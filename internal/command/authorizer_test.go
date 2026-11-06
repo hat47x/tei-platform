@@ -44,3 +44,13 @@ func TestInvokerAuthorizerAllowsExecution(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestAllowListAuthorizer(t *testing.T) {
+	allowed := AllowListAuthorizer{"sales.submit"}
+	if err := allowed.Authorize(context.Background(), Request{Capability: "sales.submit"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := allowed.Authorize(context.Background(), Request{Capability: "sales.other"}); err == nil {
+		t.Fatal("unlisted capability was allowed")
+	}
+}

@@ -148,7 +148,7 @@ BC-08/09のOwner仮説P3、BC-07の正式回復条件、BC-12の量化/再集計
 - **証明範囲**：与えられた情報を失うProjectionだけからは、二世界に異なるClaimを正しく判定することが不可能、という*有限個の合成反例*。見えない値が実際にあること、OwnerのP3/Recovery規則が受理済みであること、TEI Consumerが現在誤判定していること、過去のReceiptや外部効果を実測したことは証明していない。
 - **次に必要な製品接続**：#2506/#2500/#2516の実read-only Consumerと、#1174/#1129が所有する実Provider/Effect証拠に対し、合成の同一表示ケースを投入し、「根拠不足」の説明と実行許可が適切に分離することを観測する。実原モデル・Owner判断は#1125/#267に留める。
 
-このfixtureは**計画の十分性を反証する補助証拠**であり、第二のBusiness Rule Engine／汎用Oracle/Runtime Acceptanceを構成しない。追加の合成Case数を製品Gate PASSへ加算しない。
+このfixtureは**計画の十分性を反証する補助証拠**であり、第二のBusiness Rule Engine／汎用検証基準/Runtime Acceptanceを構成しない。追加の合成Case数を製品Gate PASSへ加算しない。
 
 
 ## 9. 操作意味と共有確定境界の二世界（2026-11-02追補・Claim別反証）
@@ -177,7 +177,7 @@ BC-14の**B側の限定的な旧挙動**は、[統合済み#2154](https://github
 
 ### 9.3 合成反証と製品受入の線引き
 
-既存の[自作two-world fixture](../fixtures/business-completion-claims/verify_claim_projections.py)へBC-13/14の二組を追加する。まず同一の公開Projectionに対し架空OracleのB₀/取消Claimが逆になることだけを検証する。その後、**BC-13**は#2598でIntent→Actual Capability/Request、**BC-14**は#1129/1174で子Function→親Pending→独立DB readを同じCase/Revisionで結合する。実Effect帰属や正式Owner意味の判定は、#1163同一Runの証拠が得られるまで保留する。
+既存の[自作two-world fixture](../fixtures/business-completion-claims/verify_claim_projections.py)へBC-13/14の二組を追加する。まず同一の公開Projectionに対し架空の検証基準のB₀/取消Claimが逆になることだけを検証する。その後、**BC-13**は#2598でIntent→Actual Capability/Request、**BC-14**は#1129/1174で子Function→親Pending→独立DB readを同じCase/Revisionで結合する。実Effect帰属や正式Owner意味の判定は、#1163同一Runの証拠が得られるまで保留する。
 
 **今回の資格**：本追加は設計候補と自作合成反例であり、旧Driver/実PG/製品Web/Windows/SHO/正式Owner受理を新しく実行・採用したものではない。#2154の既存実動、#2597のSQLite局所結果、#2598/#2485の設計所見は、それぞれの固定版・範囲に限る。成果物のPublish/Manifest一式整合は独立した[#2604](https://github.com/hat47x/tei-platform/issues/2604)が所有し、設計書のbyte/公開成功をAction Meaning受理へ昇格させない。
 

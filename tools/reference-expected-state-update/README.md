@@ -151,10 +151,16 @@ go run ./tools/reference-expected-state-update/cmd/tei-expected-state-update \
 | 項目 | 仮方針 | 実装状況 |
 | --- | --- | --- |
 | 保存先 | 共有オブジェクトストレージ（S3互換）。参照はローカル1実行1ファイルのまま | 未実装 |
-| 保持期間 | 最新1000件かつ90日。削除は運用承認を要する | `RetainRuns`は件数のみ |
-| 監査アクセス | 読取を監査ログへ記録し、テナント・案件単位で分離 | 未実装 |
-| 署名 | Ed25519、`keyId`付き、Host供給鍵。ローテーションはkeyIdで識別 | `SignRecord`/`VerifySignedRecord` |
+| 保持期間 | 最新1000件かつ90日。削除は運用承認を要する | `RetentionPolicy`（MaxRuns + MaxAge） |
+| 監査アクセス | 読取を監査ログへ記録し、テナント・案件単位で分離 | `AuditLog`（append/read、破損拒否）。認可分離は未実装 |
+| 署名 | Ed25519、`keyId`付き、Host供給鍵。ローテーションはkeyIdで識別 | `SignRecord`/`VerifySignedRecord`、`KeyRing`（rotation・retired拒否） |
 | 再現性 | record・署名・元Evidenceが揃う対象に限り条件付きで再計算 | `VerifyRecord`（合成・実DB） |
+
+参照実装の範囲:
+
+- `RetentionPolicy{MaxRuns, MaxAge}` は両方の指定を必須とし、記録時刻の無いrunを拒否する。共有ストレージ上の削除は行わない。
+- `AuditLog` はJSON Linesの追記専用で、破損行・未知schema・action/time欠落を拒否する。誰が読めるかの認可は呼出側で、テナント分離は未実装。
+- `KeyRing` はkeyIdで鍵を選び、`Rotate` で旧鍵をretiredにする。`Sign`/`Verify` は未知・retired鍵を拒否し、回転前の記録は `VerifyArchived` でのみ検証できる。鍵の保管・パスワード・HSMは未実装。
 
 `digest validated` ≠ `record authentic` ≠ `input replayable` ≠ `effect committed` ≠ `disclosable` の区別は維持する。署名は「record+signatureの同時改変」を鍵の管理下で検出する手段であり、鍵が漏えいした場合や、元Evidenceが失われた場合の再現性を保証しない。
 

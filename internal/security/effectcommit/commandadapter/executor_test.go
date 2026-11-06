@@ -111,7 +111,8 @@ func request() command.Request {
 
 func TestExecutorCommitsThroughEffectCommit(t *testing.T) {
 	invoker := command.Invoker{
-		World: adapterWorld(),
+		Authorizer: command.ReferenceAuthorizer{},
+		World:      adapterWorld(),
 		Executor: Executor{
 			Runner:      effectcommit.Runner{Provider: fakeProvider{allowed: true}},
 			Grant:       grant(),
@@ -125,7 +126,8 @@ func TestExecutorCommitsThroughEffectCommit(t *testing.T) {
 
 func TestExecutorReportsBusinessDenial(t *testing.T) {
 	invoker := command.Invoker{
-		World: adapterWorld(),
+		Authorizer: command.ReferenceAuthorizer{},
+		World:      adapterWorld(),
 		Executor: Executor{
 			Runner:      effectcommit.Runner{Provider: fakeProvider{allowed: false}},
 			Grant:       grant(),
@@ -148,7 +150,8 @@ func TestExecutorPreservesCommitUncertainty(t *testing.T) {
 	invoker := command.LifecycleInvoker{
 		Lifecycle: lifecycle,
 		Invoker: command.Invoker{
-			World: adapterWorld(),
+			Authorizer: command.ReferenceAuthorizer{},
+			World:      adapterWorld(),
 			Executor: Executor{
 				Runner:      effectcommit.Runner{Provider: fakeProvider{allowed: true, commitErr: errors.New("connection reset after send")}},
 				Grant:       grant(),
@@ -181,7 +184,8 @@ func TestExecutorPreservesCommitUncertainty(t *testing.T) {
 
 func TestExecutorReportsResourceConflict(t *testing.T) {
 	invoker := command.Invoker{
-		World: adapterWorld(),
+		Authorizer: command.ReferenceAuthorizer{},
+		World:      adapterWorld(),
 		Executor: Executor{
 			Runner:      effectcommit.Runner{Provider: fakeProvider{allowed: true, conflict: true}},
 			Grant:       grant(),
@@ -194,5 +198,59 @@ func TestExecutorReportsResourceConflict(t *testing.T) {
 	}
 	if !errors.Is(err, effectcommit.ErrResourceConflict) {
 		t.Fatalf("error does not wrap resource conflict: %v", err)
+	}
+}
+
+// TestExecutorReportsTheCallerSuppliedDeclaredEffect checks that a committed
+// effect can be reported to the Command boundary when the caller supplies the
+// plan's declared effect. The Runner returns only a receipt, so the adapter
+// must not invent the effect from the receipt.
+func TestExecutorReportsTheCallerSuppliedDeclaredEffect(t *testing.T) {
+	recorder := &command.MemoryRecorder{}
+	invoker := command.Invoker{
+		Authorizer: command.ReferenceAuthorizer{},
+		World:      adapterWorld(),
+		Executor: Executor{
+			Runner:      effectcommit.Runner{Provider: fakeProvider{allowed: true}},
+			Grant:       grant(),
+			OperationID: "op-1",
+			Effect:      &semantic.DataEffect{Kind: semantic.DataEffectUpdate, Data: "sales.order"},
+		},
+		Recorder: recorder,
+	}
+	if _, err := invoker.Invoke(context.Background(), request()); err != nil {
+		t.Fatal(err)
+	}
+	if len(recorder.Records) != 1 {
+		t.Fatalf("records=%d", len(recorder.Records))
+	}
+	record := recorder.Records[0]
+	if record.Reported == nil || record.Reported.Kind != semantic.DataEffectUpdate || record.Reported.Data != "sales.order" {
+		t.Fatalf("reported=%+v", record.Reported)
+	}
+	if record.ReportedEffectMissing {
+		t.Fatal("a supplied declared effect was recorded as missing")
+	}
+}
+
+// TestExecutorWithoutEffectKeepsTheReceiptOnlyResult is the negative control:
+// a nil Effect still reports nothing, and the Command record marks it missing.
+func TestExecutorWithoutEffectKeepsTheReceiptOnlyResult(t *testing.T) {
+	recorder := &command.MemoryRecorder{}
+	invoker := command.Invoker{
+		Authorizer: command.ReferenceAuthorizer{},
+		World:      adapterWorld(),
+		Executor: Executor{
+			Runner:      effectcommit.Runner{Provider: fakeProvider{allowed: true}},
+			Grant:       grant(),
+			OperationID: "op-1",
+		},
+		Recorder: recorder,
+	}
+	if _, err := invoker.Invoke(context.Background(), request()); err != nil {
+		t.Fatal(err)
+	}
+	if !recorder.Records[0].ReportedEffectMissing {
+		t.Fatal("receipt-only executor was not recorded as missing its declared effect")
 	}
 }

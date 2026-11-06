@@ -63,7 +63,7 @@ Consumerが提出・利用するClaim、対象Application/Subjectと粒度、適
 | **Published** | 公開世代、Artifact Digest↔相対path、実byte、切替/失敗の観測 | 物理一式として公開されたか（#2604）。Digestだけでは実ファイル所在を証明しない |
 | **Consumed** | ConsumerのRead Attempt、実読取byte/digest、参照Manifest世代、対象Occurrence | Consumerが実際に読んだ範囲。内部レビューの理解や実利用は未確認 |
 | **Delivered** | SHO/MMIで保存した文書Occurrence・納品版、AIへの明示送信/許可、外部Consumerへの配送 | 相手に届けたこと。開示許可・対象・現在性・受領観測を別にする |
-| **Interpreted/Used** | 当該Claimに必要なFacet・Scope・時点の説明/型付き結果、レビュー・Independent Oracle | 目的に対する利用の妥当性。Owner受理・実業務Effect・再実行許可は別 |
+| **Interpreted/Used** | 当該Claimに必要なFacet・Scope・時点の説明/型付き結果、レビュー・独立検証基準 | 目的に対する利用の妥当性。Owner受理・実業務Effect・再実行許可は別 |
 | **Applied/Observed** | 当該Host/Providerの実Request→Effect→独立Read/Receiptと現在Grant | 実環境の効果・業務完了は専門Ownerが判断 |
 
 **受渡しの基準**：同じdigest、同じファイル名、同じApplication名、同じ「実行成功」だけでは、これらの行を結合したことにしない。SubjectとOccurrence、出典Scope、版/時点、必要な関連パス、実Read Attemptを照合する。欠けている要素は`not-observed`または`unknown`とし、明示拒否`denied`や意味不一致`mismatch`とは区別する。
@@ -78,7 +78,7 @@ Consumerが提出・利用するClaim、対象Application/Subjectと粒度、適
 ## 6. 最小の実施順序と証拠
 
 1. **P0 Source-static確認**：mainとPR HEADを固定。上記コード・既存#2482 AC-01〜04／#2604 AP-01〜09／#2600 IB-01〜10との重複を表へ記録。新Issue/新Host/新Registryの追加は不要。
-2. **P1 focused Go**：#2482がAS-01/02とAC-01〜04の局所fixtureを検証。まず現行実装の**実際の**`NewManifest/CheckSet`結果を取得し、その後必要な最小Consumer qualificationの実装位置を比較する。Result、期待Member、欠落Memberを独立Oracleで検証。
+2. **P1 focused Go**：#2482がAS-01/02とAC-01〜04の局所fixtureを検証。まず現行実装の**実際の**`NewManifest/CheckSet`結果を取得し、その後必要な最小Consumer qualificationの実装位置を比較する。Result、期待Member、欠落Memberを独立検証基準で検証。
 3. **P2 Publish/Read**：#2604がAP-01〜09で実公開世代・Path/byte・切替・旧ファイル残存を観測。Publishの完全性とReader取得の完全性は別列。Windows/WSL/POSIXの違いを明記。
 4. **P3 Consumer比較**：同じ固定ArtifactSetをTEI CLI/AI-CUI向けread-only表示/SHO引用のうち少なくとも二つの異質Consumerへ渡し、**それぞれの期待集合・出典・実Read・情報損失・開示資格**を比較。SHOのG0-0・保存再解決C-01/T2は未成立として保持。
 5. **P4 増分評価**：#2600に結果を渡し、false reuse（不足Memberや旧版の再利用）・false invalidation（不要な再生成）の両方を測る。正しさと待ち時間改善を別のOutcomeとする。
@@ -89,7 +89,7 @@ Consumerが提出・利用するClaim、対象Application/Subjectと粒度、適
 
 - `result` は `PASS / FAIL / NOT RUN / UNSUPPORTED`等を**検証した主張に相対的**に扱う。
 - `residual` に不明依存、未読取、Scope不一致、Rule未帰属、資格失効を記録する。
-- 独立OracleはProducer自身のManifestだけを期待値の正本にしない。必要集合は元のApplication・Consumer要求・対象Mapping等から別に与える。
+- 独立検証基準はProducer自身のManifestだけを期待値の正本にしない。必要集合は元のApplication・Consumer要求・対象Mapping等から別に与える。
 - 新テストの合成PASSとOwnerによる業務意味受理・実Provider/外部Host/SHO納品のE2Eを混同しない。
 
 ## 7. 受入時のOwner判断と非主張
@@ -98,7 +98,7 @@ Consumerが提出・利用するClaim、対象Application/Subjectと粒度、適
 - **本書だけで変更しない基準**：Gate A/B/Cの過去のReady、#1119 G0〜G4、M3/M4/M9、#2484 D-1〜D-3採用・D-4保留、新しいRQ追加、SHOの独立製品性、Target外部Host方針。
 - **実行状況**：本書で新たに定義したAS-01〜05、Consumer同版Read/Deliver、外部Meaning資格、Windows/SHO/EKI/TAI E2E、Owner意味受理は**NOT RUN／未採用**。他PRで報告された合成テストPASSを本書の実行結果として再解釈しない。
 
-**次の成果物**は、上記P1/P2の同一固定Revisionでの独立Oracle＋実Go/Reader試験記録である。設計票はその受入責務を明確化するもので、試験成功そのものではない。
+**次の成果物**は、上記P1/P2の同一固定Revisionでの独立検証基準＋実Go/Reader試験記録である。設計票はその受入責務を明確化するもので、試験成功そのものではない。
 
 ## 8. Everything is Data・Function Data Contextからの追加圧力（2026-11-02追補）
 
@@ -112,7 +112,7 @@ Consumerが提出・利用するClaim、対象Application/Subjectと粒度、適
 - [Draft #2626](https://github.com/hat47x/tei-platform/pull/2626)：#2516のClaim/Scope/Completeness、混合版、二世界開示を15件合成。対象HEAD `60b9a2e145529d6dd832f5a41c40bc999d4992b7`に対する[focused CI #41442415419](https://github.com/hat47x/tei-platform/actions/runs/41442415419)はSUCCESS。ただしTEI本体/実CLI・SHO/外部HarnessのE2Eではない。
 - [MMI Draft #753](https://github.com/hat47x/markdown-matrix-injector/pull/753)／[#754](https://github.com/hat47x/markdown-matrix-injector/pull/754)、[SHO #10](https://github.com/hat47x/sho-composer/issues/10)：取得・文書への出現・表示・レビュー・固定納品と、ローカル読取／外部AI送信を独立資格として扱う。MMIのC-01/T2 G0-0未通過やSHO実製品未成立を、この比較からPASSへ昇格させない。
 
-上記は**別PRの限定合成結果**であり、本PR #2630のAS試験や実TEI Product/Consumer受入のPASSではない。必要なFixtureと観測項目だけ借り、合成Oracle/実Provider/Producerを複製しない。
+上記は**別PRの限定合成結果**であり、本PR #2630のAS試験や実TEI Product/Consumer受入のPASSではない。必要なFixtureと観測項目だけ借り、合成検証基準/実Provider/Producerを複製しない。
 
 ### 8.2 AS-06〜10：期待集合の充足とRead/Disclosureを分ける（全件NOT RUN）
 
@@ -144,7 +144,7 @@ Consumerが提出・利用するClaim、対象Application/Subjectと粒度、適
 | Case | 現実装に対するGo Characterization | 既存Ownerの次の判断 |
 | --- | --- | --- |
 | AS-01 | 異ApplicationのFunctionDefinitionを同じSource Revisionで混ぜ、Generic Manifest/CheckSetがApplication Scopeを検査しないことを観測 | #2482：要求Applicationを外部Claimから照合する必要性と配置 |
-| AS-02 | 2個の期待Memberから1個だけ残したSetをManifest化し、`Complete=true`が**Expected集合充足ではない**ことを観測 | #2482：ExpectedMember独立Oracle |
+| AS-02 | 2個の期待Memberから1個だけ残したSetをManifest化し、`Complete=true`が**Expected集合充足ではない**ことを観測 | #2482：ExpectedMember独立検証基準 |
 | AC-01 | Surface JSONの構文が壊れていても、内容内にschema文字列がある場合の検査経路 | #2482：Decode失敗Finding |
 | AC-02 | Manifest作成後にArtifact Contentを改変した場合の`Artifact.Verify`と`CheckSet`の診断差 | #2482：Reader時点での各Artifact Verify |
 | AC-03 | Gap Reasonだけを変えてdigestを再生成した場合のUnresolved照合差 | #2482：Gap→Unresolvedの理由と多重度 |
@@ -154,7 +154,7 @@ Consumerが提出・利用するClaim、対象Application/Subjectと粒度、適
 
 ### 10.2 同Semantic Subjectの複数Mappingを追加圧力にする
 
-[独立Draft #2632](https://github.com/hat47x/tei-platform/pull/2632)は、[#2611](https://github.com/hat47x/tei-platform/issues/2611)／[#2627](https://github.com/hat47x/tei-platform/pull/2627)の多経路合成比較を、PR #2587の**実`internal/operations.DeriveOperationSurface`**に接続した別担当の7ケースGo Characterization候補（初回4件＋Mapping/Storageの変更3件）である。報告された候補Source上の反例は、同じSemantic DataへArchive/Primary 2 Mappingが到達すると第一AliasのMappingだけを選び、後発候補をConflictとして表現しないこと、Alias名の変更だけでOperation Basis/Inputが入れ替わること、選択されなかったMappingだけの変更ではSurface JSONが不変になることなど。#2632のテストは取得時点でGo実行**NOT RUN**であり、独立Oracle／正式Validator／実DB未適合のまま扱う。
+[独立Draft #2632](https://github.com/hat47x/tei-platform/pull/2632)は、[#2611](https://github.com/hat47x/tei-platform/issues/2611)／[#2627](https://github.com/hat47x/tei-platform/pull/2627)の多経路合成比較を、PR #2587の**実`internal/operations.DeriveOperationSurface`**に接続した別担当の7ケースGo Characterization候補（初回4件＋Mapping/Storageの変更3件）である。報告された候補Source上の反例は、同じSemantic DataへArchive/Primary 2 Mappingが到達すると第一AliasのMappingだけを選び、後発候補をConflictとして表現しないこと、Alias名の変更だけでOperation Basis/Inputが入れ替わること、選択されなかったMappingだけの変更ではSurface JSONが不変になることなど。#2632のテストは取得時点でGo実行**NOT RUN**であり、独立検証基準／正式Validator／実DB未適合のまま扱う。
 
 **ArtifactSetとの接点**：`RenderWorkspace`が各Persistence Mappingを表定義書へ生成できても、同じWorldから得たOperation Surfaceが**複数候補の意味をすべて説明した**とは限らない。これはAS-01/02の「Member数が存在する」とは別の`Meaning/Route Coverage`である。Generic Artifact CheckSetの成功を、複数Providerの選択理由・Constraint/Gapの正しさ・実CapabilityのBinding・現在Host Grantへ昇格させない。#2611/#2627が経路候補を、#2485がOperation/Actionの選択意味を、#2598が実Request対象を、#1174が実Effectをそれぞれ検証する。
 
@@ -172,7 +172,7 @@ Consumerが提出・利用するClaim、対象Application/Subjectと粒度、適
 
 - PR [#2587](https://github.com/hat47x/tei-platform/pull/2587)は2026-11-02T14:08:40Zに**mainへ統合済み**。以後のArtifact/Manifest/Operationsは、main上の実装が比較基準になる。ただしPR #2587の統合が#2482 AC-01〜04/AS-01〜11の修正完了や、#2604の物理公開保証を意味しない。
 - 2026-11-02T14:26:07Zの照合main `b1c019fec4f05ca65e3d7491608cb849ce523d29`。mainの`internal/artifact/manifest.go`／`consistency.go`は、#2587の読取時検証上の論点が依然として残る版である。対象のBlob版／Goテストを次段階で比較する。
-- [#2633](https://github.com/hat47x/tei-platform/pull/2633)は親PRを変更せず**baseをmainへ変更**。PR差分は`internal/artifact/consumer_scope_characterization_test.go`の1ファイル。変更後の実HEAD `244fccde0bc9ad5a40d4dd203157becd856017b9`では、AS-01/02の期待Member集合を`Manifest`とは別のテストOracleとして保持することを明示した。正式な製品Oracleを新設したわけではない。
+- [#2633](https://github.com/hat47x/tei-platform/pull/2633)は親PRを変更せず**baseをmainへ変更**。PR差分は`internal/artifact/consumer_scope_characterization_test.go`の1ファイル。変更後の実HEAD `244fccde0bc9ad5a40d4dd203157becd856017b9`では、AS-01/02の期待Member集合を`Manifest`とは別のテスト判定基準として保持することを明示した。正式な製品の検証基準を新設したわけではない。
 - [#2632](https://github.com/hat47x/tei-platform/pull/2632)の多Mapping試験も7件まで増えた。これは別担当のDraftであり、本書のAS-11に必要な`Operation.ID / Basis / Inputs / Mapping Storage / WorldRevision / Provider`差を共有するが、同一Go Runとしては未結合。
 
 ### 11.2 実Source読取・Snapshot・Current資格を混同しない
@@ -189,11 +189,11 @@ Consumerが提出・利用するClaim、対象Application/Subjectと粒度、適
 
 そこで実Consumerの受入を、次の3レベルとして組み合わせる。
 
-- **L0 実TEI単体**：main exact HEADで`tei artifacts`を実行し、必要なMember期待集合（別Oracle）、個別Artifact.Verify/Manifest.Verify/CheckSet、Contentの読取、実ファイルPathとbyte、公開世代を個別に観測。権限判断や外部Consumerは主張しない。
+- **L0 実TEI単体**：main exact HEADで`tei artifacts`を実行し、必要なMember期待集合（別の独立検証基準）、個別Artifact.Verify/Manifest.Verify/CheckSet、Contentの読取、実ファイルPathとbyte、公開世代を個別に観測。権限判断や外部Consumerは主張しない。
 - **L1 異質な二Consumer**：Human設計ビューとAI向けJSON/CUIのそれぞれが、同一Manifest世代から対象Memberの実byteを読み、Claim/Scope/Disclosure/Failureを比較。見た目の同値やJSON生成成功は実SHO受理ではない。
 - **L2 SHO／Harness／実Host**：SHOのOccurrence/Review/固定納品、TAI Product Skill/外部送信、Host/Providerの現在資格・実Effectを各Ownerで独立確認する。不存在のAPIや未成熟SHO保存機能を前提にしない。
 
-[#2636](https://github.com/hat47x/tei-platform/pull/2636)／[#2600](https://github.com/hat47x/tei-platform/issues/2600)の増分F0/F1/S1/S2では、**L0で必要Memberを確定し、S1のselective再利用とF1のfull再生成を単純に比較するだけでなく、独立Expected/OracleとReader資格の双方を検査**する。結果一致だけで共通の誤りを見逃さない。時間計測は正しさの確認後。
+[#2636](https://github.com/hat47x/tei-platform/pull/2636)／[#2600](https://github.com/hat47x/tei-platform/issues/2600)の増分F0/F1/S1/S2では、**L0で必要Memberを確定し、S1のselective再利用とF1のfull再生成を単純に比較するだけでなく、独立Expected/検証基準とReader資格の双方を検査**する。結果一致だけで共通の誤りを見逃さない。時間計測は正しさの確認後。
 
 ### 11.4 リリース資格への非昇格
 
@@ -232,7 +232,7 @@ Consumerが提出・利用するClaim、対象Application/Subjectと粒度、適
 ### 12.3 次に行う検証の優先順序
 
 1. **P0 CheckSetの欠落修正**：#2659のactual Go testsをGitHub Actions実HEADと同一のcheckoutで検証。AS-01/02が引き続きGeneric Manifestでは検出不能であること、AC-01〜04が今度は検出されることを別列で記録。意図的なGeneric Setの用途を損なわない。
-2. **P1 出力物の証拠形式検証**：#2604でAP-08〜11を実`tei artifacts`／`-out`の二経路比較で検証。途中失敗、旧ファイル残留、ContentとEnvelopeの異版、ConsumerのPath/read/verify結果を独立Oracleで判定。ManifestのEntryを取り出しただけで実Fileを取得済みと主張しない。
+2. **P1 出力物の証拠形式検証**：#2604でAP-08〜11を実`tei artifacts`／`-out`の二経路比較で検証。途中失敗、旧ファイル残留、ContentとEnvelopeの異版、ConsumerのPath/read/verify結果を独立検証基準で判定。ManifestのEntryを取り出しただけで実Fileを取得済みと主張しない。
 3. **P2 版と動的依存**：#2582/#2586/#2600（Draft #2636）に、Source/Rule/Predicate/Provider/Read Cohort/Operation Basis/Storage/Content/Consumer Purposeの差を渡す。F1 fullとS1 selectiveの一致だけでなく**独立Expected**を確認し、false reuseとfalse invalidationを分けて測る。Store破損、Receipt欠落、Grant失効を単なるcache missへ丸めない。
 4. **P3 二種類のReader**：TEI側で実Human表示・AI JSONの同一出典を検証（#2626の実CLI read-only成功は独立の先行根拠）。SHO #4/#6の実保存→再開→出典再解決、TAI Product Skillの実受信・開示・撤回は**各Ownerの別実験**として扱う。
 5. **P4 実Provider／外部Host**：Function ContextのDeclared/Actual Read、複数ProviderのSnapshot、Operation選択と現在Grant/実Effectの関連を検査。設計資料の正常性を実行許可へ昇格しない。

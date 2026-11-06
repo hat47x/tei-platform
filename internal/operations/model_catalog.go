@@ -13,14 +13,28 @@ import (
 // ModelCatalog is a read-only, target-neutral Modeler projection. It is a
 // navigation aid, not a second canonical model, edit authority or acceptance.
 type ModelCatalog struct {
-	SchemaVersion          string              `json:"schemaVersion"`
-	Effect                 string              `json:"effect"`
-	NamespaceFilter        string              `json:"namespaceFilter,omitempty"`
-	WorldFingerprint       string              `json:"worldFingerprint"`
-	SourceIndexFingerprint string              `json:"sourceIndexFingerprint"`
-	ModelRevision          string              `json:"modelRevision"`
-	Entries                []ModelCatalogEntry `json:"entries"`
-	AuthorityLimits        []string            `json:"authorityLimits"`
+	SchemaVersion   string `json:"schemaVersion"`
+	Effect          string `json:"effect"`
+	NamespaceFilter string `json:"namespaceFilter,omitempty"`
+	// NamespaceMatched reports whether the requested namespace exists in the
+	// loaded World. It is always true when no filter was requested. A caller
+	// must not read an empty Entries list as "the namespace declares nothing":
+	// a misspelled namespace and a declared namespace with no entries are
+	// different answers.
+	NamespaceMatched bool `json:"namespaceMatched"`
+	// NamespaceMatchKind names what the filter selected: "all" (no filter),
+	// "namespace", "application", "query", or "unknown". An application or
+	// query ID is a real workspace subject, but it is not a semantic
+	// namespace and therefore selects no entries through -namespace.
+	NamespaceMatchKind     string `json:"namespaceMatchKind,omitempty"`
+	WorldFingerprint       string `json:"worldFingerprint"`
+	SourceIndexFingerprint string `json:"sourceIndexFingerprint"`
+	ModelRevision          string `json:"modelRevision"`
+	// DeclarationCounts separates Workspace-authored declarations from the
+	// standard semantic prelude, which is always present (#2822).
+	DeclarationCounts DeclarationCounts   `json:"declarationCounts"`
+	Entries           []ModelCatalogEntry `json:"entries"`
+	AuthorityLimits   []string            `json:"authorityLimits"`
 }
 
 type ModelCatalogEntry struct {
@@ -56,6 +70,30 @@ func CatalogWorkspace(root, namespace string) (ModelCatalog, error) {
 	return CatalogWorld(loaded.World, idx, namespace, worldFP, sourceFP), nil
 }
 
+// namespaceMatch reports whether a namespace filter names something in the
+// World and what kind of subject it named. An empty filter matches everything.
+func namespaceMatch(world ir.World, namespace string) (bool, string) {
+	if namespace == "" {
+		return true, "all"
+	}
+	for _, ns := range world.Semantics {
+		if string(ns.ID) == namespace {
+			return true, "namespace"
+		}
+	}
+	for _, app := range world.Applications {
+		if string(app.ID) == namespace {
+			return false, "application"
+		}
+	}
+	for _, query := range world.Queries {
+		if string(query.ID) == namespace {
+			return false, "query"
+		}
+	}
+	return false, "unknown"
+}
+
 // CatalogWorld is a transport-independent projection for CLI today and other
 // targets later. It does not synthesize source anchors or writable locations.
 func CatalogWorld(world ir.World, idx sourceindex.Index, namespace, worldFP, sourceFP string) ModelCatalog {
@@ -63,13 +101,17 @@ func CatalogWorld(world ir.World, idx sourceindex.Index, namespace, worldFP, sou
 	for _, ref := range idx.References {
 		refCount[ref.Subject]++
 	}
+	matched, matchKind := namespaceMatch(world, namespace)
 	out := ModelCatalog{
 		SchemaVersion:          "tei.operations.model-catalog/v0",
 		Effect:                 "read-only",
 		NamespaceFilter:        namespace,
+		NamespaceMatched:       matched,
+		NamespaceMatchKind:     matchKind,
 		WorldFingerprint:       worldFP,
 		SourceIndexFingerprint: sourceFP,
 		ModelRevision:          sourceindex.ModelRevision(idx),
+		DeclarationCounts:      CountDeclarations(world),
 		Entries:                []ModelCatalogEntry{},
 		AuthorityLimits: []string{
 			"catalog-is-a-derived-read-only-projection",
