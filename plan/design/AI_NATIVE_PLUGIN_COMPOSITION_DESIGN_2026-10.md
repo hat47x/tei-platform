@@ -534,3 +534,55 @@ Registryは**発見の索引**、Issuerは証拠の発行主体、Host/Ownerは�
 **撤回条件**：Scope/Trustの違いが既存Contract＋Profile＋Runtime Invocation＋Evidenceの読み取りProjectionで表現できれば、新しいScope Hierarchy/Policy Engine/Registry/Grant storeを追加しない。新規Plugin/Target用Core機能が不可欠と主張する場合は、二つ以上の異質Consumerと既存仕組みでの反証を提出する。
 
 **状態**：資料・既存Issue・別PRの設計照合に基づく追加受入候補。DSHの全ソース監査、実Multi-Tenant Host/IdP、Plugin配布失効・Go Link/実DB・Agent OS送出の新しい実測、Ownerの正式意味受理は**NOT RUN／未採用**。本節を含むPRのDraftとmain未統合を維持する。
+
+## 23. 六Scopeの圧力試験と方式棄却：権限の時点・効果の分割を固定する（2026-11-06、設計候補・NOT RUN）
+
+**差分の所有範囲**：§22の六Scope分類とDSH-19〜26は保持。本節は既存#2386（組織意味）、#1016（構成）、#951（Contract/Provider）、#1118（Context slot）、#1174（current Grant/Commit）、#1129（部分Effect）、#2516（開示）の**同一Operationに対する必要確認点**をつなぐ圧力試験である。方式選定の原則とD0/D1/D2は[Draft #2885](https://github.com/hat47x/tei-platform/pull/2885) §14〜21に委譲し、本節で再採用・変更しない。現mainへ採用済みのADR-0043（TEI共通Host非必須）に反しない。
+
+### 23.1 権限に関する非推論契約
+
+| Scope | 確認可能な事実 | そこから推論してはいけないこと |
+| --- | --- | --- |
+| Distribution | Plugin/ReleaseのPublisherとContract由来、Artifact digest | Publisherが信頼できるから、実行主体にBusiness/Resourceアクセス権がある |
+| Authoring | Source revision/MeaningとOwner受理、対象Function/Rule | 設計の受理から、個々のHostの現在のGrantが作られる |
+| Composition | Application/ProfileがProviderを選択、Tenant別Binding候補を宣言 | 同じPlugin/同じBinary/同じProfileから、Tenantの資格やデータ共有が自動成立する |
+| Organization | Person/Employment/OrgUnit/Membership/Position/Delegation（validAt/knownAt） | 兼務・組織Role・同名/メール/Directory Group一致が別issuerのprincipalやTenant Grantを決定する |
+| Runtime | Hostが確認したissuer+subject、Target/Resource/Tenant、current Grant epoch、Effect fence | PreflightのAllowや旧LeaseだけでCommit時にも有効だと断定する。また撤回により既Commitが消えると断定する |
+| Disclosure | 特定ConsumerへのReader結果、母集団・complete/partial/denied、開示許可 | SQL result=0やread-only、UI非表示から、別Tenantの不存在・秘密非送出・業務Effectなしを断定する |
+
+**共有の条件**：共有可否はAssetの共有（Package/Bundle/Contract）、Source/Modelの共同Authoring、RuntimeのResource/Recordアクセス、Consumerへの開示についてそれぞれ明示的なBinding/Policy/Authorityを要する。共通Libraryの同梱は共有Storage・共有Principal・暗黙のCredential再利用を意味しない。Tenant内の完全な0件から別Tenantの0件を推論しない。異なるIssuerの同一人物対応は認証された根拠なしに結合しない。元のSourceと未知構造はPlugin解除後も保存する（#2044）。
+
+### 23.2 同じ受注番号を持つ二法人・二Tenantの固定縦断（新Fixture正本ではない）
+
+既存[#2386 S2/S5/S6](https://github.com/hat47x/tei-platform/issues/2386)、[#3016](https://github.com/hat47x/tei-platform/pull/3016)（同じOrderID=9のTenant A customer12とB customer29、実PG opt-in test候補）、[#1174](https://github.com/hat47x/tei-platform/issues/1174)のEffect受入を**同一独立Expectedに戻して**使う。以下は追加の比較手順でありテストは未実行。
+
+| 観測ケース | 固定する条件・故障注入 | 独立Expected、拒否・不明の条件 |
+| --- | --- | --- |
+| SCOPE-1：二法人兼務 | Person Pは法人A本務、法人B兼務。A/Bは別のissuer+subjectかもしれない。Bで業務上承認候補となるが、B HostのGrantは無い | Bの業務候補は意味として表示可能。ただしBでの実Writeは拒否／未資格。Personの同定・共有は別出典とOwner判断。AのGrantはBの代替にならない |
+| SCOPE-2：同Plugin二Tenant | 同じContract/Implementation/Artifact、別BindingでA/BのOrderID=9を読む。Aの実GrantはA-only、Bは無し／別のB限定Grant | Aの許可されたReaderは(A,9,12)のみ、Bが無許可なら**denied（0件とは別）**。B許可時は(B,9,29)のみ。Cache/Pool/Request Contextの流用による混在を拒否。実Consumerの公開列は別Disclosure |
+| SCOPE-3：Grant撤回の競合 | T0 Grant epoch eが有効→T1 Preview/Dispatch→T2 Hostがeを撤回→T3 ProviderのCommit境界。対照はT3 Commit済み→T4撤回 | **撤回の効力点と実Provider fenceの契約を先に特定**。T2が強制境界前ならその境界の新規Writeを拒否し、Effect 0を別Readerで確認できる実現だけqualified。Host/DB間の原子的失効保証が無ければ競合区間をunknown/unqualifiedとし、「必ず0件」を自称しない。T3確定後の撤回は旧Commitを消さない |
+| SCOPE-4：部分効果とACK喪失 | 同一Business OperationでDB更新AをCommit、外部通知Bが失敗／ACK unknown。旧ProviderをUnload、B側Grantはその間に失効 | Aを実Receipt+独立Readで既確定として保持し、Bをfailed/unknownと明示。Run/Plugin cleanupを全体rollbackやBusiness Successにしない。再送は同一Operation/Effect段階IdentityとProviderの実重複防止根拠が無ければ停止。補償は業務Ownerが許容してから明示別Effectとして扱う |
+
+**時間の意味を混ぜない**：OrgのvalidAt/knownAt、Source/Accepted Revision、Profile/Artifact Revision、Grant/Lease epoch、Operation/Effect attempt時点、独立Readの観測時点を同じTimestampで代用しない。撤回要求をいつ受領したかと、実ProviderのどのCommitが拒否可能だったかは別。OS/IdPとDBに跨る完全な原子性が無い場合は**保証不能条件を先に申告**し、その方式で厳密なrevocation-at-commitが業務要件なら棄却する。
+
+**Disclosure**：Aで読める情報をBへ書込んだりAgentに送出する場合、AでのRead権限はBへのWrite/Disclosure権限でない。元Sourceの機密と開示先を別に評価。独立Readを行う観測器も正当な権限が必要であり、「検証だから」アクセス制約を迂回しない。
+
+### 23.3 方式選定の棄却基準（選定時のStop条件、未採用）
+
+まずD0（標準Data/Rule/直接Library/設定）で必要な振舞いを表現できるかを確認する。**論理Plugin Contractが必要か**と**別Processが必要か**は独立に問う。次の三方式は万能な順位ではない。
+
+| 方式 | 採用を検討できる前提 | 棄却／再設計へ戻す条件 |
+| --- | --- | --- |
+| D1 静的合成（Go単一Binary・Target native） | 独立更新をBuild/Deployで扱える、実依存・未選択の物理除外を測れる、Host側に必要な権限Fenceがある | Hard要件が無停止の個別Hot swapで再起動不可／不信Pluginコードの強制分離が必要なのに同一プロセスで実行／実選択とactual import/init/embed/Linkの一致を証明できず余計なEffectが残る／必須Grant fenceが組込めない。**その選定・実装の不合格であって静的方式一般の禁止ではない** |
+| 動的ロード／同一ProcessのGeneration | Target固有Loader・ABIと宣言された権限、prepare→ready→cutover→drain/dispose、実In-flight/Effect境界が観測できる | Go静的TargetにLoaderを強制／untrusted native pluginをin-processで隔離できると主張／世代切替で旧Resource/Secret/Tokenの残存・権限再検査漏れ・未完了Effectがある／安全なdrain/rollbackを要求されるが保証できない。Registration disposerはDB取消ではない |
+| D2 外部Process／独立Host | 契約とTransport/Caller/Target Bindingが明示され、OS/Network/Secretの強制境界を検証でき、Crash/ACK-loss/再送・Receipt/独立ReadがConsumer要求に合う | プロセス分離だけでTrust/Filesystem/Network隔離成立を自称／同一OS user・共有Credentialの越境が防げない／RPCでTenant/Subject/Operation/Grantの受渡しが偽装可能／業務上必須のCommit fence/重複防止/独立観測ができない／実Latency・Memory・配備の上限に違反。**Process＝安全は不採用** |
+
+**三方式共通の棄却**：Owner意味未受理を実行可能とする、要求されるNULL/precision/Unknown/partial/orderingを契約差に押し込む、現在GrantをProfileから推定、明示されないCredential/Networkを利用、実Target・独立Expected・Actual Source/Artifactの対応が取れない、または完全な原子性/Exactly-onceを実証なしに保証すること。必要のない「全Plugin動的化」も、適用・保守・安全の費用を増やすだけなら棄却候補。
+
+### 23.4 実証を取り込む最小の受渡し票と責務
+
+検証の独立列：`(Source/Meaning Revision, Application/Profile+Tenant binding, Contract+Provider+Artifact, Org validAt+knownAt/actor mapping, Host issuer+subject/current Grant epoch+Resource, Operation/Attempt/Effect-stage ID, required/evaluated guards+Provider fence point, effect result/receipt, independently scoped read/time/completeness, Consumer disclosure, Actual/Expected/NOT RUN)`。ここでの列は概念であり、新Manifest・全Host共通Schemaを採用しない。
+
+- **Meaning/Org**：#2386/#267。**Wiring/Scope**：#1016/#951/#1118。**Build/Way selection**：Draft #2885/#1251/#1121/#2390。**Grant/Effect/Recovery**：#1174/#1129/#2564。**Disclosure**：#2516/#1178。**Test Oracle**：#1180/#2514。**Product Gate**：#1119既存G1/G2/G4。
+- 既存[#3016](https://github.com/hat47x/tei-platform/pull/3016)を「同Key異Tenantの実PG read」局所回帰として使い、SCOPE-3のGrant撤回・SCOPE-4のDB+外部通知部分Effectや正式IdPまで成功したとは言わない。#2885の[D0/D1/D2](https://github.com/hat47x/tei-platform/pull/2885)は既存23 Vectorと独立実行証拠へ戻し、Scope横断負例を純粋D0の必須テストにしない。
+- **状態**：本文は既存Source/PR/Issueの照合に基づく**方式の停止条件・独立Expected案**。このSCOPE-1〜4を一連の実Host/IdP/実DBで実行していない。Static-vs-Dynamic-vs-Processの実コスト・権限強制・失敗時のProduct E2E、Owner意味受理・正式方式採用は**NOT RUN／未採用**。本節とそのDraftを本番保証としない。
