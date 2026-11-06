@@ -3,6 +3,12 @@
 > 2026-11-06 方針：ユーザーによる明示的な製品方向決定。標準のTEI記述Sourceは *.tei.md とし、旧 *.tei の新規作成を原則停止・段階廃止する。
 > この文書は設計・移行・独立受入計画。既存Parser/Loader移行、ソース変換、CI、SHO/Studio動作、Owner意味受理は実装・実証前。実データの無断移行を認めない。
 
+## 本文書と既存計画の所有境界（2026-11-07 横断レビュー）
+
+- **全体の移行順序と旧新互換の検収正本**：先行する [Draft #2667](https://github.com/hat47x/tei-platform/pull/2667) の `plan/design/TEI_MARKDOWN_SOURCE_MIGRATION_2026-11.md`（M0〜M5、TMD-01〜12）。本書の M0〜M6／TM-01〜14 は異なる独立Gateではなく、最初の分析時に作った対応観点である。採否・実行順は #2667 の既存統合計画に一本化し、内容が異なる場合は #2621 Owner に未決差として提示する。
+- **本書の固有責務**：ユーザーが実際に触れる `*.tei.md` の *Markdown適合性とTEI認識範囲*、旧DSLからのSource span対応、SHO/Obsidianでの原文保全、AIによる部分定式化。これらを全体計画の TMD 試験と**同じ固定Fixture／独立Expected**で検証する。新しい共通Parser、Source Registry、Acceptance、別のSemantic SSOTは追加しない。
+- **意思決定の確度**：拡張子の方針はユーザー決定。Markdown内のDSL構文、Role宣言、移行方法、互換期限、Source Writer、製品E2Eは未決・未実行。プロジェクトの `.tei/decisions/` は既存Decisionの保存先であり廃止対象ではない。
+
 ## 1. 決定の範囲と目的
 
 普通の文章は *.md、TEI向け定義を主目的とするMarkdownは *.tei.md。既存の *.tei は legacy/import 対象に下げ、原則として新規 Authoring Source の標準名にしない。*.tei.md がMarkdownでありTEIに関係することをファイル名だけで分かるようにする。末尾 .md を保ちSHO・Obsidian・一般Markdownツールとの相互運用を目指す。
@@ -88,3 +94,50 @@ SHOは未完成/不正構文でもRaw Draftを保存可能とし、TEIの正式�
 - TEI #2621＝Markdown Authoringと移行後のSource fidelity、#988＝Language/Parser、#2620＝Role、#1124＝Studio Source編集と正式Acceptance、#2823＝実Loader欠落、#2514＝独立Oracle、#2600＝Build依存、#1440＝AI自然言語→モデル候補。
 - SHO #19＝軽量Writer/Editor、SHO #18＝任意OKF、SHO #20＝Obsidian/Cloud/Vault。SUI #3391の探索成果はSHOのMarkdown Sourceとして受け、TEI側の意味に自動昇格させない。
 - この方針はユーザーによる方向付け。現行Core/DSL/Source形式・Legacy廃止期日・破壊的移行の実施判断は個々の実証とOwner Reviewに分解し、現mainの能力だとは表示しない。新しいSemantic Registry、Host、Acceptance経路は作らない。
+
+
+## 8. 記述体験と機械的資格を分離する Authoring Profiles（追加の成熟差分）
+
+### 8.1 三つのAuthoring候補を同一入力で比較
+
+| 候補（未採用） | 著者の主な入力 | 長所 | 反例・必要な独立観測 |
+| --- | --- | --- | --- |
+| **A 説明＋Markdown表＋Role** | Markdownの見出し・表・式に必要部分のみRole/対象を宣言 | ドメイン専門家の自然な認知順、SHO/外部エディタの書き味 | 同形の表が説明・データ・テストのいずれか判別できない場合、**実行候補の特定を保留**。見出し名から意味を推測しない |
+| **B コードFence内に既存TEI DSL** | Markdown本文＋指定された`tei`コード領域 | 旧DSLの字句を再利用しやすく限定PoCに適する | 突き抜けたDSL記号や未閉じFence、引用中の例示と実定義を区別。**Fenceを見つけただけでBuildへ登録しない** |
+| **C Markdown内に独立して配置した宣言書式** | 説明文の近くに短いTEI専用構文（Markdown上も合法） | コード塊による認知ノイズを抑えられる可能性 | 新Grammar/Renderer依存・外部Readerの未知構文・曖昧パースを同じ基準で比較 |
+
+**選定基準**は「専門家にとって自然な認知順・修正容易性・ノイズの少なさ」→「出典位置と部分保存」→「解釈の決定性/意味忠実度/Plugin/Grammar固定」→「外部Markdown互換」の順。Go ASTの実装都合、Markdownとして綺麗にレンダリングされること、AI生成時のToken数を先頭基準にしない。旧DSL全文をFenceへ包む方式を新標準の正式Grammarと先取りしない。A/B/Cに共通する標準データ構造/Role/Meaningと同じ独立Expectedを使う。PoCは先に最小の実動作から始め、比較結果をOwnerが採用するまで投影同値を主張しない。
+
+### 8.2 書きかけの文書と、意味解釈対象の選択を独立させる
+
+`*.tei.md` は**ファイル全体のTEI向けAuthoring意図**を識別するだけ。見出し・本文・表・サンプルコード・引用・検証対象は同一ファイル内に共存可能。定義として解釈する対象は、既存WorkspaceのSource Root/選択Profile、文書内の明示 Role/Occurrence、固定されたLanguage Plugin/Grammarと、実Loaderが読んだ範囲の積として判定する。未選択の通常Markdown、説明用の`tei`コード例、引用中の宣言、OKFの`tags: [tei]`は自動Semantic Sourceではない。
+
+SHOの**Raw Draft Save**は、構文が壊れている途中・未閉じFence・不完全表・未知Plugin、未解決Referenceでも原文を保存できる。これらの診断はTEI解釈段階に保持し、旧Parser候補を保存成功で意味受理へ昇格しない。UIのLint/補完は世代番号・buffer版を持つread-only候補であり、AI/非同期結果の後着は古いSourceへの自動Patchをしない。
+
+### 8.3 Source spanと入れ子構文の差
+
+Markdown Frontmatterの長さ、BOM、CRLF、見出し改行、Fence開始・終了文字列/長さ（バッククォート・チルダ）、インデントと最終改行を踏まえ、`embedded TEI offset` → **元ファイルのbyte-offset範囲**の単一対応を観測する。TEI Parserが返す行列位置を本文全体の位置へ単純に加算するだけではBOM/CRLF・引用/複数Fenceで誤る。必ず抽出前の実bytes/SourceRevisionと対応表を固定し、該当領域への診断・局所Patchだけを許す。**抽出Snippetだけのhashと原文全体のhashを混同しない**。
+
+無変換保存ではBOM/CRLF/空白/未知Frontmatter/元のScript糖衣などのbyte列を維持する。旧 `*.tei`を新Markdownへ変換した場合、Markdownの包み込みにより**新しいファイル全体のbyte列が旧Sourceと一致するとは主張しない**。旧元byteと新領域に対応する字句、コメント、識別子の保存・意味変化・失われた付随情報を別々に採点する。
+
+### 8.4 文章→モデル→図表を自動的な正本変更にしない
+
+SHO/SUIで作成したMarkdownの任意範囲を選択し、AIなしの手動表/図展開または任意のAI Skillから**TEI構造候補**を得る。元文書、提案した表/Graph、Owner受理済みMeaning、正式生成Artifactはそれぞれ別のIdentity/Revision。AIが推論して補ったActor・PK/Relation・NULL/欠損・時間条件・単位は人間未受理として明示。Markdown全体を機械的に定式化する必要はない。
+
+SHO Editorだけで書き始め、SUIによる発想の展開を必要に応じて経由し、`*.tei.md`に切り出しても、SUIのTree/Island/空間関係の原版をMarkdown見出しへ一対一に押し込まない。文章化された仮説はMeaning受理と異なる。外部Vault/OKFに保存できることもTEI実行資格の根拠ではない。
+
+### 8.5 追加の独立Expected（#2667のTMDケースに従属・全件NOT RUN）
+
+| ID | 同一固定Fixtureに追加するMutant | 独立Expected／検出する誤実装 | 所有 |
+| --- | --- | --- | --- |
+| **AU-01** | `*.tei.md`内の説明用FenceをBuilderが定義として処理 | 明示Selection/Roleが無ければ**実定義0**、全ファイル受理不可。空結果は「必要定義が無い」の証明にならない | #988/#2621 |
+| **AU-02** | 2個のTEI領域と未閉じFence・BOM+CRLF+日本語見出し | 元byte span/診断/段落境界が正確。解釈できない部分はDraftのまま | #2621/SHO #19 |
+| **AU-03** | Markdown表が説明/Case Expected/実Dataの同形 | Role未宣言なら候補保留。全表の型付きData自動登録0 | #2620/#2621 |
+| **AU-04** | 並列Editorが本文改版、Source候補を旧snippet位置へApply | bufferとdiskの実Revisionを比較。採用前差分で競合を止める | SHO #4/#1124 |
+| **AU-05** | 旧`*.tei`原文をFenceへ包むがコメント/空白を正規化し隠蔽 | 旧元byte/新領域/Meaning候補/診断を別観測し、正本移行成功とは表示しない | #988/#2505 |
+| **AU-06** | SUIの異なるTree枝が同じIslandに集中したB型文章をTEIのHierarchyに自動転写 | 文章化の仮説は未受理、SUIの別構造と出典を維持。Ownerの明示Meaning判断まで保留 | SUI #3391/SHO #19 |
+| **AU-07** | Markdownはlint PASS、Role Provider未ロード、`validate ok`、Buildが古い`*.tei`を消費 | Raw/Grammar/Loaded/Meaning/Build actual consumedを別列。必要なSourceの未読込をPASSにしない | #2823/#1163 |
+| **AU-08** | `foo.tei.md`がOKFでConcept ID `foo.tei`を得て旧`foo.tei`と文字一致 | OKF Concept ID/旧Source Path/TEI Meaning IDを別。自動relocation/Owner受理0 | SHO #18/#2505 |
+
+**実施順**：#2667 TMD-01〜04/07の固定1 Subjectの読込実測を最優先→その同じSourceでAU-01〜05/07を最小Authoring PoC→AU-06はSUI/SHO Producer/Writerの資格が成立した後→AU-08はOKF Pluginを選択した場合のみ。Expectedは既存#2514の独立Oracleで保持し、変換実装/AI自身がExpectedを生成して合格させない。既存G0〜G4や他Issueの新Gateにしない。
+
