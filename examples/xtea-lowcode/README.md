@@ -77,3 +77,4 @@ CGO_ENABLED=0 go build -mod=readonly -tags server -o tei-studio-server .
 別ターミナルで`http://127.0.0.1:43123/`を開きます。単票ビュー、Command計画、参照実行、Packageビューを確認できます。
 
 Studioはloopback限定の読取り専用Hostであり、接続者認証・業務操作の認可・利用者間の分離を提供しません。詳細は[Studio README](../../cmd/tei-studio/README.md)を参照してください。
+server buildと`/health`の確認記録は[Studioサーバー起動確認](../../plan/evidence/XTEA_LOWCODE_EXAMPLE_STUDIO_SMOKE_2026-11.md)にあります。画面表示・Wails RPC・Desktop WebViewは未確認です。
