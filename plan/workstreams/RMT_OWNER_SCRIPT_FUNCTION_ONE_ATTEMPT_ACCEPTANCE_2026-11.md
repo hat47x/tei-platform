@@ -407,47 +407,47 @@ P0-R1に成功しても自動的にWrite Allowは発行しない。同じRuleで
 
 | 段階 | 現行Sourceと内容 | 未検証の境界 |
 | --- | --- | --- |
-| Workspace | \`examples/xtea-lowcode/tei.workspace.yaml\`：\`semantic/applications/databases\`をsourcesへ指定 | 読込から実RunまでのInput byte・選択／版 |
-| Pattern | [\`applications/order-entry/patterns/recent-orders.tei\`](https://github.com/hat47x/tei-platform/blob/main/examples/xtea-lowcode/applications/order-entry/patterns/recent-orders.tei)：\`pattern order_entry.recent_orders browse\`、\`query order_entry.recent_orders\`、\`data sales.order\`、\`filter sales.order.status {eq ne} parameter status\`、\`page-size 20\` | **Pattern宣言のQuery参照が、実Runtime ReaderのQuery選択へ渡った証拠はない** |
-| Query/SQL | [\`queries/recent_orders.tei\`](https://github.com/hat47x/tei-platform/blob/main/examples/xtea-lowcode/applications/order-entry/queries/recent_orders.tei)：\`input status std.code\`、\`datasource sales\`、\`sql postgres file "recent_orders.sql"\`、\`result order_id/customer_id\` → \`sales.order\`属性 | 実引数・SQL実消費byte・Row/Field Mappingと実Statementの同一性 |
-| App → DB定義 | [\`application.tei\`](https://github.com/hat47x/tei-platform/blob/main/examples/xtea-lowcode/applications/order-entry/application.tei)：\`database sales {target sales_core; access read-write}\`；[\`database.tei\`](https://github.com/hat47x/tei-platform/blob/main/examples/xtea-lowcode/databases/sales-core/database.tei)：\`database sales_core {kind relational; ownership managed-here; uses semantic sales}\` | **論理Alias→実DB Instance/接続・Tenant/Scheme・Credential/Current Grantは別**。定義上targetがあることをRuntime Binding済みとしない |
-| SQL原文 | [\`recent_orders.sql\`](https://github.com/hat47x/tei-platform/blob/main/examples/xtea-lowcode/applications/order-entry/queries/recent_orders.sql)：\`select order_id, customer_id from sales.order where status = :status\` | \`order\`という識別子の方言上の扱い、実Schema名/物理table、\`:status\`からProvider PlaceholderへのBindingを実Dialect/Executionで検証。**現時点でPG実行成功／SQL不適合を断定しない** |
-| 既存Go Test | [\`cmd/tei/xtea_example_test.go\`](https://github.com/hat47x/tei-platform/blob/main/cmd/tei/xtea_example_test.go)：Workspace Validate、\`order_entry.order_record\`の\`applicationview.Build\`、Command Plan、Package、MemoryStore CRUD/cascade | このTestは**recent_ordersの実Query Read／実PostgreSQL Rowsetを実行していない**。例の\`UNBOUND_DATASOURCE\`は未解決 |
+| Workspace | `examples/xtea-lowcode/tei.workspace.yaml`：`semantic/applications/databases`をsourcesへ指定 | 読込から実RunまでのInput byte・選択／版 |
+| Pattern | [`applications/order-entry/patterns/recent-orders.tei`](https://github.com/hat47x/tei-platform/blob/main/examples/xtea-lowcode/applications/order-entry/patterns/recent-orders.tei)：`pattern order_entry.recent_orders browse`、`query order_entry.recent_orders`、`data sales.order`、`filter sales.order.status {eq ne} parameter status`、`page-size 20` | **Pattern宣言のQuery参照が、実Runtime ReaderのQuery選択へ渡った証拠はない** |
+| Query/SQL | [`queries/recent_orders.tei`](https://github.com/hat47x/tei-platform/blob/main/examples/xtea-lowcode/applications/order-entry/queries/recent_orders.tei)：`input status std.code`、`datasource sales`、`sql postgres file "recent_orders.sql"`、`result order_id/customer_id` → `sales.order`属性 | 実引数・SQL実消費byte・Row/Field Mappingと実Statementの同一性 |
+| App → DB定義 | [`application.tei`](https://github.com/hat47x/tei-platform/blob/main/examples/xtea-lowcode/applications/order-entry/application.tei)：`database sales {target sales_core; access read-write}`；[`database.tei`](https://github.com/hat47x/tei-platform/blob/main/examples/xtea-lowcode/databases/sales-core/database.tei)：`database sales_core {kind relational; ownership managed-here; uses semantic sales}` | **論理Alias→実DB Instance/接続・Tenant/Scheme・Credential/Current Grantは別**。定義上targetがあることをRuntime Binding済みとしない |
+| SQL原文 | [`recent_orders.sql`](https://github.com/hat47x/tei-platform/blob/main/examples/xtea-lowcode/applications/order-entry/queries/recent_orders.sql)：`select order_id, customer_id from sales.order where status = :status` | `order`という識別子の方言上の扱い、実Schema名/物理table、`:status`からProvider PlaceholderへのBindingを実Dialect/Executionで検証。**現時点でPG実行成功／SQL不適合を断定しない** |
+| 既存Go Test | [`cmd/tei/xtea_example_test.go`](https://github.com/hat47x/tei-platform/blob/main/cmd/tei/xtea_example_test.go)：Workspace Validate、`order_entry.order_record`の`applicationview.Build`、Command Plan、Package、MemoryStore CRUD/cascade | このTestは**recent_ordersの実Query Read／実PostgreSQL Rowsetを実行していない**。例の`UNBOUND_DATASOURCE`は未解決 |
 
-**精密化したGap**：\`Pattern→Query\`と\`App Alias sales→logical DB sales_core\`の**宣言辺は存在**する。一方、実製品での\`Pattern/Function Context→selected Query Runtime Binding→physical DataSource Instance/Provider→realized SQL+params→Rowset/Scope\`は未証明。静的な宣言辺を「不存在」と誤報しない一方、宣言を実行成功へ昇格させない。実Product Code Pathの不存在までをこのSource-static探索から断定せず、#2586/#2622の実Call Path調査で初めて\`product-read-not-connected\`か結線済みかを分類する。
+**精密化したGap**：`Pattern→Query`と`App Alias sales→logical DB sales_core`の**宣言辺は存在**する。一方、実製品での`Pattern/Function Context→selected Query Runtime Binding→physical DataSource Instance/Provider→realized SQL+params→Rowset/Scope`は未証明。静的な宣言辺を「不存在」と誤報しない一方、宣言を実行成功へ昇格させない。実Product Code Pathの不存在までをこのSource-static探索から断定せず、#2586/#2622の実Call Path調査で初めて`product-read-not-connected`か結線済みかを分類する。
 
 ### 14.2 最初の独立ExpectedはHeader Read限定、Completion対象Lとは分離
 
-このQueryのResultは\`order_id\`／\`customer_id\`の**受注ヘッダ相当2列**であり、\`sales.order_line\`・明細ID・数量・承認／Handoff証拠を返さない。\`page-size 20\`も完全母集団を宣言しない。したがって§10/§12.5の「Order1001＋二明細」は**次の明細Data Context用の別Read要件**とし、この初回Queryの成功だけで\`CompletionEvidence.Coverage=complete\`または\`EmptyJustified=true\`を供給してはならない（merged #2926はCallerが渡したCoverage/Empty証拠を評価するだけ）。
+このQueryのResultは`order_id`／`customer_id`の**受注ヘッダ相当2列**であり、`sales.order_line`・明細ID・数量・承認／Handoff証拠を返さない。`page-size 20`も完全母集団を宣言しない。したがって§10/§12.5の「Order1001＋二明細」は**次の明細Data Context用の別Read要件**とし、この初回Queryの成功だけで`CompletionEvidence.Coverage=complete`または`EmptyJustified=true`を供給してはならない（merged #2926はCallerが渡したCoverage/Empty証拠を評価するだけ）。
 
 | 既存#1180/#2514に渡す対照ID | 初回実証の合格条件／反例 | Claim上限・停止 |
 | --- | --- | --- |
-| **RMT-HR-01 Header query positive** | 実Source/SQL digest・\`status\`の入力→実bind args→実ReaderのRow/Column values・Provider/Scope・独立Expectedを同一Attemptで確認。Caseは自作固定ヘッダを使用 | **Header Read限定**。2列の値一致≠明細全件・業務Rule・Owner完了 |
-| **RMT-HR-02 filter mismatch** | 独立Fixtureで\`status=open/closed\`を区別し、誤ったbind、未束縛、別Statementによる偽一致を検出。欠損入力／NULLを無断defaultへ補完しない | Input契約/SQL実行未確認なら未資格。Query宣言のtest PASSだけでは不可 |
-| **RMT-HR-03 page/cohort** | 21件以上の候補・同じstatus・変動ページ／返却0件を対照し、\`page-size 20\`とSQL原文の（明示的ORDER BYなし）境界を実Runtimeで確認。Snapshot/Stable orderingがない場合は未確定を表示 | Page1が20件/0件というだけで全件/不存在の証拠を作らない |
-| **RMT-HR-04 physical scope** | 実DB Alias・Schema/physical table・Current Tenant/Reader filtering/RLS等、明示的Scopeを計測。SQL原文にTenant predicateが無い点は、実TargetのTenant分離保証と分ける | 多Tenant環境なら混入負例必須。単一Tenant限定なら根拠を付けN/A。Alias \`sales\`だけで隔離を推定しない |
-| **RMT-HR-05 details completion handoff** | \`order.lines\`の全Target L・grain・実Version/Scopeを**別Function Data Context／Query／Read witness**で完全取得した後、独立Expected・\`EvaluateCompletion\`へ渡す | Header SQLの成功・Paging 0件は\`CoverageComplete\`/Handoff確認へ流用不可。部分集合なら\`unverified\`保持 |
+| **RMT-HR-01 Header query positive** | 実Source/SQL digest・`status`の入力→実bind args→実ReaderのRow/Column values・Provider/Scope・独立Expectedを同一Attemptで確認。Caseは自作固定ヘッダを使用 | **Header Read限定**。2列の値一致≠明細全件・業務Rule・Owner完了 |
+| **RMT-HR-02 filter mismatch** | 独立Fixtureで`status=open/closed`を区別し、誤ったbind、未束縛、別Statementによる偽一致を検出。欠損入力／NULLを無断defaultへ補完しない | Input契約/SQL実行未確認なら未資格。Query宣言のtest PASSだけでは不可 |
+| **RMT-HR-03 page/cohort** | 21件以上の候補・同じstatus・変動ページ／返却0件を対照し、`page-size 20`とSQL原文の（明示的ORDER BYなし）境界を実Runtimeで確認。Snapshot/Stable orderingがない場合は未確定を表示 | Page1が20件/0件というだけで全件/不存在の証拠を作らない |
+| **RMT-HR-04 physical scope** | 実DB Alias・Schema/physical table・Current Tenant/Reader filtering/RLS等、明示的Scopeを計測。SQL原文にTenant predicateが無い点は、実TargetのTenant分離保証と分ける | 多Tenant環境なら混入負例必須。単一Tenant限定なら根拠を付けN/A。Alias `sales`だけで隔離を推定しない |
+| **RMT-HR-05 details completion handoff** | `order.lines`の全Target L・grain・実Version/Scopeを**別Function Data Context／Query／Read witness**で完全取得した後、独立Expected・`EvaluateCompletion`へ渡す | Header SQLの成功・Paging 0件は`CoverageComplete`/Handoff確認へ流用不可。部分集合なら`unverified`保持 |
 
 **P0最小手順**：HR-01＋HR-02を同じ実Reader Caseで先に実行、条件が成立してからHR-03/04を追加し、HR-05は明細Contextが実際に接続した後段へ置く。First ReadとOwner Write/Windows旧Driverを一度に動かす新Dependencyは作らない。
 
 ### 14.3 11/6夜のCommand/Grant/監査実装を後段の正しい資格へ配置
 
-- [merged #3033](https://github.com/hat47x/tei-platform/pull/3033)の\`ReferenceDataExecutor→AppliedOperation→OperationRecord\`は**参照Storeのレコード単位の自己報告**。\`checkAppliedOperations\`は\`Applied=[]\`を無検査で通し、同種別の追加Data操作もRelation/Targetを検証しない。参照報告なし≠Effect 0・合法な全Effectとせず、#1174の実PG Effect/Receipt/別Read負例へ引き渡す。
-- \`command.Invoker.execute\`のApplied/Outcome検査は\`Executor.Execute\`**後**。すでに別物理TxでCommitしたProviderへの後段検査Errorを\`no-effect\`としない。実\`commandadapter.Executor\`はcommitted/replayed両者を空Command Resultに潰すので、Command Result単独ではK/Replay/Owner完了を証明しない（#1174/#1129/#1163）。
-- [merged #3034](https://github.com/hat47x/tei-platform/pull/3034)はCommandの事前\`Authorizer\`を追加。[merged #3032](https://github.com/hat47x/tei-platform/pull/3032)と[merged #3035](https://github.com/hat47x/tei-platform/pull/3035)で\`issuedBy\`/宣言内Grant解決は進んだが、Issuerとresolved rootは署名された外部Authorityではない。Preflight許可は実Effect直前の同Tx current Grant・Target一致を代用しない。
-- [merged #3025](https://github.com/hat47x/tei-platform/pull/3025)はprovisional chainを実PG＋exact-head Health Receiptで再実行し、\`TRUSTED_FULL_HEALTH_NOT_RECORDED\`を解消。ただし**provisional 3診断は残り\`productGate=UNQUALIFIED\`**。本文§13.1に残る「実DB判断計画は未実行」は、[#3032 実PG CI success](https://github.com/hat47x/tei-platform/actions/runs/42235336807)の**その限定実装に関して更新**する。RMTの同一Attempt/正式業務Grant/Owner Bではない。
+- [merged #3033](https://github.com/hat47x/tei-platform/pull/3033)の`ReferenceDataExecutor→AppliedOperation→OperationRecord`は**参照Storeのレコード単位の自己報告**。`checkAppliedOperations`は`Applied=[]`を無検査で通し、同種別の追加Data操作もRelation/Targetを検証しない。参照報告なし≠Effect 0・合法な全Effectとせず、#1174の実PG Effect/Receipt/別Read負例へ引き渡す。
+- `command.Invoker.execute`のApplied/Outcome検査は`Executor.Execute`**後**。すでに別物理TxでCommitしたProviderへの後段検査Errorを`no-effect`としない。実`commandadapter.Executor`はcommitted/replayed両者を空Command Resultに潰すので、Command Result単独ではK/Replay/Owner完了を証明しない（#1174/#1129/#1163）。
+- [merged #3034](https://github.com/hat47x/tei-platform/pull/3034)はCommandの事前`Authorizer`を追加。[merged #3032](https://github.com/hat47x/tei-platform/pull/3032)と[merged #3035](https://github.com/hat47x/tei-platform/pull/3035)で`issuedBy`/宣言内Grant解決は進んだが、Issuerとresolved rootは署名された外部Authorityではない。Preflight許可は実Effect直前の同Tx current Grant・Target一致を代用しない。
+- [merged #3025](https://github.com/hat47x/tei-platform/pull/3025)はprovisional chainを実PG＋exact-head Health Receiptで再実行し、`TRUSTED_FULL_HEALTH_NOT_RECORDED`を解消。ただし**provisional 3診断は残り`productGate=UNQUALIFIED`**。本文§13.1に残る「実DB判断計画は未実行」は、[#3032 実PG CI success](https://github.com/hat47x/tei-platform/actions/runs/42235336807)の**その限定実装に関して更新**する。RMTの同一Attempt/正式業務Grant/Owner Bではない。
 
-### 14.4 \`*.tei.md\`移行・UI後着を同じ受入へ足し合わせない
+### 14.4 `*.tei.md`移行・UI後着を同じ受入へ足し合わせない
 
-Ownerが11/6に\`*.tei.md\`統一を決定し、[Draft #3030](https://github.com/hat47x/tei-platform/pull/3030)は移行計画、[Draft #3031](https://github.com/hat47x/tei-platform/pull/3031)は未対応Parserを\`TEI_MD_PARSER_UNBOUND\`で拒否する**限定Go CI成功**。しかし\`*.tei.md\`によるNative Meaning実読込・Query実行はNOT RUN。現\`*.tei\`のHR-01を先行し、移行後は同Expected・別Source Revision/AttemptでParser→Query→Readerを再資格化する。\`*.tei\`のSourceが改名されても意味が不変と断定せず、実消費byteとLocator/Source Indexが一致するか確認する。
+Ownerが11/6に`*.tei.md`統一を決定し、[Draft #3030](https://github.com/hat47x/tei-platform/pull/3030)は移行計画、[Draft #3031](https://github.com/hat47x/tei-platform/pull/3031)は未対応Parserを`TEI_MD_PARSER_UNBOUND`で拒否する**限定Go CI成功**。しかし`*.tei.md`によるNative Meaning実読込・Query実行はNOT RUN。現`*.tei`のHR-01を先行し、移行後は同Expected・別Source Revision/AttemptでParser→Query→Readerを再資格化する。`*.tei`のSourceが改名されても意味が不変と断定せず、実消費byteとLocator/Source Indexが一致するか確認する。
 
 Studioの[Draft #3036](https://github.com/hat47x/tei-platform/pull/3036)は旧RPC応答の表示失効を扱うが、UIの旧結果不採用はProvider Requestの取消、DB Rollback、現在Grantの維持ではない。Wails／Windows旧Driverの実操作観測は#940の別Laneとして保持。
 
 ### 14.5 具体的な引渡しと証拠上限
 
 - **Product Owner #2586/#2622/#2611**：HR-01の実Source Chain（Pattern→Query→Application Alias→logical DB）を起点とし、最初に欠けている**Runtime Binding/Physical DB/actual SQL Execution/Rowset**一辺を関数名・blob/HEADとともに報告。修正が必要なら既存Go APIへ小さいAdapterと独立Expectedを追加し、Fake/直接DB接続をProduct Successにしない。
-- **Data/Completion #2506/#1125/#267**：HR-05の明細全件性/空証明を、Inputの\`CoverageComplete\`文字列ではなくProvider Scope/snapshot/Provider resultの観測で裏付ける。最初のHeader Probe成功では業務Completionを評価しない。
+- **Data/Completion #2506/#1125/#267**：HR-05の明細全件性/空証明を、Inputの`CoverageComplete`文字列ではなくProvider Scope/snapshot/Provider resultの観測で裏付ける。最初のHeader Probe成功では業務Completionを評価しない。
 - **Host/Effect #2598/#1129/#1174**：P0-R2で「Executor**前**に拒否→Effect/Receipt 0」と「Executor**後**検査Err→実Effect unknown/committed」を別Caseにし、Current Grant/Target/Receipt/独立Readで判断。Grant発行ログ・参照OperationRecord・UI ResultをEffect Receiptに換算しない。
-- **統合/Oracle #1163/#2514/#1180/#1119**：同じExpectedでもE/原典R/新Authoring Sourceは別Input/Attempt。Observed Test IDs/PASS/SKIPと実Binary/SQL/Provider/Read Cohortを束縛し、足りないClaimは\`unknown/not-run/unqualified\`とする。
+- **統合/Oracle #1163/#2514/#1180/#1119**：同じExpectedでもE/原典R/新Authoring Sourceは別Input/Attempt。Observed Test IDs/PASS/SKIPと実Binary/SQL/Provider/Read Cohortを束縛し、足りないClaimは`unknown/not-run/unqualified`とする。
 
 **この追補の資格**：Source-staticなGitHub現mainの宣言／Go Test、既存merged PR・限定CIを再照合し、Draft #2783の既存計画本文だけ追補。**新たなGo test実行・PG Rowset／業務SQL実行・初回HR-01〜05・Windows Driver・実Web/Studio GUI・Owner正式意味受理はNOT RUN**。既存§12.5 P0-R1を優先し、G1/G2/原典parityは未資格。既存の別担当PR・Fixture/実コードに変更せず、Draftのままとし、**新HEADのtrusted healthとmainとの差分照合前にReady/mergeしない**。
