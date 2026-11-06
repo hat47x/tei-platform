@@ -16,7 +16,7 @@
 | AC-2 | 一部 | フック宣言の検証、`internal/hook`の実行契約、`hook.Declared`（宣言した能力以外の呼出しを拒否。[確認記録](XTEA_LOWCODE_HOOK_DECLARED_CALLS_2026-11.md)） | フック宣言・実装契約の単体試験、宣言外呼出しの拒否試験 | 宣言外呼出しの拒否をCommand境界へ接続すること |
 | AC-3 | 一部 | `role`・`required`・`immutable`・`values`、表示ラベル | 検証・ビュー・参照Executorの試験 | 幅・行数・整列・部品の表示指定 |
 | AC-4 | 一部 | `layout`の順序投影 | layoutの検証・ビュー | 座標を含む配置とプロファイル比較 |
-| AC-5 | 一部 | `Outcome`・`ExecutionError`・期間拒否 | Command実行境界・期間の試験 | 不存在・多重一致・不明を含む全結末の網羅 |
+| AC-5 | 一部 | `Outcome`・`ExecutionError`・期間拒否、`ReferenceFailure`の符号（`record-missing`・`record-exists`・`value-rejected`・`rule-rejected`）と`FailureOutcome`、CLIの`COMMAND_REFUSED` | Command実行境界・期間の試験、参照Storeの拒否符号の試験、拒否と実行障害の区別の試験 | 多結果・多重一致の表現、実Providerでの結末 |
 | AC-6 | 一部 | 値域・必須・候補キー・削除ポリシー、`COMMAND_DATASOURCE_READ_ONLY`（Applicationの読み取り専用datasource宣言を実行前に検査。[確認記録](XTEA_LOWCODE_READONLY_DATASOURCE_2026-11.md)） | 参照Storeの単体・例の試験、読み取り専用宣言の拒否・読み書き宣言の許容・宣言なしを推測しない試験 | データソース側の実行時強制（三段目） |
 | AC-7 | 一部 | `-format html`・`print`、印刷テンプレート、`tei-semantic-fingerprint`（画面・帳票が読んだ意味の版） | HTML・printの単体試験、record・header-detail・browseの印刷面が版を持つ試験 | 表示（座標・用紙・部品）の版照合、manifestの版 |
 | AC-8 | 一部 | Executorが返すEffectと宣言の照合、`Invoker.Recorder`、CLIの`-operation-log`、Studioの`records`、参照Storeの`Applied`照合と`Differences`（宣言外の種別は拒否、宣言と異なる対象への同種別適用は未解決の差として保持。CLIのテキスト・JSONとStudioの画面にも表示。操作を列挙しないExecutorは`AppliedUnobserved`で「未確認」と示す。[確認記録](XTEA_LOWCODE_OPERATION_DIFFERENCE_2026-11.md)） | 効果の不一致試験、記録の試験、画面の件数表示、適用操作の照合試験、カスケードを差として残す試験、実行結果の差の表示試験 | 実行時に発行されたSQL文・CRUD操作そのものの記録 |
@@ -58,6 +58,7 @@ persisted: false (durability: none)
 ```
 
 これは参照用AllowListによる能力単位の拒否です。利用者・資源・メニュー表示・権限の付与は確認していません。
+
 
 
 

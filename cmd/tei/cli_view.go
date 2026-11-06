@@ -216,6 +216,11 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 				result, err = invoker.Invoke(context.Background(), request)
 			}
 			if err != nil {
+				// A reference refusal is a business answer, not an execution
+				// fault: name the outcome so a caller can branch on it.
+				if outcome, ok := command.FailureOutcome(err); ok {
+					return fail("COMMAND_REFUSED", outcome+": "+err.Error(), 1)
+				}
 				if code, message, ok := commandFailure(err); ok {
 					return fail(code, message, 1)
 				}
