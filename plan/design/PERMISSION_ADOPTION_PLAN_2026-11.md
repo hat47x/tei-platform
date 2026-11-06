@@ -96,7 +96,7 @@ permission sales.order.register network connect db:5432
 
 修正して、本体を判定点を通すようにしました。
 
-- `-grants <path>` を渡すと、その JSON の付与（`{"grants":[{"kind":"filesystem","access":"write","scope":"..."}]}`）が範囲を決める。**範囲外のパスは書かない**。
+- `-grants <path>` を渡すと、その JSON の付与（`{"grants":[{"issuedBy":"…","kind":"filesystem","access":"write","scope":"..."}]}`）が範囲を決める。**範囲外のパスは書かない**。
 - `-grants` を渡さない場合は、従来どおり呼び出しで指定されたパスそのものを付与として扱う（互換のため）。
 - 付与ファイルが読めない・空なら**書かない**（読めない付与は付与ではない）。
 
@@ -127,10 +127,31 @@ tei grants -workspace reference/workspace -grants-out grants.json
 
 `tei grants` が書き出す形式と、アダプタが読む形式が**同じ**になるよう、読み取りを `access.ParseGrants` に集約しました。
 
-- 形: `{"grants":[{"kind":…,"access":…,"scope":…}]}`
+- 形: `{"grants":[{"kind":…,"access":…,"scope":…}]}`（第15章で `issuedBy` を足しました。いまの形はそちらが正本です）
 - 未知の種別・未知のアクセス・空のスコープは**エラー**（理解できない付与を「覆っている」と扱わない）。
 - 空の一覧は有効で、**何も覆わない**。
 
 移行済みのツール（`reference-first-web-frozen-world-generate`）は、この共有の読み取りを使います。**書き出し（`tei grants`）と読み取り（アダプタ）が同じ形式であること**を、それぞれの試験で固定しています。
 
 **未着手**: ツールの能力を環境に宣言し、`tei grants` の出力をそのまま `-grants` に渡す配線。いまは呼び出し側のスクリプトが付与ファイルを作っています。
+## 15. 付与の書き手と読み手を1つの型にする（2026-11-06 追記）
+
+`tei grants`（環境の宣言を書く）と `tei issue-grant`（実行時に発行する）が**別々の型**で grants ファイルを書いていました。形が二つあると、片方だけを変えてもう片方が黙って無視する状態を作れます。書き手を `access.Document` / `access.Entry` の**一つ**に寄せました。
+
+| これまで | いま |
+| --- | --- |
+| `cmd/tei/grants.go` の `grantedPermission` | `access.Entry` |
+| `cmd/tei/issue_grant.go` の `grantedPermission`（同じ名前で別の型） | 同上 |
+| 書き出しが2箇所（`json.MarshalIndent` と `os.WriteFile`） | `access.EncodeDocument` / `access.WriteDocument` |
+| 読み取りは `access.ParseGrants`（能力IDを捨てる） | `access.ParseDocument`（そのまま読む）／`ParseGrants` は互換のまま |
+
+- grants ファイルは**所有者だけが書ける**（`0600`）。付与ファイルを書き換えられるプロセスは、自分の権限を広げられます。
+- 空の一覧は `[]` として書く。`null` を「空」と読む形にしない。
+
+## 16. 発行の主体を名指しする（2026-11-06 追記）
+
+付与に**誰が決めたか**を書く欄（`issuedBy`）を足し、**要求する能力自身が発行した付与は受け取らない**ようにしました。詳細と限界は[動的な出力パスと宣言スコープ](DYNAMIC_PATH_GRANT_DESIGN_2026-11.md)の第9章に置いています。
+
+環境の宣言から書く付与の `issuedBy` は `environment:<環境ID>` です。したがって `tei grants` の出力は、**その環境が決めた**付与であり、読むツールが決めたものではありません。実行時の発行（`tei issue-grant`）は `-grant-issuer` と `-grant-reason` を要求します。
+
+**この欄が証明しないこと**: `issuedBy` は署名ではないため、名前の偽装は防げません。防げるのは**自己発行**だけです。

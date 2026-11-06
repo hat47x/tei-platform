@@ -16,6 +16,7 @@ func TestIssueGrantWritesTheGrantsFileAndTheRecord(t *testing.T) {
 	err := runIssueGrantCommand(issueGrantOptions{
 		Capability: "tei.frozen_world.lineage",
 		Scope:      filepath.Join(dir, "observed.json"),
+		Issuer:     "script:build-frozen-api",
 		Reason:     "operator requested the observation",
 		RunKey:     "run-1",
 		OutPath:    out,
@@ -29,17 +30,23 @@ func TestIssueGrantWritesTheGrantsFileAndTheRecord(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read grants: %v", err)
 	}
-	grants, err := access.ParseGrants(raw)
+	document, err := access.ParseDocument(raw)
 	if err != nil {
 		t.Fatalf("the grants file must be readable by the adapters: %v", err)
 	}
-	if len(grants) != 1 || grants[0].Scope != filepath.Join(dir, "observed.json") {
-		t.Fatalf("unexpected grants: %+v", grants)
+	if len(document.Grants) != 1 || document.Grants[0].Scope != filepath.Join(dir, "observed.json") {
+		t.Fatalf("unexpected grants: %+v", document.Grants)
+	}
+	if document.Grants[0].IssuedBy != "script:build-frozen-api" {
+		t.Fatalf("the grants file must name who issued it: %+v", document.Grants[0])
 	}
 
 	records, err := (access.IssueFile{Path: log}).Issues()
-	if err != nil || len(records) != 1 || records[0].Basis == "" {
-		t.Fatalf("the issuance must be recorded: %+v err=%v", records, err)
+	if err != nil || len(records) != 1 || records[0].Basis == "" || records[0].Issuer == "" {
+		t.Fatalf("the issuance must be recorded with its issuer and basis: %+v err=%v", records, err)
+	}
+	if records[0].Issuer != document.Grants[0].IssuedBy {
+		t.Fatalf("the record and the grants file must name the same issuer: %+v", records[0])
 	}
 }
 
@@ -49,11 +56,52 @@ func TestIssueGrantRequiresItsFlags(t *testing.T) {
 	}
 }
 
+func TestIssueGrantRequiresAnIssuerAndAReason(t *testing.T) {
+	dir := t.TempDir()
+	for name, options := range map[string]issueGrantOptions{
+		"no issuer": {
+			Capability: "tei.demo",
+			Scope:      filepath.Join(dir, "observed.json"),
+			Reason:     "operator requested the observation",
+			OutPath:    filepath.Join(dir, "grants.json"),
+			LogPath:    filepath.Join(dir, "issued.jsonl"),
+		},
+		"no reason": {
+			Capability: "tei.demo",
+			Scope:      filepath.Join(dir, "observed.json"),
+			Issuer:     "script:build-frozen-api",
+			OutPath:    filepath.Join(dir, "grants.json"),
+			LogPath:    filepath.Join(dir, "issued.jsonl"),
+		},
+	} {
+		if err := runIssueGrantCommand(options); err == nil {
+			t.Fatalf("%s must be reported", name)
+		}
+	}
+}
+
+func TestIssueGrantRejectsTheCapabilityIssuingItsOwnGrant(t *testing.T) {
+	dir := t.TempDir()
+	err := runIssueGrantCommand(issueGrantOptions{
+		Capability: "tei.frozen_world.lineage",
+		Scope:      filepath.Join(dir, "observed.json"),
+		Issuer:     "tei.frozen_world.lineage",
+		Reason:     "the capability decided for itself",
+		OutPath:    filepath.Join(dir, "grants.json"),
+		LogPath:    filepath.Join(dir, "issued.jsonl"),
+	})
+	if err == nil {
+		t.Fatal("a capability must not issue its own grant")
+	}
+}
+
 func TestIssueGrantRejectsANonCanonicalCapability(t *testing.T) {
 	dir := t.TempDir()
 	err := runIssueGrantCommand(issueGrantOptions{
 		Capability: "tei.frozen-world.lineage",
 		Scope:      filepath.Join(dir, "observed.json"),
+		Issuer:     "script:build-frozen-api",
+		Reason:     "operator requested the observation",
 		OutPath:    filepath.Join(dir, "grants.json"),
 		LogPath:    filepath.Join(dir, "issued.jsonl"),
 	})
