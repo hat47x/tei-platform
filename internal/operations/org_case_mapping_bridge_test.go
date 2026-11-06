@@ -121,7 +121,7 @@ func TestOrgCaseExplicitPersistenceEnablesReadCandidateOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 	querySource := `query org_view.case_read {
-    input caseId organization.case_record_id
+    input case_id organization.case_record_id
     datasource org_read
     sql postgres file "case_read.sql"
     result {
@@ -130,7 +130,7 @@ func TestOrgCaseExplicitPersistenceEnablesReadCandidateOnly(t *testing.T) {
     }
 }
 `
-	sqlSource := "select case_id, handling_unit_id from public.org_case_records where case_id = :caseId\n"
+	sqlSource := "select case_id, handling_unit_id from public.org_case_records where case_id = :case_id\n"
 	queryFile := filepath.Join(queryDir, "case_read.tei")
 	sqlFile := filepath.Join(queryDir, "case_read.sql")
 	if err := os.WriteFile(queryFile, []byte(querySource), 0o644); err != nil {
@@ -149,7 +149,7 @@ func TestOrgCaseExplicitPersistenceEnablesReadCandidateOnly(t *testing.T) {
 	query := withQuery.World.Queries[0]
 	if query.ID != "org_view.case_read" || query.Application != "org_view" ||
 		query.Datasource != "org_read" || query.Source != strings.TrimSpace(sqlSource) ||
-		len(query.Inputs) != 1 || query.Inputs[0].Name != "caseId" ||
+		len(query.Inputs) != 1 || query.Inputs[0].Name != "case_id" ||
 		query.Inputs[0].Type != "organization.case_record_id" {
 		t.Fatalf("Case Query Source/Inputs/Datasource were not faithfully loaded: %+v", query)
 	}
@@ -190,7 +190,7 @@ func TestOrgCaseExplicitPersistenceEnablesReadCandidateOnly(t *testing.T) {
 	// A native SQL predicate change must invalidate the Source/Model revision
 	// even though the Semantic Query ID, datasource alias and mapping stay put.
 	if err := os.WriteFile(sqlFile, []byte(strings.Replace(sqlSource,
-		"where case_id = :caseId", "where case_id = :caseId and handling_unit_id is not null", 1)), 0o644); err != nil {
+		"where case_id = :case_id", "where case_id = :case_id and handling_unit_id is not null", 1)), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	sqlChanged, err := SurfaceWorkspace(copyRoot, "org_view")
