@@ -802,6 +802,22 @@ go test -count=1 -run '^TestIndependentGoAndJavaScriptQuoteSemanticParity$' ./to
 
 **現在の試験適用範囲**：[D0直接Go Draft #3021](https://github.com/hat47x/tei-platform/pull/3021) のCIは純粋計算のReference成功と既存Process回帰までであり、上表のHot Swap・OS隔離・Tenant/Commit/Receiptの試験ではない。D1 staticのS2/S4、実費用のS5、SCOPE-1〜4の実Provider/OS/DB、Owner正式受理は **NOT RUN / NOT ADOPTED**。採否の正本は本§18.6/§18.11、Scope負例の正本は#2903 §23、Host/Effectは#1174、Application選択は#1016。第二Policy/Host/Conformance Engine/新Fixture正本は作らない。
 
+<!-- tei-plugin-md-migration-source-qualification-20261106 -->
+### 18.12 `*.tei.md` 方針をPlugin/Bundleの入力閉包へ反映する（Authoring移行への依存条件）
+
+2026-11-06のユーザー方向決定は、**TEI Authoring Sourceは `*.tei.md` を標準とし、旧 `*.tei` は段階廃止**。正式な移行計画と実装Ownerは[Draft #3030](https://github.com/hat47x/tei-platform/pull/3030)（M0〜M6、TM-01〜14）／#2621/#988/#2823。ここでは一般Markdown ReaderやDSL構文を再設計しない。対象は**Plugin/Bundle/ProviderのRequired Source、Actual Source Loaded、Build Input、実Target再資格**へ限定する。現mainの `internal/workspace/loader.go` は `plugin.tei`/`application.tei`等の固定名と `*.tei` glob、`filepath.Ext` に依存し、`*.tei.md` は単に`.md`として分類され得る。現在のLoader/Parserで新名ファイルを置くだけでは、Pluginの実Read・意味・Build/Conformanceに到達したとは言えない。
+
+| 依存するPlugin Claim | 最小の観測・禁止推論 | 引渡しOwner・既存負例 |
+| --- | --- | --- |
+| **Contract/Descriptor Sourceが発見された** | `*.tei.md`/Legacy `*.tei`/通常`.md`を区別し、Declared/Discovered/Loaded/Parsed/Qualifiedを別列とする。Catalogに同名Providerがあるだけで現在のSourceが解析されたとしない | #3030 TM-01/02/12/14、#2822/#2823、#988 |
+| **旧`plugin.tei`→`plugin.tei.md`で同じPluginを選択可能** | 新旧双方の実Loader対象・元byte/span・内部TEI領域、Source occurrenceとMeaning/Contract versionを比較。二つ存在する場合は曖昧性を検出して明示選択を要求、先勝ち/後勝ちで解決しない | #3030 TM-03/04/06、#951/#1016 |
+| **Authoringの整形・Prose変更とBuild再利用** | 文書全体のraw revision、選択TEI部分の実byte/span、Role/Meaning受理、実Build/Target digestの一致/不一致を別投影。表示内容不変・同じMeaning IDだけで旧Source受理/旧Build/旧Conformanceを再資格化しない | #3030 TM-05/08/09、#2600/#1251/#2514 |
+| **新`.tei.md`をProviderが実際に消費した** | `filepath.Ext==.md`や単なるread-only Workspace Indexの成功を実Parser/Provider Consumeと混同しない。Build-time用Schema/Loaderが存在しないなら `not connected/unsupported` で停止 | #3030 M2/M3/M5、#2823、#1167 |
+
+**段階導入**：M0 inventory／M1新規Source標準化の判断は#3030へ集約。M2 Markdown span readerとM3 Loader対応が実装・独立試験される前に、既存`*.tei` Assetの一括Rename・Legacy拒否、固定Gate原典の変更、Plugin名からの暗黙推定を実施しない。M4以降、Source Location差・改訂・決定受理範囲を照合した後だけSelected Contract/Build再資格へ進む。`.tei/decisions/`・`tei.workspace.yaml`、既存23件JSON Oracle／Go直接計算・D2 Processは移行対象外。`*.tei.md`と同一ではない `.md`文章やOKFタグをPlugin Source Acceptedと扱わない。
+
+**証拠上限**：新Authoring形式の方向決定は把握済みだが、Plugin Descriptor/Reader/Loader・Markdown/TEI Lexer・Source Index/Build Select・Studio/SHOを接続する新試験は **NOT RUN**。方式選定の実証D0/D1/D2にも移行完了という資格を上乗せしない。対応実装のOwnerは#3030/#2621/#988/#2823、Bundle/Build観測は#1251/#2600、本§は方式比較の停止条件のみ（新Parser/Registry/Authority/Fixture正本なし）。
+
 ## 19. 高凝集Bundleの適正規模と実行前提の完全性（2026-11-06、設計・未採用）
 
 ### 19.1 Bundleのサイズはファイル数ではなく、実変更の結合度で判断する
