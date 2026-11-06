@@ -2955,7 +2955,7 @@ HEAD `e0cfebf14d40db81bdef77d6c3e4898ed75d999f`に対する[GitHub Actions #4203
 | [#3032 main統合](https://github.com/hat47x/tei-platform/pull/3032) | `issuedBy`を発行記録に含め、要求Capabilityの自己発行を拒否する構文/検査を導入。さらに実PostgreSQL判定6件が[専用Workflow #42235336807](https://github.com/hat47x/tei-platform/actions/runs/42235336807)で**非SKIP PASS**（実ログで6件の `--- PASS` を確認） | 発行者文字列は署名ではない。Holder/Issuerの真正性、必要Grantの全網羅、実Host許可・業務Owner受理を証明しない |
 | [#3033 main統合](https://github.com/hat47x/tei-platform/pull/3033) | ReferenceDataExecutorがAppliedOperation（kind/data/key）を報告し、Command Invokerが宣言したEffectと照合、記録/CLI・Studioへ限定表示。Go CI [Health #42235921102](https://github.com/hat47x/tei-platform/actions/runs/42235921102)はsuccess | **Appliedを報告しないExecutorの経路が残る**。Optional Reportから実DB全操作、SQL文、外部副作用、一括効果完全性を推論しない |
 | [#3034 main統合](https://github.com/hat47x/tei-platform/pull/3034) | 既存subject/action/resourceの認可規則を、明示的に設定する`command.Invoker.Authorizer`へ接続。拒否と規則評価不能を区別し、無許可時にExecutorへ到達しない限定試験。実PG workflow [#42238564104](https://github.com/hat47x/tei-platform/actions/runs/42238564104)はsuccess | Callerが正しく現在のAuthorizer/主体/Targetを注入した証拠・正式Grant正本・実Operator全経路での強制・本番資格は別 |
-| [#3035 Open PR](https://github.com/hat47x/tei-platform/pull/3035) | `access.Ground`で実行Scopeを環境の論理宣言へ紐づける実装候補。宣言外path・他Capability・自己解決・過大なAccessの拒否テストをPRが報告 | **未統合**。`-grant-declaration`無しの発行は拒否せずwarningのまま。`ResolvedBy/issuedBy`は自己申告で署名無し。最新HEAD全体CIは別途確認 |
+| [#3035 main統合](https://github.com/hat47x/tei-platform/pull/3035) | `access.Ground`で発行Scopeを環境宣言→実行時のResolutionへ明示束縛。宣言外Path・別Capability・自己解決・過大Accessを拒否する限定試験。exact HEAD [Health #42239556042](https://github.com/hat47x/tei-platform/actions/runs/42239556042) はsuccess | **`-grant-declaration`なしの発行をwarningで許す経路が残る**。`issuedBy`/`resolvedBy`は署名無しでIssuer真正性を保証せず、発行時の静的照合は現在Host/Providerの実認可とは別 |
 
 **実効果の検査順に残る欠陥候補**：[#1174の既存評価コメント](https://github.com/hat47x/tei-platform/issues/1174#issuecomment-6688069663)は、`checkAppliedOperations`が実Executor呼出しの**後**に走るため、事後拒否でも独立Tx Commit済みの効果を取り消せないこと、Applied=nilでは実Effect=0が言えないこと、同じKindなら未宣言Dataの追加Appliedを許す分岐（F-SameKind）をSource-staticで特定。これは実PG不正作用の再現結果ではない。受理済みEffect/Relation/Targetの必要範囲と実ProviderのCommit前Fenceは#1174/#1129/#2598へ維持し、#3033の局所テスト成功を既存Issueの受入完了へしない。
 
@@ -2968,3 +2968,23 @@ HEAD `e0cfebf14d40db81bdef77d6c3e4898ed75d999f`に対する[GitHub Actions #4203
 
 **非目標／変更の資格**：同じSubjectを核にするが、Source改名、Ownerの意味受理、Host付与、実Provider Commitを一つの無差別Global Gateへ統合しない。TMDの第二Fixture正本や新認可Engine・Host/Registry/Scenario Runnerも追加しない。ここで実施したのは別PRの実コード/CI・Ownerの最新版計画を照合している**docs-only更新**。新 `*.tei.md` Parser/Builder/Reader、P0-FM-Reader／P1-Grant-Effectの新実行、署名付きIssuer、本番実DB、Owner受理は**NOT RUN**。
 
+### 58.4 2026-11-06深夜の進展：未設定拒否・Unknown保持・Grant照合と外部Effectの回復停止線
+
+**同じ必要条件を満たす責務は「存在」と「実行」を分ける**。[#3042 main統合](https://github.com/hat47x/tei-platform/pull/3042)で、`command.Invoker.Authorizer == nil`なら`COMMAND_AUTHORIZER_UNAVAILABLE`、宣言したPeriodの実状態を取得できなければ`COMMAND_PERIOD_STATE_UNAVAILABLE`としてExecutor前に拒否する。検査順は**Authorize→Period→Execute**。参照用`ReferenceAuthorizer`は**意図的な全許可の明示**にすぎず、実Principal・本番Grantの証拠ではない。同PRのexact HEAD `719afd61`の[Repository Health #42251024310](https://github.com/hat47x/tei-platform/actions/runs/42251024310)・[認可/Effect実PostgreSQL #42251024219](https://github.com/hat47x/tei-platform/actions/runs/42251024219)がsuccess。
+
+[#3042](https://github.com/hat47x/tei-platform/pull/3042)は`Executor.Execute`の**後**で宣言Effect/Outcome/Applied不一致を検出した場合も、独立TxがCommitしている可能性を排除できないため`EffectUnknown=true`としてLifecycleのunknownに残し、同一Owner/Generationの盲再送を拒否するよう修正した。これにより旧§58.2の『事後拒否が通常のrejected扱いとなる』部分は**歴史的な旧挙動**である。ただし**実Commitの取戻し、効果なし、実外部Providerでのno-replay保証を証明したわけではない**。同種だが異なるDataへの追加AppliedをKind一致だけで通す[現main `applied_check.go`](https://github.com/hat47x/tei-platform/blob/main/internal/command/applied_check.go)の分岐（F-SameKind）も残り、Scope/Relation/Targetの適合は#1174/#1129/#2598が所有する。
+
+| 新しい実装／実施 | 達成した局所資格 | 未充足の後続資格・停止線 |
+| --- | --- | --- |
+| [#3047/#3048 main統合](https://github.com/hat47x/tei-platform/pull/3047) | `GrantAuthorizer`がCapabilityの**宣言要求**と呼出し側の**発行済み許可**を比較、無宣言/部分許可を拒否。参照Goの5件を[Evidence #3048](https://github.com/hat47x/tei-platform/pull/3048)に保存 | 実CLI/Studio/ProviderにこのAuthorizerを構成・現在Grantを注入する経路は未接続。付与ファイル作成やIssuer署名を担わない |
+| [#3038 open](https://github.com/hat47x/tei-platform/pull/3038) | 参照Exporterの**読取側**で宣言とGrantを突き合わせる候補、実ファイルで未宣言能力を拒否する限定試験 | openで未統合。`-declaration`未指定時は既存経路を維持し、解像された動的Pathはまだ読取側に渡せない |
+| [#3049 main統合](https://github.com/hat47x/tei-platform/pull/3049) | CLIの未知Commandをflag有無に関係なくstderr/exit2へ、実DispatchとUsage一覧をASTテストで照合。exact HEAD [Health #42253805878](https://github.com/hat47x/tei-platform/actions/runs/42253805878) success | `tei commands`のread-only Tool広告対象やAI/外部Harnessでの実Invoker成功は別。CLI Usage列挙だけでCapability利用権を推論しない |
+| [EKI #776 main統合](https://github.com/hat47x/eki-fabric/pull/776) | Lease失効回収でAttemptを**閉じてから台帳項目を削除**、猶予中/結果あり/Close失敗は保持。限定Go試験とverifyがPR記録で成功 | **外部Effect可能性をTaskに宣言する印が未接続のため、現在は全件retryableとして閉じる**。別プロセス縦断と実外部作用/重複回避は未証明、[#745](https://github.com/hat47x/eki-fabric/issues/745)のOwner判断待ち |
+
+**P0の新たな停止条件は新Gate名を設けず既存の実行票へ追加**：同一Task/Operationに対し、TEIの`EffectUnknown`／過去Receipt／新AttemptのIssuer+Tenant+Target+OperationIDをEKIの`lease_expired`/retryable判断へ無条件に写像しない。Leaseの終了は『結果が届いていないAttemptが閉じた』証拠であり、**外部作用がなかった証拠ではない**。外部Effect可能性が未知なら自動再送の資格はunknown/調停待ちとして保持する設計を#745/#1174へ提案（EKI #776の現実装がこれを実現済みとは言わない）。実Provider側Operation identity/Receipt照会と別Connection Readにより重複副作用が排除される場合だけ、Ownerの受理済みポリシーで再投入可を判定する。新分散Host/Transaction Managerは不要。
+
+**文書・所有境界の調整**：`*.tei.md`移行は[Draft #3030のM0〜M6/TM-01〜14](https://github.com/hat47x/tei-platform/pull/3030)がAuthoring/Parser/Loaderの詳細受入、[本Draft #2667](https://github.com/hat47x/tei-platform/pull/2667)はそのConsumer・Grant・Evidence・Buildの横断的な接続だけを所有する。#3030の後続説明にある『#2667が唯一のM0〜M5/TMD計画』は逆向きの古い参照であり、統合前に修正する。既存[docs/naming.md](https://github.com/hat47x/tei-platform/blob/main/docs/naming.md)が`.tei`を『標準の技術名称』として記載するのも**現実装の説明**と**新しいAuthoring方針**を区別して次に更新する必要がある。
+
+**検証用語の最新方針**：[main統合 #3039](https://github.com/hat47x/tei-platform/pull/3039)の命名に従い、本文の*test oracle*を『独立検証基準』『独立期待値』『テスト判定基準』として記述し、データベース製品だけ`Oracle Database`と呼ぶ。既存のコード識別子や履歴リンクは機械的に改名しない。旧本文内の残存表記の全面修正は本追補で未実施（#3039担当の整合監査）。
+
+**状態**：実証したのは各PRのGo/限定実DB/CI及びコード静的境界。本追補自体はdocs-onlyで、Issuer真正性、実Grantの発効時点/撤回競合、実Providerでの不一致後Commit/Receipt/独立Read、EKI外部作用ありTaskの回復縦断、TAI外部Harness H2/H3、`*.tei.md`の実Reader、業務Ownerの正式受理は**NOT RUN/NOT ACCEPTED**。既存#1119/#1163/#1174/#745/#3030を再利用し、第二のVerifier/Host/Registryを導入しない。
