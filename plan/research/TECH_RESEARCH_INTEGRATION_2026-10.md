@@ -491,3 +491,41 @@ TEIの設計へ反映する観点：
 **不採用条件**：包んだSkillを増やしただけで実Read/正しいSource消費・Key集合・strict passが改善せず、コストと第二正本が増えるなら、構造的に明瞭なMarkdown/表・直接仕様供給を優先。逆に必要な仕様の発見と実消費が改善したなら、既存#1063/#988/#2509/#2514/#1180のAuthoring/CLI/Conformance内で適用を検討。論文の測定値をTEIの期待改善率や固定KPIにはしない。
 
 **今回の変更状態**：文献再読・現行Issue照合によるドキュメントDraft更新のみ。RES-01〜07、A/B/C1/C2の比較、新たな同一Attempt製品E2E、二Host/二Provider実測、Ownerの採用・意味受理は NOT RUN。#3017の限定Mutant kill、#2853の実PG限定観測、#2747の参照実行を合算して製品資格にしない。PR #3022はreview用Draftを維持し、main統合／Gate合格を主張しない。
+
+
+### 10.11 実装済みCompletionClaimへの研究知見接続（2026-11-06：現行mainの静的Source確認、実試験は未実施）
+
+[M4Bench arXiv:2610.37459v1](https://arxiv.org/html/2610.37459v1) の行集合誤り、[Verification Agents arXiv:2611.02285v1](https://arxiv.org/html/2611.02285v1) のvacuityとwitnessの問題を、[main内のcompletion.go](https://github.com/hat47x/tei-platform/blob/main/internal/semantic/completion.go) と [#2926](https://github.com/hat47x/tei-platform/pull/2926)（統合済み）、[空集合のOwner判断](https://github.com/hat47x/tei-platform/blob/main/plan/research/EMPTY_SET_COMPLETION_SEMANTICS_2026-11.md) へ直接接続する。**新Completion Engine／Proof IRは不要**。
+
+**現行Sourceの限定事実**：EvaluateCompletionは観測TargetResult、呼出側指定Coverage（complete/partial/unestablished）、EmptyJustified、HandoffConfirmed、Conflictingを入力し、holds/fails/unverified/contradictionを返す。Ownerが定義するL（対象集合）の実Provider取得、範囲、時点や行帰属の証明はこの関数では行わない。CoverageCompleteやEmptyJustifiedを引数に設定できること自体は、当該範囲の全件を観測した証明ではない。
+
+以下は**コード分岐の静的読解から導いた判別Fixture候補**であり、新たなGoテストやOwner意味受理は未実施。現行動作を挙げた行も「既に不具合確定」とはしない。
+
+| ID | 一つだけ変える入力・状況 | 現行の分岐／独立Expectedで検討すること | Owner |
+| --- | --- | --- | --- |
+| CQ-01 | 完全0件と、ページ0件・RLS制限の0件・Replica遅延を対照 | 誤ってCoverageCompleteを供給すると空のallow条件がholdsとなり得る。対象L、Filter、Scope、Provider、時点とReader完了を独立に確認する | #2506/#2622/#1706 |
+| CQ-02 | Targetsが空、CoverageUnestablished、EmptyPolicyDeny | 現行コードの空分岐はCoverageを確認せずfailsを返す。**実Lが空と判明していない状況でも確定的失敗と言ってよいか**をOwnerに照会。実行を許可しないことと、業務の不成立を証明することは別 | #267/#2514 |
+| CQ-03 | Handoff類型、Targets空、EmptyJustified真、CoverageComplete、HandoffConfirmed偽 | 現行コードは空のrequires-evidence分岐でholdsへ進み、後段のHandoffConfirmed判定を通らない。**対象0件で手作業確認は非適用なのか、それでも必要なのか**を業務手順のOwnerが決める | #1125/#267 |
+| CQ-04 | existence類型で、観測1件Holds真だがCoveragePartial、または観測1件Holds偽でCoveragePartial | 現行非空分岐は全対象成立型。前者unverified、後者failsとなる。**存在条件の個別行Pと完了述語全体を単純に同一視しない**。実Pが存在命題そのものなら入力Mappingの正当性を説明する | #267/#2514 |
+| CQ-05 | 別Tenant/時点/部分Readerに由来するEmptyJustified真、または矛盾するがConflicting偽 | Bool引数だけで実Source同一性や実矛盾集合は検査されない。Evidenceの発行者・Reader資格・同一Scope/Version/Principalを同一Attemptで追跡する | #1163/#2389/#2516 |
+| CQ-06 | 組織Membershipが遡及訂正され、同じ行値でも有効期間と観測時点が変わる | 旧CoverageCompleteと旧holdsを新しいL/現在Grantへ転用しない。業務時間と実Host認可時点を独立に管理する | #2389/#2600/#1174 |
+
+**最小検証順**：まずCQ-01〜05を既存#2926試験と#2514独立Expectedに対して同一の固定Fixtureで確認し、現実装とOwner期待の差を分類。その次に#2506のFunction Data Context→実Provider Read→Rの被覆証拠→Completion評価→#1163の同一Attempt/Consumerを連結。CQ-06は組織レーンの既存Fixtureを利用し、必要な書込み試行にだけ#2598/#1174の現在Grant/Effect/Receiptを接続する。CompletionHoldsをProvider Commit済み・正当な承認・業務全体の完了と同一視しない。
+
+### 10.12 Meaning受理と実Grantの2×2：研究計画への接合だけ行う
+
+[Draft #3026](https://github.com/hat47x/tei-platform/pull/3026) は、M＝Owner Accepted Meaning、G＝Current Host Grantの直交する2×2比較と、受注／組織／Workflowの同形異義を既に記述している。**その比較表を本計画へ複製せず、各セルの独立Expected・実証範囲を#1180/#2514/#1163と接続することだけを研究レーンの課題とする**。
+
+M未受理・G許可でもMeaningを採用しない。M受理済み・G拒否なら旧Meaningは履歴として保持し、現在Dispatchは拒否。両方満たしてもTarget・Version・Guard集合・Provider Commit Fenceと現在Consumerが未確認なら業務完了ではない。未受理・拒否の二不足は権限ある診断では別々に保持するが、低権限利用者へ非公開情報を露出させない。Concordatの表示可能Tool集合とHostの実Resource Grantを同一視しない（[論文 §5.3](https://arxiv.org/html/2610.37461v2)）。Draft #3026は未統合で、正式意味受理ではない。
+
+### 10.13 Skillの「割付」と「実提供」を区別する評価方式
+
+§10.7/10.10のA/B/C1/C2について、[TEI #2018](https://github.com/hat47x/tei-platform/issues/2018) および [TAI #168](https://github.com/hat47x/tai-pleroma/issues/168) の既存H2/H3評価計画を再利用する。
+
+- **割付ベース（ITT型・記述集計）**：Skillを利用する予定だった試行が未発見・未ロード・Toolなし・実送出不可でも、分母に含めて障害と費用を測る。C1でSkillを発見可能にしただけでは利用成功としない。
+- **実提供条件ベース（PP型・限定比較）**：同一Task、Source raw SHA、Oracle、モデル、Tool権限、提出方式を固定し、H3のRoot＋Required Referencesが実ロードされ、両腕のTool呼出しが実証されたものだけを比較。C2の実消費内容・版も記録する。配送の成功率と、正しく届けた仕様の効果を混同しない。
+- **Claimの上限**：H2/H3は既存の固定Task 1件・4独立Sessionが計画分母。未実行であり、仮に4 Sessionが成功しても一般的な因果効果やp95は主張しない。回答品質、Key集合、strict pass、false-qualified、unknown保持、トークン／Tool／時間／人的費用を別記録。
+
+新しいBenchmark RuntimeやSkill評価正本は不要。#2018が経済性、#1180がRequired Obligation、#2514が独立Oracle、#2509がAI/CLI境界を担当する。M4Benchの測定効果量をTEI/TAIの期待改善率へ転用しない。
+
+**今回の追補状態**：研究と既存main Source/Issue/Draft照合によるDocs-only反証設計。CQ-01〜06、Provider→Completion評価の実接続、H2/H3四Session、Owner正式受理はNOT RUN。既存の限定Go test・PG試験を単一の製品E2Eと合算せず、#1119のCritical Path／現在のGate／既存Host/Plugin方針を維持する。
