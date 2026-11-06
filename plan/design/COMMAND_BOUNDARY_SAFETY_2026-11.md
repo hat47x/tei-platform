@@ -145,9 +145,16 @@ CLIとStudioは、記録が無い場合の既定値を「効果が宣言され�
 - 「効果が報告されていない」を「宣言効果が適用された」と読み違えない。
 - `AppliedUnobserved`（操作の列挙漏れ）と `ReportedEffectMissing`（効果の報告漏れ）を別の欄として扱える。
 
+### `effectcommit` アダプタの報告（追記）
+
+`commandadapter.Executor` に `Effect *semantic.DataEffect` を追加した。呼出し側がCommand計画から宣言効果を渡すと、`StatusCommitted`／`StatusReplayed` の結果にその効果を載せる。`nil` なら従来どおりreceipt-onlyで、`ReportedEffectMissing` が記録される。
+
+- `Replayed` は同じOperationID・RequestHashの記録が既にあることの証明であり、資源の現在値の独立読取りではない。したがって `persisted` の意味を強めるものではない。
+- 実PostgreSQLの結合試験は `TEI_EFFECT_POSTGRES_DSN` 未設定のため、この環境ではskip。
+
 ### まだ決めていないこと
 
-- `effectcommit` アダプタがCommit receiptから宣言効果を返すようにするか（呼出し側が期待する `Effect` を渡すか）。
+- 呼出し側が宣言効果を渡さない構成を許すか、必須にするか。
 - 宣言効果の報告漏れを、どのExecutorで拒否するか。参照Executorは宣言効果をそのまま返すため対象外。
 - `effectcommit` のCommit成功を、独立した読取りで宣言効果と照合するか（#2998の `persisted` の意味）。
 
