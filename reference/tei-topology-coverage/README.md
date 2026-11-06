@@ -18,7 +18,11 @@
 node --test reference/tei-topology-coverage/coverage.test.mjs
 ```
 
-Node.js 22以上の組込みtest runnerだけを用います。実験ケースは、同kind/ID異scope、複数View、三項関係role保持、閉じた集合内の条件付き不在、欠落role、Graph/Table欠落、opaque/省略/未固定Reader/開示不明、Source版・Graph/Table公開版の混在、レイアウトだけの差分、欠落端点、非開示下の現在情報、Table行のscopeとqualified keyの不一致、Graph旧view IDの別scope誤結合、Relation ID指定の取り違えです。Graph/Tableの各Occurrenceが整合していない場合は、欠落の証拠を作るだけでなく、存在するという合成Claimや選択候補も拒否します。
+Node.js 22以上の組込みtest runnerだけを用います。
+
+**Relationの識別上の注意（2026-11-06追補）**：FixtureではRelationの`scope + id`を端点Subjectとは独立したqualified identityとし、GraphのRelation node・Role edge・TableのRelation recordに同じ`relationKey`を保ちます。端点のscopeはRelationの宣言scopeの根拠にはなりません。同一relation IDが別scopeに現れること、別scopeを結ぶrole、Graph/Table間のrelation typeの齟齬、Relation ID/Scopeの再束縛を負例に含めます。これは既存TEI ProductのRelation Scope ABIを定義したことにはなりません。
+
+実験ケースは、同kind/ID異scope、複数View、三項関係role保持、閉じた集合内の条件付き不在、欠落role、Graph/Table欠落、opaque/省略/未固定Reader/開示不明、Source版・Graph/Table公開版の混在、レイアウトだけの差分、欠落端点、非開示下の現在情報、Table行のscopeとqualified keyの不一致、Graph旧view IDの別scope誤結合、Relation ID指定の取り違えです。Graph/Tableの各Occurrenceが整合していない場合は、欠落の証拠を作るだけでなく、存在するという合成Claimや選択候補も拒否します。
 
 
 **実行証拠（限定）**：GitHub Actions [synthetic topology P1 #42155243921](https://github.com/hat47x/tei-platform/actions/runs/42155243921) は、exact head `577bbe60d961c58e142502ab5835c9a7610214df`、Node 24.21.0で **18/18 PASS**。試験した `coverage.mjs` のGit blob `5cc3ca120e2995650bcaba1121a2416b3be8010a`、`coverage.test.mjs` のblob `6ece714d49a7b6f8dfa4ff7d376dfe4eb61e7f4d` と試験後clean treeをActions記録で確認しました。通常のRepository Health / 脆弱性確認と、**このReferenceのfocused試験が実際に走ったこと**は別証拠として記録します。
