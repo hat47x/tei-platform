@@ -157,6 +157,24 @@ H0/H1と異質領域の要件探索は並行可能。H2/H4の実Effect資格は�
 
 **直交性の反証**：Mだけ変更してもHostの現在Grantを自動発行・更新しない。Gだけ変更しても過去のAccepted Meaningを自動生成・改変しない。ただし実際の適用判断は両者と明示された依存を再評価する。Owner受理の版更新・Grant失効・Plugin Pin変更・Source A→B→Aは別の失効要因であり、単純な「同じ値なら同じ許可」には還元しない（#267/#1174/#2582/#2600）。
 
+#### 2×2が「両方真」でも失敗する証拠の取り違え：対象・意味・実時点の束縛
+
+**既存2×2の適用条件を明示する補正**：M/Gの真偽だけを独立に判定するのは*要件の分離*であって、二つの`true`を論理積で結合すればDispatchできるというルールではない。Mの受理対象は、Function/Action/Ruleの意味契約と適用範囲・Revision（Global Ruleの場合はTenantを個別に含めないこともある）。Gの対象は実Principal・Tenant／Resource scope・許可Operation・現在時刻とEffect確定条件。**実Request・Target Bindingが両資格の適用範囲に含まれていること**を既存Resolver/Host/Providerの観測と突き合わせる。全フィールドの形式的等値は求めず、異なる粒度の証拠を根拠なしに接合しない。
+
+以下は**新Case IDやScenario正本を作らない既存#1180/#2514への追加対照**。元の公開合成Source・対象候補・独立Expectedを固定し、正常対照と差分一箇所を対にする。実Backendで該当Guard/Joinが存在することは未確認なので、安全な拒否を「現状実装済み」としない。
+
+| 変化させるWitness（それぞれ単独では有効） | 誤った合成と独立Expected | Owner／既存試験入口 |
+| --- | --- | --- |
+| Mは受注O1の確定Rule、Gは**O2の閲覧許可**に差し替え。あるいは同じBusiness Keyが別Tenantの異Resourceを指す | M=trueかつG=trueの単純積がO1の確定を許可するなら**不正な証拠接合**。実Target/Action/Principal/Tenantの一致が未証明ならDispatchを許可しない。内部では未充足Witnessを報告、外部では開示禁止の別Resource存在を漏らさない | #2598/#1174/#1656、別Tenant同Business KeyのDraft #3016（実PG新試験は未確認） |
+| Mは「見積承認」の受理、Gは同じO1への「受注確定」実行Grant。数値・表示・Source Carrierは同形 | 異なるBusiness Action間のMeaningの代用を拒否。Provider read/Grantを根拠に受注確定のOwner意味受理を生成しない。#2926の`EvaluateCompletion`が単体成功しても本番のCompletionではない | #1125/#1126/#2514（#267は仮承認） |
+| M/Gは**過去Snapshot／Preview時点**では有効、Effect確定前にOwner受理の対象Ruleが改版、または委任Grantが失効 | Source/Meaningの歴史的受理や以前のReceiptを消去するのではなく、*現在の対象Actionへの適用*を再資格化。ProviderがCommit時にGrant epochを原子的に照合できないなら、原子性を保証したと主張しない。送出後ACK喪失はunknown、盲再送不可 | #2389/#1174/#2600、実Provider保証差のConformance |
+| Business Procedureの手作業記録を、同形の自動Workflow Stepとして渡す。あるいはRequired Grant Guardの指定をCallerが省略する | 手作業ならAction/Grantの**not-applicable**を理由にDefinition全体を拒否しない。一方、自動Stepなら実行義務とHost Grant確認が必要。`RunPlan completed`やObserver存在で欠落Guard/実Effect/業務完了を合格にしない | #1125/#1130、既存Draft #2889 OC-RP-01〜03 |
+| 部分Readの`未承認=0件`を、完全なTargetSet `L=[]`として見積→受注確定の業務完了へ転用 | 実取得Source/Rowset/Fieldの必要母集団とCoverageが不明なら「承認待ちなし」もOwner完了も**unknown**。NULL・未取得・空母集団を区別。`EvaluateCompletion(L, EmptyPolicy, P)`は供給された証拠の評価器であり、その母集団を実DBから完成させる証拠ではない | #2586/#2506/#2622/#1125（main #2926） |
+
+**Oracleの判別力**：最初の対照は、同じ独立Expected/固定Targetのまま *Gのresource/action/tenantのみ* を変えるMutantを既存Scenarioへ一件注入し、明示したEffect対象O1が**一度も適用されないこと**と、Current Grant照合が実際に実行されたWitnessを別々に見る。Mutantを「検出した」だけではDB無作用は証明しない。実Provider/Grantの結合がまだ無い場合は`NOT RUN: target-grant-binding-unavailable`と記録し、静的な期待拒否を実Security PASSへ昇格しない。#2514の既存Mutant/独立Expected・#1163のAttempt証拠に委譲する。独立Expectedに反する場合は失敗をそのまま観測し、後からExpectedを実装に合わせない。
+
+**非ブールの留意点**：未受理は明示Rejectと同義ではなく、Host Grant不在は現在の拒否とProvider照会不能を区別する。開示範囲外の情報を診断に表示しない。上のM/G=trueはすべて**この比較に必要な証拠が揃った場合に限る説明上の略記**であり、実Runtimeの共通Boolean/Authority APIを提案しない。
+
 #### 三領域で破綻しやすい残余
 
 | 比較 | 単一因子だけ変える反例 | 独立Expectedと既存Owner |
