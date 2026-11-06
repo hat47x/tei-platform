@@ -20,6 +20,7 @@
 - [候補ビューの実変更履歴での負担測定](CANDIDATE_VIEW_REAL_HISTORY_MEASUREMENT_2026-11.md)（`reference/workspace` の4変更。合成ではない変更で候補件数とSource修正量を測定。major変更の実履歴はなし）
 - [実データベースでの確認手順](REAL_DATABASE_VERIFICATION_PROCEDURE_2026-11.md)（PostgreSQL 16.14で実行。CAS試験の同期不足を修正し、DDL・NULL・Web E2Eまで確認。健康診断receiptで `TRUSTED_FULL_HEALTH_NOT_RECORDED` を解消し、残る2診断は暫定オーナー判断。実Provider・本番Authorityは未実行）
 - [健康診断receipt（`005bbee7` / Actions 42152908986）](QUALIFICATION_FULL_HEALTH_005BBEE7_42152908986.json)と[暫定audit結果](REAL_PROVIDER_PROVISIONAL_AUDIT_005BBEE7.json)（`UNQUALIFIED`、残る診断は `E2_PROVIDER_GUARANTEE_NOT_ATOMIC` と `PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE`）
+- [D8〜D11暫定経路のaudit](PROVISIONAL_CHAIN_AUDIT_005BBEE7.json)と[Runner Evidence](PROVISIONAL_CHAIN_RUNNER_EVIDENCE_005BBEE7.json)（`atomic-with-commit` の暫定宣言。`PROVISIONAL_GRANT_NOT_G2_EVIDENCE` 等は暫定オーナー判断）
 - [Workspace Source Readerの環境別Evidence](WORKSPACE_SOURCE_READER_ENV_EVIDENCE_2026-11.md)（Windows 11・WSL2 Ubuntuでの許容／拒否／NOT RUNとLoadコスト。#2571）
 - [暫定チェーンの実行記録](TEI_PROVISIONAL_CHAIN_E2E_20261103.md)（D8〜D11を通した一改訂E2Eの実PostgreSQL実行と監査結果。G1・G2は未合格）
 - [X-TEA例のStudioサーバー起動確認](XTEA_LOWCODE_EXAMPLE_STUDIO_SMOKE_2026-11.md)（`examples/xtea-lowcode`のserver buildと`/health`。画面・Wails RPC・Desktop WebViewは未確認）

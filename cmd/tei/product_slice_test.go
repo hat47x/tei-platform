@@ -240,6 +240,20 @@ func TestProductSliceLoadsValidatesAndViews(t *testing.T) {
 		t.Fatalf("period state failure exit=%d body=%s", code, periodStateFailure.String())
 	}
 
+	var unauthorized bytes.Buffer
+	code, err = runViewCommand([]string{
+		"-workspace", root,
+		"-application", "order_entry",
+		"-pattern", "order_entry.order_record",
+		"-command", "sales.submit_order",
+		"-input", "order=ORD-1",
+		"-execute",
+		"-allow-capability", "sales.other",
+	}, &unauthorized)
+	if code == 0 || !strings.Contains(unauthorized.String(), "COMMAND_UNAUTHORIZED") {
+		t.Fatalf("unauthorized run exit=%d body=%s", code, unauthorized.String())
+	}
+
 	var applicationView bytes.Buffer
 	code, err = runViewCommand([]string{
 		"-workspace", root,

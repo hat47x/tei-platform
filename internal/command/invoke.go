@@ -167,6 +167,14 @@ func (i Invoker) execute(ctx context.Context, request Request, plan applicationv
 			EffectUnknown: EffectMayBeUnknown(err),
 		}
 	}
+	if result.Effect != nil {
+		if plan.Effect == nil || string(result.Effect.Kind) != plan.Effect.Kind || result.Effect.Data != plan.Effect.Data {
+			return Result{}, &ExecutionError{
+				Code:    "UNDECLARED_COMMAND_EFFECT",
+				Message: fmt.Sprintf("executor returned effect %s on %s that the capability does not declare", result.Effect.Kind, result.Effect.Data),
+			}
+		}
+	}
 	if result.Outcome != nil {
 		declared := false
 		for _, outcome := range plan.Outcomes {
