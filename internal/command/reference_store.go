@@ -62,7 +62,7 @@ func (s *MemoryStore) ApplyRecord(effect *semantic.DataEffect, key string, input
 	switch effect.Kind {
 	case semantic.DataEffectCreate:
 		if _, exists := s.data[effect.Data][key]; exists {
-			return fmt.Errorf("record %s already exists", key)
+			return referenceFailure(ReferenceRecordExists, "create", "record %s already exists", key)
 		}
 		s.data[effect.Data][key] = copyValues(inputs)
 		if attributes != nil {
@@ -70,7 +70,7 @@ func (s *MemoryStore) ApplyRecord(effect *semantic.DataEffect, key string, input
 		}
 	case semantic.DataEffectUpdate:
 		if _, ok := s.data[effect.Data][key]; !ok {
-			return fmt.Errorf("record %s is not present", key)
+			return referenceFailure(ReferenceRecordMissing, "update", "record %s is not present", key)
 		}
 		s.data[effect.Data][key] = copyValues(inputs)
 		if attributes != nil {
@@ -78,7 +78,7 @@ func (s *MemoryStore) ApplyRecord(effect *semantic.DataEffect, key string, input
 		}
 	case semantic.DataEffectDelete:
 		if _, ok := s.data[effect.Data][key]; !ok {
-			return fmt.Errorf("record %s is not present", key)
+			return referenceFailure(ReferenceRecordMissing, "delete", "record %s is not present", key)
 		}
 		delete(s.data[effect.Data], key)
 		delete(s.attributes[effect.Data], key)
@@ -390,7 +390,7 @@ func (e ReferenceDataExecutor) checkCandidateKeys(request Request) error {
 				}
 			}
 			if matched {
-				return fmt.Errorf("candidate key %s is duplicated", candidate.ID)
+				return referenceFailure(ReferenceValueRejected, "candidate-key", "candidate key %s is duplicated", candidate.ID)
 			}
 		}
 	}
@@ -438,7 +438,7 @@ func (e ReferenceDataExecutor) checkImmutableInputs(request Request) error {
 			continue
 		}
 		if old, exists := record[input.Name]; exists && old != input.Value {
-			return fmt.Errorf("immutable attribute %s cannot change", input.Attribute)
+			return referenceFailure(ReferenceValueRejected, "immutable", "immutable attribute %s cannot change", input.Attribute)
 		}
 	}
 	return nil
@@ -496,7 +496,7 @@ func (e ReferenceDataExecutor) checkValueDomains(request Request) error {
 			}
 		}
 		if !allowed {
-			return fmt.Errorf("value %s is outside the domain of %s", input.Value, input.Attribute)
+			return referenceFailure(ReferenceValueRejected, "value-domain", "value %s is outside the domain of %s", input.Value, input.Attribute)
 		}
 	}
 	return nil
@@ -542,7 +542,7 @@ func (e ReferenceDataExecutor) checkRequiredInputs(request Request) error {
 			}
 			for _, attribute := range data.Attributes {
 				if attribute.Required && !provided[attribute.ID] {
-					return fmt.Errorf("required attribute %s is not provided", attribute.ID)
+					return referenceFailure(ReferenceValueRejected, "required", "required attribute %s is not provided", attribute.ID)
 				}
 			}
 		}
@@ -593,7 +593,7 @@ func (e ReferenceDataExecutor) cascadeDelete(target core.CanonicalID, targetAttr
 							}
 						case "preserve":
 						default:
-							return fmt.Errorf("inbound relation %s restricts delete of %s", relation.ID, target)
+							return referenceFailure(ReferenceRuleRejected, "delete-policy", "inbound relation %s restricts delete of %s", relation.ID, target)
 						}
 					}
 					continue
@@ -617,7 +617,7 @@ func (e ReferenceDataExecutor) cascadeDelete(target core.CanonicalID, targetAttr
 					}
 				case "preserve":
 				default:
-					return fmt.Errorf("inbound relation %s restricts delete of %s", relation.ID, target)
+					return referenceFailure(ReferenceRuleRejected, "delete-policy", "inbound relation %s restricts delete of %s", relation.ID, target)
 				}
 			}
 		}
