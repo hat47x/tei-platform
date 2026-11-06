@@ -220,6 +220,21 @@ function summarizeCommand(view) {
   return sections;
 }
 
+// differenceSections lists the operations the declaration did not describe, so
+// a reader can see which data the execution reached beyond the declared effect.
+function differenceSections(differences) {
+  if (!Array.isArray(differences) || !differences.length) return [];
+  return [{
+    title: "宣言との差",
+    header: ["種別", "宣言", "適用"],
+    rows: differences.map((difference) => [
+      valueOf(difference.code),
+      difference.declared ? `${difference.declared.kind} ${difference.declared.data}` : "",
+      difference.applied ? `${difference.applied.kind} ${difference.applied.data}` : "",
+    ]),
+  }];
+}
+
 export function summarizeView(value) {
   if (!value || typeof value !== "object") {
     return [{title: "ビュー", rows: [["値", valueOf(value)]]}];
@@ -237,7 +252,7 @@ export function summarizeView(value) {
         ["records", Array.isArray(value.records) ? String(value.records.length) : "0"],
         ["differences", Array.isArray(value.differences) ? String(value.differences.length) : "0"],
       ],
-    }]);
+    }]).concat(differenceSections(value.differences));
   }
   if (value.package && value.version !== undefined) return summarizePackage(value);
   if (Array.isArray(value.items)) return summarizeRecord(value);
@@ -250,6 +265,7 @@ export function summarizeView(value) {
     rows: Object.entries(value).map(([key, entry]) => [key, JSON.stringify(entry)]),
   }];
 }
+
 
 
 
