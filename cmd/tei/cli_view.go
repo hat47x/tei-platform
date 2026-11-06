@@ -47,6 +47,21 @@ type cliViewReport struct {
 
 // runViewCommandは、Application Patternの対話契約を解決し、textまたはjsonで返す。
 // 意味の解決は applicationview に置き、ここでは引数・出力・終了コードだけを扱う。
+// commandFailure maps an execution failure to the CLI code a caller needs in
+// order to decide what to do next. A failure whose data effect may already be
+// applied must not read like a clean rejection, and a lifecycle refusal is a
+// replay decision rather than an execution error.
+func commandFailure(err error) (string, string, bool) {
+	var execution *command.ExecutionError
+	if errors.As(err, &execution) && execution.Code == "COMMAND_LIFECYCLE_REFUSED" {
+		return "COMMAND_LIFECYCLE_REFUSED", execution.Message, true
+	}
+	if command.EffectMayBeUnknown(err) {
+		return "COMMAND_EFFECT_UNKNOWN", err.Error(), true
+	}
+	return "", "", false
+}
+
 func runViewCommand(args []string, out io.Writer) (int, error) {
 	report := cliViewReport{SchemaVersion: "tei.cli.view/v0"}
 	fail := func(code, message string, exit int) (int, error) {
@@ -196,9 +211,8 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 				result, err = invoker.Invoke(context.Background(), request)
 			}
 			if err != nil {
-				var execution *command.ExecutionError
-				if errors.As(err, &execution) && execution.Code == "COMMAND_LIFECYCLE_REFUSED" {
-					return fail("COMMAND_LIFECYCLE_REFUSED", execution.Message, 1)
+				if code, message, ok := commandFailure(err); ok {
+					return fail(code, message, 1)
 				}
 				return fail("COMMAND_FAILED", err.Error(), 1)
 			}
