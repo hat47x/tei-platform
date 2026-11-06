@@ -183,6 +183,9 @@ func main() {
 	grantIssuer := fs.String("grant-issuer", "", "issue-grant: the party that decides the grant")
 	grantReason := fs.String("grant-reason", "", "issue-grant: why the grant is issued")
 	grantRunKey := fs.String("grant-run-key", "", "issue-grant: the run the grant belongs to")
+	grantDeclaration := fs.String("grant-declaration", "", "issue-grant: the declaration file (tei grants) the issuance must stay inside")
+	grantDeclaredScope := fs.String("grant-declared-scope", "", "issue-grant: the declared scope name this run's place maps from")
+	grantResolvedRoot := fs.String("grant-resolved-root", "", "issue-grant: the concrete place the declared scope maps to for this run")
 	grantOut := fs.String("grant-out", "", "issue-grant: write the grants file here")
 	issueLog := fs.String("issue-log", "", "issue-grant: append the issuance record here")
 	environmentID := fs.String("environment", "", "environment canonical ID")
@@ -227,6 +230,10 @@ func main() {
 			RunKey:     *grantRunKey,
 			OutPath:    *grantOut,
 			LogPath:    *issueLog,
+
+			DeclarationPath: *grantDeclaration,
+			DeclaredScope:   *grantDeclaredScope,
+			ResolutionRoot:  *grantResolvedRoot,
 		}
 		if err := runIssueGrantCommand(options); err != nil {
 			fmt.Fprintln(os.Stderr, err)

@@ -29,6 +29,10 @@ type cliValidationReport struct {
 	WorldFingerprint       string                `json:"worldFingerprint,omitempty"`
 	SourceIndexFingerprint string                `json:"sourceIndexFingerprint,omitempty"`
 	Error                  *cliValidationFailure `json:"error,omitempty"`
+	// Proposals are candidate corrections, one per diagnostic. They carry the
+	// world fingerprint the diagnostic was read from and are never accepted
+	// automatically: acceptance is a separate decision (validation.Accept).
+	Proposals []validation.Proposal `json:"proposals,omitempty"`
 }
 
 // Source locations never synthesize an empty Semantic Subject for parse errors.
@@ -114,6 +118,13 @@ func validateWorkspaceJSON(out io.Writer, root string) (int, error) {
 	}
 	report.WorldFingerprint = result.WorldFingerprint
 	report.SourceIndexFingerprint = result.SourceIndexFingerprint
+	if len(result.Diagnostics) > 0 && result.WorldFingerprint != "" {
+		diagnostics := make([]validation.Diagnostic, 0, len(result.Diagnostics))
+		for _, projected := range result.Diagnostics {
+			diagnostics = append(diagnostics, projected.Diagnostic)
+		}
+		report.Proposals = validation.Propose(diagnostics, result.WorldFingerprint)
+	}
 	for _, projected := range result.Diagnostics {
 		item := cliValidationItem{Diagnostic: projected.Diagnostic}
 		if len(projected.UnresolvedSourceOrigins) > 0 {
