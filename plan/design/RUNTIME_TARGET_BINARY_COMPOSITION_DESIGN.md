@@ -785,6 +785,23 @@ go test -count=1 -run '^TestIndependentGoAndJavaScriptQuoteSemanticParity$' ./to
 
 本負例は§18.4（必要Source閉包）の**Consumer/Attempt相対性**と§18.5（同じOracleの再利用）を補強する。Second Oracle/Host/Resolver、D2の全Test Source排除、Processの新Runtime実装は行わない。正式業務Owner受理、独立Mutant、D1、実OS/DB/Host資格は別。#1251（Go module/Build閉包）、#2514（Oracle実実行）、#1145（Process境界）、#2600（実消費と再資格）へ引き渡す。
 
+<!-- tei-d1-d2-hard-constraints-before-benchmark-20261106 -->
+### 18.11 D1／D2の比較前にハード要件で候補をふるい分ける（他レーン§23との責務分離・未採用）
+
+他レーン[DSH横断Draft #2903 §23.3](https://github.com/hat47x/tei-platform/pull/2903)が整理した二法人／別Tenant／Grant撤回／部分効果の**方式別Stop条件**を、方式選定側の§18.6へ適用するための最小関門。DSH §23のSCOPE-1〜4を新たな業務Fixture正本へコピーせず、実行方式の不適合判定だけをこの節に保持する。D0、D1、D2、動的Load、Wasmを性能の高低や開発の成熟順で並べない。
+
+| 用途で先に確認するHard requirement | D0／D1静的Goへの帰結 | D2 Process／動的Loaderへの帰結 | 必要な独立証拠・未満時の扱い |
+| --- | --- | --- | --- |
+| **同一成果物だけを厳格に配布**し、外部実行ファイルを配置できない | 通常関数D0と静的選択D1は候補。D1は現Go Targetの選択・実Link/Invocation・不要initの排除を証明 | 独立Process D2は配布条件に不適合（別の同梱方式を黙って『単一バイナリ』とは呼ばない）。Wasmを内包しても実Host要件は別 | 配布契約・Targetのactual member/Artifact bytes。条件が矛盾する場合は要件変更のOwner判断まで保留 (#1251/#1167) |
+| **停止・再ビルド不可の独立Hot Swap**を要求 | 同一Go Binaryに固定された通常D0／静的D1では満たせず、その用途では棄却候補 | D2や動的方式は候補だが実drain／再選択／世代切替／継続リクエストの挙動が未実証なら保留 | 実Consumer負荷・失敗注入・旧新世代のEffect/Receipt。単にPlugin Versionを変えてもHot Swap実証にならない (#1223/#2604) |
+| **不信Providerを同Processから強制隔離**する必要 | 信頼されないコードに実権限が届くならD0／D1は原理的に不適合。論理Contract分離だけではメモリ・File・Secret権限を隔離できない | D2のProcess境界は候補だが、OS Resource/Network制限、Secret継承・IPC／Tenant Bindingの強制が無ければ採用不可。in-process動的Loadも隔離証明の代用不可 | 実OS強制拒否・漏えい負例・攻撃対象Resource。manifest/read-only自己申告をSecurity PASSにしない (#2515/#2509/#2903) |
+| **Tenant別Grantの撤回をCommit時まで強制／部分Effectを復旧** | D0/D1も実Host/DB fenceに依存。Library/CompositionからGrantを推論しない | D2も同じ。別Process起動やACKはcommit資格・効果確定・duplicate suppressionでない | SCOPE-2〜4、実Issuer/Subject/Tenant+Target/Grant epoch、Operation、Effect Receipt、独立Read。Host/Provider間の失効原子性保証が無い場合、厳密要件なら方式を保留/棄却 (#1174/#1129) |
+| **契約だけを先に配布、実装は案件後付け** | D0で用途が満たせる場合はPlugin不要。Contract資産と静的実現の段階は分離 | D2/Wasmを先行義務化しない。外部Consumerが実際に要求したTargetだけ追加 | Provider 0のinspectと呼出拒否→Candidate→独立Conformance→実Targetの順。公開ABI・Marketplace先行禁止 (#1975/#2390/#951) |
+
+**判定順序**：①Consumer要求からHard/Soft制約と出典を確定 → ②Hard違反方式を比較対象から除外／不明なら保留 → ③残る方式だけで同一ExpectedのS0〜S6・実費用・更新境界を比較 → ④Ownerが業務意味、Hostが実行資格、Target管理者が配布要件をそれぞれ判断。**厳格単一Goバイナリと無停止個別Hot Swapが同時に絶対要件**で、実現可能な代替配布仕様も無いなら、比較用の架空D1/D2を増やさず**現要求は同時充足不明／不適合**と記録して差し戻す。
+
+**現在の試験適用範囲**：[D0直接Go Draft #3021](https://github.com/hat47x/tei-platform/pull/3021) のCIは純粋計算のReference成功と既存Process回帰までであり、上表のHot Swap・OS隔離・Tenant/Commit/Receiptの試験ではない。D1 staticのS2/S4、実費用のS5、SCOPE-1〜4の実Provider/OS/DB、Owner正式受理は **NOT RUN / NOT ADOPTED**。採否の正本は本§18.6/§18.11、Scope負例の正本は#2903 §23、Host/Effectは#1174、Application選択は#1016。第二Policy/Host/Conformance Engine/新Fixture正本は作らない。
+
 ## 19. 高凝集Bundleの適正規模と実行前提の完全性（2026-11-06、設計・未採用）
 
 ### 19.1 Bundleのサイズはファイル数ではなく、実変更の結合度で判断する
