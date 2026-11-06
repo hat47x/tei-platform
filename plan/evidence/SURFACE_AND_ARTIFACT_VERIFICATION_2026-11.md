@@ -124,7 +124,7 @@ go run ./cmd/tei validate -workspace reference/standard-crud/workspace
 この三つは、期間の宣言（#2144）・効果の規則（#1129）・実行計画（#1130）が**同じ操作面の上で噛み合う**ことを示します。合成は `CombinePreconditions` で行い、どれか一つでも満たされなければ実行しません。
 ## 10. 実データベースの確認手順（2026-11-06 追記）
 
-実データベースでの確認は**まだ行っていません**。手順と、確かめること・確かめないことを固定しました（[実データベースでの確認手順](REAL_DATABASE_VERIFICATION_PROCEDURE_2026-11.md)）。
+実データベースでの確認は、2026-11-06 に別の作業で実行されました（期待状態の比較2件・DDL・入力のNULL区別・Web経由の書込みと独立Read）。**ただし本記録が扱う期間・効果・実行計画・権限の実行時判断は、実データベースで確認していません。** 手順と、確かめること・確かめないことを固定しました（[実データベースでの確認手順](REAL_DATABASE_VERIFICATION_PROCEDURE_2026-11.md)）。
 
 - 入口は `tei dbcheck`（DSN 未設定なら終了コード 2 で、何も実行しない）。
 - 試験は `tools/reference-expected-state-concurrency`。
