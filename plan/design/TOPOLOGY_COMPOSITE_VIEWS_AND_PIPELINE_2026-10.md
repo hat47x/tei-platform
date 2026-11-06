@@ -409,3 +409,23 @@ Else absence remains unknown; no universal closed-world assumption.
 **追加の実行証拠**：[専用Node CI #42156720965](https://github.com/hat47x/tei-platform/actions/runs/42156720965) は、変更後exact head `760597b2aaddde1bf3990ee8f57a35deb9bdb9ea`で **26/26 PASS**。対象コードGit blob `c20ceb222a690d486ce5b8f95782dba6c84d9a13`／試験Git blob `9ec51ea2518b05499405bc86e21398b91856084a`、Node 24.21.0、テスト前後のclean treeを確認した。これらは**合成のscope/type/role/Graph/Table内部整合だけ**の証拠であり、元Source・実Consumer・実Build・実Transferの保証ではない。第13.2節の18/18は当時の限定記録として残す。
 
 **次段の最小受入**：既存Go Reader/Source Indexから(1)実Relation identity、(2)Relationの宣言元scopeを取得できる契約、(3)端点のqualified key、(4)roles/typeとSource/Projection revision、(5)開示済みscopeの閉包根拠を確認する。いずれかが欠けたら、図表は候補・部分表示にとどめ`absent-in-declared-snapshot`のProducer資格を実Sourceへ移さない。既存#1124/#2620/#2831/#2542の担当境界を変更せず、新共通Relation Registry/第二Resolverを追加しない。
+
+### 13.5 Query相対の条件被覆と、無視されたPredicateからの偽の不存在を禁止（2026-11-06追補）
+
+[研究計画 Draft #2966](https://github.com/hat47x/tei-platform/pull/2966)は、合成Referenceとは独立した実Source Readerと認知負荷比較を所有する。本節はその研究を再実装せず、**既存#2881の合成Evaluator内で確認できるQuery意味の欠落**だけを扱う。
+
+**具体的な不具合候補（固定Sourceを静的に確認）**：従来の`boundedAbsence`は`kind/scope/type/id`のみを読んでいる。したがって、たとえば`{kind:"relation",scope:"two",type:"produces",participantScope:"two"}`という問い合わせで`participantScope`を無視し、宣言scopeが`two`に無いだけで`absent-in-declared-snapshot`を返し得る。しかし、scope `one`に所属するRelationがscope `two`のSubjectへ接続していることと矛盾しない。この「無視した条件で得た不在」は、閉包をどれほど正しく検査しても元の問いへの答えにならない。
+
+**最小対策（新Query DSLではない）**：この合成Referenceで受理する条件を`kind`、`scope`、`type`、任意の`id`に限定し、それ以外の`participantScope`、`role`、`where`、`window`、`subjectKey`等は **`unknown:unsupported_query_predicate`** へ戻す。Relation queryの`scope`は**Relationの宣言scope**であり、接続先のscopeや、特定Roleを通じた入射関係、依存の推移閉包を表さない。これらの問い合わせを今後実装するときは、必要なEndpoint/Role/Scope/Window/Source closureを独立に列挙し、そのQueryについての完全性を示すまで不在断定を禁止する。
+
+| 反例 | 誤った判定の型 | このReferenceの許容する判断 |
+| --- | --- | --- |
+| 別scopeのSubjectへ接続するRelationの端点条件を無視 | 所属Relationが無い→接続Relationも無い | `unknown` |
+| `role=receiver`を無視してRelationの型だけで存在確定 | 別Roleの関係を同じ解釈へ昇格 | `unknown` |
+| ETLの`window/end`、BatchのACK条件を無視 | 対象期間の全件処理・配送完了を宣言Graphから推測 | `unknown`、実Event/Receiptは別Owner |
+| Buildの`where/target/selectedModules`を無視 | 未選択Dependency・実消費Inputの不存在を断言 | `unknown`、#2831のSelected/Consumed証拠は別 |
+| 無効ID、未対応の式・伝播条件の暗黙削除 | 広いQueryの結果を狭いQueryの答えに転用 | `invalid_query`または`unsupported_query_predicate` |
+
+これは単なる入力Validationの拡充ではなく、**意味解析していない条件を処理済みと見なさない**というEverything is Data/Role自己解釈の共有原則に対応する。正本Source、意味解釈部品、Projection、Query、必要な観測の各区分で「未解決」を保持する。既存実装の`present-in-snapshot`と`absent-in-declared-snapshot`はいずれも**fixture内部**のClaimであり、Owner Authority、現在Policy、実Readerの完全性を意味しない。
+
+**受入／未受入**：同一合成Fixtureで、Queryに未対応Predicateを追加したとき、存在系・不在系双方が`unknown`となることを回帰試験で固定する。実TEIのQuery/Role DSL、Source closure、Studio/AIでの問い解釈、ETL WindowやSelf-build Target/Selected Inputs、現在の開示非干渉は**別Owner／NOT RUN**。新Core Query型・汎用Solver・第二Authorityは導入しない。
