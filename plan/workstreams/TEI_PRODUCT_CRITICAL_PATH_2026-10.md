@@ -1268,7 +1268,7 @@ G0/G1/G2は**全面的な直列開発を要求しない**。DB fixtureとProvide
 **G4のread-only実証図（提案、図外の未知入力はunknown）**：
 
 ```text
-accepted BuildIntent / Source revision
+version-pinned BuildIntent / Source revision
            |
            v
  resolved typed BuildGraph -----> Required / Declared / Selected
