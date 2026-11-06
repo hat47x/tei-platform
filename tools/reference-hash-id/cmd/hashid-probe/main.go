@@ -144,10 +144,10 @@ func execute(schemePath, inputPath, subject, targetPath, expectedSource, expecte
 			return err
 		}
 		budget = &collisionBudgetEvidence{
-			ExpectedPopulation:           population,
-			MaximumCollisionProbability:  maximum,
+			ExpectedPopulation:            population,
+			MaximumCollisionProbability:   maximum,
 			EstimatedCollisionProbability: estimated,
-			PolicySource:                 "caller-declared-unverified",
+			PolicySource:                  "caller-declared-unverified",
 		}
 	}
 	input, err := readBounded(inputPath, maxInputBytes)
