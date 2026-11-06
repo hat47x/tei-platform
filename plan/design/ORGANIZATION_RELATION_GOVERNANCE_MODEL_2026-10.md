@@ -3373,3 +3373,38 @@ Ownerが求める「選択した業務Data群への広域適用＋Record/用途�
 4. **#1174/#2564**：実Readを得るまではWrite/Approval/異動時のCase保存、Commit/Receiptを後続Gateとして保持。業務上の意味受理はOwnerが独立判断する。
 
 **採否**：E1bでSource→Mapping→Surfaceの実装可能性を確認済み。次のE2a/E2b/E2cは未実証。新たな汎用Org Host、HR専用Runtime/別DB Engine、全Domain共通Tenant Key/認可Coreを作らない。#1119のP0優先順位と、他担当#2681/#2586の変更責任を保持。#3024は親#2681依存のstacked Draft・未マージ、#2389はmainへのマージ競合あり。局所CIの成功をmainや実Productの受入へ昇格させず、親統合後に再資格化する。
+
+## 79. 実Native Query AuthoringとSQL Sourceの一体追跡：E1c合格とE2実Read未接続の境界（2026-11-06、採用前）
+
+### 79.1 最小Sourceの実証：CaseRecordのQueryは読めるが、まだ実行されていない
+
+[積上げDraft #3024](https://github.com/hat47x/tei-platform/pull/3024)の現固定HEAD `705933667d5b081036314a9161280323e08a64bd` で、既存E1b Go Testに**E1c Query Authoring/SQL Sourceの変異を追加**。[Native Org Case Bridge CI #42208159977](https://github.com/hat47x/tei-platform/actions/runs/42208159977) / job #127859885404 はcompleted/success。Go 1.26.10、git HEAD/Source Blob一致、focused `TestOrgCaseExplicitPersistenceEnablesReadCandidateOnly` PASS、既存`TestOrgHeadless`・`go vet ./internal/operations`・native Workspace `tei validate`・gofmt/clean checkoutも同じ固定HEADで成功した。
+
+| E1cの検証 | 直接観測した実Source／Expected | 結果の資格 |
+| --- | --- | --- |
+| E1c-01 Queryの明示入力 | コピーしたNative Org Workspaceへ`query org_view.case_read`、`input case_id organization.case_record_id`、`datasource org_read`を追加。実`workspace.Load`の`World.Queries`でID/Application/入力型/Aliasを確認 | **PASS**。Native `.tei` ParserとLoaderの資格 |
+| E1c-02 SQLの別Source | 同じQueryが参照する`case_read.sql`を別ファイルとして追加。実Query.SourceにSQL byte内容が読み込まれ、`SourceContributions`にそのSQLファイルとQueryの関係を保持 | **PASS**。ソース所在・出所の資格。Provider実行は含まない |
+| E1c-03 明示結果列 | SQLの`case_id`→`organization.case_record.case_id`、`handling_unit_id`→`organization.case_record.handling_unit_id`がtyped ResultColumnとして保持 | **PASS**。Attributeの対応のみで、Relation `handlingUnit`の実Traversal/Row組立成功ではない |
+| E1c-04 SQLのみ差分の失効 | Query ID/Alias/Persistenceを固定し、SQLの`where`条件だけ変更。実`SurfaceWorkspace`のWorld FingerprintとModel Revisionの両方が変わることを確認 | **PASS**。実消費Source/版照合に使用できるが、現在GrantやResultが新鮮とは限らない |
+| E1c-05 Operation候補とQueryの非同一 | Queryを追加しても、既存OperationSurfaceのMembership/Case合計4件、AuthorityLimitsは変化しない | **PASS**。Operation IDをQuery/Provider/Host Capabilityに自動昇格しない |
+
+**構文の実反例**：初回固定HEAD `a96838048db49ed23832d6969af50f36a3d1e20c` の[CI #42207973000](https://github.com/hat47x/tei-platform/actions/runs/42207973000)はQuery入力名`caseId`を`invalid local name`として拒否。実DSLのLocal Name規則に従い`case_id`へ修正後、`7059336`の[CI #42208159977](https://github.com/hat47x/tei-platform/actions/runs/42208159977)で合格。この失敗はQuery Source構文の拒否であってProviderやTenant権限の失敗ではない。
+
+### 79.2 同じSourceへのBindingには、まだ別の二辺が必要
+
+(1) **Query declaration→Function Data Context**：`World.Queries`と`OperationSurface.Operations`が同じWorkspaceに存在しても、`org_view.read.organization.case_record`を`org_view.case_read`と同一Function Invocationで選択したという証拠はない。Queryの`result column`はAttributeに対応するが、`CaseRecord.handlingUnit`のRoleと必要Row/Field/Grain/CompletenessがどのData Contextに束縛されるかは明示する必要がある。#2586/#2506の責任で、Function/Query/Relationを**既存Contract**へ接続する。別Canon Queryや新Function Runnerは作らない。
+
+(2) **Query declaration→実Provider Read**：`datasource org_read`はApplicationの読取りDB Requirementを指す宣言であり、環境の実DB Alias/Provider/Connection・現在Tenant/Host Grantを証明しない。Native SQL `where case_id = :case_id`も、SQLバイトやパラメータがProviderへ実際に渡った証拠ではない。E2には選択したMapping/Provider/実SQL+args、実Row+Field+Scope/Cohort/CompleteとIndependent Expectedが同一Attemptで必要。#2622/#2611/#2586/#2514の責任を保持する。別の[X-TEA Lowcode](../../examples/xtea-lowcode/README.md)の`UNBOUND_DATASOURCE`と同様、宣言可能性≠実データ取得と扱う。
+
+(3) **Queryによる結果属性→業務Relation**：返った`handling_unit_id=D1`と`CaseRecord.handlingUnit to OrgUnit`は構造Source上で整合候補だが、実ProviderでD1が存在したか、役割に応じた有効・記録時点、関係先の完全性、現在の責任者や承認資格までは自動確定しない。Case IDをTenant全体で普遍PKと推定しない（§78）。特に実SQLの検索条件にTenant Scopeが存在しない今回の**single-database test fixture**を、Tenant-privateデータの分離保証へ流用しない。
+
+### 79.3 次の受入ケースと依存／Stop
+
+| ID | 最小入力と独立Expected | 不足時のStop |
+| --- | --- | --- |
+| ORG-E2-01 | Case C1→SQL Result `case_id=C1,handling_unit_id=D1`→明示`handlingUnit` Relation Contextを**同じWorld/Function/Scope/Invocation**へ束縛し、実Providerの1行を独立Expectedと照合 | `function-query-not-bound`／`provider-read-not-observed`を別票。Static Query PASSをE2へ移さない |
+| ORG-E2-02 | Source/Query ID/Aliasは同一だがSQL WHEREだけ変更した後、旧Preview/旧Query Consumptionを試す | `source-revision-mismatch`なら再資格化。E1cで実証した指紋の差を現在権限の再検査に代用しない |
+| ORG-E2-03 | Tenant A/Bに同じ`case_id=C1`、異なる`handlingUnitId`を持つ。Aの実ScopeでBを取得しない | 当該Provider/HostでCurrent Grant+physical Row IdentityとScopeを実観測するまで`tenant-scope-unqualified`。全標準DataへTenant列を要求しない |
+| ORG-E2-04 | Aで完全な0件、Aでpartial/未取得、B Privateでdeniedを別々に渡す | 0件・部分・拒否を同一Resultに畳まない。Consumer外部開示は別資格 |
+
+**優先順位**：まずORG-E2-01一件を#2586の実Read縦断で完成させる。静的Queryと`OperationSurface`を自動Linkする補助処理の新設や別Runtime/Hostの開発を先行しない。Source/World FingerprintとModel RevisionはE1cの正しい変化を示したが、実Row、出力、実認可、Effect/Receipt、Owner意味受理は**NOT RUN**。親#2681、子#3024、設計#2389はすべてmain未マージ（子は積上げDraft、設計PRはマージ競合）。実証範囲はPR固定コミットを参照する。
