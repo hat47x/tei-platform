@@ -1,0 +1,7 @@
+pattern order_entry.recent_orders browse {
+    data sales.order
+    query order_entry.recent_orders
+    filter sales.order.status { eq ne } parameter status
+    sort sales.order.status asc
+    page-size 20
+}
