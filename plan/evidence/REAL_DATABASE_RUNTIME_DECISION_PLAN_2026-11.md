@@ -53,3 +53,13 @@
 - `TestAnOpenPeriodUpdatesTheRow`: 期間が開 → step が `resolved`、**行は `closed` に変わる**。
 
 **確かめていないこと**: 実際の実行（この環境には DSN がありません）。したがって「実DBで期待どおりだった」とはまだ言えません。
+## 8. 効果と実行計画の試験（2026-11-06 追記）
+
+同じ雛形（一時表・SKIP・実DB）で、効果と実行計画の判断も足しました。
+
+| 試験 | 期待 |
+| --- | --- |
+| `TestAnUnobservableEffectBlocksBeforeTheWrite` | 確定後効果を観測できない → step が呼ばれず（calls=0）、**行は `new` のまま** |
+| `TestACompletedRunIsRefusedWithoutASecondWrite` | 1回目は実行して行が `closed` に変わる。2回目は `refuse` で **step が呼ばれず**、行も変わらない |
+
+**確かめていないこと**: 実行（DSN 未設定のため SKIP）。三つ（期間・効果・実行計画）とも、DSN のある環境で走らせれば同じ手順で確かめられます。
