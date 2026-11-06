@@ -4,6 +4,7 @@ data Order {
     attribute orderId type std.identifier display "受注番号"
     attribute customerId type std.identifier display "顧客"
     attribute status type std.code display "状態"
+    attribute orderDate type std.date display "受注日"
     relation customer to customer.customer one
     relation lines to sales.order_line many
 }
@@ -19,5 +20,9 @@ capability submit_order {
     outcome submitted sales.order
     effect update sales.order
 }
-
-
+period sales.month {
+    data sales.order
+    business-date sales.order.order_date
+    states open closing closed
+    closed-rejects update
+}
