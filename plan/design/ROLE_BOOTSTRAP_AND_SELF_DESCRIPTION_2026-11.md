@@ -720,3 +720,42 @@ E0：既存#2860のactual Workspace/Source Index／Go Parserを同一Sourceで�
 | RO-08 | 正常Syntax診断がConsumerに届いても権限変更でDisclose不可、または旧成功Response後着。公開面がCurrent資格で判定される | **NOT RUN**／#1124/#2516/#958 |
 
 **順序**：RO-01〜03のexact HEAD Syntax/Workspace focused + repository-health-checkをまず確認。その合格だけでRO-04〜08を合算しない。次に#2823の独立Required Rootとの比較→正式Role Required Shape→#2621/#2497への局所Source Patch提案→Consumer/Hostの実験へ進む。新Role Writer/Parser分岐/万能Registry/第二Oracle/追加Cross-cut Gate/TEI専用Hostは不要。mainはReviewerの検収まで変更しない。
+
+
+<!-- tei-role-observed-source-disclosure-handoff-20261106 -->
+## 16. 2026-11-06 観測不能なRoleを「存在しない」にしない：実Loader／公開Sliceとの境界（横断実装Fit/Gap）
+
+### 16.1 進んだ二つの隣接実装と、依然つながっていない部分
+
+- **[Draft #2935](https://github.com/hat47x/tei-platform/pull/2935) / #2823**：製品`workspace-files`に管理ファイルごとの`readByLoader`を追加する実装。**当該LoadでLoaderが読んだ**という事実を、Source inventoryから分離できる。HEAD `bd060d36`のRepository Healthほか既知のCIはcompleted/success。ただし`readByLoader=true`はSemantic parse成功・Roleを抽出した事実・Manifest上全required rootsの網羅・Plugin実消費を意味しない。Import先は個々のWorkspaceで別解決。未管理Source、未知Root、選択外Sourceもある。
+- **[Draft #2972](https://github.com/hat47x/tei-platform/pull/2972) / TEA T06/T07**：**事前公開資格が与えられたSliceだけ**から三視点へread-onlyに投影。HEAD `61bdee4f`のRepository Healthはsuccess。Source path、未許可Edge/metadata、private countからのgeometry漏洩等を限定テスト。だが現在のPolicy/Grantを判断してPrivate WorldからSliceを生成する実処理は**未実装／未実証**。Sliceの`accepted`という文字列はOwner Meaning Acceptanceの証拠にならない。
+- **[Draft #2898](https://github.com/hat47x/tei-platform/pull/2898) / #988**：Semantic Attribute上の重複Role Syntax拒否、Role値Token Anchor。HEAD `e77b705e`では`semanticAttributeOptionAnchors`に`return anchors`が2箇所ありGoの2戻り値関数としてコンパイル不能であることをCI job logで確認した。コミット[`1b49dcc4`](https://github.com/hat47x/tei-platform/commit/1b49dcc44771a4fc457113af27086c14ee972443)で両方`return anchors, nil`へ修正。最新HEADのCIは別に判定。**Role値のSource-side token anchorはWorkspace Source IndexのReferenceへ自動昇格しない**。
+- **[Draft #2860](https://github.com/hat47x/tei-platform/pull/2860)**：HEAD `0bf9fac2`の健全性・脆弱性CIがともにsuccess。ここで実証したのは一部SourceをLoad→Index→Go Parseする限定例であり、Role Required Shape/全root/実Owner意味受理は証明しない。
+
+### 16.2 Claimの正規化（新しい中央Schemaではなく既存Evidence票の列）
+
+| 層 | そのレーンが言えること | **言えないこと** |
+| --- | --- | --- |
+| **Inventoried** | Workspace管理候補の列挙／見つかったPath | 見つからないRoleが全世界に存在しない |
+| **Read-by-Loader** | 選択されたLoadでそのFileのbytesを実取得（#2935） | 内容をRoleとしてParseした、必要rootを全部読んだ |
+| **Parsed/Anchored** | `ParseSemanticFileAnchored`による局所Role候補と元byte span（#2898） | Plugin/Operator/Required Shapeが有効、OwnerがMeaning受理 |
+| **Qualified for claim** | 外部Required Root／実Consumerが必要とするRole/Dependencyと現在Source/Selectionの合致 | Runner/DB/Host Effectを行った |
+| **Disclosable now** | 現在のPublic SliceとPolicyで許された局所出力、必要なら非公開に保留（#2972） | Hidden Role/未許可情報の不在、raw Source locatorの公開、将来の再利用資格 |
+
+**グローバル不在の主張は既定で行わない**。必要なSource集合の閉包が未証明、`readByLoader=false`、解析不能、未選択Plugin、Import未束縛、Scope不明、Private Worldを使ったため公開できない、のいずれも表示では`not-observed / withheld / unresolved`を理由付きで区別する。**秘密Roleが存在するかを示す「denied vs nonexistent」差、private count、Error文字列、Source位置・依存辺、図の形・件数も公開資格の対象**。拒否理由を表示する権限自体がない場合、外部応答は同じ公開形へ畳み、監査側だけ詳細を保持する（実二世界I/O確認前に完全非干渉を主張しない）。
+
+**誤った合成の反例**：`readByLoader=true` + `Role anchorあり` + `Public Slice生成成功` でも、必須Plugin Sourceが実未取得・Owner Required Shape未受理・現在Grant未照合なら、Roleは**自己記述の完了・Studioでの編集可能・実行可能**とは言えない。公開Sliceは秘密Sourceの欠落を「Roleゼロ」の根拠に使わない。
+
+### 16.3 既存Ownerへの最小ケース（独立Expected／観測面／上限）
+
+| ID | 差分を一つに絞った反例 | 期待する停止線とOwner |
+| --- | --- | --- |
+| **RV-01** | managed一覧にRoleを含むSourceがあるが`readByLoader=false` | `Role absent`禁止。Source未読込をInventoryの空Roleと区別。#2823/#2620 |
+| **RV-02** | `readByLoader=true`だが非Semantic asset／明示Plugin未選択、Role候補が空 | Role parse/Required Shape充足を名乗らない。#988/#2823/#2620 |
+| **RV-03** | Role Sourceは一意・syntax PASS、required Root外に参照またはImportがある | Source閉包・Meaning受理は`unqualified`。自己申告`required=[]`では閉じない。#2620/#2514 |
+| **RV-04** | W0/W1の許可公開Sliceは同一、秘密Role数とSource pathは異なる | **許可された投影**の内容・Diagnostic・形が同じ（#2972の限定範囲）。実Policyでの切り出しとタイミングは別未実証。#2516/#1124 |
+| **RV-05** | R0のRole anchorを見た後、Raw Source改版／Role Plugin選択変更／Grant撤回 | 古いNavigation/Review/Consumer資格を復権させない。Current Sourceと現在Policyは別に照合。#2621/#2505/#2600 |
+
+**採用する最小順**：まず#2898のexact HEADでSyntax/Workspace testとGo build成功を確認→#2935の`readByLoader`を独立Snapshotに束縛してRO-04/RV-01の対照へ使用→#2620 Required/Declared/Consumedの独立閉包を照合→#2972の事前Qualified Public SliceをConsumer contractの**入力前提**として利用し、#2516/#1124で実Policy/Hostに対して独立二世界を確認。既存#2514 Oracleと#1163 Attempt/Receiptを使い、新Role/Source Registry、中央Disclosure Engine、書込み権限、Hard Gateを追加しない。
+
+**今回の証拠上限**：前記は実PRのSource/CIを照合した横断Fit/Gapであり、Role Required Closure、製品二世界Policy、Public Slice生成者の安全性、Studio/SHO実編集・保存、Role実Target、Owner Acceptance、Provider Effectは**NOT PROVEN**。#1119の既存P0/GateとGo単一バイナリ方針を変更しない。
