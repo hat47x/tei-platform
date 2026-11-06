@@ -42,14 +42,14 @@ go run ./tools/reference-change-assurance \
   -consumer-id order_entry.customer_reference
 ```
 
-変更は**ユーザーが仮定した検証シナリオ**であり、実際のSource変更を観測・証明したものではありません。出力の `impact` には既存APIの診断と影響先が含まれます。変化先と対象Consumerが型付き参照上で直接・間接に結ばれた場合は、他の投影ギャップが残っていても安全側に `recheck` を提案します。Graph検証の失敗、未知の変更種類、Consumer不在は `unresolved` とします。**影響先として現れなかった場合も、投影ギャップの残る現行Workspaceでは `unresolved`** であり、影響なしの証明とは扱いません。現行受注管理WorkspaceではDatabase/Database Contract関連の型が投影対象外となり、`projectionUnresolved` に残ります。型付き参照が届かないConsumerも、過去のOracleとreceipt、依存閉包が結び付いていないため**`reuse-candidate`には昇格させません**。
+変更は**ユーザーが仮定した検証シナリオ**であり、実際のSource変更を観測・証明したものではありません。出力の `impact` には既存APIの診断と影響先が含まれます。変化先と対象Consumerが型付き参照上で直接・間接に結ばれた場合は、他の投影ギャップが残っていても安全側に `recheck` を提案します。Graph検証の失敗、未知の変更種類、Consumer不在は `unresolved` とします。**影響先として現れなかった場合も、投影ギャップの残る現行Workspaceでは `unresolved`** であり、影響なしの証明とは扱いません。現行受注管理WorkspaceではDatabase/Database Contract関連の型が投影対象外となり、`projectionUnresolved` に残ります。型付き参照が届かないConsumerも、過去の検証基準とreceipt、依存閉包が結び付いていないため**`reuse-candidate`には昇格させません**。
 
 既存の合成fixtureモード `-input` は保持しますが、合成fixtureの `coverage=complete` とは別の判断権限です。実Workspaceモードは `executionAllowed=false` を固定し、Runtime Authority・Effect・Provider適合・Scenario期待値を確認しません。Business ProcedureのCanonical意味を勝手に生成せず、実Sourceのrevisionと署名・権限も確認しません。
 
 ### 残る接続課題
 
 - #1120のTyped Graphが描く**観測範囲外の依存**（nativeコード、動的な外部Effect、未投影のBusiness手順）を推測して「非影響」とみなさない。
-- #1180のScenario・期待値、#1163のEvidence Packetを介し、根拠とOracleを対象の変更前後Sourceに結びつける。
+- #1180のScenario・期待値、#1163のEvidence Packetを介し、根拠と検証基準を対象の変更前後Sourceに結びつける。
 - #951のProvider/Target fingerprintと実Runtime権限を別責務として保持する。
 - 将来の実Change Diffは `ReviewImpactDiff`（前後2スナップショット）を使用し、今回の`-change-kind`仮説を実際の差分と混同しない。
 
@@ -76,7 +76,7 @@ go run ./tools/reference-change-assurance \
 
 二つの`Load`は**各々が原子的なmulti-file snapshotではありません**。Source Indexが扱わない未管理ファイル、Runtime Effect、旧資産の意味同値、Provider artifact、外部データや権限、独立Expectationとreceiptの真正性を証明しません。`sourceChanges`はビジネス意味の差分ではなくバイト指紋の差分です。実際にSourceが変わっていない場合でも、独立した検証証拠がないため再利用を認定しません。
 
-次段階では、#1180/#1163の受入根拠と`Source Revision + Scenario/Oracle + Target/Provider`を照合し、未管理Sourceの扱いを導入します。Graph投影の欠落を推測で補う実装や新たな品質Gateは作りません。
+次段階では、#1180/#1163の受入根拠と`Source Revision + Scenario／検証基準 + Target/Provider`を照合し、未管理Sourceの扱いを導入します。Graph投影の欠落を推測で補う実装や新たな品質Gateは作りません。
 
 ## Driver Scenarioと生成CLI PlanのSource Revisionへの読取り接続（POC-10）
 
@@ -102,7 +102,7 @@ go run ./tools/reference-change-assurance \
 
 **重要**：現行の生成CLI Planは**Source Indexの`ModelRevision`そのものをpinしていません**。一方、`WorldSHA256`は保持するため、Canonical Worldに取り込まれるSQL本文の`DESC → ASC`変更は既存Planをstaleとして拒否できます。逆に、管理対象Semantic Source末尾の空行追加など、**Byte指紋とModelRevisionは変わってもWorld表現が変化しない編集**についてはPlan指紋が一致したままです。`planPinsSourceRevision=false`を明示し、この違いを`diff`の指紋変化とともに残します。Plan照合の合格を「受理済みSource Revisionへの暗号学的な束縛」とみなしてはいけません。
 
-`qualification=unresolved`、`executionAllowed=false`で固定し、Scenarioに明示した期待値と合成Fixtureの存在を**独立Oracle認定・本番Provider観測・実行済みTest PASS**へ自動昇格させません。Scenario定義・Fixture、Planが一致しても、実TargetのEffect/Permissionと業務意味・受理済みSource、Scenarioの網羅性は未証明です。#1180のCLI/Web生成と#1163の正式Evidence Packetは既存の担当機構のまま保持します。
+`qualification=unresolved`、`executionAllowed=false`で固定し、Scenarioに明示した期待値と合成Fixtureの存在を**独立検証基準としての認定・本番Provider観測・実行済みTest PASS**へ自動昇格させません。Scenario定義・Fixture、Planが一致しても、実TargetのEffect/Permissionと業務意味・受理済みSource、Scenarioの網羅性は未証明です。#1180のCLI/Web生成と#1163の正式Evidence Packetは既存の担当機構のまま保持します。
 
 次は、既存のAccepted Source RevisionとExecution Receiptから**実際に照合可能な証明項目だけ**を追加し、証拠が欠ける場合は引き続き`unresolved`へ留めます。
 
