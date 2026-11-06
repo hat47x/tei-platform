@@ -198,7 +198,7 @@ Issue #1165に対し、既存 `index.Build` → `modelref/derivedbridge.FromInde
 | `trace` | あり（`tei.cli.trace/v0`） | JSONの`error.code`、終了コード1または2 | CLI用の応答型 |
 | `validate -workspace -json` | あり（`tei.cli.validate/v0`） | JSONの`error.code`、終了コード1または2 | CLI用の応答型 |
 | `commands` | あり（`tei.cli.discovery/v0`） | 引数があれば標準エラーの自由文、終了コード2 | CLI用の応答型 |
-| `version -json` | あり（`tei.cli.version/v0`、#2318で追加） | 未知の引数は標準出力の自由文、終了コード2 | CLI用の応答型 |
+| `version -json` | あり（`tei.cli.version/v0`、#2318で追加） | 未知の引数は標準エラーの自由文、終了コード2。標準出力は空（2026-11-07に実装を修正、#2993） | CLI用の応答型 |
 | `validate`（テキスト） | なし（tab区切り行または`ok`） | 標準エラーの自由文、終了コード1または2 | 該当なし |
 | `workspace-files` | なし | 標準エラーの自由文、終了コード2 | `workspace.ManagedFile`の配列を直接出力 |
 | `source-index` | なし | 標準エラーの自由文、終了コード2 | 主体指定なしは`sourceindex.Index`（`artifacts`・`references`）、主体指定ありは`operations.SubjectSources`を直接出力 |

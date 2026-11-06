@@ -70,13 +70,20 @@ func (p *pathList) Set(v string) error {
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintln(os.Stderr, "usage: tei <scenario|version|commands|model|inspect|view|trace|workspace-files|source-index|knowledge-review-plan|knowledge-review-handoff|knowledge-review-disclose|knowledge-data-design-candidate-review|knowledge-context|knowledge-qualify|validate|index|plugin-lock|plugin-resolve|plugin-runtime-plan|observed-index|workbench-model|world|requirements|normalize-postgres-plan|desired-schema|schema-diff|plan-migration|migration-fingerprint|database-reconcile|database-compatibility|application-release-compatibility|release-graph|solution-release-graph|consumer-impact|deployment-simulate|deployment-start|deployment-ready-commands|deployment-record-attempt|deployment-retry|deployment-pause|deployment-resume|deployment-abort|deployment-recovery|deployment-start-recovery|deployment-provider-plan|deployment-reconcile> [options]")
+		fmt.Fprintln(os.Stderr, usageText())
 	}
 	if len(os.Args) < 2 {
 		flag.Usage()
 		os.Exit(2)
 	}
 	command := os.Args[1]
+	// Reject an unknown name before any flag requirement. A caller that typed
+	// the wrong command must not be told that -workspace is missing, and the
+	// answer must not depend on which flags were attached.
+	if !isAcceptedCommand(command) {
+		rejectUnknownCommand(command, os.Stderr)
+		os.Exit(2)
+	}
 	if command == "scenario" {
 		if err := runScenarioCommand(os.Args[2:], os.Stdout); err != nil {
 			fmt.Fprintln(os.Stderr, err)
