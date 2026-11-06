@@ -134,3 +134,54 @@ P0の最初に新しいPlanner、Scheduler、ABI、Optimizer用DSLを作らな�
 | IMP-05 | 最適化により起動時間は短縮するがBuild閉包が不明、別ScopeのCache結果を流用 | 速度優位でも採用不可。実Input/Scopeの検査と現在のAuthorityが必要 |
 
 **停止線**：IMP-01〜05は未実行の受入案。実AI生成・Providerの二Target接続、実導入、性能改善、業務Owner受理はNOT RUN。別の『Plugin開発Wizard』『自動Plugin生成器』『汎用Adapter Registry』をP0で新設しない。
+
+
+## 9. 呼出し粒度の最適化：Transport / Data / BusinessのBatchを同一視しない（2026-11-06 追補）
+
+### 9.1 既存Ownerと追加する問題
+
+[Capability Invocation #1145](https://github.com/hat47x/tei-platform/issues/1145)は意味Request・実行Context・Transportを分離し、[非画面Batch #1130](https://github.com/hat47x/tei-platform/issues/1130)は長時間処理/取消/途中結果/再実行、[SmartDB #2622](https://github.com/hat47x/tei-platform/issues/2622)はProviderごとのbatch/atomicity、[ETL/MFT Draft #2827](https://github.com/hat47x/tei-platform/pull/2827)はMaterialization/Relay/Import Unitと部分結果を担当する。#2504はResource上限、#1174はCurrent Effect/Receipt、#2390は外部Hostの最小Adapterを所有する。**第二Batch Runtime、統一Wire Format、汎用Job Scheduler、全Targetへの常駐TEI Hostは作らない**。
+
+この節は、呼出しオーバーヘッドを減らす手法が**元のService Contractと個々のEffect/Requestの保証を保てる条件**だけを横断要件として扱う。以下は実装APIや固定Core enumの提案ではない。
+
+| 粒度 | 最適化の例 | 変更してはいけない意味 |
+| --- | --- | --- |
+| Transport Batch | N回のRPCを1回のEnvelopeへまとめる | Request/Result/Scope/Grant/Timeout/Failureの区別、原子性の非推論 |
+| Data Batch | N行をまとめたVector/Columnar/Chunk演算 | Row cardinality、重複、NULL、順序と集計粒度、入力Snapshot |
+| Streaming | Pull/Pushで順次送受信、Backpressure | 取得/確認済み範囲、終了の完全性、取消後の未確定Item |
+| Business Batch | N件の更新を一つの業務操作とする | Commit境界、部分成功、Retry/補償、実Ownerの意味判断 |
+
+**Transportでの一括送信≠Transaction**、**Streamの停止≠外部Effect全件取消**、**Job Completed≠全MemberをConsumerが独立Read済み**。通常の単発Read-only InvokeにBatch/Streaming Contractを必須化しない。
+
+### 9.2 変換適格性の必要条件
+
+**Transport Aggregate**：元の単発Operationを一括送信しても、要素ごとの要求とOutcomeの相関が失われないこと。対象Operation/Instance、Contract/Provider/Artifact/Target/Context、Request/Attempt、Scopeと各要素のOutcome分類を照合可能にする。相関metadataは#1145のDispatch/Receiptと#1174の権限・効果へ委譲する。一つのEnvelopeにしたからといって、異なるTenant/Secret/Grantを合算しない。個別Timeout、部分Failure、返信順序が未知なら同値最適化として採用しない。
+
+**Data Chunk / Stream**：Chunk境界/順序変更、Cardinality・NULL・Precision、Read Snapshot/Watermark、重複/欠落と全件完了をConsumerが要求する意味で検査する。無制限Bufferや無制限Fan-outを低メモリのStreamingと呼ばない。実Host/AdapterがBackpressure/上限を強制できない場合は `unsupported/unknown` とする。生成/送出/受領/独立Consumer読込/業務受理を別区間として扱い、途中取消を「全件取得済み」とせず、部分入力を受け付けないReducerを誤って成功させない。Sort/LIMIT/RLSでの0件をSource全体の不存在としない（#988/#2582）。
+
+**Effectful Batch / Retry / Cancel**：書込みを一括化する場合は実ProviderのCommit境界を明示する。Idempotency keyの宣言と重複効果を実際に防ぐことを混同しない。部分Commit/ACK lost/Unknown後は#1174/#1130の現在Authority・Receipt照合・Recoveryへ接続し、無条件再送しない。取消要求は外部の既Commitを取り消した証拠ではない。元の不可分な業務操作をChunk化の都合で分割確定したり、独立した業務更新をTransport都合で原子的だと宣言したりしない。
+
+### 9.3 性能の測定と閾値
+
+各Target/Workloadの `dispatch/serialization/host-crossing`、`batch setup`、`per-item transform`、`queue/buffer wait`、`transfer`、`independent readback` を可能な範囲で区別する。概念的には個別呼出しの費用を `N × (L + C)`、Batch呼出しの費用を `L_batch + N × C_batch + queue + verification` と見積もれるが、L/CをTarget非依存の定数とは仮定しない。
+
+Batchを大きくするとThroughputが改善しても、最初の結果までの時間、p95、Peak Memory、取消応答、失敗時の再実行費用が悪化し得る。**Throughput、Queue時間、p50/p95、Peak Memory、最大in-flight、部分失敗/取消後の残存Effect**を別途測り、事前のOwner Budgetを守る。Batchの自動閾値決定は実測後の候補とし、単発呼出しが妥当なTargetへ共通Schedulerを追加しない。
+
+### 9.4 追加の反証ケース（全て提案・NOT RUN）
+
+| Case | Given / When | Expected |
+| --- | --- | --- |
+| INV-01 | Read-onlyの10単発Invokeを一Transport Batchへ置換 | 各Request/Resultの値・失敗・Scopeを独立照合。1 RPC成功≠10件意味成功 |
+| INV-02 | 2 TenantのReadを同Envelopeへ集約 | 個別の現行Grant/Contextを検査、Scope混合を拒否 |
+| INV-03 | Batch内2件成功・1件Unknown | 全体成功/失敗へ丸めずOutcomeを保存 |
+| INV-04 | 100件Streamが60件で途中取消 | 生成・送信・受信・取込み・Commit済みの範囲を別観測 |
+| INV-05 | Backpressure不能なProcess Adapterで無制限Buffer | 低メモリ保証付きStreamへの適合を拒否 |
+| INV-06 | Pushdownで順序/NULL/Collationが変わる | Consumer要求が不一致なら不適格 |
+| INV-07 | 書込み5件のTransport BatchがACKを喪失 | 実Effect Unknownを保持し無条件再送しない |
+| INV-08 | 独立Transaction5件を一括atomicと表示 | 実ProviderのCommit境界が未証明なら原子性を宣言しない |
+| INV-09 | Single-record Fast Pathは直列の方が速い | Batchを強制せず同条件のLatency/Memory/CPUを比較 |
+| INV-10 | Chunk変換Artifact Digest一致、外部ConsumerではMember一部未読 | 内容一致とReaderの全Member受領を分離 |
+
+**検証順**：まず#1145/#2390の単発TransportでINV-01/03/09を比較。#2622の実Providerがある場合だけINV-06/08、#1130/#2827の実Batchがある場合だけINV-04/07/10を接続。Resource上限とEffect Fenceは#2504/#1174の実証範囲を越えない。
+
+**撤回条件**：単発Invokeで既に予算を満たす、Batch効果が小さい/逆効果、正しい相関・部分失敗・取消を維持できない場合、最適化案そのものを撤回する。**新しいBatch Wire Contract、Scheduler、Streaming ABIは独立二Consumerの不足が実証されるまで作らない**。
