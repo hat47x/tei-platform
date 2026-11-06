@@ -189,7 +189,10 @@ func Audit(p Packet, expectedHead, expectedMain string) Report {
 		add("E2_ACCEPTANCE_KIND_REQUIRED")
 	}
 	switch kind := normalizedProvenance(p.Acceptance.AcceptanceKind); {
-	case p.Acceptance.AcceptanceKind == "":
+	case kind == "":
+		// Omitted or blank-only: the E2 "required" diagnosis above already
+		// covers it. Reporting it as unrecognized as well would be a second
+		// diagnosis for the same defect.
 	case kind == "provisional" || kind == "unspecified":
 		add("PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE")
 	default:
