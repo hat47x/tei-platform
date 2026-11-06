@@ -177,7 +177,7 @@ H0/H1と異質領域の要件探索は並行可能。H2/H4の実Effect資格は�
 
 #### 評価器の判定前に観測の帰属を確かめる：部分反例と空集合証明の非対称性
 
-**追加で確認した実コード上の境界**：[main `internal/semantic/completion.go`](https://github.com/hat47x/tei-platform/blob/main/internal/semantic/completion.go)（取得Blob `512a835ca445d81dd043f8af78ca29df4e7adb3b`）の`EvaluateCompletion`は、呼出側から`Targets[]/Coverage/EmptyJustified/HandoffConfirmed/Conflicting`を受け取り、対象のSource/業務Identity/Rule revision/Tenant/Read snapshotを自力で解決しない。既存[Go test](https://github.com/hat47x/tei-platform/blob/main/internal/semantic/completion_test.go)（Blob `8e9c49c55d8b524edbb3750b2a6ed39ff988b7c6`）では**partialでも適格な違反行を一つ観測すれば`fails`、すべて真でもpartialなら`unverified`**という非対称性を固定している。これは全称条件についての有用な局所推論だが、**違反行の帰属を呼出側が偽った／誤った場合まで安全だという証拠ではない**。#3022の限定静的レビューと#2886 §7の派生値用途区分を再利用し、新Completion Engineを作らない。
+**追加で確認した実コード上の境界**：[main `internal/semantic/completion.go`](https://github.com/hat47x/tei-platform/blob/main/internal/semantic/completion.go)（現main Blob `e42610e9159e02ba3b5c7b84c46742a846331e64`、merged #3051を含む）の`EvaluateCompletion`は、呼出側から`Targets[]/Coverage/EmptyJustified/HandoffConfirmed/Conflicting`を受け取り、対象のSource/業務Identity/Rule revision/Tenant/Read snapshotを自力で解決しない。既存[Go test](https://github.com/hat47x/tei-platform/blob/main/internal/semantic/completion_test.go)（Blob `8e9c49c55d8b524edbb3750b2a6ed39ff988b7c6`）では**partialでも適格な違反行を一つ観測すれば`fails`、すべて真でもpartialなら`unverified`**という非対称性を固定している。これは全称条件についての有用な局所推論だが、**違反行の帰属を呼出側が偽った／誤った場合まで安全だという証拠ではない**。#3022の限定静的レビューと#2886 §7の派生値用途区分を再利用し、新Completion Engineを作らない。
 
 | 対照：評価器へ投入する前の帰属（Domain違い・独立Expected） | 許される推論と停止条件 |
 | --- | --- |
