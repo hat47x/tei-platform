@@ -2924,7 +2924,7 @@ HEAD `e0cfebf14d40db81bdef77d6c3e4898ed75d999f`に対する[GitHub Actions #4203
 
 **実装の現状**：2026-11-06の現main `internal/workspace/loader.go` はSemanticを `.tei` suffix、Pluginを`plugin.tei`、Bundleを`bundle.tei`、Application等を明示`application.tei`・`*.tei`で選別する。**`*.tei.md`へファイルを改名しただけでは実Read/Parseされない**。`tei.workspace.yaml`は現行Manifest、legacy `tei.workspace.tei`は移行を必要とする例外的Reader経路。`workspace-files`のManaged、LoaderのConsumed、Syntax Parsed、Role/Meaning資格、Builder実入力、Consumer実Readerの差は既存#2823／#2595／#2514へ割り付ける。
 
-本節の実行計画・個別テスト正本は**[TEI Markdown Source移行計画](../design/TEI_MARKDOWN_SOURCE_MIGRATION_2026-11.md)**。M0 inventory→M1 Grammar可読性・loss比較→M2新旧限定Reader→M3同一Subject移行と独立Oracle→M4 Authoring切替→M5 legacy retireを段階化し、TMD-01〜12で空成功、同名二重定義、Source種別漏れ、OKF ID衝突、Raw Draft原文、A→B→A、Build/Consumer混在を反証する。
+移行計画の**唯一の担当正本候補は[Draft #3030 M0〜M6/TM-01〜14](https://github.com/hat47x/tei-platform/blob/docs/tei-md-unified-source-migration-20261106/plan/design/TEI_MD_UNIFIED_AUTHORING_MIGRATION_2026-11.md)**。本ブランチの[以前の横断メモ](../design/TEI_MARKDOWN_SOURCE_MIGRATION_2026-11.md)にあるM0〜M5/TMD-01〜12は#3030への**受渡し対応表・歴史的補助**に降格し、第二の移行仕様・Fixture/Oracle正本にしない。
 
 **OKF／SHOとの明示分離**：`*.tei.md`はMarkdownを基礎とするTEI向けファイルだが、[OKF Draft #3029](https://github.com/hat47x/tei-platform/pull/3029)の`type`付きConcept適合や任意タグ、SHOのWriter採用を一律要求しない。通常`.md`はTEI実行対象ではなく、`tags: [tei]`や拡張子からOwner意味受理・Host Grantを推論しない。**新正式Grammar、実Role Parser、Filename Migration CLI、全Workspaceの拡張子改名はNOT RUN**。#2621/#2823/#988/#1920/#2600/#2514のOwnerが個別に実試験・採用を決め、#1119既存Gateを新規Grammarが未実装の段階で全停止にしない。
 
@@ -2935,3 +2935,30 @@ HEAD `e0cfebf14d40db81bdef77d6c3e4898ed75d999f`に対する[GitHub Actions #4203
 - **実分散とTAIの境界**：[EKI main統合 #773](https://github.com/hat47x/eki-fabric/pull/773)はLease台帳への実登録（失敗時はWorkerへ配らない）を追加したが、期限切れAttemptのResult reconciliationや外部Effect再実行許可は残る。TAI [Draft #489](https://github.com/hat47x/tai-pleroma/pull/489)は固定TEI CLI/Binaryの合成資格と**実Harness H2→H3→H3→H2未実施**を分離。TEI Source改名により既存Binaryが必要Sourceを消費しなくなれば、Skill能力に関係なく比較自体を無資格とする。EKIのLeaseやTAIのSkillがTEI Meaning/Host Grantを代行しない。
 
 **本§56/57は現行GitHub Source・PR/CI報告を照合したdocs-only追加**。新Markdown Reader、実TMD fixture、実Product Scenario Mutation追加、外部Harness実セッション、実PostgreSQL再試験、Owner受理は**本変更ではNOT RUN**。Ownerが既存Issue/PRで取得済みの限定証拠だけを認める。
+
+## 58. 新Readerの誤成功防止と、Command認可・実Effect・実DB判断の証拠を別資格へ（2026-11-06後半）
+
+### 58.1 Source形式移行はGuard PASSと実Reader PASSを分離する
+
+[Draft #3031](https://github.com/hat47x/tei-platform/pull/3031)（exact HEAD `63953ccb5c12ead26ec1268e7c0afdba4eff66ae`）では、managed Source-rootを走査した後、既存Native Loader前に `*.tei.md` が存在すると `TEI_MD_PARSER_UNBOUND`でfail-closeする暫定コードを追加。[専用Guard CI #42217379093](https://github.com/hat47x/tei-platform/actions/runs/42217379093)と[Repository Health #42217378867](https://github.com/hat47x/tei-platform/actions/runs/42217378867)はexact-headで **completed/success**。本文のMarkdown Parser/Role/Meaningを実装したわけではない。main統合は未確認、Draftの限定的な成功に留める。
+
+次の**TM-02/03/04/12/14**（#3030/#2823/#988）ではGuardで拒否できる基線を保持し、選択された新Readerの Source actual read/parsed span、Required Root全件、同Meaning ID旧新衝突、Role/Operator Pin・Builder/Consumer実消費へ移行する。同一Subjectを選んだ別Checkoutの旧/新結果を独立Expectedと比較し、単にGuardを消しただけの `validate ok` は偽成功として拒否する。旧Source固定Gateや`.tei/decisions/`は自動改変しない。
+
+### 58.2 Host/Command境界の新しいmain実装を過剰資格化しない
+
+| 到達した実装 | 確認済みの範囲 | 依然不足する範囲 |
+| --- | --- | --- |
+| [#3032 main統合](https://github.com/hat47x/tei-platform/pull/3032) | `issuedBy`を発行記録に含め、要求Capabilityの自己発行を拒否する構文/検査を導入。さらに実PostgreSQL判定6件が[専用Workflow #42235336807](https://github.com/hat47x/tei-platform/actions/runs/42235336807)で**非SKIP PASS**（実ログで6件の `--- PASS` を確認） | 発行者文字列は署名ではない。Holder/Issuerの真正性、必要Grantの全網羅、実Host許可・業務Owner受理を証明しない |
+| [#3033 main統合](https://github.com/hat47x/tei-platform/pull/3033) | ReferenceDataExecutorがAppliedOperation（kind/data/key）を報告し、Command Invokerが宣言したEffectと照合、記録/CLI・Studioへ限定表示。Go CI [Health #42235921102](https://github.com/hat47x/tei-platform/actions/runs/42235921102)はsuccess | **Appliedを報告しないExecutorの経路が残る**。Optional Reportから実DB全操作、SQL文、外部副作用、一括効果完全性を推論しない |
+| [#3034 main統合](https://github.com/hat47x/tei-platform/pull/3034) | 既存subject/action/resourceの認可規則を、明示的に設定する`command.Invoker.Authorizer`へ接続。拒否と規則評価不能を区別し、無許可時にExecutorへ到達しない限定試験。実PG workflow [#42238564104](https://github.com/hat47x/tei-platform/actions/runs/42238564104)はsuccess | Callerが正しく現在のAuthorizer/主体/Targetを注入した証拠・正式Grant正本・実Operator全経路での強制・本番資格は別 |
+| [#3035 Open PR](https://github.com/hat47x/tei-platform/pull/3035) | `access.Ground`で実行Scopeを環境の論理宣言へ紐づける実装候補。宣言外path・他Capability・自己解決・過大なAccessの拒否テストをPRが報告 | **未統合**。`-grant-declaration`無しの発行は拒否せずwarningのまま。`ResolvedBy/issuedBy`は自己申告で署名無し。最新HEAD全体CIは別途確認 |
+
+**安全上の境界**：①Declared capability／Environmentの必要Grantが実在、②それを現在のHostが権威的に発行・解決、③対象Providerが実行直前に検査、④実Applied/Commit/Unknownを独立Read/Receiptで検証、の各段階が揃わなければ、形式検査やInvokerテストだけで `authorized-and-effect-verified` のClaimを出さない。事前の業務意味のOwner Acceptedと、Hostの実行時付与は独立（#1174/#2616/#1130）。
+
+### 58.3 別Issueへ渡す二つの短い一改訂試験
+
+1. **P0-FM-Reader（#3030/#3031/#2823）**：公開 `sales.order` あるいはOrg CaseRecordの**同じSource/Owner Expected**を、legacy `*.tei`に対する現行実Loader／新 `*.tei.md`を拒否するGuard／真正な新Reader（実装後）の3条件で対照。各段階の source-root required、actual parsed、selected Language/Role、source span、Build consumedを記録。まだ新Readerがない間は `not-implemented`、必要Source未読込でGreenならfalse-pass。
+2. **P1-Grant-Effect（#3032〜35/#1174/#2564）**：一つの公開Command/Targetについて (A) 現在のIssuerとDeclaration/Resolutionが正当、(B) 未宣言Capability・宣言外Path・自己発行、(C) 実行結果Unknown／部分Applied非報告を独立Expectedで比較。`issuedBy`文字列を偽装できる負例は本番Host境界の未充足として残す。OperatorがAppliedを未報告なら `reported-effects-only` とし、実Provider全作用のVerifiedにしない。#3032の実PG6件をこの縦断の全成果と誤算しない。
+
+**非目標／変更の資格**：同じSubjectを核にするが、Source改名、Ownerの意味受理、Host付与、実Provider Commitを一つの無差別Global Gateへ統合しない。TMDの第二Fixture正本や新認可Engine・Host/Registry/Scenario Runnerも追加しない。ここで実施したのは別PRの実コード/CI・Ownerの最新版計画を照合している**docs-only更新**。新 `*.tei.md` Parser/Builder/Reader、P0-FM-Reader／P1-Grant-Effectの新実行、署名付きIssuer、本番実DB、Owner受理は**NOT RUN**。
+
