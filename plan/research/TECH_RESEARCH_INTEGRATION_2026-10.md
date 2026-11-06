@@ -567,3 +567,28 @@ M未受理・G許可でもMeaningを採用しない。M受理済み・G拒否な
 | 本番Effectの完了 | Preview、承認文、Reference executorのcommitted、過去Receipt | 実Target/現在Grant/Provider Commit/Operation identity/別Reader/現在Consumer。#2598/#1174/#1824 |
 
 **Claim別に必要なEvidenceを決める**ための共通点検票であり、新しい横断Proof Engine／Registry／Test Runnerは作らない。OwnerのSource/Meaning受理とHostの現在Grantは常に独立。追加MDT-01〜08／各境界の同一Attempt実証はNOT RUN。今回のResearch Draftは計画だけで、既存の実PG局所PASS・局所Mutation kill・Parser局所CIを製品E2Eへ合算しない。
+
+
+### 10.16 一時拒否ガードの実測と、TEI Markdownを本当に解釈する次のGate（2026-11-06、他Lane最新実装との再整合）
+
+**実証済みの進展とClaim ceiling**：[PR #3031](https://github.com/hat47x/tei-platform/pull/3031)（Draft、exact HEAD 63953ccb5c12ead26ec1268e7c0afdba4eff66ae）は、現Loaderで未対応の *.tei.md がmanaged sourceに現れる場合に「黙って読まずvalidate成功」とする代わりに TEI_MD_PARSER_UNBOUND で停止する暫定処理を実装。直接確認した[専用CI #42217379093](https://github.com/hat47x/tei-platform/actions/runs/42217379093)は completed/success。該当HEADに対するRepository Health・Workspace/Studio・Wails smoke・self-build・vulnerability等のWorkflowも completed/success。**これは特定HEADでのfail-closedガードと既存回帰の証拠であって、新 *.tei.md のParser適合／正式Source読込／Meaning受理の証拠ではない**。PRはmain未統合。
+
+**移行計画の正本**：[Draft #3030](https://github.com/hat47x/tei-platform/pull/3030) の M0〜M6／TM-01〜14 を引き継ぐ。研究Draft #3022のMDT-01〜08は「研究から導いた判別観点」として残し、別の移行正本・第二Fixture実装を作らない。すでに段階設計と具体的な負例が#3030/#3031/#2621/#2823にあるため、追加すべきなのは**どの実行結果から何を言ってよいか**の資格境界である。
+
+| 段階 | 最低限の観測 | 現状と不足する資格 |
+| --- | --- | --- |
+| A0 非対応の認識 | 指定sourceをmanaged inventoryで捕捉し、Parser未選択なら診断＋停止。旧 .tei と普通の .md の非干渉 | PR #3031の限定Go/Workflow PASS。ただし別root・Manifest未登録・Role Required Root欠落を全件捕捉したとは言わない |
+| A1 実Parser消費 | Authoring原bytes/複合拡張子認識→selected/pinned Language→Markdown中の明示定義領域→元Span・Parser Role occurrence | 未実装／NOT RUN。タグや拡張子だけでLanguageを自己選択・自己受理させない（#988 Bootstrap K0） |
+| A2 意味・移行同等性 | legacy .tei と *.tei.md の対応するSubject/Relation/Rule、NULL、粒度、明示Expected、消失項目、重複Subjectを比較 | 未実証。旧Sourceを勝手に削除せず、固定GateとAccepted Meaningの所在を独立確認（#2621/#1920/#2514） |
+| A3 実消費と集合同等性 | 実Source→Function/Query→実Provider Readの集合・Scope・時点・Completeness→独立Consumer | 未実証。Parsed/ValidだけでTargetSet L、CoverageComplete、業務不存在を主張しない（#2506/#2586/#1163/#2926） |
+| A4 効果と現在権限 | 実Request/OperationID、Current Grant/Host Effect、Receipt/独立Read、Consumer開示・Owner受理 | 未実証。Reader/Parser移行成功を現在GrantやBusinessVerifiedへ昇格させない（#2598/#1174/#2516） |
+
+**優先すべき差分反証**（既存TM/CQ/RES/Issueを参照、追加Runnerなし）：
+1. **移行による空虚な完了**：legacy .tei で定義したTargetSet Lの一部が *.tei.md へ移ったが、Loader未消費またはRole/Query未束縛のまま。観測集合R=空／部分で旧Completion/Ruleがholdsとなる誤成功を止める。まずA0で明示拒否、A1後もL定義・Required Source閉包・実Provider Scopeを独立に検査。#2514/#2506/#2926。
+2. **二つのSource正本と誤Fallback**：旧 .tei と新 *.tei.md が同じSubjectを示す、または新Parser/Query Assetが未解決。旧Sourceへ黙ってfallbackして「新形式の受入PASS」としない。対象の現Selection・実Reader bytes・同じExpectedとの照合で意味・技術失敗を分離。#3030 TM-03/04/09、#2600。
+3. **旧成功の過剰失効／誤復活**：未選択の新 *.tei.md Draft追加だけで無関係な旧Artifactまで全面失効させない。他方、実Selection/Build inputが旧→新へ切り替わった時は同hashでもSource occurrence/Role/Operator版/実Consumerの資格を再評価。#2600／#1163。
+4. **学習済み手順の自己証明**：Source内にAIが生成したRule、Expected、Skill説明が共存しても、Required Oblicationの母集団を候補の自己申告や「新拡張子で読めた件数」から決めない。独立ExpectedとKnown Mutant、実Loader/Parser/Tool受領を区別。#1180/#2514/#2018。
+
+**限定業務例の接合**：[PR #3024](https://github.com/hat47x/tei-platform/pull/3024)（exact HEAD 705933667d5b081036314a9161280323e08a64bd、[局所CI #42208159977](https://github.com/hat47x/tei-platform/actions/runs/42208159977)成功）は旧 .tei を使って CaseRecord Persistence→Query SQLのSource/Revisionを確認した**E1c相当の限定実測**であり、*.tei.md Migration/Function Data Context/実SQL Provider Readを証明しない。#3030のM4/M5以後に同じ公開Case・同一独立Expectedを新Sourceへ適用し、A2の同等性とA3の実Provider資格を別に合否判定。組織E2・G1/G2を研究移行のHard Dependencyで止めない。
+
+**決定・実装・未実証の区別**：*.tei.mdへの移行方針はOwner決定済み。#3030はDesign Draft、#3031は検出拒否の実Go局所PASSを持つImplementation Draft、#3024は旧Sourceの局所Go/CI PASS。A1〜A4・新形式による実Provider/CLI/Studio/SHOの本格一巡、移行後Owner Meaning Acceptanceは未達。現行#1119 Gateは据え置き、研究PRの追記を製品Gate達成へ転用しない。
