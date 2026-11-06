@@ -843,7 +843,7 @@ go test -count=1 -run '^TestIndependentGoAndJavaScriptQuoteSemanticParity$' ./to
 <!-- tei-d1-two-offline-staging-seams-20261107 -->
 **D1で共通計算部を抽出する前の、実Sourceに基づく互換性関門（未実装）**：`plugins/reference-order-quote/main.go` の現`package main`には、quote入力・結果の型（88〜103行）、厳密JSONのメンバー検証（`strictQuoteFields`、127〜166行）、`decodeQuoteRequest`（168〜200行）、`calculate`（202〜224行）が同居する。一方、carrierの`fingerprint`/`serve`/`main`等は別責務。**金額計算関数だけを抽出してJSON厳密拒否を別実装にする案は、現23件の重複Key/大小文字差の判定が変わる可能性があり採用しない**。ここはコード位置に基づく分離候補であって、Go package変更済みではない。
 
-同じGo Providerの自己完結Buildには**異なる独立Stagingが2経路**ある。① `tools/reference-capability-transport/order_quote_process_test.go` は直下`.go`を一時 `module example.invalid/reference-order-quote`へコピーし、offline `go test`→build→実Processを検査。② `tools/reference-capability-transport/quote_go_js_vectors_test.go` は同じ`.go`を `module example.invalid/quote-go-js-comparison`へコピーし、`GOWORK=off`/`GOPROXY=off`でGo build後、Node実Processと23件を比較する。後者はWindows/Node不在で明示SKIPし得る。**前者だけを直して後者のImport閉包を壊す、または後者のSKIP緑をGo/JS同等実証へ昇格することを禁止**。
+同じGo Providerの自己完結Buildには**異なる独立Stagingが2経路**ある。① `tools/reference-capability-transport/order_quote_process_test.go` は直下`.go`を一時 `module example.invalid/reference-order-quote`へコピーし、offline `go test`→build→実Processを検査。② `tools/reference-capability-transport/quote_go_js_vectors_test.go` は同じ`.go`を `module example.invalid/quote-go-js-comparison`へコピーし、`GOWORK=off`/`GOPROXY=off`でGo build後、Node実Processと23件を比較する。後者はWindows/Node不在で明示SKIPし得る。両テストともProvider Source直下の**サブディレクトリ・Symlink・Go以外（README除く）を現状は拒否**する。`plugins/reference-order-quote/quotelib/`等を安易に置いてもStagingが自動追跡するわけではなく、`internal`に移せば新importが各一時module内で未解決になり得る。**前者だけを直して後者のImport閉包を壊す、または後者のSKIP緑をGo/JS同等実証へ昇格することを禁止**。
 
 | 実装候補と扱い | 使える根拠・変更範囲 | 停止条件／受入 |
 | --- | --- | --- |
