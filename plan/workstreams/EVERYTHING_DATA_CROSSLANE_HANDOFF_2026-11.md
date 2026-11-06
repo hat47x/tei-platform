@@ -140,6 +140,42 @@ H0/H1と異質領域の要件探索は並行可能。H2/H4の実Effect資格は�
 
 業務受注の3層更新と、Sensor/Actorの10Hz認知→60Hz運動、文書の親子章節などを、似たEntity名へ改名しただけのFixtureではなく、**異なる時間意味・関係・順序・作用・改版・Oracle**を持つ要求として比較する。必要になるCore特殊分岐、Role/Operator追加、Plugin適用、Studio専用UIの増分を#2018へ記録する（#2495/#2493/#2507）。
 
+### 9.5 同じ構造に対するMeaning／Host／Pluginの独立性を対照試験で確かめる（2026-11-06、提案・未実施）
+
+**位置づけ**：[#2619 FW-01〜07](https://github.com/hat47x/tei-platform/issues/2619#issuecomment-6603196417)と[11/6三領域反証](https://github.com/hat47x/tei-platform/issues/2619#issuecomment-6682217255)は、`status=approved`等の同形Carrierから業務意味や実行許可を推定できないことを既に示す。ここで追加するのは**反例そのものではなく、どの変更がどの資格にだけ効くべきかを一変数ずつ確かめる判別試験**。現行#1180 Scenarioと#2514独立Expectedに付帯する比較観点であり、新しいCase SSOT、Status enum、Runner、Proof Engine、Host/ACL、Gateは作らない。Draft #2896 §19のRequired→Consumed／Claim相対証拠票を参照し、同じ横断ラダーを複製しない。
+
+#### 受理と許可の2×2：構造・対象・試行条件を固定した独立対照
+
+固定の公開合成`order_entry`対象O1、Source/Role/Rule/Provider/Operation payload候補、選択Tenant、Request scopeを共通にし、次の二因子だけを変える。**M**＝対象Function/ActionについてOwner受理済みMeaning/Ruleの資格がある、**G**＝当該時点・主体・Tenant・Resourceに対する現在Host Grantが有効。これは新しい実行判定APIではなく、テストで区別する証拠条件。
+
+| M（意味） | G（現在Grant） | 独立Expected／禁止する推論 |
+| --- | --- | --- |
+| 未受理／根拠不足 | 不許可 | 構造解析に成功しても確定ActionとしてDispatchしない。意味不足と権限不足の**二つの未充足根拠**を、権限ある検査者向けの票で区別。外部Consumerに非公開のGrant/Rule存在を漏らさない |
+| 未受理／根拠不足 | 許可 | 既存Grantを業務Ruleの受理とみなさず、意味資格不足を保持。**Grant alone ≠ accepted meaning** |
+| 受理済み | 不許可 | 意味の歴史的受理は保持するが、現在の対象へのDispatchは拒否。**Meaning alone ≠ Host capability** |
+| 受理済み | 許可 | 当該対象の**実行前提候補**に過ぎない。Required Source/Guardの全件、Selected Provider、実Effect時Fence、expected stateが不足すれば実行不可。実際の効果・Receipt・業務完了は別観測 |
+
+**直交性の反証**：Mだけ変更してもHostの現在Grantを自動発行・更新しない。Gだけ変更しても過去のAccepted Meaningを自動生成・改変しない。ただし実際の適用判断は両者と明示された依存を再評価する。Owner受理の版更新・Grant失効・Plugin Pin変更・Source A→B→Aは別の失効要因であり、単純な「同じ値なら同じ許可」には還元しない（#267/#1174/#2582/#2600）。
+
+#### 三領域で破綻しやすい残余
+
+| 比較 | 単一因子だけ変える反例 | 独立Expectedと既存Owner |
+| --- | --- | --- |
+| **受注：業務語の同形異義** | 同じ`approved`/数値だが「見積承認」対「受注確定」、税・丸めRuleだけ改訂 | 表層Carrier/型が等しくてもAccepted Actionの適合を自動継承しない。従来の確認は再検討候補、現在Grantとは別。#1126/#1129/#2514 |
+| **組織：時点とTenantの非継承** | 同じPerson/Role/Plugin、兼務する二法人A/B。同じ`approved`でA側の所属承認だけを追加、または代理権を撤回 | Membership/Occupancy/業務責任は時点付きRelationであり、B側Grantを生成しない。Grant失効は過去の所属・Receiptを削除する理由でない。#2386/#2389/#1016/#1174 |
+| **Procedure：非実行操作の存在** | 同形Step`approved`を「人による電話確認」と「自動Provider更新」に差し替える | 前者は正当なBusiness Procedureの手作業・引継ぎであり、Executable Actionが**非適用**でもモデルは不成立としない。後者にはTarget/Grant/Effect観測が必要。Workflow完了≠業務完了。#1125/#1129/#1130 |
+| **Plugin：選択と作用の非干渉** | 同じDefinition/Meaningのまま未使用Pluginを同梱する、または同一Pluginを別Tenantで選択 | 実Selection/Build/RuntimeとCurrent Grantを別確認。未選択追加で既存Meaning/Providerを黙って切替えず、別Tenantの作用を推論しない。#1016/#951/#1251 |
+| **失敗・回復：外観同一性** | 同じ`approved`表示でCommit ACKあり／ACK喪失、または先行Step effect後に後続Stepがblock | `completed`表示・同値Readから元Operationの成功を推論しない。同OperationIDのReceipt Lookupと対象別独立Readを優先、盲再送禁止。#1174/#1163/#2889 |
+
+#### DSL可読性比較への最小接続
+
+各例の**独立ExpectedとDomain情報量を同一**に固定したうえで、(a) 汎用的な短い`approve(subject)`型の**擬似構文**、(b) 対象と行為（受注確定／Membership承認／手作業記録）を認知順に明示する低ノイズの表・式・DSL候補を比較する。短さやGo AST親和性を自動採用基準にせず、**意味の誤選択、追加質問、診断位置、局所修正差分、Source fidelity、AIの入力・修正コスト**を同一Taskで測る。生成AIの解釈結果と生成AIが作ったExpectedの自己一致は合格証拠とせず、#988の構文比較と#2514の独立Oracle・既知Mutantを再利用する。正式Grammar/日本語キーワード/新Role enumは採用しない。
+
+**判定票の最低列と停止条件**：`actual parsed Source occurrence／meaning role+accepted revision／operation applicability（manual時not-applicable）／required obligations（候補の自己申告以外）／provided+evaluated guards／selected Plugin+Provider+Target／current Grant+Tenant+resource／dispatch結果／Receipt+独立read／独立Expected／Claim ceiling`。未知は`unresolved`、非適用は理由付き`not-applicable`、実権限拒否は既存契約の`denied/blocked`、送出後不明は`unknown`として**概念上区別**する（製品共通enumではない）。実施順は、#1180/#2514へ比較Expectedを紐付ける→#2586の実Read接合で意味/Scopeと実Consumerを確認→#1174の限定PG Effect試行で実Grant/Commit/Receiptを確認。手作業に必須DB実行、read-onlyに書込Guardを一律課さない。
+
+**根拠と資格**：#2619の既存反例、#2389の組織計画、#1125 Procedure、#1174の実PostgreSQL限定実証、#2889のRunner特性試験、Draft #2896のSystem Composition計画を基にした**計画上の補正候補**。この2×2／三領域／DSL比較を同一Product Headで新規実行した証拠はない。**実Tenant/Host/Provider/GUI・Owner正式意味受理、#1119 Gate判定はNOT RUN／NOT ACCEPTED**。新しい基盤の実装・既存ADRの採用は提案しない。
+
+
 ## 10. 接合パケットへの成熟した追加受入（実行は全件NOT RUN）
 
 既存のHX-01〜10を残したまま、複数チャットから集まった**観測可能なギャップ**を以下の差分として追加する。
