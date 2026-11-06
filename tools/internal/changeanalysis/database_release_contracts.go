@@ -16,8 +16,8 @@ import (
 // definition. Older releases in the same line are historical and are not
 // repeated; this is not an acceptance finding. The contractCandidates
 // database-release-contract-provided kind answers a different question: which
-// releases provide a changed contract. A release may appear in both
-// observations without being a duplicate.
+// release in each major line last provides a changed contract. A release may
+// appear in both observations without being a duplicate.
 type DatabaseReleaseContractCandidate struct {
 	Snapshot        string           `json:"snapshot"`
 	Database        core.CanonicalID `json:"database"`

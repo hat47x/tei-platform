@@ -33,12 +33,13 @@ type ContractChangeCandidate struct {
 // reference Pattern's contract-query invocation, a Database release's provided
 // contract, a solution release contract gate, and header-detail, executor and
 // SQL realization bindings. Query declarations are keyed by complete Database
-// and Contract identities, not by a shared suffix. Application release
-// requirements are collapsed to the latest declaring release per application,
-// release major line and datasource alias, so repeated patch/minor history does
-// not duplicate the same state; a removed contract still reports the latest
-// declarer in each line, and releases without a numeric version are skipped
-// because they cannot be ordered. Both snapshots are scanned even after removal.
+// and Contract identities, not by a shared suffix. Application and Database
+// release declarations are collapsed to the latest declaring or providing
+// release per release major line, so repeated patch/minor history does not
+// duplicate the same state; a removed contract still reports the latest
+// declarer or provider in each line, and releases without a numeric version are
+// skipped because they cannot be ordered. Both snapshots are scanned even after
+// removal.
 func ContractCandidates(before, after ir.World) ([]ContractChangeCandidate, error) {
 	type key struct{ database, contract core.CanonicalID }
 	flatten := func(w ir.World) (map[key]database.Contract, error) {
@@ -94,8 +95,16 @@ func ContractCandidates(before, after ir.World) ([]ContractChangeCandidate, erro
 		}
 		item := ContractChangeCandidate{Database: k.database, Contract: k.contract, Change: change}
 		collect := func(w ir.World, snapshot string) {
+			// 同一snapshot・種別・識別子・Queryの宣言は区別できないため、
+			// 候補行を重複させない。
+			seen := map[ContractConsumerCandidate]bool{}
 			add := func(kind, id, query string) {
-				item.Consumers = append(item.Consumers, ContractConsumerCandidate{Snapshot: snapshot, Kind: kind, ID: id, Query: query})
+				consumer := ContractConsumerCandidate{Snapshot: snapshot, Kind: kind, ID: id, Query: query}
+				if seen[consumer] {
+					return
+				}
+				seen[consumer] = true
+				item.Consumers = append(item.Consumers, consumer)
 			}
 			for _, app := range w.Applications {
 				for _, db := range app.Databases {
@@ -162,18 +171,51 @@ func ContractCandidates(before, after ir.World) ([]ContractChangeCandidate, erro
 					}
 				}
 			}
-			// database-release-contract-providedは変更Contractを提供するReleaseを
-			// 影響範囲として並べる。databaseReleaseContractCandidatesが各major系統の
-			// 最新Releaseと現在定義の古さを見るのとは別の問いであり、同じReleaseが
-			// 両方に現れても重複ではない。
+			// Database Releaseも不変のスナップショットであり、同じmajor系統で
+			// 同じContractを提供し続けるReleaseが履歴に並ぶ。Database・Release
+			// major系統ごとに、そのContractを最後に提供したReleaseだけを残す。
+			// 最後に提供したReleaseが履歴側にしかなくても残す。数値でない
+			// versionは順序付けできないため観測しない。
+			// databaseReleaseContractCandidatesが各major系統の最新Releaseと現在
+			// 定義の古さを見るのとは別の問いであり、同じReleaseが両方に現れても
+			// 重複ではない。
+			type providedLine struct {
+				database core.CanonicalID
+				major    int
+			}
+			latestProvided := map[providedLine]string{}
 			for _, r := range w.DatabaseReleases {
+				v, ok := parseReleaseVersion(r.Version)
+				if !ok {
+					continue
+				}
+				for _, pc := range r.Provides {
+					if r.Database != k.database || pc.ID != k.contract {
+						continue
+					}
+					line := providedLine{r.Database, v[0]}
+					if current, seen := latestProvided[line]; !seen || compareReleaseVersion(r.Version, current) > 0 {
+						latestProvided[line] = r.Version
+					}
+				}
+			}
+			for _, r := range w.DatabaseReleases {
+				v, ok := parseReleaseVersion(r.Version)
+				if !ok {
+					continue
+				}
 				if r.Database != k.database {
 					continue
 				}
 				for _, pc := range r.Provides {
-					if pc.ID == k.contract {
-						add("database-release-contract-provided", string(r.Database)+"@"+r.Version, "")
+					if pc.ID != k.contract {
+						continue
 					}
+					if latestProvided[providedLine{r.Database, v[0]}] != r.Version {
+						break
+					}
+					add("database-release-contract-provided", string(r.Database)+"@"+r.Version, "")
+					break
 				}
 			}
 			for _, r := range w.SolutionReleases {
