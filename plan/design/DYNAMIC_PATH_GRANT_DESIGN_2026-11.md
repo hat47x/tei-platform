@@ -36,3 +36,20 @@
 
 - どの案を選ぶか。
 - いまの付与が第三者の承認を得ていること。
+## 6. 案Bの最小実装（2026-11-06 追記）
+
+`internal/access` に**発行の記録**を足しました。
+
+```go
+issued, err := access.Issue(log, runKey, capabilityID, spec, "operator requested the observation path")
+```
+
+- 発行は**記録と一体**。ログが無ければ発行しない（記録できない発行は発行ではない）。
+- 記録には `runKey`・能力・付与・**根拠（basis）**を残す。
+- 記録は JSON Lines（`IssueFile`）。壊れた行はエラーとして報告し、それ以前は返す。
+
+**まだ接続していません**: 発行した付与をアダプタの `-grants` に渡す経路は未実装です。発行の主体（誰が `Issue` を呼ぶか）も決めていません。
+
+## 7. ついでに直したこと
+
+移行済みツールの能力IDが `tei.frozen-world.lineage` と、**正規の識別子（小文字と下線のみ）に反して**いました。`tei.frozen_world.lineage` に修正しています。識別子の検証を通していなかったため見逃していたものです。

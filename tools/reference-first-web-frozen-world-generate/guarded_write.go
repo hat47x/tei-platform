@@ -14,7 +14,7 @@ import (
 // observation. The grant is the exact path the caller asked for, so the tool
 // cannot write anywhere else; moving the grant to the environment is the next
 // step.
-const lineageCapability = core.CanonicalID("tei.frozen-world.lineage")
+const lineageCapability = core.CanonicalID("tei.frozen_world.lineage")
 
 // loadGrants reads the grants file through the shared parser, so the tool and
 // `tei grants` keep one format. A missing or unreadable file is an error: a grant
