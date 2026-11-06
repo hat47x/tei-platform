@@ -663,3 +663,29 @@ Source/Authoring Graph → Resolved/Lowered Graph → Targetの実行・観測�
 **反証順序**：まず既存E2aで `std.binary` / `std.text` / `std.json` と異種TypeRefを合成比較する（File relayとBuild metadataを模したfixtureであり実Consumerではない）。次に #2831 の **P0-SB-A**（宣言Graph対実消費）を先行し、並行して #2827/#2542 の既存File/Message試験結果を一つの受入票へ対応付ける。差分が「型の不足」なのか「Role/Scope/Effect/Source Closureの不足」なのかを独立診断できた場合だけ標準構造の追加を #2620へ返す。二つの用途で同じMeaningと保証を再利用できなければ新標準TypeKind化を撤回する。
 
 **証拠状態**：2026-11-06時点のGitHub静的照合に基づく設計提案。共通テストハーネス／実ETL配送／TEI全体セルフビルド／本番のAcceptance・Authorityは、この追補だけでは**NOT RUN / NOT PROVEN**。既存CIや部分ReferenceのPASSを縦断PASSへ加算しない。
+
+
+### 17.7 型付き辺と「閉包・不在・実効果」のClaim相対判定（2026-11-06、設計候補）
+
+**新規の型体系ではなく受入票の判定規則。** [#2620](https://github.com/hat47x/tei-platform/issues/2620)のRole Required Shape/Source閉包、[#2831](https://github.com/hat47x/tei-platform/issues/2831)のセルフビルドP0-A0/A1、[Draft #2881](https://github.com/hat47x/tei-platform/pull/2881)のbounded absence、[Draft #2933](https://github.com/hat47x/tei-platform/pull/2933)の最適化時の契約保存を横断照合する。各担当のRole・Topology・Build・最適化用の第二検証器を本節で新設しない。
+
+一つのConsumer/Target/Phase/Scope/Source revision/選択Generationを固定したうえで、必要に応じ次の**五つの異なる主張**を追跡する。
+
+| Claim | 意味と必要な根拠 | 成功と取り違えないもの |
+| --- | --- | --- |
+| **Required** | ConsumerのContract/Role/Graphから独立して要求される型付きPort、依存、入力、Effect、Source集合。要求側の発行・適用範囲が必要 | PluginやFixtureが自己申告した `required=[]` |
+| **Declared** | Source、計画、Manifestに明示されたNode/Edge/Input/Providerとその固定版 | 全宣言が実際に選択・実行されたという意味 |
+| **Selected** | 解決されたContract/Provider/Instance/Builder/Operator/Artifact Roleとその正確な世代・対象 | 選択済み実装が実byteを読んだ／実Effectを行ったこと |
+| **Consumed** | 既存Reader/実Build/実Provider等が実際に利用した入力・Artifact/Step・時点。観測能力と欠落範囲を注記 | 同じ出力Digestなら全消費Sourceも一致すること |
+| **Observed / Disclosed** | 独立Read/Receipt/Trace/Studio Projectionで観測・開示できた内容、Reader coverage、Policy/Scopeと版 | 観測しなかった経路や隠れた副作用が「存在しない」こと |
+
+**局所型検査の成立**は、選択済みSemantic定義の構造に対するTypeRef/Shape/Multiplicityの一致候補まで（E2a [#2584](https://github.com/hat47x/tei-platform/pull/2584)）。**閉包の成立**は、上表のRequired→Declared→Selected→Consumedを当該Claimの範囲で独立に照合し、未列挙・部分観測・動的ロード・opaque境界を明示する段階。**外部Effect/Authorityの成立**は、さらに実Targetの強制境界・結果/Receipt・必要な再認可で判定する段階である。これらを一つのboolean `valid` に畳まない。
+
+- 宣言Graphの見た目・Tableの行数が一致しても、実Readerが未読込Sourceを見逃せば閉包未証明（[#2823](https://github.com/hat47x/tei-platform/issues/2823)）。逆にGraphにNodeが無くても、対象Scope/Reader/Phaseで閉包が確認されない限り「不存在」と表示しない。
+- `std.binary`から`std.binary`へのTypeRef一致は、外部配送の4分割中3件ACK、Commit後の取消、Spool容量超過を成功へ変えない（Draft [#2827](https://github.com/hat47x/tei-platform/pull/2827)の既存DM/EF条件に委譲）。単なるTransport Batch、処理Chunk、業務的Atomic Batch、Execution Groupingの保証を継承させない。
+- Build Graphに必要な型付きEdgeが揃っていても、一時的な`main.go`の二回Buildの成功から実`cmd/tei`・nested moduleの実入力閉包を推定しない（#2831）。Build stepの未宣言入力と可観測範囲外の動的工程はそれぞれfail/unknownとして区別する。
+- Pushdown/Fusion/Cache/Batch/Provider交換の最適化は、TypeRefだけでなくNULL/順序/部分失敗/Unknown/Effect/Scope/対象時点を保ったことを別に検証する（Draft #2933）。宣言された論理契約が同じという事実を、物理結果・性能効果や現在のInvocation Authorityと混同しない。
+
+**既存STケースへの追加判定（新Fixture IDは増やさない）**：ST-02はSemantic定義・Sourceの版変更による型候補と利用資格の失効、ST-03はETLのSelected/Consumed/ACK/Partialの別観測、ST-04は同型二InstanceのScope/Config/Grant分離、ST-09はArtifact digest一致でもBuilder/Attempt/Targetが異なる場合の再資格化をそれぞれ確認する。Graph/Tableの表示差は#2881、Role/Source closureは#2620、実Buildは#2831、実MFTは#2827/#2542に割り当てる。
+
+**標準化判断の停止条件**：二つのConsumerで型付き辺の共通検査が成立しても、未充足がSource閉包・Role/Effect・Transfer receipt・Build provenanceで説明できるなら新しい標準TypeKind/専用DSL/第二Resolverを追加しない。独立して同じ**意味**の表現・変換・診断に欠損が再現されたときのみ#2620と#951へ最小契約差分を返す。Stage/Host/Studio/実DB/External ProviderのE2E、実際の閉包、Owner Acceptance、性能測定は本設計では**NOT RUN / NOT PROVEN**。
