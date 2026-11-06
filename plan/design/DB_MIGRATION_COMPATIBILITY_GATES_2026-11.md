@@ -525,3 +525,21 @@ G1〜G5で各観測は取得時点が異なる。要求するのは**同一瞬�
 
 **採用・実証の上限**：上記は#2892の受入条件案であり、HistorySnapshotの新しいフィールドや全Provider共通Adapterを採用したものではない。実Readerの完全性・異種DB・Cutover・Owner承認のE2E試験はNOT RUN。#3018の6/6 successをHIST-03の実証へ昇格しない。
 
+
+### 19.8 履歴の内容照合と取得元資格の独立性（HIST-03dの特性試験）（2026-11-06）
+
+**新しく直接確認したSource上の境界**：`CompareHistory` は `HistorySnapshot.Database` と `AppliedMigration.Database` が**空欄のときも比較を許し**、`Tool` と `CapturedAt` は結果の分類時に資格条件として検査しない。従って、Repository定義とEntry ID・checksumが一致する場合、**実際の読取先や時点の証拠が欠落していても`RepoApplied`になり得る**。これは比較器の設計上の限界であり、現時点で「現在DBにMigration済み」というGate Claimではない。
+
+`internal/database/migration/history_origin_characterization_test.go` に、既存HIST-03dのための**現在の非認証挙動を特徴付けるGoテスト**を追加した。固定`m001`と一致するchecksumについて（1）Snapshot/EntryのDB・Tool・CapturedAtが空、（2）CapturedAtだけ空、（3）Entry.Toolが空、を変更し、`CompareHistory` が`RepoApplied`に分類し得ることを検査する。**このGoテストが成功した場合でも、求める移行Gateの正解は「Source/Reader/Instance/取得完結・現在時点が未確認なのでunknown」**である。構造比較結果とGateの独立Expectedを分離する。
+
+**追加採用を提案する最小手順（Provider/Reader実装は未決）**：
+
+1. 外部Migration Tool／Source Readerは既存の`HistorySnapshot`へ正規化する前に、**実Connection Target + DB Instance/Provider + Tool Source + Query Scope/Filters + 取得完結性 + CapturedAt/Revision + Grant**を個別観測する。欠けた場合は`HistorySnapshot{Entries:nil}`を「空履歴の成功」として供給しない。
+2. 内容比較`CompareHistory`を呼ぶ資格があることと、結果の`RepoApplied`が現在Gateへ使えることを分離し、後者は独立のActual Schema／Provider Effect／必要ならReader再観測を要する。`Database` の単純な文字列一致、履歴のchecksum、`CapturedAt`の新しさだけでAuthority/現在性を推測しない。
+3. HIST-03dの将来の安全実装は、（a）上流Reader/Bindingに**完全な検証責務**を置く方式、（b）比較直前のスコープ限定Validatorで不足を明示拒否する方式、の最小二案を比較する。どちらでも**新しい正本Registry・History Engine・Migration Coordinatorは導入せず**、既存の#2892/#2622/#2611に所有権を戻す。
+4. 合格の実証では、正常取得／拒否／部分取得／別Instance・異なるProvider／古い観測を同一`m001`の独立Expectedで比較し、`required/supplied/observed/qualified`を個別に示す。実接続のないProviderでは「未実装・未実施」と記録する。
+
+**合流時の注意**：本節のGoテストは**現行比較器の限界のcharacterization**であり、安全なReader admissionの実装完了を示すものではない。将来`CompareHistory`自体に厳格なprovenance検査を入れる場合は、旧`RepoApplied` Expectedを拒否/不明のExpectedに**同じ統合HEADで改める**。#3018の固定HEAD`983b9ed`は今回の追加テストを**含まない**ため、過去の6/6合格をこの新テストへ流用しない。
+
+**状態**：試験のGo Sourceを追加し、新CIの結果は別確認。実DB、History Reader/Adapter、旧新Client、CDC/Owner Grant/Receipt/独立Read/Contract受理は**NOT RUN**。
+
