@@ -203,12 +203,12 @@ Registryの検索応答は自らを`Adopted`/ `Executable`と宣言しない。�
 
 ### 10.2 必要証拠集合はConsumerの用途・Target・実選択結果で確定する
 
-第9節の`RequiredEvidence`を、Registryが全候補に共通の固定集合として先に確定しない。必要な根拠は選択した操作、Consumer Policy、現在Target、実際のProvider/Artifactの**選択閉包**によって異なる。
+第9節の`RequiredEvidence`を、Registryが全候補に共通の固定集合として先に確定しない。必要な根拠は選択した操作、Consumer Policy、現在Target、既存Resolverが確定した**選択閉包**、Build/Runtimeが実際に消費した**実消費閉包**、証明が覆う**検証範囲**によって異なる。選択されなかったことだけを、実際に使っていない証拠とはしない。
 
 ```text
 Intent / Target / Consumer Policy
     + Existing TEI selection / Lock (where applicable)
-      -> Required Claims and selected dependency closure
+      -> Required Claims + selection / actual-consumption closure
       + Observed exact bytes / signed statements / current trust evidence
       -> Read-only Qualification Projection
       -> passed | failed | inconclusive | not-evaluated
@@ -224,7 +224,7 @@ For the selected operation O and consumer/target T:
   R := requirements(policy(O,T), exact selected lock/closure)
   E := verified observations / signed evidence / current trust snapshots
   qualified(O,T) only if:
-    - the selected dependency closure is actually established,
+    - the selected dependency closure and required actual-consumption scope are established,
     - each required r in R has a matching, trusted, nonstale witness in E,
     - witness binds exact subject digest + contract/profile + target/scope,
     - no unresolved conflict, explicit deny, or required unknown remains.
@@ -234,7 +234,7 @@ For the selected operation O and consumer/target T:
 - Contract/Providerの選択と選択閉包は[#951](https://github.com/hat47x/tei-platform/issues/951)・[#1016](https://github.com/hat47x/tei-platform/issues/1016)へ委ねる。Plugin IndexやRegistryで第二Resolverを作らない。
 - `nil`（閉包未提供）と評価済み空集合`[]`（実際に0件）を同一視せず、未登録`tei.std.*`を旧`std.*`へ暗黙変換しない。[Draft #2584](https://github.com/hat47x/tei-platform/pull/2584)のPreflightや[#1121](https://github.com/hat47x/tei-platform/issues/1121)のSourceInputs境界を**局所の例**として照合する。これを新しいRegistry Canonical Schemaの即時採用としない。
 - Self-buildで`cmd/tei`等の実外部Module/Toolchain入力が未知のときは、Source/Build Provenanceの資格を未成立のまま保持する。[#2831](https://github.com/hat47x/tei-platform/issues/2831)のSB-0（選択された外部Module、依存Byte、offline供給の閉包）を待ち、Plugin公開の内容照合PASSを実Build来歴の証明へ転用しない。
-- 依存Closureが完全に分かる場合だけ局所再資格化を許す。未選択Pluginの更新で無関係Consumerを一律失効させず、選択した依存・Contract/Profile・Policyの変更を検査する。依存が未調査なら`impact not assessed`を維持する。
+- 依存Closureと実消費範囲が確認できる場合だけ局所再資格化を許す。未選択かつ実非消費と証明できたPluginの更新で無関係Consumerを一律失効させず、選択・実消費された入力、Contract/Profile、Policyの変更を検査する。未選択でも静的リンク、Goの`import`/`init`、`embed`、生成処理等で実消費され得る。依存が未調査なら`impact not assessed`を維持する。
 
 ### 10.3 採用後も信頼は非単調に変化する
 
@@ -250,7 +250,7 @@ Release/Attestationの歴史的記録が追記専用でも、Consumerの現在�
 | Case | 最小入力差 | 期待判定 | 担当 |
 | --- | --- | --- | --- |
 | RG-Q1 | Required closureが`nil`なのに空集合として扱う | `not-evaluated/unresolved`を保持し、Adopt合格にしない | #951 / #1121 |
-| RG-Q2 | 未選択PluginのReleaseだけ更新 | 依存関係の完全性が確認できるConsumerを無関係に失効させない | #951 / #2600 |
+| RG-Q2 | 未選択かつ実非消費まで独立確認できたPluginのReleaseだけ更新 | 選択/実消費/証明範囲を確認できるConsumerだけ再資格化不要。未選択だが実消費なら再評価 | #951 / #2600 / #2831 |
 | RG-Q3 | 選択ProviderのArtifactまたはContract/Profileだけ変更 | 該当Consumerの必要証拠を再評価し、旧証明を新Subjectへ流用しない | #951 / #1104 |
 | RG-Q4 | Install時の信頼は有効、Dispatch直前にIssuer/Grant失効 | 現在権限のOwnerが明示拒否/未検証にする。Registry署名だけで起動しない | #1174 / #1370 |
 | RG-Q5 | 古いTrust SnapshotをOffline Consumerに再提示 | 有効期限・観測可能な版の限界を明示し、新鮮な信頼確認を装わない | #1104 |
@@ -261,3 +261,58 @@ Release/Attestationの歴史的記録が追記専用でも、Consumerの現在�
 **優先順**：公開/取得同一性のRG-P1/P2/P3 → 操作別閉包のRG-Q1/Q6 → 明示信頼・失効のRG-Q4/Q5 → 局所再資格化RG-Q2/Q3。P0でSchemaや汎用Evidence Engineを新設せず、既存のContract/Build/Trust/Artifactと二Readerによる観測可能な不足だけを確認する。
 
 **状態**：2026-11-06の他レーンの設計・Issue/PR静的照合による追補。RG-Q1〜Q8のRegistry実行、署名、実GitHub公開、外部Consumer、Owner受理は**NOT RUN／未受理**。既存の他レーンで記録された限定試験をRegistryの新規PASSと数えない。
+
+
+---
+
+## 11. 公開後ライフサイクルと実消費閉包（2026-11-06、#2589増分設計）
+
+### 11.1 「公開済み」と「現在利用可能」を別軸で扱う
+
+Registryの初回登録、Version Bindingの公開確定後にも、Publisher移転、保守終了、既知脆弱性、配布先の削除・障害、Issuer失効、利用者による無効化が起きる。**公開した歴史的事実を削除して解決するのではなく、何が変更されたかを別の権限主体・証拠で観測する。**
+
+| 変化する対象 | 既存の正本／Authority | Registryの投影・Consumerに引き渡す情報 | 誤ってしないこと |
+| --- | --- | --- | --- |
+| Version Binding / Release Descriptor | 公開者の署名・登録確定時点のAuthority、#2589 | 不変Release Digest、Version、Publication Commitの来歴 | yankで過去の公開が無かったと書き換えない |
+| Discovery Listing / Channel | 公開索引の編集権限、署名付きポインタ | Listed/Hidden、stableなどの現在の指示先と版 | 非掲載をArtifact失効・脆弱性と断定しない |
+| Distribution Locator / Availability | GitHub等の配布者、#1105 | 取得候補、最終Readback時点、取得失敗・ミラーの位置 | locatorの存続や到達性をRelease内容の永久保証にしない |
+| Publisher / Verifier Trust | #951/#1104、各Consumer Policy | 鍵委任・失効・現在性、対象Scope、適用版 | 署名済みの古いAttestationだけで「現在Trusted」と言わない |
+| Advisory / Yank / Deprecation | 公開者・第三者Advisory IssuerとConsumer Policy | 対象Release/Artifact/Contract、理由の分類、署名/Source/時点、代替候補 | advisoryを一律削除指令・実行許可・強制代替にしない |
+| Install / Enable / Data Retention | #2044 のStudio管理と実Consumer/Host | 導入・有効化・依存関係・実Load/実使用・保持データの区別 | 無効化や非掲載でSource・保持データを自動削除しない |
+
+上記は新Core固定enumや二重Status DBの提案ではない。各正本の変更イベントと現在の検証結果を**参照する読取り専用投影**の項目候補である。Index側の安全・人気・保守評価は、独立した署名・Conformance・Consumer採用に自動昇格させない（[#2899](https://github.com/hat47x/tei-platform/issues/2899)、[Draft #2903](https://github.com/hat47x/tei-platform/pull/2903)）。
+
+### 11.2 公開後イベントの対象Bindingと受理条件
+
+停止・廃止・脆弱性告知などのイベントは、その表示名やGitHub Tagだけでなく、少なくとも**発行主体/Issuer、対象Plugin ID、Release/ArtifactまたはVersion Range、Event ID/版、発効時点、理由分類、参照するEvidence、署名・信頼の評価**へ到達可能とする。Rangeに未確定版を含める場合は影響候補とし、解決した正確なRelease Digestに対する判断と区別する。
+
+- **Yank**（新規導入候補からの取下げ）と**Security Advisory**（脆弱性に関する主張）、**Deprecation**（利用非推奨）、**Deletion / Legal Takedown**（物理配布の削除）は違う操作とする。署名付きイベントでも内容の真正性、第三者の確認、Consumerの現在Policyは別評価。Yankだけで既存実行を「安全」または「危険」と決めない。
+- 既存Lockを保持したConsumerはRelease Digestを黙って変更しない。導入時点での証明と現在のIssuer/Publisher/Artifactへの注意情報を再評価し、必要なPolicyなら利用停止・保留・明示的な更新候補の提案へ進む。別Providerの自動勝者選択は禁止（#951）。
+- Publisherが鍵を失った、Repository所有者が移転した、登録Authorityが停止した場合でも、公開済みの記録のDigest一致と現在の管理主体の承認は独立。無署名のREADMEや「新しい管理者」を名乗るProfileだけで既存Plugin IDを再割当しない。
+- 指定Targetの実行中Sessionを停止・Drain・再起動させる責務はHost/Runtimeに置く。Install/Enable/Source維持/データ削除は[#2044](https://github.com/hat47x/tei-platform/issues/2044)の既存管理境界に委ねる。静的単一BinaryにHMRや常駐Loaderを強制しない。
+- 既存Issuerの過去の署名が有効であることと、現在のOwner/Issuerが適格であることを別々のClaimとして出す。Offlineで現在性不明なら`unknown/stale`を保持し、古いRegistry索引の`safe`表示は権限根拠としない。
+
+### 11.3 影響範囲の反証：未選択と実非消費は異なる
+
+[Draft #2903](https://github.com/hat47x/tei-platform/pull/2903)の構成・実使用境界を参照する。**Resolved Selection（選択されたProvider）だけからActual Consumption（実Build/実Load/実Invokeの消費）を推定しない。** 例えば、未選択のPluginがGoの`import`/`init`や静的link、embed、生成器・Toolchain依存として取り込まれている可能性がある。
+
+影響を`unaffected`と呼べるのは、変更されたPluginが現在のConsumerの正確な選択閉包にも、当該Claimに必要な実消費閉包にも、証明範囲にも含まれないことを**当該固定版と試行の独立証拠で確認できた場合**に限る。これらの閉包が未知なら`impact not assessed`とし、配布側の自己申告を独立した不在証拠とみなさない。
+
+また、実消費の証拠はClaim相対である。Build-timeのToolchain実消費と、Runtimeの実Load・呼出しと、業務Effectへの到達を同じ事実にしない。Runtime Grant失効は過去Buildの内容Digestを変更しない。過去のReceiptは現在のEffect許可を再発行しない。
+
+### 11.4 次の最小Reference（既存E0〜E3に追加、未実施）
+
+| Case | 操作と入力差 | 期待判定 | Owner |
+| --- | --- | --- | --- |
+| RG-L1 | リリースR1公開後にPublisherが有効署名でYank | R1履歴とDigestは不変。新規導入候補の可否はPolicy、既存Lockは勝手にR2へ変更しない | #2589 / #2044 |
+| RG-L2 | Security AdvisoryがR1のみを対象に発行 | Issuer/署名/Targetと現在Policyを評価。範囲外R2に脆弱性を自動転記せず、R1を無条件安全ともしない | #1104 / #2589 |
+| RG-L3 | 未選択PluginだがGo `import`/`init`/embedでBuild実消費 | 未選択を根拠に`unaffected`としない。Build/Artifact再資格化の対象へ回す | #2831 / #2600 |
+| RG-L4 | 未選択・未実消費を実Readerと固定Build/Lockで確認 | 当該対象での無関係更新を過剰失効させない。ただし未確認Targetには一般化しない | #951 / #2831 |
+| RG-L5 | Index停止中、R1の取得済みByteと古いTrust Metadataだけ存在 | Digest・過去署名は照合可。現在のTrust/AdvisoryはUnknownで、全操作の新規採用を自動許可しない | #1104 / #1105 |
+| RG-L6 | Publisher移転後、旧Ownerの鍵から新Releaseを提出 | 現在の委任Epochに照らして拒否。移転記録の検証が不能なら保留 | #951 / #2589 |
+| RG-L7 | Plugin無効化・配布停止後も既存Sourceと保持データが存在 | 未対応Source/データを保持し、インストール済み・有効・実Loadを混同しない | #2044 |
+| RG-L8 | Publisherが代替Providerを提示、同Contractの別候補も存在 | Registry/Indexは候補提示のみ。既存Resolverの明示WiringとConsumer Owner判断なしに自動代替しない | #951 / #1016 |
+
+**P0優先**は既存RG-P1〜P3のByte/ArtifactSet readbackとE0署名・Profile対象一致。続いてRG-L3/L4の実選択と実消費の差、RG-L1/L5/L6の公開後変化を反証する。L2/L7/L8の意味・権限・運用の結果は既存Ownerとの接合後。どの局所試験の成功もRegistry E2Eや製品受入へ自動昇格させない。
+
+**状態**：静的Issue/PR照合による設計追補、公開プロトコルやCore schemaの正式採用ではない。RG-L1〜L8、実GitHub Release・署名・別Host・Producer/Consumer readback・CIは本追補ではNOT RUN。新しいPlugin Lifecycle Engine、第二Resolver、Host常駐基盤、全Pluginへの強制停止を追加しない。
