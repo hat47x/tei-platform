@@ -117,3 +117,27 @@ func TestReferenceWorkspaceHasNoSourceRootFindings(t *testing.T) {
 		t.Fatalf("reference workspace gained findings: %+v", loaded.SourceRootFindings)
 	}
 }
+
+// TestManagedFilesReportReadByLoader pins #2823 requirement 2: the file list
+// must distinguish a file the Loader read from one it only inventoried.
+func TestManagedFilesReportReadByLoader(t *testing.T) {
+	root := t.TempDir()
+	writeRootFixture(t, root, "workspace: read_status\nformatVersion: 1\nsources:\n  - semantic\n", map[string]string{
+		"semantic/order.tei": "namespace sales\n",
+		"semantic/notes.md":  "# managed, not interpreted\n",
+	})
+	loaded, err := workspace.Load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	status := map[string]bool{}
+	for _, file := range loaded.ManagedFiles {
+		status[file.Path] = file.ReadByLoader
+	}
+	if !status["semantic/order.tei"] {
+		t.Fatalf("read semantic file was not marked read: %+v", loaded.ManagedFiles)
+	}
+	if status["semantic/notes.md"] {
+		t.Fatalf("uninterpreted file was marked read: %+v", loaded.ManagedFiles)
+	}
+}

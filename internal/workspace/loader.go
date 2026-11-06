@@ -30,6 +30,10 @@ type ManagedFile struct {
 	Path       string `json:"path"`
 	SourceRoot string `json:"sourceRoot"`
 	Extension  string `json:"extension,omitempty"`
+	// ReadByLoader reports whether a domain loader consumed the file's bytes
+	// during Load. false means the file is managed but not interpreted: it is
+	// inventoried, not parsed. It does not mean the parser accepted the content.
+	ReadByLoader bool `json:"readByLoader"`
 }
 
 type SourceContribution struct {
@@ -285,11 +289,26 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 	if err := captureManagedExtra(&r); err != nil {
 		return Result{}, err
 	}
+	markManagedFilesReadByLoader(&r)
 	Normalize(&r.World)
 	// The loader snapshot stays available, but an OS handle must not escape
 	// the Load lifetime. Imports close their own pinned roots independently.
 	r.sourceReadRoot = nil
 	return r, nil
+}
+
+// markManagedFilesReadByLoader records which managed files a domain loader
+// consumed. The sourceSnapshot holds exactly the bytes read through
+// readSourceForLoad; sourceManagedExtra holds the rest. ManagedFile.Path and
+// snapshot keys share the normalized slash form.
+func markManagedFilesReadByLoader(result *Result) {
+	for i := range result.ManagedFiles {
+		path, err := sourceindex.NormalizeWorkspacePath(result.ManagedFiles[i].Path)
+		if err != nil {
+			continue
+		}
+		_, result.ManagedFiles[i].ReadByLoader = result.sourceSnapshot[path]
+	}
 }
 
 // parseWorkspaceYAML is retained for existing callers of the source-root-only API.

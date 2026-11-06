@@ -145,7 +145,18 @@ func workspaceFilesJSON(out io.Writer, workspacePath, worldPath string, extraArg
 	if err != nil {
 		return resultLoadFailure(out, "workspace-files", err)
 	}
-	return emitResult(out, resultEnvelope("workspace-files", "", r.ManagedFiles), 0)
+	return emitResult(out, resultEnvelope("workspace-files", "", workspaceFilesValue{
+		ManagedFiles:       r.ManagedFiles,
+		SourceRootFindings: r.SourceRootFindings,
+	}), 0)
+}
+
+// workspaceFilesValue is the workspace-files projection. ReadByLoader on each
+// ManagedFile separates managed-but-not-interpreted files from files a domain
+// loader read (#2823). SourceRootFindings names unknown or missing roots.
+type workspaceFilesValue struct {
+	ManagedFiles       []workspace.ManagedFile                `json:"managedFiles"`
+	SourceRootFindings []workspace.WorkspaceSourceRootFinding `json:"sourceRootFindings,omitempty"`
 }
 
 // sourceIndexJSON wraps the Source Index inspection. The whole-index form and
