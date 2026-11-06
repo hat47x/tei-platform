@@ -1,4 +1,4 @@
-﻿# X-TEA受容要件の実装対応（2026-11）
+# X-TEA受容要件の実装対応（2026-11）
 
 - 状態: **暫定**。受容要件の候補（`AC-1`〜`AC-11`、`RQ-C1`〜`RQ-C3`）と、現在の参照実装・検証を対応付ける作業記録です。
 - 受容要件: [XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md](../../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md)
@@ -38,6 +38,22 @@
 - AC-8・AC-9・AC-11の要求としての採否。
 - AC-2・AC-5の実行時強制の範囲。
 - 実Provider接続を先に行うか、残りの受入条件を先に具体化するか。
+## CLI認可の観察（2026-11-06）
 
+`examples/xtea-lowcode`に対して、許可外の能力が実行前に拒否されることを確認しました。
 
+```text
+tei view ... -execute -allow-capability sales.other
+{"ok":false,"error":{"code":"COMMAND_FAILED","message":"COMMAND_UNAUTHORIZED: capability sales.submit_order is not allowed by the reference authorizer"}}
+```
 
+許可した場合は参照Executorが実行されます。
+
+```text
+tei view ... -execute -allow-capability sales.submit_order
+outcome: submitted -> sales.order
+effect: update sales.order
+committed: true
+```
+
+これは参照用AllowListによる能力単位の拒否です。利用者・資源・メニュー表示・権限の付与は確認していません。
