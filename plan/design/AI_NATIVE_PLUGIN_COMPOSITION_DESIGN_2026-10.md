@@ -586,3 +586,43 @@ Registryは**発見の索引**、Issuerは証拠の発行主体、Host/Ownerは�
 - **Meaning/Org**：#2386/#267。**Wiring/Scope**：#1016/#951/#1118。**Build/Way selection**：Draft #2885/#1251/#1121/#2390。**Grant/Effect/Recovery**：#1174/#1129/#2564。**Disclosure**：#2516/#1178。**Test Oracle**：#1180/#2514。**Product Gate**：#1119既存G1/G2/G4。
 - 既存[#3016](https://github.com/hat47x/tei-platform/pull/3016)を「同Key異Tenantの実PG read」局所回帰として使い、SCOPE-3のGrant撤回・SCOPE-4のDB+外部通知部分Effectや正式IdPまで成功したとは言わない。#2885の[D0/D1/D2](https://github.com/hat47x/tei-platform/pull/2885)は既存23 Vectorと独立実行証拠へ戻し、Scope横断負例を純粋D0の必須テストにしない。
 - **状態**：本文は既存Source/PR/Issueの照合に基づく**方式の停止条件・独立Expected案**。このSCOPE-1〜4を一連の実Host/IdP/実DBで実行していない。Static-vs-Dynamic-vs-Processの実コスト・権限強制・失敗時のProduct E2E、Owner意味受理・正式方式採用は**NOT RUN／未採用**。本節とそのDraftを本番保証としない。
+
+## 24. Scope相対のEvidence接合：完全被覆・現在Grant・実消費を横断する最小条件（2026-11-06、設計／Product実証はNOT RUN）
+
+**差分の位置**：§21のSource/Composition/Build/Runtime/Effect、§22の六Scope、§23のSCOPE-1〜4を再掲しない。必要なのは**独立に成立したEvidenceを、そのClaimへ接合できるかの条件**である。mainへ統合された[#2926](https://github.com/hat47x/tei-platform/pull/2926)のCompletion評価、[Draft #3026](https://github.com/hat47x/tei-platform/pull/3026) §9.5のM/G直交と結合対象不一致、[#3016](https://github.com/hat47x/tei-platform/pull/3016)の同Key二Tenant、[#2885](https://github.com/hat47x/tei-platform/pull/2885)のD0/D1/D2差を既存Ownerで使う。追加のCompletion Evaluator、Policy/Grant Engine、証拠台帳、Oracleを設けない。
+
+### 24.1 Claim別の証拠適用条件（新しい共通Schemaではない）
+
+| Claimの接合 | 必須の関係・対象・時点 | 禁止する推論 |
+| --- | --- | --- |
+| 選択Contractから実Provider | Contract/Provider Pin、Profile/Target、実Build member、Load/Invoke | Catalog/ResolvedSetやD0テストからD1実Link成功を認定 |
+| 意味受理からAction | Accepted Rule/Business Action/Subject/Source Revision・受理範囲 | 見積承認を同形の受注確定のOwner受理へ転用 |
+| Grantから今回Effect | 実issuer+subject、Tenant+Resource+Action、Grant epochとProvider強制点 | A本務/B兼務、別Tenant読取、Preview許可からBのCommit権限を生成 |
+| Provider Readから集合Coverage | 実Query/Reader、Row Scope/Policy、対象母集団と時点、complete/partial、否定依存 | Tenant A内complete zeroをTenant B/全Tenantの不存在にする |
+| Receiptから効果 | Operation/Attempt/Effect stage、Target/Expected Version、実Commit、独立ReaderのScopeと時点 | 別対象のCount>0/古いReceiptから今回の効果・全Step完了を推定 |
+| Readから開示 | Consumer/Destination、許可されたBody/診断/件数、Readの由来と時点 | 読取許可を別TenantへのWriteや外部Harness送出許可へ流用 |
+
+**重要な既存実装の上限**：mainの internal/semantic/completion.go は、呼出側が与えたTargetResult・CoverageComplete/Partial/Unestablished・EmptyJustifiedを判定する。実ProviderからOwner指定の正しい集合Lを漏れなく取得したこと、Tenant/時点/目的との一致まではEvaluatorが実証しない。したがって不適格なCoverageCompleteを注入して得たholdsをProduct資格としない。0件、hidden、denied、NULL、未取得、partialは別。開示先に秘密の母集団・件数・Grant情報を出さない。
+
+### 24.2 既存独立Expectedへの一因子対照（JOIN-01〜06、すべて新規実行NOT RUN）
+
+| Case | 差し替える一条件 | Expected / 非検出の上限 |
+| --- | --- | --- |
+| JOIN-01 | Meaning MはOrder O1確定、Grant GはO2閲覧、又は別Tenant O1 | MとGが各自有効でもO1のCommitは認可しない。拒否診断だけで実Provider Effect 0は証明しない。#3026の別試験を作らず参照 |
+| JOIN-02 | A Tenantのcomplete zero又はBのhidden/partialをBのTargetSet空へ転用 | Bの不存在・Completion holdsを不認定。#3016の実Read比較だけで全母集団の完全性は証明しない |
+| JOIN-03 | T1 M/G有効→T2 Grant revoke→T3 Provider Commit、T4旧Receipt参照 | 現Grantと実Fenceの資格を再判定。原子性不明ならunknown。旧Effectは歴史的に残るが現在の実行/開示資格ではない |
+| JOIN-04 | 実Readがpartial/unobservedなのに呼出側がCoverageCompleteを供給 | Evaluatorがholdsを返しても入力Coverageの真正性を実Reader/母集団の独立Witnessで再照合。判定器の誤りと不適格入力を分離 |
+| JOIN-05 | 実D0直接計算＋D2独立Processの限定CI合格をD1静的ProviderのEvidenceへ接続 | D0/D2限定PASSを残し、D1には実Resolved→Build/Link bytes→Consumer Invokeが必要。D1は未資格 |
+| JOIN-06 | 同OperationでDB A確定後、外部通知B ACK-loss。BのGrantを撤回 | A Confirmed／B Unknownを保持。blind retry、全体成功、旧Commit取消、Receipt現在開示許可を自動推論しない |
+
+各Caseは**同じAccepted Source/Independent Expected/対象Operation**から始め、違いを一因子だけに固定する。CoverageとGrantのClaimを結ぶ際は完全なフィールド一致ではなく、各証拠が対象Action/Scope/時点を**包含すること**を検査する。実ProviderやHostへの強制が未接続ならNOT RUN/unknownで停止。Mutant検出のみで「DB効果なし」「OS送出なし」を証明したとしない。
+
+### 24.3 現物証拠と次の実証・Owner
+
+- **コード統合済み**：[PR #2926](https://github.com/hat47x/tei-platform/pull/2926) Merged。semantic.EvaluateCompletionは与えられた被覆情報を評価する限定実装であり、実Reader Coverageの作成者ではない。
+- **限定CI成功**：[Draft #3021](https://github.com/hat47x/tei-platform/pull/3021)の修正HEAD dfc133e2ce1877e3593f1e507cbc3c2b7a82bfc5 で、[Isolated](https://github.com/hat47x/tei-platform/actions/runs/42203769225)・[Repository Health](https://github.com/hat47x/tei-platform/actions/runs/42203769269)・[Dependency](https://github.com/hat47x/tei-platform/actions/runs/42203769210)がSuccessと実PRに記録。D0直接関数／D2既存Processの限定CIであってD1・Host/Ownerの資格ではない。
+- **実PostgreSQLの未確認**：[Draft #3016](https://github.com/hat47x/tei-platform/pull/3016)はA/B同じOrderID=9、異なるCustomerIDの実PG opt-inテストコードを追加したが、新試験実PG/SKIPなしPASSはPR上未確認。正式IdP/Grant、Org Case、外部Disclosureは別。
+- **実証の最短順**：#3016の実PG Scope Readをexact-headで実行（SKIPなし）→#2586/#2622の正しいFunction/Provider ReadとOwner母集団のCoverageを#2926の入力へ接続→#1174の実Host Grant/Effect/Receipt/独立Readerを**同一Operation・Target・時点**で照合。D1は#2885/#1251で別に試験。SourceのUNBOUND_DATASOURCE等を0件や「プロバイダー選択済み」とみなさない。
+- **Owner**：Meaning #267/#1125、Composition #1016/#951、Scope/Data #2386/#2586/#2622、Effect #1174/#1129、Disclosure #2516、Scenario/Oracle #1180/#2514、方式 #2885/#1251。Product gate #1119を増設・変更しない。
+
+**結果と撤回条件**：本節は既存結果から導いたEvidence接合の受入候補であり、JOIN-01〜06、Product実Host/PG/Consumer/Owner受理はNOT RUN。既存のEvidence参照でScope相対の必要Witnessを説明できる限り、新しいRegistry/Proof Store/Status Enum/Hostや共通Completion Engineを導入しない。旧Receiptや一つのCI PASSを別Claimへ無断継承しない。
