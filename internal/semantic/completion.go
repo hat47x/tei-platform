@@ -112,6 +112,13 @@ func EvaluateCompletion(capability Capability, kind EmptyPolicyCondition, eviden
 	if len(evidence.Targets) == 0 {
 		switch policy {
 		case EmptyPolicyDeny:
+			// No observed target is not proof that the Owner-declared target set is empty.
+			// Deny applies only after a complete read establishes the empty set.
+			if evidence.Coverage != CoverageComplete {
+				decision.State = CompletionUnverified
+				decision.Reason = "the empty-set policy forbids completion, but target-set emptiness is not established"
+				return decision
+			}
 			decision.State = CompletionFails
 			decision.Reason = "the empty-set policy forbids completion without a target"
 		case EmptyPolicyAllow:
