@@ -59,10 +59,10 @@ func TestMG21OldAndNewApplicationReleasesDoNotSilentlyCrossMajor(t *testing.T) {
 	}
 
 	for _, tc := range []struct {
-		name      string
-		app       apprelease.Definition
-		state     dbrelease.StateSnapshot
-		expected  dbrelease.CompatibilityState
+		name     string
+		app      apprelease.Definition
+		state    dbrelease.StateSnapshot
+		expected dbrelease.CompatibilityState
 	}{
 		{"old-app-old-db", old, oldDB, dbrelease.Compatible},
 		{"new-app-old-db", newer, oldDB, dbrelease.Blocked},
