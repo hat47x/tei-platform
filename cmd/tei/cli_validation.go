@@ -33,6 +33,10 @@ type cliValidationReport struct {
 	// world fingerprint the diagnostic was read from and are never accepted
 	// automatically: acceptance is a separate decision (validation.Accept).
 	Proposals []validation.Proposal `json:"proposals,omitempty"`
+	// DeclarationCounts counts the declarations this Workspace authored,
+	// excluding the in-process standard prelude. It lets a caller tell an
+	// empty Workspace (total=0) from one that declared model elements (#2822).
+	DeclarationCounts *operations.DeclarationCounts `json:"declarationCounts,omitempty"`
 }
 
 // Source locations never synthesize an empty Semantic Subject for parse errors.
@@ -118,6 +122,7 @@ func validateWorkspaceJSON(out io.Writer, root string) (int, error) {
 	}
 	report.WorldFingerprint = result.WorldFingerprint
 	report.SourceIndexFingerprint = result.SourceIndexFingerprint
+	report.DeclarationCounts = &result.Declarations
 	if len(result.Diagnostics) > 0 && result.WorldFingerprint != "" {
 		diagnostics := make([]validation.Diagnostic, 0, len(result.Diagnostics))
 		for _, projected := range result.Diagnostics {

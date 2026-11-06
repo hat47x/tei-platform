@@ -26,12 +26,15 @@ type ModelCatalog struct {
 	// "namespace", "application", "query", or "unknown". An application or
 	// query ID is a real workspace subject, but it is not a semantic
 	// namespace and therefore selects no entries through -namespace.
-	NamespaceMatchKind     string              `json:"namespaceMatchKind,omitempty"`
-	WorldFingerprint       string              `json:"worldFingerprint"`
-	SourceIndexFingerprint string              `json:"sourceIndexFingerprint"`
-	ModelRevision          string              `json:"modelRevision"`
-	Entries                []ModelCatalogEntry `json:"entries"`
-	AuthorityLimits        []string            `json:"authorityLimits"`
+	NamespaceMatchKind     string `json:"namespaceMatchKind,omitempty"`
+	WorldFingerprint       string `json:"worldFingerprint"`
+	SourceIndexFingerprint string `json:"sourceIndexFingerprint"`
+	ModelRevision          string `json:"modelRevision"`
+	// DeclarationCounts separates Workspace-authored declarations from the
+	// standard semantic prelude, which is always present (#2822).
+	DeclarationCounts DeclarationCounts   `json:"declarationCounts"`
+	Entries           []ModelCatalogEntry `json:"entries"`
+	AuthorityLimits   []string            `json:"authorityLimits"`
 }
 
 type ModelCatalogEntry struct {
@@ -108,6 +111,7 @@ func CatalogWorld(world ir.World, idx sourceindex.Index, namespace, worldFP, sou
 		WorldFingerprint:       worldFP,
 		SourceIndexFingerprint: sourceFP,
 		ModelRevision:          sourceindex.ModelRevision(idx),
+		DeclarationCounts:      CountDeclarations(world),
 		Entries:                []ModelCatalogEntry{},
 		AuthorityLimits: []string{
 			"catalog-is-a-derived-read-only-projection",

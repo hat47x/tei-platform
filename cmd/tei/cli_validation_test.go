@@ -346,3 +346,40 @@ func TestValidateWorkspaceWarningOnlyContract(t *testing.T) {
 		t.Fatalf("warning-only text output changed: %q", text.String())
 	}
 }
+
+// TestValidateJSONReportsZeroDeclarationsForAnEmptyWorkspace checks that
+// ok=true is not mistaken for "model declarations were loaded" (#2822).
+func TestValidateJSONReportsZeroDeclarationsForAnEmptyWorkspace(t *testing.T) {
+	root := t.TempDir()
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: empty_counts\nformatVersion: 1\nsources:\n  - semantic\n")
+	var out bytes.Buffer
+	code, err := validateWorkspaceJSON(&out, root)
+	if err != nil || code != 0 {
+		t.Fatalf("code=%d err=%v", code, err)
+	}
+	var report cliValidationReport
+	if err := json.Unmarshal(out.Bytes(), &report); err != nil {
+		t.Fatal(err)
+	}
+	if !report.OK || report.DeclarationCounts == nil || report.DeclarationCounts.Total != 0 {
+		t.Fatalf("empty workspace report=%+v", report)
+	}
+}
+
+// TestValidateJSONReportsDeclarationsForAReferenceWorkspace checks that a
+// non-empty Workspace is distinguishable from the empty one.
+func TestValidateJSONReportsDeclarationsForAReferenceWorkspace(t *testing.T) {
+	var out bytes.Buffer
+	code, err := validateWorkspaceJSON(&out, filepath.Join("..", "..", "reference", "workspace"))
+	if err != nil || code != 0 {
+		t.Fatalf("code=%d err=%v", code, err)
+	}
+	var report cliValidationReport
+	if err := json.Unmarshal(out.Bytes(), &report); err != nil {
+		t.Fatal(err)
+	}
+	if report.DeclarationCounts == nil || report.DeclarationCounts.Total == 0 ||
+		report.DeclarationCounts.Data == 0 || report.DeclarationCounts.Applications == 0 {
+		t.Fatalf("reference workspace counts=%+v", report.DeclarationCounts)
+	}
+}
