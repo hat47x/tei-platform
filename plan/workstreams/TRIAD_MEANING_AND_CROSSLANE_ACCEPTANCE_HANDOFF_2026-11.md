@@ -146,3 +146,45 @@
 **受入順の既存Owner対応**：#2621=Authoringの意図・原文保持／#2823=Discoveryと実Loader消費／#988/#2620=Language Role・Parse境界／#1440=文章→意味候補／#1125=DFD・Procedure／#1126=Data Identity／#2506/#2622=実Read／#2500 RT=編集逆写像／#267=Owner受理／#2514=独立Oracle／#1174=Host効果。既存#2586のread-only一往復、#1119 Gateを増設しない。
 
 **証拠・決定範囲**：Ownerの`*.tei.md`方向性と、現main Loaderに残る`.tei`条件は別事実。本節は横断設計への取り込みのみ。既存Workspaceファイル一括改名、Parser移植、OKF規約のTEIへの全面強制、Go/DB/GUI実行、正式Owner意味受理は**NOT RUN**。過去の外部設計者の原著仕様と帰属させない。
+
+<!-- tei-triad-claim-relative-promotion-20261106 -->
+## 9. 11/6横断追補：混在するMarkdownの一部をBusiness Meaningへ昇格する際の「主張相対」の閉包（設計・NOT RUN）
+
+**追加の理由と非重複**：[#3030 Authoring移行計画](https://github.com/hat47x/tei-platform/pull/3030) はM0〜M6とTM-01〜14を既に所有し、[#3031 暫定ガード](https://github.com/hat47x/tei-platform/pull/3031) は未BindingのTEI Markdown Sourceを黙って無視しないことを限定実証した。形式の移行試験は両者へ譲る。[#1440 POC-4/5](https://github.com/hat47x/tei-platform/issues/1440) はAs-Is/To-Be/仮説と業務有効期間を区別済み、[#1125の受注・承認縦切り](https://github.com/hat47x/tei-platform/issues/1125#issuecomment-6681840353) はBusiness完了の個別対象・承認Revisionを区別済み。本節の固有差分は、**1つのTEI Markdown文書中に混在する複数の主張に、同一の「文書が読めた／文書が承認された」資格を一括付与しない**こと。
+
+### 9.1 一つの原文にある四種類の主張を別々に扱う
+
+例として `sales/order_policy.tei.md` に次の断片が並ぶケースを想定する（**自作の検証入力候補であり、受理済み業務規則ではない**）。
+
+1. 「現状は担当者が電話で確認している」：As-Isの業務説明。手作業Procedureの候補であり、自動Workflow Actionではない。
+2. 「今後は50万円以上の注文を部門長が承認する」：To-Beの規範的候補。対象金額の税・通貨・改訂時点、承認する組織Role、適用開始時点、差戻し条件が未決なら、依存する業務Actionだけを保留する。
+3. 「数量2×単価300なら600」：単位・数値型・丸めRule・入力が確定した範囲で純粋PreviewのExpectedになり得る。ただし見積発行、特定受注の承認、Provider実Write、Business完了のExpectedにはならない。
+4. 「承認済み受注O1を確定する」：Workflowとみなす前に、DefinitionでなくInstance O1、承認対象Revision、有効な業務Meaning、Function Contextの全必要対象、実Target/Grant/Effectを別に要する。
+
+同じファイル内で(1)の説明を保持でき、(3)の純粋計算が局所的に検証できても、(2)の未決条件や(4)の実行不可が解消されたことにはならない。逆に未解決の(2)のためにすべてのRaw Draftの編集・保存を禁止しない。
+
+### 9.2 処理入口と主張の資格を二軸で評価する
+
+| 利用目的 | Source側で必要な根拠 | 成立しない推論 |
+| --- | --- | --- |
+| Raw Draft Save / Restart | 原byte・版・保存先・Write競合／権限 | Lexer不成立なので原稿を破棄する、保存できたから意味受理 |
+| 選択範囲のRead/Preview | 実選択Frontend/Parserと対象Role/span、部分構造の妥当性、必要なInput/Expected | 同一ファイルの全段落が解析・意味採用された |
+| Meaning Promote / Procedure Decision | 候補が依拠するSource部分集合、外部参照・Role/Operator版、As-Is/To-Be・適用時間/Subject、独立Expected、Ownerの明示受理 | タグ/ファイル名/構文PASS、旧回答、表示金額から自動採用 |
+| Build / 実Action / Consumer | 対象Claimに必要な実消費Source閉包、最新Meaning/Rule、実Context・Host Grant/Provider・Receipt・独立Read/開示資格 | ManagedFiles列挙、validate ok、局所Frontend成功、旧Artifactから全資格成立 |
+
+`*.tei.md` を実Workspaceに置いた際、現mainではNative Loaderが未読込となる。#3031 Draftは `TEI_MD_PARSER_UNBOUND` で**黙った成功を止める**が、これはMarkdown本文のParser/Partial Acceptanceではない。現形式未対応のProduct Validationと、Raw Draftを保存・再開できるべきAuthoring要件は**別入口・別結果**として検証する。新Reader完成までガードを無効化して無音スキップへ戻さない。
+
+### 9.3 最小の独立反証（各Ownerの既存Scenarioに付け足す比較列、Fixture正本は増やさない）
+
+| 比較条件 | 独立Expectedと停止条件 |
+| --- | --- |
+| X1: 文書にAs-IsとTo-Beが併記 | 現行運用の記述は現行Runtime Ruleではない。To-Be候補は採否とbusiness effective intervalを別に持ち、曖昧な範囲だけ保留 |
+| X2: 50万円閾値の質問に回答があるが、税込/税抜と適用開始日が未決 | 他の独立Stepを記述/審査できても、当該承認Branchの正式Meaningと実行可否は未確立。動的な注文金額を意味質問で埋めない |
+| X3: Preview=600と、価格改版後700、承認した過去のr1 | 数値の再計算・承認したRevision・実受注の現在値を別列とし、旧Business Approvalの自動再有効化／取消をしない（§7再利用） |
+| X4: 最初のSnippetだけTEIとして構文解析でき、別段落は未完 | Raw Draftは保持。明示された対象spanと依存閉包が実際に確定しない限り、文書全体のMeaning Promoteを主張しない。構文境界が曖昧なら局所解析も保留 |
+| X5: .tei.md存在・ManagedFiles列挙・Loader未消費 | 本番相当validateは合格扱いしない。#3031の一時的拒否（Draft）と#2935のreadByLoader（Draft）を実資格と別記 |
+| X6: 旧.teiの受注定義と新.tei.mdのProcedure候補が同じ意味IDを引用 | Source Location・Authoritative use-site・受理Rev・Semantic SubjectとInstanceを別に再照合。重複正本・旧Receipt/旧Reviewの無条件継承を拒否 |
+
+**次の最小実証順**：#3031で「未接続の失敗を隠さない」を維持→#3030/#988/#2621が明示Parserとbyte spanの閉包を限定PoC→#1440が一段落の現状/将来/仮説と回答履歴を候補化→#1125/#267が影響するBusiness Claimだけを受理→#2586/#2514が実Readerと独立Expectedを照合→#2598/#1174が実書込Target/Grant/Receiptを別検収。#1119の既存Gateと、#2620 Role・#2600 Build再資格化のOwnerを置換しない。
+
+**状態と限界**：#3031の固定HEAD Go/CI成功は暫定ガードのみの局所証拠で、Markdown Parse/Role Lowering/Business Accepted Meaningの成功ではない。上記X1〜X6の接続Go/CLI/DB/GUI/SHO/実業務試験、Owner正式Meaning Acceptanceは**NOT RUN／NOT ACCEPTED**。本節はdocs-only、既存規約の新enum・第二Registry/Parser/Acceptance/Host/Workflow Engine追加は求めない。
