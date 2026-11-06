@@ -3251,3 +3251,46 @@ Org D1→D2の責任継承、Tenant A→Bの切替、Provider DB/Region移設は
 5. **P2 外部Source**：SAP Manager同期、Oracle Date Effective履歴、Dataverse BU変更の連動などを実Data・実Targetで確認するのは、当該商用環境/利用条件/権限が利用可能になってから。No exact Source History→unresolved、Non-atomic Remote Effect→unknownを維持。
 
 **撤回線**：Role/Position/Temporalの新Core機構を提案しても既存Data/Relation/Ruleで独立Expectedを区別できるなら、機構は採用しない。商用仕様が設定/SKUに依存して固有な場合、Core契約へ強制するのではなくProfile/Plugin・外部Adapterの要件へ縮退する。#1119 Critical Path/ADR-0036/0043/0044は変更なし。正式業務受理はOwner、実Product適合は実Code/DB/Provider/Consumer/Receiptの現物で判断する。
+
+## 76. 商用階層権限の適合差：組織到達・Record所有・Plugin選択・実行権限の非同一性（2026-11-06、採用前）
+
+### 76.1 第58・70・75節の具体化：階層Pathは権限そのものではない
+
+追加一次資料：[Dataverse Record Access](https://learn.microsoft.com/en-us/power-platform/admin/how-record-access-determined)、[Hierarchy Security](https://learn.microsoft.com/en-us/power-platform/admin/hierarchy-security)、[Teams](https://learn.microsoft.com/en-us/power-platform/admin/manage-teams)。詳細は[商用要求監査§6](../research/COMMERCIAL_ORGANIZATION_PLATFORM_REQUIREMENTS_2026-11.md)。これはVendorの選択設定を示す比較材料であり、TEI標準がこの動作を必須採用したという意味ではない。
+
+Dataverseは**Table/ActionのPrivilege Check**と**Recordに対するOwnership／Role／Share／Hierarchy Access Check**を分ける。Hierarchy Securityは選択して有効化する仕組み。Manager階層はBusiness Unitの範囲制約を持ち、Position階層は条件付きで別BUへ到達できる。Position階層の**直接上位者**にはRead/Write等、**間接上位者**にはRead-onlyの階層由来の候補があり得る。ただし、Table側PrivilegeがなければHierarchy由来のRecord到達だけではその操作はできない。またOwner TeamはRecordを所有できるが、Access Teamは所有しないまま明示Shareを受ける。
+
+この違いから、(a)組織Relationshipの到達、(b)選択された業務Policy/Pluginでの操作候補、(c)現在のTable/Record/Host権限、(d)Providerの実施行とConsumer開示を別証拠にする。**上位の位置にいる、所有Teamに所属する、共有に参加する、Policyを除外したという事実だけで現在の実行許可を生成しない。** 他の正当なAccess経路がある可能性もあるため、一つの経路の不適格を、対象Recordへの全権限の否定へも勝手に変換しない。
+
+### 76.2 広域適用・Record例外を保ちながら第二Policy Engineは作らない
+
+| 境界 | 対象と固定する証拠 | 誤って導かないこと |
+| --- | --- | --- |
+| **Domain Meaning** | Org Axis/Role、Manager/Position、Root、Path/Depth、valid/known、Relation occurrenceと完全性 | 組織上の親→Tenant Grant、唯一のOwner、全Actionを実行可 |
+| **Optional Business Policy** | 指定Data/Function/Operationへの広域適用、Read-only／Deny／Record単位の除外、Policy版とOwner受理、複数Rule優先 | 一つの除外→Public Allow、Read-only→外部出力やWriteの許可 |
+| **Plugin / Composition** | どのApplication/Process/Tenant/Providerで選択・Build/Load/公開されたか（[#2903 §22](https://github.com/hat47x/tei-platform/pull/2903)） | 同Pluginを選んだ他Tenant/別Processにも同じ機能・資格・Grantが自動伝播 |
+| **Runtime / Enforcement** | 現Principal、Table/Record/Actionの現在Grant、Target Tenant、実Provider Route/Row/SQL Scope | Business Policy candidateと実Host認可を同一視 |
+| **Disclosure / Effect** | Consumer/Destination/出力Field・Count・Cache、Read/Writeの実結果、Receipt、独立Observation | Read成功→External AIへ出してよい、Commit Response→Effect確定 |
+
+Ownerが求める「選択した業務Data群への広域適用＋Record/用途別例外・参照専用」を§58のまま保持する。通常組織Data全体に特別ACLを標準義務化しない。適用除外は当該Policyから外れるという意味に限り、他Policy/Provider/Host/Tenant境界の許可を上書きしない。Vendor特有の階層Depth→Read-only対応は、そのProfileの採用Ruleとして扱う。
+
+### 76.3 現行合成試験への追加：CM-13/14の3つの判別
+
+既存[Draft #3019](https://github.com/hat47x/tei-platform/pull/3019)にread-onlyの独立合成Fixtureを追加し、[§58のVP-01〜33](https://github.com/hat47x/tei-platform/pull/2781)で扱うHierarchy閉包・除外／認可Scopeと**異なる**次の商用仕様差分を検査する。
+
+| ケース | 固定Expected（合成Profile） | Productで別に必要な証拠 |
+| --- | --- | --- |
+| **CM-13a Position Depth** | 直接上位+Table Writeありは階層Write候補、二階層上は階層Read候補のみ、Depth超過は不適格 | 有効化したHierarchy/Role、実Table権限、他のRecord Access方式、実Provider |
+| **CM-13b Hierarchy Model** | 同じGraph PathでもManager BU境界により候補不可、PositionならCross-BU Read候補。ただしTable Readなしならどちらも不可 | 実Business Unit/Role/SourceとCurrent Grant、Providerの判定 |
+| **CM-14 Team Ownership** | Owner Teamは所有者、Access Teamは所有せず明示ShareでRead候補。Table Read欠如ならこの経路は不適格 | 実Record Owner/Share/Role/Team、再評価版、Consumer |
+
+ここでの候補は**合成モデルの値のみ**であり、DataverseやTEI Hostが実際に許可したことを示さない。1経路の「不適格」は他の明示Grantを否定しない。実Source/ProviderでのRead・Effect・外部開示は独立Gate。
+
+### 76.4 Ownerと実証順序
+
+1. **#2510/#2386**：#3019新CM-13/14を固定HEAD CIで検査し、Synthetic E0と正式意味受理を分離。既存VP-01〜33を再実装しない。
+2. **#2681→#2586/#2506**：現在Native CaseRecordはOrgUnitへのRelationのみで、Case Persistence、Function Context、実Provider Row/Field/Scope/Consumerが未接続。CM-13/14のPASSをProduct E2aへ加算しない。先に一件の実Readを通す。
+3. **#1016/#951/#1656/#1174/#1178**：同じPluginを採用した二法人/二Tenantで、別Principal・別Host Grant・別Resource/Action・Disclosureが保たれることを当該Providerで確認。配布・選択と実権限を分ける。
+4. **#2514/#1180/#1163**：Source/Meaning・適用Policy・Provider・Current Authorization・Consumer・Effectを同じ試行に束縛した独立Expectedと実観測を保持。Not-run/SkipはPASSにしない。
+
+**撤回線**：標準Data/Relation/Rule＋選択されたProfile/Plugin＋Host Authorityで差を保てるなら、新しいCore Permission型/専用ACL/Policy Engineを追加しない。ADR-0036/0043/0044と#1119の優先を変えない。**状態**：一次資料と実Sourceの静的照合、および新合成試験の追加。実Microsoft/TEI Host・Provider/Case E2/Effect/Owner正式受理はNOT RUN。新CM試験のexact-head CIは確認するまで未合格。
