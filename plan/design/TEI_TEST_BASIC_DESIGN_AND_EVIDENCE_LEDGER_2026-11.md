@@ -315,7 +315,7 @@ main統合の[`tei dbcheck`](https://github.com/hat47x/tei-platform/pull/2894)�
 | --- | --- | --- |
 | **CEC-01｜禁止・未取得**：`Targets=[]`, `CoverageUnestablished`, EmptyPolicy=`deny` | **`fails`**。`deny`分岐は空かどうかを実Readで確証する前に返る | 「全件読んだ結果0件なので空は禁止」と「必要対象は未取得だが配列が0件」を同一視しない。独立Expectedとして**`unverified`要求を提案**するが、業務Ownerの空集合契約確定前に既存実装のバグとは断定しない |
 | **CEC-02｜独立空証明の自己申告**：`Targets=[]`, `CoverageUnestablished`, EmptyPolicy=`requires-evidence`, `EmptyJustified=true` | **`holds`**。`EmptyJustified`値を条件として使用し、Coverageには別の確認をしない | EmptyJustifiedの独立したProvider Read Scope/時点/完全性が正しいなら成立し得るが、同じboolだけでは根拠を検証できない。出典なし・別Tenant/Snapshot・権限変更時には完了適格にしない |
-| **CEC-03｜許可・未取得**：`Targets=[]`, `CoverageUnestablished`, EmptyPolicy=`allow` | **`unverified`**。同様の空候補でもCoveragedで分岐が変わる | `[]`が観測済み空集合なのか未取得かを独立に確認。Policy名だけで真の空を主張しない |
+| **CEC-03｜許可・未取得**：`Targets=[]`, `CoverageUnestablished`, EmptyPolicy=`allow` | **`unverified`**。同様の空候補でもCoverageの状態によって分岐が変わる | `[]`が観測済み空集合なのか未取得かを独立に確認。Policy名だけで真の空を主張しない |
 | **CEC-04｜局所反例・partial**：`Targets=[{L1,false}]`, `CoveragePartial`, 非衝突 | **`fails`**。確実な反例があればCoverage不足より先に評価 | 同Scope/版のL1が本来のOwner集合に属することを独立照合。未知のL2全件についての不成立・存在・権限は主張しない |
 | **CEC-05｜Source新形式未対応**：旧`*.tei`と新`*.tei.md`が混在し、新形式定義が未読込 | mainの旧Loaderの挙動と、[#3031](https://github.com/hat47x/tei-platform/pull/3031)の暫定`TEI_MD_PARSER_UNBOUND`拒否は**別HEAD・別実装** | #3031 HEAD `63953ccb5c12ead26ec1268e7c0afdba4eff66ae` の[専用CI #42217379093](https://github.com/hat47x/tei-platform/actions/runs/42217379093)・[Health #42217378867](https://github.com/hat47x/tei-platform/actions/runs/42217378867)は成功。証明したのは**黙った未読込の拒否**でありMarkdown実Parser・意味受理・既存Scenario同等性ではない |
 
