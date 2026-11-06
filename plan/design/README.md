@@ -113,6 +113,7 @@
 | [`PERIOD_STATE_SEMANTICS_DESIGN_2026-11.md`](PERIOD_STATE_SEMANTICS_DESIGN_2026-11.md) | 業務日付・会計期間の状態・締めの一貫点・確定した行の不変性・赤黒の訂正・遅延到着の方針（[#2144](https://github.com/hat47x/tei-platform/issues/2144)、提案中・中核変更のためA4判断） |
 | [`DERIVED_DESIGN_ARTIFACTS_DESIGN_2026-11.md`](DERIVED_DESIGN_ARTIFACTS_DESIGN_2026-11.md) | 受理済みの意味から表定義書・機能定義書・対応一覧・DDLを決定的に導出し、差分と未解決を読む契約（[#1803](https://github.com/hat47x/tei-platform/issues/1803)、提案中） |
 | [`XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md`](XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md) | X-TEAから回収したローコードの知見を、Core・Pattern・生成器・Plugin・Studio・要件のどこで受け止めるかの設計案（未採用）。パッケージ・対話フック・項目の役割・結果型・標準業務意味の判断候補を含む |
+| [`DATA_OPERATIONS_KEY_SPACE_AND_MULTIPLICITY_LOSS_2026-11.md`](DATA_OPERATIONS_KEY_SPACE_AND_MULTIPLICITY_LOSS_2026-11.md) | MS-09：多様なData Structure間のKey空間・多重度・逆更新の喪失を明示する |
 
 ## 関連する参照事例と評価
 
@@ -267,3 +268,8 @@ S1 realistic intent / candidate frontier
 
 - [TEI構成議論の整理と次の設計判断（2026-10-24）](TEI_CONFIGURATION_DISCUSSION_SYNTHESIS_2026-10-24.md)：独自Host非必須、TEI内での業務シミュレーション、DSL・プラグインの交差的利用、同じ版からのコード・設計書出力を既存Issueへ対応付ける検討メモ。採用・実装完了の宣言ではありません。
 - [定義形式の版と変換の境界（2026-11）](FORMAT_VERSION_CONVERSION_2026-11.md)：`.tei`と作業領域manifestの形式版、中心表現経由の変換、プラグインが実行する変換境界、三状態属性の文法提案と残作業（#1920）。
+- [実行先の現状調査](HOST_TARGET_SURVEY_2026-11.md)（Web・デスクトップ・サービス・Wasmの現在地。モバイル・組み込みは未着手）
+- [権限の現状調査](PERMISSION_ENFORCEMENT_SURVEY_2026-11.md)（宣言の検証はあるが、実行時の強制は無い）
+- [アクセス経路の棚卸し](ACCESS_PATH_INVENTORY_2026-11.md)（実行の中核が直接触るファイル操作は1件。実際のアクセスはアダプタ側）
+- [権限の強制の適用計画](PERMISSION_ADOPTION_PLAN_2026-11.md)（要求＝能力、付与＝環境。実行時に再確認して記録する）
+- [動的な出力パスと宣言スコープ](DYNAMIC_PATH_GRANT_DESIGN_2026-11.md)（環境の付与は静的、実行時のパスは動的。両者の不一致と選択肢）

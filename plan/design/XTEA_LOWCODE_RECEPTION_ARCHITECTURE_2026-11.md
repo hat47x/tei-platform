@@ -946,7 +946,12 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | 参照削除の振る舞い（`on-delete`） | 実装済み（`restrict`・`cascade`・`preserve`の宣言、実行は未実装） |
 | 削除効果の参照ポリシー検査 | 実装済み（内向きRelationに`on-delete`がない場合の警告） |
 | Commandの参照実装（契約確認用） | 実装済み（業務副作用なし、Commit/Rollbackの記録のみ） |
-| Commandからeffectcommitへのアダプタ | 実装済み（`effectcommit.Runner.Execute`へ委譲、認可・receiptを省略しない） |
+| Commandからeffectcommitへのアダプタ | 実装済み（`effectcommit.Runner.Execute`へ委譲、認可・receiptを省略しない。実PostgreSQLは`TEI_EFFECT_POSTGRES_DSN`がある場合のみ試験） |
+| Command実行前の認可契約 | 実装済み（`Invoker.Authorizer`、`AllowListAuthorizer`。権限の正本・付与は未実装） |
+| CLI参照実行の認可AllowList | 実装済み（`view -execute -allow-capability`、参照用） |
+| Command効果の宣言照合 | 実装済み（Executorが返すEffectが宣言と一致しない場合は拒否） |
+| Command実行の記録契約 | 実装済み（`Invoker.Recorder`が宣言効果・報告効果・結末を記録。実装は`MemoryRecorder`） |
+| CLI実行記録 | 実装済み（`view -execute -operation-log`、JSON） |
 | 参照データ記憶域（MemoryStore） | 実装済み（create/update/delete、スナップショットによるRollback） |
 | 参照Storeの削除ポリシー実行 | 実装済み（restrict・cascade・preserve。`Relation.Keys`がある場合は行単位、ない場合はData単位） |
 | 参照Storeの複数段カスケード | 実装済み（キー対応の再帰削除、循環防止） |
@@ -973,6 +978,8 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | Studio rendererのビュー表示 | 実装済み（Application・PatternのJSON表示、読取専用） |
 | StudioからのCommand計画・参照実行 | 実装済み（`PlanCommand`・`ExecuteCommand`、業務副作用なし） |
 | Studioからの期間状態付き参照実行 | 実装済み（`ExecuteCommandWithPeriods`、閉期間の拒否） |
+| Studioの認可AllowList | 実装済み（`ExecuteCommandWithPolicy`、能力単位の参照用） |
+| Studio実行記録 | 実装済み（`CommandRunValue.records`、画面に件数表示） |
 | Studioのビュー要約表示 | 実装済み（項目・コマンド・フック・未使用を表形式で表示） |
 | StudioのPackageビュー | 実装済み（メンバー・前提・版束縛） |
 | Applicationビューの期間（D6.1） | 実装済み（ID・Data・業務日付・状態） |
@@ -980,6 +987,15 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
+
+
+
+
+
+
+
+
 
 
 

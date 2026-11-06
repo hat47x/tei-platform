@@ -17,5 +17,13 @@
 - [E2a-1実PostgreSQL先行証拠の受領記録（JSON）](TEI_E2A1_REAL_POSTGRES_RECEIPT_38311557882.json)（上の保全文書が参照する原本。製品G2は未資格）
 - [#1803 新規作成DDLの実PostgreSQL実行の記録（JSON）](POSTGRES_DDL_ENTRY_REAL_DB_20261020.json)（上の説明文書が参照する、生の結果）
 - [操作面・成果物・束縛実行の検証記録](SURFACE_AND_ARTIFACT_VERIFICATION_2026-11.md)
+- [候補ビューの実変更履歴での負担測定](CANDIDATE_VIEW_REAL_HISTORY_MEASUREMENT_2026-11.md)（`reference/workspace` の4変更。合成ではない変更で候補件数とSource修正量を測定。major変更の実履歴はなし）
+- [実データベースでの確認手順](REAL_DATABASE_VERIFICATION_PROCEDURE_2026-11.md)（PostgreSQL 16.14で実行。CAS試験の同期不足を修正し、DDL・NULL・Web E2Eまで確認。健康診断receiptで `TRUSTED_FULL_HEALTH_NOT_RECORDED` を解消し、残る2診断は暫定オーナー判断。実Provider・本番Authorityは未実行）
+- [健康診断receipt（`005bbee7` / Actions 42152908986）](QUALIFICATION_FULL_HEALTH_005BBEE7_42152908986.json)と[暫定audit結果](REAL_PROVIDER_PROVISIONAL_AUDIT_005BBEE7.json)（`UNQUALIFIED`、残る診断は `E2_PROVIDER_GUARANTEE_NOT_ATOMIC` と `PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE`）
+- [D8〜D11暫定経路のaudit](PROVISIONAL_CHAIN_AUDIT_005BBEE7.json)と[Runner Evidence](PROVISIONAL_CHAIN_RUNNER_EVIDENCE_005BBEE7.json)（`atomic-with-commit` の暫定宣言。`PROVISIONAL_GRANT_NOT_G2_EVIDENCE` 等は暫定オーナー判断。chain testは単一経路と同じ健康診断receipt入力に対応）
+- [chain経路の健康診断receipt（`f887ab97` / Actions 42195019838）](QUALIFICATION_FULL_HEALTH_F887AB97_42195019838.json)と[receipt適用後のaudit](PROVISIONAL_CHAIN_AUDIT_F887AB97.json)（`TRUSTED_FULL_HEALTH_NOT_RECORDED` が解消し、残る診断は暫定3件）
 - [Workspace Source Readerの環境別Evidence](WORKSPACE_SOURCE_READER_ENV_EVIDENCE_2026-11.md)（Windows 11・WSL2 Ubuntuでの許容／拒否／NOT RUNとLoadコスト。#2571）
 - [暫定チェーンの実行記録](TEI_PROVISIONAL_CHAIN_E2E_20261103.md)（D8〜D11を通した一改訂E2Eの実PostgreSQL実行と監査結果。G1・G2は未合格）
+- [X-TEA例のStudioサーバー起動確認](XTEA_LOWCODE_EXAMPLE_STUDIO_SMOKE_2026-11.md)（`examples/xtea-lowcode`のserver buildと`/health`。画面・Wails RPC・Desktop WebViewは未確認）
+- [X-TEA受容要件の実装対応](XTEA_LOWCODE_ACCEPTANCE_TRACE_2026-11.md)（`AC-1`〜`AC-11`・`RQ-C1`〜`RQ-C3`の参照実装と未確認事項。受容判断は仮承認）
+- [実DBで実行時の判断を確かめる計画](REAL_DATABASE_RUNTIME_DECISION_PLAN_2026-11.md)（期間・権限・効果の判断を実DBで見る案。**NOT RUN**）

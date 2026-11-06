@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
+	"tei/internal/access"
 	"tei/internal/resource"
 )
 
@@ -148,6 +150,9 @@ func (c *hostRefreshingLeaseController) Refresh(ctx context.Context) (resource.L
 // the adapters required to enforce deny-by-default network/filesystem policy and
 // any requested secret injection.
 type HostSandboxLauncher struct {
+	// Access records the decision about the declared permissions. A nil journal
+	// keeps the decision but drops the record.
+	Access         access.Journal
 	Network        NetworkEnforcer
 	Filesystem     FilesystemEnforcer
 	Secrets        SecretInjector
@@ -179,6 +184,26 @@ func (h HostSandboxLauncher) Invoke(ctx context.Context, spec SandboxSpec, req R
 	}
 	if len(spec.Profile.SecretInjections) > 0 && h.Secrets == nil {
 		return Response{}, fmt.Errorf("host sandbox has secret injection requirements but no secret injector")
+	}
+	// The profile must stay within the declared permissions. A profile that
+	// allows more than the declaration names would enforce a policy nobody
+	// accepted, so the run is refused before any process starts. When nothing is
+	// declared there is no baseline to compare against; the deny-by-default
+	// policies are still required.
+	var violations []string
+	if len(spec.Permissions) > 0 {
+		violations = ProfileExceedsDeclarations(spec.Profile, spec.Permissions)
+	} else {
+		violations = ProfilePolicyViolations(spec.Profile)
+	}
+	if h.Access != nil {
+		record := access.Record{Capability: string(spec.Plugin.ID), Allowed: len(violations) == 0, Missing: append([]string(nil), violations...)}
+		if err := h.Access.Append(record); err != nil {
+			return Response{}, fmt.Errorf("record the access decision: %w", err)
+		}
+	}
+	if len(violations) > 0 {
+		return Response{}, fmt.Errorf("the sandbox profile is wider than what was accepted: %s", strings.Join(violations, "; "))
 	}
 
 	var cleanups []Cleanup

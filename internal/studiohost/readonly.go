@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"tei/internal/command"
 	"tei/internal/operations"
 	"tei/internal/sourceindex"
 )
@@ -70,6 +71,12 @@ type ReadOnly struct {
 	refs         []WorkspaceRef
 	services     ServiceFactory
 	xeadObserver XeadObservationObserver
+
+	// CommandLifecycle is composed by the host. When set, the
+	// ExecuteCommandWithLifecycle path records dispatch/observe/unknown stages
+	// in this store; the other ExecuteCommand methods keep their in-memory
+	// behaviour.
+	CommandLifecycle command.StageLifecycle
 }
 
 func NewReadOnly(paths []string) (*ReadOnly, error) {

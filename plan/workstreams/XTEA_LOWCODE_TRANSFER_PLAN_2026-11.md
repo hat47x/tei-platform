@@ -343,11 +343,17 @@ WP10 統合と引継ぎ
 | 削除効果の参照ポリシー検査 | 実装 | 付録C.5 |
 | Commandの参照実装 | 実装 | 付録C.5 |
 | Commandからeffectcommitへのアダプタ | 実装 | 付録C.5 |
+| Command実行前の認可契約 | 実装 | 付録C.5 |
+| CLI参照実行の認可AllowList | 実装 | 付録C.5 |
+| Command効果の宣言照合 | 実装 | 付録C.5 |
+| Command実行の記録契約 | 実装 | 付録C.5 |
+| CLI実行記録 | 実装 | 付録C.5 |
 | 参照データ記憶域（MemoryStore） | 実装 | 付録C.5 |
 | 参照Storeの削除ポリシー実行 | 実装 | 付録C.5 |
 | 参照Storeのキー対応削除 | 実装 | 付録C.5 |
 | 参照Storeの複数段カスケード | 実装 | 付録C.5 |
 | 参照Storeの削除ロールバック | 実装 | 付録C.5 |
+| interactionなしPatternのビュー | 実装 | 付録C.5 |
 | 参照Storeの必須属性検査 | 実装 | 付録C.5 |
 | 参照Storeの値域検査 | 実装 | 付録C.5 |
 | 参照Storeの重複create拒否 | 実装 | 付録C.5 |
@@ -372,6 +378,8 @@ WP10 統合と引継ぎ
 | Studio rendererのビュー表示 | 実装 | 付録C.5 |
 | StudioからのCommand計画・参照実行 | 実装 | 付録C.5 |
 | Studioからの期間状態付き参照実行 | 実装 | 付録C.5 |
+| Studioの認可AllowList | 実装 | 付録C.5 |
+| Studio実行記録 | 実装 | 付録C.5 |
 | Studioのビュー要約表示 | 実装 | 付録C.5 |
 | StudioのPackageビュー | 実装 | 付録C.5 |
 | Applicationビューの期間 | 実装 | 付録C.5 |
@@ -414,6 +422,14 @@ WP10 統合と引継ぎ
 **PRの関係.** 文書は[#2519](https://github.com/hat47x/tei-platform/pull/2519)、対話契約のPoCは[#2521](https://github.com/hat47x/tei-platform/pull/2521)です。PoCは文書のD1・D3.1の最小部分を実装し、`main`には未統合です。
 
 **統合の条件.** 要求・設計の採否が決まり、PRがDraftでなくなり、CIとレビューが通ることです。Draftのままでは統合しません。
+
+
+
+
+
+
+
+
 
 
 

@@ -1,0 +1,75 @@
+namespace sales
+
+data Order {
+    candidate-key OrderIdentity {
+        field sales.order.order_id
+    }
+    attribute orderId type std.identifier display "受注番号"
+    attribute customerId type std.identifier display "顧客"
+    attribute status type std.code display "状態"
+    attribute orderDate type std.date display "受注日"
+    relation customer to customer.customer one
+    relation lines to sales.order_line many on-delete preserve
+}
+
+data OrderLine {
+    relation order to sales.order one on-delete cascade
+        key sales.order_line.order_id -> sales.order.order_id
+    attribute orderLineId type std.identifier display "行"
+    attribute orderId type std.identifier display "受注"
+    attribute quantity type std.decimal display "数量" required
+    attribute amount type std.money display "金額"
+}
+
+capability submit_order {
+    input order sales.order
+    outcome submitted sales.order
+    effect update sales.order
+}
+period sales.month {
+    data sales.order
+    business-date sales.order.order_date
+    states open closing closed
+    closed-rejects update
+}
+capability create_order {
+    input order_id std.identifier
+    input status std.code
+    input order_date std.date
+    outcome created sales.order
+    effect create sales.order
+}
+
+capability delete_order {
+    input order_id std.identifier
+    outcome deleted sales.order
+    effect delete sales.order
+}
+
+capability create_line {
+    input order_line_id std.identifier
+    input order_id std.identifier
+    input quantity std.decimal
+    outcome created sales.order_line
+    effect create sales.order_line
+}
+data Payment {
+    attribute paymentId type std.identifier display "支払"
+    attribute orderId type std.identifier display "受注"
+    relation order to sales.order one on-delete restrict
+        key sales.payment.order_id -> sales.order.order_id
+}
+
+capability create_payment {
+    input payment_id std.identifier
+    input order_id std.identifier
+    outcome created sales.payment
+    effect create sales.payment
+}
+
+capability delete_payment {
+    input payment_id std.identifier
+    input order_id std.identifier
+    outcome deleted sales.payment
+    effect delete sales.payment
+}

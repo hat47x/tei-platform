@@ -3,14 +3,17 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"tei/internal/application"
 	"tei/internal/applicationview"
 	"tei/internal/command"
+	"tei/internal/command/lifecyclesqlite"
 	"tei/internal/core"
 	"tei/internal/periodstate"
 	"tei/internal/semantic"
@@ -51,6 +54,13 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	commandID := fs.String("command", "", "command capability to plan")
 	execute := fs.Bool("execute", false, "reference execution of the planned command")
 	periodStateFile := fs.String("period-state", "", "period state JSON for -execute")
+	operationLogFile := fs.String("operation-log", "", "write reference operation records as JSON")
+	lifecycleState := fs.String("lifecycle-state", "", "SQLite state file for restart-safe command lifecycle")
+	lifecycleCommand := fs.String("lifecycle-command", "", "stable command id recorded in the lifecycle state")
+	lifecycleOwner := fs.String("lifecycle-owner", "cli", "owner recorded in the lifecycle state")
+	lifecycleGeneration := fs.Int("lifecycle-generation", 1, "generation recorded in the lifecycle state")
+	var allowedCapabilities inputFlag
+	fs.Var(&allowedCapabilities, "allow-capability", "capability allowed by the reference authorizer; repeatable")
 	var inputPairs inputFlag
 	fs.Var(&inputPairs, "input", "command input as name=value; repeatable")
 	format := fs.String("format", "text", "text or json")
@@ -62,6 +72,11 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		(*commandID != "" && *patternID == "") ||
 		(*execute && *commandID == "") ||
 		(*periodStateFile != "" && !*execute) ||
+		(*lifecycleState != "" && (!*execute || *lifecycleCommand == "")) ||
+		(*lifecycleState == "" && *lifecycleCommand != "") ||
+		(*lifecycleGeneration < 1) ||
+		(len(allowedCapabilities) > 0 && !*execute) ||
+		(*operationLogFile != "" && !*execute) ||
 		*root != strings.TrimSpace(*root) || *applicationID != strings.TrimSpace(*applicationID) ||
 		*patternID != strings.TrimSpace(*patternID) || *packageID != strings.TrimSpace(*packageID) ||
 		*commandID != strings.TrimSpace(*commandID) {
@@ -129,6 +144,13 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 				Executor:   command.ReferenceExecutor{World: loaded.World},
 				UnitOfWork: &command.MemoryUnitOfWork{},
 			}
+			if len(allowedCapabilities) > 0 {
+				authorizer := make(command.AllowListAuthorizer, 0, len(allowedCapabilities))
+				for _, capability := range allowedCapabilities {
+					authorizer = append(authorizer, core.CanonicalID(capability))
+				}
+				invoker.Authorizer = authorizer
+			}
 			if *periodStateFile != "" {
 				states, err := periodstate.File{Path: *periodStateFile}.PeriodStates(context.Background(), *applicationID)
 				if err != nil {
@@ -136,14 +158,48 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 				}
 				invoker.Periods = command.NewMapPeriodState(states)
 			}
-			result, err := invoker.Invoke(context.Background(), command.Request{
+			var recorder *command.MemoryRecorder
+			if *operationLogFile != "" {
+				recorder = &command.MemoryRecorder{}
+				invoker.Recorder = recorder
+			}
+			request := command.Request{
 				Application: core.CanonicalID(*applicationID),
 				Pattern:     core.CanonicalID(*patternID),
 				Capability:  core.CanonicalID(*commandID),
 				Inputs:      values,
-			})
+			}
+			var result command.Result
+			if *lifecycleState != "" {
+				store, openErr := lifecyclesqlite.Open(*lifecycleState)
+				if openErr != nil {
+					return fail("LIFECYCLE_STATE_FAILED", openErr.Error(), 1)
+				}
+				defer store.Close()
+				tracked := command.LifecycleInvoker{Invoker: invoker, Lifecycle: store}
+				result, err = tracked.Invoke(context.Background(), request, command.DispatchOptions{
+					CommandID:  *lifecycleCommand,
+					Owner:      *lifecycleOwner,
+					Generation: *lifecycleGeneration,
+				})
+			} else {
+				result, err = invoker.Invoke(context.Background(), request)
+			}
 			if err != nil {
+				var execution *command.ExecutionError
+				if errors.As(err, &execution) && execution.Code == "COMMAND_LIFECYCLE_REFUSED" {
+					return fail("COMMAND_LIFECYCLE_REFUSED", execution.Message, 1)
+				}
 				return fail("COMMAND_FAILED", err.Error(), 1)
+			}
+			if recorder != nil {
+				encoded, encodeErr := json.MarshalIndent(recorder.Records, "", "  ")
+				if encodeErr != nil {
+					return fail("OPERATION_LOG_WRITE_FAILED", encodeErr.Error(), 1)
+				}
+				if writeErr := os.WriteFile(*operationLogFile, append(encoded, '\n'), 0o600); writeErr != nil {
+					return fail("OPERATION_LOG_WRITE_FAILED", writeErr.Error(), 1)
+				}
 			}
 			run := referenceCommandRun{
 				SchemaVersion: applicationview.SchemaVersion,

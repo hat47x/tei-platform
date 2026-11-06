@@ -15,3 +15,6 @@ coverage.out
 .vscode/
 
 .local/
+
+# ビルド成果物（ソースから再生成できる実行ファイル）
+*.exe
