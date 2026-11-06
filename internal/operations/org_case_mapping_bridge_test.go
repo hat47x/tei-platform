@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"tei/internal/query"
+	querymodel "tei/internal/query"
 	"tei/internal/workspace"
 )
 
@@ -153,7 +153,7 @@ func TestOrgCaseExplicitPersistenceEnablesReadCandidateOnly(t *testing.T) {
 		query.Inputs[0].Type != "organization.case_record_id" {
 		t.Fatalf("Case Query Source/Inputs/Datasource were not faithfully loaded: %+v", query)
 	}
-	if !reflect.DeepEqual(query.ResultColumns, []query.ResultColumnMapping{
+	if !reflect.DeepEqual(query.ResultColumns, []querymodel.ResultColumnMapping{
 		{Column: "case_id", Attribute: "organization.case_record.case_id"},
 		{Column: "handling_unit_id", Attribute: "organization.case_record.handling_unit_id"},
 	}) {
