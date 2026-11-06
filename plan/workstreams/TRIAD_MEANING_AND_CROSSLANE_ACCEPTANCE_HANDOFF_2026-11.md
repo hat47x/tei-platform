@@ -143,7 +143,7 @@
 - `*.tei.md` の同一表で数量2・単価300=600を計算し、価格改版後700となった場合、§7のPreview/承認Revision/Provider Cache/実Writeの区分を保持。文書の`status: approved`やOKF `verified`等のメタ情報だけで、受注O1のOwner業務承認や実DB確定を証明しない。
 - 移行期間に旧`.tei`と新`.tei.md`が同じ意味IDを持つときは二重定義・Parser差/Source出典を表示し、一方を無音優先しない。ソース移動と意味同値を同一としない一方、パス移動だけで全意味変更とも断定しない。
 
-**受入順の既存Owner対応**：#2621=Authoringの意図・原文保持／#2823=Discoveryと実Loader消費／#988/#2620=Language Role・Parse境界／#1440=文章→意味候補／#1125=DFD・Procedure／#1126=Data Identity／#2506/#2622=実Read／#2500 RT=編集逆写像／#267=Owner受理／#2514=独立Oracle／#1174=Host効果。既存#2586のread-only一往復、#1119 Gateを増設しない。
+**受入順の既存Owner対応**：#2621=Authoringの意図・原文保持／#2823=Discoveryと実Loader消費／#988/#2620=Language Role・Parse境界／#1440=文章→意味候補／#1125=DFD・Procedure／#1126=Data Identity／#2506/#2622=実Read／#2500 RT=編集逆写像／#267=Owner受理／#2514=独立検証基準／#1174=Host効果。既存#2586のread-only一往復、#1119 Gateを増設しない。
 
 **証拠・決定範囲**：Ownerの`*.tei.md`方向性と、現main Loaderに残る`.tei`条件は別事実。本節は横断設計への取り込みのみ。既存Workspaceファイル一括改名、Parser移植、OKF規約のTEIへの全面強制、Go/DB/GUI実行、正式Owner意味受理は**NOT RUN**。過去の外部設計者の原著仕様と帰属させない。
 
