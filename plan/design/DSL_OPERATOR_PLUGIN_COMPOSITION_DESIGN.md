@@ -467,3 +467,13 @@ K1の新規Schema/Registryを増設する前に、#3030のTM/AU・#2823の必要
 Source移行では、`plugin.tei.md`を選んだ意図Bと、固定名Loaderが`plugin.tei`を読む実態Aがずれる例を[#2903 §24.4](https://github.com/hat47x/tei-platform/pull/2903)と共有する。現[#3031](https://github.com/hat47x/tei-platform/pull/3031)の`TEI_MD_PARSER_UNBOUND`暫定拒否を正常Parseと誤認せず、#3030のTM-03/12/14と#2823のRequired/Loaded/Consumed区分を再利用する。**いま別DraftのCIが個別にPASSでも、このK1→K6の同一Source結合は未実証**。
 
 **品質ゲートの独立性**：#3028旧HEAD`0f6e7045`/ `5f335cc9` のRepository Healthは`gofmt`差でFAIL、同runの`go test ./...`はPASS。追加テストのStruct literal整形をGo formatterで比較したうえでcommit `62f2dd22`へ修正した。最新HEADのCI結論は完了後にのみ採用し、Go PASS≠Go fmt PASS≠正式Product受理と明記する。
+
+
+<!-- tei-dsl-bootstrap-attested-computation-source-coverage-20261107 -->
+### 13.12 OKF Attested ComputationとSource読込観測をK0の自己証明へ昇格させない
+
+[横断テスト設計Draft #2811](https://github.com/hat47x/tei-platform/pull/2811)と[意味/Grant対照Draft #3026](https://github.com/hat47x/tei-platform/pull/3026)において、OKF `Attested Computation`／deterministic attesterの検証成功は、**計算に使った宣言と結果の一致を示す限定証拠**として位置づけられている。DSL Bootstrapでも、Seed Reader/Parserそのものの出自・許可をそのParserで読み込んだ記述や自己発行Receiptで承認しない（BS-01/15）。既存#2514の独立期待値と証拠発行者・対象版・改訂・Owner受理を**別の観測**に維持し、第二Attester Engineを追加しない。
+
+**実Source消費の負例がより具体化**：[Draft #2811](https://github.com/hat47x/tei-platform/pull/2811)に記録された[TAIの実CLI負例Run #42297500012](https://github.com/hat47x/tai-pleroma/actions/runs/42297500012)では、旧固定Loaderを使い、`*.tei.md`の原文変更でSource Index Fingerprintが変わってもWorld/Catalogが不変、`*.tei`からのrenameでSubjectが消えても`validate.ok=true`となる例を観測している。**これは別プロジェクト/旧固定版の反例**であって、現在の[#3031](https://github.com/hat47x/tei-platform/pull/3031)の暫定拒否が機能しないという主張ではない。K1の`discovered`/Index変化がK3 `parsed`、K4 `actual consumed`、K6 Buildへ自動継承されないことを裏づける。
+
+**独立Expectedの差分判定（新Caseを増やさない）**：既存BS-07（必要Source集合の偽の空）、BS-10（Parser/Conformance PASSとOwner Acceptanceの分離）、BS-15（未知GrammarでSeed自己起動不可）を、#3030 TM-12/14、#2823 Read/Consumed、#2514の既存判定基準に照合する。判定に必要な対照は、**IntentしたSourceの必要集合、Readerで実観測されたbyte列、Parserが実消費したbyte列/Source span、Build入力、現行Owner Meaning/Host**。Index Fingerprint一致だけ、`validate.ok=true`だけ、Attesterの`verified`だけ、またはCandidateのRequired自己申告だけでは、どの層の未観測も埋めない。承認・作業・実DB効果の境界は既存Ownerを保持し、#1119へ未検証Gateを追加しない。
