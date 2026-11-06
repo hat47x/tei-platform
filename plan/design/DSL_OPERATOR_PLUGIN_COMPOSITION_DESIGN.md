@@ -372,3 +372,15 @@ Pluginの論理単位と実行artifactを1:1にしない。Linked / Wasm / proce
 **Go単一バイナリの標準配布への整合**：Runtimeが静的合成なら、候補の`staged`／`active`を**同一Process内に動的Registryを二世代置く要件**と解釈しない。物理的な境界は、候補Build Artifactと既存Process Image／Host配備選択／起動時Lock／現在の実行主体となり得る。検査すべき共通不変条件は、**未検証候補が現行資格を汚さず、何を有効化したかを再起動後に独立観測できること**。静的合成・動的ロード・外部Processの方式により観測対象は異なり、いずれも現在のProductとして原子的切替／再起動後復旧を実証済みとはしない（#951/#1251/#2831/#1174）。
 
 **BS-08/09/13の解釈補正**：これらは全形式に共通する**安全要求**で、`Catalog.ResolveEnvironmentWithLock`の失敗時空Resultのみを以て「部分登録・Crash Recoveryの製品実証PASS」と判定しない。静的配布なら`g1/g2`は仮の配備世代、動的登録なら仮の実Registry世代。どちらも永続状態とCurrent Host資格を実観測できない場合`not-proven`。新しいmutable Registry／切替APIをこの§だけから導入しない。
+
+
+### 13.7 `*.tei.md` 標準Authoringへの移行は、K0の構文選択と別の受理事件
+
+2026-11-06に選択された**TEI Authoring Sourceの標準ファイル名`*.tei.md`、旧`*.tei`原則廃止**の方向性は、[移行担当Draft #3030](https://github.com/hat47x/tei-platform/pull/3030)がM0〜M6／TM-01〜14で所有する。このDSL Bootstrapでは**名前・構文・受理済みMeaningを別に検証する停止条件**だけを追加する（重複する新Loader/Markdown Parser/移行Runnerは作らない）。
+
+- 現mainの`workspace.Load`は`*.tei`／`plugin.tei`等の固定発見経路を含み、`filepath.Ext("sample.tei.md")`は`.md`である。`*.tei.md`へ改名しただけでは旧Sourceが新しいManifest/Loaderに発見・読込・Parser選択されることも、原Markdownの糖衣構文を保持してCanonicalへ変換できることも保証されない。
+- **K0の有限Seedはファイル名だけをSyntax Authorityとしない**。Seedで読めるWorkspace/明示Source Kind・Language Contract Pin・版と、原文Markdown Readerの最小処理範囲を先に確定。Markdown全文／埋込DSL／OKF等の追加文法を**そのPlugin自身の未解釈記述だけで初めて選択する**のはBS-15の初回自己解釈循環に当たる。選択不可能ならRaw Draft／読取可能なSourceとして保持し、Semantic Promote・Buildを停止する。
+- 移行の反例は旧`semantic/data.tei`正常→同bytesで`data.tei.md`へrenameして`workspace-files`未列挙、またはMarkdown表／Frontmatterが現ParserのDSL grammarと異なること。**Expectedは「同内容なら意味一致」ではなく「Manifest実観測・選択Parser・原Source/糖衣・現行受理版を照合できるまではnot-qualified」**。古いCIの`*.tei` Goテスト成功は新形式の受理証拠にならない。
+- K0→K2の独立Expectedは既存BS-02（Seed形式拒否）／BS-15（新Grammar自己起動不可）へ接続し、Source inventory/Load被覆は#2823、Raw Draft/Markdown Source Fidelityは#2621/#2497、形式移行とRuntime Regressionは#3030/#1920、SHO/OKFとの橋渡しは各担当に委譲する。
+
+**資格**：これは#3030の現時点の**Authoring方針と設計Draft**を#988 Bootstrapへ反映したもの。新`*.tei.md` Loader/Parser／既存Sourceの一括移行／同一Meaning/GUI保存／Owner Meaning Acceptanceは未実証。既存の`BS-01〜15` Fixture件数とGo focused testの実入力は変更しない。
