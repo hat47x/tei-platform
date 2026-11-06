@@ -271,7 +271,7 @@ E1とE2は最小の共通面が成立した時点から重ねて実施できる�
 
 - **最初の統合Doneの最小条件**：`*.tei.md`実Loader/Parserで選択した断片が読まれ、固定Candidateの出典を照合し、独立Expectedを持つValidationで正常・誤引用・部分/未知を正しく分け、#267のAccepted Source更新を実行した場合のみReloadと一致を確認する。これらのうち実行していない列は**NOT RUN**、Owner Decisionが得られなければ**NOT ACCEPTED**。Read-only検証の成立をHost実行資格へ昇格しない。
 - **優先順位**：今はAI生成トークン数やUI画面数を増やすより、この一件で`Source selected ≠ Source consumed ≠ Candidate valid ≠ Meaning accepted ≠ Host currently authorized ≠ Effect confirmed`を証拠付きで示す。P0の停止位置を測り、現在の#3030・#267・#1180・#2514・#1163のOwnerに戻す。
-- **未受理**：この節はDocsの接続計画のみ。`*.tei.md` Reader/Parser/Editorの実装、同一Fixtureの実CLI・AI/Harness・OS/External LLM・Studio/SHO・PG/Host、M/Gの実結合、生成精度や性能、Owner受理を実証・採用したと主張しない。第二のReader/Registry/Proof Engine/Runner/Host/Oracle、固定Gateの改変はしない。
+- **未受理**：この節はDocsの接続計画のみ。`*.tei.md` Reader/Parser/Editorの実装、同一Fixtureの実CLI・AI/Harness・OS/External LLM・Studio/SHO・PG/Host、M/Gの実結合、生成精度や性能、Owner受理を実証・採用したと主張しない。第二のReader/Registry/Proof Engine/Runner/Host/独立検証基準Engine、固定Gateの改変はしない。
 
 ## 5.7 既存形式の実Provider検証と新Authoring移行を分離し、完全性証拠で合流する（2026-11-07）
 
@@ -285,7 +285,7 @@ E1とE2は最小の共通面が成立した時点から重ねて実施できる�
 | **P0-M：Migration** | [#3030](https://github.com/hat47x/tei-platform/pull/3030)のTM-02/03/04/14と、[Draft #3031](https://github.com/hat47x/tei-platform/pull/3031)の未対応Source Guard → 真のMarkdown Container Reader/選択Scope/Plugin Pin → Parser/実消費の逐次照合 | `*.tei.md`を**どのSource Kind・実byte/spanで読み取ったか／未対応なら拒否したか**という限局Claim | 実Provider結果、旧Sourceとの意味同等、Candidate/Review/Host/Business受理 |
 | **P0-J：合流** | L/Mで別々のSource Revision・実消費byte・Language/Operator Pin・必要対象集合を観測し、**同じ業務Requirement/独立Expected**へ対応付ける | 同一Meaningを主張する**範囲を明示した条件付き比較** | 同値値/同一Canonical ID/単一CI成功だけで全面移行完了と宣言すること |
 
-**移行計画のOwner**：文書移行の横断検収・TMD-01〜12は[#2667](https://github.com/hat47x/tei-platform/pull/2667)へ、Authoring表層/既存TM-01〜14とM0〜M6は[#3030](https://github.com/hat47x/tei-platform/pull/3030)へ置く。#2667のTMDは#3030のTMと対応付け済みであり、本書で第三のMigration Fixture集合を設けない。#3031は未対応の新Sourceを黙って検証PASS扱いしない**暫定Guard**であって、Markdown Reader実装ではない。
+**移行計画のOwner（2026-11-07更新）**：`*.tei.md`移行仕様・M0〜M6・TM-01〜14の主担当は[#3030](https://github.com/hat47x/tei-platform/pull/3030)。[#2667](https://github.com/hat47x/tei-platform/pull/2667)のTMD-01〜12は横断的な追跡と既存Caseの対応表であり、第二のMigration Gateではない。Authoring ProfileのAU-01〜08も#3030が比較し、本書で第三のFixture集合を設けない。#3031は未対応の新Sourceを黙って検証PASS扱いしない**暫定Guard**であって、Markdown Reader実装ではない。
 
 ### 5.7.2 Source／Target／Guardの「必須集合」と「実観測」を分ける
 
