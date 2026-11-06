@@ -64,6 +64,11 @@ func CheckTargetBinding(r Result, subject string, profile TargetProfile, binding
 	if err != nil {
 		return "", fmt.Errorf("proposed ID: %w", err)
 	}
+	// Snapshot integrity is an independent precondition: an unrelated
+	// duplicate allocation must not pass merely because it does not collide
+	// with this new candidate. This is still not proof of snapshot freshness.
+	seenSubjects := make(map[string]struct{}, len(bindings))
+	seenKeys := make(map[string]string, len(bindings))
 	for _, binding := range bindings {
 		if binding.Namespace != profile.Namespace {
 			continue
@@ -74,10 +79,21 @@ func CheckTargetBinding(r Result, subject string, profile TargetProfile, binding
 		if binding.Subject == "" {
 			return "", errors.New("allocation snapshot has an empty subject")
 		}
+		if _, exists := seenSubjects[binding.Subject]; exists {
+			return "", fmt.Errorf("allocation snapshot duplicates subject %q", binding.Subject)
+		}
+		seenSubjects[binding.Subject] = struct{}{}
+		if err := binding.Scheme.Validate(); err != nil {
+			return "", fmt.Errorf("invalid allocation snapshot scheme for %q: %w", binding.Subject, err)
+		}
 		existing, err := profile.normalize(binding.Text)
 		if err != nil {
 			return "", fmt.Errorf("invalid allocation snapshot for %q: %w", binding.Subject, err)
 		}
+		if prior, exists := seenKeys[existing]; exists && prior != binding.Subject {
+			return "", fmt.Errorf("allocation snapshot collides between %q and %q", prior, binding.Subject)
+		}
+		seenKeys[existing] = binding.Subject
 		if key == existing && binding.Subject != subject {
 			return "", fmt.Errorf("physical ID collision between %q and %q", subject, binding.Subject)
 		}
