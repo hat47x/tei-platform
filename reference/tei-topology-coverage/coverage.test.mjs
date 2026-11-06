@@ -183,3 +183,18 @@ test('relation query cannot infer presence from an endpoint in another scope',()
   assert.equal(boundedAbsence(v,{kind:'subject',scope:'two',type:'operation',id:'shared'},w).status,
     'present-in-snapshot');
 });
+
+test('relation type must be preserved across Graph/Table instead of only a label',()=>{
+  const f=fixture(),v=project(f),w=closure(f.snapshot);
+  v.graph.nodes.find(n=>n.relationKey).type='consumes';
+  assert.deepEqual(boundedAbsence(v,{kind:'relation',scope:'one',type:'produces'},w),
+    {status:'unknown',reason:'relation_coverage_loss'});
+  assert.deepEqual(selectView(v,v.table.subjects[0].viewId,f.snapshot),{status:'unresolved'});
+});
+
+test('table relation type drift without matching graph cannot assert presence',()=>{
+  const f=fixture(),v=project(f),w=closure(f.snapshot);
+  v.table.relations[0].type='consumes';
+  assert.deepEqual(boundedAbsence(v,{kind:'relation',scope:'one',type:'consumes'},w),
+    {status:'unknown',reason:'relation_coverage_loss'});
+});
