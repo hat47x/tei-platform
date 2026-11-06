@@ -128,7 +128,7 @@
 <!-- tei-triad-teimd-source-subject-bridge-20261106 -->
 ## 8. 11/6横断追補：*.tei.md統一時も三視点のSubject/Meaning/実行資格を保存する（方針はOwner決定、実移行未実施）
 
-**方針変更の取り込み**：同日後続のAuthoring議論で TEI向けSourceの標準を `*.tei.md` とし、従来 `*.tei` の新規作成を原則停止・段階廃止する方向が明示された。旧「.mdは草稿、.teiが最終意味」という二層ファイル構成を**必要条件としない**。**移行工程と独立Expectedの唯一の計画正本**は [Draft #3030のM0〜M6/TM-01〜14](https://github.com/hat47x/tei-platform/pull/3030) とし、[Draft #2667のTMD-01〜12](https://github.com/hat47x/tei-platform/pull/2667) は横断履歴と対応表に限定する（両Draft本文に逆方向の参照が残るため[整合コメント](https://github.com/hat47x/tei-platform/pull/3030#issuecomment-6690311236)を送付済み）。Authoringの意図・原文保持は#2621、Language Parserは#988、実Loader消費は#2823、形式変換は#1920のOwnerが持つ。本書ではData/Function/Business・Requirement Probe・Derived Valueに対する**影響だけ**を保持する。
+**方針変更の取り込み**：同日後続のAuthoring議論で TEI向けSourceの標準を `*.tei.md` とし、従来 `*.tei` の新規作成を原則停止・段階廃止する方向が明示された。旧「.mdは草稿、.teiが最終意味」という二層ファイル構成を**必要条件としない**。**移行工程と独立Expectedの唯一の計画正本**は [Draft #3030のM0〜M6/TM-01〜14](https://github.com/hat47x/tei-platform/pull/3030) とし、[Draft #2667のTMD-01〜12](https://github.com/hat47x/tei-platform/pull/2667) は横断履歴と対応表に限定する（#3030 PR本文の旧逆向き記述は[後続の訂正段落](https://github.com/hat47x/tei-platform/pull/3030)で明示修正済み。歴史的記述との混同を避ける）。Authoringの意図・原文保持は#2621、Language Parserは#988、実Loader消費は#2823、形式変換は#1920のOwnerが持つ。本書ではData/Function/Business・Requirement Probe・Derived Valueに対する**影響だけ**を保持する。
 
 | 三視点／用途 | `*.tei.md` で保持するもの | 自動昇格してはいけないもの |
 | --- | --- | --- |
