@@ -359,3 +359,16 @@ Pluginの論理単位と実行artifactを1:1にしない。Linked / Wasm / proce
 | **BS-06** | `ParsePipelineSyntax`→`LowerPinnedPipeline` | valid SyntaxでもOperator Pinがない場合、元Operator Token spanへの`PipelineDiagnostic`、Resolved Stepなし。Product Operator登録の有無・Owner意味受理は証明しない |
 
 テストは**既存Packageの小さなGo試験**であり、第二Seed Reader/Resolver/Runnerではない。BS-01/04/05/07〜15（実初回信頼核、自己記述循環のProduct経路、独立Required/Owner、部分登録・Crash Recovery・Cutover、Build Release）をこの3件で合格にしない。**新Goテストをコミットした事実と exact HEAD CIのPASSは別**。CI結果の有無・Go packageの実行証拠を確認してから限定受入する。
+
+
+### 13.6 実Plugin Resolverとの接続：論理解決の全件性と実有効化は別
+
+**現mainの実コードを追加照合**：
+
+- `internal/plugin/resolve.go: Catalog.ResolveEnvironment` は依存を一時的な`resolved` mapへ組み立て、欠落・cycle・bundle競合などのエラーで`ResolvedSet{}`とerrorを返す。結果のPlugin/Capability一覧は全解決後に生成され、失敗時に中途半端な`ResolvedSet`を返さない。**これは純粋な論理解決の局所的な全件性**であって、実RuntimeへPlugin Aだけ登録後にBで失敗したときの原子取消・永続回復ではない。
+- `internal/plugin/lock.go: BuildLock / ResolveEnvironmentWithLock` は、選択したDefinition fingerprint／Artifact Digest／指定Lock版（build-trace付きの版はPlan fingerprintも）を検証し、失敗で空値＋errorを返す。Lockの**宣言値とCatalog内Definitionの一致**は扱うが、実ロードされたバイナリのbytes・その出所の信頼・ロード時init副作用、Current Host Grant、部署後のProcess世代を保証する証拠ではない。実Artifact実測は別のBuild/Runtime Ownerと束縛する。
+- `internal/plugin/bootstrap.go: EvaluateBootstrapConvergence` は**ビルダー収束（SB-3）**の証拠構造・fingerprint比較。DSLを最初に解釈するK0 Source Reader／Language登録器ではない。名前が`Bootstrap`であることを機能同一性の根拠にしない。
+
+**Go単一バイナリの標準配布への整合**：Runtimeが静的合成なら、候補の`staged`／`active`を**同一Process内に動的Registryを二世代置く要件**と解釈しない。物理的な境界は、候補Build Artifactと既存Process Image／Host配備選択／起動時Lock／現在の実行主体となり得る。検査すべき共通不変条件は、**未検証候補が現行資格を汚さず、何を有効化したかを再起動後に独立観測できること**。静的合成・動的ロード・外部Processの方式により観測対象は異なり、いずれも現在のProductとして原子的切替／再起動後復旧を実証済みとはしない（#951/#1251/#2831/#1174）。
+
+**BS-08/09/13の解釈補正**：これらは全形式に共通する**安全要求**で、`Catalog.ResolveEnvironmentWithLock`の失敗時空Resultのみを以て「部分登録・Crash Recoveryの製品実証PASS」と判定しない。静的配布なら`g1/g2`は仮の配備世代、動的登録なら仮の実Registry世代。どちらも永続状態とCurrent Host資格を実観測できない場合`not-proven`。新しいmutable Registry／切替APIをこの§だけから導入しない。
