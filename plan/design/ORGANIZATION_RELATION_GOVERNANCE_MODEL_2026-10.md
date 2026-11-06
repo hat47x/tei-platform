@@ -3490,3 +3490,62 @@ W3C ORGはOrganization/Membership/Post等の構造表現を提供するが、組
 5. **外部表現の再資格**（#3030/#3031/#988/#1920）：新規Authoringの標準は *.tei.md。旧 *.tei のE1局所PASSを新形式へ移植した証拠にしない。既存の移行ORG-MD-01〜09を再使用し、本節のために新Parser、専用ACL、専用Host、第二認可/Workflow Engineを設けない。
 
 **Stop / 判定境界**：業務の明示Rule・Context/Source Role・実Provider Read・Current Host Grant・最終Effect/独立確認のどれが欠けたかを別々に報告する。候補提示や合成計算、固定HEADの局所CI、外部仕様の存在を、Ownerの業務意味受理・本番実行許可・実DB/GUI成功に繰り上げない。対象は設計・期待値の追補のみで、APP-01〜09の新たな実行、PRマージ、他担当のSource変更は行わない。
+
+## 82. 組織承認の実更新対象を束縛する：業務Case・Grant Resource・Provider Rowの同一性（2026-11-07、採用前）
+
+### 82.1 横断差分：権限の有無だけでなく「何に対する権限か」を証明する
+
+第81節はMembership／Occupancy／Delegation／Business Rule／Current Host Grant／Effectを分離した。第67/69/71/72/78節は責任移管、Tenant/Provider再束縛、C1のProduct E2 Readまで区別した。#1125のBusiness Procedure/Workflow、#1174のEffect Fence、#2514の独立Expected、#2586のContext実Readからの**未検証接合部**は、次の三つを同じ実行Attemptで区別して束縛することである。
+
+1. **業務上の対象**：受理済みCaseRecord C1の識別、担当Org D1、申請者P1、金額、関係Occurrence、適用業務Rule/時点。候補Actor P3が業務上適格かは業務規範の問題。
+2. **要求・認可上の対象**：実Principal、Application/Capability/Action、Tenant/Resourceの具体的範囲、Grantの権限源と現在版、Selection epoch/Request payload/Operation identity。広域Grantを認める場合でも、対象C1がOwner受理済み適用範囲に含まれることを具体的に検証する。
+3. **実Effect対象**：選択されたProvider/Mapping/物理Row identityと読取時版、実WriteのTarget Set、Post-image、Receipt、独立再Read。UIの選択行、QueryのJOIN行、Semantic ID、Scope.Resource文字列の一致だけでは実物理行を同定しない。
+
+**現行mainのSource-static観測**：`internal/operations/surface.go`のOperationSurfaceは非実行権限のread-only候補。 `internal/security/effectcommit/commandadapter/executor.go`は`scope.Resource = e.Grant.Resource`を構成し、`commit.go`の`validate`はGrant.Subject/Action/ResourceとScopeの文字列一致・epoch存在を検証し、Runnerは同一TransactionでCheckAuthority→WriteResource→SaveReceiptを要求する。**しかしこれらの関数の静的観測だけでは`request.Inputs`が指すCase C1、Providerが実際に更新したRow、Grant対象の三者の一致を証明しない**。Provider固有の実行で検証が成立する可能性を否定するのでなく、必要な対象対応・当該Adapterの実証を別Gateで要求する。
+
+main統合済みPR #2852/#2853はCommand Lifecycle／実PostgreSQL CASの限定E2Eを持つ。一方PR #2854は物理値A→B→Aと新idempotency keyで再適用可能な負例を実PGで確認した。これらは**Organization Case C1の同一対象・業務承認成功の証拠ではない**。
+
+### 82.2 一つの合成FixtureにおけるTarget Bindingと独立Expected（ORG-TB-01〜10、追加実行すべてNOT RUN）
+
+第81節の架空のC1（800,000円、申請者P1、担当D1、代理候補P3、委任G1）を再利用する。Tenant AとBには**同じ表示Case ID文字列C1**があるが業務CaseとProviderの実Rowは別。AのC1はD1、BのC1はD2とする。物理的な実現が専用DB／別Schema／共有Tableのどれかは未決。共有Tableなら複合キー等の一意性/Scope検証が必要な候補、専用DBならTarget DB選択を別証拠とする。標準Caseに全Tenant共通カラムを強制するものではない。
+
+| Case | 一つだけ変える条件／独立期待結果 | 検出したい誤実装 |
+| --- | --- | --- |
+| **TB-01 正例** | Tenant AのC1を明示選択、P3の業務資格と現在GrantがC1の実対象範囲を含み、Provider Aの正しいRow/版を更新。Receiptと独立再Readの同一Case・同一Operationを別々に確認 | 候補・Scope文字列一致・Commit応答の一つで「業務承認完了」と判断 |
+| **TB-02 同名別Tenant** | 同じ文字列C1をTenant Bにも配置。A向けGrant/Selection/RouteでBのRowを更新できてはならない。Bの通常Org Dataを一律秘匿する意味ではない | Case IDだけを全配備で一意と仮定、実対象をAlias先勝ちで決定 |
+| **TB-03 Application広域Grant** | Resource値がApplication単位で、実Caseを特定しない。**そのScopeにC1操作を含む明示受理済みPolicyと実Target照合があれば適格になり得る**が、値が一致するだけなら資格未証明 | 広域Grantを無条件に行単位許可へ昇格／逆に広域Grantを常に不正と断言 |
+| **TB-04 Selection epochのすり替え** | C1選択後にC2へ移動し、旧C1のPreviewが遅れて到着。旧Previewを新選択に適用せず、C1/C2どちらを実Targetにしたか明示・再確認 | 見た目の行や再利用されたUI indexを業務Case identityにする |
+| **TB-05 取込・取得不完全** | C1の存在行だけ取得できても委任元Occupancy/Ruleの必要入力が部分取得・unavailable。実Case Readは局所的に示せても業務承認適格の断定を保留 | 部分集合の0件を「競合者なし」「委任失効なし」「自己承認でない」にする |
+| **TB-06 D1→D2の責任移管** | 明示Case処分によりC1担当を変更。物理Providerが同じでも旧D1に対する承認候補・委任範囲を再評価し、組織後継だけから新Grantを発行しない | Case担当更新とHost実Grant/業務上の決裁権を同一イベント扱い |
+| **TB-07 Preview後の版変化** | Rule改訂、Grant失効、Case row版変化のいずれかをCommit前に注入。変化した条件について現行の保証可能なFenceで再評価。保証不能な外部Effectを無根拠に成功扱いしない | Preview時の資格・旧Target版をそのままCommitまで流用 |
+| **TB-08 同じOperationとABA** | 不明応答後、同じOperation ID/keyでReceiptを確認する経路と、新Keyで旧値に再適用する経路を対照。新Keyの正当な新業務Actionと重複再実行の区別はOwner規則/実Ledgerで判断 | 物理値が元へ戻ったため旧承認がなかった・新key再送が安全と推定 |
+| **TB-09 追加のEffect対象** | C1承認がCase本体に加え履歴・関連行を書き換える場合、その実Target Setと必要な業務不変条件・実Effect Coverageを観測。単一Row CASの成功では全対象の保証に拡張しない | Data/Rule側の依存や未管理Scriptによる追加書込みを検証済み扱い |
+| **TB-10 遡及訂正・取消・再審査** | 後日P2の在任期間やG1を遡及訂正。過去Receipt/実際の判断Actorを上書きせず、当時把握していた根拠と訂正後の評価を並存。取消・再審査・補償は新たなBusiness Actionとして別Effect資格 | 遡及訂正で過去Commitが自動的に「未実行」になる、取消受付＝実停止と推定 |
+
+**期待値の性質**：この10件は既存Fixtureに接続するための手書きの独立期待結果であり、実TEI Go/DB/Host試験のPASSではない。APP-01〜09の試験用委任規程、業務上の自己承認禁止・退任時失効も、案件Owner受理前の仮Ruleである。TB-05は特に、Readの存在証人と否定依存（未観測者・追加行・部分Cohort）を別に扱う。NULL／missing／0件／denied／非開示の違いは#2514/#2586の受入を再利用する。
+
+### 82.3 必要十分な証拠欄と停止条件（新API/新Core定義ではない）
+
+初回は**1 Case・1 Function・1 Provider・1 Consumer**のE2 Readを完成させ、Writeの権限検証を前提条件として混ぜない。後続のE4承認試験では、同一Attemptの既存Evidenceに必要な欄を対応づける。
+
+| 証拠段階 | 同じ試行で明示・観測すべきもの | 欠けたときの判定 |
+| --- | --- | --- |
+| A 業務Meaning | Case identity/担当・申請者・金額、Delegation occurrence、Rule/validAt/knownAt/公開版/受理範囲 | business-meaning-unqualified |
+| B 実Read | Context/Query/Actual SQL・args または正式Data Provider契約、Row+Field/Relation role/Grain/Completeness/Route/Cohort | product-read-unobserved |
+| C Target解決 | Selection/RequestのCaseと実Provider Row PK/Version/Current Tenant Scopeの対応、対象集合と適用Scopeの根拠 | effect-target-unbound |
+| D 現在Authority | 認証済みPrincipal、業務Actorとの受理済み対応、Action/Resourceを覆う実GrantとEpoch/Fence、業務規則の再評価 | authority-unqualified |
+| E Effect/Observation | Commitと実Row Post-image、Operation ID、Receipt/unknown/takeover、独立Read、複数行へのEffect Coverage | effect-unverified |
+
+これらのラベルは**説明上の診断候補**であり、製品Status enumを採用したものではない。GrantのResource文字列と実Row identityは、実Providerが「許可されたTarget Setに限定して書いた」ことを示す契約・試験で接続する。必要なら対象Key/Predicateを現在Transactionの中で再評価し、出来ないProviderでは保証可能な範囲を明示する。**組織の通常Data閲覧には専用ACL/RLSを義務化せず、実副作用の権限要件だけをそのHost/Adapter境界で検査する。**
+
+### 82.4 反映Owner・優先順位・撤回線
+
+- #2386／本Draft #2389：意味上の対象・動的承認とTarget Bindingの反例、Owner未決、APP/TBの独立期待。新Authority Runtimeは持たない。
+- #3024/#2681 → #2506/#2586/#2611/#2622：Case C1→D1の**最初の実Product E2 Read**を最優先にする。通常Readが成立するまで新Write Agent/Runtimeを要求しない。Provider Instance/Row identity・Scope/Cohortを同じRead Attemptで確認。
+- #1125/#1130/#1129：Business Procedure/Workflow Instance/Actor/Rule/Owner-write coverage。担当決定、案件移管、承認候補をデータ転送・業務状態から暗黙起動しない。
+- #1043/#1174/#2564/#1163：Grant ResourceとResolved Targetの対応、Commit前の最終資格、部分Effect、OperationID/Receipt/独立Read。既存Command Lifecycle/Effect Fenceを使い、第二認可Engineを組織領域で作らない。
+- #2514/#2510：独立Expectedの判別力（Case ID同名別Tenant、Resource fallback、部分取得、ABA、時点訂正）と未観測の証拠を明示。#3030/#3031/#988は *.tei.md Authoringの別資格を管理。
+
+**最小実装判断**：TB-02とTB-03を、組織CaseのE2 Read完成後に最初のOwner-write資格比較へ渡す。TB-07〜10は実Effect/時点訂正の後続Gate。実Providerが既に十分なTarget限定を行っていると判明した場合はその証拠を受けて本追補を縮退する。逆に証拠不在は未検証とし、「実装が危険」「全経路で脆弱」と断言しない。
+
+**今回の資格**：mainのGo Source-static観測と既存PRの限定実証、合成期待の追記だけ。ORG-TB-01〜10の新試験、実Org Provider/DB/GUI/Host、業務Owner意味受理、*.tei.mdへの製品移行、Draft解除・PR mergeは未実施。
