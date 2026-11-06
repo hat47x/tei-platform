@@ -385,3 +385,44 @@ Apache Kafkaは、Kafka Topic間ではtransactional producerとconsumer offset�
 **優先順位（元のDM/EF/RunPlanテストを追加しない）**: P0はread-onlyな1入力・2 Memberの生成→公開→別Readerの同一版/全Byte比較（#2604/EF-01）。並行して、必要Guard集合と実際にSupplyされた集合の差分だけを評価する静的負例（#2882の受入拡張先）。P1はFileSpec/ImportUnit（#2145既存Reference）と重複通知/取消し/Spool容量を合成。P2で初めて現在Grant・Commit/Receipt/独立Readを要する書込みRouteへ進む。どの段階もProviderの実送出、外部Host/EKI ResourceやBusiness Owner受理を他のCIから継承しない。
 
 **標準化の採否**: 新しいBatchKind/Guarantee証明型/Capability Resolverを固定する前に、既存TypeRef/Shape/Role/Relation/Provenanceで、上記少なくとも二Consumerの必要な差を保持できるか検証。特に[#2880](https://github.com/hat47x/tei-platform/pull/2880)の標準型二Consumer、[#1145](https://github.com/hat47x/tei-platform/issues/1145)のInvocation Request/Context/Transport分離を再利用する。Operator/Plugin合成のほうが例外と変更波及を少なく説明できるなら新しい専用DSLやCore Primitiveは導入しない。実Go/ETL/MFT/Transfer/2Process/DB/EKI試験とOwnerの意味受理は本追補では **NOT RUN**。
+
+## 15. 2026-11-06 到着・期間・公開の有界な完全性（設計／未実証）
+
+**問題**: MFTの送達完了、ストリーム処理のWatermark通過、月次締めRunPlanの完了、Artifact ManifestのCompleteが、いずれも異なる対象範囲のClaimであること。これらを同一の「データセット完全性」に畳み込むと、遅延データ・中継欠落・フィルタ済みQuery・異世代Manifestの混在を見逃す。本節は既存#2542 EF-01〜05・#2604 AP・#1130 RPL・#2933 INVと関連付ける比較票であり、第二のScenario/Completion Engine/Watermark ABIではない。
+
+### 15.1 完全性を一つのboolでなく対象付きClaimとして扱う
+
+| 判定対象 | 必要なWitnessと判定可能な主張 | 「完全」へ自動昇格してはいけないもの |
+| --- | --- | --- |
+| **Source/input selection** | 受理済みSource Revision、Manifest sourcesの全解決、業務期/入力Snapshot/期待する集合の範囲 | Workspace validate green、Source 0件、Query結果0件だけで「元データなし」（#2823） |
+| **Delivery coverage** | 宛先・File ID/Period・期待Artifact/Sequence一覧、各Hop Receipt/期限/欠落の独立検証 | 最後のFile ACK、追越禁止、Watermark通過だけでgap-free／受領全件 |
+| **Dataset/window coverage** | 対象のevent-time窓と営業期、入力Sourceごとの水位、allowed lateness、early/on-time/late pane、訂正履歴 | Watermarkは観測/推定に依存する到着指標であり業務上の全件保証・不可逆締切ではない |
+| **Published artifact-set** | 一つのGeneration/Member集合、実Byte/Hash、Consumer版pin/保持期限、Readerの全Member再読取 | 単一ファイルのatomic rename／Manifest completeから全Memberの同世代受領 |
+| **Business period acceptance** | 業務Ownerの受理規則・全件/欠落許容Policy・Rule/Source版、現Grant、必要なEffect/Receipt | RunPlan completed、0件・一致行数、MFT success、早期計算結果からBusiness Accepted |
+| **Graph/plan coverage** | 対象Scope/Target/Selected Plugin/Source Closure、Declared/Resolved/Observed/Consumed/Acceptedとopaqueな外部工程の被覆 | 図に表示されない、Filterで隠れた、未許可情報がある、という理由で不存在を断定 |
+
+この表は**比較用の断面**でありTEI正式State・ABIではない。限定したQueryで「全件」と主張するには、対象集合を列挙できる根拠、または不完全な場合を停止できる業務規則が必要。無限Stream/取引先が全ファイル一覧を公開しない場合には、勝手に「すべて届いた」としない。必要なSLA・期限・最終確認を明示のProvider/Owner Contractへ戻し、証明できない期間はunknownとする。
+
+### 15.2 Late dataを再配送・再計算・業務訂正に分ける
+
+**参考モデル**: Apache BeamのWindow/Watermark/Triggerではevent timeとprocessing timeを分け、早期/定時/遅延のpaneを発行し、遅延許容や蓄積/破棄の方式で集計の出力が変化する（https://beam.apache.org/documentation/programming-guide/）。これはTEIによるストリームEngine採用ではない。HULFT-HUB蓄積とODIPの処理基準日にも、異なる時点の区別を利用できる。
+
+**例**: 営業日Dの受注ファイルF1/F2/F3を期待する。F1とF3は受領済み、F2は中継で蓄積失効した。D+1の時刻到達でWatermarkやJob deadlineが進んでも、期待集合の一部F2が欠落するので「D完全」のEvidenceはない。遅延したF2がD+2に来た場合は、(a)配送の補完、(b)Dの集計再生成、(c)すでに締めた業務期の訂正/再受理、を別Owner・別Attemptとする。Dの既確定Artifactを同名で黙って上書きしたり、旧Receiptを新しいCommitへ転用しない。
+
+| ケース（既存Pressureへ重ねる独立Expected） | 判定すべき停止線 | 引渡し |
+| --- | --- | --- |
+| **Early result**: まだ全Fileが届かず暫定100行を集計 | provisional/partialの出力と最終結果を区別し、後続到着が修正し得ることをConsumerへ示す | #2622 Dataset/Derived、#1130出力、#2542 EF-02 |
+| **Watermark passed, file gap**: 先行F2欠落のまま定刻となる | watermark/時刻はgap-free証拠にならない。必要な全件性が要求されればBusiness Completeを拒否/保留 | #2542 EF-02、#2827 DM-05/06 |
+| **Late F2 after period close**: D+2にF2受領、Dの業務期は確定済み | 計算結果の追補・Artifact新版は可能でも、業務再確定は既存Period/Ownerの訂正・権限・Effect規則に従う。自動re-accept禁止 | #1130 RPL-02/03、#1174、#2144 |
+| **Optimization changed pane**: 窓集計をSQL PushdownまたはChunk/Fusionに変更 | 独立Expectedについてevent-time window/allowed lateness、重複・NULL・順序、Paneの暫定/確定、Consumer visibility/Scopeが保たれる範囲のみEquivalent。パフォーマンス改善は別Gate | Draft #2933 INV-04/06/10、#2622 |
+| **Opaque downstream MFT**: TEIの図では一つのTransfer nodeに見えるが、外部中継がさらに配送・破棄 | その先の内部を「存在しない」と主張しない。Node境界をopaqueとし、取得できる実Recipient Receiptまでを観測範囲に限定 | #1124/Topology、#2542、研究RQ7 |
+
+### 15.3 小さなConformance縦切りと採否
+
+**最短実証**はすでに起票された[#2542 EF-01/02](https://github.com/hat47x/tei-platform/issues/2542)を使い、(1)明細/件数合計の二Member Artifact、(2)F2欠落とF2遅延到着、(3)RunPlanの処理基準日、(4)同一世代/別版Reader、(5)完了/暫定/unknownの独立Expectedだけを追加する。新しいFixture/Oracleの正本は作らず、実OwnerのScenarioへ観測列を渡す。
+
+最初に必要なのは**読み取り専用**の受理前判定。業務再確定や外部MFT送出を先行させない。外部Sinkの二重副作用を扱う場合に限り#1174/#2853の同一OperationID/Receipt照会へ接続し、新OperationIDの自動再適用を避ける。
+
+測定指標は、(i)既存テストで見逃していた欠落/遅延/世代混合のFalse Qualified数、(ii)新しい意味正本・Role・Provider専用コードの増分、(iii)人間/AIが必要な欠落情報と影響範囲を特定する手数、(iv)Streaming/Batch化前後の可視性・Latency/Memory/Cost（#2933）を区別する。**汎用Completion Engineや新Watermark型は、二つの独立Consumerに共通して必要な表現不足が実証されるまで導入しない**。
+
+**状態／証拠上限**: BeamとHULFT等の仕様の比較、および現行TEI Issue/PRの静的照合のみ。本節の新しいGo/Streaming/SQL/実File Reader/実MFT/CI/E2E・業務Owner受理はNOT RUN。外部製品の仕様上のWatermarkや順序制御を、そのままTEI Providerの実保証として採用しない。
