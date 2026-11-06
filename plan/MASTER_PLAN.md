@@ -19,7 +19,7 @@
 - [DeepSeek Harnessに学ぶ構成・AI-first連携・横断検証（研究案）](research/DEEPSEEK_HARNESS_TEI_CROSS_PRODUCT_ADOPTION_2026-11-01.md) ：外側のAgent HarnessとTEIのService Contract/Plugin/Host Authorityの境界を比較。正式要件・実実行の受理は既存担当へ
 - [DSHのGoal・Schedule・通信境界と大規模AI並列開発（研究案）](research/DSH_SCALE_GOAL_SCHEDULE_EGRESS_RESEARCH_2026-11-01.md) ：軽量Profileの自律性、独立Workstream、既定Request拡張によるSession履歴送信、検証責務を明示。実証担当は[#2509](https://github.com/hat47x/tei-platform/issues/2509)／[TAI #234](https://github.com/hat47x/tai-pleroma/issues/234)。
 - [DSH実験的Agent Teamsの並列開発・専門家連携・用途別Context（研究案）](research/DSH_AGENT_TEAMS_CONTEXT_EXPERT_HANDOFF_2026-11-02.md) ：Team Task DAG/CAS/共有Checkout・非強制writeScope、SEIの専門家照会、#2515実効隔離・#2516用途別Projectionを統合したT-01〜T-12反証案。既存Ownerと受理を維持する。
-- [外部Harnessの結果継承と選択的再資格化（2026-11-02研究案）](research/HARNESS_EVIDENCE_CONTINUITY_AND_SELECTIVE_REQUALIFICATION_2026-11-02.md) ：DSH Headless NDJSONの投影/截断/Session再開と実Git/TEI/Oracle/Provider証拠の差を識別。#2514 Oracle、#2582 Reactive、#2595実Source、SEI #767の用途別根拠十分性に接続し、Claim単位で局所再評価する。
+- [外部Harnessの結果継承と選択的再資格化（2026-11-02研究案）](research/HARNESS_EVIDENCE_CONTINUITY_AND_SELECTIVE_REQUALIFICATION_2026-11-02.md) ：DSH Headless NDJSONの投影/截断/Session再開と実Git/TEI/Oracle Database/Providerの証拠の差を識別。#2514独立検証基準、#2582 Reactive、#2595実Source、SEI #767の用途別根拠十分性に接続し、Claim単位で局所再評価する。
 - `plan/REFERENCE_MODEL_TRANSFER_GATE_2026-10.md` ：成熟した外部の参照モデルをプラグイン中心で移し替え、TEIの表現力や暗黙の前提を横断的に検証する計画
 - `plan/design/ARTIFACT_SET_SCOPE_AND_CONSUMER_READ_EVIDENCE_2026-11.md` ：導出成果物の対象集合・内部整合・公開世代・実Consumer読取を分けて検証する**提案中**の計画（#2482／#2604。製品Gateや受理条件の変更ではない）
 
@@ -41,11 +41,11 @@
 
 **Measureの再集計適合とClaimの開示適合**を、値忠実度・時間変化するProjectionに続く検証軸として追加します。同じDecimal型・同じ表示値でも、平均・比率・重複排除人数・時点残高・分位数は集計軸と必要な中間状態が異なります。[#2593](https://github.com/hat47x/tei-platform/issues/2593)のMeasure再集計を[#2497の§13](https://github.com/hat47x/tei-platform/blob/docs/data-structure-meta-facets-20261101/plan/design/STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)に接続し、[#2501のPC-109〜120](https://github.com/hat47x/tei-platform/issues/2501)を独立反例として整理します。また、内部で正しく導出したClaim・根拠へのアクセス資格・外部Consumerへの開示資格・開示後の根拠充足・実際のConsumer読込を別々に検証します。Construction Context/AI CUI/SHOは[#2516](https://github.com/hat47x/tei-platform/issues/2516)、外部開示は#1178、SHO原本は#1803、実Consumerは#2498の既存Ownerに帰属させ、第二のMeasure/Authority/証拠Registryを作らず、受入・実送信・実Targetの観測を独立管理します。今回の反例は机上計画であり、実装/Owner受理は未実施です。
 
-**Consumer間Claim比較・文書Occurrence・開示非干渉性**を、構造保存とConstruction Contextの追加検証軸として位置づけます。同じ表示値でも対象・演算・Grain・Scope・Snapshot・Source版が異なれば比較不能であり、異値でも部分取得と全件確定のように両方正当な場合があります。比較可能な同一Claimの不一致だけを独立Oracleへ返します。また、同じTEI意味要素がSHO文書に複数出現するとき、Semantic IDと文書内Occurrence ID、局所編集・再生成・レビュー現在性を区別します。内部で読める根拠が外部Consumerへ開示できるとは限らず、非公開情報の有無が比較結果・拒否理由・Traceから漏れないかを既存開示Ownerで検証します。[#2497の§14](https://github.com/hat47x/tei-platform/blob/docs/data-structure-meta-facets-20261101/plan/design/STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)と[#2501のPC-133〜144](https://github.com/hat47x/tei-platform/blob/docs/data-structure-meta-facets-20261101/plan/design/DATA_STRUCTURE_PRESSURE_CORPUS_2026-11.md)へ整理し、実Consumer横断は#2516 W8、SHO文書はSHO #4/#6、数値忠実度は#2585、情報開示は#1178へ帰属させます。追加反例は設計段階で、実SHO/OS/AI/GUI試験やOwner受理は未実施です。
+**Consumer間Claim比較・文書Occurrence・開示非干渉性**を、構造保存とConstruction Contextの追加検証軸として位置づけます。同じ表示値でも対象・演算・Grain・Scope・Snapshot・Source版が異なれば比較不能であり、異値でも部分取得と全件確定のように両方正当な場合があります。比較可能な同一Claimの不一致だけを独立検証基準へ返します。また、同じTEI意味要素がSHO文書に複数出現するとき、Semantic IDと文書内Occurrence ID、局所編集・再生成・レビュー現在性を区別します。内部で読める根拠が外部Consumerへ開示できるとは限らず、非公開情報の有無が比較結果・拒否理由・Traceから漏れないかを既存開示Ownerで検証します。[#2497の§14](https://github.com/hat47x/tei-platform/blob/docs/data-structure-meta-facets-20261101/plan/design/STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)と[#2501のPC-133〜144](https://github.com/hat47x/tei-platform/blob/docs/data-structure-meta-facets-20261101/plan/design/DATA_STRUCTURE_PRESSURE_CORPUS_2026-11.md)へ整理し、実Consumer横断は#2516 W8、SHO文書はSHO #4/#6、数値忠実度は#2585、情報開示は#1178へ帰属させます。追加反例は設計段階で、実SHO/OS/AI/GUI試験やOwner受理は未実施です。
 
 **Functionの依存閉包・物理Read・開示・Effect対象束縛**は別々の受入義務として扱います。表示用Data Mappingだけでは非表示Validation/Rule入力を閉じられず、同じ公開JSONでも実ProviderのOverfetch有無は判定できません。Rowset completeとField observed、宣言したallと実際の取得完了、表示対象と実Request/Effect対象、公開回答と秘密Action候補の開示可否を区別します。[#2497の§17](https://github.com/hat47x/tei-platform/blob/docs/data-structure-meta-facets-20261101/plan/design/STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)へDC-01〜08を整理し、既存Corpus PC-157〜168と重複起票しません。Rule/Mappingは#2624、Provider実Readは#2628/#2622、Contextは#2506、View→実Requestは#2598、外部開示は#2516、Authoringは#2621のOwnerを維持します。隔離合成試験のPASSを実Provider/Host/OS/AIのE2Eや業務意味受理へ昇格させません。
 
-**SQL→Data Operatorの意味保存と複数Function編集の合成不変条件**を、別々の実証義務として追加します。SQLのJOIN/EXISTS、NOT IN/NOT EXISTS、LEFT JOIN、NULL三値論理、Bag多重度、DISTINCT、Filter/Sort/LIMIT順序、平均の再構成は、構文や表示値が一致しても一般に意味同等とは限りません。SQL正本とTarget条件を保持し、候補Data Operatorを独立Oracle・実Providerで検証します。また、複数Functionの個別保存成功は並行実行後の業務不変条件を保証しません。Editing Session、Read Predicate、実Transaction境界、Commit不明、Effect Lookup、独立read-backを区別します。[#2497 §18](https://github.com/hat47x/tei-platform/blob/docs/data-structure-meta-facets-20261101/plan/design/STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)と[#2501 PC-169〜180](https://github.com/hat47x/tei-platform/blob/docs/data-structure-meta-facets-20261101/plan/design/DATA_STRUCTURE_PRESSURE_CORPUS_2026-11.md)へ反例を配置し、SQLは#2387/#2622、独立期待は#2514、編集は#2597、実Effectは#1174の既存Ownerへ戻します。隔離SQLite試験のPASSは実TEI/PG/Host/Owner受理を示しません。第二Query Runtime・共通Transaction Coordinator・TEI独自Hostは導入しません。
+**SQL→Data Operatorの意味保存と複数Function編集の合成不変条件**を、別々の実証義務として追加します。SQLのJOIN/EXISTS、NOT IN/NOT EXISTS、LEFT JOIN、NULL三値論理、Bag多重度、DISTINCT、Filter/Sort/LIMIT順序、平均の再構成は、構文や表示値が一致しても一般に意味同等とは限りません。SQL正本とTarget条件を保持し、候補Data Operatorを独立検証基準・実Providerで検証します。また、複数Functionの個別保存成功は並行実行後の業務不変条件を保証しません。Editing Session、Read Predicate、実Transaction境界、Commit不明、Effect Lookup、独立read-backを区別します。[#2497 §18](https://github.com/hat47x/tei-platform/blob/docs/data-structure-meta-facets-20261101/plan/design/STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)と[#2501 PC-169〜180](https://github.com/hat47x/tei-platform/blob/docs/data-structure-meta-facets-20261101/plan/design/DATA_STRUCTURE_PRESSURE_CORPUS_2026-11.md)へ反例を配置し、SQLは#2387/#2622、独立期待は#2514、編集は#2597、実Effectは#1174の既存Ownerへ戻します。隔離SQLite試験のPASSは実TEI/PG/Host/Owner受理を示しません。第二Query Runtime・共通Transaction Coordinator・TEI独自Hostは導入しません。
 
 **空結果の否定依存・選択的再資格化・Product Skillの実利用資格**を分離して検証します。0件のQueryにもWHERE/NOT EXISTS/Relation/Scopeの依存があり、0→1→0の同値観測から途中の変更なしを推定できません。変更影響と現在のConsumer利用資格を別扱いとし、依存証拠のあるClaimのみ選択的再評価を候補とします。さらにSemantic Role、Operation、CLI、Product Skill読込、実Tool呼出し、外部Consumerへの開示、Host Effectを段階別に観測し、Skill説明やCLI存在を実行許可・完了へ昇格させません。[#2497 §19](https://github.com/hat47x/tei-platform/blob/docs/data-structure-meta-facets-20261101/plan/design/STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)、[#2501 PC-181〜192](https://github.com/hat47x/tei-platform/blob/docs/data-structure-meta-facets-20261101/plan/design/DATA_STRUCTURE_PRESSURE_CORPUS_2026-11.md)へ反例を追加。Change/Queryは#2582/#2387、Consumer資格は#2516、再利用は#2018、Product Skillは#2605/#2619とTAI #271、実Effectは#1174のOwnerを維持します。実Provider/Harness/SHO/Host統合試験は未実施で、新しいNegative Cache/Reactive Engine/独自Hostは設けません。
 
@@ -136,7 +136,7 @@ Gate C — PAS-04 Evidence — Ready
 
 `#387`での最終確認と、同じ実行で取得した子処理の成果物の独立監査を踏まえた`Ready`の判定記録は、`GATE_B_READINESS_AUDIT.md`を正本とします。
 
-PostgreSQL以外の実際のデータベースによる検証根拠も重要です。最初の参照事例では、Oracleに関する#214・#371・#376が該当します。ただし、判定段階Bの第四の必須検証経路には含めません。未完了の範囲は`unresolved`として引き継ぎます。
+PostgreSQL以外の実際のデータベースによる検証根拠も重要です。最初の参照事例では、Oracle Databaseに関する#214・#371・#376が該当します。ただし、判定段階Bの第四の必須検証経路には含めません。未完了の範囲は`unresolved`として引き継ぎます。
 
 ### 引継ぎの基準：判定段階BからCへ
 
@@ -255,9 +255,9 @@ AI向けの知識・検索索引・埋め込み表現・処理履歴などは派
 
 PostgreSQLは詳細な検証に用いる提供実装として利用します。
 
-異なる提供実装は、既存資産との互換性と、特定の提供実装に依存しない境界を検証するために利用します。Oracleは、最初の参照事例の`master_data`が利用する既存資産の一例であり、検証対象をOracleに限定するものではありません。MySQLやSQL Serverなどの追加は、具体的な資産と利用条件が明らかになってから判断します。検証では、物理的な事実の観測・読取り専用の制約・実行環境との接続・実際の読取りを区別します。
+異なる提供実装は、既存資産との互換性と、特定の提供実装に依存しない境界を検証するために利用します。Oracle Databaseは、最初の参照事例の`master_data`が利用する既存資産の一例であり、検証対象をOracle Databaseに限定するものではありません。MySQLやSQL Serverなどの追加は、具体的な資産と利用条件が明らかになってから判断します。検証では、物理的な事実の観測・読取り専用の制約・実行環境との接続・実際の読取りを区別します。
 
-Oracleの実環境での検証が未完了であることだけを理由に、固定版での判定段階BのReadyを取り消しません。
+Oracle Databaseの実環境での検証が未完了であることだけを理由に、固定版での判定段階BのReadyを取り消しません。
 
 ## 作業領域E：設計の実行と検証
 
@@ -385,7 +385,7 @@ AIの自律的な作業と実行権限を区別します。AIがツールを直�
 - **Inputの現在性と外部送信**：Source ID/実消費byte/Revision/fingerprint/span、Semantic/Operator Lock、依存閉包、purpose/Principal、Allowed *proposal/read* capability、開示範囲を別々に固定します。宣言Input＝実Load/Parse済みではなく、内部read-only＝外部LLMへの送出許可でもありません。Source本文・Tool結果に埋め込まれた命令はAuthorityではありません。
 - **Candidateと検証**：Candidate/Attempt/base revision、Typed Diff、根拠Source span/意味対象、前提/未解決を保持。構文/型/参照と、引用の意味妥当性、Source鮮度/完全性、Rule衝突を別判定します。欠落・部分取得・曖昧・矛盾は保留し、再生成・A→B→Aでも旧Reviewを自動継承しません。
 - **受理とEffect**：人によるReview/Owner意味受理→Source反映→reload/Conformance→型付きAction Intent候補→外部Hostの現在Grant/Target確認→実Provider Effect/Receipt/独立readを段階別に検収します。受理済み意味は現在の実行許可を保証せず、Commit応答不明では無確認再試行を行いません。
-- **Owner分担・優先順**：#988＝構文/Operator、#2619＝意味Role、#2622＝Data Operations、#267＝Shared Acceptance、#958＝認識状態、#2515/#2516＝Disclosure、#1180/#2514＝Scenario/独立Oracle、#2598/#1174＝実Target/Effect。P0固定CandidateのHeadless負例→P1独立Oracle/既知Mutant→P2実Consumer/外部送信・二世界非干渉→P3実Host/Receipt→P4実AI生成品質の順とし、低レベル試験のPASSを製品統合へ合算しません。
+- **Owner分担・優先順**：#988＝構文/Operator、#2619＝意味Role、#2622＝Data Operations、#267＝Shared Acceptance、#958＝認識状態、#2515/#2516＝Disclosure、#1180/#2514＝Scenario/独立検証基準、#2598/#1174＝実Target/Effect。P0固定CandidateのHeadless負例→P1独立検証基準/既知Mutant→P2実Consumer/外部送信・二世界非干渉→P3実Host/Receipt→P4実AI生成品質の順とし、低レベル試験のPASSを製品統合へ合算しません。
 
 **状態**：設計と計画の接続のみ。AIB-01〜12、実AI入力/生成精度、OS・外部LLM送信、実Provider/Host、Studio/SHO、Owner正式受理の新しい横断E2Eは**NOT RUN**。新Schema・Core enum・Acceptance Engine・Policy Engine・TEI独自Hostの採用決定ではありません。
 
@@ -417,6 +417,16 @@ AIの自律的な作業と実行権限を区別します。AIがツールを直�
 **必要対象の完全性を独立に検査**する。[main統合 #2926](https://github.com/hat47x/tei-platform/pull/2926)の`EvaluateCompletion`は、渡されたTargetSet/Coverage/EmptyPolicyの評価器であり、Callerが宣言した`CoverageComplete=true`・行数0・表面上の`holds`からProviderがOwner対象全件を読んだとは推定できない。`required→discovered→loaded→parsed→actual consumed`、Required/Observed TargetSet/Row/Field、必要Guard/実評価Guard、空集合の独立証拠、現Principal/Tenant/Scopeを同じClaimに照合する。未観測なら`unverified`、矛盾なら別扱い。#1180はRequired Obligation、#2514は独立Expected/判別力、#2586/#2628は実Provider Read、#1163は同一Attempt、#1174は実Effectを担当。新しいCompletion Engine/Proof Registryを作らない。
 
 [AI-first設計§5.7](design/AI_FIRST_REQUIREMENT_PRESSURE_AND_HEADLESS_VERIFICATION_2026-11.md)へ実証順・既存Fixture再利用・Evidence上限を集約。**限定既存成果**：#3031の固定HEAD `63953ccb`の未対応`*.tei.md` Guard Go/CI success（Draft/未merge）、#2926のCompletion evaluator main統合と局所Go PASS、#3028のBootstrap正負対照Draft。これらから新Reader/実TargetSet/Owner meaning・実Host合流は導かない。P0-L実Provider、P0-M実Reader、P0-J旧新Meaning比較、同一Source改訂のCandidate→Shared Acceptance／Consumer、実OS/AI送出・Host/Provider Effectは**NOT RUN**。Go単一バイナリと既存外部Host権限境界を維持する。
+
+### 既存Proposal・Command境界を使った初回検収の修正（2026-11-07）
+
+[AI-first設計§5.8](design/AI_FIRST_REQUIREMENT_PRESSURE_AND_HEADLESS_VERIFICATION_2026-11.md)へ、mainに統合された**実APIと実証の上限**を接続した。新たなAI修正案APIを作る前に既存`validation.Propose(diagnostics, worldFingerprint)`・`validation.Accept(&proposal, acceptedRevision)`（[#3041](https://github.com/hat47x/tei-platform/pull/3041)）を限定利用する。前者は診断に版を付け、後者は**局所`Accepted`フラグを立てるに過ぎず、Human/Owner authority・正式Source更新・Shared Acceptance／Reloadとは別**。修正PatchやSource引用span/入力閉包/Allowed AI capabilityもこの実APIには無い。真正なDecisionは引き続き#267、Source/引用の現在資格は#958/#988がOwner。
+
+[Commandの修正 #3042](https://github.com/hat47x/tei-platform/pull/3042)により、Authorizer未設定は`COMMAND_AUTHORIZER_UNAVAILABLE`、宣言PeriodのObserver未設定は`COMMAND_PERIOD_STATE_UNAVAILABLE`として拒否され、実Executor後の宣言外Effectは`EffectUnknown`で保全される。ただし参照用`ReferenceAuthorizer{}`は現在の実Host発行者・Policy・実権限の証明ではない。「拒否・unknownだからno Effect」は誤り。差の保持について[AC-8実証 #3060](https://github.com/hat47x/tei-platform/pull/3060)は参照Storeの`OperationRecord.Differences`／CLI/Studio投影まで。実SQL/DB Commit/Provider/Owner業務完了ではない。既存#2598/#1174のTarget/Grant/Receipt/独立Readで後段を別検証する。
+
+**初回Doneの更新**：P0-L旧`*.tei`の実Provider read-onlyとP0-M新`*.tei.md` Readerを並行維持。新形式の移行・TM-01〜14／M0〜M6の**主担当は#3030**（#2667 TMDは横断追跡対応表）。#3031は未対応新形式の暫定Guardである。既存AIB-01/02/03/07/08/11/12とTM/AMFを同一Fixture・独立期待値で照合し、`diagnostic proposal created → local flag accepted → owner source accepted → host request admitted → provider effect observed`を**五つの別資格**として報告する。新AI API／第二Acceptance/Host/Registry/Runnerは設けない。
+
+**用語**：[#3039](https://github.com/hat47x/tei-platform/issues/3039)と[docs/naming.md](../docs/naming.md)に従いテストの「Oracle」を「独立期待値」「独立検証基準」に置換。**Oracle Database**はDB製品名として区別し、歴史的コード名・API・URLは改名しない。設計/実証と命名更新を混同しない。#3041/#3042/#3060の既存限定Go・Reference証拠を、`*.tei.md`新Reader／人の正式受理／実外部Host Providerの同一Attempt成功へ自動継承しない。**当該統合はNOT RUN／NOT ACCEPTED**。
 
 ## 作業領域I：周辺技術との連携と本番運用の境界
 
