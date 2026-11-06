@@ -299,7 +299,7 @@ reload / Conformance
 
 [三要素MethodのTEA-V0 / Self-build Fit/Gap](design/THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)を、作業領域Gの**最小縦断実証の追加候補**として位置づける。Data/Function/Businessは同じauthoritative Script/標準データのRole別Projectionであり、専用図形を第二正本としない。既存#1124 M0〜M4と#1125/#1126/#951/#267がOwnerであり、新しい横断Gate・Resolver・Acceptanceは作らない。
 
-最優先の不足は、①Source byteと意味が同一でもSource移動により旧定義ジャンプが失効すること、②可逆でないER/DFD線編集をSourceへ誤適用しないことを、**同一の実Consumerにおける正負の試験**で証明する点にある。並行するread-only評価では、**T06（三視点二世界の開示非干渉）・T07（同一Sourceへの複数Roleでのunknown保持）**を先に反証し、Policy/Role ResolverをTEA独自に実装しない。その後にバッチ/ファイル連携と業務図の役割区別、Method Pluginの実Build/Loadを扱う。Plugin self-buildのSB-1/2/3は既存Ownerの独立資格であり、TEAの初期read-only利用のブロッカーにはしない。 [T06/T07の限定Reference（Draft #2972）](https://github.com/hat47x/tei-platform/pull/2972)では、事前資格済みPublic Sliceの合成二世界とunknown Roleの局所性をNode 8件で確認したが、実Policy/実Workbenchの非干渉は未実証。#1124の実CLI→同一Consumer接合を直接優先とし、この安全性の二世界比較を#2516/#2620と並行Pressureに置く。現行の全体優先順・Gate B/C判定は変更せず、具体的な着手・採否は担当Issueの判断へ返す。
+最優先の不足は、①Source byteと意味が同一でもSource移動により旧定義ジャンプが失効すること、②可逆でないER/DFD線編集をSourceへ誤適用しないことを、**同一の実Consumerにおける正負の試験**で証明する点にある。並行するread-only評価では、**T06（三視点二世界の開示非干渉）・T07（同一Sourceへの複数Roleでのunknown保持）**を先に反証し、Policy/Role ResolverをTEA独自に実装しない。その後にバッチ/ファイル連携と業務図の役割区別、Method Pluginの実Build/Loadを扱う。Plugin self-buildのSB-1/2/3は既存Ownerの独立資格であり、TEAの初期read-only利用のブロッカーにはしない。 [T06/T07の限定Reference（Draft #2972）](https://github.com/hat47x/tei-platform/pull/2972)では、事前資格済みPublic Sliceの事前公開Slice投影・unknown Roleの局所性に加え、Private metadata混入拒否をGitHub保存ファイルと同一BlobのNode 9件で確認。ただし実Source→公開SliceのPolicy非干渉／実Workbenchは未実証。#1124の実CLI→同一Consumer接合を直接優先とし、この安全性の二世界比較を#2516/#2620と並行Pressureに置く。現行の全体優先順・Gate B/C判定は変更せず、具体的な着手・採否は担当Issueの判断へ返す。
 
 ## 作業領域H：AIによる開発支援
 
