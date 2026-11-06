@@ -152,6 +152,59 @@ func TestReferenceDatabaseReleaseContractCandidates(t *testing.T) {
 		t.Log("parallel 4.x/5.x lines: only the latest 4.3.0 in the stale line is reported; 5.0.0 matches the current definition")
 	})
 
+	writeLine := func(root, db, oldVersion, newVersion string) {
+		t.Helper()
+		writeFile(t, filepath.Join(root, "databases", db, "database.tei"), "database "+db+" {\n    kind relational\n    ownership managed-here\n    uses semantic sales\n}\n")
+		writeFile(t, filepath.Join(root, "databases", db, "contracts", "order.tei"), "contract "+db+".order v5.0 {\n}\n")
+		for _, version := range []string{oldVersion, newVersion} {
+			minor := strings.Split(version, ".")[1]
+			writeFile(t, filepath.Join(root, "releases", "databases", db, version+".tei"), "database-release "+db+" "+version+" {\n    schema-fingerprint \""+db+"-"+version+"\"\n    provides contract "+db+".order v4."+minor+"\n    data-readiness ready\n}\n")
+		}
+	}
+
+	t.Run("same-major-separate-databases-do-not-mix", func(t *testing.T) {
+		before, after := scratchWorkspace(t), scratchWorkspace(t)
+		writeLine(after, "line_a", "4.1.0", "4.2.0")
+		writeLine(after, "line_b", "4.7.0", "4.8.0")
+		run(tei, true, "validate", "-workspace", after)
+		got := compareReport(before, after)
+		if len(got.Candidates) != 2 {
+			t.Fatalf("同じmajorの別Databaseごとに最新1件ずつを期待: %+v", got.Candidates)
+		}
+		found := byKey(got)
+		for version, database := range map[string]string{"4.2.0": "line_a", "4.8.0": "line_b"} {
+			c, ok := found["after/"+version]
+			if !ok || c.Database != database || c.Contract != database+".order" || c.ProvidedVersion != "4."+strings.Split(version, ".")[1] || c.CurrentVersion != "5.0" {
+				t.Fatalf("%sの系統が正しくありません: %+v", database, got.Candidates)
+			}
+		}
+		for _, version := range []string{"4.1.0", "4.7.0"} {
+			if _, ok := found["after/"+version]; ok {
+				t.Fatalf("履歴Releaseの%sを報告しています: %+v", version, got.Candidates)
+			}
+		}
+		t.Log("same major, separate databases: line_a 4.2.0 and line_b 4.8.0 are reported; history 4.1.0/4.7.0 and cross-database contracts are not")
+	})
+
+	t.Run("same-major-same-database-collapses-without-line-identity", func(t *testing.T) {
+		before, after := scratchWorkspace(t), scratchWorkspace(t)
+		db := "ambiguous"
+		writeFile(t, filepath.Join(after, "databases", db, "database.tei"), "database "+db+" {\n    kind relational\n    ownership managed-here\n    uses semantic sales\n}\n")
+		writeFile(t, filepath.Join(after, "databases", db, "contracts", "a.tei"), "contract "+db+".a v5.0 {\n}\n")
+		writeFile(t, filepath.Join(after, "databases", db, "contracts", "b.tei"), "contract "+db+".b v5.0 {\n}\n")
+		writeFile(t, filepath.Join(after, "releases", "databases", db, "4.3.0.tei"), "database-release "+db+" 4.3.0 {\n    schema-fingerprint \"ambiguous-4.3\"\n    provides contract "+db+".a v4.3\n    data-readiness ready\n}\n")
+		writeFile(t, filepath.Join(after, "releases", "databases", db, "4.9.0.tei"), "database-release "+db+" 4.9.0 {\n    schema-fingerprint \"ambiguous-4.9\"\n    provides contract "+db+".b v4.9\n    data-readiness ready\n}\n")
+		run(tei, true, "validate", "-workspace", after)
+		got := compareReport(before, after)
+		if len(got.Candidates) != 1 || got.Candidates[0].Version != "4.9.0" || got.Candidates[0].Contract != "ambiguous.b" {
+			t.Fatalf("同一Database・同一majorの1件への集約を期待: %+v", got.Candidates)
+		}
+		if _, ok := byKey(got)["after/4.3.0"]; ok {
+			t.Fatalf("系統識別子なしで低いversionの系統を報告しています: %+v", got.Candidates)
+		}
+		t.Log("same database and major without a line identity: only 4.9.0 is reported; the 4.3.0 line is under-reported, not over-reported")
+	})
+
 	t.Run("forward-update-keeps-existing-warning-only", func(t *testing.T) {
 		before, after := scratchWorkspace(t), scratchWorkspace(t)
 		replaceOnce(after, "databases/sales-core/contracts/order.tei", "contract sales_core.order v4.2", "contract sales_core.order v3.0")
