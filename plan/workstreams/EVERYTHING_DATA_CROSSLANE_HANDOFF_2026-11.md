@@ -2917,3 +2917,21 @@ HEAD `e0cfebf14d40db81bdef77d6c3e4898ed75d999f`に対する[GitHub Actions #4203
 受入単位は新Release Objectではなく既存の **Claim × Function/Entry × Consumer × Source/Artifact Revision × Environment/Time × Attempt** に対する証拠参照。実装済みCompat check一つ、Snapshot 0件、Version同名、Source byteの再一致、Runner completedでは、旧新Clientの現在の全体適合・Cutover・業務Effect・公開一式性を保証しない。新Schema/共通Deployment Coordinator/Host/Resolver/Policy/新Test SSOTは不要。
 
 **次の実測順**：#2586のread-only一Functionを最初に通す。旧新互換は#2555/#2887の必要Client集合、#2604の二Generation Reader、#1174のEffect/Unknownを**別Attemptで対照**し、相互関連を#1163へ渡す。#2831全体セルフビルド・外部Harness H2初回は既存P0のまま独立。R0/R1異世代実Client・実DB Cutover・実Reader公開・Owner受理は**本Docs変更でNOT RUN**。
+
+## 56. `*.tei.md`へのSource方針転換と、既存実Loaderからの安全な移行（2026-11-06、Owner方針）
+
+**更新された決定**：2026-11-06、TEI向けSource文書は **`*.tei.md` を標準**とし、従来の `*.tei` は新規作成を原則停止・段階廃止する。旧[TEI #2621](https://github.com/hat47x/tei-platform/issues/2621)に残る「`.tei.md`を標準化しない」「必要時は別`.tei`へ切り出す」は**以前の提案**であり、今回の決定に優先しない。履歴の記述自体は削除せず、後続の変更として追跡する。
+
+**実装の現状**：2026-11-06の現main `internal/workspace/loader.go` はSemanticを `.tei` suffix、Pluginを`plugin.tei`、Bundleを`bundle.tei`、Application等を明示`application.tei`・`*.tei`で選別する。**`*.tei.md`へファイルを改名しただけでは実Read/Parseされない**。`tei.workspace.yaml`は現行Manifest、legacy `tei.workspace.tei`は移行を必要とする例外的Reader経路。`workspace-files`のManaged、LoaderのConsumed、Syntax Parsed、Role/Meaning資格、Builder実入力、Consumer実Readerの差は既存#2823／#2595／#2514へ割り付ける。
+
+本節の実行計画・個別テスト正本は**[TEI Markdown Source移行計画](../design/TEI_MARKDOWN_SOURCE_MIGRATION_2026-11.md)**。M0 inventory→M1 Grammar可読性・loss比較→M2新旧限定Reader→M3同一Subject移行と独立Oracle→M4 Authoring切替→M5 legacy retireを段階化し、TMD-01〜12で空成功、同名二重定義、Source種別漏れ、OKF ID衝突、Raw Draft原文、A→B→A、Build/Consumer混在を反証する。
+
+**OKF／SHOとの明示分離**：`*.tei.md`はMarkdownを基礎とするTEI向けファイルだが、[OKF Draft #3029](https://github.com/hat47x/tei-platform/pull/3029)の`type`付きConcept適合や任意タグ、SHOのWriter採用を一律要求しない。通常`.md`はTEI実行対象ではなく、`tags: [tei]`や拡張子からOwner意味受理・Host Grantを推論しない。**新正式Grammar、実Role Parser、Filename Migration CLI、全Workspaceの拡張子改名はNOT RUN**。#2621/#2823/#988/#1920/#2600/#2514のOwnerが個別に実試験・採用を決め、#1119既存Gateを新規Grammarが未実装の段階で全停止にしない。
+
+## 57. 2026-11-06の限定実証の更新：実AI Mutant検出・Health Receipt・実行先の責務
+
+- **AI/Oracle（限定Product Mutant kill）**：[統合Draft #2901](https://github.com/hat47x/tei-platform/pull/2901)のexact HEAD `a6eb80cf` は[Health #42111973682](https://github.com/hat47x/tei-platform/actions/runs/42111973682) SUCCESS。[破壊的Draft #3017](https://github.com/hat47x/tei-platform/pull/3017)はProduct EvaluatorのRelation-Unique重複判定一行だけを誤反転し、[Health #42181290981](https://github.com/hat47x/tei-platform/actions/runs/42181290981) FAIL。実CIログで**AI追加Scenarioの対象Step自体が固定Expectedの不一致を検出**した（限定1 Mutant kill）。Draft #3017は**意図的な欠陥入りで絶対にmainへMergeしない**。NULL/欠損/部分集合・全Oracle／Owner受理には外挿しない（#2514）。
+- **暫定一改訂E2EのHealth証拠**：[main統合済み #3025](https://github.com/hat47x/tei-platform/pull/3025)が、#3020で配線したfullHealth receiptを実PostgreSQL 16.14の一改訂E2Eで読み、`TRUSTED_FULL_HEALTH_NOT_RECORDED`の**一診断だけを解消**した。監査は依然 **status=INCOMPLETE / productGate=UNQUALIFIED**、Provisional Acceptance/Grant/Guaranteeの3診断が残る。Healthあり≠正式G1/G2／実外部Provider保証。#1163/#2619の既存台帳を使用する。
+- **実分散とTAIの境界**：[EKI main統合 #773](https://github.com/hat47x/eki-fabric/pull/773)はLease台帳への実登録（失敗時はWorkerへ配らない）を追加したが、期限切れAttemptのResult reconciliationや外部Effect再実行許可は残る。TAI [Draft #489](https://github.com/hat47x/tai-pleroma/pull/489)は固定TEI CLI/Binaryの合成資格と**実Harness H2→H3→H3→H2未実施**を分離。TEI Source改名により既存Binaryが必要Sourceを消費しなくなれば、Skill能力に関係なく比較自体を無資格とする。EKIのLeaseやTAIのSkillがTEI Meaning/Host Grantを代行しない。
+
+**本§56/57は現行GitHub Source・PR/CI報告を照合したdocs-only追加**。新Markdown Reader、実TMD fixture、実Product Scenario Mutation追加、外部Harness実セッション、実PostgreSQL再試験、Owner受理は**本変更ではNOT RUN**。Ownerが既存Issue/PRで取得済みの限定証拠だけを認める。
