@@ -1,4 +1,4 @@
-package legacyauthorization_test
+package commandbinding_test
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"tei/internal/ir"
 	"tei/internal/security/legacyauth"
 	"tei/internal/security/legacyauthorization"
+	"tei/internal/security/legacyauthorization/commandbinding"
 	"tei/internal/semantic"
 )
 
@@ -58,20 +59,35 @@ func authorizationCommandRequest() command.Request {
 }
 
 func authorizedSubject() legacyauthorization.SubjectStore {
-	return authorizationStoreFunc(func(_ context.Context, subject string) (legacyauth.User, bool, error) {
+	return subjectStoreFunc(func(_ context.Context, subject string) (legacyauth.User, bool, error) {
 		return legacyauth.User{SubjectID: subject, LoginID: "clerk", RoleCode: "sales"}, true, nil
 	})
 }
 
-func commandAuthorizer(allowed bool, reason string) legacyauthorization.CommandAuthorizer {
-	return legacyauthorization.CommandAuthorizer{
+func commandAuthorizer(allowed bool, reason string) commandbinding.CommandAuthorizer {
+	return commandbinding.CommandAuthorizer{
 		Subject: "user-1",
 		Store:   authorizedSubject(),
-		Rule: authorizationRuleFunc(func(context.Context, legacyauth.User, string, string) (bool, string, error) {
+		Rule: ruleFunc(func(context.Context, legacyauth.User, string, string) (bool, string, error) {
 			return allowed, reason, nil
 		}),
 		Resource: func(command.Request) string { return "sales.order" },
 	}
+}
+
+// subjectStoreFunc adapts a function to the store interface, so the test needs no
+// store implementation of its own.
+type subjectStoreFunc func(context.Context, string) (legacyauth.User, bool, error)
+
+func (f subjectStoreFunc) FindBySubject(ctx context.Context, subject string) (legacyauth.User, bool, error) {
+	return f(ctx, subject)
+}
+
+// ruleFunc adapts a function to the rule interface.
+type ruleFunc func(context.Context, legacyauth.User, string, string) (bool, string, error)
+
+func (f ruleFunc) Evaluate(ctx context.Context, user legacyauth.User, action, resource string) (bool, string, error) {
+	return f(ctx, user, action, resource)
 }
 
 // TestCommandAuthorizerLetsAGrantedSubjectRun checks that a granted subject
@@ -108,7 +124,7 @@ func TestInvokerRejectsUngrantedCommandBeforeExecutor(t *testing.T) {
 	if !errors.As(err, &executionError) || executionError.Code != "COMMAND_UNAUTHORIZED" {
 		t.Fatalf("err=%v", err)
 	}
-	if !errors.Is(err, legacyauthorization.ErrNoGrant) {
+	if !errors.Is(err, commandbinding.ErrNoGrant) {
 		t.Fatalf("denial is not reported as a grant decision: %v", err)
 	}
 	if executor.called {
@@ -119,16 +135,16 @@ func TestInvokerRejectsUngrantedCommandBeforeExecutor(t *testing.T) {
 // TestCommandAuthorizerStopsWhenRulesCannotBeEvaluated checks that a rule
 // failure is not turned into a business denial.
 func TestCommandAuthorizerStopsWhenRulesCannotBeEvaluated(t *testing.T) {
-	authorizer := legacyauthorization.CommandAuthorizer{
+	authorizer := commandbinding.CommandAuthorizer{
 		Subject: "user-1",
 		Store:   authorizedSubject(),
-		Rule: authorizationRuleFunc(func(context.Context, legacyauth.User, string, string) (bool, string, error) {
+		Rule: ruleFunc(func(context.Context, legacyauth.User, string, string) (bool, string, error) {
 			return false, "", errors.New("rule store unavailable")
 		}),
 		Resource: func(command.Request) string { return "sales.order" },
 	}
 	err := authorizer.Authorize(context.Background(), authorizationCommandRequest())
-	if err == nil || errors.Is(err, legacyauthorization.ErrNoGrant) {
+	if err == nil || errors.Is(err, commandbinding.ErrNoGrant) {
 		t.Fatalf("rule failure was accepted as a denial: %v", err)
 	}
 }

@@ -2,15 +2,23 @@
 
 ## 対象
 
-- 実装: `internal/security/legacyauthorization/command_authorizer.go`
-- 試験: `internal/security/legacyauthorization/command_authorizer_test.go`
-- 対象版: `e96166bf3`（`main`）
+- 実装: `internal/security/legacyauthorization/commandbinding/commandauthorizer.go`
+- 試験: `internal/security/legacyauthorization/commandbinding/commandauthorizer_test.go`、`closure_test.go`
+- 対象版: `e96166bf3`（`main`）、配置の変更は 2026-11-07
 - 環境: Windows、Go `1.27.0`
+
+## 配置の変更（2026-11-07 追記）
+
+`CommandAuthorizer` を `legacyauthorization` から `legacyauthorization/commandbinding` へ移しました。
+
+- 理由: `legacyauthorization` が `internal/command` を import すると、Command境界（ひいては Workspace ローダー）が**認可規則だけを必要とするホスト**の依存閉包に入ります。固定World APIのビルドは「Workspace/syntax を閉包に含めない」ことを明示的に検査しており、実際に `frozen-world-api` がこの import で失敗しました。
+- 依存の向きを一方通行にしました。`commandbinding` は規則とCommand境界の両方を知り、`legacyauthorization` はCommand境界を知りません。
+- `closure_test.go` がこの向きを固定します（`go list -deps` の結果で確認。ソースの文字列検索ではありません）。
 
 ## 実行
 
 ```powershell
-go test ./internal/security/legacyauthorization -run 'TestCommandAuthorizer|TestInvokerRejectsUngranted' -count=1 -v
+go test ./internal/security/legacyauthorization/commandbinding -run 'TestCommandAuthorizer|TestInvokerRejectsUngranted|TestAuthorizationSourceDoesNotImport' -count=1 -v
 ```
 
 ## 観測

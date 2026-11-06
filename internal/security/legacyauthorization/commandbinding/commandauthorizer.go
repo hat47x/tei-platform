@@ -1,4 +1,14 @@
-package legacyauthorization
+// Package commandbinding connects an existing authorization source to the
+// Command boundary.
+//
+// It lives outside legacyauthorization on purpose: legacyauthorization is the
+// authorization source itself and must stay usable by hosts that never touch a
+// Command (the frozen API build is one of them). Importing internal/command from
+// legacyauthorization would pull the Command boundary, and with it the Workspace
+// loader, into every binary that only needs the rules. The dependency direction
+// is one way: commandbinding knows the rules and the Command boundary;
+// legacyauthorization knows nothing about Command.
+package commandbinding
 
 import (
 	"context"
@@ -6,6 +16,7 @@ import (
 	"fmt"
 
 	"tei/internal/command"
+	"tei/internal/security/legacyauthorization"
 )
 
 // CommandAuthorizer connects an existing authorization source to the Command
@@ -31,9 +42,9 @@ type CommandAuthorizer struct {
 	// Resource maps a request to a resource. A nil mapper uses the application ID.
 	Resource func(command.Request) string
 
-	Store       SubjectStore
-	Rule        Rule
-	EpochReader EpochReader
+	Store       legacyauthorization.SubjectStore
+	Rule        legacyauthorization.Rule
+	EpochReader legacyauthorization.EpochReader
 }
 
 // Authorize denies the call unless the existing rules allow the subject to run
@@ -53,8 +64,8 @@ func (a CommandAuthorizer) Authorize(ctx context.Context, request command.Reques
 	if action == "" || resource == "" {
 		return fmt.Errorf("command authorization has no action or resource for %s", request.Capability)
 	}
-	adapter := Adapter{Store: a.Store, Rule: a.Rule, EpochReader: a.EpochReader}
-	result, err := adapter.Invoke(ctx, AuthorizationCapability, Input{
+	adapter := legacyauthorization.Adapter{Store: a.Store, Rule: a.Rule, EpochReader: a.EpochReader}
+	result, err := adapter.Invoke(ctx, legacyauthorization.AuthorizationCapability, legacyauthorization.Input{
 		SubjectID: a.Subject,
 		Action:    action,
 		Resource:  resource,
@@ -64,7 +75,7 @@ func (a CommandAuthorizer) Authorize(ctx context.Context, request command.Reques
 	}
 	if result.Outcome != "allowed" {
 		reason := "denied"
-		if denial, ok := result.Payload.(AuthorizationDenial); ok && denial.Reason != "" {
+		if denial, ok := result.Payload.(legacyauthorization.AuthorizationDenial); ok && denial.Reason != "" {
 			reason = denial.Reason
 		}
 		return fmt.Errorf("subject is not authorized for %s on %s: %s: %w", action, resource, reason, ErrNoGrant)
