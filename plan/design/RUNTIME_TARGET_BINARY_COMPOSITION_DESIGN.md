@@ -763,6 +763,21 @@ go test -count=1 -run '^TestIndependentGoAndJavaScriptQuoteSemanticParity$' ./to
 - **新HEADの実行判定**：D0 direct単体Go test／既存D2 process test／将来D1 actual static buildとInvocationを別のGateにする。`go test` exit 0でもWindowsまたはNode不存在時のD2 `t.Skip`は実行PASSではない。新しいテストでbuild-timeの静的関数をfunction pointer経由で呼ぶだけなら「Adapter dispatchの合成確認」であり、Plugin選択・Link・Builderを含む製品D1として報告しない。比較対象の同一Target/Toolchain、23件のSource byte、Binary digest、未選択Plugin混入・依存欠落を#1251/#2600で確認する。
 **最小の実行出口**：同一Revision/Expected/OS/TargetでD0とD1のactual Go Build/Invocation、23件のExpected別Outcome、少なくとも一つの意味負例と一つの選択/依存負例、選択された/実消費されたSourceとBinary、費用を結んだ**既存Evidenceへの参照**。D1の静的呼出しが成立しなければその不適合と必要差分を成果とし、動的Loader/Processへ自動迂回しない。試験結果のOwnerは#2514（Oracle）、#951（Contract/Conformance）、#1251/#2600（Build/Bundle/費用）、#1016（実要求/採否）、#1180（Scenario SSOT）。本節は新実装の合否ではなく作業の最小仕様。**今回のS0〜S6の新試験・計測・正式受理はNOT RUN。**
 
+<!-- tei-d0-ci-actual-oracle-scope-negative-20261106 -->
+### 18.10 実CIで判明したD0/D2のOracle配布境界（2026-11-06、現物故障の反証）
+
+新[D0直接計算Draft #3021](https://github.com/hat47x/tei-platform/pull/3021)は `plugins/reference-order-quote/candidate_vectors_test.go` から既存23ベクトルを参照する1ファイルのGo試験。**初回exact HEAD `faee399c6c23d02300d3cd8988005d0f20ab0148` の実CIは失敗**した。独立[Actions #42196353181](https://github.com/hat47x/tei-platform/actions/runs/42196353181)と[Health #42196353500](https://github.com/hat47x/tei-platform/actions/runs/42196353500)のジョブログで、root `go test ./...` 中の `tei/plugins/reference-order-quote` 単体は `ok` であった一方、既存 `TestIndependentBusinessQuoteOverExistingGenericProcessTransport` が一時Go moduleへ全 `.go` をコピーして再実行した際、**候補Oracle JSONはコピーされない**ため新D0試験の相対path読取りが `no such file or directory` で失敗したことを確認。業務計算の不一致ではなく、**Test Sourceの依存とProcess配布閉包の適用Scopeが違う**問題。Go vet/gofmt合格・脆弱性CI成功を、この失敗の解消や23件の新HEAD合格へ読み替えない。
+
+**局所修正**：#3021 の新試験だけで、既存D2が生成する `go.mod` の `module example.invalid/reference-order-quote` を厳密に識別できる場合に限り、D0共有Oracle試験を `t.Skip` する。TEIルートからの直接D0試験でOracleが見つからなければ従来どおり **hard fail**。実Providerコード、D2 Staging (`.go`全件コピー/Offline Build/元の内部単体試験)、既存Oracleを改変しない。修正コミット `dfc133e2ce1877e3593f1e507cbc3c2b7a82bfc5`、修正後CI結果は独立確認するまで **PENDING/NOT VERIFIED**。
+
+| Claim | 必要な合格証拠 | 誤判定の禁止 |
+| --- | --- | --- |
+| D0 root direct | ルートSource上で共有23件（成功8・拒否15）の各subtestを実際に実行し、SKIPなしでExpectedに一致 | Standalone stagingでのD0 `t.Skip` をD0 PASSへ算入しない |
+| D2 standalone process | 固定Sourceから独立offline Go moduleの `go test`/`go vet`/`go build` が成功し、元Carrier/Host/実子Processの限定ケースが実呼出しされる | D0共有OracleがコピーされないことをD2の不完全な業務Sourceと断定しない。逆にD2試験PASSを全23 D0の証拠へ転用しない |
+| D0/D1比較 | 同一23 Oracle・同じGo Target/CPU/Toolchainで直接入口と明示静的Provider入口の実Build/実Invokeを比較 | D2のProcess又は `ResolvedSet` 合成選択をD1静的Link資格としない |
+
+本負例は§18.4（必要Source閉包）の**Consumer/Attempt相対性**と§18.5（同じOracleの再利用）を補強する。Second Oracle/Host/Resolver、D2の全Test Source排除、Processの新Runtime実装は行わない。正式業務Owner受理、独立Mutant、D1、実OS/DB/Host資格は別。#1251（Go module/Build閉包）、#2514（Oracle実実行）、#1145（Process境界）、#2600（実消費と再資格）へ引き渡す。
+
 ## 19. 高凝集Bundleの適正規模と実行前提の完全性（2026-11-06、設計・未採用）
 
 ### 19.1 Bundleのサイズはファイル数ではなく、実変更の結合度で判断する
