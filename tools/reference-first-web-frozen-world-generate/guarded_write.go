@@ -51,7 +51,12 @@ func loadGrants(path, declarationPath string) ([]permission.Spec, error) {
 
 // writeLineageWithGrants writes the observation using the supplied grants. The
 // requested path must be covered by them; the guarded filesystem checks it.
-func writeLineageWithGrants(path string, data []byte, grants []permission.Spec) error {
+//
+// accessLog is where the decision is recorded. A check whose outcome is not
+// recorded cannot be read back afterwards, so the caller may name a file; when
+// it names none, the decision is made but not kept, and the caller is told so
+// rather than being left to assume a record exists.
+func writeLineageWithGrants(path string, data []byte, grants []permission.Spec, accessLog string) error {
 	absolute, err := filepath.Abs(path)
 	if err != nil {
 		return fmt.Errorf("resolve %s: %w", path, err)
@@ -59,10 +64,16 @@ func writeLineageWithGrants(path string, data []byte, grants []permission.Spec) 
 	if len(grants) == 0 {
 		return fmt.Errorf("no grants were supplied, so %s is not written", absolute)
 	}
+	guard := access.Guard{Granted: grants}
+	if accessLog != "" {
+		guard.Journal = access.File{Path: accessLog}
+	} else {
+		fmt.Fprintln(os.Stderr, "注意: -access-log が無いため、この書出しの可否は記録されません")
+	}
 	files := access.FileSystem{
 		Root:       filepath.Dir(absolute),
 		Capability: lineageCapability,
-		Guard:      access.Guard{Granted: grants},
+		Guard:      guard,
 	}
 	return files.WriteFile(filepath.Base(absolute), data, 0o600)
 }
