@@ -197,3 +197,45 @@ func TestTargetSnapshotAndPolicyFailClosed(t *testing.T) {
 		t.Fatal("invalid allocation snapshot must reject")
 	}
 }
+
+func TestTargetRejectsCorruptUnrelatedAllocationSnapshot(t *testing.T) {
+	s := decimalScheme()
+	r, err := Derive(s, []byte("candidate-independent"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := decimalTarget()
+	prior := strings.Repeat("0", 24)
+	if prior == r.Text {
+		prior = strings.Repeat("1", 24)
+	}
+	base := TargetBinding{
+		Namespace:      p.Namespace,
+		ProfileVersion: p.ProfileVersion,
+		Subject:        "other:first",
+		Scheme:         s,
+		Text:           prior,
+	}
+	second := base
+	second.Subject = "other:second"
+	if _, err := CheckTargetBinding(r, "candidate:new", p, []TargetBinding{base, second}); err == nil {
+		t.Fatal("collision between unrelated old subjects was not detected")
+	}
+	second = base
+	second.Text = strings.Repeat("2", 24)
+	if _, err := CheckTargetBinding(r, "candidate:new", p, []TargetBinding{base, second}); err == nil {
+		t.Fatal("duplicate existing subject with a different text was accepted")
+	}
+	second = base
+	second.Subject = "other:second"
+	second.Scheme = Scheme{}
+	if _, err := CheckTargetBinding(r, "candidate:new", p, []TargetBinding{base, second}); err == nil {
+		t.Fatal("invalid preexisting scheme was accepted")
+	}
+	// Existing data from another physical namespace cannot poison this one.
+	base.Namespace = "another.namespace"
+	second.Namespace = "another.namespace"
+	if _, err := CheckTargetBinding(r, "candidate:new", p, []TargetBinding{base, second}); err != nil {
+		t.Fatalf("unrelated namespace must be ignored: %v", err)
+	}
+}
