@@ -94,7 +94,7 @@ func TestHIST03cFilteredHistoryHidesOrphanDespiteCompletePages(t *testing.T) {
 	full := migration.HistorySnapshot{
 		Database: db, Tool: migration.ToolAtlas,
 		CapturedAt: "2026-11-06T00:00:00Z",
-		Entries: source,
+		Entries:    source,
 	}
 	// The reader used an unjustified filter: ID IN (repository IDs).
 	filtered := full
