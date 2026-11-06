@@ -90,11 +90,22 @@ func TestEvaluateCompletionEmptySetPolicies(t *testing.T) {
 			want:       CompletionUnverified,
 		},
 		{
-			name:       "deny on partially observed empty is unverified",
+			name:       "deny on partial covered targets without violation is unverified",
 			capability: completionCapability(EmptyPolicyDeny),
 			kind:       EmptyPolicyUniversal,
-			evidence:   CompletionEvidence{Coverage: CoveragePartial},
-			want:       CompletionUnverified,
+			evidence: CompletionEvidence{
+				Targets: []TargetResult{{ID: "L1", Holds: true}}, Coverage: CoveragePartial,
+			},
+			want: CompletionUnverified,
+		},
+		{
+			name:       "deny on partial covered targets with violation fails",
+			capability: completionCapability(EmptyPolicyDeny),
+			kind:       EmptyPolicyUniversal,
+			evidence: CompletionEvidence{
+				Targets: []TargetResult{{ID: "L1", Holds: false}}, Coverage: CoveragePartial,
+			},
+			want: CompletionFails,
 		},
 		{
 			name:       "existence default deny on unobserved empty is unverified",
