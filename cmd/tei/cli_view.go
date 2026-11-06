@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"tei/internal/application"
@@ -53,6 +54,7 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	commandID := fs.String("command", "", "command capability to plan")
 	execute := fs.Bool("execute", false, "reference execution of the planned command")
 	periodStateFile := fs.String("period-state", "", "period state JSON for -execute")
+	operationLogFile := fs.String("operation-log", "", "write reference operation records as JSON")
 	lifecycleState := fs.String("lifecycle-state", "", "SQLite state file for restart-safe command lifecycle")
 	lifecycleCommand := fs.String("lifecycle-command", "", "stable command id recorded in the lifecycle state")
 	lifecycleOwner := fs.String("lifecycle-owner", "cli", "owner recorded in the lifecycle state")
@@ -74,6 +76,7 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		(*lifecycleState == "" && *lifecycleCommand != "") ||
 		(*lifecycleGeneration < 1) ||
 		(len(allowedCapabilities) > 0 && !*execute) ||
+		(*operationLogFile != "" && !*execute) ||
 		*root != strings.TrimSpace(*root) || *applicationID != strings.TrimSpace(*applicationID) ||
 		*patternID != strings.TrimSpace(*patternID) || *packageID != strings.TrimSpace(*packageID) ||
 		*commandID != strings.TrimSpace(*commandID) {
@@ -155,6 +158,11 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 				}
 				invoker.Periods = command.NewMapPeriodState(states)
 			}
+			var recorder *command.MemoryRecorder
+			if *operationLogFile != "" {
+				recorder = &command.MemoryRecorder{}
+				invoker.Recorder = recorder
+			}
 			request := command.Request{
 				Application: core.CanonicalID(*applicationID),
 				Pattern:     core.CanonicalID(*patternID),
@@ -183,6 +191,15 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 					return fail("COMMAND_LIFECYCLE_REFUSED", execution.Message, 1)
 				}
 				return fail("COMMAND_FAILED", err.Error(), 1)
+			}
+			if recorder != nil {
+				encoded, encodeErr := json.MarshalIndent(recorder.Records, "", "  ")
+				if encodeErr != nil {
+					return fail("OPERATION_LOG_WRITE_FAILED", encodeErr.Error(), 1)
+				}
+				if writeErr := os.WriteFile(*operationLogFile, append(encoded, '\n'), 0o600); writeErr != nil {
+					return fail("OPERATION_LOG_WRITE_FAILED", writeErr.Error(), 1)
+				}
 			}
 			run := referenceCommandRun{
 				SchemaVersion: applicationview.SchemaVersion,
