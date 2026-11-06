@@ -20,7 +20,7 @@
 | AC-6 | 一部 | 値域・必須・候補キー・削除ポリシー、`COMMAND_DATASOURCE_READ_ONLY`（Applicationの読み取り専用datasource宣言を実行前に検査。[確認記録](XTEA_LOWCODE_READONLY_DATASOURCE_2026-11.md)） | 参照Storeの単体・例の試験、読み取り専用宣言の拒否・読み書き宣言の許容・宣言なしを推測しない試験 | データソース側の実行時強制（三段目） |
 | AC-7 | 一部 | `-format html`・`print`、印刷テンプレート、`tei-semantic-fingerprint`（画面・帳票が読んだ意味の版） | HTML・printの単体試験、record・header-detail・browseの印刷面が版を持つ試験 | 表示（座標・用紙・部品）の版照合、manifestの版 |
 | AC-8 | 一部 | Executorが返すEffectと宣言の照合、`Invoker.Recorder`、CLIの`-operation-log`、Studioの`records`、参照Storeの`Applied`照合と`Differences`（宣言外の種別は拒否、宣言と異なる対象への同種別適用は未解決の差として保持。CLIのテキスト・JSONとStudioの画面にも表示。操作を列挙しないExecutorは`AppliedUnobserved`で「未確認」と示す。[確認記録](XTEA_LOWCODE_OPERATION_DIFFERENCE_2026-11.md)） | 効果の不一致試験、記録の試験、画面の件数表示、適用操作の照合試験、カスケードを差として残す試験、実行結果の差の表示試験 | 実行時に発行されたSQL文・CRUD操作そのものの記録 |
-| AC-9 | 一部 | 検証レポートの`worldFingerprint`・`sourceIndexFingerprint`、`validation.Proposal`と`validation.Accept`、`tei validate -json`の`proposals`、Studioの`ValidationResponse.proposals`（[確認記録](XTEA_LOWCODE_DIAGNOSTIC_PROPOSAL_2026-11.md)） | 検証の版照合、修正案が版に結び付くこと、版不一致・版欠落・二重受理を拒否する試験 | 作成者が修正案を採る操作の画面・手順 |
+| AC-9 | 一部 | 検証レポートの`worldFingerprint`・`sourceIndexFingerprint`、`validation.Proposal`と`validation.Accept`、`tei validate -json`の`proposals`、Studioの`ValidationResponse.proposals`（[確認記録](XTEA_LOWCODE_DIAGNOSTIC_PROPOSAL_2026-11.md)、[Studio表示の確認](XTEA_LOWCODE_STUDIO_PROPOSALS_2026-11.md)） | 検証の版照合、修正案が版に結び付くこと、版不一致・版欠落・二重受理を拒否する試験 | 作成者が修正案を採る操作の画面・手順 |
 | AC-10 | 一部 | `effectcommit`のreceipt、Commandアダプタ、CLIの`COMMAND_EFFECT_UNKNOWN`と`COMMAND_LIFECYCLE_REFUSED` | アダプタの単体試験、失敗の符号化試験、実PostgreSQLはDSN設定時のみ | Command再実行での「不明」状態の永続化と自動再実行の禁止 |
 | AC-11 | 一部 | `effectcommit.Runner`の認可境界、`command.Invoker.Authorizer`、`AllowListAuthorizer`、CLI/StudioのAllowList、`legacyauthorization/commandbinding.CommandAuthorizer`（subject・action・resourceを既存規則へ接続）、`command.GrantAuthorizer`（能力が宣言した許可と発行済み許可の照合。部分許可・無宣言・不正宣言を拒否）。確認記録: [既存認可規則](XTEA_LOWCODE_COMMAND_AUTHORIZATION_2026-11.md)、[宣言許可の照合](XTEA_LOWCODE_GRANT_AUTHORIZATION_2026-11.md) | 認可付きPostgreSQL試験（DSN設定時のみ）、Authorizerの許可・拒否試験、CLIの`-allow-capability`、Studioの`ExecuteCommandWithPolicy`、Patternが宣言していても付与が無ければExecutorへ到達しない試験、能力の宣言許可と発行許可の照合試験 | 権限の正本・付与の管理、`security.authorize`への実運用接続 |
 | AC-12 | 未実装 | 設計のみ（[作者環境の受容設計](../design/XTEA_AUTHORING_SURFACE_RECEPTION_2026-11.md)） | — | 面ごとの配置検査、意味の役割と表示指定の分離、生成物の未受理扱い | Package、Semantic/Applicationの宣言 | Package・Applicationの検証と例 | Core外の型定義との組合せ |
@@ -58,6 +58,7 @@ persisted: false (durability: none)
 ```
 
 これは参照用AllowListによる能力単位の拒否です。利用者・資源・メニュー表示・権限の付与は確認していません。
+
 
 
 
