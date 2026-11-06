@@ -13,6 +13,12 @@
 - frameは各項目のUTF-8 byte長をuint64 big-endianで付与する。ドメイン名 `tei.hashid.frame.v1` とcSHAKE customization `tei.hashid.cshake256.v1` を使用。
 - `CollisionProbability` / `CheckCollisionBudget` は独立・一様出力を仮定した誕生日近似を返す。実衝突の検出・DB永続化の一意性保証ではない。
 
+## 他レーンとの設計統合（採用前）
+
+[設計第9節](../../plan/design/HASH_DERIVED_ID_SCHEME_DESIGN_2026-11.md#9-他レーンとの統合設計2026-11-06採用済み境界と候補を区別) では、Everything is Data／Script-first Source／Plugin／生成器／ETL／Plugin self-buildとの対応を整理した。重要なのは、`HashIdScheme` を型付き宣言データ、`Derive` を明示的な変換、`HashIdText` を非権威的な派生値、`TargetProfile`と`BindingsSnapshot` を別入力とすることである。
+
+Source Reader・Accepted revision・実Generatorで消費したbyte列・Targetの原子的保存は**このReferenceの外側**。グラフへ未接続の操作を隠して実装済みとみなさない。標準プラグイン（`tei.std.hashId.*`）への採用は候補段階で、既存Capabilityの正本ID、公開RegistryのFingerprint、署名/Artifact Digestを置換しない。
+
 ## Schemeの機械可読な固定形式（PoC v1）
 
 `scheme_wire.go`/`scheme_wire_test.go` と型付きTS `hashid.mts` は、`tei.hashid.scheme/v1` の正準JSONを相互運用する。Wireは **`format`＋全11項目が必須の`scheme`** からなる。UTF-8、固定キー順、余分な空白なし、全フィールド省略なし、HTML用追加エスケープなしの1行を唯一受理し、4KiB超・重複/未知キー・null・版違い・非正規エスケープは拒否する。Go `MarshalSchemeJSON/ParseSchemeJSON`、TS `serializeSchemeJSON/parseSchemeJSON`、共有Golden `scheme_wire_vectors.json` で照合する。
@@ -32,6 +38,7 @@ Wireの文字列表現自体は **証明・意味IDではない**。 `encodedDig
 - Schemeが生成し得る**すべての文字**がTargetで許されることを要求する。生成済みIDが偶然有効な文字だけでも、生成規則としては不適合なら拒否する。
 - Snapshotの同じTarget名前空間に旧ProfileVersionが含まれる場合は、暗黙の再解釈をせず明示移行を要求する。
 - Case-insensitive Targetへは、大文字・小文字の両方を生成し得るAlphabet（例：Base64url、Base62）を拒否する。DBのcollationを自動検出しないため、実Targetのcollationを別途検証したProfileだけに利用する。
+- Snapshot内の整合性も候補IDとは独立に検査する。同一Target名前空間の旧割当で、**別Subject間の物理名衝突、同一Subjectの重複、旧Scheme宣言の不正**があれば、候補と無関係でもfail-closed。外部namespaceに属する行は混同しない。これは既存割当の検証であり、Snapshot自体の完全性・鮮度・実DB権限を保証しない。
 - Targetで同一名前空間の全割当が得られなければ、Snapshot上で衝突なしと判定できても、実一意性を保証しない。DBへの格納時に一意制約・競合再試行・Transaction等の**実保存境界**が必要。
 - 正本との紐付けは `TargetBinding.Subject`（Qualified Source identity）と `TargetBinding.Scheme`（正確な生成規則）に保持する。同じSubjectでもSchemeが異なれば暗黙の冪等再登録とはみなさず、移行を要求する。文字列だけをCanonical ID、権限、Source Acceptanceへ昇格させない。
 - 現状はASCIIのみ。Windows予約名/パス末尾規則・実DBのUnicode照合・OS別同値判定はOwnerが宣言する個別Profile/独立試験を要する。
