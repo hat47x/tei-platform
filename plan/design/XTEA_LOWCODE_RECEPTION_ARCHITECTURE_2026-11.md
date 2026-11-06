@@ -119,7 +119,7 @@ X-TEAのスクリプトAPIは、SQL・確定・機能呼出しを同じ面に置
 | 遷移 | Pattern間の遷移宣言がない | `internal/application/model.go` | 一覧から単票、明細の起動などをD1で追加する |
 | 業務上の結末 | Capabilityの`Outcomes`と、呼出し境界のerrorを分ける | `internal/semantic/model.go` L128–133、L151–158 | D5はこれを再利用し、X-TEAの戻り値を混ぜない |
 | データ効果 | `create`と`update`のみ | `internal/semantic/model.go` L140–144 | `delete`を表せない。Business Effect Lifecycleと合わせて追加を検討する |
-| 認可 | subject・action・resourceの許可 | `internal/security/legacyauthorization/authorization.go` L29–45 | `legacyauthorization.CommandAuthorizer`が`command.Invoker.Authorizer`へ接続済み。権限の正本・付与の管理は未接続 |
+| 認可 | subject・action・resourceの許可 | `internal/security/legacyauthorization/authorization.go` L29–45 | `legacyauthorization/commandbinding.CommandAuthorizer`が`command.Invoker.Authorizer`へ接続済み。権限の正本・付与の管理は未接続 |
 | 項目の意味 | Attribute（ID・型・説明・表示）とValidation（`positive`、`relation-unique`のみ） | `internal/semantic/model.go` L64–70、L101–121 | 必須・更新禁止・値域は新設し、参照は`reference` Pattern、導出はData Derivationへ寄せる |
 | 表示・配置 | アプリケーション層にモデルがない | `internal/application/model.go` | D4の表示意図を新設する |
 | 帳票・出力投影 | モデルがない | `internal/application/model.go` | D7を新設する |
