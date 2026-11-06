@@ -7,17 +7,29 @@ const invalid = () => { throw new Error("unqualified_public_slice"); };
 const cmp = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 const subjectKey = s => JSON.stringify([s.scope, s.kind, s.id]);
 const viewKey = (role, s) => JSON.stringify([role, s.scope, s.kind, s.id]);
+const fields = Object.freeze({
+  slice: ["scope", "subjects", "relations"],
+  subject: ["scope", "kind", "id", "roleStates"],
+  relation: ["id", "kind", "from", "to"],
+  endpoint: ["scope", "kind", "id", "role"],
+});
+const onlyFields = (value, allowed) => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const proto = Object.getPrototypeOf(value);
+  return (proto === Object.prototype || proto === null) &&
+    Reflect.ownKeys(value).every(key => typeof key === "string" && allowed.includes(key));
+};
 
 export function projectPublicTeaSlice(slice) {
-  if (!slice || !text(slice.scope) || !Array.isArray(slice.subjects) ||
-      !Array.isArray(slice.relations)) invalid();
+  if (!onlyFields(slice, fields.slice) || !text(slice.scope) ||
+      !Array.isArray(slice.subjects) || !Array.isArray(slice.relations)) invalid();
   const identities = new Set();
   const projected = {data: [], function: [], business: []};
   const publicDiagnostics = [];
   for (const s of slice.subjects) {
-    if (!s || !text(s.scope) || s.scope !== slice.scope ||
-        !text(s.kind) || !text(s.id) || !s.roleStates ||
-        typeof s.roleStates !== "object" || Array.isArray(s.roleStates)) invalid();
+    if (!onlyFields(s, fields.subject) || !text(s.scope) || s.scope !== slice.scope ||
+        !text(s.kind) || !text(s.id) ||
+        !onlyFields(s.roleStates, roles)) invalid();
     const identity = subjectKey(s);
     if (identities.has(identity)) invalid();
     identities.add(identity);
@@ -41,8 +53,10 @@ export function projectPublicTeaSlice(slice) {
   const edges = [];
   const edgeIds = new Set();
   for (const r of slice.relations) {
-    if (!r || !text(r.id) || !text(r.kind) || !r.from || !r.to ||
-        !roles.includes(r.from.role) || !roles.includes(r.to.role)) invalid();
+    if (!onlyFields(r, fields.relation) || !text(r.id) || !text(r.kind) ||
+        !onlyFields(r.from, fields.endpoint) || !onlyFields(r.to, fields.endpoint) ||
+        ![r.from, r.to].every(endpoint => text(endpoint.scope) &&
+          text(endpoint.kind) && text(endpoint.id) && roles.includes(endpoint.role))) invalid();
     if (edgeIds.has(r.id)) invalid();
     edgeIds.add(r.id);
     if (![r.from, r.to].every(endpoint => endpoint.scope === slice.scope &&
