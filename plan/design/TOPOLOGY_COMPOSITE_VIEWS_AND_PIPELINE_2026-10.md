@@ -429,3 +429,21 @@ Else absence remains unknown; no universal closed-world assumption.
 これは単なる入力Validationの拡充ではなく、**意味解析していない条件を処理済みと見なさない**というEverything is Data/Role自己解釈の共有原則に対応する。正本Source、意味解釈部品、Projection、Query、必要な観測の各区分で「未解決」を保持する。既存実装の`present-in-snapshot`と`absent-in-declared-snapshot`はいずれも**fixture内部**のClaimであり、Owner Authority、現在Policy、実Readerの完全性を意味しない。
 
 **受入／未受入**：同一合成Fixtureで、Queryに未対応Predicateを追加したとき、存在系・不在系双方が`unknown`となることを回帰試験で固定する。実TEIのQuery/Role DSL、Source closure、Studio/AIでの問い解釈、ETL WindowやSelf-build Target/Selected Inputs、現在の開示非干渉は**別Owner／NOT RUN**。新Core Query型・汎用Solver・第二Authorityは導入しない。
+
+### 13.6 実Go ModelRef／Source IndexのFit/Gap（2026-11-06静的照合）
+
+固定main `3572dcedfa50c3de2903dd4d8ca4ad45ccfa1417` の既存コードを確認した。これはGo実装を変更・実行したことを意味しない。別担当[研究計画 Draft #2966](https://github.com/hat47x/tei-platform/pull/2966)にある**独立実Source照合・認知負荷研究**を重複実装しない。
+
+| 既存の事実（該当Source） | 実Readerと合成Referenceの間に残る不足 |
+| --- | --- |
+| [`modelref/model.go:15–56`](https://github.com/hat47x/tei-platform/blob/3572dcedfa50c3de2903dd4d8ca4ad45ccfa1417/internal/modelref/model.go#L15-L56)：`Key{Scope,Subject}`、`Edge{From Key,To Ref,Relation string,Evidence}`、`Graph{Nodes,Edges}`が存在 | Edgeの`Relation`は**関係種別文字列**であり、すべてのRelationが独立の`declaringScope+relationID`、多項role列、Source anchorを保持するとは証明しない。合成RelationをGo Edgeへ1:1対応させない |
+| [`modelref/trace.go:13–55`](https://github.com/hat47x/tei-platform/blob/3572dcedfa50c3de2903dd4d8ca4ad45ccfa1417/internal/modelref/trace.go#L13-L55)：`TraceDirect`は直接宣言Edge、方向、full/summary、ページ、snapshot fingerprint、unresolved件数を提供 | **直接Edgeの候補観測**には利用可能。Graph全体のRelation実体・多項role・全Source閉包、未読込Pluginの不存在を証明しない。fullのページングと失効も別確認 |
+| [`sourceindex/model.go:41–56`](https://github.com/hat47x/tei-platform/blob/3572dcedfa50c3de2903dd4d8ca4ad45ccfa1417/internal/sourceindex/model.go#L41-L56)：Source Index Referenceは`Subject(kind,id),ArtifactPath,Range,Role` | Scope付きRelation/Subjectの独立Source位置が直接結び付く仕様ではない。形式上ある`Role`はSource anchorのdefinition/authoring等の**証拠役割**であり、業務関係の多項Roleと同一視しない |
+| [`modelref/sourcebridge/source.go:21–37`](https://github.com/hat47x/tei-platform/blob/3572dcedfa50c3de2903dd4d8ca4ad45ccfa1417/internal/modelref/sourcebridge/source.go#L21-L37) ／ [`resolver.go:85–110`](https://github.com/hat47x/tei-platform/blob/3572dcedfa50c3de2903dd4d8ca4ad45ccfa1417/internal/modelref/sourcebridge/resolver.go#L85-L110)：Source Indexにscopeがなく、同kind+IDの異scope衝突は`subject-scope-ambiguous`で停止 | 欠けたscopeをnamespaceや表示ラベルから推定しない。Source locatorがあることを編集権限や現在のOwner受理へ昇格させない |
+| [`operations/model_catalog.go:15–33`](https://github.com/hat47x/tei-platform/blob/3572dcedfa50c3de2903dd4d8ca4ad45ccfa1417/internal/operations/model_catalog.go#L15-L33)：Catalogは`ModelRevision`・World/Source FP・Subject・global `ambiguous`を持つ | Catalogはread-onlyの候補表示であり、全Relation宣言scope・roles・用途相対Closureの実Reader証拠ではない |
+
+**最小Fit/Gap判断**：共通のqualified Subject、direct Edge候補、版付きTrace、Source位置は既存の足場として再利用できる。一方、(a)Relation宣言scope・個別ID、(b)多項Relationのすべてのroleと端点、(c)Input/Source/Plugin/Providerの問い相対なRequired/Consumed被覆、(d)QueryのWHERE/Role/Window等の型付き解釈、(e)Current Disclosure/Authorityは別資格。合成Referenceの真偽値から逆算して実契約へ追加しない。**不足の反証が二つ以上の独立Consumerで確認された場合のみ**、#2620等のOwnerが既存構造／Plugin／Readerの拡張を判断する。
+
+**低権限向けの停止線**：合成Referenceでも、開示資格の無いfixtureはGraphの世代・要素数・relation欠落・unsupported条件の差を公開結果に反映しない。内部関数の同一返答だけではDOM/ARIA/Count/Tool JSON/実Providerの二世界非干渉ではない（#2516）。合成の開示フラグ自体は偽造可能で、実Policy受理を代替しない。
+
+**確認・未確認**：上記はGo Sourceの静的読取と合成Node試験であり、実Go Reader→合成Graph/Tableの変換、実多項Relation／Source Anchorの往復、実CLI/Studio 4入口、実Policy/Disclosure、実Build/ETL・認知負荷の検証は**NOT RUN**。次は#1124のM0実CLIが取得した同一Source/Subject候補を、独立Reader/Expectedと比較する最小一例から始める。
