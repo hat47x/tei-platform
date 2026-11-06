@@ -3561,3 +3561,66 @@ main統合済みPR #2852/#2853はCommand Lifecycle／実PostgreSQL CASの限定E
 **再利用の優先**：#1174 F-Pre/Post/NoReport/SameKind、#2564同一OperationID・実PG、#2854 ABAという既存検証を、組織C1/D1のRealized Targetという新しい識別軸で比較する。原則として新Harness／第二認可Engine／新Outcome enumは作らず、実C1 E2 Readが成立するまでは本節のE4試験を完成扱いしない。新Case試験と業務Owner受理はNOT RUN。
 
 **今回の資格**：mainのGo Source-static観測と既存PRの限定実証、合成期待の追記だけ。ORG-TB-01〜10の新試験、実Org Provider/DB/GUI/Host、業務Owner意味受理、*.tei.mdへの製品移行、Draft解除・PR mergeは未実施。
+
+## 83. 組織判断の対象集合と計算実証を結び付ける：完了判定・OKF計算契約・AI Harness（2026-11-07、採用前）
+
+### 83.1 横断の成熟差分と採用境界
+
+§81の動的承認資格、§82の業務Case↔Grant↔実Provider Row束縛、§69/73の組織改編時の「対象なし」を、**同じ業務Claimに必要な対象集合（Required Set）と実際に観測・消費した集合（Observed/Consumed Set）の区別**でつなぐ。対象集合を列挙できない局面でも、既知の一件の違反は判別可能な場合がある。反対に、観測0件から「対象全件完了」「引継ぎ不要」「委任失効なし」を導いてはならない。
+
+新しいmain統合[#3051](https://github.com/hat47x/tei-platform/pull/3051)の実Go`internal/semantic/completion.go`を直接確認。現行`EvaluateCompletion`は`CompletionEvidence.Targets/Coverage/EmptyJustified/Conflicting/HandoffConfirmed`を受け、空集合禁止`EmptyPolicyDeny`について、未観測・部分取得の`Targets=[]`なら`CompletionUnverified`とする。完全な空集合なら`CompletionFails`、既知違反`Holds:false`はCoverageが部分でも`CompletionFails`となり得る。**ただしCoverageはCaller供給値で、当該Evaluatorは実Providerから対象集合が完結したことを検証しない**。組織Caseの完了判定に直接適用済みとは主張しない。
+
+他チャットで進めたAI-first・Shared Acceptance検討[#2492](https://github.com/hat47x/tei-platform/pull/2492)、一改訂の必要証拠[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#1163](https://github.com/hat47x/tei-platform/issues/1163)、独立検証基準[#2514](https://github.com/hat47x/tei-platform/issues/2514)、read-only Product Skill[#2607](https://github.com/hat47x/tei-platform/issues/2607)を参照する。組織固有の第二Validator/Scenario正本/Host/Acceptance Registryは設けない。
+
+### 83.2 同一Case C1でのClaim別受入票：完了と承認を一括Successにしない
+
+§67/69の「D1廃止・D2/D3後継、未決Caseの処分」と§81/82のC1・担当D1・代理P3を一つの**検証用世界の別時点/分岐**として用いる。ただし異なる既存合成FixtureやGo/実PGの結果を、同じ実行Attemptの証拠に合算しない。
+
+| Claim（新IDではなく既存Caseに対応する用途） | 必要な集合・独立期待結果 | 不足時の扱い |
+| --- | --- | --- |
+| **「D1の未決Caseは0件」**（§69/73） | Owner定義のD1担当Case全集合、適用validAt/knownAt、組織公開版、Tenant/Provider Route/Cohort、Queryの否定依存まで限定。同一Scopeで完全な0件が実測されれば、その範囲内だけで0件と判断 | Aの0件からBの不存在を推論しない。partial/stale/deniedならunverified |
+| **「C1はD2に引継ぎ済み」**（§67/69/82 TB-06） | C1の単一担当Relationの変更、実Row identity、Owner受理済みCase disposition、引受事実を区別 | 組織D1→D2後継線だけではCase移管・受領・承認完了を主張しない |
+| **「引継ぎは全件完了」**（§69／#1125） | Owner対象全集合Lと各Caseの判定値、手作業Handoff証拠、必要な時点・版。完全な全集合を確認できないときはunverified。ただし対象内で未処理C2が一件確認できればfails | `Targets=[]`を空集合とみなす／局所PASSを全業務完了とすることを禁止 |
+| **「P3はC1を承認できる」**（§81 APP-01/05、§82 TB-03） | 業務Rule・委任G1・職位M1・申請者P1・金額・同一Caseの完全な必要入力と現在Host Grant。業務候補/実行許可/確定Effectを別判定 | 部分取得から「利益相反なし」「委任元権能存続」を断定しない |
+| **「C1の承認は確定した」**（§82 TB-01/08/09） | 同一Operation/Target/Current Grant、実Provider Post-image、Receipt、別接続の独立Read、適用結果のConsumer表示 | Command result、空`Applied`、Preview、ACK失敗だけでは確定/未適用を断定しない |
+
+この表は新しいProfile Schemaや実装Caseを採用したものではない。一般に「集合が不完全でも局所的にfailsと確定できる」ことと、「不完全集合でholdsや不存在が確定できない」ことを、同じ独立Expectedで反証する。完了条件の`CoverageComplete`値は、対象Ownerの定義と実Source/Provider Scopeの完全性証人が結合して初めて資格を得る。既存#3051の局所Go成功はこの結合の成功ではない。
+
+### 83.3 OKF `Attested Computation`の採用可能な原則：計算方法の保証と業務上の正当性は別
+
+OKF v0.2には`type: Attested Computation`という**計算契約の文書形式**がある。これは`runtime`、型付き`parameters`、inline/参照`computation`、`executor.resource`と`executor.receipt`、決定的な`attester.resource`により「指定された計算を実行したという証拠」を消費側が検査する形を提供する。仕様上、契約はBundleに保持し、実行ごとのReceiptと判定結果は実行時の成果であってBundleに保存しない（https://okf.md/spec/、https://docs.rs/okf/latest/okf/computation/index.html）。これは**OKFの仕組みに関する外部資料で確認できる性質**であり、TEIに採用済みではない。
+
+TEIの組織例への適用を、**一つの算出方法の検証**に限定して圧力試験する。例：`D1の特定日・特定公開版・Tenant A範囲にある未決Case件数`。候補契約に必要なのは、(a) Source/Meaning/Query/Ruleの版、(b) Case集合の意味・粒度・適用ScopeとvalidAt/knownAt、(c)実Provider/Mapping/Query+args、(d)結果値と取得Coverage/否定依存、(e)実行物・計算契約/パラメータの一致を独立に照合できるReceipt、(f)Consumer別のDisclosure適合である。**すべてをOKF Frontmatterの固定新Fieldとして要求するのではなく、TEI既存Evidenceへの参照・契約として検討**する。
+
+計算器が規定のSQLを実際に実行し、Receiptを決定的に検査できても、それだけでは(1)そのSQL/Ruleの業務意味がOwner受理済みか、(2)Providerが正しいTenant/対象全集合を返したか、(3)Queryが実際に許可された実行先・現在Grantで実行されたか、(4)結果を外部Consumerへ開示してよいか、(5)書込みEffectが成立したか、は証明できない。逆にOwnerによる定義の正式受理も、**一回の実行が指定された計算を行った証拠**にはならない。
+
+**TEIとOKFの役割分担**：
+- 正本の組織意味・Rule・受理は既存TEI Data/Function/Business/Shared Acceptance（#267）。OKF Bundleはその参照・消費可能な知識契約の**候補**であり第二のMeaning正本にしない。
+- TEI Authoringは`*.tei.md`を採用方向だが、`type: Attested Computation`をTEI Parser起動タグやすべてのTEIソースの必須Frontmatterにしない。TEI用`*.tei.md`とOKF用概念`*.md`を同一の拡張子/機械文法とみなさない。Source解析・消費保証は#3030/#3031/#988の独立Gate。
+- Product Skill`yi-tei-modeling`はSource/Relation/版・警告のread-only調査が責務。Agentが計算契約候補を発見・検証・利用する横断手順はTAI/YICのSkill/OKF担当で調整し、文書に実在しない`tei attest`や特権Runnerが存在すると書かない。
+- Attesterは値と実行手順の整合を決定的に検査するだけ。Owner判断・Host実認可・Provider実効果や秘密情報開示の許可を代行しない。署名・信頼できる実Providerログ・本番認可の完全性も別。
+
+### 83.4 既存ケースを再利用する六つの最小反証（追加実行NOT RUN）
+
+| 対照 | 変異 | 独立期待結果 |
+| --- | --- | --- |
+| **AC-01 契約固定** | Agentが承認済みQueryと同名の独自SQLを作り、同じ表示件数を返す | Value一致だけでは指定計算実行の実証としない。実SQL/paramsと承認された計算の同一性を照合 |
+| **AC-02 Provider Scope** | 取得SQLは同じだがTenant A→B/Provider alias/knownAtが変わる | 同名Queryと結果件数が同じでも実対象集合の資格は再判定 |
+| **AC-03 0件** | `Targets=[]`かつCoverage未確立、または確定完全0件を対照 | 前者は`unverified`、後者はOwnerの空集合Policyに従う。結果`0`と空集合証明は別 |
+| **AC-04 定義・実行の鮮度** | Document上の意味受理Revと実行Query/Rule/ProviderのRevがずれる | 書式や定義の最新版・旧Receiptを新Runの合格へ昇格させない。Definition verified≠Run attested |
+| **AC-05 出力先・通常Data** | 同じ組織集計をStudio内・別Tenant・外部AIへ送出する | 通常Org Dataは基本Read可能だが、実送出先・保護指定Field・実Grant/Disclosure契約の違いは別。出力値の同一性は送出許可を意味しない |
+| **AC-06 Effect非昇格** | Attestedな未決件数0のRunがあるが、D1→D2引継ぎReceipt/Handoffはない | 計算Resultは引継ぎEffect・承認完了・外部受領を証明しない |
+
+AC-01〜06は#2510の組織Pressure Corpus、#2514の独立検証基準、#1180の必要検証事項、#1163の同一改訂証拠へ**既存APP/TB/ORG-MDの変異として**引き渡す。新第二Fixture正本、OKF用独立Runner/Receipt台帳は作らない。OKF文書の形式適合と実Read/実計算/決定的Attester/本番Host/Consumerはそれぞれ別Gateである。
+
+### 83.5 現在の最小工程と適用の停止線
+
+1. **P0-L** 既存Legacy`*.tei`のC1→D1実Product E2 Read：#2681/#3024のOperation/Query Sourceを#2506/#2586/#2622の実Function/Provider/Consumerへ同一Source・同一Attemptで接続。任意のOKF導入をこのReadの前提にしない。
+2. **P0-M** 新`*.tei.md`の実Parser/Role/Raw Source消費：#3030/#3031/#988/#2823の移行Gate。同じC1/Expectedを再利用するが、旧Readerの成功を新形式合格へ流用しない。Legacy Readと新形式Readerの開発を並行可能とする。
+3. **P0-J** 一件の完成Claim：対象全集合・Scope・Coverage/EmptyJustifiedの出典と実Provider Observationを受け、#3051 Evaluatorの判定を実資格化する。対象集合の根拠が不明なら`unverified`、既知違反なら`fails`を正しく保持。Result同値だけでOKF計算契約に合格としない。
+4. **P1** 意味の受理、Attested Computation候補、Host認可、E4 Effectを互いに独立判定。main`internal/validation/proposal.go`の`Accept(...)`による`Proposal.Accepted=true`は**局所診断候補の版一致受理**であり、正式Shared Meaning受理、Source保存/Reload、現在Grant・実Effectではない（#2492/#267）。`*.tei.md`内の提案を書き込めたことも実受理ではない。
+5. **P2** 二Consumer（Studio/SHO、外部AI/CUI）の表示・開示・実Receiptを照合。正しい計算ReceiptがあってもConsumerの最終画面が旧版ならそのConsumer Claimは失効。現行Product Skillが実行したCLI/版/実入力・Target/返却Statusを必要十分に記録する。
+
+**名称方針**：main統合#3039/#3040の`docs/naming.md`に沿って、検証理論上の`Oracle`は新しい説明文で用いず、**独立期待値／独立検証基準／適合判定**を使う。Oracle Databaseの製品名と既存コード識別子・歴史的記録は変更しない。
+
+**今回の資格**：main`completion.go`・`validation/proposal.go`・Product SkillのSource read-only照合、外部OKF仕様参照、および組織の受入票設計。AC-01〜06/組織E2・正式TEI/OKF Product連携・外部AI/実Provider/Host/Owner受理は**NOT RUN**。#1119のP0工程、旧新Sourceの二レーン、新Hostなしの基本方針を維持。採用済みADR/他担当PRやmainのSource変更は行わない。
