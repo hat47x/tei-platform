@@ -730,6 +730,17 @@ Source/Authoring Graph → Resolved/Lowered Graph → Targetの実行・観測�
 
 「MECE」は閉じたEnum型の同義語ではない。**mutually exclusive** と **collectively exhaustive** は、分類対象の母集合・業務時点・Null/Unknown・複合分類の条件を明記した後、それぞれ検証する。Java等でEnumが有限でも、業務上の区分が完全かどうかや将来値の取扱いは自動決定できない。
 
+#### 設定者・基盤の分担（候補）
+
+| 判断する対象 | 設計者／Owner | 基盤の自動化・限界 |
+| --- | --- | --- |
+| 業務上の値域・分類の母集合／例外値 | 対象Scope・有効時点・未分類時の扱いを意図として宣言し、必要なら受理 | Java Enum、tagged union、SQL CHECK等の**構文上の有限値域**は抽出可能。ただし実装上のEnumを業務全体のClosed/MECEへ自動昇格しない |
+| 区分の排他・網羅、状態遷移 | ビジネス上の条件や許される遷移を確認 | 静的Constraintと独立Oracleで反例を検査。データの現行サンプルに漏れがないだけでは全称命題の証明にならない |
+| 識別性・強属性と呼ぶ特性 | Business Key/FD等に解釈できる場合は根拠と共に宣言。「強属性」の用語定義が未固定なら unresolved | UNIQUE/PK/FK/FD・実データ重複は**該当Targetの証拠**。DB PKを業務上の強さや正本Identityと同一視しない |
+| 意図と実現の差分 | 誤検知・仕様変更・受理候補をレビュー | **violated**（具体的な反例）／**conformant-in-scope**（範囲・保証を限定して一致）／**unverified**（必要な閉包・Oracleがない）を別表示し、意図を勝手に書き換えない |
+
+具体例として、業務モデルが「区分A/Bが常に排他的かつ網羅的」と要求するのにTargetの列が任意の文字列を受理する場合は、実Target上の制約が不足する**設計対実現の警告候補**とする。一方、制約が明示されていないという理由だけでは、実データに違反が存在すると断定しない。業務的なStatusの集合が未受理なら、Java Enumがあっても「業務的MECEを証明した」と報告しない。
+
 #### 宣言意図と実態の差分提示（新しいTruth/Authority判定器ではない）
 
 1. **Intended**：設計者が意味の正本に明示したClosed/Exclusive/Exhaustive/Identity等の条件、対象Scope/Source revision、受理状態。未採用の提案は受理済みと呼ばない。
