@@ -79,10 +79,10 @@ func TestHIST02MissingAppliedChecksumCannotDetectDefinitionDrift(t *testing.T) {
 func TestHIST02CanonicalChecksumDoesNotCertifyDerivedRealizationBytes(t *testing.T) {
 	db := core.MustCanonicalID("sales_core")
 	first := migration.Definition{
-		ID:       "m001",
-		Database: db,
-		Recovery: migration.RecoveryForwardFix,
-		Steps:    []migration.Step{{Kind: migration.StepVerify, Description: "stable canonical definition"}},
+		ID:           "m001",
+		Database:     db,
+		Recovery:     migration.RecoveryForwardFix,
+		Steps:        []migration.Step{{Kind: migration.StepVerify, Description: "stable canonical definition"}},
 		Realizations: []migration.Realization{{
 			Statements: []string{"ALTER TABLE orders ADD COLUMN audited INTEGER"},
 		}},
