@@ -160,3 +160,94 @@ func TestBootstrapBS06ActualOperatorLoweringRequiresExplicitPin(t *testing.T) {
 	// The resulting candidate is not proof of product Operator registration,
 	// accepted meaning, or active generation.
 }
+
+
+// This probe joins the already-tested K2 Language selection and K4 Operator
+// lowering for one identical Source. It is still reference-only and does not
+// bind a production Workspace Source, real parser executable bytes, Owner
+// meaning, or the selected runtime artifact.
+func TestBootstrapSameSourcePinnedLanguageThenOperator(t *testing.T) {
+	expected := bootstrapExpectedStops(t)
+	if expected["BS-03"] != "language-exact-pin" ||
+		expected["BS-06"] != "operator-exact-contract" {
+		t.Fatal("independent BS-03/BS-06 expected stop has changed")
+	}
+	source := "rows/order |> std.sum"
+	language := Selection{
+		LanguageID: "dsl.pipeline", ContractVersion: "1",
+		ContractFingerprint: "contract-pipeline-v1",
+		ImplementationID: "reference-parser-A", ImplementationFingerprint: "impl-A",
+	}
+	operator := OperatorContract{
+		ID: "std.sum", Version: "1", Fingerprint: "operator-contract-1",
+		InputType: "rows/order", OutputType: "amount", Effect: "pure",
+	}
+	parseCalls := 0
+	parser := Provider[PipelineSyntax]{
+		Selection: language,
+		Parse: func(src string) (PipelineSyntax, error) {
+			parseCalls++
+			return ParsePipelineSyntax(src)
+		},
+	}
+
+	t.Run("positive exact Language and Operator pins", func(t *testing.T) {
+		parseCalls = 0
+		candidate, err := ParseSelected(language, []Provider[PipelineSyntax]{parser}, source)
+		if err != nil || parseCalls != 1 {
+			t.Fatalf("exact Language selection failed: parser calls=%d, err=%v", parseCalls, err)
+		}
+		steps, err := LowerPinnedPipeline(candidate, []OperatorContract{operator}, []OperatorContract{operator})
+		if err != nil || len(steps) != 1 || steps[0].Contract != operator {
+			t.Fatalf("pinned Operator lowering failed: %+v, %v", steps, err)
+		}
+		if steps[0].Span != candidate.Operators[0].Span ||
+			source[steps[0].Span.Start:steps[0].Span.End] != operator.ID {
+			t.Fatalf("Source token provenance lost across reference stages: %+v", steps[0].Span)
+		}
+	})
+	t.Run("BS-03 mismatched implementation blocks parse", func(t *testing.T) {
+		parseCalls = 0
+		changed := parser
+		changed.Selection.ImplementationFingerprint = "impl-B"
+		_, err := ParseSelected(language, []Provider[PipelineSyntax]{changed}, source)
+		if !errors.Is(err, ErrProviderMissing) || parseCalls != 0 {
+			t.Fatalf("mismatched Language was used: parse calls=%d, err=%v", parseCalls, err)
+		}
+	})
+	t.Run("BS-06 mismatched Operator pin blocks lower", func(t *testing.T) {
+		parseCalls = 0
+		candidate, err := ParseSelected(language, []Provider[PipelineSyntax]{parser}, source)
+		if err != nil || parseCalls != 1 {
+			t.Fatalf("identical Source could not be parsed: calls=%d, err=%v", parseCalls, err)
+		}
+		stale := operator
+		stale.Fingerprint = "operator-contract-2"
+		steps, err := LowerPinnedPipeline(candidate, []OperatorContract{stale}, []OperatorContract{operator})
+		var diagnostic *PipelineDiagnostic
+		if len(steps) != 0 || !errors.As(err, &diagnostic) ||
+			!errors.Is(err, ErrOperatorMissing) {
+			t.Fatalf("stale Operator contract was accepted: steps=%+v, err=%v", steps, err)
+		}
+		if diagnostic.Step != 0 || diagnostic.Span != candidate.Operators[0].Span {
+			t.Fatalf("stale Operator diagnostic lost Source span: %+v", diagnostic)
+		}
+	})
+	t.Run("changed catalog contract cannot silently use old pin", func(t *testing.T) {
+		candidate, err := ParseSelected(language, []Provider[PipelineSyntax]{parser}, source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		modified := operator
+		modified.OutputType = "rows/text"
+		steps, err := LowerPinnedPipeline(candidate, []OperatorContract{operator}, []OperatorContract{modified})
+		var diagnostic *PipelineDiagnostic
+		if len(steps) != 0 || !errors.As(err, &diagnostic) {
+			t.Fatalf("changed catalog contract escaped pin: %+v, %v", steps, err)
+		}
+		if diagnostic.Span != candidate.Operators[0].Span ||
+			!errors.Is(err, ErrOperatorInvalid) {
+			t.Fatalf("wrong changed catalog diagnostic: %+v / %v", diagnostic, err)
+		}
+	})
+}
