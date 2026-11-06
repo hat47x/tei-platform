@@ -23,6 +23,10 @@ type WorkspaceValidation struct {
 	// Workspace has Total 0 even though the standard semantic prelude is
 	// loaded into World.Semantics (#2822).
 	Declarations DeclarationCounts
+	// SourceRootFindings are manifest source-root warnings or errors. They are
+	// separate from semantic Diagnostics because an unknown or missing root has
+	// no Canonical Subject (#2823).
+	SourceRootFindings []workspace.WorkspaceSourceRootFinding
 }
 
 func (r WorkspaceValidation) HasErrors() bool {
@@ -90,5 +94,6 @@ func ValidateWorkspace(root string) (WorkspaceValidation, error) {
 		WorldFingerprint:       worldFP,
 		SourceIndexFingerprint: sourceFP,
 		Declarations:           CountDeclarations(loaded.World),
+		SourceRootFindings:     loaded.SourceRootFindings,
 	}, nil
 }

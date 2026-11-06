@@ -11,6 +11,7 @@ import (
 	"tei/internal/operations"
 	"tei/internal/sourceindex"
 	"tei/internal/validation"
+	"tei/internal/workspace"
 )
 
 // cliValidationReport is a projection for automation, not a second semantic
@@ -37,6 +38,10 @@ type cliValidationReport struct {
 	// excluding the in-process standard prelude. It lets a caller tell an
 	// empty Workspace (total=0) from one that declared model elements (#2822).
 	DeclarationCounts *operations.DeclarationCounts `json:"declarationCounts,omitempty"`
+	// SourceRootFindings names manifest source roots that are unknown or
+	// missing. These are source-direct findings with no Canonical Subject and
+	// are not part of diagnostics (#2823).
+	SourceRootFindings []workspace.WorkspaceSourceRootFinding `json:"sourceRootFindings,omitempty"`
 }
 
 // Source locations never synthesize an empty Semantic Subject for parse errors.
@@ -123,6 +128,7 @@ func validateWorkspaceJSON(out io.Writer, root string) (int, error) {
 	report.WorldFingerprint = result.WorldFingerprint
 	report.SourceIndexFingerprint = result.SourceIndexFingerprint
 	report.DeclarationCounts = &result.Declarations
+	report.SourceRootFindings = result.SourceRootFindings
 	if len(result.Diagnostics) > 0 && result.WorldFingerprint != "" {
 		diagnostics := make([]validation.Diagnostic, 0, len(result.Diagnostics))
 		for _, projected := range result.Diagnostics {
@@ -154,6 +160,12 @@ func validateWorkspaceJSON(out io.Writer, root string) (int, error) {
 		return cliDiagnosticSortKey(report.Diagnostics[i]) < cliDiagnosticSortKey(report.Diagnostics[j])
 	})
 	report.OK = true
+	for _, finding := range report.SourceRootFindings {
+		if finding.Severity == "error" {
+			report.OK = false
+			break
+		}
+	}
 	for _, item := range report.Diagnostics {
 		if item.Diagnostic.Severity == validation.Error {
 			report.OK = false

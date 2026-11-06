@@ -45,7 +45,11 @@ type Result struct {
 	PluginImplementationSources map[string]SourceLocation
 	Sources                     map[string]SourceLocation
 	ManagedFiles                []ManagedFile
-	SourceContributions         []SourceContribution
+	// SourceRootFindings are manifest source-root problems found before any
+	// domain loader read the root. They are source-direct findings: an unknown
+	// or missing root has no Canonical Subject.
+	SourceRootFindings  []WorkspaceSourceRootFinding
+	SourceContributions []SourceContribution
 
 	// Private, transient read provenance. Not part of Canonical World or a
 	// serialized Source Index; only Load may populate this snapshot.
@@ -179,16 +183,26 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 	if err := validateWorkspaceSourceRoots(roots); err != nil {
 		return Result{}, err
 	}
+	// Classify declared roots before any domain loader runs, so a misspelling
+	// is reported as itself rather than as a downstream cascade.
+	sourceRootFindings, err := checkWorkspaceSourceRoots(sourceRoot, roots)
+	if err != nil {
+		return Result{}, err
+	}
 	// Inventory and verify the physical boundary before any domain loader can
 	// read a Source file or parse a symlink to an outside target.
 	managedFiles, err := scanManagedFiles(sourceRoot, roots)
 	if err != nil {
 		return Result{}, err
 	}
+	// Managed but not interpreted files are named separately from root
+	// findings. Neither becomes a semantic Diagnostic: there is no Subject.
+	sourceRootFindings = append(sourceRootFindings, CheckWorkspaceManagedFileNames(managedFiles)...)
 	r := Result{
 		Sources:                     map[string]SourceLocation{},
 		PluginImplementationSources: map[string]SourceLocation{},
 		ManagedFiles:                managedFiles,
+		SourceRootFindings:          sourceRootFindings,
 		sourceSnapshotRoot:          rootReal,
 		sourceSnapshot:              make(map[string][]byte),
 		sourceReadRoot:              sourceRoot,
