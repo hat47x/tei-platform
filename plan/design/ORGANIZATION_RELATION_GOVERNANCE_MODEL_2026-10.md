@@ -3106,7 +3106,7 @@ Owner保留は(1)Service Subscriberに対応する論理Tenantをどこまで推
 
 ## 73. Tenant Scope相対の不存在と共有Dataの開示：否定依存・実Row・送出の同一試行検収（2026-11-06、採用前）
 
-### 72.1 現物の差分と横断参照
+### 73.1 現物の差分と横断参照
 
 [PostgreSQL Scoped Query Fixture](../../reference/web-api-contract/fixtures/postgres_scoped_orders.sql)は物理PKを (tenant_id, order_id) とし、同じorder_idが別Tenantの別Rowとして存在できる。ところが既存の固定行はTenant A:3,9 / Tenant B:1,100であり、同一order_idの別Tenant行を返却値まで照合する試験がなかった。
 
@@ -3116,7 +3116,7 @@ Owner保留は(1)Service Subscriberに対応する論理Tenantをどこまで推
 
 既存Ownerの参照：[#1706](https://github.com/hat47x/tei-platform/issues/1706)は0件/NULL/未取得/失敗、[#1708](https://github.com/hat47x/tei-platform/issues/1708)は複数ReaderのSnapshot整合性、[#2582](https://github.com/hat47x/tei-platform/issues/2582)はNOT EXISTS/LEFT JOIN/Top-Nの否定依存・非単調な再評価、[#1178](https://github.com/hat47x/tei-platform/issues/1178)はローカルReadと外部CLI/LLMへの出所開示の違いを所有する。
 
-### 72.2 「不存在」はTenant・Query Scope・取得時点に相対する
+### 73.2 「不存在」はTenant・Query Scope・取得時点に相対する
 
 | 観測 | 認められるClaim | 禁止する推論 |
 | --- | --- | --- |
@@ -3129,7 +3129,7 @@ Owner保留は(1)Service Subscriberに対応する論理Tenantをどこまで推
 
 **権限拒否と検索0件は内部では区別し、外部Consumerへの開示は別に制限する**。同じエラーメッセージを強制するという意味ではない。外部応答・ログ・Trace・件数・結果順序・エラー時間から無権限対象の存在が推測されないかは、対象DestinationのPolicy/Consumerで別検証する（#1178/#1693）。通常の組織Dataを特別な秘匿対象に一律昇格しない。
 
-### 72.3 Shared Data・Join・導出による漏洩を見落とさない
+### 73.3 Shared Data・Join・導出による漏洩を見落とさない
 
 明示Shared Reference Dataset、公開組織情報、共通カタログは、同じ意味モデルで通常のDataとして扱える。ただしShared Catalogを読めることは、Relationで結ばれた他Tenant Private CaseのEXISTS/COUNT、ORDER/TOP、Join Fanout、Raw metadataやSource pathを開示する資格ではない。
 
@@ -3137,7 +3137,7 @@ Owner保留は(1)Service Subscriberに対応する論理Tenantをどこまで推
 
 Org D1→D2の責任継承、Tenant A→Bの切替、Provider DB/Region移設は別々の失効要因。古いTenant AのRead/否定結果やPreviewが後着しても、Tenant Bの現在結果・Effect Targetへ混入させない。ただし同時に開いている独立Function Instanceを無差別に失効させない（#2582）。
 
-### 72.4 独立Expectedの最小8反例（ORG-NA-01〜08、追加実行NOT RUN）
+### 73.4 独立Expectedの最小8反例（ORG-NA-01〜08、追加実行NOT RUN）
 
 | Case | 変異 | 事前に固定するExpected |
 | --- | --- | --- |
@@ -3150,7 +3150,7 @@ Org D1→D2の責任継承、Tenant A→Bの切替、Provider DB/Region移設は
 | ORG-NA-07 | Tenant AからBへ切替後、Aの遅延Read/Preview到着 | BのFunction/Intentを上書きしない。独立A Instanceは保持し得る |
 | ORG-NA-08 | ローカルRead許可、外部LLM/別Destination送出未許可 | Reader成功と実Egress許可は別。Raw/Source/Traceの無制限送出は不可 |
 
-### 72.5 実装への引渡しと中断条件
+### 73.5 実装への引渡しと中断条件
 
 1. **#1656/#1769・Draft #3016**：新規Go testのコンパイル・gofmt/vet、使い捨てPostgreSQLでSKIPなしのexact-head実行とA/Bを独立Expectedで確認。変更したテストの結果を得るまでは未合格。Scope/Customer projectionの実Fixture資格も点検する。
 2. **#2586/#2506/#2611**：実Native組織C1→Function Data Context→Provider Row/Field/Scope/Cohort→Consumer E2aを優先。別Web SQLでの局所成功はOrg Product Readの成功ではない。接続できなければ具体的な最初の未接続Edgeを明記。
