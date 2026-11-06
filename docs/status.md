@@ -1,4 +1,4 @@
-# TEIの実装状況
+﻿# TEIの実装状況
 
 - 整理日: 2026-10-31
 - 開発段階: **参照実装を使った実験と検証**
@@ -15,7 +15,7 @@ TEIは、分野固有の知識と実装技術を分けて管理するローコ�
 | Goのコマンドラインと作業領域 | `cmd/tei`に作業領域の読み込み、検証、入力元索引の作成などを実装。2026年11月2日に `tei operations`（操作面）と `tei artifacts`（成果物一式。`-out` でファイル出力）を追加。コマンドの例は導入手順に記載 | [使い始める](getting-started.md)、[参照用資料](../reference/README.md) |
 | TEI StudioのPoC A（Wails Web/Desktop Host） | 2026年10月18日、PR #2012の検証済み候補`c2d8866ba72bb877c4b74f444fe95b3b89368097`で二つのBrowserContext間のWorkspace選択・Catalog・Inspect・Validate・ObserveXeadと遅延応答の分離を確認し、統合コミット`0cc76fd992b0d25960ad0a6b27b96c569a9472b4`でもHost、Windows Desktop WebView2、Repository Healthが成功。後続PR #2014では空結果と読取失敗のDesktop表示も確認。**証拠は同一OS利用者・loopback Host内に限り、Workspace-ID認可、共有WebやPrincipal別の利用者分離、実利用者の価値を示しません。PoC A/B/C全体の完了も示しません** | [協調Issue #1824](https://github.com/hat47x/tei-platform/issues/1824)、[PR #2012](https://github.com/hat47x/tei-platform/pull/2012)、[PR #2014](https://github.com/hat47x/tei-platform/pull/2014)、[Wails Host #39112031888](https://github.com/hat47x/tei-platform/actions/runs/39112031888)、[Desktop WebView2 #39112031903](https://github.com/hat47x/tei-platform/actions/runs/39112031903)、[PR #2014 Desktop WebView2 #39113218123](https://github.com/hat47x/tei-platform/actions/runs/39113218123) |
 | アプリケーションとドライバー | `order_entry`で一覧表示、記録、参照、親子関係にある明細、操作などの意味上の境界を実証 | [全体構成](architecture.md)、[版1の計画](../plan/V1_REFERENCE_APPLICATION_PLAN.md) |
-| X-TEAローコード知見の受容 | `tei view`で一覧・単票・見出し明細・command・Application・Packageを投影し、`view -command -execute`で参照実行する（業務副作用なし）。期間・削除ポリシー・必須属性・値域を参照Storeで検査する。Studioホストからもビュー・Command計画・参照実行を取得できる。**実Provider・実DB・旧X-TEA Runtimeでの実行観測ではなく、設計・要件・受容判断は仮承認** | [受容設計](../plan/design/XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md)、[知識目録](../plan/research/XTEA_LOWCODE_KNOWLEDGE_INVENTORY_2026-11.md)、[受容要件](../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md) |
+| X-TEAローコード知見の受容 | `tei view`で一覧・単票・見出し明細・command・Application・Packageを投影し、`view -command -execute`で参照実行する（業務副作用なし）。参照Storeは期間、削除ポリシー（`Relation.Keys`の行単位・複数段カスケード・失敗時復元）、必須属性、値域、候補キー（型正規化）を検査する。Commandは`effectcommit.Runner`へのアダプタを持ち、認可・OperationID・receiptを省略しないが、実PostgreSQL接続は`TEI_EFFECT_POSTGRES_DSN`を設定した場合だけ試験する。Studioホストはビュー・Command計画・参照実行・期間状態を扱う。**実Provider・実DB・旧X-TEA Runtimeでの実行観測ではなく、設計・要件・受容判断は仮承認** | [受容設計](../plan/design/XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md)、[知識目録](../plan/research/XTEA_LOWCODE_KNOWLEDGE_INVENTORY_2026-11.md)、[受容要件](../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md) |
 | 実行計画（意味の宣言） | `run-plan` を宣言でき、操作の並び・実行を同定するキー・同時実行・再開・出力・自律区分を検証する（8診断）。実行は `runKey`（計画＋キー）で同定し、前回未完了なら再開（`checkpoint` のときだけ）または拒否、完了済みなら拒否する。進捗は操作ごとに記録し、途中から再開できる。`unattended` は**前提を確かめられない限り実行しない**（`blocked` を記録し、失敗とは区別）。期間の拒否は `PeriodPreconditions` でそのまま停止条件になり、確定後効果の観測可否は `EffectPreconditions` として同じ停止条件に合成される。機能定義書に `run-plan` の行を出す。**帳票としての出力の整形と、実データベースでの実行は未着手** | [実行計画の設計](../plan/design/RUN_PLAN_AND_UNATTENDED_EXECUTION_DESIGN_2026-11.md)、[#1130](https://github.com/hat47x/tei-platform/issues/1130) |
 | 効果の規則（意味の宣言） | `effect-rule` を宣言でき、対象の能力・段階（`derivation`〜`compensation`）・効果の種類とデータ・委譲先の能力・失敗時の扱いを検証する（6診断）。操作面は束縛された操作に `effectRules` を載せ、機能定義書に `effect-rule` の行を出す。実行時は `Succeeded`（能力の実行）と `Observed`（独立した読取り）を**別々に記録**し、確定後・補償の効果を能力の結末と混ぜない。補償は宣言順に実行し、補償自体の失敗も記録する。**評価はまだ実データベースで行っていない** | [効果の規則の設計](../plan/design/EFFECT_RULE_AUTHORING_DESIGN_2026-11.md)、[#1129](https://github.com/hat47x/tei-platform/issues/1129) |
 | 期間の状態（意味の宣言） | `period` を宣言でき、対象データ・業務日付属性・`open`・`closing`・`closed` の三状態・能力の実在・閉じた期間が拒否する操作を検証する。操作面は `period` と `periodRejects` を載せ、機能定義書に期間の行を出す。`tei periods -period-state-file` で運用者が期間の状態を渡し、閉じた期間が拒否する操作を一覧できる（拒否があれば終了コード 1）。`operations.CheckPeriods`・`operations.GuardCapability`・`operations.GuardCapabilityWith` が判定を行い、拒否は値として返す（実行エラーと区別）。**実行の入口でガードを呼ぶ配線と、実データベースでの確認は未着手** | [期間の状態の設計](../plan/design/PERIOD_STATE_SEMANTICS_DESIGN_2026-11.md)、[#2144](https://github.com/hat47x/tei-platform/issues/2144) |
@@ -57,4 +57,5 @@ go run ./cmd/tei validate -workspace reference/workspace
 ```
 
 詳しい確認手順と参照用作業領域の範囲は[使い始める](getting-started.md)を参照してください。手順の掲載は、公開候補や最新のコミットが試験に合格したことを意味しません。
+
 
