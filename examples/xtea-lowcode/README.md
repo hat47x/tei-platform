@@ -64,4 +64,16 @@ go run ./cmd/tei view \
 - 実データベース、実Provider、認可、receiptは含みません。
 - `view -command -execute`は参照Executorを使うため、この例の`update`効果は記録済みデータがない状態では成功しません。
 - 受容判断は仮承認であり、最終採否は別途です。
+## Studioで開く（任意）
 
+Studioのサーバービルドから、この作業領域を読み取り専用で開けます。
+
+```bash
+cd cmd/tei-studio
+CGO_ENABLED=0 go build -mod=readonly -tags server -o tei-studio-server .
+./tei-studio-server -workspace ../../examples/xtea-lowcode -port 43123
+```
+
+別ターミナルで`http://127.0.0.1:43123/`を開きます。単票ビュー、Command計画、参照実行、Packageビューを確認できます。
+
+Studioはloopback限定の読取り専用Hostであり、接続者認証・業務操作の認可・利用者間の分離を提供しません。詳細は[Studio README](../../cmd/tei-studio/README.md)を参照してください。
