@@ -187,5 +187,7 @@ X-TEA（XEAD）の Modeler・Editor・Driver を読み、**作者環境（TEI St
 - [移行計画](../workstreams/XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)
 - [実装対応](../evidence/XTEA_LOWCODE_ACCEPTANCE_TRACE_2026-11.md)
 - [作者支援ツールの移植対応表](AUTHORING_TOOL_FEATURE_TRANSFER_MAP_2026-10.md)
+- [X-TEA派生出力の受容設計](XTEA_DERIVED_OUTPUT_RECEPTION_2026-11.md)（設計書・DDL・行列・差分）
+
 
 
