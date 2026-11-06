@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [main]
     types: [opened, reopened, synchronize]
-    paths:
+    paths: &runtime-decision-paths
       - '.github/workflows/tei-runtime-decisions-postgres-ci.yml'
       - 'tools/reference-runtime-decisions/**'
       - 'internal/execution/**'
@@ -15,13 +15,19 @@ on:
       - 'internal/effectlog/**'
       - 'cmd/tei/dbcheck.go'
       - 'plan/evidence/REAL_DATABASE_RUNTIME_DECISION_PLAN_2026-11.md'
+  # main に載った版でも同じ観測を行う。PR の時点で通っていても、
+  # main の merge commit が別のものであれば、記録は main を指さない。
+  push:
+    branches: [main]
+    paths: *runtime-decision-paths
 
 permissions:
   contents: read
 
 concurrency:
-  group: tei-runtime-decisions-postgres-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  # push では SHA ごとに分ける。PR は同じ PR の新しい push で古い実行を打ち切る。
+  group: tei-runtime-decisions-postgres-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   runtime-decisions-postgres:
