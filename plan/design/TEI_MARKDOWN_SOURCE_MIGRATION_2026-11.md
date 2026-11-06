@@ -1,5 +1,6 @@
 # TEI Sourceの `*.tei.md` 統一と既存 `*.tei` 移行の検収計画（2026-11-06）
 
+> **文書の責務（2026-11-06後半更新）**：このファイルは横断計画#2667の**履歴・差分とOwnerへの受渡し**であり、独立した正式移行仕様／第二Fixture正本ではない。移行計画の主担当は[Draft #3030](https://github.com/hat47x/tei-platform/pull/3030)の[TEI_MD_UNIFIED_AUTHORING_MIGRATION_2026-11.md](https://github.com/hat47x/tei-platform/blob/docs/tei-md-unified-source-migration-20261106/plan/design/TEI_MD_UNIFIED_AUTHORING_MIGRATION_2026-11.md)。本書のM0〜M5/TMD-01〜12は先行横断メモとして維持し、実装・Fixture/独立Expectedの受入IDは主担当のM0〜M6/TM-01〜14へ集約する。旧TMDケースを並行した追加テスト要求にしない。
 > **方針の状態**：2026-11-06のOwner指示により、**TEI向け文書の標準物理拡張子は `*.tei.md`、新規 `*.tei` は原則停止・既存 `*.tei` は段階廃止**を移行方向として固定する。**実装の状態**は別：現mainのLoader/Parser、正式Markdown文法、Workspace/Target互換、旧Source自動移行、Owner Meaning Acceptanceはこの資料では変更・実証しない。旧2026-08-29 `tei-m0.21-naming.md`やTEI #2621の「`.tei.md`を標準化しない」旧検討案には**今回の決定を優先**する。既存の記録は歴史として保全する。
 
 **責務**：Authoring/物理識別＝[#2621](https://github.com/hat47x/tei-platform/issues/2621)、LoaderとRead Coverage＝[#2823](https://github.com/hat47x/tei-platform/issues/2823)／#2571、Language/Operator Grammar＝#988／#2620、Format Migration＝#1920／#2505、Source/Build・再資格化＝#2595／#2600、独立Expected＝#2514、SHO Writer＝[SHO #19](https://github.com/hat47x/sho-composer/issues/19)、OKFの選択式拡張＝[SHO #18](https://github.com/hat47x/sho-composer/issues/18)／[TEI Draft #3029](https://github.com/hat47x/tei-platform/pull/3029)。新しいParser正本、Source Registry、Host、Acceptance、Scenario Runnerは作らない。
@@ -51,3 +52,26 @@
 ## 5. 判断の境界・禁止事項
 
 これは**新しい拡張子方針と移行受入の設計**であり、`*.tei.md`の現行製品読込成功、正式なMarkdown DSL文法決定、実Migration Tool、全Source一括Rename、Role/Pluginの自動採用、OKF必須化、Studio/SHO/TAI実利用、Provider/DB/Host実Effect、Owner業務意味受理を報告しない。旧`*.tei`資料・fixtureを手当たり次第書換えず、各Ownerで実Reader接続・独立Expected・Consumerが成立してから段階移行する。現行#1119 P0/G0〜G4、他Targetの資格を無断で書換えない。
+
+
+## 6. 主担当への集約と暫定ガードの実証（2026-11-06後半）
+
+### 6.1 現行main、実装候補、検証済み事実を混ぜない
+
+- **方針**：通常の `.md` とTEI専用 `*.tei.md` を区別し、旧 `*.tei` を段階廃止する。`tei.workspace.yaml`と `.tei/decisions/` は自動改名対象外。Markdown本文の正式Role/DSL文法は未確定。#3030がM0〜M6/TM-01〜14を所有。
+- **現行mainの制限**：legacy Loaderは `*.tei`／固定名を読む。`*.tei.md` は単純改名だけではParse/Loadされず、管理ファイル一覧だけでValidationの充足を主張できない。
+- **暫定的な安全策**：[Draft #3031](https://github.com/hat47x/tei-platform/pull/3031) exact HEAD `63953ccb5c12ead26ec1268e7c0afdba4eff66ae` は、管理対象Source root内に `*.tei.md` がある場合、Native Loader前に `TEI_MD_PARSER_UNBOUND`で停止する変更。専用[CI #42217379093](https://github.com/hat47x/tei-platform/actions/runs/42217379093)・Repository Health [#42217378867](https://github.com/hat47x/tei-platform/actions/runs/42217378867) は **completed/success**。GuardはMarkdownをParseしないので、Sourceの意味同値・Authoring Reader完成を示さない。Draft未統合の段階では現mainの効果だとも主張しない。
+- **前回CIの不足**：この横断ブランチの旧HEAD `94c46a55` では[Repository Health #42217203797](https://github.com/hat47x/tei-platform/actions/runs/42217203797)が **failure**。go test全体の失敗は、この新規ファイルを `plan/design/README.md` に登録しなかった `TestPlanReadmesMentionEveryEntry` が原因（ログにファイル名を確認）。本書に索引を追加する作業と、新Markdown Loaderの製品対応は完全に別。
+
+### 6.2 横断側のTMD番号は主担当のTMへ対応付け、二重受理を禁止
+
+| 本書の歴史的TMDケース | 主担当の現行検収ケース | 引継ぎ先 |
+| --- | --- | --- |
+| TMD-01/02/03/04/07/12（実Loader・Root・重複・未読込） | TM-02/03/04/12/13/14 | #3030 M2/M3、#3031暫定Guard、#2823実読込 |
+| TMD-05/06/08（通常Markdown/OKF・原文BOM・Raw Draft） | TM-01/05/10/11 | #3030 M1/M2、#2621、SHO #18/#19 |
+| TMD-09（Source path移動・ABA・Review再資格化） | TM-07/08/09 | #3030 M4、#2505/#2600/#958 |
+| TMD-10/11（Builder・旧新Consumer共存） | TM-06/09/11/14 | #3030 M5/M6、#2595/#2516/#1119 |
+
+**最初の実行の優先度**：#3031の実Guard Greenを出発点に、主担当#3030 TM-02/03/04/14の**新Parser/Loader結合**で、同一公開Subjectに対する `required→managed→loader→parsed→actual build consumed` の欠落が0になったかを独立Expectedで検証する。Guardを外した結果、空Successが復活するなら不合格。Role受理・Host Grant・現Provider Read・実Consumerは別ゲート。テストの元Source/試験対象のCountとSource spanを記録する。
+
+**状態**：この追補はdoc/indexの整合とOwner受渡し。新Reader、TMケース実行、実Target/SHO Writer、Owner Meaning AcceptanceはNOT RUN。#3031の既存Go/CI成功を形式移行完了とはしない。
