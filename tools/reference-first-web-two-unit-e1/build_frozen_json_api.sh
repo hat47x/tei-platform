@@ -34,12 +34,16 @@ export GOOS=linux GOARCH=amd64 GOAMD64=v1 CGO_ENABLED=0
 
 # Materialize the same normalized World from the existing Source loader, on
 # the builder side only. It is a diagnostic data artifact, not a new Source.
-# The observation is written only where the supplied grants allow it. The
-# grant names the exact scratch path this step writes, so the generator cannot
-# write anywhere else even if its arguments change.
-cat > "$scratch/frozen-world-grants.json" <<EOF
-{"grants":[{"kind":"filesystem","access":"write","scope":"$scratch/generated-world-observation.json"}]}
-EOF
+# The observation is written only where the supplied grants allow it. The grant is
+# issued for this run and recorded, so the decision can be read back; the
+# generator cannot write anywhere else even if its arguments change.
+go run ./cmd/tei issue-grant \
+  -grant-capability tei.frozen_world.lineage \
+  -grant-scope "$scratch/generated-world-observation.json" \
+  -grant-reason "build_frozen_json_api observation" \
+  -grant-run-key "$2@$3" \
+  -grant-out "$scratch/frozen-world-grants.json" \
+  -issue-log "$scratch/frozen-world-issued.jsonl"
 
 go run ./tools/reference-first-web-frozen-world-generate \
   -workspace reference/workspace -application order_entry \
