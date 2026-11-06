@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"tei/internal/access"
+
 	"tei/internal/core"
 	"tei/internal/execution"
 	"tei/internal/permission"
@@ -77,3 +79,48 @@ func TestPermissionPreconditionsBlockAnUnattendedRun(t *testing.T) {
 		t.Fatalf("an uncovered permission must block the run: called=%v results=%+v", called, results)
 	}
 }
+func grantsFor() []permission.Grant {
+	return []permission.Grant{
+		{CapabilityKind: "plugin", CapabilityID: "sales.close", Permission: permission.Spec{Kind: permission.KindFilesystem, Access: permission.AccessWrite, Scope: "/var/reports"}},
+		{CapabilityKind: "plugin", CapabilityID: "sales.close", Permission: permission.Spec{Kind: permission.KindNetwork, Access: permission.AccessConnect, Scope: "db:5432"}},
+		{CapabilityKind: "plugin", CapabilityID: "sales.report", Permission: permission.Spec{Kind: permission.KindFilesystem, Access: permission.AccessRead, Scope: "/var/reports"}},
+		{CapabilityKind: "service", CapabilityID: "sales.close", Permission: permission.Spec{Kind: permission.KindSecret, Access: permission.AccessRead, Scope: "vault:db"}},
+	}
+}
+
+func TestGuardFromGrantsSelectsByKindAndIdentity(t *testing.T) {
+	guard := execution.GuardFromGrants(grantsFor(), "plugin", "sales.close", nil)
+	if len(guard.Granted) != 2 {
+		t.Fatalf("only this capability's grants belong to it: %+v", guard.Granted)
+	}
+	decision, err := guard.Check(core.MustCanonicalID("sales.close"), []permission.Spec{{Kind: permission.KindFilesystem, Access: permission.AccessWrite, Scope: "/var/reports"}})
+	if err != nil || !decision.Allowed {
+		t.Fatalf("the granted requirement must pass: %+v err=%v", decision, err)
+	}
+	decision, err = guard.Check(core.MustCanonicalID("sales.close"), []permission.Spec{{Kind: permission.KindSecret, Access: permission.AccessRead, Scope: "vault:db"}})
+	if err != nil || decision.Allowed {
+		t.Fatalf("another capability kind's grant must not apply: %+v err=%v", decision, err)
+	}
+}
+
+type accessJournal struct {
+	records []access.Record
+}
+
+func (j *accessJournal) Append(record access.Record) error {
+	j.records = append(j.records, record)
+	return nil
+}
+
+func TestGuardFromGrantsRecords(t *testing.T) {
+	journal := &accessJournal{}
+	guard := execution.GuardFromGrants(grantsFor(), "plugin", "sales.close", journal)
+	if _, err := guard.Check(core.MustCanonicalID("sales.close"), nil); err != nil {
+		t.Fatalf("check: %v", err)
+	}
+	if len(journal.records) != 1 {
+		t.Fatalf("the decision must be recorded: %+v", journal.records)
+	}
+}
+
+var _ access.Journal = access.File{}

@@ -3,6 +3,7 @@ package execution
 import (
 	"strings"
 
+	"tei/internal/access"
 	"tei/internal/core"
 	"tei/internal/permission"
 )
@@ -27,4 +28,19 @@ func PermissionPreconditions(required func(core.CanonicalID) []permission.Spec, 
 		}
 		return "the granted permissions do not cover " + strings.Join(parts, ", ")
 	}
+}
+
+// GuardFromGrants builds the access guard for one capability from the
+// environment grants. A grant belongs to the capability when both its kind and
+// its identity match, so two capabilities that share an identity but differ in
+// kind do not share permissions.
+func GuardFromGrants(grants []permission.Grant, capabilityKind string, capabilityID core.CanonicalID, journal access.Journal) access.Guard {
+	var granted []permission.Spec
+	for _, grant := range grants {
+		if grant.CapabilityKind != capabilityKind || grant.CapabilityID != capabilityID {
+			continue
+		}
+		granted = append(granted, grant.Permission)
+	}
+	return access.Guard{Granted: granted, Journal: journal}
 }
