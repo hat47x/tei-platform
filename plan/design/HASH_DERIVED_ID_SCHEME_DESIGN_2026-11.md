@@ -183,7 +183,7 @@ Referenceの成功を製品機能の完成に昇格させず、次のように**
 | --- | --- | --- |
 | W0: Scheme Wire | 正規JSON・未知/重複/null拒否、Go/TSの同一Wireと再導出、旧版拒否 | Reference実装・共有fixtureを追加。exact head CIで限定判定 |
 | W1: 暗号/生成器 | NIST cSHAKE・SHAKE既知値、frame/golden、文字集合偏り・長さ/衝突予算 | Go/Node合成試験・標準ベクトル。一様性の包括的統計保証ではない |
-| W2: Target受理前 | 許可文字・case/Unicode/予約語・想定人口/確率・旧キー衝突診断、各Provider宣言の真正性 | ASCII静的ProfileとSQLite NOCASE限定試験。他Target未確認 |
+| W2: Target受理前 | 許可文字・case/Unicode/予約語・想定人口/確率・旧キー衝突診断、各Provider宣言の真正性 | ASCII静的Profile＋SQLite NOCASE限定試験。Headless CLIはCaller宣言のpopulation/risk予算を必須検査するReference候補。**Owner Policyの資格、実Targetの衝突空間・容量は未確認** |
 | W3: 保存のAuthority | 同一Scheme/Subject/Namespace/Source revisionをTarget Ownerが検証し、**実一意制約・transaction**で永続化。競合時fail-closed | SQLite単一接続の限定負例だけ。権限・マルチ接続/分散は未実証 |
 | W4: Consumer境界 | CLI・Studio・生成器の同一Scheme入力・出力・エラー経路、view-ID→qualified ID昇格拒否、epoch/stale判定 | `cmd/hashid-probe`のread-only Headless参照Consumerを追加。実CLI/Studio/生成器・Source freshness・Authorityには未接続。合格はexact headのCIで判定 |
 | W5: 更新/移行 | 旧Schemeと新Schemeの並存、旧値への参照維持、衝突時Rollback、移行・dual-read/Owner受理、Artifact/署名の非回帰 | 未実装・未実証。正式採用/移行の決定はしていない |
@@ -202,7 +202,7 @@ Referenceの成功を製品機能の完成に昇格させず、次のように**
 `tools/reference-hash-id/cmd/hashid-probe`は製品CLIとは独立した実験用コマンドで、単一の正準`SchemeJSON`とsource raw bytesを読み取って決定的に`Derive`し、ローカルのTarget Snapshotが**明示されている場合だけ**静的`CheckTargetBinding`を実行する。
 
 - 入力Scheme/Source/Targetに上限を設ける。非正準Scheme JSON、Unknown/Duplicate/Null/欠落のあるTarget Snapshot、旧Scheme/旧Profileの衝突、同一物理IDの異Subject、許可外文字、予約名を非0終了・stdout出力なしで拒否する。
-- 成功出力は`status=derived-only`または`snapshot-preflight-only`、`authority=none`、`storageWrite=false`を固定し、呼出元申告のsubject、生成文字列、frameを決めるScheme、入力byte数と独立SHA-256値を提示する。入力Digestは、この実行が読んだbyte列の説明に過ぎない。
+- 成功出力は`status=derived-only`または`caller-pinned-budget-snapshot-preflight-only`、`authority=none`、`storageWrite=false`を固定し、呼出元申告のsubject、生成文字列、frameを決めるScheme、入力byte数と独立SHA-256値を提示する。入力Digestは、この実行が読んだbyte列の説明に過ぎない。
 - Source fileの存在/改変防止/正本Revision、Target割当の現在性・完全性、呼出元subjectがTEI正本のqualified refであること、Authority/Owner受理、原子的DB書込やRollbackを**一切保証しない**。
 - 受入候補の成功条件は、実Goコマンドとして同じFixtureを2度実行したときの出力一致、局所Source/Targetファイル不変、同名別Subject・旧Profile/別Scheme・不正Scheme JSON・巨大Inputを拒否する負例、`go test ./...`でのPackage実行の証拠。CLIの試験合格をW4の全Consumer接続済みとみなさない。
 - caller-pinned preflightでは`-expected-source-sha256`と`-expected-target-sha256`を必須にし、現在読み取った2ファイルのbyte Digestと比較する。最後にScheme/Source/Targetをもう一度読み、**観測可能な変更だけ**を検出する。ピンの正当な発行者、Accepted SourceのRevision、Target割当の全量・現在性、symlink競合・ABA、最終照合直後の更新を保証しない。成功時も`callerPinsMatched=true`、`authority=none`、`storageWrite=false`を併記し、`fresh=true`や`accepted=true`を与えない。
@@ -248,7 +248,8 @@ flowchart TD
     H["TargetProfile + physical Namespace"]
     I["Allocation snapshot + Caller SHA-256 pin"]
     J["Target preflight / candidate+snapshot collision"]
-    P["CollisionBudget(policy, population)（Referenceには存在・CLI未接続）"]
+    P["CollisionBudget（Target CLIに接続、Caller宣言のみ）"]
+    Q["Caller ExpectedPopulation + RiskCeiling（Owner未受理）"]
     K["Read-only projection: authority=none, storageWrite=false"]
     L["Target Owner: current policy + unique Tx + permission（未実装）"]
     M["Independent target readback / effect observation（未実装）"]
@@ -257,19 +258,19 @@ flowchart TD
     C --> F
     D --> E
     E --> F
+    E --> P
+    Q --> P
+    P --> F
     F --> G
     G --> J
     H --> J
     I --> J
     J --> K
-    G -.-> P
-    H -.-> P
-    P -.-> K
     K -.-> L
     L -.-> M
 ```
 
-**注意**: 上図の`P`は衝突確率・予算判定のReference関数が存在するだけで、現在の`hashid-probe` CLIは**呼び出していない**。ExpectedPopulation/許容上限のConsumer Policyが未入力であるため、W2の安全予算Gate合格とはしない。
+**注意**: 上図の`P`はTarget preflightを行う`hashid-probe`に**接続したReference検査**であり、`-expected-population`（2件以上）・`-max-collision-probability`（0〜1）を必須とし、birthday近似の上限超過を候補出力前に拒否する。`E→F`の直接辺は**derive-only**（Targetなし）の経路、`E→P→F`は**Target事前検査**（Caller予算あり）の経路。これで「Reference CLIに存在しない」とは判断しなくてよい。一方`Q`はCaller自身の申告であって、OwnerがPopulation・Policyを採用した証拠ではない。W2の製品受入完了・実Targetの衝突空間保証は依然として未実証。
 
 **注意**: 上図の`C`/`I`へのPinはCallerが供給したbyte一致の検査に限り、Source Reader／割当Snapshotの真正な取得を保証しない。`K→L`は自動昇格を示す矢印ではなく、独立したOwner受入Gateが必要であることを表す。APIが`L`を持たない限り、実保存は存在しない。
 
@@ -303,3 +304,16 @@ flowchart TD
 | P2 | バッチ・セルフビルド・Registry・公開物での必要性とコスト／効果を実測してから標準Plugin/Schemaを採否判断 | #943/#951/#2016。Coreに必須機能を導入しない |
 
 **採用判定**: `HashIdScheme`は現在もDesign/Reference。初期成功条件は「1つの実Consumerで、Source revisionとTarget権限を偽らずに同じ結果を再現できるか」であり、「全プロダクトのIDを統一すること」ではない。実Target保存・Semantic Acceptance・既存Digest移行はOwner判断を伴う別作業のまま維持する。
+
+
+### 9.5 想定規模を明示するCollision Budget（2026-11-06、Reference実装・製品Policy未採用）
+
+桁数と文字集合の可変性は、Targetへ名前を配る母集団の規模とセットで評価する。見かけの表示幅だけから安全性を推定しない。従来からGo Referenceにある`CheckCollisionBudget`をread-only `hashid-probe`の**Target事前検査にのみ**結線した。追加したCLI入力は`-expected-population`と`-max-collision-probability`で、両方必須、予算違反／不正値／未指定はfail-closed。Targetを使用しない`derived-only`では予算を実行しておらず、出力に予算検査済みと書かない。
+
+- `CollisionBudget`という**別ノード**に、Scheme、Callerが申告したExpectedPopulation（2以上）、MaximumCollisionProbability（0〜1）を入力し、推定確率が最大値を超えれば後段のCandidate/Target診断へ流さない。成功時は`collisionBudget:{expectedPopulation,maximumCollisionProbability,estimatedCollisionProbability,policySource:"caller-declared-unverified"}`をJSONで返す。
+- 確率は一様・独立な出力を仮定するbirthday近似 `p≈1−exp(−n(n−1)/(2A^L))`（exact mode）、または`2^outputBits`（encoded digest）である。実Targetの照合規則による同値化、禁止文字／予約名／既存占有／攻撃者の選択入力／暗号学的第二原像強度まで含めて安全性を保証するものではない。Target ProfileがAlphabetを狭めたり正規化で衝突させたりする場合は**同Referenceの推定値から実空間の安全証明を導かない**。
+- 合成反証として**数字24桁・10億件**では`p≈5×10^-7`となりCaller予算`10^-6`を満たすが、**数字20桁・10億件**では`p≈0.005`となり拒否する。これは学習用の比較であり、TEIや利用Targetの標準人口・許容確率を採用したわけではない。極端な過少申告`n=2`でもCLIはCallerの値を検査するだけで、権限ある業務Populationとはみなさない。
+- Target Profileが現実にどのNamesを同一視し、何件を配るかは各Target Provider/Ownerの資格。長期運用での容量変化・再試行・同時確保に対し、原子的Unique制約・衝突の診断/再受理・独立readbackは引き続き**W3の別Gate**に属する。数値Policyの署名・承認は#951の権限系へ自動接続しない。
+- Schemaへの昇格時には`CollisionBudgetPolicy`を独立した型付きRecordにする候補だが、現時点でのCLI argvはReference用の非権威的Projectionである。生成パイプラインの図からBudget検査を省略したConsumerは、そのTargetで予算検査が行われたと主張できない。
+
+**追加受入**：不正な最大確率（NaN/Inf/負数/不正文字列）、Policy片側欠落、人口下限違反は結果なしで拒否。正常な数字24桁と、予算超過の20桁は同じSource／Caller Snapshot上で独立試験。これはReferenceのコード合格条件であって本番Targetの受理ではない。
