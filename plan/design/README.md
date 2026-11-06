@@ -113,6 +113,7 @@
 | [`RUN_PLAN_AND_UNATTENDED_EXECUTION_DESIGN_2026-11.md`](RUN_PLAN_AND_UNATTENDED_EXECUTION_DESIGN_2026-11.md) | 実行計画の宣言、業務キーによる実行の同定、再開・二重起動の拒否、帳票の決定性、無人の実行条件（[#1130](https://github.com/hat47x/tei-platform/issues/1130)、提案中） |
 | [`PERIOD_STATE_SEMANTICS_DESIGN_2026-11.md`](PERIOD_STATE_SEMANTICS_DESIGN_2026-11.md) | 業務日付・会計期間の状態・締めの一貫点・確定した行の不変性・赤黒の訂正・遅延到着の方針（[#2144](https://github.com/hat47x/tei-platform/issues/2144)、提案中・中核変更のためA4判断） |
 | [`DERIVED_DESIGN_ARTIFACTS_DESIGN_2026-11.md`](DERIVED_DESIGN_ARTIFACTS_DESIGN_2026-11.md) | 受理済みの意味から表定義書・機能定義書・対応一覧・DDLを決定的に導出し、差分と未解決を読む契約（[#1803](https://github.com/hat47x/tei-platform/issues/1803)、提案中） |
+| [`XTEA_STANDARD_BUSINESS_SEMANTICS_2026-11.md`](XTEA_STANDARD_BUSINESS_SEMANTICS_2026-11.md) | X-TEAの標準業務ライブラリ（暦・税・通貨・採番・日付計算・利用者設定）を、宣言された意味と契約へ受け止める設計案（未採用）。年度開始・休日のData化、税率の適用期間の両端、率の種類、採番の桁あふれと欠番の契約を含む |
 | [`XTEA_DERIVED_OUTPUT_RECEPTION_2026-11.md`](XTEA_DERIVED_OUTPUT_RECEPTION_2026-11.md) | X-TEAの設計書・DDL・行列・差分・一覧の往復を、TEIの導出成果物の契約（版・規則・未解決・非昇格）へ受け止める設計案（未採用） |
 | [`XTEA_AUTHORING_SURFACE_RECEPTION_2026-11.md`](XTEA_AUTHORING_SURFACE_RECEPTION_2026-11.md) | X-TEAのModeler・Editor・Driverを読み、TEI Studioの作者環境と標準業務の基本機能へ受け止める形を整理した設計案（未採用）。配置検査の面分割、検索・置換の版境界、編集履歴のまとまり、雛形生成の未受理扱い、標準業務の宣言化を含む |
 | [`XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md`](XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md) | X-TEAから回収したローコードの知見を、Core・Pattern・生成器・Plugin・Studio・要件のどこで受け止めるかの設計案（未採用）。パッケージ・対話フック・項目の役割・結果型・標準業務意味の判断候補を含む |
@@ -299,5 +300,6 @@ S1 realistic intent / candidate frontier
 - [アクセス経路の棚卸し](ACCESS_PATH_INVENTORY_2026-11.md)（実行の中核が直接触るファイル操作は1件。実際のアクセスはアダプタ側）
 - [権限の強制の適用計画](PERMISSION_ADOPTION_PLAN_2026-11.md)（要求＝能力、付与＝環境。実行時に再確認して記録する）
 - [動的な出力パスと宣言スコープ](DYNAMIC_PATH_GRANT_DESIGN_2026-11.md)（環境の付与は静的、実行時のパスは動的。両者の不一致と選択肢）
+
 
 
