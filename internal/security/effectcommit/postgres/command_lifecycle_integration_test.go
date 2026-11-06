@@ -44,7 +44,8 @@ func TestPostgresCommandLifecycleEndToEnd(t *testing.T) {
 		return command.LifecycleInvoker{
 			Lifecycle: lifecycle,
 			Invoker: command.Invoker{
-				World: commandWorldE2E(),
+				Authorizer: command.ReferenceAuthorizer{},
+				World:      commandWorldE2E(),
 				Executor: commandadapter.Executor{
 					Runner:          runner,
 					Grant:           grant,

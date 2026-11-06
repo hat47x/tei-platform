@@ -140,6 +140,7 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		}
 		if *execute {
 			invoker := command.Invoker{
+				Authorizer: command.ReferenceAuthorizer{},
 				World:      loaded.World,
 				Executor:   command.ReferenceExecutor{World: loaded.World},
 				UnitOfWork: &command.MemoryUnitOfWork{},

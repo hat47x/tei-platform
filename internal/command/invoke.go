@@ -42,6 +42,14 @@ type Authorizer interface {
 	Authorize(ctx context.Context, request Request) error
 }
 
+// ReferenceAuthorizer is an explicit "allow every request" authorizer. A
+// reference execution that has no real identity or grant source must still say
+// that it chose to run without authorization; a nil Authorizer is refused.
+type ReferenceAuthorizer struct{}
+
+// Authorize allows the request. It records no grant and evaluates no rule.
+func (ReferenceAuthorizer) Authorize(context.Context, Request) error { return nil }
+
 // ExecutionErrorは、業務上の結末ではなく、呼出しの前提・実行環境・契約の不備を表す。
 type ExecutionError struct {
 	Code    string
@@ -72,6 +80,14 @@ func EffectMayBeUnknown(err error) bool {
 	return executionError.EffectUnknown
 }
 
+// effectContractViolationは、Executorが実行された後に宣言から外れた結果を
+// 返したことを表す。データ効果が適用された可能性があるため、常にunknownの印を
+// 立てる。Executor契約はUnitOfWorkへの取引参加を要求していないので、参照用の
+// UnitOfWorkがあっても巻き戻し済みとは断定できない。
+func effectContractViolation(code, message string) *ExecutionError {
+	return &ExecutionError{Code: code, Message: message, EffectUnknown: true}
+}
+
 // Invokerは、宣言とExecutorの間に立ち、入力の検証・実行・結末の照合・取引を行う。
 type Invoker struct {
 	World      ir.World
@@ -98,16 +114,23 @@ func (i Invoker) Invoke(ctx context.Context, request Request) (Result, error) {
 		}
 		return Result{}, &ExecutionError{Code: "INVALID_COMMAND_INPUT", Message: message}
 	}
-	if err := i.checkPeriod(ctx, plan); err != nil {
-		return Result{}, err
-	}
-	if i.Authorizer != nil {
-		if err := i.Authorizer.Authorize(ctx, request); err != nil {
-			return Result{}, &ExecutionError{Code: "COMMAND_UNAUTHORIZED", Message: err.Error(), Cause: err}
-		}
-	}
 	if i.Executor == nil {
 		return Result{}, &ExecutionError{Code: "COMMAND_EXECUTOR_UNAVAILABLE", Message: "no executor is configured for this command boundary"}
+	}
+	// Authorization is an explicit decision, not an optional decoration. A
+	// reference execution must pass ReferenceAuthorizer and say so, so an
+	// unconfigured Host cannot silently execute without a decision. Authorization
+	// precedes the period check because the period state can disclose business
+	// facts (whether a period is closed) to a caller that is not permitted to run
+	// the command at all.
+	if i.Authorizer == nil {
+		return Result{}, &ExecutionError{Code: "COMMAND_AUTHORIZER_UNAVAILABLE", Message: "no authorizer is configured; command execution requires an explicit authorization decision"}
+	}
+	if err := i.Authorizer.Authorize(ctx, request); err != nil {
+		return Result{}, &ExecutionError{Code: "COMMAND_UNAUTHORIZED", Message: err.Error(), Cause: err}
+	}
+	if err := i.checkPeriod(ctx, plan); err != nil {
+		return Result{}, err
 	}
 	if i.UnitOfWork == nil {
 		return i.execute(ctx, request, plan)
@@ -141,7 +164,13 @@ func (i Invoker) Invoke(ctx context.Context, request Request) (Result, error) {
 }
 
 func (i Invoker) checkPeriod(ctx context.Context, plan applicationview.CommandPlan) error {
-	if plan.Period == nil || i.Periods == nil || plan.Effect == nil {
+	if plan.Period == nil {
+		return nil
+	}
+	if i.Periods == nil {
+		return &ExecutionError{Code: "COMMAND_PERIOD_STATE_UNAVAILABLE", Message: fmt.Sprintf("period %s is declared but no period state is configured", plan.Period.ID)}
+	}
+	if plan.Effect == nil {
 		return nil
 	}
 	closed, err := i.Periods.Closed(ctx, plan.Period.ID)
@@ -174,14 +203,21 @@ func (i Invoker) execute(ctx context.Context, request Request, plan applicationv
 	}
 	if result.Effect != nil {
 		if plan.Effect == nil || string(result.Effect.Kind) != plan.Effect.Kind || result.Effect.Data != plan.Effect.Data {
-			return Result{}, &ExecutionError{
-				Code:    "UNDECLARED_COMMAND_EFFECT",
-				Message: fmt.Sprintf("executor returned effect %s on %s that the capability does not declare", result.Effect.Kind, result.Effect.Data),
-			}
+			return Result{}, effectContractViolation(
+				"UNDECLARED_COMMAND_EFFECT",
+				fmt.Sprintf("executor returned effect %s on %s that the capability does not declare", result.Effect.Kind, result.Effect.Data),
+			)
 		}
 	}
+	// The executor has already run when applied operations are checked. Even
+	// with a UnitOfWork, the Executor contract does not require it to join that
+	// transaction, so a mismatch cannot be recorded as a clean rejection.
 	if err := checkAppliedOperations(plan, result); err != nil {
-		return Result{}, err
+		var contractError *ExecutionError
+		if errors.As(err, &contractError) {
+			return Result{}, effectContractViolation(contractError.Code, contractError.Message)
+		}
+		return Result{}, effectContractViolation("UNDECLARED_COMMAND_EFFECT", err.Error())
 	}
 	if result.Outcome != nil {
 		declared := false
@@ -192,10 +228,10 @@ func (i Invoker) execute(ctx context.Context, request Request, plan applicationv
 			}
 		}
 		if !declared {
-			return Result{}, &ExecutionError{
-				Code:    "UNDECLARED_COMMAND_OUTCOME",
-				Message: fmt.Sprintf("executor returned outcome %s that the capability does not declare", result.Outcome.Name),
-			}
+			return Result{}, effectContractViolation(
+				"UNDECLARED_COMMAND_OUTCOME",
+				fmt.Sprintf("executor returned outcome %s that the capability does not declare", result.Outcome.Name),
+			)
 		}
 	}
 	if i.Recorder != nil {
