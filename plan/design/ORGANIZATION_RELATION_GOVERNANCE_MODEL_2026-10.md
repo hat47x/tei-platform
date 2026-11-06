@@ -3294,3 +3294,48 @@ Ownerが求める「選択した業務Data群への広域適用＋Record/用途�
 4. **#2514/#1180/#1163**：Source/Meaning・適用Policy・Provider・Current Authorization・Consumer・Effectを同じ試行に束縛した独立Expectedと実観測を保持。Not-run/SkipはPASSにしない。
 
 **撤回線**：標準Data/Relation/Rule＋選択されたProfile/Plugin＋Host Authorityで差を保てるなら、新しいCore Permission型/専用ACL/Policy Engineを追加しない。ADR-0036/0043/0044と#1119の優先を変えない。**固定HEAD・限定Synthetic CI実測（2026-11-06追補）**：[PR #3019](https://github.com/hat47x/tei-platform/pull/3019) のコミット c209fa8b4e803a9a9698a42648ec087add56782a に対する [組織Node Actions #42196320734](https://github.com/hat47x/tei-platform/actions/runs/42196320734) は **completed/success**。実ジョブログはcheckout/TARGET_SHA一致、CM-13の2件＋CM-14の1件が個別ok、全Reference **217/217 PASS・0 FAIL** を記録。以前の214/214は旧HEADの実行証拠であり同じRunとして足し合わせない。**資格はSynthetic Meaning E0のみ**。実Microsoft/TEI Host・Provider/Case E2/Effect/Owner正式受理はNOT RUN。PR #3019はDraft・未マージ。
+
+## 77. CaseRecordの最初の実Source接合：Persistence MappingとProduct Readの間を別Gateにする（2026-11-06、採用前）
+
+### 77.1 現行Go/TEI Sourceで直接確認した接合状態
+
+既存[Native E1 PR #2681](https://github.com/hat47x/tei-platform/pull/2681)の固定コミット e0cfebf14d40db81bdef77d6c3e4898ed75d999f の実Sourceを確認した（本段は静的なコード監査）。
+
+| 観測箇所 | 実際に存在するもの | ここから推論できないもの |
+| --- | --- | --- |
+| `reference/org-headless-workspace/semantic/organization/model.tei` | Person、OrgUnit、Membership、Position、Occupancy、CaseRecord。CaseRecordの `caseId` と `handlingUnitId`、OrgUnitへの `handlingUnit` Typed Relation | Case永続化、Case Scope/Host Grant、本人/位置の一意認可、実Query |
+| `databases/org-store/persistence/membership.tei` | org_store.membership の実Persistence宣言、`membershipId`物理PK | **CaseRecordのPersistence**。元WorkspaceにCase Mappingは未存在 |
+| `applications/org-view/application.tei` | `database org_read { target org_store; access read }` のread-only DB Requirement | 特定の実DB接続／Function/Query Context／Provider実Read資格 |
+| `internal/operations/surface.go:SurfaceWorkspace` | 実Workspace Load→SourceIndex→World Fingerprint→`DeriveOperationSurface` | Provider実SQL、Tenant Authority、実行Receipt |
+| `deriveApplicationOperations` / `emitOperation` | 選択DatabaseのPersistenceを列挙し、読み取り可能Alias+Primary/Candidate Keyがある場合、`list/read`を**候補**として導出。重複Operation IDは最初の決定的候補を採用 | 同IDが別DB Alias・異Mapping・異Tenantでも同一実Targetであること。実Readerを一意に選んだ保証 |
+| `mappingBasis` | 現実装はMapping ID/Table/PK Attributeに基づくFingerprint | Column Mapping/Storage/Nullability/Provider Session/Scope等の変更を全て捕捉する完全な実行同一性 |
+
+**重要な切り分け**：このOrg Workspaceは、標準Readerに渡す`CaseRecord`のOperation候補さえ基線では導出しない。だから最初の不足は「Caseの物理Persistence Bindingがないこと」。それを追加しただけでProduct E2a実Readerが通る、とも言えない。次の段で明示Function Data Context、選択した実Datasource/Provider、実SQL/Rows/Cohort、Consumerを同じAttemptで検査する必要がある。§71のTenant/Caseの同じBusiness Key反例は、このE2aが成立してから適用する。
+
+### 77.2 独立した最小Go Characterization（積上げDraft PR #3024）
+
+[Draft PR #3024](https://github.com/hat47x/tei-platform/pull/3024) は #2681のbranchを**変更せず**、その固定SHAから分岐した積上げDraftである。差分は`internal/operations/org_case_mapping_bridge_test.go`の1ファイル・114行のみ。元Fixtureは保持し、テスト内でコピーしたWorkspaceにだけ以下を追加する。
+
+- Persistence: `org_store.case_record` → `organization.case_record` → `public.org_case_records`、`case_id`と`handling_unit_id`をColumn Mapping、PKはCase自身の `organization.case_record.case_id`。
+- **Independent Expected M1**：元SourceではMembership用`list/read`の2件のみ、CaseRecordは構造RelationだけなのでDerived Case Operationは0件。
+- **M2**：コピー版を実`workspace.Load`すると、CaseRecord Mapping、DB、Table、PKを観測できる。Mappingが反映されればSource/Worldの実指紋は変わる。
+- **M3**：コピー版の`SurfaceWorkspace`ではCase用`list/read`が増え合計4件になり、Case`read`のInputはCase自身の`caseId`。MembershipID・OrgUnit ID・表示行番号へすり替わらない。
+- **M4（否定）**：前後とも`Effect=read-only`、`Binding`空、`Effects`空、`AuthorityLimits`保持。**Operation candidate ≠実Function/Provider/Host認可**。当該DBに実Case行が存在することも未検証。
+
+**実証状態**：GitHubのCode Blob/差分・Branch base SHAは確認。テストの`go test`／gofmt／実Native CI／実Provider／実DB／Owner受理は**NOT RUN**。Parent #2681はmain未マージ。単にPRへコードがあるだけでM1〜M4のPASSを宣言しない。積上げPRはParent Review/統合後にfixed exact-head Go TestとRepository Healthを取得してから採用する。
+
+### 77.3 Product E2aへの接続：新Runnerでなく既存三つの境界をつなぐ
+
+| 次のGate | 必要な同一Source・Attempt証拠 | 不足時の適切なStatus／担当 |
+| --- | --- | --- |
+| **E1b Operation candidate** | §77.2の実Go fixed-head：Case Mapping、`SurfaceWorkspace`のCase read Input/Origin/Basis、AuthorityLimits不変 | `mapping-not-connected`／#2681/#1127。実行成功ではない |
+| **E2a Function Context** | Case C1選択、`handlingUnit` relation role、Case主キー/Current Selection Epoch、Queryの必要FieldsとRelation Grainを明示（#2506） | `function-context-not-connected`。Operation IDや一覧表示から自動生成して成功とはしない |
+| **E2b 実DB Reader** | Datasource Alias→選択Mapping/Target→実SQL/args→Provider受信→1件のRow+Field/Scope/Cohort/Completeness（#2622/#2611/#2586） | `product-read-not-connected`。Scoped PG別Fixtureの成功や単一Mappingの静的Basisだけは不可 |
+| **E2c Consumer/独立Expected** | 同じC1→D1の実Row/Relationを、許可されたConsumerへ出す。Observedと独立Expected、部分/NULL/拒否・出所・開示資格を別票で比較 | `consumer-not-qualified`／#2516/#2514。Syntheticの同じ見た目だけでは不可 |
+| **E4 Effect（後続）** | 現在Host Grant／Provider実Row Version／Save Intent／Commit unknown／Receipt／独立再読取 | #1174/#2564/#1163。Read実証だけでWrite/Approval/組織責任移管を合格としない |
+
+**外部Referenceとの対照**：[X-TEA Lowcode受容例（main #2940）](../../examples/xtea-lowcode/README.md)には`query order_entry.recent_orders`、`datasource sales`、Native SQL fileがある一方、明示的に`UNBOUND_DATASOURCE`警告を表示し、`cmd/tei/xtea_example_test.go`は`applicationview.Build`と`ReferenceDataExecutor`／MemoryStoreを使用する。**Query宣言が存在するだけでも実DB Readerは成立しない**。Org Caseは「永続化Mapping不在」、このX-TEA例は「環境のDatasource実Binding不在」という別々の最初の不足を示す。両者を別Runner/第二Query Engineで埋めず、#2586の一枚のContext→Provider→Consumer受入票で比較する。
+
+**#2611の制約**：今は一つのAlias+MappingでM1〜M4を検査する。将来の同Semantic Data／別Alias／別Tenantのケースでは、`emitOperation`のfirst deterministic winnerと`mappingBasis`の限定入力を実Target同一性に使ってはならない。Alias順を反転した時に候補の解決理由・必要な区別が表面化することを#2611 PM-02/04へ渡す。Provider DB Aliasを専門家が初回から手入力するUXへ戻さず、既存Mapping/Targetの宣言と必要時のAI提案・Owner判断を保持。
+
+**維持する線**：#1119の実Product P0-a/P0-b、#2586の実Reader接続の優先順位は不変。#2681本文・main・採用済みADRは変更しない。新Core OrgEntity、第二Provider/Query Runtime、中央Tenant/Grant Registry、新Host、未受理DB/Host Actorは追加しない。独立Expectedと実際に観測した状態を分離する。
