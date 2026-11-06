@@ -19,6 +19,7 @@ test('two real-shaped direct references are candidates, never relation entities 
   assert.equal(x.edges.length,2);
   assert.deepEqual(x.selected,['reference-observation','semantic-relation','sales.order.customer']);
   assert.equal(x.sourceNavigation,'located-navigation-only');
+  assert.equal(x.scopeOrigin,'caller-supplied-projection-scope');
   assert.equal(x.relationEntityIdentity,'not-provided');
   assert.equal(x.multiRoleClosure,'unproven');
   assert.equal(x.absentClaim,'unknown');
