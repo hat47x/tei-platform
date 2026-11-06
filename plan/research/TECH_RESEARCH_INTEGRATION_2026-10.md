@@ -346,3 +346,55 @@ TEIの設計へ反映する観点：
 最初に作る読取り結果では、(1) 正確な情報源・意味上の識別子・衝突の根拠から**判断できた事項**、(2) 記述の不在・古い前提・業務手順固有の意図など**人の判断が残る事項**、(3) 実際の提供実装・画面・未実行の実行検証など**根拠が届かない事項**、(4) 変更の提案、保留、追加調査から**人が選ぶ事項**を分けます。
 
 **停止条件：** 顧客の編集に関する衝突を既存の検査器で再現できない場合や、異なる視点の違いを示すために受理済みの業務定義を無断で書き換える必要がある場合は、実装を増やさず、原因を既存の課題へ戻します。成功を記録する際には、正確な対象版、実行環境、コマンド、診断、実行前後にソースが変わっていないことを記録します。今回のソースの静的な確認だけでは成功とは判断しません。
+
+## 10. 2026-11-06：複合図表による概念の非混線性と実Sourceへの検証移転（研究・評価計画案）
+
+- **位置付け**：既存の技術調査計画の追補。ここでは新しい製品要求、Core型、標準API、受入Gate、Studio画面・Pipeline Runtimeを採用しない。統合済みの[トポロジー・複合図表設計](../design/TOPOLOGY_COMPOSITE_VIEWS_AND_PIPELINE_2026-10.md)と、別担当の[read-only合成Reference Draft #2881](https://github.com/hat47x/tei-platform/pull/2881)の**評価を実Sourceへ移す手順**と、Complect削減の比較方法だけを扱う。
+- **確認時点**：main `2d0b09b13b16c7f2d7183dbc995d3c62208c79ef`。#2881のexact head `0c3befe7bded8b4cfc47154312254485c5e09161`に対する[専用GitHub Actions #42155639997](https://github.com/hat47x/tei-platform/actions/runs/42155639997)は`completed / success`、合成試験はPR記録上Node 24.21.0で18/18 PASS。ただしその試験の`subjectsComplete`や`readerPinned`は**fixtureの宣言値**で、実Source readerの独立証明ではない。実Studio、実TEI Self-build、実MFT/ETL、Owner Meaning/Effectの完成を示すものではない。
+
+### 10.1 研究仮説を製品要求と区別する
+
+**H1（正確性）**：図表・表・関連グラフの組合せは、特定の問いに必要な構造・関係role・Source版・未解決事項を示すことで、単一の図表または個別コード読解より、誤った「存在しない」の断定を減らせる可能性がある。
+
+**H2（Complect削減）**：Source意味、Role/Operator、表示配置、Target/Plugin、実行Effectの独立性を維持した編集・解析は、これらを一体として扱う実装より、無関係な変更波及と再検証範囲を減らせる可能性がある。
+
+**H3（共通化）**：Studioの三視点、TEI全体セルフビルド、ETL/MFTで共通利用できるのは**型付き対応と問い相対の被覆評価**であり、同じRunner/認可/受理モデルではない。少なくとも二つの異なるConsumerで、独立した業務・技術上の意味を失わずに共通部品を再利用できるか検証する。
+
+いずれも**仮説であり、優位性は未測定**。表示がきれいになった、node数が減ったという理由だけでは支持しない。図表表現不能が確認された際は、ただちに新Core型を足すのではなく、既存構造の合成不足、Mappingの不足、Domain意味の不足、Rendererの不足のどれかを分類する。
+
+### 10.2 合成Referenceから実Sourceへ移す際の独立期待値
+
+単一の合成fixtureが「Source集合は閉じた」と宣言し、その同じ宣言をProjectionと期待値に再利用すると、実際のSource/Plugin欠落を見逃す。従って次段階では、**対象を限定した実Readerによる独立列挙**と**表示から独立した期待値**の両方を要求する。
+
+| 領域・問い | 独立の列挙／期待値の候補 | 合成Projectionで検査する対象 | Claimを止める条件 |
+| --- | --- | --- | --- |
+| Studio: このRelationやSource上の対象はどこにあるか | #1124の実CLI/Catalog、Source Indexのscope・revision・span。M0→M1の実Consumerは別Owner | 同一qualified keyへのGraph/Table/関連表の対応・role被覆 | 異scope、欠落関係、旧DOM/旧Source、未開示対象。Inspect/Source locatorを推測しない |
+| TEI Self-build: 宣言した工程だけが実行・消費されたか | #2831が所有するactual build attemptのStep・消費したSource/toolchain・各nested module・Artifact digest | 宣言Graphとの役割付き対応表、未宣言工程/入力の検出 | Traceが取れない外部Hook、source closure不足、seed trust不明。「実際に何もしていない」と断定しない |
+| ETL/MFT: どのMember/転送/取込みが成立したか | #2542/#2604/#1174の実Reader、公開世代・実配送ACK/Receipt・Import Unitと独立結果 | Dataset→Transform→ArtifactSet→Transfer→Ingestionの別関係と世代差を表示 | 一部Member旧世代、ACK喪失、opaque Provider。logical planから受領/Business Effectを推定しない |
+
+独立Expectedを作ることは新しいScenario正本を設けることではない。[#1180](https://github.com/hat47x/tei-platform/issues/1180)等の既存Ownerによる受理済みOracle/Scenarioを使い、取得対象とAttempt、Target、Artifact/Source版を固定する。Sourceに未記述の要素を探す際は、検索結果0件を自動的にclosed-worldな不在へ昇格しない。未取得・未開示の内部構造は公開画面の個数や診断からも漏らさず、[#2516](https://github.com/hat47x/tei-platform/issues/2516)の開示判断へ返す。
+
+### 10.3 実験と観測の最小構成
+
+実験候補は、(a) 単一図表または既存コード・CLIの読解、(b) Graph＋Table＋関連表＋被覆/unknown表示、の**同一Source・同一制約**を比較する。順序効果を避けるため課題順を入れ替える。人間と生成AIで同じ問題・期待値を使うが、AIへの情報供給量やインターフェースは記録し、完全に同等だと仮定しない。
+
+| 最小課題 | 正解の型 | 主な測定 |
+| --- | --- | --- |
+| 別scopeの同名対象とRelation IDを選択 | 対象の正確なqualified key、曖昧なら拒否 | 誤Inspect/誤意味推定、正しいSourceへの到達操作数 |
+| Graph上に線がないが、Readerは一部未解決 | `unknown`。完全性がある限定scopeのみ不在を許可 | 偽の不在断定率、Unknownの過剰/過少 |
+| Layoutだけを変更した後の差分確認 | 意味/Build/Authorityの変更0、viewのみ差分 | 無関係な変更・再検証ファイル/工程数 |
+| Role、選択Plugin、Source locatorを個別変更 | それぞれ必要な失効面だけ再評価 | 過剰失効と見逃し、追加の文脈探索量 |
+| 外部ビルド工程または転送ACKが未観測 | 宣言と実現の一致は未証明、結果は保留 | 漏れた実行・未観測Effectの誤断定、追跡に要する手順 |
+
+評価は、正答率だけでなく、**不正確な確信を持った回答（False Absence）**、誤ったSource/Ownerへの遷移、必要な情報への到達手数、変更で触れた無関係要素、実Source再読込・確認回数、AIの入力token・修正反復と、未解決を正しく維持した割合を記録する。速度・token削減のためにUnknownを勝手にAbsentへ変えたケースは成功ではない。
+
+同時に、**表現・編集の複雑さが別の場所へ移動しただけ**かを調べる。関連表の手動保守、図表専用の第二Source、隠れたHook、特殊なDSL、無関係Plugin追加による過剰Build invalidationは、機能数が増えてもComplect削減の反証になる。必要なドメイン間結合は失敗として数えない。
+
+### 10.4 Gateと所有境界を増やさない順序
+
+1. **基線**：#2881の合成ReferenceとCIを限定的な「投影内整合」証拠として採用する。旧Sourceを含む新しいテストハーネスをここで作らない。
+2. **初回移転**：[#1124](https://github.com/hat47x/tei-platform/issues/1124)のM0実CLI→同一Workbench Consumerの経路を先行し、実Source/Consumer対応の安全性を既存Ownerが測る。#2881の図表を実Workbenchへ先に強制投入しない。
+3. **並行負例**：[#2831](https://github.com/hat47x/tei-platform/issues/2831)の宣言vs実Build消費・[#2542](https://github.com/hat47x/tei-platform/issues/2542)のArtifact一式公開・配送/取込を独立観測する。P0をStudio UIや全ETL Builder完成のHard dependencyにしない。
+4. **比較と縮小**：二Consumer以上の**同種の構造不足**が検証された時点で、[#2620](https://github.com/hat47x/tei-platform/issues/2620)などが標準表現の最小拡張を検討する。認知負荷やエラー率の改善が支持されない場合は、共通新Core/APIでなく既存Pluginの限定投影へ戻す。
+
+**結論の資格**：本節は研究・検証計画への反映であり、Referenceの実Source接続、結果の比較、認知負荷削減、Owner採用を実施したという主張ではない。現在の評価実験は**NOT RUN**。新しいCore schema、第二Source/Resolver、TEI専用Host、汎用Pipeline Runtime、製品共通の実行Authorityを採用しない。
