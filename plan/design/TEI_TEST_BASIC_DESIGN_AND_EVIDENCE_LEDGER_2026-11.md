@@ -258,3 +258,29 @@ main統合の[`tei dbcheck`](https://github.com/hat47x/tei-platform/pull/2894)�
 - **資格の上限**：公開合成`relation-unique`で`[1,1]`を正しく`not-satisfied`と期待した**1 mutant/1 target rule/2 fixed cases**の限定判別力。正式業務Owner Meaning、Source閉包/Rule改版、他Rule・欠損/NULL・複数粒度、実Provider/Host/現在Grant、採用Suite全Obligationは未証明。#3017は意図的な不良コードを含むので本番・mainへ絶対統合しない。
 
 **次の出口**：#2514で独立業務Ruleの出典・版と追加Mutation対象（NULL、未取得、Relation scopeの誤り）を固定し、実CaseのRequired集合・Consumer実Receiptを#1180/#1163に渡す。今回の有限M1を全G2/正式Owner判断に昇格しない。新Runner/Oracle DB・Acceptance Authorityは導入しない。
+
+### 8.8 次のOracle感度とOwner対象集合証拠の二層化（2026-11-06）
+
+[#2901](https://github.com/hat47x/tei-platform/pull/2901)の同一HEAD `a6eb80cffe16a57f4cb2461ff2946065955a4e50`では[Health #42111973682](https://github.com/hat47x/tei-platform/actions/runs/42111973682)がsuccess。[#3017](https://github.com/hat47x/tei-platform/pull/3017) `0f795a012dc16200ee85e5f6b3f0b921add7bdc4`では[Health #42181290981](https://github.com/hat47x/tei-platform/actions/runs/42181290981)がfailure、実ログでAI追加の`ai-line-number-duplicate`が製品Evaluatorの重複判定誤りを検出した。この**履歴として確定したM1**と以下の**未実行の次提案**を区別する。
+
+**次の1 Mutant（設計提案・NOT RUN）**：既存`internal/semantic/validationeval/evaluator.go`の`ValidationRelationUnique`において、重複結果の分岐は正しいまま、**最後のRelation Keyだけを反復対象から落とす**誤実装を別の隔離HEADで試す。変更対象はEvaluatorのループ上限1箇所のみ。#3017の戻り値反転を再利用したり、Fixture/Scenario/Expectedを修正して見かけPASSにしない。現行2要素の正負対照は、正常`[1,2]→satisfied`、重複`[1,1]→not-satisfied`。末尾を黙って除外すれば前者は変わらず、後者を誤って`satisfied`とし得る。**この予測は実測ではない**。
+
+**実験の固定ピン（既存Source/Fixture/Oracle）**：
+- Source：[#2901](https://github.com/hat47x/tei-platform/pull/2901) HEAD、`reference/workspace/semantic/sales/validation.tei` blob `fd9e3ad6a81e3201ade8e987377137a3ba702d5f`、`reference/workspace/applications/order-entry/application.tei` blob `00c29ac0e557cb50fdcd13f2477d0b538a528c80`。Rule選択は`order_entry`の`uses validation`が正本。関数の独立ExpectedとProduct Evaluatorを同根の計算で再生成しない。
+- Fixture：`fixtures/order_valid.json` blob `bc65e0d76ce09ee96c5f32e20050a30ed1d1a37e`、`fixtures/order_duplicate_line_numbers.json` blob `7e9a04e5afbcfbfb9a857c4f4b50313d6d15429c`、Scenario `ai-candidate-line-number-uniqueness.json` blob `251b5282f6730bc7eb7f383d118bee5662389d77`。
+- Oracle：`cmd/tei/ai_line_number_independent_oracle_test.go` blob `e1c30b0fef60547f8d4f9046a57df5ac1050ff80`。実際に使用されたWorld Fingerprint、Plugin Lock、Artifact/Toolchain、Go Jobの実Attemptは**実行時のReceiptから別途取得**する。ソースのGit blob一致だけで実Loaded一式の同一性を保証しない。
+
+| 観測する結果 | 結論の上限 | 禁止する推論 |
+| --- | --- | --- |
+| **正常Green→末尾脱落Mutantで追加AI StepがValidation不一致を出す** | 合成`RelationKeys`の**与えられた2要素**の末尾を欠落させる誤りに対する当該Go Caseの局所Mutant kill | Ownerの必要明細集合を取得できていること、実DBで全行を取得したこと |
+| **他のGo TestのみRed** | 既存試験が誤りを検出した | AI追加Caseが検出したとの認定 |
+| **必要Step実行済みでSurvive** | 対象CaseのMutation感度に不足がある。実Used/Loaded/選択Rule・Observableを調べる | Mutationの安全性、Owner意味の正しさ |
+| **Build/gofmt/Run欠落/Pin不一致のみ** | inconclusive（観測不能） | CIの赤だけでProduct Mutant killとすること |
+
+**別の反例：完全性がないと実装が正しくても見かけPASS**。現在の`scenarioValidationSource.RelationKeys`は`[]string, error`を返し、Evaluatorは**渡された配列内**の重複だけを調べる。業務Ownerの必要母集団が2行`[1,1]`でも、Provider/呼出し境界が1行`[1]`を返せばEvaluatorは`satisfied`となり得る。この場合はEvaluatorが全入力要素を走査していても、**Readの完全性が未立証**であり、上の末尾Mutant killでは防げない。現在のSource IFにはScope、Snapshot、ページ終端、RLS/権限の非開示、総件数、Ownerが要求した母集団の証明は存在しない。取得済み0件・未取得・部分取得・非開示を同じ空配列へ変換しない。Fixture内で`keys: []`が正常に解釈されても「Owner対象が0件」を証明しない。
+
+**NULL／unknownは未対応として分離**：現行Fixtureは数値の文字列とRelationの`[]string`しか持たない。NULL Key、未知Key、Provider取得失敗、非開示を単なる`"null"`や空文字などの番兵値へ変換してOracleを自己追認しない。独立Expectedの定義が必要な場合は#2514のMeaning Ownerで、どの状態が`not-satisfied`／評価不能error／unknownであるべきかを先に区別し、その後#1180/#2586へFixture/実Readの要件を渡す。本節は新しいFixture Schemaを採用しない。
+
+**Source変更時の再資格**：Source内容・`uses validation`選択・Relationの意味/粒度・Operator版・Owner受理が変われば**現行Expectedの適用可能性を再確認**する。Path移動（将来`.tei`から`.tei.md`への移行を含む）は、byte同一なら自動的にMeaning同一とせず、実Source Reference再解決とModel/World、実Compiler/Plugin入力、Acceptance根拠を別々に照合する。失効した過去のGreen/Red Evidenceを削除・上書きせず、`historical valid at HEAD / current unqualified pending recheck`を併記。Source改版は#2595、再資格化は#2600、Read/母集団は#2586/#1163が所有し、#2514の独立Oracle担当Chatと実装・投稿が競合しないよう、本書は**受け渡すべき証拠・Claim上限のみ**を記述する。
+
+**進捗の区分**：#2901 Greenと#3017 M1 Killは実CI確定。末尾脱落Mutation、NULL/unknown、Provider部分取得、`.tei.md`移行後の実Resolved Sourceは**いずれもNOT RUN**。本節の追補はdocs-only。故意に不正なMutantのmain統合は厳禁。
