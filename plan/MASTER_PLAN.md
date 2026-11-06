@@ -193,6 +193,10 @@ PostgreSQLは詳細な検証に用いる提供実装として利用します。
 
 Oracleの実環境での検証が未完了であることだけを理由に、固定版での判定段階BのReadyを取り消しません。
 
+**DB移行の互換性ゲート（未採用の設計候補）**：既存のリリース計画とProviderを維持しつつ、Expand/Backfill/Validate/Cutover/Contractごとの旧新Client互換・Business Key/Physical PK・履歴・Source/CDC/Checkpoint/現在Grant・独立ReadとOwner受理を[互換性ゲート計画](design/DB_MIGRATION_COMPATIBILITY_GATES_2026-11.md)で検証する。既存[#2555](https://github.com/hat47x/tei-platform/issues/2555)・[#2147](https://github.com/hat47x/tei-platform/issues/2147)・[#2622](https://github.com/hat47x/tei-platform/issues/2622)・[#1126](https://github.com/hat47x/tei-platform/issues/1126)等の責務は維持し、Migration成功ログのみを完了としない。実DB/本番適合・Owner受理は未実施。
+
+**実装へ移す優先順（2026-11-06、未採用の検収計画）**：①[#2897](https://github.com/hat47x/tei-platform/issues/2897)のDB/提供Contract重複による互換性の後勝ち拒否（[Draft #2900](https://github.com/hat47x/tei-platform/pull/2900)に局所修正・安全Expectedテストあり、**main統合は別判定**）、②[#2892](https://github.com/hat47x/tei-platform/issues/2892)の移行履歴unknown・取得失敗の偽成功防止をそれぞれ既存比較器で実証する。③旧新Application Releaseの要求契約に対し、**必要なClient・Writer・Batchの母集団、Source/ScopeとReadの完全集合、CDC/Checkpoint、現在Grant/Effect**の独立証拠が揃うかを照合する。④G4 CutoverとG5 Contractは、Owner判断・実Provider/Consumerの観測が揃うまで進行不可とする。局所的なGo特性テストの成功、Migration履歴の単一行、`CheckApplication=Compatible`を製品Gateの合格へ昇格しない。詳しくは[互換性ゲート計画§18〜19](design/DB_MIGRATION_COMPATIBILITY_GATES_2026-11.md)を参照。#2887のMG-29現状固定テストは、#2900の安全修正と同一統合head上で**順序不変の拒否Expectedへ更新**してから全体CIを再確認する。製品型・新Gate・新History Registryの採用はせず、必要な実装変更は担当Issueの独立PRで判断する。
+
 ## 作業領域E：設計の実行と検証
 
 ### 目的
