@@ -100,7 +100,7 @@ func captureManagedExtra(result *Result) error {
 			if !bytes.Equal(parsed, content) {
 				return fmt.Errorf("source %q changed while loading Workspace", path)
 			}
-			managed.ParsedByLoader = true
+			managed.ReadByLoader = true
 			continue
 		}
 		result.sourceManagedExtra[path] = content

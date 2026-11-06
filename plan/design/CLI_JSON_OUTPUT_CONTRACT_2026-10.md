@@ -24,7 +24,7 @@
 
 実行環境: WSL go1.26.9で`go build ./cmd/tei`、参照作業領域`reference/workspace`。失敗時の例は存在しない作業領域、存在しない対象、未対応のflagを与えた場合である。終了コードは成功0、意味的な見つからない1、引数と読込みの失敗2が基本である。
 
-`workspace-files` の各要素の `parsedByLoader` は、その Load で当該ファイルがDomain Loaderに読み込まれたかを示す。`false` でも管理対象として列挙・読取り時のbyte捕捉は行う。`true` は意味の妥当性、全Sourceの網羅、Buildでの使用を保証しない。存在しないSource Rootはファイル一覧に現れず、この欄だけでは検出できない（#2823）。
+`workspace-files` の各要素の `readByLoader` は、その Load で当該ファイルがDomain Loaderに読み込まれたかを示す。SQL等の関連ファイルの読込みも含むため、構文解析を保証しない。`false` でも管理対象として列挙・読取り時のbyte捕捉は行う。`true` は意味の妥当性、全Sourceの網羅、Buildでの使用を保証しない。存在しないSource Rootはファイル一覧に現れず、この欄だけでは検出できない（#2823）。
 
 | コマンド | schemaVersion | 成功時の出力 | 失敗時の標準出力 | 内部構造体の直接出力 |
 | --- | --- | --- | --- | --- |

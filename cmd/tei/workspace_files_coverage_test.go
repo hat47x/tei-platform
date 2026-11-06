@@ -31,7 +31,7 @@ func TestWorkspaceFilesReportsLoaderConsumption(t *testing.T) {
 		OK     bool `json:"ok"`
 		Result []struct {
 			Path   string `json:"path"`
-			Parsed *bool  `json:"parsedByLoader"`
+			Parsed *bool  `json:"readByLoader"`
 		} `json:"result"`
 	}
 	if err := json.Unmarshal(out.Bytes(), &result); err != nil {

@@ -93,8 +93,8 @@ func TestManagedFilesReportActualLoaderConsumption(t *testing.T) {
 		if !ok {
 			t.Fatalf("unexpected managed file: %+v", file)
 		}
-		if file.ParsedByLoader != parsed {
-			t.Errorf("%s parsedByLoader=%v, want %v", file.Path, file.ParsedByLoader, parsed)
+		if file.ReadByLoader != parsed {
+			t.Errorf("%s readByLoader=%v, want %v", file.Path, file.ReadByLoader, parsed)
 		}
 		delete(want, file.Path)
 	}
