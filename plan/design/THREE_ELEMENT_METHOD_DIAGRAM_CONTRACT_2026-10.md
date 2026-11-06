@@ -362,3 +362,34 @@ Role解釈成功後も、現在のTarget ProviderやBusiness Actorの権限は�
 最初の独立Referenceに必要なのは**T06の二世界比較＋T07のunknown Role**である。両者を同じ公開合成注文fixtureのread-only入力で比べ、次に既存[#2586](https://github.com/hat47x/tei-platform/issues/2586)のM0 CLI→M1同一Workbench Consumerの受入へ渡す。T08は#2620のRole bootstrap、T09は#2604の公開/Read証拠を再利用し、TEA専用Resolver/Publisherの新設はしない。CLI→Workbenchの4入口/Graph stale、実Provider/Host Grant、実SHO/外部AI受領、Owner Meaning Acceptanceまでは、この文書の追記では一切成立しない。
 
 **次の計測対象**: (a) Public世界を二つの秘密構成に変えても出力が等しいか、(b)未選択Roleのエラーが無関係なData読取を止めないか、(c)独立Source movementが旧定義jumpだけを失効させるか、(d)事後に実Source・Provider・Decisionを追加した場合のみClaimsを段階的に強められるか。前節の認知負荷比較は、この安全性を満たしたread-only Methodの比較で行う。仕様・標準Role型・Plugin ABI・評価値の採用は未決。
+
+
+## 17. T06/T07合成Referenceの観測と次の実Consumer境界（2026-11-06）
+
+[独立Draft PR #2972](https://github.com/hat47x/tei-platform/pull/2972)に、**既に公開資格がある有限Slice**を入力とする三視点のread-only Referenceを追加した。実装は`reference/tei-three-element-method/public-slice.mjs`。Data/Function/BusinessのRole別Occurrence・qualified ref、role付きRelation table、固定した公開入力からのみ求める座標、`allSourceCompleteness=not-proven`を導出する。これは**TEA Methodの入力契約へのPressure**であり、Policy Engine、Role Resolver、Source Reader、現行Studio Consumerでもなく、Product Schemaではない。
+
+### 17.1 投影と開示の非可換性
+
+公開版の図形だけを最後に消す方式は、非公開Element数がレイアウト、並び、匿名端点、関連表、診断へ伝搬し得るため、以下を一般には交換可能としない。
+
+```text
+Safe candidate:    Source -> existing Policy/Role qualification -> Public Slice -> TEA Projection -> Consumer
+Unsafe candidate:  Source -> TEA Projection (global layout/count/relations) -> remove private labels
+```
+
+**本Referenceの狭い主張**: `publicSlice(W0) = publicSlice(W1)`を**前提条件として外部から与えた場合**、当Referenceの`Project`出力は一致する。これは現行PolicyがW0とW1から正しい同一Public Sliceを生成すること、実DOM/ARIA/Tool/Exportの内容が等しいこと、Timing/Cache/通信の非干渉を保証しない。後者は#2516/#1124で、実Source Readerと実Disclosure判断、実Consumer観測に束縛した二世界比較が必要。公開対象外の`count=1`やghost edge、データ保護対象の`withheld`理由を知らせない。
+
+**局所性**: `Data Role=accepted`と公開資格が与えられ、`Business Role=unknown/ambiguous`の場合、明示的な必要依存がない限りDataのread-only閲覧は止めない。一方、RoleのSource実bytes/選択Pinが未確認ならAccepted MeaningやExecution Eligibilityには昇格しない。曖昧なRoleと同名別Scopeの先勝ちを区別する。
+
+### 17.2 限定試験の実際の証拠
+
+Node.js 22.16.0で`node --test /tmp/tei-tea-ref/public-slice.test.mjs`を実行して**8件PASS**。GitHubに保存した`public-slice.mjs`（blob `e7543bd049f341d43c23dbd9c726efc68291fa66`）、`public-slice.test.mjs`（`bde7015eceb87d58ad9ebb1028cd8ad2d93152c1`）、README（`01fbf70dae6485b3709df3448df9fec92a1c2b42`）は実行したローカルbyteのGit blob SHAと各一致を確認した。
+
+合格範囲は T06: 事前公開Sliceの二世界出力同値、秘密の存在数を使ったレイアウトの負対照、未公開Endpoint拒否、T07: unknown/ambiguous Roleの局所保持、別Scope・重複key拒否、入力順序独立、raw Source path非出力。**実際の秘密SourceのDisclosure、実Role/Operator Provider、独立Source read、CLI→同一Workbench、実Graph/DOM/ARIA、現在Grant・失効、Source Acceptance、実Target/ETL/Build、GitHub CIやtrusted full checkout healthはNOT RUN**。局所試験をProduct Gate合格へ合算しない。
+
+### 17.3 次の実証への最小引継ぎ
+
+- **P0（#2516/#1124）**: 同じ合成受注SourceのW0（公開のみ）／W1（非公開要素＋非公開Relation）に対し、既存Policyが実際に公開したSliceのbytesと版・Consumer目的を取得。次に同一WorkbenchでData/Function/BusinessのGraph/Table/関連表、DOM/ARIA、件数、診断、Tool JSONを比較する。候補が出ていないことと非公開要素がないことは別のClaim。未受領なら`NOT_PROVEN`。
+- **P0並行（#2620/#951）**: 公開RoleのSelection/Interpretation依存Pin・Source Readerの実bytesを固定し、Business側unknownをData read-onlyへ波及させない。ただし同一Required Closureの欠損なら、その局所Claimだけを失効する。新Resolverは作らない。
+- **次段（#1124/#267）**: Source移動の旧Jump失効（T01）とComposite Relationの非可逆編集拒否（T03）を同じSource/Consumerへ結び、意味編集はtyped Proposal→既存Acceptanceへ限定する。
+- **他Owner**: ETL/MFTの四粒度・実2-member受領は[Draft #2827](https://github.com/hat47x/tei-platform/pull/2827)、標準I/Oの二Consumerは[Draft #2880](https://github.com/hat47x/tei-platform/pull/2880)、Plugin最適化のContract/Effect同等性は[Draft #2933](https://github.com/hat47x/tei-platform/pull/2933)。三要素Method内に第二のPipeline/Build/Delivery保証を置かない。
