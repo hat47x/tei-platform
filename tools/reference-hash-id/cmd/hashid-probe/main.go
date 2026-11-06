@@ -54,27 +54,27 @@ type targetProbeWire struct {
 // NOT a target policy acceptance, cryptographic strength certificate, or
 // authority to allocate a physical identifier.
 type collisionBudgetEvidence struct {
-	ExpectedPopulation           uint64  `json:"expectedPopulation"`
-	MaximumCollisionProbability  float64 `json:"maximumCollisionProbability"`
+	ExpectedPopulation            uint64  `json:"expectedPopulation"`
+	MaximumCollisionProbability   float64 `json:"maximumCollisionProbability"`
 	EstimatedCollisionProbability float64 `json:"estimatedCollisionProbability"`
-	PolicySource                 string  `json:"policySource"`
+	PolicySource                  string  `json:"policySource"`
 }
 
 // report never claims target allocation or semantic Source Acceptance.
 type report struct {
-	Status               string `json:"status"`
-	Authority            string `json:"authority"`
-	StorageWrite         bool   `json:"storageWrite"`
-	Subject              string `json:"subject"`
-	SchemeJSON           string `json:"schemeJSON"`
-	SourceByteCount      int    `json:"sourceByteCount"`
-	SourceSHA256         string `json:"sourceSHA256"`
-	HashIDText           string `json:"hashIdText"`
-	DigestHex            string `json:"digestHex"`
-	TargetNamespace      string `json:"targetNamespace,omitempty"`
-	NormalizedTargetKey  string `json:"normalizedTargetKey,omitempty"`
-	TargetSnapshotSHA256 string `json:"targetSnapshotSHA256,omitempty"`
-	CallerPinsMatched    bool   `json:"callerPinsMatched,omitempty"`
+	Status               string                   `json:"status"`
+	Authority            string                   `json:"authority"`
+	StorageWrite         bool                     `json:"storageWrite"`
+	Subject              string                   `json:"subject"`
+	SchemeJSON           string                   `json:"schemeJSON"`
+	SourceByteCount      int                      `json:"sourceByteCount"`
+	SourceSHA256         string                   `json:"sourceSHA256"`
+	HashIDText           string                   `json:"hashIdText"`
+	DigestHex            string                   `json:"digestHex"`
+	TargetNamespace      string                   `json:"targetNamespace,omitempty"`
+	NormalizedTargetKey  string                   `json:"normalizedTargetKey,omitempty"`
+	TargetSnapshotSHA256 string                   `json:"targetSnapshotSHA256,omitempty"`
+	CallerPinsMatched    bool                     `json:"callerPinsMatched,omitempty"`
 	CollisionBudget      *collisionBudgetEvidence `json:"collisionBudget,omitempty"`
 }
 
