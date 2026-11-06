@@ -269,3 +269,71 @@ UI/CLI/Jobの実行要求は、表示/選択の更新世代（**Selection/Contex
 **次の実装者向けの最短作業**：既存#2882 Workspace fixtureを基線とし、(a) Source/Rule/Period/Grantが独立Requiredに揃っているかの読取票、(b) #2889 OC-RP-01〜03のexacting characterizationと現在未成立のGuard enforced/Effect witnessの差、(c) #2870/2854の実PG Restart/ABAの保証範囲、を**同一ScenarioのClaim別列**に配置する。read-only実Provider/Consumerが接続できない段階で次の書込E2Eを「Script完成」と呼ばない。
 
 **受入の停止線**：この節は既存証拠・設計の照合のみであり、新しいScript本体E2E／実Provider Read→Rule→Write一試行／OS kill／二Worker／DB+RunPlan同一Attempt／Owner正式受理は**NOT RUN**。#2870で再起動を模した新インスタンスが`MayReplay=true`となる性質は**未解決の弱点**として記録し、同Key PG replay成功を一般的な復旧済みと扱わない。#2889は**Draft**、専用Go合格とRepository Health失敗を独立のEvidenceとする。
+
+## 9. .tei.md移行・Bootstrap資格・Completion判定の接合（2026-11-06）
+
+### 9.1 方針の更新と実装状況：拡張子の変更は実読込の保証ではない
+
+**本チャットが受け取ったOwnerの最新ファイル方針**：新規のTEI対象Sourceは原則`*.tei.md`へ集約し、`*.tei`は段階的に廃止する。この判断を本書の**移行方針**として扱う。一方、[Issue #2621](https://github.com/hat47x/tei-platform/issues/2621)には「`.md`+OKFタグをAuthoring、`.tei`を厳密定義Source、`.tei.md`は標準化しない」という**従前の比較案**が残っている。Issueの旧案・PRのDraft・Ownerの新方針を決定済みとして混在させない。形式規則・具体的Grammar・互換移行の正本更新は**#2621（Authoring）／#988（Language Plugin）／#2823（Loader）**へ引き渡す。本PRはScript起動への影響だけを所有し、他担当Issueを上書きしない。
+
+**2026-11-06 main実コードの現状**：`internal/workspace/loader.go`には`semantic` Sourceの`strings.HasSuffix(name, ".tei")`、`plugin.tei`／`bundle.tei`／`application.tei`等の固定名、各種`*.tei` globが残っている。`*.tei.md`を既存Workspace Loaderが同等に読むと主張できない。既存の`.tei` Fixtureと正式な実Parser対応が移るまで、**無条件の一括改名・二重読み・黙った無視を禁止する**。旧`.tei`の互換Readerを恒久的に採用すると決めたものでもない。
+
+新しいSourceの機械処理は、`file extension / OKF-or-document metadata / selected TEI region / Language Plugin / parsed structural candidate / accepted Meaning / executable Build entry`を別の境界とする。`*.tei.md`という名前やFrontmatter上の`tags: [tei]`は「TEIを意図した文書」のシグナルになり得るが、**文書全文の実行許可・全表の業務規則化・Owner Meaning Acceptance・Host Grant**ではない。Markdown中のどの範囲を実装可能な構造として読ませるか、Code fenceと表の評価対象／保存Source positionをどう保つかは#988/#2621の正式Grammar・Source mappingを待つ。本文の無関係な文章や引用を黙ってDSL実行へ昇格させない。
+
+| 移行対象 | 必要な段階・保存する証拠 | 起動時の停止条件・禁止推論 |
+| --- | --- | --- |
+| 文書`order.tei.md`新規作成 | Source path/raw bytes、Intent/profile、選択Source span、Language Plugin/Parser版、読込対象の明示 | 拡張子やタグだけでは`Parse/Meaning/Execute qualified`にならない |
+| 既存`order.tei`を新名へ移行 | before/after raw bytes、構造候補・Meaningの対応、独立Expected、生成/実Loader/Consumerの実Byte | 単なるrenameは実行資格の移植でない。移行前後の両方を二重Effectとして走らせない |
+| 同名構造が両拡張子にある | Authoritative Source ID・具体的採用範囲・差分・Ownerの選択 | **last-wins**や暗黙の二重定義を認めずambiguousで停止 |
+| `workspace-files`で列挙されるが実Readerが読まない | managed inventory／`readByLoader`候補／実Parser成功／実Build入力／必須Source閉包を別列にする | `validate ok`／`readByLoader=true`はParser・Meaning・全閉包資格でない |
+| 本文の一部に受理済み意味がある | 原文の保存、use-site/位置/Source revision、受理済みMeaningの参照、未解釈部分 | Draft Saveや部分Parse成功で文書全体を実行可能としない |
+
+[Draft #2935](https://github.com/hat47x/tei-platform/pull/2935)は`workspace-files`に`readByLoader`を追加する限定提案・試験であり、**mainへ未統合**。Loader read事実はParser成功、Role/Meaning受理、Required source closure、実Build consumerを証明しない。[Issue #2823](https://github.com/hat47x/tei-platform/issues/2823)の未知Root／解析対象外Source診断も引き続き未決。
+
+### 9.2 DSL BootstrapとScript Run開始を独立した契約にする
+
+[Draft #3028](https://github.com/hat47x/tei-platform/pull/3028)が提案するK0信頼Seed→K1 Source/Manifest→K2 exact Language選択→K3 Parse/Candidate→K4 Operator staged binding→K5 Required/Owner受理→K6 Build/Consumerの段階を、既存S1〜S5の**成立要件として参照**する（本書でBootstrap実装・第二Registryを作らない）。Candidateが一部登録されたこと、Parserが将来の構文を解釈できたこと、Operatorが見つかったことのどれもActive資格にはしない。初回Seed不整合／版不一致／一部登録・障害後の復帰では、**確実に資格が確認された既存Activeだけを使うか、できなければ拒否**する。
+
+- 同じ`*.tei.md`本文と同じ見かけのRoleでも、Parser/Operatorの実版・Source位置・必要Relation/NULL/不在・選択Targetが変われば、Source Candidate、Accepted Meaning、Build、Action Offerの再資格化を別判断する。
+- ScriptのExecutable Definitionが`Source revision`だけ一致していても、実ロードされたPlugin／Operator／Artifact byteが異なるならS4/A0の資格を据え置かない。特に未検証のSource Region・否定依存・選択Dialectがあれば`unknown`で止める。
+- Plugin Manifestが部分登録で復帰不能な場合にも、実Providerへの暗黙fallbackや旧Grantを許さない。A0開始前に止めるべき問題と、A0後のCommit unknownの回復手順を混同しない。
+- [Draft #2898](https://github.com/hat47x/tei-platform/pull/2898)のRole重複Syntax診断・read-only位置アンカーは局所的なParser改善候補。Role Writer・Owner意味受理・変更後実Consumeの保証は別。
+
+### 9.3 意味受理、実行認可、Effect確定、業務完了は別の主張
+
+[main統合 #2926](https://github.com/hat47x/tei-platform/pull/2926)には`internal/semantic/completion.go`の`EvaluateCompletion`があり、`TargetSet L × EmptyPolicy × Predicate P`から`holds / fails / unverified / contradiction`を判定する**局所的な実装・Go試験**が成立している。Runtime/Provider/Consumerが正しい対象集合・Coverage・空集合の独立証拠・手作業引継ぎを実入力として供給できたことは未実証。新しいScript Completion Evaluatorや独自Completion Statusを作らず、その入力条件へ接続する。
+
+| Owner受理済Meaning M | 現在Host Grant G | 解釈・起動への影響 |
+| --- | --- | --- |
+| あり | あり | その両者だけでは不十分。Source/Runtime/Target/GuardとEffect Fenceまで満たす範囲だけDispatch候補 |
+| あり | なし・失効 | Scriptの意味は受理済みでも実行拒否。過去Receiptは所定の開示権限内で履歴として保持 |
+| なし | あり | 実行権限を有するHostがいても当該業務意味は未受理。生成AIの候補・プレビューを実正式処理に昇格しない |
+| なし | なし | 意味のReviewとHost認可は別に停止。片方の修復から他方を推定しない |
+
+| 最終観測の例 | Completion評価へ渡せるか | 主張の上限 |
+| --- | --- | --- |
+| `Process exit=0`／RunLog Completed／Commit Receiptあり | それだけで独立`TargetSet`/Coverage/Pを組み立てない | Process/当該Effectの限定Status |
+| 必須対象集合の一部だけReaderで確認、全件Scopeは不明 | `CoveragePartial/Unestablished`と観測できた対象結果のみ渡せる | `unverified`、または観測済み反例があれば`fails` |
+| 完全な空集合が独立証明された | 明示`EmptyPolicy`に従い判定 | Policyによって`holds`／`fails`／`unverified`が異なる |
+| 手作業確認が必要なProcedure、引継ぎ実受領は無し | `HandoffConfirmed=false`を保持 | DB更新済みでも業務完了の`holds`を自動主張しない |
+| 実ReadとReceiptが食い違う／必要観測が相反 | 一致のために片方を破棄しない | `contradiction`を独立観測として残し、Ownerによる再評価 |
+| 完全な同一Scope・対象・時点の観測＋全Predicate成立 | 対象列・完全性・空集合証拠・引継ぎ・意味Ownerを明示して接続 | **定義された完了述語に限って**`holds`候補。現在の公開/操作許可はなお別 |
+
+ここで`EvaluateCompletion`が`holds`を返すこと自体と、**その入力証拠が実Target・実Reader・Current Disclosure Grantに由来した**という資格は別。Owner受理済みのCompletion claimではないものを、評価関数が成功しただけで正式な業務完了にしない。Source/Resultが同じでも歴史的Accepted Meaning、現行Grant、Consumerへの開示を毎回混同しない。
+
+### 9.4 追加の独立反証：既存Scenarioへ接続する差分だけ
+
+| 共有するCase/Source | 新しく固定する対照 | Expected / 責務 |
+| --- | --- | --- |
+| #2823／SH-01：`order.tei`→`order.tei.md`名変更 | 旧Loaderの`.tei` suffix選択と新形式を同一Workspaceで比較 | 宣言されるが実Parsedが無いものを`valid`としない。#2823/#2621/#988で移行実装・仕様判断 |
+| #2621 FM-02/03/04／SH-03：OKFタグ付きMarkdown、選択部分にRule候補 | Raw Draft保存／引用部分と実Parsed Role・Operator候補の分離 | タグ追加のみでは実行不可。選択外/未知属性は失わない。正式Role/Writerは#2620/#988 |
+| #3028 BS-05/09/12：Parser/Operator途中登録、再起動 | K2実選択／K4部分登録／現Active/Build資格の別観測 | 不完全な候補をActive/実Providerへ通さない。Runtime実障害注入はNOT RUN |
+| #1180/#2514／SH-11：TargetSet partial、0件・未知粒度、矛盾 | 同一独立Expectedと`CoverageComplete`／`CoveragePartial`／`EmptyJustified`の差 | #2926既存Evaluatorを用いた条件付き判定。独立Readerの全対象被覆を自作のFixture判定で代用しない |
+| #1130/#1174／SH-07/08：RunPlan Completed・Commit Unknown・手作業未完了 | Run/Effect/Completionの3結果軸を同じOperation IDへ結ぶ | DBやRunの成功を`BusinessVerified`へ昇格しない。実同一Attemptは未実施 |
+| #2514 #3017：意図的なEvaluator Mutant | Source/Fixture/Expected不変、誤実装時の直接Red判定 | [#3017](https://github.com/hat47x/tei-platform/pull/3017)の限定Product Evaluator mutant検出は既存Oracleの判別力の一例。Script/Completionの新Mutant検出済みとはしない |
+
+**次の最短実証順序（既存V0〜V4への差分）**：V0の最初に`*.tei.md`と旧`*.tei`の**Reader/Parser実消費比較**を挟む。ただし正式Grammarが未決・未実装ならそこで止め、旧Loaderの限定実績を新形式の成功と呼ばない。V1の実Read→独立Body/TargetSet/Coverageを先に整備し、V2の業務拒否とV3の実PG Effect/Receipt/Lookup、V4のConsumer/Business Completionは段階的に追う。比較では**一つの固定Source/Scenario/独立Expected**を用い、旧形式と新形式・実DriverとTEI・Provider別は異なるAttemptとして記録する。実行候補が増えただけで新しい全体E2Eが成立したとしない。
+
+**既存Ownerとの分担**：`*.tei.md`のファイル/Authoring/配置判断＝#2621、Parser/Language Bootstrap＝#988/#3028、Loader/必要Source＝#2823/#2935、Role/Meaning＝#2620/#2619、独立Oracle＝#2514/#1180、Script起動と権限段階＝#2502/#2499、RunPlan/部分効果＝#1130、Effect/Receipt＝#1174/#2564、Completion述語＝#1125/#2926、統合Evidence＝#1163。新しいSource Registry・Script Host・Runner・Completion Engine・第二Oracleを導入しない。
+
+**現状**：`*.tei.md`移行はOwner方針として採用対象だが、現Loader/全Fixture/Studio/CLIの新形式対応および新PackageのParser/Source位置保持はこの追補では**NOT RUN／NOT PROVEN**。#2935/#3028/#2898はDraft、#2926はmainへ統合済みの限定Evaluator。実TargetSet/Coverageの独立Provider証拠、同一Function/実PG/実Consumerの一改訂Product E2E、Ownerの新規意味受理、Windows実行も**NOT RUN**。
