@@ -122,3 +122,27 @@
 **作業順**：①Ownerに「見積の正式発行・承認対象Revision・再見積条件・確定時の採用値・取消の効力」を問う未決項目の棚卸し（判断代行なし）→②既存#1125／#2500 RT／#2514の独立Expectedへ上の対照を割付け、重複Fixtureを作らない→③#2586の実Read入口で必要な入力閉包を確認→④#2598/#1174の同一対象Request・実Readへ接続→⑤#267のMeaning/Consumer正式判断。純粋PreviewだけのConsumerには書込Grant・永続Receiptを要求しない。
 
 **証拠限界**：本節は設計文書のみ。新たなSource/Grammar/Schema/Meaning Engine/Host/DB/GUI/Workflow/テストを追加しない。本対照のGo/PG/E2E、旧X-TEA実動、Ownerの見積・承認意味受理は **NOT RUN／NOT ACCEPTED**。外部原著者の仕様と主張せず、過去ユーザー発言・旧Chat解釈・TEI提案の区分は §1 を適用する。
+
+<!-- tei-triad-teimd-source-subject-bridge-20261106 -->
+## 8. 11/6横断追補：*.tei.md統一時も三視点のSubject/Meaning/実行資格を保存する（方針はOwner決定、実移行未実施）
+
+**方針変更の取り込み**：同日後続のAuthoring議論で TEI向けSourceの標準を `*.tei.md` とし、従来 `*.tei` の新規作成を原則停止・段階廃止する方向が明示された。旧「.mdは草稿、.teiが最終意味」という二層ファイル構成を**必要条件としない**。ファイル規約・Parser/Loader/既存Fixtureの移行正本は [#2621の11/6引渡し](https://github.com/hat47x/tei-platform/issues/2621#issuecomment-6684602482)、#988/#2571/#2823へ委ね、本書ではData/Function/Business・Requirement Probe・Derived Valueに対する**影響だけ**を保持する。
+
+| 三視点／用途 | `*.tei.md` で保持するもの | 自動昇格してはいけないもの |
+| --- | --- | --- |
+| **Business** | 原文/見出し/表/手作業/業務間データ授受、内部Procedure分岐、質問と出所span、選択済み意味Role | 文面の曖昧な「高額」→自動閾値、業務間DFD Edge→Workflow実行、質問回答→正式Meaning/Host Grant |
+| **Data** | 業務Identity/Relation/時間意味、Instance例、複合Key、NULL・未取得・非開示・0件、実Data Contextの参照 | Markdown表の行順→DB PK、例示行→現在実DBの全件/完全集合、同じ数値→同じ確定業務事実 |
+| **Function** | Preview演算とContext Binding、Expectedの独立出典、typed Intentの元となる定義と履歴 | 自由な式/コードフェンス→自動実行、Roleタグ→Plugin実装選択/Authority、Preview600→保存/承認/確定 |
+| **Authoring/Build/Consumer** | Raw Draft byte、Markup/Code fence、Source locator/Revision、Required/Parsed/Actually Consumed、Consumerごとの実読取 | ファイル名一致→Parser適合、validate ok→必須Source読込、A→B→A→旧Build/Meaning/Review資格復活 |
+
+**保存先一つ、表示は複数**：同じ `order.tei.md` に説明・Data/Function/Business定義・表形式Expectedを近接させられるとしても、複数の受理済み意味正本を追加しない。どのspan/RoleがAcceptedかと、どの段落がRaw Draftかは用途相対。Graph/表/Studio/SHOはSourceに対するProjectionであり、逆写像が曖昧ならPreview/Reviewに停止する。無効な途中原稿はRaw Draftとして保存・再開できるが、実Runtime入力へ自動合格させない。
+
+**例と停止線**：
+- `semantic/sales/order.tei` をそのまま `order.tei.md` にRenameしても、現mainのSemantic Loaderは `strings.HasSuffix(name, ".tei")` なので実読込できない。この事実を移行後の「Sourceを全部検査した」と言い換えない。Plugin/Bundle/Applicationの固定名等も別Consumerで調べる（#2621/#2823）。
+- 文書に「50万円以上は上長承認」と書いてあっても、税/通貨/金額の採用時点/上長の所属/例外を勝手に埋めない。#1440の必要な質問を持ち、#1125のBusiness内部Procedure候補を部分受理できても、正式出荷・Host Grantは別資格。
+- `*.tei.md` の同一表で数量2・単価300=600を計算し、価格改版後700となった場合、§7のPreview/承認Revision/Provider Cache/実Writeの区分を保持。文書の`status: approved`やOKF `verified`等のメタ情報だけで、受注O1のOwner業務承認や実DB確定を証明しない。
+- 移行期間に旧`.tei`と新`.tei.md`が同じ意味IDを持つときは二重定義・Parser差/Source出典を表示し、一方を無音優先しない。ソース移動と意味同値を同一としない一方、パス移動だけで全意味変更とも断定しない。
+
+**受入順の既存Owner対応**：#2621=Authoringの意図・原文保持／#2823=Discoveryと実Loader消費／#988/#2620=Language Role・Parse境界／#1440=文章→意味候補／#1125=DFD・Procedure／#1126=Data Identity／#2506/#2622=実Read／#2500 RT=編集逆写像／#267=Owner受理／#2514=独立Oracle／#1174=Host効果。既存#2586のread-only一往復、#1119 Gateを増設しない。
+
+**証拠・決定範囲**：Ownerの`*.tei.md`方向性と、現main Loaderに残る`.tei`条件は別事実。本節は横断設計への取り込みのみ。既存Workspaceファイル一括改名、Parser移植、OKF規約のTEIへの全面強制、Go/DB/GUI実行、正式Owner意味受理は**NOT RUN**。過去の外部設計者の原著仕様と帰属させない。
