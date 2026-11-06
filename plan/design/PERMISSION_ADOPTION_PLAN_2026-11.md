@@ -56,3 +56,14 @@
 - 組んだ `Guard` は判定と記録をそのまま行う。
 
 これで「環境の付与 → 実行時の突き合わせ」の入口ができました。**プラグイン実行の直前に呼ぶ配線はまだです**。
+## 8. 追記（2026-11-06）: 宣言の引き出し口
+
+`execution.RequirementsFromCatalog(catalog)` を追加しました。プラグインのカタログから、能力ごとに宣言された権限を引き出します。
+
+```go
+requirements := execution.RequirementsFromCatalog(catalog)
+preconditions := execution.PermissionPreconditions(requirements, granted)
+decision, results, err := execution.RunPlan(ctx, plan, key, journal, step, execution.CombinePreconditions(preconditions, period, effects))
+```
+
+これで**実行計画の停止条件**に権限を載せるのに必要な部品が揃いました（カタログ → 宣言 → 停止条件）。

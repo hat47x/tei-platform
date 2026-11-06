@@ -6,6 +6,7 @@ import (
 	"tei/internal/access"
 	"tei/internal/core"
 	"tei/internal/permission"
+	"tei/internal/plugin"
 )
 
 // PermissionPreconditions adapts the declared permissions to the run plan: a
@@ -43,4 +44,20 @@ func GuardFromGrants(grants []permission.Grant, capabilityKind string, capabilit
 		granted = append(granted, grant.Permission)
 	}
 	return access.Guard{Granted: granted, Journal: journal}
+}
+
+// RequirementsFromCatalog returns the permissions a capability declares in the
+// plugin catalog, keyed by capability identity. The run plan asks for one
+// capability at a time, so the function keeps the declarations instead of
+// flattening them into a single list.
+func RequirementsFromCatalog(cat plugin.Catalog) func(core.CanonicalID) []permission.Spec {
+	declared := map[core.CanonicalID][]permission.Spec{}
+	for _, definition := range cat.Plugins {
+		for _, capability := range definition.Provides {
+			declared[capability.ID] = append([]permission.Spec(nil), capability.Permissions...)
+		}
+	}
+	return func(capabilityID core.CanonicalID) []permission.Spec {
+		return declared[capabilityID]
+	}
 }
