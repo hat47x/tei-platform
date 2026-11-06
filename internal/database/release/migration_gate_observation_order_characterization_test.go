@@ -20,27 +20,27 @@ func TestMG29DuplicateDatabaseObservationsAreOrderDependent(t *testing.T) {
 	app := application.Application{
 		ID: core.MustCanonicalID("order_entry"),
 		Databases: []application.DatabaseRequirement{{
-			Alias: core.LocalName("sales"),
+			Alias:          core.LocalName("sales"),
 			TargetDatabase: dbID,
-			Access: database.AccessReadWrite,
+			Access:         database.AccessReadWrite,
 			RequiredContracts: []database.ContractRequirement{{
 				ContractID: contractID, CompatibleMajor: 5,
 			}},
 		}},
 	}
 	oldObserved := dbrelease.StateSnapshot{
-		Database: dbID,
-		Source: dbrelease.StateFromObserved,
-		ObservedAt: "2026-11-05T09:00:00Z",
+		Database:      dbID,
+		Source:        dbrelease.StateFromObserved,
+		ObservedAt:    "2026-11-05T09:00:00Z",
 		DataReadiness: dbrelease.DataReady,
 		Provides: []dbrelease.ProvidedContract{{
 			ID: contractID, Version: database.ContractVersion{Major: 4},
 		}},
 	}
 	newObserved := dbrelease.StateSnapshot{
-		Database: dbID,
-		Source: dbrelease.StateFromObserved,
-		ObservedAt: "2026-11-05T10:00:00Z",
+		Database:      dbID,
+		Source:        dbrelease.StateFromObserved,
+		ObservedAt:    "2026-11-05T10:00:00Z",
 		DataReadiness: dbrelease.DataReady,
 		Provides: []dbrelease.ProvidedContract{{
 			ID: contractID, Version: database.ContractVersion{Major: 5},
@@ -65,17 +65,17 @@ func TestMG29ObservedAtDoesNotQualifyCurrentGateEvidence(t *testing.T) {
 	app := application.Application{
 		ID: core.MustCanonicalID("order_entry"),
 		Databases: []application.DatabaseRequirement{{
-			Alias: core.LocalName("sales"),
+			Alias:          core.LocalName("sales"),
 			TargetDatabase: dbID,
-			Access: database.AccessRead,
+			Access:         database.AccessRead,
 			RequiredContracts: []database.ContractRequirement{{
 				ContractID: contractID, CompatibleMajor: 5,
 			}},
 		}},
 	}
 	observed := dbrelease.StateSnapshot{
-		Database: dbID,
-		Source: dbrelease.StateFromObserved,
+		Database:      dbID,
+		Source:        dbrelease.StateFromObserved,
 		DataReadiness: dbrelease.DataReady,
 		Provides: []dbrelease.ProvidedContract{{
 			ID: contractID, Version: database.ContractVersion{Major: 5},
@@ -92,7 +92,6 @@ func TestMG29ObservedAtDoesNotQualifyCurrentGateEvidence(t *testing.T) {
 		})
 	}
 }
-
 
 // MG-29b characterizes a second unsafe last-wins path inside one DB state:
 // Provides is indexed by Contract ID without duplicate detection.
