@@ -5,13 +5,14 @@ name: TEI native organization CaseRecord persistence bridge
 on:
   push:
     branches:
-      - work/org-case-persistence-bridge-characterization-20261106
+      - main
     paths:
       - 'internal/operations/org_case_mapping_bridge_test.go'
       - 'reference/org-headless-workspace/**'
       - '.github/workflows/tei-org-case-mapping-bridge-ci.yml'
   pull_request:
     branches:
+      - main
       - work/org-tei-loader-operation-bridge-20261103
     paths:
       - 'internal/operations/org_case_mapping_bridge_test.go'
@@ -56,6 +57,7 @@ jobs:
           set -euo pipefail
           go test ./internal/operations -run '^TestOrgCaseExplicitPersistenceEnablesReadCandidateOnly$' -count=1 -v
           go test ./internal/operations -run '^TestOrgHeadless' -count=1
+          go vet ./internal/operations
           go run ./cmd/tei validate -workspace reference/org-headless-workspace
       - name: Verify the exact checkout remained clean
         if: always()
