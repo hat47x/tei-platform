@@ -447,3 +447,60 @@ For Consumer C authorized to see the same public slice in W0 and W1:
 研究で優先するのは**偽の不存在、非公開情報漏洩、誤ったSource選択、無関係な変更波及**という可観測な失敗率である。認知負荷の測定では、公開Sliceが異なる比較を混ぜず、正答率・操作数・文脈探索量・修正回数を記録する。合成試験のPASSや単一図面の簡潔さが、より高い成功率を示すとは限らない。
 
 **結論の資格**：ここで新たに実施したのは既存Draft・Issue・専用CIの静的照合と研究計画追補のみ。本節の実Source Reader、実Policy W0/W1、複合UI/DOM、論理→物理最適化の実Run、ETL／セルフビルド、生成AIと人間の比較は **NOT RUN / NOT PROVEN**。新しいCore ABI、標準ProjectionWitness API、第二Source・Policy・Graph・Host、正式受入Gateを追加しない。
+
+## 12. 2026-11-06：設計Intent・実装Realization・検証Assessmentを混線させない複合図表（横断研究案）
+
+- **状態**：調査・評価手順の提案。確認main `f275843b2bd35117f3bbb8d6090a59678d3c33ed`。新Core型／汎用Diff Engine／単一State Enum／Studio書込み・認可・実行権限の採用ではない。既存`10/11の「問い相対の完全性」「Relation所有scope」「公開非干渉」「実現後来歴」を、設計意図と実実装の齟齬検査に適用する。
+- **他レーンのOwner**：[メタ分類 #2495](https://github.com/hat47x/tei-platform/issues/2495)、[Facetの演算束縛・公理 #2544](https://github.com/hat47x/tei-platform/issues/2544)、[ER/Key/FD #1126](https://github.com/hat47x/tei-platform/issues/1126)、[Role解釈 #2620](https://github.com/hat47x/tei-platform/issues/2620)、[認識的Annotation #958](https://github.com/hat47x/tei-platform/issues/958)、[Context/公開 #2516](https://github.com/hat47x/tei-platform/issues/2516)、[Studio Consumer #1124](https://github.com/hat47x/tei-platform/issues/1124)。[Draft #2496](https://github.com/hat47x/tei-platform/pull/2496)のメタ構造、[Draft #2778](https://github.com/hat47x/tei-platform/pull/2778)のSQL/DDL静的事実・実DB/Owner受理、[Draft #2881](https://github.com/hat47x/tei-platform/pull/2881)の複合被覆は別担当。各Schema・Corpus・判別票やOwner判断をこの文書へ複製しない。
+
+### 12.1 三つの投影と、比較を成立させるための束縛
+
+| 観点（概念名） | 何を表すか | 何を証明しないか |
+| --- | --- | --- |
+| **Intent Projection** | 宣言された／Ownerに受理された意味・許容値域・関係・必要制約とそのsource/版・受理資格 | 宣言だけで形式的な矛盾なし／実装済み／実行済みとすること |
+| **Realization Projection** | 実Source、解決されたPlugin/Target、DDL/コード、実Artifact等から**実Readerが観測した**構造とその対象版 | 一部File/Targetの読取から全件存在・不存在、業務意味の正しさ、現在のAuthority |
+| **Assessment Projection** | IntentとRealizationの**対応付け、差異・未解決・反例・証拠の範囲**を、関係表・差分図として導出 | 独立した第三の意味正本、未観測領域への自動否定、診断だけからのSource自動変更 |
+
+同じqualified subjectでも、Intentの`accepted meaning revision`、Realizationの`actual source/index/toolchain/artifact revision`、Assessmentの`query scope/as-of/Policy・Consumer revision`は一律の同一digestに縮約できない。共通Graphのノードや表示座標をIdentity/Authorityへ昇格させない。Relationについても、宣言scopeと参加端点scope、関係種別／Role、導出と観測を分け、各図表の対応は受理済みSourceと独立Readerにまで追跡する。
+
+**違いの分類**は、証拠が揃った範囲の一致候補／証明済み不一致、意図そのものの矛盾・未決、実現未観測、Source/Consumer stale、現在の公開不可を少なくとも概念上区別する。ただし列挙値・色・通知仕様をここで製品APIへ固定しない。検証不能な実態を「齟齬あり」と断定したり、Owner未受理の提案を正式Intentへ昇格させたりしない。
+
+### 12.2 MECE・閉じた値域・強属性候補が要求する追加の前提
+
+**Enum型の閉じた列挙と、設計上のMECEな分類、ビジネス上の状態遷移は別の主張**である。あるSourceで`Draft / Approved / Rejected`の3値が宣言されても、全ての保存済み行や外部Providerがその集合に閉じること、互いに排他的な制約の成立、全遷移の完備性は自動的には証明されない。
+
+| Claim | Intent側で必要な宣言／証拠 | Realization側で必要な独立観測／停止線 |
+| --- | --- | --- |
+| 値域の閉包 | 対象Universe、バージョン、可能値、その他／不明の扱い | 実Schema CHECK、Parser/Codec、Legacy値、外部入力などの対象Closure。未読込SourceはUnknown |
+| MECEの排他・網羅 | 分類述語が重ならない根拠、分類対象集合の全範囲 | 重複該当／未該当の独立負例。有限fixtureで反例なし≠一般的な公理証明 |
+| 業務状態の遷移 | 状態集合と遷移規則、拒否条件、Owner受理 | `switch`やSQL CHECKだけから遷移の意味・Effectを逆推定しない |
+| 「強属性」候補 | 原典に即した定義、対象粒度、制約とOwner判断が必要 | 形式的な意味が未確定のままDBのNOT NULL、Key、表示強調から強属性を自動推定しない |
+| Facet・代数的法則 | 適用するCarrier、具体的なOperation binding、scope、法則のClaim | 同じFacet名、図上の同じ形、有限試験PASSから実装演算の法則成立を推定しない |
+
+ここでは**強属性の原典上の正式定義を確認できていない**。独自に意味を発明して新Facet/Constraintとして採用せず、[#2495](https://github.com/hat47x/tei-platform/issues/2495)/[#1126](https://github.com/hat47x/tei-platform/issues/1126)の検討待ちにする。
+
+### 12.3 Complectを検出する比較画面：一枚の差分図ではなく複合視点
+
+例：業務上のCustomer Key、物理DBのPrimary Key、UIで行を選ぶRow Keyは**異なる役割**を持ち、値が一致する実装もあり得る。その「同じ値」を一つのKey概念に束ねると、DBの索引再編によって業務IdentityやUI選択が意図せず変わる可能性を見落とす。IntentのKey/FD図、実DB Schema表、両者の型付き対応関係と出典、差分・不明・変更影響の関連グラフを**同一版束縛**で提供する方向を試す。
+
+類似の反例：Data RoleとBusiness Roleが同一Sourceにあって一方だけ未解決、同一値域上で異なる演算束縛を持つ複数Facet、宣言Graphの二工程を物理Targetが一工程へFusionした場合、Relationの宣言scopeが端点scopeと異なる場合。このような**意味の分割点**に対して、「この変更はどの範囲へ波及すべきか」を先に宣言し、Source・投影・実Artifact/Effectで独立に照合する。
+
+図表間リンクには、(a)同一主体の複数Occurrence、(b)別主体の意味Relation、(c)Intent→Realizationの追跡、(d)View間Navigation-onlyを区別する。差分表の行をSource自体として編集することは認めず、可能な場合のみ既存[#267](https://github.com/hat47x/tei-platform/issues/267)のtyped candidate→Preview→Owner受理へ送る。可逆性・現在資格がない図はread-only。
+
+### 12.4 次の小さい反証と成功／撤回判定
+
+既存Ownerの受入へ**テスト候補を受け渡す研究手順**であり、新Fixture IDや別の実行Gateは作らない。
+
+| 独立変更・反例 | 合格へ必要な区別 | 禁止する誤判定 |
+| --- | --- | --- |
+| IntentがClosed 3値なのに、実Sourceの選択済みDecoderに第4値がある | 宣言と観測対象のscope/版を揃えて違反候補を示す。実Decoder未読ならUnknown | enum宣言だけで実Target全体が完全と主張 |
+| 同じDataに異なるFacet/演算束縛を追加 | Carrier同一と演算/法則の束縛を分け、使用箇所単位で判定 | 同じFacet名だけで法則／変換が成立と扱う |
+| DB PKのみ変更し、Business KeyとUI Row Keyは不変 | 対応表の役割・Source/Target再確認、無関係なMeaning不変 | 物理Key変更を業務Identity変更と同一視 |
+| Public Sliceを変えずPrivate Relationだけを追加 | 公開された図・表・件数・診断・navigationが不変か | 内部AssessmentのUnknown内訳で存在漏洩 |
+| 最適化で二つの論理Operationを一つの物理実行へFusion | 論理関係と実行Traceを別投影し、観測できないEffectを未証明とする | 物理Nodeの減少から論理Operationの不存在を推定 |
+
+研究上の評価指標は、第10節の偽不存在・誤選択・読解操作数・AI token/再確認回数に加え、**意図的な矛盾の検出率、未知を適切に保留した割合、独立変更の非意図的波及、必要な比較関係を理解する時間**とする。同じ対象・固定Source/Expectedを使い、単一図・コード読解との対照を記録する。
+
+**撤回条件**：新しい三重Graph SSOT、分類の固定Schema、意味推論の巨大Engine、隠れた手動対応表を要し、局所変更・理解・検証の総コストを増やすなら、標準Coreへの昇格を中止して領域Plugin/限定Viewへ戻す。構造上の不足が独立した複数領域で反復する場合に限り、[#2495](https://github.com/hat47x/tei-platform/issues/2495)/[#2620](https://github.com/hat47x/tei-platform/issues/2620)で最小Primitive/Role契約の必要性を検討する。
+
+**証拠・未保証**：本節は現行IssueとDraftの静的照合を基にした研究案。実Intent↔Reader↔Artifact↔Consumer結線、SQL/実DB、形式証明、運用中Policy、Owner承認、複合Studio画面、人/AIの認知負荷比較は **NOT RUN / NOT PROVEN**。TEI独自共通Hostの必須化、第二Meaning SSOT、第二Resolver、第二Policy/Authorityは提案しない。
