@@ -129,6 +129,13 @@ func (i Invoker) Invoke(ctx context.Context, request Request) (Result, error) {
 	if err := i.Authorizer.Authorize(ctx, request); err != nil {
 		return Result{}, &ExecutionError{Code: "COMMAND_UNAUTHORIZED", Message: err.Error(), Cause: err}
 	}
+	var plannedEffect *semantic.DataEffect
+	if plan.Effect != nil {
+		plannedEffect = &semantic.DataEffect{Kind: semantic.DataEffectKind(plan.Effect.Kind), Data: plan.Effect.Data}
+	}
+	if err := checkDatasourceAccess(i.World, request, plannedEffect); err != nil {
+		return Result{}, err
+	}
 	if err := i.checkPeriod(ctx, plan); err != nil {
 		return Result{}, err
 	}
