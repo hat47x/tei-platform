@@ -947,7 +947,8 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | 削除効果の参照ポリシー検査 | 実装済み（内向きRelationに`on-delete`がない場合の警告） |
 | Commandの参照実装（契約確認用） | 実装済み（業務副作用なし、Commit/Rollbackの記録のみ） |
 | Commandからeffectcommitへのアダプタ | 実装済み（`effectcommit.Runner.Execute`へ委譲、認可・receiptを省略しない。実PostgreSQLは`TEI_EFFECT_POSTGRES_DSN`がある場合のみ試験） |
-| Command実行前の認可契約 | 実装済み（`Invoker.Authorizer`。権限の正本・付与は未実装） |
+| Command実行前の認可契約 | 実装済み（`Invoker.Authorizer`、`AllowListAuthorizer`。権限の正本・付与は未実装） |
+| CLI参照実行の認可AllowList | 実装済み（`view -execute -allow-capability`、参照用） |
 | Command効果の宣言照合 | 実装済み（Executorが返すEffectが宣言と一致しない場合は拒否） |
 | 参照データ記憶域（MemoryStore） | 実装済み（create/update/delete、スナップショットによるRollback） |
 | 参照Storeの削除ポリシー実行 | 実装済み（restrict・cascade・preserve。`Relation.Keys`がある場合は行単位、ない場合はData単位） |
@@ -982,6 +983,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
 
