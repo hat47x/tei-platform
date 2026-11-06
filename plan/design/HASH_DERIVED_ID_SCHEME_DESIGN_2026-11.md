@@ -317,3 +317,19 @@ flowchart TD
 - Schemaへの昇格時には`CollisionBudgetPolicy`を独立した型付きRecordにする候補だが、現時点でのCLI argvはReference用の非権威的Projectionである。生成パイプラインの図からBudget検査を省略したConsumerは、そのTargetで予算検査が行われたと主張できない。
 
 **追加受入**：不正な最大確率（NaN/Inf/負数/不正文字列）、Policy片側欠落、人口下限違反は結果なしで拒否。正常な数字24桁と、予算超過の20桁は同じSource／Caller Snapshot上で独立試験。これはReferenceのコード合格条件であって本番Targetの受理ではない。
+
+
+### 9.6 図表の被覆・セルフビルド・ETLとの追加反証（設計接合のみ）
+
+他レーンの最新の限定結果を、このHash ID Pipelineの受入に過大適用しないための**接合条件**を追記する。
+
+| 既存Owner・現状 | このPipelineに持ち込む条件 | 明示的に未保証なこと |
+| --- | --- | --- |
+| [複合図表の被覆Reference Draft #2881](https://github.com/hat47x/tei-platform/pull/2881) | Graph/Tableを共通Snapshotから派生させる場合、`scope/kind/qualified ID/relation role/endpoint`を保持。被覆情報が閉じた明示Scopeの場合のみ`absent-in-declared-snapshot`相当を返す | 図にHash IDのTarget保存ノードが無いからといって、外部Targetに保存済みIDが**存在しない**とは断定しない。Source/Reader/Disclosureが不完全なら`unknown` |
+| [全体セルフビルド #2831](https://github.com/hat47x/tei-platform/issues/2831) | Build graphにScheme/入力版・生成文字列の出自を表せるが、実Toolが消費したSource Closure／Toolchain／Build Attempt・Artifactと別型にする | Hash textの一致やBuild図のDeclared edgeだけで実Toolの消費・自己ビルド収束・Artifact Lockの受理を証明しない |
+| [ETL/ELT/MFT Draft #2827](https://github.com/hat47x/tei-platform/pull/2827) | 外部ファイル名・batch slugに派生IDを使っても、`content digest`、`file physical version`、`transfer attempt`、`delivery/ingest receipt`、`business effect`を別参照として結ぶ | 同じ内容hashから同じ名前を得てもDelivery/Publication/Importの完了・冪等性・Owner受理を推定しない |
+| [複合図表の独立Source研究 Draft #2966](https://github.com/hat47x/tei-platform/pull/2966) | 対応Graphが人・AIの誤選択・Unknown・変更波及を減らすか、独立Source/Expectedで比較する | ノード数や構造の短縮だけで認知負荷軽減・不在証明が成功したとみなさない |
+
+**Hash IDの最小Scope付きProjection契約候補**：任意のViewで表示する`HashIdText`は`(scope, qualifiedSubject, schemeWire, sourceReadEvidence, targetProfileVersion, targetSnapshotEvidence, collisionBudgetEvidence)`の各構成要素に遡れる必要がある。ただし`sourceReadEvidence`などの実Source保証がない場合は、欠落欄を空文字で補完せず`unknown`として扱う。Canonical SubjectをHashIdTextから逆算しない。現在の`hashid-probe`はCaller宣言のsubject/raw bytes/pinのみで、Qualified Sourceの実Reader証跡や閉じたTarget割当集合を持たないため、この完全なProjection契約は**未実装**。
+
+この記述は#2881/#2966/#2831/#2827の実装を本PRへ複製したものではない。Hash IDのTarget適用を有効化するOwner Gateとは別であり、追加の管理レジストリ・Host・独自Source Readerは必要としない。
