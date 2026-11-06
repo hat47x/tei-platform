@@ -38,19 +38,12 @@ func loadGrants(path, declarationPath string) ([]permission.Spec, error) {
 		return nil, fmt.Errorf("grants %s: %w", path, err)
 	}
 	if declarationPath != "" {
-		declaredRaw, err := os.ReadFile(declarationPath)
-		if err != nil {
-			return nil, fmt.Errorf("read declaration %s: %w", declarationPath, err)
-		}
-		declared, err := access.ParseDocument(declaredRaw)
-		if err != nil {
-			return nil, fmt.Errorf("declaration %s: %w", declarationPath, err)
-		}
 		// The resolutions that tie a declared name to this run's place are the
 		// caller's claim, not the tool's: the tool only checks that the grant
-		// stays inside the declaration as the caller mapped it.
-		if err := access.Ground(document, declared, nil, lineageCapability); err != nil {
-			return nil, fmt.Errorf("grants %s against declaration %s: %w", path, declarationPath, err)
+		// stays inside the declaration as the caller mapped it. The reader and
+		// the issuer run the same check so the two cannot drift apart.
+		if err := access.GroundFile(document, declarationPath, nil, lineageCapability); err != nil {
+			return nil, fmt.Errorf("grants %s: %w", path, err)
 		}
 	}
 	grants := make([]permission.Spec, 0, len(document.Grants))
