@@ -60,6 +60,26 @@ func ProfileExceedsDeclarations(profile SandboxProfile, perms []permission.Spec)
 			violations = append(violations, "the network allowlist names "+scope+", which no declaration permits")
 		}
 	}
+	// A handle or mount cannot be compared by name with a declared scope, but its
+	// presence must be covered by a declaration of the same kind. An injected
+	// secret with no declared secret permission is access nobody accepted.
+	var secrets, files bool
+	for _, perm := range perms {
+		switch perm.Kind {
+		case permission.KindSecret:
+			if perm.Access == permission.AccessRead {
+				secrets = true
+			}
+		case permission.KindFilesystem:
+			files = true
+		}
+	}
+	if (len(profile.SecretHandles) > 0 || len(profile.SecretInjections) > 0) && !secrets {
+		violations = append(violations, "secrets are injected, but no secret permission is declared")
+	}
+	if len(profile.Mounts) > 0 && !files {
+		violations = append(violations, "a mount is requested, but no filesystem permission is declared")
+	}
 	return violations
 }
 
