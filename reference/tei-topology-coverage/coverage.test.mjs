@@ -239,3 +239,27 @@ test('nested predicate and empty selector do not silently degrade to a broad sca
     kind:'relation',scope:'one',type:'produces',id:''
   },w).reason,'invalid_query');
 });
+
+test('undisclosed synthetic worlds do not expose distinct revision or coverage diagnostics',()=>{
+  const f=fixture(),a=project(f),b=project(f);
+  // Different private revisions and contents must give the same local result
+  // when the fixture is not disclosure-qualified.
+  b.table.subjects.pop();
+  b.graph.revision='private-revision';
+  const query={kind:'relation',scope:'one',type:'missing'};
+  const denied={...closure(f.snapshot),disclosureQualified:false};
+  assert.deepEqual(boundedAbsence(a,query,denied),
+    {status:'unknown',reason:'disclosure_unqualified'});
+  assert.deepEqual(boundedAbsence(b,query,denied),
+    {status:'unknown',reason:'disclosure_unqualified'});
+});
+
+test('disclosure denial precedes private predicate and shape checks',()=>{
+  const f=fixture(),v=project(f),denied={...closure(f.snapshot),disclosureQualified:false};
+  assert.deepEqual(boundedAbsence(v,{
+    kind:'relation',scope:'two',type:'produces',participantScope:'two'
+  },denied),{status:'unknown',reason:'disclosure_unqualified'});
+  assert.deepEqual(boundedAbsence({revision:'private-shape'},{
+    kind:'relation',scope:'two',type:'produces'
+  },denied),{status:'unknown',reason:'disclosure_unqualified'});
+});
