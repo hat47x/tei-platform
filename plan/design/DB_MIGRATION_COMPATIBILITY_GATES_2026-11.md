@@ -601,3 +601,24 @@ G1〜G5で各観測は取得時点が異なる。要求するのは**同一瞬�
 
 **次の最小順序**：#2892がHistory Reader/Toolの実際の取得元・checksum意味/有無を1 Providerで記録 → #2622/#2611がTarget・Scope・資格の一意性を照合 → #2555のG2/G3で、H0〜H3のうち何を必須とするかOwnerが用途別に明示。checksumのないProviderを一律排除する製品政策や新しいProof Storeは、現時点では採用しない。
 
+
+### 19.11 H0/H1/H2/H3とRelease互換性の同一Target・同一時点結合（既存#1163 Evidence Packetに接続、2026-11-07）
+
+**確認したSource上の非結合**：`release.StateSnapshot` は`Database/Source/Release/Provides/DataReadiness/ObservedAt`を持ち、`CheckApplication`はContract Majorと`DataReadiness`を照合する。`migration.HistorySnapshot` は`Database/Tool/CapturedAt/Entries`を持ち、`CompareHistory`はRepository ID/checksum/Stateを照合する。**どちらも、相手のObservation ID・実Connection/DB Instance・Provider・同一Read Epochを入力に持たず、相互の一致を検査しない**。両結果が局所`Compatible`と`RepoApplied`でも、それらが同じデータベース世代・同じ事象の証拠とは確定しない。
+
+| 既存MG-22/MG-27＋HIST-02/03の圧力ケース | 固定した独立Source/実対象 | 局所チェックで起こり得ること | **統合Gateの独立Expected** |
+| --- | --- | --- | --- |
+| **XH-01 同名別Instance** | 論理ID`sales_core`は同じ。Stateは新主DB、Historyは旧DB/異Tenantから採取 | `Compatible` ＋ `RepoApplied` | **unknown**：実接続先・Tenant/Provider/Authorityの同一性未証明 |
+| **XH-02 観測時刻ずれ** | Stateの`ObservedAt`は切替後、Historyの`CapturedAt`は切替前。途中にDDL/CDC/権限変更 | 両局所判定は時点の整合を検査しない | **unknown**：Read Epoch / Source revision / Commit・CDC境界を再取得 |
+| **XH-03 同じ値への復帰** | Source/定義 A→B→A、旧Receiptのchecksumは再び見かけ上同じ | Canonical/Schemaの文字列一致だけでは過去Observationの有効性は復活しない | **unknown**：依存関係・Generator版・再観測を再資格化（#2506/#2600） |
+| **XH-04 空/部分の別Reader** | 必要History全範囲でない検索結果、別時点のReplica、RLSが隠したorphan | 内容比較で`RepoApplied`、Release互換でも`Compatible`になり得る | **unknown / blocked by known orphan**：ScopeとReader可視性・水位を独立確認 |
+| **XH-05 完全な同一Attempt** | 同じ実DB Target、必要なRead ClosureとSource/Provider版を固定し、Release契約/History/SQL投入/Actual Schemaをそれぞれ別観測 | 局所値の整合を**必要条件の一部**として使える | **それでもG4/G5は未合格**：現Grant/旧新Client Writer/外部Effect/独立Read/Owner受理を要する |
+
+**最小の合成受入票（新Core型ではなく#1163既存Packetへ追加するRequired欄）**：
+
+`target logical ID + actual instance/connection identity + provider/tool identity + tenant/org scope + selected DB alias + Source/World revision + operation/attempt ID + snapshot/read epoch + observed/captured interval + complete Reader scope + checksum basis/algorithm + generator/toolchain version + SQL input digest (if H2 is required) + current Grant + independent Actual Schema/Data read`。
+
+値を持たない場合は対応するClaimを`unknown / not-run`として残す。実DSN、不可視Row件数、秘密SQL/資格情報の開示は必要権限で制御し、通常UIでは業務操作・保留理由を優先する（#2516/#2622）。**異なるGit HEADのCI合格や別AttemptのRead成功を結合の証拠へ合算しない**。
+
+**実施順と責務**：①#2892が1 Reader/ToolのRead Scope・Checksum Basis・取得時点を固定、②#2611/#2622が実Target・Alias・Providerの同一性を確認、③#2600がGenerator/Artifactから実SQL投入への根拠を対応付け、④#1163/#1119がH0〜H3・`CheckApplication`・独立Schema Readの**同一Source/Attempt結合**を判定、⑤#2555/#1174が旧新Client/CDC/Fence/Effect/Receipt/Owner受理を追加。**この横断表の作成は実Reader、実DB、同一Attemptを実行した証拠ではない**。新Gate Engine、正本Registry、分散Transaction Managerは追加しない。
+
