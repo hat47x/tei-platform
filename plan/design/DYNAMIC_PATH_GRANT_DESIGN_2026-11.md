@@ -61,6 +61,7 @@ issued, err := access.Issue(log, runKey, capabilityID, spec, "operator requested
 go run ./cmd/tei issue-grant \
   -grant-capability tei.frozen_world.lineage \
   -grant-scope "$scratch/generated-world-observation.json" \
+  -grant-issuer "script:reference-first-web-two-unit-e1" \
   -grant-reason "build_frozen_json_api observation" \
   -grant-run-key "$2@$3" \
   -grant-out "$scratch/frozen-world-grants.json" \
@@ -68,7 +69,26 @@ go run ./cmd/tei issue-grant \
 ```
 
 - 発行は**記録が先**。記録できなければ発行も書出しもしない。
-- 出力する grants ファイルはアダプタが読む形式（`access.ParseGrants`）と同じであることを試験で固定。
+- 出力する grants ファイルはアダプタが読む形式（`access.ParseDocument`）と同じであることを試験で固定。
 - 発行の記録には `runKey`・能力・付与・根拠が残る。
 
 **残る限界**: 発行しているのは**同じスクリプト**であり、第三者の承認ではありません。発行の主体（ホスト・運用・別の権威）を決めるのは次の段です。
+## 9. 発行の主体を名指しする（2026-11-06 追記）
+
+発行の記録にも grants ファイルにも、**誰が決めたか**を書く欄を足しました（`issuer`、ファイルでは `issuedBy`）。
+
+| 書き手 | `issuedBy` の値 |
+| --- | --- |
+| 環境の宣言（`tei grants`） | `environment:<環境ID>` |
+| 実行時の発行（`tei issue-grant`） | `-grant-issuer` で名指しした値 |
+
+- 環境の宣言から作った付与は、**その環境**が決めたことになります。ツールやスクリプトは決めていません。
+- 実行時の発行は、`-grant-issuer` と `-grant-reason` の両方が要ります。どちらかが空なら発行しません。
+- 発行の記録（`Issued`）にも `issuer` が入ります。
+
+**拒否する形**: 能力が**自分自身**を発行者として付与を受け取ることはありません（`access.AcceptIssuedBy`、`access.Issue` の両方で拒否）。移行済みのツールは、自分が発行したと書かれた付与ファイルを読んだ時点で失敗します。
+
+**この拒否が示すこと・示さないこと**:
+
+- 示す: 付与を**要求する側が書いた**経路は通らない。少なくとも「誰が決めたか」が別に要る。
+- 示さない: `issuedBy` は**署名ではない**。文字列を書ける者は誰でも `script:...` と書ける。第三者の承認を証明するものではなく、**自己発行を除外するだけ**の検査です。名前の偽装を防ぐには、署名・鍵・受理の記録が要ります（未着手）。

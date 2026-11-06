@@ -12,10 +12,11 @@ import (
 )
 
 // Issued is a grant issued for one run. It is not a workspace declaration: it
-// exists because a host decided this run may touch this scope, and it is recorded
-// so the decision can be read back.
+// exists because some party decided this run may touch this scope, and it is
+// recorded so the decision can be read back. Issuer names that party.
 type Issued struct {
 	RunKey     string          `json:"runKey"`
+	Issuer     string          `json:"issuer"`
 	Capability string          `json:"capability"`
 	Permission permission.Spec `json:"permission"`
 	Basis      string          `json:"basis"`
@@ -26,15 +27,26 @@ type IssueLog interface {
 	AppendIssue(Issued) error
 }
 
-// Issue grants the scope to the capability for the run and records why.
-func Issue(log IssueLog, runKey string, capability core.CanonicalID, spec permission.Spec, basis string) (permission.Spec, error) {
+// Issue grants the scope to the capability for the run and records who issued
+// it and why. An issuance without an issuer or a basis is refused: a record that
+// does not say where the authority came from is not an issuance.
+func Issue(log IssueLog, runKey, issuer string, capability core.CanonicalID, spec permission.Spec, basis string) (permission.Spec, error) {
 	if log == nil {
 		return permission.Spec{}, fmt.Errorf("no issue log is configured, so nothing is issued")
+	}
+	if issuer == "" {
+		return permission.Spec{}, fmt.Errorf("no issuer is named, so nothing is issued")
+	}
+	if issuer == string(capability) {
+		return permission.Spec{}, fmt.Errorf("%s cannot issue its own grant", capability)
+	}
+	if basis == "" {
+		return permission.Spec{}, fmt.Errorf("no basis is given, so nothing is issued")
 	}
 	if err := spec.Validate(); err != nil {
 		return permission.Spec{}, fmt.Errorf("issue %s: %w", spec.Key(), err)
 	}
-	issued := Issued{RunKey: runKey, Capability: string(capability), Permission: spec, Basis: basis}
+	issued := Issued{RunKey: runKey, Issuer: issuer, Capability: string(capability), Permission: spec, Basis: basis}
 	if err := log.AppendIssue(issued); err != nil {
 		return permission.Spec{}, err
 	}

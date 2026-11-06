@@ -1,6 +1,6 @@
 # 実DBで実行時の判断を確かめる計画（2026-11）
 
-- 状態: **試験は実装済み。実行はまだしていません（`NOT RUN`）。** DSN が無い環境ではスキップします。
+- 状態: **試験は実装済み。実行の経路もCIに置いた。実行結果はまだ記録していません（`NOT RUN`）。** DSN が無い環境ではスキップします。
 - 目的: 期間・効果・権限・実行計画の**実行時の判断**が、実際の PostgreSQL を前にしても期待どおりに働くことを確かめる。
 - 関連: [実データベースでの確認手順](REAL_DATABASE_VERIFICATION_PROCEDURE_2026-11.md)、[検証記録](SURFACE_AND_ARTIFACT_VERIFICATION_2026-11.md)
 
@@ -73,3 +73,15 @@
 | `TestACoveringGrantLetsTheWriteThrough` | `read-write` の付与が `write` の要求を覆う → 実行され、**行が `closed` に変わる** |
 
 これで**期間・効果・実行計画・権限の四系統**が、同じ雛形（一時表・SKIP・実DB）で揃いました。実行は DSN のある環境で行います。
+## 10. 実行の経路をCIに置く（2026-11-06 追記）
+
+DSN のある環境が無いまま「実行済み」と書かないために、実行の経路そのものを CI に置きました（`.github/workflows/tei-runtime-decisions-postgres-ci.yml`）。
+
+- `postgres:16-alpine` の一時 service に対して、`tei dbcheck` で接続と一時表作成の権限を先に確かめる。DSN が無ければ `dbcheck` は終了コード 2 で止まる（**実行していない**を成功に数えない）。
+- `go test -v ./tools/reference-runtime-decisions` のログを取り、**六つの試験名すべてに `--- PASS:` があること**を機械で確かめる。
+- 同じログに `--- SKIP:` があれば失敗にする。DSN の配線が外れた状態を PASS に数えないため。
+- 試験ログは 7 日間の診断 Artifact として残す。
+
+**この経路が証明しないこと**: 本番 Provider、実運用の権限、性能、期間の締め・訂正の業務手順。CI の service は使い捨ての PostgreSQL であり、本番の同等性は示しません。
+
+**まだ記録していないこと**: この workflow は**まだ一度も走っていません**。実行結果の受入番号とログをこの節へ追記するのは、実際に走った後です。

@@ -36,10 +36,13 @@ export GOOS=linux GOARCH=amd64 GOAMD64=v1 CGO_ENABLED=0
 # the builder side only. It is a diagnostic data artifact, not a new Source.
 # The observation is written only where the supplied grants allow it. The grant is
 # issued for this run and recorded, so the decision can be read back; the
-# generator cannot write anywhere else even if its arguments change.
+# generator cannot write anywhere else even if its arguments change. The issuer
+# is named as this build script: the grant is not declared by an environment, and
+# the generator refuses a grant it issued itself.
 go run ./cmd/tei issue-grant \
   -grant-capability tei.frozen_world.lineage \
   -grant-scope "$scratch/generated-world-observation.json" \
+  -grant-issuer "script:reference-first-web-two-unit-e1" \
   -grant-reason "build_frozen_json_api observation" \
   -grant-run-key "$2@$3" \
   -grant-out "$scratch/frozen-world-grants.json" \

@@ -180,6 +180,7 @@ func main() {
 	grantKind := fs.String("grant-kind", "filesystem", "issue-grant: permission kind")
 	grantAccess := fs.String("grant-access", "write", "issue-grant: permission access")
 	grantScope := fs.String("grant-scope", "", "issue-grant: the scope the grant covers")
+	grantIssuer := fs.String("grant-issuer", "", "issue-grant: the party that decides the grant")
 	grantReason := fs.String("grant-reason", "", "issue-grant: why the grant is issued")
 	grantRunKey := fs.String("grant-run-key", "", "issue-grant: the run the grant belongs to")
 	grantOut := fs.String("grant-out", "", "issue-grant: write the grants file here")
@@ -221,6 +222,7 @@ func main() {
 			Kind:       *grantKind,
 			Access:     *grantAccess,
 			Scope:      *grantScope,
+			Issuer:     *grantIssuer,
 			Reason:     *grantReason,
 			RunKey:     *grantRunKey,
 			OutPath:    *grantOut,
