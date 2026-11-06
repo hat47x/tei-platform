@@ -44,6 +44,8 @@
 
 **版別の実証上限**：#2849のAction emptyPolicyは統合済みの構文/意味表現であり、BP-05全対象Lの実Read保証や業務完了を自動受理しない。#2853は製品Invoker→実PG CAS/模擬ACK喪失/Lookup/独立Readの限定証拠、#2854は新冪等KeyでABA後に再作用できる実PG反例。いずれも旧Driver同義、二Function共有Rule、組織E2→E4、Windows実GUI、Owner意味受理を証明しない。
 
+**認可の限定的な実証更新（2026-11-07）**：[main統合PR #3037](https://github.com/hat47x/tei-platform/pull/3037)／[実試験記録](https://github.com/hat47x/tei-platform/blob/main/plan/evidence/XTEA_LOWCODE_COMMAND_AUTHORIZATION_2026-11.md) により、`legacyauthorization.CommandAuthorizer` の付与ありExecutor到達／未付与の`COMMAND_UNAUTHORIZED`・Executor非到達／規則評価不能を拒否と区別、のGo 3件が限定PASS。**Pattern/メニュー宣言はGrantではない**ことを一つのReferenceで実証した。一方、`EpochReader`による実版照合、権限の正本・付与管理、対象Resourceの解像、実Provider/DB・本番Host、Owner業務意味受理は未検証。[未統合PR #3038](https://github.com/hat47x/tei-platform/pull/3038) は付与Readerと宣言の照合候補であり、現参照ツールに必要な能力宣言・動的Resource解像まで完了した証拠ではない。#1125のBusiness Actor/承認判断、#267のMeaning受理と、ここでのCommand認可を同一状態へ縮約しない。
+
 **最初の縦切り**：BP-05第3規則のみ不成立→認可/Command非呼出を既存S1で試し、保存済みA(1)と未保存B(0)の提案後状態を対照。次に同じRequest/Provider/Receipt/Readを繋ぐ。実PG局所成功を合算して製品Gate G0〜G4合格としない。
 
 ## 4. DB移行：物理変更と業務同一性の維持を別資格にする
