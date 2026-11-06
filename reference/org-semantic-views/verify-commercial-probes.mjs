@@ -41,6 +41,35 @@ const recordRead = (record, principal, grants) => grants.some(g =>
 const domainAccess = (links, consumer, target, kind) => kind === 'data' &&
   (consumer === target || links.some(x => x.viewer === consumer && x.target === target))
   ? 'candidate' : 'denied';
+// Dataverse-specific *synthetic candidate* only. Actual access requires the
+// production security role/record/access check; organization paths are not Grants.
+function hierarchyAccessCandidate({
+  model, enabled, sameOrParentBU, distance, maxDepth, action, tablePrivileges,
+}) {
+  if (!enabled) return { status: 'not-admitted', reason: 'hierarchy-disabled' };
+  if (!tablePrivileges.includes(action))
+    return { status: 'not-admitted', reason: 'missing-table-privilege' };
+  if (!Number.isInteger(distance) || distance < 1 || distance > maxDepth)
+    return { status: 'not-admitted', reason: 'path-outside-approved-depth' };
+  if (model === 'manager' && !sameOrParentBU)
+    return { status: 'not-admitted', reason: 'manager-bu-scope' };
+  if (model !== 'manager' && model !== 'position')
+    return { status: 'unresolved', reason: 'hierarchy-model-unknown' };
+  if (model === 'position' && distance > 1 && action !== 'read')
+    return { status: 'not-admitted', reason: 'indirect-position-read-only' };
+  return { status: 'candidate', source: 'synthetic-hierarchy-rule' };
+}
+// Owning and sharing are two distinct relation roles, even if their team IDs
+// are selected by the same person/organization UI.
+function teamRecordCandidate({ team, row, sharedToTeam, tableRead }) {
+  const owns = team.type === 'owner' && row.ownerTeam === team.id;
+  const explicitlyShared = team.type === 'access' && sharedToTeam === team.id;
+  return {
+    owns,
+    canReadCandidate: tableRead && (owns || explicitlyShared),
+  };
+}
+
 function previewMove(base, move, maxLayers) {
   const proposal = structuredClone(base);
   const target = proposal.positions.find(x => x.id === move.position);
@@ -118,4 +147,46 @@ test('CM-11 what-if warning does not reject preview, approve plan, or mutate act
   assert.equal(result.status, 'preview');
   assert.equal(result.approval, 'not-observed');
   assert.equal(result.effect, 'not-observed');
+});
+
+test('CM-13 position hierarchy direct ancestor can offer write, indirect ancestor only read', () => {
+  const base = {
+    model: 'position', enabled: true, sameOrParentBU: false,
+    maxDepth: 3, tablePrivileges: ['read', 'write'],
+  };
+  assert.deepEqual(hierarchyAccessCandidate({ ...base, distance: 1, action: 'write' }),
+    { status: 'candidate', source: 'synthetic-hierarchy-rule' });
+  assert.deepEqual(hierarchyAccessCandidate({ ...base, distance: 2, action: 'write' }),
+    { status: 'not-admitted', reason: 'indirect-position-read-only' });
+  assert.deepEqual(hierarchyAccessCandidate({ ...base, distance: 2, action: 'read' }),
+    { status: 'candidate', source: 'synthetic-hierarchy-rule' });
+  assert.deepEqual(hierarchyAccessCandidate({ ...base, distance: 4, action: 'read' }),
+    { status: 'not-admitted', reason: 'path-outside-approved-depth' });
+});
+test('CM-13 manager and position hierarchy have different BU scope despite same graph path', () => {
+  const base = { enabled: true, sameOrParentBU: false, distance: 1,
+    maxDepth: 3, action: 'read', tablePrivileges: ['read'] };
+  assert.deepEqual(hierarchyAccessCandidate({ ...base, model: 'manager' }),
+    { status: 'not-admitted', reason: 'manager-bu-scope' });
+  assert.deepEqual(hierarchyAccessCandidate({ ...base, model: 'position' }),
+    { status: 'candidate', source: 'synthetic-hierarchy-rule' });
+  assert.deepEqual(hierarchyAccessCandidate({ ...base, model: 'position',
+    tablePrivileges: [] }),
+    { status: 'not-admitted', reason: 'missing-table-privilege' });
+});
+test('CM-14 owning team and access team differ even when both can read same record', () => {
+  const row = { id: 'C1', ownerTeam: 'team-own' };
+  const owner = teamRecordCandidate({
+    team: { type: 'owner', id: 'team-own' }, row, sharedToTeam: null, tableRead: true,
+  });
+  const access = teamRecordCandidate({
+    team: { type: 'access', id: 'team-access' }, row,
+    sharedToTeam: 'team-access', tableRead: true,
+  });
+  assert.deepEqual(owner, { owns: true, canReadCandidate: true });
+  assert.deepEqual(access, { owns: false, canReadCandidate: true });
+  assert.deepEqual(teamRecordCandidate({
+    team: { type: 'access', id: 'team-access' }, row,
+    sharedToTeam: 'team-access', tableRead: false,
+  }), { owns: false, canReadCandidate: false });
 });
