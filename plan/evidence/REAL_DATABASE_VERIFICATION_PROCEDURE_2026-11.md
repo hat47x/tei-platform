@@ -72,5 +72,10 @@ TEI_TEST_POSTGRES_DSN='postgres://…' go test ./tools/reference-expected-state-
   - 修正: 各読み手が読み終えたことを `readDone` で通知し、二人とも読み終えてから `start` を閉じる。再実行は2件とも PASS（0.344s）。
 - `go test ./tools/reference-ddl-entry -count=1`: PASS（17.801s）。新規DDLの収束、既存表への制約追加、主キーの置換・削除、制約名の変更、パーティション表、生成名、`reference/workspace` の `sales_core` 収束を含む。
 - `go test ./tools/reference-query-input-nullability -count=1`: PASS（0.799s）。欠落・明示NULL・空文字・値の区別、SQL前の拒否を含む。
-- `go test ./tools/reference-first-web-target -run '^TestOneRevisionOrderEntryE2EPacket$' -count=1 -v`: PASS（25.09s）。実PostgreSQLへのWebプロセスからの書込みと、別OSプロセスからの独立Readを通した。既存auditは `status=INCOMPLETE`、`productGate=UNQUALIFIED` で、`E2_PROVIDER_GUARANTEE_NOT_ATOMIC`、`PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE`、`TRUSTED_FULL_HEALTH_NOT_RECORDED` を診断した。Grantとissuerは合成で、実外部Provider・正式なAuthorityではない。
+- `go test ./tools/reference-first-web-target -run '^TestOneRevisionOrderEntryE2EPacket$' -count=1 -v`:
+  - 健康診断receiptなしの初回（`a17c28e5`）: PASS（25.09s）。実PostgreSQLへのWebプロセスからの書込みと、別OSプロセスからの独立Readを通した。auditは `INCOMPLETE` / `UNQUALIFIED` で、`E2_PROVIDER_GUARANTEE_NOT_ATOMIC`、`PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE`、`TRUSTED_FULL_HEALTH_NOT_RECORDED` を診断した。
+  - 健康診断receiptありの再実行（`005bbee7`、cleanなcloneで `HEAD=origin/main`）: PASS（34.12s）。Actions run [42152908986](https://github.com/hat47x/tei-platform/actions/runs/42152908986)（push、completed、success）のreceiptを使い、`TRUSTED_FULL_HEALTH_NOT_RECORDED` は解消した。残る診断は `E2_PROVIDER_GUARANTEE_NOT_ATOMIC` と `PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE` の2件。
+  - receipt: [`QUALIFICATION_FULL_HEALTH_005BBEE7_42152908986.json`](QUALIFICATION_FULL_HEALTH_005BBEE7_42152908986.json)、audit: [`REAL_PROVIDER_PROVISIONAL_AUDIT_005BBEE7.json`](REAL_PROVIDER_PROVISIONAL_AUDIT_005BBEE7.json)。
+  - 一度目のreceipt付き実行は、cloneの改行差分で作業ツリーがcleanでなかったため `TRUSTED_FULL_HEALTH_NOT_RECORDED` が残った。worktreeをcleanにした再実行で解消した。receipt自体の不一致ではない。
+- **暫定オーナー判断（2026-11-06）**: 残る2診断は、実外部Providerの原子性保証と正式なAuthorityが未提供であることに対応する。実物での再検証までの暫定として受け入れ、`productGate=UNQUALIFIED` は維持する。実外部Provider、Host Grant/Authority、本番相当データが揃った時点で、この判断を見直す。
 - 未実行: 実外部Provider、Host Grant/Authorityの実運用、本番データ量、実Release状態でのgate、独立Consumer。これらは[#2619の作業票](https://github.com/hat47x/tei-platform/issues/2619#issuecomment-6673122238)の環境条件が揃うまで NOT RUN とする。
