@@ -392,3 +392,50 @@ UI/CLI/Jobの実行要求は、表示/選択の更新世代（**Selection/Contex
 - **P3（Target別Consumers）**：CLI/Web/Studio/Jobの各実Entry・配備Artifact/権限/独立Bodyを照合し、新形式移行と公開Macroの消費者互換を検証。EKI/複数Build/Marketplaceは最初のread-only E2Eの必須条件にしない。
 
 **現在の証拠**：#3030は**Draft docs-only**、#2935は**Draft限定Loader read観測**、#3028は**Draft部分Go bridge**、#2926のCompletion Evaluatorは**main統合済み・Runtime未接続**。本書の二経路L/Mの実比較、#2502 SM-1〜6の実Product/Host/Provider試験、実OS/Network ACK loss、全Script形式移行、Ownerの業務意味受理は**NOT RUN／NOT QUALIFIED**。#1119 G1/G2やOwner承認をこの計画から自動成立させない。
+
+## 11. Script Admissionの実装接続点と一改訂検証の停止線（2026-11-07）
+
+### 11.1 既存コードで成立した局所防御を、新しいScript E2E合格と取り違えない
+
+- **TEI Markdown未接続**：[Draft #3031](https://github.com/hat47x/tei-platform/pull/3031) HEAD `63953ccb5c12ead26ec1268e7c0afdba4eff66ae`は、Domain Loaderの前でManaged File中の`*.tei.md`を`TEI_MD_PARSER_UNBOUND`＋Source pathにより拒否する**暫定fail-closed**を実Go試験で確認。専用[CI #42217379093](https://github.com/hat47x/tei-platform/actions/runs/42217379093) success、4 focused testとWorkspace package test/vetの限定証拠。**Draft/main未統合**、Markdown AST/Source span/TEI Grammar/実Parseは未実装。旧`*.tei`と通常`.md`の処理は維持するが、従来Loaderの`validate ok`を新Sourceの成功に転用しない。
+- **Command認可の入口**：[main統合 #3034](https://github.com/hat47x/tei-platform/pull/3034)は`internal/security/legacyauthorization/command_authorizer.go`の`CommandAuthorizer`を`command.Invoker.Authorizer`へ接続。既存`security.authorize`ルールがallowならExecutor到達、**規則上denyなら`ErrNoGrant`＋`COMMAND_UNAUTHORIZED`かつExecutor非呼出**、規則評価不能ならdenyと混同せずerror、と実Goテストが区別。**権限付与SSOT/Host Credential/current Grantの供給とCommit直前強制は未接続**。
+- **実DBチェーンのEvidence訂正**：[main統合 #3025](https://github.com/hat47x/tei-platform/pull/3025)の固定HEAD `f887ab979b104b2593561bde3f9e11e8fc7083c7`／[Health #42195019838](https://github.com/hat47x/tei-platform/actions/runs/42195019838)で暫定PG一改訂Packetの`TRUSTED_FULL_HEALTH_NOT_RECORDED`は解消。しかし監査Resultは**`INCOMPLETE / productGate=UNQUALIFIED`**。残る`PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE`、`PROVISIONAL_GRANT_NOT_G2_EVIDENCE`、`PROVISIONAL_GUARANTEE_NOT_G2_EVIDENCE`の3診断は正式受理・現在認可・外部Provider保証の不足を示す。局所Go`#3034`認可成功と暫定PG Chain Health成功を**異なるHEAD/Attemptのまま合算しない**。
+- **移行Ownerの整理**：[Draft #3030](https://github.com/hat47x/tei-platform/pull/3030)の実文書`plan/design/TEI_MD_UNIFIED_AUTHORING_MIGRATION_2026-11.md`冒頭では、移行検収の主担当を`M0〜M6/TM-01〜14`へ一本化し、[Draft #2667](https://github.com/hat47x/tei-platform/pull/2667)の`M0〜M5/TMD-01〜12`を**履歴・参照**と規定（#2667当該文書の冒頭も同じ）。両方のCase IDを別々の受入Gateへ増設しない。#2621のOwner判断・具体的な新Grammar受理はなお別。§10の二経路L/M/Jは、正式移行計画の重複ではなく**Script固有の実行資格比較**に限定する。
+
+### 11.2 原因別の停止と診断を混ぜない
+
+下表は新たな汎用Status enumの提案ではなく、**既存の各Componentが返す観測**と、S0〜S8／A0で主張できる上限を対応づけるもの。
+
+| Source / 認可 / 効果の条件 | 当該既存実装が示す限定観測 | Script起動で追加確認すべきこと／禁止推論 |
+| --- | --- | --- |
+| 現Loaderへ新`*.tei.md`、選択Parserなし | #3031 DraftではWorkspace Loadが`TEI_MD_PARSER_UNBOUND`、特定Source pathで停止 | Source manifestの全Requiredを把握し、実未Parseを明記。**Mainでは現時点で無診断の読飛ばしがあり得る**。拒否だけで新Parser実装完了とはしない |
+| 旧`*.tei`が実Parserで成功 | 現Loader/構文の局所資格。RunPlanや実DBを意味しない | 同一Source Revision・実ロードArtifact・必要Rule集合・実Providerまで追う |
+| PatternにCommandあり、既存Ruleが当該主体・操作・資源でdeny | #3034では`COMMAND_UNAUTHORIZED`、Executor呼出0の正負対照 | このCommandの拒否を「Runtimeの全Effectが0」とは言わない。前Step/外部Providerの先行効果を別記 |
+| Rule Store失敗・主体やAction/Resource不明 | #3034は評価不能errorを`ErrNoGrant`と区別（主体/Action/Resource欠落もerror） | **拒否の確定**と**認可が評価できない**を違う投影にする。再試行は実要求・現在資格を再確認し、未送出証明範囲を保つ |
+| Ruleがallow | #3034局所TestではToy Executorへ到達 | 実Providerの現在Grant、対象行/時点/Period/CAS/Receipt、業務Meaning/Script受理まで合格とはしない |
+| 実Commit後ACK-loss | #2853実PGでは同Operation ID+同Key Receipt lookupの限定成功 | RunPlan/Script/Host全工程と同じAttemptの証明でない。新Idempotency Key/ABAを許可しない |
+| Read完全性・手作業Handoff未証明 | #2926`EvaluateCompletion`は完全性や空集合証拠を呼出側に要求 | Process exit/Command commitに加え、独立TargetSet・Coverage・Predicate・Handoffを確認するまで`holds`としない |
+
+**現在の`CommandAuthorizer`の具体的な拘束不足**：`Subject`はHostが渡す文字列で、認証済み本人との一致は呼出側の責務。`Action`を省略するとCapability ID、`Resource`を省略すると**Application ID**が使われる。受注`ORD-1`等の**行・業務Target固有の許可**が必要なのにResourceをApplicationに丸めた場合、Ruleのallowから対象行の許可を導けない。対象行のID/Scopeへ写像する明示`Resource` mapper、Hostの実Principal、評価時点とCommit直前Fenceが必要。これらは#2499/#1174へ委ね、#3034の既存Adapterを二重実装しない。`Auth evaluation failed`を`no grant`へ丸めると監査と運用の意味が変わるため、UI/CLI/AI投影でも区別する（内部Rule/存在件数/秘密情報は開示しない）。
+
+### 11.3 同じ固定業務Caseで必要な“次の一試行”を定義する
+
+**候補Scenario**：#3034既存Referenceの`order_entry.submit_order`／Capability `sales.submit_order`、`order=ORD-1`、Rule Resource `sales.order`をベースにする。業務Ownerによる意味受理や本番Resource mappingが済んでいると仮定しない。既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)のScenario／[#2514](https://github.com/hat47x/tei-platform/issues/2514)の独立Expectedへ対応付け、別のScript用Test SSOTを作らない。
+
+| 一因子の違い | 実証したいExpected（今回のGo/PG統合試験ではNOT RUN） | 根拠/Owner |
+| --- | --- | --- |
+| 旧`*.tei`のSource、実Loaded/Parsedと正常Script入力 | 必須Source/Role/Ruleが実Consumed、同一Function/Target/実Read Bodyを照合できる | #2586/#2823、現Loader |
+| 新`*.tei.md`にだけ入替、選択Parserなし | **新形式を未解析のままacceptしない**。#3031導入済み環境なら`TEI_MD_PARSER_UNBOUND`で停止、Commandは呼ばない | #3031 Draft。これを新形式E2E PASSとしない |
+| 同じCommand/Rule、`Subject/Action/Resource`のGrantだけfalse | `COMMAND_UNAUTHORIZED`、当該Executor 0回。許可のある正対照はExecutor 1回 | #3034 merged局所Referenceを再利用 |
+| Host Resourceを意図したOrder IDからApplication IDへ落とす | 行単位Grantが必要なScenarioでは、要求資源に対する資格を主張**不可**。明示Resource mapで正負対照 | #2499/#1174、現Adapterのfallback事実 |
+| 同じ有効なSource/CommandでRule Storeを失効/故障させる | Rule評価errorで保留。確定した拒否`ErrNoGrant`と異なる、当該Actionを無条件再Dispatchしない | #3034評価不能の既存Go試験 |
+| Commit後の応答だけ失わせる | `unknown`→同Operation/同Key Receipt lookupと独立Read。別Key+ABAは安全とみなさない | #2853/#2854/#2870既存実PG負例、#1174 |
+| Readの対象集合をpartialにし、外部手作業確認も欠ける | Provider ReceiptだけでCompletion `holds`へ昇格せず`unverified`の根拠を表示 | #2926実Evaluator、#1125/#2514 |
+
+**次の順序・採用を要しない仮説**：
+1. **既存コードを再利用する読取専用縦切り**：mainの#3034 Command Authorizerと旧`*.tei` Reader／#2882 RunPlanが、**同じ実Loader World/同じRequest/Subject/Resource/Source Revision**で接続できるかを最初に確かめる。結合前に、現APIに渡すRequired Guard/実Row Targetが独立Expectedから揃うか調べ、不足はunsupportedとして停止。
+2. **新形式の停止検証は別Lane**：#3031のDraft HEADが固定した`TEI_MD_PARSER_UNBOUND`の正負対照を再利用し、#3030のParser/Source-span実装までは新形式を無条件に有効化しない。mainに実装済みとは記載しない。
+3. **許可を持つ本当のWriteだけ実PGへ**：#2853/#3025を再利用してCurrent Grant/Resource/Target/CAS/Receipt/独立Readを一Attemptへ接続。Provider Commit時の再照会・事前/事後のGrant失効は別試験。新しいRuntime Host/Policy Engine/Receipt DBは作らない。
+4. **受入パケットのClaim ceiling**：一回の試行に`Required Obligation / Actually Read Source / Subject+Resource mapping / Evaluated Grant / Actual Dispatch / Effect Receipt / Independent Read / Completion / Actual Consumer body`を並べ、欠落を`not-run/unknown/unsupported`で明示。既存#1163のG1/G2判定を変更しない。
+
+**残余と資格**：#3031はDraft限定Goテスト、#3034はmain実認可Adapterの単体/局所試験、#3025は実PG暫定Chain Healthの記録。**Script Source→Auth→RunPlan→PG→Independent Read→Completion→Consumerの一改訂同一Attempt**、正式Host Grant、Provider側のCommit直前権限再検証、新`*.tei.md`の実Parser/Read、実OS再起動、Owner正式意味受理は**NOT RUN / UNQUALIFIED**。本節は次の一回の実験境界を確定する**設計追補のみ**。
