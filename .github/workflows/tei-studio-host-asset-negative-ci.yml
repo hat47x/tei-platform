@@ -46,6 +46,12 @@ jobs:
           echo "base=$(git rev-parse HEAD)"
           git fetch --no-tags --depth=90 origin refs/pull/1832/head
           git cat-file -e "${HOST_SHA}^{commit}"
+          # The fixed snapshot replaces these two directories completely.
+          # Extracting over the current tree would leave newer files (for
+          # example command.go and observe_xead.go) that the fixed
+          # readonly.go does not define, and the Host would not compile
+          # (#2985). This checkout is disposable.
+          rm -rf cmd/tei-studio internal/studiohost
           git archive "${HOST_SHA}" cmd/tei-studio internal/studiohost | tar -xf -
           echo "fixed Host source: ${HOST_SHA}"
           git fetch --no-tags --depth=90 origin refs/pull/1833/head
