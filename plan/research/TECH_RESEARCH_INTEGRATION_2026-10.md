@@ -1,7 +1,7 @@
 # TEIの技術調査を設計へ反映する方針 — 2026年10月
 
 状態：**現行の技術調査の反映計画**  
-最終更新：**2026-10-09**
+最終更新：**2026-11-06**
 
 ## 1. 位置づけ
 
@@ -346,3 +346,44 @@ TEIの設計へ反映する観点：
 最初に作る読取り結果では、(1) 正確な情報源・意味上の識別子・衝突の根拠から**判断できた事項**、(2) 記述の不在・古い前提・業務手順固有の意図など**人の判断が残る事項**、(3) 実際の提供実装・画面・未実行の実行検証など**根拠が届かない事項**、(4) 変更の提案、保留、追加調査から**人が選ぶ事項**を分けます。
 
 **停止条件：** 顧客の編集に関する衝突を既存の検査器で再現できない場合や、異なる視点の違いを示すために受理済みの業務定義を無断で書き換える必要がある場合は、実装を増やさず、原因を既存の課題へ戻します。成功を記録する際には、正確な対象版、実行環境、コマンド、診断、実行前後にソースが変わっていないことを記録します。今回のソースの静的な確認だけでは成功とは判断しません。
+
+## 10. 2026年11月6日：技術短報の論文精読から既存計画への接続
+
+**状態：文献調査による受入条件の提案。TEIでの新規テスト、実Host／DB効果、正式な意味受理は NOT RUN。**
+10月までの調査はこのまま履歴として維持し、本節は11月上旬の追加知見だけを記録する。研究で報告された効果量をTEI自身の達成値に転用しない。既存のIssue、独立Expected、Source/Artifactの版、Hostの現在Authorityに接続し、新しいProof Engine、Agent Runtime、Plugin Resolver、共通Host、受理正本は作らない。
+
+### 10.1 文献と読み取りの境界
+
+| 文献（公開／改訂） | 外部研究から確認できる観点 | TEIでは採用を先取りしないもの |
+| --- | --- | --- |
+| [Modern Software Engineering with Verification Agents](https://arxiv.org/abs/2611.02285)（2026-11-01） | 仕様を先に固定し、生成コード・改変・統合結果を独立に検査する。充足可能性のwitness、空虚なPASS、mutation、意味的なmerge競合を区別 | 同論文のVIR、verified lowering、semantic merge/fleet構想は提案であり、全体系の実稼働実証ではない。TEIへの新しいIR／証明カーネル導入を決めない |
+| [Beyond Source Compatibility: WebAssembly as a Stable ABI for ARINC 653 Applications](https://arxiv.org/abs/2611.00891)（2026-10-31） | 同一Wasm成果物を異なるRuntime／CPU条件で利用する際、Guest/Host ABI、整数幅、構造体配置、import、TLSの明示が不可欠 | 実証は限定されたRuntime／OS構成。異なるARINC OSでの全面可搬性、安全認証、TEI一般Plugin ABIとしてのWIT採用を証明しない |
+| [ServerBench: How can your coding agents design specialized LLM serving systems?](https://arxiv.org/abs/2611.06841)（2026-11-04） | 変更後の実サービスについて、新鮮な入力、異なる負荷・状態・並列度、実応答／停止を再観測する。局所ベンチ成功と本番相当の安定性は別 | LLM推論サーバ特有のスループット・金額指標や個別最適化をTEIの標準KPIにしない |
+| [M4Bench](https://arxiv.org/abs/2610.37459)（2026-10-27） | 完全な操作仕様が生成・照合の正確さを大きく左右する。値の一致だけでなく、全件の包含／除外、粒度、期間、集計の意味を独立に検査 | 特定のEHR操作例やSkill包装の性能を、TEIの業務定義が正しいことの証拠にしない |
+| [Concordat: Typed Sessions for LLM Agents](https://arxiv.org/abs/2610.37461)（2026-10-27、10-30改訂） | 利用可能な操作の順序、確認段階、意図した対象を型付きセッションで制限する発想。曖昧な承認文（単なる yes）では実対象まで確定できない | Agentに表示された許可ツール集合や会話上の承認を、現在のHost Grant／作用対象の認可に置き換えない |
+| [Rethinking Verification in Agent Harnesses](https://arxiv.org/abs/2610.34577)（2026-10-25） | 実装者とは独立した検査役が、要件と変更差分から適合性を吟味する方式。検査の配置と費用対効果を比較 | 論文内のモデル・ベンチマーク別改善幅をTEIの性能期待値や採択基準へ直接転用しない |
+| [From Interaction to Capability: Task Advancement as State and Supervision for GUI Agents](https://arxiv.org/abs/2610.37482)（2026-10-27） | 作業全体が失敗しても検証済みの局所前進を条件付きで再利用し、開始条件・到達状態・検査方法を持つ | 過去のGUI成功履歴やAgent記憶を、最新Sourceの受理・現在Grant・DB効果の証拠としない |
+
+### 10.2 重複しない受入条件の移管候補
+
+| 短報起点の反証課題 | 既存Owner／実施先 | 最小Fixture・確認する負例／独立Evidence |
+| --- | --- | --- |
+| **TR-11-SPEC：仕様に沿った検証と空虚なPASSの排除** | #2514（独立Oracle／mutation）・#2619（定義と受理）・#1180（Scenario）・#2811（テスト記述） | 同じ受理候補に、満たす例、反例、曖昧／欠損Source、旧Revision、意図的なEvaluator mutantを用意。生成コードやAIの提案とは独立したExpectedで検査。検査対象Sourceが実際に読み込まれたか、条件が空集合で偶然真になっていないか、現ArtifactをConsumerが受領したかを別々に示す。#2514にある一つの局所Mutation killを全規則の検証済みへ一般化しない |
+| **TR-11-ABI：意味契約／バイナリ形式／Host Authorityの三分離** | #951（論理Capability）・#1861（実Wasm Component／二Host）・#2390（外部Host Consumer）・#943（実Build） | 既存見積もり23ベクトルと独立Expectedを再利用し、同一契約に対する実成果物、byte layout、import、Host別bindingを記録。実行可能な二Hostで失敗／拒否も比較し、Contract一致でもABI誤配置、異Host import不足、現在Grant不足を検出。現時点で実Componentによる二Host実行と正式WIT採択は NOT RUN |
+| **TR-11-STATE：短い成功を実サービス全体の成功としない** | #2514／#1180（テスト対象）・#1129（Lifecycle）・#1174（実Effect）・#1824（Studio） | 再実行／通信断／重複要求／部分確定／後着UI応答／新しい独立入力を共通Attempt・Source・対象に束縛。変更後のexact artifactで再走し、Process exit、表示、参照Executor、Commit、別Readerの観測を分ける。短い合成実行のPASSから本番の完遂を推論しない |
+| **TR-11-GRAIN：データ変換の完全性と粒度の検証** | #2622（Data Operations）・#2506（明示Data Context）・#2514（独立Expected） | 同一意味のRDB実現とAPI／導出候補を、時間範囲、母集団、業務Key、重複、NULL／未取得、順序、集約Grainで照合。数値一致でも取りこぼした行がある例と、partial取得をcompleteと誤表示する例を含める。Model Relation存在だけでは取得範囲を広げない |
+| **TR-11-ACTION：AIの操作順序と実行権限の間を検査** | #2598（Offer→Requestの実Target）・#1174（Host権限／Effect）・#1824（UI操作） | 会話上の yes が別Requestや別Tenantに流用される例、現在Grant撤回、Target alias変更、操作を省略した場合を反例化。Agent側の型付き状態は助言・診断に使えても、実Provider／外部Hostが現時点の権限・対象・Effect scopeを強制する |
+| **TR-11-REUSE：検証済み局所進捗だけを再利用** | #1824（Studio）・#2509（AI／CLI境界）・#2600（再資格化） | 再利用単位にSource/Revision、入力・前提、操作、既知Expected、実際の観測、対象Scopeを関連付ける。前回の部分成功は次回の実行可能性でもOwner受理でもなく、Source drift／Grant drift／出力先変更なら再資格化する。Agent専用永続状態正本を設けない |
+
+### 10.3 順序・判定・停止線
+
+1. **P0：既存定義とFixtureだけで反証可能性を上げる。** TR-11-SPEC、GRAIN、ACTIONについてread-only Source位置と独立Expectedの有無を調査。既存の#2514 mutant、#2622 DO-01〜08、#2598／#1174の既存負例を再利用し、新規試験名や第二Runnerをむやみに増やさない。
+2. **P1：実際に消費された対象と成果物を固定する。** Source宣言→解決→実読込→Build選択→Artifact→Consumer／Request→実Effectのうち、各Claimに必要な部分だけを明示。失敗・未実行・unsupportedを別状態として残し、validate成功を実消費成功と取り違えない。
+3. **P2：HostとProviderの実差を測る。** TR-11-ABIは既存#1861の実Component一件を優先し、同一契約を異なる二Hostで比較。TR-11-STATE／GRAINは実DB/API／独立Readerが用意できるConsumerに限って検証する。生成した合成Evidenceを実Host適合へ昇格しない。
+4. **P3：採否は費用と失敗検出力で判断する。** Verification Agentを常設すべきか、WIT/Componentを公開ABIにすべきか、履歴再利用を製品機能にすべきかは、追加する抽象化・ツールチェーン・遅延・保守費用に対する反例の検出実績と具体Consumerの必要性で比較する。
+
+**判断境界：** 文献で裏付けられた観点／TEIへ類推した設計仮説／Issueへの受入候補／実際に検証した結果／Ownerによる業務意味受理は互いに別。既存の#1119 Critical PathとA0〜A4、現行Authority、およびmainへの取込み条件を本節だけで改定しない。今回の追記は文書差分であり、上記TR-11-*の実行ログや正式採用は存在しない。
+
+### 10.4 Wailsの版更新（旧記述の時点性を保持）
+
+[Wails v3.1.0公式リリース](https://wails.io/blog/wails-v3-1-released/)は**2026-11-01**公開。前節9.3の「10月時点でもBeta」は当時の記述であり、11月6日時点の現状を表さない。#1824では3.1.0の正確な版を固定した比較候補とし、CGO不要経路は実験的機能として別に評価する。Windows／macOS／Linux、native依存、Web/Desktop接続、ビルドと再現性、現行Studioとの差分を実測する前に標準更新やアプリ生成Targetの採択を宣言しない。
