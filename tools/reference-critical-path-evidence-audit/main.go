@@ -307,6 +307,11 @@ func Audit(p Packet, expectedHead, expectedMain string) Report {
 		// declaration (e.g. a path that emits no Evidence), "undeclared",
 		// "not-atomic" or an unknown value is incomplete. Declaring it only
 		// makes the claim visible; the audit does not verify it.
+		// A level containing "provisional" is not the exact atomic label, so an
+		// E2 packet with such a level also gets PROVISIONAL_GUARANTEE_NOT_G2_EVIDENCE
+		// above. The two are independent: a provisional reason with an atomic
+		// level is not non-atomic, and a non-atomic level with an ordinary
+		// reason is not provisional.
 		if ph.Guarantee == nil || ph.Guarantee.Level != "atomic-with-commit" {
 			add("E2_PROVIDER_GUARANTEE_NOT_ATOMIC")
 		}
