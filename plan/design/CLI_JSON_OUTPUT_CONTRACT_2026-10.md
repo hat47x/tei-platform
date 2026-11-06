@@ -55,6 +55,7 @@
 - 空のWorkspace（モデル要素0件）は`validate`が`WORKSPACE_DECLARES_NO_MODEL_ELEMENTS`（warning）を返す。`ok:true`・終了コード0のままなので、`diagnostics`のwarningを確認する（#2822）。
 - `validate -json`と`model catalog`は、2026-11-07から`declarationCounts`を返す。`std`の標準意味型を除いたWorkspace自身の宣言件数であり、空のWorkspace（`total:0`）と宣言のあるWorkspaceを機械的に区別できる（#2822）。
 - `tei commands`の各entryは、2026-11-07から`schemaVersion`と`jsonContract`（`enveloped`／`raw`／`none`）を持つ。`world`だけが`raw`で、`tei.cli.*`のエンベロープを持たないことをdiscoveryから読める。
+- 2026-11-07から、discoveryが広告する`schemaVersion`と、そのコマンドが実プロセスで返す応答の`schemaVersion`の一致を`cmd/tei/cli_discovery_process_test.go`が検査する。定数同士の照合（`cli_contract_test.go`）だけでは、応答側の改名と広告のずれを検出できなかった（#2824）。`version -json`は`ok`/`error`を持たないため、この検査は`schemaVersion`の一致だけを求める。
 
 ## 5. v0の中での互換な変更と版を上げる変更（規則案）
 
