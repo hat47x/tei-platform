@@ -410,6 +410,14 @@ AIの自律的な作業と実行権限を区別します。AIがツールを直�
 
 **現状**：本追補は設計・基本計画の更新のみ。新`*.tei.md` Loader/Parser、固定Candidateの実Shared Acceptance、AI/OS送信、実Host・Providerとの同一Attempt、Owner正式受理は**NOT RUN／NOT ACCEPTED**。P0の実行後に初めて対象Revision・Consumer・不足Guardと証拠を明記して次の作業へ進む。
 
+### P0二レーン実証とCompletionの証拠資格（2026-11-07修正）
+
+前節の「初回P0は`*.tei.md`実Reader/Parserが先決」という停止条件は、**新Authoring形式からのShared Acceptanceの合格条件**へ限定する。旧`*.tei`の実Provider read-only／独立Expected検証は、[Script起動 Draft #2884 §10](https://github.com/hat47x/tei-platform/pull/2884)に合わせた**P0-L（Legacy）**として並行着手できる。**P0-M（Migration）**は`*.tei.md`の正しいSource発見・Markdown解釈・実Parser/Build入力まで別試験とし、最後に**P0-J**で旧新それぞれのSource byte/Revision/実消費範囲と同じ業務Requirement/独立Expectedを照合する。LのPASSをMへ継承せず、MのParse PASSを実Provider成立へ拡大しない。#2667が移行横断TMDと合流・Legacy退役を管理し、#3030がAuthoring固有のTMと表層、#3031が未対応Sourceの暫定拒否を担当する。第三のMigration Case SSOTは設けない。
+
+**必要対象の完全性を独立に検査**する。[main統合 #2926](https://github.com/hat47x/tei-platform/pull/2926)の`EvaluateCompletion`は、渡されたTargetSet/Coverage/EmptyPolicyの評価器であり、Callerが宣言した`CoverageComplete=true`・行数0・表面上の`holds`からProviderがOwner対象全件を読んだとは推定できない。`required→discovered→loaded→parsed→actual consumed`、Required/Observed TargetSet/Row/Field、必要Guard/実評価Guard、空集合の独立証拠、現Principal/Tenant/Scopeを同じClaimに照合する。未観測なら`unverified`、矛盾なら別扱い。#1180はRequired Obligation、#2514は独立Expected/判別力、#2586/#2628は実Provider Read、#1163は同一Attempt、#1174は実Effectを担当。新しいCompletion Engine/Proof Registryを作らない。
+
+[AI-first設計§5.7](design/AI_FIRST_REQUIREMENT_PRESSURE_AND_HEADLESS_VERIFICATION_2026-11.md)へ実証順・既存Fixture再利用・Evidence上限を集約。**限定既存成果**：#3031の固定HEAD `63953ccb`の未対応`*.tei.md` Guard Go/CI success（Draft/未merge）、#2926のCompletion evaluator main統合と局所Go PASS、#3028のBootstrap正負対照Draft。これらから新Reader/実TargetSet/Owner meaning・実Host合流は導かない。P0-L実Provider、P0-M実Reader、P0-J旧新Meaning比較、同一Source改訂のCandidate→Shared Acceptance／Consumer、実OS/AI送出・Host/Provider Effectは**NOT RUN**。Go単一バイナリと既存外部Host権限境界を維持する。
+
 ## 作業領域I：周辺技術との連携と本番運用の境界
 
 ### 目的
