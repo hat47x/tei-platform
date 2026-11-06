@@ -129,3 +129,15 @@ go run ./cmd/tei validate -workspace reference/standard-crud/workspace
 - 入口は `tei dbcheck`（DSN 未設定なら終了コード 2 で、何も実行しない）。
 - 試験は `tools/reference-expected-state-concurrency`。
 - 確かめるのは一つの行と `READ COMMITTED` の範囲。分離水準の変更・実際の実行経路・性能は**確かめない**と明記。
+## 11. 四つの前提を持つ実行計画の確認（2026-11-06 追記）
+
+期間・効果・権限の停止条件を**すべて備えた**実行計画が、どれか一つでも欠ければ止まることを一つの試験で固定しました（`internal/execution/runplan_all_preconditions_test.go`）。
+
+| 欠けているもの | 結果 |
+| --- | --- |
+| 期間が閉じている（他は揃っている） | `blocked`（理由に "closed"）。step は呼ばれない |
+| 確定後効果を観測できない（期間は開） | `blocked`（理由に `s.order.stock`） |
+| 権限の付与が無い（期間は開、観測は可能） | `blocked`（理由に `db:5432`） |
+| すべて満たす | 実行して `completed` |
+
+四つを `CombinePreconditions` で合成し、どれか一つでも満たされなければ**実行しない**ことを示しています。**無人実行の前提は、期間の状態・確定後効果の観測性・権限の付与のすべて**です。
