@@ -324,6 +324,12 @@ Web Targetでは、process起動、任意filesystem access等のブラウザで�
 
 現時点では、根拠のない一律の数値目標を定めません。Referenceでは、少なくともcold / warm start、初期転送量、install / cache footprint、steady memory、Extension追加時の増分cost、resolver / evaluator overheadをTargetごとに観測できるようにします。
 
+Pluginの最適化候補（静的結合・不要実装除外・部分評価・処理融合・DataSourceへの処理委譲・並列化・キャッシュ・実行方式の差替え等）は、選択済みContractの型、NULL/欠損、順序、精度、時点、失敗/Unknown、副作用、Scope、現在の実行権限およびTarget制約を保持する必要があります。これらの保証を確認できない場合、性能上の推定利益だけで変換・Provider選択・自動fallbackを認めず、未適格または不明として扱います。とりわけ業務書込みの再順序化・再試行・並列化、権限Scopeを跨ぐキャッシュは明示的な契約と実証なしに適用してはいけません。
+
+最適化は、Contract/Provider選択と物理Build・配置・実行の決定を区別して扱い、元のSemantic/Logical Instance identityと、実際に消費したBuild入力、生成・ロードされたArtifact member、Invocation/Effectへの追跡を保持できなければなりません。配布Bundle内の未選択Providerの追加・更新が、選択済みTargetの実Build/ロードに影響しないことを目標にしますが、実Compiler・初期化登録・Embed等による暗黙依存は実測で確認する必要があります。全Targetに動的Loader、Scheduler、Plugin専用Hostを強制してはいけません。
+
+正当性のConformance、実Artifact/Target適格性、性能改善を**独立したGate**で検証できる必要があります。性能BudgetはTargetと代表Workloadに合わせて事前設定し、baselineと候補のexact Source/Contract/Provider/Toolchain、負荷、試行回数、cache状態、実行環境を区別して測定します。p50/p95等の応答分布、起動・Memory・転送/Network・CPU/費用と、正しく省略した再計算、誤再利用、無用な失効を必要に応じて比較し、測定・改善が確認されない抽象化や最適化は撤回・縮小できなければなりません。具体的な実現/受入の候補は[Plugin実現・最適化要件](../plan/design/PLUGIN_REALIZATION_AND_OPTIMIZATION_REQUIREMENTS_2026-11.md)に整理します。
+
 ## RQ-025 業務上の行為・手順をApplication Functionから独立して設計できること
 
 TEIは、業務をApplication内部の実行手順だけへ還元せず、何のための仕事か、何を契機に行われるか、誰／どの主体が担当するか、どこが手作業・外部作業か、どのApplication Functionをどう利用するかを設計・説明できなければなりません。
