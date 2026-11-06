@@ -236,7 +236,10 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 				}
 			}
 			var differences []command.Difference
-			appliedUnobserved := true
+			// Only a declared effect gives the check something to compare. For
+			// a command without one, an empty record list is "nothing to check",
+			// not "the executor could not say".
+			appliedUnobserved := plan.Effect != nil
 			if len(recorder.Records) > 0 {
 				last := recorder.Records[len(recorder.Records)-1]
 				differences = last.Differences

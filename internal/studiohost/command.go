@@ -115,7 +115,12 @@ func recordDifferences(records []command.OperationRecord) []command.Difference {
 }
 
 // recordAppliedUnobserved reports whether the executor said what it applied.
-func recordAppliedUnobserved(records []command.OperationRecord) bool {
+// A command that declares no effect has nothing to compare, so the absence of
+// records is not an unobserved difference check.
+func recordAppliedUnobserved(records []command.OperationRecord, effectDeclared bool) bool {
+	if !effectDeclared {
+		return false
+	}
 	if len(records) == 0 {
 		return true
 	}
@@ -189,6 +194,6 @@ func (h *ReadOnly) executeCommand(workspaceID, applicationID, patternID, capabil
 		Durability:        "none",
 		Records:           recorder.Records,
 		Differences:       recordDifferences(recorder.Records),
-		AppliedUnobserved: recordAppliedUnobserved(recorder.Records),
+		AppliedUnobserved: recordAppliedUnobserved(recorder.Records, plan.Effect != nil),
 	}}
 }
