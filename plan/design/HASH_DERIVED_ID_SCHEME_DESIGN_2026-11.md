@@ -208,3 +208,92 @@ Referenceの成功を製品機能の完成に昇格させず、次のように**
 - caller-pinned preflightでは`-expected-source-sha256`と`-expected-target-sha256`を必須にし、現在読み取った2ファイルのbyte Digestと比較する。最後にScheme/Source/Targetをもう一度読み、**観測可能な変更だけ**を検出する。ピンの正当な発行者、Accepted SourceのRevision、Target割当の全量・現在性、symlink競合・ABA、最終照合直後の更新を保証しない。成功時も`callerPinsMatched=true`、`authority=none`、`storageWrite=false`を併記し、`fresh=true`や`accepted=true`を与えない。
 - この段階で`AcceptPhysicalId`は実装しない。次に実Providerを選択するなら既存#2094の派生命名検証と共存し、独立した保存・認可・snapshotのfreshness/epochを実ConsumerのOwnerが検証する。
 
+
+
+## 9. 他レーンとの統合設計（2026-11-06、採用済み境界と候補を区別）
+
+この節は[Everything is Data #2619](https://github.com/hat47x/tei-platform/issues/2619)、
+[三視点Source正本 #1124](https://github.com/hat47x/tei-platform/issues/1124)、
+[Plugin Capability #951](https://github.com/hat47x/tei-platform/issues/951)、
+[生成器の実入力束縛 #2595](https://github.com/hat47x/tei-platform/issues/2595)、
+[版間Source対応 #2505](https://github.com/hat47x/tei-platform/issues/2505)、
+[Driver Scenario #1180](https://github.com/hat47x/tei-platform/issues/1180)、
+[Plugin self-build #943](https://github.com/hat47x/tei-platform/issues/943)を照合した**設計上の接合条件**である。各IssueのOwnerが未受理の意味・実行・資格をここで採用済みに変更しない。
+
+### 9.1 標準データ／型付きPipelineとしての位置づけ
+
+`HashIdScheme`と`TargetProfile`は、標準のRecord/集合/Relation/Graph構造上で読み書き可能な**宣言データの候補**である。意味づけは交換可能な解釈／Operation Pluginに担わせ、Kernelへ「汎用Hash ID」の特別分岐を足さない。GoとTypeScriptの現Referenceはこの考えを検証する独立実装であり、標準データ構造／Plugin Registryへの登録自体は**未実装**。
+
+| ノード／値 | 型と出自（候補） | 変更時に区別すべきもの |
+| --- | --- | --- |
+| `QualifiedSourceRef + SourceRevision + Scope` | 既存のSource/typed-reference責務。Identity Ownerが決定 | `source path`、`view ID`、Hash文字列には昇格不可 |
+| `CanonicalBytes + ReadEvidence` | 読込・正規化を行ったProviderが明示出力。v1はraw bytesのみ | Caller pin一致は`Source Accepted`や実Readerの同一Attempt保証ではない |
+| `HashIdScheme` | 正準`tei.hashid.scheme/v1`＋Provider/version（候補）。同一`schemeId`でも全パラメータを比較 | algorithm/outputBits/mode/alphabet順序/length/purpose/scopeの変化は互換とは限らない |
+| `HashDigest` | 入力frame＋暗号方式から導出したbyte列とbit長。表現Encodingから独立 | Plugin/Artifact/Scenario既存Fingerprintを置き換えない |
+| `HashIdText` | `encodedDigest`または`exactCharacters`由来のScheme付き物理表現 | 非可逆exact文字列をDigestに復号したとみなさない |
+| `TargetProfile + BindingsSnapshot` | Target Ownerに属する名前空間・照合規則・実割当候補 | Snapshotの全量性・時点・Owner権限は入力だけでは証明されない |
+| `PreflightDiagnostic` | 制約違反・衝突の非権威的Projection | `AcceptedPhysicalBinding`やDB Commitではない |
+
+処理の全体を次の**明示的な依存グラフ**として考える。実線はReferenceで機械的に実行可能な操作、破線は**別Ownerの接合が未実装**の操作を表す。Referenceから直接Productionへの隠れた経路は存在しない。
+
+```mermaid
+flowchart TD
+    A["Accepted Source / Qualified Ref / Revision（既存Owner、未接続）"]
+    B["Source Reader / immutable attempt（#1017/#2595、未接続）"]
+    C["Raw canonical bytes + Caller SHA-256 pin"]
+    D["HashIdScheme v1 Wire"]
+    E["Validate Scheme"]
+    F["Domain-separated Derive (SHA-256 / XOF)"]
+    G["HashDigest or HashIdText + Scheme"]
+    H["TargetProfile + physical Namespace"]
+    I["Allocation snapshot + Caller SHA-256 pin"]
+    J["Preflight / collision budget / diagnostics"]
+    K["Read-only projection: authority=none, storageWrite=false"]
+    L["Target Owner: current policy + unique Tx + permission（未実装）"]
+    M["Independent target readback / effect observation（未実装）"]
+    A -.-> B
+    B -.-> C
+    C --> F
+    D --> E
+    E --> F
+    F --> G
+    G --> J
+    H --> J
+    I --> J
+    J --> K
+    K -.-> L
+    L -.-> M
+```
+
+**注意**: 上図の`C`/`I`へのPinはCallerが供給したbyte一致の検査に限り、Source Reader／割当Snapshotの真正な取得を保証しない。`K→L`は自動昇格を示す矢印ではなく、独立したOwner受入Gateが必要であることを表す。APIが`L`を持たない限り、実保存は存在しない。
+
+### 9.2 Plugin／meta-generation／Targetとの組合せ
+
+- **Pluginインスタンスの合成**：将来`tei.std.hashId.*`を採用する場合、Scheme Validator／Generator Adapter／Encoder／Target Validatorを型付きOperationの別インスタンスとして構成する候補とする。複数Targetや複数Schemeを同時に使え、1つのグローバルSchemeを前提にしない。これらの名前は**管理名前空間の提案**であり、現時点のCanonical Capability IDや#951のProvider/Grantを生成しない。
+- **可視な生成パイプライン**：型付きData Operation→候補ID→TargetへのBinding Candidateという辺をGraph/表として列挙する。Generatorが内部で文字列を再ハッシュしたり、Scopeを補完したり、衝突時に自動salt・renameするような**隠れた処理を禁止**。汎用標準データ構造だけで表せないことが証明されるまで専用DSL／Core原語は追加しない（#2619/#2016）。
+- **自己ビルドと公開Plugin**：Source closure／Generator version／Build Definition／Artifact Digest／Lock／署名は#943/#951のまま。ハッシュ由来の短いファイル名・Registry locatorを出せても、それをartifact integrity、publisher identity、Capability IDや検証済フィンガープリントへ暗黙昇格させない。Plugin配布の識別規則変更は別Ownerの独立比較と移行Gateを要する。
+- **ETL/ELT・ファイルリレー・書籍出版**：バッチ出力名、転送ファイル名、PDF発行slugなどはTarget制約付き`HashIdText`の候補。ETLレコードの意味主キー、元ファイルのCheckSum、転送完了Receipt、PDFの内容Digestや署名は別値。画面系とバッチ系は共通Scheme Operationを使えても、実行TargetとObservation/失敗時再試行Policyを独立定義する。
+- **Studio／Scenario**：StudioはScheme、候補、衝突予算、Target制約、Source revisionと失効診断をgeneric Record/Table/Graphとして投影するConsumer候補。Runtime View ID/選択epochでHashIdTextを正本参照に逆解決しない（#1124）。Driver ScenarioのSSOTとCLI/E2Eの派生物・Observationを混同せず、Golden/negative fixtureもScenarioから再生成できるようにする（#1180、未接続）。
+
+### 9.3 Source変化／ABA／異Scopeの反証条件
+
+| 反例 | v1 read-onlyで判定可能なこと | 製品受入に不足する証拠・Owner |
+| --- | --- | --- |
+| 同じSource内容Aを改名・別Scopeで再使用 | `purpose/scope`を変えれば生成規則を分離できる | 同じ意味Subjectの継続性や改名の受理は#1120/#2505。Hash一致をID継続性にしない |
+| Source A→B→A（同じSHA-256へ戻る） | 同じbyte列のCaller Pinが一致することだけ | Source revision/selection epoch、Acceptance ledger、同一Attempt実Readerの独立証拠は#1124/#1017/#2595 |
+| Sourceの一部を検査、別byteをBuild/Interpreterへ渡す | CLIの読込byteに対するSHA-256だけ | 実Generator/Toolの消費byte、Executable・Source閉包は#2595。Hash CLIから推定しない |
+| SnapshotをPinした後に別プロセスがIDを確保する | 既存Snapshot内の重複・衝突は検出できる | Target Ownerの最新read／一意制約／Transaction／再試行／readback（W3）。Reader Pinでは保証不能 |
+| 同一文字列で別Scheme／Target collationが異なる | Scheme全体とTargetProfileVersionを静的比較する | 実DB/OSのcollation、Unicode・case・予約規則の適格性とOwner宣言 |
+| Plugin/Artifact/Scenario Digestを短いIDで置換する | 提案段階で責務違反を診断できる | 既存#943/#951/#1180のFingerprintと署名の非回帰試験。未実施の移行は拒否 |
+
+### 9.4 Fit/Gapと後続の優先順（製品採用前）
+
+| 順 | Gap／最小証拠 | 現行主担当との関係 |
+| --- | --- | --- |
+| P0 | Scheme／Generator／Target Snapshotの局所不変条件（重複した旧割当を含む）をGo・Node・TypeScript Goldenと負例で固定 | #2814 Draft内Reference。独立Output Oracleを維持 |
+| P0 | Source Identity/Revision/Scopeと実Consumerが**同一Attempt**で読んだbyte列を結び付ける。A→B→Aと異Scopeを必須負例にする | #1017/#1124/#2595を再利用。別Source ReaderやAcceptance Engineは作らない |
+| P1 | Target Providerの現行Collation・既存割当・競合と実物理一意制約を検証、Owner Authorityと独立readbackを分ける | #2094を利用しW3を独立Gateへ。SQLite単一接続の合成試験を一般化しない |
+| P1 | Script-first Studio／Headless Scenarioの同Scheme・同結果を投影し、TypeScriptの実Providerを独立検査 | #2619/#1124/#1180。表示の成否をSource Acceptanceへ昇格しない |
+| P2 | バッチ・セルフビルド・Registry・公開物での必要性とコスト／効果を実測してから標準Plugin/Schemaを採否判断 | #943/#951/#2016。Coreに必須機能を導入しない |
+
+**採用判定**: `HashIdScheme`は現在もDesign/Reference。初期成功条件は「1つの実Consumerで、Source revisionとTarget権限を偽らずに同じ結果を再現できるか」であり、「全プロダクトのIDを統一すること」ではない。実Target保存・Semantic Acceptance・既存Digest移行はOwner判断を伴う別作業のまま維持する。
