@@ -35,7 +35,7 @@ func bootstrapExpectedStops(t *testing.T) map[string]string {
 		t.Fatal(err)
 	}
 	if fixture.Status != "INDEPENDENT_EXPECTED_NOT_OWNER_ACCEPTED" {
-		t.Fatalf("expected design-only fixture status, got %q", fixture.Status)
+		t.Fatalf("expected independent Expected fixture status, got %q", fixture.Status)
 	}
 	result := make(map[string]string, len(fixture.Cases))
 	for _, c := range fixture.Cases {
