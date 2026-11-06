@@ -493,24 +493,24 @@ TEIの設計へ反映する観点：
 **今回の変更状態**：文献再読・現行Issue照合によるドキュメントDraft更新のみ。RES-01〜07、A/B/C1/C2の比較、新たな同一Attempt製品E2E、二Host/二Provider実測、Ownerの採用・意味受理は NOT RUN。#3017の限定Mutant kill、#2853の実PG限定観測、#2747の参照実行を合算して製品資格にしない。PR #3022はreview用Draftを維持し、main統合／Gate合格を主張しない。
 
 
-### 10.11 実装済みCompletionClaimへの研究知見接続（2026-11-06：現行mainの静的Source確認、実試験は未実施）
+### 10.11 実装済みCompletionClaimへの研究知見接続（2026-11-06の検討、CQ-02は#3051で修正済み）
 
 [M4Bench arXiv:2610.37459v1](https://arxiv.org/html/2610.37459v1) の行集合誤り、[Verification Agents arXiv:2611.02285v1](https://arxiv.org/html/2611.02285v1) のvacuityとwitnessの問題を、[main内のcompletion.go](https://github.com/hat47x/tei-platform/blob/main/internal/semantic/completion.go) と [#2926](https://github.com/hat47x/tei-platform/pull/2926)（統合済み）、[空集合のOwner判断](https://github.com/hat47x/tei-platform/blob/main/plan/research/EMPTY_SET_COMPLETION_SEMANTICS_2026-11.md) へ直接接続する。**新Completion Engine／Proof IRは不要**。
 
 **現行Sourceの限定事実**：EvaluateCompletionは観測TargetResult、呼出側指定Coverage（complete/partial/unestablished）、EmptyJustified、HandoffConfirmed、Conflictingを入力し、holds/fails/unverified/contradictionを返す。Ownerが定義するL（対象集合）の実Provider取得、範囲、時点や行帰属の証明はこの関数では行わない。CoverageCompleteやEmptyJustifiedを引数に設定できること自体は、当該範囲の全件を観測した証明ではない。
 
-以下は**コード分岐の静的読解から導いた判別Fixture候補**であり、新たなGoテストやOwner意味受理は未実施。現行動作を挙げた行も「既に不具合確定」とはしない。
+以下は当時の静的分析で導いた判別Fixture候補。その後CQ-02は[#3051](https://github.com/hat47x/tei-platform/pull/3051)でmain修正・同HEADのGo/CI成功まで確認された。CQ-01/03〜06の追加実Provider試験・Owner意味受理は未実施。
 
 | ID | 一つだけ変える入力・状況 | 現行の分岐／独立Expectedで検討すること | Owner |
 | --- | --- | --- | --- |
 | CQ-01 | 完全0件と、ページ0件・RLS制限の0件・Replica遅延を対照 | 誤ってCoverageCompleteを供給すると空のallow条件がholdsとなり得る。対象L、Filter、Scope、Provider、時点とReader完了を独立に確認する | #2506/#2622/#1706 |
-| CQ-02 | Targetsが空、CoverageUnestablished、EmptyPolicyDeny | 現行コードの空分岐はCoverageを確認せずfailsを返す。**実Lが空と判明していない状況でも確定的失敗と言ってよいか**をOwnerに照会。実行を許可しないことと、業務の不成立を証明することは別 | #267/#2514 |
+| CQ-02 | Targetsが空、CoverageUnestablished、EmptyPolicyDeny | **main #3051で修正済み**：観測0件＋Coverage未確立/部分はunverified、CoverageCompleteで空が確定しEmptyPolicyDenyならfails。対象内の確実な違反は部分取得でもfails。CoverageCompleteの真正性は呼出側に残る | #267/#2514/#1163 |
 | CQ-03 | Handoff類型、Targets空、EmptyJustified真、CoverageComplete、HandoffConfirmed偽 | 現行コードは空のrequires-evidence分岐でholdsへ進み、後段のHandoffConfirmed判定を通らない。**対象0件で手作業確認は非適用なのか、それでも必要なのか**を業務手順のOwnerが決める | #1125/#267 |
 | CQ-04 | existence類型で、観測1件Holds真だがCoveragePartial、または観測1件Holds偽でCoveragePartial | 現行非空分岐は全対象成立型。前者unverified、後者failsとなる。**存在条件の個別行Pと完了述語全体を単純に同一視しない**。実Pが存在命題そのものなら入力Mappingの正当性を説明する | #267/#2514 |
 | CQ-05 | 別Tenant/時点/部分Readerに由来するEmptyJustified真、または矛盾するがConflicting偽 | Bool引数だけで実Source同一性や実矛盾集合は検査されない。Evidenceの発行者・Reader資格・同一Scope/Version/Principalを同一Attemptで追跡する | #1163/#2389/#2516 |
 | CQ-06 | 組織Membershipが遡及訂正され、同じ行値でも有効期間と観測時点が変わる | 旧CoverageCompleteと旧holdsを新しいL/現在Grantへ転用しない。業務時間と実Host認可時点を独立に管理する | #2389/#2600/#1174 |
 
-**最小検証順**：まずCQ-01〜05を既存#2926試験と#2514独立Expectedに対して同一の固定Fixtureで確認し、現実装とOwner期待の差を分類。その次に#2506のFunction Data Context→実Provider Read→Rの被覆証拠→Completion評価→#1163の同一Attempt/Consumerを連結。CQ-06は組織レーンの既存Fixtureを利用し、必要な書込み試行にだけ#2598/#1174の現在Grant/Effect/Receiptを接続する。CompletionHoldsをProvider Commit済み・正当な承認・業務全体の完了と同一視しない。
+**最小検証順**：まず#3051のCQ-02修正後のfocused Go/CIを基線とし、CQ-01/03〜05は既存#2514の独立期待値を同一固定Fixtureへ割り当て、現実装とOwner期待の差を分類。その次に#2506のFunction Data Context→実Provider Read→Rの被覆証拠→Completion評価→#1163の同一Attempt/Consumerを連結。CQ-06は組織レーンの既存Fixtureを利用し、必要な書込み試行にだけ#2598/#1174の現在Grant/Effect/Receiptを接続する。CompletionHoldsをProvider Commit済み・正当な承認・業務全体の完了と同一視しない。
 
 ### 10.12 Meaning受理と実Grantの2×2：研究計画への接合だけ行う
 
@@ -573,7 +573,7 @@ M未受理・G許可でもMeaningを採用しない。M受理済み・G拒否な
 
 **実証済みの進展とClaim ceiling**：[PR #3031](https://github.com/hat47x/tei-platform/pull/3031)（Draft、exact HEAD 63953ccb5c12ead26ec1268e7c0afdba4eff66ae）は、現Loaderで未対応の *.tei.md がmanaged sourceに現れる場合に「黙って読まずvalidate成功」とする代わりに TEI_MD_PARSER_UNBOUND で停止する暫定処理を実装。直接確認した[専用CI #42217379093](https://github.com/hat47x/tei-platform/actions/runs/42217379093)は completed/success。該当HEADに対するRepository Health・Workspace/Studio・Wails smoke・self-build・vulnerability等のWorkflowも completed/success。**これは特定HEADでのfail-closedガードと既存回帰の証拠であって、新 *.tei.md のParser適合／正式Source読込／Meaning受理の証拠ではない**。PRはmain未統合。
 
-**移行計画の暫定参照先（#2667との所有矛盾は§10.19）**：[Draft #3030](https://github.com/hat47x/tei-platform/pull/3030) の M0〜M6／TM-01〜14 を引き継ぐ。研究Draft #3022のMDT-01〜08は「研究から導いた判別観点」として残し、別の移行正本・第二Fixture実装を作らない。すでに段階設計と具体的な負例が#3030/#3031/#2621/#2823にあるため、追加すべきなのは**どの実行結果から何を言ってよいか**の資格境界である。
+**移行検収の主担当（#3030後続訂正済み、§10.19参照）**：[Draft #3030](https://github.com/hat47x/tei-platform/pull/3030) の M0〜M6／TM-01〜14 を引き継ぐ。研究Draft #3022のMDT-01〜08は「研究から導いた判別観点」として残し、別の移行正本・第二Fixture実装を作らない。すでに段階設計と具体的な負例が#3030/#3031/#2621/#2823にあるため、追加すべきなのは**どの実行結果から何を言ってよいか**の資格境界である。
 
 | 段階 | 最低限の観測 | 現状と不足する資格 |
 | --- | --- | --- |
@@ -602,24 +602,39 @@ M未受理・G許可でもMeaningを採用しない。M受理済み・G拒否な
 | --- | --- | --- | --- |
 | **DSL Bootstrap**（#988） | 同じParser Pin/Sourceと契約版が合えば、実Callback到達・候補生成が確認できる | 同じSourceでPin／Fingerprint／Manifest版を一要因変え、適切に停止・旧結果を保持 | [Draft #3028](https://github.com/hat47x/tei-platform/pull/3028)はBS-02/03/06に正負対照を追加し、HEAD aa51946a の[Repository Health #42240218716](https://github.com/hat47x/tei-platform/actions/runs/42240218716)成功。実Plugin世代切替・クラッシュ回復・新 *.tei.md Parserは未実証 |
 | **TEI Markdown**（#3030/#2823/#2621） | 実選択された新形式の元byte/Span/RoleをReader→Parser→実消費先まで保持 | 不明Parserなら明示拒否、旧 .tei と二重Subject／未読込Source／未対応Roleを成功扱いしない | [Draft #3031](https://github.com/hat47x/tei-platform/pull/3031)は後者の一部だけ局所CI成功。前者の正常受理と旧新意味同等はNOT RUN |
-| **Completion**（#267/#2514） | 全件性が独立に裏付けられたL、P成立、業務別EmptyPolicyが整合する | 部分集合、0行未取得、別Scope証拠、Handoff未確認、矛盾を混ぜて誤完了を検出 | main #2926の評価関数は既存。呼出側が供給したCoverage/EmptyJustifiedの真正性は自動検査しない。CQ-01〜06は提案のみ |
+| **Completion**（#267/#2514） | 全件性が独立に裏付けられたL、P成立、業務別EmptyPolicyが整合する | 部分集合、0行未取得、別Scope証拠、Handoff未確認、矛盾を混ぜて誤完了を検出 | main #2926に加え#3051で未観測0件の誤ったfailsを修正し、Focused Go/CI成功。呼出側Coverage/EmptyJustifiedの実Provider由来は未検証。CQ-01/03〜06は提案のみ |
 | **Command Authorization**（#1174/#2598） | 当該主体・Action・Resourceの現在Grantで、正しいTargetだけExecutorへ到達 | 付与なし、無効なRule、同形の別Tenant/Resource、Grant失効で意図せずExecしない | [main #3037](https://github.com/hat47x/tei-platform/pull/3037)で参照Authorizerの3試験を記録。許可・拒否・判定不能を分離。ただし実Grant正本とEpochReader、本番Contextは未接続 |
 | **Runtime DB decision**（#1174/#1119） | open period＋covering Grantで実更新、読み取りで対象結果を確認 | closed period、観測不能Effect、重複Run、missing Grantで書込み前停止 | [main #3032](https://github.com/hat47x/tei-platform/pull/3032)の[実PostgreSQL Actions #42235336807](https://github.com/hat47x/tei-platform/actions/runs/42235336807)はsix named testsすべて実PASS、SKIP無し。局所Reference判定の証拠であり、署名付きGrant・実運用Provider/全業務E2Eは未達 |
 
 **二つの否定的な誤りを別に測定**：false qualification（不足証拠を合格扱い）と false rejection/false invalidation（適格な対象を不必要に拒否・失効）。テストの総合Greenと判別力は別。業務意味・Current Grant・Source実消費・実Provider・独立Consumerが必要なClaimでは、限定Go/CI成功をそのまま製品資格へ昇格しない。期待値は実装やAgentの予測から生成せず、契約と独立したFixture起点で先に固定する。
 
-### 10.18 現在資格の継承境界：Studioの後着応答とHost Effectの分離
+### 10.18 現在資格の継承境界：Studio後着と実Host Effectを混同しない（追跡更新）
 
-[Draft #3036](https://github.com/hat47x/tei-platform/pull/3036)は、実main.jsにおけるCommand/View/Workbenchの旧非同期応答と旧finallyが、現在Workspaceの表示・Button状態を上書きしないようにするConsumer修正。旧HEAD a8efd8ec の[専用Node CI #42240576368](https://github.com/hat47x/tei-platform/actions/runs/42240576368)は成功、しかし同HEADの[Repository Health #42240577153](https://github.com/hat47x/tei-platform/actions/runs/42240577153)は**失敗**。ログの直接確認で、Go testはPASS、失敗は新Workflow内の unpinned checkout/setup-node Actions をRepository契約が拒否したものだった。新HEAD 992feb48 の[専用Node CI #42255903173](https://github.com/hat47x/tei-platform/actions/runs/42255903173)は成功、Repository Health/実Wails関連は照合時in_progress。旧HEADの失敗と新HEADの成功・未完了を混ぜない。
+[Draft #3036](https://github.com/hat47x/tei-platform/pull/3036)の最新確認HEAD **edec00b82c165fd9037d8cbb9a55c049a5af82f0**に対して、[専用Node回帰 #42257061560](https://github.com/hat47x/tei-platform/actions/runs/42257061560)、[Repository Health #42257061446](https://github.com/hat47x/tei-platform/actions/runs/42257061446)、[Windows WebView2 smoke #42257061651](https://github.com/hat47x/tei-platform/actions/runs/42257061651)はいずれもcompleted/success。旧HEADのWorkflow SHA pin違反によるHealth失敗は修正された。PRはDraftで、main追従時の統合可能性や新HEADによる正式WebView検収を推測しない。
 
-**Consumerの現在資格 ≠ Providerの過去のEffect**。旧Promiseの画面反映を抑止しても、Host RPC送出後に生じたDB Effectは巻き戻されない。逆に実Provider Receiptが履歴上committedでも、新Workspace/現在開示Policyに表示する資格は別判断。Selection epochはUI競合を解消するための資格であり、正式OperationID/Idempotency Keyの代用ではない。低権限Clientに内部Grantの存在／Secret Source数を漏らさず、過去AttemptのResultを現在Targetへ継承させない。#1824と#2598/#1174/#2516へ既存Scenarioを紐づけるだけとする。
+**別UI・別資格**：旧応答/旧finallyの競合を実main.js＋Node模擬DOMで試したのはBootstrap側。Windows Desktop初期経路は **/workbench/** であり、上記Desktop smokeは既存read-onlyであってBootstrap Command/Plan/Executeの実WebView2試験ではない。Workbenchには別のcreateResponseScope/workspaceEpochがあるので、#1824/#1124の担当で実Catalog/Inspect/Validate後着とDOM/ARIA・現在Disclosureを照合する。新UI Scope/Hostを重複導入しない。
 
-### 10.19 移行の唯一の検収正本と現存する計画間矛盾を明示
+**Consumer資格 ≠ Effect資格**：古い画面応答を捨てても、実Hostに送出した書込みは取消しにならない。過去OperationのReceipt/Commit成功だけでは現在Workspaceに表示できない。Selection epochは画面応答の採否、OperationID/Idempotency Keyは実Effectの同一性を扱い、互いの代用にしない。#2598/#1174/#2516と同一Attemptで検証する必要は残る。
 
-#3030 と #2667 の二つのDraftには、**所有者を互いへ委ねる矛盾**が残っている。現時点の [#2667移行メモ §6](https://github.com/hat47x/tei-platform/blob/docs/everything-data-real-evidence-cut-20261103/plan/design/TEI_MARKDOWN_SOURCE_MIGRATION_2026-11.md) は「移行の主担当＝#3030、TM-01〜14へ一本化」と記し、一方 [#3030の冒頭](https://github.com/hat47x/tei-platform/blob/docs/tei-md-unified-source-migration-20261106/plan/design/TEI_MD_UNIFIED_AUTHORING_MIGRATION_2026-11.md) は「移行の検収正本＝#2667、TMD-01〜12」と記す。両方をそのまま正本だと扱わず、#2621のOwnerに一意の選択を委ねる。
+### 10.19 移行検収の単一正本：旧矛盾は後続の記録で訂正済み
 
-**本研究レーンの暫定解決提案**：移行の実際のM0〜M6/旧新の互換とFixture番号は専門Draft #3030のTM-01〜14を一次参照とし、#2667をEverything is Data横断上の依存・差分・Owner受渡しとする（#2667後半§6の記載に整合）。#3030冒頭との逆参照は未決衝突として残し、Owner確認・重複整理まで二種類の移行Gate/Fixtureを同時採用しない。#3022のMDTは研究上の反証一覧であって第三のMigration SSOTにならない。
+初期の[Draft #3030](https://github.com/hat47x/tei-platform/pull/3030)と[Draft #2667](https://github.com/hat47x/tei-platform/pull/2667)は互いを移行の主担当に指定していた。しかし2026-11-07の更新で**#3030をAuthoring移行仕様・検収の正本（M0〜M6/TM-01〜14）、#2667を横断差分・履歴・Owner受渡し**とする整理が、双方の後続記録および#2621に反映された。過去の逆参照は履歴であり、現時点で新たなOwner決定待ちの矛盾として扱わない。#3022のMDT-01〜08も第三の移行Gateにはせず研究上の判別観点にとどめる。
 
-**用語統一**：[Issue #3039](https://github.com/hat47x/tei-platform/issues/3039) と[main統合 PR #3040](https://github.com/hat47x/tei-platform/pull/3040)に合わせ、本研究文書中のテスト判定に関する旧表記を「独立検証基準」「独立期待値」「検証基準の判別力」等へ修正した。RDBMSのOracle Databaseと混同せず、既存API識別子・過去の実行ログは改名しない。
+**未解決なのは責任分担ではなく実証**：現在の#3031ガードはmanaged Root内の未対応 *.tei.md を拒否するが、非管理Raw Draftの保存と必須Sourceの読込みは異なる用途。暗黙のSource除外や旧形式fallbackでvalidateを見かけ上PASSさせず、managed/selected/read/parsed/actual build consumedを明示的に区別する。Markdown形式・Role/Source span・旧新同等性・Studio/SHO Editor/Provider E2EはNOT RUN。試験対象は#3030 TM、#2514独立検証基準の既存Fixtureに戻す。
 
-**次の優先**：①#3030/#2667所有の一意化、②既存公開の旧 .tei Case/独立期待値で、#3031拒否→新Readerの正例/負例→Source/Role/Build実消費を接続、③同じTargetSet LのCompletionと実Provider/Readerの全件性を検証、④実Host Grant/Receipt/現在Consumerを同一Attemptに束縛する。研究の新Test Runnerや過剰なProof Registryは追加しない。新TEI Markdown本格Reader/Writer、完全E2E、Owner正式受理はNOT RUN。#1119のCritical Pathや既存Gateを無断変更しない。
+**用語**：[Issue #3039](https://github.com/hat47x/tei-platform/issues/3039) とmain統合[#3040](https://github.com/hat47x/tei-platform/pull/3040)の規約に従い、テスト判定は「独立検証基準」「独立期待値」「検証基準の判別力」。Oracle DatabaseはRDBMSの名称としてのみ使用し、実装API識別子・過去Receiptは機械的に変更しない。
+
+### 10.20 Provider全件性の偽証に対する独立判別試験（研究からの成熟差分、NOT RUN）
+
+#3051で、未観測の空集合をfailsとする局所問題は解決した。しかし**実Readが部分集合Rなのに呼出側がCoverageCompleteと自己申告すれば、EvaluateCompletionはその入力を前提にholdsを返し得る**。これは評価器のバグと即断せず、Provider/Function Data ContextからCompletionEvidenceへ変換する境界の責務として検査する。M4Benchの対象Key集合評価、Verification Agentsの空虚な成功・独立witnessと接続する具体的な次の一手は、既存#2506/#2514/#1163の同一Fixtureに限定した偽完全性の負例である。
+
+| 同一合成Owner対象L={D1,D2}に対するRead | 渡してはいけないClaim | 独立検証基準と観測 |
+| --- | --- | --- |
+| R={D1}, Providerのページ終端未確認、D1はPを満たす | CoverageComplete／全件完了 | **unverified**。Lの独立Required定義、Request filter/scope、ページ継続/Reader終了、Row identity・Revisionの一致を別観測 |
+| R={D1,D2}, 一つの同一Read cohortで全件を確認、両方P成立 | 取得範囲の裏付けなしに完了宣言 | Providerがcompleteを保証し実観測を照合できた場合だけCompletionHolds候補。単に2件見えたことは完全性を証明しない |
+| R={D1}, D1は明白にP違反 | 完了または単なる未取得によるunknown | 該当Target/Predicateの出典が現在有効なら、未取得D2があっても**fails**。既知反例の証拠は維持 |
+| R=空、RLS／Tenant／選択違いによる見かけ上0件 | L=空・業務不存在・完了 | **unverified/開示可能範囲で0件**。非開示の実件数を漏らさず現在の権限とScope相対にする |
+
+**先に固定するもの**：Owner対象集合Lの定義・Predicate/EmptyPolicyと版、合成DB Fixtureの真の行ID、想定Query/Scope、独立期待値。**実際に取得するもの**：Selected Source/Parser/Function/Query/Provider実Binding、実Read RequestとResult Slice、ページ終端・Snapshot/Revisionが保証される範囲、受取Consumer。行数やProviderの自己申告からLを再定義しない。全Providerに同一Snapshot機能を強制せず、整合したRead cohortが立証できない場合はunknownを保持する。
+
+**配置**：#2514は独立期待値とfalse complete Mutantの判別力、#2506/#2622はData ContextとRead witness、#1163はSource/Target/Attempt/Consumerの同一性、#267/#1125は業務EmptyPolicyの意味、#2600は版変更時の再資格化。新完成判定器や認可Engineは作らない。最初は**read-only**でProvider取得の同一性を確かめ、書込みは別の既存#1174 Command/PG/Receipt契約で実証する。新試験・本番Provider・業務Ownerの受理はNOT RUN。
