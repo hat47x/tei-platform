@@ -487,3 +487,17 @@ G1〜G5で各観測は取得時点が異なる。要求するのは**同一瞬�
 
 **状態**：#2902はGoコード＋合成Unit TestのDraftであり、Provider実History reader/失敗注入・実DB Migration・本番旧Client/SHO Consumer・Owner受理はNOT RUN。History sourceの完全性と鮮度を検証する公的契約は未決。`CompareHistory`の返却エラー方針の既存利用先への影響もレビュー対象。
 
+### 19.6 同一HEADの統合検証専用DraftとClaim ceiling（2026-11-06）
+
+[**Draft PR #3018（検証専用・merge禁止）**](https://github.com/hat47x/tei-platform/pull/3018)を作成し、#2887のMG-01〜29計画・Go特性テストを基線に、[#2900](https://github.com/hat47x/tei-platform/pull/2900)（Releaseの二重last-wins拒否）と[#2902](https://github.com/hat47x/tei-platform/pull/2902)（Migration Historyのunknown拒否）を**実際の同一Git tree**へ取り込んだ。#2887の旧挙動を再現するMG-29a/bは**順序に依存せず`Unknown`へ拒否する安全Expected**に変更。MG-29cの`ObservedAt`が古くても構造的に`Compatible`という局所特性は残し、現在Gate資格の別観測を引き続き必要とする。
+
+| 資格 | #3018で確認する対象 | **対象外・禁止する昇格** |
+| --- | --- | --- |
+| **Source composition** | #2887 \`321bbfea\` を基点に、#2900 \`dcb21e9\`（2ファイル）と#2902 \`adfdd2d\`（2ファイル）を組み合わせ、MG-29a/bの期待値を安全仕様へ更新 | 異なるPRのCI成功の合算、後から変更された各枝を同一版と偽ること |
+| **Go・Workspace conformance** | この**exact head**のGo test/vet/gofmt/参照Workspace。重複DB/Contract、unknown History、旧新Releaseの既存Expectedが同時に成立すること | 合成Go fixtureのsuccessを実Provider・実Client/CDC・業務意味Acceptedへ昇格しない |
+| **Runtime・Owner** | 未観測/未実施の項目をRequired/Undischargedに残し、実DB独立Read/Writer Fence/Receipt/Retention等の停止条件を明記 | Sourceの構造互換・RepoAppliedの一部成功をCutover/Contract完了へ変換しない |
+
+**合流選択**：#3018は製品PRではなく**統合適合診断専用**。#2900/#2902の個別レビュー・必要な修正と#2887の期待値改訂が受理された後、Ownerがmainへの正式な統合経路と順序を決める。#3018を先にmergeしたり、他ブランチをforce/rebaseしたりしない。最新CIは**そのexact head結果が確認されるまで未確定**であり、本節をもって正式Gate/Owner/実DB資格を主張しない。
+
+**残余**：HIST-03のHistory Adapterからの取得失敗→偽空入力、HIST-02 checksum欠落のProvider別許容、旧新Client・月次Batch・CDC/Sourceの網羅、MG-24の安全停止と現Grant/Effect/Receipt、過去時点History/SHO参照、物理削除Owner受理。新Gate Engine/Registry/Hostは作らない。
+
