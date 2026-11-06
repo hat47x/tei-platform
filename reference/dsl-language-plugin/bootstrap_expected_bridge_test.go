@@ -175,7 +175,7 @@ func TestBootstrapSameSourcePinnedLanguageThenOperator(t *testing.T) {
 	language := Selection{
 		LanguageID: "dsl.pipeline", ContractVersion: "1",
 		ContractFingerprint: "contract-pipeline-v1",
-		ImplementationID: "reference-parser-A", ImplementationFingerprint: "impl-A",
+		ImplementationID:    "reference-parser-A", ImplementationFingerprint: "impl-A",
 	}
 	operator := OperatorContract{
 		ID: "std.sum", Version: "1", Fingerprint: "operator-contract-1",
