@@ -53,3 +53,23 @@ capability create_line {
     outcome created sales.order_line
     effect create sales.order_line
 }
+data Payment {
+    attribute paymentId type std.identifier display "支払"
+    attribute orderId type std.identifier display "受注"
+    relation order to sales.order one on-delete restrict
+        key sales.payment.order_id -> sales.order.order_id
+}
+
+capability create_payment {
+    input payment_id std.identifier
+    input order_id std.identifier
+    outcome created sales.payment
+    effect create sales.payment
+}
+
+capability delete_payment {
+    input payment_id std.identifier
+    input order_id std.identifier
+    outcome deleted sales.payment
+    effect delete sales.payment
+}
