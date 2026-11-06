@@ -3161,3 +3161,42 @@ Org D1→D2の責任継承、Tenant A→Bの切替、Provider DB/Region移設は
 **撤回線**：この条件に固有の障害を実Reader/独立Expectedで検出できない場合、共通Core Contractの追加提案を止め、局所Provider/Consumer試験に縮退する。#1119 Critical Pathは変更なし。
 
 **証拠資格**：本節はdocs-only。PR #3016はテストコード登録済み・未実行／Draft。ORG-NA-01〜08の新Go/実PG/Host/GUI/Egress E2E、組織Caseの実Product Read、Ownerの正式意味受理はNOT RUN。mainと採用済みADRは変更しない。
+
+## 74. 商用高度組織製品のRequirement Probe：Workday/SAP/Oracle/Dynamics/ServiceNow/Orgvueとの充足差分（2026-11-06、採用前）
+
+**調査正本**：[高度組織を扱う商用製品の要求比較とTEI適合性監査](../research/COMMERCIAL_ORGANIZATION_PLATFORM_REQUIREMENTS_2026-11.md)。2026-11-06現在、各社公式資料・ヘルプ／リリースノートを直接確認した。商用製品の内部実装を推測せず、要求/適用条件とTEIの設計候補/合成Reference/実製品Evidenceを別に記録した。
+
+### 74.1 製品から抽出した共通の設計圧力
+
+| 直接確認した製品・一次仕様 | TEIの一般化すべき要件 | 固定してはいけない誤った一般化 |
+| --- | --- | --- |
+| [Workday HCM: Superior/Subordinate](https://doc.workday.com/admin-guide/en-us/manage-workday/organizations/manage-organization-concepts/concept--superior-and-subordinate-organizations.html)、[Business Process](https://doc.workday.com/workday-education/en-us/course-manuals/hcm-core-supplemental-for-administrators/advanced-business-process-configurations.html) | Supervisoryの単一親と他のMatrix/Custom Role、組織別・条件付き承認の合成 | すべてのRelationはTree、一つのManagerからすべての業務権限が継承される |
+| [SAP SuccessFactors: Matrix](https://help.sap.com/docs/successfactors-employee-central/implementing-position-management/synchronization-between-matrix-relationships-and-job-relationships)、[複数Incumbent](https://help.sap.com/docs/successfactors-employee-central/implementing-position-management/positions-that-allow-multiple-incumbents) | Person/Employment/Manager Role/Position/Occupancyの別Identity・Role別多重度 | Position=Person、ひとりの上司、一職位一人が標準不変条件 |
+| [Oracle HCM: Assignments](https://docs.oracle.com/en/cloud/saas/human-resources/fawhr/assignments.html)、[同日更新](https://docs.oracle.com/en/cloud/saas/human-resources/faucf/how-you-make-multiple-updates-to-date-effective-objects-in-one.html) | 雇用関係/複数Assignment/法人間移動、Date effectiveのUpdate/Correction/同日SequenceとSource History coverage | 同一valid dateの変更は常に1件、訂正がSourceの当時値を必ず保存 |
+| [Dynamics 365: Org hierarchy](https://learn.microsoft.com/en-us/dynamics365/fin-ops-core/fin-ops/organization-administration/organizations-organizational-hierarchies)、[Dataverse BU](https://learn.microsoft.com/en-us/power-platform/admin/modernized-business-units-security) | 法人/事業単位/Team、用途別Hierarchy、Record Owner・Owning BU・User BU・Security Roleの独立 | 上下関係・所属だけでRecord Owner/Current Grantも変化する |
+| [ServiceNow: Domain hierarchies](https://www.servicenow.com/docs/r/ja-JP/platform-security/bp-domain-sep-hierarchies.html) | Domain Parent-child、Contains（Data）、Visibility、Business Processの適用Scope、Private/Global/Default placementの個別強制 | Org ParentがTenant ACL、Dataの可視性がProcess実行権限、全機能が同じDomain分離保証 |
+| [Workday Adaptive Planning 2026R1](https://doc.workday.com/adaptive-planning/ja-jp/what-s-new/-/2026r1-/2026r1-planning-for-hcm-and-financials/org-design-and-scenario-modeling.html)、[Orgvue](https://www.orgvue.com/platform/) | What-if/合意/Publish/実Effect/Actualの独立、Headcount/FTE/Cost/Span/Layersの対象・粒度・時点 | Previewが実HCMを変更した、数値が変化しないのは万事実証済み |
+
+**比較判定**：調査で列挙したCP-01〜18のすべてに既存のTEI Data/Relation/Business/Query/Rule/Plugin契約から**モデル化候補**がある。しかし正式にAcceptedである、または実Provider/実Function/実認可/実Targetで商用製品相当の動作を保証したものはない。Syntheticの組織Reference（#2596、#2510）、Native E1（#2681）、Tenant File Reference（#2052）と局所SQL（#1656）はそれぞれ局所証拠であり、単純加算して統合E2/E4成功にしない。
+
+### 74.2 設計に加えるべき成熟した横断条件
+
+- **Relation Purpose / Cardinality**：Supervisory/Matrix/Position/Occupancy/Finance/Procurement/Org Ownership/Tenant Visibilityを同じ標準Relationship表現で記述できても、各Roleの上限/循環/履歴/権限連動はOwnerが意味として採用したルールだけ適用する。最小Treeを拡張したために通常Graphを不可としない。
+- **Person/Employment/Assignment/Positionの同一性**：Person P2が複数雇用と複数Assignmentを持つとき、各Employment/Position Occupancy/Manager relationship/Org Membershipは別Occurrence。ローカル異動でAssignment ID維持、グローバル移動で別Work Relationshipなどの相違はBusiness ActionとSource対応を根拠にする。標準化のため全案件へ専用HRテーブルを強制しない。
+- **時間操作の明示**：validAt/knownAt/公開版/実行時点を保つ。OracleのCorrection・同日更新Sequenceから、既存Sourceが**持っていない中間の履歴**はTEIが復元できない反例を追加。Provider Rawへの変更と、TEIのOwner受理・Source Revisionを混同しない。
+- **業務上の所属≠現行Data Grant**：DataverseがUser BUとOwning BUを別にでき、ServiceNow DomainがDataとProcess適用を区別することを補助反例とする。通常Org Dataに特殊ACLを一律付与せず、Tenant/保護Resource/外部開示へ明示されたScopeだけCurrent Provider/Hostで強制。
+- **組織設計の本番非作用**：What-if/計画版、承認候補、Accepted Published Structure、Provider Effect、後続Actualの独立性を強化。計算したHeadcount/FTE/Cost等は対象Grain・Units・Scope・Complete・Join重複/非出力依存の証拠がある範囲だけ確定する。
+
+これらは**既存のTEI標準DataとRole/Plugin/Provider上で構成可能かを検証すべき要件**であり、Workday/SAP/Dynamics/ServiceNowの固有Enum、DB Schema、固定Tenant階層、特定の認証・Workflow HostのCore内蔵を承認するものではない（ADR-0036/0043/0044）。
+
+### 74.3 実証の優先順位・Owner・未完了
+
+| Gate | 要求の代表ケース | 既存の責任とStop |
+| --- | --- | --- |
+| **P0 意味の反証** | ORG-CM-01 Supervisory/Matrix別多重度、02 空席/複数在任、03 複数Employment、05 同日Correction、06 Hierarchy Purpose、09 Data vs Process visibility、11 Plan/Actual | #2386/#2510/#1126/#2593。既存#2596合成Source/独立Expectedを増分利用し、未受理の意味や特定製品Schemaを普遍化しない |
+| **P0 製品Read** | ORG-CM-07 Record ownership/ScopeとORG-CM-10 Private Tenantの誤Default、同名CaseのTenant別Read | #2586/#2506/#1656/#2611。Native Case C1→Function Context→実Provider Row/Field/Cohort→Consumerの同一Source E2aがなければ中断 |
+| **P1 Workflow/Effect** | ORG-CM-04 Local/Global Transfer、08 Org Rule Approval/Current Grant、12 Org再編×DB移設×Effect unknown | #1125/#1130/#1174/#2564/#1163。Business meaning/Host Authority/Commit/Receiptを各別検証し、未到達はunknown |
+| **P1 計画の独立検証** | Scenario 2案のHeadcount/FTE/Cost/Span/Layers/Business ExecutionとActual比較 | #2779 What-if Draft/#2514 Oracle/#2593 Measures/#2516 SHO。Snapshotと粒度不明は合計の成功を主張しない |
+| **P2 外部HR/ERP連携** | 複数Employment/過去移動/中間履歴喪失を外部Official API/Extractで対照し、Field別Source責任と受入/公開 | #1807/#2555/#951。実Workday/SAP/Oracle Tenantへの接続、Contract・Cost・認可・外部データ権利を別に判断 |
+
+**受入結果**：ORG-CM-01〜12は今回設計した独立Expected候補で全てNOT RUN。商用製品はRequirements ProbeでありTEIが商用互換性や同等性を実装・達成した証拠ではない。Ownerによる意味受理、実Provider/GUI/Host/実Tenant、商用API/実データのConformanceは未実施。#1119の既存Critical Pathを変えず、まず一つのProduct E2 Readの実証を優先する。
