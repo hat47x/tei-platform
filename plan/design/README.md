@@ -23,6 +23,7 @@
 
 ## 一覧
 
+| [`TEI_SHO_OKF_DOMAIN_LINT_DOCUMENT_UNIT_2026-11.md`](TEI_SHO_OKF_DOMAIN_LINT_DOCUMENT_UNIT_2026-11.md) | TEI/SHOのMarkdown知識バンドルにOKF v0.2を任意導入する提案。1 Concept/1 Documentの管理粒度、受理済みValue Domainを使う非破壊Lint・入力支援、選択式Pluginと独立Expected（[SHO #18](https://github.com/hat47x/sho-composer/issues/18)、評価待ち・未採用） |
 | 文書 | 対象 |
 | --- | --- |
 | [`EVERYTHING_DATA_MARKDOWN_SOURCE_FIDELITY_2026-11.md`](EVERYTHING_DATA_MARKDOWN_SOURCE_FIDELITY_2026-11.md) | Markdownの元シンタックスシュガーと書式・Source occurrenceを保存で保持する契約、局所Patch・競合・往復受入 |
