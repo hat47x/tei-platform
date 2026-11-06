@@ -355,6 +355,30 @@ Apache Kafkaは、Kafka Topic間ではtransactional producerとconsumer offset�
 
 **最初のコード変更を開始する条件**: 既存#2604のWriterに対し「Reader A/Bが何を読むか」がテストで定義でき、OwnerのFixture/Expectedが選択できること。そこに達する前に統一Completion Engine・専用Batch DSL・新Proof Registry・共通Schedulerを作らない。本PRはこの観測の**設計差分のみ**であり、P0の実2Process/Provider/CIやOwner業務受理を新たに実行したものではない。
 
+### 12.2 P0前提Gap：Artifact Manifestから実ファイルへの検証可能な結線
+
+**2026-11-06 現行mainの実Source調査**：main `f275843b2bd35117f3bbb8d6090a59678d3c33ed` の
+`internal/artifact/manifest.go` blob `c45e2b2397974c7b5361ddfae8c65f45c91eb226`、
+`internal/artifact/artifact.go` blob `4a56949d683248185c2d51a22350cefd250362da`、
+`cmd/tei/cli_operations_artifacts.go` blob `ec0ae27c29ab80d8b5366af2fa65e3cf6e699310`、
+main統合済み`cmd/tei/cli_operations_artifacts_publication_test.go` blob `6519e47f5af803467f34dfa46decfff97a069e3c` を読取った。以下はこの版に限定した静的所見であり、新しい実Runtime試験の合格報告ではない。
+
+- `artifact.ManifestEntry` は `Kind/Rule/Version/Fingerprint/Digest/Unresolved` で、**出力Path/Member byteのDigest/Generator/完全なUnresolved内容を持たない**。Manifestが列挙した論理Artifactと物理Memberを独立Readerが一意に結び付けるには追加情報または実装依存の推測が必要。
+- `artifact.Artifact.Digest` は `tei.artifact/v0` のドメインと `Kind/InputRevision/Rule/Generator/Content/Unresolved` から求まる**Artifact全体の指紋**。保存ファイル本文のSHA-256ではない。保存本文の単なるbyte SHA-256と `ManifestEntry.Digest` を比較することは禁止。独立Readerは**全EnvelopeがあるならArtifact.Verifyによる検査**、本文しかなければ別に**physical byte digest**とEntry↔Pathの証拠を必要とする。
+- 現`writeArtifactFiles`はkindと本文一行目などで物理名を導出し、本文のみを書き、最後に `{"manifest":..., "findings":...}` を書く。出力ファイルへのLinkとMemberのbyte検証証拠はそのWrapperに含まれていない。出力直後の`manifest.Verify`が成功してもディスク上のMember内容を検証したことにならない。
+- **注意: AP-01〜03の現テスト** `publicationSet` は `WorkspaceSet.Manifest` を正規の`NewManifest`で生成せず、ゼロ値のままWriterを通している。よってR1/R2混合・古いファイル・衝突の**書込み順序の特性試験**としては有効だが、生成されたManifestと各Memberの独立検証を示す試験ではない。これらの特性試験を「有効な出版Manifestで全Member検証済み」と読み替えない。
+- [merged #2817](https://github.com/hat47x/tei-platform/pull/2817)によってAP-01〜03の局所Go試験はmainに入った。前節までの「#2817 Open」という古い記述は**調査当時の履歴**であり、現在状態は**merged**。実Publisher改修・AP-04〜・外部Readerは未成立。
+
+#### #2604/AP-06へ戻す最小の受入前提（形式・配置の採用判断はOwner）
+
+1. **正本の分離**: 論理`artifact.Manifest`のDigest/入力Revision/Unresolvedを変更しなくても、物理`PublicationBinding`（説明上の役割。新Core Typeではない）として `logical manifest entry identity -> selected output path / body byte digest / representation / generation` を取得できるか比較する。対象Storage/FSのPathとDigest scheme/保持期限は物理Providerの責任。省略・曖昧・別generation・衝突なら物理Readerを`unqualified`にする。
+2. **実現候補**: A) `manifest.json`の既存Wrapperの物理Member対応欄（versioned/後方互換と既存Readerを検証）、B) 全`Artifact` Envelopeを不変Content-addressed名で公開し別途Pathを固定、C) Provider独立の実Output一覧から正確なbyte Bindingを発行。**どれも未採用**。ManifestEntryへ勝手にPathをCore固定追加・短縮HashIDを実byte全体Digestの代用・Directory全件列挙で「必要Member全件」とすることは禁止。
+3. **最初の陽性**: `artifact.NewManifest`から作った有効な2 Member R1/R2について、別Process ConsumerがPublisher内部の`Artifact`オブジェクト・最初の一行/ファイル名生成関数を共有せず、Manifest Entry→物理Pathを列挙し、全Memberの**保存byte**を読みDigest検証した事実を表示する（#2542 EF-01、#2604 AP-06）。完全Artifactの再構成が不可能な配置なら`Artifact.Verify済み`とは表示しない。
+4. **負例**: R1 Manifest＋R2 Member、R1 pin後GC、欠落Member、Path衝突/旧ファイル残存、本文は同じでもRule/Generator/Unresolvedが異なる別Artifactを比較。実Byte成功だけでBusiness Period・Delivery/Receipt・Current Grantへ昇格しない。既存AP-01/02/03と同一の期待を共有し第二Fixtureは作らない。
+5. **受入停止線**: 現時点では「独立Readerが保存Manifest＋Memberの完全Artifact Digestを検証できる」は**未実証であり一般条件では不可能**。先に物理Bindingの欠落をOwnerへ提示し、最小差分を選定する。#2604がPublicationとReader資格、#2482が論理Manifest/CheckSet、#2516が開示、#2542がImport Unit/Recipient、#1174がBusiness Effectを維持。§12.1のP0順序はこの**前提成立後**に実2Consumerへ進む。
+
+**実行/検証の限界**: 今回はGitHubの現行Go Source・merged PR・既存試験を静的に照合しただけで、2Consumer実読取、改修済みPublication、OS/Windows差、実MFT、Owner受理はすべてNOT RUN。既存のRepository Health成功をこの未実装の保証へ転用しない。
+
 ### 追加一次資料（製品・仕様の版に依存する事実）
 
 - Apache Iceberg spec, snapshots / optimistic concurrency: https://iceberg.apache.org/spec/
