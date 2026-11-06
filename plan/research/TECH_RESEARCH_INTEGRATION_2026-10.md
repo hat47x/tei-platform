@@ -638,3 +638,36 @@ M未受理・G許可でもMeaningを採用しない。M受理済み・G拒否な
 **先に固定するもの**：Owner対象集合Lの定義・Predicate/EmptyPolicyと版、合成DB Fixtureの真の行ID、想定Query/Scope、独立期待値。**実際に取得するもの**：Selected Source/Parser/Function/Query/Provider実Binding、実Read RequestとResult Slice、ページ終端・Snapshot/Revisionが保証される範囲、受取Consumer。行数やProviderの自己申告からLを再定義しない。全Providerに同一Snapshot機能を強制せず、整合したRead cohortが立証できない場合はunknownを保持する。
 
 **配置**：#2514は独立期待値とfalse complete Mutantの判別力、#2506/#2622はData ContextとRead witness、#1163はSource/Target/Attempt/Consumerの同一性、#267/#1125は業務EmptyPolicyの意味、#2600は版変更時の再資格化。新完成判定器や認可Engineは作らない。最初は**read-only**でProvider取得の同一性を確かめ、書込みは別の既存#1174 Command/PG/Receipt契約で実証する。新試験・本番Provider・業務Ownerの受理はNOT RUN。
+
+
+### 10.21 「観測0件／差分0件／成功」の証拠資格（2026-11-07；#3054〜#3088の既存main差分）
+
+§10.8/10.11/10.20の「観測0件≠対象集合0件」は、Read・Validation・Effectの各層へ展開可能。**新しい共通Proof型を作るのではなく、Claimに必要な集合と実観測された集合を分ける**。
+
+| Claim | mainに統合された事実 | 禁止する推論と未検証事項 |
+| --- | --- | --- |
+| Workspaceの必要Sourceを消費 | [#3073](https://github.com/hat47x/tei-platform/pull/3073)は存在しないRootや未読込に見えるファイルを診断。[#3078](https://github.com/hat47x/tei-platform/pull/3078)は管理54件中、Loader実読取53件と未読取README1件を区別し、readByLoader/sourceRootFindingsを追加 | 管理／実Readは別。readByLoader真でもParse/Role/Required closure/Build消費の資格はない。管理外・宣言外のSourceも自動不存在としない。#2823 |
+| 宣言は検証済み | [#3069](https://github.com/hat47x/tei-platform/pull/3069)が利用者宣言件数を追加。[#3081](https://github.com/hat47x/tei-platform/pull/3081)は空WorkspaceへWORKSPACE_DECLARES_NO_MODEL_ELEMENTS警告 | 空Workspaceでもok:true/exit0。標準std catalogの件数と利用者宣言を混同せず、Consumerが必要とするSource集合の充足をokだけで推論しない。#2822/#1180 |
+| CLIスキーマが広告どおり | [#3058](https://github.com/hat47x/tei-platform/pull/3058)がdiscoveryを追加し、[#3095](https://github.com/hat47x/tei-platform/pull/3095)がenvelopedコマンドの実Process応答schemaVersionと広告を照合し、偽広告の負例を確認 | schemaVersion一致はresultの形や意味の互換性を保証しない。特に#3078はworkspace-files/v0のresultを**配列からobjectへ変更**し、旧Consumer互換性は未決。#2824/#2516 |
+| 宣言と適用に差はない | [#3055](https://github.com/hat47x/tei-platform/pull/3055)・[#3057](https://github.com/hat47x/tei-platform/pull/3057)は同種別別対象の適用をDifferencesへ残しCLI/Studioで表示。[#3068](https://github.com/hat47x/tei-platform/pull/3068)は作用を列挙しないExecutorをAppliedUnobserved=true/difference-check: not observedとする | Differencesが空でもAppliedが未観測なら差なしとは言えない。差が存在しても参照Commandの成功とは両立するため、Owner承認済みScopeやProvider Commit成功には自動昇格させない。#2598/#1174 |
+| Commitしたので保存された | [#3054](https://github.com/hat47x/tei-platform/pull/3054)はMemoryUnitOfWorkのcommitted=trueとpersisted=false/durability=noneを独立欄へ分離。[#3088](https://github.com/hat47x/tei-platform/pull/3088)はmain版での一時PostgreSQL六試験PASS・SKIP0をPR版とは別記録 | 参照UoWのCommitを永続化証拠に使わない。実PGの局所成功と同一OperationID/現在Grant/業務Meaning/独立Consumer到達は別。#1174/#1163 |
+
+**研究から渡す同一Fixtureの反証**：①ManagedだがreadByLoader=false／必要Role未解析、②validate okかつ宣言0件warning、③schemaVersion一致だが旧Consumerはresult配列を期待、④適用先が宣言外だが同種別のDifference、⑤AppliedUnobservedなのに空のDifferencesを差なし扱い、⑥committed=trueかつpersisted=false、⑦実PGの局所試験PASSなのに当該業務Consumerへ届かない。正例と一要因差分の負例を#1180/#2514の既存Independent Expectedに割当て、独立期待値をProducer出力から再生成しない。
+
+**適用範囲**：同じ成功・空・不在・観測なしでも、対象集合がManaged / Loader-read / Parsed / Role-required / Builder-consumed / Applied / Receipt / Consumer-deliveredのどれかを明記する。false qualificationと、未選択の草稿変更等で無関係なArtifactを失効させるfalse invalidationを別に測定する。#2600/#2516へ再利用条件を委譲。
+
+### 10.22 Sourceの物理同一性の負例と固定Studio Host
+
+[Issue #3061](https://github.com/hat47x/tei-platform/issues/3061)では、**固定Studio Hostの特定版 4bc437c7**におけるResolved Physical Root置換で、allowlist済みWorkspace IDからWorkspace外のCatalogが見える負例を報告（[#3059](https://github.com/hat47x/tei-platform/pull/3059)の負例CI）。Configured Aliasだけの置換はPASS、物理Rootの置換はSECURITY FAIL。これは固定Hostの限定実証であり、**現mainの同じ脆弱性を立証したわけではない**。mainでの同じ負例・修正、固定PoCを更新するかは#3061/#1824のOwner判断。
+
+Source Path文字列、Workspace ID、Source byte digest、実物理rootのidentityを同一証拠としない。許可時と実Readerアクセス時のrealpath/Root identity、symlink/rename・ABA・別Tenant/Scope・現在権限を照合し、矛盾時は読取停止。診断で非公開のSource件数やResource名を漏らさない。#2571/#2823/#1124/#1824/#2516へ独立負例を割当て、第二Path Resolver/Host Authorityを設けない。
+
+### 10.23 次の最小実証：一つの証拠連鎖、二つの別途Gate
+
+**Read-onlyを先行**：旧Source/独立Expectedを固定し、Selected/Required→実Read byte/locator（#3078はこの一部）→Parser/Role/Required closure→Function/Query/実ProviderのRead対象Lと取得集合R/完了性（§10.20）→CLI/Consumerの実受領値・Schema/開示資格を、#1163で同一Revision/Attemptへ束縛する。新しい *.tei.md は#3031の未束縛拒否を出発点とし、**正式Parserの正例がない限り意味Sourceとして合格としない**。#3095のschemaVersion一致と旧ClientのJSON互換性を混同しない。
+
+**Writeは別の縦切り**：同じSourceから派生してもMeaning Acceptance、現在Host Grant/対象Target、Required Guard、実PG Provider Effect、OperationID/Receipt、別Connection Read、現在Consumer Disclosureは各々独立Witnessが必要。#3054/#3055/#3068/#3070/#3077の参照Command・Datasource・Hook前処理の局所試験成功を実Provider Tx・本番Grantの受理と見なさない。#3088のmain版PostgreSQL六件PASSも別実行の証拠であり、参照Commandの適用差分を観測したことにはならない。
+
+**Buildは並行**：[merged #3091](https://github.com/hat47x/tei-platform/pull/3091)のModule Preflightにより、隔離GOPROXY=offでcmd/teiにpgx/v5、x/text、modernc.org/sqliteの未供給が観測され、Source closure/Artifact生成以前のSB-0bが必要と判明。G4はUNQUALIFIED。[merged #3094](https://github.com/hat47x/tei-platform/pull/3094)の構成Kernel A/B/C局所パケットは同じ固定checkoutで個別に実行されたが、単一Request/Operationに結合していない。artifacts manifest.complete=false／未解決6も記録されている。個別のPASSを製品一気通貫のPASSへ加算しない。
+
+**状態**：既存main局所実装と負例を照合したDocs-only研究差分。新 *.tei.md Reader/Parser、Provider→Completionの実全件証明、固定Studio Host負例の現main再試験、workspace-files旧Consumer互換、Host/Provider/Owner一改訂E2EはNOT RUN。新Core、Runner、Registry、専用TEI Hostを追加せず、#1119の既存Gateを維持する。
