@@ -428,6 +428,16 @@ AIの自律的な作業と実行権限を区別します。AIがツールを直�
 
 **用語**：[#3039](https://github.com/hat47x/tei-platform/issues/3039)と[docs/naming.md](../docs/naming.md)に従いテストの「Oracle」を「独立期待値」「独立検証基準」に置換。**Oracle Database**はDB製品名として区別し、歴史的コード名・API・URLは改名しない。設計/実証と命名更新を混同しない。#3041/#3042/#3060の既存限定Go・Reference証拠を、`*.tei.md`新Reader／人の正式受理／実外部Host Providerの同一Attempt成功へ自動継承しない。**当該統合はNOT RUN／NOT ACCEPTED**。
 
+### AI Proposal・Product Skill・Attested Computationを三経路として接続する（2026-11-07）
+
+[AI-first設計§5.9](design/AI_FIRST_REQUIREMENT_PRESSURE_AND_HEADLESS_VERIFICATION_2026-11.md)に、外部Harness実測と[OKF v0.2 Attested Computation](https://github.com/GoogleCloudPlatform/open-knowledge-format/blob/main/SPEC.md)の利用契約を接続。**AIの自由な意味Proposal**（#267のHuman/Owner Shared Acceptance）と、**受理・Pin済みComputationへの型付きParameter Bind**（Executor実Receipt＋決定的Attester）と、**Provider/外部Actionへの型付きIntent候補**（#2598/#1174の現在Host Grant/Effect）を明確に分離する。計算をAttestできたことから業務Meaning正当性・Provider対象集合全件・現在の実行資格を導かず、`validation.Accept`の局所`Accepted=true`からComputation承認や正式Source受理を導かない。
+
+**実績更新**：TEI #2605／[TAI実S1 CI #42101157330](https://github.com/hat47x/tai-pleroma/actions/runs/42101157330)では、TEI固定HEAD `50ebf8014340fd1906f6b35cfa30173e0ee2fc6c`の実Go CLIを外部リポジトリCIから起動し、公開`semantic-data:sales.order`のSource Index path/fingerprintと原byte照合を限定確認済み。これは**S1の実CLI read-only**であって、外部AI Harness自身の実Tool request/argv、Product Skill root/参照文書の実Loader読取、Source必須全集合、現在Disclosure、Owner受理ではない。
+
+**優先する最短手順**：既存P0-L（旧`*.tei`実Provider Read）／P0-M（新`*.tei.md`のReader/Guard）／P0-J（旧新同一業務の比較）の各Ownerと並行して、AI Skillレーンは**TAI #168のH2 Tool-only最初の1実Session**を最優先で観測する。その後、固定Task/実Binary/Skill bytes/Tool profile/独立期待値を変えず、H2/H3各2 Sessionの計4回で実Tool使用・Skill root/Refsロード・誤答/Warning/Unknown/Costを検収する。割付した条件と実際に提供された条件を分け、失敗Sessionを採点から恣意的に除外しない。初回Tool/Skill比較の途中でOKF用Skill説明を書換えない。
+
+**後続の任意read-only PoC**：[TAI #514](https://github.com/hat47x/tai-pleroma/issues/514)の既存AC-01〜12に従い、正規Computation/typed parameters/実Executor bytes・Job/Receipt/Attesterの実Identityと独立再Readを一件だけ照合する。OKFの`generated`/`verified`/`stale_after`は知識Conceptの来歴・現在性であり、実Actorの認証やTEI Owner Meaning/Host Grantではない。OKFはAttester ABI・wire format・sandboxを定めないため、第二Host/Receipt Registry/新共通CLIを本計画から追加しない。Product SkillのOwnerは**open #2605**、TEI #2614はclosed/duplicate。P0の実Harness・H3ロード・Attester/Job/Receipt E2Eは**NOT RUN**。Go単一バイナリ、既存Shared Acceptance、外部Hostの責務を維持する。
+
 ## 作業領域I：周辺技術との連携と本番運用の境界
 
 ### 目的
