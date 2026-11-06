@@ -507,6 +507,38 @@ func TestClaimedE1E2RejectsSourceOnlyEvidenceClass(t *testing.T) {
 	}
 }
 
+// E1/E2 require actual-observed. An empty or unknown class is the same class
+// defect as source-only for those claims: one diagnosis, not also the E0
+// "contract or test missing" report. E0 keeps the class-validity diagnosis,
+// and E1/E2 still report genuinely missing contract fields.
+func TestClaimedE1E2EmptyEvidenceClassHasOneDiagnosis(t *testing.T) {
+	for _, tier := range []string{"E1", "E2"} {
+		for _, class := range []string{"", "bogus"} {
+			p := fixture()
+			p.Claim = tier
+			p.Contract.EvidenceClass = class
+			r := Audit(p, h, m)
+			if !has(r, "E1_E2_ACTUAL_EXECUTION_CLASS_REQUIRED") ||
+				has(r, "E0_CONTRACT_OR_POSITIVE_NEGATIVE_TEST_MISSING") ||
+				r.Status != "INCOMPLETE" {
+				t.Fatalf("%s %q: %+v", tier, class, r)
+			}
+		}
+	}
+	p := fixture()
+	p.Claim = "E0"
+	p.Contract.EvidenceClass = ""
+	if r := Audit(p, h, m); !has(r, "E0_CONTRACT_OR_POSITIVE_NEGATIVE_TEST_MISSING") {
+		t.Fatalf("E0 lost the invalid-class diagnosis: %+v", r)
+	}
+	p = fixture()
+	p.Claim = "E1"
+	p.Contract.ProducerPath = ""
+	if r := Audit(p, h, m); !has(r, "E0_CONTRACT_OR_POSITIVE_NEGATIVE_TEST_MISSING") {
+		t.Fatalf("E1 lost the missing-contract-field diagnosis: %+v", r)
+	}
+}
+
 func TestStrictInputRejectsDuplicateKeysAndInvalidUTF8(t *testing.T) {
 	p := fixture()
 	b, err := json.Marshal(p)
