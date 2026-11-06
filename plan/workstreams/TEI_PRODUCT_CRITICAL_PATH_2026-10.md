@@ -1295,3 +1295,36 @@ version-pinned BuildIntent / Source revision
 
 **独立検証の責務**：実Go Preflight/外部module閉包=#1090/#1096/#2831、subject binding=#1080/#1097、Stage/Trust=#973/#979/#1104、図表投影=#2620/#2966、過剰・誤再利用=#2600、Target別nested module=#1251。新Core Schema、万能Builder、外部Dependency Store、Host、第二Runnerを先行採用しない。#2876と#2877の§35重複も統合前に一方へ収束する。
 
+
+<!-- tei-2831-20261106-actual-tei-reentry-interface -->
+### 35.3 2026-11-06 TEI自身の実行入口（Re-entry）を追加Gapとして特定する
+
+**静的確認main**: `3572dcedfa50c3de2903dd4d8ca4ad45ccfa1417`。`cmd/tei/main.go:71-124`の公開UsageとCommand Catalogでは`build`/`self-build`を提供するコマンドは掲載されていない。`tools/reference-plugin-self-build/main.go`にはPlugin構築・stage2実行の**専用Reference**が存在する。したがって「TEI本体の汎用Build entrypointが実際に稼働している」とは言えない。ただし、公開CLI一覧は**すべての内部/Plugin経路の不存在証明ではない**。既存#1130非画面Job/#1121 Lowering/#943/#979、`tools/reference-build-execution-binding`に別の再入可能な実行経路があるか先に調べ、新Runnerを作らない。
+
+#### TEIセルフビルドの3段階のClaimを分離
+
+| Level | 主語・証明したいこと | 合格の必要Evidence |
+| --- | --- | --- |
+| **SB-L1 / reproducible Go build** | 固定したGo Builderと正しい閉包を使いTEI CLI等のバイナリを生成 | exact Go compiler/toolchain、external module closure、`BuildExecutionPlan`、two attempts、output bytes/ArtifactSet digest。TEI自身がbuildを操作したとは言わない |
+| **SB-L2 / TEI-defined build** | TEI標準構造の`BuildIntent`・型付きBuild Graphで宣言した入力・処理・成果物が実buildと一致 | 原本Source/解析版、resolved Graph、実Builder選択、宣言vs実消費、入出力とAttempt、Undischarged。まだGoのReference launcherが実buildを実行してもよいが、その制御主体を記録 |
+| **SB-L3 / TEI-driven recursive build** | **stage1で出力されたTEI自身のバイナリ**がstage2のBuild Plan解決・実Build起動/委譲を駆動 | stage1 artifact digestに一致する**実プロセス実行ファイル**、stage2が消費したSource/BuildIntent・Toolchain・Builder・ArtifactSet、operation/attempt/exit/resultとStage1/2 digest比較。外部Go compilerはseed/toolchainとして明示し、TEI自身によるGo compiler self-hostingとは主張しない |
+
+#### 最優先の実装順（前節§35.2と矛盾しない）
+
+1. **SB-0a/0b**: `cmd/tei`の実依存module、オフライン供給、sum/実物照合、Go toolchainと実入力のpreflight。解決不能な場合は`unsupported/unknown`として記録。
+2. **SB-A0/A1 + SB-L1/2**: 既存Build Execution Referenceと実Go adapterを同一AttemptのTEI CLI buildへ結ぶ。Graphを見せるだけでなく、その実消費入力・生成/実行stepの`Required/Declared/Resolved/Consumed/Observed/Undischarged`を独立Expectedと突合。
+3. **SB-C0 / 新P0 Gap**: **Re-entry contract**として、stage1 TEI CLIが同一BuildIntentからBuild Graphを解決し、既存Adapterへ実行要求できる既存入口を探す。存在しなければ必要なコマンド/Operation**一個の薄い接続**を候補にし、`cmd/tei`の公開command list/受入契約・CLIエラー・read-only Previewと明示Executionを分離する。TEI DSLのBuild文法・汎用Scheduler・権限Engineを前提にしない。
+4. **SB-C1 / 真の再入実証**: stage1の**生成済みTEIバイナリを起動**してstage2を駆動。実Process image digestとGraph/Execution receiptの`Builder/Invoker`参照を突合する。別Go processがこっそり同じstage2 artifactを作った場合は不合格。stage1/stage2が同bytesでも`invoker`が一致しなければ不合格。
+
+**独立負例（未実行）**：
+- **SB-N11**: Stage2のTEI Binaryはbit-identicalだが、実際の命令はStage0 Go launcher/外部Scriptが発行した→**SB-L1だけ**。SB-L3不可。
+- **SB-N12**: 読取PreviewだけのTEIコマンドを実Build/権限付与の証拠に転用→不合格。
+- **SB-N13**: Stage1 TEI executable digestをmanifestに記載するのみで、実Processが別SHAのバイナリを起動→不合格。
+- **SB-N14**: プラグイン/外部Toolに任せた実Command・Input/OutputがGraphの型付きedgeに未記載→`Undischarged`。図表で隠しただけで「不存在」とは主張しない。
+- **SB-N15**: 外部Moduleは`go.sum`に記録されているが、隔離cacheへの固定bytesの供給・実選択module rootの照合が無い→full closureと見なさない。
+- **SB-N16**: `tei`のBuild Resultが同じでも、Source ABA、Build Attemptの異なる実行主体、Current Authorityの失効を同一identityに圧縮→不合格。（`tei`はテキスト上の仮名であり具体コマンド名を採用したものではない。）
+
+**他チャットの整合・優先範囲**：#2620 Everything is DataのRole/Required閉包、[Draft #2881](https://github.com/hat47x/tei-platform/pull/2881)の合成typed-query bounded absence、[#2966](https://github.com/hat47x/tei-platform/pull/2966)の独立Source/認知研究、[#2880](https://github.com/hat47x/tei-platform/pull/2880)/[#2827](https://github.com/hat47x/tei-platform/pull/2827)のETL二Consumer、[#2933](https://github.com/hat47x/tei-platform/pull/2933)のPlugin最適化、[#2815](https://github.com/hat47x/tei-platform/pull/2815)の柔軟なHash由来IDを参照。**可変表現の派生IDは現行Artifactの完全digest/署名/Lockや実Process同一性を置換しない**。TEI self-buildのP0はL1→L2→L3の**同一Subject・同一Revision・同一Toolchain・独立Expected**の最短経路に限定し、他Target/ETL/Studioの製品資格は独立のまま。
+
+**提出/受理の上限**：この追補はGitHub上のコード/Issue/PRの静的調査にもとづく設計候補。G4=`UNQUALIFIED`。実TEI CLIのL1/L2/L3、真の実Process image照合、実Go/CI/全Health、採用Ownerレビュー、Phaseごとの完全Source/Host観測は**NOT RUN**。#2876と#2877の同一ファイル§35重複を解消するまでどちらもmainへ独立統合しない。
+
