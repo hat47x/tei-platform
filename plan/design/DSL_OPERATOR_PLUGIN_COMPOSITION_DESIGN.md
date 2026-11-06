@@ -439,3 +439,31 @@ K1の新規Schema/Registryを増設する前に、#3030のTM/AU・#2823の必要
 **既存Evidenceの上限**：#3031 exact HEAD `63953ccb`の専用CI/Repo Healthは暫定拒否の実Go資格。#3028のBS-02/03/06・同SourceGo試験は旧Native Source/合成Pipelineの限定資格。両者の同HEAD・同Source実結合、正式Markdown Grammar/Source位置/Meaning/Owner受理、実BinaryのBuild/Host/Receiptは未実証。受入基準は各既存Ownerへ移譲し、#1119横断Gateを自動拡張しない。
 
 **用語**：[main `docs/naming.md`](../../docs/naming.md)（merged #3039/#3040）の区別に従い、判定規則は**テスト判定基準**、対象実装から独立した期待結果は**独立期待値**、根拠と適用範囲を含むものは**独立検証基準**と記載する。新Fixtureの説明フィールドは`expectedBasis`へ改名した（JSON構造は設計専用、Product ABIではない）。DB製品のOracle Database、既存API/ID/履歴を無断改名しない。
+
+
+<!-- tei-dsl-bootstrap-real-implementation-reference-join-20261107 -->
+### 13.11 Plugin実装Source→BuildPlan→Runtime呼出しの既存参照経路を再利用する（同一Attempt接合は未完了）
+
+新しい`Language/Operator→Build`専用Runtimeや別Registryは作らない。現mainの以下が**既に実装された限定足場**であり、#3028のGo Referenceと混同せず接合条件を作る。
+
+| 既存実装・試験 | 直接確認できる範囲 | そこから推論しないこと |
+| --- | --- | --- |
+| `internal/workspace/plugin_implementation_loader.go` | `plugin-implementations/.../implementation.tei`を宣言Source Rootから実読込・Parseし、Plugin Definitionとの照合、実装Source位置・Source Index `RoleImplementation`を保持 | 正式`*.tei.md`のParser、Language選択Pin、実Binaryの起動 |
+| `internal/workspace/plugin_native_implementation_reference_test.go: TestTEINativePluginImplementationReferenceRunsThroughExistingBuiltinABI` | 実WorkspaceのPlugin Definition/実装Source raw bytesをHashし、`BuildPlan`のSource Digest、`implementation.Materialize`が生成する`firstBytes/firstDigest`、Build LockとRuntime Engine Lock、Builtin登録、`DeploymentExecutor.Execute`と`PluginInvocation`を限定的に照合 | 事前のLanguage/Operator Pinからの自動Build、実OS Image/Go静的Link、正式実Provider、Owner受理・Host current Grant |
+| `reference/dsl-language-plugin/bootstrap_expected_bridge_test.go`（本Draft） | 同一Pipeline文字列`rows/order |> std.sum`のK2 Exact Language→K4 Exact Operator Contract、拒否側/成功側と元Source Span | 上記Native実装Sourceとの同一改訂、Product WorkspaceでのAuthoring入場、生成Artifactの実Link/Invoke |
+
+**次の縦断では独立に固定した1つのExpectedを保ったまま、次の証拠の結合を要求する**。
+
+1. `Selected Source`：Authoringが意図したSource Kind、管理Root、実相対Path、raw bytes Digest、Source/Occurrence Revision、Required集合、Parser Language Contract/実装Pinを、実Readerの`read`/SourceIndexと対照する。Source Indexに列挙されただけの`loaded=unknown`は実読込扱いしない（#2823/#3030）。
+2. `Actual Consumed`：**実Readerが読んだのと同じbyte列**がParser/Operator/Canonical候補の入力となったWitnessを対応づける。BS-03/06はこの部分の局所Reference基線であり、今のProduct Loaderと同一Attemptではない。
+3. `Build Inputs`：Plugin Definition/Implementationのbyte Digestに紐付く`BuildPlanFingerprint`、Builder Identity、選択されたOutput Artifact Digestを記録する。上記Builtin Referenceはこの内部照合のFitだが、Source意図と実Buildを同一にしたことの証明ではない。
+4. `Actual Runtime/Consumer`：現在のBuild/Runtime Engine Lockと、実登録・実呼出先・返却された`PluginInvocation`（選択Plugin/Artifactと同一）を照合する。実Go単一バイナリの最終的なリンク/起動対象や配備Hostは既存#1251/#951/#1016のOwnerで別に検証する。
+5. `Meaning / Authority`：既存のOwner Accepted Meaningの出典改訂とScope、Hostの現在Grant、Provider/DBの効果Receiptは別資格。上記の参照試験が全部成功しても自動昇格させない。
+
+**現行Referenceの実証上限に関する重要な注意**：`plugin_native_implementation_reference_test.go`の`nativeReferenceBuilderDigest`/`nativeReferenceEngineDigest`は固定テスト値であり、Runtime Engineの実行ファイルのHashを計算した証拠ではない。またこのFixtureは従来の`plugin.tei`/`implementation.tei`を使用し、移行中の`*.tei.md`からの正式Language選択を行わない。
+
+**検出すべき最小の誤実装（一軸差分）**：同じLanguage/Operator意味とSource Revisionを持つPlugin Bを選択し、Build/Invocationだけ旧Plugin Aへ取り違える（Bの意図/選択、Aの実消費／同じ返値）。結果値が一致してもBuild/InvocationのPlugin Identityと実入力byte digestが一致しなければ**不適合**。まず[既存Runtime Reference](../../internal/workspace/plugin_native_implementation_reference_test.go)と[#2885のD1選択→Link→Invoke検査](https://github.com/hat47x/tei-platform/pull/2885)のOwnerへ、**同一Attempt・Source Revision・Target/Runtime**でこの差を判定できる観測点を引き渡す。選択B/実呼出Aの実Mutant/正負比較はまだ**NOT RUN**、新しいProduct Registryは不要。
+
+Source移行では、`plugin.tei.md`を選んだ意図Bと、固定名Loaderが`plugin.tei`を読む実態Aがずれる例を[#2903 §24.4](https://github.com/hat47x/tei-platform/pull/2903)と共有する。現[#3031](https://github.com/hat47x/tei-platform/pull/3031)の`TEI_MD_PARSER_UNBOUND`暫定拒否を正常Parseと誤認せず、#3030のTM-03/12/14と#2823のRequired/Loaded/Consumed区分を再利用する。**いま別DraftのCIが個別にPASSでも、このK1→K6の同一Source結合は未実証**。
+
+**品質ゲートの独立性**：#3028旧HEAD`0f6e7045`/ `5f335cc9` のRepository Healthは`gofmt`差でFAIL、同runの`go test ./...`はPASS。追加テストのStruct literal整形をGo formatterで比較したうえでcommit `62f2dd22`へ修正した。最新HEADのCI結論は完了後にのみ採用し、Go PASS≠Go fmt PASS≠正式Product受理と明記する。
