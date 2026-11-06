@@ -3408,3 +3408,46 @@ Ownerが求める「選択した業務Data群への広域適用＋Record/用途�
 | ORG-E2-04 | Aで完全な0件、Aでpartial/未取得、B Privateでdeniedを別々に渡す | 0件・部分・拒否を同一Resultに畳まない。Consumer外部開示は別資格 |
 
 **優先順位**：まずORG-E2-01一件を#2586の実Read縦断で完成させる。静的Queryと`OperationSurface`を自動Linkする補助処理の新設や別Runtime/Hostの開発を先行しない。Source/World FingerprintとModel RevisionはE1cの正しい変化を示したが、実Row、出力、実認可、Effect/Receipt、Owner意味受理は**NOT RUN**。親#2681、子#3024、設計#2389はすべてmain未マージ（子は積上げDraft、設計PRはマージ競合）。実証範囲はPR固定コミットを参照する。
+
+## 80. TEI Authoring Source `*.tei.md` 標準化に伴う組織E1b/E1cの再資格化（2026-11-06、形式決定と移行実装を区別）
+
+### 80.1 決定された外部表現と、現行Org Native試験の限界
+
+2026-11-06のユーザー方針により、**新規TEI Authoring Sourceの標準ファイル名は `*.tei.md`、旧 `*.tei` は原則新規作成停止・段階廃止**。通常のMarkdown `*.md`は別である。これはAuthoringの外部表現・識別を決めたもので、Markdown本文中のDSL Fence・表・式・Roleの解釈方式まで自動的に決まったわけではない。形式全体のOwnerは[Draft #3030](https://github.com/hat47x/tei-platform/pull/3030)／[移行計画](https://github.com/hat47x/tei-platform/blob/3d2436ad34802bda8f40560dfef9804613375223/plan/design/TEI_MD_UNIFIED_AUTHORING_MIGRATION_2026-11.md)、#2621/#988/#1920である。本節は**組織モデルの既存の限定実証を新Authoring形式へ移す際の差分**に絞る。新Parserや第二Meaning正本は組織担当では作らない。
+
+[Org Native E1 PR #2681](https://github.com/hat47x/tei-platform/pull/2681)、[Case E1b/E1c積上げDraft #3024](https://github.com/hat47x/tei-platform/pull/3024)の実Go試験は、`semantic/organization/model.tei`、`applications/org-view/application.tei`、`databases/org-store/persistence/*.tei`、一時的な`queries/case_read.tei`を実Readerに渡した**Legacy source形式に対する合格**である。E1b（Persistence→Read候補）とE1c（Query/別SQL Source→ResultColumn/Source Revision）の局所合格は保持するが、これを新`*.tei.md`の対応済みと説明しない。SQLのnative asset `case_read.sql`、Workspace Manifest `tei.workspace.yaml`、管理ディレクトリ`.tei/decisions/`は一律改名の対象にしない。
+
+### 80.2 現行Loaderのギャップと暫定フェイルクローズ
+
+現行mainの`internal/workspace/loader.go`を直接確認すると、`scanManagedFiles`は宣言Source Root下のファイルを列挙する一方、各Domain Loaderは`plugin.tei`／`bundle.tei`／`application.tei`／`database.tei`／`*.tei`等で絞っている。`ManagedFile.Extension`は`filepath.Ext`由来なので`model.tei.md`は末尾`.md`として分類される。したがって**Managed Inventoryに載る ≠ 実Parserに渡した ≠ Meaningに採用された ≠ Build/Executionが当該Sourceを消費した**。少なくともこの経路では、単純RenameはMissing Meaningを成功に見せる危険がある。#2823の既存「読込み対象外の管理ファイル／未知Source Root」問題と重複しているため、新Inventory/Closure Engineは増やさない。
+
+このギャップを固定する[限定Draft PR #3031](https://github.com/hat47x/tei-platform/pull/3031)を**main起点、組織担当branchとは別に**作成した。現状`*.tei.md`の正式Parserが未選択のままManagedFilesに見つかった場合、`TEI_MD_PARSER_UNBOUND`と実Source pathでWorkspace Loadを停止する。通常`*.md`は対象外、legacy`*.tei`は引き続き読み、`*.tei`と`*.tei.md`が同居しても暗黙first-winnerにしない。**このガードは新形式を解釈する実装ではない**。本来のMarkdown Container/Language Pluginが正しく選択・版固定され、元byte/spanを保って下位Parserへ渡す機構が整えば、ガードは選択成功時の厳密な消費保証に置き換える。
+
+**固定HEADの局所実測**：[PR #3031 commit `63953ccb5c12ead26ec1268e7c0afdba4eff66ae`](https://github.com/hat47x/tei-platform/pull/3031)に対する[GitHub Actions #42217379093](https://github.com/hat47x/tei-platform/actions/runs/42217379093)（job `tei-md-admission` #127890658926）は**SUCCESS**。Exact HEAD/Guard・Test Blob、gofmt、Semantic/Query/Persistence/Plugin/Bundle/Release／大文字拡張子の未結合負例、旧Source＋通常Markdown、root外Source、パッケージ`go test ./internal/workspace`全体と`go vet`が成功。初回CIはgofmtで失敗したため修正後版だけを現在の資格とする。**実`*.tei.md` Parser／Org Model解釈／正式Authoring編集は未実装・NOT RUN**。Draft未マージ。
+
+### 80.3 Org CaseRecordの独立Expected：移行専用再資格ゲート（ORG-MD-01〜09）
+
+[Draft #3030](https://github.com/hat47x/tei-platform/pull/3030)の汎用M0〜M6／TM-01〜14のうち、Org E1b/E1cの確定結果を壊し得る**一つの業務事例**を再利用する。別のOrg Schema、別Test Runner、第二Validatorを定義しない。
+
+| Case | 元の固定条件／変異 | 独立Expected・不足時Stop |
+| --- | --- | --- |
+| ORG-MD-01 | 元`model.tei`、`case_record.tei`、`application.tei`、`case_read.tei`の意味を表す`*.tei.md`文書を用意 | **実Parser選択／Source Span確認後**、Caseと`handlingUnit` Relation、Persistence Mapping、Application read-only Req、Queryを同じSemantic IDsで保持。現時点はunsupported |
+| ORG-MD-02 | 通常`README.md`とTEI`case_read.tei.md`を同Rootへ置く | 通常文書は自動Meaningへ昇格しない。TEI文書は選択Parserの資格がない限り明示停止。単なる拡張子で全表/全Fenceを実行しない |
+| ORG-MD-03 | 前後でCaseRecord Meaningは不変、Markdown見出し・説明・装飾だけ変更 | Raw Source RevisionとAccepted Meaning Revisionを分け、説明の改版が必ず意味改版になるとは推論しない。Source Location再解決と必要な出所説明は別 |
+| ORG-MD-04 | 同一Subjectについて`case_read.tei`と`case_read.tei.md`が共存・異内容 | 未選択の二者から暗黙に一方を採用しない。選択/移行決定、Legacy Alias/Remap、差分・損失を明示 |
+| ORG-MD-05 | Markdown内Fence／表の行移動、複数同名DSL Use-site、CRLF、日本語説明、Unicode識別子 | Raw byte/Source Span/Occurrence→typed Meaningを出典付きで照合。曖昧なRoleや重複は受理前停止 |
+| ORG-MD-06 | Native SQL `case_read.sql`だけWHERE条件が変化する | `*.tei.md`側Query IDが不変でも実消費SQL Sourceを束縛してVersion/Read結果再資格を行う。旧E1cのSQL失効検査を再実行 |
+| ORG-MD-07 | `*.tei.md`を別パスへ移動、内容A→B→A、Parser/Plugin版変更、Source Read途中失敗 | Source path/byte・選択Parser版・Model/Meaning/Artifact/実Executionを別資格にする。旧Review/Grant/Receiptが復活したとしない |
+| ORG-MD-08 | Case C1とD1のResultColumnは取得できるが、Function Context/実Providerがない | `CaseRecord.handlingUnit` Role／粒度・完全性・現在Tenant Scopeを勝手に補完しない。E2未接続のまま |
+| ORG-MD-09 | 同じCase IDがTenant A/Bに存在、Legacy Sourceと新Markdown Sourceが混在 | Authoring形式の統合は業務IDの衝突解消やTenant Grantの共有を意味しない。Provider実Row Identityと実Scopeは別 |
+
+**試験結果の線引き**：ORG-MD-01〜09の新形式への変換・解釈・同一性試験は**NOT RUN**。#3031が保証するのは「未対応を黙って成功としない」だけ。従来E1b/E1cのGo PASSは旧`.tei`の固定HEADに紐付く。Markdownを書けることと、TEI Meaning／Function／実Providerを実行できることを混同しない。
+
+### 80.4 実装順と担当境界
+
+1. **形式・Source読込**：#3030/#2621（Markdown Authoring RoleとFormat）、#988（選択Parser/Language PluginとPin）、#1920（中央変換・版と旧形式の受入期間）、#2823（Inventory vs Read/Parsed/Required Scope、未知Source Root診断）。#3031の暫定Guardは実Parser選択・必須Source Consumptionが成立すれば不要。
+2. **Org再資格**：#2681/#3024の同一Case C1・D1・Read候補4件、E1c Query/SQL/Source ContributionとWorld/Model Revisionのテストを、**新形式で再実行**する。旧形式Fixtureは互換性負例として残すが、新規`*.tei`の標準作成は行わない。
+3. **Product一件実Read**：#2586/#2506/#2611はFunction→Query選択→Datasource/実Provider→Row/Field/Cohort/Consumerの同一Attemptを既存契約で検証する。形式移行が成功してもE2は未合格、逆に旧形式のE2局所結果から新形式が認可されたとしない。
+4. **編集・外部連携**：#1124/#2516／SHO Composer/OKFは元Markdownの可逆編集・保存後再Parse／原文の出所を検収し、TEI標準`*.tei.md`にOKF Plugin常駐や一律Front Matterを要求しない。
+
+**撤回・縮退条件**：新形式Loaderに選択Parserが成立したら、一律`TEI_MD_PARSER_UNBOUND`ガードは削除/縮退し、真のParsed Source/Role/Required Closure判定に置換する。旧Fixtureの`.tei`拡張子名から固定Meaningを推定する経路を長期仕様にしない。#1119のCritical Path、ADR、main既存成果物、他担当PRを今回変更しない。正式Meaning受理・本番Provider/Host Grant・新形式E2Eは別資格。
