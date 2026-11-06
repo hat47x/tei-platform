@@ -121,7 +121,7 @@ A0は独立した新しい中央Admission Serviceではなく、既存Host/Comma
 
 | 工程 | 作業と検証根拠 | 不足があれば停止する条件 |
 | --- | --- | --- |
-| P0 読取り専用の証拠結合 | mainのScript/Function Source、実Go CLI/RunPlan、Effect Commit、受理済みMeaningの同一Revisionを照合。SHを既存Scenario/Oracleへ参照付け | 元Source／実Script入口／独立Expectedのいずれか不在 |
+| P0 読取り専用の証拠結合 | mainのScript/Function Source、実Go CLI/RunPlan、Effect Commit、受理済みMeaningの同一Revisionを照合。SHを既存Scenario/検証基準へ参照付け | 元Source／実Script入口／独立Expectedのいずれか不在 |
 | P1 Headless合成 | Source/Meaning拒否、必須チェック欠落、先行Effect済みblock、Observer有無、ACK-lossの判別を既存Fixtureで実施 | Provider呼出0／Unknown／Partialが期待通り分かれない |
 | P2 既存PGの実縦断 | 既存Command Invokerと実PG、Receipt照会と**別接続**独立Readを、同じOperation/Artifact/Rule版へ束縛。Restart/Outboxを後続 | 同一Tx・Owner Scope・現在Grant・実Load版が独立に確認できない |
 | P3 UI/外部ジョブ | 同一FunctionをCLI/Web/cron相当・選択Hostへ公開し、必要に応じて1→2 Build比較、EKIはwire+実Worker適合を別評価 | 入口の到達だけでEffect保証、旧Jobの無条件乗換、対話Scriptの無人実行 |
@@ -134,7 +134,7 @@ A0は独立した新しい中央Admission Serviceではなく、既存Host/Comma
 
 ## 7. 検査被覆・非同期応答・回復資格の接合（2026-11-06、追補）
 
-**前節との差分**：以前のS0〜S8／A0とF01〜14は、故障が起きたら何を保持するかを定めた。本節は、**停止を解除してよいと誰が何で判断するか**に限定する。新しいEngine/State enum、中央Audit Store、第二Oracleを導入しない。現mainへの到達点は[merged #2882](https://github.com/hat47x/tei-platform/pull/2882)のWorkspace→`DeriveOperationSurface`→`PeriodPreconditions`／`EffectPreconditions`→`CombinePreconditions`→`RunPlan`という**合成Stepの実Goテスト**に更新する。Period closed/open、after-commit Observerなしでblockedを局所確認済み。一方、Guardの網羅性／実ProviderによるEffect強制／Observerが当該Effectを実観測したこと／実永続Run所有は未証明。既存[#1130 RPL-01〜05](https://github.com/hat47x/tei-platform/issues/1130)の検査正本を再利用する。
+**前節との差分**：以前のS0〜S8／A0とF01〜14は、故障が起きたら何を保持するかを定めた。本節は、**停止を解除してよいと誰が何で判断するか**に限定する。新しいEngine/State enum、中央Audit Store、第二検証基準を導入しない。現mainへの到達点は[merged #2882](https://github.com/hat47x/tei-platform/pull/2882)のWorkspace→`DeriveOperationSurface`→`PeriodPreconditions`／`EffectPreconditions`→`CombinePreconditions`→`RunPlan`という**合成Stepの実Goテスト**に更新する。Period closed/open、after-commit Observerなしでblockedを局所確認済み。一方、Guardの網羅性／実ProviderによるEffect強制／Observerが当該Effectを実観測したこと／実永続Run所有は未証明。既存[#1130 RPL-01〜05](https://github.com/hat47x/tei-platform/issues/1130)の検査正本を再利用する。
 
 ### 7.1 Required Guard CoverageとGuard Outcomeを二軸にする
 
@@ -211,7 +211,7 @@ UI/CLI/Jobの実行要求は、表示/選択の更新世代（**Selection/Contex
 - **P2（実PGの一改訂縦断）**：既存#2853/#2859/#1163のCommand Invoker→PG CAS→Receipt/別Connection readを再利用。実Schema gateの起動前停止／Commit時Grant・Target・Periodの再拘束／同Key ACK-loss／別Key ABA／結果Consumerを**同一AttemptとSource revision**で照合する。#2857の暫定E2E監査は`INCOMPLETE / productGate UNQUALIFIED`であり正式G1/G2合格としない。
 - **P3（現実の再起動・外部Consumer）**：OS kill→restart、実Outbox/Provider、UI遅延応答・Grant失効、旧Artifact・2 Build・EKI委任を順次接続。別Host/Providerで証明不能な部分はunsupportedとし、新中央Host/Registry/Queueを自動採用しない。
 
-**現時点の新しいSH系一気通貫試験／実UI Epoch／実Service Grant+Period+DB同一Commit／実二Process再起動／二Provider／Owner意味受理はNOT RUN。** 既存#2882局所Goの成立と、#2853実PGの限定Commit Unknownの成果だけを各Source版付きの既存Evidenceとして再利用する。
+**このScript設計の同一Revision・同一AttemptでのSH系一気通貫試験／実UI Epoch／実Service Grant+Period+DB同一Commit／再起動後の実Provider Receipt接合／二Provider／Owner意味受理はNOT RUN。** ※main #2942/#3002にはCommand Stage単体と製品CLIの二Process再起動試験が既にある。これを本Script/実PG統合成功へ昇格しない。 既存#2882局所Goの成立と、#2853実PGの限定Commit Unknownの成果だけを各Source版付きの既存Evidenceとして再利用する。
 
 ## 8. 永続回復の反例と一改訂受入の最短経路（2026-11-06、再照合）
 
@@ -219,10 +219,22 @@ UI/CLI/Jobの実行要求は、表示/選択の更新世代（**Selection/Contex
 
 **2026-11-06再照合の新しい事実**：
 - [main統合 #2870](https://github.com/hat47x/tei-platform/pull/2870)のRCAS-02は、旧`Lifecycle`に`unknown`があっても、新しい`Lifecycle`（再起動相当）では記録が無く`MayReplay=true`になることをGoテストで固定した。同じIdempotency Keyの実PG再送が`IDEMPOTENT_REPLAY`（適用0・Receipt 1件）となるのは**Provider側の永続記録**による限定的な保護。実OSプロセスの死・実ネットワーク遮断・二Worker/Hostの所有保証をテストしたわけではない。
+- [main統合 #2942](https://github.com/hat47x/tei-platform/pull/2942)は`internal/command.DurableLifecycle`（単一ホストのファイル永続Stage）と**実サブプロセス再起動テスト**を追加。未知/観測済みStageを跨いで保持し、破損Stateを空として扱わず拒否する。一方、同時Process間競合・分散Fence・実Provider Receiptは未検証。従前#2870の「再起動でStageを失う」は**in-memory Lifecycle限定の反例**へ再分類する。
+- [main統合 #3002](https://github.com/hat47x/tei-platform/pull/3002)では製品CLIの`view -execute`に**opt-in SQLite Lifecycle Store**（`-lifecycle-state`／安定`-lifecycle-command`）を結線。実CLIバイナリを2プロセスで起動し、同じCommandの観測済み再送を`COMMAND_LIFECYCLE_REFUSED`で拒否する局所試験が成立。ただしExecutorはReferenceで実Provider効果なし、Store未指定時は従来in-memory。
+- [main統合 #3008](https://github.com/hat47x/tei-platform/pull/3008)では`studiohost.ExecuteCommandWithLifecycle`を追加し、合成Store利用時に**ホスト再生成相当**の観測済みCommand再送を拒否。既存`ExecuteCommand/WithPolicy`への強制はなく、Wails製品HostのStore合成・実WebView/Provider/複数Hostは未実証。
 - [main統合 #2854](https://github.com/hat47x/tei-platform/pull/2854)は、第三者により値が元へ戻ったABA後に**別KeyでAPPLIED・Receipt 2件**となる反例を実PGで固定。同じ値になったこと／新しいAttempt ID／同じ業務目的を自称することは、再実行安全性の証拠にならない。
 - [Draft #2889](https://github.com/hat47x/tei-platform/pull/2889)では実Go `internal/execution.RunPlan` にToy Step/Journalを接続し、**Host Grant Guardを渡さなくてもcompleted、Observer存在だけで未観測、途中block前のStepが残る**というOC-RP-01〜03を固定。専用exact-HEAD [Actions #42100472921](https://github.com/hat47x/tei-platform/actions/runs/42100472921)はGo 3/3 PASS。一方、同headのRepository Healthはgofmt driftでFAILと[Draft #2783の再照合](https://github.com/hat47x/tei-platform/pull/2783)に記録されている。**専用試験PASS ≠ repository全体PASS ≠ Host Grant強制済み**。
 - [Issue #2823](https://github.com/hat47x/tei-platform/issues/2823)では、宣言Source rootが存在せず／想定ファイルがローダの対象外でも、限定条件で`validate ok`になり得る実CLI反例が記録されている。`ok`だけで「必要なScript/Ruleをすべて解析した」と判定せず、`required / declared / discovered / loaded / parsed / actually consumed`を別確認する。
 - [#2845](https://github.com/hat47x/tei-platform/issues/2845)は実運用のReceipt/観測記録の保存先・保持期間・検証・閲覧資格を未決のまま所有する。**digest-only記録は入力の復元ではなく、保存されていない記録の不在は未実行の証拠でない**。
+
+**現在のStage経路の実装差**：
+
+| 入口／Stage実装 | 再起動後の拒否が局所実証された範囲 | 残る失効・効果の証拠 |
+| --- | --- | --- |
+| in-memory `Lifecycle` | #2870では再生成時にunknown消失（負例） | 同Key PG Receiptが別に二重適用を防ぐことは一般保証でない |
+| file-backed `DurableLifecycle` | #2942のサブプロセス再起動、unknown/observedと破損拒否 | 同時Writer、Process間Fencing、Provider実Effectとの原子的接合 |
+| CLI opt-in SQLite Stage | #3002の別CLIプロセス再起動で観測済み再送拒否 | 未設定CLI・実DB Write・Provider Receipt／対象Grant |
+| StudioHost composed Stage | #3008のHost再生成時の再送拒否 | Wails実起動でのStore合成、実Provider、他Hostとの所有 |
 
 ### 8.2 再起動のcut point別に、誰の記録が復旧を許すかを固定
 
@@ -248,7 +260,7 @@ UI/CLI/Jobの実行要求は、表示/選択の更新世代（**Selection/Contex
 | Accepted Function/Rule、Owner/Scenario | 意味ID、業務入力/対象、必要Data Relation、適用Rule/順序/期間/必要Effect | `required=[]`や未読込Ruleを成功にしない |
 | Source manifestと実Loader/Builder | required Source closure、実選択・解析・消費したbyte、Native SQL/Operator/Pluginの版 | 「validate ok」や選択Sourceのhashだけでは欠損なしと主張しない |
 | Host/Provider Contract | 現在Principal/Grant/Subject、Resource/Version、tx/cas/idempotency、Receipt保管・照会の限界 | Grant未渡し／実Provider非対応ならblocked/unsupported |
-| 独立Oracle/Consumer | 正常・拒否・Unknown・partialのExpected、観測が必要な対象集合/Snapshot・開示範囲 | 0件/Reader failure/非公開を業務上の不存在にしない |
+| 独立検証基準／Consumer | 正常・拒否・Unknown・partialのExpected、観測が必要な対象集合/Snapshot・開示範囲 | 0件/Reader failure/非公開を業務上の不存在にしない |
 
 各Stepで`Independent Required → Discovered/Supplied → Actually Evaluated → Enforced at Effect → Observed`を辿り、`Undischarged`を残す。必要なSourceやGuard自体を列挙できないときは**unknown**とし、件数0を検査不要の根拠にしない。純粋計算に不要なDB Commit前提を強制しないが、実Providerを呼ぶ場合はその能力/効果分類を確認する。
 
@@ -268,7 +280,7 @@ UI/CLI/Jobの実行要求は、表示/選択の更新世代（**Selection/Contex
 
 **次の実装者向けの最短作業**：既存#2882 Workspace fixtureを基線とし、(a) Source/Rule/Period/Grantが独立Requiredに揃っているかの読取票、(b) #2889 OC-RP-01〜03のexacting characterizationと現在未成立のGuard enforced/Effect witnessの差、(c) #2870/2854の実PG Restart/ABAの保証範囲、を**同一ScenarioのClaim別列**に配置する。read-only実Provider/Consumerが接続できない段階で次の書込E2Eを「Script完成」と呼ばない。
 
-**受入の停止線**：この節は既存証拠・設計の照合のみであり、新しいScript本体E2E／実Provider Read→Rule→Write一試行／OS kill／二Worker／DB+RunPlan同一Attempt／Owner正式受理は**NOT RUN**。#2870で再起動を模した新インスタンスが`MayReplay=true`となる性質は**未解決の弱点**として記録し、同Key PG replay成功を一般的な復旧済みと扱わない。#2889は**Draft**、専用Go合格とRepository Health失敗を独立のEvidenceとする。
+**受入の停止線**：この節は既存証拠・設計の照合のみであり、新しいScript本体E2E／実Provider Read→Rule→Write一試行／OS kill／二Worker／DB+RunPlan同一Attempt／Owner正式受理は**NOT RUN**。#2870で新インスタンスが`MayReplay=true`となる性質は**in-memory方式に限定された弱点**として記録する。#2942のDurableLifecycleと#3002のCLI接続でStageの一部対策は実装・局所実証済み。ただし実Provider Receiptと永続Stageの同一Attempt接合、複数Writer/Fence、本番Host認可は依然未解決であり、同Key PG replay成功を一般的な復旧済みと扱わない。#2889は**Draft**、専用Go合格とRepository Health失敗を独立のEvidenceとする。
 
 ## 9. .tei.md移行・Bootstrap資格・Completion判定の接合（2026-11-06）
 
@@ -330,11 +342,11 @@ UI/CLI/Jobの実行要求は、表示/選択の更新世代（**Selection/Contex
 | #3028 BS-05/09/12：Parser/Operator途中登録、再起動 | K2実選択／K4部分登録／現Active/Build資格の別観測 | 不完全な候補をActive/実Providerへ通さない。Runtime実障害注入はNOT RUN |
 | #1180/#2514／SH-11：TargetSet partial、0件・未知粒度、矛盾 | 同一独立Expectedと`CoverageComplete`／`CoveragePartial`／`EmptyJustified`の差 | #2926既存Evaluatorを用いた条件付き判定。独立Readerの全対象被覆を自作のFixture判定で代用しない |
 | #1130/#1174／SH-07/08：RunPlan Completed・Commit Unknown・手作業未完了 | Run/Effect/Completionの3結果軸を同じOperation IDへ結ぶ | DBやRunの成功を`BusinessVerified`へ昇格しない。実同一Attemptは未実施 |
-| #2514 #3017：意図的なEvaluator Mutant | Source/Fixture/Expected不変、誤実装時の直接Red判定 | [#3017](https://github.com/hat47x/tei-platform/pull/3017)の限定Product Evaluator mutant検出は既存Oracleの判別力の一例。Script/Completionの新Mutant検出済みとはしない |
+| #2514 #3017：意図的なEvaluator Mutant | Source/Fixture/Expected不変、誤実装時の直接Red判定 | [#3017](https://github.com/hat47x/tei-platform/pull/3017)の限定Product Evaluator mutant検出は既存検証基準の判別力の一例。Script/Completionの新Mutant検出済みとはしない |
 
 **次の最短実証順序（既存V0〜V4への差分）**：V0の最初に`*.tei.md`と旧`*.tei`の**Reader/Parser実消費比較**を挟む。ただし正式Grammarが未決・未実装ならそこで止め、旧Loaderの限定実績を新形式の成功と呼ばない。V1の実Read→独立Body/TargetSet/Coverageを先に整備し、V2の業務拒否とV3の実PG Effect/Receipt/Lookup、V4のConsumer/Business Completionは段階的に追う。比較では**一つの固定Source/Scenario/独立Expected**を用い、旧形式と新形式・実DriverとTEI・Provider別は異なるAttemptとして記録する。実行候補が増えただけで新しい全体E2Eが成立したとしない。
 
-**既存Ownerとの分担**：`*.tei.md`のファイル/Authoring/配置判断＝#2621、Parser/Language Bootstrap＝#988/#3028、Loader/必要Source＝#2823/#2935、Role/Meaning＝#2620/#2619、独立Oracle＝#2514/#1180、Script起動と権限段階＝#2502/#2499、RunPlan/部分効果＝#1130、Effect/Receipt＝#1174/#2564、Completion述語＝#1125/#2926、統合Evidence＝#1163。新しいSource Registry・Script Host・Runner・Completion Engine・第二Oracleを導入しない。
+**既存Ownerとの分担**：`*.tei.md`のファイル/Authoring/配置判断＝#2621、Parser/Language Bootstrap＝#988/#3028、Loader/必要Source＝#2823/#2935、Role/Meaning＝#2620/#2619、独立検証基準＝#2514/#1180、Script起動と権限段階＝#2502/#2499、RunPlan/部分効果＝#1130、Effect/Receipt＝#1174/#2564、Completion述語＝#1125/#2926、統合Evidence＝#1163。新しいSource Registry・Script Host・Runner・Completion Engine・第二検証基準を導入しない。
 
 **現状**：`*.tei.md`移行はOwner方針として採用対象だが、現Loader/全Fixture/Studio/CLIの新形式対応および新PackageのParser/Source位置保持はこの追補では**NOT RUN／NOT PROVEN**。#2935/#3028/#2898はDraft、#2926はmainへ統合済みの限定Evaluator。実TargetSet/Coverageの独立Provider証拠、同一Function/実PG/実Consumerの一改訂Product E2E、Ownerの新規意味受理、Windows実行も**NOT RUN**。
 
@@ -420,7 +432,7 @@ UI/CLI/Jobの実行要求は、表示/選択の更新世代（**Selection/Contex
 
 ### 11.3 同じ固定業務Caseで必要な“次の一試行”を定義する
 
-**候補Scenario**：#3034既存Referenceの`order_entry.submit_order`／Capability `sales.submit_order`、`order=ORD-1`、Rule Resource `sales.order`をベースにする。業務Ownerによる意味受理や本番Resource mappingが済んでいると仮定しない。既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)のScenario／[#2514](https://github.com/hat47x/tei-platform/issues/2514)の独立Expectedへ対応付け、別のScript用Test SSOTを作らない。
+**候補Scenarioは2段階**：最初のread-only P0-Rでは[#2586](https://github.com/hat47x/tei-platform/issues/2586)の既存Function/Query Contextから**実際に解決・実消費できる一つのQuery/Provider Reader**を選び、Source/Scope/Result Bodyを独立Expectedで検査する。実Reader/Bindingが未接続なら`UNBOUND_DATASOURCE`／`product-read-not-connected`を止まる理由として残し、合成MemoryStoreを実DB資格へ昇格しない。その後の書込みP0-Wでは、#3034既存Referenceの`order_entry.submit_order`／Capability `sales.submit_order`、`order=ORD-1`、Rule Resource `sales.order`をベースにする。業務Ownerによる意味受理や本番Resource mappingが済んでいると仮定しない。既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)のScenario／[#2514](https://github.com/hat47x/tei-platform/issues/2514)の独立Expectedへ対応付け、別のScript用Test SSOTを作らない。
 
 | 一因子の違い | 実証したいExpected（今回のGo/PG統合試験ではNOT RUN） | 根拠/Owner |
 | --- | --- | --- |
@@ -433,9 +445,9 @@ UI/CLI/Jobの実行要求は、表示/選択の更新世代（**Selection/Contex
 | Readの対象集合をpartialにし、外部手作業確認も欠ける | Provider ReceiptだけでCompletion `holds`へ昇格せず`unverified`の根拠を表示 | #2926実Evaluator、#1125/#2514 |
 
 **次の順序・採用を要しない仮説**：
-1. **既存コードを再利用する読取専用縦切り**：mainの#3034 Command Authorizerと旧`*.tei` Reader／#2882 RunPlanが、**同じ実Loader World/同じRequest/Subject/Resource/Source Revision**で接続できるかを最初に確かめる。結合前に、現APIに渡すRequired Guard/実Row Targetが独立Expectedから揃うか調べ、不足はunsupportedとして停止。
+1. **既存コードを再利用する読取専用縦切り**：旧`*.tei`の一つのFunction→Query→選択Datasource/Provider→実Reader Bodyを**同じ実Loader World・Source Revision・Scope**で固定する。Command AuthorizerやDB Commitをread-only初回の必須前提にしない。結合前に、現APIに渡すRequired Guard/実Row Targetが独立Expectedから揃うか調べ、不足はunsupportedとして停止。
 2. **新形式の停止検証は別Lane**：#3031のDraft HEADが固定した`TEI_MD_PARSER_UNBOUND`の正負対照を再利用し、#3030のParser/Source-span実装までは新形式を無条件に有効化しない。mainに実装済みとは記載しない。
-3. **許可を持つ本当のWriteだけ実PGへ**：#2853/#3025を再利用してCurrent Grant/Resource/Target/CAS/Receipt/独立Readを一Attemptへ接続。Provider Commit時の再照会・事前/事後のGrant失効は別試験。新しいRuntime Host/Policy Engine/Receipt DBは作らない。
+3. **許可を持つ本当のWriteだけ実PGへ**：#3034の`CommandAuthorizer`（Subject/Resource明示）・#2882のRequired Guard・#3002のopt-in Durable Stageを、既存#2853実PG Command/Receipt/別Connection Readに**同じCommand ID/Operation ID/Attemptの明示対応**で接続できるか検証する。Stage保存の成功やRef Executorの`Applied`をProvider Receiptにしない。Provider Commit時の再照会・事前/事後のGrant失効、Crash/ACK-lossは別試験。新しいRuntime Host/Policy Engine/Receipt DBは作らない。
 4. **受入パケットのClaim ceiling**：一回の試行に`Required Obligation / Actually Read Source / Subject+Resource mapping / Evaluated Grant / Actual Dispatch / Effect Receipt / Independent Read / Completion / Actual Consumer body`を並べ、欠落を`not-run/unknown/unsupported`で明示。既存#1163のG1/G2判定を変更しない。
 
 **残余と資格**：#3031はDraft限定Goテスト、#3034はmain実認可Adapterの単体/局所試験、#3025は実PG暫定Chain Healthの記録。**Script Source→Auth→RunPlan→PG→Independent Read→Completion→Consumerの一改訂同一Attempt**、正式Host Grant、Provider側のCommit直前権限再検証、新`*.tei.md`の実Parser/Read、実OS再起動、Owner正式意味受理は**NOT RUN / UNQUALIFIED**。本節は次の一回の実験境界を確定する**設計追補のみ**。
