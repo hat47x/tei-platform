@@ -40,3 +40,26 @@ Node.js 22以上の組込みtest runnerだけを用います。
 **未開示時の結果均一化（合成限定）**：開示資格のないFixtureでは、View/Readerの版やGraphの形を検査する前に`unknown:disclosure_unqualified`を返し、低権限Fixture間で「版の古さ」「要素欠落」などの診断差が結果に現れないようにしています。これは内部関数のsynthetic W0/W1等値試験であり、DOM/ARIA・件数・Network・Tool JSONの非干渉や実Policy判定を実証しません。
 
 **専用CIの追加結果（31ケース）**：[Actions #42160035359](https://github.com/hat47x/tei-platform/actions/runs/42160035359) はNode 24.21.0で **31/31 PASS**、失敗0。実装blob `82ad9c0ef8e5943ee55c1611e212a06e525819ac`、テストblob `be80612ee541b0d1f2abb67e076c4000bb015f1f`。Go側の現物ReaderとそのQuery意味へは未接続です。
+
+## 実CLI直接参照の限定接続（2026-11-06）
+
+`direct-trace.mjs`は、既存Goの`tei trace`が実Workspaceから出力した **`tei.cli.trace/v0`** の成功報告を、**direct-edge候補**としてだけ観測するread-only Referenceです。新しいSource ReaderやModelRef Resolver、Relation Registry、権限判定器ではありません。
+
+```sh
+node --test reference/tei-topology-coverage/direct-trace.test.mjs
+go run ./cmd/tei trace \
+  -workspace reference/workspace \
+  -scope reference-observation \
+  -subject-kind semantic-relation \
+  -subject-id sales.order.customer \
+  -direction both -mode full > /tmp/tei-topology-trace.json
+node reference/tei-topology-coverage/verify-cli-trace.mjs /tmp/tei-topology-trace.json
+```
+
+この固定例では、実CLIの**incoming** `order_entry.customer_reference → sales.order.customer`、**outgoing** `sales.order.customer → customer.customer`を独立のNode Consumerで照合します。Source navigationの`located`は読取り位置の情報に過ぎず、編集権限・Owner意味受理にはならない。Traceの`Edge.Relation`は**直接Edgeの種別文字列**であり、`declaringScope + relationID`や任意の多項Roleの正本ではないため、`observeDirectTrace`は`relationEntityIdentity:not-provided`、`multiRoleClosure:unproven`、`sourceAndPluginClosure:unproven`、`absentClaim:unknown`を保持します。**このアダプターの結果は`boundedAbsence`へ渡しません。**
+
+対象Graph/Traceがfull一ページ・scope一致・候補read-onlyでない場合、`unknown`で止めます。0行でも「Relationshipが存在しない」にはしません。`ProjectionUnresolved`、Source位置不明、SourceIndex未閉包、非公開Policy、過去のGrantはそれぞれ独立の資格です。実CLIの生JSONにはSourceパスやEvidenceを含む可能性があるため、**許可済みpublic sliceを持たない外部Consumerへそのまま出力しない**。本アダプターはCurrent Policyを検証しません。
+
+**実施済み証拠**：[専用Actions #42205912384](https://github.com/hat47x/tei-platform/actions/runs/42205912384)。exact head `6b99fed018dc9cc9c44bd0cee2031aecb1939a7b`、Go 1.26.10、Node 24.21.0で、合成Graph/Table **31/31 PASS**、CLIアダプターの合成負例 **7/7 PASS**、実`reference/workspace`を通したGo `tei trace`→Node Consumer **PASS**。Source改変なしのclean treeをworkflowが検査。これが証明するのは、固定Workspaceの直接参照2本を実CLI JSONから同一Consumerが読んだことまでです。多項Relation完全性・全Source/Plugin閉包・実Disclosure/Policy・実WebView2/Studio・ETL/Build実行・認知改善・Owner受理は **NOT PROVEN**。
+
+**後続のFit/Gap**：実`tei trace`は直接宣言Edgeを取得できる一方、合成Referenceの任意の多項Relationに必要な独立の宣言scope・relation ID・role列は一般には復元できない。今あるGoの`TraceWorkspace`と`SourceBridge`を再利用し、実Sourceに必要な意味・roleが存在するケースを別Ownerで特定した後にだけ、追加のMapping／標準構造を検討する。#1124 M0/M1と#2831 G4の受入を代替しない。
