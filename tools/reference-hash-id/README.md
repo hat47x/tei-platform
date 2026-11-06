@@ -66,12 +66,16 @@ go run ./tools/reference-hash-id/cmd/hashid-probe \
   -subject example:record-one \
   -target-probe tools/reference-hash-id/examples/decimal24.target-probe.json \
   -expected-source-sha256 a53b0563c14046eb542a3aa0eeeb7b3d502a935477b474fbe78d81bf33fb93c4 \
-  -expected-target-sha256 7c920c2b4aa575b1e700d62e991ef3c7d3f4b6b32960d561d95048a1c33b3b72
+  -expected-target-sha256 7c920c2b4aa575b1e700d62e991ef3c7d3f4b6b32960d561d95048a1c33b3b72 \
+  -expected-population 1000000 \
+  -max-collision-probability 1e-6
 ```
 
-このfixtureは公開の合成バイト`hello TEI`を使い、独立Python SHAKE256計算による期待`hashIdText=590268890628724110017033`（数字24桁）と、入力の独立SHA-256 `a53b0563c14046eb542a3aa0eeeb7b3d502a935477b474fbe78d81bf33fb93c4`をGoldenとして検査する。返答に`status="caller-pinned-snapshot-preflight-only"`、`callerPinsMatched=true`、`authority="none"`、`storageWrite=false`と、Scheme JSON、入力バイト数/SHA-256、生成文字列、Target名前空間/正規化後キーを含む。入力SHA-256は**この実行が読んだバイト列の説明**であり、受理済Source revision/署名/適切なProviderであることを証明しない。`-target-probe`を省略すると`status="derived-only"`とする。
+このfixtureは公開の合成バイト`hello TEI`を使い、独立Python SHAKE256計算による期待`hashIdText=590268890628724110017033`（数字24桁）と、入力の独立SHA-256 `a53b0563c14046eb542a3aa0eeeb7b3d502a935477b474fbe78d81bf33fb93c4`をGoldenとして検査する。返答に`status="caller-pinned-budget-snapshot-preflight-only"`、`callerPinsMatched=true`、`authority="none"`、`storageWrite=false`と、Scheme JSON、入力バイト数/SHA-256、生成文字列、Target名前空間/正規化後キーを含む。入力SHA-256は**この実行が読んだバイト列の説明**であり、受理済Source revision/署名/適切なProviderであることを証明しない。`-target-probe`を省略すると`status="derived-only"`とする。
 
 Caller Digestの照合を次のように扱う。Target事前検査では `-expected-source-sha256` と `-expected-target-sha256` の**両方が必須**。一方、Targetを使わない`derived-only`はSource Pinなしでも実行でき、指定時には一致を検査する。CLIはScheme、Source、Targetを最後にもう一度読み、最初に読み取ったbyte列と一致することも確認する。ただし、**Caller Pinを発行した主体の資格、Source revision/Workspaceとの結びつき、Snapshotの網羅性・現在性、ファイル名/symlinkの安全性、ABA、最後の比較後の変更**は保証しない。単なるFile Hashの一致をFreshnessやAuthorityと呼ばない。
+
+**衝突確率の予算（W2の局所Reference、製品未採用）**：Target事前検査には`-expected-population`（2以上の想定ID件数）と`-max-collision-probability`（許容birthday衝突確率、0〜1）を追加して**必須**とする。以前から存在する`hashid.CheckCollisionBudget`をScheme検査後・ID生成前に呼び、上限超過・NaN/Infinity/負数・予算未指定を拒否する。成功JSONの`collisionBudget`は`expectedPopulation`、`maximumCollisionProbability`、`estimatedCollisionProbability`、`policySource="caller-declared-unverified"`を保持。上記例は「数字24桁、100万件、許容上限1e-6」の**合成値**であり、TEI標準Policy／実Target容量の採用ではない。同じAlphabetでも20桁・10億件・上限1e-6なら拒否する。この計算は**独立・一様分布のbirthday近似のみ**で、敵対的入力への強度、正規化後Targetの実有効空間、実DBの既存占有数、将来の衝突なし、原子的保存を保証しない。異なるScheme/Scope/Targetを混同してPopulationを合算・再利用しない。
 
 CLIへのTarget Snapshotは厳密な単一行正準JSON `tei.hashid.target-probe/v1` を要求する。未知・重複フィールド・欠落フィールド・異版・null・過大ファイルを拒否する。**これはReference CLI専用の試験入力で、製品の正本モデル・永続化Schema・完全な現在割当の証明ではない**。入力ファイルは最大4MiB、Scheme最大4KiB、Target Snapshot最大512KiB。すべての局所診断成功後にのみstdoutへJSONを1件出力し、拒否した場合はstderrと非0終了にする。読み込んだSource/Targetのファイルへ書き戻さない。
 
