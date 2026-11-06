@@ -3200,3 +3200,54 @@ Org D1→D2の責任継承、Tenant A→Bの切替、Provider DB/Region移設は
 | **P2 外部HR/ERP連携** | 複数Employment/過去移動/中間履歴喪失を外部Official API/Extractで対照し、Field別Source責任と受入/公開 | #1807/#2555/#951。実Workday/SAP/Oracle Tenantへの接続、Contract・Cost・認可・外部データ権利を別に判断 |
 
 **受入結果**：ORG-CM-01〜12は今回設計した独立Expected候補で全てNOT RUN。商用製品はRequirements ProbeでありTEIが商用互換性や同等性を実装・達成した証拠ではない。Ownerによる意味受理、実Provider/GUI/Host/実Tenant、商用API/実データのConformanceは未実施。#1119の既存Critical Pathを変えず、まず一つのProduct E2 Readの実証を優先する。
+
+## 75. 商用仕様の例外・既定動作を一般則へ誤昇格しない：制約／警告／曖昧／現在権限の四境界（2026-11-06、採用前）
+
+### 75.1 第74節を反証する詳細仕様
+
+第74節・[商用製品要求調査](../research/COMMERCIAL_ORGANIZATION_PLATFORM_REQUIREMENTS_2026-11.md)のCP-01〜18を、各社ヘルプの**既定・設定可能・非対応・有償オプション**まで追って補正した。出典は以下の公開一次資料。TEIが商用製品の内部動作や互換性を再現済みという意味ではない。
+
+1. **[SAP SuccessFactors: 複数Incumbent](https://help.sap.com/docs/successfactors-employee-central/implementing-position-management/positions-that-allow-multiple-incumbents)**：Positionが複数在職者を許すかは設定で異なる。さらに管理職Positionに複数Incumbentがいると、子Position側のSupervisorが先頭/任意のIncumbentになる危険がある。[Leading Hierarchy](https://help.sap.com/docs/SAP_SUCCESSFACTORS_EMPLOYEE_CENTRAL/cf23ba26985f4d4a8df3a34b7392847d/defining-leading-hierarchy) ではPosition hierarchy優先が標準構成候補だが、変更できる。[Matrix Sync](https://help.sap.com/docs/successfactors-employee-central/implementing-position-management/synchronization-between-matrix-relationships-and-job-relationships)の同期は限定条件付き。**TEIでは「2人Occupant」から「唯一の指揮Manager」を自動選択しない**。既存製品互換を求める場合のみ、その製品・設定版・連携の選択規則を明示的な外部Adapterとして扱い、意味受理と分ける。
+2. **[Oracle HCM: Assignment](https://docs.oracle.com/en/cloud/saas/human-resources/fawhr/assignments.html)**：Work RelationshipごとにPrimary Assignmentを必要とし、複数Work RelationshipではOverall Primaryも別選択される。[Employment Model](https://docs.oracle.com/en/cloud/saas/human-resources/faigh/employment-model.html)はLegal Employer/Enterpriseの設定によりSingle/Multiple Assignmentを選べる。**Person=Employment=Assignmentという固定モデルは拒否**し、対象Employment内のPrimaryと全PersonのOverall Primaryを区別する。設定が未取得なら単なるFirst Rowで代用しない。
+3. **[Dataverse: Modernized BU Security](https://learn.microsoft.com/en-us/power-platform/admin/modernized-business-units-security)**：UserのBusiness Unit、RowのOwning Business Unit、Record Owner、各BUのRole付与を別々に持ち得る。[BU変更時のレコード移動設定](https://learn.microsoft.com/en-us/power-platform/admin/create-edit-business-units)は権限・所有レコードの移設に影響する。TEIでは組織異動から物理Rowの所有者・実Grantの自動改訂を導かない（§70〜73）。**特定の外部Sourceで現に発生した連動はObserved Source Changeとして取り込むが、普遍規則としない。**
+4. **[ServiceNow: Visibility/Contains](https://www.servicenow.com/docs/r/platform-security/c_DomainVisibility.html)**：Contains DomainはData可視性を与えてもBusiness Processは共有しない。[Domain Separationサポート区分](https://www.servicenow.com/docs/r/platform-administration/domain-separation-app-data-source-integration.html)は対象アプリでのData/Process/UI/Cache/集計のサポート範囲を分ける。Tenant Profileを選択した事実だけで全Plugin/経路が分離済みにはならない。
+5. **[Workday Adaptive Planning 2026R1](https://doc.workday.com/adaptive-planning/en-us/what-s-new/releases/2026r1-release-notes/2026r1-planning-for-hcm-and-financials/org-design-and-scenario-modeling.html)**：What-ifはLive HCMから分離。Span/Layersのガイドライン超過は**Warningであり続行を禁止しない**。関係者への共有、編集、承認プロセスを持つが、承認依頼を実組織のEffectやActualに変換しない。[導入条件](https://doc.workday.com/admin-guide/en-us/adaptive-planning/org-design-and-scenario-modeling/steps--set-up-org-design-and-scenario-modeling.html)でWorkforce Planningの別ライセンス等があるため、製品名の一致だけで導入時に全Capabilityが常在するとみなさない。
+
+### 75.2 一般化するのは特定製品の設定値でなく、判断の境界
+
+| 別々に表示・検査する判定 | 意味と受入契約 | 典型的反例 |
+| --- | --- | --- |
+| **Structural invalid** | 採用されたRole/Position/Relation規則に対して違反。親の過多、単一Incumbentの重複などは、当該ProfileのValidationで拒否 | Supervisory Roleだけ親が2本、Positionがsingle-incumbent設定なのに同時2人 |
+| **Unresolved / ambiguous** | 対象候補が複数、Source履歴順や主Assignmentが未特定。追加の意味/選択を要求し、実行対象を勝手に決めない | 許容されたPosition多重Incumbent2人から上司をFirstで選ぶ、同日更新順序がSourceから未取得 |
+| **Advisory warning** | Plan/Scenario上の目安違反。Ownerがwarningとして採用したならPreview継続可。正式Publish/実Effectの許可とは別 | Span/Layers超過を技術的Validation failureへ昇格する／反対に警告なしで実反映へ進む |
+| **Runtime denied / unavailable** | 対象機能のCurrent Host/Provider GrantやTenant/Action/Resource/送出先、必要Capabilityを検査。意味上の候補存在は認可ではない | Org上のManagerであることからDataverse Row ReadやServiceNow Process実行を許可する |
+| **Source unqualified / unknown** | Sourceが欠落、Correctionにより中間履歴消失、Provider Cohort/Read Completenessが不明なときは「復元できない」を保持 | 1日2回の異動があったと聞いただけで、今ある1行から中間状態を創作 |
+| **Accepted / Published / Effect / Actual** | What-if Preview、責任者による意思決定、受理済み正式構造、実Provider作用、独立読取の実績は異なる資格 | Previewで人員数が変わったのでHRISも更新済みとする |
+
+既存Validation、Source/Reference Revision、Business Rule、Function Data Context、Intent/Action、Capability Authorize、Provider Receipt、SHO/Studio Presentationへ投影し、**全Domain共通の新しいDispositions Enum/Host/HR Core Entityを先に追加しない**。同じ判断を別Engineが再実装しないこと。Studioは業務用語で説明できること（「担当候補が複数」「計画上の目安超過」「実行権限がない」「資料が不完全」）。DSLにGoの型宣言を追加しない。
+
+### 75.3 テスト化した範囲と証拠の上限
+
+[独立合成Reference Draft PR #3019](https://github.com/hat47x/tei-platform/pull/3019)を**main起点の別branch**に作成し、`reference/org-semantic-views/verify-commercial-probes.mjs` に9つのread-only negative controlを追加。第74節のORG-CM-01,02,03,05,07,09,11に対応する。
+
+| 合成Probe | 正・負の対照と、推論できないもの |
+| --- | --- |
+| CM-01 | Supervisory 2親はinvalid、Matrix 2親はそのRoleで許容。実TEI Relation Validatorではない |
+| CM-02 | Vacant Positionは残存、single-incumbentの同時2人はinvalid、multi-incumbentで上司候補2人はunresolved。明示選択した時だけcandidate |
+| CM-03 | Primary Work Relationship内のPrimary Assignmentを選択、別Employmentの先頭Rowを使わない。Primaryが2人ならunresolved |
+| CM-05 | 同日2 UpdateにSource Sequenceがあれば区別し、なければunresolved。CorrectionでSourceが保持しなかった中間値は復元済みと主張しない |
+| CM-07 | PrincipalのOrg BUとRowのOwning BUが異なっても実Grantがなければdenied。合成関数のdenyはTEI Host実強制ではない |
+| CM-09 | ContainsはData read候補となり得てもProcess実行を許可しない。ServiceNowの正式Policy/実テナントではない |
+| CM-11 | What-ifが元Sourceを変更せず、Layers超過WarningでもPreview可。承認/実Effectはnot-observed |
+
+**実行資格の区別**：同じ9論点の**ローカルNode v22.16.0合成試行は9/9 PASS**。ただしPR #3019へ保存した整理後のファイルはローカル実行ファイルと**byte同一と検証できていない**ため、GitHub PR固定HEADの合格は未認定。今後、exact-headのNode test＋既存Reference回帰を必要とする。Nodeローカル成功はSynthetic Meaning Probeの資格までであり、Workday/SAP/Oracle/Dynamics/ServiceNow/Orgvueの実ソフト、TEI Parser/Function/Host/E2/E4、安全なTenant Isolationを検証したわけではない。
+
+### 75.4 実装優先・Owner・撤回線
+
+1. **P0 #2510/#2386**：同一SourceへのORG-CM反例として、各Role多重度・Employment Scope・同日Source履歴、WarningとInvalidを独立Expectedへ反映。配置や被雇用者の合成別Identityを既存標準Data/Relationで表現できるか確認。特定商用製品の振る舞いを標準既定ルールにしない。
+2. **P0 #2586/#2506/#1126**：実Native .tei Case C1→Function Data Context→実Provider Read/Row/Field/Cohort→Consumerを先に通す。9 synthetic testsを合格してもProduct E2を合格としない。未接続なら第一Gapを記録。
+3. **P1 #2593/#2779/#2516**：計画上のPosition/Headcount/FTE/Cost/Span/Layersを現存するMeaning→Scope/Grain/Measure依存と照合し、警告と編集許可・正式承認/実効果を分離。What-ifが実Dataを変更しないことは別Provider観測が必要。
+4. **P1 #1174/#1043/#1656/#1178**：Record Owner/Org BU/Tenant/Domain Visibility/Process Egressは現在Authorityと実Providerで検査。Vendor-specific Default等の自動割付を必要とするなら、Provider Profileの明示された条件と実測に限定する。
+5. **P2 外部Source**：SAP Manager同期、Oracle Date Effective履歴、Dataverse BU変更の連動などを実Data・実Targetで確認するのは、当該商用環境/利用条件/権限が利用可能になってから。No exact Source History→unresolved、Non-atomic Remote Effect→unknownを維持。
+
+**撤回線**：Role/Position/Temporalの新Core機構を提案しても既存Data/Relation/Ruleで独立Expectedを区別できるなら、機構は採用しない。商用仕様が設定/SKUに依存して固有な場合、Core契約へ強制するのではなくProfile/Plugin・外部Adapterの要件へ縮退する。#1119 Critical Path/ADR-0036/0043/0044は変更なし。正式業務受理はOwner、実Product適合は実Code/DB/Provider/Consumer/Receiptの現物で判断する。
