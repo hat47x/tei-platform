@@ -141,3 +141,34 @@ SHO Editorだけで書き始め、SUIによる発想の展開を必要に応じ�
 
 **実施順**：#2667 TMD-01〜04/07の固定1 Subjectの読込実測を最優先→その同じSourceでAU-01〜05/07を最小Authoring PoC→AU-06はSUI/SHO Producer/Writerの資格が成立した後→AU-08はOKF Pluginを選択した場合のみ。Expectedは既存#2514の独立Oracleで保持し、変換実装/AI自身がExpectedを生成して合格させない。既存G0〜G4や他Issueの新Gateにしない。
 
+<!-- tei-md-mixed-acceptance-freshness-20261106 -->
+## 9. 同一 `*.tei.md` 内の部分受理とClaim単位の鮮度を移行受入へ結ぶ（2026-11-06、設計／NOT RUN）
+
+### 9.1 ファイルのAuthoring意図と、受理対象Occurrenceの境界
+[#2621](https://github.com/hat47x/tei-platform/issues/2621)の「`*.tei.md` はTEI向けAuthoring意図を示す」と、[#267](https://github.com/hat47x/tei-platform/issues/267)のShared Acceptanceにおける**実際のOwner Decision対象**は同じ粒度でない。たとえば一文書に、(a) Owner受理済みの`sales.order.total`宣言、(b) 未受理の`sales.order.discount`候補、(c) 説明表、(d) 独立Expected、(e) 未閉じFenceが共存できる。**ファイル全体が受理済みでも、全体が未受理でもない**。意味受理は、元Source occurrence／対象Role・Subject／Decision対象のVersion・Scopeに対する既存の判断だけを参照する。ファイル名・Frontmatter・OKFタグ・Syntax PASSを受理の印にしない。
+
+一個のAuthoring Sourceを保存・Renameしても、**Raw Draft保存、実Readerが消費した部分、Structural Candidate、受理済みMeaningの現在適用、Claimごとの必要Dependency、現在Consumerへの開示、実Action資格**を段階別に判定する。新しいMeaning RegistryやFile-level `accepted` フラグを作らない。元ファイルのraw revisionと抽出Occurrence/span、Role/Operator Pin、Source Indexに残った宣言と実Loaded Sourceの対応を、既存機構の比較列として確認する。
+
+### 9.2 同一文書・固定二宣言で一因子ずつ変える（TM/AU/FC/RF既存Fixtureへの差分）
+
+**共通Fixture（公開合成、未実行）**：`order.tei.md`に受理済みRole `total`、未受理Role候補 `discount`、説明表、2つの独立Expectedを置く。候補の実数値・対象集合を実装から逆生成せず、[独立Oracle #2514](https://github.com/hat47x/tei-platform/issues/2514)で先に固定する。受理の有無は**既存Shared Acceptanceに実在するDecisionが示すときだけ**適用し、説明用Fixtureの`accepted`文字列を本物のOwner判断と呼ばない。以下はTM-03/05/06/08/12、AU-01/02/04/07、RF-02/05/11、FC-01/06の補助判別列であり、**新しいCase ID群を増やさない**。
+
+| 単一変更 | Source／Candidateへの期待 | 受理・Claimへの期待 | Consumer・失敗時 |
+| --- | --- | --- | --- |
+| **説明文だけ編集、`total`本体の意味入力・依存不変** | 文書raw revisionとSpan/SourceIndexは再定位、変更領域は観測。読込済みOccurrenceとPlugin/Operator Pinを確認 | `total`の旧受理は歴史として維持。必要な意味・依存が同一と照合できるなら**現在適用の維持候補**。文書全体の一律再受理を要請しない | 引用や行番号は再確認。未知の非出力依存があれば`unknown`、無根拠なBuild skipは不可 |
+| **未受理`discount`候補だけ改稿** | 当該Candidateを再導出。 `total`と重なるRole/依存・重複Subjectなら曖昧性を記録 | 依存が観測上無関係なら`total`は維持候補。新`discount`を自動受理しない | 全ファイル再Build/再Reviewも、同形候補の黙った昇格も禁止 |
+| **`total`が参照するOperator/Role版だけ変更** | `total`のSource byte不変でもParser/Operator由来の候補適合を再照合 | 旧Decisionの最新版への適用を保留/Owner確認。 `discount`のDraft保存は阻害しない | 実計算・Artifactの現在利用を再資格化。既存内容Cacheの履歴は維持 |
+| **Ownerが`total`の受理を撤回** | Source raw byte、構造Candidate、実Read履歴は同じ | 実在する撤回Decisionが確認できるなら`total`の**現在の意味付きClaimは不適格**。旧Decisionの履歴は維持 | 現在Meaningに依存するSHO/AI表示・Action候補・Build適用を再判定。過去Effectを消去・再送しない |
+| **`discount`のみ未閉じFence／部分Parse、`total`は取得可能** | `parse partial`と実取得Scope／抽出失敗を区別。`total`の完全な出典範囲・Dependency Closureが検証できるか確認 | 完全性が独立に示せれば`total`だけ維持候補。不明なら`unknown`、**文書0定義／全定義成功の両方を主張しない** | Raw Draft Saveは可能性を保持、Semantic Promote／実Buildは未資格範囲を除いて用途別判定 |
+| **同byte移動、旧`.tei`→`*.tei.md`、A→B→A** | 旧→新のSource occurrence/Parser selection/相対Link・Anchorと各revisionを区別 | 構造同値が観測されてもDecisionの現在適用を無条件継承・復活させない | 独立Read・Link再解決と現在開示を必要条件へ。未解決なら旧引用/旧Actionは保留 |
+
+**特に禁止する二つの誤判定**：`false reuse`（文書byteや旧Decisionが一致したため、変更されたOperator／撤回後Meaning／未取得Dependencyを現在採用）、`false invalidation`（説明文の段落位置・未受理の別候補変更だけで、独立に照合済みの`total` Claimまで強制無効化）。#2506のContext Definition/Instance/Result Slice、[#2582](https://github.com/hat47x/tei-platform/issues/2582)のRead Dependency/Change Impact、[#2505](https://github.com/hat47x/tei-platform/issues/2505)の版間候補、#267のOwner Decisionにそれぞれ引き渡す。**「依存無し」の十分な観測がない場合は維持判定を保留**する。
+
+### 9.3 追加の正本を作らない受入手順
+1. **同一raw Sourceと独立Expected**を固定し、`*.tei.md` Reader/Loaderが実消費したbyte・領域・Source location/spanと、抽出結果のCoverageを区別する（M0/M2/M3、#2823）。
+2. **明示RoleとOperator PinでStructural Candidateを生成**し、完全解析領域とpartial/unknown、引用・説明用表の非実行を別に報告する（#988/#2620、AU-01/02）。
+3. **既存Owner Decisionだけを参照**し、意味適用に必要なOccurrence/Role/Revision/Scope/依存Closureを照合。Acceptance historyの撤回API/判断イベントが実装済みかは別に確認し、無いものを作り話にしない（#267）。
+4. **Claimごとの必要ReadとConsumer資格を比較**する。同時Read Cohort/Rowset/Field completeness、現在Selection・Policy・Disclosureを確認し、局所維持・再導出・再取得・Owner再Reviewを分ける（#2506/#2582/#2516）。
+5. **誤再利用と過剰失効を両方向で採点**し、実Target/Studio/SHO/外部HostのPASSは、その経路で実入力・実出力が観測されるまで保留（#2514/#2600/#1174）。実Go Reader／Markdown Writer／Owner撤回E2Eは**NOT RUN**。
+
+**実装の優先順**は現行Loaderの`*.tei.md`実読込・Span mappingを先に確認し、それができたSourceで局所Claimの適用判定へ進む。新規Plugin/Host、全文書Acceptance状態、第二Resolver、常駐Reactive Engine、意味正本Registryは追加しない。
