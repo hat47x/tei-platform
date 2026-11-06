@@ -75,6 +75,7 @@ type Invoker struct {
 	UnitOfWork UnitOfWork
 	Periods    PeriodState
 	Authorizer Authorizer
+	Recorder   Recorder
 }
 
 // Invokeは、Commandを実行する。入力の不備、Executorの不在、実行の失敗、
@@ -188,6 +189,15 @@ func (i Invoker) execute(ctx context.Context, request Request, plan applicationv
 				Code:    "UNDECLARED_COMMAND_OUTCOME",
 				Message: fmt.Sprintf("executor returned outcome %s that the capability does not declare", result.Outcome.Name),
 			}
+		}
+	}
+	if i.Recorder != nil {
+		record := OperationRecord{Request: request, Reported: result.Effect, Outcome: result.Outcome}
+		if plan.Effect != nil {
+			record.Declared = &semantic.DataEffect{Kind: semantic.DataEffectKind(plan.Effect.Kind), Data: plan.Effect.Data}
+		}
+		if err := i.Recorder.Record(ctx, record); err != nil {
+			return Result{}, &ExecutionError{Code: "COMMAND_RECORD_FAILED", Message: err.Error(), Cause: err}
 		}
 	}
 	return result, nil
