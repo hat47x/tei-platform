@@ -1,0 +1,21 @@
+warning	APPLICATION_RELEASE_CONTRACT_NOT_CURRENT	application release order_entry@3.7.0 requires historical contract sales_core.order_legacy which has no current definition
+warning	DATABASE_RELEASE_CONTRACT_NOT_CURRENT	database sales_core release 4.0.0 provides historical contract sales_core.order_legacy which has no current definition
+warning	DATABASE_RELEASE_CONTRACT_NOT_CURRENT	database sales_core release 4.1.0 provides historical contract sales_core.order_legacy which has no current definition
+ok
+
+EXIT=0
+[stderr]
+�^���쐬�ł��܂���B���̌��ꃂ�[�h�ł́A�R�A�̌^�݂̂��T�|�[�g����Ă��܂��B
+�����ꏊ �s:1 ����:1
++ [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false);  ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []�ARuntimeException
+    + FullyQualifiedErrorId : CannotCreateTypeConstrainedLanguage
+ 
+�^���쐬�ł��܂���B���̌��ꃂ�[�h�ł́A�R�A�̌^�݂̂��T�|�[�g����Ă��܂��B
+�����ꏊ �s:1 ����:70
++ ... ew($false); $OutputEncoding = [System.Text.UTF8Encoding]::new($false) ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []�ARuntimeException
+    + FullyQualifiedErrorId : CannotCreateTypeConstrainedLanguage
+ 

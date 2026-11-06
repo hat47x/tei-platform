@@ -6,6 +6,7 @@
 # Captured CLI output is hashed as raw bytes by the evidence README; checkout
 # and diff must not rewrite its line endings or encoding.
 /plan/evidence/COMPOSITION_FIRST_CONSUMER_RUN_2026-11-07/** -text
+/plan/evidence/DSH_H2_TOOL_ONLY_READ_ONLY_2026-11-07/** -text
 
 # Workspace source trees are fingerprinted byte-wise (sourceIndexFingerprint,
 # modelRevision). Checkout must not rewrite their bytes (#2399).
