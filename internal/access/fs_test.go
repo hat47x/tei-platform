@@ -62,3 +62,45 @@ func TestFileSystemWithoutARootAllowsNothing(t *testing.T) {
 		t.Fatal("no root means no path is allowed")
 	}
 }
+
+// TestFileSystemRecordsAnEscapeAttempt checks that a path outside the root is
+// recorded as a refusal. The permission check never runs for it, so without this
+// the most interesting refusal (an attempt to leave the root) would be the one
+// with no trace.
+func TestFileSystemRecordsAnEscapeAttempt(t *testing.T) {
+	root := t.TempDir()
+	journal := &memoryJournal{}
+	grant := permission.Spec{Kind: permission.KindFilesystem, Access: permission.AccessReadWrite, Scope: root}
+	fs := access.FileSystem{Root: root, Capability: core.MustCanonicalID("sales.close"), Guard: access.Guard{Granted: []permission.Spec{grant}, Journal: journal}}
+
+	if _, err := fs.ReadFile("../escape.txt"); err == nil {
+		t.Fatal("a path outside the root must be refused")
+	}
+	if len(journal.records) != 1 {
+		t.Fatalf("the escape attempt must be recorded: %+v", journal.records)
+	}
+	record := journal.records[0]
+	if record.Allowed {
+		t.Fatalf("an escape attempt must be recorded as refused: %+v", record)
+	}
+	if strings.Join(record.Missing, "") == "" {
+		t.Fatalf("the record must say what was refused: %+v", record)
+	}
+}
+
+// TestFileSystemDoesNotFailASecondTimeWhenTheJournalIsBroken pins the tradeoff:
+// the path is already refused, so a journal failure must not change the answer
+// the caller gets. Reporting a journal error instead would hide the refusal.
+func TestFileSystemDoesNotFailASecondTimeWhenTheJournalIsBroken(t *testing.T) {
+	root := t.TempDir()
+	grant := permission.Spec{Kind: permission.KindFilesystem, Access: permission.AccessReadWrite, Scope: root}
+	fs := access.FileSystem{Root: root, Capability: core.MustCanonicalID("sales.close"), Guard: access.Guard{Granted: []permission.Spec{grant}, Journal: &memoryJournal{err: os.ErrPermission}}}
+
+	_, err := fs.ReadFile("../escape.txt")
+	if err == nil {
+		t.Fatal("a path outside the root must be refused")
+	}
+	if strings.Contains(err.Error(), "escape.txt is outside the root") == false {
+		t.Fatalf("the caller must see the refusal, not the journal problem: %v", err)
+	}
+}
