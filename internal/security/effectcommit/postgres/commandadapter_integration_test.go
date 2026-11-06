@@ -38,7 +38,8 @@ func TestCommandAdapterCommitsThroughPostgres(t *testing.T) {
 	fixture := openFixture(t)
 	grant := fixture.grant(t)
 	invoker := command.Invoker{
-		World: adapterWorld(),
+		Authorizer: command.ReferenceAuthorizer{},
+		World:      adapterWorld(),
 		Executor: commandadapter.Executor{
 			Runner:          effectcommit.Runner{Provider: fixture.provider},
 			Grant:           grant,

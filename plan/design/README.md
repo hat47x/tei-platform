@@ -25,6 +25,7 @@
 
 | 文書 | 対象 |
 | --- | --- |
+| [`COMMAND_BOUNDARY_SAFETY_2026-11.md`](COMMAND_BOUNDARY_SAFETY_2026-11.md) | Command境界の未設定認可・期間状態の拒否、宣言外効果をunknownとして記録する判断と、参照実行の明示的認可（[#2996](https://github.com/hat47x/tei-platform/issues/2996)、[#2997](https://github.com/hat47x/tei-platform/issues/2997)、参照実装） |
 | [`EVERYTHING_DATA_MARKDOWN_SOURCE_FIDELITY_2026-11.md`](EVERYTHING_DATA_MARKDOWN_SOURCE_FIDELITY_2026-11.md) | Markdownの元シンタックスシュガーと書式・Source occurrenceを保存で保持する契約、局所Patch・競合・往復受入 |
 | [`TEI_PRODUCT_SKILL_HARNESS_BINDING_2026-11.md`](TEI_PRODUCT_SKILL_HARNESS_BINDING_2026-11.md) | TEI read-only Product Skillを既存CLIへ正確に結び、外部Harness/Consumerの受理・許可・開示・実実行と分ける設計候補（[#2605](https://github.com/hat47x/tei-platform/issues/2605)、未採用） |
 | [`TEI_MEANING_TO_CAPABILITY_SKILL_WITNESS_2026-11.md`](TEI_MEANING_TO_CAPABILITY_SKILL_WITNESS_2026-11.md) | Everything is Dataの意味Role→標準Operation→限定CLI発見→Product Skill/Harness→実Host/SHO受渡しの資格差とSource-static・合成検証（#2619/#2605/#2614、未採用） |
