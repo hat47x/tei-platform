@@ -905,3 +905,63 @@ P0は公開可能なContract/Descriptor/Artifact/独立Expectedを既存資料�
 [Draft #2898](https://github.com/hat47x/tei-platform/pull/2898)の重複Role拒否と[Draft #2891](https://github.com/hat47x/tei-platform/pull/2891)のFixture JSON重複member拒否は、**Source fidelity**上の別々の局所修正である。これを全Pluginの新Parserへ移植するのではなく、公開Descriptor/Contract/選択表についても「曖昧性が失われる前に拒否する」という既存#988/#2620/#951/Oracleの負例へ対応付ける。具体的には同じContract IDを複数提供、同じDependency IDの別Revision、Role/Operator Pin欠落、二重指定による後勝ち、不正なValidator入力の黙示補完を拒否・保留する。元Sourceは閲覧・修正可能に保持し、意図した正式な複数Role構文まで禁止するとは決めない。
 
 **実施順序**：P0は#1975の契約だけを既存Data/Sourceでinspectし、Providerゼロの拒否を観測。P1で人/AIの候補と独立Oracle・意図的なmutantを固定し、K2/K3で既存Resolver/Conformanceを照合。P2は隔離した実SQLiteで実Readの対象/完全性/結果を別Evidence化。P3で#2390の別契約・独立Consumerへ展開し、配布方式・Adapter量・Core変更量・修復回数・検証/更新費用を測る。#1975/#2390/#951/#2514/#2620に責務を戻し、第二Registry/Resolver/Plugin Host/AI特権実行/共通Fixture正本は作らない。**K0〜K5の新実行・実SQLite/外部Consumer・公開Contract採用・Owner受理はいずれもNOT RUN**。
+
+
+<!-- tei-md-plugin-source-migration-20261106 -->
+## 22. TEI Source統一（*.tei.md）とPlugin/Buildの互換移行（2026-11-06、Owner方針／実装未着手）
+
+### 22.1 決定と適用境界
+
+2026-11-06のOwner方針：TEI向けSourceは原則 ***.tei.md** に統一し、従来の ***.tei** は新規作成を原則停止して段階的に廃止する。先行[#2621](https://github.com/hat47x/tei-platform/issues/2621)の「.tei.mdは標準化しない」「.mdと.teiの二本立て」を最終決定として維持しない。これは**ファイル名・Authoringの基準変更**であり、現行Markdown Reader/TEI DSL Reader・Role/Operator/Owner受理・Build/実行資格が完成したという宣言ではない。
+
+対象はTEIが所有するModel、Business Function、Rule、Query/Binding、Plugin/Bundle/Contract Descriptor、Test/Scenario等の**TEI Source**。通常の説明用.md、SHO/OKF文書、外部Provider実装の.go/.java等、Native SQL asset、成果物・Lockはそれぞれの役割を維持し、拡張子を無差別に書き換えない。既存のtei.workspace.yamlはWorkspace Manifestとして扱い、legacy tei.workspace.teiは明示的な移行対象とする（Manifest format変更の採否は別判定）。
+
+**.tei.mdという名前はTEI Authoring intentの識別子**。その中の文章・表・式・図・コードフェンスがすべて実行可能ではない。Markdownとして表示・保存可能な原文と、明示的に選択したLanguage/Role/Operatorで意味を解釈する範囲を分離する。OKF v0.2のtype/tags/未知キーもその仕様に沿って保持できるが、tagだけではMeaning/Grantを生成しない。採用するコードフェンス・frontmatter・表記Profileの詳細文法は#2621/#988/#2620で独立Expectedを使って決める。特定の未実装Parserを既定と推測しない。
+
+### 22.2 現行mainのコード事実と移行影響
+
+2026-11-06にmainの internal/workspace/loader.go をread-onlyで照合した。
+- loadSemantics：ファイル名末尾 .tei の選別と、選別されたraw sourceを ParseSemanticFile に供給。
+- loadPlugins / loadBundles：plugin.tei / bundle.tei の完全一致。loadApplications は application.tei、query/pattern/package/binding 等を *.tei で選択。
+- loadDatabases/Environment/Release：database.tei、migration-provider.tei、environment.tei、その他 *.tei 等に固定。
+- Workspace Manifest は tei.workspace.yaml 優先、legacy tei.workspace.tei 読取り分岐。
+- listPinnedDomainSources は選別されたFile名だけを列挙し、pinned readで実内容を取得する。管理ファイルとして列挙されたことと、Parserが実読取したことは別。
+
+したがって単純renameした *.tei.md は現在のParser対象へ自動的には加わらない。また、単にsuffix判定を *.tei.md に変えて生Markdown全体を従来のTEI文法Parserへ渡しても、混在する文章/フェンス/表の解釈は成立しない可能性がある。**Root/実列挙/実読取/実Parse/Meaning Qualified/Build consumed/Consumer loaded** を別列で検収する（#2823/#2621/#988/#2620/#1251/#2600）。
+
+### 22.3 Plugin設計との接続：論理契約の同一性とSourceの変更を分ける
+
+| 変更 | 保持すべきもの | 別資格で再確認すべきもの |
+| --- | --- | --- |
+| 同じPlugin/Bundle定義の .tei → .tei.md 移行 | Logical Contract ID・意味版・Owner根拠、旧Source revisionとMigration記録 | 新Sourceの実Loader選別、Language/Role Pin、実Span、Plugin選択・Conformance |
+| Markdown本文＋コードフェンスへ変換 | 元raw bytes、説明文/表/コメント、埋め込みDSL位置のsource map、Conversion Diff | 抽出範囲が意図したDefinitionを過不足なく含むか。記述例・引用・Testを勝手にProvider実装扱いしない |
+| Third-party Contract-only Bundle配布 | C0契約資産・独立Expected、Publisher/Artifact provenance、対象Target | .tei.md内の契約文面が実装の存在・配布者信頼・Host current Grantを自動付与しない（#1975/#2390） |
+| Build input/Dependency file path変更 | Meaning IDとRule/Contractの継承候補、旧Build/Receipt履歴 | Source occurrence/realpath・実content byte・Builder/Toolchain/Plugin Pin・ArtifactSetの再資格。path変更だけで全意味改変とせず、Source ABAで旧Evidenceを復活させない |
+| 旧 .tei と新 .tei.md が共存 | 移行中の旧データとRevision履歴を保持 | 二つが同一Canonical IDを定義するときの重複診断/明示Cutover。last-winsや二重Owner SSOTは禁止 |
+
+### 22.4 既存Fixtureを使う移行の否定対照
+
+| 対照 | 独立Expected／失敗時の停止線 | 責務 |
+| --- | --- | --- |
+| M-01 既存TEI DSL Sourceを改名するだけ | 新名が現Loaderで読まれないことを成功と数えない。必要Source未読込ならvalidate okでも unqualified | #2823/#2621 |
+| M-02 旧/新の同一意味ID共存 | 無音上書き・二重Provider選択拒否。元Source/パスは保全 | #2621/#988/#951 |
+| M-03 普通の.mdとTEI向け.tei.md | 前者をTEI Sourceとして自動処理しない。後者の説明文・例示用フェンスは自動実行しない | #2621/#2620 |
+| M-04 Markdown＋複数TEI構造ブロック／BOM/CRLF/日本語 | 元raw byteと各blockのUTF-8 byte span・順序・意味IDを照合。見出し/改行の整形で無音位置ズレ禁止 | #2621/#988/#2497 |
+| M-05 Plugin/Operator Descriptorと依存が未Pin・eager循環 | Sourceはinspect可能でもInterpretation/Activationは保留。Plugin自己記述のSeed/Pinを別資格とする | #988/#2620 |
+| M-06 Browser/Studio/SHO上の編集・no-op保存 | Markdown原文の無断整形・変換、Role未解決の意味自動受理を禁止。Apply時Revision不一致は差戻し | #2621/#1124/#2497 |
+| M-07 未読込Required Rootと旧パス参照 | 実Read/Dependency/Build Input Closureが不足なら0件ではなくunknown/unqualified | #2823/#2600 |
+| M-08 Migration後のBuild/ConsumerとRollback | exact Source/Artifact/loaded bytesを対象Targetで確認。旧成果物保全と業務Effect取消は別 | #1251/#2390/#1174 |
+
+上記M-01〜08は比較用ラベルで、新しい第二Oracle・実験Runner・固定Product API enumではない。既存#2621 FM/AP、#2823 Source root、#988 Language pin、#2620 SDX、#2514 Independent Expected、#2600 IBを共有する。
+
+### 22.5 段階的移行とOwnerへの受渡し
+
+P0 **read-only棚卸し**：既存Workspace Manifest、domain loader別の全*.tei選別点・生成書き出し・Test Fixture・外部Consumer参照・文書リンクを列挙し、現行負例を固定。原ファイル名・byte・Semantic ID・Source index/Build closureを結ぶ。TEI新Source形式規約の正本は#2621、実Loader対象と未読込診断は#2823、Language/Roleは#988/#2620。
+
+P1 **最小Parser経路の検証**：1つの公開Semantic定義とPlugin Descriptorの二つを、旧.teiと新.tei.mdで比較。プレーンMarkdownのRaw保全、明示構造ブロックの解析・byte span、旧/新独立Expected、必要Source完全性を検証。旧Grammarを無条件で捨てず、明示した互換期間中だけread-onlyまたは限定実行経路を残す。単純renameだけで適合したとしない。
+
+P2 **Workspace/Build/外部Target再資格**：現行#1251 PB・#2600 IBで実Read→Meaning→Build Source/Artifact/Readerを一改訂へ束縛。旧/新重複・リンク切れ・未使用Plugin非混入、Target固有依存充足を検査。適格なConsumerに限り移行したSourceを適用し、元Source/旧Artifactを保全。
+
+P3 **段階廃止**：既存*.teiへの新規追加を停止する運用、旧ファイルの参照・Legacy Reader撤去のGateを、P1/P2で成立したConsumerごとに判断。移行前の一斉rename/削除や、旧Fallbackで新Required Sourceの欠落を黙殺することは禁止。Ownerの形式方針は決定済みだが、文法/移行・互換期間/Plugin ABI/本番資格は実証・判断待ち。
+
+**状態**：2026-11-06の新Source命名方針を設計へ反映する追補。既存mainの*.tei読取挙動のread-only静的照合のみ。*.tei.mdのProduct Parser/Writer/CLI/Go Target・外部Consumer E2E・OS/DB・Owner業務意味受理は NOT RUN / NOT PROVEN。新Source Reader/Registry/Host/Policy Engine/第二Acceptanceを作らない。
