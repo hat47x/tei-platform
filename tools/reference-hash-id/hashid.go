@@ -349,7 +349,14 @@ func CollisionRiskUpperBound(s Scheme, population uint64) (float64, error) {
 	if logLambda >= 0 {
 		return 1, nil
 	}
-	return math.Exp(logLambda), nil
+	bound := math.Exp(logLambda)
+	if bound == 0 {
+		// Underflow is a display/precision limit, not zero risk. Use the
+		// smallest positive representable bound for a fail-closed estimate.
+		return math.SmallestNonzeroFloat64, nil
+	}
+	// Round one representable step upward, never down, for budget comparisons.
+	return math.Nextafter(bound, math.Inf(1)), nil
 }
 
 func CheckCollisionBudget(s Scheme, population uint64, maximum float64) error {
