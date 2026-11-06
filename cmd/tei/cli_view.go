@@ -717,6 +717,16 @@ func writeReferenceRunText(out io.Writer, run referenceCommandRun) (int, error) 
 	if _, err := fmt.Fprintf(out, "persisted: %t (durability: %s)\n", run.Persisted, run.Durability); err != nil {
 		return 2, err
 	}
+	// An unresolved difference is shown even when the run succeeded: the
+	// declaration did not describe the whole effect, and the reader should not
+	// have to open the operation log to notice.
+	for _, difference := range run.Differences {
+		if _, err := fmt.Fprintf(out, "difference: %s (%s %s beyond %s %s)\n",
+			difference.Code, difference.Applied.Kind, difference.Applied.Data,
+			difference.Declared.Kind, difference.Declared.Data); err != nil {
+			return 2, err
+		}
+	}
 	return 0, nil
 }
 
