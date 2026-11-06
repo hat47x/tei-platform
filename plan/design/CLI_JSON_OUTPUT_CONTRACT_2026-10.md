@@ -28,7 +28,7 @@
 | --- | --- | --- | --- | --- |
 | `version -json` | `tei.cli.version/v0` | JSON | 引数不正は標準エラー | いいえ（投影型） |
 | `commands` | `tei.cli.discovery/v0` | JSON | 引数不正は標準エラー | いいえ（投影型） |
-| `model catalog` | `tei.cli.model/v0` | JSON | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`） | いいえ（投影型。内側に`tei.operations.model-catalog`の版を持つ） |
+| `model catalog` | `tei.cli.model/v0` | JSON | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`、`SOURCE_INDEX_FAILED`、`NAMESPACE_NOT_FOUND`） | いいえ（投影型。内側に`tei.operations.model-catalog`の版を持つ） |
 | `inspect` | `tei.cli.inspect/v0` | JSON | JSON（`INVALID_ARGUMENT`、`SUBJECT_NOT_FOUND`、`INSPECTION_FAILED`、`WORKSPACE_LOAD_FAILED`、`SOURCE_INDEX_FAILED`） | いいえ（投影型） |
 | `trace` | `tei.cli.trace/v0` | JSON | JSON（`inspect`と同じ形） | いいえ（投影型） |
 | `validate -workspace -json` | `tei.cli.validate/v0` | JSON | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`、`SOURCE_INDEX_FAILED`、`WORKSPACE_VALIDATION_FAILED`） | いいえ（投影型） |

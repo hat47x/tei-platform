@@ -124,3 +124,39 @@ func seededStore(t *testing.T) *MemoryStore {
 	}
 	return store
 }
+
+// TestInvokerKeepsCascadeAsAnUnresolvedDifference checks that a cascade is not
+// refused and not hidden: the record keeps the additional rows as a difference
+// so the declaration and the execution can be compared afterwards.
+func TestInvokerKeepsCascadeAsAnUnresolvedDifference(t *testing.T) {
+	world := deletePolicyWorld("cascade")
+	recorder := &MemoryRecorder{}
+	store := NewMemoryStore()
+	seedDeleteStore(t, store)
+	invoker := Invoker{
+		World:      world,
+		Executor:   ReferenceDataExecutor{World: world, Store: store},
+		UnitOfWork: &MemoryUnitOfWork{},
+		Recorder:   recorder,
+		Authorizer: ReferenceAuthorizer{},
+	}
+	if _, err := invoker.Invoke(context.Background(), request()); err != nil {
+		t.Fatal(err)
+	}
+	if len(recorder.Records) != 1 {
+		t.Fatalf("records=%+v", recorder.Records)
+	}
+	differences := recorder.Records[0].Differences
+	if len(differences) != 1 {
+		t.Fatalf("differences=%+v", differences)
+	}
+	if differences[0].Code != DifferenceAdditionalScope || differences[0].Applied.Data != "sales.line" {
+		t.Fatalf("difference=%+v", differences[0])
+	}
+	if differences[0].Declared.Data != "sales.order" || differences[0].Message == "" {
+		t.Fatalf("difference=%+v", differences[0])
+	}
+	if counts := ScopeCount(differences); counts["sales.line"] != 1 {
+		t.Fatalf("counts=%v", counts)
+	}
+}

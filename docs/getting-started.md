@@ -60,6 +60,8 @@ go run ./cmd/tei validate \
 
 作業領域のモデル要素を一覧で確認するには、`model catalog`を使います。返された`entries[].subject.kind`と`entries[].subject.id`をそのまま`inspect`へ渡せます。`ambiguous=true`の項目は重複宣言があるため、詳細取得を拒否します。
 
+`-namespace`には意味名前空間のIDだけを指定します。存在しないID、およびapplicationやqueryのIDを渡した場合は、空の成功ではなく`NAMESPACE_NOT_FOUND`（終了コード1）を返します。`namespaceMatched`と`namespaceMatchKind`は、要求がどの種類のSubjectに一致したかを示します。宣言はあるが要素を持たない名前空間は、`namespaceMatched=true`かつ`entries`が名前空間自身だけになります。
+
 ```bash
 go run ./cmd/tei model catalog -workspace reference/workspace
 go run ./cmd/tei model catalog -workspace reference/workspace -namespace sales

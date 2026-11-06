@@ -212,7 +212,8 @@ func (i Invoker) execute(ctx context.Context, request Request, plan applicationv
 	// The executor has already run when applied operations are checked. Even
 	// with a UnitOfWork, the Executor contract does not require it to join that
 	// transaction, so a mismatch cannot be recorded as a clean rejection.
-	if err := checkAppliedOperations(plan, result); err != nil {
+	differences, err := checkAppliedOperations(plan, result)
+	if err != nil {
 		var contractError *ExecutionError
 		if errors.As(err, &contractError) {
 			return Result{}, effectContractViolation(contractError.Code, contractError.Message)
@@ -235,7 +236,7 @@ func (i Invoker) execute(ctx context.Context, request Request, plan applicationv
 		}
 	}
 	if i.Recorder != nil {
-		record := OperationRecord{Request: request, Reported: result.Effect, Outcome: result.Outcome, Applied: result.Applied}
+		record := OperationRecord{Request: request, Reported: result.Effect, Outcome: result.Outcome, Applied: result.Applied, Differences: differences}
 		if plan.Effect != nil {
 			record.Declared = &semantic.DataEffect{Kind: semantic.DataEffectKind(plan.Effect.Kind), Data: plan.Effect.Data}
 		}
