@@ -723,3 +723,16 @@ main統合済み[PR #2894](https://github.com/hat47x/tei-platform/pull/2894)の`
 - **出口**：M1なら**当該合成Rule/対象Case/固定Revision限定のMutant kill**だけ認定。業務OwnerによるMeaning受理や全Required Coverage、他Rule/NULL/部分Read、実Provider/Hostを証明しない。#1163/#1119 Product Gateは別途維持。
 
 **証拠参照**：[基本設計台帳§8.7](./TEI_TEST_BASIC_DESIGN_AND_EVIDENCE_LEDGER_2026-11.md)。#3017の[Health #42181290981](https://github.com/hat47x/tei-platform/actions/runs/42181290981)は本計画追加時点で**in_progress**。該当Go Testの実FAILログ確認前は「Mutant kill NOT VERIFIED」。本章はdocs-onlyであり、実コードは隔離Draftに保持。新Runner、Policy Engine、Oracle DB、第二Case正本は作らない。
+
+#### 18.7.1 実CIによるProduct Mutant kill確定（M1）
+
+[#2901](https://github.com/hat47x/tei-platform/pull/2901)の**正常HEAD** `a6eb80cffe16a57f4cb2461ff2946065955a4e50`（[Health #42111973682](https://github.com/hat47x/tei-platform/actions/runs/42111973682) completed/success）と、[#3017](https://github.com/hat47x/tei-platform/pull/3017)の**製品Evaluator一行だけ誤変更したMutant HEAD** `0f795a012dc16200ee85e5f6b3f0b921add7bdc4`（[Health #42181290981](https://github.com/hat47x/tei-platform/actions/runs/42181290981) completed/failure）を実際に比較。
+
+**JobログによりM1を認定**：`TestAIAddedScenarioCandidateFiles/ai-candidate-line-number-uniqueness`が実Fail、`ai-line-number-duplicate`は `Canonical Validation sales.order.lines.line_number_unique result=satisfied, expected=not-satisfied` と出力。Go全体はFail、gofmt/vetはPASS。製品Evaluator本体の誤変更を**追加AI Scenarioが直接検出できた**ことが、単に「別のEvaluatorユニットテストがFailした」という場合とは違う成果である。Candidate/Fixture/Expected/Oracle TestのBlobは正常HEADと不変。これは**1公開合成Rule/1 injected mutant**の限定感度であり、正式な独立業務Meaning、他Rule/NULL・欠損、Provider/Host/Owner、全Obligationは未資格。
+
+**計画更新（完了と次を分離）**：
+- **P0 completed (limited)**：#2828→#2890→#2895＋#2891のG0/G1/有限Oracle同一HEAD Go健全性実走（#2901）と、Product Evaluator誤実装一行MutantのM1 kill（#3017）。
+- **P1 next**：#2514でMeaning/Rule版・独立Expected provenance・選択された実Ruleを対応付け、欠損/NULL、別粒度、Relation scopeの誤実装を**必要な一つずつ**負例にする。既知Mutantをsurvivedにした場合は不足した観測を別記。採用Suite/Readerの実受領は#1180/#2604/#2516、実Provider/Hostや一改訂Packetは#2622/#1163。
+- **禁止**：不正コードの#3017は**永久にDraft、絶対mainへmergeしない**。CIのFailureを正常なRepository Health successと呼ばない。AI生成による検出率・Business Coverage一般化も主張しない。
+
+詳細Evidenceは[基本設計台帳§8.7](./TEI_TEST_BASIC_DESIGN_AND_EVIDENCE_LEDGER_2026-11.md)と[#2514](https://github.com/hat47x/tei-platform/issues/2514)へ記録。本追補はdocs-onlyで、新Runtime/Provider/Generatorの実装は追加しない。
