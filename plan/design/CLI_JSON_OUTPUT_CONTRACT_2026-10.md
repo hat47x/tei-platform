@@ -12,7 +12,7 @@
 
 ## 2. 対象範囲
 
-`tei commands`が広告する13コマンド（`cmd/tei/cli_contract.go`）のうち、読取り専用でJSONを出すものを扱う。書込み系（deployment-*など）と、`commands`自身の引数扱いは、失敗時の形式の一部としてだけ触れる。`scenario`や`model`のサブコマンド以外の広告外コマンドは扱わない。
+`tei commands`が広告する読取り専用コマンド（2026-11-07時点で19件。`cmd/tei/cli_contract.go`）のうち、JSONを出すものを扱う。件数はこの文書に固定せず、`tei commands`の出力と`cmd/tei/cli_contract_test.go`の一致を正本とする。書込み系（deployment-*など）と、`commands`自身の引数扱いは、失敗時の形式の一部としてだけ触れる。`scenario`や`model`のサブコマンド以外の広告外コマンドは扱わない。
 
 ## 3. 現在の結論（先に要約）
 
@@ -52,6 +52,7 @@
 - 引数の未対応flagは、#2332で全広告コマンドが拒否するようになった。拒否も標準エラー（`inspect`、`trace`、`validate -json`はJSON）で、flag解析のusageの分だけstderrが長くなるコマンドがある（例: `knowledge-context`に未知のflag）。`version -json`の引数不正も、2026-11-07から実装が標準エラーへ返す（表の記載と一致）。
 - `validate -json`の失敗JSONは`diagnostics`を常に空配列として持ち、`error.code`と`error.message`のみで種別を伝える。
 - `plugin-lock`は出力自身に`formatVersion: 2`を持つ。schemaVersionはないが、lock形式には版がある。
+- `tei commands`の各entryは、2026-11-07から`schemaVersion`と`jsonContract`（`enveloped`／`raw`／`none`）を持つ。`world`だけが`raw`で、`tei.cli.*`のエンベロープを持たないことをdiscoveryから読める。
 
 ## 5. v0の中での互換な変更と版を上げる変更（規則案）
 
