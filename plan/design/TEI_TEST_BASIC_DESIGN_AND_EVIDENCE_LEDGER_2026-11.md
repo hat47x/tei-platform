@@ -306,3 +306,23 @@ main統合の[`tei dbcheck`](https://github.com/hat47x/tei-platform/pull/2894)�
 **移行との接続**：[#3030](https://github.com/hat47x/tei-platform/pull/3030)の方向決定により新規TEI Authoringは`*.tei.md`標準、旧`*.tei`は原則段階廃止。しかし新Loader／Parser対応・Source span再解決・Owner Meaning再受理は未実行であり、拡張子Renameだけで上記CC-05をPASSにしない。旧新Sourceが共存した期間は、同じMeaning IDが二箇所にあれば**どちらの実使用・受理・選択か**を証拠で決め、後勝ち選択を推論しない。#2621/#3030は形式移行、#2595/#2600はSource/再資格、#2586/#1163はProvider集合、#2514は独立Oracle、#1180はScenarioを所有。
 
 **今回の完了／未完了**：#2811の前HEAD `61ed5e7bf0185ec850584f8d3f4e3f4eb29b8659`に対する[Health #42216506479](https://github.com/hat47x/tei-platform/actions/runs/42216506479)は**completed/success**。本節は現行Sourceと他レーン計画の直接照合、および独立Expected/試験順の文書化のみ。CC-01〜05の新たな実Provider/Source移行試験、末尾脱落Mutant、Owner Meaning再受理は**NOT RUN**。#2514や#3030の担当Issue・コードは編集せず、当初の成功・失敗証拠は履歴保持する。
+
+### 8.10 空集合を断定する前の実証入場：Caller申告と別範囲の証拠（2026-11-07）
+
+**現行mainの実装から直接確認した追加分岐**（`internal/semantic/completion.go` blob `512a835ca445d81dd043f8af78ca29df4e7adb3b`）：`EvaluateCompletion`はOwner集合の`Coverage`、`EmptyJustified`を**Caller申告**として受け取り、実ProviderのRowset・Snapshot・実権限を自ら取得・検証しない。前節§8.9の非空partialに加え、**空候補における不確実性の扱い**も具体的な設計検収に必要である。
+
+| 追加の負例（提案・NOT RUN） | 現行関数に同じ引数を渡した場合のコード上の挙動 | 独立検証で確定すべきClaim／禁止推論 |
+| --- | --- | --- |
+| **CEC-01｜禁止・未取得**：`Targets=[]`, `CoverageUnestablished`, EmptyPolicy=`deny` | **`fails`**。`deny`分岐は空かどうかを実Readで確証する前に返る | 「全件読んだ結果0件なので空は禁止」と「必要対象は未取得だが配列が0件」を同一視しない。独立Expectedとして**`unverified`要求を提案**するが、業務Ownerの空集合契約確定前に既存実装のバグとは断定しない |
+| **CEC-02｜独立空証明の自己申告**：`Targets=[]`, `CoverageUnestablished`, EmptyPolicy=`requires-evidence`, `EmptyJustified=true` | **`holds`**。`EmptyJustified`値を条件として使用し、Coverageには別の確認をしない | EmptyJustifiedの独立したProvider Read Scope/時点/完全性が正しいなら成立し得るが、同じboolだけでは根拠を検証できない。出典なし・別Tenant/Snapshot・権限変更時には完了適格にしない |
+| **CEC-03｜許可・未取得**：`Targets=[]`, `CoverageUnestablished`, EmptyPolicy=`allow` | **`unverified`**。同様の空候補でもCoveragedで分岐が変わる | `[]`が観測済み空集合なのか未取得かを独立に確認。Policy名だけで真の空を主張しない |
+| **CEC-04｜局所反例・partial**：`Targets=[{L1,false}]`, `CoveragePartial`, 非衝突 | **`fails`**。確実な反例があればCoverage不足より先に評価 | 同Scope/版のL1が本来のOwner集合に属することを独立照合。未知のL2全件についての不成立・存在・権限は主張しない |
+| **CEC-05｜Source新形式未対応**：旧`*.tei`と新`*.tei.md`が混在し、新形式定義が未読込 | mainの旧Loaderの挙動と、[#3031](https://github.com/hat47x/tei-platform/pull/3031)の暫定`TEI_MD_PARSER_UNBOUND`拒否は**別HEAD・別実装** | #3031 HEAD `63953ccb5c12ead26ec1268e7c0afdba4eff66ae` の[専用CI #42217379093](https://github.com/hat47x/tei-platform/actions/runs/42217379093)・[Health #42217378867](https://github.com/hat47x/tei-platform/actions/runs/42217378867)は成功。証明したのは**黙った未読込の拒否**でありMarkdown実Parser・意味受理・既存Scenario同等性ではない |
+
+**独立期待値の境界**：CEC-01の`unverified`は「未取得のまま断定してはならない」という**提案する業務Claim契約**であり、現行のGo関数が返す`fails`とは意図的に異なる。CIで`fails`を観測しただけでテスト不合格・製品不具合の確定にしない。#2514（独立検証基準の出典）／業務Meaning Ownerが期待契約を受理した後、#1180が必要Scenarioと期待を定め、#2586/#1163がProvider Read/完全性・同一Attemptを証明する。CEC-02もboolの値を証明そのものと見なさず、取得母集団を外から確定する。**同一Caller引数で、実世界が全件観測済みか欠落か異なる二世界**の識別には、この関数外の証拠が不可欠である。
+
+**修正の可能性と反証**：完成条件の型や`EmptyPolicy`を一律に変えず、①Policyの業務上の受理出典、②Owner TargetSet ID/版／Parent/Tenant／Relation Grain、③Reader Scope/asOf／Snapshot／ページ終端／RLS/Disclosure、④実Caller入力、⑤現在のHost Grant／Reader権限、を固定して関数内部の判定と独立に比較する。特に`empty`、`missing`、`partial`、`permission-denied`、`not-disclosed`のいずれも`Targets=[]`単体へ畳まない。実データの`NULL`値を未知・文字列の代用にしない。実TargetSetが決定不能なら`unqualified`を残し、見かけの`holds/fails`で正当化しない。
+
+**実Sourceと意味再資格**：#3039/#3040の用語規約（テストの判定根拠は「独立検証基準」「独立期待値」、DB製品は「Oracle Database」）を採用。旧来の機械的なテスト名・Package・既存Evidence IDは変更しない。新しいAuthoring Sourceの`*.tei.md`統一は決定済みだが、全体移行ゲートは[#2667](https://github.com/hat47x/tei-platform/pull/2667)を先行Owner、[#3030](https://github.com/hat47x/tei-platform/pull/3030)はAuthoring固有の比較・移行候補として参照する。#3031の暫定Guardを`actual parsed Source`へ昇格しない。World一致でも実Source File/Occurrence、Manifest path/SHA、Parser/Role/Plugin版、Owner Meaning受理と独立Expectedの版を再照合する。
+
+**資格・作業範囲**：CEC-01〜05の新規テスト実行、実Provider/Read/Permission、Completion API修正、末尾脱落Mutant、`*.tei.md`意味Parser、Owner受理は**NOT RUN／NOT ACCEPTED**。本節は現行Sourceと[#3031](https://github.com/hat47x/tei-platform/pull/3031)の固定CIを材料とした設計追補。第二検証基準Engine/専用DBや新Runnerは導入せず、#2514/#2586/#1163/#2667の担当Issueへ実装を複製しない。
