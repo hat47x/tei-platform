@@ -193,13 +193,13 @@ E1とE2は最小の共通面が成立した時点から重ねて実施できる�
 | **AIB-07** | Allowed proposal/readのみ、AIがwrite Intent要求 | Tool availabilityをwrite Authorityへ昇格（#2619/#2622/#1174） |
 | **AIB-08** | CandidateをReject→同内容を別Attemptで再生成 | 再生成で拒否・検証を回避（#267/#958） |
 | **AIB-09** | Human直接回答と貼付AI原文を対照 | ingestion actorとcontent provenanceを混同（#958/#1440） |
-| **AIB-10** | CandidateとExpectedを同じ生成Ruleで作成、既知Mutant投入 | 自己追認を独立Oracle合格とする（#2514/#1180） |
+| **AIB-10** | CandidateとExpectedを同じ生成Ruleで作成、既知Mutant投入 | 自己追認を独立検証基準合格とする（#2514/#1180） |
 | **AIB-11** | Accepted Source/Reload成功後にHost Grant失効 | 受理・保存成功から実行可能と推定（#2598/#1174） |
 | **AIB-12** | Host Commit ACK喪失／二重Retry | unknownを未実行とみなして重複Effect（#1174/#1129） |
 
 **P0**：固定された合成SourceでAIB-01〜09をAI生成なしのCandidate Packetとして作り、既存parse/Validation/Shared Acceptance・Source再読込に実際に接続できる範囲を測定。AIの出力品質とは分ける。**P1**：AIB-10の独立Expectedと既知Mutantで誤PASSを検出（#2514/#1180）。**P2**：別Source版・Principal・開示範囲で二世界の返答/Tool候補/診断/外部送信を実観測（#2515/#2516）。**P3**：AIB-11/12を実Provider/外部Hostの別Attempt・Receipt/独立Readへ接続（#1174）。**P4**：その後で初めて実モデルによるCandidate正確性、誤引用率、必要な保留・拒否率、修正負担・Token/時間を評価する。平均精度値や成功件数を未実行のまま記入しない。
 
-**受入停止条件**：Source/引用/実消費Inputの連鎖が不明、必要根拠未取得、Actor authority未確認、Denied/unknown Effect、外部送信のPolicy/OS実測不足は各必要範囲で`not established`／`denied`とし、未観測のProviderや本番可用性を合格としない。#267はCanonical Source書込み・Owner受理、#988は構文/意味候補、#2619は意味Role/境界、#2622はOperation/Provider、#958はepistemic履歴、#2516は開示、#1180/#2514はScenario/Oracle、#1174は実Effectを所有する。**本節は計画更新のみ、AIB-01〜12の実行・実AI/CLI/OS/外部Host/Owner統合受理はNOT RUN／NOT ACCEPTED**。
+**受入停止条件**：Source/引用/実消費Inputの連鎖が不明、必要根拠未取得、Actor authority未確認、Denied/unknown Effect、外部送信のPolicy/OS実測不足は各必要範囲で`not established`／`denied`とし、未観測のProviderや本番可用性を合格としない。#267はCanonical Source書込み・Owner受理、#988は構文/意味候補、#2619は意味Role/境界、#2622はOperation/Provider、#958はepistemic履歴、#2516は開示、#1180/#2514はScenario/独立検証基準、#1174は実Effectを所有する。**本節は計画更新のみ、AIB-01〜12の実行・実AI/CLI/OS/外部Host/Owner統合受理はNOT RUN／NOT ACCEPTED**。
 
 ## 5.5 `*.tei.md`統一に伴うAI入力・Authoring・受理境界の再資格化（2026-11-06）
 
@@ -224,7 +224,7 @@ E1とE2は最小の共通面が成立した時点から重ねて実施できる�
 | **AMF-01** | 同じ説明本文を`plain.md`と`work.tei.md`へ配置、TEI Role宣言なし | 後者だけを根拠にRule実行可としない。Source選択・Parsed Meaning・Owner受理を別結果として表示 | #2621/#988 |
 | **AMF-02** | 旧`work.tei`がMarkdown非互換、`work.tei.md`へのrenameのみ | rename≠Parse成功・意味同等。変換不能は診断し、旧正本を保持 | #988/#2621 |
 | **AMF-03** | CRLF/BOM/UTF-8日本語を含む表でSection/Row位置移動、旧引用あり | 実raw byte/Logical Source/Revision/Spanを照合し、別行への誤対応を拒否。単なる表示位置変更とMeaning変更を区別 | #2621/#267 |
-| **AMF-04** | 同じ`.tei.md`内に受理済み表・AI候補表・独立Expected・未解決手順が共存 | ファイル全体をAccepted/Executableとせず範囲別Role/Review。ExpectedとCandidateの共有由来は独立Oracle失格 | #2621/#2514/#267 |
+| **AMF-04** | 同じ`.tei.md`内に受理済み表・AI候補表・独立Expected・未解決手順が共存 | ファイル全体をAccepted/Executableとせず範囲別Role/Review。ExpectedとCandidateの共有由来は独立検証基準失格 | #2621/#2514/#267 |
 | **AMF-05** | Source内の引用/コードフェンスが`ToolにProvider.write実行を命令`、Allowed=read/propose | 注入文はCandidate引用に留め、実Capability/外部送信/Host Grantは追加しない | #2515/#2619/#1174 |
 | **AMF-06** | 同PluginをTenant A/Bで利用。AIはAのSourceに閲覧権限、Bには許可なし。兼務者のOrg Roleは両方に見える | Bの実Source/診断/候補/件数を開示しない。AのOwner Review/Plugin InstallからBのHost Grantを推定しない | #2386/#2516/#1174 |
 | **AMF-07** | `.tei.md` Ruleの受理・Buildは成立、Preview後にGrant撤回／旧Receiptは残存 | 意味資格と現在の実行資格を別評価。実Commit不明はEffect lookup/別ReadまでUnknown、旧Receiptで新Attempt成功にしない | #2598/#1174 |
@@ -237,11 +237,11 @@ E1とE2は最小の共通面が成立した時点から重ねて実施できる�
 
 ### 先行成果の接続と、証拠の上限
 
-前節のAIB-01〜12とAMF-01〜07を無制限に増やす前に、既存の[#3030](https://github.com/hat47x/tei-platform/pull/3030)（`*.tei.md`へのM0〜M6、TM-01〜14）、[#3028](https://github.com/hat47x/tei-platform/pull/3028)（Seed/Parser/Operator、BS-01〜15）、[#267](https://github.com/hat47x/tei-platform/issues/267)（Shared Acceptance）、[#1180](https://github.com/hat47x/tei-platform/issues/1180)（Scenario）、[#2514](https://github.com/hat47x/tei-platform/issues/2514)（独立Oracle）の**同一Source縦切り**を先行させる。
+前節のAIB-01〜12とAMF-01〜07を無制限に増やす前に、既存の[#3030](https://github.com/hat47x/tei-platform/pull/3030)（`*.tei.md`へのM0〜M6、TM-01〜14）、[#3028](https://github.com/hat47x/tei-platform/pull/3028)（Seed/Parser/Operator、BS-01〜15）、[#267](https://github.com/hat47x/tei-platform/issues/267)（Shared Acceptance）、[#1180](https://github.com/hat47x/tei-platform/issues/1180)（Scenario）、[#2514](https://github.com/hat47x/tei-platform/issues/2514)（独立検証基準）の**同一Source縦切り**を先行させる。
 
 現状の独立Evidenceを一つの製品横断PASSへ合算しない。
 - [#3030](https://github.com/hat47x/tei-platform/pull/3030)は**docs-only Draft**で、現mainのLoaderが`*.tei`固定名・globに依存し、`filepath.Ext("x.tei.md")`は`.md`、TEI Lexer/ParserはMarkdown全文を受け付けないことを確認した。**新`*.tei.md`の実Parser/Writer/CLI成功は未実証**。固定Gate資産と`.tei/decisions/`は一括変更対象外。
-- [#2901](https://github.com/hat47x/tei-platform/pull/2901)の固定Greenと、[意図的Mutant #3017](https://github.com/hat47x/tei-platform/pull/3017)の固定Redでは、公開合成`relation-unique`の**一件のEvaluator誤実装をAI追加Scenario自身が検出**した。これは当該Product Rule Mutantに限る判別力であり、新Markdown Reader・実Provider Read・業務Owner Oracle・本番適格性を示さない。**Mutant branchをmergeしない**。
+- [#2901](https://github.com/hat47x/tei-platform/pull/2901)の固定Greenと、[意図的Mutant #3017](https://github.com/hat47x/tei-platform/pull/3017)の固定Redでは、公開合成`relation-unique`の**一件のEvaluator誤実装をAI追加Scenario自身が検出**した。これは当該Product Rule Mutantに限る判別力であり、新Markdown Reader・実Provider Read・業務Ownerの検証基準・本番適格性を示さない。**Mutant branchをmergeしない**。
 - [#2853](https://github.com/hat47x/tei-platform/pull/2853)等の既存実PostgreSQL試験は`CommitUncertainError`のCommand unknown伝播と同OperationIDのReceipt Lookupを限定実証。実Provider/外部Hostの全Grant/Guard/Effect/After-commitの保証ではない。同じSubjectの別Key再送や前段Stepの部分効果も除外できない。
 
 ### 一枚の受渡し票：証拠の有無と、主張できる範囲
@@ -252,7 +252,7 @@ E1とE2は最小の共通面が成立した時点から重ねて実施できる�
 | --- | --- | --- |
 | **S: Source** | `*.tei.md` raw byte、Source ID/Revision、Manifest/Root選択、Markdown断片元span、Language/Operator exact Pin、実Read/Parsed Input、依存閉包 | filename/タグ/Discovery/validate okだけではSource利用資格なし |
 | **C: Candidate** | AIまたは固定CandidateのAttempt、Typed Diff、引用品と根拠の一致、未確認前提、引用・Review対象のScope、Audience別Disclosure | 引用不成立・部分文脈・外部送信資格不明なら保留／非開示 |
-| **V: Validation/Oracle** | 同一Source版の決定論的Validation、独立Expectedの作成由来、既知Mutantの検出／非検出 | Parser/CI合格でも業務意味未受理、Oracle自己追認なら不適格 |
+| **V: Validation/独立検証基準** | 同一Source版の決定論的Validation、独立Expectedの作成由来、既知Mutantの検出／非検出 | Parser/CI合格でも業務意味未受理、検証基準の自己追認なら不適格 |
 | **M: Meaning** | #267 Shared AcceptanceのHuman/Owner Decision、対象・有効範囲・判断時点、Source書込みと実Reload | Candidate acceptedに見えてもSourceに未反映ならMeaning未確定 |
 | **G: Current Grant/Binding** | 現在Principal/Tenant、必要Guard集合と供給/評価済み集合、Request/Target/Version/Operation ID | Owner受理とTool存在から実行資格を推定しない |
 | **E: Effect/Consumer** | Provider実行とCommit/Unknown、Receipt/independent read、Consumerが現在のWorkspace/selection epochで実際に読んだbytesと開示可否 | 旧Receiptや後着Responseで現在のOperation/表示を成功扱いしない |
@@ -264,7 +264,7 @@ E1とE2は最小の共通面が成立した時点から重ねて実施できる�
 1. **前提の正確な判定**：現mainは新形式MarkdownのLoader/Parser非対応なので、まず#3030 M0/M2/M3の最小実装が必要である。Readerがないうちは`*.tei.md`のraw Draftを確認できても`Parsed TEI Source=verified`としない。先にファイル名だけ切り替えたSynthetic PASSは目標ではない。
 2. **最小の固定Fixture**：注文一件の説明・型付きTEI断片・検証用表・不明な承認条件を一つの`*.tei.md`に置く。既存TM-02/05、AMF-03/04、AIB-01/03/10を**同一Fixtureと独立Expected**へ参照し、別の12件のCaseを新設しない。Markdownの未選択部分の保持、Source span/byte、`required` Input集合、Ref/Role/Version不一致、引用妥当性を別列で確認する。
 3. **LLM抜きの接合**：人手で作った固定Typed Candidateを#267へ渡し、`not established`、`rejected`、Owner受理の3条件を対照する。Owner Decisionが得られない場合は「Authoring/Validationの限定成功」で止まり、意味受理済みとしない。受理済み変更は実Source再読込後に同じ意味が得られることを確認する。
-4. **Oracleの誤成功検出**：#2901/#3017の同一Case・同一Expected・一行Mutantという**既存の有限実績**を、独立OracleとMutantの実験設計参照にする。ただし元の`*.tei`または旧Scenarioで成立したGreen/Redを、新`*.tei.md` Readerに継承しない。新Sourceの実消費版を使う場合は改めて実測する。
+4. **独立検証基準による誤成功検出**：#2901/#3017の同一Case・同一Expected・一行Mutantという**既存の有限実績**を、独立検証基準とMutantの実験設計参照にする。ただし元の`*.tei`または旧Scenarioで成立したGreen/Redを、新`*.tei.md` Readerに継承しない。新Sourceの実消費版を使う場合は改めて実測する。
 5. **後段の二独立レーン**：P1 Consumer Disclosure/実送信を#2515/#2516、P2 実Host Grant/RunPlan/Provider Receiptを#2598/#1174へ渡す。前者の公開安全はSource/AIプロンプト以外のTool/ログ/Session/CI出口を含み、未観測はunknown。後者の`blocked`はRunPlan全体のno-effectではなく、このStepの事前停止となり得る。UIの旧選択Epochへ後着した応答も現表示の成功に使わない（#1824）。
 
 ### 受入判定・計画変更の限界
@@ -314,8 +314,38 @@ E1とE2は最小の共通面が成立した時点から重ねて実施できる�
 - **実装された限定Guard**：[#3031](https://github.com/hat47x/tei-platform/pull/3031) fixed HEAD `63953ccb5c12ead26ec1268e7c0afdba4eff66ae`。Focused GoおよびWorkspace packageの試験・vet、Actions #42217379093 は限定success。ただし**Draft／未統合、現mainの安全性として流用しない**。
 - **Completion評価器**：[#2926](https://github.com/hat47x/tei-platform/pull/2926)はmain統合済み、限定`TestEvaluateCompletion`成功。`TargetSet`/実Coverage/実Provider read/Hand-offは未接続。
 - **Bootstrap**：[#3028](https://github.com/hat47x/tei-platform/pull/3028)のBS-02/03/06は既存Go APIに正負対照を持つDraft。新Parser実受入、全BSの実証、実Plugin有効化、全実Binary同一性は別。
-- **Source/AI Oracle**：#2901 Green→#3017故意Redは一件のProduct Evaluator誤実装をAI追加Scenario自身が検出した限定結果であり、`*.tei.md`/実Provider/全Target Coverageを認定しない。#2514が以後の検出力とExpected独立性を所有。
+- **Source/AI独立検証基準**：#2901 Green→#3017故意Redは一件のProduct Evaluator誤実装をAI追加Scenario自身が検出した限定結果であり、`*.tei.md`/実Provider/全Target Coverageを認定しない。#2514が以後の検出力とExpected独立性を所有。
 - **新P0-L実Provider→P0-M実Markdown Reader→P0-J旧新合流→実Candidate/Shared Acceptance→Host**の同一版統合試験、実OS/外部LLM送出、実Tenant/Policy、Owner業務意味受理は**NOT RUN／NOT ACCEPTED**。Go単一バイナリ標準、外部Hostの権限主体、第二Meaning SSOT/新Host/Registry/Proof Engineなし。
+
+## 5.8 実装済みProposalの限定契約と、Shared Acceptance／実行Effectへの橋渡し（2026-11-07）
+
+### 5.8.1 三種類の「受理」を同一視しない
+
+[main統合 #3041](https://github.com/hat47x/tei-platform/pull/3041)により`internal/validation/proposal.go`の**`validation.Propose`／`validation.Accept`**と`tei validate -json`の`proposals`が利用可能になった。これはAI専用Proposal形式やSource修正Patchの実装ではない。
+
+| 境界 | 現実のFit/Gap | 受入の停止線 |
+| --- | --- | --- |
+| **V0 診断→提案** | `validation.Propose(diagnostics, worldFingerprint)`は各診断に`Code/Severity/Subject/Diagnostic/Revision`を結び`Accepted=false`で生成。`Guidance`は任意。**Source引用span・外部Source revision・依存閉包・Allowed capability・AI Attemptは含まれない** | `proposals`非空／個数一致／JSON表示だけでは引用の正当性、Source全件読取、実行可能性を主張しない |
+| **V1 局所フラグ** | `validation.Accept(&proposal, acceptedRevision)`は同じ文字列版・非空・二重受理禁止を検査して**メモリ上の`Accepted`をtrueにする**。この関数自体にはReview actor、署名/Authority、Accepted Sourceの永続書込み、Reload/Conformance、Source ABA履歴の照合がない | `Accepted=true`を[ADR-0022](../adr/0022-ai-proposal-canonical-acceptance-boundary.md)／[#267](https://github.com/hat47x/tei-platform/issues/267)のHuman/Owner正式Meaning Acceptanceや承認Receiptと解釈しない |
+| **M 正式意味受理** | 既存Shared AcceptanceのCandidate identity、Review fingerprint、現Base revision、Actor authority、Scoped Decision、実Source反映、Reload後Conformanceを別証拠とする。AI/Validatorの局所`Accepted`の真偽はこれを代替しない | V1からMへの自動昇格・AI独自Writerを認めない |
+| **G/E 現行実行とEffect** | [main統合 #3042](https://github.com/hat47x/tei-platform/pull/3042)はCommand Authorizer未設定を`COMMAND_AUTHORIZER_UNAVAILABLE`で拒否し、宣言PeriodのObserver不在を`COMMAND_PERIOD_STATE_UNAVAILABLE`で拒否。宣言外のEffectは実Executor後に分かる場合があるため`EffectUnknown`／Lifecycle`unknown`で保全 | 明示`ReferenceAuthorizer{}`はReference専用で**真正なHost Grantの検証ではない**。拒否やUnknownを`no effect`に読み替えない |
+
+`worldFingerprint`一致は**当該Comparisonで使ったRevision文字列一致**の証拠に限り、Source path移動、外部Referenceのfreshness、Owner Review撤回、Role/Plugin版、A→B→Aの観測連続性、実Byte閉包まで包括しない。真のAI向けCandidateは§5.4の`Source/Revision/Allowed capabilities/引用/依存Context`に基づく**別の上位契約候補**であり、`validation.Proposal`に全項目を今すぐ押し込まない。
+
+### 5.8.2 参照実行の「実効果との差」を消さない
+
+[main統合 #3060](https://github.com/hat47x/tei-platform/pull/3060)の[固定Evidence](../../plan/evidence/XTEA_LOWCODE_OPERATION_DIFFERENCE_2026-11.md)は、参照Storeの`OperationRecord.Differences`とCLI/Studioの件数投影を試験で確認した。宣言に無い追加Scopeは履歴上の未解決差として残すが、発行SQL、実DBの更新前後、実Provider効果を検証していない。`committed:true`かつ`persisted:false`・`durability:none`のReference CLI結果を、実DB CommitやBusiness Completionの証拠にしてはならない。実Providerでの未宣言効果、部分成功、ACK喪失は#1174のOperationID/Receipt/独立Readの検証対象。Consumer UIには`Proposal`／`Review`／`Accepted Source`／`Request admitted`／`Effect observed`を別の状態として表示する。
+
+### 5.8.3 既存Caseを再利用する最初の差分検収
+
+- **AIB-01/03（出典・完全性）**：`validate -json`に診断とProposalが出た正例を、未読込必須Sourceを混入させた負例と対照。診断0件/Proposal0件を「必要なSourceがすべて正常」と認定しない。Legacy Provider read-only P0-Lは並行してよい。
+- **AIB-02/08（古い版・Reject/再生成）**：同一Proposalを誤Revision／空Revision／二度の`validation.Accept`で拒否する機械対照と、**真正なReview actorを伴うShared Acceptance**を別Case列で測定。V1局所trueでもMに未到達なら正式受理なし。Source ABA・撤回の実再資格化は#958/#267。
+- **AIB-07/11/12（実権限と副作用）**：Authorizer=nil／宣言Period observer=nilでは拒否、`ReferenceAuthorizer{}`を本番Grantとして認めない。Executor後の宣言外Effectはunknown/Receipt Lookupの対象にし、無確認再送を合格としない。#3042のWindows限定Go PASSを実PostgreSQL/Host同一Attemptへ流用しない。
+- **AMF-03/04／TM-02/03/14（Markdown移行）**：`*.tei.md`の実Parser/Source span/Required Inputは[移行主担当#3030](https://github.com/hat47x/tei-platform/pull/3030) M0〜M6/TM-01〜14で判定。[#2667](https://github.com/hat47x/tei-platform/pull/2667)のTMD-01〜12は**横断的な追跡・歴史的対応表**であり、別のMigration Gateや唯一の移行受入正本ではない。旧§5.7/PR説明にある「#2667が移行横断Owner」という記載は、#3030の最新Owner確定に対して補正する。#3031は未対応形式のGuardでありReaderではない。
+
+**用語統一**：[docs/naming.md](../../docs/naming.md)の2026-11-07方針に従い、テスト判定の説明では「独立期待値」「独立検証基準」「適合判定」を用い、`Oracle`は製品名**Oracle Database**の意味だけに用いる。旧説明文の表記は本文で更新するが、歴史的Case ID・実装識別子・URLは機械的に改名しない。なお現mainの同`docs/naming.md`には旧`.tei`標準の説明が残る。これは命名規約の表示更新が`*.tei.md`の実Parser/正式Migrationを先取りしないよう、[#2621](https://github.com/hat47x/tei-platform/issues/2621)／#3030のOwnerへ照合すべき**別の文書整合課題**。
+
+**証拠水準／次の実行**：#3041のGo試験・#3042のWindows Goテスト・#3060のReference記録はそれぞれ別HEAD/別Claimの既存限定証拠。本節は**採用済みAPIの意味と受入上限を照合する文書追補**のみ。新`*.tei.md`実Reader、実Candidateからの正式Source書込み、同一Source/Owner/Host/Provider/Consumer E2E、実外部LLM、OS隔離・Producer同一性はNOT RUN。第二Accepted Source正本・Authorization Registry・AI Host・万能Completion Engineを新設しない。
 
 ## 6. 採否と現在の限界
 
