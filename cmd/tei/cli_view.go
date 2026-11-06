@@ -40,6 +40,10 @@ type referenceCommandRun struct {
 	// describe, so a reader of the run output can see the gap without reading
 	// the operation log.
 	Differences []command.Difference `json:"differences,omitempty"`
+	// AppliedUnobserved is true when the executor did not enumerate its
+	// operations, so `differences` being empty is "not observed" rather than
+	// "none found".
+	AppliedUnobserved bool `json:"appliedUnobserved,omitempty"`
 }
 
 type cliViewReport struct {
@@ -227,19 +231,23 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 				}
 			}
 			var differences []command.Difference
+			appliedUnobserved := true
 			if len(recorder.Records) > 0 {
-				differences = recorder.Records[len(recorder.Records)-1].Differences
+				last := recorder.Records[len(recorder.Records)-1]
+				differences = last.Differences
+				appliedUnobserved = last.AppliedUnobserved
 			}
 			run := referenceCommandRun{
-				SchemaVersion: applicationview.SchemaVersion,
-				Mode:          "reference",
-				Plan:          plan,
-				Outcome:       result.Outcome,
-				Effect:        result.Effect,
-				Committed:     true,
-				Persisted:     false,
-				Durability:    "none",
-				Differences:   differences,
+				SchemaVersion:     applicationview.SchemaVersion,
+				Mode:              "reference",
+				Plan:              plan,
+				Outcome:           result.Outcome,
+				Effect:            result.Effect,
+				Committed:         true,
+				Persisted:         false,
+				Durability:        "none",
+				Differences:       differences,
+				AppliedUnobserved: appliedUnobserved,
 			}
 			report.OK = true
 			report.Result = run
@@ -720,6 +728,13 @@ func writeReferenceRunText(out io.Writer, run referenceCommandRun) (int, error) 
 	// An unresolved difference is shown even when the run succeeded: the
 	// declaration did not describe the whole effect, and the reader should not
 	// have to open the operation log to notice.
+	// Only a declared effect gives the check something to compare against; a
+	// command without one has no difference to look for.
+	if run.AppliedUnobserved && run.Plan.Effect != nil {
+		if _, err := fmt.Fprintln(out, "difference-check: not observed (this executor does not enumerate its operations)"); err != nil {
+			return 2, err
+		}
+	}
 	for _, difference := range run.Differences {
 		if _, err := fmt.Fprintf(out, "difference: %s (%s %s beyond %s %s)\n",
 			difference.Code, difference.Applied.Kind, difference.Applied.Data,

@@ -251,6 +251,7 @@ export function summarizeView(value) {
         ["effect", value.effect ? `${value.effect.kind} ${value.effect.data}` : ""],
         ["records", Array.isArray(value.records) ? String(value.records.length) : "0"],
         ["differences", Array.isArray(value.differences) ? String(value.differences.length) : "0"],
+        ["difference-check", value.appliedUnobserved ? "not observed" : "checked"],
       ],
     }]).concat(differenceSections(value.differences));
   }
@@ -265,6 +266,7 @@ export function summarizeView(value) {
     rows: Object.entries(value).map(([key, entry]) => [key, JSON.stringify(entry)]),
   }];
 }
+
 
 
 
