@@ -755,3 +755,24 @@ Source/Authoring Graph → Resolved/Lowered Graph → Targetの実行・観測�
 - **ST-09**：生成コード中のEnum構文があるだけで、元のBusiness classificationやSource全件性が保証されたとはしない。生成元の宣言・Target制約・実行観測を別に照合する。
 
 **検証・撤回条件**：#2495の既存Facetと#1126のFD/Key／#2544の制約・証拠の関連付けで上記が表示・診断できれば追加TypeKindは不要。二つの異質Consumerで未表現の意味が同じ形で反復し、既存契約では欠落を明示できない場合だけ追加契約をOwnerへ提案。現時点では具体的なJava/SQL/DB/Studio実接合、正規の原典定義、Target完全性、A4意味受理は**NOT RUN / NOT PROVEN**。
+
+
+### 17.10 既存コードからの意味抽出と異Targetへの再実現（2026-11-06、実証候補）
+
+他チャットの移行構想である「既存Java/.NET等のソース・DB・インターフェイスから業務定義を吸収し、意味を保ちながら異なるTarget向けに再生成する」を、ここまでの型付きI/OとFacet検査に接続する。**採用済みの一般的な自動移行能力ではなく、Source→意味候補→Owner受理→生成物→独立実行比較の実証条件**とする。既存[#1121](https://github.com/hat47x/tei-platform/issues/1121)（Lowering）、[#1126](https://github.com/hat47x/tei-platform/issues/1126)（業務Key/FD）、[#1656](https://github.com/hat47x/tei-platform/issues/1656)（ODataとCommand）、[#2831](https://github.com/hat47x/tei-platform/issues/2831)（Build）、[#2585](https://github.com/hat47x/tei-platform/issues/2585)（Projectionの値忠実度）を使用し、新Migration Engine/Contract Registryを作らない。
+
+| 証拠段階 | 収集・検査するもの | 言えないこと |
+| --- | --- | --- |
+| **Legacy observed** | 固定ソース・DDL・Enum・CHECK・API/OData metadata・ファイル仕様・実入力/結果、実際に動いたTarget/Version | DBスキーマやコード構文から業務意図が一意に決まること |
+| **TEI interpreted candidate** | 型付きPort/Role/Enum区分/業務ID候補、処理・例外・未解決のSource locator、推論根拠と対象時点 | 候補がすでにAccepted Meaningであること |
+| **Owner accepted meaning** | どの業務条件・値域・Key・結果・例外を受理したか、受理元Revisionと必要な変更影響 | AcceptしただけでTargetの実装・権限が成立すること |
+| **Target realized** | Go/Wails Desktop、Java/.NET、Web等の選択Target/Adapter/Artifact、Source/Toolchain closure、生成入出力 | あるTargetでの構築成功を、別Target/Adapterの適合へ昇格すること |
+| **Independent observed conformance** | Legacy実行と生成物を**独立Expected**で同じMeaning/入力/Scope/有効時点に照合。値・NULL・Presence・例外・順序・Effect receiptの差を保持 | 同じ表示／Artifact digestだけで業務的同等性を証明すること |
+
+**直交する二つの選択軸**：データ/連携方式はREST/OpenAPI・OData・ファイル・DB・外部Process等から明示選択し、TargetはGo/Wails（Desktopの部品流用と性能を期待する有力候補）・Java・.NET・Web等から別に選択する。Wails/Goの選択は既存システムにJava/.NETの再利用環境がある場合のTarget互換性・受入を狭めない。すべてをREST化することもTEI独自Hostや認証Coreへ強制的に依存させることもしない。
+
+**既存STケースを利用した最小の反例**：ST-02/08の閉域Enum改版と未認識値、ST-03のCSV/ODataのNULL/Presence/順序/精度/符号化、ST-04の二Target二InstanceでのScope/Grant/Key差、ST-09の生成Target/Artifactは同じMeaningでもToolchainと実バイトを別固定。抽出元の「強属性」と呼ぶ性質が原典未確定・実装だけの推定である場合は**unresolved**と表示し、Business Keyや決定属性へ自動変換しない。
+
+**最初の受入に必要な差分**：一つの固定Legacy機能に対し、①元Sourceから取り出した事実と未解決、②人間が採用した意味、③選択Targetで再生成した成果物、④別実装の独立Expectedを一枚の照合票に結ぶ。ST-02の値域改版、ST-03の情報損失、ST-04のScope不一致を最低一件ずつ負例に含める。二つ目のTarget/連携方式へ切替えたとき既存の意味上の型・保証が再利用できるかを確認した後にのみ標準型拡充を判断する。
+
+**現状の資格**：ここでのLegacy実ソース解析、独立動作比較、Java/.NET/Wails/OData/ファイルの実E2E、完全なSource closure、Owner意味受理はいずれも**NOT RUN / NOT PROVEN**。既存参照実装・外部OwnerのCI成功を移行Conformanceへ加算しない。
