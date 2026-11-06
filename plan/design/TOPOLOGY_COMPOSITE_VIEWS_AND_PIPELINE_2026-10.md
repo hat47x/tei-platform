@@ -481,3 +481,21 @@ Else absence remains unknown; no universal closed-world assumption.
 4. **研究・別Owner**：[Draft #2966](https://github.com/hat47x/tei-platform/pull/2966)が人／AIの偽の不存在、到達操作数、Complect/変更波及を比較し、表示の理解負荷低減を仮説のまま測定する。今回の実CLI 2本のPASSからその優位性を推測しない。
 
 **公開境界**：この実Sourceからの読取は実PolicyのDisclosureを判定しない。外部Consumer/AI/Studioへ実データを公開する場合は[#2516](https://github.com/hat47x/tei-platform/issues/2516)が資格化したpublic sliceを先に要求し、非公開Sourceの個数、Path、診断、roleを別経路から漏らさない。独立Policy/Source/Owner Oracleが欠けるClaimは、候補または`unknown`のままとする。
+
+### 14.4 caller-provided scopeとSource-declared identityを分ける実CLI負例
+
+固定Go `internal/modelref/derivedbridge/projection.go` の`FromIndex(d, scope)`は、**callerが指定したscope**をDerived Indexの各Node/Edgeへ付与する。ここにSourceが独立に宣言したscopeを読み取る処理はない。また`sourceindex.Reference`にはscopeが直接存在せず、`sourcebridge`は同kind/ID異scopeの衝突を安全側へ拒否する。したがって`TraceWorkspace`の`trace.subject.scope`が形式上qualifiedであっても、元Sourceの権威ある宣言scopeとの一致は**未証明**。
+
+**実行した反例**：同じ実`reference/workspace`、同じ`semantic-relation:sales.order.customer`に対して、実`tei trace`を`-scope reference-observation`と`-scope alternate-observation`で**別々に**実行し、二つのJSONを独立Node Consumerで比較した。
+
+| 独立に比較した事実 | 結果と意味 |
+| --- | --- |
+| 実CLIが返すDirect Edgeの`From/To`（scope以外）、Relation種別 | 同一。Sourceが同じ二つの観測で直接宣言参照は維持 |
+| `WorldFingerprint`／`SourceIndexFingerprint` | 同一。Source/Worldの意味や版が変わったことではない |
+| `trace.subject.scope`と各`From/ResolvedTo.scope` | Caller引数に応じて変更。実Sourceの自動発見scopeの証拠ではない |
+| `SnapshotFingerprint`（selectorを含む） | 変更を確認。古いselectorの継続tokenを別scopeへ流用しない |
+| `relationEntityIdentity`／`sourceAndPluginClosure`／`absentClaim` | 引き続き`not-provided`／`unproven`／`unknown`。scope変更後も昇格しない |
+
+**exact HEAD証拠**：[GitHub Actions #42206842519](https://github.com/hat47x/tei-platform/actions/runs/42206842519)、head `8bf4347fa587a66bbc500a8a2fd5927d150437d2`、Go1.26.10実CLI二回＋Node24.21.0の受信比較 **PASS**、合成試験 **31+7 PASS**。追加後に継続する運用・CIは別資格。既存`TraceWorkspace`そのものを変更せず、read-only Reference Consumer側だけを修正した。
+
+**不変条件／採用停止線**：`Source-declared scope`、`Projection caller-scope`、`Workspace/Observation scope`、`Principal/AuthZ scope`は同じ文字列であっても、生成元と証拠が異なる限り同一概念へ畳まない。画面の表示グループ、namespace filter、ラベル、実CLIの`-scope`からSource側Relation ID/declaring scopeを推測しない。製品のScope/Source identity契約を拡張する場合は#1120/#1124/#2620の既存Ownerへ、実Source Readerと独立Source anchor・必要閉包の証拠を渡して判断する。**新しいScope Registry/Resolver、正式Role Schemaはここで作らない**。
