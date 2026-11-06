@@ -44,7 +44,7 @@ func TestHIST02MissingAppliedChecksumCannotDetectDefinitionDrift(t *testing.T) {
 	snapshot := migration.HistorySnapshot{
 		Database: db,
 		Tool:     migration.ToolAtlas,
-		Entries:  []migration.AppliedMigration{record},
+		Entries: []migration.AppliedMigration{record},
 	}
 
 	// No provider checksum: both authored versions are currently called applied.
@@ -81,10 +81,10 @@ func TestHIST02MissingAppliedChecksumCannotDetectDefinitionDrift(t *testing.T) {
 func TestHIST02CanonicalChecksumDoesNotCertifyDerivedRealizationBytes(t *testing.T) {
 	db := core.MustCanonicalID("sales_core")
 	first := migration.Definition{
-		ID:           "m001",
-		Database:     db,
-		Recovery:     migration.RecoveryForwardFix,
-		Steps:        []migration.Step{{Kind: migration.StepVerify, Description: "stable canonical definition"}},
+		ID:       "m001",
+		Database: db,
+		Recovery: migration.RecoveryForwardFix,
+		Steps:    []migration.Step{{Kind: migration.StepVerify, Description: "stable canonical definition"}},
 		Realizations: []migration.Realization{{
 			Statements: []string{"ALTER TABLE orders ADD COLUMN audited INTEGER"},
 		}},
@@ -108,7 +108,7 @@ func TestHIST02CanonicalChecksumDoesNotCertifyDerivedRealizationBytes(t *testing
 	history := migration.HistorySnapshot{
 		Database: db,
 		Tool:     migration.ToolAtlas,
-		Entries:  []migration.AppliedMigration{{
+		Entries: []migration.AppliedMigration{{
 			Database: db,
 			ID:       first.ID,
 			State:    migration.AppliedSucceeded,
@@ -152,7 +152,7 @@ func TestHIST02DifferentDigestBasesLookLikeDefinitionDivergence(t *testing.T) {
 	history := migration.HistorySnapshot{
 		Database: db,
 		Tool:     migration.ToolAtlas,
-		Entries:  []migration.AppliedMigration{{
+		Entries: []migration.AppliedMigration{{
 			Database: db,
 			ID:       def.ID,
 			State:    migration.AppliedSucceeded,
