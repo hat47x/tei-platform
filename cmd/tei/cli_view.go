@@ -51,6 +51,8 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	commandID := fs.String("command", "", "command capability to plan")
 	execute := fs.Bool("execute", false, "reference execution of the planned command")
 	periodStateFile := fs.String("period-state", "", "period state JSON for -execute")
+	var allowedCapabilities inputFlag
+	fs.Var(&allowedCapabilities, "allow-capability", "capability allowed by the reference authorizer; repeatable")
 	var inputPairs inputFlag
 	fs.Var(&inputPairs, "input", "command input as name=value; repeatable")
 	format := fs.String("format", "text", "text or json")
@@ -62,6 +64,7 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		(*commandID != "" && *patternID == "") ||
 		(*execute && *commandID == "") ||
 		(*periodStateFile != "" && !*execute) ||
+		(len(allowedCapabilities) > 0 && !*execute) ||
 		*root != strings.TrimSpace(*root) || *applicationID != strings.TrimSpace(*applicationID) ||
 		*patternID != strings.TrimSpace(*patternID) || *packageID != strings.TrimSpace(*packageID) ||
 		*commandID != strings.TrimSpace(*commandID) {
@@ -128,6 +131,13 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 				World:      loaded.World,
 				Executor:   command.ReferenceExecutor{World: loaded.World},
 				UnitOfWork: &command.MemoryUnitOfWork{},
+			}
+			if len(allowedCapabilities) > 0 {
+				authorizer := make(command.AllowListAuthorizer, 0, len(allowedCapabilities))
+				for _, capability := range allowedCapabilities {
+					authorizer = append(authorizer, core.CanonicalID(capability))
+				}
+				invoker.Authorizer = authorizer
 			}
 			if *periodStateFile != "" {
 				states, err := periodstate.File{Path: *periodStateFile}.PeriodStates(context.Background(), *applicationID)
