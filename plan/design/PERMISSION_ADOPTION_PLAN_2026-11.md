@@ -81,3 +81,12 @@ permission sales.order.register network connect db:5432
 - 生成規則 `function-definition/v1` の行種別に `permission` を追加。
 
 **未着手**: 作業領域の読み込みからこの入力を渡す配線（いまは試験でのみ入力している）。標準操作の能力は権限を宣言しないため、行が出るのは外部に触る能力だけです。
+## 10. 最初の移行（2026-11-06 追記）
+
+`tools/reference-first-web-frozen-world-generate` の成果物書出しを、`access.FileSystem` 経由に変えました（移行第1号）。
+
+- これまでは `os.WriteFile` を直接呼んでいました。
+- いまは `writeLineage` が `access.FileSystem` を通し、**付与された範囲（呼び出しで指定された絶対パス）**の中だけに書きます。
+- 付与は当面ツール自身が作ります（指定されたパスそのもの）。これは**移行の第一歩**であり、環境の付与へ移すのは次段です。この状態では「常に許可される付与」なので、強制力の証明にはなりません。
+
+**次**: 付与を環境（`PermissionGrants`）から受け取り、指定されたパスが付与の範囲内にあることを確かめる形にする。
