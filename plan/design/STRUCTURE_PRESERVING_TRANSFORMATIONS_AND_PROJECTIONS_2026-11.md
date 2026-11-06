@@ -974,9 +974,9 @@ Graph/時系列/N次元への適用は**設計仮説**であり、SQLite11件を
 | 09〜12 | 部分取得の局所存在と全体不存在/正確件数は非対称。異Cohortはcomplete Claimを保留 | #1063/#2506/#2586 |
 | 13〜14 | 同一Personの複数Relation更新対象は曖昧。無変更部分の歴史的根拠は保持し得る | #2598/#2582/#2516 |
 
-**次の正式な検証順**：
-1. 既存#2681の実TEI CaseRecord→OrgUnitとMembershipのDefinition/occurrence/Sourceを読取り、実Function ContextのRelation path/Field/valid-known cutを明示。現段階ではモデル上の該当データ/Provider Bindが未接続なら `NOT RUN: physical-read-unavailable` とする。
-2. #2586のread側一Attemptで、まず一Providerの同じ対象/Scopeに対し、二つのknown cutでRelation occurrence/Distinct Person/Count/partialと完全0件/非出力依存を実観測。実Owner受理済みの業務履歴と人工Fixtureを混同しない。#2622は実Read/Providerの保証範囲を記録。
+**次の正式な検証順（2026-11-06 補正）**：
+1. **E2a：最短の直接Relation Read**。#2681のNative `CaseRecord.handlingUnit` を、Case ID/Relation Role/元の値で識別し、#2586で実Function Context→実Provider Row+Field/Scopeを一件観測する。独立Edge ID、未実装のRowVersion、二時点検索は先行必須条件にしない。現実にはCaseRecord Persistence/実Provider Binding未接続なら `NOT RUN: physical-read-unavailable` を維持する。
+2. **E2b：実体化Relationの時間差**。Membershipの独立 `membershipId` / personId / orgUnitId / validFrom / knownFromを使用し、同一有効日に異なる認識時点でのRowset・Distinct/Count・partial/unknownを比較する。ただし `validFrom`/`knownFrom` は現Nativeでは通常属性であり、時点Queryの意味・適用やProvider pushdownが実装済みではない。現Fixtureのr1〜r4は仮の実体化Relation履歴であり、#2681 CaseRecordの実行証拠ではない。
 3. #2497/#1124は、同一実ResultからGraph/Tree/Tableのread-only Projectionを作り、保存された情報/喪失箇所と編集対象一意性を比較。非可逆なら一般的なWrite APIの暗黙呼出しは禁止する。
 4. #2516/SHOは現在Consumer Disclosure、Source引用Occurrence、実受領/現行版を確認。#2598/#1174の実Write/Commit/Receiptを**read-only試験の合格へ混ぜない**。
 
@@ -985,6 +985,26 @@ Graph/時系列/N次元への適用は**設計仮説**であり、SQLite11件を
 **状態**：本節は設計・局所合成Fixtureの接続であって、実TEI Runtime、実組織Provider、bitemporal Query/Host、OS/AI送信、業務Owner受理の実証ではない。PR #2496はDraftを維持し、mainへ統合しない。
 
 <!-- tei-data-form-independent-requirement-closure-20261106 -->
+<!-- tei-data-form-direct-vs-materialized-relation-20261106 -->
+### 23.5 Relationの永続識別：直接参照と実体化Relationを区別する（#2389 §67〜69からの成熟差分）
+
+**補正対象**：本節§23のr1〜r4、Graph→TreeによるRelation occurrence喪失は**独立IDのあるMembership型の人工世界**について有効である。しかし、実Native #2681 のすべてのRelation、特に `CaseRecord.handlingUnit` に独立edge occurrence IDがあるという意味ではない。Graphの描画線ID、JOIN行位置、表示ラベル、SQL Row Numberから永続的なRelation IDを作らない。#2389の組織設計§67〜69の最新補正に従い、実際のSourceと対象操作の区分を明示する。
+
+| 性質 | 実体化Relation：`organization.Membership` 等 | 直接Relation：`organization.CaseRecord.handlingUnit` |
+| --- | --- | --- |
+| 実Source | `membershipId`, `personId`, `orgUnitId`, `allocation`, `validFrom`, `knownFrom`。Membershipに独立IDがある | `caseId`, `handlingUnitId`, `relation handlingUnit ... one`。別edge IDはない |
+| Grain/Identity | Membership occurrence ID＋その関係が指すPerson/OrgUnit。複数Occurrenceはあり得る | **所有Case ID＋Relation Role＋現在の値**。読取・更新時にはSource Revision/対象行の期待版が別に必要 |
+| 時間 | Valid/Known属性があるが、自動の二時点評価・History/Context切替実装ではない | 実Sourceにvalid/known属性はない。Membershipの時間条件を自動継承しない |
+| Write Target | Membership等の実体化行と期待版を同定し、必要な操作契約で更新 | Case行の該当Role/値を変更。Graphの描画辺IDへDELETEを送る発想は誤り |
+| 正式実Read | `persist org_store.membership`の宣言はあるが、Function/Provider Readまで未実証 | **CaseRecordのPersistence Mappingと実Provider Row Readは未確認**。 `org_read` がread指定でも業務Readの実行証拠にならない |
+| CAS版 | 実Providerの行版/Ownerの更新意味を別照合 | **Native CaseRecordに`rowVersion`属性は未宣言**。合成Fixtureの7→8は実Providerに仮置きした値で、現TEI Model FieldでもCAS証拠でもない |
+
+**同じ画面上の線であっても、編集対象決定は二系統**：Materialized Relation は元のMembership IDを、Direct Relationは所有Case＋Relation Role＋旧値＋別に資格化したExpected Versionを必要に応じて使う。「全Relationにedge IDを要求」も「同じOwner/Labelなら一意」も採用しない。複数担当Orgが必要なら、単一`handlingUnit`にD2/D3を同時代入せず、担当・協議先など別Roleか実体化Relationかを業務Ownerが受理して選ぶ。これは#2389 §69、#1126/#1125の意味Ownerが決定し、#2497はLossと更新対象の一般契約を所有する。
+
+**Context/Read受入**：まずE2a（Case C1→D1と対照C2→D2、Provider Row/Field/Scopeの独立Expected）を既存#2586/HJの一Attemptへ接合する。次にE2bのMembership（人P1とMembership A1等）のvalid/known・多重出現・Graph/Tree投影を別のSubject/Required集合として試す。2系列の試験の成功を一つの「Org bitemporal E2E」へ加算しない。必要となるVersionは実Provider/Sourceへ明示Bindingができるまで `missing-required-version` として保持し、足りない値をCoreに自動追加しない。新Relation型Enum、二時点Engine、Edge Registry、Host/Owner資格は作らない。
+
+**現在の実証の上限**：Native Model/Org App/`persist membership`のGitHub Source読取、#2389の設計照合のみ。CaseRecord/OrgUnit実Persistence/物理Provider Read、Materialized Relationの真正時点Query、実CAS/Host Grant/Owner意味受理はNOT RUN。既存§23のPython14件は人工Membership型の多重性を示す限定結果であり、この補正の実Go/DB実装テストではない。
+
 ## 24. 宣言の自己整合性と独立した必要条件の閉包を分離する（2026-11-06）
 
 ### 24.1 今回、実Go Sourceと他レーンのGo Characterizationから確認できた差分
