@@ -26,7 +26,16 @@ type referenceCommandRun struct {
 	Plan          applicationview.CommandPlan `json:"plan"`
 	Outcome       *semantic.Outcome           `json:"outcome,omitempty"`
 	Effect        *semantic.DataEffect        `json:"effect,omitempty"`
-	Committed     bool                        `json:"committed"`
+	// Committed reports that the configured UnitOfWork returned from Commit.
+	// It is not evidence that data was persisted: a reference run uses
+	// MemoryUnitOfWork, which counts the call without writing anything. Read it
+	// together with Persisted and Durability (#2998).
+	Committed bool `json:"committed"`
+	// Persisted is false for a reference run. It is a separate field so a
+	// caller cannot read Committed as "the data is now durable".
+	Persisted bool `json:"persisted"`
+	// Durability names the storage boundary: "none" for the reference executor.
+	Durability string `json:"durability"`
 }
 
 type cliViewReport struct {
@@ -209,6 +218,8 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 				Outcome:       result.Outcome,
 				Effect:        result.Effect,
 				Committed:     true,
+				Persisted:     false,
+				Durability:    "none",
 			}
 			report.OK = true
 			report.Result = run
@@ -680,7 +691,10 @@ func writeReferenceRunText(out io.Writer, run referenceCommandRun) (int, error) 
 			return 2, err
 		}
 	}
-	if _, err := fmt.Fprintf(out, "committed: %t\n", run.Committed); err != nil {
+	if _, err := fmt.Fprintf(out, "committed: %t (reference unit of work)\n", run.Committed); err != nil {
+		return 2, err
+	}
+	if _, err := fmt.Fprintf(out, "persisted: %t (durability: %s)\n", run.Persisted, run.Durability); err != nil {
 		return 2, err
 	}
 	return 0, nil

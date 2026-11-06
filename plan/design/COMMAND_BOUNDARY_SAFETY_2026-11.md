@@ -67,7 +67,35 @@ invoker := command.Invoker{
 - `go build ./...`、`go vet ./internal/command ./cmd/tei ./internal/studiohost ./internal/security/legacyauthorization ./internal/security/effectcommit/...`: PASS
 - 実行環境: Windows 11、go1.27.0。実PostgreSQLを使う試験はDSN未設定のためskip。
 
-## 6. この文書が主張しないこと
+## 6. `committed` と `persisted` の分離（#2998 追記）
+
+### 見つかった誤読
+
+`tei view -command -execute` とStudioの参照実行は、どちらも `committed: true` を固定で返していた。参照実行の `UnitOfWork` は `MemoryUnitOfWork` で、Commitの呼出し回数を数えるだけで何も保存しない。しかし応答の欄名と値だけを見ると「保存された」と読める。
+
+### 決めたこと
+
+| 欄 | 意味 | 参照実行の値 |
+| --- | --- | --- |
+| `committed` | 構成された `UnitOfWork` の `Commit` が成功したこと。取引境界の呼出し結果であり、永続化の証拠ではない | `true` |
+| `persisted` | 実行先へデータが保存されたこと | `false` |
+| `durability` | 保存境界の種類。`none` は保存しない参照実行 | `"none"` |
+
+`committed` は名称も意味も変えない。既存の読み手（Studio画面、`product_slice_test.go`、外部Harness）が使っているため、欄を削除・改名する案は採らない。`persisted` と `durability` は**欄の追加**であり、`tei.cli.view/v0` の互換な変更の範囲に収まる（[CLI JSON出力契約](CLI_JSON_OUTPUT_CONTRACT_2026-10.md) §5）。
+
+CLIのテキスト出力は `committed: true (reference unit of work)` と `persisted: false (durability: none)` を別行で出す。Studioの画面も同じ3欄を別行で表示する。
+
+### この分離が防ぐこと
+
+- 参照実行の成功を、実DBへの保存成功と混同しない。
+- 実Providerを接続した後も、`committed`（取引のCommit）と `persisted`（独立した読取りで確認した保存）を別の欄として扱える。将来 `persisted` を「独立読取りで確認済み」の意味に強める場合は、`durability` の値と合わせて別の判断として記録する。
+
+### まだ決めていないこと
+
+- 実Provider接続時に `committed` を「取引のCommit成功」と「独立した読取りで確認できたこと」のどちらへ対応させるか。本追記では参照実行の意味だけを固定し、実Providerの意味は未決のまま。
+- `schemaVersion` を `v1` へ上げる必要があるか。欄の追加だけなので `v0` のままと判断したが、外部読み手の互換性確認は別途必要。
+
+## 7. この文書が主張しないこと
 
 - 本物の認可・主体・権限・メニュー制御が実装されたこと。
 - `ReferenceAuthorizer`が本番で使えること。

@@ -229,7 +229,9 @@ export function summarizeView(value) {
       title: "参照実行",
       rows: [
         ["mode", valueOf(value.mode)],
-        ["committed", value.committed ? "true" : "false"],
+        ["committed", value.committed ? "true (unit of work)" : "false"],
+        ["persisted", value.persisted ? "true" : "false"],
+        ["durability", valueOf(value.durability)],
         ["outcome", value.outcome ? `${value.outcome.name} -> ${value.outcome.payload}` : ""],
         ["effect", value.effect ? `${value.effect.kind} ${value.effect.data}` : ""],
         ["records", Array.isArray(value.records) ? String(value.records.length) : "0"],

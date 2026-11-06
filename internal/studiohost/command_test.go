@@ -22,7 +22,8 @@ func TestPlanAndExecuteCommand(t *testing.T) {
 	if !run.OK || run.Failure != nil {
 		t.Fatalf("run=%+v failure=%+v", run, run.Failure)
 	}
-	if run.Value.Mode != "reference" || !run.Value.Committed {
+	if run.Value.Mode != "reference" || !run.Value.Committed ||
+		run.Value.Persisted || run.Value.Durability != "none" {
 		t.Fatalf("run=%+v", run.Value)
 	}
 }

@@ -50,6 +50,8 @@ test("command run includes the plan and the reference execution", () => {
   const sections = summarizeView({
     mode: "reference",
     committed: true,
+    persisted: false,
+    durability: "none",
     plan: {
       capability: "sales.order.submit",
       inputs: [{name: "order", type: "sales.order", value: "ORD-1", provided: true}],
@@ -59,8 +61,13 @@ test("command run includes the plan and the reference execution", () => {
   });
   assert.equal(sections[0].title, "Command");
   assert.equal(sections[sections.length - 1].title, "参照実行");
-  assert.equal(sections[sections.length - 1].rows[1][1], "true");
-  assert.equal(sections[sections.length - 1].rows[4][1], "0");
+  const rows = sections[sections.length - 1].rows;
+  assert.equal(rows[1][0], "committed");
+  assert.equal(rows[1][1], "true (unit of work)");
+  assert.equal(rows[2][0], "persisted");
+  assert.equal(rows[2][1], "false");
+  assert.equal(rows[3][0], "durability");
+  assert.equal(rows[3][1], "none");
 });
 
 test("package view is summarized into members and requirements", () => {

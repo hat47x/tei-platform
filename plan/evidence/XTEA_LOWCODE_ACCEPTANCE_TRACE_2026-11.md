@@ -53,7 +53,8 @@ tei view ... -execute -allow-capability sales.other
 tei view ... -execute -allow-capability sales.submit_order
 outcome: submitted -> sales.order
 effect: update sales.order
-committed: true
+committed: true (reference unit of work)
+persisted: false (durability: none)
 ```
 
 これは参照用AllowListによる能力単位の拒否です。利用者・資源・メニュー表示・権限の付与は確認していません。

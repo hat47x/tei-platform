@@ -38,7 +38,8 @@ func TestExecuteCommandWithLifecycleRefusesReplayAcrossHosts(t *testing.T) {
 	if !first.OK || first.Failure != nil {
 		t.Fatalf("first run=%+v failure=%+v", first, first.Failure)
 	}
-	if first.Value == nil || !first.Value.Committed || first.Value.Mode != "reference" {
+	if first.Value == nil || !first.Value.Committed || first.Value.Persisted ||
+		first.Value.Durability != "none" || first.Value.Mode != "reference" {
 		t.Fatalf("first value=%+v", first.Value)
 	}
 

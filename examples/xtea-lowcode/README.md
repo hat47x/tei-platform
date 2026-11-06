@@ -62,7 +62,7 @@ go run ./cmd/tei view \
 
 - 表示・Command計画・Package投影の参照例です。
 - 実データベース、実Provider、認可、receiptは含みません。
-- `view -command -execute`は参照Executorを使うため、この例の`update`効果は記録済みデータがない状態では成功しません。
+- `view -command -execute`は参照Executorを使うため、この例の`update`効果は記録済みデータがない状態では成功しません。応答の`committed`は参照用の取引Commit呼出し、`persisted`は常に`false`、`durability`は`none`です。
 - 受容判断は仮承認であり、最終採否は別途です。
 ## Studioで開く（任意）
 
