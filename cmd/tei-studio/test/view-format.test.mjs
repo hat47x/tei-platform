@@ -90,4 +90,29 @@ test("package view is summarized into members and requirements", () => {
   assert.equal(sections[2].rows[0][1], "sales.order");
 });
 
-
+test("command run lists the differences the declaration did not describe", () => {
+  const sections = summarizeView({
+    committed: true,
+    persisted: false,
+    durability: "none",
+    plan: {
+      capability: "sales.delete_order",
+      inputs: [{name: "order_id", type: "sales.order.order_id", value: "ORD-1", provided: true}],
+      outcomes: [{name: "deleted", payload: "sales.order"}],
+      effect: {kind: "delete", data: "sales.order"},
+    },
+    outcome: {name: "deleted", payload: "sales.order"},
+    effect: {kind: "delete", data: "sales.order"},
+    differences: [{
+      code: "additional-scope",
+      declared: {kind: "delete", data: "sales.order"},
+      applied: {kind: "delete", data: "sales.order_line", key: "order=ORD-1"},
+    }],
+  });
+  const last = sections[sections.length - 1];
+  assert.equal(last.title, "宣言との差");
+  assert.deepEqual(last.header, ["種別", "宣言", "適用"]);
+  assert.equal(last.rows[0][0], "additional-scope");
+  assert.equal(last.rows[0][1], "delete sales.order");
+  assert.equal(last.rows[0][2], "delete sales.order_line");
+});
