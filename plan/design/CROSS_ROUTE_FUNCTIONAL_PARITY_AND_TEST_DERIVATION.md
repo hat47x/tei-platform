@@ -736,3 +736,17 @@ main統合済み[PR #2894](https://github.com/hat47x/tei-platform/pull/2894)の`
 - **禁止**：不正コードの#3017は**永久にDraft、絶対mainへmergeしない**。CIのFailureを正常なRepository Health successと呼ばない。AI生成による検出率・Business Coverage一般化も主張しない。
 
 詳細Evidenceは[基本設計台帳§8.7](./TEI_TEST_BASIC_DESIGN_AND_EVIDENCE_LEDGER_2026-11.md)と[#2514](https://github.com/hat47x/tei-platform/issues/2514)へ記録。本追補はdocs-onlyで、新Runtime/Provider/Generatorの実装は追加しない。
+
+### 18.8 AI Scenarioの局所Mutation感度とOwner母集団の資格を分離する（2026-11-06）
+
+[証拠台帳§8.8](./TEI_TEST_BASIC_DESIGN_AND_EVIDENCE_LEDGER_2026-11.md)の境界を、本計画の次の受入順に接続する。**既に実証済み**：[#2901](https://github.com/hat47x/tei-platform/pull/2901) `a6eb80cffe16a57f4cb2461ff2946065955a4e50` [Health #42111973682](https://github.com/hat47x/tei-platform/actions/runs/42111973682) successと、[#3017](https://github.com/hat47x/tei-platform/pull/3017) `0f795a012dc16200ee85e5f6b3f0b921add7bdc4` [Health #42181290981](https://github.com/hat47x/tei-platform/actions/runs/42181290981) expected failure（AI追加Caseが誤って重複を受理するEvaluatorを直接検出）。**次提案は未実行**であり、当該成功を全件Read/Owner資格に一般化しない。
+
+**次の1 Mutant**は`ValidationRelationUnique`の**最後のキーを比較ループから外す**実装誤り。#2901の固定Source・Application`uses validation`・2 Fixture（`[1,2]`正常／`[1,1]`重複）・Scenario・独立Expected・Go Testの各Blobを不変にして、誤実装1箇所だけを別の**絶対merge禁止**隔離HEADへ置く。予測：AI追加`ai-line-number-duplicate`が本来`not-satisfied`なのに`satisfied`となる。実Go Test/Receiptでその対象Stepが失敗するまでは`Mutant killed`と記載しない。基線CI Green／Mutant CI Redの**失敗の帰属**（AI Case自身、別Goテストのみ、Build/infraのみ、survived）を分離する。
+
+**同じテストでは証明不能なOwner対象集合**：既存`scenarioValidationSource.RelationKeys`は`[]string,error`であり、対象行数・全ページ取得・Snapshot・実RLS/現Grant・Owner定義の必要集合の同一性を伝えない。例えばOwner母集団が`[1,1]`でも実Readが`[1]`だけならEvaluatorの実装が正しくても`satisfied`になり得る。「取得された集合をすべて評価した」ことと「必要な集合をすべて取得した」ことを**別Claim**にする。これを確かめる実Provider試験は#2586/#1163へ委譲し、**0件、部分Read、取得失敗、非開示**を同一`[]`へ潰す設計を禁じる。NULL/unknownに対する業務Expectedは現行Fixtureでは未定義で、#2514 Ownerの意味判断以前に勝手な`satisfied`/error/unknownを確定しない。
+
+**入場／再資格ルール**：①同一Source File/Revision・Rule選択・Relation scope・Fixture/Expected Blob・World/Plugin Lock/Toolchainの*実使用*を照合（#2595）、②ActualのCase ID/Step IDと実Attemptの実行・欠落・SKIPを確認（#1180）、③Owner対象集合の定義と実ProviderのRead completeness、Snapshot、Access／Disclosure範囲を独立に照合（#2586/#1163）、④Source/Operator/Plugin/Owner Meaning受理が変更されたときは過去の有限M1履歴を保存しつつ現在のClaimを失効・再資格化（#2600）。特に`.tei`→`.tei.md`へ文書表層を移す際も、同じ名前・バイトを意味受理・実Source解決の代用にしない。
+
+**担当分離**：#2514＝独立Expected/Mutationの意味・判別力、#1180＝Scenario SSOT/必要Case、#2595/#2600＝実Source/失効、#2586/#1163＝実Read/Owner母集団/一改訂Packet、#2811＝AI-firstの検収順と証拠リンク。#2514の担当Chatへ重複して投稿・Mutant実装を行わない。第二Runner／Oracle Store／全領域共通Meaning正本も作らない。
+
+**今回の達成状態**：比較条件と再資格条件を計画文書に反映したのみ。末尾脱落Mutant、NULL/unknown Fixture、実Provider全件性確認、移行後の`.tei.md` Source実解決は**NOT RUN／NOT ACCEPTED**。
