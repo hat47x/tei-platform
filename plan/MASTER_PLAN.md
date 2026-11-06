@@ -507,18 +507,17 @@ external LLM
 
 **現行mainの具体的移行Gap**：`internal/workspace/loader.go`は`semantic`を`strings.HasSuffix(name, ".tei")`、`applications/.../queries`・`persistence`などを`*.tei`、`application.tei`/`database.tei`/`plugin.tei`等を**固定名**で列挙し、発見した原文を`syntax.NewParser`へ直接渡す。`scanManagedFiles`の`filepath.Ext("model.tei.md")`は`.md`となる。よって**現状の`*.tei.md`はNative意味Sourceとして発見・解釈できると主張しない**。Migrationで`*.tei`の一斉rename、旧ParserへのMarkdown本文直接投入、`.tei.md`を汎用mdとして無言skip、または旧新両方を同じSemantic IDで二重採用することを禁止する。
 
-**段階的実装案（#2621 Authoring/#988 Grammar/#2506 Loaded Source担当で採否判断）**：
+**移行計画の正本と本計画の責務**：Markdown容器文法／ファイル名既定／旧Source段階廃止／Source span／Builder再資格化の詳しいM0〜M6とTM-01〜14は[移行専用Draft #3030](https://github.com/hat47x/tei-platform/pull/3030)（`plan/design/TEI_MD_UNIFIED_AUTHORING_MIGRATION_2026-11.md`）が所有する。ここにF0〜F3の第二の移行表を保持しない。#2621/#988/#2823/#1920が各入口を担い、構造保存#2497と実Function Read#2586は用途相対の資格を検査する。
 
-| 段階 | 最小成立条件・反例 | やらないこと |
-| --- | --- | --- |
-| **F0: 形式・意味境界の固定** | `*.tei.md`のMarkdown原文、TEI構造部分の明示的な抽出/解釈、型付き表・図・Query Source、OKF metadataの任意性を規定。曖昧なMarkdown節と未受理Ruleは保留。埋込DSLか構造表現かの具体的Grammarは#988で選定 | Markdownの任意文章や`tags:[tei]`を自動実行可能コードにしない |
-| **F1: Loader二経路の限定比較** | 同一の手書き独立Expectedに対し旧`.tei`と新`.tei.md`のSemantic ID/Relation/Query/Persistence/Result Mappingを検証。両ファイル同時存在・同名異内容・未解析Sectionは曖昧性診断。明示Selectionのある旧Sourceは移行中のみ互換読取 | `.md`という最終拡張子だけでDSLと判定、二重正本、旧Readerの即時削除 |
-| **F2: Source・SQLの版・位置の保全** | 原Markdown byte/改行/BOM、抽出範囲→元byte位置、SQL相対参照とQuery/SQL個別SourceContribution、World/Model RevisionのSQL-only変更を旧E1cの結果と比較。解析不能・失効/ABA時は旧Candidateを再使用しない | 正規化で原文や未解釈領域を消す、元への根拠なし逆Patch |
-| **F3: Cutoverの判定** | `tei validate`/Source Index/OperationSurfaceと既存Query・SQLの正負例を同一固定HEADで検査し、Consumer/SHO/Studioの読取、生成Artifactの参照位置、保存再開・独立Readerを必要な範囲で検証。新規Authoringは`.tei.md`、旧`.tei`は限定互換窓を経て段階廃止 | 局所Parser PASSを製品Provider Read・Owner Meaning・実Write PASSへ昇格 |
+**実装された暫定停止線（別Draftの限定CI）**：[PR #3031](https://github.com/hat47x/tei-platform/pull/3031) は、選択されたWorkspace Source rootsを走査した`ManagedFiles`に `*.tei.md` があると、未選択Parserのまま意味が空になる誤成功を防ぎ`TEI_MD_PARSER_UNBOUND`＋Source pathで拒否する暫定Guardを追加。exact HEAD `63953ccb5c12ead26ec1268e7c0afdba4eff66ae` の[専用CI #42217379093](https://github.com/hat47x/tei-platform/actions/runs/42217379093) は**completed/success**（Focused 4件/7 Domain圧力、Workspace package試験、vetの限定結果）。これは**未マージDraft上でのFail-closed**であり、現行mainの`*.tei.md`解析・Parser選択・Meaning/Build資格が成立したことではない。Source roots外の文書はこのGuardが観測しない。Manifestの誤Root/optional未探索の完全性は引き続き#2823の別Claim。
+
+**M1とM2/M3の順序補正（#3030への提案）**：`*.tei.md`を**下書き文書の新規作成既定**にすることは可能だが、Markdown Reader/選択Parser/Loaderが実Sourceとして消費できるまでは、選択済み実行Workspace rootへ「実行可能な既定Source」として投入しない。Raw Draft用の未選択領域とLoaded Worldの要求集合を混同しない。もし選択済みrootに旧`.tei`と新`.tei.md`が同居するなら、現#3031暫定Guardは**同内容でも拒否**する。将来、両方が解析可能になった段階では、同Subjectの二重正本を拒否またはOwnerが一方を明示選択し、先勝ち/後勝ちしない。
+
+**R1との最小接続**：#3024の旧形式E1b/E1cは、固定されたLegacy Workspace/Source Revisionでの`CaseRecord Mapping→case_read Query→SQL SourceContribution`までの証拠。移行試験ではTM-02/03/05/09/12/14を再利用し、(a)宣言Sourceが選択・実消費されたか、(b)旧新SourceのSemantic/Query/Result Mappingが独立Expected上で整合するか、(c)同じSQL IDでもSQL-only変更後のRevision失効が生きるか、(d)raw byte/Markdown SpanとSQL相対出典が失われないかを、**移行後の別HEAD**で検収する。旧形式E1c PASSと新形式E1c PASSは別資格。#2586の最初の実Provider Readは検証可能な旧形式の固定Workspaceでも先行できるが、その成功を新形式の移行適格性として再利用しない。
 
 **順序の衝突回避**：F0/F1はRead-first P0-R1を全面停止する条件にしない。実製品Readerが未接続の間は既存`.tei`でSource/Query/実Readの不足一辺を確認してよく、その証拠にSource形式の旧版と適用範囲を明記する。新形式移行後にF2/F3の差分を資格化し直す。正本は#2621/#988、Source/構造保存は#2497、実Readは#2586、独立Expectedは#2514に維持。新全域Parser/Host/Registry/第二Query Engineを増やさない。
 
-**本節の証拠上限**：GitHubの`internal/workspace/loader.go`、E1c Go/CI、既存#2621記録とユーザー形式判断の照合。新`*.tei.md` Parser/Loader、移行後E1c、実Provider/DB、SHO/Consumer、Owner意味受理は**NOT RUN／未実装**。
+**本節の証拠上限**：既存`internal/workspace/loader.go`と#3024 E1c Go/CIの実照合に加え、#3031暫定Guardの固定HEAD限定CIと、#3030移行設計の実Sourceを確認済み。実`*.tei.md` Markdown Reader/意味Parser・Builder・Writer、移行後Org E1c、実Provider/DB、SHO/Consumer、Owner意味受理は**NOT RUN／未成立**。この文書は設計引継ぎであり、#3030/#3031が既に担当する詳細契約・Goコードを二重定義しない。
 
 ## 先に固定しないもの
 
