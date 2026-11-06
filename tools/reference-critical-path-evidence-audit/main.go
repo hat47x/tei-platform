@@ -132,9 +132,15 @@ func Audit(p Packet, expectedHead, expectedMain string) Report {
 	if p.Schema != schema {
 		add("UNSUPPORTED_PACKET_SCHEMA")
 	}
-	if p.Contract.ProducerPath == "" || p.Contract.ConsumerPath == "" ||
-		p.Contract.PositiveTest == "" || p.Contract.NegativeTest == "" ||
-		(p.Contract.EvidenceClass != "source-only" && p.Contract.EvidenceClass != "synthetic-tested" && p.Contract.EvidenceClass != "actual-observed") {
+	missingContractFields := p.Contract.ProducerPath == "" || p.Contract.ConsumerPath == "" ||
+		p.Contract.PositiveTest == "" || p.Contract.NegativeTest == ""
+	validEvidenceClass := p.Contract.EvidenceClass == "source-only" ||
+		p.Contract.EvidenceClass == "synthetic-tested" || p.Contract.EvidenceClass == "actual-observed"
+	// E1/E2 own the execution-class requirement below: any class other than
+	// actual-observed is reported there. Reporting the same class defect here
+	// as "contract or test missing" would be a second diagnosis for one field.
+	invalidClass := !validEvidenceClass && p.Claim != "E1" && p.Claim != "E2"
+	if missingContractFields || invalidClass {
 		add("E0_CONTRACT_OR_POSITIVE_NEGATIVE_TEST_MISSING")
 	}
 	if p.Claim != "E0" && p.Claim != "E1" && p.Claim != "E2" {
