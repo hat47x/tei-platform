@@ -483,6 +483,19 @@ external LLM
 
 **Owner／状態**：実ReadとFunction Contextは#2586/#2506、Provider/DB Aliasと明示SQLは#2622/#2611、構造の保存/Source編集は#2497/#2621、組織の意味とCaseは#2389/#1126、独立Expectedは#1131/#1180/#2514、Writer/Host Effect/Receiptは#1129/#1174。追加された本節は設計引渡しであり、実TEI Read/DB/Consumer/Owner意味受理の実験は**NOT RUN**。#2496は古いDraftであり、この節を同Draft全体のmainへの自動採用とみなさない。
 
+<!-- tei-data-form-e1b-candidate-vs-e2-physical-read-20261106 -->
+### 2026-11-06 Read候補と実取得の接続不足を一段具体化（#3024／#2586、採用前）
+
+[#2681](https://github.com/hat47x/tei-platform/pull/2681) のNative `.tei`では、`org_view`の`org_read`（`org_store`、read）とMembershipのPersistenceだけがある。元のCaseRecordはEntity/直接Relation定義のみでPersistenceがない。現mainの`internal/operations/surface.go`にある`SurfaceWorkspace→workspace.Load→DeriveOperationSurface`は、**Readable Alias＋対応Persistence＋Data Key**からread/listの**候補**を導出するread-only経路であり、業務FunctionのQueryを発行したりProvider Rowsetを受領したりする処理ではない。
+
+[積上げDraft #3024](https://github.com/hat47x/tei-platform/pull/3024) は#2681を親とし、実Native Workspaceの一時コピーへ`persist org_store.case_record`を加え、実Loaderと`SurfaceWorkspace`がCaseRecordのlist/read候補（Read Inputは`organization.case_record.case_id`）を導出できるかを試験する。基線でMembershipの2候補、Mapping追加後は計4候補を期待するが、**本計画更新時点では同HEADのGo test/CI成功を未確認**。試験がPASSしてもE1bの候補導出に限り、Provider Binding/Row/Field/Scope/Cohort/Consumer/現在Grantを証明しない。親#2681も未統合であり、#3024はmain向け単独差分ではない。
+
+このため組織E2aの不足は2段で表示する：（1）**E1b/Candidate**：CaseRecord Mapping→実Loader/OperationSurfaceの候補と読み取り入力Identityを限定検証（#3024）；（2）**E2a/Actual Read**：明示Function Data Context→選択DB Alias/Instance→Provider/Query/Args→実Case C1/D1のRow+Field/Scope/Cohort→独立Expected/Consumer（#2586/#2506/#2622）。途中の`Binding=""`・`Effects=[]`・`read-only`は実Read/Host Grantを示さない。Owner/HostのE4 WriteやRowVersion Bindingはさらに別である。
+
+**横断の選択基準**：RMT受注例は既に`recent_orders.tei`にSQL Sourceがあるがデータソース未束縛、組織CaseはE1b Mapping/Read候補を試験中。両者は最初の欠落Edgeが違う。#2586の同一Attempt票へ、どの段階でSource/Mapping/Providerの実Consumedが途切れたかを**最初の1辺だけ**報告する。いずれも成功したときにだけ後段二SQL選択/継続を製品試験へ進める。追加のOwner専用Plugin、第二Reader、独自Function/Host、全Relation一律IDは導入しない。
+
+**証拠**：既存Go Sourceと両Draftの静的照合／本節docs-only。新Go/DB/Consumer E2E、実Host Grant、Owner意味受理はNOT RUN。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
