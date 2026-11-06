@@ -262,6 +262,16 @@ func semanticDataAnchors(lx *Lexer, dataID core.CanonicalID) ([]SubjectAnchor, e
 			if _, err := expectLexerIdent(lx, "semantic relation cardinality"); err != nil {
 				return nil, err
 			}
+			modifier, err := peekLexer(lx)
+			if err != nil {
+				return nil, err
+			}
+			if modifier.Kind == TokenIdent && modifier.Text == "on-delete" {
+				_, _ = lx.Next()
+				if _, err := expectLexerIdent(lx, "semantic relation on-delete policy"); err != nil {
+					return nil, err
+				}
+			}
 			next, err := skipSemanticRelationKeys(lx)
 			if err != nil {
 				return nil, err
