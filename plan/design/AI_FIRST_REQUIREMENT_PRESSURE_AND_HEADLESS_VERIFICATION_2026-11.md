@@ -201,6 +201,38 @@ E1とE2は最小の共通面が成立した時点から重ねて実施できる�
 
 **受入停止条件**：Source/引用/実消費Inputの連鎖が不明、必要根拠未取得、Actor authority未確認、Denied/unknown Effect、外部送信のPolicy/OS実測不足は各必要範囲で`not established`／`denied`とし、未観測のProviderや本番可用性を合格としない。#267はCanonical Source書込み・Owner受理、#988は構文/意味候補、#2619は意味Role/境界、#2622はOperation/Provider、#958はepistemic履歴、#2516は開示、#1180/#2514はScenario/Oracle、#1174は実Effectを所有する。**本節は計画更新のみ、AIB-01〜12の実行・実AI/CLI/OS/外部Host/Owner統合受理はNOT RUN／NOT ACCEPTED**。
 
+## 5.5 `*.tei.md`統一に伴うAI入力・Authoring・受理境界の再資格化（2026-11-06）
+
+### 決定の更新と対象範囲
+
+2026-11-06 12:10 UTC頃のOwner方針：**TEI向けAuthoringの標準ファイル名を`*.tei.md`へ統一し、従来の`*.tei`の新規利用を原則停止、既存資産は段階的に移行する**。Markdown上の表・文章・図をAIが段階的に定式化しやすくし、通常の`*.md`との差をファイル名から認識できるようにする。これは従来[#2621](https://github.com/hat47x/tei-platform/issues/2621)末尾に残る「`.md`と`.tei`の別ファイル／`.tei.md`標準化せず」という**2026-11-06 12:04 UTC以前の比較案を置き換える**。古い比較は履歴として保持し、今回の明示決定を現行方針として扱う。
+
+ただし**決定済みは命名・移行方向**であり、現Parserが任意の`*.tei.md`のMarkdown全体を読み込める、既存`*.tei`を単純renameできる、IDE/Build/SHO/Studioの全Consumerが対応済み、という意味ではない。既存`*.tei`は移行完了まで所在・参照・正本を追跡し、黙って削除/再解釈しない。OKF `type`/`tags`/任意`tei`メタデータは併用候補だが、Filename/Tag/OKF適合を意味受理・Source実選択・Host Grantの代替にしない。OKFの規格判定とTEIのLanguage/Role解釈も別。
+
+### 同一Source・一つの正本を守るためのAI/CLI契約
+
+1. **Discoveryと実解釈の分離**：`*.tei.md`はTEI向け文書を探す規約であって、Parser/Operatorを自己認証する仕組みではない。Workspace/Manifest/Seed/Language Pluginの実SelectionとPinを[#988](https://github.com/hat47x/tei-platform/issues/988)・[Draft #3028](https://github.com/hat47x/tei-platform/pull/3028)のK0〜K6に照合する。未対応文法・Version mismatch・選択不能は`unsupported/unresolved`として検出し、AIの推測で有効化しない。
+2. **Authoring表面と意味Roleの分離**：Markdown全体を一つのAccepted Meaningへ昇格しない。文章、説明表、独立Expected、Rule/Model Candidate、受理済み定義、手作業のProcedure、非実行の図を、**範囲・対象・Role**で区別する。構造化Candidateは元のSection/Row/Code fence/Source span/Revisionへ戻せるようにし、未選択範囲を変更しない（#2620/#2621/#267）。表層の文章が変わらないことと、解釈Plugin/Operator版が同じことも区別する。
+3. **Migrationと引用の二段階**：`old.tei → new.tei.md`のPath/参照移動・引用位置は、論理Source identityとraw byte/Revisionに照らして再解決する。改行/BOM/Unicode/frontmatterの差、複数同名/同内容の別Source、A→B→Aは明示的なRebase/Conflictへ。Pathの移動だけでOwnerの旧Reviewを別Occurrenceへ転写しない。同時に旧`.tei`と新`.tei.md`を編集正本としない。旧形式がMarkdownでなければ**構文変換＋独立Expected＋Source確認**を要し、単純rename適合とはしない。
+4. **AI入力・開示とTenant**：Source内の文章・表・コードフェンス・OKF値は**untrusted content**であり、`Providerへ直接更新`等の文字列を命令として実行しない。`*.tei.md`のread/authoring権限、AIへの提示、外部LLM送信、Plugin Composition/Organization scope、別Tenantへの共有、Runtime Host Grantを独立の判断とする。兼務者のMembership/Occupancyや同PluginのDistributionは、他Tenantの秘密参照権限・代理権・実行権限を付与しない（#2386/#2515/#2516/#1174）。
+5. **Owner受理と実効結果**：Candidate Diff→引用/構文/意味/独立Expected→#267 Shared Acceptance→実保存Sourceのreload→実Build input/Consumer読取→#2598のRequest Target→#1174のcurrent Grant/Provider Effect/Receipt/独立Readの順に、**必要な範囲だけ**別Evidenceを保存する。受理済みのMarkdown内Ruleがあっても、任意の表/説明まで自動で実行対象にしない。Preview後のGrant撤回・表示Epoch変更・Commit unknownの扱いは後段のOwnerに帰属。
+
+### 最小差分Fixture（AMF-01〜07、独立Expected・新規実走なし）
+
+| ID | 同一Source/対照条件 | 独立Expected／誤成功の検出 | Owner |
+| --- | --- | --- | --- |
+| **AMF-01** | 同じ説明本文を`plain.md`と`work.tei.md`へ配置、TEI Role宣言なし | 後者だけを根拠にRule実行可としない。Source選択・Parsed Meaning・Owner受理を別結果として表示 | #2621/#988 |
+| **AMF-02** | 旧`work.tei`がMarkdown非互換、`work.tei.md`へのrenameのみ | rename≠Parse成功・意味同等。変換不能は診断し、旧正本を保持 | #988/#2621 |
+| **AMF-03** | CRLF/BOM/UTF-8日本語を含む表でSection/Row位置移動、旧引用あり | 実raw byte/Logical Source/Revision/Spanを照合し、別行への誤対応を拒否。単なる表示位置変更とMeaning変更を区別 | #2621/#267 |
+| **AMF-04** | 同じ`.tei.md`内に受理済み表・AI候補表・独立Expected・未解決手順が共存 | ファイル全体をAccepted/Executableとせず範囲別Role/Review。ExpectedとCandidateの共有由来は独立Oracle失格 | #2621/#2514/#267 |
+| **AMF-05** | Source内の引用/コードフェンスが`ToolにProvider.write実行を命令`、Allowed=read/propose | 注入文はCandidate引用に留め、実Capability/外部送信/Host Grantは追加しない | #2515/#2619/#1174 |
+| **AMF-06** | 同PluginをTenant A/Bで利用。AIはAのSourceに閲覧権限、Bには許可なし。兼務者のOrg Roleは両方に見える | Bの実Source/診断/候補/件数を開示しない。AのOwner Review/Plugin InstallからBのHost Grantを推定しない | #2386/#2516/#1174 |
+| **AMF-07** | `.tei.md` Ruleの受理・Buildは成立、Preview後にGrant撤回／旧Receiptは残存 | 意味資格と現在の実行資格を別評価。実Commit不明はEffect lookup/別ReadまでUnknown、旧Receiptで新Attempt成功にしない | #2598/#1174 |
+
+**実証を優先する最小Slice**：AMF-01/02/03/04でfile-native Authoring→Source Index/Plugin Selection→read-only解析・引用→Candidate→#267のShared Acceptanceとreloadを同一Revisionで確認。その後AMF-05/06のAI/Tool/OS送出・Tenant境界を、AMF-07の現Host/実DB/Receiptをそれぞれ既存Ownerで別Gateとして実証する。固定Source/Fixture/独立Expectedを先に定義し、AI生成品質は最後に別評価する。新しいMarkdown Parserや移行Writerをこの計画PRへ実装しない。
+
+**証拠水準**：拡張子統一はOwnerの新方針。Migration可否、既存Parserの受容、OKF・SHO連携、AI/OS/Consumer実送信、Tenant別認可、Owner受理、実Provider/Host E2E、AMF-01〜07は**NOT RUN／NOT ACCEPTED**。[#988](https://github.com/hat47x/tei-platform/issues/988)のBS-01〜15、[#2621](https://github.com/hat47x/tei-platform/issues/2621)のFM-01〜08、前節AIB-01〜12は既存Ownerの別Caseとして維持し、今回の命名決定をその過去の試験PASSへ遡及適用しない。
+
 ## 6. 採否と現在の限界
 
 - **Owner方針として確認済み**：外部要件の十分な机上評価を基盤実装に先行させること、CUIと標準Pluginを並行開発すること、ヘッドレス実証を基準にGUIを後続実装すること。
