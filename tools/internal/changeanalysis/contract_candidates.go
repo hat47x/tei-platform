@@ -33,8 +33,12 @@ type ContractChangeCandidate struct {
 // reference Pattern's contract-query invocation, a Database release's provided
 // contract, a solution release contract gate, and header-detail, executor and
 // SQL realization bindings. Query declarations are keyed by complete Database
-// and Contract identities, not by a shared suffix. Both snapshots are scanned
-// even after removal.
+// and Contract identities, not by a shared suffix. Application release
+// requirements are collapsed to the latest declaring release per application,
+// release major line and datasource alias, so repeated patch/minor history does
+// not duplicate the same state; a removed contract still reports the latest
+// declarer in each line, and releases without a numeric version are skipped
+// because they cannot be ordered. Both snapshots are scanned even after removal.
 func ContractCandidates(before, after ir.World) ([]ContractChangeCandidate, error) {
 	type key struct{ database, contract core.CanonicalID }
 	flatten := func(w ir.World) (map[key]database.Contract, error) {
@@ -108,18 +112,60 @@ func ContractCandidates(before, after ir.World) ([]ContractChangeCandidate, erro
 					add("application-pattern-contract-query", string(app.ID)+"/"+string(p.ID), string(p.ContractQuery.Query))
 				}
 			}
+			// Application Releaseは不変のスナップショットであり、同じmajor系統の
+			// patch/minor Releaseが同じContract要求を繰り返す。系統・aliasごとに
+			// 最後に宣言したReleaseだけを残し、履歴の重複を並べない。新しい
+			// Releaseで要求が落ちても、最後に宣言したReleaseからは報告する。
+			type releaseLine struct {
+				application core.CanonicalID
+				major       int
+				alias       core.LocalName
+			}
+			latest := map[releaseLine]string{}
 			for _, r := range w.ApplicationReleases {
+				v, ok := parseReleaseVersion(r.Version)
+				if !ok {
+					continue
+				}
 				for _, db := range r.Databases {
 					if db.TargetDatabase != k.database {
 						continue
 					}
 					for _, req := range db.RequiredContracts {
-						if req.ContractID == k.contract {
-							add("application-release-contract-requirement", string(r.Application)+"@"+r.Version+"/"+string(db.Alias), "")
+						if req.ContractID != k.contract {
+							continue
+						}
+						line := releaseLine{r.Application, v[0], db.Alias}
+						if current, seen := latest[line]; !seen || compareReleaseVersion(r.Version, current) > 0 {
+							latest[line] = r.Version
 						}
 					}
 				}
 			}
+			for _, r := range w.ApplicationReleases {
+				v, ok := parseReleaseVersion(r.Version)
+				if !ok {
+					continue
+				}
+				for _, db := range r.Databases {
+					if db.TargetDatabase != k.database {
+						continue
+					}
+					for _, req := range db.RequiredContracts {
+						if req.ContractID != k.contract {
+							continue
+						}
+						if latest[releaseLine{r.Application, v[0], db.Alias}] != r.Version {
+							continue
+						}
+						add("application-release-contract-requirement", string(r.Application)+"@"+r.Version+"/"+string(db.Alias), "")
+					}
+				}
+			}
+			// database-release-contract-providedは変更Contractを提供するReleaseを
+			// 影響範囲として並べる。databaseReleaseContractCandidatesが各major系統の
+			// 最新Releaseと現在定義の古さを見るのとは別の問いであり、同じReleaseが
+			// 両方に現れても重複ではない。
 			for _, r := range w.DatabaseReleases {
 				if r.Database != k.database {
 					continue
