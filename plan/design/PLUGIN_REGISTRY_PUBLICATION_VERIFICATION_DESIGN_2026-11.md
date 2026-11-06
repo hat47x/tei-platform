@@ -182,3 +182,82 @@ undischarged: e.g. current revocation, unobserved Build closure
 この投影は既存Build Evidence、Contract Conformance、Trust Metadata、Target Qualificationの参照を結ぶ**読取り専用診断**であり、第二のEvidence Engine/Registry Resolver/Publisher Authorityを作らない。影響範囲が確認できない場合は「無影響」と宣言しない。
 
 **当該追補の状態**：最新mainと既存Issue/PRの静的照合に基づく設計差分。Registry署名実行・実GitHub配布・実Consumer・Go/Node試験・Full CIはこの追補ではNOT RUN。P0の独立二Reader・P1の公開readbackを実証するまで製品資格は未成立。
+
+
+---
+
+## 10. Consumer操作ごとの公開証拠資格（2026-11-06、#2589境界の追加）
+
+### 10.1 発見、検証、採用、実使用を別の操作とする
+
+第三者のPlugin Indexが示す「掲載済み」「公式」「検証済み」「安全」などの表示を、TEI内外の現在の実行資格へ昇格させない。[#2899](https://github.com/hat47x/tei-platform/issues/2899)からの比較研究が[#2589](https://github.com/hat47x/tei-platform/issues/2589#issuecomment-6669783120)へ接続されており、**発見可能であること、公開権限があること、内容一致、Contract適合、Consumer採用、実使用は別の事実**として扱う。
+
+| 操作 | Registry/Consumerの判定対象 | 判定できる範囲 |
+| --- | --- | --- |
+| Discover | 公開名・Plugin ID・候補Releaseを索引から発見 | 候補の存在。署名/内容/意味/安全の検証ではない |
+| Fetch/Verify | 取得した完全な必須Artifact集合とDescriptor・署名・Profileの一致 | 明示された内容とその証拠に限定 |
+| Select/Adopt | Consumerの必要Contract・Target・現在Policy・選択済Provider/Artifact Lock | そのConsumerにおける固定候補・採用判断。Runtime Grantではない |
+| Load/Dispatch | 対象Hostの現在Authority・Permission・実起動byte・Effect対象 | 選択先・権限世代・実効果が一致するときだけ実行可能 |
+
+Registryの検索応答は自らを`Adopted`/ `Executable`と宣言しない。ユーザー・AIの評価や公開サイトのランキングもAuthority/Conformanceの代替ではない。正しい署名付き説明でも、不正確な内容の可能性は残る。
+
+### 10.2 必要証拠集合はConsumerの用途・Target・実選択結果で確定する
+
+第9節の`RequiredEvidence`を、Registryが全候補に共通の固定集合として先に確定しない。必要な根拠は選択した操作、Consumer Policy、現在Target、実際のProvider/Artifactの**選択閉包**によって異なる。
+
+```text
+Intent / Target / Consumer Policy
+    + Existing TEI selection / Lock (where applicable)
+      -> Required Claims and selected dependency closure
+      + Observed exact bytes / signed statements / current trust evidence
+      -> Read-only Qualification Projection
+      -> passed | failed | inconclusive | not-evaluated
+         with missing / stale / unsupported separately diagnosed
+```
+
+`RequiredClaims`、`ObservedEvidence`、`Unsupported`、`Missing`、`Unresolved`を一律に`false`へ潰すのではなく、**何が不一致で、何が未取得で、何がそもそも対象外なのか**を表示する。ただし、必要な根拠に未解決・失効・Target不適合があれば、その操作に対して`passed`を返さない。
+
+規範的な判定条件の概念例（新Core型の導入ではない）：
+
+```text
+For the selected operation O and consumer/target T:
+  R := requirements(policy(O,T), exact selected lock/closure)
+  E := verified observations / signed evidence / current trust snapshots
+  qualified(O,T) only if:
+    - the selected dependency closure is actually established,
+    - each required r in R has a matching, trusted, nonstale witness in E,
+    - witness binds exact subject digest + contract/profile + target/scope,
+    - no unresolved conflict, explicit deny, or required unknown remains.
+  Otherwise: report diagnosis and do not claim qualification.
+```
+
+- Contract/Providerの選択と選択閉包は[#951](https://github.com/hat47x/tei-platform/issues/951)・[#1016](https://github.com/hat47x/tei-platform/issues/1016)へ委ねる。Plugin IndexやRegistryで第二Resolverを作らない。
+- `nil`（閉包未提供）と評価済み空集合`[]`（実際に0件）を同一視せず、未登録`tei.std.*`を旧`std.*`へ暗黙変換しない。[Draft #2584](https://github.com/hat47x/tei-platform/pull/2584)のPreflightや[#1121](https://github.com/hat47x/tei-platform/issues/1121)のSourceInputs境界を**局所の例**として照合する。これを新しいRegistry Canonical Schemaの即時採用としない。
+- Self-buildで`cmd/tei`等の実外部Module/Toolchain入力が未知のときは、Source/Build Provenanceの資格を未成立のまま保持する。[#2831](https://github.com/hat47x/tei-platform/issues/2831)のSB-0（選択された外部Module、依存Byte、offline供給の閉包）を待ち、Plugin公開の内容照合PASSを実Build来歴の証明へ転用しない。
+- 依存Closureが完全に分かる場合だけ局所再資格化を許す。未選択Pluginの更新で無関係Consumerを一律失効させず、選択した依存・Contract/Profile・Policyの変更を検査する。依存が未調査なら`impact not assessed`を維持する。
+
+### 10.3 採用後も信頼は非単調に変化する
+
+Release/Attestationの歴史的記録が追記専用でも、Consumerの現在の信頼判定は単調増加しない。鍵失効、Profile改訂、Issuerの委任変更、Runtime Permission取消、対象Targetの変更で、以前の`qualified`は現在の`qualified`を保証しなくなる。
+
+- Registryは古いAttestationを削除して過去を書き換えず、失効・退役・新証拠を別記録とする。
+- Consumerは導入時に検査した署名と、今も利用してよいかのPolicy/Authorityを分離する。Offline時には現在の失効確認に限界があるため`current`を偽装しない。
+- Source更新・Provider更新・Contract Fingerprint変更・選択依存変更時の再評価は、必要な実選択関係と証拠範囲が確定したものだけ局所最適化する。
+- すでに実行中の対象の停止・再許可は実Host/Runtimeの責務。Registryは実行権限を発行しない。[#1174](https://github.com/hat47x/tei-platform/issues/1174)・[#1370](https://github.com/hat47x/tei-platform/issues/1370)の既存境界を再利用する。
+
+### 10.4 操作別の反証Fixture（Reference未実行）
+
+| Case | 最小入力差 | 期待判定 | 担当 |
+| --- | --- | --- | --- |
+| RG-Q1 | Required closureが`nil`なのに空集合として扱う | `not-evaluated/unresolved`を保持し、Adopt合格にしない | #951 / #1121 |
+| RG-Q2 | 未選択PluginのReleaseだけ更新 | 依存関係の完全性が確認できるConsumerを無関係に失効させない | #951 / #2600 |
+| RG-Q3 | 選択ProviderのArtifactまたはContract/Profileだけ変更 | 該当Consumerの必要証拠を再評価し、旧証明を新Subjectへ流用しない | #951 / #1104 |
+| RG-Q4 | Install時の信頼は有効、Dispatch直前にIssuer/Grant失効 | 現在権限のOwnerが明示拒否/未検証にする。Registry署名だけで起動しない | #1174 / #1370 |
+| RG-Q5 | 古いTrust SnapshotをOffline Consumerに再提示 | 有効期限・観測可能な版の限界を明示し、新鮮な信頼確認を装わない | #1104 |
+| RG-Q6 | Source/Build closureの実外部Moduleが欠損 | Build由来の主張だけ未資格。単なるArtifact内容照合と区別 | #2831 |
+| RG-Q7 | Plugin Indexに`safe`と表示、Publisher/Conformanceの独立証拠なし | Discoverable止まり。Adopt/Executableへ昇格しない | #2589 / #2899 |
+| RG-Q8 | GitHub Releaseの複数Artifactの一部だけReadback不能 | 完全なRelease公開としない。前節RG-P2の必要集合へ結合 | #2604 / #1105 |
+
+**優先順**：公開/取得同一性のRG-P1/P2/P3 → 操作別閉包のRG-Q1/Q6 → 明示信頼・失効のRG-Q4/Q5 → 局所再資格化RG-Q2/Q3。P0でSchemaや汎用Evidence Engineを新設せず、既存のContract/Build/Trust/Artifactと二Readerによる観測可能な不足だけを確認する。
+
+**状態**：2026-11-06の他レーンの設計・Issue/PR静的照合による追補。RG-Q1〜Q8のRegistry実行、署名、実GitHub公開、外部Consumer、Owner受理は**NOT RUN／未受理**。既存の他レーンで記録された限定試験をRegistryの新規PASSと数えない。
