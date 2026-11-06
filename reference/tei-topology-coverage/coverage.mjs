@@ -30,7 +30,7 @@ export function project(input) {
   return {
     revision:rev,
     graph:{revision:rev,
-      nodes:[...subjects.map(s=>({viewId:`s:${s.key}`,key:s.key})),...relations.map(r=>({viewId:`r:${r.key}`,relationKey:r.key}))],
+      nodes:[...subjects.map(s=>({viewId:`s:${s.key}`,key:s.key})),...relations.map(r=>({viewId:`r:${r.key}`,relationKey:r.key,type:r.type}))],
       edges:relations.flatMap(r=>r.roles.map(x=>({viewId:JSON.stringify([r.key,x.index,x.role]),from:`r:${r.key}`,to:`s:${x.key}`,relationKey:r.key,role:x.role})))},
     table:{revision:rev,subjects:subjects.map(s=>({...s,viewId:`row:${s.key}`})),relations:relations.map(r=>({...r,roles:r.roles.map(x=>({...x}))}))},
   };
@@ -69,7 +69,7 @@ function projectionIntegrity(view) {
       return 'relation_identity_mismatch';
     ids.add(key);
     if (!relationNodes.some(n => n.relationKey === key &&
-        n.viewId === `r:${key}` && n.key === undefined))
+        n.viewId === `r:${key}` && n.type === r.type && n.key === undefined))
       return 'relation_coverage_loss';
     for (const [index,x] of r.roles.entries()) {
       if (!exact(x?.role) || x.index !== index || !keys.has(x.key))
