@@ -642,7 +642,7 @@ Source/Authoring Graph → Resolved/Lowered Graph → Targetの実行・観測�
 | ST-05 | Document→PDF/HTMLの二表現 | Sourceの意味とTarget固有loss/Artifactを別に追跡 |
 | ST-06 | Pluginが未宣言Network Effectを使う | Graph closureと実行時のEffect封じ込めを別判定。非強制Targetは未証明 |
 | ST-07 | 通貨JPY/個とUSD/個の演算、NULLと取得不能 | #1705/#1637へ委譲し、暗黙換算/ゼロ補完を拒否 |
-| ST-08 | `std.*` と提案中 `tei.std.*` の同名契約 | Namespace文字列置換を行わず、提案/既存/受理とPublisher Authorityを別記 |
+| ST-08 | 既存 `std.*` とRQ-008で管理領域が採用された `tei.std.*` の同名契約 | 管理Namespace方針の採用と、個別型の実定義・移行受理を区別し、文字列置換せずLock/Consumer/Publisher Authorityを再検証 |
 | ST-09 | 意味を変えずにArtifact/Targetだけ変更 | Build/Conformance再検証と業務意味の再受理を混同しない |
 
 **採用判断・撤回条件**：二Consumerで専門用語を剥がした共通I/O契約が実際に再利用でき、変換の損失・Unknownを人とAIが同じ根拠で確認できた場合だけ標準候補を採用する。既存のSemantic Type/Shape/Contractで十分なら新しいTypeKind/Registryは撤回する。既存#1103/#1121/Graph traceで可視性が足りるなら専用Pipeline Runtime/新Lockを設けない。正式な標準型への昇格、Namespace移行、MeaningのAcceptanceは別途Owner判断を要する。
@@ -689,3 +689,26 @@ Source/Authoring Graph → Resolved/Lowered Graph → Targetの実行・観測�
 **既存STケースへの追加判定（新Fixture IDは増やさない）**：ST-02はSemantic定義・Sourceの版変更による型候補と利用資格の失効、ST-03はETLのSelected/Consumed/ACK/Partialの別観測、ST-04は同型二InstanceのScope/Config/Grant分離、ST-09はArtifact digest一致でもBuilder/Attempt/Targetが異なる場合の再資格化をそれぞれ確認する。Graph/Tableの表示差は#2881、Role/Source closureは#2620、実Buildは#2831、実MFTは#2827/#2542に割り当てる。
 
 **標準化判断の停止条件**：二つのConsumerで型付き辺の共通検査が成立しても、未充足がSource閉包・Role/Effect・Transfer receipt・Build provenanceで説明できるなら新しい標準TypeKind/専用DSL/第二Resolverを追加しない。独立して同じ**意味**の表現・変換・診断に欠損が再現されたときのみ#2620と#951へ最小契約差分を返す。Stage/Host/Studio/実DB/External ProviderのE2E、実際の閉包、Owner Acceptance、性能測定は本設計では**NOT RUN / NOT PROVEN**。
+
+
+### 17.8 「型適合」「要求保証」「実行証拠」を別の判定にする（2026-11-06、実証引継ぎ）
+
+**差分となる着想**：同じTypeRefの接続に成功した後でも、ProducerがConsumerの必要とする順序・配送・原子性・再現性などを提供するとは限らない。Pluginの継承/特殊化（例：Filesystem相当のByte保存とS3系Object保存）を、メソッド名・primitive・Capability名だけで置換可能とみなさない。既存[#951](https://github.com/hat47x/tei-platform/issues/951)の正式Contract、[#2933](https://github.com/hat47x/tei-platform/pull/2933)の最適化要件、[#2827](https://github.com/hat47x/tei-platform/pull/2827)の配送保証が各意味のOwnerであり、ここで独立した保証Registryを新設しない。
+
+**診断の順序（新規プロダクトAPIではない）**：
+1. **構造候補**：TypeRef/Name/Multiplicity/NULL/Shapeのうち試作が検査できる範囲を確認。存在しない型・選択されていないSourceは衝突と断定せずUnknownにする（[#2584](https://github.com/hat47x/tei-platform/pull/2584)）。
+2. **必要な保証の充足**：Consumer側のRequired guaranteesと、選択されたProvider/Transform/Targetが**その対象と時点に対して**保証すると検証された条件を照合。未定義・不確実な意味（順序、欠損、外部ACK、Atomicity、idempotency、rollback等）は**未判定**であり、自動的なFallbackや暗黙Adapterを追加しない。
+3. **実際の成立証拠**：Declared/Selectedだけでなく実Consumed/Observed、Source closure、正規のArtifact・ReceiptとIndependent Oracleを確認。TypeRef一致とProviderの仕様適合は、実行結果や現在の権限を代替しない。
+
+要求保証を単純な真偽値へ畳まない。対象/Scope/Target/Phase/Source revision/Generation/OperationId/Attemptと、保証の根拠・確認できなかった範囲を記録し、要求が部分充足または不明ならCandidateをProduction-qualifiedに昇格しない。**Value-levelの互換、Stage/Build-levelの資格、Effect-levelの現在許可は異なる結論**として返す。
+
+| 既存Case | 型付き辺の局所結果 | 次に必要な独立検証／負例 | Owner |
+| --- | --- | --- | --- |
+| ST-03 SQL→CSV・File relay | 共通primitive/項目Shapeが一致しても構造候補のみ | 4 chunkのうち3件のみACK、部分Commit/Cancel、encoding/NULL/row orderの損失。Delivery Receipt/Sourceの実byteを照合し、成功に丸めない | #2542 / #2827 |
+| ST-04 同型の二Plugin Instance | 同TypeRefでもInstanceは別 | 異なるScope/DataSource/Grantで選択の同一性を区別。NAS系とObject StoreのAtomic Rename/一式Publishを無条件継承させない | #951 / #1016 / Draft #2933 |
+| ST-09 TEI CLI Self-build | Build Port/Artifact Roleの型が合っても構造候補のみ | **SB-0a** 実`cmd/tei`のSelected module roots/Sourceを調べ、external-unresolved/missing-module/unknownを独立表示。**SB-0b** 選択された外部Go moduleの`go.sum`・正確なbyte・offline prefetchを固定してからP0-A0/A1の宣言Graphと実消費照合へ進む。二回の`go build`・同digestを再帰Self-build証明に流用しない | #2831 / #1090 / #1096 |
+| ST-02 Semantic source改版 | 同じ文字列のTypeRefでも別定義の可能性 | Source/Meaning revisionと選択定義を再照合。Read-only Role AnchorやGraph表示の一致をOwner意味受理に昇格しない | #2620 / #267 / #2823 |
+
+**Self-buildの新たな実測Gapとの接続**：[#2831の2026-11-06追補](https://github.com/hat47x/tei-platform/issues/2831)では、既存`ResolveSourceClosure`がrepository root外のmoduleをfail-closedで拒否する一方、rootの`go.mod`は外部module依存を宣言している。`cmd/tei`でその依存が実選択されるかは独立観測前であり、**現時点でbuildが失敗すると断定しない**。外部moduleの選択/配布byteの未証明は、TypeRef不一致でも実Builderのバグでもなく、Source ClosureのUndischarged obligationに分類する。Target別工程の実消費を確認する前に「図中にない工程は存在しない」と言わない。
+
+**評価・撤回条件**：既存Contract/Role/Source閉包の診断を関連付けるだけでST-02/03/04/09を分類できれば、専用TypeKind/Guarantee Solver/Closure Engineは不要。二Consumerで同じ欠落保証を**独立証拠**によって再現し、既存OwnerのContractでは表現不能であると確かめた場合にだけ、#951/#2620への最小型付き契約追加を提案する。この節はDocs-only、実Go/ETL/S3/CLI self-build・Target Conformance・現在Authority・Owner Meaning Acceptanceは**NOT RUN/NOT PROVEN**。
