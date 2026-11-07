@@ -640,3 +640,53 @@ P0-R1の**同一Attempt Read Slice最小証拠**は`Actual Source bytes+Revision
 **次の単一試行と資格**：現mainのCrosswalk参照・PG resource observer・Go独立負例は進展として採用し、いずれも**RMT実ReaderのHR-01/02代用にしない**。#2586がまず受注Browseのphysical Provider/実SQL+status/Rowsへ接続、#2506/#2514がQ05〜07に対応するRead Sliceと独立Expected、#1163が単一Attempt Packetを持ち、その後に明細Coverage→同Rule二入口/保存前拒否→実Receipt K/Resource O/Business Bを積む。旧Driver忠実移植RとOwner Meaning・正式G1/G2は未受理。`#3175`はDraftであり、mainへの新Go Test統合と実PG Product Readを実行したとは主張しない。
 
 **文書変更の範囲**：本Draft #2783の既存RMT Markdown一ファイルのみ。Go/Fixture/Scenario/Provider/Studio/Windows原典Driverは今回変更・実行しない。変更前HEAD`3505ac2bb9e8914b0296919ea125fe1082b51cf2`の[Repository Health #42334571590](https://github.com/hat47x/tei-platform/actions/runs/42334571590)はcompleted/success。変更後HEADは別にCIを確認するまでUNVERIFIED。Draft/main未merge、G1/G2 UNQUALIFIED。
+
+## 18. 11/7夜の再資格化：同名Queryの別SQL出典／限定PG Read Slice／AIテスト能力
+
+第14〜17章のE（X-TEA合成受容例）／R（旧Driver忠実移植）／K（実Provider Effect）／O（独立観測）／B（Owner業務意味）の区別を保ちつつ、他チャットのDesign Context Query、標準構造・表現型、テスト判別力、Data Source Workbench、三視点CRUD/図面の議論を**最初の実Product Readerとその検収**へ集約する。新Query Engine・Provider・Authority・Scenario正本・Fixtureを増やさない。G1/G2の最優先P0-R1は維持する。
+
+### 18.1 同じrecent_orders名の3経路は同じSQL／Targetではない
+
+現mainの実ファイルと、固定HEADの実PG試験を再照合した。**同じ受注・Query IDに見えても、別のWorld／SQL byte／入力／対象表／取得粒度である**。
+
+| 経路 | Sourceで確認できたこと | 現時点の成立範囲 |
+| --- | --- | --- |
+| **E：合成X-TEA例** | examples/xtea-lowcode の Queryは status を input に宣言し、SQLは sales.order から order_id/customer_id を status=:status で抽出。Browse PatternはPage size 20（第14章） | Go の BuildBrowse はPattern→Query/Result属性を解決するが、CLIの当該Browse分岐は表示定義を返すだけ。実Provider Rowsetを取得しない。**HR-01/02の対象はこのEのstatus正負例** |
+| **W：reference/workspace** | reference/workspace/applications/order-entry/queries/recent_orders.tei はResult 5列、datasource sales、SQL file recent_orders.sql。対応SQLは public.orders から ordered_at >= :from で読み、ordered_at DESCで順序付ける。現Query定義に input from 宣言は見当たらない | SQL側の **:from の由来・型・実Binding**をProductが解決できるかは未検証。Eの :status を自動代入せず、W Routeの独立検収とする |
+| **C：Web Referenceの限定実PG** | [Draft #3238](https://github.com/hat47x/tei-platform/pull/3238)は別の public.tei_web_scoped_orders_reference を使う。Tenant Aの実行済みRowset TOP2=[[3],[9]]、TOP1=[[3]]、非出力 ordered_at のWHERE評価で from=2026-10-02 → [[9]]を独立Expectedへ照合 | PR exact HEAD d3b67d5809478fad828052ce01bdafe576b2f934 の[専用PG CI #42351796330](https://github.com/hat47x/tei-platform/actions/runs/42351796330)と[Health #42351796383](https://github.com/hat47x/tei-platform/actions/runs/42351796383)はcompleted/success、専用PG試験SKIPなし。ただし**Product E/WのFunction選択からこのReaderを呼んだ実証ではない**。PRはDraft・未main統合 |
+
+**最初の停止辺はEのQuery選択後**。現mainの cmd/tei/cli_view.go のBrowse分岐は BuildBrowse→BrowseViewをResultへ入れ、SQL・実Providerを呼ばない。別の製品Caller全体を未調査のまま不存在とは断定しないが、Eの **selected Query→SQL実原byte→alias→physical Provider Instance→実SQL+status bind→Rows/Scope→Function Data Context** は少なくともその分岐では未接続。Cの成功をEの実Read成功に合成しない。
+
+### 18.2 #2586が次に結線する一本と、独立Expectedの最小セット
+
+**実行先行：E Routeで最初のHeader SQL Read一往復**。既存Query・Provider・Context契約を用い、第二SQL生成器／Runnerは作らない。実行時にSource/World版、選ばれたQueryとSQLの生byte/版、実Inputの値・型・placeholder対応、logical datasource aliasとphysical Instance、実SQL、返却列/Row ID、Tenant/Read epoch、結果のConsumer受領を一つのAttempt証拠に束縛する（#1163 W1〜W5）。この時点ではHeader二列の有限Reader証拠に限り、明細全件/業務完了B/二入口Parityへ拡張しない。
+
+| 既存HR-01〜05の追加判別 | 独立Expectation／停止条件 |
+| --- | --- |
+| **E01 正例** | status OPEN/READYを個別Bindし、実Providerの実返却行と事前固定Expectedを照合。SQL byte/Target/Result Columnが異なるC/Wルートとのすり替えを検出 |
+| **E02 入力負例** | status 欠損、NULL、型誤り、誤値、未束縛alias、SQL版違いを区別。0件を即座に不存在/Business failへ昇格しない |
+| **W01 SQL :fromの起源** | W RouteのSQLには :from があるがQuery定義に入力宣言が見当たらない。実Resolver/CallerからのParameter供給根拠がなければ unbound-query-input 相当で停止。Eの statusとは別 |
+| **R1-Drift** | [main #3254](https://github.com/hat47x/tei-platform/pull/3254)ではWorld/Model Revisionが変わってもOperation basisが不変な例を観測。Query ID・basis一致を実SQL Source同一性/実行時意味一致としない。Source、実選択、実Executable、SQL+args、Readerの因果を別照合 |
+| **L-Whole** | Header Rowsetのみでは order.lines のOwner対象集合L、Page後続、集合の多重度・権限・時点を確定しない。Lの実Read後にのみCompletionへ接続 |
+
+### 18.3 Q05〜09の実証済み範囲を訂正し、開示の漏れを別検収にする
+
+旧§17.2のQ05〜07は、[新Draft #3238](https://github.com/hat47x/tei-platform/pull/3238)に移植された。限定Referenceでは**実PG**が full={3,9} / top1={3} を返し、テスト上はCompleteならholds、Partialならunverified、top1へ誤ってComplete自己申告すれば局所holdsとなり得ることを実証した。これは「製品FunctionのResult Slice完全性が自動証明される」ことではない。fullとtop1は**異なるRead Attempt・Query Plan**で、同じCI/DBでも同一Snapshotの保証はない。
+
+- **Q05**：同件数でもR=[3,3]はL={3,9}を覆わない。件数≠Entity ID集合、JOIN fanout/Relation occurrenceを区別。
+- **Q06**：TOP1を全件として扱わず、Pagination/Source Scope/Snapshotと対象集合が確立するまではunverified。
+- **Q07**：status=READYの根拠がないままCallerのHolds=trueを信じない。非出力列をConsumerへ露出しなくても、SQL/Operatorが実評価した出典と結果があれば適格なことはある。
+- **Q08**：非選択列にSQL NULL AS statusを投影したRaw slot=nilは、DB格納statusがNULLという意味ではない。not-selected/not-fetched/redacted/permission-denied/実NULLを区別し、ReadPlan.Selectedと実SQL列alias・Cell provenanceを結ぶ。
+- **Q09**：別の非出力 ordered_at を実SQL WHEREで評価し、from=2026-10-02でID 9だけを返す正例は専用PGでPASS。ただし同じ[9]がTOP1等で出る場合と区別するには実SQL+args+Filter+Limitが必要。これはQ07のstatus条件を実評価した証拠ではない。
+
+**追加の停止線：秘匿Predicateで絞り込んだ行の存在・件数がConsumerに見えてよいとは限らない**。表示列を落とすだけでは非干渉を証明できない。非開示条件だけが異なる二世界で、公開Body、件数、空集合、診断、Error、Timing、Tool結果/Session Logまでの実差を検証する責務は#2516/#2514/#1180へ渡す。実ProviderでPredicateが成立した事実とConsumerへの開示資格を別にする。
+
+### 18.4 実テスト能力T0の前進を採用し、T1とG1/G2を混同しない
+
+[main #3266](https://github.com/hat47x/tei-platform/pull/3266)と[main #3268](https://github.com/hat47x/tei-platform/pull/3268)は、**main exact SHA 69a2996187852a036057b7155d6e847527b67346**の[Push CI #42359610226](https://github.com/hat47x/tei-platform/actions/runs/42359610226)で実走済み。実TEI CLI 9 read-only、Skill静的14、pinned Driver Scenario 6 Step、実CLI負例4・独立義務負例2をPASS。局所cmd/teiのGo statement C0相当10.1%は観測されたが**C1未計測**。実DB Product Function、Owner Business、全Requirement/NFRは対象外。このT0を「未実施」へ戻さない。
+
+[Draft #3273](https://github.com/hat47x/tei-platform/pull/3273)のT1は、#3262の**必要Design Contextを完全性・Source版付きで取得した後**、未カバーRule（例：line_number_positiveの0）からAI/人間が**新たな**Scenario負例を選び、#1180/ #2514の独立Holdout Expected/Mutantと実CLIで判別する設計。T1のAI新規生成・C1・未取得Function/Business/Rule/Procedure閉包は未達。RMTではE01/E02に必要なSource・status/Scope/Context/Non-output依存をRequired/Supplied/Observed/Undischargedへ投影するだけで、第二Test Engine/新Scenario正本を作らない。
+
+[merged #3276](https://github.com/hat47x/tei-platform/pull/3276)のRQ-035/Data Source Workbench設計と[Draft #3263](https://github.com/hat47x/tei-platform/pull/3263)の三視点CRUD・図面は、共通のData/Function/Business Source、declared Read/CUDとactual Reader/Effect、Result Slice/Consumerの区別を補助する。WorkbenchやGraph/Studio/SHOの完成をE01/02のHard Gateにしない。実Read後に同一Function ContextをForm/Tableへ投影するConsumer検収に回す。
+
+**既存Owner・受入順**：#2586 Product Reader、#2611/#2622 physical Provider、#2506 Function Data Context、#2514/#1180 Scenarioと独立Expected、#1163 Evidence、#2516 Disclosure、#3262 Design Query、#3273 T1、#1119 Gate。最初は**E Route Product実SQL＋status HR-01/02**、次にRow/Scope/Field grain、Page/非出力依存、明細完全集合L、同Rule二入口、実K/O、Business B。今回の変更は**既存RMT Markdown一ファイルのみ**。新Go/本RMT実PG/旧Windows Driver/Host/SHO/正式Owner受理はNOT RUN。C Route実PGとmain T0の過去実測は各々の限定成果とし、更新後HEADのHealthを別に確認する。
