@@ -52,3 +52,6 @@
 
 # Publication-gap output is hashed as raw bytes by its README.
 /plan/evidence/OPERATIONS_COMMAND_PUBLICATION_GAP_2026-11-07/** -text
+
+# Vocabulary probe output is hashed as raw bytes by its README.
+/plan/evidence/OPERATION_VOCABULARY_PLACEMENT_2026-11-07/** -text
