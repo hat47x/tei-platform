@@ -596,3 +596,47 @@ Source A→B→Aでは同byteでもObservation時点・選択Revisionが別と�
 [merged #3171](https://github.com/hat47x/tei-platform/pull/3171)では`ApplicationView.periods`が`calendar`の宣言IDを投影できるようになり、受容例`sales.month calendar sales.fiscal`をCLI表示で確認済み。ただし**表示上のID保持であって暦Ruleの解決/期間強制や旧DriverとのMeaning同一性ではない**。原典の`FIRST_MONTH`・`ALLOWED_FISCAL_MONTH`を推測で置換せず、#2144/#1125の元々の期間対照へ引き渡す。P0-R1実Readの新必須依存にしない。
 
 **2026-11-07の資格と引継ぎ**：旧Draft Head `1b3f5a2661ed4e51b23276e8e6bd7d9f30d3b9ff`の[Repo Health #42317691986](https://github.com/hat47x/tei-platform/actions/runs/42317691986)はcompleted/success。今回本節は既存RMT受入計画Markdownだけ変更し、Go/Fixture/Runner/Owner受理を触らない。**現Mainの実PG Resource Receipt/Value一致試験成功（#3155）はE2の一部成立、RMT Function Read HR-01/02とBusiness B、Windows旧Driver、正式G1/G2は依然NOT RUN/UNQUALIFIED**。優先順は従来どおり実Read→明細完全性→同Rule二入口保存前拒否→Receipt K/資源O→業務B。新HeadのCIは再確認前にPASSとは記録しない。
+
+## 17. 11/7再資格：Pattern/Operation実Crosswalk、Read Sliceの完全性、Function内Representationの非昇格
+
+本章は`14〜16の一Function・一Query・一実Providerを優先するRMT P0-R1を維持し、並行レーンの**実現済みSource**と**未統合検証・設計候補**を同じ資格にしない。X-TEA合成受容例E、旧原典Driver忠実移植R、実データK/O、業務Owner Bは引き続き別Attempt・別Claim。新しい第二Query/Operation Engine、Scenario正本、UI State Engine、Host/Authority、Fixtureは導入しない。
+
+### 17.1 `16.8の現在地を更新：参照Crosswalkは動いたがW3/Product Actionは未統合
+
+[main merged #3195](https://github.com/hat47x/tei-platform/pull/3195)は`tools/reference-operation-pattern-crosswalk`を実装済み。既存`operations.DeriveOperationSurface`を呼んでData ID／Capability ID／Relation targetだけを突き合わせ、結果をlinks/unlinked/conflicts/ambiguousへ出す**読取専用の参考ツール**であり、製品の`tei operations`で宣言Patternを優先選択するW3は**未実装・未採用**。実Workspaceの操作8件・宣言Pattern5件でlink 4／unlinked 2／conflict 0。追加候補Patternを載せると8件・6件でlink 4／unlinked 3となる。4件の一致には`recent_orders→list.sales.order`、`order_record→read.sales.order`、`order_lines→list/read.sales.order_line`が含まれる。これは**Readのための設計候補間Identity対照**であって、Query/SQLがProviderへ渡った実行記録ではない。
+
+[main merged #3204](https://github.com/hat47x/tei-platform/pull/3204)はその同一規則を5つの宣言追加で反証：effectを持つcommandは対応Capabilityにリンク可能、Relation先DataのPersistence追加でreferenceがreadにリンク可能、同Dataを指す2 browseは**衝突・双方未採用**、効果の宣言だけでPersistenceが無ければmissing-input。**名前類似・暗黙first-winner・非宣言Effectの合成を禁止する**。旧`16.8の「手掛かりだけで結合規則が動かない」という一般化は、**参照Crosswalkに限っては訂正**する。ただしW3の採否/版管理・`Origin=declared`の製品反映・実行可能Action Offer/現在Grantを自動成立にしない（#1127/#1129/#951）。
+
+P0-R1の実Reader呼出しは`BuildBrowse(Query)→selected SQL+actual args→physical Provider→Rows/Scope/Consumer`をそのまま先行。**Crosswalk link 4件をHR-01のPASSに足さず、W3の採否をHR-01の新しい前提にも置かない**。
+
+### 17.2 Completionの「Caller申告」をRead Sliceの独立証拠へ縫い付ける
+
+[Draft #3175](https://github.com/hat47x/tei-platform/pull/3175)は現`semantic.EvaluateCompletion`と`AuthorizeBrowseRead`の実Go APIで、`ReadPlan($top=1,$select=orderId)`と**合成Rowset**を切り離したCDE-Q05〜07の限定Characterization。固定HEAD`defbf7297fb98d444879bb1766c6af95d2a17707`の[Repository Health #42334653630](https://github.com/hat47x/tei-platform/actions/runs/42334653630)はcompleted/successだが、**Draft未merge・実PostgreSQL RowsetはNOT RUN**。mainの一般的な完成保証ではない。
+
+| 既存HR-03〜05/PA-11への受渡し | 独立Expectedの要点 | `EvaluateCompletion`だけでは確認しない事実 |
+| --- | --- | --- |
+| **Q05：件数一致／識別子欠落** | Owner対象`L={A/3,A/9}`に対し観測`R=[A/3,A/3]`なら`count(R)=count(L)`でも`R≠L`。Callerが`CoverageComplete`を誤って渡した局所`holds`は採用しない | 重複除去、Row Identity、Tenant/Scope別対象集合の被覆 |
+| **Q06：Pageと全称の差** | `LIMIT 1`の`R=[A/9]`を全Lへ変換せず、Coverage不確定/Partialなら`unverified`。最初のPage/0件は空集合証拠ではない | 実Read PlanのPagination・次Page・全件存在、否定依存 |
+| **Q07：非出力Predicate** | Consumer`$select=orderId`だけでは`status=READY`の評価結果は導けない。`Holds=true`の自己申告は不適格 | ただし**認可済SQL WHERE／Operatorがstatusを実評価し、Query/Operator版、入力、Scope、結果の証拠を記録したならConsumerへのstatus列公開は不要**。非表示≠未評価 |
+
+P0-R1の**同一Attempt Read Slice最小証拠**は`Actual Source bytes+Revision / selected Query ID+SQL bytes / datasource alias+physical Provider / status bind actual / Read Plan(SQL/filter/limit/selection) / acquired Rows(業務Key・多重度・Field grain) / Reader Scope(Tenant・Grant・Read epoch) / Coverage basis(LとRの識別集合・Page/negative dependency) / Predicate evaluation origin / Consumer disclosure`。Roleと対象が異なるReadのPASSを結合してCompletionの`CoverageComplete`を自動入力しない。これらは`#2506 Context/Result Slice`、`#2514 Independent Expected`、`#1163 Evidence Packet`、`#1180 Scenario`を**再利用**。Readが動くようになってもこの欄が欠ければ、Business Bを自動合格にしない。
+
+### 17.3 Data topology・Representation topology・Function Binding topologyを混同しない
+
+[Draft #3179](https://github.com/hat47x/tei-platform/pull/3179)はMaster Planの全体ロードマップ、[Draft #3225](https://github.com/hat47x/tei-platform/pull/3225)はData/Function/Business詳細引継ぎを担当し、[Draft #3192](https://github.com/hat47x/tei-platform/pull/3192)が表現型と媒体軸、[Draft #3222](https://github.com/hat47x/tei-platform/pull/3222)が複数表現間の選択同期を担当。**これらのDraftは現行Productの受理済み構造ではない**。本RMT計画は以下の受入境界だけ共有する。
+
+- **Data topology**：1:1／1:N／Graph等の実Data/Relation/粒度とOwner意味。Source行・JOIN Fanout・Parent/ChildのIdentityを保つ。
+- **Presentation type**：Panel/Table/Tree/Chart/Media等の機能非依存な種類。種類の存在はUI Widget固定列挙をCoreに増やす根拠ではない。
+- **Function-bound instance / presentation topology**：具体的な表示Slot・Field/Axis/SelectionがどのFunction Context Instance・Result Sliceに束縛され、粒度/単位/欠損/媒体時刻のどこが失われるかを明示する。Headless FunctionならSlot=0も成立する。Multi-viewのSelection epochは**業務ID・実更新対象・Source Mutation・現在Grantを自動で決めない**。
+
+最初の受注Browseは、選択されたQueryの**実Read結果**をFunction Contextへ束縛できた時点で、Table表示への投影検収に進める。Map/Audio/Media／別Functionの高度表現を**HR-01のブロッカーにしない**。画面が正しい／資料として同じ意味に見えることを、実ProviderのRow/Scope/Completenessや別ConsumerのDisclosureへ転用しない。
+
+### 17.4 残る実行・自律・永続化の条件
+
+[main merged #3197](https://github.com/hat47x/tei-platform/pull/3197)が型コメントでも明確にした通り、`command.Executor`に`Invoker.UnitOfWork`へのTx参加の契約はない。外側RollbackやLifecycleの`unknown`は実Providerの別Tx Commitを巻き戻さない。`#3155 resource-observed`は実PGの単一Resource Payload照合として成立したが、宣言外の別Data更新、RMT Header/Lines全件、Version ABA、Current Read Grantの独立証拠にはしない（`16.7）。
+
+[merged #3220](https://github.com/hat47x/tei-platform/pull/3220)の観測ではPlugin CapabilityKindとOperation Kindの語彙検査は別系統。前者は現行閉じた列挙、後者は規則内の生成語彙で未知種別検査なし。これを「Plugin追加で標準Operation Kindも自動拡張された」と解釈しない。[PR #3231](https://github.com/hat47x/tei-platform/pull/3231)の読み取り専用調査は`unattended`が現`list/read`から導かれ、明示Service主体や`human-gated`を評価していない範囲を示したが、**読取専用だから認可不要・外部Consumerへ公開可能とはしない**。自律区分／Host実Grant／Disclosureは別資格のまま。
+
+**次の単一試行と資格**：現mainのCrosswalk参照・PG resource observer・Go独立負例は進展として採用し、いずれも**RMT実ReaderのHR-01/02代用にしない**。#2586がまず受注Browseのphysical Provider/実SQL+status/Rowsへ接続、#2506/#2514がQ05〜07に対応するRead Sliceと独立Expected、#1163が単一Attempt Packetを持ち、その後に明細Coverage→同Rule二入口/保存前拒否→実Receipt K/Resource O/Business Bを積む。旧Driver忠実移植RとOwner Meaning・正式G1/G2は未受理。`#3175`はDraftであり、mainへの新Go Test統合と実PG Product Readを実行したとは主張しない。
+
+**文書変更の範囲**：本Draft #2783の既存RMT Markdown一ファイルのみ。Go/Fixture/Scenario/Provider/Studio/Windows原典Driverは今回変更・実行しない。変更前HEAD`3505ac2bb9e8914b0296919ea125fe1082b51cf2`の[Repository Health #42334571590](https://github.com/hat47x/tei-platform/actions/runs/42334571590)はcompleted/success。変更後HEADは別にCIを確認するまでUNVERIFIED。Draft/main未merge、G1/G2 UNQUALIFIED。
