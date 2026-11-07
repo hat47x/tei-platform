@@ -148,3 +148,56 @@ Private World W0/W1が**当該Consumerへ開示可能な情報としては同じ
 各段の比較欄は**Required / Discovered / Loaded / Parsed / Bound / Evaluated / Enforced / Executed / Observed / Qualified**を区別する。これは[#2514](https://github.com/hat47x/tei-platform/issues/2514)の独立検証と既存Evidenceをつなぐ**read-only照合票**であり、新Core Enum、第二Proof Store、追加Gateではない。ある段がmissing/unknownでも、下流の表示候補の探索自体を禁止するわけではない。ただし上位の完了Claimや自動Writeへは昇格させない。
 
 **既存Ownerでの検収順**：#2586 R1-0〜3 → #2506/#2507 R1-4 → #2497/#2582 CX写像・非単調性 → #2500/#2598/#1174 現行Operation → #2516/#997/SHO/SUI Target。独立Expected/Scenarioは#2514/#1180へ差分として渡す。今回の追補は設計のみ、R1-0〜4を現在の実Product/DBで走らせた証拠ではない。正式Meaning acceptance、実Target/Host、Owner判断は未。
+
+
+## 9. 実読取証拠の帰属・環境効果・図表Consumer（2026-11-07追補）
+
+§8の「Product Function→実Query/Provider Read→同一Context→二つのread-only表現」を維持し、他レーンの実測から**対象の所在・実操作の効果・投影図の意味**という3つの独立した合格条件を追加する。RP/MV/CXや既存#2514/#1180に第二の検証基準正本を増やさない。
+
+### 9.1 最新の限定実PG成果を実証の踏み台にする
+
+[Draft #3238](https://github.com/hat47x/tei-platform/pull/3238)の固定HEAD `469cdbadb1fcf23d65526ec3c5899f4d94e8390b` では、[#2586の記録](https://github.com/hat47x/tei-platform/issues/2586)によれば独立PG Workflow [#42346176936](https://github.com/hat47x/tei-platform/actions/runs/42346176936) が completed/success、隔離PostgreSQL 16.15上でTenant Aの固定Fixture `{order3,order9}`の物理Readを実行し、`top=2`と`top=1`のResult/Completion差を観測した。**本設計作成時に「#3238のPG CI未確認」と記した旧記述は、この固定HEADに限って更新する**。
+
+ただしこれはReference ReaderのSQL→実PG Rowset→局所Completionの限定成功。**Product Function/Pattern→Query/SQL選択→physical Provider→Function Data Context→Form/Tableの一試行接続は未検証**。実件数一致とClaim Target Set/否定依存の完備は異なる。Q07の非出力Predicateが評価済みか、Current Host Grant/Owner業務受理があるかも別の証拠とする。#3238がmainにmergeされたか・新HEADでPASSしたかは再度確認が必要。
+
+### 9.2 WorkspaceとFunction Instanceの境界をSelectionの同一性へ接続する
+
+[#3149のCLI Dogfooding](https://github.com/hat47x/tei-platform/issues/3149)と[#3181](https://github.com/hat47x/tei-platform/issues/3181)では、`reference/workspace` と `examples/xtea-lowcode` に同じ `sales.order` IDがありながら、CLI応答にはWorkspace名/manifest照合値がなく、内容指紋をWorkspaceの物理的所在・権限とみなせないことが実測で指摘されている。
+
+既存のFunction-owned Representation Instance・同一Context/Selection epochの検収に次を加える：
+
+- 同じCanonical Subject/Function名・表示値・Query IDでも、Workspace Manifest実ID/Source Root/Source byte revision、Function Context Instance、Tenant/Principal/Provider binding、Read Attempt・Scopeが異なれば、**別の観測と別の操作対象**。Cross-Workspace selectionをexactへ自動昇格しない。
+- CLIがまだ出力しないmanifest identityを「応答で検証した」と記述しない。呼出し側の実Workspace/Host bindingへ戻れる場合も、Source実読取・変換・対象Revisionの根拠を提示して初めて限定的に資格化する。
+- 同じIDを別Workspaceで開き直すA→B→Aは、前のAのread/selection/Action Offerを現行Aへ復権させない。UnknownはUnknownとして提示。Workspace ID/Core enum/第二Source Registryをここで新設しない。CLI契約の改善は#3181/#3242/#2824が担当する。
+
+### 9.3 表示のread-onlyと、ファイル・通信・実業務の副作用は別
+
+[#3182](https://github.com/hat47x/tei-platform/issues/3182)では `tei commands` の `view: effect=read-only` の広告に対し、実際の `view -execute -operation-log` や `-lifecycle-state` が指定されたログ/DBファイルを書いたことを確認している。これは指定オプションでの局所的な作用であり、全view操作が無制限に書込むという意味ではない。
+
+- **業務上のread-only**：業務Entity/Relation/Sourceへ更新Intentを生成しない。
+- **環境側の作用**：ログ・ローカル一時ファイル・Clipboard・Export/Session Log/通信など、表示可能な出力面とは別に発生し得る効果。
+- **現在の実行適格性**：実コマンド＋オプション、Host Permission/Grant、SourceとTarget、実Provider／Tool作用を実行時に評価する。CLI Discoveryの抽象 `effect` や画面のenabled表示を万能な証拠としない。
+
+二つのread-only Form/Tableを表示するだけのHeadless検証と、`-execute`／Export／外部AIツール呼出しを**同じ試行やEffectなし**と扱わない。CLI分類の語彙と実修正は#3182/#2824、Form/TableのAffordanceは#2507/#997、実Effectは#2598/#1174を正本とする。
+
+### 9.4 新たな異質Consumer：Subsystem ER図とCRUD Matrix
+
+[#3250](https://github.com/hat47x/tei-platform/issues/3250)の論理Subsystem分割候補とER/CRUD派生図は、TEIの標準構造と標準表現型を圧力試験する適切なConsumer。**分割Optimizer・新Core・業務Ownerの採用判断は本設計に取り込まない**。
+
+- Entity/RelationとFunction–DataのR/C/U/D、Procedure/Owner、宣言された直接CRUD・派生可能なEffect・Provider実観測Effectを、図表の別要素・別根拠として保持する。Missing/Partial/非開示/未観測Effectを「越境更新0件」や「外部参照無し」としない。
+- ER図のノード移動・色/並べ替え/折畳みは**Presentation state**であり、Subsystem移管やRelation削除ではない。図上でOwner/所属を変える編集は、元Source/ProposalとInverse Mapping資格を要する。Read-only図が出せることは自動Source Writeの資格でない。
+- 複数Subsystem図への投影では外部Refや越境Read/CUDを黙って省略せず、必要ならLossとDisclosureを明示。論理Subsystem≠DB物理配置≠Host/Tx/Commit。#3250/#1132（分割評価・診断）、#2497（Loss）、#2507（Binding）、#2500（逆編集）を再利用する。
+
+### 9.5 最小判別票（独立Expectedに一因子だけ追加、すべて新規試験NOT RUN）
+
+| Case | 変更する一因子 | 必須Expectedと拒否・停止線 | 既存Owner |
+| --- | --- | --- | --- |
+| WX-01 | 同じ `sales.order` を2 Workspaceからinspect・Contextに配置 | ID一致やworld hashだけで二Viewの現行Subject/Scope/Grantを統合しない。source/manifest帰属不足はunresolved | #3181/#2506 |
+| WX-02 | Workspace A→B→A、旧AのResult Slice/Action Offerが遅延到着 | 同名・同値でも旧epochを現在のFunction Instanceへ採用しない | #2582/#2598 |
+| WX-03 | Headless Form/Table previewと、`view -execute`＋明示ログ出力 | ビジネスread-onlyと環境file effectを別に観測。Discoveryのeffect一語でゼロ副作用と主張しない | #3182/#997 |
+| WX-04 | 同じER Graph/CRUD Matrixでレイアウトだけ変更 | Source/Owner/Relation/CRUD責任は不変。導出図の見かけの移動を元データPatchにしない | #3250/#2497 |
+| WX-05 | 越境CUD/外部Relationがpartialまたはhidden | Diagramが0 edgeでも、完全閉包がなければ越境CUD 0/孤立Entityを確定しない。開示漏えいも別評価 | #3250/#2516 |
+| WX-06 | 実PG Reference全2件 vs Product Function実Read未接続 | 前者の局所PASSを保持し、後者のR1-0〜4は未実証と表示。2件がFull CohortかはClaim・Read Scope相対 | #2586/#2514 |
+
+実際の一Attempt証拠としては `Workspace/Source → Function/Query selected → Provider physical Read/Scope → Result Slice → Context → Form/Table Projection → Consumer` の最初に未接続の辺を**一箇所だけ**記録し、同一試行に含まれない物理Read・Effect/Receipt・独立期待値を合算しない。実Product R1/二表現/WorkspaceまたぎGUI/ER Editorの検証と正式採用は今回NOT RUN。
+
