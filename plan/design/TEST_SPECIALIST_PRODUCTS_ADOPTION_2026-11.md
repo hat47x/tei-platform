@@ -257,3 +257,66 @@ TEIでは \`Source+Accepted Function+Independent Expected\` → \`既存Driver/�
 単一のClaimに対して **必要なSourceの閉包／独立Expectedの妥当性／対象Case全件の生成・実到達／実SourceからConsumerまでの入力同一性／実観測の証拠種別・完全性／適用Scope・Tenant・時点・現在Authority** が束縛できる。欠けた列は明示的にunqualifiedとして残す。検証実験の局所PASSや外部Toolが「completed」を返しただけで全体資格を合格にしない。
 
 **状態**：この追補は他チャット・GitHubの既存実証結果と外部専門技法を結んだ**設計計画**。今回の新しいGo/CLI/Provider/GUI/Media/Harness/OS隔離のE2Eは **NOT RUN**。正本（Accepted Canonical/Driver Scenario/Meaning/Host Grant）は既存Ownerに保持する。
+
+<!-- tei-test-model-derived-obligations-20261107 -->
+## 11. 2026-11-07 横断深化：ドメイン知識による検証要求・テストデータ生成と広域整合性（採用前の設計）
+
+### 11.1 要求の導出元を固定し、候補生成と受理を分ける
+
+三要素（Data / Function / Business）、値域・単位・強属性、Key/FD/Relation、業務Rule、Procedure/Workflow、組織/規範、Provider/Host/Consumerのモデルから**Verification Obligation候補**を導出する。ただし、モデルに存在しない業務意味・許可や「何が強属性か」をAIが補完して受理済みにしない。「強属性」は当該Accepted Modelが具体的に定義する性質・適用対象・反例を参照できるまでは、テスト観点の名称にとどめる。
+
+- **業務Meaningの原典**：Accepted CanonicalのRule/Attribute/Relation/Key/Procedure、Authorityと対応Source Revision。暫定Model由来はprovisionalを明示。物理PK、業務Key、複合Key、Relation occurrence、表示行IDを識別・同一性の代用にしない（#1126）。
+- **テスト要求の原典**：意味Ruleと利用シナリオに加え、Source/Read Closure、対象集合の完全性、時点、Host Grant、実Provider Effect/独立Observation、開示境界の各必要条件。Required集合を「生成器が作れたCase数」から逆算しない（#2514/#1180/#2506）。
+- **候補生成**：型と値域の境界、NULL/未取得/非開示/空、正常・異常遷移、Relation/cardinality/FD、Rule間干渉、時間の前後、Membership/Delegation/Tenant、故障・順序・履歴、Metamorphic relation、Known Mutant。値域組合せを総当たりせず、各境界の独立対照＋意味のある交互作用のペア/高リスク多条件を選ぶ。
+- **独立Expected**：Candidate/実装/同一EvaluatorからWantを自己生成しない。原契約、手計算・別アルゴリズム・独立データセット・Ownerレビューを使い、Expectedの定義域・出典・反例判別力を記録する。AI同士の一致や多数決は独立の根拠にならない（#2514）。
+- **Scenario化**：提案Caseは既存Driver Scenarioの変更候補としてReviewし、採択後に同じScenarioからCLI/Web/Desktopへ投影する。未対応Stepや失われた分岐をsilent skipしない（#1180）。新Test DSL、永続Case Registry、新Runnerは作らない。
+
+比較票の候補列は、Requirement Ref / Accepted Meaning Revision / Claim Scope / Obligation ID / Derivation Reason / Positive-Negative-Unknown / Expected Provenance / Fixture Ref / Scenario Revision / Target Step Binding / Observer / Actual Input Binding / Qualification / Limitations。これはread-only投影であり、公開Schema・新意味正本の採用ではない。
+
+### 11.2 「生成済みのもの」ではなく「必要なもの」に対するCoverage
+
+一つのClaimに対し、**Required → Candidate-generated → Owner-reviewed → Scenario-bound → Target-generated → Actually-executed → Actually-observed → Independently-checked → Currently-qualified**を別段階として扱う。各段の分母、除外された対象、欠落理由を出力する。Function成功後に手作業が残ればBusiness Procedureの完了Coverageには算入しない。Source未読込、Target非対応、欠けたTool Replyも分母から黙って除外しない。
+
+- ケースが存在しない／生成済みだが未受理／Step未生成／未実行／実行したが未観測／観測したがClaimを支えない／旧Qualifiedが現在stale、を別理由として扱う。
+- Rule・Relation・Branch・State・Time・Role・Grant・Source・Provider・TargetのCoverageは**母集団が異なる**。総合一数値で要件不足を隠さない。Mutation scoreは既知Mutant集合への局所感度。
+- 存在証人は部分取得から成立する場合があるが、全称・不存在・全件集計は必要集合の閉包を要求する。空、未取得、非開示を「0件・真」と同一視しない。
+- JOINによる粒度崩壊、表現型の誤った書戻し、時間/Grantの失効、Function成功≠Business完了は互いに独立する未達経路として追跡する。
+
+### 11.3 独立正負対照（TT-21〜TT-29）
+
+以下は**既存OwnerのFixture/Case IDを置換しない受入要求**。合成の値・業務Ruleは正式TEI意味としてOwnerが採用したものではない。**すべてNOT RUN**。
+
+| 要求 | 合成入力・意図的差分 | 独立Expected／防ぐ誤主張 | 所有境界 |
+| --- | --- | --- | --- |
+| **TT-21 値域・属性意味** | 自作数量属性に仮Rule「整数、1以上」を置き1/0/負/小数、missing/null/未取得/非開示を区別 | 仮Ruleでは1のみ適合。入力変換・Rule拒否・取得不足は別結果。強属性等の意味が未Acceptedならprovisional | #1126/#1705/#2514 |
+| **TT-22 Key/FD・粒度** | 同じ業務Keyの別物理PK、同Nodeの別Path、同額100の別Line、FD違反 | PK一致や値一致から実体/辺/集計対象を同一視しない。Key/FD未受理なら制約を推定しない | #1126/#2497/#2593 |
+| **TT-23 三要素・手作業** | 仮Procedure「Function実行→人の確認→承認」、Function成功後も手作業未了／TaskEventとFunctionLaunchEventの差 | Function ReceiptだけでBusiness完了としない。人の作業を架空のFunctionに変換しない | #1125/#1180/#1131 |
+| **TT-24 組織・時点・Tenant** | 同人が二法人に所属、代理権失効前後、自己承認、Tenantごとに同じCase ID、Preview後Grant失効 | Membership/Position/Delegation、業務Rule、実Host Grantを分離。Resource/Tenant/Timeが欠ければunqualified | #2510/#2386/#2390/#2514 |
+| **TT-25 広域Ruleの読取閉包** | 親HのLine L1=100/L2=100は完全、独立Deliveryは3件中1件、非出力status/Grant未読込 | Line合計200は必要なLine閉包が証明されたClaimに限る。Delivery全件条件や未読込status依存Ruleは未確定 | #2506/#2586/#2582 |
+| **TT-26 状態・同時更新** | 選択A→BとAの後着応答、承認/差戻し競合、ABA、expected-state一致/不一致、取消/再送 | stale混入、後勝ち上書き、未証明の順序を拒否。合成Checkerは実DBの線形化を証明しない | #1131/#2485/#1174 |
+| **TT-27 派生・確定・効果** | Preview 200→承認Revision 200→保存、途中のRule改訂、ACK喪失、後続訂正 | Preview・承認済み値・Typed Request・Receipt・独立Resource Read・Owner完了を別Claimとする | #1129/#1174/#1163/#2671 |
+| **TT-28 Source・負の依存** | 必須の新形式tei.md未読込、旧形式の競合、DB別SQLにspecificを追加、未使用Plugin変更 | 実選択が変わる依存では再評価。無関係な変更で過剰失効しない。依存未列挙ならunknown | #3030/#2621/#2586/#2582 |
+| **TT-29 AI候補の自己検証** | AIが境界5 Caseを提案しWantに出典がない、末尾Case欠落、Tool Reply切断、holdoutを公開 | Source要求→提案→Review→Scenario版→実Target到達を照合。不確かなExpected/欠落Step/不適切開示でqualified不可 | #2514/#1180/#2515 |
+
+TT-21〜29は既存MC/FC/ORX/RP/MV/H6/OrganizationおよびTT-01〜20のCaseをコピーして別SSOTを作るのでなく、**既存Referenceのどの出典・Case・Observerが要求を満たすか**を参照する。Owner固有のExpectedがない場合は合成Expectedをprovisionalにする。
+
+### 11.4 P0を一つの縦断Fixtureへ収束させる
+
+既存#2586のH／L1=100・L2=100／独立D2=3行の自作Fixtureを再利用する。追加の承認・Tenant RuleはAccepted Meaningの表現能力を問うための**仮置き**であり、Owner受理まで正式Expectedにしない。
+
+1. **Source/Meaning**：必要なtei.md、Data/Function/Business、Rule、Key、各Revisionの出典とLoader実消費を確認。未定義の承認閾値・値域をAIが埋めない。
+2. **Read/Claim**：D1の完全2行ならLine合計200。D2部分1/3ならD2全称はnot-established。JOIN由来600とSUM(DISTINCT amount)の100をLine合計と誤認しない。
+3. **Function/Procedure**：Function成功後も手作業/承認/Host Grantを未確定に保つ。AIに渡すObligation表にも未完了Stepを残す。
+4. **Action/Effect**：実書込みへ進むのは隔離Fixtureと正式Grant・Operation Target Bindingを確認した場合のみ。既存EffectCommit観測を再利用し、receipt-only、resource-observed、read-back-unknown、Owner完了を別々に扱う。
+5. **Independent Evaluation**：独立Expected、Source→Build→Run→Consumer実入力、Tool Replyの受領、Required Step全到達、Tenant/時点の現在資格を同一Attemptで照合。欠測時は局所PASSを残してClaimはunqualified。
+
+### 11.5 導入順序・停止条件
+
+- **P0-a：設計の可検証化**。既存Accepted Meaning/Driver Scenario/Fixtureを参照する薄いread-only Obligation/Coverage比較票でTT-21/23/25/29の未達理由を判別。Sourceの実Loader消費が確認できなければunknown。
+- **P0-b：実経路一往復**。#1180の1 Scenario/1 Claim→CLI派生、#2586のFunction→Query→実Read Slice→Claimへ接続。TT-23の手作業未完とTT-25の部分取得は混ぜず別理由で報告。main #3155の合成Resource Read成功を、別DBでの実証へ横流ししない。
+- **P1：生成の品質**。Value/Time/Role/Graphの意味ある組合せをリスク別に提案。独立手計算/Oracle・既知Mutantとの比較、AIの見落とし率、人工的な偽陽性/偽陰性を測る。故意Mutantは隔離Branch/Fixtureのみに置く。
+- **P2：変更影響と再資格化**。Source、Rule、Function/Procedure、Relation、非出力Query依存、Plugin/DB選択、Tenant Grantの**正負の依存辺**と実使用に基づきAffected Obligationを選ぶ。未列挙依存、A→B→A、Owner撤回は旧PASSを履歴保持し現在資格を再評価。選択実行と定期的な全体回帰を比較する。
+
+**停止条件**：ExpectedがCandidateと同一経路、Requiredが生成済Case由来、Source未読込、Target Step silent skip、partial/非開示を全件扱い、手作業をFunction Receiptで代替、同人兼務をGrantへ自動昇格、ACK lossを未Commit扱い、旧Receiptを現在資格とする場合。新Runner/Host/Authority/Accepted Meaning Registryは追加しない。
+
+**現状**：今回の差分は、他チャットと既存限定実証を受入要求へ**計画接続する設計更新**。新規Go/CLI/Provider/AI Harness/OS隔離/Web/Desktop実行はNOT RUN。TT-21〜29と統合P0はNOT RUN、Owner Meaning AcceptanceはNOT ACCEPTED。Draftでレビュー待ち。
