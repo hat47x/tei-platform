@@ -55,7 +55,10 @@ func validateAttributeRoleTypes(attributes []semantic.Attribute, types map[core.
 		if !ok {
 			continue
 		}
-		if got == want {
+		// Role primitives currently mean canonical TEI standard types.
+		// Matching only the suffix (e.g. foreign.decimal) would silently
+		// grant an unrelated primitive the std.decimal contract.
+		if got == "std."+want {
 			continue
 		}
 		out = append(out, errFor(
@@ -68,8 +71,9 @@ func validateAttributeRoleTypes(attributes []semantic.Attribute, types map[core.
 	return out
 }
 
-// primitiveOf follows the alias chain to a primitive family name. The name is
-// the primitive type ID without its namespace, so "std.date" yields "date".
+// primitiveOf follows the alias chain to the canonical primitive TypeRef.
+// Keep the namespace: an unrelated primitive named "foreign.decimal" must not
+// satisfy a standard role that requires "std.decimal".
 func primitiveOf(typeRef core.CanonicalID, types map[core.CanonicalID]semantic.Type) (string, bool) {
 	current := typeRef
 	for depth := 0; depth < 16; depth++ {
@@ -79,7 +83,7 @@ func primitiveOf(typeRef core.CanonicalID, types map[core.CanonicalID]semantic.T
 		}
 		switch typ.Kind {
 		case semantic.TypePrimitive:
-			return primitiveFamily(current), true
+			return string(current), true
 		case semantic.TypeAlias:
 			if typ.Underlying == "" {
 				return "", false
@@ -92,13 +96,3 @@ func primitiveOf(typeRef core.CanonicalID, types map[core.CanonicalID]semantic.T
 	return "", false
 }
 
-// primitiveFamily returns the last segment of a canonical primitive type ID.
-func primitiveFamily(id core.CanonicalID) string {
-	text := string(id)
-	for index := len(text) - 1; index >= 0; index-- {
-		if text[index] == '.' {
-			return text[index+1:]
-		}
-	}
-	return text
-}
