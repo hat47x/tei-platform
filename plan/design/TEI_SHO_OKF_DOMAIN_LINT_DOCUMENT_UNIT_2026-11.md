@@ -146,3 +146,57 @@ tei_binding:
 **停止条件**：OKF互換Consumerの未知拡張拒否、Parserが原文を破壊、Lintが受理/権限を偽装、同名/別Scopeへの暗黙Binding、Plugin未使用による不可逆なBuild混入、出典/引用の誤帰属、Editorの自動書戻しでTEI Meaning変更、固定納品の自動置換。問題が起きればread-only投影に戻し、保存・納品・実行資格を分けて記録する。
 
 **今回の証拠状態**：一次仕様と既存Issue/設計の確認に基づく**計画文書**。OKF Plugin実装、ドメインLintの実CLI、SHO G2/G3保存、元資料のOKF化、実Provider/外部Consumer送出、Owner正式受理はすべて**NOT RUN**。既存CLI/CIの限定PASSを本案へ転用しない。
+
+---
+
+## 9. 2026-11-08 横断更新：OKFを共通交換層・独立検証に限定する
+
+**証拠と判断の状態**：本節はGoogleCloudPlatform/open-knowledge-formatの現行v0.2仕様（2026-11-08参照）と、TEI/SHO/SEI/SUI/TAIの既存計画を接合する**追加の設計・実験計画**。新しいOKF Reader/Exporter、Attester、Studio GUI、実Provider E2Eを実装・試験したものではない。前節P0〜P5・OK-01〜16を置換せず、判別力と実行順を補う。
+
+### 9.1 仕様の出典と仕様外の契約を明確にする
+
+- **canonical upstream**：https://github.com/GoogleCloudPlatform/open-knowledge-format/blob/main/SPEC.md 。旧 https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf は**凍結されたスナップショット**として扱い、現行仕様の正本リンクにしない。採用実験ではcanonical SPECのexact commit/digestとv0.2をEvidenceへ記録し、更新を検知したら再照合する（現時点で実Pin未実施）。
+- **OKFの最低適合**：通常ConceptはMarkdown+parseable YAML frontmatter+非空type。未知type、未定義キー、broken link、index欠落、任意のtrust/freshness項目欠落を形式拒否条件へ増やさない。F0形式／F1文書品質／F2ドメイン適合は独立に判定する。形式に適合することはAuthoring・Meaning・利用権限の証明ではない。
+- **ファイル境界**：TEI定義Authoringの標準は *.tei.md、旧 *.tei は段階廃止（TEI #2621、統合済み移行計画PR #3030）。*.tei.mdはOKF Bundle内で必須frontmatter/typeを満たす場合だけOKF Conceptとなる。例：order.tei.md → OKF Concept ID「order.tei」。Concept ID（パス由来）≠ TEI Source ID / Stable Meaning ID ≠ SHO Document/Occurrence ID。
+- **現在のReader障害**：未対応の *.tei.md をTEI管理Rootに入れても、現行Loaderが意味解析できるとは見なさない。#3031の暫定 fail-closed ガードの適用状態を実HEADで再照合し、選択済み未対応Sourceを黙って0件にしない。初回OKF read-only Bundleは、既存の許可済みSourceから**派生させた別Root**に置き、従来の実CLI回帰を妨げない。Markdown編集ができることとTEI Parserでモデルとして読めることを分離する。
+
+### 9.2 標準データ構造・表現型・Functionの非同型を交換時に保全する
+
+TEIの**標準データ構造／トポロジー**、再利用可能な**標準表現型**、Function Data ContextとActionの**実Binding**、Renderer/Hostの**実実現**を別の参照として保持する（機能パターンOwner #2507、構造 #2495、投影 #2497、Context #2506、Renderer #997）。OKFの見出し、ディレクトリ階層、通常Markdownリンクはこの型付き関係を表現するのに十分でない場合がある。
+
+最小反例は (a) 有向多重辺と属性のGraphをMarkdownに落として多重度が失われる、(b) Tree親子とSUIの複数Island所属が同じアウトラインに写る、(c) 同じData ContextでもTab/Page/Chart等の表現型・軸・単位が異なる、(d) 表現上のボタンが存在してもAction/Grantが未接続、の4件。Exportでは元Entity/Relation/Occurrence/Revisionへの許可済み参照、型付き関係・順序/多重度の損失、保留/未取得/非開示の**有無を開示できる範囲でのみ**表現する。欠落した関係の再構築、空集合推定、逆書戻し、Meaning自動受理は禁止。SEI #820、SUI #3392、SHO #6/#18の既存判別ケースを再利用する。
+
+### 9.3 Attested Computationは「定義」「実行」「効果」「受理」を別票にする
+
+OKF §10のtype: Attested Computationは独立Conceptにruntime、typed parameters、computation、executor.resource/receipt、attester.resourceを記す。Agentは**宣言された型付きパラメーターの値のみ**を与え、正規の計算定義、依存コード、Operator/Plugin Pinを勝手に改変しない。computationはinlineの# Computation fenceまたは参照ファイルでよい。Executor/Attesterのresource文字列は**実行CapabilityやHost Grantではない**。OKFはReceipt/Verdict wire、Attester ABI、sandbox、cacheを規定せず、既存TEI実行経路・Evidenceを使う。
+
+実験時に記録する**照合項目（TEI側の試験票でありOKF公式標準項目ではない）**：
+1. 定義：OKF Conceptのexact byte / Source location、TEI受理済みMeaning・Role/Operator、Source/World revision、typed parameters、Plugin/BOM Pin。OKF verifiedは「定義に対するレビュー」でありOwner Meaning Acceptanceではない。
+2. 受付と実行：Agentからのbind値・型検査、実Hostのprincipal/Grant/Disclosure、実Executor・compiled/expanded Artifactのdigest、Attempt/Job ID、実Result、Receiptの観測可否。Agentが自己申告したSQLや結果だけを実入力とみなさない。
+3. 非LLM照合：独立Attesterによる正規計算+bindと実行Artifactの同一性、Job/Providerからの独立再Readと表示Resultの同一性、使用したAttester版。PASS/FAIL/UNKNOWN/UNSUPPORTEDを区別する。
+4. 効果：read-only結果とwrite/副作用を別Gateにする。Receipt存在・committed表記とResource現在値は別。EffectUnknown/AppliedUnobservedなら盲目的再送を停止する。Owner Meaningと現在Host認可もAttester PASSから推論しない。
+
+初回は**非副作用のread-only計算1件**に限定。OKF §10.5のconsumerフローはinformativeであり、今のTEIにExecutor/Receipt APIが存在すると仮定しない。実装前はUNKNOWN/UNSUPPORTEDを返す。TAI #514 AC-01〜12、TEI #2514、#1163、#1174のOwnerと独立Expectedを再利用する。
+
+### 9.4 Plugin-firstドッグフーディングを共通の最小入口にする
+
+[統合済み #3277](https://github.com/hat47x/tei-platform/pull/3277)で定めた「Core以外はPlugin」方向とRQ-008に沿い、OKF Reader/Validator/ExporterとTEI Domain Lintを**論理Capability**として分け、関連する高凝集な配布Bundleへまとめるかは実測で決める。専用OKF Core/Host/Resolver、独立のKnowledge Registry、別Evidence Engineは設けない。
+
+最初に必要な実Pluginは「許可されたBundle Rootを列挙・read-only解析し、F0/F1/F2と未取得範囲を返す」1 Capability。CLI Consumerで**実Provider呼出し**を確認した後、SHO ReaderとTEI Studioに同Contract・Pinで接続する。Studio/SHOだけの再実装やCLI表示のmockを「共通Plugin実利用」と判定しない。Plugin absent/disabled時の通常Markdown編集と旧TEI Readerの非干渉、未選択PluginのGo Build closure、出典/外部HTTPの自動fetchなしを対照する（PD-0〜PD-5、SHO G1b/G2/G3）。初回のread-only利用をTEIの自動実行・SUI全Graph/SEI全Knowledge Exportへの依存にしない。
+
+### 9.5 最小縦切りと既存Expectedへの差分追加（すべてNOT RUN）
+
+| 順番 | 同じ固定Synthetic Sourceでの試験 | 独立判別・既存Owner |
+| --- | --- | --- |
+| K0 / 定義の固定 | 現canonical SPEC commit、選択Source/World/Plugin Pin、公開可能範囲、必要Concept集合を固定。通常Markdown・*.tei.md・OKF Conceptの境界を表にする | OK-01〜05、TEI #2621、SHO #18 |
+| K1 / read-only Bundle | 受注Data/Function/Business説明の3概念とindex、別Conceptの計算定義1件を別Rootに派生。SHO/外部Readerで読めるがTEI Meaningを変更しない | OK-01/03/11/12、SHO #4/#18 |
+| K2 / 共通実Consumer | CLIとSHOまたはStudioで同一Bundle/Provider/Pinの実呼出し・診断と原文byteを比較。Plugin disabled/別Scope/broken link/秘匿を対照 | OK-08/09/13/16、TEI #1251/#2516、PD-1〜4 |
+| K3 / 型・意味Loss | Data topology、Representation、Function Binding、SUI Tree/Islandを異形に投影し、Relation方向・多重性・Unknown・非開示を失わず説明できるか比較 | OK-06/07/10/15、TEI #2497/#2507、SUI #3392、SEI #820 |
+| K4 / 計算Attest | read-onlyの正規計算+型付きbind→実Executor Artifact/Receipt→非LLM Attester→Job独立Read。計算改変/型違反/古いReceipt/Provider partialを一要因ずつ導入 | OK-04/05/08/14、TAI #514 AC-01〜12、TEI #2514/#1163 |
+| K5 / Publication | 承認された表示部分だけindex/文書/診断を共有。未開示ID・件数・保留/Sourceの存在を別Recipientへ漏らさない。Writerのno-op保存とOwner Promotionを区別 | SHO #4/#18、SUI #3392、SEI #820、TEI #2516 |
+
+**各K段階のEvidence票**は「source/実Read coverage／Parser・Readerの消費／F0/F1/F2／表現Loss／Meaning受理／Host Grant／Artifact・Result・Receipt／独立Attester／現在Resource Readback／Recipient Disclosure／未検証」を別欄にする。実Attempt IDとSource/World/Artifact revisionを固定し、過去CIの成功を現在版の資格としない。AIが生成した実装と同じAIのExpectedによる自己一致を合格に数えない。SourceのA→B→A、別Root同bytes、古いインデックス、対象未取得なのにcoverageCompleteの4反例を必ず含める。
+
+**今回の着手順**：K0→K1→K2をP0。K3は並行設計・Ownerの異形Consumer試験を流用。K4は初回H2/H3四SessionやTEI *.tei.md Parser正常受入の前提条件にせず、隔離/実Reader/実Receipt経路が整ってからP1で独立検証。K5の自動公開・逆取込・自動実行はP2以降の明示採否に保留。新しい製品Gateや独自Schemaを先行固定しない。
+
+**Ownerと終了判定**：SHO #18がOKF文書/Reader/Writer、TEI #2621が *.tei.md Reader移行、TEI #1251/#951がPlugin Contract/選択、TEI #2497/#2507が意味保存型付き投影、TEI #2514/#1163が独立Expected・実入力、TAI #514がAttested Computation/Harness、SEI #820とSUI #3392が各DomainのExport/Importと開示境界を所有する。本節は統合案の参照地点であって、第二の受入正本ではない。上記K0〜K5の実験と正式Owner受理、実Plugin/Provider/SHO Writer/Attester/配布は**NOT RUN**。
