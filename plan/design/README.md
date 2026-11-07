@@ -25,6 +25,9 @@
 
 | 文書 | 対象 |
 | --- | --- |
+| [`VERIFIED_COMPOSITION_BOM_AND_MATRIX_DESIGN_2026-11.md`](VERIFIED_COMPOSITION_BOM_AND_MATRIX_DESIGN_2026-11.md) | 検証済みPlugin構成BOM、多版Matrix、Pairwise、独立Expected、実Artifactと同一Attempt、Trait/HTTP例外Coverageの資格分離（[#3267](https://github.com/hat47x/tei-platform/issues/3267)、評価待ち） |
+| [`DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md`](DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md) | SQL/NoSQL・ログ・API等の汎用Data Source Workbenchと開発者向けSchema CRUD、DBA業務を標準外とする機能境界（[#3270](https://github.com/hat47x/tei-platform/issues/3270)） |
+| [`ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md`](ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md) | Issue→Design Context→Scenario/独立Expected→実CLIを通してMVPのCLI/CUI・Skill・Coverageを検収する計画（[#3273](https://github.com/hat47x/tei-platform/issues/3273)） |
 | [`TRAIT_ATOMIC_COMPOSITION_AND_FULFILLMENT_2026-11.md`](TRAIT_ATOMIC_COMPOSITION_AND_FULFILLMENT_2026-11.md) | 原子的Traitの実装義務（手動/自動/Provider）、Profile合成、不適合診断、DerivedData/Pluginでの受入負例（[#3278](https://github.com/hat47x/tei-platform/issues/3278)、設計・実証候補） |
 | [`COMMAND_BOUNDARY_SAFETY_2026-11.md`](COMMAND_BOUNDARY_SAFETY_2026-11.md) | Command境界の未設定認可・期間状態の拒否、宣言外効果をunknownとして記録する判断と、参照実行の明示的認可（[#2996](https://github.com/hat47x/tei-platform/issues/2996)、[#2997](https://github.com/hat47x/tei-platform/issues/2997)、参照実装） |
 | [`EVERYTHING_DATA_MARKDOWN_SOURCE_FIDELITY_2026-11.md`](EVERYTHING_DATA_MARKDOWN_SOURCE_FIDELITY_2026-11.md) | Markdownの元シンタックスシュガーと書式・Source occurrenceを保存で保持する契約、局所Patch・競合・往復受入 |
