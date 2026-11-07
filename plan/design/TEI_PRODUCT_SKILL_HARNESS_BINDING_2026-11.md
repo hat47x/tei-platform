@@ -180,3 +180,67 @@ S0cまでに発見した複合Shellの誤認に加え、**既知read-only Comman
 [merged TEI #2850](https://github.com/hat47x/tei-platform/issues/2850)のEffectObserver欠落時の無人実行停止は**書込み・確定後Effectの後続条件付き経路**へ適用し、最初のread-only比較の必須機構にしない。EKI低遅延/マルチモーダル、SHO、MCP Tasks、Role自己記述/DB方言、複数Buildも用途で必要な時に各Ownerで実証する。新Host/Registry/第二試験Runnerは作らない。
 
 **状態**：本節は既存製品事実の反映と受入条件の整理。実CLIの限定S1は成功済。実外部HarnessのSkill load/invoke、H2/H3四Session、二Harness、全Source Closure、外部OS/Host/Provider、独立業務Oracle、Owner受理は**NOT RUN**。
+
+
+---
+
+<!-- harness-crosslane-qualification-20261108 -->
+## 7. 2026-11-08 横断統合：Skill／実Harness／設計Contextの資格を分ける
+
+### 7.1 計画の旧記録と最新実測の照合
+
+- **実TEI Product CLI**：#2605／merged #2607の公開Source実CLI S1は成立済み。TAIの別CIでも一SubjectのSource Indexと実Source byteを限定照合した。
+- **外部DSHでのH3 Skill実読込**：#2509、merged #3113と保存4 SessionではH3-A/BがSkill本文および参照文書を実Tool Readした。Source MarkdownとTool結果の比較ではfrontmatterの除去とLoaderのWrapper付与を別物として扱う。前節の「H3実Load NOT RUN」は歴史的記述であり最新状態ではない。
+- **正式比較は未成立**：H2-Aは過去Session再利用。Catalog結果は各8,192byteで途中切断、Tool Request 56／Reply 55、PowerShell stderr混入。比較適格は0/4で、Skillの独立効果採点は未成立。
+- **Design Context／Test**：#3262のmain統合済み試験用Consumerは既存CLIの9応答と限定16合成・Transport負例を判別した。merged #3304の行番号0は既知境界T1-Aの実CLI対照であり、未知RuleをAIが発見するT1-Bではない。#3324/#3326のTT-56は正常JSON・同じFingerprintでもRequired Rule/Relation/Sourceが欠け得ることをそれぞれ別PRで検査しており、統合候補の同一HEAD再資格化は独立。
+- **実効権限**：#2509のDSH read-only／workspace-writeでは許可外Readが観測され、Session LogへTool結果が複写されるMock実測もある。merged #3333のCLI discoveryはview.writeFlagsを公開し、read-only分類であっても実argv次第でローカル書込みがあることを区別した。全OS隔離・全Egressの無漏洩は未実証。
+
+### 7.2 Claimに相対的な資格ベクトル（計画用語彙。正式Schema・新Gateではない）
+
+| 軸 | 実証する問い | 判別不能・失効時 |
+| --- | --- | --- |
+| **F0 実Source取得** | Task対象のSource／Subject／Roleを、宣言ではなく実Reader/Loader/Parserが取得したか | 未Loadedを不存在とせず、realpath/Source版を記録 |
+| **F1 必要情報充足** | 独立に固定したRequired Data/Function/Business/Rule/Relation/Scenario/SourceがTaskの粒度で揃うか | 正常JSON・同FPでも必須欠落ならpartial、追加取得先を示す |
+| **F2 実配送／受領** | 実CLIの必要結果がTool Wrapperを経てHarness Consumerに全量届いたか | Request/Reply ID、stdout/stderr、byte/part/endを照合。切断や欠番は不適格 |
+| **F3 現行利用・開示** | 現在のPrincipal/Grant/OS Scope/Audienceで実Read・外部送出・操作を許されるか | read-only広告≠OS拒否≠外部開示許可。旧Grantの再利用不可 |
+| **F4 独立判別** | 提案・Scenario・生成物をCandidateと独立のExpected/Mutantで検査したか | 自己生成Expected、既知T1-Aを未知T1-B達成にしない |
+| **F5 実作用・独立観測** | 実Provider/HostのResult・Receipt・Resource変化が同Attemptで確認されたか | EffectUnknown時は新ID盲再試行禁止、同ID照会／独立Readへ |
+
+これらは必ずしも線形に全てを満たす必要はない。F1未成立でも不足を探すread-only探索は可能だが、完全なTest生成・自動採用の資格はない。F2成立でもF3の外部LLM開示許可にはならない。F4からF5を推論せず、read-only開発作業に実PG副作用Gateを不必要に課さない。
+
+特に非開示対象の件数・ID・Source path・digestは、エラーや「権限なし」という説明から漏らさない。内部Observer向けの詳細診断と外部Consumer向けの許可済Projectionを分ける（#1178/#2515/#2516）。
+
+### 7.3 接合の単位は一Attemptの観測地点であり、新Proof Storeではない
+
+既存Task Packet/Trial Runbook/Receiptに参照させる最小票：
+
+Task／Claim／独立Required → Source Revisionと実Open root/bytes → 実Binary・Skill/Plugin版・実argv/flag variant・OS Principal → request IDとCLI exit/stdout/stderr → Harness reply ID/Wrapper/受領byte・終端 → Consumerの回答Claim → Current Disclosure → Independent Expected/Mutant → Unknown/Claim Ceiling。
+
+同じhashがあることより、Producer、Transport、受領先の因果的な受渡しを優先する。CLI stdout全量≠Tool Reply全量、Skill Markdown raw byte≠Loaderが包んだTool Result、World/Index Fingerprint一致≠Required全件受領、同一名/同一Test/SourceのA→B→A≠旧PASSの現在再資格化。モデルの最終回答が正しそうでも、Tool未受領ならDelivery合格にはしない。モデルが内部で何を「読んだ」かは自己申告で証明できないため、実送信と独立回答評価を別欄にする。
+
+### 7.4 最初の比較適格H2一件から、H2/H3四Slotへの受入順
+
+1. 公開合成Workspaceの一つの利用者定義Subjectを選び、用途相対のRequired、独立Expected、TEI実Binary、Source realpath/Revision、DSH実版・Effective Config、Tool family＋実argv variant、許可Audience、観測対象Sinkを固定する。Holdoutの正答や秘密Sourceは生成Agentへ渡さない。
+2. 同じ実OS Principalで許可CLI／公開SourceのRead正例、別Lane／親root／非許可Skill／合成HoldoutのRead拒否負例を観測する。Profile名やAGENTS上の禁止だけで物理拒否とせず、#2515で強制、#2509で実Tool実行を検査する。実外部ProviderにCanaryを送信せずMockで始める。
+3. Tool RequestとCLI実argv・exit・stdout/stderr raw、Wrapper・Reply ID・全byte・終端、モデルへ送られた範囲、Session Log・Tool result・診断・CI Artifactの各Sinkを、観測可能な地点だけ結ぶ。8,192byte切断、56/55の欠番、stderr混入、未許可writeFlagsはそれぞれ独立不適格。
+4. Design Context #3262の必要Rule/Relation/Source Anchorと、TT-56の「同FPのvalid JSONなのに必須Rule欠落」を照合する。合法な非Required省略を過剰拒否しない対照も必要。全件Source IndexはDisclosure/Payload Budgetを調べてから使う。
+5. 新規H2の**一Session**を先に適格化し、失敗時はSource/意味/配送/OS/開示/Oracleのどこに不足があるかを返す。既存探索4 Sessionを事後的に正式比較へ加算しない。
+6. 上記条件が固定された後、新規H2 Tool-only 2 SessionとH3 Tool+Skill 2 Sessionを事前割付。H2ではSkill非露出、H3では本文・必要参照の実Loader Readを確認。独立採点で正答、Unknownの保持、誤操作、不要Tool、実Token・時間・人手を比較し、Skillが無効／有害なら縮小する。第二Harness／MCPは後段。
+
+**必須の負例**：部分切断、欠番、stderr混入、Required Rule/Relation欠落、FP/Source revision混合、非許可write flag、OS禁止Read成功、Session LogのみのCanary送出、A→B→A後の旧資格再利用。未計測Sinkを「漏洩なし」に昇格させない。
+
+### 7.5 他チャットからの横断Owner接続
+
+| 既存Owner | Product Skill／Harnessが渡すもの | 禁止する昇格 |
+| --- | --- | --- |
+| **#3262 Design Context** | 独立Requiredと実Loaded/Parsed/Returned/Receivedの不足理由、scope-qualifiedな再取得先 | 一Subjectの部分取得から全業務/全Source完備 |
+| **#3223/#3273/#1180/#2514 Test** | 必須Ruleが充足した領域だけPattern Proposal→Candidate→既存Scenario/独立Expectedへ | 同一Agent作Expectedの自己合格、既知T1-Aから盲検T1-B |
+| **#1251/#951/#3278/#3267 Plugin/Trait/BOM** | exact Contract/Provider/Lock、実Build収録・CLI/Studio Invokeの実Consumer別証拠 | 宣言/選択からProvider実利用、単体PASSから2×2全tuple Verified |
+| **#1124/#2586/#2497 三視点/図面/CRUD** | Data/Function/Business・Topology/Representationの必要差とSource Binding | 表示から元データ構造を逆復元、ViewからWrite Targetの自動推論 |
+| **#2017/#2515/#2516 安全境界** | Task PacketのSource Scope、OS/Tool principal、外部Audience・Sinkの実到達 | read-onlyからOS隔離、Read許可から公開/送出許可 |
+| **#1174/#3328/#1163 副作用** | 書込みTask時のOperation ID、EffectUnknown、Recorder/Stage失敗とReceipt/独立Read不足 | Unknown時の盲再送、古いReceiptによる現在Effect資格 |
+| **#2831/#1119 Self-build/横断計画** | 実Builder/Artifact/Plugin/Consumerと必要なInput同一性の問い | Go Buildの成功だけでTEI stage1→stage2/L3達成 |
+
+**計画上の依存関係**：P-1b1の一Function Requiredを固定する作業と、#2509/#2515の最初の適格H2一件は**並列**。T1-BでTest生成を採点するのは該当Required/Expectedが成立した範囲のみ。Plugin D1のCLI/Studio一操作を同一Contractで実Invokeする試験も並行させる。D1全移行、全機密Sink制御、二Harness、MCP、G4を最初のread-only探索の新Hard dependencyにしない。照合済みのClaimだけを#1119へ返す。
+
+**現状・採否**：本節は実証済み局所事実と計画上の成熟差分を接続した**文書変更**である。F0〜F5という正式API/Schema、新Trialの実行、OS物理隔離、全Tool result受領、T1-B盲検生成、実Plugin CLI/Studio二Consumer、実Provider Effect、Owner意味受理を実装済み・PASSとは扱わない。第二Reader/Resolver/Runner/Host/Permission Engine/Proof Storeも設けない。
