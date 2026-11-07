@@ -60,7 +60,7 @@ node --test reference/web-composition/plan-check.test.mjs
 - `node --test plan-check.test.mjs`: **28 PASS / 0 FAIL**（元の18件と、新規の認証・Guard検証10件）
 - `node --check plan-check.mjs`: PASS
 
-これは静的な構成検査であり、Guardに対応したProviderが実際に暗号学的検証・CSRF・業務認可を正しく実行する証拠にはなりません。特にプラグイン定義の`guardEvidence`は**合成された宣言上の制約**であり、実体の適格性は将来のHost / Plugin Conformanceで確認する必要があります。実Repository全体の`tools/repository-health-check.sh`は未実行のため、本PRのDraft維持・統合保留は変わりません。
+これは静的な構成検査であり、Guardに対応したProviderが実際に暗号学的検証・CSRF・業務認可を正しく実行する証拠にはなりません。特にプラグイン定義の`guardEvidence`は**合成された宣言上の制約**であり、実体の適格性は将来のHost / Plugin Conformanceで確認する必要があります。実Repository全体の`tools/repository-health-check.sh`は未実行ですが、これは任意の広範囲診断であり統合の一律条件ではありません。未実行の範囲は制約と残る危険性として記録し、Draftは解除して統合します。
 
 ### E1.3：Actionに必須の保護とProvider主体のスコープ（2026-10-10）
 
@@ -287,13 +287,13 @@ Web Server側は`AccountNow`という明示的なClock依存を必須にし、**
 
 追加のHTTP回帰テストは、業務Role上は受注実行権限を持つもののAccountがロック中の`subject-order-locked`と、無効な`subject-order-disabled`の拒否を確認します。さらにHostの早期認可後にAccount有効期限を越える場合と、主体対応付けStoreが実行直前に障害になる場合を試験します。この後段の失効はHTTP 403、Store障害はHTTP 503とし、CommandとObservationへ進みません。後段のStore例外はExecution Errorと区別しますが、バックエンド由来のエラーメッセージはHTTP応答へ露出させず固定文言に変換します。
 
-### 局所検証と統合保留
+### 局所検証と、統合時に記録する未検証範囲
 
 - `subject_lifecycle.go`: GitHub Blob `5a99d308658718ebb27864ae3444cf0d6a5c34da`。
 - `subject_lifecycle_test.go`: GitHub Blob `52d9501a58a47e6989a127851fcd7cd33c36778f`。
 - **上記2ファイルとローカルコピーの`git hash-object`一致を確認**しました。Go 1.23.2の隔離`module tei`で、既存`legacyauth.User`／`legacyauthorization.SubjectStore`の公開型に合わせた最小スタブを使い、`gofmt -l`出力なし、`go vet`、`go test -count=1`、`go test -race -count=1`はすべてPASSしました。テスト内12個の正常・異常ケースと依存不足テストが通過しました。
 - ただしこの隔離テストのStore・Userは互換スタブです。**実`reference/workspace`、`legacyauth.FixtureStore`、`driver.Resolver`、Web Server全体を利用した新しい結合テストのPASSは未取得**です。
-- 主体リンクの二重検査、HTTP 403/503への変換、エラー文言の秘匿、ロック／失効のHTTP負例はコードとテストを追加しましたが、それらの**actual full repository実行は未実施**です。現行mainとPR headの差分を再確認し、`tools/repository-health-check.sh`全項目PASS、実行前後cleanをexact headへ結び付けるまでDraft維持・統合禁止です。
+- 主体リンクの二重検査、HTTP 403/503への変換、エラー文言の秘匿、ロック／失効のHTTP負例はコードとテストを追加しましたが、それらの**actual full repository実行は未実施**です。現行mainとPR headの差分を再確認し、実行した検証の結果と実行前後のcleanをexact headへ結び付けます。`tools/repository-health-check.sh`は任意の広範囲診断であり、全項目PASSを統合の一律条件にはしません。未実行の検証は制約と残る危険性として記録し、Draftは解除して統合します。
 
 このReferenceは実IdP、Session Cookie、CSRF Provider、企業Directoryの現在性、分散Host間の失効伝播を提供しません。とくにAccount Storeが古いSnapshotである場合、Clockだけが最新でも本番の適格性は保証できません。
 
@@ -307,7 +307,7 @@ E2.5ではHostの早期認可後にRunnerの入口でアカウント状態を再
 
 HTTP負例には、(1) Validationと業務認可完了後、Command直前のClockでAccountが期限外になる場合、(2) 同じタイミングでSource Linkが別の業務`SubjectID`に変わる場合を追加しました。前者はHTTP 403かつ`identity-link-denied`、後者は503かつ`identity-link` Execution Errorで停止する設計です。後者の内部対応関係はHTTPへ露出させず、固定文言に置き換えます。いずれもCommand／Observationが空で、監査記録が拒否／エラーとなることを要求します。
 
-**検証状態：** コードと回帰テストをPRへコミットしましたが、これら追加分を含む実Workspace結合テストはまだ実行していません。以前の隔離GoテストはE2.5以前の状態を対象とするため、この変更に合格した証拠にはなりません。正確なPR headのクリーンなフルチェックアウトで`go test`、`go test -race`、`go vet`、`tools/repository-health-check.sh`を実行し、前後cleanを記録するまで統合禁止です。
+**検証状態：** コードと回帰テストをPRへコミットしましたが、これら追加分を含む実Workspace結合テストはまだ実行していません。以前の隔離GoテストはE2.5以前の状態を対象とするため、この変更に合格した証拠にはなりません。正確なPR headのクリーンなフルチェックアウトで`go test`、`go test -race`、`go vet`を実行し、前後cleanと結果を記録します。実行できない検証は制約と残る危険性として記録して統合します。
 
 
 ### E2.6の局所契約試験（exact Blob）
@@ -340,7 +340,7 @@ Go 1.23.2の隔離`module tei`に、実際の`session_command_scenario.go`を**G
 
 Go 1.23.2の隔離モジュールに**実際の新コード・テスト・既存Fixtureをbyte一致で配置**し、依存する`legacyauth.User`型だけを最小の互換スタブに置換しました。`gofmt -l`は空、`go vet` PASS、`go test -count=1` 3件PASS、`go test -race -count=1` PASSでした。異なるRoleを持つ同一SubjectIDの重複拒否、一意な検索、既存Editor／Viewer／Locked／DisabledのFixtureをそのまま読み込み検索できることを確認しました。
 
-**制限:** 実Repository全体の`legacyauth`／`legacyauthorization`結合テストおよびexact-headのRepository Healthは未実行です。企業Directoryや外部ユーザーStoreがSubject ID一意性を保証するかはこの参照Fixture検査だけでは証明できません。現PRはDraftを維持します。
+**制限:** 実Repository全体の`legacyauth`／`legacyauthorization`結合テストおよびexact-headのRepository Healthは未実行です。企業Directoryや外部ユーザーStoreがSubject ID一意性を保証するかはこの参照Fixture検査だけでは証明できません。実行できなかった検証は、その制約と残る危険性としてここに記録します。Draftは作業中の表示であり、内容が揃ったら解除して統合します。
 
 
 ## E2.8：業務認可失効のHTTP結果と監査の整合性
@@ -362,7 +362,7 @@ GitHub Blob SHA=`cf4de5774d534805b156832f3f40276020813b6d`と完全一致する*
 
 HTTP 200正常完了、403の業務認可拒否／主体リンク失効、503の主体Store障害と内部詳細秘匿、422の通常Command Execution Error、400のJSON `null`／Credential注入を個別に確認しました。
 
-**残る検証境界:** これはHostとRunnerのモックを使うHTTP結果処理の局所試験であり、実`reference/workspace`、実`security.authorize`、Go HostのAuditイベント配信を含む結合試験は未実行です。追加した実Workspace回帰ケースのPASSも未取得です。PR #1114はDraftを維持し、candidate exact-headの全体Repository Healthを統合条件とします。
+**残る検証境界:** これはHostとRunnerのモックを使うHTTP結果処理の局所試験であり、実`reference/workspace`、実`security.authorize`、Go HostのAuditイベント配信を含む結合試験は未実行です。追加した実Workspace回帰ケースのPASSも未取得です。`tools/repository-health-check.sh`は任意の広範囲診断であり、統合の一律条件にはしません。実行できなかった検証の制約と残る危険性を記録して統合します。
 
 ## E2.9：exact-headでのローカル統合資格判定
 
@@ -377,7 +377,7 @@ bash reference/web-composition/qualify.sh <candidate-head-sha> <current-main-sha
 
 **スクリプトの局所検証:** `qualify.sh`はGitHub Blob `aeebb93e091a3e8ac835f1daade84b947628fc20`とbyte一致するローカルコピーで`bash -n` PASS。隔離した一時Gitリポジトリで、正しいSHA＋cleanの正常経路、間違ったmain SHA、dirtyなチェックアウト、mainを含まないcandidate、検証中に生成された未追跡ファイルの5ケースを検査しました。正常経路ではテスト実行体をstubにしたため、**これは検証スクリプトのGate条件を確認したもので、TEI全体のテストPASSを意味しません。**
 
-2026-10-10現在、PR #1114はまだmainの更新を含んでおらず、このGateの統合資格は**未取得**です。正確なhead・main上でのクリーンなフルチェックアウトおよびすべてのテストの実行記録が得られるまでDraftを維持します。
+2026-10-10時点では、PR #1114はまだmainの更新を含んでおらず、このGateの統合資格は**未取得**でした。現在は、正確なhead・main上でのクリーンなフルチェックアウトと変更範囲の検証を記録して統合します。Draftは作業中の表示であり、解除して統合します。
 
 ## E2.10：Session Action JSONの一意な解釈
 
@@ -415,7 +415,7 @@ E2.6ではSessionの主体対応付けとAccount適格性をCommand直前に再�
 
 また、最終認可と副作用の実行が**同一のトランザクション／原子的な操作として結合されているわけではありません**。最終認可の直後から実際のCommitまでのごく短い期間に起こる失効を完全には排除できません。本番相当の実行では、効果を持つAdapter側での承認フェンス、権限バージョン条件、トランザクション内再検証、冪等性・取消可能性を別途設計・検証する必要があります。合成Fixtureでの時刻操作は実IdPやDirectoryの失効伝播証明ではありません。
 
-統合資格は従来どおり現行mainを含むexact-headのclean full checkoutでの`reference/web-composition/qualify.sh`全PASS、実Workspace Go回帰、未変更のrefs確認を前提とします。CIは使用せず、Draft・未マージを維持します。
+統合の前に、現行mainを含むexact-headのclean full checkoutで`reference/web-composition/qualify.sh`、実Workspace Go回帰、未変更のrefs確認を実行し、結果をPR本文へ記録します。実行できない検証は、その制約と残る危険性を記録します。CIは使用しません。
 
 ## E2.12：Command Adapterの内部まで最終認可を移動（2026-10-10）
 
@@ -437,7 +437,7 @@ E2.11の最終認可はCommandの`resolver.InvokeCapability`を呼ぶ**前**に�
 - `session_effect_grant_contract_test.go`: 今回追加したCapability Grantと構文木の契約試験
 - **実WorkspaceのGoテスト、Race、Repository Healthは未実行です。** GitHubへ変更したファイルはリポジトリ上で確認しましたが、actual full checkoutでの`go test`成功は取得していません。
 - これはConcrete Adapter内までチェックを近づけた変更であり、**認可の版条件と副作用Commitが同じトランザクションになったことを意味しません**。外部DB・SaaS API・Queue等の本番相当で原子的に失効を扱うには、プラグインに対応可能なEffect Fence／版条件／再試行保証が必要です。共通要件と競合試験は独立した[Issue #1174](https://github.com/hat47x/tei-platform/issues/1174)へ起票済みです。
-- PR #1114はDraftを維持します。最新mainを含むexact headクリーンcheckoutでWeb＋Repository Health全PASSと前後cleanを確認するまで統合しません。
+- PR #1114はDraftでしたが、Draftは作業中の表示であり、内容が揃ったら解除して統合します。最新mainを含むexact headクリーンcheckoutで`reference/web-composition/qualify.sh`とWeb回帰を実行し、前後cleanと結果をPR本文へ記録します。Repository Healthは任意の広範囲診断として扱います。
 
 
 ## E2.13：Sessionの業務Validation拒否とHTTP／監査の整合
@@ -450,7 +450,7 @@ Sessionでは、HTTP要求が認証・CSRF・Hostの早期業務認可を通過�
 
 - `session_command_route.go`: GitHub Blob `2ce16a6a47b0060a158eaa7ad78c035b8730ebc6`
 - `session_command_route_test.go`: GitHub Blob `7dbbf446239be6459cc908c41ab919f3cd424eb9`
-- 新規HTTP統合テストの実行結果は**未取得**。Actual full checkoutのGoテスト・Race・Repo Healthを省略して完了とは扱いません。PR #1114はDraftを維持します。
+- 新規HTTP統合テストの実行結果は**未取得**。Actual full checkoutのGoテスト・Raceの結果は記録し、未実行の範囲は制約と残る危険性として残します。Draftは解除して統合します。
 
 
 ## E2.14：Session実行状態とHTTP結果のfail-closed化
@@ -480,7 +480,7 @@ E2.11でブラウザへ返す権限基盤障害の文言を固定化しました
 - `session_command_route_test.go`: GitHub Blob `b9328536413862918d412cb053c9e5470547f925`
 - 追加した回帰ケースは、`order 1003`の既存合成Command Adapter障害（旧経路422、新Session 500と固定文言、Audit error）、Validation不成立の422、異常日時の400などです。
 - GitHub Blobで実装とテストのエラー文字列一致・結果分岐を静的に確認しました。ただし**実Workspace Go結合試験、Go vet/race、exact-head full Repository Healthの成功結果は未取得**です。以前の隔離Go試験を現在headの成功証拠とみなしません。
-- PR #1114はDraft・未マージを維持します。合成Fixtureを用いたテストの成功（未取得）と、実ProviderによるDurable Effectの観測（未取得）も区別します。
+- 合成Fixtureを用いたテストの結果（未取得）と、実ProviderによるDurable Effectの観測（未取得）を区別して記録します。どちらも未取得であることを、統合の停止理由にはしません。
 
 
 ## E2.15：Session結果分類の契約テストと入力形式の確定
@@ -497,7 +497,7 @@ Session要求入力`from`は既存のRead Runnerと同じRFC3339形式をHTTP入
 - `session_command_route_test.go`: GitHub Blob `01675b77607b1731e6968f01098fddda8297931e`
 - `session_result_contract_test.go`: GitHub Blob `e2fe909ff198b4c551e9167db4af157f2e713e82`
 
-**検証可能な根拠：** GitHub上の実ファイル定義、型、期待エラー文言、HTTP分岐と各ケースを静的照合しました。**未取得の根拠：** このPR exact-headのclean full checkout上での`gofmt`、`go vet`、`go test`、race、実WorkspaceのGo結合、`tools/repository-health-check.sh`全PASS、実IdPと実永続化Providerの実行証拠。過去の隔離ハーネスのPASSを新しいソースへ転用しません。現行main包含も未達のためDraftを維持します。
+**検証可能な根拠：** GitHub上の実ファイル定義、型、期待エラー文言、HTTP分岐と各ケースを静的照合しました。**未取得の根拠：** このPR exact-headのclean full checkout上での`gofmt`、`go vet`、`go test`、race、実WorkspaceのGo結合、`tools/repository-health-check.sh`全PASS、実IdPと実永続化Providerの実行証拠。過去の隔離ハーネスのPASSを新しいソースへ転用しません。現行mainの包含を確かめ、実行できなかった検証の制約と残る危険性を記録して統合します。
 
 
 ## E2.16：main包含とSession結果分類の限定Go再検証
@@ -517,6 +517,6 @@ GitHub上の`tools/reference-first-web-target/session_result_contract_test.go`�
 
 これら15ケースは、完了、Validation不成立、主体／業務認可拒否、認可基盤障害、Command／Observation障害、予期しない非終端・矛盾した完了状態、Adapter内部Errorの秘匿を検査する。HTTP結果分類関数`writeProtectedSessionCommandHTTPResult`はGitHub上の実装を同じ制御条件で隔離ハーネスへ写し、**周辺のResult型と既存`writeCommandScenarioHTTPResult`はスタブ**にしている。これは新たなビジネス・認証Providerを呼ばないテストであり、当該関数の制御分岐を検証する範囲に限定される。
 
-**統合資格ではない：** この局所テストは実Web Host、`workspace.Load`、`driver.Resolver`、`security.authorize`、実HTTP監査を呼んでいない。実リポジトリの`go test ./...`、Race、`go vet ./...`、`reference/web-composition/qualify.sh`と`tools/repository-health-check.sh`の全PASS・前後cleanは未取得。現在の実行Containerからは`github.com`のDNS名前解決ができないため、実チェックアウトを取得できない。資格確認まではPR #1114をDraft・未マージとする。
+**統合資格ではない：** この局所テストは実Web Host、`workspace.Load`、`driver.Resolver`、`security.authorize`、実HTTP監査を呼んでいない。実リポジトリの`go test ./...`、Race、`go vet ./...`、`reference/web-composition/qualify.sh`と`tools/repository-health-check.sh`の全PASS・前後cleanは未取得。現在の実行Containerからは`github.com`のDNS名前解決ができないため、実チェックアウトを取得できない。この制約を記録し、実行できる範囲の検証結果とあわせて統合する。
 
 資格取得時はPrivate Repoの完全なクリーンチェックアウトで最新head／main SHAを確認し、`bash reference/web-composition/qualify.sh <candidate-head-sha> <current-main-sha>`を実行する。その結果とGitHub上の現在head/mainを再照合してからDraft解消・統合を判断する。
