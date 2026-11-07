@@ -14,11 +14,12 @@ import json
 from pathlib import Path
 
 COMMANDS = ("commands", "version", "workspace-files", "catalog", "inspect",
-            "source-index", "trace", "requirements", "validate")
+            "inspect-validation", "source-index", "trace", "requirements", "validate")
 ENVELOPES = {
     "workspace-files": "tei.cli.workspace-files/v0",
     "catalog": "tei.cli.model/v0",
     "inspect": "tei.cli.inspect/v0",
+    "inspect-validation": "tei.cli.inspect/v0",
     "source-index": "tei.cli.source-index/v0",
     "trace": "tei.cli.trace/v0",
     "requirements": "tei.cli.requirements/v0",
@@ -26,6 +27,18 @@ ENVELOPES = {
 }
 TARGET = {"kind": "semantic-data", "id": "sales.order"}
 REQUIRED_SOURCE = "semantic/sales/order.tei"
+# Independently chosen *one-Rule* obligations from the public #3273 / #3304
+# case. This is a bounded case prerequisite, NOT complete Function/Business
+# or organizational/permission closure.
+REQUIRED_RULE = {"kind": "semantic-validation", "id": "sales.order_line.line_number_positive"}
+REQUIRED_RULE_SOURCE = "semantic/sales/validation.tei"
+REQUIRED_RULE_CANONICAL = {
+    "id": "sales.order_line.line_number_positive",
+    "kind": "positive",
+    "attribute": "sales.order_line.line_number",
+}
+REQUIRED_RELATION = {"kind": "semantic-relation", "id": "sales.order.lines"}
+
 # A test-only independent required set, NOT a claimed Workspace/Domain closure.
 # Function/Business/Rule dependencies are deliberately still unqualified.
 MISSING_CLAIMS = [
@@ -103,6 +116,21 @@ def assess(docs: dict[str, dict], failures: list[str] | None = None) -> dict:
     if source_state != "read-by-loader":
         blockers.append("required-source:" + source_state)
 
+    # A source being present and loaded is separate from the fact that the
+    # canonical Rule was actually parsed, cataloged and linked to an anchor.
+    rule_files = [e for e in managed if isinstance(e, dict)
+                  and e.get("path") == REQUIRED_RULE_SOURCE]
+    if not rule_files:
+        rule_source_state = "missing"
+    elif len(rule_files) != 1:
+        rule_source_state = "ambiguous"
+    elif rule_files[0].get("readByLoader") is not True:
+        rule_source_state = "not-loaded"
+    else:
+        rule_source_state = "read-by-loader"
+    if rule_source_state != "read-by-loader":
+        blockers.append("required-rule-source:" + rule_source_state)
+
     target_entries = docs.get("catalog", {}).get("result", {}).get("entries", [])
     if not isinstance(target_entries, list):
         target_entries = []
@@ -118,6 +146,71 @@ def assess(docs: dict[str, dict], failures: list[str] | None = None) -> dict:
     if subject_state != "found":
         blockers.append("required-subject:" + subject_state)
 
+    # TT-56: JSON can be syntactically complete with the same asserted
+    # fingerprints, yet omit one required Rule/Relation. Never infer
+    # enumeration completeness from healthy envelopes or matching digests.
+    rule_matches = [e for e in target_entries if isinstance(e, dict)
+                    and e.get("subject") == REQUIRED_RULE]
+    if not rule_matches:
+        rule_state = "missing"
+    elif len(rule_matches) != 1 or rule_matches[0].get("ambiguous") is True:
+        rule_state = "ambiguous"
+    elif (rule_matches[0].get("detail") != "positive" or
+          rule_matches[0].get("sourceStatus") != "indexed"):
+        rule_state = "not-source-backed"
+    else:
+        rule_state = "cataloged"
+    if rule_state != "cataloged":
+        blockers.append("required-rule:" + rule_state)
+
+    relation_matches = [e for e in target_entries if isinstance(e, dict)
+                        and e.get("subject") == REQUIRED_RELATION]
+    if (len(relation_matches) != 1 or
+            relation_matches[0].get("ambiguous") is True or
+            relation_matches[0].get("parent") != TARGET):
+        relation_state = "missing-or-ambiguous"
+        blockers.append("required-relation:" + relation_state)
+    else:
+        relation_state = "cataloged"
+
+    rule_inspection = docs.get("inspect-validation", {}).get("result", {})
+    if not isinstance(rule_inspection, dict):
+        rule_inspection = {}
+    if rule_inspection.get("subject") != REQUIRED_RULE:
+        rule_canonical_state = "subject-mismatch"
+    elif not isinstance(rule_inspection.get("canonical"), dict):
+        rule_canonical_state = "missing-canonical"
+    elif any(rule_inspection["canonical"].get(k) != v
+             for k, v in REQUIRED_RULE_CANONICAL.items()):
+        rule_canonical_state = "rule-contract-drift"
+    else:
+        rule_canonical_state = "matched"
+    if rule_canonical_state != "matched":
+        blockers.append("required-rule-canonical:" + rule_canonical_state)
+
+    source_refs = rule_inspection.get("sources", {}).get("references", [])
+    artifacts = rule_inspection.get("sources", {}).get("artifacts", [])
+    # Require exactly one *definition* reference to the independently
+    # required file and an exact indexed artifact, not just a path guess.
+    if not isinstance(source_refs, list):
+        source_refs = []
+    if not isinstance(artifacts, list):
+        artifacts = []
+    matching_refs = [r for r in source_refs if isinstance(r, dict)
+                     and r.get("subject") == REQUIRED_RULE]
+    matching_artifacts = [a for a in artifacts if isinstance(a, dict)
+                          and a.get("path") == REQUIRED_RULE_SOURCE]
+    if (rule_inspection.get("sourceStatus") != "indexed" or
+            len(matching_refs) != 1 or len(matching_artifacts) != 1 or
+            matching_refs[0].get("artifactPath") != REQUIRED_RULE_SOURCE or
+            matching_refs[0].get("role") != "definition" or
+            not isinstance(matching_artifacts[0].get("fingerprint"), str) or
+            not matching_artifacts[0]["fingerprint"].startswith("sha256:")):
+        rule_anchor_state = "missing-or-unqualified"
+        blockers.append("required-rule-anchor:" + rule_anchor_state)
+    else:
+        rule_anchor_state = "definition-source-indexed"
+
     fingerprints = {}
     consistency = "consistent"
     for key in ("worldFingerprint", "sourceIndexFingerprint"):
@@ -125,6 +218,7 @@ def assess(docs: dict[str, dict], failures: list[str] | None = None) -> dict:
         values = [
             docs.get("catalog", {}).get("result", {}).get(key),
             inspected.get(key),
+            rule_inspection.get(key),
             docs.get("trace", {}).get("result", {}).get(key),
             docs.get("validate", {}).get(key),
         ]
@@ -161,12 +255,18 @@ def assess(docs: dict[str, dict], failures: list[str] | None = None) -> dict:
         "observations": {
             "localReplies": f"{len(docs)}/{len(COMMANDS)}",
             "requiredSourceRead": source_state,
+            "requiredRuleSourceRead": rule_source_state,
             "requiredSubject": subject_state,
+            "requiredRule": rule_state,
+            "requiredRelation": relation_state,
+            "requiredRuleCanonical": rule_canonical_state,
+            "requiredRuleAnchor": rule_anchor_state,
             "fingerprintConsistency": consistency,
             "validationDiagnosticCount": diagnostic_count,
             "observedFingerprints": fingerprints if not blockers else {},
         },
         "boundedReference": "partial" if not blockers else "blocked",
+        "independentlyRequiredCaseScope": "one validation Rule, its typed attribute, one relation, and two Source files",
         "testExecutionAdmission": "exploration-only" if not blockers else "blocked",
         # Deliberately impossible to auto-upgrade from this local CLI slice:
         "qualifiedTestGeneration": False,
@@ -259,6 +359,70 @@ def manifest_selftest(docs: dict[str, dict]) -> dict[str, str]:
     return cases
 
 
+
+def required_rule_selftest(docs: dict[str, dict]) -> dict[str, str]:
+    """TT-56 and related prerequisite failures, tested on actual CLI JSON copies.
+
+    All mutants keep the original world/index fingerprints. These are local
+    consumer discrimination tests, not live provider/Harness transport faults.
+    """
+    results = {}
+
+    def block(name: str, mutant: dict, expected_fragment: str) -> None:
+        verdict = assess(mutant)
+        if (verdict["boundedReference"] != "blocked"
+                or verdict["testExecutionAdmission"] != "blocked"
+                or verdict["qualifiedTestGeneration"] is not False
+                or not any(expected_fragment in x for x in verdict["blockers"])):
+            raise AssertionError(f"{name} falsely admitted: {verdict['blockers']}")
+        results[name] = "rejected-with-identical-claimed-revisions"
+
+    mutant = copy.deepcopy(docs)
+    entries = mutant["catalog"]["result"]["entries"]
+    mutant["catalog"]["result"]["entries"] = [
+        e for e in entries if e.get("subject") != REQUIRED_RULE
+    ]
+    block("tt56-parseable-omitted-rule", mutant, "required-rule:missing")
+
+    mutant = copy.deepcopy(docs)
+    entries = mutant["catalog"]["result"]["entries"]
+    mutant["catalog"]["result"]["entries"] = [
+        e for e in entries if e.get("subject") != REQUIRED_RELATION
+    ]
+    block("tt56-parseable-omitted-relation", mutant, "required-relation:")
+
+    mutant = copy.deepcopy(docs)
+    entries = mutant["catalog"]["result"]["entries"]
+    selected = next(e for e in entries if e.get("subject") == REQUIRED_RULE)
+    entries.append(copy.deepcopy(selected))
+    block("tt56-duplicate-rule-subject", mutant, "required-rule:ambiguous")
+
+    mutant = copy.deepcopy(docs)
+    mutant["inspect-validation"]["result"]["canonical"]["attribute"] = "std.incorrect"
+    block("canonical-rule-attribute-drift", mutant, "required-rule-canonical:rule-contract-drift")
+
+    mutant = copy.deepcopy(docs)
+    mutant["inspect-validation"]["result"]["sources"]["references"] = []
+    block("source-definition-reference-omitted", mutant, "required-rule-anchor:")
+
+    mutant = copy.deepcopy(docs)
+    for r in mutant["inspect-validation"]["result"]["sources"]["references"]:
+        if r.get("subject") == REQUIRED_RULE:
+            r["role"] = "derived"
+    block("source-definition-role-substituted", mutant, "required-rule-anchor:")
+
+    mutant = copy.deepcopy(docs)
+    for entry in mutant["workspace-files"]["result"]["managedFiles"]:
+        if entry.get("path") == REQUIRED_RULE_SOURCE:
+            entry["readByLoader"] = False
+    block("required-rule-source-not-consumed", mutant, "required-rule-source:not-loaded")
+
+    mutant = copy.deepcopy(docs)
+    mutant["inspect-validation"]["result"]["sourceIndexFingerprint"] = "synthetic-stale-rule-index"
+    block("source-index-revision-mixed-for-rule", mutant, "fingerprint:stale")
+    return results
+
+
 def transport_selftest(folder: Path) -> dict[str, str]:
     """Corrupt real received CLI JSON bytes, not just an in-memory decoded dict.
 
@@ -316,6 +480,7 @@ def main() -> None:
     report = dict(baseline)
     report["syntheticControls"] = controls
     report["additionalManifestControls"] = manifest_selftest(docs)
+    report["additionalRequiredRuleControls"] = required_rule_selftest(docs)
     report["transportByteControls"] = transport_selftest(args.folder)
     report["localReplyEvidence"] = byte_evidence
     args.out.parent.mkdir(parents=True, exist_ok=True)
