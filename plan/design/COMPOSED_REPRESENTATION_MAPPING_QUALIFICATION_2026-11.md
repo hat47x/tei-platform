@@ -247,3 +247,37 @@ Product R1-0〜4の検証では、独立Referenceの `ExecuteScopedCanonicalRead
 検収順を **QS-01/02：実Source→SQL/引数/Provider binding→実Rowset**、次に **QS-03/06：実Rowset→二Viewの同一性・時点**、並列に **QS-04/05：Scope・Plugin/SQL改版負例** とする。実行計画は#2586 HR-01/02を正本とし、#2514/#1180の固定Fixture/Independent Expectedを再利用。新Runner/SQL Executor/Read Registry/新Proof Storeは追加しない。
 
 **今回の証拠限界**：GitHub上の上記Source/SQL/fixture/試験ファイルのBlobと本文を実確認した。SQLの実行結果は#3238固定HEADの公開された限定CI記録に依存する。本追補のQS-01〜06、製品Query/DB read、Function→Context→二表現、実joint snapshot/Owner意味受理は**NOT RUN／未実証**。現在mainの将来変更はBlobごと再照合する。
+
+
+## 11. 実Productの非単射と操作面の版ずれを同じ資格票へ（2026-11-07追補）
+
+### 11.1 既存の有限実測が増えた部分だけ資格を更新
+
+| 確認された独立実証 | 実際に成立した狭い命題 | 依然として成立しない広い命題 |
+| --- | --- | --- |
+| [SUI Draft #3396](https://github.com/hat47x/sui-sensemaking/pull/3396)／[固定HEAD frontend CI #42345896949](https://github.com/hat47x/sui-sensemaking/actions/runs/42345896949) | SUI製品の実 `buildContextProjection` に対し3/3対照がPASS。元Cardの非公開 `meta.source` 差、Island membership／Canvas座標差では公開Projectionが同一になり得る。露出するCard本文／レビュー済みIsland題名の変更ではProjectionが変化するPositive controlもPASS | SUIの逆Patch拒否、SHO Writer／OKF Export、TEIのP/Q合成写像、元Source実Reader、Host権限の合格 |
+| [TEI merged #3253](https://github.com/hat47x/tei-platform/pull/3253) | 上記SUIの非単射とTEI CLIのcaller-supplied scope（#2881の局所実測）を現mainの研究§13に帰属。表示上のScope／Keyから元Source IdentityやRelation Identityを逆推論しない | 一般的な二Consumerの非干渉、全Source Closure、逆編集資格、TEI Product Reader/Renderer |
+| [TEI merged #3254](https://github.com/hat47x/tei-platform/pull/3254) | 合成Workspaceの一属性変更でOperation Surfaceの `worldFingerprint`／`modelRevision` が変わり、Operation 5件の `basis` は不変という実出力を取得。記録時点では実行時照合の受渡し入口が見つからない | `basis`自体の誤り、Operationがすべて無効化されること、実行時の適格な自動再判定実装、現在Host Grant／実DBの検証 |
+
+**誤った合算を避ける**：CX-01の「非単射が現実に起こり得る」はSUIの**実Product局所試験で観測済み**へ更新する。一方、TEIの合成Q∘P・逆写像API・Product二Viewは実行していないため、CX-01のTEI E2E合格件数は**0のまま**。TEIが実際のSUI非公開属性を受け取った、または復元しなければならないとは要求しない。
+
+### 11.2 表示等価・Source帰属・操作の現在資格を三つに分離
+
+**例A（非単射・読み取り専用は成功してよい）**：Source AとBで非公開Source cue／Canvas/Island所属が異なるのに、公開Projection Wが一致する。この結果は、公開仕様がそれらを意図的に落としている限り**正しい**。ただし `same W bytes` は `same Source` や `unique inverse Patch` を導かない。編集要求時は元Source/Path occurrence/Versionへ別根拠で戻り、候補が複数なら自動書込みを拒否するか元ProductでOwnerへ候補を提示する。
+
+**例B（表示は同じ・Operation資格は変わり得る）**：Data Modelへ属性を追加すると、Operation 5件の `basis` が同じでもWorld/Model Revisionが変化したという#3254の実測がある。現在のAction Offerは、元Source・Rule／Predicate／Operation Input／Scope/Grant／実行Targetとの**必要依存**を再照合してから再利用可否を判断する。`basis`一致のみで旧Offerを実Requestへ昇格させない。逆に、新属性が当該View/Claim/Actionの依存閉包の外にあると独立に確認できれば、**過剰失効を避けて局所表示の資格を維持する余地**がある（影響判定は#2582、実Actionは#2598/#1174）。全属性変更を一律拒否する新共通Gateは作らない。
+
+**例C（Policyが変わっても見かけ同一）**：Public Slice/出力byteが同じでも、別Tenant/Scope/Provider/Policy revの現在のAction Permissionや実Consumer開示の資格は別。#2516で開示対象を確定したうえでProjectionを評価し、元Private Worldの差がTooltip・選択候補・ログ等のside-channelへ漏れない検査とは区別する。
+
+### 11.3 独立検証基準で測る具体的な「誤認」
+
+新しいCase群・生成器を追加するのでなく、既存CX-01/CX-05/CX-06/CX-10とQS-06の**独立Expectedに次の判別点を一因子追加する**。
+
+1. 公開Projection byteを固定して非公開 `meta.source`／Island所属だけ変えたとき、**read-only Projectionは不変**でよい。しかし同じ公開値を根拠に一意な元Source IDを選び、Reverse Updateを発行した実装は不合格。
+2. Sourceへの一属性追加により `worldFingerprint` が変わり `basis` が同じ場合、**旧Action Offerの現行資格を確認せず実Requestへ通す**実装は不合格。逆に影響外のDisplayを無根拠にすべて再生成する過剰反応は性能/説明の評価対象（安全違反と一律にはみなさない）。
+3. 出力を変える公開Card/Island titleの一因子変更にもProjectionが不変となる実装は不合格。常時同一比較で3件の負例がすべてPASSする「空虚なVerifier」を許さない。
+4. 一つのFunction Context IDだけを同じにし、Source/Scope/Read Cohortが異なるTableとFormを同期する実装は不合格。共同Snapshotの要件があるClaimに限り、版とReader/Providerの同時成立Evidenceを要求する。
+
+**テストデータ生成との接続**：Data/Function/Businessから制約付き正負Datasetを導く新しい並行Draft [#3258](https://github.com/hat47x/tei-platform/pull/3258)・[#3259](https://github.com/hat47x/tei-platform/pull/3259)・[#3260](https://github.com/hat47x/tei-platform/pull/3260)・[#3261](https://github.com/hat47x/tei-platform/pull/3261)は全てDocs-onlyの**競合する採用前候補**として扱い、#3236へ第二Generator/Dataset/Scenario SSOTを持ち込まない。将来受理される制約付きDatasetがあれば、上記の「非公開Sourceだけ変える」「Operation/Roleだけ変える」などの対照要因を#1131の既存Dataset／#1180 Scenarioと#2514の**独立Expected**へ配分する。原典未確認の「強属性」をToggle/Slider等の適合条件に自動昇格させず、既存Facet/Value Domainの受理済み制約だけを使う。
+
+**次工程と責務**：P0=SUIの局所非単射・TEIの操作面driftという有限な**既存の実測**を、#2497/#2507/#2582のread-only資格票へ持ち込む。P1=#2586の実Function→SQL/Provider ReadにSource/Context/Scope Witnessを加え、同じResult SliceからTable/Form二表現を局所比較。P2=#2500/#2598/#1174で一意なInverse/現在Grant/Effectを**別試験**にする。既存#2514/#1180へ候補と既知Mutantだけ渡す。新Go/Node test、実TEI Product 二View、実Provider/Reverse Write、Owner意味受理は**今回NOT RUN**。
