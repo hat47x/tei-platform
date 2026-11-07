@@ -200,6 +200,7 @@
 | [`reference-access-matrix/`](reference-access-matrix/) | Application × Dataの宣言された利用の対応表を導出する参照（#1803） |
 | [`reference-operation-pattern-crosswalk/`](reference-operation-pattern-crosswalk/) | 受理済みの意味から、宣言されたPatternと導出された標準操作を、Data ID・能力ID・Relation targetの三つの宣言だけで突き合わせる参照。一致は読み取りであり実行権限ではありません。一致しない宣言は operation-surface の gap 語彙で返し、既定値で埋めません（W3の設計候補を試すためのもの） |
 | [`reference-operation-drift-check/`](reference-operation-drift-check/) | 操作面を後から保存した照合値（WorldFingerprint・ModelRevision）と比べ、一致しなければ STALE_OPERATION_SURFACE を返す参照。Basis は persist 写像の値で属性追加では変わらないため比べません。未指定は unchecked として current と区別します。既定で有効にするかは未決のままです |
+| [`reference-plugin-capability-coverage/`](reference-plugin-capability-coverage/) | プラグインが宣言した能力のうち、どの環境のBindingからも選ばれていないものを一覧する参照。database-instanceは提供技術名を指すため能力IDと同一視せず数えません。選ばれていないことは欠陥の証明ではありません |
 | [`reference-accounting-period/`](reference-accounting-period/) | 業務日付とシステム時刻を分け、期間の状態・締め済み期間の直接更新拒否・赤黒訂正・締め後の到着方針・順序鍵と版による再生・締め時点の照合値を判定する参照（#2144） |
 | [`reference-partial-import-plan/`](reference-partial-import-plan/) | 別Workspaceから選んだData定義の取込み結果を分類する読取り専用の参照（#1805） |
 | [`reference-table-definition-document/`](reference-table-definition-document/) | 受理済みの意味から表定義書を導出する参照（#1803） |
