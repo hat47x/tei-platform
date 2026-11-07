@@ -732,3 +732,28 @@ G1〜G5で各観測は取得時点が異なる。要求するのは**同一瞬�
 **最小の試験順（新Runnerを作らない）**：①`physical.SchemaSnapshot.Normalize`/ `schemadiff.Compare`/ `migration.Plan`の既存APIでMA-08aとMA-09の**現挙動**を特性化（そのGo PASSは安全な適用の証明ではない）→②同じExpectedをProvider/Reader/実Targetの上位Admissionへ渡し、不適格なら`executeCalls=0`とする→③使い捨てPostgreSQLの完全/部分・別Instance・実変更による独立ReadをG1〜G3へ追加する。第一段のGo fixtureで実Reader完全性・実Provider効果を実証したと主張しない。
 
 **担当と採否**：#2622は実Provider観測のScope/Capability、#2611はDB Alias/実Instance、#2600/#1163は実消費入力/証拠束縛、#2555は移行進行とCutover、#2514は独立期待値を既存の責任範囲として保持する。すでに存在するMA-01/02、HIST-03、XH-01/03へ統合し、新Gate番号や独立Registryは設けない。本節はDocs提案・Source-static。MA-08〜10のGo/PG/Owner試験は**NOT RUN**。
+
+<!-- tei-db-migration-KOB-binding-20261107 -->
+### 20.8 適用前拒否の実装位置とReceipt／現在状態／業務検収の非合成（2026-11-07、横断成熟差分）
+
+**§20.3 MA-01/02のソース上の判別をGo特性試験へ移した**。`internal/database/migration/postgres_apply_test.go`の`TestMA01MA02NonDestructiveApplyCharacterization`は、単一`ADD COLUMN`の固定`Definition`について、①`BasedOnActualFingerprint`とfresh `SchemaObservation.Snapshot.Fingerprint`が違う、②`Definition.Database`と`SchemaObservation.Snapshot.Database`が違う、という2例を`ApplyPostgresWithFreshObservation`へ供給し、**現関数ではExecutor Callbackが一度呼ばれ得る**ことを特徴付ける。パーティション削除/制約追加がないとProviderの局所Readiness関数はDB ID確認より前で返り、fresh SQL文列は一致する、というソース上の経路。**現在の望ましくない挙動を固定するテストであり、安全合格ではない**。Go実行と実DBは別の検証。
+
+**最終の拒否条件を置く場所**：単なる`schemaDiffFromDefinition`や`RenderMigrationSQLWithObservation`の検査に任せず、実Connectionを所有するHost/ProviderのApply入口で`Plan Source/actual base/Target Scope/Provider/Current Grant`を相関させ、受入不能なら**実Executor呼出しゼロ**を独立Expectedとする。既存の`PostgresObservationFunc`と`PostgresStatementExecutor`が**同一Session・同一物理Instance・同じロック対象を指す証拠は現署名にはない**ため、双方の入力文字列を検査するだけでも不十分。現行CLIがJSONから作るoffline Planを正式Applyへ直接接続しない（§20.6）。Provider保証なしに一般化した`migration.Apply` API/RunnerやCapabilityを追加しない。
+
+**他チャットの新しいK/O/B分離をMigrationへ限定して接続する**：[merged #3127](https://github.com/hat47x/tei-platform/pull/3127)が提供した`effectcommit`のReceipt Lookupは**同じOperationに対する確定記録の存在 K**を照会する。`ResourceReader.ReadResource`は**資源の現在値 O**を別接続で読む別Capabilityであり、`Business Owner`によるデータ変換・履歴・使用可能性の判定 **B**ではない。これらをMigrationへ流用する場合も、同じResourceでないSchema/Rowset、旧新DB、CDC、外部Consumerへ一律に移植できるわけではない。`effectcommit`の単一DB Receiptがあることを、別のMigration DDLやBackfillが成功した証拠としない。[Draft #3129](https://github.com/hat47x/tei-platform/pull/3129)のFunction→実Provider Read／Command→Receipt→独立Row Readの段階分離も同じ上限で参照する。
+
+| 既存G0〜G5のClaim | 要求する独立観測 | 禁止する短絡 |
+| --- | --- | --- |
+| **K: History/Receipt recorded**（G1/G2の記録、G4のCommand） | Migration ID/Definition・実Target・Toolの履歴取得資格、または同一OperationのProvider Receiptと真の対象Scope | `RepoApplied`・Receipt存在だけで**現在Schema/Data一致**、Reader完全性、別DBの移送済みとしない。履歴欠落を作用なしとも推定しない |
+| **O: Actual State observed**（G1〜G3・G4/G5の再検証） | 別Connectionで実Schema／Data/Key/Historyを取得し、必要集合の完全性・RLS/Privilege・観測時点/Watermark・Replica lag/Writer epochを資格化 | 一度観測したt1の一致を変更後t2の**現在資格**へ再利用しない。Replicaが遅延している場合、直後の不一致をRollbackや効果ゼロと断定しない |
+| **B: Business meaning accepted**（G3〜G5） | 必要なTenant・業務Key/物理PK・変換版/有効期間・金額精度・旧新Client/Writer/外部ConsumerとOwner判断を同一Caseへ対応付け | SQL一致／行数一致／K+Oだけで業務上の同値性やCutover・破棄承認を推認しない（既存MG-05/06/07/24〜28） |
+
+**既存ケースの再利用（新しいケース台帳を増やさない）**：
+1. **MA-01/02**を`actual base/target mismatch → executeCalls=0`という上位Provider適用Gateの独立Expectedへ、現在の関数単体の特性試験と**別実装**で接続。
+2. **MA-07b/c**でCommit/DDLの後にHistory WriterやCLI ACKだけが失敗した場合、K未取得/unknownでもOで実際の結果を再確認し、同一Migration/AttemptでRecovery。無根拠に新IDで再送しない。Oが未確認なら`unknown`維持。
+3. **MG-05/06/07・XH-01/02**で同じReceipt・同じ件数だが別Tenant/別Epoch/履歴欠落、またはRead後にWriterが更新した反例を同一Expectedで再利用。`K historical pass`、`O at t1 pass`、`O current unknown`、`B pending`を別欄に記録。
+4. **§20.7 MA-08/09**でFingerprintの申告値や部分Schema観測を入力にした場合、`K/O`以前に適用前`A: Apply Admission`が`unknown`。後段のReceiptなどで**誤Targetへの実行前承認があった**ことに後付けしない。
+
+**実装・検収の次の一手**：#2611/#2622で実接続先の束縛と単一Callerの責務を固定し、`MA-01/02`の現在挙動のGo PASSと**期待されるfail-closed上位Adapterテスト**を明確に分離。#1163は同一Attempt/Source/実消費SQL/Receipt/Reader/Expectedを収容する既存Packet、#1174は実Effect/Unknown、#2892は履歴の取得・欠落、#2555は旧新Writer/CDC・Cutoverの各Ownerを維持する。新しいReceipt Store、Business Validator、Attestation Registryを作らない。
+
+**資格の上限**：今回のGo特性試験はソースを追加・保存した段階。実行したGo/Provider/DBの結果、正式Migration Apply Host、旧新Client/CDC、Owner受理は**NOT RUN/NOT ACCEPTED**。#3127のmain採用と局所Unit成功は、Migrationの統合実証には合算しない。
