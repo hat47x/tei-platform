@@ -96,3 +96,18 @@ go run ./tools/reference-verified-composition-bom \
 異TargetのLockを混ぜる場合、\`target\`軸と各Lockの\`Target\`一致を要求する。Scope/Principal/Tenant/Grantはこの限定JSONの型に存在しないので、同じTarget値でも**同じ利用権限や完全性とは主張できない**。Product接続では#3262がRequired/Loaded/Disclosedを照合し、#951/#1016が実合法候補を解決した結果で試験しなければならない。
 
 **検証範囲**：隔離Go 1.23.2で既存10＋新4＋入力不変性1＝**15 top-level Test PASS**、\`-race\`、\`go vet\` PASS、\`gofmt -l\`出力なし。新4 Testには3軸2値の**255個の非空候補部分集合**を網羅し、選択行が提供候補の全2項をカバーする負例が含まれる。GitHub PR head上のCI/本物のResolver/Host/Plugin Testは別途確認が必要であり、このReferenceの出力はVerified BOMではない。
+
+
+## 同一AttemptのWitness束縛（Reference追加／製品資格なし）
+
+`witness_audit.go`と`witness_audit_test.go`は、BOM用Test結果を外部データから束ねるときの「別RunのPASSを足した偽の統合合格」を防ぐ**read-only JSON型／純粋関数**である。主語は`WitnessAuditRequest`であり、呼出側が先に固定した各`WitnessCase`の`Lock`・`ScopeRef`・`ScenarioDigest`・`IndependentExpectedDigest`・`RequiredChecks`を、同じ`WitnessAttempt`で得たと申告された結果と突き合わせる。
+
+**呼出入口はGo関数`AuditWitnessBindings(request)`のみ。CLIの`-audit`引数やTEI Runtime/実Provider/CI Run Readerは未実装**。Go側の単体テストは`go test ./tools/reference-verified-composition-bom`で検査できる。
+
+判定：`not-run`、`ambiguous-attempt`、`identity-mismatch`、`incomplete`、`reported-failure`、`reported-pass`。失敗／未完／未知の情報を保存し、同じLockに複数Attemptがあるときは最新版や順序で自動選択しない。未知Lock、同一Evidence Refを別Attemptへ流用、重複Check、Expected/Source/Artifact/Target/Scope/Scenario相違を棄却する。
+
+`reported-pass`は**入力記録の整合性を示すだけ**で、外部提出者が作った文字列・完了フラグやExpectedの独立性を認証したものではない。出力は例外なく`claimCeiling: "fixture-identity-consistency-only", qualified: false`とする。真正なProduct BOM発行は既存の実Artifact/Run/Independent Expected/Conformance/Host Grantと同一Subjectの証拠束縛を実現した場合だけ検討する。
+
+関連：Atomic Trait Fulfillment [#3279](https://github.com/hat47x/tei-platform/issues/3279)の必須実装義務と、HTTP Response Graph [#3274](https://github.com/hat47x/tei-platform/issues/3274)のClient Reaction/未知Commitは、将来BOMの`RequiredChecks`/Scenarioへの入力として利用する。**Version Pairwise Cover、Requirement/Trait/Scenario cover、Go C0/C1、HTTP Decision Graph coverの分母は別**であり、一方の100%から他方の適格性を推論しない。
+
+**今回新規コードの検証**：最新GitHub exact HEADのCI・ローカル実行について、取得済みの証拠が確定するまで`NOT RUN/UNKNOWN`。従来15 TestのPASSが新追加テストを含むとは主張しない。
