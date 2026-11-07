@@ -182,6 +182,97 @@ func TestResolveModuleClosurePreflightReportsMissingOfflineSupply(t *testing.T) 
 	}
 }
 
+// TestClassifyModuleClosureSeparatesCorruptSupplyFromMissingModule pins the
+// distinction the caller acts on: content that was supplied but does not match
+// its recorded digest is replaced, while absent content is supplied. Collapsing
+// both into `unknown` would leave the failure pointing at the Source.
+func TestClassifyModuleClosureSeparatesCorruptSupplyFromMissingModule(t *testing.T) {
+	output := `{
+	"ImportPath": "example/cmd",
+	"Name": "main",
+	"Module": {"Path": "example", "Dir": "ROOT"}
+}
+{
+	"ImportPath": "golang.org/x/text/unicode/norm",
+	"Name": "norm",
+	"Module": {"Path": "golang.org/x/text", "Version": "v0.41.0", "Dir": "/modcache/golang.org/x/text@v0.41.0"},
+	"Error": {"ImportStack": ["example/cmd"], "Pos": "pkg/main.go:9:2", "Err": "unzip /modcache/cache/download/golang.org/x/text/@v/v0.41.0.zip: flate: corrupt input before offset 44"}
+}
+`
+	preflight, err := classifyModuleClosure("ROOT", "./cmd", "/go/bin/go", "sha256:aaaa", []byte(output))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if preflight.Classification != ModuleClosureCorrupt {
+		t.Fatalf("corrupt module supply was not classified as corrupt-supply: %s (%s)",
+			preflight.Classification, preflight.Summary)
+	}
+	if !strings.Contains(preflight.Summary, "golang.org/x/text/unicode/norm") {
+		t.Fatalf("corrupt-supply summary lost the failing import: %s", preflight.Summary)
+	}
+	if preflight.SourceClosureReachable {
+		t.Fatal("corrupt supply was reported as reaching a source closure")
+	}
+}
+
+// TestClassifyModuleClosureReportsVerifierMismatchAsCorruptSupply covers the
+// message the Go verifier emits for an extracted tree that no longer matches
+// its recorded hash. An artifact digest match cannot stand in for this check.
+func TestClassifyModuleClosureReportsVerifierMismatchAsCorruptSupply(t *testing.T) {
+	output := `{
+	"ImportPath": "example/cmd",
+	"Name": "main",
+	"Module": {"Path": "example", "Dir": "ROOT"}
+}
+{
+	"ImportPath": "golang.org/x/text",
+	"Name": "text",
+	"Module": {"Path": "golang.org/x/text", "Version": "v0.41.0", "Dir": "/modcache/golang.org/x/text@v0.41.0"},
+	"Error": {"ImportStack": ["example/cmd"], "Pos": "pkg/main.go:9:2", "Err": "golang.org/x/text v0.41.0: dir has been modified (/modcache/golang.org/x/text@v0.41.0)"}
+}
+`
+	preflight, err := classifyModuleClosure("ROOT", "./cmd", "/go/bin/go", "sha256:aaaa", []byte(output))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if preflight.Classification != ModuleClosureCorrupt {
+		t.Fatalf("verifier mismatch was not classified as corrupt-supply: %s (%s)",
+			preflight.Classification, preflight.Summary)
+	}
+}
+
+// TestClassifyModuleClosurePrefersUnknownOverCorruptSupply keeps an
+// unrecognized failure above a recognized one, so a mixed stream is not read as
+// a supply problem that a replacement would fix.
+func TestClassifyModuleClosurePrefersUnknownOverCorruptSupply(t *testing.T) {
+	output := `{
+	"ImportPath": "example/cmd",
+	"Name": "main",
+	"Module": {"Path": "example", "Dir": "ROOT"}
+}
+{
+	"ImportPath": "golang.org/x/text/unicode/norm",
+	"Name": "norm",
+	"Module": {"Path": "golang.org/x/text", "Version": "v0.41.0", "Dir": "/modcache/golang.org/x/text@v0.41.0"},
+	"Error": {"ImportStack": ["example/cmd"], "Pos": "pkg/main.go:9:2", "Err": "flate: corrupt input before offset 44"}
+}
+{
+	"ImportPath": "example/internal/broken",
+	"Name": "broken",
+	"Module": {"Path": "example", "Dir": "ROOT"},
+	"Error": {"ImportStack": ["example/cmd"], "Pos": "internal/broken/x.go:3:1", "Err": "syntax error in embedded file"}
+}
+`
+	preflight, err := classifyModuleClosure("ROOT", "./cmd", "/go/bin/go", "sha256:aaaa", []byte(output))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if preflight.Classification != ModuleClosureUnknown {
+		t.Fatalf("mixed unrecognized failure was folded into a recognized class: %s (%s)",
+			preflight.Classification, preflight.Summary)
+	}
+}
+
 // TestResolveModuleClosurePreflightReportsSupportedCandidate proves the
 // positive classification against the repository's own smallest tool package,
 // which selects no external module.
