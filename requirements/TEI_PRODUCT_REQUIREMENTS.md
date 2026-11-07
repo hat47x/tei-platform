@@ -90,6 +90,8 @@ Database、Runtime、Target等の製品固有知識は、Provider / Adapter / Ca
 
 Capabilityごとにbuiltin、generated implementation、plugin、既存実装等をBindingでき、必要なCapabilityだけを置き換えられる構造を持つ必要があります。
 
+**TEI Core以外の機能は、標準のCLIやTEI Studioを含め、原則としてContract/Providerを持つPluginとして構成できなければなりません。** CLI/Studioの開発用Pluginを作成・発見・選択・構築・テスト・利用する経路は、生成アプリケーション向けRuntime Pluginと同じ契約・構成解決・成果物追跡・検証の仕組みを用いる必要があります。表示や引数処理はSurface固有Adapterとして分離し、同じ業務/設計操作をCLI・Studio・生成アプリから利用するときに別の意味正本やResolverを作ってはいけません。既定のGo単一バイナリ構成では、未選択のPlugin実装を実成果物へ混入させず、外部Host向けには必要な能力だけを対象環境へ適応させる必要があります。Coreが特定の言語・認証・DB・UI実装へ逆依存しないこと、Plugin追加時にCore固定列挙や手書きCLI/Studio分岐の変更を原則不要にすることを、実Consumerを用いた回帰試験で示します。 Tooling・Build/Test・Application Runtimeは同じ契約解決・構築・追跡原理を利用しながら、意味解釈用Semantic Set、Authoring/Build/Runtimeの解決Scope、実行Grant、開示範囲を互いに暗黙継承してはいけません。発見したPlugin、選択したProvider、実Build/Linkに含まれた実装、実呼出した能力、現在許可される操作を別々に診断し、開発環境での成功を生成アプリケーションの本番適格性とみなしてはいけません。段階的な方式と現行Fit/Gapは[CLI/StudioからRuntimeまでのPlugin-first設計](../plan/design/PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md)を参照します。
+
 プラグインの利用に際して、Principal、Database、業務Semantic Model等の特定分野の概念を全構成へ必須導入してはいけません。汎用の値変換・バッチは必要な型と接続だけで構成でき、業務上の意味的同一性を主張するBindingではじめて正本となる意味参照の範囲・版・受理状態を確認できる必要があります。実行時の外部権限検査とは分離します。
 
 一つのComponent Typeから、設定・DataSource・対象Semantic Entity・利用範囲の異なる複数の論理Instanceを構成できなければなりません。固定パラメータ、正本へ追跡できる型付き項目・Relation参照、許された変換式、呼出しごとの値を区別し、名前や文字列表記の一致だけでBindingを確定してはいけません。実行時に変わる値を準備時の固定設定へ暗黙に混入させず、未解決・複数候補・版不一致は検査できる必要があります。
@@ -451,6 +453,8 @@ TEIは、Data Model、Function / Interaction、Business Procedure、UI、workflo
 
 Plugin / DSLによる拡張は、実装関数を追加するだけでなく、概念が何を意味し、他の概念とどう関係し、何を満たす必要があるかを機械可読に宣言できる必要があります。
 
+Traitを合成可能な小さな契約要素として利用する場合、Traitごとに明確な責務・必要形状・前提条件・適用Scope・Failure/Effect・適合条件を表現しなければなりません。Traitを宣言した対象に対して、標準実装を選択して義務を充足する方式、手動実装・適合試験を必須とする方式、実行能力を保証しない助言だけの方式を区別し、実装不足・競合・同名異意味をValidationで明示します。複数のTraitを持つことだけで合成した振る舞いの適合を推定せず、必要に応じ明示的なBridge契約と独立Conformanceを要求します。Traitの宣言をProviderの実装・正式な意味受理・現在の実行権限と同一視してはいけません。Roleによる意味解釈とTraitの実現要求も別責務として扱います。
+
 少なくとも、拡張のidentity、namespace、semantic version、適用範囲、依存条件、既存概念との関係、Constraint / Validation、ProjectionやCapabilityへの接続を追跡できなければなりません。意味論と、その意味を読み書き・検証・実現する規則は、同じ拡張のidentityへ辿れる必要があります。
 
 Semantic Extensionの依存は、特定packageのidentityを必要とするものと、Semantic Interface等の契約を満たせばよいものを区別して表現できる必要があります。Semantic Interface自体も、identity、contract version、Source、contract fingerprint等へ辿れる意味契約として扱います。providerが同じInterface名を自己申告しただけで適合済みとしてはいけません。
@@ -518,7 +522,21 @@ TEI CLIは、Canonical meaning、Source、Dependency、Validation、Conformance�
 
 Agent Adapter、TEI固有のdeveloper MCP、統合Service等を追加することは妨げません。ただし、それらは特定環境との連携や利便性を高める任意機能とし、標準的なGit / CLIやHost-provided MCPによる開発、Canonical sourceへの到達に必要な前提にはしません。
 
-## RQ-035 検証済みPlugin構成のBOMと複数バージョンの組合せ試験を標準機能として提供できること
+## RQ-035 一般開発者が異種データソースのデータと構造を管理できること
+
+TEIは、RDB、Document／Key-Value／GraphなどのNoSQL、ファイル／ログ、クラウドAPI／サービスを、Providerと標準データ構造・表現型・Functionの組合せにより、一般開発者向けの共通操作・調査・モデル化の対象にできなければなりません。SQL／NoSQLクライアントやログ閲覧画面は、この共通能力の用途別投影であり、独立した意味正本を持ちません。
+
+標準の職掌には、接続と能力発見、範囲と由来を明示した閲覧・検索・抽出・分析、Providerが許可するデータの作成／更新／削除、既存データ構造のリバースエンジニアリング、**テーブル・カラム・制約・インデックス・コレクション等の構造定義の作成／変更／削除**、構造差分とMigrationの計画・適用・再観測を含めます。データ構造の定義とその変更管理は開発ツールの責務であり、DDLを一律にDBA作業として除外してはいけません。一方、DBサーバーやクラスタの管理、バックアップ／復旧、レプリケーション、容量・表領域、DBユーザー／ロール等の基盤運用管理はTEI標準の範囲外とします。専門プラグインでの実現を禁止する意味ではありません。
+
+情報源の種類が異なっても、観測された物理構造、サンプリングによる構造候補、受理された論理的意味、望ましい構造、実際の構造、比較未確定を区別できなければなりません。RDBの物理FKやログ中の相関ID、NoSQL文書の頻出フィールドから、業務上の同一性・Relation・更新権限を自動的に受理してはいけません。NULL・欠損・未取得・非開示・サンプル外・途中失敗・空集合を混同せず、Query結果の完全性、時間窓、重複・順序、出典と鮮度を目的相対で説明できる必要があります。
+
+操作が利用可能かどうかは、Provider種別名や静的な「対応」表示だけでなく、対象Instance・環境・操作・Scope・現時点のGrantに基づいて判定します。取得をProviderへ要求した範囲、Providerが実際に取得した範囲、Consumerへ開示した範囲は独立に観測し、Read-only表示、Plan生成、受理済み意味、現在の実行権限、実効果、Receipt、独立再観測をそれぞれ別の資格として扱います。破壊的DDLは標準機能でも、外部の実対象への実行条件を満たさずに適用してはいけません。
+
+ネイティブSQL・NoSQL固有クエリ・API固有の操作と意味を保持し、共通操作で表現できない部分を黙った全件取得・編集用全置換・Query変換へ置き換えてはいけません。未知・部分取得・権限拒否・未対応・コスト上限は診断として扱い、必要に応じて明示的な代替操作を提案します。CLIで使える最小の読み取り契約と、MCP・Studio・生成AIスキルからの同じContractの利用を許し、Workbench専用の権限・キャッシュ・Query Engine・意味正本を作りません。
+
+この要求はRQ-001〜008、RQ-010〜011、RQ-018〜021、RQ-034の境界を継承します。実装・受入計画は[#3270](https://github.com/hat47x/tei-platform/issues/3270)と[横断設計](../plan/design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)に置き、要求の成立と現行参照実装の到達範囲を混同しません。
+
+## RQ-036 検証済みPlugin構成のBOMと複数バージョンの組合せ試験を標準機能として提供できること
 
 TEIは、複数のService Contract、Provider、Operator、Generator、UI/表現型等を組み合わせた構成について、**検証したバージョンと適用範囲を含むBOM（Bill of Materials）**を標準データ構造から導出・保存・再利用・配布できなければなりません。案件のApplication Composition Profileを一つのPackageに固定せず、同じ構成パターンを別Targetや案件へ適用する際は、必要な再資格化を明示します。
 
