@@ -282,3 +282,60 @@ AI/CUI/Studioには、新しい「組織専用Widget一覧」の網羅を要求�
 **既存Ownerと受入経路**：#2386は組織意味とL、#3262はDesign Contextで必要Sourceの列挙、#2586/#2622はRの実Read、#1125/#1444はHの業務上の確認契約、#1174/#1163はProvider Effect/Receipt、#2514/#1180は独立ExpectedとMutant。#3353のGo CI成功は空集合ガードに限定し、HC-01〜07や実確認Providerの実装を「済」にしない。**新Handoff Ledger/万能Receipt Engine/組織専用Completion APIを増設しない**。必要になった時点で汎用Handoff Evidenceの最小型を各Ownerで判断する。
 
 **段階**：P0は合成受入票と既存Source/Reader契約照合、P1は#2586の実Case Read後に同一Attemptと受領証跡を対応付け、P2で異Provider/人手の不確実性を扱う。実`L/R/H`の一気通貫、外部受領、Owner正式採用は **NOT RUN**。
+
+## 10. 組織の二時点と重複有効期間：兼務・異動・在任を関係単位で検収する（2026-11-08、採用前）
+
+### 10.1 第9節のM/R/Cを時間意味へ拡張するときの追加境界
+
+本節は[組織意味Issue #2386](https://github.com/hat47x/tei-platform/issues/2386)のS1〜S7、[Corpus #2510](https://github.com/hat47x/tei-platform/issues/2510)のOPC-A/C・CM-02/03/05、[main統合済み合成Reference #2596](https://github.com/hat47x/tei-platform/pull/2596)の `org-synthetic-r7`、[main統合済みNative E1 #2681](https://github.com/hat47x/tei-platform/pull/2681)を**別々の資格**として照合する。従来の一般的なas-of／遡及訂正の説明へ新たなTemporal Engineや固定Org型を追加せず、**重複時点における関係Identity・Business Rule・実Provider読取の不足**だけを具体化する。
+
+| 関係の実体とRole | 既存Native Sourceで観測できること | 同じこととみなさないもの |
+| --- | --- | --- |
+| `Person P2` | `personId`を持つ主体Data | `Employment`・`Membership`・`Principal`・他TenantのAccountに自動同一化しない |
+| `OrgUnit D1/D2` | `orgUnitId`を持つ組織Data | 同一名・後継RelationからEntity同一性/Host Grantを生成しない |
+| `Membership A2/A3` | 独立`membershipId`、`personId/orgUnitId`、`allocation/validFrom/knownFrom` | A2/A3の二本をP2一件へ畳まない。`validTo/knownTo`や時点照会はNative製品に存在するとはみなさない |
+| `Position M1` | 独立`positionId`とOrgUnitへのRelation | Positionの存在＝着任者の存在ではない |
+| `Occupancy O1/O2` | 独立`occupancyId`、Person/PositionへのRelation、`validFrom` | 職位在任＝所属・本務・権限ではない。Nativeに`validTo/knownFrom/knownTo`が実装済みともみなさない |
+
+**判断**：複数Orgへの兼務、同じPositionへの同時Occupancy、同じPerson×OrgUnitに見える複数Membershipは、すべて一律の重複エラーではない。重複禁止は `relation role / participating identity / authority source / valid-time / known-time / multiplicity / purpose` を指定してOwnerが受理する**業務規範**であり、一般のGraph JoinやUI Treeを規範の代わりにしない。属性の一致だけで二つのOccurrenceを消したり、一方をPrimaryと推測したりしない。
+
+### 10.2 既存合成Sourceの固定Expectedを時間境界まで展開
+
+合成Referenceに限り、`[start,end)`（開始を含み終了を含まない、null終了は無期限）を`valid`・`known`の**比較用規約**として用いる。日付と日時、タイムゾーン、発効の粒度・締め時刻が案件ごとに異なるため、これをTEI全体の固定時間型・DB仕様としては採用しない。元Source `membershipVersions`のA2は **known 2027-07-02以前はvalid終期なし**、**同日以降はvalid終期2027-06-01** の二版。A2は同じOccurrence IDの**記録版**であって二人目のMemberではない。
+
+| `validAt` | `knownAt` | D1のMembership occurrence | D2のMembership occurrence | Position M1のOccupancy | 検収上の意味 |
+| --- | --- | --- | --- | --- | --- |
+| 2027-05-15 | 2027-07-03 | A1, A2 | A3, A4 | O1=P2 | 遡及訂正後でも6/1以前のA2は有効 |
+| 2027-06-15 | 2027-07-01 | A1, A2 | A3, A4 | O1=P2 | 当時認識のA2は有効、P2の兼務は二本 |
+| 2027-06-15 | 2027-07-02 | A1 | A3, A4 | O1=P2 | `known`切替境界で旧A2版を選ばない |
+| 2027-06-15 | 2027-07-03 | A1 | A3, A4 | O1=P2 | 同`validAt`でも遡及訂正でD1からA2が消える |
+| 2027-07-01 | 2027-07-03 | A1 | A3, A4 | O2=P3 | O1は終了境界、O2は開始境界。O2をP3のD1 Membershipへ変換しない |
+
+ここでのD1/D2は**閉じた合成Source・二時点に対する局所Expected**。実DBの完全集合・低権限Consumerへの開示・許可される承認者を示すものではない。`validAt=2027-06-15`・`knownAt=2027-07-01`のSource側Expectedと、Replica/Primaryの読み出しCohort/実Rowsetを同一視しない。
+
+### 10.3 最小の変異と既知の誤実装：ORG-TM-01〜08（追加実行NOT RUN）
+
+| Case | 単一差分・故意のMutant | 独立Expected／拒否する誤推論 |
+| --- | --- | --- |
+| **TM-01** | P2にA2(D1)とA3(D2)、同じvalid期間。`GROUP BY personId`で一行化 | **Person distinct=1、Membership occurrence=2**。兼務を1本へ消さず、本務も暗黙選択しない |
+| **TM-02** | A2の旧版/new版をknown境界7/2で同時採用 | A2は一つのOccurrenceで、選ばれる記録版は時点相対。二重Membership・二重FTEにしない |
+| **TM-03** | A2のvalid境界6/1をinclusive-endとして選択 | 現合成Referenceの半開規約では7/3認識・valid6/1のA2は非有効。別終端規約はOwner宣言とExpected変更を必要とする |
+| **TM-04** | O1(M1/P2)終期7/1とO2(M1/P3)開始7/1を重複／空白扱い | 合成半開規約では同じ瞬間にO2のみ。在任変更からMembership更新やGranted Principalを導かない |
+| **TM-05** | 変異O3(M1/P1, valid6/30〜7/2)を加え、O1/O2と実期間が重なる | **single-incumbent(M1,当該Role)がOwner受理済みなら衝突**。multi-incumbent受理済みなら両者保持。Rule不明なら`unresolved`で、先頭行を自動選択しない |
+| **TM-06** | 変異A5(P2,D1)をA2と有効期間重複で追加。IDはA5 | 異なるOccurrenceは保持。Primary/重複禁止/配賦上限の**対象Role・Source・基準期間**が不明なら不適合断定も自動dedupも不可 |
+| **TM-07** | 同じA2の競合版が**同一knownAt・同じSource権威範囲**で相反する値を持ち、優先順未定 | Source側の衝突を`ambiguous/unresolved`。ファイル順/最新時刻/DB行順で勝者を黙示確定しない。補正Priorityが受理された場合はその契約で再評価 |
+| **TM-08** | 部分Page／別knownAt Provider Cohort／隠れたMembershipで重複検査が0件 | 実際に読めた正の重複例は限定Witnessになり得るが、**期間内に重複なし**は当該Relation/Role/対象範囲/時間区間の完全Readが要る。0件を全体不存在と断定しない |
+
+特に**半開区間の点照会で数件PASSしても、時間区間全体について重複がないことは証明できない**。区間交差、記録版の共存範囲、Authority source別の優先規則、Read completenessを併せて比較する。相反する同時在任が判明しても、正式な業務制度が複数在任を認めるならその正例を過剰拒否しない。これらの変異とExpectedは既存合成Sourceを手で拡張する**提案**であり、正式Owner受理済みOracleやNative製品実テストではない。
+
+### 10.4 成立Claimと責任境界、実装順
+
+- **P0-M（意味・構造）**：現Native Dataで関係ID・属性・出典位置・時間情報の存在と欠落を一覧化する。`knownTo/validTo`・Occupancyの記録時点・Position移管履歴がない場合は`unsupported/unknown`とし、AIが期間終端やEmployment/Grantを補完しない。#2386/#1126/#2510のOwnerで、排他/兼務/Primary/役割ごとのルールは**受理待ち**。
+- **P0-T（独立Temporal Expected）**：既存`org-synthetic-r7`の5行の確定比較、TM-01〜08の単一因子Mutantと過剰拒否を#2510 Corpus/#2514へ引き渡す。Referenceの既存Node CIは固定コミットに限る。今回の8変異は新Node/Goで**未実行**。Scenario母集団、Known Mutantの判別力、Test C0/C1・業務Obligation Coverageを別報告する（#1180/#2514）。
+- **P0-R（実Read）**：#2586で実Function→Query→DB Instance/Provider→`validAt/knownAt`・Relation ID・actual Row+Field/Scope・Read Cohort→Consumerを一Attemptで観測する。現組織Case C1→D1も未接続であり、Source定義や合成as-of PASSで置換しない。実DBに有効期間を投入していないのにTemporal Queryを製品合格と主張しない。
+- **P0-C（接合）**：P0-M/Rと同じMeaning、関係Occurrence、valid/known、Owner受理済みRole・期間Rule、Producerの実完全性/Reader証拠、独立Expectedを一件ごとに結合。表示のGraph/Tree/SHOが同じでも、失われた多重関係・非公開Field・履歴は別のClaim（#3263/#2516）。
+- **P1（判断・作用）**：業務上の承認候補/未決Caseと、Tenant Private/Shared、現在Host Grant、Effect/Receipt/外部Handoffは別資格。P2がO1の在任者だった記録や新任O2から現Grantを推定しない（#1174/#1125/#2499）。
+
+**履歴上の状態訂正**：第9.4節の『#3353はDraft・未統合』は当時の記録である。[PR #3353](https://github.com/hat47x/tei-platform/pull/3353)は**2026-11-08 JST時点でmerged**。現main `internal/semantic/completion.go`に空Handoffで`HandoffConfirmed=false`なら`unverified`へ変更する限定修正が存在する。ただし`HandoffConfirmed`はCaller申告で、独立受領・実Provider集合の完全性・組織業務完了は未実証。既存第9節のP0-R→P0-Cを維持する。
+
+**採用・未検証の境界**：採用済みなのはADRに従う共通Data/Plugin/Host非必須の基本方針であり、本節の半開規約・Position排他/兼務制約・TM-01〜08は**参考合成契約／受入候補・Owner未受理**。固定Synthetic Reference/Native E1/Completion局所修正が存在しても、今回の時間重複の実Go/Node Mutant試行、実DB/Provider/Host/SHO、全体Owner Meaning受理は**NOT RUN**。新Org Temporal Engine／第二Grant／Root Registryを作らず、#1119のCritical Pathと現行mainを変更しない。
