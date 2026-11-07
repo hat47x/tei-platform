@@ -318,3 +318,67 @@ P0-MとP0-Rは別々に着手可能だが、P0-Cが成立するまでは同一�
 Itemの正式Role体系、Canvas API、Media clock実装、*.tei.md正式Grammar、Go以外のPlugin ABI、全Required Closure、AI未知Rule発見、実Target/HostとOwner Acceptanceは保留する。
 
 **この追補のEvidence ceiling**：既存チャット、GitHub Issue、mainの設計・実装記録に基づく文書更新のみ。新しいGo/PG/Studio/SHO/Browser/Harness実行や実Provider/本番Grant/正式Meaning受理は行っていない。各ClaimはOwnerのexact Source・Build・Run・Consumerと独立Expectedによってのみ昇格させる。
+
+<!-- design-intake-second-pass-20261108 -->
+### 14.7 P0-D：設計文書が管理されていても「設計として読めない」断絶
+
+前節のP0-Iは既存のStructured TEI Subjectを使う初回Readであり、通常の設計文書そのものをTEIが読む資格をまだ示さない。ドッグフーディング #3149 の新Issue [#3346](https://github.com/hat47x/tei-platform/issues/3346)では、docs/plan MarkdownをWorkspace sourcesへ追加してもmanagedFilesには列挙されるがreadByLoader:false、catalog/inspect/trace/source-indexで意味定義にならず、未知Rootのwarningが出ることが観測された。これは**ファイル不存在**でも**設計内容が空**でもない。「原文は管理Inventoryに存在するが、意味的な解釈経路はunsupported/not-loaded」を厳密に報告する。
+
+最初のP0-Dは、新しい汎用Markdown Parserや外部File Readerを追加する前に、既存Workspace Inventory/Source Reader・Source Index/Role Readerの到達可能な操作を調べる。原Byteまたは位置付きReadを既存契約から提供できるかを判定し、できない場合はそのReadability GapをJSONと人間向け要約に両方明示する。一般の `.md`（自由文書/Raw/SHO）、`*.tei.md`（TEI Authoring候補）、`*.tei`（旧Native Source）、`*.sql`（Native asset）の用途・管理Root・必要Readerを**拡張子による意味受理を伴わず**区別する。未整理Item/OKF ConceptをTEI定義へ強制Loweringしない。
+
+| 入力の例 | Inventory/保存 | Meaning/実消費 | 必要な限定判断 |
+| --- | --- | --- | --- |
+| docs/plan 内の自由Markdown | 管理対象となり得る | 現状、Loader解釈・design catalog到達は未成立 | #3346でread-only原文到達・unsupported診断を検証。無断で *.tei.md に改名しない |
+| 管理Root内の Required *.tei.md | 存在だけは取得できる | #3031の暫定Guardはunboundを拒否する候補。正式Parserではない | #2621/#2823でParser選択とRole/Spanの実消費まで停止 |
+| 旧 *.tei / 選択 *.sql | 現行Loader/Queryの各限定経路 | 実消費があっても受理済Meaning、Function→実RowsetやConsumer受領は別 | #2622/#2586の実入力Bytes/Scope/SQL選択を測定 |
+| OKF交換Markdown/未知タイプItem | 元形式で保管できることを優先 | Exchange形式適合とTEI Role/Meaning/Operation admissionは別 | #2619/#2621/#2516。未知type/追加属性/壊れたlinkを無条件にSyntax ErrorまたはTEI Meaningとしない |
+
+**読み取れることと正しいことの二段階では足りない**。ItemのRaw byte保管、Role候補、Meaning受理、適用先Function Context、実Operation、現在Grant、外部Sinkを各々独立に資格化する。非管理Draftの存在で必須SourceのLoaderを無条件停止する副作用も、必須Sourceを単に無視する動作も、Ownerの形式/Root Policy決定前に正当化しない。
+
+### 14.8 Design Contextの「虚偽の欠落」とJSON指紋・応答形式
+
+[#3345](https://github.com/hat47x/tei-platform/issues/3345)によれば、現行 `view -format json` の `semanticFingerprint` はApplicationが使用する名前空間だけの値であり、`catalog` 等の `worldFingerprint` と範囲が違う。値が異なることだけでVersion Driftと判定しない。一方、`view` にWorld/Source Index FPがない場合、**同一Worldの検証ができた**とも主張しない。#3345は同範囲の値を追加・明示するOwnerであり、本設計取込に第二Fingerprint計算器を作らない。
+
+[#3347](https://github.com/hat47x/tei-platform/issues/3347)のCLI JSONの診断二重構造、`result` 配列/オブジェクト、Builtinと利用者定義の混在、Schema版とLock版の差は、Raw Replyを**実Command＋mode＋SchemaVersion**とともに保持して扱う。初期Consumerが勝手に平坦化して意味を上書きせず、Command互換を守る正規化は既存CLI Contract Ownerへ戻す。
+
+[#3324](https://github.com/hat47x/tei-platform/pull/3324)と[#3326](https://github.com/hat47x/tei-platform/pull/3326)のTT-56案は双方closed/unmergedであり、両方の試験件数や成功をmain実装に加算しない。特に`source-index`のsubjectモードを全件Indexと誤認してRuleが不存在だと判定するのは**Consumerの誤り**である。必要Rule/Relationを独立Requiredとして先に固定し、要求に合うSource Indexモードで実Readして初めて「不足」を評価する。単一World FPの一致だけでは、全Rule/Relationの列挙、複数Replyの同時Snapshot、必要集合の網羅性は証明できない。
+
+用途相対の判定を次のように整理する（正式Schema名は未採用）。
+
+| Read/Requirementの状態 | 誤った結論 | 必須の扱い |
+| --- | --- | --- |
+| 原資料があるがReader未対応 | 対象自体が存在しない | unsupported/not-loaded、原資料参照は保持 |
+| ReadモードがRequiredと不一致 | Ruleなし | wrong-mode / inconclusive。正しいmodeで再Read |
+| Readは成功、独立Requiredが未定義 | 必須情報100% | denominator unknown。Complete資格なし |
+| Requiredは確定、Replyに必須Rule欠落 | 全情報取得済み | missing required。候補生成前に閉包保留 |
+| 別範囲FP・別時点を同一視 | 一致またはDrift | scope-incomparable。共通Revision/意味対象が必要 |
+| 非公開・部分/0行・Page末尾未取得 | 0件なので不存在 | withheld/partial/unknown。秘匿件数自体も無許可開示しない |
+
+この判定は#3262のContext QueryがOwnerであり、#2514の独立Expectedに対して**欠落を正しく発見するだけでなく、誤った不存在判定を抑える**ことを別指標で評価する。Partial Contextの`qualifiedTestGeneration=false`を変えない。
+
+### 14.9 read-onlyの意味、Providerと受信Sinkの効果を分離
+
+PluginとToolの宣言上のread-only、実argv/FlagによるFile/Network等のEffect、Tool受信者によるSession Log・ファイル保存・外部AI送出・再開時再提示は別の実際の経路である。mainに統合された [#3333](https://github.com/hat47x/tei-platform/pull/3333) の`view`書込Flag診断、未統合の[Plugin Offer/Binding計画 #3338](https://github.com/hat47x/tei-platform/pull/3338)、[OKFと情報流計画 #3329](https://github.com/hat47x/tei-platform/pull/3329)を参照する。Catalog上read-onlyでも実行VariantがFile Writeを選べば純粋Readの資格にはしない。ProviderがReadのみでもConsumerが永続化したり、前Sessionの内容を再投入すれば情報の移動が生じる。
+
+P0-D/P0-IのRaw Item取得は未信頼Sourceの文字列をデータとして扱い、そこに含まれた命令をTEI/AI/CLIの新しい権限として実行しない。原資料のRead、外部Reference解決、Preview、実Operation、Save、Export/Egressは別の明示Operationと現在Grantに従わせる。これは新Auth Engineの実装ではなく#2515/#2516/#1178/#951へ渡す検査である。未観測SinkやSession再提示について「漏洩なし」は推定しない。
+
+### 14.10 短期の引渡しと独立判別（#1180/#2514へ接続）
+
+P0-M三視点の先行作業やP0-R製品実Readを停止させず、**P0-D（設計文書可読性のGap表示）とP0-I（既存Structured Subjectの必要集合）を並走**させる。P0-Cで同じWorld/Revision/Scope/Consumer資格が揃った部分だけ昇格し、Raw文書をTEI Meaningにすること自体を全P0の必須前提にしない。
+
+| 反証観点 | 固定する条件と独立Expected | Ownerと現資格 |
+| --- | --- | --- |
+| DI-01 管理文書未解釈 | docs/plan RawがmanagedFilesに存在、readByLoader:falseでもnot-foundにしない。本文を見ずにMeaning成功を宣言しない | #3346/#2621。現状はGap観測、製品Reader未完成 |
+| DI-02 Authoring Admission | 同形の説明表/正式表、*.tei.mdのunbound、旧 *.tei の継続、原文byteとRoleの別Revision | #2621/#2823。正式Markdown Reader未実証 |
+| DI-03 Wrong-mode | subject Indexのみ→必要Ruleが欠けたように見えるケースと、indexモードでの独立Required全Rule照合を比較 | #3262/#2514。旧TT-56並行Draftは未merge |
+| DI-04 Fingerprint比較 | viewのnamespace FPとcatalog World FPを比較不可と診断。同Scope World/Index FPが取得できた場合だけ同版を評価 | #3345。新統一応答は未実装 |
+| DI-05 JSON互換 | diagnostics二重・result配列・Builtin混在を受信側が欠落/重複と誤変換しない。互換変更は契約版で区別 | #3347/#2605。旧Consumerとの回帰必須 |
+| DI-06 実Operation | Offer宣言はread-onlyでもwriteFlag選択/保存Sinkを別Effectとして報告。selected Provider B→actual A呼出を拒否 | #1251/#951/#2515。D1実Providerは未接続 |
+| DI-07 公開・再開 | Tool Replyが保存/再開時モデル入力に再出現、外部送出や権限失効の有無を別観測 | #2515/#2516/#2509。実H3完全受領は未資格 |
+| DI-08 意味上の閉包 | 同じRule/Relation/Sourceを保持し、Function Context→実Query/RowsetとModeler図/CRUDを同一Revisionで接合 | #3262/#2586/#1124。製品端から端はNOT RUN |
+
+**計測列**は、必要集合の出所と件数、実取得数、不足・誤不存在・false missing、正しいmodeへ到達する追加Read回数、World/Source FPの比較適格性、Tool Replyの完全受領、実Provider選択とInvoke一致、Consumer保存・開示状態、exact Source/Build/Run SHAと独立Expectedを想定する。数値は事前に閾値を創作せず、#2514/#2018/#2600の既存評価範囲へ渡す。
+
+直近の担当順は、①#3346の未解釈文書が「不在」でないことの正確なCLI診断、②#3262のRequired/Mode誤不存在と実Reader閉包、③#3345/#3347の比較資格とCLI JSON互換、④#2586実Readと#1124 Modeler read-onlyをP0-C接合、⑤#1251 Inspector実Providerの二Consumer、⑥#2515/#2516の受信Sink/外部開示資格である。重複する新Test SSOT/Loader/Hostは作らない。
+
+**本追補の検証限界**：2026-11-08時点のGitHub Source/Issue/PRと会話上の設計を照合した文書計画のみ。新Product CLI/DB/Studio/HTTP/SHO/OS/Egress/Harness試験はNOT RUN。公開合成と元Sourceの相互検証、OwnerによるMeaning採用、現Grant、正式Gateは未受理。
