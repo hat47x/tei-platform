@@ -2,7 +2,7 @@
 
 - 状態：2026-11-07時点の**Owner方針を反映した設計・検証計画**。実装・実Provider適合・Ownerによる個々の業務意味の受理は別。
 - 担当課題：[ #3270 ](https://github.com/hat47x/tei-platform/issues/3270)。
-- 関連：[製品要求](../../requirements/TEI_PRODUCT_REQUIREMENTS.md) RQ-001〜008・010〜011、[現状](../../docs/status.md)、[全体計画](../MASTER_PLAN.md)。
+- 関連：[製品要求](../../requirements/TEI_PRODUCT_REQUIREMENTS.md) RQ-001〜008・010〜011・035、[現状](../../docs/status.md)、[全体計画](../MASTER_PLAN.md)。
 - 既存の責務：#2619・#2622（Data Operations/Provider）、#1126（論理・物理Data）、#1803・#2482（DDL成果物）、既存Database Schema Diff/Migration、#1127（Data-first Function）、#2495・#2497（標準構造と投影）、#2506・#2507（Data Context/Pattern）、#1824・#1124（Studio）、#2387（Query/Lineage）、#1641・#1708・#2582（鮮度・Snapshot・再取得）、#951（Provider）、#1174・#2598（実Target/Effect）、#1180・#2514（Test/独立Expected）、#3267（検証済み構成BOM）。
 
 ## 1. 結論：データ管理と基盤運用を区別する
@@ -113,3 +113,74 @@ Workbenchが見せるSnapshotは**あるscope・時点の情報源からの観�
 - **新しく固定しないもの**：汎用Schema Core enum、Query Engine、Log Indexer、DBAサービス、Provider統合Host、共通分散Snapshot、第二キャッシュ/Resolver/Authority、正式CLIサブコマンド名。
 - **検証で否定された場合**：ログに必要な時点/Windowを標準構造で保持できなければログ用FacetをPluginへ局所化。NoSQL Native更新を共通化して意味・完全性を失う場合は専用Adapterを維持。新しい共通APIの実装費用が効果を上回れば既存Data Operationsのread-only Projectionへ戻す。
 - **完了の証拠**：実行環境・入力Source・Provider/Contract版・Expected版・Scope・使用したCLI/GUI・失敗・実DBに対する独立観測を、同一attemptとして辿れる記録。文書の採用と実動検証を混同しない。
+
+## 11. W0：既存実装の静的照合と最初の未接続箇所（2026-11-07）
+
+本節は現行`main`の**GitHub上で取得したコードの静的確認**。Goテスト、CLI実行、Provider実接続の証拠ではない。以前の設計案から実装可能性を推定するのではなく、まず実在する関数・経路を確認する。
+
+| 実装・入力元 | 確認できた事実 | 本WorkBenchの未成立条件 |
+| --- | --- | --- |
+| `internal/database/provider/provider.go` | `Provider.Introspect`は物理`SchemaSnapshot`を返す小さなDB専用SPI。Capabilitiesは`map[Capability]bool`で`metadata-read/query/data-mutation/schema-change/explain/transaction/cancel`等 | RDB以外のログ/クラウドSourceは本SPIへ無理に押し込まない。操作、実対象、Principal、版、部分保証の単位への適合は未確認 |
+| `internal/database/providers/postgres/provider.go` | `CatalogReader`経由で表、列、PK、UNIQUE、FK等を読む`Introspect`。Capabilityは固定真偽で返す箇所がある | 製品版/接続Instance/実権限で確かめたCapabilityとはまだ呼べない。実CatalogReaderの到達を別試験 |
+| `internal/workbench/database/model.go` | `Model{Schemas,Queries}`と、列、Query scope、Graph、Field、Lineage、Planの**派生投影**を定義 | 実際のProvider Row、ログWindow、Document、Function Data Contextへの一往復接続の証拠ではない。Workbenchモデルを正本にしない |
+| `cmd/tei/main.go` | `schema-diff`、`observed-index`、`workbench-model`、`desired-schema`、`plan-migration`、`database-reconcile`等の既存CLI分岐 | 各コマンドが存在しても、実Providerの`Read→Function Context→UI`、物理的Apply/再読取が一気通貫とは限らない。現行CLI contractの公開範囲も別 |
+| `internal/database/schemadiff/diff.go` | Create/DropTable、Add/Drop/AlterColumn、PK/FK/Index、`UnresolvedComparison`の区別 | 静的Diffは実DB上のデータ損失影響、適用権限、Migration Historyの完全性を証明しない |
+| `internal/database/migration/plan.go` | `Plan`と`PlanPostgresWithObservation`が存在し、StepVerifyは再観測を要求する説明文 | 宣言されたVerify Stepの存在と、適用後の独立実読み取りは異なる。破壊的変更時の観測付き経路を実CLIと照合する |
+| `internal/database/migration/history.go` | `AppliedUnknown`を表現できるが、`CompareHistory`のswitchは`failed`でもchecksum差異でもなければ`RepoApplied`に到達し得る | **既存[#2892](https://github.com/hat47x/tei-platform/issues/2892)の既知未修正候補**。W2の適用済み判定・無再送判断に使う前に該当Ownerで反例試験と修正資格が必要 |
+
+**W0の判定**：RDB物理Schemaの観測・Diff/PlanとWorkbenchの派生投影はすでに存在する。一方、一般Data Sourceからの`Declared Read → Actual Acquisition → Disclosed Output`と、Function Data Context→表現型→Action/Effectの通し資格は確認できない。**最初の不足一辺は「実データの取得結果を、取得scope・完全性・Identity・Provider/版つきでFunction Data Contextへ渡す境界」**として#2586と照合する。現行コードだけでは新CLIコマンド、NoSQL Provider、ログReader、MCP、Studio完結画面が動作しているとは言えない。
+
+## 12. 横断Traitと表示・編集・実行能力の分離（設計案）
+
+[#3027](https://github.com/hat47x/tei-platform/pull/3027) の`Trait Definition → Intent Claim → Observation → Assessment`を再利用し、Providerの実行能力と、データ構造が満たす性質を混同しない。Traitは可能な限り**原子的な責務**とし、合成時のRequires/Conflicts/Implies等の制約は既存Plugin/Contract/Resolverで解決する。現段階で正式なTrait新Core enumや合成文法を固定しない。
+
+- **Structure/Meaning Traits**：`HasStableIdentity`、`OrderedEvents`、`SupportsMissing`、`HasDeclaredSchema`、`VersionedResource`等は対象データの性質候補。少量のログ例、文書サンプル、列名の一致から保証を推定しない。
+- **Operation/Provider Contracts**：`CanReadRange`、`CanPatchField`、`CanCreateSchema`、`CanDropTable`、`CanResumeCursor`等は実装と適合試験を要求する契約候補。明示されたTraitが具体的な実装・検査義務を生む場合、未提供の実装は診断する。単なるHintは別Roleとして表示し、実装・保証へ昇格させない。
+- **Presentation Suitability**：Table/Tree/Graph/Timelineはデータ形態に対する表示適合の候補。Function内のInstanceだけがData ContextのRole・粒度・範囲に結び付く。Tree表示可能≠Tree編集可能、Graphの線≠実Edge identity。
+- **Execution Qualification**：Trait合成・静的コード・Capabilityの広告は現在のHost Grant、実Providerの保証、権限、過去のReceiptの代替ではない。
+
+第一の比較は**Provider Aは限定PATCH、Provider Bはfull replaceのみ**、かつ部分取得・非開示Fieldを持つ同一Documentで行う。Aの限定更新だけを候補とし、Bに暗黙の全置換を生成しない。これは新Trait Frameworkの実装着手ではなく、既存#951/#2622/#2507/#2495の境界で有用性を検証する受入圧力である。将来のVerified Composition BOMは各exact Provider/Contract/Trait/Target tupleの適合証拠に限る。
+
+## 13. GUI/CLI/MCP・Decision Graphの同一操作モデル（設計案）
+
+先行するDesign Context Query [#3262](https://github.com/hat47x/tei-platform/issues/3262)を用いて、Schema/Function/Source/Requirement/Test/Provider/Capabilityを、**対象・依存閉包・Version・開示範囲に相対して**読み取る。CLIのread-only広告と実引数によるeffectは別途検査し、MCPはCLIの別入口に留める。Read結果は全件の自動展開ではなく、固定scopeのページング・分割応答・end marker・Tool側の完全受領を区別する（途中切断を成功0件にしない）。
+
+更新・DDL操作は、HTTPレスポンスの例外フローを含む一般OperationのDecision Graphから同じMeaning/Outcomeへ接続する。**Request受付／入力拒否／権限拒否／Provider実行／結果不明／Receipt／独立再取得／UI再表示**を別ノード・エッジとし、Graph/Table/Markdownは同一Decision/Result構造の投影とする。
+
+| 操作結果 | UI/CLI/MCPへ表明できること | 禁止事項 |
+| --- | --- | --- |
+| proposed/plan-only | 対象候補・変更案・リスク・要求Grant・Source/Actualの版 | 「適用済み」表示 |
+| rejected/unsupported | 原因、拒否した段階、再検討可能な代替 | 故障/空集合/無変更への変換 |
+| dispatched/unknown | OperationID、最後の確実な状態、調査可能なReceiptキー | 盲目の再送、現在値の一致から当該実行の確定を推定 |
+| receipt-observed | 実行のReceiptを独立照会できた範囲 | 業務上正しい結果や現在状態を無条件に確定 |
+| resource-observed | 別Readerで確認した対象・Scope・版・値 | 異対象や別時点へ無断一般化 |
+
+既存#1174/#2598/#1043/#1656がOutcome・Request/Effectの責務を持つ。Workbenchが第二のHTTP/Error/Recovery Engineを提供しない。特にDDLの外部破壊的適用や本番配備は既存ADR-0035のA4境界に従う。
+
+## 14. テスト生成と品質判定への接続（計画、未実行）
+
+最小の自然言語指示「このデータソースの設計と操作可能性を検査」から、**Design Context Query→必要な正本・観測・Capabilityと依存集合→既存Scenario/独立検証基準→テスト候補→実行→不足Coverage表示**へ接続する。生成AIはExpectedを実装出力から逆算しない。事前にC0/C1の対象母集団と対象Operation/Graph edgeを定義し、未知の分岐・未実装経路はカバレッジ0として可視化する。機能要件とNFR（応答時間、Provider API費用、転送量、Rate limit、メモリ、機密開示）は別のカバレッジ軸に置く。
+
+| ID | 独立判別入力 | Expected・Coverage |
+| --- | --- | --- |
+| WB-15 | Advertised `schema-change=true`だが対象Instanceの権限なし | Capability宣言と現在の実行可能性を分離。拒否経路C1 |
+| WB-16 | 同じDocumentでPATCH可能Provider vs full replace専用Provider、秘匿Fieldあり | Aのみ限定PATCH候補。Bはunsafe/unsupported |
+| WB-17 | Log Window 1の0件とNext cursorが残ったWindow 2 | 0件を完全集合としない。Request/Actual/Disclosed集合の差を説明 |
+| WB-18 | CLI結果が途中切断、Studioは同じSourceを最後まで受信 | CLIがexit0でもcompleteにしない。分割Part/end markerと対象版を検査 |
+| WB-19 | Event timeとIngest timeが逆転し、2 Sourceの時計がずれる | 到達時刻順と発生順を混同せず、因果断定しない |
+| WB-20 | Trait「CanDropTable」宣言あり、実Provider実装/試験がない | 実装義務未充足。単なるHintなら実行Capabilityとは扱わない |
+| WB-21 | 同一モデルをTableとGraphに表示、Graph線を削除 | 実Relation storage/Owner/Versionを特定できなければ編集Intentを拒否 |
+| WB-22 | 同一Sourceを更新後、旧Schema SnapshotがCache hit | 古いSnapshotをCurrent Actualとして採用せず再観測を要求 |
+| WB-23 | DDLが送出済みでACK喪失、独立観測で同名Tableを確認 | 当該Operationの成功因果を推定せず、Receipt/History unknownと次の検査を表示 |
+| WB-24 | DB管理者のユーザー作成要求と、開発者のCREATE TABLE要求 | 前者は標準外、後者は標準Plan/実行適合対象。Operationごとに判定 |
+| WB-25 | 同じFilterのProvider pushdownとローカルfallback、取得対象に非開示Field | silent all-readを拒否。物理Read・開示・費用を個別に検査 |
+
+**C0基準**：接続、観測、計画、試行、失敗/unknown、再取得の各処理ノードへの到達を記録。**C1基準**：権限失効、Provider unsupported、履歴unknown、部分取得、破壊的変更、Receipt不明、Scope/Version不一致、Native QueryのFallback判断を分岐として分離。完全性を示す母集団が不明な箇所は「未評価」とし、実際のカバレッジ率を捏造しない。
+
+**最短で実行可能な作業単位**は既存#2892のHistory負例（担当Owner）と、#2586の実Provider読取りの不足一辺、#3270のW0証拠束縛。独立Expectedは#2514、テストScenarioは#1180、テストPattern推薦は既存テスト計画、変更影響の差分試験は#2582へ渡す。合成Fixtureが通っても実Provider・MCP・GUI・本番操作の資格には使わない。
+
+## 15. 次の計画判断と非目標の再確認
+
+W0の静的コード照合は本書へ記録したが、**実行コードと同一attemptのProvider/Host/Consumer証拠**はまだない。新しいProvider全種類の実装前に、既存PostgreSQL ReaderのActual Row→Function Data Context→read-only Tableの一本の経路を最初の統合試験として検証する。並行して、既存Schema Diff/MigrationはPlan→Disposable DB Apply→独立Schema再観測を別の受入系列に置く。次にJSONLファイルを異質な第二Sourceとして固定し、NoSQL/クラウドAPIは能力差・部分性の実証へ段階的に広げる。実DBに破壊的適用を伴う試験は隔離DB限定とし、外部本番効果は別の権限・承認を要求する。
+
+合否は**契約の複雑性を増やした費用と、既存Capability/型/Source/Projectionだけでは検出できなかった負例の改善**で判断する。新抽象の費用対効果が確認できなければProvider局所実装に戻す。正式なQuery統一文法、巨大な汎用ログ検索サーバ、第二のSchema/Cache/Evidence/Authority基盤、DBA領域の追加は行わない。
