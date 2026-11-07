@@ -791,4 +791,6 @@ Source/Authoring Graph → Resolved/Lowered Graph → Targetの実行・観測�
 
 **閉域型との独立条件**：`semantic.Type.Values` は宣言された候補値を保持し、`validation.Validate` は空/重複値を診断する（#2495のclosedness研究に接続）。ただし宣言した値集合と、実Provider行・生成Target・別Schemaの受理値域が一致することはこれだけでは証明されない。Enum/MECE、同一primitive、Sourceの同一Hash、現在のAuthorityを自動的に相互保証へ昇格しない。値を取得できないときの`unknown`と、実在する値の明示的な契約違反を区別する。
 
+**限定的な追加反証（実装観察）**：現`internal/validation/attribute_role_type.go`の`primitiveOf`はAliasの終端`TypePrimitive`の**Type IDの末尾セグメント**を`primitiveFamily`として返す。合成IRに`external.decimal`という別NamespaceのPrimitiveを投入した場合、`tax-value`の要求`decimal`と文字列比較上は一致し得る。これは`std.decimal`のTrusted Standard PreludeやProvider契約との同一性を証明しない。現Workspace Parser/Source ReaderからこのIRが到達可能か、外部プラグインが固有Primitiveを正当に提供可能かは**未確認**。#951/#2620のOwnerで`std.decimal` Alias正例と`external.decimal`の合成負例を比較し、必要になった場合のみQualified Primitive/Provider出自の最小検査を提案する。末尾名だけの一致を本番Conformanceに昇格しない。
+
 **停止線**：#3308のprimitive照合を新しいRole Registryへ複製せず、#3318の正常系を実DB/Production資格へ拡大しない。標準化判断は、少なくとも一つの非画面Data Consumerと一つのTarget再実現Consumerで同じ意味上の不足が独立に再現された場合に限る。ここでのETL/Target/Owner Acceptanceと実Source改変の再Loadは**NOT RUN**。
