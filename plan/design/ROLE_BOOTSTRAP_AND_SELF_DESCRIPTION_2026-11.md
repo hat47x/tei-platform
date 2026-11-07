@@ -893,7 +893,7 @@ Data Topology（Entity/Relation/Graphのidentity/cardinality/時点）、Interpr
 
 ### 18.6 実行に向けた最短順序と採用条件
 
-- **P0（現在の不足を狭く確認）**：§17のsales.order元Source/派生Role Sourceを使い、ESD-25（source-index Mode/必要Rule）、ESD-27（Current/Unchecked）、ESD-20（無Role Sourceの正例）を、既存実CLIと独立Requiredで先に調べる。現実のRole Interpreterが無ければunknown/unsupportedを正しく返すところまでを受入とし、新Meta Parserや万能Item Handlerを作らない。
+- **P0（現在の不足を狭く確認）**：§17のsales.order元Source/派生Role Sourceを使い、ESD-25（source-index Mode/必要Rule）は既存実CLI、ESD-27（Current/Unchecked）はmain統合のread-only Drift Reference（実Product CLIの既定契約とは別）、ESD-20（無Role Sourceの正例）は公開Raw Sourceの独立Readでそれぞれ先に調べる。現実のRole Interpreterが無ければunknown/unsupportedを正しく返すところまでを受入とし、新Meta Parserや万能Item Handlerを作らない。
 - **P1（Role合成の成立を反証）**：ESD-21/23および既存ESD-15/16のRole Application/Atomic Traitを同一Subject/Scopeで検証。現Attribute.Roleの単一値から複数Roleの自動選択を推論せず、明示Role Application Relationが必要かを既存Semantic/Graph/Contract上で比較してから採否を判断。
 - **P1（複数表現・編集）**：ESD-22/24/28は#2497/#2621/#1124と三視点Ownerに委ねる。Functionに配置されたRepresentation Instance/Bindingと、同Itemの複数View Occurrenceを区別。UI上の同一表示・図の一致から意味・出典の完全性を主張しない。
 - **P2（実操作とテスト生成）**：ESD-26/29を#951/#1174/#3262/#2514の既存実Provider/Scenarioへ接続。CLI/MCP/Studioは同じread-only Design Context/Contractを投影するが、現時点で未実装のToolをあると広告しない。外部Harnessのpage/end/Reply digestの完全受領を別に観測。
