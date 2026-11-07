@@ -1105,6 +1105,8 @@ Pluginに内包するAgent Skill/Toolを選択する場合、`Accessible`、実`
 
 複数の表現型を同期する場合、表示のSelection/epochとDomain Subject/Relation occurrence、Data取得集合、Update Intentを別に検証する。未取得/部分取得/秘匿のDataを空集合で補完したり、UI上の選択変更をDomain Source Mutationとして自動保存したりしない。Mappingの正式な受入は#2507/#2506/#2514、媒体/時間軸・複数画面の詳細は#3192/#3222/#3225へ委譲し、このPlugin設計内に第二のUI Binding SchemaやOwner Meaningの正本を作らない。
 
+**三要素CRUD・Cross-referenceへの接続**：[Project Plugin Compositionの型付きCross-reference追補](PROJECT_PLUGIN_COMPOSITION_DESIGN.md)では、Plugin選択・実呼出しのRelationと、三要素分析法Data/Function/Businessのdirect CRUD／derived effective effect／observed operationを、同じ標準Relation occurrenceからGraph/Table/Matrixへ投影する最小検収を定義する。図上の一本のEdgeから原Sourceの複合変更・実Grant・CRUDを推論せず、表示Occurrence→qualified Relationの逆参照、public Slice/Source/時点・変換Lossを保持する。Method固有の意味は三要素設計と#1124/#1126、対応写像は#2497/#2507へ委譲。新Graph Core/Matrix SchemaやHostは追加しない。
+
 **Plugin構成の標準表現への具体化**：[Project Plugin Compositionの2026-11-07追補](PROJECT_PLUGIN_COMPOSITION_DESIGN.md)では、Plugin/Contract/Provider/Bundle/Selection/実Build/Invocationを既存Record/Relation/Collection/Graphから投影する。Graph/Table/Tree/Matrix/Timelineは標準表現型として再利用し、Graph layoutやDragを契約/権限の更新へ自動昇格させない。接続の多項関係は既存Record＋Relation集合で表現し、新Plugin Graph Core型・専用Rendererは作らない（#1016/#2497/#2507）。
 
 **状態と未決**：§23.6〜23.8は既存の限定実証をmainの計画へ接合した設計追補。D1 Provider Bの実静的Link/Invoke、Source閉包の外部Module受入、OS/Network全経路の隔離、標準表現型の実Target・UI/DB縦断、Owner意味受理は未実施／未採用。#3217はmainへ統合済み（ただし`qualified:false`）。#3222/#3225/#3162のOpen Draftは未統合として扱う。
