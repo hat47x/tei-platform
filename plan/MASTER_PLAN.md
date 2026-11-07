@@ -366,6 +366,18 @@ AIの自律的な作業と実行権限を区別します。AIがツールを直�
 
 **後続Plugin/Consumer**：[main #3334](https://github.com/hat47x/tei-platform/pull/3334)の税・為替・採番・休日DataのApplication/Studio投影は実装済みだが、行取得/実DB Bind・Wails E2Eではない。[Draft #3292](https://github.com/hat47x/tei-platform/pull/3292)のInspector一機能で選択Plugin/Providerと実Loaded/Invoked Provider、CLI/Studio二Consumer、Current Scope/Independent Expectedを別々に確認。Studio ABAの[Draft #3327](https://github.com/hat47x/tei-platform/pull/3327)は旧UI応答を採用しない2件の局所成功だけで、Hostの旧Effect取消ではない。Verified BOM/Workbench/Cache/OKF/図面はP0-CのHard dependencyにしない。**今回の変更はDocs/Planのみで、新P0-A/B/C、実Provider・正式Owner受理・Host E2E・C1はNOT RUN**。追加Runner/第二Scenario/Registry/Hostなし。
 
+### TT-56の二候補を一本化し、実Capability選択とBuild主体を分離する（2026-11-08）
+
+[AI-first資格・実測対応§9](design/AI_FIRST_QUALIFIED_INTERFACE_CURRENT_MAIN_2026-11.md)に、**Draftの二つのTT-56実装候補を統合前に一本化する**採否手順を記録した。[#3324](https://github.com/hat47x/tei-platform/pull/3324)は必要な一Ruleの`inspect-validation`/Canonical Attribute/Relation/Source Anchor、[#3326](https://github.com/hat47x/tei-platform/pull/3326)は独立Required 3 Ruleと`source-index` **indexモード**の全件照合を実装候補とする。**両PRの最終固定HEADで、専用Dogfood／Repository Health／依存チェック3系統ともcompleted/success**（#3324 CI #42385606408/#42385606448/#42385606458、#3326 CI #42385726717/#42385726733/#42385726722）。ただし**Draft未マージ・合体HEAD未試験**。#3262を唯一のDesign Context Required/Observed Ownerとし、#3326の独立Required集合＋#3324の特定Rule/Relation/属性/Source Spanを重複なく一つの検証へ照合する。必須でないRuleの省略は正例に残し、重複Caseを二重計数しない。連続するCLI readは原子的Snapshotの証明ではない。
+
+**P0の次の順序**：① #3262でRequired 3 Rule全件Indexと一Rule詳細を実CLI/Source版/返却byteで確認、合同HEAD・main pushは別CI。② #2509/#2515/TAI #168で独立Expectedへの物理アクセス拒否、Tool Reply終端・実argv/Session Log Egressを確認。③ #3273/#1180/#2514でAIが未予告Gapから独立に新Candidateを発見したか**T1-B盲検**を測る。#3304の既知行番号0 T1-A成功を再利用しない。Sourceが`partial`なら可観測Scopeの探索に限り、`qualifiedTestGeneration=false`のまま。不適格なRuleやTool全体を不可視のまま合格としない。
+
+**選択・起動・Buildの実証差**：[main #3337](https://github.com/hat47x/tei-platform/pull/3337)の参照Capability Coverageでは12宣言中6件が**その参照方式では未選択**。後続[Open #3350](https://github.com/hat47x/tei-platform/pull/3350)は既存`SupportsDatabaseProvider`の技術名対応を使って未選択を4件とする改善候補で、現main結果とは異なる。**Declared→Selected Capability→実Plugin Loaded/Invoked→Provider/Consumer適合**は別資格。未選択は必ずしも欠陥でなく、選択済みも実装・権限・BOM合格ではない。[main #3336](https://github.com/hat47x/tei-platform/pull/3336)の子Build駆動記録はInvoking/Invoked executable digest・argv/exit・実Artifactを区別するが`l3Claimed=false`／Source Closure未資格。Plugin-first Inspectorの実Invoke（#3292）とSelf-Build L3（#2831）は後続別検証で、**T1-B開始条件にしない**。
+
+**Tool/標準Dataの横断反例**：[main #3340](https://github.com/hat47x/tei-platform/pull/3340)の`-h` Value/Default とDiscoveryの同一変数化はTool説明の整合改善。実Flag許容・writeFlags #3333・OS/Network送出は別。標準Dataの[main #3343](https://github.com/hat47x/tei-platform/pull/3343)では複数Calendarが一Holiday Dataを共有できるが、Calendar省略の曖昧Readは拒否。**同じData ID／件数でも選択Contextが違えばProviderの実Sliceは別**とする。実DB Row、Studio実Provider、業務完了は未実証。
+
+**新たな実装・試験の上限**：今回の変更は本計画とAI-first設計のDocs更新のみ。合同TT-56、T1-B、比較適格H2/H3、実CLI/Studio共通Provider、Go L3/外部Host/Owner AcceptanceはNOT RUN。新Runner/第二Test/Resolver/Hostを作らず、既存Draftの採否・main追随は個別Ownerが担う。
+
 ## 作業領域I：周辺技術との連携と本番運用の境界
 
 ### 目的
