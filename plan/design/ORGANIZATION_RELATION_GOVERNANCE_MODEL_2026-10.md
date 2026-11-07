@@ -3692,6 +3692,18 @@ where case_id = :case_id
 
 **実装優先**：現mainにCase Query/Mappingがまだ入っておらず、Org `org_view`のBrowse Patternもないことをまず欠落事実として記録。これらを単純に新Core/Query Engine不足と同一視しない。#2586がProduct読取入口・統合証拠、#2506がFunction Context、#2611/#2622がTarget・Provider、#2386が組織意味とCase扱いのOwner。現`*.tei`の一件を先に扱い、新`*.tei.md` Parserは#3030/#3031に委ねる。**本追補はSource-staticと計画の更新のみで、新Go/SQL/DB/Consumer E2、旧#3024の再実行、Owner受理・閉鎖PR再開はNOT RUN。**
 
+#### 84.5.1 Sourceの論理Workspace・物理Root・利用資格を別々に検査する（他チャットのHarness/Source負例、採用前）
+
+第84.5節で定めた Org Native `Source→Application/Query→Function→Provider` の未接続辺に対し、**論理Workspace IDと、実際に読んだ物理root/Sourceが同じであるとは推論しない**という事前条件を付ける。これは§70〜73のTenant/Provider Scopeや第84.8節のRowset完全性とは別の境界。参照例は[#2823](https://github.com/hat47x/tei-platform/issues/2823)のmanifest Sources実読込診断、[#2017](https://github.com/hat47x/tei-platform/issues/2017)のHarness許可read/egress境界、[#2605](https://github.com/hat47x/tei-platform/issues/2605)の実CLI/Source provenance、[#2516](https://github.com/hat47x/tei-platform/issues/2516)の異Consumer開示資格。現TEI Org Providerに物理root越境バグがあるという断定ではない。
+
+| 最小対照 | 独立Expectedと採用停止 |
+| --- | --- |
+| **ORG-SRC-01 論理ID同じ・物理Root別**：Workspace `org_view` の名前や宣言内容は不変、許可されたRoot Aの代わりに別Root Bへ実Loader/Toolが向く | `workspace ID`／Manifest名／検査済みFingerprint一致だけを実読込root資格としない。実解決されたroot/realpath・Source locator、実消費内容/版と呼出主体のread scopeを別観測し、許可外Sourceは利用資格なし |
+| **ORG-SRC-02 移動と同名異内容**：Org Modelを移動・同名の別内容で置換、またはA→B→Aでbytesだけ戻る | Source identity・意味受理・旧Query/Function/ConsumerのEvidenceを一括流用しない。実消費時のSource位置・版・Owner受理と必要依存を再照合。再取得に失敗した場合は`unverified`、実際に許可外読取なら`denied`／isolated |
+| **ORG-SRC-03 意味は同じ・物理Provider別**：C1/D1のNative Modelは同一、Data Source alias/Provider・Tenant/実DB targetが変わる | 物理Source適格性だけでは実Provider Row C1の同一性やRead Grantなし。同一AttemptのProvider selection・actual SQL/bind/read scope・row identityと現在Consumer Disclosureを別資格で検査 |
+
+初回は**Source-static/read-onlyの対照票だけ**を#2823/#2605/#2586の既存Ownerへ渡し、新Source Registry・新隔離Runtime・新Org認可層を作らない。Harness側の許可範囲と本番HostのGrantは別仕様であり、一律のパス制限をすべてのTrusted Scriptへ課す提案でもない。実Source Root置換のOrg Workspaceテスト、実Provider E2、Owner意味受理は**NOT RUN**。
+
 ### 84.6 標準データ構造×標準表現型を組織Function内で検収する（2026-11-07、他チャット横断・正式契約採用前）
 
 #### 意味トポロジー／表現型／Function所属の三者を区別する
