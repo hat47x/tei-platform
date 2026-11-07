@@ -826,3 +826,76 @@ C0/C1は各Obligation/実到達分岐を分母にする。Candidateを評価す�
 | P2 | #2516/#1124/#2831 | 同じMeaningをStudio/SHO/実Targetに投影し、Consumer完全受領とBuild L1/L2/L3を別実証 |
 
 **今回のEvidence**：他チャットの成熟設計と既存GitHub main/公開Draft Sourceの静的照合、この計画追補のみ。新Go/Node Test、実Role Provider、実CLI/Studio共通呼出、Authoring Service Carrier実現、正式Markdown Reader、Owner Meaning Acceptance、External Host Effect、全体Self-buildは NOT RUN/NOT PROVEN。必要情報が欠けた場合に unsupported/unknown/partial と答えられることを、無理に実装成功と扱うより先に受け入れる。
+
+---
+
+<!-- tei-role-application-occurrence-obligations-20261108 -->
+## 18. 2026-11-08：Raw Item・複数Role・表現Occurrence・実行Variantを自己記述の独立関係として検証する
+
+**状態：設計・受入案。ESD-20〜29はすべてNOT RUN。** §17のESD-11〜19を置換せず、他チャットのSUI Item/Canvas、標準表現型、TEI三視点モデル、テストT1、CLI EffectとDriftの実観測を受けて追加する。これは新しいCore Itemクラス、固定Role enum、Canvas Engine、Source Writer、Test SSOT、認可Host、汎用Meta Interpreterの採用ではない。
+
+### 18.1 Everything is Dataは「未整理でも保存できる」が「自動的に意味受理・実行できる」ではない
+
+未整理の自由文章・未読ファイル・曖昧な断片を、Raw Source/Item相当の標準構造として保持できる方針を検討する。分類不可・Plugin未選択・情報不足を保存失敗の理由にせず、保存・読取り・Role候補化・正式な意味受理を別の状態にする。Raw ItemをProductの新しい永続Core型として先に決定しない（SUI側のItemモデルは他領域に有用な圧力事例でありTEI Kernelへそのまま移植しない）。
+
+- **Task / Action / Eventは固定の排他Item型ではなく、明示的に適用する意味Roleの候補**。Task＝予定/実施対象、Action＝操作意図と入力/対象、Event＝時点や根拠を持つ出来事の記録、という相違を独立Contractとして検証する。Taskがあることから実行可能Actionを自動生成しない。Event観測と未確定Effect/Receiptも混同しない。
+- **Role DefinitionとRole Applicationを分離**。前者は適用規則/Required Shape/Contract、後者はsubject/use-site/scope/Role version/Source occurrenceへのBinding。Role候補ラベルが存在してもProvider実装・Owner受理・Operation Offer・Host Grantを付与しない。
+- **Atomic TraitはRoleと別の履行義務**。Role適用の後で必要なTraitが明示された場合のみ既存#3278/#951でFulfillmentを検証する。Hintや読みやすい自然言語説明から暗黙にrequired履行へ昇格しない。
+- **専門家の認知順を守る**。日常のDSLにGoのstruct/func/importやPlugin内部Fingerprintを露出する必要はない。Markdown表/短い式はAuthoring Projectionであり、Source locator・独立Meaning/Provider Pinは既存検査層が保持する。Go AST/コード生成の都合を主構文決定基準にしない。
+
+### 18.2 四つのIdentityと三つのTopologyを横断する（新しい正式Schemaではなく検収票の列）
+
+| 関係 | 必須の区別 | 同一性の誤認を拒否する例 |
+| --- | --- | --- |
+| Subject Identity | 同じItem/Entity/Model subjectを指す安定Identity | 文字列が同じ別SubjectをAIが黙って統合 |
+| Source Occurrence | 原文Document Revision・byte位置・Container/Anchor | CRLF/BOMや文書移動後に旧byte spanをCurrentと誤認 |
+| Role Application | 同一Subjectへの用途別Role/Contract/Scope/適用Source | 単一属性への重複role Optionを正式な複数Role Bindingとして後勝ち採用 |
+| View Occurrence | Canvas/Tree/Diagram/SHOに置いた表示のID、配置・表示範囲・Disclosure | 一つのItemを二Canvasへ置くとSubject/Actionが二重生成される |
+
+Data Topology（Entity/Relation/Graphのidentity/cardinality/時点）、Interpretation Topology（Role/Operator/Pluginのeager/deferred依存）、Representation Topology（Function所有の表現InstanceとData Contextの明示Mapping）は独立。Graph→Tree、同Subjectを二Canvasへ配置、同CardのTitleだけ表示、SHO Markdownで省略する場合は、落ちた辺・隠れたSource・未取得部分を逆投影で補間しない（#2497、Draft #3303/#3263）。一方、純粋なレイアウト変更を意味・Rule・Target再生成へ機械的に直結させない。Sourceを編集するには元Occurrenceの一意性・Current Revision・対象Binding・逆写像可能性を別に満たす。
+
+### 18.3 Self-descriptionの等価性は一種類ではない
+
+| 比較 | 主張できる同一性 | 主張できない同一性 |
+| --- | --- | --- |
+| Source raw bytes一致 | 固定Encoding/line endingの原文一致 | PluginやOwner Meaningの同一性 |
+| Parsed/typed構造一致 | 既存選択済LanguageとType契約の下での候補一致 | 正式受理済みMeaning/Use-siteの一致 |
+| Accepted Meaning一致 | 指定Owner/Scope/Revisionの意味受理 | Source occurrence/実Target/現在Grantの一致 |
+| 実Provider結果一致 | 当該入力とAttemptのResult一致 | 選択ID/実呼出Provider/Effect履行の一致 |
+| 公開Projection一致 | 当該公開Consumerへ見える同一出力 | 見えないSource/Relation/全Requiredの不在 |
+
+必要に応じて内容ハッシュとSource Reference位置を別追跡する。A→B→Aでも過去Reviewの現在資格を自動復活させない。§17/Role Descriptor・Traitの改版条件を再利用し、中央Global Revision Counterを増やさない。
+
+### 18.4 直近main/PRから取り込む三つの実装上の教訓
+
+1. **Read Modeは契約の一部**：#3262の実CLI9応答を使うConsumerで、source-index全体モードとsubjectモードなど異なるOutput shapeを取り違えると、Required Ruleが実在しても誤ってMissing判定する。Draft #3324（1 Rule/subject照合）とDraft #3326（3 Rule/full-index照合）は異なる提案で、双方の個別CIが成功しても一体Context Readerの実現・同時merge適格ではない。Role/Descriptorの『無い』もMode、Scope、Pages/End、Read-by-Loader、Parsed/Consumed/Disclosureの一致で判定する。
+2. **CLIのEffectはCommand名ではなくInvocation Variantに依存**：#3182/#3302のview -executeは、read-only Discoveryに見えるCommandのOptionでローカル書込みを起こせる圧力例。#3302はclosed/unmerged。自己記述されたCapabilityのread-only表明を、すべてのFlag/操作へ普遍化しない。実オプション・選択Offer/Provider・Actual Effectを別に評価し、Toolを生成AIが自動実行してよいかはHost現在資格で判定する。
+3. **Operationが『current』なのは入力比較が成立した限定範囲**：main統合 #3325 のread-only Drift ReferenceはWorld/ModelRev一致=current、差異=stale、必要値を指定しない場合=uncheckedを区別する。basis文字列一致だけで属性変更を検出しない。過去のRole/Operation Previewを後続のBuild/Dispatch/Saveの現在資格と扱わない。
+
+加えてmain統合 #3304は、既知の行番号0 Ruleを既存Pinned実CLIで判別するT1-Aの有限実証。未知のRuleをAIが発見するT1-B、Roleの必要閉包、C1/NFR、Owner受理とは別。Source→Role→Expectedを同じ生成AIの自己申告だけで正当化せず、#2514の独立Expected・Mutantを検証基準にする。#2497で確認したSHO消費のWindows CRLF変化も、同じ表示と原Source byte/Anchorが異なる実反例として使用するが、TEIの正式Markdown Writer/Readerが成立したと主張しない。
+
+### 18.5 追加の独立判別 ESD-20〜29（すべて提案・NOT RUN）
+
+| Case | 一軸だけ変える | Expected / Owner |
+| --- | --- | --- |
+| ESD-20 | 未分類Raw Itemを読み込み、明示Role/Contract無し | Source保存・読取りは可、Role Candidate/正式Meaning/実Actionは自動生成しない。#2620/#2621 |
+| ESD-21 | 一SubjectへTaskとEventの役割候補を追加 | RoleごとのRequired Shape/時点/根拠を区別。Task＝実Action実行資格、Event＝Receiptと推論しない。#2620/#2507 |
+| ESD-22 | 同じSubjectを二Canvasへ出し、一方の配置だけ変更 | Subject/Meaning/Task/Actionは1つ、View Occurrenceは2つ。レイアウト差でMeaning再受理を要求しない。#2497/三視点Owner |
+| ESD-23 | 同文面の別Subjectを並べ、同一Subjectの二Source occurrenceとも比較 | 文字列一致でSubjectを統合しない。複数OccurrenceはIdentityだけでなく出典/改版をそれぞれ保持。#2620/#2497 |
+| ESD-24 | 多重辺Graph→単純Tree/Markdownへ非単射投影、その表示から辺を編集 | Lossがある限り元の欠落辺を削除・作出しない。編集逆写像を拒否/要Review。#2497/#1124 |
+| ESD-25 | Source Indexのsubject/index Reader Modeを取り違える | 真に存在するRequired RuleのFalse Missingを拒否。Mode別shape、Scope、Revision、Reader実Consumedを記録。#3262/#2514 |
+| ESD-26 | read-only viewのFlagへ-executeを付与する | read-only資格から外れ、書込み可能Variant/Host Grantは再評価。Command名やEffect自己申告だけで許可しない。#988/#951/#1174 |
+| ESD-27 | OperationをWorld/ModelRev指定なしで照会、続いて属性だけ変更 | uncheckedとcurrent/staleを区別。basis同一でも現在利用可と誤判定しない。#2507/#3325 |
+| ESD-28 | 同じMarkdown見た目のSourceをLF→CRLF、BOM変更で保存 | raw byte/Source spanが変わる。適切な再Parseなしに旧AnchorをCurrent扱いしない。同一Meaningは独立判定。#2621/#2497 |
+| ESD-29 | AIが既知不正Rule Caseを再利用する／独立Requiredの未知Ruleだけ欠落させる | 既知T1-A成功からT1-B/C1完全へ昇格せず、必要Rule欠落を検出可能なSource Readerが無い場合はpartial/unknown。#3262/#2514 |
+
+**検証基準の作成・管理**：この表は新しいCase/Scenario SSOTではない。#1180 Driver Scenarioに適用対象と独立Expectedを固定し、#2514に正常対照・mutant・Claim ceilingを記録する。Role Descriptor自身から生んだExpectedは独立基準とは呼ばない。#3304やDraft #3324/#3326、#3325、#2497の別Runを一つの統合PASSに足さない。
+
+### 18.6 実行に向けた最短順序と採用条件
+
+- **P0（現在の不足を狭く確認）**：§17のsales.order元Source/派生Role Sourceを使い、ESD-25（source-index Mode/必要Rule）、ESD-27（Current/Unchecked）、ESD-20（無Role Sourceの正例）を、既存実CLIと独立Requiredで先に調べる。現実のRole Interpreterが無ければunknown/unsupportedを正しく返すところまでを受入とし、新Meta Parserや万能Item Handlerを作らない。
+- **P1（Role合成の成立を反証）**：ESD-21/23および既存ESD-15/16のRole Application/Atomic Traitを同一Subject/Scopeで検証。現Attribute.Roleの単一値から複数Roleの自動選択を推論せず、明示Role Application Relationが必要かを既存Semantic/Graph/Contract上で比較してから採否を判断。
+- **P1（複数表現・編集）**：ESD-22/24/28は#2497/#2621/#1124と三視点Ownerに委ねる。Functionに配置されたRepresentation Instance/Bindingと、同Itemの複数View Occurrenceを区別。UI上の同一表示・図の一致から意味・出典の完全性を主張しない。
+- **P2（実操作とテスト生成）**：ESD-26/29を#951/#1174/#3262/#2514の既存実Provider/Scenarioへ接続。CLI/MCP/Studioは同じread-only Design Context/Contractを投影するが、現時点で未実装のToolをあると広告しない。外部Harnessのpage/end/Reply digestの完全受領を別に観測。
+
+**今回のClaim ceiling**：他チャットの設計統合・既存GitHub Issue/PR/Codeの静的照合に基づく計画差分。ESD-20〜29、正式Role多重適用Syntax/Interpreter、Raw ItemのTEI製品実装、SUI/TEI共通UI、MCP/Studio、Role/Builder E2E、実Host Effect、全体G4 Self-buildは未実施・未受理。Role解釈のP0不足は#2620に残し、SUIや表現Projection/三視点の独立Ownerを上書きしない。
