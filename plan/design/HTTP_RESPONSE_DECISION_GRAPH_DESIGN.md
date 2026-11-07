@@ -132,6 +132,36 @@ Problem Detailsの最小サンプル（設計例、**TEI正式Schemaではない
 
 `example.invalid`は外部のProblem定義ではないため、実配備で使わない。Serverの内部stack、実Resource ID、禁止Field、検証用Holdout、Grantのtoken、テナント存在、履歴を一般クライアントへ露出しない。
 
+### 4.1 Client Graph：実行結果の認知状態で分岐する（説明用）
+
+```mermaid
+flowchart TD
+    C0["C0: request attempted"] --> C1{"C1: trusted response?"}
+    C1 -->|no / incomplete| CU["CU: write effect unknown"]
+    C1 -->|yes| C2{"C2: typed response + operation outcome?"}
+    C2 -->|invalid / unrecognized| CU
+    C2 -->|known success| CS["CS: show qualified result"]
+    C2 -->|validation rejected| CV["CV: bind field errors"]
+    C2 -->|revision conflict| CR["CR: refresh and reconcile"]
+    C2 -->|accepted only| CP["CP: pending / status lookup"]
+    CU --> CO["CO: independent observation"]
+    CP --> CO
+    CO -->|not confirmed| CH["CH: hold, do not replay"]
+    CO -->|qualified evidence| CS
+```
+
+Client GraphはResponse codeごとの一律switch文ではない。例えば`C1 → CU`は、**書込みを送信した可能性がある**ときの経路であり、安全と証明されたread-only Requestとは別のRetry Policyを参照する。証拠が不明なら`CO`が成功とも不成功とも推定しない。Client Graphの実装は、Webの画面・CLIの終了コード・Desktop IPCのUI処理へそれぞれ投影する。
+
+| Edge identity | 分岐 | 評価に必要なデータ／不正な推論 |
+| --- | --- | --- |
+| C-E01 | C1 → CU | write-dispatched可能性、OperationID。HTTPなし＝副作用なし、としない |
+| C-E02 | C2 → CR | typed revision/ETag、未保存差分。旧結果を新選択へ適用しない |
+| C-E03 | C2 → CP | accepted-but-not-completed。202をCommit Receiptにしない |
+| C-E04 | CO → CS | 実Operationに束縛された現在資格の独立Observation。単なる過去Receiptでは不可 |
+| C-E05 | CO → CH | 未観測、Denied、stale、不一致。無条件replayを禁止 |
+
+ServerとClientのGraph間を結ぶのは、**宣言されたResponse Projection/typed Resultの参照関係**であり、一方のEdge IDをもう一方へ流用しない。Traceには「どこまで実観測できたか」を付け、ブラウザ外／Proxy上の障害やクライアント未受領をserver-sideの応答生成ログだけで否定しない。
+
 ## 5. CLI/MCP/Studioを同じ設計Contextから駆動する
 
 既存CLIには`commands`・`model catalog`・`inspect`・`trace`・`validate`等があるが、**Decision Graphの読み込み・完全性照会・実行経路可視化が完成したとは主張しない**。
