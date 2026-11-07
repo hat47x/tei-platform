@@ -251,7 +251,7 @@ def main() -> None:
                                "isolated-copy-before-drift")
         copied_rule = isolated_workspace / "semantic/sales/validation.tei"
         byte_before = copied_rule.read_bytes()
-        copied_rule.write_bytes(byte_before + b"\\n")
+        copied_rule.write_bytes(byte_before + b"\n")
         copy_after = read_current_fingerprints(cli, root, isolated_workspace)
         if copy_after["worldFingerprint"] != copy_before["worldFingerprint"]:
             raise AssertionError("whitespace-only Source drift unexpectedly changed Canonical World")
@@ -364,9 +364,7 @@ def main() -> None:
         print("PASS: Context World pin + fresh Source Index recheck and isolated "
               "World-stable/SourceIndex-stale rejection; 1 proposed boundary; "
               "false expected + false fixture + stale pin rejected")
-        # Legacy wording deliberately removed: a successful Scenario Plan is
-        # not sufficient to admit a stale Design Context at replay time.
-        # print("PASS: one proposed new boundary in real pinned CLI; "
+        # A successful Scenario Plan alone is not a freshness admission.
         print("LIMIT: not blind AI generation, not Scenario SSOT adoption, "
               "not full test generation qualification")
 
