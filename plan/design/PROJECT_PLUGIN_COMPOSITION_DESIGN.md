@@ -261,3 +261,13 @@ Webアプリケーションでは、UI構成キットだけでなく、HTTP要�
 | Commandでread-only datasource宣言へWrite要求 | [#3070](https://github.com/hat47x/tei-platform/pull/3070)の宣言上の事前拒否を表示 | DB/Provider側での実強制、宣言外Dataの可否 |
 
 これらは#1174/#2514/#2823/#2586の既存独立期待値・実観測Ownerに渡す追加対照であり、新しいOperation State、UI Schema、Proof Storeを定義しない。Appliedの差分がある状態で参照処理が成功しても、差分が解消済みとは表示しない。純粋quoteのD1 Link/Invoke測定には、DBの存続・Grant/Receipt/Appliedを無関係な必須条件として追加しない。**追加Product横断試験はNOT RUN**。
+
+
+<!-- tei-project-tool-plugin-choice-handoff-20261107 -->
+### 外部Toolの実装資格とPlugin選択の交差（Runtime/Target §23、未採用）
+
+[merged #3121](https://github.com/hat47x/tei-platform/pull/3121)は参照Toolの能力をEnvironment Grantへ追加した際、Plugin Catalogで解決できず `PERMISSION_GRANT_CAPABILITY_NOT_RESOLVED` となることを実検証した。案件側の確認事項は「Toolを論理Pluginとして契約・実装・Build/Lockへ登録する実利益があるか」「Plugin以外のTool Principalを既存Hostが明示委譲できるか」の2案と、それぞれの現在Grant・Consumer適用先・Revocationを同Scopeに結べるかだけ。Toolが存在することからPlugin導入もGrant発行も自動提案しない。詳細比較・負例と案の未採否は[Runtime/Target §23](RUNTIME_TARGET_BINARY_COMPOSITION_DESIGN.md)へ委譲する。
+
+[merged #3077](https://github.com/hat47x/tei-platform/pull/3077)/[merged #3108](https://github.com/hat47x/tei-platform/pull/3108)のHook宣言外呼出し拒否・Command委譲は局所Fit。Hook Runner・実Host Grantは未配線／未実証であり、案件UIの「Hookが有効」「Tool実行可能」「業務操作完了」を同じ状態へまとめない。[merged #3124](https://github.com/hat47x/tei-platform/pull/3124)/[merged #3127](https://github.com/hat47x/tei-platform/pull/3127)の `PersistenceState=observed` は現Adapterでは**Receipt Lookupの観測**であってBusiness Resource現在値の確認ではない。表示・説明は「何を読んだか」を明示する。参照Toolの選定案をD1純粋quoteの実Go Link/Invokeの前提にはしない。
+
+**状態**：案件への説明可能性の要求候補のみ。ToolをPlugin化する採用、Tool Principalの追加、Hook→本番Host E2E、Receipt→実Resource読取、Owner受理はNOT RUN／未決。別のStatus enum/Registry/二重Authorityを増設しない。
