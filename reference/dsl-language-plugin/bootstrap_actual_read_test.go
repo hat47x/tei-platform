@@ -103,4 +103,50 @@ func TestBootstrapK1LoaderReadIsDistinctFromManagedInventory(t *testing.T) {
 			t.Fatal("edited Markdown was incorrectly promoted to Loader read")
 		}
 	}
+
+	// The same unread bytes at a different managed path produce a different
+	// Source revision, but do not change the parsed World or semantic refs.
+	if err := os.Rename(filepath.Join(root, "semantic", "README.md"),
+		filepath.Join(root, "semantic", "notes.md")); err != nil {
+		t.Fatal(err)
+	}
+	moved, err := workspace.Load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	movedIndex, err := workspace.BuildSourceIndexFromLoad(root, moved)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sourceindex.ModelRevision(reloadedIndex) == sourceindex.ModelRevision(movedIndex) {
+		t.Fatal("managed Source path change was lost from the revision")
+	}
+	if !reflect.DeepEqual(reloaded.World, moved.World) ||
+		!reflect.DeepEqual(reloadedIndex.References, movedIndex.References) {
+		t.Fatal("moving unread Markdown changed parsed meaning or semantic references")
+	}
+
+	// A -> changed bytes -> relocated path -> A can return to the same
+	// content-addressed revision. That equality is NOT a record of Owner
+	// reacceptance, intermediate observations, or runtime authorization.
+	if err := os.Rename(filepath.Join(root, "semantic", "notes.md"),
+		filepath.Join(root, "semantic", "README.md")); err != nil {
+		t.Fatal(err)
+	}
+	write("semantic/README.md", "# Draft documentation, not TEI meaning\n")
+	restored, err := workspace.Load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	restoredIndex, err := workspace.BuildSourceIndexFromLoad(root, restored)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sourceindex.ModelRevision(idx) != sourceindex.ModelRevision(restoredIndex) {
+		t.Fatal("exact restored Source path/bytes did not restore content-addressed revision")
+	}
+	if !reflect.DeepEqual(loaded.World, restored.World) ||
+		!reflect.DeepEqual(idx.References, restoredIndex.References) {
+		t.Fatal("restored unread document altered parsed meaning or semantic references")
+	}
 }
