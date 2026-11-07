@@ -3856,4 +3856,6 @@ X-TEAのData Model／Field Hook／共有Scriptの知見を全Data構造へ一般
 
 [W3C ORG](https://www.w3.org/TR/vocab-org/)の拡張可能な組織語彙、[QUDT](https://qudt.org/doc/2026/02/DOC_SCHEMA-QUDT.html)のQuantity/Unit/Dimension、[W3C RDF Data Cube](https://www.w3.org/TR/vocab-data-cube/)のMeasure/Dimension区分を比較対象とする。ただしそれらのSchemaをTEI Coreへ移植・正式採用するものではなく、異なる数学的TopologyとRelation Graphの同一視も避ける。
 
+**三視点図面・クロスリファレンスへの接続**：同じData/Relation・Quantity/Measureを、Data ER/組織Graph、Function Data Context/Operation、Business DFD/Procedure、CRUD等の交差表、SHOの読みやすい図解へ別投影する場合の適合性を[比較票§7](ORGANIZATION_TOPOLOGY_QUANTITY_REPRESENTATION_PROFILE_2026-11.md)に追加した。C1担当の直接Relation、Membershipの実体化関係、Purpose別階層、FTE集約を同じEdge/数値/CRUDセルへ潰さない。ORG-XV-01〜07の単一要因対照で、別軸への変更・FTE値だけの変更・二Pathによる二重計上・業務DFDだけの変更・集計セル逆編集・非公開差異・ABAを検査する。Data/Function/Businessの図面とCRUD表は派生Projection／Source navigateを持ち、図上の一意なTyped Change候補だけ#1124のPreview/Acceptance/reparseへ接続する。#1125はDFDと手作業、#1803は設計書生成、#2514は独立Expectedを所有し、**図面・CRUD表の表示成功は実DB CRUD/Host Grant/業務完了を示さない**。
+
 **検収状態**：この節と新比較票はdocs-onlyの採用前候補。組織FTE計算、マルチグラフのProduct Query/Renderer、SHO実出力、現Host Grant、案件移管Write／Receipt、業務OwnerのQuantity/Rule受理は**NOT RUN**。
