@@ -39,6 +39,16 @@ type Result struct {
 
 // Executorは、宣言されたCommandを実際に実行する側の契約である。
 // 実装はL4（Plugin・Provider）に置き、このパッケージは境界だけを持つ。
+//
+// 取引への参加は契約に含まない。InvokerはUnitOfWorkがある場合にBegin・
+// Commit・Rollbackを呼ぶが、Executorが同じ取引へ参加することは要求しない。
+// そのため、Executorが成功した後にdeclaredEffectと異なる効果・結末・適用
+// 操作を返した場合、巻き戻し済みとは断定できない。Invokerはそのような
+// 契約違反をEffectUnknownの付いたExecutionErrorとして返し、
+// LifecycleInvokerはunknownとして記録する（rejectedとしては記録しない）。
+// 適用の有無を確定させるには、Executor側が同じ取引へ参加するか、実行後に
+// 独立した観測で確かめる必要がある。参照実装の`ReferenceExecutor`は
+// プロセス内のStoreを書き換えるだけで、外部の永続化を持たない。
 type Executor interface {
 	Execute(ctx context.Context, request Request) (Result, error)
 }

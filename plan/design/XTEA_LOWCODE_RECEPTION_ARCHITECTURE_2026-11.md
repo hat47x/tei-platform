@@ -362,7 +362,7 @@ lookup customer_lookup on order_entry.order_record.customerId
 
 **撤回条件.** フック種別が増え、Coreの小さな定義が機能型の再実装になる場合は、B（Pluginの契約）へ寄せ、ApplicationはPluginの選択だけを持ちます。
 
-**PoCでの実装.** record対話の`hook <phase> { reads ... uses ... produces ... on-failure ... }`として宣言を実装しました。位相・読み書き・失敗時の扱いを検証し、対話ビューへ表示します。実装Pluginは`internal/hook`の`Implementation`契約として境界を実装し、`reject`と`warn`を分けます。実Pluginの接続は未実装です。
+**PoCでの実装.** record対話の`hook <phase> { reads ... uses ... produces ... on-failure ... }`として宣言を実装しました。位相・読み書き・失敗時の扱いを検証し、対話ビューへ表示します。実装Pluginは`internal/hook`の`Implementation`契約として境界を実装し、`reject`と`warn`を分けます。フックが能力を呼ぶ場合は`CallingImplementation`で、`Runner`から宣言（`uses`）に制限した`Caller`を受け取ります。`hook.CommandCaller`はその呼出しをCommand境界へ委譲し、入力検証・認可・宣言効果の照合・取引境界は直接のCommand呼出しと同じ経路を通ります。能力から`command` Patternへの解決は`hook.CommandPatternFor`が行い、0件・複数件はそれぞれ拒否します。業務上の不成立は`hook.NotSatisfied`として実行の失敗と区別します。規則Pluginの参照実装は`internal/hook.ReferenceRule`（宣言した読み取りだけを評価し、同じ入力に同じ結果を返す）で、判定と能力呼出しの連結は`internal/hook.Guarded`（判定が通ったときだけ宣言済みの能力を呼び、通らなければ呼ばない）が担います。実PluginとCLI・Studioへの配線は未実装です（[確認記録](../evidence/XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)）。
 
 ### D3 項目の「意味の役割」と「表示・入力支援」を分ける
 
@@ -959,7 +959,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | 暦の宣言 | 実装済み（`calendar`の`fiscal-year starts month`・`week starts`・`business-day excludes`と、`period`の`calendar`。`CALENDAR_*`・`PERIOD_*CALENDAR*`の検証） |
 | 期間と暦の投影 | 実装済み（`view`のApplication投影に`periods[].calendar`、テキスト出力に行、Studioの「期間」表に列を追加） |
 | 採番の契約 | 実装済み（`internal/numbering`。桁・接頭辞・検査数字・桁あふれの宣言。桁あふれの既定は停止、`wrap`は宣言時のみ。検査数字は1文字） |
-| 通貨の率と方向 | 実装済み（`internal/currencyrate`。中値・買値・売値の宣言、換算方向の宣言、システム通貨の率1、行の欠落と重複の検出） |
+| 通貨の率と方向 | 実装済み（`internal/currencyrate`。中値・買値・売値の宣言、換算方向の宣言、システム通貨の率1、行の欠落と重複の検出、`currency-rate-*`の属性役割からのData結合） |
 | 税の適用期間と端数 | 実装済み（`internal/taxrate`。適用期間の両端、`floor`・`ceiling`・`half-up`・`half-even`の宣言、行の欠落と重なりの検出。`tax-applies-from`等の属性役割からDataの行を結び付ける） |
 | 暦からの日付導出 | 実装済み（`internal/businesscalendar`。日付差の規則（`elapsed`・`calendar`・`business`）、営業日加算、会計年度と年度開始、期間キー（年度＋月順序）と期間開始日の逆算。宣言から暦を解決し、休日Dataは呼出し側が与える） |
 | 画面・帳票の版 | 実装済み（全HTML・印刷テンプレートが`tei-semantic-fingerprint`を出力） |
@@ -1001,6 +1001,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
 

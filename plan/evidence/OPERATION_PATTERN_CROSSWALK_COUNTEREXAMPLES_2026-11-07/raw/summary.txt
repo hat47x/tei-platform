@@ -1,0 +1,57 @@
+== base ==
+links (4):
+  order_entry.list.sales.order <- order_entry.recent_orders [browse] via=data
+  order_entry.list.sales.order_line <- order_entry.order_lines [header-detail] via=relation
+  order_entry.read.sales.order <- order_entry.order_record [record] via=data
+  order_entry.read.sales.order_line <- order_entry.order_lines [header-detail] via=relation
+unlinked (2):
+  order_entry.customer_reference (reference) missing-input: no derived read operation on customer.customer
+  order_entry.submit_order (command) out-of-scope: capability sales.order.submit declares no effect, so no derived write operation exists to bind
+conflicts (0):
+
+== effect-cmd ==
+links (5):
+  order_entry.create.sales.order <- order_entry.register_order [command] via=capability
+  order_entry.list.sales.order <- order_entry.recent_orders [browse] via=data
+  order_entry.list.sales.order_line <- order_entry.order_lines [header-detail] via=relation
+  order_entry.read.sales.order <- order_entry.order_record [record] via=data
+  order_entry.read.sales.order_line <- order_entry.order_lines [header-detail] via=relation
+unlinked (2):
+  order_entry.customer_reference (reference) missing-input: no derived read operation on customer.customer
+  order_entry.submit_order (command) out-of-scope: capability sales.order.submit declares no effect, so no derived write operation exists to bind
+conflicts (0):
+
+== readpath ==
+links (5):
+  order_entry.list.sales.order <- order_entry.recent_orders [browse] via=data
+  order_entry.list.sales.order_line <- order_entry.order_lines [header-detail] via=relation
+  order_entry.read.customer.customer <- order_entry.customer_reference [reference] via=relation
+  order_entry.read.sales.order <- order_entry.order_record [record] via=data
+  order_entry.read.sales.order_line <- order_entry.order_lines [header-detail] via=relation
+unlinked (1):
+  order_entry.submit_order (command) out-of-scope: capability sales.order.submit declares no effect, so no derived write operation exists to bind
+conflicts (0):
+
+== conflict ==
+links (3):
+  order_entry.list.sales.order_line <- order_entry.order_lines [header-detail] via=relation
+  order_entry.read.sales.order <- order_entry.order_record [record] via=data
+  order_entry.read.sales.order_line <- order_entry.order_lines [header-detail] via=relation
+unlinked (2):
+  order_entry.customer_reference (reference) missing-input: no derived read operation on customer.customer
+  order_entry.submit_order (command) out-of-scope: capability sales.order.submit declares no effect, so no derived write operation exists to bind
+conflicts (1):
+  order_entry.list.sales.order <- order_entry.recent_orders,order_entry.recent_orders_again
+
+== no-persist ==
+links (4):
+  order_entry.list.sales.order <- order_entry.recent_orders [browse] via=data
+  order_entry.list.sales.order_line <- order_entry.order_lines [header-detail] via=relation
+  order_entry.read.sales.order <- order_entry.order_record [record] via=data
+  order_entry.read.sales.order_line <- order_entry.order_lines [header-detail] via=relation
+unlinked (3):
+  order_entry.customer_reference (reference) missing-input: no derived read operation on customer.customer
+  order_entry.rename_customer (command) missing-input: no derived update operation on customer.customer
+  order_entry.submit_order (command) out-of-scope: capability sales.order.submit declares no effect, so no derived write operation exists to bind
+conflicts (0):
+
