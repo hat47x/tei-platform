@@ -44,6 +44,18 @@ export function observeDirectTrace(envelope) {
   if (r.source.status === 'located' &&
       (!Array.isArray(r.source.references) || r.source.references.length === 0))
     return unknown('source_navigation_unqualified');
+  // SourceIndex.Reference has a subject but no Scope. Bind its Kind/ID
+  // to the requested subject without inventing a Source-declared scope.
+  if (r.source.references !== undefined) {
+    if (!Array.isArray(r.source.references)) return unknown('source_navigation_unqualified');
+    for (const ref of r.source.references) {
+      if (!record(ref) || !record(ref.subject) ||
+          !exact(ref.subject.kind) || !exact(ref.subject.id) ||
+          !exact(ref.artifactPath)) return unknown('source_reference_unqualified');
+      if (ref.subject.kind !== selected[1] || ref.subject.id !== selected[2])
+        return unknown('source_reference_identity_mismatch');
+    }
+  }
   if (r.projectionUnresolved !== undefined &&
       (!Array.isArray(r.projectionUnresolved) ||
        r.projectionUnresolved.some(x => !exact(x))))
