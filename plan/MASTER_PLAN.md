@@ -691,6 +691,18 @@ X-TEA Modeler由来の**Data/Function/Businessの3図とCRUD cross-reference**�
 
 最初は(1)合成FixtureのTEI Source/Loaderへの**表現可能部分**を特定、(2)型付きGraphの同端点多重辺・同名異IDの保持とSource復帰、(3)Function×Data CRUDで`declaredCrudComplete=false`を未知と表示、(4)Human/AI/Studio/SHOのConsumer別受領／編集の資格を検証。JOIN 2×3の6表示行≠実体6件。独立ExpectedとMutant評価は#2514/#1180を利用し、[#3236設計§13](design/COMPOSED_REPRESENTATION_MAPPING_QUALIFICATION_2026-11.md)のDGX-01〜04を順次検収する。**新製品Diagram/CRUD/GUI/Provider実行、Go/CLI/Owner受理は今回NOT RUN**。
 
+
+### 実Fixture Test・Source/Lock鮮度・CLI Effectを分けた最初の検収（2026-11-07）
+
+[統合Draft #3303の検収§14](design/COMPOSED_REPRESENTATION_MAPPING_QUALIFICATION_2026-11.md)へ、他チャットの現行実測を正確な段階で引き継いだ。
+
+- [三視点Fixture Draft #3263](https://github.com/hat47x/tei-platform/pull/3263)：合成Pressure Input/別Expected（双方AI草案・独立Oracle未受理）に、内部整合/破損を検査するGo Testを追加。分離Stubの限定試行と、GitHub実Fixtureを使うGo Test/製品Diagram/CRUDの資格は別。固定HEADのRepository Health #42373811364は**FAIL**。本計画のP0-Mでは`TEI Source/Loader→Graph/CRUD got→独立Expected/Mutant→各Consumer実受領`が最初の未接続経路。
+- [main統合 #3299](https://github.com/hat47x/tei-platform/pull/3299)：固定CI #42373330734で実Source変更とPlugin Lock変更後の旧Pinned Scenario拒否／A→B→A内容復元後の再成功を限定実測。**Content fingerprintの再一致≠過去Selection epoch、現在Grant、Plugin実Load/Conformanceの成立**。Data Context→Diagram/CRUD/SHOへ再利用する際は、Source/Policy/Consumer/必要依存をClaim相対に評価し、全Worldを無条件に失効させる新Gateは作らない。
+- [CLI効果境界のDraft #3302](https://github.com/hat47x/tei-platform/pull/3302)：`view`のpreview-only read-only広告と`-execute`等の実OS書込を分ける実修正候補。ただし[実Health #42373744325](https://github.com/hat47x/tei-platform/actions/runs/42373744325)は**FAIL**（gofmt＋CLI Flag catalogの既存契約との差）。成功した実Reader/Graph Previewを`zero external effects`や現在のOperation Grantにしない。修正受入/CLI契約は#3182/#951へ戻す。
+- **#3303自身のCI修復**：[Health #42373568969](https://github.com/hat47x/tei-platform/actions/runs/42373568969)は**FAIL**。実ログで`tools/repository-plan-check`の設計索引/要件追跡表不足を確認し、本PRが追加した**3設計文書の索引だけを`plan/design/README.md`へ登録**。残る他レーン索引とRQ-035のPAS/Gap Auditは[#3297](https://github.com/hat47x/tei-platform/pull/3297)が継続対応中。今後の新HEAD CIを見ずに全Health修復とは記録しない。
+
+まずP0-Mの実Fixture受入と一つのSource-backed Graph/CRUD結果の独立Expected照合を完了し、その後P0-Rの実Provider経路とP0-Cの結合へ進む。#2514/#1180の既存独立Oracle/Scenarioを使い、第二Parser/Graph Runtime/Policy/Runnerを増やさない。今回の新実TEI Diagram生成・Go Test・Studio/SHO・HostのE2E、正式Owner意味受理は**NOT RUN**。この追補と設計索引の更新は**採用前計画・CI修復の一部**である。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
