@@ -3627,15 +3627,15 @@ AC-01〜06は#2510の組織Pressure Corpus、#2514の独立検証基準、#1180�
 
 ## 84. 統合済みNative組織E1を製品E2の最短一件へ接続する：Query選択・実消費・再資格化（2026-11-07、採用前）
 
-### 84.1 変わった前提：親#2681はmain統合済み、子#3024は積上げDraftのまま
+### 84.1 変わった前提：親#2681はmain統合済み、子#3024はclosed・未マージ
 
 2026-11-07の現行GitHubメタデータとmain実ファイルを再取得し、次を**更新前提として確定**した。
 
 - [#2681](https://github.com/hat47x/tei-platform/pull/2681) は**closed/merged**。mainの`reference/org-headless-workspace/semantic/organization/model.tei`にPerson/OrgUnit/Membership/Position/Occupancy/CaseRecordの実TEI記述、`internal/operations/org_headless_characterization_test.go`にParser/Loader→read-only OperationSurfaceの局所Characterizationが存在する。**「E1が未merge」は過去の記録であり現在の状態ではない**。ただしCaseRecordの実PersistenceとProduct Readはmain参照Workspaceに未定義。
-- [#3024](https://github.com/hat47x/tei-platform/pull/3024) は**open/Draft、未merge**。現在のPR baseは旧#2681のhead `e0cfebf14d40db81bdef77d6c3e4898ed75d999f`、child headは`705933667d5b081036314a9161280323e08a64bd`。当該Childの局所E1b/E1c fixed-head CI成功（[Actions #42208159977](https://github.com/hat47x/tei-platform/actions/runs/42208159977)）は有効な履歴だが、**main統合後の同一HEAD・Repository Health/製品E2のPASSではない**。mainにはまだ`internal/operations/org_case_mapping_bridge_test.go`が存在しないことをファイル取得で確認。
+- [#3024](https://github.com/hat47x/tei-platform/pull/3024) は2026-11-07 00:05Z時点で**closed・未merge**（Draft属性は履歴の表示に過ぎない）。baseは旧#2681のhead `e0cfebf14d40db81bdef77d6c3e4898ed75d999f`、child headは`705933667d5b081036314a9161280323e08a64bd`。その局所E1b/E1c fixed-head CI成功（[Actions #42208159977](https://github.com/hat47x/tei-platform/actions/runs/42208159977)）は有効な履歴だが、**現mainにCase Mapping/Queryが存在する証拠でもRepository Health/製品E2のPASSでもない**。mainに`internal/operations/org_case_mapping_bridge_test.go`が存在しないことを実ファイル取得で確認。閉鎖理由と継続担当の受入意思は未確認なので、自動再開・無断cherry-pickをしない。
 - [#3085](https://github.com/hat47x/tei-platform/pull/3085) main統合のWorkspace読込観測により、`internal/workspace/loader.go`の`ManagedFile.ReadByLoader`を確認できる。Managed Inventory→`readByLoader`は区別できるが、`readByLoader=true`は**意味解析の受理／実FunctionのQuery選択／実SQL投入／実Provider Row/Scopeの保証ではない**。三段の実消費証拠は#2823/#2586の既存責務。
 
-**実際の次の最小作業は、旧E1の再設計ではなく** (a) #3024の現main再基線化と限定CIの再実行、(b) その同じSource/Worldを参照する実Function→Query選択を具体的なProduct経路で一回実証、(c) 同じ試行の実Provider Read/Consumerへ順に伸ばすこと。#3024担当Branchの競合する編集や無断mergeはしない。
+**実際の次の最小作業は、旧E1の再設計ではなく** (a) mainを基準に閉鎖済み#3024の既存E1b/E1c独立期待・Sourceを再利用するかOwnerが判断し、採用する最小差分だけを新たな作業単位で現mainに再資格化、(b) その同じSource/Worldを参照する実Function→Query選択を具体的なProduct経路で一回実証、(c) 同じ試行の実Provider Read/Consumerへ順に伸ばすこと。閉鎖済みPRの無断再開・担当Branch編集やマージをしない。
 
 ### 84.2 最小の一往復を既存Sourceに固定する
 
@@ -3667,9 +3667,27 @@ where case_id = :case_id
 
 ### 84.4 先行条件・主担当・完成時の受入
 
-1. **E1親統合後の再資格化（#3024担当）**：#2681がmain済みという基線で子PRをリベース/マージ対象変更し、Case追加後4候補・Native Query/SQL Source/typed columns/Source-only WHERE変更時の失効を既存fixed-head testで再確認。合格は**E1b/E1cのみ**。元ReferenceのMembershipだけ2候補の正例を残す。新`*.tei.md`に未移行の間は旧`*.tei`限定の実証と明記。
+1. **閉鎖済み#3024成果物の取扱いを決めたうえで現main再資格化（#2386/#2586と既存実装担当）**：旧PRを自動再開せず、#3024の実Go試験・E1b/E1c独立期待をOwnerが再利用すると判断した場合に限り、main起点の小さな後続作業でCase追加後4候補・Native Query/SQL Source/typed columns/Source-only WHERE変更時の失効を再実行。合格しても**E1b/E1cのみ**。既存Membershipだけ2候補の正例を残し、旧`*.tei`限定と記録する。
 2. **Product初接続（#2506/#2586主担当）**：実CLI/Headlessで存在を確認したFunction/Reader入口を使い、選択したQuery ID・実bind・Provider Instance・実RowとConsumerまでを一回に接続。現時点でコード上にない`tei org read`などのCLI名を計画上の実在コマンドにしない。Function→Query未接続ならまずそこだけを実際の不足として止め、仮の合成結果で隠さない。
 3. **実Provider対象の限定受入（#2622/#2611/#2514）**：単一配備に独立C1/D1 Seedを持つ一件の実Readを検収。実Provider/SQL/Row/Field/Consumer・Scope・Expectedが同じAttemptに揃ったときだけ`one-case product read qualified`相当の限定Claimを可能とする。これは正式Tenant境界全般・Business Rule/Host Effect資格を付与しない。
 4. **後続Pressure（#2386/#2510/#1174）**：上記のRead成立後に§79/81/82の別Tenant同C1、Case移管/委任、Current Host Grant、Effect Fence/Receipt/独立再Readへ進む。OKFのAttested Computationは§83の**計算実証の候補**であり、上記一件実Readの必須実装依存にしない。新形式Authoringの移行は#3030/#3031の別工程。
 
-**停止線・状態**：#2681 main統合とmain Source実在、#3024旧HEAD E1b/E1c固定CI、#3085の`ReadByLoader`実Sourceを確認した。子PRの現main再基線化、実Product Function/Provider/SQL/Row/Consumer E2、Tenant/Owner権限、正式業務意味受理、実`*.tei.md` Parser/再資格化は**NOT RUN**。新Runner/Query Engine/Host/Org専用認可/完了判定器・Fixture正本は作らない。
+**停止線・状態**：#2681 main統合とmain Source実在、#3024旧HEAD E1b/E1c固定CI（ただし現在closed・未マージ）、#3085の`ReadByLoader`実Sourceを確認した。閉鎖PRの成果の現main再資格化、実Product Function/Provider/SQL/Row/Consumer E2、Tenant/Owner権限、正式業務意味受理、実`*.tei.md` Parser/再資格化は**NOT RUN**。新Runner/Query Engine/Host/Org専用認可/完了判定器・Fixture正本は作らない。
+
+### 84.5 実行入口のSource-static再照合：Browse表示解決とFunction/Provider実Readを区別する（2026-11-07追補）
+
+現行mainの`reference/org-headless-workspace/applications/org-view/application.tei`は、`uses semantic organization`とread-onlyの`database org_read { target org_store; access read }`を宣言するだけで、**Browse Pattern/Function Data Contextをまだ宣言していない**。したがって、#3024に記述された`query org_view.case_read`を持ち込んだとしても、Applicationでの実利用・Invocationが自動接続したとは言えない。
+
+一方mainの`internal/applicationview/browse.go:BuildBrowse`には、既存Patternが`browse`か、そのPatternが明示したQuery IDが同一Applicationにあり、型付きResultColumnsの参照Attributeが解決できるかを検査して**BrowseView（表示列・Filter・Sort・PageSize）を構成する実Goコード**が存在する。ただしこの関数は実SQL・Provider Instance・Row取得・Function Context/OperationID・Consumerが実Rowを受領したことを記録/実行しない。現行`internal/applicationview/browse_test.go`の合成`browseWorld`でのPASSはOrgの実Workspace/ReaderのPASSではない。
+
+**最小の検証手順**（新Runner/新業務Patternの標準採用を求めない）：
+
+| 段階 | 現在の障害／次の具体的な試行 | 到達できる資格 |
+| --- | --- | --- |
+| A 既存E1 | #2681 mainのOrg model/Case relation、Membership read-onlyの2候補を実Loaderで固定 | mainのOrg Source/Read候補。Case実Readなし |
+| B 非マージの候補再利用 | closed #3024のCase mapping・Query/SQLを再利用するか担当が判断し、現mainの隔離Workspaceに置いてE1b/E1cを再実行 | Case read候補とQuery/SQL Sourceのみ。閉鎖PRの旧CIを流用しない |
+| C 利用入口 | 実在するFunction/Pattern契約を見つけてCase Queryを**明示選択**する。既存Browseを使うならまずOrg Applicationに必要なPatternが存在せず、`BuildBrowse`は投影構成のみである点を再現する。専用Functionの実行経路が確認できるならBrowseを必須にしない | Query選択の表現/投影検査。Provider実行ではない |
+| D 具体実Reader | Cで特定した**実行可能なProduct入口**から`case_id=C1`を実Providerへ渡し、SQL/args・物理Target・Row/Field/Scopeを観測する。存在しないCLI/APIを創作せず、入口未実装なら`product-read-not-connected`を維持 | Provider実Readが観測できた範囲だけ |
+| E Consumerと独立照合 | 同一AttemptでC1→D1を受けた出力を独立Expectedと比較。0行/未取得、部分/complete、異Tenantの資格は既存§79/83に渡す | 一件の限定E2。完成・承認・Host Write資格なし |
+
+**実装優先**：現mainにCase Query/Mappingがまだ入っておらず、Org `org_view`のBrowse Patternもないことをまず欠落事実として記録。これらを単純に新Core/Query Engine不足と同一視しない。#2586がProduct読取入口・統合証拠、#2506がFunction Context、#2611/#2622がTarget・Provider、#2386が組織意味とCase扱いのOwner。現`*.tei`の一件を先に扱い、新`*.tei.md` Parserは#3030/#3031に委ねる。**本追補はSource-staticと計画の更新のみで、新Go/SQL/DB/Consumer E2、旧#3024の再実行、Owner受理・閉鎖PR再開はNOT RUN。**
