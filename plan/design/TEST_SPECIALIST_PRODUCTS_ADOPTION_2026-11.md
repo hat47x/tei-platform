@@ -1122,3 +1122,92 @@ S/C/E/Rの全条件を一個の`qualified` booleanへ畳まない。まず`known
 
 **実績の停止線**：#3333/#3340/#3336/#3337等のmain統合は各限定Capabilityの進展であり、#3354/#3351/#3350/#3353/#3348の未統合Draftの試験成功やT1-B製品資格ではない。本節は当該PR/Sourceの照合に基づく受入計画の更新であり、新しいGo/CLI/PG/外部H3/GUI/実Plugin複合試験、Owner Meaning Acceptanceは本追補自体ではNOT RUN。第二Runner・意味正本・認可系を作らない。
 
+<!-- tei-test-epistemic-coverage-projection-20261108 -->
+## 24. 2026-11-08 横断深化：不存在判断の適格性、検証義務の標準構造投影、二世界差分テスト
+
+### 24.1 他レーンから一般化した問題――表示されない／返らない／実行されない ≠ 存在しない
+
+三視点Model/CRUDと複数Canvas (#3263)、Function ContextのPartial Read/Join/Grain (#2506/#2586)、CLI Design ContextのRule目録 (#3262)、Trait FulfillmentとVerified BOM (#3279/#3267)、SHO/外部Harnessの公開Slice/実受信 (#2516/#2509)、Cache/Buildの再利用・履歴 (#3271/#2600)を横断すると、**観測可能な部分に対象が見つからなかったことを、世界全体の不存在や未実装・未カバーと読み替える**共通の偽陰性がある。以下をテスト推薦・Coverage投影における独立Expectedとして扱う。
+
+- **存在の正の証人**：対象のstable semantic identity、Source/Role、Scope、時点/粒度、実ProducerとConsumerを束縛した観測なら、その観測範囲の存在を示せる。ただし現在のGrantや全件・持続性を推論しない。
+- **閉じた範囲での不在**：Query mode・Predicate・Source Loader/Parser・Relation/negative dependency・ページ終端・Consumer受領・Source版/共同Read cohort・許可された開示が、対象に必要な範囲で閉じているときに限り「この範囲に見つからない」と言える。業務上の不存在や削除の確定は追加の権限/実Read条件を要する。
+- **未取得／不完全／未知**：部分ページ、未Loaded、索引のsubjectモード、欠損Reply、未計測分岐、未発見Scenarioはゼロや不存在でなくunknown/partial。正常JSONや一致Fingerprintでも完全にはならない。
+- **非開示**：Secret/Deniedは内部の未取得状態や件数と直結させず、閲覧者向けには既存Disclosure規則が許す範囲に抑える。存在/件数・Source path・Missing IDも漏えい面である。
+- **不適用**：対象に要求が適用されないという、独立したSource/Rule/Target判断が得られた場合だけnot-applicableとする。テストがない・Providerが未選択という事実だけでは不適用にしない。
+
+これは第二のClosed World Engineや新Core enumの提案ではない。既存のSource/Meaning/Context/Scenario/Evidenceから、目的・対象・粒度・Scope相対に導出する**read-onlyの判定規則**である。
+
+### 24.2 Test Obligationはモデルからの派生投影であって独立の意味正本ではない
+
+対象を「要求されているか」「観測可能か」「テストされたか」の三つの集合で照合する。Test Obligation一件の表示は次の参照を持つ（実Schema未採用）。
+
+| 対象の軸 | 参照する既存Owner | 誤って合成しないもの |
+| --- | --- | --- |
+| **Semantic obligation** | Accepted Requirement/Rule/Data Relation/Function/Business/Atomic Trait IDとSource Role、Cardinality・単位・Time/NULL・条件分岐。#1120/#1126/#2495/#3279 | Rule名、同名SQL、CanvasのCard ID、型名だけを同一業務意味にしない |
+| **Applicable Scope / Closure** | #3262のRequired/Loaded/Parsed/Boundと関係/否定依存、Query Mode、Result Slice、Version/Scope/As-of。#2506/#1706 | 0件、NOT EXISTS、未描画辺、未選択Pluginを完全な不在へしない |
+| **Test design** | #2514独立Expected/合法Baseline、#1180 Scenario Source・Candidate/採択、Patternの前提と対象Target | AI自身のExpected、T1-A既知Case、別世界のテストをT1-B新発見へ加点しない |
+| **Actual execution** | 実選択CLI/Plugin Provider/Go Build/Function Entry/Provider Read・Host/Client Reactionのexact Source/Lock/Artifact/Attempt。#951/#1163/#1174/#2586 | Dispatch宣言/exit0/Cache hit/HTTP 200だけで実Rule到達を保証しない |
+| **Current qualification** | Observation+独立Expectedと必要なCurrent Grant/Consumer受信、失効・Disclose/Effectの資格。#1163/#2516/#2600 | 過去のPASS・Verified BOM・Owner未受理Candidateを現業務許可にしない |
+
+同じSubjectを二つのCanvas/表・図・SHOに表示しても、別Obligationとして重複加算しない。反対に同じ両端/ラベルの**複数Relation Edge ID**、Entity/Relation/Path occurrence/Aggregate等の異なるGrain、同名異Provider/Query/Targetは別の検証単位となる。Data構造、Function内Binding、Presentation Topology、実Action/Effectの各辺に依存がある場合はそれぞれ独立の到達義務とする。SUI的な未分類Raw Itemは保存済みというだけで意味のRequired集合に自動参入させず、未整理/後日解釈として保持する。
+
+**必要十分条件を誤らないCoverage判定**：
+1. 「特定RuleのCaseがcovered」は、当該Rule/Scope/Targetの独立Expectedと実到達・観測が資格化した場合の**局所的な正のClaim**であり、全Ruleの発見完了を要求しない。
+2. 「特定Ruleは未テスト」は、対象Ruleの存在・適用性と、そのScopeのScenario実行目録の完全性を別途確認して初めて主張可能。目録がpartialなら「現在受領したScenarioに一致Caseなし」と表現する。
+3. 「必要なRule/Relationがソースで欠落」は、#3324/#3326の独立Requiredと限定CLI投影の差集合から診断できるが、完全な業務世界でRuleが存在しない証明ではない。
+4. 「全要件がカバー済み」は、独立Required宇宙・依存/Target/Consumer範囲・実観測/独立Expectedの完全閉包がなければ不可。数値分母を勝手にゼロにしない。
+5. 現在Grant/Audienceが未知または拒否なら、内容が正しくてもそのConsumer向けの「完全なCoverage Report」を公開しない。
+
+### 24.3 推薦の停止条件と、状況に応じた次の最小操作
+
+初めに「何をテストするか」を網羅生成するより、次の分岐を既存CLI/Skillのread-only Resultから提案する。
+
+| 観測事実 | 先に推奨すること | 生成候補の資格 |
+| --- | --- | --- |
+| 必要Source/RuleがManifestにあるがLoader/Parser未確認 | 実Loader/ParserとSource Role、Full/Subject Index modeの確認 | 欠損の説明まで。Test Patternの自動採用不可 |
+| Relation/Queryがpartial、NOT EXISTSが見かけ上true、結果Grainが不明 | Predicate/Scope/ページ終端/EntityとOccurrence/否定依存の観測 | 存在の局所証人は保持。不在を前提にしたExpected不可 |
+| Trait mandatoryだがProvider/Manual Implementation/実Target不明 | #951/#3279のFulfillmentと実Consumer/Conformanceの不足照会 | テスト案は候補。提供済/Verifiedとは言わない |
+| 同一ItemがCanvas二面にあり片面のみ見える／Graph edge非表示 | Subject/Edge identityとビューOccurrence/Sourceを独立照合 | 非表示を未カバー・不存在としない |
+| 選択済Scenarioがあるが実CLI/Tool replyの完全受領なし | #1180のPinned命令・実named Test結果・#2509のReply Endを照合 | planned≠executed。全Coverage改善不可 |
+| 独立Required/Expectedと実Targetが揃い、本当にCaseが未実行 | #3273/#2514の新規Test Pattern候補を提出 | T1-B Blind Reviewerへ引渡し可 |
+
+QueryやGraphを扱う「不在に関するTest Pattern」は、Positive WitnessとNegative Witnessを分ける。たとえばD1=2、D2=3のJOIN 6行を6実体と数えず、D2の1/3ページを「残り0」としない。意図的に1要素欠落させた場合も、同じReaderが検証済みのRequiredだけに違反を示し、範囲外要素の変更には過剰拒否しない。
+
+### 24.4 同一Subjectの二投影と二世界比較による独立検証
+
+**一つの意味Sourceを、複数の異質なConsumerへ投影**するときのMetamorphicな期待値を整理する。Renderer名一致やJSONの見た目一致ではなく、何を不変にすべきかを先に定め、変更軸一つずつを独立に変える。これはテスト生成候補の型であり、OwnerのScenario/Oracle正本を複製しない。
+
+| 比較 | 期待する不変／変化 | 非主張 |
+| --- | --- | --- |
+| 同一SubjectをCanvas A/Bへ二重配置、片側のみHidden | Semantic/Requirement ID・Obligation数は不変、View occurrence/Disclosureのみ差 | 二表示を二実体・二Ruleと数えない |
+| 同じ端点のRelationをEdge ID違いで2本配置 | 多重Relationは2件を保持。片方だけ消えれば当該Edgeの差分を検出 | Graph線の描画順/レイアウトを意味としない |
+| 同一QueryにPartially fetched 1/3と完全な0件を与える | 部分1件は存在証人、complete zeroだけがScope内の不在証拠 | SQL名やRaw JSON同一なら全件としない |
+| 公開Slice不変で非公開Role/Item/Source件数のみ違うW0/W1 | 許可されるBody/Diagnostics/Status/図の可視差は生まない | 実Policy/Sink非干渉は未試験ならNOT PROVEN |
+| Source/Provider Lock A→B→A、Artifact byteだけ同じ | 過去Evidenceは履歴として残し、現在のHost/Grantを自動復活させない | hash一致=更新履歴なし・最新許可ありではない |
+| Pluginの未選択実装を追加／Provider選択だけ変更 | 実Build Closureが不変なら局所再利用余地あり。実選択Providerが変われば当該tuple資格再照合 | BOMの単体PASSを全組合せPASSにしない |
+| RuntimeでEffectUnknownだがUIに成功表示 | UI表示と実Owner Commit/別Connection Readを別証拠 | UI success/Receipt受領だけでPersistedとしない |
+
+### 24.5 新しい横断受入反例（TT-98〜TT-107、現時点は提案・NOT RUN）
+
+| ID | 独立の対照入力 | 正しい判定／Owner |
+| --- | --- | --- |
+| TT-98 | Required Ruleが存在、受領Scenario目録は途中までで一致Caseなし | unobserved-in-partial-inventory。untested確定は拒否／#3262/#1180 |
+| TT-99 | 観測済Rule Caseは局所実行済みだが、全Function Rule一覧が不完全 | 対象1 Ruleのqualified観測を保持し、全Coverageはunknown／#2514 |
+| TT-100 | Queryが先頭ページ1/3、NOT EXISTS/0件を推論 | scope-without-absence-proof、存在証人だけ保持／#2506/#1706 |
+| TT-101 | SUI/SHO/Studio二Canvasの同一Subjectカードを二件に加算 | semantic dedup、occurrence数は別／#3263/#2497 |
+| TT-102 | 同端点・同LabelのGraph Edgeが2 ID、片方を隠す | Relation Requiredは2件、非描画を削除としない／#3263/#1126 |
+| TT-103 | Trait required、宣言ありだが実Provider Load/Manual Obligation欠落 | unfulfilled/unknown、Conformance/Verified BOM不可／#3279/#3267 |
+| TT-104 | 非公開Role件数だけ異なる二World、許可Sliceは同じ | 非公開件数/Source path/診断を外部Consumerへ漏らさない／#2516/#2515 |
+| TT-105 | 同一名称のSQLを別Provider/Bindで実行しE/W/C結果を一つのCoverageへ合算 | 別Source/Target/Attemptの結果は別Claim／#2586 |
+| TT-106 | Cache hitとCLI exit0、実Binary/Rule/Observer/Tool Replyが未確認 | executed/covered/reusable-qualifiedへ昇格不可／#2600/#1163 |
+| TT-107 | Source A→B→Aで古いExpectedとGrantを無条件に再使用 | Content再一致は履歴や現在資格を回復しない／#2514/#1174 |
+
+### 24.6 現実的な実施順とClaim ceiling
+
+- **P0-A（既存実行）**：#3326/#3324のTT-56一つへ収束させた後、同じ3 Ruleと公開Source/同一CLIでRequired欠落・non-overreject・Query mode・Source/Index/Loader/Actual Rule Bindの区別を記録する。最初から全Data/Function/Businessを完全正本としない。
+- **P0-B（最初の新しい局所判別）**：TT-98/99の「目録が不完全でも局所Coveredは成立、全体Untestedは未認定」を、既存Driver Scenario/Context Gateの試験用Consumerで再現。次にTT-100のpartial→completeを独立Expectedで観測する。既存#1180/#2514のCase命名・本体Runnerを再実装しない。
+- **P1-C（AI検証）**：T1-BへはQualified Requirement範囲内の未提示Gapを一件だけ移し、B0/B1/B2/BXを実Tool受信・独立Expected/合法Baselineで評価。テストコードの提案数ではなく、真の未検証Obligationの解消・誤PASSを測定する。
+- **P1-D（Plugin/BOM・二Consumer）**：同一Contract/ProviderのCLI/Studio実呼出を#1251/#951に、Trait requiredとexact 2×2 BOMを#3279/#3267に委譲。SUI/SHOの多重View・W0/W1非干渉の検査は#3263/#2516と別実測。
+- **P2（実Product資格）**：Go C1局所実計測・実PG Provider/HTTP Client Reaction/Owner Effect/SHO実受領・NFRを必要なScopeごとに増やす。T1-BやPlugin D1の全完成を各々のHard Dependencyにしない。
+
+**既存の資格境界を維持**：この節はモデル化されたObligation投影と判定負例をOwnerへ割り当てる設計差分。新しいTest Engine／第二Semantic/Scenario/Oracle／中央Registry／認可・Host/Resolver／実Plugin Bundleを作らない。#3324/#3326別々のCI success、main #3304の既知T1-A、Go局所C0相当10.1%は既存局所実績。TT-98〜107の新実行、T1-B/外部H3、全Product C0/C1・実Provider/SHO・Owner Meaning AcceptanceはNOT RUN/NOT PROVEN。
