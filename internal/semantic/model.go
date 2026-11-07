@@ -16,8 +16,19 @@ type Namespace struct {
 	Capabilities  []Capability `json:"capabilities,omitempty"`
 	Validations   []Validation `json:"validations,omitempty"`
 	Periods       []Period     `json:"periods,omitempty"`
+	Calendars     []Calendar   `json:"calendars,omitempty"`
 	EffectRules   []EffectRule `json:"effectRules,omitempty"`
 	RunPlans      []RunPlan    `json:"runPlans,omitempty"`
+}
+
+// Calendar declares the business calendar a period follows: when the fiscal
+// year starts, which weekday begins the week, and which data holds the
+// exceptions (holidays). It declares meaning; it does not compute a date.
+type Calendar struct {
+	ID                   core.CanonicalID `json:"id"`
+	FiscalYearStartMonth int              `json:"fiscalYearStartMonth,omitempty"`
+	WeekStarts           string           `json:"weekStarts,omitempty"`
+	BusinessDayExcludes  core.CanonicalID `json:"businessDayExcludes,omitempty"`
 }
 
 // Period binds one data to a business date and to the states a closing period
@@ -30,6 +41,10 @@ type Period struct {
 	CloseRequires core.CanonicalID `json:"closeRequires,omitempty"`
 	ClosedRejects []string         `json:"closedRejects,omitempty"`
 	Correction    core.CanonicalID `json:"correction,omitempty"`
+	// Calendar names the business calendar that decides the period boundary.
+	// An empty value means the period does not declare one, and a checker
+	// must not assume a default.
+	Calendar core.CanonicalID `json:"calendar,omitempty"`
 }
 
 type TypeKind string

@@ -953,9 +953,11 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | Command実行の記録契約 | 実装済み（`Invoker.Recorder`が宣言効果・報告効果・結末を記録。実装は`MemoryRecorder`） |
 | CLI実行記録 | 実装済み（`view -execute -operation-log`、JSON） |
 | 能力の宣言許可の照合 | 実装済み（`command.GrantAuthorizer`が能力の宣言許可と発行済み許可を`permission.Covers`で照合。無宣言・部分許可・不正宣言は拒否） |
-| 診断の修正案 | 実装済み（`validation.Propose`が版付きの未受理の案を作り、`validation.Accept`が版一致と未受理を要求。`tei validate -json`は`proposals`を返す） |
+| 診断の修正案 | 実装済み（`validation.Propose`が版付きの未受理の案を作り、`validation.Accept`が版一致と未受理を要求。`tei validate -json`とStudioの`ValidateWorkspace`は`proposals`を返す） |
 | 参照Storeの拒否符号 | 実装済み（`ReferenceFailure`が`record-missing`・`record-exists`・`value-rejected`・`rule-rejected`を持ち、`FailureOutcome`が結末名へ写す。CLIは`COMMAND_REFUSED`で返す） |
-| フックの宣言外呼出し | 実装済み（`hook.Declared`が`uses`外の能力呼出しを`HOOK_UNDECLARED_CALL`で拒否。無宣言は拒否） |
+| フックの宣言外呼出し | 実装済み（`hook.Declared`が`uses`外の能力呼出しを`HOOK_UNDECLARED_CALL`で拒否。無宣言は拒否。`hook.CommandCaller`が宣言済みの呼出しをCommand境界へ委譲し、認可・取引・効果照合・記録を継承する） |
+| 暦の宣言 | 実装済み（`calendar`の`fiscal-year starts month`・`week starts`・`business-day excludes`と、`period`の`calendar`。`CALENDAR_*`・`PERIOD_*CALENDAR*`の検証） |
+| 暦からの日付導出 | 実装済み（`internal/businesscalendar`。日付差の規則（`elapsed`・`calendar`・`business`）、営業日加算、会計年度と年度開始。宣言から暦を解決し、休日Dataは呼出し側が与える） |
 | 画面・帳票の版 | 実装済み（全HTML・印刷テンプレートが`tei-semantic-fingerprint`を出力） |
 | 読み取り専用datasourceの事前検査 | 実装済み（Applicationの`database ... access read`宣言とDatabaseの`uses semantic`から対象Dataを引き、書込みCommandを`COMMAND_DATASOURCE_READ_ONLY`で拒否。宣言が無いDataは推測しない） |
 | CLIの失敗符号 | 実装済み（`COMMAND_EFFECT_UNKNOWN`・`COMMAND_LIFECYCLE_REFUSED`を`COMMAND_FAILED`から分離） |
@@ -995,6 +997,10 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
+
+
+
 
 
 

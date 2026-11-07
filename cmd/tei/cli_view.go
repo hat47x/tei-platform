@@ -31,9 +31,12 @@ type referenceCommandRun struct {
 	// MemoryUnitOfWork, which counts the call without writing anything. Read it
 	// together with Persisted and Durability (#2998).
 	Committed bool `json:"committed"`
-	// Persisted is false for a reference run. It is a separate field so a
-	// caller cannot read Committed as "the data is now durable".
+	// Persisted is true only when an independent observer saw the declared
+	// effect after Commit. A reference run has no observer, so it is false.
 	Persisted bool `json:"persisted"`
+	// Persistence separates "not applicable" (reference) from "not observed"
+	// (durable Commit without an independent read) and "observed".
+	Persistence string `json:"persistence"`
 	// Durability names the storage boundary: "none" for the reference executor.
 	Durability string `json:"durability"`
 	// Differences keeps the applied operations the declaration does not
@@ -44,6 +47,10 @@ type referenceCommandRun struct {
 	// operations, so `differences` being empty is "not observed" rather than
 	// "none found".
 	AppliedUnobserved bool `json:"appliedUnobserved,omitempty"`
+	// ReportedEffectMissing is true when the capability declared an effect but
+	// the executor reported none. The run is not rejected, but a reader must not
+	// treat the absence as proof the declared effect was applied.
+	ReportedEffectMissing bool `json:"reportedEffectMissing,omitempty"`
 }
 
 type cliViewReport struct {
@@ -236,23 +243,30 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 				}
 			}
 			var differences []command.Difference
-			appliedUnobserved := true
+			var reportedEffectMissing bool
+			// Only a declared effect gives the check something to compare. For
+			// a command without one, an empty record list is "nothing to check",
+			// not "the executor could not say".
+			appliedUnobserved := plan.Effect != nil
 			if len(recorder.Records) > 0 {
 				last := recorder.Records[len(recorder.Records)-1]
 				differences = last.Differences
 				appliedUnobserved = last.AppliedUnobserved
+				reportedEffectMissing = last.ReportedEffectMissing
 			}
 			run := referenceCommandRun{
-				SchemaVersion:     applicationview.SchemaVersion,
-				Mode:              "reference",
-				Plan:              plan,
-				Outcome:           result.Outcome,
-				Effect:            result.Effect,
-				Committed:         true,
-				Persisted:         false,
-				Durability:        "none",
-				Differences:       differences,
-				AppliedUnobserved: appliedUnobserved,
+				SchemaVersion:         applicationview.SchemaVersion,
+				Mode:                  "reference",
+				Plan:                  plan,
+				Outcome:               result.Outcome,
+				Effect:                result.Effect,
+				Committed:             true,
+				Persisted:             result.Persistence == command.PersistenceObserved,
+				Persistence:           string(result.Persistence),
+				Durability:            "none",
+				Differences:           differences,
+				AppliedUnobserved:     appliedUnobserved,
+				ReportedEffectMissing: reportedEffectMissing,
 			}
 			report.OK = true
 			report.Result = run
@@ -727,7 +741,7 @@ func writeReferenceRunText(out io.Writer, run referenceCommandRun) (int, error) 
 	if _, err := fmt.Fprintf(out, "committed: %t (reference unit of work)\n", run.Committed); err != nil {
 		return 2, err
 	}
-	if _, err := fmt.Fprintf(out, "persisted: %t (durability: %s)\n", run.Persisted, run.Durability); err != nil {
+	if _, err := fmt.Fprintf(out, "persisted: %t (persistence: %s, durability: %s)\n", run.Persisted, run.Persistence, run.Durability); err != nil {
 		return 2, err
 	}
 	// An unresolved difference is shown even when the run succeeded: the
@@ -735,6 +749,11 @@ func writeReferenceRunText(out io.Writer, run referenceCommandRun) (int, error) 
 	// have to open the operation log to notice.
 	// Only a declared effect gives the check something to compare against; a
 	// command without one has no difference to look for.
+	if run.ReportedEffectMissing {
+		if _, err := fmt.Fprintln(out, "reported-effect: missing (the capability declares an effect but the executor reported none)"); err != nil {
+			return 2, err
+		}
+	}
 	if run.AppliedUnobserved && run.Plan.Effect != nil {
 		if _, err := fmt.Fprintln(out, "difference-check: not observed (this executor does not enumerate its operations)"); err != nil {
 			return 2, err

@@ -83,7 +83,7 @@ decision, err := guard.Check("sales.close", requirements)
 第1章の件数は、一度きりの手作業（正規表現）でした。書いた数字は、コードが変わった瞬間に根拠ではなくなります。**同じ手順で何度でも数え直せる**計器を置きました（`tools/reference-access-survey`）。
 
 ```sh
-go run ./tools/reference-access-survey -out survey.json
+go run ./tools/reference-access-survey -summary
 ```
 
 - 数えるのは**構文木**（`go/parser`）で見つけた呼び出しだけです。コメントや文字列の中の `os.WriteFile` は呼び出しではないので数えません。
@@ -93,8 +93,8 @@ go run ./tools/reference-access-survey -out survey.json
 ### 2026-11-07 時点の実測
 
 ```text
-scanned 1056 / withAccess 273 / guarded 1 / calls 859
-filesystem 762・environment 82・network 15
+scanned 1061 / withAccess 275 / guarded 1 / calls 862
+environment 83 / filesystem 764 / network 15
 ```
 
 第1章の「ファイル626・ネットワーク15・環境変数31」とは一致しません。**数え方が違う**ためです。
@@ -108,3 +108,15 @@ filesystem 762・environment 82・network 15
 
 - 実行時に何が起きるか。強制の証拠ではありません。
 - **秘密**の経路。直接の読み取り呼び出しは `os.Getenv` のような環境変数として現れるため、`secret` 種別としては数えていません（`environment` に含まれます）。
+- **値を通した呼び出し**（`client.Do(req)` など）。`http.Get` でも `net.Dial` でもないため、この計器の対象外です。`Do` という名前を全部数えるのは、もっと悪い数え方なので選びませんでした。穴は塞がず、数字を完全なものとして読まない方針です。
+## 10. 追記（2026-11-07）: 拒否を残す
+
+第6章の `FileSystem` は `Root` の外を指すパスを**権限を見る前に**拒否します。その拒否は `Guard.Check` を通らないため、**記録されていませんでした**。記録が無い拒否は「起きなかったアクセス」と区別できず、**Root の外へ出ようとした試行**だけが痕跡を残さない状態でした。
+
+`FileSystem.resolve` で、`inside` が失敗したときも判定を1行記録するようにしました。
+
+- 記録は `Guard` が書くのと同じ形（`Capability`・`Allowed=false`・`Missing`）です。読む側は、権限不足による拒否と Root 外の拒否を**同じ形**で扱えます。
+- `Missing` には要求と理由（`outside the root: …`）が入ります。
+- **ジャーナルが壊れていても、返すエラーは変えません**。パスはすでに拒否されており、そこでジャーナル失敗を返すと「記録できなかった」を「拒否した」より優先して報告してしまいます。記録の失敗は握りつぶしていますが、拒否そのものは呼び出し側に伝わります。
+
+**この追記が示さないこと**: 記録の失敗を呼び出し側が知れること（**知れません**。拒否を優先する設計判断です）。記録が改竄されないこと（`access.File` は追記のみ）。

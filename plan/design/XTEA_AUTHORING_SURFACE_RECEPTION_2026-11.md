@@ -165,7 +165,21 @@ X-TEA（XEAD）の Modeler・Editor・Driver を読み、**作者環境（TEI St
 - 実DBでのSQL・トランザクション・帳票出力、旧Runtimeの実測は[#940](https://github.com/hat47x/tei-platform/issues/940)が担当します。
 - Studio（`cmd/tei-studio`）の画面操作・Wails RPCの実HTTP経路は、[起動確認](../evidence/XTEA_LOWCODE_EXAMPLE_STUDIO_SMOKE_2026-11.md)の範囲を超えて確認していません。
 
-## 7. 関連
+## 7. 実装済みの受容との接点
+
+この設計の各項目は、既に参照実装で確かめた受容と接続できます。
+
+| 設計の項目 | 既存の受容 | 接点 |
+| --- | --- | --- |
+| 診断と修正案（§3.1、§3.3） | `validation.Proposal`・`tei validate -json`・Studioの`proposals` | 案は版付きで未受理。Studioの画面にも「修正案（未受理）」として出る |
+| 面ごとの検査（§3.1） | `internal/validation/application_pattern.go`の対話検査 | Pattern種別ごとの分岐を、面の単位へ整理する |
+| 参照実行の記録（§3.6） | `Invoker.Recorder`・CLIの`-operation-log`・Studioの`records` | SQLコンソールの実行も同じ記録へ載せる |
+| 効果の宣言照合（§3.6） | `Differences`・`AppliedUnobserved` | 参照実行と実適用の差を、同じ形で残す |
+| 標準業務の宣言（§3.7） | 期間（`Period`）・値域（`Type.Values`） | 暦・税・通貨・採番を、期間と同じ宣言面へ置く |
+| 派生出力の版（§3.8） | `semanticFingerprint`・印刷の受領票 | 行列・設計書の出力へ同じ版を付ける |
+| 未受理の生成物（§3.5、§3.3） | `validation.Accept`の版一致要求 | 雛形・置換案も同じ受理境界を通す |
+
+## 8. 関連
 
 - [受容設計](XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md)
 - [知識目録](../research/XTEA_LOWCODE_KNOWLEDGE_INVENTORY_2026-11.md)
@@ -173,4 +187,8 @@ X-TEA（XEAD）の Modeler・Editor・Driver を読み、**作者環境（TEI St
 - [移行計画](../workstreams/XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)
 - [実装対応](../evidence/XTEA_LOWCODE_ACCEPTANCE_TRACE_2026-11.md)
 - [作者支援ツールの移植対応表](AUTHORING_TOOL_FEATURE_TRANSFER_MAP_2026-10.md)
+- [X-TEA派生出力の受容設計](XTEA_DERIVED_OUTPUT_RECEPTION_2026-11.md)（設計書・DDL・行列・差分）
+
+
+
 

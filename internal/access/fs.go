@@ -41,9 +41,15 @@ func (fs FileSystem) WriteFile(name string, data []byte, mode os.FileMode) error
 }
 
 // resolve checks the requirement, records the decision, and returns the path.
+//
+// A path outside the root is refused before the permission is consulted, and that
+// refusal is recorded too. A refusal nobody can read back is indistinguishable
+// from an access that never happened: an escape attempt that leaves no trace
+// cannot be investigated afterwards.
 func (fs FileSystem) resolve(name string, access permission.Access) (string, error) {
 	resolved, err := fs.inside(name)
 	if err != nil {
+		fs.recordOutsideRoot(access, name, err)
 		return "", err
 	}
 	requirement := permission.Spec{Kind: permission.KindFilesystem, Access: access, Scope: resolved}
@@ -55,6 +61,22 @@ func (fs FileSystem) resolve(name string, access permission.Access) (string, err
 		return "", fmt.Errorf("capability %s may not %s %s: the granted permissions do not cover it", fs.Capability, access, resolved)
 	}
 	return resolved, nil
+}
+
+// recordOutsideRoot records a refusal that the permission check never saw. The
+// journal is what the guard would have written, so the two refusals read the
+// same way in the log. A journal failure is not returned: the path was refused
+// anyway, and turning that refusal into a journal error would report a failure to
+// record a decision instead of the decision itself.
+func (fs FileSystem) recordOutsideRoot(access permission.Access, name string, reason error) {
+	if fs.Guard.Journal == nil {
+		return
+	}
+	_ = fs.Guard.Journal.Append(Decision{
+		Capability: string(fs.Capability),
+		Allowed:    false,
+		Missing:    []string{string(permission.KindFilesystem) + ":" + string(access) + " " + name + " (outside the root: " + reason.Error() + ")"},
+	})
 }
 
 // inside reports the absolute path, refusing anything outside the root.
