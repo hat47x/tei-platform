@@ -9,6 +9,7 @@ description: >-
 # TEIモデリング調査（Product Skill）
 
 > **2026-11-05 検証状態**：このProduct Skillの文書・参照資料は[merged PR #2607](https://github.com/hat47x/tei-platform/pull/2607)によってmainに統合済み。[GitHub Actions #41532988114](https://github.com/hat47x/tei-platform/actions/runs/41532988114)では、対象版 `d0de429ae5aac38b7949c2cfe6eacafff059675f` の公開 `reference/workspace` について、ビルド済みの実TEI CLIから `commands`・`model catalog`・`inspect`・`trace`・`validate` を読み取る**限定S1試験**が成功した。一方、外部AI HarnessへのSkillインストール・実ロード・実呼出し、MCP/Provider/業務Effect、Ownerの正式な意味受理は**NOT RUN／未受理**。他の版や任意Workspaceへ試験成功を一般化しない。
+> **2026-11-05 実行資格の更新**：このSkillの初期ファイルは[PR #2607](https://github.com/hat47x/tei-platform/pull/2607)でmainへ統合済み。対象HEAD `d0de429ae5aac38b7949c2cfe6eacafff059675f`の[Product Skill CI #41532988114](https://github.com/hat47x/tei-platform/actions/runs/41532988114)では、静的チェッカーと、公開Reference Workspaceに対する実Goバイナリの`commands`／`model catalog`／`inspect`／`trace`／`validate`が限定的に成功した。一方、**外部ハーネスでのSkill実ロード・Tool呼出し、実OS/Provider権限・開示、業務Owner受理と正式Releaseは未実証**。利用時は現在の実環境とSource対象を改めて確認する。
 
 ## いつ使うか
 
@@ -42,3 +43,4 @@ TEIのSource・モデル要素・入力元・参照関係・Validationを調べ�
 - [YIシリーズ横断Skill設計（TAI Draft）](https://github.com/hat47x/tai-pleroma/pull/270)
 
 **現在の評価状態**：Product Skillのmain統合と、公開Workspaceでの実ビルド済TEI CLIの限定read-only S1試験は確認済み（上記のexact HEAD／CI）。しかしSkill本文を読んだAIが**実際にToolを呼べる／正しく使える**ことは未検証。外部Harnessの実install/load/invoke、Tool-onlyとSkill付きのH2/H3独立4 Session比較、実外部送出・全Source完全性・正式Release/Owner受理はいずれも未実施。比較のOwnerは[TAI #168](https://github.com/hat47x/tai-pleroma/issues/168)／[Draft #270](https://github.com/hat47x/tai-pleroma/pull/270)。
+**現在の評価状態（2026-11-05）**：mainにある試作Skillの静的チェッカーと公開Fixtureの**実CLI単体CIは限定成功**。その実行はSkillを外部ハーネスからロード・呼出した試験ではない。次の資格は、必要な利用者定義Sourceが実解析済みであることの確認、同じTaskでのH2 Tool-only／H3 Tool＋Skillの実四Session比較、独立Expectedによる採点、適切な現在開示・Tool権限の確認である。二Harness互換、実外部Host/Provider、業務Owner受理、正式Releaseは**NOT RUN**（[TEI #2605](https://github.com/hat47x/tei-platform/issues/2605)／[TAI #168](https://github.com/hat47x/tai-pleroma/issues/168)）。
