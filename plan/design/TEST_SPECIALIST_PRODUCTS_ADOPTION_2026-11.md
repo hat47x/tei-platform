@@ -1123,9 +1123,9 @@ S/C/E/Rの全条件を一個の`qualified` booleanへ畳まない。まず`known
 **実績の停止線**：#3333/#3340/#3336/#3337等のmain統合は各限定Capabilityの進展であり、#3354/#3351/#3350/#3353/#3348の未統合Draftの試験成功やT1-B製品資格ではない。本節は当該PR/Sourceの照合に基づく受入計画の更新であり、新しいGo/CLI/PG/外部H3/GUI/実Plugin複合試験、Owner Meaning Acceptanceは本追補自体ではNOT RUN。第二Runner・意味正本・認可系を作らない。
 
 <!-- tei-test-epistemic-coverage-projection-20261108 -->
-## 24. 2026-11-08 横断深化：不存在判断の適格性、検証義務の標準構造投影、二世界差分テスト
+## 26. 2026-11-08 横断深化：不存在判断の適格性、検証義務の標準構造投影、二世界差分テスト
 
-### 24.1 他レーンから一般化した問題――表示されない／返らない／実行されない ≠ 存在しない
+### 26.1 他レーンから一般化した問題――表示されない／返らない／実行されない ≠ 存在しない
 
 三視点Model/CRUDと複数Canvas (#3263)、Function ContextのPartial Read/Join/Grain (#2506/#2586)、CLI Design ContextのRule目録 (#3262)、Trait FulfillmentとVerified BOM (#3279/#3267)、SHO/外部Harnessの公開Slice/実受信 (#2516/#2509)、Cache/Buildの再利用・履歴 (#3271/#2600)を横断すると、**観測可能な部分に対象が見つからなかったことを、世界全体の不存在や未実装・未カバーと読み替える**共通の偽陰性がある。以下をテスト推薦・Coverage投影における独立Expectedとして扱う。
 
@@ -1137,7 +1137,7 @@ S/C/E/Rの全条件を一個の`qualified` booleanへ畳まない。まず`known
 
 これは第二のClosed World Engineや新Core enumの提案ではない。既存のSource/Meaning/Context/Scenario/Evidenceから、目的・対象・粒度・Scope相対に導出する**read-onlyの判定規則**である。
 
-### 24.2 Test Obligationはモデルからの派生投影であって独立の意味正本ではない
+### 26.2 Test Obligationはモデルからの派生投影であって独立の意味正本ではない
 
 対象を「要求されているか」「観測可能か」「テストされたか」の三つの集合で照合する。Test Obligation一件の表示は次の参照を持つ（実Schema未採用）。
 
@@ -1158,7 +1158,7 @@ S/C/E/Rの全条件を一個の`qualified` booleanへ畳まない。まず`known
 4. 「全要件がカバー済み」は、独立Required宇宙・依存/Target/Consumer範囲・実観測/独立Expectedの完全閉包がなければ不可。数値分母を勝手にゼロにしない。
 5. 現在Grant/Audienceが未知または拒否なら、内容が正しくてもそのConsumer向けの「完全なCoverage Report」を公開しない。
 
-### 24.3 推薦の停止条件と、状況に応じた次の最小操作
+### 26.3 推薦の停止条件と、状況に応じた次の最小操作
 
 初めに「何をテストするか」を網羅生成するより、次の分岐を既存CLI/Skillのread-only Resultから提案する。
 
@@ -1173,7 +1173,7 @@ S/C/E/Rの全条件を一個の`qualified` booleanへ畳まない。まず`known
 
 QueryやGraphを扱う「不在に関するTest Pattern」は、Positive WitnessとNegative Witnessを分ける。たとえばD1=2、D2=3のJOIN 6行を6実体と数えず、D2の1/3ページを「残り0」としない。意図的に1要素欠落させた場合も、同じReaderが検証済みのRequiredだけに違反を示し、範囲外要素の変更には過剰拒否しない。
 
-### 24.4 同一Subjectの二投影と二世界比較による独立検証
+### 26.4 同一Subjectの二投影と二世界比較による独立検証
 
 **一つの意味Sourceを、複数の異質なConsumerへ投影**するときのMetamorphicな期待値を整理する。Renderer名一致やJSONの見た目一致ではなく、何を不変にすべきかを先に定め、変更軸一つずつを独立に変える。これはテスト生成候補の型であり、OwnerのScenario/Oracle正本を複製しない。
 
@@ -1187,27 +1187,27 @@ QueryやGraphを扱う「不在に関するTest Pattern」は、Positive Witness
 | Pluginの未選択実装を追加／Provider選択だけ変更 | 実Build Closureが不変なら局所再利用余地あり。実選択Providerが変われば当該tuple資格再照合 | BOMの単体PASSを全組合せPASSにしない |
 | RuntimeでEffectUnknownだがUIに成功表示 | UI表示と実Owner Commit/別Connection Readを別証拠 | UI success/Receipt受領だけでPersistedとしない |
 
-### 24.5 新しい横断受入反例（TT-98〜TT-107、現時点は提案・NOT RUN）
+### 26.5 新しい横断受入反例（TT-105〜TT-114、現時点は提案・NOT RUN）
 
 | ID | 独立の対照入力 | 正しい判定／Owner |
 | --- | --- | --- |
-| TT-98 | Required Ruleが存在、受領Scenario目録は途中までで一致Caseなし | unobserved-in-partial-inventory。untested確定は拒否／#3262/#1180 |
-| TT-99 | 観測済Rule Caseは局所実行済みだが、全Function Rule一覧が不完全 | 対象1 Ruleのqualified観測を保持し、全Coverageはunknown／#2514 |
-| TT-100 | Queryが先頭ページ1/3、NOT EXISTS/0件を推論 | scope-without-absence-proof、存在証人だけ保持／#2506/#1706 |
-| TT-101 | SUI/SHO/Studio二Canvasの同一Subjectカードを二件に加算 | semantic dedup、occurrence数は別／#3263/#2497 |
-| TT-102 | 同端点・同LabelのGraph Edgeが2 ID、片方を隠す | Relation Requiredは2件、非描画を削除としない／#3263/#1126 |
-| TT-103 | Trait required、宣言ありだが実Provider Load/Manual Obligation欠落 | unfulfilled/unknown、Conformance/Verified BOM不可／#3279/#3267 |
-| TT-104 | 非公開Role件数だけ異なる二World、許可Sliceは同じ | 非公開件数/Source path/診断を外部Consumerへ漏らさない／#2516/#2515 |
-| TT-105 | 同一名称のSQLを別Provider/Bindで実行しE/W/C結果を一つのCoverageへ合算 | 別Source/Target/Attemptの結果は別Claim／#2586 |
-| TT-106 | Cache hitとCLI exit0、実Binary/Rule/Observer/Tool Replyが未確認 | executed/covered/reusable-qualifiedへ昇格不可／#2600/#1163 |
-| TT-107 | Source A→B→Aで古いExpectedとGrantを無条件に再使用 | Content再一致は履歴や現在資格を回復しない／#2514/#1174 |
+| TT-105 | Required Ruleが存在、受領Scenario目録は途中までで一致Caseなし | unobserved-in-partial-inventory。untested確定は拒否／#3262/#1180 |
+| TT-106 | 観測済Rule Caseは局所実行済みだが、全Function Rule一覧が不完全 | 対象1 Ruleのqualified観測を保持し、全Coverageはunknown／#2514 |
+| TT-107 | Queryが先頭ページ1/3、NOT EXISTS/0件を推論 | scope-without-absence-proof、存在証人だけ保持／#2506/#1706 |
+| TT-108 | SUI/SHO/Studio二Canvasの同一Subjectカードを二件に加算 | semantic dedup、occurrence数は別／#3263/#2497 |
+| TT-109 | 同端点・同LabelのGraph Edgeが2 ID、片方を隠す | Relation Requiredは2件、非描画を削除としない／#3263/#1126 |
+| TT-110 | Trait required、宣言ありだが実Provider Load/Manual Obligation欠落 | unfulfilled/unknown、Conformance/Verified BOM不可／#3279/#3267 |
+| TT-111 | 非公開Role件数だけ異なる二World、許可Sliceは同じ | 非公開件数/Source path/診断を外部Consumerへ漏らさない／#2516/#2515 |
+| TT-112 | 同一名称のSQLを別Provider/Bindで実行しE/W/C結果を一つのCoverageへ合算 | 別Source/Target/Attemptの結果は別Claim／#2586 |
+| TT-113 | Cache hitとCLI exit0、実Binary/Rule/Observer/Tool Replyが未確認 | executed/covered/reusable-qualifiedへ昇格不可／#2600/#1163 |
+| TT-114 | Source A→B→Aで古いExpectedとGrantを無条件に再使用 | Content再一致は履歴や現在資格を回復しない／#2514/#1174 |
 
-### 24.6 現実的な実施順とClaim ceiling
+### 26.6 現実的な実施順とClaim ceiling
 
 - **P0-A（既存実行）**：#3326/#3324のTT-56一つへ収束させた後、同じ3 Ruleと公開Source/同一CLIでRequired欠落・non-overreject・Query mode・Source/Index/Loader/Actual Rule Bindの区別を記録する。最初から全Data/Function/Businessを完全正本としない。
-- **P0-B（最初の新しい局所判別）**：TT-98/99の「目録が不完全でも局所Coveredは成立、全体Untestedは未認定」を、既存Driver Scenario/Context Gateの試験用Consumerで再現。次にTT-100のpartial→completeを独立Expectedで観測する。既存#1180/#2514のCase命名・本体Runnerを再実装しない。
+- **P0-B（最初の新しい局所判別）**：TT-105/99の「目録が不完全でも局所Coveredは成立、全体Untestedは未認定」を、既存Driver Scenario/Context Gateの試験用Consumerで再現。次にTT-107のpartial→completeを独立Expectedで観測する。既存#1180/#2514のCase命名・本体Runnerを再実装しない。
 - **P1-C（AI検証）**：T1-BへはQualified Requirement範囲内の未提示Gapを一件だけ移し、B0/B1/B2/BXを実Tool受信・独立Expected/合法Baselineで評価。テストコードの提案数ではなく、真の未検証Obligationの解消・誤PASSを測定する。
 - **P1-D（Plugin/BOM・二Consumer）**：同一Contract/ProviderのCLI/Studio実呼出を#1251/#951に、Trait requiredとexact 2×2 BOMを#3279/#3267に委譲。SUI/SHOの多重View・W0/W1非干渉の検査は#3263/#2516と別実測。
 - **P2（実Product資格）**：Go C1局所実計測・実PG Provider/HTTP Client Reaction/Owner Effect/SHO実受領・NFRを必要なScopeごとに増やす。T1-BやPlugin D1の全完成を各々のHard Dependencyにしない。
 
-**既存の資格境界を維持**：この節はモデル化されたObligation投影と判定負例をOwnerへ割り当てる設計差分。新しいTest Engine／第二Semantic/Scenario/Oracle／中央Registry／認可・Host/Resolver／実Plugin Bundleを作らない。#3324/#3326別々のCI success、main #3304の既知T1-A、Go局所C0相当10.1%は既存局所実績。TT-98〜107の新実行、T1-B/外部H3、全Product C0/C1・実Provider/SHO・Owner Meaning AcceptanceはNOT RUN/NOT PROVEN。
+**既存の資格境界を維持**：この節はモデル化されたObligation投影と判定負例をOwnerへ割り当てる設計差分。新しいTest Engine／第二Semantic/Scenario/Oracle／中央Registry／認可・Host/Resolver／実Plugin Bundleを作らない。#3324/#3326別々のCI success、main #3304の既知T1-A、Go局所C0相当10.1%は既存局所実績。TT-105〜107の新実行、T1-B/外部H3、全Product C0/C1・実Provider/SHO・Owner Meaning AcceptanceはNOT RUN/NOT PROVEN。
