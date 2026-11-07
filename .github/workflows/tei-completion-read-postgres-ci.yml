@@ -1,0 +1,93 @@
+name: TEI Completion Read whole versus page (ephemeral PostgreSQL)
+
+# Reference-only: an independent finite fixture and an actual scoped SQL read.
+# Not Function/Pattern -> Provider product E2, Owner acceptance, or production ACL.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize]
+    paths:
+      - '.github/workflows/tei-completion-read-postgres-ci.yml'
+      - 'reference/web-api-contract/completion_read_slice_boundary_test.go'
+      - 'reference/web-api-contract/scoped_postgres_integration_test.go'
+      - 'reference/web-api-contract/fixtures/postgres_scoped_orders.sql'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-completion-read-postgres-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  completion-read-isolated-postgres:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: tei_fixture
+          POSTGRES_PASSWORD: local_fixture_only
+          POSTGRES_DB: tei_web_scoped_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tei_fixture -d tei_web_scoped_e2e"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+      TEI_WEB_SCOPED_PG_DSN: postgres://tei_fixture:local_fixture_only@127.0.0.1:5432/tei_web_scoped_e2e?sslmode=disable
+      TEI_WEB_SCOPED_PG_CONFIRM_ISOLATED: tei_web_scoped_e2e
+    steps:
+      - name: Fetch exact PR merge checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify exact checkout and clean state
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          [[ "$GITHUB_REF" =~ ^refs/pull/[0-9]+/merge$ ]]
+          read -r merge base head extra < <(git rev-list --parents -n 1 HEAD)
+          test -z "${extra:-}"
+          test "$merge" = "$GITHUB_SHA"
+          test "$head" = "${{ github.event.pull_request.head.sha }}"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+      - name: Set up pinned repository Go toolchain
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+      - name: Run required synthetic and actual PostgreSQL controls (no SKIP accepted)
+        shell: bash
+        run: |
+          set -euo pipefail
+          go vet ./reference/web-api-contract
+          go test -count=1 -v -run '^(TestCompletionReadSliceQualificationBoundaries|TestScopedTenantPostgresAgainstIsolatedDatabase)$' ./reference/web-api-contract | tee "$RUNNER_TEMP/completion-read.log"
+          grep -q -- '--- PASS: TestCompletionReadSliceQualificationBoundaries' "$RUNNER_TEMP/completion-read.log"
+          grep -q -- '--- PASS: TestScopedTenantPostgresAgainstIsolatedDatabase' "$RUNNER_TEMP/completion-read.log"
+          grep -Eq -- '--- PASS: TestScopedTenantPostgresAgainstIsolatedDatabase/actual_tenant_A_whole_fixture_versus_top-one_completion_witness' "$RUNNER_TEMP/completion-read.log"
+          ! grep -Eq -- '--- SKIP: Test(CompletionReadSliceQualificationBoundaries|ScopedTenantPostgresAgainstIsolatedDatabase)' "$RUNNER_TEMP/completion-read.log"
+      - name: Retain scoped test log for independent review
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tei-completion-read-pg-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/completion-read.log
+          retention-days: 7
+          if-no-files-found: error
+      - name: Verify source unchanged
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
