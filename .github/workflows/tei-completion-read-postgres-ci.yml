@@ -71,6 +71,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          echo 'DIAG: gofmt delta in scoped Postgres integration test'
+          gofmt -d reference/web-api-contract/scoped_postgres_integration_test.go
           go vet ./reference/web-api-contract
           go test -count=1 -v -run '^(TestCompletionReadSliceQualificationBoundaries|TestScopedTenantPostgresAgainstIsolatedDatabase)$' ./reference/web-api-contract | tee "$RUNNER_TEMP/completion-read.log"
           grep -q -- '--- PASS: TestCompletionReadSliceQualificationBoundaries' "$RUNNER_TEMP/completion-read.log"
