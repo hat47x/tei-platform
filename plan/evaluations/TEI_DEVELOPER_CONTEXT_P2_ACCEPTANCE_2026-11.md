@@ -426,3 +426,51 @@ P0-M（三視点Diagram/CRUD）とP0-R（Function→Query→実Provider→Contex
 3. **P2・追加認知価値**：決定的なD0（現在Tool/Sourceから不足を列挙）とSEI MethodのM1（どの追加Read/Scopeを選ぶか）を、同じSource/Read予算/Grant/開示とblind Expectedで比較。誤不存在、誤ったTest Admission、未取得依存、追加Read費用、未知Caseの発見を別指標にする。
 
 **現時点の範囲**：CC-16は合成Go試験のexact commitで限定CI PASS、製品コード無変更。本PRで新たな外部Harness実比較、Provider／実DB、OS/Network拒否、実AI生成テスト、Owner正式受理はNOT RUN。その後のdocs変更を含む現在PR HEADのCI、Repo全体Health、実Consumer受入はそれぞれ別に検収する。
+
+<!-- tei-devctx-cc17-test-revision-and-method-gap-20261108 -->
+## 19. CC-17：Test Source変更とA→B→Aを実Run資格から分離し、Methodの次Probeに接続（2026-11-08）
+
+### 19.1 今回の横断根拠と非重複責務
+
+[統合済#3284](https://github.com/hat47x/tei-platform/pull/3284)と[統合済#3296](https://github.com/hat47x/tei-platform/pull/3296)により、既存`tools/reference-issue-test-ability/context_gate.py`は、実TEI read-only CLIの9応答を使った範囲限定評価と、**合成16種**の欠損・重複・切断等を検出する。依然`boundedReference=partial`／`qualifiedTestGeneration=false`であり、**受領済みJSONの一時コピーへの破損注入**を実外部Harnessからの完全受領に読み替えない。
+
+[統合済#3304](https://github.com/hat47x/tei-platform/pull/3304)は、既知の「line_number_positive」に対する行番号0負例を固定Go Scenario経由の実TEI CLIで検出した**T1-A**。未知のRule/必要ObligationをAIが新たに見つける**T1-B**とは異なる。[Draft #3324](https://github.com/hat47x/tei-platform/pull/3324)と[Draft #3326](https://github.com/hat47x/tei-platform/pull/3326)は、同じWorld Fingerprintの下でRequired Rule/Relation欠落と`source-index` mode違いによるFalse Missingを切り分ける別案であり、どちらも現時点で未統合。ここで第二Source Index Readerや第二Readiness Gateを作らない。
+
+[Draft #3303](https://github.com/hat47x/tei-platform/pull/3303)の三視点Data/Function/Business・CRUDと実Product Contextの結合は未実施で、DiagramにないEdge／表にないRuleを「実モデルでも不存在」としない。Methodが行えるのは**取得・現在性・開示資格の不足を分けて、次に確認すべき実Tool/Sourceを提案すること**であり、未取得Sourceの意味を機械的に受理することではない。
+
+### 19.2 本PRで追加した新しい限定反例：CC-17
+
+`tools/reference-developer-context/test_revision_characterization_test.go`の`TestDiscoveryProfileCC17CandidateChangeInvalidatesOldPass`を追加（Code保存commit `2556d5b7fa91611b5113d746e6fb1b9c429cdacb`）。公開合成Go Moduleの**target file、Test名、GOOS、選択Go TestGoFilesを固定したまま**、候補Test Sourceとその独立期待だけを変更する。
+
+| 制御したEpoch | 実Source | 候補Test Source | 期待する実`go test -json` | 禁止する説明 |
+| --- | --- | --- | --- | --- |
+| E0 | `Evaluate()=0` | TestObligationは`0`を要求（A） | named test `pass` | 過去PASSを永久有効と呼ぶ |
+| E1 | 同じSource byte/SHA | 同名Testが`1`を要求（B） | named test `run`＋`fail` | GOOS/target SHA/Test名一致だからE0のPASSを現在結果とする |
+| E2 | 同じSource byte/SHA | Aへbyte復元 | **新しい**実runで`pass` | SHAがAに戻っただけでE0の旧実行Receiptを現在の実行として再認定 |
+
+`Discover`のcandidate SHAはE0→E1で変わりE2で復帰。test sourceだけ更新しても**同一target SHAと同一Go Profile選択が実検証結果を固定しない**。個別RunのeventやCode digestは実際に観測するが、試行ID・実Build byte・全依存・権限の有効期間までを正式束縛するReceiptは現`Report`にない。A→B→Aは「現在file byteが再び同一」と「以前の実行が現在有効」を分離する反例であって、単独で再実行の全領域一律強制を決めない。
+
+**現実証拠の上限**：本書執筆時、Codeを既存Draftへ保存した段階。**新CC-17はexact HEADのFocused CIログを確認するまでNOT VERIFIED**。仮にPASSでも合成GoパッケージだけのCaracterizationであり、TEI業務Oracle、実Provider、外部Harness、AIによる未知Rule発見は未実証。
+
+### 19.3 再資格化を目的相対の検査に限定する
+
+| 差分 | 認知Methodの正しい不足表現 | Next ProbeとOwner |
+| --- | --- | --- |
+| Candidate Test変更、target SHA不変 | 「候補は同じ名前、過去PASSの現在適用未確認」 | 実Build/Profile/Test Source byte＋`go test -json`の当該Eventを再束縛（本#2533、検証基準は#2514） |
+| `go test` exit0だがnamed Test 0件 | 「Run可能だが、この義務の実行証人なし」 | 必要Test/Scenario IDと選択Profileを確認（CC-16/#3262） |
+| Candidate A→B→A、Current bytes一致 | 「過去AttemptのReceiptと現在の有効期限・依存は独立」 | 既知依存だけ選択再確認、追加Edge/Grantはunknown（TAI #271／#2516） |
+| FPは同じだが必要Rule／Relation不明 | 「表示・Catalog上の不在と、Requiredの不存在を混同しない」 | 同一ScopeのSource/index mode/Source Inventory/実Loaded・非出力依存を[#3262](https://github.com/hat47x/tei-platform/issues/3262)・Draft #3324/#3326で比較 |
+| Design Context `partial`、16 controlsが検査成功 | 「欠損検査器は動いたが、必要な設計閉包はまだ未取得」 | P-1b1の一Function限定Required、独立Expectedを先に確定。新T1-Bは後段 |
+| 実H2/H3のSkill/Tool Response一部到達 | 「Tool/Skillの配送と内容・開示・回答資格は別」 | TAI #168のG0→G1→G2、実非露出／実Result終端（TEI #2509／TAI #232） |
+
+**必要な検査だけを選ぶ**：Qが存在の片側Witnessを求めるのか、全対象の否定／不存在なのか、実Executionの妥当性を求めるのかでRequired closureは異なる。既存Provider/CLIから観測された条件と、Ownerが事前に固定したR(Q)を比較し、`known / partial / unknown / unsupported`を区別する。すべてのReadをやり直すか、疑わしい依存だけを再確認するかは、同じ試行のSource/Revision/Scope/Grant/Costで評価する。Sourceの隠れたDependencyを、現在の部分Reportだけから自動補完しない。
+
+### 19.4 実施順と合格判定
+
+**P0（今）**：CC-17のFocused CIをexact HEADとJob logで確認。CC-12〜16の過去合格と混ぜず、E0 pass・E1 fail・E2新passを`TestObligation`の実named eventとして照合。PR #3176はDraftのまま、Go製品本体を変更しない。
+
+**P1（次）**：#3262／#3324／#3326のうち、**実Source/必要Ruleの判定可能な部分を既存`context_gate.py`へ受け渡す一案**だけを検収。ScopeやSource Index呼出しmodeによるFalse Missingと、真のSource/Rule欠落の両方を公開合成負例で識別。初回のP-1b1は一Functionに限定し、全Workspace完全性を要求して前段を停止しない。
+
+**P2（Model寄与比較）**：D0（決定的な不足診断）／D1（限定実追加Read）／M1（SEI Methodが選択したProbe）を、同じQ・Candidate/Source/Tool・Grant・Disclosure・Read Budget・Blind Expectedで比較。M1が独立に新しく見つけたRequiredの数、誤不存在、不要な再読取、実RunとContextの現在資格、Cost/Latencyを別々に測る。事前にAIへExpected・Reviewer-only rootを与えない。
+
+**採用と保留**：既存TEI #2533がP2評価とCC-17、#3262がDesign Context/P-1b1、#2514が独立Expected/Mutant、#2586が実Function→Query→Provider、SEI #767が問い相対Method、TAI #168/#232が実外部Harnessと開示・隔離を所有。新Test Engine、第二Reader／中央Registry／追加Cognition Host／形式未規定のReceipt ABIを作らない。**TEI本体の共同Snapshot能力・T1-B・実外部Harnessによる正答比較・実Provider・正式Owner意味受理は今回NOT RUN。**
