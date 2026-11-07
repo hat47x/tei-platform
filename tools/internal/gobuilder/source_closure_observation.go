@@ -88,6 +88,16 @@ func ObserveSourceClosure(repo, goPath, packagePath, supply, stateDir string) (S
 }
 
 func observeFromList(root, packagePath string, raw []byte) (SourceClosureObservation, error) {
+	// Normalize the repository root the same way module directories are
+	// normalized. On Windows a temporary directory can be reported as a short
+	// (8.3) path while the resolver reports the long path, and comparing those
+	// two unequal strings would misclassify every repository member as an
+	// external module member.
+	if evaluated, err := filepath.EvalSymlinks(root); err == nil {
+		root = evaluated
+	} else {
+		root = filepath.Clean(root)
+	}
 	tracked, err := trackedSourcePaths(root)
 	if err != nil {
 		return SourceClosureObservation{}, err
