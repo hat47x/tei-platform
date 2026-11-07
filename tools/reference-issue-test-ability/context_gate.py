@@ -14,12 +14,13 @@ import json
 from pathlib import Path
 
 COMMANDS = ("commands", "version", "workspace-files", "catalog", "inspect",
-            "source-index", "trace", "requirements", "validate")
+            "source-index", "source-index-all", "trace", "requirements", "validate")
 ENVELOPES = {
     "workspace-files": "tei.cli.workspace-files/v0",
     "catalog": "tei.cli.model/v0",
     "inspect": "tei.cli.inspect/v0",
     "source-index": "tei.cli.source-index/v0",
+    "source-index-all": "tei.cli.source-index/v0",
     "trace": "tei.cli.trace/v0",
     "requirements": "tei.cli.requirements/v0",
     "validate": "tei.cli.validate/v0",
@@ -105,7 +106,7 @@ def required_validation_slice(docs: dict[str, dict]) -> tuple[dict, list[str]]:
     catalog = docs.get("catalog", {}).get("result", {}).get("entries", [])
     if not isinstance(catalog, list):
         catalog = []
-    index_reply = docs.get("source-index", {})
+    index_reply = docs.get("source-index-all", {})
     if index_reply.get("mode") != "index":
         problems.append("required-rule-index:wrong-mode")
     index = index_reply.get("result", {})
@@ -403,20 +404,20 @@ def required_validation_selftest(docs: dict[str, dict], baseline: dict) -> dict[
     check("TT56-kind-misclassified", source, "required-rule-catalog")
 
     source = copy.deepcopy(docs)
-    source["source-index"]["result"]["references"] = [
-        x for x in source["source-index"]["result"]["references"]
+    source["source-index-all"]["result"]["references"] = [
+        x for x in source["source-index-all"]["result"]["references"]
         if x.get("subject") != required
     ]
     check("TT56-index-definition-omitted", source, "required-rule-index")
 
     source = copy.deepcopy(docs)
-    for ref in source["source-index"]["result"]["references"]:
+    for ref in source["source-index-all"]["result"]["references"]:
         if ref.get("subject") == required:
             ref["role"] = "derived"
     check("TT56-wrong-source-role", source, "required-rule-index")
 
     source = copy.deepcopy(docs)
-    for ref in source["source-index"]["result"]["references"]:
+    for ref in source["source-index-all"]["result"]["references"]:
         if ref.get("subject") == required:
             ref["artifactPath"] = "semantic/sales/unrelated.tei"
     check("TT56-wrong-artifact-binding", source, "required-rule-index")
