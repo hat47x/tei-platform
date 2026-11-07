@@ -28,9 +28,22 @@ tei.reference.go-build-stage-driver/v0
   artifactCrossCheckedDigest    ディスクから読み直したartifact digest
   artifactCrossCheckMatched     上二つの一致
   invokerIdentityRecorded / invokedIdentityRecorded
+  claimedInvokerDigest          駆動主体が自称したdigest（-claimed-self指定時のみ）
+  invokerClaimChecked           自称と実imageを比較したか
+  invokerClaimMatched           比較結果（ClaimChecked=true のときだけ意味を持つ）
   l3Claimed                     **常にfalse**
   claimBoundary                 何を主張しないかの一文
 ```
+
+## SB-N13 の照合（2026-11-08 追補）
+
+SB-N13は「Stage1のexecutable digestをmanifestに書くだけで、実際に起動されたのは別SHAのバイナリ」を不合格とする。**自称digestを記録するだけの実装では、この不合格を検出できない。**
+
+そこで`-claimed-self`を追加しました。駆動主体が自称するdigestを渡すと、driverは**実際に走っているprocess imageのdigest**と比較し、`invokerClaimChecked`と`invokerClaimMatched`を別欄で返します。不一致は`failureCause`に残ります。
+
+**自称を単独で受理しない**ことが要点です。`invokerClaimMatched=true`でも`l3Claimed`は`false`のままです。自称は同一性の主張であって、どのstageが成果物を著したかの証明ではありません。
+
+独立した失敗は`;`で連結して保持します。自称の不一致とartifact照合の不一致が同時に起きても、片方が他方を隠しません。
 
 ## 実測（2026-11-07 / Windows 11・Go 1.27.0）
 
@@ -55,10 +68,12 @@ tei.reference.go-build-stage-driver/v0
 3. **子のJSONを信じない**：子が報告したdigestと、ディスクから読み直したdigestを別欄で比べます。不一致は`failureCause`に残ります。
 4. **失敗も証拠**：子が非0で終了しても、driverは観測を完了し`exitCode`を記録します。driverの終了コードは「観測できたか」だけを示します。
 5. **`-child-arg-file`を追加**：シェルの引用符処理でJSON配列が壊れる問題を避けるため、引数一式をファイルから読む経路を用意しました。実際にシェル経由の指定でJSONが壊れ、この経路が必要になりました。
+6. **自称digestは実imageと比べる**：`-claimed-self`は保存するだけにせず、実行中のprocess imageのdigestと比較します。比較しなかった自称は、SB-N13の不合格を検出できないためです。
 
 ## 限界
 
 - L3は主張しません。`l3Claimed`は常に`false`です。Stage1の生成物を駆動主体にする実験は別途必要です。
+- `invokerClaimMatched=true`は「自称digestが実行中のimageと一致した」ことだけを言います。**そのimageがStage1の生成物であること**は別のClaimです（Stage1のBuild記録との照合が要る）。
 - 受理・署名・権限・配備は一切扱いません。
 - 子の標準出力全体のdigestを残しますが、子のJSONスキーマは既知の1種類しか解釈しません。
 - 1回のWindows観測です。Linuxでは同じテストが通りますが、digestのOS間一致は主張しません。
@@ -67,6 +82,6 @@ tei.reference.go-build-stage-driver/v0
 
 - `gofmt -l tools/reference-go-build-stage-driver`：差分なし
 - `go vet ./tools/reference-go-build-stage-driver`：PASS
-- `go test ./tools/reference-go-build-stage-driver -count=1`：PASS（7件。WindowsとWSLの両方）
+- `go test ./tools/reference-go-build-stage-driver -count=1`：PASS（10件。WindowsとWSLの両方）
 
 **NOT RUN**：Stage1の生成物を駆動主体にするL3実験、二回の駆動試行の比較、CI、trusted full checkout。
