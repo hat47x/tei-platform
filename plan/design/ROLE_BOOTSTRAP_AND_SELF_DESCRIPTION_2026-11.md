@@ -899,3 +899,50 @@ Data Topology（Entity/Relation/Graphのidentity/cardinality/時点）、Interpr
 - **P2（実操作とテスト生成）**：ESD-26/29を#951/#1174/#3262/#2514の既存実Provider/Scenarioへ接続。CLI/MCP/Studioは同じread-only Design Context/Contractを投影するが、現時点で未実装のToolをあると広告しない。外部Harnessのpage/end/Reply digestの完全受領を別に観測。
 
 **今回のClaim ceiling**：他チャットの設計統合・既存GitHub Issue/PR/Codeの静的照合に基づく計画差分。ESD-20〜29、正式Role多重適用Syntax/Interpreter、Raw ItemのTEI製品実装、SUI/TEI共通UI、MCP/Studio、Role/Builder E2E、実Host Effect、全体G4 Self-buildは未実施・未受理。Role解釈のP0不足は#2620に残し、SUIや表現Projection/三視点の独立Ownerを上書きしない。
+
+---
+
+<!-- tei-role-raw-authoring-and-boundary-consumed-20261108 -->
+## 19. 2026-11-08 実Source読取の最初の結節：Raw Document Inventory、11 CLI Reply、用途相対Claim（最小コード試行）
+
+**状態（この節の変更時点）**：実main Source/API・並行PRを再照合し、既存Draft #2860のGo ReferenceにRaw Markdownの限定負例を1件追加した。GitHubへコード保存した事実と、CI/Go実行結果は区別する。ここでは新Product Markdown ReaderやRole Interpreterを実装したと主張しない。
+
+### 19.1 第18節の計画に対する、実mainからの重要な状態更新
+
+- **Source Index Readerモード問題の限定解消**：[merged #3354](https://github.com/hat47x/tei-platform/pull/3354) は重複Draft #3324/#3326をともにclosed/unmergedとし、mainの既存 tools/reference-issue-test-ability/context_gate.py **一Consumer**へ統合した。実read-only CLIは従来9応答に全indexモードのsource-indexとValidation Inspectを加え**11応答**。固定独立3 Rule、1 Focus Rule Canonical、Related Relation、Source ArtifactとInspect↔Indexを照合。exact-head [専用CI #42391707962](https://github.com/hat47x/tei-platform/actions/runs/42391707962)で**32個の限定合成Control**と既存6 Scenario Step＋既知T1-Aの局所試験が成功。mainへmerge済みだが、main push側CI/実外部H3は別判定。これらは3 Rule scopeのbounded presenceであり、全Function/Business/Operator/Role/Manifest required closure、同時刻Snapshot、未知AI T1-B、Owner受理ではない。引き続き partial / exploration-only / qualifiedTestGeneration=false。
+- **Raw Markdownの具体的断絶**：[Issue #3346](https://github.com/hat47x/tei-platform/issues/3346) の実観測では docs/plan rootをmanifestで管理しても、通常*.mdは managedFilesに列挙されるだけで readByLoader=false、Semantic catalog/inspect/traceには到達しない。現 internal/workspace/loader.go の ReadByLoader契約と、internal/workspace/source_index.go の managed Artifact収集を別々に確認した。**原文byteがSource Indexに記録されても、意味解釈／Role Required Shapeの解決ではない**。一般Markdown Raw、TEI Authoring *.tei.md（Draft #3031未選択Reader拒否）、旧*.tei、SQL/外部形式の受理経路を混ぜない。
+- **比較するFingerprintの意味範囲**：[Issue #3345](https://github.com/hat47x/tei-platform/issues/3345)では viewのApplication利用Namespaceだけの semanticFingerprint と、CatalogのWorld Fingerprint/Source Index Fingerprintは同じ対象ではない。Raw Sourceのbyte hash、Loader Load-time Index、Source Root Manifest、Namespace-relative Semantic、World、Role Providerのexact implementation、Function Build Inputsを『どれもFingerprint』として同一比較しない。
+- **実CLI Replyの形とEffect**：[Issue #3347](https://github.com/hat47x/tei-platform/issues/3347)のdiagnostics wrapper、requirementsの裸配列、Catalog中std builtin混在は『見つからない』の偽診断の原因になり得る。既存受信側はCommand別の実Schema/Scopeを尊重する。[merged #3333](https://github.com/hat47x/tei-platform/pull/3333)はviewのローカル書込みFlagをwriteFlagsとして機械可読化して実File Writeを観測したが、全Variantのread-onlyやHost認可まで保証していない。Tool Producerのread-onlyとSession/Log/Egress Sinkの無書込み・無開示は別Owner（#2515）。
+- **セルフビルドの物理再入Reference**：[PR #3360](https://github.com/hat47x/tei-platform/pull/3360)は別Go driverのstage1 Artifactを実Invokerとしてstage2を実行した有限実測を報告。ただし対象は cmd/tei でなく外部Seedの自己再構築可能driverで、PR exact-head CIも区別する。Role自己記述のSD-3/4をL3 Self-build合格へ加算しない（#2831）。
+
+### 19.2 Rawデータが自己記述へ昇格する際の二レーン
+
+| レーン | 入場条件 | 主張できる上限 | 最初の欠落Edge |
+| --- | --- | --- | --- |
+| **D：Raw Authoring/Knowledge** | File/Markdown/OKF Itemのraw bytesとSource Path/Revisionが読める | 履歴付きRaw保持、Reference、用途次第で全文閲覧。ただしReader未選択なら意味候補なし | 管理外文書を含むReader/受信Scope、情報開示、原文の完全配送。Issue #3346/#2621 |
+| **S：Typed Semantic Authoring** | Workspaceが選択したGrammarと実ParserでParse、Attribute/Role Anchorを確定 | Parsed/Anchored/Type Candidate、独立Requiredがあれば範囲付きMeaning候補 | 正式 *.tei.md Reader、Role Provider exact Selection/Actual Invoke、Owner Accepted Shape。#988/#2620/#3031 |
+
+**昇格は明示的なイベント**：D→Sの正規化・分類候補をAIが提案しても、Source/Version/Selector/Scope/Required Shape/独立Expected/Owner Reviewを欠いてMeaningにはならない。Dに置いた『Task』『Event』『role trusted_amount』の単語を自動的にTask実行、Event Receipt、Role宣言、Trait履行へ昇格させない。D/Sをまたぐ同Subject/複数CanvasのView OccurrenceやSHO抽出は別Projectionであり、逆Write/Source lossを独立に検証。
+
+既存のread-only CLIで 'docs managed but uninterpreted' と表示されることは望ましい正例であって、未対応を不可視化することよりも安全。だが今後Dの中身を読む対象にもする場合は、単に Source Index のArtifactだけを公開するのではなく、現在のConsumer GrantとSource/Document用途に応じた出力範囲を検証する。秘密の有無・件数・Source locatorをUnauthorized Consumerへ漏らさない。
+
+### 19.3 今回のGo Reference更新と独立受入の上限
+
+**追加した限定Product API test**：[Draft #2860](https://github.com/hat47x/tei-platform/pull/2860)の reference/dsl-language-plugin/self_description_workspace_boundary_test.go に TestSelfDescriptionManagedRawDocumentDoesNotBecomeSemanticRole を追加（[commit abf901d0](https://github.com/hat47x/tei-platform/commit/abf901d02a77bc9f84459165c753e903a71e0252)）。
+
+検査対象は実 workspace.Load と workspace.BuildSourceIndexFromLoad。独立に固定した二Source（semantic/probe.tei のProbe Item、docs/design.md のRole様自然文）に対し、(a)双方がManaged Inventoryへ入る、(b)SemanticはReadByLoader=trueだがRaw docはfalse、(c)Raw docのLoad-time Source Index Artifact fingerprintは実raw bytesを保存、(d)Raw docはSemantic Definition Referenceを持たない、(e)Semantic SubjectのSource Index参照は生きる、(f)後からdoc bytesを書換えても旧Load IndexのAsset fingerprintは変化しない、を判別する。
+
+これはRaw資料を**現在の既存Loaderが誤って意味へ昇格させていないか**を検査する Product APIへの局所テストである。Raw bytesを実際にReaderが意味解釈した、Role PluginがInvokeされた、非公開Documentが守られた、正式 *tei.md Readerが成立したことの証拠ではない。Scopeはtemp Workspace内、外部Host/Studioなし。新テストのGo/CIは**保存時NOT RUN**であり、CIが完了してからpass/failを記載する。
+
+### 19.4 次のP0は「必要RoleとDocumentが見えない理由」の判別を具体化する
+
+| 順序 | 単位／Owner | 受入・停止条件 |
+| --- | --- | --- |
+| **P0-D0** | 今回Go限定Test + #3346/#2823 | Rawのmanaged/unread/byte-indexedを区別。Go Testのexact-head CIを取得し、失敗時はAPI実挙動を優先して設計を修正 |
+| **P0-S0** | main #3354の単一Context Consumer + #3262 | 11 replyの**対象Modeと比較可能なFP Scope**、独立Required 3 Ruleの認定範囲を固定。Partialから full へ勝手に上げない |
+| **P0-S1** | #988/#2620/Role Provider／既存 #951 | 公開sales.order元（Role無）と明示Role派生を区別。Provider実選択/実呼出が無ければunsupportedで停止 |
+| **P1-D/S** | #2621/#2497/#3346、三視点 #1124 | Raw保管→選択済Parser→Source Anchor→Preview→一意Patch→再Readを順に接続。形式/Roleの別名一致で書戻し不可 |
+| **P1-F** | #3262/#2514/#1251/#3278 | 一Functionの必要Data/Relation/Rule/Role/Trait/実消費を独立Requiredで狭く検査。未知必要物があればAIテスト生成資格を保留 |
+| **P2** | #2509/#2515/#1174/#2831 | 実H2/H3 Replyのend digest・Audience/Sink・Runtime Effects・生成TEI自身の再入を各Ownerの別Runで資格化 |
+
+**ESD-20のProduct API側局所対照を一つ増やした**。ESD-25は#3354で単一Context Consumerへ既に採用されたため、別Context Reader/独立Requiredテーブルを自己記述側に作らない。追加Case番号/第二Test SSOT/新Core型を増やさず、§17/18のESDに実Evidenceの上限を付ける。#1119既存Gateを変更しない。
