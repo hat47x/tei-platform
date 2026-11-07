@@ -158,7 +158,7 @@ def main() -> None:
             ):
                 raise AssertionError("synthetic query execution not observed")
             if step == "observe-synthetic" and (
-                ev.get("observationResult") != {"kind": "string", "data": "pending"}
+                ev.get("observationResult") != "pending"
                 or ev.get("evidenceNature") != "synthetic-independent-observation-read"
             ):
                 raise AssertionError("synthetic Observation not independently read")
