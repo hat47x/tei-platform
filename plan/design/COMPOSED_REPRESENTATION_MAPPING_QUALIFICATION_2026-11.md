@@ -378,3 +378,38 @@ Cross-reference各セルは用途ごとの根拠を区別する：
 Ownerは#3263（Fixture・三視点独立期待）、#1124/#1125/#1126（Source/Modeler）、#2497（Loss/逆写像）、#3262（Design Context Closure）、#2514/#1180（独立Expected/Scenario）、#2586（実Product Read）、#997（Target/Studio）、#3267（BOM）。**最初に不足する辺は、合成JSONの存在→TEIの実Source/Loader/Meaning→Required Closure→Projection Output→Consumer Received**である。実行可能なPoCの順をこの境界に沿わせ、Provider実Readがまだ無いことを図面Read-only実証の一般的ブロッカーにしない。
 
 今回新たなGo/CLI/Studio/Provider/SHO/外部Harness動作、独立Expected受理、実Ownerの意味採用は**NOT RUN**。この節は検収作業の実装方式を決定する**採用前のFit/Gap**であり、正式Schema、MCP、第二Parser/Source Registry/Graph Model/Runnerを固定しない。
+
+
+## 14. Fixture実試験とSource/Lock鮮度を分離した初回採否（2026-11-07追補）
+
+この節は§12（P0-M/R/Cの並列性）と§13（実Loader→Graph/CRUD不足辺）を変更せず、**新たにGitHub上で確認できた実試験・CI失敗**を検収順へ組み込む。既存#3263/#3262/#2514/#1180/#3182/#3267の責務を置き換えない。
+
+### 14.1 実試験として確認できる命題の更新
+
+| 証拠／実装 | 確認済みの限定命題 | この命題からは推論しない |
+| --- | --- | --- |
+| [Draft #3263](https://github.com/hat47x/tei-platform/pull/3263)（HEAD `aeea395ca79c2fe84e068cb94d6f43c8982e1bdf`） | `reference/diagram-crossref/fixture_contract_test.go` に**Fixtureを監査するGoテスト**が追加された。合成9 Entity・7 Relation、同名別ID、CRUD、不正入力等の構造上の制約を検査する意図。分離StubによるGo 2 Test/4 subtestは実行済み | そのStubでGitHub上の二つの実JSONを読んでTESTしたこと、TEI Loader/Graph/CRUD投影の適格性、別AIが書いた期待を独立Oracleとして受理したこと。最新HEADの[Repository Health #42373811364](https://github.com/hat47x/tei-platform/actions/runs/42373811364)は**FAIL**であり、Go試験の完全CI PASSではない |
+| [main統合 #3299](https://github.com/hat47x/tei-platform/pull/3299)（固定HEADの[専用CI #42373330734](https://github.com/hat47x/tei-platform/actions/runs/42373330734)） | 実TEI CLIの旧Pinned Scenarioが、コピーしたWorkspaceで**実Source改変**／**Plugin Lock改変**を拒否。Source/Lockの元byteへ戻すA→B→Aで再成功するContent pinの限界も観測 | 中間変更が起こらなかったこと、受理済みMeaning不変、Actual Plugin Load、Provider×Consumer Conformance、現在Grant、Graph/CRUDの実Source Reader接続 |
+| [Draft #3302](https://github.com/hat47x/tei-platform/pull/3302)（HEAD `1e43e52f48432a24c74c7f8151999fe6a641f6bd`） | `tei commands`のread-only `view`広告から、明示実行`-execute`系を除き、その差を`excludedFlagNames`で機械可読にする**修正候補** | このHeadが安全であること。実[Health #42373744325](https://github.com/hat47x/tei-platform/actions/runs/42373744325)は**FAIL**で、`gofmt`不一致と`TestCommandCatalogFlagsMatchAcceptedFlags`が広告Flag集合と実受付Flag集合の違いを検出。実行Flagの効果をCLIの静的`effect:read-only`から一律推測する設計はまだ採用しない |
+| [統合Draft #3303](https://github.com/hat47x/tei-platform/pull/3303)（旧HEADの[Health #42373568969](https://github.com/hat47x/tei-platform/actions/runs/42373568969)） | `gofmt`、`go vet`、`tei validate`は各々PASS。失敗は`tools/repository-plan-check`の設計索引登録不足とRQ-035のScenario/Evidence対応不足に局在 | 全Health PASS。今回**自PR追加3文書の索引**を登録したが、他レーン文書の索引とRQ-035証拠Mapは[Draft #3297](https://github.com/hat47x/tei-platform/pull/3297)が引継ぎ済み。別OwnerのPASをこのPRで推測修正しない |
+
+### 14.2 三視点Diagram/CRUDを実装する前の必要な「三段階の固定」
+
+**S0: Target Fixture/独立Expectedの固定** — #3263のPressure Input/Expectedは両方AI草案であり、InputとExpectedが別ファイルでも正答の独立性は証明しない。Fixture契約Testで構造不備・既知Mutantを検出し、Source・Role・Key/FD/CRUDの業務意味を#2514/#1124/#1126が別根拠で限定的に確認する。正常Fixture自身が`synthetic`と明記する場合は、その限定Claimのみで利用可能。
+
+**S1: Current Source/Invocation の固定** — 現実のTEI Readerは`actual Source revision→Loader→Parsed/Meaning/Required Closure`を満たした分だけProjectionへ渡す。実Plugin/BOM選択とLock byte、現在のProvider Link/Load/Invokeは別。#3299のA→B→A再受理はContent pinの正常動作でも、Read Cohort、Screen Selection Epoch、Host Grant、Secret Disclosureが旧版から復活した証拠ではない。再利用の単位は**Consumerの特定Claim/必要Dependencyと現在Scope**に相対的であり、全World一括の強制Invalidationは要らない。
+
+**S2: Output/Operation の固定** — `node/edge occurrence→元Source`、`CRUDセル→宣言Function/Business Path`の逆引きは表示正本と別資格。CLI/read-only Consumerで必要なAttribute・Graph Edge/CRUD Cell・Closureが受領できたかを確かめ、`view -execute`・Export・File Log等の実行Variantは実Call/Targetの効果を再評価する。成功したUI Previewだけで`zero local file effects`や業務Commitまで宣言しない。CLI Scope変更は#3182/#3302/#951の実装Owner。
+
+### 14.3 最小の差分Expected（既存Caseへ付加、ここで実行していない）
+
+| 検出すべき誤認 | 対照 | 該当Case/Owner |
+| --- | --- | --- |
+| Fixture自体のTest PASSをProduct Diagram/CRUD PASSへ昇格 | 実Parser受入とGo fixture-only Testを同時に提示し、一方の未達を正しく`not-run`へ残す | DGX-01/02、#3263/#2514 |
+| Source A→B→Aの同内容再現で旧画面のAction Offerを復権 | Content pinは再一致しても旧Selection epoch/Current Grantは別 | WX-02/CX-10、#2582/#2598 |
+| Read-only Discoveryの`view`に`-execute`を混ぜ、OS書込みがないと主張 | Previewとlog/DB fileを出す実CLI Invocation Variantを分ける | WX-03、#3182/#951 |
+| 並行CIの失敗を本PRのGraph/CRUD不合格／他PRの成功として合算 | 固定HEAD・base/merge checkout・Code/Doc/Indexの失敗種別を独立に示す | DGX-03、#2514/#1119 |
+
+**次の必要な最小実行**：#3263の正規のGitHub fixture Testで実保存JSONを読む→Source/Meaning側のAccepted部分へMappingする→同じSource revでGraph/CRUDの`got`を生成する→独立Expectedと1実Mutantで比較→CLI/Studioの受領差を検査する。#3299の既存Context Gate/Scenario/Change Detection、#3302の実行Variant、#3297のBOMは各所有契約を再利用する。作業としての第二Runner、第二Graph Model、第二Source/Permission Storeは作らない。
+
+**今回の操作と受入の限界**：#3263/#3299/#3302/#3303のIssue・ソース・CIログを再調査し、既存資料に条件を反映した。#3303の索引3件以外には新実行用Go/CLI Source変更はない。実TEI Product Diagram/CRUD、実Loader/Target/Studio/SHO/Provider Effect、Oracle Owner受理は**NOT RUN**。
