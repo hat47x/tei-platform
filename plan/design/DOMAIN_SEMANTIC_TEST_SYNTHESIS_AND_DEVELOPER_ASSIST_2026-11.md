@@ -116,3 +116,24 @@ DS/BF/XIの**新規生成・Go test・実Provider実行はNOT RUN**。QX/MTの�
 - **確認**：#2495の過去コメントで強属性の一次定義が未確認、#2514 Q05〜09および#3238の専用実PG試験の一部が成功という限定履歴がある。ただし同一Source/新HEAD／正式Business Completionへは転載しない。
 - **未実施**：本設計に基づく新たなDataset生成Engine/テスト実行、User-accepted Domain/強属性の語義調査・新Owner Meaning受理、全ての異Provider/異Tenantでの完全性、AI提案の独立評価、二Consumer製品E2E。
 - **必要な最初のOwner判断**：原典の「強属性」が指す属性分類と、業務イベント/DFDにおける実データフローのAccepted部分。本文の例示値域・業務制約は**テスト用合成仮定**であり正式顧客仕様ではない。
+
+
+## 9. 現行mainのGo Sourceに対するFit/Gap（実物照合）
+
+2026-11-07時点のmain Go Sourceを、本文の理想仕様から区別して照合した。ここでの**未存在**は、確認した型・入口に明示フィールドがないという局所観察であり、他Package/Pluginの同等機能が存在しない証明ではない。
+
+| Source上で確認した具体的な既存要素 | P0で再利用できること | 追加のFit/Gap・不正な推論 |
+| --- | --- | --- |
+| `internal/semantic/model.go` blob `ff8d555f412586f055aef3658edcc59a6626adfc`：`Type{ID,Kind,Underlying,Values}` | `Values`の**明示列挙**から閉じた候補値を提案、TypeRefを通じてFieldと接続 | `Values`が示されただけでClosed/Exclusive/Exhaustive・NULL扱い・Business Domainの有効期間を自動受理しない。数値範囲1..9を含む汎用Range型はこのType宣言にはない |
+| 同`Attribute{TypeRef,Required,Immutable,Role,Value}` | `Required`など**直接宣言済み**の形式制約からBoundary候補・更新禁止候補を提示 | `Value *string`のnil/empty/valueは**書式の値Clauseの三状態**であり、Runtime DB NULL・未取得・非開示ではない。「強属性」の一次語義を`Required`や`Immutable`へ自動結合しない |
+| 同`Data{CandidateKeys,FunctionalDependencies,Relations}`と`Relation{Cardinality,Keys,OnDelete}` | 複合Key・明示FD・RelationKeyの対応次数、one/many、deletion ruleの独立負例候補を導ける | CandidateKey/FDは**設計者宣言**。全実DBで既に保証されているとの推論や、`CardinalityMany`→具体的最大件数の導出は禁止。LogicalとPhysical IDを分ける |
+| 同`ValidationKind={positive,relation-unique}` | この2種に限って実行器への適合・Known Mutant接続を直接試せる（#3017/#3128参照） | 任意Value Domain Range/FD/Cross Entity Ruleの**汎用実行器はこのEnumでは表現しない**。Generator Candidateを全Validation Kind実行可能と誤申告しない |
+| 同`Period/Calendar/EffectRule/RunPlan` | 期間Cut・RunPlan/phase・Effect前後の候補Scenarioを提案 | RunPlanはScheduler/Authorityではない。Calendarの未宣言値を補わず、業務Event/DFD Flowの意味をこれらの型から推測しない |
+| `internal/application/model.go` blob `797d21e9f2edccb8a26de3ff61c4b42280380507`：`Pattern{Data,Relation,Query,Capability,Datasource,Filters,Sorts,PageSize,Interaction}` | Pattern→Query・Filter/Sort・PageとData Roleから、Functionの必要入力・結果粒度の不足を提案 | Pattern/Interaction＝実Provider ReadやCurrent Grantではない。非出力Rule依存を表示列に置き換えない |
+| `internal/semantic/completion.go` blob `e42610e9159e02ba3b5c7b84c46742a846331e64`：`EvaluateCompletion` | Complete/Partial/Unestablished、空集合、局所TargetResultの独立検証をReferenceで再利用 | `CoverageComplete`・`Holds`は**Caller自己申告**。関係Role/集合L/Read scope・実Predicateを同関数が独立証明するわけではない |
+
+**最初の実装上の判断**：P0は既存`semantic.Type.Values`、`Attribute.Required`、`Data.CandidateKeys/FunctionalDependencies`、`Relation.Keys/Cardinality`、`ValidationKind`、`application.Pattern`の**読み取り専用列挙と出典付け**から開始し、列挙/必須/複合キー/明示FDの4系列のObligation候補とUnsupportedを示す。いきなりRange/MECE/強属性/広域不変条件の汎用Core型を追加せず、表現できない圧力ケースの差分をOwner判断へ戻す。このGo型の直接確認は**source-static**であり、提案したGeneratorの実Go Test/CLI/Provider実行を意味しない。
+
+### #3238の現在性と意味境界
+
+別レーンの[Draft #3238](https://github.com/hat47x/tei-platform/pull/3238)は新HEADで同時進行しており、`ordered_at >= :from`を非出力のまま実PGで検査するSubtestは[Actions #42351796330](https://github.com/hat47x/tei-platform/actions/runs/42351796330) **completed/success**。**同じ値のRowsetでもQuery args/Limitが異なれば母集合の資格は異なる**。これを新Generatorの規則候補へ引き継ぐが、新Draftで合格実行を再実施したという主張ではない。
