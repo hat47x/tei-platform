@@ -2,7 +2,7 @@
 
 - 監査の基準日：2026年9月21日（前回：2026年9月11日）
 - 追加した要求の初期評価：2026年10月3日（RQ-031〜033）、2026年10月7日（RQ-034）
-- 対象：RQ-001〜034
+- 対象：RQ-001〜034（監査基準時点の集合。2026-11-07にRQ-035を追加し、以下の追補で別評価）
 - 現行の着手判断：[要件の優先順位と適用範囲 #982](https://github.com/hat47x/tei-platform/issues/982)（2026-11-04にclose。トリアージの結論は[#1119](https://github.com/hat47x/tei-platform/issues/1119)の横断計画へ吸収）
 - 横断的な受入条件：[クリティカルパス #1119](https://github.com/hat47x/tei-platform/issues/1119)
 - 上流の対応表：[要求と受入シナリオ](../UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md)
@@ -39,6 +39,15 @@
 従来の`plan/issue/`にあった個別作業文書は、公開リポジトリから退避されています。この文書の過去の記述に残る同ディレクトリへの参照は、現在の作業場所を示すものではありません。個別作業の状態と判断履歴はGitHubの課題を確認してください。
 
 ---
+
+
+### 2026-11-07 追加要求 RQ-035 の監査追補（旧2026-09-21／10-07統計は歴史値）
+
+新しい[RQ-035](../../requirements/TEI_PRODUCT_REQUIREMENTS.md)は「検証済みPlugin構成のBOMと複数バージョンの組合せ試験を標準機能として提供すること」。PAS-06を主受入、PAS-04/PAS-02を横断受入に登録し、本監査の要求別表にも**Design Only**として追加した。これにより要求集合は35件、従来集約表（RQ-001〜034）のDesign Only 8に今回の1件を加えた**現時点の形式上の内訳は Strong 10 / Partial 16 / Design Only 9（合計35）**。古い9月の分類を最新の実証状態として再評価したことは意味しない。
+
+成立の判断には「実#951で解決したPlugin候補2版×Consumer2版 → 同じ実Build/Artifact/Target・独立Expectedを使った各Attempt → 必須Trait/Requirement/Scenario/HTTP例外のCoverage → 限定BOM候補」の**同じ実験・同じSubject**を要求する。現段階の`Pairwise`計画や`AuditWitnessBindings`は自己申告Fixtureの範囲でしかなく、真正なProvider/test runner/evidence issuer/host current grant、Ownerの業務意味受理を検査していない。したがってRQ-035の状態はDesign Onlyのまま保持する。
+
+別チャットのAtomic Trait [#3279](https://github.com/hat47x/tei-platform/issues/3279)は実装義務の検証、HTTP Decision Graph [#3274](https://github.com/hat47x/tei-platform/issues/3274)はClient Reaction分岐のテスト義務を供給する。両者をBOM側の第二検証Runnerや権限正本へしてはいけない。
 
 ## 1. 目的
 
@@ -128,6 +137,7 @@ Gate C — PAS-04 — Ready
 | RQ-023 | **Partial Evidence** | cross | monorepo、Go中心、ADR / Plan / Reference、Provider / Target分離、doc guard（`repository-plan-check`）とhealth check | 保守量のGapが実測として現れた（§9）。plan文書108K行 / production Go 44.8K行。`reference-business-procedure-check`は171 file・50.8K行で、うち101 file・33.6K行がTEI packageをimportしない |
 | RQ-024 | **Design Only** | PAS-04 | First / Second Targetで測る方針、Gate C測定点、R/T traceに加え、Plugin / Semantic Extensionのlogical境界とphysical artifact境界を分離し、cold / warm start、初期転送量、storage、memory、resolver / evaluator overhead、Extension追加時の増分costをTargetごとに観測する設計を追加。ISSUE-000086 candidateでは既存Stdio processとsynthetic loopback HTTPの二transportで、同じgeneric Invocation identity / opaque payload digestをphysical carrierから分離するpressureを追加 | Plugin化前後のactual比較、unused implementation pruning、shared runtime deduplication、actual First Web Target / browser / Wasmでのprocess-free realization、context-specific thresholdが未実証。synthetic HTTP round tripはTarget性能Evidenceではない |
 | RQ-034 | **Design Only** | PAS-06 | ISSUE-000083 / #972にExecutable Reference candidateを追加。current TEI Repository全体のclean local cloneで`cmd/tei`をbuildし、targeted test、workspace-files / source-index / knowledge-context / validate / world、file-native Validation edit、ordinary Git commit、別integration cloneでのrebuild / reloadまでを一往復する。`.tei/decisions`を除去してもCanonical Worldが同一であることを要求し、Git上は無競合でも同一Canonical ID重複を`DUPLICATE_SEMANTIC_ELEMENT`で拒否するnegative pressureを持つ。Agent Adapter / Structured Proposal / TEI独自Change Set / Agent Session stateは使わない。Chat側のMCPはHost-provided Shell / Filesystem / Git MCPからCLIを呼ぶ構成でよく、TEI固有developer MCPは必須にしない | runnerはBash構文と期待diagnosticのsource存在を確認し、さらに最小の合成Go Repositoryでfull clone / build / test / commit / separate clone / semantic-conflict orchestrationがPASSした。ただしこれはrunner自体の検証でありTEI Evidenceには数えない。current execution environmentにRepository checkoutがなくGitHub DNS解決も失敗するためactual Go build / test / CLI / Git round tripは未実行。Host-mediated MCPを含む実chat/coding-agent consumerとRepository healthのactual Evidenceも未取得。native MCPを将来追加する場合だけCLIとの意味・Authority同値性検証が必要 |
+| RQ-035 | **Design Only** | PAS-06（PAS-04 / PAS-02） | [Issue #3267](https://github.com/hat47x/tei-platform/issues/3267)と[設計案](../design/VERIFIED_COMPOSITION_BOM_AND_MATRIX_DESIGN_2026-11.md)でVersion Matrix/BOMの要求と、合成Go ReferenceのPairwise/提供Lock Candidate/同一Attempt Witness照合を分離。RQ-035に対する構成要素の候補のみ | 実#951 Resolver/Provider 2版×Consumer 2版の実Target Build、#1180独立Scenario/Evidence、#2514独立Expected、Qualified BOM発行・別Target/Host実証・Owner受理が未実施。Referenceの`reported-pass`/`coveredPairs`は製品資格ではない |
 | RQ-025 | **Partial Evidence** | PAS-07 | Business Action != Application Function、manual / external Action、actor / authority分離、Business Procedure Reference / Pressure、Lane C Gate A actual execution（2026-09-20）、独立second corpus（2026-09-21、作成者self-review） | 独立review未実施。Canonical identity最終判断。Contract ADRはNot Ready |
 | RQ-026 | **Partial Evidence** | PAS-07 | Data / Function / Business cross-view Reference、Handoff identity Pressure、derived Projection原則、realistic second-case actual Evidence（`R = 82e4301`、Gate A A1〜A8） | 独立review未実施。Data-state / ownership cross-check（RRB-P2項目4）はData identityが無く未確認。diagnostic severityの確定 |
 | RQ-027 | **Partial Evidence** | PAS-06 | `tei world` / `source-index`（artifact fingerprint + reference） / `validate` / `index` / `consumer-impact` / `workbench-model`、`changeanalysis`のdependency / impact、ACTOR_CONTEXT R0 source map・R1 builder challenge（production codeを検証）。**accepted Decisionの機械到達**（2026-09-21）: Shared Acceptance Boundaryを通った受理が`.tei/decisions/`へ残り、`decisions`が現在のworkspaceと照合して`current` / `superseded`と`intact` / `diverged`を返す。記録はauthorityではない（消去・偽造しても意味とrevisionは動かない） | 残る到達不能: **`Variation`は表現を持たない**（`internal/`に0件）。Gate Evidence / Release locatorは索引の無い散文からの参照のまま。決定記録はこの境界を通った変更に限られ、Coreには同等の仕組みが無い。再入場の十分性を判定するconformanceが無い。担当Issueが無い（ADR-0028のみ） |
