@@ -90,7 +90,7 @@ Database、Runtime、Target等の製品固有知識は、Provider / Adapter / Ca
 
 Capabilityごとにbuiltin、generated implementation、plugin、既存実装等をBindingでき、必要なCapabilityだけを置き換えられる構造を持つ必要があります。
 
-**TEI Core以外の機能は、標準のCLIやTEI Studioを含め、原則としてContract/Providerを持つPluginとして構成できなければなりません。** CLI/Studioの開発用Pluginを作成・発見・選択・構築・テスト・利用する経路は、生成アプリケーション向けRuntime Pluginと同じ契約・構成解決・成果物追跡・検証の仕組みを用いる必要があります。表示や引数処理はSurface固有Adapterとして分離し、同じ業務/設計操作をCLI・Studio・生成アプリから利用するときに別の意味正本やResolverを作ってはいけません。既定のGo単一バイナリ構成では、未選択のPlugin実装を実成果物へ混入させず、外部Host向けには必要な能力だけを対象環境へ適応させる必要があります。Coreが特定の言語・認証・DB・UI実装へ逆依存しないこと、Plugin追加時にCore固定列挙や手書きCLI/Studio分岐の変更を原則不要にすることを、実Consumerを用いた回帰試験で示します。段階的な方式と現行Fit/Gapは[CLI/StudioからRuntimeまでのPlugin-first設計](../plan/design/PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md)を参照します。
+**TEI Core以外の機能は、標準のCLIやTEI Studioを含め、原則としてContract/Providerを持つPluginとして構成できなければなりません。** CLI/Studioの開発用Pluginを作成・発見・選択・構築・テスト・利用する経路は、生成アプリケーション向けRuntime Pluginと同じ契約・構成解決・成果物追跡・検証の仕組みを用いる必要があります。表示や引数処理はSurface固有Adapterとして分離し、同じ業務/設計操作をCLI・Studio・生成アプリから利用するときに別の意味正本やResolverを作ってはいけません。既定のGo単一バイナリ構成では、未選択のPlugin実装を実成果物へ混入させず、外部Host向けには必要な能力だけを対象環境へ適応させる必要があります。Coreが特定の言語・認証・DB・UI実装へ逆依存しないこと、Plugin追加時にCore固定列挙や手書きCLI/Studio分岐の変更を原則不要にすることを、実Consumerを用いた回帰試験で示します。 Tooling・Build/Test・Application Runtimeは同じ契約解決・構築・追跡原理を利用しながら、意味解釈用Semantic Set、Authoring/Build/Runtimeの解決Scope、実行Grant、開示範囲を互いに暗黙継承してはいけません。発見したPlugin、選択したProvider、実Build/Linkに含まれた実装、実呼出した能力、現在許可される操作を別々に診断し、開発環境での成功を生成アプリケーションの本番適格性とみなしてはいけません。段階的な方式と現行Fit/Gapは[CLI/StudioからRuntimeまでのPlugin-first設計](../plan/design/PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md)を参照します。
 
 プラグインの利用に際して、Principal、Database、業務Semantic Model等の特定分野の概念を全構成へ必須導入してはいけません。汎用の値変換・バッチは必要な型と接続だけで構成でき、業務上の意味的同一性を主張するBindingではじめて正本となる意味参照の範囲・版・受理状態を確認できる必要があります。実行時の外部権限検査とは分離します。
 
@@ -452,6 +452,8 @@ TEIは、Data Model、Function / Interaction、Business Procedure、UI、workflo
 ## RQ-032 Plugin / DSLで意味論を宣言・合成できること
 
 Plugin / DSLによる拡張は、実装関数を追加するだけでなく、概念が何を意味し、他の概念とどう関係し、何を満たす必要があるかを機械可読に宣言できる必要があります。
+
+Traitを合成可能な小さな契約要素として利用する場合、Traitごとに明確な責務・必要形状・前提条件・適用Scope・Failure/Effect・適合条件を表現しなければなりません。Traitを宣言した対象に対して、標準実装を選択して義務を充足する方式、手動実装・適合試験を必須とする方式、実行能力を保証しない助言だけの方式を区別し、実装不足・競合・同名異意味をValidationで明示します。複数のTraitを持つことだけで合成した振る舞いの適合を推定せず、必要に応じ明示的なBridge契約と独立Conformanceを要求します。Traitの宣言をProviderの実装・正式な意味受理・現在の実行権限と同一視してはいけません。Roleによる意味解釈とTraitの実現要求も別責務として扱います。
 
 少なくとも、拡張のidentity、namespace、semantic version、適用範囲、依存条件、既存概念との関係、Constraint / Validation、ProjectionやCapabilityへの接続を追跡できなければなりません。意味論と、その意味を読み書き・検証・実現する規則は、同じ拡張のidentityへ辿れる必要があります。
 
