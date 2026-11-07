@@ -3807,3 +3807,25 @@ P0は実GUIより**同一Meaning→二つのFunction Context候補→二表現�
 **最初の実装受渡しは新しい`CompletionQualifier`や`OrgCaseTransferLedger`ではなく**、#2586の同じ実Function/Attemptが `source + query selected + actual SQL/args + provider/physical target + row IDs/fields + scope/snapshot + read extent` を観測できるかの確認である。#2514/#1180は独立Expectedと既知誤り検出、#2628/#2622/#2611は実Readerと対象集合の限定資格、#1125/#1444は人手Handoff、#1174/#1163は実Write/Receiptをそれぞれ所有。Callerの自己申告フラグをEvidence Producerと見なさない。
 
 **停止線**：実ProviderがC1一件を取得できるまではOrg E2 `product-read-not-connected`／`physical-read-unavailable`を維持する。実C1が読めても独立のL全件・非表示Rule・Handoff・Current Grantを検証するまで`Business Completion`は`unverified`。同一Providerで`receipt-observed`のみの段階から、保存後資源の独立観測やOwnerの意味受理を主張しない。既存Go Reference/PGの局所PASSをOrg E2 PASSへ合算しない。本追加は**計画・独立Expectedの接合のみ**で、新Go/Org DB/Provider/Host/GUI試験、全件Handoff、Owner承認はNOT RUN。
+
+### 84.9 組織Relationに付随するRuleの発火と業務手順の接続（2026-11-07、他チャットのData-attached Behavior横断・採用前）
+
+X-TEAのData Model／Field Hook／共有Scriptの知見を全Data構造へ一般化する[#1129](https://github.com/hat47x/tei-platform/issues/1129)の**Rule Definition／Attachment／Function Operation Port／Effect phase**と、組織のMembership/Occupancy・CaseRecord.handlingUnitを接続する。**「Ruleを関係Dataに付けた」ことは、すべてのUI・Query・業務手順で自動起動し実効果を保証することではない**。Data/Relationが意味・適用対象を定め、Function/Procedureは明示された操作・起動条件・責任を束縛し、Provider/Hostだけが実効果を確定する。Ruleが新たなPrincipal・Grant・Workflowを生成しない。
+
+| 組織内の同じ出来事をどこで扱うか | 受理候補として要求する区別 | 無条件に実装・推論しないもの |
+| --- | --- | --- |
+| **関係の意味と識別** | `Membership A2`、`Occupancy O1`は各DataのOccurrence ID、`CaseRecord C1.handlingUnit`はCase ID・Role・旧値/新値とProvider版を対象にする | Graphの辺ID、SQL JOIN alias、Tree表示位置をAttachment先の永続関係IDとしない。現NativeのCaseRecordに独立edge ID/rowVersionが宣言済みとも言わない |
+| **Rule Definition / Attachment** | 役職在任・担当部門と承認候補の関係、必要入力・Predicate・期間、Rule/Attachment版、対象Data/Relation Roleを**明示**。read-time pure derivation・validation・before-write・Tx内効果・after-commitを別扱い | 任意のField名、同一Personの複数JOIN行、UIの「変更済み」からRuleの意味/発火回数を決定しない |
+| **Function／業務手順** | Org Exploreのread-only投影、Case HandlingのC1移管Intent、手作業引受、Workflow Stepは別起動。実Action/Rule適用に必要な `Context Instance`／QueryのRead Scope・Target/old/new・expected version・Owner規範を明示 | Treeの再配置だけでC1のBusiness Handoff、承認取消、外部通知を自動起動しない。手作業StepをFunction/Commitへ強制変換しない |
+| **実行のphaseと証拠** | 検証拒否・Tx内Commit/rollback・post-commit通知・ACK-loss/EffectUnknown・再配送・別Operationの更新を区別。実Row・Event/Operation ID・Receipt・独立再Readで主張する範囲を限定 | `valueChanged=true`、UI結果、Command ACK、Outbox受付を実Commit/外部相手方の完了とみなさない |
+
+**追加するのは既存テストの対照であり、新たな組織専用Rule Engineや試験正本ではない。**
+
+- **ORG-RB-A：直接Relationと実体化Relationの違い**（§67 ORG-SU-01、#1129 XL-03／#2500 VE-04）：C1の`handlingUnit D1→D2`はCaseを更新する候補、Membership A2のunlinkは別Data Occurrenceを操作する候補。同じ画面のD1ノード操作でもAction/Attachment Scopeが異なれば別Ruleとなる。
+- **ORG-RB-B：View由来の「変化」では発火しない**（§84.6/84.7、#1129 XL-03）：同じP1が2つのMembership行またはJOIN fan-outで表示されても、表示上の複数delta・再読込・Tree配置変更だけでは実Committed Eventを増やさない。実DBのbefore/afterと発火条件が必要。
+- **ORG-RB-C：値ABAとRule版の違い**（§82 TB-08/10、#1129 XL-03）：D1→D2→D1の後続の正当な別操作と、ACK-loss後の同一Operation再送は値だけでは区別不可。Source/Rule/Attachment版、Case/Row版、Event ID、Operation ID・現Grantを再照合し、複数イベントの二重適用・有効な別イベントの誤抑止を判別。
+- **ORG-RB-D：非表示依存と外部変化**（§83/84.8、#1129 XL-02/03）：`NOT EXISTS 未承認Case`、代理期限、Occupancy有効性は、C1の担当列が不変でも変化し得る。0件・部分集合・未取得を「依存なし」と解釈せず、必要な読取・再評価・補償対象をOwnerが決める。再評価可能なイベント源がないなら厳密Edge triggerは未対応／要照合とする。
+
+**段階と責務**：P0のC1→D1実Function/Query/Provider Read（#2586）の妨げにしない。P1は#1129のXL-01〜03と#2500 VEの**read-only Binding Plan**でData/Role/Rule/Phase・元Source occurrenceを対照し、旧X-TEA Sourceや実Driver発火を未取得なら互換性を`unknown`に止める。P2で必要な業務RuleがOwner受理された後に限り、#1174/#2564の既存実Provider Commit/Unknown/Receipt試験へ差分を渡す。#1125/#1444は人手Handoff、#2502はScript/Macro公開ライフサイクルを所有し、この節では新DSL・Job Scheduler・Outbox・Hostを作らない。
+
+**現状**：組織Native Sourceの実Rule Attachment/実Script起動/実Case DB Write、上記ORG-RB-A〜Dの新Go/PG実験、旧Driver互換、Owner受理はすべて**NOT RUN／未成立**。合成Planや別Domainの実PG成功を組織Scriptの実発火と呼ばない。
