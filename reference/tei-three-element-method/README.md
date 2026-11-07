@@ -60,3 +60,50 @@ Do not construct this shape directly from an untrusted model or use it as a
 Policy filter: the upstream qualified public read is an independent gate.
 Shape checking is not hardened for arbitrary JS Proxies, malicious input array
 iterators or side-channel effects, and cannot establish noninterference itself.
+
+
+## T10–T13: read-only prequalified Trait attachments
+
+The additional `trait-attachments.mjs` is a **presentation-only join** of
+already qualified, already disclosed Trait Claim references into existing
+Data / Function / Business occurrences. It uses `projectPublicTeaSlice`
+output as its source of view occurrences. It does not create or infer Trait
+Definitions, Owner Intent, actual Source Observations, Assessments, business
+MECE, key/strong attribute semantics, or currently authorized eligibility.
+
+`bindPublicTraitClaims(publicProjection, {scope, snapshot, claims})`
+requires an exact, caller-supplied snapshot string on each claim, matching
+scope/subject/Role, no duplicate claim IDs, and a matching published view
+occurrence. The returned `intent`, `observation`, and `assessment`
+lanes and local states are **fixture vocabulary only**, not a TEI canonical
+schema, Evidence qualification, or a new status/authority enum. The supplied
+`snapshot` is only an equality check: it **does not verify** the current
+Source, Role/Operator implementation bytes, Policy, as-of or Artifact.
+Inputs containing unqualified metadata fail closed with a generic error.
+
+```sh
+node --test reference/tei-three-element-method/public-slice.test.mjs \
+            reference/tei-three-element-method/trait-attachments.test.mjs
+```
+
+The new 10 focused tests (T10–T13) call the **actual existing public-slice
+projector**, then bind the prequalified Claim references. They prove
+synthetic three-view reference correspondence; that a Java Enum/DDL
+observation does not synthesize an Assessment; that no "strong attribute"
+or business Identity claim is inferred; that old snapshot, other Scope,
+absent/private subject, duplicate claim, unknown Role or raw private
+metadata are rejected. One test checks that an input accessor is rejected
+without being invoked. This is not a cryptographic proof of Source
+freshness, nor a validation of arbitrary untrusted JS Proxies or array
+accessors. The cross-view input is synthetic, not an actual Java/SQL/TEI
+Source Reader or a real Workbench DOM.
+
+**Next required integration evidence**: one exact public Semantic Subject
+with independently read Script/Role/Operator pins, Java Enum or equivalent
+declaration, database DDL constraint, and currently eligible Consumer
+Public Slice; preserve absence of a complete Writer inventory as
+`not-proven`. Then compare actual Inspector/Graph/Table/ARIA/diagnostic
+output in the same Consumer and attempt. Existing Owners: #3027 (Trait
+assessment, merged design), #1126 (Data identity/FD), #2620 (Role
+interpretation), #2516 (Disclosure), #1124 (Studio), #267 (Acceptance).
+This Reference is **not** an implementation of any of those Owners.
