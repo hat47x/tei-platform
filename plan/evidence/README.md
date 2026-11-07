@@ -1,4 +1,4 @@
-# 受入条件と検証根拠
+﻿# 受入条件と検証根拠
 
 要求が受け入れシナリオや検証根拠にどう結び付くかを整理する文書を置きます。要求そのものは[`requirements/`](../../requirements/README.md)、段階判定の記録と実行手順は[`gate/`](../gate/README.md)、現在の実装状況は[`docs/status.md`](../../docs/status.md)を参照してください。
 
@@ -51,7 +51,8 @@
 - [例の標準業務Dataの宣言と結合の確認](XTEA_LOWCODE_EXAMPLE_STANDARD_DATA_2026-11.md)（参照実装の試験記録。行データ・実DBは未確認）
 - [標準業務Dataの投影の確認](XTEA_LOWCODE_STANDARD_BUSINESS_PROJECTION_2026-11.md)（参照実装の試験記録。行データとWails RPC経由の確認は未実施）
 - [複数暦の休日Dataの確認](XTEA_LOWCODE_MULTI_CALENDAR_HOLIDAY_2026-11.md)（参照実装の試験記録。例への追加は未実装）
-- [休日Dataの暦識別値の検査の確認](XTEA_LOWCODE_CALENDAR_DOMAIN_2026-11.md)（参照実装の試験記録。行読み取りへの自動組込みと例への追加は未実装）
+- [休日Dataの暦識別値の検査の確認](XTEA_LOWCODE_CALENDAR_DOMAIN_2026-11.md)（参照実装の試験記録。例への追加は未実装）
+- [休日の結合と暦識別検査を一続きにする確認](XTEA_LOWCODE_HOLIDAY_RESOLVE_2026-11.md)（参照実装の試験記録。例での複数暦利用と実DBは未確認）
 - [X-TEA受容要件の実装対応](XTEA_LOWCODE_ACCEPTANCE_TRACE_2026-11.md)（`AC-1`〜`AC-11`・`RQ-C1`〜`RQ-C3`の参照実装と未確認事項。受容判断は仮承認）
 - [実DBで実行時の判断を確かめる計画](REAL_DATABASE_RUNTIME_DECISION_PLAN_2026-11.md)（期間・権限・効果の判断を実DBで見る案。**NOT RUN**）
 
