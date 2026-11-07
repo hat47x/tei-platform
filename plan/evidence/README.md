@@ -33,6 +33,7 @@
 - [フックの宣言外呼出し拒否の確認](XTEA_LOWCODE_HOOK_DECLARED_CALLS_2026-11.md)（参照実装の試験記録。Command境界への委譲は[#3108](https://github.com/hat47x/tei-platform/pull/3108)）
 - [フック実行の配線と失敗の区別の確認](XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)（参照実装の試験記録。Runnerからの配線、NotSatisfiedと実行失敗の区別、参照規則。実PluginとCLI・Studioの配線は未実装）
 - [フック宣言の印刷面への反映の確認](XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md)（参照実装の試験記録。画面と同じフック宣言が印刷面にも出る。実印刷・用紙面の版照合は未確認）
+- [フックが使う能力のcommand Pattern不在の拒否](XTEA_LOWCODE_HOOK_COMMAND_REACHABILITY_2026-11.md)（参照実装の試験記録。実行経路の無いフック宣言を検証で拒否。複数commandの曖昧さは未診断）
 - [Studio検証結果の修正案表示の確認](XTEA_LOWCODE_STUDIO_PROPOSALS_2026-11.md)（参照実装の試験記録。案を受理する操作は未実装）
 - [暦の宣言と期間への結合の確認](XTEA_LOWCODE_CALENDAR_DECLARATION_2026-11.md)（参照実装の試験記録。日付計算と税・通貨・採番は未実装）
 - [暦からの日付導出の確認](XTEA_LOWCODE_CALENDAR_CALCULATION_2026-11.md)（参照実装の試験記録。期間キー・税・通貨・採番は未実装）
@@ -71,6 +72,7 @@
 - [自律区分は何から導かれているか](OPERATION_AUTONOMY_DECLARATION_SURVEY_2026-11-07/README.md)（操作面が `unattended` を付けるのは読み取り操作だけで、`create`/`update` は `attended`、`human-gated` は0件。`Environment` にサービス主体の欄が無く、`surface.go` が `"human-gated"` を代入する箇所も無い。設計8章の「判断段階が未解決なら human-gated に倒す」は未実装で、未決3は宣言の置き場所と生成規則の新設の判断になる）
 - [実行時の照合は何を止められるか](OPERATION_DRIFT_CHECK_SURVEY_2026-11-07/README.md)（属性を1つ足すと `worldFingerprint` と `modelRevision` は変わるが、操作5件の `basis` は全件不変。`tei operations` に照合値を渡すフラグが無く、`OPERATION_SURFACE_STALE` はリポジトリ全体で0件、実行の入口 `period_guard.go` は指紋を比べない。未決4は「既定で有効にするか」の前に照合値の受け渡し経路の判断が要る）
 - [操作面のdrift照合を参照実装で試す](OPERATION_DRIFT_CHECK_REFERENCE_2026-11-07/README.md)（`tools/reference-operation-drift-check` として案(a)「呼出し側が照合値を渡す」を実装。同じWorkspace+保存値は `current`、属性を1つ足したWorkspace+同じ値は `stale` で終了コード1、未指定は `unchecked` として current と区別する。Basis は属性追加で変わらないため比べない。既定で有効にするかは15章未決4のまま）
+- [宣言されたプラグイン能力は環境から選ばれているか](PLUGIN_CAPABILITY_COVERAGE_REFERENCE_2026-11-08/README.md)（`tools/reference-plugin-capability-coverage` で参照Workspaceを集計し、宣言12件のうち6件がどの環境からも選ばれていないことを記録。database-provider 2件は instance が提供技術名を指すための数え方の限界、editor-intelligence はプラグインが明示選択されているのに能力のBindingが無い例、migration.atlas は能力の一部だけが選ばれている例。選ばれていないことを欠陥とはしない）
 - [操作面は宣言されたPatternを読んでいるか](OPERATION_SURFACE_DECLARED_PATTERN_GAP_2026-11-07/README.md)（受注Workspaceと見積もり候補の重ねで`tei operations`を比較し、World指紋は変わるのに操作面8件と`summary.declared=0`が不変であることを記録。W3未着手の設計記述と一致し、AのOperationとBの業務ActionをA側で結ぶ手掛かりが現状無いことを示す。権限・意味の受理は示さない）
 
 - [DSH外部HarnessからのTEI read-only CLI実起動](DSH_H2_TOOL_ONLY_READ_ONLY_2026-11-07/README.md)（#2509。外部AIハーネスの1実Sessionで固定実行物の実起動・実引数・実出力を同一ログで突合。H3・四Session比較・正答採点・Egressは未実施）
@@ -85,6 +87,7 @@
 
 - [TEI自身の設計をCLIで扱う実測](TEI_DOGFOODING_CLI_SELF_DESIGN_2026-11-07/README.md)（#3149。SHA-256 `bf6930a047cf94f276fb63b082bf71599986d71f1a5c53804105c04aa0021cfd` の固定実行物でread-only CLIを50出力ぶん実行し、成立した範囲と未対応を区別。意味の受理・実Provider・CI再現は未確認）
 - [供給からの実BuildとSource閉包資格の食い違い](TEI_GO_BUILD_WITH_SUPPLY_X1_2026-11-07.md)（`cmd/tei`は供給だけでBuildできるが、同じadapterのSource閉包は`rejected`。artifactと資格を別Claimとして扱う。SB-B事前確認 / X1 / #2831）
+- [Goのinternal規則とbuilder移動の影響範囲](TEI_GO_INTERNAL_RULE_AND_BUILDER_MOVE_2026-11-07.md)（SB-C0の案Aの前提がGoのinternal規則で拒否されることの実測と、移動で触れる29ファイルの内訳。実装は未着手。SB-C0 / #2831）
 - [pwsh不安定時のWSL検証手順](WSL_VERIFICATION_RUNBOOK_2026-11-07.md)（worktreeの`.git`書換え・ログインシェル回避・読み取り専用cacheの後始末・両OS結果の扱い）
 - [DSH外部Harnessのread境界の実測](DSH_H6E1_READ_BOUNDARY_2026-11-07/README.md)（#2515 H6-E1・#2509。read-onlyでもraw配下・.env・cwd外の合成canaryが読め、モデル入力とSession Logの両方へ載ったことを記録。実OS/ACLの拒否試験はNOT RUN）
 - [DSH外部Harnessが暗黙に取り込むContextの実測](DSH_H6E3_IMPLICIT_CONTEXT_2026-11-07/README.md)（#2515 H6-E3・#2509。AGENTS.md・CLAUDE.md・Skillのdescriptionが、Toolで読まずにモデル入力とSession Logへ載ることを合成canaryで観測。Skill本文は未ロード。Tool poison・実OS拒否はNOT RUN）
@@ -99,4 +102,4 @@
 - [DSH外部Harnessの再開と既送出Session Log](DSH_H6E7_RESUME_AFTER_DISCLOSURE_2026-11-07/README.md)（#2515 H6-E7・#2509。Raw canaryを読んだSessionを再開すると、Session Logは水位`27`から進み再送されない一方、モデル入力には過去の会話が再構成されcanaryが再び載る。Grant失効・ACK不明replayはNOT RUN）
 
 - [外部Go Module入力の明示opt-in受入](TEI_GO_EXTERNAL_MODULE_ADMISSION_OPTIN_2026-11-07.md)（既定の拒否方針は不変のまま、供給を明示した呼び出しだけが外部Moduleメンバーを含む閉包を受ける参照実装。受入記録に方針・根拠・拒否理由を残す。SB-B / 案C / #2831）
-
+- [起動主体と被起動主体を分けたBuild駆動の記録](TEI_GO_BUILD_STAGE_DRIVER_2026-11-07.md)（`cmd/tei`を子プロセスとして駆動し、invoker/invokedの実行ファイルdigest・argv・exitと、子の主張とディスク実物のartifact digestが一致することを記録。L3・受入・権限は未確認。SB-C0/C1 / #2831）
