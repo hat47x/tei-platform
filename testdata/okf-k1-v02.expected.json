@@ -23,7 +23,8 @@
     "root_index_okf_version": "0.2",
     "nonstandard_type_is_allowed": true,
     "unknown_extension_key_is_allowed": true,
-    "unresolved_markdown_link_is_allowed": true
+    "unresolved_markdown_link_is_allowed": true,
+    "baseline_link_integrity": "Committed baseline uses only resolvable repository-relative links; broken and bundle-absolute links are generated in temporary copies for F0/F1 tests"
   },
   "positive_controls": {
     "singleton_verified_maps_to_event_count": 1,
@@ -83,16 +84,16 @@
   "raw_sha256_utf8": {
     "index.md": "53ed2efbe2b5ac8fb3eb628c5ac6a3ddb152badd7f2d9e7bec7b55b9efeccd59",
     "data/order.md": "e199969f714240a573128432b30704cb7960505d00e991994d1fae28e47fe2c5",
-    "functions/submit.md": "4f2593b1f2552d3311ed86c6992f5edd4661eace53568e2d6d8c7198c63fad46",
-    "business/submit.md": "5b8ce60571a7e76d186d5402d7454b509139d99c94403a386c18e7f7298ba161"
+    "functions/submit.md": "6087a406c0cb5aa9aea116668401e3af5afd5c22797871a2ecf8888de8042c6e",
+    "business/submit.md": "111b2b32860ff46d23af4eaa3eee5e8b89a4f3cb13d50b79af494dfe38a8001e"
   },
   "validation_status": {
-    "github_file_readback": "PENDING AFTER UPDATE",
+    "github_file_readback": "PASS: source bytes rechecked; 2 changed files have recalculated SHA-256",
     "raw_sha256_algorithm": "two standard SHA-256 known vectors PASS",
     "yaml_parse_with_product_reader": "NOT RUN",
     "okf_formal_conformance": "NOT RUN",
     "owner_review": "NOT RUN",
-    "repository_plan_check": "PREVIOUS HEAD FAIL: TestMarkdownRelativeLinksResolve detects original intentionally broken and bundle-absolute links; new baseline planned to remove both. Latest CI NOT RUN"
+    "repository_plan_check": "PENDING: previous CI #42392171058 failed only on two committed Markdown links; baseline links patched. New exact HEAD CI not yet checked."
   },
   "fixture_generation_note": "Baseline all Markdown links resolve under TEI repository health. Broken links and bundle-root absolute links remain independently testable by mutations in a temporary checkout copy, not persisted to managed repository .md."
 }
