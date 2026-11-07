@@ -544,3 +544,25 @@ Source A→B→Aでは同byteでもObservation時点・選択Revisionが別と�
 最初は**既存HR-01/02のみ**：#2586/#2622が`runViewCommand→BuildBrowse`を固定し、既存Product Readerへ至るCallerがあれば実SQL/Rows/Scopeと同じRunで検証、無ければこの入口に限った`browse-query-execution-unbound`を既存`product-read-not-connected`の内訳として返す（新Status enumは作らない）。#2514/#1180は同ID異SQL・非表示Columnの独立Expected、#1163はSource/Request/Provider/Consumer実行とSKIP/NOT RUNの一改訂Packetを所有。P0-R1が実証できてから#1174の事前拒否／Executor後Unknown／二つの未報告欄／K/O/Grantを同一業務Attemptで照合し、旧Driver/Windows/Owner意味受理はさらに別。
 
 **資格**：現行mainの製品Go Sourceの静的追跡、[merged #3112 exact-head Repository Health #42308140870](https://github.com/hat47x/tei-platform/actions/runs/42308140870) completed/success、[前計画HEAD 1fe1e455のHealth #42301279950](https://github.com/hat47x/tei-platform/actions/runs/42301279950) completed/successを**それぞれの範囲**で参照。今回の新HR実Reader・実PG業務K/O・Windows Driver・Owner判断はNOT RUN／UNQUALIFIED。本計画Markdown以外は変更せず、G1/G2未受理、Draft/main未merge。新HEAD Healthは結果を確認するまで未確定。
+
+### 16.6 Receiptの再照会と実データのPost-imageは別証拠（11/7 main追補）
+
+[merged #3118](https://github.com/hat47x/tei-platform/pull/3118)により`commandadapter.Executor.Effect`へ**呼出側が渡した宣言効果**を、Committed/Replayedの`Result.Effect`として返せるようになった。報告漏れ`ReportedEffectMissing`は減らせるが、これは実更新先の列挙`Applied`・実DBのpost-image・受理済みOwner Targetの観測ではない。
+
+[merged #3124](https://github.com/hat47x/tei-platform/pull/3124)は`command.Invoker`へ`PersistenceState`（`not-applicable`／`not-observed`／`observed`）と`DurableStore`、`PersistenceObserver`を導入した。`DurableStore`はCallerの申告で、`PersistenceObserver.Observe`がnilを返すと`observed`へ進む。`not-observed`は「Commit失敗」ではなく、未構成・読取失敗などの**確認不足**。
+
+さらに[merged #3127](https://github.com/hat47x/tei-platform/pull/3127)の実Go `commandadapter.Executor.Observe`（`Lookup=true`）は、`Runner.Lookup`が`StatusReplayed`を返すとnilを返す。このLookupは**同一OperationID/RequestHash/GrantでReceiptを読む**が、`objects`や受注の**現在値を読まない**。それでも`Invoker.observePersistence`はnil→`PersistenceObserved`とし、CLI/Studioの`persisted`は`observed`でtrueに変換される。実試験`TestExecutorObservesACommittedReceiptByLookup`もこのReceipt-only fake Providerを使用する。**「Receiptの存在をobservedと表示する」実装は成立したが、業務レコードが期待どおり存在・更新されているという意味での独立Read Oを満たさない**。現状は表示上の`observed/persisted:true`をRMTのO資格として採用しない。
+
+| 既存F-Post/NoReportと同じOperationで追加する対照（新Fixture正本なし） | 独立期待結果・確認対象 | 誤った結論を拒否 |
+| --- | --- | --- |
+| **K-Lookup-01 / Receipt正例** | 実Provider Commit、同OperationID・RequestHash・現GrantのReceipt再照会。`StatusReplayed`なら**Kの照会成功**のみを記録 | これを`order.status`／`order.lines`の実Read O、Business Completion Bへ自動変換しない |
+| **K-Lookup-02 / Receiptあり・値不一致** | Commit後、別許可Operationが同じTargetを更新、又はレコードが削除された反例。元ReceiptのLookupが成功しても、別Connectionの現在Post-imageが元Expectedと違えば**K confirmed / O mismatch** | `persistence:observed`や`persisted:true`だけで現在値・業務成立・再実行不要を保証しない |
+| **K-Lookup-03 / Recorder/Observer不可** | 実Commit済みでLookup不能（権限失効/通信障害/構成無し）なら**Kが持つ確定度を保持し、O unverified**。観測失敗をCommit取消・効果0としない | `not-observed`を`not-persisted`や新OperationIDでの再送許可へ変換しない |
+| **K-Lookup-04 / Replayと宣言自己報告** | 同ID/同RequestのReplayed Receiptと、`Executor.Effect`に渡された宣言効果（自認）を分け、Providerの独立Post-image/Target/Scope/Schemaを再照合 | Replayed=新規Commit、`Result.Effect`の存在=Providerが物理変更を検証済み、としない |
+| **K-Lookup-05 / 複合Effect** | 同じ業務Operationが主DB行と関連Data/外部Serviceを変更する場合、Receipt観測可能な範囲を明示し、各EffectのConfirmed/Failed/Unknownと独立Readを分ける | 単一Receiptの`observed`をすべての派生/外部作用へ適用しない |
+
+**製品契約の補正候補（Owner判断まで未採用）**：#2998/#1174では、「Receipt確認」専用の観測結果と、「物理Record/Targetのpost-imageを独立読取で一致確認」の結果を別の証拠として扱う。既存`PersistenceObserved`／`persisted`の意味を**Receipt-onlyへ縮小する**ならConsumer文書・CLI JSON互換性をレビューする。従来どおり**宣言効果の実データ観測**の意味に保つなら、Receipt-only Observerではその資格へ昇格させず、別ConnectionのRead/Scope/Revision/target一致を確認できるObserverへ渡す。ここで新共通Enumや二重Receipt Storeは設けない。
+
+[merged #3125](https://github.com/hat47x/tei-platform/pull/3125)のX-TEA標準業務（会計月・暦・税・採番等）の固定版静的読解は、原典Rの意味候補としてのみ受け取る。RMTの期間判定に関係する`FIRST_MONTH`・`ALLOWED_FISCAL_MONTH`とTEIの`sales.month`を同じ意味と推定せず、実Rule・適用時点・Owner受理で別途対応付ける。税の符号別丸めや採番桁あふれの旧実装特性をTEIの安全な既定値へ無断移植せず、原典Parityと改善設計を区別する。これらは**P0-R1実Readの前提条件にしない**。
+
+**資格と次一手**：#3127 exact HEAD `c15bc4e074c5d7a86b190277c2f518df460a5876`の[Repository Health](https://github.com/hat47x/tei-platform/actions/runs/42316661948)はcompleted/success。実PostgreSQL上のReceipt Lookup＋受注Post-imageを**同一RMT Attemptで**検証した証拠ではない。`BuildBrowse→実Provider HR-01/02`の実Readを優先し、書込み後段の受理では**Receipt K と別実Read O**を最低限独立に残す。文書のみの追補で、新Go/PG-RMT/Windows原典Driver/Owner意味受理はNOT RUN、G1/G2 UNQUALIFIED。
