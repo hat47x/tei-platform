@@ -317,6 +317,7 @@ func Validate(w ir.World) []Diagnostic {
 			out = append(out, errFor(subject.Subject{Kind: "semantic-attribute", ID: string(a.ID)}, "SEMANTIC_ATTRIBUTE_ROLE_UNSUPPORTED", "attribute %s uses unsupported role %s", a.ID, a.Role))
 		}
 	}
+	out = append(out, validateAttributeRoleTypes(semanticAttributes, semanticTypes)...)
 	for _, r := range semanticRelations {
 		if _, ok := semanticData[r.Target]; !ok {
 			out = append(out, errFor(subject.Subject{Kind: "semantic-relation", ID: string(r.ID)}, "UNKNOWN_SEMANTIC_RELATION_TARGET", "relation %s targets unknown semantic data %s", r.ID, r.Target))

@@ -25,6 +25,12 @@
 
 | 文書 | 対象 |
 | --- | --- |
+| [`DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md`](DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md) | 異種Data Sourceの開発者向け閲覧・データ管理・Schema DDLとDBA境界（#3270、設計・未適格） |
+| [`HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md`](HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md) | REST例外とClient ReactionのGraph/Table/Trace同一性、再試行とCommit unknown（#3274、設計候補） |
+| [`ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md`](ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md) | TEI自身のIssue→Design Context→実CLI・テスト能力の限定ドッグフーディング（#3262） |
+| [`PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md`](PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md) | CLI/Studio/生成Runtimeに共通するPlugin Contract/Provider実証とTraitの分離（#1251） |
+| [`TEI_DESIGN_CONTEXT_TEST_HARNESS_INTEGRATION_2026-11.md`](TEI_DESIGN_CONTEXT_TEST_HARNESS_INTEGRATION_2026-11.md) | 設計Contextの完全性→Test Skill/Harness→独立Expectedへの段階的接続（#3262） |
+| [`TRAIT_ATOMIC_COMPOSITION_AND_FULFILLMENT_2026-11.md`](TRAIT_ATOMIC_COMPOSITION_AND_FULFILLMENT_2026-11.md) | 原子的Traitの実装義務（手動/自動/Provider）、Profile合成、不適合診断、DerivedData/Pluginでの受入負例（[#3278](https://github.com/hat47x/tei-platform/issues/3278)、設計・実証候補） |
 | [`BUSINESS_MEANING_PORTABILITY_AND_LEGACY_MODERNIZATION_2026-11.md`](BUSINESS_MEANING_PORTABILITY_AND_LEGACY_MODERNIZATION_2026-11.md) | REST/OData/File/MCPなどの連携方式とGo/Wails・Java・.NETのTarget選択を直交させ、既存Sourceの事実→受理済み業務意味→再生成→差分実証を接続する未採用の横断設計（#1656/#2542/#2555/#259） |
 | [`COMMAND_BOUNDARY_SAFETY_2026-11.md`](COMMAND_BOUNDARY_SAFETY_2026-11.md) | Command境界の未設定認可・期間状態の拒否、宣言外効果をunknownとして記録する判断と、参照実行の明示的認可（[#2996](https://github.com/hat47x/tei-platform/issues/2996)、[#2997](https://github.com/hat47x/tei-platform/issues/2997)、参照実装） |
 | [`EVERYTHING_DATA_MARKDOWN_SOURCE_FIDELITY_2026-11.md`](EVERYTHING_DATA_MARKDOWN_SOURCE_FIDELITY_2026-11.md) | Markdownの元シンタックスシュガーと書式・Source occurrenceを保存で保持する契約、局所Patch・競合・往復受入 |
@@ -98,6 +104,7 @@
 | [`SEMANTIC_LOGICAL_IDENTITY_FD_AUTHORING.md`](SEMANTIC_LOGICAL_IDENTITY_FD_AUTHORING.md) | 論理候補キーと関数従属性を正本ソースで明示宣言する、読み取りと静的検証の最小実装（[GitHub #1126](https://github.com/hat47x/tei-platform/issues/1126)） |
 | [`RELATION_HISTORICAL_IMPACT_2026-10.md`](RELATION_HISTORICAL_IMPACT_2026-10.md) | Relationの削除・改名・分割で、変更前の状態から過去の参照を取り出す読み取り専用の拡張（[GitHub #1126](https://github.com/hat47x/tei-platform/issues/1126)） |
 | [`PLUGIN_SELF_BUILD_PRODUCTION_CONTRACT_2026-10.md`](PLUGIN_SELF_BUILD_PRODUCTION_CONTRACT_2026-10.md) | プラグインのセルフビルドの最小契約と移行Gateの検討案。production仕様の採用ではない |
+| [`EXTERNAL_GO_MODULE_ADMISSION_CONTRACT_2026-11.md`](EXTERNAL_GO_MODULE_ADMISSION_CONTRACT_2026-11.md) | 外部Go Module入力をSource閉包へ入れられるかの判断材料。観測済みの事実と三つの選択肢・既定案・覆す条件を並べた検討案で、方針の採用ではない（[GitHub #2831](https://github.com/hat47x/tei-platform/issues/2831)） |
 | [`REFERENCE_PORT_IMPLEMENTABILITY_GAP_TRIAGE_2026-10.md`](REFERENCE_PORT_IMPLEMENTABILITY_GAP_TRIAGE_2026-10.md) | 参照モデルの実装可否と欠落機能を、原典側で止まった理由から製品側の責務へ渡す照合方法の設計案（[GitHub #1969](https://github.com/hat47x/tei-platform/issues/1969)） |
 | [`REPOSITORY_ARCHITECTURE_DEPENDENCY_GUARD_2026-10.md`](REPOSITORY_ARCHITECTURE_DEPENDENCY_GUARD_2026-10.md) | リポジトリの依存方向を守る最小ガードの実装候補 |
 | [`RUNTIME_TARGET_BINARY_COMPOSITION_DESIGN.md`](RUNTIME_TARGET_BINARY_COMPOSITION_DESIGN.md) | 多様な実行環境に向けた最小ランタイムと配備単位の設計候補（評価待ち） |
@@ -120,6 +127,7 @@
 | [`XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md`](XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md) | X-TEAから回収したローコードの知見を、Core・Pattern・生成器・Plugin・Studio・要件のどこで受け止めるかの設計案（未採用）。パッケージ・対話フック・項目の役割・結果型・標準業務意味の判断候補を含む |
 | [`DATA_OPERATIONS_KEY_SPACE_AND_MULTIPLICITY_LOSS_2026-11.md`](DATA_OPERATIONS_KEY_SPACE_AND_MULTIPLICITY_LOSS_2026-11.md) | MS-09：多様なData Structure間のKey空間・多重度・逆更新の喪失を明示する |
 | [`GO_MODULE_SUPPLY_FOR_SELF_BUILD_SB0B_2026-11.md`](GO_MODULE_SUPPLY_FOR_SELF_BUILD_SB0B_2026-11.md) | セルフビルドで外部Go Moduleを入力として認める条件（供給manifest・`h1:`照合・`go mod verify`・`corrupt-supply`分類・成果物digestを供給同一性の根拠にしない負例）の設計候補（[#2831](https://github.com/hat47x/tei-platform/issues/2831) SB-0b、未採用） |
+| [`SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md`](SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md) | セルフビルドの再入（SB-C0）の入口契約案。`cmd/tei`に汎用Build入口が無いことの静的観測、薄いCLI接続・既存toolのsubprocess・Plugin偽装の三案と依存境界、拒否条件、`qualified`を常にfalseにする出力形、L3に必要な追加情報を整理（[#2831](https://github.com/hat47x/tei-platform/issues/2831)、未採用） |
 | [`EVERYTHING_DATA_GO_LANGUAGE_REFERENCE_BRIDGE_2026-11.md`](EVERYTHING_DATA_GO_LANGUAGE_REFERENCE_BRIDGE_2026-11.md) | Everything is Dataの複数表層を既存Go Language Plugin Referenceに接続する限定試験設計（#2619/#2620/#988、Draft #2639。新Core/正式意味受理・実Product/Hostは未実証） |
 | [`QUERY_QX31_DYNAMIC_PATH_AND_NEGATIVE_DEPENDENCY_2026-11.md`](QUERY_QX31_DYNAMIC_PATH_AND_NEGATIVE_DEPENDENCY_2026-11.md) | QX-31：SQLのRelation path再束縛、相関NOT EXISTSの0件・否定依存、Read Cohortと現在Claimの分離をSQLiteで反証する補助設計（[#2387](https://github.com/hat47x/tei-platform/issues/2387)、#2582、未採用） |
 | [`QUERY_STRUCTURAL_MODEL_AND_FIXTURE_WORKBENCH_2026-10.md`](QUERY_STRUCTURAL_MODEL_AND_FIXTURE_WORKBENCH_2026-10.md) | Query構造Explainのread-only投影と、QX-01〜32のSQL/共通Data Operator/Function Context/Provider・Target同義性、証拠・開示・完全性の境界を分ける継続検証計画（[#2387](https://github.com/hat47x/tei-platform/issues/2387)、Draft #2388、未採用） |
