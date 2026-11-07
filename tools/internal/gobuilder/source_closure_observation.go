@@ -137,8 +137,18 @@ func observeFromList(root, packagePath string, raw []byte) (SourceClosureObserva
 		} else {
 			moduleDir = filepath.Clean(moduleDir)
 		}
+		// The package directory can be reported in a different form from the
+		// module directory (Windows short 8.3 paths are one case). Normalize it
+		// before deriving member paths, so a repository file is never measured
+		// against two spellings of the same directory.
+		packageDir := pkg.Dir
+		if evaluated, err := filepath.EvalSymlinks(packageDir); err == nil {
+			packageDir = evaluated
+		} else {
+			packageDir = filepath.Clean(packageDir)
+		}
 		for _, name := range PackageBuildFiles(pkg) {
-			full := filepath.Join(pkg.Dir, name)
+			full := filepath.Join(packageDir, name)
 			if moduleDir == root {
 				rel, err := filepath.Rel(root, full)
 				if err != nil {
