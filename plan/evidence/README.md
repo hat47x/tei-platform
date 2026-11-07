@@ -69,4 +69,4 @@
 - [供給からの実BuildとSource閉包資格の食い違い](TEI_GO_BUILD_WITH_SUPPLY_X1_2026-11-07.md)（`cmd/tei`は供給だけでBuildできるが、同じadapterのSource閉包は`rejected`。artifactと資格を別Claimとして扱う。SB-B事前確認 / X1 / #2831）
 - [pwsh不安定時のWSL検証手順](WSL_VERIFICATION_RUNBOOK_2026-11-07.md)（worktreeの`.git`書換え・ログインシェル回避・読み取り専用cacheの後始末・両OS結果の扱い）
 - [DSH外部Harnessのread境界の実測](DSH_H6E1_READ_BOUNDARY_2026-11-07/README.md)（#2515 H6-E1・#2509。read-onlyでもraw配下・.env・cwd外の合成canaryが読め、モデル入力とSession Logの両方へ載ったことを記録。実OS/ACLの拒否試験はNOT RUN）
-
+- [DSH外部Harnessが暗黙に取り込むContextの実測](DSH_H6E3_IMPLICIT_CONTEXT_2026-11-07/README.md)（#2515 H6-E3・#2509。AGENTS.md・CLAUDE.md・Skillのdescriptionが、Toolで読まずにモデル入力とSession Logへ載ることを合成canaryで観測。Skill本文は未ロード。Tool poison・実OS拒否はNOT RUN）
