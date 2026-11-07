@@ -341,6 +341,20 @@ AIによる提案には、意味の正本を変更する権限はありません
 
 AIの自律的な作業と実行権限を区別します。AIがツールを直接呼び出せることを、能力や利用許可の仕組みの代わりにはしません。
 
+### AI-firstの現行受入：TT-56実CLI閉包→盲検T1-Bと実Providerを分ける（2026-11-08）
+
+[AI-first資格・実測対応設計§10](design/AI_FIRST_QUALIFIED_INTERFACE_CURRENT_MAIN_2026-11.md)を、作業領域Hの**受入順と担当への引渡し**として参照する。旧[PR #3241](https://github.com/hat47x/tei-platform/pull/3241)の複数段追記は主張の歴史として設計本文へ保持し、本計画へは重複掲載しない。現行mainのIssue/ADR・TAI Runbookが受入・実験の正本である。
+
+**確認済みの最小成果**：[main統合 #3354](https://github.com/hat47x/tei-platform/pull/3354)は旧#3324/#3326を一つのContext Gateへ統合し、固定公開Sourceについて**11実CLI Reply＋32局所Consumer Controls**（既存16・Required三Rule 8・Rule/Relation/Source詳細8）を[専用exact-head CI #42391707962](https://github.com/hat47x/tei-platform/actions/runs/42391707962)で成功、Healthも別Runで成功。旧二PRはclosed/unmerged。これは一時コピーの欠落/改変を検出した実績であって、実Harnessの全Byte配送・全Domain/Function/BusinessのRequired Closure、AIのT1-B新規発見は**未証明**。`boundedReference=partial`／`qualifiedTestGeneration=false`を維持。
+
+**P0-A/P0-B/P0-Cを分離**：(A) #3262の実Loader/Rule/Relation/Source/Index/Canonical取得と独立Requiredを一Subjectの版に束縛し、不足理由を返す。(B) TAI #168・TEI #2509/#2515で独立Expected/未公開Gap/旧回答への**実OS拒否**、許可`Command+Flag`/argv・Tool Reply全Byte/終端・Session Log/Egress Sink/Consumer受領を実測して初めて比較/盲検資格を与える。(C) #3273/#1180/#2514で**未知GapのT1-B Candidate一件**を独立Expected/Mutantで採点。既知行番号0のT1-A成功は未知Gapの発見でない。[Draft #3365](https://github.com/hat47x/tei-platform/pull/3365)の部分Scenario目録TT-105/106はfixed-head Dogfood/Health/依存CIがいずれも成功したが、**部分受領＝notObservedであってuntestedConfirmedではない**、全Coverageはunknown、Draft未統合。
+
+**別レーンの実資格**：[main統合 #3353](https://github.com/hat47x/tei-platform/pull/3353)は空Targetの`EmptyPolicyHandoff`に`HandoffConfirmed=false`なら`unverified`を返す局所修正を加えたが、実相手方Receipt・Target Set全Readではない。[main #3350/#3363](https://github.com/hat47x/tei-platform/pull/3363)の参照Capability/Bindingは12宣言・未選択4、24 Bindingの選択22/欠落2（`editor.database_workbench`）、ただしReferenceの`missing`≠現Validatorの違反≠実Plugin Loader。[Draft #3371](https://github.com/hat47x/tei-platform/pull/3371)はStudio InspectorをHostの選択InspectionServiceへ接続する候補だが、CLIは依然直接経路であり、**一Pluginのselected→actual loaded/invoked→CLI/Studio二Consumer**を実証したものではない。#1251/#951/#3292へ実Invoke試験を引き渡す。
+
+**Tool公開とReaderの停止線**：[main #3333/#3340](https://github.com/hat47x/tei-platform/pull/3340)の`writeFlags`・Help/Discovery整合は安全な実argv/OS非書込みの証明ではない。[第2回CLIドッグフード #3356](https://github.com/hat47x/tei-platform/pull/3356)は一部改善とD-3/9/10残存を記録し、**現在の実入口はCLI、MCPはNOT RUN**と分類。Managed Markdown、ReaderでParsedされたSource、実Consumed Meaningを混同しない。旧`*.tei`の一Function→実Provider read-only（#2586）と新`*.tei.md` Reader移行（#3030/#3031）は並行し、T1-BのHard dependencyにしない。
+
+**PoCのA3自律作業**は採用ADR-0035に従い可能だが、製品のHuman/Owner Shared Acceptance（#267）・実Host current Grant/Effect（#1174/#2598）・外部不可逆効果の人的確認は別。**今回の追加はDocs/Planのみ**。新H2/H3四Session・実T1-B・実DB/Plugin/Host・正式Meaning Acceptance・C1はNOT RUN。Scenario/Expected/Registry/Host/Runbook/Readerの第二正本は設けない。
+
 ## 作業領域I：周辺技術との連携と本番運用の境界
 
 ### 目的
