@@ -601,3 +601,26 @@ UI/CLI/Jobの実行要求は、表示/選択の更新世代（**Selection/Contex
 **同じRunに束縛する最小欄**：`Source/World/OperationID+basis/actual Binary/Actor+Tenant+Target+current Grant/Provider Instance/RequestHash/ExecutorTx participation（proved, unproved）/UoW begin+rollback+commit/Recorder error/Stage durability before+after/EffectUnknown provenance/Receipt Lookup+resource version+Read epoch/Result Slice+Coverage+Consumer Disclosure`。不明な欄は`unverified`、秘匿Input/Grant/非開示RowのrawをTool/AI Sessionに転載しない。**新公開SchemaやRun Registryの採用ではない**。
 
 **到達点**：Reference物理PG ReadとCommand Receipt/Resource Read、Operation driftの合成実測、PinnedJournalの限定保護は個別の有限証拠。Product`Browse→Query→実Provider→Function/Consumer→Script Effect/Recovery`一改訂統合、RC-03/05実故障注入、Admission現在Grant/World照合、正式Owner Meaning、外部AI秘匿隔離は**NOT RUN／NOT QUALIFIED**。
+
+### 13.7 回復の最小実装修正とDesign Context入力資格の再分離（2026-11-08）
+
+本節は、§13.6のRC-03/05を**計画から局所Code+Test候補へ進めた**ことと、他レーンで実測されたP0-R前段のDesign Context Readinessを現状態に更新する。旧記述の「未実装」は当時のmainの観測であり、本節以降の判断では**main統合済み／Draft変更あり／実試験未確認**を分ける。
+
+**RC-03/05の実装候補**：[Draft #3328](https://github.com/hat47x/tei-platform/pull/3328)では、`Invoker.execute`でExecutor成功後の`Recorder.Record`エラーを`COMMAND_RECORD_FAILED + EffectUnknown=true`として返し、`lifecycleRecordError`も`COMMAND_LIFECYCLE_RECORD_FAILED + EffectUnknown=true`を返す。加えて、`StageDispatched`なのに`MayReplay=true`だった参照Lifecycleの矛盾を修正し、**存在するAttempt（dispatched/unknown/observed）は同Owner/Generationの自動再送候補にしない**。専用Goテストは、①Recorder障害後のUnknown/再送拒否、②実行成功後Observe障害、③既Unknown後MarkUnknown障害、④事前Authorization不備はExecutor0/Rejected、⑤DispatchedとMayReplay/Dispatchの一致を固定する。**2026-11-08記録時点はPR Draft・未統合。Go CIは完了結果未確認**。旧§13.6 C/E/Fの静的「現main」指摘を、すでにProduct修正済みと読み替えず、候補PRとベースmainとの差として残す。
+
+**このGo修正が保証しないこと**：`EffectUnknown=true`はCallerへ警告する情報であって、`Observe/MarkUnknown`失敗時の**Stageの耐久保存を修復しない**。保存された`dispatched`は二重Dispatchを拒否できても、Process crash/Journal失効/別Hostからの同Operation再送の完全Fenceを証明しない。ResourceReadの`value`一致はVersion/ABA因果、全対象集合、現在Grantを証明しない。次段は#1174/#2564の**既存**隔離PG Commit→Recorder/Stage障害→同Operation Receipt/別接続Resource Readを実試行で比較する。C（別Tx）とD（同Tx参加保証）を同じFakeのテスト成功から混同しない。
+
+**P0-R前段の実証資格と停止位置**：
+
+| 先行証拠 | 成立範囲 | このScript計画で認めない飛躍 |
+| --- | --- | --- |
+| [main #3284](https://github.com/hat47x/tei-platform/pull/3284)／[main #3296](https://github.com/hat47x/tei-platform/pull/3296) | CLI実9応答を受けた`context_gate.py`のReadinessは`partial`/`exploration-only`で、7＋追加Source Root 2＋受領byte 7の負例を判別 | Design Contextが完全・Meaning accepted・テスト生成/Provider実Readがqualifiedとはしない。別Packet/第二Parserを追加しない |
+| [main #3299](https://github.com/hat47x/tei-platform/pull/3299) | 実Source型改変・Plugin Lock改変後の旧Pinned Scenarioを拒否する限定CI。byteがA→B→Aで戻ればContent Pin自体は再成立し得る | Pin一致から改版履歴・Owner意味受理・現在Grant・全Plugin実Loadを推論しない |
+| [main #3304](https://github.com/hat47x/tei-platform/pull/3304) | 既知の正数Ruleをもとに、一時第7Stepの正負と偽Expected/Fixture/旧Pinの実CLI判別を実行 | 未知RuleをAIが盲検発見した／C1/NFR網羅・実Product Provider/Hostが適格とはしない |
+| [main #3254](https://github.com/hat47x/tei-platform/pull/3254) | 属性変更でWorld/Model版は変わるがOperation`basis`が同一の合成実測 | Basisだけで実行時Source driftを検出したり、Operation ID一致からAdmissionを保証したりしない |
+| [main #3310](https://github.com/hat47x/tei-platform/pull/3310) | `access.ChainFile`は判断レコード全欄のJSONとchainVersion`tei.access.chain/v2`をハッシュ入力へ含め、版不一致を明示 | 完全な防改竄、実Provider Commit Receipt、公開署名、全Journal/全Hostへの配備としない |
+| [未統合 #3311](https://github.com/hat47x/tei-platform/pull/3311)／[未統合 #3302](https://github.com/hat47x/tei-platform/pull/3302) | Workspace名/manifest digestのCLI投影と、`view -execute`の名前付きOutput/`read-only`適用範囲の補正候補 | 両PRをmain実装済みとしない。`effect: read-only`と実argvのFile Write/Network Egress、Host Grantを区別 |
+
+**一改訂で実験する順番**：P0-LでRequired/Discovered/Loaded/Parsed/Meaning-bound/Build-consumedを別列にし、Contextが`partial`なら**生成資格は保留したまま**P0-R1の実Source解析・実Reader Call Path調査を実施する。P0-R1のExitは**Product Pattern→selected Query Source→Provider Instance+actual SQL/params→Result Slice/Scope→Bound Function Consumer**の一Attempt束縛。DB Reader取得成功だけでも宣言済みTargetSet全件の`Completion holds`には進めない。P0-Wで#3328の限定Go Testと実PG故障注入を独立した段に置く。P0-Hで外部Harness受領・Disclosure・Session Log再送は#2509/#2515側に委譲する。新Runtime/Host/Second Expected Registryを作らない。
+
+**所有と現状の上限**：RC-03/05 Code＝#1174/#2564（Draft #3328）、Function/Query Product Reader＝#2586、Design Context/AI Test Ability＝#3262/#2514、Source/BOM＝#2822/#3267、Operation Drift＝#3254/#2502、External Read/Egress＝#2509/#2515/TAI #168、Evidence Packet＝#1163。§13.7の記述は**新しい計画と実装候補の照合**であり、今回のScript Product E2E・実PG故障注入・正式Host/Owner Meaning・C1測定・実H3隔離は**NOT RUN／UNQUALIFIED**。
