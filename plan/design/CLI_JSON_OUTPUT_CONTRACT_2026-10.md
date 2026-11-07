@@ -17,7 +17,7 @@
 ## 3. 現在の結論（先に要約）
 
 - `world`を除く、`tei commands`が広告する読取り専用JSONコマンドは`tei.cli.<command>/v0`を持ち、失敗時は`ok: false`と`error.code`を標準出力のJSON 1件で返す。終了コードの意味（0/1/2）は従来どおり。
-- **`ok`/`result`を持つ成功時の形は、`version -json`には当てはまらない。** `version -json`は`ok`を持たず、build識別（`goVersion`等）を`schemaVersion`と同じ階層に並べて返す。`tei commands`のdiscoveryは`version`を`jsonContract: "enveloped"`と広告しているため、呼び手は成功時に`ok`があると仮定できない。この食い違いは未決（#2824）で、本節は実装の現状を記す。
+- **`ok`/`result`を持つ成功時の形は、`version -json`には当てはまらない。** `version -json`は`ok`を持たず、build識別（`goVersion`等）を`schemaVersion`と同じ階層に並べて返す。2026-11-07から`tei commands`は`version`の`successShape`を`identity`として広告するので、呼び手は成功時に`ok`を仮定しない。`jsonContract`の`enveloped`は失敗時の形（`schemaVersion`と`error.code`）を指し、成功時の本体は`successShape`が示す（#2824）。
 - `world`は例外で、`tei.cli.*`のエンベロープを持たない。`tools/reference-critical-path-evidence-audit/live-r1-smoke.mjs`が`tei world`の生標準出力SHA-256を受理済みDecisionの`derivedWorldSha256`と照合するため、インデントやエンベロープの追加は証跡照合と両立しない。`world`は内部・証跡用途であり、外部の安定JSON契約の対象外とする（2026-11-02 Owner判断）。
 - 実測では、製品CLI（`cmd/tei`）が外部のGo moduleに依存しないのと同様に、**広告された読取りコマンドのうち`tei.cli.*/v0`を持たない出力は、内部構造体の変更がそのまま外部向け変更になる**。`world`はこの例外として扱い、その他のコマンドは投影型で版固定する。
 
@@ -61,6 +61,7 @@
 - `tei commands`の各entryは、2026-11-07から`schemaVersion`と`jsonContract`（`enveloped`／`raw`／`none`）を持つ。`world`だけが`raw`で、`tei.cli.*`のエンベロープを持たないことをdiscoveryから読める。
 - 2026-11-07から、discoveryが広告する`schemaVersion`と、そのコマンドが実プロセスで返す応答の`schemaVersion`の一致を`cmd/tei/cli_discovery_process_test.go`が検査する。定数同士の照合（`cli_contract_test.go`）だけでは、応答側の改名と広告のずれを検出できなかった（#2824）。`version -json`は`ok`/`error`を持たないため、この検査は`schemaVersion`の一致だけを求める。
 - 2026-11-07から、`tei commands`の各entryは`modes`（応答の`mode`が取りうる値の閉じた集合）を持つ。空文字列の要素は「その応答では`mode`が省略されうる」ことを示す。`mode`で結果の形が変わる`source-index`（`index`／`subject`）と`knowledge-context`（`context`／`disclosure`）、`plugin-lock`（`environment`または省略）、`plugin-resolve`（`unvalidated-candidates`または省略）が対象で、残りの`knowledge-*`は1形の結果型を`mode`で名乗る。`cmd/tei/cli_discovery_modes_test.go`が、実際の応答の`mode`が広告された集合に含まれることを実プロセスで検査する。
+- 2026-11-07から、`tei commands`の各entryは`successShape`（`envelope`＝`ok`/`result`、`identity`＝`version -json`のbuild識別）を持つ。省略時は`envelope`であり、成功時に`ok`を持ち、`result`を持つ。`version`だけが`identity`で、`ok`も`result`も持たない。`cmd/tei/cli_discovery_shape_test.go`が、実応答の本体が広告された形と一致することを実プロセスで検査する。
 
 ## 5. v0の中での互換な変更と版を上げる変更（規則案）
 
