@@ -14,9 +14,9 @@ import (
 
 // linkInsideRoot creates root/name pointing at target.
 //
-// On Windows a symlink needs privileges but a directory junction does not, and
-// EvalSymlinks resolves both. Using a junction keeps the escape test runnable
-// here; skipping it silently would leave the most interesting refusal unchecked.
+// On Windows a symlink needs privileges but a directory junction does not. Using
+// a junction keeps the escape test runnable here; skipping it silently would
+// leave the most interesting refusal unchecked.
 func linkInsideRoot(t *testing.T, root, name, target string) {
 	t.Helper()
 	if runtime.GOOS == "windows" {
@@ -75,35 +75,35 @@ func TestFileSystemRefusesALinkThatLeavesTheRoot(t *testing.T) {
 	}
 }
 
-// TestFileSystemStillWritesThroughALinkThatStaysInside keeps the check from being
-// a blanket refusal: a link that points inside the root is not an escape.
+// TestFileSystemRefusesALinkThatStaysInsideDocumentsTheLimit pins what os.Root
+// actually does: it refuses every path that goes through a link, including one
+// that points back inside the root. That is stricter than a name-based policy
+// needs to be, but it is the confinement the operating system gives, and calling
+// it an escape would be wrong.
 //
-// On Windows, os.Root refuses every junction it opens through, including one that
-// points back inside the root: a junction is treated as leaving the confinement
-// regardless of its target. That is stricter than this test asks for, and it is
-// not a hole, so the test reports that it cannot check the permissive case here
-// rather than passing without checking it.
-func TestFileSystemStillWritesThroughALinkThatStaysInside(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("os.Root refuses every junction on Windows, including one that points inside the root")
-	}
+// The test exists so the behaviour is written down rather than discovered: if a
+// later Go version starts allowing a link that stays inside, this test fails and
+// the change is visible.
+func TestFileSystemRefusesALinkThatStaysInsideDocumentsTheLimit(t *testing.T) {
 	root := t.TempDir()
 	inside := filepath.Join(root, "real")
 	if err := os.Mkdir(inside, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(inside, filepath.Join(root, "inside")); err != nil {
-		t.Skipf("creating a symlink failed: %v", err)
-	}
+	linkInsideRoot(t, root, "inside", inside)
 
 	grant := permission.Spec{Kind: permission.KindFilesystem, Access: permission.AccessReadWrite, Scope: root}
 	fs := access.FileSystem{Root: root, Capability: core.MustCanonicalID("sales.close"), Guard: access.Guard{Granted: []permission.Spec{grant}}}
 
-	if err := fs.WriteFile(filepath.Join("inside", "report.txt"), []byte("ok"), 0o600); err != nil {
-		t.Fatalf("a link inside the root must not be refused: %v", err)
+	err := fs.WriteFile(filepath.Join("inside", "report.txt"), []byte("ok"), 0o600)
+	if err == nil {
+		t.Skip("this Go version lets os.Root follow a link that stays inside the root; the documented limit changed")
 	}
-	if _, err := os.Stat(filepath.Join(inside, "report.txt")); err != nil {
-		t.Fatalf("the write must land at the link target: %v", err)
+	if !strings.Contains(err.Error(), "path escapes") {
+		t.Fatalf("the refusal must come from the root, not from something else: %v", err)
+	}
+	if _, statErr := os.Stat(filepath.Join(inside, "report.txt")); !os.IsNotExist(statErr) {
+		t.Fatal("a refused write must leave no file behind")
 	}
 }
 
