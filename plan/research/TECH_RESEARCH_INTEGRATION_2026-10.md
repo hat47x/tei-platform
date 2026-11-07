@@ -824,16 +824,56 @@ X-TEAのテーブル1:1／1:N→XF単票・明細→遷移の固定対応を、T
 
 [main #3193](https://github.com/hat47x/tei-platform/pull/3193)は固定WSL2/Go 1.27.3/linux-amd64、隔離供給でcmd/teiを**二回独立Build**し、両方exit 0、Artifact digest一致、Attempt ID相異を観測。[Health #42339228583](https://github.com/hat47x/tei-platform/actions/runs/42339228583) completed/success。先行#3142の選択Module供給検証、#3156のBuild成功なのにSource Closure=rejectedという結果と、**いずれも同時に成り立つ**。同じdigestを出しても資格ある閉包、Stage2の実TEI再入、Owner受理は未証明。G4はUNQUALIFIED。
 
-[Open #3217](https://github.com/hat47x/tei-platform/pull/3217)は実選択Sourceをrepo 318件・外部12 Modules／325 filesとして数え、module相対IDと専用observed digestを出す設計。Qualified digestと観測digestを別domainにし、qualificationは常にfalse。[Windows Builder #42341998886](https://github.com/hat47x/tei-platform/actions/runs/42341998886)はexact HEAD c9c86166で**completed/failure**。実試験がWindowsのTemp pathからmalformed external member nameを検出しており、単なるCI infraとは呼ばない。#3217はmain未統合、Windows相互運用性未達。#2831/#1090のSource Closure方針を研究側で変更しない。
+[Open #3217](https://github.com/hat47x/tei-platform/pull/3217)は実選択Sourceをrepo 318件・外部12 Modules／325 filesとして数え、module相対IDと専用observed digestを出す設計。Qualified digestと観測digestを別domainにし、qualificationは常にfalse。[Windows Builder #42341998886](https://github.com/hat47x/tei-platform/actions/runs/42341998886)はexact HEAD c9c86166で**completed/failure**。実試験がWindowsのTemp pathからmalformed external member nameを検出しており、単なるCI infraとは呼ばない。#3217はmain未統合。ただし後続HEAD 0788dd0fの[Windows Builder CI #42345322321](https://github.com/hat47x/tei-platform/actions/runs/42345322321)はcompleted/success（前HEAD c9c86166での失敗から進展）。Source Closure方針とG4は依然不適格。#2831/#1090のSource Closure方針を研究側で変更しない。
 
 合格票では選択Source／実Go Toolchain／Module供給・h1／実Build／Artifact byte／2 Attempt／実選択Source観測／正式Closure Qualification／Stage2で使ったBuilder image／現在Authorityを別列とする。Go buildの2回一致だけでTEI生成物が自分を再ビルドしたとは推定しない。
 
 ### 10.38 Access記録の欠落・DSH跨Lane漏洩・長期Runの回復境界
 
-[main #3136](https://github.com/hat47x/tei-platform/pull/3136)では一つのReference書出しToolにChainFileを実接続。さらに[main #3211](https://github.com/hat47x/tei-platform/pull/3211)のHeadPin/PinnedJournalは鎖末尾の削除をpinとの不一致で検出する局所機能で、[Health #42340826630](https://github.com/hat47x/tei-platform/actions/runs/42340826630)成功。ただし**PinnedJournalはこのToolへ未配線**であり、外部で保全するpinの置き場も未決。鎖整合・記録完全性・記録本文の真実性・実Request帰属・現在Host Authorityを分ける。
+[main #3136](https://github.com/hat47x/tei-platform/pull/3136)では一つのReference書出しToolにChainFileを実接続。さらに[main #3211](https://github.com/hat47x/tei-platform/pull/3211)のHeadPin/PinnedJournalは鎖末尾の削除をpinとの不一致で検出する局所機能で、[Health #42340826630](https://github.com/hat47x/tei-platform/actions/runs/42340826630)成功。後続の[main #3230](https://github.com/hat47x/tei-platform/pull/3230)は当該固定World書出しToolへ-access-headを配線し、logとpinの一致・末尾削除拒否を局所試験とE1関連CIで確認した。ただしpinの独立保全先、記録とpinの同時改竄耐性、全Toolへの普及は未決。鎖整合・記録完全性・記録本文の真実性・実Request帰属・現在Host Authorityを分ける。
 
-[main #3200](https://github.com/hat47x/tei-platform/pull/3200)のDSH Tool Process実測は、read-onlyのPowerShell制約が一部APIを拒否する一方、127.0.0.1 Mockへの通信は成立するという有限観測。[Open #3216](https://github.com/hat47x/tei-platform/pull/3216)ではWindowsの別cwd／別SessionのLane A/Bが、双方とも相手Laneの**合成canaryをread-onlyで読めた**。同PRはHealth検証中で、別OS User/ACL/Network Namespace隔離による拒否はNOT RUN。これはH2/H3の比較適格0/4を解消せず、Worktree/cwd/CLIのread-only指定はSkill Holdout/Expected非露出を保証しない。#2515とTAI #232/#168へ既存負例として接続する。
+[main #3200](https://github.com/hat47x/tei-platform/pull/3200)のDSH Tool Process実測は、read-onlyのPowerShell制約が一部APIを拒否する一方、127.0.0.1 Mockへの通信は成立するという有限観測。[Open #3216](https://github.com/hat47x/tei-platform/pull/3216)ではWindowsの別cwd／別SessionのLane A/Bが、双方とも相手Laneの**合成canaryをread-onlyで読めた**。後続の[main #3228](https://github.com/hat47x/tei-platform/pull/3228)ではworkspace-writeのRoot外書込み拒否とRoot外読取り成功を同じWindows実環境で実測した。一方、別OS User/ACL/Network Namespace隔離による読取り拒否はNOT RUN。これはH2/H3の比較適格0/4を解消せず、Worktree/cwd/CLIのread-only指定はSkill Holdout/Expected非露出を保証しない。#2515とTAI #232/#168へ既存負例として接続する。
 
 **他チャットのOracle比較から抽出する要件候補**：Runの証拠を (1)記録の整合、(2)実Request/Operation帰属、(3)当時／現在のGrant資格、(4)計算定義・Resultの検証、(5)実Provider Effectと独立再読取、(6)業務成果とOwner Acceptanceに分ける。Read-only／拒否／結果unknownも原因・影響・次の行動が説明できるRun履歴を検討し、応答喪失時は独立Lookup/Readbackが無いまま盲目的に再送しない。Skill Manifestに依存・副作用・Owner・Token/Context予算・回復条件、RunbookにResumeのSource/Artifact/Grant再検証を候補として結ぶが、**汎用Scheduler／新Receipt ABI／新Host・自動再送機構の採用はしない**。既存#1174/#1163/#2514、TAI #514のOwnerに渡す。
 
 **直近の実証順**：P0=Function ContextからのPattern Crosswalk・不一致・衝突を独立Expectedで固定し、その後の公開W5/Consumer実受領を別Gate化。P1=媒体時間軸・文章位置のlossをHeadlessで検証。P2=実Resource Readを一Function/一Operationへ束ねる。P3=Builder二回の再現性とClosure資格を#1090で整理。P4=H2/H3のOS identity・Network・Skill/Expected非露出を現物で検証。既存#1119 Gate不変。正式表現型DSL、Media実行、W3/W5本番接続、Stage2 Self-Build、Harness隔離、業務Owner受理はいずれもNOT RUN。
+
+
+### 10.39 実ReadPlanとCompletionの証拠資格（#3175 CDE-Q05〜07の実Go API Characterizationを採り入れた再資格化）
+
+[Draft #3175](https://github.com/hat47x/tei-platform/pull/3175) exact HEAD defbf7297fb98d444879bb1766c6af95d2a17707 の[Health #42334653630](https://github.com/hat47x/tei-platform/actions/runs/42334653630)はcompleted/success。mainのAuthorizeBrowseRead/scopedPublication/fixtureAuthorizationを使って**実ReadPlan**（top=1, select=orderId）を組んだうえで、合成RowsetをEvaluateCompletionに入力する限定試験が成立。SQL FixtureではTenant AのOrder 3=OPEN・9=READYを固定し、独立ExpectedをEvaluatorの出力から再生成しない。実PostgreSQL/実Provider経由のRowsetではなく、正式なG2/E2/E2Eとも別。
+
+| ケース | 原典集合・Read/判定入力 | 期待する独立判定とAPIの観測 |
+| --- | --- | --- |
+| 正常対照 Q00 | L={A/3,A/9}、Scope・Predicate・全件性が実証 | 局所holdsは説明できる。ただしCoverage資格をCaller自己申告だけで満たしたとはみなさない |
+| **Q05 同件数異集合** | L={A/3,A/9}、R=[A/3,A/3]（重複）、CallerがCoverageCompleteと誤申告 | 重複を異なる二対象と数えず、必要A/9の欠落を検出。現APIは自己申告Completeを信じ局所holdsになり得る。正しくpartialならunverified |
+| **Q06 Top-1** | ReadPlan top=1のR=[A/9]を全件として渡す | 読めた1件は全母集団ではない。partial→unverified、誤申告Complete→局所holdsとなり得る |
+| **Q07 非出力依存** | status=READYに必要な値をselect=orderIdではConsumerに出さない | 非表示だから常に未評価とはしない。実SQL WHERE/Operatorが非出力Predicateを評価し、その入力・Source・Pin・Scope/時点を証明するならQualification候補。今回の合成Rowset/自己申告Holdsにはその証拠がない |
+
+**導入すべき狭い契約**：ReadPlan・実際に消費したQuery/Operator・Result Slice/row identity・重複・Predicate評価場所・Required Source/Scope・Coverage terminal・Snapshot/Current Grantと、Callerが自称したCoverage/Holdsを**別欄**で照合。ReadPlanに制限があることから、全件取得や不存在を導かない。逆に非公開Predicate列をConsumerに開示しなければ常に未確定、と誤って判定しない。実Providerの認可された非出力依存評価を許すが、その証拠が無ければunknown。新Evidence Engineは設けず、#2506（Result Slice）、#2586（Function/Query実Read）、#2514（Independent Expected）、#1163（同一Attempt）へ渡す。
+
+**最小次実験**：同じTenant A/同じQuery原典で、Providerの実Read→Read Slice→Completionを一度だけ接続し、Q00/Q05/Q06/Q07の結果を独立Expectedに照合。業務Read/Operation/Host・Disclosureの一改訂一致が不足すればG2はUNQUALIFIED。実Readの実行・Owner意味受理はNOT RUN。
+
+### 10.40 複数Representationの同期はSelectionでありMutationではない
+
+前回§10.31/10.35のFunction-bound Instanceについて、[Draft #3222](https://github.com/hat47x/tei-platform/pull/3222)は同じSubjectをTable/Chart、DAGをTree/Graph、SHO文書、Media等で異なるOccurrence/Grainで投影するときの**同期**を追補した。#3222はdocs-only、固定HEAD db42626aの[Health #42342454235](https://github.com/hat47x/tei-platform/actions/runs/42342454235)はcompleted/failure（README索引試験）で、正式契約採用や実Renderer試験を意味しない。既存[Draft #3192](https://github.com/hat47x/tei-platform/pull/3192)は媒体/軸の詳細、[Draft #3225](https://github.com/hat47x/tei-platform/pull/3225)はData/Function/Businessの旧計画§13を現mainへ回収する役割で、[Health #42343050887](https://github.com/hat47x/tei-platform/actions/runs/42343050887)成功。ただし#3225の復元も設計案であり、正式受理ではない。#3179はMaster Plan受入順のOwner。研究PRは第二仕様・重複Fixtureを追加しない。
+
+**相互に置換できないIdentity**：Semantic Subject/Relation edge Occurrence、Function Context Instance/Result Slice、UI Representation Occurrence（表1行・Tree表示Path・Chart集計点・文書span）、Interaction selection/focus/filter、Media clock、Source/World revision、Disclosure Scope/Selection epoch。同期で選択対象を対応付けても、Widget occurrenceを業務Entity IDに昇格せず、Chart集計の選択を一明細更新Targetに変換しない。旧応答A→B→A、非表示Edge、Partial Tab、別Tenantの同名Subject、SHO原文/Modelerとの編集権限の違いを一要因負例に含む。Sort/Tab/SeekをDomain Mutation/Source Saveに自動変換しない。
+
+**優先順**：既存#2507 FP-01/02／#2497 Projection Loss／#2582 Refresh/ABAに同一FunctionのHeadless二表現を1件だけ載せ、Role/Identity/Scope/Loss/Disclosureと「同期だけ」「編集Intent候補」「実Action可能」を別列にする。実Writeは#2500/#1174へ渡す。MV-01〜08の期待値は既存#2514/#1180で管理。第二Selection Engine、独立Coordination Store、標準表現型Kindの早期固定なし。
+
+### 10.41 エージェントに公開するOperation・自律区分・隔離の再判断
+
+**操作種別はまだ一つの共通語彙ではない**。[main #3220](https://github.com/hat47x/tei-platform/pull/3220)の合成観測ではPlugin CapabilityKindは7種の閉じた宣言検査を持つのに、Operation kindは導出規則内の語彙で未知値を検査せず既定rankで扱う。この相違は将来PluginのKindを自動拡張可能とみなす根拠ではない。W3/W5のOwnerが語彙を規則の版で閉じるか、既存#951のCapability Contractへ接続するかを判断するまでは、外部Skillへ新しいOperation kindを安定契約として広告しない。
+
+[Open #3231](https://github.com/hat47x/tei-platform/pull/3231)は、合成Worldでunattendedがread-onlyのlist/readからのみ導かれ、service principal/Grant/Idempotency/業務責任の有無を検査していないことを実観測。human-gatedを生成する経路も未実装。**自律区分ラベル≠現在の実行権限**であり、読み取り専用OperationがunattendedでもDSH/TAIに無審査の実データ閲覧権限を与えない。W5の公開対象/Envelope、W3のPattern Binding、実Host Grant/Disclosureを別Gateへ。
+
+**DSH読取隔離は実測で未達**。[main #3228](https://github.com/hat47x/tei-platform/pull/3228)ではWindows workspace-writeがRoot内書込みPASS、外部への書込みUnauthorizedAccessExceptionで拒否、**外部既存合成ファイルの絶対Path・../相対Path読取りは成功**。先行[Open #3216](https://github.com/hat47x/tei-platform/pull/3216)でも別cwd/Sessionの両Laneが相手のcanaryを読めた。DSH sandbox modeの見かけ、Tool Processの制限、OS read-ACL/identity、Network Egressは別で、Skill Holdout・独立Expected・非公開Sourceにアクセスできない事実は未立証。TAI #168/232、TEI #2515へ渡し、**H2/H3比較適格は依然0/4**。信頼境界の決定に実顧客データを使わず合成canaryだけで検査する。
+
+**Auditの局所進展**：[main #3230](https://github.com/hat47x/tei-platform/pull/3230)の固定World書出しToolは-access-logと-access-headを組で渡すとPinnedJournalを実使用し、途中・末尾削除を検出して書出し前に拒否。[固定HEAD CI #42344253330](https://github.com/hat47x/tei-platform/actions/runs/42344253330)もcompleted/success。だがPinと記録を同時に書き換える者、Pinの独立保全先、記録本文の真正性は未証明であり、TEI全Runnerの署名済みReceiptではない。新Audit Engineをここへ持ち込まない。
+
+**Build資格の追跡**：[main #3156](https://github.com/hat47x/tei-platform/pull/3156)は隔離Buildが成功してもSource Closure=rejectedという事実をmainへ導入。[Open #3217](https://github.com/hat47x/tei-platform/pull/3217)はWindows用Member Identityの負例後、HEAD 0788dd0fの[Windows Builder #42345322321](https://github.com/hat47x/tei-platform/actions/runs/42345322321)はcompleted/success。ただしPRはmain未統合・qualified=false。#1090判断とG4 UNQUALIFIEDは不変。前回§10.37の古いHEADでのWindows failureは履歴として保持し、最新成功により「Windows未達が継続」と誤記しない。
+
+**テスト研究**：[Draft #3223](https://github.com/hat47x/tei-platform/pull/3223)はTosca/GraphWalker/PICT/rapid/Schemathesis/Pact/Testcontainers/Toxiproxy/Playwright等を既存Scenario SSOT・独立Expected・実Provider/Browserへ対応付ける**調査設計**で、[Health #42342553727](https://github.com/hat47x/tei-platform/actions/runs/42342553727)はREADME索引試験によりfailure。ツール導入済み／TEI Test Product完成とはしない。PoCを追加するなら、まず#3175のCoverage偽証と既存#3128 Mutantを検出できる**一因子負例**を現在の#1180/#2514/ #1163へ配置し、第二Runner/検証基準を作らない。
+
+**次の研究実証優先順**：P0=#3175の既存実ReadPlan→実Provider Result Slice→Completion/Claimの同一Attempt、P1=FunctionにBoundな二RepresentationのIdentity/Loss/Selection同期をHeadless Consumerで確認、P2=選択OperationのW3 CrosswalkとW5公開/認可の段差をOwnerの採否後に実測、P3=DSH H2/H3のOS read isolation＋Egress拒否、P4=Builder Source closure／G4を既存#2831へ。一つの成功を他Gateへ横滑りさせない。新Core/Host/Attester/Registryを増設せず、#1119のGateは変更しない。正式Owner Accepted Meaning、DB一気通貫、Media/Renderer、H2/H3比較、G4 Self-BuildはNOT RUN。
