@@ -1051,12 +1051,13 @@ P3 **段階廃止**：既存*.teiへの新規追加を停止する運用、旧�
 
 HookもToolも「声明されたUses/Target Capabilityが存在する」ことから、それを発行した主体の許可を推論しない。最初は同一Hook・同一Argumentの正負一因子比較で、未宣言→拒否、宣言済みだがImplementation不在→unavailable、宣言済み・Implementationあり・Current Grant欠落→Command/Host拒否、完全Binding・必要Grantあり→該当実Targetへの限定到達を別々に観測する。A/B方式で実Effectが発生する場合だけOperation Identity/Receiptを追加する（#1016/#951/#1174）。
 
-### 23.4 Persistence/Receiptの「観測済み」を業務Row現在性と混ぜない
+### 23.4 Persistenceの観測対象を四状態と実Read範囲で表す（2026-11-07更新）
 
-[merged #3124](https://github.com/hat47x/tei-platform/pull/3124)ではCommandが `PersistenceState=not-applicable/not-observed/observed` と `persisted` を区別する。`PersistenceObserver`はExecutor Resultをそのまま返せず、Commit後の読取りを受ける。[merged #3127](https://github.com/hat47x/tei-platform/pull/3127)のeffectcommit Adapterは`Lookup`指定時に同一OperationID等でReceiptを独立Lookupし、`StatusReplayed`を観測成功とする。ただし**その成功は同じDB境界のReceipt存在を示すのであり、業務Resourceの現在行・他Providerが返す最終値・ConsumerへのDisclosure確認ではない**。実PostgreSQL Lookup結合試験も未実施。対照として「Receiptあるが対象行は変更済み」「Receipt Lookup失敗」「Commit ACK不明／再送拒否」「参照実行でDurable Store不適用」を別の期待値として保持する。
+[merged #3124](https://github.com/hat47x/tei-platform/pull/3124)／[merged #3127](https://github.com/hat47x/tei-platform/pull/3127)の当初の`observed`だけではReceipt Lookupと資源現在値が混同された。後続[merged #3155](https://github.com/hat47x/tei-platform/pull/3155)で、`not-applicable / not-observed / receipt-observed / resource-observed`を区別し、`persisted:true`は資源の独立ReadでCommitしたpayloadとの一致を確認した場合に限定する。本文以前の「実PostgreSQLのLookup／Resource Readは未実施」という記述は**旧HEAD時点の履歴**であり、現状の未着手事項としない。
 
-Tool/Pluginを区別しても、現在Grantの実効、Commit境界、Receipt Lookup、Resource独立Read、外部Consumer受領を一致させる最終検査は共通の既存#1174/#2516/#1163へ委譲する。Receipt Lookup成功をOwner業務意味受理や「処理対象集合の完全性」へ昇格しない（#3051/#2514）。
+実装された`effectcommit.ResourceReader`／別poolの`postgres.Provider.ReadResource`と、[実PGのpostgres-conformance #42328707393](https://github.com/hat47x/tei-platform/actions/runs/42328707393)の成功を確認した。ただしReceiptはOperationの記録、ResourceReadは指定されたResourceの観測時点での値である。ResourceのVersionと当該Operationとの因果、Provider取得母集団・全対象集合、別Tenant/Replica、現在Read Grant、後続更新とConsumer受領は別Evidenceとする（#1174/#2598/#1163/#2514）。
 
+[merged #3143](https://github.com/hat47x/tei-platform/pull/3143)の`authorizationMode=reference-allow-all / reference-allow-list / external`はAuthorizerの**種別**であって実Issuer/Policy/Grantの真正性ではない。Reference全許可で成功したCommandをProduction Hostの許可済みOperationへ昇格しない。Compositionが`ResourceRead`を有効にしたことも、自動的には全Providerに適用されない。
 ### 23.5 重複しない最小負例・実施順
 
 | 対照 | 独立検証基準 | 担当と証拠の上限 |
@@ -1066,11 +1067,44 @@ Tool/Pluginを区別しても、現在Grantの実効、Commit境界、Receipt Lo
 | Hookが宣言外Call／実装欠落／Grant欠落／許可済みCall | 「拒否理由」「Provider未導入」「Authority拒否」「実Call」の四ケースを別結果とする | #3077/#3108の局所Go testは限定Fit、Hook Runner/本番HostはNOT RUN |
 | Tool/PluginのSourceは管理済みでもLoader未読込 | `workspace-files.readByLoader`（merged #3078）とSyntax/Meaning/Build memberを分ける。未知Source root/モデル0件warningを全件適合としない | #2823/#3031/#3081。新*.tei.md実ReaderはNOT RUN |
 | 純粋D1 Provider B選択、実Call A | 同じ23独立期待値の一致ではPASSとせず、Bの実Link/InvokeをTarget相対に照合 | #2885 §18.13/#1251。D1実静的GoはNOT RUN |
-| Receipt Lookup `replayed` だがResource現在値は未読取 | Receipt観測までのClaimと資源状態確認を別表示 | #3124/#3127/#1174。実PG Receipt Lookup/資源独立ReadはNOT RUN |
+| Receipt Lookupが成功、ResourceReadは未実行 | `receipt-observed`と表示。Resourceの現在値を確認済みにしない | #3131/#3155の別経路で実PG試験あり。当前Attemptで未読取なら未確認 |
+| ResourceReadがpayload一致を返した | 当該Resource・観測時点のみ`resource-observed`。全件完全・現在Grant・Owner受理とは別 | #3155実PG限定成功／#1174／#2514 |
 
 **着手順**：(P0) #3121の実拒否を再現可能な既存Evidenceとして固定し、案A/Bの必要Actor/Contract/Grant/ArtifactのFit/Gapを比較。(P1) #3077/#3108のHook→Command局所負例を既存実装へ引継ぎ、必要な実行主体/Host Grantの観測点を特定。(P2) 実Consumerの要件が明らかな方だけ実Targetに接続し、ReceiptとResource Readは別の観測票にする。これらと独立して**D1静的Provider実Link/Invokeの最短試験を優先**できる（新*.tei.md Reader、DB/Host Effect、Tool権限方式の決定をHard dependencyにしない）。
 
-**資格**：現物のTool Grant拒否、mainのHook/Command/Persistence/Receipt・Source列挙の限定Go実装を確認して設計へ接合した。本節はDocs-onlyで、案A/Bの正式採否、Tool権限新実装、Hook Runner結合、D1静的Build、実DB Resource独立Read・Owner意味受理は**NOT RUN / NOT ACCEPTED**。新Registry/独立Grant正本/万能Plugin Host/Tool API Schemaを導入しない。
+**資格**：現物のTool Grant拒否、mainのHook/Command/Persistence/Receipt・Source列挙の限定Go実装を確認して設計へ接合した。本節はDocs-onlyで、案A/Bの正式採否、Tool権限新実装、Hook Runner結合、D1静的Build、全業務・全Tenant・ConsumerでのSource→Grant→Resource独立Read、Owner意味受理は**NOT RUN / NOT ACCEPTED**。新Registry/独立Grant正本/万能Plugin Host/Tool API Schemaを導入しない。
+<!-- tei-plugin-postmerge-source-closure-harness-function-20261107 -->
+### 23.6 外部Moduleの実供給→Build→再現性→Source閉包観測→資格を非推論でつなぐ
+
+[merged #3142](https://github.com/hat47x/tei-platform/pull/3142)の`cmd/tei`実選択12 Moduleの`go.sum` h1照合、[merged #3156](https://github.com/hat47x/tei-platform/pull/3156)の隔離した供給だけによる`cmd/tei`実Build（Source closureは`rejected`）、[merged #3193](https://github.com/hat47x/tei-platform/pull/3193)の同一Linux/Go条件で独立2試行・同一Artifact digest、を**それぞれ成立した限定Claim**として扱う。これらがmainに統合済みであることと、TEI標準Build GraphからのSelf-build G4資格は別。旧Draft #2885の『#3156未merge・再現性未測定』という履歴記述を現状として再使用しない。
+
+[Open #3217](https://github.com/hat47x/tei-platform/pull/3217)は選択Sourceを`repositoryMembers`／`externalMembers`／`externalModules`へ列挙し、資格ある閉包のdigestとは異なる領域の`observedDigest`を出す**観測候補**。実測候補は`cmd/tei`のRepository 318件、外部12 Module/325 Membersだが、観測版は対象Buildの実コンパイルメンバーまで証明しない。同PRの`qualified`は意図的に常時false。未統合の観測を現mainの有資格Source閉包へ昇格しない。
+
+| 接続点 | 期待する独立対照 | 受理責務 |
+| --- | --- | --- |
+| Module supply→選択member | 実選択・`go.sum`・`.mod/.zip`が一致し、未選択5 Module不足は不合格にしない。改ざん・不一致は拒否 | #2831/#1090、供給者Trustは別 |
+| Build→Artifact | 同一対象・試行別隔離cacheでBuildを実施し、Artifact digestとToolchain/OSを記録。二回一致してもTarget横断を保証しない | #2831 SB-B、#2600 |
+| Source Observation→Qualified Closure | #3217の外部Member観測が成功しても`ResolveSourceClosure`の`rejected`を保持。採用するなら#1090のOwner判断と独立検証が必要 | #2831/#1090、G4=UNQUALIFIED |
+| D1 Provider選択→実Link→実Call | Provider A/Bが同じ23 Expectedを返す状態でBを選択し、誤ってAをLink/Invokeした場合は不合格。選択B・実B呼出し・未選択実装非混入・D2非退行の正負対照を要求 | #1251/#951/#2514、未実施 |
+
+**実施優先**：#1251のD1静的Link/Invokeは既存Go Sourceと独立Expectedで先行でき、Go全体のSelf-build G4や`.tei.md` ReaderをHard依存にしない。外部Moduleを含むTargetだけは、BuildができてもSource closure拒否を隠さない。新Module Provider、第二Resolver、無条件のTrust昇格は行わない。
+
+### 23.7 外部Harness／Toolの読取・実効隔離・副次送出を分ける
+
+[merged #3173](https://github.com/hat47x/tei-platform/pull/3173)のDSH 0.2.2-rc.1 `read-only`・ローカルMock検証では、許可投影だけでなく合成`raw/secret.txt`、`.env`、cwd外canaryも読み取られ、モデル入力とSession Logへ到達した。[merged #3191](https://github.com/hat47x/tei-platform/pull/3191)では`AGENTS.md`/`CLAUDE.md`とSkill descriptionが明示Tool Read前に投入された。[merged #3216](https://github.com/hat47x/tei-platform/pull/3216)では別cwd/Lane間の相手canaryを読めた。いずれも合成データのローカルMock観測であって、実Providerの送出・全Tool経路や実OS分離を網羅しない（#2515/#2509／TAI担当）。
+
+Pluginに内包するAgent Skill/Toolを選択する場合、`Accessible`、実`Read`、モデル入力`Delivered`、Session Log/Telemetry等の`Egress`、実OSの拒否/隔離を**別の事実**として保持する。`read-only`は業務DataのMutation不許可を意味し得ても、OS上のRead拒否・ローカルLog/Cache非生成・送出なし・worktree間秘密分離の証明にはならない。[merged #3152](https://github.com/hat47x/tei-platform/pull/3152)の`os.Root`によるPath containmentもProcess/Networkの隔離とは別。
+
+[Open #3162](https://github.com/hat47x/tei-platform/pull/3162)のTEI CLIドッグフーディングは、`view`がread-onlyと広告しても、`-execute`追加オプションでoperation log/lifecycle stateがローカル生成されることを実測した。AI Harnessへ与えるread-only Capabilityは、CLI Command名だけでなく、全argv・実File effect・出力先とWorkspace/Artifact同一性で限定する（#3149/#2605）。本節ではEgress Policy/権限エンジンの新正本は作らない。
+
+### 23.8 標準表現型とPlugin実装・Function Contextの非同一性
+
+[Draft #3222](https://github.com/hat47x/tei-platform/pull/3222)および[Draft #3225](https://github.com/hat47x/tei-platform/pull/3225)の横断検討に従い、`Standard Data Shape`、`Presentation Kind`、**Function内のRepresentation Instance/Slot**、実Interaction/Binding/Host Effectを分離する。標準表現型やRendererをPlugin Bundleで提供しても、そのKindをCatalogで発見しただけでは、特定Functionでの配置・Data mapping・Operation Offer・保存Intent・Host Grantは確定しない。Headless Functionが0 Slotを持てることと、表示が不要な業務意味が無いことも別。
+
+複数の表現型を同期する場合、表示のSelection/epochとDomain Subject/Relation occurrence、Data取得集合、Update Intentを別に検証する。未取得/部分取得/秘匿のDataを空集合で補完したり、UI上の選択変更をDomain Source Mutationとして自動保存したりしない。Mappingの正式な受入は#2507/#2506/#2514、媒体/時間軸・複数画面の詳細は#3192/#3222/#3225へ委譲し、このPlugin設計内に第二のUI Binding SchemaやOwner Meaningの正本を作らない。
+
+**状態と未決**：§23.6〜23.8は既存の限定実証をmainの計画へ接合した設計追補。D1 Provider Bの実静的Link/Invoke、Source閉包の外部Module受入、OS/Network全経路の隔離、標準表現型の実Target・UI/DB縦断、Owner意味受理は未実施／未採用。#3217/#3222/#3225/#3162のOpen Draftをmainへ統合済みと記述しない。
+
 ## 14. 業務FunctionとBuild Unitの割当・Job入口（2026-11-03、評価候補）
 
 **状態：設計候補／NOT RUN／Owner未受理。** X-TEA XF000の対話画面・定時起動を起点に、同一の型付きFunctionをUIボタン・CLI・cron・Web・既存Host/EKI等から呼び出す要求を、本書の配備単位に接続する。Goの単一実行ファイルを標準的な生成物としつつ、必要になった時点で設定を最小限追加し複数バイナリへ分割できることを狙う。TEI独自の共通Hostや常駐Schedulerは追加しない（[ADR-0043](../adr/0043-target-native-artifacts-without-tei-host.md)）。
