@@ -13,7 +13,11 @@ node --test reference/org-semantic-views/verify-context.mjs
 node --test reference/org-semantic-views/verify-acquisition.mjs
 node --test reference/org-semantic-views/verify-rule-footprint.mjs
 node --test reference/org-semantic-views/verify-query-dependencies.mjs
+node --test reference/org-semantic-views/verify-temporal.mjs
 ```
+
+
+**2026-11-08 temporal pressure (ORG-TM-01..08):** `verify-temporal.mjs` reuses `source-fixture.json` and `source-fixture.mjs`, with ten Node subtests for concurrent Memberships, same-occurrence retroactive correction, half-open valid/known boundaries, overlapping/adjacent Position Occupancy, ambiguous source versions, and complete-vs-partial period non-overlap claims. The single-/multi-incumbent choices are test-only alternatives: none is a TEI-wide business rule. Independent literal expectations are fixture-local; this does not test Native TEI temporal query, actual Provider/DB, current Tenant/Host Grant, or Owner meaning acceptance. Exact-head CI must be checked separately.
 
 The test files use JavaScript and Node built-ins only. `source-fixture.mjs` loads plain JSON from this directory; no database, external service, or business record is changed.
 
