@@ -79,3 +79,7 @@
 
 # Selection matrix output is hashed as raw bytes by its README.
 /plan/evidence/PLUGIN_SELECTION_MATRIX_REFERENCE_2026-11-08/** -text
+
+# OKF K1 synthetic bytes are compared exactly across OS; no checkout EOL conversion.
+/testdata/okf-k1-v02/** -text
+/testdata/okf-k1-v02.expected.json -text
