@@ -395,34 +395,34 @@ Goの[Traversal-resistant file APIs（Go公式）](https://go.dev/blog/osroot)�
 
 ### 18.1 追加した技術的反例
 
-[Draft PR #3176](https://github.com/hat47x/tei-platform/pull/3176)の\`tools/reference-developer-context/profile_execution_characterization_test.go\`へ、公開合成moduleだけを使う\`TestDiscoveryProfileCC16SelectionIsNotTestExecutionOrPass\`を追加した。新規テストコードのcommitは\`4abdc3d02ad308762957dc52cd95859c7768b714\`。実\`go list -json\`による構成選択と実\`go test -json -count=1\`の**名前付きTest Event**を区別する。本節執筆時点では該当exact commitのCIは未完了なので、以下のPASS/FAILは**テストの期待であって実CI検収結果ではない**。
+[Draft PR #3176](https://github.com/hat47x/tei-platform/pull/3176)の`tools/reference-developer-context/profile_execution_characterization_test.go`へ、公開合成moduleだけを使う`TestDiscoveryProfileCC16SelectionIsNotTestExecutionOrPass`を追加した。新規テストコードのcommitは`4abdc3d02ad308762957dc52cd95859c7768b714`。実`go list -json`による構成選択と実`go test -json -count=1`の**名前付きTest Event**を区別する。[Focused Actions #42385582970](https://github.com/hat47x/tei-platform/actions/runs/42385582970)のjob `128442144943`は、当該exact Test commitで**completed/success**。実ログで`TestDiscoveryProfileCC16SelectionIsNotTestExecutionOrPass`が`--- PASS`（0.55s）、CC-12/13/14/15も同じjobでPASSを確認。CC-16の内部ではGo実`go test -json` Event／Exitを照合した。これは**公開合成fixtureにおける限定Go実行試験**であり、実TEI Targetの生成AI Test能力・C1/業務Meaning受理の立証ではない。
 
 | 資格 | 固定合成期待 | 不許可の飛躍 |
 | --- | --- | --- |
-| 字句発見 | \`Discover\`がbaseとstrictの2候補を返す | 2件を実テスト実行数に数えない |
-| Go構成選択 | 通常Profileではbaseのみ、\`-tags strict\`ではbase+strictが\`TestGoFiles\`に入る | 選択されただけで実行・合格としない |
-| 実Go Run | 通常は\`TestBaseline=pass\`、strictで\`TestBaseline=pass\`＋\`TestStrict=run/fail\`を実Eventで照合 | package exitと個別testの合否を混同しない。失敗するstrictは意図的な独立合成Expected |
-| no-test正対照 | 別moduleでは\`go test -json\`がexit 0でも、名前付きTest Eventが0件 | exit 0をC0/C1 coverageやシナリオ合格と認定しない |
+| 字句発見 | `Discover`がbaseとstrictの2候補を返す | 2件を実テスト実行数に数えない |
+| Go構成選択 | 通常Profileではbaseのみ、`-tags strict`ではbase+strictが`TestGoFiles`に入る | 選択されただけで実行・合格としない |
+| 実Go Run | 通常は`TestBaseline=pass`、strictで`TestBaseline=pass`＋`TestStrict=run/fail`を実Eventで照合 | package exitと個別testの合否を混同しない。失敗するstrictは意図的な独立合成Expected |
+| no-test正対照 | 別moduleでは`go test -json`がexit 0でも、名前付きTest Eventが0件 | exit 0をC0/C1 coverageやシナリオ合格と認定しない |
 
 CC-12〜15は選択・Source読取の必要条件までであり、CC-16の成功も**実TEI業務Ruleのテスト・AI生成シナリオの有効性・Owner受理を証明しない**。Testの原典・target build・実行記録・検証基準を同じepoch／Consumerの現在資格として再結合することは別。
 
 ### 18.2 他チャットの実装成果と接続：Design Contextが不足する場合はテスト生成を保留
 
-[統合済TEI PR #3284](https://github.com/hat47x/tei-platform/pull/3284)は、9種類の実TEI CLI応答を利用する限定Consumerと7合成Negativeを追加し、\`boundedReference=partial\`／\`testExecutionAdmission=exploration-only\`／\`qualifiedTestGeneration=false\`の方向を検証対象としている。実Goテストの実行に成功した場合でも、Function/Business/Rule/Provider/GrantなどRequired閉包が未取得なら、この保留を覆せない。AIによる新負例の自律生成や独立C1証明に成功した実績ではない。
+[統合済TEI PR #3284](https://github.com/hat47x/tei-platform/pull/3284)は、9種類の実TEI CLI応答を利用する限定Consumerと7合成Negativeを追加し、`boundedReference=partial`／`testExecutionAdmission=exploration-only`／`qualifiedTestGeneration=false`の方向を検証対象としている。実Goテストの実行に成功した場合でも、Function/Business/Rule/Provider/GrantなどRequired閉包が未取得なら、この保留を覆せない。AIによる新負例の自律生成や独立C1証明に成功した実績ではない。
 
-P0-M（三視点Diagram/CRUD）とP0-R（Function→Query→実Provider→Context→Form/Table）の別々の進捗を、P0-C（Source/Subject/Scope/Revision/粒度/必要Relation）で結ぶ**同じ設計対象の検証**を次の受入条件とする。表現上のGraphに辺がない、Queryが空、Tableが1件、\`go test\`がexit 0、のいずれも関連するRequiredの不存在・全件適合・テストカバレッジを単独では示さない。Req/Obligationの独立Expectedと既知MutantのOwnerは[TEI #2514](https://github.com/hat47x/tei-platform/issues/2514)、Issue→Test探索のOwnerは[#3262](https://github.com/hat47x/tei-platform/issues/3262)。認知Methodは不足根拠・適用可能な次Probeを[SEI #767](https://github.com/hat47x/sei-cognition/issues/767)へ返す。新Core Test Engine、中央Evidence Registry、専用認知Hostは増設しない。
+P0-M（三視点Diagram/CRUD）とP0-R（Function→Query→実Provider→Context→Form/Table）の別々の進捗を、P0-C（Source/Subject/Scope/Revision/粒度/必要Relation）で結ぶ**同じ設計対象の検証**を次の受入条件とする。表現上のGraphに辺がない、Queryが空、Tableが1件、`go test`がexit 0、のいずれも関連するRequiredの不存在・全件適合・テストカバレッジを単独では示さない。Req/Obligationの独立Expectedと既知MutantのOwnerは[TEI #2514](https://github.com/hat47x/tei-platform/issues/2514)、Issue→Test探索のOwnerは[#3262](https://github.com/hat47x/tei-platform/issues/3262)。認知Methodは不足根拠・適用可能な次Probeを[SEI #767](https://github.com/hat47x/sei-cognition/issues/767)へ返す。新Core Test Engine、中央Evidence Registry、専用認知Hostは増設しない。
 
 ### 18.3 統合前の限定修正と更新されたProductの事実
 
-- 前回PR HEAD \`76d3af2c48e898c526b17764134cae79047ee24b\`の[Repository Health #42370899309](https://github.com/hat47x/tei-platform/actions/runs/42370899309)は**failure**。ログではPR追加\`profile_selection_characterization_test.go\`の\`gofmt\`ずれを確認し、commit \`feaf56fdcc9f306ba466e40aa98593ca6eb1db5a\`でその2行の整形を修正した。同じ失敗Runには別計画領域の\`RQ-035\`索引欠落と\`plan/design/README.md\`の4ファイル欠落が残る。これをCC-16のテスト不合格とも、現在HEADのHealth PASSとも解釈しない。
-- 旧固定DSH Binaryでの「Workspace identity未返却」は歴史的観測。[TEI #3181](https://github.com/hat47x/tei-platform/issues/3181)はcloseされ、**現在mainに\`workspace.Result.Identity()\`と\`operations.ModelCatalog.Workspace\`のSourceを実確認**。現行Sourceの有無と、実外部Harnessがその出力を受領したかは別（今回再実行はNOT RUN）。\`source-index\`／\`knowledge-*\`への同様の投影は未確定。
-- [TEI #3180](https://github.com/hat47x/tei-platform/issues/3180)の\`trace\`未対応kind／真正な不存在のエラー分離は統合済[#3208](https://github.com/hat47x/tei-platform/pull/3208)を参照。旧Runの\`SUBJECT_NOT_FOUND\`に新APIの解釈を遡及適用しない。
-- [Studio Host #3061](https://github.com/hat47x/tei-platform/issues/3061)では現mainのroot同一性検査（\`os.SameFile\`）と固定旧Host負例を分離している。これはCC-15の「単一file check-openの原子性」やCC-14の「共同epoch」を製品実装が保証したという根拠ではない。
+- 前回PR HEAD `76d3af2c48e898c526b17764134cae79047ee24b`の[Repository Health #42370899309](https://github.com/hat47x/tei-platform/actions/runs/42370899309)は**failure**。ログではPR追加`profile_selection_characterization_test.go`の`gofmt`ずれを確認し、commit `feaf56fdcc9f306ba466e40aa98593ca6eb1db5a`でその2行の整形を修正した。同じ失敗Runには別計画領域の`RQ-035`索引欠落と`plan/design/README.md`の4ファイル欠落が残る。これをCC-16のテスト不合格とも、現在HEADのHealth PASSとも解釈しない。
+- 旧固定DSH Binaryでの「Workspace identity未返却」は歴史的観測。[TEI #3181](https://github.com/hat47x/tei-platform/issues/3181)はcloseされ、**現在mainに`workspace.Result.Identity()`と`operations.ModelCatalog.Workspace`のSourceを実確認**。現行Sourceの有無と、実外部Harnessがその出力を受領したかは別（今回再実行はNOT RUN）。`source-index`／`knowledge-*`への同様の投影は未確定。
+- [TEI #3180](https://github.com/hat47x/tei-platform/issues/3180)の`trace`未対応kind／真正な不存在のエラー分離は統合済[#3208](https://github.com/hat47x/tei-platform/pull/3208)を参照。旧Runの`SUBJECT_NOT_FOUND`に新APIの解釈を遡及適用しない。
+- [Studio Host #3061](https://github.com/hat47x/tei-platform/issues/3061)では現mainのroot同一性検査（`os.SameFile`）と固定旧Host負例を分離している。これはCC-15の「単一file check-openの原子性」やCC-14の「共同epoch」を製品実装が保証したという根拠ではない。
 
 ### 18.4 次の実施順序／判定停止線
 
-1. **P0・限定実行票を完成**：CC-16のexact HEAD focused jobログを確認し、\`go test\`の名前付きpass/fail/実行なしを観測。全体Healthの\`gofmt\`／索引問題を別軸で確認する。強制的なTest数0をPASS表示しない。
-2. **P1・Design Context全Required閉包**：#3284の\`qualifiedTestGeneration=false\`から始め、P0-M／P0-Rの実Source・Function/Business/Rule依存、Providerの実Read、C0/C1観測を個別に充足する。部分Scopeの局所テスト・探索を禁止するのでなく、**全体の正答証明と区別して続行**する。
+1. **P0・限定実行票を固定**：CC-16のexact Test commit `4abdc3d0`はFocused job `128442144943`で合格（詳細§18.1）。`go test`の名前付きpass/fail/実行なしは親試験内で確認。全体Healthの`gofmt`／索引問題を別軸で確認する。強制的なTest数0をPASS表示しない。
+2. **P1・Design Context全Required閉包**：#3284の`qualifiedTestGeneration=false`から始め、P0-M／P0-Rの実Source・Function/Business/Rule依存、Providerの実Read、C0/C1観測を個別に充足する。部分Scopeの局所テスト・探索を禁止するのでなく、**全体の正答証明と区別して続行**する。
 3. **P2・追加認知価値**：決定的なD0（現在Tool/Sourceから不足を列挙）とSEI MethodのM1（どの追加Read/Scopeを選ぶか）を、同じSource/Read予算/Grant/開示とblind Expectedで比較。誤不存在、誤ったTest Admission、未取得依存、追加Read費用、未知Caseの発見を別指標にする。
 
-**現時点の範囲**：CC-16は製品コード無変更・合成Go試験の追加。本PRで新たな外部Harness実比較、Provider／実DB、OS/Network拒否、実AI生成テスト、Owner正式受理はNOT RUN。報告に実CI PASSと記すには当該runの検収が必要。
+**現時点の範囲**：CC-16は合成Go試験のexact commitで限定CI PASS、製品コード無変更。本PRで新たな外部Harness実比較、Provider／実DB、OS/Network拒否、実AI生成テスト、Owner正式受理はNOT RUN。その後のdocs変更を含む現在PR HEADのCI、Repo全体Health、実Consumer受入はそれぞれ別に検収する。
