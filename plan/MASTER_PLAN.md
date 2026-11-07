@@ -608,6 +608,15 @@ Sourceの論理Workspace IDと物理root/realpathも別資格とし、Manifest�
 
 **優先順位**：#2586の実C1→D1 Function→Query→Provider Read→Consumerを先行し、その後P0合成のGraph/Headcount/FTE、P1二Function/SHO表示、P2原本への一意なIntent/Host Effectを段階検証。#2506/#2507/#2516/#2510/#2497/#2593が対応Owner。新Go/DB/GUI/SHO実行、Owner Quantity/Meaning受理、実Provider実証は**NOT RUN**。既存の組織計画§84・§85と並行採用可否を評価し、無根拠な大量Core新設やP0実Readの延期を避ける。
 
+
+## 2026-11-08 組織Product E2の三ゲートと汎用Referenceからの証拠移転禁止
+
+[組織Profile §9](design/ORGANIZATION_TOPOLOGY_QUANTITY_REPRESENTATION_PROFILE_2026-11.md)へ、他チャットの#3263（三視点図/CRUDの実Source生成）、#3330（P0-M/P0-R/P0-Cの独立ゲート）、#3262（Design Context必要集合の取得完全性）、#2586（実Function→Query→Provider→Context）を、**単一Ownerを維持した実証依存**として接合した。P0-M（三視点Diagram/CRUD Source provenance）とP0-R（実行された物理ReadとRow/Field/Scope）は並行可能。P0-Cは同じMeaning ID／Source版／Snapshot／粒度／許可Scopeのもとで両証拠と独立Expectedを照合したときだけ成立する。図面表示PASS・Local Completion Holds・別DomainのPG PASSを組織E2へ流用しない。
+
+**現Sourceで判明した具体的欠落**：main `reference/org-headless-workspace/semantic/organization/model.tei` には `CaseRecord.handlingUnitId→OrgUnit` の関係があるが、検査済み組織Source/現Operation SurfaceはCase用Function、Query、実Persistence Mapping、Provider Read／Host Grantを示していない。したがってC1→D1は、現時点では**意味を表す合成Expectedであって実DBから読み取った案件ではない**。#2586の既存受注Referenceでの汎用E2検査を先行可能とする一方、組織側に必要なFunction/Bindingを具体化し、P0-C接合前は `product-read-not-connected` を保持。何が実Workspace全体に存在しないかは#3262の範囲付き探索を経ずに断言しない。
+
+**受入報告はM/R/Cの各状態と未解決を独立記録**：Model/Diagram Source、実SQL・args・Provider・row IDs/fields・read extent、必要母集団/非出力Predicate、Consumer Disclosure、exact HEAD/Attempt、Owner採否。#3238のTOP1・重複ID・隠れたPredicateはR→Cの負例として再利用するが、Caller申告 `CoverageComplete` を完全性のProducerとしない。実組織Provider/DB・三視点UI/SHO・全件業務完了・正式Owner受理は**NOT RUN**。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
