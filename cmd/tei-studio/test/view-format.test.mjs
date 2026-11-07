@@ -49,6 +49,7 @@ test("application view is summarized into patterns, packages, and periods", () =
 test("command run includes the plan and the reference execution", () => {
   const sections = summarizeView({
     mode: "reference",
+    authorizationMode: "reference-allow-all",
     committed: true,
     persisted: false,
     persistence: "not-applicable",
@@ -63,19 +64,21 @@ test("command run includes the plan and the reference execution", () => {
   assert.equal(sections[0].title, "Command");
   assert.equal(sections[sections.length - 1].title, "参照実行");
   const rows = sections[sections.length - 1].rows;
-  assert.equal(rows[1][0], "committed");
-  assert.equal(rows[1][1], "true (unit of work)");
-  assert.equal(rows[2][0], "persisted");
-  assert.equal(rows[2][1], "false");
-  assert.equal(rows[3][0], "persistence");
-  assert.equal(rows[3][1], "not-applicable");
-  assert.equal(rows[4][0], "durability");
-  assert.equal(rows[4][1], "none");
-  assert.equal(rows[5][0], "outcome");
-  assert.equal(rows[7][0], "records");
-  assert.equal(rows[7][1], "0");
-  assert.equal(rows[8][0], "differences");
+  assert.equal(rows[1][0], "authorization");
+  assert.equal(rows[1][1], "reference-allow-all");
+  assert.equal(rows[2][0], "committed");
+  assert.equal(rows[2][1], "true (unit of work)");
+  assert.equal(rows[3][0], "persisted");
+  assert.equal(rows[3][1], "false");
+  assert.equal(rows[4][0], "persistence");
+  assert.equal(rows[4][1], "not-applicable");
+  assert.equal(rows[5][0], "durability");
+  assert.equal(rows[5][1], "none");
+  assert.equal(rows[6][0], "outcome");
+  assert.equal(rows[8][0], "records");
   assert.equal(rows[8][1], "0");
+  assert.equal(rows[9][0], "differences");
+  assert.equal(rows[9][1], "0");
 });
 
 test("package view is summarized into members and requirements", () => {
