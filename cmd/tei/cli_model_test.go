@@ -83,6 +83,10 @@ func TestCLIModelCatalogUnknownNamespaceIsNotAnEmptySuccess(t *testing.T) {
 	for name, args := range map[string][]string{
 		"misspelled namespace": {"catalog", "-workspace", root, "-namespace", "no.such.ns"},
 		"application id":       {"catalog", "-workspace", root, "-namespace", "order_entry"},
+		// A query is a real workspace subject but not a semantic namespace, so
+		// -namespace selects nothing for it. It must fail the same way and name
+		// the kind, not read as "this namespace declares no entries" (#2992).
+		"query id": {"catalog", "-workspace", root, "-namespace", "order_entry.recent_orders"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			var stdout bytes.Buffer
@@ -96,6 +100,16 @@ func TestCLIModelCatalogUnknownNamespaceIsNotAnEmptySuccess(t *testing.T) {
 			}
 			if response.OK || response.Error == nil || response.Error.Code != "NAMESPACE_NOT_FOUND" {
 				t.Fatalf("unknown namespace returned a success: %+v", response)
+			}
+			if !strings.Contains(response.Error.Message, "not a semantic namespace") {
+				t.Fatalf("message does not separate a namespace filter from the subject it named: %q", response.Error.Message)
+			}
+			switch name {
+			case "application id", "query id":
+				kind := strings.TrimSuffix(name, " id")
+				if !strings.HasPrefix(response.Error.Message, kind+" ") {
+					t.Fatalf("%s message should name the %s kind: %q", name, kind, response.Error.Message)
+				}
 			}
 		})
 	}
