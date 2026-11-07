@@ -63,3 +63,5 @@
 - [DSHセッションログ拡張の既定・再試行・切断の追測](DSH_SESSION_LOG_RETRY_AND_DEFAULT_2026-11-07/README.md)（#2515 H6-E2・#2509。出荷既定で拡張fieldが載り、非2xxと空streamでは水位が進まず未受理区間が再送されることを計測。実Provider送信とEgress制御はNOT RUN）
 
 - [TEI自身の設計をCLIで扱う実測](TEI_DOGFOODING_CLI_SELF_DESIGN_2026-11-07/README.md)（#3149。SHA-256 `bf6930a047cf94f276fb63b082bf71599986d71f1a5c53804105c04aa0021cfd` の固定実行物でread-only CLIを50出力ぶん実行し、成立した範囲と未対応を区別。意味の受理・実Provider・CI再現は未確認）
+- [供給からの実BuildとSource閉包資格の食い違い](TEI_GO_BUILD_WITH_SUPPLY_X1_2026-11-07.md)（`cmd/tei`は供給だけでBuildできるが、同じadapterのSource閉包は`rejected`。artifactと資格を別Claimとして扱う。SB-B事前確認 / X1 / #2831）
+- [pwsh不安定時のWSL検証手順](WSL_VERIFICATION_RUNBOOK_2026-11-07.md)（worktreeの`.git`書換え・ログインシェル回避・読み取り専用cacheの後始末・両OS結果の扱い）
