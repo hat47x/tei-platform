@@ -169,10 +169,10 @@ WebはDOM/role/a11y/trace、Desktop/Canvasは実Host/UI操作・アクセス可�
 
 | 参照 | 確認できる限定事実 | 本書に残す未証明 |
 | --- | --- | --- |
-| main [#3155](https://github.com/hat47x/tei-platform/pull/3155) | Commit receipt再取得の \`receipt-observed\` と、別接続Resource現在値/Payload一致による \`resource-observed\` を分離。後者のみ \`persisted:true\`。Go試験・対象CIで実証。 | 更新対象全件、Versionの因果・時点・現在Read Grant、Owner業務完了。**旧「保存観測未実装」の記載を現在形で繰り返さない**。 |
-| main [#3145](https://github.com/hat47x/tei-platform/pull/3145)、[#3167](https://github.com/hat47x/tei-platform/pull/3167) | \`function-definition\` pattern増加でも \`tei operations\` が8件 derived/0件 declaredのまま。Data IDだけ部分照合、Capability/Relationは一致せず。 | 宣言Pattern→Typed Operation→Action Offerの意味的結合、実Provider/Host。**未接続を「テスト対象0」と扱わない**。 |
-| main [#3078](https://github.com/hat47x/tei-platform/pull/3078)／[#2621](https://github.com/hat47x/tei-platform/issues/2621) | Workspace file inventory、\`readByLoader\`等により発見/Loader消費を区別する経路が前進。 \`*.tei.md\`へ統一する方向。 | 実Parser Role、Accepted Meaning、Builder実入力・Consumer実使用、旧形式と新形式の等価性。 |
-| [#3175](https://github.com/hat47x/tei-platform/pull/3175) | \`EvaluateCompletion\` に対する同件数異集合／TOP-1／述語列未取得の実Go API characterization。 | 合成rowsetでありFunction→Query→実Provider取得の閉包は未成立。 |
+| main [#3155](https://github.com/hat47x/tei-platform/pull/3155) | Commit receipt再取得の `receipt-observed` と、別接続Resource現在値/Payload一致による `resource-observed` を分離。後者のみ `persisted:true`。Go試験・対象CIで実証。 | 更新対象全件、Versionの因果・時点・現在Read Grant、Owner業務完了。**旧「保存観測未実装」の記載を現在形で繰り返さない**。 |
+| main [#3145](https://github.com/hat47x/tei-platform/pull/3145)、[#3167](https://github.com/hat47x/tei-platform/pull/3167) | `function-definition` pattern増加でも `tei operations` が8件 derived/0件 declaredのまま。Data IDだけ部分照合、Capability/Relationは一致せず。 | 宣言Pattern→Typed Operation→Action Offerの意味的結合、実Provider/Host。**未接続を「テスト対象0」と扱わない**。 |
+| main [#3078](https://github.com/hat47x/tei-platform/pull/3078)／[#2621](https://github.com/hat47x/tei-platform/issues/2621) | Workspace file inventory、`readByLoader`等により発見/Loader消費を区別する経路が前進。 `*.tei.md`へ統一する方向。 | 実Parser Role、Accepted Meaning、Builder実入力・Consumer実使用、旧形式と新形式の等価性。 |
+| [#3175](https://github.com/hat47x/tei-platform/pull/3175) | `EvaluateCompletion` に対する同件数異集合／TOP-1／述語列未取得の実Go API characterization。 | 合成rowsetでありFunction→Query→実Provider取得の閉包は未成立。 |
 | [#3192](https://github.com/hat47x/tei-platform/pull/3192)、[#3222](https://github.com/hat47x/tei-platform/pull/3222)、[#3225](https://github.com/hat47x/tei-platform/pull/3225) | Shape／Representation Type／Function内Instance/Slot／Mappingと媒体軸／複数表示の協調を別契約に分けた設計（Draft）。 | Renderer・Provider・媒体同期・実更新のE2Eは未実証。RP/MVケースは各設計Ownerが保持する。 |
 | [#2515](https://github.com/hat47x/tei-platform/issues/2515)／[TAI連携](https://github.com/hat47x/tai-pleroma) | 外部HarnessのTool結果切断・出力混在・Call/Result不一致、機密Evidenceの二次送出を、比較資格・開示の独立問題として特定。 | 実OS/全出口の隔離、全Step完全受領、H2/H3の独立比較資格、未計測Sinkの不存在。 |
 
@@ -183,13 +183,13 @@ WebはDOM/role/a11y/trace、Desktop/Canvasは実Host/UI操作・アクセス可�
 検証要求ごとに次の状態を**別観測列**として保存・表示する（以下は候補の表示概念であり、新しい永続Schema/第二Registryではない）。
 
 1. **Required**：独立要求Source/Ownerのどの規則・対象についてテストが必要か。Required集合の根拠はCandidate Modelから逆算しない。
-2. **Discovered/Loaded/Parsed**：Manifestが宣言したSource、列挙された実Source、Loaderが読んだByte、Parserが解釈したOccurrenceを分離。未Loader消費・未知Root・未列挙の場合、業務Missingとは断定せず \`source-incomplete / unqualified\`。
+2. **Discovered/Loaded/Parsed**：Manifestが宣言したSource、列挙された実Source、Loaderが読んだByte、Parserが解釈したOccurrenceを分離。未Loader消費・未知Root・未列挙の場合、業務Missingとは断定せず `source-incomplete / unqualified`。
 3. **Meaning/Binding**：Accepted MeaningとFunction Context、Relation Path、Pattern/Operation、Targetに接続できたか。表示できたこと／同Data IDであることから、Operation実行可能としない。
 4. **Generated/Executed**：Driver Scenarioの必須Stepが各Targetの生成物へ落ち、実Runで各Stepに到達したか。単なるCase件数、exit 0、CI成功と分ける。
 5. **Observed**：Business Result、Execution Error、UI状態、Provider rowset、Commit receipt、別接続Resource read、Tool受領の**各種類**と、対象同一性・時点・完全性を記録。未観測は不在でない。
 6. **Qualified**：Independent Expectedの独立性、Known Mutant判別力、実Source/Build/Consumer一致、母集団/権限/Disclosure/Owner受理のうちClaimに必要な条件を確認。Scope外はunknownまたはunqualified。
 
-これは一直線のPASS昇格ではなく、**各関係を根拠付きでjoinする評価票**。高位列が真でも低位列の欠測が残れば全体の主張を拡張しない。旧\`PASS\`・\`resource-observed\`・\`Verified\`を一つのBooleanへ還元しない。
+これは一直線のPASS昇格ではなく、**各関係を根拠付きでjoinする評価票**。高位列が真でも低位列の欠測が残れば全体の主張を拡張しない。旧`PASS`・`resource-observed`・`Verified`を一つのBooleanへ還元しない。
 
 ### 8.3 標準データ構造と複数表現からテストを導出する際の制約
 
@@ -209,28 +209,28 @@ Jepsenは実SystemへのOperation invocation／completionの履歴と故障注�
 
 - ケースの順序、並行性、Operation ID、Invocation、Provider実Effect、応答の到着/欠落、Retry、Receipt lookup、独立Readを区別。応答喪失を未実行・失敗と推定しない。
 - OpenTelemetryのTrace ID/Span/Linkは外部Runとの相関に有用。ただしTrace IDの存在をSource/Artifact同一性、Observerの完全性、現在Grant、独立Resource読取の**証明とはしない**。Samplingや紛失、複数Traceへの分断、Observer遅延を負例とする。
-- TAI/DSH等のHarnessでToolが成功したように見えても、stdoutのJSON 8,192 byte切断、stderr混入、Call/Result件数不一致、Tool reply未受領なら\`complete\`にしない。**Tool実行と、検証器が実際に受領した全内容**を別Witnessにする。Runの途中で未受領のStepを暗黙に補完しない。
+- TAI/DSH等のHarnessでToolが成功したように見えても、stdoutのJSON 8,192 byte切断、stderr混入、Call/Result件数不一致、Tool reply未受領なら`complete`にしない。**Tool実行と、検証器が実際に受領した全内容**を別Witnessにする。Runの途中で未受領のStepを暗黙に補完しない。
 - Test・Trace・CI・Issueが機密値を含む可能性を考え、保護された生Evidenceと公開用の集約結果を分ける。非公開Expected/行数/拒否理由/秘密由来Digestを無条件に公開しない。全Sinkの監視範囲は#2515を参照する。
 
 参考一次資料： [Jepsen core](https://jepsen-io.github.io/jepsen/jepsen.core.html)、[Hypothesis Stateful](https://hypothesis.readthedocs.io/en/latest/stateful.html)、[OpenTelemetry Overview](https://opentelemetry.io/docs/specs/otel/overview/)。
 
 ### 8.5 OKF Attested Computationとの接続（DocumentとRuntimeの責務分離）
 
-[Open Knowledge Format v0.2仕様 §10](https://github.com/GoogleCloudPlatform/open-knowledge-format/blob/main/SPEC.md)の\`type: Attested Computation\`は、計算内容・runtime/parameter・executor/receipt・決定論的attesterをConceptで参照し、実行Receipt自体はbundle外のRuntime Artifactとして扱う。**説明可能な計算契約と、実行の確証を分離する点**を採用候補とする。
+[Open Knowledge Format v0.2仕様 §10](https://github.com/GoogleCloudPlatform/open-knowledge-format/blob/main/SPEC.md)の`type: Attested Computation`は、計算内容・runtime/parameter・executor/receipt・決定論的attesterをConceptで参照し、実行Receipt自体はbundle外のRuntime Artifactとして扱う。**説明可能な計算契約と、実行の確証を分離する点**を採用候補とする。
 
-TEIでは \`Source+Accepted Function+Independent Expected\` → \`既存Driver/外部Hostでの実Run\` → \`Evidence/Receipt\` → \`決定論的検査\` → \`Claim相対Qualification\` の関係をread-onlyに投影する。SHOは文書内リンク・引用を扱い、SEIは知識Claim/Evidenceの参照を担う。**OKFのfrontmatterに書いた\`verified\`やattester PASSを、Ownerの業務意味受理・現在Host Grant・実DBの完全性へ自動昇格しない**。OKFの軽量互換要件を破る必須TEI独自fieldや独立実行Registryを設けない。
+TEIでは `Source+Accepted Function+Independent Expected` → `既存Driver/外部Hostでの実Run` → `Evidence/Receipt` → `決定論的検査` → `Claim相対Qualification` の関係をread-onlyに投影する。SHOは文書内リンク・引用を扱い、SEIは知識Claim/Evidenceの参照を担う。**OKFのfrontmatterに書いた`verified`やattester PASSを、Ownerの業務意味受理・現在Host Grant・実DBの完全性へ自動昇格しない**。OKFの軽量互換要件を破る必須TEI独自fieldや独立実行Registryを設けない。
 
 ## 9. 追加の独立検証基準（TT-11〜TT-20：別IssueのCaseを参照する受入票）
 
 | Case | 入力・意図的欠損 | 独立して期待する結果／拒否する過大主張 | Owner・証拠 |
 | --- | --- | --- | --- |
-| **TT-11 Source closure** | Required\`*.tei.md\`をmanifestに宣言するがLoader/Parserが消費しない。別例は旧\`*.tei\`と新\`*.tei.md\`の同Subject異内容。 | validateが局所成功してもRequired完了ではない。未読込は\`source-incomplete\`、曖昧な二重正本はunresolved。 | #2621/#2823/#1180。Input byte・Loaded occurrence。 |
-| **TT-12 Pattern→Operation** | Function patternを1件追加、\`tei operations\`は既存8 derived/0 declaredのまま。 | 追加機能の実Operation到達をPASSにしない。\`binding unresolved\`。成功件数の分母に未接続要求を含める。 | #2507/#1180、main #3145/#3167を再利用。 |
+| **TT-11 Source closure** | Required`*.tei.md`をmanifestに宣言するがLoader/Parserが消費しない。別例は旧`*.tei`と新`*.tei.md`の同Subject異内容。 | validateが局所成功してもRequired完了ではない。未読込は`source-incomplete`、曖昧な二重正本はunresolved。 | #2621/#2823/#1180。Input byte・Loaded occurrence。 |
+| **TT-12 Pattern→Operation** | Function patternを1件追加、`tei operations`は既存8 derived/0 declaredのまま。 | 追加機能の実Operation到達をPASSにしない。`binding unresolved`。成功件数の分母に未接続要求を含める。 | #2507/#1180、main #3145/#3167を再利用。 |
 | **TT-13 Topology/grain** | 同一親のD1=2件・D2=3件、JOINでは6行。Chartは集計1行。 | JOIN6≠子実体6。Aggregate行に逆写像・対象確定が無い場合、更新Actionを導出しない。 | #2506/#2497/#3192 RP。 |
 | **TT-14 Cross-view epoch** | TableでA選択→B選択。Aの遅延Read応答がBのContextに到着。Tabはpartial。 | stale AをBへ混入・同期成功と認定しない。partial Tabの非表示を「対象なし」としない。 | #3222 MV、#2506。 |
 | **TT-15 Graph occurrence** | 同一Entityが異なる2本のRelation pathでTreeへ重複表示。 | 同一表示行番号・同labelのみでEntity/Update対象と推定しない。Path occurrenceが必要。 | #2497/#3222 MV。 |
 | **TT-16 Media-time** | 文書の行位置とTTS/録音再生timeを関連づけ、テキスト更新後に旧Seek情報を再利用。 | 元Source位置≠再生time。写像根拠と版が無い旧Seekを現在の同時刻と扱わない。 | #3192 RP、#3222 MV、SHO/SUI側。 |
-| **TT-17 Persistence state** | ACKを失うがreceiptは取得、Resourceは未読取／別接続で一致／後刻に別値へ更新。 | \`receipt-observed\`はpersistedを主張しない。Resource一致時のみ限定した\`resource-observed\`。後刻の現在値・全関係・Owner完了は別判断。 | main #3155、#1174/#1163。 |
+| **TT-17 Persistence state** | ACKを失うがreceiptは取得、Resourceは未読取／別接続で一致／後刻に別値へ更新。 | `receipt-observed`はpersistedを主張しない。Resource一致時のみ限定した`resource-observed`。後刻の現在値・全関係・Owner完了は別判断。 | main #3155、#1174/#1163。 |
 | **TT-18 Harness result completeness** | Tool実行は成功、stdout JSONが8,192 byteで切断。56 Callに55 Reply、stderr混入。 | 完全受領と宣言せず未観測/要再照合。exit 0を独立Expected・完全Coverageの代替にしない。 | #2515/#1163、Tool受領範囲。 |
 | **TT-19 Evidence as egress** | Mock canaryをTest/Tool/CI Traceに載せ、公開Issue向けReportを生成。 | 内部Evidenceの保持と公開Disclosureを分離。非許可Raw/拒否理由・秘密由来Digestを公開しない。未監視Sinkはunknown。 | #2515 H6-E13〜E15、#1178。 |
 | **TT-20 History/checker** | 並行するsubmit/cancel/retry、Grant失効、ACK-lossを固定Historyと独立モデルで検査。 | Invocation/Completion/Effect/Observerを別列にし、停止時刻や部分観測を残す。合成HistoryのPASSで実DB線形化・全Workflow適合を主張しない。 | #1174/#1131/#1163。 |
