@@ -1211,3 +1211,15 @@ QueryやGraphを扱う「不在に関するTest Pattern」は、Positive Witness
 - **P2（実Product資格）**：Go C1局所実計測・実PG Provider/HTTP Client Reaction/Owner Effect/SHO実受領・NFRを必要なScopeごとに増やす。T1-BやPlugin D1の全完成を各々のHard Dependencyにしない。
 
 **既存の資格境界を維持**：この節はモデル化されたObligation投影と判定負例をOwnerへ割り当てる設計差分。新しいTest Engine／第二Semantic/Scenario/Oracle／中央Registry／認可・Host/Resolver／実Plugin Bundleを作らない。#3324/#3326別々のCI success、main #3304の既知T1-A、Go局所C0相当10.1%は既存局所実績。TT-105〜107の新実行、T1-B/外部H3、全Product C0/C1・実Provider/SHO・Owner Meaning AcceptanceはNOT RUN/NOT PROVEN。
+
+<!-- tei-test-tt56-main-merged-20261108 -->
+### 26.7 最新のTT-56実装基線：二Draftの収束をmain統合として認識する
+
+[PR #3354](https://github.com/hat47x/tei-platform/pull/3354) は2026-11-08 JSTに**merged**（merge commit 39d4debae386442c11149c7d3995bcfffa711c20）。旧[Draft #3324](https://github.com/hat47x/tei-platform/pull/3324)と[#3326](https://github.com/hat47x/tei-platform/pull/3326)は**closed / unmerged**となった。したがって§22/§23/§25内の「一本化待ち」「#3354 Draft」という記述は**当時の履歴**とし、これから再び二実装を統合する計画として扱わない。
+
+- 統合対象HEAD 0ab2b99f028a867da6681239f8b79691b9a877b4の[専用CI #42391707962](https://github.com/hat47x/tei-platform/actions/runs/42391707962) は completed/success。**既存11件の実CLI read-only Reply**を取得し、3 Validation RequiredのCatalog/全Index/Loader・Focused Canonical/Relation/Source照合を**1つの context_gate.py**で検査。既存16＋3 Rule差分8（7 reject/1非過剰拒否）＋Focused 8 reject＝**32件の限定合成Consumer Controls**。
+- 同Runで既存6 pinned Scenario Step＋既知T1-A一時第7 Step/独立負例を維持。Go cmd/tei局所statement C0相当は**10.0%（当該HEAD）**で、以前の10.1%と単純な増減比較をしない。C1、全機能/非機能Coverage、原子的Source Snapshot、T1-B、実Provider/Host、外部H3 Tool Reply完全受領、Owner Acceptanceは別資格。
+- 上の成功はPRの**exact HEADと仮統合Checkout**の試行。merge commit 39d4de... を対象とした独立push CIや新たなBinaryの結果は、同Runで確認したことにはしない。
+- **次の最小P0対象を変更**：TT-56二候補統合ではなく、**TT-105/106**の「不完全Scenario目録から未テスト断定禁止」と「対象Ruleの局所Covered保持／全体Coverage unknown」を、main統合済みの1 Consumerと既存Scenario/独立Expectedの範囲内で実証する。次にTT-107の部分Query/NOT EXISTSへ拡張。T1-BとC1は独立並行。
+
+**到達範囲**：Required 3 Validationの限定同一性照合まで。実行対象が完全に読み込まれた／実Functionに束縛された／外部へ開示してよいという上位資格は付与しない。
