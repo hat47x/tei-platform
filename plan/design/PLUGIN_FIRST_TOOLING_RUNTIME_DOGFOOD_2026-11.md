@@ -147,3 +147,69 @@ tests:
 - [VS Code Extension API](https://code.visualstudio.com/api/)は標準機能のExtension化、[Extension Host](https://code.visualstudio.com/api/advanced-topics/extension-host)はUI/Workspace/Remoteという実行場所の分離・Activationを参考にできる。ただしTEIは同じExtension Hostを義務付けない。
 - [HashiCorp go-plugin](https://github.com/hashicorp/go-plugin)はProcess/RPC・Protocol version・Handshakeの実装例。これを全Pluginの義務ABIにしない。
 - [Gradle TestKit](https://docs.gradle.org/current/userguide/test_kit.html)はPluginを実Consumer（実Build）で試す機能試験の参考。TEIは既存Driver ScenarioとIndependent Expected、actual Build/Runnerに接続し、新Runnerを作らない。
+
+
+---
+
+## 8. Traitの原子性と実装義務：Extension TypeからPlugin/BOM/CLI/Studioへ（2026-11-07追補）
+
+**位置づけ**：他レーンで具体化した「拡張型を明示すると、デフォルト実装が選ばれるか、手動実装が必須と診断される」「Traitは合成できるよう原子的にする」という要求を、上記 D1〜D6 の実証条件へ接続する。正式Trait DSL、Core enum、特定実装方式の採用ではない。既存[#2619](https://github.com/hat47x/tei-platform/issues/2619)/[#2620](https://github.com/hat47x/tei-platform/issues/2620) のEverything is Data・Semantic Role、[#951](https://github.com/hat47x/tei-platform/issues/951) のContract/Resolver、[#2507](https://github.com/hat47x/tei-platform/issues/2507) の型付きFunction Pattern適合、[#3267](https://github.com/hat47x/tei-platform/issues/3267) のVerified BOMを第二の正本なしに再利用する。
+
+### 8.1 ContractとしてのTraitとHintを区別する
+
+1. **一Trait＝一つの独立して判定できる義務**。実行要求・前提・入力/出力・失敗/未知・Effect・適用Scope/Target・Conformance Obligation・Contract identity/versionを追跡できる粒度で定義する。「DB全部」「完全なCache」「編集可能UI全体」という巨大なTraitを作らず、単一の意味要求から複数Traitを合成する。Trait名をCore固定enumとして追加しない。
+2. **明示的なExtension Type/Roleの指定は、原則として行動を変える**。宣言したTrait義務が (a)適格な標準Provider/Generatorによる既定の実装に束縛される、または (b)対象Consumer/Targetでの手動実装をRequiredとして診断・検証される。実装が存在しないのに型ラベルだけ有効化することを標準の成功状態にしない。
+3. **Hint/Advisoryは別の弱い関係**。提案・最適化ヒントだけの場合は実装義務・実行可能性を付与しないことを明記し、discover/inspect/Design Queryで実効Traitと区別する。利用者が「Traitを明示すれば機能が実装される」と期待したのに、単なる色付けで終わる状態を避ける。
+4. **Default implementationはContract定義と別**。Defaultがあっても、選択Profile/Target/Scopeに適格で、実装Version/Artifact/入力Closureと独立Conformanceを確認できる場合だけ解決可能。未実装、Provider不在、競合、循環、Target非対応を任意の「空成功」「無断fallback」「最新Provider後勝ち」にしない。
+5. **手動実装必須時はどこで止まるかを明示**。候補編集・探索時は未解決を診断として保持できるが、対象TargetのBuild/Published Offer/実Invocationに要求Traitが必要なら、実装不足を不適格として停止する。未必要のOptional Traitまで全世界に一律実装を求めない。
+6. **合成衝突は解決順序で隠さない**。二Traitが同じOperation名・異なるEffect/Null/Precision/Unit/Scopeを要求した場合、単に最後に現れた宣言を選ばず、Conflictまたは明示的なBridge/Adapter/Bindingを要求する。多重参照した同一Traitは同じ意味IDに正規化できるが、異なる契約を同一視しない。
+7. **Traitの静的成立と実資格は別**。Trait要求 → 具体Provider解決 → 実Builder/Link/Load → 実Dispatcher/Invocation → 現Host/Provider Grant → Effect/Receipt → 独立Observation/Consumer受領を分離。Trait実装と適合試験はAuthority、現在Disclosure、Business Acceptance、業務確定値ではない。
+
+### 8.2 Everything is Dataの候補表現（正式ABIは作らない）
+
+新しい専用ASTや独立Registryを設けず、既存の標準Data/Ref/Relation上に以下の読み取り関係を投影できるかを試す。
+
+| Subject | 最小のRelationと証拠 | 誤解してはいけないこと |
+| --- | --- | --- |
+| Trait Contract | stable ref/version、単一義務、requires/obliges、Scope、Effect/Failure、Conformance ref | 宣言が実Providerや実権限を生むわけではない |
+| Data/Function/Representation Extension Type | どのTraitをどの文脈で要求し、どのBindingを使うか | Target/Function contextなしの万能「編集可」「読取可」は不可 |
+| Default/Manual Implementation | provides/implements、Contract fingerprint、Target/Profile、実選択根拠、actual artifact | ContractにDefaultを同梱しただけで実Byteが選ばれたことにしない |
+| Composition | requires closure、excludes、Conflict、resolved Lock、選択理由とunknown | 依存未探索／ロード順後勝ちを成功扱いしない |
+| Test/Proof projection | Requirement/Scenario ID、Independent Expected、Mutant、实际実行Actor/Attempt、Coverage/Claim ceiling | 個別Traitのテスト合格から合成BOMの合格を作らない |
+
+この構造は**編集用言語構文の決定ではない**。日常DSLにGoのstruct、func、package、型引数の露出を強制せず、ドメイン専門家が読む順序（対象→付加する意味/義務→既定実装または実装要求→テスト）を最優先する。
+
+### 8.3 具体的なドッグフーディング：実際の効果を宣言へ照合する
+
+最初は、デフォルト実装を持つread-onlyな**設計Inspect/Discover**と、標準実装が存在しない**変更Intent/Schema Alter等**の対比を使う。前者も「外部開示許可」を伴わず、後者は承認されたProvider/Hostの実作用がない限り実行不能にする。Cacheでは Atomic CAS、Snapshot Consistency、Read、Purgeを用途上必要な原子Trait候補に分け、単なる保存成功と整合性・確定値の意味を混ぜない（[#3271](https://github.com/hat47x/tei-platform/issues/3271)）。
+
+**現行実装から得た反例**：[CLI #3182](https://github.com/hat47x/tei-platform/issues/3182)では、command discoveryがviewをread-onlyと広告する一方、明示execute+operation-log/lifecycle-stateが指定されるとローカルファイルへ実際に書き込む。同一Command名の静的なEffectラベルだけでは、特定引数・モードにおける「業務データ操作のEffect」と「ToolのFilesystem出力」を正確に表せない。今回Traitを導入するなら、**Operation Variant/Invocation Context相対のEffectの正確性を必須テストとする**。勝手にread-onlyというラベルを消す/書込権限を変える仕様変更は本追補では行わず、#3182のOwnerが決める。
+
+### 8.4 最小の独立反証ケース（TRF-01〜12、今回NOT RUN）
+
+| ID | 対照入力 | 要求される独立Expected |
+| --- | --- | --- |
+| TRF-01 Default binding | Extension Typeが1原子Traitを要求、対応Defaultがexact Targetで選択できる | 明示Version/実装Ref/Target、選択理由が出る。契約宣言だけのProvider存在・実InvocationをPASSにしない |
+| TRF-02 Manual required | 同Traitを要求、Defaultなし／手動実装欠落 | 設計候補段階ではunresolved、必要TargetのBuild/Invoke前に実装不足を機械診断。無断no-opなし |
+| TRF-03 Advisory only | Hintのみ付けたSubject | Hintが機能Offer/必須Plugin/Runtime Grantを増やさない |
+| TRF-04 Atomic composition | ReadとValidateを別々に提供し、両方を要求 | 両方の義務が独立に充足、片方欠落時は部分不適格。無関係Traitの実装は強制しない |
+| TRF-05 Collision | 同名Operationに異なるEffect/NULL/Unit要求、並びだけ反転 | 明示Bridge/Conflictを要求。列挙順・Import順・last-winsで結果が変化しない |
+| TRF-06 Real effect | #3182のview previewとexecute+named output、CLIとStudioの同契約 | 宣言されたread-onlyと実Filesystem writeの違いを診断。静的Command EffectだけでNo Writeを保証しない |
+| TRF-07 Provider change | 同Version別Artifact、古いBOMと新Default実装 | 現Lock/実Artifact/Input Closureと独立適合試験が一致するまでqualifiedにしない |
+| TRF-08 Target mismatch | Go静的でDefaultあり、外部Host/Browserでは実装・Grant不足 | 代替候補またはunsupported。黙ったGo実装の移植・Host許可の偽装なし |
+| TRF-09 Read/Write split | Readable Log Data SourceにSchema Dropを要求 | Unsupportedまたは明示外部Providerの実装要求。readだけでDDL Offerを生成しない |
+| TRF-10 Reversible edit | 表への編集写像は一意、集約Graph/SHO文は多対一 | 一意でないTargetへの自動Writeを拒否。元Source navigate/差分Previewを維持（#2497） |
+| TRF-11 Cache/Snapshot | Local CASのDefault・Remote Providerによる手動実装、TTL/Grant変更 | Byte hit、Snapshot整合性、Effect、現在開示の別資格。実CAS保証未観測なら失敗/unknown（#3271） |
+| TRF-12 Verified composition | Trait実装Provider A1/A2 × Consumer B1/B2 | 2×2 exact tupleごとに実Link/Invoke+独立Expected。未実行行をVerified BOMへ含めない（#3267） |
+
+### 8.5 既存D0〜D6へ載せる実装順と採否
+
+- **D0/現状棚卸し**：実Core/Plugin/Composition/CLI/Studioで既に存在するTrait相当の要求/実装/Constraintを対応づける。新Core enumを入れる前に**標準DataとしてのRelation+Constraintだけで表現可能か**比較。未確認Source/Typed Request/Builder inputはunknownのまま。
+- **D1の小さな実験**：TRF-01/02/04/06を先行。既存Inspect read-only Operationを一つだけ共有Contract/Providerに束縛し、無Defaultの場合は手動実装不在を検出する。CLI実argv/実stdout・Studio実Service呼出を独立Expectedと照合。現実に操作未実装なら未実装を明示し、DocumentだけでPASSにしない。
+- **D2/D3**：表示可能なTrait義務・Missing implementation・Conflict・Target非対応を#3262 Design Query→#1180 Scenario/独立Expectedの候補へ、Source span/Revision付きで投影。AIは「必要な実装を作るか・組合せるか」を最少の操作で選べること。CandidateのExpectedを独立の正解としない。
+- **D4/D5**：Data Source WorkbenchのReadとDDL、Cache Snapshot Provider、Rendererの逆編集を異質なConsumerとして検証。選択済みProviderが実TargetでBuild/Invokeされた証拠と、Hostが与えた現在Grantを別票にする。
+- **D6/BOM/セルフビルド**：原子Trait単独の緑とTrait合成/Plugin Version Matrixの緑、実TEI自身のStage2再入を分けて評価。#3267はComposition資格、#2831は真のSelf-build、#2600はCache再利用の資格を持ち、相互に自動認定しない。
+
+**採否判断の計測軸**：新Trait 1件追加に要するCore変更件数（理想0）、Extension記述の構文ノイズ、必須未実装の検出率、合成衝突の偽PASS/過剰拒否、Tool/Runtimeの実Effect広告の正確性、CLI/Studio/Targetの同一契約適合、Provider別手動コード量、Target/Lock差分による再試験範囲。少なくとも2種類の異質なConsumerと正負1件ずつを先行する。
+
+**現在の資格**：本節はIssue・現行Code・他チャット方針を照合した設計計画であり、Trait公開Schema/DSL、実Plugin移行、TRF-01〜12、新しいGo/CLI/Studio/Provider試験、Owner正式採用は **NOT RUN／未採用**。本DocのD1試験を通したときだけ、実装方式の判断を更新する。
