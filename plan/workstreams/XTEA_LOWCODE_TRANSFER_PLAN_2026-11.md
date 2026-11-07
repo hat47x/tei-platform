@@ -355,6 +355,9 @@ WP10 統合と引継ぎ
 | 読み取り専用datasourceの事前検査 | 実装 | 付録C.5 |
 | 画面・帳票の版 | 実装 | 付録C.5 |
 | フックの宣言外呼出し | 実装 | 付録C.5 |
+| フックの呼出しのCommand境界への委譲 | 実装 | 付録C.5、`internal/hook`（[#3108](https://github.com/hat47x/tei-platform/pull/3108)） |
+| フック実行からの宣言制限呼出し元の配線 | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md) |
+| フックの不成立と実行失敗の区別 | 実装 | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md) |
 | 参照Storeの拒否符号 | 実装 | 付録C.5 |
 | 作者環境の面ごとの検査（AC-12） | 設計のみ | 作者環境の受容設計§3.1〜3.4 |
 | 派生出力の版・未解決（AC-7） | 設計のみ | 派生出力の受容設計§3.1〜3.5 |
@@ -399,7 +402,7 @@ WP10 統合と引継ぎ
 | Package（宣言・検証・版束縛・衝突・ビュー表示） | 実装 | 付録C.5、`internal/application`・`internal/validation` |
 | Semantic fingerprint（投影の意味の版） | 実装 | 付録C.5、`internal/semantic` |
 | 統合試験（Semantic→Application→Package→view/print） | 実装 | `cmd/tei/product_slice_test.go` |
-| 残る未実装 | 実Provider接続、集計の実データ計算、削除の効果、帳票テンプレートの版管理 | 付録C.5、D5・D7 |
+| 残る未実装 | 実Provider接続、集計の実データ計算、削除の効果、帳票テンプレートの版管理、フックの実PluginとCLI・Studioへの配線 | 付録C.5、D5・D7 |
 
 **文書の読み方.**
 

@@ -29,7 +29,8 @@
 - [診断の修正案と受理境界の確認](XTEA_LOWCODE_DIAGNOSTIC_PROPOSAL_2026-11.md)（参照実装の試験記録。作成者向けの受理操作は未実装）
 - [能力の宣言許可と発行許可の照合確認](XTEA_LOWCODE_GRANT_AUTHORIZATION_2026-11.md)（参照実装の試験記録。許可の管理と実行経路への接続は未実装）
 - [読み取り専用datasourceへの書込み拒否の確認](XTEA_LOWCODE_READONLY_DATASOURCE_2026-11.md)（参照実装の試験記録。データソース側の実行時強制は未実装）
-- [フックの宣言外呼出し拒否の確認](XTEA_LOWCODE_HOOK_DECLARED_CALLS_2026-11.md)（参照実装の試験記録。Command境界への接続は未実装）
+- [フックの宣言外呼出し拒否の確認](XTEA_LOWCODE_HOOK_DECLARED_CALLS_2026-11.md)（参照実装の試験記録。Command境界への委譲は[#3108](https://github.com/hat47x/tei-platform/pull/3108)）
+- [フック実行の配線と失敗の区別の確認](XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)（参照実装の試験記録。Runnerからの配線、NotSatisfiedと実行失敗の区別、参照規則。実PluginとCLI・Studioの配線は未実装）
 - [Studio検証結果の修正案表示の確認](XTEA_LOWCODE_STUDIO_PROPOSALS_2026-11.md)（参照実装の試験記録。案を受理する操作は未実装）
 - [暦の宣言と期間への結合の確認](XTEA_LOWCODE_CALENDAR_DECLARATION_2026-11.md)（参照実装の試験記録。日付計算と税・通貨・採番は未実装）
 - [暦からの日付導出の確認](XTEA_LOWCODE_CALENDAR_CALCULATION_2026-11.md)（参照実装の試験記録。期間キー・税・通貨・採番は未実装）
