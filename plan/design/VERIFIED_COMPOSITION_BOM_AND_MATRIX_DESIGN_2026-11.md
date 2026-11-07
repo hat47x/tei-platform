@@ -111,3 +111,55 @@ Fixture自体は合成。Go標準ライブラリで有限の直積・上限・�
 [Jenkins Plugin BOM](https://www.jenkins.io/doc/developer/plugin-development/dependency-management/)／[Jenkins BOMのCompatibility Testing](https://github.com/jenkinsci/bom)／[Gradle Platformと版制約](https://docs.gradle.org/current/userguide/platforms.html)／[GitHub Actions Matrix](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax)／[Nix exact lock](https://nix.dev/concepts/flakes)／[CycloneDX v1.7](https://ecma-international.org/publications-and-standards/standards/ecma-424/)。
 
 **確認の上限**：本件のSource/Version Matrix Reference、Docs-only設計、隔離Go試験4件以外の製品実装・GitHub exact-head CI・二Plugin実Target統合・Conformance issuer/Host資格は未実施。
+
+
+## 8. 横断統合：Pairwise計画・Cache/SnapshotとBOMの利用資格（2026-11-07追補）
+
+本節は「BOMを標準機能として届ける」ために、別チャットで進んだテスト設計、Design Context完全性、Cache/Snapshot Provider、大プラグイン主義（Open/unpromised）の議論を再接続する。**BOMはContextやCacheの真実を保存する第二正本ではなく、Sourceと実装のVersionから現在導出できる構成・試験結果の証拠付き投影**である。
+
+### 8.1 Matrix計画と実行資格を二段に分ける
+
+[Go Pairwise限定Reference](../../tools/reference-verified-composition-bom/README.md)には従来の2×2全直積に加え、**複数軸に対して全2項相互作用を含む行だけを決定論的に選ぶ**Planning-only実装を追加した。3軸×各2値の全直積8から4行を選択し、4軸×各3値の全直積81から2項全組を含む少数行を生成する。**このReferenceが証明するのは「無制約の指定軸に対してすべてのペアが計画に含まれた」までであり、PluginのVersion適合、実Targetで実行可能、テスト結果PASSを意味しない。** `FullCartesianSize`、`TotalPairs`、`CoveredPairs`、`Cases`と`qualified=false`を別フィールドにする。
+
+Product化で追加すべき要件は次の通り。
+
+| 問い | 必須の処理 | 誤って主張してはいけないこと |
+| --- | --- | --- |
+| Required Closureは完全か | #3262が対象Function/Targetの要求・Source/Loader/Disclosure・必要Pluginの欠落を示す | 見えていない依存が存在しない |
+| 組合せは実現可能か | #951/#1016が各exact tupleのProvider/Contract/Scopeを解決し、解決不能・曖昧・非互換を理由付きで示す | Pairwiseに含まれた組合せなら実行可能 |
+| どの組合せを試すか | small full、pairwise、boundary、changed-impact、既知高次interaction、negative constraintsを独立に選択 | Pairwiseの2項100%を全直積の検証済み100%と呼ぶ |
+| 実際に何を使ったか | 実Build/Toolchain/Artifact/ProviderのSource/Runtime consumptionを確定したLockに束縛 | Lockがあるだけで実Link/Invocation成立 |
+| Test/Expectedは独立か | #1180/#2514のScenario/独立Expected/Mutant、実Run/断片・SKIP・Tool切断を照合 | CI exit0や別AttemptのPASSの合算 |
+| BOMの現在資格は何か | 実受理Owner/Publisher/Target/Grant/DisclosureをProduct側で必要に応じて照合 | 過去Evidence＝現在も許可/業務的に正しい |
+
+**Constraint付きPairwiseの要点**：除外を行った後は、元の無制約ペア集合が全て実現可能とは限らない。適用不能なペアを`infeasible-with-reason`、Source/Resolver不足を`unknown`、解決済みで未試験を`not-run`、検査済みのペアを`covered`と分け、**到達可能な全ペア集合の証拠がある場合だけ**制約相対のCoverageを確定する。ReferenceはConstraintsを解かないため、Pairwise生成候補をただ除去して「100%」へ再計算する方式は不採用。
+
+### 8.2 BOMとCache/Snapshotは相互利用するが資格を共有しない
+
+別チャットで成熟した「CacheをBackend別メモ化ではなく正本からの派生Snapshotとして統合する」案は、既存[#3271](https://github.com/hat47x/tei-platform/issues/3271)へ管理Ownerを置く（2026-11-07作成済み）。BOM側は**実Provider Instanceを選ぶ構成要素・試験軸として含める**。
+
+- **Build cache**：実Consumed Source/Generator/ToolchainとTargetが一致するときにだけBuild省略候補。Content digest一致でも別Toolchain/別ExpectedのTest Witnessは共有しない。#2600/#2831がOwner。
+- **Test result / Qualification cache**：過去のConformance Evidenceは**そのexact tuple・Fixture/Independent Expected Revision・実Target・Build/Source closure**にだけ紐付く。旧PASSは歴史として残し、Test Profile変更やSource ABAからCurrent qualifiedを自動復活させない。#2514/#3267がOwner。
+- **Derived Dataset Snapshot**：業務データに適用する場合、入力Source/時点/粒度/NULL・Partial/権限Scope/整合保証とそのProvider Instanceを保持。単にSnapshot byteが同じでも、別Tenant、別有効時点、非開示Scopeでは共有しない。#1641/#1708/#2582/#2622/#3271がOwner。
+- **Provider Instance**：Memory、Local File、tmpを先行検証し、Redis/S3/DynamoDB/CDNは必要が示された場合のみ追加。Storage Plugin版と選択された**Instance/Region/Tenant/Capabilities/Retention**を別IdentityとしてBOMに含める。CDN purge ACKを全Edge消滅・権限取消とは呼ばない。
+- **Persisted business fact**：Ownerが確定した受注金額等は派生キャッシュではない。Cache eviction、BOM再試験、Rule改版で暗黙に業務保存値を変更しない。#1641/#1174がOwner。
+
+**状態の分離**：Cache hit／byte verified／Snapshot freshness／Test result valid／Artifact included／Conformance qualified／Host currently authorized／Business acceptedを一つの`valid=true`にしない。Reuseできる部分だけ再利用し、範囲不足・Unknown・Permission deniedの状態を保存する。
+
+### 8.3 新たに導く否定試験（正式SSOTは#1180/#2514）
+
+| ID | 変化/操作 | 独立Expected候補・棄却条件 |
+| --- | --- | --- |
+| VCB-P1 | 3軸各2版の8候補からPairwise計画 | 計画4行、2項12/12、qualified=false、Test未実行をPASSとしない |
+| VCB-P2 | 4軸各3版の81候補 | 2項54/54、全直積より少ない行、固定順。実組合せ適否は未判定 |
+| VCB-P3 | Pairwiseの候補行がConstraint上不可能 | 実行不能理由を残し、候補行を消しただけで制約相対Coverage100%としない |
+| VCB-S1 | Providerは同版だが選択したCache InstanceのScope/Storage変化 | 対象TupleのActual-Selected Instance/Artifact/Expectedを再検査。無関係BOMを不要失効させない |
+| VCB-S2 | Cache hitだが実Source A→B→A、旧Test Evidence付き | Hitを現在Conformance資格へ昇格しない。過去テスト記録は改ざんせず保持 |
+| VCB-S3 | Partial sourceからDerived Snapshotを作り、BOM側では全件と解釈 | SnapshotのPartial/unknownを維持、BOM全件テストPASSを許さない |
+| VCB-S4 | 別Tenantと同じByteでCacheを共有、Grant失効 | 参照候補の発見と実Data開示・実呼出のGrantを分離 |
+| VCB-S5 | Optional Open APIが上流更新で破壊 | 必要な下流Adapterと該当Functionだけ資格を失う。Stable保証を上流へ偽帰属しない |
+| VCB-S6 | 高凝集Bundleの未選択Pluginに変更 | 選択Closureが不変で実Artifactも非干渉ならBOM不要失効なし。Go initが混入したらBuild側失格 |
+
+**実装順**：①今回のPairwise pure plannerの局所Reference → ②#951/#1016の実合法Tuple・#3262のRequired Closureを投影 → ③#1180のRunner/Independent Expectedと実Artifactへ結合 → ④#2600の正しいCache/Build省略＋#3271のProvider Instance比較 → ⑤Qualified BOM発行・外部Host・異Tenantは必要な独立実証後。#1119 G1/G2/G4に新しいHard Gateを足さず、Production資格は個別のOwnerの受入条件に従う。
+
+**今回の証拠**：隔離Go 1.23.2でPairwise追加6テストと従来4テストの計10件PASS、`go vet`PASS、`gofmt`差分なし。現在のGitHub branchのexact-head CIと実Resolver/実テストRunner/Cache Providerは**NOT RUN**。新Core kind、BOM発行権限、独立Cache Host、CDN機能の採用を意味しない。
