@@ -87,3 +87,33 @@
 4. **統合前の整合**：PR #2492の現行mainからの大幅乖離を踏まえ、旧PRの全文移植ではなく、実装に必要な成熟Contractだけを本書と[基本計画](../MASTER_PLAN.md)へ移送する。旧PRの研究・基礎データ・要求の残余は各Ownerが別途差分採否を判断。最新mainと[Draft #3179](https://github.com/hat47x/tei-platform/pull/3179)のMASTER_PLAN追補は両立を確認する。ここで旧PRや既存Fixtureの自動Closeはしない。
 
 **未実証**：比較適格H2/H3（0/4）、適格TrialでのSkill Load/効果・費用採点（探索H3実Loadは限定観測済み）、非公開データを含む実Egress拒否、全Source/Target閉包を持つ新`*.tei.md` Reader、実Providerの一Function read-only縦断、AI Proposalの正式Source更新一往復、実HostのGrant→業務Outcome、OKF Executor/Attester一往復。実測済みClaimは上記の有限実装・HEAD・環境に限る。
+
+
+## 6. Design Context取得から「未カバーテスト一件」を生む最短の実証（2026-11-07追加）
+
+### 6.1 P-1aとT0は実証範囲を限定して採用し、P-1b/T1を次の差分とする
+
+[Design Context QueryのOwner #3262](https://github.com/hat47x/tei-platform/issues/3262)が定めた**「テスト生成に先立ち、生成AIも人間も迷わず必要設計情報・欠落を取得できること」**を、初回テスト生成の前提とする。対象を無条件の全Workspaceに広げず、**一つの利用者Subjectと用途**について独立に定めたRequired設計入力が、実CLI→実Loaded/Parsed→実Consumer受領まで到達したかを診断する。
+
+| 段階 | 確認済みの成果 | 次の資格と現時点のGap |
+| --- | --- | --- |
+| **P-1a 現行CLIによる読取り** | [main統合 #3264](https://github.com/hat47x/tei-platform/pull/3264)は同一実Go CLIから9読取り応答、`semantic-data:sales.order`のWorld/Source Index束縛、指定`semantic/sales/order.tei`の`readByLoader:true`、Source欠落/異版/未読込の負例DF-02/03/09を固定CIで検証。[最終HEAD専用CI #42357451983](https://github.com/hat47x/tei-platform/actions/runs/42357451983)は限定成功 | **Claim=partial**。Data以外の全Function/Business/Rule/Procedure/Requirement、Parser意味解釈・全必要Dependency、実Consumerへの分割完遂を認定しない |
+| **T0 固定済みScenario判別** | [main統合 #3266](https://github.com/hat47x/tei-platform/pull/3266)の実Binaryからpinned Scenario **6 Step**、実CLIの不正データ/期待値/Fixture/Plan **4負例**＋独立義務**2負例**を検出。[最終HEAD CI #42359069285](https://github.com/hat47x/tei-platform/actions/runs/42359069285)限定成功。Go statement C0相当**10.1%は一テスト選択の局所値**。[main #3268](https://github.com/hat47x/tei-platform/pull/3268)はSource/Scenario/Skill/依存変更によるテスト再起動の`paths`対象を拡充 | 既知の検証対象を**実行し判別**した証拠であり、Issueから新規Caseを設計した証拠ではない。**C1未測定、全Requirement/NFR Coverage未測定**。PR仮統合Runとmain push Runは別 |
+| **P-1b Design Context整形** | #3262にScope・Source/Role・Required/Observed・欠落理由・連番/継続/End Marker・Audience別開示の設計候補あり | **未実装/未実証**。実CLIの9応答を単にAIが要約したことを、欠落のない一つのDesign Context Product応答としない。新CLI名を実在と偽らない |
+| **T1 未カバー領域から新しい負例を提案** | 既存[#1180](https://github.com/hat47x/tei-platform/issues/1180) Scenario／[#2514](https://github.com/hat47x/tei-platform/issues/2514) 独立Expectedと、[#3223](https://github.com/hat47x/tei-platform/issues/3223) Pattern候補を再利用。[#3273](https://github.com/hat47x/tei-platform/issues/3273)はT0からの次の負例選択を計画 | **新しいAI/人間の候補生成と独立判別はNOT RUN**。既存T0の既知6 Stepを再実行しただけでT1達成とはしない |
+
+**次の最小受入（1 Rule、1 Goal、1新負例）**：公開`sales.order`の「行番号は正」のRuleを選び、Design Contextへ必要Source/Rule/Relation/独立要求を**実Loaderから**返す。既存Scenarioに無い「行番号=0」の候補を、AIまたは人が**最小の入力操作で**提案できるか測る。候補自身が`Expected`を自己定義しただけでは採点せず、AIへ非公開の**事前固定独立期待結果**と既知Mutant/負例で、実CLI結果・ルール選択・拒否理由を照合する。欠落Rule・未取得Source・非出力Predicate・異Tenant/Scopeなら`incomplete/unverified`、実選択/出力範囲が不足なら`partial`として、検証可能領域だけにCandidateを出す。実装側で新しいDriver Scenario正本／Test Runner／Expected Storeを作らない。
+
+**同じCoverageを混ぜない**：①対象Domain/Requirementの列挙Coverage、②Source→Required/Observedの取得Coverage、③Scenario義務Coverage、④既知Mutantに対する判別力、⑤Go C0/C1、⑥Workflow起動Coverage、⑦実CLI/Provider/Harnessの受領Coverageは別分母。初回T1でC0/C1やNFR全体の達成率を見せず、**未測定・未取得・未実装を0%やPASSに変換しない**。測定項目＝AIの必要Tool呼出し数、迷った選択数、実Bytes/分割/切断、作成時間、Test Candidate重複、誤合格/誤棄却、最小反例、既知Mutation結果、Token/費用・人手。
+
+### 6.2 三要素Diagram・Function表現・テストの対応は同一Sourceから導出
+
+[三要素図面・CRUD計画Draft #3263](https://github.com/hat47x/tei-platform/pull/3263)および標準Data構造／標準表現型の議論は、Design ContextのRequired Data/Function/Business、Role・多重度・Rule/Procedure・Projectionを**同じSourceの別表現**として扱うために接続する。表示を持つ表現型InstanceはFunction文脈に配置し、そのBindingの意味・Axis/単位・粒度・NULL/欠落を評価する。Diagram/CRUDで見つかる検証義務（例えばRelationshipの1:N、FunctionのCRUD、Businessの実承認）をテストPattern候補へ投影しても、**図の編集・AI表現の変更は第二Meaning Sourceにしない**。SHOの自然なMarkdown図はDocument Consumerであり、TEI図の正本/実CRUDを代用しない。初回T1のためのStudio Renderer・SHO Writer実装をHard dependencyにしない。
+
+### 6.3 Pluginの検証済み組合せとSnapshotは後続の共通資格として再利用
+
+[製品要求 #3267](https://github.com/hat47x/tei-platform/issues/3267)はVerified Composition BOMとVersion Matrixを標準能力に位置付け、[Draft #3269](https://github.com/hat47x/tei-platform/pull/3269)は**渡されたexact Lock**の2×2等をread-onlyで列挙し、pairwise Coverageを決定論的に説明するReferenceを実装した。ただし`qualified:false`固定で、**実Resolver・実Builder/Provider・実独立Test・公式BOM発行は未達**。パターン候補、resolved lock、実Artifact、テスト実証、Qualified tuple、SBOM部品一覧を混同しない。pairwise合格から未試験の三者相互作用をPASSにしない。
+
+[#3271](https://github.com/hat47x/tei-platform/issues/3271)の派生Snapshot/Cache Provider構想は、同一Source/Plugin Pin/実消費閉包と現在Disclosureの資格再利用を検討する後続横断。**Cache hit・Artifact byte一致・過去BOM・過去Owner承認を、Current Grant・検証済み意味・現在のProvider全件Snapshotへ昇格しない**。P0 Design Context/T1/H2 Trialを、BOM Matrix/Cache Backend導入待ちにしない。#951/#1016/#2600/#1180/#2514既存SSOTへ検証結果を接続するだけとし、Pluginの公開Open/Stable/Internal保証と実Tenant開示/Host Permissionも別にする。
+
+**この章の適用範囲**：main統合された#3264/#3266/#3268の限定実行結果を計画へ反映しただけで、P-1b、新T1テスト生成、Function/Businessの全Required閉包、実Modeler/SHO/Plugin Matrixの動作、正式Meaning/Provider Business E2Eは**今回NOT RUN**。現在mainの証拠と本PRの統合時Headを別に照合する。
