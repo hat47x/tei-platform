@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -109,12 +110,11 @@ func TestActualReadCC15StableInRootFileRemainsReadable(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer f.Close()
-	b := make([]byte, len(body))
-	n, err := f.Read(b)
+	b, err := io.ReadAll(f)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n != len(body) || string(b) != body {
-		t.Fatalf("root-relative open read %d bytes (%q) instead of fixture", n, b)
+	if string(b) != body {
+		t.Fatalf("root-relative open read %q instead of fixture", b)
 	}
 }
