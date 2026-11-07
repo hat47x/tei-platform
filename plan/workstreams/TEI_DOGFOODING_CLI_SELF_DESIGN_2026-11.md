@@ -1,6 +1,6 @@
 # TEIドッグフーディング：生成AIがCLIだけでTEI自身の設計を扱えるかの実測と課題
 
-- **状態**: 2026-11-07 実測と課題の起票を完了。本書と実測記録は `main` に統合済み（PR #3162、merge commit `6fa253312`）。D-1・D-2・D-4〜D-8 は #3180〜#3186 として起票済み。検出した課題の修正は未着手・未受理。
+- **状態**: 2026-11-07 実測と課題の起票を完了。本書と実測記録は `main` に統合済み（PR #3162、merge commit `6fa253312`）。D-1・D-2・D-4〜D-8 は #3180〜#3186 として起票済み。**2026-11-08 追記: D-1・D-2・D-4〜D-8 の対応はすべて `main` に統合され、起票した #3180〜#3186 はすべて Closed。D-3・D-10 は #2824・#2822 の範囲、D-9 は #2619・#2621 の設計範囲として残る。** 各課題の対応PRは §3 の「対応」欄、まとめは §3.12 にある。
 - **担当課題**: [#3149](https://github.com/hat47x/tei-platform/issues/3149)（対応方針の正本）。
 - **検証記録**: [TEI自身の設計をCLIで扱う実測](../evidence/TEI_DOGFOODING_CLI_SELF_DESIGN_2026-11-07/README.md)（生出力50ファイルを含む）。
 - **関連**: [#1155](https://github.com/hat47x/tei-platform/issues/1155)（CLI主入口）、[#2605](https://github.com/hat47x/tei-platform/issues/2605)（Product Skill）、[#2354](https://github.com/hat47x/tei-platform/issues/2354)（CLI JSON契約、Closed）、[#2824](https://github.com/hat47x/tei-platform/issues/2824)（discoveryの広告、Open）。
@@ -375,6 +375,23 @@ TEI自身の設計は、`docs/`と`plan/`のMarkdownで書かれている。こ�
 `commands`は19件のままで、`world`だけが`schemaVersion`を持たない。9件が`modes`を広告するようになっている（`#2824`の追加）。**D-3・D-10の一部（`commands`の広告）は`main`で進んでいる**が、`view`の版の欄と`entries`の標準定義混在は変わっていない。
 
 この再確認は`vcsModified: true`の作業ツリーから作った実行物であり、§1の固定実行物の実測と数値を直接比較しない。CI・実DB・実Providerは引き続きNOT RUN。
+
+### 3.12 課題の対応状況（2026-11-08 追記）
+
+D-1・D-2・D-4〜D-8 の対応が `main` に入り、対応する Issue はすべて Closed になった。D-3・D-9・D-10 は設計・契約の範囲として既存Issueに残る。
+
+| 課題 | Issue | 対応（`main` のPR・merge） | 何が変わったか |
+| --- | --- | --- | --- |
+| D-1 | #3180 Closed | #3208（`55cb15e93`）、#3215（`0d4d41d82`） | `trace` は投影しない種類を `UNSUPPORTED_SUBJECT_KIND`（終了コード2）で返し、`SUBJECT_NOT_FOUND`（1）と区別する。投影範囲は `derivedbridge.SupportsSubjectKind` に一本化し、投影結果との一致を試験で固定した。 |
+| D-2 | #3181 Closed | #3247（`1a66959cd`） | `validate -json`・`model catalog`・`inspect`・`trace`・`workspace-files` の成功応答が `workspace`（`name`・`formatVersion`・`manifest.sha256`）を持つ。`tei.workspace.tei` の旧形式も同じ。 |
+| D-4 | #3182 Closed | #3333（`b83c8309c`） | `view` の entry に `writeFlags`（`-operation-log`・`-lifecycle-state`）を載せ、実ファイル書込みと照合する。`effect` の語彙は変えていない。 |
+| D-5 | #3183 Closed | #3214（`3774f9945`） | `-plugin-lock` が `plugin-lock` の envelope をそのまま受理する。 |
+| D-6 | #3184 Closed | #3233（`163b02be9`） | 使えない plugin lock を両コマンドで終了コード2の `INVALID_PLUGIN_LOCK` に揃えた。 |
+| D-7 期待1 | #3185 Closed | #3227（`575518c0f`） | `-h` は成功（終了コード0、標準出力へusage）。 |
+| D-7 期待2 / D-10の一部 | #3242 Closed | #3307（`6a956e92d`） | `tei commands` の entry が `argumentValues`・`argumentType`・`argumentDefaults` を持ち、実装の受理値と同じ変数を参照する。 |
+| D-8 | #3186 Closed | #3323（`03fb618bb`） | `docs/business-system-design-reading-guide.md` に要件JSONの形と既存例を記載し、その例を実際に読む回帰試験を追加した。 |
+
+この表のPR・mergeは、いずれもCI（Repository Healthを含む）の成功と、変更範囲の `go test` を確認して統合した。**意味の受理・実DB・実Provider・本番配備の証拠ではない**。§1の固定実行物による再実測（同じバイナリ digest での比較）はまだ行っていない。次の再実測では、この表の後の `main` から1つの実行物を作り、D-1〜D-8の解消とD-3・D-9・D-10の残存を同じ手順で確かめる。
 
 ---
 
