@@ -1,14 +1,13 @@
 package access
 
 import (
-	"bufio"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strconv"
+
+	"tei/internal/jsonl"
 )
 
 // chainGenesis is the previous hash of the first record. It is a fixed value, so
@@ -74,26 +73,11 @@ type ChainFile struct {
 // Append implements Journal. The record is linked to the last stored record, so a
 // record appended out of order does not verify.
 func (f ChainFile) Append(record Record) error {
-	if err := os.MkdirAll(filepath.Dir(f.Path), 0o755); err != nil {
-		return fmt.Errorf("prepare access journal %s: %w", f.Path, err)
-	}
 	chained, err := f.next(record)
 	if err != nil {
 		return err
 	}
-	raw, err := json.Marshal(chained)
-	if err != nil {
-		return fmt.Errorf("encode access record: %w", err)
-	}
-	file, err := os.OpenFile(f.Path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
-	if err != nil {
-		return fmt.Errorf("open access journal %s: %w", f.Path, err)
-	}
-	defer file.Close()
-	if _, err := file.Write(append(raw, '\n')); err != nil {
-		return fmt.Errorf("write access journal %s: %w", f.Path, err)
-	}
-	return nil
+	return jsonl.Append(f.Path, "access journal", chained)
 }
 
 // next builds the record that follows the last stored one. The existing chain is
@@ -116,34 +100,12 @@ func (f ChainFile) next(record Record) (Chained, error) {
 	return Chained{Record: record, ChainVersion: chainVersion, PrevHash: previous, Hash: recordHash(previous, record, index)}, nil
 }
 
-// chained reads the file as chained records.
+// chained reads the file as chained records. It uses the shared reader, so the
+// rule "a damaged line is an error and the earlier records are returned" is the
+// same as the other journals: the chain adds fields to the record, not a second
+// reading convention.
 func (f ChainFile) chained() ([]Chained, error) {
-	file, err := os.Open(f.Path)
-	if os.IsNotExist(err) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, fmt.Errorf("open access journal %s: %w", f.Path, err)
-	}
-	defer file.Close()
-	var records []Chained
-	scanner := bufio.NewScanner(file)
-	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
-	for line := 1; scanner.Scan(); line++ {
-		text := scanner.Bytes()
-		if len(text) == 0 {
-			continue
-		}
-		var record Chained
-		if err := json.Unmarshal(text, &record); err != nil {
-			return records, fmt.Errorf("access journal %s line %d: %w", f.Path, line, err)
-		}
-		records = append(records, record)
-	}
-	if err := scanner.Err(); err != nil {
-		return records, fmt.Errorf("read access journal %s: %w", f.Path, err)
-	}
-	return records, nil
+	return jsonl.Read(f.Path, "access journal", jsonl.DecodeJSON[Chained])
 }
 
 // Records reads the decisions without the chain, so a caller that only wants the

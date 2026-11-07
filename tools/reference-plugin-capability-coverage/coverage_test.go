@@ -154,3 +154,69 @@ func TestReportStatesAuthorityAndIsDeterministic(t *testing.T) {
 		t.Fatalf("bad header: %+v", a)
 	}
 }
+
+
+func TestSelectedPluginDoesNotImplySelectedCapability(t *testing.T) {
+	// An Environment can select the plugin package without binding its
+	// editor capability. Do not elevate package selection to capability use.
+	w := world()
+	w.Environments[0].Plugins = []environment.ExtensionRequirement{
+		{ID: "tei.editor.sql", CompatibleMajor: 1},
+	}
+	r := Derive(w)
+	got := find(r, "tei.editor.sql", "editor.sqlglot")
+	if got == nil || got.Status != Unselected || len(got.Environments) != 0 {
+		t.Fatalf("package selection must not select capability: %+v", got)
+	}
+}
+
+func TestOneSelectedCapabilityDoesNotSelectAllOfItsPluginCapabilities(t *testing.T) {
+	// The deployment-executor binding uses one offered capability;
+	// another offered capability from the same plugin remains unselected.
+	w := world()
+	w.Plugins[0].Provides = append(w.Plugins[0].Provides,
+		capability(plugin.CapabilityEditorIntelligence, "editor.postgres"))
+	r := Derive(w)
+	chosen := find(r, "tei.db.postgres", "database.postgres")
+	unchosen := find(r, "tei.db.postgres", "editor.postgres")
+	if chosen == nil || chosen.Status != Selected {
+		t.Fatalf("chosen capability = %+v", chosen)
+	}
+	if unchosen == nil || unchosen.Status != Unselected {
+		t.Fatalf("another capability of chosen plugin = %+v", unchosen)
+	}
+}
+
+func TestDatabaseTechnologyCoverageDoesNotClaimUniqueProviderResolution(t *testing.T) {
+	// This report measures which declarations match an Environment's
+	// database technology. Two matches can both be reported "selected" here
+	// even though an actual Provider Resolver must detect the ambiguity.
+	w := ir.World{
+		Plugins: []plugin.Definition{
+			{ID: "tei.db.first", Version: "1.0.0", Provides: []plugin.Capability{{
+				Kind: plugin.CapabilityDatabaseProvider, ID: "database.first",
+				DatabaseProviders: []environment.DatabaseProvider{environment.ProviderPostgres},
+			}}},
+			{ID: "tei.db.second", Version: "1.0.0", Provides: []plugin.Capability{{
+				Kind: plugin.CapabilityDatabaseProvider, ID: "database.second",
+				DatabaseProviders: []environment.DatabaseProvider{environment.ProviderPostgres},
+			}}},
+		},
+		Environments: []environment.Environment{{ID: "development", Instances: []environment.DatabaseInstance{{
+			ID: "sales.dev", Provider: environment.ProviderPostgres,
+		}}}},
+	}
+	r := Derive(w)
+	for _, id := range []struct{ pluginID, capabilityID string }{
+		{"tei.db.first", "database.first"},
+		{"tei.db.second", "database.second"},
+	} {
+		got := find(r, id.pluginID, id.capabilityID)
+		if got == nil || got.Status != Selected {
+			t.Fatalf("coverage candidate %s = %+v", id.pluginID, got)
+		}
+	}
+	if r.Authority != "derived-read-only" || r.Unselected != 0 {
+		t.Fatalf("report cannot certify a unique provider: %+v", r)
+	}
+}
