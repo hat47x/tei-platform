@@ -1017,3 +1017,11 @@ CLIの各ReplyにはEnvelope Schema、resultShape、Read Mode、Fingerprintの**
 **Run S3（意味と実行）**：S2の実選択証拠と、Role必要Shape・原子的Trait Fulfillment・独立Expectedを接合。正規化・Owner Acceptance、現在Grant、Tool全受信、Target Build（Go単一binary）を各既存OwnerのClaimで審査する。[main統合 #3360](https://github.com/hat47x/tei-platform/pull/3360) のdriver stage1→stage2再入は本物の限定物理Referenceだが**対象はcmd/teiではない**。TEI全体のG4 L3資格をここへ流用しない（#2831）。
 
 **停止線**：製品Ready判定・全Required Closure・AI T1-B生成・実Domain Conformanceを、Reference CIのPASS数やDescription/Role名から導かない。main再Base/Go Build/CIは最新exact HEADで判断する。既存G0〜G4 Gateを保持し、D1/Raw/Role/Trait/BOM/Self-buildを全て最初のP0 Hard Dependencyにしない。
+
+### 20.7 CI実測への補正：Go試験PASSとFormatting失敗を分ける
+
+<!-- tei-role-ci-gofmt-fix-20261108 -->
+
+第19節で追加したRaw Markdownテストを含む exact HEAD e14aab213f6057f17744a4881e32e4a6ed7eac33 の[Repository Health #42394860575](https://github.com/hat47x/tei-platform/actions/runs/42394860575)は**completed/failure**。実Jobログでは `go vet ./...`、`go test -count=1 -timeout 60m ./...`、`tei validate -workspace reference/workspace`がPASSし、`reference/dsl-language-plugin`パッケージの試験もPASS。一方 `gofmt -l . is empty` はFAIL、対象は追加した `reference/dsl-language-plugin/self_description_workspace_boundary_test.go`。この段階の総合結果をPASSと報告しない。
+
+失敗理由をGo Test failure / Doc Plan failure / Formatting failureに分類したうえで、追加関数直前の不要な空行1行だけを[commit 1668d617](https://github.com/hat47x/tei-platform/commit/1668d617a7b47202feff345f742a286713972637)で除去した。既存FixtureとExpected/Assertionは変更なし。**修正後のPR HEADでCI completed/successを取得するまではRepository Health未資格**。過去のGo Test PASSは元HEAD限定、修正後の現HEADへ無条件に転用しない。正式Meaning/実Role Provider/Runtime Authorityへも昇格しない。
