@@ -332,3 +332,13 @@ RQ-035/RQ-036・横断Indexは[Draft #3297](https://github.com/hat47x/tei-platfo
 そのため旧ブランチを現mainの固定commit `6cf510d6301a1e133ebbe69ad7bf004f03361b54`と**履歴を保つ二親merge**で統合し、最新main内容を保持した`plan/design/README.md`へこの設計文書の索引1件を追加。差分は本Design、合成Input/Expected、Fixture Go Test、Indexの5ファイルのみ。二親commit `6d3eb7f6cf7fc68c4401947faf9cad157ae565af`の作成後比較で**main比ahead22/behind0、5ファイルのみ**を確認した。これは既存PRのreview候補更新であってmainへのmergeではない。
 
 **新HEADのexact CI（Health/脆弱性）や新実Consumer・Owner正式採用は別に確認する**。古いGo PASSや旧失敗理由を新HEADへ無条件転記しない。
+
+### 19.5 現行Typed GraphとCLI Discoveryに固有のGap（実Source静的照合）
+
+`internal/modelref/model.go`の`tei.modelref.v0`を静的確認した。現`Node`は`Key{Scope,Subject}`を持ち、同一Keyの重複を検査する。一方、`Edge`は`From Key / To Ref / Relation string / Evidence[]`であり、**Edge自身に独立した安定ID・View Occurrence ID・表示位置は含まれていない**。現`Validate`はSource/Target参照、Extension Rule、循環、Evidenceを検査するが、これをそのまま図面編集の一意なRelationインスタンス・Source spanの証明にはできない。Relation欄が異なれば並列の型区別は可能でも、**同一端点・同一関係種別の2件を表示・選択・Sourceへ逆参照する保証は別に必要**。この事実をCoreへ即時EdgeID追加する根拠とはせず、#1124/#2497/#2620の既存標準Graph/Source Refの表現力を先に調べ、欠ける時だけ局所Adapterのtyped occurrence+source locatorを検証する。
+
+`tools/reference-business-dfd/main.go`は`procedure/review/set`という明示のReference FixtureとWorkspaceを受けるread-only投影Adapterであり、DOT/JSON・select/previewが存在しても**本番のAccepted Business手順を全件Sourceから導出できたことは示さない**。ここでもGraph用途/出典とAccepted Meaningを別に保持する。
+
+またmain統合済み[#3333](https://github.com/hat47x/tei-platform/pull/3333)ではCLIの`view`が記録系`-operation-log`/`-lifecycle-state`により実ファイルを書き得ることを`writeFlags`と実実行Testで明示した。以前の[#3302](https://github.com/hat47x/tei-platform/pull/3302)は別の修正Draftであり、最新mainで`view`の`effect:read-only`という**名前上の分類だけ**を外部副作用なしの根拠にしてはならない。図面検査は`argv`の実Variantと書込Sink、ConsumerのDisclosure/Tool Deliveryを分ける。
+
+最初の実Probeは「同一Scopeの`modelref`候補Graphから**異なるStable EdgeIDを持つ2 Relationship occurrence**を元Sourceへ回収できるか」「`view -format json`のApplication局所FingerprintをWorld/Source Indexと混同しないか」を判別し、満たさない場合は**read-only/unsupportedと不足Contractの位置を返す**。ModelRef/Studio/SHOの静的型が合致しただけで製品機能の対応済み扱いにしない。
