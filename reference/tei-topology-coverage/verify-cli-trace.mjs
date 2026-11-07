@@ -27,6 +27,13 @@ crossBound.result.source.key={scope:'reference-observation',subject:{
 assert.deepEqual(observeDirectTrace(crossBound),
   {status:'unknown',reason:'source_navigation_identity_mismatch'},
   'a located anchor for another subject must never be rebound');
+const wrongReference=structuredClone(raw);
+wrongReference.result.source.references[0].subject={
+  kind:'semantic-data',id:'customer.customer'
+};
+assert.deepEqual(observeDirectTrace(wrongReference),
+  {status:'unknown',reason:'source_reference_identity_mismatch'},
+  'Source Index reference for another subject must not be attributed to selector');
 
 assert.equal(observed.absentClaim,'unknown');
 assert.equal(observed.relationEntityIdentity,'not-provided');
