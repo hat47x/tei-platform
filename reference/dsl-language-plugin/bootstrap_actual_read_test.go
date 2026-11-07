@@ -1,0 +1,65 @@
+package languagereference
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+
+	"tei/internal/workspace"
+)
+
+// Actual ReadByLoader is a narrower claim than managed inventory or Source Index
+// presence. It does not prove semantic acceptance, selected Language identity,
+// Operator lowering, or Build consumption.
+func TestBootstrapK1LoaderReadIsDistinctFromManagedInventory(t *testing.T) {
+	root := t.TempDir()
+	write := func(relative, content string) {
+		t.Helper()
+		path := filepath.Join(root, filepath.FromSlash(relative))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("tei.workspace.yaml", "workspace: bootstrap-read\nformatVersion: 1\nsources:\n  - semantic\n")
+	write("semantic/model.tei", "namespace probe\n")
+	write("semantic/README.md", "# Draft documentation, not TEI meaning\n")
+	write("drafts/unmanaged.tei.md", "# Not a declared TEI Source\n")
+
+	loaded, err := workspace.Load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	readByFile := make(map[string]bool)
+	for _, managed := range loaded.ManagedFiles {
+		readByFile[filepath.ToSlash(managed.Path)] = managed.ReadByLoader
+	}
+	nativeRead, nativeManaged := readByFile["semantic/model.tei"]
+	if !nativeManaged || !nativeRead {
+		t.Fatalf("actual native TEI Source was not read: %+v", readByFile)
+	}
+	notesRead, notesManaged := readByFile["semantic/README.md"]
+	if !notesManaged || notesRead {
+		t.Fatalf("ordinary Markdown should be inventoried but not parsed: %+v", readByFile)
+	}
+	if _, found := readByFile["drafts/unmanaged.tei.md"]; found {
+		t.Fatalf("unmanaged draft entered Source inventory: %+v", readByFile)
+	}
+
+	idx, err := workspace.BuildSourceIndexFromLoad(root, loaded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	artifacts := make(map[string]bool)
+	for _, item := range idx.Artifacts {
+		artifacts[filepath.ToSlash(item.Path)] = true
+	}
+	if !artifacts["semantic/model.tei"] || !artifacts["semantic/README.md"] {
+		t.Fatalf("Source Index should keep both read and unread managed artifacts: %+v", artifacts)
+	}
+	if artifacts["drafts/unmanaged.tei.md"] {
+		t.Fatalf("Source Index pulled unmanaged draft into the Workspace: %+v", artifacts)
+	}
+}
