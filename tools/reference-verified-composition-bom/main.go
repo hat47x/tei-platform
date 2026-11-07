@@ -73,7 +73,10 @@ func Project(input Input) (Output, error) {
 	if input.MaxCases < 1 || len(input.Axes) == 0 || len(input.RequiredChecks) == 0 {
 		return out, errors.New("axes, requiredChecks and positive maxCases are required")
 	}
-	axes := append([]Axis(nil), input.Axes...)
+	axes := make([]Axis, len(input.Axes))
+	for i, axis := range input.Axes {
+		axes[i] = Axis{Name: axis.Name, Options: append([]string(nil), axis.Options...)}
+	}
 	sort.Slice(axes, func(i, j int) bool { return axes[i].Name < axes[j].Name })
 	knownAxes := map[string]map[string]bool{}
 	total := 1
