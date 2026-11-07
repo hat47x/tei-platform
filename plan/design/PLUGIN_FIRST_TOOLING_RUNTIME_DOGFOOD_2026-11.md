@@ -289,5 +289,15 @@ tests:
 
 **着手順**：P0 現`InspectSubject`→CLI／Wailsの実Call Graphと`Read`の外部効果/Disclosure棚卸し → P1 既存Contract Resolverから**exact一Provider**をshadow実呼出し、同一Identity/Scope/Result＋実Invoker記録をReadback → P2 誤Provider選択、無断fallback、不完全Source／Tool応答の負例を先行 → P3 CLIとStudio`/workbench/`を同一Operationへ切替えて実Node/DOM・Windows WebView2で別Consumerを検査 → P4 #3270 Data Workbench/#3274 HTTP Graph/#3267 Verified BOM/`*.tei.md` SHOへ用途別展開。#3292全体計画Gとの二重Hard Gate化はしない。
 
+### D1の実Studio二画面と、新しく実装された宣言投影の受入境界
+<!-- tei-desktop-d1-dual-studio-surface-and-unknown-effect-20261107 -->
+- [main統合 #3334](https://github.com/hat47x/tei-platform/pull/3334) は [main統合 #3318](https://github.com/hat47x/tei-platform/pull/3318) の標準業務Data（`tax/exchange/numbering/holiday`）のRole付き例を受け、`ApplicationView.standardBusiness`→`tei view`テキスト→`cmd/tei-studio/assets/view-format.mjs`の「標準業務」表へ**宣言したData/属性の投影**を追加した。Go局所試験・Node formatter試験の成功はPR記録にあり、実Wails RPC/HTTP・実Rowの計算/実DBは未実証。このformatterはStudioの**bootstrap `/`画面**であり、既定`/workbench/`の`reference/tei-studio-workbench/main.ts`が同じApplication投影を受領した証拠ではない。
+- **二Consumerを二画面と混同しない**：DC-02の対象はまず**CLI `inspect`と実`/workbench/`**という別Call-site。bootstrap `/`の`view`成功・Workbench `inspect`成功・CLI `view`成功はそれぞれのAction/Schema/Route/Source/公開Scopeを記録する。内容が似た表示だからPlugin-selected Provider actual Invoke、同じFunction Context、Read Slice、Host/DB Readerを通過したと認定しない。次に追加するなら明示した`view`の二Consumerを**別Case**とし、`inspect`のD1に混ぜない。
+- [Draft #3327](https://github.com/hat47x/tei-platform/pull/3327)のexact HEAD `dd2c782d4127405e86c04ebca71e88b7db5873be`では、[Node24 Workbench CI #42385644277](https://github.com/hat47x/tei-platform/actions/runs/42385644277)で既存+ABAの**20/20 test、typecheck、build PASS**。しかし`dist/main.js`対Wails埋込み`assets/workbench/main.js`の**byte一致はFAIL**（649340byte地点）。他のStudio #8・Wails PoC A・Repository Health成功も埋込み整合の代替ではない。A→B→A応答抑止は限定合格だが、**Sourceと実配布資産が不一致のため該当PR全体は未合格**。Bundle Ownerがmain基線で再現・更新方式/原典一致を確認後、exact head CIを再検査する。静的/合成テストの成果を捨てる必要はない。
+- [Draft #3328](https://github.com/hat47x/tei-platform/pull/3328)はExecutor後のRecorder／Lifecycle記録失敗と`MayReplay`の矛盾を`EffectUnknown`として保全する**Command層の修正候補**。D1 `inspect`はread-onlyでありこのPRに書込機能や新UI結果Enumを追加しない。将来、`/workbench/`からeffectful Commandを公開する場合は、`CommandRecordFailed`等の**Executor後unknown**、事前拒否、Receipt観測、resource再読取を別に表示し、旧UIの一律`failure`を安全な再試行承認としない。未知の作用は#1174/#2996/#2564でReceipt/Fenceを照合するまで自動再送禁止。
+- [Open #3306](https://github.com/hat47x/tei-platform/pull/3306)の「Hookの`uses`に対応するCommand Patternが無い」Validator拒否は**実行可能性の宣言チェックの改善候補**であり、複数Commandの曖昧さ・位相対応・実Plugin/Provider/Studio invokeは未証明。#3334のBusiness Role表示やHook宣言のScreen/Print一致を「業務操作可能」と表示しない。
+
+**この追加の適格性**：#3334/#3318のmain実装と#3327 CIの限定結果をreadbackし、Open #3328/#3306の計画/実装候補を分離。新しい実DB／Wails GUI／Function Context／Plugin actual Invoke/Effect試験・Owner受理はNOT RUN。D1a→D1bのexit Gateや既存Scenario SSOTを変更せず、**既存受入DC-02/DC-06への証拠注記**のみとする。
+
 **停止線**：Provider実Invokeを一つも観測しなければ`not-connected`。Required Source/Parser/Role/Disclosureが欠落すれば`partial/unknown/unqualified`。Commandの実副作用が不明なら`failure`へ潰して再送しない。Core/Resolver/Scenario/Authority/Host/Registryの第二正本と正式新Schema/CLIコマンドを本節で新設せず、実Provider／正本意味の受理は各Ownerへ委ねる。
 
