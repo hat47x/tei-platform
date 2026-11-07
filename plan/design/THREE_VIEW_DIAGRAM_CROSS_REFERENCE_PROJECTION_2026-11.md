@@ -216,3 +216,47 @@ Sourceを`*.tei.md`へ統一する方針は#2621に従い、現状のLoader/Pars
 - **L4/SHO Consumer**: 同じGraphを引用するだけの読み取り経路と、SHOのMermaid風Authoring本文／図解Assetを別正本で扱い、旧図・未取得・秘匿・納品欠落を説明する。
 
 このL0〜L4は説明用の作業分解であり、既存G0〜G4やP0のGateを新設・置換しない。図面Core/Runtimeに特別扱いを固定する前に**業務三視点とHTTP Response Graphという二つの異質Consumer**へ同一契約が成立するか測る。
+
+## 16. 複数キャンバスと意味要素の多重配置（SUIのCard/Islandとの横断成熟差分）
+
+巨大な単一図面を分割しても、同じEntity/Relation/Functionの意味とSource位置を一意の正本として保持する。**一つの意味要素が複数キャンバスへ現れることを許容**し、別々のPresentation Occurrenceと、同一のSemantic Subject/Relationを分ける。これはSUIの複数Canvas/Island間でカードを共有する要件とも同型だが、TEI Data/Function/Businessの意味正本をSUI Cardテーブルへ移す提案ではない。
+
+| Identity/State | 何を表すか | 同じ／異なる |
+| --- | --- | --- |
+| Semantic Subject/Relation | `data.order`, `rel.order.lines` のSource・意味・Relation identity | どのCanvasに出しても同一 |
+| Canvas / View Scope | 業務全体図、受注明細図、サブシステム別在庫図 | 互いに異なる表示・探索Scope |
+| View Occurrence | `view.sales.order`, `view.fulfillment.order` | 同じSubjectの別表示位置であり別の操作対象 |
+| Presentation State | ノード座標、折畳み、強調、別名、viewport、レイアウトProfile | semantic commitではない |
+| Interaction Selection | Canvas内で選ばれたOccurrenceと、そのSubject ID、Current Epoch | 選択同期は実行許可・Source書戻しではない |
+| Document Occurrence | SHO文章内での引用図・説明・注記、参照版 | 書籍中での再掲はTEIモデルの複製ではない |
+
+**同一Graphから複数Viewへ投影**する場合、各Viewに属するノード・関係の「見えている集合」は、元Sourceの全Related集合ではない。省略される外部Node/Relationはloss ledgerとSource navへ保持し、図が見やすくなっただけで削除したと判定しない。Canvas間リンクや同一Subjectハイライトはread-onlyで開始する。Canvas内オブジェクトをdrag/duplicate/deleteしても、明示的に選択したDomain Edit IntentとSource編集資格を経ない限り、業務Entityを生成・削除しない。
+
+### 新Fixture・反証候補
+
+既存[合成Input](../../reference/diagram-crossref/pressure-input-v0.json)に、`canvas.sales-overview`と`canvas.fulfillment`を追加。同じ`data.order`・`data.line`が異なるOccurrence IDで両Canvasに現れ、`rel.order.lines`も異なる描画Occurrenceを持つ。合計2 View・9 node occurrence。これらは**正式TEIグラフ表現ではない合成Pressure JSON**である。
+
+- **CV-01**: 同じSubjectを別Canvas上で選択し、Semantic IDとSource locatorは同じだが、選択Occurrence/Epochは別と認識。9個のView occurrenceを9個の新Data Entityとして数えない。
+- **CV-02**: Canvas分割・統合、位置・折畳み・Focus変更後も9 Entity / 7 RelationのSemantic集合は変わらない。外部参照とCanvasに描かれなかった多重辺をSourceから消さない。
+- **CV-03**: 同じRelationを2 Canvasに描く際にRelation IDは同一、描画Edge occurrenceは別。片方のレイアウト変更で他方のMeanings/CRUDを更新しない。
+- **CV-04**: 意図しないView Occurrence IDの重複、異なるSubjectへの参照、削除済みSource上のノードを含む古いCanvasを検出。独立なSelection ContextなしのPatchを拒否。
+- **CV-05**: 概念的に共有されたEntityをSHOの複数箇所へ挿入した場合、Document occurrence・キャプション・局所Reviewは別。Source改訂後は該当引用図の更新必要性を説明し、全部を黙って改稿しない。
+- **CV-06**: 同一Sourceに対し2つのCanvasから互いに異なるProposalを送る場合、Source Revision/Authority/対象RelationをApply時に照合し、見かけ上の並行編集成功を意味受理・業務Commitとしない。
+
+[AI草案Expected](../../reference/diagram-crossref/expected-v0.json)にはView ID、同一Semantic Subjectの複数Occurrence、Relationの複数Edge Occurrence、Presentationのみの操作を記録し、[Fixture Go audit](../../reference/diagram-crossref/fixture_contract_test.go)へ重複View ID/Occurrence・未解決参照の**局所整合検査**とMutation 1件（view occurrenceの衝突）を追加した。ここでの合格はDiagram Renderer/Studio/SUI/SHOの実体験や、版違いのSourceに対するedit grantの正しさを証明しない。SUI固有CardのSchema/OKF意味・Shō WriterのOwnerは各製品に残す。
+
+## 17. 最新実装・CIを反映した実証優先順位（11/07）
+
+[統合候補Draft #3303](https://github.com/hat47x/tei-platform/pull/3303)は、先の#3236の三視点・標準Representation設計を**現mainへ移し直す別4ファイルの計画Owner**。本#3263は図面/CRUDの合成Reference・Mutation契約と最小可逆編集検収を所有し、#3303のRP/MV/CX/WX/QS/DM・`MASTER_PLAN.md`追記を複製しない。P0-M（モデリングGraph/CRUD）、P0-R（実Product Function→Query→Provider Read）、P0-C（同一ID/Scope/Revisionで接合）を独立の証拠として管理する。**CRUD宣言`R`は実Provider Readとは異なる**。X-TEAのBusiness Action→Function参照による派生可能性も業務操作の現在実行資格ではない。
+
+[main統合済み#3296](https://github.com/hat47x/tei-platform/pull/3296)で、既存Context Gateが実CLI9応答と16の合成拒否対照を実測した。一方、`boundedReference=partial`、`qualifiedTestGeneration=false`であり、Function/Business/RelationのRequired Closureおよび図面・CRUDの製品生成を証明しない。このため本#3263の最初の未完成辺は今なお**実Source/Loader→Graph・Function/Business Relation・CRUD Projection→CLI対象Source/Cell逆参照→実Consumer受領**である。Test Case生成T1は#3273、BOM版Matrixは#3267/[Draft #3297](https://github.com/hat47x/tei-platform/pull/3297)、Plugin Inspector D1は#3279/Studio別Owner、Product Readは#2586が管理する。
+
+現`tei.cli.discovery/v0`の`view`はread-onlyの広告に`-execute`系を含めており、[Issue #3182](https://github.com/hat47x/tei-platform/issues/3182)/[Draft #3302](https://github.com/hat47x/tei-platform/pull/3302)が実際のファイル生成を確認して修正を提案中。したがって**read-onlyの`model catalog/inspect/trace/source-index`等を優先し、`view -execute`系を図面閲覧の無副作用前提としない**。Plugin宣言のEffect/ReadOnlyから外部効果・ファイル出力の不在を無検査に決めない。#3302の最終merge前でもコマンド呼出しを明示的に区別する。
+
+### PR #3263 exact-HEAD CI障害の根拠と所有範囲
+
+旧HEAD `aeea395ca79c2fe84e068cb94d6f43c8982e1bdf` に対する[Repository Health #42373811364](https://github.com/hat47x/tei-platform/actions/runs/42373811364) は**completed/failure**。実ログでは `gofmt -l . is empty` がPASS、追加した `reference/diagram-crossref` を含む全Go package testはPASSとして列挙されている一方、`tools/repository-plan-check`が以下の既存計画整合性でFAIL: (1) RQ-035の受入・Gap Audit未登録、(2) 追加設計6件の `plan/design/README.md`索引欠落（本PRの`THREE_VIEW_...`を含む）、(3) `plan/evidence/README.md`のPlugin-first D1索引欠落。**全Health FAILをGo Fixture実装のFAILと読み替えず、同時に「全体CIは緑」とも表現しない**。
+
+RQ-035/RQ-036・横断Indexは[Draft #3297](https://github.com/hat47x/tei-platform/pull/3297)や別Ownerが並列修正中。本PRは自身の設計文書の索引確認/追加だけを担当し、他領域のRequirement本体/受入対応/Plugin D1文書索引を競合して書き換えない。#3297等がmainへ統合後、#3263の最新mainで対象ファイルを照合し、exact-head Health/合成Fixture Testを再資格化する。Goテスト内のMutation数やSource/Expected更新により旧`aeea395c`の成功範囲を現HEADへ自動引き継がない。
+
+**本節時点の新CI/Owner受理/実Studio・SHOは未確認**。全図面の編集・CRUD Matrixの実Product投影・実Provider読取完了を、Fixtureが増えたことだけから主張しない。
