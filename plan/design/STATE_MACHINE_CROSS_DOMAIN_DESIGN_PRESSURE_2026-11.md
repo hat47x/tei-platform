@@ -297,6 +297,48 @@ TEI CoreでSpring Statemachineの全機構を先行採用するのではなく�
 
 **採否・証拠の状態**：これは既存Source/Issue/他Draftの結合計画であり、新しいTEI API/Interaction Plugin/Job Scheduler/Rule正本を実装した記録ではない。IV-01〜08の同一Attempt Web/CLI/Provider/Host/EKI E2E、実組織Policy enforcement、実Command拒否、元X-TEAとの同義検証、Owner受理はすべて**NOT RUN／NOT ACCEPTED**。既存の#1119 Gateを引き上げない。
 
+
+### 7.12 11月7〜8日横断：Raw Item・Role・状態図からDesign Context／Plugin実呼出し／Provider実観測へ（計画、未受理）
+
+<!-- 20261108-state-raw-role-inspector-context-handoff -->
+
+**11/3方針に対する成熟差分**：Data ScriptのIF-first／決定表・状態図は意味保存Projection／InvocationとEffectを分ける構成は維持する。その上で11/7の「Everything is Data」「未整理Item/複数Canvas」「原子的Trait」「Core以外Plugin-first」「必要設計情報の完全性」「三視点図/CRUDと実Provider Read」を、同一構造の**異なる資格段階**として扱う。新しい巨大Core Kindや第二Workflow Engineを追加しない。
+
+| 段階 | 保持・確認する事実 | 自動的に昇格させないもの |
+| --- | --- | --- |
+| **C0 Raw Source/Item** | 未整理Text/Markdown/外部Reference/添付の保存、Content bytes・Occurrence・Revision・Scope、Canvasの配置・分割/参照 | 保存・表示できたことからParsed/Accepted/Runnableを推論しない |
+| **C1 Structural/Role Candidate** | 実際に選択したSyntax/Language PluginでのRead/Parse/BindとSource位置。ItemにTask/Action/Event/State/Transition等の拡張Role候補を対応付ける | LabelやGraph Edgeから実Business Transition、Committed Event、Task実行資格を作らない |
+| **C2 Accepted Meaning/Model** | Owner受理済みData/Function/Business/Rule、Subject/Role/時点/Scope、IFとDecision Table/Graphの意味保存条件 | 可視化の同値・同名・Trait宣言・AI提案をOwner MeaningやGrantにしない |
+| **C3 Composition/Run/Effect** | Required Trait→Provider選択→Load/Link→実Call→CLI/Studio Consumer、現在Host/Provider Grant、Write/Receipt/独立Read。外部EKIはTask/Attempt/Lease/Bodyを自分で管理 | 「build成功」「selected」「Reference Committed」「EKI completed」「結果0件」だけで実業務完了としない |
+
+Itemは未整理の情報を乱暴に保持してよい一般の単位であり、Task/Action/Eventを固定した物理レコード分類にしない。Roleは組み合わせ・拡張可能。ただし **Event事実とEvent発火条件、Action Intentと実Effect、TEI上のTask RoleとEKIのTask IDは区別**する。同一Itemを二つのCanvasへ置いても、二つの業務Eventを発生させない。Canvasの位置変更・リンク削除はEntity削除/Relation削除/Business Transitionではない。
+
+**現行の確かな再利用資産と未達**：
+- [merged #3277](https://github.com/hat47x/tei-platform/pull/3277)：Plugin-firstの設計/製品要求はmainへ反映。現行CLI静的dispatch、Studio固定Bridgeから共通Inspector Contract/Providerへの実接続は残る。#951/#1251/#1158の既存Resolver/Providerを使い、第二Inspector Engineを作らない。
+- [merged #3354](https://github.com/hat47x/tei-platform/pull/3354)：限定された実CLI 11 Reply／32 Consumer Controlsは、独立Required 3 RuleとCanonical/Sourceの欠落を検出する有限な証拠。全Source/Function/Business閉包、単一原子的Snapshot、実Provider Read、外部Harness完全受領、AI盲検新規発見の証明ではない。#3262のRequired/Observedへ接続する。
+- [merged #3353](https://github.com/hat47x/tei-platform/pull/3353)：空TargetsでHandoffConfirmed=falseなのにCompletionHoldsとなる不整合を局所修正。空集合が正当でも、別の主体の引継ぎ受領証拠は独立。Caller申告と外部相手/実Provider Receiptを混同しない。
+- [#3278/#3279](https://github.com/hat47x/tei-platform/issues/3279)：Atomic TraitのDefinition/Requirement/Binding/Fulfillment/Evidenceは設計候補。manual-required未実装、Plugin契約版不一致、宣言のみで実Load/Invokeが無い場合はunfulfilled/unverified。現在Grant/Owner受理はさらに別。#3267 BOMにも実Target別Evidenceが必要。
+- [#3271](https://github.com/hat47x/tei-platform/issues/3271)：派生Snapshot/Cacheの再生成・失効は確定業務履歴やCommitted Eventではない。Mapping/Schema/Cache版変更でVirtual Valueが動いてもBusiness Write/Outbox/EKI Jobを自動発火しない（本Draft DS-01〜08を再利用）。
+- [#2497](https://github.com/hat47x/tei-platform/issues/2497)/#1124/#1125/#2586：Canvas・State Graph・Transition Table・三視点図・CRUD・SHO説明を元Subjectへの複数Projectionとして扱う。Loss/逆写像不能ならread-only。実Provider行読取は別の実証。
+
+**追加の独立Expected候補（CR-01〜08、全件新規NOT RUN）**
+
+| ID | 反例 | 期待する結果と既存Owner |
+| --- | --- | --- |
+| CR-01 | 未整理/未知RoleのRaw Markdownを保存 | Sourceは保全・閲覧可能、MeaningとExecutionは未資格。#2621 |
+| CR-02 | 同一Itemを二Canvasへ配置、片側Layout削除 | 元Item/Entity/Relation/Business Eventは消えない。Action二重発火なし。#2497/#1124 |
+| CR-03 | 説明TextにAction/Task/Eventという語がある | 解釈/Owner受理なしでは実Action/Eventへ昇格しない。#2620 |
+| CR-04 | JSON/FP正常でもRequired RuleやSource Anchorが未観測 | #3354の限定実Consumer相当ではreject。全Domain閉包の主張なし。#3262 |
+| CR-05 | Inspector宣言は選択済みだが実Provider別、manual Trait欠落 | selected≠loaded≠called≠fulfilledを検査。#951/#3279/#3277 |
+| CR-06 | Schema/Cache改訂でVirtual Fieldがfalse→true、業務Writeなし | Business Event/Outbox/EKI Jobは発行しない。#1129/#3271 |
+| CR-07 | Handoff対象0件、完全性正当化済、受領未確認 | Completionはunverified、独立Handoffを別観測。#1125/#3353 |
+| CR-08 | Studio Reference実行成功、EKI Task.completed、Bodyや実Effect不明 | Task/Artifact/Owner Completedは別。#1130/#1174/EKI #112 |
+
+**着手順（既存#1119 Gateを増やさない）**：P0-Mでは一つの公開合成SourceのRaw Item/Accepted Rule/Business ProcedureをGraph・表・CRUDへread-only投影。P0-Dでは#3262/#3354で独立Requiredと実ReadのGapを照合し、partialを維持。P0-Pでは#3277の最初のInspectorを既存Resolver経由で選択→実Load/Call→CLI/Studio同じConsumerへ渡すが、未接続先はNOT RUNとする。P0-Rでは[#2586](https://github.com/hat47x/tei-platform/issues/2586)のorder_entry.recent_orders一Function/一Queryを実Provider Readへ接続し、Rowset/Scope/Completeness/経路を独立観測。P0-Eの書込/Jobは、現在Target/Grant、Tx/CAS/Receipt、Handoff、EKI Body/Owner完了の別資格が揃うまで実行成功と主張しない。
+
+**非採用/保留**：Canvas固有の必須Core型階層、固定Task/Action/Event enum、Raw Textの自動意味受理、中央Trait Resolver/BOM/Host/新認可Engine、全Domain共通State Machine Runtime。複数Canvasの実UI・協働編集、正式Role Syntax、CLI/Studio共通Plugin実呼出、実Query Provider、Owner受理は本追補では未採用/未実証。
+
+**Evidence ceiling**：GitHub現行Issue・main統合PRの限定証拠を引用したdocs-onlyの横断設計。CR-01〜08の実製品試験、Studio/Web/SHO/EKI E2E、Provider/Host実行、CI、正式意味受理はこの変更で**NOT RUN**。過去PRが証明した限定試験を本PRで実行したとは記載しない。
 ## 8. 今回の結論と検証の状態
 
 **成熟した設計入力として置くもの**：状態機械の適用対象は業務に限らない／図・状態表・遷移表・交差マトリクスは同一意味を異なる形で投影する／意味Core・実行・保存・UI・文書を直結せず明示Bindingする／業務IFを全部置換しない／実Runtimeの一般化は別の採用判断とする。
