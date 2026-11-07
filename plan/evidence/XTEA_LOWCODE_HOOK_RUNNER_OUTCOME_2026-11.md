@@ -6,8 +6,9 @@
 - 宣言の検査: `internal/validation/application_pattern.go`（同じ位相の重複宣言を拒否）
 - 規則Pluginの参照実装: `internal/hook/reference.go`（`ReferenceRule`）と`internal/hook/guarded.go`（`Guarded`）
 - 委譲先: `internal/hook/command_caller.go`（`CommandCaller`・`DeclaredCommand`。`971bc772b`で`main`へ統合済み。この変更では触れていません）
-- 試験: `internal/hook/run_caller_test.go`、`internal/hook/reference_test.go`、`internal/hook/guarded_test.go`、`internal/validation/application_pattern_hook_duplicate_test.go`
-- 対象版: `0b36094a8`（`main`）を基点とした作業ブランチ
+- 能力→Patternの解決: `internal/hook/command_resolve.go`（`CommandPatternFor`。0件・複数件を拒否）
+- 試験: `internal/hook/run_caller_test.go`、`internal/hook/reference_test.go`、`internal/hook/guarded_test.go`、`internal/hook/command_resolve_test.go`、`internal/validation/application_pattern_hook_duplicate_test.go`
+- 対象版: 作業ブランチ`feat/hook-command-boundary-20261107`（`main`を基点。記録時点の`origin/main`は`2c69eed6b`。正確なheadはPRで固定する）
 - 環境: Windows（Go `1.27.0`）、WSL2 Ubuntu（Go `1.27.3`）
 
 ## 変更の要点
@@ -65,6 +66,14 @@ go run ./cmd/tei validate -workspace examples/xtea-lowcode
 - `TestGuardedCannotCallAnUndeclaredCapability` 成功。規則が満たされていても、宣言に無い能力は`HOOK_UNDECLARED_CALL`で拒否され、境界へ0回。
 - `TestGuardedFailsWithoutABoundaryWhenTheRuleHolds` 成功。判定が通っても呼出し先が無ければ`HOOK_REJECTED`で、成功にしない。
 - `TestGuardedNeedsACapability` 成功。能力の未設定は`HOOK_CAPABILITY_NOT_CONFIGURED`で報告される。
+
+### 能力からPatternの解決（`internal/hook/command_resolve.go`）
+
+- `TestCommandPatternForFindsTheDeclaringPattern` 成功。能力を宣言する`command` Patternが1つなら、それが返る。
+- `TestCommandPatternForRefusesWithoutADeclaration` 成功。宣言が無ければ`HOOK_PATTERN_NOT_DECLARED`で拒否する。
+- `TestCommandPatternForRefusesAmbiguity` 成功。同じ能力を宣言するPatternが2つなら`HOOK_PATTERN_AMBIGUOUS`で拒否する（宣言順で選ばない）。
+- `TestCommandPatternForIgnoresNonCommandPatterns` 成功。`record` Patternが能力名を持っていても、`command` Patternとしては扱わない。
+- `TestCommandPatternForNeedsAnApplication` 成功。Applicationの未指定は`HOOK_APPLICATION_REQUIRED`で報告する。
 
 ### 周辺
 
