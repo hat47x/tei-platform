@@ -184,3 +184,81 @@ Workbenchが見せるSnapshotは**あるscope・時点の情報源からの観�
 W0の静的コード照合は本書へ記録したが、**実行コードと同一attemptのProvider/Host/Consumer証拠**はまだない。新しいProvider全種類の実装前に、既存PostgreSQL ReaderのActual Row→Function Data Context→read-only Tableの一本の経路を最初の統合試験として検証する。並行して、既存Schema Diff/MigrationはPlan→Disposable DB Apply→独立Schema再観測を別の受入系列に置く。次にJSONLファイルを異質な第二Sourceとして固定し、NoSQL/クラウドAPIは能力差・部分性の実証へ段階的に広げる。実DBに破壊的適用を伴う試験は隔離DB限定とし、外部本番効果は別の権限・承認を要求する。
 
 合否は**契約の複雑性を増やした費用と、既存Capability/型/Source/Projectionだけでは検出できなかった負例の改善**で判断する。新抽象の費用対効果が確認できなければProvider局所実装に戻す。正式なQuery統一文法、巨大な汎用ログ検索サーバ、第二のSchema/Cache/Evidence/Authority基盤、DBA領域の追加は行わない。
+
+## 16. Core外PluginによるWorkbenchの縦断：開発環境と生成Runtimeで同じ能力を使う（2026-11-07追補）
+
+[#3277](https://github.com/hat47x/tei-platform/pull/3277)でmainへ統合された[Plugin-first tooling/runtime dogfooding設計](PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md)の**D1（read-only Inspectorの一操作）→D4（Workbench実データ）→D5（生成Runtimeで再利用）**と、本書の**W0/W1/W2/W3/W4**を同一の受入経路に結ぶ。これまでの「Data SourceをProvider化」だけでは足りない。**閲覧・編集・Diff・Plan・検証・CLI/Studio表現機能そのものをCore外の標準Plugin**として実装・選択・試験し、アプリケーション実行環境へ持ち込めることを証明する。
+
+- 最小Coreに置くのは契約/識別/参照/一般的な値と依存関係/失敗資格の基礎だけ。RDB、NoSQL、File/Log、Cloud API、Query、Parser、表・ツリー・タイムライン・グラフのRenderer、Schema Operation、Provider固有DDL、CLI/Studio Surface、テストDriverなどをCoreに固定しない。
+- **Data Source Providerは「情報源から取得する」責務**。表示型、操作パターン、Schema Change、ログ相関、独立検証は独立した役割のPlugin/Contractで組み立てる。実装パッケージをすべて細粒度の配布物へ分解する義務ではない。論理契約/実装/Instance/Bundle/Artifact/選択済み/実呼出を区別。
+- **初期W0の既存コードを再利用**：`internal/database/provider/provider.go`はRDBのMetadataRead/Introspectに関するLegacy Adapter、`internal/workbench/database/model.go`はIndexからの**オフライン派生表示**とみなす。`cmd/tei/main.go`の`workbench-model`は`loadObservations(analysisPaths,schemaPaths,planPaths)`から`index.BuildWithAllObservations`を経由して`databaseworkbench.Build`を呼ぶ。**その分岐自体は実DBへ接続してRow/Fieldを取得する実Provider Readではない**。
+- 既存`internal/composition/selection.go`の`Select`はContract/Scope/依存Epochの**宣言上の選択**で、実Target/Artifact/Host Grantは証明しない。`internal/plugin/model.go`の固定`CapabilityKind`を拡張して汎用Source群を加えることを標準拡張方式としない。正式なContract Resolver/SelectionとLegacy DB SPIのAdapterは既存#951/#1251のOwnerに委ねる。
+- CLIに手書きのコマンド入口が残るD1では**従来経路とPlugin経路が同一の意味結果へ到達したか**を比較。D2以後、選択したPluginのOperation OfferからHelp/Discovery、Studio Surfaceが導出され、未選択Pluginが使用可能な操作として混入しないことを実測する。StudioのWails/Bridge自体は実行環境であり第二の業務意味正本ではない。
+- 標準の提供形態はGo静的合成を先に検証し、単一実行ファイルの**実Build/Link閉包・未使用要素の非干渉**を検査する。外部Process、Java/.NET Hostは同じService Contractを満たせる別実現とし、方式選定は隔離・契約適合・配布と実測コストを見て段階判断する。
+- Verified Composition BOM（#3267）は**exact Contract＋実Provider＋Consumer/Target＋Build/Invocation＋Independent Expectedの組合せ**が通った場合だけ「検証済み」と表明する。各Plugin単体の合格や同一semver、Providerの静的Capability広告だけでは、CLI/Studio/Go生成Runtimeの全組合せを合格としない。
+
+### 原子的Traitの最新案との照合（#3278）
+
+2026-11-07にmainへ統合された[原子的Traitの実装義務・合成・履行検証](TRAIT_ATOMIC_COMPOSITION_AND_FULFILLMENT_2026-11.md)は、Trait/Contract/Provider/Hintを明確に分離する。Workbenchでも`Read`、`Versioned`、`ConditionalWrite`、`HistoricalQuery`等は**各用途に必要な保証と失敗条件**へ展開し、Generated/Standard/Manual/External実装のうち何が履行するかと独立Expectedを結ぶ。NoSQL Documentが編集可能に見えても`ConditionalWrite`の不一致時非更新を保証できないなら、編集Operation Offerは不成立にする（Readは維持）。
+
+Trait集合の合成は原則として交換・結合・冪等であり、同じ要求を別の順序で与えても選択・不足診断を変えない。同じTraitの異なるParameter/Scopeは後勝ちせず衝突または明示の両立性評価へ送る。Providerの対応宣言や単体Conformanceから、合成した全体を自動PASSとしない。実際のData Source Instanceと現在Grantまで評価する。Workbench独自のTrait Registryや複合Trait Core enumを作らず、#3278/#951の実証結果を参照する。
+
+### 用途別の責務／実装差し替え（比較用。正式Schema・Plugin名未採用）
+
+| 組合せる役割 | 先行する実Provider/Reference | CLI・Studio Consumer | 生成Go Runtime Consumer |
+| --- | --- | --- | --- |
+| Source Discover / Structure Observe | 既存PostgreSQL `CatalogReader`・DB Provider、JSONLファイルReader候補 | Schema/Source Inspector、完全性・未観測表示 | 必要な構造契約のValidatorのみ選択 |
+| Data Read/Native Query | 既存DB Query Contract/Runnerとの接続候補、JSONL Reader | Data ContextをTable/Tree/Timelineへ投影 | 同じQuery/Data Context契約でRow/Record取得 |
+| Schema Design / Plan | 既存`schemadiff`・`migration.Plan`・DB方言Provider | 差分/DDL/依存/安全性の説明 | 実業務Runtimeに設計Workbench UIを含める必要なし |
+| Action / Schema Apply | 既存Host/Provider EffectとReceipt | 明示Grantつき実行候補と結果確認 | 契約を要求する場合だけ該当操作を静的選択 |
+| Test / Explain / Conformance | 既存Scenario＋Independent Expected＋Evidence | CLI test・Studio diagnosticの同一Claim | Target実Build/Invocationを別途検査 |
+
+**表示可能≠編集可能**。Treeで見えるJSONDocument、Graphで見える参照線、ログ解析で抽出したCorrelation IDから、WriterやField-patch能力、Business Key、実行Grantを合成してはいけない。表示された型がFunction内に置かれたInstance/Mappingを経由して対象と結び付いた時だけ、明示的な変更候補となり得る。
+
+## 17. 汎用Sourceの第一級ドッグフーディング・パケット（既存Gateを増やさない）
+
+[#1251](https://github.com/hat47x/tei-platform/issues/1251)のD1を**Workbench W0の依存条件として共有**し、D1/D2を丸ごとW0が実装し直さない。最短の実証は、同じread-only Inspector ContractをCLIとStudioで比較し、その契約枠を**PostgreSQLの実データReader**と**JSONLファイルReader**の二つの異質な情報源へ圧力試験すること。さらに同じ選択済みData Read契約が、不要な開発用Surfaceを含まない生成Go実行物へ移植できるかD5で検証する。DDL Applyは別の破壊性・Ownerを持つW2で、閲覧経路成功から権限や副作用を借用しない。
+
+既存`#2586`のFunction Query→Data Context、`#2611`の同一Semantic Dataの複数DB Alias、`#3262`のRequired Source Closure、`#3182`のCLI Effect表示不一致を**必ず同じ受入パケットから参照する**。
+
+| 連結 | 実証する実物 | 証拠の上限／禁止する誤成功 |
+| --- | --- | --- |
+| P0-0：Inspector | 既存`model catalog`または`inspect`一件を選択済みContract/ProviderからCLIとStudioへ | 「コマンドが存在」≠Pluginの`selected/linked/invoked`。Source/Subject/Revision/開示・不足が一致 |
+| P0-1：Workbench read | 小さなPostgreSQLの実Readから`Source identity/rowset/field/grain/scope/completeness`をData Contextへ、JSONLから`events/order/offset/time`を同じ基本契約へ | オフライン`workbench-model`表示だけを実Read成功と呼ばない。Source/Query/Provider/実取得/開示を別観測 |
+| P0-2：Source複数経路 | `archive`と`primary`が同じ`sales.order`へ異なる物理Mappingを与える | Alias辞書順・同一Operation名で片方を黙って選ばず、ambiguous/explicit bindingにする（#2611） |
+| P1-0：表現型 | Table/Tree/Timeline/Graphを同じData/Function Contextへ束縛 | 非可逆投影で更新先を推測しない。開示した列・未取得列を保持 |
+| P1-1：PlanとEffect | `desired-schema→schema-diff→plan-migration→Provider`の隔離DB経路、既存History Unknown | Plan/DDL生成、実Apply、Receipt、独立再観測、差分消滅は別資格。#2892を先行 |
+| P1-2：Result & Help | CLI/Studioで同一Offerのread/plan/writeを提示。CLI実引数に局所出力を指定できる例 | `view -execute -operation-log`は外部業務DBが読取りでも**ローカルファイルへの書込み**があり得る（#3182）。read-only広告から「副作用ゼロ」を推測しない |
+| P2-0：Generated Runtime | Workbench開発で使用した契約/ProviderをGo単一バイナリ側へ選択 | 実Link/Invoke、現行Grant/Targetを検査。未選択DB/Studio/テストPluginの暗黙混入を拒否 |
+| P2-1：再利用資格 | Provider 2版×Consumer 2版のexact組合せ＋Source変更/Cache invalidate | Lock/BOMの個別PASSを合算しない。旧観測と旧Grantを現在資格へ昇格しない |
+
+### 合成Fixtureの最小設計（検証用資料。Production Sourceではない）
+
+- **RDB**：隔離DBの`sales_order(id,customer_id,amount,status)`に2〜3件の公開合成行を配置。業務識別・状態列・金額精度は宣言を要し、物理PKだけからBusiness IDを受理しない。読取り用`primary`と別`archive` aliasは意図的に異Mapping／別時点とし、同一`sales.order`名の重複を未解決のまま比較する。
+- **JSONL**：本PRで同梱する`examples/data-source-workbench/events.jsonl`。Event timeとIngest timeの逆転、イベントID重複、JSON明示NULL/属性欠損、同一Order IDへの相関候補を含める。`orderId`文字列が一致しても、RDBの業務Keyとの意味関係は自動受理しない。
+- **独立Expected**：同梱READMEの事実票を実装から独立に固定し、Providerの実返値と別に照合する。数や時刻の検証に加え、完全性・重複ルール・権限・未選択Pluginの非混入は実Consumer/Buildの試験資格として別途必要。
+
+## 18. 新規の判別試験と停止線（計画・NOT RUN）
+
+| ID | 対照入力 | 独立Expected |
+| --- | --- | --- |
+| WB-26 | `workbench-model`に既存`-schema/-analysis`ファイルを渡す | 派生Index/Schema/Query投影。実DB Read/Runtime Grant/実Row集合の証拠ではない |
+| WB-27 | PluginをDiscoverしたがCLI/Studioから未選択 | Discovery一覧と利用可能Offerを区別。未選択実装が実Build/Invokeへ混入しない |
+| WB-28 | 同じRead ContractにProvider A/B、同一Targetに二重Binding | 明示Bindingなしの曖昧選択を拒否。辞書順や最新versionへ黙って切り替えない |
+| WB-29 | CLIとStudioで同一Inspector＋同一Source/Grant | Request/Meaning/Revision/不足と診断が一致。Transport表示とClient E2Eは個別検証 |
+| WB-30 | PostgreSQL read→Data ContextとJSONL read→Data Context | 共通契約の粒度/Source/時点/完全性は保持。SQLの表型をJSONLへ強制しない |
+| WB-31 | 同Semantic Data、`archive`/ `primary`の異DB/異Mapping | 一つのOperation IDの先勝ちで消去せず複数候補/不明を明示 |
+| WB-32 | 選択ProviderのPlugin版/Contract固定、実Go生成バイナリ | 選択済みの実Link/Invokeを示し、Studio・未選択Provider・テストDriverの混入を検査 |
+| WB-33 | `view`をread-only広告、`-execute -operation-log`で実ファイル書込 | 外部Data effect・ローカル出力・秘密送出を分離し、実Invokeに対応したEffectを表示（#3182） |
+| WB-34 | Schema Plan中にSource/Grant/Historyが変化 | 古いSnapshot/Plan/旧GrantでApplyしない。History unknownをappliedへ昇格しない |
+| WB-35 | Inspector/ProviderのPluginだけ別版へ差替え、同じFunctionをCLI/Goで実行 | exact Lock/Target別に再検証。個別Plugin Conformanceを組合せ合格へ流用しない |
+| WB-36 | File Readerはlocal FS権限のみ、Cloud ReaderはNetwork/Secretを要求 | 最小GrantをSource別に分離。ログ内容や秘密情報をAI Harnessへ自動送出しない |
+| WB-37 | 独立NoSQL/JSONL ProviderがNative filterを実装せず、実Sourceは巨大 | 無音の全量取得・ローカルfallback禁止。予算/情報源のコスト/scopeを開示 |
+| WB-38 | `Read+Versioned` / `Versioned+Read` / `Read+Read+Versioned`を同一Scopeで要求 | 合成要求/未充足が順序・重複によらず同一、別Parameterの後勝ちなし（#3278） |
+| WB-39 | NoSQL Providerが`ConditionalWrite`を必須宣言したが失敗時非更新の実装/試験欠落 | Read-only表示は可能でもWrite Offerは`required-missing`または`unverified`。Hint扱いで迂回しない |
+| WB-40 | PluginがPublisherの許可なしに同名・互換高版のContractを差し込む | Contract ID/semverだけで採用せず#951のAuthority/Conformance境界へ拒否、既存Stableを黙って置換しない |
+| WB-41 | 時間窓のログ集計で遅着・訂正が発生、旧MaterializationがCache hit | Watermark/入力閉包/訂正の反映根拠がない限り完全集計・業務確定値を主張せず、#3271/#1641の失効診断 |
+
+受入順は**WB-26/27/29（D1に接合）→WB-30/31（実Read）→WB-34（DDL安全）→WB-32/35（実Build／BOM）**。WB-33/36/37/39/40/41はどの段階でも安全性や意味・履行保証を損なうなら停止する固定負例。性能測定は経路別に初回接続時間、ページ取得時間、メモリ/Bytes、Plugin導入に必要な編集ファイル数・Core改修数、静的Buildの含有差、CLI/Studio/Runtimeの実呼出差を計測する。未取得値は`not-run`と記載し、仮の性能目標や完全合格率を生成しない。
+
+**本節のClaim ceiling**：現行コードと既存PRの静的観測、Source Fixture・独立Expected・Fixture自身の回帰テストの作成まで（テスト実行・実Provider Conformanceは未確認）。実PostgreSQL、CLI/Studio同一Plugin呼出し、生成GoのLink/Invoke、JSONL Reader、DB Apply、P0〜P2の実試験は未実施。#1251のD1/D2契約、#2586のRead、#2892のHistory、#3267のBOM、#951のResolverを重複実装しない。

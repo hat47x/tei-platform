@@ -20,6 +20,11 @@ import (
 // バイト単位で変わらないことを示す。構文エラーの失敗文言と「先頭のanchorを採る」
 // 規則は、internal/workspace/source_index_anchor_table_test.goで検査する。
 // 値を更新するときは、変更前の実装が出力した根拠をPRに残すこと。
+//
+// 2026-11-07の更新: #3181でtraceの成功応答がworkspace識別子を持つようになり、
+// 成功時のJSON全体が変わった。モデルの内容・行の順序・ページ継続の結果が変わって
+// いないことは、上の各比較（pagedRowsとfullの一致、Workspace更新後のSTALE_SNAPSHOT）で
+// 別に検査している。変更前の実装の値はgit履歴から参照する。
 const goldenFile = "testdata/golden.json"
 
 func digest(v any) string {

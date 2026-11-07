@@ -38,36 +38,39 @@ type Parser struct {
 
 func NewParser(src string) *Parser { return &Parser{lx: NewLexer(src)} }
 
-func (p *Parser) ParseWorkspace() ([]string, error) {
+// ParseWorkspace reads the legacy `tei.workspace.tei` manifest. The name is
+// the declared workspace identity; it is returned so callers can report which
+// Workspace a read came from instead of inferring it from a path (#3181).
+func (p *Parser) ParseWorkspace() (name string, roots []string, err error) {
 	if _, err := p.expectText("workspace"); err != nil {
-		return nil, err
+		return "", nil, err
 	}
-	if _, err := p.expect(TokenIdent); err != nil {
-		return nil, err
+	nameTok, err := p.expect(TokenIdent)
+	if err != nil {
+		return "", nil, err
 	}
 	if _, err := p.expect(TokenLBrace); err != nil {
-		return nil, err
+		return "", nil, err
 	}
-	var roots []string
 	for {
 		t, err := p.peek()
 		if err != nil {
-			return nil, err
+			return "", nil, err
 		}
 		if t.Kind == TokenRBrace {
 			_, _ = p.next()
 			break
 		}
 		if _, err := p.expectText("source"); err != nil {
-			return nil, err
+			return "", nil, err
 		}
 		v, err := p.expect(TokenIdent)
 		if err != nil {
-			return nil, err
+			return "", nil, err
 		}
 		roots = append(roots, strings.TrimSuffix(v.Text, "/**"))
 	}
-	return roots, p.expectEOF()
+	return nameTok.Text, roots, p.expectEOF()
 }
 
 func (p *Parser) ParseApplication() (application.Application, error) {

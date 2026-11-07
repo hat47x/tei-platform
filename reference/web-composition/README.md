@@ -6,6 +6,8 @@
 
 ## 目的
 
+**HTTP Decision Graphとの境界（2026-11-07限定監査）**：[設計 #3274](../../plan/design/HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md)を参照。`composeRequestPlan`はGuardの契約依存DAGとTerminalイベント**宣言集合**を検査するが、実HTTP分岐の全Terminal PathでのAudit強制を証明するわけではない。[HDG-21 characterisation](plan-check.terminal-gap.test.mjs)では、Action因果祖先にならないTerminal宣言Stepがあっても構成上は受理される点を記録した。限定V8で2/2 PASS。追加の[限定Node CI Workflow](../../.github/workflows/tei-http-decision-characterization.yml)はexact checkoutのPlanner/Test Blobを記録して`node --test reference/web-composition/plan-check.terminal-gap.test.mjs`を実行する。**当該Workflowの実Run成功が確認されるまではNode本実行は未検証**。実Hostの分岐・監査については未検証であり、**このGapを実Hostの監査バイパス脆弱性と断定しない**。E1の検査をRuntime Audit Conformanceに昇格させない。
+
 プラグインを組み合わせるとき、HTTP要求の実行前に次の問題を発見できるかを確かめます。
 
 - 必須保護（本人確認・要求元保護・業務操作の認可）の不足。
