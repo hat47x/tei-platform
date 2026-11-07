@@ -31,7 +31,7 @@
 | `commands` | `tei.cli.discovery/v0` | JSON | 引数不正は標準エラー | いいえ（投影型） |
 | `model catalog` | `tei.cli.model/v0` | JSON（`declarationCounts`を含む） | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`、`SOURCE_INDEX_FAILED`、`NAMESPACE_NOT_FOUND`） | いいえ（投影型。内側に`tei.operations.model-catalog`の版を持つ） |
 | `inspect` | `tei.cli.inspect/v0` | JSON | JSON（`INVALID_ARGUMENT`、`SUBJECT_NOT_FOUND`、`INSPECTION_FAILED`、`WORKSPACE_LOAD_FAILED`、`SOURCE_INDEX_FAILED`） | いいえ（投影型） |
-| `trace` | `tei.cli.trace/v0` | JSON | JSON（`inspect`と同じ形） | いいえ（投影型） |
+| `trace` | `tei.cli.trace/v0` | JSON | JSON（`inspect`と同じ形。加えて`UNSUPPORTED_SUBJECT_KIND`（終了コード2）を`SUBJECT_NOT_FOUND`（同1）と区別する） | いいえ（投影型） |
 | `view` | `tei.cli.view/v0` | JSON（`-format json`。内側の`result`に`tei.applicationview/v0`を持つ） | JSON（終了コード2: `INVALID_ARGUMENT`・`WORKSPACE_LOAD_FAILED`・`PERIOD_STATE_LOAD_FAILED`。終了コード1: `VIEW_FAILED`・`VIEW_UNSUPPORTED`・`COMMAND_REFUSED`・`COMMAND_FAILED`・`COMMAND_LIFECYCLE_REFUSED`・`COMMAND_EFFECT_UNKNOWN`・`OPERATION_LOG_WRITE_FAILED`・`LIFECYCLE_STATE_FAILED`） | いいえ（投影型） |
 | `validate -workspace -json` | `tei.cli.validate/v0` | JSON（`declarationCounts`・`sourceRootFindings`を含む） | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`、`SOURCE_INDEX_FAILED`、`WORKSPACE_VALIDATION_FAILED`） | いいえ（投影型） |
 | `workspace-files` | `tei.cli.workspace-files/v0` | `result`に`managedFiles`（各要素は`readByLoader`付き）と`sourceRootFindings` | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`） | いいえ（投影型。#2354第一陣で包んだ） |
@@ -52,6 +52,7 @@
 観測の補足:
 
 - 引数の未対応flagは、#2332で全広告コマンドが拒否するようになった。拒否も標準エラー（`inspect`、`trace`、`validate -json`はJSON）で、flag解析のusageの分だけstderrが長くなるコマンドがある（例: `knowledge-context`に未知のflag）。`version -json`の引数不正も、2026-11-07から実装が標準エラーへ返す（表の記載と一致）。
+- `trace`は2026-11-07から、派生索引が関係図へ投影しない種類（`semantic-candidate-key`・`semantic-functional-dependency`）を`UNSUPPORTED_SUBJECT_KIND`（終了コード2）で返す。投影する種類で識別子が存在しない場合は、従来どおり`SUBJECT_NOT_FOUND`（終了コード1）である。両者を同じ符号にすると「宣言済みの参照が無い」と「この種類は対象外」を区別できない（#3180）。
 - 引数不正の出力先は、`cmd/tei/cli_argument_failure_streams_test.go`が実プロセスの標準出力と標準エラーを分けて検査する（#2993）。`version`・`commands`は標準出力を空のまま標準エラーへ理由を書き、`validate -json`は同じ失敗を標準出力の1 JSONで返す。この差はコマンドごとの決定であり、CLI全体の既定として読まない。
 - `validate -json`の失敗JSONは`diagnostics`を常に空配列として持ち、`error.code`と`error.message`のみで種別を伝える。
 - `validate -json`は、2026-11-07から`sourceRootFindings`を返す。`sources`の存在しないrootは`severity:"error"`（`ok:false`・終了コード1）、Loaderが解釈しない未知rootと、Loaderが読まない近似名の管理ファイルは`severity:"warning"`である。Canonical Subjectを持たないため`diagnostics`とは別の欄にする（#2823）。

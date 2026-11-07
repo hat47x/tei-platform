@@ -79,6 +79,36 @@ func TestTraceWorkspaceJSONSuccessAndContinuation(t *testing.T) {
 	}
 }
 
+func TestTraceWorkspaceJSONDistinguishesUnprojectedKindFromMissingSubject(t *testing.T) {
+	// `examples/xtea-lowcode` declares a candidate key that `inspect` can read.
+	// `trace` has never projected that kind, so the honest answer is "this kind
+	// is outside the trace surface", not "no declared references exist" (#3180).
+	root := filepath.Join("..", "..", "examples", "xtea-lowcode")
+	run := func(kind, id string) cliTraceReport {
+		t.Helper()
+		var out bytes.Buffer
+		got, err := traceWorkspaceJSON(&out, root, "", "dogfood", kind, id,
+			"both", "summary", "", 0, 0, 0)
+		if err != nil {
+			t.Fatalf("trace %s:%s: %v", kind, id, err)
+		}
+		if got == 0 {
+			t.Fatalf("trace %s:%s unexpectedly succeeded: %s", kind, id, out.String())
+		}
+		return parseTraceReport(t, out.Bytes())
+	}
+	unprojected := run("semantic-candidate-key", "sales.order.order_identity")
+	if unprojected.OK || unprojected.Error == nil ||
+		unprojected.Error.Code != operations.InspectionUnsupportedKind {
+		t.Fatalf("unprojected kind was not reported as unsupported: %+v", unprojected)
+	}
+	// A projected kind with an absent ID keeps the semantic "not found".
+	missing := run("semantic-data", "sales.no_such_data")
+	if missing.OK || missing.Error == nil || missing.Error.Code != operations.InspectionNotFound {
+		t.Fatalf("absent subject lost SUBJECT_NOT_FOUND: %+v", missing)
+	}
+}
+
 func TestTraceWorkspaceJSONArgumentErrors(t *testing.T) {
 	root := filepath.Join("..", "..", "reference", "workspace")
 	cases := []struct {

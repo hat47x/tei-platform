@@ -229,8 +229,8 @@ func TestTraceWorkspaceReportsTraceErrorBeforeSourceIndexFailure(t *testing.T) {
 	}
 
 	// グラフを見て初めて分かる失敗（存在しない主体）は、Source Index側の失敗より優先する。
-	// 検査対象外の種別なので、inspectCanonicalでは弾かれず、TraceDirectが返す。
-	missing := modelref.Key{Scope: "reference-observation", Subject: subject.Subject{Kind: "no-such-kind", ID: "x"}}
+	// 派生索引が投影する種別なので、inspectCanonicalを通過し、TraceDirectが返す。
+	missing := modelref.Key{Scope: "reference-observation", Subject: subject.Subject{Kind: "semantic-data", ID: "unknown-data"}}
 	_, err = TraceWorkspace(root, missing, modelref.TraceOptions{Mode: "summary"})
 	var failure *ValidationFailure
 	if errors.As(err, &failure) {
@@ -239,11 +239,21 @@ func TestTraceWorkspaceReportsTraceErrorBeforeSourceIndexFailure(t *testing.T) {
 	if !errors.As(err, &traceErr) || traceErr.Code != "SUBJECT_NOT_FOUND" {
 		t.Fatalf("expected SUBJECT_NOT_FOUND from the trace, got %v", err)
 	}
+
+	// 派生索引が投影しない種別は、世界を読む前のUNSUPPORTED_SUBJECT_KINDとして返る
+	// （#3180）。存在しないIDと同じSUBJECT_NOT_FOUNDにしない。
+	unprojected := modelref.Key{Scope: "reference-observation", Subject: subject.Subject{Kind: "no-such-kind", ID: "x"}}
+	_, err = TraceWorkspace(root, unprojected, modelref.TraceOptions{Mode: "summary"})
+	if !errors.As(err, &traceErr) || traceErr.Code != InspectionUnsupportedKind {
+		t.Fatalf("expected UNSUPPORTED_SUBJECT_KIND for an unprojected kind, got %v", err)
+	}
 }
 
 // Traceが失敗して戻るときも、並行に走らせた処理は合流済みで、goroutineが残らない。
 func TestTraceWorkspaceLeavesNoGoroutinesWhenTheTraceFails(t *testing.T) {
-	missing := modelref.Key{Scope: "reference-observation", Subject: subject.Subject{Kind: "no-such-kind", ID: "x"}}
+	// 投影される種別の存在しないIDを使う。Source Index側も走らせたうえで
+	// TraceDirectが失敗する経路で、並行に起動した処理が残らないことを見る。
+	missing := modelref.Key{Scope: "reference-observation", Subject: subject.Subject{Kind: "semantic-data", ID: "unknown-data"}}
 	for i := 0; i < 5; i++ {
 		before := runtime.NumGoroutine()
 		_, err := TraceWorkspace(referenceWorkspaceRoot(), missing, modelref.TraceOptions{Mode: "summary"})

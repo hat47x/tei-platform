@@ -42,6 +42,46 @@ func TestUnknownDoesNotBecomeCanonical(t *testing.T) {
 	}
 }
 
+// SupportsSubjectKind must describe exactly what FromIndex materializes. A
+// kind claimed here but never added would make `trace` answer SUBJECT_NOT_FOUND
+// for a subject that the graph genuinely cannot contain (#3180).
+func TestSupportsSubjectKindMatchesWhatFromIndexProjects(t *testing.T) {
+	d := index.Derived{
+		SemanticElements: []index.SemanticElementEntry{
+			{Kind: "namespace", ID: "sales"},
+			{Kind: "type", ID: "sales.code"},
+			{Kind: "data", ID: "sales.order"},
+			{Kind: "attribute", ID: "sales.order.order_id"},
+			{Kind: "relation", ID: "sales.order.customer"},
+			{Kind: "validation", ID: "sales.order.amount"},
+			{Kind: "capability", ID: "sales.submit"},
+		},
+		ApplicationPatterns: []index.ApplicationPatternIndexEntry{{Application: "order_entry", Pattern: "order_entry.submit"}},
+		Queries:             []index.QueryIndexEntry{{Query: "recent_orders"}},
+	}
+	p := derivedbridge.FromIndex(d, "sales-scope")
+	projected := map[string]bool{}
+	for _, node := range p.Graph.Nodes {
+		projected[node.Key.Subject.Kind] = true
+	}
+	for _, kind := range []string{
+		"semantic", "semantic-type", "semantic-data", "semantic-attribute",
+		"semantic-relation", "semantic-validation", "semantic-capability",
+		"application", "application-pattern", "query",
+	} {
+		if !derivedbridge.SupportsSubjectKind(kind) || !projected[kind] {
+			t.Fatalf("%s: SupportsSubjectKind=%v projected=%v", kind, derivedbridge.SupportsSubjectKind(kind), projected[kind])
+		}
+	}
+	// inspect reads these from the Canonical World, but the derived bridge has
+	// no edge for them, so trace must refuse the kind instead of the ID.
+	for _, kind := range []string{"semantic-candidate-key", "semantic-functional-dependency", "unknown-kind"} {
+		if derivedbridge.SupportsSubjectKind(kind) || projected[kind] {
+			t.Fatalf("%s: unprojected kind was accepted", kind)
+		}
+	}
+}
+
 func TestAmbiguousGenericSemanticReferenceNeverGuessed(t *testing.T) {
 	d := index.Derived{
 		SemanticElements: []index.SemanticElementEntry{

@@ -46,6 +46,7 @@ go run ./cmd/tei validate -workspace reference/workspace -json
 | `inspect`と`trace`のFingerprintが異なる | 異版/異入力の可能性を報告し、同一版として結合しない |
 | Warning付き`validate ok=true` | ValidationはWarning付きで成立。Warningを結果から消さない |
 | `trace`に直接辺がない | 宣言済みの対応参照がない/未解決など結果の範囲を調べ、全依存不存在の証明にしない |
+| `trace`が`UNSUPPORTED_SUBJECT_KIND`（終了コード2）を返す | その種類は関係図に投影されない（`semantic-candidate-key`・`semantic-functional-dependency`）。`SUBJECT_NOT_FOUND`（同1）の「宣言が無い」と読み替えず、`inspect`で要素自体を読めるか別に確かめる |
 | 適用したいFunction Patternが説明されているが実Targetにない | 文書上の提案・参照例と、実Provider・Renderer・Hostの適用資格を別に確認 |
 | 公開不可の原資料がある | Source保持側で許可されたProjectionを構成し、外部HarnessへRaw/非公開Metadataをそのまま渡さない |
 | 外部Java/.NETアプリケーションでTEI Providerを使いたい | TEI Skillでは開発手順の案内まで。#2390/#2513等で実HostへのContract/Artifact/Loadを別に検証 |

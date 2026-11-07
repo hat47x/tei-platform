@@ -43,6 +43,19 @@ func TraceWorkspace(root string, key modelref.Key, options modelref.TraceOptions
 			Code: "INVALID_SUBJECT", Message: "exact nonempty scope, subject kind and subject id are required",
 		}
 	}
+	// A kind the Derived bridge never projects cannot produce declared
+	// references, and looking it up in the candidate graph would report the
+	// same "not found" as a genuinely absent subject. The caller must learn
+	// that the kind itself is outside this read surface (#3180), so the check
+	// runs before any load and costs nothing.
+	if !derivedbridge.SupportsSubjectKind(key.Subject.Kind) {
+		return WorkspaceTrace{}, &modelref.TraceError{
+			Code: InspectionUnsupportedKind,
+			Message: fmt.Sprintf(
+				"trace does not project subject kind %q; inspect may still read it, but it has no declared-reference edges",
+				key.Subject.Kind),
+		}
+	}
 	loaded, err := workspace.Load(root)
 	if err != nil {
 		return WorkspaceTrace{}, &ValidationFailure{Stage: StageLoad, Err: err}
