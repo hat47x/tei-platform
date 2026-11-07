@@ -338,3 +338,21 @@ Wails依存を外したGo Service/合成Adapterの試験と、実WebView起動�
 これでD1の**First Missing Edge**は「抽象的なPlugin/Studio統合」ではなく、**Studio `ReadOnly.InspectSubject`の実Provider Port不在とCLI直接分岐**と特定できる。上流のSource/Providerの選択・現在資格も未解決のまま明記し、旧Runtime Carrierを破壊的変更するのではなく、Host-ownedなAuthoring入口から既存#1251/#951/#1016の同じ選択機構を消費する。
 
 **資格**：本§はmainの3 Goファイルと[main統合 #3300](https://github.com/hat47x/tei-platform/pull/3300)の静的照合による計画。新Port・差替え・Go単体試験・CLI/Wails二Consumer・Plugin実Invoke/Host Grant、正式受理は**NOT IMPLEMENTED / NOT RUN**。
+
+### 10.8 D1の実装候補を限定受入へ接続し、選択表示と実利用を区別する
+<!-- tei-desktop-inspection-port-slice-20261108 -->
+
+**実行に着手した範囲**：[#3371](https://github.com/hat47x/tei-platform/pull/3371)は、§10.7で指摘した`ReadOnly.InspectSubject`のServiceFactory迂回に対し、既存`RootServices`へ`InspectionService`を加える**小さなGo変更のDraft**。Factory無しのPoC read-only経路は維持し、Factory非nilのときInspector未提供なら暗黙の`operations.InspectSubject`へfallbackせず拒否する。Subject/schema/effect/Canonical非空/World・Source Index fingerprintが一致しない応答は成功扱いしない。Root allowlist/Identity検査はFactory呼出前に維持し、Host固有エラーは公開Responseへそのまま返さない。
+
+**新Go試験の役割**：Factoryからの一回の実Service呼出し、旧built-inへの無断fallback拒否、誤Subject・Effect・版/内容欠落、許可外Workspace/Root差替えのFactory呼出0回、Host-private error秘匿を対照する。これらは**Host-selected typed Inspector入口の局所試験候補**であり、PluginのContract/Provider exact選択、実Composition Lock→actual invoked Providerの対応、CLIとWailsが二つの独立Consumerとして同じProviderを利用した証拠ではない。初回PRの[Actions](https://github.com/hat47x/tei-platform/actions)は作成時queued/pendingで、Go/CIのPASSは未確認。ここでDS-D1-A/Bを`PASS`にしない。
+
+| 次の検証順 | 必要な反証・確認 | 間違った合格判定 |
+| --- | --- | --- |
+| **S1: Host Port** | #3371のFactory非nilでService missing/Error/Subject mismatch/Allowlist異常がFail closed、Factory nil legacyが保持。PR exact-head Go+Repository Healthを実測 | テストコード追加だけで実成功、Contract選択済みと主張 |
+| **S2: Composition actual** | #3300 AS-01〜12のHost-owned Authoring Selectionと同一Scope/Provider版/Artifactを`InspectionService`実装に束縛。Pin B→実Aは結果同一でもFAIL。旧`application-runtime`専用Carrierを流用しない | typed Portができた＝実Plugin Invoke／Runtime認可あり |
+| **S3: CLI+Wails** | CLI直接`inspectWorkspaceJSON`経路も同一Contractへ切替。CLI・`/workbench/`を別Attempt/別Call siteで実呼出し比較。Workspace/Source/Disclosure/Unknownと同一Artifact、旧A→B→A応答とBundle配布バイトを検証 | Studio単独Port PASSやNode UI20/20を二Consumer／実Desktopの合格へ流用 |
+| **S4: Data Source/Offer** | [Draft #3363](https://github.com/hat47x/tei-platform/pull/3363)ではreference/workspaceの24 Binding中22 selected・2 missing（`editor.database_workbench`、dev/prod）。ただし現Validatorは`editor.sql_analysis`のみ能力照合、`database_workbench`にはKnown検査のみ。#3270/#951の適用条件・実Provider Invoke/Target検証までを別資格として説明 | 参照Matrixのmissingを製品エラーとして強制／selectedを実対応・Grantに昇格 |
+
+**判断上の留意**：Studioが扱うread-only結果でも、CLI／Tool／Session Log等の受信側は保存・送出し得る。Source/ResultのDisclosureとSinkの観測は#2515/#3338に委ねる。#3354の11実CLI Reply・32局所対照はRule/Source Closureの**一部を拒否できる**証拠で、全設計情報・外部Tool配送やWails側の実選択資格ではない。#3359のHook Reads限定はDraftで、RunnerからCLI/Studioへの配線とProduces sideは未実証。FunctionのOfferやHook宣言が画面に見えても実行可能・意味受理済みとは表示しない。
+
+**計画統合の状態**：本§は同じDesktop設計Draftへ実装候補の所在・依存関係・不合格条件を追記したもの。#3371は別Draft、#3352はまだmain未統合、#3363/#3359も未統合。新しいWails/Windows/Provider/CLI+Studio二Consumer・外部Sinkの試験を本節では実施していない。§10.1〜10.7や#1180/#2514の独立Expected/Gateは維持する。
