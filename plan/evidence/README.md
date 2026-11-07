@@ -49,6 +49,7 @@
 - [Go選択Module閉包の事前観測](TEI_GO_MODULE_CLOSURE_PREFLIGHT_2026-11-07.md)（`cmd/tei`は現行の隔離観測で`missing-module`、自己完結したtoolは`supported`。Build・Artifact・権限は未実行。SB-0a / #2831）
 - [構成Kernel移行Gateの最初の実証パケット実行記録](COMPOSITION_FIRST_CONSUMER_RUN_2026-11-07/README.md)（固定HEADでA・B・C三経路を別々に実行し、`operations`と`artifacts`が同じ`modelRevision`を共有したことだけを記録。三経路の同一業務Request接続・Owner受理・実DB効果は未確認）
 - [構成Gateの次の一辺を依存グラフで測る](COMPOSITION_NEXT_EDGE_STATIC_SURVEY_2026-11-07/README.md)（Goファイル2876件と実行単位167件のimport閉包を走査し、`internal/operations`と`internal/composition`を同居させるファイル・実行単位が0件、`internal/servicehost`の非試験呼出し元も0件であることを記録。実行時の不接続や権限は示さない）
+- [宣言されたPatternと導出された操作はどこで結べるか](PATTERN_KIND_OPERATION_MAPPING_2026-11-07/README.md)（同じWorldから `tei operations` の導出操作8件と `tei artifacts` の `pattern` 5件を取り、Data ID・能力ID・Relation target の三つの手掛かりごとに一致と限界を記録。受理済み基準では書込み操作の `binding` が全件nullで、読み取り専用の `command` は構造上どの導出操作とも結ばれない。結合規則の採否は示さない）
 - [操作面は宣言されたPatternを読んでいるか](OPERATION_SURFACE_DECLARED_PATTERN_GAP_2026-11-07/README.md)（受注Workspaceと見積もり候補の重ねで`tei operations`を比較し、World指紋は変わるのに操作面8件と`summary.declared=0`が不変であることを記録。W3未着手の設計記述と一致し、AのOperationとBの業務ActionをA側で結ぶ手掛かりが現状無いことを示す。権限・意味の受理は示さない）
 
 - [DSH外部HarnessからのTEI read-only CLI実起動](DSH_H2_TOOL_ONLY_READ_ONLY_2026-11-07/README.md)（#2509。外部AIハーネスの1実Sessionで固定実行物の実起動・実引数・実出力を同一ログで突合。H3・四Session比較・正答採点・Egressは未実施）
@@ -59,5 +60,6 @@
 
 - [DSHセッションログ拡張の実送出計測](DSH_SESSION_LOG_EGRESS_MOCK_2026-11-07/README.md)（#2509・TAI #232。ローカルMock宛で拡張fieldの水位・再有効化・Tool結果の複製送出を計測。実Providerへの送出とEgress制御はNOT RUN）
 - [オフラインGo Module供給の検証](TEI_GO_MODULE_SUPPLY_VERIFICATION_2026-11-07.md)（`cmd/tei`の実選択12件を`go.sum`の`h1`へ束縛してオフライン再解決。供給元・署名・Buildは未検証。SB-0b / #2831）
+- [DSHセッションログ拡張の既定・再試行・切断の追測](DSH_SESSION_LOG_RETRY_AND_DEFAULT_2026-11-07/README.md)（#2515 H6-E2・#2509。出荷既定で拡張fieldが載り、非2xxと空streamでは水位が進まず未受理区間が再送されることを計測。実Provider送信とEgress制御はNOT RUN）
 - [供給からの実BuildとSource閉包資格の食い違い](TEI_GO_BUILD_WITH_SUPPLY_X1_2026-11-07.md)（`cmd/tei`は供給だけでBuildできるが、同じadapterのSource閉包は`rejected`。artifactと資格を別Claimとして扱う。SB-B事前確認 / X1 / #2831）
 - [pwsh不安定時のWSL検証手順](WSL_VERIFICATION_RUNBOOK_2026-11-07.md)（worktreeの`.git`書換え・ログインシェル回避・読み取り専用cacheの後始末・両OS結果の扱い）

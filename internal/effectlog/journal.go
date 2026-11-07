@@ -41,7 +41,7 @@ func (f File) Append(record Record) error {
 	if err := os.MkdirAll(filepath.Dir(f.Path), 0o755); err != nil {
 		return fmt.Errorf("prepare effect journal %s: %w", f.Path, err)
 	}
-	file, err := os.OpenFile(f.Path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	file, err := os.OpenFile(f.Path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
 		return fmt.Errorf("open effect journal %s: %w", f.Path, err)
 	}
