@@ -560,4 +560,24 @@ UI/CLI/Jobの実行要求は、表示/選択の更新世代（**Selection/Contex
 - **公開と自律**：[main #3210](https://github.com/hat47x/tei-platform/pull/3210)で`tei operations`はCLIから利用できても`tei commands`の選択公開外。[Draft #3231](https://github.com/hat47x/tei-platform/pull/3231)の`unattended`はread-only由来に留まり、実Service Subject/現在Grantは未接続。`view -execute`の操作ログ/Lifecycleローカル書込み（Draft #3162）も、Business read-onlyや外部AI送出とは別属性。DSHの実Tool読取/Session Log/開示隔離は#2509/#2515/TAI #168へ移し、Client表示の権限をHostの正式権限としない。
 - **Evidence境界**：Source/Query/実バイナリ/Provider/actual SQL+params（機密値非公開）/Result Slice/Owner L/P/OperationID/Receipt/Resource post-image/Consumer実受領を、#1163の既存PacketでClaim別に紐付ける。OKF/SHOのAttested記述は検査内容・根拠の来歴であり、Meaning/Grant/実Effectの権限ではない。
 
-**到達点**：Web Referenceの物理PG ReadおよびCommand系Receipt/Resource Readは**個別の実装・実証あり**。Productの`Browse→Query→実Provider→Bound Function/Consumer→Script Effect/Recovery`一改訂統合、RC-03/05故障注入、正式Host Grant・Owner受理、外部AI機密境界は**NOT RUN／NOT QUALIFIED**。
+### 13.5 Operationの陳腐化・記録障害・外部Session復帰を同一境界で誤認しない
+
+[main #3254](https://github.com/hat47x/tei-platform/pull/3254)の実測では、`reference/standard-crud/workspace`の属性を1つ追加するだけで`worldFingerprint`／`modelRevision`が変化し、Operation 5件の`basis`は**すべて不変**だった。現`tei operations`には`-expected-fingerprint`が無く、実行時`period_guard`も操作面の版は照合しない。このため、**Operation ID/Basisの一致は、Source/World/Operationが現在有効な証拠ではない**。`basis`は依存根拠のFingerprintとして保持し、世界全体の版であるかのように再定義しない。
+
+**Script起動・回復の独立Expected**は、既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)／[#1163](https://github.com/hat47x/tei-platform/issues/1163)と[#1174](https://github.com/hat47x/tei-platform/issues/1174) RC-03/05に対応付け、以下の一因子対照を優先する。
+
+| 一因子を変えた条件 | Admission／Recoveryで求める区別（本Script経路の新実走は未実施） |
+| --- | --- |
+| 同Operation IDと`basis`のまま管理対象Source属性だけ変更 | **実Source・World・選択Targetの現在性を再検証**。改版前の許可/Planを自動再利用しない。`worldFingerprint`不一致の扱い（再導出/停止/再受理）はOwnerの実行Contract選択に委ねる。新エラーコードを採用済みとして書かない |
+| 同じSource/WorldでTenant・Target Resource・Actor/Grantだけ変更 | Operationが同一でも**現在Host Grant/Target**は別。対象集合を実Providerへ渡す直前に比較し、過去の認可/別TenantのReceiptを再利用しない |
+| Executor別Tx Commit済み→`Recorder.Record`だけ失敗（RC-03） | `COMMAND_RECORD_FAILED`を*Clean Rejected/Effect 0*へ昇格させない。Stageを可能な限りunknownとして保持し、同Operation IDのReceipt Lookup＋別接続現在値Readで限定確定。実コード`EffectUnknown`伝播の修正要否は#1174が所有 |
+| Executor別Tx Commit済み→`Lifecycle.Observe`失敗、または`MarkUnknown`自体失敗（RC-05） | 記録失敗がある状態で**安全に再送可能**と表現しない。Stageの実耐久性を観測し、Receipt/Target/Operation Identity一致まで再試行資格を保留。Ack喪失と補償は別のRun/判断 |
+| 同OperationのReceipt Lookup一致、ResourceのValueがA→B→A | `receipt-observed`と現在値byte一致だけで**Version/因果的Postimage**を確認したとしない。`ResourceRead`のVersion・Read時点・同一Target/Grantを別欄に残す。今のObserverがVersion比較を保証するとは推定しない |
+| 非公開Rawを過去Sessionで読み、Sessionを再開する | [未統合 #3237](https://github.com/hat47x/tei-platform/pull/3237)の**合成DSH実測**では既送出Session Logの水位は進み再送が止まっても、モデル入力に以前のCanaryが再登場した。**Session Logの非再送≠モデル入力からの消去**。再開時は現在Disclosure/Task/Session資格を再判定し、過去のRawが新要求に載らないと推測しない |
+| 保存されたJournalの鎖・pinは一致、別Provider実Commit証拠は欠落 | [main #3230](https://github.com/hat47x/tei-platform/pull/3230)の`PinnedJournal`は接続した固定World Buildの**末尾削除・追記時検査**を限定観測する。署名でも全Journalへの適用でも実Provider Receiptでもない。Source/Run/Effect/ConsumerそれぞれのReceiptを代用しない |
+
+**同一Attemptへ追加する実観測列（新公開Schemaではなく既存Evidence Packetへの手渡し）**：`Source path+bytes/manifest identity（観測時）/World FP/Source Index FP/modelRevision/Operation ID+basis/selected Function+Pattern+Query/actual Binary/Actor+Tenant+Target+current Grant/Provider SQL+args digest+scope/Stage before+after/Recorder+Lifecycle outcome/OperationID+RequestHash/Receipt lookup/Resource value+version+asOf/Consumer delivery+Disclosure decision`。実Providerとの接続がない列は`unverified`とする。実SQLパラメータやGrant、非開示Row、Session Rawを外部AIの記録へ丸ごと転載しない。
+
+**実装順と責務**：P0-Rの最初の作業は引き続き§13.1〜13.3のProduct`BuildBrowse→selected Query→実Provider Reader`接続であり、Operation SurfaceのW3全実装や新Snapshot/Authority基盤を先に要求しない。次にP0-Sとして**実行直前のSource/World/OperationとTarget/Grantの照合口**を既存RunPlan/Host Admissionに探し、なければ最小の不足を#2502/#1130へ引渡す。最後にP0-WでRC-03/05を#1174の既存Stage/Receipt/ResourceReadに繋ぐ。外部SessionのRaw再露出とEgressは#2509/#2515・TAI #232、Journal pinの適用範囲は#1174/#2845、Product Readは#2586、Ownerの業務Meaningと対象集合は#2506/#2514が受理する。第二のPolicy/Query/Recovery Engine・Fixture正本は追加しない。
+
+**到達点**：Web Referenceの物理PG Read、Command Receipt/Resource Read、Operation driftの合成実測、PinnedJournalの限定実装はいずれも**別々の有限証拠**。Product`Browse→Query→実Provider→Bound Function/Consumer→Script Effect/Recovery`同一Source/Attempt、RC-03/05実障害注入、実行直前のHost/Grant/World照合、DSH再開時の実機密Profile、正式Owner受理は**NOT RUN／NOT QUALIFIED**。
