@@ -52,6 +52,7 @@
 - [DSH外部HarnessからのTEI read-only CLI実起動](DSH_H2_TOOL_ONLY_READ_ONLY_2026-11-07/README.md)（#2509。外部AIハーネスの1実Sessionで固定実行物の実起動・実引数・実出力を同一ログで突合。H3・四Session比較・正答採点・Egressは未実施）
 - [DSH実HarnessでのH2/H3四Session実行](DSH_H2_H3_FOUR_SESSION_2026-11-07/README.md)（#2509・TAI #168。H2→H3→H3→H2を同一Taskで実行し、H3のSkill実Load byteを確認。回答採点・Skill効果の因果・Egressは未確認）
 
+- [Go Module供給のcorrupt-supply分類](TEI_GO_MODULE_CORRUPT_SUPPLY_2026-11-07.md)（#2831 SB-0b。archive破損と展開済み改変の実観測、`go list`では展開済み改変が見えないこと、`go mod verify`が捕まえることの記録。供給manifestと`h1:`照合の接続は未実装）
 
 
 
