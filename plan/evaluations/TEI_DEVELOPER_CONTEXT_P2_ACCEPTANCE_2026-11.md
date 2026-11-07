@@ -503,7 +503,7 @@ P0-M（三視点Diagram/CRUD）とP0-R（Function→Query→実Provider→Contex
 
 従って、**Target SHA／Test SHA／Profile／候補List／Reportが全て同じでも、必要依存の実byteが変わればTest結果が変わる**。CC-17のTest Source byte変更とは独立の負例。これは、TEIのRule/Relation／Function・Queryの見えない依存がChange Impactや実Test Admissionを決め得ることを、より小さいGoパッケージで実証する位置付けである。Goの`GoFiles`一覧は本Packageに限る。Go Toolchain/外部Imports／Plugin／実Target Binary／Provider／実Run Receiptの完全閉包は取得していない。
 
-**試験状態**：本節初版の時点でコードはGitHubへ保存。CC-18のexact Source commitに対する**Focused CIの完了・Jobログを確認するまではRUN成功を主張しない**。成功しても、実製品`Discover`のDependency追跡機能を追加・検証したわけではない。現`Report`の候補ReportがDependency closureを代表しない、という限定反例である。
+**限定CI結果（exact Test Source commit）**：`31a317f506a750658efa56710319363aa72e68da`に対する[Focused Actions #42391826601](https://github.com/hat47x/tei-platform/actions/runs/42391826601)、job `128460814122`は**completed/success**。実ジョブログで`TestDiscoveryProfileCC18UnreportedSourceDependencyChangesTestOutcome` **PASS（0.37秒）**、CC-12〜17も同じジョブでPASS（SKIPではない）を確認した。CC-18のE0/E1/E2は試験内部で実Goの`go test -json` named eventとexitを照合。**公開合成Go package限定**。実製品`Discover`のDependency追跡機能を追加・検証したわけではなく、現`Report`が必要Dependency閉包を表さない反例である。後続のdocs更新を含むPR HEADの全体HealthはこのCIと別検収。
 
 ### 20.3 認知Methodが選ぶべき「次のProbe」を狭く定義する
 
@@ -526,4 +526,4 @@ TEI #3262の不足は単純な`Read more`ではない。**どの問いQの必要
 - P0-M（三視点/CRUD）のDiagram Edge、P0-R（Function→Query→実Provider→表現）の実行Edge、P0-C（同一Source/Scope/Revision/Consumer）の一致を一つの図で表現しても、それだけで同じTime/GrantのActual Executionとはしない。[TEI #2516](https://github.com/hat47x/tei-platform/issues/2516)／[#2586](https://github.com/hat47x/tei-platform/issues/2586)が現在性・ProviderのOwner。
 - [SEI #767](https://github.com/hat47x/sei-cognition/issues/767)はQごとのUnknown/次Probe選択、[TEI #2533](https://github.com/hat47x/tei-platform/issues/2533)はCC-18とP2比較、[#3262](https://github.com/hat47x/tei-platform/issues/3262)は既存Context Gateへの方式収束、[#2514](https://github.com/hat47x/tei-platform/issues/2514)は独立Expected/Mutantを所有する。
 
-**進行ゲート**：①CC-18の実Go Focused CI・現在HEAD Healthを確認、②TT-56の両Draftに対し同一R(Q)のpositive／true missing／wrong mode／outside-scopeを照合して既存Consumerで採用一案を選ぶ、③製品の実Loader→Parser→Evaluatorへ一Ruleを通す、④外部MethodのTool受領・独立採点を別段階で検収。新しいIndex Reader、Source Parser、Proof Store、中央認知Host、Runtime Authorityを追加しない。実H2/H3適格比較・実OS隔離・実Provider/DB・AI盲検T1-B・Owner Accepted Meaningは今回NOT RUN。
+**進行ゲート**：①CC-18の実Go Focused CIは上記exact Test Source commitで検証済み。後続HEADのHealthを別検収、②TT-56の両Draftに対し同一R(Q)のpositive／true missing／wrong mode／outside-scopeを照合して既存Consumerで採用一案を選ぶ、③製品の実Loader→Parser→Evaluatorへ一Ruleを通す、④外部MethodのTool受領・独立採点を別段階で検収。新しいIndex Reader、Source Parser、Proof Store、中央認知Host、Runtime Authorityを追加しない。実H2/H3適格比較・実OS隔離・実Provider/DB・AI盲検T1-B・Owner Accepted Meaningは今回NOT RUN。
