@@ -29,7 +29,11 @@ type ModelCatalog struct {
 	NamespaceMatchKind     string `json:"namespaceMatchKind,omitempty"`
 	WorldFingerprint       string `json:"worldFingerprint"`
 	SourceIndexFingerprint string `json:"sourceIndexFingerprint"`
-	ModelRevision          string `json:"modelRevision"`
+	// ModelRevision is the revision of the managed Source set, not of the
+	// loaded World. An empty Workspace (no managed Source read) reports the
+	// SHA-256 of the empty input while still listing the standard prelude,
+	// so this value must not be read as "the model is empty" (#2822).
+	ModelRevision string `json:"modelRevision"`
 	// DeclarationCounts separates Workspace-authored declarations from the
 	// standard semantic prelude, which is always present (#2822).
 	DeclarationCounts DeclarationCounts   `json:"declarationCounts"`
