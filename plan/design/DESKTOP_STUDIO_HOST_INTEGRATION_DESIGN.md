@@ -319,3 +319,22 @@ Wails依存を外したGo Service/合成Adapterの試験と、実WebView起動�
 | DS-07／#1158（後続Write、現D1外） | [main #3348](https://github.com/hat47x/tei-platform/pull/3348)でHookの位相順、warn継続、不成立・失敗時の停止位置を`RunSequence`のGo局所試験で固定。ただしCLI/Studio実行経路への呼出しは未接続。Hook順序の表示・広告を、実行した事実／Transaction境界／Plugin選択／外部Effectと同一視しない |
 
 **First Missing Edgeの更新**：実Read-only Inspectorへの次の一手は、`requiredDomainClosure`がunknown/partialの場合に**Provider選択へ先行させないこと**ではなく、十分に収集できた範囲を限定表示し、未実証の追加Source/Role/Relationを欠落と誤判定しないこと。実Provider D1で要求されるSource/Contract/Disclosure閉包が揃わない場合、`qualifiedInvoke=false`のまま実呼出適格性を否定する。これは設計候補であり、現CLI/Hostの既存Result Schema/Permission/Owner受理を上書きする強制的な新boolean fieldではない。
+
+### 10.7 実コード上の最初の欠落辺：InspectはRootServicesを使っていない
+<!-- tei-desktop-d1-first-missing-host-seam-20261108 -->
+
+**2026-11-08のmain実ソース照合**：
+- `internal/studiohost/readonly.go`：`RootServices`の提供口は`Catalog CatalogService`と`Validation ValidationService`だけ。`ReadOnly.CatalogWorkspace`／`ValidateWorkspace`は非nil Factoryを使い、必要なServiceが欠ければ拒否する。一方、`ReadOnly.InspectSubject`は現在`h.workspace(id)`のallowlist/root same-file照合後、`operations.InspectSubject(root, ...)`を**無条件に直接呼び出す**。`services` Factoryによる選択/差替えは通っていない。従って既存Wails `StudioBridge.InspectSubject`が動いた事実をPlugin-backed Inspectと読まない。
+- `cmd/tei/main.go`：`inspect`分岐は`inspectWorkspaceJSON`を直接呼ぶ。Studioだけの差替えに成功しても、同じContractがCLIと二Consumerで使われたとは認めない。
+- `internal/plugin/runtime/service_carrier.go::validateServiceSelection`：`selection.Scope != "application-runtime"`を明示拒否。Authoring `inspect`へ旧CarrierのScope文字列を追加/変更するだけでは、Target/Host所有のSelection・Artifact・Current Grantを保護できない。[main #3300](https://github.com/hat47x/tei-platform/pull/3300)のAS-01〜12と実装着手票は**この不足辺の詳細Owner**であり、本書で二重の選択器や新契約を実装しない。
+
+**直近の差分最小案（DS-D1-A/Bの実装担当へ渡す）**：
+
+1. **Studio側のService境界**：現`RootServices`に対応するInspectの*型付きread-only Port*を加えるか、既存operationsのService化候補を利用する。nil Factory時の既存PoC経路と、non-nilでProviderが不在・誤選択のときを分ける。non-nilのD1選択経路でInspectorが無い場合に**暗黙の`operations.InspectSubject`へfallbackして成功させない**。実変更前に既存RootServices consumer/Go testsに対する影響を列挙。
+2. **CLI側の同一Contract**：CLIは既存`inspectWorkspaceJSON`を見せかけだけ包装せず、実際のContract/Provider選択→Host-owned Binding→実Invoker/実Sourceを照合する。StudioとCLIは別Attemptでよいが、それぞれ同一SelectionとResultに対して**actual Provider identityの証拠**が必要。
+3. **負例を先に固定**：Workspace許可外/Root identity変更 → ServiceFactory呼出`0`回、Selected B→Actual A→Result bytes同一 → FAIL、Non-nil FactoryでInspect Service欠落 → FAIL、Scope application-runtimeの旧CarrierをAuthoringへ誤流用 → FAIL、古いSource/Provider pin → FAIL。正常CaseはHostが選んだContract/Providerで一度だけInvokeし、Responseに残す出所とConsumerが一致する。Factory nilの既存PoC結果は互換性として保持しつつ、**Plugin実証の合格数に含めない**。
+4. **本番権限ではない**：RootServicesへのPort追加は受理済みModel/Source Closure、Build Artifact trust、OS Grant、Actual Provider Read、Owner Meaningを証明しない。D1はread-onlyのみ。後続Function Data Context/Graph Canvas/Write Receiptは同じ受入票の別列。
+
+これでD1の**First Missing Edge**は「抽象的なPlugin/Studio統合」ではなく、**Studio `ReadOnly.InspectSubject`の実Provider Port不在とCLI直接分岐**と特定できる。上流のSource/Providerの選択・現在資格も未解決のまま明記し、旧Runtime Carrierを破壊的変更するのではなく、Host-ownedなAuthoring入口から既存#1251/#951/#1016の同じ選択機構を消費する。
+
+**資格**：本§はmainの3 Goファイルと[main統合 #3300](https://github.com/hat47x/tei-platform/pull/3300)の静的照合による計画。新Port・差替え・Go単体試験・CLI/Wails二Consumer・Plugin実Invoke/Host Grant、正式受理は**NOT IMPLEMENTED / NOT RUN**。
