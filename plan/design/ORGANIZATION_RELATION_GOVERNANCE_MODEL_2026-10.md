@@ -3043,3 +3043,651 @@ Owner保留は(1)Service Subscriberに対応する論理Tenantをどこまで推
 #1119の既存Critical Pathを変更しない。OR-TN-01〜12と§70を置換せず、**TN-BDは同一Attempt Bindingの判別試験**として組織Meaning圧力を実Provider/Authority側の試験に接続する。必要証拠集合は#1180、独立Oracleは#2514、固定実行Evidenceは#1163を用いる。Caller自身が与えたCheckのPASSを必要証拠の網羅性としない。
 
 **状態**：本節は実Code/ADR/Issueの静的照合に基づく設計と実証計画。TN-BD-01〜08はNOT RUN。組織Caseの現在Tenant Authority/実Provider実Read/現在Host Grant/各外部RouteのIsolation、Ownerによる正式意味受理、Product E2E合格を主張しない。採用済みADR-0036/0043/0044とmainは変更しない。
+
+## 72. 組織改編とTenant配備切替の交差：同一Caseの再束縛・Effect unknown・過去時点Read（2026-11-06、採用前）
+
+### 72.1 なぜ§69〜71の次にこの境界を検証するか
+
+第69節の**組織後継と案件別Disposition**、第70節の**共通意味＋独立Tenant Isolation**、第71節の**B0〜B5同一Attempt Scope Binding**を前提とする。これらを採用しても、組織変更とTenantの実Provider/配備変更が同じ時期に進行すると、**一つのBusiness Case/Operation IDの意味は同じに見えても、実Read対象・Commit先・Receipt所在・現在Grant・Consumer開示世代が変化する**。本節は新しい一般Migration Engineや共通Txを提案せず、交差した変更における再資格化と停止条件を既存契約へ追加する。
+
+特に以下の三つは**別の変更軸**であり、相互に暗黙導出しない。
+
+| 変更軸 | 例 | 所有する事実と必要な再資格化 |
+| --- | --- | --- |
+| **O：Organization/Business** | D1がD2/D3に分割され、C1の担当をD2へ変更する | validAt/knownAt、Org Identity・Case disposition/Rule・Owner受理。後継組織線だけでCase移管やGrantを作らない（§69） |
+| **P：Provider/Deployment** | Tenant Aの実DBをOld→Newへ移設、Read Replica→Primaryへ切替 | DB Alias/instance/physical row・Query realization・Read Cohort/Completeness・Reader/Writer fence・old/new Receipt照合。Tenantの業務IDを変えたことにはしない（#2611/#2555） |
+| **T：Tenant/Ownership/Disclosure** | C1のデータ管理をTenant AからBへ移す、又はA→Bへ明示共有する | Business owner・提供主体・実Authority・Data export/import/retention・Consumer/Recipient・Current Grantを別途受理。単なるDB移設と同一視しない（§70〜71/#2020） |
+
+**限定的な同値の意味**：OとPをどちらの順序で処理しても最終表示`C1→D2`が同じになることはあり得る。しかし、これだけでRead Scope、実Provider row identity、未確定Operation、Receiverの現在資格、Receipt/監査、外部送信を含む**運用上の可換性**は証明できない。『両順序とも許容』は具体的Case/Provider Contract・独立Expectedに照らした判定とし、万能な可換性定理や共通二相Commitを仮定しない。
+
+### 72.2 固定する境界：過去の業務時点と現在の物理Routeを結び付け過ぎない
+
+基礎Fixtureは既存§68/71の`Tenant A:C1(handlingUnit=D1)`／対照`Tenant B:C1(handlingUnit=D2)`、#2596の合成Membership/valid-known、#2681の実Native CaseRecord定義、#1656の固定Scoped PG、#2853/#2854の**別Case実PostgreSQL Command Reference**をそれぞれの資格で再利用する。以下は一つの**試験用変異**であり、実TEIに格納済みの業務行ではない。
+
+- `2027-07-01`にBusiness上のD1後継候補D2/D3が発効。ただしC1の担当D1→D2はOwnerによる**別Disposition受理**が必要。
+- `2027-07-02`にTenant AのDB配備をOld ProviderからNew Providerへ移す。これはTenant Aのままの**物理Route切替**であり、Tenant Bへ所有権を移してはいない。
+- `2027-07-03`にD1の過去Membership訂正が記録される。`validAt=2027-06-15`かつ`knownAt=2027-07-01`の照会と、同`validAt`で`knownAt=2027-07-03`の照会は履歴の独立Expectedが異なる。ただし**両方とも現在適格なNew Providerから取得できる実現はあり得る**。`validAt`が古いという理由でOld DB Aliasを選ばない。旧新DBのHistory coverageが不明なら`unresolved`。
+- `C1(rowVersion=7)`はProvider試験の仮定であり、現Native CaseRecord `.tei`には`rowVersion`属性もCase Persistence Mappingも存在しない。物理Version、Meaning/Source/Route epoch、OperationIDと同一視せず、実Provider Bindingの検収を先に求める。
+
+### 72.3 ReadとEffectを混ぜずに検査する
+
+**Read-only基準**：C1をTenant Aの現在資格で読み、明示Function Contextの`handlingUnit`、実Provider Alias/DB instance/Query/args、Row+Field/Scope、Cohort、Consumerが受領した公開Fieldと独立Expectedを同一試行で照合。旧ProviderのPage 1と新ProviderのPage 2、または同じSnapshotラベルで異なるknownAtを結合して、`complete`を推測しない。Read-onlyの判定にWriteのReceiptやGrantを一律必須にしない。
+
+**Effect基準**：C1の担当変更D1→D2を既存型付きActionとしてOwnerが受理した場合に限り、実対象Case/Role/旧値/実Provider row version、Target Tenant、現在Grant、Period/Effect Rule、OperationID/Idempotency Scope、選択されたWriter route/generationを作用境界で検査する。Old Writer側でCommit ACKを失った後にNew Writerへ切り替わった場合、**新しいOperation Keyを発行して無条件に再Dispatchしない**。Old側Receipt Lookup・Migration時のOperation identity/Receipt引継ぎ保証・独立Readで同一効果が認定できないなら`unknown`を保留し、再実行資格を自動発行しない（#1174/#2564）。
+
+**Tenant移管**：同じTenant A内のDB移設はP軸である。他Tenant BへC1をExport/Transferする場合はT軸の**明示されたBusiness/Authority/Disclosure操作**であり、送信側と受領側の資格、重複Case IDの対応、必要なData/Receipt/Retentionの範囲を別々に検証する。相手側のOrg Membershipや受信成功メッセージでOwner/Grant/業務引継ぎを自動受理しない。複数Providerを一原子Txにまとめられない場合の部分効果・補償/引継ぎは既存#1129/#1130の契約に委ねる。
+
+### 72.4 Cross-axis pressure：ORG-XC-01〜07（独立Expected案・すべてNOT RUN）
+
+| Case | 一つの故障注入・対照 | 期待結果／拒否する誤成功 |
+| --- | --- | --- |
+| **XC-01** | 組織D1→D2のみを受理し、Provider routeはOldのまま | C1の業務Dispositionだけの変更。Tenant/DB切替やGrant発行を導かない |
+| **XC-02** | Provider Old→Newのみ移設、Org/Caseの業務意味は不変 | Meaning改訂なしでもDB Alias/Row version/Cohort/Consumer資格は再確認。Business Caseを別IDとして増殖させない |
+| **XC-03** | C1のPre-readはOld、実行直前にWriterがNewへ切替 | 旧Pre-read/Grant/row-versionをNewの実作用に無条件流用しない。同一Targetの再解決・Provider保証が不明ならnot-admitted |
+| **XC-04** | OldでCommit後にACK喪失、Newへ切替後に同Operationを処理しようとする | Old Receipt/Operation identityの引継ぎを実証できないなら`unknown`。新Key再Dispatchによる二重効果を成功としない。別CaseのPG replay PASSは証明にならない |
+| **XC-05** | 旧Business validAtを照会し、ProviderはNewが現在適格 | validAtとProvider route generationを混同しない。New側History coverage不明なら結果をunqualified。旧DB自動fallback不可 |
+| **XC-06** | Tenant AからBへC1共有/移管、両側に文字列C1がある | 明示Owner/Authority/Recipient/Source-Target identity mappingと開示を確認。DB切替や同名OrgだけでB private recordを上書きしない |
+| **XC-07** | O→PとP→Oで最終画面C1→D2は同じだが、一方はOldの未処理Operationが残る | 表示最終値同一から可換/完了を主張しない。実Operation/Receipt/partial/Consumer evidenceを比較し、未知の効果があれば両順序同値は`unresolved` |
+
+**独立性**：Expectedは当該実Provider/生成AI/RunPlanのActualを使って自己生成しない。古い操作が二重実行されるMutation、wrong-route読取、missing Receipt、hidden Private rowを既知のnegative controlとして検証する。期間・Scope・対象集合が不完全なら存在証人に限る局所Claimは維持可能だが、全移設完了／旧Writer完全停止／二重効果ゼロの**普遍的Claim**は保留する（#2514/#1180/#2516）。
+
+### 72.5 実装順：既存Ownerに差分だけを渡す
+
+| 優先 | 最小の次アクションと停止条件 | 正本・Owner |
+| --- | --- | --- |
+| **P0-A** | §68のE2a実Product Call Pathをまず取得。Case/Orgの現Native Persistence・Context不足はProduct Read Gapとして保持。XC-01/02/05の独立ExpectedとReader必要集合を固定 | #2586/#2506/#2622/#2514 |
+| **P0-B** | §71のTN-BD-01/04を同じ合成C1/Tenant A/Bへ接続し、Provider Alias/ScopeとCase identityの不一致をread-onlyで判別。現Trusted Authorityがない場合はそれを明記 | #2611/#1656/#2510/#1043 |
+| **P1** | C1の単一Writer切替とin-flight/unknownを実Providerで観測し、Receipt引継ぎの可否を検査。各Providerの保証外なら二重作用回避を**未証明**として停止 | #2555/#1174/#2564/#1163 |
+| **P2** | Tenantを跨ぐExport/ShareとOwner/Recipient開示、組織再編の未決Caseを並行条件で確認。異配備世代・SHO/Agent Consumerは実受領した範囲のみ認定 | #2020(closed履歴)/#2499/#2516/#1130/#2604 |
+
+組織Profile/Delivery Pluginを一体のData意味として構成する方針（§70）を維持し、Isolation/Provider/Targetの**実強制**をPlugin宣言やGraph表示と混同しない。Go単一バイナリを基本とする場合にも、常駐Tenant Router/専用Migration Serviceを標準Coreへ加えず、対象HostとProviderの実能力に合わせる（ADR-0036/0043/0044）。E2初回実Readより組織向けUniversal Cutoverを優先しない。
+
+**証拠と採用状況**：本節は§69〜71、ADR、現実の`scoped_postgres_reference.go`、実PG Command Reference、及び既存Issueの**Source-static照合に基づく設計追補**。ORG-XC-01〜07、新Org Case実Provider Read/Commit、Old→Newの実DB/Receipt移行、Tenant間実Transfer、Owner業務意味受理は**NOT RUN／NOT ACCEPTED**。§70〜71の既存8+12試験は実行済みに変更しない。#1119のCritical Pathとmainは維持する。
+
+## 73. Tenant Scope相対の不存在と共有Dataの開示：否定依存・実Row・送出の同一試行検収（2026-11-06、採用前）
+
+### 73.1 現物の差分と横断参照
+
+[PostgreSQL Scoped Query Fixture](../../reference/web-api-contract/fixtures/postgres_scoped_orders.sql)は物理PKを (tenant_id, order_id) とし、同じorder_idが別Tenantの別Rowとして存在できる。ところが既存の固定行はTenant A:3,9 / Tenant B:1,100であり、同一order_idの別Tenant行を返却値まで照合する試験がなかった。
+
+この不足に対し、[Draft PR #3016](https://github.com/hat47x/tei-platform/pull/3016)を現mainから独立して作成。既存の実PostgreSQL opt-in TestScopedTenantPostgresAgainstIsolatedDatabaseにTenant Bの(order_id=9,customer_id=29)を後段だけ追加し、元のAの(9,12)と対照する **48行のtest-only変更**。TrustedReadContext→AuthorizeBrowseRead→ScopedPostgresOrdersReference/SQLTenantScopeAuthority→実SQL→Consumer結果を同じ業務キーで区別する。元のFixture/Provider/Productionコードには変更なし。
+
+**この追加GoテストはGitHub保存までで、gofmt/Go test・実PG・CIの結果は未確認**。本テストはDSNなしではSKIPされる。PASSや本番のTenant隔離保証と呼ばない。これまでの限定実DB成功や合成Referenceの成功を、新しい同キー試験の実行成功に遡及適用しない。
+
+既存Ownerの参照：[#1706](https://github.com/hat47x/tei-platform/issues/1706)は0件/NULL/未取得/失敗、[#1708](https://github.com/hat47x/tei-platform/issues/1708)は複数ReaderのSnapshot整合性、[#2582](https://github.com/hat47x/tei-platform/issues/2582)はNOT EXISTS/LEFT JOIN/Top-Nの否定依存・非単調な再評価、[#1178](https://github.com/hat47x/tei-platform/issues/1178)はローカルReadと外部CLI/LLMへの出所開示の違いを所有する。
+
+### 73.2 「不存在」はTenant・Query Scope・取得時点に相対する
+
+| 観測 | 認められるClaim | 禁止する推論 |
+| --- | --- | --- |
+| 検証済みTenant A・必要Row/Field/Predicate、同じCohortのcomplete Readerで0件 | **AのそのScope/時点について0件** | 全Tenantで不存在、過去も不存在、B Privateの不存在 |
+| Aのpartial Page/一部Relation未取得/Scope不明 | unknown / incomplete | A内もNOT EXISTS=true、全件移行済み、完了 |
+| B Privateへのアクセス拒否 | 内部証拠ではdenied。Consumerへの拒否表現は別のDisclosure契約 | Bにデータがある/ないという存在情報を無権限先へ公開 |
+| Provider障害、stale Policy、異Snapshotの混合、Tenant切替後の旧Read | unqualified：必要なら再認可・再読取 | 0件・NULL・Effect 0件・保存成功へ置換 |
+
+空結果にも**否定依存**が残る。NOT EXISTS、LEFT JOIN未一致、COUNT=0、未割当てCaseなし、全件引継ぎ済み等は「どの世界のどの集合を完全に調べたか」を必要とする。必要な証拠は既存Claim/Function Data Context/Query契約から導く：Source/Relation path/Predicate、現在認可済みTenant/Row/Field Scope、Provider/DB Alias/実SQL、valid/known/Policy revision、Page/Cohort/complete、非出力依存とConsumer用途。完全性は常に**そのResource・Scope・Queryに相対する**。一般の「全システムで0件」へ昇格させない。
+
+**権限拒否と検索0件は内部では区別し、外部Consumerへの開示は別に制限する**。同じエラーメッセージを強制するという意味ではない。外部応答・ログ・Trace・件数・結果順序・エラー時間から無権限対象の存在が推測されないかは、対象DestinationのPolicy/Consumerで別検証する（#1178/#1693）。通常の組織Dataを特別な秘匿対象に一律昇格しない。
+
+### 73.3 Shared Data・Join・導出による漏洩を見落とさない
+
+明示Shared Reference Dataset、公開組織情報、共通カタログは、同じ意味モデルで通常のDataとして扱える。ただしShared Catalogを読めることは、Relationで結ばれた他Tenant Private CaseのEXISTS/COUNT、ORDER/TOP、Join Fanout、Raw metadataやSource pathを開示する資格ではない。
+
+現[Scoped PG E11/E12](../../reference/web-api-contract/POSTGRES_SCOPED_E2E.md)は、公開選択Columnの値を変えず非公開orderedAtだけを変えても、結果順序・Topが変わる**限定した推論漏洩の実例**。出力Field MaskやIsolation SQLの局所合格を全Disclosure Claimへ昇格させない。外部AIへの投影/SHO/CLI Trace/Exportを含め、Read資格とEgress資格を別列にする。
+
+Org D1→D2の責任継承、Tenant A→Bの切替、Provider DB/Region移設は別々の失効要因。古いTenant AのRead/否定結果やPreviewが後着しても、Tenant Bの現在結果・Effect Targetへ混入させない。ただし同時に開いている独立Function Instanceを無差別に失効させない（#2582）。
+
+### 73.4 独立Expectedの最小8反例（ORG-NA-01〜08、追加実行NOT RUN）
+
+| Case | 変異 | 事前に固定するExpected |
+| --- | --- | --- |
+| ORG-NA-01 | A/B双方にorder_id=9、customer_idは12/29 | Aは(9,12)、Bは(9,29)。Draft #3016の実PGで確認が必要 |
+| ORG-NA-02 | AはC1なし、BにはC1あり、A側はcomplete | 「Aの認可済みScopeで0件」のみ可。全体不存在は不可 |
+| ORG-NA-03 | AのPage1にはC1なし、後続Page不明 | A内もNOT EXISTS/全件処置済みはunknown |
+| ORG-NA-04 | AがB Private C1を指定し、Host拒否 | 内部deniedを0件扱いしない。外部へのB存在/件数/出所開示不可 |
+| ORG-NA-05 | Shared Catalogは同一、B Privateだけ追加 | A外部ConsumerのEXISTS/ORDER/COUNT等からBの変化を漏らさない |
+| ORG-NA-06 | 同じA Scopeに対するReplica/PrimaryのknownAt不一致 | 異Cohortの空結果をcompleteな否定証拠として合成しない |
+| ORG-NA-07 | Tenant AからBへ切替後、Aの遅延Read/Preview到着 | BのFunction/Intentを上書きしない。独立A Instanceは保持し得る |
+| ORG-NA-08 | ローカルRead許可、外部LLM/別Destination送出未許可 | Reader成功と実Egress許可は別。Raw/Source/Traceの無制限送出は不可 |
+
+### 73.5 実装への引渡しと中断条件
+
+1. **#1656/#1769・Draft #3016**：新規Go testのコンパイル・gofmt/vet、使い捨てPostgreSQLでSKIPなしのexact-head実行とA/Bを独立Expectedで確認。変更したテストの結果を得るまでは未合格。Scope/Customer projectionの実Fixture資格も点検する。
+2. **#2586/#2506/#2611**：実Native組織C1→Function Data Context→Provider Row/Field/Scope/Cohort→Consumer E2aを優先。別Web SQLでの局所成功はOrg Product Readの成功ではない。接続できなければ具体的な最初の未接続Edgeを明記。
+3. **#2582/#1706/#1708/#2514**：ORG-NA-02/03/06を既存独立Oracle/Query依存・Snapshot契約で検証。新Reactive/Negative Cache/Universe Engineなし。
+4. **#1178/#1693/#1656**：ORG-NA-04/05/08の特定Destination/ConsumerへのRead/拒否/送出を区別して検証。新Disclosure Engineを作らない。
+5. **#1174/#1163**：ORG-NA-07の後着・現在Grant・実Action/Commit Unknown/Receiptは同一Attemptと物理効果を別証拠で確認。
+
+**撤回線**：この条件に固有の障害を実Reader/独立Expectedで検出できない場合、共通Core Contractの追加提案を止め、局所Provider/Consumer試験に縮退する。#1119 Critical Pathは変更なし。
+
+**証拠資格**：本節はdocs-only。PR #3016はテストコード登録済み・未実行／Draft。ORG-NA-01〜08の新Go/実PG/Host/GUI/Egress E2E、組織Caseの実Product Read、Ownerの正式意味受理はNOT RUN。mainと採用済みADRは変更しない。
+
+## 74. 商用高度組織製品のRequirement Probe：Workday/SAP/Oracle/Dynamics/ServiceNow/Orgvueとの充足差分（2026-11-06、採用前）
+
+**調査正本**：[高度組織を扱う商用製品の要求比較とTEI適合性監査](../research/COMMERCIAL_ORGANIZATION_PLATFORM_REQUIREMENTS_2026-11.md)。2026-11-06現在、各社公式資料・ヘルプ／リリースノートを直接確認した。商用製品の内部実装を推測せず、要求/適用条件とTEIの設計候補/合成Reference/実製品Evidenceを別に記録した。
+
+### 74.1 製品から抽出した共通の設計圧力
+
+| 直接確認した製品・一次仕様 | TEIの一般化すべき要件 | 固定してはいけない誤った一般化 |
+| --- | --- | --- |
+| [Workday HCM: Superior/Subordinate](https://doc.workday.com/admin-guide/en-us/manage-workday/organizations/manage-organization-concepts/concept--superior-and-subordinate-organizations.html)、[Business Process](https://doc.workday.com/workday-education/en-us/course-manuals/hcm-core-supplemental-for-administrators/advanced-business-process-configurations.html) | Supervisoryの単一親と他のMatrix/Custom Role、組織別・条件付き承認の合成 | すべてのRelationはTree、一つのManagerからすべての業務権限が継承される |
+| [SAP SuccessFactors: Matrix](https://help.sap.com/docs/successfactors-employee-central/implementing-position-management/synchronization-between-matrix-relationships-and-job-relationships)、[複数Incumbent](https://help.sap.com/docs/successfactors-employee-central/implementing-position-management/positions-that-allow-multiple-incumbents) | Person/Employment/Manager Role/Position/Occupancyの別Identity・Role別多重度 | Position=Person、ひとりの上司、一職位一人が標準不変条件 |
+| [Oracle HCM: Assignments](https://docs.oracle.com/en/cloud/saas/human-resources/fawhr/assignments.html)、[同日更新](https://docs.oracle.com/en/cloud/saas/human-resources/faucf/how-you-make-multiple-updates-to-date-effective-objects-in-one.html) | 雇用関係/複数Assignment/法人間移動、Date effectiveのUpdate/Correction/同日SequenceとSource History coverage | 同一valid dateの変更は常に1件、訂正がSourceの当時値を必ず保存 |
+| [Dynamics 365: Org hierarchy](https://learn.microsoft.com/en-us/dynamics365/fin-ops-core/fin-ops/organization-administration/organizations-organizational-hierarchies)、[Dataverse BU](https://learn.microsoft.com/en-us/power-platform/admin/modernized-business-units-security) | 法人/事業単位/Team、用途別Hierarchy、Record Owner・Owning BU・User BU・Security Roleの独立 | 上下関係・所属だけでRecord Owner/Current Grantも変化する |
+| [ServiceNow: Domain hierarchies](https://www.servicenow.com/docs/r/ja-JP/platform-security/bp-domain-sep-hierarchies.html) | Domain Parent-child、Contains（Data）、Visibility、Business Processの適用Scope、Private/Global/Default placementの個別強制 | Org ParentがTenant ACL、Dataの可視性がProcess実行権限、全機能が同じDomain分離保証 |
+| [Workday Adaptive Planning 2026R1](https://doc.workday.com/adaptive-planning/ja-jp/what-s-new/-/2026r1-/2026r1-planning-for-hcm-and-financials/org-design-and-scenario-modeling.html)、[Orgvue](https://www.orgvue.com/platform/) | What-if/合意/Publish/実Effect/Actualの独立、Headcount/FTE/Cost/Span/Layersの対象・粒度・時点 | Previewが実HCMを変更した、数値が変化しないのは万事実証済み |
+
+**比較判定**：調査で列挙したCP-01〜18のすべてに既存のTEI Data/Relation/Business/Query/Rule/Plugin契約から**モデル化候補**がある。しかし正式にAcceptedである、または実Provider/実Function/実認可/実Targetで商用製品相当の動作を保証したものはない。Syntheticの組織Reference（#2596、#2510）、Native E1（#2681）、Tenant File Reference（#2052）と局所SQL（#1656）はそれぞれ局所証拠であり、単純加算して統合E2/E4成功にしない。
+
+### 74.2 設計に加えるべき成熟した横断条件
+
+- **Relation Purpose / Cardinality**：Supervisory/Matrix/Position/Occupancy/Finance/Procurement/Org Ownership/Tenant Visibilityを同じ標準Relationship表現で記述できても、各Roleの上限/循環/履歴/権限連動はOwnerが意味として採用したルールだけ適用する。最小Treeを拡張したために通常Graphを不可としない。
+- **Person/Employment/Assignment/Positionの同一性**：Person P2が複数雇用と複数Assignmentを持つとき、各Employment/Position Occupancy/Manager relationship/Org Membershipは別Occurrence。ローカル異動でAssignment ID維持、グローバル移動で別Work Relationshipなどの相違はBusiness ActionとSource対応を根拠にする。標準化のため全案件へ専用HRテーブルを強制しない。
+- **時間操作の明示**：validAt/knownAt/公開版/実行時点を保つ。OracleのCorrection・同日更新Sequenceから、既存Sourceが**持っていない中間の履歴**はTEIが復元できない反例を追加。Provider Rawへの変更と、TEIのOwner受理・Source Revisionを混同しない。
+- **業務上の所属≠現行Data Grant**：DataverseがUser BUとOwning BUを別にでき、ServiceNow DomainがDataとProcess適用を区別することを補助反例とする。通常Org Dataに特殊ACLを一律付与せず、Tenant/保護Resource/外部開示へ明示されたScopeだけCurrent Provider/Hostで強制。
+- **組織設計の本番非作用**：What-if/計画版、承認候補、Accepted Published Structure、Provider Effect、後続Actualの独立性を強化。計算したHeadcount/FTE/Cost等は対象Grain・Units・Scope・Complete・Join重複/非出力依存の証拠がある範囲だけ確定する。
+
+これらは**既存のTEI標準DataとRole/Plugin/Provider上で構成可能かを検証すべき要件**であり、Workday/SAP/Dynamics/ServiceNowの固有Enum、DB Schema、固定Tenant階層、特定の認証・Workflow HostのCore内蔵を承認するものではない（ADR-0036/0043/0044）。
+
+### 74.3 実証の優先順位・Owner・未完了
+
+| Gate | 要求の代表ケース | 既存の責任とStop |
+| --- | --- | --- |
+| **P0 意味の反証** | ORG-CM-01 Supervisory/Matrix別多重度、02 空席/複数在任、03 複数Employment、05 同日Correction、06 Hierarchy Purpose、09 Data vs Process visibility、11 Plan/Actual | #2386/#2510/#1126/#2593。既存#2596合成Source/独立Expectedを増分利用し、未受理の意味や特定製品Schemaを普遍化しない |
+| **P0 製品Read** | ORG-CM-07 Record ownership/ScopeとORG-CM-10 Private Tenantの誤Default、同名CaseのTenant別Read | #2586/#2506/#1656/#2611。Native Case C1→Function Context→実Provider Row/Field/Cohort→Consumerの同一Source E2aがなければ中断 |
+| **P1 Workflow/Effect** | ORG-CM-04 Local/Global Transfer、08 Org Rule Approval/Current Grant、12 Org再編×DB移設×Effect unknown | #1125/#1130/#1174/#2564/#1163。Business meaning/Host Authority/Commit/Receiptを各別検証し、未到達はunknown |
+| **P1 計画の独立検証** | Scenario 2案のHeadcount/FTE/Cost/Span/Layers/Business ExecutionとActual比較 | #2779 What-if Draft/#2514 Oracle/#2593 Measures/#2516 SHO。Snapshotと粒度不明は合計の成功を主張しない |
+| **P2 外部HR/ERP連携** | 複数Employment/過去移動/中間履歴喪失を外部Official API/Extractで対照し、Field別Source責任と受入/公開 | #1807/#2555/#951。実Workday/SAP/Oracle Tenantへの接続、Contract・Cost・認可・外部データ権利を別に判断 |
+
+**受入結果**：ORG-CM-01〜12は今回設計した独立Expected候補で全てNOT RUN。商用製品はRequirements ProbeでありTEIが商用互換性や同等性を実装・達成した証拠ではない。Ownerによる意味受理、実Provider/GUI/Host/実Tenant、商用API/実データのConformanceは未実施。#1119の既存Critical Pathを変えず、まず一つのProduct E2 Readの実証を優先する。
+
+## 75. 商用仕様の例外・既定動作を一般則へ誤昇格しない：制約／警告／曖昧／現在権限の四境界（2026-11-06、採用前）
+
+### 75.1 第74節を反証する詳細仕様
+
+第74節・[商用製品要求調査](../research/COMMERCIAL_ORGANIZATION_PLATFORM_REQUIREMENTS_2026-11.md)のCP-01〜18を、各社ヘルプの**既定・設定可能・非対応・有償オプション**まで追って補正した。出典は以下の公開一次資料。TEIが商用製品の内部動作や互換性を再現済みという意味ではない。
+
+1. **[SAP SuccessFactors: 複数Incumbent](https://help.sap.com/docs/successfactors-employee-central/implementing-position-management/positions-that-allow-multiple-incumbents)**：Positionが複数在職者を許すかは設定で異なる。さらに管理職Positionに複数Incumbentがいると、子Position側のSupervisorが先頭/任意のIncumbentになる危険がある。[Leading Hierarchy](https://help.sap.com/docs/SAP_SUCCESSFACTORS_EMPLOYEE_CENTRAL/cf23ba26985f4d4a8df3a34b7392847d/defining-leading-hierarchy) ではPosition hierarchy優先が標準構成候補だが、変更できる。[Matrix Sync](https://help.sap.com/docs/successfactors-employee-central/implementing-position-management/synchronization-between-matrix-relationships-and-job-relationships)の同期は限定条件付き。**TEIでは「2人Occupant」から「唯一の指揮Manager」を自動選択しない**。既存製品互換を求める場合のみ、その製品・設定版・連携の選択規則を明示的な外部Adapterとして扱い、意味受理と分ける。
+2. **[Oracle HCM: Assignment](https://docs.oracle.com/en/cloud/saas/human-resources/fawhr/assignments.html)**：Work RelationshipごとにPrimary Assignmentを必要とし、複数Work RelationshipではOverall Primaryも別選択される。[Employment Model](https://docs.oracle.com/en/cloud/saas/human-resources/faigh/employment-model.html)はLegal Employer/Enterpriseの設定によりSingle/Multiple Assignmentを選べる。**Person=Employment=Assignmentという固定モデルは拒否**し、対象Employment内のPrimaryと全PersonのOverall Primaryを区別する。設定が未取得なら単なるFirst Rowで代用しない。
+3. **[Dataverse: Modernized BU Security](https://learn.microsoft.com/en-us/power-platform/admin/modernized-business-units-security)**：UserのBusiness Unit、RowのOwning Business Unit、Record Owner、各BUのRole付与を別々に持ち得る。[BU変更時のレコード移動設定](https://learn.microsoft.com/en-us/power-platform/admin/create-edit-business-units)は権限・所有レコードの移設に影響する。TEIでは組織異動から物理Rowの所有者・実Grantの自動改訂を導かない（§70〜73）。**特定の外部Sourceで現に発生した連動はObserved Source Changeとして取り込むが、普遍規則としない。**
+4. **[ServiceNow: Visibility/Contains](https://www.servicenow.com/docs/r/platform-security/c_DomainVisibility.html)**：Contains DomainはData可視性を与えてもBusiness Processは共有しない。[Domain Separationサポート区分](https://www.servicenow.com/docs/r/platform-administration/domain-separation-app-data-source-integration.html)は対象アプリでのData/Process/UI/Cache/集計のサポート範囲を分ける。Tenant Profileを選択した事実だけで全Plugin/経路が分離済みにはならない。
+5. **[Workday Adaptive Planning 2026R1](https://doc.workday.com/adaptive-planning/en-us/what-s-new/releases/2026r1-release-notes/2026r1-planning-for-hcm-and-financials/org-design-and-scenario-modeling.html)**：What-ifはLive HCMから分離。Span/Layersのガイドライン超過は**Warningであり続行を禁止しない**。関係者への共有、編集、承認プロセスを持つが、承認依頼を実組織のEffectやActualに変換しない。[導入条件](https://doc.workday.com/admin-guide/en-us/adaptive-planning/org-design-and-scenario-modeling/steps--set-up-org-design-and-scenario-modeling.html)でWorkforce Planningの別ライセンス等があるため、製品名の一致だけで導入時に全Capabilityが常在するとみなさない。
+
+### 75.2 一般化するのは特定製品の設定値でなく、判断の境界
+
+| 別々に表示・検査する判定 | 意味と受入契約 | 典型的反例 |
+| --- | --- | --- |
+| **Structural invalid** | 採用されたRole/Position/Relation規則に対して違反。親の過多、単一Incumbentの重複などは、当該ProfileのValidationで拒否 | Supervisory Roleだけ親が2本、Positionがsingle-incumbent設定なのに同時2人 |
+| **Unresolved / ambiguous** | 対象候補が複数、Source履歴順や主Assignmentが未特定。追加の意味/選択を要求し、実行対象を勝手に決めない | 許容されたPosition多重Incumbent2人から上司をFirstで選ぶ、同日更新順序がSourceから未取得 |
+| **Advisory warning** | Plan/Scenario上の目安違反。Ownerがwarningとして採用したならPreview継続可。正式Publish/実Effectの許可とは別 | Span/Layers超過を技術的Validation failureへ昇格する／反対に警告なしで実反映へ進む |
+| **Runtime denied / unavailable** | 対象機能のCurrent Host/Provider GrantやTenant/Action/Resource/送出先、必要Capabilityを検査。意味上の候補存在は認可ではない | Org上のManagerであることからDataverse Row ReadやServiceNow Process実行を許可する |
+| **Source unqualified / unknown** | Sourceが欠落、Correctionにより中間履歴消失、Provider Cohort/Read Completenessが不明なときは「復元できない」を保持 | 1日2回の異動があったと聞いただけで、今ある1行から中間状態を創作 |
+| **Accepted / Published / Effect / Actual** | What-if Preview、責任者による意思決定、受理済み正式構造、実Provider作用、独立読取の実績は異なる資格 | Previewで人員数が変わったのでHRISも更新済みとする |
+
+既存Validation、Source/Reference Revision、Business Rule、Function Data Context、Intent/Action、Capability Authorize、Provider Receipt、SHO/Studio Presentationへ投影し、**全Domain共通の新しいDispositions Enum/Host/HR Core Entityを先に追加しない**。同じ判断を別Engineが再実装しないこと。Studioは業務用語で説明できること（「担当候補が複数」「計画上の目安超過」「実行権限がない」「資料が不完全」）。DSLにGoの型宣言を追加しない。
+
+### 75.3 テスト化した範囲と証拠の上限
+
+[独立合成Reference Draft PR #3019](https://github.com/hat47x/tei-platform/pull/3019)を**main起点の別branch**に作成し、`reference/org-semantic-views/verify-commercial-probes.mjs` に9つのread-only negative controlを追加。第74節のORG-CM-01,02,03,05,07,09,11に対応する。
+
+| 合成Probe | 正・負の対照と、推論できないもの |
+| --- | --- |
+| CM-01 | Supervisory 2親はinvalid、Matrix 2親はそのRoleで許容。実TEI Relation Validatorではない |
+| CM-02 | Vacant Positionは残存、single-incumbentの同時2人はinvalid、multi-incumbentで上司候補2人はunresolved。明示選択した時だけcandidate |
+| CM-03 | Primary Work Relationship内のPrimary Assignmentを選択、別Employmentの先頭Rowを使わない。Primaryが2人ならunresolved |
+| CM-05 | 同日2 UpdateにSource Sequenceがあれば区別し、なければunresolved。CorrectionでSourceが保持しなかった中間値は復元済みと主張しない |
+| CM-07 | PrincipalのOrg BUとRowのOwning BUが異なっても実Grantがなければdenied。合成関数のdenyはTEI Host実強制ではない |
+| CM-09 | ContainsはData read候補となり得てもProcess実行を許可しない。ServiceNowの正式Policy/実テナントではない |
+| CM-11 | What-ifが元Sourceを変更せず、Layers超過WarningでもPreview可。承認/実Effectはnot-observed |
+
+**固定HEADでの実行証拠（2026-11-06追加）**：新Draft PR #3019のexact HEAD `5666491b74c36bf77f0683e603c35c5014e0476e`で、[組織Synthetic Reference Node CI #42185647106](https://github.com/hat47x/tei-platform/actions/runs/42185647106) の `synthetic-node` job #127785209239が**SUCCESS**。実ログはHEAD/TARGET_SHA一致を検査し、`verify-handoff.mjs`から新9件をimportして実行。既存Baseline205件+追加9件の**計214/214 PASS、0 FAIL**（`node --test`によるReference範囲）。作業用ローカルNode v22.16.0でも同9論点9/9 PASSだったが、こちらより**GitHubの固定HEADを正本の試験証拠**とする。なお既存Workflowの217等の他集合や実Go/実Provider試験と混同しない。**このCIはSynthetic Meaning Probeであり、実TEI Parser/Function/Host/E2/E4、実Workday/SAP/Oracle/Dynamics/ServiceNow/Orgvue、現行Tenant Isolation/Owner正式受理を検証しない**。PRはDraft・main未マージである。
+
+### 75.4 実装優先・Owner・撤回線
+
+1. **P0 #2510/#2386**：同一SourceへのORG-CM反例として、各Role多重度・Employment Scope・同日Source履歴、WarningとInvalidを独立Expectedへ反映。配置や被雇用者の合成別Identityを既存標準Data/Relationで表現できるか確認。特定商用製品の振る舞いを標準既定ルールにしない。
+2. **P0 #2586/#2506/#1126**：実Native .tei Case C1→Function Data Context→実Provider Read/Row/Field/Cohort→Consumerを先に通す。9 synthetic testsを合格してもProduct E2を合格としない。未接続なら第一Gapを記録。
+3. **P1 #2593/#2779/#2516**：計画上のPosition/Headcount/FTE/Cost/Span/Layersを現存するMeaning→Scope/Grain/Measure依存と照合し、警告と編集許可・正式承認/実効果を分離。What-ifが実Dataを変更しないことは別Provider観測が必要。
+4. **P1 #1174/#1043/#1656/#1178**：Record Owner/Org BU/Tenant/Domain Visibility/Process Egressは現在Authorityと実Providerで検査。Vendor-specific Default等の自動割付を必要とするなら、Provider Profileの明示された条件と実測に限定する。
+5. **P2 外部Source**：SAP Manager同期、Oracle Date Effective履歴、Dataverse BU変更の連動などを実Data・実Targetで確認するのは、当該商用環境/利用条件/権限が利用可能になってから。No exact Source History→unresolved、Non-atomic Remote Effect→unknownを維持。
+
+**撤回線**：Role/Position/Temporalの新Core機構を提案しても既存Data/Relation/Ruleで独立Expectedを区別できるなら、機構は採用しない。商用仕様が設定/SKUに依存して固有な場合、Core契約へ強制するのではなくProfile/Plugin・外部Adapterの要件へ縮退する。#1119 Critical Path/ADR-0036/0043/0044は変更なし。正式業務受理はOwner、実Product適合は実Code/DB/Provider/Consumer/Receiptの現物で判断する。
+
+## 76. 商用階層権限の適合差：組織到達・Record所有・Plugin選択・実行権限の非同一性（2026-11-06、採用前）
+
+### 76.1 第58・70・75節の具体化：階層Pathは権限そのものではない
+
+追加一次資料：[Dataverse Record Access](https://learn.microsoft.com/en-us/power-platform/admin/how-record-access-determined)、[Hierarchy Security](https://learn.microsoft.com/en-us/power-platform/admin/hierarchy-security)、[Teams](https://learn.microsoft.com/en-us/power-platform/admin/manage-teams)。詳細は[商用要求監査§6](../research/COMMERCIAL_ORGANIZATION_PLATFORM_REQUIREMENTS_2026-11.md)。これはVendorの選択設定を示す比較材料であり、TEI標準がこの動作を必須採用したという意味ではない。
+
+Dataverseは**Table/ActionのPrivilege Check**と**Recordに対するOwnership／Role／Share／Hierarchy Access Check**を分ける。Hierarchy Securityは選択して有効化する仕組み。Manager階層はBusiness Unitの範囲制約を持ち、Position階層は条件付きで別BUへ到達できる。Position階層の**直接上位者**にはRead/Write等、**間接上位者**にはRead-onlyの階層由来の候補があり得る。ただし、Table側PrivilegeがなければHierarchy由来のRecord到達だけではその操作はできない。またOwner TeamはRecordを所有できるが、Access Teamは所有しないまま明示Shareを受ける。
+
+この違いから、(a)組織Relationshipの到達、(b)選択された業務Policy/Pluginでの操作候補、(c)現在のTable/Record/Host権限、(d)Providerの実施行とConsumer開示を別証拠にする。**上位の位置にいる、所有Teamに所属する、共有に参加する、Policyを除外したという事実だけで現在の実行許可を生成しない。** 他の正当なAccess経路がある可能性もあるため、一つの経路の不適格を、対象Recordへの全権限の否定へも勝手に変換しない。
+
+### 76.2 広域適用・Record例外を保ちながら第二Policy Engineは作らない
+
+| 境界 | 対象と固定する証拠 | 誤って導かないこと |
+| --- | --- | --- |
+| **Domain Meaning** | Org Axis/Role、Manager/Position、Root、Path/Depth、valid/known、Relation occurrenceと完全性 | 組織上の親→Tenant Grant、唯一のOwner、全Actionを実行可 |
+| **Optional Business Policy** | 指定Data/Function/Operationへの広域適用、Read-only／Deny／Record単位の除外、Policy版とOwner受理、複数Rule優先 | 一つの除外→Public Allow、Read-only→外部出力やWriteの許可 |
+| **Plugin / Composition** | どのApplication/Process/Tenant/Providerで選択・Build/Load/公開されたか（[#2903 §22](https://github.com/hat47x/tei-platform/pull/2903)） | 同Pluginを選んだ他Tenant/別Processにも同じ機能・資格・Grantが自動伝播 |
+| **Runtime / Enforcement** | 現Principal、Table/Record/Actionの現在Grant、Target Tenant、実Provider Route/Row/SQL Scope | Business Policy candidateと実Host認可を同一視 |
+| **Disclosure / Effect** | Consumer/Destination/出力Field・Count・Cache、Read/Writeの実結果、Receipt、独立Observation | Read成功→External AIへ出してよい、Commit Response→Effect確定 |
+
+Ownerが求める「選択した業務Data群への広域適用＋Record/用途別例外・参照専用」を§58のまま保持する。通常組織Data全体に特別ACLを標準義務化しない。適用除外は当該Policyから外れるという意味に限り、他Policy/Provider/Host/Tenant境界の許可を上書きしない。Vendor特有の階層Depth→Read-only対応は、そのProfileの採用Ruleとして扱う。
+
+### 76.3 現行合成試験への追加：CM-13/14の3つの判別
+
+既存[Draft #3019](https://github.com/hat47x/tei-platform/pull/3019)にread-onlyの独立合成Fixtureを追加し、[§58のVP-01〜33](https://github.com/hat47x/tei-platform/pull/2781)で扱うHierarchy閉包・除外／認可Scopeと**異なる**次の商用仕様差分を検査する。
+
+| ケース | 固定Expected（合成Profile） | Productで別に必要な証拠 |
+| --- | --- | --- |
+| **CM-13a Position Depth** | 直接上位+Table Writeありは階層Write候補、二階層上は階層Read候補のみ、Depth超過は不適格 | 有効化したHierarchy/Role、実Table権限、他のRecord Access方式、実Provider |
+| **CM-13b Hierarchy Model** | 同じGraph PathでもManager BU境界により候補不可、PositionならCross-BU Read候補。ただしTable Readなしならどちらも不可 | 実Business Unit/Role/SourceとCurrent Grant、Providerの判定 |
+| **CM-14 Team Ownership** | Owner Teamは所有者、Access Teamは所有せず明示ShareでRead候補。Table Read欠如ならこの経路は不適格 | 実Record Owner/Share/Role/Team、再評価版、Consumer |
+
+ここでの候補は**合成モデルの値のみ**であり、DataverseやTEI Hostが実際に許可したことを示さない。1経路の「不適格」は他の明示Grantを否定しない。実Source/ProviderでのRead・Effect・外部開示は独立Gate。
+
+### 76.4 Ownerと実証順序
+
+1. **#2510/#2386**：#3019新CM-13/14を固定HEAD CIで検査し、Synthetic E0と正式意味受理を分離。既存VP-01〜33を再実装しない。
+2. **#2681→#2586/#2506**：現在Native CaseRecordはOrgUnitへのRelationのみで、Case Persistence、Function Context、実Provider Row/Field/Scope/Consumerが未接続。CM-13/14のPASSをProduct E2aへ加算しない。先に一件の実Readを通す。
+3. **#1016/#951/#1656/#1174/#1178**：同じPluginを採用した二法人/二Tenantで、別Principal・別Host Grant・別Resource/Action・Disclosureが保たれることを当該Providerで確認。配布・選択と実権限を分ける。
+4. **#2514/#1180/#1163**：Source/Meaning・適用Policy・Provider・Current Authorization・Consumer・Effectを同じ試行に束縛した独立Expectedと実観測を保持。Not-run/SkipはPASSにしない。
+
+**撤回線**：標準Data/Relation/Rule＋選択されたProfile/Plugin＋Host Authorityで差を保てるなら、新しいCore Permission型/専用ACL/Policy Engineを追加しない。ADR-0036/0043/0044と#1119の優先を変えない。**固定HEAD・限定Synthetic CI実測（2026-11-06追補）**：[PR #3019](https://github.com/hat47x/tei-platform/pull/3019) のコミット c209fa8b4e803a9a9698a42648ec087add56782a に対する [組織Node Actions #42196320734](https://github.com/hat47x/tei-platform/actions/runs/42196320734) は **completed/success**。実ジョブログはcheckout/TARGET_SHA一致、CM-13の2件＋CM-14の1件が個別ok、全Reference **217/217 PASS・0 FAIL** を記録。以前の214/214は旧HEADの実行証拠であり同じRunとして足し合わせない。**資格はSynthetic Meaning E0のみ**。実Microsoft/TEI Host・Provider/Case E2/Effect/Owner正式受理はNOT RUN。PR #3019はDraft・未マージ。
+
+## 77. CaseRecordの最初の実Source接合：Persistence MappingとProduct Readの間を別Gateにする（2026-11-06、採用前）
+
+### 77.1 現行Go/TEI Sourceで直接確認した接合状態
+
+既存[Native E1 PR #2681](https://github.com/hat47x/tei-platform/pull/2681)の固定コミット e0cfebf14d40db81bdef77d6c3e4898ed75d999f の実Sourceを確認した（本段は静的なコード監査）。
+
+| 観測箇所 | 実際に存在するもの | ここから推論できないもの |
+| --- | --- | --- |
+| `reference/org-headless-workspace/semantic/organization/model.tei` | Person、OrgUnit、Membership、Position、Occupancy、CaseRecord。CaseRecordの `caseId` と `handlingUnitId`、OrgUnitへの `handlingUnit` Typed Relation | Case永続化、Case Scope/Host Grant、本人/位置の一意認可、実Query |
+| `databases/org-store/persistence/membership.tei` | org_store.membership の実Persistence宣言、`membershipId`物理PK | **CaseRecordのPersistence**。元WorkspaceにCase Mappingは未存在 |
+| `applications/org-view/application.tei` | `database org_read { target org_store; access read }` のread-only DB Requirement | 特定の実DB接続／Function/Query Context／Provider実Read資格 |
+| `internal/operations/surface.go:SurfaceWorkspace` | 実Workspace Load→SourceIndex→World Fingerprint→`DeriveOperationSurface` | Provider実SQL、Tenant Authority、実行Receipt |
+| `deriveApplicationOperations` / `emitOperation` | 選択DatabaseのPersistenceを列挙し、読み取り可能Alias+Primary/Candidate Keyがある場合、`list/read`を**候補**として導出。重複Operation IDは最初の決定的候補を採用 | 同IDが別DB Alias・異Mapping・異Tenantでも同一実Targetであること。実Readerを一意に選んだ保証 |
+| `mappingBasis` | 現実装はMapping ID/Table/PK Attributeに基づくFingerprint | Column Mapping/Storage/Nullability/Provider Session/Scope等の変更を全て捕捉する完全な実行同一性 |
+
+**重要な切り分け**：このOrg Workspaceは、標準Readerに渡す`CaseRecord`のOperation候補さえ基線では導出しない。だから最初の不足は「Caseの物理Persistence Bindingがないこと」。それを追加しただけでProduct E2a実Readerが通る、とも言えない。次の段で明示Function Data Context、選択した実Datasource/Provider、実SQL/Rows/Cohort、Consumerを同じAttemptで検査する必要がある。§71のTenant/Caseの同じBusiness Key反例は、このE2aが成立してから適用する。
+
+### 77.2 独立した最小Go Characterization（積上げDraft PR #3024）
+
+[Draft PR #3024](https://github.com/hat47x/tei-platform/pull/3024) は #2681のbranchを**変更せず**、その固定SHAから分岐した積上げDraftである。差分は`internal/operations/org_case_mapping_bridge_test.go`の1ファイル・114行のみ。元Fixtureは保持し、テスト内でコピーしたWorkspaceにだけ以下を追加する。
+
+- Persistence: `org_store.case_record` → `organization.case_record` → `public.org_case_records`、`case_id`と`handling_unit_id`をColumn Mapping、PKはCase自身の `organization.case_record.case_id`。
+- **Independent Expected M1**：元SourceではMembership用`list/read`の2件のみ、CaseRecordは構造RelationだけなのでDerived Case Operationは0件。
+- **M2**：コピー版を実`workspace.Load`すると、CaseRecord Mapping、DB、Table、PKを観測できる。Mappingが反映されればSource/Worldの実指紋は変わる。
+- **M3**：コピー版の`SurfaceWorkspace`ではCase用`list/read`が増え合計4件になり、Case`read`のInputはCase自身の`caseId`。MembershipID・OrgUnit ID・表示行番号へすり替わらない。
+- **M4（否定）**：前後とも`Effect=read-only`、`Binding`空、`Effects`空、`AuthorityLimits`保持。**Operation candidate ≠実Function/Provider/Host認可**。当該DBに実Case行が存在することも未検証。
+
+**実証状態の更新（2026-11-06）**：新PR #3024のGoファイルはGitHub Blob `8d004c39ba86bf1dbc92760d68b0d96cbf10118e`と同byteのローカル検査でgofmt差分0。加えて、当該Blobを含むexact HEAD `1d15c31657d37c8a0d26559162ff81fa6b8d70c2`の[Native Case Mapping CI #42203835508](https://github.com/hat47x/tei-platform/actions/runs/42203835508)で最初の局所成功を確認。さらに**最新固定HEAD `cc10afc61fb11f6c87848bd704afeffbb88ccd60`**の[Native E1b CI #42204092007](https://github.com/hat47x/tei-platform/actions/runs/42204092007)（job #127846254555）は **SUCCESS**。ログでcheckout/Target HEADとTest Blobの一致、Go1.26.10、`TestOrgCaseExplicitPersistenceEnablesReadCandidateOnly` PASS、`TestOrgHeadless`回帰、`go vet ./internal/operations`、`tei validate`とgofmt/clean checkoutも成功。従って**M1〜M4は実Go Parser/Loader/OperationSurfaceに関する局所E1b試験としてPASS**。実Function Data Context/実Provider Rowset/実DB/Host Grant/Consumer/Owner受理は依然NOT RUN。親#2681はmain未マージ、親[Native E1 CI](https://github.com/hat47x/tei-platform/actions/runs/42031418190)は別版のPASS、同親[Repository Health](https://github.com/hat47x/tei-platform/actions/runs/42031418161)はgofmt検査でfailure。これらを子の実Product合格やRepository Health合格へ流用しない。
+
+### 77.3 Product E2aへの接続：新Runnerでなく既存三つの境界をつなぐ
+
+| 次のGate | 必要な同一Source・Attempt証拠 | 不足時の適切なStatus／担当 |
+| --- | --- | --- |
+| **E1b Operation candidate** | §77.2の実Go fixed-head：Case Mapping、`SurfaceWorkspace`のCase read Input/Origin/Basis、AuthorityLimits不変 | `mapping-not-connected`／#2681/#1127。実行成功ではない |
+| **E2a Function Context** | Case C1選択、`handlingUnit` relation role、Case主キー/Current Selection Epoch、Queryの必要FieldsとRelation Grainを明示（#2506） | `function-context-not-connected`。Operation IDや一覧表示から自動生成して成功とはしない |
+| **E2b 実DB Reader** | Datasource Alias→選択Mapping/Target→実SQL/args→Provider受信→1件のRow+Field/Scope/Cohort/Completeness（#2622/#2611/#2586） | `product-read-not-connected`。Scoped PG別Fixtureの成功や単一Mappingの静的Basisだけは不可 |
+| **E2c Consumer/独立Expected** | 同じC1→D1の実Row/Relationを、許可されたConsumerへ出す。Observedと独立Expected、部分/NULL/拒否・出所・開示資格を別票で比較 | `consumer-not-qualified`／#2516/#2514。Syntheticの同じ見た目だけでは不可 |
+| **E4 Effect（後続）** | 現在Host Grant／Provider実Row Version／Save Intent／Commit unknown／Receipt／独立再読取 | #1174/#2564/#1163。Read実証だけでWrite/Approval/組織責任移管を合格としない |
+
+**外部Referenceとの対照**：[X-TEA Lowcode受容例（main #2940）](../../examples/xtea-lowcode/README.md)には`query order_entry.recent_orders`、`datasource sales`、Native SQL fileがある一方、明示的に`UNBOUND_DATASOURCE`警告を表示し、`cmd/tei/xtea_example_test.go`は`applicationview.Build`と`ReferenceDataExecutor`／MemoryStoreを使用する。**Query宣言が存在するだけでも実DB Readerは成立しない**。Org Caseは「永続化Mapping不在」、このX-TEA例は「環境のDatasource実Binding不在」という別々の最初の不足を示す。両者を別Runner/第二Query Engineで埋めず、#2586の一枚のContext→Provider→Consumer受入票で比較する。
+
+**#2611の制約**：今は一つのAlias+MappingでM1〜M4を検査する。将来の同Semantic Data／別Alias／別Tenantのケースでは、`emitOperation`のfirst deterministic winnerと`mappingBasis`の限定入力を実Target同一性に使ってはならない。Alias順を反転した時に候補の解決理由・必要な区別が表面化することを#2611 PM-02/04へ渡す。Provider DB Aliasを専門家が初回から手入力するUXへ戻さず、既存Mapping/Targetの宣言と必要時のAI提案・Owner判断を保持。
+
+**維持する線**：#1119の実Product P0-a/P0-b、#2586の実Reader接続の優先順位は不変。#2681本文・main・採用済みADRは変更しない。新Core OrgEntity、第二Provider/Query Runtime、中央Tenant/Grant Registry、新Host、未受理DB/Host Actorは追加しない。独立Expectedと実際に観測した状態を分離する。
+
+## 78. E1b局所PASSからE2の一件実Readへ：Case Key、Tenant Scope、実Providerの同一性を固定する（2026-11-06、採用前）
+
+### 78.1 観測済みの「できること」と、次に作るべき一つのProof
+
+#3024の固定HEADで、実TEI Source→Persistence Mapping→Read Operation Candidateが成立することは局所PASSを得た。次の要求は新しい別モデルを作ることではなく、**Case C1のFunction Invocationから実Providerに到達したことを示す一枚のE2 Read Receipt/Observation**である。既存#2586のFunction Data Context、#2622 Data Operations/Provider、#2611 Alias実対象、#2514独立Expectedを合わせるが、互いのPASSを自動合算しない。
+
+| 証拠境界 | 既に観測済み | 次に必要な入力／独立Expected | 欠ける場合 |
+| --- | --- | --- | --- |
+| Source/World | Go実LoaderがCase Mapping追加→Read候補を導出する固定HEAD PASS (#3024) | 実Functionが**同じSource/World/Model revision**を読み、他ScopeのCaseと混同しない | 候補のSourceと実消費Source不一致 |
+| Business target/Relation | `CaseRecord.caseId`と`handlingUnitId`が別属性、関係名`handlingUnit` | C1の業務識別とD1へのRelationを、**型付きRelation path**と取得Field/Grainで固定する。Display Row IndexやMembership occurrenceはCase Keyでない | `function-context-not-connected` |
+| Function Context/Query | `OperationSurface`の`read`はDerived candidateのみ | 明示Function Context/Query ContractでC1、必要Row/Field、Source Role、取得対象と非出力Predicate、選択時点/completeを記録 | `query-context-unbound` |
+| Physical Provider | 合成`persist`宣言はTarget Table/Case PKを記述 | Application DB alias/実Provider/SQL+argsまたは他Data Source、実ReaderのRow/Field/Cohort/completeを**同一Invocation**で観測 | `provider-read-unobserved` |
+| Host/Consumer | もとのRead-only Operationは権限なしを明示 | Current Principal/Resource/Tenant Scope、Consumer用途に対して何を開示したか、部分/0件/deniedを区別 | `grant-unqualified`／`consumer-unqualified` |
+| Independent oracle | E1bの元2候補→変更後4候補を実Goで照合 | 同Case C1のExpected（Case自身の識別、D1 relation、Row+Field、0件・別Tenant・欠落負例）を**Actualとは独立**に固定 | E2 Product PASSを留保 |
+
+### 78.2 一つのCase Keyを全Tenantで普遍的な物理PKと誤認しない
+
+#3024のコピーWorkspace内に足した `primary-key organization.case_record.case_id` は、**単一Database/単一MappingでOperation導出を判別するための最小Fixture**である。この試験はTenant別レコードを持たず、Client/Host/ProviderのTenant Scopeもなく、`caseId`が全Tenantでグローバル一意であることを示さない。
+
+- **専用Tenant DB/別Schema**：その物理スコープでCase IDが一意なら、そのMappingのPKにCase IDのみを採用できる可能性がある。ただし当該DB Alias/Providerの選択根拠、現在Grant、実Readerのスコープを別証拠にする。
+- **共有TableでTenant A/Bに同じC1が存在**：別TenantのRowの同一視を禁じる。Tenant IDを全Canonical Domain Rowへ義務化する代わりに、選んだProvider/DB設計が持つ**実Row identityとTenant Scope enforcement**を独立検証。共有物理Tableでの複合PK、別partition、RLS等はTarget固有の実現方法であり、最終方式をここで確定しない。
+- **共有Master/通常Org Data**：Tenant-private Caseと公開/共通OrgやCatalogは同じ厳格度で秘匿する必要がなく、Scopeは明示的に指定する。業務Orgの親子や同PersonのMembershipからTenant Grantを推論しない。
+
+[Draft #3016](https://github.com/hat47x/tei-platform/pull/3016)はSQL Referenceに**Tenant A/Bで同一orderId文字列**を導入した別テスト案であり、この組織CaseRecordの実E2結果ではない。SQL Reference/Org Native/.tei/Providerを混ぜた擬似的な「統合成功」は禁止する。
+
+### 78.3 最小次工程と決定の境界
+
+1. **#2586/#2506**：一つのCase C1に対するRead-only Function/Query Contextを既存Data/Relationで宣言し、Source/Model/Instance IDとField+RelationのRequired Setを記録する。Ruleによる責任Manager決定や複数Employment合算を先に内蔵しない。
+2. **#2622/#2611**：実ProviderにC1のQueryを渡し、戻ったRow+Field/Scope/Cohortと対象DB Alias/Mappingを同一実行試行で対照。Aliasの辞書順先勝ちを物理Target資格にしない。
+3. **#2514/#2510**：独立Expectedに正例C1→D1、別Tenant C1→D2、存在0件／未取得／denied、Source改版を追加するが、局所Fixtureの結果を別のProduct E2として再利用しない。
+4. **#1174/#2564**：実Readを得るまではWrite/Approval/異動時のCase保存、Commit/Receiptを後続Gateとして保持。業務上の意味受理はOwnerが独立判断する。
+
+**採否**：E1bでSource→Mapping→Surfaceの実装可能性を確認済み。次のE2a/E2b/E2cは未実証。新たな汎用Org Host、HR専用Runtime/別DB Engine、全Domain共通Tenant Key/認可Coreを作らない。#1119のP0優先順位と、他担当#2681/#2586の変更責任を保持。#3024は親#2681依存のstacked Draft・未マージ、#2389はmainへのマージ競合あり。局所CIの成功をmainや実Productの受入へ昇格させず、親統合後に再資格化する。
+
+## 79. 実Native Query AuthoringとSQL Sourceの一体追跡：E1c合格とE2実Read未接続の境界（2026-11-06、採用前）
+
+### 79.1 最小Sourceの実証：CaseRecordのQueryは読めるが、まだ実行されていない
+
+[積上げDraft #3024](https://github.com/hat47x/tei-platform/pull/3024)の現固定HEAD `705933667d5b081036314a9161280323e08a64bd` で、既存E1b Go Testに**E1c Query Authoring/SQL Sourceの変異を追加**。[Native Org Case Bridge CI #42208159977](https://github.com/hat47x/tei-platform/actions/runs/42208159977) / job #127859885404 はcompleted/success。Go 1.26.10、git HEAD/Source Blob一致、focused `TestOrgCaseExplicitPersistenceEnablesReadCandidateOnly` PASS、既存`TestOrgHeadless`・`go vet ./internal/operations`・native Workspace `tei validate`・gofmt/clean checkoutも同じ固定HEADで成功した。
+
+| E1cの検証 | 直接観測した実Source／Expected | 結果の資格 |
+| --- | --- | --- |
+| E1c-01 Queryの明示入力 | コピーしたNative Org Workspaceへ`query org_view.case_read`、`input case_id organization.case_record_id`、`datasource org_read`を追加。実`workspace.Load`の`World.Queries`でID/Application/入力型/Aliasを確認 | **PASS**。Native `.tei` ParserとLoaderの資格 |
+| E1c-02 SQLの別Source | 同じQueryが参照する`case_read.sql`を別ファイルとして追加。実Query.SourceにSQL byte内容が読み込まれ、`SourceContributions`にそのSQLファイルとQueryの関係を保持 | **PASS**。ソース所在・出所の資格。Provider実行は含まない |
+| E1c-03 明示結果列 | SQLの`case_id`→`organization.case_record.case_id`、`handling_unit_id`→`organization.case_record.handling_unit_id`がtyped ResultColumnとして保持 | **PASS**。Attributeの対応のみで、Relation `handlingUnit`の実Traversal/Row組立成功ではない |
+| E1c-04 SQLのみ差分の失効 | Query ID/Alias/Persistenceを固定し、SQLの`where`条件だけ変更。実`SurfaceWorkspace`のWorld FingerprintとModel Revisionの両方が変わることを確認 | **PASS**。実消費Source/版照合に使用できるが、現在GrantやResultが新鮮とは限らない |
+| E1c-05 Operation候補とQueryの非同一 | Queryを追加しても、既存OperationSurfaceのMembership/Case合計4件、AuthorityLimitsは変化しない | **PASS**。Operation IDをQuery/Provider/Host Capabilityに自動昇格しない |
+
+**構文の実反例**：初回固定HEAD `a96838048db49ed23832d6969af50f36a3d1e20c` の[CI #42207973000](https://github.com/hat47x/tei-platform/actions/runs/42207973000)はQuery入力名`caseId`を`invalid local name`として拒否。実DSLのLocal Name規則に従い`case_id`へ修正後、`7059336`の[CI #42208159977](https://github.com/hat47x/tei-platform/actions/runs/42208159977)で合格。この失敗はQuery Source構文の拒否であってProviderやTenant権限の失敗ではない。
+
+### 79.2 同じSourceへのBindingには、まだ別の二辺が必要
+
+(1) **Query declaration→Function Data Context**：`World.Queries`と`OperationSurface.Operations`が同じWorkspaceに存在しても、`org_view.read.organization.case_record`を`org_view.case_read`と同一Function Invocationで選択したという証拠はない。Queryの`result column`はAttributeに対応するが、`CaseRecord.handlingUnit`のRoleと必要Row/Field/Grain/CompletenessがどのData Contextに束縛されるかは明示する必要がある。#2586/#2506の責任で、Function/Query/Relationを**既存Contract**へ接続する。別Canon Queryや新Function Runnerは作らない。
+
+(2) **Query declaration→実Provider Read**：`datasource org_read`はApplicationの読取りDB Requirementを指す宣言であり、環境の実DB Alias/Provider/Connection・現在Tenant/Host Grantを証明しない。Native SQL `where case_id = :case_id`も、SQLバイトやパラメータがProviderへ実際に渡った証拠ではない。E2には選択したMapping/Provider/実SQL+args、実Row+Field+Scope/Cohort/CompleteとIndependent Expectedが同一Attemptで必要。#2622/#2611/#2586/#2514の責任を保持する。別の[X-TEA Lowcode](../../examples/xtea-lowcode/README.md)の`UNBOUND_DATASOURCE`と同様、宣言可能性≠実データ取得と扱う。
+
+(3) **Queryによる結果属性→業務Relation**：返った`handling_unit_id=D1`と`CaseRecord.handlingUnit to OrgUnit`は構造Source上で整合候補だが、実ProviderでD1が存在したか、役割に応じた有効・記録時点、関係先の完全性、現在の責任者や承認資格までは自動確定しない。Case IDをTenant全体で普遍PKと推定しない（§78）。特に実SQLの検索条件にTenant Scopeが存在しない今回の**single-database test fixture**を、Tenant-privateデータの分離保証へ流用しない。
+
+### 79.3 次の受入ケースと依存／Stop
+
+| ID | 最小入力と独立Expected | 不足時のStop |
+| --- | --- | --- |
+| ORG-E2-01 | Case C1→SQL Result `case_id=C1,handling_unit_id=D1`→明示`handlingUnit` Relation Contextを**同じWorld/Function/Scope/Invocation**へ束縛し、実Providerの1行を独立Expectedと照合 | `function-query-not-bound`／`provider-read-not-observed`を別票。Static Query PASSをE2へ移さない |
+| ORG-E2-02 | Source/Query ID/Aliasは同一だがSQL WHEREだけ変更した後、旧Preview/旧Query Consumptionを試す | `source-revision-mismatch`なら再資格化。E1cで実証した指紋の差を現在権限の再検査に代用しない |
+| ORG-E2-03 | Tenant A/Bに同じ`case_id=C1`、異なる`handlingUnitId`を持つ。Aの実ScopeでBを取得しない | 当該Provider/HostでCurrent Grant+physical Row IdentityとScopeを実観測するまで`tenant-scope-unqualified`。全標準DataへTenant列を要求しない |
+| ORG-E2-04 | Aで完全な0件、Aでpartial/未取得、B Privateでdeniedを別々に渡す | 0件・部分・拒否を同一Resultに畳まない。Consumer外部開示は別資格 |
+
+**優先順位**：まずORG-E2-01一件を#2586の実Read縦断で完成させる。静的Queryと`OperationSurface`を自動Linkする補助処理の新設や別Runtime/Hostの開発を先行しない。Source/World FingerprintとModel RevisionはE1cの正しい変化を示したが、実Row、出力、実認可、Effect/Receipt、Owner意味受理は**NOT RUN**。親#2681、子#3024、設計#2389はすべてmain未マージ（子は積上げDraft、設計PRはマージ競合）。実証範囲はPR固定コミットを参照する。
+
+## 80. TEI Authoring Source `*.tei.md` 標準化に伴う組織E1b/E1cの再資格化（2026-11-06、形式決定と移行実装を区別）
+
+### 80.1 決定された外部表現と、現行Org Native試験の限界
+
+2026-11-06のユーザー方針により、**新規TEI Authoring Sourceの標準ファイル名は `*.tei.md`、旧 `*.tei` は原則新規作成停止・段階廃止**。通常のMarkdown `*.md`は別である。これはAuthoringの外部表現・識別を決めたもので、Markdown本文中のDSL Fence・表・式・Roleの解釈方式まで自動的に決まったわけではない。形式全体のOwnerは[Draft #3030](https://github.com/hat47x/tei-platform/pull/3030)／[移行計画](https://github.com/hat47x/tei-platform/blob/3d2436ad34802bda8f40560dfef9804613375223/plan/design/TEI_MD_UNIFIED_AUTHORING_MIGRATION_2026-11.md)、#2621/#988/#1920である。本節は**組織モデルの既存の限定実証を新Authoring形式へ移す際の差分**に絞る。新Parserや第二Meaning正本は組織担当では作らない。
+
+[Org Native E1 PR #2681](https://github.com/hat47x/tei-platform/pull/2681)、[Case E1b/E1c積上げDraft #3024](https://github.com/hat47x/tei-platform/pull/3024)の実Go試験は、`semantic/organization/model.tei`、`applications/org-view/application.tei`、`databases/org-store/persistence/*.tei`、一時的な`queries/case_read.tei`を実Readerに渡した**Legacy source形式に対する合格**である。E1b（Persistence→Read候補）とE1c（Query/別SQL Source→ResultColumn/Source Revision）の局所合格は保持するが、これを新`*.tei.md`の対応済みと説明しない。SQLのnative asset `case_read.sql`、Workspace Manifest `tei.workspace.yaml`、管理ディレクトリ`.tei/decisions/`は一律改名の対象にしない。
+
+### 80.2 現行Loaderのギャップと暫定フェイルクローズ
+
+現行mainの`internal/workspace/loader.go`を直接確認すると、`scanManagedFiles`は宣言Source Root下のファイルを列挙する一方、各Domain Loaderは`plugin.tei`／`bundle.tei`／`application.tei`／`database.tei`／`*.tei`等で絞っている。`ManagedFile.Extension`は`filepath.Ext`由来なので`model.tei.md`は末尾`.md`として分類される。したがって**Managed Inventoryに載る ≠ 実Parserに渡した ≠ Meaningに採用された ≠ Build/Executionが当該Sourceを消費した**。少なくともこの経路では、単純RenameはMissing Meaningを成功に見せる危険がある。#2823の既存「読込み対象外の管理ファイル／未知Source Root」問題と重複しているため、新Inventory/Closure Engineは増やさない。
+
+このギャップを固定する[限定Draft PR #3031](https://github.com/hat47x/tei-platform/pull/3031)を**main起点、組織担当branchとは別に**作成した。現状`*.tei.md`の正式Parserが未選択のままManagedFilesに見つかった場合、`TEI_MD_PARSER_UNBOUND`と実Source pathでWorkspace Loadを停止する。通常`*.md`は対象外、legacy`*.tei`は引き続き読み、`*.tei`と`*.tei.md`が同居しても暗黙first-winnerにしない。**このガードは新形式を解釈する実装ではない**。本来のMarkdown Container/Language Pluginが正しく選択・版固定され、元byte/spanを保って下位Parserへ渡す機構が整えば、ガードは選択成功時の厳密な消費保証に置き換える。
+
+**固定HEADの局所実測**：[PR #3031 commit `63953ccb5c12ead26ec1268e7c0afdba4eff66ae`](https://github.com/hat47x/tei-platform/pull/3031)に対する[GitHub Actions #42217379093](https://github.com/hat47x/tei-platform/actions/runs/42217379093)（job `tei-md-admission` #127890658926）は**SUCCESS**。Exact HEAD/Guard・Test Blob、gofmt、Semantic/Query/Persistence/Plugin/Bundle/Release／大文字拡張子の未結合負例、旧Source＋通常Markdown、root外Source、パッケージ`go test ./internal/workspace`全体と`go vet`が成功。初回CIはgofmtで失敗したため修正後版だけを現在の資格とする。**実`*.tei.md` Parser／Org Model解釈／正式Authoring編集は未実装・NOT RUN**。Draft未マージ。
+
+### 80.3 Org CaseRecordの独立Expected：移行専用再資格ゲート（ORG-MD-01〜09）
+
+[Draft #3030](https://github.com/hat47x/tei-platform/pull/3030)の汎用M0〜M6／TM-01〜14のうち、Org E1b/E1cの確定結果を壊し得る**一つの業務事例**を再利用する。別のOrg Schema、別Test Runner、第二Validatorを定義しない。
+
+| Case | 元の固定条件／変異 | 独立Expected・不足時Stop |
+| --- | --- | --- |
+| ORG-MD-01 | 元`model.tei`、`case_record.tei`、`application.tei`、`case_read.tei`の意味を表す`*.tei.md`文書を用意 | **実Parser選択／Source Span確認後**、Caseと`handlingUnit` Relation、Persistence Mapping、Application read-only Req、Queryを同じSemantic IDsで保持。現時点はunsupported |
+| ORG-MD-02 | 通常`README.md`とTEI`case_read.tei.md`を同Rootへ置く | 通常文書は自動Meaningへ昇格しない。TEI文書は選択Parserの資格がない限り明示停止。単なる拡張子で全表/全Fenceを実行しない |
+| ORG-MD-03 | 前後でCaseRecord Meaningは不変、Markdown見出し・説明・装飾だけ変更 | Raw Source RevisionとAccepted Meaning Revisionを分け、説明の改版が必ず意味改版になるとは推論しない。Source Location再解決と必要な出所説明は別 |
+| ORG-MD-04 | 同一Subjectについて`case_read.tei`と`case_read.tei.md`が共存・異内容 | 未選択の二者から暗黙に一方を採用しない。選択/移行決定、Legacy Alias/Remap、差分・損失を明示 |
+| ORG-MD-05 | Markdown内Fence／表の行移動、複数同名DSL Use-site、CRLF、日本語説明、Unicode識別子 | Raw byte/Source Span/Occurrence→typed Meaningを出典付きで照合。曖昧なRoleや重複は受理前停止 |
+| ORG-MD-06 | Native SQL `case_read.sql`だけWHERE条件が変化する | `*.tei.md`側Query IDが不変でも実消費SQL Sourceを束縛してVersion/Read結果再資格を行う。旧E1cのSQL失効検査を再実行 |
+| ORG-MD-07 | `*.tei.md`を別パスへ移動、内容A→B→A、Parser/Plugin版変更、Source Read途中失敗 | Source path/byte・選択Parser版・Model/Meaning/Artifact/実Executionを別資格にする。旧Review/Grant/Receiptが復活したとしない |
+| ORG-MD-08 | Case C1とD1のResultColumnは取得できるが、Function Context/実Providerがない | `CaseRecord.handlingUnit` Role／粒度・完全性・現在Tenant Scopeを勝手に補完しない。E2未接続のまま |
+| ORG-MD-09 | 同じCase IDがTenant A/Bに存在、Legacy Sourceと新Markdown Sourceが混在 | Authoring形式の統合は業務IDの衝突解消やTenant Grantの共有を意味しない。Provider実Row Identityと実Scopeは別 |
+
+**試験結果の線引き**：ORG-MD-01〜09の新形式への変換・解釈・同一性試験は**NOT RUN**。#3031が保証するのは「未対応を黙って成功としない」だけ。従来E1b/E1cのGo PASSは旧`.tei`の固定HEADに紐付く。Markdownを書けることと、TEI Meaning／Function／実Providerを実行できることを混同しない。
+
+### 80.4 実装順と担当境界
+
+1. **形式・Source読込**：#3030/#2621（Markdown Authoring RoleとFormat）、#988（選択Parser/Language PluginとPin）、#1920（中央変換・版と旧形式の受入期間）、#2823（Inventory vs Read/Parsed/Required Scope、未知Source Root診断）。#3031の暫定Guardは実Parser選択・必須Source Consumptionが成立すれば不要。
+2. **Org再資格**：#2681/#3024の同一Case C1・D1・Read候補4件、E1c Query/SQL/Source ContributionとWorld/Model Revisionのテストを、**新形式で再実行**する。旧形式Fixtureは互換性負例として残すが、新規`*.tei`の標準作成は行わない。
+3. **Product一件実Read**：#2586/#2506/#2611はFunction→Query選択→Datasource/実Provider→Row/Field/Cohort/Consumerの同一Attemptを既存契約で検証する。形式移行が成功してもE2は未合格、逆に旧形式のE2局所結果から新形式が認可されたとしない。
+4. **編集・外部連携**：#1124/#2516／SHO Composer/OKFは元Markdownの可逆編集・保存後再Parse／原文の出所を検収し、TEI標準`*.tei.md`にOKF Plugin常駐や一律Front Matterを要求しない。
+
+**撤回・縮退条件**：新形式Loaderに選択Parserが成立したら、一律`TEI_MD_PARSER_UNBOUND`ガードは削除/縮退し、真のParsed Source/Role/Required Closure判定に置換する。旧Fixtureの`.tei`拡張子名から固定Meaningを推定する経路を長期仕様にしない。#1119のCritical Path、ADR、main既存成果物、他担当PRを今回変更しない。正式Meaning受理・本番Provider/Host Grant・新形式E2Eは別資格。
+## 81. 動的承認の責任・代理委任・実行資格を同一案件で判別する（2026-11-07、採用前）
+
+### 81.1 なぜ第67〜80節にさらに補助試験が要るか
+
+第67/69節は組織改編とCase責任移管、第70〜73節はTenant/Provider切替、第77〜80節はNative SourceからE2 Readまでを既に切り分けた。しかし**所属関係・職位在任・代理委任・決裁権限・Host Grant・実際の承認Effectの六つが、同じ案件・同じ行為者・同じ時点でどう分離されるか**を、独立した金額・本人申請・失効の負例で判別する余地がある。ここでは抽象的な新Authority Engineや標準決裁額を追加せず、既存Data/Relation/Rule/Business Procedure/Function/Hostの接続に渡す**試験用Policy**を一つだけ作る。
+
+W3C ORGはOrganization/Membership/Post等の構造表現を提供するが、組織統制・責任・権限の全機微を規定するものではない（https://www.w3.org/TR/vocab-org/）。RFC 8693はDelegationとImpersonationを区別する（https://www.rfc-editor.org/rfc/rfc8693.html）。いずれもTEI案件での承認規程や現在のHost許可を定める根拠にはしない。
+
+### 81.2 固定Synthetic Caseと仮Rule（Owner未受理）
+
+共通OrgケースのC1/D1/Position M1を**別試験用の説明パラメータ**に使用する（既存#2596や#3024の実Fixtureへ自動混入しない）。P1=申請者、P2=2027-06-30までM1在任、P4=2027-07-01からM1在任、P3=代理行為候補。P2→P3のDelegation G1は2027-06-25〜07-05、対象D1・承認額上限JPY 1,000,000・再委任不可と明示。案件C1はJPY 800,000／申請者P1／担当D1、C2はJPY 1,200,000／申請者P1／担当D1、C3はJPY 800,000／申請者P3／担当D1。金額は試験入力に過ぎず、TEIの標準上限規則ではない。
+
+仮の業務規程R-APP-1は「P2のM1在任に由来する決裁資格の委任」と「承認時の職位・申請者・対象案件・金額・委任範囲による再評価」を要求する。**委任元の退任後も委任が続くかは本来案件Ownerの規程選択であり、このFixtureでは『続かない』という条件を意図的に固定する。** 他業務へ一般化しない。現在Host Grantは同じBusiness Rightとは別に時点と資源を持ち、関係Sourceの人物P3と認証済みPrincipalとの対応も明示的な検証対象とする。
+
+### 81.3 独立Expected：ORG-APP-01〜09（すべて追加実行NOT RUN）
+
+| 試験 | 変異と独立期待結果 | 禁止する誤推論 |
+| --- | --- | --- |
+| APP-01 | 2027-06-30、C1、P3。R-APP-1に照らし**業務承認候補にはなる**。現在Principal/Grant/対象Row・最終Effectは別判定 | 所属線やDelegation発見だけで実承認済みとする |
+| APP-02 | 同日C2、P3。金額が委任上限を超えるため**業務候補から除外**。Host Grantがあっても覆らない | 実行API許可をBusiness Rule充足と同一視する |
+| APP-03 | 同日C3、P3。本人申請のため**自己承認を拒否**。P2からの委任自体は消さない | 有効委任なら利益相反検査を省略する |
+| APP-04 | 2027-07-01、P2→P4職位交替。G1の期間内でも**仮Ruleの権能源泉が退任で不成立**。P4の新たな業務候補は別に求める | token期限だけで委任元の業務権能が存続したとする |
+| APP-05 | 2027-06-30のAPP-01で業務適格だが、P3のCurrent Host Grantは取消済み。**Effect拒否**。業務上の資格評価履歴は保持 | Candidate/Preview、過去Grant、認証済み本人確認を現在許可にする |
+| APP-06 | C1の担当を明示的にD1→D2へ移管。旧D1のG1/Rule resultから**新D2への権限・承認候補を自動継承しない** | 部門後継線・ケース移管からGrantや職務権限を発行する |
+| APP-07 | P3がG1をP5へ再委任しようとする。G1は再委任不可のため**ビジネス上不適格**。Delegation pathは読取・説明してよい | 権限連鎖を無制限の推移閉包として計算する |
+| APP-08 | P3のPreview後にRule改訂／Grant失効／Case Row更新が発生。送出前・Commit境界では**現在の必要条件を再評価**、送出後の応答喪失は**Effect unknown**で保持 | Preview PASS→Commit PASS、タイムアウト→未実行を推定する |
+| APP-09 | P3に直接資格とG1経由の資格という複数候補経路が同時存在。**根拠経路は複数保持し、Actor/Case/Effectを二重計上しない**。経路優先はOwner未決なら未決 | SQL DISTINCTだけで規範・優先順位を自動決定する |
+
+上表の「拒否」「候補」は**手書きの独立期待結果**であってTEIのテストPASSではない。Statusは説明用分類であり新Core enumを確定しない。NULL／対象0件／未取得／非開示／別Tenant／異Cohortは第73/78節と#2514の既存区別をそのまま使い、組織Data全般に新しい閲覧制限を課さない。
+
+### 81.4 Model→Function→Actionの同一試行証拠と最小実装順
+
+1. **意味受理**（#2386/#1125/#2510）：Person、Occupancy、DelegationのRelation occurrenceとCaseの担当・申請者・金額、R-APP-1の権能源泉・時点・適用範囲を別出典として表現。いずれも通常の既存Data/Relation/Ruleを使い、受理前にRuleを実効Policyへ昇格させない。Ownerは「委任元退任時の効力」「異動後の案件」「自己承認の例外」「複数経路の優先」を案件別に判断する。
+2. **まず一件Read**（#3024→#2506/#2586/#2622/#2611）：C1→handlingUnit D1の実Function/Query/Provider Readと、Row+Field/Role/Grain、Actual Input、Source/Model/Query revision、Target mapping・Scope・Cohortを同一Attemptで観測。**現在の最優先工程はこのE2**。APP-01の承認Ruleや実Host Writeを、このRead成功の前提条件として余計に加えない。
+3. **Read後に業務候補**（#1131/#1129/#2514）：同じC1にAPP-01〜04を追加。候補の導出理由と独立Expectedを比較し、部分Collectionや未受理Ruleでの断定を止める。業務規程は仮案のまま正式適用しない。
+4. **最後に実行資格・効果**（#1043/#1174/#1163/#2564）：Authenticated Principal（実Actor）／Delegation Source／現在Grant／対象Case row version／最終Post-image不変条件を一つのEffect Attemptで照合。Commit不明時は同一operation identityでReceiptと独立Readを追跡し、非実行と推定して再送しない。Append-onlyな過去Receiptを遡及訂正で書き換えない。
+5. **外部表現の再資格**（#3030/#3031/#988/#1920）：新規Authoringの標準は *.tei.md。旧 *.tei のE1局所PASSを新形式へ移植した証拠にしない。既存の移行ORG-MD-01〜09を再使用し、本節のために新Parser、専用ACL、専用Host、第二認可/Workflow Engineを設けない。
+
+**Stop / 判定境界**：業務の明示Rule・Context/Source Role・実Provider Read・Current Host Grant・最終Effect/独立確認のどれが欠けたかを別々に報告する。候補提示や合成計算、固定HEADの局所CI、外部仕様の存在を、Ownerの業務意味受理・本番実行許可・実DB/GUI成功に繰り上げない。対象は設計・期待値の追補のみで、APP-01〜09の新たな実行、PRマージ、他担当のSource変更は行わない。
+
+## 82. 組織承認の実更新対象を束縛する：業務Case・Grant Resource・Provider Rowの同一性（2026-11-07、採用前）
+
+### 82.1 横断差分：権限の有無だけでなく「何に対する権限か」を証明する
+
+第81節はMembership／Occupancy／Delegation／Business Rule／Current Host Grant／Effectを分離した。第67/69/71/72/78節は責任移管、Tenant/Provider再束縛、C1のProduct E2 Readまで区別した。#1125のBusiness Procedure/Workflow、#1174のEffect Fence、#2514の独立Expected、#2586のContext実Readからの**未検証接合部**は、次の三つを同じ実行Attemptで区別して束縛することである。
+
+1. **業務上の対象**：受理済みCaseRecord C1の識別、担当Org D1、申請者P1、金額、関係Occurrence、適用業務Rule/時点。候補Actor P3が業務上適格かは業務規範の問題。
+2. **要求・認可上の対象**：実Principal、Application/Capability/Action、Tenant/Resourceの具体的範囲、Grantの権限源と現在版、Selection epoch/Request payload/Operation identity。広域Grantを認める場合でも、対象C1がOwner受理済み適用範囲に含まれることを具体的に検証する。
+3. **実Effect対象**：選択されたProvider/Mapping/物理Row identityと読取時版、実WriteのTarget Set、Post-image、Receipt、独立再Read。UIの選択行、QueryのJOIN行、Semantic ID、Scope.Resource文字列の一致だけでは実物理行を同定しない。
+
+**現行mainのSource-static観測**：`internal/operations/surface.go`のOperationSurfaceは非実行権限のread-only候補。 `internal/security/effectcommit/commandadapter/executor.go`は`scope.Resource = e.Grant.Resource`を構成し、`commit.go`の`validate`はGrant.Subject/Action/ResourceとScopeの文字列一致・epoch存在を検証し、Runnerは同一TransactionでCheckAuthority→WriteResource→SaveReceiptを要求する。**しかしこれらの関数の静的観測だけでは`request.Inputs`が指すCase C1、Providerが実際に更新したRow、Grant対象の三者の一致を証明しない**。Provider固有の実行で検証が成立する可能性を否定するのでなく、必要な対象対応・当該Adapterの実証を別Gateで要求する。
+
+main統合済みPR #2852/#2853はCommand Lifecycle／実PostgreSQL CASの限定E2Eを持つ。一方PR #2854は物理値A→B→Aと新idempotency keyで再適用可能な負例を実PGで確認した。これらは**Organization Case C1の同一対象・業務承認成功の証拠ではない**。
+
+### 82.2 一つの合成FixtureにおけるTarget Bindingと独立Expected（ORG-TB-01〜10、追加実行すべてNOT RUN）
+
+第81節の架空のC1（800,000円、申請者P1、担当D1、代理候補P3、委任G1）を再利用する。Tenant AとBには**同じ表示Case ID文字列C1**があるが業務CaseとProviderの実Rowは別。AのC1はD1、BのC1はD2とする。物理的な実現が専用DB／別Schema／共有Tableのどれかは未決。共有Tableなら複合キー等の一意性/Scope検証が必要な候補、専用DBならTarget DB選択を別証拠とする。標準Caseに全Tenant共通カラムを強制するものではない。
+
+| Case | 一つだけ変える条件／独立期待結果 | 検出したい誤実装 |
+| --- | --- | --- |
+| **TB-01 正例** | Tenant AのC1を明示選択、P3の業務資格と現在GrantがC1の実対象範囲を含み、Provider Aの正しいRow/版を更新。Receiptと独立再Readの同一Case・同一Operationを別々に確認 | 候補・Scope文字列一致・Commit応答の一つで「業務承認完了」と判断 |
+| **TB-02 同名別Tenant** | 同じ文字列C1をTenant Bにも配置。A向けGrant/Selection/RouteでBのRowを更新できてはならない。Bの通常Org Dataを一律秘匿する意味ではない | Case IDだけを全配備で一意と仮定、実対象をAlias先勝ちで決定 |
+| **TB-03 Application広域Grant** | Resource値がApplication単位で、実Caseを特定しない。**そのScopeにC1操作を含む明示受理済みPolicyと実Target照合があれば適格になり得る**が、値が一致するだけなら資格未証明 | 広域Grantを無条件に行単位許可へ昇格／逆に広域Grantを常に不正と断言 |
+| **TB-04 Selection epochのすり替え** | C1選択後にC2へ移動し、旧C1のPreviewが遅れて到着。旧Previewを新選択に適用せず、C1/C2どちらを実Targetにしたか明示・再確認 | 見た目の行や再利用されたUI indexを業務Case identityにする |
+| **TB-05 取込・取得不完全** | C1の存在行だけ取得できても委任元Occupancy/Ruleの必要入力が部分取得・unavailable。実Case Readは局所的に示せても業務承認適格の断定を保留 | 部分集合の0件を「競合者なし」「委任失効なし」「自己承認でない」にする |
+| **TB-06 D1→D2の責任移管** | 明示Case処分によりC1担当を変更。物理Providerが同じでも旧D1に対する承認候補・委任範囲を再評価し、組織後継だけから新Grantを発行しない | Case担当更新とHost実Grant/業務上の決裁権を同一イベント扱い |
+| **TB-07 Preview後の版変化** | Rule改訂、Grant失効、Case row版変化のいずれかをCommit前に注入。変化した条件について現行の保証可能なFenceで再評価。保証不能な外部Effectを無根拠に成功扱いしない | Preview時の資格・旧Target版をそのままCommitまで流用 |
+| **TB-08 同じOperationとABA** | 不明応答後、同じOperation ID/keyでReceiptを確認する経路と、新Keyで旧値に再適用する経路を対照。新Keyの正当な新業務Actionと重複再実行の区別はOwner規則/実Ledgerで判断 | 物理値が元へ戻ったため旧承認がなかった・新key再送が安全と推定 |
+| **TB-09 追加のEffect対象** | C1承認がCase本体に加え履歴・関連行を書き換える場合、その実Target Setと必要な業務不変条件・実Effect Coverageを観測。単一Row CASの成功では全対象の保証に拡張しない | Data/Rule側の依存や未管理Scriptによる追加書込みを検証済み扱い |
+| **TB-10 遡及訂正・取消・再審査** | 後日P2の在任期間やG1を遡及訂正。過去Receipt/実際の判断Actorを上書きせず、当時把握していた根拠と訂正後の評価を並存。取消・再審査・補償は新たなBusiness Actionとして別Effect資格 | 遡及訂正で過去Commitが自動的に「未実行」になる、取消受付＝実停止と推定 |
+
+**期待値の性質**：この10件は既存Fixtureに接続するための手書きの独立期待結果であり、実TEI Go/DB/Host試験のPASSではない。APP-01〜09の試験用委任規程、業務上の自己承認禁止・退任時失効も、案件Owner受理前の仮Ruleである。TB-05は特に、Readの存在証人と否定依存（未観測者・追加行・部分Cohort）を別に扱う。NULL／missing／0件／denied／非開示の違いは#2514/#2586の受入を再利用する。
+
+### 82.3 必要十分な証拠欄と停止条件（新API/新Core定義ではない）
+
+初回は**1 Case・1 Function・1 Provider・1 Consumer**のE2 Readを完成させ、Writeの権限検証を前提条件として混ぜない。後続のE4承認試験では、同一Attemptの既存Evidenceに必要な欄を対応づける。
+
+| 証拠段階 | 同じ試行で明示・観測すべきもの | 欠けたときの判定 |
+| --- | --- | --- |
+| A 業務Meaning | Case identity/担当・申請者・金額、Delegation occurrence、Rule/validAt/knownAt/公開版/受理範囲 | business-meaning-unqualified |
+| B 実Read | Context/Query/Actual SQL・args または正式Data Provider契約、Row+Field/Relation role/Grain/Completeness/Route/Cohort | product-read-unobserved |
+| C Target解決 | Selection/RequestのCaseと実Provider Row PK/Version/Current Tenant Scopeの対応、対象集合と適用Scopeの根拠 | effect-target-unbound |
+| D 現在Authority | 認証済みPrincipal、業務Actorとの受理済み対応、Action/Resourceを覆う実GrantとEpoch/Fence、業務規則の再評価 | authority-unqualified |
+| E Effect/Observation | Commitと実Row Post-image、Operation ID、Receipt/unknown/takeover、独立Read、複数行へのEffect Coverage | effect-unverified |
+
+これらのラベルは**説明上の診断候補**であり、製品Status enumを採用したものではない。GrantのResource文字列と実Row identityは、実Providerが「許可されたTarget Setに限定して書いた」ことを示す契約・試験で接続する。必要なら対象Key/Predicateを現在Transactionの中で再評価し、出来ないProviderでは保証可能な範囲を明示する。**組織の通常Data閲覧には専用ACL/RLSを義務化せず、実副作用の権限要件だけをそのHost/Adapter境界で検査する。**
+
+### 82.4 反映Owner・優先順位・撤回線
+
+- #2386／本Draft #2389：意味上の対象・動的承認とTarget Bindingの反例、Owner未決、APP/TBの独立期待。新Authority Runtimeは持たない。
+- #3024/#2681 → #2506/#2586/#2611/#2622：Case C1→D1の**最初の実Product E2 Read**を最優先にする。通常Readが成立するまで新Write Agent/Runtimeを要求しない。Provider Instance/Row identity・Scope/Cohortを同じRead Attemptで確認。
+- #1125/#1130/#1129：Business Procedure/Workflow Instance/Actor/Rule/Owner-write coverage。担当決定、案件移管、承認候補をデータ転送・業務状態から暗黙起動しない。
+- #1043/#1174/#2564/#1163：Grant ResourceとResolved Targetの対応、Commit前の最終資格、部分Effect、OperationID/Receipt/独立Read。既存Command Lifecycle/Effect Fenceを使い、第二認可Engineを組織領域で作らない。
+- #2514/#2510：独立Expectedの判別力（Case ID同名別Tenant、Resource fallback、部分取得、ABA、時点訂正）と未観測の証拠を明示。#3030/#3031/#988は *.tei.md Authoringの別資格を管理。
+
+**最小実装判断**：TB-02とTB-03を、組織CaseのE2 Read完成後に最初のOwner-write資格比較へ渡す。TB-07〜10は実Effect/時点訂正の後続Gate。実Providerが既に十分なTarget限定を行っていると判明した場合はその証拠を受けて本追補を縮退する。逆に証拠不在は未検証とし、「実装が危険」「全経路で脆弱」と断言しない。
+
+
+### 82.5 11月7日mainの事後検証との適合（#1174既存ケースを再利用）
+
+最新mainの`internal/command/invoke.go`／`internal/command/applied_check.go`をread-only再確認した。main統合 #3033/#3034/#3042 では、`Applied`報告・事後Effect差分、事前Authorizer、事後検証失敗を`EffectUnknown`へ伝搬する経路が進んでいる。既存[ #1174の2026-11-07確認コメント](https://github.com/hat47x/tei-platform/issues/1174#issuecomment-6690399598)がF-Pre/F-Post/F-NoReport/F-StaleGrant/F-SameKindを所有しているので、**組織独自の同等Fixtureは増やさない**。
+
+- `checkAppliedOperations`は`Applied`が空なら比較を行わない。`commandadapter.Executor`の`StatusCommitted/StatusReplayed`からのCommand結果も`Result{}`であり、**Reported Applied 0件とPhysical Effect 0件は同義ではない**。C1承認でTB-01/TB-09を評価するときは実ProviderのRow/Effect/Receiptを同一Operationで観測する。
+- 宣言Effectと同じKind・別Dataの追加Appliedは、`DifferenceAdditionalScope`として**未解決差分を返す**。合法なCascadeと無関係Case/別Tenantへの作用の区別には、受理済みRelation path・対象集合・現在Grant・実Effectが必要。未解決Differenceを「拒否された」または「正当と認められた」と勝手に解釈しない。
+- main #3042では事後検証の失敗をLifecycleの`unknown`へ接続しており、旧「事後Rejectとして再送可能」という反例の**現在の期待結果を更新**する。ただし`unknown`は未作用／Rollback成功の証拠ではなく、Receipt/独立Readが未接続ならC1承認完了も未証明。
+- #3034の事前`CommandAuthorizer`はProductの改善であるが、ApplicationをResource既定値とする経路から**特定C1/Tenant/実Rowへの権限適用**、現在GrantとCommit時点の同一フェンス、実際の複数行Effectは別資格。#1174と#2598の担当が所有する既存契約へTarget解決の観測欄のみ引き渡す。
+
+**再利用の優先**：#1174 F-Pre/Post/NoReport/SameKind、#2564同一OperationID・実PG、#2854 ABAという既存検証を、組織C1/D1のRealized Targetという新しい識別軸で比較する。原則として新Harness／第二認可Engine／新Outcome enumは作らず、実C1 E2 Readが成立するまでは本節のE4試験を完成扱いしない。新Case試験と業務Owner受理はNOT RUN。
+
+**今回の資格**：mainのGo Source-static観測と既存PRの限定実証、合成期待の追記だけ。ORG-TB-01〜10の新試験、実Org Provider/DB/GUI/Host、業務Owner意味受理、*.tei.mdへの製品移行、Draft解除・PR mergeは未実施。
+
+## 83. 組織判断の対象集合と計算実証を結び付ける：完了判定・OKF計算契約・AI Harness（2026-11-07、採用前）
+
+### 83.1 横断の成熟差分と採用境界
+
+§81の動的承認資格、§82の業務Case↔Grant↔実Provider Row束縛、§69/73の組織改編時の「対象なし」を、**同じ業務Claimに必要な対象集合（Required Set）と実際に観測・消費した集合（Observed/Consumed Set）の区別**でつなぐ。対象集合を列挙できない局面でも、既知の一件の違反は判別可能な場合がある。反対に、観測0件から「対象全件完了」「引継ぎ不要」「委任失効なし」を導いてはならない。
+
+新しいmain統合[#3051](https://github.com/hat47x/tei-platform/pull/3051)の実Go`internal/semantic/completion.go`を直接確認。現行`EvaluateCompletion`は`CompletionEvidence.Targets/Coverage/EmptyJustified/Conflicting/HandoffConfirmed`を受け、空集合禁止`EmptyPolicyDeny`について、未観測・部分取得の`Targets=[]`なら`CompletionUnverified`とする。完全な空集合なら`CompletionFails`、既知違反`Holds:false`はCoverageが部分でも`CompletionFails`となり得る。**ただしCoverageはCaller供給値で、当該Evaluatorは実Providerから対象集合が完結したことを検証しない**。組織Caseの完了判定に直接適用済みとは主張しない。
+
+他チャットで進めたAI-first・Shared Acceptance検討[#2492](https://github.com/hat47x/tei-platform/pull/2492)、一改訂の必要証拠[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#1163](https://github.com/hat47x/tei-platform/issues/1163)、独立検証基準[#2514](https://github.com/hat47x/tei-platform/issues/2514)、read-only Product Skill[#2607](https://github.com/hat47x/tei-platform/issues/2607)を参照する。組織固有の第二Validator/Scenario正本/Host/Acceptance Registryは設けない。
+
+### 83.2 同一Case C1でのClaim別受入票：完了と承認を一括Successにしない
+
+§67/69の「D1廃止・D2/D3後継、未決Caseの処分」と§81/82のC1・担当D1・代理P3を一つの**検証用世界の別時点/分岐**として用いる。ただし異なる既存合成FixtureやGo/実PGの結果を、同じ実行Attemptの証拠に合算しない。
+
+| Claim（新IDではなく既存Caseに対応する用途） | 必要な集合・独立期待結果 | 不足時の扱い |
+| --- | --- | --- |
+| **「D1の未決Caseは0件」**（§69/73） | Owner定義のD1担当Case全集合、適用validAt/knownAt、組織公開版、Tenant/Provider Route/Cohort、Queryの否定依存まで限定。同一Scopeで完全な0件が実測されれば、その範囲内だけで0件と判断 | Aの0件からBの不存在を推論しない。partial/stale/deniedならunverified |
+| **「C1はD2に引継ぎ済み」**（§67/69/82 TB-06） | C1の単一担当Relationの変更、実Row identity、Owner受理済みCase disposition、引受事実を区別 | 組織D1→D2後継線だけではCase移管・受領・承認完了を主張しない |
+| **「引継ぎは全件完了」**（§69／#1125） | Owner対象全集合Lと各Caseの判定値、手作業Handoff証拠、必要な時点・版。完全な全集合を確認できないときはunverified。ただし対象内で未処理C2が一件確認できればfails | `Targets=[]`を空集合とみなす／局所PASSを全業務完了とすることを禁止 |
+| **「P3はC1を承認できる」**（§81 APP-01/05、§82 TB-03） | 業務Rule・委任G1・職位M1・申請者P1・金額・同一Caseの完全な必要入力と現在Host Grant。業務候補/実行許可/確定Effectを別判定 | 部分取得から「利益相反なし」「委任元権能存続」を断定しない |
+| **「C1の承認は確定した」**（§82 TB-01/08/09） | 同一Operation/Target/Current Grant、実Provider Post-image、Receipt、別接続の独立Read、適用結果のConsumer表示 | Command result、空`Applied`、Preview、ACK失敗だけでは確定/未適用を断定しない |
+
+この表は新しいProfile Schemaや実装Caseを採用したものではない。一般に「集合が不完全でも局所的にfailsと確定できる」ことと、「不完全集合でholdsや不存在が確定できない」ことを、同じ独立Expectedで反証する。完了条件の`CoverageComplete`値は、対象Ownerの定義と実Source/Provider Scopeの完全性証人が結合して初めて資格を得る。既存#3051の局所Go成功はこの結合の成功ではない。
+
+### 83.3 OKF `Attested Computation`の採用可能な原則：計算方法の保証と業務上の正当性は別
+
+OKF v0.2には`type: Attested Computation`という**計算契約の文書形式**がある。これは`runtime`、型付き`parameters`、inline/参照`computation`、`executor.resource`と`executor.receipt`、決定的な`attester.resource`により「指定された計算を実行したという証拠」を消費側が検査する形を提供する。仕様上、契約はBundleに保持し、実行ごとのReceiptと判定結果は実行時の成果であってBundleに保存しない（https://okf.md/spec/、https://docs.rs/okf/latest/okf/computation/index.html）。これは**OKFの仕組みに関する外部資料で確認できる性質**であり、TEIに採用済みではない。
+
+TEIの組織例への適用を、**一つの算出方法の検証**に限定して圧力試験する。例：`D1の特定日・特定公開版・Tenant A範囲にある未決Case件数`。候補契約に必要なのは、(a) Source/Meaning/Query/Ruleの版、(b) Case集合の意味・粒度・適用ScopeとvalidAt/knownAt、(c)実Provider/Mapping/Query+args、(d)結果値と取得Coverage/否定依存、(e)実行物・計算契約/パラメータの一致を独立に照合できるReceipt、(f)Consumer別のDisclosure適合である。**すべてをOKF Frontmatterの固定新Fieldとして要求するのではなく、TEI既存Evidenceへの参照・契約として検討**する。
+
+計算器が規定のSQLを実際に実行し、Receiptを決定的に検査できても、それだけでは(1)そのSQL/Ruleの業務意味がOwner受理済みか、(2)Providerが正しいTenant/対象全集合を返したか、(3)Queryが実際に許可された実行先・現在Grantで実行されたか、(4)結果を外部Consumerへ開示してよいか、(5)書込みEffectが成立したか、は証明できない。逆にOwnerによる定義の正式受理も、**一回の実行が指定された計算を行った証拠**にはならない。
+
+**TEIとOKFの役割分担**：
+- 正本の組織意味・Rule・受理は既存TEI Data/Function/Business/Shared Acceptance（#267）。OKF Bundleはその参照・消費可能な知識契約の**候補**であり第二のMeaning正本にしない。
+- TEI Authoringは`*.tei.md`を採用方向だが、`type: Attested Computation`をTEI Parser起動タグやすべてのTEIソースの必須Frontmatterにしない。TEI用`*.tei.md`とOKF用概念`*.md`を同一の拡張子/機械文法とみなさない。Source解析・消費保証は#3030/#3031/#988の独立Gate。
+- Product Skill`yi-tei-modeling`はSource/Relation/版・警告のread-only調査が責務。Agentが計算契約候補を発見・検証・利用する横断手順はTAI/YICのSkill/OKF担当で調整し、文書に実在しない`tei attest`や特権Runnerが存在すると書かない。
+- Attesterは値と実行手順の整合を決定的に検査するだけ。Owner判断・Host実認可・Provider実効果や秘密情報開示の許可を代行しない。署名・信頼できる実Providerログ・本番認可の完全性も別。
+
+### 83.4 既存ケースを再利用する六つの最小反証（追加実行NOT RUN）
+
+| 対照 | 変異 | 独立期待結果 |
+| --- | --- | --- |
+| **AC-01 契約固定** | Agentが承認済みQueryと同名の独自SQLを作り、同じ表示件数を返す | Value一致だけでは指定計算実行の実証としない。実SQL/paramsと承認された計算の同一性を照合 |
+| **AC-02 Provider Scope** | 取得SQLは同じだがTenant A→B/Provider alias/knownAtが変わる | 同名Queryと結果件数が同じでも実対象集合の資格は再判定 |
+| **AC-03 0件** | `Targets=[]`かつCoverage未確立、または確定完全0件を対照 | 前者は`unverified`、後者はOwnerの空集合Policyに従う。結果`0`と空集合証明は別 |
+| **AC-04 定義・実行の鮮度** | Document上の意味受理Revと実行Query/Rule/ProviderのRevがずれる | 書式や定義の最新版・旧Receiptを新Runの合格へ昇格させない。Definition verified≠Run attested |
+| **AC-05 出力先・通常Data** | 同じ組織集計をStudio内・別Tenant・外部AIへ送出する | 通常Org Dataは基本Read可能だが、実送出先・保護指定Field・実Grant/Disclosure契約の違いは別。出力値の同一性は送出許可を意味しない |
+| **AC-06 Effect非昇格** | Attestedな未決件数0のRunがあるが、D1→D2引継ぎReceipt/Handoffはない | 計算Resultは引継ぎEffect・承認完了・外部受領を証明しない |
+
+AC-01〜06は#2510の組織Pressure Corpus、#2514の独立検証基準、#1180の必要検証事項、#1163の同一改訂証拠へ**既存APP/TB/ORG-MDの変異として**引き渡す。新第二Fixture正本、OKF用独立Runner/Receipt台帳は作らない。OKF文書の形式適合と実Read/実計算/決定的Attester/本番Host/Consumerはそれぞれ別Gateである。
+
+### 83.5 現在の最小工程と適用の停止線
+
+1. **P0-L** 既存Legacy`*.tei`のC1→D1実Product E2 Read：#2681/#3024のOperation/Query Sourceを#2506/#2586/#2622の実Function/Provider/Consumerへ同一Source・同一Attemptで接続。任意のOKF導入をこのReadの前提にしない。
+2. **P0-M** 新`*.tei.md`の実Parser/Role/Raw Source消費：#3030/#3031/#988/#2823の移行Gate。同じC1/Expectedを再利用するが、旧Readerの成功を新形式合格へ流用しない。Legacy Readと新形式Readerの開発を並行可能とする。
+3. **P0-J** 一件の完成Claim：対象全集合・Scope・Coverage/EmptyJustifiedの出典と実Provider Observationを受け、#3051 Evaluatorの判定を実資格化する。対象集合の根拠が不明なら`unverified`、既知違反なら`fails`を正しく保持。Result同値だけでOKF計算契約に合格としない。
+4. **P1** 意味の受理、Attested Computation候補、Host認可、E4 Effectを互いに独立判定。main`internal/validation/proposal.go`の`Accept(...)`による`Proposal.Accepted=true`は**局所診断候補の版一致受理**であり、正式Shared Meaning受理、Source保存/Reload、現在Grant・実Effectではない（#2492/#267）。`*.tei.md`内の提案を書き込めたことも実受理ではない。
+5. **P2** 二Consumer（Studio/SHO、外部AI/CUI）の表示・開示・実Receiptを照合。正しい計算ReceiptがあってもConsumerの最終画面が旧版ならそのConsumer Claimは失効。現行Product Skillが実行したCLI/版/実入力・Target/返却Statusを必要十分に記録する。
+
+**名称方針**：main統合#3039/#3040の`docs/naming.md`に沿って、検証理論上の`Oracle`は新しい説明文で用いず、**独立期待値／独立検証基準／適合判定**を使う。Oracle Databaseの製品名と既存コード識別子・歴史的記録は変更しない。
+
+**今回の資格**：main`completion.go`・`validation/proposal.go`・Product SkillのSource read-only照合、外部OKF仕様参照、および組織の受入票設計。AC-01〜06/組織E2・正式TEI/OKF Product連携・外部AI/実Provider/Host/Owner受理は**NOT RUN**。#1119のP0工程、旧新Sourceの二レーン、新Hostなしの基本方針を維持。採用済みADR/他担当PRやmainのSource変更は行わない。
+
+## 84. 統合済みNative組織E1を製品E2の最短一件へ接続する：Query選択・実消費・再資格化（2026-11-07、採用前）
+
+### 84.1 変わった前提：親#2681はmain統合済み、子#3024はclosed・未マージ
+
+2026-11-07の現行GitHubメタデータとmain実ファイルを再取得し、次を**更新前提として確定**した。
+
+- [#2681](https://github.com/hat47x/tei-platform/pull/2681) は**closed/merged**。mainの`reference/org-headless-workspace/semantic/organization/model.tei`にPerson/OrgUnit/Membership/Position/Occupancy/CaseRecordの実TEI記述、`internal/operations/org_headless_characterization_test.go`にParser/Loader→read-only OperationSurfaceの局所Characterizationが存在する。**「E1が未merge」は過去の記録であり現在の状態ではない**。ただしCaseRecordの実PersistenceとProduct Readはmain参照Workspaceに未定義。
+- [#3024](https://github.com/hat47x/tei-platform/pull/3024) は2026-11-07 00:05Z時点で**closed・未merge**（Draft属性は履歴の表示に過ぎない）。baseは旧#2681のhead `e0cfebf14d40db81bdef77d6c3e4898ed75d999f`、child headは`705933667d5b081036314a9161280323e08a64bd`。その局所E1b/E1c fixed-head CI成功（[Actions #42208159977](https://github.com/hat47x/tei-platform/actions/runs/42208159977)）は有効な履歴だが、**現mainにCase Mapping/Queryが存在する証拠でもRepository Health/製品E2のPASSでもない**。mainに`internal/operations/org_case_mapping_bridge_test.go`が存在しないことを実ファイル取得で確認。閉鎖理由と継続担当の受入意思は未確認なので、自動再開・無断cherry-pickをしない。
+- [#3085](https://github.com/hat47x/tei-platform/pull/3085) main統合のWorkspace読込観測により、`internal/workspace/loader.go`の`ManagedFile.ReadByLoader`を確認できる。Managed Inventory→`readByLoader`は区別できるが、`readByLoader=true`は**意味解析の受理／実FunctionのQuery選択／実SQL投入／実Provider Row/Scopeの保証ではない**。三段の実消費証拠は#2823/#2586の既存責務。
+
+**実際の次の最小作業は、旧E1の再設計ではなく** (a) mainを基準に閉鎖済み#3024の既存E1b/E1c独立期待・Sourceを再利用するかOwnerが判断し、採用する最小差分だけを新たな作業単位で現mainに再資格化、(b) その同じSource/Worldを参照する実Function→Query選択を具体的なProduct経路で一回実証、(c) 同じ試行の実Provider Read/Consumerへ順に伸ばすこと。閉鎖済みPRの無断再開・担当Branch編集やマージをしない。
+
+### 84.2 最小の一往復を既存Sourceに固定する
+
+**変えない入力**：組織Source`organization.case_record`（Case PK=`organization.case_record.case_id`、Relation Role=`handlingUnit`）、read-only Application`org_view`、DB要求Alias`org_read`→logical DB`org_store`、#3024のコピー作業領域で追加した`persist org_store.case_record`（`public.org_case_records`）と`query org_view.case_read`。`input case_id organization.case_record_id`、SQL Source`case_read.sql`は以下の二列を返す（実Patchで文字列確認済み）。
+
+```sql
+select case_id, handling_unit_id
+from public.org_case_records
+where case_id = :case_id
+```
+
+これを**正式な生成SQLや全Tenant共通Queryの採用**とはしない。現QueryにはTenant predicateがなく、`case_id`単一PKは隔離した単一配備での説明用。物理DBの特定、Scope、行の同一性、B法人/別Tenantとの安全な分離は後続のProvider実証で決める。
+
+**最初の肯定対照**：隔離した一つの実DB/Provider試験に独立Seed（C1→D1）を置き、(1) 実Function/Contextの選択Case=C1・Query IDと入力`case_id=C1`、(2) 実行時のDB/Provider Instance、選択SQL byte/実statement+args、(3) Row/Fieldとして`case_id=C1,handling_unit_id=D1`を読み、(4) Consumerの実Outputと元の独立Expectedを同じ試行で比較する。**ResultColumnの属性Mapping成功は、Role`CaseRecord.handlingUnit`の実Traversal成立を自動的には証明しない**。Roleの必要な参照先を実際に取得/検証できた場合だけRole Claimを追加する。
+
+最初の負例は、(#3024 E1cで既に固定した)SQL-only WHERE変更による版失効、および、CaseID不在の0行とProvider未接続/未取得を分ける二つに限定する。Tenant A/B同ID・Alias二候補・Replica遅延は、単一配備の肯定対照が成立してから§79 ORG-E2-03/04と#2611既存PM反例を**そのまま再利用**する。Fixture/試験IDを追加発行しない。
+
+### 84.3 必要な受渡し欄を「存在した／実読込した／実消費した」で明示
+
+| 段階 | 既存実装から引く値／担当 | その段階が保証しないこと |
+| --- | --- | --- |
+| **Source declared** | `tei.workspace.yaml`の管理root、`ManagedFiles`、Query/SQLの原byte path+digest、World/Model Revision（#3024/#2823） | 実Parserが読んだ／Functionが選んだこと |
+| **Loader read / semantic candidate** | `ReadByLoader`、Query/typed ResultColumns・SourceContributions、同じSourceのLoad結果（#3024/#3085） | 受理済みBusiness Meaning／Providerへ投入したSQL/params |
+| **Function selected** | 具体Function Data Context/実Invoker・選択epoch、`org_view.case_read`を選んだ**実呼出し**と`case_id=C1`（#2506/#2586） | Aliasが実Provider Instanceを指したこと |
+| **Execution consumed** | Provider選択、実statement+bind値、SQL実行先、実Row/Field/Scope/Cohort/Read Epoch・結果範囲（#2622/#2611/#1163） | 全Tenantの不存在／事後Host Write許可 |
+| **Consumer observed** | 一つのRead Resultを受領した実Consumer Body/表示のC1→D1・同Attempt独立Expected（#2514/#2516） | Business Completion・Owner承認・実Write Effect |
+
+表の列は**既存Evidence/観測の接続指示**であり新Product JSON Schemaではない。Observedがない段階を仮の値や隣のPRのPASSで埋めない。`readByLoader`と`Consumption`の差、`null`とMissing、emptyとPartial、Source Revisionと実DB Snapshotの差を維持する。#3051の`CoverageComplete`は実Readが1行成功しただけで成立しない。取得済みC1の存在Claimは局所証拠になり得ても、「D1未処理Caseは0件」や「引継ぎ全件完了」は§83のRequired Set/否定依存を満たすまで`unverified`。
+
+### 84.4 先行条件・主担当・完成時の受入
+
+1. **閉鎖済み#3024成果物の取扱いを決めたうえで現main再資格化（#2386/#2586と既存実装担当）**：旧PRを自動再開せず、#3024の実Go試験・E1b/E1c独立期待をOwnerが再利用すると判断した場合に限り、main起点の小さな後続作業でCase追加後4候補・Native Query/SQL Source/typed columns/Source-only WHERE変更時の失効を再実行。合格しても**E1b/E1cのみ**。既存Membershipだけ2候補の正例を残し、旧`*.tei`限定と記録する。
+2. **Product初接続（#2506/#2586主担当）**：実CLI/Headlessで存在を確認したFunction/Reader入口を使い、選択したQuery ID・実bind・Provider Instance・実RowとConsumerまでを一回に接続。現時点でコード上にない`tei org read`などのCLI名を計画上の実在コマンドにしない。Function→Query未接続ならまずそこだけを実際の不足として止め、仮の合成結果で隠さない。
+3. **実Provider対象の限定受入（#2622/#2611/#2514）**：単一配備に独立C1/D1 Seedを持つ一件の実Readを検収。実Provider/SQL/Row/Field/Consumer・Scope・Expectedが同じAttemptに揃ったときだけ`one-case product read qualified`相当の限定Claimを可能とする。これは正式Tenant境界全般・Business Rule/Host Effect資格を付与しない。
+4. **後続Pressure（#2386/#2510/#1174）**：上記のRead成立後に§79/81/82の別Tenant同C1、Case移管/委任、Current Host Grant、Effect Fence/Receipt/独立再Readへ進む。OKFのAttested Computationは§83の**計算実証の候補**であり、上記一件実Readの必須実装依存にしない。新形式Authoringの移行は#3030/#3031の別工程。
+
+**停止線・状態**：#2681 main統合とmain Source実在、#3024旧HEAD E1b/E1c固定CI（ただし現在closed・未マージ）、#3085の`ReadByLoader`実Sourceを確認した。閉鎖PRの成果の現main再資格化、実Product Function/Provider/SQL/Row/Consumer E2、Tenant/Owner権限、正式業務意味受理、実`*.tei.md` Parser/再資格化は**NOT RUN**。新Runner/Query Engine/Host/Org専用認可/完了判定器・Fixture正本は作らない。
+
+### 84.5 実行入口のSource-static再照合：Browse表示解決とFunction/Provider実Readを区別する（2026-11-07追補）
+
+現行mainの`reference/org-headless-workspace/applications/org-view/application.tei`は、`uses semantic organization`とread-onlyの`database org_read { target org_store; access read }`を宣言するだけで、**Browse Pattern/Function Data Contextをまだ宣言していない**。したがって、#3024に記述された`query org_view.case_read`を持ち込んだとしても、Applicationでの実利用・Invocationが自動接続したとは言えない。
+
+一方mainの`internal/applicationview/browse.go:BuildBrowse`には、既存Patternが`browse`か、そのPatternが明示したQuery IDが同一Applicationにあり、型付きResultColumnsの参照Attributeが解決できるかを検査して**BrowseView（表示列・Filter・Sort・PageSize）を構成する実Goコード**が存在する。ただしこの関数は実SQL・Provider Instance・Row取得・Function Context/OperationID・Consumerが実Rowを受領したことを記録/実行しない。現行`internal/applicationview/browse_test.go`の合成`browseWorld`でのPASSはOrgの実Workspace/ReaderのPASSではない。
+
+**最小の検証手順**（新Runner/新業務Patternの標準採用を求めない）：
+
+| 段階 | 現在の障害／次の具体的な試行 | 到達できる資格 |
+| --- | --- | --- |
+| A 既存E1 | #2681 mainのOrg model/Case relation、Membership read-onlyの2候補を実Loaderで固定 | mainのOrg Source/Read候補。Case実Readなし |
+| B 非マージの候補再利用 | closed #3024のCase mapping・Query/SQLを再利用するか担当が判断し、現mainの隔離Workspaceに置いてE1b/E1cを再実行 | Case read候補とQuery/SQL Sourceのみ。閉鎖PRの旧CIを流用しない |
+| C 利用入口 | 実在するFunction/Pattern契約を見つけてCase Queryを**明示選択**する。既存Browseを使うならまずOrg Applicationに必要なPatternが存在せず、`BuildBrowse`は投影構成のみである点を再現する。専用Functionの実行経路が確認できるならBrowseを必須にしない | Query選択の表現/投影検査。Provider実行ではない |
+| D 具体実Reader | Cで特定した**実行可能なProduct入口**から`case_id=C1`を実Providerへ渡し、SQL/args・物理Target・Row/Field/Scopeを観測する。存在しないCLI/APIを創作せず、入口未実装なら`product-read-not-connected`を維持 | Provider実Readが観測できた範囲だけ |
+| E Consumerと独立照合 | 同一AttemptでC1→D1を受けた出力を独立Expectedと比較。0行/未取得、部分/complete、異Tenantの資格は既存§79/83に渡す | 一件の限定E2。完成・承認・Host Write資格なし |
+
+**実装優先**：現mainにCase Query/Mappingがまだ入っておらず、Org `org_view`のBrowse Patternもないことをまず欠落事実として記録。これらを単純に新Core/Query Engine不足と同一視しない。#2586がProduct読取入口・統合証拠、#2506がFunction Context、#2611/#2622がTarget・Provider、#2386が組織意味とCase扱いのOwner。現`*.tei`の一件を先に扱い、新`*.tei.md` Parserは#3030/#3031に委ねる。**本追補はSource-staticと計画の更新のみで、新Go/SQL/DB/Consumer E2、旧#3024の再実行、Owner受理・閉鎖PR再開はNOT RUN。**

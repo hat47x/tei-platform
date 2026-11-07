@@ -54,6 +54,10 @@ type Rate struct {
 	AppliesUntil time.Time
 	// Value is the rate as a fraction: 0.10 is ten percent.
 	Value float64
+	// Rounding is the rounding the row itself declares. An empty value means
+	// the row follows the set default, so one period can be corrected without
+	// splitting the declaration.
+	Rounding Rounding
 }
 
 // Set is the rate rows and the rounding rule a caller resolved from a
