@@ -51,3 +51,22 @@ Fixtureは**実Provider/実Sourceから得たEvidenceではない**。4行の予
 - [CycloneDX ECMA-424](https://ecma-international.org/publications-and-standards/standards/ecma-424/)：SBOM在庫と証拠の表現。TEIのCompatibility BOMと混同しない。
 
 **検証状況**：同内容の隔離コピーでGo 1.23.2、`GO111MODULE=off go test -count=1 -v` 4 test PASS、`GO111MODULE=off go vet ./...` PASS、`gofmt -l`空を観測。GitHubに格納された版のexact-head CI、リポジトリ全体Health、実TEI Resolver/Runner/Artifact結合はNOT RUN。
+
+
+## Pairwise計画：発行資格と完全組合せ試験を区別する（2026-11-07追加）
+
+従来の2×2全直積の`Project`に加え、**テスト実行前の純粋な試験計画**を生成する`PlanPairwise`をReferenceに追加した。入力は既存JSON Fixtureの`axes`と正の`maxCases`のみを利用し、出力を`claimCeiling:"planning-only", qualified:false`へ固定する。現行の`Project`の`matrixComplete`とは**別結果**であり、計画上のPairwise coverage 100%と実際のTest/Runtime互換性を混同しない。
+
+```sh
+# 既存の全組合せに対するWitness投影
+go run ./tools/reference-verified-composition-bom -input tools/reference-verified-composition-bom/fixture.json
+
+# 入力軸からのPairwiseテスト計画（Test実行・Lock解決なし）
+go run ./tools/reference-verified-composition-bom -input tools/reference-verified-composition-bom/fixture.json -plan pairwise
+```
+
+生成は軸・選択値を辞書順で固定する。まず第1・第2軸の全対を列挙し、第3軸以降は既存行の拡張と必要な追加行によって全2項相互作用をカバーする。**全直積数**は任意精度整数の文字列、**全2項の数／選択行によって被覆された2項の数**は別フィールド。実際に選んだ行からPairwise Coverageを再計算し、完全でなければエラーを返す。生成行数が明示`maxCases`を超えると拒否し、黙って途中結果を合格扱いしない。
+
+**観測した隔離試験（2026-11-07）**：従来4 Testに加え、3軸2値の全直積8→4行、4軸3値の全直積81→少数行、異なる候補数の5軸全直積144、決定性、重複軸/値拒否、上限拒否、入力不変性、単軸の候補全件を含む合計10 TestがPASS。Go 1.23.2の隔離コピーで`GO111MODULE=off go test -count=1 -v`と`GO111MODULE=off go vet ./...`PASS、`gofmt -l`は空。**GitHub側exact-head CIは未実行**。
+
+**制限**：軸値の依存制約、選択済みContract/Providerの不適合、必須Version compatibility、適用不可Target、3-way以上の既知障害、Security/Grant、Stateful/Effect、Test Priority、Runnerとの接続はこのアルゴリズムでは解決しない。生成した行に無効な候補が含まれ得るため、#951/#1016の実Resolverで合法性・足りないScopeを判定したうえで、必要な独立Scenarioを#1180/#2514に渡す。無効行を黙って除外して「残余Pairwise完全」と称してはいけない。Pairwise完全は**無制約の宣言軸集合についてのみ**。本結果を検証済みBOMとして公開しない。
