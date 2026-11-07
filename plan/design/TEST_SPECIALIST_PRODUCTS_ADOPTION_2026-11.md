@@ -909,3 +909,65 @@ Source・Rule・Relation/negative dependency・Target/Plugin Lock・Generator・
 **実装の最短順**：(1) Draft #3324のexact HEADと統合後mainを別々に検収し、一Ruleの必要Source/Relation閉包が不足ならT1-B範囲を狭める → (2) 既出Caseと重ならない一Obligationを独立事前登録 → (3) 既存CLI/Skill受領でAI Candidateと正例・負例を生成 → (4) #1180/#2514/#1163でTarget到達・独立Expected・Mutation対照・Coverage差集合を観測 → (5) Source/Plugin/Target変更で再資格化判定 → (6) 必要時にだけ実Provider・HTTP・Studio/MCP・Version Matrixへ拡張。
 
 **非主張とOwner**：この§21の追加はCoverage/Pattern/Blind Trialの設計を既存#3262（Context）、#2514（独立判別）、#1180（Scenario SSOT）、#1163（Evidence）、#2509（Harness配送）、#3274（HTTP）、#3267（BOM）、#2600（Reuse）へ割り当てるもの。新しい正式Schema・CLIコマンド、Test Engine/Oracle、Host/Grant、CI実行、T1-B発見、C1実測、正式Meaning Acceptanceは**実施していない**。
+
+<!-- tei-test-required-slice-actual-ci-and-cohort-20261108 -->
+## 22. 2026-11-08 横断統合：必須Rule Sliceの実CI、同時点性の未証明、Test/Evidenceの到達資格（Owner別計画）
+
+### 22.1 §21の前提を更新する「既に実証された最小Required差集合」
+
+[Draft #3326](https://github.com/hat47x/tei-platform/pull/3326) は旧9 CLI Replyでは**subjectモード**だった `source-index` を全件 **indexモード**でも取得する10番目の既存read-only CLI呼出しへ増やした。独立に事前固定した公開ReferenceのValidation 3件（`quantity_positive`、`line_number_unique`、`line_number_positive`）に対し、Source `semantic/sales/validation.tei` の `readByLoader`、Catalog `semantic-validation` の一意性とkind、indexの`definition` role/Source path、Source artifact/fingerprintの限定整合を判定する。既存16受領/Manifest負例、旧6 pinned Scenario、T1-A候補第7 Stepも同じWorkflowで実行する。
+
+**新規実測**：当該PRのexact HEAD `c2d2da10cc93022697204e66e83c30248b3810a0`と現在Branchの同一性はGitHub compareで`identical`（ahead=behind=0）。[専用CI #42385726717](https://github.com/hat47x/tei-platform/actions/runs/42385726717)の`bounded-design-context` Jobは **completed/success**。既存7+2+7の16条件に加え、**7件の必須Rule欠落・Kind/Role/Path・重複・Loader未読込の拒否**と、**非必須Subject削除を過剰拒否しない1対照**を検査した。公開合成Artifact `tei-issue-test-ability` ID `13579711391`（保存時点expired=false、保持条件はActions側）へ結果を出力。`requiredValidationSlice.status=bounded-present` は**この公開固定3件だけ**。結果の`boundedReference=partial`、`testExecutionAdmission=exploration-only`、`qualifiedTestGeneration=false`、C1 unmeasuredは維持する。新CLI API・新Parser・Owner意味受理・外部Tool受領は実証していない。
+
+**失敗を利用した学習**：先行[CI #42385502023](https://github.com/hat47x/tei-platform/actions/runs/42385502023)は、subjectモードのSource Indexを全件参照と誤用して `wrong-mode` とDefinition欠落を観測した。これはProductのRequired Rule欠落ではなく**試験用ReaderのQuery mode不足**。要求集合の不備／検索モードの誤り／Source実欠落／結果の実受領欠落を、一つの「未カバーRule」に合成しない。
+
+**並行Draftの所有整理**：[Draft #3324](https://github.com/hat47x/tei-platform/pull/3324) は一Ruleの`inspect-validation`投影とSource Anchor/Canonical属性まで照合する**別方式の候補**で、同じ`context_gate.py`とWorkflow/計画を変更している。現時点の[#42385502023](https://github.com/hat47x/tei-platform/actions/runs/42385502023)は#3326の初回FAILであり、#3324のCI結果ではない。#3324の最新HEADに対する統合資格は未確認。`#3326`の実際に成功した**3 Rule+index mode**をP-1b局所基準として評価し、`#3324`の単一Rule Inspect/属性照合に不足する差分がある場合だけ移植する。一つのConsumer・一つの独立Required組に収束させ、別々の競合ファイルをそのまま並行mergeしない。どちらのDraftも正式Owner採用やmain上の完成機能とは主張しない。
+
+### 22.2 次のP-1b受入は「同一時点」と「実消費」を一段だけ深める
+
+今の10応答は単一Workflow内で**順次**呼び出した別Processの観測であり、各JSON fingerprintが一致しても全Readが同一原子的Snapshotから来た証拠ではない。TEI開発者Contextの[Draft #3176](https://github.com/hat47x/tei-platform/pull/3176) CC-14は、個々のSHAが正しくても共同成立しない`(T0,C1)`、CC-15はPath検証後の差替え、CC-16はDiscoverしたTestと実`go test -json`の結果を区別した**限定Go Characterization**。これらをProduct Readinessへ無条件に転用せず、次の同一Workspace/Ruleの反例に縮約する。
+
+| 一段先の到達性 | 最小の独立Expected | 失敗時の表現 |
+| --- | --- | --- |
+| **Query mode / Required** | `subject`で無いDefinitionは`index`で得られるが、必要3 RuleはCatalog/Index/Loaderに同版で存在し、非必須の省略は許す | wrong-modeとrequired-missingを分離 |
+| **共同Read cohort** | Manifest/Source/Index/Catalog/Inspect/Ruleの実Consumerの読取世代が混合なら、個別SHA正でも同じClosureとして資格化しない。Query中にSourceをA→B→Aへ変えても共同世代の履歴は未観測のまま | cohort-unknown / stale、再取得条件を説明 |
+| **Parser/Meaning/Rule実Bind** | Test-onlyのRule ID固定値と`readByLoader:true`だけでProduct Parsed/Bound/Acceptedを称さず、当該Validationの実Evaluatorへ届いたSource/RoleとFunction/Relation依存を既存Productで確認 | parser-or-binding-unqualified |
+| **Test実行** | DiscoveryのTest名・Source集合と、指定Profileで現に走ったTest ID/Result/Pathが一致。exit0/no Testや別TestのRedを当該Ruleの判別力に加算しない | selected-but-not-executed / not-target-reached |
+| **Delivery/Disclosure** | 実Harness受信側のRequest/Reply count、最終part/ordered-end、許可Scope/実Sinkが当該Attemptで照合済み | delivery-unverified / ineligible。Tool成功でも外部比較に加算しない |
+
+原子的Snapshot、現在Grant、Meaning受理に対しては、**今回新たな実Product Gateが成功したという主張をしない**。受入不可な場合の「どのSource/Rule/Replyが追加で必要か」を分かる形で出すことが、生成AI用の最小指示UXと直接つながる（#3262/#2514/#2018）。
+
+### 22.3 他チャットの「実際に壊れ得る」実行端を、Coverage母集団へ接続
+
+- **Operation現在性**：[merged #3325](https://github.com/hat47x/tei-platform/pull/3325)のread-only参照実装は期待WorldFingerprint/ModelRevisionを与えれば`current/stale/unchecked`を区別し、属性変更では`basis`単独が不足することを検証済み。ただし既定の`tei operations`/Invoker/Current Grantへ未接続。静的Graph/CRUD/Functionが存在することを実Dispatch Coverageへ加算しない。
+- **UIのepoch**：[Draft #3327](https://github.com/hat47x/tei-platform/pull/3327)はWorkbench A→B→Aで旧Inspectの成功/失敗を採用しない局所Node回帰。これはUI Responseの可視資格であり、旧Host実行の中断、Context共同Read、Effect取消を意味しない。
+- **Command効果不明**：[Draft #3328](https://github.com/hat47x/tei-platform/pull/3328)はExecutor後のRecorder/Stage書込み失敗を`EffectUnknown`へ伝播し、`MayReplay`と実Dispatchの食違いを修正する案。新Goテスト・exact-head CI・実PG隔離の成功は別検証。業務拒否と副作用不明/再送安全をTest Resultの異なる状態として扱う。
+- **Build成功とSource Closure**：[merged #3331](https://github.com/hat47x/tei-platform/pull/3331)は旧X1証拠文書の文字化け重複を削除しただけで、記録値`buildSucceeded=true`でも`sourceClosureState=rejected` / `artifactProducedDespiteUnqualifiedClosure=true`を維持。局所Build exit0からG4/Source Closure/Artifact現在資格を推測しない。
+- **業務Roleの実消費**：[merged #3318](https://github.com/hat47x/tei-platform/pull/3318)は休日・税率・為替・採番のRole付き例を既存Binder/Validationへ接続し、行を**テストが直接与える**限定Go試験を持つ。型/Role宣言≠実Provider行のValues/Precision/NULL/時間有効性や完全Readであり、同じObligationモデルで不足として提示する。
+- **Graph/CRUD**：[Draft #3263](https://github.com/hat47x/tei-platform/pull/3263)の複数Canvas/parallel edge/CRUDは合成Fixtureの一貫性、実TEI Loader/Graph/SHO両Consumer/独立Expectedは未達。表示OccurrenceはSubject、業務Relation、実Effectのいずれのカバレッジ分母とも同一視しない。
+
+### 22.4 独立の横断反例（TT-89〜TT-97：Case正本は各担当へ割り当て）
+
+| ID | 独立に変える点 | 正しいOutcome / Owner |
+| --- | --- | --- |
+| TT-89 | `source-index` subject/index modeを間違え、同じWorld FPでValidationが一覧に出ない | wrong-query-mode。Rule実欠落と誤分類しない／#3262 |
+| TT-90 | 全10 Reply JSON正常・個別SHA正、Source観測世代だけ混合 | cohort-unknown。同一Snapshot qualifiedは不可／#3262/#2533 |
+| TT-91 | 必須3 Ruleのうち一つだけ欠落、非必須Itemを一件削除した場合と対照 | Required欠落はblocked、非必須欠落はbounded partial維持／#3262/#2514（#3326で限定実行済み） |
+| TT-92 | Catalog/Loader indexは一致、Product Rule Parser/Bindが未観測 | Source tracedだがmeaning/binding unqualified／#3262/#2506 |
+| TT-93 | `go test` exit0だが選定Testは0件／別TestだけRed | 選定Caseのexecuted/killはfalseまたはunknown／#2514/#2533 |
+| TT-94 | Operationは同ID・`basis`一致でも属性が変化、期待World/ModelRevなし | `unchecked`または`stale`を区別、actual Invoke/Grantは未受理／#951/#2514 |
+| TT-95 | UI A→B→Aに旧成功Replyが到着、別の旧Commandに副作用が残る | 画面採用拒否と効果/取消/Grantを別判定／#1824/#1174 |
+| TT-96 | Executor成功後Recorder失敗／Command Stage不明、旧Receiptだけあり | EffectUnknown、再送安全・Resource現在値は未観測／#1174/#1163 |
+| TT-97 | Build artifact生成exit0、独立Source閉包がrejected | Artifact存在はBuild局所事実のみ。Self-Build/G4資格はunqualified／#2831/#2514 |
+
+TT-89/90/92〜97は**この横断結合を新たに実行したわけではない**。TT-91の限定ルール差集合は#3326のPR専用CIにおいて7 reject+1 negative controlを観測済み。旧Evidence/別Issueの局所テストを新しいE2E PASSへ合算しない。
+
+### 22.5 導入順・担当・ブランチ統合の停止線
+
+1. **P0（現在）**：#3262のTT-56実装候補#3326と#3324を**一つへ収束**し、#3326実CIのexact HEAD結果（7拒否/1非過剰拒否）を元に、差分として必要なInspect Canonical/Anchorだけ取り込むか判断。実装の二重Core化や別Rule正本を避け、main追随と統合後main Runは別検収。
+2. **P1（次の最小実装）**：3 Ruleのうち1 Ruleについて、実Loader→Parser role→実Evaluator Targetと、その同Attemptの生成済Pinned Scenarioの接続（または明示unknown）を観測する。CC-14/15の共同Read/Path差替えを、必要なら同TestのNegativesとして追加。既存`context_gate.py`の`partial`を全製品`qualified`へ変更しない。
+3. **P1（T1-B）**：観測・開示資格を満たすContext上で、事前未提示のObligationを1件、生成AIが提出→独立Reviewer→#1180 Scenario→#2514 Expected/Target Mutant→#1163 Evidenceの既存経路で判別。既出行番号0や公開済みRequired3件の再提案は新規発見に加算しない。
+4. **P2（横断拡張）**：実Provider/Functionの接続#2586、Command EffectUnknown#1174、Operation drift#951、UI epoch#1824、BOM exact tuple#3267、三視点Graph/CRUD#3263、Self-Build#2831は必要な一辺ずつ追加。C0/C1、業務Obligation、Mutant到達、NFR/Effect、実Consumer/Deliveryは独立分母にする。
+
+**今回の資格**：#3326 exact HEADのGitHub Actions局所Jobを照合し、既存#3176/#3325/#3327/#3328/#3331/#3318/#3263の限界を新たな依存順と横断反例へ整理した**設計追補**。本Draftの追記コミットに新Go/CLI/Browser/PG/H2/H3の実行は伴わない。#3324/#3326のmain統合、T1-B・実Provider・G4・Owner Meaning Acceptanceは未成立。新Runner、Resolver、Host、Authority、第二Scenario/Oracle正本を追加しない。
+
