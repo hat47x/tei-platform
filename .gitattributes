@@ -25,3 +25,6 @@
 
 # Egress measurement summaries are hashed as raw bytes.
 /plan/evidence/DSH_SESSION_LOG_EGRESS_MOCK_2026-11-07/** -text
+
+# Operation-surface pattern gap evidence is hashed as raw bytes.
+/plan/evidence/OPERATION_SURFACE_DECLARED_PATTERN_GAP_2026-11-07/** -text
