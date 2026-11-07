@@ -507,7 +507,7 @@ main統合済み[ #3264 ](https://github.com/hat47x/tei-platform/pull/3264)は�
 
 ### 14.4 テスト生成・Provider/Plugin/BOM/Cacheへの依存を増やさない順序
 
-**テスト能力**：T0はmain #3264/#3266/#3268の限定実証で進んだが、T1「#3262 Design Contextから未カバー義務を発見し、生成AIが新しいCaseを提案、独立Expected/Mutation/実CLIにより判別」は[Draft #3273](https://github.com/hat47x/tei-platform/pull/3273)の計画であり未実施。C0局所測定とC1/要件・NFR Coverageは別。Scenario正本は#1180、独立期待値は#2514、Coverage不足提案は#3223/#3273。**Product Function→Provider R1未接続を、T0のGreenやAIが生成したScenario数で相殺しない**。
+**テスト能力（11/7後続補正）**：T0はmain #3264/#3266/#3268の限定実証で進み、[main統合 #3304](https://github.com/hat47x/tei-platform/pull/3304)では#3273で**既知の行番号0 Rule候補（T1-A）**を、生成済Pinned実TEI CLI／既存6 Step＋一時第7 Step／偽Expected・偽Fixture・古いPinの3負例で実行した（[限定CI #42378033965](https://github.com/hat47x/tei-platform/actions/runs/42378033965)は当該旧実行HEADでsuccess）。しかしT1-Bの**未発見Ruleの盲検探索／AIによる新規Case独立生成**やC1/要件・NFR Coverageは未実証。T1「#3262 Design Contextから未カバー義務を発見し、生成AIが新しいCaseを提案、独立Expected/Mutation/実CLIにより判別」の全面資格は[Draft #3273](https://github.com/hat47x/tei-platform/pull/3273)の計画段階を出ない。C0局所測定とC1/要件・NFR Coverageは別。Scenario正本は#1180、独立期待値は#2514、Coverage不足提案は#3223/#3273。**Product Function→Provider R1未接続を、T0のGreenやAIが生成したScenario数で相殺しない**。
 
 **拡張範囲**：[main #3276](https://github.com/hat47x/tei-platform/pull/3276)がData Source Workbench RQ-035（Schema CRUDは標準、DBA運用は非標準）、[main #3277](https://github.com/hat47x/tei-platform/pull/3277)がCore外Plugin化とCLI/Studio自身を使うdogfood計画を追加済み。対象の実Provider能力・Reader Scope・Action Grantを解決して初めてこのR1入口を選択する。Plugin/DB/Cloud実装を全件P0としない。#3267（Verified Composition BOM）はExact Source/Contract/Target/組合せ試験の再利用資格、#3271（Cache/Snapshot）は観測時点・依存Closure・失効資格の再利用を所有する。**単体Provider/Plugin個別PASS、Cache hit、BOMの構成一覧は、実Functionの同一Attempt R1/R2成立の代替にならない**。
 
@@ -520,19 +520,19 @@ main統合済み[ #3264 ](https://github.com/hat47x/tei-platform/pull/3264)は�
 
 ### 15.1 一つの直列P0で塞がず、「意味からの図面」「実Read」「二者の照合」を分離
 
-[Draft #3236](https://github.com/hat47x/tei-platform/pull/3236)は標準構造/表現型の合成写像の統合候補を更新し、**P0-M（三視点Modeler read-only）とP0-R（実Function→Provider Read）を互いに独立した最小実証として並行実施**し、次に**P0-C（cross-view結合）**を行う順を示した。これは§14が最初に強調したP0-Rを撤回するものではなく、#1124の旧X-TEA三視点図面／CRUD cross-referenceという**モデリング製品固有の主要価値をProvider実装待ちにしない**ための境界修正である。
+[Draft #3303（旧#3236の現main向け置換候補）](https://github.com/hat47x/tei-platform/pull/3303)は標準構造/表現型の合成写像の統合候補を更新し、**P0-M（三視点Modeler read-only）とP0-R（実Function→Provider Read）を互いに独立した最小実証として並行実施**し、次に**P0-C（cross-view結合）**を行う順を示した。これは§14が最初に強調したP0-Rを撤回するものではなく、#1124の旧X-TEA三視点図面／CRUD cross-referenceという**モデリング製品固有の主要価値をProvider実装待ちにしない**ための境界修正である。
 
 | 並行レーン | 最小の入出力・独立期待値 | まだ主張しない資格とOwner |
 | --- | --- | --- |
 | **P0-M：三視点のread-only導出** | 同じ受理Source/RevisionのData Entity/Relation、Function/Pattern、Business Procedure/Step/Actorから、Data・Function・Businessの3図とCRUD Matrixを**Headless CLI/JSONの投影**として説明。Node/Edge/Source Location、宣言と派生、欠落/非開示/部分集合を保持。 | Product実Row Read、実Effect、画面上編集・逆Patch、業務Ownerの新規意味受理は未実施。#1124/#1125/#1126、[Draft #3263](https://github.com/hat47x/tei-platform/pull/3263)が設計・検証Owner |
 | **P0-R：Functionの実Read** | 実Function/Pattern→実Query Source/SQL byte/parameters→Physical Provider/Scope→Actual Rowset/Field Presence/Read Cohort→Contextを**一Attempt**で接続（§14）。 | CRUD表のC/U/Dの実行、図面の編集資格、全Function一般化を主張しない。#2586/#2506/#2387/#2514 |
-| **P0-C：Model/Readの照合** | その**同じSource Subject/Workspace/Revision・Function/Query Binding・Entity identity/grain・Scope/Time**を使って、P0-M側のData/Function/CRUD RowとP0-R側のActual Read Slice/Consumerを照合する。未一致は解決せず差分として返す。 | Nodeのラベル一致だけで意味・取得対象/Host Grant一致を確定しない。合成写像#3236、正本/投影#2497、同一試行#1163、設計取得#3262 |
+| **P0-C：Model/Readの照合** | その**同じSource Subject/Workspace/Revision・Function/Query Binding・Entity identity/grain・Scope/Time**を使って、P0-M側のData/Function/CRUD RowとP0-R側のActual Read Slice/Consumerを照合する。未一致は解決せず差分として返す。 | Nodeのラベル一致だけで意味・取得対象/Host Grant一致を確定しない。合成写像#3303（旧#3236）、正本/投影#2497、同一試行#1163、設計取得#3262 |
 
 **非推論**：CRUD表の「R」はFunctionが対象データを**参照すると宣言/派生された**ことを表す分類であり、物理RowsetをそのFunctionが取得したことのReceiptではない。C/U/Dも実業務更新の記録やAuthorityではない。またP0-Rの実PostgreSQL成功を三視点図面の正本・意味受理へ逆流させない。**P0-M単独とP0-R単独の独立合格を尊重**し、双方が揃っていないことだけで「図面導出不可」としない。
 
 ### 15.2 Design Contextの「探索利用可」と「検証済みモデル/テスト生成」を区別する
 
-main統合[#3284](https://github.com/hat47x/tei-platform/pull/3284)は`tools/reference-issue-test-ability/context_gate.py`（main Blob `0c9873e7fcc129151668f3b0c4cbc74c74e9bc4a`）を追加。既存のread-only CLI Reply 9種についてSubjectの特定、Source Inventory/Loader、world/index Fingerprint、返信欠損/Source Rootを検査し、7種の限定負例を判別する。実Sourceでは**正常な限定Referenceでも**`boundedReference=partial`、`testExecutionAdmission=exploration-only`、`qualifiedTestGeneration=false`。この結果は[該当CI #42370519406](https://github.com/hat47x/tei-platform/actions/runs/42370519406)のPR限定実測に基づきmainへ取り込まれた。**AIが新規テストを設計できる製品資格が成立したわけではない**。
+main統合[#3284](https://github.com/hat47x/tei-platform/pull/3284)は`tools/reference-issue-test-ability/context_gate.py`を導入し、続く[main統合 #3296](https://github.com/hat47x/tei-platform/pull/3296)が**同じGate**でread-only CLI Reply 9種、既存7負例＋Source Root/Manifest 2負例＋Tool ReplyのByte改変7負例、計16対照へ強化した（[限定CI #42371310577](https://github.com/hat47x/tei-platform/actions/runs/42371310577) success）。実Sourceでは**正常な限定Referenceでも**`boundedReference=partial`、`testExecutionAdmission=exploration-only`、`qualifiedTestGeneration=false`。初版#3284と拡張#3296の**個別実行証拠**を区別し、Tool Reply Byte負例は受領済みJSONの一時コピーの合成改変であって実外部Harness通信の完全性保証ではない。**AIが新規テストを設計できる製品資格が成立したわけではない**。
 
 この実装を三視点Modelerへ**転用する際の判断はscope相対**である：
 
@@ -553,8 +553,54 @@ main統合[#3284](https://github.com/hat47x/tei-platform/pull/3284)は`tools/ref
 | **未読込Business Source／非開示Relation** | 図・Matrixには`unknown/partial/withheld`の資格を残し、空セル・空集合を「業務上不存在」へ昇格させない（#3262/#2516） |
 | **Source/Rule変更後に図だけ再生成** | P0-Mの差分は表示可でも旧P0-R/旧Test T0/旧Artifactの適合を自動再利用しない。Source+Query+Context/Mapping+Consumer/Targetの失効範囲を比較（#2582/#2600） |
 
-**重要な独立Expectedの上限**：[Draft #3263](https://github.com/hat47x/tei-platform/pull/3263)には三図/CRUDの合成入力と期待JSONが別ファイルで存在し、内部整合15項目の静的確認が記録されているが、**両方ともAI草案**。出力Expectedがファイルとして分離されているだけでは、#2514が要求する意味上独立した検証基準・Mutation検出力・Owner受理にならない。P0-Mを実Go/CLI実行し、既存Mutationを誤成功として通さない追加試験が必要。#3236のRP/MV/CXケースをこの表で再定義・複製しない。
+**重要な独立Expectedの上限**：[Draft #3263](https://github.com/hat47x/tei-platform/pull/3263)には三図/CRUDの合成入力と期待JSONが別ファイルで存在し、内部整合15項目の静的確認が記録されているが、**両方ともAI草案**。出力Expectedがファイルとして分離されているだけでは、#2514が要求する意味上独立した検証基準・Mutation検出力・Owner受理にならない。P0-Mを実Go/CLI実行し、既存Mutationを誤成功として通さない追加試験が必要。#3303が継承する旧#3236のRP/MV/CXケースをこの表で再定義・複製しない。
 
 **実装順**：P0-Mは既存Source/CLI/Modeler ProjectionからData→Function→Business→CRUDをread-onlyで独立実行し、P0-Rは§14のSource→Actual SQL→Provider行の接合を独立実行する。P0-Cは双方の**受理Source/版・Subject/Role・Function Binding・実Data同一性・Scope/時点**が揃った後だけ実施する。図上編集、SHO文書Consumer、Studio GUI、Host Write、HTTP Decision GraphをP0-Mの開始条件にしない。P0-C成功後も現在Grant/Business確定とは別資格。#1119の既存Gate・Critical Pathを変更せず、担当Issueの実証を受入可能な形で横断照合する。
 
 **証拠資格**：main #3284の限定read-only Consumerテストや#3238の隔離PG、Draft #3263の合成Artifactを参照した**設計計画の更新**であり、この§15の三図・CRUD生成/Mutation/Function Product実Read/P0-Cを新たに実行したわけではない。人間/OwnerのMeaning採用や実Web/Studio/SHO/本番Host・Providerの一往復は**NOT RUN/NOT ACCEPTED**。新Source Registry/Renderer/Acceptance Engine/独立Expected正本/テストRunnerは設けない。
+
+<!-- tei-triad-crosscanvas-two-identity-20261108 -->
+## 16. 11/7〜8横断追補：多Canvas共有と三視点Graph/CRUDを「意味Subject・表示Occurrence・実データInstance」の三つの識別単位で検収する
+
+### 16.1 同じ「受注」を指しても、Modeler Node・Canvas上のカード・実業務Rowは別
+
+[Draft #3263](https://github.com/hat47x/tei-platform/pull/3263)の現行合成入力`reference/diagram-crossref/pressure-input-v0.json`（確認Blob `26bd66d01bd97fc0647fda0c511faf3d62af75f9`）は、**Entity 9 / Relation 7 / Function 4 / Business Action 3 / Canvas 2**と、Canvas上の**9つの表示Occurrence**を区別する。別指定Expected `expected-v0.json`（確認Blob `b9ab9c2a4fe559db6afd48e841eb2ef178d83bb0`）も、複数Canvasで同じSubjectを共有しつつOccurrenceは異なる、という対照を明示。ただし**両JSONはAI草案のPressure/Expectedであり、TEI Parserが読んだAccepted Sourceでも製品Graph/CRUDの実出力でもない**。
+
+- **Semantic Definition/Subject**：例 `data.order`（受注というData *型・定義*）、`rel.order.lines`（Relation定義）、`fn.order.register`（Function定義）。安定したSubject ID/Source Position/Revisionを共有する。表示ラベル「状況」が同じでも`data.order.status`と`data.flow.status`は別Subject。
+- **Representation Occurrence**：`canvas.sales-overview`の`view.sales.order`と`canvas.fulfillment`の`view.fulfillment.order`は**同じ`data.order`への二つの配置**。同様にRelation `rel.order.lines`にも`view.sales.edge.order-lines`・`view.fulfillment.edge.order-lines`という別の表示辺がある。表示位置、選択、展開・折畳み、レイヤー/Canvas所属はPresentation状態であり、Semantic Subjectの複製・削除・変更を意味しない。
+- **業務データInstance/実対象**：受注O1や明細L1の実Row/Key、Tenant/Scope/Versionは、`data.order`という**モデル型**そのものではない。P0-Mの選択した設計ノード/Function×Data CRUDセルから、具体的受注O1へのAction Target/Host Grantを直接生成しない。P0-CではFunction Data Context→Query/Result Slice→Row/Occurrenceへ**別の束縛Witness**が必要（§14/15、#2586/#2506/#2598/#1174）。
+
+この三つはIdentityだけでなく**失効粒度**も別。共通Semantic Definitionの意味・Relation Rule改訂は双方のCanvas由来Projection/依存Buildへ影響し得るが、一つのCanvasで座標・折畳みだけを変えた場合、他CanvasやSource Meaningの受理を黙って失効させない。表示上の削除は特定Occurrenceの削除であり、Data/Relation/業務イベントの削除と推定しない（旧#3222のMV、現在は#3303の合成写像Owner）。
+
+### 16.2 同じ合成Fixtureからだけ派生させるData/Function/Business反例
+
+| 対照（#3263 Input/Expected・#3303既存ケースへ判別列を追加） | 独立に確認する意味 | 禁止する誤保証 |
+| --- | --- | --- |
+| **二Canvas共有**：`data.order`が二つの`view.*.order`へ表示される | 受注定義は1 Subject。二つのOccurrence ID、Canvas所属、Selection/Source版は識別できる | 2表示＝2業務Entity／2受注Row、片方の配置削除＝元受注定義の削除 |
+| **Relationの二重出現**：`rel.order.lines`が二つのCanvasに投影 | 同じRelation定義を異なる表示辺が参照。表示辺とSemantic EdgeのIDを保持 | 片方の表示辺の非表示＝Semantic Relation不存在／Edge Rule変更 |
+| **同名・異ID**：「状況」の2 Subject、同端点を持つ`rel.line.sku.primary/alt` | ラベル・端点が同じでもSource IDとRole/Edgeが違う | 表示ラベル/端点キーだけで統合、並列Edgeを一つへ縮約 |
+| **Context境界**：同じSubjectが別Canvas/Functionの別Scope・Disclosureで見える | 表示利用者の現在Scope/Selection epochに応じ、開示・Action候補を別々に再評価 | 片方で表示可・操作可→他方で同じGrantがある |
+| **CRUD列の意味**：`fn.order.register×data.order=C` | FunctionからData *定義*への**宣言操作**であり、個別O1の実更新Receiptではない | Canvas出現数×CRUD、`C`セル＝O1作成済み、`R`セル＝Providerの実Read成功 |
+| **未完備Scope**：`fn.external.dispatch`の`declaredCrudComplete=false` | 未列挙のセルは`unknown-not-enumerated`で、`none`にしてよいのは列挙範囲がcompleteな場合のみ | 表に空欄→実作用がない、外部配送にGrantやEffectが無いと確定 |
+| **手作業Step**：`action.phone.confirm`はFunction無しで手順に存在 | Business Actionの説明・手作業と自動Function/Commandを独立に表示 | Function未接続→手順不存在、Step＝実自動発火Event |
+| **編集の逆写像**：Canvas Aでカードを移動、同じSubjectを表すCanvas Bはそのまま | Presentation Occurrenceだけの変更と、Role/Relation等のSourceパッチ・両Canvas再Projectionを独立判定 | ドラッグやSelection同期をDomain Mutation・Business Approval/Effectへ変換 |
+
+**Itemの分類**についても将来の汎用Canvas/Documentへ接続する際、`Task/Action/Event`を現在の`Item`と排他的なCore型の列挙として先決しない。情報断片に付く**Role/Traitの候補**と、実発生Event・実行Attempt・実業務Actionの**別Subject/履歴/Receipt**を混同しない。詳細設計のOwnerは#2495/#2497/#2620、Function/Patternは#2507、実Action/Receiptは#2598/#1174。これは正式採用済みのType/Role Registryという主張ではない。
+
+### 16.3 Source・CLI Tool・生成AIテストの現在資格と失効
+
+**Source/Consumerの現実**：P0-Mの合成JSONをProduct Sourceと見なさず、まずTEIが実読したSourceの`Workspace Identity/Manifest Source`・`worldFingerprint`・Model Revision・Source Span・Semantic Subject/Relation ID・Read Completenessを一致させる。[main #3307](https://github.com/hat47x/tei-platform/pull/3307)は`tei commands`に引数集合/型/既定値を追加し、実CLI受理値の局所試験を固定した。ただし**Diagram/CRUD専用Operationの公表／実Consumer到達を実装したものではない**。[PR #3311](https://github.com/hat47x/tei-platform/pull/3311)は`workspace`名・Manifest版/照合値のCLI応答追加の候補だが現時点**未統合**。二つのWorkspaceで同じModel名・同じByte/World FPでも、同じ業務Contextと断定できない。#2822/#2824/#3262が公開・同一性の既存Ownerを保つ。
+
+**テスト能力の最新上限**：[main #3296](https://github.com/hat47x/tei-platform/pull/3296)の9 CLI Reply・16合成負例は`exploration-only / qualifiedTestGeneration=false`のSource/Tool Responseを機械的に切り分ける限定資格。[main #3304](https://github.com/hat47x/tei-platform/pull/3304)で行番号0の**既知**Rule Candidateを生成済Pinned CLIで実行し、偽Expected/偽Fixture/古いPinの3負例まで区別できるようになったが、AIによる**未知のMulti-Canvas/CRUDの不変条件発見（T1-B）**は未検証。#3263のExpectedが別ファイルであることだけで独立Meaning保証は成立しない。#2514/#1180/#3273の同一Scenario/Expected/Mutation体制に、上表の最小反例を差分として取り込む。
+
+**図面・テスト・実データの失効を一緒にしない**：Source Subjectの意味変更なら対応するP0-M/Binding/Consumerを再資格化、CanvasだけのLayout変更なら対応Occurrence/Renderer差分だけを評価。Function Query/SQL/Provider/RowVersion変更ならP0-R/Business Claimを独立再実証し、P0-Mの内容が同じでも古い実Readを使い回さない。Plugin/Target/BOM/Operator版の変更はSelected実装/実利用・Conformance Witnessを再点検し、単に旧Artifactが存在するだけで適格にしない。これらは既存#1163/#2582/#2600/#3262/#3297と[main #3298](https://github.com/hat47x/tei-platform/pull/3298)のTrait/Provider実利用の責務に委ねる。
+
+### 16.4 既存Ownerの実装順と停止線
+
+1. **P0-M（#1124/#3263、統合候補#3303）**：まず実TEI Sourceを読んだHeadless Data/Function/Business図＋CRUD表、Source SpanへのRead-only逆参照。Canvas2/Occurrence9、同名2 Subject、同端点多重辺、`unknown`と`none`の差を**既存合成Pressureと独立期待値**で検査する。最初に重要なのは製品Parser→Graph/CRUDの実出力であり、Canvas描画自体は後段。合成Fixture用Go auditのPASSだけで製品投影の受理としない。
+2. **P0-R（#2586/#2506）**：一Function/一Query/一実ProviderのProduct Rowset/Selected・Predicate・Scope・Timeを実観測。参照PGの限定成功と製品選択SQL/Providerの成功を区別する（§14）。
+3. **P0-C（#2497/#1163）**：P0-Mの**Model型/Function-Data定義参照**とP0-Rの**実行時Entity Instance/Rowset**を同じSource/Workspace/Revision/Function Bindingで照合。照合可能なものだけ連結し、未接続や同名別Contextは未解決として返す。
+4. **編集/Consumer/Effect（#1124/#997/#2500/#2598/#1174）**：対象OccurrenceのLayout/Selection状態、可逆なSource編集、Actual RowのBusiness Commandを別手段で検証。SHO/Studio/Webの画面試験・現在Grant・Receipt・実資源読取・Business AcceptanceはP0-M/R単体の必要条件にしない。
+
+**担当境界**：三図/CRUDのFixtureやCanvas2/MV/RP/CXの正本は#3263/#3303、汎用Role/Trait/Itemの正式設計は#2495/#2620、実Provider R1とContextは#2586/#2506、独立期待値/Mutationは#2514/#1180、実Target/Grant/Effectは#1174が所有。本計画は受入横断の**誤帰属と失効の照合条件のみ**。**現時点の証拠は既存合成JSON・Go Fixture候補・限定CLI/PG/CIと本設計計画であり、今回新たな製品三図/CRUD/複数Canvas実GUI/製品Function→Provider→Business実Effectを試験していない。正式なOwner Meaning受理もNOT RUN**。第二Scenario SSOT、Canvas Meaning Store、Graph Editor、Policy Engine、Hostは作らない。
+
