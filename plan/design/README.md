@@ -28,6 +28,7 @@
 | [`DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md`](DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md) | 異種Data Sourceの開発者向け閲覧・データ管理・Schema DDLとDBA境界（#3270、設計・未適格） |
 | [`HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md`](HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md) | REST例外とClient ReactionのGraph/Table/Trace同一性、再試行とCommit unknown（#3274、設計候補） |
 | [`ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md`](ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md) | TEI自身のIssue→Design Context→実CLI・テスト能力の限定ドッグフーディング（#3262） |
+| [`RAW_ITEM_ROLE_MULTICANVAS_TEI_CROSSLANE_2026-11.md`](RAW_ITEM_ROLE_MULTICANVAS_TEI_CROSSLANE_2026-11.md) | SUI未整理Item/Task・Action・EventのRole候補、複数Canvas表示IdentityとSHO文書位置をTEI標準構造・三視点・独立検証へ接続する受入設計（#2619/#1124、未採用） |
 | [`PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md`](PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md) | CLI/Studio/生成Runtimeに共通するPlugin Contract/Provider実証とTraitの分離（#1251） |
 | [`TEI_DESIGN_CONTEXT_TEST_HARNESS_INTEGRATION_2026-11.md`](TEI_DESIGN_CONTEXT_TEST_HARNESS_INTEGRATION_2026-11.md) | 設計Contextの完全性→Test Skill/Harness→独立Expectedへの段階的接続（#3262） |
 | [`TRAIT_ATOMIC_COMPOSITION_AND_FULFILLMENT_2026-11.md`](TRAIT_ATOMIC_COMPOSITION_AND_FULFILLMENT_2026-11.md) | 原子的Traitの実装義務（手動/自動/Provider）、Profile合成、不適合診断、DerivedData/Pluginでの受入負例（[#3278](https://github.com/hat47x/tei-platform/issues/3278)、設計・実証候補） |
