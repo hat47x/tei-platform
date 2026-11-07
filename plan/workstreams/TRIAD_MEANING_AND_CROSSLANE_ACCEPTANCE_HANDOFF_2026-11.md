@@ -279,3 +279,49 @@
 4. **#1125/#267／#2389**：Business Procedureの手作業・承認対象Revision、組織上のActor/委任と現Grant、業務的なCascade許可Scopeを判断する。仮規則で合成PASSしても、人間の正式な意味受理・本番Grant/Business完了の資格へ昇格させない。
 
 **証拠上限**：各main PRの限定Go/CLI試験は既存の結果であり、本節の同一O1/C9／同一Revision/Provider/Consumerでの統合試験ではない。新Reader・旧新Clientの実互換・DB実作用と別Connection Read・本番Grant・Owner正式Business受理・新しいStudio/SHO/Harness E2Eは**NOT RUN／NOT ACCEPTED**。新たなSource/Oracle/RunPlan Registry、第二JSON Parser、万能Audit Engine、Host、業務状態表を作らない。
+
+<!-- tei-triad-receipt-postimage-separation-20261107 -->
+## 12. 11/7横断追補：Receipt再照会を「宣言したData Effectの保存後状態確認」に昇格させない（既存証拠の意味修正案）
+
+### 12.1 main統合された3段階と、最新実コードで残る意味のずれ
+
+[#3054](https://github.com/hat47x/tei-platform/pull/3054)で参照実行の`committed=true`と`persisted=false`を分離した後、[main統合 #3124](https://github.com/hat47x/tei-platform/pull/3124)で`command.Result.Persistence`に`not-applicable / not-observed / observed`を追加した。[main統合 #3127](https://github.com/hat47x/tei-platform/pull/3127) は`commandadapter.Executor.Lookup`から`effectcommit.Runner.Lookup`を呼び、`StatusReplayed`なら`PersistenceObserver.Observe`を成功終了させる。
+
+**Source-staticの具体的な非推論**：
+- 現main `internal/command/persistence.go`（確認Blob `be114c633dd7b41815ab713c18a33e0efd878da0`）では、Observerがエラーを返さなければ`PersistenceObserved`となる。コメント上の意味は「宣言したEffectが保存先から独立読取で確認された」であり、CLI/Studioの`persisted`はこの状態から真になり得る。
+- 現main `internal/security/effectcommit/commandadapter/executor.go`（確認Blob `6b854d7240a4401593c8b693bdea657aee8b5ff2`）の`Observe`は**同じOperationID/Request/payload/GrantのReceiptの再照会**だけを行う。対象となる業務行の保存後値、Tenant付きRow Identity、適用されたField/Relation/Versionを再読取しない。引数`declared semantic.DataEffect`はReceipt検査対象の粒度を実質的に拡張しない。同ファイルのコメント自体も「receipt observation, not record observation」と明記する。
+- [main統合 #3118](https://github.com/hat47x/tei-platform/pull/3118)では、Executorが返す`Result.Effect`を**呼出し側が与えた宣言Effectの再報告**で補える。報告欠落`ReportedEffectMissing=false`であっても、実Providerがその対象Effectを作用させたことは証明できない。類似して`Applied`空や`Difference`無しは実更新の全件証明ではない（§10〜11、#1174）。
+- よって、`Lookup=true`、`DurableStore=true`、該当Observerを実配線した構成では、**Receiptしか確認していなくても汎用`PersistenceObserved`へ達し得る**。これをStudio/CLI/Harness側で「受注O1の保存を独立確認した」と受け取る場合に、契約上の過大主張が成立する。**当該構成が本番業務で使われ、誤った保存確認が実際に発生したとは確認していない**。
+
+### 12.2 一つの受注O1で独立させる証拠：履歴Receiptと保存後の現在値
+
+| 観測 | 独立に言える範囲 | その観測だけでは言えない範囲 |
+| --- | --- | --- |
+| `UnitOfWork.Commit`成功 | 当該構成のCommit呼出しが成功した | 独立な対象確認、業務上の受注確定 |
+| `Runner.Lookup=StatusReplayed` | 指定OperationID＋RequestHash等に対応するReceiptが記録され、照会できた（当該Lookup契約の範囲） | O1の現在値/明細全件・許可外C9の不在・今の業務完了 |
+| Caller由来の`Result.Effect` | 呼出し側が宣言Effectを特定していた | 実Data Effectがそのとおり作用した |
+| `Applied`と`Differences` | Executorが報告した操作と宣言との差 | 報告漏れ/同Kind別対象の未検証・実Provider行の完全性 |
+| 別接続・適切なSnapshotでのO1 PostimageとC9不変 | 読み取った時点/ScopeでのO1/C9の実状態 | 過去Operationの因果的寄与（ReceiptやVersionの束縛なし）・将来の不変性 |
+| Receipt＋Postimage＋Operation/Target/Version/Grant/Meaningの同一試行照合 | **証拠が揃った範囲**で「指定した受注Operationの効果を確認」する候補 | 手作業引継ぎ、業務承認、OwnerのMeaning受理、Consumer開示権限 |
+
+`persistence=not-observed`も「DBに保存されなかった」ではなく、**現在のObserverに必要な観測が無い／失敗した**という意味を守る。Receiptのみ確認できてもBusiness完了・確定Postimageは保留する。また`StatusReplayed`は既往のOperationを指すので、現在のGrantや再承認・更新後の版が有効なままとは推測しない。
+
+### 12.3 既存Scenarioへ重ねる最小4対照（新Fixture正本・新状態機械なし）
+
+| 同一O1、OperationIDを固定した負例／対照 | 独立期待値・診断の要求 |
+| --- | --- |
+| **R+ / O?**：Receipt Lookup成功、O1の実状態は未読・Reader unavailable・Replica遅延 | 「操作記録を確認」とは言えるが**対象状態の確認済みとは言えない**。現在の`persistence=observed`だけから「O1保存済み」の表示・Owner完了Claimを発行しない |
+| **R+ / O≠**：Receiptは存在するが、その後O1が更新/取消された、または別Tenantの同表示IDを読んだ | 履歴Receiptは残す。現在O1の値/対象/版の不一致を提示し、過去Effectの取消・無作用や現時点の条件達成を推測しない |
+| **R? / O+**：Receipt Lookup不可、O1の状態値は期待と一致 | 一致したPostimageの帰属を当該Operationへ**無条件に確定しない**（別Attempt/同値業務/旧更新の可能性）。Lookup失敗で別ID盲再送しない |
+| **R+ / O+、Target mismatch**：Receipt/Readが双方成功、だがGrantはO1・PayloadはO2、あるいは余分にC9更新 | 両方成功でもBusinessの`Target/Relation/Scope`の矛盾が解消していない。必要な現在Grant、実更新行、承認Revisionの同一性を照合し、過剰な成功にしない |
+
+`R`は**Receipt照会**、`O`は**保存後の対象状態の独立Read**。二つは「どちらか一方の成功」ではなく、用途ごとに必要性が異なる**別の検証根拠**。この4対照は既存[#1174 F-Post/F-NoReport](https://github.com/hat47x/tei-platform/issues/1174#issuecomment-6690399598)・[#2671 PO-01〜15](https://github.com/hat47x/tei-platform/pull/2671)・[#2514独立検証基準](https://github.com/hat47x/tei-platform/issues/2514)へ判別列として追加する想定で、第二の固定Scenario/Oracle/Runnerを設けない。
+
+### 12.4 既存Ownerへ渡す最小の契約補正と実装順
+
+- **#2998 / #2824（Command結果・Consumer契約）**：`PersistenceObserved`と`persisted=true`が**Receipt観測を示すのか、宣言Effectの保存後Row確認を示すのか**を、現在の公開説明/実行UIで一致させる。後者を意味するならReceipt-only Observerはその資格を満たさない。別途、観測根拠の種類（ReceiptかPostimageか）が利用側へ伝わる最小表現と旧Client互換を判断する。新enumや版上げの採用はOwner判断であり、本書で決めない。暫定表示は「操作記録を確認」と「対象データを確認」を言い分ける。
+- **#1174 / #2598 / #1163（Provider・効果・証拠）**：同一OperationID/RequestHash/Scope/Grant/Targetの`Runner.Lookup`が確かめたReceiptと、独立した対象O1 Postimage/C9不変・Snapshot/期間を別Witnessにする。実PGと別Readerによる観測後に初めて効果・永続化のQualificationを見直す。2026-11-07時点で #3127 は**mainへ統合されたが、実PG結合でLookup/Row Postimageを同時に通した試験は未実証**。
+- **#1125 / #267 / #2506（Business/Meaning）**：Owner受理済みの受注確定規則と、作業担当者の承認・個別O1の成立判断をこれらの技術的Receipt/Readと区別し、今の`Completion`結果・Scope/TargetSetを再照合する。過去の承認・非公開の資料から新しい承認/開示を自動導かない。
+- **#3030 / #988 / #2823（Authoringと実Read）**：旧`*.tei`でのReceipt/Lookup成功と、未実装の新`*.tei.md`定義の実消費を別に扱う。同一Meaning/Source/Revision・Operationでつながっていない別々のCI成功を製品一往復へ合算しない。
+
+**状態**：main #3124/#3127/#3118の静的実Sourceと既存テスト/PR記録、計画への引継ぎに基づく**設計上の矛盾候補と検収の補強**。今回のR/O対照を実Go/PG/Windows/GUIで新たに走らせたものではない。Ownerが公開`persisted`契約の意味を修正採用したわけでも、実Provider・Resource Postimage・正式Business受理が成功したわけでもない。第二Provider/Host/Runtime/Meaning Registry・新業務状態表は作らない。
