@@ -68,6 +68,15 @@
 # Drift-check survey output is hashed as raw bytes by its README.
 /plan/evidence/OPERATION_DRIFT_CHECK_SURVEY_2026-11-07/** -text
 
+# Drift-check reference output is hashed as raw bytes by its README.
+/plan/evidence/OPERATION_DRIFT_CHECK_REFERENCE_2026-11-07/** -text
+
+# Plugin coverage output is hashed as raw bytes by its README.
+/plan/evidence/PLUGIN_CAPABILITY_COVERAGE_REFERENCE_2026-11-08/** -text
+
+# Technology-resolution output is hashed as raw bytes by its README.
+/plan/evidence/PLUGIN_CAPABILITY_COVERAGE_TECHNOLOGY_RESOLUTION_2026-11-08/** -text
+
 # OKF K1 synthetic bytes are compared exactly across OS; no checkout EOL conversion.
 /testdata/okf-k1-v02/** -text
 /testdata/okf-k1-v02.expected.json -text
