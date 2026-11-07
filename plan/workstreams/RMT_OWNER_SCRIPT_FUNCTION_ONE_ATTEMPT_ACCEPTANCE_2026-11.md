@@ -723,3 +723,48 @@ Required→Loaded/Parsed、Selected→Provider Execute、Returned→Consumer Rec
 直前計画HEAD 2f3c9494の[Health #42370557015](https://github.com/hat47x/tei-platform/actions/runs/42370557015)はfailure。実Jobログで原因はRQ-035のPAS/Gap未登録と設計索引4件不足であり、gofmt・go vetと他のGo Package試験はPASS。**現mainではこれらの登録済み状態をGitHubで直接確認**した。旧HEADのFAILは履歴として保持し、索引は既存修復Ownerと重複変更せず、新HEAD CIで別判定する。
 
 次一手は#2586のE Route実Provider Header Read HR-01/02。その後#2506/#2514のPage・明細完全集合・非出力Predicate、#2516開示、#1125/#1174の同Rule二入口／Receipt K・資源O／業務Bへ進む。#3238のC専用実PGと#3304のT1-A成功は局所成果として認めるが、E実Reader、旧Windows Driver、Owner Meaning受理、G1/G2合格へは合算しない。今回はMarkdown計画だけの変更で、新Go・実E Provider・旧Driver・Owner正式試験はNOT RUN。
+
+## 20. 11/8再資格：Design Contextの閉包反例、実CLI効果、Commit後Unknownと原典暦を受入順に統合
+
+第18〜19章で固定したE／W／Cの異SQL・異Target・異Read Attemptの区別、及び最初のE Route（examples/xtea-lowcode の order_entry.recent_orders、SQL status=:status）Product Read HR-01/02を変更しない。本章で取り込む新成果は、いずれも**局所の実Go/CI、または未統合Draftの提案**であり、製品のFunction→実SQL/Provider Rowset、一つのOwner業務効果と同じ資格にしない。新Scenario正本、Source Index／Plugin Resolver／Transaction Coordinator／Hostを追加しない。
+
+### 20.1 TT-56：Fingerprint一致・正常なJSONでも、必要なRuleが欠落し得る
+
+[Draft #3326](https://github.com/hat47x/tei-platform/pull/3326)は、既存CLI9件のContext Gateから**既存source-indexの全Indexモードを追加した10応答**へ広げ、事前に固定した公開合成Validation 3件のRequiredとCatalog・SourceIndexのDefinition Role・Source Path・Loader実Readを照合した。初回[専用CI #42385502023](https://github.com/hat47x/tei-platform/actions/runs/42385502023)は失敗したが、それは**subjectモードのSource Indexを全件Indexと誤認した試験用Consumerの不備**であり、「必要Ruleが実Sourceから消えた」という証拠ではない。修正後の固定HEAD c2d2da10cc93022697204e66e83c30248b3810a0 に対する[専用dogfood #42385726717](https://github.com/hat47x/tei-platform/actions/runs/42385726717)と[Repository Health #42385726733](https://github.com/hat47x/tei-platform/actions/runs/42385726733)はcompleted/success。**ただしDraft未統合**であり、現mainのDesign Contextが全Rule closureを保証するという意味ではない。並行[Draft #3324](https://github.com/hat47x/tei-platform/pull/3324)も近い問題を扱うので、**両案を独立した二つの正本として取り込まない**。
+
+E Routeの検証に使う最小Requiredを、宣言Status Input／SQL Sourceだけでなく、そのQueryのPredicate・Function Context・Validation Rule・Relation・Result Field依存について別指定する。少なくとも以下を同一AttemptのReadinessとRowset Executionの**別票**にする。
+
+| 対照 | Request / Contextの差分 | 許されるClaim |
+| --- | --- | --- |
+| **DC-R01** | RequiredのValidationだけをCatalogの正常JSONから省略。World/Index Fingerprintは元Replyのまま | Catalog schema OK・fingerprint一致でも未取得RuleはNOT QUALIFIED。実Sourceに当該Ruleが存在しないとも断定しない |
+| **DC-R02** | SourceIndexがsubjectモードのままで全件Definition照合を要求 | wrong-mode/insufficient-responseとしてContextを保留し、Source欠落に置換しない |
+| **DC-R03** | 10 Replyの各Source FPは同じだが、途中でSource/Grant/Selectionが更新 | 個別Reply同一性≠原子的な一World Snapshot／実Query実行時点の権限 |
+| **DC-R04** | Required Rule/Relationが揃ってもProviderに実接続されず、EのSQL＋statusは未実行 | Context局所Readinessは進んでもHR-01/02はNOT RUN。必要Source/Parser/Roleの証拠とProduct実Read証拠を分ける |
+
+既存#3262が必要設計情報の分母・完備条件、#2514が独立Expected、#2586が物理Reader、#1163が実行PacketのOwner。選択したRule1件の受領証拠を全Data/Function/Businessの意味受理に拡大しない。
+
+### 20.2 CLIのFile Effect表示はmainで実装済み、実Command Effectの広告は未完
+
+旧`19の「名前付き出力の広告は未統合」を**局所的に訂正**する。[main merged #3333](https://github.com/hat47x/tei-platform/pull/3333)は既存 tei.cli.discovery/v0 の view に writeFlags（-operation-log、-lifecycle-state）を追加し、実CLIで引数を指定した際のJSONファイル／SQLite Stageファイルの生成と、指定しない場合の非生成を対照した。固定HEAD 78bf41c99964255c4372ac0a71556538d40b83d2 の[Health #42386374310](https://github.com/hat47x/tei-platform/actions/runs/42386374310)はsuccess。現mainの cmd/tei/cli_contract.go でも read-only と writeFlags の両欄を確認した。
+
+ただしこの read-only は**正本の意味変更ではない**との定義に限られる。Caller指定Pathへの物理File書込みを可視化しただけであり、-executeのCommand/DB Effect・実Grant・外部Consumerが見た結果は網羅していない。[未統合 #3302](https://github.com/hat47x/tei-platform/pull/3302)の excludedFlagNames によるInvocation Variantのread-only範囲制限は、mainへ入った writeFlags と同じ解決策として**採用確定させない**。RMTのHost/Harnessは必ず実argv、writeFlags、出力先、Command／Provider Targetを照合し、広告されたCommand名だけで副作用なしと認定しない。
+
+### 20.3 RC-03/RC-05：実行後の記録障害は、以前の拒否ではなく効果不明として扱う
+
+現main internal/command/invoke.go の Recorder.Record 失敗は依然 COMMAND_RECORD_FAILED を返すが、**EffectUnknownを付けない経路**がある。main lifecycle.go の MayReplay はStageDispatchedをtrue扱いする経路があり、実Dispatchの再送拒否と一致しない。[Draft #3328](https://github.com/hat47x/tei-platform/pull/3328)は前者を NewUnknownExecutionError に変更し、後者を既存Attemptが存在する限りMayReplay=falseに合わせ、LifecycleのObserve/MarkUnknown失敗を効果不明として伝播する5 Go対照を加えた。固定HEAD 1b8ff4e68d840a6981f4c2b2ea2fb310c3e1765f の[Health #42385861954](https://github.com/hat47x/tei-platform/actions/runs/42385861954)はsuccessだが、**Draft未統合／TestはReference Executor＋Memory UoW/Stage Fake**。実PG Commit ACK消失／Journal crash／再起動・別Host競合は未実証。
+
+新しい受入はRMTの既存F-Post/RC-03/RC-05へ次の限定の正負対照を付加する：Executor前の権限拒否→Effect 0/Rejected、Executor後Recorder失敗→Effect Unknown/同Attempt安易な再送禁止、Commit後Stage Observe失敗→元Stage Dispatchedでも再Dispatch禁止、Unknown記録自体失敗→外側返却でもUnknown保持。**Stageが永続化されない場合、ローカルの再Dispatch拒否だけでは別Host再送を阻止できない**。Receipt K・独立Postimage O・Owner Meaning Bを回復するまで確定成功/失敗を作らない。既存#1174/#2996/#2502/#1163のOwnerに再実験を渡し、第二Journal/Coordinatorは作らない。
+
+### 20.4 Hookと暦の標準機能はX-TEA由来の意味対照へ接続する
+
+[main merged #3306](https://github.com/hat47x/tei-platform/pull/3306)は、Hookのusesが指すCapabilityに対応するApplication Command Patternが**存在しない**場合に検証拒否を加えた。これは旧`19の「未統合」を訂正できるが、複数同Capability Commandの曖昧性、位相とCommandの結合、実Runner/Plugin/Providerの呼出しを解決したわけではない。[PR #3348](https://github.com/hat47x/tei-platform/pull/3348)のPhase順実行と途中停止のGo実装は**現時点未統合**であり、TxnとPhase、Plugin合成順序、実Product Callerは未資格。対応するData Script/Hookの実動作Par​​ityは、Read/Update二入口の本番同Rule実行時に別検収する。
+
+[main merged #3343](https://github.com/hat47x/tei-platform/pull/3343)では、X-TEAの暦コードに相当するholiday-calendar Roleを追加し、複数暦が同じ休日Dataを共有するとき、Calendar指定なしの全行読込を拒否して別暦休日の混入を防ぐ。これはDate Role・timezoneとあわせた**参照用Binder/Row変換**の前進であり、旧DriverのKBCALENDAR文字列/日付書式/実DB/年会計期間の意味Parityとはまだ別。暦Dataに紐付くCalendar IDの実妥当性と旧Provider/Owner Expectedは未受理。HR-01/02のstatus Queryに関係ない暦全機能を先行Hard Gateにしない。
+
+### 20.5 実Operation DriftとPlugin能力選択は物理Source/Provider消費とは別
+
+[main merged #3325](https://github.com/hat47x/tei-platform/pull/3325)のread-only参照drift検査は、Callerが渡すWorldFingerprintとModelRevisionを現在値と照合し、current／stale／uncheckedを区別する。Basisだけでは属性変更を検出できないという独立負例がある。**これは実Commandの実行直前検査でも選択SQL raw bytesの検査でもない**。EのActual Source SQLと現在Provider/Operationを別に記録する。
+
+[main merged #3337](https://github.com/hat47x/tei-platform/pull/3337)は宣言Plugin CapabilityとEnvironmentの選択を参照的に棚卸しできるが、未選択は直ちに欠陥ではなく、**選択済み＝実Provider Loader/権限/接続成功ではない**。database-providerの技術名とCapability IDの比較差は[未統合 #3350](https://github.com/hat47x/tei-platform/pull/3350)が既存ValidationのSupportsDatabaseProviderで改める候補。RMTのsales→sales_core物理BindingはWorld上のPlugin候補の選択ではなく、**当該Attemptの実Provider Instanceと実行SQL/Rowset**で検収する。
+
+**変更後の最短順序とClaim ceiling**：#2586 E Route Product Query/SQL+status/Provider/Rowset HR-01/02 → #2506/#2514の対象集合L・Result Slice・negative dependencies/Scope → #1125/#1174の二入口同Ruleと実K/O/Business B。#3262 TT-56をContextの前段品質、#3182 CLI writeFlagsをTool Scope、#1174 RC-03/05をCommit後回復、#1125のHook・暦を独立Meaning対照へ分担する。**今回新Go/実E Product PG/旧Windows Runtime/実Owner受理の実験はNOT RUN。G1/G2は引き続きUNQUALIFIED**。本追補は既存RMT Markdown 1ファイルのみ変更、過去のCI成功を新HEADへ流用しない。
