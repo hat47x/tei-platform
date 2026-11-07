@@ -40,7 +40,7 @@ REQUIRED_RULE_CANONICAL = {
 REQUIRED_RELATION = {"kind": "semantic-relation", "id": "sales.order.lines"}
 
 # A test-only independent required set, NOT a claimed Workspace/Domain closure.
-# Function/Business/Rule dependencies are deliberately still unqualified.
+# Function/Business/other-Rule dependencies remain unqualified.
 MISSING_CLAIMS = [
     "independent-required-closure: Function/Business/Rule/Procedure",
     "source-parser-role-and-accepted-meaning",
@@ -214,7 +214,7 @@ def assess(docs: dict[str, dict], failures: list[str] | None = None) -> dict:
     fingerprints = {}
     consistency = "consistent"
     for key in ("worldFingerprint", "sourceIndexFingerprint"):
-        # Existing contract: these 4 commands expose common resolved fingerprints.
+        # Existing contract: these 5 command projections expose common fingerprints.
         values = [
             docs.get("catalog", {}).get("result", {}).get(key),
             inspected.get(key),
@@ -487,7 +487,8 @@ def main() -> None:
     args.out.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"PASS: bounded Design Context {baseline['boundedReference']}; "
           f"{len(controls)} base controls + {len(report['additionalManifestControls'])} manifest "
-          f"+ {len(report['transportByteControls'])} byte-reply rejection controls; "
+          f"+ {len(report['transportByteControls'])} byte-reply controls "
+          f"+ {len(report['additionalRequiredRuleControls'])} required-Rule controls; "
           "test generation qualification withheld")
 
 
