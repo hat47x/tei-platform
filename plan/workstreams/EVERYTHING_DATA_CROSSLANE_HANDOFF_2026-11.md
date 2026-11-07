@@ -140,6 +140,157 @@ H0/H1と異質領域の要件探索は並行可能。H2/H4の実Effect資格は�
 
 業務受注の3層更新と、Sensor/Actorの10Hz認知→60Hz運動、文書の親子章節などを、似たEntity名へ改名しただけのFixtureではなく、**異なる時間意味・関係・順序・作用・改版・検証基準**を持つ要求として比較する。必要になるCore特殊分岐、Role/Operator追加、Plugin適用、Studio専用UIの増分を#2018へ記録する（#2495/#2493/#2507）。
 
+### 9.5 同じ構造に対するMeaning／Host／Pluginの独立性を対照試験で確かめる（2026-11-06、提案・未実施）
+
+**位置づけ**：[#2619 FW-01〜07](https://github.com/hat47x/tei-platform/issues/2619#issuecomment-6603196417)と[11/6三領域反証](https://github.com/hat47x/tei-platform/issues/2619#issuecomment-6682217255)は、`status=approved`等の同形Carrierから業務意味や実行許可を推定できないことを既に示す。ここで追加するのは**反例そのものではなく、どの変更がどの資格にだけ効くべきかを一変数ずつ確かめる判別試験**。現行#1180 Scenarioと#2514独立Expectedに付帯する比較観点であり、新しいCase SSOT、Status enum、Runner、Proof Engine、Host/ACL、Gateは作らない。Draft #2896 §19のRequired→Consumed／Claim相対証拠票を参照し、同じ横断ラダーを複製しない。
+
+#### 受理と許可の2×2：構造・対象・試行条件を固定した独立対照
+
+固定の公開合成`order_entry`対象O1、Source/Role/Rule/Provider/Operation payload候補、選択Tenant、Request scopeを共通にし、次の二因子だけを変える。**M**＝対象Function/ActionについてOwner受理済みMeaning/Ruleの資格がある、**G**＝当該時点・主体・Tenant・Resourceに対する現在Host Grantが有効。これは新しい実行判定APIではなく、テストで区別する証拠条件。
+
+| M（意味） | G（現在Grant） | 独立Expected／禁止する推論 |
+| --- | --- | --- |
+| 未受理／根拠不足 | 不許可 | 構造解析に成功しても確定ActionとしてDispatchしない。意味不足と権限不足の**二つの未充足根拠**を、権限ある検査者向けの票で区別。外部Consumerに非公開のGrant/Rule存在を漏らさない |
+| 未受理／根拠不足 | 許可 | 既存Grantを業務Ruleの受理とみなさず、意味資格不足を保持。**Grant alone ≠ accepted meaning** |
+| 受理済み | 不許可 | 意味の歴史的受理は保持するが、現在の対象へのDispatchは拒否。**Meaning alone ≠ Host capability** |
+| 受理済み | 許可 | 当該対象の**実行前提候補**に過ぎない。Required Source/Guardの全件、Selected Provider、実Effect時Fence、expected stateが不足すれば実行不可。実際の効果・Receipt・業務完了は別観測 |
+
+**直交性の反証**：Mだけ変更してもHostの現在Grantを自動発行・更新しない。Gだけ変更しても過去のAccepted Meaningを自動生成・改変しない。ただし実際の適用判断は両者と明示された依存を再評価する。Owner受理の版更新・Grant失効・Plugin Pin変更・Source A→B→Aは別の失効要因であり、単純な「同じ値なら同じ許可」には還元しない（#267/#1174/#2582/#2600）。
+
+#### 2×2が「両方真」でも失敗する証拠の取り違え：対象・意味・実時点の束縛
+
+**既存2×2の適用条件を明示する補正**：M/Gの真偽だけを独立に判定するのは*要件の分離*であって、二つの`true`を論理積で結合すればDispatchできるというルールではない。Mの受理対象は、Function/Action/Ruleの意味契約と適用範囲・Revision（Global Ruleの場合はTenantを個別に含めないこともある）。Gの対象は実Principal・Tenant／Resource scope・許可Operation・現在時刻とEffect確定条件。**実Request・Target Bindingが両資格の適用範囲に含まれていること**を既存Resolver/Host/Providerの観測と突き合わせる。全フィールドの形式的等値は求めず、異なる粒度の証拠を根拠なしに接合しない。
+
+以下は**新Case IDやScenario正本を作らない既存#1180/#2514への追加対照**。元の公開合成Source・対象候補・独立Expectedを固定し、正常対照と差分一箇所を対にする。実Backendで該当Guard/Joinが存在することは未確認なので、安全な拒否を「現状実装済み」としない。
+
+| 変化させるWitness（それぞれ単独では有効） | 誤った合成と独立Expected | Owner／既存試験入口 |
+| --- | --- | --- |
+| Mは受注O1の確定Rule、Gは**O2の閲覧許可**に差し替え。あるいは同じBusiness Keyが別Tenantの異Resourceを指す | M=trueかつG=trueの単純積がO1の確定を許可するなら**不正な証拠接合**。実Target/Action/Principal/Tenantの一致が未証明ならDispatchを許可しない。内部では未充足Witnessを報告、外部では開示禁止の別Resource存在を漏らさない | #2598/#1174/#1656、別Tenant同Business KeyのDraft #3016（実PG新試験は未確認） |
+| Mは「見積承認」の受理、Gは同じO1への「受注確定」実行Grant。数値・表示・Source Carrierは同形 | 異なるBusiness Action間のMeaningの代用を拒否。Provider read/Grantを根拠に受注確定のOwner意味受理を生成しない。#2926の`EvaluateCompletion`が単体成功しても本番のCompletionではない | #1125/#1126/#2514（#267は仮承認） |
+| M/Gは**過去Snapshot／Preview時点**では有効、Effect確定前にOwner受理の対象Ruleが改版、または委任Grantが失効 | Source/Meaningの歴史的受理や以前のReceiptを消去するのではなく、*現在の対象Actionへの適用*を再資格化。ProviderがCommit時にGrant epochを原子的に照合できないなら、原子性を保証したと主張しない。送出後ACK喪失はunknown、盲再送不可 | #2389/#1174/#2600、実Provider保証差のConformance |
+| Business Procedureの手作業記録を、同形の自動Workflow Stepとして渡す。あるいはRequired Grant Guardの指定をCallerが省略する | 手作業ならAction/Grantの**not-applicable**を理由にDefinition全体を拒否しない。一方、自動Stepなら実行義務とHost Grant確認が必要。`RunPlan completed`やObserver存在で欠落Guard/実Effect/業務完了を合格にしない | #1125/#1130、既存Draft #2889 OC-RP-01〜03 |
+| 部分Readの`未承認=0件`を、完全なTargetSet `L=[]`として見積→受注確定の業務完了へ転用 | 実取得Source/Rowset/Fieldの必要母集団とCoverageが不明なら「承認待ちなし」もOwner完了も**unknown**。NULL・未取得・空母集団を区別。`EvaluateCompletion(L, EmptyPolicy, P)`は供給された証拠の評価器であり、その母集団を実DBから完成させる証拠ではない | #2586/#2506/#2622/#1125（main #2926） |
+
+**独立期待結果の判別力**：最初の対照は、同じ独立Expected/固定Targetのまま *Gのresource/action/tenantのみ* を変えるMutantを既存Scenarioへ一件注入し、明示したEffect対象O1が**一度も適用されないこと**と、Current Grant照合が実際に実行されたWitnessを別々に見る。Mutantを「検出した」だけではDB無作用は証明しない。実Provider/Grantの結合がまだ無い場合は`NOT RUN: target-grant-binding-unavailable`と記録し、静的な期待拒否を実Security PASSへ昇格しない。#2514の既存Mutant/独立Expected・#1163のAttempt証拠に委譲する。独立Expectedに反する場合は失敗をそのまま観測し、後からExpectedを実装に合わせない。
+
+**非ブールの留意点**：未受理は明示Rejectと同義ではなく、Host Grant不在は現在の拒否とProvider照会不能を区別する。開示範囲外の情報を診断に表示しない。上のM/G=trueはすべて**この比較に必要な証拠が揃った場合に限る説明上の略記**であり、実Runtimeの共通Boolean/Authority APIを提案しない。
+
+#### 評価器の判定前に観測の帰属を確かめる：部分反例と空集合証明の非対称性
+
+**追加で確認した実コード上の境界**：[main `internal/semantic/completion.go`](https://github.com/hat47x/tei-platform/blob/main/internal/semantic/completion.go)（現main Blob `e42610e9159e02ba3b5c7b84c46742a846331e64`、merged #3051を含む）の`EvaluateCompletion`は、呼出側から`Targets[]/Coverage/EmptyJustified/HandoffConfirmed/Conflicting`を受け取り、対象のSource/業務Identity/Rule revision/Tenant/Read snapshotを自力で解決しない。既存[Go test](https://github.com/hat47x/tei-platform/blob/main/internal/semantic/completion_test.go)（Blob `8e9c49c55d8b524edbb3750b2a6ed39ff988b7c6`）では**partialでも適格な違反行を一つ観測すれば`fails`、すべて真でもpartialなら`unverified`**という非対称性を固定している。これは全称条件についての有用な局所推論だが、**違反行の帰属を呼出側が偽った／誤った場合まで安全だという証拠ではない**。#3022の限定静的レビューと#2886 §7の派生値用途区分を再利用し、新Completion Engineを作らない。
+
+| 対照：評価器へ投入する前の帰属（Domain違い・独立Expected） | 許される推論と停止条件 |
+| --- | --- |
+| 受注O1の**同じMeaning Revision／TargetSet L／Scope／Read cohort**に属する明細L2が`P=false`、L1は未取得 | そのL2が真に適格な反例なら、全件取得を待たず該当する**全称Claimがfails**と判断可能。未取得L1の値や、実Commit/取消・Owner業務完了は確定しない |
+| 表示・行ID・`P=false`は同じだが、L2は**別Tenant O2／古いRule版／Preview旧epoch**の観測 | 有効な反例を*現在O1のP*へ流用しない。対象/Scope/Rule/Observation identityが結び付くまで、現行Claimは`unverified`または適切な矛盾診断。関数にそのまま渡して返る`fails`は**呼出側入力の評価結果**であり、現行業務不成立の証拠ではない |
+| 対象O1の取得済みL1は`P=true`、未取得L2の有無も不明。あるいは`L=[]`だが一頁目のみの0件 | 局所的な満足は認めても全称Claimの`holds`は不可。Provider/Field/PopulationのCoverageが確定しなければ保留。実`EmptyPolicy`／`EmptyJustified`値を推測で埋めない |
+| O1の対象全集合に対する**独立の空証明**が存在するが、観測元は旧Snapshot、別Tenant、または限定ACLで母集団が変わっている | 証明の原Scope/Provider/Snapshot/取得完全性が現在のTargetSet Lと同一の対象を扱うか再確認。`EmptyJustified=true`という呼出引数の存在だけでは証明の出典と新鮮性を保証しない。空集合時の`deny/allow/requires-evidence`の意味は#267 Ownerの採否に従う |
+| O1の見積金額600をRule r1でPreviewし承認引用。後に価格改訂で現在Preview700、または別O2でも600。GはO1確定に有効 | 観測値・承認Decision・実Requestが同じ対象でも**承認時に引用した値とRule/Source Revision**が異なれば、現在の確定に採用できるかはOwner Rule次第。過去の600承認を抹消せず、700や別O2の600へ自動移転しない。G=trueから引用値の有効性を推論しない（Draft #2886 §7） |
+| 手作業Handoffの対象集合が空、または`HandoffConfirmed`の証拠が別Business Instanceから来る | 単体Evaluatorの空集合分岐による`holds/fails`と、該当Instanceの**人間への授受・確認が業務上必要か**を分離。空時の引継ぎ義務はOwner判断であり、`RunPlan completed`や他Instanceの確認から手作業完了を自動生成しない（#1125/#267） |
+
+**最小の実証単位（既存Scenario/独立期待結果へ付帯）**：公開合成`order_entry`の同一Rule/Source/Expectedで、①適格な部分集合中の`P=false`、②**P/値を変えず**対象のTenant・Business InstanceまたはRead epochのみを変更した非適格`P=false`、③適格な部分集合中の`P=true`、④同じ0件でもRead completeness/独立空証明だけ異なる対照を扱う。呼出側に帰属チェックが未実装なら、(a) **現Evaluator単体の戻り値**、(b) **実呼出しが不適格入力を渡さなかった証拠**、(c) **現在のClaimへ出してよい判定**を別票にする。実データのSource/Target/Query/Consumer紐付けは#2586/#2506、意味・業務完了は#1125/#267、Independent ExpectedとMutation判別力は#1180/#2514、現在のEffect/Hostは#1174/#1163へ戻す。評価器の単体PASSや一時的な`fails`を、現時点のBusiness Completion/不完了・安全な拒否・Host/Provider Effectの証明へ昇格しない。
+
+**状態**：上記の関数・既存Go testは静的Source/実テスト記述を直接確認。*今回*の4対照を用いる新Go/実Provider/実Tenant/CLI・実Reader・Owner受理は**NOT RUN**。既存コードのBUG確定、新API/共通Validity Tokenの採用、既存#267の意味変更は行わない。
+
+#### 証拠の入場資格：`*.tei.md`実消費とGrant発行主体の真正性（2026-11-06追加）
+
+**今回の新たな接合点**：これまでのM（業務意味受理）×G（現在Grant）対照には、Mの根拠Sourceが実Loader/Parserで消費されたかと、Gを発行した主体が本当に信頼できるかという**異なる入場条件**がある。同じTarget/Scope/版を指す説明上の`true`同士でも、入場条件が欠ければ実DispatchやOwner完了をQualifiedとしない。新しい第三・第四のBoolean／全域Proof Engineの導入ではなく、既存Source/Loader・Authority・Effect witnessの**何が未観測か**を示す。
+
+**直接確認した現在地**：
+- [merged #3032](https://github.com/hat47x/tei-platform/pull/3032)により`internal/access/grants.go`（Blob `24db243bace5fe38671588fe1c04f72bd15ee7a9`）に`issuedBy`と`AcceptIssuedBy`が入り、名前なし／Capability自身による自己発行を拒否する。既存[grants_test.go](https://github.com/hat47x/tei-platform/blob/main/internal/access/grants_test.go)は第三者名の付与が**この発行者検査を通るだけ**で実Grantを作らないと明示する。`issuedBy`は署名でも検証済みIssuer Identityでもない。付与ファイル`0600`は一般利用者からの書換えを制限するが、同じプロセス・書込み可能主体の偽装不能やHost採否は保証しない。`IssueFile`の記録も署名・実Hostの受理ではない。
+- [Draft #3030](https://github.com/hat47x/tei-platform/pull/3030)でAuthoring形式は**原則`*.tei.md`へ統一**する方針に進んだ。一方、main `internal/workspace/loader.go`（現main Blob `d2b480edfaec21feb89e34e658805ea1ed0f7339`、#3078の`readByLoader`追加を含む）は現時点で旧`*.tei`等の選択に依存する。[Draft #3031](https://github.com/hat47x/tei-platform/pull/3031)は新形式の黙った未読込への診断を提案するが、実Sourceとして新形式をParsing/Meaning/Build消費した資格はまだ示さない。従来`*.tei`の歴史的Meaning受理を自動削除しない一方、新`*.tei.md`を置いただけで現在のMeaning/実入力の同一性も保証しない。
+
+| 一箇所だけ変える対照（既存#1180/#2514 Expectedへ付帯） | 許される局所結果と、上位Claimの停止線 |
+| --- | --- |
+| **Source移行対照**：同じ業務内容の旧`order_entry.tei`のみ／新`order_entry.tei.md`のみ／両方に異内容で同Subjectを置く | 新形式が実Loaded/Parsed/Consumedされていなければ現在Meaningの資格は**unresolved**。旧版を黙って採用して`validate ok`でも新形式を検証済みにしない。両者が衝突した場合は無根拠なlast-winsを不可とする（#2621/#2823/#3030） |
+| **Issuer記述対照**：同一Grant内容で`issuedBy`を空／Capability自身／第三者名へ一因子だけ変える | 現`EncodeDocument/AcceptIssuedBy`の空・自己発行拒否と、第三者**文字列のみの検査通過**を区別。第三者名があっても署名・発行権限・Host採用・実Current Grantは**未確定**。`ParseDocument`と`ParseGrants`の用途を混ぜない（#3032/#1174） |
+| **Authority結合対照**：`issuedBy`とPermission Scopeは同じで、承認されたIssuer／実Principal・Tenant・Operation・Resourceの束縛が有る／無い | 署名やHostの受理契約がない環境では、Issuer文字列が別人を名乗っても現関数のローカル検査を通り得る。そこで**Product Grant qualified**とは言えない。Caller要求を「承認済み」と自動投影せず、未確認要素とDisclosureを区別する（#1174/#1163） |
+| **効果境界対照**：同じM、同じ名前付きGrantで実ProviderへのDispatch前／Effect時Grant失効／Commit応答喪失 | Preflight/自己発行拒否の単体PASSを**Commit時のGrant Fence**やDB無作用へ代用しない。実Effect時に拒否できる保証が必要ならProvider/Hostの実境界を検査し、できなければunknown/unqualified。ACK喪失時は同OperationIDのReceipt Lookupを優先し、新Key盲再送をしない（#1174） |
+
+**優先する検収の最小差分**：①既存[Issue #2823](https://github.com/hat47x/tei-platform/issues/2823)と[Draft #3031](https://github.com/hat47x/tei-platform/pull/3031)にReader/Parser/Consumedの観測を委譲、②[#3032](https://github.com/hat47x/tei-platform/pull/3032)の既存Issuer局所試験をそのまま用い、Issuer文字列だけでは真正性を証明しないことをOwner検収票に残す、③一つの`order_entry` Functionで**実Consumed Source・Owner Meaning revision・Hostが受け入れた発行権限の根拠・現在Target/Grant・実Provider/Consumer**を[#1163](https://github.com/hat47x/tei-platform/issues/1163)の一Attemptに紐付ける。Source形式移行を扱うためだけに書込みGrantやProduction Commitをread-onlyへ一律要求しない。
+
+**採否・実測の上限**：#3032のコードはmainへ統合済み。追加で[Actions #42235336807](https://github.com/hat47x/tei-platform/actions/runs/42235336807)の実Job `127951340786`のログを直接確認した。**PR #3032のmerge検証Commit `b2a05196dd779e54764de66549d94d3de0e3878d`**（PR HEAD `c2b7e44042fb7148901cd6e2678983012b415a7c`を含む）でPostgreSQLを起動し、期間closed/open・Effect Observer不能・重複拒否・Grantなし/ありの**6実GoケースがPASS、対象6件SKIPなし**。これは実Runtime Decisionの**限定PG証拠**に昇格できる。しかし**Issuerの真正性・現在Host Grantの発効点・別Tenant同Key・本節のSource/Issuer誤接合・業務Meaning受理**を実証したものではなく、この横断対照の追加試験はNOT RUN。#3030/#3031はDraft、`*.tei.md`の実Parser対応・移行・同一Meaning再受理、Issuerの署名/独立Host承認、現Grantと実DB Effect/Owner正式受理は**NOT RUN／NOT ACCEPTED**。既存#2621/#2823/#1174のOwnerと#1119 Gateを維持し、新権限Issuer Registry/共通Host/新Writerを設けない。
+
+#### Commandの認可二系統・追加Scope差分・実保存を独立資格にする（2026-11-07、main実装差分を再照合）
+
+**前回記述の現況訂正**：旧版#3033の`checkAppliedOperations`を前提にした「同種別・別対象の追加操作を無条件に許容する」は**最新版の説明として不十分**。main統合[#3055](https://github.com/hat47x/tei-platform/pull/3055)/[#3057](https://github.com/hat47x/tei-platform/pull/3057)/[#3060](https://github.com/hat47x/tei-platform/pull/3060)/[#3062](https://github.com/hat47x/tei-platform/pull/3062)/[#3065](https://github.com/hat47x/tei-platform/pull/3065)では、**同Kind・別Dataは`Difference{code:additional-scope}`として記録・表示**し、`Applied=[]`は`AppliedUnobserved=true`と明示する。該当Diffがある場合でも**参照実行は成功し得る**。これらの記録を独立したProvider実Effect観測や、関連Relationを確認した「業務上許されるCascade」と混同しない。
+
+**現mainの直接確認（2026-11-07）**：
+- `internal/command/applied_check.go`（Blob `9158488a87276d4c6903caa5a26edc90c9815f8f`）は`[]Difference`を返す。同Kind・別Dataは`additional-scope`の未解決差分として保持し、別Kindや宣言効果の実報告欠落は契約違反。差分自体はCommit阻止条件ではない。
+- `internal/command/operation.go`（Blob `bfa916a8d97cbd00faac84a4f35e9f511bd578a8`）は`Applied/Differences/AppliedUnobserved`を分ける。参照実行の`MemoryRecorder`はExecutorの報告を記録するが、外部DBの完全な実効果を独立観測しない。`invoke.go`（Blob `9f9099b6a9565d54597f2feb87bb41ce3d0be8d9`）は**Executor実行後に差/Outcomeを検査し、成功経路でRecorderを呼ぶ**。契約違反時は`EffectUnknown`となり、正常`OperationRecord`の不存在を効果ゼロと扱えない。
+- [#3047](https://github.com/hat47x/tei-platform/pull/3047)導入`internal/command/grant_authorizer.go`（Blob `ba93c741620a6aea0cb904d1e772b5c927ef0eb1`）の`GrantAuthorizer`は**Capability宣言PermissionとCallerから渡されたGrant Specの被覆**を検査。対象Capabilityの宣言エントリ欠落を拒否するが、Issuer真正性・Host受理・実Resource別のSubject Ruleの検査ではない。[#3064](https://github.com/hat47x/tei-platform/pull/3064)後の`internal/security/legacyauthorization/commandbinding/commandauthorizer.go`（Blob `af12a1899d778eeb26107f6ffa4ebe8ce26d2412`）は**Subject＋Action＋Resource**を既存Ruleへ渡すが、Permission Spec/発行経路の真正性は検査しない。
+- **構成上の独立性**：`Invoker.Authorizer`は**単一の`Authorizer`インターフェイス値**。その位置に`GrantAuthorizer`または`CommandAuthorizer`の一方を入れて局所PASSしても、**両方の要求が製品実行時に評価された証拠にはならない**。すべての純粋/Read-only操作に両方を一律義務化する提案ではなく、当該業務Effectに必要とOwner/Hostが明示したobligationの充足を同じRequestで確認する。Compositionの実装方式は既存Host/#1174のOwner判断。
+- [#3035](https://github.com/hat47x/tei-platform/pull/3035)/[#3038](https://github.com/hat47x/tei-platform/pull/3038)の`Ground`/Consumer照合は発行Scopeを環境宣言に制約する局所機構。現`access/ground.go`（Blob `f68dde6a14ccbfb1e5fa9e615a0fcc5978f4a1cc`）でも`issuedBy/resolvedBy`文字列の署名・Hostによる真正性確認、実Effectの現行Grant Fenceは証明しない。
+- [#3054](https://github.com/hat47x/tei-platform/pull/3054)の`committed=true, persisted=false, durability=none`は**参照メモリUnitOfWork成功と永続化なし**を表示する有限な改善。[#3124](https://github.com/hat47x/tei-platform/pull/3124)で三状態`Persistence`を追加済みだが、実Providerでの`Receipt Lookup`と資源Readの違い、および`committed/persisted`の強い意味の採否は同設計§8〜§9のOwner判断として残る。
+
+**重複を増やさない最小対照**（公開合成の同一`order_entry`、Meaning/Operation/Fixture/独立期待結果を固定し既存#1180/#2514へ引き継ぐ）：
+
+| 条件のみ変更 | 実装が示す有限な結果 | 未充足／独立Expectedと停止条件 |
+| --- | --- | --- |
+| **認可片側だけ**：同じO1のWriteについて(a)Permission Specは被覆だがSubject/Resource Ruleはdeny、(b)RuleはallowだがPermission Specは未被覆 | 選択された一方のAuthorizer単体が局所的にPASS/denyし得る | 当該Effectに必要な両obligationの**実評価証拠**がなければProduct Writeの許可成立を主張しない。受信したRequestのSubject/Action/Resource/Tenantと能力＋Grant scopeを別列に残す |
+| **同種別の範囲差**：宣言`update sales.order/O1`と、報告`update sales.order/O1`＋`update unrelated.data/U1` | 現行`checkAppliedOperations`は**`additional-scope`差分を返す**。差分は記録され得るが、成功経路を遮断しない | U1が適法なCascadeかの判定は**Relation Policy/対象集合・実Provider Report/独立Read**を使う。差分「表示された」ことを「業務上許容済み」へ昇格しない。実U1不正更新は観測していない |
+| **報告能力の差**：実Providerが`Applied`を列挙する／列挙できず`[]` | 列挙不可は`AppliedUnobserved=true`として観測可能 | 未観測≠効果0件。`Differences=[]`や`committed=true`でもProvider Physical Effectの完全性・独立Read・Owner完了はunqualified |
+| **事後契約違反**：Executorが書込み後、別Kindの`Applied`や未宣言Outcomeを返す／ACK喪失 | `EffectUnknown`の失敗診断が返り得るが、正常Recorder経路には到達しない場合がある | `OperationRecord`欠落や参照UnitOfWork rollbackをDB無作用の証拠にしない。同OperationID/AttemptのReceipt Lookup・別Readerと再送停止を#1174/#1163の既存契約で要求 |
+| **Consumer誤読**：同じ`committed=true`でも`durability=none`の参照実行／実Provider・Receiptあり | 参照実行の`persisted=false`表示は成立 | 外部Harnessが`committed`一項目だけを読んで業務保存済みと判定しない。実Providerの`persisted`判断とCLI schemaVersionの変化は既存Ownerで確認 |
+
+**優先順位と採否**：P0は(a)認可片側だけのすり抜け候補と、(b)`additional-scope`差分の**保存/Consumer表示と業務許容の非同値**を、既存テストに**同じSource/固定Expected**で接続すること。局所Go試験・Reference報告・Schema Version広告を本番Host/実Provider/Owner Meaningの資格へ格上げしない。#2514（独立検証基準/Mutant）、#1180（Scenario SSOT）、#1174（Host/Effect）、#1163（同一Attempt/独立Read）、#1129（Cascade/業務Rule）、#2586（実Provider Data）へ実作業を委譲。新Authorizer Aggregator、全Target共通Grant Engine、第二Effect Registryを**この文書で先行採用しない**。
+
+**証拠状態**：mainの実Codeとmerged #3033/#3034/#3035/#3038/#3047/#3054/#3055/#3057/#3064を直接照合。現行のReferenceテストは実際に`Differences`を保持するが、上の二系統Authorizerの同一Request結合、無関係U1の実DB変更、外部ConsumerでのPersisted資格、正式Owner受理を**今回実試験していない（NOT RUN／NOT ACCEPTED）**。#3051は空集合Deny/Unknown挙動を変更する未統合Draftであり本節で採用しない。
+
+#### 副作用の到達範囲とAttestationの適用範囲を閉じずに合格させない（2026-11-07）
+
+**最新mainで成立した局所改善と、なお残る横断条件**：[#3070](https://github.com/hat47x/tei-platform/pull/3070)でCommandの`checkDatasourceAccess`は`Application.Databases`・`database.uses semantic`を参照し、宣言された**主たる`plan.Effect.Data`**がRead-only datasourceに属するときExecutor前に`COMMAND_DATASOURCE_READ_ONLY`を返す（main `internal/command/datasource_access.go`、取得Blob `a332c4ba7df2a354ab502c68f5e57c28dd1314c9`）。[#3055](https://github.com/hat47x/tei-platform/pull/3055)の`additional-scope`はExecutor後の別Data報告を差分として残す。**主対象の事前チェックがPASSすることと、実作用が到達する全Data／Provider／Tenantの制約充足は別**。両方の局所機構を採用しつつ、一方のPASSで他方を証明しない。
+
+| 固定Source／一因子の負例 | 現行Sourceから言えること | 独立期待結果・必要な次の証拠 |
+| --- | --- | --- |
+| **関連先Read-only**：公開合成O1の宣言`delete sales.order`はRW、Cascadeの候補に`ledger.entry`（別namespace、RO）を含む。関連先をRW/ROだけ入れ替える | 事前`checkDatasourceAccess`は宣言主対象`sales.order`のみを見る。実行後`Applied`に`ledger.entry`が報告されても`additional-scope`に留まり、RO強制の証明にはならない | Cascadeの越namespace適用がモデル上**非対応ならその時点でunsupported**、対応するなら明示Relation/Owner Effect Policy・選択Datasource・Effect直前のProvider fenceを確認し、RO先に副作用がないことを**独立Read**で検証。単に差を記録して成功表示するだけでは不十分 |
+| **同namespace二つのDatasource宣言**：`database A uses sales (read-write)`と`database B uses sales (read)`をAppで両方参照し、宣言の順序だけ反転 | 現`checkDatasourceAccess`は最初にnamespaceが一致したDatasourceで`return nil`またはRead-only拒否するため、**選択Alias未確定のまま記述順で可否が変わり得る** | 実際に使うDatasource alias/Mappingと、重複の有効性／優先則をOwner契約で決める。未確定のときは順序による許可を実権限PASSに昇格しない。新しい一律禁止のDB選択規則をここで採用しない |
+| **主対象のDatasource Mappingなし**：Effectは`sales.order`、Appにそれを覆うDB宣言が存在しない | 現検査は推測して拒否せず`nil`を返す。これは**検査対象外／未解決**であって、実Providerへの書込み権限付与ではない | 実Provider選択・Mapping・必要Host GrantとTarget Read/Write fenceの観測を要求する。参照Commandの成功やRO違反なしの診断を実Target資格としない |
+| **OKF Attested ComputationからBusiness Completionを導く誤接合**：同じ計算結果と有効Receiptだが、Inputがpartial Read／別Tenant／旧Operator版。あるいはOwnerが意味受理を撤回 | 決定的Attesterが検査できるのはPinされた定義・実入力・実行結果等、**そのAttestationが対象とする限定Claim**。実行・再読取・署名・Owner／Host資格は追加の証拠 | [#2514](https://github.com/hat47x/tei-platform/issues/2514)の既存独立検証基準と[#2614](https://github.com/hat47x/tei-platform/issues/2614)の限定Product Skill候補を利用する。Attestation=`verified`から`CoverageComplete`／Owner Meaning Acceptance／現在Grant／Provider Effectを推論しない。候補のVerifierを新Core/Hostへ移植しない |
+
+**ほかの実装進展との整合**：[#3051](https://github.com/hat47x/tei-platform/pull/3051)は**main統合済み**で、`EmptyPolicyDeny`＋`Targets=[]`＋`CoverageUnestablished`を`fails`でなく`unverified`へ修正済み（`semantic/completion.go` Blob `e42610e9159e02ba3b5c7b84c46742a846331e64`）。適格な`P=false`反例をpartialで`fails`とする既存規則は保持。[#3078](https://github.com/hat47x/tei-platform/pull/3078)/[#3081](https://github.com/hat47x/tei-platform/pull/3081)では`workspace-files.readByLoader`と空宣言warningが実装されたが、`readByLoader=true`や`validate.ok=true`は`*.tei.md`の構文解釈・Meaning受理・実Build消費を保証しない。証拠列の改善を旧失敗のままと書かず、未達のClaimだけを残す。
+
+**作業引渡し（新Scenario正本を作らない）**：最小の新Mutant候補は「同一Sourceで重複Datasourceの宣言順だけを反転」し、選択Aliasと判定が変わるかを固定すること。次に「主対象RW／関連対象RO」のEffect閉包について、対象Relationshipと実Provider対応の有無を確認し、存在する場合のみ隔離DBで安全な拒否・実効果0・Receiptの別証拠を取る。元の`#3070`既存4件は**主対象の宣言による局所拒否**であって、上記二反例のGo/実DB成功ではない。実Owner=#1129（Relation／Cascade）、#1174（Effect/Host）、#2586（実Provider Binding）、#1180/#2514（Scenario・独立期待値）、#2621/#2823（Source）。OKF側のAttester真正性と独立Expectedは#2614/#2514/TAI #514へ委譲。特殊なWorkflow/Attester/DB Router/Policy Engineをこの計画で採用しない。
+
+**状態**：本節はmainの実Sourceと統合済みPRから導いた**反証可能な設計／試験要求**。同namespace重複宣言・関連先ROの新Go試験、実DB強制、OKF Attesterの実Tool/Receipt、正式Owner Meaning Acceptanceは**NOT RUN／NOT ACCEPTED**。受理済み業務MeaningがRO先のCascadeを許容しているとは推測しない。
+
+#### Receiptの独立Lookupと業務資源の独立Readを取り違えない（2026-11-07）
+
+**新mainの局所到達点と接合ギャップ**：[#3112](https://github.com/hat47x/tei-platform/pull/3112)で`ReportedEffectMissing`が`AppliedUnobserved`と独立に観測され、[#3104](https://github.com/hat47x/tei-platform/pull/3104)で効果無宣言なら適用操作比較自体を非適用とする区別が入った。[#3124](https://github.com/hat47x/tei-platform/pull/3124)の`internal/command/persistence.go`（確認Blob `be114c633dd7b41815ab713c18a33e0efd878da0`）は`Persistence=not-applicable/not-observed/observed`を導入し、`observed`を**「宣言された資源効果がCommit後の独立Readで確認された」**意味として説明する。`Invoker.DurableStore`は外部構成の申告であり、型が実永続Storeを保証するわけではない。CLIの`persisted`は`PersistenceObserved`の場合だけtrueになる。
+
+一方、[#3127](https://github.com/hat47x/tei-platform/pull/3127)の`internal/security/effectcommit/commandadapter/executor.go`（確認Blob `6b854d7240a4401593c8b693bdea657aee8b5ff2`）が実装した`Executor.Observe`は、`Lookup=true`で`Runner.Lookup`を呼び**OperationID/RequestHashに対応するReceipt**を読み直す。そのCodeコメントも「資源の現在値を読まない」と明示する。ところが[結合単体試験 `TestExecutorObservesACommittedReceiptByLookup`](https://github.com/hat47x/tei-platform/blob/main/internal/security/effectcommit/commandadapter/executor_test.go)（確認Blob `6d9a282f54337a287322d1b127230adb025a3ba6`）では、`Invoker.PersistenceObserver = executor`としてReceipt Lookupだけで`PersistenceObserved`を返す。**Receipt観測の成功と資源状態の観測成功は、同じ`observed`の値からは区別できない構成が存在する**。このテストが確認する局所動作を、実Productの`persisted=true`＝業務データ確認済みと解釈しない。
+
+| 同一OperationID・RequestHash・Receiptを固定した対照 | 独立期待結果・安全なClaim ceiling |
+| --- | --- |
+| **R1 Receiptのみ**：`Lookup`成功、だが`sales.order/O1`の別Readerは未接続 | `receipt lookup observed`まで。記録の存在、同一Operationの重複識別は確認できても、`resource state observed`・`business completed`は**unverified**。この構成が`PersistenceObserved`を返す現在のTest動作は**観測済み局所結果**であり、Product保存検収の独立期待結果とは分ける |
+| **R2 不一致の資源状態**：同じReceiptを返すが、独立ReadではO1が旧版／別値／未取得、あるいはProviderがpartial/遅延Replicaしか返さない | Receiptの値を変えずに、業務資源の確認だけ不成立／不明へ変わるべき。`persisted=true`をConsumerに許すには、Readerの実Source/Query・Target/Scope・Version/Read cohort・Coverage/一致値の検証が必要。現mainのこの製品縦断試験は**NOT RUN** |
+| **R3 資源Read一致**：同じReceiptに加え、Host/Providerから独立した対象Readerで要求する版・値を確認 | 当該Target/時点の`resource effect observed`候補へ進めるが、Grantの現在資格・他Dataへの`additional-scope`/RO違反・Owner業務完了は依然として別。対象が複数なら各対象／集計範囲の完全性を検証 |
+| **R4 Unknown/Replay**：Commit ACK喪失後のReceipt Lookup成功、または`StatusReplayed` | 未知だったOperationの記録が確認できた範囲だけ資格を更新し、**資源現在値の独立Readの代わりにしない**。同Keyの二重実行禁止・新Key再送禁止は#1174のFence/Idempotencyで別検査。Receiptが欠ければCommitしていないと断定しない |
+
+**最初の検証差分**：既存#3127のReceipt-only陽性テストを**変更せず対照基線**にする。その隣に、同一Receipt/OperationIDで資源Readの有無・取得値だけを一因子変更する**Consumer独立期待結果**を置き、(1)現`PersistenceState`、(2)実Receipt read、(3)資源の別接続Read、(4)`persisted`を見た外部Consumerが何を主張したかを別票にする。実Reader未接続なら`NOT RUN: resource-read-unbound`とし、`UNBOUND_DATASOURCE`を隠してReference MemoryStoreやReceipt Lookupで代用しない。Function→Query→Datasource→Provider実Readは既存[#2586](https://github.com/hat47x/tei-platform/issues/2586)、Host/Effect FenceとReceiptは[#1174](https://github.com/hat47x/tei-platform/issues/1174)、同一Attempt/独立Consumerは[#1163](https://github.com/hat47x/tei-platform/issues/1163)、独立Expectedは[#2514](https://github.com/hat47x/tei-platform/issues/2514)のOwnerとする。
+
+**設計判断の限界**：`PersistenceObserved`という既存コード上の戻り値自体を勝手に書き換えず、Receipt観測を消去しない。型/CLI契約を拡張するなら、**ReceiptとResourceの観測種類・Provenanceを分ける**案と、ConsumerごとのClaim ceilingによる読み分け案を比較し、互換性／Owner受理と実PG・独立Readで判断する。`tei.cli.view/v0`等の一律版上げ、新`Receipt` ABI、第二永続化Engine、全Actionへの書込み後Read義務は本節で採用しない。[#2614](https://github.com/hat47x/tei-platform/issues/2614)は現在closedであり、OKF/TEI Product Skillの継続窓口は[#2605](https://github.com/hat47x/tei-platform/issues/2605)とTAI #514を優先する。今回のProduct PG/資源Read/Owner受理の新試験は**NOT RUN／NOT ACCEPTED**。
+
+#### 三領域で破綻しやすい残余
+
+| 比較 | 単一因子だけ変える反例 | 独立Expectedと既存Owner |
+| --- | --- | --- |
+| **受注：業務語の同形異義** | 同じ`approved`/数値だが「見積承認」対「受注確定」、税・丸めRuleだけ改訂 | 表層Carrier/型が等しくてもAccepted Actionの適合を自動継承しない。従来の確認は再検討候補、現在Grantとは別。#1126/#1129/#2514 |
+| **組織：時点とTenantの非継承** | 同じPerson/Role/Plugin、兼務する二法人A/B。同じ`approved`でA側の所属承認だけを追加、または代理権を撤回 | Membership/Occupancy/業務責任は時点付きRelationであり、B側Grantを生成しない。Grant失効は過去の所属・Receiptを削除する理由でない。#2386/#2389/#1016/#1174 |
+| **Procedure：非実行操作の存在** | 同形Step`approved`を「人による電話確認」と「自動Provider更新」に差し替える | 前者は正当なBusiness Procedureの手作業・引継ぎであり、Executable Actionが**非適用**でもモデルは不成立としない。後者にはTarget/Grant/Effect観測が必要。Workflow完了≠業務完了。#1125/#1129/#1130 |
+| **Plugin：選択と作用の非干渉** | 同じDefinition/Meaningのまま未使用Pluginを同梱する、または同一Pluginを別Tenantで選択 | 実Selection/Build/RuntimeとCurrent Grantを別確認。未選択追加で既存Meaning/Providerを黙って切替えず、別Tenantの作用を推論しない。#1016/#951/#1251 |
+| **失敗・回復：外観同一性** | 同じ`approved`表示でCommit ACKあり／ACK喪失、または先行Step effect後に後続Stepがblock | `completed`表示・同値Readから元Operationの成功を推論しない。同OperationIDのReceipt Lookupと対象別独立Readを優先、盲再送禁止。#1174/#1163/#2889 |
+
+#### DSL可読性比較への最小接続
+
+各例の**独立ExpectedとDomain情報量を同一**に固定したうえで、(a) 汎用的な短い`approve(subject)`型の**擬似構文**、(b) 対象と行為（受注確定／Membership承認／手作業記録）を認知順に明示する低ノイズの表・式・DSL候補を比較する。短さやGo AST親和性を自動採用基準にせず、**意味の誤選択、追加質問、診断位置、局所修正差分、Source fidelity、AIの入力・修正コスト**を同一Taskで測る。生成AIの解釈結果と生成AIが作ったExpectedの自己一致は合格証拠とせず、#988の構文比較と#2514の独立期待結果・既知Mutantを再利用する。正式Grammar/日本語キーワード/新Role enumは採用しない。
+
+**判定票の最低列と停止条件**：`actual parsed Source occurrence／meaning role+accepted revision／operation applicability（manual時not-applicable）／required obligations（候補の自己申告以外）／provided+evaluated guards／selected Plugin+Provider+Target／current Grant+Tenant+resource／dispatch結果／Receipt+独立read／独立Expected／Claim ceiling`。未知は`unresolved`、非適用は理由付き`not-applicable`、実権限拒否は既存契約の`denied/blocked`、送出後不明は`unknown`として**概念上区別**する（製品共通enumではない）。実施順は、#1180/#2514へ比較Expectedを紐付ける→#2586の実Read接合で意味/Scopeと実Consumerを確認→#1174の限定PG Effect試行で実Grant/Commit/Receiptを確認。手作業に必須DB実行、read-onlyに書込Guardを一律課さない。
+
+**既存mainの具体的接合先**：[#2926](https://github.com/hat47x/tei-platform/pull/2926)は`semantic.EvaluateCompletion`の`(TargetSet L, EmptyPolicy, Predicate P)`限定評価をmainへ統合済み、[#2671](https://github.com/hat47x/tei-platform/pull/2671)はCommit後ReadとOwner完了Claimの差を記録した。ただし#267は仮承認で、実Runtime/Consumerが対象全集合L・独立Coverage・Pを供給したことや、現Host Grant／Provider Effectを証明したわけではない。上表のM=受理済みは**独立に固定するFixture条件**であり、これらの現行実装から本番の正式受理を推測しない。新Completion Evaluatorは追加せず、#1125/#267を既存Ownerとして再利用する。
+
+**根拠と資格**：#2619の既存反例、#2389の組織計画、#1125 Procedure、#1174の実PostgreSQL限定実証、#2889のRunner特性試験、Draft #2896のSystem Composition計画を基にした**計画上の補正候補**。この2×2／三領域／DSL比較を同一Product Headで新規実行した証拠はない。**実Tenant/Host/Provider/GUI・Owner正式意味受理、#1119 Gate判定はNOT RUN／NOT ACCEPTED**。新しい基盤の実装・既存ADRの採用は提案しない。
+
 ## 10. 接合パケットへの成熟した追加受入（実行は全件NOT RUN）
 
 既存のHX-01〜10を残したまま、複数チャットから集まった**観測可能なギャップ**を以下の差分として追加する。
