@@ -33,7 +33,7 @@ def artifact_digest(artifact):
             + rule['version'] + '\n' + rule['fingerprint'] + '\n'
             + artifact['generator'] + '\n' + artifact['content']
             + '\n--unresolved--\n')
-    for x in sorted(artifact.get('unresolved', []),
+    for x in sorted(artifact.get('unresolved') or [],
                     key=lambda a: (a['subject'], a['reason'], a['detail'])):
         text += x['subject'] + '\t' + x['reason'] + '\t' + x['detail'] + '\n'
     return fingerprint(text)
@@ -77,7 +77,7 @@ def compare(operations, artifacts, application):
         need(item.get('digest') == artifact_digest(item), 'artifact_envelope_digest_mismatch')
         expected_entries.append((item['kind'], item['rule']['id'], item['rule']['version'],
                                  item['rule']['fingerprint'], item['digest'],
-                                 len(item.get('unresolved', []))))
+                                 len(item.get('unresolved') or [])))
     actual_entries = [(e['kind'], e['rule'], e['version'], e['fingerprint'],
                        e['digest'], e['unresolved']) for e in manifest['entries']]
     need(Counter(actual_entries) == Counter(expected_entries), 'manifest_member_mismatch')
