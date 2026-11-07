@@ -300,3 +300,57 @@ W1 → W2 →（W3・W4 は並行）→ W5 → W6 の順に進めます。W1・W
 - 期間の状態は「いつ実行できるか」。
 
 閉じた期間を `human-gated` に読み替えません。両方を持つことで、判断の主体と実行の可否を混同せずに読めます。
+
+## 追記（2026-11-07）: W3 の対応表を、観測できた三つの手掛かりから書く
+
+W3（宣言と導出の優先順位）は**未着手**のままです。ここでは、7章の規則（同じ対象・同じ種別の宣言が導出を置き換える）を実装するために**何を突き合わせる必要があるか**を、実行して観測した結果から具体化します。**採用前の案であり、W3を実装済みとは扱いません。**
+
+### 観測の出所
+
+- [操作面が宣言されたPatternを読んでいるか](../evidence/OPERATION_SURFACE_DECLARED_PATTERN_GAP_2026-11-07/README.md)：現行の`tei operations`は`pattern`を読んでいない（World指紋が変わっても操作面8件と`summary.declared=0`が不変）。
+- [宣言されたPatternと導出された操作は、どこで結べるか](../evidence/PATTERN_KIND_OPERATION_MAPPING_2026-11-07/README.md)：同じWorldから両方の一覧を取り、突き合わせ可能な欄が**Data ID・能力ID・Relation targetの三つ**であることを確認。
+
+### 三つの手掛かりと、それぞれの限界
+
+| 手掛かり | 宣言側 | 導出側 | 限界 |
+| --- | --- | --- | --- |
+| Data ID | `browse`・`record`の`data` | 操作の`target` | `browse`と`record`が同じDataを指すため、IDだけでは`list`と`read`を選べない |
+| 能力ID | `command`の`capability` | 書込み操作の`binding` | 効果を宣言しない能力では`binding`が空。読み取り専用の`command`は一致先を持たない |
+| Relation target | `reference`・`header-detail`の`relation` | 導出側に`relation`を`target`に持つ操作は無い | Relationのtarget Dataへ読み替える規則が、現行の規則語彙に無い |
+
+### 対応表の案（規則の版に含める語彙）
+
+`Kind`どうしの対応は、**名前の類似ではなく、Patternの契約（[Application Pattern v1](APPLICATION_PATTERN_V1_DESIGN.md)のKindごとの受理field）から導きます。** 名前のprefixや部分一致で推測しません。
+
+| Pattern Kind | 対応する操作の種別 | 突き合わせる欄 | 宣言だけが持つ情報 |
+| --- | --- | --- | --- |
+| `browse` | `list` | `data` = `target` | `query`（取得経路） |
+| `record` | `read` | `data` = `target`、かつ`read`が導出されていること（候補キーの存在） | なし |
+| `command` | `create` / `update`（`capability`の効果が対象Dataに一致する場合のみ） | `capability` = `binding` | なし |
+| `reference` | `read`（`relation`のtarget Dataについて） | `relation`のtarget Data = `target` | `datasource`（参照経路） |
+| `header-detail` | `list`／`read`（`relation`のtarget Dataについて） | `relation`のtarget Data = `target` | なし |
+
+この表から、実装時に必要な規則は次の4つです。
+
+1. **`relation` から `target Data` への読み替え。** `reference`と`header-detail`は`Relation`を指すため、`Relation.Target`（`customer.customer`・`sales.order_line`）を`target`として使う。読み替えた事実は来歴（`basis`または診断）に残し、黙って行わない。
+2. **`command` の一致条件。** `capability`の効果が、対象Dataへの`create`/`update`を宣言している場合だけ、その`binding`と一致させる。**効果の宣言が無い`command`（読み取り専用）は、対応する導出操作を持たない**ため、`origin=declared`のまま操作面へ載せ、`gaps`へ`out-of-scope`（この規則の版では導出しない）として理由を残す。空の結果で隠さない（5章・3項）。
+3. **同じDataを指す複数のKindの扱い。** `browse`と`record`が同じDataを指す場合、`list`は`browse`に、`read`は`record`に結ぶ（種別の対応で決まる）。両方が同じ種別を指す場合は**衝突**として`conflict`を返し、どちらかを選ばない。
+4. **上書きの範囲。** 置き換えるのは「同じ対象・同じ種別」だけ（7章）。`reference`が`list`を消したり、`command`が`read`を消したりしない。抑制（`suppress`）は宣言された場合だけ来歴に残す。
+
+### この案が増やす効果の制限
+
+- `command`の`capability`が効果を宣言していない場合、**操作面の側で効果を補わない。** 宣言が無いことを理由に`unattended`へ倒さない（8章の安全側の規則をそのまま適用）。
+- `datasource`・`query`は取得経路の選択であり、操作の同一性の判定に使わない。これらを使った「同じ操作」の判定は行わない。
+- 解決できない`relation`、効果の宣言が曖昧な`capability`は、`conflict`または`missing-semantics`として返し、既定値で埋めない。
+
+### 撤回条件
+
+- 対応表の導入で`gaps`が増えるだけで、操作の一覧が読みやすくならない場合は、`origin=declared`の表示だけを残し、上書きの判定を撤回する。
+- `relation`の読み替えが、Relationを持たない操作（標準CRUD）の意味を変える場合は、読み替えを`reference`・`header-detail`に限定したまま、標準操作の`target`を変更しない。
+- 同じDataを指す複数Kindの衝突が参照Workspaceで頻発する場合は、種別の対応を規則から外し、宣言側の`Kind`をそのまま並べるだけにする。
+
+### 未決（この追記でも決めないこと）
+
+- 対応表を**規則の版**（`tei.operation-surface/standard-crud`の次版）に置くか、**プラグインの契約**（#951）へ移すか（15章の2番）。
+- `route`・`datasource`のような取得経路の情報を、将来`Operation`の欄として持たせるか。現行の出力契約（9章）を変える判断になるため、この追記では触れない。
+- W3の実装順。W4（書込みの自律区分）との並行可否は、実装時の試験範囲で決める。
