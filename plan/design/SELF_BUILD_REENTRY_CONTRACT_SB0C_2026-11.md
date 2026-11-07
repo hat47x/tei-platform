@@ -45,9 +45,44 @@ SB-0a〜SB-Bの実測で、次が分かっている。
 
 **Aを第一候補にする理由**：L3の定義は「stage1で出力されたTEI自身のバイナリがstage2のBuild Plan解決・実Build起動を駆動」であり、Bはこの主語を別バイナリへ移す。Cは`cmd/tei`をPluginとして偽装する。
 
-**Aの依存境界問題の扱い**：`internal/operations/dependency_test.go`は`tei/tools/`を禁止している。この禁止は「Operationがtransport/toolingへ依存しない」ためのもので、**CLI（`cmd/tei`）は対象外**である。`cmd/tei`から`tools/internal/gobuilder`をimportするのは、既存の規則に抵触しない。実際、`tools/reference-*`は現在`cmd/tei`から呼ばれていないが、これは規則ではなく単に未接続である。
+### 3.1 訂正（2026-11-07）：AはGoのinternal規則に抵触する
 
-ただし、`tools/internal/gobuilder`が`internal/`へ移るべきかは別の判断である。ADR-0033はコアとプラグインのサブプロジェクト化を扱い、`tools/internal/`の位置は明示していない。**本稿は移動を提案しない**（移動は既存15ファイルのimport pathを変え、Evidenceの参照を壊す）。
+当初の§3は「`cmd/tei`から`tools/internal/gobuilder`をimportするのは既存の規則に抵触しない」と書いた。**これは誤りである。** 実測で確かめた。
+
+`tei/tools/internal/gobuilder`は`tei/tools/`配下の`internal`であり、Goのinternal規則により**`tei/tools/`の外からはimportできない**。`cmd/tei`は`tei/cmd/`にあり、外側である。
+
+~~~text
+$ mkdir -p .tmp_probe/cmd && cat > .tmp_probe/cmd/probe.go  (import "tei/tools/internal/gobuilder")
+$ go vet ./.tmp_probe/cmd
+package tei/.tmp_probe/cmd
+	.tmp_probe/cmd/probe.go:4:2: use of internal package tei/tools/internal/gobuilder not allowed
+~~~
+
+この検査は`tei-wt-intcheck`のworktree（main `96d276b74`）、Go 1.27.3 linux/amd64で実行し、probeは削除した。interpreterの判定はコンパイル時のパス規則であり、`internal/operations/dependency_test.go`の禁止とは**別の層**にある。
+
+したがってAの前段は二択になる。
+
+| Aの変種 | 内容 | 影響 |
+| --- | --- | --- |
+| A-1 | `gobuilder`をモジュール直下の`internal/`配下へ移す | 既存15ファイルのimport pathが変わる。`tools/`の側から新pathをimportできる（module root 配下なので、`tools/`からも`cmd/`からも届く） |
+| A-2 | `gobuilder`の必要な関数だけを新しい`internal/`パッケージへ写し、`tools/`側は既存のまま残す | **同じ実装が二つになる**。§35.2が禁じた「第二Runner」に近づく |
+| A-3 | `internal/`側に薄いwrapperを置き、`go`コマンドを直接execする | `ResolveSourceClosure`等の既存検査を再実装することになる |
+
+**A-1を本稿の推奨にする。** 移動は一度きりで、import pathの変更は機械的に追える。A-2は二重実装、A-3は検査の再実装であり、どちらも「一つのadapterを共有する」という前提を壊す。
+
+ただしA-1は`tools/internal/gobuilder`の**15ファイルすべてのimport pathを変える**ため、既存Evidence（`plan/evidence/TEI_GO_*`）が引用するコマンドの実行手順も変わる。移動そのものを本稿で実施せず、影響範囲を別途洗う必要がある。移動は[ADR-0033](../adr/0033-core-and-plugin-subprojects.md)の配置判断に触れるため、**採用はしない**。
+
+### 3.2 再評価：Bは「別バイナリ」ではなく「別プロセス」の問題になる
+
+A-1のコストを踏まえると、B（`tools/reference-go-build-with-supply`のsubprocess起動）の短所も読み直す必要がある。
+
+- BではBuild主体が別バイナリになるが、L3の定義は「Stage1で生成したTEI自身のProcessが、Stage2のBuild Plan解決と既存adapterへの実行要求を駆動した」ことである。**subprocessを起動するのがStage1のTEIなら、駆動主体はStage1のまま**である
+- 証明に必要なのは「Stage1のTEIが、どのchild executableを、どのargvで起動したか」の記録であり、child自身のdigestである。これは`StdioProcessLauncher`で既に取得できる形に近い
+- 逆にA-1では、Stage1のTEIが**同じプロセス内で**Buildを実行する。駆動と実行が同一プロセスになり、区別が弱くなる
+
+**したがってAとBの優劣は「どちらがL3に近いか」では決まらない。** Aはプロセス内、Bはプロセス間で、L3の証拠の取り方が違う。本稿の第一候補は**Bへ変更する**。理由は、A-1の移動コストが大きく、Bは既存の依存境界を変えずに駆動主体の記録まで取れるためである。
+
+ただしBにも制約がある。Stage1のTEIがchildを起動するには、既存の`StdioProcessLauncher`を**そのまま使えるとは限らない**（Plugin用のwire protocolを前提にしている）。実際に使えるかは未確認であり、§6の未決事項に移す。
 
 ## 4. SB-C0の最小契約（案）
 
@@ -79,6 +114,9 @@ tei self-build
 4. `-state`が未指定、または既存の試行と共有されている
 5. `-output`が既存ファイルを上書きする（no-clobber）
 6. WorkspaceのSourceが未受理（`validate`がerrorを返す）
+7. 起動するchild executableが`-builder`で明示されていない（Bの場合。PATH解決に委ねない）
+
+7はBを選んだ場合の追加条件である。`StdioProcessLauncher`の既存方針（「Executableとargvを分けたまま渡し、shellを経由しない」）に合わせ、**PATHからの暗黙解決を許さない**。childのexecutable digestは起動前に記録する。
 
 5は`reference-plugin-build-supply`のno-clobber規約と同じ扱いにする。上書きfallbackを持たない。
 
@@ -125,21 +163,26 @@ SB-C0の出力だけではL3を主張できない。L3には次が要る。
 | SC0-05 | `validate`がerrorのWorkspace | Buildを開始しない |
 | SC0-06 | 成功時の出力 | `qualified: false`。artifact成功をL3・受入・権限と表現しない |
 | SC0-07 | Stage1のdigestを自己申告だけ | L3の証明にしない（SB-N13の再掲） |
-| SC0-08 | `cmd/tei`から`tools/`をimportする変更 | `internal/operations`の禁止規則を緩めない。緩める場合は別の設計判断 |
+| SC0-08 | `cmd/tei`から`tools/internal/`をimportする変更 | Goのinternal規則が拒否する（§3.1で実測）。規則を緩めるのではなく、`gobuilder`の移動かwrapperかを選ぶ |
+| SC0-09 | Bで`-builder`を省略しPATHから解決させる | 拒否。child executableのdigestを記録できない起動を許さない |
+| SC0-10 | Stage1が起動したchildのdigestと、記録したdigestが違う | L3不可。SB-N13と同じ扱い |
 
 ## 6. 未決事項
 
 - コマンド名（`self-build` / `build` / `artifact build`）
 - Build Intentの解決方式（`-intent`でID指定か、Workspace内の宣言から解決か）
-- `tools/internal/gobuilder`を`internal/`へ移すか、`cmd/tei`から`tools/`を直接importするか
+- **A-1（`gobuilder`の`internal/`への移動）とB（subprocess）のどちらを採るか**。§3.1・§3.2でBを推奨へ変更したが、A-1の移動コストを測っていない
+- `internal/plugin/runtime`の`StdioProcessLauncher`をBuild用child起動へ**そのまま使えるか**（Plugin用wire protocol前提であるため、未確認）
 - `-self-digest`の取得方法（実行ファイル自身のdigestをどう自己参照するか）
 - 出力のschemaVersionと、既存`tei.cli.*`との命名一貫性
 - SB-C1（Stage1実行によるStage2駆動）の実測手順
 
 ## 7. この文書の終了条件
 
-- [ ] §3の三案のどれを採るかの決定（ownerは[#1090](https://github.com/hat47x/tei-platform/issues/1090)と#2831）
-- [ ] `tei self-build`の実装とSC0-01〜08の実試験
+- [x] §3の三案の比較と、Aの前提がGoのinternal規則に抵触することの実測（§3.1）
+- [ ] A-1とBのどちらを採るかの決定（ownerは[#1090](https://github.com/hat47x/tei-platform/issues/1090)と#2831）
+- [ ] `gobuilder`移動の影響範囲（15ファイルのimport pathと、`plan/evidence/TEI_GO_*`が引用する実行手順）の洗い出し
+- [ ] `tei self-build`の実装とSC0-01〜10の実試験
 - [ ] `cli_contract.go`の広告と実応答の一致（既存のdiscovery照合へ載せる）
 - [ ] SB-C1の実測手順
 
