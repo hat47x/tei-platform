@@ -256,3 +256,56 @@ tests:
 - https://github.com/WebAssembly/component-model/blob/main/design/mvp/WIT.md
 
 **実施状況**：2026-11-07の他チャット・現行main・既存Issueの静的突合と移行条件の設計追補。PD-0〜PD-7、Trait合成、actual two consumer、実Go Build/Studio/UI/Host、CLI Skill/MCP、実DB/HTTP副作用、Self-buildの新規試験は**NOT RUN**。正式Schema/ABI、数値Budget、Owner Meaning Acceptanceは**NOT ACCEPTED**。本追補は#1119のG0〜G4を置換せず、実証時の必要証拠を既存Gateへ渡す。
+
+
+## 14. 横断収束：実行可能Offer・表示逆写像・受信側SinkをD1の契約監査へ接続（2026-11-08案）
+
+**位置づけ**：#1251のD1/PD-1〜5に渡す最小の検証差分。#951/#1016のContract/Provider/Resolution、#3278のAtomic Trait、#1158のOperation/Surface、#1180/#2514のScenario/Independent Expected、#3267のBOM、#2516のDisclosure、#2497のProjection/逆写像が各正本。新しいCore enum、第二Resolver、権限・Evidence・Scenario SSOT、共通TEI Hostを作らない。以下のOperation Offerは**説明上の集合名**であり、正式Schema/ABIの採用ではない。
+
+### 14.1 「広告できる」と「実行できる」の間に残る空白
+
+一つの操作の受入で、次の独立観測を揃える。異なる層を一つの `available=true` に潰さない。
+
+| 層 | 既存Ownerと確認対象 | 不成立時にしてはいけない推論 |
+| --- | --- | --- |
+| 意味・型 | #2619/#2620/#3278：Role、Trait義務、型、NULL、Effect、Failure | 名前/構文が合うだけで意味が満たされたとしない |
+| 広告・入力 | #1155/#1158/#3242：CLI/MCP/Studioに投影する引数許容値、既定値、条件付きEffect | Help/Discoveryに載っただけで全入力Variantが実呼出し可としない |
+| 到達可能性 | #1251/#951/#1016、Hookの既存Validation：必要なPattern/Handler/ProviderとScopeが実接続される | HookやSurface Contributionの宣言だけで実行済み・実装済みとしない |
+| 実構成 | #943/#1089/#1251：選択Provider、実Build input、linked Artifact、Host入口で観測した実Provider | 選択B・実呼出A、同じResult bytesを合格にしない |
+| 現在の効果 | #1174/#2516：Operation Variant、実Write/Receipt、対象・Grant、Unknown | `read-only`名義のNamed File Outputや実DB unknownを無作用扱いしない |
+| 受信・公開 | #2509/#2515/#2516/#3262：CLI/stdout、MCP Tool、AI Harness Session/Log、Studio/SHOへの配送と保存/外部送出の観測 | ProviderがReadであるだけで結果の非永続・非外部送出・完全受領を保証しない |
+
+**既存実例への接続**：
+- Draft [#3306](https://github.com/hat47x/tei-platform/pull/3306) はHook `uses` がApplicationの `command` Patternへ到達しない場合を検証時に拒否する実装候補。PluginのOfferでも同種の「宣言はあるが実Handlerが無い」をD1負例にする。HookのCommand経路をそのままPlugin専用Core固定仕様へ転用しない。
+- [#3307](https://github.com/hat47x/tei-platform/pull/3307) は既存CLI Discoveryの引数許容値・既定値と実受理を一致させる限定的変更。これを、全Input/Operation Variant/Provider適合が既に自動導出された証拠とはしない。
+- 実CLI [#3182](https://github.com/hat47x/tei-platform/issues/3182) とDraft [#3302](https://github.com/hat47x/tei-platform/pull/3302)：`view`の`-execute` VariantはNamed Local Fileへ書ける。実出力と契約上のEffect広告を別々に検証し、実DB Commitへは昇格しない。
+- [#3309](https://github.com/hat47x/tei-platform/pull/3309) が報告するDSH headlessの**合成canary限定**観測は、read-onlyで取得したTool結果が永続Session Logにも現れ得ることを示す。他のSink、TEI製品、第三者環境へ無条件に一般化しない。受信側保存先の実測は別Ownerで継続。
+
+### 14.2 表現型Pluginと標準データ構造の境界
+
+**データのIdentity/Relation/Topologyは、Canvas・Table・Graph・Markdown・SHOの表示上のCardやNodeとは別**。SUI/KJ/マインドマップで同じItemが複数Canvasへ現れても、Itemの同一性・Source/Accepted Meaning・依存を重複して複製しない。未分類のRaw ItemはPlugin未導入・無効化後も保持し、未解釈を「存在しない」に縮退させない（#2044/#2497）。表示Pluginは必要なShape/Axis/Unit/Source/Multiplicity/Orderを契約として要求し、非単射・損失あるProjectionは `renderable` と `editable/writeback` を区別する。逆写像の対象Identity/Revision/権限が一意に定まらない限り自動Writeを拒否する。新しい万能ItemKindやCanvas専用Core型を要求しない。
+
+Data Workbench #3270、REST Decision Graph #3274、三要素モデルとCRUD/SHO、SUI Canvasを**異種Consumer**として使う。どれも同じContract/Providerの意味とEvidenceを参照できるが、画面で操作できることから元データへのWrite資格を推論しない。Source保存は開示や業務意味受理とは別Claim。
+
+### 14.3 最小追加負例（既存#1180/#2514のIndependent Expectedへ委譲）
+
+| ID | 反例 | Expected / 既存受入Owner |
+| --- | --- | --- |
+| PO-01 | Plugin Surface/HookがOperationを宣言、実Handler/Pattern到達経路なし | `declared`のみ、`executable`不成立と診断。#1251/#1158／Hook類似#3306 |
+| PO-02 | CLI広告の許容値/既定値/条件付きEffectと実Provider受理が違う | Offerの対象Variantを拒否・診断。#1155/#1158/#3182 |
+| PO-03 | Bを選択したがCLIまたはStudioがAへ実呼出、返却bytes一致 | Host由来の実Entry不一致でFAIL。#1251 D1-W01〜03 |
+| PO-04 | Read-only SourceをToolで取得し、受信Harnessが結果を永続Sessionへ記録 | Provider EffectのReadと受信SinkのWriteを別観測。Grant/開示とSinkの実測範囲外はunknown。#2515/#2516 |
+| PO-05 | 同一Itemを二Canvasへ表示し片方で非可逆編集を試す | 同一Identity・重複計数なし。逆写像/Revision未確定ならWrite禁止。#2497/#1124 |
+| PO-06 | Renderer Plugin無効化、未知Raw Itemが存在 | Raw Source/Refは保持、対応するView/Write/Meaningだけunknown/unsupported。#2044 |
+| PO-07 | NULL・単位・時点が不適合なProviderを型名だけで選択 | Structural/semantic Conformanceを別検証し不適合を拒否。#951/#3278 |
+| PO-08 | 4バージョンtuple中Synthetic Witnessが1件だけ実Call未観測 | 実組合せQualifiedへ加えずmatrix-incomplete。#3267 |
+| PO-09 | 同じLockでも受信先のDisclosure/GrantまたはSource Revisionが変化 | 過去のResult/Cache/BOM Evidenceを現在の開示・実行資格へ流用しない。#3262/#3271/#2516 |
+
+### 14.4 最短の実装順と停止線
+
+1. **D1を肥大化させない**：既存`inspect`一操作を、A/B Provider・CLI実Call-site・Studio実Call-site・Host観測で実証。PO-01/02/03/07を優先し、同一結果bytesの誤配線を検出する。
+2. **独立した横断pressure**：D1で得たTyped Offerのread/unknown/closureを一つのData Workbench Readerへ接続する。別レーンでPO-04の受信Sink実験を#2515へ、PO-05/06の非可逆表示・Raw保持を#2497へ返す。これらをD1完了のHard Dependencyにしない。
+3. **資格の引渡し**：実選択・実Build/Invoke・独立Expectedだけを#3267に渡す。合成witnessや独立Tool PASSのUnionからVerified BOMを作らない。外部Host、実DB Effect、SHO/SUI双方向編集、G4 Self-buildはそれぞれ実Target証拠で後続評価する。
+4. **費用対効果**：新しいContract/Providerを一つ追加するためのCore差分、Consumer別特別処理、Open APIへのAdapter変更量、D1誤PASS/誤失効、Sinkの未観測割合、Build closure混入、入力/出力配送の完全性を記録する。第二正本や新Core enumが必要になれば抽象境界を見直す。
+
+**状態**：横断議論とGitHub上の既存Issue/PRからの**設計・受入案**。PO-01〜09をTEI製品経路で実行したわけではない。Plugin実2 Consumer、実BOM資格、SUI/SHO Writeback、実MCP Disclosure/Sink、正式Owner Meaning Acceptanceは未受理・未実証。旧/進行中PRの局所PASSをこの統合全体のPASSへ拡張しない。
