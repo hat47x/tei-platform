@@ -269,6 +269,16 @@
       "id": "N12",
       "failure": "static-guard-presence-promoted-to-runtime-guard-evidence",
       "expected": "FAIL"
+    },
+    {
+      "id": "N13",
+      "failure": "presentation-occurrence-identity-conflated-across-canvas-views",
+      "expected": "FAIL"
+    },
+    {
+      "id": "N14",
+      "failure": "semantic-source-altered-by-presentation-canvas-split-merge",
+      "expected": "FAIL"
     }
   ],
   "evidenceRequirements": {
@@ -277,5 +287,37 @@
     "studio": "real Web/Desktop consumer state, selection epoch and explicit edit operation",
     "sho": "real Markdown parse/preview, render bytes, document occurrence and target asset",
     "production": "no claim without independent external Provider/Host/Owner evidence"
+  },
+  "expectedCanvasViews": {
+    "viewIds": [
+      "canvas.sales-overview",
+      "canvas.fulfillment"
+    ],
+    "occurrenceCount": 9,
+    "uniqueOccurrenceIdAcrossCanvases": true,
+    "semanticSubjectCanHaveMultipleViewOccurrences": true,
+    "sharedSubjects": {
+      "data.order": [
+        "view.sales.order",
+        "view.fulfillment.order"
+      ],
+      "data.line": [
+        "view.sales.line",
+        "view.fulfillment.line"
+      ]
+    },
+    "relationOccurrences": {
+      "rel.order.lines": [
+        "view.sales.edge.order-lines",
+        "view.fulfillment.edge.order-lines"
+      ]
+    },
+    "canvasSplitChangesSemanticEntities": false,
+    "canvasSplitChangesSemanticRelations": false,
+    "layoutChangeRequiresMeaningAcceptance": false,
+    "selectionRequiresViewOccurrenceAndSemanticSubject": true,
+    "missingRelationInVisibleCanvasMeansAbsentInModel": false,
+    "crossCanvasNavigationNotImplicitWrite": true,
+    "visibleCanvasScopeIsNotEntireWorld": true
   }
 }
