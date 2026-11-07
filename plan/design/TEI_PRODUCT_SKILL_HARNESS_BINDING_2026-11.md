@@ -1,6 +1,6 @@
 # TEI Product Skill：既存CLIへの結合と外部Harnessでの利用を検証する設計
 
-- **状態**：2026-11-02 提案／初期portable Skill文書候補。正式Skill採用、実インストール、実Harness・本番外部Host接続は未実施。
+- **状態（2026-11-05更新）**：Product Skill文書・CIは[merged #2607](https://github.com/hat47x/tei-platform/pull/2607)でmainに存在。公開Workspaceでの実TEI CLI限定S1は[Actions #41532988114](https://github.com/hat47x/tei-platform/actions/runs/41532988114)で成功。外部HarnessのSkill実load/invoke、H2/H3比較、正式Owner意味受理は未実施。
 - **Owner**：[TEI #2605](https://github.com/hat47x/tei-platform/issues/2605)。
 - **横断受入**：[TAI #168](https://github.com/hat47x/tai-pleroma/issues/168)、[TAI Draft #270](https://github.com/hat47x/tai-pleroma/pull/270)のSK-01、[TAI #74](https://github.com/hat47x/tai-pleroma/issues/74)の配布。
 - **関連**：TEI #1155/#2354（既存CLI）、#2017（AI作業票）、#2516（Context/開示）、#1178（LLM Disclosure）、#2390（TEI非依存の外部Consumer）、#2493（大量並列要求）、#951（Service Contract）。
@@ -18,7 +18,7 @@ TAIが無くてもTEIを単独使用でき、TEI Skillが無くても既存CLI�
 
 ## 2. 実在のread-only入口に限定する初期Skill
 
-2026-11-02の`main`を参照。以下は**ソース静的確認に基づく候補**。各環境で使用する前に現実のコマンドと利用権限を確認する。
+初期候補は2026-11-02のmainを参照。その後[限定CLI CI #41532988114](https://github.com/hat47x/tei-platform/actions/runs/41532988114)で既存read-only入口を実行したが、全Command・全Schema・全Workspaceの包括保証ではない。実環境のコマンドと利用権限を確認する。
 
 | 用途 | 現在の入口 | 注意すべき限界 |
 | --- | --- | --- |
@@ -163,4 +163,20 @@ S0cまでに発見した複合Shellの誤認に加え、**既知read-only Comman
 | 独立Product SkillはTAIを追加しなくても有用 | TEI単体でH3を成立させ、H5との差分を見る | 横断Skillで説明し、不要な重複配布を避ける |
 | 複数Harness間で手順を移植できる | H6でTool/Capability/Host差を説明できるか | 必要箇所だけHarness Adapterを加える |
 
-**実証状態**：本計画と試作Skillは採用前の設計・検証候補。元7件の合成Python試験について別実行を報告している一方、S0c追加後の14件・実Checkout全体checker・S1実CLIの現HEAD CIは確認前。TS-01〜22の実製品・実Harness受入、S2/S3・H0〜H6の比較は行っていない。OwnerによるProduct Skill正式採用、実CLI/実Host/別Harness・実OS情報境界の受入は今後。
+**2026-11-02当時の実証状態（後続の正式な観測は§6を参照）**：本計画と試作Skillは採用前の設計・検証候補。元7件の合成Python試験について別実行を報告している一方、S0c追加後の14件・実Checkout全体checker・S1実CLIの現HEAD CIは確認前。TS-01〜22の実製品・実Harness受入、S2/S3・H0〜H6の比較は行っていない。OwnerによるProduct Skill正式採用、実CLI/実Host/別Harness・実OS情報境界の受入は今後。
+
+
+---
+
+<!-- tei-skill-reconciled-s1-source-completeness-20261105 -->
+## 6. 2026-11-05：Product Skillの実証状態を一段だけ更新
+
+[merged TEI #2607](https://github.com/hat47x/tei-platform/pull/2607)でSkill rootと参照文書がmainへ統合済み。[GitHub Actions #41532988114](https://github.com/hat47x/tei-platform/actions/runs/41532988114)のproduct-skill-read-only Jobは成功。対象版 d0de429ae5aac38b7949c2cfe6eacafff059675f では、公開reference/workspaceのsales.orderとsales.order.customerを固定したビルド済TEI CLIによるcommands、model catalog、inspect、trace、validateの限定read-only実行が成立した。**外部AI HarnessがこのSkillをロード・呼び出ししたことにはならない。**
+
+実Source適用の境界：[TEI #2822](https://github.com/hat47x/tei-platform/issues/2822)では空Workspaceでもvalidate.ok=true、標準stdのCatalogが13件ある。[#2823](https://github.com/hat47x/tei-platform/issues/2823)ではmanifestの未知rootやworkspace-files列挙対象が実Loaderで未解析となる。[#2824](https://github.com/hat47x/tei-platform/issues/2824)ではcommands 19件と旧文書の13件、worldの契約対象外が未整合。よってTaskで要求する**利用者定義Subjectのkind/idとそのSource**を実Workspace・版・Catalog・Inspectで照合する。宣言／列挙／Loaded／検証／Scenario Coverage／実Consumer利用を単一の「成功」に昇格させない。Sourceが未読込ならunknownを保持し、不存在や全件検証済みと断定しない。
+
+最初の後続は[TAI #168](https://github.com/hat47x/tai-pleroma/issues/168)／[SK-02 Runbook](https://github.com/hat47x/tai-pleroma/blob/docs/yi-harness-skills-20261102/docs/yi-constellation/first-real-skill-qualification-runbook-2026-11-02.md)の実一Harness四Session。固定した必要User Subject、実Binary、SourceIndex、Tool Profile、独立Expectedを用い、H2 Tool-only二SessionとH3 Product Skill実ロード二Sessionを正答・Warning/Unknown・Token/時間/人手で比較。Skillが有益でなければCLI/Tool-onlyを維持する。別Harnessはこの後のSK-03。
+
+[merged TEI #2850](https://github.com/hat47x/tei-platform/issues/2850)のEffectObserver欠落時の無人実行停止は**書込み・確定後Effectの後続条件付き経路**へ適用し、最初のread-only比較の必須機構にしない。EKI低遅延/マルチモーダル、SHO、MCP Tasks、Role自己記述/DB方言、複数Buildも用途で必要な時に各Ownerで実証する。新Host/Registry/第二試験Runnerは作らない。
+
+**状態**：本節は既存製品事実の反映と受入条件の整理。実CLIの限定S1は成功済。実外部HarnessのSkill load/invoke、H2/H3四Session、二Harness、全Source Closure、外部OS/Host/Provider、独立業務Oracle、Owner受理は**NOT RUN**。

@@ -1,6 +1,6 @@
 # ADR-0025: 遷移の評価順序を固定し、成立しなかった遷移を業務結果として返す
 
-- 状態: 提案中
+- 状態: 提案中（[ADR-0046](0046-business-lifecycle-as-standard-data-role.md)へ統合を提案。ADR-0046の採用時に置き換え済みとする）
 - 日付: 2026-09-05
 - 関連Issue: ISSUE-000038（作業範囲と実装順）
 - 関連設計: [業務Lifecycle v1 設計](../design/BUSINESS_LIFECYCLE_V1_DESIGN.md)（評価待ち）
