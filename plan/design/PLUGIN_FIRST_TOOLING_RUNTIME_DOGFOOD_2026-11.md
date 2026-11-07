@@ -280,7 +280,7 @@ tests:
 | **Invoked/Observed** | 実Consumerによる型付き`Service`のProvider identity・operation・attempt・target・入力/出力・失敗・読取範囲。単なる関数結果の値一致より**どのProviderが呼ばれたか**を優先 | Contract意味適合、テストの独立性 |
 | **Conformant/Currently usable** | #1180/#2514の独立Expected/負例/Scope付きCoverage＋#3267 exact BOM、現在Host Grant/Disclosure/Owner Meaning・Effectはさらに別照合 | 別Version、別Target、別Tenant、将来時点までの無条件保証 |
 
-この表の行はProduct新Core状態列挙でなく、同じ既存Subjectの異なるread-only投影である。公開面は既定`Open/unpromised`と明示`Stable`を区別するが、**同Bundleにある未公開Internal/Secretを発見可能として外部に渡さない**。Open依存でのAdapter修復責任は下流が持ち、発行者によるStable保証や実現在Grantと混同しない。
+この表の行はProduct新Core状態列挙でなく、同じ既存Subjectの異なるread-only投影である。公開面の設計案では`Open/unpromised`を基本、明示`Stable`を区別するが、**同Bundleにある未公開Internal/Secretを発見可能として外部に渡さない**。Open依存でのAdapter修復責任は下流が持ち、発行者によるStable保証や実現在Grantと混同しない。
 
 ### 14.3 最小縦断：Tooling Consumerの実選択を先に証明する
 
