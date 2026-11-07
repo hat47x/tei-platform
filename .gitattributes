@@ -59,8 +59,20 @@
 # Workspace-write probe observations are hashed as raw bytes.
 /plan/evidence/DSH_WORKSPACE_WRITE_ASYMMETRY_2026-11-07/** -text
 
+# Resume-after-disclosure observations are hashed as raw bytes.
+/plan/evidence/DSH_H6E7_RESUME_AFTER_DISCLOSURE_2026-11-07/** -text
+
 # Autonomy survey output is hashed as raw bytes by its README.
 /plan/evidence/OPERATION_AUTONOMY_DECLARATION_SURVEY_2026-11-07/** -text
 
 # Drift-check survey output is hashed as raw bytes by its README.
 /plan/evidence/OPERATION_DRIFT_CHECK_SURVEY_2026-11-07/** -text
+
+# Drift-check reference output is hashed as raw bytes by its README.
+/plan/evidence/OPERATION_DRIFT_CHECK_REFERENCE_2026-11-07/** -text
+
+# Plugin coverage output is hashed as raw bytes by its README.
+/plan/evidence/PLUGIN_CAPABILITY_COVERAGE_REFERENCE_2026-11-08/** -text
+
+# Technology-resolution output is hashed as raw bytes by its README.
+/plan/evidence/PLUGIN_CAPABILITY_COVERAGE_TECHNOLOGY_RESOLUTION_2026-11-08/** -text

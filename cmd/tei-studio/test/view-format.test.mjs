@@ -40,13 +40,16 @@ test("application view is summarized into patterns, packages, and periods", () =
     patterns: [{id: "order_entry.order_record", kind: "record"}],
     packages: [{id: "order_entry.list_to_record", version: "1", bound: true}],
     periods: [{id: "sales.period", data: "sales.order", businessDate: "sales.order.order_date", states: ["open", "closed"], calendar: "sales.fiscal"}],
+    standardBusiness: [{kind: "tax", data: "master.tax_rate", attributes: ["master.tax_rate.applies_from", "master.tax_rate.rate"]}],
   });
-  assert.deepEqual(sections.map((section) => section.title), ["Application", "Pattern", "Package", "期間"]);
+  assert.deepEqual(sections.map((section) => section.title), ["Application", "Pattern", "Package", "標準業務", "期間"]);
   assert.equal(sections[2].rows[0][2], "束縛済み");
-  assert.equal(sections[3].rows[0][3], "open, closed");
+  assert.equal(sections[3].rows[0][0], "tax");
+  assert.equal(sections[3].rows[0][1], "master.tax_rate");
+  assert.equal(sections[4].rows[0][3], "open, closed");
   // A period names the calendar its boundary follows, so the view shows it
   // instead of leaving the reader to guess a default.
-  assert.equal(sections[3].rows[0][4], "sales.fiscal");
+  assert.equal(sections[4].rows[0][4], "sales.fiscal");
 });
 
 test("command run includes the plan and the reference execution", () => {
@@ -137,5 +140,6 @@ test("validation view lists diagnostics and unanswered proposals", () => {
   assert.equal(sections[1].rows[0][1], "未受理");
   assert.equal(sections[1].rows[0][2], "sha256:abc");
 });
+
 
 

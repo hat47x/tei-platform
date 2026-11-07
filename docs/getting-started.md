@@ -78,6 +78,8 @@ Workspaceがモデル要素を1つも宣言していない場合、`validate`は
 
 `model catalog`の`modelRevision`は、管理対象Sourceのファイルpathと生バイトの組をsha256で並べた値です。**読み込んだWorldの内容の版ではありません。** 管理対象Sourceが1件も無いWorkspaceでは、空入力のSHA-256（`sha256:e3b0c442…b855`）になります。標準意味型（`std`）の`entries`は`modelRevision`の計算に入らないため、`entries`が0件でなくてもこの値になり得ます。空かどうかを判別するには、`modelRevision`ではなく`declarationCounts.total`を使ってください。`modelRevision`は「管理対象Sourceを1バイトも読まなかった」ことの証拠であり、モデルの同一性・受理・整合性の証拠ではありません。
 
+`validate -json`・`model catalog`・`inspect`・`trace`・`workspace-files`は、結果に`workspace`を返します。`name`は`tei.workspace.yaml`の`workspace:`に書かれた値、`formatVersion`はmanifestの版、`manifest.sha256`は読んだmanifestのバイトの照合値です。同じCanonical IDが複数のWorkspaceに別の意味で存在し得るため、`worldFingerprint`は内容の同一性を示しますが、どのWorkspaceかは示しません。両者を組み合わせて、結果の混在を防いでください。`workspace:`を書かないmanifestは読み込まれ、`name`は空になります（パスから名前を作りません）。これらは読んだ版の識別子であり、受理・権限・排他ロックではありません。
+
 ```bash
 go run ./cmd/tei model catalog -workspace reference/workspace
 go run ./cmd/tei model catalog -workspace reference/workspace -namespace sales
@@ -118,7 +120,7 @@ go run ./cmd/tei trace \
 
 結果に含まれる`worldFingerprint`と`sourceIndexFingerprint`は、`inspect`が返す同名の項目と比較できます。意味の正本を識別する前者が同じでも、入力元ファイルの移動や注記の変更があれば、後者は変わります。結果の`source`は選択要素の元定義、`relatedSources`は全件出力のそのページに登場した参照先・参照元の情報源の候補を示します。`projectionUnresolved`は、派生索引を作った時点で解決できなかった参照を示します。関係の`resolved`は宣言の解決に成功したことのみを意味し、実行の成功・人間による承認・書込み許可を意味しません。入力元索引と原ファイルの間で生じる同時更新は、一つの処理として固定できていません。
 
-成功時の終了コードは`0`、不存在・重複宣言は`1`、引数不正・未対応の種類・作業領域読込み失敗などは`2`です。失敗時も可能な範囲で`ok=false`と`error.code`を持つJSONを出力します。現時点で対応するのは宣言済みの直接参照であり、複数段の依存探索、すべての種類の要素取得、受理済み業務フローとの完全な横断参照には対応しません。
+成功時の終了コードは`0`、不存在・重複宣言は`1`、引数不正・未対応の種類・作業領域読込み失敗などは`2`です。`inspect`が読める種類のうち、`semantic-candidate-key`と`semantic-functional-dependency`は派生索引の関係図に投影されないため、`trace`は`UNSUPPORTED_SUBJECT_KIND`（終了コード`2`）を返し、`SUBJECT_NOT_FOUND`（終了コード`1`）とは区別します。後者は種類は投影されるが指定した識別子の宣言が無いことを示します。失敗時も可能な範囲で`ok=false`と`error.code`を持つJSONを出力します。現時点で対応するのは宣言済みの直接参照であり、複数段の依存探索、すべての種類の要素取得、受理済み業務フローとの完全な横断参照には対応しません。
 
 ## 1. テスト
 

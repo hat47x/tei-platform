@@ -146,6 +146,30 @@ func sortByKey[T any](items []T, key func(T) string) {
 	}
 }
 
+// SupportsSubjectKind reports whether FromIndex materializes this exact subject
+// kind. A kind that is absent here may still be readable through the Canonical
+// World (inspect); the projection would not place it in the candidate graph at
+// all. Callers that must tell "no declared references" apart from "this kind is
+// not projected" ask this question before they trace, so the answer cannot
+// drift from what FromIndex actually builds.
+func SupportsSubjectKind(kind string) bool {
+	for _, supported := range SupportedSubjectKinds {
+		if kind == supported {
+			return true
+		}
+	}
+	return false
+}
+
+// SupportedSubjectKinds lists the kind set SupportsSubjectKind answers from.
+// It is exported so a caller can advertise the same set it will accept, without
+// keeping a second copy that could drift from FromIndex (#3242, #3180).
+var SupportedSubjectKinds = []string{
+	"semantic", "semantic-type", "semantic-data", "semantic-attribute",
+	"semantic-relation", "semantic-validation", "semantic-capability",
+	"application", "application-pattern", "query",
+}
+
 func semanticKind(kind string) (string, bool) {
 	switch kind {
 	case "namespace":

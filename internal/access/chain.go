@@ -15,24 +15,43 @@ import (
 // an empty log and a log whose first record was replaced are different files.
 const chainGenesis = "sha256:" + "0000000000000000000000000000000000000000000000000000000000000000"
 
+// chainVersion names the rule that produced the hashes in a journal.
+//
+// It is written into every record and into the hash input, so a journal written
+// under another rule is rejected with a clear mismatch instead of quietly
+// verifying by accident. Changing how a record is hashed is therefore a change
+// this journal can see, which is the point of a version marker.
+const chainVersion = "tei.access.chain/v2"
+
 // Chained is one record in a chain-linked access journal. The embedded Record is
-// the decision itself; the two extra fields make a later edit detectable.
+// the decision itself; the extra fields make a later edit detectable.
 //
 // The fields are inline in the JSON (embedded structs are flattened), so a reader
 // that only knows Record — including Records() and the plain File reader — still
 // reads a chained journal without knowing about the chain.
 type Chained struct {
 	Record
-	PrevHash string `json:"prevHash"`
-	Hash     string `json:"hash"`
+	ChainVersion string `json:"chainVersion"`
+	PrevHash     string `json:"prevHash"`
+	Hash         string `json:"hash"`
 }
 
-// recordHash binds one decision to the one before it. Every field that a reader
-// would act on is hashed, so changing a capability, flipping Allowed, or dropping
-// a missing requirement all change the hash.
+// recordHash binds one decision to the one before it.
+//
+// The decision is hashed as its own JSON encoding rather than as a hand-listed
+// set of fields. The hand-listed version left a trap: a field added to Record
+// later would not be hashed, so a change to it would pass verification. Hashing
+// the encoded form means every field is covered by construction.
 func recordHash(previous string, record Record, index int) string {
+	encoded, err := json.Marshal(record)
+	if err != nil {
+		// The Record is a plain struct of strings, a bool, and a string slice;
+		// encoding it cannot fail. Falling back to a value that never matches
+		// keeps a failed encode from producing a hash that verifies.
+		return "sha256:" + hex.EncodeToString([]byte("unencodable:"+err.Error()))
+	}
 	hash := sha256.New()
-	for _, part := range append([]string{previous, strconv.Itoa(index), record.Capability, strconv.FormatBool(record.Allowed)}, record.Missing...) {
+	for _, part := range []string{chainVersion, previous, strconv.Itoa(index), string(encoded)} {
 		hash.Write([]byte(part))
 		hash.Write([]byte{0})
 	}
@@ -94,7 +113,7 @@ func (f ChainFile) next(record Record) (Chained, error) {
 		previous = records[len(records)-1].Hash
 	}
 	index := len(records) + 1
-	return Chained{Record: record, PrevHash: previous, Hash: recordHash(previous, record, index)}, nil
+	return Chained{Record: record, ChainVersion: chainVersion, PrevHash: previous, Hash: recordHash(previous, record, index)}, nil
 }
 
 // chained reads the file as chained records.
@@ -169,9 +188,18 @@ func (f ChainFile) VerifyHead(expected string) error {
 }
 
 // verifyChain walks the records and reports the first one that does not match.
+//
+// The version is checked before the hash: a record written under another rule
+// would fail the hash comparison anyway, but the message would say "mismatched
+// hash", which reads like tampering. Naming the version difference says what
+// actually happened.
 func verifyChain(path string, records []Chained) error {
 	previous := chainGenesis
 	for index, record := range records {
+		if record.ChainVersion != chainVersion {
+			return fmt.Errorf("access journal %s record %d was written under chain %q, not %q",
+				path, index+1, record.ChainVersion, chainVersion)
+		}
 		if record.PrevHash != previous {
 			return fmt.Errorf("access journal %s record %d does not follow the record before it", path, index+1)
 		}
