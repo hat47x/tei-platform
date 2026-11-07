@@ -669,6 +669,13 @@ func writeApplicationText(out io.Writer, view applicationview.ApplicationView) (
 			return 2, err
 		}
 	}
+	// Standard business Data is shown with the attributes its binder reads, so
+	// a reader can see which Data the roles are on without opening the files.
+	for _, ref := range view.StandardBusiness {
+		if _, err := fmt.Fprintf(out, "standard-business %s %s (%s)\n", ref.Kind, ref.Data, strings.Join(canonicalIDs(ref.Attributes), " ")); err != nil {
+			return 2, err
+		}
+	}
 	for _, pattern := range view.Patterns {
 		if _, err := fmt.Fprintf(out, "pattern %s (%s)\n", pattern.ID, pattern.Kind); err != nil {
 			return 2, err
@@ -683,6 +690,14 @@ func writeApplicationText(out io.Writer, view applicationview.ApplicationView) (
 		return 2, err
 	}
 	return 0, nil
+}
+
+func canonicalIDs(ids []core.CanonicalID) []string {
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, string(id))
+	}
+	return out
 }
 
 func writePackageText(out io.Writer, view applicationview.PackageView) (int, error) {
