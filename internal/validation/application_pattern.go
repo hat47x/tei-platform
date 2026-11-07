@@ -651,12 +651,20 @@ func validateRecordPatternInteraction(
 		}
 	}
 
+	seenHookPhases := map[string]bool{}
 	for _, hook := range pattern.Interaction.Hooks {
 		switch hook.Phase {
 		case "before-read", "before-create", "after-create", "before-update", "after-update", "before-delete", "after-delete":
 		default:
 			out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_INTERACTION_HOOK_PHASE_UNSUPPORTED", "record pattern %s hook uses unsupported phase %s", pattern.ID, hook.Phase))
 		}
+		// One phase names one hook. Two hooks with the same phase would leave the
+		// second silently unexecuted, because the runner resolves a phase to one
+		// declaration.
+		if seenHookPhases[hook.Phase] {
+			out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_INTERACTION_HOOK_PHASE_DUPLICATE", "record pattern %s declares more than one %s hook", pattern.ID, hook.Phase))
+		}
+		seenHookPhases[hook.Phase] = true
 		switch hook.Failure {
 		case "", "reject", "warn":
 		default:

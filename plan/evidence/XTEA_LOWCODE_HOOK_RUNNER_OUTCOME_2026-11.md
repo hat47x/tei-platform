@@ -3,9 +3,10 @@
 ## 対象
 
 - 配線: `internal/hook/run.go`（`Runner.Caller`）と`internal/hook/calling.go`（`CallingImplementation`・`NotSatisfied`）
+- 宣言の検査: `internal/validation/application_pattern.go`（同じ位相の重複宣言を拒否）
 - 規則Pluginの参照実装: `internal/hook/reference.go`（`ReferenceRule`）
 - 委譲先: `internal/hook/command_caller.go`（`CommandCaller`・`DeclaredCommand`。`971bc772b`で`main`へ統合済み。この変更では触れていません）
-- 試験: `internal/hook/run_caller_test.go`、`internal/hook/reference_test.go`
+- 試験: `internal/hook/run_caller_test.go`、`internal/hook/reference_test.go`、`internal/validation/application_pattern_hook_duplicate_test.go`
 - 対象版: `0b36094a8`（`main`）を基点とした作業ブランチ
 - 環境: Windows（Go `1.27.0`）、WSL2 Ubuntu（Go `1.27.3`）
 
@@ -42,6 +43,10 @@ go run ./cmd/tei validate -workspace examples/xtea-lowcode
 - `TestRunnerWarnsOnACallingFailure` 成功。`on-failure warn`でも拒否の種類（`HOOK_UNDECLARED_CALL`）は保持される。
 - `TestRunnerKeepsCallerFailureDistinctFromRefusal` 成功。下位境界の失敗は不成立ではなく`HOOK_REJECTED`として返り、原因（`errors.Is`）も保持される。
 
+### 宣言の検査（`internal/validation`）
+
+- `TestValidateInteractionHookRejectsDuplicatePhase` 成功。同じ位相（`before-update`など）のフックを二つ宣言すると`APPLICATION_PATTERN_INTERACTION_HOOK_PHASE_DUPLICATE`で拒否される。従来は後から書いた宣言が黙って実行されない状態を許していた（`hook.Runner`は位相から一つだけ解決する）。既存の`TestValidateInteractionHook`（正常系）と各負例は`ok`のまま、`reference/workspace`と`examples/xtea-lowcode`の`tei validate`も`ok`。
+
 ### 規則Pluginの参照実装（`internal/hook/reference_test.go`）
 
 - `TestReferenceRuleAcceptsObservedPositiveValue` 成功。観測済みで条件を満たす値は通る。
@@ -55,7 +60,7 @@ go run ./cmd/tei validate -workspace examples/xtea-lowcode
 
 ### 周辺
 
-- `go test ./internal/hook ./internal/command`は両方`ok`（WindowsとWSL2）。
+- `go test ./internal/hook ./internal/command ./internal/validation`はWindowsで`ok`、`internal/hook`と`internal/command`はWSL2でも`ok`。
 - `go vet`と`gofmt -l`は無出力（WindowsとWSL2）。
 - `go build ./...`は成功。
 - `reference/workspace`の`tei validate`は`ok`（既存の警告3件のみ）。`examples/xtea-lowcode`も`ok`（既存の警告1件のみ）。
