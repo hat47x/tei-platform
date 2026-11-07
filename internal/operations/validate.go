@@ -27,6 +27,10 @@ type WorkspaceValidation struct {
 	// separate from semantic Diagnostics because an unknown or missing root has
 	// no Canonical Subject (#2823).
 	SourceRootFindings []workspace.WorkspaceSourceRootFinding
+	// Workspace identifies the read boundary these diagnostics came from
+	// (#3181). It stays empty when Direct is set: a syntax finding means no
+	// World was built, so there is no manifest decision to report.
+	Workspace WorkspaceIdentity
 }
 
 func (r WorkspaceValidation) HasErrors() bool {
@@ -95,5 +99,6 @@ func ValidateWorkspace(root string) (WorkspaceValidation, error) {
 		SourceIndexFingerprint: sourceFP,
 		Declarations:           CountDeclarations(loaded.World),
 		SourceRootFindings:     loaded.SourceRootFindings,
+		Workspace:              WorkspaceIdentityOf(loaded),
 	}, nil
 }

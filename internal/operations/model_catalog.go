@@ -36,9 +36,12 @@ type ModelCatalog struct {
 	ModelRevision string `json:"modelRevision"`
 	// DeclarationCounts separates Workspace-authored declarations from the
 	// standard semantic prelude, which is always present (#2822).
-	DeclarationCounts DeclarationCounts   `json:"declarationCounts"`
-	Entries           []ModelCatalogEntry `json:"entries"`
-	AuthorityLimits   []string            `json:"authorityLimits"`
+	DeclarationCounts DeclarationCounts `json:"declarationCounts"`
+	// Workspace identifies the read boundary this catalog came from (#3181).
+	// It is descriptive only and is not a Canonical identity.
+	Workspace       WorkspaceIdentity   `json:"workspace"`
+	Entries         []ModelCatalogEntry `json:"entries"`
+	AuthorityLimits []string            `json:"authorityLimits"`
 }
 
 type ModelCatalogEntry struct {
@@ -71,7 +74,11 @@ func CatalogWorkspace(root, namespace string) (ModelCatalog, error) {
 	if err != nil {
 		return ModelCatalog{}, err
 	}
-	return CatalogWorld(loaded.World, idx, namespace, worldFP, sourceFP), nil
+	catalog := CatalogWorld(loaded.World, idx, namespace, worldFP, sourceFP)
+	// CatalogWorld is also called with a synthetic World, where there is no
+	// read boundary to name; only this loader-backed entry point can report it.
+	catalog.Workspace = WorkspaceIdentityOf(loaded)
+	return catalog, nil
 }
 
 // namespaceMatch reports whether a namespace filter names something in the

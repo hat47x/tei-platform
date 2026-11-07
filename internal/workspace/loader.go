@@ -74,6 +74,11 @@ type Result struct {
 	// Format version declared by the Workspace manifest. Semantic files may
 	// declare their own header; when they do, it must agree with this value.
 	manifestFormatVersion int
+	// Name is the `workspace:` label read from the manifest. It names the
+	// Workspace for people; it is not a Canonical identity, and two Workspaces
+	// may carry the same label. Read-only projections report it so a caller
+	// holding several Workspaces can tell two results apart (#3181).
+	manifestName string
 
 	// Only populated during Load. One pinned directory handle protects all
 	// domain Source reads from a Workspace root pathname being replaced.
@@ -96,6 +101,13 @@ type ManifestIdentity struct {
 	Path   string `json:"path"`
 	SHA256 string `json:"sha256"`
 }
+
+// WorkspaceName reports the manifest's `workspace:` label. It is empty when
+// Load did not read a YAML manifest, and it is not a Canonical identity.
+func (r Result) WorkspaceName() string { return r.manifestName }
+
+// ManifestFormatVersion reports the `formatVersion` declared by the manifest.
+func (r Result) ManifestFormatVersion() int { return r.manifestFormatVersion }
 
 // ManifestIdentity reports the manifest bytes read by Load (zero for a Result
 // not produced by Load).
@@ -151,6 +163,7 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 	var imports []WorkspaceImport
 	var manifestID ManifestIdentity
 	manifestFormatVersion := 0
+	manifestName := ""
 	if src, err := readPinnedWorkspaceFile(sourceRoot, "tei.workspace.yaml"); err == nil {
 		manifest, parseErr := parseWorkspaceManifestYAML(string(src))
 		if parseErr != nil {
@@ -172,6 +185,7 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 			return Result{}, fmt.Errorf("%s: unsupported workspace formatVersion %d (supported: 1, 2)", manifestYAML, manifest.FormatVersion)
 		}
 		manifestFormatVersion = manifest.FormatVersion
+		manifestName = manifest.Name
 		roots, imports = manifest.Sources, manifest.Imports
 		manifestID = ManifestIdentity{Path: "tei.workspace.yaml", SHA256: sourceindex.Fingerprint(src)}
 	} else if src, legacyErr := readPinnedWorkspaceFile(sourceRoot, "tei.workspace.tei"); legacyErr == nil {
@@ -216,6 +230,7 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 		sourceManifest:              manifestID,
 		sourceImportsDeclared:       len(imports) > 0,
 		manifestFormatVersion:       manifestFormatVersion,
+		manifestName:                manifestName,
 	}
 	// TEI standard semantic types are a library prelude, not Micro Kernel kinds.
 	r.World.Semantics = append(r.World.Semantics, stdlib.SemanticNamespace())

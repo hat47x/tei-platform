@@ -10,6 +10,7 @@ import (
 	"tei/internal/core"
 	"tei/internal/dependency"
 	"tei/internal/knowledgecontext"
+	"tei/internal/operations"
 	"tei/internal/plugin"
 	pluginruntime "tei/internal/plugin/runtime"
 	"tei/internal/validation"
@@ -148,15 +149,18 @@ func workspaceFilesJSON(out io.Writer, workspacePath, worldPath string, extraArg
 	return emitResult(out, resultEnvelope("workspace-files", "", workspaceFilesValue{
 		ManagedFiles:       r.ManagedFiles,
 		SourceRootFindings: r.SourceRootFindings,
+		Workspace:          operations.WorkspaceIdentityOf(r),
 	}), 0)
 }
 
 // workspaceFilesValue is the workspace-files projection. ReadByLoader on each
 // ManagedFile separates managed-but-not-interpreted files from files a domain
 // loader read (#2823). SourceRootFindings names unknown or missing roots.
+// Workspace names the read boundary the listing came from (#3181).
 type workspaceFilesValue struct {
 	ManagedFiles       []workspace.ManagedFile                `json:"managedFiles"`
 	SourceRootFindings []workspace.WorkspaceSourceRootFinding `json:"sourceRootFindings,omitempty"`
+	Workspace          operations.WorkspaceIdentity           `json:"workspace"`
 }
 
 // sourceIndexJSON wraps the Source Index inspection. The whole-index form and

@@ -38,6 +38,9 @@ type SubjectInspection struct {
 	SourceIndexFingerprint string              `json:"sourceIndexFingerprint"`
 	SourceStatus           string              `json:"sourceStatus"`
 	Sources                SubjectSources      `json:"sources"`
+	// Workspace identifies the read boundary this inspection came from (#3181).
+	// It is descriptive: it grants no authority and is not a Canonical identity.
+	Workspace WorkspaceIdentity `json:"workspace"`
 }
 
 // InspectSubject reads one Workspace, then projects its already-normalized World
@@ -90,6 +93,7 @@ func InspectSubject(root string, subject sourceindex.Subject) (SubjectInspection
 		WorldFingerprint:       worldFP,
 		SourceIndexFingerprint: sourceFP,
 		SourceStatus:           status,
+		Workspace:              WorkspaceIdentityOf(loaded),
 		Sources:                sources,
 	}, nil
 }

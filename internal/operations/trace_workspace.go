@@ -30,6 +30,8 @@ type WorkspaceTrace struct {
 	RelatedSources         []sourcebridge.Navigation `json:"relatedSources,omitempty"`
 	ProjectionUnresolved   []string                  `json:"projectionUnresolved,omitempty"`
 	AuthorityLimits        []string                  `json:"authorityLimits"`
+	// Workspace identifies the read boundary this trace came from (#3181).
+	Workspace WorkspaceIdentity `json:"workspace"`
 }
 
 // supportedTraceKind reports whether derivedbridge can place this kind in the
@@ -174,6 +176,7 @@ func TraceWorkspace(root string, key modelref.Key, options modelref.TraceOptions
 		SnapshotFingerprint:    snapshotFP,
 		WorldFingerprint:       worldFP,
 		SourceIndexFingerprint: sourceFP,
+		Workspace:              WorkspaceIdentityOf(loaded),
 		Trace:                  result,
 		Source:                 resolver.Locate(key),
 		ProjectionUnresolved:   append([]string(nil), projection.Unresolved...),

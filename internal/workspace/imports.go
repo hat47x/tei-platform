@@ -36,8 +36,12 @@ type ResolvedImport struct {
 
 type workspaceManifest struct {
 	FormatVersion int
-	Sources       []string
-	Imports       []WorkspaceImport
+	// Name is the `workspace:` value. It is an authoring label, not a Canonical
+	// identity: two Workspaces may use the same name, and one Workspace may be
+	// renamed without changing any declaration.
+	Name    string
+	Sources []string
+	Imports []WorkspaceImport
 }
 
 // parseWorkspaceManifestYAML accepts the existing small workspace YAML subset
@@ -53,6 +57,12 @@ func parseWorkspaceManifestYAML(src string) (workspaceManifest, error) {
 			continue
 		}
 		if strings.HasPrefix(line, "workspace:") {
+			// A `workspace:` value names the Workspace for readers; it does not
+			// select source roots, and it is not an identity. Keep it so the
+			// read-only projections can report which Workspace a result came
+			// from (#3181). An empty value is tolerated exactly as before: the
+			// label is optional and some existing fixtures omit it.
+			out.Name = strings.TrimSpace(strings.TrimPrefix(line, "workspace:"))
 			continue
 		}
 		if strings.HasPrefix(line, "formatVersion:") {
