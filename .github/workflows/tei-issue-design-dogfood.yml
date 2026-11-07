@@ -223,6 +223,35 @@ jobs:
               target_summary.write(summary)
           print("PASS: bounded real CLI + Product Skill static check, partial claim, 3 synthetic controls")
           PY
+      - name: Refuse false test readiness on partial, missing, or mixed Design Context
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/reference-issue-test-ability/context_gate.py \
+            --in "$RUNNER_TEMP/issue-to-design" \
+            --out "$RUNNER_TEMP/issue-to-design/context-readiness.json"
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          r = json.loads((Path(os.environ["RUNNER_TEMP"]) / "issue-to-design/context-readiness.json").read_text())
+          assert r["boundedReference"] == "partial"
+          assert r["testExecutionAdmission"] == "exploration-only"
+          assert r["qualifiedTestGeneration"] is False
+          assert len(r["syntheticControls"]) == 7
+          assert r["observations"]["requiredSourceRead"] == "read-by-loader"
+          lines = [
+              "## Design Context → Test Ability 事前資格（#3262）",
+              "",
+              "- 9既存CLI応答から**Source loaded/Subject/Fingerprintの限定部分**を確認。",
+              "- 合成負例: Subject欠落、Inventory未Read、Fingerprint版混合、Reply欠落、Schema Drift、Source Root欠損 + 外部Provider/Grant未観測（7種）。",
+              "- Test生成資格: **false**。固定公開Scenarioの局所探索のみ可能。",
+              "- Function/Business/RuleのRequired Closure、Parser/Meaning、Provider実Read、外部Harness完全受領/開示、C1/NFRは未知。",
+          ]
+          print("\n".join(lines))
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as o:
+              o.write("\n".join(lines) + "\n")
+          PY
       - name: Qualify test discrimination against real pinned Scenario CLI
         shell: bash
         run: |
@@ -234,6 +263,7 @@ jobs:
             --root . \
             --cli "$RUNNER_TEMP/tei" \
             --coverage "$RUNNER_TEMP/tei-scenario-c0.cover" \
+            --context "$RUNNER_TEMP/issue-to-design/context-readiness.json" \
             --out "$RUNNER_TEMP/issue-to-design/test-ability.json"
           test -z "$(git status --porcelain=v1)"
           python3 - <<'PY'
@@ -268,6 +298,7 @@ jobs:
           name: tei-issue-test-ability
           path: |
             ${{ runner.temp }}/issue-to-design/report.json
+            ${{ runner.temp }}/issue-to-design/context-readiness.json
             ${{ runner.temp }}/issue-to-design/test-ability.json
             ${{ runner.temp }}/tei-scenario-c0.cover
           if-no-files-found: warn
