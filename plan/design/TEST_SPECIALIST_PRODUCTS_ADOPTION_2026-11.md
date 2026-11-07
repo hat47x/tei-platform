@@ -604,3 +604,50 @@ TT-44は**既存Sourceの意味衝突という現在確認済みの反例**。TT
 5. **P2-Harness/Disclosure**：#2509/TAI #168の比較適格が成立するまではSkill説明・Tool完了を実完全受領/現在Grant/漏出不在へ昇格しない。
 
 **今回の状態**：GitHub実Source比較（TT-44）、既存PRとRunの限定結果に基づく計画追補、Blob再取得のみ。新しいCLI/Go/PG/AI T1/OSテストは**NOT RUN**。正式採番・Owner Meaning Acceptance・BOM qualificationは**NOT ACCEPTED**。
+
+
+---
+
+<!-- tei-testing-p1a-readiness-actual-20261107 -->
+## 17. 2026-11-07 P-1a実装済みReadinessの再評価とT1入口の厳密化
+
+**更新理由**：§15/16の作成後に、Design Contextの実テスト[#3284](https://github.com/hat47x/tei-platform/pull/3284)が**mainへ統合**され、BOM Referenceの[#3269](https://github.com/hat47x/tei-platform/pull/3269)は**未mergeでclosed**となった。したがって§16の「Draft #3269をそのまま統合するBlocker」という説明は当時の競合発見の記録として保持するが、**現時点の統合予定PRであるとの前提は撤回**する。RQ-035の異Meaning再利用は新しいBOM採用Branchで再検査する。過去のGitHub Blob比較による衝突発見自体は消さない。
+
+### 17.1 #3284の実行証拠と現在の資格
+
+#3284の最終HEAD `eeb2295a900df45e134b65d3f96e677e1f0c886f` の[専用CI #42370519406](https://github.com/hat47x/tei-platform/actions/runs/42370519406)は **completed/success**。PR仮統合Checkout `9fc3a34462b18ab9f79d8459bbefb6bfebee0dd0`、Go単一TEI binary SHA-256 `bf6720f51bec404396b779a2ba74efecc944b1d333bccd2982565e1f05fc1e24`。9件のread-only CLI、14件のSkill静的検査、Source/Subject/Fingerprintの限定Contextと**7件の欠落・陳腐化・未観測負例**、既存pinned Scenario 6 Stepを同じCIで検証した。公開合成Artifactには `context-readiness.json` が追加された。
+
+重要なのは、CIが成功しても出力は **`partial` / `qualifiedTestGeneration=false`** であり、外部Harness受領は`null`のままという点。これは「テストが失敗した」のではなく、**不足を正しく検出するTest Readiness Checkerが合格した**状態である。未取得Data/Function/Business、受理済みMeaning、実Provider Read、外部Tool Delivery、C1/NFRは資格外。Artifactの保持期間と現在mainの再実行を別扱いにする。
+
+### 17.2 P-1bの入力を「AIに渡してよい」ものへ制限
+
+P-1aが`partial`を返した場合、T1用Context Packetは次の**既知の部分集合**だけを機械可読で渡す。未知のRequirementやSourceが「存在しない」とは推測しない。
+
+| 入力の分類 | 生成器への扱い | 合否 |
+| --- | --- | --- |
+| Loader実消費・Parser位置・同版SourceとAccepted Meaningが照合済み | 対象Scope/Grantが許す範囲でPattern候補の適用に使用 | candidate-ready（Target/Independent Expectedは別） |
+| Source indexedだがLoader未読込、Meaning未受理、Function/Business閉包不明 | Source/Meaningの不足として報告。合法Baselineを仮定してExpectedを確定しない | blocked / provisional |
+| Required分母が未確定、C1未計測、NFR Observerなし | `unknown/unmeasured`を維持し、Coverage改善率を数値化しない | not-qualified |
+| 旧RevisionのPage、Tool Reply欠落、Disclosure未許可 | 同版Packetへ混ぜず受領/開示の失敗として停止 | fail-closed |
+
+**局所的な候補生成は可能**：`qualifiedTestGeneration=false`は全てのアイデア出しの禁止ではない。たとえば公開合成Ruleの出典が明示されれば、行番号0を「未受理の負例Candidate」として提示できる。ただし**独立Expectedの正式採用、実Target実行、現在Qualified**とは別。ここを一つのbooleanで表現するとAIの提案価値と実証資格を両方失う。
+
+### 17.3 テスト提案の最小の次段階（#3262→#3273→#1180）
+
+1. **P-1b**：既存`context-readiness.json`のRequired/Observed/UnknownとSource Refを同版で受領し、Rule `sales.order_line.line_number_positive`に必要なSource/Rule/Allowed Contextを一つのtyped indexへ投影。新CLIを作る前に既存read-only command群で閉包が取得可能か確認する。
+2. **T1新規性**：既存Scenarioにない`line_number=0`の負例を生成。合法Baselineの他Rule/Relationを維持し、狙ったRuleだけが`not-satisfied`となる独立ExpectedをAIへ秘匿して固定。CandidateはOwner Reviewまで未受理。
+3. **実行・判別**：既存Driver Scenario `verify→generate→check`から新pinned CLIを実行し、実Tool Reply・Input/Source/Build digest・結果の観測を同Attemptへ束縛。既存6 Stepが再PASSしただけではT1を完了扱いしない。
+4. **差集合を提示**：`required`、`candidate`、`reviewed`、`executed`、`observed`、`independently-checked`、`currently-qualified`を別集合で比較。C0は測定した範囲だけ、C1はunmeasuredのまま。
+5. **Plugin/Trait/BOMとの連結は後続**：main統合済み[#3277](https://github.com/hat47x/tei-platform/pull/3277)/[#3281](https://github.com/hat47x/tei-platform/pull/3281)/[#3285](https://github.com/hat47x/tei-platform/pull/3285)のPlugin-first/原子的Traitは**設計成果**。実CLI/Studioの同Provider Load・Trait Fulfillment・合成Conformanceを既存#3278/#1251のOwnerが実証してからMatrix行へ投入。docs-onlyの成功を実Plugin Runtime PASSにしない。
+
+### 17.4 追加の負例 TT-51〜TT-55
+
+| ID | 入力 | 独立Expected | Owner |
+| --- | --- | --- | --- |
+| TT-51 Readiness成功≠生成資格 | #3284のCI成功、`partial`・`qualifiedTestGeneration=false` | Checker局所PASSを保持、T1の独立Expected/現在Qualificationは未成立 | #3262/#3273 |
+| TT-52 部分Contextでの有用な提案 | 既知公開Ruleだけで行番号0の候補を提案。別の未読込Ruleが存在 | 提案はprovisional、未読込Ruleを存在しないと断定せず、独立Oracle確定/実行は保留 | #2514/#3273 |
+| TT-53 Tool Receipt欠落 | Contextの一部は生成されたがHarness Tool Replyを未受領 | CLI実行成功でもDelivered/Observed/Qualifiedは別、欠測を合格にしない | #2509/#3262 |
+| TT-54 BOM Draft消滅 | 旧#3269がclosed/unmergedでも旧PRにだけあったRQ-035を現mainの採用要求と誤認 | 現main Sourceを再取得してMeaning確認。旧衝突は履歴として残し、新BOM採用Branchで再検査 | #3267/#1119 |
+| TT-55 Trait/Plugin設計を実装証明へ昇格 | mainにPlugin-first/Atomic Trait設計があるが、実Consumer Load・Manual Obligation Conformanceは未実施 | 設計PASS・静的候補・実Load/Invocation/Grant・現在Qualifiedを分離 | #3278/#1251/#2514 |
+
+**現状と停止条件**：#3284の限定CIは実証済み。TT-51〜55の新たな統合E2E、T1生成・実pinned Rule試験、MCP/Studio、実Provider/Host/Plugin合成、Owner Meaning Acceptanceは**NOT RUN / NOT ACCEPTED**。Design Contextがpartialでも候補を提示することと、欠けた独立Expected/開示資格を補完して「正式合格」とすることは厳格に分離する。
