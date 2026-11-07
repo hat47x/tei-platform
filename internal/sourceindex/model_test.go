@@ -157,3 +157,29 @@ func TestManagedSourceRevisionByteAndMembershipSensitivity(t *testing.T) {
 		t.Fatal("changed path should change managed Source revision")
 	}
 }
+
+// A Workspace that declares no managed Source bytes yields the SHA-256 of the
+// empty input. That value is the revision of "no managed Source artifact was
+// read", not of "the loaded World is empty": the standard semantic prelude is
+// always loaded and appears in the catalog entries, while the revision stays
+// at the empty digest (#2822). Reading it as a model identity would make two
+// unrelated empty Workspaces look like the same model.
+func TestManagedSourceRevisionOfAnEmptyIndexIsTheEmptyDigest(t *testing.T) {
+	const emptyInput = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+	if got := sourceindex.ModelRevision(sourceindex.Index{}); got != emptyInput {
+		t.Fatalf("empty managed Source revision changed: %s", got)
+	}
+	if got := sourceindex.ModelRevision(sourceindex.Index{Artifacts: []sourceindex.Artifact{}}); got != emptyInput {
+		t.Fatalf("empty artifact list is not the empty index: %s", got)
+	}
+	// One zero-length artifact is still a member: it must not collapse to the
+	// empty digest, or a Workspace that manages an empty file would be
+	// indistinguishable from one that manages no file at all.
+	empty, err := sourceindex.NewArtifact("semantic/empty/placeholder.tei", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := sourceindex.ModelRevision(sourceindex.Index{Artifacts: []sourceindex.Artifact{empty}}); got == emptyInput {
+		t.Fatal("an empty managed file must not read as the empty index")
+	}
+}
