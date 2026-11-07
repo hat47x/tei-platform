@@ -18,9 +18,9 @@ type cliCommandRecord struct {
 	// -execute=true all have the name execute). A caller must not infer
 	// read-only safety for an excluded variant, even for a false-valued flag.
 	ExcludedFlagNames []string `json:"excludedFlagNames,omitempty"`
-	Required      []string `json:"required"`
-	Optional      []string `json:"optional,omitempty"`
-	Output        string   `json:"output"`
+	Required          []string `json:"required"`
+	Optional          []string `json:"optional,omitempty"`
+	Output            string   `json:"output"`
 	// SchemaVersion is the schemaVersion the command returns, when it has one.
 	// A command with an empty value is either text-only at this invocation or
 	// outside the stable JSON contract; JSONContract says which.
