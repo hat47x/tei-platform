@@ -450,7 +450,7 @@ P0-M（三視点Diagram/CRUD）とP0-R（Function→Query→実Provider→Contex
 
 `Discover`のcandidate SHAはE0→E1で変わりE2で復帰。test sourceだけ更新しても**同一target SHAと同一Go Profile選択が実検証結果を固定しない**。個別RunのeventやCode digestは実際に観測するが、試行ID・実Build byte・全依存・権限の有効期間までを正式束縛するReceiptは現`Report`にない。A→B→Aは「現在file byteが再び同一」と「以前の実行が現在有効」を分離する反例であって、単独で再実行の全領域一律強制を決めない。
 
-**現実証拠の上限**：本書執筆時、Codeを既存Draftへ保存した段階。**新CC-17はexact HEADのFocused CIログを確認するまでNOT VERIFIED**。仮にPASSでも合成GoパッケージだけのCaracterizationであり、TEI業務Oracle、実Provider、外部Harness、AIによる未知Rule発見は未実証。
+**限定CIで実証**：テストSource commit `2556d5b7fa91611b5113d746e6fb1b9c429cdacb`の[Focused Actions #42388764022](https://github.com/hat47x/tei-platform/actions/runs/42388764022)、job `128451686216`は**completed/success**。実Jobログに`TestDiscoveryProfileCC17CandidateChangeInvalidatesOldPass` **PASS（0.60s）**、CC-12〜16も同じジョブでPASS（SKIPでない）が記録されている。E0/E1/E2は試験本体で実`go test -json`のnamed Eventとexitを照合。**合成Goパッケージ限定のCharacterization**であり、TEI業務Oracle、実Provider、外部Harness、AIによる未知Rule発見は未実証。後続Docs commitやPR仮統合HEADのRepo Healthはこのrunでは検収していない。
 
 ### 19.3 再資格化を目的相対の検査に限定する
 
@@ -467,7 +467,7 @@ P0-M（三視点Diagram/CRUD）とP0-R（Function→Query→実Provider→Contex
 
 ### 19.4 実施順と合格判定
 
-**P0（今）**：CC-17のFocused CIをexact HEADとJob logで確認。CC-12〜16の過去合格と混ぜず、E0 pass・E1 fail・E2新passを`TestObligation`の実named eventとして照合。PR #3176はDraftのまま、Go製品本体を変更しない。
+**P0（限定実証完了）**：CC-17のFocused CIをexact Test Source commitとJob logで確認済み。CC-12〜16の過去合格と混ぜず、E0 pass・E1 fail・E2新passを`TestObligation`の実named eventとして照合。PR #3176はDraftのまま、Go製品本体を変更しない。
 
 **P1（次）**：#3262／#3324／#3326のうち、**実Source/必要Ruleの判定可能な部分を既存`context_gate.py`へ受け渡す一案**だけを検収。ScopeやSource Index呼出しmodeによるFalse Missingと、真のSource/Rule欠落の両方を公開合成負例で識別。初回のP-1b1は一Functionに限定し、全Workspace完全性を要求して前段を停止しない。
 
