@@ -4,7 +4,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -99,8 +98,7 @@ func TestOKFK1RawSourceWitness(t *testing.T) {
 }
 
 func TestOKFK1NegativeLinksStayInTemporaryCopies(t *testing.T) {
-	root, expected := okfK1Fixture(t)
-	_ = expected
+	root, _ := okfK1Fixture(t)
 	for _, entry := range []string{"functions/submit.md", "business/submit.md"} {
 		raw, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(entry)))
 		if err != nil {
@@ -118,8 +116,7 @@ func TestOKFK1NegativeLinksStayInTemporaryCopies(t *testing.T) {
 			t.Fatalf("baseline target missing: %v", err)
 		}
 		mutatedCopy := append([]byte(nil), raw...)
-		mutatedCopy = append(mutatedCopy, []byte(fmt.Sprintf(
-			"\nSee [unresolved](/business/missing.md) and [bundle-root](/data/order.md).\n"))...)
+		mutatedCopy = append(mutatedCopy, []byte("\nSee [unresolved](/business/missing.md) and [bundle-root](/data/order.md).\n")...)
 		if string(mutatedCopy) == string(raw) ||
 			!strings.Contains(string(mutatedCopy), "](/business/missing.md)") ||
 			!strings.Contains(string(mutatedCopy), "](/data/order.md)") {
