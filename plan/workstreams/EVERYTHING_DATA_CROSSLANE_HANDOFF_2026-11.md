@@ -1358,6 +1358,50 @@ Requiredが全社、Authorized/ActualがTenant A限定なら「Tenant Aの対象
 
 **実証順**：#1180/#2811の保存ScenarioでQRA-P1/N1を独立Expectedへ対応付け、#2822/#2823の既存CLI負例を隔離WorkspaceでQRA-N2に接続。#2604のmember実取得へN3、#2813/#2828のRaw入力適格性へN4を振り分け、#2622/#2628に実二ProviderのReadを渡す。既存Case・Fixture・Receiptを利用し、新CLI/Source Loader/Schema/Job Engine/共通Registryを作らない。**オンラインhot pathへ毎回二Source照合を追加しない**。CI・Go/SQL/Provider/Replica/EKI/Leanの新E2Eと性能実測、Ownerの入場条件採否は本節ではNOT RUN。
 
+
+### 27.11 Quality Checkの実装義務と検証済みProvider構成――原子的Trait・BOM・生成Targetの実適合（2026-11-07横断追補）
+
+> **設計・受入差分／新実装・実Provider品質JobのE2EはNOT RUN。** §26〜27.10のAccepted Meaning由来Online Guard／Offline CheckSet／Lean Law／外部突合と、§62のT0/T1・Trait/BOM一般契約を、**一つの検査をどのProvider・Targetで本当に実行できるか**という具体的な不足へ接続する。原子的Trait・Fulfillmentは#3278/#3279、Contract/Provider Resolverは#951、Verified Composition BOMは#3267、Design Contextは#3262、Data Operationsは#2622、Lawは#2544、独立検証基準は#2514が正本。品質専用Trait Resolver、第二Rule/Proof Engine、Scheduler、中央Result Store、TEI Hostは追加しない。
+
+#### 27.11.1 業務Rule・能力要求・実装履行・実観測の四段階
+
+同じ受理済みData Ruleから生成するCheckSetでも、Provider Aは完全な同一SnapshotのReadと集計Pushdownに対応する一方、Provider Bはページング付き部分取得や非原子的API照会しか提供しない場合がある。「SQLを生成できた」「Traitの名が付いた」「Query APIが成功した」を全件品質保証と呼ばない。RuleとTraitは別：**Ruleは何を正しいと判断するか**、**Trait/Contractは何を実現・検証しなければならないか**。実装の責務が宣言されてもOwnerの業務意味受理・現在Host Grant・実Data Scopeは独立に判定する。
+
+| 段階 | 必要な最小参照・実態 | Claimの上限と停止条件 |
+| --- | --- | --- |
+| Accepted Rule/Scope | Source/Meaning/Operator revision、Subject、Unit/Precision/Nullability、Relation・時間/粒度、必須Onlineと許容Deferred | Rule未受理・存在しない関係・量の意味不明ならQuality Check採用不可 |
+| Required Capabilities（**候補の原子Trait群**） | 実Identity/Occurrence識別、Field Presence/NULL/withheld区別、Read Scope Witness、Snapshot/Watermark束縛、必要な集合閉包、Decimal/Time演算、read-only Effect境界 | 名称やrequiredラベルだけでは能力充足でない。**検査に必要な要求だけ**を原子化し、全部入りCore型を作らない |
+| Bound Fulfillment | #951既存ResolverでProvider実提供、明示生成、手動実装義務、外部実装を識別。必要Operation・契約版・Target・Targetの実Artifact/Loaderを束縛 | 未実装はunfulfilled、宣言のみはunverified。手動実装を黙って生成済みとみなさない |
+| Actual Conformance/Read | #1180 Scenario/#2514独立Expected、実Go/SQL Query/Artifact byte、実Provider Request/Row+Field・Read Cohort、現在Grant・Consumer結果 | 実Readerが部分集合ならpass-in-scope/unknown、同一Runの実証がなければQualified BOMへ昇格不可 |
+
+上表の能力名称は**検証上の分解例であり正式Trait IDや必須公開APIではない**。例えば「Complete Read」が要求するのは実際のRow/Field/Relation/否定依存に対する完全性であり、単にProviderがsupportsPaginationと申告したことではない。完全性を提供できないProviderでも、Ownerが認めた**部分検査・重点検査・統計的標本**として実行することは可能だが、そのとき全件PASSの資格は付与しない。Providerが既存データを更新可能であっても、品質CheckSetが副作用を行わない契約を別に守る。
+
+#### 27.11.2 検査実装の選択と高速化は、意味保存の試験を先に通す
+
+- **通常Go Runtime**：必須入力拒否・金額丸め・Identity/Authority/Commit条件は既存Input/Effect境界に残す。静的Trait解決・Rule/Operator/Generator整合・固定byte検査は編集/Build/Loadへ移し、**各行/各Requestで同じ静的検証を再実行しない**（§25）。Nightly Quality Jobの存在だけでOnline Guardを削除しない。
+- **Offline Check Target**：read-only Go streaming、Provider SQL aggregate/pushdown、Provider-native queryを**選択肢**とし、NULL/missing/withheld/partial、bag/grain、並び順・limit/filterの順、Decimal/Precision、valid/known time、Scope/RLSを固定して選択する。Pushdown非対応時の黙示fallback（全件が必要なのに途中ページだけ）や方言未対応のNative SQLを正常値で埋めることを拒否。
+- **形式Law Target**：Lean等の証明はOperation bindingと前提の資格を扱い、Providerで実取得した母集団の完全性・翻訳同等性・実行中の権限・同一Artifactの実ロードを証明しない。Proofがある場合も独立Expectedと実Targetの観測を省略しない。
+- **変更時の再評価**：Rule/Meaning、Trait要求、Contract/Provider版、生成器/Toolchain、Data Scope/Read Cohort/Policy、Provider実CapabilityまたはTarget/Pluginの選択が変わったとき、#2600の依存閉包で該当するCheck/BOM/Claimを再資格化する。Source値のA→B→A、同版別Binary、別Scopeの同名Traitで古いPASSを復活させない。反対に無関係・未選択Pluginの追加で必要以上に再Buildしない。
+
+**Verified Composition BOMは「配布可能な組合せの検証結果」であり、業務品質PASSではない**。#3267のPattern→exact Lock→Matrix候補→実同一Attempt Conformance→Scope付きQualified BOMを、検査用Provider+Targetにも適用する。組合せが2×2なら全4候補を試し、版数が増えればpairwise/境界/changed-impactを選択できるが、**未試験の3-way/4-way組合せを合格にしない**。実Target/Build/Reader/Expectedのいずれかが欠けた候補はnot-run/unverifiedのまま。組合せ単体がQualifiedでも、検査対象データの現在適合・Ownerの受理・本番アクセス権は別Claim。
+
+#### 27.11.3 最小Pressureを既存Scenario/独立Expectedへ引き継ぐ（QTP、NOT RUN）
+
+| ID | 同一Ruleからの構成と故障注入 | 独立Expected／採用停止線 |
+| --- | --- | --- |
+| **QTP-01 原子能力欠落** | Order合計Rule、Provider Aは完整なread cohort、Provider Bはページ途中まで。双方のQueryは成功 | Aの固定Scope内のみ全件候補、Bはincomplete。Providerの自己申告やrows returnedを完全性証拠にしない |
+| **QTP-02 manual-required** | 必要なSnapshot/Identity能力を手動実装必須と宣言し、実装なし→実装後Conformance | 欠落はunfulfilled/開発診断。実装の存在だけでデータ品質PASSにしない |
+| **QTP-03 Pushdown非同値** | Order O1の明細2件×配送3件、SQL aggregateがJOIN fanoutで200→600 | 手作業で固定したExpected=200。GoとSQLが同じ誤りなら双方Fail（§27.8/§2593） |
+| **QTP-04 時点・権限** | Tenant AだけRLS可、Replica watermark遅延、Provider Bの未取得列を0へ | pass-in-scope/unknown/withheldを分離し、現在Primary・全社PASSへ拡大しない |
+| **QTP-05 BOM Matrix** | Provider v1/v2 × Go streaming/SQL pushdownの4候補。うち1組がNULLで誤動作 | exact tupleと独立Expected/actual Readによる行ごとの資格。別版・別Targetへ局所PASSを外挿しない |
+| **QTP-06 更新と非干渉** | Plugin AのResolver選択外にBを追加、次に選択済みProviderのContract版を変える | 無関係Bは既存資格を過剰失効させず、選択済み変更は必要Check/BOM/結果を再検証 |
+| **QTP-07 Source形式移行** | RuleのSourceを旧 .tei から .tei.md に単純改名、旧Loaderは未読込だがvalidate OK | readByLoader/実Parser/Role/MeaningとGenerated Checkの実消費を別確認。移行済み・検査実行可能と誤主張しない（§56〜59/#3030） |
+| **QTP-08 Lean Law** | Lean上の命題成立、実ProviderはLの部分集合Rのみ取得、Go/SQLどちらかにNULL誤実装 | Proofの成立、Target同等性、Data Coverageを別判定。何も自動で補完しない |
+
+**最短の縦断実証**：T0=§62/#3262の現在の実CLI Design Contextで、受注Rule/Operator/Data Scope/未解決依存を実取得する。取得がpartialならAIはテスト候補を作れても完全なRule把握・採用は主張できない。T1=既存#1180 Scenario/独立Expectedを固定し、必要な能力・Trait要求だけを抽出。T2=#951/#3278の実Provider/実装履行から一つのread-only Check（初期はGoまたはSQLの**どちらか一つ**）を走らせ、失敗/不完全性を実Readで観測。T3=同じRuleを第二Provider/TargetにLowerしてQTP-01/03/05を比較。T4=資格が成立したexact tupleだけ#3267 BOM候補へ掲載し、性能とScopeを実測（CPU/IO/Provider roundtrip/Replica lag、Online p95/allocを分離）。**T1の新しいAI提案、全Provider共通型、Lean必須導入、第二Registry、実Job Scheduler、Owner意味受理をP0の前提にしない**。
+
+**責務の返却**：#2622がData Rule/Providerの意味・実Read、#951/#3278/#3279がTrait実装義務/既存Resolver、#3267がComposition MatrixとBOM資格、#3262がread-only Design Context、#1180/#2514がScenarioと独立Expected、#2600が差分失効、#2544がLean Law、#1130が無画面Checkの実行契約を担当する。§62のT0実CLI・限定Mutantの既存成功は参考にするが、**このQTPを実行した証拠ではない**。本節はDocs-only／NOT RUN／新しいTrait ID・BOM Schema・Provider API・Lean Target・実行性能のOwner採用は未決。
+
 ## 28. 一改訂のValue／Flow／Job／Consumer縦断――参照実行と外部実行を混同しない（2026-11-03横断追補）
 
 ### 28.1 並行する三つのOwner計画を、別の正本を作らずにつなぐ
