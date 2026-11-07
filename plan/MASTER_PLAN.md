@@ -202,6 +202,9 @@ SQL/NoSQLのデータ、ログファイル、クラウド情報源は別々の�
 
 [汎用データソース・ワークベンチの設計・縦断実証案](design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)は#3270の計画として、①現状契約棚卸し・read-only構造観測、②実DBでのReverse/Schema Plan、③Disposable DBでのCREATE/ALTER/DROPと独立読取り、④ログ/NoSQLの部分取得・時系列・型揺れ、⑤CLI/MCP/Studioの共通投影、⑥組合せBOM/Cache資格の検証を段階化する。#1126・#1803・#2622・既存Schema Diff/Migration・#1641・#3267へ責務を戻し、第二のSchema/Query/Cache/Authority正本を作らない。**既存の判定段階B/Cと主線優先順位は変えず、設計・受入案と実装済みを区別する。**
 
+**対応する製品要求は[RQ-035](../requirements/TEI_PRODUCT_REQUIREMENTS.md#rq-035-一般開発者が異種データソースのデータと構造を管理できること)**。2026-11-07に現行コードを静的確認した結果、`internal/database/provider/provider.go`のDB専用SPI、PostgreSQL `Introspect`、`internal/workbench/database/model.go`の派生投影、`cmd/tei/main.go`のSchema Diff/Migration入口は存在する。一方、異種Sourceを含む実Provider Read→完全性付きFunction Data Context→標準表現型の一往復は未確認であり、#2586と最初の不足一辺を検証する。Schema Historyのunknown→applied誤分類候補は既存#2892へ渡す。Trait・Decision Graph・C0/C1・独立期待値への接続とWB-15〜25は上記設計書の11〜15節に集約し、ここへ第二の契約正本を作らない。静的確認は実Provider/Go/GUIの実行成功を意味しない。**
+
+
 ## 作業領域E：設計の実行と検証
 
 ### 目的
