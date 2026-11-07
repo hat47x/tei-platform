@@ -1373,3 +1373,59 @@ Go標準 `go test -coverprofile` はstatement系Coverageであり、分岐の結
 **停止条件**：空集合のCase自体を完了、未宣言Enumをclosed、Hook宣言を実Provider Read、Plugin選択を実Invocation、Reference L3をcmd/teiのL3、JSONL途中までを全Journal、T1-Aの再提示をT1-B新発見、C0局所をC1/全製品Coverage、Owner未受理のCandidateを正式業務テストと呼ぶこと。
 
 **本節の検証状態**：各Ownerのmain/Draftと本設計文書を照合した**計画更新のみ**。TT-105/106は§27・#3365で**実コードを持つDraft（exact-headのCIは別検収）**、本節TT-115〜122の横断適用・T1-B盲検Trial・A/B両経路のProduct実結合・実H2/H3外部受領・Code C1・現Host Grant/Effect・Owner正式Meaning AcceptanceはNOT RUN／NOT ACCEPTED。Mainに統合済みの個別試験結果はそのSourceの限定Claimに限って引用する。
+
+<!-- tei-test-local-witness-vs-closed-absence-cross-consumer-20261108 -->
+## 29. 2026-11-08：TT-105/106の実CIから「正の局所証拠／閉じた不在証明／複数Consumerの同一性」を実装優先へ（限定実証）
+
+### 29.1 §27の計画から進んだ実証を、exact HEADへ限定して反映
+
+[Draft #3365](https://github.com/hat47x/tei-platform/pull/3365)の現HEAD `1e2531fede563ed4b1d32cca0e78ccaf69fe364c`で、[専用Actions #42394673357](https://github.com/hat47x/tei-platform/actions/runs/42394673357) Job `128469383600` は**completed/success**、[Repository Health #42394673331](https://github.com/hat47x/tei-platform/actions/runs/42394673331) も**completed/success**（同PR HEADのPull Request Trigger）。専用Job実ログには、mainに既存の11 read-only CLI/32限定Context Controls、6実Pinned Scenario、実CLI拒否6＋独立義務/Oracle拒否2、**#3365追加のTT-105/106と7個の目録コピー対照**を検証する実Assertionがあり、`TT-105/106: complete-for-one-pinned-scenario; observed local steps without claiming complete Product coverage` と報告されている。既知T1-Aの候補境界も継続実行。
+
+この結果は**§27の「exact-head CI未確認」を当該HEADについて更新する**もの。PRは本照会時点で**open/draft・main未merge**であり、統合後mainでの新Run、実外部H3の途中切断、全業務Required、実Code C1、実Provider/Host、未知テスト発見T1-B、Owner受理を示さない。
+
+### 29.2 今回、TEIのテスト能力に必要な二つの「証明向き」を固定する
+
+| 判定の向き | 成立に必要な最小Witness | 不成立時の扱い |
+| --- | --- | --- |
+| **存在・実行の正の局所証拠** | 対象Step/Ruleの安定Ref、実Run Source/Scenario/Artifactの比較可能な版、実Result/独立Expected、受信した検証済みReceiptの範囲。別対象のReceipt欠落は、既に確認した正証人を自動消去しない | 観測済みの局所Stepだけを`observed-in-scope`。対象Revision/Consumer/Scopeが変われば再資格化 |
+| **存在しない／未テストの負の結論** | **独立Required Universe**、該当Source/Rule/Scenario選択集合の用途相対閉包、Enumerator/Loader/Parser、実実行予定と実Run目録の閉包、終端/継続・Recipient全受信、DisclosureとRevisionの比較可能性 | 一件のReply欠落なら`not-observed-in-received-inventory`。絶対的な`never-tested`や業務上の不存在を宣言しない |
+| **Ruleがcoveredであるという結合証拠** | Step到達に加え、指定Rule/Decision outcomeへの**実Binder/実Evaluator**、入力/Target、Independent ExpectedとRule別Resultの照合 | Stepの`verified:true`、Model上のRelation、コードstatement C0だけではRule coveredにしない |
+| **全Product Coverage** | 受理/独立Requiredの全分母・対応Targetと異質Source/未実装の独立観測、C0/C1/NFRと現資格の用途別集計 | #3365の`productCoverage:"unknown"`を保持。局所率を全体率へ外挿しない |
+
+**局所的な正証人の単調性は条件付き**：同一Subject/Source/Attempt/Observer内で未関連ページを失っても有効な別Receiptまで自動で消さない。しかしSource revision・選択Agent/Rule・独立Expectedの入替え、Rev失効、開示権限の変更、重複/偽Receiptによる真偽の曖昧化まで同じ正証人として持ち越さない。#3365の実装はあくまで**6 Stepの受領済み証拠を試験用に投影**し、実外部Tool宛てのACK/endを構築したわけではない。
+
+AIに対する推薦が`未カバーのテストを追加`か`まだ必要情報が取得できていない`かは、**Rule Required集合**、**選択済Scenario Case集合**、**実行実績**、**その受領目録**、**開示対象Consumer**を区別して決める。どの集合が閉じていないかを具体的に示せること自体が、UIとSkillに共通した価値である。
+
+### 29.3 CLI・Studio・物理DB Reverseの新成果は「同じ証拠」ではなく対照Consumer
+
+- **CLI result契約 [Draft #3370](https://github.com/hat47x/tei-platform/pull/3370)**：`tei requirements` の成功時`result`は**配列**であり、Discoveryへの`resultShape:"array"`追記と実Binary対照Testが候補。PR HEAD `dcf759a04084fc03134a6f7971864609c71497f5`の[read-only dogfood CI #42395222332](https://github.com/hat47x/tei-platform/actions/runs/42395222332)はsuccess。ただしRepository Healthは本照会時にin_progressであり、PRはDraft/未統合。Discoveryの外側`successShape`、`jsonContract`、内側`resultShape`は別。未宣言のResult Shapeをobjectと補完しない。正しい配列`[]`の受領成功と、独立Requiredの充足0件/不明を分ける。
+- **Studio Inspector [Draft #3371](https://github.com/hat47x/tei-platform/pull/3371)**：`internal/studiohost`のHost選択済み`InspectionService`へReaderを接続し、Factoryありで未提供/誤Subject/誤Fingerprint/誤Effectなら**暗黙builtin fallbackを禁止**する正負試験候補。HEAD `a42df66bf9faa4c55a888a9c4bb900252e450e8a`の[限定Issue dogfood CI #42395396794](https://github.com/hat47x/tei-platform/actions/runs/42395396794)はsuccessだが、Studio固有/Healthの全CI・実Plugin Resolver/Link/Invoke/CLI↔Studio二Consumer等は未確認。**実Host選択Service呼出≠実Plugin Provider選択/Current Grant**。
+- **Workbench Physical Relation [Draft #3372](https://github.com/hat47x/tei-platform/pull/3372)**：合成`postgres.Provider.Introspect`→Workbench Projectionで**Observed FK/UNIQUE・複合Foreign Key・並列Relation・CapturedAt/Fingerprint**を保持するコード/Go test候補。HEAD `402a57f79f8d2e77493683d539ef22e1f1af7aec`の主要Go/Health CIは照会時queued、Wails Desktop smokeだけsuccess。**合成物理Catalog→Workbenchの観測がData/Businessの受理済みRelation/Function CRUD/実Row Readへ昇格するわけではない**。
+- **実Dogfood D-3/D-9/D-10 [PR #3356](https://github.com/hat47x/tei-platform/pull/3356)**：`view`のNamespace範囲Fingerprint、管理Markdownの`readByLoader:false`、CLIコマンド別JSON Shapeは、#3370/#3371/#3372の各Consumerが**False-Missing/False-Covered**へ落ちないための独立入力。実TEI専用開発MCP Serverは本再測定で確認できずMCP実試験はNOT RUN。各Source/Owner #3345/#3346/#3347、#3262を維持。
+
+### 29.4 独立検収に引き渡すTT-131〜TT-138（既存Runner/Expected正本参照）
+
+| ID | 最小正負対照／変える一軸 | 判定と必要な証拠 | Owner |
+| --- | --- | --- | --- |
+| **TT-131 局所正証人** | 6 Stepの実Receiptから1件を削除、別の正常Stepの実Receiptは残す | 正常Stepの局所observed維持、削除Stepはnot-observed、Product Coverage unknown。#3365 exact HEADで限定PASS | #3365/#2514 |
+| **TT-132 False Never-Tested** | Step 1件が受信一覧にないが実選択/送信/外部ACKの閉包は未証明 | untestedConfirmed空。実外部Harnessが未検収なら別資格。#3365のコピー改変7対照は外部配送の実故障ではない | #2509/#3262 |
+| **TT-133 Step→Rule誤写像** | Stepの実verified Receiptは正しいがRule Binding/実Evaluatorが異なる版を使用 | Step observedは保持、対象Rule coveredはunverified。Role/Source/Actual Input/Independent Resultが必要 | #1180/#2514/#3262 |
+| **TT-134 CLI Array正常** | `requirements`成功`result:[]`を、object専用Consumer/未知resultShapeへ渡す | JSON Shape契約とRequired欠落を別票。正常配列を異常/全Requirement 0件と誤断定しない。Draft #3370の局所Product CIに委譲 | #3347/#3370 |
+| **TT-135 Host選択Inspector** | Studio Factoryから選択Inspector Aを供給 ⇄ FactoryありだがInspectionなし/Subjectが異なる | A実callの正証人と、無断Builtinへの回帰禁止・typed errorを別判定。Plugin B actual LoadやCLI一致は未確認 | #3371/#1824/#951 |
+| **TT-136 Physical FK≠業務Relation** | 同一Catalogに複合/並列FK2本、Function/Business Meaning未受理 | Physical Observationでは2辺と方向/Source保持、Diagram/CRUDのAccepted Meaningはunknown。Candidate→Owner判断を要求 | #3372/#1124/#2586 |
+| **TT-137 構造Missingの偽陽性** | Raw MarkdownはmanagedでLoader未読込、Source Index mode違い、Result array・局所FP混在 | 不明/未Loaded/比較不能を独立診断。正常Query Shapeや異Scope FPを「Ruleは不存在」と誤判定しない | #3356/#3345/#3346/#3347/#3262 |
+| **TT-138 部分目録の開示** | 許可Public Sliceは同一、秘密Step/Role数だけ異なる二WorldをCLI/Studio/Harnessへ投影 | Public Body・件数/診断・Tool/Session副送出の許可外差異ゼロを要求。外部Sink/OS強制未実測ならnot-proven | #2516/#2509/#2515 |
+
+§28 TT-115〜122/§26 TT-123〜130と同じ番号・Fixture/Ownerを上書きしない。**TT-131/132の#3365限定CIのみ今回は既存他BranchのPASSとして根拠を採録**。TT-133〜138の横断統合E2Eは今回新実行していない。
+
+### 29.5 最初の一往復を組織的に短くする
+
+1. **P0-A #3365の限定正証人を基線化**：PR exact HEAD [CI #42394673357](https://github.com/hat47x/tei-platform/actions/runs/42394673357)、Health #42394673331は実success。main採用前の文書・Code/CI検収を#2514/#1180へ渡す。もしmainが進んでいれば、その新HEAD/main push CIは別Run。現`scoped_step_coverage`はtest-onlyで`productCoverage=unknown`を保持し、全業務Coverage Engineにしない。
+2. **P0-B 正常入力をFalse Missingにしない**：#3370の実`requirements.result[]`、#3356のD-3/D-9/D-10を既存#3262 Consumerに通し、「必要Rule/Relationが本当に欠けた」と「ConsumerのSchema/Mode/Loader/FP Scopeの誤読」を対照検査。合法な非Required省略で過剰拒否しない。**二つ目のReaderは作らない**。
+3. **P0-T Blind T1-Bを一局所Ruleで実行**：現在Allowed Sliceの実Source/Required/Meaning/Tool Replyを同一世界で束縛し、独立Reviewerが未提示ObligationとExpectedを事前固定。AIに渡したContext/Role/Source/秘匿Holdoutを分離し、提案→Review→既存#1180 Scenario→実Pinned CLI/独立Mutant→#2514 Evidenceへ。既知行番号0 T1-Aの再選択をnovel discoveryとしない。
+4. **P1-D 二Consumer実Inspector／Reverse観測**：#3371でHost selected serviceと実Callの一致、CLIとの同意味・同版/Disclosure、Plugin exact Loadを別検査。#3372はPhysical Observation→Candidate→Accepted Meaning→Diagram/CRUDという変換を段階別Witnessにし、実DB接続・現Grant/Row/Business CRUDはそれぞれ別。
+5. **P1-S 新Patternの適用適格**：#3353空Handoff/#3358 open Calendar/#3357 JSONL prefix+#3359 Hook reads/#3360 SelfBuild等の§28独立対照は、Required＋実Consumer/Artifact/Effectの根拠があるときだけ推薦。Case数やLink見かけを「新しいCoverage増分」と計上しない。
+
+**更新した設計判断**：テスト基盤は「生成する/しない」のbinaryではなく、**対象となる業務Obligationに対して、局所的に確認できた正の事実、まだ閉じていない探索範囲、真正に未カバーと判断できる領域を分離し、次にどのReader/Observer/Reviewを必要とするか推薦する**。その同じ結果をCLI/Skill/MCP/Studioへ用途別に整形して渡す。別のSemantic Store、Coverage Engine、Host、Authority、Test Runnerを初手で増設しない。
+
+**本節の資格**：#3365 exact HEAD CI＋Healthのsuccess、#3370の限定dogfood CI成功はGitHubから実確認した他Branchの結果。#3371は一部CIだけ成功、#3372の重要CIは未確定。**今回のGitHub作業は設計文書・Owner引渡しだけ**。新実CLI/Go/実Provider/CLI↔Studio同一Consumer、T1-B盲検、MCP・外部H3、Go C1、Owner正式意味受理はNOT RUN/NOT ACCEPTED。
