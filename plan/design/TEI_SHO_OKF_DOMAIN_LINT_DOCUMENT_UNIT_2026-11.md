@@ -332,3 +332,12 @@ R0（ProducerがSourceを読んだ時）、R1（派生Bundleが書かれConsumer
 **停止条件**：破損データをOKFから消してからPASS、閲覧できただけでAttested Run・Meaning/Owner受理、未計測出口込み漏えい0の断言、現在Audienceに無許可なSource/diagnostic公開、旧Evidenceの再資格化、実Kernel/OS Sandbox未確認のまま外部Harnessの資格主張。外部公開・外部Tool/RunPlan・不可逆なEffectは別のHost/Owner許可まで止める。
 
 **Owner/現状**：SHO #18（文書/Reader/Writer）、TEI #3262/#2514（独立Required/検証基準）、#2515/#2516/#1178（実隔離/二次Disclosure）、#1251/#951（Plugin選択）、#2621（Authoring）、#2600（失効）、SUI #3392／SEI #820（元関係・Claim）、TAI #514（Attestation/Skill）へ分担する。**今回の検証はGitHub一次資料・上流SPECの静的照合のみ**。新OKF Validator、Consumer実2経路、公開Observer/Viewer対照、OS/Network安全、Attester/実Provider/Owner AcceptanceはすべてNOT RUN。
+
+
+### 11.6 実Invoke variantとSession再開時の情報流を再判定する
+
+**ProviderやCLIの名称・宣言だけではRead-onlyを保証できない**。既存TEI [#3182](https://github.com/hat47x/tei-platform/issues/3182)と改善Draft [#3302](https://github.com/hat47x/tei-platform/pull/3302)では、read-onlyと広告されるview系CLIでもexecute/operation-logなどの実Flagによってファイル出力が生じ得る。これをOKF Reader/Exporter/Attested Computationの誤実行を防ぐ追加圧力とする。**Invocation variant＝実Command名＋argv/flags＋stdin＋現在Source/Target＋Plugin/Host Grant＋出力先**を単位に、実Effectを検査する。Tool Catalogのeffect:read-onlyや利用できるTool名だけから、全Flag variantが無副作用とはしない。#3302はDraftでありTEI CLI全体修正済みとは扱わない。Provider/Hook/Operation Offerの広告と実到達性は重複せず [Plugin-first Draft #3338](https://github.com/hat47x/tei-platform/pull/3338) のPD/PO受入へ渡す。
+
+**受信者SinkとSession再開**：既存 [TEI #3309](https://github.com/hat47x/tei-platform/pull/3309) の合成canary試験（Open）は、read-only DSHでTool結果がstdoutと永続Session Logに残る局所結果を示した。一方、[main統合 #3237](https://github.com/hat47x/tei-platform/pull/3237)のH6-E7合成試験ではSession再開時に**既受理Log区間は再送されないが、前TurnのRaw canaryが再構成されたModel入力には再登場**した。したがって「Logに再送なし」「新Tool readなし」「Pluginがread-only」のいずれも、継続SessionへのRaw再提示がないことを保証しない。OKF/SHO/SEI文書の旧引用・内部診断・未受理SourceをHarnessへ載せた場合も、再開/撤回後のModel入力・Tool結果・永続Sink/外部公開の資格を既存#2515/#1178/TAI #232で別判定する。
+
+**追加の一因子負例**（新Case IDなし）：A同一OKF ConceptでReader純粋preview vs execute指定、B Provider effect read-onlyだがTool/Session LogへCanaryが複写、C Recipient権限がR0→R1で撤回された後のSession再開（旧Model Contextが残る）、Dログ受理がなかった場合と、モデル入力に再登場した場合を混同して偽の非再送PASS。Expectedは「許可された純粋ReaderではReader由来の新外部副作用なし」「未許可Variantは実行前拒否または別Host資格へ」「既観測の過去送出は撤回されない」「全Sinkの不在は実観測なしにはunknown」。OS/Network/Model入力の本番遮断は**NOT RUN**、新Harness/Plugin Engine/強制Policyは設計しない。
