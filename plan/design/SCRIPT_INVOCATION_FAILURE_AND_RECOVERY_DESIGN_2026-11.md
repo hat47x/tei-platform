@@ -580,4 +580,24 @@ UI/CLI/Jobの実行要求は、表示/選択の更新世代（**Selection/Contex
 
 **実装順と責務**：P0-Rの最初の作業は引き続き§13.1〜13.3のProduct`BuildBrowse→selected Query→実Provider Reader`接続であり、Operation SurfaceのW3全実装や新Snapshot/Authority基盤を先に要求しない。次にP0-Sとして**実行直前のSource/World/OperationとTarget/Grantの照合口**を既存RunPlan/Host Admissionに探し、なければ最小の不足を#2502/#1130へ引渡す。最後にP0-WでRC-03/05を#1174の既存Stage/Receipt/ResourceReadに繋ぐ。外部SessionのRaw再露出とEgressは#2509/#2515・TAI #232、Journal pinの適用範囲は#1174/#2845、Product Readは#2586、Ownerの業務Meaningと対象集合は#2506/#2514が受理する。第二のPolicy/Query/Recovery Engine・Fixture正本は追加しない。
 
-**到達点**：Web Referenceの物理PG Read、Command Receipt/Resource Read、Operation driftの合成実測、PinnedJournalの限定実装はいずれも**別々の有限証拠**。Product`Browse→Query→実Provider→Bound Function/Consumer→Script Effect/Recovery`同一Source/Attempt、RC-03/05実障害注入、実行直前のHost/Grant/World照合、DSH再開時の実機密Profile、正式Owner受理は**NOT RUN／NOT QUALIFIED**。
+### 13.6 実行境界の切断点：UnitOfWork参加と記録失敗の区別
+
+現main`internal/command/invoke.go`の実コードでは、`BuildCommandPlan→Authorize→DataSource/Period Check→任意のUnitOfWork.Begin→Executor.Execute→Effect/Applied/Outcome Check→Recorder.Record→任意のUnitOfWork.Commit→Persistence Observe`の順で処理する。`LifecycleInvoker.Dispatch`はInvokerの前、`Lifecycle.Observe/MarkUnknown`は後である。**Recorderは外側UnitOfWorkのCommitより前だが、独立TxのExecutorが既Commitした後にはなり得る**。`Executor`は同一UoWへの参加を契約上要求していない（[main #3197](https://github.com/hat47x/tei-platform/pull/3197)）。したがって、`UnitOfWork != nil`から参加やRollbackの有効性を推測しない。
+
+[#1174](https://github.com/hat47x/tei-platform/issues/1174)の既存RC-03/05へ接続する**実装担当向け故障注入仕様**（新しいScenario正本を作らない）を次のように固定する。
+
+| 切断点（一因子） | 事前に固定する独立Expected | 現mainに関する確認・未実証 |
+| --- | --- | --- |
+| A：事前認可・期間拒否で`Executor`未呼出 | 実Executor呼出0、Providerへの書込み0を証拠で確認。`Dispatch`の記録は既にあり得るためStageと効果を混同しない | 実コード上の順序は確認済み。実Providerの拒否時readbackは未試験 |
+| B：Executorが型付きEffectUnknown errorを返す | 元のUnknownを保持し、同一Owner/Generationの盲再送を拒否。外側Rollbackだけで独立Txの効果0を断定しない | 既存Command/Lifecycle局所試験がある。実外部Commit/別接続Readの同一Attemptは未試験 |
+| C：独立TxでCommit後、`Recorder.Record`だけ失敗（RC-03） | `COMMAND_RECORD_FAILED`だけではClean Rejectedを証明せず、実Receipt・別接続Postimageまで`effect unknown`に止める | 現`invoke.go`は`EffectUnknown`なしで返し、`LifecycleInvoker`が通常`OutcomeRejected`へ進み得る。実故障注入は未試験 |
+| D：Cと同じ失敗だがExecutorが外側UoWの**同一Tx参加を証明**し、Rollback完了 | 対象Providerのpost-image/Receiptが更新されなかったことを別途確認してから、**当該Effectに限り**非適用の候補 | 現`Executor`型から参加は分からない。参加未証明ならCと同じUnknownとして保留 |
+| E：外側UoW Commit済み→`Lifecycle.Observe`だけ失敗（RC-05） | CommitとStage永続記録を別々に照合。記録失敗で効果0や再送可能としない | 現`lifecycleRecordError`の外側エラーにはUnknown flagがなく、保存Stageの成功は保証しない |
+| F：元のUnknownに続く`MarkUnknown`も失敗（RC-05） | 元ErrorのUnknown、Stage記録失敗、Provider結果を別記録し、Error包装でUnknownを消失させない | 現`EffectMayBeUnknown`は最初に一致した`ExecutionError`のflagを読むため、外側falseが内側trueを遮り得る |
+| G：同Operation ID／Basisのまま実行直前Source/World改版 | 検査時と実消費時のSource Closure/World/Target/Grantを比較し、相違なら既存Admission Ownerへ再受理要否を返す | [main #3254](https://github.com/hat47x/tei-platform/pull/3254)は属性1つでWorld/Model版が変わりBasisは不変と実測。実行時照合の製品実装は未資格 |
+
+**最小の実施順**：①A/C/E/Fの既存Go型/`LifecycleInvoker`を使う**Characterization**を同じRequest/OperationIDで行い、失敗コード・`EffectMayBeUnknown`・Stageを独立Expectedに突合。②C/Dを**別のExecutor取引参加条件**で差分検証し、Commit前/後の独立Resultを区別。③本番DBを使わず、許可された隔離PostgreSQLでC/EのReceipt＋別接続Readの故障注入を行う。④Gは既存`Operation Surface`の出力と実行直前Loaded Sourceを一Revisionで比較するAdmission試験に分ける。実Providerを再実装せず、既存#1180/#2514/#1163に結果を引き渡す。
+
+**同じRunに束縛する最小欄**：`Source/World/OperationID+basis/actual Binary/Actor+Tenant+Target+current Grant/Provider Instance/RequestHash/ExecutorTx participation（proved, unproved）/UoW begin+rollback+commit/Recorder error/Stage durability before+after/EffectUnknown provenance/Receipt Lookup+resource version+Read epoch/Result Slice+Coverage+Consumer Disclosure`。不明な欄は`unverified`、秘匿Input/Grant/非開示RowのrawをTool/AI Sessionに転載しない。**新公開SchemaやRun Registryの採用ではない**。
+
+**到達点**：Reference物理PG ReadとCommand Receipt/Resource Read、Operation driftの合成実測、PinnedJournalの限定保護は個別の有限証拠。Product`Browse→Query→実Provider→Function/Consumer→Script Effect/Recovery`一改訂統合、RC-03/05実故障注入、Admission現在Grant/World照合、正式Owner Meaning、外部AI秘匿隔離は**NOT RUN／NOT QUALIFIED**。
