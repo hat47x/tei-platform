@@ -53,6 +53,7 @@
 
 - 引数の未対応flagは、#2332で全広告コマンドが拒否するようになった。拒否も標準エラー（`inspect`、`trace`、`validate -json`はJSON）で、flag解析のusageの分だけstderrが長くなるコマンドがある（例: `knowledge-context`に未知のflag）。`version -json`の引数不正も、2026-11-07から実装が標準エラーへ返す（表の記載と一致）。
 - 引数不正の出力先は、`cmd/tei/cli_argument_failure_streams_test.go`が実プロセスの標準出力と標準エラーを分けて検査する（#2993）。`version`・`commands`は標準出力を空のまま標準エラーへ理由を書き、`validate -json`は同じ失敗を標準出力の1 JSONで返す。この差はコマンドごとの決定であり、CLI全体の既定として読まない。
+- `-h`／`-help`は引数不正ではない（#3185）。2026-11-07から、`inspect`・`view`・`trace`・`workspace-files`・`knowledge-*`・`commands`・`version`・`model catalog`は、終了コード0・標準出力に`usage: tei <command> [options]`とそのコマンドが広告するflagの説明を書き、標準エラーは空にする。未知のflag（`-not-a-flag`など）は従来どおり`INVALID_ARGUMENT`・終了コード2で、`-h`とは区別する。`cmd/tei/cli_help_test.go`が両方を実プロセスで検査する。`validate`は元からflag packageの既定（標準エラーに`Usage of`、終了コード0）で、この変更の対象外である。
 - `tei commands`の`output`欄は、同じentryの`jsonContract`と一貫していることを`cmd/tei/cli_advertised_output_test.go`が検査する（#2824）。`json`／`text; json when …`と`enveloped`の組合せ、`raw`と`json`の組合せを定数で照合し、あわせて実プロセスでtext既定の3コマンドがJSONエンベロープを書かないこと、json既定の5コマンドが引数不足でも標準出力へ1件のエンベロープを書くことを確かめる。負例は`world`の`output`を`text`へ変えると失敗する。
 - `validate -json`の失敗JSONは`diagnostics`を常に空配列として持ち、`error.code`と`error.message`のみで種別を伝える。
 - `validate -json`は、2026-11-07から`sourceRootFindings`を返す。`sources`の存在しないrootは`severity:"error"`（`ok:false`・終了コード1）、Loaderが解釈しない未知rootと、Loaderが読まない近似名の管理ファイルは`severity:"warning"`である。Canonical Subjectを持たないため`diagnostics`とは別の欄にする（#2823）。

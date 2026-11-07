@@ -108,6 +108,10 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	fs.Var(&inputPairs, "input", "command input as name=value; repeatable")
 	format := fs.String("format", "text", "text or json")
 	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			printHelp(out, fs, "view")
+			return 0, nil
+		}
 		return fail("INVALID_ARGUMENT", err.Error(), 2)
 	}
 	if fs.NArg() != 0 || *root == "" || *applicationID == "" ||
