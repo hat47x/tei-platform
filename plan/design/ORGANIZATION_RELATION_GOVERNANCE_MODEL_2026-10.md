@@ -3705,7 +3705,7 @@ X-TEAの単票・明細・機能遷移を発展させ、**データ構造はDB�
 | **Function内の表現インスタンス** | 「組織を照会するFunction」のTree＋Table、「案件を扱うFunction」のCase Panel＋担当部門Picker。双方でD1を表示しても独立したContext Instance | Function Data Context Definition/Instance、選択epoch、Query/Result Slice・Scope/Read版、機能Purpose・提供するAction候補。#2506/#1127/#2500 | 同じ表示型・同じ行文字列・同じNodeが同じ読取集合／現行時点／Action資格／Requestを共有するとは推論しない |
 | **実利用／Effect** | Treeで選択→C1詳細の表示、担当部門変更候補、承認操作候補 | 実Provider Read・Consumer Output、ViewChange→Intent、Business Rule・Host Grant、Effect/Receipt/独立再読。#2586/#2598/#1174 | 操作ボタンを出した事実や`OperationSurface`候補を実許可・DB Commit・完了に昇格しない |
 
-実装を選ばない段階では以上を**受入上の四分割**として使用し、Coreへ新しい`PresentationKind`や専用Org UI Schemaを導入しない。UI構成キットのRenderer/Framework/案​​件上書きは#997、Functionパターン適合は#2507、UI変更からIntentへ戻す逆写像は#2500、実Data Contextは#2506をOwnerとする。TEI標準表現型の広域検討は組織Profileへ閉じ込めず、組織は反証用の一Domainとして提供する。
+実装を選ばない段階では以上を**受入上の四分割**として使用し、Coreへ新しい`PresentationKind`や専用Org UI Schemaを導入しない。UI構成キットのRenderer/Framework/案件上書きは#997、Functionパターン適合は#2507、UI変更からIntentへ戻す逆写像は#2500、実Data Contextは#2506をOwnerとする。TEI標準表現型の広域検討は組織Profileへ閉じ込めず、組織は反証用の一Domainとして提供する。
 
 #### 組織で最初に検証する二つのFunction文脈と二つの表現
 
