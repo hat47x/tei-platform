@@ -152,6 +152,13 @@ function summarizeApplication(view) {
       rows: view.packages.map((pkg) => [valueOf(pkg.id), valueOf(pkg.version), pkg.bound ? "束縛済み" : ""]),
     });
   }
+  if (Array.isArray(view.standardBusiness) && view.standardBusiness.length) {
+    sections.push({
+      title: "標準業務",
+      header: ["種別", "Data", "属性"],
+      rows: view.standardBusiness.map((ref) => [valueOf(ref.kind), valueOf(ref.data), joined(ref.attributes)]),
+    });
+  }
   if (Array.isArray(view.periods) && view.periods.length) {
     sections.push({
       title: "期間",
@@ -299,6 +306,7 @@ export function summarizeView(value) {
     rows: Object.entries(value).map(([key, entry]) => [key, JSON.stringify(entry)]),
   }];
 }
+
 
 
 

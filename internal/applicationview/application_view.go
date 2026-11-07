@@ -11,13 +11,17 @@ import (
 
 // ApplicationViewは、ApplicationのPattern・Package・意味の版を一覧する投影である。
 type ApplicationView struct {
-	SchemaVersion       string                  `json:"schemaVersion"`
-	Application         core.CanonicalID        `json:"application"`
-	SemanticUses        []core.CanonicalID      `json:"semanticUses,omitempty"`
-	Patterns            []ApplicationPatternRef `json:"patterns,omitempty"`
-	Packages            []ApplicationPackageRef `json:"packages,omitempty"`
-	Periods             []ApplicationPeriodRef  `json:"periods,omitempty"`
-	SemanticFingerprint string                  `json:"semanticFingerprint,omitempty"`
+	SchemaVersion string                  `json:"schemaVersion"`
+	Application   core.CanonicalID        `json:"application"`
+	SemanticUses  []core.CanonicalID      `json:"semanticUses,omitempty"`
+	Patterns      []ApplicationPatternRef `json:"patterns,omitempty"`
+	Packages      []ApplicationPackageRef `json:"packages,omitempty"`
+	Periods       []ApplicationPeriodRef  `json:"periods,omitempty"`
+	// StandardBusiness lists the standard business Data (tax, exchange rate,
+	// numbering, holiday) the used semantics declare, with the attributes each
+	// binder reads. It is a reading aid; the roles are checked by validation.
+	StandardBusiness    []StandardBusinessRef `json:"standardBusiness,omitempty"`
+	SemanticFingerprint string                `json:"semanticFingerprint,omitempty"`
 }
 
 // ApplicationPatternRefは、Applicationが持つPatternの種別とIDである。
@@ -98,6 +102,7 @@ func BuildApplication(world ir.World, applicationID core.CanonicalID) (Applicati
 			})
 		}
 	}
+	view.StandardBusiness = standardBusiness(namespaces)
 	view.SemanticFingerprint = fingerprint
 	return view, nil
 }
