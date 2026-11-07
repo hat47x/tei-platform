@@ -960,7 +960,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | 期間と暦の投影 | 実装済み（`view`のApplication投影に`periods[].calendar`、テキスト出力に行、Studioの「期間」表に列を追加） |
 | 採番の契約 | 実装済み（`internal/numbering`。桁・接頭辞・検査数字・桁あふれの宣言。桁あふれの既定は停止、`wrap`は宣言時のみ。検査数字は1文字） |
 | 通貨の率と方向 | 実装済み（`internal/currencyrate`。中値・買値・売値の宣言、換算方向の宣言、システム通貨の率1、行の欠落と重複の検出） |
-| 税の適用期間と端数 | 実装済み（`internal/taxrate`。適用期間の両端、`floor`・`ceiling`・`half-up`・`half-even`の宣言、行の欠落と重なりの検出） |
+| 税の適用期間と端数 | 実装済み（`internal/taxrate`。適用期間の両端、`floor`・`ceiling`・`half-up`・`half-even`の宣言、行の欠落と重なりの検出。`tax-applies-from`等の属性役割からDataの行を結び付ける） |
 | 暦からの日付導出 | 実装済み（`internal/businesscalendar`。日付差の規則（`elapsed`・`calendar`・`business`）、営業日加算、会計年度と年度開始、期間キー（年度＋月順序）と期間開始日の逆算。宣言から暦を解決し、休日Dataは呼出し側が与える） |
 | 画面・帳票の版 | 実装済み（全HTML・印刷テンプレートが`tei-semantic-fingerprint`を出力） |
 | 読み取り専用datasourceの事前検査 | 実装済み（Applicationの`database ... access read`宣言とDatabaseの`uses semantic`から対象Dataを引き、書込みCommandを`COMMAND_DATASOURCE_READ_ONLY`で拒否。宣言が無いDataは推測しない） |
@@ -1001,6 +1001,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
 
