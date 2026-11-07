@@ -71,6 +71,7 @@ func inspectWorkspaceJSONWithService(out io.Writer, root, world, kind, id string
 		switch {
 		case errors.As(err, &inspection):
 			failure.Code = inspection.Code
+			failure.Message = inspection.Message
 			if inspection.Code == operations.InspectionNotFound || inspection.Code == operations.InspectionAmbiguous {
 				code = 1
 			}
