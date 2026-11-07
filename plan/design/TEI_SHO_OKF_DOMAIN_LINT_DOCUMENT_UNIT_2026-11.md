@@ -358,12 +358,14 @@ R0（ProducerがSourceを読んだ時）、R1（派生Bundleが書かれConsumer
 
 - [index.md](../../testdata/okf-k1-v02/index.md)：root限定のokf_version 0.2、Data/Function/Business相当の3概念を列挙。
 - [data/order.md](../../testdata/okf-k1-v02/data/order.md)：Data Entity。sources.resourceは直接fetch可能URIでなく**集合を説明するScope descriptor**。実Data ProviderのReader成功を表さない。
-- [functions/submit.md](../../testdata/okf-k1-v02/functions/submit.md)：Function。bundle-root相対LinkでOrder Conceptへ接続。verifiedはsingleton mappingの合成processイベント1件。人間認証・意味受理・実計算Receiptではない。
-- [business/submit.md](../../testdata/okf-k1-v02/business/submit.md)：未分類Raw Itemの**交換包装候補**。type Unclassified Draft Item／追加Frontmatter x-tei-experimentを含む。故意のbroken linkを持ち、OKF v0.2 F0には受理されるがF1には警告候補。役割Task/Action/Event/Traitの採用を示さない。
+- [functions/submit.md](../../testdata/okf-k1-v02/functions/submit.md)：Function。通常の相対LinkでOrder Conceptへ接続。OKF v0.2のbundle-root基準絶対Linkは一時Copyへ注入して形式適合を別試験する。verifiedはsingleton mappingの合成processイベント1件。人間認証・意味受理・実計算Receiptではない。
+- [business/submit.md](../../testdata/okf-k1-v02/business/submit.md)：未分類Raw Itemの**交換包装候補**。type Unclassified Draft Item／追加Frontmatter x-tei-experimentを含む。通常は解決可能な相対リンクを持つ。broken linkは一時Copyへ注入し、OKF v0.2 F0適合とF1警告を別検査する。役割Task/Action/Event/Traitの採用を示さない。
 - [testdata/okf-k1-v02.expected.json](../../testdata/okf-k1-v02.expected.json)：3 Concept/1 index、正例/負例、上流Spec exact commit+raw digest、各実File raw SHA-256、できたこと/できないことを別票で固定した**暫定期待**。同じ作成Attemptで設計したため、実装と独立の仕様由来であっても**Ownerが独立に審査した検証基準ではない**。#2514の適格性・既知Mutant killが成立するまで合格基準へ昇格しない。
 - [repository .gitattributes](../../.gitattributes)へこのBundleとexpected.jsonの-path -text を追加し、Windowsのcheckout EOL変換でRaw期待が壊れることを防ぐ。SHO #21の354→368byte負例を受けた限定対象の対策であり、通常Markdown編集や別のRaw Sourceの改行変換を強制しない。
 
 実GitHub File Readbackで5ファイルとshaを取得した。上流Specと各FixtureのRaw UTF-8 SHA-256はexpected.jsonに書いたものに一致するよう固定。**これは形式適合の実Reader検証ではなくFile/byte入力同一性の静的基線**。
+
+**2026-11-08 CI負例と修正方針**：K1初回実Bundleでは、OKFとして有効な `/data/order.md`（Bundle-root絶対Link）と、形式上許されるbroken link `/business/missing.md` を同梱した。しかし[TEI #3329の旧HEAD CI #42392171058](https://github.com/hat47x/tei-platform/actions/runs/42392171058) の `go test ./tools/repository-plan-check` / `TestMarkdownRelativeLinksResolve` が両件を**実Fail**と判別した。これはOKF v0.2 F0仕様違反ではなく、TEIリポジトリ全体のMarkdownリンク存在検査との**用途・Root解釈の衝突**。現行CheckerをOKFのために緩めない。コミットする正常BundleのLinkは相対かつ解決可能に限定し、broken linkとBundle-root絶対Linkは一時Copyへの独立変異で試験する。成功CIが得られるまで本修正をPASSと呼ばない。原Fixture Raw SHA-256を新原文で必ず更新する。
 
 ### 12.3 素朴なFixtureがあっても必ず区別する対照判定
 
@@ -390,4 +392,4 @@ R0（ProducerがSourceを読んだ時）、R1（派生Bundleが書かれConsumer
 4. **K2二Consumer**：共通選択済みOKF Reader/ValidatorのContract/Plugin Provider Pinを、CLIとSHOまたはStudioの**実二箇所**で同じBundle/Raw digestから呼び出す。Spec-valid、F1文書品質、F2業務、実Read/受領Coverage、Owner/Grantを別列にする。元SUI→SHO一File H1はSHO #21、SEI Claimは#820、Attested ComputationはTAI #514の別資格。
 5. **Owner/CI**：#2514/#1180の独立Expectedとmutant判別力、#3262のRequired→Received、#1251/#951のPlugin実選択、#2515の安全な実Sink検証を使い、合格した実段階だけ進める。完了した証拠はtestdataや計画から自動昇格させず、既存Evidence票とその実CI/Receiptへリンクする。
 
-**今回の到達点**：K0の**上流仕様Source Pin成立**、K1の**固定合成Input＋暫定Expected＋原byte EOL制御のGit実配置とReadback**。まだK0の実Product依存閉包、独立Expectedの正式受理、K1 F0 YAML Parser/Validatorの実行、K2実2 Consumer、SHO Writer、SEI Import、OS/Egress拒否、外部Harness/Attester/Owner Meaningは**NOT RUN／NOT QUALIFIED**。§9〜11の計画全体が成功したという主張ではない。
+**今回の到達点**：K0の**上流仕様Source Pin成立**、K1の**固定合成Input＋暫定Expected＋原byte EOL制御のGit実配置とReadback（CI負例のリンクを修正した最新版の再照合は別記録）**。まだK0の実Product依存閉包、独立Expectedの正式受理、K1 F0 YAML Parser/Validatorの実行、K2実2 Consumer、SHO Writer、SEI Import、OS/Egress拒否、外部Harness/Attester/Owner Meaningは**NOT RUN／NOT QUALIFIED**。§9〜11の計画全体が成功したという主張ではない。
