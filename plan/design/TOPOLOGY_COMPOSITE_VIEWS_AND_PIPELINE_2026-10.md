@@ -350,7 +350,7 @@ Else absence remains unknown; no universal closed-world assumption.
 | --- | --- | --- |
 | **Observer Workspace由来** | 現行Go `WorkspaceTrace.Workspace`のLoad-time `Manifest(Path,SHA256)`・FormatVersion | 同WorldFPだから同Workspace、Manifest SHAが現在の全Source/依存を固定した、Accepted/Lockである |
 | **Caller Projection Scope** | 同じ実Workspaceに別々の`-scope`を与え、Direct Edgeの非scope部とWorld/SourceIndex fingerprintが同じこと | 投影で付与したScopeがSource自身の宣言Scope・PrincipalのGrantである |
-| **Source Navigation** | `trace.subject`と`source.key`のScope/Kind/ID一致、`located`なら参照情報が少なくとも1件 | Source位置が現在も有効、Source ReaderがRole全件を解析した、Ownerの編集受理がある |
+| **Source Navigation** | `trace.subject`と`source.key`のScope/Kind/ID一致、`located`なら非空の参照情報と各Reference.SubjectのKind/ID一致（Source Indexに無いScopeを補完しない） | Source位置が現在も有効、Source ReaderがRole全件を解析した、Ownerの編集受理がある |
 | **Direct Edge** | Read-only Full/Unpaged/方向/解決・未解決を区別したCLI JSON | `Edge.Relation`種別文字列が独立Relation ID/多項Role、0件が業務Relationの不存在である |
 
 **受入と停止線**：負例で別Subjectの`located`誤帰属、Manifest欠落、scope変更、CLI partial、0行の不存在への誤昇格を拒否。基準GoコードとCI固定headで試験し、実CLIを使用しても非公開二世界・現在Grant・Studio M0/M1・セルフビルドStage2は未証明とする。結果の受理は実施したexact-head CIとOwner Reviewが別途必要。新Core Relation Registry、第二Source Reader、共通Host、専用Query DSLは設けない。
