@@ -356,7 +356,7 @@ PR [#3176](https://github.com/hat47x/tei-platform/pull/3176)の test-only `tools
 | **CC-15b after-replacement validation** | 差替え**後**の通常`readInside(root, name)`はroot外symlinkを拒否 | 静止した外部symlinkの拒否を示すが、検査と実Openの間の原子性・同時攻撃耐性は示さない |
 | **CC-15c root-relative alternative** | 標準`os.OpenRoot(root).Open(name)`で当該外部symlinkを拒否し、安定したroot内fileを読めるか | **比較したGo Toolchain/OSとこのFixtureに限定**。Root能力の採用、全Platform/特殊mountやA→B→A・複数fileのcohort整合性は別資格 |
 
-**CI正本**：コードを入れた時点では[PR #3176](https://github.com/hat47x/tei-platform/pull/3176)のexact HEAD、`TestActualReadCC15*`の実ログ・Repository Healthを確認してからPASSへ昇格する。GitHub Actionsがqueuedなら`NOT YET VERIFIED`。symlink作成権限が無い環境で`Skip`した場合はそのOSで拒否／攻撃を検証したと数えない。
+**限定CIで実測済み**：テスト正本commit `c7030a8f4a7897af518a729717065dee514ccef5`の[Focused Actions #42370450702](https://github.com/hat47x/tei-platform/actions/runs/42370450702)は**completed/success**、job `128397310948` の実ログで `TestActualReadCC15PathCheckIsNotFileOpenIdentity` と `TestActualReadCC15StableInRootFileRemainsReadable` がともに **PASS（SKIPではない）**。同じrunではCC-14の2件もPASS。Goの実File I/OとOpenRootを使う公開合成試験に限定した証拠であり、Repo Health、実本体内部の介入競合、実OS攻撃防御、全Platformの保証は別。symlink作成権限がなく`Skip`した将来の環境は、この成功したUbuntu試験とは区別して数える。
 
 ### 実装案を限定する
 
