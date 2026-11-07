@@ -5,10 +5,10 @@ import {projectPublicTeaSlice} from "./public-slice.mjs";
 const snapshot = "source:R1|role:P1|policy:G1";
 const subject = {scope: "sales", kind: "semantic-data", id: "order-status"};
 const viewId = role => JSON.stringify([role, subject.scope, subject.kind, subject.id]);
-const projection = () => projectPublicTeaSlice({scope: "sales", subjects: [
+const projection = (projectionSnapshot = snapshot) => projectPublicTeaSlice({scope: "sales", subjects: [
   {scope: subject.scope, kind: subject.kind, id: subject.id,
     roleStates: {data: "accepted", function: "accepted", business: "accepted"}},
-], relations: []});
+], relations: []}, projectionSnapshot);
 const c = (claimId, role, lane, state) => ({claimId, scope: subject.scope, kind: subject.kind, subjectId: subject.id,
   role, traitId: "closed-domain", lane, state, evidenceId: `E-${claimId}`, snapshot});
 // Attachments refer to one Subject. They are not computed conformance results.
@@ -47,6 +47,20 @@ test("T12: old snapshot cannot be rebound to current projection", () => {
   const e = envelope();
   e.claims[0].snapshot = "source:R0|role:P1|policy:G1";
   assert.throws(() => bindPublicTraitClaims(projection(), e), /unqualified_trait_attachment/);
+});
+
+test("T12: equal view ID is insufficient when projection epoch differs", () => {
+  const staleProjection = projection("source:R0|role:P1|policy:G1");
+  assert.equal(staleProjection.views.data[0].viewId, projection().views.data[0].viewId);
+  assert.throws(() => bindPublicTraitClaims(staleProjection, envelope()),
+    /unqualified_trait_attachment/);
+});
+
+test("T12: unstamped projection cannot acquire a snapshot by an envelope alone", () => {
+  const unstamped = projection(null);
+  assert.equal(Object.hasOwn(unstamped, "snapshot"), false);
+  assert.throws(() => bindPublicTraitClaims(unstamped, envelope()),
+    /unqualified_trait_attachment/);
 });
 
 test("T12: scope mismatch cannot bind same display name", () => {
