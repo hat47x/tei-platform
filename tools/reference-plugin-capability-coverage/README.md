@@ -16,10 +16,10 @@ Workspaceは変更しません。Provider解決・実装選択・権限発行は
 | `deployment-executor` | する | 能力IDをそのまま指す |
 | `observation-provider` | する | 同上 |
 | `evidence-provider` | する | 同上 |
-| `database-instance` | **しない** | 指すのは提供技術名（`postgres`）で、能力ID（`database.postgres`）ではない |
+| `database-instance` | する（技術名で解決） | 指すのは提供技術名（`postgres`）。能力IDとは文字列で比べず、`Capability.SupportsDatabaseProvider` で解決する（既存の validation と同じ問い） |
 | `lease-policy`・`grant`・`external` | しない | 選択ではなく、資源・権限・外部要件 |
 
-`database-provider` の能力が常に `unselected` に見えるのは、この数え方の結果です。レポートの `notes` にも明記しています。
+`database-provider` も、instance の提供技術に対応する能力が選ばれたものとして扱います。技術名と能力IDを文字列で比べないため、`postgres` と `database.postgres` の食い違いは起きません。
 
 ## 出力
 
@@ -35,7 +35,7 @@ Workspaceは変更しません。Provider解決・実装選択・権限発行は
 
 ## 未実装
 
-- `database-provider` の選択を、instance と能力IDの対応を宣言から解決して数えること（現行モデルにその対応がありません）。
+- `database-provider` の解決が、instance と能力の対応を**宣言**から引くこと（現行は能力側の `databaseProviders` を引いており、instance 側の宣言ではありません）。
 - Bundle経由の間接選択を、選んだ主体ごとに分けること。
 - 実Provider・実Host・権限との照合。
 
