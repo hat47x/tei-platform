@@ -47,6 +47,7 @@
 - [Studio固定Host負例のCI実行記録](STUDIO_FIXED_HOST_CI_2026-11-07.md)（#2948のGo版修正後に試験本体へ到達し、固定Hostのroot置換負例が失敗した記録。#3061で追跡）
 - [宣言と実行の差の保持](XTEA_LOWCODE_OPERATION_DIFFERENCE_2026-11.md)（#3055の記録）
 - [Go選択Module閉包の事前観測](TEI_GO_MODULE_CLOSURE_PREFLIGHT_2026-11-07.md)（`cmd/tei`は現行の隔離観測で`missing-module`、自己完結したtoolは`supported`。Build・Artifact・権限は未実行。SB-0a / #2831）
+- [Go Module供給のcorrupt-supply分類](TEI_GO_MODULE_CORRUPT_SUPPLY_2026-11-07.md)（#2831 SB-0b。archive破損と展開済み改変の実観測、`go list`では展開済み改変が見えないこと、`go mod verify`が捕まえることの記録。供給manifestと`h1:`照合の接続は未実装）
 - [Go Module供給の実観測](TEI_GO_MODULE_SUPPLY_OBSERVATION_2026-11-07.md)（#2831 SB-0bの前提。供給の有無・破損・改変が分類と成果物へどう現れるかの実測。TEIのBuild経路は未実行）
 - [構成Kernel移行Gateの最初の実証パケット実行記録](COMPOSITION_FIRST_CONSUMER_RUN_2026-11-07/README.md)（固定HEADでA・B・C三経路を別々に実行し、`operations`と`artifacts`が同じ`modelRevision`を共有したことだけを記録。三経路の同一業務Request接続・Owner受理・実DB効果は未確認）
 - [構成Gateの次の一辺を依存グラフで測る](COMPOSITION_NEXT_EDGE_STATIC_SURVEY_2026-11-07/README.md)（Goファイル2876件と実行単位167件のimport閉包を走査し、`internal/operations`と`internal/composition`を同居させるファイル・実行単位が0件、`internal/servicehost`の非試験呼出し元も0件であることを記録。実行時の不接続や権限は示さない）
@@ -66,3 +67,4 @@
 - [TEI自身の設計をCLIで扱う実測](TEI_DOGFOODING_CLI_SELF_DESIGN_2026-11-07/README.md)（#3149。SHA-256 `bf6930a047cf94f276fb63b082bf71599986d71f1a5c53804105c04aa0021cfd` の固定実行物でread-only CLIを50出力ぶん実行し、成立した範囲と未対応を区別。意味の受理・実Provider・CI再現は未確認）
 - [供給からの実BuildとSource閉包資格の食い違い](TEI_GO_BUILD_WITH_SUPPLY_X1_2026-11-07.md)（`cmd/tei`は供給だけでBuildできるが、同じadapterのSource閉包は`rejected`。artifactと資格を別Claimとして扱う。SB-B事前確認 / X1 / #2831）
 - [pwsh不安定時のWSL検証手順](WSL_VERIFICATION_RUNBOOK_2026-11-07.md)（worktreeの`.git`書換え・ログインシェル回避・読み取り専用cacheの後始末・両OS結果の扱い）
+- [DSH外部Harnessのread境界の実測](DSH_H6E1_READ_BOUNDARY_2026-11-07/README.md)（#2515 H6-E1・#2509。read-onlyでもraw配下・.env・cwd外の合成canaryが読め、モデル入力とSession Logの両方へ載ったことを記録。実OS/ACLの拒否試験はNOT RUN）

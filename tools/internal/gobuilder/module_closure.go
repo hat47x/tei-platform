@@ -26,6 +26,7 @@ const (
 	ModuleClosureSupported    = "supported"
 	ModuleClosureExternal     = "external-unresolved"
 	ModuleClosureMissing      = "missing-module"
+	ModuleClosureCorrupt      = "corrupt-supply"
 	ModuleClosureUnknown      = "unknown"
 	moduleClosureSchemaV0     = "tei.reference.go-module-closure-preflight/v0"
 	moduleClosureEvidenceNote = "offline go list -e observation; not a build attempt"
@@ -61,7 +62,7 @@ type FileDigest struct {
 }
 
 // ModuleClosurePreflight is the read-only evidence of what the Go resolver
-// observed for one package path. Classification is one of the four constants
+// observed for one package path. Classification is one of the five constants
 // above; any observation the resolver did not make stays `unknown`.
 type ModuleClosurePreflight struct {
 	SchemaVersion          string              `json:"schemaVersion"`
@@ -234,14 +235,22 @@ func classifyModuleClosure(root, packagePath, goPath, goDigest string, raw []byt
 	return preflight, nil
 }
 
-// classifyModuleRoots applies a fixed precedence: unknown is retained above
-// every other result because an unrecognized failure is not evidence that the
-// target is merely short of module content. Missing module content ranks next,
-// then a selected external module root, then a supported target module.
+// classifyModuleRoots applies a fixed precedence: unknown, then a corrupt
+// supply, then a module supply gap, then a selected external module root, then
+// a supported target module. `unknown` stays above every other result because
+// an unrecognized failure is not evidence that the target is merely short of
+// module content. `corrupt-supply` ranks next: the content was present but did
+// not match its recorded digest, which the caller fixes by replacing the
+// supply, not by editing the Source.
 func classifyModuleRoots(root string, roots []ModuleRoot, unresolved []UnresolvedPackage) (string, string) {
 	for _, pkg := range unresolved {
-		if !isModuleSupplyFailure(pkg.Error) {
+		if !isModuleCorruptionFailure(pkg.Error) && !isModuleSupplyFailure(pkg.Error) {
 			return ModuleClosureUnknown, "unrecognized resolver failure is not classified as a module supply gap: " + pkg.ImportPath
+		}
+	}
+	for _, pkg := range unresolved {
+		if isModuleCorruptionFailure(pkg.Error) {
+			return ModuleClosureCorrupt, "supplied module content does not match its recorded digest: " + pkg.ImportPath + ": " + pkg.Error
 		}
 	}
 	if len(unresolved) > 0 {
@@ -278,6 +287,28 @@ func isModuleSupplyFailure(errText string) bool {
 		"without a go.sum entry",
 		"inconsistent vendoring",
 		"updates to go.mod needed",
+	} {
+		if strings.Contains(lower, marker) {
+			return true
+		}
+	}
+	return false
+}
+
+// isModuleCorruptionFailure recognizes the resolver messages that mean the
+// supplied module content was present but did not match the digest recorded for
+// it. The distinction matters because the caller's next action differs: a
+// supply gap is fixed by supplying content, a corruption by replacing content.
+// Anything not listed here stays `unknown` rather than being guessed.
+func isModuleCorruptionFailure(errText string) bool {
+	lower := strings.ToLower(errText)
+	for _, marker := range []string{
+		"dir has been modified",
+		"checksum mismatch",
+		"zip: checksum error",
+		"flate: corrupt input",
+		"verifying module content",
+		"module content mismatch",
 	} {
 		if strings.Contains(lower, marker) {
 			return true
