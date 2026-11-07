@@ -485,3 +485,60 @@ P0の完了は「全Domainへ一般化」ではなく、**どの根拠が揃え�
 
 **この追補のEvidence ceiling**：GitHub上の既存実装差分、担当PR試験、fixed-head CI結果を比較した計画接続。#3372/#3371/#3366/#3370は確認時点未統合で、新たなGo/PG/CLI/Studio/SHO/外部Harnessの製品横断E2E、Owner正式意味受理は**NOT RUN**。#3372の物理Catalog Test・#3365の限定Scenario Controlを、Diagram/CRUD製品合格やR1 E2に加算しない。
 
+<!-- tei-intake-projection-proof-selection-discovery-20261108 -->
+### 14.16 部分的に分かっている設計を保持する：三視点・CRUDのOpen-world検収
+
+**今回追加する設計判断**：欠けた設計定義があるとき、対象Model全体を空にすることも、欠けた行・関係を「存在しない」と断定することもしない。**観測済みの肯定的事実はSource/Role/Revision付きで保持し、未列挙の関係は用途相対にunknownとする**。一方で、公開・実行・自動編集には必要集合の閉包が成立するまで進めない。これは「すべてを強制Stop」でも「部分知識から全体を推測」でもない。
+
+三視点の[Draft #3263](https://github.com/hat47x/tei-platform/pull/3263)は、Entity 9／Relation 7／Function 4／Business Action 3／Canvas 2・9 occurrenceの合成JSON、既知CRUDのRを残したまま欠けた宣言をunknownにするGo Fixture Auditと破損負例を持つ。これは**正式TEI Sourceから製品Parser/Loader経由でGraph/CRUDを導出した証拠ではない**。当該PRの最新HEADでCIが失敗/取消になっていても、Fixture観測の意味を製品合格へ強めず、最新HEADのJob/統合後mainを別確認する。
+
+| 推論する内容 | 十分な根拠／必要な観測 | 根拠が不足した時の正しい扱い |
+| --- | --- | --- |
+| Data/Function/Businessの既知Node・Relation・Business Action | 受理できた個々のSource宣言と参照、Read mode、Meaning Role/Version | **既知宣言は維持**。未読込Rootや他分野の全宣言を空とみなさない |
+| CRUDのR/C/U/Dセル | 対象FunctionとDataが同一Meaning Contextで宣言したDependency/操作と、その根拠 | 宣言されたRは残す。未列挙セルはunknown。Declared Rを実DB Read Receiptとしない |
+| そのFunctionが特定データを「使わない」 | 対象Functionの必要Dependencyが用途相対に完全、Scope/Revisionと否定根拠が一致 | 0件やempty Tableからnegative membershipを導かない |
+| 1 Subjectを2 Canvasへ表示 | Semantic Subject ID、Canvas内Occurrence ID、View/選択epoch、Source locator | 表示複製はSubject複製でない。片方を閉じてもSource Delete/業務Deleteにならない |
+| 多重Edge／同名Node | Source Relation Identity、向き・端点・Multiplicity、各表示Projectionの対応 | 現製品のEdgeに独立Stable IDが無ければ「ある」と偽装せず不足として報告 |
+| Business Task/Procedureの完了 | 受理済業務条件、必要依存、空集合正当性、独立Receiver/Effect観測 | [main #3353](https://github.com/hat47x/tei-platform/pull/3353)のHandoffFlag修正だけでは実Receiver Receiptにならない |
+
+**P0-Mの最小縦断（#1124/#1125/#1126/#3263）**：既存の実TEI Structured Sourceを一件固定し、(1) Source/Loader実Read → (2) Semantic Identity/Role/Relationの既存Queryで確認 → (3) 同じSourceからData/Function/BusinessとCRUDのread-only headless Projection → (4) 元のSource位置への逆参照 → (5) 意図的な未読込Relation／同名Node／二Canvasを加えた差分検査、の順で進める。段階(3)で製品の対応実装がなければ**first missing edge = Source→Graph/CRUD Projection**として停止し、#3263の合成期待値を実装済みReaderと称さない。既存Fixtureは試験入力候補であり、独立Expectedとしての資格は#2514 Owner判断待ち。
+
+**P0-Cの接合基準（#2586/#3262）**：CRUD RのSourceと実Product `order_entry.recent_orders` Query/SQL/args/Provider Rowsetの実際のSource・Function Context・Scope・Read epochを照合する。Query ID同名、Reference PostgreSQL成功、Graph生成だけでは一件の接合にならない。データの一部のみ分かる場合、局所的な肯定Claimは保持してよいが、全件不存在、全体完了、Write eligibilityは推論しない。
+
+### 14.17 Plugin選択の実測を、Inspector実InvocationとVerified BOMへ過大転記しない
+
+[main #3363](https://github.com/hat47x/tei-platform/pull/3363)は既存`Capability.Supports*`を使い、参照Workspaceの6種類の環境Bindingを一括して評価した。公開Fixtureの内訳は**24 Binding／selected 22／missing 2／ambiguous 0**。missingはdevelopment/productionそれぞれの`editor.database_workbench`だが、現製品Validatorは`editor.sql_analysis`だけ能力適合を照合し、`editor.database_workbench`にはKnown値検査のみを適用している。この**参照調査と製品Validationの検査対象差**を無条件の設定欠陥と判定しない。今回の参照工具は診断のOwnerではない。
+
+この結果は[main #3337](https://github.com/hat47x/tei-platform/pull/3337)/[#3350](https://github.com/hat47x/tei-platform/pull/3350)の「12宣言・未選択6→4」という別の問い（宣言Capabilityがどの環境でも選択されない）と分母が違う。**前者24はBinding数、後者12はCapability宣言数**であり、22 selectedを12/12のProvider Conformanceと合算しない。
+
+P1 Inspectorでまず判別するのは、①Contractと対象Operationの宣言、②同Scopeの実Binding選択（複数候補はambiguous）、③CLIとStudio Hostそれぞれが同じPinned Provider実装に到達したこと、④actual Handler/IOのInvoke/Result/Effect、⑤現GrantとConsumer Disclosure、の別々のWitness。Provider B selectedでもactual Aが呼ばれたら出力が同じでも不適格。選択されないPluginをBuild Artifactから物理除外できたかは#1251/#2831側の別テストである。
+
+#3267のVerified Composition BOMはさらに**組合せのexact tuple**（Contract/Provider/Consumer/Target/Source/Build/Test独立Expected）に束縛する。今回の24/22/2一覧からVerified BOM行を生成しない。最小の2 Provider版×2 Consumer版を同じExpectedで実行し、4件それぞれのPASS/FAIL/SKIP/NOT-RUN・actual Artifact/Runtime Invokeを検収するまではCandidateのままにする。参照選択表が多少拡張されても第二Resolver/Validation Authorityは作らない。
+
+### 14.18 CLI Discoveryの応答型と、設計Contextを読むConsumerの契約を合わせる
+
+[#3347](https://github.com/hat47x/tei-platform/issues/3347)から切られた[Draft #3370](https://github.com/hat47x/tei-platform/pull/3370)は、実`requirements`の`result`が**配列**であることを`commands` Discoveryの任意`resultShape: "array"`として明記する狭い実装案である。未指定のCommandは**object確定ではなくunspecified**として扱う。JSONの外Envelope、Command固有result Shape、実Reply bytes、意味的なRequired Closure、Consumer最後までの受領は互いに独立のClaim。
+
+| 圧力試験 | Consumerがすべきこと | 禁止する判断 |
+| --- | --- | --- |
+| `requirements`で`result: []` | 実Command/mode/Schemaと、検証したDiscovery shapeに従って配列と解釈 | 空配列=世界にRequirementがない、JSON失敗 |
+| `validate.diagnostics`のラップ | 現v0契約の形を保持し、互換変更かv1移行かOwnerが決める | 受信側の独自平坦化で診断件数・出典を破損 |
+| `model catalog`の組込定義混在 | builtin/user-declaredを区別できる既存欄・Source参照を照合 | builtinの件数を業務Model完全性とみなす |
+| `view`のnamespace fingerprint | namespace使用範囲とWorld/Index Scopeを別に記録 | 文字列不一致だけでstale、出力成功だけでWorld一致 |
+| JSON受信の成功と11 CLI Replies | 生byte/取得mode/Response Shape/Requiredの積み重ねを比較 | HTTP/Tool Deliveryが途中切断していてもcomplete |
+
+#3370の`resultShape`は、**実CLI追加Testとexact HEAD CIが成功し、Ownerがv0互換を認めた場合のみ**現行製品契約として扱う。提案中のoptional Hintを、CLI実行やMCP実装、Context完全性の証拠へ昇格しない。#3354の11 Reply/32 Controlsは継続利用できるが、Discoveryが返すShapeとConsumerの実Read/受領にずれがあればQualified Test Generationは保留する。
+
+### 14.19 次の一件に絞った実装・検収引渡し
+
+対象は新規全機能の一括実装ではなく**既存一Structured Functionで、最初に欠ける受渡し辺を計測すること**。着手順は以下とし、既存OwnerのIssue/Fixture/SSOTを利用する。
+
+1. **Context Reader（#3262）**：main #3354の11 Repliesと3 Rule独立Requiredを基点に、#3370の`requirements`配列が実Consumerで誤欠落にならないか（または未統合として保留）を実CLIで再検査。unknownとfalse-missingを別カウント。
+2. **三視点（#3263/#1124）**：同一Sourceの観測済みData/Function/Business/CRUDをRead-onlyで照合。合成Fixtureではなく実Parser/Loader→Graph/CRUDへの未接続Edgeを明示し、Unknown Cellでも既知CRUD Rを失わない。
+3. **実Provider（#2586）**：別Reference SQLではなくProduct `recent_orders`の実Byte/params/Environment/Read Scope→Rowset→Function Contextに到達したかを判別。到達していなければUnsupported/Not-runを返す。
+4. **Plugin Inspector（#1251）**：#3363のBinding参照表の限界を保ったまま、CLI/Studioの同一Provider実Invokeに対するselected B/actual A負例を実行。BOMのverifiedへはまだ昇格しない。
+5. **Cross Consumer（#2516/#2509）**：同Source/Role/World Scopeと同Consumer受領の範囲でP0-Cを構成。MCP入口がない時点ではCLIを検証入口とし、将来MCP/SHO/AI HostへClaimだけ移送しない。
+
+試験結果の対人表示は、**何が分かったか→何が分からないか→使ってよい用途→最初のMissing Edge→次に必要なProbe**の順を推奨する。既知情報を消さず、ただし未資格な使用を進めない。既存の#1180/#2514のScenario/独立Expected、#1163のEvidence、#1119のGateに属し、新統一Test Engine/BOM Authority/Graph Storeは設けない。
+
+**今回のEvidence ceiling**：この§14.16〜14.19はmain #3353/#3354/#3363とOpen Draft #3263/#3370、関連Issueの限定観測に基づくdocs-only追補。合成FixtureのGo Test、実Provider/CLI/Studioの新Call、Cross-view Product E2E、独立Oracle・Owner業務意味の受理は今回NOT RUN。開いているDraftをmerge済みと扱わず、各exact HEADのCIとmainの互換を別検証する。
