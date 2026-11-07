@@ -510,6 +510,13 @@ ChatGPTなどのチャット実行環境・Codex・Claude Code・一般的なIDE
 
 参照事例では、エージェントのセッション・チェックポイント・一般的な検証状態などをTEIの製品状態に追加せずに、この一連の作業が成立するか確認します。専用のエージェント接続部品や独自の変更セットがなくても成立することを、導入しない境界として検証します。
 
+
+### RQ-035 — 異種データソースと構造定義の開発者向け管理（対応候補）
+
+主となるPAS-03では、同じProvider・対象Instance・Scopeを条件として、宣言された構造と実観測の差、Migration計画、許可されたDDLの実適用、適用後の再観測を区別する。PAS-01は観測構造と受理済み論理意味の分離、PAS-02はFunction/Providerのデータ操作、PAS-04はCLI/Studio等のTarget別投影を補う。SQL/NoSQL固有のQueryが失われないこと、部分取得・非開示・権限拒否・実効果不明が成功に丸められないことを独立に受け入れる。TEI標準の職掌にはSchema CRUDを含む一方、クラスタ運用・バックアップなどのDBA業務は標準外とする。
+
+**これは受入シナリオの割当であってPAS-03の実適合ではない。** 実NoSQL/ログ/Cloud、動的Grant、破壊的DDL、実DB変更・再読取、CLI/MCP/Studio同一Consumer、OwnerによるMeaning受理の一連の証拠は未取得。仕様の正本はRQ-035、受入計画のOwnerは[#3270](https://github.com/hat47x/tei-platform/issues/3270)と[データソースワークベンチ設計](design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)を参照する。
+
 ## 11. Requirement → Primary PAS mapping
 
 | Requirement | Primary PAS | Secondary / cross-cutting |
@@ -548,6 +555,7 @@ ChatGPTなどのチャット実行環境・Codex・Claude Code・一般的なIDE
 | RQ-032 | PAS-06 | PAS-01 / PAS-07 |
 | RQ-033 | PAS-06 | PAS-01 |
 | RQ-034 | PAS-06 | PAS-01 |
+| RQ-035 | PAS-03 | PAS-01 / PAS-02 / PAS-04 |
 
 Primaryは最初に具体化する代表的なPASを示し、要求の網羅率を表す点数ではありません。
 
