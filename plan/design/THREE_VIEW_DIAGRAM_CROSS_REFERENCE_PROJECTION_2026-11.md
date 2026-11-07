@@ -93,3 +93,83 @@ Organizationの兼務・異動履歴では、Graphを一つのTreeへ投影す�
 ### 関連Issue（担当の二重化を避ける）
 
 TEI: #1119 #1124 #1125 #1126 #1031 #1131 #1132 #1803 #2497 #997 #2621 #2506 #2507 #3250 / SHO: hat47x/sho-composer#5 #6 #19。
+
+## 9. 2026-11-07 横断成熟化：三つのトポロジーを跨ぐ選択・編集資格
+
+他レーンの[標準表現型トポロジー Draft #3192](https://github.com/hat47x/tei-platform/pull/3192)、[表現間Coordination Draft #3222](https://github.com/hat47x/tei-platform/pull/3222)、[Data/Function/Businessの引継ぎ Draft #3225](https://github.com/hat47x/tei-platform/pull/3225)と本書の**担当範囲を重複させない**。これらのDraftはmain統合・正式契約採用を前提としない。
+
+- **Data topology**: Subject/Relationの意味、Edge ID、Multiplicity、Path occurrence、Business Key/FD、単位・時点・Grain。DB JOIN resultやUI rowをDomain Entityと同定しない。
+- **Presentation topology**: Graph/Tree/Matrix/Flow/Pageの表示配置、group/fold/viewport/legend、表示候補の適合条件。図形座標やページ番号をRelation Identityにしない。
+- **Binding topology**: Function（設計Inspect等のread-only機能も含む）のContext/目的/選択集合とRepresentation Instance/Slotを接続。型としてのGraphは独立に定義できるが、利用中の図面Instanceの意味・操作資格は明示された用途文脈なしに成立したと主張しない。SHOの図面Occurrenceは文書機能に属し、TEI業務Functionと同一の正本にはならない。
+
+**選択同期は更新ではない**。Matrixセル→Function宣言／Typed Edge集合→Data図の辺選択→Source locator、という同期をread-onlyで先に成立させる。次を常に分ける。
+
+| ID/状態 | 例 | 禁止する暗黙推定 |
+| --- | --- | --- |
+| Semantic Subject / Relation / Path occurrence | `data.line`、`rel.order.lines`、明細出現L1 | 同じ見た目・同じLabelなら同一Subject |
+| Projection occurrence | 複数図に現れる1 Subject、同一セルに重なる複数Edge | 1表示行＝1業務対象、セル1つ＝元定義1つ |
+| Function Context / Result Slice | 対象選択母集団、取得Filter、Scope、Closure、Version | 可視2行＝全件2件 |
+| Interaction Selection / Epoch | 現図の選択、古いAsync応答、Zoom/fold | 選択済みなら現在の操作Grantを取得済み |
+| Change Proposal / Action Eligibility | 一意なRelationのoptional変更、明示的なDiff | 図のドラッグ・選択・直接リンク操作が業務Update |
+| Artifact / Effect / Delivery | 図面生成、SHO納品、実Provider receipt | SVG成功＝DB永続化、文書出力成功＝受信者実Read |
+
+このマッピングを#1124のCUI/Studio Consumerで再利用し、選択同期Engine、第二Source Index、独立Action Resolverを新設しない。CUIで提案するJSON shapeは正式ABIではなく既存`model inspect/trace/diff`、Source Locator、#2506 Context、#2497 loss/逆写像へ適合する最小フィールドから導出する。
+
+## 10. Pluginとしての図解・CRUD基盤と互換性BOM
+
+「Core以外はPlugin」の方針を満たし、Studio専用Diagram EngineやSHO専用の第二の意味解釈器を作らない。同じ読み取りProjectionをCLI/Studio/SHOに使わせること自体をdogfoodingとする。
+
+| 役割（候補、正式Plugin名ではない） | 担当 | 境界 |
+| --- | --- | --- |
+| Cross-reference projection | Function/Data/Businessの型付きEdge→CRUD/対応表 | 業務Operation宣言と実Effectを区別。表計算ファイルそのものを正本にしない |
+| Diagram projection | Data/Business/FunctionのSource/Meaning→loss-aware Graph | 構造保存と逆写像は#2497、意味Roleは#2620 |
+| Presentation profile | X-TEA式属性・具体例・N側配置、用途・対象読者別Density | 意味Graph・Accepted Sourceは書換えない |
+| Layout/Renderer adapter | 実際のGraph→SVG/Canvas/PDF向け図 | Target/renderer/asset/font versionを固定し、適合を検査 |
+| Interaction adapter | 選択同期、Source navigation、型付き編集案のPreview | 現在のAuthority/Grantを付与しない。GUI固有意味を増やさない |
+| Document consumer | SHOのMarkdown fenced block/TEI引用/Occurrence/注釈 | 原文編集、固定納品、開示はSHO #4/#5/#6/#19のOwner |
+
+**Verified BOM**は、Plugin Contract/Provider/Renderer/Profile/CLI/Studio/SHO consumer、実行Target、font/locale、Schema・Operator/Generatorの実消費版、およびその組合せで実際に実行されたCase集合とReceiptを区別して表す。単に解決できる依存グラフを「検証済み」としない。複数バージョンの試験では、全組合せ・pairwise・境界組合せ・変更影響に基づく再試験を別にし、未実行組合せを合格扱いしない。Plugin入替時は**意味Projection digest / 表示geometry・asset digest / document review**の失効を独立判断する。Ownerは既存Plugin/Composition/BOM/Scenario側に維持し、本書で第二BOM Resolverや専用CIを設けない。
+
+## 11. 再生成・鮮度・描画規模・読みやすさ
+
+世界の意味が同じでも表示資産が異なる場合と、見た目が同じでもMeaning/Authorityが失効した場合を分離する。
+
+| 変更 | 再確認対象の代表例 | 再受理しないもの |
+| --- | --- | --- |
+| Relation/FD/Function/CRUDのSourceまたはScope変更 | 構造Projection、CRUD、影響解析、図面/SHO引用Review | Layoutの座標だけを業務意味へ昇格しない |
+| 前回は存在しなかったEdge/Functionが追加 | 「該当なし」Matrixセル、閉包/欠落依存、related graph | 空結果を「影響なし」と再利用しない |
+| source A→B→A、Owner受理撤回、Access/Grant変更 | 最新受理・Disclosure/編集資格、旧Selection/Document引用 | byteやdigest復帰で過去Grantを復活させない |
+| Dataset/Snapshot/例値変更 | 例値の表示、図解説明、文書Review | Schema/Key/FDを例値から更新しない |
+| Renderer/layout/font/theme/viewport/locale変更 | geometry、読みやすさ、SVG/PDF/DOCX/alt、出力Review | Meaning revisionへの不必要な受理要求 |
+| Diagram Profile/Projection Rule/Plugin版変更 | 定義済みLoss/Orientation/Cardinality、構造DigestとBOM適合 | Source同一で旧Ruleの資格を引き継がない |
+
+大規模モデルではSubsystem/Role/関心領域での**根拠付き折畳みと段階的展開**、ノード・Edge数/文字数/線交差数/操作応答時間/増分再計算の測定を優先する。Graphの全件読込みや全体再描画を常に要件とせず、取込の部分性と今見えている図の範囲を明示する。増分導出・Cache・MaterializationはDerived Data/世界・モデル・Artifact Revisionの既存資格に沿わせ、表示ArtifactのCache hitから現在の開示・編集許可を推定しない。
+
+人間向けの可読性目標は、読み順・日本語長名・1画面あたりの構造密度・Relationを辿れること・凡例・代替表・印刷を**別の観測項目**として扱う。自動判定（文字の重なり/切れ・関係線の一致）とAIによる説明可能性評価、Ownerの最終意味判断を独立させる。現在実際の読者試験は未実施であり、「高い視認性を実証済み」とは記載しない。
+
+## 12. 新しい実行可能Referenceへの橋渡し（保存済みだが実行なし）
+
+本PRに以下を付ける。入力はTEI正式DSLではなく合成Pressure data、期待は**実装出力から生成していない別JSON**として明示した。両方とも今回AIで草案作成したため、独立Expectedとしての品質検査・Owner受理は**未取得**。文書からモデル解釈や合格を自動認定してはいけない。
+
+- [synthetic pressure input](../../reference/diagram-crossref/pressure-input-v0.json): Entity 9、型付きRelation 7、Function 4、Business Action 3、二つの1:N子集合の2×3 JOIN、同ラベル別ID、同端点の多重有向辺、手作業、外部Functionの宣言不完全、partial／Actual未観測のPressure。
+- [separately specified expected](../../reference/diagram-crossref/expected-v0.json): 宣言CRUD Matrix、Business Action経由のpotential path、manual/跨Subsystem、非単射の書戻し、SHO投影・選択同期・Renderer変更と12個の既知Mutantに期待するFAILを分離。
+
+**受入の段階**:
+
+1. **P-1（即着手）**: CLI/Plugin/Studio現行コードが合成Inputをどの型付きReaderまで読めるか静的Fit/Gapを報告する。JSONの存在はLoader実装・Go Test PASSではない。既存CLIの実出力と必要最小限の差分を固定。
+2. **P0-H**: 当該Inputを既存TEI Source/Accepted Worldで表現できる最小部分に変換し、World/Scope/Source locatorを保持したread-only GraphとMatrixを*実際のCLI*から取得。Oracleは別担当の検証/既知Mutant棄却後に使用。
+3. **P0-E**: 1件の可逆なRelation `rel.line.sku.alt.optional=true→false`（説明用Synthetic）とnon-injective Graph→Tree、曖昧選択、古いRevision、部分取得の拒否を既存Edit/Acceptance経路で実行。必要なOwner判断なしに業務上の変更を採用しない。
+4. **P0-C**: CLI/MCPとStudioを同一Source/Graph/Matrixの異なるConsumerとして、Semantic IDs・coverage・失敗分類・Selection Epochを比較。Provider実Effectが要らないread-only設計検証を先行させ、G1/G2実DB Read/Commit資格と合算しない。
+5. **P1-SHO**: SHOのRaw Markdown/Reader/Writerが成立した後、短い独立テキスト図とTEI参照図を実Renderer/Target別に検証。図面出力のみで文書固定納品の一式実Readを主張しない。
+
+**異質なDogfooding**: 同じGraph/Node/Edge/表の汎用契約を、[HTTP Response Decision Graph #3274](https://github.com/hat47x/tei-platform/issues/3274)のServer/Client decision graphとPlugin依存BOMに適用する。HTTP側のHDG-08・10等が要求する並列辺/Guard/条件/未取得/部分/実Trace区別を本ProjectionへPressureとして戻す。ただしHTTP業務意味/Client Reaction/実Guard合否は#3274とその既存Owner、Plugin BOM資格はComposition/Test Ownerとし、図面PoCから実HTTPを受理しない。
+
+### Referenceの判定票（本PR時点）
+
+| 項目 | 状況 | 留意点 |
+| --- | --- | --- |
+| GitHubへの合成Input・期待JSONの保存 | 保存済み（GitHub内容再読取・JSON構文検査は別） | 新TEI実行機能ではない |
+| 既知Mutantの設計 | 12種類を期待結果として記載 | Mutation runner・独立oracle reviewer未実施 |
+| Headless Graph/CRUD/CUI | NOT RUN | 開発する場合は#1124/CLI既存入口を拡張 |
+| Source Patch/Studio/SHO実Consumer | NOT RUN | Writer/Renderer実装とArtifact資格は別 |
+| Actual Provider/Owner受理/Production | NOT RUN / NOT ACCEPTED | 既存Gate・Authorityを迂回しない |
