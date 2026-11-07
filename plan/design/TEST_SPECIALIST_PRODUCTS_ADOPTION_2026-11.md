@@ -471,3 +471,75 @@ Design情報の完全性は**指定したRequirement/Subject/Relation/Rule/Proce
 **停止条件**：JSON parse／exit0／validate.ok／Catalog非0／1ページ／Tool successを全情報の証拠にする、未解析Source・hidden Relation・非出力Rule・Manual Procedure・未カバーNFRを消す、別版ページを連結、現Grantなしで機密Raw/件数を外部送出、未実装のMCPを実在するToolとしてSkillに記述する、という動作。
 
 **状態**：本節は#3262の受入要件をテスト生成計画の前段として接続した**設計のみ**。実CLI一貫Read・Design Context Query・MCP・Harness全受領・新Test Pattern E2EはNOT RUN、正式なSchema/Owner受理はNOT ACCEPTED。
+
+<!-- tei-test-t0-t1-integrated-dcq-20261107 -->
+## 15. 2026-11-07 更新：T0実証からDesign Context P-1b→AI新規テストT1への一本化
+
+### 15.1 最新の限定実証と未達を改版する
+
+前節までの「新実行NOT RUN」は**本設計文書で追加した機能に対する記載**であり、既存TEI Test Ability T0全体が未実行という意味ではない。実証Ownerのmain統合PR #3264/#3266/#3268と、main push [CI #42359610226](https://github.com/hat47x/tei-platform/actions/runs/42359610226)を現時点の基線とする。
+
+| 検証 | 実際のEvidence | 言える上限 |
+| --- | --- | --- |
+| Design Context P-1a限定 | 同一mainの実TEI binaryからread-only CLI 9種類、Required Source readByLoader、対象欠落/版差/Loader未読負例を照合（#3264） | 一つの公開合成SubjectのSource/Indexと限定Read。Function/Business/Ruleの全閉包とは言えない |
+| Test Ability T0 | 既存Driver Scenarioの生成済みpinned 6 Stepを実CLIで実行、実CLI否定4件＋独立義務否定2件（#3266/#3268） | 既存Scenarioの実到達と既知欠陥への局所判別力。AIの新しいCase生成や製品全域の実証ではない |
+| Code C0 | Go cmd/teiの**選択1テスト**のstatement C0相当10.1% | 対象package/テスト選択の局所的実測。全体C0、業務要件のCoverage、C1を示さない |
+| C1・機能/NFR | C1 unmeasured、要件分母の全件実照合・非機能実測なし | 表・グラフの分岐、業務Rule分岐、HTTP Decision GraphのEdge/GuardもコードC1の代替にならない |
+| Harness H2/H3 | #2509でH3 Skill/参照Tool Readは実測。ただしCatalog 8,192byte切断・56 Call/55 Result、比較適格0/4 | Skill実Loadと実CLI受信は限定事実。完全配送・独立採点・実OS隔離は未成立 |
+
+上記のmain push RunのArtifactには公開合成Evidenceがあるが、保持期間7日のため永続ファイルが常に入手できるとみなさない。Run/CI/Source/Build/Scenario digestの資格を固定して参照し、後のHEADの新規テスト成功へ転用しない。
+
+### 15.2 P-1b Design Context Packet（DCP、仮称）の利用者中心の出力契約
+
+**「設計情報をすべて返す」という絶対保証は採らない**。利用者がFunction・Issue・Ruleのどれを指定したか、用途がテスト生成/仕様確認/影響分析のどれか、依存深さ・Sourceの範囲・時点とGrantを決め、**用途相対のRequired集合**をまず外部に根拠付きで確定する。
+
+1. **Overview（常に小さく）**：Subject/Role、何を得たか、何が足りないか、受理された意味の範囲、現在の資格、必要な次の読取り。読む側が長大なJSONを毎回すべて展開しなくてよい。
+2. **Typed Reference Index**：Data/Function/Business/Rule/Procedure/Query/Context/Scenario/Requirement/Provider/Artifact等の安定Ref、Source locationと版、Relation occurrence、依存の正負、必要な非出力属性、NFR/実C0/C1の観測Refs。これは閲覧や関係探索の**索引**であり、Role/意味やSource本文の完全読込に昇格しない。
+3. **Closure Ledger**：Required、Discovered、Loader-consumed、Parsed occurrence、Accepted/Provisional Binding、Consumer-visible、Delivered/Tool-ACKを**集合として照合**。各差集合をmissing/not-loaded/unparsed/unresolved/permission-denied/unsupported/stale/truncatedで説明。分母が未確定なら割合を算出しない。
+4. **Detail Pages**：必要Refを段階的に詳細取得し、Stable order・Snapshot/World/Index/Meaning/Disclosure binding・Continuation・End marker・Received bytesを検査。同じSource、Grant、Scopeを保証できない複数ページを継ぎ足さない。
+5. **Claim Ceiling**：得られた証拠から許される最強の主張をscope付きで表示。例：syntax valid、indexed source exists、loaded/parsed、test candidate-ready、scenario-executed、observed-effect、business-acceptedを**別条件**とし、局所成功から上位へ自動昇格しない。
+
+**宣言する完全性は直交する**：Required/Source/Meaning/Dependent Result Slice/Consumer Disclosure/Delivery。非公開情報の存在や件数はDisclosureが許す場合だけ示す。全世界の完全性は、許可された局所完全性とは異なる。Reasonがpermission-deniedでも秘密のIdentifier/件数を露出しない。
+
+Responseを読むProduct Skillは、JSONのschemaVersion/modeとstdout JSON、stderr診断、Tool Result受領を別々に検証する。Tool切断なら「次ページあり」だけでなく「このページ自体が完全に届いたか」を検証できなければ停止する。CLI JSON・MCP Tool/Resource・人間向け表/Graphは**同一Queryからの用途別投影**であり、Human表示の省略を新しい意味正本にしない。
+
+### 15.3 一つのT1独立試験へ接続する
+
+**最初の対象を公開合成Workspaceの受注行番号Rule sales.order_line.line_number_positive に固定する**（[#3273](https://github.com/hat47x/tei-platform/pull/3273) §13、TG-01〜06が実行Owner）。既存T0の6 Stepを単にもう一度PASSさせることはT1としない。
+
+| Stage | 必須受渡し | Fail-closed条件 |
+| --- | --- | --- |
+| T1-0 Required | Issue/Ruleの原典・独立な未カバーObligation、合法Baseline、Allowed Source、許可されるDisclosure | AI出力Case数をRequired分母としない。Rule Source未解析ならunknown |
+| T1-1 Discover | 実CLIでSource/Loader/Role/Rule/Operator/World+Index fingerprintの適用範囲を観測し、Design Context Packetへ束縛 | Source Indexedだけ、Builtinのみ、Role未解析をRule資格にしない |
+| T1-2 Recommend | AIには対象Rule・合法Baseline・許可ContextとCoverage gapのみ開示。出典つきPattern候補から**行番号0**の負例を提案 | Independent Expected/Mutant/holdoutをAI入力へ渡さない。数値を意味未受理のRuleから発明しない |
+| T1-3 Prepare | 量・Key・Relation等の合法性を保持した一差分Caseを固定、seed/Generator/Pattern/Source/Scenario revisionを明示 | 行番号0以外の制約も壊すなら違反識別が曖昧として拒否 |
+| T1-4 Execute | #1180の既存Driver Scenario SSOTへreview candidateを接続し、verify→generate→check→新pinned CLI Stepを**実行** | 生成だけ・exit0・旧Scenarioの再実行をT1成果にしない |
+| T1-5 Qualify | AIと独立に事前固定：quantity_positive=satisfied、line_number_positive=not-satisfied、line_number_unique=satisfied。RuleごとのBusiness Result・独立観測・Source/Run/Toolの同一性を比較 | 値が一致しない/必要Obs未取得/Tool Reply切断ならfailまたはunqualified。OracleをActualから修正する場合は新Revと独立再審査 |
+| T1-6 Review | Required Gapを1つ埋めたと根拠付きで報告。Ownerは受理を判断、未受理ならCandidate状態を維持 | AIの案/限定CLI成功をMeaning Acceptanceや全Coverageへ拡張しない |
+
+T1への合流で**コードC0/C1の数値改善を必須成功条件にしない**。対応するコード分岐のInstrumentationが未整備ならC1はunmeasuredとして、モデルRule Branch/義務/独立Expectedによる判別の成立を別に記録。必要に応じて局所C0の変化を副次観測する。性能/可用性/機密開示等のNFRは独立Probe/Threshold/Target・同条件測定が揃うまでunverified。
+
+### 15.4 複合構造の検証をT1の後続Patternに引き渡す
+
+| 成熟した別レーン | Test Patternの選択規則 | 資格上限・Owner |
+| --- | --- | --- |
+| HTTP Response Decision Graph #3274（main設計#3275） | Guard/Node/Edge/Transport/Client Reactionを別Universeにして、422不適合／ACK-loss／再送不能を候補に。Node到達は業務Outcomeと異なる | HDG-01〜12を参照しExpectedをコピーしない。実HTTP/外部HostはNOT RUN |
+| Verified Composition BOM #3267 | Resolved exact tuple 2 Provider版×2 Consumer版、偽互換・actual Loadとselected mismatchをPattern候補に。Pairwiseは未知3-wayをPASSにしない | static matrix/locked candidate ≠ real invoked/verified BOM。Owner #3267/#951/#2514 |
+| Temporal/Derived Trait #3027・標準Data | as-of遡及訂正、Temporal履歴保護、Derived再生成/失効・Materialization削除を区別。Trait Hintを機能実装やRetention保証としない | Semantic Trait/Owner受理と実Provider/ストレージ実観測は別 |
+| 汎用Data Source Workbench #3270（main設計#3276） | 実Provider ReadのScope/Row/Field/Grant→Function Data ContextをP0第一候補とし、DDL AppliedUnknownは独立再読取まで未確定 | Schema CRUD提案≠実適用、DBA運用は標準範囲外、#2586/#2892がOwner |
+| Graph/複数表現 #3236・#2497 | 同Node別Path occurrence/多重Edge、Tree/Chart/MarkdownのLoss・逆Patch不適格、Hidden relationのDisclosure | View同値≠意味可逆・更新権限、独立CX/MP Caseを参照 |
+| Self-Build #2831/#1119 | Required Source/Build Graph/Plugin/Toolchain→実消費Byte・Artifact・Execution Receiptの一致、欠けたBuild依存の負例 | Build成功≠Source closure/Stage収束/実Consumer現行資格 |
+
+**優先順**は「多Domainを一度に実装する」ではなく、T0成功の実証を保持し、#3262 P-1bでT1-0/1の必要Contextを提供→#3273 T1-2〜6で一つの新しいCaseを検証→#2586でProvider Readと意味Contextを一辺接続→専門Plugin Patternを追加する。Graph/BOM/HTTP/Temporalの設計ケース群は並列で資料化してよいが、P0一往復の依存にはしない。
+
+### 15.5 検証結果を自らテストする（Quality of Test Evidence）
+
+- **Denominator honesty**：Required Function/Rule/NFR/C0/C1/Plugin tupleをそれぞれ独立Requiredとして列挙。未実装のFeatureを「コード対象外」だから全Requirement完了としない。
+- **Generation independence**：AIに渡した設計Context、保持したHoldout、事前固定Expected、検証に使ったTool・Consumerを別Witnessにする。自己採点を通さない。
+- **Completeness under delivery failure**：8,192byte切断、欠落1 Tool Reply、旧Source/別Grantの混入、非出力Rule、手作業などを同じ合成Worldで別々に注入。正例・負例・unknownを曖昧に一括PASSしない。
+- **CI trigger quality**：#3268の広いpaths起動は実装済みの安全側基線であり、完全なDependency Graph/選択的再実行の証明ではない。漏れと過剰CI実行・費用を並行測定する。
+- **Minimal instruction quality**：同一Source/Fixture/独立Expectedの長文Promptと「対象Rule/未カバーを埋めて」という短い指示を、提案の正確性・Tool Call/Token・不必要Source閲覧・Disclosure/欠損誤認で比較。H2/H3の既存実験資格を汚染しない別Runにする。
+
+**横断の停止線**：新CLI/MCP名の実在偽装、Design Source未解析なのにcompleteを宣言、古いT0のPASSをT1へ引継ぐ、C0=10.1%を製品Coverageと呼ぶ、C1やNFRの推定合格、未受理Trait/Ruleを業務Meaningへ自動昇格、実Plugin/Provider/Hostを未実行のままqualifiedとする行為。
+
+**実行状態**：本節の追記は、実mainのT0 CIと新しい他レーン設計を参照してT1への接続を**計画化したもの**。上表のT0は当該exact mainで限定実証済み。P-1b統合Query、T1新生成・実Pinned Rule結果、C1、MCP、実DB/Host/HTTP、Owner正式受理は**未実施／未受理**。既存#3273のT1実行Owner、#3262 Design Context Owner、#1180 Scenario SSOT、#2514独立Expectedを重複させない。
