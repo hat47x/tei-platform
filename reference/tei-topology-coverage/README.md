@@ -7,7 +7,7 @@
 既存 `cmd/tei trace` の `tei.cli.trace/v0` と、`operations.TraceWorkspace`のRead-only結果をNodeから検査する。
 
 - **Trace selector**：scope付きSubject／方向／full 1ページ／row cardinality／解決・未解決を明示。0件・不完全ページからRelation不存在を結論しない。
-- **Source navigation**：`source.key`が`trace.subject`に一致。Located時に非空のSource Index referencesがあることだけを確認。別Keyへのlocated誤帰属を拒否。
+- **Source navigation**：`source.key`が`trace.subject`に一致。Located時に非空のSource Index referencesが必要で、各参照の`subject.kind/id`も選択対象に一致することを検査する。Source Indexにはscopeがないため、Sourceから独立のscopeを推測しない。
 - **Workspace identity**（現mainの#3181）：`workspace.manifest.path`と`sha256`、`formatVersion`をLoad時の由来情報として要求。**Manifestが観測されたことはSource完全性、現在のSourceの独立再読取、受理済みモデル、権限、Lockを意味しない**。
 - **Scope由来**：既存`derivedbridge.FromIndex(d,scope)`のscopeはCaller提供。実Workspaceを異なる2つの`-scope`で読み、選択子bound fingerprint・qualified Keyだけ変わることを確認する。Source自身の宣言scopeとは言わない。
 - **直接Edgeの資格**：`Edge.Relation`は種別であり、独立した業務Relation ID／所属Scope／多項Roleではない。`relationEntityIdentity:not-provided`、`multiRoleClosure:unproven`、`absentClaim:unknown`、`authority:read-only-candidate`を維持。
