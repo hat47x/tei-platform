@@ -406,25 +406,19 @@ X-TEAではDBテーブルの1:1・1:NトポロジーをXFxxxの単票/明細機�
 **証拠資格**：ここまでの表現型分類・Function所有規則・具体的Binding契約は**設計案／Owner未受理**。#3145の既存CLI実測と#3120の局所試験は確認できるが、今回のTable/Tree/Chart/Widget比較、`*.tei.md` Reader、Web/Studio GUI、実Provider・Host・Owner Meaning/Business Acceptanceの実行は**NOT RUN**。新UI Core、独自Host、二重意味正本、万能表現型Editorを導入しない。
 
 <!-- tei-triad-binding-topologies-media-axes-20261107 -->
-### 13.5 Data Shape・Representation Instance・Bindingは異なるトポロジーを持つ
+### 13.5 データ構造／Function内表現／Bindingを三つのトポロジーとして接続する
 
-§13の「標準表現型は機能から独立に定義し、具体的な表現InstanceはFunctionのContextへ配置」を、**構造と写像の三層**として検証する。これは[#3179の全体計画](https://github.com/hat47x/tei-platform/pull/3179)が所有する簡潔な導入順と重複させず、#2497のLoss-aware Mapping、#2506のFunction Data Context、#2507のPattern適合に接続する詳細の**受入候補**である。
+**既存Ownerを優先する**：[Draft #3192](https://github.com/hat47x/tei-platform/pull/3192)の`STANDARD_REPRESENTATION_TOPOLOGY_AND_MEDIA_AXES_2026-11.md`は、標準表現型の構造、時間・音声・動画・文書の軸適合、RP-01〜08の独立反例を**詳細設計の正本候補として所有**する。本節ではその反例・Grammar・共通型を再定義せず、Data/Function/Businessの**意味・作用・Consumerへの接点だけ**を記述する。#2497（写像と損失）、#2506（Context）、#2507（Pattern）、#997（Renderer）も各々のOwnerを維持する。
 
-| 層 | 独自に保持する同一性・辺・軸 | 不正な推論 |
+| 層 | 当該Functionで束縛すべきもの | 誤って昇格させないこと |
 | --- | --- | --- |
-| **標準データ構造のトポロジー** | Entity/Edge/Occurrence Identity、Relation向きと多重性、Collection粒度/完全性、単位・時点・座標・文書Section/Paragraph | Dataの1:NからPanel数・Tab順・Workflow Stepを決定 |
-| **Function内の表現トポロジー** | Function/Slot Identity、Panel/Tab/Tree/Graph/Chartの親子・並び、Viewport、Focus/Selection、Dimension/Media Track・ページ | 表示順や集計の棒を元Entity/Business手順の正本とする |
-| **Bindingのトポロジー** | `Context Role/Path/Occurrence/Grain → Slot/Axis/Value/Selection`の明示対応、Source/Mapping Revision、Coverage、単位変換、情報損失、編集逆写像の必要条件 | 同名ラベル・Widget種類一致から自動的に業務属性や実書込先を確定 |
+| **Data topology** | Entity/Edge/OccurrenceのIdentity、関係向き/多重性、時間/単位/CRS、粒度と取得完全性 | JOIN行や画面Slotを元のEntity/Relationと同一視 |
+| **Representation topology** | Function ID内のSlot ID、Tab/Panel/Tree/Chart/Media Track/文書ページの配置・選択・軸 | Slot順序をBusiness ProcedureのStep、表示ページをSource段落、表示GraphをデータGraphの完全表現とみなす |
+| **Binding topology** | `Source Role/Occurrence/Path/Grain → Function Slot/Dimension`を明示対応、Revision/Operator、情報損失/取得Scope、逆写像可否を検査 | 表示可能性から編集・Action可用性/Host Grant/実Effectを推定 |
 
-同じEntityを複数Widgetに見せてもデータ実体は一つ。一つのChart棒が複数Entityを表すなら、棒の編集は対象集合・逆写像Ruleを明示しなければread-only。Tree表示で省かれた第二の親や多重EdgeをDataから消さない。Pane/Tabの付け替えはData Relationの変更でもBusiness Procedureの順序変更でもない。
+**Triad計画の最小の検収境界**：同じH/D1/D2をTable/Tree/Chart/CUIに配置しても、D1実体2件・JOIN投影6行・集計棒1件の粒度とBusiness Claimの必要集合は不変。Tab並べ替えや媒体再生位置の変更はBusiness/Sourceの更新ではない。異なる単位・時間軸・文書ページ・Graph多重親は#3192のRP-01〜08と#2497のLoss条件に委譲する。表現上の編集から一意なData Targetへ逆解決できず、現在Version/Scope/権限も欠けるなら、`ViewChange→Intent`は未資格としてread-onlyに留める（#2500/#2598/#1174）。
 
-**軸と単位の適合は二値の型チェックより広い。**
-- **音声・動画**：録音/撮影の絶対時刻、再生相対時刻、音声Sample/映像Frame、編集Timelineは異なる軸。Sample Rate/Frame Rate、始点/同期根拠、欠測を明示しない「時間軸あり」は同期済みの証明ではない。Scrubで移動した時刻を業務イベント発生時点と同一視しない。
-- **文章とページ**：Paragraph/Sectionは文書のSource構造。Viewport幅で変わるページは表示由来。一方、原本版で確定したページ番号は出典Locationとして意味を持ち得るので、Source Revision/Layout/Locatorとともに扱う。表示上のページ移動はParagraph Identityの変更でも全文取得でもない。
-- **量・空間・Chart**：Quantity PointとDelta、通貨と換算適用時点、座標系CRS・時間帯・Precision・軸の方向をBindingで検査。Number型だけで地図座標・Chart軸を自動一致にしない。Sliderの表示min/max/stepを受理された税率・承認閾値として採用しない。
-- **File風表現**：Treeに「Folder/File」があることはFilesystemの実Path/書込資格を生まない。実アクセスはRoot/Link解決・Provider・Host Grantによって独立に判定する。
-
-**既存独立期待値へ重ねる最小対照**：#2586 H/D1/D2のEntity2・JOIN6・集計1をTable/Chart/Tree/CUIへ投影してもGrainを維持、Graph→Treeで隠れたEdgeを保持、Tab移動でBusiness Stepを変更せず、部分Datasetでも表示はできるが全件不存在Claimは未確定、異なるTimeOrigin/CRS/単位やPage Sourceの混同はunresolved、集計/Timeline/Graphからの書戻しは明示逆写像が無ければ禁止。複数Slotの表示資格と現在のAction Offer／Host実行資格も独立にする。新しいCore Widget Enum・第二Mapping Registry・万能Rendererの採用は提案しない。**音声/映像・文書・UI・実DBの統合試験はNOT RUN**。
+**導入順**：#3192でトポロジー分類と独立Expected→#2586の一Function/ContextでBinding/Lossを観測→#997/#1124でRenderer/Authoring→#2500で逆写像→#1174/#1163でHost/Provider Effectを別検証。新Core Widget enum、別Mapping/Meaning Registry、第二Fixture正本は作らない。媒体間同期・ページ/音声化の製品E2E、正式Owner受理は本PRではNOT RUN。
 
 ### 13.6 実Patternと導出Operationは同じDataを指すだけでは結合しない
 
