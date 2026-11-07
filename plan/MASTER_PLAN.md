@@ -20,6 +20,8 @@
 - `plan/design/ARTIFACT_SET_SCOPE_AND_CONSUMER_READ_EVIDENCE_2026-11.md` ：導出成果物の対象集合・内部整合・公開世代・実Consumer読取を分けて検証する**提案中**の計画（#2482／#2604。製品Gateや受理条件の変更ではない）
 - `plan/workstreams/TRIAD_MEANING_AND_CROSSLANE_ACCEPTANCE_HANDOFF_2026-11.md` ：Data・Function・Businessの意味を保ち、移植・DB移行・組織Relation・Plugin境界における既存Ownerの検収条件を照合する**提案中**の横断引渡し（#1125／#1126／#1129／#2619。新Gate・業務意味の採用ではない）
 
+- `plan/design/HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md` ：Web/Desktop APIの例外結果、Client Reaction、HTTP Decision Graphと表・実行トレースの**提案中**の横断ドッグフーディング計画（[#3274](https://github.com/hat47x/tei-platform/issues/3274)）。既存#1043/#1656/#1158/#1174/#2620/#1180のOwnerを維持し、実装・正式採用・実Target E2Eの成立を意味しない。
+
 ## 現在の主線
 
 第1版の参照アプリケーション`order_entry`を中心に、現在は次の順で進めます。
@@ -193,6 +195,15 @@ PostgreSQLは詳細な検証に用いる提供実装として利用します。
 異なる提供実装は、既存資産との互換性と、特定の提供実装に依存しない境界を検証するために利用します。Oracleは、最初の参照事例の`master_data`が利用する既存資産の一例であり、検証対象をOracleに限定するものではありません。MySQLやSQL Serverなどの追加は、具体的な資産と利用条件が明らかになってから判断します。検証では、物理的な事実の観測・読取り専用の制約・実行環境との接続・実際の読取りを区別します。
 
 Oracleの実環境での検証が未完了であることだけを理由に、固定版での判定段階BのReadyを取り消しません。
+
+### 汎用データソースの開発者向け管理範囲（2026-11-07、#3270）
+
+SQL/NoSQLのデータ、ログファイル、クラウド情報源は別々の製品機能を増やすのでなく、既存Data Operations・Provider・標準データ構造と表示型から構成する。**スキーマ／テーブル／索引／制約の作成・変更・削除をTEI標準に含める**。これらはアプリケーション設計・データ管理の責務であり、DBA/インフラ運用（サーバ、クラスタ、バックアップ、レプリケーション、DBユーザー管理など）は標準外とする。実行時の対象・権限と破壊性は別途検査する。
+
+[汎用データソース・ワークベンチの設計・縦断実証案](design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)は#3270の計画として、①現状契約棚卸し・read-only構造観測、②実DBでのReverse/Schema Plan、③Disposable DBでのCREATE/ALTER/DROPと独立読取り、④ログ/NoSQLの部分取得・時系列・型揺れ、⑤CLI/MCP/Studioの共通投影、⑥組合せBOM/Cache資格の検証を段階化する。#1126・#1803・#2622・既存Schema Diff/Migration・#1641・#3267へ責務を戻し、第二のSchema/Query/Cache/Authority正本を作らない。**既存の判定段階B/Cと主線優先順位は変えず、設計・受入案と実装済みを区別する。**
+
+**対応する製品要求は[RQ-035](../requirements/TEI_PRODUCT_REQUIREMENTS.md#rq-035-一般開発者が異種データソースのデータと構造を管理できること)**。2026-11-07に現行コードを静的確認した結果、`internal/database/provider/provider.go`のDB専用SPI、PostgreSQL `Introspect`、`internal/workbench/database/model.go`の派生投影、`cmd/tei/main.go`のSchema Diff/Migration入口は存在する。一方、異種Sourceを含む実Provider Read→完全性付きFunction Data Context→標準表現型の一往復は未確認であり、#2586と最初の不足一辺を検証する。Schema Historyのunknown→applied誤分類候補は既存#2892へ渡す。Trait・Decision Graph・C0/C1・独立期待値への接続とWB-15〜25は上記設計書の11〜15節に集約し、ここへ第二の契約正本を作らない。静的確認は実Provider/Go/GUIの実行成功を意味しない。**
+
 
 ## 作業領域E：設計の実行と検証
 
@@ -629,6 +640,17 @@ X-TEAのDB 1:1／1:N→XF単票・明細という対応を、**物理テーブ�
 **実測で更新した表示・操作資格**：[SUI Draft #3396](https://github.com/hat47x/sui-sensemaking/pull/3396)の固定HEAD CIでは実Product `buildContextProjection` の非単射（元Source cue／Island所属が異なっても公開投影が同じ）と正の変更対照を**3/3 PASS**で観測した。[main統合済みTEI #3253](https://github.com/hat47x/tei-platform/pull/3253)はこれを研究基線に帰属する。**公開投影が正しく同じことは元Source Identityの一致・逆編集の一意性を証明しない**。一方[main統合済み#3254](https://github.com/hat47x/tei-platform/pull/3254)の操作面drift実測ではモデル属性追加でWorld/Model fingerprintが変わっても5 Operationの`basis`が不変。現在の実Request資格を旧`basis`一致から導かず、必要依存・Source/Version/Selection・実Grantを確認する。影響外と証明できるread-only表示は局所維持を認め、すべての変更で無条件に再取得・拒否する第二Gateを設けない。
 
 **開発上の接続**：[合成写像検収§11](design/COMPOSED_REPRESENTATION_MAPPING_QUALIFICATION_2026-11.md)にSUIの局所PASS、TEIの操作面照合未接続、Product E2未実証を別票で保存。#2497/#2507/#2582/#2598・独立Expected #2514/#1180へ引き渡す。並行しているドメイン意味駆動のテスト生成案[#3258](https://github.com/hat47x/tei-platform/pull/3258)〜[#3261](https://github.com/hat47x/tei-platform/pull/3261)はOwner #1131/#2514との採否・重複統合を待つ**別Draft**であり、#3236の第二データ生成器やScenario正本にはしない。TEI Product二View/実逆Patch/Hostの新試験・Owner受理はNOT RUN。
+
+
+### 2026-11-07 三視点Diagram/CRUDと実Provider Readを並列P0で検収する（main成果との整合）
+
+X-TEA Modeler由来の**Data/Function/Businessの3図とCRUD cross-reference**はTEIモデラーの基幹価値であり、実Providerが先に接続できることを前提にしない。[三視点受入 Draft #3263](https://github.com/hat47x/tei-platform/pull/3263)（M-01〜10）を既存#1124/#1125/#1126/#2497/#1803へ振り分け、**P0-M**として受理済み限定Sourceから3図・CRUD MatrixをHeadless/read-onlyで導き、Source/Role/Relation/Occurrence/Revision・宣言/派生候補/実観測Effectの根拠を同時に返す。Graphの辺・多重性/1:Nの関係Roleを保存し、行列の空欄、未取得/非開示/partialを「CUDなし」の証拠にしない。図座標・Mermaid風文書の見た目を元Source更新としない。可逆な編集はTyped ProposalとOwner Acceptanceを経る。SHOの独立図解は既存SHO #5/#6/#19 Consumerで検収する。
+
+従来の **P0-R**（#2586実Product Function→Query/SQL/Provider→Result Slice→同一ContextのForm/Table）も維持する。**P0-C**では三図/CRUDの`sales.order`と実Read結果を型付きSubject/Source Revision/Scope/Read Attemptで照合するが、Query実行がない`R`宣言を実Reader成功と呼ばず、同IDでもWorkspace/Providerが違えば接合しない。M/R両レーンは共通の出典・欠損診断を利用し、製品Mainの新Schemaや第二Reader/Runnerは立てない。
+
+前段の設計完全性は[#3262](https://github.com/hat47x/tei-platform/issues/3262)が所有。**main統合済み[#3264](https://github.com/hat47x/tei-platform/pull/3264)の実CLI9呼出し・Skill静的14・Required Source Loader確認**と**[#3266](https://github.com/hat47x/tei-platform/pull/3266)/[#3268](https://github.com/hat47x/tei-platform/pull/3268)の既存Scenario 6 step／実CLI負例4＋独立義務2／対象pathのCI再起動**は限定のT0基線であり、Design Contextの全Source Closureや三図/CRUD実生成、MCP/外部Harness完全受領、AIの新Case生成を実証しない。Goの局所Statement Coverage C0相当をC1や機能/NFR Coverageへ昇格させない。未カバーRuleから新Caseを作るT1は[Draft #3273](https://github.com/hat47x/tei-platform/pull/3273)と#1131/#2514/#1180が担当し、第二Oracleを作らない。
+
+[合成写像検収§12](design/COMPOSED_REPRESENTATION_MAPPING_QUALIFICATION_2026-11.md)のDM-01〜08を既存独立Expectedへ引き渡す。**今回の新たな実P0-M Graph/CRUD出力・P0-R Product Provider接続・P0-C Crossview・Studio/SHO・Owner意味受理はNOT RUN**。mainと並行Draftの更新内容を失わないよう、旧ブランチのMaster Planを最新mainに基づき統合し、PRの再比較とCIは別に確認する。
 
 ## 先に固定しないもの
 
