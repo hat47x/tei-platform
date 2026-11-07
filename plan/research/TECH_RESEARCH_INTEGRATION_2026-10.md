@@ -670,12 +670,12 @@ Source Path文字列、Workspace ID、Source byte digest、実物理rootのident
 
 **Buildは並行**：[merged #3091](https://github.com/hat47x/tei-platform/pull/3091)のModule Preflightにより、隔離GOPROXY=offでcmd/teiにpgx/v5、x/text、modernc.org/sqliteの未供給が観測され、Source closure/Artifact生成以前のSB-0bが必要と判明。G4はUNQUALIFIED。[merged #3094](https://github.com/hat47x/tei-platform/pull/3094)の構成Kernel A/B/C局所パケットは同じ固定checkoutで個別に実行されたが、単一Request/Operationに結合していない。artifacts manifest.complete=false／未解決6も記録されている。個別のPASSを製品一気通貫のPASSへ加算しない。
 
-**状態**：既存main局所実装と負例を照合したDocs-only研究差分。新 *.tei.md Reader/Parser、Provider→Completionの実全件証明、固定Studio Host負例の現main再試験、workspace-files旧Consumer互換、Host/Provider/Owner一改訂E2EはNOT RUN。新Core、Runner、Registry、専用TEI Hostを追加せず、#1119の既存Gateを維持する。
+**状態**：既存main局所実装と負例を照合したDocs-only研究差分。新 *.tei.md Reader/Parser、Provider→Completionの実全件証明、旧固定Studio Hostの修復とin-flight fd race、workspace-files旧Consumer互換、Host/Provider/Owner一改訂E2EはNOT RUN。現mainの限定root identity試験は後続#3098で確認済み（§10.22）。新Core、Runner、Registry、専用TEI Hostを追加せず、#1119の既存Gateを維持する。
 
 
 ### 10.24 OKF v0.2：可搬な知識と実行資格を二段階に分離する（2026-11-07、OKF v0.2一次仕様 §3〜§12の再確認）
 
-**出典**：[GoogleCloudPlatform OKF v0.2 SPEC](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md)。OKFはfrontmatter typeを持つportable Markdown Concept形式であり、storage/serving/実Query/実Attester ABI/Receipt wire/sandboxを提供しない。§10.5のDiscover→Load→Parameterize→Execute→Attest→Gateは実装説明（informative）、§12はRuntime protocol/Attester ABI/cache未規定と明記。新TEI Runtimeや独自中央Attestation Engineを採用済みとはみなさない。
+**出典**：[GoogleCloudPlatform OKF v0.2 canonical SPEC](https://github.com/GoogleCloudPlatform/open-knowledge-format/blob/main/SPEC.md)。OKFはfrontmatter typeを持つportable Markdown Concept形式であり、storage/serving/実Query/実Attester ABI/Receipt wire/sandboxを提供しない。§10.5のDiscover→Load→Parameterize→Execute→Attest→Gateは実装説明（informative）、§12はRuntime protocol/Attester ABI/cache未規定と明記。新TEI Runtimeや独自中央Attestation Engineを採用済みとはみなさない。
 
 | OKF v0.2の最小仕様・シグナル | TEI/SHOで扱う段階 | 非推論と既存Owner |
 | --- | --- | --- |
