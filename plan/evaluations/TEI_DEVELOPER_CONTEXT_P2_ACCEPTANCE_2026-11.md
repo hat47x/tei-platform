@@ -474,3 +474,56 @@ P0-M（三視点Diagram/CRUD）とP0-R（Function→Query→実Provider→Contex
 **P2（Model寄与比較）**：D0（決定的な不足診断）／D1（限定実追加Read）／M1（SEI Methodが選択したProbe）を、同じQ・Candidate/Source/Tool・Grant・Disclosure・Read Budget・Blind Expectedで比較。M1が独立に新しく見つけたRequiredの数、誤不存在、不要な再読取、実RunとContextの現在資格、Cost/Latencyを別々に測る。事前にAIへExpected・Reviewer-only rootを与えない。
 
 **採用と保留**：既存TEI #2533がP2評価とCC-17、#3262がDesign Context/P-1b1、#2514が独立Expected/Mutant、#2586が実Function→Query→Provider、SEI #767が問い相対Method、TAI #168/#232が実外部Harnessと開示・隔離を所有。新Test Engine、第二Reader／中央Registry／追加Cognition Host／形式未規定のReceipt ABIを作らない。**TEI本体の共同Snapshot能力・T1-B・実外部Harnessによる正答比較・実Provider・正式Owner意味受理は今回NOT RUN。**
+
+<!-- tei-devctx-cc18-dependency-and-tt56-probe-20261108 -->
+## 20. CC-18：Target/Test不変でも、依存Sourceの変更で旧PASSは使えない（2026-11-08）
+
+### 20.1 他レーンの最新実証を反映した判断
+
+[TEI #3262](https://github.com/hat47x/tei-platform/issues/3262)のTT-56は、既存`context_gate.py`に対する**二つの公開合成方式**が正確なPR HEADのCIで成功した段階である。いずれもDraft/未統合であり、単純な優劣や独立した二つの「必須Rule正本」を作るべきではない。
+
+| 方式と実証 | 長所・確認された限定事実 | 同時採用してはいけない点 |
+| --- | --- | --- |
+| [Draft #3324](https://github.com/hat47x/tei-platform/pull/3324)（HEAD `4f4b114aa826b1a603044c5eef34407f536f186d`、[CI #42385606408](https://github.com/hat47x/tei-platform/actions/runs/42385606408) success） | 一つの独立Required Rule、Relation、`inspect-validation` Canonical属性、Definition Role/Anchor・Loader・FPを比較。従来16＋新8合成負例を拒否 | 1 Ruleのcanonical matchingだけで複数Ruleの全件、Function/Businessの閉包、実Evaluatorの意味受理を主張しない |
+| [Draft #3326](https://github.com/hat47x/tei-platform/pull/3326)（HEAD `c2d2da10cc93022697204e66e83c30248b3810a0`、[CI #42385726717](https://github.com/hat47x/tei-platform/actions/runs/42385726717) success） | 独立必須Validation 3件をCatalog／Loader／既存`source-index`の**indexモード**によるDefinition Referencesと照合。7拒否＋範囲外1非過剰拒否。初回のsubjectモード照合失敗を訂正 | `source-index` subject応答を全Reference Listと誤読しない。3 Ruleが揃ってもFunction→Query→実Providerと全Sourceの共同Snapshotを主張しない |
+
+**収束方針**：既存の一つの`context_gate.py`を拡張するOwnerは#3262。比較の**基準点は#3326の「問合せに必要なRule集合R(Q)と同じSource Index indexモード」「必要範囲外は止めない」**とし、#3324の**Canonical属性・Relation/Source Anchor検査**を、同じQに必要なものに限り取り込むかを差分比較する。Candidateのファイル数やRule数の多さで優越としない。最初に`R(Q)`、有効な`source-index` mode、Scope、`WorkspaceIdentity/WorldFP/ModelRev/SourceIndexFP`、実Source load、Provider未観測を同じ受入票に固定。Index mode混同から生じる`false-missing`と、対象Ruleが実際にRequired集合に対して欠けている`required-missing`、権限不足による`undisclosed`、未取得`unknown`を**同じ`absent`へ潰さない**。両PRのコードをそのまま連結・二重採用しない。
+
+### 20.2 CC-18：依存の変更で同じDiscover Reportが異なる実Go結果を持つ
+
+[Draft #3176](https://github.com/hat47x/tei-platform/pull/3176)の`tools/reference-developer-context/dependency_revision_characterization_test.go`に、`TestDiscoveryProfileCC18UnreportedSourceDependencyChangesTestOutcome`を追加（保存commit `31a317f506a750658efa56710319363aa72e68da`）。
+
+合成Go Moduleの`qualification.go`が`rules.go`の`requiredRule()`を呼び、`qualification_test.go`は`Evaluate()==0`を要求する。**TargetとTestはどのEpochでも一byteも変えない**。Go自身の`go list -json`に`GoFiles=[qualification.go, rules.go]`が現れることを確認する一方、現`Discover`はtarget SHAと`qualification_test.go`候補SHAしか報告しない。
+
+| Epoch | `rules.go` | `Discover`のTarget/候補情報 | `go test -json -count=1`期待 |
+| --- | --- | --- | --- |
+| E0 | `requiredRule()=0` | 基準Report R0 | 実`TestRequiredRule=pass` |
+| E1 | `requiredRule()=1` | **R0と構造・値とも同一** | 実`TestRequiredRule=run+fail` |
+| E2 | `requiredRule()=0`（A→B→A） | **R0と再び同一** | **新しい実run**で`pass` |
+
+従って、**Target SHA／Test SHA／Profile／候補List／Reportが全て同じでも、必要依存の実byteが変わればTest結果が変わる**。CC-17のTest Source byte変更とは独立の負例。これは、TEIのRule/Relation／Function・Queryの見えない依存がChange Impactや実Test Admissionを決め得ることを、より小さいGoパッケージで実証する位置付けである。Goの`GoFiles`一覧は本Packageに限る。Go Toolchain/外部Imports／Plugin／実Target Binary／Provider／実Run Receiptの完全閉包は取得していない。
+
+**試験状態**：本節初版の時点でコードはGitHubへ保存。CC-18のexact Source commitに対する**Focused CIの完了・Jobログを確認するまではRUN成功を主張しない**。成功しても、実製品`Discover`のDependency追跡機能を追加・検証したわけではない。現`Report`の候補ReportがDependency closureを代表しない、という限定反例である。
+
+### 20.3 認知Methodが選ぶべき「次のProbe」を狭く定義する
+
+TEI #3262の不足は単純な`Read more`ではない。**どの問いQの必要集合R(Q)が足りず、取得したTool Replyが実際にどのMode・権限・Source Revisionで得られたか**によって、試すべき次Actionが変わる。
+
+| 初期観測 | D0（新Readなしの正しい診断） | D1（固定手順の追加Read） | M1（SEI Methodの選択効果を検証する候補） |
+| --- | --- | --- | --- |
+| Source IndexがsubjectモードでDefinition一覧を含まない | `unsupported-evidence-for-completeness`。Rule不存在とは答えない | 同じ既存CLIのindexモードで必要Ruleの定義参照を確認 | 誤った`absent`よりindex-mode再Probeを優先できるか |
+| indexモードで必要Rule IDが欠落、Required Source loadが不明 | `required-unresolved`、Source/Scopeが未知 | Workspace Inventory／Loader、Catalog/Inspect／Definition Roleを別取得 | Source未ロード・Rule未定義・非開示を切り分け、1回Budgetで必要なProbeを選べるか |
+| Target/Testが不変で、Testの過去実行だけある | `historical-pass-not-current-qualified` | Go Profile/Dependency Read Setと現Sourceを確認し、必要なら新`go test` Event取得 | 変更が当該Obligationに影響するかを推定し、不要な再実行を抑制できるか |
+| Ruleはあるが実Function→Provider取得・End-to-end Effect未確認 | `bounded-source-known / execution-unknown` | 実Product Tool/Providerの限定ReadとAttempt/Effect/Grantを取得 | Rule Sourceの再確認ではなく実Consumer/Providerの不足にProbeを向けられるか |
+| 全件否定を求めるがTool Replyが途中切断 | `unknown`（存在証人と不存在証明を非対称に扱う） | 正規のPage/終端・Scope/Grantを検証 | 片側の存在Witnessだけで足りる問いに過剰な全件取得を要求しないか |
+
+**比較設計**：公開合成Qを2種（必要Ruleの定義到達、変更された依存に対する実Test資格）、隠した独立Expectedをそれぞれ別に固定。D0、同一決定的予算のD1、SEI M1の提案を**同じ元World/Tool profile／Read Budget=1・2／現在Grant/Disclosure**で評価する。M1がD1と同じProbeだけを返した場合はMethodの純増効果と数えない。出力は正答／必要根拠到達／誤不存在／無駄Read／コストを別表で記録。実Toolを呼べないMethodは`proposed`、Toolを呼んだだけなら`invoked`、本当に必要Sourceが利用可能なら`evidence-received`として区別し、未実行をPASSとしない。
+
+### 20.4 他チャットとの整合と次の受入
+
+- [merged #3299](https://github.com/hat47x/tei-platform/pull/3299)の実Source/Plugin Lock改変後に古いScenarioを拒否する限定Go+CLI試験、[merged #3325](https://github.com/hat47x/tei-platform/pull/3325)のOperation Drift `current/stale/unchecked` を再利用する。ただし**Content PinがAへ戻ったこと**≠古いAttemptの現在Receipt、Operation比較成功≠実Execution Grant。
+- [merged #3304](https://github.com/hat47x/tei-platform/pull/3304)は**既知Ruleの0負例を実CLIで実証したT1-A**であり、AI未知Obligation発見のT1-BはNOT RUN。#3262 P-1b1がRule/Relation/Sourceの必要集合を閉じても、独立ExpectedをModelに見せないTest Generation、実Mutant、C1/NFR、Owner受理は後段。
+- P0-M（三視点/CRUD）のDiagram Edge、P0-R（Function→Query→実Provider→表現）の実行Edge、P0-C（同一Source/Scope/Revision/Consumer）の一致を一つの図で表現しても、それだけで同じTime/GrantのActual Executionとはしない。[TEI #2516](https://github.com/hat47x/tei-platform/issues/2516)／[#2586](https://github.com/hat47x/tei-platform/issues/2586)が現在性・ProviderのOwner。
+- [SEI #767](https://github.com/hat47x/sei-cognition/issues/767)はQごとのUnknown/次Probe選択、[TEI #2533](https://github.com/hat47x/tei-platform/issues/2533)はCC-18とP2比較、[#3262](https://github.com/hat47x/tei-platform/issues/3262)は既存Context Gateへの方式収束、[#2514](https://github.com/hat47x/tei-platform/issues/2514)は独立Expected/Mutantを所有する。
+
+**進行ゲート**：①CC-18の実Go Focused CI・現在HEAD Healthを確認、②TT-56の両Draftに対し同一R(Q)のpositive／true missing／wrong mode／outside-scopeを照合して既存Consumerで採用一案を選ぶ、③製品の実Loader→Parser→Evaluatorへ一Ruleを通す、④外部MethodのTool受領・独立採点を別段階で検収。新しいIndex Reader、Source Parser、Proof Store、中央認知Host、Runtime Authorityを追加しない。実H2/H3適格比較・実OS隔離・実Provider/DB・AI盲検T1-B・Owner Accepted Meaningは今回NOT RUN。
