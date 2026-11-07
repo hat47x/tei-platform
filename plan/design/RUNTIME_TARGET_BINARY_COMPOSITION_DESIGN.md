@@ -1022,3 +1022,51 @@ P3 **段階廃止**：既存*.teiへの新規追加を停止する運用、旧�
 **更新された実装Evidence（2026-11-07）**：[Draft #3031](https://github.com/hat47x/tei-platform/pull/3031)の固定HEAD `63953ccb`では、未対応の*.tei.mdを黙って未読込扱いせずParser未Binding診断で停止する限定Workspace Go試験がCI成功。これは**新形式を安全に拒否できる候補**の実証であり、正式Markdown Reader・Parsed/Qualified/Build-consumed・旧新意味互換の実証ではない。PRはDraft・未merge。移行の受入条件は#2667/#3030へ委譲する。
 
 **状態**：2026-11-06の新Source命名方針を設計へ反映する追補。現mainの旧*.tei読取の静的照合と、別Draft #3031の限定拒否試験のみ確認。*.tei.mdのProduct Parser/Writer/Go Target・外部Consumer E2E・OS/DB・Owner業務意味受理は NOT RUN / NOT PROVEN。新Source Reader/Registry/Host/Policy Engine/第二Acceptanceを作らない。
+
+
+<!-- tei-tool-plugin-principal-separation-20261107 -->
+## 23. Tool／Plugin／実行主体を同一視しない：外部ToolのCapability Grant停止を起点とした受入設計（2026-11-07、方式未採用）
+
+### 23.1 新しい実観測と、Plugin設計に返す問い
+
+[merged #3121](https://github.com/hat47x/tei-platform/pull/3121) は、`reference/workspace`の一時複製へ参照ツール能力 `tei.frozen_world.lineage` の書込み付与を加えて `tei validate` を**実行**し、`PERMISSION_GRANT_CAPABILITY_NOT_RESOLVED` を観測した。現 `internal/validation/validation.go` のEnvironment Grant検証は `resolvedPlugins.Capability(capKind, g.CapabilityID)` でProviderを要求するが、この参照ToolはPlugin Catalogに登録されていない。元Workspaceは変更せず、この経路は**未接続／未利用可能**。故障の観測は事実だが、ToolをPluginとして登録すべきかという設計判断は**未決定**。
+
+必要な区別：**(1)論理Capability Contract＝何ができるか、(2)実装/配布＝Plugin Bundle・独立CLI Tool・Builder・Host内蔵実装等のどれが実現するか、(3)呼出主体・実行Authority＝誰が現在のTenant/Resource/Effectで実行できるか**。Bundle内包、Executable Toolとして存在、契約定義、Plugin Catalogで発見できることは互いの自動証明ではない。Developer/AI向けToolを一律にRuntime Pluginへ変換することも、ToolをPlugin外として権限検証を外すことも要求しない。
+
+### 23.2 最初に比較するのは二つの有限な適用案（採否はOwner留保）
+
+| 観点 | 案A：実Toolを既存Plugin契約として提供 | 案B：Toolを別の実行主体として既存権限契約へ明示接続 |
+| --- | --- | --- |
+| 導入条件 | Contract/Provider identity、Source・実Artifact・Build/Lock、Catalog解決を満たす。Pluginとして要求・配布する実需要を示す | Toolを名指す主体・実装/実Targetを明示し、既存のHost Grant/Consumer境界に委譲する経路が必要。Toolであるだけで許可しない |
+| 現状Fit | 現 `resolvedPlugins.Capability` を流用しやすいが、Runtime Plugin依存・配布コストが増える | 権限契約の対象拡張が必要かもしれない。現行ValidatorはToolを未解決として拒否するため**実装済みと見なさない** |
+| 必須負例 | Tool未選択/未Load、同名Contract権限横取り、署名・Bundle版だけでGrant発行、未使用PluginのGo init混入 | Tool名を文字列で宣言しただけのPermission bypass、他TenantへのGrant漏れ、発行元が名乗っただけの真正性偽装 |
+| 方式の採否 | 外部配布・第三者Conformance・Target選択の利益を実証した場合に検討。全ToolのPlugin化を強制しない | 実Hostが既にTool Principal/Delegationを提供する場合を比較。第二のAuthority Registryや万能Tool Grant正本は先行導入しない |
+
+選定の前提は `Source/Contract/selected implementation/actual binary or process/actual invocation/current Host or Provider Grant` の同一対象・版・Scope束縛。案A/Bとも契約の発行者/namespace Authority（#951）と、実Grantのissuer/権限（#1174および既存Access Owner）を混同しない。文字列`issuedBy`/`ResolvedBy`やArtifact digestは、真正な発行者・OS隔離・現在許可の代替ではない（merged #3035/#3075/#3072）。
+
+### 23.3 HookとCommandで実装済みになった境界を再利用し、未配線を保留する
+
+[merged #3077](https://github.com/hat47x/tei-platform/pull/3077)の `hook.Declared` は、宣言外Capability呼出しを`HOOK_UNDECLARED_CALL`で拒否し、宣言内だが実装不在の`HOOK_IMPLEMENTATION_UNAVAILABLE`と区別する。[merged #3108](https://github.com/hat47x/tei-platform/pull/3108)の `hook.DeclaredCommand` は、Patternが宣言した能力とCommand境界へ委譲する限定Adapterを追加した。ただし**hook.Runnerからの実配線・実Host Grant・実Providerは未実証**。したがって「Hook Usesに宣言済み」「Patternに存在」「Command Boundで受け取った」「現在Grantがある」「実実装が呼ばれた」を一つのProvider Enabledへ畳まない。
+
+HookもToolも「声明されたUses/Target Capabilityが存在する」ことから、それを発行した主体の許可を推論しない。最初は同一Hook・同一Argumentの正負一因子比較で、未宣言→拒否、宣言済みだがImplementation不在→unavailable、宣言済み・Implementationあり・Current Grant欠落→Command/Host拒否、完全Binding・必要Grantあり→該当実Targetへの限定到達を別々に観測する。A/B方式で実Effectが発生する場合だけOperation Identity/Receiptを追加する（#1016/#951/#1174）。
+
+### 23.4 Persistence/Receiptの「観測済み」を業務Row現在性と混ぜない
+
+[merged #3124](https://github.com/hat47x/tei-platform/pull/3124)ではCommandが `PersistenceState=not-applicable/not-observed/observed` と `persisted` を区別する。`PersistenceObserver`はExecutor Resultをそのまま返せず、Commit後の読取りを受ける。[merged #3127](https://github.com/hat47x/tei-platform/pull/3127)のeffectcommit Adapterは`Lookup`指定時に同一OperationID等でReceiptを独立Lookupし、`StatusReplayed`を観測成功とする。ただし**その成功は同じDB境界のReceipt存在を示すのであり、業務Resourceの現在行・他Providerが返す最終値・ConsumerへのDisclosure確認ではない**。実PostgreSQL Lookup結合試験も未実施。対照として「Receiptあるが対象行は変更済み」「Receipt Lookup失敗」「Commit ACK不明／再送拒否」「参照実行でDurable Store不適用」を別の期待値として保持する。
+
+Tool/Pluginを区別しても、現在Grantの実効、Commit境界、Receipt Lookup、Resource独立Read、外部Consumer受領を一致させる最終検査は共通の既存#1174/#2516/#1163へ委譲する。Receipt Lookup成功をOwner業務意味受理や「処理対象集合の完全性」へ昇格しない（#3051/#2514）。
+
+### 23.5 重複しない最小負例・実施順
+
+| 対照 | 独立検証基準 | 担当と証拠の上限 |
+| --- | --- | --- |
+| ToolをEnvironment Grantで指すがCatalogで未解決 | `PERMISSION_GRANT_CAPABILITY_NOT_RESOLVED`で停止。無音で別Providerへ切替・単にTool名で許可しない | #3121現物の既観測。今後の設計案A/B共通負例（#951/#1016） |
+| 同じCapabilityを別Tenant/主体が持つ | 契約一致だけでGrantを横流ししない。current issuer/subject/Resource/Scopeを実比較 | #2903/#1174。実同Host多Tenant E2EはNOT RUN |
+| Hookが宣言外Call／実装欠落／Grant欠落／許可済みCall | 「拒否理由」「Provider未導入」「Authority拒否」「実Call」の四ケースを別結果とする | #3077/#3108の局所Go testは限定Fit、Hook Runner/本番HostはNOT RUN |
+| Tool/PluginのSourceは管理済みでもLoader未読込 | `workspace-files.readByLoader`（merged #3078）とSyntax/Meaning/Build memberを分ける。未知Source root/モデル0件warningを全件適合としない | #2823/#3031/#3081。新*.tei.md実ReaderはNOT RUN |
+| 純粋D1 Provider B選択、実Call A | 同じ23独立期待値の一致ではPASSとせず、Bの実Link/InvokeをTarget相対に照合 | #2885 §18.13/#1251。D1実静的GoはNOT RUN |
+| Receipt Lookup `replayed` だがResource現在値は未読取 | Receipt観測までのClaimと資源状態確認を別表示 | #3124/#3127/#1174。実PG Receipt Lookup/資源独立ReadはNOT RUN |
+
+**着手順**：(P0) #3121の実拒否を再現可能な既存Evidenceとして固定し、案A/Bの必要Actor/Contract/Grant/ArtifactのFit/Gapを比較。(P1) #3077/#3108のHook→Command局所負例を既存実装へ引継ぎ、必要な実行主体/Host Grantの観測点を特定。(P2) 実Consumerの要件が明らかな方だけ実Targetに接続し、ReceiptとResource Readは別の観測票にする。これらと独立して**D1静的Provider実Link/Invokeの最短試験を優先**できる（新*.tei.md Reader、DB/Host Effect、Tool権限方式の決定をHard dependencyにしない）。
+
+**資格**：現物のTool Grant拒否、mainのHook/Command/Persistence/Receipt・Source列挙の限定Go実装を確認して設計へ接合した。本節はDocs-onlyで、案A/Bの正式採否、Tool権限新実装、Hook Runner結合、D1静的Build、実DB Resource独立Read・Owner意味受理は**NOT RUN / NOT ACCEPTED**。新Registry/独立Grant正本/万能Plugin Host/Tool API Schemaを導入しない。
