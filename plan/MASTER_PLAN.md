@@ -626,6 +626,10 @@ X-TEAのDB 1:1／1:N→XF単票・明細という対応を、**物理テーブ�
 
 既存#2586（Product E2 Read）、#2387/#2862（SQL Source/Variant）、#2611（Provider binding）、#2506/#2507（Context→表現）、#2514/#1180（独立Expected/Scenario）の担当へ、QS-01〜06を追加の一因子差分として引き継ぐ。これは**出典に基づく設計更新のみ**であり、QSの新Go/実Provider/二View E2、Owner意味受理はNOT RUN。新SQL Executor/Reader/Registry/Gateは作らない。
 
+**実測で更新した表示・操作資格**：[SUI Draft #3396](https://github.com/hat47x/sui-sensemaking/pull/3396)の固定HEAD CIでは実Product `buildContextProjection` の非単射（元Source cue／Island所属が異なっても公開投影が同じ）と正の変更対照を**3/3 PASS**で観測した。[main統合済みTEI #3253](https://github.com/hat47x/tei-platform/pull/3253)はこれを研究基線に帰属する。**公開投影が正しく同じことは元Source Identityの一致・逆編集の一意性を証明しない**。一方[main統合済み#3254](https://github.com/hat47x/tei-platform/pull/3254)の操作面drift実測ではモデル属性追加でWorld/Model fingerprintが変わっても5 Operationの`basis`が不変。現在の実Request資格を旧`basis`一致から導かず、必要依存・Source/Version/Selection・実Grantを確認する。影響外と証明できるread-only表示は局所維持を認め、すべての変更で無条件に再取得・拒否する第二Gateを設けない。
+
+**開発上の接続**：[合成写像検収§11](design/COMPOSED_REPRESENTATION_MAPPING_QUALIFICATION_2026-11.md)にSUIの局所PASS、TEIの操作面照合未接続、Product E2未実証を別票で保存。#2497/#2507/#2582/#2598・独立Expected #2514/#1180へ引き渡す。並行しているドメイン意味駆動のテスト生成案[#3258](https://github.com/hat47x/tei-platform/pull/3258)〜[#3261](https://github.com/hat47x/tei-platform/pull/3261)はOwner #1131/#2514との採否・重複統合を待つ**別Draft**であり、#3236の第二データ生成器やScenario正本にはしない。TEI Product二View/実逆Patch/Hostの新試験・Owner受理はNOT RUN。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
