@@ -434,7 +434,7 @@ P0-M（三視点Diagram/CRUD）とP0-R（Function→Query→実Provider→Contex
 
 [統合済#3284](https://github.com/hat47x/tei-platform/pull/3284)と[統合済#3296](https://github.com/hat47x/tei-platform/pull/3296)により、既存`tools/reference-issue-test-ability/context_gate.py`は、実TEI read-only CLIの9応答を使った範囲限定評価と、**合成16種**の欠損・重複・切断等を検出する。依然`boundedReference=partial`／`qualifiedTestGeneration=false`であり、**受領済みJSONの一時コピーへの破損注入**を実外部Harnessからの完全受領に読み替えない。
 
-[統合済#3304](https://github.com/hat47x/tei-platform/pull/3304)は、既知の「line_number_positive」に対する行番号0負例を固定Go Scenario経由の実TEI CLIで検出した**T1-A**。未知のRule/必要ObligationをAIが新たに見つける**T1-B**とは異なる。[Draft #3324](https://github.com/hat47x/tei-platform/pull/3324)と[Draft #3326](https://github.com/hat47x/tei-platform/pull/3326)は、同じWorld Fingerprintの下でRequired Rule/Relation欠落と`source-index` mode違いによるFalse Missingを切り分ける別案であり、どちらも現時点で未統合。ここで第二Source Index Readerや第二Readiness Gateを作らない。
+[統合済#3304](https://github.com/hat47x/tei-platform/pull/3304)は、既知の「line_number_positive」に対する行番号0負例を固定Go Scenario経由の実TEI CLIで検出した**T1-A**。未知のRule/必要ObligationをAIが新たに見つける**T1-B**とは異なる。[旧Draft #3324・closed/unmerged](https://github.com/hat47x/tei-platform/pull/3324)と[旧Draft #3326・closed/unmerged](https://github.com/hat47x/tei-platform/pull/3326)は、同じWorld Fingerprintの下でRequired Rule/Relation欠落と`source-index` mode違いによるFalse Missingを切り分ける別案であり、どちらも現時点で未統合。ここで第二Source Index Readerや第二Readiness Gateを作らない。
 
 [Draft #3303](https://github.com/hat47x/tei-platform/pull/3303)の三視点Data/Function/Business・CRUDと実Product Contextの結合は未実施で、DiagramにないEdge／表にないRuleを「実モデルでも不存在」としない。Methodが行えるのは**取得・現在性・開示資格の不足を分けて、次に確認すべき実Tool/Sourceを提案すること**であり、未取得Sourceの意味を機械的に受理することではない。
 
@@ -480,14 +480,14 @@ P0-M（三視点Diagram/CRUD）とP0-R（Function→Query→実Provider→Contex
 
 ### 20.1 他レーンの最新実証を反映した判断
 
-[TEI #3262](https://github.com/hat47x/tei-platform/issues/3262)のTT-56は、既存`context_gate.py`に対する**二つの公開合成方式**が正確なPR HEADのCIで成功した段階である。いずれもDraft/未統合であり、単純な優劣や独立した二つの「必須Rule正本」を作るべきではない。
+[TEI #3262](https://github.com/hat47x/tei-platform/issues/3262)のTT-56は、二つの公開合成方式の実CI成功を受け、**[PR #3354](https://github.com/hat47x/tei-platform/pull/3354)で単一`context_gate.py`へ統合済み**である。以下の比較表は当時の設計選択の記録であり、#3324/#3326は現在どちらもclosed/unmerged。採用済みの二つの必須Rule正本は存在しない。
 
 | 方式と実証 | 長所・確認された限定事実 | 同時採用してはいけない点 |
 | --- | --- | --- |
-| [Draft #3324](https://github.com/hat47x/tei-platform/pull/3324)（HEAD `4f4b114aa826b1a603044c5eef34407f536f186d`、[CI #42385606408](https://github.com/hat47x/tei-platform/actions/runs/42385606408) success） | 一つの独立Required Rule、Relation、`inspect-validation` Canonical属性、Definition Role/Anchor・Loader・FPを比較。従来16＋新8合成負例を拒否 | 1 Ruleのcanonical matchingだけで複数Ruleの全件、Function/Businessの閉包、実Evaluatorの意味受理を主張しない |
-| [Draft #3326](https://github.com/hat47x/tei-platform/pull/3326)（HEAD `c2d2da10cc93022697204e66e83c30248b3810a0`、[CI #42385726717](https://github.com/hat47x/tei-platform/actions/runs/42385726717) success） | 独立必須Validation 3件をCatalog／Loader／既存`source-index`の**indexモード**によるDefinition Referencesと照合。7拒否＋範囲外1非過剰拒否。初回のsubjectモード照合失敗を訂正 | `source-index` subject応答を全Reference Listと誤読しない。3 Ruleが揃ってもFunction→Query→実Providerと全Sourceの共同Snapshotを主張しない |
+| [旧Draft #3324・closed/unmerged](https://github.com/hat47x/tei-platform/pull/3324)（HEAD `4f4b114aa826b1a603044c5eef34407f536f186d`、[CI #42385606408](https://github.com/hat47x/tei-platform/actions/runs/42385606408) success） | 一つの独立Required Rule、Relation、`inspect-validation` Canonical属性、Definition Role/Anchor・Loader・FPを比較。従来16＋新8合成負例を拒否 | 1 Ruleのcanonical matchingだけで複数Ruleの全件、Function/Businessの閉包、実Evaluatorの意味受理を主張しない |
+| [旧Draft #3326・closed/unmerged](https://github.com/hat47x/tei-platform/pull/3326)（HEAD `c2d2da10cc93022697204e66e83c30248b3810a0`、[CI #42385726717](https://github.com/hat47x/tei-platform/actions/runs/42385726717) success） | 独立必須Validation 3件をCatalog／Loader／既存`source-index`の**indexモード**によるDefinition Referencesと照合。7拒否＋範囲外1非過剰拒否。初回のsubjectモード照合失敗を訂正 | `source-index` subject応答を全Reference Listと誤読しない。3 Ruleが揃ってもFunction→Query→実Providerと全Sourceの共同Snapshotを主張しない |
 
-**収束方針**：既存の一つの`context_gate.py`を拡張するOwnerは#3262。比較の**基準点は#3326の「問合せに必要なRule集合R(Q)と同じSource Index indexモード」「必要範囲外は止めない」**とし、#3324の**Canonical属性・Relation/Source Anchor検査**を、同じQに必要なものに限り取り込むかを差分比較する。Candidateのファイル数やRule数の多さで優越としない。最初に`R(Q)`、有効な`source-index` mode、Scope、`WorkspaceIdentity/WorldFP/ModelRev/SourceIndexFP`、実Source load、Provider未観測を同じ受入票に固定。Index mode混同から生じる`false-missing`と、対象Ruleが実際にRequired集合に対して欠けている`required-missing`、権限不足による`undisclosed`、未取得`unknown`を**同じ`absent`へ潰さない**。両PRのコードをそのまま連結・二重採用しない。
+**収束判断（#3354で実施済み）**：既存の一つの`context_gate.py`を拡張するOwnerは#3262。比較の**基準点は#3326の「問合せに必要なRule集合R(Q)と同じSource Index indexモード」「必要範囲外は止めない」**とし、#3324の**Canonical属性・Relation/Source Anchor検査**を、同じQに必要なものに限り取り込むかを差分比較する。Candidateのファイル数やRule数の多さで優越としない。最初に`R(Q)`、有効な`source-index` mode、Scope、`WorkspaceIdentity/WorldFP/ModelRev/SourceIndexFP`、実Source load、Provider未観測を同じ受入票に固定。Index mode混同から生じる`false-missing`と、対象Ruleが実際にRequired集合に対して欠けている`required-missing`、権限不足による`undisclosed`、未取得`unknown`を**同じ`absent`へ潰さない**。両PRのコードをそのまま連結・二重採用しない。
 
 ### 20.2 CC-18：依存の変更で同じDiscover Reportが異なる実Go結果を持つ
 
@@ -526,4 +526,57 @@ TEI #3262の不足は単純な`Read more`ではない。**どの問いQの必要
 - P0-M（三視点/CRUD）のDiagram Edge、P0-R（Function→Query→実Provider→表現）の実行Edge、P0-C（同一Source/Scope/Revision/Consumer）の一致を一つの図で表現しても、それだけで同じTime/GrantのActual Executionとはしない。[TEI #2516](https://github.com/hat47x/tei-platform/issues/2516)／[#2586](https://github.com/hat47x/tei-platform/issues/2586)が現在性・ProviderのOwner。
 - [SEI #767](https://github.com/hat47x/sei-cognition/issues/767)はQごとのUnknown/次Probe選択、[TEI #2533](https://github.com/hat47x/tei-platform/issues/2533)はCC-18とP2比較、[#3262](https://github.com/hat47x/tei-platform/issues/3262)は既存Context Gateへの方式収束、[#2514](https://github.com/hat47x/tei-platform/issues/2514)は独立Expected/Mutantを所有する。
 
-**進行ゲート**：①CC-18の実Go Focused CIは上記exact Test Source commitで検証済み。後続HEADのHealthを別検収、②TT-56の両Draftに対し同一R(Q)のpositive／true missing／wrong mode／outside-scopeを照合して既存Consumerで採用一案を選ぶ、③製品の実Loader→Parser→Evaluatorへ一Ruleを通す、④外部MethodのTool受領・独立採点を別段階で検収。新しいIndex Reader、Source Parser、Proof Store、中央認知Host、Runtime Authorityを追加しない。実H2/H3適格比較・実OS隔離・実Provider/DB・AI盲検T1-B・Owner Accepted Meaningは今回NOT RUN。
+**進行ゲート**：①CC-18の実Go Focused CIは上記exact Test Source commitで検証済み。後続HEADのHealthを別検収、②TT-56は#3354で一本化済み。次に実11 CLI/32 Controlsの限定結果から、必要な一Functionの`R(Q)`を独立に定めて実Reader/Parser/Evaluatorを照合する、③製品の実Loader→Parser→Evaluatorへ一Ruleを通す、④外部MethodのTool受領・独立採点を別段階で検収。新しいIndex Reader、Source Parser、Proof Store、中央認知Host、Runtime Authorityを追加しない。実H2/H3適格比較・実OS隔離・実Provider/DB・AI盲検T1-B・Owner Accepted Meaningは今回NOT RUN。
+
+<!-- tei-devctx-q-relative-admission-maturity-20261108 -->
+## 21. P2継続：実Context・局所Test Witness・問合せ相対の不足を単一Evidenceへ誤集約しない（2026-11-08）
+
+### 21.1 横断コード・CIの最新到達点（各Ownerの正本を保持）
+
+| Owner／確定したSource | この計画が受け取る**実測済みの狭い事実** | 境界・まだ証明しないこと |
+| --- | --- | --- |
+| [TEI merged #3354](https://github.com/hat47x/tei-platform/pull/3354)／[CI #42391707962](https://github.com/hat47x/tei-platform/actions/runs/42391707962) | 既存`tools/reference-issue-test-ability/context_gate.py`にTT-56二案を集約。**11種の実TEI CLI read-only Reply**と**32個の合成Consumer Controls**を同じ専用CIで検証（7+2+7+8+8）。#3324/#3326はclosed/unmerged | 32は製品コードMutant数・全RuleのIndependent Expected数ではない。連続11 Readは原子的Snapshotでもない。`boundedReference=partial`／`qualifiedTestGeneration=false`を維持 |
+| [TEI Draft #3365](https://github.com/hat47x/tei-platform/pull/3365)／[CI #42394673357](https://github.com/hat47x/tei-platform/actions/runs/42394673357) | 既存`probe.py`にread-only `scoped_step_coverage`を追加。**実Pinned Scenario 6 Step**を基に、受領目録をコピーして7対照（TT-105/106、終端欠落/偽終端、Source mismatch、重複／未検証Receipt）を判別。exact HEADの専用dogfood/Health/脆弱性CIはcompleted/success | `end_received`は試験用受領目録への**呼出側提供**。実H2/H3 Toolストリームのend-to-end終端証明ではない。6 Step局所`localObserved`を全Product Coverageや不存在へ昇格しない。Draft/未merge |
+| [TEI Draft #3176](https://github.com/hat47x/tei-platform/pull/3176)／[CI #42392143845](https://github.com/hat47x/tei-platform/actions/runs/42392143845) | CC-12〜18のGo構成／Source Cohort／Path-Open／実Go Test Event／Test Code・Dependency ABAの限定Go試験と、前HEADの専用/Health/依存CI3件success | 自作合成Go Module。TEI Product Readerや実AI Methodを実行していない。Draft/未merge。現Plan改訂を含む**新HEADのCIは別検収** |
+| [TEI merged #3304](https://github.com/hat47x/tei-platform/pull/3304)／[CI #42378033965](https://github.com/hat47x/tei-platform/actions/runs/42378033965) | 事前に人が定めた既知`line_number=0`条件の実Pinned CLI判別＝**T1-A** | 問いから未知Ruleを生成AIが発見した**T1-B**とは分離 |
+| [TEI Draft #3356](https://github.com/hat47x/tei-platform/pull/3356) | 現CLIのread-only調査・Command Catalog（19コマンド）とMCP入口を照合し、**MCP実行入口を確認できない**ことを記録 | MCPを実Callした観測はNOT RUN。TEI独自MCPが必須というArchitecture変更を要求しない。**CLI/Tool wrapperを実調査経路の基本**とする |
+| [TEI merged #3333](https://github.com/hat47x/tei-platform/pull/3333) | `tei commands`の`view.writeFlags`で`-operation-log`/`-lifecycle-state`の名指し書込を機械可読にした | コマンドの`effect:read-only`はOS全域無書込・全送出拒否を保証しない。実argv／Host・Network観測は別資格 |
+
+### 21.2 P2の中心判断：十分性は単一の総合PASSでなく、Q相対の「証拠束」で判定
+
+`Q`（実際の問い・主張）の成立を評価するとき、下の各行について**観測／未観測／拒否**を独立に持つ。これはこの評価計画の記入欄であって、TEI Coreに新しい共通Type/Proof Engineを実装する提案ではない。
+
+| 論点 | 最小Witness | Witnessが無いとき言ってはいけないこと |
+| --- | --- | --- |
+| **S：Source/Identity** | Workspace manifest、Source path/role、Revision/実Read bytesと必要R(Q)の一致。SourceとReferenceの移動、A→B→Aに区別が要る | Fingerprint一致＝同一Qの必要依存全件一致 |
+| **T：Transport/Completeness** | 実Tool Request/Resultの対応、byte/page・終端・切断とConsumerの実受領 | JSON valid／終端をFixtureがtrueに設定＝外部受領完了 |
+| **R：Required/Meaning** | Qに必要なData/Function/Business/Rule/Relationと、独立に固定したRequired集合。Loader/Parser/Canonical/非出力Predicateを区別 | Catalog上の未表示や図/CRUD上の空欄＝要素不存在・Meaning受理 |
+| **X：Test/Execution** | Go Profile、実選択Test/Source依存、実Binary/Target、個別named Event、Scenario Version、Expected、現Attempt | `go test` exit0／旧Receipt／テスト名一致＝現在の機能/NFRカバレッジ |
+| **A：Authority/Disclosure/Effect** | Consumerの用途、現在Host Grant・実argv/書込先、実Provider/OS/Egress・公開可能なResult | `read-only`宣言／Skill Load／実CLI成功＝無副作用／現在認可／外部開示適格 |
+
+**非対称性**：存在については、Qに適合する単一の現在Source Witnessで足りる場合がある。しかし「不存在」「未テスト」「必要なRuleがない」といった全称否定は、Q相対の対象Universe・Mode・実Read範囲・終端・権限・必要依存の閉包が別途必要。**`notObserved`を`untestedConfirmed`へ置換しない**。同時に、別の既確認Stepの`localObserved`を、不足した他Stepのせいで無条件に破棄しない。現在性やSource mismatchで当該Receipt自体が不適格になった場合に限ってその局所Witnessも無資格化する。
+
+### 21.3 D0→D1→M1の実比較を「次Probeの識別能力」に絞る
+
+現在の[SEI #767](https://github.com/hat47x/sei-cognition/issues/767)には、公開合成の不足根拠・残差と次Probe候補がある。しかし**実SEI Methodによる新CLI Tool受領→独立Expected比較**は未実施。実験前に次を固定し、探索段階と採点段階を分ける。
+
+| 固定ケースとQ | 参加者へ公開する現在の状況 | 隠して独立に固定する真相／採点上の差 |
+| --- | --- | --- |
+| **E1: Rule absent?** | subjectモードIndexから見えない必要Rule、Catalog/Source read可否未確定 | 実Ruleは存在。最適追加Probeは同CLIのindexモードを再取得。誤`absent`は失点。indexモードの結果受領はTool evidenceで確認 |
+| **E2: Required missing?** | Qの独立Required 3 Rule中、部分Replyで1 Ruleだけ未表示 | (a)正しいindex-mode/必要Scopeでも実欠落、(b)単に一時Replyが切断、を双子Fixtureにする。M1はabsenceとunknownを識別する必要条件を問えるか |
+| **E3: Test passed?** | Target/Test/report/Go Profileは同一、過去`TestRequiredRule` PASS | 隠した変更が`rules.go`にあり、現在の実RunはFAIL（CC-18）。Go selected source／依存読取または実named Eventが必要 |
+| **E4: Is step untested?** | 6-step Pinned Scenarioの部分受領目録で対象Stepは`notObserved`、他Stepはverified | 実Scenario全件目録の有無を別に確認。`untestedConfirmed`と断定しないが、既観測Stepの局所肯定を維持（TT-105/106） |
+| **E5: Did read-only guarantee no writes?** | `tei commands`で`view`の旧`effect`表示と`writeFlags`を閲覧可能 | 実argvのflagと出力先を照合する必要がある。Flag以外のOS/Network効果やCurrent Grantは別。Skill静的記述だけで採点しない |
+
+**比較条件**：D0=同じ初期Tool Resultだけで診断する決定的Baseline、D1=同じ許可済みCLIから固定優先順で1追加Probe、M1=SEI Methodによる1追加Probeの提案。Budget 1/2は別実験。全員が同じ`Q`、公開Source/Revision、Tool allowlist/mode、Grant/Disclosure、初期Result byte、受取可能な範囲を持つ。Hidden R(Q)・独立Expected・negative pairの区別と評価者専用SourceはParticipantから物理的に分離する。**M1の提案と、Harness経由で実Toolが動き、回答byteが届いたことは別スコア**。M1がD1と同じProbeを選んだ場合に、追加のMethod能力を認めない。
+
+採点票の列は`probe proposed`／`actual tool invoked`／`received complete`／`required witness attained`／`correct current claim`／`false absence`／`unnecessary reads`／`cost`。定量改善は独立Expectedの照合後のみ。Tool到達しない模擬選択、実Methodが動かない状態、Read budget外の再調査を成功に計上しない。実外部H2/H3の適格比較は[TAI #168](https://github.com/hat47x/tai-pleroma/issues/168)がOwner。TEIのLocal CI合格をHarnessの実OS隔離・実Tool受領証明へ昇格させない。
+
+### 21.4 統合計画と担当への差分
+
+1. **P0（完了した限定実測を固定）**：CC-12〜18／TT-56単一Consumer #3354の各exact Run・Source・限定結果、TT-105/106 Draft #3365の7合成ControlをPlan上で区別。旧二案選定と「まだTT-56は2 Draftのみ」という作業を**取り消す**。#3365はCI成功だが**Draftのまま**。
+2. **P1（次のProduct適格化）**：#3262のDesign Contextから、一つのFunctionの独立Required／実Source Reader・Parser／Validation/Relation／実Scenario/Go Targetを`R(Q)`で接続。#3356のMCP無しを理由にCLIを止めない。Source Loaded≠Meaning Accepted、11 Reply≠共同Epoch、6 Test Step≠全体C1を保持。
+3. **P2（実SEI Method効果）**：Q相対のD0/D1/M1実Probe比較を、独立Expected、同じTool/Grant/Read Budgetと実Receiptで実行。外部AI/LLMへHidden Expectedが渡らないことの実際の境界検証を先行し、空の記録を不在とみなさない。
+4. **P3（後続）**：T1-A既知Ruleを超えるT1-B盲検の新Obligation検出、実Function→Query→Provider→Context、Pluginの宣言→選択→実Load/Invocation、三視点図面/CRUDのProduct Consumer、実Operation/Host/OS/Effect、Full Coverageは各Ownerへ。複数のDraftで同一正式Gate/読取器を競合実装しない。
+
+**現在の停止線**：本§21は既存コード・CI・Source照合から成熟した評価手順を計画へ移すDocs作業。**実M1 Methodを外部Harnessで走らせた結果、実E1〜E5のBlind Score、実Product Provider全閉包、C1、Owner Meaning/Authority受理はNOT RUN。** 新しい中央Meaning Store、認知Host、Test Engine、Product Schema、Permission Engineは導入しない。
