@@ -51,10 +51,17 @@ func adapterWorld() ir.World {
 	}
 }
 
+// receiptStore lets a fakeProvider remember the receipt SaveReceipt wrote, so
+// Lookup can replay it in the same test.
+type receiptStore struct {
+	byID map[string]effectcommit.Receipt
+}
+
 type fakeProvider struct {
 	allowed   bool
 	conflict  bool
 	commitErr error
+	store     *receiptStore
 }
 
 func (p fakeProvider) Begin(context.Context) (effectcommit.Transaction, error) {
@@ -69,8 +76,19 @@ func (t *fakeTransaction) CheckAuthority(context.Context, effectcommit.Scope, le
 	return t.provider.allowed, nil
 }
 
-func (t *fakeTransaction) FindReceipt(context.Context, string) (effectcommit.Receipt, bool, error) {
-	return effectcommit.Receipt{}, false, nil
+func (t *fakeTransaction) FindReceipt(_ context.Context, operationID string) (effectcommit.Receipt, bool, error) {
+	if t.provider.store == nil {
+		return effectcommit.Receipt{}, false, nil
+	}
+	rec, ok := t.provider.store.byID[operationID]
+	return rec, ok, nil
+}
+
+func (t *fakeTransaction) SaveReceipt(_ context.Context, rec effectcommit.Receipt) error {
+	if t.provider.store != nil {
+		t.provider.store.byID[rec.OperationID] = rec
+	}
+	return nil
 }
 
 func (t *fakeTransaction) WriteResource(_ context.Context, request effectcommit.Request) (uint64, error) {
@@ -80,7 +98,6 @@ func (t *fakeTransaction) WriteResource(_ context.Context, request effectcommit.
 	return request.ExpectedVersion + 1, nil
 }
 
-func (t *fakeTransaction) SaveReceipt(context.Context, effectcommit.Receipt) error { return nil }
 func (t *fakeTransaction) Commit(context.Context) error {
 	return t.provider.commitErr
 }
@@ -252,5 +269,60 @@ func TestExecutorWithoutEffectKeepsTheReceiptOnlyResult(t *testing.T) {
 	}
 	if !recorder.Records[0].ReportedEffectMissing {
 		t.Fatal("receipt-only executor was not recorded as missing its declared effect")
+	}
+}
+
+// TestExecutorObservesACommittedReceiptByLookup checks that an explicitly
+// configured lookup observation turns a committed receipt into an observed
+// persistence state. The lookup returns the same receipt; it does not read the
+// resource's value.
+func TestExecutorObservesACommittedReceiptByLookup(t *testing.T) {
+	lifecycle := command.NewLifecycle()
+	executor := Executor{
+		Runner:      effectcommit.Runner{Provider: fakeProvider{allowed: true, store: &receiptStore{byID: map[string]effectcommit.Receipt{}}}},
+		Grant:       grant(),
+		OperationID: "op-1",
+		Effect:      &semantic.DataEffect{Kind: semantic.DataEffectUpdate, Data: "sales.order"},
+		Lookup:      true,
+	}
+	invoker := command.Invoker{
+		Authorizer:          command.ReferenceAuthorizer{},
+		World:               adapterWorld(),
+		Executor:            executor,
+		DurableStore:        true,
+		PersistenceObserver: executor,
+	}
+	result, err := invoker.Invoke(context.Background(), request())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Persistence != command.PersistenceObserved {
+		t.Fatalf("persistence=%q, want observed", result.Persistence)
+	}
+	_ = lifecycle
+}
+
+// TestExecutorWithoutLookupLeavesPersistenceNotObserved checks that a committed
+// receipt with no configured lookup is not claimed as observed.
+func TestExecutorWithoutLookupLeavesPersistenceNotObserved(t *testing.T) {
+	executor := Executor{
+		Runner:      effectcommit.Runner{Provider: fakeProvider{allowed: true}},
+		Grant:       grant(),
+		OperationID: "op-1",
+		Effect:      &semantic.DataEffect{Kind: semantic.DataEffectUpdate, Data: "sales.order"},
+	}
+	invoker := command.Invoker{
+		Authorizer:          command.ReferenceAuthorizer{},
+		World:               adapterWorld(),
+		Executor:            executor,
+		DurableStore:        true,
+		PersistenceObserver: executor,
+	}
+	result, err := invoker.Invoke(context.Background(), request())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Persistence != command.PersistenceNotObserved {
+		t.Fatalf("persistence=%q, want not-observed", result.Persistence)
 	}
 }

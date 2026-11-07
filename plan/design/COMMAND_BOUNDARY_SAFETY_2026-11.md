@@ -184,9 +184,18 @@ CLIとStudioは `persisted`（`observed` のときだけtrue）と `persistence`
 
 `Invoker.DurableStore` はcompositionの主張であり、Invokerは検証しない。`UnitOfWork` が `MemoryUnitOfWork` かどうかを型で判定しないのは、参照用の取引と実取引を型で偽装できるためである。参照実行はfalseにして `not-applicable` を明示する。
 
+### `effectcommit` アダプタの観測（追記）
+
+`commandadapter.Executor` に `Lookup bool` を追加した。trueのとき `Observe` は同じ `Request`・`Grant`・`OperationID`・payloadで `Runner.Lookup` を呼び、`StatusReplayed` なら観測成功とする。
+
+- これは**receiptの観測**であり、資源の現在値の観測ではない。Lookupは同じDB境界で記録を照会するだけで、`objects` の現在値を読まない。
+- `Lookup` の結果が `not-recorded`・`denied`・`conflict` なら `not-observed`。エラーも `not-observed`。
+- 実PostgreSQLでのこの観測経路は、まだ結合試験に組み込んでいない。
+
 ### まだ決めていないこと
 
-- `PersistenceObserver` を実Providerの経路へ配線するか（Commitとは別の読取り接続が要る）。
+- 資源の現在値を読む独立観測を実Providerに足すか（現在の `Lookup` はreceiptのみ）。
+- `PersistenceObserver` を実Providerの経路へ配線するか（本追記はアダプタ単体の実装）。
 - `not-observed` を警告や停止条件にするか。現状は応答の欄としてのみ返す。
 - `Replayed` の経路で観測を行うか。Replayは現在値の読取りではなく記録の再確認なので、別の観測が必要。
 - `DurableStore` をcompositionから自動で決める方法。現状は呼出し側の明示的な宣言。
