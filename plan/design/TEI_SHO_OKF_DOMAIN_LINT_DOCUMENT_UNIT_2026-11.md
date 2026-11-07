@@ -341,3 +341,53 @@ R0（ProducerがSourceを読んだ時）、R1（派生Bundleが書かれConsumer
 **受信者SinkとSession再開**：既存 [TEI #3309](https://github.com/hat47x/tei-platform/pull/3309) の合成canary試験（Open）は、read-only DSHでTool結果がstdoutと永続Session Logに残る局所結果を示した。一方、[main統合 #3237](https://github.com/hat47x/tei-platform/pull/3237)のH6-E7合成試験ではSession再開時に**既受理Log区間は再送されないが、前TurnのRaw canaryが再構成されたModel入力には再登場**した。したがって「Logに再送なし」「新Tool readなし」「Pluginがread-only」のいずれも、継続SessionへのRaw再提示がないことを保証しない。OKF/SHO/SEI文書の旧引用・内部診断・未受理SourceをHarnessへ載せた場合も、再開/撤回後のModel入力・Tool結果・永続Sink/外部公開の資格を既存#2515/#1178/TAI #232で別判定する。
 
 **追加の一因子負例**（新Case IDなし）：A同一OKF ConceptでReader純粋preview vs execute指定、B Provider effect read-onlyだがTool/Session LogへCanaryが複写、C Recipient権限がR0→R1で撤回された後のSession再開（旧Model Contextが残る）、Dログ受理がなかった場合と、モデル入力に再登場した場合を混同して偽の非再送PASS。Expectedは「許可された純粋ReaderではReader由来の新外部副作用なし」「未許可Variantは実行前拒否または別Host資格へ」「既観測の過去送出は撤回されない」「全Sinkの不在は実観測なしにはunknown」。OS/Network/Model入力の本番遮断は**NOT RUN**、新Harness/Plugin Engine/強制Policyは設計しない。
+
+---
+
+## 12. 2026-11-08 K0実Pin・K1合成Fixtureの実配置と未実証境界
+
+**これまでの§9〜11との関係**：K0/K1の**入力と期待結果の置き場所を実際に作った**。K2実2 Consumerは未実施。ここに記す正例/負例はOK-01〜16と#2514/#3262のOwnerの受入基準に対応する**暫定Fixture**であり、第二のOKF標準・Test Runner・Meaning正本ではない。新OKF Validator/Plugin実装を行ったという意味ではない。
+
+### 12.1 公式仕様の実Pin（K0の技術入力のみ成立）
+
+- official repository: GoogleCloudPlatform/open-knowledge-format、対象 [SPEC.md at commit ad30107c31c06aec8a7d5636e0d1058118604e6f](https://github.com/GoogleCloudPlatform/open-knowledge-format/blob/ad30107c31c06aec8a7d5636e0d1058118604e6f/SPEC.md)、OKF v0.2。
+- 実Git readbackによるGit blob SHA-1: c06e3eede0c910d0ecf12524c34204156f8795ac。原文UTF-8 SHA-256: **26aa5da029278939f914e578107242d9607d4f2dc5fe153272b82f9ed1030101**。計算器はSHA-256既知の空文字・abc二ベクトルと一致することを先に確認した。Git commit・blob SHA・原byte digestを混同しない。
+- 旧knowledge-catalog/okfは凍結snapshot。上流mainの将来移動を自動追随せず、本Fixtureの判定は上記Commitで維持する。新Specでの再試験は別Source revisionとして扱う。K0の**全Product Source/Consumer/Provider/Host Pinは未完成**。
+
+### 12.2 実配置した小さなBundle（K1 P0入力、全て合成・公開可能）
+
+- [index.md](../../testdata/okf-k1-v02/index.md)：root限定のokf_version 0.2、Data/Function/Business相当の3概念を列挙。
+- [data/order.md](../../testdata/okf-k1-v02/data/order.md)：Data Entity。sources.resourceは直接fetch可能URIでなく**集合を説明するScope descriptor**。実Data ProviderのReader成功を表さない。
+- [functions/submit.md](../../testdata/okf-k1-v02/functions/submit.md)：Function。bundle-root相対LinkでOrder Conceptへ接続。verifiedはsingleton mappingの合成processイベント1件。人間認証・意味受理・実計算Receiptではない。
+- [business/submit.md](../../testdata/okf-k1-v02/business/submit.md)：未分類Raw Itemの**交換包装候補**。type Unclassified Draft Item／追加Frontmatter x-tei-experimentを含む。故意のbroken linkを持ち、OKF v0.2 F0には受理されるがF1には警告候補。役割Task/Action/Event/Traitの採用を示さない。
+- [testdata/okf-k1-v02.expected.json](../../testdata/okf-k1-v02.expected.json)：3 Concept/1 index、正例/負例、上流Spec exact commit+raw digest、各実File raw SHA-256、できたこと/できないことを別票で固定した**暫定期待**。同じ作成Attemptで設計したため、実装と独立の仕様由来であっても**Ownerが独立に審査した検証基準ではない**。#2514の適格性・既知Mutant killが成立するまで合格基準へ昇格しない。
+- [repository .gitattributes](../../.gitattributes)へこのBundleとexpected.jsonの-path -text を追加し、Windowsのcheckout EOL変換でRaw期待が壊れることを防ぐ。SHO #21の354→368byte負例を受けた限定対象の対策であり、通常Markdown編集や別のRaw Sourceの改行変換を強制しない。
+
+実GitHub File Readbackで5ファイルとshaを取得した。上流Specと各FixtureのRaw UTF-8 SHA-256はexpected.jsonに書いたものに一致するよう固定。**これは形式適合の実Reader検証ではなくFile/byte入力同一性の静的基線**。
+
+### 12.3 素朴なFixtureがあっても必ず区別する対照判定
+
+| 個別Mutant/対照 | 公式OKF v0.2の仕様上の期待（製品未実行） | 進行を止める領域 |
+| --- | --- | --- |
+| 基線:3 Concept＋root index | F0適合候補、F1 unresolved link警告、F2 TEI Meaningは未資格 | 業務Role/Source実Readの偽受理 |
+| 1 Conceptのtypeを削る | F0非適合 | OKF形式の受入 |
+| YAML frontmatterを壊す | F0非適合 | OKF形式の受入 |
+| 未知type、追加key | F0は拒否しない | 該当TEI Roleが実装/受理済みとの誤認 |
+| index.mdを欠く | F0は拒否しない | Required全件を読んだとする推論 |
+| Concept内Markdown Linkが壊れる | F0は拒否しない | 出典/参照品質・必要Relationの保証 |
+| verified単一mapping | verification event 1件として処理 | human Owner承認/実Attesterへの昇格 |
+| sources.resourceがScope descriptor | 元Sourceの実fetch未成立と表示 | 0件/存在しない/原資料読み取り済みの断定 |
+| 同じConceptを複数のCanvas/SHOで表示 | 文書回数とnative Item Identity/Source根拠件数は別 | 意味上の二重計数・無断逆Patch |
+| 原byteは同じでSource Rootだけ変える | Git SHA・内容が一致してもSource Identity/Grantを再評価 | 誤ったCurrent Qualification再利用 |
+
+1要因ずつ変異させる際は、元fixtureファイルを上書きせず別の実行用Copyに適用する。変異後の現在Source/World・Output/Actual Readと元のExpectedのRevisionを同一Attemptで結び付ける。AIが作ったExpectedの自己一致だけでPASSにしない。
+
+### 12.4 実装とテストの最短順（既存CLI/SHOを無理にOKF扱いしない）
+
+1. **K0 Reader Fit/Gap**：TEI #3262の実CLIにOKF Bundle/Concept Readerが既に存在するか、SHO #18 G1bがどこまでFrontmatterを読めるか、現在のactual argv/Source Scopeで確認。未提供ならunsupported/NOT RUNと記録し、仮のteeコマンドや未知のMCP Toolを作らない。通常Markdown読取成功をOKF F0合格にしない。
+2. **K1 最小実Validator**：既存の担当Plugin/SHO Reader経路でK1の正例と最低4負例（type欠落、壊れたYAML、未知type、broken link）を**同じFixture Copy**から独立Expectedに対して比較。必要なParserが未実装ならGitHub上の静的検査だけを記録し、実Validator成功を主張しない。短い仕様のため新万能文書エンジンを作らない。
+3. **K1 Source/Disclosure**：Scope descriptorにHTTP fetchを試みない、外部Linkや未知typeからToolを自動起動しない、実Readerが未取得/partialを示す、秘密Rootの有無を公開診断で漏らさない。実OS Network否定には#2515の独立観測を要する。
+4. **K2二Consumer**：共通選択済みOKF Reader/ValidatorのContract/Plugin Provider Pinを、CLIとSHOまたはStudioの**実二箇所**で同じBundle/Raw digestから呼び出す。Spec-valid、F1文書品質、F2業務、実Read/受領Coverage、Owner/Grantを別列にする。元SUI→SHO一File H1はSHO #21、SEI Claimは#820、Attested ComputationはTAI #514の別資格。
+5. **Owner/CI**：#2514/#1180の独立Expectedとmutant判別力、#3262のRequired→Received、#1251/#951のPlugin実選択、#2515の安全な実Sink検証を使い、合格した実段階だけ進める。完了した証拠はtestdataや計画から自動昇格させず、既存Evidence票とその実CI/Receiptへリンクする。
+
+**今回の到達点**：K0の**上流仕様Source Pin成立**、K1の**固定合成Input＋暫定Expected＋原byte EOL制御のGit実配置とReadback**。まだK0の実Product依存閉包、独立Expectedの正式受理、K1 F0 YAML Parser/Validatorの実行、K2実2 Consumer、SHO Writer、SEI Import、OS/Egress拒否、外部Harness/Attester/Owner Meaningは**NOT RUN／NOT QUALIFIED**。§9〜11の計画全体が成功したという主張ではない。
