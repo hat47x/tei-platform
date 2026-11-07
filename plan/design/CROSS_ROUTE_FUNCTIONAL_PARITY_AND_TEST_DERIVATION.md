@@ -793,3 +793,22 @@ main統合済み[PR #2894](https://github.com/hat47x/tei-platform/pull/2894)の`
 **検収終了条件**：C1のGo分岐の実観測、C2のRead完全性、C3の実Source解決、C4のOwner受理を**同一Attemptで観測できたものだけ**限定受理。#2514は独立検証基準、#1180はScenario SSOT、#2586/#1163はRowset/Provider、#2595/#2600はSource失効、#2667/#3030はAuthoring移行の担当。新判定Engineや第二Case正本を作らない。#3039/#3040の用語規約に従い、新しい記述は「独立期待値・独立検証基準」を使用し、現存コード名・機械的IDは保持する。
 
 **状態**：現mainに#3051のCompletion Sourceが取り込まれたことを再読取し、#3051 exact HEAD `581e699b62b126c86388c88c7c357674394ad252`の[Health #42256518693](https://github.com/hat47x/tei-platform/actions/runs/42256518693)は**completed/success**（Go全体、gofmt、vet成功）。[#3031](https://github.com/hat47x/tei-platform/pull/3031)の未対応Source拒否も別HEADで成功。**Provider/Owner対象全集合の実Reader証拠、誤った`CoverageComplete`申告の拒否、CEC-02独立空証明の実確認、実Markdown Parser、Owner意味受理、末尾脱落MutantはNOT RUN**。この§18.10はdocs-only、#2514/#3030の担当Issue・実装コードに変更なし。
+
+### 18.11 テスト導出の次の一手：Claim別Coverageの3反証を実受領に結び付ける（2026-11-07）
+
+**先行成果との接続**：[台帳§8.11](./TEI_TEST_BASIC_DESIGN_AND_EVIDENCE_LEDGER_2026-11.md)の固定Sourceと、独立期待値Owner [#2514 CDE-Q05〜07](https://github.com/hat47x/tei-platform/issues/2514#issuecomment-6698037813)・Result Slice Owner [#2506 R05〜07](https://github.com/hat47x/tei-platform/issues/2506#issuecomment-6698048070)を使用する。#3051はmain統合済みの**局所Completionの未観測空否定修正**、#2901/#3017は**既知の合成Relation判別力**。いずれも今回の「全Owner対象・Required Predicate Field・Reader Completeness」の合格を代替しない。
+
+| 実装を増やさず先に行う検収 | 最小の固定材料 | 採点するClaim／停止線 |
+| --- | --- | --- |
+| **P0 R05：同件数・違うOccurrence** | `L={tenant-a/3,tenant-a/9}`、合成`R=[tenant-a/3,tenant-a/3]`、P/Owner ScopeとSource固定 | Row count = 2でもdistinct対象は1件。全件Coverageの誤申告を**unqualified**と判定する。JOIN複製と実注文2件は別。既存の独立Expectedから実Rを生成せず、二つのSourceが共有する誤Query Filterの可能性も記録 |
+| **P0 R06：正常なTOP 1** | 現main `postgres_scoped_orders.sql`、`scoped_postgres_integration_test.go`。Aで`$select=orderId&$orderby=orderId desc&$top=1`の期待`9` | **ページ表示**の成功と、対象注文`{3,9}`の**全件Completion**の未資格を両立。実PG Caseの実行には`TEI_WEB_SCOPED_PG_DSN`・隔離DB Opt-inとテスト非SKIPの証拠が必要 |
+| **P0 R07：Rule列の未投影** | `L={A/3,A/9}`、P=`status=READY`、Consumerは`$select=orderId`。Fixtureでは3がOPEN・9がREADY | ID列の受領だけでPの結果を捏造しない。`status`の**内部Rule Read**が実際に必要なら、D/V/Q/Aの明示Mapping・現在Grant・実Read Footprintを#2506/#2586側で検査し、ConsumerへUnauthorized列を付加しない |
+| **P1 実Readに結合** | 上の独立Q05〜07と同じOwner Population/Query/Source/Rule版、Tenant/Parent/Scope/as-of、Reader Result Slice、Snapshot、page-end、Field Presence/Disclosure、Actual Consumer | #1163の同一Source/Runtime/Provider/AttemptでSource/Ruleの**実消費**とExpected/Actualを結合。PGページの成功、Go evaluatorの成功、別CIの健康状態を一回の統合PASSに足し合わせない |
+
+**実証に使う既存コードの確認**：現mainの `reference/web-api-contract/fixtures/postgres_scoped_orders.sql` blob `5113f47d131da7c6b00c7f00dd67fcd7298a53da`、`reference/web-api-contract/scoped_postgres_integration_test.go` blob `062fe0ab4262bb066d5a06090c21453e6d1cc73f`を直接取得した。後者の`$top=1` Caseは**既存Go Source上の正負期待**であり、今回の試行で実PostgreSQLを起動した証拠ではない。#2514 Q05・Q07は合成受入計画、Q06も**本統合AttemptとしてNOT RUN**。固定したSource/Expectedが観測されていなければ`not-run`、対象/粒度/Read cohort不一致なら`unqualified`、取得エラー・Schema/版不一致なら`unknown/needs-requalification`と記録する。
+
+**機械化する場合の最小差分**：既存Scenarioに`case/step/required obligation`の参照を付け、既存Result SliceとReader Receiptの**比較表**で、`requested page completed`、`Owner target membership covered`、`required predicate fields observed`、`Source actually parsed/selected/consumed`を別列にする。`Satisfaction`値そのものと**Claim qualification**を同じEnumにしない。既存Driver v0が`satisfied/not-satisfied`を持つだけなら新しい`unknown`を無理に追加せず、資格の不足はEvidence側で表現する。非出力依存（WHERE、JOIN、NOT EXISTS、Ruleの隠れたField）をConsumer投影だけから推定せず、明示D/V/Q/A参照を使う。
+
+**再資格・権限境界**：Tenant/Parent Relation occurrence、Owner集合・Ruleの粒度、`status`等の必要Field、Query filter/order/top、Source/Plugin/Manifest/Operator版、Provider Grant/RLS、Snapshot/selection epoch、Consumer用途が変われば**影響Claimだけ**を再評価する。`.tei.md`形式移行ではIndex反映と実Parser/Meaning消費を分ける。OKF deterministic Attester/`verified`もExpectedの独立性・Source消費・実Read集合・Host Grant/Owner Acceptanceを証明しない。
+
+**責務と次の停止線**：#2811は検収順・証拠台帳リンクのみを所有。独立期待値の判別力=#2514、Case集合=#1180、Result Slice=#2506、実Query/Provider=#2586/#2622、同一改訂Packet=#1163、開示=#2516、Source移行=#3030。新しいRuntime/Runner/独立期待値Store・Owner認可は追加しない。**当該R05〜07の新テスト、PG実行、CallerからCompletionへの実連結、Owner受理、OKF実Attestationは今回NOT RUN**。
