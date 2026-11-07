@@ -201,7 +201,7 @@ func Project(input Input) (Output, error) {
 
 func main() {
 	input := flag.String("input", "", "read an exact-lock matrix fixture as JSON")
-	strategy := flag.String("plan", "", "optionally emit pairwise planning-only cases without qualifying evidence")
+	strategy := flag.String("plan", "", "emit pairwise or supplied-locks-pairwise planning-only cases without qualifying evidence")
 	flag.Parse()
 	if *input == "" {
 		fmt.Fprintln(os.Stderr, "-input is required")
@@ -231,8 +231,22 @@ func main() {
 		}
 		return
 	}
+	if *strategy == "supplied-locks-pairwise" {
+		result, err := PlanResolvedPairwise(in)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(result); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if *strategy != "" {
-		fmt.Fprintln(os.Stderr, "unsupported planning strategy; choose pairwise or leave -plan unset")
+		fmt.Fprintln(os.Stderr, "unsupported planning strategy; choose pairwise, supplied-locks-pairwise, or leave -plan unset")
 		os.Exit(2)
 	}
 	result, err := Project(in)
