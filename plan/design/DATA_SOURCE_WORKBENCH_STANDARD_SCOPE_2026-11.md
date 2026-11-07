@@ -280,7 +280,7 @@ Trait集合の合成は原則として交換・結合・冪等であり、同じ
 
 現行`internal/workbench/database/model.go`の`SchemaView`は`Database`とTable/Column/PKしか出さず、`physical.SchemaSnapshot`が持つ**観測時点・Fingerprint・UNIQUE・FKの構造情報が落ちる**。この状態でWorkbenchのSchema Table/DiagramからFKを取り出すのは、元データに戻るか推測に依存する。
 
-本件では、read-only`SchemaView`に`CapturedAt/Fingerprint`、`TableView`に`UniqueConstraints/ForeignKeys`を**追加投影**する。変更は既存`PhysicalSchemas`を正としたコピーであり、型付きBusiness Relation、Function CRUD、Physical Schema Snapshotsの第二正本、モデル編集/APIを追加しない。JSON追加フィールドは既存Readerとの互換確認を別に残す。
+本件では、read-only`SchemaView`に`CapturedAt/Fingerprint`、`TableView`に`UniqueConstraints/ForeignKeys/Indexes`を**追加投影**する。Indexの鍵（式・Collation/OpClassを含む）、部分索引述語、含有列、一意性のNULL規則、`Valid/Ready/Live`の**観測された状態**を含め、元の`physical.Index`と同じフィールド型を保持して深いコピーを作る。Indexの無効状態を、Desiredが望む状態やDB操作の現在の許可に置き換えない。変更は既存`PhysicalSchemas`を正としたコピーであり、型付きBusiness Relation、Function CRUD、Physical Schema Snapshotsの第二正本、モデル編集/APIを追加しない。JSON追加フィールドは既存Readerとの互換確認を別に残す。
 
 `internal/database/providers/postgres/workbench_projection_test.go`では、既存Fake Catalogから実プロダクトの`postgres.Provider.Introspect→index.Derived→databaseworkbench.Build`を通し、schema-qualified Table、物理PK、UNIQUE、FK参照先、観測時刻/Fingerprint、元Source sliceとの非aliasを判別する。**Fake Catalogであり実PostgreSQL/DB Grant/完全性・SHO・三視点受理は試験できない**。加えて既存`internal/workbench/database/model_test.go`に複合列の順序と、同じ参照先への**2本の異なる有向FKを一本へ潰さない**判別試験を加える。これも物理メタデータの投影試験であって意味的Graph編集の受入試験ではない。
 
@@ -308,6 +308,18 @@ Trait集合の合成は原則として交換・結合・冪等であり、同じ
 | **Schema** | Actual Catalog Reader→Physical Schema→Workbench Projection | FK/UNIQUE/CapturedAtの限定Product投影を今回圧力試験。実DB/Scope/Completeness/Plugin selectionは#2622/#1251 |
 | **Data/Function** | 実Row/Field/Query/Instance→Data Context→Function Table/Tree | 実Reader/実取得/Disclosureを同一Attemptで照合する#2586がOwner。今回のSchema表示PASSで代用しない |
 | **三視点/SHO** | Accepted Data/Function/Business＋構造位置→Diagram/CRUD/文書投影 | #3263/#3303（Draft）・#1124/#1125/#1126のOwnerへ。未受理Relation/Functionはunknownで、描画により認可されない |
+
+### WB-50〜54：Index構造を持つテーブル変更計画への最小受入
+
+| ID | 独立した入力・反例 | Expected／資格の上限 |
+| --- | --- | --- |
+| WB-50 | 同じTableに通常索引1件、式/部分索引1件（無効状態） | Index 2件を観測値として投影。無効Indexを`usable`と宣言せず、Planが無音で存在・正常と扱わない |
+| WB-51 | Index KeyのExpression/Collation/OpClass、IncludedColumns、Predicate | Native provider-owned metadataを削らずsource由来も保持する。式を共通SQL意味へ無断正規化しない |
+| WB-52 | View生成後に元SnapshotのIndexKey/Predicate/Normalization/Stateを更新 | 深いCopyで以前のObservationを維持。元Source改版を更新の既成事実としない |
+| WB-53 | 無効索引を含む実DBのSchema DiffとDesired Index | `SchemaView`の描画可否ではなく、既存`schemadiff`／`Plan`がIndex状態をどう扱うか別評価。実DB Apply資格は未付与 |
+| WB-54 | 同一名称の索引／外部キーを複数Schemaで観測、Queryが未Loaded | Qualified Tableと別Scopeを保持。必要Data/Function/Ruleがなくても画面表示成功から完成したERD/CRUDへ昇格しない |
+
+WB-50〜52は合成CatalogのGo Product経路で狭く圧力試験し、WB-53〜54はDB実観測とModeler/Contextとの**未実行の受入条件**として維持する。元のPhysical Snapshotは引き続きDB構造の観測正本であり、Workbench JSONは閲覧用コピー。Indexの論理/物理Facetと意味受理は既存#1126/#2622、移行計画は既存Migration、実DDL Effect/Receiptは#1174/#2892へ帰属する。
 
 **Critical Pathの停止線**：実Provider取得・Current Authority・Independent Expectedを持たないまま、Workbenchの物理カタログ表示、合成ログ相関、三視点図面の外観、生成テストの件数だけで業務用データクライアントの実行／安全なSchema Apply／正式業務CRUDまで合格とはしない。結果の受領完全性とContext Readiness（#3354限定合成Consumer PASS）を、Product E2E/Gateへ誤昇格させない。
 
