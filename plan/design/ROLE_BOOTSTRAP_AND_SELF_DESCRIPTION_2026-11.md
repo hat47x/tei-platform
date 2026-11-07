@@ -946,3 +946,74 @@ Data Topology（Entity/Relation/Graphのidentity/cardinality/時点）、Interpr
 | **P2** | #2509/#2515/#1174/#2831 | 実H2/H3 Replyのend digest・Audience/Sink・Runtime Effects・生成TEI自身の再入を各Ownerの別Runで資格化 |
 
 **ESD-20のProduct API側局所対照を一つ増やした**。ESD-25は#3354で単一Context Consumerへ既に採用されたため、別Context Reader/独立Requiredテーブルを自己記述側に作らない。追加Case番号/第二Test SSOT/新Core型を増やさず、§17/18のESDに実Evidenceの上限を付ける。#1119既存Gateを変更しない。
+
+---
+
+<!-- tei-role-independent-closure-and-real-invoke-20261108 -->
+## 20. 2026-11-08：自己記述Roleの最初の成立条件を「必要閉包×選択階層×実消費」に限定する（横断P0接続）
+
+**状態：計画への採用候補・新ESD-30〜37はNOT RUN。** §19の実Go Raw文書試験と main統合 #3354（Design Context）に、続いてmainへ統合された #3337/#3367/#3368（Capability Selection、D1受入、Atomic Trait独立Required）を接合する。正式Role Interpreter、Self-describing Grammar/ABI、新Production Tool、Host認可、Agent用万能Source Readerを実装したという主張ではない。
+
+### 20.1 自己記述の根拠は自己申告で閉じない
+
+Role定義をTEIの標準データで記述できても、そのRole自身が「Required Sourceは全部ある」「自分の解釈器は正しい」「Traitを満たす」「実行してよい」と宣言しても採用根拠にならない。Bootstrapは既存 #988 のK0 Seed→K1 Workspace/Manifest Source→K2 exact Language Selection→K3 Parse Candidate→K4 Operator/Role Binding→K5独立Required/Owner意味受理→K6物理実消費を維持。実Reader/Interpreter未対応の場合は unsupported と表示し、データとしてのRaw保持を継続する。
+
+**最小の受入票（新Core Schemaではない）**：一つのSubject/Function/用途につき、外部固定の RequiredSet、Manifest/Source Inventory、Loader ReadSet、ParseSet/Anchor、Selected Language/Role/Operator、Resolved exact Provider、Actual Call/ConsumedSet、Owner Accepted Meaning、現在Consumer/Host資格を別欄にする。
+
+| 判定 | 肯定に必要な根拠 | 停止する誤認 |
+| --- | --- | --- |
+| Sourceに存在 | 指定Scope/Source版の実Inventory/Source byte | 世界全体のRole不在を、限定Workspaceの未発見から推論 |
+| Required閉包 | **用途別に独立固定した集合** R と、実Consumer観測済みの対応付き集合 C の差。RのUniverse/Scopeも明示 | 候補定義内 required=[] や Plugin提供一覧を必要件数の分母に使う |
+| Interpreter選択 | Language/Role Contract + Capability Kind/ID + Scope + exact Provider Pin | Bundle/PluginがselectedだからRole Providerもselectedだと推論 |
+| 実消費 | 対象Build/RuntimeにProviderが含まれ、**選択した実装が実call-siteで起動された**証拠 | A/Bが同じ値を返したことをSelection一致・Executionとする |
+| Role Meaning | 独立Expectedで必要Shape/Null/関係/単位/時点を評価しOwner受理範囲を固定 | Parser candidateやRole自身の宣言をAccepted Meaningに昇格 |
+| 現在利用資格 | 受信Audience・目的/Scope・Rev・現在Host/Disclosure、Replyの完全受領 | 旧Receipt/Source Index hash/Role純粋性をGrantに流用 |
+
+必要条件の集合差 R − C が空でも、RのUniverse自体が閉じていない、実Readがpartial、依存元Pluginがunknown、Reader modeが異なる、秘匿で開示不能なら full と言わない。逆に**独立R外の任意のCandidateが未選択であること**は正常な場合があるため不合格へ過剰昇格しない。これは #3354 の3 Rule/32局所Controlの正負対照から、自己記述に取り込む最小原則である。
+
+### 20.2 Pluginの『ある／選ばれた／呼ばれた』を4段階から5段階へ分ける
+
+main統合 [#3337](https://github.com/hat47x/tei-platform/pull/3337) の実read-only Capability Coverageは、Plugin Package選択と個別 Capability Kind+ID 選択を別観測にした。DB技術名とCapability IDを直に等値比較した旧集計のunselected=6は誤分類を含み、修正版Ruleではunselected=4。旧6→4は利用率が改善した証拠ではなく、**集計規則を修正した差**。同名IDでもKind違いは別、1 Plugin内の複数Capabilityも部分選択可能、複数候補の支持は一意Provider Selectionでない。main統合 [#3368](https://github.com/hat47x/tei-platform/pull/3368) の限定Reference Testがこの分離を補強した。
+
+自己記述のRole実消費は、(1) Declared Plugin/Capability → (2) Selected Capability/Scope → (3) Exact Role/Operator/Tooling Provider Resolved → (4) actual Build/Load/Invocation by CLI or Studio → (5) Independent Semantic/Operational Conformance、の五つを別Claimにする。正式なPlugin Catalog/Descriptor Schemaを新設する意味ではない。
+
+main統合 [#3367](https://github.com/hat47x/tei-platform/pull/3367) はD1受入のAS-13〜20とこの実選択段階を計画へ固定したが、**実CLI/Studio同Provider呼出までは未実装**。[Draft #3371](https://github.com/hat47x/tei-platform/pull/3371) はStudio ReadOnlyにHost選択 InspectionService を導入し、Factory非nil時は未提供/不正投影をfail-closedにする実コード候補。factory nilの旧PoC経路、CLIの手書きinspect、Compose exact Provider Binding、実Provider Identityの呼出証跡、Wails二Consumer、実Host Grantは別。ここでRole Interpreterのactual callをStudio Factoryの成功から推測しない。最短の対照は selected=B/actual=A/Result同値の否定対照と、selected=B/actual=B/Result妥当の肯定対照を同Contract/Sourceで並走する。
+
+### 20.3 Raw資料→意味候補の自動化に必要な非昇格規則
+
+§19の追加Go Referenceは docs/design.md をManaged/Load-time byte-indexedにもできるが、Semantic Definition Referenceに昇格しないことを検査する。ここへAI/SHOによる抽出・情報整理を足す場合も、原文中の「role privileged」「外部Toolを実行」といった文字列は**資料の内容**であり、TEIのParser/Host/AI Skillへの命令ではない。Candidateは出典、原byte/Revision、抽出ロジック/Plugin版、Confidenceではなく独立検証条件を持つ。文書に記述されたRole・Trait・Task/Action/Eventは、Language Readerが明示選択されて型/Required Shapeを検証するまでRawまたはCandidateに留める。
+
+Read-only Document Readerが将来必要になる場合、管理Inventory、文書内容の受信、Semantic Parse、Owner Acceptance、現在Disclosure、実Sink保存/Egressを別段階で設計する。既存 Issue [#3346](https://github.com/hat47x/tei-platform/issues/3346) と #2621のAuthoring Ownershipへ返し、本PRで汎用Markdown Readerを先行追加しない。現 `*.tei.md` パーサ未接続のDraft [#3031](https://github.com/hat47x/tei-platform/pull/3031)は拒否の局所証拠であり、旧*.teiの単純Renameを意味同一としない。
+
+### 20.4 AI/CLI/Studioに渡すContextは『構造が読めた』と『必要情報が揃った』を別にする
+
+main統合 [#3354](https://github.com/hat47x/tei-platform/pull/3354) の単一 `context_gate.py` は11実read-only CLI Reply／合成32 Controlsを経て、Required Ruleの正常JSON欠落・Role定義Referenceの差・正当な非Required省略を区別する。ただし boundedReference=partial、qualifiedTestGeneration=false。Scope相対のTask Required集合はこの固定3 Rule以外にも Function/Business/Relation/Role/Operator/Source/Scenario を含み得る。
+
+CLIの各ReplyにはEnvelope Schema、resultShape、Read Mode、Fingerprintの**意味する範囲**があり、それらが同じでないなら absent と結論しない。特に #3345 の view application-local semanticFingerprint をWorldFingerprintと比較しない。[Draft #3370](https://github.com/hat47x/tei-platform/pull/3370) は requirements.result の**実配列**をresultShape=arrayとして広告する候補。未宣言結果をObjectと推測しない。#3347のdiagnostics wrapperやstd builtin混在を理解できない場合は malformed/unknown とRequired Missingを分離。
+
+複数Consumerへ自己記述を返す際は、Read Sliceが許可済みであること、Outputが途中切断されていないこと、External Tool ReplyとSession Sinkに原文/秘密Pathを漏らさないことを別検証する。Row/Role/Secretが非開示でも、未許可Consumerへの『秘密Roleが存在するか』を答える必要はない。Scopeが不明ならGlobal Absentを主張せず、監査側のみ内部不足理由を保持する。
+
+### 20.5 新しい一軸判別 ESD-30〜37（全件提案・NOT RUN）
+
+| ID | 反例 | 独立Expected／既存Owner |
+| --- | --- | --- |
+| ESD-30 | Plugin Pは選択済、P内Role Capability Rは未選択 | RのSelectionは未充足。Plugin SelectedをRole Bindingに流用しない。#1251/#3337 |
+| ESD-31 | 同一IDのCapabilityが別Kind、または1 Pluginの2能力から一方のみ選択 | Kind+ID/Scopeで独立判定。Capability総数をRequired Role分母に使わない。#3278/#3368 |
+| ESD-32 | DB技術名とCapability IDの比較規則が変わり、候補選択数だけ差 | rule fingerprintが異なる旧6/新4を単一時点の改善としない。#1251/#3278 |
+| ESD-33 | Role Provider A選択、CLIはA、StudioはHost Factory経由Bを実呼出、Result一致 | 同一Provider実利用を拒否。双方の実call-site/Build Pinで個別検証。#3371/#951 |
+| ESD-34 | Factory非nilだがInspection未提供。既存built-inなら成功するSubject | 明示未結線ならfail closed。PoC fallbackの無条件使用を拒否。#3371/#1824 |
+| ESD-35 | Raw MarkdownにRole/Host操作を命令形で書くが実Parser未選択 | Raw byte保持のみ。役割宣言・Tool Invocation・Meaningへ昇格させない。#3346/#2620 |
+| ESD-36 | `requirements`正常成功でresult=[]、別Readにはrequired Ruleが存在 | JSON Shapeはvalid array。『Requirement情報なし』と『必要Rule不在』は独立、未知ならpartial。#3347/#3370/#3262 |
+| ESD-37 | 提示FingerprintがWorldとview Namespaceなど比較Scope不一致 | version mismatched/uncheckedとRequired Absentを区別。Host/Grant・BOMへ伝播させない。#3345/#2514 |
+
+### 20.6 最小の次Runと完了判定（旧P0/Gateを増やさない）
+
+**Run S0（Role原文）**：前回追加した `TestSelfDescriptionManagedRawDocumentDoesNotBecomeSemanticRole` のexact PR HEAD/CIを最初に判定。既存Raw/Semantic 2 Source・Manifest digest・Loaded/Artifact/Reference・mutated Raw Revisionを保持。期待はRaw未Parsed／Semantic Parsedの対照。TestがGreenでも直接Role意味受理へ昇格しない。
+
+**Run S1（必要集合）**：main #3354単一Consumerの実11 Reply/独立3 Rule対照を再利用し、ESD-36/37のReader Mode・Shape・Scope差をSchema別に確認。Source側 `Role` が実現されていないことを『未発見』ではなく `unsupported/no-provider-evidence` と表示できるかFit/Gapに残す。新CaseのExpectedは #2514、Scenarioは #1180。
+
+**Run S2（Provider actual）**：#1251/#951のInspector D1選択、#3371のStudio FactoryおよびCLIの実入口から同一ContractのProvider A/Bを選択し、実Call/Resultを対照する。実Plugin Role解釈とは別、最初は既存read-only inspectだけで P0 技術接合を確認。Provider selectionの実証後に必要Role Contract一つだけを載せ、Language Kernel/Parser/Role専用Registryを新設しない。
+
+**Run S3（意味と実行）**：S2の実選択証拠と、Role必要Shape・原子的Trait Fulfillment・独立Expectedを接合。正規化・Owner Acceptance、現在Grant、Tool全受信、Target Build（Go単一binary）を各既存OwnerのClaimで審査する。[main統合 #3360](https://github.com/hat47x/tei-platform/pull/3360) のdriver stage1→stage2再入は本物の限定物理Referenceだが**対象はcmd/teiではない**。TEI全体のG4 L3資格をここへ流用しない（#2831）。
+
+**停止線**：製品Ready判定・全Required Closure・AI T1-B生成・実Domain Conformanceを、Reference CIのPASS数やDescription/Role名から導かない。main再Base/Go Build/CIは最新exact HEADで判断する。既存G0〜G4 Gateを保持し、D1/Raw/Role/Trait/BOM/Self-buildを全て最初のP0 Hard Dependencyにしない。
