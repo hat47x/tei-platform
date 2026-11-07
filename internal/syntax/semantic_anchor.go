@@ -157,6 +157,22 @@ func semanticSubjectAnchors(src string, namespace core.CanonicalID) ([]SubjectAn
 			if err := skipSemanticPeriodBody(lx); err != nil {
 				return nil, err
 			}
+		case "calendar":
+			sym, err := expectLexerIdent(lx, "semantic calendar identity")
+			if err != nil {
+				return nil, err
+			}
+			id, err := semanticPeriodID(namespace, sym.Text)
+			if err != nil {
+				return nil, err
+			}
+			anchors = append(anchors, SubjectAnchor{Kind: "semantic-calendar", ID: string(id), Anchor: tokenAnchor(sym)})
+			if err := expectLexerKind(lx, TokenLBrace, "semantic calendar body"); err != nil {
+				return nil, err
+			}
+			if err := skipSemanticPeriodBody(lx); err != nil {
+				return nil, err
+			}
 		case "effect-rule":
 			sym, err := expectLexerIdent(lx, "semantic effect-rule identity")
 			if err != nil {
