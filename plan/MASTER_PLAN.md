@@ -580,6 +580,14 @@ main統合済み[#3070](https://github.com/hat47x/tei-platform/pull/3070)の`int
 
 **本節の証拠上限**：既存`internal/workspace/loader.go`と#3024 E1c Go/CIの実照合に加え、#3031暫定Guardの固定HEAD限定CIと、#3030移行設計の実Sourceを確認済み。実`*.tei.md` Markdown Reader/意味Parser・Builder・Writer、移行後Org E1c、実Provider/DB、SHO/Consumer、Owner意味受理は**NOT RUN／未成立**。この文書は設計引継ぎであり、#3030/#3031が既に担当する詳細契約・Goコードを二重定義しない。
 
+## ドメインモデル由来のテスト生成と開発者支援（設計・未実装）
+
+TEIの三要素分析（Data / Function / Business）を、単なる入力データの生成にとどめず、値域・型・強属性の意味候補・業務Key/FD・Relation・業務Rule・手作業/承認を含むProcedure・広域のデータ整合性から**検証義務と正負テスト候補を導出する開発者支援**へ展開する。独立Expected、実Runner、実Provider、Source/Attempt Evidence、Owner受理の正本は増設しない。
+
+最初は#1131の型付きDataset/Snapshot・候補生成、#1126/#2495の制約、#2514の独立Expected、#1180のScenario、#1163の実証Evidenceを利用し、**受理済みConstraintだけを決定論的に検査して正常例・境界値・一因子違反の反例を生成する**。次に#1125の業務手順・手作業/承認、#2506/#2586のContext/実Read、複数Tenant/Provider・変更/同時実行への横断検査を段階的に足す。AIは反例探索と変更影響分析を支援し、業務意味の採否や本番の副作用は実行しない。
+
+**「強属性」の原典定義は未受理**であるため、業務Key・FD・必須属性と自動同一視しない。未取得、業務NULL、非選択SQL NULL、部分取得、異Snapshot、非公開条件の照合も区別する。詳細と16件の独立対照候補、P0〜P2の開発順、実行済み/未実行境界は [ドメインモデル由来のテスト生成・開発者支援計画](design/DOMAIN_MODEL_DERIVED_TEST_AND_DEVELOPER_SUPPORT_2026-11.md) にまとめる（Draft、**生成機能は未実装・NOT RUN**）。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
