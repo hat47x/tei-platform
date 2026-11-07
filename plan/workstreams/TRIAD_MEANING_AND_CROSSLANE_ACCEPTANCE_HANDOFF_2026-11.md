@@ -281,7 +281,9 @@
 **証拠上限**：各main PRの限定Go/CLI試験は既存の結果であり、本節の同一O1/C9／同一Revision/Provider/Consumerでの統合試験ではない。新Reader・旧新Clientの実互換・DB実作用と別Connection Read・本番Grant・Owner正式Business受理・新しいStudio/SHO/Harness E2Eは**NOT RUN／NOT ACCEPTED**。新たなSource/Oracle/RunPlan Registry、第二JSON Parser、万能Audit Engine、Host、業務状態表を作らない。
 
 <!-- tei-triad-receipt-postimage-separation-20261107 -->
-## 12. 11/7横断追補：Receipt再照会を「宣言したData Effectの保存後状態確認」に昇格させない（既存証拠の意味修正案）
+## 12. 11/7横断追補：Receipt再照会を「宣言したData Effectの保存後状態確認」に昇格させない（#3127当時の履歴と#3155以降の実装再資格化）
+
+**現行版の読み方**：§12.1〜12.4は#3127当時の単一`observed`問題を分析した履歴であり、現在mainの未修正欠陥を主張するものではない。最新の修正状況・残余リスクは§12.5を優先する。
 
 ### 12.1 main統合された3段階と、最新実コードで残る意味のずれ
 
@@ -325,6 +327,27 @@
 - **#3030 / #988 / #2823（Authoringと実Read）**：旧`*.tei`でのReceipt/Lookup成功と、未実装の新`*.tei.md`定義の実消費を別に扱う。同一Meaning/Source/Revision・Operationでつながっていない別々のCI成功を製品一往復へ合算しない。
 
 **状態**：main #3124/#3127/#3118の静的実Sourceと既存テスト/PR記録、計画への引継ぎに基づく**設計上の矛盾候補と検収の補強**。今回のR/O対照を実Go/PG/Windows/GUIで新たに走らせたものではない。Ownerが公開`persisted`契約の意味を修正採用したわけでも、実Provider・Resource Postimage・正式Business受理が成功したわけでもない。第二Provider/Host/Runtime/Meaning Registry・新業務状態表は作らない。
+
+
+<!-- tei-triad-receipt-resource-current-qualification-20261107 -->
+### 12.5 #3155以降はReceipt・現在値の観測を実装上分離済み、残る因果・同一性を別検収にする
+
+[main統合 #3155](https://github.com/hat47x/tei-platform/pull/3155)では、`PersistenceState`を`not-applicable`／`not-observed`／`receipt-observed`／`resource-observed`に分離し、**`persisted:true`を`resource-observed`に限定**した。これは前掲のReceipt確認をResource確認へ誤昇格させる問題への実装済み対処。[main #3157](https://github.com/hat47x/tei-platform/pull/3157)の成立状況には実PostgreSQLでのReceipt Lookupと資源読取試験の結果が反映されている。[PR #3155の認可・Effect PGワークフロー](https://github.com/hat47x/tei-platform/actions/runs/42328707393)もcompleted/success。**ただし同一Business O1/C9・承認・全Provider経路の製品完了実証ではない**。
+
+main実コードを照合した残余の証拠境界：
+- `internal/command/persistence.go`（blob `5e8fcec8eca81ded38c9305adba054f71ce168e9`）は`DetailedPersistenceObserver`の`receipt`/ `resource`を分離する。一方、旧`PersistenceObserver`はエラー無しをresource観測と扱う後方互換経路があるため、**そのObserver実装が本当に独立Readした証拠**は外側で確認する。
+- `internal/security/effectcommit/commandadapter/executor.go`（blob `7d1ccedd7dca5f8df8f5c84da0fca722ef8e9198`）の`ResourceRead`は`Found`と**`bytes.Equal(state.Payload,payload)`**を確認する。返却された`ResourceState.Version`は、同コードではExpected/Commit版と照合していない。**同値を別Attemptが書いた場合、現在値一致だけで当該Operationの因果を証明しない**。
+- PostgreSQL `ReadResource`（blob `31c0f03a60fbabfec2d0163553bc9f95e54e1b20`）は別poolで`objects`の`version,value`を`application,resource`条件で再読取する。関数のコメントどおり**ここではRead Authorityを再検査しない**。Host側の読取権限と開示、Tenant/業務Keyと物理Resource/RowのBinding、関係する子集合・無関係C9の追加更新は別に検証する。
+
+| 同一O1／Operationの追加対照 | 独立期待値 |
+| --- | --- |
+| Receipt R+のみ、O1は未読 | `receipt-observed`。資源観測/業務確定へ昇格しない |
+| O1保存後値は一致、別Attempt・旧Attemptも同値 | `resource-observed`は**観測時点の局所値一致**。Receipt/Version/RequestHashと対象を再照合し、因果と業務完了を別検証 |
+| O1は一致、必須子明細がpartial／C9が余分に更新 | 一資源の観測を全Effect/全件・Scope内作用に拡張しない |
+| 観測データが正しくても現在のReader GrantやConsumer開示権限が無い | 実値は非開示。Authorizerが他境界で許可したことをReader権限へ推定しない |
+| Receipt保持、取消やABAによって現在値が再一致 | 履歴Receiptは残るが旧Business承認/Host Grant・現在Effect資格は自動復活しない |
+
+**既存Ownerへの依頼**：#1174/#2598/#1163は同じOperationID/Target/Version/GrantでReceipt・独立Postimage・追加作用を同時に確認し、#2998/#2824はCLI/Studio/Harnessの新旧Consumerが`receipt-observed`と`resource-observed`を区別できるか検証する。#2514/#2506/#1125は同じShape/Business対象の部分集合・意味受理と切り分ける。新しい状態機械、Receipt Store、検証基準の第二正本は作らない。**今回の新Go/実PG/本番IdP/Business一体試験はNOT RUN**。
 
 ## 13. 11/7横断追補：標準データ構造と標準表現型を独立に定義し、具体的表現はFunction内へ配置する（設計・未受理）
 
