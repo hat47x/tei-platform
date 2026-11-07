@@ -617,6 +617,9 @@ Sourceの論理Workspace IDと物理root/realpathも別資格とし、Manifest�
 
 **受入報告はM/R/Cの各状態と未解決を独立記録**：Model/Diagram Source、実SQL・args・Provider・row IDs/fields・read extent、必要母集団/非出力Predicate、Consumer Disclosure、exact HEAD/Attempt、Owner採否。#3238のTOP1・重複ID・隠れたPredicateはR→Cの負例として再利用するが、Caller申告 `CoverageComplete` を完全性のProducerとしない。実組織Provider/DB・三視点UI/SHO・全件業務完了・正式Owner受理は**NOT RUN**。
 
+
+**実装回帰の追加（2026-11-08）**：[Draft #3353](https://github.com/hat47x/tei-platform/pull/3353)は、現mainの`EvaluateCompletion`が`EmptyPolicyHandoff`・0件・`EmptyJustified=true`で、引継ぎ受領なしでも`holds`になり得る分岐を修正する。6ケースで`allow/requires-evidence/deny`と受領有無を対照し、確定`fails`を損なわない。**空集合の独立証拠≠相手方の受領証拠**を組織Profile§9.4のP0-C検収へ追加。ただし`HandoffConfirmed`/`CoverageComplete`はなおCaller申告なので、局所Go PASSだけを実Case引継ぎ・製品E2完了へ昇格させない。#3353は未統合でGo/CI結果未確認。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
