@@ -3773,9 +3773,9 @@ P0は実GUIより**同一Meaning→二つのFunction Context候補→二表現�
 
 #### 他レーンの現行実証とOrgで残る一つの辺
 
-- [main #3051](https://github.com/hat47x/tei-platform/pull/3051)により未観測の空集合でDenyを確定しない修正は統合済み。しかし現mainの\`internal/semantic/completion.go:EvaluateCompletion\`は**Caller提供の\`Coverage\`／\`EmptyJustified\`／\`HandoffConfirmed\`を自身ではProviderへ照合しない**。部分結果でもCallerが誤って\`CoverageComplete\`と伝えると\`holds\`が返り得る。したがって「Completion APIが\`holds\`」と「業務上の全件引継ぎが独立に証明済み」は別資格。
-- [Draft #3238](https://github.com/hat47x/tei-platform/pull/3238)の合成Q05〜07は、(i)件数だけ一致して対象IDが欠落、(ii)TOP1/Pageだけ完了、(iii)表示列にないPredicate依存の未取得を分離し、隔離PostgreSQLでも特定Fixtureの全行とTOP1のRowset差を実証する。ただしこれは**Web Reference/局所Fixture**であって、Org \`CaseRecord\`の実Function→Query→Provider Readerや全Tenant・Owner Procedureを証明しない。本節は同じ過誤をOrgへ転用する受入を記述するだけで、テスト本体やReaderを複製しない。
-- [main #3124](https://github.com/hat47x/tei-platform/pull/3124)／[main #3127](https://github.com/hat47x/tei-platform/pull/3127)で既存Command/Effect観測が進んだが、**Receiptの再照会（過去の処理記録）と、対象Case資源の現在値・行版の独立再Readは別**。前者だけでCaseの\`persisted=true\`や業務Handoff完了を主張しない。実Case Providerにこの二者が結びついているかは未実証。
+- [main #3051](https://github.com/hat47x/tei-platform/pull/3051)により未観測の空集合でDenyを確定しない修正は統合済み。しかし現mainの`internal/semantic/completion.go:EvaluateCompletion`は**Caller提供の`Coverage`／`EmptyJustified`／`HandoffConfirmed`を自身ではProviderへ照合しない**。部分結果でもCallerが誤って`CoverageComplete`と伝えると`holds`が返り得る。したがって「Completion APIが`holds`」と「業務上の全件引継ぎが独立に証明済み」は別資格。
+- [Draft #3238](https://github.com/hat47x/tei-platform/pull/3238)の合成Q05〜07は、(i)件数だけ一致して対象IDが欠落、(ii)TOP1/Pageだけ完了、(iii)表示列にないPredicate依存の未取得を分離し、隔離PostgreSQLでも特定Fixtureの全行とTOP1のRowset差を実証する。ただしこれは**Web Reference/局所Fixture**であって、Org `CaseRecord`の実Function→Query→Provider Readerや全Tenant・Owner Procedureを証明しない。本節は同じ過誤をOrgへ転用する受入を記述するだけで、テスト本体やReaderを複製しない。
+- [main #3124](https://github.com/hat47x/tei-platform/pull/3124)／[main #3127](https://github.com/hat47x/tei-platform/pull/3127)で既存Command/Effect観測が進んだが、**Receiptの再照会（過去の処理記録）と、対象Case資源の現在値・行版の独立再Readは別**。前者だけでCaseの`persisted=true`や業務Handoff完了を主張しない。実Case Providerにこの二者が結びついているかは未実証。
 
 #### 同じC1→D2の検収を、業務Claimに必要な集合から逆向きに構成する
 
@@ -3783,14 +3783,14 @@ P0は実GUIより**同一Meaning→二つのFunction Context候補→二表現�
 
 | 既存検証に載せる対照 | 期待する結論／停止理由 |
 | --- | --- |
-| **既知のC1を1行だけ実Read** | \`C1.handlingUnit=D1\`の存在・対応列は当該Scope/Read版の限定証拠になり得るが、C2未取得なら\`L\`全件完了は\`unverified\`。新しい\`CoverageComplete\`を推定しない |
-| **2行ともC1の重複Path（C2欠落）** | 表示件数が\`|L|=2\`でもEntity identity/Relation occurrenceを突合するとC2欠落。SQL JOIN/Treeの同じCase occurrenceを2対象へ数えず、\`CoverageComplete\`は拒否 |
-| **\`$top=1\`／未終了Page／Replicaが異なる** | ページ内行の評価は可能でもRequired集合の読了を保証しない。実ProviderのScope/Read Epoch/継続条件が揃うまで\`CoveragePartial\`／\`unverified\` |
-| **非表示の委任期限・自己承認・Required Ruleが未Read** | 表示されたCase ID/部門だけで\`P3 may approve\`の\`holds\`を返さない。Predicateが実際に使ったField/NULL/欠落/Source/Role/時点と観測の対応がなければ\`unverified\`。既知違反なら当該Claimは\`fails\` |
-| **完全な同一Scope ReadでL空、あるいは対象に未処理C2** | 空集合の扱いはOwnerのEmptyPolicyと独立取得資格に従う。未処理C2が一件存在するなら全件引継ぎ\`fails\`の反例。空List／未読込を\`empty\`に変換しない |
-| **CaseのC1担当値はD2／Receipt照会成功、引受証拠なし** | Case書込の\`receipt-observed\`は記録の証拠、実資源の再読取は\`resource-observed\`、人手/外部Handoffはさらに別。独立再Read・業務上の受領が無ければそれぞれ\`not-observed\`。全件引継ぎ完了とはしない |
+| **既知のC1を1行だけ実Read** | `C1.handlingUnit=D1`の存在・対応列は当該Scope/Read版の限定証拠になり得るが、C2未取得なら`L`全件完了は`unverified`。新しい`CoverageComplete`を推定しない |
+| **2行ともC1の重複Path（C2欠落）** | 表示件数が`|L|=2`でもEntity identity/Relation occurrenceを突合するとC2欠落。SQL JOIN/Treeの同じCase occurrenceを2対象へ数えず、`CoverageComplete`は拒否 |
+| **`$top=1`／未終了Page／Replicaが異なる** | ページ内行の評価は可能でもRequired集合の読了を保証しない。実ProviderのScope/Read Epoch/継続条件が揃うまで`CoveragePartial`／`unverified` |
+| **非表示の委任期限・自己承認・Required Ruleが未Read** | 表示されたCase ID/部門だけで`P3 may approve`の`holds`を返さない。Predicateが実際に使ったField/NULL/欠落/Source/Role/時点と観測の対応がなければ`unverified`。既知違反なら当該Claimは`fails` |
+| **完全な同一Scope ReadでL空、あるいは対象に未処理C2** | 空集合の扱いはOwnerのEmptyPolicyと独立取得資格に従う。未処理C2が一件存在するなら全件引継ぎ`fails`の反例。空List／未読込を`empty`に変換しない |
+| **CaseのC1担当値はD2／Receipt照会成功、引受証拠なし** | Case書込の`receipt-observed`は記録の証拠、実資源の再読取は`resource-observed`、人手/外部Handoffはさらに別。独立再Read・業務上の受領が無ければそれぞれ`not-observed`。全件引継ぎ完了とはしない |
 | **D1→D2→D1の値ABA／異OperationIDの再送** | 現在値一致だけで過去のEffectなし・再適用安全を断定しない。Target/expected version/Operation identity/独立Receipt/Post-imageは既存§82 TB-08と#1174へ引渡し |
 
-**最初の実装受渡しは新しい\`CompletionQualifier\`や\`OrgCaseTransferLedger\`ではなく**、#2586の同じ実Function/Attemptが \`source + query selected + actual SQL/args + provider/physical target + row IDs/fields + scope/snapshot + read extent\` を観測できるかの確認である。#2514/#1180は独立Expectedと既知誤り検出、#2628/#2622/#2611は実Readerと対象集合の限定資格、#1125/#1444は人手Handoff、#1174/#1163は実Write/Receiptをそれぞれ所有。Callerの自己申告フラグをEvidence Producerと見なさない。
+**最初の実装受渡しは新しい`CompletionQualifier`や`OrgCaseTransferLedger`ではなく**、#2586の同じ実Function/Attemptが `source + query selected + actual SQL/args + provider/physical target + row IDs/fields + scope/snapshot + read extent` を観測できるかの確認である。#2514/#1180は独立Expectedと既知誤り検出、#2628/#2622/#2611は実Readerと対象集合の限定資格、#1125/#1444は人手Handoff、#1174/#1163は実Write/Receiptをそれぞれ所有。Callerの自己申告フラグをEvidence Producerと見なさない。
 
-**停止線**：実ProviderがC1一件を取得できるまではOrg E2 \`product-read-not-connected\`／\`physical-read-unavailable\`を維持する。実C1が読めても独立のL全件・非表示Rule・Handoff・Current Grantを検証するまで\`Business Completion\`は\`unverified\`。同一Providerで\`receipt-observed\`のみの段階から、保存後資源の独立観測やOwnerの意味受理を主張しない。既存Go Reference/PGの局所PASSをOrg E2 PASSへ合算しない。本追加は**計画・独立Expectedの接合のみ**で、新Go/Org DB/Provider/Host/GUI試験、全件Handoff、Owner承認はNOT RUN。
+**停止線**：実ProviderがC1一件を取得できるまではOrg E2 `product-read-not-connected`／`physical-read-unavailable`を維持する。実C1が読めても独立のL全件・非表示Rule・Handoff・Current Grantを検証するまで`Business Completion`は`unverified`。同一Providerで`receipt-observed`のみの段階から、保存後資源の独立観測やOwnerの意味受理を主張しない。既存Go Reference/PGの局所PASSをOrg E2 PASSへ合算しない。本追加は**計画・独立Expectedの接合のみ**で、新Go/Org DB/Provider/Host/GUI試験、全件Handoff、Owner承認はNOT RUN。
