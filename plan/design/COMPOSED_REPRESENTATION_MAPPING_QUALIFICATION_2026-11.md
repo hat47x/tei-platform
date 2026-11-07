@@ -499,7 +499,7 @@ main統合[Reference #3325](https://github.com/hat47x/tei-platform/pull/3325)は
 
 ### 18.1 実Fixtureの新しい二つの反例
 
-[Draft #3263](https://github.com/hat47x/tei-platform/pull/3263)の現在Sourceには、二つのCanvasに同じSemantic Subjectを複数の**異なるView Occurrence**として配置するPressure Fixtureと、そのSource RelationのOccurrence ID、既知Mutantの監査が追加された。さらに`fixture_contract_test.go`には`TestPartialFunctionCRUDKeepsKnownCellsAndUnknownRemainder`が追加されている。このテストは**Fixture入力とExpectedが内的に矛盾しないかの検査**であり、TEI Product Loader→三図/CRUDの実生成・Owner独立Oracleの合格ではない。最新HEAD `2bc0d0f3aa3960751d57745209d94a8253538d72`のHealthは失敗（旧[Run #42385303844](https://github.com/hat47x/tei-platform/actions/runs/42385303844)でDesign索引不足）。修正後HEADの実Go/CI合格は別途確かめる。
+[Draft #3263](https://github.com/hat47x/tei-platform/pull/3263)の現在Sourceには、二つのCanvasに同じSemantic Subjectを複数の**異なるView Occurrence**として配置するPressure Fixtureと、そのSource RelationのOccurrence ID、既知Mutantの監査が追加された。さらに`fixture_contract_test.go`には`TestPartialFunctionCRUDKeepsKnownCellsAndUnknownRemainder`が追加されている。このテストは**Fixture入力とExpectedが内的に矛盾しないかの検査**であり、TEI Product Loader→三図/CRUDの実生成・Owner独立Oracleの合格ではない。旧HEAD `2bc0d0f3aa3960751d57745209d94a8253538d72`の[Health #42385303844](https://github.com/hat47x/tei-platform/actions/runs/42385303844)は設計索引不足でFAIL。その後[Draft #3263](https://github.com/hat47x/tei-platform/pull/3263)の索引修正HEAD `6d3eb7f6cf7fc68c4401947faf9cad157ae565af`を確認したが、**その新HEADのGo/CI結果は別途判定**し、旧FAIL・旧PASSを流用しない。
 
 **部分情報の単調性**：`fn.external.dispatch`は`declaredCrudComplete=false`でも、明示`data.customer: R`が与えられたセルは**Rのまま**保持する。同じFunctionの宣言されていない`data.order`等は`unknown-not-enumerated`であり、`none`にしない。`complete=false`を理由に**既知Rをunknownへ消す**のも、未列挙を**noneへ確定**するのも誤り。これはMatrix全体を三値一色へ塗りつぶさず**各セルの明示事実と列挙閉包**を別根拠に持つということ。宣言されたRは実Provider Readの成功や業務Effect完了ではない。
 
