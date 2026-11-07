@@ -1,0 +1,113 @@
+{
+  "schema": "tei.reference.operation-pattern-crosswalk/v0",
+  "authority": "derived-read-only",
+  "ruleId": "tei.reference.operation-pattern-crosswalk",
+  "ruleVersion": "v0",
+  "ruleFingerprint": "sha256:601dff18d70dc94af994fa9486b9cd4d2c2f1572e24b8f22d48e682089ffe36d",
+  "applications": [
+    {
+      "id": "order_entry",
+      "operations": [
+        "order_entry.create.sales.order",
+        "order_entry.create.sales.order_line",
+        "order_entry.list.customer.customer",
+        "order_entry.list.sales.order",
+        "order_entry.list.sales.order_line",
+        "order_entry.read.customer.customer",
+        "order_entry.read.sales.order",
+        "order_entry.read.sales.order_line",
+        "order_entry.update.sales.order",
+        "order_entry.update.sales.order_line"
+      ],
+      "patterns": [
+        "order_entry.customer_reference",
+        "order_entry.order_lines",
+        "order_entry.order_record",
+        "order_entry.recent_orders",
+        "order_entry.submit_order"
+      ],
+      "links": [
+        {
+          "operation": "order_entry.list.sales.order",
+          "operationKind": "list",
+          "pattern": "order_entry.recent_orders",
+          "patternKind": "browse",
+          "via": "data",
+          "subject": "sales.order"
+        },
+        {
+          "operation": "order_entry.list.sales.order_line",
+          "operationKind": "list",
+          "pattern": "order_entry.order_lines",
+          "patternKind": "header-detail",
+          "via": "relation",
+          "subject": "sales.order_line"
+        },
+        {
+          "operation": "order_entry.read.customer.customer",
+          "operationKind": "read",
+          "pattern": "order_entry.customer_reference",
+          "patternKind": "reference",
+          "via": "relation",
+          "subject": "customer.customer"
+        },
+        {
+          "operation": "order_entry.read.sales.order",
+          "operationKind": "read",
+          "pattern": "order_entry.order_record",
+          "patternKind": "record",
+          "via": "data",
+          "subject": "sales.order"
+        },
+        {
+          "operation": "order_entry.read.sales.order_line",
+          "operationKind": "read",
+          "pattern": "order_entry.order_lines",
+          "patternKind": "header-detail",
+          "via": "relation",
+          "subject": "sales.order_line"
+        }
+      ],
+      "unlinked": [
+        {
+          "pattern": "order_entry.submit_order",
+          "kind": "command",
+          "code": "out-of-scope",
+          "detail": "capability sales.order.submit declares no effect, so no derived write operation exists to bind"
+        }
+      ],
+      "conflicts": [],
+      "ambiguous": [
+        "order_entry.order_lines"
+      ]
+    },
+    {
+      "id": "repair_intake",
+      "operations": [
+        "repair_intake.list.customer.customer",
+        "repair_intake.read.customer.customer"
+      ],
+      "patterns": [
+        "repair_intake.customer_reference"
+      ],
+      "links": [
+        {
+          "operation": "repair_intake.read.customer.customer",
+          "operationKind": "read",
+          "pattern": "repair_intake.customer_reference",
+          "patternKind": "reference",
+          "via": "relation",
+          "subject": "customer.customer"
+        }
+      ],
+      "unlinked": [],
+      "conflicts": []
+    }
+  ],
+  "notes": [
+    "link is a reading of the accepted meaning; it is not execution authority",
+    "a missing link is reported, never filled with a default",
+    "header-detail can match more than one operation kind; both are listed and the Pattern is marked ambiguous",
+    "the operation surface this reads is the same rule the CLI reports (tei.operation-surface/standard-crud)"
+  ]
+}
