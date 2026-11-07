@@ -28,10 +28,38 @@ const (
 	// configured. It must not be read as "not persisted": the Commit may have
 	// succeeded.
 	PersistenceNotObserved PersistenceState = "not-observed"
-	// PersistenceObserved means an independent observer read the declared
-	// effect back after Commit and reported success.
-	PersistenceObserved PersistenceState = "observed"
+	// PersistenceReceiptObserved means an independent read found the committed
+	// operation's receipt. A receipt proves the operation id and request hash
+	// were recorded; it does NOT prove the resource's stored value matches.
+	PersistenceReceiptObserved PersistenceState = "receipt-observed"
+	// PersistenceResourceObserved means an independent read of the stored
+	// resource's current value matched the committed payload.
+	PersistenceResourceObserved PersistenceState = "resource-observed"
 )
+
+// PersistenceMethod names which storage fact an observation established.
+type PersistenceMethod string
+
+const (
+	// PersistenceMethodReceipt is a committed-operation receipt, not the stored
+	// resource value.
+	PersistenceMethodReceipt PersistenceMethod = "receipt"
+	// PersistenceMethodResource is the stored resource's current value.
+	PersistenceMethodResource PersistenceMethod = "resource"
+)
+
+// PersistenceObservation is what a DetailedPersistenceObserver established.
+type PersistenceObservation struct {
+	Method PersistenceMethod
+}
+
+// DetailedPersistenceObserver is an optional extension of
+// PersistenceObserver that says WHICH fact it observed. A plain
+// PersistenceObserver is treated as a resource observation because its
+// documented contract is the stored effect, not a receipt.
+type DetailedPersistenceObserver interface {
+	ObservePersistence(ctx context.Context, request Request, declared semantic.DataEffect) (PersistenceObservation, error)
+}
 
 // PersistenceObserver performs an independent read after a successful Commit
 // and reports whether the declared effect is visible at the storage boundary.
@@ -56,10 +84,26 @@ func (i Invoker) observePersistence(ctx context.Context, request Request, declar
 	if i.PersistenceObserver == nil {
 		return PersistenceNotObserved
 	}
+	if detailed, ok := i.PersistenceObserver.(DetailedPersistenceObserver); ok {
+		try := *declared
+		observation, err := detailed.ObservePersistence(ctx, request, try)
+		if err != nil {
+			return PersistenceNotObserved
+		}
+		switch observation.Method {
+		case PersistenceMethodResource:
+			return PersistenceResourceObserved
+		case PersistenceMethodReceipt:
+			return PersistenceReceiptObserved
+		default:
+			// An observer that does not name its method is not upgraded.
+			return PersistenceNotObserved
+		}
+	}
 	if err := i.PersistenceObserver.Observe(ctx, request, *declared); err != nil {
 		return PersistenceNotObserved
 	}
-	return PersistenceObserved
+	return PersistenceResourceObserved
 }
 
 // PersistenceObserverFunc adapts a function to PersistenceObserver. It keeps

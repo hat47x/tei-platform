@@ -207,7 +207,7 @@ func (h *ReadOnly) executeCommand(workspaceID, applicationID, patternID, capabil
 		Outcome:               result.Outcome,
 		Effect:                result.Effect,
 		Committed:             true,
-		Persisted:             result.Persistence == command.PersistenceObserved,
+		Persisted:             result.Persistence == command.PersistenceResourceObserved,
 		Persistence:           string(result.Persistence),
 		Durability:            "none",
 		Records:               recorder.Records,

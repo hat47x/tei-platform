@@ -52,3 +52,4 @@
 
 - [DSH外部HarnessからのTEI read-only CLI実起動](DSH_H2_TOOL_ONLY_READ_ONLY_2026-11-07/README.md)（#2509。外部AIハーネスの1実Sessionで固定実行物の実起動・実引数・実出力を同一ログで突合。H3・四Session比較・正答採点・Egressは未実施）
 - [DSH実HarnessでのH2/H3四Session実行](DSH_H2_H3_FOUR_SESSION_2026-11-07/README.md)（#2509・TAI #168。H2→H3→H3→H2を同一Taskで実行し、H3のSkill実Load byteを確認。回答採点・Skill効果の因果・Egressは未確認）
+- [DSHセッションログ拡張の実送出計測](DSH_SESSION_LOG_EGRESS_MOCK_2026-11-07/README.md)（#2509・TAI #232。ローカルMock宛で拡張fieldの水位・再有効化・Tool結果の複製送出を計測。実Providerへの送出とEgress制御はNOT RUN）
