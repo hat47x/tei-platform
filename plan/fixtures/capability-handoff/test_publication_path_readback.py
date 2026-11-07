@@ -73,6 +73,28 @@ class PublicationPathReadbackTests(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, "duplicate ledger member"):
             verify_ledger_publication_paths(MEMBERS + [dict(MEMBERS[0])], self.root)
 
+    def test_same_body_with_other_envelope_does_not_prove_artifact_identity(self):
+        # AP-10/11: changing the rule/generator/gap details without changing
+        # Content must NOT turn a successful body read into an envelope claim.
+        reference = verify_ledger_publication_paths(MEMBERS, self.root)
+        changed = [dict(m) for m in MEMBERS]
+        changed[0]["rule"] = {"id": "different-rule", "version": "R2"}
+        changed[0]["generator"] = "different-producer"
+        changed[0]["unresolved"] = [{"subject": "x", "reason": "different"}]
+        observed = verify_ledger_publication_paths(changed, self.root)
+        self.assertEqual(observed, reference)
+        self.assertEqual(observed["member_binding"], "ledger-fixture-path-to-bytes-only")
+        self.assertNotIn("artifact_digest_verified", observed)
+
+    def test_partial_r2_member_under_r1_manifest_is_rejected_as_r1_read(self):
+        # AP-01/AP-06: a new member from R2 alongside old R1 files/manifest.
+        # This proves only detection by the bounded Reader, NOT atomic publish.
+        old_manifest = (self.root / "manifest.json").read_bytes()
+        (self.root / PATHS[0]).write_bytes(b"table public.notes\nR2 only\n")
+        self.assertEqual((self.root / "manifest.json").read_bytes(), old_manifest)
+        with self.assertRaisesRegex(AssertionError, "path-to-byte mismatch"):
+            verify_ledger_publication_paths(MEMBERS, self.root)
+
     def test_modified_member_byte_rejected(self):
         (self.root / PATHS[0]).write_bytes(b"tampered")
         with self.assertRaisesRegex(AssertionError, "path-to-byte mismatch"):
