@@ -246,3 +246,33 @@ W1で`docs/reference.md`をReadして完全path一致を観測後、**文書byte
 **実装と判定**：PR #2669の`tools/reference-developer-context/blind_probe_scope_comparison_test.go`へ`TestBlindProbeSameReportCompetingScopesOneReadBound`と`TestBlindProbeAdditionalReadResolvesMissAtHigherCost`を追加し、Focused workflowの`TestBlindProbe`対象とする。**当該exact HEADのGo CI結果が確定するまではPASS表現は予測値として扱う**。Go実行が合格しても、認知Methodの実質的増分効果の実証にはならない。
 
 **次にM1を検証するためのゲートではない受入手順**：①現在の実SEI Methodで選べるProbeの表現を確認、②両側に同じ初期Report/Q/現在Source/実Tool/Scope/Grant/予算を提供、③正解Scopeと独立Rを隠す、④Methodが提案したScopeに対して**同じToolで実Read**、⑤Read結果のSHA/時点/失敗/Consumer開示と費用で評価、⑥1回Budgetでの失敗と2回Budgetでの改善を混ぜない。Methodによる選択にModelの追加情報があるならその出典・開示資格を別記。#2514がOracle、SEI #767がMethod、#2533が比較、#2516がDisclosure、TAI #271が再資格化を所有。ADR-0038と業務Meaningの受理はOwner未決。新Host/Registry/正式Proof Store/製品Gateを追加しない。
+
+<!-- tei-devctx-p2c-profile-cohort-20261107 -->
+## 13. P2-2c：候補のGo構成適合と複数Readの共同成立を区別する（2026-11-07、提案・NOT RUN）
+
+**位置づけ・確認したSource**：完了済み[#2196](https://github.com/hat47x/tei-platform/issues/2196)と[統合済PR #2669](https://github.com/hat47x/tei-platform/pull/2669)の既存T/CC試験を再利用する。mainの tools/reference-developer-context/main.go（blob dc69dc3a204085801ca509bdda2e2e27b91fa204）の Discover は、Goテストのファイル名・stem本文一致・文書の参照文字列で候補を収集し、Goのbuild profileを解釈しない。targetと各candidateは別々に readInside され、readInside は EvalSymlinks → Lstat → os.ReadFile の順で実行される。**個々のSHA-256が正しいことは、単一の原子的なRead cohortや実Open対象の永続同一性を示さない**。この所見は静的Source確認であり、競合攻撃や実漏洩の成功を意味しない。
+
+### 新しく分離する二つの資格
+
+1. **字句候補 ≠ Go構成で選択されたテスト ≠ 実行済みPASS ≠ Qに必要な独立根拠**。同じテスト候補でもGOOS/GOARCH、build tags、CGO、toolchain、実際のtestコマンドの対象によって利用可能性が異なる。Profile外の候補を絶対的に「無関係」「不存在」とせず、どのProfileでの判断かを明示する。
+2. **fileごとの内容fingerprint ≠ 複数Readの共同Snapshot**。targetを読んだ後にSourceが更新されれば、target旧版とcandidate新版を組み合わせたReportを作り得る。旧Reportの再現と、現在の検証・ビルドに必要な共同成立条件を分離する。
+
+### 独立Expected付き最小Pressure（製品修正前の試験計画）
+
+| Case | 一因子変更 | 独立Expected／不適切な昇格を拒否 |
+| --- | --- | --- |
+| **CC-12 GOOS** | 公開合成packageに qualification_linux_test.go と qualification_windows_test.go を設置。Go testファイル選択対象をLinux/Windowsに切替え、Sourceの内容・字句候補集合を固定 | Discoverは両候補を返し得るが、Goの対象Profileで選択されるテスト集合は異なる。fixture作成時に別途固定した期待集合を、実 go list のTestGoFiles等と比較。go list成功をテスト実行/PASSへ昇格しない |
+| **CC-13 Build tag** | qualification_opt_test.go に build constraint optcheck を付け、Goの -tags optcheck 有無のみを変更 | 同じ発見候補でもProfile選択は変わる。文字列一致/候補順位から有効なビルド依存や実テスト実行を推定しない |
+| **CC-14 Fractured read** | 評価用の制御Readerで世界を(T0,C0)→(T1,C0)→(T1,C1)と変え、targetはT0、candidateはC1で読み取る | 両digestは正しくても(T0,C1)が同時に実在した時点はない。現在のReportに共同成立を示す証拠が無いなら、評価票で joint-cohort-unverified を残す。製品Report Schema追加はOwner未決 |
+| **CC-15 Check/open gap** | 公開temp pathと制御hookだけで、symlink解決・Lstatと実file openの間の変更を圧力試験する | 事前チェックしたrealpath・sizeと実際に読んだfile objectの同一性は未証明と表示する。実際のroot外読取、OS脱出、秘密漏洩の発生はこの設計だけでは主張しない |
+
+**実行順序・再利用**：
+
+- **P0**：CC-12/13は現Discover＋既存Go toolchainで限定的に評価し、discovered C、profile-selected T、actual executed、独立R(Q)を別に記録。Build constraintの正式解釈はGo Toolに委ね、TEIの独自Parserを作らない。別OSで実テストできないときはnot-runであり、失敗や不存在ではない。
+- **P1**：CC-14の決定的な読取順序を隔離Fixtureで再現し、個別fingerprintと共同Source資格を別列にする。修正前に新しい全Repository Snapshot Engineを導入しない。実際のBuild入力/Artifact一致は[#2595](https://github.com/hat47x/tei-platform/issues/2595)と[#2016](https://github.com/hat47x/tei-platform/issues/2016)、複数ReadのClaim比較は[#2516](https://github.com/hat47x/tei-platform/issues/2516)がOwner。
+- **P1並列**：CC-15は外部秘密Sourceを使わず局所tempのみで再現条件を設計する。root内判定・実Opened file・osごとの制御機構を分ける。物理権限・Network/OS実効拒否は[#2515](https://github.com/hat47x/tei-platform/issues/2515)へ渡す。
+- **P2**：既存のD0現Report／D1決定的Probe／SEI M1 Methodを、同一公開可能Projection・Tool・Grant・Scope・読取予算・Source版・評価側に隔離した独立Expectedで比較。Profile未選択/共同Read未確認を「次に取るべき根拠」として説明できるか確認し、実Readのない提案はproposed/unsupportedのまま残す。実モデルと実Product接続はまだ行っていない。
+
+**評価票（公式Schemaではない）**：checkout/HEAD、各Source実byteとdigest、go toolchain/GOOS/GOARCH/CGO/tags、lexical discovered、selected by build profile、actually executed/result、read order、joint-cohort qualification、Scope/budget/failure、独立R(Q)、現在Disclosure、unknown/residual/next probe。Path・候補件数・Toolの存在・診断自体が機密になり得るので、外部へ示す票は既存[#2516](https://github.com/hat47x/tei-platform/issues/2516)に従う。候補名・Markdownは非信頼データであり、モデルへの命令として扱わない。
+
+**追加価値と境界**：決定的なProfile検査/再Readで十分ならモデルを導入しない。go list、mock、model-ranked、Attester verified、digest一致は業務意味受理/現在Grant/外部送出可否/独立Expectedを代行しない（[#2514](https://github.com/hat47x/tei-platform/issues/2514)、[SEI #820](https://github.com/hat47x/sei-cognition/issues/820)）。認知Methodが担うのは不足根拠と識別的な次Probeの選択（[SEI #767](https://github.com/hat47x/sei-cognition/issues/767)）、再開と現在資格は[TAI #271](https://github.com/hat47x/tai-pleroma/issues/271)に委譲する。#2196/#2021は閉鎖状態のまま。**CC-12〜15、実Go/CI、実モデル、実Provider/OS、Owner AcceptanceはNOT RUN**。第二Claim Store、Agent Host、Authority、認知/証拠Gateを作らない。
