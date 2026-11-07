@@ -418,6 +418,8 @@ X-TEAではDBテーブルの1:1・1:NトポロジーをXFxxxの単票/明細機�
 
 **Triad計画の最小の検収境界**：同じH/D1/D2をTable/Tree/Chart/CUIに配置しても、D1実体2件・JOIN投影6行・集計棒1件の粒度とBusiness Claimの必要集合は不変。Tab並べ替えや媒体再生位置の変更はBusiness/Sourceの更新ではない。異なる単位・時間軸・文書ページ・Graph多重親は#3192のRP-01〜08と#2497のLoss条件に委譲する。表現上の編集から一意なData Targetへ逆解決できず、現在Version/Scope/権限も欠けるなら、`ViewChange→Intent`は未資格としてread-onlyに留める（#2500/#2598/#1174）。
 
+**複数Instance間の同期は別の責務**：[Draft #3222](https://github.com/hat47x/tei-platform/pull/3222)の`REPRESENTATION_CROSSVIEW_COORDINATION_2026-11.md`がSelection/Focus/Filter/Seekの同期、Subject・Path・集計group・View Occurrence・Media timeのIdentity差、MV-01〜08の独立対照を所有する。本計画では、**表示上の選択が他Slotへ同期されたこと ≠ 一意なBusiness Entity/更新Targetが選ばれたこと ≠ 現在のAction Offer/Grant取得**というTriadの受入境界のみを引き受ける。元Sourceや業務データを変えるのは明示的な型付きIntent以降であり、表示同期をDomain Mutationとして自動保存しない。部分取得・古いepoch・非開示には同期結果の不確実性を保持する。
+
 **導入順**：#3192でトポロジー分類と独立Expected→#2586の一Function/ContextでBinding/Lossを観測→#997/#1124でRenderer/Authoring→#2500で逆写像→#1174/#1163でHost/Provider Effectを別検証。新Core Widget enum、別Mapping/Meaning Registry、第二Fixture正本は作らない。媒体間同期・ページ/音声化の製品E2E、正式Owner受理は本PRではNOT RUN。
 
 ### 13.6 実Patternと導出Operationは同じDataを指すだけでは結合しない
