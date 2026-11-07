@@ -30,6 +30,10 @@ type ManagedFile struct {
 	Path       string `json:"path"`
 	SourceRoot string `json:"sourceRoot"`
 	Extension  string `json:"extension,omitempty"`
+	// ReadByLoader reports whether a domain loader consumed the file's bytes
+	// during Load. false means the file is managed but not interpreted: it is
+	// inventoried, not parsed. It does not mean the parser accepted the content.
+	ReadByLoader bool `json:"readByLoader"`
 }
 
 type SourceContribution struct {
@@ -45,7 +49,11 @@ type Result struct {
 	PluginImplementationSources map[string]SourceLocation
 	Sources                     map[string]SourceLocation
 	ManagedFiles                []ManagedFile
-	SourceContributions         []SourceContribution
+	// SourceRootFindings are manifest source-root problems found before any
+	// domain loader read the root. They are source-direct findings: an unknown
+	// or missing root has no Canonical Subject.
+	SourceRootFindings  []WorkspaceSourceRootFinding
+	SourceContributions []SourceContribution
 
 	// Private, transient read provenance. Not part of Canonical World or a
 	// serialized Source Index; only Load may populate this snapshot.
@@ -180,15 +188,28 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 		return Result{}, err
 	}
 	// Inventory and verify the physical boundary before any domain loader can
-	// read a Source file or parse a symlink to an outside target.
+	// read a Source file or parse a symlink to an outside target. Containment
+	// failures keep their existing fail-closed error and are never reclassified
+	// as a finding.
 	managedFiles, err := scanManagedFiles(sourceRoot, roots)
 	if err != nil {
 		return Result{}, err
 	}
+	// Classify declared roots after the physical boundary is verified, so a
+	// misspelling is reported as itself rather than as a downstream cascade and
+	// an escaping symlink keeps the original containment error. Managed but
+	// not interpreted files are named separately from root findings. Neither
+	// becomes a semantic Diagnostic: there is no Subject.
+	sourceRootFindings, err := checkWorkspaceSourceRoots(sourceRoot, roots)
+	if err != nil {
+		return Result{}, err
+	}
+	sourceRootFindings = append(sourceRootFindings, CheckWorkspaceManagedFileNames(managedFiles)...)
 	r := Result{
 		Sources:                     map[string]SourceLocation{},
 		PluginImplementationSources: map[string]SourceLocation{},
 		ManagedFiles:                managedFiles,
+		SourceRootFindings:          sourceRootFindings,
 		sourceSnapshotRoot:          rootReal,
 		sourceSnapshot:              make(map[string][]byte),
 		sourceReadRoot:              sourceRoot,
@@ -268,11 +289,26 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 	if err := captureManagedExtra(&r); err != nil {
 		return Result{}, err
 	}
+	markManagedFilesReadByLoader(&r)
 	Normalize(&r.World)
 	// The loader snapshot stays available, but an OS handle must not escape
 	// the Load lifetime. Imports close their own pinned roots independently.
 	r.sourceReadRoot = nil
 	return r, nil
+}
+
+// markManagedFilesReadByLoader records which managed files a domain loader
+// consumed. The sourceSnapshot holds exactly the bytes read through
+// readSourceForLoad; sourceManagedExtra holds the rest. ManagedFile.Path and
+// snapshot keys share the normalized slash form.
+func markManagedFilesReadByLoader(result *Result) {
+	for i := range result.ManagedFiles {
+		path, err := sourceindex.NormalizeWorkspacePath(result.ManagedFiles[i].Path)
+		if err != nil {
+			continue
+		}
+		_, result.ManagedFiles[i].ReadByLoader = result.sourceSnapshot[path]
+	}
 }
 
 // parseWorkspaceYAML is retained for existing callers of the source-root-only API.
@@ -533,6 +569,7 @@ func loadSemantics(root string, r *Result) error {
 		r.World.Semantics[idx].Data = append(r.World.Semantics[idx].Data, ns.Data...)
 		r.World.Semantics[idx].Capabilities = append(r.World.Semantics[idx].Capabilities, ns.Capabilities...)
 		r.World.Semantics[idx].Validations = append(r.World.Semantics[idx].Validations, ns.Validations...)
+		r.World.Semantics[idx].Calendars = append(r.World.Semantics[idx].Calendars, ns.Calendars...)
 		r.World.Semantics[idx].Periods = append(r.World.Semantics[idx].Periods, ns.Periods...)
 		r.World.Semantics[idx].EffectRules = append(r.World.Semantics[idx].EffectRules, ns.EffectRules...)
 		r.World.Semantics[idx].RunPlans = append(r.World.Semantics[idx].RunPlans, ns.RunPlans...)

@@ -1,4 +1,4 @@
-import test from "node:test";
+﻿import test from "node:test";
 import assert from "node:assert/strict";
 import {summarizeView} from "../assets/view-format.mjs";
 
@@ -39,17 +39,24 @@ test("application view is summarized into patterns, packages, and periods", () =
     application: "order_entry",
     patterns: [{id: "order_entry.order_record", kind: "record"}],
     packages: [{id: "order_entry.list_to_record", version: "1", bound: true}],
-    periods: [{id: "sales.period", data: "sales.order", businessDate: "sales.order.order_date", states: ["open", "closed"]}],
+    periods: [{id: "sales.period", data: "sales.order", businessDate: "sales.order.order_date", states: ["open", "closed"], calendar: "sales.fiscal"}],
   });
   assert.deepEqual(sections.map((section) => section.title), ["Application", "Pattern", "Package", "期間"]);
   assert.equal(sections[2].rows[0][2], "束縛済み");
   assert.equal(sections[3].rows[0][3], "open, closed");
+  // A period names the calendar its boundary follows, so the view shows it
+  // instead of leaving the reader to guess a default.
+  assert.equal(sections[3].rows[0][4], "sales.fiscal");
 });
 
 test("command run includes the plan and the reference execution", () => {
   const sections = summarizeView({
     mode: "reference",
+    authorizationMode: "reference-allow-all",
     committed: true,
+    persisted: false,
+    persistence: "not-applicable",
+    durability: "none",
     plan: {
       capability: "sales.order.submit",
       inputs: [{name: "order", type: "sales.order", value: "ORD-1", provided: true}],
@@ -59,7 +66,22 @@ test("command run includes the plan and the reference execution", () => {
   });
   assert.equal(sections[0].title, "Command");
   assert.equal(sections[sections.length - 1].title, "参照実行");
-  assert.equal(sections[sections.length - 1].rows[1][1], "true");
+  const rows = sections[sections.length - 1].rows;
+  assert.equal(rows[1][0], "authorization");
+  assert.equal(rows[1][1], "reference-allow-all");
+  assert.equal(rows[2][0], "committed");
+  assert.equal(rows[2][1], "true (unit of work)");
+  assert.equal(rows[3][0], "persisted");
+  assert.equal(rows[3][1], "false");
+  assert.equal(rows[4][0], "persistence");
+  assert.equal(rows[4][1], "not-applicable");
+  assert.equal(rows[5][0], "durability");
+  assert.equal(rows[5][1], "none");
+  assert.equal(rows[6][0], "outcome");
+  assert.equal(rows[8][0], "records");
+  assert.equal(rows[8][1], "0");
+  assert.equal(rows[9][0], "differences");
+  assert.equal(rows[9][1], "0");
 });
 
 test("package view is summarized into members and requirements", () => {
@@ -76,3 +98,44 @@ test("package view is summarized into members and requirements", () => {
   assert.equal(sections[1].rows[1][1], "order_entry.order_record");
   assert.equal(sections[2].rows[0][1], "sales.order");
 });
+
+test("command run lists the differences the declaration did not describe", () => {
+  const sections = summarizeView({
+    committed: true,
+    persisted: false,
+    persistence: "not-applicable",
+    durability: "none",
+    plan: {
+      capability: "sales.delete_order",
+      inputs: [{name: "order_id", type: "sales.order.order_id", value: "ORD-1", provided: true}],
+      outcomes: [{name: "deleted", payload: "sales.order"}],
+      effect: {kind: "delete", data: "sales.order"},
+    },
+    outcome: {name: "deleted", payload: "sales.order"},
+    effect: {kind: "delete", data: "sales.order"},
+    differences: [{
+      code: "additional-scope",
+      declared: {kind: "delete", data: "sales.order"},
+      applied: {kind: "delete", data: "sales.order_line", key: "order=ORD-1"},
+    }],
+  });
+  const last = sections[sections.length - 1];
+  assert.equal(last.title, "宣言との差");
+  assert.deepEqual(last.header, ["種別", "宣言", "適用"]);
+  assert.equal(last.rows[0][0], "additional-scope");
+  assert.equal(last.rows[0][1], "delete sales.order");
+  assert.equal(last.rows[0][2], "delete sales.order_line");
+});
+
+test("validation view lists diagnostics and unanswered proposals", () => {
+  const sections = summarizeView({
+    diagnostics: [{diagnostic: {severity: "error", code: "INVALID_DATABASE_ACCESS", message: "datasource has invalid access mode"}}],
+    proposals: [{code: "INVALID_DATABASE_ACCESS", revision: "sha256:abc", accepted: false}],
+  });
+  assert.deepEqual(sections.map((section) => section.title), ["診断", "修正案（未受理）"]);
+  assert.equal(sections[0].rows[0][1], "INVALID_DATABASE_ACCESS");
+  assert.equal(sections[1].rows[0][1], "未受理");
+  assert.equal(sections[1].rows[0][2], "sha256:abc");
+});
+
+

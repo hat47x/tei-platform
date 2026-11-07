@@ -1,0 +1,17 @@
+{"schemaVersion":"tei.cli.validate/v0","ok":true,"diagnostics":[{"diagnostic":{"code":"DATABASE_RELEASE_CONTRACT_NOT_CURRENT","severity":"warning","message":"database sales_core release 4.0.0 provides historical contract sales_core.order_legacy which has no current definition"}},{"diagnostic":{"code":"DATABASE_RELEASE_CONTRACT_NOT_CURRENT","severity":"warning","message":"database sales_core release 4.1.0 provides historical contract sales_core.order_legacy which has no current definition"}},{"diagnostic":{"code":"APPLICATION_RELEASE_CONTRACT_NOT_CURRENT","severity":"warning","message":"application release order_entry@3.7.0 requires historical contract sales_core.order_legacy which has no current definition"}}],"worldFingerprint":"sha256:c92de09f9595b1f46bfc18e6f99260d8391113b6d2639357d372abf634a1d65a","sourceIndexFingerprint":"sha256:1827f4b46169710cbe26179498bf30ef775aecba858c3beff8e2e0d53ca23531"}
+
+[stderr]
+�^���쐬�ł��܂���B���̌��ꃂ�[�h�ł́A�R�A�̌^�݂̂��T�|�[�g����Ă��܂��B
+�����ꏊ �s:1 ����:1
++ [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false);  ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []�ARuntimeException
+    + FullyQualifiedErrorId : CannotCreateTypeConstrainedLanguage
+ 
+�^���쐬�ł��܂���B���̌��ꃂ�[�h�ł́A�R�A�̌^�݂̂��T�|�[�g����Ă��܂��B
+�����ꏊ �s:1 ����:70
++ ... ew($false); $OutputEncoding = [System.Text.UTF8Encoding]::new($false) ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []�ARuntimeException
+    + FullyQualifiedErrorId : CannotCreateTypeConstrainedLanguage
+ 

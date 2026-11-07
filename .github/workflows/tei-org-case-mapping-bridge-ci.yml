@@ -1,0 +1,68 @@
+name: TEI native organization CaseRecord persistence bridge
+
+# A branch-specific E1b regression for the stacked child of native org E1 PR.
+# Parser/Loader -> mapping -> derived candidate only, not Product Provider E2.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'internal/operations/org_case_mapping_bridge_test.go'
+      - 'reference/org-headless-workspace/**'
+      - '.github/workflows/tei-org-case-mapping-bridge-ci.yml'
+  pull_request:
+    branches:
+      - main
+      - work/org-tei-loader-operation-bridge-20261103
+    paths:
+      - 'internal/operations/org_case_mapping_bridge_test.go'
+      - 'reference/org-headless-workspace/**'
+      - '.github/workflows/tei-org-case-mapping-bridge-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-case-mapping:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      TARGET_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Pin Go version
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+      - name: Verify the exact Source and formatting
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          test -z "$(gofmt -l internal/operations/org_case_mapping_bridge_test.go)"
+          printf 'actual-head=%s\n' "$(git rev-parse HEAD)"
+          printf 'test-blob=%s\n' "$(git rev-parse HEAD:internal/operations/org_case_mapping_bridge_test.go)"
+          go version
+      - name: Native CaseRecord bridge characterization
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test ./internal/operations -run '^TestOrgCaseExplicitPersistenceEnablesReadCandidateOnly$' -count=1 -v
+          go test ./internal/operations -run '^TestOrgHeadless' -count=1
+          go vet ./internal/operations
+          go run ./cmd/tei validate -workspace reference/org-headless-workspace
+      - name: Verify the exact checkout remained clean
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"

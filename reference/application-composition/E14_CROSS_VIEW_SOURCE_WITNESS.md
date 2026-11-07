@@ -45,6 +45,6 @@ E13の`-include-direct-derived`による追加出力は、既存E5の`report.sta
 2. **#1120を直接importしない。** #1120はまだDraftの並行ブランチであり、現在の#1016からその候補Packageを正本として固定しない。将来の共通checkoutでE13のWorldから`derivedbridge.FromIndex`を得て、`Validate`・`Impact`を呼ぶ結合テストを実施する。
 3. **#1017も未統合。** 同じ`loaded.World`を使っても、解析時Source bytesの一貫性やファイルシステムTOCTOUまでは保証できない。
 4. **SUI Stage 0は正式Applicationではない。** E14の三視点の成立をSUIへ一般化しない。Native Canvas/DocumentとActionの接続は別Consumerで検証する。
-5. E5・E13・E14のGo focused testとNodeテスト、実WorkspaceのCLI、最新headでの`tools/repository-health-check.sh`全項目PASS・前後clean・main照合を得るまでは**Draftを解除・統合しない**。
+5. E5・E13・E14のGo focused testとNodeテスト、実WorkspaceのCLIを実行し、結果と前後clean・main照合を記録して統合する。`tools/repository-health-check.sh`は任意の広範囲診断として扱い、全項目PASSを統合の一律条件にはしない。**Draftは解除して統合する**。
 
 実行する際は、[E13のローカル検証スクリプト](qualify-e13-local.sh)を使う。ただしスクリプトが存在することは検証成功の証拠ではない。

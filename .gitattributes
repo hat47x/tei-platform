@@ -3,6 +3,11 @@
 /plan/evidence/tei-e1-synthetic-38267656696/*.json -text
 /plan/evidence/TEI_E2A1_REAL_POSTGRES_RECEIPT_38311557882.json -text
 
+# Captured CLI output is hashed as raw bytes by the evidence README; checkout
+# and diff must not rewrite its line endings or encoding.
+/plan/evidence/COMPOSITION_FIRST_CONSUMER_RUN_2026-11-07/** -text
+/plan/evidence/DSH_H2_TOOL_ONLY_READ_ONLY_2026-11-07/** -text
+
 # Workspace source trees are fingerprinted byte-wise (sourceIndexFingerprint,
 # modelRevision). Checkout must not rewrite their bytes (#2399).
 /examples/first-capability-effect/** -text
@@ -13,3 +18,49 @@
 /reference/workspace/** -text
 /tools/reference-data-first-persistence/testdata/overlay/** -text
 /tools/reference-external-adoption-authority/testdata/consumer/** -text
+
+# Survey output is hashed as raw bytes by the evidence README.
+/plan/evidence/COMPOSITION_NEXT_EDGE_STATIC_SURVEY_2026-11-07/** -text
+/plan/evidence/DSH_H2_H3_FOUR_SESSION_2026-11-07/** -text
+
+# Egress measurement summaries are hashed as raw bytes.
+/plan/evidence/DSH_SESSION_LOG_EGRESS_MOCK_2026-11-07/** -text
+
+# Retry/default egress measurement summaries are hashed as raw bytes.
+/plan/evidence/DSH_SESSION_LOG_RETRY_AND_DEFAULT_2026-11-07/** -text
+
+# Operation-surface pattern gap evidence is hashed as raw bytes.
+/plan/evidence/OPERATION_SURFACE_DECLARED_PATTERN_GAP_2026-11-07/** -text
+
+# Pattern/operation mapping evidence is hashed as raw bytes.
+/plan/evidence/PATTERN_KIND_OPERATION_MAPPING_2026-11-07/** -text
+
+# Read-boundary observations are hashed as raw bytes.
+/plan/evidence/DSH_H6E1_READ_BOUNDARY_2026-11-07/** -text
+
+# Implicit-context observations are hashed as raw bytes.
+/plan/evidence/DSH_H6E3_IMPLICIT_CONTEXT_2026-11-07/** -text
+
+# Host inventory observations are hashed as raw bytes.
+/plan/evidence/DSH_H6E0_HOST_INVENTORY_2026-11-07/** -text
+
+# Counterexample output is hashed as raw bytes by its README.
+/plan/evidence/OPERATION_PATTERN_CROSSWALK_COUNTEREXAMPLES_2026-11-07/** -text
+
+# Lane-separation observations are hashed as raw bytes.
+/plan/evidence/DSH_H6E4_LANE_SEPARATION_2026-11-07/** -text
+
+# Publication-gap output is hashed as raw bytes by its README.
+/plan/evidence/OPERATIONS_COMMAND_PUBLICATION_GAP_2026-11-07/** -text
+
+# Vocabulary probe output is hashed as raw bytes by its README.
+/plan/evidence/OPERATION_VOCABULARY_PLACEMENT_2026-11-07/** -text
+
+# Workspace-write probe observations are hashed as raw bytes.
+/plan/evidence/DSH_WORKSPACE_WRITE_ASYMMETRY_2026-11-07/** -text
+
+# Autonomy survey output is hashed as raw bytes by its README.
+/plan/evidence/OPERATION_AUTONOMY_DECLARATION_SURVEY_2026-11-07/** -text
+
+# Drift-check survey output is hashed as raw bytes by its README.
+/plan/evidence/OPERATION_DRIFT_CHECK_SURVEY_2026-11-07/** -text

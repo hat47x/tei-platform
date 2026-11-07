@@ -6,8 +6,6 @@ import (
 	"io"
 	"os"
 	"time"
-
-	"tei/internal/sourceacceptance/hoststore"
 )
 
 // FileSource reads one signed provisional Grant file and a trust file. Both
@@ -40,11 +38,11 @@ func (s FileSource) Read(ctx context.Context, q Query) (Verified, error) {
 	if err != nil {
 		return Verified{}, err
 	}
-	policy, err := hoststore.LoadTrustPolicyWithSchema(s.TrustPath, TrustSchema)
+	trust, err := LoadTrust(s.TrustPath)
 	if err != nil {
 		return Verified{}, err
 	}
-	v, err := Verify(g, q, policy.WithClock(s.Now), s.Now)
+	v, err := VerifyScoped(g, q, trust.WithClock(s.Now), s.Now)
 	if err != nil {
 		return Verified{}, err
 	}

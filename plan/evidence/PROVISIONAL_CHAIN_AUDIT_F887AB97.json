@@ -1,0 +1,12 @@
+{
+  "schema": "tei.critical-path-evidence/v0",
+  "requested": "E2",
+  "status": "INCOMPLETE",
+  "productGate": "UNQUALIFIED",
+  "diagnostics": [
+    "PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE",
+    "PROVISIONAL_GRANT_NOT_G2_EVIDENCE",
+    "PROVISIONAL_GUARANTEE_NOT_G2_EVIDENCE"
+  ],
+  "authorityLimit": "caller-supplied locators and assertions; review actual bytes, runtime, permission, and exact trusted checkout independently"
+}

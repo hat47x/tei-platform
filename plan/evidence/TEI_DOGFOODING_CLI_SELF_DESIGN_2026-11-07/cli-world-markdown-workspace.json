@@ -1,0 +1,73 @@
+{
+  "semantics": [
+    {
+      "id": "std",
+      "types": [
+        {
+          "id": "std.binary",
+          "symbol": "binary",
+          "kind": "primitive"
+        },
+        {
+          "id": "std.boolean",
+          "symbol": "boolean",
+          "kind": "primitive"
+        },
+        {
+          "id": "std.code",
+          "symbol": "code",
+          "kind": "primitive"
+        },
+        {
+          "id": "std.date",
+          "symbol": "date",
+          "kind": "primitive"
+        },
+        {
+          "id": "std.datetime",
+          "symbol": "datetime",
+          "kind": "primitive"
+        },
+        {
+          "id": "std.decimal",
+          "symbol": "decimal",
+          "kind": "primitive"
+        },
+        {
+          "id": "std.identifier",
+          "symbol": "identifier",
+          "kind": "primitive"
+        },
+        {
+          "id": "std.integer",
+          "symbol": "integer",
+          "kind": "primitive"
+        },
+        {
+          "id": "std.json",
+          "symbol": "json",
+          "kind": "primitive"
+        },
+        {
+          "id": "std.money",
+          "symbol": "money",
+          "kind": "primitive"
+        },
+        {
+          "id": "std.text",
+          "symbol": "text",
+          "kind": "primitive"
+        },
+        {
+          "id": "std.time",
+          "symbol": "time",
+          "kind": "primitive"
+        }
+      ]
+    }
+  ],
+  "applications": null,
+  "databases": null,
+  "environments": null,
+  "queries": null
+}

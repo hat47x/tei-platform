@@ -6,11 +6,22 @@
 
 TEIは現在、設計上の境界をGoのコードで検証している段階です。この文書では完成した画面製品の操作ではなく、参照実装を使った動作確認を説明します。
 
-主要な手順を試すには、Goの開発環境が必要です。
+主要な手順を試すには、Goの開発環境が必要です。必要なGoの版は、リポジトリ直下の`go.mod`にある`go`行が示す版以上です。この文書は版の数値を複製しません。`go.mod`の更新のたびに文書が古くなるためです。2026-11-07時点の`go.mod`は`go 1.26.10`を要求します。数値は必ず`go.mod`で確認してください。
 
 ```bash
+grep '^go ' go.mod
 go version
 ```
+
+2つの出力を見比べ、`go version`の版が`go.mod`の要求以上であることを確認してください。
+
+版が足りない場合、`GOTOOLCHAIN=local`を設定した環境では、`go run ./cmd/tei version`が`go: go.mod requires go >= ...`で失敗します。TEIのCIの多くは`GOTOOLCHAIN: local`で動かし、版は`go-version-file: go.mod`から取ります（`.github/workflows/*.yml`に`go-version:`の直指定を残さないことを`tools/repository-architecture-check`の試験が検査します）。`GOTOOLCHAIN`が`auto`（既定）の環境では、Goがネットワークから必要な版を取得することがあります。ダウンロードを許可しない環境では、`go.mod`の要求以上のGoを事前に用意してください。この失敗はTEIの検証結果ではなく、実行環境の不足です。
+
+### Node.jsを使う試験の前提
+
+リポジトリ全体のGo試験は、`go test ./...`の一部として、どのworkflowからも参照されていなかったNode.js試験5ファイルを実行します（`tools/repository-node-tests/`）。Node.jsが無い環境ではskipし、GitHub Actionsでは必須です。手元でNode.js試験を再現する場合はNode.jsを用意してください。
+
+個別の参照ツールは、それぞれの`package.json`の`engines`が要求版を示します。2026-11-07時点では、`reference/tei-studio-independent-consumer`が`>=22.16.0`、`reference/tei-studio-workbench`が`>=24`です。workflowには`22`・`22.16.0`・`24`・`24.21.0`が混在しており、単一の版へ統一していません。使うツールの`package.json`を確認し、版が合わない場合はそのツールの試験を実行しないでください。この混在を解消するかは未決です（[#2953](https://github.com/hat47x/tei-platform/issues/2953)）。
 
 ## 最初の小さな作業領域から始める
 
@@ -51,9 +62,21 @@ go run ./cmd/tei validate \
 
 版を固定する値は、checkoutの改行（CRLF/LF）の受け取り方にも依存します。`sourceIndexFingerprint`と`modelRevision`（`model catalog`が返す、管理対象Sourceの版。Shared Acceptanceが照合する`baseModelRevision`と同じ値）は、Sourceの生バイトをsha256で識別するため、行末だけが違うcheckoutでも別の版になります。`worldFingerprint`は正規化したモデルの内容を識別しますが、元定義に書かれた本文をそのまま載せる欄（移行のDDLや問い合わせのSQLなど）があると、その本文の改行も反映されます。2026-10-31にmainで実測した結果では、`reference/workspace`（`databases/sales-core/migrations/20260826_001/migration.tei`と`persistence/order.tei`がSQL本文を持つ）ではCRLFのcheckoutで`worldFingerprint`も変わり、その種の欄を持たない`examples/first-workspace`では`worldFingerprint`は変わらず`sourceIndexFingerprint`と`modelRevision`だけが変わりました。別の環境で作った版固定の値を照合するときは、比較する側のcheckoutの改行をそろえてください。リポジトリ内のWorkspaceの木（`reference/workspace`、`examples/`配下、`reference/product-contracts`ほか、`tei.workspace.yaml`のある8木）は`.gitattributes`で`-text`に固定してあり、新しいcheckoutでは改行が書き換わらない。`core.autocrlf`が有効な環境で作った古いcheckoutで該当pathが`modified`に見えるときは、差分を確認し、必要な変更を保存したうえで、意図したファイルだけを復元してください。`git restore`は未保存の変更を破棄します。[#2399](https://github.com/hat47x/tei-platform/issues/2399)（2026-10-31クローズ）では、生バイトでの版識別を維持し、改行正規化後のバイトで計算する契約への変更を見送る仮決定をしました。この変更は、Shared Acceptanceの版を張り替える時点で改めて判断します。
 
+`workspace-files`の各要素は`readByLoader`を持ちます。`true`はそのファイルのバイト列をLoad中にdomain loaderが読んだこと、`false`は管理対象だが解釈されていないことを示します。`workspace-files`の`sourceRootFindings`は、未知・存在しないsource rootを名指しします。`readByLoader:true`だけではParserの意味受理や整合性合格を意味しません。
+
+`validate -json`の応答には`sourceRootFindings`が入ります。`tei.workspace.yaml`の`sources`に存在しないrootがあれば`severity:"error"`（`ok:false`、終了コード1）、Loaderが解釈しない未知のrootなら`severity:"warning"`です。`workspace-files`に載るがLoaderが読まない近似名のファイル（`.tei.bak`・`Application.tei`など）も`file`付きのwarningとして返します。これらはCanonical Subjectを持たないため`diagnostics`ではなく別の欄です。
+
+Workspaceがモデル要素を1つも宣言していない場合、`validate`は`WORKSPACE_DECLARES_NO_MODEL_ELEMENTS`（warning）を返します。`ok:true`のまま終了コード0ですが、`diagnostics`にこのwarningがあるため「宣言が読み込まれて検証を通った」と読み違えないでください。標準意味型（`std`）は宣言として数えません。
+
+`validate -json`の応答には`declarationCounts`が入ります。これはWorkspace自身が宣言した要素の件数で、プロセス内の標準意味型（`std`）を含みません。`ok:true`でも`declarationCounts.total`が`0`なら、そのWorkspaceはモデル要素を何も宣言していません。`model catalog`の応答にも同じ`declarationCounts`があります。標準定義だけの13件の`entries`は、利用者の宣言を意味しません。
+
 終了コードは`0`が検証成功（警告を含む）、`1`が検証不成立、`2`が入力・読込みなどの実行失敗です。`-json`で返す結果を利用するときも終了コードを確認してください。`commands`はすべてのコマンドや拡張機能を列挙する完全な登録簿ではありません。詳細とウェブやデスクトップへの接続方針は[コマンドライン優先のインターフェース設計](../plan/design/CLI_FIRST_INTERFACE_DESIGN.md)を参照してください。
 
 作業領域のモデル要素を一覧で確認するには、`model catalog`を使います。返された`entries[].subject.kind`と`entries[].subject.id`をそのまま`inspect`へ渡せます。`ambiguous=true`の項目は重複宣言があるため、詳細取得を拒否します。
+
+`-namespace`には意味名前空間のIDだけを指定します。存在しないID、およびapplicationやqueryのIDを渡した場合は、空の成功ではなく`NAMESPACE_NOT_FOUND`（終了コード1）を返します。`namespaceMatched`と`namespaceMatchKind`は、要求がどの種類のSubjectに一致したかを示します。宣言はあるが要素を持たない名前空間は、`namespaceMatched=true`かつ`entries`が名前空間自身だけになります。
+
+`model catalog`の`modelRevision`は、管理対象Sourceのファイルpathと生バイトの組をsha256で並べた値です。**読み込んだWorldの内容の版ではありません。** 管理対象Sourceが1件も無いWorkspaceでは、空入力のSHA-256（`sha256:e3b0c442…b855`）になります。標準意味型（`std`）の`entries`は`modelRevision`の計算に入らないため、`entries`が0件でなくてもこの値になり得ます。空かどうかを判別するには、`modelRevision`ではなく`declarationCounts.total`を使ってください。`modelRevision`は「管理対象Sourceを1バイトも読まなかった」ことの証拠であり、モデルの同一性・受理・整合性の証拠ではありません。
 
 ```bash
 go run ./cmd/tei model catalog -workspace reference/workspace
@@ -172,18 +195,15 @@ SQLファイルを移動し、参照先だけを更新した場合でも、正�
 go run ./cmd/tei plugin-lock \
   -workspace reference/workspace -environment production > /tmp/tei-plugin-lock-result.json
 
-python3 -c 'import json,sys; r=json.load(sys.stdin); assert r["ok"]; json.dump(r["result"],sys.stdout)' \
-  < /tmp/tei-plugin-lock-result.json > /tmp/tei-plugin-lock.json
-
 go run ./cmd/tei plugin-runtime-plan \
   -workspace reference/workspace \
   -environment production \
-  -plugin-lock /tmp/tei-plugin-lock.json
+  -plugin-lock /tmp/tei-plugin-lock-result.json
 ```
 
 この結果から、環境が利用するプラグインとその版、提供される機能、必要な権限、資源の対応付け、隔離に関する要求を確認できます。
 
-`plugin-lock`は結果をJSON envelopeで返すため、`-plugin-lock`へ渡すファイルには上のように`result`を保存します。`-environment production`を指定したLockはproductionだけを対象とし、別の環境には使えません。この指定を省略した従来の操作は全環境のLockを作ります。どちらの場合もWorkspace全体の検証は省略されず、Lockの作成・選択は実行権限や成果物バイト列の検証ではありません。
+`plugin-lock`は結果をJSON envelopeで返します。`-plugin-lock`は、その envelope をそのまま受け付けます（内側の`result`だけを渡しても同じ結果になります）。`-environment production`を指定したLockはproductionだけを対象とし、別の環境には使えません。この指定を省略した従来の操作は全環境のLockを作ります。どちらの場合もWorkspace全体の検証は省略されず、Lockの作成・選択は実行権限や成果物バイト列の検証ではありません。
 
 リポジトリに保存した参照用プラグインの実装固定情報についても、作業領域から再生成して一致することを自動検査で確認しています。
 

@@ -62,7 +62,7 @@ func (s *MemoryStore) ApplyRecord(effect *semantic.DataEffect, key string, input
 	switch effect.Kind {
 	case semantic.DataEffectCreate:
 		if _, exists := s.data[effect.Data][key]; exists {
-			return fmt.Errorf("record %s already exists", key)
+			return referenceFailure(ReferenceRecordExists, "create", "record %s already exists", key)
 		}
 		s.data[effect.Data][key] = copyValues(inputs)
 		if attributes != nil {
@@ -70,7 +70,7 @@ func (s *MemoryStore) ApplyRecord(effect *semantic.DataEffect, key string, input
 		}
 	case semantic.DataEffectUpdate:
 		if _, ok := s.data[effect.Data][key]; !ok {
-			return fmt.Errorf("record %s is not present", key)
+			return referenceFailure(ReferenceRecordMissing, "update", "record %s is not present", key)
 		}
 		s.data[effect.Data][key] = copyValues(inputs)
 		if attributes != nil {
@@ -78,7 +78,7 @@ func (s *MemoryStore) ApplyRecord(effect *semantic.DataEffect, key string, input
 		}
 	case semantic.DataEffectDelete:
 		if _, ok := s.data[effect.Data][key]; !ok {
-			return fmt.Errorf("record %s is not present", key)
+			return referenceFailure(ReferenceRecordMissing, "delete", "record %s is not present", key)
 		}
 		delete(s.data[effect.Data], key)
 		delete(s.attributes[effect.Data], key)
@@ -288,18 +288,22 @@ func (e ReferenceDataExecutor) Execute(_ context.Context, request Request) (Resu
 	}
 	plan, _ := applicationview.BuildCommandPlan(e.World, request.Application, request.Pattern, request.Capability, request.Inputs)
 	targetAttributes := attributeValues(plan)
+	var applied []AppliedOperation
 	if capability.Effect != nil && capability.Effect.Kind == semantic.DataEffectDelete {
 		snapshot := e.Store.Snapshot()
-		if err := e.checkDeletePolicy(capability.Effect.Data, targetAttributes); err != nil {
+		cascaded, err := e.checkDeletePolicy(capability.Effect.Data, targetAttributes)
+		if err != nil {
 			e.Store.Restore(snapshot)
 			return Result{}, err
 		}
+		applied = append(applied, cascaded...)
 	}
 	key := recordKeyFields(request.Inputs, e.KeyFields)
 	if err := e.Store.ApplyRecord(capability.Effect, key, request.Inputs, targetAttributes); err != nil {
 		return Result{}, err
 	}
-	result := Result{Effect: capability.Effect}
+	applied = append(applied, AppliedOperation{Kind: capability.Effect.Kind, Data: capability.Effect.Data, Key: key})
+	result := Result{Effect: capability.Effect, Applied: applied}
 	if len(capability.Outcomes) > 0 {
 		outcome := capability.Outcomes[0]
 		result.Outcome = &outcome
@@ -386,7 +390,7 @@ func (e ReferenceDataExecutor) checkCandidateKeys(request Request) error {
 				}
 			}
 			if matched {
-				return fmt.Errorf("candidate key %s is duplicated", candidate.ID)
+				return referenceFailure(ReferenceValueRejected, "candidate-key", "candidate key %s is duplicated", candidate.ID)
 			}
 		}
 	}
@@ -434,7 +438,7 @@ func (e ReferenceDataExecutor) checkImmutableInputs(request Request) error {
 			continue
 		}
 		if old, exists := record[input.Name]; exists && old != input.Value {
-			return fmt.Errorf("immutable attribute %s cannot change", input.Attribute)
+			return referenceFailure(ReferenceValueRejected, "immutable", "immutable attribute %s cannot change", input.Attribute)
 		}
 	}
 	return nil
@@ -492,7 +496,7 @@ func (e ReferenceDataExecutor) checkValueDomains(request Request) error {
 			}
 		}
 		if !allowed {
-			return fmt.Errorf("value %s is outside the domain of %s", input.Value, input.Attribute)
+			return referenceFailure(ReferenceValueRejected, "value-domain", "value %s is outside the domain of %s", input.Value, input.Attribute)
 		}
 	}
 	return nil
@@ -538,7 +542,7 @@ func (e ReferenceDataExecutor) checkRequiredInputs(request Request) error {
 			}
 			for _, attribute := range data.Attributes {
 				if attribute.Required && !provided[attribute.ID] {
-					return fmt.Errorf("required attribute %s is not provided", attribute.ID)
+					return referenceFailure(ReferenceValueRejected, "required", "required attribute %s is not provided", attribute.ID)
 				}
 			}
 		}
@@ -546,11 +550,15 @@ func (e ReferenceDataExecutor) checkRequiredInputs(request Request) error {
 	return nil
 }
 
-func (e ReferenceDataExecutor) checkDeletePolicy(target core.CanonicalID, targetAttributes map[core.CanonicalID]string) error {
-	return e.cascadeDelete(target, targetAttributes, map[string]bool{})
+func (e ReferenceDataExecutor) checkDeletePolicy(target core.CanonicalID, targetAttributes map[core.CanonicalID]string) ([]AppliedOperation, error) {
+	var applied []AppliedOperation
+	if err := e.cascadeDelete(target, targetAttributes, map[string]bool{}, &applied); err != nil {
+		return nil, err
+	}
+	return applied, nil
 }
 
-func (e ReferenceDataExecutor) cascadeDelete(target core.CanonicalID, targetAttributes map[core.CanonicalID]string, visited map[string]bool) error {
+func (e ReferenceDataExecutor) cascadeDelete(target core.CanonicalID, targetAttributes map[core.CanonicalID]string, visited map[string]bool, applied *[]AppliedOperation) error {
 	for _, namespace := range e.World.Semantics {
 		for _, data := range namespace.Data {
 			for _, relation := range data.Relations {
@@ -579,12 +587,13 @@ func (e ReferenceDataExecutor) cascadeDelete(target core.CanonicalID, targetAttr
 							}
 							visited[visitKey] = true
 							e.Store.DeleteKey(data.ID, record.Key)
-							if err := e.cascadeDelete(data.ID, record.Attributes, visited); err != nil {
+							*applied = append(*applied, AppliedOperation{Kind: semantic.DataEffectDelete, Data: data.ID, Key: record.Key})
+							if err := e.cascadeDelete(data.ID, record.Attributes, visited, applied); err != nil {
 								return err
 							}
 						case "preserve":
 						default:
-							return fmt.Errorf("inbound relation %s restricts delete of %s", relation.ID, target)
+							return referenceFailure(ReferenceRuleRejected, "delete-policy", "inbound relation %s restricts delete of %s", relation.ID, target)
 						}
 					}
 					continue
@@ -601,13 +610,14 @@ func (e ReferenceDataExecutor) cascadeDelete(target core.CanonicalID, targetAttr
 						}
 						visited[visitKey] = true
 						e.Store.DeleteKey(data.ID, record.Key)
-						if err := e.cascadeDelete(data.ID, record.Attributes, visited); err != nil {
+						*applied = append(*applied, AppliedOperation{Kind: semantic.DataEffectDelete, Data: data.ID, Key: record.Key})
+						if err := e.cascadeDelete(data.ID, record.Attributes, visited, applied); err != nil {
 							return err
 						}
 					}
 				case "preserve":
 				default:
-					return fmt.Errorf("inbound relation %s restricts delete of %s", relation.ID, target)
+					return referenceFailure(ReferenceRuleRejected, "delete-policy", "inbound relation %s restricts delete of %s", relation.ID, target)
 				}
 			}
 		}

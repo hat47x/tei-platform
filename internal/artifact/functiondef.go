@@ -7,6 +7,7 @@ import (
 
 	"tei/internal/application"
 	"tei/internal/core"
+	"tei/internal/permission"
 	"tei/internal/semantic"
 	"tei/internal/sourceindex"
 )
@@ -22,7 +23,7 @@ const (
 )
 
 const functionDefinitionRulePolicy = `function-definition/v1
-lines: application, capability (<id>), input, outcome, output, effect, validation, period, effect-rule, run-plan, pattern
+lines: application, capability (<id>), input, outcome, output, effect, permission, validation, period, effect-rule, run-plan, pattern
 order: capabilities by id, inputs and outcomes in the authored order, patterns by id
 unresolved: capability without input, capability without output or outcomes, capability without effect`
 
@@ -35,6 +36,8 @@ type FunctionDefinitionInput struct {
 	Periods       map[core.CanonicalID]semantic.Period
 	EffectRules   []semantic.EffectRule
 	RunPlans      []semantic.RunPlan
+	// Permissions holds the permissions each capability declares.
+	Permissions map[core.CanonicalID][]permission.Spec
 }
 
 // RenderFunctionDefinition renders the functions an application declares. It
@@ -132,6 +135,19 @@ func renderFunctionDefinition(input FunctionDefinitionInput) (string, []Unresolv
 			fmt.Fprintf(&b, " on-failure %s", rule.OnFailure)
 		}
 		b.WriteString("\n")
+	}
+
+	permissionIDs := make([]core.CanonicalID, 0, len(input.Permissions))
+	for id := range input.Permissions {
+		permissionIDs = append(permissionIDs, id)
+	}
+	sort.Slice(permissionIDs, func(i, j int) bool { return permissionIDs[i] < permissionIDs[j] })
+	for _, id := range permissionIDs {
+		declared := append([]permission.Spec(nil), input.Permissions[id]...)
+		sort.Slice(declared, func(i, j int) bool { return declared[i].Key() < declared[j].Key() })
+		for _, perm := range declared {
+			fmt.Fprintf(&b, "permission %s %s %s %s\n", id, perm.Kind, perm.Access, perm.Scope)
+		}
 	}
 
 	plans := append([]semantic.RunPlan(nil), input.RunPlans...)

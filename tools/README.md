@@ -111,6 +111,11 @@
 | [`reference-build-attempt-evidence/`](reference-build-attempt-evidence/) | ビルド失敗を含む実行記録の保管 |
 | [`reference-build-authoring-intent/`](reference-build-authoring-intent/) | 人・生成AIが書くビルド宣言から、確定したビルド計画を導出する境界の確認 |
 | [`reference-build-execution-binding/`](reference-build-execution-binding/) | ビルド実行と主体・対象の結び付け |
+| [`reference-go-module-closure-preflight/`](reference-go-module-closure-preflight/) | Go対象の選択Module閉包をオフラインで分類する事前観測。`supported`/`external-unresolved`/`missing-module`/`unknown`を区別し、Build・Artifact・権限は行わない（#2831 SB-0a） |
+| [`reference-go-build-with-supply/`](reference-go-build-with-supply/) | 供給だけを使う隔離環境で実Buildし、成果物digestとSource閉包の資格を別々に記録する。両者が食い違うX1を明示する（#2831 SB-B事前確認） |
+| [`reference-go-module-supply-verify/`](reference-go-module-supply-verify/) | オフラインGo Module供給を、対象の実選択Moduleと`go.sum`の`h1`へ束縛して再解決する検証。供給元・署名・Build権限は扱わない（#2831 SB-0b） |
+| [`reference-go-build-reproducibility/`](reference-go-build-reproducibility/) | 同じ対象を隔離した二つの状態で実Buildし、成果物digestの一致と試行の同一性を別々に記録する。Builder信頼・受入・権限は扱わない（#2831 SB-N8） |
+| [`reference-go-module-supply-verify/`](reference-go-module-supply-verify/) | オフラインGo Module供給を、対象の実選択Moduleと`go.sum`の`h1`へ束縛して再解決する検証。供給元・署名・Build権限は扱わない（#2831 SB-0b） |
 | [`reference-builder-contract-resolution/`](reference-builder-contract-resolution/) | Builder契約の解決と適用 |
 | [`reference-studio-composition-evidence-7/`](reference-studio-composition-evidence-7/) | TEI Studioの静的合成を実装外から検査する限定的な黒箱検査器（#1824 / #7） |
 | [`reference-host-acceptance/`](reference-host-acceptance/) | 暫定のHost Acceptance Storeへ、issuerが署名したDecisionを鍵生成・署名・取込み・失効する参照ツール。効果許可は与えない（#267 / #1121） |
@@ -129,7 +134,9 @@
 | [`reference-process-plugin/`](reference-process-plugin/) | 別プロセスで動くPluginの参照用起動点 |
 | [`reference-composition-process-bridge/`](reference-composition-process-bridge/) | 合成基盤と従来・独立プロセスプラグインの接続試験 |
 | [`reference-runtime-capability-identity/`](reference-runtime-capability-identity/) | 実行時Capabilityの識別方法の確認 |
+| [`reference-runtime-decisions/`](reference-runtime-decisions/) | 期間・効果・権限・実行計画の**実行時の判断**を、一時PostgreSQLを相手に観測する試験（#2483）。期間が閉じている／効果を観測できない／付与が無い／実行が完了済みのとき、判断が`blocked`・`refuse`になり**行が変わらない**ことを確かめる。DSNが無ければスキップし、CIはスキップをPASSに数えない |
 | [`reference-runtime-snapshot/`](reference-runtime-snapshot/) | 生成時と実行時の投影境界の確認 |
+| [`reference-access-survey/`](reference-access-survey/) | `internal/access`を通さずに外部へ触る箇所を**構文木で**数える計器。ファイル・ネットワーク・環境変数の別と、呼び出しの多いディレクトリを出す。数え直せること自体が目的で、**強制の証拠ではない**（`guarded`は「その層を経由する」以上の意味を持たない） |
 | [`reference-plugin-bundle/`](reference-plugin-bundle/) | 二つの独立プラグインを一つの成果物へ結合し、論理識別子と物理成果物を同一視しないことを確かめる参照試験（#1251） |
 | [`reference-plugin-wasi-smoke/`](reference-plugin-wasi-smoke/) | 独立プラグインを同一ソースからLinux/amd64とWASIへ構築し、両方の実行結果を比較する試験（#1251） |
 
@@ -191,6 +198,7 @@
 | [`reference-developer-context/`](reference-developer-context/) | TEIのGoソース1件に対し、実在する関連テストと明示参照する設計資料を根拠付きの調査候補として返す読み取り専用の参照PoC。ローカルのSystem One互換判断モデルは候補の順位付けにだけ使い、失敗時は決定的な基準順を保つ。受理・権限・実行を決めない（#2196 / #2021） |
 | [`reference-design-output/`](reference-design-output/) | 受理済みの意味から表・機能・対応一覧・DDL・静的HTML索引を一つのrevisionへ束縛して導出する参照。書式（markdown/text）を差し替えても意味の行を保ち、編集できる正本の位置と、宣言された利用／観測された副作用を別々に示す（#1803） |
 | [`reference-access-matrix/`](reference-access-matrix/) | Application × Dataの宣言された利用の対応表を導出する参照（#1803） |
+| [`reference-operation-pattern-crosswalk/`](reference-operation-pattern-crosswalk/) | 受理済みの意味から、宣言されたPatternと導出された標準操作を、Data ID・能力ID・Relation targetの三つの宣言だけで突き合わせる参照。一致は読み取りであり実行権限ではありません。一致しない宣言は operation-surface の gap 語彙で返し、既定値で埋めません（W3の設計候補を試すためのもの） |
 | [`reference-accounting-period/`](reference-accounting-period/) | 業務日付とシステム時刻を分け、期間の状態・締め済み期間の直接更新拒否・赤黒訂正・締め後の到着方針・順序鍵と版による再生・締め時点の照合値を判定する参照（#2144） |
 | [`reference-partial-import-plan/`](reference-partial-import-plan/) | 別Workspaceから選んだData定義の取込み結果を分類する読取り専用の参照（#1805） |
 | [`reference-table-definition-document/`](reference-table-definition-document/) | 受理済みの意味から表定義書を導出する参照（#1803） |

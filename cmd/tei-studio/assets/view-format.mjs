@@ -155,8 +155,8 @@ function summarizeApplication(view) {
   if (Array.isArray(view.periods) && view.periods.length) {
     sections.push({
       title: "期間",
-      header: ["ID", "Data", "業務日付", "状態"],
-      rows: view.periods.map((period) => [valueOf(period.id), valueOf(period.data), valueOf(period.businessDate), joined(period.states)]),
+      header: ["ID", "Data", "業務日付", "状態", "暦"],
+      rows: view.periods.map((period) => [valueOf(period.id), valueOf(period.data), valueOf(period.businessDate), joined(period.states), valueOf(period.calendar)]),
     });
   }
   return sections;
@@ -220,6 +220,50 @@ function summarizeCommand(view) {
   return sections;
 }
 
+// differenceSections lists the operations the declaration did not describe, so
+// a reader can see which data the execution reached beyond the declared effect.
+function differenceSections(differences) {
+  if (!Array.isArray(differences) || !differences.length) return [];
+  return [{
+    title: "宣言との差",
+    header: ["種別", "宣言", "適用"],
+    rows: differences.map((difference) => [
+      valueOf(difference.code),
+      difference.declared ? `${difference.declared.kind} ${difference.declared.data}` : "",
+      difference.applied ? `${difference.applied.kind} ${difference.applied.data}` : "",
+    ]),
+  }];
+}
+
+// validationSections shows the diagnostics and their unanswered proposals, so a
+// reader sees that a correction exists without mistaking it for an accepted fix.
+function validationSections(value) {
+  const sections = [];
+  if (Array.isArray(value.diagnostics)) {
+    sections.push({
+      title: "診断",
+      header: ["重大度", "符号", "内容"],
+      rows: value.diagnostics.map((item) => [
+        valueOf(item.diagnostic?.severity),
+        valueOf(item.diagnostic?.code),
+        valueOf(item.diagnostic?.message),
+      ]),
+    });
+  }
+  if (Array.isArray(value.proposals)) {
+    sections.push({
+      title: "修正案（未受理）",
+      header: ["符号", "受理", "版"],
+      rows: value.proposals.map((proposal) => [
+        valueOf(proposal.code),
+        proposal.accepted ? "受理済み" : "未受理",
+        valueOf(proposal.revision),
+      ]),
+    });
+  }
+  return sections;
+}
+
 export function summarizeView(value) {
   if (!value || typeof value !== "object") {
     return [{title: "ビュー", rows: [["値", valueOf(value)]]}];
@@ -229,12 +273,21 @@ export function summarizeView(value) {
       title: "参照実行",
       rows: [
         ["mode", valueOf(value.mode)],
-        ["committed", value.committed ? "true" : "false"],
+        ["authorization", valueOf(value.authorizationMode)],
+        ["committed", value.committed ? "true (unit of work)" : "false"],
+        ["persisted", value.persisted ? "true" : "false"],
+        ["persistence", valueOf(value.persistence)],
+        ["durability", valueOf(value.durability)],
         ["outcome", value.outcome ? `${value.outcome.name} -> ${value.outcome.payload}` : ""],
         ["effect", value.effect ? `${value.effect.kind} ${value.effect.data}` : ""],
+        ["records", Array.isArray(value.records) ? String(value.records.length) : "0"],
+        ["differences", Array.isArray(value.differences) ? String(value.differences.length) : "0"],
+        ["difference-check", value.appliedUnobserved ? "not observed" : "checked"],
+        ["reported-effect", value.reportedEffectMissing ? "missing" : "reported"],
       ],
-    }]);
+    }]).concat(differenceSections(value.differences));
   }
+  if (value.diagnostics !== undefined || value.proposals !== undefined) return validationSections(value);
   if (value.package && value.version !== undefined) return summarizePackage(value);
   if (Array.isArray(value.items)) return summarizeRecord(value);
   if (Array.isArray(value.columns)) return summarizeBrowse(value);
@@ -246,4 +299,11 @@ export function summarizeView(value) {
     rows: Object.entries(value).map(([key, entry]) => [key, JSON.stringify(entry)]),
   }];
 }
+
+
+
+
+
+
+
 

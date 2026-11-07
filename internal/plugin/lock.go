@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 
@@ -81,6 +82,26 @@ func supportedLockFormatVersion(version int) bool {
 	return version == LockFormatVersion || version == BuildTraceLockFormatVersion
 }
 
+// InvalidLockError marks a Plugin Lock that cannot be used at all, as distinct
+// from a lock that is well-formed but does not match this environment or catalog.
+// The distinction is what lets a CLI return one exit code for the same bad input
+// regardless of which command read it (#3184).
+type InvalidLockError struct {
+	Message string
+}
+
+func (e *InvalidLockError) Error() string { return e.Message }
+
+// IsInvalidLock reports whether err says the lock bytes themselves are unusable.
+func IsInvalidLock(err error) bool {
+	var invalid *InvalidLockError
+	return errors.As(err, &invalid)
+}
+
+func invalidLock(format string, args ...any) error {
+	return &InvalidLockError{Message: fmt.Sprintf(format, args...)}
+}
+
 func validateLockBuildTrace(lock Lock) error {
 	for _, environmentLock := range lock.Environments {
 		for _, locked := range environmentLock.Plugins {
@@ -124,10 +145,10 @@ func (l Lock) environment(id core.CanonicalID) (EnvironmentLock, bool) {
 // execution artifacts bind to this value rather than to a mutable catalog.
 func EnvironmentLockFingerprint(l Lock, environmentID core.CanonicalID) (string, error) {
 	if !supportedLockFormatVersion(l.FormatVersion) {
-		return "", fmt.Errorf("unsupported plugin lock format %d", l.FormatVersion)
+		return "", invalidLock("unsupported plugin lock format %d", l.FormatVersion)
 	}
 	if err := validateLockBuildTrace(l); err != nil {
-		return "", err
+		return "", invalidLock("%s", err.Error())
 	}
 	el, ok := l.environment(environmentID)
 	if !ok {
@@ -147,10 +168,10 @@ func EnvironmentLockFingerprint(l Lock, environmentID core.CanonicalID) (string,
 
 func (c Catalog) ResolveEnvironmentWithLock(env environment.Environment, lock Lock) (ResolvedSet, error) {
 	if !supportedLockFormatVersion(lock.FormatVersion) {
-		return ResolvedSet{}, fmt.Errorf("unsupported plugin lock format %d", lock.FormatVersion)
+		return ResolvedSet{}, invalidLock("unsupported plugin lock format %d", lock.FormatVersion)
 	}
 	if err := validateLockBuildTrace(lock); err != nil {
-		return ResolvedSet{}, err
+		return ResolvedSet{}, invalidLock("%s", err.Error())
 	}
 	el, ok := lock.environment(env.ID)
 	if !ok {

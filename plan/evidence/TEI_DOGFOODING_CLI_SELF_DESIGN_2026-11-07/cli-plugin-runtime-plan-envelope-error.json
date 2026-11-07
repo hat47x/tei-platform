@@ -1,0 +1,8 @@
+{
+  "schemaVersion": "tei.cli.plugin-runtime-plan/v0",
+  "ok": false,
+  "error": {
+    "code": "PLUGIN_RUNTIME_PLAN_FAILED",
+    "message": "unsupported plugin lock format 0"
+  }
+}

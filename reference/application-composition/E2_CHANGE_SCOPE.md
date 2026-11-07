@@ -65,4 +65,4 @@ node reference/application-composition/e2-change-probe.mjs .
 
 本Referenceはテキスト上の既知の部分だけを照合する。TEI DSLの汎用解析器を置き換えず、PermissionやProvider Conformanceを認定せず、Sourceの変更も加えない。提案を生成したことと、利用可能な構成として受け入れたことは区別する。
 
-**統合上の制約**: 新しいJavaScriptを含むため、ブランチの最新コミットに対する信頼できるフルチェックアウトで `tools/repository-health-check.sh` の全項目PASSと前後cleanを取得するまで、mainへ統合しない。今回の隔離環境はGitHubへの直接cloneができず、この全体検査は未実施である。
+**統合時に記録する制約**: 新しいJavaScriptを含むため、ブランチの最新コミットに対する信頼できるフルチェックアウトで、変更範囲の検証（Node実行・Goテスト）と前後cleanを記録して統合する。`tools/repository-health-check.sh`は任意の広範囲診断として扱い、全項目PASSを統合の一律条件にはしない。今回の隔離環境はGitHubへの直接cloneができず、この全体検査は未実施である。未実施の範囲は制約として記録する。

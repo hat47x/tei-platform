@@ -24,13 +24,48 @@ type Request struct {
 type Result struct {
 	Outcome *semantic.Outcome    `json:"outcome,omitempty"`
 	Effect  *semantic.DataEffect `json:"effect,omitempty"`
+	// AuthorizationMode names the authorization decision that let this
+	// execution run. It is set by the Invoker, never by an Executor.
+	AuthorizationMode AuthorizationMode `json:"authorizationMode,omitempty"`
+	// Applied lists the data operations the executor actually applied. An
+	// executor that cannot enumerate them leaves it nil, and the record then
+	// holds only the declared and reported effects.
+	Applied []AppliedOperation `json:"applied,omitempty"`
+	// Persistence reports whether an independent observer saw the declared
+	// effect after Commit. The Invoker sets it after a successful execution;
+	// an Executor must leave it empty.
+	Persistence PersistenceState `json:"persistence,omitempty"`
 }
 
 // Executorは、宣言されたCommandを実際に実行する側の契約である。
 // 実装はL4（Plugin・Provider）に置き、このパッケージは境界だけを持つ。
+//
+// 取引への参加は契約に含まない。InvokerはUnitOfWorkがある場合にBegin・
+// Commit・Rollbackを呼ぶが、Executorが同じ取引へ参加することは要求しない。
+// そのため、Executorが成功した後にdeclaredEffectと異なる効果・結末・適用
+// 操作を返した場合、巻き戻し済みとは断定できない。Invokerはそのような
+// 契約違反をEffectUnknownの付いたExecutionErrorとして返し、
+// LifecycleInvokerはunknownとして記録する（rejectedとしては記録しない）。
+// 適用の有無を確定させるには、Executor側が同じ取引へ参加するか、実行後に
+// 独立した観測で確かめる必要がある。参照実装の`ReferenceExecutor`は
+// プロセス内のStoreを書き換えるだけで、外部の永続化を持たない。
 type Executor interface {
 	Execute(ctx context.Context, request Request) (Result, error)
 }
+
+// Authorizerは、Commandの実行前に呼出しの可否を決める契約である。
+// 認可の正本や権限の付与は提供せず、L4の実装へ委ねる。
+type Authorizer interface {
+	Authorize(ctx context.Context, request Request) error
+}
+
+// ReferenceAuthorizer is an explicit "allow every request" authorizer. A
+// reference execution that has no real identity or grant source must still say
+// that it chose to run without authorization; a nil Authorizer is refused.
+type ReferenceAuthorizer struct{}
+
+// Authorize allows the request. It records no grant and evaluates no rule.
+func (ReferenceAuthorizer) Authorize(context.Context, Request) error { return nil }
 
 // ExecutionErrorは、業務上の結末ではなく、呼出しの前提・実行環境・契約の不備を表す。
 type ExecutionError struct {
@@ -62,12 +97,31 @@ func EffectMayBeUnknown(err error) bool {
 	return executionError.EffectUnknown
 }
 
+// effectContractViolationは、Executorが実行された後に宣言から外れた結果を
+// 返したことを表す。データ効果が適用された可能性があるため、常にunknownの印を
+// 立てる。Executor契約はUnitOfWorkへの取引参加を要求していないので、参照用の
+// UnitOfWorkがあっても巻き戻し済みとは断定できない。
+func effectContractViolation(code, message string) *ExecutionError {
+	return &ExecutionError{Code: code, Message: message, EffectUnknown: true}
+}
+
 // Invokerは、宣言とExecutorの間に立ち、入力の検証・実行・結末の照合・取引を行う。
 type Invoker struct {
 	World      ir.World
 	Executor   Executor
 	UnitOfWork UnitOfWork
 	Periods    PeriodState
+	Authorizer Authorizer
+	Recorder   Recorder
+	// PersistenceObserver, when set, performs an independent read after a
+	// successful Commit. A nil observer leaves persistence as not-observed;
+	// it never means "not persisted".
+	PersistenceObserver PersistenceObserver
+	// DurableStore is the composition's claim that this boundary has a durable
+	// store behind it. The Invoker does not verify it. false makes persistence
+	// not-applicable (a reference run), so "not observed" is not printed when
+	// there is nothing that could have stored the effect.
+	DurableStore bool
 }
 
 // Invokeは、Commandを実行する。入力の不備、Executorの不在、実行の失敗、
@@ -86,14 +140,40 @@ func (i Invoker) Invoke(ctx context.Context, request Request) (Result, error) {
 		}
 		return Result{}, &ExecutionError{Code: "INVALID_COMMAND_INPUT", Message: message}
 	}
-	if err := i.checkPeriod(ctx, plan); err != nil {
-		return Result{}, err
-	}
 	if i.Executor == nil {
 		return Result{}, &ExecutionError{Code: "COMMAND_EXECUTOR_UNAVAILABLE", Message: "no executor is configured for this command boundary"}
 	}
+	// Authorization is an explicit decision, not an optional decoration. A
+	// reference execution must pass ReferenceAuthorizer and say so, so an
+	// unconfigured Host cannot silently execute without a decision. Authorization
+	// precedes the period check because the period state can disclose business
+	// facts (whether a period is closed) to a caller that is not permitted to run
+	// the command at all.
+	if i.Authorizer == nil {
+		return Result{}, &ExecutionError{Code: "COMMAND_AUTHORIZER_UNAVAILABLE", Message: "no authorizer is configured; command execution requires an explicit authorization decision"}
+	}
+	if err := i.Authorizer.Authorize(ctx, request); err != nil {
+		return Result{}, &ExecutionError{Code: "COMMAND_UNAUTHORIZED", Message: err.Error(), Cause: err}
+	}
+	mode := authorizationModeOf(i.Authorizer)
+	var plannedEffect *semantic.DataEffect
+	if plan.Effect != nil {
+		plannedEffect = &semantic.DataEffect{Kind: semantic.DataEffectKind(plan.Effect.Kind), Data: plan.Effect.Data}
+	}
+	if err := checkDatasourceAccess(i.World, request, plannedEffect); err != nil {
+		return Result{}, err
+	}
+	if err := i.checkPeriod(ctx, plan); err != nil {
+		return Result{}, err
+	}
 	if i.UnitOfWork == nil {
-		return i.execute(ctx, request, plan)
+		result, err := i.execute(ctx, request, plan)
+		if err != nil {
+			return result, err
+		}
+		result.Persistence = i.observePersistence(ctx, request, declaredEffect(plan))
+		result.AuthorizationMode = mode
+		return result, nil
 	}
 	transaction, err := i.UnitOfWork.Begin(ctx)
 	if err != nil {
@@ -120,11 +200,28 @@ func (i Invoker) Invoke(ctx context.Context, request Request) (Result, error) {
 			EffectUnknown: true,
 		}
 	}
+	result.Persistence = i.observePersistence(ctx, request, declaredEffect(plan))
+	result.AuthorizationMode = mode
 	return result, nil
 }
 
+// declaredEffect projects the plan's declared effect for the persistence
+// observer. It returns nil when the capability declares no effect.
+func declaredEffect(plan applicationview.CommandPlan) *semantic.DataEffect {
+	if plan.Effect == nil {
+		return nil
+	}
+	return &semantic.DataEffect{Kind: semantic.DataEffectKind(plan.Effect.Kind), Data: plan.Effect.Data}
+}
+
 func (i Invoker) checkPeriod(ctx context.Context, plan applicationview.CommandPlan) error {
-	if plan.Period == nil || i.Periods == nil || plan.Effect == nil {
+	if plan.Period == nil {
+		return nil
+	}
+	if i.Periods == nil {
+		return &ExecutionError{Code: "COMMAND_PERIOD_STATE_UNAVAILABLE", Message: fmt.Sprintf("period %s is declared but no period state is configured", plan.Period.ID)}
+	}
+	if plan.Effect == nil {
 		return nil
 	}
 	closed, err := i.Periods.Closed(ctx, plan.Period.ID)
@@ -155,6 +252,25 @@ func (i Invoker) execute(ctx context.Context, request Request, plan applicationv
 			EffectUnknown: EffectMayBeUnknown(err),
 		}
 	}
+	if result.Effect != nil {
+		if plan.Effect == nil || string(result.Effect.Kind) != plan.Effect.Kind || result.Effect.Data != plan.Effect.Data {
+			return Result{}, effectContractViolation(
+				"UNDECLARED_COMMAND_EFFECT",
+				fmt.Sprintf("executor returned effect %s on %s that the capability does not declare", result.Effect.Kind, result.Effect.Data),
+			)
+		}
+	}
+	// The executor has already run when applied operations are checked. Even
+	// with a UnitOfWork, the Executor contract does not require it to join that
+	// transaction, so a mismatch cannot be recorded as a clean rejection.
+	differences, err := checkAppliedOperations(plan, result)
+	if err != nil {
+		var contractError *ExecutionError
+		if errors.As(err, &contractError) {
+			return Result{}, effectContractViolation(contractError.Code, contractError.Message)
+		}
+		return Result{}, effectContractViolation("UNDECLARED_COMMAND_EFFECT", err.Error())
+	}
 	if result.Outcome != nil {
 		declared := false
 		for _, outcome := range plan.Outcomes {
@@ -164,10 +280,30 @@ func (i Invoker) execute(ctx context.Context, request Request, plan applicationv
 			}
 		}
 		if !declared {
-			return Result{}, &ExecutionError{
-				Code:    "UNDECLARED_COMMAND_OUTCOME",
-				Message: fmt.Sprintf("executor returned outcome %s that the capability does not declare", result.Outcome.Name),
-			}
+			return Result{}, effectContractViolation(
+				"UNDECLARED_COMMAND_OUTCOME",
+				fmt.Sprintf("executor returned outcome %s that the capability does not declare", result.Outcome.Name),
+			)
+		}
+	}
+	if i.Recorder != nil {
+		record := OperationRecord{
+			Request:               request,
+			Reported:              result.Effect,
+			Outcome:               result.Outcome,
+			Applied:               result.Applied,
+			Differences:           differences,
+			ReportedEffectMissing: plan.Effect != nil && result.Effect == nil,
+			// A command that declares no effect has nothing to compare, so an
+			// empty Applied list is not an unobserved difference check. Only a
+			// declared effect makes the empty list "the executor could not say".
+			AppliedUnobserved: plan.Effect != nil && len(result.Applied) == 0,
+		}
+		if plan.Effect != nil {
+			record.Declared = &semantic.DataEffect{Kind: semantic.DataEffectKind(plan.Effect.Kind), Data: plan.Effect.Data}
+		}
+		if err := i.Recorder.Record(ctx, record); err != nil {
+			return Result{}, &ExecutionError{Code: "COMMAND_RECORD_FAILED", Message: err.Error(), Cause: err}
 		}
 	}
 	return result, nil

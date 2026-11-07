@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -68,13 +70,20 @@ func (p *pathList) Set(v string) error {
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintln(os.Stderr, "usage: tei <scenario|version|commands|model|inspect|view|trace|workspace-files|source-index|knowledge-review-plan|knowledge-review-handoff|knowledge-review-disclose|knowledge-data-design-candidate-review|knowledge-context|knowledge-qualify|validate|index|plugin-lock|plugin-resolve|plugin-runtime-plan|observed-index|workbench-model|world|requirements|normalize-postgres-plan|desired-schema|schema-diff|plan-migration|migration-fingerprint|database-reconcile|database-compatibility|application-release-compatibility|release-graph|solution-release-graph|consumer-impact|deployment-simulate|deployment-start|deployment-ready-commands|deployment-record-attempt|deployment-retry|deployment-pause|deployment-resume|deployment-abort|deployment-recovery|deployment-start-recovery|deployment-provider-plan|deployment-reconcile> [options]")
+		fmt.Fprintln(os.Stderr, usageText())
 	}
 	if len(os.Args) < 2 {
 		flag.Usage()
 		os.Exit(2)
 	}
 	command := os.Args[1]
+	// Reject an unknown name before any flag requirement. A caller that typed
+	// the wrong command must not be told that -workspace is missing, and the
+	// answer must not depend on which flags were attached.
+	if !isAcceptedCommand(command) {
+		rejectUnknownCommand(command, os.Stderr)
+		os.Exit(2)
+	}
 	if command == "scenario" {
 		if err := runScenarioCommand(os.Args[2:], os.Stdout); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -113,6 +122,10 @@ func main() {
 		return
 	}
 	if command == "commands" {
+		if len(os.Args) == 3 && (os.Args[2] == "-h" || os.Args[2] == "-help") {
+			io.WriteString(os.Stdout, "usage: tei commands\n\tdiscovery of the selected read-only commands; no arguments\n")
+			return
+		}
 		if len(os.Args) != 2 {
 			fmt.Fprintln(os.Stderr, "commands does not accept arguments")
 			os.Exit(2)
@@ -172,6 +185,20 @@ func main() {
 	artifactCheck := fs.Bool("check", false, "artifacts: fail when the set is inconsistent")
 	periodStates := fs.String("period-states", "", "periods: period=state pairs, comma separated")
 	periodStatePath := fs.String("period-state-file", "", "periods: JSON object of period to state")
+	dbCheckDSNFlag := fs.String("dsn", "", "dbcheck: PostgreSQL DSN (defaults to TEI_TEST_POSTGRES_DSN)")
+	grantsOut := fs.String("grants-out", "", "grants: write the grants document here instead of stdout")
+	grantCapability := fs.String("grant-capability", "", "issue-grant: the capability the grant is issued to")
+	grantKind := fs.String("grant-kind", "filesystem", "issue-grant: permission kind")
+	grantAccess := fs.String("grant-access", "write", "issue-grant: permission access")
+	grantScope := fs.String("grant-scope", "", "issue-grant: the scope the grant covers")
+	grantIssuer := fs.String("grant-issuer", "", "issue-grant: the party that decides the grant")
+	grantReason := fs.String("grant-reason", "", "issue-grant: why the grant is issued")
+	grantRunKey := fs.String("grant-run-key", "", "issue-grant: the run the grant belongs to")
+	grantDeclaration := fs.String("grant-declaration", "", "issue-grant: the declaration file (tei grants) the issuance must stay inside")
+	grantDeclaredScope := fs.String("grant-declared-scope", "", "issue-grant: the declared scope name this run's place maps from")
+	grantResolvedRoot := fs.String("grant-resolved-root", "", "issue-grant: the concrete place the declared scope maps to for this run")
+	grantOut := fs.String("grant-out", "", "issue-grant: write the grants file here")
+	issueLog := fs.String("issue-log", "", "issue-grant: append the issuance record here")
 	environmentID := fs.String("environment", "", "environment canonical ID")
 	solutionID := fs.String("solution", "", "solution release canonical ID")
 	historyPath := fs.String("history", "", "normalized migration history JSON")
@@ -190,6 +217,46 @@ func main() {
 	var statePaths pathList
 	fs.Var(&statePaths, "state", "database compatibility state JSON; repeatable")
 	parseErr := fs.Parse(os.Args[2:])
+	if errors.Is(parseErr, flag.ErrHelp) {
+		printHelp(os.Stdout, fs, command)
+		return
+	}
+
+	// dbcheck needs neither a workspace nor a world: it reports whether a
+	// database can be used, so it runs before those requirements apply.
+	if command == "dbcheck" {
+		if err := runDBCheck(context.Background(), dbCheckDSN(*dbCheckDSNFlag), os.Stdout); err != nil {
+			if errors.Is(err, errDSNMissing) {
+				fmt.Fprintln(os.Stderr, "DSNが未設定です。TEI_TEST_POSTGRES_DSN か -dsn で指定してください（実DBの確認は何も実行していません）。")
+				os.Exit(2)
+			}
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
+	if command == "issue-grant" {
+		options := issueGrantOptions{
+			Capability: *grantCapability,
+			Kind:       *grantKind,
+			Access:     *grantAccess,
+			Scope:      *grantScope,
+			Issuer:     *grantIssuer,
+			Reason:     *grantReason,
+			RunKey:     *grantRunKey,
+			OutPath:    *grantOut,
+			LogPath:    *issueLog,
+
+			DeclarationPath: *grantDeclaration,
+			DeclaredScope:   *grantDeclaredScope,
+			ResolutionRoot:  *grantResolvedRoot,
+		}
+		if err := runIssueGrantCommand(options); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if command == "inspect" || command == "trace" {
 		if parseErr == nil {
 			parseErr = validateSelectedReadOnlyFlags(fs, command)
@@ -461,7 +528,7 @@ func main() {
 		writeJSON(d)
 		return
 	}
-	if (*worldPath == "") == (*workspacePath == "") {
+	if command != "dbcheck" && (*worldPath == "") == (*workspacePath == "") {
 		fmt.Fprintln(os.Stderr, "exactly one of -workspace or -world is required")
 		os.Exit(2)
 	}
@@ -492,6 +559,22 @@ func main() {
 	switch command {
 	case "operations":
 		if err := runOperationsCommand(*workspacePath, *applicationID, *artifactOutDir); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	case "grants":
+		if err := runGrantsCommand(*workspacePath, *applicationID, *grantsOut); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	case "dbcheck":
+		if err := runDBCheck(context.Background(), dbCheckDSN(*dbCheckDSNFlag), os.Stdout); err != nil {
+			if errors.Is(err, errDSNMissing) {
+				fmt.Fprintln(os.Stderr, "DSNが未設定です。TEI_TEST_POSTGRES_DSN か -dsn で指定してください（実DBの確認は何も実行していません）。")
+				os.Exit(2)
+			}
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
@@ -812,9 +895,9 @@ func main() {
 			os.Exit(1)
 		}
 		if result.PluginInvocation != nil {
-			var lock plugin.Lock
-			if err := decodeJSONFile(*pluginLockPath, &lock); err != nil {
-				fmt.Fprintln(os.Stderr, err)
+			lock, lockErr := decodePluginLockFile(*pluginLockPath)
+			if lockErr != nil {
+				fmt.Fprintln(os.Stderr, lockErr)
 				os.Exit(1)
 			}
 			runtimePlan, err := pluginruntime.BuildPlan(plugin.Catalog{Plugins: w.Plugins, Bundles: w.Bundles}, env, lock)
@@ -895,9 +978,9 @@ func main() {
 		}
 		plan := deploymentProviderPlan{Executors: routed}
 		if *pluginLockPath != "" {
-			var lock plugin.Lock
-			if err := decodeJSONFile(*pluginLockPath, &lock); err != nil {
-				fmt.Fprintln(os.Stderr, err)
+			lock, lockErr := decodePluginLockFile(*pluginLockPath)
+			if lockErr != nil {
+				fmt.Fprintln(os.Stderr, lockErr)
 				os.Exit(1)
 			}
 			runtimePlan, err := pluginruntime.BuildPlan(plugin.Catalog{Plugins: w.Plugins, Bundles: w.Bundles}, env, lock)
@@ -1108,9 +1191,9 @@ func runtimeFingerprintsForEnvironment(w ir.World, path string, environmentID co
 	if path == "" {
 		return "", "", fmt.Errorf("-plugin-lock is required for durable deployment run operations")
 	}
-	var lock plugin.Lock
-	if err := decodeJSONFile(path, &lock); err != nil {
-		return "", "", err
+	lock, lockErr := decodePluginLockFile(path)
+	if lockErr != nil {
+		return "", "", lockErr
 	}
 	env, ok := findEnvironment(w, environmentID)
 	if !ok {

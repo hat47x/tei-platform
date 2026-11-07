@@ -250,6 +250,15 @@ jobs:
             --server "$RUNNER_TEMP/tei-studio-server" \
             --port 43124
 
+      - name: Bootstrapの実Chromiumにおける遅着Catalog応答・DOM/ARIAを検証
+        working-directory: cmd/tei-studio
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/tei-studio-playwright/bin/python" test/bootstrap_async_smoke.py \
+            --server "$RUNNER_TEMP/tei-studio-server" \
+            --port 43130
+
       - name: 依存checksum証拠を保持（ソースには自動反映しない）
         if: success()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

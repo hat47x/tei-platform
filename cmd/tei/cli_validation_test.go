@@ -3,11 +3,13 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"tei/internal/operations"
+	"tei/internal/validation"
 )
 
 func readValidationReport(t *testing.T, b *bytes.Buffer) cliValidationReport {
@@ -85,6 +87,46 @@ func TestValidateWorkspaceJSONSemanticFailure(t *testing.T) {
 	}
 	if report.OK || !found {
 		t.Fatalf("unexpected semantic report: %+v", report)
+	}
+}
+
+// TestValidateWorkspaceJSONProposesWithoutAccepting checks that diagnostics are
+// paired with proposals bound to the read revision, and that the report never
+// marks one accepted: acceptance is a separate human decision.
+func TestValidateWorkspaceJSONProposesWithoutAccepting(t *testing.T) {
+	root := t.TempDir()
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: bad\nformatVersion: 1\nsources:\n  - applications\n")
+	writeWorkspaceFile(t, root, "applications/order-entry/application.tei", `application order_entry {
+    database sales {
+        target sales_core
+        access invalid
+    }
+}
+`)
+	var out bytes.Buffer
+	code, err := validateWorkspaceJSON(&out, root)
+	if err != nil || code != 1 {
+		t.Fatalf("exit=%d err=%v body=%s", code, err, out.String())
+	}
+	report := readValidationReport(t, &out)
+	if len(report.Proposals) != len(report.Diagnostics) {
+		t.Fatalf("diagnostics=%d proposals=%d", len(report.Diagnostics), len(report.Proposals))
+	}
+	for _, proposal := range report.Proposals {
+		if proposal.Accepted {
+			t.Fatalf("proposal was accepted without a decision: %+v", proposal)
+		}
+		if proposal.Revision != report.WorldFingerprint {
+			t.Fatalf("proposal revision=%q want=%q", proposal.Revision, report.WorldFingerprint)
+		}
+	}
+	if err := validation.Accept(&report.Proposals[0], "rev-changed"); err == nil {
+		t.Fatal("a changed revision accepted the proposal")
+	}
+	report.Proposals = nil
+	out.Reset()
+	if _, err := validateWorkspaceJSON(&out, root); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -303,5 +345,45 @@ func TestValidateWorkspaceWarningOnlyContract(t *testing.T) {
 	if text.String() == "ok\n" || !strings.HasSuffix(text.String(), "\nok\n") ||
 		!strings.HasPrefix(text.String(), "warning\t") {
 		t.Fatalf("warning-only text output changed: %q", text.String())
+	}
+}
+
+// TestValidateJSONReportsZeroDeclarationsForAnEmptyWorkspace checks that
+// ok=true is not mistaken for "model declarations were loaded" (#2822).
+func TestValidateJSONReportsZeroDeclarationsForAnEmptyWorkspace(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "semantic"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: empty_counts\nformatVersion: 1\nsources:\n  - semantic\n")
+	var out bytes.Buffer
+	code, err := validateWorkspaceJSON(&out, root)
+	if err != nil || code != 0 {
+		t.Fatalf("code=%d err=%v", code, err)
+	}
+	var report cliValidationReport
+	if err := json.Unmarshal(out.Bytes(), &report); err != nil {
+		t.Fatal(err)
+	}
+	if !report.OK || report.DeclarationCounts == nil || report.DeclarationCounts.Total != 0 {
+		t.Fatalf("empty workspace report=%+v", report)
+	}
+}
+
+// TestValidateJSONReportsDeclarationsForAReferenceWorkspace checks that a
+// non-empty Workspace is distinguishable from the empty one.
+func TestValidateJSONReportsDeclarationsForAReferenceWorkspace(t *testing.T) {
+	var out bytes.Buffer
+	code, err := validateWorkspaceJSON(&out, filepath.Join("..", "..", "reference", "workspace"))
+	if err != nil || code != 0 {
+		t.Fatalf("code=%d err=%v", code, err)
+	}
+	var report cliValidationReport
+	if err := json.Unmarshal(out.Bytes(), &report); err != nil {
+		t.Fatal(err)
+	}
+	if report.DeclarationCounts == nil || report.DeclarationCounts.Total == 0 ||
+		report.DeclarationCounts.Data == 0 || report.DeclarationCounts.Applications == 0 {
+		t.Fatalf("reference workspace counts=%+v", report.DeclarationCounts)
 	}
 }
