@@ -74,7 +74,7 @@ X-TEA（XEAD）の Driver が持つ**標準業務ライブラリ**（日付・�
 | 採番 | `numbering-counter`・`numbering-digits` | 必須 |
 | 採番 | `numbering-prefix`・`numbering-check`・`numbering-overflow` | 任意 |
 | 休日 | `holiday-date` | 必須（休日Dataを宣言する場合） |
-| 休日 | `holiday-calendar` | 任意（複数の暦が1つのDataを共有する場合） |
+| 休日 | `holiday-calendar` | 任意（複数の暦が1つのDataを共有する場合。型が値域を宣言していれば、宣言外の識別は報告される） |
 
 - 必須の役割が欠けたDataは結合で拒否され、欠けた役割名が報告されます。
 - 任意の役割は、列が空なら契約の既定（接頭辞なし・検査数字なし・停止など）のままです。空欄から別の規則を推測しません。
@@ -247,6 +247,8 @@ X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設�
 - [評価時点の決定性](EVALUATION_CONTEXT_DETERMINISM_2026-10.md)
 - [移行計画](../workstreams/XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)（WP8）
 - [受容要件](../../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md)（RQ-C3）
+
+
 
 
 
