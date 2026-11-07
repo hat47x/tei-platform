@@ -74,6 +74,10 @@ CLI利用者が「この対象には宣言済みの参照が無い」と「こ�
 1. `trace`でも未知kindを`UNSUPPORTED_SUBJECT_KIND`（終了コード2）として返し、`SUBJECT_NOT_FOUND`（1）と区別する。
 2. `derivedbridge`が投影しない種類（`semantic-candidate-key`・`semantic-functional-dependency`）を、応答に`unprojectedKind`などの欄で明示する。第二の正本を作らず、既存の`authorityLimits`と同じ形の注記で足りるかを含めて判断する。
 
+**対応（2026-11-07）**
+
+候補1を [PR #3208](https://github.com/hat47x/tei-platform/pull/3208) で実装した。`trace`は世界を読む前に投影範囲を確かめ、対象外なら`UNSUPPORTED_SUBJECT_KIND`（終了コード2）を返す。投影する種類で識別子が存在しない場合は`SUBJECT_NOT_FOUND`（終了コード1）のままである。続けて、投影範囲の一覧を`derivedbridge.SupportsSubjectKind`へ寄せ、`derivedbridge`の投影結果と一致することを検査する試験を加えた。候補2の`unprojectedKind`欄は、失敗時に符号で示せるため追加していない。追跡は[#3180](https://github.com/hat47x/tei-platform/issues/3180)。
+
 ---
 
 ### D-2 Workspaceの名前とmanifestの照合値が応答に出ない
@@ -104,6 +108,10 @@ tei inspect -workspace examples/xtea-lowcode -subject-kind semantic-data -subjec
 **候補の修正**
 
 `model catalog`・`inspect`・`trace`・`validate`の応答に、manifestの`workspace`名と`formatVersion`、manifest自体のSHA-256を載せる。既存の「新しい欄を足すのは互換な変更」の規則（`CLI_JSON_OUTPUT_CONTRACT_2026-10.md`§5）の範囲で足せるか、`v1`を要するかを判断する。
+
+**対応（2026-11-07）**
+
+互換な変更として足した。`workspace-files`も含む5コマンドの成功応答が`workspace`（`name`・`formatVersion`・`manifest.sha256`）を持つ。`internal/workspace`に`WorkspaceIdentity`と`Result.Identity()`を置き、manifestの`workspace:`を`name`として読む（`tei.workspace.tei`の旧形式も同じ）。`workspace:`が無いmanifestは従来どおり読み込み、`name`は空にする（パスから名前を作らない）。重複した`workspace:`行は拒否する。追跡は[#3181](https://github.com/hat47x/tei-platform/issues/3181)。
 
 ---
 

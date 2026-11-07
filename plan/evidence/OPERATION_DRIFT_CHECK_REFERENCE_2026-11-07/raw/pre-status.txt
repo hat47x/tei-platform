@@ -1,0 +1,5 @@
+?? aw/run.sh
+?? aw/t.sh
+?? tools/reference-operation-drift-check/cmd/tei-operation-drift-check/main.go
+?? tools/reference-operation-drift-check/driftcheck.go
+?? tools/reference-operation-drift-check/driftcheck_test.go
