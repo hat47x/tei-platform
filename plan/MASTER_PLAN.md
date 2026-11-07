@@ -590,6 +590,8 @@ main統合済み[#3070](https://github.com/hat47x/tei-platform/pull/3070)の`int
 
 #3236の組合せ表現では、Data→Function View→SHO/AIの各写像が局所成功しても全体のRelation/Scope/開示を保証しない。#1129の**Data-attached Rule Attachment**はMembership発生やCaseの直接Relationへ明示Bindingし、read-time導出・validation・before-write・Tx内効果・post-commitを区別する。表示変化やSQL JOINの重複を発火・完了の証拠にしない（§84.7/84.9）。
 
+Sourceの論理Workspace IDと物理root/realpathも別資格とし、Manifestの名前が同じでも実読込Sourceの位置・内容・現在許可範囲を検査する（組織設計§84.5.1、#2823/#2605/#2017）。
+
 **製品E2の優先は不変**：main統合#2681のNative組織E1を起点に、[#2586](https://github.com/hat47x/tei-platform/issues/2586)で**一件のC1→D1を実Function→Query→Provider Read→Consumer**まで同じSource/Attemptで検証。旧[#3024](https://github.com/hat47x/tei-platform/pull/3024)と設計PR[#2389](https://github.com/hat47x/tei-platform/pull/2389)は**closed・unmerged**であり、その旧CI/未マージ草案から現main Product E2 PASSやOwner意味採用を主張しない。ここでの追補は**docs-only／独立期待・接続案**で、組織二Functionの実UI・実DB/Host・Procedure Instance、正式Owner受理はNOT RUN。
 
 ## 先に固定しないもの
