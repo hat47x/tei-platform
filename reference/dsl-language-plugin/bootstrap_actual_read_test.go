@@ -3,8 +3,10 @@ package languagereference
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
+	"tei/internal/sourceindex"
 	"tei/internal/workspace"
 )
 
@@ -73,5 +75,32 @@ func TestBootstrapK1LoaderReadIsDistinctFromManagedInventory(t *testing.T) {
 	}
 	if nativeRefs == 0 {
 		t.Fatal("valid native TEI Source must produce a Source reference; otherwise the negative case is vacuous")
+	}
+
+	// Editing managed but unread Markdown changes the Source revision without
+	// changing the semantic World or its qualified Source references. This
+	// separates content change detection from actual semantic consumption.
+	write("semantic/README.md", "# Updated documentation, still not TEI meaning\n")
+	reloaded, err := workspace.Load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reloadedIndex, err := workspace.BuildSourceIndexFromLoad(root, reloaded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sourceindex.ModelRevision(idx) == sourceindex.ModelRevision(reloadedIndex) {
+		t.Fatal("changed unread Markdown was lost from Source revision")
+	}
+	if !reflect.DeepEqual(loaded.World, reloaded.World) {
+		t.Fatal("unread Markdown mutated the semantic World")
+	}
+	if !reflect.DeepEqual(idx.References, reloadedIndex.References) {
+		t.Fatal("unread Markdown changed semantic Source references")
+	}
+	for _, managed := range reloaded.ManagedFiles {
+		if filepath.ToSlash(managed.Path) == "semantic/README.md" && managed.ReadByLoader {
+			t.Fatal("edited Markdown was incorrectly promoted to Loader read")
+		}
 	}
 }
