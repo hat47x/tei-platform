@@ -599,13 +599,13 @@ Source A→B→Aでは同byteでもObservation時点・選択Revisionが別と�
 
 ## 17. 11/7再資格：Pattern/Operation実Crosswalk、Read Sliceの完全性、Function内Representationの非昇格
 
-本章は`14〜16の一Function・一Query・一実Providerを優先するRMT P0-R1を維持し、並行レーンの**実現済みSource**と**未統合検証・設計候補**を同じ資格にしない。X-TEA合成受容例E、旧原典Driver忠実移植R、実データK/O、業務Owner Bは引き続き別Attempt・別Claim。新しい第二Query/Operation Engine、Scenario正本、UI State Engine、Host/Authority、Fixtureは導入しない。
+本章は第14〜16章の一Function・一Query・一実Providerを優先するRMT P0-R1を維持し、並行レーンの**実現済みSource**と**未統合検証・設計候補**を同じ資格にしない。X-TEA合成受容例E、旧原典Driver忠実移植R、実データK/O、業務Owner Bは引き続き別Attempt・別Claim。新しい第二Query/Operation Engine、Scenario正本、UI State Engine、Host/Authority、Fixtureは導入しない。
 
 ### 17.1 第16.8節の現在地を更新：参照Crosswalkは動いたがW3/Product Actionは未統合
 
 [main merged #3195](https://github.com/hat47x/tei-platform/pull/3195)は`tools/reference-operation-pattern-crosswalk`を実装済み。既存`operations.DeriveOperationSurface`を呼んでData ID／Capability ID／Relation targetだけを突き合わせ、結果をlinks/unlinked/conflicts/ambiguousへ出す**読取専用の参考ツール**であり、製品の`tei operations`で宣言Patternを優先選択するW3は**未実装・未採用**。実Workspaceの操作8件・宣言Pattern5件でlink 4／unlinked 2／conflict 0。追加候補Patternを載せると8件・6件でlink 4／unlinked 3となる。4件の一致には`recent_orders→list.sales.order`、`order_record→read.sales.order`、`order_lines→list/read.sales.order_line`が含まれる。これは**Readのための設計候補間Identity対照**であって、Query/SQLがProviderへ渡った実行記録ではない。
 
-[main merged #3204](https://github.com/hat47x/tei-platform/pull/3204)はその同一規則を5つの宣言追加で反証：effectを持つcommandは対応Capabilityにリンク可能、Relation先DataのPersistence追加でreferenceがreadにリンク可能、同Dataを指す2 browseは**衝突・双方未採用**、効果の宣言だけでPersistenceが無ければmissing-input。**名前類似・暗黙first-winner・非宣言Effectの合成を禁止する**。旧`16.8の「手掛かりだけで結合規則が動かない」という一般化は、**参照Crosswalkに限っては訂正**する。ただしW3の採否/版管理・`Origin=declared`の製品反映・実行可能Action Offer/現在Grantを自動成立にしない（#1127/#1129/#951）。
+[main merged #3204](https://github.com/hat47x/tei-platform/pull/3204)はその同一規則を5つの宣言追加で反証：effectを持つcommandは対応Capabilityにリンク可能、Relation先DataのPersistence追加でreferenceがreadにリンク可能、同Dataを指す2 browseは**衝突・双方未採用**、効果の宣言だけでPersistenceが無ければmissing-input。**名前類似・暗黙first-winner・非宣言Effectの合成を禁止する**。旧第16.8節の「手掛かりだけで結合規則が動かない」という一般化は、**参照Crosswalkに限っては訂正**する。ただしW3の採否/版管理・`Origin=declared`の製品反映・実行可能Action Offer/現在Grantを自動成立にしない（#1127/#1129/#951）。
 
 P0-R1の実Reader呼出しは`BuildBrowse(Query)→selected SQL+actual args→physical Provider→Rows/Scope/Consumer`をそのまま先行。**Crosswalk link 4件をHR-01のPASSに足さず、W3の採否をHR-01の新しい前提にも置かない**。
 
@@ -633,7 +633,7 @@ P0-R1の**同一Attempt Read Slice最小証拠**は`Actual Source bytes+Revision
 
 ### 17.4 残る実行・自律・永続化の条件
 
-[main merged #3197](https://github.com/hat47x/tei-platform/pull/3197)が型コメントでも明確にした通り、`command.Executor`に`Invoker.UnitOfWork`へのTx参加の契約はない。外側RollbackやLifecycleの`unknown`は実Providerの別Tx Commitを巻き戻さない。`#3155 resource-observed`は実PGの単一Resource Payload照合として成立したが、宣言外の別Data更新、RMT Header/Lines全件、Version ABA、Current Read Grantの独立証拠にはしない（`16.7）。
+[main merged #3197](https://github.com/hat47x/tei-platform/pull/3197)が型コメントでも明確にした通り、`command.Executor`に`Invoker.UnitOfWork`へのTx参加の契約はない。外側RollbackやLifecycleの`unknown`は実Providerの別Tx Commitを巻き戻さない。PR #3155の`resource-observed`は実PGの単一Resource Payload照合として成立したが、宣言外の別Data更新、RMT Header/Lines全件、Version ABA、Current Read Grantの独立証拠にはしない（第16.7節）。
 
 [merged #3220](https://github.com/hat47x/tei-platform/pull/3220)の観測ではPlugin CapabilityKindとOperation Kindの語彙検査は別系統。前者は現行閉じた列挙、後者は規則内の生成語彙で未知種別検査なし。これを「Plugin追加で標準Operation Kindも自動拡張された」と解釈しない。[PR #3231](https://github.com/hat47x/tei-platform/pull/3231)の読み取り専用調査は`unattended`が現`list/read`から導かれ、明示Service主体や`human-gated`を評価していない範囲を示したが、**読取専用だから認可不要・外部Consumerへ公開可能とはしない**。自律区分／Host実Grant／Disclosureは別資格のまま。
 
