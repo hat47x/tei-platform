@@ -277,15 +277,15 @@ def transport_selftest(folder: Path) -> dict[str, str]:
         original = target.read_bytes()
         corruptions = {
             "tool-reply-omitted": None,
-            "tool-reply-truncated": original[:max(10, len(original) // 2)] + b"\\n",
-            "tool-reply-not-terminated": original.rstrip(b"\\r\\n"),
+            "tool-reply-truncated": original[:max(10, len(original) // 2)] + b"\n",
+            "tool-reply-not-terminated": original.rstrip(b"\r\n"),
             "json-duplicate-member":
-                b'{"schemaVersion":"tei.cli.model/v0","schemaVersion":"tei.cli.model/v0","ok":true}\\n',
+                b'{"schemaVersion":"tei.cli.model/v0","schemaVersion":"tei.cli.model/v0","ok":true}\n',
             "json-escaped-duplicate":
-                b'{"id":1,"\\\\u0069d":2}\\n',
+                b'{"id":1,"\\u0069d":2}\n',
             "json-nonfinite":
-                b'{"schemaVersion":"tei.cli.model/v0","ok":true,"value":NaN}\\n',
-            "json-trailing-object": original + b'{"extra":true}\\n',
+                b'{"schemaVersion":"tei.cli.model/v0","ok":true,"value":NaN}\n',
+            "json-trailing-object": original + b'{"extra":true}\n',
         }
         for name, data in corruptions.items():
             if data is None:
