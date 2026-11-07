@@ -895,9 +895,9 @@ func main() {
 			os.Exit(1)
 		}
 		if result.PluginInvocation != nil {
-			var lock plugin.Lock
-			if err := decodeJSONFile(*pluginLockPath, &lock); err != nil {
-				fmt.Fprintln(os.Stderr, err)
+			lock, lockErr := decodePluginLockFile(*pluginLockPath)
+			if lockErr != nil {
+				fmt.Fprintln(os.Stderr, lockErr)
 				os.Exit(1)
 			}
 			runtimePlan, err := pluginruntime.BuildPlan(plugin.Catalog{Plugins: w.Plugins, Bundles: w.Bundles}, env, lock)
@@ -978,9 +978,9 @@ func main() {
 		}
 		plan := deploymentProviderPlan{Executors: routed}
 		if *pluginLockPath != "" {
-			var lock plugin.Lock
-			if err := decodeJSONFile(*pluginLockPath, &lock); err != nil {
-				fmt.Fprintln(os.Stderr, err)
+			lock, lockErr := decodePluginLockFile(*pluginLockPath)
+			if lockErr != nil {
+				fmt.Fprintln(os.Stderr, lockErr)
 				os.Exit(1)
 			}
 			runtimePlan, err := pluginruntime.BuildPlan(plugin.Catalog{Plugins: w.Plugins, Bundles: w.Bundles}, env, lock)
@@ -1191,9 +1191,9 @@ func runtimeFingerprintsForEnvironment(w ir.World, path string, environmentID co
 	if path == "" {
 		return "", "", fmt.Errorf("-plugin-lock is required for durable deployment run operations")
 	}
-	var lock plugin.Lock
-	if err := decodeJSONFile(path, &lock); err != nil {
-		return "", "", err
+	lock, lockErr := decodePluginLockFile(path)
+	if lockErr != nil {
+		return "", "", lockErr
 	}
 	env, ok := findEnvironment(w, environmentID)
 	if !ok {
