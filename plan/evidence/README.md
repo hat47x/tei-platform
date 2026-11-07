@@ -112,3 +112,4 @@
 - [SB-N13の自称invoker照合](TEI_GO_STAGE_DRIVER_INVOKER_CLAIM_2026-11-08.md)（駆動主体が自称するdigestを実行中process imageと照合する欄をstage driverへ追加。一致しても`l3Claimed`はfalseのまま。独立した失敗は連結して保持する。SB-C0/C1 / #2831）
 
 - [stage1の生成物がstage2を駆動する（L3）](TEI_GO_SELF_BUILD_TWO_STAGE_L3_2026-11-07.md)（stage1のartifactをstage2のinvokerとして実起動し、invoker一致・同一レシピ・artifact一致が揃うことを記録。Seed Trust・受入・権限・別OS一般化は未確認。SB-C1 / #2831）
+- [値域付き型宣言のanchor走査](SYNTAX_TYPE_VALUES_ANCHOR_2026-11-08.md)（`type ... values { ... }` が Source Index と validate を失敗させていた記録。anchor 走査の読み飛ばしのみで、値集合の意味検証は未確認）
