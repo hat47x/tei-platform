@@ -239,3 +239,79 @@ Grant失効やSource改版をConsumerが**観測**したら、旧成功応答の
 - 例外のある共有Dataを単に「複数Subsystemで更新可能」と正規化せず、どちらの業務Command/Scope/期/Authorityがどう引き受けるかの明示契約へ分解可能か検討する。契約が不足する場合は未解決のまま保持。
 
 **追加候補 SP-19 / SP-20（NOT RUN）**：SP-19はShared Read Function・手作業・外部Systemがあるモデルを無理に全件exactly-one membershipへ押し込まないこと。SP-20は時点付きprimary write owner候補が複数/欠落しても、自動更新許可や実Owner決定へ昇格しないこと。
+
+
+## 17. 固定Owner下の越境CUD下界と修復必要性の証明（2026-11-08、設計候補）
+
+本Issueの新しい価値は「最良の候補を出す」に加えて、**所属変更だけで達成できない目標を反証可能な根拠で説明する**点である。既存#1132の候補CUD診断を使い、別のOwner判定器や実Effect推論を実装しない。
+
+### 17.1 成立条件と定義
+
+同一revision・Scope・解析Policyで固定された、十分に照合されたdirect-write辺集合 E を考える。Data d は受理済みかつ一意のprimary write owner g(d) を持つ。各Function f はこの比較の間は**一つの所属先** p(f) を持つ。Data ownerのgroupingは固定、Functionを分割しない、Functionのwrite辺を変更しない。許される所属候補を A(f) とする。Eの各辺 e=(f,d,operation) に非負の重み w(e) を与える（重みの根拠が不明なら全辺1とする暫定分析を明示する）。
+
+固定Owner下での越境既知重みは次である。
+
+    Cross(p) = Σ_(f,d,operation)∈E w(f,d,operation) × [p(f) ≠ g(d)]
+
+Functionごとに write 先Owner group g の重みを W(f,g) とする。許された所属先のうち、最も大きい内部重みを残せた場合でも、次の**下界**未満にはできない。
+
+    LB_fixed = Σ_f (Σ_g W(f,g) - max_(s∈A(f)) W(f,s))
+
+A(f)が空なら分割候補自体が不成立。A(f)がすべてのOwner groupを含み、Function間の追加制約がない単純な場合、この下界は達成できる。must-link、can't-link、Subsystem規模、Function同居など追加制約がある場合は**下界に過ぎない**。全機能を一つのSubsystemへ入れる、Data Owner境界を変更する、Functionを別Operationへ分解するなどはこの証明の前提から外れるため、同じ下界と単純比較しない。
+
+無重みの場合、一つのFunctionが直接更新するDataの固定Owner groupが k 個あり、Functionが一つのgroupにしか属せないなら、異なるgroupにつき少なくとも k-1 本のdirect-write関係は越境として残る（各groupへ少なくとも一つの関係がある場合）。ただし総合スコアやTransactionの安全性を証明するものではない。
+
+**重要**：LB_fixed が正なら「所属変更だけでは既知越境CUDゼロ不可」の構造的証明になる。LB_fixed がゼロでも、制約追加・未解析辺・実Effect・業務意味により「全システム越境更新ゼロ」は証明されない。
+
+### 17.2 合成例と期待値（本設計上の手計算・製品試験NOT RUN）
+
+固定Owner Sales=Order、Inventory=Stock。
+
+| Function | 更新先と重み | 許容所属 |
+| --- | --- | --- |
+| PlaceOrder | Order:C(1)、Stock:U(2) | Sales / Inventory |
+| Restock | Stock:U(1) | Inventoryのみ |
+
+候補Aは PlaceOrder=Sales、Restock=Inventory。known direct-write relations 3本、越境1本（PlaceOrder→Stock U）、越境重み2。候補Bは PlaceOrder=Inventory、Restock=Inventory。**同じ3本**の関係を保持し、越境1本（PlaceOrder→Order C）、越境重み1。従って **LB_fixed=1**（重み）、最良候補でも越境本数は1。いずれも越境ゼロではない。業務上PlaceOrder=Sales固定ならLB_fixed=2となる。重み2/1は説明用の仮定で、実測頻度ではない。
+
+この例は変更操作を許可した場合の構造的候補比較であり、PlaceOrderの担当者・業務責任がInventoryへ移せると判断したものではない。Owner側Command委譲によるU消失は新たなFunction/call/effect契約を必要とするBoundary repairとして別比較に回す。
+
+### 17.3 Analyzerの結果契約
+
+最低限、(1)入力Source closure/known E/Unknown母数、(2)Owner binding/allowed membership/hard constraints、(3)LB_fixedとその適用前提、(4)各FunctionのOwner group別write weightと残存越境の根拠、(5)分割候補と実越境値、(6)ゼロ不可/条件付きゼロ可能/不明の**判定理由**を返す。
+
+「ゼロ不可」は固定Owner・非分割Function・既知Eという問題設定に相対的で、普遍的なシステム設計の不可能性ではない。入力Sourceの不完全性がある場合、Eに対する下界の説明は可能でも、未知の辺についてゼロ保証を与えない。Assessmentが最小の変更理由を示し、人間が再設計を検討する材料とする。
+
+## 18. 分割最適化と既存移行検収の接点
+
+他チャットの[設計移行Draft #3252](https://github.com/hat47x/tei-platform/pull/3252)は、既存ソース由来の設計候補、旧実装の動作、TEI受理済み意味、生成先実装を区別して比較する。#3250ではSubsystem境界とCRUD/Effectの**差分説明**だけを提供し、旧Java/C#/SQL/Triggerの抽出・実装互換の受理は#3252/#2555と既存Scenario/独立ExpectedのOwnerに委ねる。
+
+| 比較 | 本Issueが報告できること | 別Ownerによる検証が必要なこと |
+| --- | --- | --- |
+| 現行所属→Partition-only案 | 同じ既知edge集合での越境本数・重み・影響Scope | 業務責任変更の正式受理 |
+| 現行所属→Boundary repair案 | Source提案のwrite/call/effect差分、前提と未決 | 旧動作・業務Meaning・新実装の三者比較、Tx/Authority/回復 |
+| Owner/DB配置の移動・Cutover | logical Owner変更、残存越境依存、Data identity対応候補 | 実データ移行、物理Schema、二重Writer排除、切替時点、独立Read |
+| 単一Artifact→複数Build Target | logical partitionが不変か、期待される通信境界 | 実Build closure、Process/Provider/Grant/Artifact一致 |
+
+「旧実装と新実装が同じ越境CUD数」でも意味互換の証拠にはならない。旧不具合の保存と意図的な修正も、同じ静的Matrixからは区別できない。逆に意図的修正のためMatrixが変わっても、新しいOwner Meaning受理なしに不適合と決めない。
+
+## 19. 最小Referenceの具体的着手順と反証票（提案/未実装）
+
+**Step P0-a（Read-only）**：現在の#1132 candidate checkerと、#1120/#1127等の受理済みProducerを比較し、Accepted Scope/Source closure/Owner/Function IOのうち**実在する契約**だけを再利用する。実Producerが無い場合は接続を「未実装」として止め、用意した合成JSONをAcceptedと呼ばない。
+
+**Step P0-b（Partition-only）**：固定Owner、fixed known CUD edges、Function allowed membershipの極小fixtureだけを用い、エッジの保存不変条件、LB_fixed計算、越境edgeの再分類、単純全列挙による小規模oracleを比較する。OracleはOptimizerとは独立した実装で計算する。大規模ソルバーや新Constraint DSLは採用しない。
+
+**Step P1-a（候補と説明）**：複数候補の違反・Score内訳・Source位置・未解決母数をCUI read-onlyで比較する。解けないhard constraintは「最適化失敗」ではなく矛盾集合候補と未決の出所を表示する。Closed-worldの根拠なしに全体ゼロ判定をしない。
+
+**Step P1-b（修復の分岐）**：LB_fixed>0のFunctionだけを修復検討対象に優先表示するが、Command委譲等の業務変更を自動生成・受理しない。所属変更を伴わない修復、物理Target移動を別カテゴリに保つ。
+
+| ID | 反証入力 | 期待する結果 |
+| --- | --- | --- |
+| SP-21 | 2固定Ownerを跨いで書くFunction、所属先2候補 | LB_fixed>0、越境0を不可能と報告（前提付き） |
+| SP-22 | 同じedge集合のまま所属先/重みだけを変える | direct edge universe不変、越境分類と重み値は再計算 |
+| SP-23 | 既知edge0だが未知Trigger/Sql解析不足 | LB_fixed=0でも全体越境0を保証しない |
+| SP-24 | must-link/allowed-member制約、またはData Owner境界を変更 | LBの適用条件を更新し、旧Problemの値を流用しない |
+| SP-25 | 外部直接U→Owner Commandの提案 | Partition-onlyではなくBoundary repairへ送り、Effect/Tx/独立Expectedが未検証なら実現資格なし |
+| SP-26 | 同じCRUD表だが旧実装と新生成物の業務結果が異なる | CRUD一致だけで互換/意味適合のPASSを出さない |
+
+**優先順**：P0-aでAccepted Producer/Scope/coverageの実際の欠落を先に解く。その後P0-bの小規模独立Referenceで構造的な下界・不変条件を確認し、Studio図表/P2、旧資産移行・複数Target/P3へ進む。既存#1119/#1124/#2831の直接P0に新たなHard Dependencyを置かない。上記のSP試験は**すべて提案・NOT RUN**。
