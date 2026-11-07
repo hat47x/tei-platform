@@ -158,7 +158,40 @@ CLIとStudioは、記録が無い場合の既定値を「効果が宣言され�
 - 宣言効果の報告漏れを、どのExecutorで拒否するか。参照Executorは宣言効果をそのまま返すため対象外。
 - `effectcommit` のCommit成功を、独立した読取りで宣言効果と照合するか（#2998の `persisted` の意味）。
 
-## 9. この文書が主張しないこと
+## 9. 永続化の観測（`persistence`）と `persisted`（#2998 追補）
+
+### 三つの問いを分ける
+
+`committed` と `persisted` の二欄だけでは、次の三つが混ざる。
+
+1. その実行に永続storeがあるか（参照実行は無い）。
+2. durableなCommitが起きたか（`UnitOfWork.Commit` の結果）。
+3. Commit後に、宣言効果を独立した読取りで見たか。
+
+`command.Result.Persistence` と `PersistenceState` を追加し、次の三状態にした。
+
+| 値 | 意味 |
+| --- | --- |
+| `not-applicable` | 宣言効果が無い、または `Invoker.DurableStore=false`（参照実行）。観測対象が無い |
+| `not-observed` | durable storeはあるが、独立した読取りを構成していない（`PersistenceObserver` がnil）、または読取りが失敗した |
+| `observed` | `PersistenceObserver.Observe` が宣言効果を読取りで確認した |
+
+`PersistenceObserver` は `Request` と**宣言効果**だけを受け、Executorの `Result` を受けない。Executorの報告をそのまま観測として返せないようにするためである。読取り失敗はCommandの失敗ではなく `not-observed` にする（Commitは既に起きている）。
+
+CLIとStudioは `persisted`（`observed` のときだけtrue）と `persistence` を返す。参照実行は `persisted:false`・`persistence:"not-applicable"`、実Providerでobserver未構成なら `persistence:"not-observed"` になる。
+
+### `Invoker.DurableStore` の位置付け
+
+`Invoker.DurableStore` はcompositionの主張であり、Invokerは検証しない。`UnitOfWork` が `MemoryUnitOfWork` かどうかを型で判定しないのは、参照用の取引と実取引を型で偽装できるためである。参照実行はfalseにして `not-applicable` を明示する。
+
+### まだ決めていないこと
+
+- `PersistenceObserver` を実Providerの経路へ配線するか（Commitとは別の読取り接続が要る）。
+- `not-observed` を警告や停止条件にするか。現状は応答の欄としてのみ返す。
+- `Replayed` の経路で観測を行うか。Replayは現在値の読取りではなく記録の再確認なので、別の観測が必要。
+- `DurableStore` をcompositionから自動で決める方法。現状は呼出し側の明示的な宣言。
+
+## 10. この文書が主張しないこと
 
 - 本物の認可・主体・権限・メニュー制御が実装されたこと。
 - `ReferenceAuthorizer`が本番で使えること。

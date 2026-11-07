@@ -2,6 +2,7 @@ package studiohost
 
 import (
 	"strings"
+	"tei/internal/command"
 	"testing"
 )
 
@@ -23,7 +24,8 @@ func TestPlanAndExecuteCommand(t *testing.T) {
 		t.Fatalf("run=%+v failure=%+v", run, run.Failure)
 	}
 	if run.Value.Mode != "reference" || !run.Value.Committed ||
-		run.Value.Persisted || run.Value.Durability != "none" {
+		run.Value.Persisted || run.Value.Persistence != string(command.PersistenceNotApplicable) ||
+		run.Value.Durability != "none" {
 		t.Fatalf("run=%+v", run.Value)
 	}
 }

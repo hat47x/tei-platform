@@ -28,8 +28,12 @@ type CommandRunValue struct {
 	// Committed reports that the configured UnitOfWork returned from Commit.
 	// The reference host uses MemoryUnitOfWork, which does not write data (#2998).
 	Committed bool `json:"committed"`
-	// Persisted is false for a reference execution.
+	// Persisted is true only when an independent observer saw the declared
+	// effect after Commit. A reference execution has no observer.
 	Persisted bool `json:"persisted"`
+	// Persistence separates "not applicable" (reference) from "not observed"
+	// and "observed".
+	Persistence string `json:"persistence"`
 	// Durability names the storage boundary: "none" for the reference executor.
 	Durability string                    `json:"durability"`
 	Records    []command.OperationRecord `json:"records,omitempty"`
@@ -200,7 +204,8 @@ func (h *ReadOnly) executeCommand(workspaceID, applicationID, patternID, capabil
 		Outcome:               result.Outcome,
 		Effect:                result.Effect,
 		Committed:             true,
-		Persisted:             false,
+		Persisted:             result.Persistence == command.PersistenceObserved,
+		Persistence:           string(result.Persistence),
 		Durability:            "none",
 		Records:               recorder.Records,
 		Differences:           recordDifferences(recorder.Records),
