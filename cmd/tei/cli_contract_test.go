@@ -168,7 +168,6 @@ func TestDiscoverySchemaVersionMismatchIsDetected(t *testing.T) {
 	}
 }
 
-
 // TestViewReadOnlyDiscoveryExcludesActualFileWriteVariant pins the advertised
 // read-only subset to invocations without -execute. The same CLI command does
 // accept an -execute invocation that can write a named file (#3182); it must
@@ -182,10 +181,10 @@ func TestViewReadOnlyDiscoveryExcludesActualFileWriteVariant(t *testing.T) {
 	if len(record.ExcludedFlagNames) != 1 || record.ExcludedFlagNames[0] != "execute" {
 		t.Fatalf("view must exclude effectful execute flag: %+v", record.ExcludedFlagNames)
 	}
-	for _, option := range record.Optional {
-		if strings.Contains(option, "-execute") {
-			t.Fatalf("read-only discovery advertises an effectful variant: %q", option)
-		}
+	// Flag discovery must still describe every accepted CLI argument (#2332).
+	// "execute" is an accepted flag, but the read-only claim excludes its use.
+	if !strings.Contains(strings.Join(record.Optional, " "), "-execute") {
+		t.Fatal("view discovery must still describe the accepted -execute flag")
 	}
 	// The exclusion is not a CLI flag ban. Exercise the real reference command
 	// through its command entry and independently inspect the named output.
