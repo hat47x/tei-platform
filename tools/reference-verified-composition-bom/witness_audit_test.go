@@ -9,16 +9,16 @@ func auditBase() WitnessAuditRequest {
 	return WitnessAuditRequest{
 		Cases: []WitnessCase{
 			{
-				Lock: Lock{Fingerprint: "lock-a", SourceFingerprint: "src-a", ArtifactDigest: "sha-a", Target: "go-static"},
+				Lock:     Lock{Fingerprint: "lock-a", SourceFingerprint: "src-a", ArtifactDigest: "sha-a", Target: "go-static"},
 				ScopeRef: "tenant-a/function-x", ScenarioDigest: "scenario-1",
 				IndependentExpectedDigest: "independent-expected-1",
-				RequiredChecks: []string{"contract", "integration"},
+				RequiredChecks:            []string{"contract", "integration"},
 			},
 			{
-				Lock: Lock{Fingerprint: "lock-b", SourceFingerprint: "src-b", ArtifactDigest: "sha-b", Target: "go-static"},
+				Lock:     Lock{Fingerprint: "lock-b", SourceFingerprint: "src-b", ArtifactDigest: "sha-b", Target: "go-static"},
 				ScopeRef: "tenant-a/function-x", ScenarioDigest: "scenario-1",
 				IndependentExpectedDigest: "independent-expected-1",
-				RequiredChecks: []string{"contract", "integration"},
+				RequiredChecks:            []string{"contract", "integration"},
 			},
 		},
 		Attempts: []WitnessAttempt{
@@ -27,7 +27,7 @@ func auditBase() WitnessAuditRequest {
 				SourceFingerprint: "src-a", ArtifactDigest: "sha-a", Target: "go-static",
 				ScopeRef: "tenant-a/function-x", ScenarioDigest: "scenario-1",
 				IndependentExpectedDigest: "independent-expected-1",
-				ExpectedSteps: 2, ObservedSteps: 2, Complete: true,
+				ExpectedSteps:             2, ObservedSteps: 2, Complete: true,
 				Checks: []WitnessCheck{
 					{CheckID: "contract", Status: "pass", EvidenceRef: "e-a-contract"},
 					{CheckID: "integration", Status: "pass", EvidenceRef: "e-a-integration"},
