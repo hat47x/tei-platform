@@ -1,0 +1,1 @@
+{"format":"tei.hashid.target-probe/v1","profile":{"namespace":"example.records","profileVersion":"decimal24-v1","allowedAlphabet":"0123456789","minLength":0,"maxLength":0,"exactLength":24,"caseFoldASCII":false,"reserved":[]},"bindings":[]}
