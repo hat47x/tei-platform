@@ -167,6 +167,8 @@ main [#3284](https://github.com/hat47x/tei-platform/pull/3284) と [#3296](https
 | `sales.order.lines.line_number_unique` | 同Relation内の`relation-unique` Rule | 同SubjectのSource Anchor/Role、Inventoryの`readByLoader` |
 | `sales.order_line.line_number_positive` | 行番号正数Rule | 同SubjectのCanonical Kind/Index Reference、T1-Aの候補と同じSource Bundle |
 
+**受領経路の追加**：従来の9件に含まれる`source-index -subject-kind semantic-data -subject-id sales.order`は**subjectモードであり**、必要な別ValidationのDefinition Referenceは含まない。そのまま9件だけでRequiredを検証済みと称することはできない。そこで実CLIの**既存全件モード** `tei source-index -workspace reference/workspace`を10番目のread-only Replyとして独立に取得する。CLI自体の新設や第2Source Index実装ではない。Tool Reply 10件それぞれの生byte digestを限定Evidenceに含めるが、順次取得のため原子的Snapshotとは主張しない。
+
 この3つに対し、`workspace-files.result.managedFiles`の`semantic/sales/validation.tei`が1件で`readByLoader:true`、`source-index`が`mode:index`で同Source Artifactを1件、各Definition Referenceの`subject/kind/role/artifactPath`を一意に持つことを**既存CLI投影の値だけ**から確認する。受領したCatalog/Index JSONを検査するため、DSL構文をPythonで再パースせず、Source位置と意味正本は依然TEI既存Loader/Source Indexが保有する。
 
 **決定的な非推論**：CatalogやSource Indexで一致したことは、その3件についての**限定的な読取・追跡可能性**の証拠であって、全Function/Business/Rule/ProcedureのRequired集合、業務意味受理、Source解析の完全性、Graphトポロジーの全辺、現在Host権限/Plugin実Load、実DB Readを証明しない。`boundedReference`は`partial`、`testExecutionAdmission`は`exploration-only`、`qualifiedTestGeneration=false`を**維持**する。
