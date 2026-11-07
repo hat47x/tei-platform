@@ -1255,18 +1255,18 @@ QueryやGraphを扱う「不在に関するTest Pattern」は、Positive Witness
 | [Open #3363](https://github.com/hat47x/tei-platform/pull/3363) 環境Binding×既存Supports*の参照Matrix。24 Bindings中22 selected、2 missing（`editor.database_workbench`） | **参照Candidate Matrix**と製品Validatorの責務を分離。現Validatorは`editor.sql_analysis`等の限定Checkであり、Reference上missing 2件は製品Rejectや実Plugin Load Failureを意味しない。selected→actual invoked/Artifact/Grantは未確認（#3279/#951/#3267）。 |
 | [Open #3361](https://github.com/hat47x/tei-platform/pull/3361) Product Skill/Harness F0〜F5 | 実Source Read、Required充足、外部Tool完全受領、現在Disclosure、独立Expected、実Effectは6つの観測軸。H3限定Tool Read≠OS強制非漏洩・8,192byte切断解決・56/55 Reply欠落解決。新規H2の一Session実受領・Egressは未実証（#2509/#2515）。 |
 
-#### 26.8.3 独立反例と受入条件 TT-115〜TT-122（既存Fixtureへ参照し、新Scenario SSOTを作らない）
+#### 26.8.3 独立反例と受入条件 TT-123〜TT-130（既存Fixtureへ参照し、新Scenario SSOTを作らない）
 
 | ID | 一つだけ変える対照入力 | 期待する局所診断・非主張 | 実行Owner |
 | --- | --- | --- | --- |
-| **TT-115 Document is not loaded** | docs/planのMarkdownをsourcesへ追加し管理Fileとして見せるがLoader未読込 | indexed/discoveredと`readByLoader:false`を保持。未解析ContentからRule/Requirement coveredや意味の欠損0を導かない | #3346/#3262 |
-| **TT-116 Fingerprint scope confusion** | `view.semanticFingerprint`とcatalog World/Index FPが異なる | 異Scope FPを単純な不一致Failureにしない。同Scope/同Kind同士の改版/欠損はstale/unknown | #3345/#1163 |
-| **TT-117 CLI shape false absence** | nested diagnostics/array result/builtin entriesの既知正常JSONを渡す | 型付きCommand別Adapterで部分/既存Stdを識別。Schema不一致はunsupported/error、空Requiredにしない | #3347/#3262 |
-| **TT-118 Open versus closed ValueDomain** | 同じ値`C2`を、Values未宣言と`{C1}`明示型へ与える | 前者は制約不宣言・後者は拒否。直接ValueDomain Testと実HolidayRows経路の未接続を別列 | #3358/#2514 |
-| **TT-119 Hook undeclared data leak** | `reads=[A]`のHookへ`A,B`を渡し、`on-failure warn`の合成と比較 | 宣言外Bは拒否。実Runnerが未配線なら実Host非開示としない。produces/実Effectは未証明 | #3359/#1174 |
-| **TT-120 Truncated journal prefix** | JSONL 2正常行+1破損、前2件とReader errorが返る | prefixは保存、全件/効果不在の証拠としては拒否。0600と改竄耐性は別 | #3357/#1163 |
-| **TT-121 Self-build claim substitution** | stage2の自称Process digestだけをStage1 artifactと合わせ、実Invokerが違う | L3拒否。Stage1 artifact→Stage2 process・child/argv・artifactの実独立照合が必要。Reference PASS≠`cmd/tei` G4 | #3360/#3362/#2831 |
-| **TT-122 Plugin Matrix reference-only missing** | 24 Binding中`editor.database_workbench` 2件に対応宣言なし。Validatorは当該Featureを能力照合しない | 参照`missing=2`は保持、製品不適合はunknown/別判断。selected 22も実Load/Invoke資格なし | #3363/#3279 |
+| **TT-123 Document is not loaded** | docs/planのMarkdownをsourcesへ追加し管理Fileとして見せるがLoader未読込 | indexed/discoveredと`readByLoader:false`を保持。未解析ContentからRule/Requirement coveredや意味の欠損0を導かない | #3346/#3262 |
+| **TT-124 Fingerprint scope confusion** | `view.semanticFingerprint`とcatalog World/Index FPが異なる | 異Scope FPを単純な不一致Failureにしない。同Scope/同Kind同士の改版/欠損はstale/unknown | #3345/#1163 |
+| **TT-125 CLI shape false absence** | nested diagnostics/array result/builtin entriesの既知正常JSONを渡す | 型付きCommand別Adapterで部分/既存Stdを識別。Schema不一致はunsupported/error、空Requiredにしない | #3347/#3262 |
+| **TT-126 Open versus closed ValueDomain** | 同じ値`C2`を、Values未宣言と`{C1}`明示型へ与える | 前者は制約不宣言・後者は拒否。直接ValueDomain Testと実HolidayRows経路の未接続を別列 | #3358/#2514 |
+| **TT-127 Hook undeclared data leak** | `reads=[A]`のHookへ`A,B`を渡し、`on-failure warn`の合成と比較 | 宣言外Bは拒否。実Runnerが未配線なら実Host非開示としない。produces/実Effectは未証明 | #3359/#1174 |
+| **TT-128 Truncated journal prefix** | JSONL 2正常行+1破損、前2件とReader errorが返る | prefixは保存、全件/効果不在の証拠としては拒否。0600と改竄耐性は別 | #3357/#1163 |
+| **TT-129 Self-build claim substitution** | stage2の自称Process digestだけをStage1 artifactと合わせ、実Invokerが違う | L3拒否。Stage1 artifact→Stage2 process・child/argv・artifactの実独立照合が必要。Reference PASS≠`cmd/tei` G4 | #3360/#3362/#2831 |
+| **TT-130 Plugin Matrix reference-only missing** | 24 Binding中`editor.database_workbench` 2件に対応宣言なし。Validatorは当該Featureを能力照合しない | 参照`missing=2`は保持、製品不適合はunknown/別判断。selected 22も実Load/Invoke資格なし | #3363/#3279 |
 
 #### 26.8.4 次に走らせる最小縦切りと、実装の優先順
 
@@ -1276,7 +1276,7 @@ QueryやGraphを扱う「不在に関するTest Pattern」は、Positive Witness
 4. **P1-E（副作用・完全性）**：#3357 JSONL prefix+error、#3359 ReadsFor実入口、#3351業務拒否/技術評価不能、#3353空集合Handoffを異なる故障原因として実Target/Observerへ結合。単体Go PASSからProducer/Consumer/Persistedの資格を導かない。
 5. **P1-B（Build・Plugin）**：#3360 stage-driver限定再入性→#3362 process-image→#2831 `cmd/tei`再入契約、#3363 Ref Matrix→#951実選択・Provider Load/Invoke→#3267 exact Tupleの順。各別PRのlocal PASS、Source・Artifact・Target・Granted Runtimeの合成適合を分ける。CLI/Studio双方で同じInspector Pluginを実呼出す最短D1を並行して進める。
 
-**観測済と未実施の境界**：#3357/#3358/#3348/#3354はmain統合済みの限定成果。#3356はドッグフーディング第2ラウンドの実測を報告する**未統合PR**。#3359/#3360/#3361/#3362/#3363は各PRが報告した局所試験/提案であって、本節で新しく実行した試験ではない。TT-115〜122は**受入計画・NOT RUN**。外部H2/H3受領、MCP、T1-B、新しい実Provider/Host、`cmd/tei` G4、Owner Meaning Acceptanceは**未証明**。実施済みの局所結果を合算して全E2E/製品テストCoverageを作らない。
+**観測済と未実施の境界**：#3357/#3358/#3348/#3354はmain統合済みの限定成果。#3356はドッグフーディング第2ラウンドの実測を報告する**未統合PR**。#3359/#3360/#3361/#3362/#3363は各PRが報告した局所試験/提案であって、本節で新しく実行した試験ではない。TT-123〜122は**受入計画・NOT RUN**。外部H2/H3受領、MCP、T1-B、新しい実Provider/Host、`cmd/tei` G4、Owner Meaning Acceptanceは**未証明**。実施済みの局所結果を合算して全E2E/製品テストCoverageを作らない。
 
 <!-- tei-test-partial-inventory-dogfood-20261108 -->
 ## 27. 2026-11-08：部分Scenario目録でも局所正証人を保持する実装（TT-105/106）
