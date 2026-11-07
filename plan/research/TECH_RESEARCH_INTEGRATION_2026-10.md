@@ -658,7 +658,7 @@ M未受理・G許可でもMeaningを採用しない。M受理済み・G拒否な
 
 ### 10.22 Sourceの物理同一性の負例と固定Studio Host
 
-[Issue #3061](https://github.com/hat47x/tei-platform/issues/3061)では、**固定Studio Hostの特定版 4bc437c7**におけるResolved Physical Root置換で、allowlist済みWorkspace IDからWorkspace外のCatalogが見える負例を報告（[#3059](https://github.com/hat47x/tei-platform/pull/3059)の負例CI）。Configured Aliasだけの置換はPASS、物理Rootの置換はSECURITY FAIL。これは固定Hostの限定実証であり、**現mainの同じ脆弱性を立証したわけではない**。mainでの同じ負例・修正、固定PoCを更新するかは#3061/#1824のOwner判断。
+[Issue #3061](https://github.com/hat47x/tei-platform/issues/3061)では、**固定Studio Hostの特定版 4bc437c7**におけるResolved Physical Root置換で、allowlist済みWorkspace IDからWorkspace外のCatalogが見える負例を報告（[#3059](https://github.com/hat47x/tei-platform/pull/3059)の負例CI）。Configured Aliasだけの置換はPASS、物理Rootの置換はSECURITY FAIL。これは固定Hostの限定実証であり、**現mainの同じ脆弱性を立証したわけではない**。後続の[main統合 #3098](https://github.com/hat47x/tei-platform/pull/3098)は現mainのReadOnly Hostが起動時の実体rootを保持し、各操作前に同一性を再確認する仕様と[#3063](https://github.com/hat47x/tei-platform/pull/3063)の限定試験を記録した。一方、固定PoC版4bc437c7は別の歴史的脆弱性のまま扱い、更新の要否とin-flight fd raceは#3061/#1824のOwner判断。
 
 Source Path文字列、Workspace ID、Source byte digest、実物理rootのidentityを同一証拠としない。許可時と実Readerアクセス時のrealpath/Root identity、symlink/rename・ABA・別Tenant/Scope・現在権限を照合し、矛盾時は読取停止。診断で非公開のSource件数やResource名を漏らさない。#2571/#2823/#1124/#1824/#2516へ独立負例を割当て、第二Path Resolver/Host Authorityを設けない。
 
@@ -671,3 +671,47 @@ Source Path文字列、Workspace ID、Source byte digest、実物理rootのident
 **Buildは並行**：[merged #3091](https://github.com/hat47x/tei-platform/pull/3091)のModule Preflightにより、隔離GOPROXY=offでcmd/teiにpgx/v5、x/text、modernc.org/sqliteの未供給が観測され、Source closure/Artifact生成以前のSB-0bが必要と判明。G4はUNQUALIFIED。[merged #3094](https://github.com/hat47x/tei-platform/pull/3094)の構成Kernel A/B/C局所パケットは同じ固定checkoutで個別に実行されたが、単一Request/Operationに結合していない。artifacts manifest.complete=false／未解決6も記録されている。個別のPASSを製品一気通貫のPASSへ加算しない。
 
 **状態**：既存main局所実装と負例を照合したDocs-only研究差分。新 *.tei.md Reader/Parser、Provider→Completionの実全件証明、固定Studio Host負例の現main再試験、workspace-files旧Consumer互換、Host/Provider/Owner一改訂E2EはNOT RUN。新Core、Runner、Registry、専用TEI Hostを追加せず、#1119の既存Gateを維持する。
+
+
+### 10.24 OKF v0.2：可搬な知識と実行資格を二段階に分離する（2026-11-07、OKF v0.2一次仕様 §3〜§12の再確認）
+
+**出典**：[GoogleCloudPlatform OKF v0.2 SPEC](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md)。OKFはfrontmatter typeを持つportable Markdown Concept形式であり、storage/serving/実Query/実Attester ABI/Receipt wire/sandboxを提供しない。§10.5のDiscover→Load→Parameterize→Execute→Attest→Gateは実装説明（informative）、§12はRuntime protocol/Attester ABI/cache未規定と明記。新TEI Runtimeや独自中央Attestation Engineを採用済みとはみなさない。
+
+| OKF v0.2の最小仕様・シグナル | TEI/SHOで扱う段階 | 非推論と既存Owner |
+| --- | --- | --- |
+| 非予約 *.md はparseable YAML frontmatter＋非空type。未知type/keys、任意fields欠落・broken link・index欠落は寛容に扱う | OKFの**形式Conformance**と、TEIのRequired Source/Role/Operator/現在実行資格を別列で出す。SHO Raw Draft保存・OKF閲覧・TEI Meaning Promoteを別Operationへ | Conformance PASSを実TEI Parser、Accepted Meaning、外部Code実行可に昇格しない。#3030/#2621、[SHO #18](https://github.com/hat47x/sho-composer/issues/18) |
+| sources[].resourceと任意id、Claim脚注／generated/verified Actor・時刻 | Source IDと足場、Reference/Revision、Source spanとClaimごとの引用を保持。Writer/Readerは未知keysと元bytesの非対象領域を保持 | resourcesはURL以外のScope記述も可能。URLの有無・verifiedのhuman:文字列・usage_countを真正性／独立検証基準／Authorityと同一視しない。#2514、[SEI #820](https://github.com/hat47x/sei-cognition/issues/820) |
+| statusはdraft/stable/deprecated、省略時stable。stale_afterはUTC offset付き絶対時刻 | 文書Lifecycle／期限とSource Revision・Operator Pin・Decisionの現在適用性を別軸で追跡 | stableデフォルトでもOwner受理とは言えず、期限内でもSource改訂・撤回・A→B→Aを失効判定から外さない。#2600/#267 |
+| index.mdは任意の段階的発見、log.mdは人間向け日時履歴、通常Markdown Linkは無型 | SkillのRoot→必要Conceptだけ取得、必要Referenceの閉包、Source/Consumer実読込を別計数 | index未掲載≠対象不存在、Log≠Decision履歴/Receipt、Link≠型付き関係・Grant。#1180/#2823、SEI #820 |
+| Concept IDはbundle pathの末尾.mdを除いた値 | **TEI固有の衝突例**：sales.order.tei.md のOKF Concept IDはsales.order.teiとなり得る。旧sales.order.teiのPath、TEI Semantic Subject ID、Owner Acceptance IDと異なるidentityとして保持する | ファイル名の見かけ上の一致で旧新のMeaning/Decision/Build/Receiptを自動結合しない。#3030 TM、#2600、SHO #18 |
+| Attested Computationはruntime、型付きparameters、正規computation、executor.resource/receipt、決定的attester.resourceを区別 | 定義／契約versionと実行したArtifact、Receipt／Attester verdictを同一Attemptで照合 | OKFの形式適合、定義verified、Run attested、Owner Accepted Meaning、現在Host Grant、実Provider Effectを**別判定列**へ。#2514/#1163、TAI #514 |
+
+**導入形態**：OKFをTEI/SHO/SEIの正本へ上書きしない。既存[TEI Draft #3029](https://github.com/hat47x/tei-platform/pull/3029)とSHO #18が選択式の文書/Domain Lint、SEI #820がKnowledge Export/Import境界、TAI #514がSkill/Attestationの横断計画を担当する。新Parser/Resolver/Source Registry/中央Trust Scoreは導入しない。
+
+### 10.25 Attested Computation：まずread-onlyの「正規計算が走ったか」だけを実証する
+
+一次仕様OKF v0.2 §10.3は**Agentは宣言済みtyped parameterの値だけを供給し、正規computationを編集しない**とする。Consumerがbindした実SQL/compiled artifactをReceiptの実行Artifactと照合し、deterministic no-LLM AttesterがReceiptと権威あるJob/Result再読取に基づいて判定する。**Definition verified**は文書／定義のレビュー記録、**run attested**は一試行の計算経路に対する検証で、互いに代替できない。
+
+既存[TAI #514](https://github.com/hat47x/tai-pleroma/issues/514) AC-01〜12／[TEI #2514](https://github.com/hat47x/tei-platform/issues/2514)の独立期待値・既知Mutantを実証の正本とする。新ケース番号を第三の検収正本にしない。最小の同一Fixtureで必要な正負対照は、正規typed bind→実Read→独立Result（正）、AgentによるQuery差替え／型不正、旧JobIDの流用、Receipt捏造、Result一致だが別Operator/Plugin Pin、constant-PASS Attester、部分Rowsetなのにcomplete、期限内定義だが現在Source変更、Run attest成功だがOwner受理撤回（負）である。**Attesterのbytes/実行環境/入力と判定版もPinし、Attester自身の自己申告だけを証拠としない**。
+
+**最低観測束**：selected OKF Concept bytes/Path/Source Revision／正規TEI Function/Query/Role/Operator/Targetのexact selectionとtyped parameter bytes／実Host/Provider実行資格・Request・実際に実行されたSQLまたはcompiled Artifact／実Receipt JobID・Result・Scope/Row completeness・Timestamp／独立再Read／Attester actual code+verdict／現在Consumerの開示資格。欠落したらunknown/unsupported/not-run、モデルに架空のReceiptを書かせない。OKF Receiptは**bundle外のruntime artifact**であるため、TEI既存#1163 Evidence Packetへ参照する設計にとどめ、OKF文書へ各実行ログを強制保存しない。
+
+**採用順**：最初は実CLIに存在するread-only Source/Inspect/Queryの範囲で**契約読取だけ**を提案し、正式Executor/Attesterが無ければunsupported。実Host Side Effect・DB更新・配備・削除はOKF §10のRun Attestationをそのまま転用せず、#1174のOperationID/Grant/Commit fence/Receipt/独立ReadとOwnerの明示受理が必要。新Attester ABI/Runtime/自動Host Permissionを先に固定しない。実OKF Contract→TEI CLI→Executor→Attesterの一改訂試験はNOT RUN。
+
+### 10.26 外部Harnessの実Tool到達：H2/H3の比較母集団へ混ぜない（2026-11-07）
+
+[TEI Evidence PR #3113](https://github.com/hat47x/tei-platform/pull/3113)／[TAI #168](https://github.com/hat47x/tai-pleroma/issues/168)に、DSH 0.2.2-rc.1から固定TEI read-only実行ファイルを起動し、実Tool request/CLI result/最終回答まで到達したh2-08の**限定実観測**がある。固定Source revision 50ebf8014340fd1906f6b35cfa30173e0ee2fc6c／公開sales.order／固定Participant Task。Tool Call 56、実TEI起動32、CLI Validate warning3。試行9件は参加者Task完了1、短い接続確認2、MALFORMED_RESPONSE5、INVALID_CONFIG1。PRはOpenで、DSHの全原JSONLは保存されておらず、製品側の要約・保存したTool Result以外を独立に再構成できたとは言わない。
+
+**新しい境界**：read-only指定でも実作業Dir外の元Worktreeを読み出せたため、Skill/Expected/Holdout非露出・OS isolationを保証できない。Windows workspace-write sandboxはWin32 5で失敗、Egress拒否も未実証。したがって**技術的 Tool transport到達**と**H2比較適格**を分離。H2/H3四Sessionの適格件数は0/4で、探索9件を既存4つのITT分母へ事後追加しない。
+
+**最短次段**：既存OS/VM/Container機能でH2 Participantに固定Binary・公開Workspace・Taskのみを見せ、Skill Root/References/独立Expected/過去回答/他Sessionへ本当にアクセスできない観測を先に固定。その条件で一つ目の比較適格H2を実行し、その後H3で必要Skill Root+Referenceの実Reader受領を観測してH2→H3→H3→H2四独立Sessionへ進む。[TEI #2605](https://github.com/hat47x/tei-platform/issues/2605)がProduct Skill現物とCLI一致、[TAI #168](https://github.com/hat47x/tai-pleroma/issues/168)が比較条件を所有。旧[TEI #2614](https://github.com/hat47x/tei-platform/issues/2614)はclosed/duplicateなので、新担当をそこへ戻さない。TAI #514のOKF計算Attestationを初回H2/H3のBlocking条件にしない。
+
+### 10.27 SEI知識管理：OKFを交換投影に使い、Truth/Decisionの正本にしない
+
+[SEI #820](https://github.com/hat47x/sei-cognition/issues/820)（open/設計、KO-01〜15すべてNOT RUN）は、OKF v0.2のsources、Actor、status/stale_after、index/log、Attested Computation等をSEI Observation/Hypothesis/Recommendation/Decision/Method/Unknown/Lineageの**選択的Export/Import候補**へ結び付けている。元SEI Logical Ref/Exact Binding/Responsibility/Method Application/未解決残余・Authorityの正本は変えない。Source引用の脚注順が変わっても元idが変わらない、同一起点の転載2件を独立根拠2件と数えない、status省略stableでDecisionのunresolvedを消さない、Actor human:ラベルから本人確認を推論しない等の負例を既存SEI Ownerへ渡す。
+
+TEIとの実接点は、(1) accepted meaningの根拠Original SourceとRevision/Scope、(2) attested計算Resultの現在妥当性と未取得・非開示、(3) TEI/SHO/SUI/TAIへ渡すClaimの説明・未決・現在Context、の**read-only Handoff**。外部OKFの閲覧は可能でも、Native Decision StoreへのImport/上書きにはSEI既存#775のContract・Exact Binding・Owner Reviewが必要。OKF index不掲載／broken linkは形式として許容しても、必要根拠の閉包不明なら用途別Qualificationはunknown。SEI版付きObservationの失効、更新時のA→B→A、Decision撤回をOKF status/stale_afterで代用しない。
+
+**次の実験は既存Ownerの順序で**：TEI #2605/TAI #168の外部実Tool/Skill比較を先行。SEI #820の一Concept/複数Claimのread-only Exportを別Fixtureで照合し、OKF形式適合・Source実Read・SEI問い相対の十分性・Attester verdict・現在Host/Consumerを別列にする。実SEI OKF Import/Export、実Attester、実H3 Skill Load、Owner Meaning受理はNOT RUN。
+
+**本追補の性質**：OKF原典と現GitHub Issue/PRを照合した研究・計画更新。既存#3029/#2514/#2605/TAI#514/SEI#820を参照するものであり、新Plugin実装・第二Evidence Registry・新Attester Runner・共通Knowledge Store・業務Hostは作らない。業務G1/G2、G4 Self-Build、SHO WriterをOKF実証のHard dependencyにしない。
