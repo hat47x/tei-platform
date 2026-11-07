@@ -278,6 +278,13 @@ tests:
 | **DC-05 異質データ・Graph** | [merged #3287](https://github.com/hat47x/tei-platform/pull/3287)の合成Postgres 3行・JSONL 5件はFixture契約。実Row/Scope/History/DDL Applyは#2586/#3270の別試験。HTTP多重辺/自己ループは現Catalog Graphへ押し込まずTable/Source参照＋unsupportedを返す | Fixture限定試験とProduct Readを分離 |
 | **DC-06 実Build/TargetとCurrent Authority** | 未選択Pluginのimport/`init`/assets混入、選択版と実Linked版不一致、対象/Principal/Grant更新、receipt-old/unknown writeを別Claimとする。UIで表示できたProviderやBOM pairwise/独立Reader成功から実Target資格を推測しない | 実Build/Windows/Effect NOT RUN |
 
+
+### Desktop D1のUI後着応答検収：Workspace同名ABAを独立に固定
+<!-- tei-desktop-inspect-aba-regression-20261107 -->
+- [Draft #3327](https://github.com/hat47x/tei-platform/pull/3327)は既存`reference/tei-studio-workbench/responses.workspace-switch.test.mjs`の`createResponseScope`に**A1→B→A2（同じWorkspace名・同じSubject ID）**を追加。旧A1の成功・失敗がA2のInspector表示／エラーを上書きしない2対照。mainと等価な`responses.ts`と追加ロジックのローカルNode 22で**2/2 PASS**、PRはDraftで新exact-head CI／Node24`npm test`／実WebViewは未確認。
+- **この局所合格の用途**：DC-02の「UI response-scope epochをvalue ABAに依存させない」を限定的に補強する。ただし既存Host Bridge／CLIとStudioの選択Plugin Providerはまだ接続されておらず、**二Consumerの実Provider同一Invoke／Read cohort／Function Context・Grant／実EffectはPASSしていない**。`createResponseScope`は旧Host操作を停止・取り消すものではない。
+- **次の不合格対照**：DC-01選択Provider B・実Invoke A、DC-04 Source/Tool一部欠落、DC-02 CLIと`/workbench/`の実二Consumer、MV-05 Function Context同ID ABAは、既存#951/#1016/#2586/#2514のOwnerへ残す。UIだけの2 PASSをそのままD1b移行許可にはしない。
+
 **確認済みテストの上限**：[merged #3284](https://github.com/hat47x/tei-platform/pull/3284)は9件の既存read-only CLI応答を基にした限定Design Context `partial`／資格保留と7つの合成Negativeを、[#3296](https://github.com/hat47x/tei-platform/pull/3296)はManifest追加2・Tool応答byte改変7を足した計16対照をCIで実証した。ただし独立の外部Harness応答切断ではなく受領済JSONコピーへの改変であり、Rule/Function/Business Required Closure、AIによる新Case生成、C1、外部Host／Studio実適合は未達。`qualifiedTestGeneration=false`を維持し、D1のSource閉包の下限診断として**参照**するだけとする。
 
 **着手順**：P0 現`InspectSubject`→CLI／Wailsの実Call Graphと`Read`の外部効果/Disclosure棚卸し → P1 既存Contract Resolverから**exact一Provider**をshadow実呼出し、同一Identity/Scope/Result＋実Invoker記録をReadback → P2 誤Provider選択、無断fallback、不完全Source／Tool応答の負例を先行 → P3 CLIとStudio`/workbench/`を同一Operationへ切替えて実Node/DOM・Windows WebView2で別Consumerを検査 → P4 #3270 Data Workbench/#3274 HTTP Graph/#3267 Verified BOM/`*.tei.md` SHOへ用途別展開。#3292全体計画Gとの二重Hard Gate化はしない。
