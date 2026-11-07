@@ -602,6 +602,8 @@ Sourceの論理Workspace IDと物理root/realpathも別資格とし、Manifest�
 
 **表現型適合**はGraph、Tree、Matrix、Table、Chart、Timeline、Map、SHOの平易なMermaid風テキストを同じDataから構成し、用途/Scope/Unit/Path/時間/Disclosure・Lossと逆編集資格を別々に検証する。TEI表現インスタンスはFunction Data Contextに所属し、SHOは別Consumerとして再資格化。Readableな図の生成成功≠元Relationの再構成可能性／現在Grant／実編集Effect。標準の表現型と専門Profileを分離し、新Renderer/Topology Engineを組織専用で複製しない。
 
+**三要素・図面・CRUD横断の受入差分**：[組織合成Profile§7](design/ORGANIZATION_TOPOLOGY_QUANTITY_REPRESENTATION_PROFILE_2026-11.md)で、Data/Function/Businessの図面・SHO図解・CRUD等クロスリファレンスを同一Semantic Sourceから導出するときの意味、必要Source/Role/Quantity、Source逆編集資格を明示。合成例Org Explore／Case Handling／Workforce Report／人手Handoffでは、Rは**宣言された依存**、U?は**未受理の操作候補**であり、実Read/実Effect/Host Grantではない。Graphで二経路へ出現する同一C、D1のFTE集計セル、DFDの移管矢印、CRUDのセルは自動で同一更新対象にならない。ORG-XV-01〜07（軸だけ変更、FTEだけ変更、Path多重、DFDのみ変更、集計セル編集、非公開差、ABA）を既存#1124/#1125/#1803/#2497/#2593/#2514の検証へ接続する。モデル図面とCRUD表は派生表示であり、**一意なSource対象を持つ型付き変更候補だけ**既存Preview/Acceptance/reparseへ渡す。C0/C1の未カバー範囲は#1180/#2514の既存独立Expected/Scenarioの側で判定し、新Org専用Runner/Canonical/生成器は作らない。
+
 **優先順位**：#2586の実C1→D1 Function→Query→Provider Read→Consumerを先行し、その後P0合成のGraph/Headcount/FTE、P1二Function/SHO表示、P2原本への一意なIntent/Host Effectを段階検証。#2506/#2507/#2516/#2510/#2497/#2593が対応Owner。新Go/DB/GUI/SHO実行、Owner Quantity/Meaning受理、実Provider実証は**NOT RUN**。既存の組織計画§84・§85と並行採用可否を評価し、無根拠な大量Core新設やP0実Readの延期を避ける。
 
 ## 先に固定しないもの
