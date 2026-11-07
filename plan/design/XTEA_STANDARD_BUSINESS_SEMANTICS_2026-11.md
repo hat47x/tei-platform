@@ -78,6 +78,7 @@ X-TEA（XEAD）の Driver が持つ**標準業務ライブラリ**（日付・�
 - 必須の役割が欠けたDataは結合で拒否され、欠けた役割名が報告されます。
 - 任意の役割は、列が空なら契約の既定（接頭辞なし・検査数字なし・停止など）のままです。空欄から別の規則を推測しません。
 - 語彙の追加は`internal/validation/validation.go`の`attributeRoles`に置き、綴りの誤りは引き続き`SEMANTIC_ATTRIBUTE_ROLE_UNSUPPORTED`で報告します。
+- 役割が要求するプリミティブ型（`date`・`decimal`・`integer`）は`internal/validation/attribute_role_type.go`の`rolePrimitives`に置きます。宣言の型が要求と違う場合は`SEMANTIC_ATTRIBUTE_ROLE_TYPE_MISMATCH`で報告し、別名（`type X from Y`）は下地まで辿って判定します。型名と役割名のどちらも「何でも受理する」ことはしません。
 
 ## 3.1 受け止める形
 
@@ -245,6 +246,7 @@ X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設�
 - [評価時点の決定性](EVALUATION_CONTEXT_DETERMINISM_2026-10.md)
 - [移行計画](../workstreams/XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)（WP8）
 - [受容要件](../../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md)（RQ-C3）
+
 
 
 
