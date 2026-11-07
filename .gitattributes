@@ -58,3 +58,6 @@
 
 # Workspace-write probe observations are hashed as raw bytes.
 /plan/evidence/DSH_WORKSPACE_WRITE_ASYMMETRY_2026-11-07/** -text
+
+# Resume-after-disclosure observations are hashed as raw bytes.
+/plan/evidence/DSH_H6E7_RESUME_AFTER_DISCLOSURE_2026-11-07/** -text
