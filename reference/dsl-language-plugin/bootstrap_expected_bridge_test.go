@@ -12,8 +12,9 @@ import (
 )
 
 // The expected stops are authored separately from the selected TEI APIs.
-// This test bridges only BS-02/03/06; the remaining bootstrap/recovery cases
-// are design-only, not implicitly qualified by a passing go test.
+// The focused tests exercise BS-02/03/06 and BS-14's current-witness
+// boundary. The remaining bootstrap/recovery cases are design-level only;
+// no passing Go test implies formal Owner acceptance or full K0-K6 coverage.
 func bootstrapExpectedStops(t *testing.T) map[string]string {
 	t.Helper()
 	path := filepath.Join("..", "..", "plan", "fixtures", "role-bootstrap",
