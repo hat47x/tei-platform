@@ -342,3 +342,40 @@ RQ-035/RQ-036・横断Indexは[Draft #3297](https://github.com/hat47x/tei-platfo
 またmain統合済み[#3333](https://github.com/hat47x/tei-platform/pull/3333)ではCLIの`view`が記録系`-operation-log`/`-lifecycle-state`により実ファイルを書き得ることを`writeFlags`と実実行Testで明示した。以前の[#3302](https://github.com/hat47x/tei-platform/pull/3302)は別の修正Draftであり、最新mainで`view`の`effect:read-only`という**名前上の分類だけ**を外部副作用なしの根拠にしてはならない。図面検査は`argv`の実Variantと書込Sink、ConsumerのDisclosure/Tool Deliveryを分ける。
 
 最初の実Probeは「同一Scopeの`modelref`候補Graphから**異なるStable EdgeIDを持つ2 Relationship occurrence**を元Sourceへ回収できるか」「`view -format json`のApplication局所FingerprintをWorld/Source Indexと混同しないか」を判別し、満たさない場合は**read-only/unsupportedと不足Contractの位置を返す**。ModelRef/Studio/SHOの静的型が合致しただけで製品機能の対応済み扱いにしない。
+
+## 20. 実modelrefのGraph受入とEdge Identity欠落の独立実証（11/08）
+
+本PRの[modelref Fit/Gap Go Test](../../reference/diagram-crossref/modelref_fitgap_test.go)を追加した。これは単に合成JSON同士を比較する従来のFixture auditとは違い、**実際のTEI `internal/modelref` の `Graph`/`Validate`/`Diff`を動かすテストコード**である。ただし入力は引き続き本PRの合成Data/Relation JSONであり、実Source Loader・Function/Business Parser・Accepted Meaning・Product CLI/Studio/SHOを経由しない。テスト内の写像は一時的な実証Adapterであり、Core/新Projection Schemaを定義しない。
+
+### 20.1 なぜRelation TypeとRelation InstanceのIdentityを分離するか
+
+現在の`modelref.Edge`は`From Key`/`To Ref`/`Relation string`/`Evidence[]`を保持するが、`EdgeID`を含まない。今回の合成入力は、`data.line→data.sku`という同じ端点に対して`rel.line.sku.primary`と`rel.line.sku.alt`の二つの**別の業務関係Occurrence**を持ち、両方とも型は`reference`である。
+
+- **MRX-01（正例）**: 合成9 Data Node・7 Edgeを型付き`tei.modelref.v0`へ一時写像し、`Validate`がすべての端点とEdge Typeを許すことを確認する（Source provenanceは`proposal`として留める）。
+- **MRX-02（負例・限定検出）**: 同じ`From/To/Relation/Evidence`である2 Edgeを、`modelref`自身では区別できないことを確認。**両方に別の元Source Relation IDがある事実は、現在のtyped Graphから復元できない**。したがってGraphからの逆Patchは`ambiguous`・`read-only`にとどめる。
+- **MRX-03（正例だが不十分）**: 片方のEdgeを失うと`modelref.Diff`が`reference-changed`を報告できることを確認。ただし「どちらの元Relationを削除したか」は報告できない。**変更の検出**と**変更対象の一意な特定**の適格性を区別する。
+- **MRX-04（次段）**: ID/Source locatorを持つ既存標準Graph/Source RefのCandidateを調査し、型とOccurrenceを保存できる場合だけCLI Headless出力のEdge→元Sourceを要求する。`EdgeID`を直ちに`internal/modelref`へ追加してABIを固定することはしない。
+
+**反例設計の補正**: 旧N01は「2本あるEdgeのうち1本を落としたら件数差を検出」という局所弱判別に過ぎない。**ModelRefが2本の同型Edgeを表示・保持できても、片方を選択して元Sourceの`rel.line.sku.alt.optional`へ可逆編集できるとは限らない**。独立Expected（#2514）では `Graph shape/count`、`Edge identity/source locator`、`edit target uniqueness`、`current revision/authority`を別のAssertとして持つ。新テストでModelRefのGraph全体・Data/Function/Business全意味対応が完成したとは主張しない。
+
+### 20.2 他チャット最新の実Product能力とモデル解釈の分離
+
+| 既存の実証・所有境界 | 今回の図面・CRUD Consumerへの反映 |
+| --- | --- |
+| [main統合 #3354](https://github.com/hat47x/tei-platform/pull/3354)：実CLI **11応答**と限定**32 Consumer Controls**でRule/Relation/Sourceの不整合を拒否 | `Required`は実Function/Business/Schemaを含まない`partial`。Graph 9/Edge 7・CRUD 4×9の完全性証拠とはしない。Reader/Parser Role入場とData Meaning Scopeを別票で返す。 |
+| [main統合 #3353](https://github.com/hat47x/tei-platform/pull/3353)：空集合のHandoffについて`HandoffConfirmed`未確認なら完成扱いしない | Source/Relation/CRUDの既知0件、Provider空集合、外部受領確認を**三つの独立条件**で扱う。取得0件とモデル中に要素が無いこと、結果Asset未受領とBusiness完了を混同しない。 |
+| [Draft #3371](https://github.com/hat47x/tei-platform/pull/3371)：StudioHostの`InspectionService`型付きHost経路、未提供・不一致拒否 | Diagramも暫定的に既存Read-only Inspectorを入口にできるが、**CLI直接ReaderとHost選択Pluginの実Provider一致は未確認**。別ホスト・別Coreではなく#1824/#3279のPlugin/Composition Ownerへ渡す。 |
+| [Draft #3372](https://github.com/hat47x/tei-platform/pull/3372)：Workbenchの物理FK/UNIQUE・観測Revisionを失わないReverse情報の保持 | 物理FK/UNIQUEは業務Relation/Keyの**Structural Candidate**であり、Ownerが受理するまでSemantic Edgeへ昇格させない。逆向きWorkBench→Modeler→SHOで`observed`・`candidate`・`accepted`を保つ。 |
+| #3303：標準Representation Topology、Function-owned Instance、実Read/交差表示 | Canvas Subject/Occurrence/Result Sliceの結線を共有、表現型の型/意味正本をこのPRで再定義しない。 |
+
+**M1の次に進める条件**: `reference/workspace`から認識された実Source/Subjectの情報で、`readByLoader/parsed/bound`の各段階と、標準Graph内RelationのIdentity/Sourceを明示的に対応させること。対象の関係が解決不能なら、同型Edgeへの**Read-only表示**だけを受入し、Source逆編集を拒否する。Function CRUDの列挙が不完全なら、明示された`R/C/U/D`は残し、未列挙セルはUnknownとする（§18）。この停止線が成立するまではStudio/SHOのRenderer/E2Eの成功を宣言しない。
+
+### 20.3 テスト資格の明確化
+
+- **Fixture Audit**: JSONの内部整合、既知の局所破損の拒否。独立Owner Oracleではない。
+- **`modelref` Fit/Gap**: TEI実Go packageの型・参照・Diffに対する合成入力の限定実行。Source Loaderや製品図面生成の実証ではない。
+- **Source Admission**: 実Workspaceに管理されるSourceがLoader/Parser/Roleに入場し、同一SnapshotでSubject/Relationが解決するか（#3262/#3346）。
+- **Product Projection**: 上記のReal SourceからData/Function/Business図面/CRUDを作成し、Edge/Cell→元Source・Loss/Scope/開示の現在資格まで辿れるか（#1124/#1125/#1126/#2497）。
+- **Reverse Edit/Consumer**: Canvas/Studio/SHO/実Provider/Hostで、一意性・適用可能性・実配送/実効果を既存Owner/Scenario/独立Expectedで検証する。
+
+上の5資格を一つの`PASS`としない。新`modelref_fitgap_test.go`のgo test、gofmt、GitHub Health、最後の変更HEADは**その実Runで確認してから**判定する。
