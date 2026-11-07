@@ -745,7 +745,7 @@ E Routeの検証に使う最小Requiredを、宣言Status Input／SQL Sourceだ�
 
 ### 20.2 CLIのFile Effect表示はmainで実装済み、実Command Effectの広告は未完
 
-旧`19の「名前付き出力の広告は未統合」を**局所的に訂正**する。[main merged #3333](https://github.com/hat47x/tei-platform/pull/3333)は既存 tei.cli.discovery/v0 の view に writeFlags（-operation-log、-lifecycle-state）を追加し、実CLIで引数を指定した際のJSONファイル／SQLite Stageファイルの生成と、指定しない場合の非生成を対照した。固定HEAD 78bf41c99964255c4372ac0a71556538d40b83d2 の[Health #42386374310](https://github.com/hat47x/tei-platform/actions/runs/42386374310)はsuccess。現mainの cmd/tei/cli_contract.go でも read-only と writeFlags の両欄を確認した。
+旧第19章の「名前付き出力の広告は未統合」を**局所的に訂正**する。[main merged #3333](https://github.com/hat47x/tei-platform/pull/3333)は既存 tei.cli.discovery/v0 の view に writeFlags（-operation-log、-lifecycle-state）を追加し、実CLIで引数を指定した際のJSONファイル／SQLite Stageファイルの生成と、指定しない場合の非生成を対照した。固定HEAD 78bf41c99964255c4372ac0a71556538d40b83d2 の[Health #42386374310](https://github.com/hat47x/tei-platform/actions/runs/42386374310)はsuccess。現mainの cmd/tei/cli_contract.go でも read-only と writeFlags の両欄を確認した。
 
 ただしこの read-only は**正本の意味変更ではない**との定義に限られる。Caller指定Pathへの物理File書込みを可視化しただけであり、-executeのCommand/DB Effect・実Grant・外部Consumerが見た結果は網羅していない。[未統合 #3302](https://github.com/hat47x/tei-platform/pull/3302)の excludedFlagNames によるInvocation Variantのread-only範囲制限は、mainへ入った writeFlags と同じ解決策として**採用確定させない**。RMTのHost/Harnessは必ず実argv、writeFlags、出力先、Command／Provider Targetを照合し、広告されたCommand名だけで副作用なしと認定しない。
 
@@ -757,7 +757,7 @@ E Routeの検証に使う最小Requiredを、宣言Status Input／SQL Sourceだ�
 
 ### 20.4 Hookと暦の標準機能はX-TEA由来の意味対照へ接続する
 
-[main merged #3306](https://github.com/hat47x/tei-platform/pull/3306)は、Hookのusesが指すCapabilityに対応するApplication Command Patternが**存在しない**場合に検証拒否を加えた。これは旧`19の「未統合」を訂正できるが、複数同Capability Commandの曖昧性、位相とCommandの結合、実Runner/Plugin/Providerの呼出しを解決したわけではない。[PR #3348](https://github.com/hat47x/tei-platform/pull/3348)のPhase順実行と途中停止のGo実装は**現時点未統合**であり、TxnとPhase、Plugin合成順序、実Product Callerは未資格。対応するData Script/Hookの実動作Par​​ityは、Read/Update二入口の本番同Rule実行時に別検収する。
+[main merged #3306](https://github.com/hat47x/tei-platform/pull/3306)は、Hookのusesが指すCapabilityに対応するApplication Command Patternが**存在しない**場合に検証拒否を加えた。これは旧第19章の「未統合」を訂正できるが、複数同Capability Commandの曖昧性、位相とCommandの結合、実Runner/Plugin/Providerの呼出しを解決したわけではない。[PR #3348](https://github.com/hat47x/tei-platform/pull/3348)のPhase順実行と途中停止のGo実装は**現時点未統合**であり、TxnとPhase、Plugin合成順序、実Product Callerは未資格。対応するData Script/Hookの実動作Parityは、Read/Update二入口の本番同Rule実行時に別検収する。
 
 [main merged #3343](https://github.com/hat47x/tei-platform/pull/3343)では、X-TEAの暦コードに相当するholiday-calendar Roleを追加し、複数暦が同じ休日Dataを共有するとき、Calendar指定なしの全行読込を拒否して別暦休日の混入を防ぐ。これはDate Role・timezoneとあわせた**参照用Binder/Row変換**の前進であり、旧DriverのKBCALENDAR文字列/日付書式/実DB/年会計期間の意味Parityとはまだ別。暦Dataに紐付くCalendar IDの実妥当性と旧Provider/Owner Expectedは未受理。HR-01/02のstatus Queryに関係ない暦全機能を先行Hard Gateにしない。
 
