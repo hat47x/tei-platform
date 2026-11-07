@@ -254,3 +254,33 @@ tests:
 - https://github.com/WebAssembly/component-model/blob/main/design/mvp/WIT.md
 
 **実施状況**：2026-11-07の他チャット・現行main・既存Issueの静的突合と移行条件の設計追補。PD-0〜PD-7、Trait合成、actual two consumer、実Go Build/Studio/UI/Host、CLI Skill/MCP、実DB/HTTP副作用、Self-buildの新規試験は**NOT RUN**。正式Schema/ABI、数値Budget、Owner Meaning Acceptanceは**NOT ACCEPTED**。本追補は#1119のG0〜G4を置換せず、実証時の必要証拠を既存Gateへ渡す。
+
+## Desktop固有のD1受入：共通Inspectorを実際に呼んだProviderへ束縛する（2026-11-07）
+<!-- tei-desktop-inspect-d1-actual-consumer-20261107 -->
+
+**統合位置と既存証拠**：§10〜13のD1a shadow／D1b切替・PD-0〜7を受け、[#1824](https://github.com/hat47x/tei-platform/issues/1824)の**既定`/workbench/` Consumer**だけの実装・試験停止線を定める。旧[Draft #3280](https://github.com/hat47x/tei-platform/pull/3280)を最新mainへそのまま適用せず、重複するContract/Plugin/Trait一般論を削除した置換差分。[Draft #3292](https://github.com/hat47x/tei-platform/pull/3292)はMaster Plan Gの縦断優先順であり本節の実Consumer受入正本ではない。**本節の追加自体は実コード・実UI・実ProviderのPASSではない**。
+
+### D1が今不足している実Callと、先に使える既存実装
+
+- 現main `internal/operations/inspect.go::InspectSubject` は、対象Subjectのread-only Canonical投影・World/Source Index Fingerprintを返す。ただしSourceコメントのとおりFingerprintは**記述的な同一性情報であってCAS用Revision TokenでもMeaning Acceptanceでもない**。用途別Required Domain Closure、実Parser消費、Hostの現在Disclosure、Provider Scopeの完全性を自動保証しない。
+- 現CLI `cmd/tei/main.go` は `inspectWorkspaceJSON` へ静的dispatch、Studio `cmd/tei-studio/main.go::StudioBridge.InspectSubject` は `studiohost.ReadOnly.InspectSubject` へ委譲。Studio側は `operations.InspectSubject` へ接続済み。**低位の同じInspector関数の再利用は存在するが、#951/#1016でexact選択したPlugin Providerの二Consumer実Invokeの証拠ではない**。大規模移管を先行せず既存Read Serviceを同じContract Adapterで再利用する。
+- `reference/tei-studio-workbench/main.ts` はCatalog SubjectとInspect、read-only `validate/refresh/inspect`に限定。`presentation.ts::relatedGraph` は単親Catalogの最大8 Entry表示で、多重Relationや実Function Result Sliceではない。Document Raw Editor、Function Data Context、Data Source実Row／DDL、HTTP Decision Graphの実Graph表示はD1のInspector成功をもって資格を付与しない。
+- [merged #3285](https://github.com/hat47x/tei-platform/pull/3285)の原子的Trait・契約充足をD1でも判定し、宣言だけのRead Traitや`read-only`広告を実挙動と混同しない。[#3182](https://github.com/hat47x/tei-platform/issues/3182)ではCLIの広告と記録系副作用の不一致が既知。D1の`inspect`は外部Writeなしに限定し、Tooling側の記録やReadの外部送出は別のEffect/Disclosureとして観測する。
+
+### 一改訂・一対象で固定する証拠と受入
+
+| ケース（EDP/PDに従属、独立Scenario正本は増やさない） | 一因子差と期待 | 状態 |
+| --- | --- | --- |
+| **DC-01 exact selected→actual** | Provider A/Bが同Contractを公開、LockがBを選択しAを実呼出する故障を必ずFAIL。Caller/Host・Contract/Scope/Target・選択Pin・**実Invoker ID/Version/Artifact**・Result/Evidenceを同一Attemptで照合。単にCLI/StudioのJSONが一致しても合格にしない | 新D1検証NOT RUN |
+| **DC-02 CLI↔Studio二Consumer** | 同一Workspace実Manifest bytes/Source Root・Subject・公開範囲の`InspectSubject`をCLI JSONと実`/workbench/`で観測。Source/Revision/Failure/Null/Unknownは対応し、UI列省略は`complete`を増やさない。UI後着/別Workspace/同Subject異epochは既存`createResponseScope`等で拒否 | 新D1検証NOT RUN |
+| **DC-03 不在・曖昧・Trait欠落** | Plugin未選択、同優先順位A/B二Provider、Read Trait必須未実装、same ID別digest/Scopeで暗黙first-winner・旧手書きCLI/Wails Bridgeへの無断fallbackなし。適格Default Implementationのみ採用し、助言Traitを実行能力にしない | 新D1検証NOT RUN |
+| **DC-04 Source/Tool閉包** | World/Source FP一致でもRequired Family欠損、Source Root片側、`*.tei.md` Parser未接続、8192-byte途中切断、JSON重複member、end marker欠落では`complete`/AIテスト生成資格にしない | [merged #3284](https://github.com/hat47x/tei-platform/pull/3284)/[#3296](https://github.com/hat47x/tei-platform/pull/3296)は別の限定Gate/CI証拠。**CLI/Studio実Provider D1のPASSではない** |
+| **DC-05 異質データ・Graph** | [merged #3287](https://github.com/hat47x/tei-platform/pull/3287)の合成Postgres 3行・JSONL 5件はFixture契約。実Row/Scope/History/DDL Applyは#2586/#3270の別試験。HTTP多重辺/自己ループは現Catalog Graphへ押し込まずTable/Source参照＋unsupportedを返す | Fixture限定試験とProduct Readを分離 |
+| **DC-06 実Build/TargetとCurrent Authority** | 未選択Pluginのimport/`init`/assets混入、選択版と実Linked版不一致、対象/Principal/Grant更新、receipt-old/unknown writeを別Claimとする。UIで表示できたProviderやBOM pairwise/独立Reader成功から実Target資格を推測しない | 実Build/Windows/Effect NOT RUN |
+
+**確認済みテストの上限**：[merged #3284](https://github.com/hat47x/tei-platform/pull/3284)は9件の既存read-only CLI応答を基にした限定Design Context `partial`／資格保留と7つの合成Negativeを、[#3296](https://github.com/hat47x/tei-platform/pull/3296)はManifest追加2・Tool応答byte改変7を足した計16対照をCIで実証した。ただし独立の外部Harness応答切断ではなく受領済JSONコピーへの改変であり、Rule/Function/Business Required Closure、AIによる新Case生成、C1、外部Host／Studio実適合は未達。`qualifiedTestGeneration=false`を維持し、D1のSource閉包の下限診断として**参照**するだけとする。
+
+**着手順**：P0 現`InspectSubject`→CLI／Wailsの実Call Graphと`Read`の外部効果/Disclosure棚卸し → P1 既存Contract Resolverから**exact一Provider**をshadow実呼出し、同一Identity/Scope/Result＋実Invoker記録をReadback → P2 誤Provider選択、無断fallback、不完全Source／Tool応答の負例を先行 → P3 CLIとStudio`/workbench/`を同一Operationへ切替えて実Node/DOM・Windows WebView2で別Consumerを検査 → P4 #3270 Data Workbench/#3274 HTTP Graph/#3267 Verified BOM/`*.tei.md` SHOへ用途別展開。#3292全体計画Gとの二重Hard Gate化はしない。
+
+**停止線**：Provider実Invokeを一つも観測しなければ`not-connected`。Required Source/Parser/Role/Disclosureが欠落すれば`partial/unknown/unqualified`。Commandの実副作用が不明なら`failure`へ潰して再送しない。Core/Resolver/Scenario/Authority/Host/Registryの第二正本と正式新Schema/CLIコマンドを本節で新設せず、実Provider／正本意味の受理は各Ownerへ委ねる。
+
