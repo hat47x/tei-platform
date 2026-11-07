@@ -1,17 +1,36 @@
 name: TEI Issue-to-Design read-only dogfood
+# Re-run the bounded test-ability probe when its actual CLI, domain models,
+# semantic evaluator, Scenario sources or Go dependency closure change.
+# Path filters are a scheduling aid, not proof of complete dependency closure.
 on:
   pull_request:
     paths:
       - ".github/workflows/tei-issue-design-dogfood.yml"
       - "plan/design/ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md"
       - "tools/reference-issue-test-ability/**"
+      - "skills/yi-tei-modeling/**"
       - "reference/driver-scenarios/**"
-      - "cmd/tei/scenario*.go"
-      - "internal/scenariotest/**"
-      - "internal/semantic/validationeval/**"
+      - "reference/workspace/**"
+      - "cmd/tei/**"
+      - "internal/**"
+      - "go.mod"
+      - "go.sum"
   push:
     branches:
+      - main
       - "poc/issue-design-dogfood-*"
+      - "test/issue-dogfood-trigger-*"
+    paths:
+      - ".github/workflows/tei-issue-design-dogfood.yml"
+      - "plan/design/ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md"
+      - "tools/reference-issue-test-ability/**"
+      - "skills/yi-tei-modeling/**"
+      - "reference/driver-scenarios/**"
+      - "reference/workspace/**"
+      - "cmd/tei/**"
+      - "internal/**"
+      - "go.mod"
+      - "go.sum"
   workflow_dispatch:
 
 permissions:
