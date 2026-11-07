@@ -3729,6 +3729,19 @@ P0は実GUIより**同一Meaning→二つのFunction Context候補→二表現�
 
 **棄却/縮退条件**：FunctionなしのRendererが実データを独立保持し第二の意味正本になるなら棄却。Rendererが意味ID・Relation occurrence・Read Scope/epochを安全に受け渡せないなら編集を抑止し、read-onlyとする。既存#2506/#2500/#997の契約で不足が説明・検証可能なら組織固有の新契約を作らない。**機能表現の再利用性はUIの一致ではなく、意味・Target/Role・取得範囲の保存と誤操作の抑止で検収する。**
 
+#### 複数表現を連結したときの資格（#3236の合成写像を組織Caseへ適用）
+
+[Draft #3236](https://github.com/hat47x/tei-platform/pull/3236)の合成写像 `P: Data → Function内View`、`Q: View → 外部Consumer`について、**Pが正しく、Q単体も表示できても、Q∘Pが元の組織関係・編集対象・開示条件を保存する保証はない**。組織表現は画面上のTreeで終わらず、DFD/SHOの図や文章、AI/CUI用説明、Exportにも転写される。これらの派生Consumerを元のFunctionのRead Scopeと同じGrantにあると見なさない。
+
+| 既存Case/Policyを使う反証 | 必要な独立期待／表示で許される主張 |
+| --- | --- |
+| **D1へ2つの関係Pathで到達→Tree→SHO Outline**（§58、§84.6、#3236 CX-01） | 同じD1が一つのOutline項目になっても、元Graphの2経路・目的・関係Occurrenceは復元できない。経路単位の組織承認・編集Target・件数Claimには元Sourceへの再参照とLoss表示が必要。SHOの文面を元Relation編集へ自動逆写像しない |
+| **2つのPrivate Worldが同じPublic Org Treeを表示**（§58 ORG-SEC-E2-08、#3236 CX-04） | 非公開Membership／Delegationの有無が、公開SHO/AI Bodyだけでなく、Outline項目数・Graph座標・Tooltip・Selection候補・診断・Tool Logへ漏れないかをConsumer別に比較。実Disclosure/Host資格未確認なら外部公開は未資格 |
+| **C1→C2→C1選択／Org版R0→R1→R0復帰**（§84.6、#3236 CX-06/10） | 同じ`C1`ラベル・同じD1表示に戻っても、旧Context Instance/epoch・Source fingerprint/Policy・Consumer投影資格を再使用しない。旧Selectionと後着Rowsetの混入を拒む |
+| **Org Exploreのread-only Tree→Case Handlingの編集候補**（§84.6、#3236 CX-05/08） | 同じNode IDでも、Function目的・実Case対象・直接/実体化Relation・現在Grant・必要非表示Ruleを照合しない限りWrite OfferをDispatchに昇格しない。Partial Read/疑似Edgeはread-onlyに留める |
+
+これらは組織固有の第二Projection/Disclosure仕様ではなく、**#3236のCX既存ケースに§58の組織PolicyとC1/D1を適用した引渡し**とする。P/Qの局所成功、見かけの出力byte一致、過去のPolicy許可は、異質Consumerの実出力/実現在権限/独立Business Expectedの合格ではない。最初の実証Ownerは#2586の実Read、#2506/#2497の粒度/損失、#2516の開示、#1124/#997のUI/表示に据え置く。組織二FunctionからSHO/AIまでの実E2E、非干渉・Host判定は**NOT RUN**。
+
 ### 84.7 組織の表現・業務DFD・手順・Workflow Instance・実効果の接続を判別する（2026-11-07、横断成熟差分・採用前）
 
 第84.6節の「表現型は再利用可能、実インスタンスはFunctionに属する」という境界を、[#1125](https://github.com/hat47x/tei-platform/issues/1125)の**一階層業務DFD**、[#1444](https://github.com/hat47x/tei-platform/issues/1444)のProcedureからFunction/作業への選択的展開、[#2598](https://github.com/hat47x/tei-platform/issues/2598)のView Intent→実Request、[#1174](https://github.com/hat47x/tei-platform/issues/1174)のHost/Effectへ接続する。すでに第67/69/81/82/83節で分離したOrg後継・Case責任・承認・Grant・完全性を**新モデルで再定義しない**。今回の追加は、DataとFunctionの表示からBusiness Procedureの手順実行を無言で作ってしまう危険を、同じC1/D1→D2例の**既存受入票へ結び直すこと**に限定する。
