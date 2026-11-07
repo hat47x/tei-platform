@@ -360,6 +360,7 @@ WP10 統合と引継ぎ
 | フックの不成立と実行失敗の区別 | 実装 | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md) |
 | 判定と能力呼出しの連結（`Guarded`） | 実装（参照） | 付録C.5、`internal/hook` |
 | 能力から`command` Patternの解決（`CommandPatternFor`） | 実装 | 付録C.5、`internal/hook` |
+| フック宣言の画面・印刷面への反映 | 実装 | 付録C.5、`internal/applicationview`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md) |
 | 参照Storeの拒否符号 | 実装 | 付録C.5 |
 | 作者環境の面ごとの検査（AC-12） | 設計のみ | 作者環境の受容設計§3.1〜3.4 |
 | 派生出力の版・未解決（AC-7） | 設計のみ | 派生出力の受容設計§3.1〜3.5 |

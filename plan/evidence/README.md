@@ -31,6 +31,7 @@
 - [読み取り専用datasourceへの書込み拒否の確認](XTEA_LOWCODE_READONLY_DATASOURCE_2026-11.md)（参照実装の試験記録。データソース側の実行時強制は未実装）
 - [フックの宣言外呼出し拒否の確認](XTEA_LOWCODE_HOOK_DECLARED_CALLS_2026-11.md)（参照実装の試験記録。Command境界への委譲は[#3108](https://github.com/hat47x/tei-platform/pull/3108)）
 - [フック実行の配線と失敗の区別の確認](XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)（参照実装の試験記録。Runnerからの配線、NotSatisfiedと実行失敗の区別、参照規則。実PluginとCLI・Studioの配線は未実装）
+- [フック宣言の印刷面への反映の確認](XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md)（参照実装の試験記録。画面と同じフック宣言が印刷面にも出る。実印刷・用紙面の版照合は未確認）
 - [Studio検証結果の修正案表示の確認](XTEA_LOWCODE_STUDIO_PROPOSALS_2026-11.md)（参照実装の試験記録。案を受理する操作は未実装）
 - [暦の宣言と期間への結合の確認](XTEA_LOWCODE_CALENDAR_DECLARATION_2026-11.md)（参照実装の試験記録。日付計算と税・通貨・採番は未実装）
 - [暦からの日付導出の確認](XTEA_LOWCODE_CALENDAR_CALCULATION_2026-11.md)（参照実装の試験記録。期間キー・税・通貨・採番は未実装）
@@ -42,6 +43,7 @@
 - [為替Dataの宣言と行の結合の確認](XTEA_LOWCODE_CURRENCY_BINDING_2026-11.md)（参照実装の試験記録。例への追加と年次・月次の優先順位の宣言は未実施）
 - [採番Dataの宣言と行の結合の確認](XTEA_LOWCODE_NUMBERING_BINDING_2026-11.md)（参照実装の試験記録。取引内の発行・取消、同時実行、例への追加は未実装）
 - [休日Dataの宣言と行の結合の確認](XTEA_LOWCODE_HOLIDAY_BINDING_2026-11.md)（参照実装の試験記録。例への追加と複数暦の識別は未実装）
+- [標準業務の属性役割語彙の確認](XTEA_LOWCODE_ROLE_VOCABULARY_2026-11.md)（参照実装の試験記録。役割と型の対応検査、例への追加は未実装）
 - [X-TEA受容要件の実装対応](XTEA_LOWCODE_ACCEPTANCE_TRACE_2026-11.md)（`AC-1`〜`AC-11`・`RQ-C1`〜`RQ-C3`の参照実装と未確認事項。受容判断は仮承認）
 - [実DBで実行時の判断を確かめる計画](REAL_DATABASE_RUNTIME_DECISION_PLAN_2026-11.md)（期間・権限・効果の判断を実DBで見る案。**NOT RUN**）
 
@@ -86,3 +88,4 @@
 - [DSH `workspace-write` の書込み・読取り非対称](DSH_WORKSPACE_WRITE_ASYMMETRY_2026-11-07/README.md)（#2515 P0-a・H6-E1。宣言root外への書込みは`UnauthorizedAccessException`で拒否されファイルも作られない一方、同じroot外のファイルは絶対・相対pathとも読めた。`DSH_PERMISSION_MODE`は空、`LanguageMode`はFullLanguage。読取り拒否の実OS構成はNOT RUN）
 - [フックの宣言外呼出し拒否の確認](XTEA_LOWCODE_HOOK_DECLARED_CALLS_2026-11.md)（参照実装の試験記録。Command境界への接続は未実装）
 - [外部Moduleを含む選択Sourceの観測](TEI_GO_SOURCE_CLOSURE_OBSERVATION_2026-11-07.md)（`cmd/tei`の選択入力をリポジトリ内318件と外部Module 12件・325メンバーに分けて列挙し、資格は常に`false`として閉包方針を変えない記録。SB-A1 / #2831）
+

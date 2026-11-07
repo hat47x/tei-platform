@@ -61,7 +61,25 @@ X-TEA（XEAD）の Driver が持つ**標準業務ライブラリ**（日付・�
 
 `getSystemVariant*`・`setVariant`・`getUserValueOf`で、システム変数と利用者別の値を読み書きします（`D:Session.java L2112`、`D:XFScriptable.java L56–60`）。
 
-## 3. 受け止める形
+## 3. 属性の役割語彙
+
+標準業務のDataは、列名ではなく**属性の役割**で結合します（§5の三段の「結合」）。役割は`role <name>`として属性に宣言し、検証は既知の役割だけを受理します。標準業務で使う役割は次の17個です。
+
+| 対象 | 役割 | 必須 |
+| --- | --- | --- |
+| 税 | `tax-applies-from`・`tax-applies-until`・`tax-value`・`tax-rounding` | 必須 |
+| 税 | `tax-category` | 任意 |
+| 通貨 | `currency-rate-currency`・`currency-rate-fiscal-year`・`currency-rate-month-sequence`・`currency-rate-middle` | 必須 |
+| 通貨 | `currency-rate-buying`・`currency-rate-selling` | 任意 |
+| 採番 | `numbering-counter`・`numbering-digits` | 必須 |
+| 採番 | `numbering-prefix`・`numbering-check`・`numbering-overflow` | 任意 |
+| 休日 | `holiday-date` | 必須（休日Dataを宣言する場合） |
+
+- 必須の役割が欠けたDataは結合で拒否され、欠けた役割名が報告されます。
+- 任意の役割は、列が空なら契約の既定（接頭辞なし・検査数字なし・停止など）のままです。空欄から別の規則を推測しません。
+- 語彙の追加は`internal/validation/validation.go`の`attributeRoles`に置き、綴りの誤りは引き続き`SEMANTIC_ATTRIBUTE_ROLE_UNSUPPORTED`で報告します。
+
+## 3.1 受け止める形
 
 ### 3.1 年度・締め月は「暦の宣言」に置く
 
@@ -227,6 +245,7 @@ X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設�
 - [評価時点の決定性](EVALUATION_CONTEXT_DETERMINISM_2026-10.md)
 - [移行計画](../workstreams/XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)（WP8）
 - [受容要件](../../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md)（RQ-C3）
+
 
 
 
