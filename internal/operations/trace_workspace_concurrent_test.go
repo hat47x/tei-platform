@@ -230,7 +230,7 @@ func TestTraceWorkspaceReportsTraceErrorBeforeSourceIndexFailure(t *testing.T) {
 
 	// グラフを見て初めて分かる失敗（存在しない主体）は、Source Index側の失敗より優先する。
 	// 検査対象外の種別なので、inspectCanonicalでは弾かれず、TraceDirectが返す。
-	missing := modelref.Key{Scope: "reference-observation", Subject: subject.Subject{Kind: "no-such-kind", ID: "x"}}
+	missing := modelref.Key{Scope: "reference-observation", Subject: subject.Subject{Kind: "semantic-data", ID: "no-such-subject"}}
 	_, err = TraceWorkspace(root, missing, modelref.TraceOptions{Mode: "summary"})
 	var failure *ValidationFailure
 	if errors.As(err, &failure) {
@@ -243,7 +243,7 @@ func TestTraceWorkspaceReportsTraceErrorBeforeSourceIndexFailure(t *testing.T) {
 
 // Traceが失敗して戻るときも、並行に走らせた処理は合流済みで、goroutineが残らない。
 func TestTraceWorkspaceLeavesNoGoroutinesWhenTheTraceFails(t *testing.T) {
-	missing := modelref.Key{Scope: "reference-observation", Subject: subject.Subject{Kind: "no-such-kind", ID: "x"}}
+	missing := modelref.Key{Scope: "reference-observation", Subject: subject.Subject{Kind: "semantic-data", ID: "no-such-subject"}}
 	for i := 0; i < 5; i++ {
 		before := runtime.NumGoroutine()
 		_, err := TraceWorkspace(referenceWorkspaceRoot(), missing, modelref.TraceOptions{Mode: "summary"})

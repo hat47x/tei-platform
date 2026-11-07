@@ -32,6 +32,21 @@ type WorkspaceTrace struct {
 	AuthorityLimits        []string                  `json:"authorityLimits"`
 }
 
+// supportedTraceKind reports whether derivedbridge can place this kind in the
+// typed graph at all. It is narrower than supportedInspectionKind: inspect can
+// read a candidate key or a functional dependency straight from the World, but
+// the reference projection carries neither, so trace has nothing to walk.
+func supportedTraceKind(kind string) bool {
+	switch kind {
+	case "semantic", "semantic-type", "semantic-data", "semantic-attribute",
+		"semantic-relation", "semantic-validation", "semantic-capability",
+		"application", "application-pattern", "query":
+		return true
+	default:
+		return false
+	}
+}
+
 // TraceWorkspace joins the established Derived Index modelref projection and
 // Source Index navigation. The only edge semantics are those provided by
 // derivedbridge, which itself consumes existing declared dependencies.
@@ -43,6 +58,18 @@ func TraceWorkspace(root string, key modelref.Key, options modelref.TraceOptions
 			Code: "INVALID_SUBJECT", Message: "exact nonempty scope, subject kind and subject id are required",
 		}
 	}
+	// A kind the typed graph cannot carry is not "a subject with no references".
+	// Report it before loading anything, so a caller never reads SUBJECT_NOT_FOUND
+	// as "this subject is unrelated to everything" (#3180). inspect supports a
+	// wider kind set than the projection does; both fall outside the graph here.
+	if !supportedTraceKind(key.Subject.Kind) {
+		return WorkspaceTrace{}, &modelref.TraceError{
+			Code: "UNSUPPORTED_SUBJECT_KIND",
+			Message: fmt.Sprintf("trace does not project subject kind %q; the typed graph carries namespace, type, data, attribute, relation, validation, capability, application, application-pattern and query",
+				key.Subject.Kind),
+		}
+	}
+
 	loaded, err := workspace.Load(root)
 	if err != nil {
 		return WorkspaceTrace{}, &ValidationFailure{Stage: StageLoad, Err: err}
