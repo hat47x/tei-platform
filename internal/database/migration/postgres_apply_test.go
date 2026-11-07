@@ -10,6 +10,8 @@ import (
 	"tei/internal/database/migration"
 	"tei/internal/database/physical"
 	"tei/internal/database/providers/postgres"
+	"tei/internal/database/schemadiff"
+	"tei/internal/environment"
 )
 
 func TestApplyPostgresWithFreshObservationBlocksNewPartitionBeforeExecution(t *testing.T) {
@@ -203,4 +205,74 @@ func plannedOrdinaryPostgresDrop(t *testing.T) migration.Definition {
 		t.Fatal(err)
 	}
 	return definition
+}
+
+// TestMA01MA02NonDestructiveApplyCharacterization exposes the narrow boundary
+// of ApplyPostgresWithFreshObservation. It does NOT establish safe admission.
+// Independent expected at the actual Apply Caller: refuse both inputs before
+// executing statements unless base fingerprint and concrete target are proven.
+func TestMA01MA02NonDestructiveApplyCharacterization(t *testing.T) {
+	db := core.MustCanonicalID("sales_core")
+	column := physical.Column{Name: "audited", PhysicalType: "pg_catalog.bool", Nullable: true}
+	diff := schemadiff.Diff{
+		Database: string(db),
+		Changes: []schemadiff.Change{{
+			Kind: schemadiff.AddColumn, Table: "public.orders", Column: &column,
+		}},
+	}
+	definition, err := migration.Plan(
+		"ma01_02", db, "base-schema-A", diff, environment.ProviderPostgres,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(definition.Realizations) != 1 || len(definition.Realizations[0].Statements) != 1 {
+		t.Fatalf("invalid fixture: %#v", definition.Realizations)
+	}
+
+	tests := []struct {
+		name     string
+		snapshot physical.SchemaSnapshot
+	}{
+		{
+			name: "MA-01 actual fingerprint drift but SQL unchanged",
+			snapshot: physical.SchemaSnapshot{
+				Database: db, Fingerprint: "actual-schema-B",
+			},
+		},
+		{
+			name: "MA-02 observer database differs from plan",
+			snapshot: physical.SchemaSnapshot{
+				Database: core.MustCanonicalID("other_core"),
+				Fingerprint: "base-schema-A",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			executeCalls := 0
+			err := migration.ApplyPostgresWithFreshObservation(
+				context.Background(),
+				definition,
+				func(context.Context) (postgres.SchemaObservation, error) {
+					return postgres.SchemaObservation{Snapshot: tt.snapshot}, nil
+				},
+				func(_ context.Context, statements []string) error {
+					executeCalls++
+					if len(statements) != 1 || statements[0] != definition.Realizations[0].Statements[0] {
+						t.Fatalf("unexpected executed statements: %#v", statements)
+					}
+					return nil
+				},
+			)
+			if err != nil {
+				t.Fatalf("characterization expected present callback behavior, got: %v", err)
+			}
+			if executeCalls != 1 {
+				t.Fatalf("expected current unqualified callback, got calls=%d", executeCalls)
+			}
+			// Required future Apply Admission: executeCalls=0.
+			// This passing test is evidence of a gap, not a migration safety PASS.
+		})
+	}
 }
