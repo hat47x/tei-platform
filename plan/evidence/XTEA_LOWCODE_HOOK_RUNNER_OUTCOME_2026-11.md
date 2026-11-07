@@ -4,9 +4,9 @@
 
 - 配線: `internal/hook/run.go`（`Runner.Caller`）と`internal/hook/calling.go`（`CallingImplementation`・`NotSatisfied`）
 - 宣言の検査: `internal/validation/application_pattern.go`（同じ位相の重複宣言を拒否）
-- 規則Pluginの参照実装: `internal/hook/reference.go`（`ReferenceRule`）
+- 規則Pluginの参照実装: `internal/hook/reference.go`（`ReferenceRule`）と`internal/hook/guarded.go`（`Guarded`）
 - 委譲先: `internal/hook/command_caller.go`（`CommandCaller`・`DeclaredCommand`。`971bc772b`で`main`へ統合済み。この変更では触れていません）
-- 試験: `internal/hook/run_caller_test.go`、`internal/hook/reference_test.go`、`internal/validation/application_pattern_hook_duplicate_test.go`
+- 試験: `internal/hook/run_caller_test.go`、`internal/hook/reference_test.go`、`internal/hook/guarded_test.go`、`internal/validation/application_pattern_hook_duplicate_test.go`
 - 対象版: `0b36094a8`（`main`）を基点とした作業ブランチ
 - 環境: Windows（Go `1.27.0`）、WSL2 Ubuntu（Go `1.27.3`）
 
@@ -57,6 +57,14 @@ go run ./cmd/tei validate -workspace examples/xtea-lowcode
 - `TestReferenceRuleReportsTheSameOrderForSeveralRefusals` 成功。複数の不成立があっても属性名の昇順で同じものを報告する（宣言順やmapの反復順に依存しない）。
 - `TestReferenceRuleIsNotAWarn` 成功。`on-failure warn`でも業務上の不成立は警告に変えない。
 - `TestReferenceRuleIgnoresUndeclaredReads` 成功。規則が宣言していない値は判定しない。
+
+### 判定と能力呼出しの連結（`internal/hook/guarded.go`、`internal/hook/guarded_test.go`）
+
+- `TestGuardedRunsTheCapabilityWhenTheRuleHolds` 成功。規則を満たす入力では、宣言した能力が設定した入力で境界へ1回だけ届く。
+- `TestGuardedDoesNotCallWhenTheRuleFails` 成功。業務上の不成立では能力を呼ばない（0回）。
+- `TestGuardedCannotCallAnUndeclaredCapability` 成功。規則が満たされていても、宣言に無い能力は`HOOK_UNDECLARED_CALL`で拒否され、境界へ0回。
+- `TestGuardedFailsWithoutABoundaryWhenTheRuleHolds` 成功。判定が通っても呼出し先が無ければ`HOOK_REJECTED`で、成功にしない。
+- `TestGuardedNeedsACapability` 成功。能力の未設定は`HOOK_CAPABILITY_NOT_CONFIGURED`で報告される。
 
 ### 周辺
 
