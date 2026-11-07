@@ -308,3 +308,37 @@ PR [#3176](https://github.com/hat47x/tei-platform/pull/3176)の test-only `tools
 一段前の成功から後段を推論しない。例えば Tool ResultがJSON構文としてvalidでも、Serverが部分集合しか返していない、Terminalが出力を切断した、Consumerが最後まで実受領していない、現在Grantが失効した場合は、問い相対にL3以降を未確認にする。一方、単一Witnessによる存在反証なら、全件閉包を必須条件にせず、対象帰属・版・開示の必要条件だけを評価する（[SEI #767](https://github.com/hat47x/sei-cognition/issues/767)）。
 
 **実行・評価Ownerと優先順**：最初の事前登録H2/H3比較ではTAI #168の固定Task/Skill/Expected/Tool集合を変更しない。G0（Participant隔離と許可Sourceの実Read拒否）→G1（実送出範囲）→G2（実Tool・受領byteとSource/Workspaceの束縛）を先に検収し、独立採点はTAI担当。TEI #2509は実Harness/Tool出力、TEI #3180/#3181/#3182はCLI個別契約、TEI #3061は固定Host物理rootの反例、TEI #2514は独立Expected、TEI #2516はPurpose/Disclosure、SEI #767は不足根拠と次ProbeのMethodを所有する。今回P2評価側はそれらを一つのClaimへ過剰集約しない。**新しいH2/H3比較実行、実SEI Method接続、OS隔離、全Scope/全件資格、Owner受理は本§14ではNOT RUN**。
+
+<!-- tei-devctx-cc14-actual-fractured-cohort-20261107 -->
+## 15. CC-14の限定実Go反証を、問い相対のRead Cohort資格へ接続（2026-11-07）
+
+### 実測と「言えること」の境界
+
+[Draft PR #3176](https://github.com/hat47x/tei-platform/pull/3176)の`tools/reference-developer-context/source_cohort_characterization_test.go`に、`TestActualReadCC14IndividualDigestsDoNotProveJointCohort`と`TestActualReadCC14StableCohortIsOnlyFixtureQualified`を追加した。実既存`readInside`を2回呼ぶ間に、公開`t.TempDir`のSourceを意図的に書き換えるだけの、**決定的な単一スレッド試験**である。秘密・実OS競合・外部Providerは使わない。
+
+- **固定World**：観測済み実file状態を`(T0,C0) → (T1,C0) → (T1,C1)`と進める。Target読取はT0、candidate読取はC1。各`readInside`の実byteとSHA-256は正しいが、`(T0,C1)`は記録したいずれのWorldにも存在しない。評価側は同時点のペアを**試験開始前に固定した三つのEpoch**で独立検査する。単に「SHAが一致しない」ではなく、「**正しい個別SHAを貼り合わせてもjoint Worldが構成されない**」を反証する。
+- **正対照**：新しい通常`Discover`を最終の安定`(T1,C1)`にかけるとT1/C1の個別fingerprintを返し、もう一度同じSourceにかけた安定対照はbyte一致する。ただし二回の一致も**任意の実Repoに対する原子的Snapshot保証ではない**。
+- **exact 実行証拠**：変更HEAD `04cefdb2874b0b0c86c7e64c221add5511cf3ae9`の[専用Focused CI #42370160427](https://github.com/hat47x/tei-platform/actions/runs/42370160427)（job `128396439042`）は**completed/success**。Jobログで上記2テストとCC-12/13がすべて`--- PASS`と出力。既存Workflowの`-run`に`TestActualRead`を追加し、テストファイルが存在するだけで未実行になる事態を避けた。
+- **保証しないこと**：実`Discover`中の並行更新をスケジュールして競合を再現した**わけではない**。その内部ループ自体に`(T0,C1)`が発生したこと、Go testによるRace検出、実OS sandbox/pinning・root外Read、全Sourceの原子的整合・業務受理は証明しない。現製品`Report`のSHA fieldだけでは共同成立Epochや実Read cohortを表現できない、という**表現の限界**を試験した。
+
+### 用途に相対的なRead Cohortを既存Receiptへ結び付ける
+
+**Read Cohortは新しい中央Store／Core Runtimeオブジェクトを意味しない。** 既存#2516のConsumer用途相対Contextと、Source/Build/Attempt Receiptの証拠票に、当該Claimへ必要なSourceの集合と実消費byteが**共同に成立したか**を示す限定Wit​​nessを組み合わせる考え方である。目的別に以下を切り分ける。
+
+| どのClaimを行うか | 必要になる最小の追加観測 | 今回得られたもの |
+| --- | --- | --- |
+| `Goの構成Pでtest候補を選択できる` | GOOS/GOARCH/tags・toolchainを固定し、実`go list`と独立Expectedを突合 | CC-12/13の合成実Go PASS。実テスト実行は別 |
+| `Source Sと候補Cを同じ検証根拠として使える` | 問いQに必要なRead-set、双方の実byteと、共同成立を示すSource version/cohort資格 | **個別SHAだけでは不足する反例**をCC-14で実Go確認。実Cohortの一般的取得方式は未採用 |
+| `否定Claim Qについて対象が存在しない` | 対象Universe、非出力Predicate、Relation/Provider/必要依存の閉包、実Readの完了と共同Scope | [#2516](https://github.com/hat47x/tei-platform/issues/2516)/[SEI #767](https://github.com/hat47x/sei-cognition/issues/767)のOwner。CC-14では**NOT RUN** |
+| `署名済みPlugin/Artifactを現在利用できる` | exact Release/Artifact/Verifier署名、現Trust/Revocation、実HostのLoaded bytes/Effect | [TEI Draft #3244](https://github.com/hat47x/tei-platform/pull/3244)/[#2589](https://github.com/hat47x/tei-platform/issues/2589)に委譲。CC-14のSHA不十分さを実Plugin侵害の証拠とはしない |
+| `外部Harnessが適格な回答を返した` | 実Tool呼出し/Result全文受領、Workspace/Source Binding、Scope/Grant、独立Expected、開示可能性 | [TAI #168](https://github.com/hat47x/tai-pleroma/issues/168)の実Sessionを参照するが比較適格は0/4 |
+
+**最小の実装候補（まだ採用しない）**：`root resolved identity + worktree/dirty status + required Read Set + exact digests + effective Go Profile + observed period/revision + purpose/consumer`を**試行ごとの検証票**として提示する。Git HEADやWorldFPだけをRead Cohortの一意識別としない。dirtyなSourceがHEAD不変で更新される、同じファイルがA→B→Aへ復帰する、実Readにない新規依存が増える、別rootの同名Subjectを取得した場合を負例にする。実Sourceが共同に成立したという保証を求めるConsumerには、使用したSourceを固定するBuild/Read方法、限定再取得と前後照合、または実ProviderのSnapshot能力を必要条件として個別に選ぶ。**前後照合だけをあらゆる並行更新・ABAの数学的な完全証明にはしない**。
+
+### 次の反証と優先度
+
+1. **CC-15は別試験に隔離**：`readInside`の`EvalSymlinks → Lstat → os.ReadFile`の間に別file objectへ変わり得ることを、実際にOpenしたinode/objectの検証とは区別して確認する。公開temp path以外を使わず、現mainの実際のroot外読取を確認できなければ未証明。Studio固定Hostの[既存負例 #3061](https://github.com/hat47x/tei-platform/issues/3061)も個別のOwner証拠でありこのPoCの成功に流用しない。
+2. **Read-set再資格化**：対象Source byte不変・Candidate変更、Candidate不変・Go Profile変更、Source内容復元A→B→A、依存Edge追加、Scope/Disclosure失効の5組で、どのQのどの結果を再使用できるかを[#2516](https://github.com/hat47x/tei-platform/issues/2516)／[TAI #271](https://github.com/hat47x/tai-pleroma/issues/271)へ戻す。安全と確認済みの変更のみ再利用し、不明な依存を無影響としない。
+3. **M1との実比較は後段**：決定的なProfile確認／必要Read再取得で解消する不足と、SEI Methodの調査選択で初めて解消する不足を、同じ実Tool/Grant/予算/開示で比較する。OKF/SHO/SUIの表示・知識交換は証拠を運ぶ側でありOwnerのMeaning受理や共同Snapshot生成器ではない。
+
+**最新到達点**：本Sectionの新規2テストは固定HEADのGitHub Actionsで限定PASS。PRはDraft／未マージ、製品`Discover/Rerank`本体と正式`Report` ABIは変更しない。共同Source Snapshotの製品能力、CC-15、実外部Harness Method、実OS/Network/Provider、Owner受理はNOT RUN。
