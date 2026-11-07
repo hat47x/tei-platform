@@ -684,13 +684,13 @@ DSH read-only/workspace-writeが作業Dir外を読めることは実証済み（
 この第15章は現行mainの第11〜14章を保持した追加計画である。衝突中の旧[Draft #3022](https://github.com/hat47x/tei-platform/pull/3022)の§10.1〜10.47は経緯・未実証Caseの参考とし、mainへ機械的に重複Mergeしない。必要な唯一の成熟差分だけを既存Issue/PR/研究計画の新Revisionに移す。現行Evidenceと異なる旧状態を再採用しない。独立Expectedは#2514、Scenarioの正本は#1180、実Consume/AcceptanceのEvidenceは#1163、既存Gateは#1119。実Product三視点/PG/Provider/Studio/SHO E2E、未知Test自律生成、外部H2/H3資格、G4 Self-Build、正式Owner意味受理は**NOT RUN / NOT PROVEN**。
 
 
-### 15.8 必要Ruleの未取得・失効とTest Generation資格（2026-11-08、TT-56実CLI）
+### 15.8 必要Ruleの未取得・失効とTest Generation資格（main #3354に一本化）
 
-[Draft #3324](https://github.com/hat47x/tei-platform/pull/3324)と[Draft #3326](https://github.com/hat47x/tei-platform/pull/3326)は、従来の実CLI9応答＋合成16負例を超え、**同一Fingerprint・正常JSONでも必須Rule/Relationだけ欠落する**TT-56を限定実証した。#3324はinspect-validationのRule/Attribute/Source Referenceを追加読取、#3326は独立Required3 RuleとSource Indexの**indexモード**を10番目の読取として追加。両Draftの最新HEADで専用Dogfood CIとRepository Healthはcompleted/success。
+並行していた[Draft #3324](https://github.com/hat47x/tei-platform/pull/3324)／[Draft #3326](https://github.com/hat47x/tei-platform/pull/3326)の成熟差分は、[main #3354](https://github.com/hat47x/tei-platform/pull/3354)へ統合済み。固定HEAD 0ab2b99fの[専用Dogfood CI #42391707962](https://github.com/hat47x/tei-platform/actions/runs/42391707962)と[Repository Health #42392009764](https://github.com/hat47x/tei-platform/actions/runs/42392009764)はcompleted/success。重複旧Draftをそのまま二重Mergeしない。
 
-ここでの成熟した負例は、CLIのsource-index **subjectモード**の結果をDefinition全件Indexと取り違えると、Rule欠落ではなく**試験側の誤った取得モード**が原因となること（#3326の初回FAILと修正）。評価はRequiredの独立固定→Discovered→Reader actual bytes→Catalog/Rule identity→Index definition role/path→Inspect actual attribute→Consumer receivedの段階別に行う。追加10応答は逐次実行であり原子的な同一World Snapshotの証明ではない。元SourceとManifest/Index Revisionを別々にPinする。必要でないSubjectまで要求して不必要に拒否する負例も持つ。Sourceを実ReadしたこととParser/Meaning/Plugin実消費・現在Grantは区別する。
+**実証の上限**：既存9＋全Indexモードsource-index＋Focused inspect＝**実Read-only CLI 11応答**。独立にRequiredと定めたValidation3 Rule、Source Loader Read、Catalog ID、Definition Role/Path、Canonical Rule・attribute、関連Relation Parent、Inspect ReferenceとFingerprintを照合。限定Consumer Controlsは**32件**（従来16＋独立Required Rule系8＋Focused Rule/Relation/Index系8）。同一専用CIで既存Pinned Scenario6 Stepと既知T1-A一時Stepも実行。これらは**Consumerの合成Tool Reply改変に対する局所判別**で、32個のCode Mutant kill、全Function/Business/MeaningのClosed World、T1-B未知Rule自律発見、C1/NFRではない。
 
-**統合時の重複回避**：#3324/#3326はcontext_gate.py・Workflow・同じOwner計画を並行変更している。二重採用・テスト件数の合算はせず、#3262がRequired集合・どちらの追加Readerを使うか・兼ね備えるべき一因子反例を一つの現行HEADで選択する。#2514の独立Expected、#1180 Scenario正本、#3223 Test Patternを維持。boundedReference=partial、qualifiedTestGeneration=false、T1-B未知Ruleの盲検発見・C1/NFR・H3実受領・Owner Accepted MeaningはNOT RUN。
+source-indexのsubjectモードを定義全件Indexと誤認した初回失敗は**試験側の取得モード誤り**であり、Rule実不存在の証拠ではない。11応答は逐次実行で原子的World Snapshot未保証。実Readerが見たbytes／Mode／Required母集団／Role・Source span／Result Shape／完全配送／Parser・実Rule Consumed／現在Disclosureを別Claimとし、部分ReferenceではboundedReference=partial、qualifiedTestGeneration=falseを維持。#3262/#2514/#1180/#3223へ引き継ぐ。
 
 ### 15.9 実行後の記録障害はClean RejectedでなくEffectUnknown
 
@@ -702,7 +702,7 @@ DSH read-only/workspace-writeが作業Dir外を読めることは実証済み（
 
 [main #3325](https://github.com/hat47x/tei-platform/pull/3325)のOperation Drift参照はWorldFingerprintとModelRevisionをCaller期待値と比較し、current/stale/uncheckedを区別。Basisは属性差異でも変わらず、現在版の代替ではない。参照ツールのcurrentは実Command前のCASや現在Grantの証明ではない。[main #3333](https://github.com/hat47x/tei-platform/pull/3333)はCLI DiscoveryのviewにwriteFlagsを広告し、operation-logとlifecycle-stateが実Named Fileへ書くことをGo実Processで確認した。従来effect=read-onlyは正本を変えない意味に限られ、**OS上の無書込保証ではない**。Flag/Target/実Invocation VariantをHostで再照合する正式契約は未決。[Open #3311](https://github.com/hat47x/tei-platform/pull/3311)のWorkspace name/Manifest digestはOriginの説明であって、全Required Source/実消費/Current Authorityの証明ではない。
 
-Pluginの[main #3337](https://github.com/hat47x/tei-platform/pull/3337)は、宣言Capability12件のうち6件が環境Bindingから未選択とした初版Reference。database-instanceの技術名postgresとCapability ID database.postgresを単純文字列比較しない制限があった。[Open #3350](https://github.com/hat47x/tei-platform/pull/3350)は**既存Validation.SupportsDatabaseProvider**を再使用し、2件を適合するdatabase-providerへ結んで未選択4件に再分類する候補（固定HEADのHealthは確認時点in_progress）。6→4の変化は数え方の変更であり、既存検証を履歴から消さない。選択済みはProvider実装がある、実Link/Load/Invokeした、Host Grantがある、という証明ではない。
+Pluginの[main #3337](https://github.com/hat47x/tei-platform/pull/3337)は、宣言Capability12件のうち6件が環境Bindingから未選択とした初版Reference。database-instanceの技術名postgresとCapability ID database.postgresを単純文字列比較しない制限があった。[main #3350](https://github.com/hat47x/tei-platform/pull/3350)で既存Validation.SupportsDatabaseProviderを再使用し、database-provider2件を対応技術により選択済みと分類、同一Referenceの未選択は**4件**へ変わった。固定HEADのHealthはcompleted/success。6→4は**解決規則が異なる観測**であり旧Evidenceは保持する。選択済みでも実Provider Load/Invoke・Host Grantは未実証。
 
 **D1の具体的受入**：read-only Inspectorで選択したPlugin Bと実InvokeしたProvider BのSource/Scope/Contract/Artifact/Version/Resultを、CLIとStudioの二Consumerで一致させる。Selected B→Actual Aでも同じ出力になる負例を独立Expectedで拒否する。#951/#1251/#3278/#3267がOwner。[Draft #3327](https://github.com/hat47x/tei-platform/pull/3327)のA→B→A遅着Inspect応答拒否はUI採用制御の限定試験であり、Host処理・副作用の取消、World CASではない。
 
@@ -712,4 +712,28 @@ Pluginの[main #3337](https://github.com/hat47x/tei-platform/pull/3337)は、宣
 
 [Open #3309](https://github.com/hat47x/tei-platform/pull/3309)のDSH合成Canaryはstdoutだけでなく永続Session Logにも存在。Logは**9個の連結zstd Frame**で、先頭だけ展開すると179 bytes／Canary0、全Frame展開では40,136 bytes／Canary1。部分展開による観測0件を「漏洩無し」に昇格しない。cache/storage/attachment限定走査の一致0も全Sink・外部Provider送出・削除・保持期限の証明ではない。read-only/workspace-writeの実OS外部読取拒否、Network Egress、Tool/Skill/独立Expected Holdoutは未実証。H2/H3比較適格0/4、#2515／TAI #168/#232がOwner。機密情報でなく合成Canaryのみを継続。
 
-**次のP0順は維持**：#3262の重複するTT-56 Reader/Requiredを一本化→P0-Tの適格な設計情報取得、#2586で一Functionの実PG ReadをData Context/Consumerへ同一Attempt接続→P0-R、#3263の実Source→Graph/CRUD Source逆参照→P0-M、#1251のCLI/Studio実Plugin D1、#1174の実DB障害注入を各Ownerで並行させる。G4とH2/H3は別経路。Required/Discovered/Loaded/Parsed/Actually Consumed/Current Grant/Independent Expectedを別列で保持し、#1119既存Gateを変更しない。新Core Host・第二Evidence Store・中央Attester・汎用Test Generatorを導入しない。正式Owner Meaning Acceptance、Product一改訂E2E、L3、H2/H3実隔離はNOT RUN。
+**次のP0順を更新**：#3354でTT-56のReader/Requiredは一本化済み。P0-Tは不足するFunction/BusinessのRequiredと実受領を圧力試験し、#2586で一Functionの実PG ReadをData Context/Consumerへ同一Attempt接続→P0-R、#3263の実Source→Graph/CRUD Source逆参照→P0-M、#1251のCLI/Studio実Plugin D1、#1174の実DB障害注入を各Ownerで並行させる。G4とH2/H3は別経路。Required/Discovered/Loaded/Parsed/Actually Consumed/Current Grant/Independent Expectedを別列で保持し、#1119既存Gateを変更しない。新Core Host・第二Evidence Store・中央Attester・汎用Test Generatorを導入しない。正式Owner Meaning Acceptance、Product一改訂E2E、L3、H2/H3実隔離はNOT RUN。
+
+### 15.12 CLIのOutput Shape／部分テスト目録を、必要情報の欠落と混同しない
+
+[Open #3356](https://github.com/hat47x/tei-platform/pull/3356)の実CLI Dogfood第2回では、Workspace同一性・Lock再入力・Help・書込みflag等が前進した一方、(1) viewのSemantic FPはWorld/IndexとScopeが異なる、(2)管理対象MarkdownがLoaderで意味読込されない、(3)JSON result／diagnosticsのShapeがCommand別、を確認。MCP Server入口は現実装に無く**MCP経路はNOT RUN**。CLI成功から別HarnessのMCP同型受領を推測しない。
+
+[Open #3366](https://github.com/hat47x/tei-platform/pull/3366)はviewのJSONへWorld/SourceIndex FPを追加する候補。Semantic Uses FPは異なる対象範囲なので値一致を要求しない。[Draft #3370](https://github.com/hat47x/tei-platform/pull/3370)はrequirementsのresultが**Array**であることをDiscovery resultShape=arrayと実CLI試験へ載せる。広告の無いShapeはobjectでなく**unspecified**。CIは確認時点一部成功・全Health実行中。成功Envelope／内側Result型／FP範囲を分け、全Commandの破壊的統一を先行しない。
+
+[Draft #3365](https://github.com/hat47x/tei-platform/pull/3365)のTT-105/106は、部分Scenario Receipt目録で実観測済Stepの局所成果を保持するが、未収録Stepを自動でuntestedConfirmedへ分類しない。終端欠落・偽終端・Source SHA不一致・重複Receipt・未検証Receiptの負例を持つ。固定HEADの専用Dogfood／Health CIはcompleted/successだが、実Harness途中切断や全Product Coverageは未実証。独立Expectedを保持し、局所CoveredとRequirement Universe完全性を別列にする。#1180/#2514/#3262がOwner。
+
+### 15.13 Plugin選択／原子的Trait Required／Inspector実Invocationを接続する
+
+[main #3363](https://github.com/hat47x/tei-platform/pull/3363)のSelection Matrixは既存Capability.Supports*による環境Binding6形式を一覧し、公開合成Workspaceで**24 Binding中 selected22／missing2／ambiguous0**を観測。missing2はeditor.database_workbench（development/production）で、現Product Validationは環境Featureのうちsql_analysisだけをCapability照合する。したがって**Reference missing＝実製品Validation失敗ではない**。ここでValidatorに新規規則を導入するかは#951/Plugin Owner判断。
+
+[main #3368](https://github.com/hat47x/tei-platform/pull/3368)はPlugin package選択とCapability選択の不一致、同一Pluginの能力別選択、同一DB技術への複数Provider候補という3負例を追加。TraitのDeclared／Required／Selected／Resolved／Invoked／Verifiedを分離し、Required集合がpartial/unknownなら不足0件を充足率100%にしない。[main #3377](https://github.com/hat47x/tei-platform/pull/3377)はTrait適用先Field/Row/Function/Plugin/Representationの差、未Parsed Markdown、非開示Required、Manual CAS欠落を設計反例に追加したが、TC-21〜26実ProviderテストはNOT RUN。Traitヒントを実装履行にしない。
+
+[Draft #3371](https://github.com/hat47x/tei-platform/pull/3371)はStudio Host Factoryに型付きInspectionServiceを追加し、Factory指定時の旧operations直接呼出しへのfallbackや不正応答を拒否する限定Port実装。CIの部分成功は確認できるが固定HEADの全Healthは確認時点実行中で、**CLI/Studioで同じ選択済みPlugin Providerを実InvokeするD1はまだ未完成**。最短試験はA/B二Providerを用意し、B選択時に実InvocationがBであることをCLI→Studio両方で証明し、B選択→A実呼出し（Result同値）を失格化。#1251/#951/#3278/#3267がOwner。新Resolver/Hostを作らない。
+
+### 15.14 DB Reverseで観測した制約を三視点の業務意味へ自動昇格しない
+
+[Draft #3372](https://github.com/hat47x/tei-platform/pull/3372)は物理Catalog Reader→WorkbenchにFK/UNIQUEの複合列、別Schema同名表、観測時刻とFPを保持する設計・実Product Go経路のMock Catalog試験候補。現HEADのCIは確認時点pending。Physical ObservationのFK/UNIQUEは、業務Relation/Business Key/CRUDの**構造候補**にすぎず、Owner Accepted Meaning・Snapshot完全性・実PG現在Read・Host Grantではない。
+
+評価は Physical Source Observation→Structural Candidate→Owner Accepted Data/Function/Business Meaning→Graph/CRUD Source逆参照→Product Function/Provider実Read を別Laneで進める。物理制約が無いことから業務Relation不存在を断定せず、DB reverse完了を三視点P0-Mの必須Blocking前提にしない。#3270/#2495/#2497/#1124/#2586に引継ぎ、第二DB Schema Engineや図面正本は作らない。
+
+**現時点の並行優先順**：P0-Tはmain #3354の11 CLI/32限定Controlsから、必要Function/Business情報と実Consumer受領、次に盲検T1-Bへ。P0-D1は選択Provider→実Invocation→CLI/Studio二Consumerを証明。P0-RはReference PGの成功を実Product Function/Query/Provider/Consumerの同一Attemptへ。P0-Mは実TEI Source→三視点Graph/CRUDのread-only導出、Workbench Reverseは候補Inputとして並行。H2/H3隔離・G4は独立Owner。#1119 Gateを変えず、新Host/Runner/Registry/Attesterを増やさない。正式Owner Meaning、実Product E2E、L3/G4、H2/H3比較はNOT RUN。
