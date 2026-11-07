@@ -3,6 +3,7 @@
 package commandadapter
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -34,6 +35,11 @@ type Executor struct {
 	// boundary; it does not read the resource's current value, so this is
 	// receipt observation, not record observation.
 	Lookup bool
+	// ResourceRead additionally reads the stored resource's current value
+	// through Runner.ReadResource and compares it with the committed payload.
+	// This is the only path that establishes resource observation; it is
+	// opt-in because it uses a separate pool connection after the Commit.
+	ResourceRead bool
 }
 
 // Execute calls the authorized effect-commit boundary and maps its status to a
@@ -128,4 +134,42 @@ func (e Executor) payload(request command.Request) ([]byte, error) {
 		return e.Payload, nil
 	}
 	return json.Marshal(request.Inputs)
+}
+
+// ObservePersistence implements command.DetailedPersistenceObserver. It names
+// which storage fact it established: the stored resource's current value when
+// ResourceRead is set, otherwise the committed receipt.
+func (e Executor) ObservePersistence(ctx context.Context, request command.Request, declared semantic.DataEffect) (command.PersistenceObservation, error) {
+	if e.ResourceRead {
+		payload, err := e.payload(request)
+		if err != nil {
+			return command.PersistenceObservation{}, err
+		}
+		scope := e.scope(request)
+		state, err := e.Runner.ReadResource(ctx, scope)
+		if err != nil {
+			return command.PersistenceObservation{}, err
+		}
+		if !state.Found {
+			return command.PersistenceObservation{}, errors.New("committed resource was not found by the independent read")
+		}
+		if !bytes.Equal(state.Payload, payload) {
+			return command.PersistenceObservation{}, errors.New("independently read resource value does not match the committed payload")
+		}
+		return command.PersistenceObservation{Method: command.PersistenceMethodResource}, nil
+	}
+	if err := e.Observe(ctx, request, declared); err != nil {
+		return command.PersistenceObservation{}, err
+	}
+	return command.PersistenceObservation{Method: command.PersistenceMethodReceipt}, nil
+}
+
+func (e Executor) scope(request command.Request) effectcommit.Scope {
+	return effectcommit.Scope{
+		Application: string(request.Application),
+		Capability:  string(request.Capability),
+		Subject:     e.Grant.SubjectID,
+		Action:      e.Grant.Action,
+		Resource:    e.Grant.Resource,
+	}
 }
