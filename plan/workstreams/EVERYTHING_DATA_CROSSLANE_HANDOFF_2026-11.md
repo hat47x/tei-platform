@@ -3184,3 +3184,40 @@ HEAD `e0cfebf14d40db81bdef77d6c3e4898ed75d999f`に対する[GitHub Actions #4203
 
 **今回の証拠上限**：main #3296は局所Context輸送負例のCIがPASS、#3287は異種Source fixtureと独立Expectedの局所Goテスト、#3277/#3285はPlugin-firstの計画・現実装監査、#3297はGo Reference/計画候補で全体Health failure。**D1-01〜05の実2Consumer/Provider再配線・Trait Runtime Fulfillment・正式BOM・実DB/Live Workbenchの同一Attempt E2EはNOT RUN**。実Source/Meaning Owner受理とHost実行Grantは別の証拠であり、PoCの自律PR統合を代替にしない。
 
+
+<!-- tei-20261108-priority-d1-context-test-transport-boundary -->
+## 63. 実Context資格からPlugin Inspectorの呼出しへ：mainの前進と残った一辺（2026-11-08）
+
+§62のD1-01〜05、P0-A/H2、T1-B、Verified BOMの**既存受入を変更しない**。11/7夜のmain統合と新Draftが示した差分を、実際の接合順と統合回帰のためだけに記録する。ここでは第2のDesign Context、Inspector、Contract Resolver、Test Runner、BOM、Hostを作らない。
+
+### 63.1 成立した証拠と、同じCaseでも未成立の証拠
+
+| 現行の実装／試験 | 成立している限定Claim | まだ成立しないClaim |
+| --- | --- | --- |
+| [main #3354](https://github.com/hat47x/tei-platform/pull/3354)（専用[CI #42391707962](https://github.com/hat47x/tei-platform/actions/runs/42391707962) success） | **単一Design Context Consumer**へ11実CLI Read-only Reply、独立Requiredな3 Rule／Canonical／Relation／Source照合と32合成Consumer Control、既知T1-A一件を接続。旧#3324/#3326は重複未mergeで閉鎖 | Required全Function/全Source、盲検の新規T1-B発見、C1、外部Tool全受領、Plugin実Provider Invoke、業務Owner意味受理 |
+| [main #3367](https://github.com/hat47x/tei-platform/pull/3367)、#3337/#3363 | Plugin宣言・Capability選択・実Contract/Provider・Build・Invocationの区別を既存Inspector D1計画へ反映。環境Bindingの参考照合は24件中22選択・2欠落という**Referenceの観測** | 選択された一意Providerを実CLI/Studioが呼んだこと、Refでmissingな2件が製品Validator違反と認定されたこと |
+| [main #3368](https://github.com/hat47x/tei-platform/pull/3368)、[main #3377](https://github.com/hat47x/tei-platform/pull/3377) | Plugin package選択≠個別Capability選択、Role/Field/Function/Pluginに必要な原子Trait閉包、manual-requiredと実Conformanceの違いを**局所Reference・設計**で固定 | Traitsが全SourceでLoaded/Parsed/Resolved、実Providerの手動Trait実装・実CLI/Studio/DB Conformance／BOM認定。さらに#3368の[exact-head Health #42394981115](https://github.com/hat47x/tei-platform/actions/runs/42394981115)はcoverage_test.goのgofmtで**FAIL**（MergedであってもHealth PASSではない） |
+| [Draft #3365](https://github.com/hat47x/tei-platform/pull/3365)（[専用CI #42394673357](https://github.com/hat47x/tei-platform/actions/runs/42394673357) success） | TT-105/106：部分Scenario Receiptの目録にないStepはnotObserved、観測済みの他Stepの局所成功は保存、全体Coverageはunknown。コピー改変による7個の限定対照 | 全Scenario Universeの完全列挙／未列挙全て未実行／T1-B盲検・C1・外部H2の切断復旧 |
+| [Draft #3378](https://github.com/hat47x/tei-platform/pull/3378)、[#3371](https://github.com/hat47x/tei-platform/pull/3371)、[#3381](https://github.com/hat47x/tei-platform/pull/3381) | 既存CLI/Studio direct Inspectorの同じData/Rule/Relationに対する基線比較、Studio Host選択Serviceへの型付き入口、CLIのfail-closed Service注入口を**別々のDraft**へ記述・実コード候補保存 | **exact-selected Providerを実Bind→actual Invoke→CLI/Studio両Consumer full receive** の同一Attempt。CLIデフォルトはBuiltinのまま、Studio HostのService Factoryに実Pluginを供給するCompositionは未成立 |
+
+### 63.2 最初の「残った一辺」の実装・試験
+
+**最初のD1実証を read-only Inspector 1 Contract / 2 Provider / 1 Consumer に縮小する。** 既存#1180 Scenarioと#2514独立Expectedを使い、CLIの実起動・選択・戻り値から次を一Attemptに固定する。
+
+1. **事前固定**：公開sales.orderを対象としたSource/World/Contract/Provider A・Bのexact identity、選択理由、使用Binary、独立Expectedを、Invokerから独立に保持する。Raw *.tei.md管理対象・未Parsed RoleをAccepted/Required充足にしない（#3346/#2860）。
+2. **正常Aと正常B**：同一ContractにAを選択してA呼出、次の独立AttemptでBを選択してB呼出。返却Canonが同じでも、実Invoker/Provider ID、Call count、Arg/Result bytes・Source rev・Scope・実受領を記録して選択一致を判定。
+3. **負例**：Bを要求したのにAへ暗黙fallback、selected Providerが未供給なのにBuiltinへ黙ってfallback、偽Subject／WorldFP／schema/effectを返した場合に拒否。Studioの#3371のService経路とCLIの#3381のService経路は**同じ既存Result Contractガードを再利用すること**を後で照合するが、両Draftの共有ファイルを統合前に無断編集しない。
+4. **拡張は実績後**：CLI一Consumer成功後、同一Selection規則でStudio Serviceへの実Provider Injectionと正しい実Consumer表示を検証。2 Surfaceの成功と、A/B×CLI/Studioの全4 tuple・2×2 Verified BOMは別。BOMは#3267/#3297のactual Source/Lock/Artifact/Independent Expected/Provider/Targetに紐付いたConformanceを必要とする。
+5. **Test/Transportは並列**：main #3354の11 Reply・32 Controlをそのまま使い、Draft #3365でReceipt Scope/End/duplicate/absenceを反証。T1-B盲検新規Obligation発見は#3262/#2514、外部H2のTool Call全件とReply/Sink/OS read禁止は#2509/#2515・TAI #168が別Owner。専用CI成功やSkill受領一部を外部比較適格へ合算しない。
+
+**明示的な接合点**：Design ContextからD1へ渡すのは必要なSource/Role/Rule/Relation/独立Expectedの**観測済み部分と未充足理由**だけ。D1はSelected→Actual Invokeを証明し、その結果を同じSource/ScopeのConsumerへ渡す。Required Trait閉包は候補が申告した提供能力集合から推測しない。Plugin Declared/SelectedもHost Grantではない。CLIで実Providerを呼ぶ最初の一辺を、Studio/BOM/G4/Self-description/SHO/実DB書込みの完成まで待たせない。
+
+### 63.3 実装品質と採用判断
+
+- **最初の修復**：#3368の固定HEAD Repository Healthはgofmtで不合格。原因とmain同一Blobの確認を[当該PR引継ぎ](https://github.com/hat47x/tei-platform/pull/3368#issuecomment-6710695722)へ保存。後続main修正のexact-head focused/Healthを取得するまで、そのHEADの全体成功を掲示しない。
+- **Draft再接合**：#3378 direct-path基線、#3371 Studio seam、#3381 CLI seamの差を最小3-wayで確認し、**一つの既存Inspector Result/契約ガード**へ寄せる。実Provider Bindingを供給しないならD1を完成と認定しない。未確認Raw Source/Tool partial時はunknown、許可されたエラーだけをConsumerへ開示。
+- **成果の計測**：1実Provider Callまでの追加Core分岐・Adapter数、Binding/Requirement不足の検出数、誤PASS/過剰拒否、Tool bytes/Issue→Test工数を既存#2018へ。#3365の局所Coverageはその分母内だけで報告し、T1-B/全Product Coverageに転記しない。
+
+**責務・Gate**：#1251/#951＝D1 Contract/Provider/Resolution、#3262/#2514/#1180＝Requiredと独立Expected、#3278/#3279＝Trait Required Closure、#3267＝exact BOM、#1824/#1158＝Studio/CLI両Consumer、#2509/#2515＝外部Tool受領、#1119＝既存Gateの優先順。G1/G2業務PG／G4全体Self-buildは既存独立実証のまま。新Host・Schema・Reader・Oracle・Registryなし。
+
+**証拠の上限**：この§63はmain既存局所CIとDraft実装案を照合して**計画本文へ記録しただけ**。D1で選択された実ProviderのCLI/Studio呼出、Trait手動実装Conformance、Verified BOM、外部比較適格H2/T1-B、実PG/SHO、正式Owner Meaning受理を新たに実行したものではない。
