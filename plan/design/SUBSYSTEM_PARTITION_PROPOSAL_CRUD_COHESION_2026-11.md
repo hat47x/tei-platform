@@ -192,7 +192,7 @@ Studioの逆操作は、ドラッグによるMembership変更も含め必ず候�
 
 標準構造Roleの語彙が受理できること（V0）と、Subsystem/Owner/Accessという役割がSemantic型やBinder要求へ適合すること（V1）、実Studio/SHO/CUI/Target Consumerが正しく利用できること（V2）は異なる。#2495/#2619/#2620の既存Role契約を利用し、名前や表示型だけからV1/V2を自動合格にしない。
 
-表示面では、Subsystem ER図の内部Dataとexternal参照、CRUD Matrixのeffective/potential/direct/observedを表示区別し、Relation所属Scopeと端点Scopeを保持する。表示圧縮によるedge欠落、非開示/未読取/不明、Renderer能力欠落を「不存在」に読み替えない。表現の損失・逆編集は[#3250の表示引継ぎ](https://github.com/hat47x/tei-platform/issues/3250#issuecomment-6703937718)・[#3236](https://github.com/hat47x/tei-platform/pull/3236)の専門Ownerに委ねる。
+表示面では、Subsystem ER図の内部Dataとexternal参照、CRUD Matrixのeffective/potential/direct/observedを表示区別し、Relation所属Scopeと端点Scopeを保持する。表示圧縮によるedge欠落、非開示/未読取/不明、Renderer能力欠落を「不存在」に読み替えない。表現の損失・逆編集は[#3250の表示引継ぎ](https://github.com/hat47x/tei-platform/issues/3250#issuecomment-6703937718)と標準表現型の既存Ownerへ照会する。[#3236](https://github.com/hat47x/tei-platform/pull/3236)はclosedの検討記録であり、内容のmain統合・採用を前提としない。
 
 Grant失効やSource改版をConsumerが**観測**したら、旧成功応答の再表示と既表示対象の現在資格を別に判定し、既存#1124のstale/epoch規則へ従う。観測されていない失効について即時無効化を証明したとは言わない。Diagnostic件数・拒否理由・境界位置から非公開データを漏らさないよう現在Disclosureに従う。
 
@@ -226,3 +226,16 @@ Grant失効やSource改版をConsumerが**観測**したら、旧成功応答の
 - [AWS: Business-domain service boundaries](https://docs.aws.amazon.com/wellarchitected/2024-06-27/framework/rel_service_architecture_business_domains.html)（Domain境界と組織・設計上の責務）
 
 これらは比較研究の根拠であり、特定のアルゴリズム・係数・物理マイクロサービスへの自動変換を正式採用した根拠ではない。
+
+
+## 16. MECE・閉値域・強属性とSubsystem責任（2026-11-07）
+
+設計特性の検討（#2495/#1126、Roleとfacetの既存Owner）と混同しないため、次を分ける。
+
+- **Subsystem分割のMECEは対象集合と軸を指定した場合だけの設計制約**。全業務Function/Procedure/Read Projectionの所属が必ず互いに排他的とは限らない。Shared Function/共通参照、外部System、未割当、段階移行を明示的に表す。
+- **Dataのprimary write ownerがexactly-one**という条件は、受理済みの対象データ・有効期間・scope・ownership policyがあって初めて検証するガバナンス規則。Owner候補が複数/0件の場合、勝手に選ばずambiguous/unresolved。バックアップやレプリカが別Systemに存在しても、同じ論理正本を勝手に追加する根拠にならない。
+- **Closed enum/Closed Domain・網羅性・排他性・識別性・有効時点**は別の性質。Subsystem集合を有限に列挙できることは、所属の網羅・重複無し・業務境界の正しさを保証しない。
+- **強属性**は原典上の厳密定義・TEI共通受理が未完の候補であり、候補キーや識別子やSubsystem ownerと自動的に同一視しない。識別/更新の責任検証に必要な別Traitは受理済みRole/Ruleから参照する。
+- 例外のある共有Dataを単に「複数Subsystemで更新可能」と正規化せず、どちらの業務Command/Scope/期/Authorityがどう引き受けるかの明示契約へ分解可能か検討する。契約が不足する場合は未解決のまま保持。
+
+**追加候補 SP-19 / SP-20（NOT RUN）**：SP-19はShared Read Function・手作業・外部Systemがあるモデルを無理に全件exactly-one membershipへ押し込まないこと。SP-20は時点付きprimary write owner候補が複数/欠落しても、自動更新許可や実Owner決定へ昇格しないこと。
