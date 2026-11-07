@@ -757,3 +757,23 @@ G1〜G5で各観測は取得時点が異なる。要求するのは**同一瞬�
 **実装・検収の次の一手**：#2611/#2622で実接続先の束縛と単一Callerの責務を固定し、`MA-01/02`の現在挙動のGo PASSと**期待されるfail-closed上位Adapterテスト**を明確に分離。#1163は同一Attempt/Source/実消費SQL/Receipt/Reader/Expectedを収容する既存Packet、#1174は実Effect/Unknown、#2892は履歴の取得・欠落、#2555は旧新Writer/CDC・Cutoverの各Ownerを維持する。新しいReceipt Store、Business Validator、Attestation Registryを作らない。
 
 **資格の上限**：今回のGo特性試験はソースを追加・保存した段階。実行したGo/Provider/DBの結果、正式Migration Apply Host、旧新Client/CDC、Owner受理は**NOT RUN/NOT ACCEPTED**。#3127のmain採用と局所Unit成功は、Migrationの統合実証には合算しない。
+
+<!-- tei-db-migration-workbench-plugin-qualification-20261107 -->
+### 20.9 RQ-035 Data Source Workbench・Plugin-first・テスト設計への合流（2026-11-07、横断決定の適用範囲）
+
+[main統合済み #3276](https://github.com/hat47x/tei-platform/pull/3276)の[RQ-035/Workbench](DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)は、一般開発者によるSQL/NoSQL/ログ・クラウドデータソースの構造/データ管理に**Schema CREATE/ALTER/DROPを標準機能として含める**。DBA領域（DBサーバー/クラスタ/バックアップ/アカウント運用）を標準へ広げない。これに従い、Migration G0〜G5はWorkbenchの**Schema Apply経路の安全な部分**として再利用するが、RDB向けのトランザクション・履歴・正本切替条件を全Providerへ一律適用しない。SQL/DDL未対応Provider、サンプリング/ページングのみのSourceは`unsupported`または`unknown`のまま、読取可能な範囲を正確に返す。既存のWorkbench WB-01〜25とは二重の受入台帳を作らない。
+
+[main統合済み #3277](https://github.com/hat47x/tei-platform/pull/3277)はCLI・Studioを含むCore以外のPlugin-first実装を製品要求とした。ただし**要求/設計の統合でありDB Migration RunnerのPlugin化は未実装**。実Schema操作については、CLI/MCP/Studio/生成Appが別のSchema意味・Authority・Provider Resolverを持たず、**同じData Operation ContractとProvider実能力**に到達することを目指す。CLIの`plan-migration`が現状offline JSONを読むこと（§20.6）を維持し、実適用をCLI手書き分岐だけへ追加しない。
+
+| 既存能力・段階 | 必須入力/検証（§20.2 P/A/Eを再利用） | 統合時の独立Expected |
+| --- | --- | --- |
+| **Read/Reverse（Workbench W0/W1、G0）** | Readerが要求Scope/実取得Scope/開示Scope・全件性/時点/権限を報告、構造の確定/候補/未取得を分離。PostgreSQL実読取→Data Context→標準表現型のread-only縦切りは#2586を先行 | `SchemaSnapshot`の`Tables`欠落を実不存在としない（MA-09）。CLI/Studio/MCPの同じSource/Scopeは同じ候補と診断。未観測/非開示を空集合へ変えない |
+| **Plan/Preview（G0、Workbench W1/W2）** | Accepted Data Structureと実Snapshot、Provider/Realization・SQL bytes、変更対象・破壊性/費用、差分`Unresolved`、Context/Source revision | MA-08の申告Fingerprint一致をActual資格へ使わず、モデルと観測の時点・能力が異なれば`not-admitted`。Previewは権限ではない |
+| **Admit→Apply（G1/G2/G5、Workbench W2）** | 実Instance/Alias/Tenant・Environment/Grant/Provider Trait（DDL/Tx/Lock/NonTx/partial operation）の**現在資格**、同一対象への再観測と適用の束縛 | MA-01/02で不一致・未取得・未対応なら`executeCalls=0`。UIからもAI/CLIからも同じProvider拒否、ログやNoSQLにDDLを捏造しない |
+| **Observe→Recover（G1〜G5）** | 実発行文/Statement単位Result、History/Receipt(K)、別接続Actual Schema/Data(O)、業務Meaning/Retention/Old Client(B)を別主張、部分効果・ACK lossを記録 | MA-05/07でEffect unknownをClean Rejected/自動再送へ落とさず、実ReadとOperation identityでRecovery。#3155の`persisted:true`の意味は**Resource観測に限定**し、Migrationへ自動昇格させない |
+
+**Data Scope/Plugin/BOM/Cacheの横断境界**：Session/User/Tenantは保存先の物理共有状態と異なり、`Scope + Authority + Lifecycle + Consistency`が操作ごとに要る。Traitは「能力の宣言」と「現Targetで実証した能力」を分離し、特定DB製品名・Feature名のみで適用権限を付与しない。Version組合せBOM（#3269/#3267）、Source/Artifact Cache（#2600/#3271）は**検証済み組合せ・生成物の再利用資格**であり、現在のTarget Schema、Grant、Writer EpochやDDL許可を保証しない。変更後の適用可否は必ず再判定する。Pluginの版違いでSQL実現が変わる場合は§19.10のH2を再評価し、Meaning H1とは別票で示す。
+
+**テスト・ハーネスへの実装接続**：既存#3273のDesign Context→未カバー要件→独立Expected→CLI実行と#2514/#1180のScenarioを、WorkbenchのWB-15〜25と本計画MA-01/02/05/07/08/09に**同じFixture**で接続する。C0は`inspect→plan→admit→apply→observe→recover`の各Node実到達、C1は`stale/partial/unsupported/denied/unknown/target-mismatch/ack-lost`分岐で、必要母集団が分からなければ率を出さない。Provider read-only契約と正式Apply契約は分離し、実Connectionのない合成FakeからG1 PASSを作らない。生成AIへのCLI/MCP応答にはExpectedとObservedと未解決の必要項目を明示するが、別のScenario Engine/証拠Storeは設けない。
+
+**短期の実装順**：①#2586でPostgreSQL実Reader→Data Context→read-only表現の最短縦切りを先行、②#2611/#2622で対象Instance/Capabilityの現在資格とMA-01/02の`executeCalls=0`を実Adapterで検証、③使い捨てDBのSchema CREATE/ALTER/DROP→別接続Read/History・非Tx/partial負例、④実行できた契約をCLI/MCP/Studioから同一Providerへ投影、⑤旧新Writer・CDC/Retentionを伴うG3〜G5は#2555の独立Cutover・Owner承認に留める。既存WB計画の段階を置換せず、本PRでのPlugin化・データソース拡充・実DDL・Owner受理は**NOT RUN**。
