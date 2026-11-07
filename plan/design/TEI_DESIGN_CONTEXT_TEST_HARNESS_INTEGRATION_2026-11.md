@@ -152,3 +152,60 @@ main [#3284](https://github.com/hat47x/tei-platform/pull/3284) と [#3296](https
 - Artifact `tei-issue-test-ability` ID `13576656749`、約18KiB、7日保持に`t1-line-number-candidate.json`と従前の限定証拠を保存。業務データ／正式Scenarioを変更していない。
 - **到達上限**：これは**既存Issueで選定されていた境界1件を実CLIで初めて検収**したこと。外部AI Harnessで未知Ruleを盲検発見した証拠ではない。候補の恒久採用/#1180正本更新、Source→Functionの全Required閉包、C1/全業務要件・NFR、実Provider/Host、独立Product実装コードMutant、Owner Meaning受理は**NOT RUN**。Contextは引き続きpartial/exploration-only、`qualifiedTestGeneration=false`を維持。
 - **注意**：本追記は実Run後の別commit。上記は先行HEADの成功であり、**この文書追補を含む最終PR HEADおよび統合後mainの合格は、各Runを確認するまで主張しない**。
+
+## 8. P-1b1最小差分：JSON正常・同一Fingerprintでも欠ける必須Ruleを検出（TT-56）
+
+### 8.1 設計判断：独立Requiredと既存Product投影の**差集合**
+
+既存T0/T0.5は`semantic-data:sales.order`一件のCatalog・Inspect・Source Loader照合と、9 CLI Reply/Manifest/Transportの16種の負例検出が成立した。T1-A（main [#3304](https://github.com/hat47x/tei-platform/pull/3304)）は`line_number=0`の一候補を実Pinned CLIで実行した。ただし**テストで必要とする別RuleをCatalogが表示しなくても、表面的なData対象・Fingerprint一致だけなら「条件がそろった」と誤認し得る**。これはTool Replyを壊す負例やSourceを実改変してWorld SHAを失効させる負例とは異なる。
+
+最初の照合対象を公開合成`sales.order`のValidation評価3件とし、**必要な3 Subjectの集合はCatalogや候補Scenario結果から導出しない**。
+
+| 独立Required（test-only） | 正本での表現 | 既存Product CLIで観測するもの |
+| --- | --- | --- |
+| `sales.order_line.quantity_positive` | `validation.tei`のpositive Rule | Catalogの`semantic-validation`正本存在、`sourceStatus:indexed`、Source Indexの当該`definition`参照 |
+| `sales.order.lines.line_number_unique` | 同Relation内の`relation-unique` Rule | 同SubjectのSource Anchor/Role、Inventoryの`readByLoader` |
+| `sales.order_line.line_number_positive` | 行番号正数Rule | 同SubjectのCanonical Kind/Index Reference、T1-Aの候補と同じSource Bundle |
+
+**受領経路の追加**：従来の9件に含まれる`source-index -subject-kind semantic-data -subject-id sales.order`は**subjectモードであり**、必要な別ValidationのDefinition Referenceは含まない。そのまま9件だけでRequiredを検証済みと称することはできない。そこで実CLIの**既存全件モード** `tei source-index -workspace reference/workspace`を10番目のread-only Replyとして独立に取得する。CLI自体の新設や第2Source Index実装ではない。Tool Reply 10件それぞれの生byte digestを限定Evidenceに含めるが、順次取得のため原子的Snapshotとは主張しない。
+
+この3つに対し、`workspace-files.result.managedFiles`の`semantic/sales/validation.tei`が1件で`readByLoader:true`、`source-index`が`mode:index`で同Source Artifactを1件、各Definition Referenceの`subject/kind/role/artifactPath`を一意に持つことを**既存CLI投影の値だけ**から確認する。受領したCatalog/Index JSONを検査するため、DSL構文をPythonで再パースせず、Source位置と意味正本は依然TEI既存Loader/Source Indexが保有する。
+
+**決定的な非推論**：CatalogやSource Indexで一致したことは、その3件についての**限定的な読取・追跡可能性**の証拠であって、全Function/Business/Rule/ProcedureのRequired集合、業務意味受理、Source解析の完全性、Graphトポロジーの全辺、現在Host権限/Plugin実Load、実DB Readを証明しない。`boundedReference`は`partial`、`testExecutionAdmission`は`exploration-only`、`qualifiedTestGeneration=false`を**維持**する。
+
+### 8.2 独立の反証と、欠陥を過剰に検出しない対照
+
+| TT-56 | 独立に変えるもの | 期待する判別 |
+| --- | --- | --- |
+| A | Catalogから必須`line_number_positive`だけを削除 | `required-rule-catalog`でblocked。JSONもFPも正常 |
+| B | Catalogの必須SubjectのKindだけを変更 | Subject名が同じでも別Kindなのでblocked |
+| C | Source Indexの当該Definition Referenceだけを削除 | SourceがInventoryに残っていてもblocked |
+| D | Definition ReferenceのRoleを`derived`へ変更 | Source参照の存在だけでRole充足としない |
+| E | Definition ReferenceのArtifact Pathを別Sourceへ変更 | Subject文字列一致だけでSource束縛充足としない |
+| F | Catalogに同一必須Subjectを重複追加 | 一意選択不能はblocked、first/last winsにしない |
+| G | `validation.tei`はInventoryにあるが`readByLoader=false` | 掲載だけでは実Loadedでないためblocked |
+| H | **必須集合の外側**の無関係なCatalog要素だけ削除 | **この限定Requiredの判定はpartialを維持**。全Workspace閉包を暗黙に評価しない |
+
+A〜Hは既存TEI CLIが返したJSONの**test-onlyメモリ上のコピー**を変更する。A〜Gは7件の拒否、Hは1件の過剰拒否防止。World/SourceIndex Fingerprint欄を変更せず、`Catalog+Indexの表層指紋一致`だけで必須集合の完備を認定しない。実Toolの実配送・本番権限・Sourceファイルの実改変やConsumerの実ロードをテストしたものではない。
+
+### 8.3 他チャット領域のRequired/Gapを同じ構造へ統一する
+
+今後のTEI標準Data/Function/Business・Topology/単位系・標準表現型・Graph/SHO/CRUDの情報も、特別な第2Context Readerを増やすのでなく、必要な構造の**独立Required→実Product投影でのAvailable/Indexed/Loaded/Parsed/Consumed→未解決Gap**で管理する。ただし各領域の全件性を3 Ruleの試験だけで証明しない。
+
+| 領域とOwner | 後続の具体的な同型負例／依存 |
+| --- | --- |
+| **標準Data/Topology/Unit**（#1124/#3223） | Relation向き・多重性・同名別Identity、NULL vs missing、集計grainとFTE/金額単位。図の不可視辺/空Tableを「存在しない」としない |
+| **Function→Query→Provider**（#2586/#3283） | Function Source宣言と実Target Build収録・Entry、Query SQL byte/bind、実Provider Read、部分集合/0件、Consumer現在Grantを別義務。合成Browseは実DB結果としない |
+| **Plugin/Trait/BOM**（#3278/#3267） | Contract/Provider/Atomic Traitの宣言・手動実装必須・同一Bundle実Load/Call、exact version tupleと2×2の独立Conformanceを別列。Lock byte一致を4組合せVerifiedとしない |
+| **HTTP Decision Graph／SHO**（#1043/#1656、SHO担当） | Node/Transition/Guardの必要集合、Runtime Audit／HTTPレスポンス／Client Reaction／Receiptの別証拠。Mermaid等は表示投影で意味正本ではない |
+| **CLI/MCP/H3 Harness**（#2605/#2509） | 実Tool Reply ID・完全Part・EOF／開示Grant／Source Revisionを対照。受領済みJSONの一時改変試験で8,192byte途中切断や未返答Requestを解消したとしない |
+| **TEI自身のTest/Build**（#1180/#2514/#2831） | 同一義務からCase生成・独立Expected・Mutant判別。Stage1実TEI→Stage2再入Buildの実Artifact/Receiptと一般`go build`を別資格にする |
+
+今後の候補の第一出力は「テスト候補一覧」だけでなく、`missing source / wrong role / not-loaded / unaccepted meaning / not actually consumed / unknown disclosure / true uncovered test` の**正しい不足理由**を先に示す。IssueやAIの要約だけでProductの実Requiredを捏造せず、Ownerの意味・現在Host Grantを自動承認しない。
+
+### 8.4 受入と残りの最短実行順
+
+- **TT56/T0.7（今回）**：既存`context_gate.py`に限定Rule Slice照合を追加。P0 Scenarioの旧6 StepとT1-A Candidateは一切書き換えず、同じCIで16既存Control＋7拒否／1非過剰拒否の追加検査を行う。実PR HEADとmain pushの**各別CI**からEvidenceを残す。これは実測成功確認まではNOT RUN。
+- **P-1b1次段階**：一Functionを独立Requiredで定義し、Data/Function/Business/Relation/Rule/Source Anchor/Build Entryを**操作用途に必要な範囲**で列挙。不明と未対応、Consumer非開示を混同せず、既存typed operationsと同一Source IndexからCLI→MCPへ投影。下流への受領・Deliveryと実Provider Readerは別Gate。
+- **T1-B**：そのRequired集合を生成AIに与え、候補の独立Hidden Holdout・Source Revision/Scope/Provider/Build Target一致を、別OwnerのExpected/Mutantで検収する。#3273の既知行番号0を盲検未知発見の成功数に算入しない。
+- **開発上の停止線**：新Core Type/第二Query/Parser/Resolver/Scenario SSOT/Host/Authority/証拠Storeを先行設置せず、1つの実不足辺が解消する度に同じIndependent Requiredで再測定する。C0(statement)・C1(branch)・Graph Node/Edge・Scenario Requirement・NFRの分母を相互換算しない。
