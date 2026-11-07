@@ -619,6 +619,110 @@ main統合済み[#3070](https://github.com/hat47x/tei-platform/pull/3070)の`int
 
 **正本／次の引渡し**：[実装・証拠・詳細T0〜T3](design/ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md)を参照。T1では#3262のtyped read-only Contextの要件Closure／Unknownを先に実証し、#3223のPattern推薦→#1180採用Scenario→#2514の独立判別へ移す。外部H2/H3でのSkill効果はTAI #168／TEI #2509が固定Task・Skill実ロード・完全Reply・送出資格を揃えた**独立実験**を行う。Source/Rule/Plugin/Owner受理、C1・NFR、Function実Provider、外部H3 Test-Case生成は現時点で**NOT QUALIFIED**。
 
+## 2026-11-07 標準データ構造・標準表現型と合成写像の統合検証（採用前）
+
+X-TEAのDB 1:1／1:N→XF単票・明細という対応を、**物理テーブルと無関係な標準データ構造**、**Functionから独立した標準表現型の定義**、**Function Data Contextに所有される表現インスタンス**、**両側の構造間Mapping**へ一般化する検証を進めます。Container／Table／Tree／Chart／文書／音声等が同じ元Dataを異なる形に見せる際、表示能力・意味の保持・同期・編集候補・現在のHost Grant・Provider Effectを独立に評価します。
+
+### 成果を一本の現行main起点の候補計画へまとめる
+
+- [標準表現型と媒体時間軸](design/STANDARD_REPRESENTATION_TOPOLOGY_AND_MEDIA_AXES_2026-11.md)：Data/Representationの構造、Function-owned Instance、元データ時刻／取得時刻／Playback時間／文書位置、軸保持・変換・生成を分ける。旧[Draft #3192](https://github.com/hat47x/tei-platform/pull/3192)の成熟した設計記録を再利用。
+- [複数表現の選択・状態・同期](design/REPRESENTATION_CROSSVIEW_COORDINATION_2026-11.md)：Subject/Result/Path/View occurrence、selection epoch、Presentation-only変更と業務Actionを分ける。旧[Draft #3222](https://github.com/hat47x/tei-platform/pull/3222)の成熟した設計記録を再利用。
+- [合成写像の適格性・非単射・否定依存・開示](design/COMPOSED_REPRESENTATION_MAPPING_QUALIFICATION_2026-11.md)：Source→表示→他Consumerの各段でloss・Scope・unknown・Permissionを検収。局所表示成功から、合成後の完全性や逆編集を推論しない。SUI Tree/Island→SHO Outline、D1/D2 partial、空結果の否定依存、Research/Full Autoの操作モード、全出力面のDisclosureを実例とする。
+
+**受入順（新Gateではない）**：P0 HeadlessでCX-01〜03/08の非単射・集計・空集合の判別 → P1 CX-04〜06/10のConsumer非干渉・操作Mode・epoch/版 → P2 SHO/SUI/Mediaを異質ConsumerとしてCX-07/09へ接続 → P3 #2586の実Function→Query→Provider Readを経て、編集が必要な場合のみ#2500→#2598→#1174のIntent/実Request/Receipt/独立Readへ接続。旧PRのRP/MVと新CXは[#2514](https://github.com/hat47x/tei-platform/issues/2514)/[#1180](https://github.com/hat47x/tei-platform/issues/1180)の既存独立Expected/Scenarioへ**差分引継ぎ**し、第二のテスト正本を設けません。
+
+**担当を変更しない**：構造のFacet=#2495、Loss/Projection=#2497、Context/Result Slice=#2506、Pattern=#2507、変更影響=#2582、Renderer=#997、用途別開示=#2516、実Read=#2586、Writer/原文受理=SHO/TEI各Owner。今後のUI生成・Operation開発を早めるための設計であり、Core型列挙・共通Plugin Registry/Runtime/Host・第二Action/権限Engine・新Gateは追加しません。
+
+**証拠の上限**：これは現行mainを起点とした設計資料と計画の整備であり、CX-01〜10の新試験、実Provider/Media/Renderer/Host接合、SHO/SUI実受領、Owner意味受理は**NOT RUN**。局所PRのGo/CI実績や見かけの同一表示を、実Product E2E／現在の適合資格へ自動昇格させません。並行変更がある場合は統合前に同一HEAD/内容差分を再照合します。
+
+### 製品実Readから二表現へ渡す初回受入（2026-11-07追補）
+
+上記の幅広いRP/MV/CX圧力ケースは維持するが、**最初にProduct資格を得る一本の実証**は[#2586 HR-01/02](https://github.com/hat47x/tei-platform/issues/2586)が所有する`order_entry.recent_orders` Headerの**Function→実選択Query/SQL・args→Runtime DataSource alias/物理Provider→actual Rowset/Scope/Field Presence→Function Data Context**に固定する。その後、同じContextからForm/Tableの**二つのread-only表現**を投影し、Identity・Grain・NULL/未取得・Page/部分集合・選択epoch・開示の一致と、情報損失を#2506/#2507/#2497で検収する。最初に欠ける接続辺はunresolvedとしてSource/Ownerとともに記録し、Headlessの参照・合成成功を実Product Read資格にしない。
+
+現main統合[#3195](https://github.com/hat47x/tei-platform/pull/3195)/[#3204](https://github.com/hat47x/tei-platform/pull/3204)のPattern↔Operation突き合わせ参照実装は8 Operation／5 Patternの局所結果があるが、**正式なFunction/Action dispatchとSQL Readerではない**。参照用実PG Readの[Draft #3238](https://github.com/hat47x/tei-platform/pull/3238)もProduct HR-01/02とは別。反対に、[main統合#3155](https://github.com/hat47x/tei-platform/pull/3155)は資源独立Readによる`resource-observed`を既に持つため「永続化の観測機構が全TEIで未実装」とは記載しない。**Resource Readの局所成立≠受注FunctionのHeader/明細完全Read≠業務Outcome**とする。
+
+順序はR1実Read→R2同一Contextの二read-only表現→R3必要な場合のみViewChange/typed Intent/現在Grant→R4 Effect/Receipt/独立Read→R5 SHO/SUI/Graph/Media異質Consumer。独立Expectedと否定依存／同件数異集合／LIMIT 1／Non-output Predicateの反例は既存#2514/#1180を再利用。詳細は[合成写像の適格性 §8](design/COMPOSED_REPRESENTATION_MAPPING_QUALIFICATION_2026-11.md)。新しい実行結果の主張ではなく、実Provider、Product二表現、Owner受理は**NOT RUN**。
+
+
+### Workspace帰属・read-onlyの実効果・ER/CRUD図の資格（2026-11-07更新）
+
+標準表現型の初回実証をR1 Product Header Read→R2同一ContextのForm/Table read-onlyとする順序は維持する。追加で三つの**適用資格**を検査する。
+
+- **Workspace/Source帰属**：[#3149](https://github.com/hat47x/tei-platform/issues/3149)/[#3181](https://github.com/hat47x/tei-platform/issues/3181)のCLIドッグフーディングで、別Workspaceの同一 `sales.order` Subjectに対しmanifest/Workspace identityが応答に欠落する問題が観測された。Context Instance、Manifest identity、Source revision、実Provider Scope、Read epochを明示し、同名・同内容を同一実対象へ無音結合しない。CLI Contractの変更は#3181/#3242/#2824がOwner。第二Workspace Registryは作らない。
+- **副作用の種類**：[#3182](https://github.com/hat47x/tei-platform/issues/3182)で、`view`のread-only広告と明示`-execute`＋ログ/状態ファイル出力が別であることが実測された。Business read-only、環境ファイル・送出効果、現在Host Grant/実Requestを独立評価する。Form/Tableを読み取り専用で投影できても`zero OS effects`、自動Action dispatch、業務完了を宣言しない。
+- **異質な図表Consumer**：[#3250](https://github.com/hat47x/tei-platform/issues/3250)のSubsystem候補/ER/CRUD/依存図は、標準構造をGraph/Tableへ展開する追加圧力例として利用する。論理Subsystem/Owner候補・表示レイアウト・直接CRUD・間接Effect・実Provider Effect・物理配置を区別し、折畳み/図の移動をSource Rewriteとしない。未知・部分・非開示の越境Edgeを「越境0件」と推測しない。専用Optimizerと受理権限は#3250/#267のままとする。
+
+**前進した実証**：[Draft #3238](https://github.com/hat47x/tei-platform/pull/3238)固定HEADの[#2586実行記録](https://github.com/hat47x/tei-platform/issues/2586)で、隔離PG 16.15→物理Read→局所Completion、Top 2/Top 1の区別が限定CI成功。これはReferenceの一部達成で、**Product Function→Query/Provider→Context→二表現のE2E合格ではない**。前節の「#3238 PGの結果は未確認」は作成時点の履歴とし、本節の限定成功を現在資格として優先する。
+
+同じ[#2514](https://github.com/hat47x/tei-platform/issues/2514)/[#1180](https://github.com/hat47x/tei-platform/issues/1180)のIndependent Expected/Scenarioへ、[合成写像検収§9](design/COMPOSED_REPRESENTATION_MAPPING_QUALIFICATION_2026-11.md)のWX-01〜06を一因子差分として引き継ぐ。新Go/実Product DB→二表現・跨Workspace UI・ER Editorの試験とOwner Meaning Acceptanceは**NOT RUN**。複数並行PRのMaster Plan編集は統合前に内容比較し、同一受入を二度追記しない。
+
+
+### 実SQL Sourceと隔離PG Readの対応証拠（2026-11-07：初回実証の停止線）
+
+[合成写像検収§10](design/COMPOSED_REPRESENTATION_MAPPING_QUALIFICATION_2026-11.md)に、現mainの**実Sourceファイル比較**から得られた不足条件を追加した。Product `reference/workspace/applications/order-entry/queries/recent_orders.tei` は `datasource sales` と別ファイル `recent_orders.sql` を参照し、そのSQLは **`FROM public.orders`、`WHERE ordered_at >= :from`、`ORDER BY ordered_at DESC`**。一方[Draft #3238](https://github.com/hat47x/tei-platform/pull/3238)の実PG Referenceは専用の `public.tei_web_scoped_orders_reference` とTenant限定の実行により、`orderId`ソート・TOPを比較する。Logical Query IDや`sales_core`の一致、実PGのGreenだけで、**同じSQL byte/母集団/Time Window/Physical Provider/現在認可**とは断定しない。
+
+初回HR-01/02では、**Function/Pattern実選択→Query Source + SQL fileの実消費bytes→`:from`のBinding/Time Zone→runtime datasource sales/physical Provider/実行statement→受領Rowset・Scope・Read epoch→Context/Result Slice**を一Attemptとして固定する。原Queryの`ordered_at`順とReferenceの`orderId`順が異なるなら、先頭ページの同数・同一IDだけで表示同等・全集合Coverageを宣言しない。QueryのSQL-only変更は別Source Contributionとして失効。Contextが同じでも複数Readerの**joint snapshot**は自動成立しない。
+
+既存#2586（Product E2 Read）、#2387/#2862（SQL Source/Variant）、#2611（Provider binding）、#2506/#2507（Context→表現）、#2514/#1180（独立Expected/Scenario）の担当へ、QS-01〜06を追加の一因子差分として引き継ぐ。これは**出典に基づく設計更新のみ**であり、QSの新Go/実Provider/二View E2、Owner意味受理はNOT RUN。新SQL Executor/Reader/Registry/Gateは作らない。
+
+**実測で更新した表示・操作資格**：[SUI Draft #3396](https://github.com/hat47x/sui-sensemaking/pull/3396)の固定HEAD CIでは実Product `buildContextProjection` の非単射（元Source cue／Island所属が異なっても公開投影が同じ）と正の変更対照を**3/3 PASS**で観測した。[main統合済みTEI #3253](https://github.com/hat47x/tei-platform/pull/3253)はこれを研究基線に帰属する。**公開投影が正しく同じことは元Source Identityの一致・逆編集の一意性を証明しない**。一方[main統合済み#3254](https://github.com/hat47x/tei-platform/pull/3254)の操作面drift実測ではモデル属性追加でWorld/Model fingerprintが変わっても5 Operationの`basis`が不変。現在の実Request資格を旧`basis`一致から導かず、必要依存・Source/Version/Selection・実Grantを確認する。影響外と証明できるread-only表示は局所維持を認め、すべての変更で無条件に再取得・拒否する第二Gateを設けない。
+
+**開発上の接続**：[合成写像検収§11](design/COMPOSED_REPRESENTATION_MAPPING_QUALIFICATION_2026-11.md)にSUIの局所PASS、TEIの操作面照合未接続、Product E2未実証を別票で保存。#2497/#2507/#2582/#2598・独立Expected #2514/#1180へ引き渡す。並行しているドメイン意味駆動のテスト生成案[#3258](https://github.com/hat47x/tei-platform/pull/3258)〜[#3261](https://github.com/hat47x/tei-platform/pull/3261)はOwner #1131/#2514との採否・重複統合を待つ**別Draft**であり、#3236の第二データ生成器やScenario正本にはしない。TEI Product二View/実逆Patch/Hostの新試験・Owner受理はNOT RUN。
+
+
+### 2026-11-07 三視点Diagram/CRUDと実Provider Readを並列P0で検収する（main成果との整合）
+
+X-TEA Modeler由来の**Data/Function/Businessの3図とCRUD cross-reference**はTEIモデラーの基幹価値であり、実Providerが先に接続できることを前提にしない。[三視点受入 Draft #3263](https://github.com/hat47x/tei-platform/pull/3263)（M-01〜10）を既存#1124/#1125/#1126/#2497/#1803へ振り分け、**P0-M**として受理済み限定Sourceから3図・CRUD MatrixをHeadless/read-onlyで導き、Source/Role/Relation/Occurrence/Revision・宣言/派生候補/実観測Effectの根拠を同時に返す。Graphの辺・多重性/1:Nの関係Roleを保存し、行列の空欄、未取得/非開示/partialを「CUDなし」の証拠にしない。図座標・Mermaid風文書の見た目を元Source更新としない。可逆な編集はTyped ProposalとOwner Acceptanceを経る。SHOの独立図解は既存SHO #5/#6/#19 Consumerで検収する。
+
+従来の **P0-R**（#2586実Product Function→Query/SQL/Provider→Result Slice→同一ContextのForm/Table）も維持する。**P0-C**では三図/CRUDの`sales.order`と実Read結果を型付きSubject/Source Revision/Scope/Read Attemptで照合するが、Query実行がない`R`宣言を実Reader成功と呼ばず、同IDでもWorkspace/Providerが違えば接合しない。M/R両レーンは共通の出典・欠損診断を利用し、製品Mainの新Schemaや第二Reader/Runnerは立てない。
+
+前段の設計完全性は[#3262](https://github.com/hat47x/tei-platform/issues/3262)が所有。**main統合済み[#3264](https://github.com/hat47x/tei-platform/pull/3264)の実CLI9呼出し・Skill静的14・Required Source Loader確認**と**[#3266](https://github.com/hat47x/tei-platform/pull/3266)/[#3268](https://github.com/hat47x/tei-platform/pull/3268)の既存Scenario 6 step／実CLI負例4＋独立義務2／対象pathのCI再起動**は限定のT0基線であり、Design Contextの全Source Closureや三図/CRUD実生成、MCP/外部Harness完全受領、AIの新Case生成を実証しない。Goの局所Statement Coverage C0相当をC1や機能/NFR Coverageへ昇格させない。未カバーRuleから新Caseを作るT1は[Draft #3273](https://github.com/hat47x/tei-platform/pull/3273)と#1131/#2514/#1180が担当し、第二Oracleを作らない。
+
+[合成写像検収§12](design/COMPOSED_REPRESENTATION_MAPPING_QUALIFICATION_2026-11.md)のDM-01〜08を既存独立Expectedへ引き渡す。**今回の新たな実P0-M Graph/CRUD出力・P0-R Product Provider接続・P0-C Crossview・Studio/SHO・Owner意味受理はNOT RUN**。mainと並行Draftの更新内容を失わないよう、旧ブランチのMaster Planを最新mainに基づき統合し、PRの再比較とCIは別に確認する。
+
+
+### 三視点Fixtureを現行CLI/Graph/Design Contextの実装入口へ接続（2026-11-07）
+
+[三視点計画Draft #3263](https://github.com/hat47x/tei-platform/pull/3263)にはData Entity 9／Relation 7（同端点の別Role二辺）／Function 4／Business Action 3、独立に記述した`expected-v0.json`、12種のKnown Mutant候補がある。しかし**合成JSONはTEI Parser入力でなく、Input/ExpectedともAI草案**。整合性15項目の静的検査は独立Expectedの正当性やTEI製品Graph/CRUDの実生成の証拠ではない。
+
+実mainの `internal/modelref/model.go` はScoped Ref/Relation Evidence、`tools/reference-er-table-crossview/projection.go` はread-only ER/物理表比較、`tools/reference-business-dfd/diagram_context.go` はHandoff候補DOT、`reference/tei-studio-graph/graph.ts` はnode/edge IDと多重辺・Node選択を保持する。ただし**実三視点Source→Loader/Role→Graph/CRUD Projection→元Relation/CellのSource復帰→Studio/SHO実Consumer**はまだ未接続。GraphでEdge select/Field slotのSource復帰は現在のnode-only Referenceと別資格。既存CLI discoveryに三視点diagram/CRUD製品Commandは広告されていない。
+
+**新しい検証前段**：[main統合#3284](https://github.com/hat47x/tei-platform/pull/3284)・[#3296](https://github.com/hat47x/tei-platform/pull/3296)の既存`context_gate.py`は、9 read-only CLI Replyを使用し、不正/欠落Root・古いSource指紋・途中切断・JSON重複Member等の**計16の合成負例を有限CIで判別済み**（[#3296固定HEAD CI](https://github.com/hat47x/tei-platform/actions/runs/42371310577)）。しかしRequiredの中心は`semantic-data:sales.order`で、Function/Business/Rule/Relationすべての閉包ではない。Diagram/CRUDの`complete`やテスト生成可へ昇格させず、現行Gateへ対象Requiredを拡張しても実Loader/Consumerが支持した範囲だけ資格化する。第二Packet/Runnerは作らない（重複PR #3293は未マージClose）。
+
+最初は(1)合成FixtureのTEI Source/Loaderへの**表現可能部分**を特定、(2)型付きGraphの同端点多重辺・同名異IDの保持とSource復帰、(3)Function×Data CRUDで`declaredCrudComplete=false`を未知と表示、(4)Human/AI/Studio/SHOのConsumer別受領／編集の資格を検証。JOIN 2×3の6表示行≠実体6件。独立ExpectedとMutant評価は#2514/#1180を利用し、[#3236設計§13](design/COMPOSED_REPRESENTATION_MAPPING_QUALIFICATION_2026-11.md)のDGX-01〜04を順次検収する。**新製品Diagram/CRUD/GUI/Provider実行、Go/CLI/Owner受理は今回NOT RUN**。
+
+
+### 実Fixture Test・Source/Lock鮮度・CLI Effectを分けた最初の検収（2026-11-07）
+
+[統合Draft #3303の検収§14](design/COMPOSED_REPRESENTATION_MAPPING_QUALIFICATION_2026-11.md)へ、他チャットの現行実測を正確な段階で引き継いだ。
+
+- [三視点Fixture Draft #3263](https://github.com/hat47x/tei-platform/pull/3263)：合成Pressure Input/別Expected（双方AI草案・独立Oracle未受理）に、内部整合/破損を検査するGo Testを追加。分離Stubの限定試行と、GitHub実Fixtureを使うGo Test/製品Diagram/CRUDの資格は別。固定HEADのRepository Health #42373811364は**FAIL**。本計画のP0-Mでは`TEI Source/Loader→Graph/CRUD got→独立Expected/Mutant→各Consumer実受領`が最初の未接続経路。
+- [main統合 #3299](https://github.com/hat47x/tei-platform/pull/3299)：固定CI #42373330734で実Source変更とPlugin Lock変更後の旧Pinned Scenario拒否／A→B→A内容復元後の再成功を限定実測。**Content fingerprintの再一致≠過去Selection epoch、現在Grant、Plugin実Load/Conformanceの成立**。Data Context→Diagram/CRUD/SHOへ再利用する際は、Source/Policy/Consumer/必要依存をClaim相対に評価し、全Worldを無条件に失効させる新Gateは作らない。
+- [CLI効果境界のDraft #3302](https://github.com/hat47x/tei-platform/pull/3302)：`view`のpreview-only read-only広告と`-execute`等の実OS書込を分ける実修正候補。ただし[実Health #42373744325](https://github.com/hat47x/tei-platform/actions/runs/42373744325)は**FAIL**（gofmt＋CLI Flag catalogの既存契約との差）。成功した実Reader/Graph Previewを`zero external effects`や現在のOperation Grantにしない。修正受入/CLI契約は#3182/#951へ戻す。
+- **#3303自身のCI修復**：[Health #42373568969](https://github.com/hat47x/tei-platform/actions/runs/42373568969)は**FAIL**。実ログで`tools/repository-plan-check`の設計索引/要件追跡表不足を確認し、本PRが追加した**3設計文書の索引だけを`plan/design/README.md`へ登録**。残る他レーン索引とRQ-035のPAS/Gap Auditは[#3297](https://github.com/hat47x/tei-platform/pull/3297)が継続対応中。今後の新HEAD CIを見ずに全Health修復とは記録しない。
+
+まずP0-Mの実Fixture受入と一つのSource-backed Graph/CRUD結果の独立Expected照合を完了し、その後P0-Rの実Provider経路とP0-Cの結合へ進む。#2514/#1180の既存独立Oracle/Scenarioを使い、第二Parser/Graph Runtime/Policy/Runnerを増やさない。今回の新実TEI Diagram生成・Go Test・Studio/SHO・HostのE2E、正式Owner意味受理は**NOT RUN**。この追補と設計索引の更新は**採用前計画・CI修復の一部**である。
+
+
+### 複数Canvasと部分CRUDの既知事実を失わない検収（2026-11-08）
+
+[統合Draft #3303 §18](design/COMPOSED_REPRESENTATION_MAPPING_QUALIFICATION_2026-11.md)に、[#3263の実Go Fixture契約テスト](https://github.com/hat47x/tei-platform/pull/3263)を踏まえた、**全体partialでも明示済みの局所事実を消さない**検収を追加。Function`declaredCrudComplete=false`でも、明示された`data.customer:R`はRのまま残り、未列挙の`data.order`は`unknown-not-enumerated`であって`none`ではない。必要Rule/Relationの不足を空のCRUD表とせず、Context GateでRequired/Receivedの差を提示する。実DB Readerや業務Effectを宣言Rから推論しない。
+
+**複数Canvas同一Subject**では、一つのSemantic Subject/Relationを二Canvasへ異なるView Occurrenceとして配置できる。カード／図の移動・Canvas分割・片側Occurrence削除はSemantic Item/Relationの削除・意味変更ではない。Edge ID／向き／Role／Source RevisionとCanvas内OccurrenceのIDを分離。図でCard表示できない長大な未整理Itemでも、直接開くデータとして保持でき、カード化を強制しない。図のRead-only Graph/CRUD合格、逆編集適格性、Consumer受領、SHO Writerの資格は別。MC-01〜04を既存#2514/#1180へ一因子差分として渡し、新しいItem/Task/Core型や第二Registryは定義しない。
+
+**空集合Handoffの現行更新**：[main統合 #3353](https://github.com/hat47x/tei-platform/pull/3353)は`Targets=[]`・`EmptyJustified=true`でもHandoff未確認なら`CompletionUnverified`に留める局所修正と6回帰Testを持つ。固定HEADの[Health #42391982442](https://github.com/hat47x/tei-platform/actions/runs/42391982442)はsuccessだが、`CoverageComplete`／`HandoffConfirmed`はCaller申告であり、相手方ReceiptやProvider実結果は未証明。空CRUDセル（未知・不在）とBusiness Outcome（Handoff済・未確認）を混同しない。
+
+既存P0-M（Data/Function/Business Source→Graph/CRUD）、P0-R（Function→実SQL/Provider→Context→Form/Table）は**並行P0**、P0-Cは十分なSource/Scope/Revision/Read Cohortが一致した時だけ接合する。#3263のFixture監査は実製品Graph/CRUD生成のPASSではなく、新Go/CLI/Studio/SHO/実Provider E2E、Ownerの意味受理は今回**NOT RUN**。
+
+
+### 三視点のSource入場を三層に分ける（2026-11-08）
+
+三視点P0-Mを最初に製品へ接続する際は、**Accepted TEI Source／管理Markdown／DB物理Schema観測**を別資格で扱う。[#3346](https://github.com/hat47x/tei-platform/issues/3346)の実CLIでは`docs/plan`のMarkdownはmanagedでも`readByLoader:false`であり、意味上のData/Function/Business宣言として読めたことにはならない。[main統合#3354](https://github.com/hat47x/tei-platform/pull/3354)固定CI[#42391707962](https://github.com/hat47x/tei-platform/actions/runs/42391707962)は11実CLI Reply/32合成Consumer Controlで限定Rule/Relation/Sourceの照合まで実証したが、Function・Business・全Requiredの閉包や新規テスト生成資格は`partial`のまま。これを三視点図/CRUD完備に昇格させない。
+
+[Workbench Draft #3372](https://github.com/hat47x/tei-platform/pull/3372)はCatalog経由で物理FK/UNIQUE・複合列・観測時刻/指紋を**候補として保持する製品コード変更**を提案し、fake Catalogのテストを追加した。未マージ・実PG未実証。Observed Physical FKとAccepted Business Relation/CRUDを区別し、Constraint不在を業務Relation不在へ推論しない。この最小Read-only逆取込をP0-M0の**独立入力候補**として扱い、受理済みSourceを代替する正本にはしない。
+
+[合成写像検収§19](design/COMPOSED_REPRESENTATION_MAPPING_QUALIFICATION_2026-11.md)のSA-01〜06を#3263/#3270/#1126（Diagram/DB候補）、#3262（実Reader/Required Closure）、#2514/#1180（独立Expected/Scenario）、#3346/#2621（Markdown Authoring）に渡す。最初は**限定実TEI Source→Qualified Data/Relation Graph→元Source/Roleへ戻る**一辺を製品実行し、Function/Business/CRUDの未取得を明示する。並列P0-Rの実SQL/Provider Read、P0-Cの相互Source照合も維持。新Reader/Parser/Graph Engine/第二Semantic Registryや一括Hard Gateは作らず、実Product Diagram/CRUD/Workbench×実DB/Host、Ownerの業務意味受理は**NOT RUN**。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤

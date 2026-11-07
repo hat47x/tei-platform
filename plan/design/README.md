@@ -25,6 +25,9 @@
 
 | 文書 | 対象 |
 | --- | --- |
+| [`STANDARD_REPRESENTATION_TOPOLOGY_AND_MEDIA_AXES_2026-11.md`](STANDARD_REPRESENTATION_TOPOLOGY_AND_MEDIA_AXES_2026-11.md) | データと表現のトポロジー、Function内表示インスタンス、媒体・文書と時間軸の適合条件（#2497/#2507、採用前） |
+| [`REPRESENTATION_CROSSVIEW_COORDINATION_2026-11.md`](REPRESENTATION_CROSSVIEW_COORDINATION_2026-11.md) | 表示間選択のIdentity/Scope/Occurrence/epoch、非開示・時点・操作の分離を検証する設計（#2506/#2582、採用前） |
+| [`COMPOSED_REPRESENTATION_MAPPING_QUALIFICATION_2026-11.md`](COMPOSED_REPRESENTATION_MAPPING_QUALIFICATION_2026-11.md) | Data→Function View→異質Consumerの合成写像、損失・逆編集・Source証拠、三視点Diagram/CRUDと実Readの並列P0、実装Fit/Gap（#2497/#3263/#2586、採用前） |
 | [`DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md`](DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md) | 異種Data Sourceの開発者向け閲覧・データ管理・Schema DDLとDBA境界（#3270、設計・未適格） |
 | [`HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md`](HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md) | REST例外とClient ReactionのGraph/Table/Trace同一性、再試行とCommit unknown（#3274、設計候補） |
 | [`ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md`](ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md) | TEI自身のIssue→Design Context→実CLI・テスト能力の限定ドッグフーディング（#3262） |
