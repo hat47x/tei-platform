@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"path/filepath"
+	"os"
+	"strings"
 	"testing"
 )
 
@@ -163,5 +165,48 @@ func TestDiscoverySchemaVersionMismatchIsDetected(t *testing.T) {
 	}
 	if record.SchemaVersion != "tei.cli.inspect/v0" {
 		t.Fatalf("inspect schemaVersion=%q", record.SchemaVersion)
+	}
+}
+
+
+// TestViewReadOnlyDiscoveryExcludesActualFileWriteVariant pins the advertised
+// read-only subset to invocations without -execute. The same CLI command does
+// accept an -execute invocation that can write a named file (#3182); it must
+// not be included among the safe read-only command variants returned by
+// `tei commands`. This deliberately does not test business DB commit.
+func TestViewReadOnlyDiscoveryExcludesActualFileWriteVariant(t *testing.T) {
+	record, ok := discoveryRecord("view")
+	if !ok || record.Effect != "read-only" {
+		t.Fatalf("missing read-only view discovery record: %+v", record)
+	}
+	if len(record.ExcludedFlags) != 1 || record.ExcludedFlags[0] != "-execute" {
+		t.Fatalf("view must exclude effectful -execute invocation: %+v", record.ExcludedFlags)
+	}
+	for _, option := range record.Optional {
+		if strings.Contains(option, "-execute") {
+			t.Fatalf("read-only discovery advertises an effectful variant: %q", option)
+		}
+	}
+	// The exclusion is not a CLI flag ban. Exercise the real reference command
+	// through its command entry and independently inspect the named output.
+	root := filepath.Join("..", "..", "reference", "workspace")
+	logFile := filepath.Join(t.TempDir(), "operation.json")
+	var output bytes.Buffer
+	code, err := runViewCommand([]string{
+		"-workspace", root,
+		"-application", "order_entry",
+		"-pattern", "order_entry.submit_order",
+		"-command", "sales.order.submit",
+		"-input", "order=sales.order",
+		"-execute",
+		"-operation-log", logFile,
+		"-format", "json",
+	}, &output)
+	if err != nil || code != 0 {
+		t.Fatalf("effectful invocation failed: code=%d err=%v body=%s", code, err, output.String())
+	}
+	fileBody, err := os.ReadFile(logFile)
+	if err != nil || len(fileBody) == 0 || !json.Valid(fileBody) {
+		t.Fatalf("expected actual JSON operation-log filesystem output: bytes=%d err=%v", len(fileBody), err)
 	}
 }
