@@ -360,7 +360,6 @@ func TestSelfDescriptionAttributeAnchorsDoNotSubstituteForRoleOptionSpan(t *test
 	// meaning acceptance is performed by this source-navigation test.
 }
 
-
 // A Markdown document that contains Role-like words can be inventoried and
 // byte-indexed without becoming a semantic declaration. This uses the real
 // Workspace Loader and Load-time Source Index, not a second Markdown parser.
