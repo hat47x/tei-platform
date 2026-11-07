@@ -617,6 +617,15 @@ X-TEAのDB 1:1／1:N→XF単票・明細という対応を、**物理テーブ�
 
 同じ[#2514](https://github.com/hat47x/tei-platform/issues/2514)/[#1180](https://github.com/hat47x/tei-platform/issues/1180)のIndependent Expected/Scenarioへ、[合成写像検収§9](design/COMPOSED_REPRESENTATION_MAPPING_QUALIFICATION_2026-11.md)のWX-01〜06を一因子差分として引き継ぐ。新Go/実Product DB→二表現・跨Workspace UI・ER Editorの試験とOwner Meaning Acceptanceは**NOT RUN**。複数並行PRのMaster Plan編集は統合前に内容比較し、同一受入を二度追記しない。
 
+
+### 実SQL Sourceと隔離PG Readの対応証拠（2026-11-07：初回実証の停止線）
+
+[合成写像検収§10](design/COMPOSED_REPRESENTATION_MAPPING_QUALIFICATION_2026-11.md)に、現mainの**実Sourceファイル比較**から得られた不足条件を追加した。Product `reference/workspace/applications/order-entry/queries/recent_orders.tei` は `datasource sales` と別ファイル `recent_orders.sql` を参照し、そのSQLは **`FROM public.orders`、`WHERE ordered_at >= :from`、`ORDER BY ordered_at DESC`**。一方[Draft #3238](https://github.com/hat47x/tei-platform/pull/3238)の実PG Referenceは専用の `public.tei_web_scoped_orders_reference` とTenant限定の実行により、`orderId`ソート・TOPを比較する。Logical Query IDや`sales_core`の一致、実PGのGreenだけで、**同じSQL byte/母集団/Time Window/Physical Provider/現在認可**とは断定しない。
+
+初回HR-01/02では、**Function/Pattern実選択→Query Source + SQL fileの実消費bytes→`:from`のBinding/Time Zone→runtime datasource sales/physical Provider/実行statement→受領Rowset・Scope・Read epoch→Context/Result Slice**を一Attemptとして固定する。原Queryの`ordered_at`順とReferenceの`orderId`順が異なるなら、先頭ページの同数・同一IDだけで表示同等・全集合Coverageを宣言しない。QueryのSQL-only変更は別Source Contributionとして失効。Contextが同じでも複数Readerの**joint snapshot**は自動成立しない。
+
+既存#2586（Product E2 Read）、#2387/#2862（SQL Source/Variant）、#2611（Provider binding）、#2506/#2507（Context→表現）、#2514/#1180（独立Expected/Scenario）の担当へ、QS-01〜06を追加の一因子差分として引き継ぐ。これは**出典に基づく設計更新のみ**であり、QSの新Go/実Provider/二View E2、Owner意味受理はNOT RUN。新SQL Executor/Reader/Registry/Gateは作らない。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
