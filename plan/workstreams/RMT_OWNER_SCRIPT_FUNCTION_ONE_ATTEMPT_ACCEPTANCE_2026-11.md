@@ -768,3 +768,55 @@ E Routeの検証に使う最小Requiredを、宣言Status Input／SQL Sourceだ�
 [main merged #3337](https://github.com/hat47x/tei-platform/pull/3337)は宣言Plugin CapabilityとEnvironmentの選択を参照的に棚卸しできるが、未選択は直ちに欠陥ではなく、**選択済み＝実Provider Loader/権限/接続成功ではない**。database-providerの技術名とCapability IDの比較差は[未統合 #3350](https://github.com/hat47x/tei-platform/pull/3350)が既存ValidationのSupportsDatabaseProviderで改める候補。RMTのsales→sales_core物理BindingはWorld上のPlugin候補の選択ではなく、**当該Attemptの実Provider Instanceと実行SQL/Rowset**で検収する。
 
 **変更後の最短順序とClaim ceiling**：#2586 E Route Product Query/SQL+status/Provider/Rowset HR-01/02 → #2506/#2514の対象集合L・Result Slice・negative dependencies/Scope → #1125/#1174の二入口同Ruleと実K/O/Business B。#3262 TT-56をContextの前段品質、#3182 CLI writeFlagsをTool Scope、#1174 RC-03/05をCommit後回復、#1125のHook・暦を独立Meaning対照へ分担する。**今回新Go/実E Product PG/旧Windows Runtime/実Owner受理の実験はNOT RUN。G1/G2は引き続きUNQUALIFIED**。本追補は既存RMT Markdown 1ファイルのみ変更、過去のCI成功を新HEADへ流用しない。
+
+## 21. 11/8追補：Context11応答のmain統合、空集合Handoffの停止線、原典Source/実Providerの独立性
+
+本章は第20章の最新実装状態を更新し、TEI参照モデル完全移植のRMT P0-R1を進めるために**どのClaimを補強でき、どれを補強できないか**を明確化する。E Route（examples/xtea-lowcode の order_entry.recent_orders、SQL status=:status）、W Route（reference/workspace の :from）とC Route（Web Reference実PostgreSQL）は引き続き別のSource・SQL・Provider・Scope。優先度はE Product Function→実Query/SQL→実物理Provider→Header Rows→Function Contextで変更しない。新Parser/Context Engine/Scenario SSOT/Workflow Host/Authorityは設けない。
+
+### 21.1 TT-56はDraft二件からmainの単一Gateへ統合済み
+
+旧第20.1節の「#3326 Draft／#3324並行候補」は**現在地が変わった**。[main merged #3354](https://github.com/hat47x/tei-platform/pull/3354)が既存context_gate.pyに両者の限定成果を統合し、旧#3324/#3326を**closed/unmerged**に整理した。重複した2つのGate／独立Expected正本を作らない。実際の構成は**11件のTEI CLI read-only Reply**（元の9＋全Indexモードの source-index＋Focused semantic-validation inspect）、独立Required 3 Validation、Rule Canonical・Relation・Definition SourceとそのLoader/Source Index/Fingerprintの相互照合、及び**32件の合成Consumer対照**。固定HEAD 0ab2b99f028a867da6681239f8b79691b9a877b4 の[専用CI #42391707962](https://github.com/hat47x/tei-platform/actions/runs/42391707962)と[Health #42392009764](https://github.com/hat47x/tei-platform/actions/runs/42392009764)はcompleted/success。現在main tools/reference-issue-test-ability/context_gate.pyにも source-index-all／inspect-validation を確認した。
+
+この前進は**必要と先に決めた公開合成3 RuleのScopeに限定した局所Context Readiness**。32件はCLI応答の合成改変に対するConsumer Controlsであり、製品コードMutant killや未知RuleのAI発見数ではない。結果は引き続き boundedReference=partial／testExecutionAdmission=exploration-only／qualifiedTestGeneration=false。CLI11応答を順に取得しただけで**原子的な同一Snapshot／実Providerまたは現在Host Grant／外部Harness完全受領**は証明できない。
+
+RMT E01/02の独立Requiredには、単に名前が見つかっただけでなくQuery/SQLに必要なRule・Relation・Result属性、Source Location、実Loaded/Parsed、Current Selection/Runtime Inputと不在・未取得の区別を含める。source-indexのsubjectモードとindexモードを区別し、正常JSON・一致FingerprintであってもRequired Rule欠落を不適格にする。Context ReadyとProduct Readerのactual SQL/Rowsetは**別票**である。
+
+### 21.2 空集合の証明と外部Handoff受領は二つの義務
+
+[main merged #3353](https://github.com/hat47x/tei-platform/pull/3353)は internal/semantic/completion.go の **EmptyPolicyHandoff＋Targets=[]＋EmptyJustified=true** において、HandoffConfirmed=falseなのに CompletionHolds へ進み得た例を修正した。空集合枝でHoldsに達しても引継ぎ確認がなければ**CompletionUnverified**。Denyによる確定Failsを上書きせず、非空Targetの既存確認を維持する。固定HEAD cf3de9a61906167b3b5cc2fbd246e238a5018d5f の[Health #42394613242](https://github.com/hat47x/tei-platform/actions/runs/42394613242)はcompleted/success。実Go Codeをmainから再読取して当該停止枝を確認した。
+
+| 受注／業務引継ぎ受入の独立対照 | 対象集合の成立 | Handoff受領／判定の資格 |
+| --- | --- | --- |
+| **HC-01 未取得の0件** | 1 Pageが0件、CoverageがPartial/Unknown | 空集合Lを証明しない。Handoff・業務Completionは未確認 |
+| **HC-02 真の空集合・Handoff未確認** | Owner対象Lが空であることを独立に示したと仮定しても、HandoffConfirmed=false | Handoff型はUnverified。空集合の証拠を受領へ代用しない |
+| **HC-03 CallerのHandoffConfirmed=true** | Callerが真を報告し局所EvaluatorがHoldsを返し得る | 実Host/相手方Receipt・受領者・時点・対象集合・Disclosureは**独立に未証明**。G2/Bへ昇格しない |
+| **HC-04 明示Deny／履行失敗** | Independent Expectedが拒否／確定違反を示す | 安易にUnknownへ丸めない。実行前の拒否と実行後の効果不明も分離 |
+| **HC-05 受領だけが新しい／Readが古い** | HandoffとReadが別Epoch・別Scope・別Tenant | 受領フラグがあっても同じ対象集合・Operation/Actorに束縛されるまで完了資格なし |
+
+これは既存#1125 Business Procedure／#2506 Result Slice／#2514 Independent Expected／#1163 Evidenceへの追加検証観点。**Target集合Lの完全性、Predicate実評価、空集合の独立証拠、Handoffの実受領、現在Grantは5つの別義務**とし、証拠がない箇所をCallerのboolで埋めない。Universal Readの0件とHandoff Receiptの0件も同義ではない。
+
+### 21.3 Plugin Providerの選択規則変更・原典暦の値域を実行資格から切り離す
+
+[main merged #3350](https://github.com/hat47x/tei-platform/pull/3350)は、read-only参照のPlugin能力選択を技術名とCapability IDの文字列比較ではなく、既存の SupportsDatabaseProvider に従って解決するよう修正した。参照Worldで宣言12能力・未選択6→4となり、Postgres/Oracleの database-provider が選択されたと数えられる。**以前の6件観測を当時の方式による履歴として保持**し、今回の4件を実Provider binary/Load/接続/SQL ExecuteのPASSへ変換しない。RMTでは sales datasource alias→sales_core→実DB Instance/Target SQL/Subject Grant/Rowsetを独立観測する。
+
+[main merged #3358](https://github.com/hat47x/tei-platform/pull/3358)はX-TEAの暦コードに対応するHoliday Calendar属性のValueDomainを型の宣言値域から解決する。宣言された閉値域外のコードを報告でき、値域宣言がない型は**開集合のまま**で勝手に全拒否しない。固定HEAD c3e39a4a4047bcff834bc3ac1198e0f7091b5e66 の[Health #42393319879](https://github.com/hat47x/tei-platform/actions/runs/42393319879)はsuccess。ただし **HolidayRowsForCalendarへのValueDomain.Validate自動組込み、実Workspace例の値域、旧Driver/実DB/Ownerの意味Parityは未実装**。暦機能は原典R/Bの別受入に割り当て、Eのstatus Header Readの前提にしない。
+
+### 21.4 Raw資料／Tool受領／Journalを別扱いにする
+
+[未統合 PR #3356](https://github.com/hat47x/tei-platform/pull/3356)のCLI dogfooding第2回は、単一ビルド実行物でread-only CLI面を再実測し、**MCP専用Server入口は現状未確認でMCP自体NOT RUN**と記録。CLIが使えることをMCP／外部Harness Tool配送成功とみなさない。一般MarkdownがmanagedFilesにあってもreadByLoader=falseなら、原典Java/SQLや設計Markdownの**Raw存在／実Reader取得／構造解析／TEI Accepted Meaning／Business Source束縛**を別に検収する。[Design Intake Draft #3355](https://github.com/hat47x/tei-platform/pull/3355)のP0-D Raw資料到達性、P0-I既存CLI設計情報、並行P0-M三視点/CRUDとP0-R実Read、P0-C同一Subject/Scope接合を参照する。Raw保持やGraph/SHO出力をE Product ReadのHard Gateにしない。MCPを欠くことはCLI経路でHR-01/02を実証する妨げにはしない。
+
+[main merged #3357](https://github.com/hat47x/tei-platform/pull/3357)はAccess/Issuance/Runlog/EffectlogのJSON Lines読書きを共有実装へ整理し、0600、欠損ファイル空、破損行はエラー＋既読Prefix、という既存の扱いを保つ。これは**改竄検知、厳密な原子公開、効果とReceiptの因果照合を実現したわけではない**。特に「壊れた行より前の記録が返った」をJournal全件正常・当該Command結果確定・再送安全へ昇格させない。第20.3節の[未統合 #3328](https://github.com/hat47x/tei-platform/pull/3328)が扱うExecutor後Recorder/Stage書込み失敗と組み合わせ、当該AttemptのRecord/Stage/実DB Receipt/別Connection Oを独立確認する。#1174のRC-03/05は引き続き未受理。
+
+### 21.5 次の一試行・実証済み境界・停止位置
+
+| 順 | Owner／既存試験の前進 | 今回の判定 |
+| --- | --- | --- |
+| **P0-I：Required Context** | #3354 main、11 Reply/32局所対照の限定PASS | 3 Rule Scopeの局所検査は達成。全Required Closure/実行時Grant/Consumer受領は未資格 |
+| **P0-R：実Product E Read** | #2586 HR-01/02、Query定義とBuildBrowse表示解決 | **未達：mainのCLI PatternBrowse分岐はBuildBrowse Viewを返すが実Provider Rowsetを呼ばない**。Query実Byte→Bind→physical Readerが最初の欠落 |
+| **P0-B：Completion／Handoff** | #3353 main、空集合Handoffの誤Holds防止 | 実Read全L、外部受領、同Attempt Host Scope、Owner Meaningは未資格 |
+| **P0-Effect/Recovery** | #3155単一Resourceの実PG別読取、#3328未統合の効果不明修正 | RMT二入口の全Effect K/O、実Journal crash/再送、Business Bは未資格 |
+| **原典Meaning/Target** | #3350 Provider選択規則、#3358暦値域、#3357 Journal整流 | 旧Windows Driver実挙動とOwner受理、別Target/Host同値性は未資格 |
+
+この章で**E Product SQL実行、実Header/Lines Rowset、旧X-TEA Windows Driver、実Host/MCP/SHO、Owner正式意味受理は新たに実施していない**。C Route隔離PGはReferenceの有限成功、Provider選択は宣言解決、Context11 Replyは限定候補取得。G1/G2はUNQUALIFIED。次は#2586のE Route Query実SQL＋status→実PG Reader→Function Data Context／Consumer一試行を、#1163同一Attempt Packetと#2514独立Expectedで実証。その後に明細全L・Handoff/Disclosure・二入口保存前拒否・実K/O/業務Bへ接続する。新Go/Fixture/Scenario/Hostの第二正本は追加しない。
+
+今回の変更は本RMT計画Markdown 1ファイルのみ。変更前HEAD fc8f8b83f4f1b82ab1920027ce8529bb15b19250 の[Health #42391972484](https://github.com/hat47x/tei-platform/actions/runs/42391972484)はcompleted/success。**新HEADのCIは別結果が出るまでPASSとしない**。
