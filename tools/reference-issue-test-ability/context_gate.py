@@ -14,12 +14,14 @@ import json
 from pathlib import Path
 
 COMMANDS = ("commands", "version", "workspace-files", "catalog", "inspect",
-            "source-index", "trace", "requirements", "validate")
+            "source-index", "source-index-all", "inspect-validation", "trace", "requirements", "validate")
 ENVELOPES = {
     "workspace-files": "tei.cli.workspace-files/v0",
     "catalog": "tei.cli.model/v0",
     "inspect": "tei.cli.inspect/v0",
     "source-index": "tei.cli.source-index/v0",
+    "source-index-all": "tei.cli.source-index/v0",
+    "inspect-validation": "tei.cli.inspect/v0",
     "trace": "tei.cli.trace/v0",
     "requirements": "tei.cli.requirements/v0",
     "validate": "tei.cli.validate/v0",
@@ -28,6 +30,24 @@ TARGET = {"kind": "semantic-data", "id": "sales.order"}
 REQUIRED_SOURCE = "semantic/sales/order.tei"
 # A test-only independent required set, NOT a claimed Workspace/Domain closure.
 # Function/Business/Rule dependencies are deliberately still unqualified.
+# Fixed independent obligations for the *public, synthetic* Rule slice exercised
+# by #3304. They are not inferred from Catalog or Scenario Expected, and do
+# not purport to enumerate all Function/Business/Requirement dependencies.
+REQUIRED_VALIDATION_SOURCE = "semantic/sales/validation.tei"
+FOCUS_RULE = {"kind": "semantic-validation", "id": "sales.order_line.line_number_positive"}
+FOCUS_RULE_CANONICAL = {
+    "id": "sales.order_line.line_number_positive",
+    "kind": "positive",
+    "attribute": "sales.order_line.line_number",
+}
+FOCUS_RELATION = {"kind": "semantic-relation", "id": "sales.order.lines"}
+
+REQUIRED_VALIDATIONS = (
+    ("sales.order_line.quantity_positive", "positive"),
+    ("sales.order.lines.line_number_unique", "relation-unique"),
+    ("sales.order_line.line_number_positive", "positive"),
+)
+
 MISSING_CLAIMS = [
     "independent-required-closure: Function/Business/Rule/Procedure",
     "source-parser-role-and-accepted-meaning",
@@ -69,6 +89,196 @@ def load(folder: Path) -> tuple[dict[str, dict], list[str], dict[str, dict]]:
         except (OSError, UnicodeError, ValueError) as exc:
             failures.append(f"{name}: {type(exc).__name__}")
     return docs, sorted(failures), byte_evidence
+
+
+
+def required_validation_slice(docs: dict[str, dict]) -> tuple[dict, list[str]]:
+    """Bound one *independently named* Rule set to existing Catalog and Index.
+
+    This is a consumer of resolved TEI operations, not a duplicate DSL reader.
+    Both replies may remain individually parseable and claim the same
+    fingerprints while omitting a sibling required by this test obligation.
+    """
+    problems = []
+    managed = docs.get("workspace-files", {}).get("result", {}).get("managedFiles", [])
+    if not isinstance(managed, list):
+        managed = []
+    source_files = [x for x in managed if isinstance(x, dict)
+                    and x.get("path") == REQUIRED_VALIDATION_SOURCE]
+    source_state = ("missing" if not source_files else
+                    "ambiguous" if len(source_files) != 1 else
+                    "loaded" if source_files[0].get("readByLoader") is True else
+                    "not-loaded")
+    if source_state != "loaded":
+        problems.append("required-rule-source:" + source_state)
+
+    catalog = docs.get("catalog", {}).get("result", {}).get("entries", [])
+    if not isinstance(catalog, list):
+        catalog = []
+    index_reply = docs.get("source-index-all", {})
+    if index_reply.get("mode") != "index":
+        problems.append("required-rule-index:wrong-mode")
+    index = index_reply.get("result", {})
+    if not isinstance(index, dict):
+        index = {}
+    refs = index.get("references", [])
+    if not isinstance(refs, list):
+        refs = []
+    artifacts = index.get("artifacts", [])
+    if not isinstance(artifacts, list):
+        artifacts = []
+    sources = [a for a in artifacts if isinstance(a, dict)
+               and a.get("path") == REQUIRED_VALIDATION_SOURCE]
+    if len(sources) != 1 or not isinstance(sources[0].get("fingerprint"), str) or not sources[0]["fingerprint"]:
+        problems.append("required-rule-artifact:missing-or-ambiguous")
+
+    rule_states = []
+    for rule_id, kind in REQUIRED_VALIDATIONS:
+        subject = {"kind": "semantic-validation", "id": rule_id}
+        entries = [entry for entry in catalog if isinstance(entry, dict)
+                   and entry.get("subject") == subject]
+        if len(entries) != 1:
+            catalog_state = "missing" if not entries else "ambiguous"
+        elif entries[0].get("ambiguous") is True or entries[0].get("detail") != kind:
+            catalog_state = "ambiguous-or-kind-mismatched"
+        elif entries[0].get("sourceStatus") != "indexed":
+            catalog_state = "not-indexed"
+        else:
+            catalog_state = "canonical-catalogued"
+        if catalog_state != "canonical-catalogued":
+            problems.append("required-rule-catalog:" + rule_id + ":" + catalog_state)
+        # Definition Reference is an actual operation output, not proof of
+        # Owner acceptance or semantic completeness of every other Rule.
+        definitions = [ref for ref in refs if isinstance(ref, dict)
+                       and ref.get("subject") == subject
+                       and ref.get("role") == "definition"
+                       and ref.get("artifactPath") == REQUIRED_VALIDATION_SOURCE]
+        wrong = [ref for ref in refs if isinstance(ref, dict)
+                 and ref.get("subject") == subject and ref not in definitions]
+        index_state = ("definition-indexed" if len(definitions) == 1 and not wrong else
+                       "missing-or-wrong-role-path" if not definitions else "ambiguous")
+        if index_state != "definition-indexed":
+            problems.append("required-rule-index:" + rule_id + ":" + index_state)
+        rule_states.append({
+            "subject": subject,
+            "declaredKind": kind,
+            "catalog": catalog_state,
+            "definitionReference": index_state,
+        })
+    # A bounded, independent test obligation: *not* the full Workspace or
+    # Function closure. No inference from absence in a generic partial Query.
+    observation = {
+        "scope": "fixed-public-reference-only",
+        "source": REQUIRED_VALIDATION_SOURCE,
+        "sourceRead": source_state,
+        "requiredCount": len(REQUIRED_VALIDATIONS),
+        "rules": rule_states,
+        "status": "bounded-present" if not problems else "blocked",
+        "productRuleMeaningAccepted": False,
+        "functionalDependencyClosure": "unqualified",
+    }
+    return observation, sorted(set(problems))
+
+
+
+def focused_structure_slice(docs: dict[str, dict]) -> tuple[dict, list[str]]:
+    """Cross-check one real Rule's Canonical/Source and one related Relation.
+
+    Assesses independently selected obligations using *existing* operations.
+    The three-Rule indexed existence check stays in required_validation_slice.
+    Neither is an independent model parser nor a general Closure resolver.
+    """
+    errors = []
+    entries = docs.get("catalog", {}).get("result", {}).get("entries", [])
+    if not isinstance(entries, list):
+        entries = []
+    relation = [e for e in entries if isinstance(e, dict)
+                and e.get("subject") == FOCUS_RELATION]
+    if not relation:
+        relation_state = "missing"
+    elif len(relation) != 1 or relation[0].get("ambiguous") is True:
+        relation_state = "ambiguous"
+    elif relation[0].get("parent") != TARGET:
+        relation_state = "parent-mismatch"
+    else:
+        relation_state = "matched"
+    if relation_state != "matched":
+        errors.append("required-relation:" + relation_state)
+
+    inspection = docs.get("inspect-validation", {}).get("result", {})
+    if not isinstance(inspection, dict):
+        inspection = {}
+    canonical = inspection.get("canonical")
+    if inspection.get("subject") != FOCUS_RULE:
+        canonical_state = "subject-mismatch"
+    elif not isinstance(canonical, dict):
+        canonical_state = "missing"
+    elif any(canonical.get(k) != v for k, v in FOCUS_RULE_CANONICAL.items()):
+        canonical_state = "kind-or-attribute-mismatch"
+    else:
+        canonical_state = "matched"
+    if canonical_state != "matched":
+        errors.append("required-rule-canonical:" + canonical_state)
+
+    sources = inspection.get("sources", {})
+    if not isinstance(sources, dict):
+        sources = {}
+    refs = sources.get("references", [])
+    artifacts = sources.get("artifacts", [])
+    all_idx = docs.get("source-index-all", {}).get("result", {})
+    if not isinstance(all_idx, dict):
+        all_idx = {}
+    all_refs = all_idx.get("references", [])
+    all_artifacts = all_idx.get("artifacts", [])
+    for obj in (refs, artifacts, all_refs, all_artifacts):
+        if not isinstance(obj, list):
+            errors.append("required-rule-source:invalid-index-shape")
+    if not isinstance(refs, list):
+        refs = []
+    if not isinstance(artifacts, list):
+        artifacts = []
+    if not isinstance(all_refs, list):
+        all_refs = []
+    if not isinstance(all_artifacts, list):
+        all_artifacts = []
+    owned_refs = [r for r in refs if isinstance(r, dict)
+                  and r.get("subject") == FOCUS_RULE]
+    indexed_refs = [r for r in all_refs if isinstance(r, dict)
+                    and r.get("subject") == FOCUS_RULE]
+    indexed_artifacts = [a for a in all_artifacts if isinstance(a, dict)
+                         and a.get("path") == REQUIRED_VALIDATION_SOURCE]
+    current_artifacts = [a for a in artifacts if isinstance(a, dict)
+                         and a.get("path") == REQUIRED_VALIDATION_SOURCE]
+    if (inspection.get("sourceStatus") != "indexed" or
+            len(owned_refs) != 1 or len(indexed_refs) != 1 or
+            owned_refs[0] != indexed_refs[0] or
+            owned_refs[0].get("artifactPath") != REQUIRED_VALIDATION_SOURCE or
+            owned_refs[0].get("role") != "definition"):
+        ref_state = "missing-or-inconsistent"
+        errors.append("required-rule-source-reference:" + ref_state)
+    else:
+        ref_state = "same-definition-reference"
+
+    if (len(current_artifacts) != 1 or len(indexed_artifacts) != 1 or
+            current_artifacts[0] != indexed_artifacts[0] or
+            not isinstance(current_artifacts[0].get("fingerprint"), str) or
+            not current_artifacts[0]["fingerprint"].startswith("sha256:")):
+        artifact_state = "missing-or-mismatched"
+        errors.append("required-rule-source-artifact:" + artifact_state)
+    else:
+        artifact_state = "same-indexed-artifact"
+    state = {
+        "scope": "one independently required public Rule and Relation",
+        "rule": FOCUS_RULE,
+        "relation": FOCUS_RELATION,
+        "canonical": canonical_state,
+        "relationState": relation_state,
+        "definitionReference": ref_state,
+        "sourceArtifact": artifact_state,
+        "status": "bounded-present" if not errors else "blocked",
+        "allFunctionBusinessDependenciesClosed": False,
+    }
+    return state, sorted(set(errors))
 
 
 def assess(docs: dict[str, dict], failures: list[str] | None = None) -> dict:
@@ -125,6 +335,7 @@ def assess(docs: dict[str, dict], failures: list[str] | None = None) -> dict:
         values = [
             docs.get("catalog", {}).get("result", {}).get(key),
             inspected.get(key),
+            docs.get("inspect-validation", {}).get("result", {}).get(key),
             docs.get("trace", {}).get("result", {}).get(key),
             docs.get("validate", {}).get(key),
         ]
@@ -152,12 +363,18 @@ def assess(docs: dict[str, dict], failures: list[str] | None = None) -> dict:
     diagnostics = val.get("diagnostics")
     diagnostic_count = len(diagnostics) if isinstance(diagnostics, list) else None
 
+    rule_slice, rule_blockers = required_validation_slice(docs)
+    focus_slice, focus_blockers = focused_structure_slice(docs)
+    blockers.extend(rule_blockers)
+    blockers.extend(focus_blockers)
     blockers = sorted(set(blockers))
     return {
         "schema": "tei.reference.design-context-readiness/v0",
         "issue": "hat47x/tei-platform#3262",
         "subject": TARGET,
         "requiredSource": REQUIRED_SOURCE,
+        "requiredValidationSlice": rule_slice,
+        "focusedStructureSlice": focus_slice,
         "observations": {
             "localReplies": f"{len(docs)}/{len(COMMANDS)}",
             "requiredSourceRead": source_state,
@@ -259,6 +476,170 @@ def manifest_selftest(docs: dict[str, dict]) -> dict[str, str]:
     return cases
 
 
+
+def required_validation_selftest(docs: dict[str, dict], baseline: dict) -> dict[str, str]:
+    """TT-56: keep Reply parseable and fingerprints *unchanged*.
+
+    Mutations are isolated in-memory copies of already received CLI responses.
+    They neither modify Source nor claim an actual external Tool delivery test.
+    """
+    if baseline["requiredValidationSlice"]["status"] != "bounded-present":
+        raise AssertionError("reference Rule slice not present in genuine CLI result")
+    tests = {}
+    required = {"kind": "semantic-validation",
+                "id": "sales.order_line.line_number_positive"}
+
+    def check(name: str, mutated: dict, needle: str) -> None:
+        report = assess(mutated)
+        if (report["boundedReference"] != "blocked"
+                or report["testExecutionAdmission"] != "blocked"
+                or report["qualifiedTestGeneration"] is not False
+                or report["requiredValidationSlice"]["status"] != "blocked"):
+            raise AssertionError(f"{name}: false qualified {report['blockers']}")
+        if not any(needle in reason for reason in report["blockers"]):
+            raise AssertionError(f"{name}: wrong blocker {report['blockers']}")
+        # We intentionally did not touch the CLI's apparently matching
+        # World/Index fingerprints; their equality never proves completeness.
+        original = docs["catalog"]["result"]["worldFingerprint"]
+        if mutated["catalog"]["result"]["worldFingerprint"] != original:
+            raise AssertionError("negative must preserve declared fingerprint")
+        tests[name] = "blocked"
+
+    source = copy.deepcopy(docs)
+    source["catalog"]["result"]["entries"] = [
+        e for e in source["catalog"]["result"]["entries"] if e.get("subject") != required
+    ]
+    check("TT56-catalog-sibling-omitted", source, "required-rule-catalog")
+
+    source = copy.deepcopy(docs)
+    entry = next(x for x in source["catalog"]["result"]["entries"]
+                 if x.get("subject") == required)
+    entry["subject"]["kind"] = "semantic-data"
+    check("TT56-kind-misclassified", source, "required-rule-catalog")
+
+    source = copy.deepcopy(docs)
+    source["source-index-all"]["result"]["references"] = [
+        x for x in source["source-index-all"]["result"]["references"]
+        if x.get("subject") != required
+    ]
+    check("TT56-index-definition-omitted", source, "required-rule-index")
+
+    source = copy.deepcopy(docs)
+    for ref in source["source-index-all"]["result"]["references"]:
+        if ref.get("subject") == required:
+            ref["role"] = "derived"
+    check("TT56-wrong-source-role", source, "required-rule-index")
+
+    source = copy.deepcopy(docs)
+    for ref in source["source-index-all"]["result"]["references"]:
+        if ref.get("subject") == required:
+            ref["artifactPath"] = "semantic/sales/unrelated.tei"
+    check("TT56-wrong-artifact-binding", source, "required-rule-index")
+
+    source = copy.deepcopy(docs)
+    duplicate = next(x for x in source["catalog"]["result"]["entries"]
+                     if x.get("subject") == required)
+    source["catalog"]["result"]["entries"].append(copy.deepcopy(duplicate))
+    check("TT56-duplicate-required-rule", source, "required-rule-catalog")
+
+    source = copy.deepcopy(docs)
+    for entry in source["workspace-files"]["result"]["managedFiles"]:
+        if entry.get("path") == REQUIRED_VALIDATION_SOURCE:
+            entry["readByLoader"] = False
+    check("TT56-rule-source-not-loaded", source, "required-rule-source")
+
+    # Negative control for over-rejection: removing an *unrequired* Catalog
+    # item must not invalidate this explicitly bounded three-Rule obligation.
+    source = copy.deepcopy(docs)
+    before = len(source["catalog"]["result"]["entries"])
+    source["catalog"]["result"]["entries"] = [
+        x for x in source["catalog"]["result"]["entries"]
+        if x.get("subject") != {"kind": "semantic-type", "id": "std.money"}
+    ]
+    if len(source["catalog"]["result"]["entries"]) >= before:
+        raise AssertionError("independent non-required subject not in fixture")
+    if assess(source)["boundedReference"] != "partial":
+        raise AssertionError("TT56 over-rejected unrelated subject omission")
+    tests["TT56-outside-required-scope-remains-partial"] = "bounded-scope-maintained"
+    return tests
+
+
+
+def focused_structure_selftest(docs: dict[str, dict], baseline: dict) -> dict[str, str]:
+    """New discrimination not already covered by the three-Rule/Index tests."""
+    if baseline["focusedStructureSlice"]["status"] != "bounded-present":
+        raise AssertionError("real read-only Rule/Relation structure was not matched")
+    controls = {}
+
+    def check(name: str, change, reason: str, structure_blocked: bool = True) -> None:
+        mutant = copy.deepcopy(docs)
+        change(mutant)
+        report = assess(mutant)
+        if (report["boundedReference"] != "blocked" or
+                report["testExecutionAdmission"] != "blocked" or
+                report["qualifiedTestGeneration"] is not False or
+                not any(reason in x for x in report["blockers"])):
+            raise AssertionError(f"{name}: false qualified {report['blockers']}")
+        if structure_blocked and report["focusedStructureSlice"]["status"] != "blocked":
+            raise AssertionError(f"{name}: structure erroneously accepted")
+        # Mutation intentionally leaves all declared World/SourceIndex
+        # revision strings alone except the explicit mixed-revision control.
+        controls[name] = "rejected"
+
+    def without_relation(d):
+        e = d["catalog"]["result"]["entries"]
+        d["catalog"]["result"]["entries"] = [
+            v for v in e if v.get("subject") != FOCUS_RELATION
+        ]
+
+    check("TT56-related-relation-omitted", without_relation, "required-relation:missing")
+
+    def duplicate_relation(d):
+        e = d["catalog"]["result"]["entries"]
+        target = next(v for v in e if v.get("subject") == FOCUS_RELATION)
+        e.append(copy.deepcopy(target))
+
+    check("TT56-related-relation-ambiguous", duplicate_relation, "required-relation:ambiguous")
+
+    def unrelated_parent(d):
+        v = next(x for x in d["catalog"]["result"]["entries"]
+                 if x.get("subject") == FOCUS_RELATION)
+        v["parent"] = {"kind": "semantic-data", "id": "sales.other"}
+
+    check("TT56-related-relation-parent-changed", unrelated_parent, "required-relation:parent-mismatch")
+
+    def wrong_attribute(d):
+        d["inspect-validation"]["result"]["canonical"]["attribute"] = "sales.order_line.other"
+
+    check("Rule-canonical-attribute-changed", wrong_attribute, "required-rule-canonical:")
+
+    def wrong_kind(d):
+        d["inspect-validation"]["result"]["canonical"]["kind"] = "relation-unique"
+
+    check("Rule-canonical-kind-changed", wrong_kind, "required-rule-canonical:")
+
+    def missing_inspected_ref(d):
+        d["inspect-validation"]["result"]["sources"]["references"] = []
+
+    check("Rule-inspection-definition-reference-omitted", missing_inspected_ref,
+          "required-rule-source-reference:")
+
+    def mismatched_artifact(d):
+        for x in d["inspect-validation"]["result"]["sources"]["artifacts"]:
+            if x.get("path") == REQUIRED_VALIDATION_SOURCE:
+                x["fingerprint"] = "sha256:" + "0" * 64
+
+    check("Rule-inspection-SourceIndex-artifact-differs", mismatched_artifact,
+          "required-rule-source-artifact:")
+
+    def mixed_inspect_revision(d):
+        d["inspect-validation"]["result"]["sourceIndexFingerprint"] = "stale-index-only-rule"
+
+    check("Rule-inspection-mixed-revision", mixed_inspect_revision,
+          "fingerprint:stale", structure_blocked=False)
+    return controls
+
+
 def transport_selftest(folder: Path) -> dict[str, str]:
     """Corrupt real received CLI JSON bytes, not just an in-memory decoded dict.
 
@@ -316,13 +697,17 @@ def main() -> None:
     report = dict(baseline)
     report["syntheticControls"] = controls
     report["additionalManifestControls"] = manifest_selftest(docs)
+    report["requiredValidationControls"] = required_validation_selftest(docs, baseline)
+    report["focusedStructureControls"] = focused_structure_selftest(docs, baseline)
     report["transportByteControls"] = transport_selftest(args.folder)
     report["localReplyEvidence"] = byte_evidence
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"PASS: bounded Design Context {baseline['boundedReference']}; "
           f"{len(controls)} base controls + {len(report['additionalManifestControls'])} manifest "
-          f"+ {len(report['transportByteControls'])} byte-reply rejection controls; "
+          f"+ {len(report['transportByteControls'])} byte-reply rejection controls "
+          f"+ {len(report['requiredValidationControls'])} bounded Rule-slice checks "
+          f"+ {len(report['focusedStructureControls'])} Rule/Relation Canonical checks; "
           "test generation qualification withheld")
 
 
