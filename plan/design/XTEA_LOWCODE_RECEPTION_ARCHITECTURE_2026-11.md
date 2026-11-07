@@ -957,7 +957,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | 参照Storeの拒否符号 | 実装済み（`ReferenceFailure`が`record-missing`・`record-exists`・`value-rejected`・`rule-rejected`を持ち、`FailureOutcome`が結末名へ写す。CLIは`COMMAND_REFUSED`で返す） |
 | フックの宣言外呼出し | 実装済み（`hook.Declared`が`uses`外の能力呼出しを`HOOK_UNDECLARED_CALL`で拒否。無宣言は拒否。`hook.CommandCaller`が宣言済みの呼出しをCommand境界へ委譲し、認可・取引・効果照合・記録を継承する） |
 | 暦の宣言 | 実装済み（`calendar`の`fiscal-year starts month`・`week starts`・`business-day excludes`と、`period`の`calendar`。`CALENDAR_*`・`PERIOD_*CALENDAR*`の検証） |
-| 期間と暦の投影 | 実装済み（`view`のApplication投影に`periods[].calendar`、テキスト出力に行を追加） |
+| 期間と暦の投影 | 実装済み（`view`のApplication投影に`periods[].calendar`、テキスト出力に行、Studioの「期間」表に列を追加） |
 | 採番の契約 | 実装済み（`internal/numbering`。桁・接頭辞・検査数字・桁あふれの宣言。桁あふれの既定は停止、`wrap`は宣言時のみ。検査数字は1文字） |
 | 通貨の率と方向 | 実装済み（`internal/currencyrate`。中値・買値・売値の宣言、換算方向の宣言、システム通貨の率1、行の欠落と重複の検出） |
 | 税の適用期間と端数 | 実装済み（`internal/taxrate`。適用期間の両端、`floor`・`ceiling`・`half-up`・`half-even`の宣言、行の欠落と重なりの検出） |
@@ -1001,6 +1001,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
 
