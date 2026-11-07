@@ -77,3 +77,34 @@ T1不合格例：候補は作ったがRuleに届かない、正答Holdoutの混�
 **最小ループ**：Source／Ownerを読む→不足の最初の一辺だけIssueへ戻す→修正→同一独立Required/Expectedで再検査→Evidence Digest/実BinaryとAttempt→Qualification更新。main PR Healthや新Artifactを他ブランチへ無断流用しない。
 
 **既存Owner**：#3262はContext/Closure、#2605/TAI #168/#2509は外部Skill/Harness、#1180はScenario SSOT、#2514は独立Expected/Mutant、#3223はテストパターン/カバレッジ、#1163はEvidence、#3267はBOM、#2831はSelf-Build、#1119はGate総括、#2018は効率・コスト。重複Issueや第二Source Readerを作らない。
+
+## 6. 再資格化の最初の実Source試験（2026-11-07／T0.6）
+
+### 6.1 重複実装を避けた新たな成熟差分
+
+main [#3284](https://github.com/hat47x/tei-platform/pull/3284) と [#3296](https://github.com/hat47x/tei-platform/pull/3296) は、9つの実CLI応答を既存の`context_gate.py`で読み、計**16種類の受領・欠落・陳腐化・資格保留を識別する限定Reference**まで拡張した。これは「**Tool応答を後から改変した場合**」の拒否力であり、**生成済みテストを実行するまでに現実のWorkspace Sourceが変化した**負例とは異なる。旧#3293の第二`packet.py`は重複と判明して閉鎖済みであり、再導入しない。
+
+この差分は製品Design Context API、Plugin Contract、Source Resolver、Test Oracleへ機能を足すのではなく、既存実行入口`scenario generate → run`のSource/Lock版固定の判別力を**隔離した実ファイル改変**で確認する。
+
+| 新実験 | 固定根拠 | 新たな操作と独立Expected | Claim Ceiling |
+| --- | --- | --- | --- |
+| **T0.6-S1** Canonical Source TOCTOU | 元Scenario・World Fingerprint、合成`semantic/sales/order.tei` | 一時Workspaceで旧Plan生成・正常pinned実行 → `externalId`の型を変更 → World Fingerprint変化確認 → **旧pinned実CLIの拒否** → 原byte復元 | 使用時のWorld Pin差異の検出のみ。Source全件/Parser/Role/Owner/Provider閉包は非証明 |
+| **T0.6-S2** Plugin Lock Byte TOCTOU | 元Scenario・Workspaceの`.tei/plugin-lock.json`の実byte | 別一時Workspaceで旧Plan生成 → JSONと意味的に等価な空白変更 → Lock SHA差確認 → **旧pinned実CLIの拒否** | Lock byte pinが機能したのみ。Plugin/Providerの**実Consumer Load・Runtime Link・組合せConformance**は非証明 |
+| **T0.6-S3** A→B→A | Source原byte、変更履歴と旧Plan | Bの間は拒否、Aへの**byte完全復元時に旧Planが再び成立**する事実を独立に記録 | 「中間版が存在しなかった」「古いOwner承認・Grantが現在も有効」は**推論禁止**。Observation epoch・Effect/Current Stateは別Owner |
+
+**区別する実行段階**：CLI JSONの局所受領・Source Inventory・Parser消費、ScenarioのWorld/Lock byte Pin、Provider実Read/操作、実Host/現在Grant、BOMの検証済み組合せ、Owner Meaningは、同じ`verified`へ畳まない。Sourceが一瞬BになってAに戻った場合の履歴を、content-based fingerprintのみで証明することはできない。
+
+### 6.2 Verified Composition BOMとテスト生成の依存関係
+
+[#3267](https://github.com/hat47x/tei-platform/issues/3267)の標準Verified Composition BOM（構想）では、Reusable Pattern／exact resolved tuple＋Lock／組合せMatrix／**同じAttemptの実Link・Load・Invocationと独立Expected**／Qualified BOMを区別する。今回の`Plugin Lock fingerprint differs`は**そのうちLock byte差分の失効検出だけ**である。
+
+後続T1のPattern推薦では`Required Capability`/Traitの原子的Fulfillment、Provider/Consumer/Target/Versionの適用述語を明記する。最初の組合せ2×2を試す際も **個々のProvider PASSから4行の組合せPASSを合成しない**。組合せと実行したTest Case、Current Grant/Scope、Target/Artifact/RuntimeをEvidenceとして束縛し、ReleaseとOwnerは別判断。BOM製品機能・PluginテストMatrix・Trait強制ValidatorをT0.6の前提にはしない。
+
+### 6.3 Gateと未解決
+
+- **T0.6独立Exit**：実ビルドTEI CLIで、Source／Lockの実物改変が旧Planを拒否し、復元時のA→B→Aでは履歴を自動的に証明できないことを記録。2種類の改変はrunnerの廃棄する**公開合成Workspaceコピーだけ**。main SourceやSecret/外部Providerには触れない。
+- **後続P-1b1**：同じSubject/Scopeで実Source Identity・Parser Read・Function/Business/Rule/Relation closureを束縛し、Source Root移動・リンク/パス同名異byte・Source内容は同じだがParser/Toolchainが異なる反例を追加。中央Scannerや第二Source/Meaning Resolverを作らない。
+- **後続T1**：必要Subjectの欠落/NULL・一意・時間/金額Unit・グラフ多重性・HTTP例外/再試行とProvider partial/emptyを**独立Holdout**として分母に入れ、同一Instruction Budget下でAI生成CaseのC0/C1・実Mutant kill/survive・誤Acceptedを測定。既存#3273のT1 Case Ownerを複製しない。
+- **後続T2／T3**：Plugin組合せBOMは#3267、DB/実Resource Readは#2586/#3238、Consumer Disclosureは#2515/#2516、SHO保存/再開とData/Function/Business図面は既存SHO/Modeler Owner、TEI実Self-Build L3は#2831へ渡す。同じ実行Runから取れない資格はunknown/not-runのまま維持する。
+
+**計測値の扱い**：新CIが走る前の本節は**試験実装・期待結果の計画**であり、実測成功ではない。後からPR exact HEAD、main、実Binary、Artifact、失敗理由をそれぞれ記録する。既存の局所C0=10.1%を新testのC1や全Requirement母集団のCoverageに換算しない。

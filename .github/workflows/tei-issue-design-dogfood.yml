@@ -274,7 +274,12 @@ jobs:
           report = json.loads(p.read_text(encoding="utf-8"))
           assert report["claimCeiling"].startswith("bounded-test-ability")
           assert len(report["tested"]) == 6
-          assert len(report["mutantsKilled"]) == 6
+          assert len(report["mutantsKilled"]) == 8
+          assert report["discriminationCounts"]["realCliFixtureExpectedPlanSourceAndLock"] == 6
+          assert report["discriminationCounts"]["independentObligationAndOracle"] == 2
+          assert report["discriminationCounts"]["actualProductEvaluatorCodeMutant"] == "not-run-in-this-probe"
+          assert report["mutantsKilled"]["changed-real-canonical-source"] == "real-cli-stale-world-rejected"
+          assert report["mutantsKilled"]["changed-real-plugin-lock"] == "real-cli-stale-lock-rejected"
           assert report["coverage"]["goC1BranchCoverage"] == "unmeasured"
           lines = [
               "## TEI Test Ability — 独立検証基準（#2514 / #1180）",
@@ -283,9 +288,11 @@ jobs:
               "- 正常Validation、業務拒否、synthetic Browse、synthetic Observationを別々に観測。",
               "- **実CLIで検出**：重複Key、誤ったScenario Expected、変更済Fixture pin、改変済生成Plan（4種）。",
               "- **独立の検査義務で検出**：必須Step欠落、常時satisfiedの偽検証基準（2種）。",
+              "- **実Workspaceの一時コピーで検出**：Plan生成後のCanonical Source改変／Plugin Lock改変による旧pinの拒否（2種）。",
+              "- Source A→B→Aで元pinは再び有効になる。中間履歴、Owner受理、Plugin実Load、現在Grantは未証明。",
               f"- Go局所statement C0: `{report['coverage']['goC0StatementCoverageForCmdTei']}`。",
               "- **C1は未計測**。全要求Coverage/NFR/実DB/GUI/正式意味受理も未評価。",
-              "- 結果は一時JSONとActions Logに記録。全製品のテスト能力証明ではない。",
+              "- 結果は限定JSONとActions Artifactに保持。全製品のテスト能力証明ではない。",
           ]
           print("\n".join(lines))
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
