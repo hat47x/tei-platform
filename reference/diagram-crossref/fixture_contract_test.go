@@ -13,8 +13,8 @@ import (
 )
 
 type fixture struct {
-	SourceRevision string                       `json:"sourceRevision"`
-	Entities       []struct{ ID, Label string } `json:"entities"`
+	SourceRevision string                                `json:"sourceRevision"`
+	Entities       []struct{ ID, Label string }          `json:"entities"`
 	Relations      []struct{ ID, From, To, Kind string } `json:"relations"`
 	Functions      []struct {
 		ID                   string `json:"id"`
