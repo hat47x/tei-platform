@@ -200,3 +200,64 @@ OKF §10のtype: Attested Computationは独立Conceptにruntime、typed paramete
 **今回の着手順**：K0→K1→K2をP0。K3は並行設計・Ownerの異形Consumer試験を流用。K4は初回H2/H3四SessionやTEI *.tei.md Parser正常受入の前提条件にせず、隔離/実Reader/実Receipt経路が整ってからP1で独立検証。K5の自動公開・逆取込・自動実行はP2以降の明示採否に保留。新しい製品Gateや独自Schemaを先行固定しない。
 
 **Ownerと終了判定**：SHO #18がOKF文書/Reader/Writer、TEI #2621が *.tei.md Reader移行、TEI #1251/#951がPlugin Contract/選択、TEI #2497/#2507が意味保存型付き投影、TEI #2514/#1163が独立Expected・実入力、TAI #514がAttested Computation/Harness、SEI #820とSUI #3392が各DomainのExport/Importと開示境界を所有する。本節は統合案の参照地点であって、第二の受入正本ではない。上記K0〜K5の実験と正式Owner受理、実Plugin/Provider/SHO Writer/Attester/配布は**NOT RUN**。
+
+---
+
+## 10. 2026-11-08 他チャット横断深化：未整理Item・受領閉包・部分失効の実証
+
+**位置づけ**：§9のK0〜K5と既存OK-01〜16へ、TEI「機能整理」・Plugin-first・Design Contextテスト、SUI/SHOの実相互運用負例から得た追加の判別条件を渡す。新しい正式OKF Schema、Item taxonomy、Parser、Runner、Authority、Evidence Registry、追加Case正本は作らない。以下の新試験は本計画としては **NOT RUN**。
+
+### 10.1 未整理ItemをConceptへ強制変換しない
+
+- **native captureとexchangeを分離**：TEI/SUIでItemを未分類・未読・カード化前のRaw情報として取り込み、後から開いて整理できる。ItemがTask/Action/Event/Observation/DocumentのどのRoleを持つかは未決でもよい。Task/Action/Eventは別々の意味Role/Trait候補であり、OKFのtype文字列やMarkdown見出しから業務作用・発生済みEvent・自動Workflowを推論しない。Item Identity/内容Version/出典とRole候補・複数のCanvas/Tree/Island/View Occurrenceを分離する。
+- **OKF形式との境界**：v0.2 Conceptは非空typeを要求する。未分類Raw Itemを無言で確定業務Conceptに変えず、初回はnativeに原形保存し、選択した範囲だけ別の派生Concept Draftにする。後続のA/B候補は (A) Rawをnative保持して非公開・OKF交換対象外、(B)明示的な包装種別 type: Unclassified Item（TEI/SHOの仮ラベルでOKF標準typeでも業務受理でもない）＋status: draftとして出す。Bで元byte/未決/出典/未知属性を保てないならAへ戻す。OKFの自由型をTEIの正式分類へ読み替えない。
+- **同一Itemの複数Canvas所属**：Canvasを分割しつつItem Identity 1／Occurrence Nを許容する。複数出現、Conceptの置き場所、Markdownリンク数から独立の元Source N件や親子・所有権を推論しない。座標・Island所属/ネスト・Tree順序・多重有向Edge・保留を別々に保ち、許可された型付き参照またはLossとして表現。非公開Item/Edge/Countの有無をLoss説明自体から漏らさない（TEI #2497/#2507、SUI #3392、SEI #820）。
+- **逆Import停止線**：OKF Conceptのtypeや見出しはnative Item Roleの受理、Taskの実施、Action Dispatch、Event観測ではない。受領Conceptは元Source参照付き候補として隔離し、正規Binding・Owner判断・現在Grant・独立Expectedまで元Worldに自動書戻し0。
+
+### 10.2 ProducerからConsumerまでの一往復を分解して検収する
+
+**既存の局所実証と上限**：
+- SUI [#3396](https://github.com/hat47x/sui-sensemaking/pull/3396)は実buildContextProjectionで、元Source/島所属/座標が異なる二Worldから同じ公開Projectionを生成できる非単射を3件で検証。SUI [#3397](https://github.com/hat47x/sui-sensemaking/pull/3397)は可視・公開許可済みの内容だけを通常Markdown草稿にする5件の限定実試験を持つ。欠けたSourceや未公開Count/Island、OKF sources/verifiedを捏造しない。DraftでありOKF Concept Export成功ではない。
+- SHO [Draft #21](https://github.com/hat47x/sho-composer/pull/21)の合成354 UTF-8 bytesはWindowsのcheckout EOL変換で368 bytesとなりRaw identityが一致しなかった。合成FixtureのLF固定で2 OS Reader回帰を確認したが、実SUI Producer→SHO CLIが**同一の一File**を受け渡すH1は最新のRunner CIでSKIP。偽Checkout起動前拒否PASSを実H1 PASSにしない。SHO ReaderがMarkdown link_open 0件と示しても元のSource 0件/全資料取得とはいえない。
+- TEI [#3262](https://github.com/hat47x/tei-platform/issues/3262)の既存実CLI9応答を使う試験用Context Gateは [merged #3284](https://github.com/hat47x/tei-platform/pull/3284) / [#3296](https://github.com/hat47x/tei-platform/pull/3296) に限定のsynthetic/transport **計16負例**を持つ。正式Product Design Context Query、外部Harness Replyの全受領、OKF全Concept閉包を証明しない。
+
+**K1/K2の観測点**：①Producer実Source Read（workspace/manifest/realpath/revision/actual bytes/allowed scope）、②P: Data→可視Projection（どのRole/Relation/SourceとDisclosureが現れたか）、③Q: Projection→Markdown/OKFの実生成byte・index・Concept集合・Loss、④OS/File/Distributionの実物理byte/digest/EOL、⑤Consumerが実Readしたbyte/Parser profileと受領範囲、⑥独立Required集合に対するF0/F1/F2・Meaning・Disclosure判定、⑦Owner Promotionと現在用途での独立の資格を別票にする。Pで失われたSource/IslandはQで自動復元できず、①未読なのに③〜⑤がPASSしても原資料確認済みにはしない。
+
+**受領閉包**：#3262のRequired→Discovered→Loaded→Parsed→Bound→Returned→Receivedを再利用。成功したCLI call、JSON parse、index列挙、モデルRevisionや古いPASSを全件証明にしない。独立Required集合・ordered pages・end marker・各part digest・実Consumer receipt、workspace/manifest identity（別Workspaceに同Canonical IDがある場合）を照合不能ならpartial/unknownのまま停止。表示等価なEOL正規化と原byte同一性を別判定。Workspace識別不足の修正OwnerはTEI #3181/CLI契約側であり、本書は別Readerを設けない。
+
+### 10.3 何が変わったかで部分再資格化を決める
+
+| 変化 | 再確認すべきもの | 自動扱いしないもの |
+| --- | --- | --- |
+| 原Source移動・同bytes別Root・A→B→A | realpath/Source identity/引用Occurrence/現在用途Review | byte一致による旧受理・旧Referenceの復権 |
+| Item本文・Claim・業務Ruleの変更 | 該当Meaning/依存投影/Domain Lint | 無関係な全Concept/全Pluginの失効 |
+| Canvas座標のみ変更 | 幾何解釈/当該Viewの投影 | 原本文/Value Domain/業務判断の無条件失効 |
+| 島所属・Tree親・Edge変更 | Topology・関係・B型説明・P/Q Loss | 本文同じだからWorld不変とする |
+| 非公開Item/Count変更 | 内部のDisclosure再審査 | 他Recipientへの存在・件数の開示 |
+| OKF verified/status/期限変更 | 文書のtrust/freshness・原Source時点照合 | TEI Meaning・Host Grant・Attester歴史の改変 |
+| 未選択Plugin/Generator変更 | Catalog候補/必要ならBuild closure A/B | 無関係Targetの一律rebuild・再受理 |
+| 選択済みProvider/Toolchain/Attester変更 | 実Consumed Lock/Artifact/Receipt/独立Expected | 同Source hash/旧CI PASSの無条件流用 |
+
+これは新Invalidation Engineでなく、TEI #2600/#1251/#2497、SHO #4、SUI #3392、SEI #820の既存判定の接合票。OKF stale_after単独ではSource移動・A→B→A、Owner撤回、Toolchain差替を検知できない。World Fingerprint、Model Revision、Artifact Revision、Actual Input、Recipientの同一性を別扱いとする。
+
+### 10.4 OKFの知識BundleとPlugin BOM・Runtime Receiptを分ける
+
+| 対象 | 契約 | 避ける誤認 |
+| --- | --- | --- |
+| OKF Knowledge Bundle | Markdown Concept/index/logをまとめる**交換・配布単位** | path由来Concept ID≠Item/Meaning/Document Identity、index≠必要集合完全 |
+| TEI Plugin Bundle / Resolved BOM | 選択Capability/Provider/Implementation/Targetの**構成・実Build閉包** | Plugin ID≠Capability ID≠Business ID、未選択Provider混入なしを実Build確認 |
+| Actual Artifact / Run Receipt | 実Generator/Input/Target/Host/Attemptと実Resultの**観測** | OKF verified、Recipe、形式PASSは実Build/Attested Runの証拠でない |
+
+共通Pluginは高凝集のBundleで配布してよいが、F0/F1/F2とAuthorityの判定を別にし、discovered→selected→build-consumed→artifact-included→runtime-invokedのどこまで達したかを同一Scenarioで表示。初回K2はCLIとSHO/Studioの実二call-siteで同じread-only Contract・Provider Pinを消費することを証明する（#1251/[#3277](https://github.com/hat47x/tei-platform/pull/3277)）。OKFのAttested Computation Run ReceiptはBundle**外**のruntime artifactであり、TEI既存Host/Evidenceへ委譲する。
+
+### 10.5 P0実行票・既存テストへの割当
+
+- **K0-A：Required固定**。公開可の1 Workspace・1 Function/受注Ruleと、必要Data/Function/Business/Relation/Source/Rule集合を独立に定義。元Sourceの実読取・manifest identity・World・Plugin Lockを確認し、未探索を0件として合格させない。既存#3262のContext Gateと#2514の独立Expectedを再利用。
+- **K1-A：小さなBundle**。許可済みSourceから3 Conceptとroot indexのread-only派生を別Rootに作る。未分類Raw Item/既存*.tei/SHO正本を上書きしない。F0合格と「原Sourceを読んでいないのでMeaning/Provenance未資格」の負例を同時に保持。
+- **K1-B：既存SUI/SHO引継ぎ**。OKF型付けより前にSUI #3397→SHO #21の実一File H1、Raw 354 bytes、Checkout/EOL、元出典未読、Producer/Consumer境界を検証。現CIのSKIPをPASSにしない。K1-AをこのH1の成功までブロックしない。
+- **K2：二Consumer**。CLIとSHOまたはStudioで同じContract/Bundle/Provider版を実消費し、F0形式・F1引用・F2 Domain・原byte・未取得/非開示・全応答受領を独立判定。G1b通常Markdown Reader成功はOKF F0 Validator実成功とは別。Plugin OFF/AI OFFでも通常Markdown編集を維持。
+- **Case帰属**：OK-03/12（Raw未整理/未知type）、OK-08（0件/部分/秘匿）、OK-10/11（同Item複数Canvasと同文異World）、OK-05/15（座標のみ失効）、OK-09/13/16（Provider選択と非干渉）、OK-14（外部文書の実行指示非実行）。SUI SU-OKF01/03/04/08/10、SHO #4/#18/#21、TEI #3262/#2514、TAI #514の独立Expectedへ関連付け、新番号・第二PASS台帳は増やさない。
+
+**即停止**：独立Requiredがないcomplete、Loss不明のroundtrip、未分類Itemの自動意味分類、文書typeを見たAction自動Dispatch、raw変換を視覚等価で隠すこと、秘匿Count/ID漏えい、verified→Owner受理/Grant自動昇格、未選択PluginのBuild/init混入、実Receipt・Result未読のAttested PASS。書込み/外部送出/自動Import/恒久公開は既存Host・Ownerの別資格まで行わない。
+
+**証拠資格（現在）**：SUI投影非単射・通常Markdown Draft、SHO合成ReaderのOS別回帰、TEI Context試験用Consumerの負例は**別々の局所実測**。OKF Validator実装、OKF Bundleの実2 Consumer、SUI→SHO実One-File H1、元Source→OKF→Consumer全件、SHO Writer、SEI Import、TEI Meaning受理、Attester/Provider Effectは**NOT RUN/UNQUALIFIED**。今回の変更は文書とOwnerへの受渡しのみ。
