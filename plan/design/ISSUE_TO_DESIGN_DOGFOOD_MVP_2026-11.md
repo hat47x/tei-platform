@@ -250,3 +250,71 @@ Provenanceは観測した各Replyの実Bytes/sha256と評価したSubject/Source
 - 期待どおりの重要な負の結果：`qualifiedTestGeneration=false`、`externalHarnessDeliveryComplete=null`。CLIが正常応答したことは**全Required Source/業務Meaning/実Provider/実Harnessでの受領/Grant**の確認ではない。
 - Artifact `tei-issue-test-ability`、ID `13573890404`（当該Runから7日間保持）は、限定`context-readiness.json`、既存`test-ability.json`、元の`report.json`、C0 profileを保存。ファイルそのものが永続Evidence Serviceや製品の検証正本とはならない。
 - **注意**：上記は最初のPR HEADの実測。証拠追補によってGit commitは変わるため、最終HEADのmerge/main実行は別Runを確認する。異なるRun/Headの結論を合算して完了宣言しない。
+
+<!-- design-intake-crosslane-20261108 -->
+## 14. 横断設計取込：Raw Itemから意味候補・実Consumerまで（2026-11-08）
+
+### 14.1 取込原則と責務
+
+この節は、既存Issueと設計書の間で失われやすい意味・証拠の継ぎ目を整理する。新しいMeaning正本、Importer、Parser、Registry、Resolver、Runner、Host、Gateを作らない。対象は #2619 Everything is Data、#3262 Design Context、#2621 Authoring、#1125/#1126 三視点、#2586 実Read、#1180/#2514 Scenarioと独立Expectedの既存Ownerである。
+
+設計取込は一括変換・一括受理ではない。未整理の情報をRaw Itemとして忠実に保管する経路と、必要な用途についてRole付きの意味候補を生成する経路を併設する。原文の保管、構文の読取、構造候補の成立、Ownerの意味受理、選択Providerの実行、外部Consumerへの完全受領は異なるClaimである。Action/Event/Taskは普遍的な基底型と決めず、Itemに適用する役割・Relation・時点として表せるかをまず検証する。Rawのまま全文閲覧できればよく、巨大Itemの全内容をカード化する必要はない。
+
+TEIはSource/Reference/Revision、Structural Candidate、Accepted Meaning、依存とEvidenceを表す。SEIは問い・未知・矛盾・次のProbeを扱う。CLI/MCP/Harnessは実際に読んだ範囲、結果完全性、Grant/Disclosure、Consumer受領を検証する。AIの推論やTool到達だけでOwner AcceptanceやHost認可に昇格しない。
+
+### 14.2 共通の取込照合票
+
+| 領域 | 必須の区別・不変条件 | 担当と停止条件 |
+| --- | --- | --- |
+| Raw/Authoring | 原bytesまたは形式忠実性、Source occurrence/locator、版、読取時点、非公開情報、Draft/Requiredの別 | #2621/#2823。意味Role未選択ならRawとして保管し、実行しない |
+| Role/Meaning | Subject identity、Structure Candidate、Role/Operator pin、Source location、曖昧な対応・Owner受理 | #988/#2620/#267。構文や同名の一致を意味受理としない |
+| Data/Function/Business | Key/Relation/History、Function Data Context/Operation、Actor/DFD/手作業/起動契機を分離 | #1125/#1126/#1129。三図・CRUDは同一SourceからのProjectionで実Effectではない |
+| 標準Dataと標準表現 | Data topology・grain・relation occurrenceとRepresentation topology・Function-owned instance・loss・選択epochを別管理 | #2497/#2506/#2507/#2500。Chart集計やDAG→Treeの曖昧な編集を拒否 |
+| Canvasと媒体 | 同Itemの複数Canvas表示は表示occurrence。多重辺のidentity/direction、Source時間/取得epoch/Media clock/文書位置/単位を区別 | #1124/#997/#2495。配置変更をDomain mutationにしない。TTSを原音源と同一視しない |
+| Plugin/Tool | Contract/Provider/Bundle、selected/resolved/linked/invoked/authorized、atomic Trait・Verified BOM | #951/#1251/#3267/#3278。存在・選択・CI成功を実Consumer適合に代用しない |
+| 実Read/Write | Function→実Query SQL bytes/args→実Provider Rowset/Completeness→Consumer。書込はtyped Intent/現Grant/Receipt/独立Read | #2586/#1174/#2516。参照PG成功や旧Receiptで製品実効果を主張しない |
+| 検証とHarness | Required、Loaded、Executed、Observed、Qualified、独立Expected、Coverage分母、Source/Test/Build版とTool完全受領 | #3262/#1180/#2514/#1163。C0はstatement、C1はbranchの別計測。未知を不存在にしない |
+
+特に、Canvasの分割によって同一Subjectを複数表示しても、Subject/Business identityやHistoryは増えない。Graphの同名別Node、同じNodeの複数描画、多重有向辺、非公開・省略Edgeを区別し、選択同期をそのまま更新対象決定に使わない。表示に失われる情報がある場合はread-onlyまたは明示的な逆写像契約を要求する。
+
+### 14.3 Source形式と保存の責務
+
+2026-11-06にTEI向けの標準Authoringを *.tei.md へ移す方針が決まった。一般の .md は独立し、旧 *.tei は段階移行する。#3030は移行計画、Draft #3031はParser未束縛の *.tei.md を無音で読み飛ばさない暫定Guardであり、正式Markdown ParserやSource span/Role lowering/意味移行は実装済みとしない。
+
+初期検証は、説明表と正式定義表の同形、Root内RequiredとRoot外Raw Draft、旧形式の継続、Parser未束縛時の明示停止、原文の移動・装飾変更・A→B→A、同名異bytesの保存後再Readを比較する。Draft保管成功とBuild Sourceとしての実消費を一つの資格にしない。SHOの文書受理とTEI Owner Meaningは独立に判定する。
+
+### 14.4 実装順：P0-MとP0-Rは並列、接合はP0-C
+
+| 段階 | 固定する対象と操作 | Exit・未充足時の止め方 | Owner |
+| --- | --- | --- | --- |
+| P0-I Raw/Context | 公開 reference/workspace の semantic-data:sales.order。Inventory、Loader、実CLI、Required Source/Role/Rule/Relation差分 | JSON/schema正常でも未取得のRole/Sourceをunknownへ。独立Required無しで全体Completeを主張しない | #2621/#2823/#3262 |
+| P0-M 三視点 | 同一Source/Meaning/RevisionのData/Function/Business図、CRUD表、標準表現へのread-only投影 | 同名Node・多重Relation・人手Procedure・CRUDの宣言と実効果を混同しない。Provider実Readを先行Gateにしない | #1124/#1125/#1126/#2497 |
+| P0-R 製品実Read | order_entry実Function、Productで選択したQuery/SQL bytes/params、Provider Rowset、Scope/Claim | 別Sourceの tei_web_scoped_orders_reference PG成功をProduct recent_orders.sqlの実Read資格へ流用しない | #2586/#2622/#2506 |
+| P0-C 接合 | P0-MとP0-Rの同一Subject/Function/Query/Revision/grain/Scopeを結び、Consumerへ渡す | 別World・別epoch・部分受領を統合PASSへ合算しない。実Consumer Disclosureを別観測 | #3262/#2516/#1163 |
+| P1 Plugin dogfood | CLI inspectとStudio Bridgeから、同一Pinned Contract/Providerをそれぞれ実呼出 | 旧CLI直結やMockの共通利用は不合格。別Provider選択でもCoreに新固定Kindを増やさない | #1251/#951/#1824 |
+| P1 Edit/Effect | 可逆単一occurrenceのみPreview→Intent→現Grant→実Write→Receipt/独立Read | 部分・集計・同名別対象のWrite、commit unknownの新ID盲再送は拒否 | #2500/#1174 |
+| P2 Consumers | SHO保存・再開、MCP/Harness完全受領、異Target/異Domainへの投影 | 保存成功やローカルJSON正常だけで外部受領・全Source Closure・Owner意味受理にしない | #2516/#2509/#2831、SHO担当 |
+
+P0-MとP0-Rは別々に着手可能だが、P0-Cが成立するまでは同一シナリオの統合成功を主張しない。#1119の既存Gate G0〜G4は変更しない。#1251のPlugin inspector縦切りは並行し、既存Service Contractと独立Expectedを利用する。
+
+### 14.5 既存Scenarioへ引き渡す判別観点（新Test SSOTではない）
+
+- 未整理Item・説明表・Role未選択の *.tei.md を有効なFunctionとして実行しない。一方、Raw本文は欠落なく保存・閲覧できる。
+- 同一Itemの複数Canvas表示、DAG→Tree、同名Node・多重有向RelationでSubject/EdgeのidentityとSourceへの追跡を失わない。
+- partial Rowset、非可逆Chart集約、単位不適合Slider、時計の変換が未定義のAudio/Videoは、不正なWrite/同一軸の断定を拒否する。
+- 正常Schema・同Fingerprintでも必須Rule/Relationだけ抜けた応答を不完全と判定する。個別Readが成功しても共同Snapshotを推定しない。
+- Pluginの発見・選択・実Link・実Invoke・現Grantの未充足を別々に表示する。Tooling側の限定PASSを生成RuntimeのPASSへ広げない。
+- 同じLogical IDや似たRow IDでも、別SQL/別Provider/別Rowsetを製品Readとして取り違えない。0行、格納NULL、未選択、非公開、unknownを別状態とする。
+- Source/Test/Build/Operator/Consumerの変更・A→B→Aで旧Test PASSや旧Receiptを現在資格へ再利用しない。
+- Tool途中切断、SHO保存後別Read失敗、外部Referenceの同名異内容差替えをローカル成功から隠さない。
+- C0満点でもC1未計測、欠落Requirementと未検証NFRを別の未Coveredとして示す。既知Case実行T1-Aと、盲検の未知不足を探すT1-Bは分ける。
+
+これらは#1180/#2514が独立Expectedと実Scenarioを管理するための要求入力である。本節を新たなCase正本にしない。
+
+### 14.6 計画・資格の現在位置
+
+採用する設計方向は、Raw保全から選択Roleへ、三視点とFunction内表現の同Source投影、CLI/StudioのPlugin-first、Context/実Read/Consumer/独立検証の同一Attempt照合である。実装優先は#3262のRequired Rule/Source閉包、#2586のProduct実Read、P0-M/P0-Cの接合であり、#1251のinspect実Providerを並走させる。
+
+Itemの正式Role体系、Canvas API、Media clock実装、*.tei.md正式Grammar、Go以外のPlugin ABI、全Required Closure、AI未知Rule発見、実Target/HostとOwner Acceptanceは保留する。
+
+**この追補のEvidence ceiling**：既存チャット、GitHub Issue、mainの設計・実装記録に基づく文書更新のみ。新しいGo/PG/Studio/SHO/Browser/Harness実行や実Provider/本番Grant/正式Meaning受理は行っていない。各ClaimはOwnerのexact Source・Build・Run・Consumerと独立Expectedによってのみ昇格させる。
