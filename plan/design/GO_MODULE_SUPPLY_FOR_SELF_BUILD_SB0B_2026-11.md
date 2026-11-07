@@ -90,6 +90,19 @@ ModuleSupplyManifest
 
 同じ理由で、`go.sum`の存在は何も証明しない。`go.sum`は**照合の期待値**であり、期待値と実際のbyteを突き合わせた記録が無ければ、期待値だけが残る。
 
+### 3.4 既存実装との接続（2026-11-07 追補）
+
+本節の契約案を、次の二つの実装が別々に持つ。**いずれもmainへ未統合であり、本稿はそれを採用済みと扱わない。**
+
+| 実装 | 担当範囲 | 状態 |
+| --- | --- | --- |
+| `gobuilder`の`corrupt-supply`分類（[PR #3144](https://github.com/hat47x/tei-platform/pull/3144)） | §4の分類変更。`go list -e`の既知文面から供給破損を分ける | Open。`gobuilder`の単体試験と実観測を伴う |
+| `tools/reference-go-module-supply-verify`（[PR #3142](https://github.com/hat47x/tei-platform/pull/3142)） | §3.1・§3.2の照合部分。`go.sum`の`h1:`を独立に再計算し、実際に選択されたModuleだけへ適用する。宣言したが選択されないModuleは不合格にしない | Open（`main`との競合あり） |
+
+二つは重ならない。前者は「どの打ち手か」を選ぶ分類、後者は「供給が記録と合うか」の照合である。§5の`ResolveSourceClosure`変更は、どちらも行っていない。
+
+PR #3142から本稿の§3.1へ取り込むべき差分が一つある。**照合の対象は`go.mod`の宣言Moduleではなく、`go list`が実際に選択したModuleに限る。** `cmd/tei`は17件を宣言し12件を選択するため、宣言全体を対象にすると選択されない5件の欠落で正しい供給を不合格にする。本稿の§3.1の`entries[]`は「供給した」の記録であり、照合の分母は実選択側で決める、と読むべきである。
+
 ## 4. 分類の変更（SB-0a → SB-0b）
 
 SB-0aの四分類に、供給の失敗を区別する一項を足す。
@@ -156,7 +169,8 @@ SBP-25〜26は本稿の実測（§2.3）から直接作った負例であり、�
 ## 9. この文書の終了条件
 
 - [ ] SBP-24〜30のownerと実装先を各Issueへ同期
-- [ ] `corrupt-supply`分類の実装と単体試験
+- [x] `corrupt-supply`分類の実装と単体試験（[PR #3144](https://github.com/hat47x/tei-platform/pull/3144)。Open、main未統合）
+- [ ] `go.sum`照合の実選択への限定を採用し、§3.1のmanifestへ接続する（[PR #3142](https://github.com/hat47x/tei-platform/pull/3142) が候補。Open、mainとの競合あり）
 - [ ] 外部Module入力つきclosure digestの別値化と、既存照合値への非流用の回帰試験
 - [ ] 供給manifestを伴うL1 packetの一枚目
 - [ ] 別Go版・別OSでの再観測
