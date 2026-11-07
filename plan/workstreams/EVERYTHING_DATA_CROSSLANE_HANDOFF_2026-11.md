@@ -269,6 +269,25 @@ H0/H1と異質領域の要件探索は並行可能。H2/H4の実Effect資格は�
 
 **次の受入境界**：旧「Receipt/Resource用の観測種別を新設する」要件は達成済みとし、`resource-observed`を**実Target/Version/Provider Route/Read Scope/Cohort・Function Context・現在Consumer**へ束縛する。観測対象が1件なら、未観測の関連Dataまで一般化しない。#1163同一Attempt、#2514独立検証基準、#2586実Read、#1174実Host/Effectの既存Ownerへ引き渡す。第二Receipt ABI/永続化Engine・一律書込み後全Provider Read強制は採用しない。正式Owner受理とProduct Gateは未達。
 
+#### Functionに属する標準表現型：構造の表示をActionの実行資格へ変換しない（2026-11-07）
+
+**他チャットの標準データ構造／表現型整理との接合**：DBテーブルやX-TEAのXF機能型から独立した**標準データ構造**（単一Record・1:N Relation・階層・Graph・時系列・集合等）を、標準の**表現型**（パネル／タブ／テキスト／単一・複数選択／ON-OFF／スライダー／テーブル／ツリー／ファイル系／Graph等）へ写像する。表現型の**型定義・テンプレート**はFunctionから独立に再利用可能だが、意味を持つ**表示・選択・入力のOccurrenceはFunction Definition/InstanceのContext内でのみ成立**する。表現型だけの宣言からFunction、Owner意味、編集Capability、Target・Grantを発行しない。表示形態が同一でもFunction Purpose・粒度・選択対象・演算/Rule・開示・現在性は別。
+
+**既存構造の利用に必要な識別**：`Structure identity/Relation occurrence`、`Function/Context Instance`、`Representation occurrence/Renderer Pin`、`Selection epoch/Selected Subject`、`Typed Intent/Action Offer`、`Host Grant/実Effect`を別のIdentityとして扱い、実行前に必要な対応を明示する。Graph→TreeやAggregation表は非単射なら自動書戻しを禁止し、同じ見た目でもOrigin・NULL/partial・bag/order・Relation向き/多重性を維持できた範囲だけ意味保存を主張。既存[#2497](https://github.com/hat47x/tei-platform/issues/2497)のProjection/逆写像と[#2507](https://github.com/hat47x/tei-platform/issues/2507)のFunction Pattern適用条件を再利用し、新Representation Registryは作らない。
+
+**最新mainで確認された実Productの境界**：[merged #3145](https://github.com/hat47x/tei-platform/pull/3145)の固定Source/実CLI観測では、`function-definition`に`pattern order_entry.preview_order_quote command`が存在するのに、`tei operations`は8件とも`derived`、`summary.declared=0`のまま**宣言Pattern追加の前後で不変**だった（[固定Evidence](https://github.com/hat47x/tei-platform/blob/main/plan/evidence/OPERATION_SURFACE_DECLARED_PATTERN_GAP_2026-11-07/README.md)）。したがって現行のOperation Surfaceを**業務Function/Commandの網羅Catalog**として使わない。逆に宣言`command`を機械的に`read/update`などのOperationへ加えても、Kind/Purpose/適用Ruleの対応は未受理なので、Actionを捏造しない。
+
+[#3143](https://github.com/hat47x/tei-platform/pull/3143)ではCommand結果に`authorizationMode=reference-allow-all/reference-allow-list/external`が実装された（main `internal/command/authorization_mode.go` Blob `a7651fc6f37c6f03a8b62fe398b33644559b6d2e`）。`external`は非Reference Authorizerを選んだ**型分類に過ぎず**、Subject/Action/Resource RuleとCapability Permissionの**両方**を評価した証拠でも、Issuer/Target/Tenant/Commit時の現行権限の証拠でもない。UIで`editable`と表示し`authorizationMode=external`が付いても実Dispatch資格にはならない。
+
+| 一因子だけ変更する公開合成対照 | 保存・拒否すべき判断 |
+| --- | --- |
+| **RP-1：同一Function/同一DataをTable→Tree/Graphで表示** | SourceのIdentity/多重度/選択Subjectと表示変換の損失を比較。非一意なRelation復元、集計GraphのEdge削除はread-only/ambiguousで止める |
+| **RP-2：同一Table/Toggle型を閲覧Functionと確定Functionに配置** | 見た目が同じでもPurpose/Required Rule・Host Grant/Action Offerは継承しない。表示成功・入力可能・型付きIntent・Dispatch可能を別票 |
+| **RP-3：宣言Patternを追加、Operation Surfaceが不変** | `derived`の8件と`declared=0`を「Commandなし／業務機能なし／実行可能」の根拠にしない。Source→実Parser→Function Pattern→Action Offerの消費を[#2586](https://github.com/hat47x/tei-platform/issues/2586)の単一Function縦切りで確認 |
+| **RP-4：同じFunctionを参照Allow-all／外部認可へ切替** | `authorizationMode`表示を採否の根拠ではなく局所観測に保ち、当該Requestに必要な認可Obligationと実Evaluated集合を[#2598](https://github.com/hat47x/tei-platform/issues/2598)/[#1174](https://github.com/hat47x/tei-platform/issues/1174)で照合 |
+
+**計画上の順序と上限**：P0＝同一公開`order_entry` Source/Function/Contextと独立Expectedに対するread-only RP-1〜3の表現忠実度・Pattern消費対照。P1＝Intent/Action Offerの限定対応。P2＝必要と明示したActionだけHost Grant・Receipt・Resource Read・Consumer資格へ接続する。P0で標準表現型の正式Schema/DSL構文を採用せず、データから業務実行責任・操作順序を自動生成しない。表現型の実GUI、宣言PatternのOperation Surfaceへの正式組込み、RP-1〜4の新E2E、Owner意味受理は**NOT RUN／NOT ACCEPTED**。所有範囲は#2497/#2507/#2586/#2598/#1174へ引き渡す。
+
 #### 三領域で破綻しやすい残余
 
 | 比較 | 単一因子だけ変える反例 | 独立Expectedと既存Owner |
