@@ -33,6 +33,10 @@ func runModelCommand(args []string, out io.Writer) (int, error) {
 	root := fs.String("workspace", "", "TEI workspace directory")
 	namespace := fs.String("namespace", "", "optional exact semantic namespace ID")
 	if err := fs.Parse(args[1:]); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			printHelp(out, fs, "model catalog")
+			return 0, nil
+		}
 		return fail("INVALID_ARGUMENT", err.Error(), 2)
 	}
 	if fs.NArg() != 0 || strings.TrimSpace(*root) == "" || *root != strings.TrimSpace(*root) ||

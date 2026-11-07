@@ -61,3 +61,6 @@
 
 # Resume-after-disclosure observations are hashed as raw bytes.
 /plan/evidence/DSH_H6E7_RESUME_AFTER_DISCLOSURE_2026-11-07/** -text
+
+# Autonomy survey output is hashed as raw bytes by its README.
+/plan/evidence/OPERATION_AUTONOMY_DECLARATION_SURVEY_2026-11-07/** -text
