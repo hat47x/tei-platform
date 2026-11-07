@@ -163,3 +163,46 @@
 - **P2**：#3030 `*.tei.md` Reader移行、#267 Shared Acceptance、#1174のHost Effect/Receipt/Resource、#1119の横断検収を実Source/実Targetが接続した範囲で拡張。表示・図面/SHO・事前Cache/BOMの完成をP0のGateにしない。
 
 PoCのコード/合成Fixture/内部CIは採用済みADR-0035の自律開発区分で進め、外部への不可逆効果だけA4で人に確認する。**業務意味のOwner Acceptance**と**HostのCurrent Grant**はなお別の製品資格。元Source byteと読取時点、独立Expected、Plugin/Moduleの版・実Build入力、実Consumer、開示Audienceを常に区別し、同一Attempt/同一時点で確認していない組合せを`qualified`にしない。
+
+
+## 8. 必要Rule閉包と実Tool副作用を別資格とし、T1-Bの入口を狭く実証する（2026-11-08）
+
+### 8.1 正常JSONの「取得できた」は必要Ruleの「揃った」と異なる
+
+[Draft #3324](https://github.com/hat47x/tei-platform/pull/3324) は、既存[main #3296](https://github.com/hat47x/tei-platform/pull/3296)の9実CLI応答・16合成負例に**`inspect-validation`を加えた実10応答**で、`validation.tei`の実Loader読取、Rule/RelationのIdentityと非曖昧性、`positive`検証のCanonical Attribute/Source Anchor、Source Indexの`role=definition`・実Path/FPを比較する差分を実装候補として保持する。正常JSON・World/Index FP一致でも、Rule/Relationだけ省略・複製・別Attribute・Anchor不一致・Loader未読取・異版Indexなら不足。**Tool Replyの一時コピーに作った8負例**は実Harness配送の欠落や実Providerからの全件取得を検証したことにはならない。
+
+| 個別の受入資格 | 必須の実観測 | 欠落・陳腐化したとき |
+| --- | --- | --- |
+| **Protocol/Delivery** | Tool request/response ID・実Byte全体・Schema、ページ順・終了、Model/Consumerの実受領 | parse success、先頭digest一致、`Tool result`件数だけでは`unverified`。#2509/TAI #168が実Harness境界 |
+| **Source/Meaning Closure** | 対象一Ruleの独立Required、宣言Source/Role/Relation→実Loader-read→Parser/Canonical Rule/Attribute/Anchor→実Consumed byteと同じ版 | `validate ok`/空Catalog/同一World FPで代用しない。#3324はこのうちRule単位の局所照合を提案するのみ |
+| **Test Candidate Admission** | 当該Ruleの必要Source・前提・独立期待結果・Known Mutant・既存Scenarioとの重複比較 | `qualifiedTestGeneration=false`は維持。**狭いScopeの手動/探索Candidate評価**と、欠落ゼロの自動生成資格を混同しない |
+| **Action/Disclosure** | Tool Profileで許した正確なInvocation Variantと実argv、実File/Network/Log効果、Current Audience/Grant | Command名や`effect:read-only`から無書込み・無送出を推論しない。非公開資料に対する拒否がない限りT1-B Blind Holdoutは未適格 |
+
+[#3262](https://github.com/hat47x/tei-platform/issues/3262)をDesign ContextのRequired/Observed/不足理由・返却/受領のOwner、[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)をCandidate/独立Expected/判別のOwnerとし、**T1-Bは二段階**とする。(a) Source/Rule Closureが実観測できた狭い一領域について、既知行番号0のような答えをAIに伏せて候補の新規性を測る、(b) 参加者が独立Expected・Required Gap・既知MutantへTool経由で到達できない実OS/Harness拒否と、実Consumerの全Byte受領を測って初めて**盲検適格**にする。aができてもbの未達は合算しない。既に提案済みの行番号0を「AIによる未知条件発見」と計上せず、常時Rejectや誤Expectedの自動合格を禁止する。
+
+[テスト基本設計 Draft #3223](https://github.com/hat47x/tei-platform/pull/3223) のTT-73〜80/81〜88を**追加のテスト正本として複製せず**、既知Case焼直し・偽Mutant kill・C1のC0代用・未知BOMを合格とする誤判定を、この初回実証の独立負例に再利用する。C0相当の局所数値とC1・要件/NFR Coverage・Tool受領・実Rule Closureはすべて異なる分母。未知母集団や欠落Dependencyから`100%`を出さない。
+
+**現時点**：#3324はDraft/未統合・PR作成時点exact-head CI **未確認**で、`qualifiedTestGeneration=false`のまま。#3304の既知T1-Aはmain統合済みだが、**T1-B盲検発見/独立採点、P-1b完全投影、実Harness配送の全件・禁制資料拒否はNOT RUN**。
+
+### 8.2 実CLIのwriteFlagsとOS隔離を連結して検証する
+
+[main統合 #3333](https://github.com/hat47x/tei-platform/pull/3333) は`tei.cli.discovery/v0`の互換な追加欄`writeFlags`に、`view`の`-operation-log`・`-lifecycle-state`を明記した。Goの限定試験で`view -execute`と指定Flagによる実ローカル書込み、指定Flagなしの対照、Discoveryの他Entryに誤記載されないことを確認した。`effect:read-only`は**Canonical Meaningを書き換えない**という限定表現であり、「ローカルファイルも通信も変更しない」という意味ではない。旧Draft[#3302](https://github.com/hat47x/tei-platform/pull/3302)の`excludedFlagNames`をmainの現行契約と混同しない。
+
+**H2/T1-B向け具体的採否**：`tei commands`から安全なread-only Profileを導出する際には`writeFlags`の有無だけでなく、許可するCommand＋Flag集合・完全argv・実File/Process/Network/Session Log・実Tool Resultの受領を照合する。初回は`view -execute`等不要な効果を持つInvocation Variantを参加者Toolから除外し、OS側で禁止Pathと独立Holdoutの拒否を試験する。CLIが広告するVariantだけを禁止しても、Shell/別Tool/子Processが同じFileへ書けない証明にはならない。実OS/Egressは#2515/TAI #232、Tool公開は#2509/#2605/#951、現在Host Grantは#1174で別資格。
+
+[main #3310](https://github.com/hat47x/tei-platform/pull/3310)はAccess Chain v2にRecord全欄のJSONとchainVersionを含めることで、欄追加漏れ・規則版誤認を減らしたが、ハッシュ鎖を**第三者不変性やAuthoritative Permission、現在の外部Egress拒否**へ昇格させない。外部にPinしたHead、観測者Identity、許可された公開投影は別。
+
+### 8.3 Consumerで「表示された標準Data」を実Providerでの利用と混同しない
+
+[main #3334](https://github.com/hat47x/tei-platform/pull/3334) は標準業務Data（休日・税・為替・採番）の`ApplicationView.standardBusiness`とStudio表示を限定実装した。これは[main #3308/#3318](https://github.com/hat47x/tei-platform/pull/3318)のRole/Primitive検証と例Workspaceへの宣言を**Application Consumerへ投影**した実績であり、行データの取得・税率計算・実DB Bind・Wails RPC E2E・本番Hostでの作用はまだ示さない。
+
+Plugin-first Inspectorの[D1 Draft #3292](https://github.com/hat47x/tei-platform/pull/3292)では、`selected Plugin/Provider→actual loaded/linked/invoked Provider→CLI/Studio Consumer`と、UI上のModel Projectionだけを別票とする。値が同じでもBを選択してAを実呼出しした場合は不合格。複数Surfaceの表示が成立しても、実Provider行の完全性、Function Data Context、現在Tenant/Scopeは[#2586](https://github.com/hat47x/tei-platform/issues/2586)の実Read試験に戻す。対応する[Studio ABA Draft #3327](https://github.com/hat47x/tei-platform/pull/3327)の2件の局所Node試験は、A→B→A後の**古いUI応答の不採用**に限定成功であり、実Provider取消・新Consumer資格・Host Effectを保証しない。
+
+### 8.4 次の一回の実行順
+
+- **P0-A（先行できる）**：#3262/#3324の狭い一Ruleで、独立RequiredとRule/Relation/Source Anchorの実Read一致・不一致を実現し、欠落理由を返す。Draft #3324のexact-head Go/CI・現mainとのDiff/実Toolの受信を別判定。単に既知の合成8負例がPASSしただけで`qualifiedTestGeneration=true`にしない。
+- **P0-B（並行準備）**：#2509/#2515/TAI #168で実OS/HarnessのHoldout拒否・`writeFlags`/完全argvと全Tool Reply byte/Session Log Sinkを照合。これが不成立なら盲検資格は保留するが、公開合成DataによるローカルT1-AやP-1b研究は止めない。
+- **P0-C（P0-AとBに適格証拠がある範囲だけ）**：#3273/#1180/#2514のT1-Bで、未予告のRule GapからAI Candidateを生成し、非公開Expected/既知Mutantを独立評価。一回のSessionで新規性と誤採用を同時に判別する。Resultがpartialなら未観測を不合格/成功のいずれにも変えない。
+- **P1別レーン**：#3292の一Inspector実Plugin Invoke、#3334の表示と#2586実Provider readを比較。Plugin/Workbench/BOM全部、`*.tei.md` Reader・Host・OKF本番E2EはP0-CのHard dependencyにしない。
+
+**本節は受入条件の更新のみ**。実P0-A/B/C、新AI候補生成、実CLI/Studio Plugin同一Provider利用、実DB・Host・C1は今回**NOT RUN**。Scenario/Expected/Tool/Host/Policy/Readerの第二実装や新しい総合Gateを設けない。
