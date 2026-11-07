@@ -1,4 +1,4 @@
-# X-TEA標準業務ライブラリの受容設計 — 暦・税・通貨・採番（2026-11）
+﻿# X-TEA標準業務ライブラリの受容設計 — 暦・税・通貨・採番（2026-11）
 
 ## 1. この文書の役割
 
@@ -180,7 +180,7 @@ X-TEAの`setVariant`・`setUserValueOf`は、スクリプトから任意の値�
 
 | 段階 | 実装 | 結合（Data宣言の属性役割） | 確認記録 |
 | --- | --- | --- | --- |
-| 1. 暦の宣言と休日Data | `internal/syntax/semantic_calendar.go`、`internal/validation/calendar.go` | `business-day excludes <data>`（暦が休日Dataを名指す） | [暦の宣言と期間への結合](../evidence/XTEA_LOWCODE_CALENDAR_DECLARATION_2026-11.md) |
+| 1. 暦の宣言と休日Data | `internal/syntax/semantic_calendar.go`、`internal/validation/calendar.go`、`internal/businesscalendar/holiday_binding.go` | `business-day excludes <data>`（暦が休日Dataを名指す）、`holiday-date`（Dataが日付属性を名指す） | [暦の宣言と期間への結合](../evidence/XTEA_LOWCODE_CALENDAR_DECLARATION_2026-11.md) |
 | 2. 期間との結び付き | `period`の`calendar`、`internal/businesscalendar` | 期間が従う暦を名指す（未知・別名前空間は拒否） | [暦からの日付導出](../evidence/XTEA_LOWCODE_CALENDAR_CALCULATION_2026-11.md)、[期間キーの導出](../evidence/XTEA_LOWCODE_PERIOD_KEY_2026-11.md) |
 | 3. 税 | `internal/taxrate` | `tax-applies-from`・`tax-applies-until`・`tax-category`・`tax-value`・`tax-rounding` | [税率の適用期間と端数処理](../evidence/XTEA_LOWCODE_TAX_RATE_2026-11.md)、[Data結合](../evidence/XTEA_LOWCODE_TAX_RATE_BINDING_2026-11.md) |
 | 4. 通貨 | `internal/currencyrate` | `currency-rate-currency`・`-fiscal-year`・`-month-sequence`・`-middle`・`-buying`・`-selling` | [通貨換算の率の種類と方向](../evidence/XTEA_LOWCODE_CURRENCY_RATE_2026-11.md)、[Data結合](../evidence/XTEA_LOWCODE_CURRENCY_BINDING_2026-11.md) |
@@ -227,6 +227,7 @@ X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設�
 - [評価時点の決定性](EVALUATION_CONTEXT_DETERMINISM_2026-10.md)
 - [移行計画](../workstreams/XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)（WP8）
 - [受容要件](../../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md)（RQ-C3）
+
 
 
 

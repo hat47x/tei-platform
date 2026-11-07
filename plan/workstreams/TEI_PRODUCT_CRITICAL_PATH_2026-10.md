@@ -185,7 +185,7 @@ N10は既存Runtimeで同等試験が作れない場合、`unresolved`としてG
 1. Current mainと自分のPR head、他のopen PRの変更path。担当が重なるときは既存branch/PRの所有者を先に確認する。
 2. 新しい契約を導入するならproducer/consumer（Issue番号、API/Schemaの位置）、破壊的変更と負例。
 3. 既存契約を借りるだけならそのSource path、必要な不足点だけを提示。
-4. `tested` / `not-run` / `needs-trusted-checkout` / `actual-target-observed` を明確に区別し、Draft PRのまま未検証統合しない。
+4. `tested` / `not-run` / `needs-trusted-checkout` / `actual-target-observed` を明確に区別し、`not-run` の範囲を制約として記録して統合する。Draftは解除して統合する。
 5. 各milestoneが資格確認されたらmainに統合し作業branchを削除する。他チャットのbranchを無断で書き換えない。
 
 初回の全レーン一斉実装は行わず、**V00→V03→V04→V05→V08** の縦断を最初の到達目標とする。その間に#1125/#1126/#1132のread-only診断を並行して準備し、製品の実働ループが成立してから必要に応じて#1129/#1130/#1131を深める。
