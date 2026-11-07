@@ -1227,3 +1227,53 @@ QueryやGraphを扱う「不在に関するTest Pattern」は、Positive Witness
 - **次の最小P0対象を変更**：TT-56二候補統合ではなく、**TT-105/106**の「不完全Scenario目録から未テスト断定禁止」と「対象Ruleの局所Covered保持／全体Coverage unknown」を、main統合済みの1 Consumerと既存Scenario/独立Expectedの範囲内で実証する。次にTT-107の部分Query/NOT EXISTSへ拡張。T1-BとC1は独立並行。
 
 **到達範囲**：Required 3 Validationの限定同一性照合まで。実行対象が完全に読み込まれた／実Functionに束縛された／外部へ開示してよいという上位資格は付与しない。
+
+
+---
+
+<!-- tei-test-source-and-proof-round2-20261108 -->
+## 27. 2026-11-08 第二ラウンドDogfoodingと実装境界：テスト生成の入力資格・実行経路・証拠の破れ目
+
+**差分の性格**：§18〜26のRequired/Observed/Qualified原則を再定義せず、現行mainで新たに**実観測された不連続箇所**を既存テストOwnerへ割り振る。T1-B（未知Ruleの盲検発見）を新しい机上試験一覧ではなく、実Source Reader・実Toolと独立Expectedを使う一往復に限定する。各PRの状態は本節作成時点のGitHubで確認したものであり、今後のmainへの統合・CI結果を先取りしない。
+
+### 27.1 Sourceを渡したつもりでも、実Loaderが設計を読んでいない
+
+[第2ラウンドDogfood #3356](https://github.com/hat47x/tei-platform/pull/3356) は実TEI CLIの再測定（Go 1.27.3 / WSL2）により、修復済みのD-1/2/4〜8と、未解決の**D-3（`view`のFingerprint）、D-9（設計文書の実Loader不消費）、D-10（JSON形状差）**を分離した。製品独自の開発用MCP Server/Commandは今回確認できず、**CLI実測・MCP NOT RUN**。[#3346](https://github.com/hat47x/tei-platform/issues/3346)、[#3345](https://github.com/hat47x/tei-platform/issues/3345)、[#3347](https://github.com/hat47x/tei-platform/issues/3347)が個別の実現Owner。
+
+- **D-9**：`docs/`・`plan/`をWorkspace sourcesに列挙しても、Markdownは`managedFiles`へ現れるだけで`readByLoader:false`。`model catalog`/`inspect`/`trace`/`source-index`の**意味としては読めない**。Issue本文・設計Markdownの文字列を見たAgentが、TEIのAccepted Canonicalへ自動Bound済みとみなすことを禁止。一般Markdown/Raw Item/`*.tei.md`のTEI Authoring候補/既存`*.tei`は別資格（#2621/#2619）。P0はSource discoverabilityと意味解釈の有無を**実CLI応答で明示**する。Parser導入をここで勝手に決めない。
+- **D-3**：`view -format json`の`semanticFingerprint`は利用Namespaceに限定した指紋で、catalog/inspect/validate等の`worldFingerprint`・`sourceIndexFingerprint`と**対象範囲が異なる**。等しくないこと自体を版漂流と判定せず、同種同Scopeの指紋が揃わない場合にのみstale/unknown。欄の追加/Schema v1は#3345の契約判断。
+- **D-10**：`validate -json`の`diagnostics[]`は二重構造、`requirements.result`は配列、`model catalog`にbuiltin/stdが混在し、`plugin-lock`に独立形式版がある。単一共通`result.object`や全entries=業務宣言をConsumerが仮定すると**偽の欠損/過剰Required**を作る。実Command別Schema/Modeを正規化するのは読み手の明示責務だが、新しい第二意味正本・CLI偽MCP APIは作らない。
+
+### 27.2 「宣言した意味」「実装した作用」「実際のReader」は別の試験対象
+
+| 新たに成立した／計画された実装証拠 | 本テスト設計へ取り込む区別・資格上限 |
+| --- | --- |
+| [main #3358](https://github.com/hat47x/tei-platform/pull/3358) Holiday Calendarの`ValueDomain`検証：型でValuesが宣言されている場合だけ宣言外を拒否、未宣言は**開集合**。Go局所Test 5件 | **値域未宣言≠入力値が不正／全値合法**。さらに`HolidayRowsForCalendar`への自動接続は未実装。単体の`Validate` PASSを実業務読取・型制約の自動強制へ昇格しない（#1126/#2514）。 |
+| [main #3348](https://github.com/hat47x/tei-platform/pull/3348) Hook`RunSequence`位相順・Warn/Refuse停止、[Open #3359](https://github.com/hat47x/tei-platform/pull/3359) `ReadsFor`宣言属性のみに限定する実装候補 | Hookの`reads`宣言→実渡したSource値→Hook呼出→`produces`→Command/Effectは**別辺**。#3359はProviderから値を取得せずCLI/Studio/RunSequenceへ未配線。`on-failure warn`の続行や直接Runner Testを実入口の効果適合としない（#951/#1174/#2514）。 |
+| [main #3357](https://github.com/hat47x/tei-platform/pull/3357) 共通JSONL Read/Append（局所Go試験6件） | 壊れた行で**前方の有効Recordとerrorを同時返却**する。呼出元がerrorを無視してprefixを「全履歴」と判定したら不適格。0600はOwner-only file permissionであって改竄不可能の証明ではない。ChainFileは別規則（#1163/#2515）。 |
+| [Open #3360](https://github.com/hat47x/tei-platform/pull/3360) Stage1生成Driver自身がStage2を実駆動、[Open #3362](https://github.com/hat47x/tei-platform/pull/3362) 自称Invoker digestと実Process Imageの照合 | **限定ローカルGo Referenceの再入性**と`cmd/tei` G4は分離。`stage1 artifact == stage2 invoker`、同Child/Args、artifact一致を別判定。Self-claimの一致だけではL3を主張不可。Open PR局所Go PASSをmain/Release/G4へ加算しない（#2831/#1163）。 |
+| [Open #3363](https://github.com/hat47x/tei-platform/pull/3363) 環境Binding×既存Supports*の参照Matrix。24 Bindings中22 selected、2 missing（`editor.database_workbench`） | **参照Candidate Matrix**と製品Validatorの責務を分離。現Validatorは`editor.sql_analysis`等の限定Checkであり、Reference上missing 2件は製品Rejectや実Plugin Load Failureを意味しない。selected→actual invoked/Artifact/Grantは未確認（#3279/#951/#3267）。 |
+| [Open #3361](https://github.com/hat47x/tei-platform/pull/3361) Product Skill/Harness F0〜F5 | 実Source Read、Required充足、外部Tool完全受領、現在Disclosure、独立Expected、実Effectは6つの観測軸。H3限定Tool Read≠OS強制非漏洩・8,192byte切断解決・56/55 Reply欠落解決。新規H2の一Session実受領・Egressは未実証（#2509/#2515）。 |
+
+### 27.3 独立反例と受入条件 TT-115〜TT-122（既存Fixtureへ参照し、新Scenario SSOTを作らない）
+
+| ID | 一つだけ変える対照入力 | 期待する局所診断・非主張 | 実行Owner |
+| --- | --- | --- | --- |
+| **TT-115 Document is not loaded** | docs/planのMarkdownをsourcesへ追加し管理Fileとして見せるがLoader未読込 | indexed/discoveredと`readByLoader:false`を保持。未解析ContentからRule/Requirement coveredや意味の欠損0を導かない | #3346/#3262 |
+| **TT-116 Fingerprint scope confusion** | `view.semanticFingerprint`とcatalog World/Index FPが異なる | 異Scope FPを単純な不一致Failureにしない。同Scope/同Kind同士の改版/欠損はstale/unknown | #3345/#1163 |
+| **TT-117 CLI shape false absence** | nested diagnostics/array result/builtin entriesの既知正常JSONを渡す | 型付きCommand別Adapterで部分/既存Stdを識別。Schema不一致はunsupported/error、空Requiredにしない | #3347/#3262 |
+| **TT-118 Open versus closed ValueDomain** | 同じ値`C2`を、Values未宣言と`{C1}`明示型へ与える | 前者は制約不宣言・後者は拒否。直接ValueDomain Testと実HolidayRows経路の未接続を別列 | #3358/#2514 |
+| **TT-119 Hook undeclared data leak** | `reads=[A]`のHookへ`A,B`を渡し、`on-failure warn`の合成と比較 | 宣言外Bは拒否。実Runnerが未配線なら実Host非開示としない。produces/実Effectは未証明 | #3359/#1174 |
+| **TT-120 Truncated journal prefix** | JSONL 2正常行+1破損、前2件とReader errorが返る | prefixは保存、全件/効果不在の証拠としては拒否。0600と改竄耐性は別 | #3357/#1163 |
+| **TT-121 Self-build claim substitution** | stage2の自称Process digestだけをStage1 artifactと合わせ、実Invokerが違う | L3拒否。Stage1 artifact→Stage2 process・child/argv・artifactの実独立照合が必要。Reference PASS≠`cmd/tei` G4 | #3360/#3362/#2831 |
+| **TT-122 Plugin Matrix reference-only missing** | 24 Binding中`editor.database_workbench` 2件に対応宣言なし。Validatorは当該Featureを能力照合しない | 参照`missing=2`は保持、製品不適合はunknown/別判断。selected 22も実Load/Invoke資格なし | #3363/#3279 |
+
+### 27.4 次に走らせる最小縦切りと、実装の優先順
+
+1. **P0-R（Source Admission実測）**：#3356 D-9/D-10の現状を同一実Binaryの`workspace-files`/`validate`/`source-index`/`model catalog`で再実行。意図的に管理Markdownだけを加える試験と、宣言3 Ruleの実`*.tei` Sourceを残す試験を対照にし、**未読込FileをTest Requiredへ昇格しない一方、独立に指定済みRequiredを消さない**ことを検収。一般MarkdownのParserをこのテストで勝手に採用しない。
+2. **P0-C（Consumer契約）**：現main [#3354](https://github.com/hat47x/tei-platform/pull/3354)の11実CLI Reply/32合成Controlの同一Consumerから、D-3/D-10のmode/schema/FP Scopeの相違を**誤Missingと誤Completeの両方向**で試験。main pushの独立CI、実Response raw byteとTool Deliveryを別々に確認する。新Readerや第二Packetは追加しない。
+3. **P0-T（T1-B盲検）**：Required Source/Rule/合法Baselineの独立Holdoutが確定して初めてAgentを実行。未知Gapを意図的に非提示にした場合の**候補発見率と、未Loaded/partial時の適切な保留率を両方**採点する。既知T1-Aの行番号0実行は基線として保存し、T1-B発見実証へ加点しない。
+4. **P1-E（副作用・完全性）**：#3357 JSONL prefix+error、#3359 ReadsFor実入口、#3351業務拒否/技術評価不能、#3353空集合Handoffを異なる故障原因として実Target/Observerへ結合。単体Go PASSからProducer/Consumer/Persistedの資格を導かない。
+5. **P1-B（Build・Plugin）**：#3360 stage-driver限定再入性→#3362 process-image→#2831 `cmd/tei`再入契約、#3363 Ref Matrix→#951実選択・Provider Load/Invoke→#3267 exact Tupleの順。各別PRのlocal PASS、Source・Artifact・Target・Granted Runtimeの合成適合を分ける。CLI/Studio双方で同じInspector Pluginを実呼出す最短D1を並行して進める。
+
+**観測済と未実施の境界**：#3357/#3358/#3348/#3354はmain統合済みの限定成果。#3356はドッグフーディング第2ラウンドの実測を報告する**未統合PR**。#3359/#3360/#3361/#3362/#3363は各PRが報告した局所試験/提案であって、本節で新しく実行した試験ではない。TT-115〜122は**受入計画・NOT RUN**。外部H2/H3受領、MCP、T1-B、新しい実Provider/Host、`cmd/tei` G4、Owner Meaning Acceptanceは**未証明**。実施済みの局所結果を合算して全E2E/製品テストCoverageを作らない。
