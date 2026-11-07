@@ -321,6 +321,20 @@ AIによる提案には、意味の正本を変更する権限はありません
 
 AIの自律的な作業と実行権限を区別します。AIがツールを直接呼び出せることを、能力や利用許可の仕組みの代わりにはしません。
 
+### AI-first資格分離の初回実証（2026-11-07、現在mainへの成熟差分）
+
+[AI-first資格・実測対応](design/AI_FIRST_QUALIFIED_INTERFACE_CURRENT_MAIN_2026-11.md)を横断受入の現行基線として参照する。旧[PR #2492](https://github.com/hat47x/tei-platform/pull/2492)は現行mainから大きく乖離しているため、**全追補を機械移植しない**。本節は成熟したAI受入条件だけを移すもので、同PRに含まれる別件の要求・基礎データ・研究の自動採否ではない。既存Owner/ADR・TAI Runbookと競合する第二の正本・中央Agent Hostを作らない。
+
+**三経路**：AIの自由なMeaning Proposalは#267のShared Acceptance、受理済みComputationの型付きParameter Bindは正規実行物・Receipt・独立Attester、Provider等のEffectful Intentは現在Host Grant/OperationID/Receipt・Resource再Readへ分ける。`validation.Accept`局所フラグ・Studio未受理案、PoCの機械検証によるADR-0035 A3、OKFの`verified`、本番のMeaning/Grant/Effectを相互に代替しない。
+
+**現行実績と制限**：DSHからTEI実BinaryへのTool transportは[#3113](https://github.com/hat47x/tei-platform/pull/3113)で探索限定成功。ただしCatalog Tool Result 8,192 byteの途中終了、Tool call 56/Result 55、stdout/stderr付着、参加者の禁制資料へのアクセス拒否未確立により、TAI #168のH2/H3比較適格は**0/4**。[#3200](https://github.com/hat47x/tei-platform/pull/3200)のTool子Process環境実測、[#3153/#3161](https://github.com/hat47x/tei-platform/pull/3161)のDSH Session Log既定送出・再送は、モデルPrompt以外のSinkと実OS隔離を明示確認する根拠。これらは実Providerの全Egress非漏えいやSkill増分価値の証明ではない。
+
+**Tool選択・Source完全性**：[main #3210](https://github.com/hat47x/tei-platform/pull/3210)ではCLI受理53／公開discovery19という実差があり、非公開34は意図的な選択。AI側がCLIで呼べることと公開Tool/Host資格は別。[Draft #3162](https://github.com/hat47x/tei-platform/pull/3162)の`read-only`表示でも`-execute`でローカル書込みがある反例を残す。SourceはRequired→Discovered→Loaded→Parsed→Actual Consumed、ProviderはRequired Target Set→Observed Result Slice→Predicate Evaluation/Scopeを照合。[Draft #3175](https://github.com/hat47x/tei-platform/pull/3175)の同件数異集合／TOP-1／非出力Predicateの有限CIを、実Read全件保証へ拡張しない。[Draft #3156](https://github.com/hat47x/tei-platform/pull/3156)の実Build成功・Source閉包拒否も、artifactと資格を分ける実例として扱う。
+
+**次の小さいDone**：(1) TAI #168／TEI #2509/#2515/#2605で、OSの禁止Source拒否・許可Egress/Tool Result完全性・Answer/Consumer受信を備えた**比較適格H2一Session**を新Trialで成立させる。(2) #2586/#2514/#2506で旧`*.tei`の一Function→実Provider read-onlyと独立期待値を照合する。(3) #3030/#3031で新`*.tei.md` Reader/旧新意味比較、#267で正式Source受理/再Loadへ接続する。(4) #1174/#2598で現在Host Grant・Receipt／Resource観測・業務Outcomeを段階別に確認する。(5) OKF Attested Computationは初回H2/H3比較条件を変更せず、TAI #514の後続read-only PoCへ置く。
+
+**停止線**：新H2/H3の4Session、実非公開Egress拒否、実Providerの全件閉包、`*.tei.md`実Parser、AI正式Meaning受理・本番Host一往復は**NOT RUN／NOT ACCEPTED**。PoC内A3の自律開発を停止させず、対外不可逆効果のA4と製品側資格を別に評価する。[Draft #3179](https://github.com/hat47x/tei-platform/pull/3179)の標準構造・機能内表現のMASTER_PLAN差分とは独立の節とし、merge前に最新mainとの差分を照合する。
+
 ## 作業領域I：周辺技術との連携と本番運用の境界
 
 ### 目的
