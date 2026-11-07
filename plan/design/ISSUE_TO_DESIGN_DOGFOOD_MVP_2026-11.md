@@ -163,3 +163,15 @@ DF-02/03/09はこのPRのCIで**JSON投影に対する合成Mutation**として�
 - **第三段階のEvidence保存**：実Runの`test-ability.json`、`report.json`、`tei-scenario-c0.cover`は従来runner一時領域にあり、Action Artifactとしては保存されていなかった。新commitでGitHub Actionsの公開合成テスト証拠のみを7日間のArtifactとして保持するStepを追加。これ以降のPR HEAD/Runは**別Evidence**とし、上記旧Runの成功を代用しない。
 
 この限定検証が証明するのは**テスト実行と既知負例を見分ける能力**であり、生成AIがIssueから適切なテストを新規生成できる能力ではない。T1では既知HoldoutをSkill/生成Agentへ見せず、同じQualified Sourceから提案されたテストが独立Mutantを判別するかを比較する。実Go EvaluatorコードMutantについては#2514/#3017の独立証拠を維持する。
+
+## 12. テストが存在しても起動されない問題（CI Trigger Closure）
+
+**2026-11-07 の初回Fit/Gap**：実CLI/Scenarioのテスト能力T0をCIで確認できても、Workflowの元の`pull_request.paths`は主にScenario/Validator/Test Toolだけであり、`reference/workspace/**`、`internal/driver/**`、`internal/workspace/**`、`cmd/tei`の全入口、`go.mod/go.sum`、Product Skill本体の変更では**自動起動が保証されなかった**。結果として、一部の実装・構成変更でテストが存在するのに再実行されない「発火Coverage」のギャップがある。これはC0/C1、テストCaseの判別力とは別の品質義務。
+
+- 今回は現行Workflowの`pull_request`と`push`にSource/CLI/Scenario/Skill/Build依存を覆う保守的なpath集合を追加し、`main`へのpushで**統合後mainを再検証**する。既存の実行Step・Expected・Runnerは変更しない。
+- 既存CIが監視する`cmd/tei/**`、`internal/**`、`reference/workspace/**`、`reference/driver-scenarios/**`、`skills/yi-tei-modeling/**`、`tools/reference-issue-test-ability/**`、`go.mod`、`go.sum`を明示。新しいトップレベル依存が増える場合は完全な静的依存Graphによる対象判定がないため、`paths`の資格を再検討する。
+- 粗い保守的path集合での追加CI起動回数/費用は#2018に記録し、**正しさを落とさずに**後から対象を絞る。緩いworkflow filterを`CI成功`より上位の品質資格としない。
+- 同じCIのPR仮統合checkoutと`main push`checkoutは別版・別Run。PR合格をそのまま統合後mainの実測値に転用しない。
+- Scope外：GitHub Actions起動サービス全体の可用性、秘匿データへの外部送出、実H3 Harness Skill、Go以外のTarget/GUI/NFRの全Dependency closureを証明するものではない。
+
+現時点では新Trigger契約を設計・Workflowへ保存した段階。実`push main`の成功は該当Runを確認するまで**NOT RUN**。
