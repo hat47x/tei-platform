@@ -63,7 +63,7 @@ type WitnessAuditReport struct {
 func AuditWitnessBindings(input WitnessAuditRequest) (WitnessAuditReport, error) {
 	out := WitnessAuditReport{
 		ClaimCeiling: "fixture-identity-consistency-only",
-		Qualified: false, Rows: []WitnessAuditRow{},
+		Qualified:    false, Rows: []WitnessAuditRow{},
 	}
 	if len(input.Cases) == 0 {
 		return out, errors.New("at least one independently requested case is required")
