@@ -262,16 +262,18 @@ func (l LifecycleInvoker) Invoke(ctx context.Context, request Request, options D
 	return result, nil
 }
 
-// lifecycleRecordErrorは、業務結果と段階記録の食い違いを表す。結果は既に
-// 適用されている可能性があるため、EffectUnknownは立てない。
+// lifecycleRecordErrorは、業務結果と段階記録の食い違いを表す。
+// Executorが効果を適用した後で段階の記録だけが失敗した可能性があるため、
+// clean rejectionへ変換せずunknownを呼出し元へ伝える。
 func lifecycleRecordError(recordErr, cause error) error {
 	var inner error
 	if cause != nil {
 		inner = cause
 	}
 	return &ExecutionError{
-		Code:    "COMMAND_LIFECYCLE_RECORD_FAILED",
-		Message: recordErr.Error(),
-		Cause:   inner,
+		Code:          "COMMAND_LIFECYCLE_RECORD_FAILED",
+		Message:       recordErr.Error(),
+		Cause:         inner,
+		EffectUnknown: true,
 	}
 }
