@@ -14,7 +14,10 @@ import (
 // DATABASE_RELEASE_CONTRACT_AHEAD_OF_CURRENT_DEFINITION does not warn about:
 // the latest release in a major line provides an older major than the current
 // definition. Older releases in the same line are historical and are not
-// repeated; this is not an acceptance finding.
+// repeated; this is not an acceptance finding. The contractCandidates
+// database-release-contract-provided kind answers a different question: which
+// release in each major line last provides a changed contract. A release may
+// appear in both observations without being a duplicate.
 type DatabaseReleaseContractCandidate struct {
 	Snapshot        string           `json:"snapshot"`
 	Database        core.CanonicalID `json:"database"`

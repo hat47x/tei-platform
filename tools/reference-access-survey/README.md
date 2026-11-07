@@ -6,10 +6,13 @@
 
 ```sh
 go run ./tools/reference-access-survey                    # 標準出力へ JSON
+go run ./tools/reference-access-survey -summary           # 合計と上位ディレクトリだけ
 go run ./tools/reference-access-survey -out survey.json   # ファイルへ
 go run ./tools/reference-access-survey -tests             # 試験ファイルも数える
 go run ./tools/reference-access-survey internal cmd       # 対象を絞る
 ```
+
+`-summary` は、文書に引用する数だけを出します。全体の JSON は約 180 KB あり、三つの整数を確かめるのにそれを読ませるのは無駄です。JSON は実行同士を比べるための成果物として残します。
 
 既定の対象は `internal`・`cmd`・`tools` です。`vendor`・`node_modules`・`testdata` は辿りません。
 

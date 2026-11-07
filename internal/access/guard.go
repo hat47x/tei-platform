@@ -15,11 +15,14 @@ import (
 )
 
 // Decision is the outcome of checking one capability.
-type Decision struct {
-	Capability string   `json:"capability"`
-	Allowed    bool     `json:"allowed"`
-	Missing    []string `json:"missing,omitempty"`
-}
+//
+// It is the same type as the record a journal keeps, on purpose. They were two
+// separately declared structs with identical fields, converted by
+// `Record(decision)`: adding a field to one and not the other would have
+// silently dropped it at the conversion, with nothing to report the loss. One
+// type cannot drift from itself, and the JSON written to the journal is the JSON
+// the caller reads.
+type Decision = Record
 
 // Record is one check in the journal.
 type Record struct {
@@ -50,7 +53,7 @@ func (g Guard) Check(capabilityID core.CanonicalID, required []permission.Spec) 
 		decision.Missing = append(decision.Missing, string(requirement.Kind)+":"+string(requirement.Access)+" "+requirement.Scope)
 	}
 	if g.Journal != nil {
-		if err := g.Journal.Append(Record(decision)); err != nil {
+		if err := g.Journal.Append(decision); err != nil {
 			return decision, err
 		}
 	}

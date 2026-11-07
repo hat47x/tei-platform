@@ -144,6 +144,12 @@ func TestReferenceCandidateViewBurdenComparison(t *testing.T) {
 	if !contains(baselineReport.AuthorityLimit, "application-release-candidates-latest-declaration-per-major-line-no-explicit-line-identity") {
 		t.Fatalf("Application Release候補の系統識別子がない境界がauthorityLimitsにありません: %v", baselineReport.AuthorityLimit)
 	}
+	if !contains(baselineReport.AuthorityLimit, "contract-candidates-application-release-latest-declaration-per-major-line-no-explicit-line-identity") {
+		t.Fatalf("contractCandidatesのApplication Release系統境界がauthorityLimitsにありません: %v", baselineReport.AuthorityLimit)
+	}
+	if !contains(baselineReport.AuthorityLimit, "contract-candidates-database-release-latest-provider-per-major-line-no-explicit-line-identity") {
+		t.Fatalf("contractCandidatesのDatabase Release提供系統境界がauthorityLimitsにありません: %v", baselineReport.AuthorityLimit)
+	}
 	if !contains(baselineReport.AuthorityLimit, "database-release-candidates-latest-per-major-line-no-explicit-line-identity") {
 		t.Fatalf("同一major内の系統識別子がない境界がauthorityLimitsにありません: %v", baselineReport.AuthorityLimit)
 	}

@@ -5,6 +5,7 @@ import (
 
 	"tei/internal/application"
 	apprelease "tei/internal/application/release"
+	"tei/internal/core"
 	"tei/internal/database"
 	dbrelease "tei/internal/database/release"
 	"tei/internal/ir"
@@ -190,5 +191,347 @@ func TestContractCandidatesApplicationDefinitionAndReleaseAreIndependent(t *test
 		if key := c.Snapshot + "/" + c.Kind; want[key] != c.ID {
 			t.Fatalf("declaration identity or kind conflated: %+v", c)
 		}
+	}
+}
+
+func appReleaseWithContract(app, version, alias, contract string, major int) apprelease.Definition {
+	return apprelease.Definition{
+		Application: core.CanonicalID(app), Version: version,
+		Databases: []application.DatabaseRequirement{{
+			Alias: core.LocalName(alias), TargetDatabase: "sales",
+			RequiredContracts: []database.ContractRequirement{{ContractID: core.CanonicalID(contract), CompatibleMajor: major}},
+		}},
+	}
+}
+
+func releaseConsumerIDs(consumers []ContractConsumerCandidate, snapshot string) map[string]bool {
+	out := map[string]bool{}
+	for _, c := range consumers {
+		if c.Snapshot == snapshot && c.Kind == "application-release-contract-requirement" {
+			out[c.ID] = true
+		}
+	}
+	return out
+}
+
+func dbReleaseProviding(version, contract string, major, minor int) dbrelease.Definition {
+	return dbrelease.Definition{
+		Database: "sales", Version: version,
+		Provides: []dbrelease.ProvidedContract{{ID: core.CanonicalID(contract), Version: database.ContractVersion{Major: major, Minor: minor}}},
+	}
+}
+
+func providedConsumerIDs(consumers []ContractConsumerCandidate, snapshot string) map[string]bool {
+	out := map[string]bool{}
+	for _, c := range consumers {
+		if c.Snapshot == snapshot && c.Kind == "database-release-contract-provided" {
+			out[c.ID] = true
+		}
+	}
+	return out
+}
+
+func definitionConsumerIDs(consumers []ContractConsumerCandidate, snapshot string) map[string]bool {
+	out := map[string]bool{}
+	for _, c := range consumers {
+		if c.Snapshot == snapshot && c.Kind == "application-contract-requirement" {
+			out[c.ID] = true
+		}
+	}
+	return out
+}
+
+func definitionConsumerCount(consumers []ContractConsumerCandidate, snapshot string) int {
+	n := 0
+	for _, c := range consumers {
+		if c.Snapshot == snapshot && c.Kind == "application-contract-requirement" {
+			n++
+		}
+	}
+	return n
+}
+
+// Contractが削除されても、履歴Releaseの参照は消さない。ただし同じApplication
+// major系統・aliasで同じ要求を繰り返すReleaseは、その要求を最後に宣言した
+// 1件だけを残す。全履歴を並べても削除検出の情報は増えない。
+func TestContractCandidatesRemovedContractKeepsLatestReleasePerMajorLine(t *testing.T) {
+	before := ir.World{
+		Databases: []database.Database{{ID: "sales", Contracts: []database.Contract{
+			{ID: "sales.order", Version: database.ContractVersion{Major: 1}},
+		}}},
+		ApplicationReleases: []apprelease.Definition{
+			appReleaseWithContract("order_entry", "3.7.0", "db", "sales.order", 1),
+			appReleaseWithContract("order_entry", "3.8.0", "db", "sales.order", 1),
+			// 3.9.0は要求を落としている。3.x系統の最後の宣言は3.8.0。
+			appReleaseWithContract("order_entry", "3.9.0", "db", "sales.other", 1),
+			// 並行保守の2.x系統と、別Applicationの系統は独立して残す。
+			appReleaseWithContract("order_entry", "2.9.0", "db", "sales.order", 1),
+			appReleaseWithContract("billing", "1.4.0", "db", "sales.order", 1),
+		},
+	}
+	after := before
+	after.Databases = []database.Database{{ID: "sales"}}
+	changes, err := ContractCandidates(before, after)
+	if err != nil || len(changes) != 1 || changes[0].Change != "removed" {
+		t.Fatalf("removed contract candidate: %+v, %v", changes, err)
+	}
+	for _, snapshot := range []string{"before", "after"} {
+		got := releaseConsumerIDs(changes[0].Consumers, snapshot)
+		want := []string{"order_entry@3.8.0/db", "order_entry@2.9.0/db", "billing@1.4.0/db"}
+		if len(got) != len(want) {
+			t.Fatalf("%s: 系統ごとの最新宣言3件を期待: %v", snapshot, got)
+		}
+		for _, id := range want {
+			if !got[id] {
+				t.Fatalf("%s: 最新宣言 %s がありません: %v", snapshot, id, got)
+			}
+		}
+		for _, id := range []string{"order_entry@3.7.0/db", "order_entry@3.9.0/db"} {
+			if got[id] {
+				t.Fatalf("%s: 履歴または非参照Releaseを報告しています: %v", snapshot, got)
+			}
+		}
+	}
+}
+
+// 変更（major更新）でも同じ規則を使う。3.x系統の3.9.0/3.9.1ではなく、
+// 最後に宣言した3.10.0だけを表示する。
+func TestContractCandidatesChangedContractKeepsLatestReleasePerMajorLine(t *testing.T) {
+	before := ir.World{
+		Databases: []database.Database{{ID: "sales", Contracts: []database.Contract{
+			{ID: "sales.order", Version: database.ContractVersion{Major: 1}},
+		}}},
+		ApplicationReleases: []apprelease.Definition{
+			appReleaseWithContract("order_entry", "3.9.0", "db", "sales.order", 1),
+			appReleaseWithContract("order_entry", "3.9.1", "db", "sales.order", 1),
+			appReleaseWithContract("order_entry", "3.10.0", "db", "sales.order", 1),
+		},
+	}
+	after := before
+	after.Databases = []database.Database{{ID: "sales", Contracts: []database.Contract{
+		{ID: "sales.order", Version: database.ContractVersion{Major: 2}},
+	}}}
+	changes, err := ContractCandidates(before, after)
+	if err != nil || len(changes) != 1 || changes[0].Change != "changed" {
+		t.Fatalf("changed contract candidate: %+v, %v", changes, err)
+	}
+	for _, snapshot := range []string{"before", "after"} {
+		got := releaseConsumerIDs(changes[0].Consumers, snapshot)
+		if len(got) != 1 || !got["order_entry@3.10.0/db"] {
+			t.Fatalf("%s: 系統の最新宣言1件を期待: %v", snapshot, got)
+		}
+	}
+}
+
+// 要求を最後に宣言したReleaseが履歴側にしかなくても、そのReleaseは残す。
+// 新しいReleaseで要求が落ちたことを理由に参照を消さない。
+func TestContractCandidatesHistoryOnlyReleaseDeclarationSurvives(t *testing.T) {
+	before := ir.World{
+		Databases: []database.Database{{ID: "sales", Contracts: []database.Contract{
+			{ID: "sales.order", Version: database.ContractVersion{Major: 1}},
+		}}},
+		ApplicationReleases: []apprelease.Definition{
+			appReleaseWithContract("order_entry", "3.7.0", "db", "sales.order", 1),
+			appReleaseWithContract("order_entry", "3.8.0", "db", "sales.other", 1),
+			appReleaseWithContract("order_entry", "3.9.0", "db", "sales.other", 1),
+		},
+	}
+	after := before
+	after.Databases = []database.Database{{ID: "sales"}}
+	changes, err := ContractCandidates(before, after)
+	if err != nil || len(changes) != 1 || changes[0].Change != "removed" {
+		t.Fatalf("removed contract candidate: %+v, %v", changes, err)
+	}
+	for _, snapshot := range []string{"before", "after"} {
+		got := releaseConsumerIDs(changes[0].Consumers, snapshot)
+		if len(got) != 1 || !got["order_entry@3.7.0/db"] {
+			t.Fatalf("%s: 履歴側の最後の宣言を残すべき: %v", snapshot, got)
+		}
+	}
+}
+
+// 同じReleaseが同じContractを別aliasで要求する場合、aliasは別の消費経路
+// なので両方残す。
+func TestContractCandidatesReleaseAliasesStayDistinct(t *testing.T) {
+	before := ir.World{
+		Databases: []database.Database{{ID: "sales", Contracts: []database.Contract{
+			{ID: "sales.order", Version: database.ContractVersion{Major: 1}},
+		}}},
+		ApplicationReleases: []apprelease.Definition{{
+			Application: "order_entry", Version: "3.8.0",
+			Databases: []application.DatabaseRequirement{
+				{Alias: "read", TargetDatabase: "sales", RequiredContracts: []database.ContractRequirement{{ContractID: "sales.order", CompatibleMajor: 1}}},
+				{Alias: "write", TargetDatabase: "sales", RequiredContracts: []database.ContractRequirement{{ContractID: "sales.order", CompatibleMajor: 1}}},
+			},
+		}},
+	}
+	after := before
+	after.Databases = []database.Database{{ID: "sales"}}
+	changes, err := ContractCandidates(before, after)
+	if err != nil || len(changes) != 1 || changes[0].Change != "removed" {
+		t.Fatalf("removed contract candidate: %+v, %v", changes, err)
+	}
+	got := releaseConsumerIDs(changes[0].Consumers, "before")
+	if len(got) != 2 || !got["order_entry@3.8.0/read"] || !got["order_entry@3.8.0/write"] {
+		t.Fatalf("aliasごとの宣言を保持すべき: %v", got)
+	}
+}
+
+// Database Releaseの提供Contractも、同じDatabase・Release major系統で同じ
+// Contractを繰り返す履歴を全件並べない。系統ごとに最後に提供したReleaseだけを
+// 残し、削除されたContractでも系統被覆は失わない。
+func TestContractCandidatesRemovedContractKeepsLatestDatabaseReleasePerMajorLine(t *testing.T) {
+	before := ir.World{
+		Databases: []database.Database{{ID: "sales", Contracts: []database.Contract{
+			{ID: "sales.order", Version: database.ContractVersion{Major: 1}},
+		}}},
+		DatabaseReleases: []dbrelease.Definition{
+			dbReleaseProviding("3.9.0", "sales.order", 1, 0),
+			dbReleaseProviding("4.0.0", "sales.order", 1, 0),
+			dbReleaseProviding("4.1.0", "sales.order", 1, 1),
+			dbReleaseProviding("4.2.0", "sales.order", 1, 2),
+			dbReleaseProviding("5.0.0", "sales.order", 1, 0),
+			// 6.x系統は別Contractだけを提供する。
+			dbReleaseProviding("6.0.0", "sales.other", 1, 0),
+		},
+	}
+	after := before
+	after.Databases = []database.Database{{ID: "sales"}}
+	changes, err := ContractCandidates(before, after)
+	if err != nil || len(changes) != 1 || changes[0].Change != "removed" {
+		t.Fatalf("removed contract candidate: %+v, %v", changes, err)
+	}
+	for _, snapshot := range []string{"before", "after"} {
+		got := providedConsumerIDs(changes[0].Consumers, snapshot)
+		want := []string{"sales@3.9.0", "sales@4.2.0", "sales@5.0.0"}
+		if len(got) != len(want) {
+			t.Fatalf("%s: 系統ごとの最新提供3件を期待: %v", snapshot, got)
+		}
+		for _, id := range want {
+			if !got[id] {
+				t.Fatalf("%s: 最新提供 %s がありません: %v", snapshot, id, got)
+			}
+		}
+		for _, id := range []string{"sales@4.0.0", "sales@4.1.0", "sales@6.0.0"} {
+			if got[id] {
+				t.Fatalf("%s: 履歴または非提供Releaseを報告しています: %v", snapshot, got)
+			}
+		}
+	}
+}
+
+// Contractの変更でも同じ規則を使う。
+func TestContractCandidatesChangedContractKeepsLatestDatabaseReleasePerMajorLine(t *testing.T) {
+	before := ir.World{
+		Databases: []database.Database{{ID: "sales", Contracts: []database.Contract{
+			{ID: "sales.order", Version: database.ContractVersion{Major: 1}},
+		}}},
+		DatabaseReleases: []dbrelease.Definition{
+			dbReleaseProviding("4.1.0", "sales.order", 1, 1),
+			dbReleaseProviding("4.2.0", "sales.order", 1, 2),
+		},
+	}
+	after := before
+	after.Databases = []database.Database{{ID: "sales", Contracts: []database.Contract{
+		{ID: "sales.order", Version: database.ContractVersion{Major: 2}},
+	}}}
+	changes, err := ContractCandidates(before, after)
+	if err != nil || len(changes) != 1 || changes[0].Change != "changed" {
+		t.Fatalf("changed contract candidate: %+v, %v", changes, err)
+	}
+	for _, snapshot := range []string{"before", "after"} {
+		got := providedConsumerIDs(changes[0].Consumers, snapshot)
+		if len(got) != 1 || !got["sales@4.2.0"] {
+			t.Fatalf("%s: 系統の最新提供1件を期待: %v", snapshot, got)
+		}
+	}
+}
+
+// 提供を最後に宣言したReleaseが履歴側にしかなくても、そのReleaseは残す。
+func TestContractCandidatesHistoryOnlyDatabaseReleaseProviderSurvives(t *testing.T) {
+	before := ir.World{
+		Databases: []database.Database{{ID: "sales", Contracts: []database.Contract{
+			{ID: "sales.order", Version: database.ContractVersion{Major: 1}},
+		}}},
+		DatabaseReleases: []dbrelease.Definition{
+			dbReleaseProviding("4.0.0", "sales.order", 1, 0),
+			dbReleaseProviding("4.1.0", "sales.other", 1, 0),
+			dbReleaseProviding("4.2.0", "sales.other", 1, 0),
+		},
+	}
+	after := before
+	after.Databases = []database.Database{{ID: "sales"}}
+	changes, err := ContractCandidates(before, after)
+	if err != nil || len(changes) != 1 || changes[0].Change != "removed" {
+		t.Fatalf("removed contract candidate: %+v, %v", changes, err)
+	}
+	for _, snapshot := range []string{"before", "after"} {
+		got := providedConsumerIDs(changes[0].Consumers, snapshot)
+		if len(got) != 1 || !got["sales@4.0.0"] {
+			t.Fatalf("%s: 履歴側の最後の提供を残すべき: %v", snapshot, got)
+		}
+	}
+}
+
+// 現在のApplication定義はApplicationごとに1つで履歴を持たない。同じaliasで
+// 同じContractを重複宣言した場合、識別子が同一の候補行は情報を増やさないため
+// 1件に畳む。
+func TestContractCandidatesCurrentApplicationDuplicateDeclarationCollapses(t *testing.T) {
+	before := ir.World{
+		Databases: []database.Database{{ID: "sales", Contracts: []database.Contract{
+			{ID: "sales.order", Version: database.ContractVersion{Major: 1}},
+		}}},
+		Applications: []application.Application{{
+			ID: "app",
+			Databases: []application.DatabaseRequirement{{
+				Alias: "db", TargetDatabase: "sales",
+				RequiredContracts: []database.ContractRequirement{
+					{ContractID: "sales.order", CompatibleMajor: 1},
+					{ContractID: "sales.order", CompatibleMajor: 1},
+				},
+			}},
+		}},
+	}
+	after := before
+	after.Databases = []database.Database{{ID: "sales", Contracts: []database.Contract{
+		{ID: "sales.order", Version: database.ContractVersion{Major: 2}},
+	}}}
+	changes, err := ContractCandidates(before, after)
+	if err != nil || len(changes) != 1 || changes[0].Change != "changed" {
+		t.Fatalf("changed contract candidate: %+v, %v", changes, err)
+	}
+	for _, snapshot := range []string{"before", "after"} {
+		got := definitionConsumerIDs(changes[0].Consumers, snapshot)
+		if definitionConsumerCount(changes[0].Consumers, snapshot) != 1 || len(got) != 1 || !got["app/db"] {
+			t.Fatalf("%s: 同一宣言を1件に畳むべき: count=%d %v", snapshot, definitionConsumerCount(changes[0].Consumers, snapshot), got)
+		}
+	}
+}
+
+// 別aliasは別の消費経路なので、現在のApplication定義でも両方残す。
+func TestContractCandidatesCurrentApplicationAliasesStayDistinct(t *testing.T) {
+	before := ir.World{
+		Databases: []database.Database{{ID: "sales", Contracts: []database.Contract{
+			{ID: "sales.order", Version: database.ContractVersion{Major: 1}},
+		}}},
+		Applications: []application.Application{{
+			ID: "app",
+			Databases: []application.DatabaseRequirement{
+				{Alias: "read", TargetDatabase: "sales", RequiredContracts: []database.ContractRequirement{{ContractID: "sales.order", CompatibleMajor: 1}}},
+				{Alias: "write", TargetDatabase: "sales", RequiredContracts: []database.ContractRequirement{{ContractID: "sales.order", CompatibleMajor: 1}}},
+			},
+		}},
+	}
+	after := before
+	after.Databases = []database.Database{{ID: "sales", Contracts: []database.Contract{
+		{ID: "sales.order", Version: database.ContractVersion{Major: 2}},
+	}}}
+	changes, err := ContractCandidates(before, after)
+	if err != nil || len(changes) != 1 || changes[0].Change != "changed" {
+		t.Fatalf("changed contract candidate: %+v, %v", changes, err)
+	}
+	got := definitionConsumerIDs(changes[0].Consumers, "before")
+	if len(got) != 2 || !got["app/read"] || !got["app/write"] {
+		t.Fatalf("aliasごとの宣言を保持すべき: %v", got)
 	}
 }

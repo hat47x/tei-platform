@@ -52,6 +52,7 @@ func TestPostgresCommandLifecycleEndToEnd(t *testing.T) {
 					OperationID:     operation,
 					ExpectedVersion: expected,
 					Payload:         []byte("updated"),
+					Effect:          &semantic.DataEffect{Kind: semantic.DataEffectUpdate, Data: "sales.order"},
 				},
 			},
 		}

@@ -18,3 +18,6 @@
 /reference/workspace/** -text
 /tools/reference-data-first-persistence/testdata/overlay/** -text
 /tools/reference-external-adoption-authority/testdata/consumer/** -text
+
+# Survey output is hashed as raw bytes by the evidence README.
+/plan/evidence/COMPOSITION_NEXT_EDGE_STATIC_SURVEY_2026-11-07/** -text
