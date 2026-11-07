@@ -65,6 +65,14 @@ Wireの文字列表現自体は **証明・意味IDではない**。 `encodedDig
 
 `read_claim_test.go`には同バイト／別Subject・別Scope・別Revision・別Attempt・不一致バイトの拒否、Source A→B→Aで旧Claimの再利用が成立し得る反例を含めた。**現行CLIにはまだ接続していない**。接続する場合、実Readerの資格のないCaller Claimを`Verified`と表示せず、#1017/#1124/#2595のOwnerが実消費Byteと同一Attemptの根拠を提供する必要がある。単一Fileの局所比較をBuild/ETLのSource Closure全量保証とみなさない。
 
+## 既存TEI Source Indexとの局所照合（P0 Reference、2026-11-07）
+
+`read_claim_sourceindex.go`の`CompareDeclaredSourceIndexRead`は、新しいSource Readerを実装せず、既存`tei/internal/sourceindex`の`NormalizeWorkspacePath`、`Fingerprint`、`ModelRevision`を使う。Callerの`ReadClaim.SourceRevision`は**Source集合全体のModelRevision**（`sha256:<hex>`）、`SourceSHA256`は**対象ファイルのraw SHA-256**（prefixなし）として別々に検査する。対象Path／宣言Index／Consumerから渡された単一ファイルのbytesを局所比較し、全Artifact Pathの曖昧な重複、不正Fingerprint、別Path／不一致ModelRevision／不一致bytesをfail-closed。
+
+`read_claim_sourceindex_test.go`では、選択したファイルのbytesが変わらなくても、**管理集合内の別ファイルの内容やPathが変わるとModelRevisionが変わる**ことを反証する。また、同じ集合のA→B→AでModelRevisionも復元し得るため、内容版だけから単調なAttempt/Revisionを証明できないことを固定する。
+
+成功しても`status=caller-index-bytes-consistent-only`、`authority=none`、`sourceReaderVerified=false`、`qualifiedSubjectVerified=false`、`sourceScopeVerified=false`、`readAttemptVerified=false`、`sourceAccepted=false`、`allSourceBytesVerified=false`。**この関数はCallerのIndexと渡されたbytesを比較しているだけ**で、WorkspaceをOpenして読み取った証拠、実ToolのConsumer byte、Source集合の全ファイル読取、正本のQualified Subject/Scope、Owner AcceptanceやTarget保存には接続しない。既存`operations.readWorkspaceSource`のPinned Readerと`WorkspaceTrace`の各Fingerprintを同一Attemptで結ぶ要件は[設計§9.9](../../plan/design/HASH_DERIVED_ID_SCHEME_DESIGN_2026-11.md)に記載する。
+
 ## 最初のHeadless Consumer：read-only `hashid-probe`（W4候補）
 
 `cmd/hashid-probe/` に、実行基盤・Studio・Hostへ依存しない最小CLIを配置する。保存済みの**正準Scheme Wire**と**raw byteの入力ファイル**、呼出元が明示する`subject`から`Derive`を実行する。必要であればローカルの`target-probe`（宣言Profile＋既存割当Snapshot）を読み、`CheckTargetBinding`による**事前診断だけ**を行う。
