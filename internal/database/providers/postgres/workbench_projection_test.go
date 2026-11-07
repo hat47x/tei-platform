@@ -64,6 +64,24 @@ func TestObservedPhysicalRelationsReachWorkbenchWithoutSemanticInference(t *test
 	if unique.Name != "orders_customer_key" || len(unique.Columns) != 1 || unique.Columns[0] != "customer_id" {
 		t.Fatalf("unique constraint changed: %#v", unique)
 	}
+	if len(orders.Indexes) != 2 {
+		t.Fatalf("physical indexes were lost: %#v", orders.Indexes)
+	}
+	regular, expression := orders.Indexes[0], orders.Indexes[1]
+	if regular.Name != "orders_customer_idx" || !regular.State.Usable() ||
+		len(regular.Keys) != 1 || regular.Keys[0].Column != "customer_id" {
+		t.Fatalf("regular index state and key changed: %#v", regular)
+	}
+	if expression.Name != "orders_note_expr_idx" || expression.State == nil ||
+		expression.State.Valid || !expression.State.Ready || !expression.State.Live ||
+		len(expression.Keys) != 1 || expression.Keys[0].Expression == nil ||
+		expression.Keys[0].Expression.Source != "lower(note)" ||
+		expression.Keys[0].Expression.Normalization == nil ||
+		expression.Keys[0].Expression.Normalization.Authority != "postgresql-catalog-deparse" ||
+		expression.Predicate == nil || expression.Predicate.Source != "note IS NOT NULL" ||
+		len(expression.IncludedColumns) != 1 || expression.IncludedColumns[0] != "order_id" {
+		t.Fatalf("expression index details lost: %#v", expression)
+	}
 	if len(orders.ForeignKeys) != 1 {
 		t.Fatalf("physical relationship was lost: %#v", orders.ForeignKeys)
 	}
@@ -83,15 +101,26 @@ func TestObservedPhysicalRelationsReachWorkbenchWithoutSemanticInference(t *test
 	original.UniqueConstraints[0].Columns[0] = "changed"
 	original.ForeignKeys[0].Columns[0] = "changed"
 	original.ForeignKeys[0].ReferencedColumns[0] = "changed"
+	original.Indexes[0].Keys[0].Column = "changed"
+	original.Indexes[1].Keys[0].Expression.Source = "changed"
+	original.Indexes[1].Keys[0].Expression.Normalization.Authority = "changed"
+	original.Indexes[1].Predicate.Source = "changed"
+	original.Indexes[1].IncludedColumns[0] = "changed"
+	original.Indexes[1].State.Valid = true
 	if orders.PrimaryKey[0] != "order_id" || orders.UniqueConstraints[0].Columns[0] != "customer_id" ||
-		orders.ForeignKeys[0].Columns[0] != "customer_id" || orders.ForeignKeys[0].ReferencedColumns[0] != "customer_id" {
+		orders.ForeignKeys[0].Columns[0] != "customer_id" || orders.ForeignKeys[0].ReferencedColumns[0] != "customer_id" ||
+		orders.Indexes[0].Keys[0].Column != "customer_id" ||
+		orders.Indexes[1].Keys[0].Expression.Source != "lower(note)" ||
+		orders.Indexes[1].Keys[0].Expression.Normalization.Authority != "postgresql-catalog-deparse" ||
+		orders.Indexes[1].Predicate.Source != "note IS NOT NULL" ||
+		orders.Indexes[1].IncludedColumns[0] != "order_id" || orders.Indexes[1].State.Valid {
 		t.Fatalf("Workbench result aliases mutable physical source: %#v", orders)
 	}
 	raw, err := json.Marshal(got)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, key := range []string{`"capturedAt":"2026-11-07T00:00:00Z"`, `"fingerprint":"synthetic-observation-r0"`, `"uniqueConstraints"`, `"foreignKeys"`, `"referencedTable":"customers"`} {
+	for _, key := range []string{`"capturedAt":"2026-11-07T00:00:00Z"`, `"fingerprint":"synthetic-observation-r0"`, `"uniqueConstraints"`, `"foreignKeys"`, `"referencedTable":"customers"`, `"indexes"`, `"predicate"`} {
 		if !strings.Contains(string(raw), key) {
 			t.Fatalf("read-only JSON output lacks %s: %s", key, raw)
 		}
