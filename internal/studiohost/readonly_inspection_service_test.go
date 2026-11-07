@@ -69,9 +69,19 @@ func TestInspectionUsesHostSelectedService(t *testing.T) {
 // absent, invoking the normal built-in Operation would hide the failed bind.
 func TestInspectionFactoryMissingServiceFailsClosed(t *testing.T) {
 	root := filepath.Join("..", "..", "reference", "workspace")
-	subject := sourceindex.Subject{Kind: "semantic-data", ID: "sales.order"}
-	if _, err := operations.InspectSubject(root, subject); err != nil {
-		t.Fatalf("fixture must be inspectable by the legacy path: %v", err)
+	catalog, err := operations.CatalogWorkspace(root, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var subject sourceindex.Subject
+	for _, entry := range catalog.Entries {
+		if _, err := operations.InspectSubject(root, entry.Subject); err == nil {
+			subject = entry.Subject
+			break
+		}
+	}
+	if subject == (sourceindex.Subject{}) {
+		t.Fatal("fixture has no inspectable Subject for proving the forbidden fallback")
 	}
 	calls := 0
 	h, err := NewReadOnlyWithFactory([]string{root}, func(string) (RootServices, error) {
