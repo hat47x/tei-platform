@@ -46,18 +46,23 @@ func TestRequirementsResultShapeDiscoveryChecksActualCLI(t *testing.T) {
 	if !reply.OK || reply.SchemaVersion != record.SchemaVersion {
 		t.Fatalf("actual response mismatch: ok=%v version=%q advertised=%q", reply.OK, reply.SchemaVersion, record.SchemaVersion)
 	}
-	if len(reply.Result) == 0 || reply.Result[0] != '[' {
-		t.Fatalf("advertised array, actual result starts with %q", reply.Result)
+	// Test-only shape oracle. It does not add a new runtime response validator.
+	// The first-byte check rejects null, which json.Unmarshal into a Go slice
+	// otherwise accepts as a valid nil slice.
+	arrayResult := func(raw json.RawMessage) bool {
+		var items []json.RawMessage
+		return len(raw) > 0 && raw[0] == '[' && json.Unmarshal(raw, &items) == nil
 	}
-	var entries []json.RawMessage
-	if err := json.Unmarshal(reply.Result, &entries); err != nil {
-		t.Fatalf("actual result is not a JSON array: %v", err)
+	if !arrayResult(reply.Result) {
+		t.Fatalf("advertised array, actual result has different shape: %q", reply.Result)
 	}
-
-	// A valid JSON object would have passed a parse-only gate, yet it must
-	// not satisfy the array-shaped result guarantee in the discovery record.
-	fake := json.RawMessage(`{"notAnArray":true}`)
-	if len(fake) == 0 || fake[0] == '[' {
-		t.Fatal("negative fixture accidentally matches array result")
+	for name, fixture := range map[string]json.RawMessage{
+		"object":  json.RawMessage(`{"notAnArray":true}`),
+		"null":    json.RawMessage(`null`),
+		"invalid": json.RawMessage(`[{"missing":`),
+	} {
+		if arrayResult(fixture) {
+			t.Errorf("%s fixture incorrectly satisfies resultShape=array", name)
+		}
 	}
 }
