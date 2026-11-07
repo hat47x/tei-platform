@@ -566,3 +566,33 @@ Source A→B→Aでは同byteでもObservation時点・選択Revisionが別と�
 [merged #3125](https://github.com/hat47x/tei-platform/pull/3125)のX-TEA標準業務（会計月・暦・税・採番等）の固定版静的読解は、原典Rの意味候補としてのみ受け取る。RMTの期間判定に関係する`FIRST_MONTH`・`ALLOWED_FISCAL_MONTH`とTEIの`sales.month`を同じ意味と推定せず、実Rule・適用時点・Owner受理で別途対応付ける。税の符号別丸めや採番桁あふれの旧実装特性をTEIの安全な既定値へ無断移植せず、原典Parityと改善設計を区別する。これらは**P0-R1実Readの前提条件にしない**。
 
 **資格と次一手**：#3127 exact HEAD `c15bc4e074c5d7a86b190277c2f518df460a5876`の[Repository Health](https://github.com/hat47x/tei-platform/actions/runs/42316661948)はcompleted/success。実PostgreSQL上のReceipt Lookup＋受注Post-imageを**同一RMT Attemptで**検証した証拠ではない。`BuildBrowse→実Provider HR-01/02`の実Readを優先し、書込み後段の受理では**Receipt K と別実Read O**を最低限独立に残す。文書のみの追補で、新Go/PG-RMT/Windows原典Driver/Owner意味受理はNOT RUN、G1/G2 UNQUALIFIED。
+
+### 16.7 実PostgreSQLで資源現在値の別読取が成立：KとOの境界を更新（11/7）
+
+`16.6で「資源Post-image Reader未接続」と記した状態は**現在のmainでは更新が必要**。[merged #3155](https://github.com/hat47x/tei-platform/pull/3155)により、Receipt-only照会と資源値照会は別`PersistenceMethod`になった。現[`internal/command/persistence.go`](https://github.com/hat47x/tei-platform/blob/main/internal/command/persistence.go)は次の4状態：`not-applicable`、`not-observed`、`receipt-observed`、`resource-observed`。**`persisted:true`は`resource-observed`だけ**（[merged #3157](https://github.com/hat47x/tei-platform/pull/3157)の`docs/status.md`にも反映済み）。
+
+現[`commandadapter.Executor.ObservePersistence`](https://github.com/hat47x/tei-platform/blob/main/internal/security/effectcommit/commandadapter/executor.go)は、`ResourceRead=true`なら`Runner.ReadResource`の返却Payloadと当該呼出側が固定した実Commit Payloadの**byte一致**を確認して`resource-observed`とする。`ResourceRead=false`かつ`Lookup=true`なら`receipt-observed`（同Operationの記録の照会のみ）。どちらも失敗・未設定なら`not-observed`（効果0ではない）。[`postgres.Provider.ReadResource`](https://github.com/hat47x/tei-platform/blob/main/internal/security/effectcommit/postgres/provider.go)は書込後に**別pool接続**で`objects`の`version,value`を読む。
+
+実証は[PR #3155 exact-head `19f00c7`の実PG Workflow #42328707393](https://github.com/hat47x/tei-platform/actions/runs/42328707393)（completed/success）の実job logまで確認し、`TestPostgresCommandObservesACommittedReceiptByLookup`と`TestPostgresCommandObservesTheStoredResource`が**実行されPASS、SKIPなし**であることを確認した。後者はCommit→別接続でのPayload一致の正例と、同じ資源値を`changed`に変更した後の観測失敗を検証する。これは現実のPostgreSQLでの**局所的なEffect Commit資源観測**が成立したという進歩であり、単なる設計案やモックのPASSではない。
+
+しかし**受注RMTの業務Post-image Oは依然未資格**。現実装の以下の条件は、この局所成功からは導けない。
+
+| 既存K-Lookup受入票への差分 | 現Sourceで確認したこと | RMT側の独立Expected／最小の追加対照 |
+| --- | --- | --- |
+| **K/O-Resource-01（正対照）** | `ResourceRead=true`ではResource現在Payload byte一致を別pool Readで観測済み。Receipt-onlyは`receipt-observed`であり`persisted:false` | 実RMT受注ContextとOwner受理されたTarget/SQL/Scopeに結び付けた上で`resource-observed`を業務Oへ接続。`effectcommit.objects`の単一Resource値を`sales.order`／明細Lの取得済み完全集合と読み替えない |
+| **K/O-Resource-02（ABA・Version）** | PostgreSQL Readerは`version,value`を返すが、`Executor.ObservePersistence`が比較するのは**`state.Payload`だけ**で、`state.Version`を元ReceiptのVersionと比較していない | 書込A→別OperationでB→別OperationでA、現在ValueがAへ戻ってVersionが進んだ反例では、Payload一致で現コードは`resource-observed`へ到達し得る。**同一版のEffect Post-imageと主張しない**。Version/Receiptの帰属は#2564/#1174が判断 |
+| **K/O-Resource-03（読取Scope/権限）** | `postgres.Provider.ReadResource`の`WHERE`は`application=$1 AND resource=$2`で、メソッドコメントにも**読取時のAuthority再検査なし**とある。`Scope`の`Subject/Action/Capability`は空でないことを検査するがSQL絞込には含まれない | 読取主体/Grant epoch/業務Tenantと開示可否、Resource ID→実Record/Business keyの解決を別Host/Provider根拠で検査。内部Observer結果の生Payloadを無許可Consumerへ公開しない |
+| **K/O-Resource-04（構成）** | `ResourceRead`はOptional bool、`DurableStore`はCaller申告、`PersistenceObserver`も明示構成が必要 | Productの当該入口で設定されていなければ`not-observed`（正常処理と観測未実施を分離）。`resource-observed`を全Command/全Providerで実施済みとしない |
+| **K/O-Resource-05（Replayと複合Effect）** | `ResourceRead`は現在値とCaller Payloadを比較する。旧Receipt Replay、複合更新、外部API/明細全件は自動取得しない | 同じOperationID/RequestHashのK、Owner対象集合Lの実取得完了、当該EffectのVersion/Reader、外部作用ごとの結果を独立欄に保持。旧Receiptが存在するだけでB/全Effectを`holds`にしない |
+
+上記K/O-Resource-02/03は**現Sourceを読んだ設計上の反例案であり、その新しい実DB故障注入を実行したという主張ではない**。新Persistence状態・Validator・権限エンジンは増やさず、既存#2998（公開契約）、#1174（Commit/Grant/Target）、#2564（CAS/ABA）、#1163（Evidence）の独立Expectedへ回す。
+
+### 16.8 Pattern／Operation Surfaceの同一性はまだ未採用：P0-R1の別入口へ誤束縛しない
+
+[merged #3145](https://github.com/hat47x/tei-platform/pull/3145)・[merged #3167](https://github.com/hat47x/tei-platform/pull/3167)は実TEI CLIの固定Worldで、`tei operations`の導出Operationと宣言Function Patternが**まだ一対一に結ばれない**ことを観測した。`reference/workspace`へ`order_entry.preview_order_quote`候補Patternを追加すると、宣言Patternは5→6件、World fingerprintは変わるが、導出Operationは8件のまま／`summary.declared=0`。`Binding`は効果を宣言しないread-only Commandでは空となる。前掲受注BrowseとOperation SurfaceのProduct実行資格は**異なる入口**であり、`BuildBrowse`のQuery選択が成立しても`tei operations`が同じPatternからOperatorを選択したことにはならない。
+
+[PR #3172](https://github.com/hat47x/tei-platform/pull/3172)はW3対応表の設計候補（現時点**未採用・未実装**）。Data ID一致だけで同一Dataの`browse`と`read`を選別できず、Capability IDが効果なしread-only Commandでは消え、Relation targetとSemantic targetの変換も別規則が必要。**名前類似・先頭一致・first-winnerで未宣言のFunction/Effectを勝手に結ばない**。#1127/#1129の既存W3 Ownerが規則/版/優先・衝突を受理するまで、RMT HR-01/02は`BuildBrowse→Query→実Reader`という既存表示入口に限定し、Operation Surface経由で実業務行動が可能と報告しない。新Operation Engineや標準表現型の中核列挙を追加しない。
+
+[merged #3171](https://github.com/hat47x/tei-platform/pull/3171)では`ApplicationView.periods`が`calendar`の宣言IDを投影できるようになり、受容例`sales.month calendar sales.fiscal`をCLI表示で確認済み。ただし**表示上のID保持であって暦Ruleの解決/期間強制や旧DriverとのMeaning同一性ではない**。原典の`FIRST_MONTH`・`ALLOWED_FISCAL_MONTH`を推測で置換せず、#2144/#1125の元々の期間対照へ引き渡す。P0-R1実Readの新必須依存にしない。
+
+**2026-11-07の資格と引継ぎ**：旧Draft Head `1b3f5a2661ed4e51b23276e8e6bd7d9f30d3b9ff`の[Repo Health #42317691986](https://github.com/hat47x/tei-platform/actions/runs/42317691986)はcompleted/success。今回本節は既存RMT受入計画Markdownだけ変更し、Go/Fixture/Runner/Owner受理を触らない。**現Mainの実PG Resource Receipt/Value一致試験成功（#3155）はE2の一部成立、RMT Function Read HR-01/02とBusiness B、Windows旧Driver、正式G1/G2は依然NOT RUN/UNQUALIFIED**。優先順は従来どおり実Read→明細完全性→同Rule二入口保存前拒否→Receipt K/資源O→業務B。新HeadのCIは再確認前にPASSとは記録しない。
