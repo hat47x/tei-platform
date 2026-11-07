@@ -486,10 +486,34 @@ main統合[Reference #3325](https://github.com/hat47x/tei-platform/pull/3325)は
 
 **判定の三つの独立要因**：
 1. **Required集合の完全性** — 11 Reply・Source Index・Focused Inspectがそろっても、#3263で必要な全Business Action／Relation／FunctionがRequiredに列挙されたとはいえない。公開3 Ruleの一致を三視点図面の「Relation 0件／未定義なし」へ昇格させない。Scope/Actor/Disclosure/Snapshotごとに`required minus observed`を明記。
-2. **空集合・業務引継ぎの完了性** — [未統合PR #3353](https://github.com/hat47x/tei-platform/pull/3353)は`EmptyPolicyHandoff`かつ`Targets=[]`で`EmptyJustified=true`でも`HandoffConfirmed=false`なら現mainで`CompletionHolds`になり得る反例を報告し、`CompletionUnverified`へ抑制する修正候補を提案。**対象の空が独立に正当化されたこと**と、**相手方が引継ぎを受けたこと**は別Witness。Caller申告の`HandoffConfirmed`も実外部Receiptではない。空のCRUDセルや空のWorkflow Inboxに転用して業務完了と認定しない（#1125/#2386/#1444、独立Expected #2514）。
+2. **空集合・業務引継ぎの完了性** — [main統合PR #3353](https://github.com/hat47x/tei-platform/pull/3353)では、旧実装で`EmptyPolicyHandoff`かつ`Targets=[]`・`EmptyJustified=true`でも`HandoffConfirmed=false`なら`CompletionHolds`となり得た反例を修正し、`CompletionUnverified`へ抑制した。6件の回帰を追加し、固定PR HEADの[Repository Health #42391982442](https://github.com/hat47x/tei-platform/actions/runs/42391982442)はcompleted/success。**対象の空が独立に正当化されたこと**と、**相手方が引継ぎを受けたこと**は別Witness。Caller申告の`HandoffConfirmed`も実外部Receiptではない。空のCRUDセルや空のWorkflow Inboxに転用して業務完了と認定しない（#1125/#2386/#1444、独立Expected #2514）。
 3. **参照・選択・実行の現在性** — [main統合 #3350](https://github.com/hat47x/tei-platform/pull/3350)ではDB技術名に対応するPlugin Capabilityの選択を既存`SupportsDatabaseProvider`で評価し、参照Workspaceの未選択は**6→4**へ修正された。ただし`selected`は**実Binary実装／実Providerを呼んだ／DB Resultを消費した／現在Grantがある**ことを示さない。[main #3325](https://github.com/hat47x/tei-platform/pull/3325)の`current/stale/unchecked`もCLI参照drift照合の資格のみ。図・表・Formが正常表示されていても実Application ReadやCommand/Host実効果の資格は別。
 
 **既存受入への明示的な投入順**：P0-Mは#3263の3図/CRUDで独立RequiredとRole/Edge/Cell Source逆参照を試験し、P0-Rは#2586で`Function→選択Query/SQL byte+:from→physical Provider→Rowset/Field/Scope→Context`を一Attemptで検証する。P0-Cはその二つの**同一World/Source Revision/Subject/Scope/Read Cohort**が観測できたときだけ結ぶ。Plugin D1/Build・Design Query TT-56は前段の部分資格であり、Product Readの代替ではない。既存Test Runner/Scenario/Predicate/Host/Authority SSOTを増やさない。
 
-**本追補の証拠上限**：main統合PRの固定HEAD専用CIと現行Draftの内容を照合したDocs-only更新。新Go/Node/CLI/PG/Studio/SHO/実Provider/Host試験・三視点独立Expectedの正式Owner受理は**NOT RUN**。#3353は未統合なので現mainのCompletionバグ修正済みとは主張しない。
+**本追補の証拠上限**：main統合PRの固定HEAD専用CIと現行Draftの内容を照合したDocs-only更新。#3353の修正は空集合×Handoffの**局所Go判定**であり、`CoverageComplete`／`HandoffConfirmed`は依然Caller申告で、外部相手方の独立Receiptや実Provider結果ではない。新Go/Node/CLI/PG/Studio/SHO/実Provider/Host試験・三視点独立Expectedの正式Owner受理は**今回NOT RUN**。
 
+
+
+## 18. 不完全CRUDの既知セル保持と多Canvasの同一Subject共有を局所受入に追加（2026-11-08）
+
+### 18.1 実Fixtureの新しい二つの反例
+
+[Draft #3263](https://github.com/hat47x/tei-platform/pull/3263)の現在Sourceには、二つのCanvasに同じSemantic Subjectを複数の**異なるView Occurrence**として配置するPressure Fixtureと、そのSource RelationのOccurrence ID、既知Mutantの監査が追加された。さらに`fixture_contract_test.go`には`TestPartialFunctionCRUDKeepsKnownCellsAndUnknownRemainder`が追加されている。このテストは**Fixture入力とExpectedが内的に矛盾しないかの検査**であり、TEI Product Loader→三図/CRUDの実生成・Owner独立Oracleの合格ではない。最新HEAD `2bc0d0f3aa3960751d57745209d94a8253538d72`のHealthは失敗（旧[Run #42385303844](https://github.com/hat47x/tei-platform/actions/runs/42385303844)でDesign索引不足）。修正後HEADの実Go/CI合格は別途確かめる。
+
+**部分情報の単調性**：`fn.external.dispatch`は`declaredCrudComplete=false`でも、明示`data.customer: R`が与えられたセルは**Rのまま**保持する。同じFunctionの宣言されていない`data.order`等は`unknown-not-enumerated`であり、`none`にしない。`complete=false`を理由に**既知Rをunknownへ消す**のも、未列挙を**noneへ確定**するのも誤り。これはMatrix全体を三値一色へ塗りつぶさず**各セルの明示事実と列挙閉包**を別根拠に持つということ。宣言されたRは実Provider Readの成功や業務Effect完了ではない。
+
+**共有Subject／多Occurrence**：Canvas A/Bに同じ`Semantic Subject ID`を置けるが、`View Occurrence ID`はCanvasごとに別。Subject Identityと位置・Size・折畳み・表示フィルタ等のPresentation Stateを混ぜない。表示要素の移動・Canvas分割・片方のOccurrence削除は、他CanvasのSubject・Relationや元Source意味の削除を含意しない。二Canvasで同一Relationを表示する場合も**元RelationのID＋方向＋Role／複数表示OccurrenceのID**をそれぞれ保持。表示辺を欠いたCanvasと、Sourceから辺が消えたWorldの二つを区別する。
+
+### 18.2 次の最小判別を既存Expected／Scenarioへ渡す
+
+| 判別 | 一因子差分 | 独立Expected（Graph表示/CRUDを別判定） | Owner |
+| --- | --- | --- | --- |
+| MC-01 | `declaredCrudComplete=false`のFunctionに明示`data.customer:R`を1件追加 | 対象セルだけR、他未列挙はunknown。既知RをUnknown化・他セルをNone化する両Mutantを落とす | #3263/#2514 |
+| MC-02 | Semantic Subject同一でCanvas Bへ表示Occurrenceだけ追加 | Subject・元Relation・Meaning版は不変。Canvas数/Occurrence数は変化する。編集対象をCanvas Bの位置情報から自動決定しない | #3263/#1124/#2497 |
+| MC-03 | Canvas Aのカード表示だけ削除、Canvas Bに同Subjectが残る | AのOccurrenceだけ除去。元Subject/Relation削除・共有Canvas Bの消滅・Source Rewriteを起こさない | #3263/#2500 |
+| MC-04 | 空のBusiness Workflow対象集合でHandoff未確認、明示Rセルは存在 | `#3353`の局所修正に従いCompletionはUnverified。CRUDの既知R/列挙未知と外部Handoffの業務完了を相互に代用しない | #1125/#2386/#2514 |
+
+実装順は**Fixture監査→実TEI Source/Meaning→Headless二Canvas Graph／Matrixを同一Revisionで実出力→Occurrence/CRUD CellからQualified Sourceへ戻る→独立Expectedで1 Mutant以上検出**。両Canvas間の編集同期／SHO Writer／実Host Permissionや`view -execute`のEffectは別の試行。大きいCanvas分割の操作性を先に新しいCore Canvas/Task型にしない。Cardが未整理のDocument/Itemであっても、標準Data Structureはその表示方式と独立して保持し、可視カード化を強制しない。
+
+本追補はSourceと既存テストの**実観測→受入条件への引継ぎ**であり、MC-01〜04の新Product Graph/CRUD E2E、Go Mutation実行、複数Canvas GUI、SHO、業務Receipt、Owner意味受理は**NOT RUN**。第二Graph/Domain/Scenario SSOT、独立Context Reader、Host／Runnerを増やさない。
