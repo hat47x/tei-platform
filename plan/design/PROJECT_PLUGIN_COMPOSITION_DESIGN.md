@@ -268,6 +268,19 @@ Webアプリケーションでは、UI構成キットだけでなく、HTTP要�
 
 [merged #3121](https://github.com/hat47x/tei-platform/pull/3121)は参照Toolの能力をEnvironment Grantへ追加した際、Plugin Catalogで解決できず `PERMISSION_GRANT_CAPABILITY_NOT_RESOLVED` となることを実検証した。案件側の確認事項は「Toolを論理Pluginとして契約・実装・Build/Lockへ登録する実利益があるか」「Plugin以外のTool Principalを既存Hostが明示委譲できるか」の2案と、それぞれの現在Grant・Consumer適用先・Revocationを同Scopeに結べるかだけ。Toolが存在することからPlugin導入もGrant発行も自動提案しない。詳細比較・負例と案の未採否は[Runtime/Target §23](RUNTIME_TARGET_BINARY_COMPOSITION_DESIGN.md)へ委譲する。
 
-[merged #3077](https://github.com/hat47x/tei-platform/pull/3077)/[merged #3108](https://github.com/hat47x/tei-platform/pull/3108)のHook宣言外呼出し拒否・Command委譲は局所Fit。Hook Runner・実Host Grantは未配線／未実証であり、案件UIの「Hookが有効」「Tool実行可能」「業務操作完了」を同じ状態へまとめない。[merged #3124](https://github.com/hat47x/tei-platform/pull/3124)/[merged #3127](https://github.com/hat47x/tei-platform/pull/3127)の `PersistenceState=observed` は現Adapterでは**Receipt Lookupの観測**であってBusiness Resource現在値の確認ではない。表示・説明は「何を読んだか」を明示する。参照Toolの選定案をD1純粋quoteの実Go Link/Invokeの前提にはしない。
+[merged #3077](https://github.com/hat47x/tei-platform/pull/3077)/[merged #3108](https://github.com/hat47x/tei-platform/pull/3108)のHook宣言外呼出し拒否・Command委譲は局所Fit。Hook Runner・実Host Grantは未配線／未実証であり、案件UIの「Hookが有効」「Tool実行可能」「業務操作完了」を同じ状態へまとめない。[merged #3124/#3127](https://github.com/hat47x/tei-platform/pull/3127)のReceipt Lookupを基に、[merged #3155](https://github.com/hat47x/tei-platform/pull/3155)は`receipt-observed`と`resource-observed`を区別し、**persisted:trueはResourceReadで現在値一致を観測した場合のみ**とした。対象の実PG Conformanceはsuccessだが、現在Grant・時点・Read Scope・Consumer受領の全検証ではない。案件表示では参照したResource/Receipt/観測時点を分ける。参照Toolの選定案をD1純粋quoteの実Go Link/Invokeの前提にはしない。
 
-**状態**：案件への説明可能性の要求候補のみ。ToolをPlugin化する採用、Tool Principalの追加、Hook→本番Host E2E、Receipt→実Resource読取、Owner受理はNOT RUN／未決。別のStatus enum/Registry/二重Authorityを増設しない。
+**状態**：案件への説明可能性の要求候補。ToolをPlugin化する採用、Tool Principalの追加、Hook→本番Host E2E、同一業務Source/Tenant/実Grant/ConsumerまでのResource独立Read、Owner受理はNOT RUN／未決。#3155のResource読取単体・実PG試験は成立範囲を限定して参照する。別のStatus enum/Registry/二重Authorityを増設しない。
+
+
+<!-- tei-project-go-supply-and-harness-effect-projection-20261107 -->
+### 案件に表示する証拠の更新：Go供給/Read-only Tool/認可種別（Runtime/Target §23.6〜23.7参照）
+
+| 案件側の表示対象 | 必要な実証の範囲と禁じる昇格 |
+| --- | --- |
+| **外部Module供給** | [#3142](https://github.com/hat47x/tei-platform/pull/3142)による実選択12件のgo.sum整合とoffline再解決は「供給検査済み」。[Open #3156](https://github.com/hat47x/tei-platform/pull/3156)の一回の実cmd/tei Go Buildは「Artifactあり、Source closure rejected」と**同時表示**。G4やD1 selected Providerの実Link/Invokeへ昇格しない。 |
+| **Tool/Hookの実行時認可** | [#3143](https://github.com/hat47x/tei-platform/pull/3143)の`authorizationMode`を実応答の型名として提示する。特に`reference-allow-all`は実Owner/Resource評価をしていない。`external`という文字列だけでは使ったGrant/Policyの正体を特定できない。 |
+| **実行後Persistence** | [#3155](https://github.com/hat47x/tei-platform/pull/3155)の`receipt-observed`と`resource-observed`を区別。後者でも当該Read時点・Resource Scope以外へ拡張しない。`not-observed`や`not-applicable`を書込み失敗/未実施と断定しない。 |
+| **read-only CLI／AI Harness** | [Draft #3162](https://github.com/hat47x/tei-platform/pull/3162)では`view -execute`がローカルoperation-log/lifecycle-stateを書いた。業務Effectがread-onlyであっても「ホストへの副作用なし」と表示しない。[#3153](https://github.com/hat47x/tei-platform/pull/3153)/[#3161](https://github.com/hat47x/tei-platform/pull/3161)のDSHローカルMockはTool結果のSessionLog副次送出と再送を確認した。実外部Egress/機密Scopeの合格ではない（#2515担当）。 |
+
+**案件Profileの選定判断**：新たなD1静的Go試験の成立は、外部Module全体のG4 Self-buildやTool Principal案A/Bを採用することに依存させない。逆に実Consumerが外部Moduleを選択したときは、Buildが成功してもSource closure rejectedの警告・資格不足を隠さない。Runtime/Target §23.6のGo供給／Artifact／閉包／実Invokeの四段を既存#1251/#2831のEvidenceへ参照するのみで、案件ごとの第二Validator/Build GraphやStatus enumを作らない。**本節は既存証拠のread-only投影計画。新しい実Consumer E2E、実外部Egress、Owner受理はNOT RUN**。
