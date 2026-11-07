@@ -309,3 +309,61 @@ Data Workbench #3270、REST Decision Graph #3274、三要素モデルとCRUD/SHO
 4. **費用対効果**：新しいContract/Providerを一つ追加するためのCore差分、Consumer別特別処理、Open APIへのAdapter変更量、D1誤PASS/誤失効、Sinkの未観測割合、Build closure混入、入力/出力配送の完全性を記録する。第二正本や新Core enumが必要になれば抽象境界を見直す。
 
 **状態**：横断議論とGitHub上の既存Issue/PRからの**設計・受入案**。PO-01〜09をTEI製品経路で実行したわけではない。Plugin実2 Consumer、実BOM資格、SUI/SHO Writeback、実MCP Disclosure/Sink、正式Owner Meaning Acceptanceは未受理・未実証。旧/進行中PRの局所PASSをこの統合全体のPASSへ拡張しない。
+
+
+## 15. Function配置・Topology Binding・変更影響をPlugin-first適合に接続（2026-11-08横断案）
+
+**今回の差分**：§14は「Plugin Operationを宣言・表示・実呼出できるか」を扱った。本節はその次の独立条件、すなわち**同じ能力をどのFunction Data Contextの、どの粒度・関係・表示インスタンスへ適用できるか**を限定する。他チャットの標準データ構造／標準表現型分離（#2495/#2497/#2507）、Functionに置く表現インスタンスとData Context（#2506/#1127）、ViewChange→Intent（#2500）、依存範囲の再資格化（#2582/#2600）、Plugin-first（#1251/#951/#1016）を接続する。正式新Schema/ABI/Core列挙を本節で採用しない。
+
+### 15.1 機能の提供とFunction内の適用・配置は異なる
+
+- **Representation Definition / Pluginの能力**：Table/Tree/Graph/Timeline/Audio/Video等の表現型、必要Shape・Axis・Unit・Cardinality・編集Intent・Target制約を宣言する。Pluginがinstall/discoverされたことは実装選択・Function配置・現在Grantを意味しない。
+- **Data Context Definition/Instance**：Functionが参照するSemantic Subject/Relation path、Entity/Edge/Path occurrence/Aggregate等の粒度、取得Sliceの完全性/partial/unknown、Source/Query/Rule Revision・selection epochを持つ（#2506）。複数Contextを一つのJOIN出力へ無断同一化しない。
+- **Representation Instance in Function**：表現型の実利用は必ずFunction内のインスタンスとして配置し、どのContextとRelation/Topologyに接続するかを明示する。表現型Pluginの登録時に全Functionへ自動配置しない。複数Canvasが一つのItemを別Occurrenceとして表示してもData Identityを複製しない。
+- **Structure/Topology Binding**：Data側の同一性・向き・多重辺・順序・時間軸/座標系・単位・NULL・部分集合を、表現型側でどの範囲まで保持/変換/喪失するかを宣言する。形状適合と用途適切性（例えば集計値を個別Entityとして編集できるか）は独立に診断。自動推測で元の関係を増減しない。
+- **Operation Intent／Writeback**：表示で可能なSelect/Drag/Editは、元のEntity/Edge/Path occurrenceとRevisionへ一意に戻せるときだけ型付きIntent候補を作る。Provider適合・Host現在Grant・実Commit/独立Readはその後の別資格（#2500/#1174）。非単射な表・Graph・SHO文章の逆書戻しは原則拒否し、Candidate/Reviewへ戻す。
+- **Openな拡張との両立**：未知の表現Pluginや独自Traitでも、契約を満たす範囲を表示・適用候補にできる。ただしOpen/Stable/Internalの公開保証、利用可否、Owner Meaning Acceptance、現在実行権限は別。Trait Fulfillmentの正本は#3278、Consumer実証は#3279。
+
+**解釈上の重要点**：`Plugin selected`、`Function-bound`、`renderable`、`editable`、`operation-offered`、`executable-now`、`effect-observed`は、同じBooleanで管理しない。必要な既存契約の結果をread-onlyに合成した用途相対の判断とし、第二Availability Registryを作らない。
+
+### 15.2 変更時には「何を再Buildするか」と「どの表示・操作Claimを再確認するか」を別々に判断
+
+| 変更 | 表示／Functionへの影響 | Build/BOM／実行資格への影響 |
+| --- | --- | --- |
+| 未選択の表現Plugin/Provider追加 | Catalog候補のみ変化。Functionの既存Bindingは原則維持。ただしDefault選択へ作用する場合はSelection再確定 | 実Build input不変ならArtifact維持候補。実import/init/Embed混入時は再評価（#1251/#2600） |
+| 選択Pluginの実装改版、Contract意味は同じ | 対象Representation/AdapterのConformanceを再確認。受理済みData Meaningを自動変更しない | 実Provider/Artifact/Targetのexact資格を再確認。旧BOMのVersion文字列一致だけではPASSにしない |
+| Function内の表示位置・スタイルだけ変更 | 表示Artifact/Occurrenceは変更。Entity/Relationと独立の意味・データClaimは維持候補 | Buildへ実消費された範囲だけ変更。UIだけの編集をRuntime/DB全体失効にしない |
+| DataのRelation/多重度/軸・単位/粒度の変更 | 該当Binding、集計、操作Intentの意味・逆写像を再確認。別Contextの無影響は依存根拠がある場合のみ維持 | Data/Query/Provider/Generatorの実消費閉包を照合し局所再Build |
+| D2部分取得・親Selection epoch更新・遅延旧応答 | D2依存Claimはpartial/stale。独立D1 Claimまで無根拠に失効させず、旧結果を新Contextへ混ぜない | Plugin実装が同じならBinaryを再Buildする理由とは限らない。Current disclosure/Action資格は再評価 |
+| Provider/Source A→B→A、旧Lock・Grant再登場 | 見かけの表示一致だけで旧現在資格は復活させない。必要時に再取得・再解決 | #2600/#3267の旧Evidence再利用条件・Artifact来歴とCurrent Grantを別判定 |
+| 表現Plugin無効化・不明Source | 未解釈Raw Item/Sourceを保持、対応Viewはunsupported/unknown。存在しない・削除済みへ変換しない | 選択済みProvider欠落時は黙ってDefault/旧直呼出へfallbackしない |
+
+**増分更新は追加だけではない**：#2582のLEFT JOINの未一致行、NOT EXISTS、Top-N、集計のように、入力追加で既存表示が消える場合は`retract/replace`の必要性を明示する。Producerが部分取得しか保証できないとき、0件と「存在しない」の同一化を拒否。Cache hitやBOM適合履歴でCurrent Result/Disclosureを保証しない。
+
+### 15.3 既存Scenario/Independent Expectedへ渡す追加圧力（PFB-01〜11）
+
+| ID | 自作最小ケース | 独立Expected／担当 |
+| --- | --- | --- |
+| PFB-01 | Table Plugin install済み、FunctionにRepresentation Instance未配置 | CatalogでdiscoverableでもFunction-bound/renderedとしない。#2507/#1251 |
+| PFB-02 | 同一ItemをCanvas A/Bに二Occurrenceとして表示 | Item Identityは1件、View Occurrenceは2件。片側の位置変更でDataを複製/意味変更しない。#2497/#1124 |
+| PFB-03 | 同labelのNode 2件＋同source/targetの異なるEdge 2件をGraphへ投影 | Node/Edge ID・方向・多重性を保持。表示label一致を同一Entity/Edgeへ畳み込まない。#2495/#2497 |
+| PFB-04 | 子D1=2件、D2=3件、JOIN投影6行とD1集計1行 | 6表示行≠子Entity 6件。集計行から個別書戻し不可。#2506/#2507/#2500 |
+| PFB-05 | D1全件、D2先頭ページのみ。D1だけの合計とD1×D2のJOIN集計 | D1依存の限定Claimは維持候補。D2依存の全件Claimはpartial/unknown。#2582/#2586 |
+| PFB-06 | Window1で親A→B、AのProvider応答が遅延到着。Window2はAを表示中 | W1のB Contextへ旧A結果を混ぜず、W2のAまで誤失効しない。#2506/#2582 |
+| PFB-07 | Tree/Graphで多親のEdgeをdrag/edit、表示上はEntityカードを移動 | Edge/Path occurrenceを型付き対象にし、Entity deleteや全親削除へ変換しない。対象曖昧ならIntent拒否。#2500/#2497 |
+| PFB-08 | RendererのAxis/Unit/時点/座標系不適合、形状だけは成立 | Render候補と適切性/変換資格を分離し、無音の単位変換・意味受理を禁止。#2495/#2507 |
+| PFB-09 | 未選択Plugin追加／Default変更／実Buildへの`init`混入の3例 | Catalog変更・Selection変化・実Build混入を判別し、不要失効と誤Reuseの双方を拒否。#1016/#1251/#2600 |
+| PFB-10 | 同Resultを返すProvider A/B、Bを選択・Aを実Invoke | 値一致でも実Callの不一致をFAIL。Function Bindingが正しくても実Implementation資格は別。#1251/#951 |
+| PFB-11 | Plugin取り外し・Raw Itemのみ残存、CLI/Studio/SHOは異なるRenderer | Source/Identity保持と表現不能を区別。開示不能の件数/Pathを無断表示しない。#2044/#2516 |
+
+### 15.4 段階・Owner・非目標
+
+- **P0／D1既存優先**：#1251のInspector一操作、A/B Provider、CLI/Studio実call-site、Hostでの実Entry観測と独立Expectedを先に通す。PFB-10はD1-Wと同じScenarioを再利用し、別Runnerを作らない。
+- **P0並行／Headless Binding**：#2506/#2507/#2497/#2500の既存FixtureからPFB-01〜05/07/08を対象に、一つのFunction、二Context、Table+Graphの二表現インスタンスを**read-only**でinspectする。合成入力だけならReferenceとして明記し、Product Parser/Studioでの実利用と区別する。
+- **P1／変更影響**：PFB-06/09と#2582/#2600の依存Closureを結合し、Build Artifactの失効とFunction表示/Action Readinessの失効を別票で実測。未知依存はunknown。BOMのexact tuple資格は#3267が所有する。
+- **P1以降／Writeback/Target**：#2500/#1174で非単射View→Intent候補→Host実Grant→実Effect→独立Readを順に検証。Java/.NET/Go、SUI/SHO/Studioは必要な実Consumerだけ選択し、新TEI Host前提を設けない。
+- **測定**：Core変更数、Plugin独自Adapter数、誤Entity/Edge対象数、NULL/partial過大Claim、無関係Context/Artifactの誤失効、依存変更見落とし、CLI/Studioの意味差、独立Expectedの負例検出率、構成手順・生成AI指示数。新特別機構のコストが優位なら本抽象案を縮小/撤回する。
+
+**責務**：#2495構造分類、#2506 Data Context、#2507 Function Pattern適合、#2497投影、#2500逆写像、#2582反応/局所失効、#951/#1016 Resolver、#1251 CLI/Studio Plugin移行、#3278/#3279 Trait、#2600 Build/Cache、#3267 BOM、#1180/#2514試験、#2516開示。既存正本へ参照・引継ぎし、新Function Binding Store、第二Resolver/Renderer Engine/Cache/Runnerや新Gateは増やさない。
+
+**状態**：設計・負例・受入順の追補。新Function Bindingの正式Schema/ABI、PFBの実Go/Studio/GUI/Host/DB、製品Graph/Canvasの二Consumer、BOM資格、Ownerの意味受理は**NOT RUN/NOT ACCEPTED**。過去の合成Reference PASSをこの統合PASSとしない。
