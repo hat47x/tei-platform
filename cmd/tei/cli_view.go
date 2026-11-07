@@ -265,7 +265,7 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 				Outcome:               result.Outcome,
 				Effect:                result.Effect,
 				Committed:             true,
-				Persisted:             result.Persistence == command.PersistenceObserved,
+				Persisted:             result.Persistence == command.PersistenceResourceObserved,
 				Persistence:           string(result.Persistence),
 				Durability:            "none",
 				Differences:           differences,

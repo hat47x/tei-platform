@@ -62,6 +62,10 @@ type fakeProvider struct {
 	conflict  bool
 	commitErr error
 	store     *receiptStore
+	// resource is the value a ResourceReader returns. resourceErr makes the
+	// read fail. nil resource means "not found".
+	resource    []byte
+	resourceErr error
 }
 
 func (p fakeProvider) Begin(context.Context) (effectcommit.Transaction, error) {
@@ -100,6 +104,16 @@ func (t *fakeTransaction) WriteResource(_ context.Context, request effectcommit.
 
 func (t *fakeTransaction) Commit(context.Context) error {
 	return t.provider.commitErr
+}
+
+func (p fakeProvider) ReadResource(context.Context, effectcommit.Scope) (effectcommit.ResourceState, error) {
+	if p.resourceErr != nil {
+		return effectcommit.ResourceState{}, p.resourceErr
+	}
+	if p.resource == nil {
+		return effectcommit.ResourceState{Found: false}, nil
+	}
+	return effectcommit.ResourceState{Version: 1, Payload: p.resource, Found: true}, nil
 }
 func (t *fakeTransaction) Rollback() error { return nil }
 
@@ -296,8 +310,8 @@ func TestExecutorObservesACommittedReceiptByLookup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Persistence != command.PersistenceObserved {
-		t.Fatalf("persistence=%q, want observed", result.Persistence)
+	if result.Persistence != command.PersistenceReceiptObserved {
+		t.Fatalf("persistence=%q, want receipt-observed", result.Persistence)
 	}
 	_ = lifecycle
 }
@@ -310,6 +324,59 @@ func TestExecutorWithoutLookupLeavesPersistenceNotObserved(t *testing.T) {
 		Grant:       grant(),
 		OperationID: "op-1",
 		Effect:      &semantic.DataEffect{Kind: semantic.DataEffectUpdate, Data: "sales.order"},
+	}
+	invoker := command.Invoker{
+		Authorizer:          command.ReferenceAuthorizer{},
+		World:               adapterWorld(),
+		Executor:            executor,
+		DurableStore:        true,
+		PersistenceObserver: executor,
+	}
+	result, err := invoker.Invoke(context.Background(), request())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Persistence != command.PersistenceNotObserved {
+		t.Fatalf("persistence=%q, want not-observed", result.Persistence)
+	}
+}
+
+// TestExecutorReadsTheResourceToObservePersistence checks that ResourceRead
+// compares the independently read stored value with the committed payload and
+// reports resource-observed only on a match.
+func TestExecutorReadsTheResourceToObservePersistence(t *testing.T) {
+	executor := Executor{
+		Runner:       effectcommit.Runner{Provider: fakeProvider{allowed: true, resource: []byte(`{"order":"ORD-1"}`)}},
+		Grant:        grant(),
+		OperationID:  "op-1",
+		Effect:       &semantic.DataEffect{Kind: semantic.DataEffectUpdate, Data: "sales.order"},
+		ResourceRead: true,
+	}
+	invoker := command.Invoker{
+		Authorizer:          command.ReferenceAuthorizer{},
+		World:               adapterWorld(),
+		Executor:            executor,
+		DurableStore:        true,
+		PersistenceObserver: executor,
+	}
+	result, err := invoker.Invoke(context.Background(), request())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Persistence != command.PersistenceResourceObserved {
+		t.Fatalf("persistence=%q, want resource-observed", result.Persistence)
+	}
+}
+
+// TestExecutorResourceReadMismatchIsNotObserved checks that a stored value that
+// differs from the committed payload is not claimed as observed.
+func TestExecutorResourceReadMismatchIsNotObserved(t *testing.T) {
+	executor := Executor{
+		Runner:       effectcommit.Runner{Provider: fakeProvider{allowed: true, resource: []byte(`{"order":"OTHER"}`)}},
+		Grant:        grant(),
+		OperationID:  "op-1",
+		Effect:       &semantic.DataEffect{Kind: semantic.DataEffectUpdate, Data: "sales.order"},
+		ResourceRead: true,
 	}
 	invoker := command.Invoker{
 		Authorizer:          command.ReferenceAuthorizer{},
