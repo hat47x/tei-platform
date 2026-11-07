@@ -61,3 +61,6 @@
 
 # Autonomy survey output is hashed as raw bytes by its README.
 /plan/evidence/OPERATION_AUTONOMY_DECLARATION_SURVEY_2026-11-07/** -text
+
+# Drift-check survey output is hashed as raw bytes by its README.
+/plan/evidence/OPERATION_DRIFT_CHECK_SURVEY_2026-11-07/** -text
