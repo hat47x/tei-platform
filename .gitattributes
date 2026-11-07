@@ -25,3 +25,6 @@
 
 # Egress measurement summaries are hashed as raw bytes.
 /plan/evidence/DSH_SESSION_LOG_EGRESS_MOCK_2026-11-07/** -text
+
+# Retry/default egress measurement summaries are hashed as raw bytes.
+/plan/evidence/DSH_SESSION_LOG_RETRY_AND_DEFAULT_2026-11-07/** -text

@@ -56,3 +56,4 @@
 
 
 - [DSHセッションログ拡張の実送出計測](DSH_SESSION_LOG_EGRESS_MOCK_2026-11-07/README.md)（#2509・TAI #232。ローカルMock宛で拡張fieldの水位・再有効化・Tool結果の複製送出を計測。実Providerへの送出とEgress制御はNOT RUN）
+- [DSHセッションログ拡張の既定・再試行・切断の追測](DSH_SESSION_LOG_RETRY_AND_DEFAULT_2026-11-07/README.md)（#2515 H6-E2・#2509。出荷既定で拡張fieldが載り、非2xxと空streamでは水位が進まず未受理区間が再送されることを計測。実Provider送信とEgress制御はNOT RUN）
