@@ -194,7 +194,7 @@ X-TEAの`setVariant`・`setUserValueOf`は、スクリプトから任意の値�
 | 期間キー | `internal/businesscalendar/period_key.go` | [期間キーの導出](../evidence/XTEA_LOWCODE_PERIOD_KEY_2026-11.md) |
 | 税 | `internal/taxrate`（`Resolve`・`Bind`でData宣言の属性役割から行を結び付ける） | [税率の適用期間と端数処理](../evidence/XTEA_LOWCODE_TAX_RATE_2026-11.md) |
 | 通貨 | `internal/currencyrate`（`Resolve`・`Bind`でData宣言の属性役割から行を結び付ける） | [通貨換算の率の種類と方向](../evidence/XTEA_LOWCODE_CURRENCY_RATE_2026-11.md) |
-| 採番 | `internal/numbering` | [採番の契約](../evidence/XTEA_LOWCODE_NUMBERING_2026-11.md) |
+| 採番 | `internal/numbering`（`Resolve`・`Bind`でData宣言の属性役割から行を結び付ける） | [採番の契約](../evidence/XTEA_LOWCODE_NUMBERING_2026-11.md) |
 
 各段階で、参照実装の試験と証拠を`plan/evidence/`へ残します。
 
@@ -221,6 +221,7 @@ X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設�
 - [評価時点の決定性](EVALUATION_CONTEXT_DETERMINISM_2026-10.md)
 - [移行計画](../workstreams/XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)（WP8）
 - [受容要件](../../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md)（RQ-C3）
+
 
 
 
