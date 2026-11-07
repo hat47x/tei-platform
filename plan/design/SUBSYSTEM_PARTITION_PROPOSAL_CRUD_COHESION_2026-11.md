@@ -136,3 +136,93 @@ Studioの逆操作は、ドラッグによるMembership変更も含め必ず候�
 - [Microsoft Domain Analysis / Bounded Context](https://learn.microsoft.com/en-us/azure/architecture/microservices/model/domain-analysis)
 
 この文書は**設計候補の保存**であり、正式なSemantic変更・Optimizer実装・実験PASS・Studio表示・実DB/Target動作・人間による設計受理を宣言しない。
+
+
+## 11. 2026-11-07 深化：分割と境界修復は別のProposal
+
+**分類A: Partition-only** は、元のData/Function/Procedure/CRUD/Effect宣言を**不変**としたまま、所属・境界の候補だけを変える。候補の越境CUD改善は、同一Source closure・edge universeを母集団とした場合に限って比較可能である。Functionを別Subsystemへ移動しても、Functionが既存Dataへ行うDirect CUDは消失せず、所属に応じて内部/越境へ再分類されるだけである。
+
+**分類B: Boundary repair** は、既存の直接更新をOwner側Commandへ委譲、Business RuleをOwner側へ移動、Data責任を分解するなど、元の操作契約やSource自体を変える。修復候補は、先にBefore/AfterのAction・Read/Write/Effect・Transaction・失敗回復・開示・Authorityの対応を明示し、同義性の未証明を保持する。自動生成した修復を採用済み意味とみなさず、#267/#1129/#1174/#1180の受理・独立Expectedへ渡す。
+
+| 例 | Partition-only | Boundary repair |
+| --- | --- | --- |
+| 外部Table Uを行うFunctionの所属移動 | 旧U edgeは残る。新境界で再集計 | なし |
+| 外部Table UをOwner Commandへ置換 | 対象外 | 直接U→Call/Effectへ変更。Tx、拒否、再試行、Unknownの契約を別途検証 |
+| 共通TableをDomain別Dataへ分割 | 対象外 | Identity/意味/Sync/移行・Source-Target mappingを変更。人間の業務判断が必要 |
+| 同一論理Subsystemを二つのArtifactへ配置 | 論理変更なし | Target/Buildの実現候補であり、業務操作の修復ですらない |
+
+**反例**：候補が越境CUDを0にしたと報告する一方で、元の外部U edgeを根拠なく削除している場合、分割改善ではなく未受理の業務変更である。比較不能として停止する。
+
+## 12. 最適化の評価契約・被覆率
+
+### 12.1 計算母集団
+
+固定されたScope/Revision/Accepted Subject集合に対し、Function–DataのAccess Relationを、Source-backed declared / parsed-extracted / derived-potential / actual-observed / unresolvedで分離する。論理Relation自身の所属Scopeは両端のScopeから推定しない。Reference/Query/Trigger/ETL/外部Fileが参照するDataを名前のみで紐付けない。
+
+各Accessについて、operation C/R/U/D（拡張Operationは対応写像が明示されるまでunknown）、Data粒度、Read/Write集合、出典、解釈規則版、対象Scope、coverage、stalenessを記録する。CallやEventの多段到達は直接CRUDの代用としない。複数CUD操作の重複は集合/多重集合のどちらを数えるか明示する。
+
+評価値は、**closed and qualified scope の既知direct write集合**の越境数を算定し、その他は unresolved/write-coverage として必ず別表示する。スコアが0でも、母集団の閉包が証明されない限り「越境更新が存在しない」と表示しない。
+
+### 12.2 制約と複数目的
+
+| 評価順 | 判断 | 停止線 |
+| --- | --- | --- |
+| Hard | 明示Owner/業務不変条件、must-link/cannot-link、許可された変更、必要なScope/開示、サイズ制約 | 未確定・矛盾するなら計算上の候補に留める |
+| Primary | 同一known direct CUD集合での越境数/重み | 未知edgeを0に補完しない。非同一closure間の改善率を比較しない |
+| Secondary | 内部凝集、Read cut、Function/Procedure連携、影響半径、トランザクション依存、設計理解性 | Hard制約の違反を重み付き平均で相殺しない |
+| Cost | 移動数、既存Owner変更、連携契約と移行費用 | 動的値・推定値を測定済みと呼ばない |
+
+重みが不明なら任意の単一総合順位へ縮約しない。制約充足した**Pareto候補**と、何を優先すると候補が逆転するかを説明する。関係の重みが一部のみ既知なら、既知値に基づく評価と不確定範囲を分ける。評価パラメータやtie-break policyは版付きで再現可能にする。
+
+**候補比較可能性の条件**：Candidate A/Bが同じSource closure・解析policy・accepted revision・Disclosureの範囲を共有すること。そうでなければ改善値は単純比較不可とし、差分入力や不足Evidenceを先に表示する。
+
+### 12.3 検証票（例）
+
+あるScopeについてData 8件、Function 5件、SourceのWrite edge 12件が宣言され、8件だけがqualifiedなら、越境既知edgeが0でも結果は「既知8件の越境0、未判定4件（+他に未探索Sourceが存在する可能性）」である。**システム全体の越境0**ではない。
+
+## 13. Intent / Realization / Assessment とConsumer適合
+
+他チャットのTEI共通方針に合わせ、以下を別Projectionで表す。
+
+| Projection | 表示と証拠 | 境界 |
+| --- | --- | --- |
+| Intent | Accepted論理所属・Owned Data・Function Port・明示CRUD・制約 | 設計者の意図であり実SQL/Providerの更新結果ではない |
+| Realization | Source parser・SQL/Trigger・Target Artifact・Plugin/Host/Batchから読める実装上の関係 | 未解析・動的経路、実権限/実Commit不明を保持 |
+| Assessment | Scope/Revision/Policy/Source closureに結び付いた一致・齟齬・不明・陳腐化 | 不一致を報告する前に両者の同一対象性と充足根拠が必要 |
+
+標準構造Roleの語彙が受理できること（V0）と、Subsystem/Owner/Accessという役割がSemantic型やBinder要求へ適合すること（V1）、実Studio/SHO/CUI/Target Consumerが正しく利用できること（V2）は異なる。#2495/#2619/#2620の既存Role契約を利用し、名前や表示型だけからV1/V2を自動合格にしない。
+
+表示面では、Subsystem ER図の内部Dataとexternal参照、CRUD Matrixのeffective/potential/direct/observedを表示区別し、Relation所属Scopeと端点Scopeを保持する。表示圧縮によるedge欠落、非開示/未読取/不明、Renderer能力欠落を「不存在」に読み替えない。表現の損失・逆編集は[#3250の表示引継ぎ](https://github.com/hat47x/tei-platform/issues/3250#issuecomment-6703937718)・[#3236](https://github.com/hat47x/tei-platform/pull/3236)の専門Ownerに委ねる。
+
+Grant失効やSource改版をConsumerが**観測**したら、旧成功応答の再表示と既表示対象の現在資格を別に判定し、既存#1124のstale/epoch規則へ従う。観測されていない失効について即時無効化を証明したとは言わない。Diagnostic件数・拒否理由・境界位置から非公開データを漏らさないよう現在Disclosureに従う。
+
+## 14. ETL / Plugin / Self-buildへの限定した接続
+
+- ETL/MFTではDataset境界とBusiness Data Owner境界が一致するとは限らない。抽出Read、配送ACK、Import、Business Write、永続化後の独立Readを別edge/receiptとして扱い、転送済みを業務更新済みとしない（#2542）。
+- Plugin合成は**要求固定→既存Provider探索→適合するCapability合成→不足だけ実装→独立Conformance→最適化**を既定とする。最適化が古いSource/Policyや対象Targetの能力制約を飛び越えない（#2933）。
+- Self-buildに転用する場合も、業務Subsystemの所属とBuild GraphのRequired/Selected/Consumed/Observedを同型と決めつけない。選択されないPluginやGraphに無いStepが成果物に混入すれば拒否。Stage1/Stage2を同じ論理図として示すだけで実セルフビルドと主張しない（#2831）。
+- Go/Wails Desktop、Java/.NET、REST/OData/File、単一Binary/多ProcessというTarget配置候補は、同じAccepted論理分割から別々に検証する。共通Hostを必須化しない。
+
+## 15. 追加の反証可能な受入候補（SP-11〜18、すべて NOT RUN）
+
+| ID | 負例・対照 | 期待する観測 |
+| --- | --- | --- |
+| SP-11 | 同じFunction/Data/Access集合で所属のみ移動 | write edgeそのものは不変、内外判定だけ変化 |
+| SP-12 | 越境Uを削除・Owner Commandへ置換する修復候補 | Partition-onlyで改善と評価せず、変更契約と別受理が必要 |
+| SP-13 | 一部Source/Trigger/動的SQLが不明、既知越境0 | 「既知0・未判定n」、全体ゼロ保証を拒否 |
+| SP-14 | 同一名称のDataが異Scope、Relation所属は第三Scope | owner/Relationを名前や端点Scopeから推定しない |
+| SP-15 | 同じ図でもSource/Grant/Disclosureが改版・失効 | stale候補適用拒否、既表示と後着応答を別検証 |
+| SP-16 | レイアウト折畳み/表示圧縮/非開示で辺が見えない | 図中不存在から意味上の不存在を推定しない |
+| SP-17 | ETL転送ACKありだがImport/Business effect/独立Readなし | 完了・Owner Writeの保証を拒否 |
+| SP-18 | 同じ論理分割の単一Buildと分離Buildを比較 | 受理済み業務意味は不変、実Artifact/Dependency/Authorityは別の検証 |
+
+**検証順序**：P0のread-only Source closure/coverage→既存#1132との差分、P1のPartition-onlyとBoundary repairを分けた小さな合成Reference、P2のStudio/CLI説明・Source Change Proposal、P3の実Reader/ETL/複数Targetへの接続。既存#1119 Gateを増設・変更せず、#1124のStudio直接P0、#2831の実セルフビルドP0に新しいhard dependencyを作らない。
+
+### 今回照合した追加研究
+
+- [Design Structure Matrixによる分割・統合のレビュー](https://doi.org/10.1109/17.946528)（DSMの構造依存行列）
+- [CRUD MatrixとAxiomatic Design](https://doi.org/10.1016/j.compind.2021.103569)（CRUDによる情報システム設計の先行研究）
+- [Microsoft: Microservice Boundaries](https://learn.microsoft.com/en-us/azure/architecture/microservices/model/microservice-boundaries)（Aggregate、業務責任、通信負担、非機能制約）
+- [AWS: Business-domain service boundaries](https://docs.aws.amazon.com/wellarchitected/2024-06-27/framework/rel_service_architecture_business_domains.html)（Domain境界と組織・設計上の責務）
+
+これらは比較研究の根拠であり、特定のアルゴリズム・係数・物理マイクロサービスへの自動変換を正式採用した根拠ではない。
