@@ -8,6 +8,20 @@ TEIの開発支援は、ランダムな入力値を大量に作るだけでな�
 
 三要素分析法は **Data（Entity/Key/Relation/Domain）、Function（入力/Query/Rule/操作/出力）、Business（目的/契機/役割/責任/手作業/DFDデータフロー）** の相互照合に使う。業務モデルのDFD矢印はWorkflowの実行順・自動起動・人間の引受完了を直接意味しない。Procedure/Workflow Instanceは明示的な参照で接続する。
 
+### 三つの視点だけでなく、論理要件・物理制約・実装観測を分ける
+
+三要素分析法の解説では、Data／Function／Businessの三視点を、**論理要件・物理制約・実装**にも分けて捉える。テスト支援ではこの違いが「設計上のルール」と「Targetで強制されるルール」を区別する根拠になる。
+
+| 視点 | 論理要件の例 | 物理制約の例 | 実装・Actualの検証 |
+| --- | --- | --- | --- |
+| Data | 受理されたKey/FD/値域/Relation/時間 | DB型、DDL、CHECK/FK、Provider実現能力 | 実Rowset、格納値、Query・更新結果、Snapshot |
+| Function | 入力、Rule、Query、操作、Output契約 | 言語/Runtime、API、Target差、Disclosure | 実呼出し、SQL+bind、Operator、Consumerの実受領 |
+| Business | 業務目的、Actor/責任、Event、DFD、Procedure/Handoff | 実組織・人員・運用手段、現実の作業制約 | 手作業/承認/外部引受の独立観測と未観測 |
+
+1つのCaseでも、「論理上は拒否すべき」「DBの現CHECKでは拒否できない」「実際のFunctionは局所PASS」「人間の承認は未実施」は同時に成立し得る。**モデル一致・Target実行・業務完了の評価結果を合算しない**。物理制約を変更しても業務意味の受理が自動更新されるわけではない。
+
+参照：[三要素分析法（1）](https://atmarkit.itmedia.co.jp/fbiz/cbuild/complete/doa/01/02.html)（三視点×論理要件・物理制約・実装）。これは出典に基づく構造の補足であり、原著の「強属性」の定義を確認したものではない。
+
 ## 2. 既存契約の再利用・責務分担
 
 | 正本／担当 | 本計画で再利用するもの | 追加する仕事 |
