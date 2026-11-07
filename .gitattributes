@@ -22,3 +22,15 @@
 # Survey output is hashed as raw bytes by the evidence README.
 /plan/evidence/COMPOSITION_NEXT_EDGE_STATIC_SURVEY_2026-11-07/** -text
 /plan/evidence/DSH_H2_H3_FOUR_SESSION_2026-11-07/** -text
+
+# Egress measurement summaries are hashed as raw bytes.
+/plan/evidence/DSH_SESSION_LOG_EGRESS_MOCK_2026-11-07/** -text
+
+# Retry/default egress measurement summaries are hashed as raw bytes.
+/plan/evidence/DSH_SESSION_LOG_RETRY_AND_DEFAULT_2026-11-07/** -text
+
+# Operation-surface pattern gap evidence is hashed as raw bytes.
+/plan/evidence/OPERATION_SURFACE_DECLARED_PATTERN_GAP_2026-11-07/** -text
+
+# Pattern/operation mapping evidence is hashed as raw bytes.
+/plan/evidence/PATTERN_KIND_OPERATION_MAPPING_2026-11-07/** -text

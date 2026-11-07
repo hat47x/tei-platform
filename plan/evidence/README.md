@@ -36,6 +36,7 @@
 - [期間キーの導出の確認](XTEA_LOWCODE_PERIOD_KEY_2026-11.md)（参照実装の試験記録。月内締めの期間化と状態との結合は未実装）
 - [税率の適用期間と端数処理の確認](XTEA_LOWCODE_TAX_RATE_2026-11.md)（参照実装の試験記録。税率Dataの宣言との結合と税区分の運用は未実装）
 - [通貨換算の率の種類と方向の確認](XTEA_LOWCODE_CURRENCY_RATE_2026-11.md)（参照実装の試験記録。Data宣言との結合と年次・月次の優先順位は未実装）
+- [採番の契約の確認](XTEA_LOWCODE_NUMBERING_2026-11.md)（参照実装の試験記録。採番Data・取引との結合は未実装）
 - [X-TEA受容要件の実装対応](XTEA_LOWCODE_ACCEPTANCE_TRACE_2026-11.md)（`AC-1`〜`AC-11`・`RQ-C1`〜`RQ-C3`の参照実装と未確認事項。受容判断は仮承認）
 - [実DBで実行時の判断を確かめる計画](REAL_DATABASE_RUNTIME_DECISION_PLAN_2026-11.md)（期間・権限・効果の判断を実DBで見る案。**NOT RUN**）
 
@@ -46,13 +47,23 @@
 - [Studio固定Host負例のCI実行記録](STUDIO_FIXED_HOST_CI_2026-11-07.md)（#2948のGo版修正後に試験本体へ到達し、固定Hostのroot置換負例が失敗した記録。#3061で追跡）
 - [宣言と実行の差の保持](XTEA_LOWCODE_OPERATION_DIFFERENCE_2026-11.md)（#3055の記録）
 - [Go選択Module閉包の事前観測](TEI_GO_MODULE_CLOSURE_PREFLIGHT_2026-11-07.md)（`cmd/tei`は現行の隔離観測で`missing-module`、自己完結したtoolは`supported`。Build・Artifact・権限は未実行。SB-0a / #2831）
+- [Go Module供給のcorrupt-supply分類](TEI_GO_MODULE_CORRUPT_SUPPLY_2026-11-07.md)（#2831 SB-0b。archive破損と展開済み改変の実観測、`go list`では展開済み改変が見えないこと、`go mod verify`が捕まえることの記録。供給manifestと`h1:`照合の接続は未実装）
+- [Go Module供給の実観測](TEI_GO_MODULE_SUPPLY_OBSERVATION_2026-11-07.md)（#2831 SB-0bの前提。供給の有無・破損・改変が分類と成果物へどう現れるかの実測。TEIのBuild経路は未実行）
 - [構成Kernel移行Gateの最初の実証パケット実行記録](COMPOSITION_FIRST_CONSUMER_RUN_2026-11-07/README.md)（固定HEADでA・B・C三経路を別々に実行し、`operations`と`artifacts`が同じ`modelRevision`を共有したことだけを記録。三経路の同一業務Request接続・Owner受理・実DB効果は未確認）
 - [構成Gateの次の一辺を依存グラフで測る](COMPOSITION_NEXT_EDGE_STATIC_SURVEY_2026-11-07/README.md)（Goファイル2876件と実行単位167件のimport閉包を走査し、`internal/operations`と`internal/composition`を同居させるファイル・実行単位が0件、`internal/servicehost`の非試験呼出し元も0件であることを記録。実行時の不接続や権限は示さない）
+- [宣言されたPatternと導出された操作はどこで結べるか](PATTERN_KIND_OPERATION_MAPPING_2026-11-07/README.md)（同じWorldから `tei operations` の導出操作8件と `tei artifacts` の `pattern` 5件を取り、Data ID・能力ID・Relation target の三つの手掛かりごとに一致と限界を記録。受理済み基準では書込み操作の `binding` が全件nullで、読み取り専用の `command` は構造上どの導出操作とも結ばれない。結合規則の採否は示さない）
+- [操作面は宣言されたPatternを読んでいるか](OPERATION_SURFACE_DECLARED_PATTERN_GAP_2026-11-07/README.md)（受注Workspaceと見積もり候補の重ねで`tei operations`を比較し、World指紋は変わるのに操作面8件と`summary.declared=0`が不変であることを記録。W3未着手の設計記述と一致し、AのOperationとBの業務ActionをA側で結ぶ手掛かりが現状無いことを示す。権限・意味の受理は示さない）
 
 - [DSH外部HarnessからのTEI read-only CLI実起動](DSH_H2_TOOL_ONLY_READ_ONLY_2026-11-07/README.md)（#2509。外部AIハーネスの1実Sessionで固定実行物の実起動・実引数・実出力を同一ログで突合。H3・四Session比較・正答採点・Egressは未実施）
 - [DSH実HarnessでのH2/H3四Session実行](DSH_H2_H3_FOUR_SESSION_2026-11-07/README.md)（#2509・TAI #168。H2→H3→H3→H2を同一Taskで実行し、H3のSkill実Load byteを確認。回答採点・Skill効果の因果・Egressは未確認）
 
-- [Go Module供給のcorrupt-supply分類](TEI_GO_MODULE_CORRUPT_SUPPLY_2026-11-07.md)（#2831 SB-0b。archive破損と展開済み改変の実観測、`go list`では展開済み改変が見えないこと、`go mod verify`が捕まえることの記録。供給manifestと`h1:`照合の接続は未実装）
 
 
 
+- [DSHセッションログ拡張の実送出計測](DSH_SESSION_LOG_EGRESS_MOCK_2026-11-07/README.md)（#2509・TAI #232。ローカルMock宛で拡張fieldの水位・再有効化・Tool結果の複製送出を計測。実Providerへの送出とEgress制御はNOT RUN）
+- [オフラインGo Module供給の検証](TEI_GO_MODULE_SUPPLY_VERIFICATION_2026-11-07.md)（`cmd/tei`の実選択12件を`go.sum`の`h1`へ束縛してオフライン再解決。供給元・署名・Buildは未検証。SB-0b / #2831）
+- [DSHセッションログ拡張の既定・再試行・切断の追測](DSH_SESSION_LOG_RETRY_AND_DEFAULT_2026-11-07/README.md)（#2515 H6-E2・#2509。出荷既定で拡張fieldが載り、非2xxと空streamでは水位が進まず未受理区間が再送されることを計測。実Provider送信とEgress制御はNOT RUN）
+
+- [TEI自身の設計をCLIで扱う実測](TEI_DOGFOODING_CLI_SELF_DESIGN_2026-11-07/README.md)（#3149。SHA-256 `bf6930a047cf94f276fb63b082bf71599986d71f1a5c53804105c04aa0021cfd` の固定実行物でread-only CLIを50出力ぶん実行し、成立した範囲と未対応を区別。意味の受理・実Provider・CI再現は未確認）
+- [供給からの実BuildとSource閉包資格の食い違い](TEI_GO_BUILD_WITH_SUPPLY_X1_2026-11-07.md)（`cmd/tei`は供給だけでBuildできるが、同じadapterのSource閉包は`rejected`。artifactと資格を別Claimとして扱う。SB-B事前確認 / X1 / #2831）
+- [pwsh不安定時のWSL検証手順](WSL_VERIFICATION_RUNBOOK_2026-11-07.md)（worktreeの`.git`書換え・ログインシェル回避・読み取り専用cacheの後始末・両OS結果の扱い）

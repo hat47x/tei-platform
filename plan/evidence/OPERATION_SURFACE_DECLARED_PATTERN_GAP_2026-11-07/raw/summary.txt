@@ -1,0 +1,41 @@
+accepted:
+  schemaVersion=tei.operations.operation-surface/v0 application=order_entry
+  worldFingerprint=sha256:c92de09f9595b1f46bfc18e6f99260d8391113b6d2639357d372abf634a1d65a
+  modelRevision=sha256:f414e2b09d2f6ea5d0f5f282aea55612985c0e8155877ad8d310250633cf3fd2
+  rule={'id': 'tei.operation-surface/standard-crud', 'version': 'v1', 'fingerprint': 'sha256:92adf0fa3b20816fb6068780a6dd8b9b1fb77973e6c2cff823313346b0e59ae0'}
+  operations=8 gaps=0 conflicts=0
+  summary={'operations': 8, 'derived': 8, 'declared': 0, 'unattended': 4, 'gaps': 0}
+  origins={'derived': 8}
+   order_entry.list.sales.order | kind=list | target=sales.order | origin=derived | binding=None
+   order_entry.read.sales.order | kind=read | target=sales.order | origin=derived | binding=None
+   order_entry.create.sales.order | kind=create | target=sales.order | origin=derived | binding=None
+   order_entry.update.sales.order | kind=update | target=sales.order | origin=derived | binding=None
+   order_entry.list.sales.order_line | kind=list | target=sales.order_line | origin=derived | binding=None
+   order_entry.read.sales.order_line | kind=read | target=sales.order_line | origin=derived | binding=None
+   order_entry.create.sales.order_line | kind=create | target=sales.order_line | origin=derived | binding=None
+   order_entry.update.sales.order_line | kind=update | target=sales.order_line | origin=derived | binding=None
+overlay:
+  schemaVersion=tei.operations.operation-surface/v0 application=order_entry
+  worldFingerprint=sha256:44a7ce6342befd82b17e1e7677f0bd60a6dc9538f176e5ce581643c03fc6c226
+  modelRevision=sha256:8ee83bef3c5ffdf56d541ab5266ef6c52443cad1248faf46c47fbacbf3d8b94c
+  rule={'id': 'tei.operation-surface/standard-crud', 'version': 'v1', 'fingerprint': 'sha256:92adf0fa3b20816fb6068780a6dd8b9b1fb77973e6c2cff823313346b0e59ae0'}
+  operations=8 gaps=0 conflicts=0
+  summary={'operations': 8, 'derived': 8, 'declared': 0, 'unattended': 4, 'gaps': 0}
+  origins={'derived': 8}
+   order_entry.list.sales.order | kind=list | target=sales.order | origin=derived | binding=None
+   order_entry.read.sales.order | kind=read | target=sales.order | origin=derived | binding=None
+   order_entry.create.sales.order | kind=create | target=sales.order | origin=derived | binding=None
+   order_entry.update.sales.order | kind=update | target=sales.order | origin=derived | binding=None
+   order_entry.list.sales.order_line | kind=list | target=sales.order_line | origin=derived | binding=None
+   order_entry.read.sales.order_line | kind=read | target=sales.order_line | origin=derived | binding=None
+   order_entry.create.sales.order_line | kind=create | target=sales.order_line | origin=derived | binding=None
+   order_entry.update.sales.order_line | kind=update | target=sales.order_line | origin=derived | binding=None
+overlay artifacts:
+  manifest.complete=False findings=0
+  pattern lines in function-definition=6
+   pattern order_entry.customer_reference reference
+   pattern order_entry.order_lines header-detail
+   pattern order_entry.order_record record
+   pattern order_entry.preview_order_quote command
+   pattern order_entry.recent_orders browse
+   pattern order_entry.submit_order command

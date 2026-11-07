@@ -17,7 +17,7 @@
 ## 3. 現在の結論（先に要約）
 
 - `world`を除く、`tei commands`が広告する読取り専用JSONコマンドは`tei.cli.<command>/v0`を持ち、失敗時は`ok: false`と`error.code`を標準出力のJSON 1件で返す。終了コードの意味（0/1/2）は従来どおり。
-- **`ok`/`result`を持つ成功時の形は、`version -json`には当てはまらない。** `version -json`は`ok`を持たず、build識別（`goVersion`等）を`schemaVersion`と同じ階層に並べて返す。`tei commands`のdiscoveryは`version`を`jsonContract: "enveloped"`と広告しているため、呼び手は成功時に`ok`があると仮定できない。この食い違いは未決（#2824）で、本節は実装の現状を記す。
+- **`ok`/`result`を持つ成功時の形は、`version -json`には当てはまらない。** `version -json`は`ok`を持たず、build識別（`goVersion`等）を`schemaVersion`と同じ階層に並べて返す。2026-11-07から`tei commands`は`version`の`successShape`を`identity`として広告するので、呼び手は成功時に`ok`を仮定しない。`jsonContract`の`enveloped`は失敗時の形（`schemaVersion`と`error.code`）を指し、成功時の本体は`successShape`が示す（#2824）。
 - `world`は例外で、`tei.cli.*`のエンベロープを持たない。`tools/reference-critical-path-evidence-audit/live-r1-smoke.mjs`が`tei world`の生標準出力SHA-256を受理済みDecisionの`derivedWorldSha256`と照合するため、インデントやエンベロープの追加は証跡照合と両立しない。`world`は内部・証跡用途であり、外部の安定JSON契約の対象外とする（2026-11-02 Owner判断）。
 - 実測では、製品CLI（`cmd/tei`）が外部のGo moduleに依存しないのと同様に、**広告された読取りコマンドのうち`tei.cli.*/v0`を持たない出力は、内部構造体の変更がそのまま外部向け変更になる**。`world`はこの例外として扱い、その他のコマンドは投影型で版固定する。
 
@@ -52,12 +52,16 @@
 観測の補足:
 
 - 引数の未対応flagは、#2332で全広告コマンドが拒否するようになった。拒否も標準エラー（`inspect`、`trace`、`validate -json`はJSON）で、flag解析のusageの分だけstderrが長くなるコマンドがある（例: `knowledge-context`に未知のflag）。`version -json`の引数不正も、2026-11-07から実装が標準エラーへ返す（表の記載と一致）。
+- 引数不正の出力先は、`cmd/tei/cli_argument_failure_streams_test.go`が実プロセスの標準出力と標準エラーを分けて検査する（#2993）。`version`・`commands`は標準出力を空のまま標準エラーへ理由を書き、`validate -json`は同じ失敗を標準出力の1 JSONで返す。この差はコマンドごとの決定であり、CLI全体の既定として読まない。
 - `validate -json`の失敗JSONは`diagnostics`を常に空配列として持ち、`error.code`と`error.message`のみで種別を伝える。
 - `validate -json`は、2026-11-07から`sourceRootFindings`を返す。`sources`の存在しないrootは`severity:"error"`（`ok:false`・終了コード1）、Loaderが解釈しない未知rootと、Loaderが読まない近似名の管理ファイルは`severity:"warning"`である。Canonical Subjectを持たないため`diagnostics`とは別の欄にする（#2823）。
 - 空のWorkspace（モデル要素0件）は`validate`が`WORKSPACE_DECLARES_NO_MODEL_ELEMENTS`（warning）を返す。`ok:true`・終了コード0のままなので、`diagnostics`のwarningを確認する（#2822）。
 - `validate -json`と`model catalog`は、2026-11-07から`declarationCounts`を返す。`std`の標準意味型を除いたWorkspace自身の宣言件数であり、空のWorkspace（`total:0`）と宣言のあるWorkspaceを機械的に区別できる（#2822）。
+- `model catalog`の`modelRevision`は、管理対象Sourceのpathと生バイトの組から作る版であり、**読み込んだWorldの内容の版ではない**。管理対象Sourceを1件も読まないWorkspaceでは空入力のSHA-256（`sha256:e3b0c442…b855`）になり、標準意味型の`entries`が並んでいてもこの値になる。空かどうかは`modelRevision`ではなく`declarationCounts.total`で判定する（#2822）。この区別を`internal/sourceindex`・`internal/operations`・`cmd/tei`の試験と`docs/getting-started.md`へ書いた。
 - `tei commands`の各entryは、2026-11-07から`schemaVersion`と`jsonContract`（`enveloped`／`raw`／`none`）を持つ。`world`だけが`raw`で、`tei.cli.*`のエンベロープを持たないことをdiscoveryから読める。
 - 2026-11-07から、discoveryが広告する`schemaVersion`と、そのコマンドが実プロセスで返す応答の`schemaVersion`の一致を`cmd/tei/cli_discovery_process_test.go`が検査する。定数同士の照合（`cli_contract_test.go`）だけでは、応答側の改名と広告のずれを検出できなかった（#2824）。`version -json`は`ok`/`error`を持たないため、この検査は`schemaVersion`の一致だけを求める。
+- 2026-11-07から、`tei commands`の各entryは`modes`（応答の`mode`が取りうる値の閉じた集合）を持つ。空文字列の要素は「その応答では`mode`が省略されうる」ことを示す。`mode`で結果の形が変わる`source-index`（`index`／`subject`）と`knowledge-context`（`context`／`disclosure`）、`plugin-lock`（`environment`または省略）、`plugin-resolve`（`unvalidated-candidates`または省略）が対象で、残りの`knowledge-*`は1形の結果型を`mode`で名乗る。`cmd/tei/cli_discovery_modes_test.go`が、実際の応答の`mode`が広告された集合に含まれることを実プロセスで検査する。
+- 2026-11-07から、`tei commands`の各entryは`successShape`（`envelope`＝`ok`/`result`、`identity`＝`version -json`のbuild識別）を持つ。省略時は`envelope`であり、成功時に`ok`を持ち、`result`を持つ。`version`だけが`identity`で、`ok`も`result`も持たない。`cmd/tei/cli_discovery_shape_test.go`が、実応答の本体が広告された形と一致することを実プロセスで検査する。
 
 ## 5. v0の中での互換な変更と版を上げる変更（規則案）
 

@@ -155,8 +155,8 @@ function summarizeApplication(view) {
   if (Array.isArray(view.periods) && view.periods.length) {
     sections.push({
       title: "期間",
-      header: ["ID", "Data", "業務日付", "状態"],
-      rows: view.periods.map((period) => [valueOf(period.id), valueOf(period.data), valueOf(period.businessDate), joined(period.states)]),
+      header: ["ID", "Data", "業務日付", "状態", "暦"],
+      rows: view.periods.map((period) => [valueOf(period.id), valueOf(period.data), valueOf(period.businessDate), joined(period.states), valueOf(period.calendar)]),
     });
   }
   return sections;
@@ -299,6 +299,7 @@ export function summarizeView(value) {
     rows: Object.entries(value).map(([key, entry]) => [key, JSON.stringify(entry)]),
   }];
 }
+
 
 
 
