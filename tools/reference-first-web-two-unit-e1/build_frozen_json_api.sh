@@ -55,6 +55,7 @@ go run ./tools/reference-first-web-frozen-world-generate \
   -lineage-out "$scratch/generated-world-observation.json" \
   -grants "$scratch/frozen-world-grants.json" \
   -access-log "$scratch/frozen-world-access.jsonl" \
+  -access-head "$scratch/frozen-world-access.head" \
   > "$scratch/derived/api/frozen-world.json"
 digest="$(sha256sum "$scratch/derived/api/frozen-world.json" | cut -d' ' -f1)"
 test "${#digest}" -eq 64
@@ -63,8 +64,14 @@ test "${#digest}" -eq 64
 # the allowed one. Without this check the log is optional evidence nobody reads;
 # with it, a build that silently stopped enforcing would still produce a digest
 # and would look the same.
+#
+# The head pins the last hash of the record, so a removed last line is a mismatch
+# rather than a shorter valid chain. The pin is compared here as well: the tool
+# refuses to write when the two disagree, and this confirms the record they left
+# behind is the one that was pinned.
 test -s "$scratch/frozen-world-access.jsonl"
-python3 - "$scratch/frozen-world-access.jsonl" <<'PY'
+test -s "$scratch/frozen-world-access.head"
+python3 - "$scratch/frozen-world-access.jsonl" "$scratch/frozen-world-access.head" <<'PY'
 import json, pathlib, sys
 
 lines = [line for line in pathlib.Path(sys.argv[1]).read_text(encoding="utf-8").splitlines() if line.strip()]
@@ -75,6 +82,9 @@ if record.get("allowed") is not True:
     raise SystemExit("the observation write was not allowed: %s" % lines[0])
 if record.get("capability") != "tei.frozen_world.lineage":
     raise SystemExit("the access decision names another capability: %s" % lines[0])
+pinned = pathlib.Path(sys.argv[2]).read_text(encoding="utf-8").strip()
+if pinned != record.get("hash"):
+    raise SystemExit("the pinned head does not equal the recorded hash: pin=%s record=%s" % (pinned, record.get("hash")))
 PY
 
 # Reuse Shared Acceptance's read-only Decision Index for its original
