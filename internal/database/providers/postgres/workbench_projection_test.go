@@ -68,7 +68,7 @@ func TestObservedPhysicalRelationsReachWorkbenchWithoutSemanticInference(t *test
 		t.Fatalf("physical indexes were lost: %#v", orders.Indexes)
 	}
 	regular, expression := orders.Indexes[0], orders.Indexes[1]
-	if regular.Name != "orders_customer_idx" || !regular.State.Usable() ||
+	if regular.Name != "orders_customer_idx" || regular.State == nil || !regular.State.Usable() ||
 		len(regular.Keys) != 1 || regular.Keys[0].Column != "customer_id" {
 		t.Fatalf("regular index state and key changed: %#v", regular)
 	}
