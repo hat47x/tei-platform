@@ -442,7 +442,7 @@ P0の完了は「全Domainへ一般化」ではなく、**どの根拠が揃え�
 **本追補の資格**：GitHub mainの現行計画・関連PRの実証範囲と、他チャットの設計方針を突合した文書上の成熟差分。OKF K1のTEI Reader/SHO二Consumer、再資格化の全負例、実Product Function/Plugin/Host、追加Go/DB/GUI/Harness試験を今回実行したものではない。
 
 <!-- tei-design-intake-cli-only-mcp-read-closure-20261108 -->
-### 14.11 CLI/MCPの実在、Readerの意味到達、SourceとConsumerの受領を一つの実験で分離
+### 14.15 CLI/MCPの実在、Readerの意味到達、SourceとConsumerの受領を一つの実験で分離
 
 **現在の最も重要な新しい不足Edge**：#3149ドッグフーディング第2ラウンドの[未統合PR #3356](https://github.com/hat47x/tei-platform/pull/3356)は、現mainの実TEI CLIを同じ手順で走らせて旧D-1〜D-10を再点検した。現時点で`commands`は19件、MCPサーバーに対応するCommand／実Go Serverを発見できず、**再現できたのはCLI経路だけ**。MCPについては「入口なし／NOT RUN」であって、CLIが使えることをMCPの実Tool受領やHarnessの動作へ昇格させない。MCP採用を全P0のブロッカーにするのでもない。将来必要なら**既存TEI CLI/Query/Providerの同じ意味・認可・診断契約を呼ぶ薄いAdapter**とし、第二のMeaning/Required Registryを作らない。#3356の専用Health／実測の資格はその固定Binaryに限る。
 
@@ -457,7 +457,7 @@ P0の完了は「全Domainへ一般化」ではなく、**どの根拠が揃え�
 | P0-M：同一Subjectを2 Canvas／2 Viewへ投影 | Subject ID、各Canvas View Occurrence ID、Edge Role/向き/多重性、Projection Source/Revision、元Sourceへの逆参照、Consumer実受領 | #3263/#1124/#2497。Viewが複数でも根拠Subjectは増えない。Graph→Tree/Chartの非単射から書込対象を逆推定しない |
 | P0-R：`recent_orders`のProduct SQL/args→Provider | Environment/Provider宣言、selected、**actual invoked binary/instance**、SQL原byte+`:from`、Rowset/Field/Scope/Read Cohort、Function Context、実受領 | #2586/#1251/#951。main[#3350](https://github.com/hat47x/tei-platform/pull/3350)のCapability未選択6→4補正は**選択計算の成果**だけ。隔離PG Reference成功やPlugin selectedはProduct E2の証拠でない |
 | P1：CLI`view`／将来MCP／Studioから操作・保存 | 読取命令・`-execute`等の実Variant、`writeFlags`、OSファイル、Provider効果、Session/Tool Sink、独立再Read、現在Grantをそれぞれ別に観測 | #3182/#2515/#1174。read-onlyは業務意味の非変更であり、Named Output／外部転送の不存在を保証しない。MCP入口がない現状は`unsupported` |
-| Handoff／Completion：対象0件のBusiness Procedure | `Targets=[]`、Expected Coverageの根拠、`EmptyJustified`、`HandoffConfirmed`、実Receiver Receipt、Business Effectの実証を区別 | [未統合 #3353](https://github.com/hat47x/tei-platform/pull/3353)/#2386。修正Draftの局所CI成功をmain完了条件に流用しない。Caller確認フラグは受信者の独立観測ではない |
+| Handoff／Completion：対象0件のBusiness Procedure | `Targets=[]`、Expected Coverageの根拠、`EmptyJustified`、`HandoffConfirmed`、実Receiver Receipt、Business Effectの実証を区別 | [main統合 #3353](https://github.com/hat47x/tei-platform/pull/3353)/#2386。空集合+Handoff未確認時のCompletionUnverifiedへの限定修正であり、実Receiverの独立Receiptや組織業務完了の資格に流用しない。Caller確認フラグは受信者の独立観測ではない |
 
 **到達順は変更しない**：P0-D/Raw Source ReadとP0-I/実CLI Contextを並走し、その証拠を使用してP0-M三図・CRUDとP0-R一Function実Product Readを並行する。接合P0-CはWorld/Source/Role/Scope/Read Epochが一致したときだけ。P1のCLI/Studio共通Inspectorの**selected Provider＝actual Invoke**試験を次のPlugin-first縦切りとし、MCP/SHO/H3は利用できる入口と完全受領が観測できる場合だけ独立判定する。P0-M／P0-RをMCPや新Markdown Parserの完成待ちにしない。
 
