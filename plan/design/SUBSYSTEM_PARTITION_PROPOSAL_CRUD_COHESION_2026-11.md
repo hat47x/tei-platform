@@ -34,7 +34,7 @@ TEIの既存標準Data / Relation / Graph / Collection / Constraint / typed Port
 - Dataの論理Identity/Entity/Relation/Field/Key/FDと、物理Table/Schema/PK/UI Row Key/生成IDを区別する。
 - 一つのDataを複数Subsystemが参照することと、そのDataの正本更新責任が複数あることを区別する。
 - 同じ実世界の概念が別のbounded contextで異なるモデルを持ち得る。機械的な同名一致でDataを同一視せず、相互変換・同期の契約を明示する。
-- Scope + Source identity + revision + accepted meaningを固定する。同名異scope、異なるSource closeure/Policy/Plugin版を混合しない。
+- Scope + Source identity + revision + accepted meaningを固定する。同名異scope、異なるSource closure/Policy/Plugin版を混合しない。
 - データオーナーが未確定、SourceのCRUDが未被覆、関係が複数候補、Function IOが不明の場合は**unresolved**。未観測をCUDゼロと表示しない。
 - Source tokenやsource-indexの存在・fingerprintの一致はAuthenticity/業務Acceptance/Effect実証ではない。
 - 図の座標・レイアウトや表示折り畳みは意味の正本に昇格させない。
