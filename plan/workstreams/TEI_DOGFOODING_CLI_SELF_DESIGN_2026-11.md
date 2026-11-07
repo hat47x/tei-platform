@@ -1,6 +1,6 @@
 # TEIドッグフーディング：生成AIがCLIだけでTEI自身の設計を扱えるかの実測と課題
 
-- **状態**: 2026-11-07 実測記録と課題の起票。read-onlyの実測は完了し、検出した課題は未修正・未受理。
+- **状態**: 2026-11-07 実測と課題の起票を完了。本書と実測記録は `main` に統合済み（PR #3162、merge commit `6fa253312`）。D-1・D-2・D-4〜D-8 は #3180〜#3186 として起票済み。検出した課題の修正は未着手・未受理。
 - **担当課題**: [#3149](https://github.com/hat47x/tei-platform/issues/3149)（対応方針の正本）。
 - **検証記録**: [TEI自身の設計をCLIで扱う実測](../evidence/TEI_DOGFOODING_CLI_SELF_DESIGN_2026-11-07/README.md)（生出力50ファイルを含む）。
 - **関連**: [#1155](https://github.com/hat47x/tei-platform/issues/1155)（CLI主入口）、[#2605](https://github.com/hat47x/tei-platform/issues/2605)（Product Skill）、[#2354](https://github.com/hat47x/tei-platform/issues/2354)（CLI JSON契約、Closed）、[#2824](https://github.com/hat47x/tei-platform/issues/2824)（discoveryの広告、Open）。
@@ -22,7 +22,7 @@
 - **発見・読取り・検証の主要な経路は成立した。** `commands` → `model catalog` → `inspect` → `trace` → `validate -json` を同じ実行物で連続実行し、各段の終了コードと`ok`、`diagnostics`、照合値を別々に取得できた。`validate`・`model catalog`・`inspect`・`trace`の`worldFingerprint`は同一Workspaceで一致した。
 - **「設計を扱う」ための不足は、主に4点に集まる。** 対象の種類の非対称、Workspace同一性の欠落、版の値の名前と置き場所の不統一、設計文書（Markdown）が意味として読まれないこと。
 - **副作用の宣言と実挙動が一致しない箇所がある。** `commands`は`view`を`effect: read-only`と広告するが、`-execute`に`-operation-log`や`-lifecycle-state`を付けると作業ディレクトリへファイルを書く。
-- 検出した課題は10件。うち「CLI出力の契約」に属するものは既存の[#2354](https://github.com/hat47x/tei-platform/issues/2354)・[#2824](https://github.com/hat47x/tei-platform/issues/2824)と重なるため、本記録では**重複を明記して新規Issueを作らない**。それ以外は§6で分割先を示す。
+- 検出した課題は10件。うち D-1・D-2・D-4〜D-8 は #3180〜#3186 として起票済み。D-3・D-10 は [#2354](https://github.com/hat47x/tei-platform/issues/2354)（Closed）・[#2824](https://github.com/hat47x/tei-platform/issues/2824)・[#2822](https://github.com/hat47x/tei-platform/issues/2822) の範囲、D-9 は [#2619](https://github.com/hat47x/tei-platform/issues/2619)・[#2621](https://github.com/hat47x/tei-platform/issues/2621) の設計範囲として、新規Issueを作らない。重複確認と分割先は§4、次の作業は§6にある。
 
 ## 3. 検出課題（一覧）
 
@@ -372,20 +372,22 @@ TEI自身の設計は、`docs/`と`plan/`のMarkdownで書かれている。こ�
 
 ## 4. 重複の確認と分割先
 
-| 課題 | 既存Issueとの関係 | 分割先（案） |
+| 課題 | 既存Issueとの関係 | 分割先（2026-11-07 起票済み） |
 | --- | --- | --- |
-| D-1 | `#1165`（Closed）はtraceの初期実装。種類の非対応は未起票 | 新規Issue（CLI: traceの未対応kindをSUBJECT_NOT_FOUNDと区別する） |
-| D-2 | `#2823`（Open）はsources診断、`#2605`はSkill側の記録 | 新規Issue（CLI: 応答にWorkspace同一性を含める） |
-| D-3 | `#2354`（Closed）の残範囲。`#2824`（Open）は広告の一致 | `#2824`へ追記、または新規Issue（CLI: 版の欄を統一する） |
-| D-4 | `#2998`（Open）は`committed`の意味。作用の宣言は未起票 | 新規Issue（CLI: effectを作用の範囲で分ける） |
-| D-5 | 該当なし（`getting-started.md`は回避策を記載済み） | 新規Issue（CLI: plugin-lockのround-trip） |
-| D-6 | 該当なし | D-5と同一Issue、または`#2354`系 |
-| D-7 | `#2824`（Open）と近いが対象が異なる | 新規Issue（CLI: -hと引数契約） |
-| D-8 | 該当なし | 新規Issue（文書: knowledge-qualifyの要件例） |
+| D-1 | `#1165`（Closed）はtraceの初期実装。種類の非対応は未起票 | [#3180](https://github.com/hat47x/tei-platform/issues/3180)（CLI: traceの未対応kindをSUBJECT_NOT_FOUNDと区別する） |
+| D-2 | `#2823`（Open）はsources診断、`#2605`はSkill側の記録 | [#3181](https://github.com/hat47x/tei-platform/issues/3181)（CLI: 応答にWorkspace同一性を含める） |
+| D-3 | `#2354`（Closed）の残範囲。`#2824`（Open）は広告の一致 | `#2824`・`#2822` の範囲として扱う（新規Issueは作らない） |
+| D-4 | `#2998`（Open）は`committed`の意味。作用の宣言は未起票 | [#3182](https://github.com/hat47x/tei-platform/issues/3182)（CLI: effectを作用の範囲で分ける） |
+| D-5 | 該当なし（`getting-started.md`は回避策を記載済み） | [#3183](https://github.com/hat47x/tei-platform/issues/3183)（CLI: plugin-lockのround-trip） |
+| D-6 | 該当なし | [#3184](https://github.com/hat47x/tei-platform/issues/3184)（CLI: 同じlock不正で終了コードが分かれる） |
+| D-7 | `#2824`（Open）と近いが対象が異なる | [#3185](https://github.com/hat47x/tei-platform/issues/3185)（CLI: -hと引数契約） |
+| D-8 | 該当なし | [#3186](https://github.com/hat47x/tei-platform/issues/3186)（文書: knowledge-qualifyの要件例） |
 | D-9 | `#2619`・`#2621`（Open）の設計範囲 | 既存Issueへ実測結果を渡す（新規Issueは作らない） |
-| D-10 | `#2822`（Open）と重なる | `#2822`へ追記 |
+| D-10 | `#2822`（Open）と重なる | `#2822`へ追記（新規Issueは作らない） |
 
-**本記録では新規Issueを作らない。** 分割は、この計画文書を統合した後に、重複の最終確認をしてから行う。理由は、`#3149`が「横断の実測記録と転記」を持ち、個別の修正は既存Issueまたは分割したIssueが持つと定めているため。今回の実測で得た生データを先に残し、分割時に参照できるようにする。
+**分割は 2026-11-07 に完了した。** 本書を `main` へ統合した後（PR #3162、merge commit `6fa253312`）、重複の最終確認をして D-1・D-2・D-4〜D-8 を #3180〜#3186 として起票した。D-3・D-10 は `#2824`・`#2822` の範囲、D-9 は `#2619`・`#2621` の設計範囲として、新規Issueを作らない。各Issueは、本書 §3 の再現手順と `plan/evidence/TEI_DOGFOODING_CLI_SELF_DESIGN_2026-11-07/` の生データのパスを引用している。
+
+`#3149` の定めどおり、本記録は横断の実測と転記を持ち、個別の修正は分割したIssueが持つ。
 
 ## 5. 設計支援の観点で残った問い
 
@@ -395,7 +397,7 @@ TEI自身の設計は、`docs/`と`plan/`のMarkdownで書かれている。こ�
 
 ## 6. 次に必要な作業
 
-1. 本書と検証記録をブランチへコミットし、`#3149`へ結果を転記する（本作業の範囲）。
-2. 課題の分割: D-1・D-2・D-4・D-5・D-7・D-8を新規Issueへ、D-3・D-10を`#2824`／`#2822`へ、D-9を`#2619`／`#2621`へ渡す。分割時に、本書の§3の再現手順と生データのパスを各Issueへ引用する。
-3. 修正の採否はOwner判断。本記録は候補と根拠を提示するに留める。
+1. ~~本書と検証記録をブランチへコミットし、`#3149`へ結果を転記する~~（完了。PR #3162、merge commit `6fa253312`。`#3149` への転記は 2026-11-07 のコメント2件）。
+2. ~~課題の分割~~（完了。D-1・D-2・D-4〜D-8 を #3180〜#3186 として起票。D-3・D-9・D-10 は既存Issueの範囲）。
+3. 修正の採否はOwner判断。本記録は候補と根拠を提示するに留める。#3180〜#3186 のいずれかを着手する場合は、本書 §3 の再現手順と生データから始める。
 4. 再実測は、`0b9c14a8…`ではなく修正後の`main`で行い、同じ実行物の識別（SHA-256）を記録する。改行の異なるcheckoutでの照合（`#2399`）と、大規模Workspaceでの完全性（`#1177`）は別途。
