@@ -31,4 +31,4 @@
 3. それぞれのProvider／Parser／Projection／CLI/Studio/Go Targetの**実選択・Link・Invoke・完全受領・独立Expected**を別票にする。`events.jsonl`を外部AIサービスへ送出することをProvider読取成功の必須条件にしない。
 4. さらに`archive`と`primary`を別DB/異MappingにしたFixtureを追加する場合、#2611 PM-01〜06のOwnerに従い、同一`sales.order`の暗黙の先勝ち選択を拒否する。既存業務意味に採用しない。
 
-**検証状況**：本PRで確認するのは入力ファイル構造とExpectedの手動・静的照合のみ。実DB上の結果、Go Test、Pluginの選択/Link/Invoke、CLI/Studio E2E、独立Result Conformanceは未実施。
+**検証状況**：入力ファイルと独立期待値の静的照合に加え、`fixture_test.go`にJSONLの行数・重複・時刻逆転・NULL/欠損の回帰テストを記述した。実行結果は未取得（NOT RUN）。テストがPASSした場合でも検証できるのは**Fixtureの不変条件のみ**であり、実DB上の結果、Provider/Pluginの選択/Link/Invoke、CLI/Studio E2E、独立Result ConformanceのPASSにはならない。
