@@ -627,3 +627,58 @@ Source側のRelation全件列挙や`P`の所属が不明な場合、**境界の�
 **実証順**：P0=既存#2881 CLIで取得できる`direct-edge-candidates`と、Sourceから未取得の独立Relation/Effectを区別して評価票を作成。P1=#3255のSubsystem候補に同一Source・Role対応表を適用し、known 0とunknownの負例を独立Expectedで確認。P2=必要に応じ#1124のGraph/Table ConsumerでSnapshot/Disclosureの整合を評価。P3=二Consumer以上で同種の構造的不足が反復した場合のみ#2495/#2497/#2620のOwnerが標準契約の最小追加を検討。**#3255の分割最適化、#2881のReference実装、#1132のCUD checker、#267の受理を代替・ブロックしない**。
 
 **証拠と停止線**：本節は既存Owner/PR/CIとSourceを使った**設計・評価手順の追補のみ**。Boundary table生成の製品実装、独立Source全文closure、実Studio UI、実CRUD/Transaction/ETL/Self-build、Owner受理、人/AIの比較試験は **NOT RUN / NOT PROVEN**。新共通Host、Policy Engine、Schemaや受理Gatewayを設けない。
+
+
+## 15. 2026-11-08：他レーンの実装証拠を「三視点モデル・実Read・AIテスト」の独立P0へ引き継ぐ
+
+**性格**：2026-11-07後半のTEI／SHO／SUI／TAI・Plugin／Trait議論と、現行GitHubの実Go/CLI/PG試験を比較した研究上の受入順。前§10〜14のRelation所属、非単射、Complect、サブシステム境界を保持する。旧[Draft研究PR #3022](https://github.com/hat47x/tei-platform/pull/3022)の未統合の長大な履歴をそのまま再Mergeせず、主張が変化した成熟差分だけを現mainへ追加する。**本節は計画・研究引継ぎであり、新しいTEI Core型、Host、Runner、Registry、Accepted Meaningを採用するものではない。**
+
+### 15.1 独立に着手できるP0-M・P0-R・P0-Tと、それらを結ぶP0-C
+
+| 検証Lane・既存Owner | 確認できた有限の成立点 | 次の受入に不足する辺 |
+| --- | --- | --- |
+| **P0-M 三視点Modeler** #1124/#1125/#1126／[Draft #3263](https://github.com/hat47x/tei-platform/pull/3263) | Data/Function/Business Graph、Function×Data CRUD、同Semantic Subjectの二Canvas共有、Edge occurrenceとSource逆参照を問う合成Fixture・設計 | 実TEI Reader/Parser/Accepted SourceからのGraph・CRUD実導出、Edge/Cell→原Source対応、独立Expectedと既知Mutant。実Studio/SHO Consumerはその後 |
+| **P0-R Function実Read** #2586/#2506／[Draft #3238](https://github.com/hat47x/tei-platform/pull/3238) | 隔離実PostgreSQLでFull/Top-1、非出力PredicateのSQL実評価を有限の独立Expectedで照合。固定HEADの実PG CI・Healthは成功 | Product Function→選択Query/SQL原bytes＋bind引数→実Provider→Result Slice/Context→Consumerの**同一Attempt**。Reference PG局所PASSをProduct E2へ転用しない |
+| **P0-T AIテスト能力** #3262/#2514/#1180／[main #3304](https://github.com/hat47x/tei-platform/pull/3304) | 実CLI9種・Design Context合成16負例・既存Pinned 6 Step。既知Ruleから追加した行番号0の一時7番目のStepを実CLIで判別 | T1-A一例の成功と、AIが未知Rule/欠陥を盲検で発見するT1-B、C1/NFR/要求Coverageは別。独立Expectedを生成Implementationから導かない |
+
+**P0-Cは統合資格**：P0-Mのsales.orderの意味・Relation IDと、P0-Rの実Rowset・Scope、P0-TのTest対象が、Source/Role/Workspace/Revision/Result grain/Read epochに一致することを独立Consumerで照合。DiagramのCRUD Rは実Provider ReadでもEffectでもない。同一Subjectの二Canvas Occurrenceは同一業務Entityの別表示であり、新しいDB行でもない。P0-Mを実Provider完成までブロックせず、P0-Rを実Diagram完成までブロックしない。既存#1119 Gateを維持。
+
+### 15.2 Data/Presentation/Bindingを分離したまま多Canvas・Itemを検収する
+
+他チャットのSUI検討では、大型Canvasは分割しても関係を維持し、**同一Card/Itemを複数Canvasに出現させられる**。Tree/Outline、KJの空間配置、表・図のProjectionを独立に扱う。未整理の生情報もItemへ暫定格納でき、Task/Action/Eventの意味付与は固定排他的EnumよりRole/Trait候補として検討する。独立した時点・主体・履歴を持つ出来事なら別Semantic Subjectが必要になり得るが、これをTEIの新Core Item型の正式採用としない。
+
+[Draft #3263](https://github.com/hat47x/tei-platform/pull/3263)はEntity9/Relation7/Function4/Business Action3・Canvas2を含む合成候補。二Canvasの別Occurrence、同端点別IDの多重Edge、Tree化で非表示になる複親、Chart集計点と元明細行、編集によるSource変更と業務Value変更を別々に反証する。Identity/Scope/Non-injective loss/Current Disclosureは#2495/#2497/#2507/#2516のOwnerに置く。AI草案Expectedの自己整合を独立業務正答としない。
+
+[Draft #3303](https://github.com/hat47x/tei-platform/pull/3303)は三視点・表現型への受入計画を現mainから再構成する案であり、実Product Diagram/CRUD・Studio/SHO保存・Owner受理を保証しない。図の一つのCardを他Canvasに複製配置することを、意味正本・Relation・Historyの複製としない。Figure drag/Selection/Tab/Seekは原則Presentation状態であり、Owner Action・Provider Effect・Source保存は別経路。
+
+### 15.3 Completionと非出力Predicateの実Read証拠をConsumer資格へつなぐ
+
+[Draft #3238](https://github.com/hat47x/tei-platform/pull/3238)の[実PG CI #42351796330](https://github.com/hat47x/tei-platform/actions/runs/42351796330)と[Health #42351796383](https://github.com/hat47x/tei-platform/actions/runs/42351796383)はcompleted/success。Tenant Aの独立期待集合L={3,9}に対するFull/Top-1の観測と、Consumerに返さないordered_atをSQL WHEREで実評価しID9のみを返す正例が成立。**TOP1の1行は全件でなく、同件数でも重複R=[3,3]は必要9を含まない。** 非出力Predicateを実Providerが評価できたことと、結果行の存在・件数から秘密を推知されてもよいというDisclosure許可は別。
+
+次の同一Attempt Packetで固定する欄は、Function選択・Source/Workspace identity・SQL原bytes/Parameter・実Provider/Query execution・Role/Relation path・Result Slice/Row ID/重複/粒度・Coverage basis・Predicateの実評価箇所・Independent Expected・Source/Policy/Read epoch・現在Consumer Disclosure。CallerのCoverageComplete/Holds自己申告だけでCompleteへ昇格しない。実Providerが非出力列を評価した証拠がある場合には、Consumerへの列開示が無いことだけで過剰拒否もしない。業務Writeは別Laneで、Commit/Receipt lookup/resource-observed/Versionと実更新対象全件性、Owner Meaningを分ける。
+
+### 15.4 T0からT1-Aへの実前進と、T1-Bの未実証
+
+[main #3284](https://github.com/hat47x/tei-platform/pull/3284)／[main #3296](https://github.com/hat47x/tei-platform/pull/3296)は、実CLI応答9種を読みDesign Contextを評価し、Required Source欠落、片側Root、途中切断、JSON重複memberなど**合成16 Negative**を識別した。正常入力でもContextはpartial、qualifiedTestGeneration=false。[main #3299](https://github.com/hat47x/tei-platform/pull/3299)では実SourceとPlugin Lockを改変すると既存Pinned Scenarioを拒否したが、A→B→Aで元bytesへ戻ったことを中間変更なし／現Grant有効とは推論しない。
+
+[main #3304](https://github.com/hat47x/tei-platform/pull/3304)の専用[実CI #42378033965](https://github.com/hat47x/tei-platform/actions/runs/42378033965)は、既知の正数Ruleに基づく行番号0の新しい一時Scenario Stepで positive Ruleのみnot-satisfied、Quantity/Uniquenessはsatisfiedと判別し、偽Expected・偽Fixture・古いPinの3負例を拒否。これは**T1-Aの限定実行**。専用CIのProgram HEADとPR最終HEADのHealthを別証拠にする。Scenario正本に採用したことでも、AIが未知Rule/欠陥を盲検発見したT1-Bでもない。C1/要件/NFR Coverageと実Provider/E2EはNOT RUN。次の非同種Ruleの一因子対照、独立Expected、生成時Source/Role/Plugin Pinを#2514/#1180へ返す。
+
+### 15.5 Plugin-first／Trait／BOM／Workbenchは一つの実Provider呼出しを先に証明する
+
+[main #3277](https://github.com/hat47x/tei-platform/pull/3277)のCore以外Plugin方針は、現CLI・Studioが既にPlugin化済みという事実ではない。[main #3300](https://github.com/hat47x/tei-platform/pull/3300)の静的実装監査では、旧Service Carrierはapplication-runtime以外のScopeを拒否し、InspectorはCLIとStudioから直接operationsを呼ぶ。最短D1はHost-owned Authoring Adapter→既存Contract/Resolver→**実選択Providerを実Invoke**→CLIとStudioの両ConsumerでSource/Selection/Revision/Resultを照合。「Bを選択してAを実呼出し」する同出力Negativeを検出する。新共通TEI Host・第二Resolverを導入しない。
+
+[main #3298](https://github.com/hat47x/tei-platform/pull/3298)のAtomic Trait契約は宣言、適用条件、手動実装義務、Plugin選択、実Link/Invoke、Conformance、現在Grantを区別。Hintでは未実装のConditionalWriteを履行済みとしない。read-only Inspector D1とWrite Traitの未履行検証は並行。BOMの候補Version Pair coverageは、未供給Tupleの不存在・実互換/Provider成功ではない。現要求**RQ-035はData Source Workbench**、BOMは独立要求IDのOwner判断（RQ-036候補）に戻し、同一IDの意味差替えを拒否する。[main #3287](https://github.com/hat47x/tei-platform/pull/3287)のJSONL/PG Fixtureの試験PASSも実Plugin/DB Reader/生成Go Applicationの適合を証明しない。
+
+### 15.6 CLI／外部Harness／Buildの実観測から導く資格の上限
+
+[main #3307](https://github.com/hat47x/tei-platform/pull/3307)はCLI Discoveryの閉じた引数集合を実受理値と照合。[Open #3311](https://github.com/hat47x/tei-platform/pull/3311)はWorkspace Name/Manifestと名前付き出力を追加するが、WorkspaceのSource全閉包、認可、Meaningは証明しない。[Draft #3302](https://github.com/hat47x/tei-platform/pull/3302)のview -executeはread-only契約と実ファイル書込みを分離する提案段階。Harness SkillのToolを「読める」ことと実Invocation Variant/Effect/Disclosureを別判定にする。
+
+DSH read-only/workspace-writeが作業Dir外を読めることは実証済み（main #3228）。[Open #3309](https://github.com/hat47x/tei-platform/pull/3309)の合成Canaryはstdoutと**複数連結zstd frameで圧縮された永続Session Log**に残る。最初のframeだけを読んで機密漏洩なしと判定しない。別OS Identity/実Read ACL、Network Egress拒否、実Provider送出は未実証で、H2/H3の比較適格は引き続き0/4。#2515、TAI #168/#232が既存Owner。
+
+[main #3193](https://github.com/hat47x/tei-platform/pull/3193)の2回Build byte一致と[main #3156](https://github.com/hat47x/tei-platform/pull/3156)のSource Closure=rejectedは両立。[Open #3313](https://github.com/hat47x/tei-platform/pull/3313)は外部Moduleを明示供給したときだけ選択Sourceを受け入れるopt-in Reference。既定repository-onlyの拒否は維持し、go.sum toolchain依存検査・独立byte照合・供給元Trust/署名・Stage2実TEI Buildを分ける。G4はUNQUALIFIED。#2831/#1090 Ownerを迂回しない。
+
+### 15.7 次の小さい受入と旧Draftの扱い
+
+**並行順**：P0-Mは実TEI Sourceから三視点Graph/CRUDを導出してSourceへ逆参照する。P0-Rは一Functionから実PG Query→Data Context→read-only Consumerを同一Attemptで渡す。P0-Tは非同種Ruleで追加Scenario候補→独立Expected→実CLIを再度判別する。P0-Cは3者のSource/Role/Revision/Scope/Grain一致を別のReaderで照合する。P1は標準表現型の二ConsumerでIdentity/Loss/Disclosure/Selection同期を実測。P2は必要な場合だけ型付きAction→現在Grant→実Effect→Receipt→独立Resource Read→Client Reaction。H2/H3隔離とG4は別経路で資格を得る。
+
+この第15章は現行mainの第11〜14章を保持した追加計画である。衝突中の旧[Draft #3022](https://github.com/hat47x/tei-platform/pull/3022)の§10.1〜10.47は経緯・未実証Caseの参考とし、mainへ機械的に重複Mergeしない。必要な唯一の成熟差分だけを既存Issue/PR/研究計画の新Revisionに移す。現行Evidenceと異なる旧状態を再採用しない。独立Expectedは#2514、Scenarioの正本は#1180、実Consume/AcceptanceのEvidenceは#1163、既存Gateは#1119。実Product三視点/PG/Provider/Studio/SHO E2E、未知Test自律生成、外部H2/H3資格、G4 Self-Build、正式Owner意味受理は**NOT RUN / NOT PROVEN**。
