@@ -376,14 +376,14 @@ Pluginの論理単位と実行artifactを1:1にしない。Linked / Wasm / proce
 
 ### 13.7 `*.tei.md` 標準Authoringへの移行は、K0の構文選択と別の受理事件
 
-2026-11-06に選択された**TEI Authoring Sourceの標準ファイル名`*.tei.md`、旧`*.tei`原則廃止**の方向性は、[移行担当Draft #3030](https://github.com/hat47x/tei-platform/pull/3030)がM0〜M6／TM-01〜14で所有する。このDSL Bootstrapでは**名前・構文・受理済みMeaningを別に検証する停止条件**だけを追加する（重複する新Loader/Markdown Parser/移行Runnerは作らない）。
+2026-11-06に選択された**TEI Authoring Sourceの標準ファイル名`*.tei.md`、旧`*.tei`原則廃止**の方向性は、[main統合済みの移行計画 #3030](https://github.com/hat47x/tei-platform/pull/3030)がM0〜M6／TM-01〜14で所有する。このDSL Bootstrapでは**名前・構文・受理済みMeaningを別に検証する停止条件**だけを追加する（重複する新Loader/Markdown Parser/移行Runnerは作らない）。
 
 - 現mainの`workspace.Load`は`*.tei`／`plugin.tei`等の固定発見経路を含み、`filepath.Ext("sample.tei.md")`は`.md`である。`*.tei.md`へ改名しただけでは旧Sourceが新しいManifest/Loaderに発見・読込・Parser選択されることも、原Markdownの糖衣構文を保持してCanonicalへ変換できることも保証されない。
 - **K0の有限Seedはファイル名だけをSyntax Authorityとしない**。Seedで読めるWorkspace/明示Source Kind・Language Contract Pin・版と、原文Markdown Readerの最小処理範囲を先に確定。Markdown全文／埋込DSL／OKF等の追加文法を**そのPlugin自身の未解釈記述だけで初めて選択する**のはBS-15の初回自己解釈循環に当たる。選択不可能ならRaw Draft／読取可能なSourceとして保持し、Semantic Promote・Buildを停止する。
 - 移行の反例は旧`semantic/data.tei`正常→同bytesで`data.tei.md`へrenameして`workspace-files`未列挙、またはMarkdown表／Frontmatterが現ParserのDSL grammarと異なること。**Expectedは「同内容なら意味一致」ではなく「Manifest実観測・選択Parser・原Source/糖衣・現行受理版を照合できるまではnot-qualified」**。古いCIの`*.tei` Goテスト成功は新形式の受理証拠にならない。
 - K0→K2の独立Expectedは既存BS-02（Seed形式拒否）／BS-15（新Grammar自己起動不可）へ接続し、Source inventory/Load被覆は#2823、Raw Draft/Markdown Source Fidelityは#2621/#2497、形式移行とRuntime Regressionは#3030/#1920、SHO/OKFとの橋渡しは各担当に委譲する。
 
-**資格**：これは#3030の現時点の**Authoring方針と設計Draft**を#988 Bootstrapへ反映したもの。新`*.tei.md` Loader/Parser／既存Sourceの一括移行／同一Meaning/GUI保存／Owner Meaning Acceptanceは未実証。既存の`BS-01〜15` Fixture件数とGo focused testの実入力は変更しない。
+**資格**：これは#3030でmainへ格納された**Authoring方針と移行設計**を#988 Bootstrapへ反映したもの。新`*.tei.md` Loader/Parser／既存Sourceの一括移行／同一Meaning/GUI保存／Owner Meaning Acceptanceは未実証。既存の`BS-01〜15` Fixture件数とGo focused testの実入力は変更しない。
 
 
 <!-- tei-bs-test-discriminating-positive-controls-20261106 -->
@@ -427,7 +427,7 @@ BS-02/03/06に単独の拒否条件を置いただけでは、実装が**すべ�
 <!-- tei-dsl-bootstrap-required-source-scope-naming-20261107 -->
 ### 13.10 必須TEI Sourceと非管理Draftを混同しないK1受入、独立期待値の用語
 
-[移行Owner Draft #3030](https://github.com/hat47x/tei-platform/pull/3030)の2026-11-07追補では、現[Guard Draft #3031](https://github.com/hat47x/tei-platform/pull/3031)が**管理Root内で`*.tei.md`を一つでも見つけるとLoad全体を停止し得る**点を、正式Parser導入時の受入へ引き渡している。Guardは現状の誤った成功を防ぐ暫定処置で、任意Markdown草稿を意味Sourceへ自動分類する製品仕様ではない。
+[移行仕様のmain統合 #3030](https://github.com/hat47x/tei-platform/pull/3030)の2026-11-07追補では、現[Guard Draft #3031](https://github.com/hat47x/tei-platform/pull/3031)が**管理Root内で`*.tei.md`を一つでも見つけるとLoad全体を停止し得る**点を、正式Parser導入時の受入へ引き渡している。Guardは現状の誤った成功を防ぐ暫定処置で、任意Markdown草稿を意味Sourceへ自動分類する製品仕様ではない。
 
 K1に要求する区別は**(a)宣言された必須TEI Source、(b)管理対象として発見されたがParser未束縛の候補、(c)非管理Raw Draft、(d)普通のMarkdown**。必須なら未読込・未解析を`0件の成功`にせず、候補として存在するだけならOwnerの用途・必要集合が確定するまでRead-only/unknown、非管理Draftや通常Markdownを自動実行・意味受理せず不要な妨害も避ける。
 
@@ -494,7 +494,7 @@ Source移行では、`plugin.tei.md`を選んだ意図Bと、固定名Loaderが`
 
 **反例**：`Source Index Artifacts`が2件あることを根拠に`parsed sources=2`／`accepted meaning=2`と数える実装は誤り。追加Goテストでは、Native Sourceからの`Index.References`が少なくとも1件ある一方、未読込の`README.md`から意味`Reference`を生成しないことも確認する（ArtifactがあってもSubjectを推定しない）。独立のInput期待と、`readByLoader`の実観測、Source Indexの管理Artifact列挙を**別の列**で報告する。既存BS-07（Required集合を候補の`required=[]`から自己確定しない）の**関連観測点**であり、BS-07の全要件・Required独立Closed World判定をこの局所試験のPASSで済ませない。
 
-この試験に管理Root**内**の`*.tei.md`の「成功」を追加しない。現mainでは未対応新形式が黙って未読となり得るが、[Draft #3031](https://github.com/hat47x/tei-platform/pull/3031)の暫定`TEI_MD_PARSER_UNBOUND`はそのケースを明示拒否する。両方で同じSourceを正常に解析できたと見なすと、移行の欠落をテストが固定してしまう。正式な`*.tei.md`の入場／Loader実読込／Parser／Source span／Meaning／Buildは[Draft #3030](https://github.com/hat47x/tei-platform/pull/3030)のTM検収がOwnerであり、次の同一HEAD統合試験まで未実証。
+この試験に管理Root**内**の`*.tei.md`の「成功」を追加しない。現mainでは未対応新形式が黙って未読となり得るが、[Draft #3031](https://github.com/hat47x/tei-platform/pull/3031)の暫定`TEI_MD_PARSER_UNBOUND`はそのケースを明示拒否する。両方で同じSourceを正常に解析できたと見なすと、移行の欠落をテストが固定してしまう。正式な`*.tei.md`の入場／Loader実読込／Parser／Source span／Meaning／Buildは[main統合済み計画 #3030](https://github.com/hat47x/tei-platform/pull/3030)のTM検収がOwnerであり、次の同一HEAD統合試験まで未実証。
 
 
 
