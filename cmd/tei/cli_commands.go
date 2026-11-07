@@ -141,6 +141,15 @@ func helpText(fs *flag.FlagSet, command string) string {
 		if usage != "" {
 			fmt.Fprintf(&out, "    \t%s\n", usage)
 		}
+		// A closed value set is part of the grammar, not prose the caller has
+		// to find in a document (#3242). Print the same sets `tei commands`
+		// advertises, and do not restate them by hand.
+		if values, ok := valueSets(command)[f.Name]; ok {
+			fmt.Fprintf(&out, "    \tvalues: %s\n", strings.Join(values, ", "))
+		}
+		if value, ok := valueDefaults(command)[f.Name]; ok {
+			fmt.Fprintf(&out, "    \tdefault: %s\n", value)
+		}
 	})
 	return out.String()
 }
