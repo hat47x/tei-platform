@@ -776,3 +776,32 @@ Source/Authoring Graph → Resolved/Lowered Graph → Targetの実行・観測�
 **最初の受入に必要な差分**：一つの固定Legacy機能に対し、①元Sourceから取り出した事実と未解決、②人間が採用した意味、③選択Targetで再生成した成果物、④別実装の独立Expectedを一枚の照合票に結ぶ。ST-02の値域改版、ST-03の情報損失、ST-04のScope不一致を最低一件ずつ負例に含める。二つ目のTarget/連携方式へ切替えたとき既存の意味上の型・保証が再利用できるかを確認した後にのみ標準型拡充を判断する。
 
 **現状の資格**：ここでのLegacy実ソース解析、独立動作比較、Java/.NET/Wails/OData/ファイルの実E2E、完全なSource closure、Owner意味受理はいずれも**NOT RUN / NOT PROVEN**。既存参照実装・外部OwnerのCI成功を移行Conformanceへ加算しない。
+
+
+### 17.11 標準業務Roleの型とConsumer保証を段階別に照合する（2026-11-07、実証候補）
+
+**新たに確定した実装事実**：main `680646b8629ce7af5b9bb0ba7db3529151b63a4c` に統合済みの [PR #3248](https://github.com/hat47x/tei-platform/pull/3248) は、税5・通貨6・採番5・休日1の**計17 Role名**を `internal/validation/validation.go` の`attributeRoles`に追加し、宣言の受理と誤記拒否をテストした。これは**語彙の受理**であって、属性のRoleとSemantic TypeRefの整合検査は未実装（[証拠文書](../../plan/evidence/XTEA_LOWCODE_ROLE_VOCABULARY_2026-11.md)）。一方 [merged #2584](https://github.com/hat47x/tei-platform/pull/2584) のE2aは、選択済みSemantic定義を用いた**Port間のTypeRef/Aliasの構造検査**に限り、業務Roleの意味、Current Provider Conformance、Runtime Effectは未判定である。この二つの独立した局所PASSを、Role付きI/Oの一つの正式PASSへ合算しない。
+
+#### 三つの独立した照合と、後続の二Consumer
+
+| 段階・Owner | 検証する対象 | 合格から推論してはいけないこと |
+| --- | --- | --- |
+| **V0 Role語彙** — #3248 / #2620 | `role tax-value`等の既知語彙と綴り。発行Sourceの位置・版を別に保持 | Roleの基礎型、必須Role集合、業務的意味の正しさ |
+| **V1 選択TypeRef・Binder契約** — #1223 / #951 と標準業務Binder | Roleが参照するAttributeのTypeRef/Alias、Binderごとの必要Role・多重度・値域・NULL/欠落・有効時点、選択SemanticのSource/版 | 同じprimitiveやNameなら異なる業務Roleを交換できること。型の宣言だけで実Providerへ接続できること |
+| **V2 Consumer固有の実適合** — #2827 / #2831 / #1121 / #2514 | ETL/OData/ファイルの転送結果、Go/Java/.NET等への生成結果を、独立Expected・実Source closure・Target Artifact/Receiptと照合 | E2aのcandidate、TypeRefの一致、roleの存在だけで送達・実Build・業務操作が成功したこと |
+
+V1の`Role → Allowed TypeRef/Shape`は**評価中の契約候補**であり、#3248の語彙テーブルから新しいCore Enumや全Role共通の型Resolverを派生させない。例えば「税率の開始日」「税額/率」「採番桁数」の要求型を、既存の税・為替・採番・休日Binderの必要契約と照合し、必要であればその**既存Owner**が受理する。単位、端数処理、通貨の換算方向、日付の暦、Sourceの有効期間は、`std.decimal`や`std.date`だけでは指定できない。
+
+#### 既存STケースに割り付ける具体的な正負圧力
+
+| 既存Case | 固定する対照 | 要求する証拠・拒否条件 |
+| --- | --- | --- |
+| ST-02 / ST-08 | `tax-applies-from`に日付用のTypeRef vs `std.text`、同じTypeRef文字列で定義Source改版 | 語彙受理は両方成立し得る。Binderが必要とする日付契約がなければ**Role-型適合は未判定／不適合**。Source未受理ならProductionへ昇格不可 |
+| ST-03 | `tax-value`・`currency-rate-middle`の数値をCSV/ODataから供給。NULL、欠落、桁・丸め、期間外、部分配送 | 既存TypeRef/Roleの検査とは別に、値の精度・期間・配送ACKと実Sink受領を検証。数値が転送できたことを業務的換算の成功としない |
+| ST-04 | 同型Plugin二Instanceの`currency-rate-currency`、異Scope/事業期・有効時点 | Role名・TypeRef一致で別ScopeのRates/Grantを自動混合しない。未選択Provider・未読込Sourceはunknown |
+| ST-09 | `numbering-counter`・`numbering-digits`を持つDataを生成Targetへ渡す。別途可変長Hash IDを使用 | 業務採番のCounter/Sequenceと[Draft #2815](https://github.com/hat47x/tei-platform/pull/2815)のContent-derived HashIdは別identity・scheme。短縮文字列一致でArtifact digestやBusiness Keyへ昇格しない |
+| ST-03 / ST-09 | `holiday-date`による休日カレンダーに対して、Legacyと生成Go/Java/.NETが同じ境界日を処理 | Readerが属性を読んだだけで暦解釈・全Required Role・正本Meaning/実Target再現を証明しない。独立Expectedと実Targetの差を保持 |
+
+**診断区分**：V0の未知Role、V1のTypeRef未指定/Source未取得/型義務未定義、V1の確定契約への反例、V2の実消費・実結果不一致を**別原因**で記録する。`unknown`を勝手に成功、デフォルト、NULL、または拒否確定へ畳まない。Read-only検査・候補表示とOwnerの意味受理、Invocation Authorityも分離する。
+
+**最小作業順と撤回条件**：まず#3248の既存Go試験と既存Binderの局所型・値域検査の入口を固定版で照合し、**Role受理のみ／Binder実型検査済み／Consumer実値検査済み**の3状態を区別する。次に同一Role付きSourceから、非画面ETLと別Target生成という異質な二Consumerの正負例を観測する。独立した失敗がRole-to-Typeの不足で再現された場合に限り#951/#2620/標準業務Ownerへ最小Contract差分を返す。既存Binderの型・値域契約で説明可能なら新規Semantic TypeKind/Role Registry/Converterを採用しない。本節では**実Go/ETL/Java/.NET/DB/Targetの追加試験、閉包・業務受理・実AuthorizationはNOT RUN/NOT PROVEN**。
