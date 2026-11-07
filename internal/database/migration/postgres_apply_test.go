@@ -243,7 +243,7 @@ func TestMA01MA02NonDestructiveApplyCharacterization(t *testing.T) {
 		{
 			name: "MA-02 observer database differs from plan",
 			snapshot: physical.SchemaSnapshot{
-				Database: core.MustCanonicalID("other_core"),
+				Database:    core.MustCanonicalID("other_core"),
 				Fingerprint: "base-schema-A",
 			},
 		},
