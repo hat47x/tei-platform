@@ -104,8 +104,8 @@ func TestDiscoveryProfileCC12GOOSSelection(t *testing.T) {
 func TestDiscoveryProfileCC13BuildTagSelection(t *testing.T) {
 	root := profileFixture(t, map[string]string{
 		"qualification.go":           "package fixture\nfunc Evaluate() {}\n",
-		"qualification_base_test.go":  "package fixture\n",
-		"qualification_opt_test.go":   "//go:build optcheck\n\npackage fixture\n",
+		"qualification_base_test.go": "package fixture\n",
+		"qualification_opt_test.go":  "//go:build optcheck\n\npackage fixture\n",
 	})
 	r, err := Discover(root, "qualification.go")
 	if err != nil {
