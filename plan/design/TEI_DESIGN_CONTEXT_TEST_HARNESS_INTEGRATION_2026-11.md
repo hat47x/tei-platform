@@ -152,3 +152,35 @@ main [#3284](https://github.com/hat47x/tei-platform/pull/3284) と [#3296](https
 - Artifact `tei-issue-test-ability` ID `13576656749`、約18KiB、7日保持に`t1-line-number-candidate.json`と従前の限定証拠を保存。業務データ／正式Scenarioを変更していない。
 - **到達上限**：これは**既存Issueで選定されていた境界1件を実CLIで初めて検収**したこと。外部AI Harnessで未知Ruleを盲検発見した証拠ではない。候補の恒久採用/#1180正本更新、Source→Functionの全Required閉包、C1/全業務要件・NFR、実Provider/Host、独立Product実装コードMutant、Owner Meaning受理は**NOT RUN**。Contextは引き続きpartial/exploration-only、`qualifiedTestGeneration=false`を維持。
 - **注意**：本追記は実Run後の別commit。上記は先行HEADの成功であり、**この文書追補を含む最終PR HEADおよび統合後mainの合格は、各Runを確認するまで主張しない**。
+
+## 8. P-1b1（最小1 Rule）：正常JSONの部分欠落を「完全」と誤認させない（TT-56）
+
+### 8.1 先行実証・横断Ownerとの関係
+
+[#3304](https://github.com/hat47x/tei-platform/pull/3304) のT1-Aは、行番号0の**既知**Caseを新しい一時Scenario候補として既存実TEI CLIに掛けた実験であり、Ruleの必要なSource/定義位置が完備であると先に証明したわけではない。Design Contextの正本を新設せず、既存`context_gate.py`（試験専用のread-only Consumer）に、**一つの独立Required Case**の必要条件を追加する。
+
+- 対象Case：`semantic-validation:sales.order_line.line_number_positive`。**独立したCase契約**は`kind=positive`、`attribute=sales.order_line.line_number`、Source=`semantic/sales/validation.tei`。
+- 対象Relation：`semantic-relation:sales.order.lines`（Parent=`semantic-data:sales.order`）。ReferenceのData ModelでRelationと子行番号の関係があり、Scenarioの`relation-unique`も独立に検査している。ただし業務Procedure/時間/多重性を含む**全依存グラフの閉包**ではない。
+- Data：従来から`semantic-data:sales.order`と必要Source=`semantic/sales/order.tei`を固定し、追加Source `validation.tei`も独立にInventoryから**Loader実Read**を要求する。
+- Ruleの`inspect`は**実TEI CLIの既存typed operation**に`-subject-kind semantic-validation -subject-id ...`を指定する（新Parser/Rule Resolver/Workspace Scannerは追加しない）。`canonical` のkind/attribute、`sources.references` の**definition role・exact artifactPath**、Source Index artifactのfingerprint、Catalogの同Subject・Relation列挙を照合する。
+
+### 8.2 判定行列
+
+| Required／観測 | 追加した確認 | 不成立・未知の表現 |
+| --- | --- | --- |
+| Source `validation.tei` | `workspace-files`に一意に管理、`readByLoader:true` | Inventoryの存在だけなら`not-loaded`。欠落／二重掲載は拒否 |
+| Rule存在と意味上の最小構造 | `model catalog`で`semantic-validation` exact Subjectが一意、Source-backed。別の実CLI `inspect`がCanonical ID/positive/attributeに一致 | 同じFingerprint文字列を残していてもRule欠落・duplicate・別attributeなら**blocked**。業務Owner Meaning受理は別 |
+| 定義への到達 | `inspect.sources.references` 1件の`role=definition`、`artifactPath=validation.tei`と対応Source Index Artifact digest | Role=derived・Anchor欠落・Catalogだけの存在は**blocked**。実Parser全Source閉包は未資格 |
+| Relation | `sales.order.lines`のCatalog identity/parent一意 | Relationだけ省略されるparseable Replyも**blocked**。三要素分析図/CRUDの空行を不存在と見ない |
+| 同一観測の整合 | catalog/inspect(Data)/inspect(Validation)/trace/validateのWorld/SourceIndex Fingerprint一致 | 混在版は`stale`。A→B→Aの履歴・現在Grantは別 |
+| 全Function/Business/Rule、独立Test生成 | 必要情報の分母・受理Scopeは今は不完全 | `partial/exploration-only`、`qualifiedTestGeneration=false`のまま。未知を0件にしない |
+
+**新しい8つの独立Negative**：TT-56①CatalogのRequired Ruleだけ削除、②Relationだけ削除（いずれもSchemaが有効、World/Index FP文字列は同じ）、③Rule IDを二重掲載、④Canonical attributeを差し替え、⑤Definition referenceを削除、⑥definition role→derived、⑦`validation.tei`のLoader未消費、⑧Validation InspectだけIndex FPを異版へ変更。いずれも**実CLIから取得したJSONの試験用コピーを改変**するだけであり、実Source/世界の改変ではない。既存の16負例（7 baseline+2 Manifest+7 Byte）は不変。
+
+### 8.3 T1-B・表現型／Plugin・Self-buildへの最小引渡し
+
+この限定Caseで必要Sourceが揃っても、生成Agentへ与える独立Holdoutの具体的ExpectedやMutation版は別に隠す。**入力不足の修復**と**真のテスト不足を埋めるCase生成**を混ぜない。今後のT1-Bには次のいずれかの性質が必要：未知の独立Ruleでの正負例発見、Function/Business/Query/Providerの接続Gapの検出、NULL/Partial/Scope/開示の新しい負例。前回#3304の行番号0は既知なので盲検試験に再計上しない。
+
+Data/Function/Business間のGraph/CRUDやFunction内PresentationをTest Requiredへ投影する際は、各Edgeの`source/revision/identity`を正本モデルと束縛し、非描画・非表示・非取得・非公開を同一の不存在にしない。Trait/BOMは`selected`/exact Lock/actual Consumer Load/Invocation/Target/Grantを分離し、Inspector Plugin D1（#1251/#951）完成を今回のCLI限定Caseの前提にしない。実Product Readは#2586、外部H3完全受領は#2509、独立Expected/実コードMutantは#2514、Scenario保存の採否は#1180、C0/C1・Pattern適用は#3223、Self-build L3は#2831がそれぞれ所有。
+
+**今回の新実装**：既存`context_gate.py`および限定CIの検証入口だけを改修する。旧9コマンドに`inspect-validation`を1件追加した**実10 CLI応答**と、既存16＋新8 controlsを同一Runで検査し、公開合成EvidenceをActions Artifactへ保持する。**この節を追加した時点では新HEAD/CIの受入はNOT RUN**。実RunでPASSしても`qualifiedTestGeneration`、実DB/Host/現在Grant、外部Harness実受領、Owner Meaning Acceptance、C1、G4 Self-Buildを成功に変更しない。
