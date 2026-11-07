@@ -462,6 +462,33 @@ external LLM
 
 上流に足りない決定は、[深掘り設計の上流接続](workstreams/UPSTREAM_CONNECTION_2026-11.md) 6章に置きました。マイルストーンの到達条件、#982 の一往復の担当、#1119 の契約枠への追加は、未決の判断として残ります。PoCの作業は、既定案を選んで進め、後から覆せる形で実装と検証を続けます。既定案を選んだ理由と覆す条件は、関連するIssue・PRへ記録します。
 
+<!-- tei-data-shape-presentation-r1-20261107 -->
+## 2026-11-07 標準データ構造・表現型・機能内Presentationの最初の受入（設計候補）
+
+**目的と位置づけ**：X-TEAのテーブル間1:1／1:N関係、単票・明細やXF系機能の対応関係を、TEIでは**物理テーブルに依存しないData Shape**、**機能から独立して定義できるPresentation Type**、**特定Functionに束縛されたPresentation Instance**へ分解する。これは採用済みCore Schema／実装完了の宣言ではない。詳細型／Pattern適合の正本は[#2506](https://github.com/hat47x/tei-platform/issues/2506)・[#2507](https://github.com/hat47x/tei-platform/issues/2507)、標準CRUD／機能は[#1127](https://github.com/hat47x/tei-platform/issues/1127)、UI実現は[#997](https://github.com/hat47x/tei-platform/issues/997)に置き、本節は**製品横断の検収順序**だけを束ねる。既存のデータ様式設計・Read-first詳細は[旧横断Draft #3023](https://github.com/hat47x/tei-platform/pull/3023)を履歴・検討根拠として参照し、同じ大量の受入票を重複管理しない。
+
+| 層 | 意味・責務 | これだけから推論しないこと |
+| --- | --- | --- |
+| **標準データ構造／Data Shape** | Scalar/Record/Collection、1:1・1:N等のRelation／Graph・Tree・時系列・空間／多次元・表、Identity・Cardinality・Grain・単位・NULL/欠損・出現ID・Temporal/ScopeのFacet。DB Table/列とのMappingは別 | テーブル・FK・ラベルや見た目からBusiness Meaning、正当な更新対象、必要全集合、現在Grantを決めない |
+| **標準表現型／Presentation Type** | Panel/Form、Tabs、Text Input、単一/複数選択、On/Off、Slider、Table、Tree、Chart、Map等の型付き表示・入力方式。表示器／TargetやPluginへ実現を委譲 | UI種別からFunctionの業務責任、保存/承認Action、DB Bindingを生成しない。型の定義はFunctionに依存しないが、**実際の業務PresentationはFunctionの外に単独存在させない** |
+| **機能内Presentation／Bound Instance** | Function Data Contextの対象／Relation path／Field／Grain／Selection／必要入力、Projection、Presentation Type Binding、Action Intent、状態/Revision・Consumerを**明示**して実際の表示を構成 | 表示可能≠変更可能、Operation候補≠現在Dispatch可、Save click≠Commit・Receipt・保存後対象データ確認 |
+| **Provider/Host/Consumer** | Query/Target/Realizationの選択、実Provider Rowset/Field/Scope/Cohort、Host Grant/Effect/Receipt、実Consumerでの限定Projectionを各担当契約で連結 | Alias名やOperation ID、Source/Receiptの指紋一致から現在の実データ同一性や開示許可を認定しない |
+
+**参照実装で観測された不足**：[main統合 #3145](https://github.com/hat47x/tei-platform/pull/3145)は固定Workspaceと見積候補を比較し、Model Revision・World Fingerprint・`function-definition`のPattern（候補側6件）は変わる一方、`tei operations`は**8件／gaps 0／conflicts 0／declared 0、全8件がderived**で不変と実測。つまり**既存OperationSurfaceに宣言Pattern/Business Actionを取り込むW3経路は、この限定観測では成立していない**。これを「全機能／全Actionを構成できる」証拠にしない。逆に、PatternをOperationへ無条件に複製する設計を決めたわけでもない。最初の関連は`function-definition`/宣言Sourceを通じて照合し、Action Purpose、KindとEffect、粒度/Context、Authorityの対応が揃うまでは`unresolved`として保持（#2507/#1127）。既存`surface.go`のderived Operationと実Service Contract/Commandの所有関係は別。
+
+### 同一Fixtureでの最小受入順（試験IDの第二正本を作らない）
+
+| 順位・Owner | 一つの正例と、先に固定する負例 | 成功の上限／停止線 |
+| --- | --- | --- |
+| **R0→R1／#2586・#2506・#2514** | 受注`Order1001`と明細2件（または組織`Case C1→Unit D1`）を独立Expectedに固定。Function Context→明示Query→Alias/実Provider→実Row/Field/Scope/Cohortの**同一Attempt**。別Tenant同番号、未取得、部分集合、NULL、完全な0件、Join増幅を対照 | まず**一Function・一Query・一実Provider**。宣言のみ、`readByLoader`、`UNBOUND_DATASOURCE`、型付きQuery候補、`tei dbcheck`、合成Go PASSではR1実Read合格でない。R1v二SQL・R1p Page継続は後続 |
+| **P1／#1127・#2507・#997** | **同じFunction Context／Selection／業務ID**をPanel/FormとTableの二Presentationへ投影。列/Role/Unit/欠損/出現ID・Scopeを比較し、Renderer変更でもMeaning・Actionの正本は一つに保つ。Table↔Chartの集計／Tree↔GraphのPath多重性は既存FP-01/02へ | 2表示の局所投影が一致してもFunctionが実Read/書込可能とは言わない。集約の書戻しやTree node dragから更新対象を推論しない。Native Canvas等の例外はUI Kit/Targetが所有 |
+| **P2／#2500・#2598・#1174** | Form編集／Tableセル編集→`ViewChange→型付きIntent→既存Action`。同一対象ID/Revision、必須Rule、現在Host Grant、選択Provider実Target、取消/再送・部分Effectの負例を対照 | read-only・適用候補・実Dispatch・実Effect/Receipt・Owner意味受理を分離。Widgetのeditable状態や`committed:true`を許可/保存の証拠にしない |
+| **M／#3030・#2823・#988** | 旧`.tei`の固定R1/Presentation Fixtureと、新`*.tei.md`の同じ独立Expectedを比較。Required Root→Managed→`readByLoader`→Parsed Occurrence/Source Span→実Builder/Function消費を分離 | [#3073/#3078/#3081](https://github.com/hat47x/tei-platform/pull/3078)はRoot診断・Loader読込印・宣言0件Warningまで、[#3031](https://github.com/hat47x/tei-platform/pull/3031)は未統合の未束縛拒否Guard。新Markdown実Parserや移行後R1 PASSは未証明 |
+
+**保存後の確認は最低二つに分ける**：[main #3124](https://github.com/hat47x/tei-platform/pull/3124)の`persistence`（`not-applicable/not-observed/observed`）と[main #3127](https://github.com/hat47x/tei-platform/pull/3127)の`effectcommit.Runner.Lookup`による独立**Receipt再照会**は、記録されたOperation ID・Payloadの照合であり、**業務対象Recordの現在値を独立取得した証拠ではない**。`persistence:observed`を出しても、Consumerへ「受注保存後の内容を確認済み」と説明するには**別のProvider Read／対象Identity/Scope/Version/Fieldの独立Expected**を要する。さらに`AppliedUnobserved`と`Differences=[]`の非同一性（main #3068/#3104）を維持する。
+
+**優先順位・資格**：R0/R1は旧`.tei`で先行でき、Markdown ReaderやGUI完成はP0のブロッカーにしない。P1はR1と同一のMeaning/Context/Expectedを再利用し、表現を切替えても各Consumerの許容Scopeを変えない。P2とMはそれぞれ別Claimとして後続検証。構造・型・Role/Patternの提案と、機能内Presentationの業務意味受理はOwner判断。**今回の更新は既存Source/PR試験記録に基づく計画であり、P1/P2/Mの実製品E2E・実Provider R1・実DB値の独立Read・Owner正式受理はNOT RUN**。新Core UI種別、万能Presentation Engine、第二Parser/Host/Reader、影のAction/Authority正本を先に増やさない。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
