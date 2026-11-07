@@ -15,26 +15,26 @@ type WitnessAuditRequest struct {
 }
 
 type WitnessCase struct {
-	Lock                     Lock     `json:"lock"`
-	ScopeRef                 string   `json:"scopeRef"`
-	ScenarioDigest           string   `json:"scenarioDigest"`
-	IndependentExpectedDigest string  `json:"independentExpectedDigest"`
-	RequiredChecks           []string `json:"requiredChecks"`
+	Lock                      Lock     `json:"lock"`
+	ScopeRef                  string   `json:"scopeRef"`
+	ScenarioDigest            string   `json:"scenarioDigest"`
+	IndependentExpectedDigest string   `json:"independentExpectedDigest"`
+	RequiredChecks            []string `json:"requiredChecks"`
 }
 
 type WitnessAttempt struct {
-	AttemptID                 string          `json:"attemptId"`
-	LockFingerprint           string          `json:"lockFingerprint"`
-	SourceFingerprint         string          `json:"sourceFingerprint"`
-	ArtifactDigest            string          `json:"artifactDigest"`
-	Target                    string          `json:"target"`
-	ScopeRef                  string          `json:"scopeRef"`
-	ScenarioDigest            string          `json:"scenarioDigest"`
-	IndependentExpectedDigest string          `json:"independentExpectedDigest"`
-	ExpectedSteps             int             `json:"expectedSteps"`
-	ObservedSteps             int             `json:"observedSteps"`
-	Complete                  bool            `json:"complete"`
-	Checks                    []WitnessCheck  `json:"checks"`
+	AttemptID                 string         `json:"attemptId"`
+	LockFingerprint           string         `json:"lockFingerprint"`
+	SourceFingerprint         string         `json:"sourceFingerprint"`
+	ArtifactDigest            string         `json:"artifactDigest"`
+	Target                    string         `json:"target"`
+	ScopeRef                  string         `json:"scopeRef"`
+	ScenarioDigest            string         `json:"scenarioDigest"`
+	IndependentExpectedDigest string         `json:"independentExpectedDigest"`
+	ExpectedSteps             int            `json:"expectedSteps"`
+	ObservedSteps             int            `json:"observedSteps"`
+	Complete                  bool           `json:"complete"`
+	Checks                    []WitnessCheck `json:"checks"`
 }
 
 type WitnessCheck struct {
