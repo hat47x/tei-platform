@@ -824,3 +824,31 @@ Registryは**発見の索引**、Issuerは証拠の発行主体、Host/Ownerは�
 **採用先・次の最小実装**：#3300のAS負例と#3277のD1移行を利用して、`authoring`用のread-only Inspectorに1 ProviderのSelected→Build actual→Invoke／CLI・Studio二Consumer受領を通し、B選択→A呼出しを故意に失敗させる。#3262 Context Gateは`partial`の表示を保持。外部Harnessの実隔離、セッション保持先の全Sink/削除とAudience許可は#2515／#2516、Pin/Matrixは#3267、独立Expectedは#2514のOwner。要求数や全Plugin/GUI書換えを増やさず、根拠が欠けるClaimは`unqualified`で停止する。
 
 **今回の実施の上限**：#3277/#3285/#3300のmain統合は**設計とFit/Gap**。#3284/#3296/#3299/#3304のCIは特定の限定Context/Scenario判別で成功。#3309のローカル保存はPR上の合成Canary実測、main未統合。#3311 Workspace欄・#3302 CLI read-only Variantも未統合。今回のInspector Provider実Build/Invoke、完全H2/H3 4 Session、OS/Network隔離、実外部Provider、Owner業務意味・Plugin製品資格は**NOT RUN**。ADR-0035 A3の変更範囲機械検証・A4の外部効果確認に従い、旧Draft一律保留規則を復活させない。
+
+### 27.6 Capability選択の粒度と独立Context・Build主体の実測を最初のInspectorへ（2026-11-08、前節の実Provider二Consumer試験を実装に近づける差分）
+
+この節は§27.5に記したInspector D1/CLI+Studio同一Provider実呼出しを**繰り返さず**、その直前に測る必要のある`Environment Binding`の粒度、および読取・Buildの観測者の同一性を最新mainのSource/限定試験に基づき補足する。実装優先順位の正本は[mainのPlugin-first計画](PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md)／[merged #3300](https://github.com/hat47x/tei-platform/pull/3300)。独立検証基準のOwnerは#2514、実Contextは#3262、実Buildは#2831/#1251であり、第二のResolver/Registry/Gateを導入しない。
+
+#### 実観測から区別できた三段の選択
+
+[main統合 #3337](https://github.com/hat47x/tei-platform/pull/3337)は`World.Plugins[].Provides`のKind＋Capability IDとEnvironmentの`deployment-executor`／`observation-provider`／`evidence-provider` Bindingを照合するread-only Referenceを実装した。対象`reference/workspace`では宣言Capability 12件のうち、当時の照合規則で「未選択」6件。**未選択＝不具合ではない**（候補の同梱、別環境向け、Plugin本体のみ選択、同じPlugin内の別能力だけ選択等）。`editor-intelligence`はPluginが明示選択されても当該Capability Bindingは未選択、`migration-provider`は同じIDが別Kindの`deployment-executor`としてのみ選択される具体的反例。
+
+ただし`database-instance`の`postgres`／`oracle`という**技術名**は`database.postgres`等の**Capability ID**ではない。#3337では2件を数えず未選択6件としたが、[open #3350](https://github.com/hat47x/tei-platform/pull/3350)は既存`internal/validation`の`Capability.SupportsDatabaseProvider(instance.Provider)`を用いた修正を提示し、同じSourceで未選択4件／両Database Providerは選択済みという局所観測を報告。**#3350は本節時点で未main統合**。二つの計数は解決規則・Source版に相対的であり、互いの歴史的観測を上書きしない。新しいKind↔技術名対応表をPlugin層へ複製せず、既存Validatorの採用判定と同じ規則へ参照経路を揃える。未選択能力数だけでBOM・Plugin削除や実装不足を決めない。
+
+| 新規対照 | 固定条件と変える一因子 | 独立期待値／Claim上限 |
+| --- | --- | --- |
+| **SEL-01 packageとCapability** | 同じPlugin package/version/provides、EnvironmentでPlugin本体のみ選択→Kind+ID Bindingを追加 | Package selectedのまま特定Capability未選択を明示。Capabilityごとの選択が必要なFunction/Inspectorでは、選択前に実Provider Invokeしない。選択後も実装適合・Build/Grantとは別 |
+| **SEL-02 capability Kind誤同一視** | 同じCapability IDを保ち、`deployment-executor`と`migration-provider`でKindを切替 | IDだけ一致しても別Capability。依存を満たすと推論しない。Bindingを持たない能力は`unselected`、Kind不一致は`mismatched`等、原因を分ける |
+| **SEL-03 technologyとの写像** | 同じDatabase Instance `provider:postgres`、同じDeclared Capabilityで支持技術だけ変更 | `SupportsDatabaseProvider`に沿って対象Instanceを選択／非選択に区別。技術名をCapability IDの文字列と比較しない。#3350の局所実装を製品Provider/DB実Readの証明へ昇格しない |
+| **SEL-04 正常JSONだがRequiredが欠落** | World/SourceIndex FPとJSON schemaは正常のまま、Inspector用Required Rule/Relation/Source Anchorの1要素だけを落とす | [Draft #3324](https://github.com/hat47x/tei-platform/pull/3324)の独立Required `validation.tei`＋`inspect-validation`設計に合わせて`partial`／`qualifiedTestGeneration:false`で停止。正常JSON・一致FP・Catalog存在から必要閉包が完備としない。未実行のSourceを0件と読まない |
+| **SEL-05 Build driverと実Artifact** | 同じSource/Lock/child argvのもとで実Build Driverと被起動実行物を別Digestで観測 | [main統合 #3336](https://github.com/hat47x/tei-platform/pull/3336)は子Build executable/PID/exit、報告Artifact Digestと実disk Digestの突合を参照実装で記録する。ただし**Driverは生成済みTEI Stage1ではなく**`l3Claimed:false`。D1実Targetが選択Provider BをLink/Callする資格、L3 Self Build、Owner受理は独立 |
+
+#### 受入手順と既存成果の再利用
+
+**P0（実装に着手する前の小さな測定）**：#3337のread-only Plugin Capability Referenceと既存#951/#1016の選択結果を同一World・同一Environment・Source版で比較する。これが不一致なら「Package/Capability/Technologyのどの解決が違うか」を特定し、#3350が未統合である限り6件と4件を同一HEADの結果として混在させない。併せて、[main統合 #3307](https://github.com/hat47x/tei-platform/pull/3307)のCLI引数集合と[main統合 #3333](https://github.com/hat47x/tei-platform/pull/3333)の`writeFlags`による名前付き出力の観測を使用する。§27.5の古い「`-execute`と書込フラグは未公開」という読みを現mainへ流用しない。Effect語彙自体の分割は未決。
+
+**P1（最小D1縦切り）**：次に`authoring` Scopeのread-only Inspector 1能力だけで、Package→Kind/Capability Binding→exact Contract/Provider→Target Build actual→CLI/Studio各Callerの実Invokeを**同一Attemptで突合**する。PackageがSelectedでもRequired Capability未選択、Bを選んでAを呼ぶ、正しいBでもRequired Rule/Relation不足、actual Build target不一致を一因子ずつ拒否する。必要TraitのRequired/Default/Manual/Provided履行・Version Matrixは既存#3279/#3267へ引き渡し、開発時のTrait fulfilledだけで実Grantを与えない。
+
+**独立レーン**：#3324のContext Gateは既存実CLIでのT0.5→T1-A精度向上であり、D1 Productへ暗黙依存させない。#3336のBuilder Driveは#2831でのSB-C0/C1局所前進であり、本節のD1実Build/Callが済んだ証拠でもL3 Self Build完成でもない。外部DSHの実OS Read/Egress隔離や永続Session Sinkは§26〜27.5／#2515が所有する別レーン。
+
+**状態**：#3337/#3336/#3307/#3333はmainへ統合された限定Reference/CLI改善。#3350と#3324は未統合の別Owner差分。**SEL-01〜05の同一D1製品Attempt、実CLI/Studio同一Provider B呼出し、Rule/Relation全必要閉包、実PostgreSQL/実Host、L3、外部Harness機密隔離、Owner意味受理はこのDocs追補ではNOT RUN**。Source/Artifact/Scope/Current Grant/Actual Input/Resultを別証拠として扱い、事後の正常な数え方や同一JSONを理由に過去の実験のClaimを変更しない。
