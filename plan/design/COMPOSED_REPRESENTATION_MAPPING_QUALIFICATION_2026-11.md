@@ -98,3 +98,53 @@ Private World W0/W1が**当該Consumerへ開示可能な情報としては同じ
 
 - Horn, Perera, Cheney (2018) *Incremental Relational Lenses* — View updateのsource deltaへ戻す条件を、一般のUI編集の自動許可とは区別する。
 - *A mathematical foundation to support bidirectional mappings between digital models* (2022) — Delta lens合成に法則・前提が必要な例。TEI全RepresentationにLens法則を強制しない。
+
+
+## 8. 最初の製品実証を一つに絞る：実Read→Context→二表現（2026-11-07追補）
+
+前段までのRP/MV/CX群は**要求探索の広さ**を維持する。一方、初めて採用資格を与えるための縦断実証は「1 Function・1 Query・1 Provider Read・1 Context・2 Read-only Representation」の独立した一試行を最優先とする。これは検証を狭くするためではなく、Source/Provider/Contextの**最初に欠ける接続辺**を一つ特定してから、同じ証拠を異質なConsumerへ拡張するためである。
+
+### 8.1 現mainで確認された既存機構と、依然として欠けるもの
+
+- [main統合 #3195](https://github.com/hat47x/tei-platform/pull/3195) の `tools/reference-operation-pattern-crosswalk` は既存 `operations.DeriveOperationSurface` を再利用し、PatternとOperationをData/Capability/Relationの条件で突き合わせる。実Go参照出力は8 Operation／5 Pattern、4 link。これは**候補の照合**であり、Product Function/Action選択やRuntime Readの証拠ではない。
+- [main統合 #3204](https://github.com/hat47x/tei-platform/pull/3204) は同Dataに対する複数browseの競合、Effectless command、Persistence入力不足等を識別する。候補が複数なら**first-winner選択**して成功扱いにしない。
+- [Draft #3238](https://github.com/hat47x/tei-platform/pull/3238) は既存Web API参照の限定的なPostgreSQL行取得を試験候補として追加。**実Product Functionからの選択Query→Provider→Result Slice E2aとは別**。Draft新HEADのPG/Go CIや実行結果を再確認せずPASSへ計上しない。
+- [main統合 #3155](https://github.com/hat47x/tei-platform/pull/3155) では `receipt-observed` と `resource-observed` を分離した限定実装が存在する。従って「独立Resource ReadがTEI全体で未実装」は誤りだが、**受注FunctionのSQL Rowset/Provider Scope→Context→画面、保存後業務完了**は未実証。参照PG Effect/Resource観測を本CaseのPASSへ転記しない。
+
+### 8.2 Product R1：最初のActual Read Witness
+
+主Ownerは既存[#2586 HR-01/02](https://github.com/hat47x/tei-platform/issues/2586)。対象を `order_entry.recent_orders` の**注文Header**に固定し、まずread-onlyで次を同一Attemptに接続する。
+
+| 順 | Witness/受渡し | 明示すべき停止線 |
+| --- | --- | --- |
+| R1-0 | 実際のWorkspace Root／Source raw revision・Loader実消費・Parser結果、選択されたProduct Function/Pattern IDと必須Role | 宣言・Crosswalk link・`tei operations`列挙は実Product Bindingではない |
+| R1-1 | Function→Query Selection、選択したSQLのSource byte/args、DB別Query選択、DataSource alias・実Physical Provider instance | `UNBOUND_DATASOURCE`、ambiguous alias、source不一致はunresolved。SQL文字列やDatasource名だけで実Providerを推測しない |
+| R1-2 | 実Readerが受領したHeader行とField presence、Target occurrence/grain、Limit/Sort/Filter/Scope/Tenant/Principal・read epoch・Rowset version | Page成功を母集団完全性にしない。別Provider/replicaの同時点性を推測しない |
+| R1-3 | 受注Headerに相対的な独立Expected／取得集合・必要Predicate・否定依存・Disclosureを同じContext Instance/Read Attemptへ結合 | `status`未投影は自動で「未評価」とも「評価済み」とも断定しない。Provider実評価のWitnessがあるときだけClaim候補 |
+| R1-4 | 同じContext→**FormとTableのread-only二表現**へのProjection。Subject/Field/NULL/missing/order/scope/epochを照合 | 表示二箇所の一致をBusiness Acceptance・Write可・全OrderLine読取と呼ばない |
+
+**粒度を越える最初の失敗を明示する**：Headerの有限集合の取得成功から、OrderLine全件、受注Submit、Ruleの全称、保存後業務完了を主張しない。Pattern/Operationの候補対応が曖昧な場合はR1-0で停止し、参照ツールを本番Resolverに昇格させない。実Product Readが未実装なら、R1-0/1の最初に欠けるEdgeをSource位置・既存Ownerで記録する。
+
+### 8.3 Read-only二表現の初回合格と不合格（独立Expectedへ接続）
+
+- **正常**：同一Header Subject/ContextからTable行とFormの対象を一致させ、Display列の欠落、Row order、Nullable値、Display-only状態を正しく説明できる。Table↔Formを切り替えてもRead cohort・業務意味の正本が増えない。
+- **負例1**：Headerを2件取得したがLIMIT 1のTableを見て全件2件が読めたと報告する実装を不合格。必要な閉包はClaim相対。
+- **負例2**：JOINで同一Headerが3行表示され、その3行を3業務Entity／3更新候補と扱う実装を不合格。
+- **負例3**：未取得/非開示/status述語の依存をfalse・0件と表示する実装を不合格。非出力Predicateは実Provider/Operatorで評価済みの証拠があれば、秘密値をConsumerへ開示せずにClaim資格を得る余地がある。
+- **負例4**：A→B→A選択の旧response・旧Action Offerが現在のContextに再入する実装を不合格。Function/Data/Query/Policy/Pluginの版も使途ごとに資格化。
+- **負例5**：Tableの2表示行が同じでも、Consumer別のDisclosure/Scope/hidden edgeが異なるのに「二View完全同値」とみなす実装を不合格。
+
+初回R1-4は**Graph/Tree/Audioの実Renderer完成を要求しない**。既存UI Kit/Projection Contractを使ったHeadless出力2種類で十分かを確認する。実Renderer・SUI/SHOの媒体表現は次段に並列圧力試験として維持し、要求探索の上限は置かない。
+
+### 8.4 資格の階段と先行しないもの
+
+1. **A: 構造・意味適用候補** — Declaration/Pattern/Shapeが存在し、必要情報が分かる（合成/CUI上の読み取りに限定）。
+2. **B: 実入力・Provider Read証拠** — 実Source/Query/Provider/Scope/Rowsetを同一Attemptに束縛。ここで初めて実ReadのClaimを限定的に評価。
+3. **C: 複数表現の局所意味保存** — 同じContextから2種類のViewを作り、対象/粒度/欠損/Disclosureのlossを診断。Bを満たす前の合成PASSはCのProduct資格でない。
+4. **D: ViewChange→typed Intent→現在Request/Grant** — 読取資格から書込資格を導かず、#2500/#2598/#1174の既存境界を再利用。
+5. **E: 実Effect/独立Resource Read/業務Outcome** — Receipt・Resource観測・業務完了の主張対象と証拠は別。#3155の局所成果とProduct R1/Order Entry全体を合算しない。
+6. **F: 異質Targetと生成媒体** — SHO/SUI、Graph/Tree、文書↔朗読などを、Consumer別Source/Alignment/開示/実Targetの資格で再検証。
+
+各段の比較欄は**Required / Discovered / Loaded / Parsed / Bound / Evaluated / Enforced / Executed / Observed / Qualified**を区別する。これは[#2514](https://github.com/hat47x/tei-platform/issues/2514)の独立検証と既存Evidenceをつなぐ**read-only照合票**であり、新Core Enum、第二Proof Store、追加Gateではない。ある段がmissing/unknownでも、下流の表示候補の探索自体を禁止するわけではない。ただし上位の完了Claimや自動Writeへは昇格させない。
+
+**既存Ownerでの検収順**：#2586 R1-0〜3 → #2506/#2507 R1-4 → #2497/#2582 CX写像・非単調性 → #2500/#2598/#1174 現行Operation → #2516/#997/SHO/SUI Target。独立Expected/Scenarioは#2514/#1180へ差分として渡す。今回の追補は設計のみ、R1-0〜4を現在の実Product/DBで走らせた証拠ではない。正式Meaning acceptance、実Target/Host、Owner判断は未。
