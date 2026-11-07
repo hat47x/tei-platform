@@ -1078,7 +1078,7 @@ HookもToolも「声明されたUses/Target Capabilityが存在する」こと�
 
 [merged #3142](https://github.com/hat47x/tei-platform/pull/3142)の`cmd/tei`実選択12 Moduleの`go.sum` h1照合、[merged #3156](https://github.com/hat47x/tei-platform/pull/3156)の隔離した供給だけによる`cmd/tei`実Build（Source closureは`rejected`）、[merged #3193](https://github.com/hat47x/tei-platform/pull/3193)の同一Linux/Go条件で独立2試行・同一Artifact digest、を**それぞれ成立した限定Claim**として扱う。これらがmainに統合済みであることと、TEI標準Build GraphからのSelf-build G4資格は別。旧Draft #2885の『#3156未merge・再現性未測定』という履歴記述を現状として再使用しない。
 
-[Open #3217](https://github.com/hat47x/tei-platform/pull/3217)は選択Sourceを`repositoryMembers`／`externalMembers`／`externalModules`へ列挙し、資格ある閉包のdigestとは異なる領域の`observedDigest`を出す**観測候補**。実測候補は`cmd/tei`のRepository 318件、外部12 Module/325 Membersだが、観測版は対象Buildの実コンパイルメンバーまで証明しない。同PRの`qualified`は意図的に常時false。未統合の観測を現mainの有資格Source閉包へ昇格しない。
+[merged #3217](https://github.com/hat47x/tei-platform/pull/3217)は選択Sourceを`repositoryMembers`／`externalMembers`／`externalModules`へ列挙し、資格ある閉包のdigestとは異なる領域の`observedDigest`を出す**実装済みの観測経路**。限定実測は`cmd/tei`のRepository 318件、外部12 Module/325 Members。`qualified`は意図的に常にfalseで、実Buildが正確に同じ全メンバーを使用した証明ではない。**mainに観測機構があることは、外部Module Source閉包の資格が成立したことではない。**
 
 | 接続点 | 期待する独立対照 | 受理責務 |
 | --- | --- | --- |
@@ -1086,6 +1086,8 @@ HookもToolも「声明されたUses/Target Capabilityが存在する」こと�
 | Build→Artifact | 同一対象・試行別隔離cacheでBuildを実施し、Artifact digestとToolchain/OSを記録。二回一致してもTarget横断を保証しない | #2831 SB-B、#2600 |
 | Source Observation→Qualified Closure | #3217の外部Member観測が成功しても`ResolveSourceClosure`の`rejected`を保持。採用するなら#1090のOwner判断と独立検証が必要 | #2831/#1090、G4=UNQUALIFIED |
 | D1 Provider選択→実Link→実Call | Provider A/Bが同じ23 Expectedを返す状態でBを選択し、誤ってAをLink/Invokeした場合は不合格。選択B・実B呼出し・未選択実装非混入・D2非退行の正負対照を要求 | #1251/#951/#2514、未実施 |
+
+**後続の方式比較（採否未決）**：[merged #3246](https://github.com/hat47x/tei-platform/pull/3246)の判断資料は、A＝現行の外部Module拒否を維持、B＝検証済み実選択供給のみSource閉包へ採用、C＝既定拒否のまま明示opt-inで段階的に認める、の三案を示し**Cを推奨するが正式採用していない**。採用前には、(1) Goの実Build入力と観測Member集合の一致、(2) opt-in/既定のClosure意味の識別、(3) `go.sum`自体の受理と供給元Trust、(4) Windows/Linuxの相対Member identity、(5) #1090/#2831の既存BuildSource契約への接続を個別に判定する。Aの継続は失敗ではなく安全な設計判断であり、B/Cが未実装のまま `qualified:true` へ変更しない。
 
 **実施優先**：#1251のD1静的Link/Invokeは既存Go Sourceと独立Expectedで先行でき、Go全体のSelf-build G4や`.tei.md` ReaderをHard依存にしない。外部Moduleを含むTargetだけは、BuildができてもSource closure拒否を隠さない。新Module Provider、第二Resolver、無条件のTrust昇格は行わない。
 
@@ -1103,7 +1105,29 @@ Pluginに内包するAgent Skill/Toolを選択する場合、`Accessible`、実`
 
 複数の表現型を同期する場合、表示のSelection/epochとDomain Subject/Relation occurrence、Data取得集合、Update Intentを別に検証する。未取得/部分取得/秘匿のDataを空集合で補完したり、UI上の選択変更をDomain Source Mutationとして自動保存したりしない。Mappingの正式な受入は#2507/#2506/#2514、媒体/時間軸・複数画面の詳細は#3192/#3222/#3225へ委譲し、このPlugin設計内に第二のUI Binding SchemaやOwner Meaningの正本を作らない。
 
-**状態と未決**：§23.6〜23.8は既存の限定実証をmainの計画へ接合した設計追補。D1 Provider Bの実静的Link/Invoke、Source閉包の外部Module受入、OS/Network全経路の隔離、標準表現型の実Target・UI/DB縦断、Owner意味受理は未実施／未採用。#3217/#3222/#3225/#3162のOpen Draftをmainへ統合済みと記述しない。
+**状態と未決**：§23.6〜23.8は既存の限定実証をmainの計画へ接合した設計追補。D1 Provider Bの実静的Link/Invoke、Source閉包の外部Module受入、OS/Network全経路の隔離、標準表現型の実Target・UI/DB縦断、Owner意味受理は未実施／未採用。#3217はmainへ統合済み（ただし`qualified:false`）。#3222/#3225/#3162のOpen Draftは未統合として扱う。
+
+<!-- tei-plugin-release-consumer-witness-handoff-20261107 -->
+### 23.9 第三者PluginのRelease証拠から実Consumerへ：公開・独立検証・利用資格の橋渡し（2026-11-07）
+
+第三者PluginのRegistry正本は[#2589](https://github.com/hat47x/tei-platform/issues/2589)／[公開設計](PLUGIN_REGISTRY_PUBLICATION_VERIFICATION_DESIGN_2026-11.md)に置く。ここでは§21のContract-first／§23.6のSupply・Build・閉包と接続する**最短Consumer検収**だけを定義する。新しいRegistry、Release schema、Attestation Profile、二つ目のResolver/Lock/Hostを新設しない。
+
+[Draft #3244](https://github.com/hat47x/tei-platform/pull/3244) exact head `b5d389cfa7e6b98a589cba54fff4d837848e1a80` の[専用CI #42347303135](https://github.com/hat47x/tei-platform/actions/runs/42347303135)で、Go/Nodeの独立Readerが**テスト専用Fixture**のPublisher Ed25519署名・Release SHA-256、二つの必須Artifact Role/Byte、Verifier声明のRelease Subject/Profile/Targetを照合し、正常例と14種類の否定例を実行した。CIの`release-evidence-binding` Jobはsuccess。Fixture側の公開鍵を信頼起点に使わずReaderに固定した点は適切だが、これは実Publisherの権限・現在のIssuer Trust/失効、実Conformance実行、外部配布・Hostでの利用資格を証明しない。`fresh`/Owner epochは模擬Policy入力であり、その現在性を問合せていない。
+
+| 接続の相 | 成立を示す最小の独立観測 | 絶対に推論しないもの／既存担当 |
+| --- | --- | --- |
+| **R0 Contract / Provider Candidate** | Contract/Profile/Targetと実装候補の明示参照、独立期待値と拒否例。未Providerは未提供として扱う | Catalog発見＝Provider存在、AI生成候補＝Owner意味受理（#951/#1975） |
+| **R1 Release Frame検証** | Release digest・必要Artifact集合・Role/Bytes、Publisher署名とVerifier声明の対象を独立に照合（#3244 fixture-only成功） | テスト鍵のSignature PASS＝現在の実Publisher権限、実Conformance結果（#2589/#1104） |
+| **R2 実Publication確定** | 同じPlugin identity/versionに対するVersion Binding確定、署名時点のAuthority/Release全MemberをPublication Attemptに固定 | Registry掲載＝実GitHub Release byteの将来受領、同Version別Byteの上書き許容（#2589/#1105） |
+| **R3 Consumer Readback** | 別Attempt/別Readerが公開Locatorから同一Releaseと各必須Artifactの実Byteを取得・再hash。R1 manifest＋R2 memberの混合を拒否 | 署名済みManifestの存在＝実ConsumerにByteが届いたこと（#2604/#2390） |
+| **R4 Source / Build / Selected Provider** | Consumer Targetに必要な選択Provider・Source/Build closure・実Artifact・Version/Target Profileを一致させる。Go外部Moduleは§23.6の限定資格を使用 | Release digestと`go.sum`一致＝Build Provenance、Module Source資格、D1 B実Link/Invoke（#2831/#1251） |
+| **R5 Loaded / Granted / Invoked** | 実HostでLoadしたbyte identity、対象Tenant/Resource/Current Grant、Consumer実Callと結果・Effectの同一Attempt証拠 | Signed release＝実行許可、本番Host強制、Owner Acceptance、Receipt/Resourceの現在性（#1370/#1174/#2390） |
+
+**最小の反証**：①署名済みだが必須Memberが欠落／別版のMemberを混ぜた、②同Version別Byteが別Locatorへ載った、③Publisher/Verifierの権限が既に失効したが署名は検証できる、④Profile/Targetが違う声明を流用、⑤R3 Readback後にR5 Load Byteが変わった（TOCTOU）、⑥R4でProvider Bを選んだのにAを実Call、⑦Releaseだけ有効でConsumerは未取得／権限なし、を**異なる不合格・未取得**として区別する。既存#2589 RG、#1251 PB、#2514独立検証基準に引継ぎ、第二のFixture正本は作らない。
+
+**適用の重さ**：R1〜R3は第三者公開PluginのTrust/Distributionが必要なConsumerで優先する。ローカル純粋計算D1の最初のA/B実験に、実Registry/Publisher署名/本番HostをHard dependencyとして課さない。逆に外部Releaseから実装を採用する場合、Go二ReaderのテストFixture成功だけでR3〜R5を省略しない。
+
+**状態**：#3244はDraft・未マージ、専用CIの成功は固定Headに限る。実GitHub Release Readback、現在Trust/失効照会、実Conformance実行、二つの独立Host、D1選択Bの実Static Link/Invoke、Owner Meaning受理はNOT RUN/NOT PROVEN。これは既存Evidenceを接合する**設計追補**で、業務Grantや第三者Plugin方式の新規採用ではない。
 
 ## 14. 業務FunctionとBuild Unitの割当・Job入口（2026-11-03、評価候補）
 
