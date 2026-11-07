@@ -25,6 +25,7 @@
 
 | 文書 | 対象 |
 | --- | --- |
+| [`AI_FIRST_QUALIFIED_INTERFACE_CURRENT_MAIN_2026-11.md`](AI_FIRST_QUALIFIED_INTERFACE_CURRENT_MAIN_2026-11.md) | AI-firstのSource/Tool/Independent Expected/Meaning/Grant・Effect受入を、mainのTT-56実CLIと盲検T1-B・Plugin実呼出しへ接続（§10現行状態、採用判断は既存Owner） |
 | [`DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md`](DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md) | 異種Data Sourceの開発者向け閲覧・データ管理・Schema DDLとDBA境界（#3270、設計・未適格） |
 | [`HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md`](HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md) | REST例外とClient ReactionのGraph/Table/Trace同一性、再試行とCommit unknown（#3274、設計候補） |
 | [`ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md`](ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md) | TEI自身のIssue→Design Context→実CLI・テスト能力の限定ドッグフーディング（#3262） |
