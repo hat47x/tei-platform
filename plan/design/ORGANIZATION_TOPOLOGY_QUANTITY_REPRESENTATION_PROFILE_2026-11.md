@@ -113,3 +113,59 @@ AI/CUI/Studioには、新しい「組織専用Widget一覧」の網羅を要求�
 | **P2 異業種への耐性** | 企業・行政・非営利・研究組織・共同事業で同じFacetを使い、特有RuleのみProfile差分にする。意味型/演算の不足を反証する | #2510/#2493/#2018。小PoCの範囲を製品の表現力上限にしない |
 
 **採用停止線**：現mainのNative Org E1は実在するが、組織用FTEのQuantity Kind/基準・多軸Hierarchy・新Representation Instance/SHO出力・実Case Provider E2/Host Actionがすべて実装済みという主張はできない。正式な組織集計式、重複Pathの会計扱い、承認・委任、数値の演算則はOwnerの意味受理が別に必要。P0のC1→D1実Provider Readを妨げる大規模Core改造は行わない。
+
+## 7. 三要素図面と組織Measureのクロスリファレンス：同一Meaningから異なる線・数値・操作を導く
+
+他チャットのX-TEA三要素分析法（Data／Function／Business各モデルの図面表示・編集、CRUD等のクロスリファレンス生成）とSHOの平易なテキスト図解要求を、**既存#1124三視点Modeler／#1125一階層業務DFD／#1803設計書導出の受入に接続**する。§1〜6の「Dataの構造・数量・表現型」の上に、どの**Function/Procedureが、どのData/Relation occurrenceを、何の目的で利用するか**という型付き依存関係を投影する。ModelerのData/Function/Business図、CRUD表、SHOの組織図は別正本ではなく、Script/DSLを含む同一のauthoritative Sourceから導く。
+
+| クロスビュー対象 | 必要な型付き関係／粒度 | 生成図・表 | 誤った自動同一視 |
+| --- | --- | --- | --- |
+| Data View | Person／OrgUnit／Membership／Position／Occupancy／CaseRecordとRole別Relation、時点・Source ID | ER/Graph／関連詳細／組織構造Diagram | 同じGraph線を雇用・所属・指揮・費用配賦・Case担当と判定する |
+| Function View | Function ID、Data Context、Query/Operation Role、依存するRead Set、Case/Relation変更Intent、Quantity種別 | Function→Data/Operationの参照図、入力出力表、CRUD候補 | Tree/Pickerが表示できることを物理CRUD実行・現行Grantと判定する |
+| Business View | Business Procedure／一階層DFDのBusiness Step/Actor/Trigger、対象Dataの授受、手作業/外部Step、責任 | 手順DFD、Handoff説明、職務別担当表 | DFD矢印をData Relation、Transaction、Workflow実行順や引継ぎ完了と判定する |
+| Cross Reference | 同じCanonical Subject／Role ID、Source locator/revision、Function→Data用途、Procedure→Function/Manualの明示Binding | CRUD/Role/Step表、Source追跡、差分・影響表 | SQL JOIN/SQL UPDATE字面からOwner受理済みの業務CRUDと推定する |
+| Quantitative Projection | Measure Ref、Fact/Occurrence、Unit/Basis、Rollup Axis、演算法則と必要集合のRead Witness | 人数・FTE・工数のMatrix/Chart/KPI、SHO図解 | 同じ「2」でUnique Person数、Relation件数、FTEを同一Quantityとする |
+
+### 7.1 CRUD表は「宣言・導出・実測」を混ぜない
+
+**設計時の合成例**（既存mainに実Functionや実書込が存在すると主張しない）。`R`は「明示的に設計上Readを必要とすること」、`U?`は「明示意味の採否・実装・Grant未確認の更新候補」、`—`は「この例から宣言なし」。`U?`をC/U/Dの実実行実績として扱わない。Relationの`Link/Unlink`はRow CRUDの`U`と等価とは限らない。
+
+| Function／Business step | OrgUnit | Membership | Position/Occupancy | CaseRecord | Measure／依存 |
+| --- | --- | --- | --- | --- | --- |
+| Org Explore（Function候補） | R | R | R（表示目的が明示された場合） | — | PathとAs-of、Entity/Occurrenceを区別 |
+| Case Handling（Function候補） | R | — | — | R、担当`U?` | Case→Orgの直接Relation、実TargetとCurrent Grantが必要 |
+| Workforce Report（Function候補） | R | R | 必要なReportのみR | — | Unique Person CountとFTEを別に算定、非出力allocationを含む |
+| 引継ぎを受領する（Business Procedure） | 業務参照 | — | — | 業務参照 | 人手/外部確認をSystem Uと自動対応させない |
+
+行と列の交差は`Declared / Derived Candidate / Actual Read / Actual Effect / Not observed / Unknown`等の**別資格**を参照できなければならない（正式なCRUDセルSchema新設を意味しない）。設計書Generator #1803は、未取得／未宣言セルを「C/R/U/Dなし、確実に使わない」と断定しない。Queryに非出力のPredicateやJOIN依存がある場合、出力Fieldに現れなくてもRead Setへ残す。Business Actor・Procedure役割と物理Principal/Grantは同じ列へ潰さない。
+
+### 7.2 数量付き図の一貫性は射影と集計の交換可能性を要求する
+
+一般には「GraphをTree展開した後にSUM」と「元の実Fact集合にSUM」の結果が一致するとは限らない。**投影してから集計することと、集計してから投影することが等価なのは、Subject/Fact identity・path係数・集計軸/基準時点・Read集合完全性・NULL規則が保存される場合に限る。** 同じ数値が描画されるだけでは十分でない。
+
+§3のH→D1→CとH→D2→Cにおいて、Cに固有の0.4 FTE Factが一件なら、Pathを2行へ複製した後に単純SUMする0.8は、Ownerが「経路ごとに全量計上する」と受理した特別な場合を除いて元Factの0.4と同値でない。逆に経路別の明示重み付けが業務上の意味なら、Nodeの単純重複排除は経路係数を失う。SHOのDiagramでEdgeを一本に畳む表示は許せても、失われたRole/Path/係数の再生成・逆編集は不許可。
+
+これを組織の標準構造が持つべき**数量操作の適合性**として#2593/#2544へ渡す。新たな数式解釈器やGeneral Graph Engineを組織側で作らない。
+
+### 7.3 図上編集の資格とCRUDの影響解析
+
+同じMeaningに対応する複数の投影を保持する場合でも、図形移動や数値変更を直接Source改変にしない。
+
+1. **D1への構造Edge付替え**：Relationship occurrence/Role、対象Graph axis、有効・認知時点、Source span/revisionを一意に逆引きできるならtyped changeの**候補**。多重ParentのTree展開行／Projection-only配置は編集不資格。#1124の既存Preview→Acceptance→reparse/reproject経路へ渡す。
+2. **MatrixのD1 FTE=1.6セル変更**：複数Membershipが寄与した集約であるため、対象Fact/演算の逆写像が一意でない。独立した配置配分のOwner操作が宣言されない限り、元の0.6/1.0への自動PATCHは拒否しSource/Contributorへnavigateする。
+3. **Business DFDの「D1→D2引継ぎ」線編集**：Procedure/授受契約の変更候補であり、CaseRecord.handlingUnit D1→D2の実Writeとは別。手順図の変更だけではWorkflow Instanceを実行しない。
+4. **CRUD表の`U?`セル編集**：派生された利用状況の表そのものを正本とせず、元のFunction Operation／Rule BindingのSourceへnavigateして変更案を示す。意味受理→生成／実効果を別に表示する。
+
+### 7.4 独立Expected／変異の最小集合（#2514/#1180へ引渡し）
+
+| 対照（公開合成、原実装由来のExpectedではない） | 変えた因子 | 不変でよいもの／更新・停止すべきもの |
+| --- | --- | --- |
+| **ORG-XV-01 組織Graphの目的変更** | H→Cの同じ端点を`command`→`budget` Relationへ変更 | Node IDは同じでも指揮Tree/Business権能候補は失効。費用配賦図は別Purposeとして再評価。軸を無視したRendererは不合格 |
+| **ORG-XV-02 FTEだけ変更** | A1.allocation 0.6→0.5（基準／時点／集合は同一と仮定） | Unique Person／Membership件数は不変、D1 FTE=1.5・全体FTE=1.9へ改訂。Graphの所属線に無関係な再描画を安全違反とはしないが、旧FTE表示/SHO数値維持は不合格 |
+| **ORG-XV-03 Path fanout** | Cへの二PathをTree出現行として展開 | CのEntityは一つ／Path二つ、未配賦Fact0.4を0.8にしない。二行を別組織とするCRUD/Chartは禁止 |
+| **ORG-XV-04 DFD矢印編集** | 人手Handoffの送り先D1→D2を変更 | Business Procedure/責任の候補差分だけ。CaseのhandlingUnit/Host Grant/Provider Effectは不変（別操作がない前提） |
+| **ORG-XV-05 非可逆集計セル編集** | D1 FTE Chartの1.6を1.4へドラッグ | 元A1/A3への一意な更新候補なし→read-only/ambiguous。独立Actionが新設されていない限り自動更新しない |
+| **ORG-XV-06 表示一致・内部差異** | 同じPublic Treeを保ち非公開Membership/委任・時点/Sourceのみ変える | 外部SHO/AI/Tool Logに非許可情報・件数が漏れない。Private依存の承認候補は再資格化 |
+| **ORG-XV-07 Source版ABA／後着** | A→B→AのSource/Selection復帰と旧Response到着 | 出力一致だけで旧Owner Meaning・Receipt・現在Grant・編集Offerを復権させない |
+
+上記は**既存§16/39/84/85、#2593 MC、#3236 CX、#1124 M0〜M3、#1125 DFD、#2514独立検証**へ交差参照するための診断対照で、第二Fixture SSOTではない。最初のP0は構造・Measure・図/表のread-only反証、P1は#2586の実一件Read→Function Contextからの三視点/Quantity導出、P2は一意なモデル変更候補と受理後再Projection。Modeler/SHO/外部Hostでの実一往復とCRUD実更新、Owner正式受理は**NOT RUN**。
