@@ -361,6 +361,32 @@ Schemeの静的制約をTEIの「強属性」等に特別昇格する案は、�
 
 **今回の局所Reference**：`tools/reference-hash-id/read_claim.go` に `ReadClaim` と `CompareUntrustedReadClaims` を追加。独立に受け取った「宣言側」と「消費側」の `QualifiedSubject / SourceScope / SourceRevision / ReadAttemptID / SourceSHA256` の5項目が同一であり、Consumerから渡された実バイトが宣言Digestと一致する場合だけ、`status="caller-claims-consistent-only"` の**非権威的診断**を返す。必須フィールドの欠落／不正文字列、別Subject、異SourceScope、異Revision、別Attempt、異Digestや実消費bytes不一致は拒否。実Reader・実Generator・Studioには**まだ接続していない**。
 
+**局所Referenceの処理図**（実線＝今回のGo関数が比較する入力、破線＝未実装の実Source Reader／Generator引渡し）。
+
+```mermaid
+flowchart TD
+    R["既存TEI Source Reader / 実Consumed Closure（#1017/#2595）未接続"]
+    D["Caller declared ReadClaim: QualifiedSubject + SourceScope + Revision + AttemptID + SHA256"]
+    O["Caller consumed ReadClaim: 同じ5項目の別申告"]
+    B["Consumerから渡されたraw bytes"]
+    C["CompareUntrustedReadClaims（Go Reference）"]
+    X{"全項目の一致・raw bytes SHA256一致?"}
+    N["Fail closed: mismatch diagnostic（stdoutへの受理なし）"]
+    P["caller-claims-consistent-only / authority=none / sourceAccepted=false"]
+    A["Source Acceptance・同一Attempt実証（Owner、未接続）"]
+    R -.-> D
+    R -.-> O
+    D --> C
+    O --> C
+    B --> C
+    C --> X
+    X -->|No| N
+    X -->|Yes| P
+    P -.-> A
+```
+
+この図の破線は「自動的な昇格経路」を意味しない。実Readerが供給していない申告を、同一の値が並んだという理由で証明済みとみなすことは禁止する。
+
 **重要なScope分離**：`ReadClaim.SourceScope` はSourceが所属するWorkspace／Identity Scope。一方 `Scheme.Scope` はハッシュ導出のドメイン分離に使う用途Scopeであり、両者は同じ文字列である必要がない。SourceのScopeをSchemeへ暗黙代入したり、Scheme.ScopeでSourceの資格を補完したりしない。複数SourceをまとめるBuild/ETLでは、Source ClosureやConsumption Setの正式なOwner契約を利用し、この単一ファイルReferenceを全件証明へ昇格させない。
 
 | 独立の確認 | 局所Referenceで検査可能 | 真正な製品受入に必要な外部証拠 |
