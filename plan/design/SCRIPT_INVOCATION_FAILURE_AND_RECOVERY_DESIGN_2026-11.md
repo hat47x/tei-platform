@@ -484,13 +484,13 @@ UI/CLI/Jobの実行要求は、表示/選択の更新世代（**Selection/Contex
 
 本節は旧Draft [#2884](https://github.com/hat47x/tei-platform/pull/2884) を**最新mainベースへ再構成する際の新しい成熟差分**。11章までの旧設計は過去の観測時点を保持する。**本節の現状表と各PRの最新状態が優先**し、古い「未実装」「未実証」の記述を現在の全経路へ一律に適用しない。
 
-### 12.1 最新main/未統合PRからのContract差分
+### 12.1 時点別Contract差分（最新の実装状態は§13を優先）
 
 | Mechanismと出典 | 実装・実証済み範囲（またはDraft候補） | Script受入で主張してはいけないこと |
 | --- | --- | --- |
 | [main #3118](https://github.com/hat47x/tei-platform/pull/3118) `commandadapter.Executor.Effect` | Callerが**宣言した**EffectをAdapterが`Committed`／`Replayed`の結果へ載せ、`ReportedEffectMissing`を解消し得る。Effect未指定時はreceipt-onlyの後方互換 | Caller提供の宣言を返しただけでは、**DBの対象Row/Fieldが実際に宣言どおり変わった**ことを独立に証明しない。Replayは現在値の観測ではない |
 | [main #3124](https://github.com/hat47x/tei-platform/pull/3124) `PersistenceObserver`／`PersistenceState` | `not-applicable`（非永続／宣言Effectなし）、`not-observed`（観測未構成・失敗）、`observed`（Observerがtrue）の3つを分離。Commit後Observerのエラーで正常Commit自体を取り消した扱いにしない | `DurableStore=true`はCompositionが供給する主張であり、InvokerがStore実体を検証した証拠ではない。Observedの**何を見たか**を記録せず`persisted=true`を汎用業務効果確認としない |
-| [未統合 #3127](https://github.com/hat47x/tei-platform/pull/3127) `commandadapter.Executor.Lookup` | Draftでは同一Request/Grant/OperationID/payloadで`Runner.Lookup`し、Receiptの`StatusReplayed`を観測する正負対照。単体Go報告あり、実PG連結はDSN無しで未実証 | **Lookupで再確認したのはReceiptであり、Resource現在値ではない**。これが`PersistenceStateObserved`に写されても、Row/Field状態の独立観測やBusiness Completionへの昇格は禁止。Draftをmain実装済みとして扱わない |
+| [main統合 #3127](https://github.com/hat47x/tei-platform/pull/3127)／[main #3131](https://github.com/hat47x/tei-platform/pull/3131) `commandadapter.Executor.Lookup` | 同一Request/Grant/OperationID/payloadで`Runner.Lookup`し、Receiptを観測。#3131で実PostgreSQL Lookupの限定試験も追加 | **LookupはReceiptの確認であり、Resource現在値の確認ではない**。#3155以降は`receipt-observed`として扱い、業務完了への自動昇格は禁止 |
 | [main #3123](https://github.com/hat47x/tei-platform/pull/3123) `access.FileSystem` | Root外へのアクセス試行を拒否時に記録（記録失敗でも拒否は継続） | Access GuardのRoot境界と**外部DSH Harness SandboxのOS読取隔離**は別。拒否ログの欠落から「試行なし」を導かず、ログの真正性・完全性も未保証 |
 | [外部実測PR #3113](https://github.com/hat47x/tei-platform/pull/3113) | 外部Harness→固定TEI CLIのread-only実起動を証拠化 | Tool/CLI成功・validate ok・world fingerprint一致から、実Provider Read、参加者隔離、Source Meaning受理、業務Effectを推論しない |
 
@@ -506,18 +506,18 @@ UI/CLI/Jobの実行要求は、表示/選択の更新世代（**Selection/Contex
 | 実Commit成功、Executor Effectだけ欠落 | `ReportedEffectMissing=true`でもCommit失敗と断定しない。Receipt/RowReadは独立に実施 |
 | `DurableStore=false`、または比較するEffectがない | `PersistenceState=not-applicable`。「観測済み」と「観測不要」を混同しない |
 | Durable Store主張あり、Observer無し/失敗 | `PersistenceState=not-observed`。Commit済みなら再送判断はReceipt LookupとOperation Identityに基づく。Observer失敗で二重実行しない |
-| 同KeyのProvider Receiptは`StatusReplayed`、対象Rowは他者に更新/削除された | **Receiptはobservedでも現在値は未確認/異なる**。現在Rowの読み直しなしに、宣言Data EffectやBusiness Completion `holds`へ進まない |
+| 同KeyのProvider Receiptは`StatusReplayed`、対象Rowは他者に更新/削除された | **Receiptは`receipt-observed`でも現在Rowは更新・削除済みとなり得る**。実`ResourceRead`不一致なら`resource-observed`へ進めず、Business Completion `holds`はさらに別判定 |
 | 同ID/KeyでもHost Grant・Tenant/Target Scopeが変化 | 古いReceipt/報告を別Targetへの認可・副作用資格に流用しない。Host Grantの現在資格・Disclosureを再評価 |
 | read-only外部AgentがRoot外のファイル読取を試行 | TEI Access Guard通過時の拒否記録と、DSH Sandbox自体の隔離を別観測。前者が実装済みでも後者は未知として扱う |
 | 実Readが0行／partial／RLS等で非開示 | 証拠の完全性・TargetSet Scope/Versionが無ければ「不存在」も`Completion holds`も推論しない |
 
-ここで`AppliedUnobserved`と`ReportedEffectMissing`の二つは、**Resultの列挙・報告能力の制約を示す**欄であり、Commitの実証でも実Data状態の否定でもない。`PersistenceStateObserved`も*Observerが確認した対象*（ReceiptかRowか）まで示さない限り、画面には「何を確認したか」を限定して表示する。Receipt lookup用ObserverをData state Observerへ名前だけで流用しない。
+ここで`AppliedUnobserved`と`ReportedEffectMissing`の二つは、**Resultの列挙・報告能力の制約を示す**欄であり、Commitの実証でも実Data状態の否定でもない。最新main #3155では`receipt-observed`と`resource-observed`を分け、`persisted:true`は後者だけである。画面にはObserverの確認対象・Scope・時点を限定して表示する。Receipt lookup用ObserverをData state Observerへ名前だけで流用しない。
 
 ### 12.3 統合の順序と停止線を、現行の実機構へ束縛
 
 - **P0-R（先行・read-only）**：#2586と`examples/xtea-lowcode`の`UNBOUND_DATASOURCE`を起点に、既存Product `Function/Query→Datasource Alias/Instance→選択実Provider→実Read→Rowset/Scope/Body`の**最初の未接続の一辺を確定**。可能なら1件の独立Expectedとの対照を実試験。未接続なら`product-read-not-connected`を明記し、CLI/外部Harness成功に代えない。
-- **P0-W（その後・write）**：選択した同一Business Operationを、既存`CommandAuthorizer`・Required Guard・`DurableLifecycle`・`effectcommit.Runner`・Receipt lookup・**独立した実Row/Field Read**へ接続する。#3127を使う場合も`Lookup=true`はReceipt存在の観測まで。PG試験は実`TEI_EFFECT_POSTGRES_DSN`と固定HEADで確認し、skipをPASSに数えない。Consent/OwnerのMeaning/Grantは別責務。
+- **P0-W（その後・write）**：選択した同一Business Operationを、`CommandAuthorizer`・Required Guard・`DurableLifecycle`・`effectcommit.Runner`・#3127/#3131のReceipt Lookup・#3155の`ResourceRead`（別接続／更新内容との一致）へ接続する。`Lookup=true`は`receipt-observed`まで、`ResourceRead=true`は実Row一致を観測できた場合のみ`resource-observed`。双方ともCompositionの実設定を確認し、PG試験は`TEI_EFFECT_POSTGRES_DSN`と固定HEADで実施。skipをPASSに数えない。Consent/OwnerのMeaning/Grantは別責務。
 - **Consumer/AI**：CLI/Studio/DSHへは実Target/Scopeに対するDisclosure・raw secret非開示・判定不能の理由を投影する。Root拒否が記録されてもDSHサンドボックスの読取隔離証明が無い限り非公開SourceをParticipantへ渡さない。
 - **移行レーン**：`*.tei.md`の正式Reader/Writerは[#3030](https://github.com/hat47x/tei-platform/pull/3030)、暫定fail-closedは未統合[#3031](https://github.com/hat47x/tei-platform/pull/3031)。旧`*.tei`での局所Read/Effect資格を新形式へ転記しない。
 
-**統合資格**：本書は設計と既存実装のFit/Gapを示すDraftであり、上表の新しい統合Go/実PG/二Host/Provider/実Owner受理・本番Grantは**NOT RUN／NOT QUALIFIED**。#1119 G1/G2 Gateや業務受理を代行しない。古いDraftの変更履歴は[#2884](https://github.com/hat47x/tei-platform/pull/2884)に保存し、本書を**最新main起点の後継候補**として扱う。旧PRは後継PRが作成・差分検証できた後に重複を解消する。
+**統合資格**：本書は設計と既存実装のFit/Gapを示すDraft。#3131/#3155のReceipt・Resource Readの局所PostgreSQL試験追加とconformance実績は区別して採用する。一方、Script→Function/Pattern→実Provider→Completion/Consumerの**同一Source・同一Attempt E2E**、二Host/正式Owner受理・本番Grantは**NOT RUN／NOT QUALIFIED**。#1119 G1/G2 Gateや業務受理を代行しない。古いDraftの変更履歴は[#2884](https://github.com/hat47x/tei-platform/pull/2884)に保存し、本書を**最新main起点の後継候補**として扱う。旧PRは後継PRが作成・差分検証できた後に重複を解消する。
