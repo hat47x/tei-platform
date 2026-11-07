@@ -32,12 +32,16 @@ func inspectedReference(subject sourceindex.Subject) operations.SubjectInspectio
 // that Studio discovers while it silently invokes the built-in operation.
 func TestInspectionUsesHostSelectedService(t *testing.T) {
 	root := t.TempDir() // No TEI manifest: the built-in Inspector cannot load it.
+	resolvedRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		t.Fatal(err)
+	}
 	want := sourceindex.Subject{Kind: "semantic-data", ID: "sales.order"}
 	factoryCalls, invokeCalls := 0, 0
 	h, err := NewReadOnlyWithFactory([]string{root}, func(trustedRoot string) (RootServices, error) {
 		factoryCalls++
-		if trustedRoot != root {
-			t.Fatalf("factory received a different root: %q != %q", trustedRoot, root)
+		if trustedRoot != resolvedRoot {
+			t.Fatalf("factory received a different root: %q != %q", trustedRoot, resolvedRoot)
 		}
 		return RootServices{
 			Inspection: inspectionServiceFunc(func(subject sourceindex.Subject) (operations.SubjectInspection, error) {
