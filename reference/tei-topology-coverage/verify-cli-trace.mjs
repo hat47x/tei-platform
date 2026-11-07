@@ -18,6 +18,16 @@ assert.equal(has('application-pattern','order_entry.customer_reference','semanti
 assert.equal(has('semantic-relation','sales.order.customer','semantic-data','customer.customer'),true,
   'actual CLI did not expose expected outgoing direct edge');
 assert.equal(observed.sourceNavigation,'located-navigation-only');
+// Negative control on the actual CLI payload: SourceNavigation belongs to the
+// selected subject, even when the Source is otherwise valid and located.
+const crossBound=structuredClone(raw);
+crossBound.result.source.key={scope:'reference-observation',subject:{
+  kind:'application-pattern',id:'order_entry.customer_reference'
+}};
+assert.deepEqual(observeDirectTrace(crossBound),
+  {status:'unknown',reason:'source_navigation_identity_mismatch'},
+  'a located anchor for another subject must never be rebound');
+
 assert.equal(observed.absentClaim,'unknown');
 assert.equal(observed.relationEntityIdentity,'not-provided');
 assert.equal(observed.multiRoleClosure,'unproven');
