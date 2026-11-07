@@ -270,3 +270,4 @@
 | [`check-transform-wasm-conformance.sh`](check-transform-wasm-conformance.sh) | js/wasmの実行がネイティブのTransform wire契約を保つことの確認 |
 
 R7Bの一回限りの準備・公開・後処理を行うスクリプトは、統合と対象ブランチの終了後に削除しました。現在の根拠確認や再現に使う検査・取得ツールは上の一覧に残しています。
+| [`reference-self-build-two-stage/`](reference-self-build-two-stage/) | stage1で作った実行ファイルをstage2のinvokerとして実起動し、invoker一致・同一レシピ・artifact一致を別々に判定する。Seed Trust・受入・権限は扱わない（#2831 SB-C1） |
