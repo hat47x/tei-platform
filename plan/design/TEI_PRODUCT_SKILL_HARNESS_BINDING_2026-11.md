@@ -180,3 +180,203 @@ S0cまでに発見した複合Shellの誤認に加え、**既知read-only Comman
 [merged TEI #2850](https://github.com/hat47x/tei-platform/issues/2850)のEffectObserver欠落時の無人実行停止は**書込み・確定後Effectの後続条件付き経路**へ適用し、最初のread-only比較の必須機構にしない。EKI低遅延/マルチモーダル、SHO、MCP Tasks、Role自己記述/DB方言、複数Buildも用途で必要な時に各Ownerで実証する。新Host/Registry/第二試験Runnerは作らない。
 
 **状態**：本節は既存製品事実の反映と受入条件の整理。実CLIの限定S1は成功済。実外部HarnessのSkill load/invoke、H2/H3四Session、二Harness、全Source Closure、外部OS/Host/Provider、独立業務Oracle、Owner受理は**NOT RUN**。
+
+
+---
+
+<!-- harness-crosslane-qualification-20261108 -->
+## 7. 2026-11-08 横断統合：Skill／実Harness／設計Contextの資格を分ける
+
+### 7.1 計画の旧記録と最新実測の照合
+
+- **実TEI Product CLI**：#2605／merged #2607の公開Source実CLI S1は成立済み。TAIの別CIでも一SubjectのSource Indexと実Source byteを限定照合した。
+- **外部DSHでのH3 Skill実読込**：#2509、merged #3113と保存4 SessionではH3-A/BがSkill本文および参照文書を実Tool Readした。Source MarkdownとTool結果の比較ではfrontmatterの除去とLoaderのWrapper付与を別物として扱う。前節の「H3実Load NOT RUN」は歴史的記述であり最新状態ではない。
+- **正式比較は未成立**：H2-Aは過去Session再利用。Catalog結果は各8,192byteで途中切断、Tool Request 56／Reply 55、PowerShell stderr混入。比較適格は0/4で、Skillの独立効果採点は未成立。
+- **Design Context／Test（2026-11-08更新）**：#3262のmain統合済み試験用Consumerは、初期9応答／16負例から、[merged #3354](https://github.com/hat47x/tei-platform/pull/3354)の**11実CLI応答／32限定Consumer Control**へ進んだ。PRのexact-head [CI #42391707962](https://github.com/hat47x/tei-platform/actions/runs/42391707962) は成功し、実mainのConsumer Blob同一性も照合された。旧#3324/#3326はclosed/unmergedで重複加算しない。**main pushの別CIと外部Harness完全受領は未検収**。merged #3304の行番号0は既知境界T1-Aの実CLI対照であり、未知RuleをAIが発見するT1-Bではない。
+- **実効権限**：#2509のDSH read-only／workspace-writeでは許可外Readが観測され、Session LogへTool結果が複写されるMock実測もある。merged #3333のCLI discoveryはview.writeFlagsを公開し、read-only分類であっても実argv次第でローカル書込みがあることを区別した。全OS隔離・全Egressの無漏洩は未実証。
+
+### 7.2 Claimに相対的な資格ベクトル（計画用語彙。正式Schema・新Gateではない）
+
+| 軸 | 実証する問い | 判別不能・失効時 |
+| --- | --- | --- |
+| **F0 実Source取得** | Task対象のSource／Subject／Roleを、宣言ではなく実Reader/Loader/Parserが取得したか | 未Loadedを不存在とせず、realpath/Source版を記録 |
+| **F1 必要情報充足** | 独立に固定したRequired Data/Function/Business/Rule/Relation/Scenario/SourceがTaskの粒度で揃うか | 正常JSON・同FPでも必須欠落ならpartial、追加取得先を示す |
+| **F2 実配送／受領** | 実CLIの必要結果がTool Wrapperを経てHarness Consumerに全量届いたか | Request/Reply ID、stdout/stderr、byte/part/endを照合。切断や欠番は不適格 |
+| **F3 現行利用・開示** | 現在のPrincipal/Grant/OS Scope/Audienceで実Read・外部送出・操作を許されるか | read-only広告≠OS拒否≠外部開示許可。旧Grantの再利用不可 |
+| **F4 独立判別** | 提案・Scenario・生成物をCandidateと独立のExpected/Mutantで検査したか | 自己生成Expected、既知T1-Aを未知T1-B達成にしない |
+| **F5 実作用・独立観測** | 実Provider/HostのResult・Receipt・Resource変化が同Attemptで確認されたか | EffectUnknown時は新ID盲再試行禁止、同ID照会／独立Readへ |
+
+これらは必ずしも線形に全てを満たす必要はない。F1未成立でも不足を探すread-only探索は可能だが、完全なTest生成・自動採用の資格はない。F2成立でもF3の外部LLM開示許可にはならない。F4からF5を推論せず、read-only開発作業に実PG副作用Gateを不必要に課さない。
+
+特に非開示対象の件数・ID・Source path・digestは、エラーや「権限なし」という説明から漏らさない。内部Observer向けの詳細診断と外部Consumer向けの許可済Projectionを分ける（#1178/#2515/#2516）。
+
+### 7.3 接合の単位は一Attemptの観測地点であり、新Proof Storeではない
+
+既存Task Packet/Trial Runbook/Receiptに参照させる最小票：
+
+Task／Claim／独立Required → Source Revisionと実Open root/bytes → 実Binary・Skill/Plugin版・実argv/flag variant・OS Principal → request IDとCLI exit/stdout/stderr → Harness reply ID/Wrapper/受領byte・終端 → Consumerの回答Claim → Current Disclosure → Independent Expected/Mutant → Unknown/Claim Ceiling。
+
+同じhashがあることより、Producer、Transport、受領先の因果的な受渡しを優先する。CLI stdout全量≠Tool Reply全量、Skill Markdown raw byte≠Loaderが包んだTool Result、World/Index Fingerprint一致≠Required全件受領、同一名/同一Test/SourceのA→B→A≠旧PASSの現在再資格化。モデルの最終回答が正しそうでも、Tool未受領ならDelivery合格にはしない。モデルが内部で何を「読んだ」かは自己申告で証明できないため、実送信と独立回答評価を別欄にする。
+
+### 7.4 最初の比較適格H2一件から、H2/H3四Slotへの受入順
+
+1. 公開合成Workspaceの一つの利用者定義Subjectを選び、用途相対のRequired、独立Expected、TEI実Binary、Source realpath/Revision、DSH実版・Effective Config、Tool family＋実argv variant、許可Audience、観測対象Sinkを固定する。Holdoutの正答や秘密Sourceは生成Agentへ渡さない。
+2. 同じ実OS Principalで許可CLI／公開SourceのRead正例、別Lane／親root／非許可Skill／合成HoldoutのRead拒否負例を観測する。Profile名やAGENTS上の禁止だけで物理拒否とせず、#2515で強制、#2509で実Tool実行を検査する。実外部ProviderにCanaryを送信せずMockで始める。
+3. Tool RequestとCLI実argv・exit・stdout/stderr raw、Wrapper・Reply ID・全byte・終端、モデルへ送られた範囲、Session Log・Tool result・診断・CI Artifactの各Sinkを、観測可能な地点だけ結ぶ。8,192byte切断、56/55の欠番、stderr混入、未許可writeFlagsはそれぞれ独立不適格。
+4. Design Context #3262の必要Rule/Relation/Source Anchorと、TT-56の「同FPのvalid JSONなのに必須Rule欠落」を照合する。合法な非Required省略を過剰拒否しない対照も必要。全件Source IndexはDisclosure/Payload Budgetを調べてから使う。
+5. 新規H2の**一Session**を先に適格化し、失敗時はSource/意味/配送/OS/開示/Oracleのどこに不足があるかを返す。既存探索4 Sessionを事後的に正式比較へ加算しない。
+6. 上記条件が固定された後、新規H2 Tool-only 2 SessionとH3 Tool+Skill 2 Sessionを事前割付。H2ではSkill非露出、H3では本文・必要参照の実Loader Readを確認。独立採点で正答、Unknownの保持、誤操作、不要Tool、実Token・時間・人手を比較し、Skillが無効／有害なら縮小する。第二Harness／MCPは後段。
+
+**必須の負例**：部分切断、欠番、stderr混入、Required Rule/Relation欠落、FP/Source revision混合、非許可write flag、OS禁止Read成功、Session LogのみのCanary送出、A→B→A後の旧資格再利用。未計測Sinkを「漏洩なし」に昇格させない。
+
+### 7.5 他チャットからの横断Owner接続
+
+| 既存Owner | Product Skill／Harnessが渡すもの | 禁止する昇格 |
+| --- | --- | --- |
+| **#3262 Design Context** | 独立Requiredと実Loaded/Parsed/Returned/Receivedの不足理由、scope-qualifiedな再取得先 | 一Subjectの部分取得から全業務/全Source完備 |
+| **#3223/#3273/#1180/#2514 Test** | 必須Ruleが充足した領域だけPattern Proposal→Candidate→既存Scenario/独立Expectedへ | 同一Agent作Expectedの自己合格、既知T1-Aから盲検T1-B |
+| **#1251/#951/#3278/#3267 Plugin/Trait/BOM** | exact Contract/Provider/Lock、実Build収録・CLI/Studio Invokeの実Consumer別証拠 | 宣言/選択からProvider実利用、単体PASSから2×2全tuple Verified |
+| **#1124/#2586/#2497 三視点/図面/CRUD** | Data/Function/Business・Topology/Representationの必要差とSource Binding | 表示から元データ構造を逆復元、ViewからWrite Targetの自動推論 |
+| **#2017/#2515/#2516 安全境界** | Task PacketのSource Scope、OS/Tool principal、外部Audience・Sinkの実到達 | read-onlyからOS隔離、Read許可から公開/送出許可 |
+| **#1174/#3328/#1163 副作用** | 書込みTask時のOperation ID、EffectUnknown、Recorder/Stage失敗とReceipt/独立Read不足 | Unknown時の盲再送、古いReceiptによる現在Effect資格 |
+| **#2831/#1119 Self-build/横断計画** | 実Builder/Artifact/Plugin/Consumerと必要なInput同一性の問い | Go Buildの成功だけでTEI stage1→stage2/L3達成 |
+
+**計画上の依存関係**：P-1b1の一Function Requiredを固定する作業と、#2509/#2515の最初の適格H2一件は**並列**。T1-BでTest生成を採点するのは該当Required/Expectedが成立した範囲のみ。Plugin D1のCLI/Studio一操作を同一Contractで実Invokeする試験も並行させる。D1全移行、全機密Sink制御、二Harness、MCP、G4を最初のread-only探索の新Hard dependencyにしない。照合済みのClaimだけを#1119へ返す。
+
+**現状・採否**：本節は実証済み局所事実と計画上の成熟差分を接続した**文書変更**である。F0〜F5という正式API/Schema、新Trialの実行、OS物理隔離、全Tool result受領、T1-B盲検生成、実Plugin CLI/Studio二Consumer、実Provider Effect、Owner意味受理を実装済み・PASSとは扱わない。第二Reader/Resolver/Runner/Host/Permission Engine/Proof Storeも設けない。
+
+
+---
+
+<!-- harness-negative-claim-and-coverage-20261108 -->
+## 8. 2026-11-08：負のClaim、Coverage分母、Scope非互換をProduct Skillの判断基準にする
+
+### 8.1 既存成果と残る新問題
+
+[merged #3354](https://github.com/hat47x/tei-platform/pull/3354)の実CLI11応答／32限定Consumer Controlsは、Rule・Relation・Canonical・Source Anchorが正常JSON・同Fingerprintでも局所欠落し得ることを判別する。旧#3324/#3326はclosed/unmerged。PRのexact-head CI #42391707962は成功し、実mainの既存ConsumerとBlob同一性も別途確認された。ただし**main pushの別CI結果、Function全閉包、実H3 Tool配送、現在権限、T1-Bは未検収**。
+
+F0〜F5を区別してもAIが「Ruleは存在しない」「このRequirementは未テスト」「同Fingerprintなので受領済み」と断定する余地が残る。#2497/#2516/#3262が一般のProjection／完全性のOwnerであり、**本Product Skillは既存CLIからどこまで発言できるか、何を追加取得・差戻しするか**だけを所有する。
+
+### 8.2 「対象Scopeに存在しない」を言える条件
+
+独立に定めたTask／Claim Q、対象Scope U、Revision V、開示Audience A、必要集合 R(Q,U,V)に対し、「U内にXが存在しない」と言えるのは当該Claimについて次の条件を確認できた場合だけ。
+
+1. UでのSource/Role/Providerの列挙の完全性が独立に定義され、対象集合を実際に列挙・検査できた。全Workspace一般の不存在と拡張しない。
+2. 実Source root／realpathと必要RoleのLoader／Parser／Meaning消費を確認。Manifest、Inventory、Source Indexの宣言だけで代用しない。
+3. CLIの検索モード、意味粒度、namespace、RevisionをQと比較可能なScopeで固定し、必要なRule/Relation/Source Anchorの隠れた依存を取り落としていない。
+4. CLI Producerの必要な結果と、Harness Tool Consumer側のReply全byte・連番・終端を確認。途中切断・古いPageとの混在を「結果0件」にしない。
+5. 現在Grant／Disclosureがその否定命題の開示を許し、非開示、partial、unsupported、stale、未測定を不存在の根拠に含めていない。秘密の件数やpathも許可なしに明かさない。
+6. 出力のabsence claimに独立Expectedまたは受理済みSource意味の根拠があり、AIの自己申告・検索順位・件数0のみから推論していない。
+
+一つでも欠ければ、実際に確認できた肯定的な事実を維持しながら「限定Scopeでは未判定」と報告する。必要なら許可されたSourceだけ追加取得する。Sourceからの値の欠落、Reader未対応、非開示、Tool切断、不存在を同じエラーへ畳まない。
+
+### 8.3 現行CLIの具体的な非互換を失敗原因として扱う
+
+- **#3345 Fingerprint Scope**：viewのnamespace-scoped semanticFingerprintをmodel catalog等のWorld/SourceIndex fingerprintとそのまま比較せず、比較対象が異なる場合は「scope-not-comparable」。文字列差のみでSemantic Changeを宣言しない。
+- **#3346 未解釈Markdown**：docs/planをManaged Filesとして数えられてもLoaderの対象でない場合は「not-loaded/unsupported」。設計要求が不存在、意味が受理済み、変更不要とは言わない。正式Readerは#2621/#2619。
+- **#3347 JSONの形**：validateの診断二重構造、requirementsのresult配列、Catalog内のstdと利用者定義の混在を、既存コマンド別のSchemaで読む。共通Objectへの誤平坦化で欠落を捏造しない。新規Parser／新CLI Schemaの実装は#1155/#2354/#3347へ委譲。
+- **#3354 Source Index mode**：subject modeを全件index modeと誤認しない。全件Index利用には実AudienceとPayload Budget/Source消費の照合が必要。CLIの11 reply連続取得だけで一つの原子的Snapshotとはしない。
+- **履歴の再資格化**：Source/Test/Lock/GrantのA→B→Aで旧digestに戻っても旧PASSは自動復権しない。7日保持のCI Artifactが期限切れの場合はSource意味変更ではなく、独立監査時の再取得可能性不足として記録する。
+
+### 8.4 「見えない」ことを「未テスト」とする誤りを禁止
+
+Coverageの分母はScenario一覧から逆算せず、別途固定した対象Requirement/Rule/Decision Outcome/NFRで定義する。実取得済みScenario、実行Case、独立Expected、Mutant、Source/Testの現行版を各別列で保持する。
+
+既存6 Pinned Step、既知T1-A第7 Step、32合成Consumer Controlsは母集団が異なり合算できない。#3354のcmd/tei局所Go statement C0相当10.0%をGo branch C1や業務Decision GraphのCoverageへ換算しない。Scenario一覧が部分取得なら観測済みRuleの「covered」は残せるが、全体Coverageは「unknown」。空リストを「未テスト0件」「全体0%」に変換しない。
+
+T1-Bの本当の判別は、AIに既存T1-Aの境界入力や非公開Expectedを予告せず、独立に固定した一FunctionのRequiredから**既存6 Step＋既知T1-A以外の新しい負例**を提案させること。候補の新規性、実Pinned CLI、独立Expected、真のProduct Mutation Kill、Owner採否は別Evidenceとする。候補自作のExpectedで成功扱いしない。
+
+### 8.5 既存Consumer/Scenarioだけで試す10件の独立Pressure
+
+| Case | 変える条件 | Harnessに求める判別 |
+| --- | --- | --- |
+| HC-01 | 必須Ruleは存在するがSource Indexのsubject modeのみ取得 | wrong-mode／未判定。Rule不存在にしない |
+| HC-02 | view局所Fingerprintとcatalog World Fingerprintが不一致 | 異Scopeを識別。意味版変化と断定しない |
+| HC-03 | Markdown設計SourceをManagedのみでLoader未消費 | not-loaded/unsupported。不在としない |
+| HC-04 | validateの入れ子診断、requirements配列、std混在 | 既存CLIのSchemaに応じて解釈し、空判定やUser Source過算を防止 |
+| HC-05 | 同FPの正常JSONからRequired Ruleを削除／非Requiredを削除 | 必須欠落はpartial、合法な非Required省略は過剰拒否しない |
+| HC-06 | CLI Exit0だがTool Replyが切断／欠番 | F2不成立。先頭FP一致から全受信にしない |
+| HC-07 | 同じ公開Slice、異なる秘密Rule/件数の二世界 | 公開Consumerへ非開示の存在・数・pathを漏らさない（実OSとSink測定範囲を併記） |
+| HC-08 | Scenario目録が一部未取得 | 局所Coveredと全体Coverage unknownを併存させる |
+| HC-09 | 分割Read中にGrant/Source改版、あるいはA→B→A | 旧Page・旧PASSを現在資格へ合成しない |
+| HC-10 | CandidateとExpectedを同じAI誤仕様へ改変 | 独立Expected/Mutantが誤りを判別する |
+
+### 8.6 実行順と非重複の担当
+
+**#3262 P-1b1**：mainの単一Context Consumerを使用し、一Functionの独立Requiredを固定。HC-01〜05/08/09の必要な部分を既存CLIの実結果と一時コピーの負例で検証。既存の良い局所Coveredは保持し、全Source Closureが欠ける間は「探索のみ、正式Test採用不可」。
+
+**#2509/#2515とTAI #168**：新しい比較適格H2一Attemptを用い、HC-06/07とOS許可外Read拒否、実argv/Tool Reply/Session Log/Audienceを対照。OSやTool配送が不適格ならH2/H3効果比較へ混ぜない。
+
+**#1180/#2514/#3223**：独立Requiredが満たせる一RuleからHC-08/10のT1-B候補を既存Scenario verify/generate/check→Pinned実CLI→独立Expectedへ渡す。既知T1-Aの再実行を新発見としない。
+
+**その他のOwner**：Plugin/Trait/BOMは#951/#1251/#3278/#3267、三視点の表示・編集写像は#1124/#2497/#2586、副作用は#1174/#3328、Self-buildは#2831。一般の意味十分性は#2497/#2516、実機密非干渉は#2515のOwnerへ戻す。新しいReader/Parser/Runner/Resolver/Permission Engine/Proof Storeは追加しない。
+
+**状態**：main統合#3354の11 Reply/32合成Controls・既知T1-Aは局所実績。HC-01〜10の統合的な新Attempt、Function全閉包、実Harnessの完全Tool配送、T1-B、C1、現在Grant／独立Effect／Owner意味受理は**NOT RUN**。本節は検証義務を定める設計・計画の更新であり、新しい成功を宣言しない。
+
+
+---
+
+<!-- harness-query-and-resume-witness-20261108 -->
+## 9. 2026-11-08 横断深化：Queryの負の依存・結果集合証拠と、Harness再開の別Epochを接合する
+
+### 9.1 二種類の不足を一つのpartialに畳まない
+
+前節HC-01〜10は主に設計情報とTool配送の不足を扱った。ここでは他レーンの**実Readでの結果集合の真偽**（#2506/#2586/#2514/#3238）と、**開示済みSessionを再開するときの送出/資格の継続**（#2515／TAI #168）を別々に扱う。
+
+生成AIが Function の要件を読めることと、そのFunctionが実Data Sourceで要求Rowsetを読み取れたことは別資格である。さらに実Readが成功しても、Owner集合のExtent、Predicateの評価、結果の粒度、時点、許可Audienceを確定しなければ「全件」「0件」「存在しない」「業務条件を満たす」は証明されない。
+
+**具体的な実証入口**は#2586 HR-01/02の既存対象 order_entry.recent_orders と、SQL Source／bind :from → datasource alias sales →実Instance/Provider→実SQL+args→Rowset／Result Slice→同Function Consumer。現main cmd/tei/cli_view.go のBrowseは applicationview.BuildBrowse を返す分岐であり、**その分岐から実SQL Rowset Readerを直接呼ぶコードは観測されない**（別Caller全体の不存在は断定しない）。#3350 main統合のdatabase Capability選択補正（未選択能力6→4）は宣言上の適合であり、Provider actual invoked／SQL actual bytes／DB readの資格とは異なる。
+
+### 9.2 Query Resultから許されるClaimと必要な証人
+
+| 根拠／観測 | 成立し得る限定Claim | 足りないと不成立となる強いClaim |
+| --- | --- | --- |
+| 同Identity・Scope・Revisionの実Readで一致行1件 | そのRead時点の存在の証人 | 現在も存在する／全集合の完全性 |
+| Rows countがOwner期待件数と同数 | そのProjectionにその数のRowsがあった | **対象Identity集合**が同一とは限らない。重複 A/3,A/3 は A/3,A/9 でない |
+| TOP1の一ページ／query limit実行 | 必要条件の一部分を取得した | 全Owner集合のCoverage Complete／他行不存在 |
+| 表示列にstatus等がない | Consumerにはその値を渡さなかった | SQL WHERE/Operatorでその列を評価しなかったとは限らない |
+| 実SQL/actual bindsと独立Expectedで非出力Predicateを照合 | **Provider内のそのPredicate評価**は検証可能 | 非開示列をConsumerに送る許可／全Rowset・Owner意味受理 |
+| 未選択属性のRaw slotがnil／NULL AS slot | そのProjectionでそのslotに値がない | DB格納NULL、ユーザーの業務値未設定、Predicate違反 |
+| 選ばれたSQL/Provider Capability | Candidate／静的Selection | 実Link、実Invoke、実SQL byte、実取得Rows、Current Grant |
+
+**負の依存（negative dependency）**も保存する。例えば共通SQLのみで選ばれたRealizationは、DB固有SQLが「選択候補に存在しなかった」ことに依存する。後で固有SQLが追加されれば、既存SQL byteが不変でも候補選択資格は失効する。同様にNOT EXISTS／LEFT JOIN／TOP-N／隠れたPredicateは、追加行や非出力列の変更で旧い否定結論・順位・仮NULLが撤回され得る。出力に含まれないから依存しない、というキャッシュ/Context失効規則は禁止する。
+
+**実証済みの局所境界**：Draft #3175のQ05〜07は実Go ReadPlan＋合成Rowsetでの限定試験をPR専用CI #42334653630でPASS。Draft #3238の隔離PostgreSQL CI #42351796330では、実TOP1／非出力 ordered_at >= :from の実SQL WHERE評価とSelected外列の Raw nil 等を限定観測。ただし両者は**Product Function order_entry.recent_orders→実Provider→Consumer E2ではない**。同一Snapshotの二Readとも証明されていない。元のResult Slice/Lineage/MeaningとSQL実行のOwnerは#2506/#2586/#2622、独立Expectedは#2514。
+
+### 9.3 Harnessの作業再開は「成果の再利用」「実行資格」「旧本文の再送」を分ける
+
+再開に必要な区別は、(a) Task/Claimについて確かめた成果と未決事項、(b) Source/Provider/Plugin/Test/Grantなどの**現在資格**、(c) Harness Session／Tool History／送出先の**現在開示資格**、(d) 実行済み／EffectUnknownのOperation identityと実Receipt、である。過去に成功したTool結果は歴史的証拠として保持できるが、今すぐ再利用・再送・再実行できることを意味しない。
+
+実DSH [#2515 H6-E7](https://github.com/hat47x/tei-platform/issues/2515)／PR #3237の合成canary対照では、同じSessionを再開すると、既送信区間がdsh_session_logへ再送されない一方、**以前のRaw canaryが再構成されたモデル入力に再び現れた**。別Mock計測ではSession Logをoff→onに戻すと未送信区間が送出される。よって「Session Log再送なし」「Toolを今回呼んでいない」「権限が後から失効した」を、過去内容のモデル入力非送出へ変換してはならない。
+
+**再開時の最小Check**（正式なSession/Resume API追加ではなくTAI Runbook／既存Task Packetへの観測項目）：
+
+1. **保全**：Task ID、独立Required、完成済みClaim／歴史的Evidence、未実施/Unknown、停止理由、元Source/Model/Test/Tool/Plugin/Build revision、実ReadとTool受領点を保存。履歴やOwner reviewの撤回は削除しない。
+2. **現在性**：新epochで実Source/Revision/必要依存・Operator/Provider/Grant/Disclosureを確認し、Claim別にreusable／needs-recheck／must-retract／unknownを区別。一律全再実行も旧PASSの無検証再利用も避ける。可逆/単調な肯定結果でもScope・as-ofの変化を明記。
+3. **会話再生前の開示**：resume前に旧Session中のRaw/Tool Result/Skill/AGENTS/暗黙Contextが新Audienceへ再構成され得るかを確認し、許可できない場合は**旧Session継続を許さず、新しい隔離Sessionへ許可済みの要約・参照だけを渡す**。過去の送出を事後取消しできたと主張しない。
+4. **出力Sink**：モデル入力の履歴再構成、dsh_session_logの水位・backlog、Tool result、診断/CI Artifact、外部Networkを別観測。新SessionでもOSの禁止Source Readを実際に拒否し、隠し件数/名前の漏出を検証。未測Sinkはunknown。
+5. **作用再送**：Write/Commit後の記録障害またはACK-lossではEffectUnknown。新Operation IDで盲再送せず、同ID Receipt照会・現在Grant・独立Resource Readから再開判断。read-only Queryの再取得とは異なる。
+6. **比較試験の継続**：初回H2/H3の固定Source/Skill/Binary/Tool allowlist/Independent Expectedを変えた再開を同じ比較Slotへ編入しない。差が必要なら新Group/epochとして測定する。過去探索Sessionの事後再採点も行わない。
+
+**選択的再資格化の基本**：実Readの結果を利用するClaimに対して、Data依存＋**負の依存**＋実Source/Selection/Query/Scope／Audience／Consumerの閉包が立証された場合だけ、無影響部分の既存Evidenceを再利用できる。閉包自体が未取得なら安全側にUnknown／再取得を返し、コスト削減のために証拠を作り直したように装わない。Performance/Token費用は#2018へ別計測する。
+
+### 9.4 試験の新規差分だけを既存Ownerへ追加（HW-11〜18）
+
+| ID | 独立Fixture／差分 | 受入結果／Owner |
+| --- | --- | --- |
+| **HW-11** | 全Owner L={A/3,A/9}、Result=[A/3,A/3]（countのみ一致） | 重複とIdentity extentを検出、Coverage未成立。#2506/#2514。Go合成境界は既存Q05 |
+| **HW-12** | TOP1の1行成功、Owner集合は2行 | 局所取得成功／全件Coverage unknownを併記。#2506/#2586。既存Q06 |
+| **HW-13** | statusがSelected外、Predicateが未実証／実SQL WHEREで評価済みを対比 | 「非出力」と「未評価」を別証拠とし、非開示値を漏らさない。#2586/#2514。既存Q07/Q09 |
+| **HW-14** | 未選択列がRaw nilだがDB格納値はNOT NULL | NULL ASのProjection由来とDB値NULLを区別。#2506/#3238。既存Q08 |
+| **HW-15** | 共通SQL Source不変のまま、後からDB固有SQLを追加／Provider選択条件変更 | 選ばれなかった候補への負の依存を失効し、再Selection。#2586/#2622。既存QX-01 |
+| **HW-16** | Read後にGrant縮小、同Session resumeで旧Rawを会話から再構成 | 今回Tool Readなしでもモデル入力へ送る場合は不適格。必要なら隔離Sessionと許可済み要約で再開。#2515/TAI #168。既存H6-E7を拡張 |
+| **HW-17** | Session Log一度off→on、あるいは503後resume | 未送信Backlog／同Range再送をSink別に計測。offだけで削除・非送出を宣言しない。#2515/#2509/TAI |
+| **HW-18** | Source/Test/Grant/非出力Predicateを変更して一部Claimだけ無効化、他は固定 | 独立Expectedとの対照で選択的再資格化・撤回/再発見を判別。#2533/#2514/#958、#1163へEvidence束縛 |
+
+これらは既存Q05〜09、QX-01、H6-E7、CC-18を**別製品テストとして数え直さないためのHarness受入差分**。最初の実Product試験は#2586 HR-01/02の公開Reference一Functionを優先し、実Reader・実SQL+bind・Rowset/Read extent／Predicate・許可Consumer受領を固定する。HW-16〜17は合成canary/Mock受信で別レーンとして進める。Source/Provider/Grantが揃わなければ「Product Read E2=not-connected/unknown」と報告し、実PG Reference PASSを流用しない。
+
+### 9.5 合流条件と現状
+
+**Claim単位の証拠接合**：Q/Required → 実Function/Query選択＋選択されなかった候補集合の根拠 → SQL Source/actual bind → 実物理Provider/Rowset/Grain/Extent/Predicate evaluation → Tool Reply/Consumer → Scope/as-of/Current Grant → Independent Expected → 出力Claim／Unknown／再資格化対象。セッション再開ではさらに歴史的モデル入力・送出Sinkと現在Audienceを別接合する。これは既存#1163 Evidence Packet/TAI Runbookの**観測欄の接続**であり、Universal Evidence Engineや新Host、SQL Runner、Session SSOT、権限Engineは追加しない。
+
+**今回の作業資格**：#3354 mainの11 Reply/32局所Consumer Controls、Q05〜09の限定Go/PG実証、#2515のH6-E7 Mock再開／過去モデル入力へのRaw再登場は**既存の固定条件下での証拠**。本HW-11〜18のProduct Function E2、現在Grant縮小後の実再開拒否、第二Harness/Egress全経路、T1-B、Owner業務意味は**NOT RUN**。前節HC-01〜10とHW-11〜18は試験計画の数であり、新たな実行PASS数ではない。
