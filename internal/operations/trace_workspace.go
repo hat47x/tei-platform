@@ -32,6 +32,11 @@ type WorkspaceTrace struct {
 	AuthorityLimits        []string                  `json:"authorityLimits"`
 }
 
+// TraceSubjectKinds is the closed set of subject kinds the typed graph can
+// carry: the projection's own list, not a second copy of it. The CLI advertises
+// this same set for -subject-kind on trace (#3242, #3180).
+var TraceSubjectKinds = derivedbridge.SupportedSubjectKinds
+
 // supportedTraceKind reports whether derivedbridge can place this kind in the
 // typed graph at all. It is narrower than supportedInspectionKind: inspect can
 // read a candidate key or a functional dependency straight from the World, but
