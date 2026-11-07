@@ -25,6 +25,9 @@
 
 | 文書 | 対象 |
 | --- | --- |
+| [`STANDARD_REPRESENTATION_TOPOLOGY_AND_MEDIA_AXES_2026-11.md`](STANDARD_REPRESENTATION_TOPOLOGY_AND_MEDIA_AXES_2026-11.md) | データと表現のトポロジー、Function内表示インスタンス、媒体・文書と時間軸の適合条件（#2497/#2507、採用前） |
+| [`REPRESENTATION_CROSSVIEW_COORDINATION_2026-11.md`](REPRESENTATION_CROSSVIEW_COORDINATION_2026-11.md) | 表示間選択のIdentity/Scope/Occurrence/epoch、非開示・時点・操作の分離を検証する設計（#2506/#2582、採用前） |
+| [`COMPOSED_REPRESENTATION_MAPPING_QUALIFICATION_2026-11.md`](COMPOSED_REPRESENTATION_MAPPING_QUALIFICATION_2026-11.md) | Data→Function View→異質Consumerの合成写像、損失・逆編集・Source証拠、三視点Diagram/CRUDと実Readの並列P0、実装Fit/Gap（#2497/#3263/#2586、採用前） |
 | [`TRAIT_ATOMIC_COMPOSITION_AND_FULFILLMENT_2026-11.md`](TRAIT_ATOMIC_COMPOSITION_AND_FULFILLMENT_2026-11.md) | 原子的Traitの実装義務（手動/自動/Provider）、Profile合成、不適合診断、DerivedData/Pluginでの受入負例（[#3278](https://github.com/hat47x/tei-platform/issues/3278)、設計・実証候補） |
 | [`COMMAND_BOUNDARY_SAFETY_2026-11.md`](COMMAND_BOUNDARY_SAFETY_2026-11.md) | Command境界の未設定認可・期間状態の拒否、宣言外効果をunknownとして記録する判断と、参照実行の明示的認可（[#2996](https://github.com/hat47x/tei-platform/issues/2996)、[#2997](https://github.com/hat47x/tei-platform/issues/2997)、参照実装） |
 | [`EVERYTHING_DATA_MARKDOWN_SOURCE_FIDELITY_2026-11.md`](EVERYTHING_DATA_MARKDOWN_SOURCE_FIDELITY_2026-11.md) | Markdownの元シンタックスシュガーと書式・Source occurrenceを保存で保持する契約、局所Patch・競合・往復受入 |
