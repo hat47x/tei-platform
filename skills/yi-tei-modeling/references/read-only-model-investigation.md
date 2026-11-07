@@ -1,6 +1,6 @@
 # TEI read-onlyモデル調査：CLI手順と主張範囲
 
-この資料は`skills/yi-tei-modeling/SKILL.md`の詳細参照。**2026-11-02のmainソース確認に基づく設計例**であり、当該SkillによるCLI実行・受入の証拠ではない。通常のCLI仕様・現在のコマンド・版識別は[TEIを動かす](../../../docs/getting-started.md)と`cmd/tei/cli_contract.go`を先に確認する。
+この資料は`skills/yi-tei-modeling/SKILL.md`の詳細参照。コマンド例は**2026-11-02のmainソース確認に基づく探索手順**。その後、[実CLI CI #41532988114](https://github.com/hat47x/tei-platform/actions/runs/41532988114)で公開Workspaceを同一ビルド済み実行物から読み取る限定S1試験が成立したが、**外部HarnessがこのSkillを実ロード／実実行した証拠ではない**。通常のCLI仕様・現在のコマンド・版識別は[TEIを動かす](../../../docs/getting-started.md)と`cmd/tei/cli_contract.go`を先に確認する。
 
 ## read-only縦切りの例
 
@@ -24,6 +24,8 @@ go run ./cmd/tei validate -workspace reference/workspace -json
 - `worldFingerprint`／`sourceIndexFingerprint`は読取り時点の版同一性の手掛かり。実ContentやSource位置の違い、`modelRevision`の意味を区別し、同一ハッシュを現在の許可・人の意味受理へ読み替えない。
 - `go run`ではバイナリにVCS情報が埋め込まれないことがある。ビルド済み実行ファイルの`version -json`、Git HEAD、Working Tree変更、Workspaceの入力バイトを用途に応じて照合する。
 
+
+**実Harness比較への注意**：上記の`go run`は探索用のコマンド例であり、各行で同じ実行物を使ったことの証明ではない。H2 Tool-only／H3 Skill付きの比較では、[TAI SK-02初回Runbook](https://github.com/hat47x/tai-pleroma/blob/docs/yi-harness-skills-20261102/docs/yi-constellation/first-real-skill-qualification-runbook-2026-11-02.md)に従い、**比較前に実バイナリを一度だけビルド・固定**し、実呼出しのbinary SHA／cwd／argv／Workspace／SourceRevision／exit／diagnosticsを照合する。異なる実行物でも論理的に同じSource FPが出た、というだけで同一実験腕と判定しない。
 
 ## 呼出し時の実物・複数Readの接合（TS-11〜TS-15）
 

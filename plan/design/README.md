@@ -118,6 +118,7 @@
 | [`XTEA_AUTHORING_SURFACE_RECEPTION_2026-11.md`](XTEA_AUTHORING_SURFACE_RECEPTION_2026-11.md) | X-TEAのModeler・Editor・Driverを読み、TEI Studioの作者環境と標準業務の基本機能へ受け止める形を整理した設計案（未採用）。配置検査の面分割、検索・置換の版境界、編集履歴のまとまり、雛形生成の未受理扱い、標準業務の宣言化を含む |
 | [`XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md`](XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md) | X-TEAから回収したローコードの知見を、Core・Pattern・生成器・Plugin・Studio・要件のどこで受け止めるかの設計案（未採用）。パッケージ・対話フック・項目の役割・結果型・標準業務意味の判断候補を含む |
 | [`DATA_OPERATIONS_KEY_SPACE_AND_MULTIPLICITY_LOSS_2026-11.md`](DATA_OPERATIONS_KEY_SPACE_AND_MULTIPLICITY_LOSS_2026-11.md) | MS-09：多様なData Structure間のKey空間・多重度・逆更新の喪失を明示する |
+| [`GO_MODULE_SUPPLY_FOR_SELF_BUILD_SB0B_2026-11.md`](GO_MODULE_SUPPLY_FOR_SELF_BUILD_SB0B_2026-11.md) | セルフビルドで外部Go Moduleを入力として認める条件（供給manifest・`h1:`照合・`go mod verify`・`corrupt-supply`分類・成果物digestを供給同一性の根拠にしない負例）の設計候補（[#2831](https://github.com/hat47x/tei-platform/issues/2831) SB-0b、未採用） |
 | [`EVERYTHING_DATA_GO_LANGUAGE_REFERENCE_BRIDGE_2026-11.md`](EVERYTHING_DATA_GO_LANGUAGE_REFERENCE_BRIDGE_2026-11.md) | Everything is Dataの複数表層を既存Go Language Plugin Referenceに接続する限定試験設計（#2619/#2620/#988、Draft #2639。新Core/正式意味受理・実Product/Hostは未実証） |
 | [`QUERY_QX31_DYNAMIC_PATH_AND_NEGATIVE_DEPENDENCY_2026-11.md`](QUERY_QX31_DYNAMIC_PATH_AND_NEGATIVE_DEPENDENCY_2026-11.md) | QX-31：SQLのRelation path再束縛、相関NOT EXISTSの0件・否定依存、Read Cohortと現在Claimの分離をSQLiteで反証する補助設計（[#2387](https://github.com/hat47x/tei-platform/issues/2387)、#2582、未採用） |
 | [`QUERY_STRUCTURAL_MODEL_AND_FIXTURE_WORKBENCH_2026-10.md`](QUERY_STRUCTURAL_MODEL_AND_FIXTURE_WORKBENCH_2026-10.md) | Query構造Explainのread-only投影と、QX-01〜32のSQL/共通Data Operator/Function Context/Provider・Target同義性、証拠・開示・完全性の境界を分ける継続検証計画（[#2387](https://github.com/hat47x/tei-platform/issues/2387)、Draft #2388、未採用） |
@@ -141,6 +142,13 @@
 | [`FUNCTION_DATA_CONTEXT_PATTERN_PRESSURE_2026-11.md`](FUNCTION_DATA_CONTEXT_PATTERN_PRESSURE_2026-11.md) | Function Data Contextと機能パターンの横断設計・圧力試験（2026-11） |
 | [`JAVA_LIBRARY_PORTABLE_CONSUMER_AND_STORE_GATES_2026-10.md`](JAVA_LIBRARY_PORTABLE_CONSUMER_AND_STORE_GATES_2026-10.md) | Java Libraryの外部Consumer・Artifact Store受入計画（2026-10-30） |
 | [`ORGANIZATION_RELATION_GOVERNANCE_MODEL_2026-10.md`](ORGANIZATION_RELATION_GOVERNANCE_MODEL_2026-10.md) | 組織関係・時点・統制の標準意味モデル：横断設計と最小検証計画 |
+| [`DSL_NEUTRAL_UNICODE_AUTHORING_AND_SAFE_AI_2026-11.md`](DSL_NEUTRAL_UNICODE_AUTHORING_AND_SAFE_AI_2026-11.md) | TEI DSL：グローバル共通構文・Unicode表層名・Studio表示・AI入力安全性の統合計画（2026-11-03） |
+| [`ETL_ELT_MFT_CROSSBOUNDARY_CONTRACT_PRESSURE_2026-11.md`](ETL_ELT_MFT_CROSSBOUNDARY_CONTRACT_PRESSURE_2026-11.md) | ETL/ELT・MFT/ファイルリレー横断契約の圧力試験（設計候補・2026-11-04） |
+| [`PLUGIN_REALIZATION_AND_OPTIMIZATION_REQUIREMENTS_2026-11.md`](PLUGIN_REALIZATION_AND_OPTIMIZATION_REQUIREMENTS_2026-11.md) | Plugin機能の実現・安全な最適化に必要な契約（2026-11-06、設計/要件候補） |
+| [`SCRIPT_INVOCATION_FAILURE_AND_RECOVERY_DESIGN_2026-11.md`](SCRIPT_INVOCATION_FAILURE_AND_RECOVERY_DESIGN_2026-11.md) | Script起動の失敗状態・再実行・回復設計（2026-11） |
+| [`SEMANTIC_TRAIT_CLAIMS_AND_CONFORMANCE_2026-11.md`](SEMANTIC_TRAIT_CLAIMS_AND_CONFORMANCE_2026-11.md) | 意味的特性の宣言・観測・適合：閉値域／MECE／属性同一性の横断設計（2026-11） |
+| [`TEI_MD_UNIFIED_AUTHORING_MIGRATION_2026-11.md`](TEI_MD_UNIFIED_AUTHORING_MIGRATION_2026-11.md) | TEI Authoring Source を .tei.md へ統一する段階移行計画 |
+| [`TEI_SHO_OKF_DOMAIN_LINT_DOCUMENT_UNIT_2026-11.md`](TEI_SHO_OKF_DOMAIN_LINT_DOCUMENT_UNIT_2026-11.md) | TEI/SHOのOKF知識バンドルとドメインLint：段階導入の検証計画 |
 
 ## 関連する参照事例と評価
 

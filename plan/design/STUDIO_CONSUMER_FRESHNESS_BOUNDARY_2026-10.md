@@ -75,3 +75,30 @@ Source変更を検知した時点で旧表示のcurrent-readyを取り消し、�
 - **未証明**: 非Host ConsumerのSource変更通知、readiness Evidence schema/発行者/失効条件、原子的な複数資源Snapshot、実Provider/DB/Invocationの現在性、実UIの負例E2E。
 
 本書は#1124第3・第4追補および既存設計の境界を整理してConsumerに固有な拒否規則だけを追加する。Core契約、受理機構、実現準備判定、Hostを再実装しない。
+## 外部Referenceの取得鮮度をConsumerへ投影する追加条件（2026-11-03、未採用）
+
+横断設計は[外部Semanticの受理・Reference鮮度追補](EXTERNAL_SEMANTIC_ACCEPTANCE_HANDOFF_2026-10.md)に集約し、本書ではStudio固有の表示・後着応答の拒否だけを扱う。取得時のfresh/stale/unavailable/partial/not-found/permission-deniedは一つの排他的な現在状態とは限らず、最後の成功Cacheと今回の試行失敗を並べて示す。現在のSource Reader／Providerによる取得Observation、表示範囲の完全性、Consumer用途の鮮度、開示可否を別々に評価する。
+
+| Studioでの場面 | 表示・拒否条件（提案） |
+| --- | --- |
+| 外部Referenceがstaleまたはoffline | 最終取得Revision・時刻・Scope・Cached内容の版・今回のunavailableを表示。古いCacheで現行モデルのreadyを示さない。固定履歴のPreview・構文診断は条件付きで許容。 |
+| partial取得・必須参照not-found | 未取得範囲と参照元spanを診断。未取得を0件／有効／存在しないと推論しない。必須性と用途でError・保留を決める。 |
+| permission-denied | 現在取得・公開・修正資格を拒否。低権限Consumerへ対象の存在・診断件数・修正候補名自体が漏れる場合は一般的なunavailable表示へ縮約。 |
+| 外部Referenceが移動、Source内容は同じ | Meaning側の候補保持とSource Index／引用／Traceの再定位を分ける。World Fingerprint一致からSource Locatorや現在の開示可否を確定しない。 |
+| 取得要求Aの応答待ちに、Workspace／Provider／Policy／Sourceが変更 | Response世代と参照Observation版の双方を検査。後着の旧成功・旧失敗で現在の診断・ready・修正候補を上書きしない。 |
+| AI一括修正候補 | 各対象のSource occurrence・期待Revision・範囲・変更区分・依存版をPreview。stale／多義／意味変更候補は自動採用せず、既存#267受理境界へ渡す。 |
+
+**追加する最小のConsumer負例（NOT RUN）**：R10の外部Referenceを読み込んだ後に、内容A→B→Aを経て現在のReader／Policy状態を変更する。旧R10の取得成功と修正候補を遅着させても現行表示に反映せず、固定済み履歴の閲覧だけを保持する。別の負例ではA同byteで移動させ、内容由来の構文診断は必要以上に失効させず、旧引用locatorとGraph選択mapの現在性だけを拒否／再解決する。既存応答epochだけで外部Sourceの現在性を証明しない。
+
+上記はStudio／LSP／CLI共通の新Resolverを作る案ではない。取得・構文解析は既存Reader／Language Plugin、意味と受理は既存Semantic／Shared Acceptance、実行可能性は各Provider／Hostが所有する。TEI Studio実画面、AIの実バルク操作、実OS／HTTP権限変化の製品試験は未実施。
+
+## 複数Referenceの現在性と操作資格を分ける補足（2026-11-03・第2次、未採用）
+
+取得分類／利用モード／RF-19〜24の独立Expectedは[外部Reference案件受理の第3追補](EXTERNAL_SEMANTIC_ACCEPTANCE_HANDOFF_2026-10.md)を正とし、本書はStudioの表示境界だけを追加する。
+
+- **Referenceごとのfreshと、画面上の合成Claimのreadyを分ける。** A/Bが各々freshでもProvider別snapshotが混在する場合は、強い整合性が必要な操作はnot-verified。既存#1708が保証水準を所有し、Studio自身は同一時点の証明を発行しない。
+- **履歴Viewと現在Viewを明示。** pinnedな旧Aで構文診断・履歴プレビューを許しても、現在版のValidation・Meaning受理・Actionをreadyと表示しない。offlineの「最後に取得できた内容」と「今回のunavailable」を区別する。
+- **不在の確定範囲を限定。** 旧Not Foundを現在版へ持ち越さず、秘匿目的の404と真の不存在を低権限向け画面で区別可能にしない。診断件数、補完候補、実行Tool列挙から対象の存在を漏らさない。
+- **遅延応答・Policy撤回。** Source byteやWorldFPが同じでも、Access/Disclosure更新後の旧Reference応答・修正提案を新規表示／外部AI送信／一括適用しない。Source epoch、Consumer要求世代、資格の再照合が各々必要。Permissionが変わらない無関係の許可済みViewは不要に失効させない。
+
+**同一Consumer負例（計画／NOT RUN）**：公開Reference AとBを異なるread cohortで取得し、A/Bは個別fresh、合成readinessだけunknownと表示する。その後、AのCached byteは不変のままPolicyを撤回し、古いA Inspect応答を後着させる。合成readyへの昇格0回、旧応答による表示更新0回、拒否後の外部AI送信0回を独立にassertする。既存Graph／Response laneのReference Test PASSとこのConsumer縦断のPASSは別。TEI Studioで実行済みとは扱わない。

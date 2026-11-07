@@ -115,3 +115,159 @@ Webアプリケーションでは、UI構成キットだけでなく、HTTP要�
 - 既存機構で足りると分かった対象は新Issueへ分割しない。必要な機構だけを#1016で評価し、隣接する#997 / #998 / #951 / #943 / #988 / #993 / GitHub Issues000040の既存担当へ引き渡す。
 
 本書の評価を経て、Application Composition Profileが実際に独立したSource表現を要するかを決める。採用するならADRを別途作成し、Project-owned Source / Plugin Lock / Semantic Lock / Target realizationを第二正本化しない最小境界に限る。
+
+<!-- tei-project-extension-choice-handoff-20261106 -->
+## 2026-11-06 追補：案件の要求からPlugin要否へ進む最小判断（設計・NOT RUN）
+
+拡張方式そのものの比較正本は[Runtime/Target Binary Composition設計 §14](RUNTIME_TARGET_BINARY_COMPOSITION_DESIGN.md)に委譲する。本節は**Application Composition Profileが要求を取り込む時点**に必要な三段階選択の入口だけを定め、Plugin/Host/Contract/Buildの第二Resolverを作らない。
+
+### 既存の構成操作を先に試す
+
+| 案件からの要求 | 最初に評価する手段 | 独立したPlugin/Implementation選択を要求する条件 |
+| --- | --- | --- |
+| フィルタ・集計・導出計算を追加 | 既存Operator、純粋Library/明示Data Operations | 独立版・意味・効果を持つOperator Contractを複数Consumerが必要とする |
+| 保存前に業務規則を追加 | Project OwnerのAccepted Business Rule/Procedure | 別Owner/Targetに独立配布する共通能力が実例で成立した場合のみ |
+| DB接続先・実SQL方言を変更 | 意味上のFunction/Relationを保ち、Environment/Provider/SQL Assetを明示Binding | 実Data Provider能力・実方言・Scope・認可/効果が既存実装で満たせない |
+| 画面の独自部品を追加 | #997のKit公開点・Project UI Layer | 型付きRenderer/Target Host Bridgeに必要な実Consumer契約がある |
+| 生成された業務コードへ案件の処理を追加 | #2090で宣言されたExtension Point/Project-owned Source、またはAccepted Rule/Function | 別Consumer向けに独立配布・独立更新する実装契約が必要な場合 |
+| Go/Desktop・外部Targetへ展開 | 既存Target Generator/Build Compositionを参照 | 固有Toolchain・ABI・Host/Target能力・Artifactの独立実現が必要 |
+| 別Processで外部製品を呼ぶ | 既存のService/Transport Contractと外部Hostの能力を確認 | 独立更新・障害分離・異言語実行が不可欠で、Single-binary等の制約と整合する |
+
+通常利用者が選ぶのはData/Relation/Function/Action等の**業務要求と必要な結果**。DB方言、Plugin package、ローダー種別はまず既存Profile/Provider/Host側で解決し、不足・競合・未確認だけを用途に応じた診断で提示する。選択を自動化しても、業務意味の受理・現在権限・Provider実効果は自動成立しない。
+
+### Project選択と更新時の非干渉
+
+構成時の記録は、既存Source/Lock/Builderで保持できる参照を使い、最低限「必要Contract/Target」「選択済みProvider/Generator」「exact Sourceと実装Fingerprint」「Build closure/実Artifact」「実行時のHost capability」を区別する。候補Catalog/Bundleが更新されても、**選択・実消費・配布Artifactが不変なら無関係なProjectを過剰失効しない**。ただしDefault Provider選択、Go import/init、Generatorの読込入力、Native SQL Asset等が変われば、名目上未使用でも実依存として再資格化する（#1251/#2600）。
+
+**案件Ownerへの最小質問**：何を実現したいか、既存機能が不足する具体例は何か、業務意味の正本/変更権限は誰か、必要Targetと厳密単一バイナリ/独立更新の要否、Read/Writeと途中失敗で残る効果、許容停止と試験可能な独立Expected。この情報が既存Source/Projectから既知なら質問を繰り返さず、未決のみ照会する。
+
+**判定の停止線**：Providerが曖昧／Scope・Capability不整合／実Target非対応／実Source消費未特定／Sourceの意味改変を要するがOwner未受理／部分CommitやACK-lossをRecoveryできない場合、黙示の別Provider/別Process/fallbackへ切替えない。既存Core fixed kind、万能Plugin ABI、Runtime Loader、外部Hostの一般義務化を先取りしない。
+
+**既存Issueへの受渡し**：このProfile側は要求→候補→選択の境界（#1016）。Service Contract/現在Authorityは#951、Plugin Package/Bundleは#1251、DSLは#988、Data Providerは#2622、実生成・Buildは#1121/#259/#943、更新費用は#2600/#2018、Effectは#1174。UI Kitの`extends/provide/replace/decorate`を汎用Compositionの優先順位へコピーしない。
+
+検証は上記§14の既存 EX-01〜08／#1251 PB/PBN／#1016 PCF に対応する最小Fixtureを**共有**し、第二の期待値正本を作らない。今回の追補は設計文書のみ。実Go/DB/外部Hostの新E2E、正式Plugin粒度・ABI/Schema、Owner受理はNOT RUN／未採用。
+
+<!-- tei-project-extension-qualification-handoff-20261106-v2 -->
+### 案件Profileの選定結果を「実行資格」と混同しない（2026-11-06追補）
+
+[Runtime/Target Binary Composition §15](RUNTIME_TARGET_BINARY_COMPOSITION_DESIGN.md) の証拠受渡しを、案件の構成表示へ**参照**する。Projectの入力として新しいReceipt/Lock Schemaを設けず、既存Source/Composition/Build/Hostが所有する参照を結ぶread-only投影とする。
+
+| 案件画面・CUIで説明すべき状態 | 表示できる根拠 | 次へ進めない場合 |
+| --- | --- | --- |
+| 要求を満たす方法 | Configure/標準Rule・Operator/Plugin/Target候補と、必要な追加契約 | Plugin化の実需がないなら既存機能を優先 |
+| 構成の選択 | Required Contract・Provider/Generator・Targetの明示Selectionと選択根拠 | 曖昧Provider・欠落Capability・禁止fallbackなら候補保留 |
+| 生成物への収録 | 実消費Source/依存の閉包、Target別artifact/member・actual loaded bytes | 未使用物混入と必要module依存欠落を**別の失敗**として診断 |
+| 実行の資格 | 実Caller/Scope/Host Grantと対象・Source/Model/Operation版 | Build収録だけでは実行可能と表示しない |
+| 実業務の結果 | Request/Attempt、Commit/Unknown、Receipt/独立Read | ACK・Exit0・画面上の成功だけでは業務完了としない |
+
+**案件Ownerへ追加で尋ねるのは結果を変える質問だけ**。単一バイナリが厳密な配布制約なのか、別Processが必要な実障害・更新周期の理由は何か、途中確定の許容とOwnerの回復責務は何か、のうちSource/要件から確定していない事項を選ぶ。細かなDB方言・Go module・Plugin packaging方式を通常利用者の必須入力としない。
+
+**移行時の判定**：選定済みProviderが変わったときは同名FunctionでもTarget Capability、独立Expected、実Read/Write/Receiptを再評価。未選択BundleのCatalog版だけが変わっても、実Selection・実消費・Artifactが不変なら無関係Functionを過剰staleにしない。ただしSource/SQL Asset A→B→A、Provider Default順位、Go init/選択module go.sumの変化を「同じ名だから不変」と扱わない。
+
+**担当への返却**：Project選択は#1016、Contract/Grantは#951/#1174、依存不足・過剰混入は#1251 PB-10/#1167/#2600、UIは#997、DB/SQLは#2622、Targetは#259。判断に必要な不足条件を表示して保留し、第二Resolver・万能Plugin Runtime・独自Host・新Gateを追加しない。新しい実Consumerの横断試験・Owner受理はNOT RUN。
+
+<!-- tei-project-generated-extension-reconciliation-20261106 -->
+### 案件の生成拡張点を汎用Pluginと同一視しない（#2888重複統合）
+
+[Runtime/Target Binary Composition §14.7](RUNTIME_TARGET_BINARY_COMPOSITION_DESIGN.md) に#2888の固有差分を集約。案件が追加した保存前検査・業務規則は、まずProjectのAccepted Source/Rule/Functionとして扱う。生成物へ案件処理を接合する必要がある場合も、#2090の宣言済みHookに案件Sourceを置く方法と、独立Version/Conformanceを持つPluginを配布する方法を**別に比較**する。Hook名/型が同じでも、生成器更新で呼出順・粒度・Owner Meaningが変われば同等とは判定しない。
+
+**案件の更新追従**は旧Generator/Kit＋Project-owned delta＋新Generator/Kitの三者比較で診断する。再生成で案件Sourceを失う・生成コードへ直接書き込む・未公開Slot/Hookへ依存する場合は保留。UIの通常表示/Action affordanceの成功を、実Host GrantやCommit資格へ昇格しない。#2090の限定Closed/チェック済み項目は全Targetの実証済みではなく、ここでは再試験を増殖させず既存Caseへ参照接続する。
+
+**差戻し線**：独立配布のConsumer・更新責任が無いなら、新Plugin宣言/Loaderを必須化しない。業務意味の変更が必要ならOwner受理へ戻す。生成拡張点の互換性不足なら契約を修正し、案件Sourceを保護したまま生成物を再検証する。PR #2888のEXD-07は同設計§14.7と#2090へ吸収し、第二Fixture正本を設けない。docs-only／NOT RUN。
+
+
+<!-- tei-project-plugin-update-impact-projection-20261106 -->
+### 案件画面におけるPlugin/Bundle更新影響のread-only投影（2026-11-06、設計・未採用）
+
+[Runtime/Target Binary Composition §17](RUNTIME_TARGET_BINARY_COMPOSITION_DESIGN.md)に更新イベント別の影響判定を集約する。Project Compositionは**実利用状況と判断に必要な不足条件を表示**するだけとし、別のUpdate Resolver/Registry/Acceptance/Grantを持たない。
+
+| 案件側の見え方 | 提示する根拠 | 禁止する誤案内 |
+| --- | --- | --- |
+| 候補Bundleが更新されたが当該Application未選択 | Catalog/Selection/実消費入力の差分、必要な場合だけ候補再解決 | 全Functionを「更新必須」とする |
+| 現在使用する生成器・Providerに変更がある | Selected Contract/Implementationの実Byte、必要Target/Artifact・試験不足 | 同名同version/同じ表示結果で「互換済み」とする |
+| Contract/Scope/Effectが改訂された | 既存Accepted Meaning・Conformanceと現行Grantの差異 | Plugin導入やCI PASSで業務Ownerの再受理を省略 |
+| Providerが利用不能・撤回された | 選択済み対象、現在のConformance/Grant、影響するAction/Function | 最初の候補へ無断fallback、旧Artifactの存在を実行許可扱い |
+| Update後もArtifact内容が同じ | 実Build/Inputと各member、独立Test・Current Eligibilityの差分 | Artifact byte一致でEvidence/Grantも同一とする |
+| Source/Query/Ruleが別版となった | Source occurrenceと依存、Rule時点、Read ScopeとConsumer開示 | A→B→Aで旧Source受理や旧実DB Read資格を自動復活 |
+
+通常利用者には「対象Function」「何が変わるか」「保留の理由と必要な確認」を優先し、Bundle内部のmodule/ToolchainやDB Dialect詳細は必要な権限を持つ開発者向け表示に留める。比較の正本は既存#951/#1016/#1251/#2600/#1174の結果を参照し、古いPreviewや過去Evidenceを現在の実行許可に昇格させない。
+
+**検収**：#1016 PCF-06と#1251 PB/PBNを流用し、無関係Plugin更新は過剰staleにしない一方、選択済み実装・SQL Binding・Source/Rule・Current Grantが変化する場合は不足診断を返せること。実Studio/CUI実装・実Build・権限・Owner受理はNOT RUN。
+
+
+<!-- tei-composition-independent-gates-source-bootstrap-d1-scope-20261107 -->
+## 2026-11-07 横断受入：Plugin不要・静的Provider・*.tei.md Bootstrap・業務Effectの独立ゲート（設計／NOT RUN）
+
+本節は**案件から見た最短の実証順と、相互に前提としない条件**のみを扱う。方式選定は[Runtime/Target §14〜22](RUNTIME_TARGET_BINARY_COMPOSITION_DESIGN.md)、新Authoring移行は[Draft #3030](https://github.com/hat47x/tei-platform/pull/3030)、初回Language/Operator Bootstrapは[Draft #3028 §13](https://github.com/hat47x/tei-platform/pull/3028)、Scope相対のEvidence接合は[Draft #2903 §24](https://github.com/hat47x/tei-platform/pull/2903)を正本とし、第二Selection/Lock/Proof Store/Registry/Hostを作らない。
+
+### 四つの経路の前提と停止条件
+
+| 経路／次の最短検証 | 必ずそろえる証拠 | 別経路を前提にしない条件・資格上限 |
+| --- | --- | --- |
+| **A Plugin不要D0／Process D2**：既存見積もり23件の直接Go計算と子Process対照 | 独立検証基準のraw入力/独立期待値、exact HEAD/Toolchain、D0実GoとD2 Build/Invoke/SKIPを区別した結果 | 新*.tei.md Reader/動的Registry/実DB Host Grantを純計算の基線に要求しない。[Draft #3021](https://github.com/hat47x/tei-platform/pull/3021) HEAD dfc133e2の3 CI成功は限定証拠で、D1や正式Owner受理の実証ではない |
+| **B D1 静的Provider**：同一Go TargetのContract選択→実Link→Invoke | Aと同じ独立検証基準/Target、[#951](https://github.com/hat47x/tei-platform/issues/951)の明示Contract/Provider選択、実Build closure/linked member/選択実装と呼出実装の一致、未選択実装の非混入 | *.tei.md移行完了をHard依存にしない。現行Go Source/JSON形式の期待値で比較可能。ResolvedSet/BuildPlan、D0・D2成功はD1 PASSではない（#1251/#1167/#2600） |
+| **C 新*.tei.md由来Plugin/Role**：Raw MarkdownからCandidateを解決 | #3030 TM-02/03/12/14（実File発見/Read、原byte＋block span、必要Source充足、旧新重複拒否）、#3028 BS-02/03/06/15（既知Seedで読めるFormat/Language＋実Parser Pin、自己循環拒否、Operatorと有効化の分離） | C未完成でもA/Bの既存Source Reference試験を止めない。ただし新形式はRaw ReadだけでSelected/Build-qualified/Activeとは表示しない（#2621/#2823/#988/#2620） |
+| **D Effectを持つ案件・多Tenant**：Host/Provider実行→Consumer完了 | 対象Action/Resource/Tenant/時点に束縛したMeaning・Current Grant、Required/Supplied/Evaluated Guard、実Read範囲・Receipt・独立Consumer Body/Disclosure（#1174/#1163/#2516、#2903 §24） | A/Bの純計算ConformanceはDのGrant/Commit資格ではない。main統合#2926 EvaluateCompletionのCoverageCompleteはCaller供給値。実Providerの母集団/epoch/Scopeで裏付くまでは業務完了を表示しない |
+
+### Projectの最小負例と診断
+
+- **Source存在≠実Loader消費**：managed inventoryやvalidate成功だけで利用可能とせず、必要Plugin Descriptorの実Read/ParserとRequired Sourceの被覆を確認（#2823/#3030 TM-14）。
+- **初回Seed自己循環**：*.tei.mdやfrontmatterに未知Languageの名前があるだけでそのLanguageを初起動しない。Seedで確定不能ならRaw Draft保持・Interpretation/Activation保留（#3028 BS-15）。
+- **同名旧新Source／Provider競合**：旧.teiと新.tei.mdの同Subject、同Contractへの複数実装、同版異byteを後勝ち/最新候補で無音選択しない。否定依存と実探索範囲が不明なら存在しないと断定しない（#951/#1016/#3030 TM-03）。
+- **D0/D2→D1の資格誤転用**：同じ23件Expectedで合格してもD1実Linked Providerの呼出証拠がなければ未実施。D2 offline moduleで意図的にSKIPされたD0をrootの23件PASSへ加算しない（#3021/#2514）。
+- **Effect/Scopeの証拠不一致**：Tenant A/B、無権限と業務0行、Partialと完全Read、Preview時GrantとCommit時Grant、旧Receiptと現Attemptを同じ完了としない（#2903 JOIN-01〜06）。
+
+**優先順位**：まずAの固定HEAD・限定CIを保存し、**BのD1実静的Link＋Invokeを次の最小実装作業**として既存#951/#1251へ渡す。Cは別レーンでPlugin Descriptor1件のRaw Reader→Seed/Parser Pin→Parse＋Span検証。Dは既存Host/DBで同一Attemptの資格がそろったときだけ実E2Eを評価。無関係なGateを相互のHard dependencyへしない。Go単一Binary既定、外部Hostの現在認可、通常.mdの非自動実行、Owner意味受理の独立性は維持。
+
+**状態**：既存Issue/PR/Go Codeの観測を案件計画の依存順に整理したdocs-onlyの追補。新しいD1実Go Link/Invoke、*.tei.md Loader、Multi-Tenant/DB同一Attempt E2E、Owner正式受理の試験はNOT RUN。新Runner/Schema/ADR/Authorityを導入しない。
+
+
+<!-- tei-project-admission-auth-witness-update-20261107 -->
+## 2026-11-07 現行コードの前進を案件資格へ接続：Source Admission・Grant根拠・実Effect（設計追補）
+
+前節のA〜D四経路を**新しい共通Gateに組み替えない**。別レーンで進んだ実Go修正により、案件の構成表示で言えること／言えないことの境界を更新する。Format/Loaderの移行正本は[Draft #2667](https://github.com/hat47x/tei-platform/pull/2667)（横断移行）、[Draft #3030](https://github.com/hat47x/tei-platform/pull/3030)（Authoring形式）であり、[Draft #3031](https://github.com/hat47x/tei-platform/pull/3031)は移行を実装したものではない。
+
+| 実装と固定資格 | Projectに表示してよい限定事実 | 表示してはならない昇格 |
+| --- | --- | --- |
+| **新Markdown Source Admission**：[Draft #3031](https://github.com/hat47x/tei-platform/pull/3031) HEAD 63953ccbの局所CIは、対象外扱いで*.tei.mdを黙って通す代わりに未Bindingを診断するGuardのfocused/Workspace試験が成功 | 「TEI向けMarkdown Sourceを検出したが、Parser未Bindingのため解釈・構成には使えない」。旧*.tei処理の互換と区別 | Rawファイル発見、validateの一部成功、Guard PASS→Markdown Parser/Meaning/Plugin選択の実資格 |
+| **WorkspaceのRoot診断**：main統合[#3073](https://github.com/hat47x/tei-platform/pull/3073)は未知/不存在のsources root、既存Loaderが読まない近似名ファイルへ診断を追加 | 実Loaderの既知範囲でroot存在・綴り・対象外に気付ける。sourceRootFindingsとvalidateの診断理由を示せる | root findings 0件・declarationCounts>0・validate ok→全Required Source/Import/Provider Readの完全性、*.tei.md実解釈の成功 |
+| **Grantの発行・宣言境界**：mainへmerge済み[#3032](https://github.com/hat47x/tei-platform/pull/3032)のissuedBy、[#3035](https://github.com/hat47x/tei-platform/pull/3035)のaccess.Ground（Capabilityの宣言、論理Scope→実Path解像、ResolvedByの記録） | 「宣言されたCapability・Resource・Access範囲との整合を検査した」。主張したissuerと解像根拠、実Scopeを提示 | 発行者名/ResolvedByが文字列で一致→発行・解像の真正性、Host/IdPの現在権限、Tenant全Scopeの許可 |
+| **Consumer側の発行照合**：main統合[#3038](https://github.com/hat47x/tei-platform/pull/3038)の任意 -grants/-declaration、[#3075](https://github.com/hat47x/tei-platform/pull/3075)の共通GroundFile。[#3047](https://github.com/hat47x/tei-platform/pull/3047)は宣言権限と発行権限の局所照合 | 実Invocationが照合を明示したとき、その範囲の宣言整合を確認済みと表示できる。参照GrantAuthorizerがCommandテストをPASSした事実も区別 | 任意照合が全Consumerで強制済み、GrantAuthorizerがCLI/Studio/本番Hostへ配線済み、issuer/ResolvedByが真正、本番Effectが認可済み |
+| **Command実行時の認可・Effect**：main統合[#3034](https://github.com/hat47x/tei-platform/pull/3034)の旧規則Adapter（[#3064](https://github.com/hat47x/tei-platform/pull/3064)で依存方向を整理）、[#3042](https://github.com/hat47x/tei-platform/pull/3042)の必須認可/期間検査、[#3055](https://github.com/hat47x/tei-platform/pull/3055)/[#3068](https://github.com/hat47x/tei-platform/pull/3068)のDifferences・Applied未観測、[#3054](https://github.com/hat47x/tei-platform/pull/3054)のpersisted/durability | 参照Commandが受けたRequired Guard、宣言効果と列挙済みAppliedとの差、観測の有無、Unit-of-work完了/永続性を独立提示できる | Menu表示＝実行許可、Applied空＝差分0/副作用0、committed:true＝DB永続保存、unknown効果＝安全再送、参照Test＝実Provider/Receipt |
+| **テスト判定基準の命名**：main merge済み[#3039](https://github.com/hat47x/tei-platform/pull/3039)/[#3040](https://github.com/hat47x/tei-platform/pull/3040) | 人間向け文書では「独立期待値／独立検証基準／テスト判定基準」を使う。DB製品は「Oracle Database」と表す | 既存コード識別子、履歴のGit SHA/パス、Fixtureの機械的な全面改名。過去の試験結果を新しいHeadのPASSに加算 |
+
+**停止線を一つに見せない**。実際の必要関係は次のとおり。
+
+- **D1純粋quoteの実験**：既存[D0/D2 PR #3021](https://github.com/hat47x/tei-platform/pull/3021)の固定23件の独立期待値を使い、選択Provider B→実Go Link→**Bの実Call**を同一Target/同一試行で照合する。*.tei.md ReaderやDB Grantは不要。選択BでもAが呼ばれ同結果となる負例で選択と実呼出しを判別（#1251/#951、#2885 §18.13）。旧quote Providerがpackage mainで、現D2がGo Sourceを一時offline moduleへコピーする事情から、単純な共通packageへの抽出でD2を壊さないことも実測条件。
+- **新形式のPluginへ切替**：#3031の未Binding診断が有効であることと、#2667/#3030の実Markdown Reader/Seed/Parser Pin/Role・Source span/実消費を区別。Guardを解除する前に必要Source/重複旧新/正常例・拒否例の独立期待値を固定。旧Sourceの正常CIを新*.tei.md SourceのPASSへ転記しない。
+- **Effectを持つPlugin**：現在の対象Action/Tenant/Resource/Scopeで、発行主体の真正性（未実証なら未資格）、宣言と実解像、Consumer側の実検査有無、実Host/Provider現在強制、Applied/Receipt/独立Readerを別照合する。PreflightでGrantがあってもCommit時の撤回発効点が分からなければunknownを維持。#3032/#3035/#3034の限定Go実装から、未検証の本番発行者署名・完全な権限チェーンを推論しない（#951/#1174/#2516）。
+- **Reader不完全・適用操作不明**：Providerが未取得・部分的・非開示なら0件を「不存在」と解釈しない。Appliedを返さないExecutorの空値は「未報告」であり、「副作用ゼロ」ではない。同一AttemptのCoverageとEffectを別の実観測で検証する。
+
+**優先・Owner**：D1静的Link/Invoke（#1251/#951）を最小の次実装とし、Source Readerの正式移行（#2667/#3030/#2823/#988）と、Grantの真正性・Host/Receipt（#1174と既存Access Owner）は別レーンで進める。#3038/#3075/#3047/#3042/#3054/#3055/#3068/#3073はmainへ統合済み。ただし#3031の未Binding GuardはDraft未統合であり、新Markdown Parserがmainで稼働したとの主張はしない。今回の新Go/OS/DB E2E、署名付き実Grant、Owner意味受理はNOT RUN。第二Registry/Host/Status API/検証基準正本は設けない。
+
+
+<!-- tei-composition-claim-interpretation-after-reference-command-20261107 -->
+### 実装が進んだ後も資格を強め過ぎないための一試行の対照（既存Independent Expectedの投影）
+
+参照Commandで順に、(a)宣言されたCapability/Grantの照合、(b)実行時Guard、(c)宣言した効果、(d)報告されたApplied・差分、(e)CLI/Studioのcommitted/persisted/durability、(f)Operation/Receiptと独立Readを表示する場合、**全欄が埋まっていても同じTarget/Tenant/Source/Attemptを参照すること**が必要。個別PASSの寄せ集めを一つの『実行済み』にしない。
+
+| 既存の限定対照 | Project側の判定 | 未証明のこと |
+| --- | --- | --- |
+| Source rootが未知／未読込だがResultは空 | Source coverage未確立として保留。既知空Workspace（宣言0件）と区別 | 対象業務にDataが存在しないという確定 |
+| CallerがGrant/宣言を供給しCommand側で照合PASS | Scope適合の局所検査として表示。真のissuer/Host現在強制は不明 | Grant真正性、承認済みConsumer、別Tenant許可 |
+| Declared effectあり、Appliedを列挙しないExecutorが成功 | AppliedUnobservedとして表示。差分がないのではなく比較不能 | 副作用ゼロ、書込み範囲正確、実DB効果 |
+| 参照Unit-of-workでcommitted:true・persisted:false、durability:none | Unit-of-work完了の限定表記、保存は未確認 | 永続DB Commit、外部Receiverの受領 |
+| Effect不明・同Owner/Generationでの再Submit要求 | COMMAND_EFFECT_UNKNOWN と再送拒否を区別し、既存Receipt/独立Readによる回復へ | 未適用と断定、別Keyで安全再送、無条件Rollback |
+| Commandでread-only datasource宣言へWrite要求 | [#3070](https://github.com/hat47x/tei-platform/pull/3070)の宣言上の事前拒否を表示 | DB/Provider側での実強制、宣言外Dataの可否 |
+
+これらは#1174/#2514/#2823/#2586の既存独立期待値・実観測Ownerに渡す追加対照であり、新しいOperation State、UI Schema、Proof Storeを定義しない。Appliedの差分がある状態で参照処理が成功しても、差分が解消済みとは表示しない。純粋quoteのD1 Link/Invoke測定には、DBの存続・Grant/Receipt/Appliedを無関係な必須条件として追加しない。**追加Product横断試験はNOT RUN**。
+
+
+<!-- tei-project-tool-plugin-choice-handoff-20261107 -->
+### 外部Toolの実装資格とPlugin選択の交差（Runtime/Target §23、未採用）
+
+[merged #3121](https://github.com/hat47x/tei-platform/pull/3121)は参照Toolの能力をEnvironment Grantへ追加した際、Plugin Catalogで解決できず `PERMISSION_GRANT_CAPABILITY_NOT_RESOLVED` となることを実検証した。案件側の確認事項は「Toolを論理Pluginとして契約・実装・Build/Lockへ登録する実利益があるか」「Plugin以外のTool Principalを既存Hostが明示委譲できるか」の2案と、それぞれの現在Grant・Consumer適用先・Revocationを同Scopeに結べるかだけ。Toolが存在することからPlugin導入もGrant発行も自動提案しない。詳細比較・負例と案の未採否は[Runtime/Target §23](RUNTIME_TARGET_BINARY_COMPOSITION_DESIGN.md)へ委譲する。
+
+[merged #3077](https://github.com/hat47x/tei-platform/pull/3077)/[merged #3108](https://github.com/hat47x/tei-platform/pull/3108)のHook宣言外呼出し拒否・Command委譲は局所Fit。Hook Runner・実Host Grantは未配線／未実証であり、案件UIの「Hookが有効」「Tool実行可能」「業務操作完了」を同じ状態へまとめない。[merged #3124](https://github.com/hat47x/tei-platform/pull/3124)/[merged #3127](https://github.com/hat47x/tei-platform/pull/3127)の `PersistenceState=observed` は現Adapterでは**Receipt Lookupの観測**であってBusiness Resource現在値の確認ではない。表示・説明は「何を読んだか」を明示する。参照Toolの選定案をD1純粋quoteの実Go Link/Invokeの前提にはしない。
+
+**状態**：案件への説明可能性の要求候補のみ。ToolをPlugin化する採用、Tool Principalの追加、Hook→本番Host E2E、Receipt→実Resource読取、Owner受理はNOT RUN／未決。別のStatus enum/Registry/二重Authorityを増設しない。

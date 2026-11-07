@@ -138,3 +138,61 @@ Target実行・実Effect・独立Observation
 - **記録する差**：解釈成功・型/意味一致・実評価・独立Expected比較・Target実Effect・外部Consumer取得・Owner受理を別々に証拠化する。計画表の存在・自作Fixture PASSから正式採用/本番動作を宣言しない。
 
 **当追補の検証状態**：2026-11-02時点の公開GitHub Issue/PRと、既存の局所合成試験記録の照合・文書編集のみ。EID-A〜G新試験、実TEI Parser/Go、RDB/API Provider E2E、GUI、SHO保存・外部Skill、正式Owner意味受理は**NOT RUN / NOT ACCEPTED**。原典の非公開本文・固有ID・名称・locatorは本文へ掲載しない。
+
+## 4. 2026-11-03：X-TEA継承候補の出典三層と反証可能な移植境界
+
+**位置付け：横断計画への出典・Owner引渡し追補。新採用決定／新ADR／共通Schema／新Hostではない。** 渡辺幸三氏の歴史的な設計思想、X-TEA/XEAD Driver・Buriの実装観測、過去チャットの設計解釈、TEIでの提案・未決を分離する。渡辺氏の公開記事を直接読んだことは、指定された過去6会話の逐語本文を検証したことではない。旧チャット由来の詳細（State Predicate→Transition→Consequence、Definition例の分離、Task Action≠Application Function等）は**要約に基づく解釈、当該6会話ID別の原文照合は未実施**。歴史的仕様や正式TEI採用済みというラベルを与えない。
+
+**出典ID（別系統の根拠を同列にしない）**：
+- **W-01（歴史・本人記事）**：[渡辺幸三「ユーザーと共通理解できる“システム観”が必要だ」2005-10-20](https://atmarkit.itmedia.co.jp/fbiz/cbuild/complete/doa/01/01.html)。論理要件／物理制約／実装、データ・機能・業務の3視点、利用者との共通理解。
+- **W-02（歴史・本人記事）**：[「データ、UI、業務手順の『3要素』をとらえる」2006-05-09](https://www.itmedia.co.jp/im/articles/0605/09/news085_2.html)。データモデルへの**実際値の例**の併記、サブシステム別構成、FunctionのUI・入出力・呼出しの関係。記事中の「Instance」は本番DBのSnapshot保証ではない。
+- **W-03（歴史・本人記事）**：[「実行可能な仕様書は“設計できるプログラマ”が書く」2011-08-22](https://www.itmedia.co.jp/im/articles/1108/22/news108_2.html)。仮想Field、検証、関連Tableの更新を含む規則をTable操作に結び付ける説明。TEIのEffect/Provider方式を指示する記事ではない。
+- **X-01（旧Driverの局所実測）**：[TEI PR #2154](https://github.com/hat47x/tei-platform/pull/2154)。合成XEAF／旧Driver／ローカルH2で、画面操作・戻り値・共有Sessionのcommit・親rollback・別JDBC connectionからの値確認を分けて記録。原X-TEA業務全体／本番DBの検収ではない。
+- **X-02（現TEIソース観察）**：[PR #2670 main統合](https://github.com/hat47x/tei-platform/pull/2670)・[inspect.go](https://github.com/hat47x/tei-platform/blob/main/internal/xeadsource/inspect.go)のRelationalResolutionPolicyRevision v2。FAMILYの左Keyより長い右PK/SKを単純な同数不一致と区別するが、Field pairingはunresolved。独立KeyのSortKey検査・意味Acceptedは別。
+- **B-01/B-02（Buriの公開実装・版固定）**：[Buriマニュアル](https://github.com/seasarorg/s2buri/blob/fbaf32dd3ec2a815dfe3f4426f10d6b0ce53547d/buri-core/doc/%E3%83%9E%E3%83%8B%E3%83%A5%E3%82%A2%E3%83%AB.txt)／[PostgreSQL DDL](https://github.com/seasarorg/s2buri/blob/fbaf32dd3ec2a815dfe3f4426f10d6b0ce53547d/buri-core/db/createdb_postgre.sql)。BURI_DATA／STATE／BRANCH／STATE_UNDO_LOGというBuri固有の永続化とPath/Branch/処理時刻を確認。Buriの動作を新規実行した証拠ではない。
+
+### 4.1 六論点の継承範囲：確認／解釈／候補／保留
+
+| 論点 | 直接確認できる原典・ソース | 旧チャットの**解釈**（逐語未照合） | TEIでの検証提案と未確認範囲 |
+| --- | --- | --- | --- |
+| **Requirement Probe** | W-01は利用者と設計者の共通理解、論理要件と実装の区別を説くが、固有名「Requirement Probe」は確認できない | 実例・反例・質問から要求候補を磨き、欠けたOwner判断を補完しない | [#1440](https://github.com/hat47x/tei-platform/issues/1440)文章→候補→質問、[#1125](https://github.com/hat47x/tei-platform/issues/1125)業務Procedureへ。Probeという名の製品機構・採用契約は**未決** |
+| **Definition / Instance** | W-02は理解を助ける**値の例**をモデルへ併記する。表示例が実DB同時点Snapshotとは書かない | 旧InstanceをDataset／Snapshot／Scenario／独立Expectation／Presentation Orderへ区別して扱う | [#1126](https://github.com/hat47x/tei-platform/issues/1126)定義・例、[#2506](https://github.com/hat47x/tei-platform/issues/2506)Context DefinitionとResult Slice、[#1131](https://github.com/hat47x/tei-platform/issues/1131)Scenario。Instanceのデータ真正性・取得時点・完全性・期待値独立性は**未実証** |
+| **業務キー / 物理PK** | W-01は論理要件と物理制約を区別。X-01では旧DriverのCHAR空白埋めとVARCHAR実表の不一致で候補0を再現。X-02はFAMILYの非対称Key構造をSource-onlyで区別 | 業務Identity、複合／候補Key、DB PK、UI row index、Source SortKeyを別物とする | [#1126](https://github.com/hat47x/tei-platform/issues/1126)・[#950](https://github.com/hat47x/tei-platform/issues/950)・[#2622](https://github.com/hat47x/tei-platform/issues/2622)。キー列数やSortKey順を業務上の一意性へ自動昇格しない。原典全Keyの業務意味、CHAR等の正式Target型は**Owner待ち** |
+| **Function / Business Procedure / Runtime Workflow** | W-02はFunctionのUI・入出力／呼出し関係を示す。W-03はTable操作のRuleを分類。X-01は旧Session／子Functionの暗黙commit・取消表示とDB結果の差を局所実測 | Task Action（人の作業）≠Application Function（システム機能）。State/Procedureの意味≠Runtime Workflow実行。Table ScriptもPure Rule／Mutation／Consequenceに分解 | [#1125](https://github.com/hat47x/tei-platform/issues/1125)、[#1129](https://github.com/hat47x/tei-platform/issues/1129)、[#2507](https://github.com/hat47x/tei-platform/issues/2507)、[#2499](https://github.com/hat47x/tei-platform/issues/2499)。旧XF 8種・共有Tx・全手順自動化を一般契約にしない。業務完了とEffect境界は**Owner未受理** |
+| **履歴と状態保持** | W-01〜03から「全業務で汎用状態表が必須」という結論は導けない。B-01/B-02はBuri自身がData/State/Branch/Undoを分離している証拠 | State Predicate→Transition→Consequenceを区別。状態を業務事実から導出できる場合と、確定記録・有効期間・監査が必要な場合を分ける | [#1129](https://github.com/hat47x/tei-platform/issues/1129)、[#2386](https://github.com/hat47x/tei-platform/issues/2386)、[#2505](https://github.com/hat47x/tei-platform/issues/2505)。本体列・業務別履歴表・イベント・Buri型横断状態表・JSONは**物理方式の候補**。全業務への共通状態表採用は未決 |
+| **Plugin Capability** | W-01の論理／実装分離は一般思想。W-03は機能パターンとRuleの再利用を扱うが、TEI型Capability/Provider/Hostとは別 | X-TEAの機能型・Script APIを、業務意味とは独立した実装手段として抽象化する | [#951](https://github.com/hat47x/tei-platform/issues/951)、[#988](https://github.com/hat47x/tei-platform/issues/988)、[#1174](https://github.com/hat47x/tei-platform/issues/1174)、[#2611](https://github.com/hat47x/tei-platform/issues/2611)。Contract ID/Version/Effect/FailureとProvider実Binding・既存Host認可を分離。固定XF種別＝Plugin 1件、新共通Host/Registry、任意Workflow＝自動Grantは**不採用前提の反証対象** |
+
+### 4.2 仕様の過剰一般化を拒否する最小反例
+
+1. **単一キーの見かけ上の成功**：受注明細の業務Identityが `(受注番号, 明細番号)` で、物理PKが `order_line_id` の場合、画面が物理1列で行を選択できてもBusiness identityは証明されない。逆に複合業務キーがあっても物理PKを複合化する必然はない。業務上の有効範囲、テナント、再採番、NULL、粒度をOwnerが定めるまでKey変換は候補。旧DriverのCHAR/VARCHAR挙動（X-01）を全Providerの比較規則にしない。X-02のFAMILY「Source形状として許容」もField pairの意味受理ではない。
+2. **状態列／汎用状態表の誤一般化**：受注の確定・取消は本体行の状態列と必要な監査記録が候補。組織所属の有効期間は複数所属・訂正・二時点を伴い得る。承認Workflowの並行Branch/再試行・代理はRun/Task別状態を要する場合がある。同じ`status`型でも意味・基数・時点・同時更新は違う。横断検索／Run実行管理の需要を証明する前にBuriのBURI_STATE群を全Domainへ転用せず、本体行への状態保持も万能と決めない。
+3. **画面/SQLからCommitを決め付ける誤り**：旧XF選択画面で「取消」が表示される、SQL UPDATEに到達する、子Functionが正常終了する、Commit応答を受ける、別接続で更新値が見える、業務上完了する、はそれぞれ別Claim。X-01の局所H2実動で子の保存が親の未確定更新を確定する例があったが、TEIで暗黙commitを設計規則へ採用しない。Receiptがあっても独立Readが当該Commitを含む因果性や必要対象集合の全件完了を推定しない。
+4. **資料・実行フローの同一視**：人が電話確認するBusiness StepはRuntime WorkflowやFunctionなしでも業務意味がある。逆に内部Retry/補償処理はFunction/Procedure上の一Stepとは限らない。承認結果から実Capability Grantを直結せず[#2499](https://github.com/hat47x/tei-platform/issues/2499)/[#1174](https://github.com/hat47x/tei-platform/issues/1174)の既存Authority/Effect経路で実証する。
+
+### 4.3 「確認した」と言える上限の証拠段階
+
+| 段階（本書の比較表記であり新Gateではない） | 肯定できること | 未到達のClaim |
+| --- | --- | --- |
+| E0 **Source/歴史仕様** | 固定原典の文章、XEAD/XEAF XML、SQL/コードbyteが存在・読取可能 | その経路の実行、TEI意味Accepted |
+| E1 **静的経路** | UI→Script→SQL/Tx呼出しの分岐・到達可能性 | 実分岐、実保存、業務完了 |
+| E2 **実画面／Function操作** | 入力、表示、戻り値、イベント完了を特定条件で観測 | SQL実行・commit成立 |
+| E3 **SQL／Tx試行** | 実SQL・結果・送出とTx境界を観測 | commit確定と外部Reader可視性 |
+| E4 **Commit／Receipt** | 特定Operationの確定応答・receipt等を取得 | 当該commitを含むRead・postimage |
+| E5 **別接続・独立DB Read** | 固定DB/接続/時点/条件での可視値を観測 | replica/別Providerの同値・因果保証・業務全対象の完了 |
+| E6 **Owner Meaning／Business完了** | 必要対象集合、拒否・再実行、時点、独立Expectedと照合して受理された限定Claim | 別Domain/全環境での意味同値 |
+
+X-01のローカル合成H2別JDBC接続の読取例は**E5の限定観測**だが、業務全体のE6や正式原典H2/J5完了に昇格させない。BuriのDDL／公開JUnitソース読取はE0/E1であり、Buriの実DB/Tx再現試験を新規に実行したことにはしない。現在mainへ統合されたX-02 policy v2のGo実装・合成回帰もSource-only資格にとどまり、X-TEAの正式Field対応やOwner判定は**未完了**。
+
+### 4.4 受入前の最小比較票と既存Ownerへの配置
+
+新規の共通Fixture管理機構を作らず、**三つの縦切り比較**を既存課題へ渡す。
+
+| 対照対象 | 固定する業務意味・独立Expected | 棄却できる誤一般化 | 既存Owner候補 |
+| --- | --- | --- | --- |
+| **受注確定／取消** | 業務キーと物理PKが異なる明細2件、状態更新条件、同一FunctionのRule/Result Slice、実Tx・Receipt・独立Read。期待値はSource/parser/Generated SQL由来にせずOwnerまたは独立Fixtureで固定 | 1物理ID＝業務ID、画面OK＝確定、SQL成功＝Owner完了、全件取得の未確認 | [#1126](https://github.com/hat47x/tei-platform/issues/1126)／[#2506](https://github.com/hat47x/tei-platform/issues/2506)／[#1129](https://github.com/hat47x/tei-platform/issues/1129)／[#1174](https://github.com/hat47x/tei-platform/issues/1174) |
+| **組織所属の履歴** | 同一Personの兼務、開始/終了、有効時点と記録時点、遡及訂正。現在行のstatusが同じでも過去説明が異なる | 全ての業務状態を本体一列／Buri共通状態表へ強制、単一parentを普遍化 | [#2386](https://github.com/hat47x/tei-platform/issues/2386)／[#1126](https://github.com/hat47x/tei-platform/issues/1126) |
+| **手作業を含む承認** | 人の電話確認・差戻し・代理・並行Workflowと、実ActionのAuthority・Receiptを別Expectedにする | Procedure=自動Workflow、Buri状態記録=業務事実、承認済み=実行可能Grant | [#1125](https://github.com/hat47x/tei-platform/issues/1125)／[#2499](https://github.com/hat47x/tei-platform/issues/2499)／[#951](https://github.com/hat47x/tei-platform/issues/951) |
+
+**既存計画との責務**：Source Fidelity／Key・FAMILY・Runtime Referは[#950](https://github.com/hat47x/tei-platform/issues/950)と[Relationship RMT計画](TEI_RMT_RELATION_CROSSVIEW_ASSURANCE_PLAN_2026-11.md)、改版は[#2505](https://github.com/hat47x/tei-platform/issues/2505)、Data/Providerは[#2622](https://github.com/hat47x/tei-platform/issues/2622)、一業務のP0完了は[#1119](https://github.com/hat47x/tei-platform/issues/1119)へ委譲する。本節の表は履歴・出典・Consumer引渡しを示すだけで、各IssueのTest/Owner責務を移設しない。ADR-0032はPlugin/Composition候補の既存参照先だが、本文の新規判断を本書で作らない。Buri方式の採用、業務Keyルール、履歴標準物理形式、Workflow共通表、Plugin構成方式も**未決**。
+
+**停止条件**：歴史的な本人資料に記載がない語彙を「渡辺氏の仕様」と呼ぶ、Source観測や旧合成E5をTEI E6へ昇格する、業務意味のOwner不在で移植をAcceptedとする、独立Key/未受理FAMILY・状態/履歴構造を固定物理方式へ一般化する、元原典の固有ID・locatorsを公開する、のいずれかが生じた場合は当該Claimの採用を保留する。本節は読取資料・GitHubソースの静的照合と計画記述のみ。三つの縦切りの正式製品E2E／旧業務Owner受理は**NOT RUN**。

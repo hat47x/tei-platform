@@ -12,16 +12,23 @@
 - 外部Moduleの内容が隔離`GOMODCACHE`へ供給されていない
 - 対象のGo Source自体が解決できない（構文不正など）
 
-この三つは打つ手が違います。二つ目は供給の追加で解けますが、三つ目はSourceの修正が必要です。畳んだままだと、`cmd/tei`のどのimportが止まっているのかを実装ごとに推測することになります。本Referenceは、`go list -e`の**per-package failure**を保持し、次の四分類で返します。
+この三つは打つ手が違います。二つ目は供給の追加で解けますが、三つ目はSourceの修正が必要です。畳んだままだと、`cmd/tei`のどのimportが止まっているのかを実装ごとに推測することになります。本Referenceは、`go list -e`の**per-package failure**を保持し、次の五分類で返します。
 
 | 分類 | 意味 | 次の打ち手 |
 | --- | --- | --- |
 | `supported` | 選択されたModule根が対象Module1つだけ | `ResolveSourceClosure`と`BuildPackage`へ進められる（artifact成立は別） |
 | `external-unresolved` | 外部Module根が選択されたが、内容は供給済み | 外部Moduleのbyte・`go.sum`・版の照合（SB-0b）が別途必要 |
 | `missing-module` | 選択packageがオフライン解決できなかった（module供給・`go.sum`不足） | 隔離cacheへの明示的な供給（SB-0b） |
+| `corrupt-supply` | 内容は供給されていたが、記録されたダイジェストと合わない（archive破損・展開後の改変など） | 供給を差し替える。Sourceの修正ではない |
 | `unknown` | 上記以外の解決失敗、または`go list`自体が非0終了 | 分類しない。Sourceや環境の調査が先 |
 
-`unknown`を`missing-module`へ丸めません。認識していない失敗を、供給の問題として扱うと、Sourceの誤りを「moduleが足りない」と報告してしまいます。
+`unknown`を`missing-module`へ丸めません。認識していない失敗を、供給の問題として扱うと、Sourceの誤りを「moduleが足りない」と報告してしまいます。同じ理由で、`corrupt-supply`も`unknown`へ畳みません。**供給の破損は呼び出し側が直す失敗**であり、Sourceの誤りは実装者が直す失敗です。畳むと、CIの失敗メッセージからどちらを直すのか読めなくなります。
+
+優先順位は`unknown` → `corrupt-supply` → `missing-module` → `external-unresolved` → `supported`です。`unknown`が最上位なのは、認識していない失敗が混ざった列を、供給の差し替えで直る問題として扱わないためです。
+
+`corrupt-supply`の判定は、解決器が返す既知の文面（`flate: corrupt input`、`dir has been modified`、`checksum mismatch` など）に依存します。文面が変われば`unknown`へ落ちます。落ちる側は安全ですが、網羅性は保証しません。
+
+**この分類は、供給byteの正しさを保証するものではありません。** `go list`が読んだ時点での展開済みツリーについて、記録との不一致を報告するだけです。供給manifest・`h1:`照合・`go mod verify`の接続はSB-0bの設計案（[Draft PR #3103](https://github.com/hat47x/tei-platform/pull/3103) の `plan/design/GO_MODULE_SUPPLY_FOR_SELF_BUILD_SB0B_2026-11.md`）の範囲で、まだ実装していません。
 
 ## 観測の作り方
 
@@ -60,4 +67,5 @@ go run ./tools/reference-go-module-closure-preflight -repo . -package ./cmd/tei
 - 一度の`go list`は、その時点のModule供給とGo版での観測です。別の供給・別のGo版・別OSへの一般化はできません。
 - 観測はGoコンパイラの選択を`go list`に委ねます。実際のBuildが使うファイルと一致することを保証するのは`ResolveSourceClosure`と実Buildの照合です。
 - 外部Moduleの供給・`go.sum`と実byteの照合・Trustは**未実装**（SB-0b）。本Referenceは、その前提となる観測だけを行います。
-- `missing-module`の判定は、`go list`のエラーメッセージの既知の文面に依存します。Go版が文面を変えた場合は`unknown`へ落ちます。落ちることは安全側ですが、分類の網羅性は保証されません。
+- `missing-module`の判定は、`go list`のエラーメッセージの既知の文面に依存します。Go版が文面を変えた場合は`unknown`へ落ちます。落ちることは安全側ですが、分類の網羅性は保証されません。`corrupt-supply`も同じ性質を持ちます。
+- `corrupt-supply`は「供給が記録と合わない」ことの報告であり、供給元のTrustでも、`go.sum`の内容の正しさでもありません。供給元を誰が作ったかは別の判定へ返します。

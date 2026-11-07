@@ -56,8 +56,8 @@ git grep -n "ADR-0035" -- . ':!plan/adr/0035-autonomy-levels-and-verification-pa
 - [ADR-0021: キーを使わない見出し・明細間の関連をたどる処理は構成パターン外の実現方式で扱う](0021-header-detail-relation-traversal-realization.md)
 - [ADR-0022: AIによる変更提案と意味の正本の受理境界を分ける](0022-ai-proposal-canonical-acceptance-boundary.md)
 - [ADR-0023: 命令後の観測を独立した明示的な読取りの境界として扱う](0023-command-observation-explicit-read-boundary.md)
-- [ADR-0024: 業務上の状態遷移の正本を意味の定義に置き、状態の識別子と物理コードを分ける](0024-business-lifecycle-ownership.md)（提案中）
-- [ADR-0025: 遷移の評価順序を固定し、成立しなかった遷移を業務結果として返す](0025-transition-evaluation-and-conflict-result.md)（提案中）
+- [ADR-0024: 業務上の状態遷移の正本を意味の定義に置き、状態の識別子と物理コードを分ける](0024-business-lifecycle-ownership.md)（提案中。ADR-0046へ統合を提案）
+- [ADR-0025: 遷移の評価順序を固定し、成立しなかった遷移を業務結果として返す](0025-transition-evaluation-and-conflict-result.md)（提案中。ADR-0046へ統合を提案）
 - [ADR-0026: 分割テーブルの子表を提供実装が管理する実現方式とし、共通のスキーマ差分検査から分ける](0026-partition-child-provider-realization-boundary.md)
 - [ADR-0027: 分割テーブルを伴うPostgreSQLのDropTableは提供実装の実行前条件を満たさなければ拒否する](0027-postgres-partition-drop-execution-precondition.md)
 - [ADR-0028: TEIの成果物を人間・構築に携わるAI・業務を扱うAIの共通知識基盤として扱う](0028-human-ai-builder-agent-shared-knowledge-plane.md)
@@ -69,11 +69,14 @@ git grep -n "ADR-0035" -- . ':!plan/adr/0035-autonomy-levels-and-verification-pa
 - [ADR-0034: 生成器を受理済み意味から導出する版付き成果物として扱い、生成AIによる生成器生成を同じ適合境界に置く](0034-generator-as-derived-artifact.md)（提案中）
 - [ADR-0035: 自律開発を段階づけ、機械可読な作業票と変更範囲に応じた検証で人間の関与を減らす](0035-autonomy-levels-and-verification-packets.md)（採用。2026-11-07改訂、A3を機械確認へ寄せ人確認は外部効果のみ）
 - [ADR-0036: 提供形態の違いはプラグインの選択で実現し、形態別の実装を作らない](0036-delivery-forms-as-plugin-composition.md)（採用）
-- [ADR-0037: 生成器の失効・置換を、意味・生成物・実行受理の版から分離する](0037-generator-lifecycle-separation.md)（提案中）
+- [ADR-0037: 生成器の失効・置換を、意味・生成物・実行受理の版から分離する](0037-generator-lifecycle-separation.md)（提案中。ADR-0045へ統合を提案）
 - [ADR-0038: 認知機能を提案ポートとして扱い、受理・権限・実行から分離する](0038-cognition-as-proposal-port.md)（提案中）
-- [ADR-0039: Query入力の不在と明示NULLを契約で分け、SQL実行前に拒否する](0039-query-input-presence-and-null.md)（提案中）
-- [ADR-0040: 生成器の失効承認をregistryの編集と分離し、承認recordの対象一致だけを検証する](0040-generator-revocation-approval-separation.md)（提案中）
-- [ADR-0041: 生成物の来歴・選抜・artifact・auditを分離し、実行権限へ接続しない](0041-generated-artifact-provenance-boundaries.md)（提案中）
+- [ADR-0039: Data Operation入力の不在と明示NULLを契約で分け、Provider呼出し前に拒否する](0039-query-input-presence-and-null.md)（提案中）
+- [ADR-0040: 生成器の失効承認をregistryの編集と分離し、承認recordの対象一致だけを検証する](0040-generator-revocation-approval-separation.md)（提案中。ADR-0045へ統合を提案）
+- [ADR-0041: 生成物の来歴・選抜・artifact・auditを分離し、実行権限へ接続しない](0041-generated-artifact-provenance-boundaries.md)（提案中。ADR-0045へ統合を提案）
 - [ADR-0042: Decision witnessのactor・authority状態は、policy検証configurationによるexact bindingでのみ解決し、受理とは混同しない](0042-decision-witness-authority-qualified-boundary.md)（提案中）
 - [ADR-0043: TEI独自Hostを前提とせず、成果物を対象環境に適応させる](0043-target-native-artifacts-without-tei-host.md)（採用。ADR-0032・ADR-0033のHost必須部分を更新）
 - [ADR-0044: 認証をTEIコアの規定・実現対象としない](0044-authentication-not-a-core-concern.md)（採用。Studioはローカルで認証無し原則、ランタイム認証はPlugin依存。ADR-0019・ADR-0043の認証側の分離を具体化）
+- [ADR-0045: 生成器と生成物を、版付き成果物・ライフサイクル・独立証拠の組として扱う](0045-generator-artifact-lifecycle-and-evidence.md)（提案中。ADR-0034・0037・0040・0041の統合案）
+- [ADR-0046: 業務状態遷移を、標準データ上のLifecycle役割とOwner Actionのガードとして扱う](0046-business-lifecycle-as-standard-data-role.md)（提案中。ADR-0024・0025の統合案）
+- [ADR-0047: ADR-0043・ADR-0044を既存ADRへ適用する範囲を定める](0047-applying-adr-0043-0044-to-existing-adrs.md)（提案中）

@@ -100,6 +100,8 @@ TEI管理の予約名前空間は`tei.*`とし、標準契約を`tei.std.*`、�
 
 外部プラグイン公開では、名前の予約・発行主体の確認、ソースリポジトリの関連付け、リリース成果物の形式・内容Digest検証、Capabilityへの適合性、Consumerの採用・実行権限を別々の状態として追跡できる必要があります。配布物の発見・検証を、Acceptedな業務意味や現在の実行許可へ自動的に昇格させてはいけません。Registryが成果物を集中保管することや、名前が逆ドメイン形式であること、実行時のオンラインRegistry接続を必須としません。参照済みリリースの同一性・来歴・検査対象と未検証範囲はオフラインでも再確認できるようにします。
 
+内容から導出する可変長・可変文字集合のIDを採用する場合も、生成Scheme・用途・Scopeと、内容バイトを検証する完全性Digest、持続的な意味ID、公開世代、転送試行・受領証拠を区別できなければなりません。短縮表示や外部システム用IDを単独の正本参照、Artifact検証、契約適合、実行許可の証拠へ昇格させず、既存の署名対象・Lock・Digestを暗黙に変更してはいけません。
+
 生成物へ案件固有の実装を結び付ける場合は、その実装の所有者、対応する拡張点と契約の版、入出力、実行段階を追跡できる必要があります。再生成は案件側の実装を上書きせず、拡張点の廃止や互換性のない変更を、利用前の不適合として検出できなければなりません。生成物への直接編集も、上書きの前に検出し、保全または明示的な判断へ渡します。特定言語の継承やファイル配置の規則は要求しません。
 
 ## RQ-009 既存システムの認証・認可仕様を保持した移行が可能であること
@@ -323,6 +325,14 @@ Plugin / Semantic Extensionを増やしたこと自体を理由に、Targetの�
 Web Targetでは、process起動、任意filesystem access等のブラウザで成立しない実行方式をSemantic Extensionの成立条件へ含めてはいけません。Target固有のRuntime要件を満たせない場合は、意味を暗黙に変更してfallbackせず、build / Conformance段階で非対応またはUnresolvedとして扱える必要があります。
 
 現時点では、根拠のない一律の数値目標を定めません。Referenceでは、少なくともcold / warm start、初期転送量、install / cache footprint、steady memory、Extension追加時の増分cost、resolver / evaluator overheadをTargetごとに観測できるようにします。
+
+Pluginの最適化候補（静的結合・不要実装除外・部分評価・処理融合・DataSourceへの処理委譲・並列化・キャッシュ・実行方式の差替え等）は、選択済みContractの型、NULL/欠損、順序、精度、時点、失敗/Unknown、副作用、Scope、現在の実行権限およびTarget制約を保持する必要があります。これらの保証を確認できない場合、性能上の推定利益だけで変換・Provider選択・自動fallbackを認めず、未適格または不明として扱います。とりわけ業務書込みの再順序化・再試行・並列化、権限Scopeを跨ぐキャッシュは明示的な契約と実証なしに適用してはいけません。
+
+最適化は、Contract/Provider選択と物理Build・配置・実行の決定を区別して扱い、元のSemantic/Logical Instance identityと、実際に消費したBuild入力、生成・ロードされたArtifact member、Invocation/Effectへの追跡を保持できなければなりません。配布Bundle内の未選択Providerの追加・更新が、選択済みTargetの実Build/ロードに影響しないことを目標にしますが、実Compiler・初期化登録・Embed等による暗黙依存は実測で確認する必要があります。全Targetに動的Loader、Scheduler、Plugin専用Hostを強制してはいけません。
+
+正当性のConformance、実Artifact/Target適格性、性能改善を**独立したGate**で検証できる必要があります。性能BudgetはTargetと代表Workloadに合わせて事前設定し、baselineと候補のexact Source/Contract/Provider/Toolchain、負荷、試行回数、cache状態、実行環境を区別して測定します。p50/p95等の応答分布、起動・Memory・転送/Network・CPU/費用と、正しく省略した再計算、誤再利用、無用な失効を必要に応じて比較し、測定・改善が確認されない抽象化や最適化は撤回・縮小できなければなりません。具体的な実現/受入の候補は[Plugin実現・最適化要件](../plan/design/PLUGIN_REALIZATION_AND_OPTIMIZATION_REQUIREMENTS_2026-11.md)に整理します。
+
+複数のPlugin呼出しをまとめる最適化では、Transport上の一括送信、DataのChunk/Streaming、複数業務操作のBatchを区別する必要があります。通信回数の削減を、操作の原子性、全件完了、正しい順序、取消済み効果の撤回と同一視せず、元のRequest/Result相関、各Scope/Grant、部分失敗・Unknown、Backpressure/Buffer上限、実ProviderのCommit境界を維持できなければなりません。これらを満たせないTargetではBatch化を強制せず、単発呼出しを維持できることとします。実測ではThroughputに加え、待機・tail latency・Peak Memory・取消・部分失敗時の費用を区別します。
 
 ## RQ-025 業務上の行為・手順をApplication Functionから独立して設計できること
 

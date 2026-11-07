@@ -34,3 +34,9 @@
 
 # Pattern/operation mapping evidence is hashed as raw bytes.
 /plan/evidence/PATTERN_KIND_OPERATION_MAPPING_2026-11-07/** -text
+
+# Read-boundary observations are hashed as raw bytes.
+/plan/evidence/DSH_H6E1_READ_BOUNDARY_2026-11-07/** -text
+
+# Implicit-context observations are hashed as raw bytes.
+/plan/evidence/DSH_H6E3_IMPLICIT_CONTEXT_2026-11-07/** -text
