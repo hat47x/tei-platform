@@ -1,6 +1,6 @@
 {
   "fixture": "okf-k1-v02",
-  "purpose": "Provisional specification-derived test expectations, separate from the future reader implementation; authored with fixture and NOT an independently owner-qualified oracle",
+  "purpose": "Provisional specification-derived expected results for a repository-health-clean synthetic baseline. Distinct mutation copies contain F0-allowed broken/bundle-absolute links.",
   "okf": {
     "version": "0.2",
     "repository": "GoogleCloudPlatform/open-knowledge-format",
@@ -33,7 +33,7 @@
       "functions/submit",
       "business/submit"
     ],
-    "unresolved_link": "/business/missing.md"
+    "baseline_relative_link": "../data/order.md"
   },
   "negative_mutants": [
     {
@@ -57,8 +57,14 @@
       "expected_format_conformant": true
     },
     {
-      "name": "delete business/submit.md unresolved link",
-      "expected_format_conformant": true
+      "name": "append broken link to temporary copy of business/submit.md",
+      "expected_format_conformant": true,
+      "expected_document_quality": "warning-only"
+    },
+    {
+      "name": "append OKF bundle-root absolute link /data/order.md to temporary copy of functions/submit.md",
+      "expected_format_conformant": true,
+      "expected_document_quality": "link resolves from bundle root; repository-wide Markdown checker not applied to temporary copy"
     }
   ],
   "must_not_infer": [
@@ -81,10 +87,12 @@
     "business/submit.md": "5b8ce60571a7e76d186d5402d7454b509139d99c94403a386c18e7f7298ba161"
   },
   "validation_status": {
-    "github_file_readback": "PASS",
+    "github_file_readback": "PENDING AFTER UPDATE",
     "raw_sha256_algorithm": "two standard SHA-256 known vectors PASS",
     "yaml_parse_with_product_reader": "NOT RUN",
     "okf_formal_conformance": "NOT RUN",
-    "owner_review": "NOT RUN"
-  }
+    "owner_review": "NOT RUN",
+    "repository_plan_check": "PREVIOUS HEAD FAIL: TestMarkdownRelativeLinksResolve detects original intentionally broken and bundle-absolute links; new baseline planned to remove both. Latest CI NOT RUN"
+  },
+  "fixture_generation_note": "Baseline all Markdown links resolve under TEI repository health. Broken links and bundle-root absolute links remain independently testable by mutations in a temporary checkout copy, not persisted to managed repository .md."
 }
