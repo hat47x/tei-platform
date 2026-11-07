@@ -156,6 +156,10 @@
 | [`TEI_MD_UNIFIED_AUTHORING_MIGRATION_2026-11.md`](TEI_MD_UNIFIED_AUTHORING_MIGRATION_2026-11.md) | TEI Authoring Source を .tei.md へ統一する段階移行計画 |
 | [`TEI_SHO_OKF_DOMAIN_LINT_DOCUMENT_UNIT_2026-11.md`](TEI_SHO_OKF_DOMAIN_LINT_DOCUMENT_UNIT_2026-11.md) | TEI/SHOのOKF知識バンドルとドメインLint：段階導入の検証計画 |
 
+| [`HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md`](HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md) | HTTP Decision GraphのServer/Client/Recovery/GuardとGraph・表・Traceの投影契約（#3274、設計・限定Reference、実HTTP/Hostの実証は別） |
+| [`PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md`](PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md) | CLI/Studio/Runtimeで同じPlugin Contract・Providerを実呼出する最小ドッグフーディング計画（#1251、設計・未実証） |
+| [`TEI_DESIGN_CONTEXT_TEST_HARNESS_INTEGRATION_2026-11.md`](TEI_DESIGN_CONTEXT_TEST_HARNESS_INTEGRATION_2026-11.md) | Design Contextの完全性から未カバーテスト・独立Expected・Harness再現へつなぐ計画（#3262/#3273、実縦断は別検証） |
+
 ## 関連する参照事例と評価
 
 `DESIGN_SYNTHESIS_CROSS_VIEW_PROOF_DESIGN.md`の評価順序は、後続の読み取り専用の検証結果に合わせ、R1～R6へ反映済みです。当初、変更や古い状態の再評価として扱う予定だった論点は、R3～R5を先に個別に評価したうえで、R6のスナップショットの失効として扱います。
