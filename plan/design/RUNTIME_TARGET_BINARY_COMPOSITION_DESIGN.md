@@ -1292,3 +1292,40 @@ Atomic Traitを今後Plugin/Functionの契約義務に使う場合、**宣言に
 **最短の次の実験**：①#3284をそのまま再利用し、限定`sales.order` Readinessを保持する。②対象を`order_entry.recent_orders`へ切り替えたとき不足するFunction/Query/Rule/Loader/Actual Buildの列を、既存CLI/Sourceで示す。③不足が最初に確認された一辺だけを#3262または#2586の既存Ownerで実装・計測し、同じSource Revisionで比較する。④同じFunctionへのP0-M図/CRUD投影とT1 Negative Caseを**並行**で進める。⑤これらが限定成立してから実CLI/Web/Job、2/3 Unit、実Effectへ拡張する。比較の計測は「必要だった手動指定数、初めて不成立となる一辺の検出率、false complete/false stale、Consumer受領、Target/Bundle適合、1→N Build追加コスト」で行う。
 
 **本追補の実行資格**：#3284の現行mainコードと既存PRの公開CI記録・Issueを読取照合した計画差分。新しいFunction Context Product E2E、実`recent_orders` Provider/Action、Graph/CRUD Renderer、2/3 Binary、Job/HTTP Consumer、Trait Conformance、BOM実Compat Matrix、Owner意味受理は**本PRではNOT RUN**。
+
+<!-- tei-function-qualification-exec-maturity-20261108 -->
+### 2026-11-08 実CLI・Plugin選択・実行後不明状態の前進を受けたFunction資格の更新（設計候補）
+
+**今回の基準の変更**：「Source/Functionを読めるか」から「どの必要集合をどの実Consumerが使ったか」へ進める。全Workspace共通の`complete=true`やFunction一般の`executable=true`を導入せず、**用途（設計D／テストT／実Read R／表現P／実Build・入口B／副作用E）と評価したSubject・Source snapshot・Actor/Scope・実Target・Attemptごとの最初の不足辺**を表示する。
+
+#### 実装済みの限定証拠と未成立の正確な境界
+
+| 同一時点の根拠 | 確認できた範囲 | Function資格へ昇格しない範囲 |
+| --- | --- | --- |
+| main統合 [#3354](https://github.com/hat47x/tei-platform/pull/3354)、[exact-head専用CI #42391707962](https://github.com/hat47x/tei-platform/actions/runs/42391707962) | 既存`context_gate.py`を単一経路に維持し、**11実CLI read-only Reply**（全`source-index`と`inspect-validation`を含む）・公開合成**3 Rule/Relation/Source**の独立Required・**32件の合成Consumer判別**、既存6 Pinned Step＋既知Rule候補を実行。旧#3324/#3326は未統合でクローズ | **全Function/Business/Procedure閉包、原子的Workspace snapshot、独立C1/全NFR、未知RuleをAIが発見するT1-B、外部H3完全受領は未成立**。32件はProduct Code Mutant 32件でない。従来の「9 Replyのみ」は履歴 |
+| main統合 [#3315](https://github.com/hat47x/tei-platform/pull/3315) | read-only CLIの複数応答にWorkspace名、Manifest format版、Manifest byte digestを付加 | 同名別Workspace、A→B→A、同Manifest下のSource/Grant変更、全Required sourceの原子的同版を証明しない。`source-index`等すべての応答にWorkspace Identityがあるとは仮定しない |
+| main統合 [#3350](https://github.com/hat47x/tei-platform/pull/3350) | `database-instance`技術名を`SupportsDatabaseProvider`で選択し、Reference上のunselected数を6→4へ訂正 | **選択候補≠Link/Load/Invoke/Grant/SQL実発行/Rowset**。Plugin-first D1のCLI/Studio二Consumerは別試行（#1251/#951/#1824） |
+| main統合 [#3304](https://github.com/hat47x/tei-platform/pull/3304) | 公開Ruleの行番号0を既存Scenarioの一時第7 Stepとして実CLI判別（既知T1-A） | 生成AIが未知Ruleを盲検探索して新規負例を採用したT1-B、独立Product Mutant/C1や正式Scenario採用ではない |
+| 未統合 [Draft #3328](https://github.com/hat47x/tei-platform/pull/3328) | Executor後のRecorder/Stage失敗を`EffectUnknown`、`MayReplay`とDispatchの不整合を修正するGo提案と5テスト | **mainの現`internal/command/invoke.go`ではRecorder失敗時`EffectUnknown`が未設定、`lifecycle.go`のStage記録失敗も同様**。Draftの修正はmainの安全性へ未反映、実PG/プロセス再起動・Fence/Receipt未検証 |
+| 未統合 [Draft #3353](https://github.com/hat47x/tei-platform/pull/3353) | 空TargetでもHandoff未確認ならCompletion不確定とする修正候補 | `EmptyJustified`が正しくても外部受領済み・業務完了の証拠はない。Caller申告の`HandoffConfirmed`自体も独立確認ではない |
+
+※ここでのCIは、それぞれ記載した**対象HEAD/Fixtureでの限定実証**である。異なるPR/Build/Actor/時点で得たPASSを、一つの`recent_orders`実Product End-to-Endに足し合わせない。特にmainの`internal/command`は今回GitHubで読み取った旧挙動であり、[#3328](https://github.com/hat47x/tei-platform/pull/3328)が統合されれば、その**新しいmain HEADで再評価**する。
+
+#### 最小のread-only Function資格照合（具体例）
+
+**入力**（新API/JSON Schemaの採用ではなく既存Readerへの照会条件）：`order_entry.recent_orders`（Candidate Function）／対象WorkspaceとそのSource・Manifest同一性／利用目的`R`（Product Read）／要求するContextのData/Rule/Query/Result grain／許されたActor/Tenant/Scope／期待Source/Operation Revision／Plugin exact resolution／Targetと実Consumer。既存CLIで得られない欄は「ない」と推測せず`unknown / unobserved / unsupported`で返す。必要がない実Write GrantまでRの読取り資格に要求しない。
+
+**最小出力の導出列**：`Required IDs+Roles → Found/Loaded/Parsed/Bound IDs → Declared Function/Query & SQL candidates → Selected SQL/args & actual Provider Invoke → actual Result Slice/Scope/Completeness → Context/Consumer accepted bytes → Claim evidence ceiling`。Root/Negative Dependencyや全件空集合も「列挙されなかった」だけで不要・なしとしない。同じSubject/FPの各CLI replyを逐次受領した**11コマンドの一致**は原子的Snapshotを意味しない。実行途中でSource/Manifest/Grant/Selection Epochが変化した場合は、実入力と受領byteを別に記録して旧結果の現在資格を保留する（#3181/#3327/#3254/#2582）。
+
+**結果の期待**：現時点は`recent_orders`の宣言されたQuery/aliasが存在しても、**BuildBrowseの候補選択→実Product Caller→選択SQLとbind値の実消費→実Provider接続→Rowset→Function Context→Consumer**の一連が未確認。製品Rについて`unverified`を返し、最初の失われた辺だけを[#2586](https://github.com/hat47x/tei-platform/issues/2586)（Function/Query/Result縦断）へ、Context Requiredの取得問題を[#3262](https://github.com/hat47x/tei-platform/issues/3262)へ渡す。別Referenceの実PostgreSQL read、Read UIだけ、Plugin selected、World Fingerprint一致は代替にならない。
+
+#### Build/Entry/Effectへ進む際の反例を一つのScenarioから分岐する
+
+- **Read-onlyで実Providerを呼べた後**：Function/Plugin Contractと実Consumed SQL/SourceをArtifactへ結び、単一Go Binaryの実包含・実Dispatcher・外部Consumer受領を検査してB資格とする。2/3 Unit分割は初回実ReadやCLI Context完全性の先行必須条件にはしない（#1130/#1167/#2600/#2604）。
+- **直前改訂と現在Grant**：#3254で確認した`basis`不変・World/Model改訂の負例を、実行直前の適合チェックに再利用。Command/Jobの入場はSource/Operation/Contract/Provider/Actorの必要条件を照合する。Snapshotが古い／必要Grant不明なら要求を拒否または保留し、単に`basis`一致・Open Plugin/Trait宣言や旧BOMで許可しない。採用するRuntime API/Policyは各既存Owner判断。
+- **Executor以後の記録失敗**：Recorder/Stageが失敗しても既に業務Effectが起こった可能性がある。**Clean Rejectedと断定しない**。#3328の限定修正を統合できたか最新mainで再確認した上で、#1174/#2564の独立PG Receipt・別Connection再Read、ACK-loss/同Operation再送/別key/ABA、永続Stageの実試験へ進む。Resultの`EffectUnknown`は外部Effectの観測済み証明や自動回復ではない。
+- **空集合と業務完了**：必要な対象集合が正当に0件でも、Workflowのhandoff/External Consumer ACK・対象ResourceのIndependent Readは別。#3353の空集合正当化とHandoff未確認を、Job完了判定・表示上の「完了」に混ぜない。対象集合の真の空／未探索／権限非開示を分ける（#1706/#1125/#1130）。
+
+**引渡しと段階**：先行してよいのは `D`の既存11-Reply範囲を使った欠落表示、`T`の既知T1-A後続（盲検T1-B）、`P`の三視点図・CRUD read-only Projection（後継Draft #3303）、`R`の一Function実Product Readの**並列**。B（物理配置）とE（実副作用）をすべての作業の直列Gateにしない。初回Rが成立した時点で、同一Row Identity/Scope/Source Revisionを`P`の表/図と結ぶCrossviewを確認し、以後同一ScenarioのCLI/Web/Jobへ拡張する。各段階のError/Incomplete/Unknownと人・生成AIの必要手順数を[#2018](https://github.com/hat47x/tei-platform/issues/2018)へ返す。
+
+**今回の追加は計画文書のみ**。新Product Query接続、MCP、Plugin D1実呼出、11コマンド原子的Snapshot、実2/3 Build、Web/Job/Studio/SHO、実DB Command故障注入/回復、外部H3完備、Owner意味受理は**本PRではNOT RUN**。第二Reader/Host/Scenario SSOT/Resolver/Policy/Runtime Registryを追加しない。
