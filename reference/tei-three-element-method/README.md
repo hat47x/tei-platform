@@ -25,7 +25,7 @@ Run with Node 22+:
 node --test reference/tei-three-element-method/public-slice.test.mjs
 ```
 
-The 9 checks demonstrate: T06 output equality for W0/W1 with identical *separately supplied*
+The 10 public-slice checks demonstrate: T06 output equality for W0/W1 with identical *separately supplied*
 prequalified public inputs, an intentionally leaky whole-graph-layout negative control, rejection
 of a relation whose endpoint was not public-qualified, and T07 isolation of
 an unknown/ambiguous Business or Data Role without turning unrelated accepted
@@ -72,13 +72,18 @@ Definitions, Owner Intent, actual Source Observations, Assessments, business
 MECE, key/strong attribute semantics, or currently authorized eligibility.
 
 `bindPublicTraitClaims(publicProjection, {scope, snapshot, claims})`
-requires an exact, caller-supplied snapshot string on each claim, matching
-scope/subject/Role, no duplicate claim IDs, and a matching published view
-occurrence. The returned `intent`, `observation`, and `assessment`
+requires one exact caller-supplied snapshot string across the **actual public
+projection**, the envelope and each claim, plus matching scope/subject/Role,
+no duplicate claim IDs, and a matching published view occurrence. Obtain a
+stamp by calling `projectPublicTeaSlice(qualifiedSlice, snapshot)`. Its
+one-argument mode remains read-only but **cannot accept Trait attachments**.
+A different or missing projection stamp rejects even when the view IDs match. The returned `intent`, `observation`, and `assessment`
 lanes and local states are **fixture vocabulary only**, not a TEI canonical
 schema, Evidence qualification, or a new status/authority enum. The supplied
-`snapshot` is only an equality check: it **does not verify** the current
-Source, Role/Operator implementation bytes, Policy, as-of or Artifact.
+`snapshot` is a three-way, **caller-assigned equality witness only**: it
+**does not verify** the current Source, Role/Operator implementation bytes,
+Policy, as-of or Artifact. A reused/ABA or forged stamp cannot be detected
+without the real Producer, current policy and independent readback.
 Inputs containing unqualified metadata fail closed with a generic error.
 
 ```sh
@@ -86,13 +91,14 @@ node --test reference/tei-three-element-method/public-slice.test.mjs \
             reference/tei-three-element-method/trait-attachments.test.mjs
 ```
 
-The new 10 focused tests (T10–T13) call the **actual existing public-slice
+The 12 focused Trait tests (T10–T13) call the **actual existing public-slice
 projector**, then bind the prequalified Claim references. They prove
 synthetic three-view reference correspondence; that a Java Enum/DDL
 observation does not synthesize an Assessment; that no "strong attribute"
 or business Identity claim is inferred; that old snapshot, other Scope,
 absent/private subject, duplicate claim, unknown Role or raw private
-metadata are rejected. One test checks that an input accessor is rejected
+metadata are rejected. In particular, an old/unstamped *projection* cannot
+receive current claims solely because its display IDs match. One test checks that an input accessor is rejected
 without being invoked. This is not a cryptographic proof of Source
 freshness, nor a validation of arbitrary untrusted JS Proxies or array
 accessors. The cross-view input is synthetic, not an actual Java/SQL/TEI
