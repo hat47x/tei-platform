@@ -366,7 +366,7 @@ Goの[Traversal-resistant file APIs（Go公式）](https://go.dev/blog/osroot)�
 
 ### 横断的な影響と停止線
 
-- [Studio固定Host #3061](https://github.com/hat47x/tei-platform/issues/3061)ではWorkspace ID allowlistを通した後で物理rootが置換される別の実負例がある。こちらの本CC-15は**参照用ローカルreadInsideの静的分割手順**で、Studio実装の同一欠陥や既修正を自動認定しない。
+- [Studio固定Host #3061](https://github.com/hat47x/tei-platform/issues/3061)は**固定旧Host `4bc437c7` の実負例（root置換後の外部Catalog Read）**と、**現main側の別の正対照（既存root同一性検査・統合済[#3098](https://github.com/hat47x/tei-platform/pull/3098)・公開再検査PASS）**を分けている。これはWorkspaceの**root同一性**の試験であり、個別ファイルのCheck/Open、Go Root API、複数fileの共同Snapshotを保証したわけではない。本CC-15は参照用ローカル`readInside`の分割API試験であり、Studio本体に同じ未修正欠陥があると主張しない。
 - [TEI #3181](https://github.com/hat47x/tei-platform/issues/3181)のWorkspace Manifest Identityと`WorldFingerprint`、[TEI #2589](https://github.com/hat47x/tei-platform/issues/2589)の署名付きArtifact exact bytes、[TAI #168](https://github.com/hat47x/tai-pleroma/issues/168)の実Tool Deliveryはそれぞれ**異なる同一性の観測**。Path同一だけでもSHA同一だけでも、実Hostが開いた対象・現在Grant・Consumer開示を証明しない。
 - P2認知Methodはこの不足を`unknown`/必要な次の検査として記述できるかが対象。実Root/Open拒否はProduct/Host・OS、実外部送出はTEI #2515／TAI #232、独立ExpectedはTEI #2514に残す。秘密Sourceに対する攻撃試行、外部API/DB副作用、Owner受理、正式Core APIは本試験の範囲外。
 
