@@ -298,7 +298,7 @@ PR [#3176](https://github.com/hat47x/tei-platform/pull/3176)の test-only `tools
 | H3-A/Bが各5,482 byteの同一Skill本文を実Load、refs/read-only-model-investigation.md をToolで読取 | Product Skill root/参照ファイルの**限定Delivered/Read**実証 | Instructionを正しく適用、Required refs全閉包、独立正答、Capability/Authorityは未実証 |
 | H2→H3→H3→H2の実四Session completed | 技術的な実Session到達とSkill提示の有無は観測済み | H2-A再利用、Taskの論理Path差、隔離不足、許可外Tool、独立採点無し。TAIの**比較適格0/4**は不変 |
 | `read-only`を指定してもDSHが作業場所外SourceをReadした | 宣言mode≠OS/physical scope証拠 | Allowed Workspace/Tool/SourceやSecret不受領を自己申告しない。実隔離はTEI #2515／TAI #232 |
-| TEI実CLI `trace`は一部宣言済みkindを`SUBJECT_NOT_FOUND`で返す[#3180](https://github.com/hat47x/tei-platform/issues/3180) | 特定の投影対象のtrace失敗は、対応範囲外／未投影の可能性を保留 | `no relationship`／`source absent`／`all dependencies explored`へ昇格しない |
+| 旧TEI実CLIでは一部kindの`trace`が`SUBJECT_NOT_FOUND`と誤返却していたが、[merged #3208](https://github.com/hat47x/tei-platform/pull/3208)で未対応kindを`UNSUPPORTED_SUBJECT_KIND`へ分離 | 現行mainの投影対象外は機械可読な未対応。固定旧DSH Binaryの過去Tool結果は歴史的な旧挙動のまま | 検証したCLI build/ABIを示さず「未対応ではない」「関係不在」と推論しない。別の投影範囲・実Consumer再受領は未確認 |
 | 実CLI replyにmanifest identityが無い[#3181](https://github.com/hat47x/tei-platform/issues/3181)、viewの`read-only`宣言でもflagにより局所FSへ書く[#3182](https://github.com/hat47x/tei-platform/issues/3182) | Reviewerは実argv・root realpath・manifest byte・出力先・実Effectを一試行へ別束縛 | WorldFP＝Workspace ID、command family read-only＝実Invocation無書込みを推測しない |
 
 ### 14.3 P2比較の最小Evidence ladder（正式Schemaではない）
@@ -371,3 +371,21 @@ Goの[Traversal-resistant file APIs（Go公式）](https://go.dev/blog/osroot)�
 - P2認知Methodはこの不足を`unknown`/必要な次の検査として記述できるかが対象。実Root/Open拒否はProduct/Host・OS、実外部送出はTEI #2515／TAI #232、独立ExpectedはTEI #2514に残す。秘密Sourceに対する攻撃試行、外部API/DB副作用、Owner受理、正式Core APIは本試験の範囲外。
 
 **注記**：CC-14は複数Fileの共同時点、CC-15は一つのPathに対する事前Checkと実Open対象の同一性であり、両者を一つのPASSに統合しない。
+
+<!-- tei-devctx-cognition-data-representation-20261107 -->
+## 17. Standard Data・表現型・Atomic Traitを認知の証拠層へ安全に投影する（2026-11-07、統合設計・新実証NOT RUN）
+
+**横断の成熟した方向**：[TEI Draft #3236](https://github.com/hat47x/tei-platform/pull/3236)（標準データ構造×標準表現型の合成写像）と[TEI Draft #3282](https://github.com/hat47x/tei-platform/pull/3282)（Atomic Traitの実装義務・合成衝突）、[TEI #2507](https://github.com/hat47x/tei-platform/issues/2507)のFunction Binding、[TEI #2516](https://github.com/hat47x/tei-platform/issues/2516)の用途相対Contextを参照。表現型・Traitの新たな全体モデルを本Issueでは作らず、認知Methodがどのデータの何を観測できたかを失わず引き渡す。
+
+**観測の分解**：元の標準データ構造（Record/Collection/Relation/Graph/時系列等）・対象範囲と粒度・Relationの向き/多重度・時点/単位・NULL/未取得/非開示、FunctionのSelection/Query/Rule依存、表示先の標準表現型（Table/Tree/Graph/Panel等）、実Consumerへ渡されたSlice、を別欄にする。Function Bindingは接続の意味を所有し、Rendererの見た目やExportされたOKF/SHO文書は元構造の完全な逆写像を保証しない。
+
+| 反証対象 | 同じ公開表現から誤って推測しやすい主張 | 既存Ownerへ渡す検証 |
+| --- | --- | --- |
+| Data→Table（Collection先頭1件のみ表示） | 表に1件だから対象集合も1件／全件合格 | #2506/#2516の実選択・Provider完全性とR(Q)を確認。表示件数ではなく実Read Scopeを独立に照合 |
+| Data→Graph（同labelノード、多重辺、方向を省略） | 同じ図の形は同じEntity同一性・Relation意味を示す | #2495/#1124、元のNode/Edge ID・向き・多重度・属性をSourceに遡及できる場合だけ比較 |
+| Data→Document/OKF（派生Index/Markdown） | 表示が同じなら原資料・非公開WHERE・差分履歴も同じ | #2634/#2516／SHO／SEI #820。Source/Predicate/粒度・改訂・開示を残し、不明ならunknown |
+| Plugin/Trait→Tool discovery | Capability/Atomic Traitの宣言があるから対象実装・現在権限・動作が保証された | #3282/#2390/#2589、実Provider/Host、Pin/Build Artifact、Signature/Attesterと実Load/Effectを分離 |
+
+**AI/CUI/MCPへの最小提示方針**：実際に存在する既存TEI CLIのcatalog/inspect/trace/validateとSource/Manifest/Tool Replyを使用し、試行用Projectionとして「問いQ、対象/Source版、必要な依存、観測済みと未観測、実Go Profile／Read cohort、Disclosure、根拠となる実Tool/Receipt、次に確認すべき情報」を出す。現CLIに存在しない新しい inspect-context / probe / MCP契約を実装済みと偽称しない。SEI Methodは公開・実行可能な候補から次Probeを提案し、Target Providerの必要条件・Owner Meaning・Host GrantはTEI等既存Ownerに残す。
+
+**次の比較順**：(A) 現行CLI/データ構造から決定的に作れるread-only表、(B)同じ実Sourceから生成した複数表示で落ちる情報の反証、(C)限定Toolでの実追加Read、(D)SEI Methodの識別的なProbe選択、の順に独立Rを隠して比較。表示図の美観・モデル自己申告を十分性採点に入れず、新たなRegistry/中央Cognition Host/第2意味正本を作らない。**本§17は所有Issueを横断する評価条件の接続であり、新たな実Provider/Renderer/Tool試験やOwner AcceptanceはNOT RUN**。
