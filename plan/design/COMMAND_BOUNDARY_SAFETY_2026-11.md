@@ -95,7 +95,112 @@ CLIのテキスト出力は `committed: true (reference unit of work)` と `pers
 - 実Provider接続時に `committed` を「取引のCommit成功」と「独立した読取りで確認できたこと」のどちらへ対応させるか。本追記では参照実行の意味だけを固定し、実Providerの意味は未決のまま。
 - `schemaVersion` を `v1` へ上げる必要があるか。欄の追加だけなので `v0` のままと判断したが、外部読み手の互換性確認は別途必要。
 
-## 7. この文書が主張しないこと
+## 7. 効果を宣言しないCommandの `appliedUnobserved`（#3068 追補）
+
+### 見つかった誤読
+
+`OperationRecord.AppliedUnobserved` は「Executorが適用操作を列挙しなかった」ことを示す。しかし `Applied` が空になる理由は二つある。
+
+1. Executorが列挙できない（**未観測**）。
+2. 能力が効果を宣言していないので、比較する対象が無い（**比較対象なし**）。
+
+どちらも `len(result.Applied) == 0` になるため、単純な実装では2を「未観測」と表示していた。効果を宣言しないCommandでは `difference-check: not observed` が常に出る。
+
+### 決めたこと
+
+`AppliedUnobserved` は **能力が効果を宣言している場合だけ** true にする。
+
+- `plan.Effect != nil && len(result.Applied) == 0` → `appliedUnobserved:true`
+- `plan.Effect == nil` → `appliedUnobserved:false`
+
+CLIとStudioは、記録が無い場合の既定値を「効果が宣言されていればtrue、されていなければfalse」にした。効果なしのCommandでは `difference-check: not observed` を出さない。
+
+### この分離が防ぐこと
+
+- 「比較する対象が無い」を「Executorが答えられなかった」と読み違えない。
+- 効果なしのCommandに、存在しない差の確認を要求しない。
+
+### まだ決めていないこと
+
+- 効果を宣言したが `Applied` が空のままのExecutorを、構成時に拒否するか（#2996の未決）。
+- `AppliedUnobserved` を `Differences` の有無と独立に扱うか、`differenceCheck` のような三状態（`checked`・`not-observed`・`not-applicable`）へ改めるか。
+
+## 8. 宣言効果を報告しないExecutorの記録（#2996 追補）
+
+### 見つかった差
+
+能力が効果を宣言しているのに、Executorが `Effect` を返さない場合がある。`effectcommit` アダプタはCommit receiptだけを返し、効果の種類・対象を返さない。この場合、境界は次のどちらかを知らない。
+
+- Executorが宣言効果を適用したが、報告しなかった。
+- Executorが何も適用しなかった。
+
+### 決めたこと（記録のみ）
+
+`OperationRecord.ReportedEffectMissing` を追加し、`plan.Effect != nil && result.Effect == nil` のとき true にした。CLIの `referenceCommandRun` とStudioの `CommandRunValue` にも同じ欄を追加し、CLIテキストとStudio画面に `reported-effect: missing` を表示する。
+
+**拒否はしていない。** 宣言効果の報告漏れを `MISSING_COMMAND_EFFECT`（EffectUnknown）として拒否すると、`effectcommit` アダプタのCommit成功がすべてunknownになり、実Providerの正常経路が壊れる。実Providerの意味（Commit成功と効果報告の一致）は、Providerの契約として別に決める必要がある。
+
+### この記録が防ぐこと
+
+- 「効果が報告されていない」を「宣言効果が適用された」と読み違えない。
+- `AppliedUnobserved`（操作の列挙漏れ）と `ReportedEffectMissing`（効果の報告漏れ）を別の欄として扱える。
+
+### `effectcommit` アダプタの報告（追記）
+
+`commandadapter.Executor` に `Effect *semantic.DataEffect` を追加した。呼出し側がCommand計画から宣言効果を渡すと、`StatusCommitted`／`StatusReplayed` の結果にその効果を載せる。`nil` なら従来どおりreceipt-onlyで、`ReportedEffectMissing` が記録される。
+
+- `Replayed` は同じOperationID・RequestHashの記録が既にあることの証明であり、資源の現在値の独立読取りではない。したがって `persisted` の意味を強めるものではない。
+- 実PostgreSQLの結合試験は `TEI_EFFECT_POSTGRES_DSN` 未設定のため、この環境ではskip。
+
+### まだ決めていないこと
+
+- 呼出し側が宣言効果を渡さない構成を許すか、必須にするか。
+- 宣言効果の報告漏れを、どのExecutorで拒否するか。参照Executorは宣言効果をそのまま返すため対象外。
+- `effectcommit` のCommit成功を、独立した読取りで宣言効果と照合するか（#2998の `persisted` の意味）。
+
+## 9. 永続化の観測（`persistence`）と `persisted`（#2998 追補）
+
+### 三つの問いを分ける
+
+`committed` と `persisted` の二欄だけでは、次の三つが混ざる。
+
+1. その実行に永続storeがあるか（参照実行は無い）。
+2. durableなCommitが起きたか（`UnitOfWork.Commit` の結果）。
+3. Commit後に、宣言効果を独立した読取りで見たか。
+
+`command.Result.Persistence` と `PersistenceState` を追加し、次の三状態にした。
+
+| 値 | 意味 |
+| --- | --- |
+| `not-applicable` | 宣言効果が無い、または `Invoker.DurableStore=false`（参照実行）。観測対象が無い |
+| `not-observed` | durable storeはあるが、独立した読取りを構成していない（`PersistenceObserver` がnil）、または読取りが失敗した |
+| `observed` | `PersistenceObserver.Observe` が宣言効果を読取りで確認した |
+
+`PersistenceObserver` は `Request` と**宣言効果**だけを受け、Executorの `Result` を受けない。Executorの報告をそのまま観測として返せないようにするためである。読取り失敗はCommandの失敗ではなく `not-observed` にする（Commitは既に起きている）。
+
+CLIとStudioは `persisted`（`observed` のときだけtrue）と `persistence` を返す。参照実行は `persisted:false`・`persistence:"not-applicable"`、実Providerでobserver未構成なら `persistence:"not-observed"` になる。
+
+### `Invoker.DurableStore` の位置付け
+
+`Invoker.DurableStore` はcompositionの主張であり、Invokerは検証しない。`UnitOfWork` が `MemoryUnitOfWork` かどうかを型で判定しないのは、参照用の取引と実取引を型で偽装できるためである。参照実行はfalseにして `not-applicable` を明示する。
+
+### `effectcommit` アダプタの観測（追記）
+
+`commandadapter.Executor` に `Lookup bool` を追加した。trueのとき `Observe` は同じ `Request`・`Grant`・`OperationID`・payloadで `Runner.Lookup` を呼び、`StatusReplayed` なら観測成功とする。
+
+- これは**receiptの観測**であり、資源の現在値の観測ではない。Lookupは同じDB境界で記録を照会するだけで、`objects` の現在値を読まない。
+- `Lookup` の結果が `not-recorded`・`denied`・`conflict` なら `not-observed`。エラーも `not-observed`。
+- 実PostgreSQLの結合試験 `TestPostgresCommandObservesACommittedReceiptByLookup` を追加した。Commit→Lookupで `observed` になり、receipt行を削除すると同じ設定の `Observe` が失敗する（資源の現在値は変わらない）ことを確かめる。`TEI_EFFECT_POSTGRES_DSN` 未設定の環境ではskipする。
+
+### まだ決めていないこと
+
+- 資源の現在値を読む独立観測を実Providerに足すか（現在の `Lookup` はreceiptのみ）。
+- `PersistenceObserver` を実Providerの経路へ配線するか（本追記はアダプタ単体の実装）。
+- `not-observed` を警告や停止条件にするか。現状は応答の欄としてのみ返す。
+- `Replayed` の経路で観測を行うか。Replayは現在値の読取りではなく記録の再確認なので、別の観測が必要。
+- `DurableStore` をcompositionから自動で決める方法。現状は呼出し側の明示的な宣言。
+
+## 10. この文書が主張しないこと
 
 - 本物の認可・主体・権限・メニュー制御が実装されたこと。
 - `ReferenceAuthorizer`が本番で使えること。

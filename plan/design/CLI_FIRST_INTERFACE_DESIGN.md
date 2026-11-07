@@ -187,7 +187,9 @@ Issue #1165に対し、既存 `index.Build` → `modelref/derivedbridge.FromInde
 
 ## 10. JSON出力の契約一覧とv0内の互換規則（#2354、2026-10-29）
 
-`tei commands`が広告する12件の読取りコマンドについて、2026-10-29時点のorigin/main（`eafdfcab7`）のコードを読んで確認した結果と、版固定の候補を整理する。範囲は`cmd/tei/main.go`と各コマンドの出力型で、実行による確認は含まない。下の「採否」は提案であり、採用にはOwnerの判断が要る。
+`tei commands`が広告する読取りコマンド（件数は固定せず`tei commands`と試験を正本とする）について、版固定の候補を整理する。下の「採否」は提案であり、採用にはOwnerの判断が要る。
+
+**§10.1の表は2026-10-31時点の記録であり、現在の実装ではない。** その後の#2354第一陣〜第三陣で`workspace-files`・`source-index`・`knowledge-*`・`requirements`・`plugin-*`は`tei.cli.*/v0`のエンベロープを持つようになり、`tei commands`の各entryは`schemaVersion`と`jsonContract`を広告する（#2824）。現在の一覧と失敗時の形式は[CLI JSON出力契約](CLI_JSON_OUTPUT_CONTRACT_2026-10.md)§4を正本とし、ここへ複製しない。以下は版固定の判断材料として残す。
 
 ### 10.1 現状の一覧
 
@@ -209,7 +211,7 @@ Issue #1165に対し、既存 `index.Build` → `modelref/derivedbridge.FromInde
 | `plugin-resolve` | なし | 同上 | `plugin.ResolvedSet`を直接出力 |
 | `plugin-runtime-plan` | なし | 同上（計画の構築失敗は終了コード1） | `pluginruntime`の計画を直接出力 |
 
-読取りコマンドの出力型のうち、`source-index`の型は上のとおり確定した（Issue起票時は未確認だった）。いずれもschemaVersionの欄を持たない。
+読取りコマンドの出力型のうち、`source-index`の型は上のとおり確定した（Issue起票時は未確認だった）。表の「なし」は2026-10-31時点の状態であり、現在は上に書いたとおりエンベロープへ移行済みである。
 
 ### 10.2 v0の中での互換な変更と、versionを上げる変更（提案）
 

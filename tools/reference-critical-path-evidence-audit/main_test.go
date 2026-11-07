@@ -798,11 +798,27 @@ func TestProvisionalGuaranteeIsNeverG2Evidence(t *testing.T) {
 			}
 		}
 	}
-	// provisional in the level is diagnosed as both.
+	// A provisional level fails two independent requirements at once: the
+	// exact atomic level, and G2 evidence. Neither diagnosis implies the
+	// other, so both are reported for the same declaration.
+	for _, level := range []string{"provisional", "Provisional_Atomic"} {
+		p := fixture()
+		p.Physical.Guarantee = &Guarantee{Level: level}
+		r := Audit(p, h, m)
+		if !has(r, want) || !has(r, "E2_PROVIDER_GUARANTEE_NOT_ATOMIC") {
+			t.Fatalf("%q: %+v", level, r)
+		}
+	}
+	// Negative controls: each diagnosis occurs without the other.
 	p := fixture()
-	p.Physical.Guarantee = &Guarantee{Level: "Provisional_Atomic"}
-	if r := Audit(p, h, m); !has(r, want) || !has(r, "E2_PROVIDER_GUARANTEE_NOT_ATOMIC") {
-		t.Fatalf("%+v", r)
+	p.Physical.Guarantee = &Guarantee{Level: "atomic-with-commit", Reason: "provisional D10: unverified"}
+	if r := Audit(p, h, m); !has(r, want) || has(r, "E2_PROVIDER_GUARANTEE_NOT_ATOMIC") {
+		t.Fatalf("provisional reason with an atomic level: %+v", r)
+	}
+	p = fixture()
+	p.Physical.Guarantee = &Guarantee{Level: "not-atomic", Reason: "declared by the Provider"}
+	if r := Audit(p, h, m); has(r, want) || !has(r, "E2_PROVIDER_GUARANTEE_NOT_ATOMIC") {
+		t.Fatalf("non-atomic level with an ordinary reason: %+v", r)
 	}
 	// An ordinary reason passes; the strict CLI accepts the field.
 	p = fixture()

@@ -569,6 +569,7 @@ func loadSemantics(root string, r *Result) error {
 		r.World.Semantics[idx].Data = append(r.World.Semantics[idx].Data, ns.Data...)
 		r.World.Semantics[idx].Capabilities = append(r.World.Semantics[idx].Capabilities, ns.Capabilities...)
 		r.World.Semantics[idx].Validations = append(r.World.Semantics[idx].Validations, ns.Validations...)
+		r.World.Semantics[idx].Calendars = append(r.World.Semantics[idx].Calendars, ns.Calendars...)
 		r.World.Semantics[idx].Periods = append(r.World.Semantics[idx].Periods, ns.Periods...)
 		r.World.Semantics[idx].EffectRules = append(r.World.Semantics[idx].EffectRules, ns.EffectRules...)
 		r.World.Semantics[idx].RunPlans = append(r.World.Semantics[idx].RunPlans, ns.RunPlans...)

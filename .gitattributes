@@ -3,6 +3,11 @@
 /plan/evidence/tei-e1-synthetic-38267656696/*.json -text
 /plan/evidence/TEI_E2A1_REAL_POSTGRES_RECEIPT_38311557882.json -text
 
+# Captured CLI output is hashed as raw bytes by the evidence README; checkout
+# and diff must not rewrite its line endings or encoding.
+/plan/evidence/COMPOSITION_FIRST_CONSUMER_RUN_2026-11-07/** -text
+/plan/evidence/DSH_H2_TOOL_ONLY_READ_ONLY_2026-11-07/** -text
+
 # Workspace source trees are fingerprinted byte-wise (sourceIndexFingerprint,
 # modelRevision). Checkout must not rewrite their bytes (#2399).
 /examples/first-capability-effect/** -text
@@ -13,3 +18,7 @@
 /reference/workspace/** -text
 /tools/reference-data-first-persistence/testdata/overlay/** -text
 /tools/reference-external-adoption-authority/testdata/consumer/** -text
+
+# Survey output is hashed as raw bytes by the evidence README.
+/plan/evidence/COMPOSITION_NEXT_EDGE_STATIC_SURVEY_2026-11-07/** -text
+/plan/evidence/DSH_H2_H3_FOUR_SESSION_2026-11-07/** -text

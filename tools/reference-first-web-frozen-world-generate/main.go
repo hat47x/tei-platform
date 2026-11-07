@@ -24,6 +24,7 @@ func main() {
 	lineageOut := flag.String("lineage-out", "", "optional build-only derived World/digest observation path")
 	grantsPath := flag.String("grants", "", "optional JSON grant file; when set, the observation path must be covered by it")
 	declarationPath := flag.String("declaration", "", "optional grants file the environment declared; when set, the grants must stay inside it")
+	accessLog := flag.String("access-log", "", "optional JSON Lines file recording whether the write was allowed")
 	flag.Parse()
 	if flag.NArg() != 0 || *application != "order_entry" || *baseline == "" ||
 		*revision == "" || *target == "" {
@@ -87,7 +88,7 @@ func main() {
 				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
 			}
-			if err := writeLineageWithGrants(*lineageOut, append(output, '\n'), grants); err != nil {
+			if err := writeLineageWithGrants(*lineageOut, append(output, '\n'), grants, *accessLog); err != nil {
 				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
 			}

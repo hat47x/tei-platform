@@ -8,6 +8,7 @@ import (
 	"tei/internal/command"
 	"tei/internal/security/effectcommit"
 	"tei/internal/security/effectcommit/commandadapter"
+	"tei/internal/semantic"
 )
 
 // RCAS-04 (#2564) on the product path: the same operation identity with a
@@ -43,6 +44,7 @@ func TestPostgresCommandOperationIdentityRejectsDifferentPayload(t *testing.T) {
 					OperationID:     "same-operation",
 					ExpectedVersion: expected,
 					Payload:         []byte(payload),
+					Effect:          &semantic.DataEffect{Kind: semantic.DataEffectUpdate, Data: "sales.order"},
 				},
 			},
 		}

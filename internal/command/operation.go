@@ -27,6 +27,13 @@ type OperationRecord struct {
 	// operations it applied. It keeps "no difference was found" distinct from
 	// "the executor could not say", which an empty Applied list alone cannot.
 	AppliedUnobserved bool `json:"appliedUnobserved,omitempty"`
+	// ReportedEffectMissing is true when the capability declared an effect but
+	// the executor returned none. The boundary does not reject this yet: doing
+	// so would make every executor that reports only a commit receipt (the
+	// effectcommit adapter) an unknown outcome. The field records the gap so a
+	// reader does not treat "no reported effect" as "the declared effect was
+	// applied" (#2996).
+	ReportedEffectMissing bool `json:"reportedEffectMissing,omitempty"`
 }
 
 // Recorder observes successful Command executions. It is optional; a recorder

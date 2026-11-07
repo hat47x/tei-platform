@@ -1,0 +1,9 @@
+measured_working_tree_of=db62a36a176f51dbcc36fd7cb9a6bbcf80ef35f
+note_on_head=the measurement ran in this worktree whose only non-Go additions are under plan/evidence; no Go file was added or changed, so go list -deps and the import scan are unaffected by the commit hash
+go version go1.27.0 windows/amd64
+OS=Windows 10.0.26100 (windows/amd64)
+pre_status=clean (git status --porcelain=v1 --untracked-files=all returned 0 lines)
+method=import-graph scan over every *.go under the repository (excluding .git), plus go list -deps for executable units
+note=the raw go list -json -deps stdout is a regenerable intermediate (about 2.5MB) and is not committed; import-graph.json keeps only the files that import a target and is committed
+tools=scan_imports.py + summarize_imports.py (Python 3) and go list -json -deps ./...
+python=Python 3 (bundled interpreter)

@@ -51,7 +51,18 @@ func loadGrants(path, declarationPath string) ([]permission.Spec, error) {
 
 // writeLineageWithGrants writes the observation using the supplied grants. The
 // requested path must be covered by them; the guarded filesystem checks it.
-func writeLineageWithGrants(path string, data []byte, grants []permission.Spec) error {
+//
+// accessLog is where the decision is recorded. A check whose outcome is not
+// recorded cannot be read back afterwards, so the caller may name a file; when
+// it names none, the decision is made but not kept, and the caller is told so
+// rather than being left to assume a record exists.
+//
+// The journal is chained: a decision written here cannot be edited afterwards
+// without breaking the chain. A journal that was already changed fails on the
+// append, which happens before the observation is written, so a run against a
+// changed journal leaves neither a record nor an observation behind. Removal of
+// the last line is not detectable from the file alone (see access.ChainFile).
+func writeLineageWithGrants(path string, data []byte, grants []permission.Spec, accessLog string) error {
 	absolute, err := filepath.Abs(path)
 	if err != nil {
 		return fmt.Errorf("resolve %s: %w", path, err)
@@ -59,10 +70,30 @@ func writeLineageWithGrants(path string, data []byte, grants []permission.Spec) 
 	if len(grants) == 0 {
 		return fmt.Errorf("no grants were supplied, so %s is not written", absolute)
 	}
+	guard := access.Guard{Granted: grants}
+	var journal access.ChainFile
+	if accessLog != "" {
+		journal = access.ChainFile{Path: accessLog}
+		guard.Journal = journal
+	} else {
+		fmt.Fprintln(os.Stderr, "注意: -access-log が無いため、この書出しの可否は記録されません")
+	}
 	files := access.FileSystem{
 		Root:       filepath.Dir(absolute),
 		Capability: lineageCapability,
-		Guard:      access.Guard{Granted: grants},
+		Guard:      guard,
 	}
-	return files.WriteFile(filepath.Base(absolute), data, 0o600)
+	if err := files.WriteFile(filepath.Base(absolute), data, 0o600); err != nil {
+		return err
+	}
+	if accessLog != "" {
+		// Verify after the write as well: the append verifies the journal it
+		// read, but a concurrent writer could have changed the file in between.
+		// The write has already happened, so the error says the record cannot be
+		// trusted rather than that the write was refused.
+		if err := journal.Verify(); err != nil {
+			return fmt.Errorf("the record of this write does not verify: %w", err)
+		}
+	}
+	return nil
 }

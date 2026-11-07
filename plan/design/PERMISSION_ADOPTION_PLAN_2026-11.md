@@ -170,3 +170,20 @@ tei grants -workspace reference/workspace -grants-out grants.json
 - `-grant-declaration` を渡さない発行は通しますが、**grounded でない**と標準エラーに書きます。記録に解像が残らないため、後から宣言に照らせません。
 
 **限界**: 解像の値を書くのは呼び出し側です。`issuedBy` と同じく、その値が環境の決定であることの証明にはなりません。示せるのは**宣言の外への発行が通らない**ことだけです。詳細は[動的な出力パスと宣言スコープ](DYNAMIC_PATH_GRANT_DESIGN_2026-11.md)の第10章。
+## 18. 判定を記録に残す（2026-11-07 追記）
+
+`access.Guard` は**すべての判定を記録**しますが、移行済みのツールは `Journal` を渡していませんでした。判定は行われているのに**後から読めない**状態です。「拒否された」ことを示すには、拒否が起きたことの記録が要ります。
+
+- `reference-first-web-frozen-world-generate` に `-access-log` を足しました。渡すと許可・拒否の両方が JSON Lines で残ります。
+- 渡さない場合、書き込みは従来どおり行われ、**記録されないことを標準エラーに書きます**。黙って「記録がある」と仮定させません。
+
+実機で確認した並び（この環境、Windows）:
+
+```text
+{"capability":"tei.frozen_world.lineage","allowed":false,"missing":["filesystem:write …\\obs.json"]}
+{"capability":"tei.frozen_world.lineage","allowed":true}
+```
+
+拒否のときは `obs.json` が作られず、同じログに許可も残ります。
+
+**この記録が示さないこと**: 記録が改竄されないこと（`access.File` は追記のみで、ハッシュ鎖を持ちません）。鎖つきの記録は `tools/reference-audit-log` に別途ありますが、ここでは接続していません。
