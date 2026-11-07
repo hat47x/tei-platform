@@ -1389,7 +1389,7 @@ Requiredが全社、Authorized/ActualがTenant A限定なら「Tenant Aの対象
 
 | ID | 同一Ruleからの構成と故障注入 | 独立Expected／採用停止線 |
 | --- | --- | --- |
-| **QTP-01 原子能力欠落** | Order合計Rule、Provider Aは完整なread cohort、Provider Bはページ途中まで。双方のQueryは成功 | Aの固定Scope内のみ全件候補、Bはincomplete。Providerの自己申告やrows returnedを完全性証拠にしない |
+| **QTP-01 原子能力欠落** | Order合計Rule、Provider Aは完全なread cohort、Provider Bはページ途中まで。双方のQueryは成功 | Aの固定Scope内のみ全件候補、Bはincomplete。Providerの自己申告やrows returnedを完全性証拠にしない |
 | **QTP-02 manual-required** | 必要なSnapshot/Identity能力を手動実装必須と宣言し、実装なし→実装後Conformance | 欠落はunfulfilled/開発診断。実装の存在だけでデータ品質PASSにしない |
 | **QTP-03 Pushdown非同値** | Order O1の明細2件×配送3件、SQL aggregateがJOIN fanoutで200→600 | 手作業で固定したExpected=200。GoとSQLが同じ誤りなら双方Fail（§27.8/§2593） |
 | **QTP-04 時点・権限** | Tenant AだけRLS可、Replica watermark遅延、Provider Bの未取得列を0へ | pass-in-scope/unknown/withheldを分離し、現在Primary・全社PASSへ拡大しない |
