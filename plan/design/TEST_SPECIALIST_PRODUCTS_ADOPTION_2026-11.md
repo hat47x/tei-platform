@@ -972,9 +972,9 @@ TT-89/90/92〜97は**この横断結合を新たに実行したわけではな�
 **今回の資格**：#3326 exact HEADのGitHub Actions局所Jobを照合し、既存#3176/#3325/#3327/#3328/#3331/#3318/#3263の限界を新たな依存順と横断反例へ整理した**設計追補**。本Draftの追記コミットに新Go/CLI/Browser/PG/H2/H3の実行は伴わない。#3324/#3326のmain統合、T1-B・実Provider・G4・Owner Meaning Acceptanceは未成立。新Runner、Resolver、Host、Authority、第二Scenario/Oracle正本を追加しない。
 
 <!-- tei-test-c1-and-tt56-convergence-20261108 -->
-## 22. 2026-11-08：TT-56二実装の収束・Go C1計測・T1-B実験の着手条件
+## 23. 2026-11-08：TT-56二実装の収束・Go C1計測・T1-B実験の着手条件
 
-### 22.1 現行PRとexact-head実証の再点検
+### 23.1 現行PRとexact-head実証の再点検
 
 | Draft | 検証方法 | 実証の状態 | 独立した価値／不足 |
 | --- | --- | --- | --- |
@@ -985,7 +985,7 @@ TT-89/90/92〜97は**この横断結合を新たに実行したわけではな�
 
 **収束の推奨**：#3262が独立Requiredを一つだけ固定し、ひとつの既存context_gate.py・ひとつの専用CIへ収束させる。優先は (a) 3 Rule集合・Required外non-overrejectを満たす検査、(b) 1 RuleのCanonical属性とRelationの追加確認が当該用途に必要かを独立Expectedで判断、(c) subject inspect / full-indexのReply byte数・受信完全性・許可Audienceを計測して最小Reader選択、の順。追加CLIを無条件に11種へ増やさない。全件IndexにはSource存在やSecretの開示面が増える可能性があるため、実Consumerの許可Scopeを測定せず外部Harnessへ公開しない。片方のDraftを残すとしても、もう一方は差分を整理して閉じ、二つの恒久的Test Consumerを運用しない。
 
-### 22.2 Go C0からC1を導出しない実装指針
+### 23.2 Go C0からC1を導出しない実装指針
 
 Goの標準Go coverは**statement/basic-block相当の実行記録**であり、C1の独立した分岐Outcomeの完全計測ではない。Go公式のbuild-cover（Go 1.20以降のbinary integration coverage）はCLIアプリの実測範囲を広げられるが、出力の百分率はstatementsである。Go公式のcover説明では複合論理式内側の&&/||は直接probeしない。この違いを前提に以下の三経路を分離する。
 
@@ -999,7 +999,7 @@ G1の最小比較対象は同一ifのtrue/false、false側が空のif、ifの&&�
 
 **率の記録**：対象Build/Instrumenter/Scope/Excludedと分母の出典を固定。Required BranchがunknownならC1率はunknown。既知部分のみ報告する場合は「bounded branch outcomes m/n」とし、全製品C1の百分率を名乗らない。真偽値の分岐網羅と各原子条件の独立効果（MC/DC）も別の指標。
 
-### 22.3 Blind T1-Bの実験手順を4条件の比較に固定
+### 23.3 Blind T1-Bの実験手順を4条件の比較に固定
 
 独立Evaluatorが公開Sourceから妥当なMeaning・合法Baseline・許可Contextを定め、まだ生成者に提示していないObligation（正・負の期待とMutant target）を保管する。Source自体の意味を隠して解けない課題にはしない。生成者はExpected/評価対象Mutant/隠れたGapリストを読めない。今までのline_number=0/#3017を再利用した場合は新規発見に加算しない。
 
@@ -1012,9 +1012,9 @@ G1の最小比較対象は同一ifのtrue/false、false側が空のif、ifの&&�
 
 各Trialの受入条件：Tool全Replyの受領・終了marker／SourceとTool/Build版一致、出力からの秘匿情報流出なし、Candidateが既存Caseと意味的に異なる、正常対照がPASS、目的の負例が対象Rule/Guardを識別、実Target到達、独立Expectedとの照合、可能なら当該Caseが実Mutantをkill。適格Trial間だけで成功率・false-qualified率・Tool呼出回数・Token・実時間・追加されたCoverageの**局所差分**を比較する。B0〜B2が同条件で再現できない場合は比較不可。Trialが1件ならProof-of-Mechanismであり統計的優位ではない。
 
-### 22.4 実装順序・担当・終結条件
+### 23.4 実装順序・担当・終結条件
 
-1. **直近**：§22.1の二Draftの対象HEAD証拠を確定し、#3262に一本化方針を渡す。Test用一時JSONの差分判定を共通化してもSource／Reader／Runnerの第二正本を増やさない。Issue #3223のMarkdown escaped-backtick事故は本Branch上で修正し、修正後のHealthを別Runで確認する。
+1. **直近**：§23.1の二Draftの対象HEAD証拠を確定し、#3262に一本化方針を渡す。Test用一時JSONの差分判定を共通化してもSource／Reader／Runnerの第二正本を増やさない。Issue #3223のMarkdown escaped-backtick事故は本Branch上で修正し、修正後のHealthを別Runで確認する。
 2. **P0**：#2514へC0（公式Instrumented CLI）とG1の局所C1を分けて引き渡す。Go計測の非対応を「全体C1=0%」とせずunmeasuredとする。最初のC1候補はRule Evaluator又は小さなHTTP Decision Handlerのうち、独立Outcome/負例を用意できる小Package一つ。
 3. **P0**：#3273/#1180/#2509を既存Runner/Scenario/Skillで用い、一つの真の未知Obligationを別Evaluatorで事前登録。実Harnessの受信・開示が不適格なら内側の限定CLIで先行し、外部H3と同等のTrialと呼ばない。
 4. **P1**：最初の局所T1-B結果をObligation差集合（required、received、proposed、reviewed、executed、independently-qualified、currently-usable）へ反映。必要なSource/Meaning/Target/Grantが欠落した場合は「次に何を取得すべきか」をテスト推薦の成果として記録する。
