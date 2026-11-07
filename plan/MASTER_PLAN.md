@@ -596,6 +596,14 @@ X-TEAのDB 1:1／1:N→XF単票・明細という対応を、**物理テーブ�
 
 **証拠の上限**：これは現行mainを起点とした設計資料と計画の整備であり、CX-01〜10の新試験、実Provider/Media/Renderer/Host接合、SHO/SUI実受領、Owner意味受理は**NOT RUN**。局所PRのGo/CI実績や見かけの同一表示を、実Product E2E／現在の適合資格へ自動昇格させません。並行変更がある場合は統合前に同一HEAD/内容差分を再照合します。
 
+### 製品実Readから二表現へ渡す初回受入（2026-11-07追補）
+
+上記の幅広いRP/MV/CX圧力ケースは維持するが、**最初にProduct資格を得る一本の実証**は[#2586 HR-01/02](https://github.com/hat47x/tei-platform/issues/2586)が所有する`order_entry.recent_orders` Headerの**Function→実選択Query/SQL・args→Runtime DataSource alias/物理Provider→actual Rowset/Scope/Field Presence→Function Data Context**に固定する。その後、同じContextからForm/Tableの**二つのread-only表現**を投影し、Identity・Grain・NULL/未取得・Page/部分集合・選択epoch・開示の一致と、情報損失を#2506/#2507/#2497で検収する。最初に欠ける接続辺はunresolvedとしてSource/Ownerとともに記録し、Headlessの参照・合成成功を実Product Read資格にしない。
+
+現main統合[#3195](https://github.com/hat47x/tei-platform/pull/3195)/[#3204](https://github.com/hat47x/tei-platform/pull/3204)のPattern↔Operation突き合わせ参照実装は8 Operation／5 Patternの局所結果があるが、**正式なFunction/Action dispatchとSQL Readerではない**。参照用実PG Readの[Draft #3238](https://github.com/hat47x/tei-platform/pull/3238)もProduct HR-01/02とは別。反対に、[main統合#3155](https://github.com/hat47x/tei-platform/pull/3155)は資源独立Readによる`resource-observed`を既に持つため「永続化の観測機構が全TEIで未実装」とは記載しない。**Resource Readの局所成立≠受注FunctionのHeader/明細完全Read≠業務Outcome**とする。
+
+順序はR1実Read→R2同一Contextの二read-only表現→R3必要な場合のみViewChange/typed Intent/現在Grant→R4 Effect/Receipt/独立Read→R5 SHO/SUI/Graph/Media異質Consumer。独立Expectedと否定依存／同件数異集合／LIMIT 1／Non-output Predicateの反例は既存#2514/#1180を再利用。詳細は[合成写像の適格性 §8](design/COMPOSED_REPRESENTATION_MAPPING_QUALIFICATION_2026-11.md)。新しい実行結果の主張ではなく、実Provider、Product二表現、Owner受理は**NOT RUN**。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
