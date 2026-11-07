@@ -276,3 +276,35 @@ W1で`docs/reference.md`をReadして完全path一致を観測後、**文書byte
 **評価票（公式Schemaではない）**：checkout/HEAD、各Source実byteとdigest、go toolchain/GOOS/GOARCH/CGO/tags、lexical discovered、selected by build profile、actually executed/result、read order、joint-cohort qualification、Scope/budget/failure、独立R(Q)、現在Disclosure、unknown/residual/next probe。Path・候補件数・Toolの存在・診断自体が機密になり得るので、外部へ示す票は既存[#2516](https://github.com/hat47x/tei-platform/issues/2516)に従う。候補名・Markdownは非信頼データであり、モデルへの命令として扱わない。
 
 **追加価値と境界**：決定的なProfile検査/再Readで十分ならモデルを導入しない。go list、mock、model-ranked、Attester verified、digest一致は業務意味受理/現在Grant/外部送出可否/独立Expectedを代行しない（[#2514](https://github.com/hat47x/tei-platform/issues/2514)、[SEI #820](https://github.com/hat47x/sei-cognition/issues/820)）。認知Methodが担うのは不足根拠と識別的な次Probeの選択（[SEI #767](https://github.com/hat47x/sei-cognition/issues/767)）、再開と現在資格は[TAI #271](https://github.com/hat47x/tai-pleroma/issues/271)に委譲する。#2196/#2021は閉鎖状態のまま。**CC-12〜15、実Go/CI、実モデル、実Provider/OS、Owner AcceptanceはNOT RUN**。第二Claim Store、Agent Host、Authority、認知/証拠Gateを作らない。
+
+<!-- tei-devctx-harness-delivered-evidence-20261107 -->
+## 14. P2-2c実測・P2後続：実Harnessの「取得・Tool返却・受領の完全性・利用資格」を別列へ接合（2026-11-07）
+
+### 14.1 §13の実装状態更新：CC-12/13だけ限定RUN
+
+PR [#3176](https://github.com/hat47x/tei-platform/pull/3176)の test-only `tools/reference-developer-context/profile_selection_characterization_test.go` に、独立の公開合成Packageを作る **CC-12（GOOS Linux/Windows）／CC-13（Go build tag）** の2つのGo Testを追加した。既存`Discover`による候補収集と、実Go Tool `go list -json` の `TestGoFiles` を別の入力・結果として照合する。Tool環境は`GOOS`・`GOARCH`・`CGO_ENABLED`・tags・toolchainを限定し、Sourceを変更せずにProfileだけ変える。Go構成選択は**実テスト実行・独立検証基準・Owner受理ではない**。
+
+- **Exact test commit**：`f0020c1b300a9f75d85e38b0709c531ba31786d8`。
+- [Focused CI #42345862680](https://github.com/hat47x/tei-platform/actions/runs/42345862680) の `bounded-discovery` は **completed/success**。実Job log `128323341089` に `TestDiscoveryProfileCC12GOOSSelection`（linux/windows両subtest含む）と `TestDiscoveryProfileCC13BuildTagSelection` の **PASS** が明示されている。
+- CC-14 fractured read／CC-15 check-open gap、製品Reporter修正、実Windows実行、実Model、実Provider、Owner受理は **NOT RUN**。このexact commitのrepo-wide healthが独立に成功したかは、該当Workflow結果を別途検証する。
+
+### 14.2 認知側に必要な証拠資格：Tool実到達と有効な回答を分ける
+
+他レーンの実証[TEI #2509](https://github.com/hat47x/tei-platform/issues/2509)、[統合済Evidence #3113](https://github.com/hat47x/tei-platform/pull/3113)、[四Session実Evidence](https://github.com/hat47x/tei-platform/blob/main/plan/evidence/DSH_H2_H3_FOUR_SESSION_2026-11-07/README.md)、[TAI #168 Runbook](https://github.com/hat47x/tai-pleroma/issues/168)を参照する。以下は**既存実測の認知評価への受渡し**であり、このPRでDSHを再実行した証拠ではない。
+
+| 実測された事象 | 認知Methodへの受渡し可能なClaim | 禁止する昇格／未取得 |
+| --- | --- | --- |
+| DSH H2-AでTool Call 56・Tool Result 55・TEI CLI実起動32。catalog Tool Result 8,192 byteで途中切断 | Harness→実CLI→Tool応答の限定経路は成立。Call/Result・必要Contentの全量到達は未確認 | Caller completed、同じFingerprintや一部JSONから`catalog complete`／全件を読んだと推測しない |
+| H3-A/Bが各5,482 byteの同一Skill本文を実Load、refs/read-only-model-investigation.md をToolで読取 | Product Skill root/参照ファイルの**限定Delivered/Read**実証 | Instructionを正しく適用、Required refs全閉包、独立正答、Capability/Authorityは未実証 |
+| H2→H3→H3→H2の実四Session completed | 技術的な実Session到達とSkill提示の有無は観測済み | H2-A再利用、Taskの論理Path差、隔離不足、許可外Tool、独立採点無し。TAIの**比較適格0/4**は不変 |
+| `read-only`を指定してもDSHが作業場所外SourceをReadした | 宣言mode≠OS/physical scope証拠 | Allowed Workspace/Tool/SourceやSecret不受領を自己申告しない。実隔離はTEI #2515／TAI #232 |
+| TEI実CLI `trace`は一部宣言済みkindを`SUBJECT_NOT_FOUND`で返す[#3180](https://github.com/hat47x/tei-platform/issues/3180) | 特定の投影対象のtrace失敗は、対応範囲外／未投影の可能性を保留 | `no relationship`／`source absent`／`all dependencies explored`へ昇格しない |
+| 実CLI replyにmanifest identityが無い[#3181](https://github.com/hat47x/tei-platform/issues/3181)、viewの`read-only`宣言でもflagにより局所FSへ書く[#3182](https://github.com/hat47x/tei-platform/issues/3182) | Reviewerは実argv・root realpath・manifest byte・出力先・実Effectを一試行へ別束縛 | WorldFP＝Workspace ID、command family read-only＝実Invocation無書込みを推測しない |
+
+### 14.3 P2比較の最小Evidence ladder（正式Schemaではない）
+
+**L0 宣言／候補**（Skill/Tool/Profile発見）→ **L1 実起動**（実argv/実Binary/実SourceとHost境界）→ **L2 実返却**（Call ID→Result ID・raw bytes/長さ/構造・stderr・truncate）→ **L3 必要根拠の到達**（問いQの必要R、選択済みGo Profile、actual complete read/Scope/共同成立・Source時点）→ **L4 独立評価**（hidden Expected・negative/control・誤不存在と未確認保持）→ **L5 現在利用**（Owner Meaning/Consumer Disclosure/Current Grant/Effect、各担当の観測）。これは**評価票上の証拠の分類**であり、共通Runtime状態型／新Claim Registryではない。
+
+一段前の成功から後段を推論しない。例えば Tool ResultがJSON構文としてvalidでも、Serverが部分集合しか返していない、Terminalが出力を切断した、Consumerが最後まで実受領していない、現在Grantが失効した場合は、問い相対にL3以降を未確認にする。一方、単一Witnessによる存在反証なら、全件閉包を必須条件にせず、対象帰属・版・開示の必要条件だけを評価する（[SEI #767](https://github.com/hat47x/sei-cognition/issues/767)）。
+
+**実行・評価Ownerと優先順**：最初の事前登録H2/H3比較ではTAI #168の固定Task/Skill/Expected/Tool集合を変更しない。G0（Participant隔離と許可Sourceの実Read拒否）→G1（実送出範囲）→G2（実Tool・受領byteとSource/Workspaceの束縛）を先に検収し、独立採点はTAI担当。TEI #2509は実Harness/Tool出力、TEI #3180/#3181/#3182はCLI個別契約、TEI #3061は固定Host物理rootの反例、TEI #2514は独立Expected、TEI #2516はPurpose/Disclosure、SEI #767は不足根拠と次ProbeのMethodを所有する。今回P2評価側はそれらを一つのClaimへ過剰集約しない。**新しいH2/H3比較実行、実SEI Method接続、OS隔離、全Scope/全件資格、Owner受理は本§14ではNOT RUN**。
