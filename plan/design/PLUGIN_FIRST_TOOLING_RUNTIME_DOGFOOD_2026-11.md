@@ -294,7 +294,7 @@ tests:
 | **PDC-04** | 同Bundleへ未使用Plugin Cを同梱 | Go import/init/actual BuildにCが影響しなければ既存選択は不変。実混入するなら非干渉PASSを拒否 | #1251/#943/#1097 |
 | **PDC-05** | invokerとinvokedの実行物を差替え、Child reportだけ同じDigestとする | 実Binary・Child argv/PID/exit・Disk Artifact digestの不一致を診断。L3への自動昇格なし | #2831/#3336 |
 | **PDC-06** | Plugin/Ruleの必須Sourceを`docs/plan`に置くだけ／CLI出力を途中切断 | managed/parsed/loaded/returned/end-markerを分け、Required Closure不明ならBOM qualification不許可 | #3262/#3346/#2509 |
-| **PDC-07** | A1/A2×Consumer C1/C2の4 exact tupleを実行 | #3297のMatrixは**計画のみ**。各tupleに同じTarget/Artifact/Independent Expected/Attemptと実B Providerを束縛。実呼出が欠ければnot-run | #3267/#1180/#2514 |
+| **PDC-07** | A1/A2×Consumer C1/C2の4 exact tupleを実行 | #3297のMatrixは**計画のみ**。各tupleに同じTarget/Artifact/Independent Expected/Attemptと実際に呼び出したProviderを束縛。実呼出が欠ければnot-run | #3267/#1180/#2514 |
 | **PDC-08** | A/B個別PASS・同一Attemptに見えるが別Source/Artifact/Expected/Scope | 旧資格の寄せ集めでQualified Unionを発行しない。失効Scopeだけ再検証 | #3267/#2600 |
 | **PDC-09** | 本体ではCLI read-only正常だがStudioから異Provider経由／Local-only権限喪失 | Serviceの意味とProvider使用を独立観測。UI表示と実Runtime資格を別判定 | #1824/#1124/#1174 |
 | **PDC-10** | Manual Required Trait未実装、代替Open Providerが存在する | #3278のAtomic Requirementが未充足なら勝手に代替実装へfallbackしない。Publisher Stableを強制しない | #3278/#3279 |
