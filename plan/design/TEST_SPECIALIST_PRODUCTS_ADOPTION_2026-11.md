@@ -851,7 +851,7 @@ TT-64〜66の*限定実Source/Lock試行*のみ#3299の実証を引用する。T
 
 ### 21.1 「カバレッジ」を一つの数字へ合成しない
 
-テスト推薦に渡す最小単位は、**対象Scopeにおける検証義務（Obligation）**。これは新しいTEI Core型・第二Scenario正本の採用提案ではなく、#3262のDesign Context、#1180のScenario、#2514のIndependent Expected、#1163のEvidenceから得るread-only投影の概念的な行である。各行は少なくとも \`Claim/Requirement ref、検証する条件・分岐・境界、対象Function/Rule/Relation/Guard、Sourceと受理範囲、Version/Target/Scope、独立Expected ref、必要な実Observation、既存Test/Receipt、取得・開示・資格状態\` を参照する。判定前に、Source/解析・Meaning・独立Expected・実Entry・Tool受領・現在Grantの不足を別々に残す。
+テスト推薦に渡す最小単位は、**対象Scopeにおける検証義務（Obligation）**。これは新しいTEI Core型・第二Scenario正本の採用提案ではなく、#3262のDesign Context、#1180のScenario、#2514のIndependent Expected、#1163のEvidenceから得るread-only投影の概念的な行である。各行は少なくとも `Claim/Requirement ref、検証する条件・分岐・境界、対象Function/Rule/Relation/Guard、Sourceと受理範囲、Version/Target/Scope、独立Expected ref、必要な実Observation、既存Test/Receipt、取得・開示・資格状態` を参照する。判定前に、Source/解析・Meaning・独立Expected・実Entry・Tool受領・現在Grantの不足を別々に残す。
 
 | 別々の指標 | 分母と観測方法 | 不正な昇格を止める条件 |
 | --- | --- | --- |
@@ -863,13 +863,13 @@ TT-64〜66の*限定実Source/Lock試行*のみ#3299の実証を引用する。T
 | **Plugin/BOM組合せ** | exact Contract/Provider/Consumer/Target/Lock tupleの必要組合せ | pairwise生成済み・部品単体PASSを実tuple合格へ加算しない |
 | **NFR／Effect／UI** | 時間・負荷・中断・秘匿・可用性等の宣言SLO/測定環境／実Read/Effect／実表示操作 | 合成Fixtureやmock、warm cacheのみの結果を実業務・実UIへ昇格しない |
 
-各分母は \`required-known / required-unresolved / excluded-with-reason\` を分ける。独立Requiredの閉包が未証明なら「既知部分に対する局所率」だけを対象・revision付きで示し、**全体率の確定値は unknown** とする。Coveredも \`planned、generated、reviewed、executed、observed、independently-qualified、currently-usable\` を混ぜない。Test生成によって単に候補数が増えたことは、C0/C1/業務Coverageの上昇ではない。
+各分母は `required-known / required-unresolved / excluded-with-reason` を分ける。独立Requiredの閉包が未証明なら「既知部分に対する局所率」だけを対象・revision付きで示し、**全体率の確定値は unknown** とする。Coveredも `planned、generated、reviewed、executed、observed、independently-qualified、currently-usable` を混ぜない。Test生成によって単に候補数が増えたことは、C0/C1/業務Coverageの上昇ではない。
 
 ### 21.2 Pattern推薦は、まず「なぜ未カバーか」を選ぶ
 
 #3262のRequired Closureと受信完全性を先に照合し、**Source/Parser不足、Meaning未受理、独立Oracle不足、実Target/Consumer未到達、Grant/Disclosure失効、真にTest未実行**を分類する。最初の五つに対しては不足を埋める操作・追加調査を優先推薦し、最後だけ新Test Candidateへ進む。AIはTool/DSL出力の形式から暗黙に意味・権限を補わない。
 
-真のGapへ適用するTest Patternは \`必要なMeaning/型/Unit/Grain/Scope、前提、最小入力変更、合法Baseline、変えてはいけない独立Invariant、Expectedの取得先、実Entry/Observer、故障注入可能点、失効条件\` を持つ。初期の候補群は次のように一般化する。
+真のGapへ適用するTest Patternは `必要なMeaning/型/Unit/Grain/Scope、前提、最小入力変更、合法Baseline、変えてはいけない独立Invariant、Expectedの取得先、実Entry/Observer、故障注入可能点、失効条件` を持つ。初期の候補群は次のように一般化する。
 
 - **Rule境界型**：範囲端点・NULL/欠損・精度・一意性／複合キー・時刻境界を、型とOwner受理済みRuleに応じて選ぶ。既知行番号0例を新発見に流用しない。
 - **Topology／Query型**：1:N×1:Nの行増幅、Entity/Relation/Occurrence別粒度、空と未取得、部分集合・NOT EXISTS、別時点Sourceを反例化する。実ProviderとQueryの選択byteがない場合は「未実証」。
@@ -881,9 +881,9 @@ TT-64〜66の*限定実Source/Lock試行*のみ#3299の実証を引用する。T
 
 ### 21.3 T1-B最小試験を、盲検発見と「誤って通るテスト」の検出に分解する
 
-**事前登録**：Independent Evaluatorが、既出 \`line_number=0\` と公知#3017 Mutantとは異なる一つのQualified Scopeを選び、未カバーObligation、合法Baseline、正負Expected、比較用の正しい実装と意図的誤実装（可能なら無関係の対照変更）を固定。保管は#2514のOwner境界。AIにはRuleを理解するのに許されたSource/Design Contextは開示するが、選択された隠れたGap一覧、採点・Mutation・期待値表・Holdout手順は見せない。Rule Meaning自体を隠して不可能問題にしない。実受領が不完全なら \`ineligible\` とする。
+**事前登録**：Independent Evaluatorが、既出 `line_number=0` と公知#3017 Mutantとは異なる一つのQualified Scopeを選び、未カバーObligation、合法Baseline、正負Expected、比較用の正しい実装と意図的誤実装（可能なら無関係の対照変更）を固定。保管は#2514のOwner境界。AIにはRuleを理解するのに許されたSource/Design Contextは開示するが、選択された隠れたGap一覧、採点・Mutation・期待値表・Holdout手順は見せない。Rule Meaning自体を隠して不可能問題にしない。実受領が不完全なら `ineligible` とする。
 
-**提案**：Generatorが \`Rule ref、未カバー理由、合法Baseline→入力差分、正例＋負例、変えてはいけない他のRule/状態、実行入口・必要観測\` を返す。既存Caseと等価なInput/Target/Expectationの重複を判定し、Case IDや文章が新しいだけでは \`novel=false\`。候補はprovisionalで、永続Scenario SSOTへ無審査追加しない。
+**提案**：Generatorが `Rule ref、未カバー理由、合法Baseline→入力差分、正例＋負例、変えてはいけない他のRule/状態、実行入口・必要観測` を返す。既存Caseと等価なInput/Target/Expectationの重複を判定し、Case IDや文章が新しいだけでは `novel=false`。候補はprovisionalで、永続Scenario SSOTへ無審査追加しない。
 
 **独立評価**：Reviewerは候補受付後にHoldoutへ照合し、既存#1180の一時Scenario→verify/generate/check→pinned実CLIを走らせ、(1)正常実装で合法Baselineが合格、(2)目的の負例だけが指定Rule/Guardを拒否、(3)実Targetに到達している、(4)偽Expected・無関係の変更・常時fail・別Case failureでは誤ってkill認定しない、(5)対象Mutantに対し**当該Caseが**独立Expectedと異なる結果を観測、を別々に判定する。Mutationを利用できない対象ではMutation結果はnot-runとして残す。
 
