@@ -1237,7 +1237,6 @@ G0/G1/G2は**全面的な直列開発を要求しない**。DB fixtureとProvide
 
 **資格の上限**：本節はGitHubのソース/Issue/PR静的照合と計画更新のみ。`P0-A0/A1/B/C`の実TEI CLI/Stage Go Run、fresh full checkout、CI・独立Review/Owner承認は未取得。現在のG4=`UNQUALIFIED`。業務G1/G2・Studio M0/M1・ETL実配送に新Hard dependencyを追加しない。
 
-
 <!-- tei-2831-20261106-module-closure-recursive-selfbuild -->
 ### 35.2 2026-11-06 最優先Gapの実ソース追跡：外部Go Module閉包と本当の再帰的セルフビルド
 
@@ -1295,7 +1294,6 @@ version-pinned BuildIntent / Source revision
 
 **独立検証の責務**：実Go Preflight/外部module閉包=#1090/#1096/#2831、subject binding=#1080/#1097、Stage/Trust=#973/#979/#1104、図表投影=#2620/#2966、過剰・誤再利用=#2600、Target別nested module=#1251。新Core Schema、万能Builder、外部Dependency Store、Host、第二Runnerを先行採用しない。#2876と#2877の§35重複も統合前に一方へ収束する。
 
-
 <!-- tei-2831-20261106-actual-tei-reentry-interface -->
 ### 35.3 2026-11-06 TEI自身の実行入口（Re-entry）を追加Gapとして特定する
 
@@ -1328,3 +1326,21 @@ version-pinned BuildIntent / Source revision
 
 **提出/受理の上限**：この追補はGitHub上のコード/Issue/PRの静的調査にもとづく設計候補。G4=`UNQUALIFIED`。実TEI CLIのL1/L2/L3、真の実Process image照合、実Go/CI/全Health、採用Ownerレビュー、Phaseごとの完全Source/Host観測は**NOT RUN**。#2876と#2877の同一ファイル§35重複を解消するまでどちらもmainへ独立統合しない。
 
+<!-- tei-self-build-fitgap-p0-20261105 -->
+## 35. 2026-11-05 TEI全体セルフビルド Fit/Gap：G4の最短実証をP0並行に昇格（提案）
+
+**本節が最新の作業優先順**。§9/§30の「自己構築はP1並走」「wave4」は当時の判断として保持するが、[Issue #1119](https://github.com/hat47x/tei-platform/issues/1119)の2026-11-04追補に従い、**セルフビルドの最短縦切りだけをP0並行**へ引き上げる。既存G0〜G4の定義と業務Web/DB P0のHard dependencyは変更しない。担当・受入の正本は[Issue #2831](https://github.com/hat47x/tei-platform/issues/2831)に置き、#943（Plugin self-build Referenceとしてclosed）の二重起票・再実装をしない。
+
+**照合版** main `36bda76271db4db72ddd41a8566d281f02764b8a`。既存`tools/reference-build-execution-binding/`はBuildExecutionPlan/ArtifactSet/Result、Build-only DAG、seed/stage edge、失敗時pin拒否をReferenceとして表現する。`tools/reference-build-authoring-intent/`はPlugin主体のBuildIntent→BuildPlan導出（実ビルド実行・非Plugin主題・.tei構文は対象外）。`.github/workflows/tei-self-build-qualification.yml`はPlugin SB-3＋exact Engineの参照CIを定義するが、TEI全体の標準構造Graphを正本としてTEI CLI等の実成果物を再生成したという証拠ではない。
+
+| 順位 | Fitを再利用して解く具体Gap | 担当・最初の独立したExit |
+| --- | --- | --- |
+| **P0-SB-A / 最優先** | **標準データ構造に記述した有効Build graphと実行済み工程が一致するか**。既存BuildIntent/BuildGraph、型付きSource/Operation/Dependency/Resultを連結。実行器が実際に開いたSource bytes、toolchain、環境、生成入力、Node/Edgeと出力memberを記録し、宣言外工程・missing edge・undeclared input・Graphにだけある未実行工程をそれぞれ未証明または拒否。Diagramはこの同じGraphからのread-only投影で、図中にない隠れフックを許さない。 | #2831、#2620/#1063、#1109/#1103。まず既存Plugin SB-3 Referenceの**実工程**をGraphと照合する一つのHeadless fixture。独立したGraph Model/Runner/Core DSLを先に新設しない |
+| **P0-SB-B / Aと並行可能** | **非PluginのTEI自身の実成果物**（最初はCLIかRuntime Engineの一つ）へ、正確なBuild subject、BuildIntent→解決済みPlan、言語Adapter、Source closure、toolchain、Artifact Set/Result、digest、Lock、runtime engine bindingをつなぐ。Plugin identityを偽装しない。 | #2831、#1080/#1097/#1096/#973。実バイトを二度構築してdigest比較、Source改版で失効・docs-only非干渉・wrong engine/target拒否を一件ずつ |
+| **P0-SB-C / A+B接合後** | **Stage0→Stage1→Stage2の実行・収束**。stage0 seedの外部性とexact実行identity、同じSource closureとbuilder/program、stageごとのartifact digestを別々に記録。stage1/stage2同値と、seed/engine/Source/Builder変更時の失効・不収束を検証する。 | #2831、#979/#973/#1095/#1083/#1163。収束Evidence、失敗Evidence、exact-head/clean pre-post、実バイナリに結びつくProofの未取得を分離。収束はseed trustや正式Acceptanceを意味しない |
+| **P1-SB** | 複数logical subject→一physical Artifact、複数output/Target、一式の公開・増分Build省略・selective Evidence再資格化・Studio図表Projection | #1097、#2600（Draft #2636を再実装しない）、#1016/#1124 |
+| **P2-SB** | Go以外のbuild adapter、Web/Java/.NET/Wasmや書籍等の異種Target、全TEI成果物のrelease-wide self-hosting | #1101/#1121/#1016 |
+
+**受入・Claimの停止線**：(a) GraphのfingerprintやRenderer表示のみで実工程を見たとしない、(b) Runtime PluginのSB-3同値をTEI全体のself-hostingと呼ばない、(c) Go外部seed・現行Toolchainの事実を隠さない、(d) exact Source/Builder/Target/Artifact/Build Evidenceが一致してもOwner意味受理・現在のRuntime権限・本番配備を主張しない、(e) 旧G4は**UNQUALIFIED**を維持する。最初の業務P0（#1127/#1163）やStudio M0/M1（#1124）には新たなHard blockerを設けない。
+
+**この追補の実施区分**：main上の静的Source/Issue/Workflow照合にもとづく**優先順位・Fit/Gapの設計提案**。PR branchでの実Go/Node Build、CI run、exact-head全Repository Health、Stage1/2実収束、人的Owner受理は、この追補で新規に実施していない。確認できた既存Referenceの有無と、新しいProduct E2E資格を混同しない。
