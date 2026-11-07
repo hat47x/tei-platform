@@ -380,6 +380,36 @@ Apache Kafkaは、Kafka Topic間ではtransactional producerとconsumer offset�
 
 **資格**：ここまでの差分は既存Go/Pythonの静的読取とIssue/PR照合だけ。AP-12の新たな実行、正規Manifest＋別Readerの同Attempt E2E、MFT Recipient/実PG/Owner受理はNOT RUN。既存merged testsとRepository Healthの合格は、その限定範囲のみの実証。
 
+### 12.3 2026-11-07 既存AP-12の限定Executable Reference接続
+
+[本設計のmain統合 PR #2827](https://github.com/hat47x/tei-platform/pull/2827)後、受入実証を既存[#2604 AP-12/13](https://github.com/hat47x/tei-platform/issues/2604#issuecomment-6585644900)へ委ねたまま、**小さな候補[Draft #3256](https://github.com/hat47x/tei-platform/pull/3256)**を追加した。これは**一般のManifest→Path方式の採用ではなく、公開`ledger` Fixtureの限定Reader検証**である。
+
+- **入力／Owned Scope**: `reference/standard-crud/workspace`、Application `ledger`。既存`tei artifacts`のfull ArtifactSet/Manifest出力と、`-out`のfresh directoryの同一試行比較を継続。Writerが別途呼ぶ`artifactFileName`をExpected生成に再利用せず、3つのtable（`public.notes`／`public.orders`／`public.order_archive`）、1つのfunction（`ledger`）、operation surfaceの5相対Pathを**Reference固定のExpected Layout**とする。別Applicationへ一般化しない。
+- **P0-A負例**: 二つのTableの物理ファイル名は固定のままBodyを交換する。旧Python Readerの`Counter(expected Bodies)==Counter(actual Bodies)`はTrueでも、`path→member→byte`を照合すれば拒否（AP-12）。Rename／余剰／Directory／欠落／重複／Role改変／Body改変も個別に拒否する。
+- **局所結果**: Python helper＋単体試験をローカルで**9/9 PASS**（2ファイルをGitHubで再取得し、ローカル実行版とGit blob SHA一致）。これは**合成FixtureのReaderロジック**の結果であって、Go ArtifactSetの正式Manifest出版、複数Consumerの原子的一式読取、HULFT/PG/Business Owner受理ではない。
+- **既存実CLI CI**: [`tei-one-revision-capability.yml`](../../.github/workflows/tei-one-revision-capability.yml)へ上記9試験を追加し、同Workflowの実Go CLI build／実`ledger` Artifact/Manifest出力を新Readerへ接続。**exact-headのCI合否が観測されるまでは実CLI検証未成立**。Repository Healthや別PRのCIを代入しない。
+- **P1/P2への引継ぎ**: #2604 AP-06/08〜16のR1/R2世代切替・旧Member GC・Manifest自体のPath/Content byte Binding資格、#2630の用途別Required Member、#2542 EF-01〜03のRecipient/ImportUnit、#1130のRunPlan・#1174のEffectを独立した未成立Claimとして保持。Path/byte Witnessの成功だけで`Artifact.Verify`をdiskから再構築したとも、`Manifest.Complete`がConsumer必要集合全件を保証したとも称さない。
+
+**採否**: 一般のPublication Mapping、標準RoleやManifest Entryの変更、任意Transport/MFT Adapterは、現在の5ファイルFixtureだけでは根拠不足。別Reader・別Host・第二Scenario正本を作らず、#2604 Ownerが実証と互換性に基づき方式を選択する。
+
+### 12.4 2026-11-08 結果確認と、Byte／Envelope境界の独立負例
+
+**PR #3256 の最初のexact HEAD `bcf77d7bd8dd1dc7e9242a6d708761c1f613693a`についてGitHub APIで実結果を確認**:
+
+| 実行根拠 | 成立した範囲／別資格 |
+| --- | --- |
+| [one-revision actual Go CLI＋Python Reader CI #42348103565](https://github.com/hat47x/tei-platform/actions/runs/42348103565) | completed/success。exact HEAD checkout、pinされたGoツールチェーンによる実CLI build、9件のPython単体、同一公開`ledger` WorkspaceのArtifact生成と実Path/Byte Reader、改名によるSource revision差の実検証。これは**一つのfresh-dir**での受領に限る |
+| [Repository Health #42348103549](https://github.com/hat47x/tei-platform/actions/runs/42348103549) | completed/success。上記実CLIとは別の全体健全性検査 |
+| [Dependency scan #42348103617](https://github.com/hat47x/tei-platform/actions/runs/42348103617) | completed/success。root/studioのgovulncheckと参照Workbench等のnpm auditのWorkflow結果。実Provider接続やBusiness Policyの安全証明ではない |
+
+追加する**同じ既存Unit Testへの負例**（本節執筆時点で新HEADのCIは別に必要）:
+
+- **AP-01/06（読取側の反応）**: R1のManifestを保持しつつ一つのMemberだけR2のBodyに置換。限定ReaderはR1受領資格を拒否することを確認する。ただし**既存Writerが必ず原子公開することの実証ではなく**、失敗後のRecoveryと旧版pin/GCの保証でもない。
+- **AP-10/11（過剰資格化の拒止）**: Bodyを同じに保ち、Rule Version／Generator／Unresolved詳細だけを変更。Byte限定Readerは同じBody digestを返し得るため、結果の資格を`ledger-fixture-path-to-bytes-only`に限定し、`Artifact.Verify`・意味の同一性・業務受理を出力しない。**同じbyteだから同じArtifactとはしない**。
+- **実装担当を増やさない**: #2604が物理Publication/Consumer Reader、#2482がArtifact Envelopeの内部検証、#2630が用途別RequiredMember、#2542が外部Recipient/Import、#1174がEffectを担当。#2831／PR #3313の外部Module opt-inはBuild Sourceの独立証拠であり、Ledgerのファイル読取PASSをSelf-build全閉包や実MFT保証へ移さない。
+
+**次の受入順**: (i) #3256 exact HEADの11 Python例＋actual Go CLI CI結果、(ii) #2604が所有する**正規Manifestを維持したR1/R2公開競合と独立Consumer pin/GC**、(iii) #2542 EF-01〜03で実送達/ImportUnit/期間、(iv) Owner承認付きEffect。新Renderer、Publication Mappingの正式API、専用Completion Engineの先行採用は不要。製品E2E・Windows/FS差・実MFT・業務Owner受理は引き続きNOT RUN。
+
 ### 追加一次資料（製品・仕様の版に依存する事実）
 
 - Apache Iceberg spec, snapshots / optimistic concurrency: https://iceberg.apache.org/spec/

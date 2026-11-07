@@ -19,6 +19,8 @@ import shutil
 import subprocess
 import tempfile
 
+from publication_path_readback import verify_ledger_publication_paths
+
 SOURCE = Path("semantic/sales/order.tei")
 MOVED = Path("semantic/sales/order-relocated.tei")
 
@@ -113,16 +115,16 @@ def verify_reader(binary, workspace, application, baseline, directory):
             "real manifest file content differs from expected stdout")
     require(stored["findings"] == baseline["artifacts"].get("findings", []),
             "real manifest file findings differ")
-    physical = [p for p in directory.iterdir() if p.is_file() and p.name != "manifest.json"]
-    require(all(p.parent == directory and not p.is_symlink() for p in physical),
-            "unexpected artifact paths")
-    expected_bodies = Counter(
-        member["content"].encode("utf-8") for member in baseline["artifacts"]["artifacts"])
-    actual_bodies = Counter(p.read_bytes() for p in physical)
-    require(expected_bodies == actual_bodies,
-            "published file bytes do not cover the exact ArtifactSet content")
-    return {"file_count": len(physical), "reader_validated_bytes": True,
-            "manifest_file_sha256": hashlib.sha256(manifest_path.read_bytes()).hexdigest()}
+    # This reference is restricted to the public standard CRUD ledger fixture.
+    # Its expected path layout is independent of the Writer's naming function.
+    # Checking a Body multiset alone would accept two swapped table file bodies.
+    require(application == "ledger",
+            "path/member witness is only qualified for the ledger reference")
+    readback = verify_ledger_publication_paths(
+        baseline["artifacts"]["artifacts"], directory)
+    return {"reader_validated_bytes": True,
+            "manifest_file_sha256": hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
+            **readback}
 
 
 def main():
@@ -198,7 +200,9 @@ def main():
             "old_operation_plus_new_artifact_qualified": cross_command_join_qualified,
             "limitations": ["no mid-command mutation or atomic-snapshot proof",
                 "no Host/Provider/Skill/SHO/Owner acceptance",
-                "workspace source copied to temporary directory"],
+                "workspace source copied to temporary directory",
+                "ledger fixture path/byte witness only; not full Artifact envelope verification",
+                "no atomic multi-file publication or independent recipient acceptance"],
         }, ensure_ascii=False, sort_keys=True, indent=2))
 
 
