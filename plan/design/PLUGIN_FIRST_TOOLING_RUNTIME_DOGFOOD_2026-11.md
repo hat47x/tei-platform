@@ -175,7 +175,7 @@ tests:
 | Data/Function/Representation Extension Type | どのTraitをどの文脈で要求し、どのBindingを使うか | Target/Function contextなしの万能「編集可」「読取可」は不可 |
 | Default/Manual Implementation | provides/implements、Contract fingerprint、Target/Profile、実選択根拠、actual artifact | ContractにDefaultを同梱しただけで実Byteが選ばれたことにしない |
 | Composition | requires closure、excludes、Conflict、resolved Lock、選択理由とunknown | 依存未探索／ロード順後勝ちを成功扱いしない |
-| Test/Proof projection | Requirement/Scenario ID、Independent Expected、Mutant、实际実行Actor/Attempt、Coverage/Claim ceiling | 個別Traitのテスト合格から合成BOMの合格を作らない |
+| Test/Proof projection | Requirement/Scenario ID、Independent Expected、Mutant、実際の実行Actor/Attempt、Coverage/Claim ceiling | 個別Traitのテスト合格から合成BOMの合格を作らない |
 
 この構造は**編集用言語構文の決定ではない**。日常DSLにGoのstruct、func、package、型引数の露出を強制せず、ドメイン専門家が読む順序（対象→付加する意味/義務→既定実装または実装要求→テスト）を最優先する。
 
@@ -211,5 +211,7 @@ tests:
 - **D6/BOM/セルフビルド**：原子Trait単独の緑とTrait合成/Plugin Version Matrixの緑、実TEI自身のStage2再入を分けて評価。#3267はComposition資格、#2831は真のSelf-build、#2600はCache再利用の資格を持ち、相互に自動認定しない。
 
 **採否判断の計測軸**：新Trait 1件追加に要するCore変更件数（理想0）、Extension記述の構文ノイズ、必須未実装の検出率、合成衝突の偽PASS/過剰拒否、Tool/Runtimeの実Effect広告の正確性、CLI/Studio/Targetの同一契約適合、Provider別手動コード量、Target/Lock差分による再試験範囲。少なくとも2種類の異質なConsumerと正負1件ずつを先行する。
+
+**比較参考（TEI固有方式の採用ではない）**：Rust Traitは実装必須memberとDefault memberを区別する（https://doc.rust-lang.org/reference/items/traits.html）。Go interfaceはMethod Set/埋込みを合成し、同名別Signatureの合成は不正である（https://go.dev/ref/spec）。Java interfaceのDefault実装は多重継承時に衝突し得る（https://docs.oracle.com/javase/tutorial/java/IandI/multipleinheritance.html）。TEIはこれらの言語記法を日常DSLへ露出せず、原子性・実装必須・適合診断・明示Conflict解決という振る舞いだけを候補にする。
 
 **現在の資格**：本節はIssue・現行Code・他チャット方針を照合した設計計画であり、Trait公開Schema/DSL、実Plugin移行、TRF-01〜12、新しいGo/CLI/Studio/Provider試験、Owner正式採用は **NOT RUN／未採用**。本DocのD1試験を通したときだけ、実装方式の判断を更新する。
