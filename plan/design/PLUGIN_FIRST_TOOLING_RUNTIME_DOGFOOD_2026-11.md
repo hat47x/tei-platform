@@ -142,6 +142,45 @@ tests:
 - D1を最小Go Targetで実証した後、D2で追加した抽象が開発負荷と安全上の効果を改善しなければ、Interface/Roleを縮小・撤回する。意味・認可・Buildの新しい第二基盤は採用しない。
 - 本書に含むCLI/Studio共通Plugin実利用、Generated App再利用、実Build Closureテスト、Studio E2E、Self-build Stage試験は**NOT RUN**。独立Expectedとexact-head CI、実Target負例を実施してから段階的にQualificationを判断する。
 
+## 8. Desktopで最初に通す縦断：PluginのRead-only OperationをCLI／Studioへ同一契約で接続する
+
+**追加背景（2026-11-07、#1824 Consumer・#3270 Workbench・#3274 HTTP Graph・#3262 Design Contextと照合）**：現行 `cmd/tei/cli_commands.go` の手書きコマンド、`cmd/tei-studio/main.go` の固定 `StudioBridge`、`reference/tei-studio-workbench/main.ts` のSource Subject Catalog・`validate/refresh/inspect` は、同じContract/Providerの実選択と呼出しを共有していない。これを「CLI/StudioはPlugin化済み」や「任意のData Source/Graphを汎用表示・操作済み」と見せない。Studioの既定 `/workbench/` とBootstrap `/`、生成アプリTargetの証拠は別に取る。
+
+**D1の実装対象を絞る**。新しい汎用Plugin Manager、UI Registry、HTTP Graph Renderer、Data Source Backendを先行しない。最初のOperationは現存する **read-only `inspect` または `model catalog` の一方**に固定し、既存のTyped Service/Source Index/Host公開制約をProviderとして包んだうえで、#951/#1016の実Compositionが選んだexact ProviderをCLIとStudioの二Consumerへ引き渡す。既存の結果・診断を利用し、両者で同じMeaning/Read scope/Failureを観測できるか確認する。Wails Bridgeは薄いAdapterとして残せるが、選択Pluginに依存した意味分岐・固定Command追加を重複正本として増殖させない。
+
+### 8.1 Producer→Consumerの接続で消してはいけない情報
+
+| 区間 | 取得すべき証拠（既存契約へ束縛する候補。新Schema／正式CLIは未採用） | そこから言えないこと |
+| --- | --- | --- |
+| **要求と資格** | Caller、Workspace/Subjectのstable ref、用途、expected World/Source Index/Accepted Revision、現在のHost/Disclosure scope | Subject名が一致するだけで現在の開示・実行が許可された |
+| **Contract/Provider選択** | Contract/Version、実Provider identity、selected exact Lock、未選択/複数候補/Contract不一致の診断、実呼出しTarget | Plugin Packageに同梱／Capability宣言あり＝実Providerが選択・実行された |
+| **実Source/Design Context** | Required/Discovered/Loaded/Parsed/Bound/Returnedの用途相対集合、Provider読取範囲・取得時点・粒度・NULL/欠損/非開示/partial | Catalog件数、validate.ok、終了コード0、切断されたJSON＝完全な対象設計情報 |
+| **UI Presentation** | 同一Resultの公開可能なField/Relation/Source locationとLoss、表示Plugin・Target版、Selection/Workspace epoch、受領完結 | StudioのTable/Graph表示やARIAの選択＝Source Editorの受理／Dataの更新Target／Host Grant |
+| **Result/Recovery** | Typed failure/unknown/unsupported/stale・受領完全性、exact Operation/Attempt、実証時は独立Expected | read-onlyの成功＝業務Action/HTTP Effect/Receipt/資源現在値／Owner Completion |
+
+D1では**read-onlyなので外部Write Effectは発生させない**。ただし外部データを読むProviderではネットワーク・課金・秘密取得などの利用条件があり得るため、read-onlyという名前だけで暗黙接続・全件検索・外部送信を許さない。実際のProviderが未配線なら、Stub/Referenceの応答をProduct実Readとして表示せず `not-connected` を残す。
+
+### 8.2 他チャットの成果をDesktop固有のConsumer圧力へ接続
+
+1. **汎用Data Source Workbench #3270／RQ-035**：初期はschema/Query Catalog等の読み取り専用候補だけを共通Operationで検証。実SQL Row/Field/Scopeを読み込んでいない場合、Table/Treeを描画できても「異種Data Source閲覧完了」とはしない。DDLのPlan/Applyはread-only Pluginの機能へ暗黙付与しない。DROPや型縮小は別のIntent/Grant/実Provider/独立再観測（#2892のMigration History unknownを含む）。
+2. **HTTP Response Decision Graph #3274**：標準有向多重GraphのNode/Edge/Guard/Outcomeと、Client Reaction/Recoveryは用途別Projection。既存 `reference/tei-studio-workbench/presentation.ts::relatedGraph` はCatalogの単親・最大8 Entryだけ、`reference/tei-studio-graph/graph.ts`はself-edge未対応のread-only Rendererなので、実HTTP/業務の複雑な多重GraphのConformanceには使えない。初回は許可されたNode/Edge表／Source参照／未対応診断を共通Read Contractで表示し、適格なGraph Rendererができてから同一Sourceから比較。Graph表示やOpenAPI生成は実Server Guard/Client Retry安全性の証拠でない。
+3. **Design Context Query #3262／AIテスト #3273**：CLI/Studioの読取りは、Required集合とSourceの実読取閉包、page/cursor/end marker、途中切断/欠落Reply、現在Disclosureを同じ実根拠から説明する。人間向けに短縮した表示からRequiredが欠けても「complete」としない。CLIの9 read-onlyコマンド/限定T0 PASSはP-1b全閉包QueryやAI新Case生成の証拠ではない。
+4. **Verified Composition BOM #3267**：同一Contractを供給するProvider二版／Renderer二版の各exact Lock・実Build/OS/Scopeを別資格として扱う。StudioのPlugin一覧に見えること／参考的Matrixのpairwise coverageだけから、実Windows Wailsや生成Goアプリでの相互運用性を保証しない。選択されないPluginの `init`・import・asset混入も実Buildで確認する。
+5. **Raw Authoring/SHO**：`*.tei.md`のParser未対応・Syntax errorでも、Hostに許された原byteのOpen/Raw Saveは意味WorkspaceのLoad成功へ依存させない。Editorの保護対象はSource raw byte/Revision/dirty bufferであり、D1のInspectorや意味受理/Provider接続の成否はRaw Draft保存の資格を与えたり奪ったりしない。
+
+### 8.3 既存EDP／Scenarioに追加する最初の一因子対照（新Scenario SSOTなし）
+
+| ケース（EDP-01〜12と組み合わせる） | 同じ独立Expectedで区別する観測 |
+| --- | --- |
+| **DC-01** 選択済みread-only Inspect ProviderをCLIとStudioから同一固定Workspace/Subjectで呼ぶ | Contract/Provider実解決・Scope・Source/Revision・結果Field/診断・missing/partialが同じ。UIが簡略表示しても意味と完全性は変わらない |
+| **DC-02** Plugin未選択・Providerが二つ・同ID別Version | 選択理由と停止理由を明示。旧CLI手書き経路やStudio固定Bridgeによる無言fallbackで実行しない |
+| **DC-03** Sourceを1版変更／8,192-byte途中切断／Tool Reply欠落 | 旧Buffer/旧Response/旧pageを現在扱いしない。exit0・Catalog有件数・画面表示成功はread closure completeの証拠としない |
+| **DC-04** Catalog Graphの多重辺／9要素／未知Role、HTTP decisionの自己ループ | 既存Graphへ押し込まず、表／Source navigate／unsupportedに留める。表示制約をDomain上の辺・Outcome欠落として扱わない |
+| **DC-05** read-onlyログ/Schema探索→DDL Apply要求、またはHTTP write timeout | D1 read-only操作でWrite Offerを作らない。EffectUnknownや受信欠落を画面の `failure`へ縮退させて自動再送しない（#1158/#1174へ） |
+| **DC-06** Read/Disclosure変更、Plugin/Renderer版変更、未使用Plugin追加 | 表示とOwner Meaning/実Grantの失効範囲を分離。秘密候補数をDOM/ARIA/Tool JSONへ漏らさない。未使用Pluginの実Artifact混入は別に計測 |
+
+**実装順・停止線**：①D0で手書きCLI/Bridge・既存Product Reader/Providerを実Call Graphで確認→②D1でread-only一操作を実Compositionから解決しCLI JSONへ接続→③同じOperationをStudio `/workbench/`のInspectorへ接続（Node/DOMとWorkspace/Selection epochの後着負例）→④実Windows WebView2で表示/Host Disclosureを再検収→⑤#3270実Read/DDL、#3274 graph/HTTP、#3273 AIテストの各Ownerへ派生受入。実Go/Node/Windows/Provider E2E・本書でのOwner受理は **NOT RUN**。既存D0〜D6とEDP-01〜12のGate/SSOTを増やさない。
+
 ## 参考実装からの限定的な示唆
 
 - [VS Code Extension API](https://code.visualstudio.com/api/)は標準機能のExtension化、[Extension Host](https://code.visualstudio.com/api/advanced-topics/extension-host)はUI/Workspace/Remoteという実行場所の分離・Activationを参考にできる。ただしTEIは同じExtension Hostを義務付けない。
