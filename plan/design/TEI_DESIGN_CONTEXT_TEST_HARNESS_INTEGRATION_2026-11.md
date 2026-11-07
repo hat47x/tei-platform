@@ -283,7 +283,7 @@ A〜Hは既存TEI CLIが返したJSONの**test-onlyメモリ上のコピー**を
 - **#2514/#1180**：業務拒否の独立Expected・Product Mutant killと、Context RevisionのFreshness負例を**別種類**として計測。今回のSource LFはGo実EvaluatorコードMutantでなく、Source Index変更の失効テスト。
 - **#3365**：Scenario目録の欠落とCoverage分母（TT-105/106）は別Draftで検討中。今回のContext→Pin比較は目録・カバレッジを推測せず、既存T1-A候補の時間境界だけ担当する。競合する`probe.py`を変更しない。
 - **#3361/#2509**：外部AI Harnessが受領した実Request/Reply/EOF/Disclosure/Scopeと、この**ローカルCLI**の前後観測を混同しない。
-- **#3360/#2831**：Stage1生成TEIをStage2のinvokerとして使った最新の実証があるため、以前の「L3再入は一律NOT RUN」は最新main Evidenceで再確認する。ただしContext→Scenarioの成功をG4・Build Intent Graphや全Targetに読み替えない。
+- **#3360/#2831**：Stage1で再構築した**reference-go-build-stage-driver**がStage2を駆動した実プロセス試行は成立している。一方、対象は`cmd/tei`ではなく、TEI標準Build Intent/Graphを使ったTEI本体の再入L2/L3は**未実証**。外部Go Seed Trust、単一OS/toolchain/Recipeの制約を残し、G4全体は`UNQUALIFIED`。Context→Scenario成功をSelf-build資格と混同しない。
 - **#3267/#3278**：Plugin Lock byte差分を2×2Verified BOM・実Provider Consumer/Invocationへ昇格しない。Source ContextとProvider Contract/TargetのVersion/Current Grantは別Witness。
 
 **今回の変更予定**は`tools/reference-issue-test-ability/t1_line_number_candidate.py`と既存dogfood CI・本計画に限定。新実CI成功確認までは実験結果を**NOT RUN**とする。外部H3の盲検T1-B新Case生成、C1/NFR/全Requirement、実DB/Provider、Owner Accepted Meaning、現在Grantは新規受入しない。
