@@ -100,15 +100,22 @@ func InspectSubject(root string, subject sourceindex.Subject) (SubjectInspection
 	}, nil
 }
 
+// InspectionSubjectKinds is the closed set of subject kinds this read-only
+// surface resolves. It is exported so the CLI can advertise the same values it
+// accepts, instead of leaving callers to guess or read prose (#3242).
+var InspectionSubjectKinds = []string{
+	"semantic", "semantic-type", "semantic-data", "semantic-attribute", "semantic-relation",
+	"semantic-candidate-key", "semantic-functional-dependency", "semantic-capability", "semantic-validation",
+	"application", "application-pattern", "query",
+}
+
 func supportedInspectionKind(kind string) bool {
-	switch kind {
-	case "semantic", "semantic-type", "semantic-data", "semantic-attribute", "semantic-relation",
-		"semantic-candidate-key", "semantic-functional-dependency", "semantic-capability", "semantic-validation",
-		"application", "application-pattern", "query":
-		return true
-	default:
-		return false
+	for _, supported := range InspectionSubjectKinds {
+		if kind == supported {
+			return true
+		}
 	}
+	return false
 }
 
 // inspectCanonical works only with normalized IR objects; every candidate is
