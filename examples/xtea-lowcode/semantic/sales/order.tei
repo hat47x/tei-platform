@@ -29,6 +29,7 @@ capability submit_order {
 calendar sales.fiscal {
     fiscal-year starts month 4
     week starts monday
+    business-day excludes master.holiday
 }
 
 period sales.month {
@@ -79,3 +80,4 @@ capability delete_payment {
     outcome deleted sales.payment
     effect delete sales.payment
 }
+
