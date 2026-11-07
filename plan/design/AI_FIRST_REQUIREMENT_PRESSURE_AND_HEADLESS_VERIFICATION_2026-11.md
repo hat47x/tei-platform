@@ -415,6 +415,45 @@ OKF v0.2 [一次仕様 §10](https://github.com/GoogleCloudPlatform/open-knowled
 
 **設計の停止線**：新たに認めるのは「DSH→実TEI Binary transportの探索成功」と「Completionの未知空集合処理の限定修正」であり、**比較適格H2/H3 0/4、独立回答採点、実OS拒否・Egress不在、Product Skill Load、OKF Attester、Provider read/write、Owner Meaning受理は未達**。AIの`read-only`能力、Host Grant、Provider Effect/Receipt、Audienceへの出力許可は別の実観測が必要。今回の§5.10も計画文書のみを更新し、実コード・本番設定・新Trial実行はしない。
 
+## 5.11 実CLI・Studio・認可・Persistenceの最新接続を証拠の段階で検収する（2026-11-07）
+
+### 5.11.1 限定実装の進展を別Claimで更新する
+
+前節§5.10の**実DSH→TEI Tool transport限定成功**は変えず、[Evidence PR #3113](https://github.com/hat47x/tei-platform/pull/3113)が**main統合済み**になったことを状態更新する。ただし探索9 Attempt／比較適格なH2/H3 **0/4**／独立Expected未採点のまま。以降の新実装も「接続済み」の粒度を区別して扱う。
+
+| 既存製品面・実装 | 確認できた最大の事実 | 禁止する上位資格 |
+| --- | --- | --- |
+| **AI修正案の表示**：[main #3120](https://github.com/hat47x/tei-platform/pull/3120)・[Evidence #3122](https://github.com/hat47x/tei-platform/pull/3122) | StudioHost `ValidationResponse.proposals`はWorld fingerprintに結びつく未受理案を返し、`view-format`が診断/修正案（未受理）を別表で表示。限定Go/Node試験成功 | UIに表示された・`validation.Accept`の局所`Accepted`＝#267の正式Shared Acceptance/Source保存、Wails RPC実HTTP、業務Meaning/実Host Grantとしない |
+| **Grantの配線**：[main #3121](https://github.com/hat47x/tei-platform/pull/3121) | 非Pluginの参照Toolへ環境Grantを宣言すると`PERMISSION_GRANT_CAPABILITY_NOT_RESOLVED`。現ValidatorはPlugin catalogから解決するため止まる | ToolはPluginと同義と決定しない。環境GrantをCLIに渡した/Toolを公開したことから実Authorityを推定しない。契約選択と正式実接続は未決 |
+| **認可表示**：[main #3143](https://github.com/hat47x/tei-platform/pull/3143) | `authorizationMode`＝`reference-allow-all`／`reference-allow-list`／`external`をCLI/Studioへ投影 | `external`が実Principal・Grant/Policy版を検査したとの証明はない。参照用の許可を本番Grantへ昇格しない |
+| **永続化の観測**：[main #3124/#3127/#3131/#3155](https://github.com/hat47x/tei-platform/pull/3155) | `not-applicable`／`not-observed`／`receipt-observed`／`resource-observed`を区別。独立Receipt Lookupと別pool接続の現在Resource読取が限定実PostgreSQL conformanceで確認され、`persisted:true`は`resource-observed`のときのみ | Commit成功／同Operation Receipt／現在値一致／業務完了をひとつの緑状態にしない。Observerが構成されない`not-observed`を失敗・未Commitと推定しない。独立Readでも取得時点・Grant・対象集合は別 |
+| **アクセス/記録**：[main #3123/#3133/#3136/#3152](https://github.com/hat47x/tei-platform/pull/3152) | `access.FileSystem`のRoot外拒否を記録し、`os.OpenRoot`によってリンク/ジャンクション経由の脱出を拒否。Reference Toolの`ChainFile`は中途改変を検出 | このAccess APIの閉じ込め＝DSH `pwsh/read`や子Process/NetworkのOS隔離ではない。鎖はhead外部Pinなしの末尾削除、全再Hashを防げず、ログの内容の真正性も証明しない |
+| **RunPlan所有世代**：[main #3139](https://github.com/hat47x/tei-platform/pull/3139) | 書込み前の`runlog.Owns`照合で旧Attemptの遅着完了記録を局所停止する | Journal読取→追記のatomicityやProvider実Effect、Concurrent Crash/Fenceの全保証ではない |
+| **CLI Product contract**：[main #3148/#3160](https://github.com/hat47x/tei-platform/pull/3160)、[Dogfooding Draft #3162](https://github.com/hat47x/tei-platform/pull/3162) | `tei commands`が`modes`・`successShape`を広告。Dogfoodingの一固定実Binaryでは、CLIで実Sourceを読める一方、Workspace Identity/Manifestが応答に不足、`view effect:read-only`でも`-execute -operation-log`や`-lifecycle-state`が作業ファイルを書いた | Commandの広告だけで応答Schema・対象Workspace・副作用なしを確定しない。CLI単体の実測を全Tool Profile/DSH・実Providerの不作用へ継承しない。Draft #3162はCI/正式受理前 |
+| **Model Source版**：[main #3163](https://github.com/hat47x/tei-platform/pull/3163) | `modelRevision`は管理Source Indexのbyte由来の版でありWorld版ではない。Prelude-onlyの空Workspaceでも`model catalog ok:true`とstd entriesがあり得る。実宣言の有無は`declarationCounts`を確認 | ModelRevision一致・Catalog非空・validate okを必要User Subject/Source closureの実Parsed/Consumed成功へ昇格しない |
+
+**開発自律性と製品受理を区別**：[採用済みADR-0035／main #3150](https://github.com/hat47x/tei-platform/pull/3150)の方針では、リポジトリ内PoC・固定Fixture/文書/参照検証は機械照合できるA3の範囲で自律進行でき、**外部に取り消せない効果**（本番配備、秘密送出、削除・破壊的移行、対外公開/第三者ライセンス等）はA4として人へ確認する。これを「製品の業務Owner MeaningがAI生成内容で自動受理された」とは解釈しない。#267のShared Acceptance／外部Host Authorityは**製品側の資格**であり、PoC工程の全変更に人的Blocking Reviewを新設しない。変更時にADR-0035のPoC工程と、対象製品の適用資格/実効果を別証拠列で提示する。
+
+### 5.11.2 DSH Mock egressの実測で次のH2適格条件を修正
+
+[main Evidence #3153](https://github.com/hat47x/tei-platform/pull/3153)と[main Evidence #3161](https://github.com/hat47x/tei-platform/pull/3161)は、**DSH 0.2.2-rc.1／ローカル127.0.0.1 Mock Endpoint／ダミーCredential**で次を実観測した：
+
+- `session-log-deepseek.enabled:true`なら要求の`dsh_session_log`に約45 KB/19 eventが含まれる。Toolの合成markerは**モデル入力1箇所に加えてSession Logの2箇所**（`tool/result`の`data.message`と`data.meta`）へ投影された。これはモデル入力のMaskだけでは防げない第二の送出経路。
+- 同じSessionを`enabled:false`で再開した間は当該fieldが無かったが、`true`へ戻すと止めた区間のeventsが**再送された**。既定Profile（`--patch`なし）でもSession Log fieldが載った。
+- Mockが503を返した場合、同じ水位（`afterSeq`/ `throughSeq`）の約45KBが次要求で再送された。200応答でも`message_stop`なしのStream切断では水位が進まず再送した。**disabled once＝過去ログが消える／送信されない、という推論は禁止**。
+- これらは**Mockの限定wire挙動**であり、実Providerでの保存、全送信先/Telemetry、in-flight、8MiB超の分割、実OS Egress拒否・公開Policy資格にはまだ昇格しない。Session LogのRaw本文を公開Artifactへ載せず、内部Audienceに保存した原本と公開した`field/size/hash`投影を別管理する（#2515/#2516/TAI #232）。
+
+**次のH2比較適格試験の必要条件**：
+1. 固定Participant Task/TEI binary/Workspace/Tool allowlist/DSH Version/Model/請求経路を事前Pinし、Reviewer-only独立期待値・Skill原文・旧回答へ**実Toolから拒否された**ことをOS/Harness側で観測。TEIの`access.FileSystem`だけでDSH実Processを閉じ込めたとはしない。
+2. 実送出の許可対象（公開合成入力と許可されたPrompt等）・Audienceを用途ごとに明示し、`dsh_session_log`の既定ON、Off→On backlog、503/切断再送による**複数Request/複数Sink**を測れるProfile/Mockと実OS拒否の必要範囲を選ぶ。外部Providerへ秘密を送って実験しない。
+3. 比較用の新Trial GroupのH2→H3→H3→H2は[TAI #168](https://github.com/hat47x/tai-pleroma/issues/168) Runbookのみが正本。探索9 Attemptは比較試験へ事後混入しない。Tool-onlyとSkillありで使用するTool/Skill/Source実Byte・Permission/Profileを同一条件にし、Skillそのものの差以外で要件を変えない。
+4. H2の`View/Inspect/Validate`という自然言語・広告上のread-onlyと、**実`argv`・暗黙のローカル書込み・外部送信**を区別。初回は`-execute`など不要なAction候補をTool側で提供せず、実Tool commandsの型付きAllowlistを使う。Allowlist設置だけで実OS/Host拒否が成立するとはしない。
+5. Source/Model Revision、実Parsed/Actual Consumed、Return JSON successShape/mode、Stdout/Stderr/exit、Answer/Consumer受信、独立Expected、Unknown・警告を同一Sessionへ束縛する。Studio Proposal表示や実CLI Modelがあることだけで意味受理・Action資格は認めない。
+
+**Ownerへ渡すべき未決**：外部Tool GrantをPlugin catalogに束縛するか（#3121/ #951）、`external` Authorizerの実根拠をどこまでConsumerへ公開するか（#3143/#1174/#2516）、`receipt-observed`／`not-observed`のUI警告・再照会停止条件（#3155/#1174）、Tool/OS Sandbox実拒否の最小実装（#2515/TAI #232）。別の中央Host/Registry、AI独自承認Engine、Receipt SSOTを先に作らない。
+
+**証拠水準**：上記のmain局所実装・DSH Mock wire・PR #3113探索を**各Source/HEADの限定成果**として採用。新たなH2/H3比較適格Session、実OS/Harness全面隔離、実ProviderへのEgress、Studio Wails end-to-end、外部Host current Grant、`*.tei.md`実Reader/Owner業務Meaning/DB業務完了は**NOT RUN／NOT QUALIFIED**。本節は既存Ownerへの統合計画であり、新Schema・新Runtime・新コードを追加しない。
+
 ## 6. 採否と現在の限界
 
 - **Owner方針として確認済み**：外部要件の十分な机上評価を基盤実装に先行させること、CUIと標準Pluginを並行開発すること、ヘッドレス実証を基準にGUIを後続実装すること。
