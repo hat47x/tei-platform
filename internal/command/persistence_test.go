@@ -125,3 +125,52 @@ func TestInvokerDoesNotObserveAfterARolledBackExecution(t *testing.T) {
 		t.Fatal("observer ran after a failed execution")
 	}
 }
+
+// TestPersistenceObserverFuncIsTheSameContract checks that the function adapter
+// receives the request and declared effect, and that its error becomes
+// not-observed rather than a Command failure.
+func TestPersistenceObserverFuncIsTheSameContract(t *testing.T) {
+	called := false
+	observer := PersistenceObserverFunc(func(_ context.Context, _ Request, declared semantic.DataEffect) error {
+		called = true
+		if declared.Kind != semantic.DataEffectUpdate || declared.Data != "sales.order" {
+			t.Fatalf("declared=%+v", declared)
+		}
+		return nil
+	})
+	invoker := Invoker{
+		Authorizer:          ReferenceAuthorizer{},
+		World:               commandWorld(),
+		Executor:            fakeExecutor{result: Result{Effect: &semantic.DataEffect{Kind: semantic.DataEffectUpdate, Data: "sales.order"}}},
+		UnitOfWork:          &MemoryUnitOfWork{},
+		DurableStore:        true,
+		PersistenceObserver: observer,
+	}
+	result, err := invoker.Invoke(context.Background(), request())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !called || result.Persistence != PersistenceObserved {
+		t.Fatalf("called=%v persistence=%q", called, result.Persistence)
+	}
+}
+
+// TestNilPersistenceObserverFuncIsNotObserved checks that a nil function is an
+// explicit not-observed, not a panic.
+func TestNilPersistenceObserverFuncIsNotObserved(t *testing.T) {
+	invoker := Invoker{
+		Authorizer:          ReferenceAuthorizer{},
+		World:               commandWorld(),
+		Executor:            fakeExecutor{result: Result{Effect: &semantic.DataEffect{Kind: semantic.DataEffectUpdate, Data: "sales.order"}}},
+		UnitOfWork:          &MemoryUnitOfWork{},
+		DurableStore:        true,
+		PersistenceObserver: PersistenceObserverFunc(nil),
+	}
+	result, err := invoker.Invoke(context.Background(), request())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Persistence != PersistenceNotObserved {
+		t.Fatalf("persistence=%q, want not-observed", result.Persistence)
+	}
+}
