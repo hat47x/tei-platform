@@ -78,6 +78,7 @@ jobs:
           grep -q -- '--- PASS: TestCompletionReadSliceQualificationBoundaries' "$RUNNER_TEMP/completion-read.log"
           grep -q -- '--- PASS: TestScopedTenantPostgresAgainstIsolatedDatabase' "$RUNNER_TEMP/completion-read.log"
           grep -Eq -- '--- PASS: TestScopedTenantPostgresAgainstIsolatedDatabase/actual_tenant_A_whole_fixture_versus_top-one_completion_witness' "$RUNNER_TEMP/completion-read.log"
+          grep -Eq -- '--- PASS: TestScopedTenantPostgresAgainstIsolatedDatabase/actual_tenant_A_whole_fixture_versus_top-one_completion_witness/non-output_SQL_WHERE_predicate_is_evaluated_without_projecting_its_field' "$RUNNER_TEMP/completion-read.log"
           ! grep -Eq -- '--- SKIP: Test(CompletionReadSliceQualificationBoundaries|ScopedTenantPostgresAgainstIsolatedDatabase)' "$RUNNER_TEMP/completion-read.log"
       - name: Retain scoped test log for independent review
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
