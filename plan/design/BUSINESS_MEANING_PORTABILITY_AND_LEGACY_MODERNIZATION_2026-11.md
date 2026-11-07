@@ -111,3 +111,60 @@ Self-Build #2831と重なるのは「同じ定義から必要なBuild/Artifact�
 採用候補の一般化は少なくともHTTPと非HTTPの異質Consumer、および異なるTargetまたは旧・新実装の差分観測が成立してから行う。必要なOperator/Mapping/ConformanceがTEI標準構造で表現できないと実証された箇所だけを既存Ownerへ返す。
 
 **現状の主張上限**: 本書は各既存文書とIssueの静的照合に基づく横断設計であり、新たなGo/Java/.NET/Wails/HTTP/OData/MFT/実DB/実旧システム試験やOwnerによる意味受理を実施していない。
+
+## 8. 旧実装・受理意味・新生成物の三角検収（2026-11-07追加、設計／NOT RUN）
+
+旧実装と新生成物の結果一致を、業務上の正しさと同一視しない。「同じ動作」には**旧仕様との互換**と**受理済みMeaningへの適合**の二つの独立した問いがある。前者は移行元への差分実行、後者はOwnerが採用した規則・既存Scenarioの独立Expectedで判定する。実際の副作用と独立観測も別判定。これは既存[ScenarioのCross-route契約](CROSS_ROUTE_FUNCTIONAL_PARITY_AND_TEST_DERIVATION.md)の利用法であり、第二Scenario/Oracle SSOTではない。
+
+| 限定した入力・権限・状態前提での判定 | 受理済みMeaningに適合 | 受理済みMeaningに不適合／不明 |
+| --- | --- | --- |
+| 旧実装と新生成物が同じ結果・Effect | **互換かつ適合の候補**。観測した範囲に限定して申告 | **旧実装の誤り・非受理規則の温存候補**。一致を理由に合格としない |
+| 旧実装と新生成物が異なる結果・Effect | **意図的な修正の候補**。旧互換を破るため変更理由・Owner受理・移行方針が必要 | **変換欠落／不適合／観測不足の候補**。既定値で埋めず差戻し |
+| 同じ条件で旧動作が観測できない | 比較不能。新側の適合だけを限定申告 | 比較不能・未検証。旧互換も適合も名乗らない |
+
+「旧実装の正しい動作」を事後に生成AIが創作して独立Expectedを上書きしない。受理前の候補・Source-static・合成Fixture・実Provider観測の証拠種を分ける。旧/新双方が同じ観測結果でも、**観測していない業務規則・権限・副作用の同等性は導出できない**。
+
+### 8.1 最小Witness（新しい永続Schemaではなく既存Evidenceの照合列）
+
+- **Source**: 旧ソース実byte/digest・対象ファイルと依存閉包、DB DDL/Trigger/Procedure、設定・Version、必要に応じてfile encoding。Source Indexと[Source改版対応](SOURCE_REVISION_CORRESPONDENCE_AND_CONSUMER_IMPACT_2026-11.md)へリンク。パス・画面IDをCanonical Subject IDへ昇格させない。
+- **Meaning**: 対象Subject/Scope、Accepted revision、どの旧Source factからどのIntent/Ruleを**推定したか**、受理/未受理/競合・Unknown。Source所有者の切替と意味の受理は別。
+- **Operation**: 同じScenario revision、独立Expected、入力集合・NULL/欠損/空、時間・文字集合・Decimal精度・Enum値域、実Caller/Subject、適用した現行Policy/Resource Grant。権限同一の根拠が無ければ異なる条件の結果として扱う。
+- **Realization**: 実使用したBuilder/Generator/Provider/Library/ABI/Runtime/DB/Target Bindingと依存閉包。Baseline B/Rと生成物Tlegacy/Tnew・digestを区別。単なる同じファイル名、同じLockの解決予定、CI build成功から実ロードを推定しない。
+- **Observation**: Raw output、公開可能な結果、更新対象・Receipt、独立Read、外部受領と時点、Unknown、ログと例外（秘密情報を除く）。HTTP 200、MCP Tool成功、Wails戻値、MFT ACKを業務完了へ自動昇格しない。
+
+同じ試行の照合列が埋まらなければ**not comparable / unqualified**とし、必要なSource・Target・Observerの欠落理由を記録する。SourceがA→Bに移動・編集されてもパス一致で継承せず、版間対応候補と受理・再検収を分ける。異なるHost/OSの改行・文字集合変換は形式/byte同一性と業務意味同一性の両方に圧力をかける（#2497/#2498）。
+
+## 9. 旧ソース吸上げで見逃しやすい閉包と非可逆性（設計／NOT RUN）
+
+最初に「解析できたファイル」ではなく「対象Operationの動作へ寄与し得るSource・外部依存の有限集合」を列挙する。入口（画面・API・Batch・File）からの実到達関係、SQL/ストアド/DB Trigger、非同期Consumer、設定・フラグ、Code Table、入力形式、時点・権限、エラー経路を区別する。解析器が認識できない動的呼出し、DB外効果、外部サービス側規則は**不在ではなく未解決**。全面解析・完全再現を先に要求せず、対象Operation/Consumerを限定する。
+
+| Source由来の事象 | 吸上げの候補 | 無断でしてはならないこと |
+| --- | --- | --- |
+| SQL JOIN・CASE・集約・型変換 | Data/Functionの構造・Query lineage・導出規則の候補 | SQLの構造だけから業務Relation/Function Intentを確定する（#2387/#1126） |
+| Java/C# Enum・定数・if分岐 | 閉じた値域・必須条件・状態遷移の候補 | 実装enumとMECEな業務分類が同義と推定する（#1126/強属性検討） |
+| Null/default、丸め、タイムゾーン、Collation、外字 | 観測対象の表現・計算意味 | 同じJSON/DTO形状・Parser成功で往復意味保存とする（#2498） |
+| DB Trigger、外部ファイル、Job、メッセージ | Hidden Effect、Delivery/Import、Business Eventの候補 | ストアド/External Consumer未観測のまま無副作用と報告する（#2542） |
+| UI表示・APIレスポンス・Projection | 利用者操作の入口／開示された結果 | 表示から隠れたSource identity、対象集合、権限を復元したと主張する（#2497/#2516） |
+
+非単射なProjectionから原データを一意に復元できない場合、AIによる「補完」をSource factに変えてはならない。必要なSource Reader/明示Bindingが無ければ不明のまま残す。旧画面や一つのAPIの正常応答だけでSource全体・Data/Function/Business三視点のCoverageが揃ったとしない。
+
+## 10. 最初の有限な実証と移行時の停止線（既存Ownerへの受渡し）
+
+**段階A：同一Accepted Meaning、異なる入口。** 既存\`order_entry\`から一つのQueryと一つのCommandを選ぶ。既存Driver Scenarioと独立Expectedをそのまま使い、GoのHTTP/JSON経路と非HTTP/in-processまたは既存CLI経路のResult/拒否/対象/独立Readを比較。未対応Operationをstubで通さず、必要な入口が未接続なら明示して停止（#1656/#1158/#1180）。File ExportはFileSpec/Manifestの独立資格、ODataは採用判断待ち、Generated Wails Desktopは第二Targetで個別資格（#259）。
+
+**段階B：旧コードの一点抽出。** 旧JavaまたはC#の小さな関数/Queryについて、Sourceの静的事実と実観測を別収集する。特に(1)欠損/NULL/default、(2)Decimal丸め、(3)Enum範囲外、(4)外部Effect/例外の**正負対**を独立Oracleへ結ぶ。元言語→TEI→同言語の再生成を先に比較し、意味抽出誤差と言語変更誤差を区別する。旧実Targetや動作Oracleが得られないときはsource-static／proposed止まりとする（#2387/#2498/#2555）。
+
+**段階C：安全な段階移行。** 旧と新の両方へ同じ変更系Operationを本番Mirroringしない。Read-only shadow/合成Snapshotの比較は可能だが、Writeは隔離された使い捨てProvider・独立Readに限定した検証から始める。並走・CDC・書込Ownerの切替、旧Clientの失効、Rollback/再同期は#2555の既存受理範囲に委譲する。実DBの接続・\`dbcheck\`成功だけでMigration Cutover、無副作用、全Consumer適合を名乗らない。
+
+**最小の拒否ケース（新Test SSOTを作らない）**:
+
+- **TRI-01**：旧と新の出力が一致するが独立Expectedには不適合（旧不具合を温存）→旧互換のみ候補、業務適合拒否。
+- **TRI-02**：旧と新の出力が異なるが新は受理済みMeaningに適合→互換破壊と意図的修正を明示し、旧受入へ無断切替しない。
+- **TRI-03**：表面上の結果は同じで、実更新対象または独立Readが異なる→互換不成立（#1174/#1180）。
+- **TRI-04**：未公開列を使うSort/Count、欠落Dataの0件化、非可逆Projection後の復元推測→Consumerの開示/完全性と原Source Claimを分離（#1656/#2497）。
+- **TRI-05**：Wails一体型でCaller/Grantを省略、または旧ClientがCutover後も更新できる→Build形態や「ローカル」をAuthorityの代用品にしない（#259/#2555）。
+- **TRI-06**：旧Source依存の一つ（SQL Trigger/Job/設定）を読み落とし、新Targetへ未同梱→Source閉包/Artifact閉包/Target実消費の欠損として未資格（#2831/#2600）。
+
+P0は段階Aの一つのQuery/Commandと段階BのSource-static/Observedの分離票まで。最初の反証で不足が証明されない限り、共通Runtime・巨大Parser・独自二重Generator/Scenario/Authority・新規Core kindの導入を保留する。既存の#2514独立Conformance、#1180 Scenario、#2604 Publication、#2555 Cutoverを集めて**一つの見通しのよい比較票**にするが、比較票自体をAcceptanceやE2Eの証明にはしない。
+
+**現時点の結果上限**：TRI-01〜06、旧言語の同言語再生成、生成Wails Desktop、外部File/MFT/OData/実DBでの同一試行E2E、業務Owner受理はいずれも**NOT RUN／未受理**。既存Issue・資料にある限定Referenceの過去PASSと、本追補の新規受入は区別する。
