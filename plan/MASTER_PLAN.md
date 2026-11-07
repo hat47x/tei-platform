@@ -580,6 +580,14 @@ main統合済み[#3070](https://github.com/hat47x/tei-platform/pull/3070)の`int
 
 **本節の証拠上限**：既存`internal/workspace/loader.go`と#3024 E1c Go/CIの実照合に加え、#3031暫定Guardの固定HEAD限定CIと、#3030移行設計の実Sourceを確認済み。実`*.tei.md` Markdown Reader/意味Parser・Builder・Writer、移行後Org E1c、実Provider/DB、SHO/Consumer、Owner意味受理は**NOT RUN／未成立**。この文書は設計引継ぎであり、#3030/#3031が既に担当する詳細契約・Goコードを二重定義しない。
 
+## 2026-11-07 組織表現と業務手順の非自動接続（#2386/#1125、受入提案）
+
+[組織設計§84.6〜84.7](design/ORGANIZATION_RELATION_GOVERNANCE_MODEL_2026-10.md)へ、組織の**Data/Relationトポロジー**、再利用可能な**標準表現型**、**Function内のPresentation/Contextインスタンス**、一階層の**業務DFD（業務間データ授受）**、内部**Business Procedure**、実**Workflow Instance/Host/Provider Effect**を分ける最小受入を接続した。画面Treeの部門後継線、案件担当Pickerの選択、DFDのデータ授受矢印、Procedureの引継ぎStep、実Case移管と人手の受領は、似た図形や同じC1/D1/D2でも同じ出来事ではない。
+
+**具体的な検証は既存Ownerへ委譲**：#2506/#2507/#997は組織Tree/TableとCase Panel/PickerでFunction ContextとTarget・Scope/epochの保持を検査、#2500/#2598はViewChange→受理済みAction/実Requestの不一致を検査、#1125/#1444はDFD→Handoff/Procedure（人手/外部/機械）の**read-only対応**を検査、#1174/#1163は現在Grant/Target・Effect/Receipt/独立再読取を所有する。既存ORG-SU/SM・APP/TB・VE/RITの独立期待を再利用し、新Workflow/Policy Engine/専用Org Core型は設けない。
+
+**製品E2の優先は不変**：main統合#2681のNative組織E1を起点に、[#2586](https://github.com/hat47x/tei-platform/issues/2586)で**一件のC1→D1を実Function→Query→Provider Read→Consumer**まで同じSource/Attemptで検証。旧[#3024](https://github.com/hat47x/tei-platform/pull/3024)と設計PR[#2389](https://github.com/hat47x/tei-platform/pull/2389)は**closed・unmerged**であり、その旧CI/未マージ草案から現main Product E2 PASSやOwner意味採用を主張しない。ここでの追補は**docs-only／独立期待・接続案**で、組織二Functionの実UI・実DB/Host・Procedure Instance、正式Owner受理はNOT RUN。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
