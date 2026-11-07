@@ -33,7 +33,7 @@ git status --porcelain=v1 --untracked-files=all --ignored
 git rev-parse HEAD
 ```
 
-作業領域とindex、未追跡・無視対象のファイルは実行前後ともcleanであり、headが一致することを要求する。失敗のある記録をPASSとして使わない。対象headまたはmainが動いた場合は、現行の統合規則に従って資格を取り直す。Draft PRは統合しない。
+作業領域とindex、未追跡・無視対象のファイルは実行前後ともcleanであり、headが一致することを要求する。失敗のある記録をPASSとして使わない。対象headまたはmainが動いた場合は、現行の統合規則に従って資格を取り直す。Draftは作業中の表示であり、解除して統合する。
 
 Kernelの独立性は、`check-core-isolation.sh`が同じソースを別モジュールへコピーし、外部Consumerから実行することでも確認する。試験用に型を作り直したモジュールでは代用しない。
 
