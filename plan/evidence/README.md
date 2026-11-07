@@ -40,6 +40,7 @@
 - [採番の契約の確認](XTEA_LOWCODE_NUMBERING_2026-11.md)（参照実装の試験記録。採番Data・取引との結合は未実装）
 - [税率Dataの宣言と行の結合の確認](XTEA_LOWCODE_TAX_RATE_BINDING_2026-11.md)（参照実装の試験記録。Workspace例への追加と実DBの実測は未実施）
 - [為替Dataの宣言と行の結合の確認](XTEA_LOWCODE_CURRENCY_BINDING_2026-11.md)（参照実装の試験記録。例への追加と年次・月次の優先順位の宣言は未実施）
+- [採番Dataの宣言と行の結合の確認](XTEA_LOWCODE_NUMBERING_BINDING_2026-11.md)（参照実装の試験記録。取引内の発行・取消、同時実行、例への追加は未実装）
 - [X-TEA受容要件の実装対応](XTEA_LOWCODE_ACCEPTANCE_TRACE_2026-11.md)（`AC-1`〜`AC-11`・`RQ-C1`〜`RQ-C3`の参照実装と未確認事項。受容判断は仮承認）
 - [実DBで実行時の判断を確かめる計画](REAL_DATABASE_RUNTIME_DECISION_PLAN_2026-11.md)（期間・権限・効果の判断を実DBで見る案。**NOT RUN**）
 
@@ -57,6 +58,7 @@
 - [宣言されたPatternと導出された操作はどこで結べるか](PATTERN_KIND_OPERATION_MAPPING_2026-11-07/README.md)（同じWorldから `tei operations` の導出操作8件と `tei artifacts` の `pattern` 5件を取り、Data ID・能力ID・Relation target の三つの手掛かりごとに一致と限界を記録。受理済み基準では書込み操作の `binding` が全件nullで、読み取り専用の `command` は構造上どの導出操作とも結ばれない。結合規則の採否は示さない）
 - [操作とPatternの突き合わせを参照実装で試す](OPERATION_PATTERN_CROSSWALK_REFERENCE_2026-11-07/README.md)（W3の対応表を `tools/reference-operation-pattern-crosswalk` として実装し、受理済みと見積もり候補のWorkspaceに当てた記録。`browse`/`record`/`header-detail` は一致4件、`command` は効果を宣言しない能力で一律 `out-of-scope`、`reference` は参照先Dataに `read` が無いため `missing-input`。既定値で埋めないことと、W3未着手のままであることを示す）
 - [突き合わせ規則の反例](OPERATION_PATTERN_CROSSWALK_COUNTEREXAMPLES_2026-11-07/README.md)（同じWorkspaceに宣言を一つだけ足す5つの場合で、一致・不一致・衝突が1件ずつ変わることを記録。効果を宣言する能力は `command` を一致させ、参照先DataのPersistenceは `reference` を一致させ、同じDataを指す2つ目の `browse` は衝突として両方の名前を出して選ばない。効果の宣言だけでは標準操作が導出されないことも `missing-input` として残る）
+- [操作面はCLIの公開面に出ているか](OPERATIONS_COMMAND_PUBLICATION_GAP_2026-11-07/README.md)（`tei commands` は `selected-read-only-commands` の19件だけを載せ、CLIは53件を受け付ける。`operations` は公開されておらず、成功時は単段JSONで `ok`/`result` を持たず、失敗時はstdout 0バイトでエンベロープにならない。W5の3条件のうち満たすのは「動く」だけで、公開の可否は15章の未決1のまま）
 - [操作面は宣言されたPatternを読んでいるか](OPERATION_SURFACE_DECLARED_PATTERN_GAP_2026-11-07/README.md)（受注Workspaceと見積もり候補の重ねで`tei operations`を比較し、World指紋は変わるのに操作面8件と`summary.declared=0`が不変であることを記録。W3未着手の設計記述と一致し、AのOperationとBの業務ActionをA側で結ぶ手掛かりが現状無いことを示す。権限・意味の受理は示さない）
 
 - [DSH外部HarnessからのTEI read-only CLI実起動](DSH_H2_TOOL_ONLY_READ_ONLY_2026-11-07/README.md)（#2509。外部AIハーネスの1実Sessionで固定実行物の実起動・実引数・実出力を同一ログで突合。H3・四Session比較・正答採点・Egressは未実施）
@@ -76,3 +78,4 @@
 - [DSH外部Harnessが暗黙に取り込むContextの実測](DSH_H6E3_IMPLICIT_CONTEXT_2026-11-07/README.md)（#2515 H6-E3・#2509。AGENTS.md・CLAUDE.md・Skillのdescriptionが、Toolで読まずにモデル入力とSession Logへ載ることを合成canaryで観測。Skill本文は未ロード。Tool poison・実OS拒否はNOT RUN）
 - [二回の独立Buildにおける再現性の観測](TEI_GO_BUILD_REPRODUCIBILITY_2026-11-07.md)（`cmd/tei`を別々の試行ID・別の隔離stateで二回Buildし、同じartifact digestを得た記録。Builder信頼・受入・権限は未確認。SB-N8 / #2831）
 
+- [DSH外部HarnessのHost棚卸し](DSH_H6E0_HOST_INVENTORY_2026-11-07/README.md)（#2515 H6-E0。Tool ProcessからOS・mount・環境変数・loopback到達性を列挙し、read-onlyのConstrainedLanguageと危険modeの差、親の環境変数が子へ継承されないことを観測。別Host・実Egress制御はNOT RUN）
