@@ -282,3 +282,27 @@ Wails依存を外したGo Service/合成Adapterの試験と、実WebView起動�
 **正本とPR配置**：本§10はDesktop/Wails固有の検収**Owner #1824**。広域Plugin-first契約は[main統合 #3285](https://github.com/hat47x/tei-platform/pull/3285)の`plan/design/PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md`§8〜13、[Draft #3338](https://github.com/hat47x/tei-platform/pull/3338)§14がOwner。従来[Draft #3301](https://github.com/hat47x/tei-platform/pull/3301)のDC-01〜06からDesktop固有部分のみ移送した**置換候補**であり、#3301を同じPlugin共通文書へ並行mergeするのではなく、差分・受入票を照合して二重計画を解消する。既存#2514/#1180 Test/Expected SSOT、#3262 Design Context、#1163 Evidence、#1174 Host Effectを別名で再発行しない。
 
 **今回の証拠区分**：確認したGitHubのmain Source/merged PR/固定CIの事実と、この文書の計画は別。**本書追加をもって、Go/Node/Wails/Windows実機/実Provider/実DB/実External Sink・Owner意味受理が完了したとはしない**。
+
+### 10.5 実CLI観測を増やしてもD1の実Provider受入へ短絡しない（2026-11-08追補）
+<!-- tei-desktop-host-d1-real-selector-closure-next-slice-20261108 -->
+
+**mainで増えた限定実装**：
+- [main #3350](https://github.com/hat47x/tei-platform/pull/3350)：既存Plugin Capability Coverageのdatabase-instanceは能力 `SupportsDatabaseProvider` によって実装候補を*選択*するよう更新。文字列一致や命名に依存しない選択のテストはあるが、selectedはContract実装・Build/Link・実Invoke・Current Grant・DB操作成功ではない。Desktop D1では**(a) advertised/declared, (b) eligible, (c) selected, (d) loaded/linked, (e) actual invoked, (f) receiver accepted**を一列のBooleanにせず段階観測する。最初に`inspect`対象のContract・Provider ID／版／Artifactを現在Selectionから解決し、既存Service実Callを同じAttemptに結び付ける。
+- [main #3306](https://github.com/hat47x/tei-platform/pull/3306)：Hookが使う能力とApplication内Command Patternの接続がないとValidationで拒否する。DesktopでのOperation Offerは**実行経路を持つ宣言か**を調べる前提を得た。ただし複数Command候補・Phase・実HandlerとHost authorization、Unknownの正しい表示は未完了。UIへのOfferをGrantと同一視しない。
+- [main #3354](https://github.com/hat47x/tei-platform/pull/3354)：既存CLIのRule/Canonical/Relation/Source間対応に対して、独立3-Rule slice/Canon/Sourceの合成負例を含む限定TT-56ゲートがある。これをSource同一性の*前段資料*とし、全Function/Business required nodes、外部Toolの実受領、Disclosure、Owner Meaningが閉じたとは判断しない。#3262のDesign Context `partial`と`qualifiedTestGeneration=false`は、別Packetで明示的に資格が証明されない限り維持する。
+- [Draft #3356](https://github.com/hat47x/tei-platform/pull/3356)の第2回CLIドッグフード記録は、19 CLI commandsの検査範囲で**TEI独自MCP serverの実入口を確認できない**とする。実行できたのはCLI経路であり、MCP経路は`NOT RUN`。従って「CLI用のSkillはMCPにもそのまま使える」と宣言しない。D1の二ConsumerはあくまでCLIとWails Workbenchの**別の実入口**であり、将来のMCP Adapter追加は既存OperationへのAdapterとして独立に検収する。
+- [Draft #3338](https://github.com/hat47x/tei-platform/pull/3338)の§15は、Data topology／Functionに配置されたRepresentation Instance／Binding topology、変更時の局所再資格化を担当する。Desktopで一つのNodeが複数Canvasに現れるとき、**Entity ID・View Occurrence ID・Function Context epochを混同しない**。Presentersの再描画やBundle新旧一致だけで必要Data SliceのContent/Read cohort/許可を証明しない。
+
+**D1最小実試験への増分要求（#1180/#2514のScenarioへ渡す、ここには第二Fixture正本を作らない）**
+
+| 反例／観測 | 独立Expectedと担当 | UI/CLIの停止線 |
+| --- | --- | --- |
+| DS-D1-G：技術は一致するが必要Capability不在／Providerが選択されても実Artifact不在／選択B・実呼出A | #3350 capability選択を入口に#951/#1016 actual invoke・#1251 Contract適合を別列で検査。例示BがAと同じResult bytesでもFAIL | `selected`や`available`だけで「実行可能」表示しない |
+| DS-D1-H：3 Rule対応は観測できても必要Function/Business/Relation一部が未読／Provider未取得／非開示／空集合 | #3354 TT-56と#3262 Context Readinessを段階照合。必要な集合の閉包と独立根拠があるまでpartial。受信側Sinkへの完全配送は別票 | 空のGraph/Tableを「関係なし・0件・検証済み」に変えない。対象外と証拠欠落を区別 |
+| DS-D1-I：同一EntityがCanvas A/Bに出る／旧View epochのReplyが再選択後に届く／Projectionが集約・非単射 | #2506/#2507/#2497/#3222 Function Context・Occurrenceの既存負例を参照。UI応答世代とData Read cohortを分離し、編集可能との誤認を抑止 | read-only Inspect以外の自動Writeback・Action Offerはなし |
+
+**実装に渡す最小Receipt項目（構想上の観測列であり公開Schemaは未採用）**：
+`[actual Workspace/Source fingerprint, required-domain closure status, caller/consumer, selected Contract/Capability/Provider/version, linked Artifact digest, observed invoker identity, operation+attempt, result fingerprint, receiver/sink/disclosure, UI epoch, unresolved reason]`。
+初回はD1のread-only Inspectで既存Result/診断から取得できる項目だけを出し、未実装の実Invoker identityやSource Closureを**推測で埋めない**。実Callerが異なるCLIとWailsは各自のAttemptを持ち、同じ資格条件下で比較する（別Callを「同一Attempt」とは呼ばない）。これをデバッグ画面の常設公開ABIにせず、まずCIで比較可能な限定Evidenceとして使用。
+
+**現時点の評価**：#3350/#3306/#3354のmain統合済み限定実証と、#3356/#3338の未統合設計・観測を区別。本追補の実CLI→Wails二Consumer、実Pluginロード/選択実呼出、H3・外部Sink、全Source Closure、Windows実機、Owner受理は**NOT RUN**。最初の欠けた辺を埋める優先順位（P0 Bundle/Source → P1 Actual Provider → P2 二Consumer）を変更しない。
