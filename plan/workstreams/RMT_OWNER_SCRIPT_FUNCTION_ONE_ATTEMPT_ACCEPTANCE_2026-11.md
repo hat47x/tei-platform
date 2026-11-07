@@ -690,3 +690,36 @@ P0-R1の**同一Attempt Read Slice最小証拠**は`Actual Source bytes+Revision
 [merged #3276](https://github.com/hat47x/tei-platform/pull/3276)のRQ-035/Data Source Workbench設計と[Draft #3263](https://github.com/hat47x/tei-platform/pull/3263)の三視点CRUD・図面は、共通のData/Function/Business Source、declared Read/CUDとactual Reader/Effect、Result Slice/Consumerの区別を補助する。WorkbenchやGraph/Studio/SHOの完成をE01/02のHard Gateにしない。実Read後に同一Function ContextをForm/Tableへ投影するConsumer検収に回す。
 
 **既存Owner・受入順**：#2586 Product Reader、#2611/#2622 physical Provider、#2506 Function Data Context、#2514/#1180 Scenarioと独立Expected、#1163 Evidence、#2516 Disclosure、#3262 Design Query、#3273 T1、#1119 Gate。最初は**E Route Product実SQL＋status HR-01/02**、次にRow/Scope/Field grain、Page/非出力依存、明細完全集合L、同Rule二入口、実K/O、Business B。今回の変更は**既存RMT Markdown一ファイルのみ**。新Go/本RMT実PG/旧Windows Driver/Host/SHO/正式Owner受理はNOT RUN。C Route実PGとmain T0の過去実測は各々の限定成果とし、更新後HEADのHealthを別に確認する。
+
+## 19. 11/8横断再資格：実行可能なテスト・Workspace・Tool EffectをE Routeへ接続
+
+第18章のE（X-TEA合成受注例のstatus Query）／W（別Workspaceのfrom Query）／C（Web Referenceの隔離PostgreSQL）を異なる実行経路として保持する。Eの最初の未接続は「Function/Patternが選択したQuery → SQL実原byteとstatus引数 → physical Provider → Header実Rowset → Function Data Context/Consumer」である。本章は並行レーンの成熟成果を、その代わりではなく実証の前段・後段へ限定して組み込む。
+
+### 19.1 T1-Aは実走、T1-Bは未成立
+
+[main #3284](https://github.com/hat47x/tei-platform/pull/3284)のDesign Context Gateは実TEI CLIの9読取応答と、欠落・版競合・Root不完全などの合成負例を実測した。ただし正常時もcontextはpartial、qualifiedTestGeneration=false。Sourceの読込・列挙から必須Function/Rule/Provider/Grantの完全な閉包を推定しない。
+
+[main #3304](https://github.com/hat47x/tei-platform/pull/3304)は、既存計画#3273で既に提案した「明細行番号は正数」というRuleに0を与える一時Scenario第7Stepを、生成済みPinned TEI CLIで実実行した。旧固定HEAD 02d4c624の[専用CI #42378033965](https://github.com/hat47x/tei-platform/actions/runs/42378033965)は成功し、行番号1の正対照・0の不成立、偽Expected／偽Fixture／古いPinの3負例を検出した。**T1-A（既知Caseの実行・判別）は成立、T1-B（AIが未見Ruleから独立した新Caseを盲検発見）は未成立**。正式Scenario採用、全要件/C1 Coverage、Owner受理ではない。#3304最終HEADの[全体Health #42378254383](https://github.com/hat47x/tei-platform/actions/runs/42378254383)はfailureであり、専用CI成功と混同しない。
+
+RMTではEのstatus入力定義とSQLのstatusプレースホルダをRequiredに固定し、E01のOPEN/READY実Bind対照、E02の欠損/NULL/誤Bind・異SQL Sourceの負例を候補化する。**候補の合成Scenario PASSは実Product SQL/Provider HR-01/02の成功ではない**。T1-Bの検証は#3262 Design Context、#1180 Scenario、#2514独立Expected／Holdout／Mutantに委ねる。
+
+### 19.2 取得・選択・実行・受領の四境界を独立にする
+
+現mainのinternal/operations/inspect.goにはWorkspace識別、worldFingerprint、sourceIndexFingerprintの別欄がある。[PR #3311](https://github.com/hat47x/tei-platform/pull/3311)のManifest版/hashと名前付き出力広告は追加候補であり未統合。Workspace名・Manifest Hash・Query IDが同じでもSQL実原byteや実Providerの取得を証明しない。[Draft #3302](https://github.com/hat47x/tei-platform/pull/3302)はviewをread-onlyと広告してもexecute指定でoperation-log等へ実書込できる負例と、広告を限定する修正案。外部Harnessがexecute付きviewを無条件read-onlyと扱わず、Source非変更・名前付きファイル書込・Command/DB Effectを別に検査する。
+
+| Eの同一Attemptの欄 | 必須となる実観測 | 禁止する推論 |
+| --- | --- | --- |
+| W：WorkspaceとSource | Root/Manifest、World/Index指紋、Loader実取得Source | 同名・宣言あり＝全Required読込済み |
+| Q：実Query | 選択SQL原byte/版、Dialect、status実型・値・束縛 | 同Query ID＝同SQL・同実行 |
+| P：実Provider | sales→sales_core→物理Instance、実SQL/引数、Grant/Target/Tenant/時点 | BuildBrowse投影成功＝実DB読取成功 |
+| R：ResultとConsumer | Row Identity/粒度/多重度、Page、Predicate由来、完全なReply受領 | TOP1・0行＝全母集団、返却＝受領、非出力＝開示安全 |
+
+Required→Loaded/Parsed、Selected→Provider Execute、Returned→Consumer Received、Result Slice→Completion Claimを四つの独立した境界として検収する。不明・partialなら後段をunqualifiedに保つ。新たなEvidence Registry/APIを作らず、#1163/#2506/#2586/#2516へ受け渡す。
+
+### 19.3 Hook、図面、CIの進展と資格上限
+
+[PR #3306](https://github.com/hat47x/tei-platform/pull/3306)はHook usesに対応するCommand Patternの不在を検証拒否する未統合の改善候補。複数Command曖昧性、Phase、実Runner/Provider接続は未検収。[Draft #3263](https://github.com/hat47x/tei-platform/pull/3263)・[Draft #3303](https://github.com/hat47x/tei-platform/pull/3303)の三視点Diagram/CRUD P0-Mと実Read P0-R、同一Identity/Scopeでの接合P0-Cを別Gateとする。図の宣言Rセル、Canvas選択、合成Fixtureを製品実Reader/Host Grantの証拠にしない。P0-MをEの実Readerに先立つ必須条件へ追加しない。
+
+直前計画HEAD 2f3c9494の[Health #42370557015](https://github.com/hat47x/tei-platform/actions/runs/42370557015)はfailure。実Jobログで原因はRQ-035のPAS/Gap未登録と設計索引4件不足であり、gofmt・go vetと他のGo Package試験はPASS。**現mainではこれらの登録済み状態をGitHubで直接確認**した。旧HEADのFAILは履歴として保持し、索引は既存修復Ownerと重複変更せず、新HEAD CIで別判定する。
+
+次一手は#2586のE Route実Provider Header Read HR-01/02。その後#2506/#2514のPage・明細完全集合・非出力Predicate、#2516開示、#1125/#1174の同Rule二入口／Receipt K・資源O／業務Bへ進む。#3238のC専用実PGと#3304のT1-A成功は局所成果として認めるが、E実Reader、旧Windows Driver、Owner Meaning受理、G1/G2合格へは合算しない。今回はMarkdown計画だけの変更で、新Go・実E Provider・旧Driver・Owner正式試験はNOT RUN。
