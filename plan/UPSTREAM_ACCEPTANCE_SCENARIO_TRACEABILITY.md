@@ -510,6 +510,12 @@ ChatGPTなどのチャット実行環境・Codex・Claude Code・一般的なIDE
 
 参照事例では、エージェントのセッション・チェックポイント・一般的な検証状態などをTEIの製品状態に追加せずに、この一連の作業が成立するか確認します。専用のエージェント接続部品や独自の変更セットがなくても成立することを、導入しない境界として検証します。
 
+### RQ-035 — 検証済みPlugin BOMとVersion組合せ試験
+
+主にPAS-06の「既存の意味・Pluginを探索して再利用する」を、実際に検証した構成として再使用できるところまで確認する。PAS-04では同一Contractの異Target/ビルド版の適用範囲、PAS-02では構成したFunctionが実際のScenarioを満たすかを別に確認する。
+
+受入例は、実Provider/Consumer各2版のexact Lock→実Target Build/Artifact→同じAttemptで独立Expected/必要Checkを実行→合格組合せだけを限定BOMへ登録、という一往復。Pairwise計画の2項Coverage、C0/C1、Requirement/Trait/Graph分岐Coverageを異なる分母で示し、未実行・Tool切断・別Tenant/Grant・古いArtifact/ExpectedをPASSへ合算しない。実Providerが存在しない段階の合成ReferenceはPAS成立のEvidenceではない。Ownerは[#3267](https://github.com/hat47x/tei-platform/issues/3267)、設計は[Verified Composition BOM](design/VERIFIED_COMPOSITION_BOM_AND_MATRIX_DESIGN_2026-11.md)へ接続し、第二Resolver/Runnerを作らない。
+
 ## 11. Requirement → Primary PAS mapping
 
 | Requirement | Primary PAS | Secondary / cross-cutting |
@@ -548,6 +554,7 @@ ChatGPTなどのチャット実行環境・Codex・Claude Code・一般的なIDE
 | RQ-032 | PAS-06 | PAS-01 / PAS-07 |
 | RQ-033 | PAS-06 | PAS-01 |
 | RQ-034 | PAS-06 | PAS-01 |
+| RQ-035 | PAS-06 | PAS-04 / PAS-02 |
 
 Primaryは最初に具体化する代表的なPASを示し、要求の網羅率を表す点数ではありません。
 
