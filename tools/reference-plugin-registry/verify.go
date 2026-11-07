@@ -9,7 +9,6 @@ import (
     "errors"
     "fmt"
     "os"
-    "strconv"
     "strings"
 )
 
@@ -89,8 +88,7 @@ func Verify(f Fixture, p Policy) error {
         values[i]=strings.TrimPrefix(lines[i+1],key)
     }
     if values[0]!=p.ExpectedPlugin || values[1]!=p.ExpectedVersion { return errors.New("unexpected plugin/version") }
-    epoch,err:=strconv.Atoi(values[2])
-    if err!=nil || epoch!=p.OwnerEpoch { return errors.New("owner epoch mismatch") }
+    if values[2]!=fmt.Sprint(p.OwnerEpoch) { return errors.New("owner epoch mismatch") }
     expected:=map[string]string{"core":values[3],"ui":values[4]}
     if len(f.Artifacts)!=len(expected) { return errors.New("required artifact count mismatch") }
     seen:=map[string]bool{}
