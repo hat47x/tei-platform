@@ -37,6 +37,7 @@
 - [税率の適用期間と端数処理の確認](XTEA_LOWCODE_TAX_RATE_2026-11.md)（参照実装の試験記録。税率Dataの宣言との結合と税区分の運用は未実装）
 - [通貨換算の率の種類と方向の確認](XTEA_LOWCODE_CURRENCY_RATE_2026-11.md)（参照実装の試験記録。Data宣言との結合と年次・月次の優先順位は未実装）
 - [採番の契約の確認](XTEA_LOWCODE_NUMBERING_2026-11.md)（参照実装の試験記録。採番Data・取引との結合は未実装）
+- [税率Dataの宣言と行の結合の確認](XTEA_LOWCODE_TAX_RATE_BINDING_2026-11.md)（参照実装の試験記録。Workspace例への追加と実DBの実測は未実施）
 - [X-TEA受容要件の実装対応](XTEA_LOWCODE_ACCEPTANCE_TRACE_2026-11.md)（`AC-1`〜`AC-11`・`RQ-C1`〜`RQ-C3`の参照実装と未確認事項。受容判断は仮承認）
 - [実DBで実行時の判断を確かめる計画](REAL_DATABASE_RUNTIME_DECISION_PLAN_2026-11.md)（期間・権限・効果の判断を実DBで見る案。**NOT RUN**）
 
@@ -68,3 +69,4 @@
 - [供給からの実BuildとSource閉包資格の食い違い](TEI_GO_BUILD_WITH_SUPPLY_X1_2026-11-07.md)（`cmd/tei`は供給だけでBuildできるが、同じadapterのSource閉包は`rejected`。artifactと資格を別Claimとして扱う。SB-B事前確認 / X1 / #2831）
 - [pwsh不安定時のWSL検証手順](WSL_VERIFICATION_RUNBOOK_2026-11-07.md)（worktreeの`.git`書換え・ログインシェル回避・読み取り専用cacheの後始末・両OS結果の扱い）
 - [DSH外部Harnessのread境界の実測](DSH_H6E1_READ_BOUNDARY_2026-11-07/README.md)（#2515 H6-E1・#2509。read-onlyでもraw配下・.env・cwd外の合成canaryが読め、モデル入力とSession Logの両方へ載ったことを記録。実OS/ACLの拒否試験はNOT RUN）
+
