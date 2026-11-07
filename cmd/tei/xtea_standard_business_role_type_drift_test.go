@@ -32,17 +32,29 @@ func TestXTEAExampleRoleTypeDriftKeepsUnknownSeparateFromMismatch(t *testing.T) 
 	}
 
 	tests := []struct {
-		name     string
-		typeRef  string
-		wantCode string
+		name             string
+		typeRef          string
+		wantCode         string
+		foreignPrimitive bool
 	}{
-		{"wrong-primitive", "std.date", mismatchCode},
-		{"unresolved-type", "master.unknown_rate_type", unknownCode},
+		{"wrong-primitive", "std.date", mismatchCode, false},
+		{"unresolved-type", "master.unknown_rate_type", unknownCode, false},
+		{"same-suffix-foreign-primitive", "foreign.decimal", mismatchCode, true},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			world := loaded.World
 			world.Semantics = append([]semantic.Namespace(nil), world.Semantics...)
+			if tc.foreignPrimitive {
+				// A different publisher's primitive is not the trusted std.decimal
+				// contract merely because its canonical ID ends in ".decimal".
+				world.Semantics = append(world.Semantics, semantic.Namespace{
+					ID: "foreign",
+					Types: []semantic.Type{{
+						ID: "foreign.decimal", Symbol: "decimal", Kind: semantic.TypePrimitive,
+					}},
+				})
+			}
 			found := false
 			for i, ns := range world.Semantics {
 				if ns.ID != "master" {
