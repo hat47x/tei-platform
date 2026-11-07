@@ -825,7 +825,11 @@ Registryは**発見の索引**、Issuerは証拠の発行主体、Host/Ownerは�
 
 **今回の実施の上限**：#3277/#3285/#3300のmain統合は**設計とFit/Gap**。#3284/#3296/#3299/#3304のCIは特定の限定Context/Scenario判別で成功。#3309のローカル保存はPR上の合成Canary実測、main未統合。#3311 Workspace欄・#3302 CLI read-only Variantも未統合。今回のInspector Provider実Build/Invoke、完全H2/H3 4 Session、OS/Network隔離、実外部Provider、Owner業務意味・Plugin製品資格は**NOT RUN**。ADR-0035 A3の変更範囲機械検証・A4の外部効果確認に従い、旧Draft一律保留規則を復活させない。
 
-### 27.6 Capability選択の粒度と独立Context・Build主体の実測を最初のInspectorへ（2026-11-08、前節の実Provider二Consumer試験を実装に近づける差分）
+### 27.6 Capability選択の粒度と独立Context・Build主体の実測を最初のInspectorへ
+
+**後続mainによる状態更新（2026-11-08）**：以下の#3350「open」、#3324「Draft」、#3336「L3未達」は**各観測当時の記述**。#3350はmain統合済み、#3324は重複を統合したmain #3354へ継承、#3360は**参照driver自身**のStage1→Stage2 L3を実証した（`cmd/tei`のL3は未実施）。現行の実装／Claim上限は§27.7に示す。新しい比較結果を旧Runの証拠へ遡及適用しない。
+
+（2026-11-08、前節の実Provider二Consumer試験を実装に近づける差分）
 
 この節は§27.5に記したInspector D1/CLI+Studio同一Provider実呼出しを**繰り返さず**、その直前に測る必要のある`Environment Binding`の粒度、および読取・Buildの観測者の同一性を最新mainのSource/限定試験に基づき補足する。実装優先順位の正本は[mainのPlugin-first計画](PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md)／[merged #3300](https://github.com/hat47x/tei-platform/pull/3300)。独立検証基準のOwnerは#2514、実Contextは#3262、実Buildは#2831/#1251であり、第二のResolver/Registry/Gateを導入しない。
 
@@ -852,3 +856,38 @@ Registryは**発見の索引**、Issuerは証拠の発行主体、Host/Ownerは�
 **独立レーン**：#3324のContext Gateは既存実CLIでのT0.5→T1-A精度向上であり、D1 Productへ暗黙依存させない。#3336のBuilder Driveは#2831でのSB-C0/C1局所前進であり、本節のD1実Build/Callが済んだ証拠でもL3 Self Build完成でもない。外部DSHの実OS Read/Egress隔離や永続Session Sinkは§26〜27.5／#2515が所有する別レーン。
 
 **状態**：#3337/#3336/#3307/#3333はmainへ統合された限定Reference/CLI改善。#3350と#3324は未統合の別Owner差分。**SEL-01〜05の同一D1製品Attempt、実CLI/Studio同一Provider B呼出し、Rule/Relation全必要閉包、実PostgreSQL/実Host、L3、外部Harness機密隔離、Owner意味受理はこのDocs追補ではNOT RUN**。Source/Artifact/Scope/Current Grant/Actual Input/Resultを別証拠として扱い、事後の正常な数え方や同一JSONを理由に過去の実験のClaimを変更しない。
+
+### 27.7 実Selection Matrix・Studio Host入口・T0.5・MCP非必須・L3の実証状態を更新する（2026-11-08、過去の未達記述の訂正・実装着手の接合点）
+
+本節は[mainにあるPlugin-first計画](PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md)と[Inspector D1 Fit/Gap main #3300](https://github.com/hat47x/tei-platform/pull/3300)の設計正本を変更しない。§27.5/27.6で既に決めた「一つの\`inspect\`をCLI/Studioで同じSelected Providerから実Callする」を、**今回新しく確認できたGo縦断・実Reference・実CLIテスト**に基づき次の実行順へ更新する。
+
+#### 27.7.1 前回の未確定事項は、どこまで実証済みになったか
+
+| 以前の条件 | 2026-11-08の確認済み変更 | なお同じ成功とは呼べない範囲 |
+| --- | --- | --- |
+| Capability選択のDB技術名とIDが混同される | [main統合 #3350](https://github.com/hat47x/tei-platform/pull/3350)が\`SupportsDatabaseProvider\`を使い、\`reference/workspace\`の宣言12件中「未選択」6→4という**同じ技術意味に沿う分類**へ改善。#3337の旧結果は当時のSource/規則として保持 | [main統合 #3363](https://github.com/hat47x/tei-platform/pull/3363)の6種Binding一括Referenceは24中\`selected=22,missing=2,ambiguous=0\`。ただし\`editor.database_workbench\`2件の\`missing\`は**実Validatorが検査を要求していない対象**。検証ルールの追加が必須とは即断せず、ReferenceとValidationの適用対象差を別に記録。選択成功≠実Provider存在・Host Grant |
+| Studio \`inspect\`のHost-selected Provider入口が無い | [Draft #3371](https://github.com/hat47x/tei-platform/pull/3371)は\`RootServices.Inspection\`という型付き\`InspectionService\`を追加し、**Factory非nilなら直接\`operations.InspectSubject\`へfallbackしない**Go変更と正負試験を提案。main\`readonly.go\`はなお\`RootServices\`がCatalog/Validationだけで、Inspectは直接Operation。PR先のGo Sourceの差分を別々に確認 | #3371は**Draft・未main・CI未検証**。Factoryに#951/#1016のactual selected Providerを渡すComposition Binding、CLI側同等Port、A/B実呼出差、Studio/Wails/Consumer実受領は別途必要。Factory nil時のPoC fallbackを正式Plugin Invokeとみなさない |
+| Required Rule/Relationが正常なJSONで欠落しても成功し得る | [main統合 #3354](https://github.com/hat47x/tei-platform/pull/3354)は旧#3324/#3326の重複3ファイルを統合し、**11実read-only CLI応答＋32局所Context Controls**（うち3 Rule Required、Focused Canonical、Relation/Source Indexを照合）。固定HEADの専用CIがsuccess | \`boundedReference=partial\`／\`qualifiedTestGeneration=false\`のまま。完全なFunction/Business Closure・T1-B未知RuleのAI盲検発見・実外部H3 Tool受領・C1・Owner Meaningは未取得。32件はProduct Mutant Killではない |
+| Build Driver≠Self-build、L3未達 | [main統合 #3360](https://github.com/hat47x/tei-platform/pull/3360)で**参照driver自身**のStage1 artifactをStage2 invokerに実起動し、同じchild/args・同じ生成artifactを照合、Reference \`l3Claimed:true\`。#3362はinvokerの自称Digestと実Process Imageの独立照合を追加 | **\`cmd/tei\`が自分自身を生成したL3ではない**。Go seed、Module供給Trust、Target/Host、D1選択Providerの実Link/Callは別のClaim。既存#2831が引き続きOwner |
+| 外部AI/CLI/MCPの比較入口が共通 | [Open #3356](https://github.com/hat47x/tei-platform/pull/3356)の第2ラウンドは実CLI成果の再読取と、**実TEI MCP server入口は現mainに未存在**とのSource調査を記録。CLI既存19広告read-onlyコマンドは有る | 既存ADRが開発用MCP Serverを必須としていない以上、**MCPが無いことをInspector D1の先行失敗や別Core実装の要求にしない**。MCP Tool受領、H3/Consumer・実OS隔離は実施されていない |
+| Recorder/Stage失敗は効果0として返し得る | [Draft #3328](https://github.com/hat47x/tei-platform/pull/3328)で\`COMMAND_RECORD_FAILED\`／Lifecycle失敗への\`EffectUnknown\`伝播と\`MayReplay\`の曖昧再送拒否を実コードで提案 | **mainの\`invoke.go\`はまだ\`COMMAND_RECORD_FAILED\`に\`EffectUnknown\`を付けていない**（今回Source照合）。#3328未統合で、実PG/別Connection/Journal crash/外部Receiptによる実効果確認なし。read-only Inspector内の結果とは別に、後のwrite-enabled Provider採用の停止線とする |
+
+#### 27.7.2 次の実装を1段に限定する：二種類の「選択されている」を分ける
+
+**先に使える現物**：#3363の6形式\`Binding\`一括結果と#3354のRequired Context Gate。両者はread-onlyに局所照合できるが、前者が「\`selected\`」と出しても後者が「\`partial\`」と出しても**互いの判断を上書きしない**。\`editor.database_workbench\`のReference未選択・Validator非対象という差は、「missing/ambiguous/unknown/not-checked」をアプリの実Plugin機能失敗へ短絡させない具体例。既存\`Supports*\`の再利用を優先し、新しい能力対応表・二重Resolverを作らない。
+
+**先に実装する1辺**：#3371のHost-selected\`InspectionService\`の正負試験を独立に確定させ、非nil Factoryから別の直接Operationに逃げないことを確認する。その次に既存#951/#1016でexact\`authoring\` Contract/Provider Bを選択し、CLIとStudio**各独立Caller**へ同じ実Providerを渡す。二つのCallerから\`Inspect\`を呼んだ事実（Target/Contract/Source Revision/Result byte）を同じAttemptに束縛し、**B選択→A実行で結果だけ一致**という負例を拒否する。これは選択Scopeを旧\`application-runtime\` Carrierへ偽装することもStudio RendererにRoot/Provider選択権を与えることも要求しない。
+
+**TestとBuildは邪魔をしない独立証拠**：#3354の11 CLI/32 Controlsは\`inspect\`に必要なSource/Rule/Relationの一部だけを証明し、CLI/StudioのPlugin実Call完了を要求しない。#3360のReference L3は\`cmd/tei\`セルフビルドの前段計測であり、最初のInspector D1をL3完成まで保留する条件にしない。#3328の書込失敗時\`unknown\`は実Effectを始める次の段階で必要であり、今のread-only Inspectorを外部DB commit fixtureに変える理由ではない。
+
+| 限定対照 | 実機で見る状態／独立期待値 | 必要なOwner・実施状況 |
+| --- | --- | --- |
+| **PATH-01** 同一Worldの6 Binding選択 | Capabilityを持つ、環境が選ぶ、ValidatorがそのBindingを検査する、実Invokeの四つを別に報告。\`not-checked\`は不合格でも合格でもない。 \`editor.database_workbench\`の2件でReferenceの\`missing\`とValidatorの非対象を共存させる | #951/#1016/#3279。#3363 main実Referenceあり、Product InspectorとのJoinはNOT RUN |
+| **PATH-02** Host Factoryの正負対照 | Factory非nil・Inspection未供給なら旧Operationにfallbackせず拒否。FactoryがBを供給すればBを1回呼ぶ。非許可RootではFactoryは0回。Subject/Effect/Schema/FP不一致は非公開の内部原因を隠して拒否 | #3371はGo変更Draft、現main未接続。exact-head Go/CI・実Wailsは未確認 |
+| **PATH-03** CLI×Studio同一Provider | \`authoring\` ScopeのBを選んで両実Callerからactual B Invokeし、選択B／実Aでは失敗。両者の世界/Source/Required Context/Disclosureはそれぞれ別の証拠 | #1251/#951/#1158/#1824、**新しいE2E NOT RUN** |
+| **PATH-04** ContextとTransportの不完全性 | 同じJSON/FPでも必須Rule/Relation欠落を検出。Sourceの未読込、Result途中切断、Tool独立受領を混同せず\`partial\`で停止。MCP未実装を全利用不能と扱わずCLI正例は保持 | #3262/#3354実CLI限定PASS。外部MCP/H3と全Required Closureは未実証 |
+| **PATH-05** Build・事後効果 | 参照Stage1→Stage2 \`l3Claimed:true\`と、製品\`cmd/tei\` L3未実施、実Inspector D1 Link未実施を別に保持。Recorder/Lifecycle失敗後の再送は\`unknown\`として既存#3328/#1174で検証 | #2831の参照L3限定PASS、#3328 Draft／実PG効果NOT RUN |
+
+**次の優先順**：PATH-01の既存read-only照合→PATH-02のStudio Host Service正負対照→PATH-03のCLI二Consumer同一Selected Providerのactual Invoke→PATH-04 Required Source/Ruleを拡張→必要な段階でのみPATH-05の実Build/Effect資格。MCPが必要となるConsumerを特定するまでは新MCP Serverや第二Tool Registryを実装順の前提にしない。Provider/ToolのOS隔離・機密情報送出と保持の資格は既存#2515／TAI #232で別検証する。
+
+**実装・資格状態**：main統合は#3350/#3354/#3360/#3362/#3363の限定Reference／局所Test。Studio Host入口#3371、Command効果不明#3328、MCP第2ラウンドEvidence #3356は各Open/Draft。今回の§27.7は**docs-only**で、Studio/CLI共通実Provider・OS/外部Harness送出拒否・MCP実入口・\`cmd/tei\` L3・実PG/ReceiptとOwner意味受理を新たに実行したものではない。#1119のGates／ADR-0035のA3/A4を変更せず、第二Host/Resolver/Registry/Scenario正本を導入しない。
