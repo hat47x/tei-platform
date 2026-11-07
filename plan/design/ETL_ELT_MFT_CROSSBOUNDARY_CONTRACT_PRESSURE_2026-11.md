@@ -392,6 +392,24 @@ Apache Kafkaは、Kafka Topic間ではtransactional producerとconsumer offset�
 
 **採否**: 一般のPublication Mapping、標準RoleやManifest Entryの変更、任意Transport/MFT Adapterは、現在の5ファイルFixtureだけでは根拠不足。別Reader・別Host・第二Scenario正本を作らず、#2604 Ownerが実証と互換性に基づき方式を選択する。
 
+### 12.4 2026-11-08 結果確認と、Byte／Envelope境界の独立負例
+
+**PR #3256 の最初のexact HEAD `bcf77d7bd8dd1dc7e9242a6d708761c1f613693a`についてGitHub APIで実結果を確認**:
+
+| 実行根拠 | 成立した範囲／別資格 |
+| --- | --- |
+| [one-revision actual Go CLI＋Python Reader CI #42348103565](https://github.com/hat47x/tei-platform/actions/runs/42348103565) | completed/success。exact HEAD checkout、pinされたGoツールチェーンによる実CLI build、9件のPython単体、同一公開`ledger` WorkspaceのArtifact生成と実Path/Byte Reader、改名によるSource revision差の実検証。これは**一つのfresh-dir**での受領に限る |
+| [Repository Health #42348103549](https://github.com/hat47x/tei-platform/actions/runs/42348103549) | completed/success。上記実CLIとは別の全体健全性検査 |
+| [Dependency scan #42348103617](https://github.com/hat47x/tei-platform/actions/runs/42348103617) | completed/success。root/studioのgovulncheckと参照Workbench等のnpm auditのWorkflow結果。実Provider接続やBusiness Policyの安全証明ではない |
+
+追加する**同じ既存Unit Testへの負例**（本節執筆時点で新HEADのCIは別に必要）:
+
+- **AP-01/06（読取側の反応）**: R1のManifestを保持しつつ一つのMemberだけR2のBodyに置換。限定ReaderはR1受領資格を拒否することを確認する。ただし**既存Writerが必ず原子公開することの実証ではなく**、失敗後のRecoveryと旧版pin/GCの保証でもない。
+- **AP-10/11（過剰資格化の拒止）**: Bodyを同じに保ち、Rule Version／Generator／Unresolved詳細だけを変更。Byte限定Readerは同じBody digestを返し得るため、結果の資格を`ledger-fixture-path-to-bytes-only`に限定し、`Artifact.Verify`・意味の同一性・業務受理を出力しない。**同じbyteだから同じArtifactとはしない**。
+- **実装担当を増やさない**: #2604が物理Publication/Consumer Reader、#2482がArtifact Envelopeの内部検証、#2630が用途別RequiredMember、#2542が外部Recipient/Import、#1174がEffectを担当。#2831／PR #3313の外部Module opt-inはBuild Sourceの独立証拠であり、Ledgerのファイル読取PASSをSelf-build全閉包や実MFT保証へ移さない。
+
+**次の受入順**: (i) #3256 exact HEADの11 Python例＋actual Go CLI CI結果、(ii) #2604が所有する**正規Manifestを維持したR1/R2公開競合と独立Consumer pin/GC**、(iii) #2542 EF-01〜03で実送達/ImportUnit/期間、(iv) Owner承認付きEffect。新Renderer、Publication Mappingの正式API、専用Completion Engineの先行採用は不要。製品E2E・Windows/FS差・実MFT・業務Owner受理は引き続きNOT RUN。
+
 ### 追加一次資料（製品・仕様の版に依存する事実）
 
 - Apache Iceberg spec, snapshots / optimistic concurrency: https://iceberg.apache.org/spec/
