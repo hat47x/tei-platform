@@ -32,6 +32,7 @@ var rolePrimitives = map[string]string{
 	"numbering-check":              "",
 	"numbering-overflow":           "",
 	"holiday-date":                 "date",
+	"holiday-calendar":             "", // any type: a calendar identity is a code or text
 }
 
 // validateAttributeRoleTypes reports an attribute whose role requires a
