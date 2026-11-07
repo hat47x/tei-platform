@@ -234,8 +234,8 @@ func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environ
 			var resolved plugin.ResolvedSet
 			var resolveErr error
 			if pluginLockPath != "" {
-				var lock plugin.Lock
-				if decodeErr := decodeJSONFile(pluginLockPath, &lock); decodeErr != nil {
+				lock, decodeErr := decodePluginLockFile(pluginLockPath)
+				if decodeErr != nil {
 					fail(resultCodeInvalidPluginLock, decodeErr.Error())
 				} else {
 					resolved, resolveErr = catalog.ResolveEnvironmentWithLock(env, lock)
@@ -244,7 +244,13 @@ func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environ
 				resolved, resolveErr = catalog.ResolveEnvironment(env)
 			}
 			if resolveErr != nil {
-				fail(resultCodePluginResolveFailed, resolveErr.Error())
+				// Same rule as plugin-runtime-plan: an unusable lock is an input
+				// failure with INVALID_PLUGIN_LOCK, not a resolve outcome (#3184).
+				if plugin.IsInvalidLock(resolveErr) {
+					fail(resultCodeInvalidPluginLock, resolveErr.Error())
+				} else {
+					fail(resultCodePluginResolveFailed, resolveErr.Error())
+				}
 			} else if detail.SelectionError == nil {
 				detail.Candidates = &resolved
 			}
@@ -290,25 +296,35 @@ func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environ
 		if command == "plugin-resolve" {
 			var r plugin.ResolvedSet
 			if pluginLockPath != "" {
-				var lock plugin.Lock
-				if err := decodeJSONFile(pluginLockPath, &lock); err != nil {
-					return emitResult(out, resultFailure(command, resultCodeInvalidPluginLock, err), 2)
+				lock, lockErr := decodePluginLockFile(pluginLockPath)
+				if lockErr != nil {
+					return emitResult(out, resultFailure(command, resultCodeInvalidPluginLock, lockErr), 2)
 				}
 				r, err = catalog.ResolveEnvironmentWithLock(env, lock)
 			} else {
 				r, err = catalog.ResolveEnvironment(env)
 			}
 			if err != nil {
+				if plugin.IsInvalidLock(err) {
+					return emitResult(out, resultFailure(command, resultCodeInvalidPluginLock, err), 2)
+				}
 				return emitResult(out, resultFailure(command, resultCodePluginResolveFailed, err), 2)
 			}
 			return emitResult(out, resultEnvelope(command, "", r), 0)
 		}
-		var lock plugin.Lock
-		if err := decodeJSONFile(pluginLockPath, &lock); err != nil {
-			return emitResult(out, resultFailure(command, resultCodeInvalidPluginLock, err), 2)
+		lock, lockErr := decodePluginLockFile(pluginLockPath)
+		if lockErr != nil {
+			return emitResult(out, resultFailure(command, resultCodeInvalidPluginLock, lockErr), 2)
 		}
 		plan, err := pluginruntime.BuildPlan(catalog, env, lock)
 		if err != nil {
+			// A lock whose bytes are unusable is an input failure (exit 2), the
+			// same as the decode and resolve paths of plugin-resolve. A
+			// well-formed lock that does not match the environment or the
+			// catalog stays a planning failure (exit 1) (#3184).
+			if plugin.IsInvalidLock(err) {
+				return emitResult(out, resultFailure(command, resultCodeInvalidPluginLock, err), 2)
+			}
 			return emitResult(out, resultFailure(command, resultCodePluginPlanFailed, err), 1)
 		}
 		return emitResult(out, resultEnvelope(command, "", plan), 0)

@@ -13,7 +13,7 @@
 | 要件 | 状態 | 主な実装 | 検証 | 残る未確認 |
 | --- | --- | --- | --- | --- |
 | AC-1 | 実装済み（参照） | Application Packageの検証・ビュー | Packageビュー、`TestXTEAExampleWorkspace` | 取り外し後の受理済み意味の保持を実DBで確認 |
-| AC-2 | 一部 | フック宣言の検証、`internal/hook`の実行契約、`hook.Declared`（宣言した能力以外の呼出しを拒否。[確認記録](XTEA_LOWCODE_HOOK_DECLARED_CALLS_2026-11.md)）、`hook.CommandCaller`（フックの呼出しをCommand境界へ委譲）、`hook.Runner.Caller`（宣言に制限した呼出し元を実装へ渡す配線）、`hook.ReferenceRule`（宣言した読み取りだけを評価する規則Pluginの参照実装）、`hook.Guarded`（判定が通ったときだけ宣言済みの能力を呼ぶ連結）、`hook.CommandPatternFor`（能力を宣言する`command` Patternを1件だけ解決し、0件・複数件を拒否。[確認記録](XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)） | フック宣言・実装契約の単体試験、宣言外呼出しの拒否試験、Command境界への委譲試験、Runnerからの配線と宣言外拒否の試験、参照規則の決定性・未観測拒否の試験、同位相の重複宣言の拒否試験、判定と能力呼出しの連結の試験、能力からPatternの解決（0件・複数件の拒否）の試験 | 実Pluginからの供給路、CLI・Studioの実行経路への配線、`reads`・`produces`の実データ観測 |
+| AC-2 | 一部 | フック宣言の検証、`internal/hook`の実行契約、`hook.Declared`（宣言した能力以外の呼出しを拒否。[確認記録](XTEA_LOWCODE_HOOK_DECLARED_CALLS_2026-11.md)）、`hook.CommandCaller`（フックの呼出しをCommand境界へ委譲）、`hook.Runner.Caller`（宣言に制限した呼出し元を実装へ渡す配線）、`hook.ReferenceRule`（宣言した読み取りだけを評価する規則Pluginの参照実装）、`hook.Guarded`（判定が通ったときだけ宣言済みの能力を呼ぶ連結）、`hook.CommandPatternFor`（能力を宣言する`command` Patternを1件だけ解決し、0件・複数件を拒否。[確認記録](XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)）、印刷面（`-format print`）も同じフック宣言を表示（[確認記録](XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md)） | フック宣言・実装契約の単体試験、宣言外呼出しの拒否試験、Command境界への委譲試験、Runnerからの配線と宣言外拒否の試験、参照規則の決定性・未観測拒否の試験、同位相の重複宣言の拒否試験、判定と能力呼出しの連結の試験、能力からPatternの解決（0件・複数件の拒否）の試験、画面と印刷の両方で同じフック宣言が出る試験 | 実Pluginからの供給路、CLI・Studioの実行経路への配線、`reads`・`produces`の実データ観測 |
 | AC-3 | 一部 | `role`・`required`・`immutable`・`values`、表示ラベル | 検証・ビュー・参照Executorの試験 | 幅・行数・整列・部品の表示指定 |
 | AC-4 | 一部 | `layout`の順序投影 | layoutの検証・ビュー | 座標を含む配置とプロファイル比較 |
 | AC-5 | 一部 | `Outcome`・`ExecutionError`・期間拒否、`ReferenceFailure`の符号（`record-missing`・`record-exists`・`value-rejected`・`rule-rejected`）と`FailureOutcome`、CLIの`COMMAND_REFUSED`、フックの`hook.NotSatisfied`（業務上の不成立を実行の失敗と区別。[確認記録](XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)） | Command実行境界・期間の試験、参照Storeの拒否符号の試験、拒否と実行障害の区別の試験、不成立と`warn`・実行失敗の区別の試験 | 多結果・多重一致の表現、実Providerでの結末、フックの結末名とCommand結末名の対応規則 |
@@ -25,7 +25,7 @@
 | AC-11 | 一部 | `effectcommit.Runner`の認可境界、`command.Invoker.Authorizer`、`AllowListAuthorizer`、CLI/StudioのAllowList、`legacyauthorization/commandbinding.CommandAuthorizer`（subject・action・resourceを既存規則へ接続）、`command.GrantAuthorizer`（能力が宣言した許可と発行済み許可の照合。部分許可・無宣言・不正宣言を拒否）。確認記録: [既存認可規則](XTEA_LOWCODE_COMMAND_AUTHORIZATION_2026-11.md)、[宣言許可の照合](XTEA_LOWCODE_GRANT_AUTHORIZATION_2026-11.md) | 認可付きPostgreSQL試験（DSN設定時のみ）、Authorizerの許可・拒否試験、CLIの`-allow-capability`、Studioの`ExecuteCommandWithPolicy`、Patternが宣言していても付与が無ければExecutorへ到達しない試験、能力の宣言許可と発行許可の照合試験 | 権限の正本・付与の管理、`security.authorize`への実運用接続 |
 | AC-12 | 未実装 | 設計のみ（[作者環境の受容設計](../design/XTEA_AUTHORING_SURFACE_RECEPTION_2026-11.md)） | — | 面ごとの配置検査、意味の役割と表示指定の分離、生成物の未受理扱い | Package、Semantic/Applicationの宣言 | Package・Applicationの検証と例 | Core外の型定義との組合せ |
 | RQ-C2 | 一部 | フック宣言、CommandとObservationの分離 | 単体試験 | Plugin境界での完全な宣言強制 |
-| RQ-C3 | 一部 | 期間、値域、型正規化、`calendar`宣言と期間との結合（[確認記録](XTEA_LOWCODE_CALENDAR_DECLARATION_2026-11.md)）、`internal/businesscalendar`（暦からの日付差・営業日加算・会計年度・期間キー。[確認記録](XTEA_LOWCODE_CALENDAR_CALCULATION_2026-11.md)、[期間キーの確認](XTEA_LOWCODE_PERIOD_KEY_2026-11.md)）、`internal/taxrate`（適用期間の両端・端数処理の宣言・重なりの検出。Data宣言の属性役割からの行の結合。[確認記録](XTEA_LOWCODE_TAX_RATE_2026-11.md)、[Data結合の確認](XTEA_LOWCODE_TAX_RATE_BINDING_2026-11.md)）、`internal/currencyrate`（同上。[確認記録](XTEA_LOWCODE_CURRENCY_RATE_2026-11.md)）、`internal/numbering`（同上。[確認記録](XTEA_LOWCODE_NUMBERING_2026-11.md)）、`ApplicationView.periods`の`calendar`（期間が従う暦を投影。Studioの「期間」表にも列を追加） | 参照Store・例の試験、暦宣言の構文・検証試験、日付導出の試験（13件） | 税・通貨・採番の適用期間と評価時点、期間キーの導出 |
+| RQ-C3 | 一部 | 期間、値域、型正規化、`calendar`宣言と期間との結合（[確認記録](XTEA_LOWCODE_CALENDAR_DECLARATION_2026-11.md)）、`internal/businesscalendar`（暦からの日付差・営業日加算・会計年度・期間キー。[確認記録](XTEA_LOWCODE_CALENDAR_CALCULATION_2026-11.md)、[期間キーの確認](XTEA_LOWCODE_PERIOD_KEY_2026-11.md)）、`internal/taxrate`（適用期間の両端・端数処理の宣言・重なりの検出。Data宣言の属性役割からの行の結合。[確認記録](XTEA_LOWCODE_TAX_RATE_2026-11.md)、[Data結合の確認](XTEA_LOWCODE_TAX_RATE_BINDING_2026-11.md)）、`internal/currencyrate`（同上。[確認記録](XTEA_LOWCODE_CURRENCY_RATE_2026-11.md)）、`internal/numbering`（同上。Data宣言の属性役割からの行の結合。[確認記録](XTEA_LOWCODE_NUMBERING_2026-11.md)、[Data結合の確認](XTEA_LOWCODE_NUMBERING_BINDING_2026-11.md)）、`holiday-date`役割からの休日行の結合（[確認記録](XTEA_LOWCODE_HOLIDAY_BINDING_2026-11.md)）、標準業務の属性役割17個の受理と綴り誤りの拒否（[確認記録](XTEA_LOWCODE_ROLE_VOCABULARY_2026-11.md)）、`ApplicationView.periods`の`calendar`（期間が従う暦を投影。Studioの「期間」表にも列を追加） | 参照Store・例の試験、暦宣言の構文・検証試験、日付導出の試験（13件） | 税・通貨・採番の適用期間と評価時点、期間キーの導出 |
 
 ## 実DB・実Providerで未確認のこと
 
@@ -58,9 +58,6 @@ persisted: false (durability: none)
 ```
 
 これは参照用AllowListによる能力単位の拒否です。利用者・資源・メニュー表示・権限の付与は確認していません。
-
-
-
 
 
 

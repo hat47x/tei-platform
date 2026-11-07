@@ -14,7 +14,7 @@ func TestWriteLineageWithGrantsRefusesAPathOutsideTheGrantedScope(t *testing.T) 
 	dir := t.TempDir()
 	other := t.TempDir()
 	grants := []permission.Spec{{Kind: permission.KindFilesystem, Access: permission.AccessWrite, Scope: other}}
-	if err := writeLineageWithGrants(filepath.Join(dir, "lineage.json"), []byte("{}"), grants, ""); err == nil {
+	if err := writeLineageWithGrants(filepath.Join(dir, "lineage.json"), []byte("{}"), grants, "", ""); err == nil {
 		t.Fatal("a path outside the granted scope must be refused")
 	}
 }
@@ -49,7 +49,7 @@ func TestWriteLineageWithGrantsRecordsTheDecisionWhenAsked(t *testing.T) {
 	path := filepath.Join(dir, "lineage.json")
 	accessLog := filepath.Join(dir, "access.jsonl")
 	grant := permission.Spec{Kind: permission.KindFilesystem, Access: permission.AccessWrite, Scope: path}
-	if err := writeLineageWithGrants(path, []byte("{}"), []permission.Spec{grant}, accessLog); err != nil {
+	if err := writeLineageWithGrants(path, []byte("{}"), []permission.Spec{grant}, accessLog, ""); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 	records, err := (access.File{Path: accessLog}).Records()
@@ -68,7 +68,7 @@ func TestWriteLineageWithGrantsStillWritesWithoutAnAccessLog(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "lineage.json")
 	grant := permission.Spec{Kind: permission.KindFilesystem, Access: permission.AccessWrite, Scope: path}
-	if err := writeLineageWithGrants(path, []byte("{}"), []permission.Spec{grant}, ""); err != nil {
+	if err := writeLineageWithGrants(path, []byte("{}"), []permission.Spec{grant}, "", ""); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 	if _, err := os.Stat(path); err != nil {
@@ -86,7 +86,7 @@ func TestWriteLineageWithGrantsRefusesAChangedAccessLog(t *testing.T) {
 	accessLog := filepath.Join(dir, "access.jsonl")
 	grant := permission.Spec{Kind: permission.KindFilesystem, Access: permission.AccessWrite, Scope: path}
 
-	if err := writeLineageWithGrants(path, []byte("{}"), []permission.Spec{grant}, accessLog); err != nil {
+	if err := writeLineageWithGrants(path, []byte("{}"), []permission.Spec{grant}, accessLog, ""); err != nil {
 		t.Fatalf("first write: %v", err)
 	}
 	raw, err := os.ReadFile(accessLog)
@@ -96,15 +96,71 @@ func TestWriteLineageWithGrantsRefusesAChangedAccessLog(t *testing.T) {
 	if err := os.WriteFile(accessLog, []byte(strings.Replace(string(raw), `"allowed":true`, `"allowed":false`, 1)), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := writeLineageWithGrants(path, []byte("{}"), []permission.Spec{grant}, accessLog); err == nil {
+	if err := writeLineageWithGrants(path, []byte("{}"), []permission.Spec{grant}, accessLog, ""); err == nil {
 		t.Fatal("a changed record must not gain a valid-looking line")
+	}
+}
+
+// TestWriteLineageWithGrantsPinsTheHeadWhenAsked checks that naming a head pin
+// records the last hash, so a later reader can detect a removed last line.
+func TestWriteLineageWithGrantsPinsTheHeadWhenAsked(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "lineage.json")
+	accessLog := filepath.Join(dir, "access.jsonl")
+	accessHead := filepath.Join(dir, "access.head")
+	grant := permission.Spec{Kind: permission.KindFilesystem, Access: permission.AccessWrite, Scope: path}
+
+	if err := writeLineageWithGrants(path, []byte("{}"), []permission.Spec{grant}, accessLog, accessHead); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	head, err := (access.HeadPin{Path: accessHead}).Read()
+	if err != nil || head == "" {
+		t.Fatalf("the head must be pinned: %q err=%v", head, err)
+	}
+	recorded, err := (access.ChainFile{Path: accessLog}).Head()
+	if err != nil || recorded != head {
+		t.Fatalf("the pin must equal the journal's last hash: pin=%q journal=%q err=%v", head, recorded, err)
+	}
+}
+
+// TestWriteLineageWithGrantsRefusesARemovedLastRecord is the case the chain alone
+// cannot catch, and the reason the flag exists: dropping the last line of the
+// record leaves a valid chain, and only the pin notices.
+func TestWriteLineageWithGrantsRefusesARemovedLastRecord(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "lineage.json")
+	accessLog := filepath.Join(dir, "access.jsonl")
+	accessHead := filepath.Join(dir, "access.head")
+	grant := permission.Spec{Kind: permission.KindFilesystem, Access: permission.AccessWrite, Scope: path}
+
+	if err := writeLineageWithGrants(path, []byte("{}"), []permission.Spec{grant}, accessLog, accessHead); err != nil {
+		t.Fatalf("first write: %v", err)
+	}
+	// Empty the journal: the chain of zero records is consistent, the pin is not.
+	if err := os.WriteFile(accessLog, []byte{}, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeLineageWithGrants(path, []byte("{}"), []permission.Spec{grant}, accessLog, accessHead); err == nil {
+		t.Fatal("a removed last record must be reported, not extended")
+	}
+}
+
+// TestWriteLineageWithGrantsRefusesAPinWithoutALog keeps a flag combination from
+// silently doing nothing: a pin of a record that is not written has no meaning.
+func TestWriteLineageWithGrantsRefusesAPinWithoutALog(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "lineage.json")
+	accessHead := filepath.Join(dir, "access.head")
+	grant := permission.Spec{Kind: permission.KindFilesystem, Access: permission.AccessWrite, Scope: path}
+	if err := writeLineageWithGrants(path, []byte("{}"), []permission.Spec{grant}, "", accessHead); err == nil {
+		t.Fatal("a head pin without the log it pins must be refused")
 	}
 }
 
 func TestWriteLineageWithGrantsWithoutGrantsWritesNothing(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "lineage.json")
-	if err := writeLineageWithGrants(path, []byte("{}"), nil, ""); err == nil {
+	if err := writeLineageWithGrants(path, []byte("{}"), nil, "", ""); err == nil {
 		t.Fatal("no grants means nothing is written")
 	}
 	if _, err := os.Stat(path); !os.IsNotExist(err) {

@@ -39,16 +39,11 @@ type WorkspaceTrace struct {
 // supportedTraceKind reports whether derivedbridge can place this kind in the
 // typed graph at all. It is narrower than supportedInspectionKind: inspect can
 // read a candidate key or a functional dependency straight from the World, but
-// the reference projection carries neither, so trace has nothing to walk.
+// the reference projection carries neither, so trace has nothing to walk. The
+// set lives with the projection itself, so a kind added there is not silently
+// accepted here (or refused here while the graph would carry it).
 func supportedTraceKind(kind string) bool {
-	switch kind {
-	case "semantic", "semantic-type", "semantic-data", "semantic-attribute",
-		"semantic-relation", "semantic-validation", "semantic-capability",
-		"application", "application-pattern", "query":
-		return true
-	default:
-		return false
-	}
+	return derivedbridge.SupportsSubjectKind(kind)
 }
 
 // TraceWorkspace joins the established Derived Index modelref projection and

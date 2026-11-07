@@ -74,6 +74,10 @@ CLI利用者が「この対象には宣言済みの参照が無い」と「こ�
 1. `trace`でも未知kindを`UNSUPPORTED_SUBJECT_KIND`（終了コード2）として返し、`SUBJECT_NOT_FOUND`（1）と区別する。
 2. `derivedbridge`が投影しない種類（`semantic-candidate-key`・`semantic-functional-dependency`）を、応答に`unprojectedKind`などの欄で明示する。第二の正本を作らず、既存の`authorityLimits`と同じ形の注記で足りるかを含めて判断する。
 
+**対応（2026-11-07）**
+
+候補1を [PR #3208](https://github.com/hat47x/tei-platform/pull/3208) で実装した。`trace`は世界を読む前に投影範囲を確かめ、対象外なら`UNSUPPORTED_SUBJECT_KIND`（終了コード2）を返す。投影する種類で識別子が存在しない場合は`SUBJECT_NOT_FOUND`（終了コード1）のままである。続けて、投影範囲の一覧を`derivedbridge.SupportsSubjectKind`へ寄せ、`derivedbridge`の投影結果と一致することを検査する試験を加えた。候補2の`unprojectedKind`欄は、失敗時に符号で示せるため追加していない。追跡は[#3180](https://github.com/hat47x/tei-platform/issues/3180)。
+
 ---
 
 ### D-2 Workspaceの名前とmanifestの照合値が応答に出ない

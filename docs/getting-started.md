@@ -120,7 +120,7 @@ go run ./cmd/tei trace \
 
 結果に含まれる`worldFingerprint`と`sourceIndexFingerprint`は、`inspect`が返す同名の項目と比較できます。意味の正本を識別する前者が同じでも、入力元ファイルの移動や注記の変更があれば、後者は変わります。結果の`source`は選択要素の元定義、`relatedSources`は全件出力のそのページに登場した参照先・参照元の情報源の候補を示します。`projectionUnresolved`は、派生索引を作った時点で解決できなかった参照を示します。関係の`resolved`は宣言の解決に成功したことのみを意味し、実行の成功・人間による承認・書込み許可を意味しません。入力元索引と原ファイルの間で生じる同時更新は、一つの処理として固定できていません。
 
-成功時の終了コードは`0`、不存在・重複宣言は`1`、引数不正・未対応の種類・作業領域読込み失敗などは`2`です。失敗時も可能な範囲で`ok=false`と`error.code`を持つJSONを出力します。現時点で対応するのは宣言済みの直接参照であり、複数段の依存探索、すべての種類の要素取得、受理済み業務フローとの完全な横断参照には対応しません。
+成功時の終了コードは`0`、不存在・重複宣言は`1`、引数不正・未対応の種類・作業領域読込み失敗などは`2`です。`inspect`が読める種類のうち、`semantic-candidate-key`と`semantic-functional-dependency`は派生索引の関係図に投影されないため、`trace`は`UNSUPPORTED_SUBJECT_KIND`（終了コード`2`）を返し、`SUBJECT_NOT_FOUND`（終了コード`1`）とは区別します。後者は種類は投影されるが指定した識別子の宣言が無いことを示します。失敗時も可能な範囲で`ok=false`と`error.code`を持つJSONを出力します。現時点で対応するのは宣言済みの直接参照であり、複数段の依存探索、すべての種類の要素取得、受理済み業務フローとの完全な横断参照には対応しません。
 
 ## 1. テスト
 
@@ -197,18 +197,15 @@ SQLファイルを移動し、参照先だけを更新した場合でも、正�
 go run ./cmd/tei plugin-lock \
   -workspace reference/workspace -environment production > /tmp/tei-plugin-lock-result.json
 
-python3 -c 'import json,sys; r=json.load(sys.stdin); assert r["ok"]; json.dump(r["result"],sys.stdout)' \
-  < /tmp/tei-plugin-lock-result.json > /tmp/tei-plugin-lock.json
-
 go run ./cmd/tei plugin-runtime-plan \
   -workspace reference/workspace \
   -environment production \
-  -plugin-lock /tmp/tei-plugin-lock.json
+  -plugin-lock /tmp/tei-plugin-lock-result.json
 ```
 
 この結果から、環境が利用するプラグインとその版、提供される機能、必要な権限、資源の対応付け、隔離に関する要求を確認できます。
 
-`plugin-lock`は結果をJSON envelopeで返すため、`-plugin-lock`へ渡すファイルには上のように`result`を保存します。`-environment production`を指定したLockはproductionだけを対象とし、別の環境には使えません。この指定を省略した従来の操作は全環境のLockを作ります。どちらの場合もWorkspace全体の検証は省略されず、Lockの作成・選択は実行権限や成果物バイト列の検証ではありません。
+`plugin-lock`は結果をJSON envelopeで返します。`-plugin-lock`は、その envelope をそのまま受け付けます（内側の`result`だけを渡しても同じ結果になります）。`-environment production`を指定したLockはproductionだけを対象とし、別の環境には使えません。この指定を省略した従来の操作は全環境のLockを作ります。どちらの場合もWorkspace全体の検証は省略されず、Lockの作成・選択は実行権限や成果物バイト列の検証ではありません。
 
 リポジトリに保存した参照用プラグインの実装固定情報についても、作業領域から再生成して一致することを自動検査で確認しています。
 

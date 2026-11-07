@@ -504,3 +504,63 @@ For Consumer C authorized to see the same public slice in W0 and W1:
 **撤回条件**：新しい三重Graph SSOT、分類の固定Schema、意味推論の巨大Engine、隠れた手動対応表を要し、局所変更・理解・検証の総コストを増やすなら、標準Coreへの昇格を中止して領域Plugin/限定Viewへ戻す。構造上の不足が独立した複数領域で反復する場合に限り、[#2495](https://github.com/hat47x/tei-platform/issues/2495)/[#2620](https://github.com/hat47x/tei-platform/issues/2620)で最小Primitive/Role契約の必要性を検討する。
 
 **証拠・未保証**：本節は現行IssueとDraftの静的照合を基にした研究案。実Intent↔Reader↔Artifact↔Consumer結線、SQL/実DB、形式証明、運用中Policy、Owner承認、複合Studio画面、人/AIの認知負荷比較は **NOT RUN / NOT PROVEN**。TEI独自共通Hostの必須化、第二Meaning SSOT、第二Resolver、第二Policy/Authorityは提案しない。
+
+## 13. 2026-11-07：複合Projectionの出典資格・非単射性・Complectの変化行列（研究計画への反映）
+
+- **状態・範囲**：本節は既存`10〜12の横断研究を、異なる**実コードの反例**から評価可能な課題へ絞るための計画追補。照合main `680646b8629ce7af5b9bb0ba7db3529151b63a4c`。新Core型・汎用Projection ABI・Reverse Patch Engine・Diff/Policy Engine・正式受入Gateを採用しない。
+- **既存Owner**：[TEIの写像忠実性 #2497](https://github.com/hat47x/tei-platform/issues/2497)、[複合read-only Reference Draft #2881](https://github.com/hat47x/tei-platform/pull/2881)、[Studio #1124](https://github.com/hat47x/tei-platform/issues/1124)、[Role #2620](https://github.com/hat47x/tei-platform/issues/2620)、[現在のDisclosure #2516](https://github.com/hat47x/tei-platform/issues/2516)、[Source Acceptance #267](https://github.com/hat47x/tei-platform/issues/267)、[TEA三視点設計](../design/THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)、[Plugin最適化設計](../design/PLUGIN_REALIZATION_AND_OPTIMIZATION_REQUIREMENTS_2026-11.md)。[SUI #3396](https://github.com/hat47x/sui-sensemaking/pull/3396)は**別Productの独立Consumer証拠**であり、TEI製品API採用の根拠に自動転用しない。
+
+### 13.1 Identityの起源と、表示上のScopeを分離する
+
+[Draft #2881](https://github.com/hat47x/tei-platform/pull/2881)では、既存`tei trace` CLIを二つのcaller指定scopeで実行すると、Scope以外のWorld/Source・直接Edgeが同じままProjection Keyだけ異なり得ることを観測した。`derivedbridge.FromIndex`は投影Keyにcaller指定scopeを付与するため、**出力に`scope`という文字列があることは、Source自身がそのscopeでRelation/Subjectを宣言した証拠にならない**。同Draftの最終exact head `79c16e057d9cd97cd579d8b8fc432f26671beacd`について[専用CI #42207187724](https://github.com/hat47x/tei-platform/actions/runs/42207187724)は`completed/success`。PRには実Go1.26.10 CLI二回→Node24.21.0比較PASS、合成31/31、CLI境界7/7と記録。ただし真のRelation ID・全Role・Source/Provider closure、実Workbench/Policyは未証明。
+
+評価上は少なくとも次を混同しない：**Source/Ownerが宣言した主体scope**、**Relationのdeclaring scope**、**参加端点のscope**、**CLI/Projectionが受け取るcaller選択scope**、**表示occurrenceのview ID/epoch**、**ConsumerのDisclosure scope**。同じ文字列でも、その生成元・時点・解釈契約が異なる。CLIのscopeを変えたときに出力Keyが変わるなら、その変化をSource上のidentity変更と診断しない。
+
+**最初の実証課題**：同じ実Sourceをcaller scope A/Bで投影し、変化するProjection Keyと不変なSource/Worldを独立に比較。Source側の真正な宣言scopeが得られないなら、対応表には`caller-supplied`等の出典区分を持つ**評価用注記**を残し、Source-owned Relation Key、唯一locator、bounded absence、現在の書込資格を勝手に発行しない。正式な出典enumやSourceIndex schemaの新設は#1120/#2497/#1124へ戻す。
+
+### 13.2 同じ図表から元の構造は一般には復元できない
+
+[SUI Draft #3396](https://github.com/hat47x/sui-sensemaking/pull/3396)の**実Product `buildContextProjection()`**に対するテストでは、Cardの`meta.source`だけを変えた二世界、Island所属とCanvas座標を変えた二世界が、**公開出力全体で同じ**になり得る。一方、公開本文やレビュー済みIsland題名の変更では出力が変化する正対照もある。[専用CI #42345896949](https://github.com/hat47x/sui-sensemaking/actions/runs/42345896949)はexact head `a7893f9c4114d140dc19c7ff2f565693c5b1b29b`、`completed/success`、PR記録では該当3/3件PASS。SUIの実逆Patch拒否、OKF/SHO Exporter、TEI共通Renderer/Readerの実装を示すものではない。
+
+これはProjection `f : Source → View` が**非単射**になり得る具体的証拠であり、`f(S1)=f(S2)` から `S1=S2` は導けない。従って図表のbyte/digest一致、表示ノード数の一致、Graph/Table同形は、それだけではSource同一・Relation/Source anchor一致・意味上の同値性・安全な逆Writeを意味しない。
+
+同じDiagram/Textへ集約された複数Sourceの**編集逆写像**は、対象範囲と正本Ownerを固定したうえで、一意な編集対象と許容されるSource変換が**別の信頼可能な証拠**で定まる場合のみ候補化する。非可逆な集計/折畳み/引用は既定read-only。正本に対する変更は既存#267でtyped candidate→Preview→明示受理とし、図の出力からSourceを捏造しない。これは#2497の写像保存・逆変換Ownerへ渡す**横断受入圧力**であり、独自Lens/Writer/APIの採用ではない。
+
+### 13.3 複合図表の「結合可能性」と「不存在」を分ける
+
+図Aと表Bが同じ`qualified key`を表示しても、そのkeyがcaller由来の表示用Scopeを含む場合、**両Viewが同じSource-owned対象を指す保証にはならない**。さらにSource revision/Source Index/Role pin/選択Provider/Public Sliceの資格が異なる場合、同一表示名や同一画面HashでJoinしてはいけない。
+
+- **Cross-view correspondence**：同一Source anchorを保持できる範囲と、caller/display由来の補助対応を区別する。後者はNavigation Candidateであり、Sourceの確定Identityではない。
+- **Mapping loss**：投影時に元のRelation role、所属、出典、順序、Card/Islandの情報が落ちていれば、その情報に関する問いは`unknown`。図表を複数合成しても捨てた情報は自動復元されない。
+- **Visibility**：非公開情報は内部の診断には必要でも、その存在や件数を公開View/Graph/AI Toolへ漏らさない。W0/W1の観測同値と、内部Reader完全性は別。
+- **Absence**：Source-ownedな限定された対象・関係、必要なPredicateとSource/Reader closureが証明できない`tei trace`のdirect edgesや公開Sliceから、Source上の関係不存在を主張しない。空表示は無いことの証明ではない。
+
+これにより「図に無ければ無い」を拒否するだけでなく、**どの問いについて、どの証拠を追加すれば限定的不在・同一性・編集可能性を判定できるか**を説明できる設計が目標になる。
+
+### 13.4 Complectを発見する直交変更行列：単純化の実測方法
+
+単純さの評価を、ノード数や抽象の数ではなく、**意図的に一つの概念軸を変えた場合、どの証拠/投影/実現が適切に変化・失効するか**で測る。独立ExpectedはDomain/Ownerの意味規則から先に記述し、単一のProjectionに期待値を自己申告させない。
+
+| 入力側の単一変化 | 必然的な変化または再資格化 | 不自然な波及・誤推論の例 |
+| --- | --- | --- |
+| View座標のみ変更 | Layout revision、必要なView描画 | Meaning、Source identity、Build Intent、Effectまで改変 |
+| Caller側の`trace -scope`値だけ変更 | Projection Key/selector束縛 | Sourceの宣言scopeやRelation identityが変わったと断言 |
+| Source位置のみ移動（意味値同一） | Source Index・jump/引用の現在資格 | 意味自体を変更と断言、逆に旧locatorを無条件再利用 |
+| Provider選択またはFusionのみ変更 | Target realization・実工程/Trace・必要なArtifact再資格化 | Logical Role/Relationを暗黙削除、物理1回を論理全工程成功と宣言 |
+| 非公開の構造のみ変更、Public Slice同一 | 内部Assessment、必要なPolicy再評価 | 公開Node数・診断・Tool JSONにPrivate存在の差分 |
+| 元構造のIsland所属等を変更、公開文書同一 | Source構造、正本の出典・必要なReview | 出力Hash一致で元の構造・編集対象の同一性を確定 |
+
+比較では、(a)**意味・構造の値が変化した**、(b)**値は不変だが再資格化が必要**、(c)**閲覧資格が変化した**、(d)**未観測のため不明**を別列にする。期待された依存影響をComplect失敗とみなさず、独立なはずの部分への波及を測る。期待した変化の欠落も失敗（依存の見落とし）として数える。二値の「変更有無」だけで判断しない。
+
+人間・生成AIで、誤ったSource選択、偽の不存在/同一性の宣言、必要なSourceへ到達する操作、未知の保持、余計な影響修正、Context Token/再確認・試行数を測る。表示項目を減らすだけで正答が悪化すれば、Complect解消とは認めない。`#2497`のStructure-preserving Mapping、`#2018`の生産性比較を既存Ownerとする。
+
+### 13.5 優先順・撤回条件
+
+1. **P0 実Source由来の照合**：#2881の実`tei trace`二scope・直接Edgeの証拠を、#1124/#2497の既存Reader/Consumer境界へ受け渡す。Scopeの起源、Source owned/not-proven、direct edgeと独立Relationを分ける。新たなProduct Source Readerは本研究で作らない。
+2. **P1 非単射の横断比較**：SUI #3396の実Projection反例とTEI #2881のcaller Scope変化を、同一の「失われた次元・失効する操作」評価票へ並べる。SUI/SHOの機能・Policy・逆Patchは各Ownerの実証に残す。
+3. **P2 変更局所性を実測**：同じ業務変更に対し、コード/単一図と複合図表の独立Expectedに基づく変化行列を比較し、意味・Locator・Public Slice・Artifact/Effectのどの値/資格が変わったかを記録。
+4. **P3 最小構造拡張の是非**：異質な二Consumer以上で**同一の構造的不足**が反復し、既存の型付き関係/Projection合成では正しく表せず、かつ認知負荷と変更費用の改善が確認できた場合のみ、#2495/#2497/#2620の既存Ownerが標準Contractの拡充を検討。
+
+**撤回条件**：Source-owned Identityの証明なしに表示スコープを正本化する、非単射の逆写像を勝手に書込へつなぐ、別々のGraph SSOTを増殖させる、非公開の内部Unknownを表示して漏洩させる、メタ生成の隠れ依存で調査・変更コストが増える場合は、共通API導入を撤回してread-only/Domain Pluginへ限定する。
+
+**実証資格**：#2881の実CLI+Node限定CIとSUI #3396の実Product projectionの独立限定CIは確認した。**両者の同一仕様下での統合試験、TEIの正式Relation Sourceアンカー/全Role closure、実Workbench・Policy、Source編集・Owner受理、実Build/ETL、認知負荷の比較は NOT RUN / NOT PROVEN**。ドキュメントの成熟と実製品の資格を混同しない。

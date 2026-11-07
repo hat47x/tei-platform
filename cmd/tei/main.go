@@ -122,6 +122,10 @@ func main() {
 		return
 	}
 	if command == "commands" {
+		if len(os.Args) == 3 && (os.Args[2] == "-h" || os.Args[2] == "-help") {
+			io.WriteString(os.Stdout, "usage: tei commands\n\tdiscovery of the selected read-only commands; no arguments\n")
+			return
+		}
 		if len(os.Args) != 2 {
 			fmt.Fprintln(os.Stderr, "commands does not accept arguments")
 			os.Exit(2)
@@ -213,6 +217,11 @@ func main() {
 	var statePaths pathList
 	fs.Var(&statePaths, "state", "database compatibility state JSON; repeatable")
 	parseErr := fs.Parse(os.Args[2:])
+	if errors.Is(parseErr, flag.ErrHelp) {
+		printHelp(os.Stdout, fs, command)
+		return
+	}
+
 	// dbcheck needs neither a workspace nor a world: it reports whether a
 	// database can be used, so it runs before those requirements apply.
 	if command == "dbcheck" {
@@ -886,9 +895,9 @@ func main() {
 			os.Exit(1)
 		}
 		if result.PluginInvocation != nil {
-			var lock plugin.Lock
-			if err := decodeJSONFile(*pluginLockPath, &lock); err != nil {
-				fmt.Fprintln(os.Stderr, err)
+			lock, lockErr := decodePluginLockFile(*pluginLockPath)
+			if lockErr != nil {
+				fmt.Fprintln(os.Stderr, lockErr)
 				os.Exit(1)
 			}
 			runtimePlan, err := pluginruntime.BuildPlan(plugin.Catalog{Plugins: w.Plugins, Bundles: w.Bundles}, env, lock)
@@ -969,9 +978,9 @@ func main() {
 		}
 		plan := deploymentProviderPlan{Executors: routed}
 		if *pluginLockPath != "" {
-			var lock plugin.Lock
-			if err := decodeJSONFile(*pluginLockPath, &lock); err != nil {
-				fmt.Fprintln(os.Stderr, err)
+			lock, lockErr := decodePluginLockFile(*pluginLockPath)
+			if lockErr != nil {
+				fmt.Fprintln(os.Stderr, lockErr)
 				os.Exit(1)
 			}
 			runtimePlan, err := pluginruntime.BuildPlan(plugin.Catalog{Plugins: w.Plugins, Bundles: w.Bundles}, env, lock)
@@ -1182,9 +1191,9 @@ func runtimeFingerprintsForEnvironment(w ir.World, path string, environmentID co
 	if path == "" {
 		return "", "", fmt.Errorf("-plugin-lock is required for durable deployment run operations")
 	}
-	var lock plugin.Lock
-	if err := decodeJSONFile(path, &lock); err != nil {
-		return "", "", err
+	lock, lockErr := decodePluginLockFile(path)
+	if lockErr != nil {
+		return "", "", lockErr
 	}
 	env, ok := findEnvironment(w, environmentID)
 	if !ok {

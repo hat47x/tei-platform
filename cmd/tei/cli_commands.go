@@ -1,7 +1,9 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"io"
 	"strings"
 )
 
@@ -96,4 +98,56 @@ func isAcceptedCommand(name string) bool {
 // form whether or not a -workspace or -world flag follows it.
 func rejectUnknownCommand(name string, errOut interface{ Write([]byte) (int, error) }) {
 	fmt.Fprintf(errOut, "unknown command %q\n%s\n", name, usageText())
+}
+
+// helpText describes one command's flags. `-h` and `-help` ask the CLI to
+// explain itself, so answering with INVALID_ARGUMENT and exit 2 made the most
+// ordinary exploration look like a mistake (#3185).
+//
+// The shared FlagSet holds every command's flags, so printing all of them
+// would answer a different question than the one asked. When the command has
+// an advertised flag list, only those flags are described; otherwise the text
+// names the command and points at `tei commands` rather than dumping the
+// others' flags.
+func helpText(fs *flag.FlagSet, command string) string {
+	var out strings.Builder
+	fmt.Fprintf(&out, "usage: tei %s [options]\n", command)
+	allowed, ok := selectedReadOnlyFlagAllowlist[command]
+	if !ok {
+		if command == "model catalog" {
+			// model catalog parses its own FlagSet, so it is not in the shared
+			// allowlist. Its two flags are the whole grammar it accepts.
+			fmt.Fprintf(&out, "  -workspace string\n    \tTEI workspace directory\n")
+			fmt.Fprintf(&out, "  -namespace string\n    \toptional exact semantic namespace ID\n")
+			return out.String()
+		}
+		fmt.Fprintf(&out, "run `tei commands` for the advertised commands\n")
+		return out.String()
+	}
+	wanted := make(map[string]bool, len(allowed))
+	for _, name := range allowed {
+		wanted[name] = true
+	}
+	fs.VisitAll(func(f *flag.Flag) {
+		if !wanted[f.Name] {
+			return
+		}
+		placeholder, usage := flag.UnquoteUsage(f)
+		line := "  -" + f.Name
+		if placeholder != "" {
+			line += " " + placeholder
+		}
+		fmt.Fprintf(&out, "%s\n", line)
+		if usage != "" {
+			fmt.Fprintf(&out, "    \t%s\n", usage)
+		}
+	})
+	return out.String()
+}
+
+// printHelp answers a requested usage listing on standard output. It is not an
+// argument failure: the caller asked to read the grammar, did not ask for a
+// diagnosis, and no command ran.
+func printHelp(out io.Writer, fs *flag.FlagSet, command string) {
+	io.WriteString(out, helpText(fs, command))
 }

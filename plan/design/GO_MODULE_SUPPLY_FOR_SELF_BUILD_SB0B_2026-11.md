@@ -90,18 +90,44 @@ ModuleSupplyManifest
 
 同じ理由で、`go.sum`の存在は何も証明しない。`go.sum`は**照合の期待値**であり、期待値と実際のbyteを突き合わせた記録が無ければ、期待値だけが残る。
 
-### 3.4 既存実装との接続（2026-11-07 追補）
+### 3.4 既存実装との接続（2026-11-07 追補・統合後）
 
-本節の契約案を、次の二つの実装が別々に持つ。**いずれもmainへ未統合であり、本稿はそれを採用済みと扱わない。**
+本節の契約案を、次の実装が分担して持つ。**分担は重なっておらず、本稿の§3.1・§3.2・§4の全部を一つの実装が満たしているわけではない。**
 
 | 実装 | 担当範囲 | 状態 |
 | --- | --- | --- |
-| `gobuilder`の`corrupt-supply`分類（[PR #3144](https://github.com/hat47x/tei-platform/pull/3144)） | §4の分類変更。`go list -e`の既知文面から供給破損を分ける | Open。`gobuilder`の単体試験と実観測を伴う |
-| `tools/reference-go-module-supply-verify`（[PR #3142](https://github.com/hat47x/tei-platform/pull/3142)） | §3.1・§3.2の照合部分。`go.sum`の`h1:`を独立に再計算し、実際に選択されたModuleだけへ適用する。宣言したが選択されないModuleは不合格にしない | Open（`main`との競合あり） |
+| `gobuilder`の`corrupt-supply`分類（[PR #3144](https://github.com/hat47x/tei-platform/pull/3144)、main `e3e94204f`） | §4の分類変更。`go list -e`の既知文面から供給破損を分ける | **統合済み**。単体試験と実観測を伴う |
+| `tools/reference-go-module-supply-verify`（[PR #3142](https://github.com/hat47x/tei-platform/pull/3142)、main `8b7edf867`） | §3.1・§3.2の照合部分。`go.sum`の`h1:`を独立に再計算し、実際に選択されたModuleだけへ適用する。宣言したが選択されないModuleは不合格にしない | **統合済み** |
+| `tools/reference-go-build-with-supply`（[PR #3156](https://github.com/hat47x/tei-platform/pull/3156)、main `5ad04cbdf`） | §6のL1側。供給だけを使う隔離環境で実Buildし、artifact digestとSource閉包の資格を別欄で返す | **統合済み** |
 
-二つは重ならない。前者は「どの打ち手か」を選ぶ分類、後者は「供給が記録と合うか」の照合である。§5の`ResolveSourceClosure`変更は、どちらも行っていない。
+前者二つは「どの打ち手か」を選ぶ分類と「供給が記録と合うか」の照合であり、三つ目は「Buildできること」と「閉包の資格」の分離である。§5の`ResolveSourceClosure`変更は、いずれも行っていない。
 
 PR #3142から本稿の§3.1へ取り込むべき差分が一つある。**照合の対象は`go.mod`の宣言Moduleではなく、`go list`が実際に選択したModuleに限る。** `cmd/tei`は17件を宣言し12件を選択するため、宣言全体を対象にすると選択されない5件の欠落で正しい供給を不合格にする。本稿の§3.1の`entries[]`は「供給した」の記録であり、照合の分母は実選択側で決める、と読むべきである。
+
+### 3.5 供給が通っても閉包の資格は成立しない（X1の実測）
+
+`cmd/tei`について、供給を渡した実Buildと、同じadapterの`ResolveSourceClosure`を同じ条件で走らせた結果は次である（[X1の記録](../evidence/TEI_GO_BUILD_WITH_SUPPLY_X1_2026-11-07.md)）。
+
+| 欄 | 値 |
+| --- | --- |
+| `buildSucceeded` | `true`（exit 0、artifact digest `sha256:a512ffba…`） |
+| `sourceClosureState` | `rejected` |
+| `artifactProducedDespiteUnqualifiedClosure` | `true` |
+
+拒否理由は二段階ある。第一に`ResolveSourceClosure`自身が`GOPROXY=off`で走るため、供給が渡っていない。第二に、**供給を渡しても`moduleDir != root`で外部Module根を拒否する**設計だからである。したがって理由の形が変わっても`rejected`であり続ける。
+
+これは本稿§5の変更が**未着手であること**の実測であり、同時に、§6のL1とL2を同じ「成立した」でまとめてはいけないことの実測でもある。artifactが在ることは、閉包の資格の証明ではない。
+
+### 3.6 次の判断点：§5を行うか、`rejected`のまま進めるか
+
+二つの道があり、どちらも本稿では決めない。
+
+| 選択肢 | 内容 | 必要な作業 | リスク |
+| --- | --- | --- | --- |
+| A: §5を行う | `ResolveSourceClosure`を、照合済み供給を前提に外部Module入力を認める形へ変える | 本稿§5の1〜5、§7のSBP-24〜30 | 安全側の停止線を外す。既存の`SourceClosureDigest`の意味を保つ必要がある |
+| B: `rejected`のまま進める | artifactと閉包を別Claimとして扱い、閉包の資格を要求しない対象でSB-A/SB-Bを進める | 対象の選び直し（外部Moduleを選ばない対象） | 資格の無い閉包を前提にしたEvidenceが増える |
+
+方針の所有者は[#1090](https://github.com/hat47x/tei-platform/issues/1090)である。本稿はAの手順を§5に書いたが、**採用はしていない**。Bを選ぶ場合も、§3.5の三欄を残す限り、artifactと資格の混同は検出できる。
 
 ## 4. 分類の変更（SB-0a → SB-0b）
 
@@ -169,8 +195,10 @@ SBP-25〜26は本稿の実測（§2.3）から直接作った負例であり、�
 ## 9. この文書の終了条件
 
 - [ ] SBP-24〜30のownerと実装先を各Issueへ同期
-- [x] `corrupt-supply`分類の実装と単体試験（[PR #3144](https://github.com/hat47x/tei-platform/pull/3144)。Open、main未統合）
-- [ ] `go.sum`照合の実選択への限定を採用し、§3.1のmanifestへ接続する（[PR #3142](https://github.com/hat47x/tei-platform/pull/3142) が候補。Open、mainとの競合あり）
+- [x] `corrupt-supply`分類の実装と単体試験（[PR #3144](https://github.com/hat47x/tei-platform/pull/3144)。main `e3e94204f`）
+- [x] `go.sum`照合を実選択へ限定する部分の実装（[PR #3142](https://github.com/hat47x/tei-platform/pull/3142)。main `8b7edf867`）。§3.1のmanifestへの接続は未着手
+- [x] 供給下の実Buildと閉包資格を別欄で返す実装と実測（[PR #3156](https://github.com/hat47x/tei-platform/pull/3156)。main `5ad04cbdf`、[X1の記録](../evidence/TEI_GO_BUILD_WITH_SUPPLY_X1_2026-11-07.md)）
+- [ ] §3.6のA/Bのどちらを採るかの決定（ownerは[#1090](https://github.com/hat47x/tei-platform/issues/1090)）
 - [ ] 外部Module入力つきclosure digestの別値化と、既存照合値への非流用の回帰試験
 - [ ] 供給manifestを伴うL1 packetの一枚目
 - [ ] 別Go版・別OSでの再観測

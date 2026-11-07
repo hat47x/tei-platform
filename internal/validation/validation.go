@@ -31,10 +31,25 @@ type Diagnostic struct {
 	Subject  *subject.Subject `json:"subject,omitempty"`
 }
 
+// attributeRoles lists the roles a semantic attribute may carry. The first
+// group is the display and meaning vocabulary; the second group names the
+// attributes a standard business declaration binds to (tax, exchange rate,
+// numbering, holiday). They are here so a declaration that names one is
+// accepted, and a typo is still reported.
 var attributeRoles = map[string]bool{
 	"key": true, "business-key": true, "due-date": true, "period": true,
 	"quantity": true, "amount": true, "status": true, "timestamp": true,
 	"name": true, "code": true, "note": true, "description": true,
+
+	// Standard business binding roles.
+	"tax-applies-from": true, "tax-applies-until": true, "tax-category": true,
+	"tax-value": true, "tax-rounding": true,
+	"currency-rate-currency": true, "currency-rate-fiscal-year": true,
+	"currency-rate-month-sequence": true, "currency-rate-middle": true,
+	"currency-rate-buying": true, "currency-rate-selling": true,
+	"numbering-counter": true, "numbering-digits": true, "numbering-prefix": true,
+	"numbering-check": true, "numbering-overflow": true,
+	"holiday-date": true,
 }
 
 func Validate(w ir.World) []Diagnostic {
