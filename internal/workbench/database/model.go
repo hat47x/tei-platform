@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"tei/internal/core"
+	"tei/internal/database/physical"
 	"tei/internal/database/plan"
 	"tei/internal/index"
 	"tei/internal/query"
@@ -32,6 +33,7 @@ type TableView struct {
 	PrimaryKey        []string               `json:"primaryKey,omitempty"`
 	UniqueConstraints []UniqueConstraintView `json:"uniqueConstraints,omitempty"`
 	ForeignKeys       []ForeignKeyView       `json:"foreignKeys,omitempty"`
+	Indexes           []physical.Index       `json:"indexes,omitempty"`
 }
 
 type ColumnView struct {
@@ -145,6 +147,38 @@ type LineageView struct {
 	To   query.FieldID `json:"to"`
 }
 
+
+// copyObservedIndex ensures that an observed physical index, including its
+// provider-specific expressions and actual readiness, survives read-only UI
+// projection without sharing mutable slices or pointers with the observation.
+// The index is still a physical database fact, not a business index claim.
+func copyObservedIndex(idx physical.Index) physical.Index {
+	out := idx
+	out.IncludedColumns = append([]string(nil), idx.IncludedColumns...)
+	out.Keys = append([]physical.IndexKey(nil), idx.Keys...)
+	for j := range out.Keys {
+		out.Keys[j].Expression = copyObservedExpression(idx.Keys[j].Expression)
+	}
+	out.Predicate = copyObservedExpression(idx.Predicate)
+	if idx.State != nil {
+		state := *idx.State
+		out.State = &state
+	}
+	return out
+}
+
+func copyObservedExpression(source *physical.ProviderExpression) *physical.ProviderExpression {
+	if source == nil {
+		return nil
+	}
+	out := *source
+	if source.Normalization != nil {
+		meta := *source.Normalization
+		out.Normalization = &meta
+	}
+	return &out
+}
+
 func Build(d index.Derived) Model {
 	var m Model
 	for _, s := range d.PhysicalSchemas {
@@ -166,6 +200,9 @@ func Build(d index.Derived) Model {
 				ReferencedSchema: fk.ReferencedSchema, ReferencedTable: fk.ReferencedTable,
 				ReferencedColumns: append([]string(nil), fk.ReferencedColumns...),
 			})
+			}
+			for _, idx := range t.Indexes {
+				tv.Indexes = append(tv.Indexes, copyObservedIndex(idx))
 			}
 			sv.Tables = append(sv.Tables, tv)
 		}
