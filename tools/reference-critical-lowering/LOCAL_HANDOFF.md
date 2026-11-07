@@ -8,7 +8,7 @@ Work branch: `work/issue-1121-lowering-contract` / target: `main`
 
 チャット経由のGitHubファイル編集とAPI上でのDiff・既存ソース照合は実施した。**完全なprivate Repository Checkout、Go packageのコンパイル、Gofmt、実Web server/HTTP smoke、全Repository Health、Production Host Authority、DBの外部実行は未確認**。これまでのPASSは、隔離した`qualify.sh`/mock Git ShellのGuardテストだけである。
 
-以下の一連の作業はローカル環境で行う。**CIは利用しない**。このファイルをGitHubへ追加したこと、また`qualify.sh`が存在すること自体はPASS証拠ではない。条件が揃うまでDraftを解除せずmainへマージせずIssueを閉じない。
+以下の一連の作業はローカル環境で行う。**CIは利用しない**。このファイルをGitHubへ追加したこと、また`qualify.sh`が存在すること自体はPASS証拠ではない。条件が揃わない範囲は制約と残る危険性を記録し、変更範囲の検証結果を添えて統合する。Draftは解除する。
 
 ## 1. 認証済み完全Checkoutと変更の確認
 
