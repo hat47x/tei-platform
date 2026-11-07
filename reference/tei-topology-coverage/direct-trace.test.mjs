@@ -142,3 +142,14 @@ test('Load-manifest identity is observed, not an Accepted identity or grant',()=
   assert.equal(x.authority,'read-only-candidate');
   assert.equal(x.absentClaim,'unknown');
 });
+
+test('Source Index reference subject must match trace Kind/ID independently of scope',()=>{
+  const f=fixture();
+  f.result.source.references[0].subject={kind:'semantic-data',id:'customer.customer'};
+  assert.deepEqual(observeDirectTrace(f),
+    {status:'unknown',reason:'source_reference_identity_mismatch'});
+  const bad=fixture();
+  bad.result.source.references[0].artifactPath='';
+  assert.deepEqual(observeDirectTrace(bad),
+    {status:'unknown',reason:'source_reference_unqualified'});
+});
