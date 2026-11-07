@@ -143,3 +143,12 @@ main [#3284](https://github.com/hat47x/tei-platform/pull/3284) と [#3296](https
 4. Skillなし/H3 Skillありの比較は[#2509](https://github.com/hat47x/tei-platform/issues/2509)の同一Participant/同一Tool受領・実OS/Network開示資格が整った時だけ実施する。外部Tool受領が切断されたSessionの失敗/時間/コストはITТ分母に残し、Skill有効性の比較には採用しない。
 
 **新実走前の状態**：この節は候補の試験実装と受入条件。実CI/run/Goの新結果は専用PR HEADを確認して追補する。T1-B、実GoコードMutant、H3の盲検比較、C1、全Required/NFR、Owner Meaning Acceptanceは**NOT RUN**。
+
+### 7.4 最初の実行記録（2026-11-07／候補の実行、T1-A）
+
+- **候補プログラム実測HEAD** `02d4c624339fc2d6241703e9a9148ccf46fed99e` の[GitHub Actions #42378033965](https://github.com/hat47x/tei-platform/actions/runs/42378033965)、Job `128419576184` は**completed/success**。仮統合Checkout `b9ff3b32af3d1b88056848751b87fbc351899e11`、実TEI CLI SHA256 `5e0bf9a15a2f83417c8303ea1f58df25ab80bd43c09bf51649621bb2a6ca01b2`。
+- **同一CI内で確認できたこと**：既存9 read-only実CLI応答とContext拒否16件、保存済みScenario 6 pinned Stepと実CLI拒否6＋独立条件2は従来通りPASS。その後、#3273候補を基点Scenarioの**一時コピーへ7番目として追加**し、実TEI CLIの`scenario verify`（未評価）→`generate`→`check`→`generated-pinned run`を実行して`sales.order_line.line_number_positive=not-satisfied`、数量正・Relation一意2 Ruleはsatisfiedを観測。
+- **実際の判別**：新候補の`expectValidations`だけを偽装した場合、合成Fixtureの行番号/対応Relation Keyを両方1に変えた場合、生成後Fixtureだけを更新した場合の**3負例**は、実CLIがそれぞれ正しい理由で拒否。合成Fixtureは`line_number=0`と当該行のRelation Key `0`を一致させ、2行のKey `0`/`2`を一意に保持。単なる正数Ruleの成功自己申告ではない。
+- Artifact `tei-issue-test-ability` ID `13576656749`、約18KiB、7日保持に`t1-line-number-candidate.json`と従前の限定証拠を保存。業務データ／正式Scenarioを変更していない。
+- **到達上限**：これは**既存Issueで選定されていた境界1件を実CLIで初めて検収**したこと。外部AI Harnessで未知Ruleを盲検発見した証拠ではない。候補の恒久採用/#1180正本更新、Source→Functionの全Required閉包、C1/全業務要件・NFR、実Provider/Host、独立Product実装コードMutant、Owner Meaning受理は**NOT RUN**。Contextは引き続きpartial/exploration-only、`qualifiedTestGeneration=false`を維持。
+- **注意**：本追記は実Run後の別commit。上記は先行HEADの成功であり、**この文書追補を含む最終PR HEADおよび統合後mainの合格は、各Runを確認するまで主張しない**。
