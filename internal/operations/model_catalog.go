@@ -29,6 +29,11 @@ type ModelCatalog struct {
 	NamespaceMatchKind     string `json:"namespaceMatchKind,omitempty"`
 	WorldFingerprint       string `json:"worldFingerprint"`
 	SourceIndexFingerprint string `json:"sourceIndexFingerprint"`
+	// Workspace names the Workspace this catalog was read from (#3181). The
+	// same Canonical ID may exist in several Workspaces with different meaning,
+	// and worldFingerprint identifies content rather than the Workspace. It is
+	// absent when the caller supplied a World directly (CatalogWorld).
+	Workspace *workspace.WorkspaceIdentity `json:"workspace,omitempty"`
 	// ModelRevision is the revision of the managed Source set, not of the
 	// loaded World. An empty Workspace (no managed Source read) reports the
 	// SHA-256 of the empty input while still listing the standard prelude,
@@ -71,7 +76,10 @@ func CatalogWorkspace(root, namespace string) (ModelCatalog, error) {
 	if err != nil {
 		return ModelCatalog{}, err
 	}
-	return CatalogWorld(loaded.World, idx, namespace, worldFP, sourceFP), nil
+	catalog := CatalogWorld(loaded.World, idx, namespace, worldFP, sourceFP)
+	identity := loaded.Identity()
+	catalog.Workspace = &identity
+	return catalog, nil
 }
 
 // namespaceMatch reports whether a namespace filter names something in the
