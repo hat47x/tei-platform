@@ -8,6 +8,7 @@ on:
       - ".github/workflows/tei-issue-design-dogfood.yml"
       - "plan/design/ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md"
       - "tools/reference-issue-test-ability/**"
+      - "tools/reference-design-context-packet/**"
       - "skills/yi-tei-modeling/**"
       - "reference/driver-scenarios/**"
       - "reference/workspace/**"
@@ -24,6 +25,7 @@ on:
       - ".github/workflows/tei-issue-design-dogfood.yml"
       - "plan/design/ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md"
       - "tools/reference-issue-test-ability/**"
+      - "tools/reference-design-context-packet/**"
       - "skills/yi-tei-modeling/**"
       - "reference/driver-scenarios/**"
       - "reference/workspace/**"
@@ -223,6 +225,42 @@ jobs:
               target_summary.write(summary)
           print("PASS: bounded real CLI + Product Skill static check, partial claim, 3 synthetic controls")
           PY
+      - name: Compose bounded Design Context Packet from actual read-only replies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/reference-design-context-packet/packet.py \
+            --input-dir "$RUNNER_TEMP/issue-to-design" \
+            --obligations tools/reference-design-context-packet/obligations.json \
+            --output "$RUNNER_TEMP/issue-to-design/context-packet.json"
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          p = Path(os.environ["RUNNER_TEMP"]) / "issue-to-design/context-packet.json"
+          packet = json.loads(p.read_text(encoding="utf-8"))
+          assert packet["state"] == "partial"
+          assert packet["complete"] is False
+          assert packet["candidateTestGenerationQualified"] is False
+          assert len(packet["syntheticControls"]) == 9
+          assert packet["data"]["subjectObserved"] is True
+          assert len(packet["sourceLedger"]) == 1
+          assert packet["sourceLedger"][0]["loaderObservation"] == "read-by-loader"
+          assert packet["sourceLedger"][0]["parsedAndRole"] == "not-observed"
+          assert packet["delivery"]["externalHarnessReplyComplete"] is None
+          lines = [
+              "## Design Context Packet — #3262 P-1b bounded consumer",
+              "",
+              "- 実CLIの9出力を**同一限定Subject**で検査し、独立Required集合と観測を分離。",
+              "- Source read-by-loaderとParser/Role/Meaning受理を分離。",
+              "- 9つの負例：欠落Subject、未Load/消えたSource、異版、欠落版、root finding、Tool reply欠落/切断/Schema変更をfail closed。",
+              "- **Packet=partial、テスト生成の資格なし**。Function/Business/Rule/Dependency、外部Delivery/Disclosureは未観測。",
+              "- 本Packetは外部AI/Skillへ送信していない。第二Reader、Product CLI、MCP、Host実装ではない。",
+          ]
+          print("\n".join(lines))
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
+              f.write("\n".join(lines) + "\n")
+          PY
       - name: Qualify test discrimination against real pinned Scenario CLI
         shell: bash
         run: |
@@ -268,6 +306,7 @@ jobs:
           name: tei-issue-test-ability
           path: |
             ${{ runner.temp }}/issue-to-design/report.json
+            ${{ runner.temp }}/issue-to-design/context-packet.json
             ${{ runner.temp }}/issue-to-design/test-ability.json
             ${{ runner.temp }}/tei-scenario-c0.cover
           if-no-files-found: warn
