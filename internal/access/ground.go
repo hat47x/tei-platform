@@ -96,7 +96,7 @@ func groundsIn(declared Document, resolutions []Resolution, entry Entry) bool {
 		if candidate.Kind != entry.Kind {
 			continue
 		}
-		granted := permission.Spec{Kind: permission.Kind(candidate.Kind), Access: permission.Access(candidate.Access), Scope: candidate.Scope}
+		granted := candidate.Spec()
 		if permission.Covers(granted, required) {
 			return true
 		}

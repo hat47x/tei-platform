@@ -70,3 +70,9 @@
 
 # Drift-check reference output is hashed as raw bytes by its README.
 /plan/evidence/OPERATION_DRIFT_CHECK_REFERENCE_2026-11-07/** -text
+
+# Plugin coverage output is hashed as raw bytes by its README.
+/plan/evidence/PLUGIN_CAPABILITY_COVERAGE_REFERENCE_2026-11-08/** -text
+
+# Technology-resolution output is hashed as raw bytes by its README.
+/plan/evidence/PLUGIN_CAPABILITY_COVERAGE_TECHNOLOGY_RESOLUTION_2026-11-08/** -text

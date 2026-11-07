@@ -1,4 +1,4 @@
-﻿# 受入条件と検証根拠
+# 受入条件と検証根拠
 
 要求が受け入れシナリオや検証根拠にどう結び付くかを整理する文書を置きます。要求そのものは[`requirements/`](../../requirements/README.md)、段階判定の記録と実行手順は[`gate/`](../gate/README.md)、現在の実装状況は[`docs/status.md`](../../docs/status.md)を参照してください。
 
@@ -73,7 +73,8 @@
 - [実行時の照合は何を止められるか](OPERATION_DRIFT_CHECK_SURVEY_2026-11-07/README.md)（属性を1つ足すと `worldFingerprint` と `modelRevision` は変わるが、操作5件の `basis` は全件不変。`tei operations` に照合値を渡すフラグが無く、`OPERATION_SURFACE_STALE` はリポジトリ全体で0件、実行の入口 `period_guard.go` は指紋を比べない。未決4は「既定で有効にするか」の前に照合値の受け渡し経路の判断が要る）
 - [操作面のdrift照合を参照実装で試す](OPERATION_DRIFT_CHECK_REFERENCE_2026-11-07/README.md)（`tools/reference-operation-drift-check` として案(a)「呼出し側が照合値を渡す」を実装。同じWorkspace+保存値は `current`、属性を1つ足したWorkspace+同じ値は `stale` で終了コード1、未指定は `unchecked` として current と区別する。Basis は属性追加で変わらないため比べない。既定で有効にするかは15章未決4のまま）
 - [宣言されたプラグイン能力は環境から選ばれているか](PLUGIN_CAPABILITY_COVERAGE_REFERENCE_2026-11-08/README.md)（`tools/reference-plugin-capability-coverage` で参照Workspaceを集計し、宣言12件のうち6件がどの環境からも選ばれていないことを記録。database-provider 2件は instance が提供技術名を指すための数え方の限界、editor-intelligence はプラグインが明示選択されているのに能力のBindingが無い例、migration.atlas は能力の一部だけが選ばれている例。選ばれていないことを欠陥とはしない）
-- [操作面は宣言されたPatternを読んでいるか](OPERATION_SURFACE_DECLARED_PATTERN_GAP_2026-11-07/README.md)（受注Workspaceと見積もり候補の重ねで`tei operations`を比較し、World指紋は変わるのに操作面8件と`summary.declared=0`が不変であることを記録。W3未着手の設計記述と一致し、AのOperationとBの業務ActionをA側で結ぶ手掛かりが現状無いことを示す。権限・意味の受理は示さない）
+
+- [database-providerの選択を技術名ではなく能力で解決する](PLUGIN_CAPABILITY_COVERAGE_TECHNOLOGY_RESOLUTION_2026-11-08/README.md)（先行記録では instance の提供技術名を能力IDと文字列比較していたため database-provider 2件を数えなかった。既存の validation と同じ Capability.SupportsDatabaseProvider で解決すると両方が selected になり、未選択は6件から4件に減る。先行記録は履歴として残し、訂正しない）- [操作面は宣言されたPatternを読んでいるか](OPERATION_SURFACE_DECLARED_PATTERN_GAP_2026-11-07/README.md)（受注Workspaceと見積もり候補の重ねで`tei operations`を比較し、World指紋は変わるのに操作面8件と`summary.declared=0`が不変であることを記録。W3未着手の設計記述と一致し、AのOperationとBの業務ActionをA側で結ぶ手掛かりが現状無いことを示す。権限・意味の受理は示さない）
 
 - [DSH外部HarnessからのTEI read-only CLI実起動](DSH_H2_TOOL_ONLY_READ_ONLY_2026-11-07/README.md)（#2509。外部AIハーネスの1実Sessionで固定実行物の実起動・実引数・実出力を同一ログで突合。H3・四Session比較・正答採点・Egressは未実施）
 - [DSH実HarnessでのH2/H3四Session実行](DSH_H2_H3_FOUR_SESSION_2026-11-07/README.md)（#2509・TAI #168。H2→H3→H3→H2を同一Taskで実行し、H3のSkill実Load byteを確認。回答採点・Skill効果の因果・Egressは未確認）
@@ -103,4 +104,5 @@
 
 - [外部Go Module入力の明示opt-in受入](TEI_GO_EXTERNAL_MODULE_ADMISSION_OPTIN_2026-11-07.md)（既定の拒否方針は不変のまま、供給を明示した呼び出しだけが外部Moduleメンバーを含む閉包を受ける参照実装。受入記録に方針・根拠・拒否理由を残す。SB-B / 案C / #2831）
 - [起動主体と被起動主体を分けたBuild駆動の記録](TEI_GO_BUILD_STAGE_DRIVER_2026-11-07.md)（`cmd/tei`を子プロセスとして駆動し、invoker/invokedの実行ファイルdigest・argv・exitと、子の主張とディスク実物のartifact digestが一致することを記録。L3・受入・権限は未確認。SB-C0/C1 / #2831）
+- [セルフビルドP0の証拠台帳](TEI_SELF_BUILD_P0_EVIDENCE_LEDGER_2026-11-08.md)（SB-0a〜SB-C1の統合済みEvidenceをClaim別に並べ、L1で成立したもの・未成立のもの・L3までの残差を一か所にした索引。本稿は新規の主張ではなく、各項目の再実行もしていない。SB-P0 / #2831）
 - [stage1の生成物がstage2を駆動する（L3）](TEI_GO_SELF_BUILD_TWO_STAGE_L3_2026-11-07.md)（stage1のartifactをstage2のinvokerとして実起動し、invoker一致・同一レシピ・artifact一致が揃うことを記録。Seed Trust・受入・権限・別OS一般化は未確認。SB-C1 / #2831）
