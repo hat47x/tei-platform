@@ -72,7 +72,7 @@ go run ./cmd/tei validate -workspace examples/xtea-lowcode
 - `go vet`と`gofmt -l`は無出力（WindowsとWSL2）。
 - `go build ./...`は成功。
 - `reference/workspace`の`tei validate`は`ok`（既存の警告3件のみ）。`examples/xtea-lowcode`も`ok`（既存の警告1件のみ）。
-- `tools/repository-plan-check`は`ok`。`tools/repository-architecture-check`はWindows・WSL2のどちらでも600秒のtimeoutになった（この環境の制約）。`tools/repository-node-tests`はWSL2のNode v12が`--test`に対応しないため失敗し、Windowsでは`ok`。最終的な判定はCIの`repository-health`に委ねる。
+- `tools/repository-plan-check`は`ok`。`tools/repository-architecture-check`はWindows・WSL2のどちらでも600秒のtimeoutになった（この環境の制約）。`tools/repository-node-tests`はWSL2のNode v12が`--test`に対応しないため失敗し、Windowsでは`ok`。CIの`repository-health`は`46855c411`で成功した（[実行 42328960526](https://github.com/hat47x/tei-platform/actions/runs/42328960526)。CodeQL・govulncheck・npm audit・Studio系の検査も同じheadで成功）。この成功はこのheadのCI結果であり、製品の受入や別の版の安全性を示しません。
 
 ## 読み取れること
 
