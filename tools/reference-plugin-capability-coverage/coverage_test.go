@@ -95,6 +95,47 @@ func TestAPluginThatDeclaresNothingContributesNothing(t *testing.T) {
 	}
 }
 
+func TestADatabaseInstanceSelectsTheProviderByTechnology(t *testing.T) {
+	// The instance names "postgres"; the capability ID is "database.postgres".
+	// Resolving it must not be a text match, and it must mark the capability
+	// selected.
+	w := ir.World{
+		Plugins: []plugin.Definition{{ID: "tei.db.postgres", Version: "1.0.0", Provides: []plugin.Capability{{
+			Kind:              plugin.CapabilityDatabaseProvider,
+			ID:                "database.postgres",
+			DatabaseProviders: []environment.DatabaseProvider{environment.ProviderPostgres},
+		}}}},
+		Environments: []environment.Environment{{ID: "development", Instances: []environment.DatabaseInstance{
+			{ID: "sales.dev", Provider: environment.ProviderPostgres},
+		}}},
+	}
+	r := Derive(w)
+	got := find(r, "tei.db.postgres", "database.postgres")
+	if got == nil || got.Status != Selected {
+		t.Fatalf("postgres = %+v", got)
+	}
+	if len(got.Environments) != 1 || got.Environments[0] != "development" {
+		t.Fatalf("environments = %v", got.Environments)
+	}
+}
+
+func TestAnInstanceTechnologyNoCapabilitySupportsStaysUnselected(t *testing.T) {
+	w := ir.World{
+		Plugins: []plugin.Definition{{ID: "tei.db.postgres", Version: "1.0.0", Provides: []plugin.Capability{{
+			Kind:              plugin.CapabilityDatabaseProvider,
+			ID:                "database.postgres",
+			DatabaseProviders: []environment.DatabaseProvider{environment.ProviderPostgres},
+		}}}},
+		Environments: []environment.Environment{{ID: "development", Instances: []environment.DatabaseInstance{
+			{ID: "sales.dev", Provider: environment.ProviderOracle},
+		}}},
+	}
+	r := Derive(w)
+	if got := find(r, "tei.db.postgres", "database.postgres"); got == nil || got.Status != Unselected {
+		t.Fatalf("oracle instance selected postgres = %+v", got)
+	}
+}
+
 func TestReportStatesAuthorityAndIsDeterministic(t *testing.T) {
 	a := Derive(world())
 	b := Derive(world())

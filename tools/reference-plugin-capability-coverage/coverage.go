@@ -20,6 +20,7 @@ import (
 	"tei/internal/core"
 	"tei/internal/environment"
 	"tei/internal/ir"
+	"tei/internal/plugin"
 )
 
 const (
@@ -41,8 +42,10 @@ selected: an Environment binding names the exact Capability ID the declaration
           offers, for a binding form this rule counts
 binding forms counted: deployment executor, observation provider,
                       evidence provider
-not counted: database instance provider (it names a provider technology such as
-             postgres/oracle, not the Capability ID database.postgres)
+database-provider: a database instance names a provider technology
+                 (postgres/oracle); it is resolved through the same
+                 Capability.SupportsDatabaseProvider the workspace validation uses,
+                 so the technology is never compared with the Capability ID as text
 not counted: lease policy, permission grant, external requirement, artifact
 not checked: whether the selected implementation exists, conforms or is trusted
 `
@@ -94,7 +97,7 @@ func Derive(world ir.World) Report {
 		Notes: []string{
 			"unselected means no Environment binding names this Kind+ID; it is not proof that the plugin is unused",
 			"a selection is a declaration, not Provider conformance, artifact trust or Host authority",
-			"database-provider capabilities always appear unselected: an Environment instance names a provider technology (postgres/oracle), not the Capability ID (database.postgres)",
+			"a database-provider selection is resolved by technology (SupportsDatabaseProvider), not by comparing the instance provider name with the Capability ID text",
 			"lease policies, grants and external requirements are not counted as selection",
 		},
 	}
@@ -183,9 +186,23 @@ func bindings(world ir.World) map[string][]string {
 	}
 	for _, env := range world.Environments {
 		name := string(env.ID)
-		// Database instances are NOT counted. An instance names a provider
-		// technology ("postgres"), not the Capability ID ("database.postgres"),
-		// so counting it would report a false selection.
+		// A database instance names a provider technology ("postgres"), not a
+		// Capability ID. The existing validation resolves it against the
+		// database-provider capabilities that support that technology, so this
+		// rule asks the same question instead of guessing.
+		for _, instance := range env.Instances {
+			for _, def := range world.Plugins {
+				for _, capability := range def.Provides {
+					if capability.Kind != plugin.CapabilityDatabaseProvider {
+						continue
+					}
+					if !capability.SupportsDatabaseProvider(instance.Provider) {
+						continue
+					}
+					record(string(plugin.CapabilityDatabaseProvider), string(capability.ID), name)
+				}
+			}
+		}
 		for _, binding := range env.DeploymentExecutors {
 			record(string("deployment-executor"), string(binding.Executor), name)
 		}
