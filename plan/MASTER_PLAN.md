@@ -339,6 +339,12 @@ AIの自律的な作業と実行権限を区別します。AIがツールを直�
 
 **停止線**：隔離・独立採点を満たした新H2/H3の4Session（探索の限定4Sessionとは別）、実非公開Egress拒否、実Providerの全件閉包、`*.tei.md`実Parser、AI正式Meaning受理・本番Host一往復は**NOT RUN／NOT ACCEPTED**。PoC内A3の自律開発を停止させず、対外不可逆効果のA4と製品側資格を別に評価する。[Draft #3179](https://github.com/hat47x/tei-platform/pull/3179)の標準構造・機能内表現のMASTER_PLAN差分とは独立の節とし、merge前に最新mainとの差分を照合する。
 
+**Design Context→T1新負例の最短経路（2026-11-07更新）**：[AI-first資格設計§6](design/AI_FIRST_QUALIFIED_INTERFACE_CURRENT_MAIN_2026-11.md)へ、#3262の**用途相対Required Design Context read-only投影**を、AI Test Generatorより先の前提として配置。P-1a＝[main #3264](https://github.com/hat47x/tei-platform/pull/3264)の実CLI 9応答／Subject・Source Index一致／`readByLoader:true`／欠落・異版・未読込の3負例は限定実証済み、**全Data/Function/Business/Rule/Procedure閉包・新Context APIは未実証**。T0＝[main #3266](https://github.com/hat47x/tei-platform/pull/3266)の実Binary pinned Scenario 6 Step／実CLI4負例＋独立義務2負例／局所statement C0相当10.1%（C1未計測）。[main #3268](https://github.com/hat47x/tei-platform/pull/3268)でSource/CLI/Skill等変更時のCI再発火範囲を拡張したが、完全な依存Closureや全要求Coverageではない。
+
+**次の新規検証はT1一件**：公開`sales.order`の「行番号は正」のRuleについて、#3262の実消費Source/Rule/Requirementと必要Context/未取得を読取り専用で照合し、**既存Scenarioが網羅していない行番号0の負例**を最小CLI/AI操作で候補生成する。独立Expected/Holdoutを生成Agentへ渡さず、#1180 Scenarioの実CLI実行と#2514の既知Mutant/独立判別で「提案が新しい欠落を検出した」と示す。P-1bの機械／人間両用の整形、T1の新Candidate実行、C1/NFR Coverageは未実装・未検収。案の競合[Draft #3258/#3259/#3260/#3261](https://github.com/hat47x/tei-platform/pull/3258)を第二のTest/Expected/Runner正本にせず、実装Owner #1131/#1126/#1125/#1180/#2514/#3223/#2811へ帰属させる。
+
+**後続・並行レーン**：[三要素Diagram/CRUD Draft #3263](https://github.com/hat47x/tei-platform/pull/3263)は同じSource/RoleからのProjectionにとどめ、Function文脈の表現型Instance、SHO図解・表示/編集を初回T1のBlockingにしない。[基本機能 #3267](https://github.com/hat47x/tei-platform/issues/3267)のVerified Composition BOM／[Reference Draft #3269](https://github.com/hat47x/tei-platform/pull/3269)のexact-lock／pairwise候補は`qualified:false`の計画・表示段階であり、実Plugin組合せPASSや現Host Grantではない。[Snapshot/Cache #3271](https://github.com/hat47x/tei-platform/issues/3271)も実消費・Input/Artifact・現在資格の後続再利用で、新P0 Hard Gateにしない。既存P0-L実ProviderとP0-M`*.tei.md` Reader、および比較適格H2/H3は相互に独立して並走する。**本追加はDocsのみ、P-1b/T1実Run・BOM実Build/Provider/Host・意味受理はNOT RUN**。
+
 ## 作業領域I：周辺技術との連携と本番運用の境界
 
 ### 目的
