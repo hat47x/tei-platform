@@ -247,7 +247,7 @@ AI/CUI/Studioには、新しい「組織専用Widget一覧」の網羅を要求�
 
 **現mainの実コード照合**：`internal/semantic/completion.go:EvaluateCompletion` は非空Targetの `EmptyPolicyHandoff` では `HandoffConfirmed` を確認するが、0件の分岐では `EmptyJustified`／`CoverageComplete` による `CompletionHolds` の前後に確認ガードがない。そのため **`Targets=[]; EmptyJustified=true; HandoffConfirmed=false` の局所入力が `holds` になり得る**。現mainにある`completion_test.go`の旧Testは非空Handoffしか確認していない。これを受領済み業務・実Providerの完了保証と呼ばない。
 
-**既存Coreの最小修正は別Draft [#3353](https://github.com/hat47x/tei-platform/pull/3353)** に分離した。0件分岐で評価結果が`holds`かつ`HandoffConfirmed=false`のときだけ`unverified`へ格下げする（`deny`による確定`fails`は維持）。要求される受入対照は以下6条件で、実コード・同一テストOwnerは#3353／`internal/semantic/completion_test.go`。この組織Profileにはコードや第二Fixtureを置かない。
+**既存Coreの最小修正は [#3353](https://github.com/hat47x/tei-platform/pull/3353) でmain統合済み**（squash `6cf510d6301a1e133ebbe69ad7bf004f03361b54`）。0件分岐で評価結果が`holds`かつ`HandoffConfirmed=false`のときだけ`unverified`へ格下げする（`deny`による確定`fails`は維持）。要求される受入対照は以下6条件で、実コード・同一テストOwnerは#3353／`internal/semantic/completion_test.go`。この組織Profileにはコードや第二Fixtureを置かない。
 
 | 独立入力（局所Completion APIの限定例） | Expected |
 | --- | --- |
@@ -260,4 +260,25 @@ AI/CUI/Studioには、新しい「組織専用Widget一覧」の網羅を要求�
 
 **さらに外側の未解決資格**：`HandoffConfirmed`、`EmptyJustified`、`CoverageComplete` はすべてCaller提供のフラグであり、`EvaluateCompletion` は外部の人手受領、必須Target集合の閉包、実Provider同一ScopeのRead、現在Host Grantを証明しない。したがって新回帰がPASSしてもProduct E2／Case移管／Business Completionは未成立。#2586/#2622の実Read Producer、#1125/#1444の受領証拠、#1174の実Effect、#2514の独立Expectedを**別々の観測**としてP0-R→P0-Cで組み合わせる。空対象が正式に許容され、かつ別途受領を要しない業務はOwnerの別条件・別Kindとして表現し、Handoff条件を無音で緩めない。
 
-**状態**：本Profileは採用前の検収計画。#3353はDraft・未統合で、Go/CI実行資格は現時点で未確認。実業務の受領と正式Owner受理は **NOT RUN**。
+**状態**：本Profileは採用前の検収計画。#3353の修正はmainに統合済み。PR HEAD `cf3de9a61906167b3b5cc2fbd246e238a5018d5f` に対する [Repository Health #42391982442](https://github.com/hat47x/tei-platform/actions/runs/42391982442) は **completed/success**（`gofmt`／`go vet ./...`／`go test -count=1 -timeout 60m ./...`）。この合格は旧PR検証対象のGo局所回帰であり、実業務の受領、組織E2、正式Owner受理は **NOT RUN**。
+
+
+### 9.5 一括Handoff確認フラグの集合帰属と鮮度：全件Caseの誤完了を防ぐ（2026-11-08、P0-C）
+
+**修正後も残る実装境界**：mainに統合済みの`EvaluateCompletion`では、`HandoffConfirmed`が**Claim単位の真偽値**であり、確認の出典・確認者・対象ID集合・Ownerの受領規程・時点・期限・Revision・実Operationに結びついた証跡を入力として受け取らない。したがって`Targets=[C1,C2], CoverageComplete, HandoffConfirmed=true`は局所Evaluatorで`holds`になり得ても、**C1だけの受領ACKを呼出元が全体確認と取り違えた場合、C2の引継ぎは証明されていない**。これは今回の#3353（空集合ガード）とは独立の、Evidence Producer／Handoff Binding側の不足である。
+
+**新Coreフィールドを追加する前に、既存Read/Procedure/Receipt経路で二つの集合を閉じる**。業務Ownerが定めた必要対象`L`、同じMeaning/Source/Scope/snapshotで実Readした対象`R`、受理済み手順に従う確認対象`H`を混同しない。`R`は#2586/#2622が実取得を観測し、`H`は#1125/#1444で、対象別の確認証跡、または**Ownerが明示的に認めた正確な集合への一括確認**として観測する。案件DB値がD2、Command Receiptが成功、人手ACKがあるという3種類の記録だけで**同じ`L`・版に属することを証明した**とはしない。最後に#2514の独立Expectedが`L/R/H`の閉包・一致と逆例を判別し、その結果が必要条件を満たす範囲に限って既存`HandoffConfirmed`へ渡す。単純な件数一致や公開Viewの件数を集合の証明にしない。
+
+| 合成した受入対照（全件Case Handoff） | 独立Expected／停止条件 |
+| --- | --- |
+| **ORG-HC-01 基本正例**：`L={C1,C2}`、`R={C1,C2}`、同一Scope/必要版の正当な受領`H={C1,C2}` | 受領出典・Owner規範・相手方・適用時点まで照合して初めて全件確認候補。局所`holds`だけではBusiness Completionではない |
+| **ORG-HC-02 一件のみACK**：`L=R={C1,C2}`、`H={C1}` | `unverified`。単一Global boolをtrueにして全体成功へ昇格しない |
+| **ORG-HC-03 ACK重複**：`H=[C1,C1]`を件数2として使用／`C2`なし | `unverified`。ACK件数とDistinct Scope-bound Case IDを分離 |
+| **ORG-HC-04 一括ACKの対象が曖昧**：バッチ受領あり、対象ID/Revision未束縛 | `unverified`。一括確認が禁止ではないが、確認の適用集合が不明なら全件Claimを確定しない |
+| **ORG-HC-05 途中改訂・ABA**：C1の担当/版が変わり、旧`H`を再利用 | 現行Claimの資格を失効。現在値D2だけで前回の受領を新Operationに移植しない |
+| **ORG-HC-06 公開範囲と異なるH**：Tenant/Disclosure/非表示依存が`L`と異なる | 全体確認を主張しない。秘匿対象のID・件数・ACK詳細を低権限Consumerへ返さない |
+| **ORG-HC-07 空対象で明示的な手順完了**：`L=R=∅`、Ownerが空集合のHandoff条件を要求 | 空集合資格と別に相手方/人手の確認を要求（#3353で局所判定修正済み）。確認不要の業務なら別Condition/PolicyとしてOwnerが明示 |
+
+**既存Ownerと受入経路**：#2386は組織意味とL、#3262はDesign Contextで必要Sourceの列挙、#2586/#2622はRの実Read、#1125/#1444はHの業務上の確認契約、#1174/#1163はProvider Effect/Receipt、#2514/#1180は独立ExpectedとMutant。#3353のGo CI成功は空集合ガードに限定し、HC-01〜07や実確認Providerの実装を「済」にしない。**新Handoff Ledger/万能Receipt Engine/組織専用Completion APIを増設しない**。必要になった時点で汎用Handoff Evidenceの最小型を各Ownerで判断する。
+
+**段階**：P0は合成受入票と既存Source/Reader契約照合、P1は#2586の実Case Read後に同一Attemptと受領証跡を対応付け、P2で異Provider/人手の不確実性を扱う。実`L/R/H`の一気通貫、外部受領、Owner正式採用は **NOT RUN**。
