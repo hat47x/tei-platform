@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -105,10 +106,36 @@ func TestPluginLockEnvelopeIsAcceptedAsPluginLockInput(t *testing.T) {
 	if err := json.Unmarshal(body, &response); err != nil {
 		t.Fatalf("not one envelope: %v (%s)", err, body)
 	}
-	if response.OK || response.Error == nil || response.Error.Code != "PLUGIN_RUNTIME_PLAN_FAILED" {
+	if response.OK || response.Error == nil || response.Error.Code != "INVALID_PLUGIN_LOCK" {
 		t.Fatalf("a non-lock file was accepted: %s", body)
 	}
 	if !bytes.Contains([]byte(response.Error.Message), []byte("unsupported plugin lock format")) {
 		t.Fatalf("unexpected message for a non-lock file: %q", response.Error.Message)
+	}
+
+	// The same unusable lock must take the same exit code and code in both
+	// commands that read -plugin-lock (#3184).
+	for _, command := range []string{"plugin-runtime-plan", "plugin-resolve"} {
+		command := exec.Command(binary, command, "-workspace", reference,
+			"-environment", "development", "-plugin-lock", bogusPath)
+		var stdout, stderr bytes.Buffer
+		command.Stdout, command.Stderr = &stdout, &stderr
+		err := command.Run()
+		code := 0
+		if exit, ok := err.(*exec.ExitError); ok {
+			code = exit.ExitCode()
+		} else if err != nil {
+			t.Fatalf("run %s: %v", command, err)
+		}
+		if code != 2 {
+			t.Fatalf("%s on an unusable lock: exit=%d want 2 (stdout=%s)", command.Args[0], code, stdout.String())
+		}
+		var envelope cliResultEnvelope
+		if err := json.Unmarshal(stdout.Bytes(), &envelope); err != nil {
+			t.Fatalf("%s: not one envelope: %v (%s)", command.Args[0], err, stdout.String())
+		}
+		if envelope.Error == nil || envelope.Error.Code != "INVALID_PLUGIN_LOCK" {
+			t.Fatalf("%s: code=%+v want INVALID_PLUGIN_LOCK", command.Args[0], envelope.Error)
+		}
 	}
 }
