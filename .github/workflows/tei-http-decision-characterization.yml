@@ -1,0 +1,47 @@
+name: HTTP Decision Graph 限定Node Characterization
+
+# 既存Web構成E1の宣言検査とRuntime Path証明の差だけを実行する。
+# このWorkflowが成功しても実Host監査・実DB Effect・Graph Loaderは未検証。
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/tei-http-decision-characterization.yml'
+      - 'reference/web-composition/plan-check.mjs'
+      - 'reference/web-composition/plan-check.terminal-gap.test.mjs'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/tei-http-decision-characterization.yml'
+      - 'reference/web-composition/plan-check.mjs'
+      - 'reference/web-composition/plan-check.terminal-gap.test.mjs'
+
+permissions:
+  contents: read
+
+jobs:
+  hdg21-characterization:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: 対象SourceとWorkflowを取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: 対象Git版とRunnerを出力
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          printf 'checked-sha=%s\n' "$GITHUB_SHA"
+          printf 'planner-blob=%s\n' "$(git rev-parse HEAD:reference/web-composition/plan-check.mjs)"
+          printf 'test-blob=%s\n' "$(git rev-parse HEAD:reference/web-composition/plan-check.terminal-gap.test.mjs)"
+          node --version
+          node --check reference/web-composition/plan-check.mjs
+          node --check reference/web-composition/plan-check.terminal-gap.test.mjs
+      - name: HDG-21 構成器の現行挙動を実Nodeテスト
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test reference/web-composition/plan-check.terminal-gap.test.mjs
