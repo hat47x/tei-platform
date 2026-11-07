@@ -115,7 +115,7 @@ func TestDriveRecordsBothIdentitiesAndCrossChecksArtifact(t *testing.T) {
 	artifact := filepath.Join(dir, "artifact")
 	child := buildChild(t, dir)
 
-	evidence, err := Drive(child, []string{"-artifact", artifact, "-digest", "sha256:deadbeef"}, artifact, "")
+	evidence, err := Drive(child, []string{"-artifact", artifact, "-digest", "sha256:deadbeef"}, artifact, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,7 +169,7 @@ func TestDriveAcceptsAMatchingChildReport(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	evidence, err := Drive(child, []string{"-artifact", artifact, "-digest", digest}, artifact, "")
+	evidence, err := Drive(child, []string{"-artifact", artifact, "-digest", digest}, artifact, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,7 +189,7 @@ func TestDriveDetectsChildFailureWithoutClaimingResults(t *testing.T) {
 	artifact := filepath.Join(dir, "artifact")
 	child := buildChild(t, dir)
 
-	evidence, err := Drive(child, []string{"-exit", "7"}, artifact, "")
+	evidence, err := Drive(child, []string{"-exit", "7"}, artifact, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -211,7 +211,7 @@ func TestDriveRefusesToOverwriteAnExistingArtifact(t *testing.T) {
 		t.Fatal(err)
 	}
 	child := buildChild(t, dir)
-	if _, err := Drive(child, []string{"-artifact", artifact}, artifact, ""); err == nil || !strings.Contains(err.Error(), "does not overwrite") {
+	if _, err := Drive(child, []string{"-artifact", artifact}, artifact, "", ""); err == nil || !strings.Contains(err.Error(), "does not overwrite") {
 		t.Fatalf("existing artifact was not refused: %v", err)
 	}
 }
@@ -223,7 +223,7 @@ func TestDriveRejectsANonExecutableChild(t *testing.T) {
 		t.Fatal(err)
 	}
 	artifact := filepath.Join(dir, "artifact")
-	if _, err := Drive(path, nil, artifact, ""); err == nil {
+	if _, err := Drive(path, nil, artifact, "", ""); err == nil {
 		t.Skipf("this platform executed a non-executable file")
 	}
 }
@@ -246,4 +246,85 @@ func TestBadChildArgIsRejectedBeforeStarting(t *testing.T) {
 		t.Fatalf("malformed -child-arg was not a usage failure: code=%d", code)
 	}
 	var _ = json.Marshal
+}
+
+// SB-N13: a driving stage that merely writes its own digest into a manifest
+// must not be read as the process that ran. The claim is only meaningful when
+// it is compared with the running image, and a mismatch has to fail closed.
+func TestDriveRejectsAClaimedInvokerDigestThatDiffersFromTheImage(t *testing.T) {
+	dir := tempDir(t)
+	artifact := filepath.Join(dir, "artifact")
+	child := buildChild(t, dir)
+
+	evidence, err := Drive(child, []string{"-artifact", artifact, "-digest", "sha256:deadbeef"}, artifact, "", "sha256:not-this-process")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !evidence.InvokerClaimChecked {
+		t.Fatal("a supplied claim was not compared")
+	}
+	if evidence.InvokerClaimMatched {
+		t.Fatal("a wrong claim was reported as matching")
+	}
+	if evidence.ClaimedInvokerDigest != "sha256:not-this-process" {
+		t.Fatalf("the claim was not recorded: %+v", evidence)
+	}
+	if !strings.Contains(evidence.FailureCause, "claimed invoker digest differs") {
+		t.Fatalf("claim mismatch had no stated cause: %q", evidence.FailureCause)
+	}
+	if evidence.L3Claimed {
+		t.Fatal("a failed claim still claimed L3")
+	}
+}
+
+// A claim that matches the running image is recorded as checked and matched,
+// but it still does not make the attempt L3: the claim is about identity, not
+// about which stage authored the artifact.
+func TestDriveRecordsAMatchingClaimWithoutClaimingL3(t *testing.T) {
+	dir := tempDir(t)
+	artifact := filepath.Join(dir, "artifact")
+	child := buildChild(t, dir)
+
+	self := filepath.Join(dir, "self.exe")
+	if err := os.WriteFile(self, []byte("self-bytes"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	selfDigest, err := fileDigest(self)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The artifact must not exist yet, and the child writes its own bytes.
+	evidence, err := Drive(child, []string{"-artifact", artifact, "-digest", "sha256:deadbeef"}, artifact, self, selfDigest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if evidence.DriverSelfDigest != selfDigest {
+		t.Fatalf("self digest was not taken from the supplied image: %+v", evidence)
+	}
+	if !evidence.InvokerClaimChecked || !evidence.InvokerClaimMatched {
+		t.Fatalf("a matching claim was not recorded as matched: %+v", evidence)
+	}
+	if evidence.L3Claimed {
+		t.Fatal("matching claim was read as L3")
+	}
+}
+
+// Two independent failures must both survive. Overwriting a single field would
+// hide an invoker-claim mismatch as soon as the artifact cross-check also failed.
+func TestDriveKeepsBothIndependentFailureCauses(t *testing.T) {
+	dir := tempDir(t)
+	artifact := filepath.Join(dir, "artifact")
+	child := buildChild(t, dir)
+
+	evidence, err := Drive(child, []string{"-artifact", artifact, "-digest", "sha256:wrong-on-purpose"}, artifact, "", "sha256:not-this-process")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(evidence.FailureCause, "claimed invoker digest differs") {
+		t.Fatalf("invoker claim cause was lost: %q", evidence.FailureCause)
+	}
+	if !strings.Contains(evidence.FailureCause, "differs from the artifact on disk") {
+		t.Fatalf("artifact cross-check cause was lost: %q", evidence.FailureCause)
+	}
 }

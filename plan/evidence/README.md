@@ -108,5 +108,6 @@
 - [外部Go Module入力の明示opt-in受入](TEI_GO_EXTERNAL_MODULE_ADMISSION_OPTIN_2026-11-07.md)（既定の拒否方針は不変のまま、供給を明示した呼び出しだけが外部Moduleメンバーを含む閉包を受ける参照実装。受入記録に方針・根拠・拒否理由を残す。SB-B / 案C / #2831）
 - [起動主体と被起動主体を分けたBuild駆動の記録](TEI_GO_BUILD_STAGE_DRIVER_2026-11-07.md)（`cmd/tei`を子プロセスとして駆動し、invoker/invokedの実行ファイルdigest・argv・exitと、子の主張とディスク実物のartifact digestが一致することを記録。L3・受入・権限は未確認。SB-C0/C1 / #2831）
 - [セルフビルドP0の証拠台帳](TEI_SELF_BUILD_P0_EVIDENCE_LEDGER_2026-11-08.md)（SB-0a〜SB-C1の統合済みEvidenceをClaim別に並べ、L1で成立したもの・未成立のもの・L3までの残差を一か所にした索引。本稿は新規の主張ではなく、各項目の再実行もしていない。SB-P0 / #2831）
+- [SB-N13の自称invoker照合](TEI_GO_STAGE_DRIVER_INVOKER_CLAIM_2026-11-08.md)（駆動主体が自称するdigestを実行中process imageと照合する欄をstage driverへ追加。一致しても`l3Claimed`はfalseのまま。独立した失敗は連結して保持する。SB-C0/C1 / #2831）
 
 - [stage1の生成物がstage2を駆動する（L3）](TEI_GO_SELF_BUILD_TWO_STAGE_L3_2026-11-07.md)（stage1のartifactをstage2のinvokerとして実起動し、invoker一致・同一レシピ・artifact一致が揃うことを記録。Seed Trust・受入・権限・別OS一般化は未確認。SB-C1 / #2831）
