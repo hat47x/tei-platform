@@ -452,3 +452,18 @@ X-TEAではDBテーブルの1:1・1:NトポロジーをXFxxxの単票/明細機�
 5. **Patternを追加してもOperation不変**：Data ID一致に留まり、Kind/Capability未一致なら未接続と報告。Operationが`unattended`でも新Patternの宣言読込やCapability Targetの適合は別に検証する（#3167/#3172）。
 
 **Owner/実証の割付**：PatternとRepresentation適合は#2507、表現間Coordinationは#3222、Derived Operation/W3/W4は#1127と[PR #3231](https://github.com/hat47x/tei-platform/pull/3231)、Current Context/Selectionは#2506/#2582、Action変換は#2500/#2598、DisclosureとDeliveryは#2515/#2516、実Host/Effectは#1174。新Autonomy Policy/Prompt Approval Engine・状態Enum・第二Action Registryを本計画に新設しない。**本節は既存Go Sourceと#3231合成CLI観測の引渡しであり、今回この5対照の製品E2E、実権限・実媒体/GUI・Owner正式受理はNOT RUN**。
+
+<!-- tei-triad-domain-operator-role-binding-time-unit-20261107 -->
+### 13.8 時間・金額のRepresentation適合と、期間に依存する業務Operatorの入力閉包を分ける
+
+標準表現型のDate/Time、Number、Money、Chart/Timeline等への表示適合と、Functionの業務計算に必要な**適用期間・有効時点・単位・Role・演算規則**は別資格である。この差については、X-TEA継承の参照実装が2026-11-07 mainへ進んだため、抽象論ではなく次の3つの**限定実装**を既存のFunction Data Context受入へ接続する。
+
+| main統合済みの参照実装 | 確認済みの振舞い | Function Context→実業務へ残る境界 |
+| --- | --- | --- |
+| [#3151 taxrate](https://github.com/hat47x/tei-platform/pull/3151) | RateのCategoryと両端を含む適用期間、宣言された端数処理を使用。該当Rate無し／複数Rate競合は`ErrInvalidRate` | 受注O1の税区分・計算対象日付・金額のRole、税率Dataの実Provider行、Source/Rate版、Owner Ruleの受理。Chartの日付やSliderの数値だけから税率を選ばない |
+| [#3154 currencyrate](https://github.com/hat47x/tei-platform/pull/3154) | 通貨・年度/月・率の種類、掛け/割り方向と端数処理を宣言。ゼロ率・行欠落・重複を正当な率と扱わない | 金額通貨と基準通貨、適用年度/月、方向/Rateの取得Scope、選択元Source/版。表示通貨記号だけで換算済みのBusiness値を断定しない |
+| [#3232 businesscalendar](https://github.com/hat47x/tei-platform/pull/3232) | 暦が名指すHoliday Dataの`holiday-date` Roleを解決し、日付の不正・時間帯未指定を診断。**Holiday Dataを宣言しない暦**は「休日なし」と解釈 | **宣言が存在しない**場合と、**宣言された休日Dataをまだ読んでいない／部分取得／権限で隠された**場合を分ける。後者を空の休日集合に自動変換しない。暦別の複数Holiday Data識別や実Provider E2Eは未接続 |
+
+**横断の反例を一つに束ねる**：同一受注O1の見積Previewの数値600がTable/Chartと同じ表示であっても、税額の端数処理・Rateの適用時点・換算方向・休日条件が異なるとBusiness Claimの内容は異なり得る。表現側のDate/Decimal/通貨ラベルが等しいだけでは、Functionの入力行集合と業務Operatorの意味は同じにならない。率が欠けたときの近傍日付への推測Fallback、休日Dataを宣言したのに未取得なのを「休日なし」、同じ表の別暦行を混入、許可されたScopeより広い行の計算使用、過去の承認に現時点のRateを無言適用、を**既存業務Operatorの負例**とする。復元された過去値が一致しても承認Revision・Operator版・実Read資格は自動復活しない。
+
+**着手順と非重複**：表示軸・媒体適合は#3192/#2497、税・換算・休日の演算自体とDomain Referenceは各PRの既存Owner、Function内Role/Scope/Result Sliceは#2506、Source→Actual Readerは#2586、Business Rule/確定値は#1125、独立期待値は#2514に委譲。最初はRead-onlyの一Functionを用いて`Role＋期間＋実行されたOperator＋Actual Input Rows＋結果のUnit/Precision/Source`を同じAttemptで確認し、Provider実Readまで接続してからBusiness Claimへ進む。**今回の三つの参照実装を受注O1の実Function・*.tei.md・実PG・GUIに接続した新試験はNOT RUN**。第二Tax/FX/Calendar Engineや新State Enumは作らない。
