@@ -43,3 +43,6 @@
 
 # Counterexample output is hashed as raw bytes by its README.
 /plan/evidence/OPERATION_PATTERN_CROSSWALK_COUNTEREXAMPLES_2026-11-07/** -text
+
+# Publication-gap output is hashed as raw bytes by its README.
+/plan/evidence/OPERATIONS_COMMAND_PUBLICATION_GAP_2026-11-07/** -text
