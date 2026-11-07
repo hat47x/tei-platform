@@ -651,3 +651,68 @@ P-1aが`partial`を返した場合、T1用Context Packetは次の**既知の部�
 | TT-55 Trait/Plugin設計を実装証明へ昇格 | mainにPlugin-first/Atomic Trait設計があるが、実Consumer Load・Manual Obligation Conformanceは未実施 | 設計PASS・静的候補・実Load/Invocation/Grant・現在Qualifiedを分離 | #3278/#1251/#2514 |
 
 **現状と停止条件**：#3284の限定CIは実証済み。TT-51〜55の新たな統合E2E、T1生成・実pinned Rule試験、MCP/Studio、実Provider/Host/Plugin合成、Owner Meaning Acceptanceは**NOT RUN / NOT ACCEPTED**。Design Contextがpartialでも候補を提示することと、欠けた独立Expected/開示資格を補完して「正式合格」とすることは厳格に分離する。
+
+<!-- tei-test-delivery-reachability-path-qualification-20261107 -->
+## 18. 2026-11-07 追加：Design Contextの真の完了性と、Function/Entry/Decision Pathまでのテスト到達性（設計・未採用）
+
+### 18.1 別チャットの実装・設計から抽出した、残る「空振り合格」
+
+前節の#3284で実行した `tools/reference-issue-test-ability/context_gate.py`（main、Source blob `0c9873e7fcc129151668f3b0c4cbc74c74e9bc4a`）は、既存CLI 9応答のschema、Source inventory + `readByLoader`、Subject、World/Index fingerprintを照合し、JSONの重複キー・非有限値・余剰Object・途中切断等を**test-only Consumerで拒否**する。この前進は、独立したRequired Universeの閉包やTool受領を証明する**製品API**ではない。特に、**構文的に正しいJSONへ再構成した末尾欠落**は、既知の対象だけでSource/Subject/FPの一致を維持し得る。必要な独立Required、Enumeration終端、開示可能なManifest、受信者ACKがなければ「その対象以外が存在しない」とは言えない。
+
+並行して[Function/Build/Entry Draft #3283](https://github.com/hat47x/tei-platform/pull/3283)は、Function定義→意味→実Build収録→Entry公開→現在Grant→実Effectを**独立資格**とした。[HTTP Decision Graph main #3289](https://github.com/hat47x/tei-platform/pull/3289)のHDG-21は、静的 `onTerminal` ラベルが全種類揃い、`after` 順序ヒントがあっても、**各short-circuit実Pathを通ったAuditの因果証拠にはならない**という限定Characterization（V8 2/2）である。実HTTP HostのAuditバイパスが立証されたという意味ではない。
+
+**結論**：テストCaseの実行・C0/C1/Graph EdgeのCoverageを増やす前に、1つのObligationが**本当に必要Sourceから、実配備Targetの必要Entry/Branch/Observerまで到達したか**を説明できる必要がある。Source Index、Build Plan、Service Contract、OpenAPI、静的Graph、単独CI合格を連結しただけでは、同一Attemptの実証にならない。
+
+### 18.2 Test Design Contextの「完了」を偽装できない条件
+
+- **独立したRequired Universe**：Userが選択したScope/Function/Requirementと受理済みMeaningから必要なSource/Role/Relation/非出力Rule/Procedure/Scenario/NFRを列挙。DiscoverできたリストだけをRequiredへコピーしない。そもそもRequiredが未確定なら `unbounded/unknown` とする。
+- **Enumeration証拠**：対象Cursor/Scope/Source Revision/Visibilityと、読取元が保証する終端・件数・順序・可能なら内容照合値（権限のあるConsumerに限定）を別参照として保存。単なる `\n`、valid JSON、空の次ページ、自己申告の `complete:true` は完全性の独立証拠ではない。
+- **Source・Loader・SemanticとDeliveryの独立性**：読めたbyte、Parserに届いたRole occurrence、Meaningの受理、Result投影、CLI stdout、MCP/外部Harnessの完全受領は別Witness。FP一致や最終Reply 2xxと外側Observerの受領済みを混同しない。受信者ACKが取得できなければ `delivery-unverified` を許す。
+- **定義された出力形**：一枚のOverview + typed reference index + scope-relative Closure Ledger + 必要に応じるDetail Pages + `Claim Ceiling`。人が読むMarkdown/表/GraphとJSONは同じQueryの投影。自動省略項目・非公開Ref・未取得Sourceの存在と粒度を区別し、秘密のID/件数/digestは権限外に出さない。
+- **変化と資格**：SourceがA→B→Aとなった、途中でSelection/Grant/Plugin/Target/Visibilityが切り替わった、Rule Dependency/否定依存が増えた場合、同じ見た目のDocumentから旧Qualifiedを復元しない。無関係Target/Plugin変更で無根拠に全件失効させることも避ける。
+
+ここでの「完了」は*要求されたScopeの受理/開示可能な観測範囲内*だけ。Source不完全であっても、既知一Ruleについて**provisionalなテスト候補**を提案することは許す。候補生成と独立Expected確定、既存Driver Scenario採用、実Target結果確認、Owner Meaning Acceptanceを一つの `qualified` にまとめない。#3262がContextの品質を、#2605/#2509がSkill/実Harnessを、#2516/#2515がDisclosure/Egressを所有する。
+
+### 18.3 FunctionのTest Coverageを「設計→配備→入口→分岐→観測」の二グラフで追跡
+
+**Design/Requirement Graph**：Requirement/Business Procedure/Function/Data/Rule/Relation/Trait/Plugin Contract/Scenario Obligationの**必要な依存**（否定依存・未表出属性・時間/Scopeを含む）。これは何を検証するべきかの分母。
+
+**Execution/Delivery Graph**：同じFunction/Ruleが実Build root→actual consumed source→Link済Artifact→Entry（CLI selector / HTTP route / Job）→現在Actor/Host Grant→実Request→Branch/Guard→Effect/Result→Response/Tool受領→独立Read/Observerへ流れた**観測された因果経路**。これは何を検証できたかの証拠であり、Design Graphの辺から自動的には導けない。
+
+| Coverage / Qualification | Required Universe | Observedの必要条件 |
+| --- | --- | --- |
+| Function/Entry availability | Required Function×Target×Build Unit×Entry×Scope | SourceとMeaningの束縛、実Artifact収録、dispatch/route/Job実Entry到達、現在Grant。CLI成功をWeb/cronへ流用しない |
+| Decision/Guard/Audit Path | 必須Rule Decision outcome、保護Guard、Terminal/Recovery path、Audit義務 | 実Path ID/Decision outcome、short-circuit時の必須監査経路、同AttemptのTraceと独立Expected。ラベル集合・topological orderのみは証拠不足 |
+| Code C0/C1 | **実Instrumented Buildごと**のstatement / branch outcome | Target/Artifact/計測器/SourceMap/実Runを固定。Go標準statement値をC1としない。別Buildの%を単純足算しない |
+| Business/Effect | Requirement/Scenario/Manual Step/Effect/Business Completion | Scenario step実到達、必要な人的ステップの別Observer、Receipt/Resource Read/Owner受理を個別に照合 |
+| Non-functional | 明示NFR/SLO・環境/負荷/測定窓/統計/失敗回復条件 | 規定Target/Traffic/Duration/Sinkで実測。UIの表示やUnit PASSはNFR合格を示さない |
+| Plugin/Trait/Composition | Required Trait Fulfillment/Contract×exact Provider/Target/BOM tuple | #3278のrequired/manual/default実装充足と独立Conformance、#3267の実Resolver/Build/Load/Invocation。各個別PASSやPairwise計画を合成Qualifiedにしない |
+
+**C0/C1とGraph網羅は独立**：HTTP/Workflow/PluginのGraphで全LabelやEdgeが定義されたことは、実CodeのC1でも、実Host Auditへの到達でもない。必要Guardを実行前に必ず通過させる要求には、Path制約/実Traceの別検証がいる。異なるTargetに同じFunction意味を投影しても、生成コードの分岐母集団は同一でないことがあるため、C0/C1を集計表示するときは各Build/Toolの分母と対象割合を並記する。
+
+### 18.4 重複を避けた追加横断負例 TT-56〜TT-63（個別Case/Expectedは各Owner）
+
+| ID | 入力（具体的な違反） | 期待される判定 | Owner |
+| --- | --- | --- | --- |
+| **TT-56 parseable部分Response** | catalogが有効JSON・同FP・同Required Subjectを維持しながら**他の必須関係/Roleを省いた** | 既知一Subjectの局所一致を保っても、独立Required/終端の閉包がない限りDomain completeを拒否。newline/JSON parseでは不足 | #3262/#2509/#2514 |
+| **TT-57 Function未収録** | Meaning上はFunctionあり、Build配置表にも名前があるが実Go Artifactには必要Symbol/実現がない | 設計上の存在を保持、Build-qualified/Entry実行資格はunverifiedまたはfailed。#3283のBuild Ownerに実Consumed witnessを要求 | #1130/#2831/#3283 |
+| **TT-58 Entry非到達** | 実Binaryには実装があるが、当該CLI selector/Web route/Job triggerが未配線・旧Buildを呼ぶ | 当該Entryへの到達はnot-observed/unsupported。別EntryのPASSやAPI説明文を転用しない | #3283/#1158/#1180 |
+| **TT-59 入口別意味ドリフト** | CLIとHTTPが同名Function/同じ表面Resultを返すが別Rule Revision/Provider版へbind | それぞれのSource/Build/Actual Input/Attemptを比較してparity不成立。HTTP status一致は十分条件でない | #1180/#951/#3274 |
+| **TT-60 Terminal Audit見せかけ網羅** | HDG-21の `onTerminal` completed/rejected/errorが全列挙され、`after` で並ぶが拒否short-circuitのAudit因果経路未証明 | 静的Label合致は限定PASS、Runtime Path Auditはunknown。実Hostの脆弱性確定とは主張しない | #3274/#3289 |
+| **TT-61 Trait実装欠落** | Manual `ConditionalWrite` がrequiredだが実装不足、他TraitはadvisoryまたはDefault-backed | RequiredのConformance不足を明示、advisory不足を同じ失敗にしない。実行Guard/Host Grantはさらに別 | #3278/#3281/#951 |
+| **TT-62 Cross-Build Coverageの誤合算** | Go単一BinaryのC0と別Web/Job ArtifactのStatement/Branch Countを、分母や計測器を固定せず合算 | 各Target/Artifact/Source/Tool別Coverageしか表示しない。C1未計測をGraph Edge出現率で代替しない | #1180/#2514/#3283 |
+| **TT-63 Manual+Async Outcomeの空振り** | Jobの受付ACK・HTTP 202・内部Step PASSがあるが、要承認Manual Step、Effect/独立Read、復旧Pathが未観測 | 受付/業務拒否/技術失敗/Effect unknown/実Business Completionを別Outcome。再送可能性を勝手に付与しない | #1130/#1174/#3274/#1125 |
+
+TT-56〜63は**横断Verification Obligation**であり、#3283 Build/Entry試験、#3274 HDG、#3278 TC、#1180 Scenario、#3262 DCQの**新たなFixture正本を作らない**。既存Referenceへ要件と期待結果の**不足一辺**を伝えるための指標である。
+
+### 18.5 実行順・最小受入と経済性
+
+- **P-1b-a（最優先）**：main #3284の `context-readiness.json` と同じ公開Fixtureを用い、`TT-56`「構文的には正常だがRequired内の情報が欠ける」を独立RequiredとRead結果の差で拒否できるかテスト。まず既存CLI/Consumerで説明可能か試し、不足時のみ#3262へResponseの終端/Count等の最小追加を提案。Source/Actual Reply/外部Deliveryは別Witnessとして記録。
+- **P0-T1（既存優先順位を変更しない）**：#3273の行番号0 Candidateを、T1 Required/Role/Source→Provisional Pattern→Review→既存Scenario→実Pinned CLI→独立Expectedへ一往復。#3284の `qualifiedTestGeneration=false` をAIが勝手にtrueへ変換せず、検証可能な局所Caseと未検証全体の両方を記録。
+- **P1-Entry**：#3283のFunction一件をGo単一Build/CLI Entryで実照合し、次にWebまたはJob入口へ同一Scenarioを再生成。1→2→3 Buildは必要時の比較であり、初回T1のHard Dependencyにしない。Target別の実C0/C1/Branch/Guard/Outcomeに未測項目を残す。
+- **P1-Decision**：#3289のHDG-21 Characterizationを前提とするが、実Hostのterminal-path Audit/Client Reactionの観測には別のActual Traceと独立Oracleを要求。Code C1導入は別のInstrumentation正確性PoCとして#2514へ依頼し、静的Graphで代用しない。
+- **P2-Portfolio**：#3278 Trait required/manual missing、#3267 BOM exact matrix、#3270 Workbench Provider、#2586実Read Scopeを専門Patternとして採択し、#2018に指示量・Tool回数/Token・正しく検出したGap・誤PASS・測定費用を報告。
+
+**停止条件**：正常なJSONだけで全Required確認済み、Function定義だけで全Build/Entry到達、Auditラベルだけでshort-circuit Path監査成立、他Target C1へGoのC0転用、HTTP 202/Job ACKを業務完了、Trait宣言を実Impl/Grant、個別Plugin PASSを合成BOM PASSとする主張。
+
+**状態**：#3284の限定実CIと#3289の2ケースV8 Characterizationは他Ownerの限定実証済み。#3283は設計Draft。TT-56〜63と新P-1b/Entry/実Audit/T1の製品E2E・MCP/Studio・Owner意味受理は**NOT RUN / NOT ACCEPTED**。この節はGitHub Source/設計の突合に基づく計画追加であり、新Runtime/Resolver/Host/Registry/Runner/Scenario SSOTを作らない。
