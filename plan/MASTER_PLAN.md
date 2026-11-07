@@ -448,6 +448,18 @@ AIの自律的な作業と実行権限を区別します。AIがツールを直�
 
 **現在の証拠と未達**：DSH→TEI CLI技術的接続は探索1件で限定実測済み、#3051 Completionの局所修正はmain統合済み。一方、比較適格H2/H3、H3実Skillロード・効果/コスト、実OS拒否・Egress不在、`*.tei.md` Reader、全Provider対象集合の完全性、Owner意味受理・実Host Effectは**NOT RUN／NOT QUALIFIED**。前節§5.9の「H2実Tool呼出し未実施」は新Evidence以前の歴史状態であり、現在の適格性判定を上書きしない。
 
+### AI-first実装境界の新しい到達点と次の一試行（2026-11-07）
+
+[AI-first設計§5.11](design/AI_FIRST_REQUIREMENT_PRESSURE_AND_HEADLESS_VERIFICATION_2026-11.md)で最新mainの実装と実証を接続し、前節の「H2 Tool接続自体は限定達成、比較適格H2/H3は0/4」を維持。**新しい次のBlocking Exit**は、禁止Source/独立期待値/Skill/過去回答への実アクセス拒否と、用途別の実送出範囲が確認された環境で、**H2 Tool-onlyを比較適格な一Sessionとして実行すること**である。TAI #168の既存Trial/Task/割付を唯一の比較正本とし、探索9回の事後選別をしない。
+
+**根拠を持つ実装進展**：[main #3120/#3122]のStudio版付き修正案（あくまで未受理）、[#3143](https://github.com/hat47x/tei-platform/pull/3143)の認可種別`reference-allow-all/reference-allow-list/external`、[#3124/#3127/#3131/#3155](https://github.com/hat47x/tei-platform/pull/3155)の永続化観測`not-applicable/not-observed/receipt-observed/resource-observed`（`persisted:true`は現在Resource一致の場合だけ）を、**個別の製品Evidence**として採用する。実PostgreSQLでのReceipt Lookup/Resource別接続観測の限定経路があるが、Business Completion/current Host Grantは未実証。ツール環境Grantの[main #3121](https://github.com/hat47x/tei-platform/pull/3121)は`PERMISSION_GRANT_CAPABILITY_NOT_RESOLVED`で停止しており、ToolをPluginと決めるかは未決。AI提案→Source変更は依然#267 Shared Acceptance、Host実行は#1174。PoCコード/Fixtureの開発を全部Owner待ちにしない。[採用ADR-0035/#3150](https://github.com/hat47x/tei-platform/pull/3150)に従いA3の機械検証・自律作業と、対外不可逆効果に必要なA4の人的確認を区別し、製品業務Meaning/実Grantの資格を機械PASSで偽装しない。
+
+**実効隔離と送出の反証を先行**：[main #3152](https://github.com/hat47x/tei-platform/pull/3152)のTEI`access.FileSystem`は`os.OpenRoot`でリンク/ジャンクション経由のRoot逸脱を拒否できるが、DSHのShell・子Process・Socketまでは閉じ込めない。Access journalの改変検出も独立headの固定がなければ末尾削除や全再Hashを防げない。[main #3153/#3161](https://github.com/hat47x/tei-platform/pull/3161)のDSH 0.2.2-rc.1 **ローカルMock実測**は、既定Profileでの`dsh_session_log`約45KB送出、Tool markerのモデル入力とは別の2箇所への複写、off→on再開/503/stream切断後のbacklog再送を観測した。これは「`enabled:false`にしたから秘密送出が0」「read-onlyだから外送なし」の否定材料であり、実Providerでの漏えい確定やOS全出口の保護実証ではない。#2515/TAI #232で許可Audience・実測Sink・未測定を同Attemptに記録し、公開用EvidenceへMock rawを無制限に転送しない。
+
+**実Source・Tool資格も別照合**：[main #3148/#3160](https://github.com/hat47x/tei-platform/pull/3160)のCLI discoveryは`modes`/`successShape`を広告するが、実argv・stdout/stderr/exit・Response Mode・実Workspaceを別検証。[Dogfooding Draft #3162](https://github.com/hat47x/tei-platform/pull/3162)は`view effect:read-only`でも`-execute -operation-log`や`-lifecycle-state`によるローカル書込みを観測した。初回H2 Tool allowlistは不要な`-execute`を公開せず、構文上のread-only・参照API・実OS/Host制約を分ける。[main #3163](https://github.com/hat47x/tei-platform/pull/3163)により`modelRevision`は**管理Source Indexの版であってWorldの版ではない**と明確化。空Workspaceで`ok:true`＋`std` entriesが出ても`declarationCounts.total=0`なら必要Subjectの実Loaded/Parsed/Consumed資格は未確立。旧`*.tei` Provider P0-Lと新`*.tei.md` P0-M/P0-Jは引き続き別レーンで進める。
+
+**今回のDone/NOT DONE**：docs/planの契約追補のみ。実Tool探索とMock egress/限定PG・CLIは**既存mainの別HEAD**で観測された結果であり、このPRの同一End-to-End成功ではない。比較適格H2/H3、実OS隔離・全送信拒否、Studio Wails実通過、正式`*.tei.md` Reader、Owner Meaning、実Host・Business Effectは**NOT RUN／NOT QUALIFIED**。新AI Host/Policy Registry/Approval Engine/Runner/Fixture正本は増やさない。PR #2492はmainの[ADR-0035採用 #3150](https://github.com/hat47x/tei-platform/pull/3150)等より古いbaseから発展しているため、統合前にcurrent mainへの差分・旧A4記述と新受入境界の衝突を**別途rebase/レビューで照合**し、旧PRの既存CIを現main資格とみなさない。
+
 ## 作業領域I：周辺技術との連携と本番運用の境界
 
 ### 目的
