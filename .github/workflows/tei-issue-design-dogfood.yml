@@ -4,6 +4,11 @@ on:
     paths:
       - ".github/workflows/tei-issue-design-dogfood.yml"
       - "plan/design/ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md"
+      - "tools/reference-issue-test-ability/**"
+      - "reference/driver-scenarios/**"
+      - "cmd/tei/scenario*.go"
+      - "internal/scenariotest/**"
+      - "internal/semantic/validationeval/**"
   push:
     branches:
       - "poc/issue-design-dogfood-*"
@@ -199,3 +204,52 @@ jobs:
               target_summary.write(summary)
           print("PASS: bounded real CLI + Product Skill static check, partial claim, 3 synthetic controls")
           PY
+      - name: Qualify test discrimination against real pinned Scenario CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Go's coverage is statement-based (C0-equivalent); it is NOT C1.
+          go test ./cmd/tei -run '^TestRegenerateScenarioArgvAndStdinPlan$' \
+            -count=1 -coverprofile="$RUNNER_TEMP/tei-scenario-c0.cover"
+          python3 tools/reference-issue-test-ability/probe.py \
+            --root . \
+            --cli "$RUNNER_TEMP/tei" \
+            --coverage "$RUNNER_TEMP/tei-scenario-c0.cover" \
+            --out "$RUNNER_TEMP/issue-to-design/test-ability.json"
+          test -z "$(git status --porcelain=v1)"
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          p = Path(os.environ["RUNNER_TEMP"]) / "issue-to-design/test-ability.json"
+          report = json.loads(p.read_text(encoding="utf-8"))
+          assert report["claimCeiling"].startswith("bounded-test-ability")
+          assert len(report["tested"]) == 6
+          assert len(report["mutantsKilled"]) == 6
+          assert report["coverage"]["goC1BranchCoverage"] == "unmeasured"
+          lines = [
+              "## TEI Test Ability — 独立検証基準（#2514 / #1180）",
+              "",
+              "- 実TEI Binaryで生成済み版固定Scenario commandを **6/6 step** 実行。",
+              "- 正常Validation、業務拒否、synthetic Browse、synthetic Observationを別々に観測。",
+              "- **実CLIで検出**：重複Key、誤ったScenario Expected、変更済Fixture pin、改変済生成Plan（4種）。",
+              "- **独立の検査義務で検出**：必須Step欠落、常時satisfiedの偽検証基準（2種）。",
+              f"- Go局所statement C0: `{report['coverage']['goC0StatementCoverageForCmdTei']}`。",
+              "- **C1は未計測**。全要求Coverage/NFR/実DB/GUI/正式意味受理も未評価。",
+              "- 結果は一時JSONとActions Logに記録。全製品のテスト能力証明ではない。",
+          ]
+          print("\n".join(lines))
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
+              f.write("\n".join(lines) + "\n")
+          PY
+      - name: Preserve bounded synthetic test-ability evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tei-issue-test-ability
+          path: |
+            ${{ runner.temp }}/issue-to-design/report.json
+            ${{ runner.temp }}/issue-to-design/test-ability.json
+            ${{ runner.temp }}/tei-scenario-c0.cover
+          if-no-files-found: warn
+          retention-days: 7
