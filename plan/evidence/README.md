@@ -46,7 +46,8 @@
 - [休日Dataの宣言と行の結合の確認](XTEA_LOWCODE_HOLIDAY_BINDING_2026-11.md)（参照実装の試験記録。例への追加と複数暦の識別は未実装）
 - [標準業務の属性役割語彙の確認](XTEA_LOWCODE_ROLE_VOCABULARY_2026-11.md)（参照実装の試験記録。例への追加は未実装）
 - [役割と型の対応検査の確認](XTEA_LOWCODE_ROLE_TYPE_CHECK_2026-11.md)（参照実装の試験記録。要求プリミティブの拡張は未実装）
-- [例の標準業務Dataの宣言と結合の確認](XTEA_LOWCODE_EXAMPLE_STANDARD_DATA_2026-11.md)（参照実装の試験記録。行データ・画面投影・実DBは未確認）
+- [例の標準業務Dataの宣言と結合の確認](XTEA_LOWCODE_EXAMPLE_STANDARD_DATA_2026-11.md)（参照実装の試験記録。行データ・実DBは未確認）
+- [標準業務Dataの投影の確認](XTEA_LOWCODE_STANDARD_BUSINESS_PROJECTION_2026-11.md)（参照実装の試験記録。行データとWails RPC経由の確認は未実施）
 - [X-TEA受容要件の実装対応](XTEA_LOWCODE_ACCEPTANCE_TRACE_2026-11.md)（`AC-1`〜`AC-11`・`RQ-C1`〜`RQ-C3`の参照実装と未確認事項。受容判断は仮承認）
 - [実DBで実行時の判断を確かめる計画](REAL_DATABASE_RUNTIME_DECISION_PLAN_2026-11.md)（期間・権限・効果の判断を実DBで見る案。**NOT RUN**）
 
@@ -94,4 +95,5 @@
 - [外部Moduleを含む選択Sourceの観測](TEI_GO_SOURCE_CLOSURE_OBSERVATION_2026-11-07.md)（`cmd/tei`の選択入力をリポジトリ内318件と外部Module 12件・325メンバーに分けて列挙し、資格は常に`false`として閉包方針を変えない記録。SB-A1 / #2831）
 
 - [DSH外部Harnessの再開と既送出Session Log](DSH_H6E7_RESUME_AFTER_DISCLOSURE_2026-11-07/README.md)（#2515 H6-E7・#2509。Raw canaryを読んだSessionを再開すると、Session Logは水位`27`から進み再送されない一方、モデル入力には過去の会話が再構成されcanaryが再び載る。Grant失効・ACK不明replayはNOT RUN）
+
 

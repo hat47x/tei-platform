@@ -64,7 +64,7 @@ go run ./cmd/tei view \
 - 表示・Command計画・Package投影の参照例です。
 - 実データベース、実Provider、認可、receiptは含みません。
 - `view -command -execute`は参照Executorを使うため、この例の`update`効果は記録済みデータがない状態では成功しません。応答の`committed`は参照用の取引Commit呼出し、`persisted`は常に`false`、`durability`は`none`です。
-- 標準業務のDataは宣言と結合の例であり、税率・為替・採番の行データは含みません。`internal/taxrate`・`internal/currencyrate`・`internal/numbering`の`Resolve`で役割を解決するところまでを例で確かめられます。
+- 標準業務のDataは宣言と結合の例であり、税率・為替・採番の行データは含みません。`internal/taxrate`・`internal/currencyrate`・`internal/numbering`の`Resolve`で役割を解決するところまでを例で確かめられます。`view -application order_entry`は、宣言された標準業務Dataを`standardBusiness`（種別・Data・属性）として投影します。
 - 受容判断は仮承認であり、最終採否は別途です。
 ## Studioで開く（任意）
 
@@ -80,3 +80,4 @@ CGO_ENABLED=0 go build -mod=readonly -tags server -o tei-studio-server .
 
 Studioはloopback限定の読取り専用Hostであり、接続者認証・業務操作の認可・利用者間の分離を提供しません。詳細は[Studio README](../../cmd/tei-studio/README.md)を参照してください。
 server buildと`/health`の確認記録は[Studioサーバー起動確認](../../plan/evidence/XTEA_LOWCODE_EXAMPLE_STUDIO_SMOKE_2026-11.md)にあります。画面表示・Wails RPC・Desktop WebViewは未確認です。
+
