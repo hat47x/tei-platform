@@ -22,3 +22,6 @@
 # Survey output is hashed as raw bytes by the evidence README.
 /plan/evidence/COMPOSITION_NEXT_EDGE_STATIC_SURVEY_2026-11-07/** -text
 /plan/evidence/DSH_H2_H3_FOUR_SESSION_2026-11-07/** -text
+
+# Egress measurement summaries are hashed as raw bytes.
+/plan/evidence/DSH_SESSION_LOG_EGRESS_MOCK_2026-11-07/** -text
