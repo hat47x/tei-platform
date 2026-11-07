@@ -601,7 +601,7 @@ Source A→B→Aでは同byteでもObservation時点・選択Revisionが別と�
 
 本章は`14〜16の一Function・一Query・一実Providerを優先するRMT P0-R1を維持し、並行レーンの**実現済みSource**と**未統合検証・設計候補**を同じ資格にしない。X-TEA合成受容例E、旧原典Driver忠実移植R、実データK/O、業務Owner Bは引き続き別Attempt・別Claim。新しい第二Query/Operation Engine、Scenario正本、UI State Engine、Host/Authority、Fixtureは導入しない。
 
-### 17.1 `16.8の現在地を更新：参照Crosswalkは動いたがW3/Product Actionは未統合
+### 17.1 第16.8節の現在地を更新：参照Crosswalkは動いたがW3/Product Actionは未統合
 
 [main merged #3195](https://github.com/hat47x/tei-platform/pull/3195)は`tools/reference-operation-pattern-crosswalk`を実装済み。既存`operations.DeriveOperationSurface`を呼んでData ID／Capability ID／Relation targetだけを突き合わせ、結果をlinks/unlinked/conflicts/ambiguousへ出す**読取専用の参考ツール**であり、製品の`tei operations`で宣言Patternを優先選択するW3は**未実装・未採用**。実Workspaceの操作8件・宣言Pattern5件でlink 4／unlinked 2／conflict 0。追加候補Patternを載せると8件・6件でlink 4／unlinked 3となる。4件の一致には`recent_orders→list.sales.order`、`order_record→read.sales.order`、`order_lines→list/read.sales.order_line`が含まれる。これは**Readのための設計候補間Identity対照**であって、Query/SQLがProviderへ渡った実行記録ではない。
 
