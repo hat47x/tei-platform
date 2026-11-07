@@ -94,17 +94,5 @@ func (r Runner) Run(ctx context.Context, invocation Invocation) error {
 	} else {
 		err = r.Implementation.Run(ctx, invocation)
 	}
-	if err != nil {
-		// A condition the hook found unsatisfied is a business answer, not an
-		// execution fault: it is returned as itself so a caller can report the
-		// outcome, and on-failure warn does not turn a refusal into a warning.
-		if isNotSatisfied(err) {
-			return err
-		}
-		if declared.Failure == "warn" {
-			return &Warning{Err: err}
-		}
-		return &Error{Code: "HOOK_REJECTED", Message: err.Error(), Cause: err}
-	}
-	return nil
+	return wrapFailure(err, declared)
 }
