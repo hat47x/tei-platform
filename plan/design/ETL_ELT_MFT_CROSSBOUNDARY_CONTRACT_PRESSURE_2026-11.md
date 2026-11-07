@@ -380,6 +380,18 @@ Apache Kafkaは、Kafka Topic間ではtransactional producerとconsumer offset�
 
 **資格**：ここまでの差分は既存Go/Pythonの静的読取とIssue/PR照合だけ。AP-12の新たな実行、正規Manifest＋別Readerの同Attempt E2E、MFT Recipient/実PG/Owner受理はNOT RUN。既存merged testsとRepository Healthの合格は、その限定範囲のみの実証。
 
+### 12.3 2026-11-07 既存AP-12の限定Executable Reference接続
+
+[本設計のmain統合 PR #2827](https://github.com/hat47x/tei-platform/pull/2827)後、受入実証を既存[#2604 AP-12/13](https://github.com/hat47x/tei-platform/issues/2604#issuecomment-6585644900)へ委ねたまま、**小さな候補[Draft #3256](https://github.com/hat47x/tei-platform/pull/3256)**を追加した。これは**一般のManifest→Path方式の採用ではなく、公開`ledger` Fixtureの限定Reader検証**である。
+
+- **入力／Owned Scope**: `reference/standard-crud/workspace`、Application `ledger`。既存`tei artifacts`のfull ArtifactSet/Manifest出力と、`-out`のfresh directoryの同一試行比較を継続。Writerが別途呼ぶ`artifactFileName`をExpected生成に再利用せず、3つのtable（`public.notes`／`public.orders`／`public.order_archive`）、1つのfunction（`ledger`）、operation surfaceの5相対Pathを**Reference固定のExpected Layout**とする。別Applicationへ一般化しない。
+- **P0-A負例**: 二つのTableの物理ファイル名は固定のままBodyを交換する。旧Python Readerの`Counter(expected Bodies)==Counter(actual Bodies)`はTrueでも、`path→member→byte`を照合すれば拒否（AP-12）。Rename／余剰／Directory／欠落／重複／Role改変／Body改変も個別に拒否する。
+- **局所結果**: Python helper＋単体試験をローカルで**9/9 PASS**（2ファイルをGitHubで再取得し、ローカル実行版とGit blob SHA一致）。これは**合成FixtureのReaderロジック**の結果であって、Go ArtifactSetの正式Manifest出版、複数Consumerの原子的一式読取、HULFT/PG/Business Owner受理ではない。
+- **既存実CLI CI**: [`tei-one-revision-capability.yml`](../../.github/workflows/tei-one-revision-capability.yml)へ上記9試験を追加し、同Workflowの実Go CLI build／実`ledger` Artifact/Manifest出力を新Readerへ接続。**exact-headのCI合否が観測されるまでは実CLI検証未成立**。Repository Healthや別PRのCIを代入しない。
+- **P1/P2への引継ぎ**: #2604 AP-06/08〜16のR1/R2世代切替・旧Member GC・Manifest自体のPath/Content byte Binding資格、#2630の用途別Required Member、#2542 EF-01〜03のRecipient/ImportUnit、#1130のRunPlan・#1174のEffectを独立した未成立Claimとして保持。Path/byte Witnessの成功だけで`Artifact.Verify`をdiskから再構築したとも、`Manifest.Complete`がConsumer必要集合全件を保証したとも称さない。
+
+**採否**: 一般のPublication Mapping、標準RoleやManifest Entryの変更、任意Transport/MFT Adapterは、現在の5ファイルFixtureだけでは根拠不足。別Reader・別Host・第二Scenario正本を作らず、#2604 Ownerが実証と互換性に基づき方式を選択する。
+
 ### 追加一次資料（製品・仕様の版に依存する事実）
 
 - Apache Iceberg spec, snapshots / optimistic concurrency: https://iceberg.apache.org/spec/
