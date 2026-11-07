@@ -92,6 +92,9 @@ func TestLifecycleObserveFailurePreservesUnknownEffect(t *testing.T) {
 	if !ok || attempt.Stage != StageDispatched {
 		t.Fatalf("attempt=%+v, found=%t; unrecorded outcome must not be marked observed", attempt, ok)
 	}
+	if stages.MayReplay(options.CommandID) {
+		t.Fatal("dispatched command was advertised as replayable after observation failed")
+	}
 	if _, err := stages.Dispatch(options.CommandID, options.Owner, options.Generation); err == nil {
 		t.Fatal("duplicate dispatch was permitted after observation failed")
 	}
@@ -122,6 +125,9 @@ func TestLifecycleUnknownRecordFailureKeepsUncertainty(t *testing.T) {
 	attempt, ok := stages.Attempt(options.CommandID)
 	if !ok || attempt.Stage != StageDispatched {
 		t.Fatalf("attempt=%+v, found=%t; unknown could not be durably recorded", attempt, ok)
+	}
+	if stages.MayReplay(options.CommandID) {
+		t.Fatal("dispatched command was advertised as replayable after MarkUnknown failed")
 	}
 	if _, err := stages.Dispatch(options.CommandID, options.Owner, options.Generation); err == nil {
 		t.Fatal("duplicate dispatch was permitted after MarkUnknown failed")
@@ -155,5 +161,22 @@ func TestPreExecutorAuthorizationFailureStaysRejected(t *testing.T) {
 	}
 	if executor.calls != 0 {
 		t.Fatalf("executor calls=%d, want 0", executor.calls)
+	}
+}
+
+// The MayReplay query must agree with Dispatch for an in-flight attempt.
+func TestLifecycleDispatchedIsNotReplayable(t *testing.T) {
+	lifecycle := NewLifecycle()
+	if !lifecycle.MayReplay("in-flight") {
+		t.Fatal("an absent command was not initially dispatchable")
+	}
+	if _, err := lifecycle.Dispatch("in-flight", "owner-a", 1); err != nil {
+		t.Fatal(err)
+	}
+	if lifecycle.MayReplay("in-flight") {
+		t.Fatal("an in-flight command was advertised as replayable")
+	}
+	if _, err := lifecycle.Dispatch("in-flight", "owner-a", 1); err == nil {
+		t.Fatal("an in-flight command was re-dispatched")
 	}
 }
