@@ -332,6 +332,11 @@ def main() -> None:
             "omitted-required-step": "independent-obligation-rejected",
             "always-satisfied-grader": "independent-property-rejected",
         },
+        "discriminationCounts": {
+            "realCliFixtureExpectedPlanSourceAndLock": 6,
+            "independentObligationAndOracle": 2,
+            "actualProductEvaluatorCodeMutant": "not-run-in-this-probe",
+        },
         "productTestEvidence": "synthetic Canonical Validation and Browse/Observation; no real DB",
         "sourceReversionObservation": "A-B-A returns to identical Source bytes and old pin succeeds; intervening history/Authority not proven",
         "pluginLockQualification": "byte pin only; actual plugin Consumer Load/Provider Behavior not measured",
@@ -347,7 +352,9 @@ def main() -> None:
         "claimCeiling": "bounded-test-ability; not Scenario/Owner/Host/provider-wide",
     }
     args.out.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print("PASS: 6 real pinned Scenario steps and 6 bounded negative discrimination controls")
+    print("PASS: 6 real pinned Scenario steps; "
+          "6 actual CLI input/pin/plan rejection controls plus "
+          "2 independent obligation/oracle controls; no injected Product code mutant")
     print("C0:", last, " / C1: unmeasured; overall requirements/NFR: not-qualified")
     print("Scenario SHA256:", digest(source), " / binary SHA256:", digest(cli.read_bytes()))
 
