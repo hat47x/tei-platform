@@ -11,6 +11,13 @@
 
 > **最新の横断受入判断（2026-11-08）**：§22〜25に、TT-56の統合候補#3354、業務拒否と技術失敗を分ける#3351、CLI実Writeの#3333、Plugin能力の宣言/選択の#3337/#3350、Subprocess Buildの#3336、DSH Sinkの#3309を、**実証済み・Draft未検収・必要な実配線**に分けて整理した。旧§17〜21の状態説明は各記録時点のものとし、現在の受入の上限は最新節を優先する。
 
+<!-- tei-test-compact-execution-baseline-20261108 -->
+> **現在の実装基線と次の1件（2026-11-08／履歴章の状態表示より優先）**：
+> ① **成立した局所証拠**：main統合 #3304 の既知境界T1-A（7番目の一時Step／独立負例3）、main統合 #3354 の11実CLI Reply＋32合成Consumer対照、main統合 #3353 の空集合でも未確認Handoffを`holds`にしない修正、main統合 #3360/#3362 の参照Stage Driver限定の再入／process-image対照、main統合 #3363 の24 Bindingに対する22 selected／2 missingという**参照算定**。これらは同一Product Attemptの合格を示さない。
+> ② **新しく検収したDraft**：[TT-105/106実装 #3365](https://github.com/hat47x/tei-platform/pull/3365) HEAD `1e2531fede563ed4b1d32cca0e78ccaf69fe364c` の専用CI [#42394673357](https://github.com/hat47x/tei-platform/actions/runs/42394673357)、全体Health [#42394673331](https://github.com/hat47x/tei-platform/actions/runs/42394673331)、既知脆弱性検査 [#42394673273](https://github.com/hat47x/tei-platform/actions/runs/42394673273) はいずれも **completed/success**。本PRは**未統合**。実6 Pinned Stepに対する試験用受信目録・7コピー負例の合格であり、`productCoverage=unknown`と`untestedConfirmed=[]`を維持する。External Tool/全Product/C1/真のT1-Bの証拠ではない。
+> ③ **CLI契約の現行圧力**：[第2ラウンド #3356](https://github.com/hat47x/tei-platform/pull/3356)の実CLI調査ではD-9（管理MarkdownはLoaderの意味入力でない）とD-10（CLI JSON形状不統一）が残り、MCP Server入口は**未確認・MCP NOT RUN**。一方[#3366](https://github.com/hat47x/tei-platform/pull/3366)は`view -format json`にWorld/SourceIndex Fingerprintを加える**未統合PR**で、同HEADの限定/全体CI成功は現時点の検証証拠。見える欄が増えることとSource全件のReader資格は別。
+> ④ **次の実行順（既存Ownerへ委譲）**：P0は #3365 のmain統合後Run資格確認→#3262の3 Required Rule/Source/実選択Modeと受領完了の局所判定→#3273の**未知Obligationを生成者から隠したT1-B**、同時並行で #2586 の実Product Function→SQL/Provider Read。P1は`End marker`・`verified`を呼出元booleanと実Receiver/Runの独立Witnessへ分ける否定対照、#3356のD-9/D-10と#3366の各Version/Scope相違をCLI/Skillに透過しない比較、#3279 Plugin実選択と実Invoke、#2831の`cmd/tei`再入を追加。**T1-B盲検／実Product Provider／外部H3完全受領／Go C1／Owner Meaningは依然未資格**。
+
 ## 1. 守るべき不変条件
 
 TEIのテストは、単なる「実行した／PASSした」の収集ではなく、**テストの判別力・実入力の同一性・対象範囲・証拠の現在資格**を分離して扱う。専門製品の導入で新しいSemantic正本、第二Driver、第二Test Scenario、第二Host、第二Authority、共通Runtimeを増やさない。
@@ -1276,7 +1283,7 @@ QueryやGraphを扱う「不在に関するTest Pattern」は、Positive Witness
 4. **P1-E（副作用・完全性）**：#3357 JSONL prefix+error、#3359 ReadsFor実入口、#3351業務拒否/技術評価不能、#3353空集合Handoffを異なる故障原因として実Target/Observerへ結合。単体Go PASSからProducer/Consumer/Persistedの資格を導かない。
 5. **P1-B（Build・Plugin）**：#3360 stage-driver限定再入性→#3362 process-image→#2831 `cmd/tei`再入契約、#3363 Ref Matrix→#951実選択・Provider Load/Invoke→#3267 exact Tupleの順。各別PRのlocal PASS、Source・Artifact・Target・Granted Runtimeの合成適合を分ける。CLI/Studio双方で同じInspector Pluginを実呼出す最短D1を並行して進める。
 
-**観測済と未実施の境界**：#3357/#3358/#3348/#3354はmain統合済みの限定成果。#3356はドッグフーディング第2ラウンドの実測を報告する**未統合PR**。#3359/#3360/#3361/#3362/#3363は各PRが報告した局所試験/提案であって、本節で新しく実行した試験ではない。TT-123〜122は**受入計画・NOT RUN**。外部H2/H3受領、MCP、T1-B、新しい実Provider/Host、`cmd/tei` G4、Owner Meaning Acceptanceは**未証明**。実施済みの局所結果を合算して全E2E/製品テストCoverageを作らない。
+**観測済と未実施の境界**：#3357/#3358/#3348/#3354はmain統合済みの限定成果。#3356はドッグフーディング第2ラウンドの実測を報告する**未統合PR**。#3359/#3360/#3361/#3362/#3363は各PRが報告した局所試験/提案であって、本節で新しく実行した試験ではない。TT-123〜130は**受入計画・NOT RUN**。外部H2/H3受領、MCP、T1-B、新しい実Provider/Host、`cmd/tei` G4、Owner Meaning Acceptanceは**未証明**。実施済みの局所結果を合算して全E2E/製品テストCoverageを作らない。
 
 <!-- tei-test-partial-inventory-dogfood-20261108 -->
 ## 27. 2026-11-08：部分Scenario目録でも局所正証人を保持する実装（TT-105/106）
@@ -1313,6 +1320,10 @@ QueryやGraphを扱う「不在に関するTest Pattern」は、Positive Witness
 4. **P1 多Consumer/Plugin**：同一独立ObligationをCLI/Studio/SHOやPlugin/Trait/BOMへ投影する場合、同じSubject IDの見かけの複製を分母へ加算せず、実読み込み/実呼出・View occurrence/Provider exact tupleは別軸で比較する。#1251/#951/#3279/#3267が実走Owner。
 5. **P2 C1・NFR・Effect**：Go Code C1/Scenario Rule判別/HTTP Graph Guard/現DB Effect/NFRは、それぞれ独立分母と実行証拠で検収する。全Stepの実行だけで業務・C1・SLO達成を名乗らない。
 
+**#3365 exact-head CI検収追補**：HEAD `1e2531fede563ed4b1d32cca0e78ccaf69fe364c`（`probe.py` blob `d6cebb6d45c099914a85d7a360b3522c2439eb57`）に対し、[専用CI #42394673357](https://github.com/hat47x/tei-platform/actions/runs/42394673357)、[Health #42394673331](https://github.com/hat47x/tei-platform/actions/runs/42394673331)、[依存 #42394673273](https://github.com/hat47x/tei-platform/actions/runs/42394673273)は**completed/success**。§27.3の「未確認」はDraft作成時点の状態。現HEADはCI成功した**未統合候補**であり、main統合後のCLIバイナリ・実Runは別検収。
+
+**次の反証点（既存TT-105/106を強化する試験条件、独立Case正本は増やさない）**：`scoped_step_coverage`はtest-onlyのread-only Consumerであり、`end_received`と`row.verified`は**呼出元が供給する値**。同関数単独ではそのEndが実Receiverに到達したか、verifiedが実Pinned CLI検証に由来するかを認証しない。**「全Required Stepの偽Receipt＋偽End」**という全件揃った改変コピーを追加対照にし、単なる配列整合/booleanから**受領完全性または実行適格を自動認定しない**よう、実Invoker／Run Receipt／actual Tool Deliveryの独立Witnessが必要なことを明記する。現在の7 Controlsは一Step欠落や偽End（欠落同伴）を拒否するが、全件偽装への独立Producer照合の実証とは別。製品の偽造脆弱性が実証されたとの主張ではなく**テスト用Consumerの信頼前提の明示**である。
+
 **Claim ceiling**：§27の新実装は既存実CLIの受領済みStepと改変コピーを扱うbounded test-dogfood。真の外部Tool配送欠落、実Provider部分故障、Product全体Rule Universe、Method/Holdoutを隠したT1-B、Go C1・正式Owner受理を証明しない。新Source/Plugin Resolver、Test Runner、認可/Authority、専用Proof Storeは導入しない。
 
 <!-- tei-test-real-qualification-patterns-20261108 -->
@@ -1324,7 +1335,7 @@ QueryやGraphを扱う「不在に関するTest Pattern」は、Positive Witness
 
 別レーンの具体的な実例には、[merged #3353](https://github.com/hat47x/tei-platform/pull/3353)の**空集合でも未確認Handoffを完了としない**修正、[merged #3358](https://github.com/hat47x/tei-platform/pull/3358)の**休日Calendarの値域が閉じている場合に限り宣言外値を拒否**する局所実装、[merged #3350](https://github.com/hat47x/tei-platform/pull/3350)の**Provider能力を技術対応で解決**するReference改善がある。3件とも特定Code/Referenceの限定成果で、実業務の他者受領、未知暦全Domain、実Provider Invoke/Grantの合格ではない。
 
-進行中の[#3359](https://github.com/hat47x/tei-platform/pull/3359)はHookへ渡す宣言済み `reads` の事前検査候補だが、Providerからの取得やCLI/RunSequenceへの結線は未実証。[#3363](https://github.com/hat47x/tei-platform/pull/3363)は既存Capability Supports*による24 Binding中selected 22/missing 2の**read-only参照算定**を提案し、`editor.database_workbench` のmissingを直ちに製品不具合とはしない。[#3360](https://github.com/hat47x/tei-platform/pull/3360)は自己再構築可能な**参照Driver**についてStage1生成物がStage2を実駆動した局所L3 trueを実測したが、**cmd/teiのL3・全Source Closureではない**。それぞれの現実の観測を、テストPatternの独立対照へ変換する。
+進行中の[#3359](https://github.com/hat47x/tei-platform/pull/3359)はHookへ渡す宣言済み `reads` の事前検査候補だが、Providerからの取得やCLI/RunSequenceへの結線は未実証。[main統合済み #3363](https://github.com/hat47x/tei-platform/pull/3363)は既存Capability Supports*による24 Binding中selected 22/missing 2の**read-only参照算定**を提供し、`editor.database_workbench` のmissingを直ちに製品不具合とはしない。[main統合済み #3360](https://github.com/hat47x/tei-platform/pull/3360)は自己再構築可能な**参照Driver**についてStage1生成物がStage2を実駆動した局所L3 trueを実測したが、**cmd/teiのL3・全Source Closureではない**。それぞれの現実の観測を、テストPatternの独立対照へ変換する。
 
 ### 28.2 Patternを単なる入力値集ではなく「性質を変える一軸と不変部分」の組にする
 
