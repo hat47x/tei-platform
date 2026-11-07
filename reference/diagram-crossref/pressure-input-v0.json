@@ -294,7 +294,28 @@
       "fn.external.dispatch"
     ],
     "actualProviderEffect": "not-observed",
-    "disclosureScope": "synthetic-public"
+    "disclosureScope": "synthetic-public",
+    "dataResultSlices": [
+      {
+        "data": "data.line",
+        "scope": "synthetic order O100",
+        "observedOccurrences": 2,
+        "completeness": "complete-for-this-synthetic-order-only"
+      },
+      {
+        "data": "data.payment",
+        "scope": "synthetic order O100",
+        "observedOccurrences": 3,
+        "completeness": "complete-for-this-synthetic-order-only"
+      },
+      {
+        "data": "data.stock",
+        "scope": "external inventory",
+        "observedOccurrences": null,
+        "completeness": "partial-or-unknown",
+        "note": "Do not infer empty stock or absence of actual effect"
+      }
+    ]
   },
   "negativeVariants": [
     {
