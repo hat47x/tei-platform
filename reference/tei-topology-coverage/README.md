@@ -75,3 +75,13 @@ node reference/tei-topology-coverage/verify-cli-trace.mjs \
 **exact-head CI**：[Actions #42206842519](https://github.com/hat47x/tei-platform/actions/runs/42206842519)、コードhead `8bf4347fa587a66bbc500a8a2fd5927d150437d2`、Go 1.26.10実CLI **2実行**→Node独立比較PASS、Node 24.21.0のGraph/Table 31件＋CLI境界7件PASS、失敗0。実Sourceの全scopeや未読込Root、Policy、実Studio UIは **NOT PROVEN**。
 
 **後続のFit/Gap**：実`tei trace`は直接宣言Edgeを取得できる一方、合成Referenceの任意の多項Relationに必要な独立の宣言scope・relation ID・role列は一般には復元できない。今あるGoの`TraceWorkspace`と`SourceBridge`を再利用し、実Sourceに必要な意味・roleが存在するケースを別Ownerで特定した後にだけ、追加のMapping／標準構造を検討する。#1124 M0/M1と#2831 G4の受入を代替しない。
+
+## 2026-11-07 SourceNavigationのKey照合（実CLI観測アダプター）
+
+既存GoのSourceBridge Navigationは `{key,status,references,authorityLimits}` を返します。Referenceの `observeDirectTrace` は従来、`status:"located"` のみで `sourceNavigation:"located-navigation-only"` と表示し、**別Subjectや別scopeに結び付いたSource位置であっても見かけ上Locatedにできる**問題がありました。
+
+修正は同じCLI応答中の `trace.subject` と `source.key` の**scope/kind/id一致**を検証し、located時に空でない`references`を要求します。Sourceがunresolvedの場合はDirect Edge候補の存在を保持しつつ `sourceNavigation:"unresolved"` のまま。欠けたSource／別Key／located-without-references／未解決情報の不正Shapeは `unknown` とし、誤帰属に成功しません。
+
+検証には合成負例（他Subject/他scope、Key欠落、located空参照、未解決の分離、ProjectionUnresolved不正型）と、**実CLIで取得したJSONのSource Keyだけを別Subjectへ改変するnegative control**を併用します。既存 `tei trace`、SourceIndex、ModelRef、SourceBridgeは一切変更しません。
+
+本チェックは**same-packet整合**であり、独立Source Reader／同一時点の全Source閉包／本番Policy／Current Grant／編集権限／Accepted Meaningを証明しません。研究計画[PR #2966](https://github.com/hat47x/tei-platform/pull/2966)（main統合済み）のIntent／Realization／Assessmentを、今回の局所Source帰属検査へ適用しただけです。より詳しいFit/Gapは[設計§15](../../plan/design/TOPOLOGY_COMPOSITE_VIEWS_AND_PIPELINE_2026-10.md)を参照してください。
