@@ -74,6 +74,7 @@ jobs:
           "$cli" model catalog -workspace reference/workspace > "$out/catalog.json"
           "$cli" inspect -workspace reference/workspace -subject-kind semantic-data -subject-id sales.order > "$out/inspect.json"
           "$cli" source-index -workspace reference/workspace -subject-kind semantic-data -subject-id sales.order > "$out/source-index.json"
+          "$cli" source-index -workspace reference/workspace > "$out/source-index-all.json"
           "$cli" trace -workspace reference/workspace -scope reference-observation -subject-kind semantic-relation -subject-id sales.order.customer -direction both -mode summary > "$out/trace.json"
           "$cli" requirements -workspace reference/workspace > "$out/requirements.json"
           "$cli" validate -workspace reference/workspace -json > "$out/validate.json"
@@ -86,7 +87,7 @@ jobs:
 
           folder = Path(os.environ["RUNNER_TEMP"]) / "issue-to-design"
           names = ("commands", "version", "workspace-files", "catalog", "inspect",
-                   "source-index", "trace", "requirements", "validate")
+                   "source-index", "source-index-all", "trace", "requirements", "validate")
           docs = {}
           sizes = {}
           for name in names:
@@ -101,19 +102,22 @@ jobs:
           assert docs["commands"].get("scope") == "selected-read-only-commands"
           assert docs["version"].get("schemaVersion") == "tei.cli.version/v0"
           for name in ("workspace-files", "catalog", "inspect", "source-index",
-                       "trace", "requirements", "validate"):
+                       "source-index-all", "trace", "requirements", "validate"):
               assert docs[name].get("ok") is True, (name, docs[name].get("error"))
           schemas = {
               "workspace-files": "tei.cli.workspace-files/v0",
               "catalog": "tei.cli.model/v0",
               "inspect": "tei.cli.inspect/v0",
               "source-index": "tei.cli.source-index/v0",
+              "source-index-all": "tei.cli.source-index/v0",
               "trace": "tei.cli.trace/v0",
               "requirements": "tei.cli.requirements/v0",
               "validate": "tei.cli.validate/v0",
           }
           for name, expected in schemas.items():
               assert docs[name].get("schemaVersion") == expected, (name, docs[name].get("schemaVersion"))
+          assert docs["source-index"].get("mode") == "subject"
+          assert docs["source-index-all"].get("mode") == "index"
           # Independently declared minimal source obligation: an indexed Subject
           # cannot alone prove that the required Source file was consumed.
           required_source = "semantic/sales/order.tei"
@@ -241,6 +245,7 @@ jobs:
           assert len(r["syntheticControls"]) == 7
           assert len(r["additionalManifestControls"]) == 2
           assert len(r["transportByteControls"]) == 7
+          assert r["observations"]["localReplies"] == "10/10"
           assert r["requiredValidationSlice"]["status"] == "bounded-present"
           assert r["requiredValidationSlice"]["requiredCount"] == 3
           assert len(r["requiredValidationControls"]) == 8
@@ -251,7 +256,7 @@ jobs:
           lines = [
               "## Design Context → Test Ability 事前資格（#3262）",
               "",
-              "- 9既存CLI応答から**Source loaded/Subject/Fingerprintの限定部分**を確認。",
+              "- 既存9 CLI応答＋既存Source Indexの全件モード1応答から、Source/Rule/FPの限定部分を確認。",
               "- 合成負例: Subject欠落、Inventory未Read、Fingerprint版混合、Reply欠落、Schema Drift、Source Root欠損 + 外部Provider/Grant未観測（7種）。",
               "- **TT-56**：独立必須3 Validation を既存Catalog＋Source IndexのDefinition Role＋Loader Readへ結合。",
               "- JSON正常・World/Index Fingerprint一致のまま必須Ruleだけ欠ける等**7件を拒否**。範囲外の1件は過剰拒否しない。",
