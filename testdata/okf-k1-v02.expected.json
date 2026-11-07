@@ -1,0 +1,74 @@
+{
+  "fixture": "okf-k1-v02",
+  "purpose": "Independent synthetic expectations for future K1 reader; not a test run",
+  "okf": {
+    "version": "0.2",
+    "repository": "GoogleCloudPlatform/open-knowledge-format",
+    "spec_commit": "ad30107c31c06aec8a7d5636e0d1058118604e6f",
+    "spec_blob_git_sha": "c06e3eede0c910d0ecf12524c34204156f8795ac"
+  },
+  "required_files": [
+    "index.md",
+    "data/order.md",
+    "functions/submit.md",
+    "business/submit.md"
+  ],
+  "concept_count": 3,
+  "index_count": 1,
+  "format_expected": {
+    "conformant": true,
+    "missing_type": 0,
+    "malformed_frontmatter": 0,
+    "root_index_okf_version": "0.2",
+    "nonstandard_type_is_allowed": true,
+    "unknown_extension_key_is_allowed": true,
+    "unresolved_markdown_link_is_allowed": true
+  },
+  "positive_controls": {
+    "singleton_verified_maps_to_event_count": 1,
+    "source_resource_can_be_scope_descriptor": true,
+    "concept_ids": [
+      "data/order",
+      "functions/submit",
+      "business/submit"
+    ],
+    "unresolved_link": "/business/missing.md"
+  },
+  "negative_mutants": [
+    {
+      "name": "delete type from data/order.md",
+      "expected_format_conformant": false
+    },
+    {
+      "name": "make business/submit.md YAML unparseable",
+      "expected_format_conformant": false
+    },
+    {
+      "name": "add extra x-unknown frontmatter key to data/order.md",
+      "expected_format_conformant": true
+    },
+    {
+      "name": "delete index.md",
+      "expected_format_conformant": true
+    },
+    {
+      "name": "change business/submit.md type to Future Experimental Role",
+      "expected_format_conformant": true
+    },
+    {
+      "name": "delete business/submit.md unresolved link",
+      "expected_format_conformant": true
+    }
+  ],
+  "must_not_infer": [
+    "TEI Domain/Role/Trait adoption",
+    "original source actually read",
+    "business owner acceptance",
+    "verified human identity",
+    "runtime attestation",
+    "external publication grant",
+    "full Source closure",
+    "SUI tree/island recoverability"
+  ],
+  "expected_runtime_status": "NOT RUN"
+}
