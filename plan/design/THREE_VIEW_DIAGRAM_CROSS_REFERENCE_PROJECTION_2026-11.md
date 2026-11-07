@@ -260,3 +260,28 @@ Sourceを`*.tei.md`へ統一する方針は#2621に従い、現状のLoader/Pars
 RQ-035/RQ-036・横断Indexは[Draft #3297](https://github.com/hat47x/tei-platform/pull/3297)や別Ownerが並列修正中。本PRは自身の設計文書の索引確認/追加だけを担当し、他領域のRequirement本体/受入対応/Plugin D1文書索引を競合して書き換えない。#3297等がmainへ統合後、#3263の最新mainで対象ファイルを照合し、exact-head Health/合成Fixture Testを再資格化する。Goテスト内のMutation数やSource/Expected更新により旧`aeea395c`の成功範囲を現HEADへ自動引き継がない。
 
 **本節時点の新CI/Owner受理/実Studio・SHOは未確認**。全図面の編集・CRUD Matrixの実Product投影・実Provider読取完了を、Fixtureが増えたことだけから主張しない。
+
+## 18. 不完全なFunction CRUD宣言で「既知」を消さない（11/07 実コード修正）
+
+他チャットのDesign Context／未取得・部分集合／C0/C1テストの議論を、既存`reference/diagram-crossref/fixture_contract_test.go`の**実コード上の誤判定**へ還元した。以前の監査関数は`DeclaredCrudComplete=false`の場合、明示`uses`が存在しても全Dataセルを`unknown-not-enumerated`と判定していた。基底Fixtureの`fn.external.dispatch`は`uses=[]`であるため、この誤りは既存正常系／5破損Caseからは検出されなかった。
+
+### 18.1 修正した意味契約と最小反証
+
+| Function×Dataセル | 列挙された`uses` | Function宣言の網羅性 | 正しい局所結果 |
+| --- | --- | --- | --- |
+| 既知`R`セル | 明示`R` | `false` | **`R`**（既知の肯定事実を維持） |
+| 未列挙セル | なし | `false` | `unknown-not-enumerated`（不存在とは言わない） |
+| 未列挙セル | なし | `true` | `none`（**宣言の限定Scope内のみ**） |
+| 既知`C/U/D/R`セル | 明示 | `true` | 宣言した操作を維持 |
+
+新`TestPartialFunctionCRUDKeepsKnownCellsAndUnknownRemainder`は、既存公開Fixtureをコピーして`fn.external.dispatch`へ既存の`data.customer=R`を一つ追加し、期待票にも`R`を明示する。この**正例が通ること**に加えて、(a) 既知`R`を`unknown`に潰した偽陰性、(b) 未列挙`data.order`を`none`へ昇格した偽陰性を、それぞれ拒否する。元Fixture/Expectedの保存内容やDomain Oracleは書き換えず、監査関数と同じGo packageの有限テストとして加える。
+
+### 18.2 所有と受入の上限
+
+- #3263：合成Fixture・Function CRUD表示の局所意味。**不完全であっても実際に列挙されたセルを消さない**という不変条件を保持する。
+- #3262：実Source/LoaderからFunctionと`uses`をどの範囲で発見・受領・解析できたかのDesign Context閉包を担当。未発見Functionの操作を`none`と推測しない。
+- #2514/#1180：この最小正例と**2種の拒否対照**を既存Independent Expected／Scenarioの判別力へ引き継ぐ。監査関数自身の計算値を独立Oracleとして扱わない。
+- #2586/#2506：同じ区別を実Product Query／Read Slice／Function Data Contextへ接続するが、CRUD宣言`R`は実ProviderのRead実行や行集合完全性ではない。
+- #2507/#2497/SHO：表・図・文書で空欄に変換する際、局所的な`unknown`と確認済み`none`と明示`R`が視覚上合流した場合、逆編集や不存在推論を許可しない。
+
+**証拠状態**：この追補時点でGoテストSourceはブランチへ追加済みだが、当該commitの正式Repository Health/Go Test結果は別途照合する。仮に局所テストがPASSしても、実TEI Parser・Graph/CRUD projector・CLI/Studio/SHO Consumer・Function/Business全Required Closure・独立Owner Oracle・実Provider/Host Effectは**未検証**。新しいCore Enum/Parser/Runner/Authorityは追加しない。
