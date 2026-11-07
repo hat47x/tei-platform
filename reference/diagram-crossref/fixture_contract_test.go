@@ -29,14 +29,14 @@ type fixture struct {
 		Function *string `json:"function"`
 	} `json:"businessActions"`
 	NegativeVariants []struct{ ID string } `json:"negativeVariants"`
-	CanvasViews []struct {
-		ID string `json:"id"`
+	CanvasViews      []struct {
+		ID        string `json:"id"`
 		Instances []struct {
 			OccurrenceID string `json:"occurrenceId"`
-			SubjectID string `json:"subjectId"`
+			SubjectID    string `json:"subjectId"`
 		} `json:"instances"`
 		RelationOccurrences []struct {
-			ID string `json:"id"`
+			ID         string `json:"id"`
 			RelationID string `json:"relationId"`
 		} `json:"relationOccurrences"`
 	} `json:"canvasViews"`
@@ -57,10 +57,10 @@ type expectation struct {
 		Cells map[string]map[string]string `json:"cells"`
 	} `json:"expectedFunctionDeclaredCrudMatrix"`
 	KnownMutantRejections []struct{ ID, Expected string } `json:"knownMutantRejections"`
-	ExpectedCanvasViews struct {
-		ViewIDs []string `json:"viewIds"`
-		OccurrenceCount int `json:"occurrenceCount"`
-		SharedSubjects map[string][]string `json:"sharedSubjects"`
+	ExpectedCanvasViews   struct {
+		ViewIDs             []string            `json:"viewIds"`
+		OccurrenceCount     int                 `json:"occurrenceCount"`
+		SharedSubjects      map[string][]string `json:"sharedSubjects"`
 		RelationOccurrences map[string][]string `json:"relationOccurrences"`
 	} `json:"expectedCanvasViews"`
 }
