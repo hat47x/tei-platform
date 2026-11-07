@@ -77,7 +77,7 @@ func TestInvokerObservesPersistenceWithAnIndependentObserver(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Persistence != PersistenceObserved {
+	if result.Persistence != PersistenceResourceObserved {
 		t.Fatalf("persistence=%q, want observed", result.Persistence)
 	}
 	if !observer.called || observer.effect.Kind != semantic.DataEffectUpdate || observer.effect.Data != "sales.order" {
@@ -123,5 +123,105 @@ func TestInvokerDoesNotObserveAfterARolledBackExecution(t *testing.T) {
 	}
 	if observer.called {
 		t.Fatal("observer ran after a failed execution")
+	}
+}
+
+// TestPersistenceObserverFuncIsTheSameContract checks that the function adapter
+// receives the request and declared effect, and that its error becomes
+// not-observed rather than a Command failure.
+func TestPersistenceObserverFuncIsTheSameContract(t *testing.T) {
+	called := false
+	observer := PersistenceObserverFunc(func(_ context.Context, _ Request, declared semantic.DataEffect) error {
+		called = true
+		if declared.Kind != semantic.DataEffectUpdate || declared.Data != "sales.order" {
+			t.Fatalf("declared=%+v", declared)
+		}
+		return nil
+	})
+	invoker := Invoker{
+		Authorizer:          ReferenceAuthorizer{},
+		World:               commandWorld(),
+		Executor:            fakeExecutor{result: Result{Effect: &semantic.DataEffect{Kind: semantic.DataEffectUpdate, Data: "sales.order"}}},
+		UnitOfWork:          &MemoryUnitOfWork{},
+		DurableStore:        true,
+		PersistenceObserver: observer,
+	}
+	result, err := invoker.Invoke(context.Background(), request())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !called || result.Persistence != PersistenceResourceObserved {
+		t.Fatalf("called=%v persistence=%q", called, result.Persistence)
+	}
+}
+
+// TestNilPersistenceObserverFuncIsNotObserved checks that a nil function is an
+// explicit not-observed, not a panic.
+func TestNilPersistenceObserverFuncIsNotObserved(t *testing.T) {
+	invoker := Invoker{
+		Authorizer:          ReferenceAuthorizer{},
+		World:               commandWorld(),
+		Executor:            fakeExecutor{result: Result{Effect: &semantic.DataEffect{Kind: semantic.DataEffectUpdate, Data: "sales.order"}}},
+		UnitOfWork:          &MemoryUnitOfWork{},
+		DurableStore:        true,
+		PersistenceObserver: PersistenceObserverFunc(nil),
+	}
+	result, err := invoker.Invoke(context.Background(), request())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Persistence != PersistenceNotObserved {
+		t.Fatalf("persistence=%q, want not-observed", result.Persistence)
+	}
+}
+
+type detailedObserver struct {
+	method PersistenceMethod
+	err    error
+}
+
+func (o detailedObserver) Observe(context.Context, Request, semantic.DataEffect) error {
+	return nil
+}
+
+func (o detailedObserver) ObservePersistence(context.Context, Request, semantic.DataEffect) (PersistenceObservation, error) {
+	return PersistenceObservation{Method: o.method}, o.err
+}
+
+// TestDetailedObserverReceiptIsNotPersisted checks that a receipt observation
+// is not upgraded to persisted; only a resource observation is.
+func TestDetailedObserverReceiptIsNotPersisted(t *testing.T) {
+	invoker := Invoker{
+		Authorizer:          ReferenceAuthorizer{},
+		World:               commandWorld(),
+		Executor:            fakeExecutor{result: Result{Effect: &semantic.DataEffect{Kind: semantic.DataEffectUpdate, Data: "sales.order"}}},
+		UnitOfWork:          &MemoryUnitOfWork{},
+		DurableStore:        true,
+		PersistenceObserver: detailedObserver{method: PersistenceMethodReceipt},
+	}
+	result, err := invoker.Invoke(context.Background(), request())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Persistence != PersistenceReceiptObserved {
+		t.Fatalf("persistence=%q, want receipt-observed", result.Persistence)
+	}
+}
+
+func TestDetailedObserverResourceIsPersisted(t *testing.T) {
+	invoker := Invoker{
+		Authorizer:          ReferenceAuthorizer{},
+		World:               commandWorld(),
+		Executor:            fakeExecutor{result: Result{Effect: &semantic.DataEffect{Kind: semantic.DataEffectUpdate, Data: "sales.order"}}},
+		UnitOfWork:          &MemoryUnitOfWork{},
+		DurableStore:        true,
+		PersistenceObserver: detailedObserver{method: PersistenceMethodResource},
+	}
+	result, err := invoker.Invoke(context.Background(), request())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Persistence != PersistenceResourceObserved {
+		t.Fatalf("persistence=%q, want resource-observed", result.Persistence)
 	}
 }

@@ -52,12 +52,14 @@
 観測の補足:
 
 - 引数の未対応flagは、#2332で全広告コマンドが拒否するようになった。拒否も標準エラー（`inspect`、`trace`、`validate -json`はJSON）で、flag解析のusageの分だけstderrが長くなるコマンドがある（例: `knowledge-context`に未知のflag）。`version -json`の引数不正も、2026-11-07から実装が標準エラーへ返す（表の記載と一致）。
+- 引数不正の出力先は、`cmd/tei/cli_argument_failure_streams_test.go`が実プロセスの標準出力と標準エラーを分けて検査する（#2993）。`version`・`commands`は標準出力を空のまま標準エラーへ理由を書き、`validate -json`は同じ失敗を標準出力の1 JSONで返す。この差はコマンドごとの決定であり、CLI全体の既定として読まない。
 - `validate -json`の失敗JSONは`diagnostics`を常に空配列として持ち、`error.code`と`error.message`のみで種別を伝える。
 - `validate -json`は、2026-11-07から`sourceRootFindings`を返す。`sources`の存在しないrootは`severity:"error"`（`ok:false`・終了コード1）、Loaderが解釈しない未知rootと、Loaderが読まない近似名の管理ファイルは`severity:"warning"`である。Canonical Subjectを持たないため`diagnostics`とは別の欄にする（#2823）。
 - 空のWorkspace（モデル要素0件）は`validate`が`WORKSPACE_DECLARES_NO_MODEL_ELEMENTS`（warning）を返す。`ok:true`・終了コード0のままなので、`diagnostics`のwarningを確認する（#2822）。
 - `validate -json`と`model catalog`は、2026-11-07から`declarationCounts`を返す。`std`の標準意味型を除いたWorkspace自身の宣言件数であり、空のWorkspace（`total:0`）と宣言のあるWorkspaceを機械的に区別できる（#2822）。
 - `tei commands`の各entryは、2026-11-07から`schemaVersion`と`jsonContract`（`enveloped`／`raw`／`none`）を持つ。`world`だけが`raw`で、`tei.cli.*`のエンベロープを持たないことをdiscoveryから読める。
 - 2026-11-07から、discoveryが広告する`schemaVersion`と、そのコマンドが実プロセスで返す応答の`schemaVersion`の一致を`cmd/tei/cli_discovery_process_test.go`が検査する。定数同士の照合（`cli_contract_test.go`）だけでは、応答側の改名と広告のずれを検出できなかった（#2824）。`version -json`は`ok`/`error`を持たないため、この検査は`schemaVersion`の一致だけを求める。
+- 2026-11-07から、`tei commands`の各entryは`modes`（応答の`mode`が取りうる値の閉じた集合）を持つ。空文字列の要素は「その応答では`mode`が省略されうる」ことを示す。`mode`で結果の形が変わる`source-index`（`index`／`subject`）と`knowledge-context`（`context`／`disclosure`）、`plugin-lock`（`environment`または省略）、`plugin-resolve`（`unvalidated-candidates`または省略）が対象で、残りの`knowledge-*`は1形の結果型を`mode`で名乗る。`cmd/tei/cli_discovery_modes_test.go`が、実際の応答の`mode`が広告された集合に含まれることを実プロセスで検査する。
 
 ## 5. v0の中での互換な変更と版を上げる変更（規則案）
 
@@ -103,5 +105,5 @@ D案を選んでも、失敗時JSONをstderrでなくstdoutへ出す現在のC1�
 
 - `world`は2026-11-02のOwner判断で外部契約の対象外とし、生の`ir.World`出力を維持する。エンベロープ化する場合は、`tools/reference-critical-path-evidence-audit/live-r1-smoke.mjs`の生バイト証跡照合（`derivedWorldSha256`）を先に再設計する。`plugin-lock`はlock形式の`formatVersion: 2`を正本として扱い、`tei.cli.plugin-lock/v0`の`result`内に保持する。
 - schemaVersionを足す場合の、v0のまま足すか、新契約としてv1を新設するか。既存の出力を包む場合は読み手への告知が必要で、告知の要否と時期を含めてIssueで決める。
-- 一覧の表と実装の一致を機械検査にするかどうか。`tei commands`の`output`欄と実装の対応は試験で保たれているが、schemaVersionの有無の一覧はこの文書の手動の記録であり、#2354の完了条件には入っていない。
+- 一覧の表と実装の一致は、2026-11-07から`cmd/tei/cli_contract_doc_test.go`が機械検査する。`tei commands`が広告するenvelopedの各コマンドが、§4の表に同じ`schemaVersion`で載っていること、表が広告にないコマンドを載せていないことを検査する。表の行を増減したときは、この試験が対応を保つ。`tei commands`の`output`欄と実装の対応も別の試験で保たれている。
 - 実測は参照作業領域と失敗例の一組だけである。大規模な作業領域での出力の形（配列の空のときの`null`/`[]`の違いなど）は確認していない。

@@ -51,6 +51,10 @@ type referenceCommandRun struct {
 	// the executor reported none. The run is not rejected, but a reader must not
 	// treat the absence as proof the declared effect was applied.
 	ReportedEffectMissing bool `json:"reportedEffectMissing,omitempty"`
+	// AuthorizationMode names how the run was authorized:
+	// reference-allow-all, reference-allow-list, or external. It is evidence
+	// about which check ran, not a grant of authority (#2997).
+	AuthorizationMode string `json:"authorizationMode,omitempty"`
 }
 
 type cliViewReport struct {
@@ -261,12 +265,13 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 				Outcome:               result.Outcome,
 				Effect:                result.Effect,
 				Committed:             true,
-				Persisted:             result.Persistence == command.PersistenceObserved,
+				Persisted:             result.Persistence == command.PersistenceResourceObserved,
 				Persistence:           string(result.Persistence),
 				Durability:            "none",
 				Differences:           differences,
 				AppliedUnobserved:     appliedUnobserved,
 				ReportedEffectMissing: reportedEffectMissing,
+				AuthorizationMode:     string(result.AuthorizationMode),
 			}
 			report.OK = true
 			report.Result = run
@@ -724,6 +729,11 @@ func writeCommandPatternText(out io.Writer, view applicationview.CommandPatternV
 func writeReferenceRunText(out io.Writer, run referenceCommandRun) (int, error) {
 	if _, err := fmt.Fprintln(out, "mode: reference (no durable effects)"); err != nil {
 		return 2, err
+	}
+	if run.AuthorizationMode != "" {
+		if _, err := fmt.Fprintf(out, "authorization: %s\n", run.AuthorizationMode); err != nil {
+			return 2, err
+		}
 	}
 	if code, err := writeCommandPlanText(out, run.Plan); err != nil {
 		return code, err

@@ -174,11 +174,12 @@ CLIとStudioは、記録が無い場合の既定値を「効果が宣言され�
 | --- | --- |
 | `not-applicable` | 宣言効果が無い、または `Invoker.DurableStore=false`（参照実行）。観測対象が無い |
 | `not-observed` | durable storeはあるが、独立した読取りを構成していない（`PersistenceObserver` がnil）、または読取りが失敗した |
-| `observed` | `PersistenceObserver.Observe` が宣言効果を読取りで確認した |
+| `receipt-observed` | 独立読取りが、Commit済みOperationのreceiptを確認した。receiptはOperationIDとRequestHashの記録であり、資源の現在値ではない |
+| `resource-observed` | 独立読取りが、資源の現在値とCommitしたpayloadの一致を確認した。これだけが `persisted:true` |
 
 `PersistenceObserver` は `Request` と**宣言効果**だけを受け、Executorの `Result` を受けない。Executorの報告をそのまま観測として返せないようにするためである。読取り失敗はCommandの失敗ではなく `not-observed` にする（Commitは既に起きている）。
 
-CLIとStudioは `persisted`（`observed` のときだけtrue）と `persistence` を返す。参照実行は `persisted:false`・`persistence:"not-applicable"`、実Providerでobserver未構成なら `persistence:"not-observed"` になる。
+CLIとStudioは `persisted`（`resource-observed` のときだけtrue）と `persistence` を返す。参照実行は `persisted:false`・`persistence:"not-applicable"`、実Providerでobserver未構成なら `persistence:"not-observed"` になる。
 
 ### `Invoker.DurableStore` の位置付け
 
@@ -200,7 +201,36 @@ CLIとStudioは `persisted`（`observed` のときだけtrue）と `persistence`
 - `Replayed` の経路で観測を行うか。Replayは現在値の読取りではなく記録の再確認なので、別の観測が必要。
 - `DurableStore` をcompositionから自動で決める方法。現状は呼出し側の明示的な宣言。
 
-## 10. この文書が主張しないこと
+## 10. どの認可判断で実行したかを応答に載せる（#2997 追補）
+
+### 見つかった差
+
+#3042 で `Authorizer` 未設定を拒否し、参照実行は `ReferenceAuthorizer` を明示するようにした。しかし応答からは、その実行が**どの認可判断**で通ったのか読めなかった。`ReferenceAuthorizer`（全許可）と `AllowListAuthorizer`（能力名だけ許可）と本物の規則は、どれも「認可された」と同じ形で現れる。
+
+### 決めたこと
+
+`command.Result.AuthorizationMode` を追加し、Invokerが実行後に設定する。値は次の三つ。
+
+| 値 | 意味 |
+| --- | --- |
+| `reference-allow-all` | `ReferenceAuthorizer`。主体・規則・資源を評価していない |
+| `reference-allow-list` | `AllowListAuthorizer`。名前の一致だけを見た参照判断 |
+| `external` | それ以外の `Authorizer`。どの規則・付与を参照したかは境界からは分からない |
+
+CLIの `referenceCommandRun` とStudioの `CommandRunValue` に `authorizationMode` を追加し、テキストと画面にも表示する。欄の追加であり、`tei.cli.view/v0` の互換な変更の範囲に収まる。
+
+### この表示が防ぐこと
+
+- 参照実行の全許可を、本物の権限判断と読み違えない。
+- `AllowListAuthorizer` を、主体・資源・規則を含む認可と読み違えない。
+
+### まだ決めていないこと
+
+- `external` の内訳（どの規則・付与を参照したか）を応答に載せるか。載せる場合は認可の正本・開示境界の設計が要る。
+- `authorizationMode` を必須欄にするか、省略可能のままにするか。
+- StudioでAllowListを指定しない実行が全許可になることを、画面で警告として出すか。
+
+## 11. この文書が主張しないこと
 
 - 本物の認可・主体・権限・メニュー制御が実装されたこと。
 - `ReferenceAuthorizer`が本番で使えること。
@@ -221,3 +251,12 @@ CLIとStudioは `persisted`（`observed` のときだけtrue）と `persistence`
 この文書はどれも採用しない。実Providerの試験（`TEI_EFFECT_POSTGRES_DSN`）でCommit成功と独立読取りを同じ実行で観測できるようになった時点で、候補ごとの結果を記録してから決める。
 
 `committed` をP2へ変える場合は `tei.cli.view` の版を上げる。P1のまま `persisted` を独立読取りの意味に強めるなら、`persisted` が「確認済み」であることを示す別欄（例: `persistenceObserved`）が要る。
+
+## 11. 資源の現在値の観測（追記）
+
+`DetailPersistenceObserver` を追加し、観測がreceiptと資源のどちらを確かめたかを名指しできるようにした。
+
+- `effectcommit.Runner.ReadResource` は、Providerが `ResourceReader` を実装している場合だけ現在値を読む。未実装なら `ErrResourceObservationUnavailable` を返す（「保存されていない」ではない）。
+- `commandadapter.Executor` に `ResourceRead bool` を追加。trueならCommit後に別pool接続で `objects` の現在値を読み、Commitしたpayloadと一致した場合だけ `resource-observed`。
+- 実PostgreSQLの結合試験 `TestPostgresCommandObservesTheStoredResource` を追加。Commit後に `objects` を書き換えると、同じ設定の観測が失敗することを確かめる。
+- receipt Lookupだけでは `receipt-observed` であり、`persisted:true` にはならない。

@@ -46,6 +46,9 @@ type CommandRunValue struct {
 	// ReportedEffectMissing is true when the capability declared an effect but
 	// the executor reported none. It is recorded, not rejected (#2996).
 	ReportedEffectMissing bool `json:"reportedEffectMissing,omitempty"`
+	// AuthorizationMode names how the run was authorized. The Studio reference
+	// host uses reference-allow-all when no capability allow list is supplied.
+	AuthorizationMode string `json:"authorizationMode,omitempty"`
 }
 
 // CommandRunResponse is the result of a reference execution.
@@ -204,12 +207,13 @@ func (h *ReadOnly) executeCommand(workspaceID, applicationID, patternID, capabil
 		Outcome:               result.Outcome,
 		Effect:                result.Effect,
 		Committed:             true,
-		Persisted:             result.Persistence == command.PersistenceObserved,
+		Persisted:             result.Persistence == command.PersistenceResourceObserved,
 		Persistence:           string(result.Persistence),
 		Durability:            "none",
 		Records:               recorder.Records,
 		Differences:           recordDifferences(recorder.Records),
 		AppliedUnobserved:     recordAppliedUnobserved(recorder.Records, plan.Effect != nil),
 		ReportedEffectMissing: recordReportedEffectMissing(recorder.Records),
+		AuthorizationMode:     string(result.AuthorizationMode),
 	}}
 }
