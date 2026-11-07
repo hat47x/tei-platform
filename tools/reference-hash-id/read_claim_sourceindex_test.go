@@ -135,3 +135,22 @@ func TestExistingSourceIndexAlsoCannotDetectABAAcceptance(t *testing.T) {
 		t.Fatalf("restored index and content must not imply monotonic acceptance: %+v %v", report, err)
 	}
 }
+
+func TestSourceIndexCannotIndependentlyVerifyScopeSubjectOrAttempt(t *testing.T) {
+	index, claim, bytes := indexedReadFixture(t)
+	// Index.Artifacts only contains file-level path/fingerprint metadata.
+	// No SourceScope, QualifiedSubject, or ReadAttemptID is certified by
+	// this read-only artifact projection, even with a valid ModelRevision.
+	claim.QualifiedSubject = "another-claimed-subject"
+	claim.SourceScope = "workspace:unrelated"
+	claim.ReadAttemptID = "attempt:replayed"
+	result, err := CompareDeclaredSourceIndexRead(index, "semantic/order.tei", claim, bytes)
+	if err != nil {
+		t.Fatalf("local index/byte consistency must not pretend to verify unrelated labels: %v", err)
+	}
+	if result.QualifiedSubjectVerified || result.SourceScopeVerified ||
+		result.ReadAttemptVerified || result.SourceReaderVerified ||
+		result.SourceAccepted || result.Authority != "none" {
+		t.Fatalf("an artifact index incorrectly certified scope/subject/attempt: %+v", result)
+	}
+}
