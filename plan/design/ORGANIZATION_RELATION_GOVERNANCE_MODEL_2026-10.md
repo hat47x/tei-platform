@@ -3691,3 +3691,80 @@ where case_id = :case_id
 | E Consumerと独立照合 | 同一AttemptでC1→D1を受けた出力を独立Expectedと比較。0行/未取得、部分/complete、異Tenantの資格は既存§79/83に渡す | 一件の限定E2。完成・承認・Host Write資格なし |
 
 **実装優先**：現mainにCase Query/Mappingがまだ入っておらず、Org `org_view`のBrowse Patternもないことをまず欠落事実として記録。これらを単純に新Core/Query Engine不足と同一視しない。#2586がProduct読取入口・統合証拠、#2506がFunction Context、#2611/#2622がTarget・Provider、#2386が組織意味とCase扱いのOwner。現`*.tei`の一件を先に扱い、新`*.tei.md` Parserは#3030/#3031に委ねる。**本追補はSource-staticと計画の更新のみで、新Go/SQL/DB/Consumer E2、旧#3024の再実行、Owner受理・閉鎖PR再開はNOT RUN。**
+
+### 84.6 標準データ構造×標準表現型を組織Function内で検収する（2026-11-07、他チャット横断・正式契約採用前）
+
+#### 意味トポロジー／表現型／Function所属の三者を区別する
+
+X-TEAの単票・明細・機能遷移を発展させ、**データ構造はDBテーブルや画面から独立した意味トポロジー**、**表現型は業務Functionから独立して再利用可能な表示・操作形式**、しかし**具体的な表現の利用インスタンスは必ず特定Function/利用文脈に属する**、という関係で検討する。前二者を直接一対一対応させて「Dataには常にこの画面が付く」としない。「表現型が機能から独立」は*型・再利用可能な定義*の独立性であり、実表示・選択・編集・現在Grant・実行権限を持つインスタンスがFunctionなしに成立することではない。
+
+| 層 | 組織例 | 保存・判定の正本 | 表示から推論しないこと |
+| --- | --- | --- | --- |
+| **標準データ構造／Relation** | `Person`、`OrgUnit`、`Position`、`Membership`（識別可能な関係発生）、`Occupancy`（別の関係発生）、`CaseRecord.handlingUnit`（Caseから部門への直接Relation）、階層Purpose付き多重Path | Data/Relation/業務ID、方向・多重度・Occurrence、validAt/knownAt、受理されたMeaning。#1126/#2495 | テーブル名、グラフ描画位置、ツリーの親表示順、表示ラベルから関係同一性・権限を作らない |
+| **標準表現型の適合候補** | 単票Panel、Table、Tree、Graph、Tab/Pane、Text/Input、Single-/Multi-select、On/Off、Slider、Chart等 | 表現型の入力要求（粒度・安定ID・Role/Value Domain・取得範囲・選択状態）と、必要な場合の明示変換。#2507/#997 | 表示できる→更新できる、`boolean`らしい→Toggle可、数値→Slider可、Multi-select→多値Relationなどを既定としない。Tabは一般にコンテナであり関係の1:Nを意味しない |
+| **Function内の表現インスタンス** | 「組織を照会するFunction」のTree＋Table、「案件を扱うFunction」のCase Panel＋担当部門Picker。双方でD1を表示しても独立したContext Instance | Function Data Context Definition/Instance、選択epoch、Query/Result Slice・Scope/Read版、機能Purpose・提供するAction候補。#2506/#1127/#2500 | 同じ表示型・同じ行文字列・同じNodeが同じ読取集合／現行時点／Action資格／Requestを共有するとは推論しない |
+| **実利用／Effect** | Treeで選択→C1詳細の表示、担当部門変更候補、承認操作候補 | 実Provider Read・Consumer Output、ViewChange→Intent、Business Rule・Host Grant、Effect/Receipt/独立再読。#2586/#2598/#1174 | 操作ボタンを出した事実や`OperationSurface`候補を実許可・DB Commit・完了に昇格しない |
+
+実装を選ばない段階では以上を**受入上の四分割**として使用し、Coreへ新しい`PresentationKind`や専用Org UI Schemaを導入しない。UI構成キットのRenderer/Framework/案件上書きは#997、Functionパターン適合は#2507、UI変更からIntentへ戻す逆写像は#2500、実Data Contextは#2506をOwnerとする。TEI標準表現型の広域検討は組織Profileへ閉じ込めず、組織は反証用の一Domainとして提供する。
+
+#### 組織で最初に検証する二つのFunction文脈と二つの表現
+
+**提案用の二機能（製品に登録済みではない）**：
+
+- **Org Explore（read-only）**：同一の受理済み組織意味・同一時点・選択済みScopeを、Table（Membership行・Position・Occupancyを混同しない）とTreeまたはGraph（目的付きOrg階層と関係Path）へ別投影。どちらも同じ結果を参照する場合にはContext Instance/Result Sliceの同一性が確認できること。必要なRelationや取得粒度が違えば**別Result Slice**を持つこと。Table row numberやTreeの見た目をObject identityにしない。
+- **Case Handling（表示＋Action候補）**：`C1.handlingUnit=D1`のCase Panel、担当部門の選択（必要に応じSingle-select/検索）、承認候補の提示。同じ`D1`の名称・Tree Nodeを参照しても、CaseのTargetは`CaseRecord`のC1、MembershipのTargetはその発生ID、OrgUnitのTargetはD1であり、互いに置換不可。Caseの部門変更は`handlingUnit` Relationの変更候補であって、Org Unit reparent・Membershipの削除・承認済みEffectではない。
+
+**初回Headlessの独立期待（#2506 FC／#2500 VE／§79 ORG-E2を再利用し、新Fixture正本を作らない）**：
+
+| 対照 | 構造・表示の変異 | 期待する判断 |
+| --- | --- | --- |
+| **同一Personの2 Membership** | P1がD1/D2に別Membership occurrenceで所属。Tableの複数行・Treeの複数枝へ投影 | P1のEntityは同一、Membershipは別発生。氏名で重複消去せず、削除/変更候補はMembership IDが特定できる場合のみ |
+| **DAG→Tree Path** | 同一D1がPurpose別/多重親の2経路から到達する | Treeに2回出てもD1を複製しない。Path/Relation occurrenceが失われた描画はread-onlyまたはTarget unresolved。Treeの単一親規則を元Graphの普遍制約へ昇格しない |
+| **Case直接Relationと所属Relation** | C1→D1の担当部門、P1→D1のMembershipを同一画面に並べる | `handlingUnit`と`Membership`は異なる意味Role。Case担当変更IntentはMembership row更新/削除に流れない |
+| **2 Functionの同一表現型** | Org ExploreのD1 Table/TreeとCase Handlingの部門PickerでD1を表示 | 表現型定義は再利用可。ただしContext/Selection epoch/ScopeとAction OfferはFunctionごとに検査し、照会Functionでのread-only表示を承認許可へ昇格しない |
+| **選択切替と部分取得** | C1表示中にC2選択、古いC1 Queryが後着。Treeの別枝は1ページのみ、空表示あり | C1応答をC2 Contextへ合流させない。Partial/unknown/denied/confirmed emptyを区別し、非表示部門の不存在や引継ぎ完了を主張しない |
+| **非可逆な集計・操作型** | 部門別人数Chart上の「3」を編集、あるいは数値FTEにSliderを自動配置、boolean風StatusにToggleを自動配置 | 集計→単一Membership/Positionへの逆写像なしでは更新候補`unsupported/unresolved`。単位・許容域・離散/連続・Owner承認済みValue DomainなしにSlider/Toggleを適用しない |
+
+P0は実GUIより**同一Meaning→二つのFunction Context候補→二表現のHeadless read-only projectionとContext/Identityの独立期待**を先行させる。#2681 mainの実`CaseRecord`/Membership Sourceを使い、#3024はclosed/unmergedの歴史的候補として扱う。OrgのC1→D1 **実Product Read（§84.2〜84.5）を置き換えない**。Source静的/合成ProjectionでPASSしても、実Reader、現在Grant、書込みEffect・Owner意味受理の資格は別。実GUI/DB/Host/外部CUI二Consumerと上記組織固有の試験は**NOT RUN**。
+
+**棄却/縮退条件**：FunctionなしのRendererが実データを独立保持し第二の意味正本になるなら棄却。Rendererが意味ID・Relation occurrence・Read Scope/epochを安全に受け渡せないなら編集を抑止し、read-onlyとする。既存#2506/#2500/#997の契約で不足が説明・検証可能なら組織固有の新契約を作らない。**機能表現の再利用性はUIの一致ではなく、意味・Target/Role・取得範囲の保存と誤操作の抑止で検収する。**
+
+### 84.7 組織の表現・業務DFD・手順・Workflow Instance・実効果の接続を判別する（2026-11-07、横断成熟差分・採用前）
+
+第84.6節の「表現型は再利用可能、実インスタンスはFunctionに属する」という境界を、[#1125](https://github.com/hat47x/tei-platform/issues/1125)の**一階層業務DFD**、[#1444](https://github.com/hat47x/tei-platform/issues/1444)のProcedureからFunction/作業への選択的展開、[#2598](https://github.com/hat47x/tei-platform/issues/2598)のView Intent→実Request、[#1174](https://github.com/hat47x/tei-platform/issues/1174)のHost/Effectへ接続する。すでに第67/69/81/82/83節で分離したOrg後継・Case責任・承認・Grant・完全性を**新モデルで再定義しない**。今回の追加は、DataとFunctionの表示からBusiness Procedureの手順実行を無言で作ってしまう危険を、同じC1/D1→D2例の**既存受入票へ結び直すこと**に限定する。
+
+#### 「矢印・ステップ・ボタン・履歴」の非同一性
+
+| 見えているもの／モデル | 正当に説明できること | 自動的に成立しないこと |
+| --- | --- | --- |
+| **Org図のD1→D2後継線** | 改編後のOrgUnitの後継対応（適用目的・時点・出所が明示される範囲） | C1の担当移管、未決案件の引受け、承認・委任の継承、Host Grant |
+| **一階層業務DFDの「D1業務→D2業務」矢印** | データ／成果物の授受とその送り元・受け先（業務内容は各業務の内部Procedureで定義） | 手順の実行順序、D2の人による受領、イベント起動、分岐・例外の自動処理、責任変更 |
+| **受理済みBusiness Procedureの「引継ぎ」Step** | 何を・誰の業務上の責任で・どの条件で行う必要があるか、人手／機械／外部作業の種別 | 当該Workflow Instanceが進行・完了したこと、当該Actorが現在Hostで認可されたこと |
+| **Org ExploreのTree／Case Handlingの担当部門Picker・承認Button** | Functionに属するSelection/Presentation InstanceとOperation Intentの候補 | 選択=保存、表示上のD2=実Case対象D2、承認Offer=Host Dispatch資格、操作候補=Business Completion |
+| **C1の物理更新と業務State** | 版・Target・Operation/Receipt・実Post-imageから実際に確認できる限定Effect／現在State | 手作業の引受け、外部通知の相手側完了、改編前の過去判断の取り消し、すべてのCase移管完了 |
+
+**業務DFDは同一階層の業務間データ授受を表し、条件分岐・例外・手作業は各業務の内部Procedureへ置く。** DFDに矢印があることをもって自動Workflow順序・Actor責任・現在Grantを導出しない。必要なら受理済みProcedureの特定StepをRuntime/Workflow InstanceのActionへ*明示Binding*するが、「定義がある」「インスタンスを起動した」「実行が確定した」「業務完了した」は別資格である。人手のみのStepはFunctionを持たずに存続し得る。
+
+#### 受入は既存C1案件の一連の関係を対象とし、未決を安全に残す
+
+試験用の時点・Case・Actorは第67節のC1/D1/D2と第81節APPの仮規程を**独立の適用条件で再利用**する。同じC1が二つの組織Functionに現れても、Org Exploreのread-only閲覧と、Case Handlingの担当変更・引受申請・承認Intentは別。新しい業務DataやCase移管専用State Machineは追加しない。
+
+| 対照／既存試験との対応 | 独立期待値 | 不足時の停止・確認責務 |
+| --- | --- | --- |
+| **DFD transfer vs Handoff**（#1125／§69 ORG-SM） | D1→D2の業務間授受を描いても、受領した人・対象C1・引継ぎ未決事項・期限・Business Stepの実施は未確定 | DFD read-only観測。実施記録/本人証拠がなければBusiness Handoff completion=unverified |
+| **Tree reparent vs Case reassignment**（§84.6／§82 TB-06／#2500 VE-04） | TreeでOrg階層を変えるIntentと、Case C1のhandlingUnit D1→D2を更新するIntentは異なるRole/Target。Caseの実Row更新なしにC1移管済みとしない | Relation Occurrence/Case ID/Read epoch/Host Grantの不明を明示。画面行・図上Edgeを物理更新Targetにしない |
+| **Procedure vs Instance**（#1444／#1125／§67 ORG-SU） | Owner受理済みProcedureにStepがあっても、実Instance・manual/external work・Current Actorの進行は別。定義改版後の旧Instanceは適用Policyが未受理なら勝手に切替えない | Definition/Instance/Step/validAt/knownAtの同一性・必要条件を個別観測。自動Runtimeを必須としない |
+| **承認Offer vs 実行資格**（§81 APP-01/05／#2598） | P3が条件付き候補であっても、同一C1/現在Actor/Grant/対象Row・Rule時点・必要Guardをすべて検査するまでDispatch/Commit適格ではない | Business candidate／Host denied or unknown／Provider unknownを別結果とし、Button有効化で許可しない |
+| **Stateと完了証拠**（§82 TB-08/10／§83 AC-06） | C1のCase字段がD2でも、受領・外部手配・未決Case全集合が不明なら「全件移管完了」ではない。Cancel要求は既Commitを消さない | 実Receipt・独立Post-imageと、手作業/外部結果/全集合Coverageを別に照合。未知を成功/不存在へ丸めない |
+| **異時点・後着表示**（§84.6／#2598／§82 TB-10） | tReadのOrg Explore結果がtEditのCase Handlingへ後着しても現在Contextへ混ぜない。遡及修正を知った後の説明と当時の決裁記録は併存 | UI selection epoch、業務effective/known time、Provider read snapshot、Host Grantの時点を別々に保持 |
+
+これらは**新しいORG-PROC専用テストIDではなく**、既存§67/69/81/82/83のORG-SU/SM・APP/TB・#2500 VE・#2598 RIT・#1125のBusiness Procedure受入へ割り当てる差分である。実CaseReadが未接続でもSource-static／synthetic意味試験は並列できるが、それらのPASSを[#2586](https://github.com/hat47x/tei-platform/issues/2586)の実Function→Query→Provider Row＋ConsumerのE2に合算しない。
+
+#### 作業順・採用停止線
+
+1. **P0 Read**：main統合済み[#2681](https://github.com/hat47x/tei-platform/pull/2681)を基線とし、最初の一件C1→D1を実Function/Provider/Consumerで読む。closed/unmerged[#3024](https://github.com/hat47x/tei-platform/pull/3024)のCase Mapping/Query CIは歴史的E1b/E1c候補であってmain E2資格ではない。#2586/#2506/#2622が所有。
+2. **P1 Function表現の同一性**：§84.6のOrg ExploreとCase Handlingを同じRelation/SourceからHeadless二投影し、Target/Path/Scope/epoch・変更Intentの誤写像を判別。#2506/#2507/#2500/#997の契約を再利用し、すべてのOrg Dataを専用画面にしない。
+3. **P1 Procedure接合**：一階層DFDからHandoff／内部Procedureへ移動・参照できる**read-only対応関係**と、手作業/外部Stepの欠落診断を#1125/#1444へ引き渡す。DFD矢印から自動Trigger/Actor Grant/Workflow Instanceを生成しない。
+4. **P2 Effect/Business Completion**：C1移管・承認は現在Actor/Host Grant/実Target/Receipt/独立再読取・手作業受領・全集合Coverageの各証拠に分ける。#2598/#1174/#1163と§82/83の既存受入を使う。組織の正式権限規程・外部Handoff完了はOwner判断が必要。
+
+**採用資格・非目標**：新たなOrg専用Workflow Engine、BPMN/DMN標準固定、Actor→Principal自動Grant、DFDからの自動Step生成、状態一括テーブル、第二Meaning正本、独自Host/Receipt Registryをこの段階で導入しない。Source/Planの差分と手書き独立期待の提案であり、実Go/DB/Host/GUI/SHO/Business Procedure Instance/外部人手・Owner業務意味受理は**NOT RUN**。部分的に整った表示やDFDから本番業務を実行する資格は未成立。
