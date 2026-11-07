@@ -359,3 +359,96 @@ func TestSelfDescriptionAttributeAnchorsDoNotSubstituteForRoleOptionSpan(t *test
 	// No Source write, Scope/Authority check, Role Required Shape or Owner
 	// meaning acceptance is performed by this source-navigation test.
 }
+
+
+// A Markdown document that contains Role-like words can be inventoried and
+// byte-indexed without becoming a semantic declaration. This uses the real
+// Workspace Loader and Load-time Source Index, not a second Markdown parser.
+// The docs root is currently a forward-compatible/unknown source root.
+func TestSelfDescriptionManagedRawDocumentDoesNotBecomeSemanticRole(t *testing.T) {
+	root := t.TempDir()
+	for _, dir := range []string{"semantic", "docs"} {
+		if err := os.MkdirAll(filepath.Join(root, dir), 0755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	manifest := "workspace: raw_self_description\nformatVersion: 1\nsources:\n  - semantic\n  - docs\n"
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte(manifest), 0600); err != nil {
+		t.Fatal(err)
+	}
+	semanticSource := "namespace probe\ndata item {\n  attribute value type std.text\n}\n"
+	if err := os.WriteFile(filepath.Join(root, "semantic", "probe.tei"), []byte(semanticSource), 0600); err != nil {
+		t.Fatal(err)
+	}
+	const rawPath = "docs/design.md"
+	raw := []byte("# Unaccepted design draft\n\nTask and Event are possible roles.\n\n" +
+		"Proposed: namespace hidden; data forged; role trusted_amount.\n")
+	if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(rawPath)), raw, 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	loaded, err := workspace.Load(root)
+	if err != nil {
+		t.Fatalf("load managed semantic and raw documentation: %v", err)
+	}
+	managed := make(map[string]workspace.ManagedFile)
+	for _, item := range loaded.ManagedFiles {
+		managed[item.Path] = item
+	}
+	if item, ok := managed[rawPath]; !ok || item.ReadByLoader {
+		t.Fatalf("raw Markdown must be inventoried but not parsed: %+v, present=%v", item, ok)
+	}
+	if item, ok := managed["semantic/probe.tei"]; !ok || !item.ReadByLoader {
+		t.Fatalf("semantic source must be read by the actual domain Loader: %+v, present=%v", item, ok)
+	}
+	if _, ok := loaded.Sources["semantic-data:hidden.forged"]; ok {
+		t.Fatal("Role-like prose in Markdown became an accepted semantic Subject")
+	}
+
+	index, err := workspace.BuildSourceIndexFromLoad(root, loaded)
+	if err != nil {
+		t.Fatalf("index real Load-time managed bytes: %v", err)
+	}
+	var foundArtifact bool
+	for _, artifact := range index.Artifacts {
+		if artifact.Path != rawPath {
+			continue
+		}
+		foundArtifact = true
+		if want := sourceindex.Fingerprint(raw); artifact.Fingerprint != want {
+			t.Fatalf("raw managed Artifact fingerprint = %s, expected %s", artifact.Fingerprint, want)
+		}
+	}
+	if !foundArtifact {
+		t.Fatal("managed raw Markdown was omitted from the Source Index Artifact inventory")
+	}
+	for _, reference := range index.References {
+		if reference.ArtifactPath == rawPath {
+			t.Fatalf("unparsed Markdown acquired a semantic definition Reference: %+v", reference)
+		}
+	}
+	if len(index.ReferencesFor(sourceindex.Subject{Kind: "semantic-data", ID: "probe.item"})) != 1 {
+		t.Fatal("independent semantic source was unexpectedly not indexed")
+	}
+
+	// The next filesystem read is not the original Load. Even if the
+	// original byte-indexed asset survives, it never proves a Role contract.
+	changed := []byte("# Edited unaccepted draft\n\nrole elevated_amount\n")
+	if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(rawPath)), changed, 0600); err != nil {
+		t.Fatal(err)
+	}
+	originalIndex, err := workspace.BuildSourceIndexFromLoad(root, loaded)
+	if err != nil {
+		t.Fatalf("re-index the original Load-time bytes: %v", err)
+	}
+	for _, artifact := range originalIndex.Artifacts {
+		if artifact.Path == rawPath {
+			if artifact.Fingerprint != sourceindex.Fingerprint(raw) ||
+				artifact.Fingerprint == sourceindex.Fingerprint(changed) {
+				t.Fatalf("Load-time raw asset retroactively changed: %+v", artifact)
+			}
+			return
+		}
+	}
+	t.Fatal("original Load-time raw asset disappeared from Source Index")
+}
