@@ -241,3 +241,23 @@ AI/CUI/Studioには、新しい「組織専用Widget一覧」の網羅を要求�
 単一Case `C1` の存在証人の検収は、まず `CaseRecord.caseId=C1` と `handlingUnitId=D1` が**どの実Read SQL/args・Provider・対象Schema/Field・Request/Attempt・Source/Scope/snapshot**から得られたかを同一試行で追跡する。必要なSource/Binding/権限/Fieldが一つでも欠けるなら `product-read-not-connected` または `unverified`。その後、二件集合 `L={C1,C2}` の全件Claimへ進むときは**ID集合と実Read範囲の独立照合**を追加し、`{C1,C1}`／TOP1／非表示Predicateを不足とする。Local `EvaluateCompletion` に完全性を入力する前に、このProducer側の照合を完了する。
 
 **ゲート別の最低報告単位**：`source revision & actual input / accepted meaning ID / graph-or-CRUD provenance (M) / physical query+args, rowset+fields, scope+extent (R) / independent Required IDs+Expected, mismatches, unknowns (C) / executed target+CI/attempt / Owner qualification`。M、R、Cそれぞれ `not-run / failed / partial / qualified` を**別に**記す。今回の追加は設計上の検収票と依存の明文化のみであり、実組織SQL/DB/Host/GUI、E2統合、正式Owner受理は **NOT RUN**。
+
+
+### 9.4 Empty Handoffの実装上の誤完了境界：空集合と受領証拠を別々に検査（2026-11-08）
+
+**現mainの実コード照合**：`internal/semantic/completion.go:EvaluateCompletion` は非空Targetの `EmptyPolicyHandoff` では `HandoffConfirmed` を確認するが、0件の分岐では `EmptyJustified`／`CoverageComplete` による `CompletionHolds` の前後に確認ガードがない。そのため **`Targets=[]; EmptyJustified=true; HandoffConfirmed=false` の局所入力が `holds` になり得る**。現mainにある`completion_test.go`の旧Testは非空Handoffしか確認していない。これを受領済み業務・実Providerの完了保証と呼ばない。
+
+**既存Coreの最小修正は別Draft [#3353](https://github.com/hat47x/tei-platform/pull/3353)** に分離した。0件分岐で評価結果が`holds`かつ`HandoffConfirmed=false`のときだけ`unverified`へ格下げする（`deny`による確定`fails`は維持）。要求される受入対照は以下6条件で、実コード・同一テストOwnerは#3353／`internal/semantic/completion_test.go`。この組織Profileにはコードや第二Fixtureを置かない。
+
+| 独立入力（局所Completion APIの限定例） | Expected |
+| --- | --- |
+| Handoff／0件／独立空集合証拠あり／人手受領なし | `unverified` |
+| Handoff／0件／独立空集合証拠あり／人手受領あり | `holds`（**Caller提供の受領情報を信頼した局所判定のみ**） |
+| Handoff／0件／明示Allow／全件Scope／人手受領なし | `unverified` |
+| Handoff／0件／明示Allow／全件Scope／人手受領あり | `holds`（局所判定のみ） |
+| Handoff／0件／明示Deny／全件Scope／受領なし | `fails` |
+| Handoff／0件／独立空集合証拠なし／人手受領あり | `unverified` |
+
+**さらに外側の未解決資格**：`HandoffConfirmed`、`EmptyJustified`、`CoverageComplete` はすべてCaller提供のフラグであり、`EvaluateCompletion` は外部の人手受領、必須Target集合の閉包、実Provider同一ScopeのRead、現在Host Grantを証明しない。したがって新回帰がPASSしてもProduct E2／Case移管／Business Completionは未成立。#2586/#2622の実Read Producer、#1125/#1444の受領証拠、#1174の実Effect、#2514の独立Expectedを**別々の観測**としてP0-R→P0-Cで組み合わせる。空対象が正式に許容され、かつ別途受領を要しない業務はOwnerの別条件・別Kindとして表現し、Handoff条件を無音で緩めない。
+
+**状態**：本Profileは採用前の検収計画。#3353はDraft・未統合で、Go/CI実行資格は現時点で未確認。実業務の受領と正式Owner受理は **NOT RUN**。
