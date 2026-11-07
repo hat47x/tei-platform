@@ -341,3 +341,16 @@ Else absence remains unknown; no universal closed-world assumption.
 **次の最小証拠**: (a)同一qualified要素の複数View occurrence、(b)role付き関係のGraph/Table間の完全往復（描画・意味変更なし）、(c)queryを制限して初めて成立する「不在」の正負例、(d)Layoutのみ変更でSource不変、(e)旧Snapshotまたは曖昧scopeではInspect/Locate呼出し0。まずこの五つのread-only検査を確認し、標準構造不足の観測なしにCoreやStudioフックを追加しない。
 
 **検証状態**: 本追補は既存Issue/PRとコード公開契約に対する静的設計照合である。Reference本体の追加、実GUI、実Provider/Runtime、独立Observation、認知負荷実測、実Production Artifact検査は **NOT RUN / NOT PROVEN**。
+
+### 11.5 P1への限定移管：実CLI Direct TraceとWorkspace Manifest（2026-11-08）
+
+統合済み[研究計画 #2966](https://github.com/hat47x/tei-platform/pull/2966)のIntent／Realization／Assessmentを前提に、旧[複合Reference Draft #2881](https://github.com/hat47x/tei-platform/pull/2881)の**実CLI直接参照だけ**を最新main `c2b8062b7737816e33f85f80ac5f3956f5494f65`へ分割する（[read-only Reference](../../reference/tei-topology-coverage/README.md)）。旧PRの合成Graph/Table閉包31件や汎用Relationスキーマを本件の製品契約として移管しない。
+
+| Claim・証拠 | 小さなReferenceで照合する値 | 昇格しない結論 |
+| --- | --- | --- |
+| **Observer Workspace由来** | 現行Go `WorkspaceTrace.Workspace`のLoad-time `Manifest(Path,SHA256)`・FormatVersion | 同WorldFPだから同Workspace、Manifest SHAが現在の全Source/依存を固定した、Accepted/Lockである |
+| **Caller Projection Scope** | 同じ実Workspaceに別々の`-scope`を与え、Direct Edgeの非scope部とWorld/SourceIndex fingerprintが同じこと | 投影で付与したScopeがSource自身の宣言Scope・PrincipalのGrantである |
+| **Source Navigation** | `trace.subject`と`source.key`のScope/Kind/ID一致、`located`なら非空の参照情報と各Reference.SubjectのKind/ID一致（Source Indexに無いScopeを補完しない） | Source位置が現在も有効、Source ReaderがRole全件を解析した、Ownerの編集受理がある |
+| **Direct Edge** | Read-only Full/Unpaged/方向/解決・未解決を区別したCLI JSON | `Edge.Relation`種別文字列が独立Relation ID/多項Role、0件が業務Relationの不存在である |
+
+**受入と停止線**：負例で別Subjectの`located`誤帰属、Manifest欠落、scope変更、CLI partial、0行の不存在への誤昇格を拒否。基準GoコードとCI固定headで試験し、実CLIを使用しても非公開二世界・現在Grant・Studio M0/M1・セルフビルドStage2は未証明とする。結果の受理は実施したexact-head CIとOwner Reviewが別途必要。新Core Relation Registry、第二Source Reader、共通Host、専用Query DSLは設けない。

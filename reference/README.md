@@ -196,3 +196,7 @@ go run ./tools/reference-deployment-attempt
 - 値を更新したとき、設計上どの意味が変わるのか
 
 この考え方の背景は、[ADR-0003](../plan/adr/0003-reference-fixtures.md) に記録しています。
+
+## CLI直接参照のWorkspace同一性検査（Read-only評価）
+
+[tei-topology-coverage](tei-topology-coverage/README.md)は、既存`tei trace`の実Workspace出力を独立Node Consumerで照合し、ScopeのCaller由来、SourceNavigationの対象一致、Load-time Manifest同一性の**限定的な検査**を行います。旧Draft #2881の複合Graph/Table研究全体をmainへ採用するものではなく、Source閉包・Current Policy・意味受理・Studio実イベントの資格は引き続き別です。
