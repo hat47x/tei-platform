@@ -413,3 +413,38 @@ Ownerは#3263（Fixture・三視点独立期待）、#1124/#1125/#1126（Source/
 **次の必要な最小実行**：#3263の正規のGitHub fixture Testで実保存JSONを読む→Source/Meaning側のAccepted部分へMappingする→同じSource revでGraph/CRUDの`got`を生成する→独立Expectedと1実Mutantで比較→CLI/Studioの受領差を検査する。#3299の既存Context Gate/Scenario/Change Detection、#3302の実行Variant、#3297のBOMは各所有契約を再利用する。作業としての第二Runner、第二Graph Model、第二Source/Permission Storeは作らない。
 
 **今回の操作と受入の限界**：#3263/#3299/#3302/#3303のIssue・ソース・CIログを再調査し、既存資料に条件を反映した。#3303の索引3件以外には新実行用Go/CLI Source変更はない。実TEI Product Diagram/CRUD、実Loader/Target/Studio/SHO/Provider Effect、Oracle Owner受理は**NOT RUN**。
+
+
+<!-- tei-crossview-t1a-tt56-operation-drift-20261108 -->
+## 15. 三視点の入力閉包・Rule判別・Operation現在性を別資格で進める（2026-11-08追補）
+
+本節は§12の**P0-M（三視点とCRUD／Read不要）・P0-R（実Product Read）・P0-C（同ScopeのCrossview）**を維持し、§13/14に増えた設計/実測のうち**検証能力の実前進だけ**を当該Ownerへ結ぶ。旧[統合Draft #3236](https://github.com/hat47x/tei-platform/pull/3236)は閉鎖済み・未マージで、本PRが引継ぎ先。PR #3179も既に閉鎖・未マージ。旧PRの `MASTER_PLAN.md` をそのまま再投入しない。
+
+### 15.1 Contextの「必要情報がない」と「必要Ruleに達した」を別に判定
+
+- main統合[#3284](https://github.com/hat47x/tei-platform/pull/3284)/[#3296](https://github.com/hat47x/tei-platform/pull/3296)/[#3299](https://github.com/hat47x/tei-platform/pull/3299)は、実CLI応答・Loader証拠、欠落/陳腐化/片側Root欠落、SourceとPlugin Lockの実変更を試験専用Consumerで判別できた。ただし `boundedReference=partial`、`qualifiedTestGeneration=false` と現在Consumer/Host・意味受理の別資格は維持する。Fingerprint一致・JSON受領成功から、図/CRUDに必要なRule/Relation/Businessの列挙完了を推定しない。
+- main統合[#3304](https://github.com/hat47x/tei-platform/pull/3304)の[実CLI CI #42378033965](https://github.com/hat47x/tei-platform/actions/runs/42378033965) は、**既に選定された**行番号正数Ruleに `line_number=0` を与えた追加第7Stepの`not-satisfied`を、既存Pinned Scenario 6Step・独立Property・3実CLI負例と区別して確認した。**T1-A（既知境界の新Step実走）**であり、AIが未知Ruleを盲検発見したT1-B、全Required閉包、製品C1/NFRではない。実測後のPR文書HEADはCIで実走したプログラムHEADと異なるため、実証の引用は前記固定CIとその範囲へ限定する。
+- 未統合[Draft #3326](https://github.com/hat47x/tei-platform/pull/3326)は**同じWorld/Index Fingerprintで必要なValidation/RuleがCLI出力から部分的に消える**TT-56を追加検査する候補。最初の実CIでは`source-index`のsubjectモードを全件Indexと誤認して失敗したため、既存`source-index -workspace`のindexモードを**10番目のread-only Reply**として取得する方式に修正。これは試験Consumerの入力不足が作ったFalse Missingであり、実ParserのRule欠落を発見したわけではない。**修正後の新HEAD CIが成功するまではPASS未確定**。別の[Draft #3324](https://github.com/hat47x/tei-platform/pull/3324)も同じTT-56をinspect-validationで解く競合候補。実FixtureのRequired・実CLI現行契約と負例判別能力を比較して既存#3262/#2514へ採否を返し、**二つのRule Registry/二つのRequired正本を同時採用しない**。
+
+### 15.2 図・表の読み取りから実操作までのAdmissionを混同しない
+
+main統合[Reference #3325](https://github.com/hat47x/tei-platform/pull/3325)は、`WorldFingerprint`+`ModelRevision`のExpectedを呼出側から与える**参照用drift-check**で、同Workspaceなら`current`、属性改版なら`stale`、Expected未指定なら`unchecked`を区別した。`basis`は属性変更を捕捉しないため比較対象にしない。**既定の`tei operations`・実Invoker・現Host Grantには未接続**であり、旧View/Operation IDや同じBasisを「いまDispatch可」とみなさない。表示のみの図/CRUDセルと、Command/Update/外部EgressのAdmissionを分離し、read-only投影により変わらない範囲の局所再利用は許すが、未観測の依存を「影響なし」と断定しない。
+
+| 既存Lane／受入場所 | 新しく引き継ぐ最小の独立負例 | 証拠として使える範囲 |
+| --- | --- | --- |
+| **P0-M0 / #3263・#3262・#2514** | 同一FP・正常JSONのまま`validation.tei`の必須Rule/Role・Relationが1件だけ欠落、または`source-index`がsubject modeのまま | `required - observed`と実読込・Role/Sourceの突合を出し、`partial/unknown`へ停止。TEI Graph/CRUD Product PASSでない |
+| **P0-M1/M2 / #1124・#3263** | 同端点の多重有向Relation、同label別Entity、未列挙Functionを元Sourceへ逆参照できない | NodeだけでなくEdge ID/Relation Role/Path occurrence、CRUDセルの`declared/derived/unknown`を別Witnessにする。Graphic描画だけで完全なDependency閉包としない |
+| **P0-R / #2586・#2506・#2514** | Reference PGではRowset取得、しかしProduct `recent_orders.sql` の`public.orders`・実`:from`・選択Providerの証拠が無い | Product Function→実Query/SQL byte/args→実Provider Rowset/Field/Scope/Context/Consumerの**最初の欠落Edge**に停止。別SQL・別母集団を同じRead成功と合算しない |
+| **P0-C / #2507・#2582・#2598** | 同じDiagram/CRUDとForm/Table、同じOperation IDだがSource/World改版、Selection Epoch又は現在Grantが異なる | 表示の同一性はScope/Revisionが合うClaimのみ認定。参照drift-check`current`≠実Invoker admission、`unchecked`≠pass |
+| **T1-A→T1-B / #3262・#3273・#1180** | 既知ゼロ値のT1-A実走を、未知のRuleをAIが発見・生成したT1-Bと表示上で同じ「新規生成済」にする | #3304のT1-Aは実CLI候補判別だけ。未知Rule探索・独立Holdout・C1/NFR/Owner採択は次の別実験 |
+
+### 15.3 次に実行すべき実測と停止線
+
+**A：設計Contextの正本を一つにする**。#3324／#3326の両DraftはTT-56への異なるConsumer接続なので、実read-only CLIのSource Index modeと`inspect`の必要情報を照合し、**独立Required 1 Rule/Role/Relationの同一Expected**に対する判別と、新旧Index再資格化を比較する。旧9 Replyと新10 Replyの件数差を製品全域Coverageの差としない。採用は#3262/#2514の既存Owner。
+
+**B：図とCRUDの第一の実Consumerを成立させる**。#3263の合成JSONを実TEI Sourceとして偽装せず、実Loader→Meaning→Graph/CRUD Projection→Edge/Cell Source navigate→CLI/Studio受領の一Attemptを、DGX-01/02・独立Expected・実Mutationで検証する。P0-Mのread-only First Sliceは、P0-Rの実DBが未接続でも限定受入可能。
+
+**C：最初の実Product Readを完了する**。#2586でFunction/Pattern→Selected Query `recent_orders`→Source SQL byte+`:from`→physical Provider→Result Field Presence/Scope/Cohort→Function Context→Form/Tableを一件固定する。実隔離PG Reference・#3304のtest CLI合格・#3325 drift-checkの局所成功を、このP0-Rの代替証拠にしない。
+
+**本節の実行資格**：既存main統合済み#3304/#3325・#3296/#3299の実試験記録と、#3324/#3326の未統合Draft Source/CIの照合を既存設計票へ追補。新しい製品Go/PG/Studio/Graph/Host/MCP実試行と独立ExpectedのOwner意味受理は**今回NOT RUN**。この計画の変更自体は実装・製品受理を意味しない。新Parser/Resolver/Runner/Domain Registry/Host/Gate・第二Scenario正本は導入しない。
+
