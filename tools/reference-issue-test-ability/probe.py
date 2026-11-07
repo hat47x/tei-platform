@@ -98,10 +98,24 @@ def main() -> None:
     parser.add_argument("--cli", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--coverage", type=Path, required=True)
+    parser.add_argument("--context", type=Path, required=True)
     args = parser.parse_args()
     root = args.root.resolve()
     cli = args.cli.resolve()
     assert cli.is_file(), cli
+    # The Design Context is only a bounded read-only observation, not an
+    # Accepted Model or a consumer Grant. Any missing/mixed Source blocks even
+    # this exploratory pinned Scenario test; full test generation remains off.
+    design = json.loads(args.context.read_text(encoding="utf-8"))
+    if (design.get("schema") != "tei.reference.design-context-readiness/v0"
+            or design.get("testExecutionAdmission") != "exploration-only"
+            or design.get("boundedReference") != "partial"
+            or design.get("qualifiedTestGeneration") is not False
+            or design.get("productMeaningAccepted") is not False
+            or design.get("externalHarnessDeliveryComplete") is not None
+            or design.get("blockers")
+            or design.get("observations", {}).get("fingerprintConsistency") != "consistent"):
+        raise AssertionError("unqualified Design Context; refuse bounded Scenario qualification")
     args.out.parent.mkdir(parents=True, exist_ok=True)
 
     original_scenario = root / SCENARIO
@@ -237,6 +251,10 @@ def main() -> None:
         raise AssertionError(f"unrecognized Go statement coverage result: {last!r}")
     summary = {
         "schema": "tei.reference.issue-test-ability/v0",
+        "designContext": {"admission": design["testExecutionAdmission"],
+                          "fullTestGenerationQualified": False,
+                          "requiredSourceRead": design["observations"]["requiredSourceRead"],
+                          "sourceIndexFingerprint": design["observations"].get("observedFingerprints", {}).get("sourceIndexFingerprint")},
         "execution": "real built CLI, actual generated pinned Scenario commands",
         "tested": sorted(measured),
         "observed": measured,
