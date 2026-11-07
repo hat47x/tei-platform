@@ -1,0 +1,201 @@
+name: TEI Issue-to-Design read-only dogfood
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/tei-issue-design-dogfood.yml"
+      - "plan/design/ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md"
+  push:
+    branches:
+      - "poc/issue-design-dogfood-*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bounded-design-context:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      GOENV: off
+      GOWORK: off
+      PYTHONDONTWRITEBYTECODE: "1" # Product Skill unit tests must not dirty checkout
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Verify existing Product Skill documents and bounded examples
+        run: |
+          python3 skills/yi-tei-modeling/verify_skill.py
+          python3 -m unittest discover -s skills/yi-tei-modeling/tests -p 'test_*.py' -v
+      - name: Build exact TEI CLI and run bounded read-only queries
+        shell: bash
+        run: |
+          set -euo pipefail
+          cli="$RUNNER_TEMP/tei"
+          out="$RUNNER_TEMP/issue-to-design"
+          mkdir -p "$out"
+          test -z "$(git status --porcelain=v1)"
+          go build -o "$cli" ./cmd/tei
+          printf 'checkout=%s\n' "$(git rev-parse HEAD)"
+          printf 'go=%s\n' "$(go version)"
+          sha256sum "$cli"
+          "$cli" commands > "$out/commands.json"
+          "$cli" version -json > "$out/version.json"
+          "$cli" workspace-files -workspace reference/workspace > "$out/workspace-files.json"
+          "$cli" model catalog -workspace reference/workspace > "$out/catalog.json"
+          "$cli" inspect -workspace reference/workspace -subject-kind semantic-data -subject-id sales.order > "$out/inspect.json"
+          "$cli" source-index -workspace reference/workspace -subject-kind semantic-data -subject-id sales.order > "$out/source-index.json"
+          "$cli" trace -workspace reference/workspace -scope reference-observation -subject-kind semantic-relation -subject-id sales.order.customer -direction both -mode summary > "$out/trace.json"
+          "$cli" requirements -workspace reference/workspace > "$out/requirements.json"
+          "$cli" validate -workspace reference/workspace -json > "$out/validate.json"
+          python3 - <<'PY'
+          import copy
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          folder = Path(os.environ["RUNNER_TEMP"]) / "issue-to-design"
+          names = ("commands", "version", "workspace-files", "catalog", "inspect",
+                   "source-index", "trace", "requirements", "validate")
+          docs = {}
+          sizes = {}
+          for name in names:
+              raw = (folder / (name + ".json")).read_bytes()
+              sizes[name] = len(raw)
+              if not raw or not raw.endswith(b"\n"):
+                  raise AssertionError(f"{name}: incomplete or non-terminated JSON output")
+              docs[name] = json.loads(raw)
+              if not isinstance(docs[name], dict):
+                  raise AssertionError(f"{name}: object expected")
+          assert docs["commands"].get("schemaVersion") == "tei.cli.discovery/v0"
+          assert docs["commands"].get("scope") == "selected-read-only-commands"
+          assert docs["version"].get("schemaVersion") == "tei.cli.version/v0"
+          for name in ("workspace-files", "catalog", "inspect", "source-index",
+                       "trace", "requirements", "validate"):
+              assert docs[name].get("ok") is True, (name, docs[name].get("error"))
+          schemas = {
+              "workspace-files": "tei.cli.workspace-files/v0",
+              "catalog": "tei.cli.model/v0",
+              "inspect": "tei.cli.inspect/v0",
+              "source-index": "tei.cli.source-index/v0",
+              "trace": "tei.cli.trace/v0",
+              "requirements": "tei.cli.requirements/v0",
+              "validate": "tei.cli.validate/v0",
+          }
+          for name, expected in schemas.items():
+              assert docs[name].get("schemaVersion") == expected, (name, docs[name].get("schemaVersion"))
+          # Independently declared minimal source obligation: an indexed Subject
+          # cannot alone prove that the required Source file was consumed.
+          required_source = "semantic/sales/order.tei"
+          managed = docs["workspace-files"]["result"].get("managedFiles", [])
+          assert isinstance(managed, list), "workspace-files: managedFiles is not a list"
+          matches = [entry for entry in managed
+                     if isinstance(entry, dict) and entry.get("path") == required_source]
+          assert len(matches) == 1, ("required source inventory missing/ambiguous", matches)
+          assert matches[0].get("readByLoader") is True, (
+              "required source not read by domain loader", matches[0])
+          def source_read_state(records):
+              actual = [entry for entry in records
+                        if isinstance(entry, dict) and entry.get("path") == required_source]
+              if len(actual) != 1:
+                  return "incomplete"
+              return "read-by-loader" if actual[0].get("readByLoader") is True else "not-loaded"
+          mutated_managed = [dict(e) if isinstance(e, dict) else e for e in managed]
+          for e in mutated_managed:
+              if isinstance(e, dict) and e.get("path") == required_source:
+                  e["readByLoader"] = False
+          assert source_read_state(mutated_managed) == "not-loaded", "DF-09 not killed"
+          target = {"kind": "semantic-data", "id": "sales.order"}
+          entries = docs["catalog"]["result"]["entries"]
+          inspected = docs["inspect"]["result"]
+          assert inspected.get("subject") == target, inspected.get("subject")
+          assert isinstance(entries, list)
+
+          def assess(catalog_entries, inspect_result):
+              if not any(x.get("subject") == target and not x.get("ambiguous", False)
+                         for x in catalog_entries):
+                  return "incomplete"
+              values = {}
+              for key in ("worldFingerprint", "sourceIndexFingerprint"):
+                  observed = [
+                      docs["catalog"]["result"].get(key),
+                      inspect_result.get(key),
+                      docs["trace"]["result"].get(key),
+                      docs["validate"].get(key),
+                  ]
+                  values[key] = observed
+                  if any(not isinstance(x, str) or not x for x in observed):
+                      return "incomplete"
+                  if len(set(observed)) != 1:
+                      return "stale"
+              # No complete claim: this does not prove parser/required/Business closure.
+              return "partial"
+
+          assert assess(entries, inspected) == "partial", "bounded fixture changed"
+          mutated_entries = [e for e in entries if e.get("subject") != target]
+          assert assess(mutated_entries, inspected) == "incomplete", "DF-02 not killed"
+          modified_inspect = copy.deepcopy(inspected)
+          modified_inspect["sourceIndexFingerprint"] = "synthetic-mismatched-fingerprint"
+          assert assess(entries, modified_inspect) == "stale", "DF-03 not killed"
+
+          warnings = [x for x in docs["validate"].get("diagnostics", [])
+                      if isinstance(x, dict) and str(x.get("severity", "")).lower() == "warning"]
+          index_mode = docs["source-index"].get("mode", "not-declared-in-output")
+          report = {
+              "schema": "tei.reference.issue-design-dogfood/v0",
+              "issue": "hat47x/tei-platform#3262",
+              "subject": target,
+              "checkout": os.environ.get("GITHUB_SHA", "unknown"),
+              "cliResults": [{"command": name, "bytes": sizes[name],
+                              "sha256": hashlib.sha256((folder / (name + ".json")).read_bytes()).hexdigest()}
+                             for name in names],
+              "requiredSource": required_source,
+              "requiredSourceReadByLoader": True,
+              "boundedDataClaim": "partial",
+              "missingClaims": ["Function/Business/Rule/Procedure closure",
+                                "independent Required set over all sources",
+                                "Parser/Accepted Meaning qualification",
+                                "external Harness/MCP delivery and current disclosure",
+                                "self-build Stage1 process re-entry"],
+              "sourceIndexMode": index_mode,
+              "validationDiagnostics": len(docs["validate"].get("diagnostics", [])),
+              "warnings": len(warnings),
+              "syntheticControls": {"DF-02-missing-subject": "incomplete",
+                                    "DF-03-fingerprint-mismatch": "stale",
+                                    "DF-09-required-source-unloaded": "not-loaded"},
+              "ownerMeaningAccepted": False,
+              "deliveryCompleteToExternalHarness": None,
+          }
+          (folder / "report.json").write_text(
+              json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+          lines = [
+              "## Issue #3262 → TEI設計Context（限定ドッグフーディング）",
+              "",
+              f"- Checkout: `{report['checkout']}`",
+              f"- Subject: `semantic-data:sales.order`（catalog/inspectで特定）",
+              f"- 実TEI CLI応答: {len(names)}件、単一Binary、JSON/exit 0。詳細Bytes/digestはrunnerのreport.json。",
+              f"- 設計Claim: **{report['boundedDataClaim']}**。全設計情報の完全取得ではない。",
+              f"- validate: 診断 {report['validationDiagnostics']}件、Warning {report['warnings']}件（passと混同しない）",
+              f"- Required Source: `{required_source}` はreadByLoader:true。Parser/Meaning受理は別。",
+              f"- 合成負例: DF-02 → incomplete、DF-03 → stale、DF-09 → not-loaded（実Source改変ではない）",
+              "",
+              "### 未充足（既存Issueへ戻す）",
+          ]
+          lines += [f"- {gap}" for gap in report["missingClaims"]]
+          lines += [
+              "",
+              "根拠: CLIのread-only JSONを実行時照合。要求とOwnerは plan/design/ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md。",
+              "**非主張**: Skill実ロード、実MCP、外部受領、意味受理、全Workspace/Stage Self-BuildはNOT RUN。",
+          ]
+          summary = "\n".join(lines) + "\n"
+          print(summary)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as target_summary:
+              target_summary.write(summary)
+          print("PASS: bounded real CLI + Product Skill static check, partial claim, 3 synthetic controls")
+          PY
