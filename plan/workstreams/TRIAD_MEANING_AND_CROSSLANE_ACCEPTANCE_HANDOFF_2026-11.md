@@ -467,3 +467,48 @@ X-TEAではDBテーブルの1:1・1:NトポロジーをXFxxxの単票/明細機�
 **横断の反例を一つに束ねる**：同一受注O1の見積Previewの数値600がTable/Chartと同じ表示であっても、税額の端数処理・Rateの適用時点・換算方向・休日条件が異なるとBusiness Claimの内容は異なり得る。表現側のDate/Decimal/通貨ラベルが等しいだけでは、Functionの入力行集合と業務Operatorの意味は同じにならない。率が欠けたときの近傍日付への推測Fallback、休日Dataを宣言したのに未取得なのを「休日なし」、同じ表の別暦行を混入、許可されたScopeより広い行の計算使用、過去の承認に現時点のRateを無言適用、を**既存業務Operatorの負例**とする。復元された過去値が一致しても承認Revision・Operator版・実Read資格は自動復活しない。
 
 **着手順と非重複**：表示軸・媒体適合は#3192/#2497、税・換算・休日の演算自体とDomain Referenceは各PRの既存Owner、Function内Role/Scope/Result Sliceは#2506、Source→Actual Readerは#2586、Business Rule/確定値は#1125、独立期待値は#2514に委譲。最初はRead-onlyの一Functionを用いて`Role＋期間＋実行されたOperator＋Actual Input Rows＋結果のUnit/Precision/Source`を同じAttemptで確認し、Provider実Readまで接続してからBusiness Claimへ進む。**今回の三つの参照実装を受注O1の実Function・*.tei.md・実PG・GUIに接続した新試験はNOT RUN**。第二Tax/FX/Calendar Engineや新State Enumは作らない。
+
+<!-- tei-triad-real-function-witness-matrix-20261107 -->
+## 14. 11/7横断追補：同一Function・同一Actual Rowsetから表現・業務Claim・Client反応までをつなぐ最小Witness計画
+
+### 14.1 最新の実行証拠が閉じた範囲と、残る一辺
+
+main統合済み[ #3264 ](https://github.com/hat47x/tei-platform/pull/3264)は、対象Issue→read-only CLI 9種→Source Index/版照合→必要SourceのLoader読込（及び欠落/異版/未読込負例）を**限定CI**で実行した。しかし対象Domain/FunctionのRequired Role/Rule/Procedure/ContextがすべてParser/Meaningで解決されたとは言えない。[ #3266 ](https://github.com/hat47x/tei-platform/pull/3266)は同じ実バイナリでpinned Scenario 6 Step、実CLIで4種の負例、独立義務の2負例を検出した。限定的なstatement coverageは約10.1%の**局所C0相当**であり、C1・未カバー機能要件/非機能要件・生成AIが新規に作る負例の妥当性を証明しない。[ #3268 ](https://github.com/hat47x/tei-platform/pull/3268)は関連Source/Scenario/Skill変更による再検証起動範囲を拡張したが、完全な依存追跡ではない。
+
+[Draft #3238](https://github.com/hat47x/tei-platform/pull/3238) の**exact head `d3b67d5809478fad828052ce01bdafe576b2f934`**では、実隔離PostgreSQLから同じ固定FixtureのTenant A Rowset `{3,9}`と`TOP1={3}`を取得し、別の非出力列`ordered_at`のSQL Predicateで`{9}`が得られることを独立Expectedで照合した。[実PG CI #42351796330](https://github.com/hat47x/tei-platform/actions/runs/42351796330)・[Health #42351796383](https://github.com/hat47x/tei-platform/actions/runs/42351796383)はともにcompleted/success。これは**Web ReferenceのScoped Reader**の実証であり、TEIの受理済み**Function→選択Query→実Product Provider→Context/Claim/Consumer**を同じAttemptで通した証拠ではない。#3238は**Draft/未統合**。
+
+残るP0は[#2586](https://github.com/hat47x/tei-platform/issues/2586)の**一Function・一Query・一Actual Provider Read**である。機能の宣言やPanel/Table描画、Source `readByLoader:true`、別ReferenceのPG Greenを足し算して、この一辺の成立にしない。
+
+### 14.2 同じ受注Functionの「必要な証拠」と判別点を縦にそろえる
+
+| 段階（同じSource/Function/Target/Attemptに限定） | 揃える観測根拠・最小判別点 | 未充足時に禁止する主張 | 既存Owner |
+| --- | --- | --- | --- |
+| **D0：Design Context取得** | Subject/FunctionとRequired Data・Rule・Business Procedure・Context・Source Identity/Revision・Loaded/Parsed/Accepted/Unknownを**scope相対**に一覧。欠落/部分/非開示を区別 | catalog件数/CLI `ok`だけで必要設計を全取得・受理済み | #3262 / #2822 / #2823 |
+| **R1：Functionから実Read** | Function ID→Pattern/Query/Provider/Actual SQLまたはnative selection→Tenant/Scope/Predicate/Projection→**実Rowset**/Field/Result Grain/Read Cohortと物理取得時点を連結 | 別Reference PG PASSをそのFunctionの実取得に読み替える | #2586 / #2387 / #2506 / #2622 |
+| **R2：Claim相対の完全性** | 事前固定L={3,9}とActualを独立比較。`TOP1={3}`はPartial、同件数重複やPredicate未取得はUnverified、完全な母集団だけが対象Predicateに必要な範囲でComplete | 誤Caller申告`CoverageComplete`をEvaluator戻り`holds`で自己検証 | #2514 / #1180 / #2506 / #1163 |
+| **R3：非出力Predicateと開示** | `WHERE ordered_at>=...`等の非表示列依存をQuery/Lineageに残す。二つの許可WorldでRow Membership・件数/順序/診断/Preview/Tool Logの開示差を調べる | $selectで列を伏せたことを、Predicate依存の推知やTool出力の非干渉の証明に使う | #2516 / #2515 / #2506 / #3238 |
+| **P1：Function内の複数表現** | 同じContextのTable/Form/Chart/TreeでEntity/Occurrence/Grain/Revision/Selectionを束縛。集計・JOINの非単射写像はread-onlyまたは明示Inverseのみ | Renderer選択や同期した選択位置から一意な業務Target/Actionを生成 | #2497 / #2507 / #997 / #2500 / #3236 |
+| **A1：操作・権限・作用** | Patternと導出OperationのKind/Capability適合、現在Grant/Target/Version、Intent→Command→Outcome/Effect、ReceiptとResource readの区別 | `unattended`やenabled、`persisted:true`だけで全Entity/業務完了/承認済みと説明 | #1127 / #2598 / #1174 / #2998 |
+| **C1：TransportとClient Reaction** | typed Business Outcome/EffectUnknown/Receipt/ReadをHTTPやDesktop IPCへ**輸送手段別に投影**し、Client側のRetry/Refresh/Reconcileと表示・非開示を別観測 | HTTP 200/202・Problem text・タイムアウトから「業務完了／確実に無作用」と推測 | #3274 / #1656 / #1158 / #1174 |
+
+本表は**既存Issueへの受入引渡しを同一Attemptで見渡すための比較票**であり、製品の新しい`D0/R1...` Enum・Graph/Proof Engine・第二Scenario SSOTではない。初回は**Read-onlyのR1とR2/R3まで**をP0とし、UI/Action/EffectをP0の必須前提に昇格させない。Source・Read・Consumerが同一の実証に閉じていない行は`not-connected/unverified`として明記する。
+
+### 14.3 既存テストへの追加判別：結果が一致しても実施範囲と開示は別
+
+同じ公開固定Fixtureを利用し、#3238の専用Scoped Readerと#2586の製品Function入口を**別Implementation/Witness**として対照する。新しいRow FixtureやExpectedの正本は作らない。
+
+1. **実Readの足場**：独立期待L={A/3,A/9}。独立PGで`TOP2=[3,9]`、`TOP1=[3]`を取れた既存結果は、製品Functionの接続の**必要な参考**だが代替ではない。Product入口ではFunction/Query/Provider/Target/Scope/Rowsetの同一試行記録が新たに必要。
+2. **完全性と判定**：`TOP1`で`CoveragePartial`なら局所Completionは`unverified`。誤って`CoverageComplete`を申告して`holds`になったときは評価器の**入力信頼境界の反例**として保持。必要なField `status`を取得していないなら`orderId`のみから状態述語のHoldsを作らない。
+3. **非出力Predicateは閲覧秘密を保証しない**：`$select=orderId`とし、SQL内で`ordered_at`の条件が実評価されれば、返却する行IDや件数が条件を間接的に伝え得る。正当なQuery実行権と、そのResult Membership/Count/Tool Logを現在Consumerへ開示する資格は別。#2516の二World差異試験と連結する。
+4. **同じActual Contextから二表現**：TableでL1/L2を表示し、Chartで合計を表示する。L1/L2の2実体、JOINによる6行、集計棒1件の異なる粒度を保つ。部分D2や古いSelection epochから全件不存在Claim・一意Targetの書戻しへ昇格しない。表現合成の非単射/CXケースは[統合候補 #3236](https://github.com/hat47x/tei-platform/pull/3236)がOwner（旧#3192/#3222は未統合Draftのまま）。
+5. **Clientが副作用を知らない**：リードだけの初回P0と混同せず、将来同じ受注のCommandがHTTPでタイムアウトしたらEffectUnknown/Receipt Lookup/Current Grant/Resource観測に沿ったClient Reactionを検査。`202 Accepted`で業務完了としない。[main統合 #3275](https://github.com/hat47x/tei-platform/pull/3275)の[Decision Graph設計](https://github.com/hat47x/tei-platform/blob/main/plan/design/HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md)は**設計/NOT RUN**であり、実HTTP/Client実装の資格ではない。
+
+### 14.4 テスト生成・Provider/Plugin/BOM/Cacheへの依存を増やさない順序
+
+**テスト能力**：T0はmain #3264/#3266/#3268の限定実証で進んだが、T1「#3262 Design Contextから未カバー義務を発見し、生成AIが新しいCaseを提案、独立Expected/Mutation/実CLIにより判別」は[Draft #3273](https://github.com/hat47x/tei-platform/pull/3273)の計画であり未実施。C0局所測定とC1/要件・NFR Coverageは別。Scenario正本は#1180、独立期待値は#2514、Coverage不足提案は#3223/#3273。**Product Function→Provider R1未接続を、T0のGreenやAIが生成したScenario数で相殺しない**。
+
+**拡張範囲**：[main #3276](https://github.com/hat47x/tei-platform/pull/3276)がData Source Workbench RQ-035（Schema CRUDは標準、DBA運用は非標準）、[main #3277](https://github.com/hat47x/tei-platform/pull/3277)がCore外Plugin化とCLI/Studio自身を使うdogfood計画を追加済み。対象の実Provider能力・Reader Scope・Action Grantを解決して初めてこのR1入口を選択する。Plugin/DB/Cloud実装を全件P0としない。#3267（Verified Composition BOM）はExact Source/Contract/Target/組合せ試験の再利用資格、#3271（Cache/Snapshot）は観測時点・依存Closure・失効資格の再利用を所有する。**単体Provider/Plugin個別PASS、Cache hit、BOMの構成一覧は、実Functionの同一Attempt R1/R2成立の代替にならない**。
+
+**順序**：既存#1119のGatesを増やさず、(i) #3262で対象設計Required閉包の不足を可視化 → (ii) #2586の一Function・一Query・一実Provider R1 → (iii) #2506/#2514のCoverage/非出力依存と#2516の開示 → (iv) #2507/#997の同Context複数表現 → (v) 必要な実Action/Host/HTTP Decision Graph → (vi) #3267/#3271で結合済み実証の適切な再利用とT1新規負例、という順。Read-only R1に実HTTP/本番認可/媒体Rendererを**前提要件として過剰に課さない**。本書はOwnerの採用・本番許可やProduct E2/G2合格を決定しない。
+
+**証拠資格（2026-11-07時点）**：この追補は既存main Source/PR exact-head CI/Issueに基づく**文書更新**。#3238の実隔離PG・#3264等の実CLI/Scenario実行は各担当の既存限定証拠であり、**今回**新たなGo/DB/Harness/Studio/Clientを実行したものではない。実Product Function→実Reader→Context/Claim→Form/Table→Client、Owner業務意味受理、実Host Grant/実Provider完了の同一試行は**NOT RUN / NOT ACCEPTED**。
