@@ -104,3 +104,12 @@ test("extra relation fields, symbols and getters are rejected at the public boun
   assert.throws(() => projectPublicTeaSlice(accessor), /unqualified_public_slice/);
   assert.equal(getterCalls, 0);
 });
+
+test("public projection carries explicit caller epoch only when supplied", () => {
+  const unstamped = projectPublicTeaSlice(publicInput());
+  assert.equal(Object.hasOwn(unstamped, "snapshot"), false);
+  const stamped = projectPublicTeaSlice(publicInput(), "source:R1|role:P1|policy:G1");
+  assert.equal(stamped.snapshot, "source:R1|role:P1|policy:G1");
+  assert.deepStrictEqual(stamped.views, unstamped.views);
+  assert.throws(() => projectPublicTeaSlice(publicInput(), ""), /unqualified_public_slice/);
+});
