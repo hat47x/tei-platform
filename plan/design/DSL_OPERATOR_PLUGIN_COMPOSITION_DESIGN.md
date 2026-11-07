@@ -501,3 +501,35 @@ Source移行では、`plugin.tei.md`を選んだ意図Bと、固定名Loaderが`
 **未読込Markdownの内容変更対照**：同じWorkspace内で`semantic/README.md`の内容だけを書き換え、再`workspace.Load`と`BuildSourceIndexFromLoad`を行う。独立Expectedは、`sourceindex.ModelRevision`は**変わる**（管理Artifactのbyte変化）一方、`World`と`Index.References`は**変わらず**、Markdownの`ReadByLoader`もfalseを保持する、というもの。これにより「Source変更を見落とす誤実装」と「管理文書の変更を勝手にTEI意味変更へ昇格させる誤実装」を同じ一因子対照で判別する。ただし、`ModelRevision`の変化からOwnerが受理済みの意味を自動失効させるか、どのBuild Artifactを再生成すべきかは、この局所試験では判定しない（#2823/#2514/#1251 Owner）。
 
 **資格上限**：#3078のmain統合と専用CI成功はSource Read証拠の機能を示す。本PRに追加したGoテストの成功は**この新しいPR HEADのCIが完了した場合に限る**。ProductとしてのK0〜K6通過、Owner Meaning受理、実Plugin loaded bytes、実Host/Provider Effect、BS-08/09/13のCrash/ACK復旧を主張しない。新Reader／Registry／Attester／独立Expected正本を作らない。
+
+ 
+<!-- tei-dsl-bootstrap-aba-source-physical-engine-qualification-20261107 -->
+### 13.14 K1 SourceのA→B→Aと、実Plugin Target検証の「実行された範囲」
+
+[前回実証HEAD `5eb0d1d3`](https://github.com/hat47x/tei-platform/commit/5eb0d1d311463d5b1be668454327f2a8cddd90ca)はRepository Health [#42318077501](https://github.com/hat47x/tei-platform/actions/runs/42318077501)と依存脆弱性 [#42318077571](https://github.com/hat47x/tei-platform/actions/runs/42318077571)が双方PASS。ここで証明されたのは限定Go Referenceと従来Goテストの成立であり、正式`*.tei.md` Readerや実Hostへの一気通貫資格ではない。
+
+**今回加えたK1一因子反例**：`bootstrap_actual_read_test.go`の単一Workspace（旧`semantic/model.tei`を実読込、普通の`README.md`はInventory/Index Artifactのみ）で、対象`README.md`に対して次の対照を続ける。変化させるのは未読込文書の内容／所在だけとし、モデル用Native TEIのbyte列は固定する。
+
+| Step | ファイル | 独立期待値 | 判定できないこと |
+| --- | --- | --- | --- |
+| **A：初期** | `semantic/README.md` 元本文 | Managed/Index Artifactあり、`ReadByLoader=false`。Native TEIのWorld/Subject Refは存在 | Owner Meaning承認、Builder消費、Host |
+| **B：内容変更** | 同Path・別本文 | **Source `ModelRevision`はAと異なる**がWorld/Subject RefsはAと一致 | 改訂の都度どの受理・成果物を失効すべきか |
+| **C：Path移動** | Bと同byte列の`semantic/notes.md` | `ModelRevision`はBとも異なる。World/Subject Refsは変化しない | Path aliasや別Workspace Scopeの認可 |
+| **A'：元位置・元bytesへ復帰** | `semantic/README.md` 初期本文 | content-addressed `ModelRevision(A') = ModelRevision(A)`、World/Refsも一致 | **過去のOwner受理・Trust・Host Grantの自動復活** |
+
+この対照は、byte hashやPath fingerprintの**値の一致**と、介在したB/C変更の**履歴・再受理判断**を分離する。BS-14のA→B→A失効反例の「Source Revision投影」の局所実証として利用するが、初回SeedのOwner受理そのものは試験に存在しない。A'で指紋が戻る性質を利用して古いOwner意思を自動的に再使用する実装は未適格とする（#988/#2600/#2514）。Source Indexに通常MarkdownがあることとTEI Meaningが受理されることも別である。
+
+**実Build/実Runtimeの既存証拠の到達点を精密化**：現mainには次の先行試験があるため、「物理Target bytesの照合は一切ない」と一般化しない。
+
+| 既存試験／実行入口 | 直接の確認内容 | 限界と条件 |
+| --- | --- | --- |
+| `internal/plugin/runtime/builtin_registration_test.go`／`engine_replay_boundary_test.go` | 選択Runtime Planに対するBuiltin RegistrationのBuild/Realization/Engine Lock不一致を拒否。変更した登録はInvoke前に停止し、Accepted Instanceを用いる局所ケースあり | Reference BuiltinはOS上の実Processの実体証拠ではない |
+| `internal/plugin/runtime/engine_actual_binary_lock_test.go` | NativeとWasmの**実Artifact bytes**を再Hashし、別Target Lock、入替・改ざんを拒否する限定試験 | `TEI_TARGET_BIND_NATIVE`／`TEI_TARGET_BIND_WASM`等の4環境変数を指定する専用CIでのみ実行。一般`go test ./...`ではSkipする |
+| `internal/plugin/runtime/engine_lock_receipt_replay_test.go` | Evidence ReceiptのNative/Wasm実ファイル再読込、Source realization、BuildPlan/Runtime Engine Lock、改ざん・Target入替の再検査 | 専用[tei-runtime-engine-evidence-replay](https://github.com/hat47x/tei-platform/blob/main/.github/workflows/tei-runtime-engine-evidence-replay.yml)の実Artifact生成・環境変数が必要。Receipt再生≠現在Host Grant/業務Effect |
+| `internal/workspace/plugin_native_implementation_reference_test.go` | 旧`implementation.tei`とDefinition SourceをHash→Materialize→Build Lock→参照Builtin Invoke→`PluginInvocation`を接続 | 新`*.tei.md`とDSL K2/K4のSourceとは別。固定Builder/Engine Digestラベルを実OS Image測定値と混同しない |
+
+[tei-transform-wasm-conformance](https://github.com/hat47x/tei-platform/blob/main/.github/workflows/tei-transform-wasm-conformance.yml)／Evidence Replayのworkflowは**変更対象ファイルPath限定**または手動起動であり、Draft #3028のCI成功がそれらの実Target試験の**今回のHEADでの実行**を証明するわけではない。別Headの過去Evidenceは当該Head/Targetに限定し、勝手に再資格化しない。
+
+**次に本当に残るJOIN**：`Selected Source/Revision`（Root・Intentと`ReadByLoader`）→`Selected Language+Operator Contract`（K2/K4）→`Actual BuildPlan Sources`→`Physical Target Engine`→`PluginInvocation`を、同じSourceRevision/Target/Attempt・独立期待値で接続すること。既存Runtime実証を再作成するのではなく、**Bを選んだのにAをビルド・呼び出す（返値は等しい）**誤接合のSource→Selection列に実証の不足がある。必要なBuild/Target差分は#1251/#2885/#973、Authoring Sourceは#3030/#2823、消費者は#1016、Owner認可/Receiptは#1174。欠落がある場合は`not-proven`で停止。新Registry/Host/Proof Store/新独立Expected正本は作らない。
+
+**SHO/Studioとの分離**：[#1824](https://github.com/hat47x/tei-platform/issues/1824)で検討するRaw Markdown Writerは、`Workspace.Load`の意味受理の失敗と独立して設計する。Source Path/Raw bytesを扱うだけのDraft編集は可能でも、保存だけでK0 Seed、Semantic Admission、Build資格を付与しない。`*.tei.md`の意味Parser未Bindingを解除するのは#3030のParser/Loader側の検収による。
