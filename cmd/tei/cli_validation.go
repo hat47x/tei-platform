@@ -42,6 +42,11 @@ type cliValidationReport struct {
 	// missing. These are source-direct findings with no Canonical Subject and
 	// are not part of diagnostics (#2823).
 	SourceRootFindings []workspace.WorkspaceSourceRootFinding `json:"sourceRootFindings,omitempty"`
+	// Workspace is the Workspace identity the read came from (#3181): the
+	// author-written name, the manifest format version and the manifest bytes
+	// digest. It is omitted for a Direct syntax finding, where no Workspace
+	// identity was established.
+	Workspace *workspace.WorkspaceIdentity `json:"workspace,omitempty"`
 }
 
 // Source locations never synthesize an empty Semantic Subject for parse errors.
@@ -129,6 +134,7 @@ func validateWorkspaceJSON(out io.Writer, root string) (int, error) {
 	report.SourceIndexFingerprint = result.SourceIndexFingerprint
 	report.DeclarationCounts = &result.Declarations
 	report.SourceRootFindings = result.SourceRootFindings
+	report.Workspace = result.Workspace
 	if len(result.Diagnostics) > 0 && result.WorldFingerprint != "" {
 		diagnostics := make([]validation.Diagnostic, 0, len(result.Diagnostics))
 		for _, projected := range result.Diagnostics {
