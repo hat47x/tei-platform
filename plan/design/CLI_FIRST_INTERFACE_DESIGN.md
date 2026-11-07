@@ -133,7 +133,7 @@ Issue #1165に対し、既存 `index.Build` → `modelref/derivedbridge.FromInde
 
 本作業は、独立したDraft系列（[#1159](https://github.com/hat47x/tei-platform/pull/1159) → [#1169](https://github.com/hat47x/tei-platform/pull/1169) と [#1139](https://github.com/hat47x/tei-platform/pull/1139) → [#1171](https://github.com/hat47x/tei-platform/pull/1171)）を参照する**統合用Draft候補**である。統合ブランチで履歴を接続していても各元PRがmainへ統合可能と認定されたわけではない。元PRのheadを変更せず、上流の検証・マージ順序を尊重して最終的な差分を再評価する。
 
-具体的には、executable CLIによる`commands`、`inspect`、`trace`、`validate`の戻り値/出力整合性と、typed Go操作/CLIの同等性を確認する。CIは停止中につき、Goのunit/プロセステストを追加した事実とclean checkoutにおける実行済みPASSを混同しない。`AGENTS.md`に定めるexact head/full repository healthが揃うまでDraftを維持し、mainへマージしない。
+具体的には、executable CLIによる`commands`、`inspect`、`trace`、`validate`の戻り値/出力整合性と、typed Go操作/CLIの同等性を確認する。CIは停止中につき、Goのunit/プロセステストを追加した事実とclean checkoutにおける実行済みPASSを混同しない。`AGENTS.md`に定めるとおり、`tools/repository-health-check.sh`は任意の広範囲診断であり統合の一律条件にはしない。変更範囲の検証結果を記録し、Draftは解除して統合する。
 
 
 ### 8.1 統合候補の静的レビューで修正した境界

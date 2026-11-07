@@ -260,3 +260,22 @@ CLIの `referenceCommandRun` とStudioの `CommandRunValue` に `authorizationMo
 - `commandadapter.Executor` に `ResourceRead bool` を追加。trueならCommit後に別pool接続で `objects` の現在値を読み、Commitしたpayloadと一致した場合だけ `resource-observed`。
 - 実PostgreSQLの結合試験 `TestPostgresCommandObservesTheStoredResource` を追加。Commit後に `objects` を書き換えると、同じ設定の観測が失敗することを確かめる。
 - receipt Lookupだけでは `receipt-observed` であり、`persisted:true` にはならない。
+
+## 12. Executorの取引参加を契約に含めない（#2996 追補）
+
+### 見つかった差
+
+`Executor` の契約には「`UnitOfWork` へ参加する」と書かれておらず、`Invoker` は `UnitOfWork` がある場合に `Begin`・`Commit`・`Rollback` を自ら呼ぶ。そのため、Executorが成功した後に宣言外の効果・結末・適用操作を返した場合、`Rollback` が呼ばれても Executor の書込みが同じ取引に参加していた保証は無い。
+
+### 決めたこと
+
+- 宣言外の効果・結末・適用操作を検出した場合、`Invoker` は `EffectUnknown` の付いた `ExecutionError` を返す。`UnitOfWork` の有無で分けない。巻き戻し済みと断定できる根拠が無いため。
+- `LifecycleInvoker` はこのエラーを `unknown` として記録し、`rejected` としては記録しない（#3042）。`unknown` の Command は同じowner/generationの再送を拒否する。
+- `Executor` の型コメントに、取引への参加は契約に含まないこと、適用の有無を確定させるには Executor 側の参加か実行後の独立観測が要ることを書いた（`internal/command/invoke.go`）。
+- 試験 `internal/command/safety_test.go` が、`UnitOfWork` あり・なし・`LifecycleInvoker` 経由の3通りで `EffectUnknown` と `unknown` 記録を固定している。
+
+### まだ決めていないこと
+
+- 宣言した効果を Executor が返さない場合（`Effect` が nil）の扱い。現在は拒否せず `ReportedEffectMissing` として記録する。拒否すると `effectcommit` アダプタのCommit成功がすべてunknownになり、実Providerの正常経路が壊れるため。
+- Executor に取引参加を契約として要求し、参加しない Executor を構成時に拒否するか（Issueの選択肢c）。
+- 実Providerで、宣言外の効果が実際に適用されたかを独立観測で確かめる経路。`ResourceRead` は宣言効果の現在値を見るもので、宣言外の書込みの検出ではない。

@@ -41,5 +41,23 @@
 # Implicit-context observations are hashed as raw bytes.
 /plan/evidence/DSH_H6E3_IMPLICIT_CONTEXT_2026-11-07/** -text
 
+# Host inventory observations are hashed as raw bytes.
+/plan/evidence/DSH_H6E0_HOST_INVENTORY_2026-11-07/** -text
+
 # Counterexample output is hashed as raw bytes by its README.
 /plan/evidence/OPERATION_PATTERN_CROSSWALK_COUNTEREXAMPLES_2026-11-07/** -text
+
+# Lane-separation observations are hashed as raw bytes.
+/plan/evidence/DSH_H6E4_LANE_SEPARATION_2026-11-07/** -text
+
+# Publication-gap output is hashed as raw bytes by its README.
+/plan/evidence/OPERATIONS_COMMAND_PUBLICATION_GAP_2026-11-07/** -text
+
+# Vocabulary probe output is hashed as raw bytes by its README.
+/plan/evidence/OPERATION_VOCABULARY_PLACEMENT_2026-11-07/** -text
+
+# Workspace-write probe observations are hashed as raw bytes.
+/plan/evidence/DSH_WORKSPACE_WRITE_ASYMMETRY_2026-11-07/** -text
+
+# Autonomy survey output is hashed as raw bytes by its README.
+/plan/evidence/OPERATION_AUTONOMY_DECLARATION_SURVEY_2026-11-07/** -text

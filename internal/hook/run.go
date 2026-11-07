@@ -46,6 +46,9 @@ func (w *Warning) Unwrap() error { return w.Err }
 type Runner struct {
 	World          ir.World
 	Implementation Implementation
+	// Callerは、フックから能力を呼ぶ下位の境界である（`CommandCaller`など）。
+	// 宣言に制限されていない境界をそのまま実装へ渡さず、必ずDeclaredで包む。
+	Caller Caller
 }
 
 // Runは、Patternの対話に宣言されたフックを実行する。
@@ -82,7 +85,22 @@ func (r Runner) Run(ctx context.Context, invocation Invocation) error {
 	if r.Implementation == nil {
 		return &Error{Code: "HOOK_IMPLEMENTATION_UNAVAILABLE", Message: "no implementation is configured for this hook boundary"}
 	}
-	if err := r.Implementation.Run(ctx, invocation); err != nil {
+	var err error
+	if calling, ok := r.Implementation.(CallingImplementation); ok {
+		// A hook that calls capabilities is only given the caller its own
+		// declaration permits. An unset caller is not a licence: Declared refuses
+		// every call without an inner boundary.
+		err = calling.RunWithCaller(ctx, invocation, declaredCaller(r.Caller, declared))
+	} else {
+		err = r.Implementation.Run(ctx, invocation)
+	}
+	if err != nil {
+		// A condition the hook found unsatisfied is a business answer, not an
+		// execution fault: it is returned as itself so a caller can report the
+		// outcome, and on-failure warn does not turn a refusal into a warning.
+		if isNotSatisfied(err) {
+			return err
+		}
 		if declared.Failure == "warn" {
 			return &Warning{Err: err}
 		}

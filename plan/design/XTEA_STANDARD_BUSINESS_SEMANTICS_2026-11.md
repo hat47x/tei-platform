@@ -174,29 +174,24 @@ X-TEAの`setVariant`・`setUserValueOf`は、スクリプトから任意の値�
 | 採番 | L4（契約）＋L1（宣言） | 一意性・連続性・欠番・桁あふれの契約、形式の設定 | 番号の実体（表） |
 | 利用者設定 | L1 | 宣言された設定項目 | 任意のキー |
 
-## 5. 実装の順序
+## 5. 実装の順序と現在地
 
-1〜5は参照実装まで進みました。6は設計のみです。
+1〜5は参照実装まで進み、6は設計のみです。どの段階も「宣言 → 実行時の値の結合 → 照会」の三段で作り、各段階の試験記録を`plan/evidence/`へ残しています。
 
-## 5.0 実装済みの範囲（2026-11-07）
+| 段階 | 実装 | 結合（Data宣言の属性役割） | 確認記録 |
+| --- | --- | --- | --- |
+| 1. 暦の宣言と休日Data | `internal/syntax/semantic_calendar.go`、`internal/validation/calendar.go`、`internal/businesscalendar/holiday_binding.go` | `business-day excludes <data>`（暦が休日Dataを名指す）、`holiday-date`（Dataが日付属性を名指す） | [暦の宣言と期間への結合](../evidence/XTEA_LOWCODE_CALENDAR_DECLARATION_2026-11.md) |
+| 2. 期間との結び付き | `period`の`calendar`、`internal/businesscalendar` | 期間が従う暦を名指す（未知・別名前空間は拒否） | [暦からの日付導出](../evidence/XTEA_LOWCODE_CALENDAR_CALCULATION_2026-11.md)、[期間キーの導出](../evidence/XTEA_LOWCODE_PERIOD_KEY_2026-11.md) |
+| 3. 税 | `internal/taxrate` | `tax-applies-from`・`tax-applies-until`・`tax-category`・`tax-value`・`tax-rounding` | [税率の適用期間と端数処理](../evidence/XTEA_LOWCODE_TAX_RATE_2026-11.md)、[Data結合](../evidence/XTEA_LOWCODE_TAX_RATE_BINDING_2026-11.md) |
+| 4. 通貨 | `internal/currencyrate` | `currency-rate-currency`・`-fiscal-year`・`-month-sequence`・`-middle`・`-buying`・`-selling` | [通貨換算の率の種類と方向](../evidence/XTEA_LOWCODE_CURRENCY_RATE_2026-11.md)、[Data結合](../evidence/XTEA_LOWCODE_CURRENCY_BINDING_2026-11.md) |
+| 5. 採番 | `internal/numbering` | `numbering-counter`・`numbering-digits`・`numbering-prefix`・`numbering-check`・`numbering-overflow` | [採番の契約](../evidence/XTEA_LOWCODE_NUMBERING_2026-11.md)、[Data結合](../evidence/XTEA_LOWCODE_NUMBERING_BINDING_2026-11.md) |
+| 6. 利用者設定 | 未実装 | — | — |
 
-1. **暦の宣言と休日Data**: `calendar`の宣言と、休日をDataで持つ形。営業日数・日付差の列挙を参照実装で照会する。
-2. **期間との結び付き**: `period`に`calendar`を結び、年度開始月から期間キーを導く。
-3. **税の宣言**: 適用期間の両端と端数処理を宣言し、境界（改正日）を試験する。
-4. **通貨の宣言**: 率の種類と適用日を宣言する。
-5. **採番の契約**: 一意性・連続性・欠番・桁あふれの契約を定め、参照実装で発行と取り消しを試験する。
-6. **利用者設定**: 宣言された項目だけを読み書きする（未実装）。
+三段の分け方には理由があります。
 
-| 段階 | 実装 | 確認記録 |
-| --- | --- | --- |
-| 暦の宣言 | `internal/syntax/semantic_calendar.go`、`internal/validation/calendar.go` | [暦の宣言と期間への結合](../evidence/XTEA_LOWCODE_CALENDAR_DECLARATION_2026-11.md) |
-| 日付導出 | `internal/businesscalendar` | [暦からの日付導出](../evidence/XTEA_LOWCODE_CALENDAR_CALCULATION_2026-11.md) |
-| 期間キー | `internal/businesscalendar/period_key.go` | [期間キーの導出](../evidence/XTEA_LOWCODE_PERIOD_KEY_2026-11.md) |
-| 税 | `internal/taxrate`（`Resolve`・`Bind`でData宣言の属性役割から行を結び付ける） | [税率の適用期間と端数処理](../evidence/XTEA_LOWCODE_TAX_RATE_2026-11.md) |
-| 通貨 | `internal/currencyrate`（`Resolve`・`Bind`でData宣言の属性役割から行を結び付ける） | [通貨換算の率の種類と方向](../evidence/XTEA_LOWCODE_CURRENCY_RATE_2026-11.md) |
-| 採番 | `internal/numbering` | [採番の契約](../evidence/XTEA_LOWCODE_NUMBERING_2026-11.md) |
-
-各段階で、参照実装の試験と証拠を`plan/evidence/`へ残します。
+- **宣言**はWorldに置き、受理の対象にします。X-TEAは表名・システム変数・列名を実行時に解決したため、宣言と実行の対応を読む人が確かめられませんでした。
+- **結合**は、宣言された役割から保存行を実行時の値へ写します。行の解釈失敗（非数値・解釈できない日付・非正の率）は、その行と属性を名指して報告し、飛ばしません。飛ばせば、欠落が後段の別の場所で「率が無い」として現れ、原因を追えなくなります。
+- **照会**は、結合済みの値だけを入力にします。ここへ既定値を混ぜないので、宣言の欠落が既定値で隠れません。
 
 ## 5.1 期間キーの導出（実装済み）
 
@@ -213,6 +208,17 @@ X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設�
 - 配布JAR（Driver M36）と固定ソースの同一性は未確認です。
 - 実DBでの税額・換算・採番の結果は、[#940](https://github.com/hat47x/tei-platform/issues/940)が担当します。
 
+### 6.1 参照実装で未実装のまま残したこと
+
+| 残り | 理由 | 何が分かれば決まるか |
+| --- | --- | --- |
+| Workspace例への税・通貨・採番Dataの追加 | 役割名は新しい語彙で、例へ入れると受理済み意味の変更になる | 例を受理経路へ載せるか、別の例を足すかの判断 |
+| 月内の締め（20日締めなど）の期間化 | X-TEAの「締め日を過ぎた日付を翌月へずらす」規則（`getMSeqOfDate` L2476–2484）を引き継がない方針にしたため、月内締めは独立した期間として宣言する必要がある | 期間キーに日を含めるか、期間を分けるかの宣言 |
+| 為替の年次・月次の優先順位 | X-TEAの「月次率0なら年次表へ」は0を制御値にしていたため引き継がない | フォールバックを宣言にするか、行の欠落を報告に留めるか |
+| 採番の発行と取消の取引結合 | `State`を返す形にしたが、取引への参加は呼出し側の責務として残した | 取引境界（`UnitOfWork`）との接続方法 |
+| 採番表の行の識別 | `IDNUMBER`に相当する役割を定義していない | 複数規則を1表に置くか、Dataを分けるか |
+| 利用者設定 | 設計のみ | 宣言された設定項目の形と、受理の対象範囲 |
+
 ## 7. 関連
 
 - [X-TEA知見の受容アーキテクチャ](XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md)（D6、D6.1）
@@ -221,6 +227,8 @@ X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設�
 - [評価時点の決定性](EVALUATION_CONTEXT_DETERMINISM_2026-10.md)
 - [移行計画](../workstreams/XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)（WP8）
 - [受容要件](../../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md)（RQ-C3）
+
+
 
 
 
