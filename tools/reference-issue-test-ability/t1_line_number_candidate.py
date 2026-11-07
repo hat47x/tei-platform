@@ -127,12 +127,21 @@ def main() -> None:
         valid_fixture = json.loads((root / BASE_SCENARIO.parent / "fixtures/order_valid.json").read_text())
         new_fixture = deepcopy(valid_fixture)
         new_fixture["numbers"]["sales.order_line.line_number"] = "0"
+        # The single-row number and the same row's relation-key projection
+        # must stay coherent; changing only the scalar would create an
+        # internally contradictory synthetic dataset.
+        relation = new_fixture["relationKeys"]
+        if len(relation) != 1 or relation[0]["relation"] != "sales.order.lines":
+            raise AssertionError("unexpected relation fixture shape")
+        relation[0]["keys"][0] = "0"
         assert_independent_rule(new_fixture, "not-satisfied")
         assert_independent_rule(valid_fixture, "satisfied")
         if new_fixture["numbers"]["sales.order_line.quantity"] != valid_fixture["numbers"]["sales.order_line.quantity"]:
             raise AssertionError("candidate unexpectedly changed quantity")
-        if new_fixture["relationKeys"] != valid_fixture["relationKeys"]:
-            raise AssertionError("candidate unexpectedly changed relation uniqueness")
+        if len(relation[0]["keys"]) != len(set(relation[0]["keys"])):
+            raise AssertionError("candidate unintentionally also violated relation uniqueness")
+        if new_fixture["numbers"]["sales.order_line.line_number"] != relation[0]["keys"][0]:
+            raise AssertionError("row number and projected relation key disagree")
         fixture_path.write_text(json.dumps(new_fixture, indent=2) + "\n", encoding="utf-8")
 
         candidate = make_candidate(base, fixture_name)
@@ -192,7 +201,10 @@ def main() -> None:
         candidate["steps"][-1]["expectValidations"][TARGET_RULE] = "not-satisfied"
         proposal.write_text(json.dumps(candidate, indent=2) + "\n", encoding="utf-8")
         new_fixture["numbers"]["sales.order_line.line_number"] = "1"
+        new_fixture["relationKeys"][0]["keys"][0] = "1"
         assert_independent_rule(new_fixture, "satisfied")
+        if new_fixture["numbers"]["sales.order_line.line_number"] != new_fixture["relationKeys"][0]["keys"][0]:
+            raise AssertionError("positive control row and relation projection disagree")
         fixture_path.write_text(json.dumps(new_fixture, indent=2) + "\n", encoding="utf-8")
         lying_fixture = real_cli(cli, root, "scenario", "run", "-scenario", str(proposal),
                                  "-workspace", str(WORKSPACE), "-step", TARGET_STEP,
