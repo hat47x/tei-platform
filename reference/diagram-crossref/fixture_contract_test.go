@@ -29,6 +29,17 @@ type fixture struct {
 		Function *string `json:"function"`
 	} `json:"businessActions"`
 	NegativeVariants []struct{ ID string } `json:"negativeVariants"`
+	CanvasViews []struct {
+		ID string `json:"id"`
+		Instances []struct {
+			OccurrenceID string `json:"occurrenceId"`
+			SubjectID string `json:"subjectId"`
+		} `json:"instances"`
+		RelationOccurrences []struct {
+			ID string `json:"id"`
+			RelationID string `json:"relationId"`
+		} `json:"relationOccurrences"`
+	} `json:"canvasViews"`
 }
 
 type expectation struct {
@@ -46,6 +57,12 @@ type expectation struct {
 		Cells map[string]map[string]string `json:"cells"`
 	} `json:"expectedFunctionDeclaredCrudMatrix"`
 	KnownMutantRejections []struct{ ID, Expected string } `json:"knownMutantRejections"`
+	ExpectedCanvasViews struct {
+		ViewIDs []string `json:"viewIds"`
+		OccurrenceCount int `json:"occurrenceCount"`
+		SharedSubjects map[string][]string `json:"sharedSubjects"`
+		RelationOccurrences map[string][]string `json:"relationOccurrences"`
+	} `json:"expectedCanvasViews"`
 }
 
 func fixtureProblems(f fixture, want expectation) []string {
@@ -168,6 +185,73 @@ func fixtureProblems(f fixture, want expectation) []string {
 			add("Business Action references unknown Function")
 		}
 	}
+	// Presentation instance identity is separate from Semantic Subject identity.
+	canvasIDs := map[string]bool{}
+	occurrenceIDs := map[string]bool{}
+	sharedSubjects := map[string][]string{}
+	relationOccurrences := map[string][]string{}
+	for _, view := range f.CanvasViews {
+		if view.ID == "" || canvasIDs[view.ID] {
+			add("duplicate/empty canvas view ID: " + view.ID)
+		}
+		canvasIDs[view.ID] = true
+		for _, instance := range view.Instances {
+			if instance.OccurrenceID == "" || occurrenceIDs[instance.OccurrenceID] {
+				add("duplicate/empty view occurrence ID: " + instance.OccurrenceID)
+			}
+			occurrenceIDs[instance.OccurrenceID] = true
+			if _, exists := entities[instance.SubjectID]; !exists {
+				add("view occurrence references unknown Semantic Subject: " + instance.SubjectID)
+			}
+			sharedSubjects[instance.SubjectID] = append(sharedSubjects[instance.SubjectID], instance.OccurrenceID)
+		}
+		for _, edge := range view.RelationOccurrences {
+			if edge.ID == "" || occurrenceIDs[edge.ID] {
+				add("duplicate/empty relation occurrence ID: " + edge.ID)
+			}
+			occurrenceIDs[edge.ID] = true
+			if _, exists := edges[edge.RelationID]; !exists {
+				add("view edge references unknown Relation: " + edge.RelationID)
+			}
+			relationOccurrences[edge.RelationID] = append(relationOccurrences[edge.RelationID], edge.ID)
+		}
+	}
+	if len(canvasIDs) != len(want.ExpectedCanvasViews.ViewIDs) {
+		add("canvas view count mismatch")
+	}
+	for _, id := range want.ExpectedCanvasViews.ViewIDs {
+		if !canvasIDs[id] {
+			add("missing required canvas view: " + id)
+		}
+	}
+	if len(sharedSubjects) == 0 || len(occurrenceIDs) == 0 {
+		add("empty canvas projection")
+	}
+	instanceCount := 0
+	for _, view := range f.CanvasViews {
+		instanceCount += len(view.Instances)
+	}
+	if instanceCount != want.ExpectedCanvasViews.OccurrenceCount {
+		add("canvas subject occurrence count mismatch")
+	}
+	for id, expected := range want.ExpectedCanvasViews.SharedSubjects {
+		actual := append([]string(nil), sharedSubjects[id]...)
+		clone := append([]string(nil), expected...)
+		sort.Strings(actual)
+		sort.Strings(clone)
+		if !reflect.DeepEqual(actual, clone) {
+			add("shared Semantic Subject lost across canvases: " + id)
+		}
+	}
+	for id, expected := range want.ExpectedCanvasViews.RelationOccurrences {
+		actual := append([]string(nil), relationOccurrences[id]...)
+		clone := append([]string(nil), expected...)
+		sort.Strings(actual)
+		sort.Strings(clone)
+		if !reflect.DeepEqual(actual, clone) {
+			add("shared Relation lost across canvases: " + id)
+		}
+	}
 	mutants := map[string]bool{}
 	for _, m := range f.NegativeVariants {
 		if mutants[m.ID] {
@@ -248,6 +332,9 @@ func TestFixtureAuditRejectsFourKnownMutations(t *testing.T) {
 		}},
 		{"break-referenced-edge-target", func(x *fixture) {
 			x.Relations[0].To = "no.such.subject"
+		}},
+		{"duplicate-view-occurrence", func(x *fixture) {
+			x.CanvasViews[1].Instances[0].OccurrenceID = x.CanvasViews[0].Instances[0].OccurrenceID
 		}},
 	}
 	for _, tc := range cases {
