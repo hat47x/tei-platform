@@ -254,3 +254,23 @@ tests:
 - https://github.com/WebAssembly/component-model/blob/main/design/mvp/WIT.md
 
 **実施状況**：2026-11-07の他チャット・現行main・既存Issueの静的突合と移行条件の設計追補。PD-0〜PD-7、Trait合成、actual two consumer、実Go Build/Studio/UI/Host、CLI Skill/MCP、実DB/HTTP副作用、Self-buildの新規試験は**NOT RUN**。正式Schema/ABI、数値Budget、Owner Meaning Acceptanceは**NOT ACCEPTED**。本追補は#1119のG0〜G4を置換せず、実証時の必要証拠を既存Gateへ渡す。
+
+## 14. D1実証で再利用するGo閉包と実Providerの証拠（2026-11-07、現物照合）
+
+この節は新たな契約正本ではなく、**PD-0〜PD-4を実装する前の停止線**である。旧[物理方式選定Draft #2885](https://github.com/hat47x/tei-platform/pull/2885)は**未マージでクローズ**されており、その議論は履歴としてのみ参照する。実装判断の正本は本書と#1251/#951/#1016/#3262/#3267。
+
+**名称の区別**：以前のQuote **Q-D0/Q-D1/Q-D2**は直接Go計算／静的Go Provider／別Processの*物理方式比較*。本書の**PD-0〜PD-7**はCLI/Studio/生成Runtimeの*Plugin-first製品移行検収*であり、同じD1という通称でも別の試験である。[#3021](https://github.com/hat47x/tei-platform/pull/3021)のQuote23件・D0/D2限定CI成功は、Inspector Providerの意味、Source/Scope、CLI/Studio二Consumerの実呼出しを証明しない。
+
+| 検証列 | 確認できた実装と証拠 | そこから推論してはいけないこと |
+| --- | --- | --- |
+| **Module選択** | main統合[#3091](https://github.com/hat47x/tei-platform/pull/3091)のGo事前分類。空stream／標準Libraryのみをunknownへ戻す負例は[旧Draft #3130](https://github.com/hat47x/tei-platform/pull/3130)の固定CIで成功 | Exit 0・supportedを対象Source全件読込、実BuildやProvider呼出しのPASSにしない |
+| **供給byte** | main統合[#3142](https://github.com/hat47x/tei-platform/pull/3142)はcmd/teiの宣言17件／実選択12件／未選択5件と選択Moduleのgo.sum照合を分離。main統合[#3144](https://github.com/hat47x/tei-platform/pull/3144)はcorrupt-supplyを追加 | 未選択宣言だけで不合格にしない。go listが見落とす展開済み改変は別途go mod verifyで確認。供給元Trustは別 |
+| **BuildとSource閉包** | main統合[#3156](https://github.com/hat47x/tei-platform/pull/3156)は外部Module供給でcmd/tei実Build成功、同じadapterのSource閉包はrejectedというX1実測 | Artifact生成成功→Closure qualifiedも、Closure rejected→Artifact不存在も導かない。外部Module拒否方針#1090をここで緩めない |
+| **Builtin実Call** | 既存internal/workspace/plugin_native_implementation_reference_test.goはimplementation.teiを読んでBuildPlan/Materialize/Lock/Builtin Invokeを結ぶ | interpreted-builtin/hostと固定テスト用Engine digestから実Go Binaryへの選択Provider Bの静的Linkを推定しない |
+| **BOM/Cache** | [BOM Draft #3269](https://github.com/hat47x/tei-platform/pull/3269)は合成Version Matrix、[Cache検討#3271](https://github.com/hat47x/tei-platform/issues/3271)は派生Snapshotの実験計画 | observed-pass、cache hit、version組合せの宣言を同一Target/Attemptの資格やOwner意味受理にしない |
+
+**本節と同じ新ブランチの実コード修正**：#3144がmainに統合された後のclassifyModuleRootsへ、選択Module rootが0件ならunknownへ戻す判定を再適用し、空stream／標準Libraryのみの2負例をテストする。既存corrupt-supply・missing-module・unknownの検査は保持し、両修正を**同一HEADのCI**で確認する。この事前分類に成功してもGo Build、Artifact、権限、業務Conformanceは成立しない。
+
+**最初のPlugin-first D1実装の証拠パケット**：同じWorkspace RevisionとConsumer Attemptに、(1)Required Contract/Trait・Source/Scope、(2)選択Provider ID/Version/Lock、(3)実Loaded/Consumed SourceとBuild member/Artifact、(4)CLI・StudioそれぞれのInvokerとResult、(5)独立Expected/Unknown/現在Grantを**別々のClaimとして**記録する。Provider Bを選択して実際はAを呼ぶ偽陽性、未選択Providerのinit混入、未選択候補追加による過剰失効を区別する。テストに不要なDB/Effectを捏造しない。
+
+**順序**：PD-0でread-only Inspector/Model Catalogの実Sourceと実Consumerを固定→PD-1でA/B選択と負例→PD-2でCLI/Studio二Consumerの実Call→PD-4で静的Go Member/Artifactと非干渉を実測。Self-build #2831や共通Cache/BOM製品実装は別Gateであり、PD-1へのHard Dependencyにしない。設計情報のread-only表明はログ・ファイル・Egressが無いことの保証にならない（#3149）。**新Inspector Provider／実二Consumerの試験／Go静的D1リンク／Cache/BOM E2EはNOT RUN**。第二Registry/Runtime Authority/Runnerを追加しない。
