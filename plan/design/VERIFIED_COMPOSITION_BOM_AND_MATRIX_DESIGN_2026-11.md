@@ -284,3 +284,29 @@ Server/ClientのGraph構造、HTTP Adapter、Conformance EvidenceをBOMに**リ�
 5. 当該SubjectのOwner受理・Trust/Grant/Disclosureが別に成立した場合だけ#3267の限定BOMを発行。単独Reference PASSや履歴Cache hitは資格条件を満たさない。
 
 **実施状況**：設計は本節へ反映。Trait/HTTP Graph/Test Coverage/C0/C1の製品統合は未実施。`witness_audit.go`および合成テストは新規追加したが、最新GitHub HEADのCI結果を確認するまでは実装上の合格を主張しない。Trusted/actual E2EとOwner受理はNOT RUN。
+
+
+## 11. 履歴Capability EvidenceのProducer規則変更をVersion Matrixに組み込む（2026-11-08／限定検査）
+
+### 11.1 実際に発生した差分：表示上の`v0`は同じでも選択規則が変わる
+
+[main merged #3337](https://github.com/hat47x/tei-platform/pull/3337)の初回実記録は`reference/workspace`で12個の宣言Capabilityのうち6個が`unselected`だった。これは`database-instance`の`postgres`等をCapability ID `database.postgres`と文字列比較しないという、**当時の限定計測規則の記録**であり、実Providerが使われていない事実ではない。その後の[main merged #3350](https://github.com/hat47x/tei-platform/pull/3350)・[#3363](https://github.com/hat47x/tei-platform/pull/3363)では`SupportsDatabaseProvider`に基づく、既存Validatorに合わせた選択判定に変更された。同じ`Schema`と`RuleVersion:v0`の**ラベル**でも`ruleFingerprint`が変わる。
+
+[Draft #3379](https://github.com/hat47x/tei-platform/pull/3379)は保存済み歴史的raw JSONと現行`workspace.Load`→`plugincoverage.Derive`を同じPlugin/Version/Kind+ID単位で照合し、古い規則に由来する`unselected`→新規則の`selected`とProducer Rule差を反証するテストを追加した。旧rawを現在の選択資格へ書き換えない。
+
+### 11.2 BOMに再利用可能な証拠の判定表（新Coreスキーマではなく受入規則）
+
+| 歴史的Claim | 変更後の判断 | 不正な推論 |
+| --- | --- | --- |
+| Plugin/Capabilityが`unselected`（旧Ruleで観測） | 当時の歴史的Observationを保持し、現行World/Rule/Environment/Scopeで再導出 | 未選択が永続的に必要能力欠落／欠陥 |
+| 同じPlugin Package/Version文字列 | `Kind+Capability ID+Contract/Provider Implementation`、Target/Scopeを再照合 | 同Packageだから全Trait/Capabilityが使われた |
+| `Schema`/`RuleVersion`表示が同じ | ルール内容の`ruleFingerprint`と実Producer Implementation、Source Closureを照合 | 表示上同じ`v0`ならTest Witness流用可 |
+| 新Ruleで`selected`になった | 合法なCandidate/Bindingとして選択済みの**範囲**のみ。#951のProvider一意解決、#1251実Load/Invokeへ別送 | `selected`→実Provider呼出→Conformance PASS |
+| Build Report／Stage Driverの自己報告 | #3336のinvoker/invokedと実ディスクArtifactの再取得、#2600の実消費Closureで照合 | Self-report、Tool Exit0、cache hitが正式BOMを認定 |
+| 同じ2×2 Version Matrixを再計画 | 先にProducer/Required Context/Source/Target/Rule再資格。合法な候補2項集合と全4行の実独立Testを別票へ | 既存Pairwise計画100%がRule変更後も互換性100% |
+
+**対象相対の失効**：宣言や選択数が変化したからといって全PluginのSemantic Source/Build Artifact/過去Test結果を無条件に失効させない。変わったProducer Ruleを実際に用いた**Selection/Eligibilityの派生Claim**を再導出し、実選択・実Build入力・必要Testの依存経路で影響範囲を限定する。対象依存が不完全なら`unknown`に保つ。旧`unselected=6`と現行の値を「改善KPI」へ自動変換しない（測定規則が違うため）。
+
+**P0の接続**：#3262からRequired Source/Rule/Relation/Loader/Targetの閉包を得る→main #3337/#3350/#3363の現行`Capability Report`を**現在の規則で再生成**→#951の合法解決/Version Lock→#1251の実Inspector Provider A/B→#1180/#2514の独立Expectedと同一Attempt/Artifact→#3267の限定BOM行。BOM発行は本節を読んだだけでは可能にならない。
+
+**資格上限**：#3379は過去/現在のReference Ruleの**読取結果を比べるだけ**。実Provider選択、Go実Link/Invoke、CLI/Studioの二Consumer、Runtime/Grant、Trusted Conformance、BOM配布は**NOT RUN**。#3297自体もmainからdivergeしたDraft・未統合であり、新Targetや新Hard Gate、第二Resolver/Runner/Cache/Authorityを追加しない。
