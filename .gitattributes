@@ -70,3 +70,6 @@
 
 # Sink inventory observations are hashed as raw bytes.
 /plan/evidence/DSH_H6E6_SINK_INVENTORY_2026-11-07/** -text
+
+# Drift-check reference output is hashed as raw bytes by its README.
+/plan/evidence/OPERATION_DRIFT_CHECK_REFERENCE_2026-11-07/** -text
