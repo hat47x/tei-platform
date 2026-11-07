@@ -704,3 +704,31 @@ G1〜G5で各観測は取得時点が異なる。要求するのは**同一瞬�
 **次の境界決定（#2622/#2611/#2555既存Owner）**：`plan-migration`を実行入口に拡張するのではなく、①正式Migrationを実行するHost/Providerの責任者・接続先/Grant、②現Plan/History/Actualを同一Attemptへ結合する方法、③破壊的/非Tx/部分適用の停止/復旧保証を先に確認する。製品の`apply-migration`コマンドや新Migration Host/Storeは、この調査だけで新設しない。#1163の既存Evidence Packetへ`input-kind=file/live`・`input-scope/target/reader`・`actual-execution-attempt`を**診断項目**として渡し、新しいCore Schemaの採用は求めない。
 
 **CI修正の事実と上限**：旧§20.5に記録した`acfce089`/ `8166c655`のHealth失敗（原因：`history_checksum_characterization_test.go`の`gofmt`）に対し、同じDraft branchで**空白1か所のみ**を整列するcommit `05304eab133627dca22bec4730343023c4749526`を作成、Sourceを再取得して変更位置を確認した。過去HeadのGo test/vet/validate PASSは現Headへ自動継承しない。新Headのexact-head CI完了を別途確認するまでHealthの成功を主張しない。新しい実Go/PGテスト、正式Caller接続、Owner受理はNOT RUN。
+
+<!-- tei-db-migration-snapshot-trust-20261107 -->
+### 20.7 Actual Schemaの入力真正性とClosed-World資格：`Fingerprint`値・表一覧を「実DBの現在事実」と誤認しない（2026-11-07、静的照合／提案）
+
+**§20.6のSource照合を一段進めた新事実**：`physical.SchemaSnapshot`の主要属性は`Database/CapturedAt/Fingerprint/Tables`であり、取得した実Connection・Provider/Tenant/Schema scope、読取のページ完結性や権限・取得全体の成否をこの型自体は保持しない。`SchemaSnapshot.Normalize()`は表/列/Constraint/Indexの順序を整えるが、`Fingerprint`を計算・照合しない。`schemadiff.Compare(desired, actual)`はLogical Databaseを比較して表一覧を集合差分する。`cmd/tei/main.go`の`plan-migration`は`-actual`の**外部JSON**をDecodeし、`schemadiff.Compare(desired.Normalize(), actual.Normalize())`でDiffを作り、**ファイル内の値をそのまま**`migration.Plan(..., actual.Fingerprint, ...)`へ渡す。`plan.go`も文字列の真偽やSchema byteとの整合を検証せず、`Definition.BasedOnActualFingerprint`へ保存する。
+
+従って、**現CLIが返すMigration Definitionの`BasedOnActualFingerprint`は「入力ファイルの申告値」であって、その時点で実DBから検証・束縛されたSchema fingerprintを表す保証はない**。値が空欄・古い・別Source由来でも、別の検査なしに`Plan`の入力へ渡る。ここでの`Fingerprint`が何をハッシュ／世代表示するかは現段階で一律確定していないため、既存フィールドを無条件で「正規化Snapshot JSONのSHA-256」とみなして上書きする設計は採らない。
+
+**より重要なClosed-World反例**：`schemadiff.Compare`は`actual.Tables`に存在しない表を「実DBに存在しない表」と扱い、desiredにだけある場合は`CreateTable`候補を作る。しかしActual一覧がPermission/Filter/接続間違い/途中打切りで**部分取得された場合**、その差分は「表が存在しない」ではなく「表の有無を判定できない」。全ページ完了・Scope/権限が未確認のまま、構造Diffが解決済みであることを**G1のDDL適用資格に昇格させない**。データ行の0件/非開示とSchema一覧の欠落は別観測だが、どちらも部分集合を対象全集合と推認しない原則は共通（#2506/#2600）。
+
+| 既存MA-01/02を補う新Fixture | 固定した同一Source・入出力 | **独立Expected（移行適用の資格）** |
+| --- | --- | --- |
+| **MA-08a Claimed fingerprint collision** | `actual-A.json`と内容を変えた`actual-B.json`へ同じ申告`Fingerprint=fp1`を与える。`BasedOnActualFingerprint`は両方同じになり得る | Diff/Planの生成が成功しても、FingerprintがSchema内容と対応する**証明なし**。`Apply Admission=unknown`、Provider Origin/アルゴリズム/対象集合・版を検証するまで実行しない |
+| **MA-08b Blank/stale fingerprint** | 取得時点・Schema内容が異なるのに`Fingerprint=""`、または旧`fp1`を再提出 | 空欄を検証済み最新値として扱わない。**計画候補の生成**と**変更前提が現在も成立すること**を区別。申告値一致をABA/Grant現在性の証拠にしない |
+| **MA-09 Partial schema looks absent** | 独立Expectedに既存表`public.audit_log`を固定。Readerの部分集合`Tables=[public.orders]`を`-actual`へ渡す。desiredには両表あり | `Compare`が`CreateTable(public.audit_log)`候補を作り得ても、**実DBに表がないという負の事実は未確定**。全集合を証明できるReader/Scopeで再観測するまでG1適用停止 |
+| **MA-10 Same input, different Origin** | `Database=sales_core`、`Tables`、`Fingerprint`が同じJSONを、異なる実Instance/Tenantやoffline cacheから提出 | ファイル内容の同一性・Logical DB名一致は実Target束縛を証明しない。Provider/Connection/Scope/Read epoch/Authorityと最終消費者を明示するまで`unknown`（既存XH-01/03の深化） |
+
+**同一Fixtureでの観測列（新Core型ではない）**：
+- `declared`：要求したLogical Database、実行目的/要求Scope、計画Source/Mapping、`BasedOnActualFingerprint`の申告値とその**定義済み意味**。
+- `observed`：実際に読んだConnection/Instance/Provider、Readerと版、取得権限・Scope・全件性、`CapturedAt`とWatermark、保存した入力ファイルの**実消費byte digest**。読み取りの成功・不成功を別記。
+- `computed`：Providerが定義した算法/対象領域から再算出または証明できる場合のみ検証済みSnapshot fingerprint。**入力ファイルのhash**と**Actual Schemaの完全・現在のhash**を同一Claimにしない。
+- `accepted`：G0の計画用入力として使用可か、G1のApply Admissionとして十分か、Owner/Host Grantが現在有効かの判断を**別列**にする。`unknown`や不完全読取はPlan候補の存在で解消しない。
+
+これはOKFの`Attested Computation`で強調する**実入力・計算内容・観測可能な結果・検証範囲の分離**を、#1163既存Evidence Packetと#2600の入力鮮度に適用する案である。新しい署名基盤、Attestation Registry、全Provider共通Fingerprint算法を設けない。計算記録があっても業務MeaningのOwner受理・実DB権限・現在Grantは得られない。また、[merged #3060](https://github.com/hat47x/tei-platform/pull/3060)の宣言/実行`Differences`保持は**X-TEA参照実装の限定証拠**であり、Migrationの実Provider適用を合格にする根拠ではない。
+
+**最小の試験順（新Runnerを作らない）**：①`physical.SchemaSnapshot.Normalize`/ `schemadiff.Compare`/ `migration.Plan`の既存APIでMA-08aとMA-09の**現挙動**を特性化（そのGo PASSは安全な適用の証明ではない）→②同じExpectedをProvider/Reader/実Targetの上位Admissionへ渡し、不適格なら`executeCalls=0`とする→③使い捨てPostgreSQLの完全/部分・別Instance・実変更による独立ReadをG1〜G3へ追加する。第一段のGo fixtureで実Reader完全性・実Provider効果を実証したと主張しない。
+
+**担当と採否**：#2622は実Provider観測のScope/Capability、#2611はDB Alias/実Instance、#2600/#1163は実消費入力/証拠束縛、#2555は移行進行とCutover、#2514は独立期待値を既存の責任範囲として保持する。すでに存在するMA-01/02、HIST-03、XH-01/03へ統合し、新Gate番号や独立Registryは設けない。本節はDocs提案・Source-static。MA-08〜10のGo/PG/Owner試験は**NOT RUN**。
