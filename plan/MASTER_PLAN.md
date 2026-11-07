@@ -438,6 +438,16 @@ AIの自律的な作業と実行権限を区別します。AIがツールを直�
 
 **後続の任意read-only PoC**：[TAI #514](https://github.com/hat47x/tai-pleroma/issues/514)の既存AC-01〜12に従い、正規Computation/typed parameters/実Executor bytes・Job/Receipt/Attesterの実Identityと独立再Readを一件だけ照合する。OKFの`generated`/`verified`/`stale_after`は知識Conceptの来歴・現在性であり、実Actorの認証やTEI Owner Meaning/Host Grantではない。OKFはAttester ABI・wire format・sandboxを定めないため、第二Host/Receipt Registry/新共通CLIを本計画から追加しない。Product SkillのOwnerは**open #2605**、TEI #2614はclosed/duplicate。P0の実Harness・H3ロード・Attester/Job/Receipt E2Eは**NOT RUN**。Go単一バイナリ、既存Shared Acceptance、外部Hostの責務を維持する。
 
+### 外部AI Harnessの実Tool接続済みと比較試験の未適格を区別（2026-11-07）
+
+[AI-first設計§5.10](design/AI_FIRST_REQUIREMENT_PRESSURE_AND_HEADLESS_VERIFICATION_2026-11.md)に、従来の「初回H2 Tool実起動は未実施」という状態の**明示的な訂正**を記録した。[TEI実測PR #3113](https://github.com/hat47x/tei-platform/pull/3113)／[TAI #168](https://github.com/hat47x/tai-pleroma/issues/168)のDSH 0.2.2-rc.1 Windows headless探索では、固定TEI `50ebf801…`と公開Source/固定Taskで、完了した`h2-08`のTool call 56／result 55、実TEI Binary起動32件とCLI/Source Indexの読み取りを確認した。**外部AI Harness→Tool request→実TEI CLI→Tool Resultの技術的接続は限定達成済み**。PR #3113はEvidenceのOpen/未マージであり、探索9試行中の短い接続確認2、長いTask完了1、Tool JSON連結エラー5、無効Config1は試行別の歴史的証拠として記録する。
+
+**次のBlocking Exitを変更**：最初の「実Tool Callを一件取る」から、**比較資格を持つH2 Tool-onlyを一件取る**へ移す。探索Sessionはread-onlyでも作業Dir外のWorktreeを読めたため、Skill/独立期待値/旧回答の物理非露出・OS隔離が実証されていない。Session logの`enabled:false`は実通信送出0の証明ではなく、Windows `workspace-write` SandboxはWin32 5で初期化失敗。TAI #168の既存SK-02 RunbookをTrial正本として、(1)禁止Path/Canary実アクセス拒否、(2)許可された外部送出と未観測Sinkの分離、(3)固定Task/Source/CLI/Tool/Model/Skill／Reviewer-only期待値、(4)実Tool→回答→Consumer受領・独立採点を同一Sessionで確認、(5)その後H3実Skill root/References Loadと`H2→H3→H3→H2`四Sessionを開始する。探索9試行から成功例を事後選抜せず、**比較適格Trial 0/4**のままとする。#2509がDSH固有の実証、#2515/TAI #232が実OS・開示、#2605がTEI Skill、TAI #168が比較Owner。MALFORMED_RESPONSEはTool連結JSONという実失敗であり、`maxParallelToolCalls:1`でも回避できなかった。異なるProfile/Provider/モデルへの修正は新Pinned Trial Groupで行う。TEI独自Harness Runtime/Runner/Validatorは増設しない。
+
+[main統合 #3051](https://github.com/hat47x/tei-platform/pull/3051)のCompletion評価は、未確立Coverageの空Targetを`unverified`、完全と確認した空Targetの`deny`を`fails`へ区別するよう改善済み。明白な反例が1件あれば部分取得でも`fails`。ただしCaller自身の`CoverageComplete`真偽や全Source/Target/Field/Tenant/Snapshot・実Provider Readを証明する改修ではない。[Draft #2935](https://github.com/hat47x/tei-platform/pull/2935)の`readByLoader`もLoader読取の限定目印であり、Parse/Build/実Consumer読取へ昇格させない。P0-L（既存`*.tei`実Provider）とP0-M（新`*.tei.md` Reader）を並行維持し、#3030は移行Owner、#2514/#2506は独立期待値・母集団検証を担当する。
+
+**現在の証拠と未達**：DSH→TEI CLI技術的接続は探索1件で限定実測済み、#3051 Completionの局所修正はmain統合済み。一方、比較適格H2/H3、H3実Skillロード・効果/コスト、実OS拒否・Egress不在、`*.tei.md` Reader、全Provider対象集合の完全性、Owner意味受理・実Host Effectは**NOT RUN／NOT QUALIFIED**。前節§5.9の「H2実Tool呼出し未実施」は新Evidence以前の歴史状態であり、現在の適格性判定を上書きしない。
+
 ## 作業領域I：周辺技術との連携と本番運用の境界
 
 ### 目的
