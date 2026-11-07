@@ -517,3 +517,41 @@ main統合[Reference #3325](https://github.com/hat47x/tei-platform/pull/3325)は
 実装順は**Fixture監査→実TEI Source/Meaning→Headless二Canvas Graph／Matrixを同一Revisionで実出力→Occurrence/CRUD CellからQualified Sourceへ戻る→独立Expectedで1 Mutant以上検出**。両Canvas間の編集同期／SHO Writer／実Host Permissionや`view -execute`のEffectは別の試行。大きいCanvas分割の操作性を先に新しいCore Canvas/Task型にしない。Cardが未整理のDocument/Itemであっても、標準Data Structureはその表示方式と独立して保持し、可視カード化を強制しない。
 
 本追補はSourceと既存テストの**実観測→受入条件への引継ぎ**であり、MC-01〜04の新Product Graph/CRUD E2E、Go Mutation実行、複数Canvas GUI、SHO、業務Receipt、Owner意味受理は**NOT RUN**。第二Graph/Domain/Scenario SSOT、独立Context Reader、Host／Runnerを増やさない。
+
+
+## 19. 三種の入力Sourceから三視点へ渡す前の実体帰属（2026-11-08追補）
+
+### 19.1 「Sourceとして存在する」を「業務意味として読めた」にしない
+
+他レーンの実CLI調査（[#3346](https://github.com/hat47x/tei-platform/issues/3346)、[Draft #3356](https://github.com/hat47x/tei-platform/pull/3356)）では、`docs/`・`plan/`配下のMarkdownをWorkspace `sources`に置いても、現行Loaderは`*.tei`の意味解釈を行い、設計Markdownは`managedFiles`に現れても`readByLoader:false`に留まる。これらを`Data/Function/Businessを読み込んだ`証拠へ転記してはならない。#2621のMarkdown Authoring/Sourceと、#3262の実Required/Received ClosureがOwner。別のMarkdown専用意味Parserを本PRで作らない。
+
+**三視点モデルへの入場は異なる3種類**として扱う。
+
+| 入力の区分 | 実際の到達点 | 三視点への受渡し上限 |
+| --- | --- | --- |
+| **Accepted TEI Source** | 選択Workspace／実Loaderが読み込んだSource、型付きSubject/Relation/Role、Ownerが限定的に受理した意味 | 対象Scope/Revision/Closure内でGraph/CRUDに利用。Displayと編集Intent/現在Grantは別 |
+| **Managed Markdown / Imported Document** | 管理対象・内容保全／Source Locationを示せるが、`readByLoader:false`やParser/Meaning未受理 | 文書の引用・候補・Raw Itemとして提示可。宣言済みData/Relation/Function/CRUDの存在へ自動昇格しない |
+| **Observed Physical DB Schema** | Catalog Readerが観測したTable/PK/FK/UNIQUE、観測時点・Fingerprint、物理Provider/Scope | Data/Relation/Keyの**Structural Candidate**。複合列や方向を保持するが、業務Relation/CRUD、Tenant Grant、実DDL Effect・Owner受理ではない |
+
+[Draft #3372](https://github.com/hat47x/tei-platform/pull/3372)は既存`SchemaView`に`CapturedAt/Fingerprint`、`TableView`に`UniqueConstraints/ForeignKeys`をread-only追加する**未マージ製品コード候補**で、実`Postgres CatalogReader→Introspect→Derived→Workbench`の経路を**fake Catalog**から検査する。これを受理するなら、物理複合FKの実観測原型とSource RevisionをCandidateに渡せるが、**実PG Catalog・Actual Read/Consumer・Accepted Relationは未検証**。Presentational ER/CRUDは物理Constraintが無いことから業務Relation無しを推論せず、同じ列の別FK二本を1辺に畳まない。受理票は#3270/#1126/#3263がOwnerで、#3303は候補への意味受入条件だけを記録する。
+
+### 19.2 Design Context Gateは進展したが、閉包の範囲は限定
+
+main統合済み[PR #3354](https://github.com/hat47x/tei-platform/pull/3354) の固定HEAD[専用CI #42391707962](https://github.com/hat47x/tei-platform/actions/runs/42391707962)は**11実Read-only CLI Reply／32合成Consumer Control、既存6 pinned Scenario・T1-A候補と独立拒否**を検証した。3つの独立Required Rule、Focused ValidationのCanonical属性・Relation/Parent・Source Index Definition／Artifact・版一致まで照合する。しかし`boundedReference=partial`、`qualifiedTestGeneration=false`のまま。**Rule/Relationの限定確認を、Function/Business/全業務モデルの閉包やDiagram/CRUD出力の完全性へ昇格しない**。
+
+三視点P0-Mへの最短接続は、まず実TEI Sourceに存在する最小のData/Relation/RuleだけをGraphに投影し、Source LocatorとRevisionを保持して`supported`とすること。未受理のFunction CRUD/Business Action/外部Docは`unknown/incomplete`と明示してよく、Productが要求する三図/CRUD「完全」の合格は別のRequired集合を独立に観測するまで保留する。
+
+### 19.3 同一記号による誤接合を落とす差分検査
+
+| 対照 | 一因子差分 | 独立Expected／停止条件 | Owner |
+| --- | --- | --- | --- |
+| SA-01 | 同じ`sales.order`文字列のManaged Markdownと実TEI Loader済みSubject | 同名だけで同じAccepted Meaning/Source Locatorとしない。`readByLoader:false`の宣言からCRUDを確定しない | #3346/#3262 |
+| SA-02 | Physical FK二本が同じ端点／異なる列組・制約IDを持つ | 物理観測は2本を保持。業務1:N/組成・同一Relationという受理は未実施 | #3270/#1126/#3263 |
+| SA-03 | Schema Snapshotの`Fingerprint`あり、Source/Provider ScopeやSnapshot完全性が未証明 | 指紋の存在だけで全DBの閉包・現行実Read・Key不変を認定しない | #3270/#2514 |
+| SA-04 | Rule/Relationの11実CLI受領は成立、Function/Businessが未取得 | 局所RequiredだけPASSし三視点/CRUD完全性は`partial`。観測されないCUDを`none`にしない | #3262/#2514 |
+| SA-05 | Source A→B→AでFingerprintが戻ったが、Graph/Canvas表示Occurrence/操作epochは旧値 | Source内容の再一致と現在のSelection/Action Offer/Grantを別検収にする | #2582/#2598 |
+| SA-06 | WorkbenchのFK・UNIQUE候補だけでDiagramを出し、Query/Providerの実ReadもCRUD宣言も無い | Read-only物理ER候補なら限定表示可能、受理済み業務ER/CRUD及びRDB実読取の成功は`unverified` | #3372/#2497/#2586 |
+
+このSA-01〜06は新しいProduct Gate/Fixture/Scenario正本ではなく、#3263の三視点Fixture／#2514の独立Expected／#1180のScenarioへ**一因子差分**で渡す。既存Graph/ModelRef/Workbench/read-only Design Contextの再利用を優先し、第二Graph・DB/Markdown Parser・Owner Registry・Host・Plugin Resolverは新設しない。
+
+**現在の実証上限**：#3354の固定CIはSource/Rule/Relationの限定Consumer検査、#3372は未マージのfake-Catalog製品コード試験候補、#3346のMarkdownはRaw/managedのまま。本PRから新しいGraph/CRUD Product投影、実PG Catalog Reader、Studio/SHO/Host副作用、Owner意味受理、SA-01〜06のGo Mutant Testは**NOT RUN**。
