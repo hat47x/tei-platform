@@ -342,3 +342,32 @@ PR [#3176](https://github.com/hat47x/tei-platform/pull/3176)の test-only `tools
 3. **M1との実比較は後段**：決定的なProfile確認／必要Read再取得で解消する不足と、SEI Methodの調査選択で初めて解消する不足を、同じ実Tool/Grant/予算/開示で比較する。OKF/SHO/SUIの表示・知識交換は証拠を運ぶ側でありOwnerのMeaning受理や共同Snapshot生成器ではない。
 
 **最新到達点**：本Sectionの新規2テストは固定HEADのGitHub Actionsで限定PASS。PRはDraft／未マージ、製品`Discover/Rerank`本体と正式`Report` ABIは変更しない。共同Source Snapshotの製品能力、CC-15、実外部Harness Method、実OS/Network/Provider、Owner受理はNOT RUN。
+
+<!-- tei-devctx-cc15-staged-check-open-and-safe-root-20261107 -->
+## 16. CC-15：チェック時のPathと実Open対象を区別する限定安全試験（2026-11-07）
+
+### 採用する観測単位
+
+[Draft #3176](https://github.com/hat47x/tei-platform/pull/3176)のtest-only `tools/reference-developer-context/path_open_characterization_test.go`で、実`readInside`が用いる3段階のAPI呼出し（`filepath.EvalSymlinks`→`os.Lstat`→`os.ReadFile`）の**検査後・最終Open前**にパスを意図的に差し替える。公開`t.TempDir`内の通常ファイルから、別の公開`t.TempDir`にある合成Canaryへのsymlinkへ置換する。これらは**テストが時刻を制御して個別APIを呼んだ**ものであり、実`readInside`内部を割込ませた試行でも、実敵対的な同時実行攻撃の成功でもない。
+
+| 独立対照 | 検証する事象 | 主張してよい上限 |
+| --- | --- | --- |
+| **CC-15a staged check-open** | 旧ファイルのEvalSymlinks/Lstatはroot内regularを確認した後、最終`os.ReadFile`が差替えsymlinkをたどり、公開・合成root外Canary byteを読む | 同じPathを**別時点にチェックし、別APIでOpenする設計はfile object identityを証明しない**。本体`readInside`の競合成功・非公開Data漏洩・実OS Sandbox突破は未実測 |
+| **CC-15b after-replacement validation** | 差替え**後**の通常`readInside(root, name)`はroot外symlinkを拒否 | 静止した外部symlinkの拒否を示すが、検査と実Openの間の原子性・同時攻撃耐性は示さない |
+| **CC-15c root-relative alternative** | 標準`os.OpenRoot(root).Open(name)`で当該外部symlinkを拒否し、安定したroot内fileを読めるか | **比較したGo Toolchain/OSとこのFixtureに限定**。Root能力の採用、全Platform/特殊mountやA→B→A・複数fileのcohort整合性は別資格 |
+
+**CI正本**：コードを入れた時点では[PR #3176](https://github.com/hat47x/tei-platform/pull/3176)のexact HEAD、`TestActualReadCC15*`の実ログ・Repository Healthを確認してからPASSへ昇格する。GitHub Actionsがqueuedなら`NOT YET VERIFIED`。symlink作成権限が無い環境で`Skip`した場合はそのOSで拒否／攻撃を検証したと数えない。
+
+### 実装案を限定する
+
+Goの[Traversal-resistant file APIs（Go公式）](https://go.dev/blog/osroot)に記載された`os.Root`（Go 1.24+）は、root外へのsymlink traversalを防ぐ**候補手段**。当該repoは`go.mod`でGo 1.26.10を要求するが、API採用前に実Go/OS/互換性を別検証する。[`os.Root`の既知修正（GO-2026-4970）](https://pkg.go.dev/vuln/GO-2026-4970)の影響がある古いToolchainを無条件に安全とみなさない。とくに`os.Root`のTraversal保証と、mount境界／全Platform／OS sandbox／実Consumerへの開示や複数fileの共同時点は同義でない。
+
+採用判断で比較するのは「**root-relativeに実FileをOpen → 開いた実ハンドルのStatでregular/sizeを確認 → 上限付きReadで実bytesをhash**」という単一Fileの実取得手順と、現在の事前Lstat→別Openの手順。さらにRootの固定時点、Target相対Pathの正規化、dir symlink、権限失効、Source rename、opened objectの保全を対象にする。**新しい一律File StoreやRuntime Permission Engineは導入しない**。変更案・API/Go最低版判断はTEI #2533とSource/Host各Ownerへ戻す。
+
+### 横断的な影響と停止線
+
+- [Studio固定Host #3061](https://github.com/hat47x/tei-platform/issues/3061)ではWorkspace ID allowlistを通した後で物理rootが置換される別の実負例がある。こちらの本CC-15は**参照用ローカルreadInsideの静的分割手順**で、Studio実装の同一欠陥や既修正を自動認定しない。
+- [TEI #3181](https://github.com/hat47x/tei-platform/issues/3181)のWorkspace Manifest Identityと`WorldFingerprint`、[TEI #2589](https://github.com/hat47x/tei-platform/issues/2589)の署名付きArtifact exact bytes、[TAI #168](https://github.com/hat47x/tai-pleroma/issues/168)の実Tool Deliveryはそれぞれ**異なる同一性の観測**。Path同一だけでもSHA同一だけでも、実Hostが開いた対象・現在Grant・Consumer開示を証明しない。
+- P2認知Methodはこの不足を`unknown`/必要な次の検査として記述できるかが対象。実Root/Open拒否はProduct/Host・OS、実外部送出はTEI #2515／TAI #232、独立ExpectedはTEI #2514に残す。秘密Sourceに対する攻撃試行、外部API/DB副作用、Owner受理、正式Core APIは本試験の範囲外。
+
+**注記**：CC-14は複数Fileの共同時点、CC-15は一つのPathに対する事前Checkと実Open対象の同一性であり、両者を一つのPASSに統合しない。
