@@ -543,3 +543,64 @@ T1への合流で**コードC0/C1の数値改善を必須成功条件にしな�
 **横断の停止線**：新CLI/MCP名の実在偽装、Design Source未解析なのにcompleteを宣言、古いT0のPASSをT1へ引継ぐ、C0=10.1%を製品Coverageと呼ぶ、C1やNFRの推定合格、未受理Trait/Ruleを業務Meaningへ自動昇格、実Plugin/Provider/Hostを未実行のままqualifiedとする行為。
 
 **実行状態**：本節の追記は、実mainのT0 CIと新しい他レーン設計を参照してT1への接続を**計画化したもの**。上表のT0は当該exact mainで限定実証済み。P-1b統合Query、T1新生成・実Pinned Rule結果、C1、MCP、実DB/Host/HTTP、Owner正式受理は**未実施／未受理**。既存#3273のT1実行Owner、#3262 Design Context Owner、#1180 Scenario SSOT、#2514独立Expectedを重複させない。
+
+
+---
+
+<!-- tei-testing-crosslane-req-id-matrix-mbt-20261107 -->
+## 16. 2026-11-07 横断成熟差分：要求同一性、T1新規判別力、Version Matrix（設計と観測を分離）
+
+本節は既存の§15に追加する**統合時の停止条件と受入票**。T1の実装・テストOwnerは[#3273](https://github.com/hat47x/tei-platform/pull/3273)、独立Expectedは#2514、Design Contextは#3262、BOMは#3267/#3269。新しいRunner、Test SSOT、Requirement Registry、Authorityを作らない。
+
+### 16.1 実際に発見した製品要求IDの意味衝突：統合Blocker
+
+2026-11-07にGitHubのファイルを直接比較した結果、mainの requirements/TEI_PRODUCT_REQUIREMENTS.md （blob 4893dac4a6bf31b24c8b510b68ce43ae408ddfd3）では **RQ-035 = 異種Data Source Workbench・開発者向けSchema CRUD**。mainへ統合済み[#3276](https://github.com/hat47x/tei-platform/pull/3276)の要求である。
+
+しかしDraft [#3269](https://github.com/hat47x/tei-platform/pull/3269) のHEAD 895bdd6143ce2c9050820379662e7bdcedee5bfa の同ファイル（blob 3a675f181f7da1a03e8d06deb022cf4235e6b913）では **RQ-035 = Verified Composition BOM・複数Version組合せ試験**。異なる意味の二要求に同一IDが割り当てられている。GitHubの[#3269レビューコメント](https://github.com/hat47x/tei-platform/pull/3269#issuecomment-6706614977)へ是正を依頼済み。
+
+これは「現在1ファイルに重複IDがない」検査を通過し得る**ID→Meaning置換**であり、単独BranchのGoテスト合格とは独立した統合阻害条件となる。**現main RQ-035の意味を維持**し、BOM側を独立Requirement（未使用のRQ-036等はOwner採番）として改訂し、Issue/Plan/Case等の参照を照合するまで統合不可。自動採番や他Ownerの要求本文上書きはしない。
+
+最小回帰は baseline と candidate の **ID→Title/Meaning/Source** を比較して、明示Owner判断やMigration Mapのない別意味への置換を拒否する。異なるBranchの局所PASSをRequirementの同一性と誤認しない。
+
+### 16.2 実main T0と未完了T1の分離
+
+- **T0は限定成立**：main統合済み[#3264](https://github.com/hat47x/tei-platform/pull/3264)/[#3266](https://github.com/hat47x/tei-platform/pull/3266)/[#3268](https://github.com/hat47x/tei-platform/pull/3268)。固定mainの[CI #42359610226](https://github.com/hat47x/tei-platform/actions/runs/42359610226)で、実read-only CLI 9種・Product Skill静的14件・既存pinned Scenario 6 Step・実CLI負例4件/独立義務負例2件を観測。Go C0相当10.1%はcmd/teiの**選択された局所テスト**、C1はunmeasured。広いCI path triggerの存在は完全なDependency closureを証明しない。
+- **T1は未成立**：[#3273](https://github.com/hat47x/tei-platform/pull/3273)の独立Gapから、新しい行番号0の負例をAIが提案し、独立Expectedと照合し、受理待ちのScenario Candidateとして実pinned CLIへ流す一件が最小課題。既存6 Stepや旧重複Keyケースを再実行しただけではT1としない。AIがActualに合わせてExpectedを修正した場合は独立性を再審査。
+- **実PG Readは限定成立**：[#3238](https://github.com/hat47x/tei-platform/pull/3238)の隔離PostgreSQLでTenant A {3,9} と TOP1 {3} を実取得し、Q05〜07と非出力ordered_at WHERE正例を検証。ただしFunction→Query→実Provider→Claimを同一製品Attemptで完全に接続した証拠ではない。非出力PredicateのSQL評価と返却行集合のDisclosure資格は別判定。Q07の別status述語を本正例の成功で上書きしない。
+- **Oracleの改訂履歴**：#3266初回CIはtyped Observationとdecode後のpendingの取り違えでFAIL。期待値修正後の成功は別HEAD・別Runであり、修正の根拠を独立Oracle/Output Contractから照合する。現在値への追従だけでQualifiedにしない。
+
+### 16.3 Verified Composition BOMのPairwiseをテスト設計の分母へ接続
+
+[#3269](https://github.com/hat47x/tei-platform/pull/3269)の隔離Go Referenceでは3軸各2値の全直積8通りに対し、供給されたexact Lock候補は4行であり、供給候補に現れる2項組合せが9/12、計画はその9/9を被覆する。**供給候補の9/9** と **宣言Universeの9/12** と **実行済み・適合済み** は別の集合である。供給されない3ペアを不可能・互換性なし・PASSへ自動変換しない。3-way以上の相互作用も未証明。
+
+BOM-AとBOM-Bの個別合格から、実際に組み合わせたCompositeのQualified Unionを導かない。実Resolver Lock、Source/Build/Artifact/Consumerが実Loadした版、Scenario/Independent Expected、Target/Environment/Grantの一致を**同じ組合せ行・Attempt**で証明する。現在のPairwise Plannerはplanning-only・qualified:falseを維持し、Core Resolver/Hostの代わりにしない。
+
+### 16.4 テストモデルの忠実度とonline/offlineを受入に明示
+
+[ISO/IEC/IEEE FDIS 29119-8:2026](https://standards.iteh.ai/catalog/standards/iso/45b3e3a2-a490-40d3-8348-4357687bf137/iso-iec-ieee-29119-8)は**Final Draft**。正式規格の全面準拠を主張するのではなく、model fidelity（テストモデルと実対象の前提/入力/期待動作の対応）、抽象水準・追跡可能性・test-data・test環境・モデルCoverage、online/offline生成の区別を設計チェック項目として参照する。
+
+TEIの既定は**候補生成→Owner Review→保存済みDriver Scenario→Target別実行のoffline型**。online探索は隔離合成Fixtureの未受理Candidateとして扱い、実Host副作用・業務Meaningへ自動昇格させない。モデル上に手作業、非出力依存、Source読込失敗、非機能要求が表現されていない場合、その未表現部分をmodel-fidelity gapとして保持する。
+
+### 16.5 独立正負対照 TT-44〜TT-50（新しいCase正本ではなく横断Obligation）
+
+| ID | 比較入力 | 独立Expected・判別する誤り | Owner |
+| --- | --- | --- | --- |
+| TT-44 Requirement identity | main RQ-035 WorkbenchをDraft RQ-035 BOMで置換。最終文書内の重複数は0 | **FAIL**：同IDで別Meaning。Owner採番/参照修復なしに統合不可。GitHubで既存衝突は**観測済み** | #3267/#3270/#1119 |
+| TT-45 T0とT1 | 既存6 StepはPASS、未カバー行番号0の新Caseはなし | T0限定PASS、T1はNOT RUN。新Caseの実pinned実行と独立Rule診断が必要 | #3273/#1180/#2514 |
+| TT-46 Oracle改訂 | 初回Expectedがtyped状態とdecode後pendingを混同し失敗、修正後PASS | Oracle出典と二HEAD/Runを比較、Actual追従だけでは独立検証基準としない | #3266/#2514 |
+| TT-47 CI起動 | Required Source/Scenarioを変更したのにWorkflowが未起動/SKIP | Gate未実施として不適格。#3268のpath監視も実Runで発火と漏れを測る | #3268/#1119 |
+| TT-48 非出力Predicate | 実WHEREで非出力ordered_atを使う正例と、statusが未評価のQ07 | SQL実評価の存在、Membership開示、Claim資格を別々に照合。別Predicateの過大受理を禁止 | #3238/#2506/#2515 |
+| TT-49 Pairwise分母 | 4 exact Lockの供給候補9/9、宣言Universeは9/12 | unknown 3/12、qualified:false。未供給を不適合・合格としない | #3269/#3267 |
+| TT-50 複数BOM合格の合算 | BOM-AとBOM-Bが別々にPASS、合成a+bは未構築/未実行 | CompositeはNOT RUN/unknown。実組合せのLock/Artifact/Consumer/Independent Expectedが必要 | #3267/#951/#1163 |
+
+TT-44は**既存Sourceの意味衝突という現在確認済みの反例**。TT-45〜50の横断受入E2Eは今回未実施。#3273 TG、#3269 Pairwise Fixture、#3238 PG fixtureを複製しない。
+
+### 16.6 既存計画への優先順位の変更
+
+1. **P0-G Integration guard**：RQ-IDとMeaning非衝突を#3269で解消し、既存requirementsとCIに最小回帰を追加（新Registry不要）。これをT1やBOM製品完成と混同しない。
+2. **P0-T1**：#3262のP-1bにSource/Meaning/Rule/Gapの閉包を要求し、#3273の新しい行番号0負例をDriver ScenarioへReview→実生成/実CLI→独立判別。実証済みT0は固定した比較基線とする。
+3. **P1-Matrix**：既存Resolver/Lock→Build/Artifact→Test/Independent Expected→Consumer実Load/Host観測をMatrix行ごとに接続。実行できていない行を勝手にPASSや非対応としない。
+4. **P1-CI/C0/C1**：#3268の保守的Triggerを実Changeで検証。C0局所・C1未測定・Functional/NFR未カバーを別Universeで表示。
+5. **P2-Harness/Disclosure**：#2509/TAI #168の比較適格が成立するまではSkill説明・Tool完了を実完全受領/現在Grant/漏出不在へ昇格しない。
+
+**今回の状態**：GitHub実Source比較（TT-44）、既存PRとRunの限定結果に基づく計画追補、Blob再取得のみ。新しいCLI/Go/PG/AI T1/OSテストは**NOT RUN**。正式採番・Owner Meaning Acceptance・BOM qualificationは**NOT ACCEPTED**。
