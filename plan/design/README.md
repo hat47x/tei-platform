@@ -326,6 +326,7 @@ S1 realistic intent / candidate frontier
 
 ## 一覧
 
+| [`TEI_SHO_OKF_DOMAIN_LINT_DOCUMENT_UNIT_2026-11.md`](TEI_SHO_OKF_DOMAIN_LINT_DOCUMENT_UNIT_2026-11.md) | TEI/SHOのMarkdown知識バンドルにOKF v0.2を任意導入する提案。1 Concept/1 Documentの管理粒度、受理済みValue Domainを使う非破壊Lint・入力支援、選択式Pluginと独立Expected（[SHO #18](https://github.com/hat47x/sho-composer/issues/18)、評価待ち・未採用） |
 | 文書 | 対象 |
 | --- | --- |
 | [`TEI_MD_UNIFIED_AUTHORING_MIGRATION_2026-11.md`](TEI_MD_UNIFIED_AUTHORING_MIGRATION_2026-11.md) | 新規TEI Authoring Sourceを *.tei.md に統一し、旧 *.tei を段階廃止するユーザー方針とLoader/Parser/OKF/SHO移行の独立検証計画 |
