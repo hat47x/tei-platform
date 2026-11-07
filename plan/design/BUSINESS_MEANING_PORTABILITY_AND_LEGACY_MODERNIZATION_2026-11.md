@@ -168,3 +168,61 @@ Self-Build #2831と重なるのは「同じ定義から必要なBuild/Artifact�
 P0は段階Aの一つのQuery/Commandと段階BのSource-static/Observedの分離票まで。最初の反証で不足が証明されない限り、共通Runtime・巨大Parser・独自二重Generator/Scenario/Authority・新規Core kindの導入を保留する。既存の#2514独立Conformance、#1180 Scenario、#2604 Publication、#2555 Cutoverを集めて**一つの見通しのよい比較票**にするが、比較票自体をAcceptanceやE2Eの証明にはしない。
 
 **現時点の結果上限**：TRI-01〜06、旧言語の同言語再生成、生成Wails Desktop、外部File/MFT/OData/実DBでの同一試行E2E、業務Owner受理はいずれも**NOT RUN／未受理**。既存Issue・資料にある限定Referenceの過去PASSと、本追補の新規受入は区別する。
+
+## 11. 論理Subsystemを移行境界として使う場合の追加条件（2026-11-07、設計／未実証）
+
+[サブシステム分割提案 #3250 / Draft #3255](https://github.com/hat47x/tei-platform/pull/3255)の「論理的なOwner・直接CUD・有効Effect・物理配置は別軸」を移行に利用する。**Subsystem候補の最適化、移行対象の選択、実行中の書込Authority切替は異なる意思決定**であり、分割候補が採用された時点で旧システムのDB書込を止めてはならない。#1132のread-only診断も再実装しない。
+
+例：旧販売Functionが受注Orderを登録し、在庫Stockへ直接SQL UPDATEする構造を考える。新実現では販売Functionから在庫Ownerが管理する明示Commandへ委譲する設計候補を評価できる。しかしこれは単にtransportをHTTPに替える話ではない。Go/Wailsのin-process、Java/.NET内のmethod、HTTP、MQなど**どの実現形でも**、在庫を更新する主体と承認、順序、部分成功、再試行、回復、独立観測を示す必要がある。
+
+\`\`\`text
+【旧実装】販売Function ── Direct U(Stock) ──→ 旧DB
+       │                  （Source-static候補／実Effectは別）
+       └── C(Order) ────────────────────────→ 旧DB
+
+【新実現候補】販売Function ── C(Order) ──────→ 対象DB/Provider
+       │
+       └── Typed Intent / Capability Invocation
+                     ↓  明示Binding・現在Grant
+                 在庫Owner Command ── U(Stock) → 対象DB/Provider
+                     ↓
+                 Result / Receipt / independent Read
+\`\`\`
+
+直接越境CUDがゼロになっても、委譲経路は依存として残す。もとの単一DB transactionを、別サービスへの呼出しに変更しただけではatomicityは保持されない。新Targetが同一プロセスでも実Providerの権限と失敗・観測境界を飛ばしてはならない。現行Targetが必要なtransaction/compensation/reconciliation能力を満たさなければ **incompatible / unresolved** とする。分割のために新しい業務手続・状態を暗黙に採用するのではなくShared Acceptanceへ戻す。
+
+### 11.1 移行Sliceの有限な検収票（説明用・新Core型ではない）
+
+| 固定するもの | 必要な観測 | 誤成功として拒否すること |
+| --- | --- | --- |
+| **意味と所属**: Subsystem候補、Data/Function/Business Subject、Accepted revision、Source closure | Owner・Read/CUD・Effective依存、未解析Edgeの母数 | CRUD表の直接U=0から実越境Effect=0を結論する |
+| **操作と境界**: Order登録→Stock引当の型付きIntentと、現在の実Target/Grant | 旧direct Uと新Owner Commandの対象、時点、拒否、結果・必要な副作用 | 呼出成功、HTTP 2xx、Wails戻値から在庫確定を結論する |
+| **確定と観測**: 同じ独立Scenario Expected、Commit/Receipt、別Read、通信断/重複 | 在庫と受注の必要な一貫性、不明/部分成功、独立Read | 原子的保証がないのに旧単一Txと同等と断言する |
+| **Cutover**: 旧新のWrite Owner、Client cohort、CDC/逆同期、コード変換版・有効時点 | #2555が所有する切替/旧Writer失効・再開/rollbackの具体的Evidence | 分割提案やBuild成功をAuthority切替済みと扱う |
+
+最初の比較は**read-onlyまたは使い捨てDB上で**旧・新両経路を独立に実行する。旧と新の本番副作用を二重送出しない。中間状態が異なる場合、受理済み業務契約が同等と見なす時間・観測範囲を明示し、無条件に結果一致へ縮約しない。#2555の既存P0 DB移行/Owner受理より前に新しいCutover Gateを作らない。
+
+## 12. 抽出したTraitと各連携先の意味保存を分ける（設計／未実証）
+
+[意味的特性の設計](SEMANTIC_TRAIT_CLAIMS_AND_CONFORMANCE_2026-11.md)の**Trait Claim / Source fact / 実装側Enforcement / Assessment**を再利用する。Java/C#のEnumや定数表、SQLのCHECK/UNIQUE、ファイルのコード体系、OData EDM、OpenAPI Schemaは、特性を調べるための別個のSource/Target証拠となる。**これらの記述が一致しても、それだけでMECE・強属性・業務キー・全Writerにわたる制約強制が受理されたとは言えない**。
+
+例：Java \`OrderStatus {NEW, ACTIVE, CLOSED}\` に対して、DB列が \`VARCHAR NOT NULL\` で、旧ファイル経路から \`HOLD\` が書き込める可能性があるとする。Java Enumの3値だけを取り込んでTEIの業務値域を自動確定すると、ファイルを利用していたConsumerや旧レコードの意味が失われ得る。逆に未知値を無条件に\`NEW\`へ置換すると、欠落した検証・履歴・業務判断を隠す。Source-staticの3値、DBで保証されたNOT NULL、別Writerの実到達性、Ownerが意図した分類・有効時点は**別Claim**とする。
+
+| 対象の変形 | 保存を検証する性質 | 必要な停止線・Owner |
+| --- | --- | --- |
+| 旧Java/C# → TEI → 同言語 | 値域、例外、Decimal/Date/Null、業務Identifierとその出典 | 意図未受理ならCandidate止まり。#2497/#2498、Trait #2495 |
+| TEI → Go/Wails / Java / .NET | 同じTyped Operationと許可された結果・拒否、実行中のGrant/Provider | Target別実行・現在Authorityなしに同等性を宣言しない。#259/#1180 |
+| TEI → REST/OData | 公開Read scope、Filter/Sort/Count、ErrorとClient Reaction、schema/metadata | 非公開列・未確定Effectを漏らさない。#1656／HTTP #3274 |
+| TEI → File/ETL/MFT | Code Table有効時点、文字集合、Null/欠損、レコード順序、ACK/Import/Business Event | Delivery成功を業務Effectへ昇格しない。#2542/#2604 |
+| 旧→新DB・並走 | 主キーと業務同一性、変換表の多重度と有効期間、CDC、更新のOwner | 未対応の多対多・曖昧値を推測変換しない。#2555 |
+
+### 12.1 一つの変更で両方を見られる最小負例
+
+- **MS-01（値域に対する閉包不足）**：Java Enumは3値、DBに値域CHECKはなく、別ファイルWriter未観測。\`closed-domain\`はSource-staticに留め、全業務閉値域・MECE PASSを主張しない。業務上\`HOLD\`を新値として採るか拒否するかはOwner判断。
+- **MS-02（時点と変換表）**：同じ旧コード\`A\`が有効期間によって別の新コードへ対応する。ファイル取込時点と業務上の適用時点を明示せずに最新表へ変換し、過去再実行を一致と主張しない（#2555）。
+- **MS-03（契約は同じ、配備が変化）**：在庫引当を同期Callから非同期Messageへ置換。公開Action IDと入力が同じでも、応答時点の確定性と再試行可能性は異なる。未確定の\`accepted-to-queue\`を\`stock-reserved\`としない（#1174/#2542）。
+- **MS-04（非可逆Projection）**：OData/画面へ公開した列には元の区分・Source identityが欠落。これを元データの同等性や変更権限の証明に使わない（#2497/#2516）。
+
+これらは#1180/既存独立Expected/各Ownerへの**既存Caseの差分条件**であり、新しいHarness、第二のTrait Engine、Migration Mapping Registry、全方式共通の意味論や正式仕様を増やす根拠ではない。必要な実Target・実Consumer・Owner/Policy評価が無ければ**NOT RUN / not qualified**と記録する。
+
+**本追補の主張上限**：Subsystem分割、Source抽出、同言語再生成、Java/.NET/Go/Wailsの同一Scenario、REST/OData/File/MFT実連携、現行Grant・実DB・Cutoverの追加実証は行っていない。設計の責務接合と最小反証条件のみであり、[Draft #3255](https://github.com/hat47x/tei-platform/pull/3255)・#2555・Trait各Ownerの採用判断を代行しない。
