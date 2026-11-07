@@ -3841,3 +3841,19 @@ X-TEAのData Model／Field Hook／共有Scriptの知見を全Data構造へ一般
 **段階と責務**：P0のC1→D1実Function/Query/Provider Read（#2586）の妨げにしない。P1は#1129のXL-01〜03と#2500 VEの**read-only Binding Plan**でData/Role/Rule/Phase・元Source occurrenceを対照し、旧X-TEA Sourceや実Driver発火を未取得なら互換性を`unknown`に止める。P2で必要な業務RuleがOwner受理された後に限り、#1174/#2564の既存実Provider Commit/Unknown/Receipt試験へ差分を渡す。#1125/#1444は人手Handoff、#2502はScript/Macro公開ライフサイクルを所有し、この節では新DSL・Job Scheduler・Outbox・Hostを作らない。
 
 **現状**：組織Native Sourceの実Rule Attachment/実Script起動/実Case DB Write、上記ORG-RB-A〜Dの新Go/PG実験、旧Driver互換、Owner受理はすべて**NOT RUN／未成立**。合成Planや別Domainの実PG成功を組織Scriptの実発火と呼ばない。
+
+## 85. 組織トポロジーと数量・標準表現型の合成Profile：表現力を固定Org図から解放する（2026-11-07、採用前）
+
+**独立の横断比較票**：[組織トポロジー・Quantity Kind・標準表現型の合成Profile](ORGANIZATION_TOPOLOGY_QUANTITY_REPRESENTATION_PROFILE_2026-11.md)。既存§16/19/25/39/44/53/84と、標準Data Facet #2495、演算法則 #2544、単位/丸め #1705、Measure再集計 #2593、Projection #2497、Function #2506/#2507、Organization Corpus #2510を**一つの反証可能な適合条件**へ束ねた。Organization専用Core/Ontology/Widget Registryを新設せず、組織ProfileとしてData/Relation/Time/Quantity/Rule/Representationを合成する。新たな実装・試験成功、正式Owner受理の記録ではない。
+
+この横断比較での主要判断は次のとおり。
+
+1. **Structure axisとNormative axisは別**：Legal/人事/指揮/費用帰属/案件取扱/管轄/手順は同じOrgUnit IDを参照し得ても異なるRelation Graph。Tree/DAG/多重Graph/n-ary Relation/空間・時間のProfile制約を用途別に選び、Person/Membership/Position/Occupancy/Caseと現在Grantは相互に代入しない。
+2. **Quantity KindとUnit/Basisを別**：現在mainの`Membership.allocation type std.decimal`だけではFTE分母・割合表記・時点・業務意味は不明。Headcount（Unique Person）、Membership件数、Position定員、FTE、期間工数、通貨金額、費用比率は別Quantity Kind/Grain。集計は`Measure × Rollup axis × Operation × Cohort`の適合条件が必要。
+3. **有限Expectedを固定**：公開合成WorldのP1→D1=0.6 FTE/D2=0.4 FTE、P2→D1=1.0 FTEでは、D1人員2／D2人員1、全体Unique Person2／Membership3／FTE2.0。Hから共通Cへ二経路で到達してもCの0.4 FTE Factを無条件に0.8へ重複計上しない。元Nativeに実数値や受理済みFTE単位があると推定しない。
+4. **Representation能力と逆編集を別**：Tree/Graph/Matrix/Chart/Timeline/Map/SHO Mermaid風図解は用途と保持できるFacetが異なる。Treeに経路を複製しても元Node/Relationを増やさず、SHOにわかりやすく描けてもGraphの多重Edgeや有効時点を失った図を元Meaningへ自動書戻ししない。Functionに配置された表現インスタンスと下流SHO Consumerの権限・公開資格は別。
+5. **P0実Read優先は不変**：#2586の一件C1→D1実Function→Query→Provider→Consumerを先に成立させる。次に必要な単位/Facet/Path/Claimを一因子ずつ変える合成適合試験、二Function・異質Consumer、実Owner受理／Host Effectへ進む。別Issueの実測や別FixtureでのPG PASSを同一Product E2として加算しない。
+
+[W3C ORG](https://www.w3.org/TR/vocab-org/)の拡張可能な組織語彙、[QUDT](https://qudt.org/doc/2026/02/DOC_SCHEMA-QUDT.html)のQuantity/Unit/Dimension、[W3C RDF Data Cube](https://www.w3.org/TR/vocab-data-cube/)のMeasure/Dimension区分を比較対象とする。ただしそれらのSchemaをTEI Coreへ移植・正式採用するものではなく、異なる数学的TopologyとRelation Graphの同一視も避ける。
+
+**検収状態**：この節と新比較票はdocs-onlyの採用前候補。組織FTE計算、マルチグラフのProduct Query/Renderer、SHO実出力、現Host Grant、案件移管Write／Receipt、業務OwnerのQuantity/Rule受理は**NOT RUN**。
