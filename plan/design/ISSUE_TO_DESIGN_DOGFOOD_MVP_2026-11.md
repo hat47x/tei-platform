@@ -465,3 +465,23 @@ P0の完了は「全Domainへ一般化」ではなく、**どの根拠が揃え�
 
 **この節の証拠上限**：main統合PR・専用限定CIと#3356の公開合成CLIドッグフーディング記録を照合して追加したdocs-onlyの受入順。新Go/CLI/MCP/PG/Studio/SHOの製品E2E、外部H3、生Provider Write/Read、Ownerの正式Meaning受理は**今回NOT RUN**。
 
+<!-- tei-intake-physical-to-meaning-inspector-coverage-20261108 -->
+### 14.16 物理DB観測から三視点への受渡しと、Inspectorの実呼出しを別々に完成させる
+
+**実コードで見つかった二つの最初の不足辺（ともにDraft、未統合）**：
+
+- [Workbench #3372](https://github.com/hat47x/tei-platform/pull/3372) は、従来の`physical.SchemaSnapshot`に存在しながら`databaseworkbench.SchemaView`へ転送されていなかった**FK/UNIQUE／CapturedAt／Fingerprint**をread-only Projectionへ追加する。Fake PostgreSQL Catalog→既存`Introspect`→`index.Derived`→Workbenchという実Go経路のテストを含むが、実PG接続ではない。Schemaを含む`QualifiedName`、複合FKの列順、同じ二端点間の複数Relation、Source slice非aliasを維持する。これは**Physical Observationの受渡し成功**であり、業務Key・Function CRUD・Modeler Accepted Relationには自動昇格しない。
+- [Studio Inspector #3371](https://github.com/hat47x/tei-platform/pull/3371) は、非nil`ServiceFactory`を受けても従来の直接`operations.InspectSubject`へ逸れる経路を閉じ、Host側`RootServices.Inspection`を選択した場合はそこからのみ取得し、未登録/誤Subject/誤Schema/Effect/Fingerprintを拒否する候補。Factory=nilの旧PoCは維持。**Hostの型付きServiceまでのルーティング**であり、実Plugin Provider B選択→B実Invoke、CLIとStudio二Consumer、Host Grant、実DB Resultの証拠ではない（#1251/#951/#1824）。
+
+**同じ受入Fixtureへ繋ぐ最初の一回**：`public.orders`/`reporting.orders`同名別Schema＋独立した二FKを持つ限定カタログと、明示Sourceで受理済みのData Relation/Function Operationを**別の根拠**として用意する。①物理CatalogのObserved Source/Provider/Principal/CapturedAt/取得Scope、②Workbenchに保持した複合Constraint・観測Revision、③別受理されたData Key/Relation/Function CRUDと未解決候補との差、④三視点Projection上のEdge ID/Relation Role/CRUD Cell Source、⑤CLI/Studio InspectorのRequest・実選択Service・Reply完全受領を、それぞれ独立Expectedで照合する。途中が未接続なら**最初の欠けた辺**で止め、FK=0を業務Relation=0、見えたNodeを更新可能Object、Inspectorが応答したことを実Plugin Invokeとしない。
+
+同時に、CLI JSON契約の部分改良候補[PR #3366](https://github.com/hat47x/tei-platform/pull/3366)（`view`へのWorld/SourceIndex FP追加）と[PR #3370](https://github.com/hat47x/tei-platform/pull/3370)（`requirements.result`の配列ShapeをDiscoveryで明示）は**別の互換性判断**とする。`semanticFingerprint`の用途範囲とWorld Fingerprintを混同せず、未指定Shapeをobjectと推論せず、同じ`v0`でも旧Consumerの実JSON Decodeを要検証（#3345/#3347/#2824）。これらのCI成功はTool Replyが完全配送された証拠ではない。
+
+### 14.17 「未観測」と「未テストを確定」を分けるCoverageの受入
+
+[Draft #3365](https://github.com/hat47x/tei-platform/pull/3365)のTT-105/106は、実CLI pinned Scenarioの受領済み6 Stepを対象に、**局所観測済みStepの肯定**を保持しつつ、受領目録が部分的なときの未出現Stepを`untestedConfirmed`へ格上げしない限定対照。固定PR HEADの専用Dogfood CI/Healthは成功しているが、実Harness途中切断、全Requirement/Function Coverage、C1、未知Rule T1-Bの達成ではない。Source digest・受領終端・独立Required Step IDがそろわないなら全体Coverageは`unknown`に留める。
+
+この列は#3262のRequired Contextと#1180/#2514の独立Scenario/Expectedの**既存分母**へ接続するだけで、新しいCoverage正本・Rule Registryは作らない。P0-Mの三図/CRUD、P0-RのProduct `recent_orders`、Inspector D1の実Provider選択にそれぞれ**実Attemptと適切なExpectedの組**ができたときのみ、局所Coverageを追加する。参照実装の合成Controlsの個数をProduct Mutation Killや業務完了率へ転換しない。
+
+**この追補のEvidence ceiling**：GitHub上の既存実装差分、担当PR試験、fixed-head CI結果を比較した計画接続。#3372/#3371/#3366/#3370は確認時点未統合で、新たなGo/PG/CLI/Studio/SHO/外部Harnessの製品横断E2E、Owner正式意味受理は**NOT RUN**。#3372の物理Catalog Test・#3365の限定Scenario Controlを、Diagram/CRUD製品合格やR1 E2に加算しない。
+
