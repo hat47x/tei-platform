@@ -600,6 +600,25 @@ main統合済み[#3070](https://github.com/hat47x/tei-platform/pull/3070)の`int
 
 **本節の証拠上限**：既存`internal/workspace/loader.go`と#3024 E1c Go/CIの実照合に加え、#3031暫定Guardの固定HEAD限定CIと、#3030移行設計の実Sourceを確認済み。実`*.tei.md` Markdown Reader/意味Parser・Builder・Writer、移行後Org E1c、実Provider/DB、SHO/Consumer、Owner意味受理は**NOT RUN／未成立**。この文書は設計引継ぎであり、#3030/#3031が既に担当する詳細契約・Goコードを二重定義しない。
 
+<!-- tei-design-context-test-ability-t0-5-20261107 -->
+### 2026-11-07 Issue→設計→テスト能力：Main実証とMVPへの統合（#3262／#2514）
+
+**実装／実証済みの小さい縦切り**：[#3264](https://github.com/hat47x/tei-platform/pull/3264)は既存TEI CLI 9 read-only操作で一SubjectのSource/Inventory/Loader/Versionを限定検証。[#3266](https://github.com/hat47x/tei-platform/pull/3266)は既存#1180 Scenario SSOTから生成した**実別プロセス pinned CLI 6 Step**と、実CLI拒否4件／独立期待値検査2件をCIで確認。[#3268](https://github.com/hat47x/tei-platform/pull/3268)はSource/CLI/Scenario/Skill/Go依存変更を監視対象に追加してmain push再試験を実証。これらを全機能、正式意味、外部ProviderのE2Eとはしない。
+
+**独立Requiredを満たしたかで次段の資格を決める**：[#3284](https://github.com/hat47x/tei-platform/pull/3284)は実9 CLI Replyを読む**テスト専用Consumer**をmainへ統合し、Source未読込、Subject欠落、Fingerprint版混合、Tool Reply欠落、Schema変更、Source root欠損を安全に拒否する6合成対照＋外部Provider/Harness/Grant未観測の資格保留1対照を検証。正常でも**`boundedReference=partial`／`testExecutionAdmission=exploration-only`／`qualifiedTestGeneration=false`**。Source Read≠Parsed/Accepted、同Fingerprint≠A→B→Aを含む時点・権限の完全保証、CLI受信≠H3外部Harnessへの完整なDelivery。局所`cmd/tei`1テストのStatement C0相当は10.1%、**C1未計測**。
+
+| 段階 | Mainに取り込む/検証する成果 | 完了を禁じる不足条件と既存Owner |
+| --- | --- | --- |
+| **T0 実行・判別** | 固定公開Scenarioの実CLI pinned 6 Step、独立Propertyと意図的失敗の判別、正例・業務拒否の区別 | 実コードMutant・別Target・Owner/実DBの包括PASSにはしない。#1180/#2514 |
+| **T0.5 Test Readiness** | 実CLIのSource/Subject/Version/必要Replyと独立Requiredを照合し、未Loaded/欠落/新旧混合を検出。必要な情報が未取得なら`blocked`又は`partial` | Product test-generation全資格、Plugin実Consumer Load、外部Harness受領／Grant／機密送出安全性は未実証。#3262/#2605/#2509 |
+| **T1 AIによるCase発見** | 必須Data/Function/Business/Rule/Relationの出典・意味・未取得を同Scopeで回答し、最小指示で適用理由付きPattern／Candidate Scenarioを生成。独立Holdout非開示でMutant/false-qualified/未カバーを測定 | プロンプトからのExpected自己採点、Schema/件数・C0だけからのCoverage完了、AIがOwner Meaningを承認したふりをすることを拒否。#3223/#2514/#1180 |
+| **T2 実製品横断** | Function→Query→実Provider Reader→Row/Field/Scope/Completeness、同ScenarioのCLI/Web/Studio分岐、API例外系のGraph＋表＋遷移検査。実Grant、Effect、Receipt、資源再読取を別証拠化 | 局所合成Query/HTTP静的Graph/旧Receiptや実PG別Reference成功から全経路PASSへ昇格しない。#2586/#3274/#1174/#2516 |
+| **T3 自己記述・Self-Build** | TEI自体の要件/Rule/Graph/Scenario/Buildを標準Dataに記述・適切に投影、Stage1実TEI ProcessからStage2 Build/Artifactへの再入を検証 | `go build`、標準Plugin SB-3、GraphレンダリングだけでG4=L3合格としない。#2831/#1119 |
+
+**順序と並列性**：T0.5はT1の**品質ゲート**だが、実Product ReaderのP0-R1（#2586）、Host Effect/Receipt、Plugin・Trait設計、DSL `*.tei.md`移行、Self-Build G4を全てT1の後に直列化する新Hard dependencyではない。別Ownerは並列に独立Fixtureを前進できるが、横断Claimを認定するときだけ`Required→Observed Source/実Consumer→Target Revision/Grant→Independent Expected→Claim Ceiling`の**同一試行**で照合する。T0.5のtest-only Python Readerは製品用Design Context Query・第2Parser/Verifier/権限正本に昇格させない。
+
+**正本／次の引渡し**：[実装・証拠・詳細T0〜T3](design/ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md)を参照。T1では#3262のtyped read-only Contextの要件Closure／Unknownを先に実証し、#3223のPattern推薦→#1180採用Scenario→#2514の独立判別へ移す。外部H2/H3でのSkill効果はTAI #168／TEI #2509が固定Task・Skill実ロード・完全Reply・送出資格を揃えた**独立実験**を行う。Source/Rule/Plugin/Owner受理、C1・NFR、Function実Provider、外部H3 Test-Case生成は現時点で**NOT QUALIFIED**。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
