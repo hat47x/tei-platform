@@ -320,3 +320,111 @@ TT-21〜29は既存MC/FC/ORX/RP/MV/H6/OrganizationおよびTT-01〜20のCaseを�
 **停止条件**：ExpectedがCandidateと同一経路、Requiredが生成済Case由来、Source未読込、Target Step silent skip、partial/非開示を全件扱い、手作業をFunction Receiptで代替、同人兼務をGrantへ自動昇格、ACK lossを未Commit扱い、旧Receiptを現在資格とする場合。新Runner/Host/Authority/Accepted Meaning Registryは追加しない。
 
 **現状**：今回の差分は、他チャットと既存限定実証を受入要求へ**計画接続する設計更新**。新規Go/CLI/Provider/AI Harness/OS隔離/Web/Desktop実行はNOT RUN。TT-21〜29と統合P0はNOT RUN、Owner Meaning AcceptanceはNOT ACCEPTED。Draftでレビュー待ち。
+
+<!-- tei-test-pattern-c0c1-20261107 -->
+## 12. 2026-11-07 横断深化：最小指示のテストデータ・テスト規則作成とCoverageからのPattern提案（設計案／NOT RUN）
+
+### 12.1 User Experienceを第一の受入要件にする
+
+目標は **対象を1つ選ぶ→提案→必要な差分だけ確認→保存済みDriver Scenarioへ採択**。自然言語でも同じ経路を使い、既にFunctionを選択中なら再指定は不要。利用者が正常系・境界値・参照整合性・権限・失敗回復などを毎回列挙しないで済むよう、TEIの受理済みMeaningとRequirement/ObligationからPattern候補を逆引きする。生成AIにも同じheadless read-only入口を与える。追加質問は、意味や必要なGrantが本当に不足する条件だけに限る。
+
+下記は**将来の構文候補であり、現行CLIに実装されているとの主張ではない**。
+
+    tei test propose order_entry
+    tei test propose order_entry --focus uncovered --budget small
+    tei test patterns explain order_entry
+
+同等の自然言語：「受注の未カバー領域を埋めるテストデータとテストを提案して」。最初の画面/CUI出力は「未カバーの要求」「上位3 Pattern」「追加すべきCaseと独立Expectedの根拠」「未受理/未観測」を短く表示する。原則として1回の選択→提案で見通しを得られ、詳細パラメータは必要時のみ展開する。UIの操作回数・Prompt token/文字数・質問往復数・Review/修正回数・計算コスト・有効提案率を測定対象とする。少ない指示で質が悪化するなら不合格。
+
+### 12.2 Pattern Languageを標準Data Structureの「知識部品」として記述する
+
+独立した第三の業務DSLやTest Runnerを追加せず、既存Record/Collection/Relation/Graph/Rule/Time/Facetの組合せで**Test Pattern候補**を説明・保存できるかを先にPoCする。Markdownの近傍表・短い宣言・自然言語はAuthoring Projectionであり、保存済みPatternとAccepted Meaning/Driver Scenario/Conformanceを別の正本にしない。Pluginが業界固有Patternを提供できることを目標に、Core固定enumの増殖は避ける。
+
+**Patternの最小比較列（正式公開Schema未採用）**：
+
+| 列 | 意味・独立受入条件 |
+| --- | --- |
+| Pattern ID / Revision / Origin | 知識の出典、提案者、Ownerの意味受理状態、Plugin/Source版。AIが生成したPatternはまずprovisional |
+| Applies to | 対象Data/Function/Businessと型・Role・単位/精度・Relation/Cardinality・Time・Tenant・Contextの**適用述語**。同名一致だけで選択しない |
+| Preconditions / Valid Baseline | 合法Datasetを作る拘束条件と必要Source/Scope、参照Rule。未読込・unacceptedはunknown |
+| Variation / Violated Constraint | 正常ケースの変形／狙って壊す制約／保つ制約／多条件相互作用。負例が無関係Ruleまで壊したら診断 |
+| Obligation / Independent Oracle | 埋めるべき機能/非機能要求・コード/モデル上の到達候補・独立Expectedの定義域/出典・必要Observer |
+| Fixture / Scenario / Shrink | 既存#1131 Dataset・#1180 Scenarioへの提案写像、seed、Generator/Tool版、失敗入力の意味を保つ縮約 |
+| Safety / Qualification | 合成データ規則、秘密・holdout非開示、実Target/Host Grant境界、再利用可否・stale |
+
+まずPattern familyは baseline / boundary / missing-null-unloaded / relation-cardinality / bag-join-grain / decimal-unit / temporal-asof / state-transition / role-delegation / partial-read / concurrency-retry / projection-loss / plugin-binding / resilience-latency / disclosure として**候補**を列挙。Patternの命名・最小操作・適用条件は実験で絞る。基準となる正常Dataset→一つの狙った誤条件→必要時のみ交互作用、という認知順序を優先し、総当たりを初期規定にしない。
+
+**作成・選択を迷わせない三段階**：A. 自動提案（Meaning/未達Coverageから上位3件を理由付き表示）、B. 短い選択（boundary等のFocusと小/中/大の予算だけ指定）、C. 定義拡張（専門家が近傍Markdown表を記す、AIが候補化し検証・Owner Review）。AIが既存Patternを作り直すよりも、既存部品の合成とパラメータ化を優先する。適用不能/競合/情報不足なら**なぜ生成できないか**を1つの根拠付き診断にして停止する。
+
+### 12.3 C0/C1はコードの実測値。業務・モデルCoverageを別軸にする
+
+用語は日本の一般的用法に合わせ **C0＝命令（statement）網羅、C1＝分岐（branch）網羅** とする。**C0/C1は実装コードの実際の通過状況**であり、DSL/業務Ruleのケース数、Graph Edge coverage、機能要件のカバー率、合成fixtureでの想定到達率と同一視しない。公式参照：
+- IPA ソフトウェアテスト見積りガイドブック（C0/C1/C2）：https://www.ipa.go.jp/archive/publish/qv6pgp0000000yho-att/000005132.pdf
+- Go coverage（標準ツールはstatement/basic block近似。C1をそのまま保証しない）：https://go.dev/blog/cover および https://go.dev/doc/build-cover
+
+**Code coverage（実測）**：対象Artifact/Build/Source digest/Target/Tool版/計測対象package/実行Attempt/Instrumentation/実入力/Step/Counterを束縛する。Goの `go test -coverprofile` はC0相当のstatement coverage用として利用する。**Go標準のcoverage率をC1として表示しない**。C1には分岐Outcomeを測る別の計測器・Target Adapter・明示された計測意味が必要。新しいBranch Coverage Providerを導入する場合は、AST/CFGに対する正確さ、短絡評価、switch/select、panic/defer、生成ソース→元DSL位置、Instrumentationの影響を小PoCで確認する。無い場合は `C1=unmeasured` と表示する。
+
+**Coverage Universeを分ける**：
+
+| Universe | 分母（Required） | 実測・主張 | 禁止する取り違え |
+| --- | --- | --- | --- |
+| **C0** | 固定Buildに含む測定対象の実行可能Statement集合 | 実行で通過したStatement。非Instrumented範囲・外部依存はout-of-scopeと明示 | 行/試験件数をC0とみなす |
+| **C1** | 同Buildの計測器が定義する各判定の分岐Outcome集合 | 正確に観測したTrue/False等の実分岐 | Go標準statement計測や単なる `if` 存在から推定 |
+| **Model/Rule/Path** | Accepted RuleのDecision/Outcome、Relation path、業務遷移・禁止遷移 | モデル上のCase・Requirement/Scenarioの到達と独立Oracle | モデル分岐をコードC1と同一視 |
+| **Functional** | 要求・受入条件・Claim・必要Operation/Target/Observerの集合 | 必要なStepが生成され実行され意味検証済みか | 全コード実行を全機能要件充足とみなす |
+| **Non-functional** | 性能/SLO、復旧、セキュリティ、可用性、整合性、互換性、アクセシビリティ等の**測定条件つき要求** | Target/負荷/失敗注入/統計条件/実観測と閾値・期間を対応づける | C0/C1や通常Unit PASSでNFR達成と断定 |
+
+分母は**実Source/Revisionから列挙したRequired集合**。未生成・未計測・到達不能／意図的除外・Source閉包不明を区別し、除外理由・Owner/Review・版を表示する。「未実装の要件」はコード上の分母に現れないため、Requirement/Obligation側で必ず残す。適合状態は「計画済／生成済／実行済／実観測／独立検証済／現在資格あり」を分ける。旧BuildのCoverageを新Buildへ足さない。コード→元DSL→Business Ruleの双方向Source Mapが失われれば関連付けはunresolvedとする。
+
+### 12.4 未カバー領域を「必要なデータとテスト提案」へ逆写像する
+
+Coverage gap→関連Requirement/Accepted Meaning→関係するFunction/Rule/Branch/状態/Source span→Pattern適用述語→境界・負例を含むDataset候補→Driver ScenarioのStep候補→Target instrumented Run/独立Oracleの必要条件、という**read-onlyの推論経路**を設計する。
+
+| Gap | 第一候補Pattern | 追加すべき入力・観測 |
+| --- | --- | --- |
+| C0未実行Statement | 到達前提の合法Baseline、前提値境界、異常系 | 実行条件・対応Function・実際に通ったCounter |
+| C1未実行False/異常分岐 | boundary / missing-null / invalid-transition | 意図的に条件を反転するDataset、分岐Outcome実測、Business Result/Errorの独立Expected |
+| Function要件未到達 | operation-scenario / procedure-step | Function→Scenario→CLI/WebのStep対応、手作業・External Stepは別Observer |
+| 多重Relation/集計が未検証 | relation-cardinality / bag-join-grain | Path occurrence、2×3 JOIN、独立Line合計、集合閉包 |
+| テスト対象の組織/権限未検証 | role-delegation-tenant / grant-revoke | Valid time、Tenant、Subject/Caller/Resource、Host current Grant、拒否Evidence |
+| 性能SLO未検証 | latency-under-load | 負荷条件、観測時間窓、統計量p95等、Hardware/Target/Provider版、基準値 |
+| 回復/冪等/未知結果未検証 | concurrency-retry / ack-loss | Invocation/Effect/Receipt/独立Resource Read、retry・取消、停止・再開の観測 |
+| 開示/秘密境界未検証 | disclosure / alternate-egress | DOM/Tool log/CI/report等の各Egress、機密/公開の許可範囲、観測不能はunknown |
+
+Pattern推薦の順位は **未カバーObligationへの寄与・リスク/影響・独立判別力・実行安全性・生成/実行コスト・前提条件の既知性** の多目的評価とする。単一の“coverage %最大化”で最適化しない。上位案は「満たすGap」「根拠」「必要な追加情報」「期待される観測」「実施できない理由」を示す。C1未達Branchを埋める値を元コードの比較式から推測しても、独立ExpectedやRule受理を省略しない。
+
+### 12.5 実証可能な独立対照 TT-35〜TT-43（新SSOTではない）
+
+| ID | 独立の差分・負例 | Expected（受入の境界） | 既存Owner |
+| --- | --- | --- | --- |
+| TT-35 最小指示 | 同じFunction/Accepted Revisionに対し長文Promptと1対象指示+Pattern選択を比較 | 同じ固定独立Expected/Mutantsで検出力を落とさず、操作数・Tokenを減らせるか測定。生成AIの自己採点は不可 | #2514/#1180/#2018 |
+| TT-36 Pattern適用の誤推奨 | 金額DecimalとQuantity/Time Pointを同型として推奨、RuleがSource未読込 | Unit/Time/Facetが不適合なら候補から除くかunknown。入力の名前のみで自動適用しない | #1705/#2495/#2507 |
+| TT-37 目的のある負例 | 数量>=1の**仮Rule**で1と0を比較。他のRelation/Keyは維持 | 負例が狙ったRuleだけ破る。Rule未Acceptedならprovisional、Expectedを確定しない | #2514/#1126 |
+| TT-38 C0/C1差分 | 真分岐で全Statementを通過、偽分岐未実行。Go標準profileのみ投入 | C0は高率/100%でもC1は**unmeasured**。別Branch Providerで偽分岐未通過が分かればC1 gap。数値捏造しない | #1180/#2514 |
+| TT-39 要件分母の欠落 | Source上に未実装Business Requirement、実Codeに該当行なし | C0 100%でもFunctional Requirementはuncovered。テスト対象0件にはしない | #1119/#1180/#2514 |
+| TT-40 NFRの閾値 | p95 200ms以下・指定負荷/時間窓の**仮SLO**を設置、Unit PASSのみ | 未負荷/未計測ならunverified、合格は同Target/負荷/集計条件の実測に限る | #1163/#2514/#1445 |
+| TT-41 多段表現の非単射 | Graphの二Relation occurrence→Treeの一表示→Markdown | 表示PASSでも逆Patch対象の一意性は不成立。Mapping損失を下流へ伝える | #3236 CX/#2497 |
+| TT-42 Plugin実Loadの不一致 | Contract C/Provider Bを選択したがConsumerはArtifact AをLoad | 静的Resolve成功と実Consumer合致を分離し、合成Conformanceを不適合/unknownにする | #951/#943/#2600 |
+| TT-43 Generator/Pattern改版 | 同seed/ScenarioでPattern規則、生成器版またはRule meaningを変更 | 旧Data/Caseを現在のExpectedに無条件流用しない。無関係依存は過剰失効を防ぐ | #2582/#2514/#1180 |
+
+上記IDはTT-01〜29や#3236 CX、#951 AV、#2515 H6等の具体データ/Expectedを**置換しない横断Obligation**。実行Ownerに既存Caseを参照して到達・観測させる。すべて**計画、NOT RUN、NOT ACCEPTED**。
+
+### 12.6 実装順序と完了条件（既存基盤への増分接続）
+
+- **P0-A Coverage現状の正直な計測**：実Go `go test -coverprofile` / `GOCOVERDIR` で固定Target/Commit/Instrumented範囲のC0相当値を報告。C1 Providerがなければunmeasuredを表示。Rule/Requirement未カバーと別列にする。対象数・分母・例外・Source→Build→Execution同一性は必須。
+- **P0-B 1対象→推薦→Dataset**：#2586のH/L1/L2/D2を対象に、固定Pattern3〜5件の適用述語を比較し、基準・JOIN反例・部分取得のDataset候補を**同一Accepted Revisionから**構成。本人への追加質問なしで推薦理由と不足Sourceを示し、Datasetから独立Expectedを機械的に逆算しない。
+- **P0-C Gap→Case→Scenario→実到達**：要求未カバーとC0未通過、C1未測定を**別Gap**として試し、上位推薦が既存Driver ScenarioのどのStep/Case候補を満たすか対応づける。Owner Review後、CLI生成・実行Counterと独立Observationへ追跡。正式C1計測器の採否はP1へ保留。
+- **P1**：Go C1等のInstrumentation/正確なSource Mapの小PoC、Model/Rule branch coverage、Domain Patternの人/AI両用Authoring、Rule競合診断、意味を保持するShrinking。性能/可用性/セキュリティ/アクセシビリティ等の異質NFRへの推薦を追加し、実Target測定を各既存Ownerへ委譲。
+- **P2**：全Target/Plugin/ProviderのCoverage/evidence現在資格の再計算、変更Impact、推薦順位改善。生成AIへの長文Promptと短い指示のA/B比較を同じReference Corpus/独立Expected/予算で評価。
+
+**実測KPI（初期仮説。合否閾値はPoC後Owner判断）**：必要指示数、Pattern選択にかかる操作数、推薦精度（適用できた割合）、未達Obligationの減少、独立Mutant検出率、正常Baselineの意味保持、単一違反生成の正確さ、再現率、生成・実行コスト、stale誤認数、秘匿/無許可副作用0。C0/C1の数値のみを成果指標にしない。
+
+**停止条件**：Goのstatement coverageをC1と呼ぶ、Source未Loaded/未計測を0%・達成済みに丸める、モデル上の未実装要件を分母から消す、コード通過からFunction/NFR完成と推測する、未受理RuleをAIが補って確定する、生成AIが自身のWantを採点する、Patternの提案を現在Grantに昇格する、実Provider/外部通信へ安全範囲外のテストデータを自動送出する。
+
+**現状**：本節は既存TEI Issue/PRとIPA・Go公式資料に基づく設計追補。CLI構文・Pattern Library/Schema・C1計測・NFR Provider・生成AI最短操作は提案であり、実装/実Go試験/独立Oracle検証/Owner正式受理は**NOT RUN / NOT ACCEPTED**。
+
+## 13. 経路合成との接続（#3236を受入条件として参照）
+
+[統合Draft #3236](https://github.com/hat47x/tei-platform/pull/3236)のData→View→Consumer、Representation Instance、非単射・Loss/Presence・否定依存・Disclosureの独立Expectedを**新たなテスト正本として複製しない**。Patternは各変換で維持すべきIdentity/Time/Unit/Multiplicity/Scopeと、合成後に失われた/unknownとなる性質をObligationへ投影する。例えば二つのRelation occurrenceがTree一行へ畳まれれば、読取り表示テストは提案できても自動逆Patchテストを「成功見込」とせず、拒否/unknownをExpectedとする。
+
+Plugin Compositionも既存Graph/Relation/Contract表現と#951の解決・#943/#2600の実Artifact・#1174の現在Grantを参照し、解決候補の存在と**実ConsumerがどれをLoadし実行したか**を分ける。新Graph Schema/第二Resolver/第二Authority/第二Test Scenarioは作らない。局所PatternのPASSから合成Target全体のPASSを推論しない。TT-41/42の専門Ownerが提供する実Resultで欠落の有無を判断し、実験未実施の部分をunknownとして残す。
