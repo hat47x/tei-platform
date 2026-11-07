@@ -762,3 +762,30 @@ Registryは**発見の索引**、Issuerは証拠の発行主体、Host/Ownerは�
 **方式の候補を選べることと安全な物理隔離は別**。D2外部Processでは、PluginやHarnessがTEI FileSystem Brokerを通らない読取・通信を行う場合、`os.Root`/Grant検査の限定PASSを全Processの保証へ拡張できない。D1静的合成では同一Processの呼出し境界が実際にどこまで強制されるかを確認し、D0純粋計算へ不要なOS隔離義務を課さない。方式の採否は[#2885](https://github.com/hat47x/tei-platform/pull/2885)へ委譲し、Consumer別のSource Disclosure・Effect/Grant・実行環境適合が未確認なら「方式が実装可能」から「採用可」へ進めない。
 
 **提案／採用の区分**：#3152/#3153/#3155/#3161はmainの限定実装・実測結果。#3162はDraftでなく未統合の実探索報告。EGR-01〜04として記述した追加の厳密な横断比較、実OS隔離＋Egress非送出、H3 Skillロード／4 Session比較、機密Profile、Owner受理は未実施。ADR-0035のA3機械確認とA4外部効果の確認は別に扱い、旧来の「すべての業務意味・権限変更はA4で人へ戻す」という一般化をここで復活させない。
+
+## 27. DSH実Scope分離と暗黙Context：Plugin発見・Function利用・実境界を再接合する（2026-11-07、現物実証からの最小追加。試験正本は各Owner）
+
+**変更点**：§26の「read-only/CWDはOS読取・Egress境界でない」を、別々の**書込保護／Lane間読取／暗黙Context送出／Tool実公開／選択Source閉包**へ具体化する。これは「すべてを一律に新しいPlugin Engineへ載せる」という提案ではない。PluginのDistribution・Composition・Runtime・Disclosureを、**Functionの使用対象／実行環境で有効な対象／Audienceへ渡せる内容**で個別に判定する。
+
+### 27.1 新しい現物を踏まえたClaim上限
+
+| 実観測・由来 | 合格または不成立が確定した範囲 | Plugin合成・外部Harnessに適用する停止線 |
+| --- | --- | --- |
+| [main #3228](https://github.com/hat47x/tei-platform/pull/3228)／[#2515](https://github.com/hat47x/tei-platform/issues/2515)：DSH \`workspace-write\` | Windowsの当該設定ではRoot内書込成功・Root外書込は\`UnauthorizedAccessException\`で拒否。一方、同じRoot外の既存Canaryは絶対Path・\`../\`双方から読取成功。Sandbox初期化前のDACL修復も実験前提 | Writeが拒否された＝Readも拒否、あるいは修復後OS ACLが安全、としない。読取/書込を別の実OS正負対照で観測。ACL変更は実測の前提であり一般利用者への修復手順の推奨ではない |
+| [main #3216](https://github.com/hat47x/tei-platform/pull/3216)／#2515：別DSH Lane | 別CWD・別SessionのLane A/Bが互いの合成Canaryを読み、モデル入力・Session Logへ載せた。別OS User/ACL/mount/Network隔離は**未構成** | Worktree・Session・Plugin Profile・Publisher/Tenant IDが異なるという論理分離を、Source/Secretの実物理分離としない。別Lane・別Tenantの機密採用時は認証主体＋OS/Providerアクセス強制と送出拒否を要実証 |
+| [実Mock PR #3191](https://github.com/hat47x/tei-platform/pull/3191)／[#2515 H6-E3](https://github.com/hat47x/tei-platform/issues/2515)：暗黙Context | Toolにより明示Readされていない\`AGENTS.md\`／\`CLAUDE.md\`の合成markerとSkill frontmatterの\`description\`がモデル入力／Session Logへ載る一方、Skill本文は未ロード・未送出 | \`Tool was not called\`＝未読／未送出とは判定できない。Accessible、Loaded as implicit instructions/description、Tool Read、Sent over Wire、Consumer Grantedを別列。Skill説明文の自動発見は本文の資格でも公開同意でもない |
+| [main #3210](https://github.com/hat47x/tei-platform/pull/3210)／#2509実H2再読：CLI公開面と結果 | 固定観測では53コマンドをCLIが受理、\`tei commands\`は19件を選択して公開、34件は意図的に非広告。DSH H2実記録はTool Call 56／Result 55、Catalog Tool保存は8192BでJSON末尾不完全、他保存にはstdout JSON後のstderr付随がある | Advertised Tool集合≠実CLIで実行可能な全Command集合。未広告を即「漏れ」や「無権限」とみなさず、外部Harnessが実際に起動できる\`argv\`／Flag／出力先／ネットワークを許可された範囲に限定。Exit0/Session Completed/一部fingerprint一致から必要な全Result受領・完全なReadを導かない |
+| [Draft #3217](https://github.com/hat47x/tei-platform/pull/3217)／[#1251](https://github.com/hat47x/tei-platform/issues/1251)：外部Module閉包 | \`cmd/tei\`の選択Sourceについて、Repo内318 file・外部12 Module/325 fileを観測し、\`qualified:false\`と明示。別の実Build・byte再現性が成立しても、現\`ResolveSourceClosure\`は\`rejected\` | Plugin Selected／実Compile／Artifact Digest／依存選択観測／Qualified Closure／B実Callを独立の判定列に維持。外部Moduleの観測Digestを既存Qualified Digestに置換しない。決定Ownerは#1090/#2831/#1251／方式#2885 |
+
+**横断した意味の接続**：[Draft #3225](https://github.com/hat47x/tei-platform/pull/3225)／#3192／#3179の標準データ構造／機能非依存の表現型／Function内のBound Representation Instanceを前提とする。**表現型の存在・Pluginの広告・Functionの操作Offerは、実Data BindingやHost Grantを生成しない**。Headless Functionが表示Slot 0で成立し得ることを認め、表示や非表示、Tab/Graph/Audio等の表示差を機密Source開示／業務Operation許可へ転用しない。媒体型・選択同期の仕様は#3192/#3222、実Operation/Action bindingは#3172/#1127/#2507、実Provider/Receiptは#1174/#2586の正本へ委譲。
+
+### 27.2 既存受入票へ接続する次の限定対照（新Fixture正本を作らない）
+
+- **H6-E1/E4の正負対照**：同じ合成Canary・ToolでAllowed Projection、別Lane/Root外のRawの2件を読む。DSH Mode \`read-only\`／\`workspace-write\`切替による**Write拒否だけ**をRead資格に加点しない。別OS identity・ACL・AppContainer/mount等の実構成で**禁止ReadがOS/Serverに拒否される**までは機密Laneの比較適格を保留。
+- **H6-E3/E2の送出対照**：明示Tool Readを行わず、\`AGENTS.md\`／\`CLAUDE.md\`／Skill descriptionだけを変えた場合のモデル入力・Session Log・Retry・Title requestを同じMock Receiverで比較。暗黙Contextの流入、Tool Result由来の送出、未観測Sinkは別列。実秘密や実CredentialをFixtureへ入れず、実Provider保存を推定しない。
+- **外部H2/H3のResult完全性**：固定Command/args/Exit/STDOUT/STDERRそれぞれの実byte長・digestとHarness Result ID/受領byteを照合。8192B切詰め・Call 56/Result 55を欠損として表現し、JSON先頭のFingerprint一致を完全Catalogや採点済みAnswerへ昇格しない。許可Command family（Read-only広告とCLI実実行範囲）を固定し、H3のSkill descriptionの自動注入と本文実Loadを区別。
+- **表示・Provider実使用**：同じData Shape／Function ContextでBound Presentation Instance有無・Rendererを変える対照と、D1/D2の選択Providerを変える対照を別に実施。Presentationの表示成功はFunction→Query→実Provider Read、Current Grant、Effect/Receipt、Go Target Build closure資格の代替にならない。
+
+**計画の責務と優先順位**：#2515／TAI #232は実OS/Network分離と送出、#2509／TAI #168は外部H2/H3比較、#2516はConsumer開示、#3210はCLI広告範囲、#3192/#3225は表現型/Function束縛、#1090/#2831/#1251/#2885は実Build/Plugin資格。実Reader/Effectは#2586/#1174。優先するのは新Plugin Runtime設計ではなく、**すでに観測できている負例に対する禁止Readの実強制、完全Tool Result、真のSelected→Build→Invokeの正負対照**。適用可能な既存Fixture/Expectedを利用し、第二Runtime/Host/ACL/証拠Storeを作らない。
+
+**状態・撤回条件**：#3216/#3228の限定Canary実測、#3210の実CLI差分はmain統合済み。#3191実Context証拠、#3217 Build観測、#3225 Function/表現型計画は各PRの範囲のみであり、main／Owner採用を一括主張しない。実OSによる**禁止Read**、外部Egress遮断、完全なH2/H3比較（4 Session）、D1選択Bの実Go Link/Invoke、Data→Function→Presentationの実Provider/GUI/Host資格、Ownerの正式意味受理はこの追補では**NOT RUN**。ADR-0035のA3機械確認／A4外部効果の確認方針は変更しない。 
