@@ -5,13 +5,13 @@
 **これはBuildの実行を伴う観測ですが、TEIのBuild経路（`BuildPackage` / `ResolveSourceClosure` / SB-3実行器）を通したBuildではありません。** ここで測ったのは`go build`と`go mod verify`という既存Go toolchainの振る舞いであり、TEI artifact・Lock・受入・権限・G4の判定を一切動かしません。G4は`UNQUALIFIED`のままです。
 
 - 設計側の契約案：[セルフビルドのGo Module供給境界](../design/GO_MODULE_SUPPLY_FOR_SELF_BUILD_SB0B_2026-11.md)
-- SB-0a（分類の事前観測）：[Draft PR #3091](https://github.com/hat47x/tei-platform/pull/3091)（branch `fix/gobuilder-module-closure-preflight-20261107`、head `7eaeaa09135fbecbd6e26aef2ccc1207e374be01`）。追加した観測入口と`gobuilder`の分類コードは、このPRのbranch上にあり、このcheckout（main系）には未統合
+- SB-0a（分類の事前観測）：[`tools/reference-go-module-closure-preflight`](../../tools/reference-go-module-closure-preflight/README.md)（[PR #3091](https://github.com/hat47x/tei-platform/pull/3091)でmainへ統合、merge commit `c81659678ed302e97bc229d1141d7808e8252105`）。記録は[`TEI_GO_MODULE_CLOSURE_PREFLIGHT_2026-11-07.md`](TEI_GO_MODULE_CLOSURE_PREFLIGHT_2026-11-07.md)
 
 ## 観測条件
 
 | 項目 | 値 |
 | --- | --- |
-| 対象checkout | `D:\GIT\hat47x\tei-wt-module-closure`。PR #3091のbranch head `7eaeaa09135fbecbd6e26aef2ccc1207e374be01`（親 `4fdad69d9f360ef605930cc298f2a72efdfdee8e`） |
+| 対象checkout | `D:\GIT\hat47x\tei-wt-module-closure`。観測時のHEADはSB-0aのbranch head `7eaeaa09135fbecbd6e26aef2ccc1207e374be01`（親 `4fdad69d9f360ef605930cc298f2a72efdfdee8e`）。のちに[PR #3091](https://github.com/hat47x/tei-platform/pull/3091)としてmainへ統合（merge commit `c81659678ed302e97bc229d1141d7808e8252105`） |
 | Go | `go1.27.0`、windows/amd64。実行ファイルdigest `sha256:7d828191ba32519a9c9361789ab647486236ed45c660889196c7770a8ff1985c` |
 | `go.mod` / `go.sum` | `sha256:ad0264180541bc910132f3f9183deb81539c89b3f4d88ba68fd2512d0382f19c` / `sha256:d5967ad9f867efa398e7fa9afaccb61819a3e8f520aaee7bbb4a5069402c55d3` |
 | 固定設定 | `GOPROXY=off`、`GOSUMDB=off`、`GOWORK=off`、`GOTOOLCHAIN=local`、`CGO_ENABLED=0`、`GOENV=off`、`GOFLAGS=`、`GOOS=windows`、`GOARCH=amd64`、`-trimpath` |
