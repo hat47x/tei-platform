@@ -362,7 +362,7 @@ lookup customer_lookup on order_entry.order_record.customerId
 
 **撤回条件.** フック種別が増え、Coreの小さな定義が機能型の再実装になる場合は、B（Pluginの契約）へ寄せ、ApplicationはPluginの選択だけを持ちます。
 
-**PoCでの実装.** record対話の`hook <phase> { reads ... uses ... produces ... on-failure ... }`として宣言を実装しました。位相・読み書き・失敗時の扱いを検証し、対話ビューへ表示します。実装Pluginは`internal/hook`の`Implementation`契約として境界を実装し、`reject`と`warn`を分けます。実Pluginの接続は未実装です。
+**PoCでの実装.** record対話の`hook <phase> { reads ... uses ... produces ... on-failure ... }`として宣言を実装しました。位相・読み書き・失敗時の扱いを検証し、対話ビューへ表示します。実装Pluginは`internal/hook`の`Implementation`契約として境界を実装し、`reject`と`warn`を分けます。フックが能力を呼ぶ場合は`CallingImplementation`で、`Runner`から宣言（`uses`）に制限した`Caller`を受け取ります。`hook.CommandCaller`はその呼出しをCommand境界へ委譲し、入力検証・認可・宣言効果の照合・取引境界は直接のCommand呼出しと同じ経路を通ります。能力から`command` Patternへの解決は`hook.CommandPatternFor`が行い、0件・複数件はそれぞれ拒否します。業務上の不成立は`hook.NotSatisfied`として実行の失敗と区別します。規則Pluginの参照実装は`internal/hook.ReferenceRule`（宣言した読み取りだけを評価し、同じ入力に同じ結果を返す）で、判定と能力呼出しの連結は`internal/hook.Guarded`（判定が通ったときだけ宣言済みの能力を呼び、通らなければ呼ばない）が担います。実PluginとCLI・Studioへの配線は未実装です（[確認記録](../evidence/XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)）。
 
 ### D3 項目の「意味の役割」と「表示・入力支援」を分ける
 
