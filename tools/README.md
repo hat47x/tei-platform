@@ -113,6 +113,7 @@
 | [`reference-build-execution-binding/`](reference-build-execution-binding/) | ビルド実行と主体・対象の結び付け |
 | [`reference-go-module-closure-preflight/`](reference-go-module-closure-preflight/) | Go対象の選択Module閉包をオフラインで分類する事前観測。`supported`/`external-unresolved`/`missing-module`/`unknown`を区別し、Build・Artifact・権限は行わない（#2831 SB-0a） |
 | [`reference-go-build-with-supply/`](reference-go-build-with-supply/) | 供給だけを使う隔離環境で実Buildし、成果物digestとSource閉包の資格を別々に記録する。両者が食い違うX1を明示する（#2831 SB-B事前確認） |
+| [`reference-go-module-supply-verify/`](reference-go-module-supply-verify/) | オフラインGo Module供給を、対象の実選択Moduleと`go.sum`の`h1`へ束縛して再解決する検証。供給元・署名・Build権限は扱わない（#2831 SB-0b） |
 | [`reference-builder-contract-resolution/`](reference-builder-contract-resolution/) | Builder契約の解決と適用 |
 | [`reference-studio-composition-evidence-7/`](reference-studio-composition-evidence-7/) | TEI Studioの静的合成を実装外から検査する限定的な黒箱検査器（#1824 / #7） |
 | [`reference-host-acceptance/`](reference-host-acceptance/) | 暫定のHost Acceptance Storeへ、issuerが署名したDecisionを鍵生成・署名・取込み・失効する参照ツール。効果許可は与えない（#267 / #1121） |
