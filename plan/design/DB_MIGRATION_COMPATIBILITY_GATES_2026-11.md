@@ -777,3 +777,25 @@ G1〜G5で各観測は取得時点が異なる。要求するのは**同一瞬�
 **テスト・ハーネスへの実装接続**：既存#3273のDesign Context→未カバー要件→独立Expected→CLI実行と#2514/#1180のScenarioを、WorkbenchのWB-15〜25と本計画MA-01/02/05/07/08/09に**同じFixture**で接続する。C0は`inspect→plan→admit→apply→observe→recover`の各Node実到達、C1は`stale/partial/unsupported/denied/unknown/target-mismatch/ack-lost`分岐で、必要母集団が分からなければ率を出さない。Provider read-only契約と正式Apply契約は分離し、実Connectionのない合成FakeからG1 PASSを作らない。生成AIへのCLI/MCP応答にはExpectedとObservedと未解決の必要項目を明示するが、別のScenario Engine/証拠Storeは設けない。
 
 **短期の実装順**：①#2586でPostgreSQL実Reader→Data Context→read-only表現の最短縦切りを先行、②#2611/#2622で対象Instance/Capabilityの現在資格とMA-01/02の`executeCalls=0`を実Adapterで検証、③使い捨てDBのSchema CREATE/ALTER/DROP→別接続Read/History・非Tx/partial負例、④実行できた契約をCLI/MCP/Studioから同一Providerへ投影、⑤旧新Writer・CDC/Retentionを伴うG3〜G5は#2555の独立Cutover・Owner承認に留める。既存WB計画の段階を置換せず、本PRでのPlugin化・データソース拡充・実DDL・Owner受理は**NOT RUN**。
+
+<!-- tei-db-migration-catalog-resolver-matrix-20261108 -->
+### 20.10 Plugin選択→実Catalog→三視点候補→Schema変更の受入閉包（2026-11-08、他レーン差分の採否）
+
+前節のWorkbench/Plugin-first要求を既存コードに照らし、**「対応技術の宣言が選ばれた」ことを「実Providerを使える」「現在のDDL実行権限がある」と誤昇格させない**ことを新しいP0検収項目にする。[merged #3350](https://github.com/hat47x/tei-platform/pull/3350)はPlugin能力とDatabase Instanceの技術名を`SupportsDatabaseProvider`で対応付ける参照測定を改善し、`selected`/ `unselected`の集計を正した。ただし実Providerの実装、実Instanceへの接続、権限、操作・結果はこの測定に含まない。既存`internal/database/providers/postgres/provider.go`の`Capabilities`は`MetadataRead/SchemaChange/Transaction`等を返すが、**対象テーブルへの現在Grant・ロック/非Tx DDL・実Snapshot完全性・処理済みEffectの証明ではない**。Resolverを増設せず、既存#951/#2622の責務で区別する。
+
+[Draft #3372](https://github.com/hat47x/tei-platform/pull/3372)は、物理Catalogの`FK/UNIQUE/Index`、`CapturedAt/Fingerprint`をread-only Workbench `SchemaView`へ落とさず投影し、`Physical Observation → Structural Candidate → Accepted Data/Function/Business → Diagram/CRUD/SHO`をつなぐ**未統合**変更。実SchemaのFK/UNIQUEは業務Relation/Keyの受理ではなく、逆にFKが観測されないことは業務Relationの不在でもない。このSource ObservationをそのままMigrationのDiff/Apply Admissionへ渡す場合も、**表示Projectionのフィールドが増えても、Instance/Scope/Readerの取得完全性・権限・世代が保証されたことにはならない**（MA-08/09、XH-01）。業務意味から宣言した希望Schemaと、物理Catalogから観測したActual Schemaを混同しない。
+
+**既存Fixtureに追加する最小の「同じInputで2つのConsumer」検収**：
+
+| 入力・変更 | Workbench/Reverse側（#3270/#3372） | Migration側（#2887/#2611/#2622） | 必須の非推論 |
+| --- | --- | --- | --- |
+| **MA-09a：同一Logical DBでpartial catalog**、FK/UNIQUE・表の一部がReaderから欠落 | 取得済み物理制約だけをSource Candidateとして表示、欠落は`unknown/not-observed` | DesiredにあってActualから欠けた表が`CreateTable`候補になり得ても適用しない（`executeCalls=0`） | 表・関係が無い、または自由にCREATEできるとは言わない |
+| **MA-02a：`selected` Provider技術は一致、実Instance/Aliasが違う** | 宣言上のBinding解決と、実CatalogのConnection/Scopeを別に示す | 実ProviderとCurrent Grant/Actual Observationが計画のTargetに束縛されない限りAdmit拒否 | Plugin選択、Capabilities=true、Plan成功を実行許可へ昇格しない |
+| **MA-01a：同じPlan/SQL、Catalog改訂世代・制約・Indexが変わる** | Observation Revisionと候補の失効を表示し、Accepted MeaningはOwner判断 | 変更後の依存影響・生成SQLを再審査し、未受理なら実行を止める | 申告Fingerprint一致や新Projectionの表示を現在Target保証へ使わない |
+| **MG-05/07：物理FKあり、業務多重度・履歴・時点Relation未受理** | 物理関係と業務候補を区別して三視点/CRUDへ引き渡す | Schema変更が成功してもB（業務受理）とG3/G4はpending | FKと行数一致だけで業務上の整合性・Cutover完了にしない |
+
+**テストの成立条件**：既存の合成Catalog→Introspect→Workbench Projectionの試験で確認できるのは、フィールド・ID/向き/多重度・出典時刻が**投影で消えないこと**だけ。実PostgreSQL独立Connectionの`Catalog Reader`→同じSnapshot/Scope→Migration Plan→不一致時拒否→DDL（隔離DBに限定）→別Connection再読取と、旧新Client・Owner確認は別経路。テストハーネスにはこの2 Consumerの必要項目（実取得列集合、欠落、Resolver selected、実Capability、Current Grant、Apply Attempt、Observed Diff）を**既存#1163 Packet**の別欄で返す。C0/C1の母集団が不明な場合は未評価とし、偽のカバレッジ率を出さない。
+
+**短期の責務と停止線**：#951/#3350はResolver宣言選択、#3270/#3372は物理情報の非損失投影、#2611/#2622は実DB Target/Provider能力・Apply Admission、#2892はHistory Reader、#1163/#2514はExpectedと実入力の照合、#2555はCutoverのOwner。新しいPhysical Relation正本、Migration向けPlugin Resolver、Project-level History Registryは作らない。§20.8のMA-01/02特性試験は現挙動を特徴付けた段階であり、安全なAdapter拒否・実PG・SHO/Studio実利用・Owner受理は**NOT RUN**。
+
+**統合に関する検証上限**：前HEAD `0675d019c9a3f19ff6edbc4538b229d37e52a2a4` のRepository Healthは**failure**（ほか6つのWorkflowはsuccess）。Jobログでは`internal/database/migration/postgres_apply_test.go`のgofmtと、`RQ-035`の要求マッピング2箇所、設計索引4箇所の不一致を特定。gofmt 1箇所は本PRの後続commit `882e99d5b52141953a01e25400a8c25c330be1b7`で整列し再読取済み。**RQ-035マッピングと索引4箇所は、その後の最新mainに記録が存在することを確認した**ためPR側で重複編集せず、最新mainの内容を損失なく合成する。新exact-headでCI完了するまでGoテスト合格は未認定。
