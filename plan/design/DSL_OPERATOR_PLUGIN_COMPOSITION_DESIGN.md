@@ -477,3 +477,23 @@ Source移行では、`plugin.tei.md`を選んだ意図Bと、固定名Loaderが`
 **実Source消費の負例がより具体化**：[Draft #2811](https://github.com/hat47x/tei-platform/pull/2811)に記録された[TAIの実CLI負例Run #42297500012](https://github.com/hat47x/tai-pleroma/actions/runs/42297500012)では、旧固定Loaderを使い、`*.tei.md`の原文変更でSource Index Fingerprintが変わってもWorld/Catalogが不変、`*.tei`からのrenameでSubjectが消えても`validate.ok=true`となる例を観測している。**これは別プロジェクト/旧固定版の反例**であって、現在の[#3031](https://github.com/hat47x/tei-platform/pull/3031)の暫定拒否が機能しないという主張ではない。K1の`discovered`/Index変化がK3 `parsed`、K4 `actual consumed`、K6 Buildへ自動継承されないことを裏づける。
 
 **独立Expectedの差分判定（新Caseを増やさない）**：既存BS-07（必要Source集合の偽の空）、BS-10（Parser/Conformance PASSとOwner Acceptanceの分離）、BS-15（未知GrammarでSeed自己起動不可）を、#3030 TM-12/14、#2823 Read/Consumed、#2514の既存判定基準に照合する。判定に必要な対照は、**IntentしたSourceの必要集合、Readerで実観測されたbyte列、Parserが実消費したbyte列/Source span、Build入力、現行Owner Meaning/Host**。Index Fingerprint一致だけ、`validate.ok=true`だけ、Attesterの`verified`だけ、またはCandidateのRequired自己申告だけでは、どの層の未観測も埋めない。承認・作業・実DB効果の境界は既存Ownerを保持し、#1119へ未検証Gateを追加しない。
+
+
+<!-- tei-dsl-k1-readbyloader-actual-witness-20261107 -->
+### 13.13 main統合済み `readByLoader` を使ったK1実Source読込の限定実証
+
+[merged PR #3078](https://github.com/hat47x/tei-platform/pull/3078)で、`internal/workspace/loader.go`の`ManagedFile.ReadByLoader`と`SourceRootFindings`がmainに統合された。`readByLoader`は、管理Root内のファイルを**domain Loaderが実際に読んだかどうか**を、`sourceSnapshot`に存在する実読込Source pathから投影する。単なるInventoryやSource Index Artifactの列挙と区別するが、形式に合ったParse、Canonical意味受理、実Buildへの入力、現行Host Grantは保証しない。
+
+この差をテストの独立した観測にするため、本PRに `reference/dsl-language-plugin/bootstrap_actual_read_test.go` を追加。実`workspace.Load`と`workspace.BuildSourceIndexFromLoad`を使用し、**一つのManifest（formatVersion 1、`sources: [semantic]`）**のもとで次を検査する。
+
+| 実File | ManagedFiles | `ReadByLoader` | Source Index Artifact | 限定的に証明できること |
+| --- | --- | --- | --- | --- |
+| `semantic/model.tei`（`namespace probe`） | あり | `true` | あり | 既存Native Loaderがこのbyte列を読んだ |
+| `semantic/README.md` | あり | `false` | あり | Inventory/Indexに含まれても実DSL Parserが読んだことにはならない |
+| `drafts/unmanaged.tei.md` | なし | 該当なし | なし | Manifestで宣言されないDraftを管理Root／意味Sourceへ勝手に取り込まない |
+
+**反例**：`Source Index Artifacts`が2件あることを根拠に`parsed sources=2`／`accepted meaning=2`と数える実装は誤り。独立のInput期待と、`readByLoader`の実観測、Source Indexの管理Artifact列挙を**別の列**で報告する。既存BS-07（Required集合を候補の`required=[]`から自己確定しない）の**関連観測点**であり、BS-07の全要件・Required独立Closed World判定をこの局所試験のPASSで済ませない。
+
+この試験に管理Root**内**の`*.tei.md`の「成功」を追加しない。現mainでは未対応新形式が黙って未読となり得るが、[Draft #3031](https://github.com/hat47x/tei-platform/pull/3031)の暫定`TEI_MD_PARSER_UNBOUND`はそのケースを明示拒否する。両方で同じSourceを正常に解析できたと見なすと、移行の欠落をテストが固定してしまう。正式な`*.tei.md`の入場／Loader実読込／Parser／Source span／Meaning／Buildは[Draft #3030](https://github.com/hat47x/tei-platform/pull/3030)のTM検収がOwnerであり、次の同一HEAD統合試験まで未実証。
+
+**資格上限**：#3078のmain統合と専用CI成功はSource Read証拠の機能を示す。本PRに追加したGoテストの成功は**この新しいPR HEADのCIが完了した場合に限る**。ProductとしてのK0〜K6通過、Owner Meaning受理、実Plugin loaded bytes、実Host/Provider Effect、BS-08/09/13のCrash/ACK復旧を主張しない。新Reader／Registry／Attester／独立Expected正本を作らない。
