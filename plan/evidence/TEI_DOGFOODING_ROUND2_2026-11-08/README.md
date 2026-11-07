@@ -23,28 +23,34 @@
 
 ## 3. 生データ
 
-同じディレクトリの `cli-*` と、`0N-*.out`／`0N-*.err`（`N` は実行順）が生出力である。主な対応:
+同じディレクトリの `*.txt` が実行時の標準出力のコピーである。`.out` はリポジトリの `.gitignore`（`*.out`）に当たるため `.txt` で保存した。**25件すべての標準エラーは空だった**ので、`.err` のファイルは残していない。
 
 | ファイル | 呼出し | 終了コード |
 | --- | --- | --- |
 | `cli-binary-sha256.txt` | 実行物のSHA-256 | — |
 | `cli-version-json.txt` | `version -json` | 0 |
-| `01-commands.out` | `commands` | 0 |
-| `03-trace-unsupported-kind.out` | `trace … -subject-kind semantic-candidate-key` | 2 |
-| `04-validate-identity.out` | `validate -workspace reference/workspace -json` | 0 |
-| `05-plugin-lock.out` | `plugin-lock -workspace reference/workspace` | 0 |
-| `06-plugin-runtime-plan-envelope.out` | 上のenvelopeをそのまま `-plugin-lock` に渡す | 0 |
-| `07-help-inspect.out` | `inspect -h` | 0 |
-| `08-knowledge-qualify.out` | 最小の要件JSON `{"expectedKind":"semantic-data"}` | 0 |
-| `09-inspect-ref.out`・`10-inspect-xtea.out` | 2つのWorkspaceで同じ Canonical ID を `inspect` | 0 |
-| `11`・`12` | `trace`（summary / full） | 0 |
-| `13`〜`17` | `validate`・`workspace-files`・`source-index`・`view`・`knowledge-context` | 0 |
-| `18`〜`21` | 失敗系（不在1・未知kind2・未知namespace1・読込み失敗2） | 1/2/1/2 |
+| `01-commands.txt` | `commands` | 0 |
+| `02-commands-json-keys.txt` | `commands`（`01` と同じ内容を discovery の検査に使ったもの） | 0 |
+| `03-trace-unsupported-kind.txt` | `trace … -subject-kind semantic-candidate-key` | 2 |
+| `04-validate-identity.txt` | `validate -workspace reference/workspace -json` | 0 |
+| `05-plugin-lock.txt` | `plugin-lock -workspace reference/workspace` | 0 |
+| `06-plugin-runtime-plan-envelope.txt` | 上のenvelopeをそのまま `-plugin-lock` に渡す | 0 |
+| `07-help-inspect.txt` | `inspect -h` | 0 |
+| `08-knowledge-qualify.txt` | 最小の要件JSON（`08-requirements-min.json`）を渡す | 0 |
+| `09-inspect-ref.txt`・`10-inspect-xtea.txt` | 2つのWorkspaceで同じ Canonical ID を `inspect` | 0 |
+| `11-trace-capability.txt`・`12-trace-capability-full.txt` | `trace`（summary / full） | 0 |
+| `13-validate-xtea.txt` | `validate -workspace examples/xtea-lowcode -json` | 0 |
+| `14-workspace-files-reference.txt` | `workspace-files -workspace reference/workspace` | 0 |
+| `15-source-index-first.txt` | `source-index -workspace examples/first-workspace` | 0 |
+| `16-view-application.txt` | `view … -format json` | 0 |
+| `17-knowledge-context.txt` | `knowledge-context … -subject-id sales.order` | 0 |
+| `18-inspect-not-found.txt` | 不在のsubject | 1 |
+| `19-inspect-unsupported-kind.txt` | 未知の `-subject-kind` | 2 |
+| `20-namespace-not-found.txt` | 存在しないnamespace | 1 |
+| `21-validate-missing-workspace.txt` | 存在しないWorkspace | 2 |
 | `22-mcp-surface-survey.txt` | MCP入口の調査（CLI広告・Goソースのgrep・文書の位置づけ） | — |
-| `30`・`31` | `view -format json`・`model catalog` | 0 |
-| `32`・`33` | 設計文書（`docs/`＋`plan/`）をWorkspaceにした `validate`・`workspace-files` | 0 |
-
-`02-commands-json-keys.out` は `01` と同じ内容を discovery の検査に使ったもの。
+| `30-view-json.txt`・`31-model-catalog.txt` | D-3の確認（`view` と `model catalog` の版の欄） | 0 |
+| `32-validate-markdown-workspace.txt`・`33-files-markdown-workspace.txt` | 設計文書をWorkspaceにした `validate`・`workspace-files` | 0 |
 
 ## 4. 観測
 
@@ -57,7 +63,7 @@
 | D-3 版の欄の不統一 | `view -format json` の `result` は `application`・`patterns`・`schemaVersion`・`semanticFingerprint`・`semanticUses` のみ。`worldFingerprint` を持たず、`semanticFingerprint` は `sha256:f6c4cf29…` で `model catalog` の `worldFingerprint` `sha256:c92de09f…` と異なる（`30`・`31`） | **残る** |
 | D-4 `view` の作用と広告 | `view` は `effect: read-only` のまま、`writeFlags` に `-operation-log`・`-lifecycle-state` を挙げる（`01`） | **閉じた**（`effect` 語彙の統一は未着手） |
 | D-5 `plugin-lock` のround-trip | envelopeをそのまま `-plugin-lock` へ渡して成功（`06`、終了コード0） | **閉じた** |
-| D-6 不正lockの終了コード | 第1ラウンドで観測した2コマンドの差は、mainの修正で終了コード2に揃った（`22`の調査対象外。個別の再実行はしていない） | 閉じた（間接確認） |
+| D-6 不正lockの終了コード | 第1ラウンドで観測した2コマンドの差は、mainの修正で終了コード2に揃った（個別の再実行はしていない） | 閉じた（間接確認） |
 | D-7 `-h` | `inspect -h` は終了コード0・標準出力にusage（`07`） | **閉じた** |
 | D-8 要件JSONの例 | 読み案内に欄の表と実例ファイルへの参照があり、最小形 `{"expectedKind":"semantic-data"}` が `applicable` で通る（`08`） | **閉じた** |
 | D-9 設計文書が意味として読まれない | `docs/`＋`plan/` のWorkspaceは `ok:true`、`WORKSPACE_DECLARES_NO_MODEL_ELEMENTS` と `sourceRootFindings`（`docs`・`plan`）、管理2ファイルは `readByLoader` が0（`32`・`33`） | **残る** |
@@ -79,11 +85,15 @@
 - `view -execute` のテキスト出力に `authorization: reference-allow-all` の行が入った（第1ラウンドの固定実行物には無かった）。
 - 第1ラウンドで `plugin-lock` の envelope を渡すと `unsupported plugin lock format 0` で失敗した経路が、現行mainでは成功する。
 
+### 4.4 第1ラウンドの再現性に関する注意
+
+第1ラウンドの生データは `cli-*.json`／`cli-*.txt` として保存していたが、そのうち `.out` を使っていたものは無く、`.txt` で残していた。第2ラウンドでは `.out` が `.gitignore`（`*.out`）に当たることに気づいたため `.txt` へ改名した。**第1ラウンドのファイル名との対応を保つため、以降のラウンドも `.txt` を使う。**
+
 ## 5. 読み取れること
 
 - 第1ラウンドで起票した10件のうち、7件（D-1・D-2・D-4〜D-8）は現行mainで解消している。**起票した課題が実際に修正へつながった**ことを、同じ手順の再実測で確認できた。
 - 残るのは D-3（版の欄の不統一）・D-9（設計文書がCLIの意味として読まれない）・D-10（出力の形の不統一）の3件で、いずれも**単一の欄や語彙の追加では閉じない設計判断**を含む。
-- CLIは引数の許容値を discovery で広告するようになり、生成AIが「何を渡せるか」を文書なしで知る経路ができた。ただし `subject-kind` の許容値のように、`argumentValues` に載っているかを今回は確認していない（`22`の範囲外）。
+- CLIは引数の許容値を discovery で広告するようになり、生成AIが「何を渡せるか」を文書なしで知る経路ができた。
 
 ## 6. 読み取れないこと（NOT RUN）
 
