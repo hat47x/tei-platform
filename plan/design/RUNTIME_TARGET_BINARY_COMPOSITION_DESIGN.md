@@ -1212,3 +1212,51 @@ Build Unitごとに、選択したroot・依存閉包・実Generator/Builderが*
 **横断受入の終了条件（提案）**：固定した一つのAccepted Function/Rule/Scenarioを使い、①単一Goバイナリ、②Web/API＋Batchの2unit、③Job別の3unitで、全必須rootの配置、実消費入力、ビルド済みArtifact、公開入口、Target適合、外部Consumerの実受領、権限・結果を別列の証拠として比較できること。必要なら単一Buildが最善であるとの結論も許す。自動設定の記述行数・人が修正した箇所・Build latency/size/起動遅延・false reuse・false invalidationを測るが、設計だけで高速化を主張しない。
 
 **採用前の判断**：§14.3の優先順位・Build構成ファイル名・Root発見方法・Release切替契約は未採用。まず既存#1167/#1182と実現在のCLIを調べ、新しい構成Schema・コード生成入口・公開APIの実装が不可避かを判別する。#1130のBU、#2600のIB、#2604のAP、#2787のWPを重複コピーして新Gateにしない。追加した本文は設計・責務接合のみであり、実マルチBuild・Job起動・Web/EKI/Studio/SHO/実DB/Owner受理はいずれも**NOT RUN**。
+
+<!-- tei-function-entry-qualification-crosslane-20261107 -->
+## Functionの定義・実現・現在の提供可否を同じ根拠から照合する（2026-11-07、横断設計候補）
+
+**目的**：§14/15のFunction→Build割当を、現在のCLI/MCPによる設計照会、標準Data/Function/Business図とCRUD対応、標準表現型、Web/CLI/Jobの共通Function、実Provider、Plugin組合せの検証と接続する。これらを「Function一覧に載った＝いま呼べる」という誤った一段階判定にしない。本文は既存Ownerへの受入条件の受渡しであり、新しい中央Registry、Catalog正本、Host、Runtime Policy Engine、Parser、テストSSOTを採用しない。
+
+### 定義・物理実現・現在の利用資格は別の問い
+
+「Functionがある」「そのビルドに収録された」「利用者がいま実行できる」「業務効果を確認した」は、それぞれ異なる主張である。判定キーは、少なくとも **Functionの安定IDと意味Revision、Application/Project、依存するContract/Plugin版、Target/Build Unitと実Artifact identity、Entry Point/Consumer、Actor/Tenant/Scope/現在Grant、Resource/環境/評価時点** のうち当該Claimに必要な項目を保持する。固定Handoverの意味版と実Target build版、生成物の公開版と実Consumerが読んだ版を一つのRevisionに畳まない。
+
+| 層（read-onlyな照合列） | 正にするため必要な根拠 | 見落としてはいけない不成立 |
+| --- | --- | --- |
+| 定義と意味 | 実際に選択・Loaded/ParsedされたSource、stable Function/Action/Ruleと意味受理範囲、Source location/revision | Manifest掲載、readByLoader=true、機能定義書の生成だけではAccepted Meaningや実行資格にならない。未取得・部分・未解析を空集合にしない |
+| 必須設計閉包 | Data/Function/Business、Query/SQL/Relation、Rule、要求/Scenario、依存するProvider・ContractのRequired集合と充足根拠 | 観測した行数/表示上のRelationだけでNOT EXISTS・全必須入力やC0/C1/NFR coverageを推定しない |
+| Build実現 | 選択rootと依存閉包、宣言Sourceと実消費byte、Target/Toolchain/Plugin lock、実Go生成・link後Artifact/memberの証拠 | Selector/manifestが選択を宣言しただけ、別UnitのFunctionが存在するだけ、同digestだけでは物理包含・除外や再利用を保証しない |
+| Entry公開と受領 | 明示されたCLI selector / Web route / OS Job trigger、実Dispatcher/Hostへのbinding、版互換、外部Consumerの実受領 | 同じBinaryへの収録は公開ではない。HTTP routeの存在・API schema・cron登録も実呼出し成功ではない |
+| 現在の実行資格 | 実Actor/ScopeとHost grant、対象Resource/Provider資格、実Requestのtyped input/Context、必要Guardの充足 | PluginのOpen/Stable区分、UIでのボタン表示、Skill記述、CLIのexit 0は認可・安全な副作用の証拠にならない |
+| 結果・業務効果 | Attemptごとの受付/起動/Result、Operation ID/Effect fence、Provider Receipt、独立した対象資源の再Readと業務完了条件 | Task completed、HTTP 2xx、Receipt取得、RunPlan step completedのいずれも、現在のBusiness Outcomeとは同一でない |
+
+各列は **proven / contradicted / unknown / stale / unsupported / partial / not-observed** 等の根拠と適用範囲で示す。「全機能が利用可能」の単一booleanを新設しない。権限によって開示不能なSource・ID・件数・digest自体は非開示にできるようにし、権限不足と本当に存在しないことを外部Consumerへ漏らさない。
+
+### 設計照会とBuild管理の共同入口：先にread-onlyで不備を見つける
+
+最小の入口は [#3262 Design Context Query](https://github.com/hat47x/tei-platform/issues/3262) の **用途と対象に相対的なRequired閉包** とし、[#2482 機能定義書・対応一覧](https://github.com/hat47x/tei-platform/issues/2482) はそこからの派生Projectionとする。対象Functionの所属、Data/Function/Business三視点、CRUD宣言/業務経路/実Effectの区別、Context/Selectionと標準Data Shape・機能内Presentationの対応は既存[#1125](https://github.com/hat47x/tei-platform/issues/1125)、[#1127](https://github.com/hat47x/tei-platform/issues/1127)、[#2507](https://github.com/hat47x/tei-platform/issues/2507) に帰属させる。図面やCRUD表に描けることと、元Sourceへ可逆編集できることは別の資格とする。
+
+CLIの既存inspect/catalog/operations/artifacts/validate等を実在する契約の範囲で照合し、まず **Required → Declared → Discovered → Loaded → Parsed → Meaning-bound → Build-consumed → Consumer-observed** の差を可視化する。各段階を同名の「発見済み」へ丸めない。特に現行mainの **readByLoaderはbyte取得の証拠のみ**であり、*.tei.mdはAuthoring上の統一方針と実Reader移行の完了を分ける。現在のoperations一覧が、宣言された全Function/Patternを網羅すると仮定しない。テスト設計や生成AIへの推薦は、独立Required集合と出力完全性（同Snapshotのpagination、終端、切断の有無）が確定した部分に限定する。CLIとMCPと人間向け表は同じQueryの別Projectionとし、MCP専用Reader/正本は作らない。
+
+Build管理Pluginが提案する変更も、**照会結果 → 配置候補 → 差分Preview → 許可されたProject設定保存 → Build実行 → 成果物検証** を分離する。初期は設定不要の単一Go Binaryを維持し、複数Unitが必要な場合だけ既存[#1016](https://github.com/hat47x/tei-platform/issues/1016) のProject compositionと[#951](https://github.com/hat47x/tei-platform/issues/951) のResolverによる解決候補を利用する。Plugin版のrange・正確なlock・検証済みBOMの効力範囲は組合せ試験のOwnerに返す。OpenなPlugin APIの存在は実Runner/OS Secretの公開許諾に拡張しない。
+
+### 複数入口の契約を「同じFunctionが同じ意味を維持する」条件で検証
+
+CLI、Web/REST、Desktop、非対話CLI/cron、EKI委任は**Invocationの実現形**であり、業務Functionの別正本ではない。ただし入口の実装差（必要な対話、OS Resource、Session、Authn、Timeout、再試行、戻り値）は無視しない。共通のtyped Intent/Resultと [#1180 Scenario](https://github.com/hat47x/tei-platform/issues/1180) の独立保存Expectedを基準に、[#1158](https://github.com/hat47x/tei-platform/issues/1158) のAdapterで現実の到達範囲を比較する。CLIが存在するだけでWeb/Jobへ自動公開せず、対話必須Functionをheadless Jobへ無断変換しない。
+
+HTTP経路の例外は[#3274](https://github.com/hat47x/tei-platform/issues/3274) の **Business Outcome → Execution/Effect certainty → HTTP projection → Client Reaction** で検証し、HTTP status・OpenAPI・Problem DetailsをFunction意味や回復規則の正本としない。Jobがtimeout/ACK喪失した場合は受付不明・Commit不明・Receipt Lookup不能・独立再Read未完了を別状態にする。安易に新Operation IDで再送せず、[#1130](https://github.com/hat47x/tei-platform/issues/1130) のRunPlan前提条件・部分Effectと[#1174](https://github.com/hat47x/tei-platform/issues/1174) の実Provider Effect FenceのOwnerへ渡す。
+
+### 最短の縦断試行と停止条件（既存Fixtureを再利用）
+
+| 順番 | 同一Function/Scenarioで追う差分 | 独立期待と受け渡し先 |
+| --- | --- | --- |
+| P-1 設計対象確定 | Acceptedな一つのFunctionに必要なSource/Business/Data/Rule/Query/Scenarioを列挙。実Loader/CLI結果とRequired集合の差を表示 | #3262 DCQ-01〜10、#2823。宣言だけ・切断・欠落・権限非開示でcomplete禁止。新CLI名の捏造禁止 |
+| P0 単一Build | rootとnon-rootを含めてゼロ割当設定のGo単一Binaryへ対応付け、実Consumed input・Artifact/Entryを実測 | #1130 BU-01/08、#2595、#1167。実link、除外、Dispatcherが未観測ならunknown |
+| P1 必要時のみ分割 | 同じMeaningで1→2→3 Build、依存共有/Source移動/版混在/Consumerが読んだbyteを比較 | #1130 BU-02/05/06/07、#2600 IB、#2604 AP。ビルド成功と公開可能を別判定 |
+| P2 同一Scenarioの二入口 | まず副作用のないFunctionをCLIとWeb、次に非対話Job入口へ。typed inputとHost条件、実Result、旧新Consumer互換を比較 | #1180、#1158、#3274、#1130 BU-04。入口不足はunsupported、UIだけの成功は非代替 |
+| P3 効果あり・回復 | 一つのEffectありFunctionで権限拒否、期間Guard欠落、部分Effect、ACK-loss、同一/異なる冪等key、旧Job再開を区別 | #1130 BU-09/ACU/RPL、#1174、#2514。Commit/独立Read/Owner完了のないResultは未確定 |
+
+試行ごとに同じ **Function/Scenario/Source revision/Target/Artifact/Consumer/Actor/Attempt** に根拠を束縛し、どの一辺が初めて未成立かを示す。既存Scenarioと独立Oracleがテスト正本であり、この表は追加のFixture正本でも新Gateでもない。比べるのは、手設定数・手修正箇所・誤生成/誤除外・Build latency/size・起動コストと、利用者/生成AIが未充足理由を特定できるか。省略ビルドやPlugin分割が常に優位とは先に決めない。
+
+**状態・採用線**：本追補は横断会話の成熟した制約を、既存のBuild/Job/Design Context/Scenario各Ownerへつなぐ設計候補。新規CLI/MCP、実マルチBuild、Web/cron/EKI/Studio/SHO、実Provider Read/Effect、Plugin BOMの実互換Matrix、正式Owner意味受理の新しい合格を主張しない。コード試験・E2Eは本変更では **NOT RUN**。
