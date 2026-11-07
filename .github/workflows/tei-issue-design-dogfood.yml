@@ -298,6 +298,44 @@ jobs:
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
               f.write("\n".join(lines) + "\n")
           PY
+      - name: Execute proposed uncovered Rule boundary via existing pinned TEI Scenario
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/reference-issue-test-ability/t1_line_number_candidate.py \
+            --root . \
+            --cli "$RUNNER_TEMP/tei" \
+            --context "$RUNNER_TEMP/issue-to-design/context-readiness.json" \
+            --out "$RUNNER_TEMP/issue-to-design/t1-line-number-candidate.json"
+          test -z "$(git status --porcelain=v1)"
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          r = json.loads((Path(os.environ["RUNNER_TEMP"]) / "issue-to-design/t1-line-number-candidate.json").read_text())
+          assert r["case"]["observed"]["sales.order_line.line_number_positive"] == "not-satisfied"
+          assert r["case"]["observed"]["sales.order_line.quantity_positive"] == "satisfied"
+          assert r["case"]["observed"]["sales.order.lines.line_number_unique"] == "satisfied"
+          assert r["case"]["executionMode"] == "generated-pinned"
+          assert len(r["negativeControls"]) == 3
+          assert r["independentBlindHoldoutApplied"] is False
+          assert r["ownerMeaningAccepted"] is False
+          assert r["scenarioSSOTChanged"] is False
+          assert r["context"]["qualifiedTestGeneration"] is False
+          lines = [
+              "## T1候補：未実行Rule境界を実CLIで確認（#3273）",
+              "",
+              "- 公開line_number_positiveの0境界を候補として一時Scenarioへ追加（正本Scenarioは無変更）。",
+              "- 実TEI CLIの verify→generate→check→generated-pinned run を完了。",
+              "- 行番号ゼロだけがnot-satisfied、数量正・行番号一意はsatisfied。業務拒否と技術エラーを区別。",
+              "- 嘘Expected、異なる値のFixture、Plan生成後Fixture変更の3負例は実CLIで拒否。",
+              "- **外部AI Harness/Skillからの盲検テスト生成ではない**。Issue #3273既知候補の初回実行に限定。",
+              "- Contextはpartial/exploration-only。Scenario Owner採用、C1、全要件・実DB/Hostは未資格。",
+          ]
+          print("\n".join(lines))
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as file:
+              file.write("\n".join(lines) + "\n")
+          PY
       - name: Preserve bounded synthetic test-ability evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -307,6 +345,7 @@ jobs:
             ${{ runner.temp }}/issue-to-design/report.json
             ${{ runner.temp }}/issue-to-design/context-readiness.json
             ${{ runner.temp }}/issue-to-design/test-ability.json
+            ${{ runner.temp }}/issue-to-design/t1-line-number-candidate.json
             ${{ runner.temp }}/tei-scenario-c0.cover
           if-no-files-found: warn
           retention-days: 7
