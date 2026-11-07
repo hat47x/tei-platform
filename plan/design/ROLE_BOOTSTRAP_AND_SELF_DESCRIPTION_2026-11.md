@@ -759,3 +759,70 @@ E0：既存#2860のactual Workspace/Source Index／Go Parserを同一Sourceで�
 **採用する最小順**：まず#2898のexact HEADでSyntax/Workspace testとGo build成功を確認→#2935の`readByLoader`を独立Snapshotに束縛してRO-04/RV-01の対照へ使用→#2620 Required/Declared/Consumedの独立閉包を照合→#2972の事前Qualified Public SliceをConsumer contractの**入力前提**として利用し、#2516/#1124で実Policy/Hostに対して独立二世界を確認。既存#2514 Oracleと#1163 Attempt/Receiptを使い、新Role/Source Registry、中央Disclosure Engine、書込み権限、Hard Gateを追加しない。
 
 **今回の証拠上限**：前記は実PRのSource/CIを照合した横断Fit/Gapであり、Role Required Closure、製品二世界Policy、Public Slice生成者の安全性、Studio/SHO実編集・保存、Role実Target、Owner Acceptance、Provider Effectは**NOT PROVEN**。#1119の既存P0/GateとGo単一バイナリ方針を変更しない。
+
+---
+
+<!-- tei-role-cross-lane-provider-consumption-20261108 -->
+## 17. 2026-11-08 横断統合：自己記述をAuthoring Providerの実消費・独立Requiredへ接合（設計・NOT RUN）
+
+**結論**：SD-1 記述可能、SD-2 契約記述可能、SD-3 選択された実Interpreterが消費、SD-4 編集・再解釈可能を別Claimとする。SD-5 TEI全体self-buildは #2831 の専管。標準データ構造で記述したRoleやTraitが、実Interpreter/Providerによって評価されたこと、実装義務が履行されたこと、現在の開示・実行資格があることは別。新Core Meta Schema/Interpreter、第二Resolver/Registry、Writer/Runner、TEI Host、中央Evidence DBを設けない。#1119既存Gateも変更しない。
+
+### 17.1 実装観測から修正した最初のFixture
+
+- **元Subjectは公開Referenceの semantic-data:sales.order**。mainの reference/workspace/semantic/sales/order.tei にある Order.total は std.money 型で、元SourceにはRole Optionが無い。従って現在の実WorkspaceにRoleが適用済み、正式Role Providerが存在する、という前提で試験を組まない。
+- Draft #2860 の既存Go Testはworkspace.Load、Load時Source Index、独立Read byte比較、既存Go Syntax Parser、Role候補の局所解析を検証する。しかしそこで使うLanguage Selection identityとFingerprintは test-only、Required Shapeの正式解釈・実Provider実消費・Owner受理は未実証。元SourceのSHA/Versionと試験用派生Sourceを別々に束縛する。
+- 隔離した派生Fixtureだけに、Order.totalのRole単一Optionを追加する。Role文字列は試験値であり登録済みContractとは認めない。元Fixture・派生FixtureのSubject IDが一致しても、Source Revision/意味の受理/Build資格が一致するとは推測しない。
+- mainの既存 Design Context Probe（#3284/#3296）は実CLI read-only 9応答・Source/Index等を比較し、partial / exploration-only / qualifiedTestGeneration=false として正しく資格を保留している。独立Required Function/Business/Rule/Role/Operator、外部Harness完全受領、C1/NFR、Owner意味受理は未資格。既存試験Consumerを第二正本や正式Product Context Queryへ昇格させない。
+- main統合 #3300 の実Source監査では、Authoring Inspector CLI/Studioの直接呼出とComposition Provider経路がまだ結線されていない。現存の service_carrier は application-runtime 専用でありAuthoring Role Interpreterとして使用したとはいえない。Role自己記述とPlugin-first D1は同じResolver/Contract原則を用いるが、実Role Providerの有無は独立に診断する。
+- Source AcceptanceのLoad時Source IndexとManifest digestは別欄であり、Host current witnessがManifestのRequired Root/Import意図まで受理した証明ではない。Root変更でSource Index/Worldが同じ場合も、独立Required閉包の再検査を省略しない（#988/#3028/#3262）。
+
+### 17.2 新しい型ではなく、既存標準構造上の五つの関係として扱う
+
+| 関係 | 表すこと | 禁止する誤昇格 |
+| --- | --- | --- |
+| Descriptor | Role/Operator/Trait/PluginのID、契約版、Required Shape、依存、診断、宣言Effect | trusted/pureの自己申告から認可・無副作用を証明 |
+| Use-site Binding | Source occurrenceとSubject、明示Role/Operator、実Provider Pin、Target/Scope | 同名Role・Carrier・実装ラベルの一致から選択成功を推論 |
+| Independent Obligation | 用途別のRequired Source/Dependency/Scenario/Expected、外部に固定された根拠 | 候補のrequired空配列で閉包PASS、AI生成CandidateからExpectedを自己追認 |
+| Fulfillment | Traitが要求したgenerated/provider/manual-required/externalの実装、actual Build/Load/Invoke、Conformance | Trait名・ヒント・署名・Result一致から実実装履行を推論 |
+| Qualification | Source Read、Parsed、Meaning Accepted、Build、現在Host/Consumerの用途相対Claim | Syntax/検査/過去Receiptから現在権限や公開資格を自動付与 |
+
+Roleは意味適用、Atomic Traitは実装義務、Data TopologyはIdentity/Cardinality/Graph、Interpretation Topologyはeager/deferred依存、Representation TopologyはFunction内の表現型InstanceとData Contextとの明示Mapping。これらは一つのTreeへ圧縮しない。将来の複数Role適用は対象Subjectに対する別Use-site Application Relation候補として比較する。現行Attributeの単一Role Optionや重複Optionを複数Role正式構文として使わず、同属性の二重宣言はDraft #2898のSyntax拒否を優先する。
+
+標準表・Tree・Graph・文章・SHOと、SUI的な同一Itemの複数Canvas所属は、対象意味IDを共有する異なるProjection/配置Relationとして扱う。表示上の省略、Graph→Treeの非可逆変換、Itemのラフな草稿化から元のSource/Relationを復元したと主張しない（#2497）。これはP1以降の圧力試験とし、自己記述P0のHard Dependencyにしない。
+
+### 17.3 最短の実行パケット：同一Subject・独立Required・一因子差
+
+1. **P0-A 元Source固定**：実main/CLI binary/argv、Workspace Manifest raw digest、Load Attempt、Source Index Artifact、元Source bytes、Subject/Scope、CLI Reply bytes/end、独立Required集合を記録。Managed/ReadByLoader/Parsed/Anchored/Selected/ActuallyConsumed/Disclosableを個別列とし、未読込を存在しないと呼ばない。
+2. **P0-B Role構文と出典**：元SourceにはRole無し、派生SourceにRoleを一つ付与。BOM/CRLF/日本語コメント/引用中role/二重Optionの正常・負例を#2898既存Go Testと照合。read-only Source AnchorをWritable Patch/受理済Meaningに昇格しない。Draft/CIはexact HEADで確認。
+3. **P0-C 解釈入口のFit/Gap**：#988 Language/Operatorのexact Pinと、#951/#1016のContract/Provider実選択を確認。Authoring Scopeの正式Role Providerが存在しなければ unsupported と明記し、合成Selectionやapplication-runtime Carrierで「実Interpreter成功」を装わない。Provider A選択・Provider B実呼出は値が同じでもFAIL。
+4. **P0-D 独立閉包照合**：#3262の既存read-only CLI Consumerを利用し、Required/Declared/Loaded/Parsed/Selected/Consumed/Observedの範囲付き比較を実施。現Productに実Role Interpreterが無ければGap確定まで。Fixtureテスト成功、Catalog非空、validate OK、Build artifact存在を意味全件PASSへ合算しない。
+5. **P1-E 改版と編集**：Role Option一箇所・Plugin同版実bytes・Source A→B→A・Manual Trait未実装を一因子ずつ変える。Raw Draft保存/Preview/一意Patch/Independent Re-read（#2621/#2497）、Owner再受理要否、Build再計算・Evidence再資格化、現Host開示を分離。正式 *.tei.md Reader/段階移行は#3030のOwnerであり、同形式のDraft保存成功はTEIでの意味Source登録ではない。
+
+### 17.4 追加判別ケース ESD-11〜19（提案、全件NOT RUN）
+
+| ID | 単独変更・反証対象 | 独立Expected・停止線 |
+| --- | --- | --- |
+| ESD-11 | D1でProvider Aを選択、実CLI/StudioはBを呼出し、出力は同じ | Result一致でも不合格。Contract/Scope/Epoch/実Call identityを比較（#1251 AS-02） |
+| ESD-12 | Authoring Role用途へapplication-runtime専用Carrierを流用 | 必要な契約/Scope無しなら unsupported。共通Go関数＝同一Provider実利用ではない |
+| ESD-13 | Manifest Rootだけ変更、Source IndexとWorld byteは同じ | 独立Required Root充足はunknown。Manifest変更を無関係と判定しない |
+| ESD-14 | 管理Rootの必須Sourceに *.tei.md を追加、正式Language Reader未選択 | Managed/ReadとParsed/Meaningを分離。旧*.tei/未管理Markdownは対照として保持 |
+| ESD-15 | 同Attribute role二重指定・引用中role・BOM/CRLF | 重複は位置付き拒否、引用は非宣言、単独値Anchorは実byte位置に一致 |
+| ESD-16 | Trait manual-required 未実装、hintのみ存在 | unfulfilled。Hint、Role候補、実装済みを混同しない |
+| ESD-17 | Node→Ref<Node>のdeferred循環、A↔Bのeager解釈循環 | 前者保持可能、後者拒否。固定点解釈を暗黙で導入しない |
+| ESD-18 | Secret Requiredだけ異なる二世界、公開入力は同じ | 公開Response/診断/件数/図形から秘密の有無を漏らさず、監査側では未充足を残す |
+| ESD-19 | Role解釈・Artifact bytesは一致するが、stage2実Processがstage1を未使用 | 自己ビルドL3は不合格（#2831）。ビルド再実行と再入の別Claim |
+
+C0/C1は各Obligation/実到達分岐を分母にする。Candidateを評価する同じRole/AIからExpectedを作らず、#2514/#1180の独立ExpectedとMutantを使う。外部Harness Reply切断、Runtime/Host Grant未観測の場合は qualified としない。
+
+### 17.5 Ownerと順序：第二の縦断Gateを作らない
+
+| 順 | Owner | 成果・Exit |
+| --- | --- | --- |
+| P0-A | #2620/#2823/#3262 | 公開sales.orderのSource/Manifest/Load/Indexと独立Requiredの範囲付きGap |
+| P0-B | #988/#2620、Draft #2898/#3028 | Role Option、Source Anchor、K0 Seed/Language/Operator exact Pinの局所反証 |
+| P0-C | #1251/#951/#1016/#1158、main #3300 | Authoring Provider選択と実call-site（Inspector D1）をまず確認。Role処理の有無は別 |
+| P1-A | #2620/#3278/#2514 | 最小Role Interpreter実消費と一つのAtomic Trait履行を独立Expectedで検証 |
+| P1-B | #2621/#2497/#1124、#3030 | Markdown草稿保存・Preview・局所逆Patch・再Read・再受理要否を別結果 |
+| P2 | #2516/#1124/#2831 | 同じMeaningをStudio/SHO/実Targetに投影し、Consumer完全受領とBuild L1/L2/L3を別実証 |
+
+**今回のEvidence**：他チャットの成熟設計と既存GitHub main/公開Draft Sourceの静的照合、この計画追補のみ。新Go/Node Test、実Role Provider、実CLI/Studio共通呼出、Authoring Service Carrier実現、正式Markdown Reader、Owner Meaning Acceptance、External Host Effect、全体Self-buildは NOT RUN/NOT PROVEN。必要情報が欠けた場合に unsupported/unknown/partial と答えられることを、無理に実装成功と扱うより先に受け入れる。
