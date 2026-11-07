@@ -233,7 +233,7 @@ func TestScopedTenantPostgresAgainstIsolatedDatabase(t *testing.T) {
 	// for arbitrary tenants, changed snapshots, or unrelated Result Slices.
 	t.Run("actual tenant A whole fixture versus top-one completion witness", func(t *testing.T) {
 		pub := scopedPublication(t)
-		read := func(top string) [][]any {
+		read := func(top string, since time.Time) [][]any {
 			t.Helper()
 			plan, err := AuthorizeBrowseRead(ctx, fixtureAuthorization(t), pub,
 				url.Values{"$select": {"orderId"}, "$orderby": {"orderId asc"}, "$top": {top}},
@@ -250,7 +250,7 @@ func TestScopedTenantPostgresAgainstIsolatedDatabase(t *testing.T) {
 				ScopedPostgresOrdersReference{
 					DB: db, Database: core.MustCanonicalID("sales_core"), Authority: authority,
 				},
-				map[string]any{"from": from})
+				map[string]any{"from": since})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -260,8 +260,8 @@ func TestScopedTenantPostgresAgainstIsolatedDatabase(t *testing.T) {
 			return got.Rows
 		}
 
-		full := read("2")
-		one := read("1")
+		full := read("2", from)
+		one := read("1", from)
 		// Independent expectations were fixed from the checked-in SQL fixture,
 		// not derived from the Result Slice or semantic evaluator.
 		if !reflect.DeepEqual(full, [][]any{{int64(3)}, {int64(9)}}) {
@@ -270,6 +270,19 @@ func TestScopedTenantPostgresAgainstIsolatedDatabase(t *testing.T) {
 		if !reflect.DeepEqual(one, [][]any{{int64(3)}}) {
 			t.Fatalf("fixed tenant A first page mismatch: %v", one)
 		}
+
+		// Positive control for a non-output predicate: the SQL WHERE clause
+		// evaluates ordered_at >= :from, but ReadPlan selects only orderId.
+		// The caller receives an ID, not the undisclosed ordered_at value.
+		t.Run("non-output SQL WHERE predicate is evaluated without projecting its field", func(t *testing.T) {
+			threshold := time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC)
+			filtered := read("2", threshold)
+			// Independently fixed fixture: order 3 occurred on Oct 1, order 9
+			// occurred on Oct 2. The real SQL predicate must exclude order 3.
+			if !reflect.DeepEqual(filtered, [][]any{{int64(9)}}) {
+				t.Fatalf("non-output ordered_at predicate not applied: %v", filtered)
+			}
+		})
 
 		evidenceFor := func(rows [][]any, coverage semantic.Coverage) semantic.CompletionEvidence {
 			t.Helper()
