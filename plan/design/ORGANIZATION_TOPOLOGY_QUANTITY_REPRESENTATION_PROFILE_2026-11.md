@@ -214,3 +214,30 @@ AI/CUI/Studioには、新しい「組織専用Widget一覧」の網羅を要求�
 5. **P2／Effectと受入**：実関係更新、Host Grant、Receipt、独立再Read、Owner業務Ruleは#1174/#1163/Org Ownerの既存境界を通す。#3258〜61の複数Draftから新Org専用Test Generator/SSOTを作らない。
 
 **受入状態**：本節は**既存Org Profileの追加診断・適合計画**であり、ORG-TG-01〜08の新実行・C0/C1測定・AI Generator実装・Product SQL/Org DB/GUI/SHO/Owner Meaning受理は **NOT RUN**。既存完了・実証済みの局所テストと混ぜて新たな一気通貫PASSを宣言しない。
+
+
+## 9. 製品到達の三ゲート：三視点生成（M）と実Read（R）を別成立させてから接合（C）する（2026-11-08、受入提案）
+
+### 9.1 現行Sourceで確認できる上限
+
+2026-11-08照合時のmain `reference/org-headless-workspace/semantic/organization/model.tei` は、Person／OrgUnit／Membership／Position／Occupancy／CaseRecordと、それぞれの型付きRelationを宣言している。CaseRecordには `caseId`、`handlingUnitId`、`handlingUnit to organization.org_unit one` と参照Keyがある。一方、**このSource単体にはCase用Function/Query、物理Persistence Mapping、対象Case行・Provider、Host Grant、Business Handoff実施証拠はない**。既存 `internal/operations/org_headless_characterization_test.go` が確認するread-only Operation SurfaceもMembershipを中心とするもので、CaseのProduct Readを宣言・実行していない。したがって `C1→D1` は組織的な意味候補／独立Expectedの例として有用でも、現mainで取得されたCase行ではない。
+
+これは「当該機能が全Workspaceに存在しない」という全称証明ではなく、上記**検査済みSourceと既存Operation Surfaceの範囲内**での否定である。#3262のDesign Contextで他のSource/Plugin/Functionの必要集合を調べる際は、未探索・未Load・未Parseを不存在へ変換しない。
+
+### 9.2 P0-M／P0-R／P0-Cの依存と独立検収
+
+| ゲート・既存Owner | 必要な最小成果物と観測 | この段階で主張できないこと |
+| --- | --- | --- |
+| **P-1：設計入力の閉包** #3262 | 一つの対象Function/DomainについてRequired Data/Function/Business/Relation/Rule/Sourceを独立に固定し、found/loaded/parsed/bound/returnedと欠落理由、実消費Source revision、Scopeをread-onlyで提示する。完全なTool Reply受領も別確認 | 空欄を「設計上存在しない」とすること、許可範囲外の存在/件数の開示、AI生成されたExpectedの正式受理 |
+| **P0-M：三視点の実Source生成** #3263/#1124/#1125 | 同一Semantic SourceからData Relation図、Function→Query/Context参照、Business DFD/ProcedureとCRUDを機械取得し、各ノード/辺/セルにSubject/Occurrence/Role/Sourceと宣言R・未受理U?を保持。複数Canvasに現れる同一要素は同一ID | DFD矢印をCase移管Effect、CRUDのRを実SQL Read、図上同一位置を同一Relation/権限とすること |
+| **P0-R：実Function Readの受渡し** #2586/#2622 | **既存汎用Referenceの受注例**なら選択Query/args→実PostgreSQL Provider→物理行ID/必要Field/Scope/Read extent→Function Data Context/Consumerを同一Attemptで観測。**組織Case例**には別途Case Function/Query/実Persistence Bindingを明示してC1を同様に観測する | 受注の実PG成功を組織Case Product E2 PASSへ転記、静的Browse/SQL metadataを物理Readと呼称、ページ1件をOwner全件の証明とすること |
+| **P0-C：MとRの意味・範囲接合** #2586/#2514/#1180 | Diagram/CRUDのSource／Role／Quantity Kindと実ReadのSource/Target/Row identity/Field/Scope/epoch、Consumerの公開Scopeを**同一Meaning ID・対象版・粒度**で照合。独立Expectedの正例・欠損/重複/TOP1/非出力Predicate負例を判別する | 取得列不足のFTE・業務権限を補完、Callerの`CoverageComplete`だけから全件引継ぎ完了を断言、Receiptから独立再Read/人手確認を推定 |
+| **P1/P2：表示・逆編集・Effect** #2497/#2507/#1174/#1163 | 同一DataをTree/Table/Graph/SHOへ再Projectionし、失われたRelation/Unit/Disclosureと一意な変更候補を判定。実更新は別Host Grant/Operation/Receipt/独立Read、手作業は別Handoffで確認 | Non-injective図の直接書戻し、旧Session/旧Grantの再利用、Rule Attachmentからの自動業務Effect |
+
+**並行化と接合順**：P0-MとP0-Rの個別Fixture／コード／CIは互いの完成を待たず進めてよい。P0-Cだけは**同じ受理意味・Scope・Source revision・Attemptに結びつく実成果物**が揃ってから成立判定する。#3330の横断優先と#3263のDiagram Fixtureを参照するが、両Draftは現mainで実製品生成を証明していない。#3238の実PostgreSQL TOP1／非出力述語試験は**汎用Referenceの読取境界**であり、組織Caseの完成証拠へ流用しない。
+
+### 9.3 最初に必要な再現可能な受入票（Issueで運用し、第二正本は作らない）
+
+単一Case `C1` の存在証人の検収は、まず `CaseRecord.caseId=C1` と `handlingUnitId=D1` が**どの実Read SQL/args・Provider・対象Schema/Field・Request/Attempt・Source/Scope/snapshot**から得られたかを同一試行で追跡する。必要なSource/Binding/権限/Fieldが一つでも欠けるなら `product-read-not-connected` または `unverified`。その後、二件集合 `L={C1,C2}` の全件Claimへ進むときは**ID集合と実Read範囲の独立照合**を追加し、`{C1,C1}`／TOP1／非表示Predicateを不足とする。Local `EvaluateCompletion` に完全性を入力する前に、このProducer側の照合を完了する。
+
+**ゲート別の最低報告単位**：`source revision & actual input / accepted meaning ID / graph-or-CRUD provenance (M) / physical query+args, rowset+fields, scope+extent (R) / independent Required IDs+Expected, mismatches, unknowns (C) / executed target+CI/attempt / Owner qualification`。M、R、Cそれぞれ `not-run / failed / partial / qualified` を**別に**記す。今回の追加は設計上の検収票と依存の明文化のみであり、実組織SQL/DB/Host/GUI、E2統合、正式Owner受理は **NOT RUN**。
