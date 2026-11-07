@@ -365,6 +365,108 @@
     {
       "id": "N12",
       "mutation": "treat a diagram containing an HTTP auth guard as proof that the runtime guard executed"
+    },
+    {
+      "id": "N13",
+      "mutation": "re-use same presentation occurrence ID for two different canvas views and silently conflate selections"
+    },
+    {
+      "id": "N14",
+      "mutation": "split/merge/collapse canvas layouts and incorrectly delete or replicate the shared semantic Entity/Relation"
+    }
+  ],
+  "canvasViews": [
+    {
+      "id": "canvas.sales-overview",
+      "purpose": "Business/Data overview",
+      "projectionScope": "synthetic.order-entry/sales",
+      "instances": [
+        {
+          "occurrenceId": "view.sales.order",
+          "subjectId": "data.order",
+          "x": 120,
+          "y": 100
+        },
+        {
+          "occurrenceId": "view.sales.customer",
+          "subjectId": "data.customer",
+          "x": 300,
+          "y": 100
+        },
+        {
+          "occurrenceId": "view.sales.line",
+          "subjectId": "data.line",
+          "x": 120,
+          "y": 260
+        },
+        {
+          "occurrenceId": "view.sales.status",
+          "subjectId": "data.order.status",
+          "x": 300,
+          "y": 260
+        }
+      ],
+      "relationOccurrences": [
+        {
+          "id": "view.sales.edge.order-lines",
+          "relationId": "rel.order.lines"
+        },
+        {
+          "id": "view.sales.edge.order-customer",
+          "relationId": "rel.order.customer"
+        }
+      ]
+    },
+    {
+      "id": "canvas.fulfillment",
+      "purpose": "Data/Function fulfillment detail",
+      "projectionScope": "synthetic.order-entry/sales-inventory",
+      "instances": [
+        {
+          "occurrenceId": "view.fulfillment.order",
+          "subjectId": "data.order",
+          "x": 100,
+          "y": 120
+        },
+        {
+          "occurrenceId": "view.fulfillment.line",
+          "subjectId": "data.line",
+          "x": 310,
+          "y": 120
+        },
+        {
+          "occurrenceId": "view.fulfillment.stock",
+          "subjectId": "data.stock",
+          "x": 320,
+          "y": 300
+        },
+        {
+          "occurrenceId": "view.fulfillment.sku",
+          "subjectId": "data.sku",
+          "x": 520,
+          "y": 140
+        },
+        {
+          "occurrenceId": "view.fulfillment.warehouse",
+          "subjectId": "data.warehouse",
+          "x": 520,
+          "y": 300
+        }
+      ],
+      "relationOccurrences": [
+        {
+          "id": "view.fulfillment.edge.order-lines",
+          "relationId": "rel.order.lines"
+        },
+        {
+          "id": "view.fulfillment.edge.line-sku",
+          "relationId": "rel.line.sku.primary"
+        },
+        {
+          "id": "view.fulfillment.edge.stock-sku",
+          "relationId": "rel.stock.sku"
+        }
+      ]
     }
   ]
 }
