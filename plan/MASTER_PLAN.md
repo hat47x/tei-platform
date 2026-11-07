@@ -363,6 +363,8 @@ reload / Conformance
 
 **P0開始時の不変条件**：既存`internal/plugin/runtime/service_carrier.go`は`application-runtime`以外のScopeを拒否する。Tooling/Authoring Inspectorの実装は当該制約を緩めず、既存`composition` SelectionとHost-owned`studiohost` Seamの不足辺だけを修正する。画面がSourceを読めたことと、Function Data ContextやOwner Accepted Meaningを満たすことは異なる。
 
+**実装候補の進捗（2026-11-08）**：[Draft #3371](https://github.com/hat47x/tei-platform/pull/3371)では既存`studiohost.RootServices/ServiceFactory`へ型付き`InspectionService`を追加し、Factoryを設定した場合の旧`operations.InspectSubject`への無音fallback拒否、Subject/Effect/Schema/Fingerprint等の不一致拒否をGoコードと試験へ具体化している。ただし**未統合Draft／作成時点Go CI未検収**であり、実Compositionで選択したProviderのHost側供給、CLIの同じProviderへの接続、WebView/Build/actual Invocationの証拠は別。P0-b/cの候補として既存#1251/#1824が検証し、Studio seamの追加だけでD1bを完了扱いしない。
+
 **今回の上限**：main統合済み参照結果の引用と、実Consumerに残る不足の計画反映。PGD-01〜06を同一HEAD・同一attemptで実CLI/Studio/Go/Frontend/Host検証したわけではない。新Contract Schema/ABI、実B呼出、G4 L3、BOM組合せの本番資格、Owner業務受理は **NOT RUN／NOT PROVEN**。
 
 
