@@ -356,6 +356,16 @@ AIの自律的な作業と実行権限を区別します。AIがツールを直�
 
 **残るP0**：T1-Bの初回盲検Candidate、比較適格H2/H3の4Session、旧`*.tei`一Function→実Provider read-only、新`*.tei.md` Reader/実意味比較は**未成立**。既存局所CI Greenを正式Meaning/Authority/EffectやBuild G4適格に昇格させず、ADR-0035のPoC A3自律実装を不必要に止めない。
 
+### 正常JSONでも必要Ruleが欠ける場合の停止条件とTool実効果（2026-11-08）
+
+[AI-first資格・実測対応§8](design/AI_FIRST_QUALIFIED_INTERFACE_CURRENT_MAIN_2026-11.md)で、**T1-Bへの入力の実資格と、AIに渡すToolの実効果**を二つの独立したP0に具体化した。先行する[main #3296](https://github.com/hat47x/tei-platform/pull/3296)の9件の実CLI応答＋合成欠落/破損16負例は、正常JSON/同Fingerprintのまま必要Rule・Relationだけ欠落する反例を検査しきらない。[Draft #3324](https://github.com/hat47x/tei-platform/pull/3324)は`inspect-validation`を加えた10応答で、`validation.tei` Loader実読取・Rule/Relation Identity/Canonical Attribute/Source Anchor/Definition Roleを比較し、Tool Reply一時コピー8負例を拒否する変更候補。ただし**Draft/CI未確認、Context`partial`/`qualifiedTestGeneration=false`**であり、実Tool配送・Function/Business全Requirement・新AIテストの資格へ昇格しない。
+
+**実Toolの権限・副作用**：[main #3333](https://github.com/hat47x/tei-platform/pull/3333)は`tei.cli.discovery/v0`に`view.writeFlags=[-operation-log,-lifecycle-state]`を互換追加し、実ローカルFile書込みを限定Go試験で検証した。`effect:read-only`はCanonical Meaning非変更であり、File/Network無変更の証明ではない。H2/T1-Bでは許可Command/Flag/実argv・File/Session Log・Audienceを明示し、Holdout/Reviewer-only資料へ**実OS/Harnessで到達拒否できた**場合のみBlind資格を与える（#2509/#2515/TAI #168）。旧Draft #3302の別提案欄は現mainの実Contractではない。
+
+**次の最小Done**：P0-A=#3262/#3324による一Ruleの独立RequiredとActual Source/Rule closure・不足理由の検査（まずDraft exact-head CI）、P0-B=#2509/#2515のHoldout物理隔離/Tool Result全体性・副作用/送出境界、P0-C=#3273/#1180/#2514の**未知Rule Gapからの盲検T1-B候補一件→独立Expected/Mutantの判別**。一件の狭いSourceが成立しても全Workspaceの`qualifiedTestGeneration`は別。#3304の既知行番号0のT1-A成功をT1-Bに転用しない。設計Contextが`partial`なら取得済みScopeの探索に限り、全域PASSを返さない。従来の適格H2/H3比較と、旧`*.tei`実Provider read-only、新`*.tei.md` Parser移行は**別の並行レーン**。
+
+**後続Plugin/Consumer**：[main #3334](https://github.com/hat47x/tei-platform/pull/3334)の税・為替・採番・休日DataのApplication/Studio投影は実装済みだが、行取得/実DB Bind・Wails E2Eではない。[Draft #3292](https://github.com/hat47x/tei-platform/pull/3292)のInspector一機能で選択Plugin/Providerと実Loaded/Invoked Provider、CLI/Studio二Consumer、Current Scope/Independent Expectedを別々に確認。Studio ABAの[Draft #3327](https://github.com/hat47x/tei-platform/pull/3327)は旧UI応答を採用しない2件の局所成功だけで、Hostの旧Effect取消ではない。Verified BOM/Workbench/Cache/OKF/図面はP0-CのHard dependencyにしない。**今回の変更はDocs/Planのみで、新P0-A/B/C、実Provider・正式Owner受理・Host E2E・C1はNOT RUN**。追加Runner/第二Scenario/Registry/Hostなし。
+
 ## 作業領域I：周辺技術との連携と本番運用の境界
 
 ### 目的
