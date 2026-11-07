@@ -74,28 +74,28 @@ go run ./tools/reference-verified-composition-bom -input tools/reference-verifie
 
 ## 実際に提供されたLock候補だけを使うPairwise（2026-11-07）
 
-\`-plan pairwise\`は無制約のVersion軸の全直積を対象にする。一方、依存の非互換やTarget制限によって**解決済み候補が一部しか存在しない**場合に、無制約計画の行を後で削る方式はPairwise網羅を壊す。この問題を可視化するため、同じReferenceへ\`-plan supplied-locks-pairwise\`を追加した。
+`-plan pairwise`は無制約のVersion軸の全直積を対象にする。一方、依存の非互換やTarget制限によって**解決済み候補が一部しか存在しない**場合に、無制約計画の行を後で削る方式はPairwise網羅を壊す。この問題を可視化するため、同じReferenceへ`-plan supplied-locks-pairwise`を追加した。
 
-\`\`\`sh
+```sh
 go run ./tools/reference-verified-composition-bom \
   -input tools/reference-verified-composition-bom/fixture.json \
   -plan supplied-locks-pairwise
-\`\`\`
+```
 
-入力JSONの\`locks\`内で**実際に与えられたexact候補**だけを選択可能行とし、その候補集合に現れた2項相互作用を決定論的にカバーする少数行を選ぶ。各行には\`lockFingerprint\`を付け、実際に提供されていない候補を新たに生成しない。
+入力JSONの`locks`内で**実際に与えられたexact候補**だけを選択可能行とし、その候補集合に現れた2項相互作用を決定論的にカバーする少数行を選ぶ。各行には`lockFingerprint`を付け、実際に提供されていない候補を新たに生成しない。
 
-- \`declaredPairs\`：全宣言値の2項総数。
-- \`candidatePairs\`：提供されたexact Lockに現れた2項数。
-- \`coveredCandidatePairs\`：選択した行がカバーした2項数。
-- \`unrepresentedDeclaredPairs\`：宣言上は存在するが、提供Lockに現れない2項数。**不可能・非互換と断定できない**。
-- \`candidateUniverseCompleteness: "unknown"\`：Lock一覧がSource/Scope/Providerの全件かどうか検証していない。
-- \`qualified:false\`、\`claimCeiling:"planning-only"\`：依存のResolver/Runtime/実テストに合格したことを示さない。
+- `declaredPairs`：全宣言値の2項総数。
+- `candidatePairs`：提供されたexact Lockに現れた2項数。
+- `coveredCandidatePairs`：選択した行がカバーした2項数。
+- `unrepresentedDeclaredPairs`：宣言上は存在するが、提供Lockに現れない2項数。**不可能・非互換と断定できない**。
+- `candidateUniverseCompleteness: "unknown"`：Lock一覧がSource/Scope/Providerの全件かどうか検証していない。
+- `qualified:false`、`claimCeiling:"planning-only"`：依存のResolver/Runtime/実テストに合格したことを示さない。
 
-2軸×各2値の既存Fixtureでは、4宣言組合せに対しLock提供は3件、\`candidatePairs=3,coveredCandidatePairs=3,unrepresentedDeclaredPairs=1\`となる。3軸×各2値の追加テストでは、8宣言候補中4 Lockから**9/12ペアのみ提供され**、9/9の計画網羅を全12ペアの検証・実現可能性へ昇格させない。
+2軸×各2値の既存Fixtureでは、4宣言組合せに対しLock提供は3件、`candidatePairs=3,coveredCandidatePairs=3,unrepresentedDeclaredPairs=1`となる。3軸×各2値の追加テストでは、8宣言候補中4 Lockから**9/12ペアのみ提供され**、9/9の計画網羅を全12ペアの検証・実現可能性へ昇格させない。
 
-異TargetのLockを混ぜる場合、\`target\`軸と各Lockの\`Target\`一致を要求する。Scope/Principal/Tenant/Grantはこの限定JSONの型に存在しないので、同じTarget値でも**同じ利用権限や完全性とは主張できない**。Product接続では#3262がRequired/Loaded/Disclosedを照合し、#951/#1016が実合法候補を解決した結果で試験しなければならない。
+異TargetのLockを混ぜる場合、`target`軸と各Lockの`Target`一致を要求する。Scope/Principal/Tenant/Grantはこの限定JSONの型に存在しないので、同じTarget値でも**同じ利用権限や完全性とは主張できない**。Product接続では#3262がRequired/Loaded/Disclosedを照合し、#951/#1016が実合法候補を解決した結果で試験しなければならない。
 
-**検証範囲**：隔離Go 1.23.2で既存10＋新4＋入力不変性1＝**15 top-level Test PASS**、\`-race\`、\`go vet\` PASS、\`gofmt -l\`出力なし。新4 Testには3軸2値の**255個の非空候補部分集合**を網羅し、選択行が提供候補の全2項をカバーする負例が含まれる。GitHub PR head上のCI/本物のResolver/Host/Plugin Testは別途確認が必要であり、このReferenceの出力はVerified BOMではない。
+**検証範囲**：隔離Go 1.23.2で既存10＋新4＋入力不変性1＝**15 top-level Test PASS**、`-race`、`go vet` PASS、`gofmt -l`出力なし。新4 Testには3軸2値の**255個の非空候補部分集合**を網羅し、選択行が提供候補の全2項をカバーする負例が含まれる。GitHub PR head上のCI/本物のResolver/Host/Plugin Testは別途確認が必要であり、このReferenceの出力はVerified BOMではない。
 
 
 ## 同一AttemptのWitness束縛（Reference追加／製品資格なし）
