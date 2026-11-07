@@ -329,12 +329,12 @@ flowchart TD
 | --- | --- | --- |
 | [複合図表の被覆Reference Draft #2881](https://github.com/hat47x/tei-platform/pull/2881) | Graph/Tableを共通Snapshotから派生させる場合、`scope/kind/qualified ID/relation role/endpoint`を保持。被覆情報が閉じた明示Scopeの場合のみ`absent-in-declared-snapshot`相当を返す | 図にHash IDのTarget保存ノードが無いからといって、外部Targetに保存済みIDが**存在しない**とは断定しない。Source/Reader/Disclosureが不完全なら`unknown` |
 | [全体セルフビルド #2831](https://github.com/hat47x/tei-platform/issues/2831) | Build graphにScheme/入力版・生成文字列の出自を表せるが、実Toolが消費したSource Closure／Toolchain／Build Attempt・Artifactと別型にする | Hash textの一致やBuild図のDeclared edgeだけで実Toolの消費・自己ビルド収束・Artifact Lockの受理を証明しない |
-| [ETL/ELT/MFT Draft #2827](https://github.com/hat47x/tei-platform/pull/2827) | 外部ファイル名・batch slugに派生IDを使っても、`content digest`、`file physical version`、`transfer attempt`、`delivery/ingest receipt`、`business effect`を別参照として結ぶ | 同じ内容hashから同じ名前を得てもDelivery/Publication/Importの完了・冪等性・Owner受理を推定しない |
-| [複合図表の独立Source研究 Draft #2966](https://github.com/hat47x/tei-platform/pull/2966) | 対応Graphが人・AIの誤選択・Unknown・変更波及を減らすか、独立Source/Expectedで比較する | ノード数や構造の短縮だけで認知負荷軽減・不在証明が成功したとみなさない |
+| [ETL/ELT/MFT 統合済みPR #2827](https://github.com/hat47x/tei-platform/pull/2827) | 外部ファイル名・batch slugに派生IDを使っても、`content digest`、`file physical version`、`transfer attempt`、`delivery/ingest receipt`、`business effect`を別参照として結ぶ | 同じ内容hashから同じ名前を得てもDelivery/Publication/Importの完了・冪等性・Owner受理を推定しない |
+| [複合図表の独立Source研究 統合済みPR #2966](https://github.com/hat47x/tei-platform/pull/2966) | 対応Graphが人・AIの誤選択・Unknown・変更波及を減らすか、独立Source/Expectedで比較する | ノード数や構造の短縮だけで認知負荷軽減・不在証明が成功したとみなさない |
 
 **Hash IDの最小Scope付きProjection契約候補**：任意のViewで表示する`HashIdText`は`(scope, qualifiedSubject, schemeWire, sourceReadEvidence, targetProfileVersion, targetSnapshotEvidence, collisionBudgetEvidence)`の各構成要素に遡れる必要がある。ただし`sourceReadEvidence`などの実Source保証がない場合は、欠落欄を空文字で補完せず`unknown`として扱う。Canonical SubjectをHashIdTextから逆算しない。現在の`hashid-probe`はCaller宣言のsubject/raw bytes/pinのみで、Qualified Sourceの実Reader証跡や閉じたTarget割当集合を持たないため、この完全なProjection契約は**未実装**。
 
-この記述は#2881/#2966/#2831/#2827の実装を本PRへ複製したものではない。Hash IDのTarget適用を有効化するOwner Gateとは別であり、追加の管理レジストリ・Host・独自Source Readerは必要としない。
+この記述は#2881/#2966/#2831/#2827の実装を本PRへ複製したものではない。#2827と#2966はmain統合済みだが、そこでの設計・研究成果をHash IDの実Target受理やSource Readerの保証へ自動転用しない。Hash IDのTarget適用を有効化するOwner Gateとは別であり、追加の管理レジストリ・Host・独自Source Readerは必要としない。
 
 
 ### 9.7 特性評価：Intent／Observed／Conformance／Unknownの分離（2026-11-06）
@@ -351,3 +351,26 @@ TEIの型付き特性識別の横断議論に照らし、Hash IDのConstraintを
 **Source ABA負例**：初回A→途中B→復元Aのあと、CallerがAのSHA-256を渡せば最終byte照合は再び一致する。このReferenceで再現した場合も`authority=none`と`storageWrite=false`のままであり、元のSource Revisionを継続的に占有したとは判断しない。#1124/#1017/#2595の同一Attempt Source証拠がConsumerで得られるまで、`CallerPinsMatched=true`は`SourceAccepted`を含意しない。
 
 Schemeの静的制約をTEIの「強属性」等に特別昇格する案は、既存の特性識別レーン（#2496等）の定義・Owner決定に委ねる。未確定概念を新Core構文や第二Acceptanceへ取り込まない。
+
+
+### 9.8 外部Source Readerと実Consumerの同一Attemptに向けた接合（2026-11-07）
+
+[Source Index/TOCTOU #1017](https://github.com/hat47x/tei-platform/issues/1017)、
+[Studio Source identity #1124](https://github.com/hat47x/tei-platform/issues/1124)、
+[Generator実消費Source #2595](https://github.com/hat47x/tei-platform/issues/2595)を再利用する。既存のReaderやAcceptanceを別のSource正本へ複製せず、`HashId`を**実際に消費したSourceの派生値**として結ぶための最小条件を明確化する。
+
+**今回の局所Reference**：`tools/reference-hash-id/read_claim.go` に `ReadClaim` と `CompareUntrustedReadClaims` を追加。独立に受け取った「宣言側」と「消費側」の `QualifiedSubject / SourceScope / SourceRevision / ReadAttemptID / SourceSHA256` の5項目が同一であり、Consumerから渡された実バイトが宣言Digestと一致する場合だけ、`status="caller-claims-consistent-only"` の**非権威的診断**を返す。必須フィールドの欠落／不正文字列、別Subject、異SourceScope、異Revision、別Attempt、異Digestや実消費bytes不一致は拒否。実Reader・実Generator・Studioには**まだ接続していない**。
+
+**重要なScope分離**：`ReadClaim.SourceScope` はSourceが所属するWorkspace／Identity Scope。一方 `Scheme.Scope` はハッシュ導出のドメイン分離に使う用途Scopeであり、両者は同じ文字列である必要がない。SourceのScopeをSchemeへ暗黙代入したり、Scheme.ScopeでSourceの資格を補完したりしない。複数SourceをまとめるBuild/ETLでは、Source ClosureやConsumption Setの正式なOwner契約を利用し、この単一ファイルReferenceを全件証明へ昇格させない。
+
+| 独立の確認 | 局所Referenceで検査可能 | 真正な製品受入に必要な外部証拠 |
+| --- | --- | --- |
+| 同じBytes、別Subjectまたは別SourceScope | 申告ラベル不一致を拒否 | 正本のqualified source identity、所属変更・renameのDecision |
+| 同じBytes、別Revisionまたは別ReadAttemptID | 申告ラベル不一致を拒否 | 既存Source Readerが発行した版と、実Consumerが**同じAttemptで消費した**証拠 |
+| A→B→A（同じDigestに復帰） | 新しいRevision/Attemptを申告すれば拒否。古い申告を再利用すると一致を返す可能性を明示 | Source Index版、Readerが観測したinode/record/attempt等の資格、実Consumer実消費とstale判定 |
+| Source Digestが一致、Generatorが別Byteを消費 | 提供されたByteに対する照合不一致を拒否 | 別Readerではなく実Toolが消費したByte Closure・実行Hash。#2595のOwner |
+| 始終Source申告が一致、Targetに競合Commit | このReferenceでは判定不能 | W3のTarget Ownerが原子的Unique制約・同一版受理・独立readbackを実証 |
+
+`CompareUntrustedReadClaims` の成功は**二つのCaller申告が整合するだけ**であり、`authority="none"`、`sourceReaderVerified=false`、`sourceAccepted=false` を固定する。命名にVerified/Acceptedを用いず、単に一致した値へ権限を付与しない。実Provider/Source Readerの証拠がない場合は `unknown` のまま保持する。
+
+**後続P0の最小接続順**：① 既存Reader/Source Indexが提供するqualified subjectとrevision/attemptを同一実行から取得、② 実Generator/Headless Consumerが読んだByteと独立に照合、③ A→B→A・別Scope・同名別Subject・一部Sourceだけ合致を反例に固定、④ 同一EvidenceをStudio/CLIでreadonly表示。W3のTarget保存とW5の旧ID移行は最後まで別Owner Gateとする。今回、既存Source Readerの公開APIやSource Index正本の変更、CLIの自動受理は実施しない。
