@@ -43,3 +43,6 @@
 
 # Host inventory observations are hashed as raw bytes.
 /plan/evidence/DSH_H6E0_HOST_INVENTORY_2026-11-07/** -text
+
+# Counterexample output is hashed as raw bytes by its README.
+/plan/evidence/OPERATION_PATTERN_CROSSWALK_COUNTEREXAMPLES_2026-11-07/** -text
