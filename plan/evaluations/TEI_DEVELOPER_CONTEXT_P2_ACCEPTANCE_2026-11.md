@@ -580,3 +580,61 @@ TEI #3262の不足は単純な`Read more`ではない。**どの問いQの必要
 4. **P3（後続）**：T1-A既知Ruleを超えるT1-B盲検の新Obligation検出、実Function→Query→Provider→Context、Pluginの宣言→選択→実Load/Invocation、三視点図面/CRUDのProduct Consumer、実Operation/Host/OS/Effect、Full Coverageは各Ownerへ。複数のDraftで同一正式Gate/読取器を競合実装しない。
 
 **現在の停止線**：本§21は既存コード・CI・Source照合から成熟した評価手順を計画へ移すDocs作業。**実M1 Methodを外部Harnessで走らせた結果、実E1〜E5のBlind Score、実Product Provider全閉包、C1、Owner Meaning/Authority受理はNOT RUN。** 新しい中央Meaning Store、認知Host、Test Engine、Product Schema、Permission Engineは導入しない。
+
+<!-- tei-devctx-canvas-item-provenance-cc19-21-20261108 -->
+## 22. P2認知空間ブリッジ：未整理Itemと複数Canvasの「見える範囲」をSource全件性に昇格しない（2026-11-08、横断設計・NOT RUN）
+
+### 22.1 成熟した外部要件を、#2533の既存Evidence境界へ接合する
+
+2026-11-07のCanvas/情報断片の横断議論では、①**巨大Canvasを関連を維持して分割**、②**同じItemを複数Canvasへ配置**、③**未分類・未読のRaw ItemをInboxに保存しReaderで直接開く**、④**Task/EventはItemの意味Roleまたは別Subject、Action/Effectは実行契約**、⑤**構造・意味・表現・実行を分離、Owner受理のない意味を自動確定しない**ことが成熟した設計要件となった。
+
+本節はこの要件を、開発文脈探索とSEI Methodの**Claim相対の観測十分性**に翻訳する。CanvasをTEI Source/Meaningの新正本とせず、既存Source/Reference/Revision、標準Data Topology/Role/Trait、Function内Presentationと、用途相対Construction Contextの**表示・配置側のConsumer**として扱う。Canvas/Item製品実装や実Readerの完成を意味しない。
+
+- **Item Source/Identity**：Raw本文／Blob／来歴／版を保持できるが、保存済み・索引済み・Readerで実読済み・意味確定済み・現在開示可能はそれぞれ別。未整理Itemをカード化・Task化しない運用を許容する。
+- **Semantic Subject/Role**：必要時にData/Function/Business/Task/Event/その他のRoleを提案。Role CandidateはOwnerが受理したMeaningではない。同じ原典Task上のEventと実Function LaunchEventを同一視せず、Actionへの変換は型付き契約・Host Grant・実Invocationを要する。
+- **Canvas/Occurrence**：CanvasはItemを所有せず、同一Itemの表示Occurrence、Group/Tree/Relation/座標を配置する。分割/統合/再配置は原則Viewの変更であり、Source IDや意味Relationを自動複製・削除しない。一方、ユーザーが意味関係自体を編集した場合は別Revision/Owner受理。
+- **Representation/Projection**：カード、表、グラフ、SHO/Markdown、AI向けJSONは元SourceとTopologyに対する非単射であり得る。表示された0件・空リンク・同一本文はSource不存在、関係不存在、元ID同一、逆編集資格の証明ではない。
+- **Probe/Delivery/Effect**：SEIが必要な次Reader/索引/関係解決を提案しても、実Tool・Scope/Grant・実Read/受領がない限り取得完了にしない。Tool一覧・表示・文書中のAction語・Trait宣言は実Effectの権限ではない。
+
+### 22.2 新しい反例（CC-19〜21、**製品試験NOT RUN**）
+
+| 対照・問い Q | 二つの世界と同じ観測 | 独立Expectedで区別すべき結論 |
+| --- | --- | --- |
+| **CC-19 未整理Itemの不可視性**：「この変更に関連する資料は存在しないか」 | W0＝対象Sourceに関連するRaw Itemなし。W1＝Inboxに非カード化・未読の関連Raw Itemが1件ある。どちらもCanvas Card 0／閲覧したSource 0／既存Discover候補0の投影を与え得る | W1の存在はReader/索引の実Readが必要。初期投影だけから不存在を主張しない。Raw Itemの存在が判明しても本文解釈／関連Meaningは別 |
+| **CC-20 分割・複数Occurrence**：「独立した2件の根拠があるか」 | W2＝1 Item IをCanvas A/Bに各1 Occurrence配置。W3＝独立Item I/Jの同じ文章をそれぞれCanvas A/Bに配置。二つの見えるカードと同じ文章を持ち得る | W2の原典支持数は1、W3は2候補。ただし同じ一次Source由来なら証拠独立性はさらに別。Canvas分割で元ID・関係edge・来歴を失わない |
+| **CC-21 RoleとActionの誤昇格**：「このTaskは実行・完了したか」 | W4＝Raw Itemに「Task/Action/Event/実行済み」とあるだけ。W5＝受理済みRole＋実Tool/Attempt/Receipt/現在対象の独立Readを持つ。両者の表示カード見出しを同じにできる | W4は文書・候補Roleに留まる。W5もReceiptだけで実業務Outcomeを断定せず、実EffectとOwner/現在Grantを別判定 |
+
+**既存実証との区別**：[TEI #2497](https://github.com/hat47x/tei-platform/issues/2497)のSUI実Productを使う非単射Projection負例（SUI #3396/#3397、SHO #21の別OS・実Reader限定対照）は、**Viewから元Source/Topologyを逆復元できない**ことへの先行証拠。ただし上記CC-19〜21のTEI Canvas/Item Product実装、閲覧/保存・分割・Plugin Runtime・Consumer E2Eの実証ではない。[Draft #3176](https://github.com/hat47x/tei-platform/pull/3176)のCC-12〜18実Goは**Go Source/Profile/Test/依存**を対象とし、Canvasの製品受入にはそのまま転用しない。
+
+### 22.3 初回受入票：保持・意味・配置・実行を同じ真偽値にしない
+
+これは#2533の**評価票の列**であり、新しいCore Schema/Item Role Registry/共通Activity DBではない。
+
+| 層 | 既存のSource/Consumerから観測すべき値 | 不足時の表現 |
+| --- | --- | --- |
+| Raw保持・読取 | Item/Source ID、実Content bytes/digest、Revision、Viewer/Reader実Read、失敗・未読・未整理 | `stored-unread`／`unknown`／`not-permitted`（存在自体が秘匿なら公開しない） |
+| 認知/意味 | Q、独立Required R(Q)、候補Role/出典位置、必要Facet/Relation、Owner Accepted範囲 | `candidate`／`partial`／`unaccepted` |
+| 配置/Topology | Canvas ID、Occurrence→Item参照、Graph edgeの固有IDと向き・多重度、分割前後の対応、表示に落ちた情報 | `view-only`／`projection-loss`／`unresolved-reference` |
+| 取得/配送 | 実Tool/ReaderとScope・Grant・Request/Result byte・終端・実Consumer受信・Disclosure | `proposed`／`unsupported`／`received-partial`／`withheld` |
+| Action/Effect | Roleの型付きExecution Contract、実Invocation/Host Grant、Receipt、独立Resource Read、現在適用 | `not-invoked`／`effect-unknown`／`not-current-qualified` |
+
+**可視範囲の原則**：内部ReaderがRaw Itemの存在を知っていても、公開ConsumerにItem数・path・Tool候補を見せられるとは限らない。公開二世界で可視Projectionが同じなら、公開面の返答から秘密のItem/Canvas構造を推測できたと扱わない。実Producer→Renderer→Consumer／OS非干渉を未確認のまま「非漏えい合格」と言わない（#2516/#2515）。
+
+### 22.4 D0/D1/M1への接続と採用順序
+
+**初期Qを2種に限定**：Q1「見えないRaw Itemを含め、関連資料が存在するか」、Q2「同じ資料が複数Canvasに表示されているのか、独立した根拠が複数あるのか」。CC-19/20の二世界Expectedを**評価者側で先に固定**し、各参加条件には同じ許可済みItem一覧・Canvas Projection・Tool Capability/Grant/Read Budgetと元のSource版を渡す。隠したRaw内容、元Itemの答、Reviewer-only Sourceは渡さない。
+
+- **D0**：Canvasの可視カードだけを使った「不存在」「独立2件」の断定を拒否し、未読ItemとOccurrenceの残余を明示する。追加Readを行わない。
+- **D1**：既存の許可されたReader/索引Toolで「Item原典ID/生Reader」を優先する決定的Probeを1件選択。実入口が存在しないなら `unsupported` で終える。Layoutの再表示はRaw原典を新しく読んだことにはならない。
+- **M1**：SEI Methodが**同じ情報・Tool/Grant/予算**で1件のProbeを選び、D1に比べて必要Witness到達・誤不存在/誤独立数・不要Read/CPU/latencyを改善するか測る。Modelが既知のItem ID/非公開pathを推測して正答したように見えるTrialを成功に含めない。
+- **先行の現実証拠**：TEI CLI/Sourceの構成・必要Rule・実Step/実Tool受信を先に持ち、Canvas実Reader未接続なら上記CCを**計画と公開合成Oracleだけ**に留める。実Canvas ProductのTest/Hostを作ったと偽称しない。
+- **後続のLoss評価**：同一ItemをInbox/Reader/Canvas A+B/SHO/AIへ移した場合、Q相対のSource ID/Relation/Meaning/Hidden Scopeが残るかを投影と元Sourceの独立Readで比較する。表面同一は逆Writeの許可にならない。
+
+### 22.5 Ownerと停止条件
+
+- **TEI #2533**：このCCの認知評価・D0/D1/M1比較、**TEI #2497/#2620/#2619**：元Data/Role/Topologyと非単射Projectionの構造的Owner、**TEI #2514**：独立Expected・同一一次Sourceの重複基準、**TEI #2516**：Consumer別開示・Source/Identity/Revisionの現在資格。
+- **SEI #767**：問いに応じた不足把握と次Probe選択、**TEI #2605/TAI #168/#271**：現Product Skill・Toolの実入口／Session継続、**#2515/TAI #232**：実OS/Networkの権限・受信完全性。Action/Plugin Effectは既存TEI Host/Provider Ownerで扱う。
+- **停止条件**：見えない＝存在しない、複数カード＝独立根拠複数、Canvas分割＝Itemの複製、未整理Item＝自動Role受理、Task/Event文字列＝実Action指示、Renderer投影の一致＝元Sourceの逆操作資格、のいずれも禁止する。Productで未実証のReader・Parser・Trait合成・Permission・外部Skill受領・実Actionを、この計画の形式適合からPASSへ昇格しない。
+
+**状態**：本節は他チャットの成熟要件をP2の反証可能な計画へ翻訳した**設計更新のみ**。CC-19/20/21、Canvas実Reader・分割/結合、実D0/D1/M1、実Owner Meaning/Grantの試験は**NOT RUN**。既存#3176のCC-12〜18実Go限定証拠と区別し、新しい共通Cognition Host、第二Source正本、Universal Item Type/Policy Engine/Gateを追加しない。
+
