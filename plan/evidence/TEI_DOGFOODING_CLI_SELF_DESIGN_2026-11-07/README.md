@@ -119,6 +119,34 @@
 | `cli-knowledge-qualify-empty-requirements.json` | 要件JSONに`{}` | 2 |
 | `cli-knowledge-qualify-unknown-field.json` | 要件JSONに`{"requirements":[…]}` | 2 |
 
+### 2.10 現在のmain相当での再確認（2026-11-07 追記）
+
+`origin/main`（`70089048e`）を本ブランチへマージした時点の作業ツリーから、別の実行物（`go build ./cmd/tei`、SHA-256 `fe52894ab9a092c896125b834aa101b81cc0c2097c1e97f0037b805626a99c70`、`vcsRevision: 6d215d328…`、`vcsModified: true`）を作り、§3.2の課題が同じように再現するかを確かめた。**これは§1の固定実行物による実測とは別の実行物**であり、結果を混ぜて「同じ試行」としない。
+
+| ファイル | 対比した課題 | 呼出し | 終了コード |
+| --- | --- | --- | --- |
+| `cli-main-recheck-commands.json` | D-2・D-7（発見の形） | `commands` | 0 |
+| `cli-main-recheck-trace-candidate-key.json` | D-1 | `trace … -subject-kind semantic-candidate-key`（`examples/xtea-lowcode`） | 1 |
+| `cli-main-recheck-trace-unknown-kind.json` | D-1 | `trace … -subject-kind not-a-kind` | 1 |
+| `cli-main-recheck-view-application.json` | D-3 | `view … -application order_entry -format json` | 0 |
+| `cli-main-recheck-plugin-lock-envelope.json` | D-5 | `plugin-lock -workspace reference/workspace`（envelope全体） | 0 |
+| `cli-main-recheck-plugin-lock-inner.json` | D-5 | 上の`result`だけを保存したもの | — |
+| `cli-main-recheck-help-inspect.json` | D-7 | `inspect -h` | 2 |
+| `cli-main-recheck-knowledge-qualify-empty.json` | D-8 | `knowledge-qualify … -qualification-requirements {}` | 2 |
+| `cli-main-recheck-validate-markdown-workspace.json` | D-9 | `validate -workspace <docs+plan> -json` | 0 |
+
+観測の要点:
+
+- **D-1は同じ**。候補キーの`trace`と未知kindの`trace`は、どちらも`SUBJECT_NOT_FOUND`・終了コード1で、応答はバイト単位で同一だった。
+- **D-2は同じ**。`model catalog`・`inspect`・`validate`・`workspace-files`・`source-index`の応答に、`workspace`または`manifest`を含む欄は無かった。
+- **D-3は同じ**。`view -format json`の`result`は`application`・`patterns`・`schemaVersion`・`semanticFingerprint`・`semanticUses`だけで、`worldFingerprint`と`sourceIndexFingerprint`を持たない。`semanticFingerprint`の値も§2.5の`cli-view-application.json`と同じ`sha256:f6c4cf29…`だった。
+- **D-4は同じ**。`view -execute -operation-log`は`op.jsonl`（215バイト）を作業ディレクトリへ書いた。テキスト出力には`authorization: reference-allow-all`の行が加わっている（§2.5の固定実行物の出力には無かった行である）。
+- **D-5は同じ**。envelopeを渡す`plugin-runtime-plan`は終了コード1（`unsupported plugin lock format 0`）、内側の`result`は終了コード0。
+- **D-7・D-8・D-9も同じ**。`inspect -h`は`INVALID_ARGUMENT`・終了コード2、要件JSONの`{}`は`qualification expectedKind is required`、Markdown Workspaceは`ok:true`で`WORKSPACE_DECLARES_NO_MODEL_ELEMENTS`と`sourceRootFindings`2件（`docs`・`plan`）。
+- `commands`は19件のままで、`world`だけが`schemaVersion`を持たず`jsonContract: raw`。9件が`modes`を持つ（§2.1の固定実行物の時点では無かった欄）。
+
+**注意**: この再確認は`vcsModified: true`（マージ後の未コミット状態）から作った実行物である。§1の`0b9c14a8…`の実測値と数値を直接比較せず、各節の対比だけに使う。実DB・実Provider・CIは引き続きNOT RUN。
+
 ## 3. 観測の要点
 
 ### 3.1 成立したこと

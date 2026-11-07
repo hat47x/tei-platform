@@ -333,6 +333,7 @@ TEI自身の設計は、`docs/`と`plan/`のMarkdownで書かれている。こ�
 | `requirements`の`result` | 配列（`result: []`） | `cli-requirements-reference.json` |
 | `model catalog`の`entries` | 標準定義の型12件を含む（`declarationCounts.types=0`のWorkspaceでも`semantic-type`のentryがある） | `cli-model-catalog-xtea-lowcode.json` |
 | `view`の`result.schemaVersion`と`result.plan.schemaVersion` | 同じ値`tei.applicationview/v0`が2箇所 | `cli-view-execute.json` |
+| `commands`のentry | 9件が`modes`を広告するが、`identity`を持つentryは0件（main相当の再確認） | `cli-main-recheck-commands.json` |
 
 **期待との差**
 
@@ -346,6 +347,26 @@ TEI自身の設計は、`docs/`と`plan/`のMarkdownで書かれている。こ�
 
 - `diagnostics`の二重構造は`v0`の既存形であり、変えるなら`v1`が要る（`CLI_JSON_OUTPUT_CONTRACT_2026-10.md`§5）。`#2354`の決定を待つ。
 - `model catalog`の`entries`に`origin: declared｜prelude`のような欄を足し、標準定義を機械的に除外できるようにする。`#2822`と重なるため、同Issueへ追記するのが適切。
+
+### 3.11 マージ後main相当での再確認（2026-11-07 追記）
+
+`origin/main`（`70089048e`）を取り込んだ作業ツリーから別の実行物（SHA-256 `fe52894ab9a092c896125b834aa101b81cc0c2097c1e97f0037b805626a99c70`、`vcsRevision: 6d215d328…`、`vcsModified: true`）を作り、D-1〜D-5・D-7〜D-9を再確認した。詳細は[実測記録](../evidence/TEI_DOGFOODING_CLI_SELF_DESIGN_2026-11-07/README.md)の§2.10にある。
+
+| 課題 | 再確認の結果 |
+| --- | --- |
+| D-1 | 同じ。候補キーと未知kindの`trace`応答は`SUBJECT_NOT_FOUND`・終了コード1で、バイト単位でも同一 |
+| D-2 | 同じ。`model catalog`・`inspect`・`validate`・`workspace-files`・`source-index`に`workspace`／`manifest`の欄が無い |
+| D-3 | 同じ。`view -format json`の`result`に`worldFingerprint`・`sourceIndexFingerprint`が無く、`semanticFingerprint`は`sha256:f6c4cf29…`のまま |
+| D-4 | 同じ。`view -execute -operation-log`は`op.jsonl`（215バイト）を書く。テキスト出力に`authorization: reference-allow-all`の行が加わった |
+| D-5 | 同じ。envelopeは終了コード1、内側の`result`は終了コード0 |
+| D-6 | 未確認（再確認では`plugin-resolve`との終了コード差を測っていない） |
+| D-7 | 同じ。`inspect -h`は`INVALID_ARGUMENT`・終了コード2 |
+| D-8 | 同じ。要件JSONの`{}`は`qualification expectedKind is required` |
+| D-9 | 同じ。Markdown Workspaceは`ok:true`・`WORKSPACE_DECLARES_NO_MODEL_ELEMENTS`・`sourceRootFindings`2件 |
+
+`commands`は19件のままで、`world`だけが`schemaVersion`を持たない。9件が`modes`を広告するようになっている（`#2824`の追加）。**D-3・D-10の一部（`commands`の広告）は`main`で進んでいる**が、`view`の版の欄と`entries`の標準定義混在は変わっていない。
+
+この再確認は`vcsModified: true`の作業ツリーから作った実行物であり、§1の固定実行物の実測と数値を直接比較しない。CI・実DB・実Providerは引き続きNOT RUN。
 
 ---
 
