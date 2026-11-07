@@ -697,3 +697,35 @@ Registryは**発見の索引**、Issuerは証拠の発行主体、Host/Ownerは�
 **実施優先順位**：最初にRC-03/RC-05の外部Commit済み＋RecorderまたはLifecycle段階記録失敗を、既存`LifecycleInvoker`とeffectcommit実Provider（可能なら専用使い捨てPG）、同一Operation ID、Receipt lookup、独立Readで検証する。必要ならEffectUnknown伝播/再送停止を#1174/#1163のOwnerで修正し、#3042/#3053の既存不明結果契約を使う。次にRC-02で二つの認可義務が実Targetに共に適用されたことを確かめる。実装の新しい共通Host、Grant Store、Effect Coordinatorを提案しない。
 
 **採用・根拠の区別**：#3038/#3042/#3047/#3051/#3053はmain統合済みの局所実装（それぞれのPRに限定試験記録）。Recorder失敗の不明状態と二重認可強制は今回の**追加受入候補で、Product実試験NOT RUN**。Source形式`*.tei.md`方針は変更せず、[#3031](https://github.com/hat47x/tei-platform/pull/3031)の未接続診断はDraftのまま。D0直接純粋計算には不要な実DB/Permissionを強制しない。#1119の既存判定段階も変更しない。
+
+## 25. 実DSH起動・Receipt観測・データ観測の資格境界（2026-11-07、既存実装と実試行に基づく受入差分）
+
+**この節の追加理由**：これまでの§21〜24はDSHの公開仕様とTEIの局所実装に基づく比較だった。[TEI側の実DSH起動記録 PR #3113](https://github.com/hat47x/tei-platform/pull/3113)が作成され、固定TEI Binaryを外部Harnessから呼び出した実証が初めて現れた。同時に[main統合 #3124](https://github.com/hat47x/tei-platform/pull/3124)と[main統合 #3127](https://github.com/hat47x/tei-platform/pull/3127)で `PersistenceObserver` と `effectcommit.Runner.Lookup` の配線が進んだ。二つの新事実は**実起動したこと**／**Receiptを再読取できたこと**を示すが、**許された範囲だけに隔離されたこと**／**宣言した業務データの実状態を読み直したこと**とは異なる。この境界を、既存Ownerの検証項目として記録する。新しいHarness/Permission Engine、Proof Store、Completion Evaluatorを追加しない。
+
+### 25.1 証拠を取り違えないための実接合表
+
+| 主張 | すでに観測できること | 同じ証拠では判定できないこと／次の正当なOwner |
+| --- | --- | --- |
+| **外部Tool呼出しの成立** | #3113 の固定TEI commit `50ebf8014340fd1906f6b35cfa30173e0ee2fc6c`／実Binary SHA-256 `186d06ce…69707`で、DSH `0.2.2-rc.1`の1 SessionにTEI起動32回を記録。`commands`/`version`/`model catalog`/`inspect`/`source-index`/`validate`が実Tool経路で成功 | 同じ回答の独立採点、H3 Skillロード・比較、実Agentの正しいOwner Meaning、OS/Network隔離、外部送出許可や秘密の非送出（#2509／TAI #168／#2515／#2516） |
+| **読取Scopeの強制** | #3113は`read-only`設定下でもParticipant作業ディレクトリ外の固定worktreeを読めた。二経路のWorld/SourceIndex fingerprintが一致した事実はある | **作業ディレクトリ限定の読み取り隔離は未達**。Toolの名称・ReadOnly宣言・cwd・同一指紋はOS拒否証拠ではない。実Deniedアクセスと許可対象の同じ読取成功の正負対照を必要とする（#2509/#2515） |
+| **Receiptの存在** | #3127の`commandadapter.Executor.Observe`は`Lookup=true`で同じRequest/Grant/OperationID/payloadを`Runner.Lookup`し、`StatusReplayed`ならnilを返す。受入票で示せるのは該当Receipt/Operation recordの再確認 | その時点のBusiness Recordの実値、変更後にさらに別Commitが生じた場合の新旧Version、Row/Fieldの実ReadやReplica遅延の不存在（#2998/#1174） |
+| **宣言業務効果の観測** | mainの`command.PersistenceObserver.Observe`契約は「宣言したEffectを独立Readで確認」を意味し、nilなら`PersistenceObserved`へ昇格する | #3127のReceipt-only Lookupをそのまま注入する場合、独立Row/Post-imageを読まずに`persistence:"observed"`へ進み得る**意味の不一致**がある。これはSource-staticな契約リスクであり実DB不整合の再現結果ではない |
+| **静的Targetの実依存閉包** | [merged #3064](https://github.com/hat47x/tei-platform/pull/3064)で不要なParser/Workspace依存を切り離し、特定Go Tagの`go list -deps`にそれらが出ないことを確認 | D1の実Contract/Provider選択・物理Link/Call、Target Binaryが必要なものを含み不要なものを含まないこと、全Targetの閉包（#2885/#1251）。別Targetの限定`go list`はD1 Product資格ではない |
+| **現在の開示資格** | 上記の内部実ログ・Receipt・観測結果には各々の出典がある | 外部Harness／組織／Tenant／Consumerに実Source path・Receipt/Row値・内部診断・件数を提供してよいとは推論しない（#2516）。成功ログに秘密の存在を示さない |
+
+### 25.2 Receipt-only → Persistedの誤昇格を防ぐ一因子対照
+
+[main `internal/command/persistence.go`](https://github.com/hat47x/tei-platform/blob/main/internal/command/persistence.go)では `PersistenceObserved` は「宣言した効果が独立読取で見えた」状態であり、`observePersistence` はObserverからのnil応答で `observed` を返す。一方[main `internal/security/effectcommit/commandadapter/executor.go`](https://github.com/hat47x/tei-platform/blob/main/internal/security/effectcommit/commandadapter/executor.go)のReceipt Lookupは、実データの現在値を読まずに成功する。両者の**合成時の意味**を#2998で照合する。
+
+- **OBS-01（同一Commit後の正常対照）**：同一Operation/Grant/Target/ExpectedVersionのCommit→Receipt Lookup→別接続で業務Row/Fieldを独立Read。三つを同一時点と仮定せず、観測Version/時刻を別記。Receiptあり、Rowは期待post-imageなら各々をその事実の範囲でqualifiedにする。
+- **OBS-02（誤昇格の識別例）**：Operation AのReceiptは有効なまま、その後別Operation Bが同じ業務Rowを合法に変更。AのReceipt Lookupは`StatusReplayed`でも、現在のRowがAのpost-imageと一致するとは限らない。Receipt成功だけを根拠に「現在の資源値がAの効果を示す」「Owner Completion Holds」と表示しない。Aの過去CommitとBの現在値を別に保存する。
+- **OBS-03（まだ読めない場合）**：Receipt Lookup成功・独立Row Read失敗／権限拒否／Replicaが旧版なら、Receipt観測は成功として残しても**データの観測はnot-observed/unknown**。現在の開示許可も別に評価する。Receipt不在をEffect 0とも断定しない。
+- **OBS-04（記録障害と再送）**：既存§24.6 RC-03/05のRecorder/Lifecycle記録失敗後、Receipt LookupとRow Readを使う。観測失敗をクリーンな拒否とせず、同Operationの照会と再送停止を維持する。mainの `COMMAND_RECORD_FAILED`／`lifecycleRecordError` は今回の静的確認時点ではEffectUnknown伝播が未修正で、実故障注入はNOT RUN。
+
+**受入の暫定ルール**：既存 `persistence` 1欄をSource的に「receiptを観測した／effectを観測した」の双方に使わない。現契約がEffect Post-imageの意味ならReceipt-only Observerで `observed` を返す利用を制限し、Receipt観測の成功と実データ観測の成否を既存Receipt/独立Read欄へ区別して表示する。別Enum・Universal Effect Coordinatorの導入を先に決めず、まず現#2998のConsumer契約と独立期待値を固定する。
+
+### 25.3 DSH実証の次の比較資格
+
+[PR #3113のEvidence](https://github.com/hat47x/tei-platform/tree/docs/dsh-h2-readonly-evidence-20261107/plan/evidence/DSH_H2_TOOL_ONLY_READ_ONLY_2026-11-07)は**実起動32件を含む限定1 Session**。提示されたTAI側の4 Session比較に転用しない。未完の条件は、実Taskのanswerを独立期待値で採点すること、比較参加者へ渡す情報とそれ以外を**実OS拒否で隔離**すること、許可済みSourceとの正常対照、Harnessが取得したRaw Tool resultと外部送出の観測、Skillの実byte/実Load、H2/H3の同条件比較。read-onlyが作業ディレクトリ外を読める事実を隠すために全Hostの観測を消さず、**Participantへ見せる公開範囲をOwnerの許可で絞った実環境**で再実証する。比較のTask/採点/Skill正本はTAI #168、TEI接続実証は#2509、情報境界は#2515/#2516に委譲。
+
+**検収優先順位・状態**：P0は上記OBS-02/03を#2998/#1174で実Post-imageとReceipt区別の回帰として固定。次にRC-03/05の故障注入（独立Effect観測）。外部Harnessは#2509で隔離条件を先に実証してから比較資格を判定し、Go静的D1の実Buildは#1251で独立。**OBS-01〜04、実PostgreSQL・失効・Resource Read、隔離適格DSH Session、D1実Link/Invoke、Owner意味受理は新規NOT RUN**。既存の成功記録を消したり、第二のSource/Host/Registry/Runbookを作らない。
