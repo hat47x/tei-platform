@@ -776,3 +776,19 @@ Source/Authoring Graph → Resolved/Lowered Graph → Targetの実行・観測�
 **最初の受入に必要な差分**：一つの固定Legacy機能に対し、①元Sourceから取り出した事実と未解決、②人間が採用した意味、③選択Targetで再生成した成果物、④別実装の独立Expectedを一枚の照合票に結ぶ。ST-02の値域改版、ST-03の情報損失、ST-04のScope不一致を最低一件ずつ負例に含める。二つ目のTarget/連携方式へ切替えたとき既存の意味上の型・保証が再利用できるかを確認した後にのみ標準型拡充を判断する。
 
 **現状の資格**：ここでのLegacy実ソース解析、独立動作比較、Java/.NET/Wails/OData/ファイルの実E2E、完全なSource closure、Owner意味受理はいずれも**NOT RUN / NOT PROVEN**。既存参照実装・外部OwnerのCI成功を移行Conformanceへ加算しない。
+
+
+### 17.11 Role付きDataの実装資格と未検証のValue/Consumer境界（2026-11-08、限定差分）
+
+統合済み [#3248](https://github.com/hat47x/tei-platform/pull/3248) はRole名を認識し、[#3308](https://github.com/hat47x/tei-platform/pull/3308) はRoleと`date/decimal/integer`の要求primitive（Alias連鎖を含む）を検査し、[#3318](https://github.com/hat47x/tei-platform/pull/3318) は `examples/xtea-lowcode` の税・為替・採番・休日の実Sourceを読んだ上で、**試験内で供給した行**を既存Binderへ渡す正常系を確認した。旧[Draft #3251](https://github.com/hat47x/tei-platform/pull/3251)はClosed/未統合であり、その当時の「Role→型が未実装」という説明を現況に転用しない。
+
+| 現在の証拠 | そこで保証される範囲 | 次の独立した反証 |
+| --- | --- | --- |
+| **V0** Role語彙 (#3248) | 17名称と誤記の静的識別 | 宣言Roleの存在は正しい値型を意味しない |
+| **V1** Role→primitive (#3308) | 必要primitiveの一致・Aliasの基底型・未知TypeRefの二重診断回避 | 実Workspaceからの `tax-value/std.decimal` を `std.date` または未知TypeRefへ変えた時、異なる診断へ分岐するか（[Draft #3320](https://github.com/hat47x/tei-platform/pull/3320)、in-memory World負例） |
+| **V2** Source→Binder正常系 (#3318) | 実Workspace定義をResolveし、試験内rowをBindする限定Reference | 行データの真正なSource・欠落/NULL/値域/丸め・実DB/旧Runtimeは未確認。Binder成功だけで実Consumer効果を主張しない |
+| **V3** 異質Consumer・Target | **未証明**。ETL/FileとTarget生成を同じSource/Meaning/Scopeで比較する計画 | #2542/#2827の配送Receipt、#1121/#3252の再生成、#2514の独立Expected、#2831の実Build Closure。新しい共通Runtimeを作らない |
+
+**閉域型との独立条件**：`semantic.Type.Values` は宣言された候補値を保持し、`validation.Validate` は空/重複値を診断する（#2495のclosedness研究に接続）。ただし宣言した値集合と、実Provider行・生成Target・別Schemaの受理値域が一致することはこれだけでは証明されない。Enum/MECE、同一primitive、Sourceの同一Hash、現在のAuthorityを自動的に相互保証へ昇格しない。値を取得できないときの`unknown`と、実在する値の明示的な契約違反を区別する。
+
+**停止線**：#3308のprimitive照合を新しいRole Registryへ複製せず、#3318の正常系を実DB/Production資格へ拡大しない。標準化判断は、少なくとも一つの非画面Data Consumerと一つのTarget再実現Consumerで同じ意味上の不足が独立に再現された場合に限る。ここでのETL/Target/Owner Acceptanceと実Source改変の再Loadは**NOT RUN**。
