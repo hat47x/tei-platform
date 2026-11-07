@@ -58,6 +58,7 @@
 - `validate -json`と`model catalog`は、2026-11-07から`declarationCounts`を返す。`std`の標準意味型を除いたWorkspace自身の宣言件数であり、空のWorkspace（`total:0`）と宣言のあるWorkspaceを機械的に区別できる（#2822）。
 - `tei commands`の各entryは、2026-11-07から`schemaVersion`と`jsonContract`（`enveloped`／`raw`／`none`）を持つ。`world`だけが`raw`で、`tei.cli.*`のエンベロープを持たないことをdiscoveryから読める。
 - 2026-11-07から、discoveryが広告する`schemaVersion`と、そのコマンドが実プロセスで返す応答の`schemaVersion`の一致を`cmd/tei/cli_discovery_process_test.go`が検査する。定数同士の照合（`cli_contract_test.go`）だけでは、応答側の改名と広告のずれを検出できなかった（#2824）。`version -json`は`ok`/`error`を持たないため、この検査は`schemaVersion`の一致だけを求める。
+- 2026-11-07から、`tei commands`の各entryは`modes`（応答の`mode`が取りうる値の閉じた集合）を持つ。空文字列の要素は「その応答では`mode`が省略されうる」ことを示す。`mode`で結果の形が変わる`source-index`（`index`／`subject`）と`knowledge-context`（`context`／`disclosure`）、`plugin-lock`（`environment`または省略）、`plugin-resolve`（`unvalidated-candidates`または省略）が対象で、残りの`knowledge-*`は1形の結果型を`mode`で名乗る。`cmd/tei/cli_discovery_modes_test.go`が、実際の応答の`mode`が広告された集合に含まれることを実プロセスで検査する。
 
 ## 5. v0の中での互換な変更と版を上げる変更（規則案）
 
