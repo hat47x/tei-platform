@@ -137,6 +137,8 @@ CPUプロファイル（largeの`full`を繰り返し実行、`go test -bench`�
 
 `golden_test.go`は、変更前の実装で出力した次のSHA-256を`testdata/golden.json`に固定し、変更後も一致することを調べます。small・mediumの両方で、5種の処理（`TraceWorkspace`の完全なJSON出力）、`BuildSourceIndex`の結果、ページ継続（700件ずつ取得して連結した行が一括`full`と一致）を含みます。あわせて、古い継続tokenとWorkspace更新後の継続tokenが`STALE_SNAPSHOT`で拒否されることを確認します。largeは変更前の実装で約2分かかるため、goldenには含めず手動計測に限ります。
 
+**2026-11-07の更新（#3181）**: `TraceWorkspace`の応答に`workspace`（読んだWorkspaceの名前・manifest版・manifest照合値）を足したため、`TraceWorkspace`全体の出力のSHA-256は変わりました。`sourceIndex`と`pagedRows`（`TraceWorkspace`の応答ではない）は変わっていません。`TEI_WRITE_GOLDEN=1`で`testdata/golden.json`を再生成し、変更前の値はgit履歴に残しています。出力byte数と行数は変わっていません。
+
 ## 参照グラフ生成の改善（#1177の続き）
 
 段別の`index.Build`と`derivedbridge`は約0.19秒、確保113万回でした。largeを`go test -bench`で繰り返し測ると、`index.Build`単体は約27 ms・57回の確保で、費用の大半は`derivedbridge.FromIndex`でした。確保したオブジェクトの約77%が、`FromIndex`の整列の比較関数が比較のたびに作る「種別/ID」などの文字列連結でした（`#1177`のtraceの整列と同じ形です）。
