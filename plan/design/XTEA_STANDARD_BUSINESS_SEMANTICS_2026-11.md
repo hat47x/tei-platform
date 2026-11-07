@@ -174,14 +174,27 @@ X-TEAの`setVariant`・`setUserValueOf`は、スクリプトから任意の値�
 | 採番 | L4（契約）＋L1（宣言） | 一意性・連続性・欠番・桁あふれの契約、形式の設定 | 番号の実体（表） |
 | 利用者設定 | L1 | 宣言された設定項目 | 任意のキー |
 
-## 5. 実装の順序（案）
+## 5. 実装の順序
+
+1〜5は参照実装まで進みました。6は設計のみです。
+
+## 5.0 実装済みの範囲（2026-11-07）
 
 1. **暦の宣言と休日Data**: `calendar`の宣言と、休日をDataで持つ形。営業日数・日付差の列挙を参照実装で照会する。
 2. **期間との結び付き**: `period`に`calendar`を結び、年度開始月から期間キーを導く。
 3. **税の宣言**: 適用期間の両端と端数処理を宣言し、境界（改正日）を試験する。
 4. **通貨の宣言**: 率の種類と適用日を宣言する。
 5. **採番の契約**: 一意性・連続性・欠番・桁あふれの契約を定め、参照実装で発行と取り消しを試験する。
-6. **利用者設定**: 宣言された項目だけを読み書きする。
+6. **利用者設定**: 宣言された項目だけを読み書きする（未実装）。
+
+| 段階 | 実装 | 確認記録 |
+| --- | --- | --- |
+| 暦の宣言 | `internal/syntax/semantic_calendar.go`、`internal/validation/calendar.go` | [暦の宣言と期間への結合](../evidence/XTEA_LOWCODE_CALENDAR_DECLARATION_2026-11.md) |
+| 日付導出 | `internal/businesscalendar` | [暦からの日付導出](../evidence/XTEA_LOWCODE_CALENDAR_CALCULATION_2026-11.md) |
+| 期間キー | `internal/businesscalendar/period_key.go` | [期間キーの導出](../evidence/XTEA_LOWCODE_PERIOD_KEY_2026-11.md) |
+| 税 | `internal/taxrate` | [税率の適用期間と端数処理](../evidence/XTEA_LOWCODE_TAX_RATE_2026-11.md) |
+| 通貨 | `internal/currencyrate` | [通貨換算の率の種類と方向](../evidence/XTEA_LOWCODE_CURRENCY_RATE_2026-11.md) |
+| 採番 | `internal/numbering` | [採番の契約](../evidence/XTEA_LOWCODE_NUMBERING_2026-11.md) |
 
 各段階で、参照実装の試験と証拠を`plan/evidence/`へ残します。
 
@@ -208,4 +221,5 @@ X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設�
 - [評価時点の決定性](EVALUATION_CONTEXT_DETERMINISM_2026-10.md)
 - [移行計画](../workstreams/XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)（WP8）
 - [受容要件](../../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md)（RQ-C3）
+
 

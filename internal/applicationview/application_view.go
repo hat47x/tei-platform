@@ -39,6 +39,9 @@ type ApplicationPeriodRef struct {
 	Data         core.CanonicalID `json:"data"`
 	BusinessDate core.CanonicalID `json:"businessDate"`
 	States       []string         `json:"states,omitempty"`
+	// Calendar names the business calendar the period follows. An empty value
+	// means the declaration names none, and a reader must not assume a default.
+	Calendar core.CanonicalID `json:"calendar,omitempty"`
 }
 
 // BuildApplicationは、ApplicationのPattern・Packageと、使用する意味の版を解決する。
@@ -91,6 +94,7 @@ func BuildApplication(world ir.World, applicationID core.CanonicalID) (Applicati
 				Data:         period.Data,
 				BusinessDate: period.BusinessDate,
 				States:       period.States,
+				Calendar:     period.Calendar,
 			})
 		}
 	}

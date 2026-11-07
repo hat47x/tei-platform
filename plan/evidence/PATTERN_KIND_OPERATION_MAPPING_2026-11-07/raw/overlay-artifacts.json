@@ -1,0 +1,118 @@
+{
+  "inputRevision": "sha256:8ee83bef3c5ffdf56d541ab5266ef6c52443cad1248faf46c47fbacbf3d8b94c",
+  "artifacts": [
+    {
+      "kind": "table-definition",
+      "inputRevision": "sha256:8ee83bef3c5ffdf56d541ab5266ef6c52443cad1248faf46c47fbacbf3d8b94c",
+      "rule": {
+        "id": "tei.artifact.table-definition",
+        "version": "v1",
+        "fingerprint": "sha256:2de929928f966fe4867c734b09c6a31132fcd585ab5e6d62a3472c6d1446184e"
+      },
+      "generator": "tei-artifact-tabledef/v1",
+      "content": "table public.orders\ndata sales.order\ncolumn order_id sales.order.order_id int64 required pk\ncolumn customer_id sales.order.customer_id int64 required\ncolumn ordered_at sales.order.ordered_at datetime-tz required\ncolumn status sales.order.status varchar required\ncolumn total_amount sales.order.total decimal required\ncolumn external_id sales.order.external_id varchar optional\nprimary-key sales.order.order_id\nindex orders_customer_idx sales.order.customer_id\n",
+      "digest": "sha256:e3d6757c945984ad81ef9c78b259f60b301b6c1f7c1c71d5e530bbb102de7a15",
+      "unresolved": null
+    },
+    {
+      "kind": "table-definition",
+      "inputRevision": "sha256:8ee83bef3c5ffdf56d541ab5266ef6c52443cad1248faf46c47fbacbf3d8b94c",
+      "rule": {
+        "id": "tei.artifact.table-definition",
+        "version": "v1",
+        "fingerprint": "sha256:2de929928f966fe4867c734b09c6a31132fcd585ab5e6d62a3472c6d1446184e"
+      },
+      "generator": "tei-artifact-tabledef/v1",
+      "content": "table public.order_lines\ndata sales.order_line\ncolumn order_line_id sales.order_line.order_line_id int64 required pk\ncolumn line_number sales.order_line.line_number int64 required\ncolumn item_code sales.order_line.item_code varchar required\ncolumn quantity sales.order_line.quantity decimal required\ncolumn unit_price sales.order_line.unit_price decimal required\nprimary-key sales.order_line.order_line_id\n",
+      "digest": "sha256:b39c551f6899960af58fd077cbadcf835bb2b58d75b0f79e39aa65eecd75fd3f",
+      "unresolved": null
+    },
+    {
+      "kind": "function-definition",
+      "inputRevision": "sha256:8ee83bef3c5ffdf56d541ab5266ef6c52443cad1248faf46c47fbacbf3d8b94c",
+      "rule": {
+        "id": "tei.artifact.function-definition",
+        "version": "v1",
+        "fingerprint": "sha256:0b9fa12c6137edbbdc05092621c581b9e62365acb1f6194ab7dab5f8f99de76b"
+      },
+      "generator": "tei-artifact-functiondef/v1",
+      "content": "application order_entry\ncapability sales.order.quote_lines\ninput request sales.quote_request\noutput sales.quote_result\nvalidation sales.order.lines.line_number_unique relation-unique\nvalidation sales.order_line.line_number_positive positive\nvalidation sales.order_line.quantity_positive positive\ncapability sales.order.submit\ninput order sales.order\noutput sales.order\nvalidation sales.order.lines.line_number_unique relation-unique\nvalidation sales.order_line.line_number_positive positive\nvalidation sales.order_line.quantity_positive positive\ncapability security.authenticate\ninput login_id std.identifier\ninput credential security.credential\noutcome authenticated security.authenticated_subject\noutcome denied security.authentication_denial\nvalidation sales.order.lines.line_number_unique relation-unique\nvalidation sales.order_line.line_number_positive positive\nvalidation sales.order_line.quantity_positive positive\ncapability security.authorize\ninput subject security.authenticated_subject\ninput action security.authorization_action\ninput resource security.authorization_resource\noutcome allowed security.authorization_grant\noutcome denied security.authorization_denial\nvalidation sales.order.lines.line_number_unique relation-unique\nvalidation sales.order_line.line_number_positive positive\nvalidation sales.order_line.quantity_positive positive\npattern order_entry.customer_reference reference\npattern order_entry.order_lines header-detail\npattern order_entry.order_record record\npattern order_entry.preview_order_quote command\npattern order_entry.recent_orders browse\npattern order_entry.submit_order command\n",
+      "digest": "sha256:1e2201f23e445f8671576eef294263944a7ec9f8461966d2598b52b7c2fb85b9",
+      "unresolved": [
+        {
+          "subject": "sales.order.quote_lines",
+          "reason": "missing-semantics",
+          "detail": "capability declares no effect"
+        },
+        {
+          "subject": "sales.order.submit",
+          "reason": "missing-semantics",
+          "detail": "capability declares no effect"
+        },
+        {
+          "subject": "security.authenticate",
+          "reason": "missing-semantics",
+          "detail": "capability declares no effect"
+        },
+        {
+          "subject": "security.authorize",
+          "reason": "missing-semantics",
+          "detail": "capability declares no effect"
+        }
+      ]
+    },
+    {
+      "kind": "operation-surface",
+      "inputRevision": "sha256:8ee83bef3c5ffdf56d541ab5266ef6c52443cad1248faf46c47fbacbf3d8b94c",
+      "rule": {
+        "id": "tei.artifact.operation-surface",
+        "version": "v1",
+        "fingerprint": "sha256:76412dbc390921fa4eae6f8b944a153f971e9b04288dee2e86d492eec5cafd54"
+      },
+      "generator": "tei-artifact-surface/v1",
+      "content": "{\n  \"schemaVersion\": \"tei.operations.operation-surface/v0\",\n  \"application\": \"order_entry\",\n  \"rule\": {\n    \"id\": \"tei.operation-surface/standard-crud\",\n    \"version\": \"v1\",\n    \"fingerprint\": \"sha256:92adf0fa3b20816fb6068780a6dd8b9b1fb77973e6c2cff823313346b0e59ae0\"\n  },\n  \"operations\": [\n    {\n      \"id\": \"order_entry.list.sales.order\",\n      \"kind\": \"list\",\n      \"target\": \"sales.order\",\n      \"origin\": \"derived\",\n      \"autonomy\": \"unattended\",\n      \"basis\": \"sha256:3fffc2ae72ebfc6baf68ef167ee58ebdab9e9475d69fb18e8a2e4f20cc1321a9\"\n    },\n    {\n      \"id\": \"order_entry.read.sales.order\",\n      \"kind\": \"read\",\n      \"target\": \"sales.order\",\n      \"origin\": \"derived\",\n      \"inputs\": [\n        \"sales.order.order_id\"\n      ],\n      \"autonomy\": \"unattended\",\n      \"basis\": \"sha256:3fffc2ae72ebfc6baf68ef167ee58ebdab9e9475d69fb18e8a2e4f20cc1321a9\"\n    },\n    {\n      \"id\": \"order_entry.create.sales.order\",\n      \"kind\": \"create\",\n      \"target\": \"sales.order\",\n      \"origin\": \"derived\",\n      \"inputs\": [\n        \"sales.order.order_id\",\n        \"sales.order.customer_id\",\n        \"sales.order.ordered_at\",\n        \"sales.order.status\",\n        \"sales.order.total\",\n        \"sales.order.external_id\"\n      ],\n      \"effects\": [\n        \"create:sales.order\"\n      ],\n      \"autonomy\": \"attended\",\n      \"basis\": \"sha256:3fffc2ae72ebfc6baf68ef167ee58ebdab9e9475d69fb18e8a2e4f20cc1321a9\"\n    },\n    {\n      \"id\": \"order_entry.update.sales.order\",\n      \"kind\": \"update\",\n      \"target\": \"sales.order\",\n      \"origin\": \"derived\",\n      \"inputs\": [\n        \"sales.order.order_id\"\n      ],\n      \"effects\": [\n        \"update:sales.order\"\n      ],\n      \"concurrency\": \"expected-state\",\n      \"autonomy\": \"attended\",\n      \"basis\": \"sha256:3fffc2ae72ebfc6baf68ef167ee58ebdab9e9475d69fb18e8a2e4f20cc1321a9\"\n    },\n    {\n      \"id\": \"order_entry.list.sales.order_line\",\n      \"kind\": \"list\",\n      \"target\": \"sales.order_line\",\n      \"origin\": \"derived\",\n      \"autonomy\": \"unattended\",\n      \"basis\": \"sha256:7409d5d372f542a5eaa951fabb9b9dec69fc6c2c45651980f64aba7e81b4f471\"\n    },\n    {\n      \"id\": \"order_entry.read.sales.order_line\",\n      \"kind\": \"read\",\n      \"target\": \"sales.order_line\",\n      \"origin\": \"derived\",\n      \"inputs\": [\n        \"sales.order_line.order_line_id\"\n      ],\n      \"autonomy\": \"unattended\",\n      \"basis\": \"sha256:7409d5d372f542a5eaa951fabb9b9dec69fc6c2c45651980f64aba7e81b4f471\"\n    },\n    {\n      \"id\": \"order_entry.create.sales.order_line\",\n      \"kind\": \"create\",\n      \"target\": \"sales.order_line\",\n      \"origin\": \"derived\",\n      \"inputs\": [\n        \"sales.order_line.order_line_id\",\n        \"sales.order_line.line_number\",\n        \"sales.order_line.item_code\",\n        \"sales.order_line.quantity\",\n        \"sales.order_line.unit_price\"\n      ],\n      \"preconditions\": [\n        \"sales.order.lines.line_number_unique\",\n        \"sales.order_line.line_number_positive\",\n        \"sales.order_line.quantity_positive\"\n      ],\n      \"effects\": [\n        \"create:sales.order_line\"\n      ],\n      \"autonomy\": \"attended\",\n      \"basis\": \"sha256:7409d5d372f542a5eaa951fabb9b9dec69fc6c2c45651980f64aba7e81b4f471\"\n    },\n    {\n      \"id\": \"order_entry.update.sales.order_line\",\n      \"kind\": \"update\",\n      \"target\": \"sales.order_line\",\n      \"origin\": \"derived\",\n      \"inputs\": [\n        \"sales.order_line.order_line_id\"\n      ],\n      \"effects\": [\n        \"update:sales.order_line\"\n      ],\n      \"concurrency\": \"expected-state\",\n      \"autonomy\": \"attended\",\n      \"basis\": \"sha256:7409d5d372f542a5eaa951fabb9b9dec69fc6c2c45651980f64aba7e81b4f471\"\n    }\n  ],\n  \"gaps\": [],\n  \"summary\": {\n    \"operations\": 8,\n    \"derived\": 8,\n    \"declared\": 0,\n    \"unattended\": 4,\n    \"gaps\": 0\n  }\n}\n",
+      "digest": "sha256:1838494d70401d9f887582fecf6a06f8ee1d21f2fe9858bd38278e254a44cf0b",
+      "unresolved": null
+    }
+  ],
+  "manifest": {
+    "inputRevision": "sha256:8ee83bef3c5ffdf56d541ab5266ef6c52443cad1248faf46c47fbacbf3d8b94c",
+    "entries": [
+      {
+        "kind": "function-definition",
+        "rule": "tei.artifact.function-definition",
+        "version": "v1",
+        "fingerprint": "sha256:0b9fa12c6137edbbdc05092621c581b9e62365acb1f6194ab7dab5f8f99de76b",
+        "digest": "sha256:1e2201f23e445f8671576eef294263944a7ec9f8461966d2598b52b7c2fb85b9",
+        "unresolved": 4
+      },
+      {
+        "kind": "operation-surface",
+        "rule": "tei.artifact.operation-surface",
+        "version": "v1",
+        "fingerprint": "sha256:76412dbc390921fa4eae6f8b944a153f971e9b04288dee2e86d492eec5cafd54",
+        "digest": "sha256:1838494d70401d9f887582fecf6a06f8ee1d21f2fe9858bd38278e254a44cf0b",
+        "unresolved": 0
+      },
+      {
+        "kind": "table-definition",
+        "rule": "tei.artifact.table-definition",
+        "version": "v1",
+        "fingerprint": "sha256:2de929928f966fe4867c734b09c6a31132fcd585ab5e6d62a3472c6d1446184e",
+        "digest": "sha256:b39c551f6899960af58fd077cbadcf835bb2b58d75b0f79e39aa65eecd75fd3f",
+        "unresolved": 0
+      },
+      {
+        "kind": "table-definition",
+        "rule": "tei.artifact.table-definition",
+        "version": "v1",
+        "fingerprint": "sha256:2de929928f966fe4867c734b09c6a31132fcd585ab5e6d62a3472c6d1446184e",
+        "digest": "sha256:e3d6757c945984ad81ef9c78b259f60b301b6c1f7c1c71d5e530bbb102de7a15",
+        "unresolved": 0
+      }
+    ],
+    "digest": "sha256:5008788c8524d01f2b6727d7091d7645743d85326a641ff73ffaeca6d0e22cf6",
+    "complete": false
+  },
+  "findings": []
+}

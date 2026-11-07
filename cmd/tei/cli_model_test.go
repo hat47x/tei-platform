@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -122,5 +123,64 @@ func TestCLIModelCatalogEmptyNamespaceIsADeclaredSuccess(t *testing.T) {
 	// request matched a declared namespace instead of being reported unknown.
 	if len(response.Result.Entries) != 1 || response.Result.Entries[0].Subject.Kind != "semantic" {
 		t.Fatalf("empty namespace catalog=%+v", response.Result.Entries)
+	}
+}
+
+// TestCLIModelCatalogEmptyWorkspaceRevisionIsTheEmptyDigest pins what
+// modelRevision means when the Workspace manages no Source (#2822). The value
+// is the revision of the managed Source set, not of the loaded World: the
+// standard prelude still contributes entries, while the revision stays at the
+// empty-input digest. Without this, an empty Workspace looks either like a
+// model identity or like a failure, and neither is what the field reports.
+func TestCLIModelCatalogEmptyWorkspaceRevisionIsTheEmptyDigest(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "semantic"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: empty_source\nformatVersion: 1\nsources:\n  - semantic\n")
+	var stdout bytes.Buffer
+	code, err := runModelCommand([]string{"catalog", "-workspace", root}, &stdout)
+	if err != nil || code != 0 {
+		t.Fatalf("empty workspace code=%d err=%v body=%s", code, err, stdout.String())
+	}
+	var response modelCLIResponse
+	if err := json.Unmarshal(stdout.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if !response.OK || response.Result == nil {
+		t.Fatalf("empty workspace catalog is not a success: %+v", response)
+	}
+	const emptyInput = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+	if response.Result.ModelRevision != emptyInput {
+		t.Fatalf("empty workspace revision=%q", response.Result.ModelRevision)
+	}
+	// The entries are not empty: the prelude is loaded. That is why the
+	// revision cannot be read as "the World declares nothing".
+	prelude := 0
+	for _, entry := range response.Result.Entries {
+		if entry.Subject.ID == "std" || strings.HasPrefix(entry.Subject.ID, "std.") {
+			prelude++
+		}
+		if entry.Subject.ID != "std" && !strings.HasPrefix(entry.Subject.ID, "std.") {
+			t.Fatalf("an empty workspace declared a non-prelude subject: %+v", entry.Subject)
+		}
+	}
+	if prelude == 0 {
+		t.Fatal("expected the standard prelude in the catalog entries")
+	}
+	// The empty Workspace and the reference Workspace share neither the
+	// revision nor the declaration counts, so the two cannot be confused.
+	reference := filepath.Join("..", "..", "reference", "workspace")
+	var refOut bytes.Buffer
+	if code, err := runModelCommand([]string{"catalog", "-workspace", reference}, &refOut); err != nil || code != 0 {
+		t.Fatalf("reference catalog code=%d err=%v", code, err)
+	}
+	var ref modelCLIResponse
+	if err := json.Unmarshal(refOut.Bytes(), &ref); err != nil {
+		t.Fatal(err)
+	}
+	if ref.Result == nil || ref.Result.ModelRevision == emptyInput ||
+		ref.Result.DeclarationCounts.Total == 0 {
+		t.Fatalf("reference workspace collapsed into the empty revision: %+v", ref.Result)
 	}
 }

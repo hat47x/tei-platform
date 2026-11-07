@@ -25,7 +25,7 @@
 | AC-11 | 一部 | `effectcommit.Runner`の認可境界、`command.Invoker.Authorizer`、`AllowListAuthorizer`、CLI/StudioのAllowList、`legacyauthorization/commandbinding.CommandAuthorizer`（subject・action・resourceを既存規則へ接続）、`command.GrantAuthorizer`（能力が宣言した許可と発行済み許可の照合。部分許可・無宣言・不正宣言を拒否）。確認記録: [既存認可規則](XTEA_LOWCODE_COMMAND_AUTHORIZATION_2026-11.md)、[宣言許可の照合](XTEA_LOWCODE_GRANT_AUTHORIZATION_2026-11.md) | 認可付きPostgreSQL試験（DSN設定時のみ）、Authorizerの許可・拒否試験、CLIの`-allow-capability`、Studioの`ExecuteCommandWithPolicy`、Patternが宣言していても付与が無ければExecutorへ到達しない試験、能力の宣言許可と発行許可の照合試験 | 権限の正本・付与の管理、`security.authorize`への実運用接続 |
 | AC-12 | 未実装 | 設計のみ（[作者環境の受容設計](../design/XTEA_AUTHORING_SURFACE_RECEPTION_2026-11.md)） | — | 面ごとの配置検査、意味の役割と表示指定の分離、生成物の未受理扱い | Package、Semantic/Applicationの宣言 | Package・Applicationの検証と例 | Core外の型定義との組合せ |
 | RQ-C2 | 一部 | フック宣言、CommandとObservationの分離 | 単体試験 | Plugin境界での完全な宣言強制 |
-| RQ-C3 | 一部 | 期間、値域、型正規化、`calendar`宣言と期間との結合（[確認記録](XTEA_LOWCODE_CALENDAR_DECLARATION_2026-11.md)）、`internal/businesscalendar`（暦からの日付差・営業日加算・会計年度・期間キー。[確認記録](XTEA_LOWCODE_CALENDAR_CALCULATION_2026-11.md)、[期間キーの確認](XTEA_LOWCODE_PERIOD_KEY_2026-11.md)）、`internal/taxrate`（適用期間の両端・端数処理の宣言・重なりの検出。[確認記録](XTEA_LOWCODE_TAX_RATE_2026-11.md)）、`internal/currencyrate`（同上。[確認記録](XTEA_LOWCODE_CURRENCY_RATE_2026-11.md)）、`internal/numbering`（桁あふれの既定停止・検査数字・一意性の契約。[確認記録](XTEA_LOWCODE_NUMBERING_2026-11.md)） | 参照Store・例の試験、暦宣言の構文・検証試験、日付導出の試験（13件） | 税・通貨・採番の適用期間と評価時点、期間キーの導出 |
+| RQ-C3 | 一部 | 期間、値域、型正規化、`calendar`宣言と期間との結合（[確認記録](XTEA_LOWCODE_CALENDAR_DECLARATION_2026-11.md)）、`internal/businesscalendar`（暦からの日付差・営業日加算・会計年度・期間キー。[確認記録](XTEA_LOWCODE_CALENDAR_CALCULATION_2026-11.md)、[期間キーの確認](XTEA_LOWCODE_PERIOD_KEY_2026-11.md)）、`internal/taxrate`（適用期間の両端・端数処理の宣言・重なりの検出。[確認記録](XTEA_LOWCODE_TAX_RATE_2026-11.md)）、`internal/currencyrate`（同上。[確認記録](XTEA_LOWCODE_CURRENCY_RATE_2026-11.md)）、`internal/numbering`（同上。[確認記録](XTEA_LOWCODE_NUMBERING_2026-11.md)）、`ApplicationView.periods`の`calendar`（期間が従う暦を投影） | 参照Store・例の試験、暦宣言の構文・検証試験、日付導出の試験（13件） | 税・通貨・採番の適用期間と評価時点、期間キーの導出 |
 
 ## 実DB・実Providerで未確認のこと
 
@@ -58,6 +58,7 @@ persisted: false (durability: none)
 ```
 
 これは参照用AllowListによる能力単位の拒否です。利用者・資源・メニュー表示・権限の付与は確認していません。
+
 
 
 
