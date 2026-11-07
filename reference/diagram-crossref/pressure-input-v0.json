@@ -315,7 +315,7 @@
     },
     {
       "id": "N05",
-      "mutation": "rename/reorder diagram nodes without changing semantic source"
+      "mutation": "change presentation-only display alias and diagram node order while preserving authoritative semantic Source"
     },
     {
       "id": "N06",
