@@ -610,7 +610,7 @@ M未受理・G許可でもMeaningを採用しない。M受理済み・G拒否な
 
 ### 10.18 現在資格の継承境界：Studio後着と実Host Effectを混同しない（追跡更新）
 
-[Draft #3036](https://github.com/hat47x/tei-platform/pull/3036)の最新確認HEAD **edec00b82c165fd9037d8cbb9a55c049a5af82f0**に対して、[専用Node回帰 #42257061560](https://github.com/hat47x/tei-platform/actions/runs/42257061560)、[Repository Health #42257061446](https://github.com/hat47x/tei-platform/actions/runs/42257061446)、[Windows WebView2 smoke #42257061651](https://github.com/hat47x/tei-platform/actions/runs/42257061651)はいずれもcompleted/success。旧HEADのWorkflow SHA pin違反によるHealth失敗は修正された。PRはDraftで、main追従時の統合可能性や新HEADによる正式WebView検収を推測しない。
+旧[Draft #3036](https://github.com/hat47x/tei-platform/pull/3036)は歴史的成果を保存して未統合Close。後継の[Draft #3117](https://github.com/hat47x/tei-platform/pull/3117)（exact HEAD b75df7a54a27a540e51c57778fd173213752491f）は当時のmainから同じ5ファイルを移植し、[Node回帰 #42309517633](https://github.com/hat47x/tei-platform/actions/runs/42309517633)／[実Wails Server/Chromium #42309517587](https://github.com/hat47x/tei-platform/actions/runs/42309517587)／[Repository Health #42309517593](https://github.com/hat47x/tei-platform/actions/runs/42309517593)がcompleted/success。実ChromiumのPASS_BOOTSTRAP_LATE_CATALOGはServer初期Bootstrap / の後着応答の限定資格であり、Desktop既定 /workbench/ のCatalog/Inspect/ValidateやCommand/Provider Effectの受入ではない。#3117はDraft・main未統合、旧#3036の歴史的CIを新HEADの証明に流用しない。
 
 **別UI・別資格**：旧応答/旧finallyの競合を実main.js＋Node模擬DOMで試したのはBootstrap側。Windows Desktop初期経路は **/workbench/** であり、上記Desktop smokeは既存read-onlyであってBootstrap Command/Plan/Executeの実WebView2試験ではない。Workbenchには別のcreateResponseScope/workspaceEpochがあるので、#1824/#1124の担当で実Catalog/Inspect/Validate後着とDOM/ARIA・現在Disclosureを照合する。新UI Scope/Hostを重複導入しない。
 
@@ -650,7 +650,7 @@ M未受理・G許可でもMeaningを採用しない。M受理済み・G拒否な
 | 宣言は検証済み | [#3069](https://github.com/hat47x/tei-platform/pull/3069)が利用者宣言件数を追加。[#3081](https://github.com/hat47x/tei-platform/pull/3081)は空WorkspaceへWORKSPACE_DECLARES_NO_MODEL_ELEMENTS警告 | 空Workspaceでもok:true/exit0。標準std catalogの件数と利用者宣言を混同せず、Consumerが必要とするSource集合の充足をokだけで推論しない。#2822/#1180 |
 | CLIスキーマが広告どおり | [#3058](https://github.com/hat47x/tei-platform/pull/3058)がdiscoveryを追加し、[#3095](https://github.com/hat47x/tei-platform/pull/3095)がenvelopedコマンドの実Process応答schemaVersionと広告を照合し、偽広告の負例を確認 | schemaVersion一致はresultの形や意味の互換性を保証しない。特に#3078はworkspace-files/v0のresultを**配列からobjectへ変更**し、旧Consumer互換性は未決。#2824/#2516 |
 | 宣言と適用に差はない | [#3055](https://github.com/hat47x/tei-platform/pull/3055)・[#3057](https://github.com/hat47x/tei-platform/pull/3057)は同種別別対象の適用をDifferencesへ残しCLI/Studioで表示。[#3068](https://github.com/hat47x/tei-platform/pull/3068)は作用を列挙しないExecutorをAppliedUnobserved=true/difference-check: not observedとする | Differencesが空でもAppliedが未観測なら差なしとは言えない。差が存在しても参照Commandの成功とは両立するため、Owner承認済みScopeやProvider Commit成功には自動昇格させない。#2598/#1174 |
-| Commitしたので保存された | [#3054](https://github.com/hat47x/tei-platform/pull/3054)はMemoryUnitOfWorkのcommitted=trueとpersisted=false/durability=noneを独立欄へ分離。[#3088](https://github.com/hat47x/tei-platform/pull/3088)はmain版での一時PostgreSQL六試験PASS・SKIP0をPR版とは別記録 | 参照UoWのCommitを永続化証拠に使わない。実PGの局所成功と同一OperationID/現在Grant/業務Meaning/独立Consumer到達は別。#1174/#1163 |
+| Commitしたので保存された | [#3054](https://github.com/hat47x/tei-platform/pull/3054)はMemoryUnitOfWorkのcommitted=trueとpersisted=false/durability=noneを独立欄へ分離。[#3088](https://github.com/hat47x/tei-platform/pull/3088)はmain版での一時PostgreSQL六試験PASS・SKIP0をPR版とは別記録 | 参照UoWのCommitを永続化証拠に使わない。main #3124はpersistence=not-applicable/not-observed/observedを導入。main #3127/#3131の独立Lookupは同じOperationIDのReceiptの存在を実PGで確かめるが、対象Resourceの現在値を見ない。実Commit/Receiptと行値・現在Grant・業務Meaning・Consumer到達は別。#2998/#1174/#1163 |
 
 **研究から渡す同一Fixtureの反証**：①ManagedだがreadByLoader=false／必要Role未解析、②validate okかつ宣言0件warning、③schemaVersion一致だが旧Consumerはresult配列を期待、④適用先が宣言外だが同種別のDifference、⑤AppliedUnobservedなのに空のDifferencesを差なし扱い、⑥committed=trueかつpersisted=false、⑦実PGの局所試験PASSなのに当該業務Consumerへ届かない。正例と一要因差分の負例を#1180/#2514の既存Independent Expectedに割当て、独立期待値をProducer出力から再生成しない。
 
@@ -666,9 +666,9 @@ Source Path文字列、Workspace ID、Source byte digest、実物理rootのident
 
 **Read-onlyを先行**：旧Source/独立Expectedを固定し、Selected/Required→実Read byte/locator（#3078はこの一部）→Parser/Role/Required closure→Function/Query/実ProviderのRead対象Lと取得集合R/完了性（§10.20）→CLI/Consumerの実受領値・Schema/開示資格を、#1163で同一Revision/Attemptへ束縛する。新しい *.tei.md は#3031の未束縛拒否を出発点とし、**正式Parserの正例がない限り意味Sourceとして合格としない**。#3095のschemaVersion一致と旧ClientのJSON互換性を混同しない。
 
-**Writeは別の縦切り**：同じSourceから派生してもMeaning Acceptance、現在Host Grant/対象Target、Required Guard、実PG Provider Effect、OperationID/Receipt、別Connection Read、現在Consumer Disclosureは各々独立Witnessが必要。#3054/#3055/#3068/#3070/#3077の参照Command・Datasource・Hook前処理の局所試験成功を実Provider Tx・本番Grantの受理と見なさない。#3088のmain版PostgreSQL六件PASSも別実行の証拠であり、参照Commandの適用差分を観測したことにはならない。
+**Writeは別の縦切り**：Meaning Acceptance、現在Host Grant/対象Target、Required Guard、実PG Effect、OperationID/Receipt Lookup、**別ConnectionによるResource現在値Read**、現在Consumer Disclosureは各々独立Witnessが必要。[main #3124](https://github.com/hat47x/tei-platform/pull/3124)のpersistence三状態、[#3127](https://github.com/hat47x/tei-platform/pull/3127)のReceipt Lookup、[#3131](https://github.com/hat47x/tei-platform/pull/3131)の実PostgreSQL試験は前進だが、Receipt LookupはResourceの現在値を検証しない。#3118の宣言Effect報告、#3055/#3068のApplied/Unobserved、#3133の未配線ChainFileの成果も単一Attemptの実Effect全件性やAuditの真正性を証明しない。#3088のmain版PostgreSQL六件PASSや参照Commandの別CIを合算して一つのOwner/Consumer業務完了にしない。
 
-**Buildは並行**：[merged #3091](https://github.com/hat47x/tei-platform/pull/3091)のModule Preflightにより、隔離GOPROXY=offでcmd/teiにpgx/v5、x/text、modernc.org/sqliteの未供給が観測され、Source closure/Artifact生成以前のSB-0bが必要と判明。G4はUNQUALIFIED。[merged #3094](https://github.com/hat47x/tei-platform/pull/3094)の構成Kernel A/B/C局所パケットは同じ固定checkoutで個別に実行されたが、単一Request/Operationに結合していない。artifacts manifest.complete=false／未解決6も記録されている。個別のPASSを製品一気通貫のPASSへ加算しない。
+**Buildは並行**：[merged #3091](https://github.com/hat47x/tei-platform/pull/3091)のModule Preflightにより、隔離GOPROXY=offでcmd/teiにpgx/v5、x/text、modernc.org/sqliteの未供給が観測され、Source closure/Artifact生成以前のSB-0bが必要と判明。G4はUNQUALIFIED。[Draft #3130](https://github.com/hat47x/tei-platform/pull/3130)は選択Moduleが0件・stdlib-onlyをsupported扱いする空虚な成功をunknownへ修正し、exact HEADのRepo Health／Windows Builder CI成功。ただしまだmain未統合で、実Module供給・Go Artifact/Linkの証明ではない。[merged #3094](https://github.com/hat47x/tei-platform/pull/3094)の構成Kernel A/B/C局所パケットは同じ固定checkoutで個別に実行されたが、単一Request/Operationに結合していない。artifacts manifest.complete=false／未解決6も記録されている。個別のPASSを製品一気通貫のPASSへ加算しない。
 
 **状態**：既存main局所実装と負例を照合したDocs-only研究差分。新 *.tei.md Reader/Parser、Provider→Completionの実全件証明、旧固定Studio Hostの修復とin-flight fd race、workspace-files旧Consumer互換、Host/Provider/Owner一改訂E2EはNOT RUN。現mainの限定root identity試験は後続#3098で確認済み（§10.22）。新Core、Runner、Registry、専用TEI Hostを追加せず、#1119の既存Gateを維持する。
 
@@ -694,7 +694,7 @@ Source Path文字列、Workspace ID、Source byte digest、実物理rootのident
 
 既存[TAI #514](https://github.com/hat47x/tai-pleroma/issues/514) AC-01〜12／[TEI #2514](https://github.com/hat47x/tei-platform/issues/2514)の独立期待値・既知Mutantを実証の正本とする。新ケース番号を第三の検収正本にしない。最小の同一Fixtureで必要な正負対照は、正規typed bind→実Read→独立Result（正）、AgentによるQuery差替え／型不正、旧JobIDの流用、Receipt捏造、Result一致だが別Operator/Plugin Pin、constant-PASS Attester、部分Rowsetなのにcomplete、期限内定義だが現在Source変更、Run attest成功だがOwner受理撤回（負）である。**Attesterのbytes/実行環境/入力と判定版もPinし、Attester自身の自己申告だけを証拠としない**。
 
-**最低観測束**：selected OKF Concept bytes/Path/Source Revision／正規TEI Function/Query/Role/Operator/Targetのexact selectionとtyped parameter bytes／実Host/Provider実行資格・Request・実際に実行されたSQLまたはcompiled Artifact／実Receipt JobID・Result・Scope/Row completeness・Timestamp／独立再Read／Attester actual code+verdict／現在Consumerの開示資格。欠落したらunknown/unsupported/not-run、モデルに架空のReceiptを書かせない。OKF Receiptは**bundle外のruntime artifact**であるため、TEI既存#1163 Evidence Packetへ参照する設計にとどめ、OKF文書へ各実行ログを強制保存しない。
+**最低観測束**：selected OKF Concept bytes/Path/Source Revision／正規TEI Function/Query/Role/Operator/Targetのexact selectionとtyped parameter bytes／実Host/Provider実行資格・Request・実際に実行されたSQLまたはcompiled Artifact／実Receipt JobID・Result・Scope/Row completeness・Timestamp／**Receiptの独立Lookupと、Result/Resourceの独立再Readを別Witness**／Attester actual code+verdict／現在Consumerの開示資格。欠落したらunknown/unsupported/not-run、モデルに架空のReceiptを書かせない。OKF Receiptは**bundle外のruntime artifact**であるため、TEI既存#1163 Evidence Packetへ参照する設計にとどめ、OKF文書へ各実行ログを強制保存しない。
 
 **採用順**：最初は実CLIに存在するread-only Source/Inspect/Queryの範囲で**契約読取だけ**を提案し、正式Executor/Attesterが無ければunsupported。実Host Side Effect・DB更新・配備・削除はOKF §10のRun Attestationをそのまま転用せず、#1174のOperationID/Grant/Commit fence/Receipt/独立ReadとOwnerの明示受理が必要。新Attester ABI/Runtime/自動Host Permissionを先に固定しない。実OKF Contract→TEI CLI→Executor→Attesterの一改訂試験はNOT RUN。
 
@@ -715,3 +715,37 @@ TEIとの実接点は、(1) accepted meaningの根拠Original SourceとRevision/
 **次の実験は既存Ownerの順序で**：TEI #2605/TAI #168の外部実Tool/Skill比較を先行。SEI #820の一Concept/複数Claimのread-only Exportを別Fixtureで照合し、OKF形式適合・Source実Read・SEI問い相対の十分性・Attester verdict・現在Host/Consumerを別列にする。実SEI OKF Import/Export、実Attester、実H3 Skill Load、Owner Meaning受理はNOT RUN。
 
 **本追補の性質**：OKF原典と現GitHub Issue/PRを照合した研究・計画更新。既存#3029/#2514/#2605/TAI#514/SEI#820を参照するものであり、新Plugin実装・第二Evidence Registry・新Attester Runner・共通Knowledge Store・業務Hostは作らない。業務G1/G2、G4 Self-Build、SHO WriterをOKF実証のHard dependencyにしない。
+
+
+### 10.28 Receiptを読めたことと、業務状態を読めたことを分ける（2026-11-07、実PostgreSQL exact-HEAD CIまで追跡）
+
+mainへ統合された[#3124](https://github.com/hat47x/tei-platform/pull/3124)はCommandのPersistenceを not-applicable（参照UoW／宣言Effectなし）・not-observed（Durable Store想定だが検証不可）・observed（PersistenceObserverが与えられた宣言Effectを確認）の三状態へ分離。ObserverにはExecutorのResultを渡さず、自己申告値の横流しを抑止。一方[#3127](https://github.com/hat47x/tei-platform/pull/3127)のEffectcommit ObserverはRequest/Grant/OperationIDが一致するRunner.LookupでReceiptがreplayedとなれば観測成立とする。
+
+**このobservedの観測対象はReceiptであってResource現在値ではない**。[#3131](https://github.com/hat47x/tei-platform/pull/3131) exact HEAD ed1af3b17db6690bb8c9846c7f5ef36ed1ada02d の[実PostgreSQL CI #42318032659](https://github.com/hat47x/tei-platform/actions/runs/42318032659)はcompleted/success。新試験は実Commit→Receipt Lookupでpersistence=observedとし、Receipt行を除去するとLookup失敗になる一方、対象objects行の現在値が同じであることを確認する。WindowsローカルではDSNなしで新PG試験はSKIPだったため、CIと混同しない。
+
+| 観測段階 | 局所実証／期待できるClaim | そこで止める推論 |
+| --- | --- | --- |
+| CommandがCommitを返す | UnitOfWork / Provider boundaryの応答 | 永続化、独立観測、Owner受理は未確認 |
+| Receipt Lookupが同じOperationIDを再取得 | #3131の特定PostgreSQL経路でのReceipt existence/replay | **対象行が現在も期待値であるとは言えない**。Receipt削除とResource保持を対照 |
+| 独立Data ReaderがResourceを再読取 | Resource ID・Version・列・Scope・Snapshot／時点を固定しActualとExpected比較 | **このReader経路の同一Attempt本格E2EはNOT RUN**。Row 0件／RLS／Replica遅延をresource不存在としない |
+| Consumerが現在の結果を受領 | Schema/Policy/Disclosureと対象・改訂・Attempt一致 | Business Completion/Meaning Acceptance/現在Grantの自動導出は禁止 |
+
+**研究の最小反例**：一つの合成受注に対してA：Receiptあり・objects現在値がExpectedどおり、B：Receiptあり・後続更新でobjectsが違う、C：Receipt削除・objects値は保持、D：Commit応答喪失でLookup=unknown、E：Receiptあり・別Tenant/別OperationID、F：Providerなしの参照MemoryUoW。A〜Fは独立Expectedを先に固定し、Receipt Lookup successとResource Result正しさを混同して判定するConsumer／Attesterを失格とする。既存#2998/#1174/#1163/#2514/TAI #514に属し、別の共通Persistence Engine/Receipt ABIを作らない。**新A〜F実統合試験とOwner受理はNOT RUN**。
+
+[main #3133](https://github.com/hat47x/tei-platform/pull/3133)はAccess判定ログ用ChainFileで途中改変を検出できるが、既存ツールの-access-logはなお従来Fileで、ChainFileを未使用。末尾削除は外部Pin headがなければ検出できず、全履歴を再ハッシュできる者や虚偽判定本文の正しさも防げない。**Record存在／記録連鎖整合／決定の真偽／Hostによる現在認可**は別の検証列とする。
+
+### 10.29 独立検証基準の判別力：第二Mutantが実AI Scenarioに検出された
+
+[NEVER MERGE Draft #3128](https://github.com/hat47x/tei-platform/pull/3128)のHEAD 4ccb8759a2dcdb48766b8fde33cae845c1aa2379 は、[正常基線 #2901](https://github.com/hat47x/tei-platform/pull/2901) HEAD a6eb80cffe16a57f4cb2461ff2946065955a4e50（Health成功）からrelation-uniqueの評価で**最後の複合Key要素を無視する**変更だけを入れたMutant。既存Scenario・Fixture・独立Expectedは不変。前回[#3017](https://github.com/hat47x/tei-platform/pull/3017)の「最終Result誤判定」と異なり、今回は入力処理（Tail Truncation）の欠陥。
+
+[Mutant Health #42317468571](https://github.com/hat47x/tei-platform/actions/runs/42317468571)はcompleted/failure。しかし単にCI赤だっただけでなく、**実ログJob 128233525880の452〜454行**で TestAIAddedScenarioCandidateFiles/ai-candidate-line-number-uniqueness が ai-line-number-duplicate について Canonical Validation ... result=satisfied, expected=not-satisfied を検出。同じGo testでは既存Evaluator回帰（546〜550行）、DSL language-pluginの非同等試験（583〜586行）もFAIL。gofmt／vet／reference workspace validateはPASS。したがって**この固定Caseに対する第二のAI Scenario mutation killは実証済み**。別Workflow「Action Surface actual Go CLI witness」の失敗は lstat ... action_surface_handoff_test.go file missingという別の失敗で、Mutant killの根拠に流用しない。
+
+判別力について言えるのは、正常基線同一Fixture上で二種類の誤実装（#3017 result inversion、#3128 tail truncation）に対して既存AI ScenarioがRedになったことまで。Providerが実際に全Keyを返した保証、非表示/Null/Partial、別Scope/実DB、業務Owner Meaning Acceptanceは未実証。#2514が独立ExpectedとMutant分類のOwner、#1180が必要Scenario集合、#1163が実Source/Target/Provider/Consumer一改訂のEvidence。**新しいMutation Runnerや第二検証基準ストアは作らず、#3128は絶対にmainへmergeしない。**
+
+### 10.30 観測不足のsupported判定と、外部ToolのGrant型の未決
+
+[main #3091](https://github.com/hat47x/tei-platform/pull/3091)のGo Module Preflightでは、標準packageだけ・空のgo list streamで対象Moduleを実観測せずsupportedが返り得る。[Draft #3130](https://github.com/hat47x/tei-platform/pull/3130)がこれをunknownへ変更し、exact HEAD d6ac7dedの[Windows Builder CI #42317891135](https://github.com/hat47x/tei-platform/actions/runs/42317891135)／[Health #42317891168](https://github.com/hat47x/tei-platform/actions/runs/42317891168)はcompleted/success。ただし**main未統合**で、Source閉包・実Artifact/Link/Plugin Invocation・G4 Self-Buildは不成立。空の観測結果は標準package由来の「正常な対象集合ゼロ」か「対象Moduleを調べ損ねた」のか区別する。#2831/#1251の既存受入へ返す。
+
+[main #3121](https://github.com/hat47x/tei-platform/pull/3121)では、参照Toolの環境Grantを追加しようとすると、Provider CapabilityがPlugin Catalogへ解決できず PERMISSION_GRANT_CAPABILITY_NOT_RESOLVED が実発生した。これは**ToolをPluginへ正規化するか、別種のPrincipal/Grantとして定義するかが未決**であり、GrantのValidationを緩めてSource/Capabilityの未解決を通してはいけない。OKF AttesterやDSH/MCP Adapterを接続する際にも、Skill/Tool文書の存在を環境Grantとして推論しない。既存#951/#1174/#1251およびAccess設計Ownerで決定し、Research Draftで新しいHost/Plugin登録方式を先行採用しない。
+
+**優先して実証する順序は不変**：read-only Source/Provider/Consumerの実Read閉包→必要な場合の同一OperationIDでのEffect/Receipt/Data Readback→Meaning/Grant/Attesterの用途別再資格化。H2/H3隔離・G4・SHO Writerを互いにHard Dependencyにしない。
