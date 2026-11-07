@@ -205,3 +205,17 @@ tei grants -workspace reference/workspace -grants-out grants.json
 **試験**: それぞれ `TestFileIsOwnerOnly`（`runlog`・`effectlog`）と `TestAccessJournalIsOwnerOnly`・`TestIssueLogIsOwnerOnly` で固定します。Windows では POSIX の権限ビットが観測できないため**スキップ**し、CI の Linux で判定します。
 
 **この追記が示さないこと**: 記録が改竄されないこと。`ChainFile` は改竄を**検出**しますが、他の三つは検出しません。Windows の権限はプラットフォームの ACL に委ねています。
+## 20. 「移行済み」を検査できる主張にする（2026-11-07 追記）
+
+この計画は「移行済みのツール」を名指ししていますが、**その主張を検査する仕組みがありません**でした。移行済みと書いたツールに新しい `os.WriteFile` が増えても、何も落ちません。文章だけが「移行済み」と言い続けます。
+
+計器（第9章）で数え直す試験を置きました（`tools/reference-access-survey/migration_test.go`）。
+
+- 移行済みツールの一覧を**宣言**として持ちます（現時点では `reference-first-web-frozen-world-generate`）。
+- 各ツールを数え直し、外に触るファイルが `tei/internal/access` を import していなければ**失敗**します。
+- 一覧に載っているツールが消えていれば**失敗**します（存在しないツールを「移行済み」と書いたまま検査が空回りするのを防ぐ）。
+- リポジトリの根は `go.mod` を上へ辿って見つけます。テストの作業ディレクトリに依存させません。
+
+**これは弱い主張**を検査します。「保護層を**通っている**」ことであって、「保護層が**効いている**」ことではありません。後者は `internal/access` の試験と固定Worldビルドの検査が担当します。
+
+**この追記が示さないこと**: 一覧に無いツールの状態。未移行として扱い、この検査の対象外です。
