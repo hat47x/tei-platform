@@ -57,7 +57,7 @@ pruneは明示したkeep setだけを残し、空keep・未知digest・検証失
 
 - 生成物の来歴は複数のreceipt・fileへ分かれる。単一の判定にまとめたい利用者は、必要な証拠を自分で選択する必要がある。
 - 署名・artifact・auditの検証toolは、それぞれの範囲だけを報告する。
-- Authority、削除承認、本番配備の受理は、ADR-0022 / ADR-0035のA4として人へ戻す。
+- Authority、削除承認、本番配備の受理は、ADR-0022の受理境界で扱う。開発作業としてはADR-0035のA3で進め、外部へ取り消せない効果を出す場合だけA4として人に確認する。
 - 将来、Build attestationやartifact bindingの正本を追加する場合も、この分離を維持する。
 
 ## 未決

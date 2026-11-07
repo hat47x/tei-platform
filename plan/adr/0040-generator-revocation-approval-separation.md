@@ -54,7 +54,7 @@ registryは`revoked`と対象digestを宣言し、承認recordを参照する。
 
 ### Authorityを複製しない
 
-承認recordは既存のAuthority Evidence / Build Evidenceへ接続できるかを評価する参照であり、新しいAuthority・常駐サービス・承認UIを作らない。意味の受理・権限付与はADR-0022 / ADR-0035のA4として人へ戻す。
+承認recordは既存のAuthority Evidence / Build Evidenceへ接続できるかを評価する参照であり、新しいAuthority・常駐サービス・承認UIを作らない。意味の受理・権限付与はADR-0022の受理境界で扱い、開発作業としてはADR-0035のA3で進める。外部へ取り消せない効果を出す場合だけ、ADR-0035のA4として人に確認する。
 
 ## 代替案
 
