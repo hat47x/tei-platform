@@ -48,9 +48,18 @@ type StageDriverEvidence struct {
 	CrossCheckMatched    bool           `json:"artifactCrossCheckMatched"`
 	InvokerRecorded      bool           `json:"invokerIdentityRecorded"`
 	InvokedRecorded      bool           `json:"invokedIdentityRecorded"`
-	L3Claimed            bool           `json:"l3Claimed"`
-	FailureCause         string         `json:"failureCause,omitempty"`
-	Boundary             string         `json:"claimBoundary"`
+	// ClaimedInvokerDigest is what the driving stage says it is. It is never
+	// accepted on its own: SB-N13 rejects a manifest entry that names one
+	// executable while the process that actually ran is a different one.
+	ClaimedInvokerDigest string `json:"claimedInvokerDigest,omitempty"`
+	// InvokerClaimChecked is true only when a claim was supplied and compared
+	// against the digest of the running process image.
+	InvokerClaimChecked bool `json:"invokerClaimChecked"`
+	// InvokerClaimMatched is meaningful only when InvokerClaimChecked is true.
+	InvokerClaimMatched bool   `json:"invokerClaimMatched"`
+	L3Claimed           bool   `json:"l3Claimed"`
+	FailureCause        string `json:"failureCause,omitempty"`
+	Boundary            string `json:"claimBoundary"`
 }
 
 func main() {
@@ -62,6 +71,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	fs.SetOutput(stderr)
 	child := fs.String("child", "", "起動するchild executable（必須。PATH解決しない）")
 	self := fs.String("self", "", "invoker自身のexecutable（省略時は現在のプロセス）")
+	claimedSelf := fs.String("claimed-self", "", "駆動主体が自称するdigest（SB-N13の照合用。省略時は照合しない）")
 	childArg := fs.String("child-arg", "", "childへ渡す引数一式をJSON配列で指定")
 	childArgFile := fs.String("child-arg-file", "", "childへ渡す引数一式のJSON配列を書いたファイル（シェルの引用符問題を避ける）")
 	artifactPath := fs.String("artifact", "", "childが作るartifactのパス（cross-check用。必須）")
@@ -91,7 +101,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
-	evidence, err := Drive(*child, childArgs, *artifactPath, *self)
+	evidence, err := Drive(*child, childArgs, *artifactPath, *self, *claimedSelf)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return 1
@@ -109,7 +119,12 @@ func run(args []string, stdout, stderr io.Writer) int {
 
 // Drive starts the child with the exact argv, records both identities, then
 // independently re-reads the artifact to cross-check the child's own report.
-func Drive(childPath string, childArgs []string, artifactPath, selfPath string) (StageDriverEvidence, error) {
+//
+// claimedSelf is an optional digest the driving stage asserts about itself. It
+// is compared against the digest of the process image that actually ran, so
+// SB-N13 ("the manifest names one executable, a different one ran") is
+// detectable instead of silently accepted.
+func Drive(childPath string, childArgs []string, artifactPath, selfPath, claimedSelf string) (StageDriverEvidence, error) {
 	exactChild, err := filepath.Abs(childPath)
 	if err != nil {
 		return StageDriverEvidence{}, err
@@ -144,6 +159,18 @@ func Drive(childPath string, childArgs []string, artifactPath, selfPath string) 
 	}
 	evidence.DriverSelfDigest = selfDigest
 	evidence.InvokerRecorded = selfDigest != ""
+
+	// SB-N13 guard: a self-reported invoker digest is only meaningful when it
+	// is compared with the image that actually ran. Record the claim, the
+	// comparison, and the failure cause; never let the claim stand alone.
+	if strings.TrimSpace(claimedSelf) != "" {
+		evidence.ClaimedInvokerDigest = strings.TrimSpace(claimedSelf)
+		evidence.InvokerClaimChecked = true
+		evidence.InvokerClaimMatched = evidence.ClaimedInvokerDigest == selfDigest
+		if !evidence.InvokerClaimMatched {
+			evidence.FailureCause = "claimed invoker digest differs from the running process image"
+		}
+	}
 
 	if artifactPath != "" {
 		if _, err := os.Stat(artifactPath); err == nil {
@@ -183,7 +210,7 @@ func Drive(childPath string, childArgs []string, artifactPath, selfPath string) 
 	evidence.InvokedRecorded = childDigest != ""
 
 	if exitCode != 0 {
-		evidence.FailureCause = "child exited unsuccessfully"
+		appendFailure(&evidence, "child exited unsuccessfully")
 		return evidence, nil
 	}
 
@@ -193,7 +220,7 @@ func Drive(childPath string, childArgs []string, artifactPath, selfPath string) 
 	}
 	decoder := json.NewDecoder(strings.NewReader(out))
 	if err := decoder.Decode(&child); err != nil {
-		evidence.FailureCause = "child output is not one JSON object: " + err.Error()
+		appendFailure(&evidence, "child output is not one JSON object: "+err.Error())
 		return evidence, nil
 	}
 	evidence.ChildSchema = child.SchemaVersion
@@ -203,15 +230,26 @@ func Drive(childPath string, childArgs []string, artifactPath, selfPath string) 
 	// the child's own digest field.
 	actualDigest, err := fileDigest(artifactPath)
 	if err != nil {
-		evidence.FailureCause = "artifact cross-check could not read the artifact: " + err.Error()
+		appendFailure(&evidence, "artifact cross-check could not read the artifact: "+err.Error())
 		return evidence, nil
 	}
 	evidence.CrossCheckedArtifact = actualDigest
 	evidence.CrossCheckMatched = child.ArtifactDigest == actualDigest
 	if !evidence.CrossCheckMatched {
-		evidence.FailureCause = "child-reported digest differs from the artifact on disk"
+		appendFailure(&evidence, "child-reported digest differs from the artifact on disk")
 	}
 	return evidence, nil
+}
+
+// appendFailure keeps every independent failure cause. A single overwritten
+// field would hide an invoker-claim mismatch as soon as a later check also
+// fails, and two failures are not one.
+func appendFailure(evidence *StageDriverEvidence, cause string) {
+	if evidence.FailureCause == "" {
+		evidence.FailureCause = cause
+		return
+	}
+	evidence.FailureCause += "; " + cause
 }
 
 func fileDigest(path string) (string, error) {
