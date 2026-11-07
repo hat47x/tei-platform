@@ -488,11 +488,11 @@ Source移行では、`plugin.tei.md`を選んだ意図Bと、固定名Loaderが`
 
 | 実File | ManagedFiles | `ReadByLoader` | Source Index Artifact | 限定的に証明できること |
 | --- | --- | --- | --- | --- |
-| `semantic/model.tei`（`namespace probe`） | あり | `true` | あり | 既存Native Loaderがこのbyte列を読んだ |
+| `semantic/model.tei`（`organization`の型・Data宣言） | あり | `true` | あり | 既存Native Loaderがこのbyte列を読んだ |
 | `semantic/README.md` | あり | `false` | あり | Inventory/Indexに含まれても実DSL Parserが読んだことにはならない |
 | `drafts/unmanaged.tei.md` | なし | 該当なし | なし | Manifestで宣言されないDraftを管理Root／意味Sourceへ勝手に取り込まない |
 
-**反例**：`Source Index Artifacts`が2件あることを根拠に`parsed sources=2`／`accepted meaning=2`と数える実装は誤り。独立のInput期待と、`readByLoader`の実観測、Source Indexの管理Artifact列挙を**別の列**で報告する。既存BS-07（Required集合を候補の`required=[]`から自己確定しない）の**関連観測点**であり、BS-07の全要件・Required独立Closed World判定をこの局所試験のPASSで済ませない。
+**反例**：`Source Index Artifacts`が2件あることを根拠に`parsed sources=2`／`accepted meaning=2`と数える実装は誤り。追加Goテストでは、Native Sourceからの`Index.References`が少なくとも1件ある一方、未読込の`README.md`から意味`Reference`を生成しないことも確認する（ArtifactがあってもSubjectを推定しない）。独立のInput期待と、`readByLoader`の実観測、Source Indexの管理Artifact列挙を**別の列**で報告する。既存BS-07（Required集合を候補の`required=[]`から自己確定しない）の**関連観測点**であり、BS-07の全要件・Required独立Closed World判定をこの局所試験のPASSで済ませない。
 
 この試験に管理Root**内**の`*.tei.md`の「成功」を追加しない。現mainでは未対応新形式が黙って未読となり得るが、[Draft #3031](https://github.com/hat47x/tei-platform/pull/3031)の暫定`TEI_MD_PARSER_UNBOUND`はそのケースを明示拒否する。両方で同じSourceを正常に解析できたと見なすと、移行の欠落をテストが固定してしまう。正式な`*.tei.md`の入場／Loader実読込／Parser／Source span／Meaning／Buildは[Draft #3030](https://github.com/hat47x/tei-platform/pull/3030)のTM検収がOwnerであり、次の同一HEAD統合試験まで未実証。
 
