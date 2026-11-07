@@ -52,6 +52,7 @@
 観測の補足:
 
 - 引数の未対応flagは、#2332で全広告コマンドが拒否するようになった。拒否も標準エラー（`inspect`、`trace`、`validate -json`はJSON）で、flag解析のusageの分だけstderrが長くなるコマンドがある（例: `knowledge-context`に未知のflag）。`version -json`の引数不正も、2026-11-07から実装が標準エラーへ返す（表の記載と一致）。
+- 2026-11-07から、`validate -json`・`model catalog`・`inspect`・`trace`・`workspace-files`の成功応答は`workspace`を持つ。`name`はmanifestの`workspace:`、`formatVersion`はmanifestの版、`manifest.sha256`はmanifestのバイトの照合値である。複数のWorkspaceが同じCanonical IDを持つ場合に、`worldFingerprint`（内容の同一性）だけでは読み元を識別できないためで、既存の欄を変えずに足す互換な変更とする（#3181）。`workspace:`を書かないmanifestは読み込まれ、`name`は空になる。この欄は受理・権限・排他の証拠ではない。
 - 引数不正の出力先は、`cmd/tei/cli_argument_failure_streams_test.go`が実プロセスの標準出力と標準エラーを分けて検査する（#2993）。`version`・`commands`は標準出力を空のまま標準エラーへ理由を書き、`validate -json`は同じ失敗を標準出力の1 JSONで返す。この差はコマンドごとの決定であり、CLI全体の既定として読まない。
 - `tei commands`の`output`欄は、同じentryの`jsonContract`と一貫していることを`cmd/tei/cli_advertised_output_test.go`が検査する（#2824）。`json`／`text; json when …`と`enveloped`の組合せ、`raw`と`json`の組合せを定数で照合し、あわせて実プロセスでtext既定の3コマンドがJSONエンベロープを書かないこと、json既定の5コマンドが引数不足でも標準出力へ1件のエンベロープを書くことを確かめる。負例は`world`の`output`を`text`へ変えると失敗する。
 - `validate -json`の失敗JSONは`diagnostics`を常に空配列として持ち、`error.code`と`error.message`のみで種別を伝える。

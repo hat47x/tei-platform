@@ -148,7 +148,15 @@ func workspaceFilesJSON(out io.Writer, workspacePath, worldPath string, extraArg
 	return emitResult(out, resultEnvelope("workspace-files", "", workspaceFilesValue{
 		ManagedFiles:       r.ManagedFiles,
 		SourceRootFindings: r.SourceRootFindings,
+		Workspace:          workspaceIdentityPointer(r),
 	}), 0)
+}
+
+// workspaceIdentityPointer returns the Workspace identity as a pointer so the
+// JSON field is omitted only when the manifest was not read at all (#3181).
+func workspaceIdentityPointer(r workspace.Result) *workspace.WorkspaceIdentity {
+	identity := r.Identity()
+	return &identity
 }
 
 // workspaceFilesValue is the workspace-files projection. ReadByLoader on each
@@ -157,6 +165,8 @@ func workspaceFilesJSON(out io.Writer, workspacePath, worldPath string, extraArg
 type workspaceFilesValue struct {
 	ManagedFiles       []workspace.ManagedFile                `json:"managedFiles"`
 	SourceRootFindings []workspace.WorkspaceSourceRootFinding `json:"sourceRootFindings,omitempty"`
+	// Workspace identifies which Workspace the listed files came from (#3181).
+	Workspace *workspace.WorkspaceIdentity `json:"workspace,omitempty"`
 }
 
 // sourceIndexJSON wraps the Source Index inspection. The whole-index form and

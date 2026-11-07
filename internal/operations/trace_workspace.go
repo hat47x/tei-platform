@@ -30,6 +30,10 @@ type WorkspaceTrace struct {
 	RelatedSources         []sourcebridge.Navigation `json:"relatedSources,omitempty"`
 	ProjectionUnresolved   []string                  `json:"projectionUnresolved,omitempty"`
 	AuthorityLimits        []string                  `json:"authorityLimits"`
+	// Workspace names the Workspace this trace was read from (#3181). The
+	// same Canonical ID may exist in several Workspaces with different meaning,
+	// and worldFingerprint identifies content, not the Workspace.
+	Workspace *workspace.WorkspaceIdentity `json:"workspace,omitempty"`
 }
 
 // supportedTraceKind reports whether derivedbridge can place this kind in the
@@ -169,6 +173,7 @@ func TraceWorkspace(root string, key modelref.Key, options modelref.TraceOptions
 			Message: "trace graph, selector, World, or Source Index differs from the prior page",
 		}
 	}
+	identity := loaded.Identity()
 	out := WorkspaceTrace{
 		SchemaVersion:          "tei.operations.trace/v0",
 		SnapshotFingerprint:    snapshotFP,
@@ -178,6 +183,7 @@ func TraceWorkspace(root string, key modelref.Key, options modelref.TraceOptions
 		Source:                 resolver.Locate(key),
 		ProjectionUnresolved:   append([]string(nil), projection.Unresolved...),
 		AuthorityLimits:        append([]string(nil), projection.AuthorityLimits...),
+		Workspace:              &identity,
 	}
 	if result.Mode == "summary" {
 		return out, nil
