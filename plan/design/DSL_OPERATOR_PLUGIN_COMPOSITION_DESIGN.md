@@ -496,4 +496,8 @@ Source移行では、`plugin.tei.md`を選んだ意図Bと、固定名Loaderが`
 
 この試験に管理Root**内**の`*.tei.md`の「成功」を追加しない。現mainでは未対応新形式が黙って未読となり得るが、[Draft #3031](https://github.com/hat47x/tei-platform/pull/3031)の暫定`TEI_MD_PARSER_UNBOUND`はそのケースを明示拒否する。両方で同じSourceを正常に解析できたと見なすと、移行の欠落をテストが固定してしまう。正式な`*.tei.md`の入場／Loader実読込／Parser／Source span／Meaning／Buildは[Draft #3030](https://github.com/hat47x/tei-platform/pull/3030)のTM検収がOwnerであり、次の同一HEAD統合試験まで未実証。
 
+
+
+**未読込Markdownの内容変更対照**：同じWorkspace内で`semantic/README.md`の内容だけを書き換え、再`workspace.Load`と`BuildSourceIndexFromLoad`を行う。独立Expectedは、`sourceindex.ModelRevision`は**変わる**（管理Artifactのbyte変化）一方、`World`と`Index.References`は**変わらず**、Markdownの`ReadByLoader`もfalseを保持する、というもの。これにより「Source変更を見落とす誤実装」と「管理文書の変更を勝手にTEI意味変更へ昇格させる誤実装」を同じ一因子対照で判別する。ただし、`ModelRevision`の変化からOwnerが受理済みの意味を自動失効させるか、どのBuild Artifactを再生成すべきかは、この局所試験では判定しない（#2823/#2514/#1251 Owner）。
+
 **資格上限**：#3078のmain統合と専用CI成功はSource Read証拠の機能を示す。本PRに追加したGoテストの成功は**この新しいPR HEADのCIが完了した場合に限る**。ProductとしてのK0〜K6通過、Owner Meaning受理、実Plugin loaded bytes、実Host/Provider Effect、BS-08/09/13のCrash/ACK復旧を主張しない。新Reader／Registry／Attester／独立Expected正本を作らない。
