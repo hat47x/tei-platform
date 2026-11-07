@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"errors"
 
 	"tei/internal/semantic"
 )
@@ -60,3 +61,18 @@ func (i Invoker) observePersistence(ctx context.Context, request Request, declar
 	}
 	return PersistenceObserved
 }
+
+// PersistenceObserverFunc adapts a function to PersistenceObserver. It keeps
+// the observer contract (request plus declared effect, no executor Result) while
+// letting the composition supply a small concrete reader without a new type.
+type PersistenceObserverFunc func(context.Context, Request, semantic.DataEffect) error
+
+// Observe implements PersistenceObserver.
+func (f PersistenceObserverFunc) Observe(ctx context.Context, request Request, declared semantic.DataEffect) error {
+	if f == nil {
+		return errNilPersistenceObserver
+	}
+	return f(ctx, request, declared)
+}
+
+var errNilPersistenceObserver = errors.New("persistence observer function is nil")
