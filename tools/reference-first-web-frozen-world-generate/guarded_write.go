@@ -49,6 +49,36 @@ func loadGrants(path, declarationPath string) ([]permission.Spec, error) {
 	return document.Specs(), nil
 }
 
+// accessRecord is what the tool records and checks: the chained journal, and the
+// head pin when the caller names one.
+//
+// Without a pin the chain still detects an edit or a removed middle record, but
+// not a removed last record: a shortened chain is a valid chain. Naming a pin
+// closes that case, and the run refuses to write when the journal no longer
+// matches the pin. The tool reports which of the two it used, so a later reader
+// knows how much the record can show.
+type accessRecord struct {
+	chained access.ChainFile
+	pinned  access.PinnedJournal
+	pinned2 bool
+}
+
+// journal returns the value to hand the guard.
+func (r accessRecord) journal() access.Journal {
+	if r.pinned2 {
+		return r.pinned
+	}
+	return r.chained
+}
+
+// verify checks the record after the write.
+func (r accessRecord) verify() error {
+	if r.pinned2 {
+		return r.pinned.Verify()
+	}
+	return r.chained.Verify()
+}
+
 // writeLineageWithGrants writes the observation using the supplied grants. The
 // requested path must be covered by them; the guarded filesystem checks it.
 //
@@ -57,12 +87,10 @@ func loadGrants(path, declarationPath string) ([]permission.Spec, error) {
 // it names none, the decision is made but not kept, and the caller is told so
 // rather than being left to assume a record exists.
 //
-// The journal is chained: a decision written here cannot be edited afterwards
-// without breaking the chain. A journal that was already changed fails on the
-// append, which happens before the observation is written, so a run against a
-// changed journal leaves neither a record nor an observation behind. Removal of
-// the last line is not detectable from the file alone (see access.ChainFile).
-func writeLineageWithGrants(path string, data []byte, grants []permission.Spec, accessLog string) error {
+// headPin names the file holding the last hash of that record. When it is given,
+// the record is also checked for a removed last line; when it is not, the tool
+// says so, because silence would let a reader assume the stronger check ran.
+func writeLineageWithGrants(path string, data []byte, grants []permission.Spec, accessLog, headPin string) error {
 	absolute, err := filepath.Abs(path)
 	if err != nil {
 		return fmt.Errorf("resolve %s: %w", path, err)
@@ -71,10 +99,20 @@ func writeLineageWithGrants(path string, data []byte, grants []permission.Spec, 
 		return fmt.Errorf("no grants were supplied, so %s is not written", absolute)
 	}
 	guard := access.Guard{Granted: grants}
-	var journal access.ChainFile
+	var record accessRecord
+	if accessLog == "" && headPin != "" {
+		return fmt.Errorf("a head pin needs the access log it pins; give both -access-log and -access-head")
+	}
 	if accessLog != "" {
-		journal = access.ChainFile{Path: accessLog}
-		guard.Journal = journal
+		record = accessRecord{chained: access.ChainFile{Path: accessLog}}
+		if headPin != "" {
+			record.pinned = access.PinnedJournal{
+				Journal: access.ChainFile{Path: accessLog},
+				Pin:     access.HeadPin{Path: headPin},
+			}
+			record.pinned2 = true
+		}
+		guard.Journal = record.journal()
 	} else {
 		fmt.Fprintln(os.Stderr, "注意: -access-log が無いため、この書出しの可否は記録されません")
 	}
@@ -87,13 +125,16 @@ func writeLineageWithGrants(path string, data []byte, grants []permission.Spec, 
 		return err
 	}
 	if accessLog != "" {
-		// Verify after the write as well: the append verifies the journal it
-		// read, but a concurrent writer could have changed the file in between.
-		// The write has already happened, so the error says the record cannot be
+		// Verify after the write as well: the append checks the record it read,
+		// but a concurrent writer could have changed the file in between. The
+		// write has already happened, so the error says the record cannot be
 		// trusted rather than that the write was refused.
-		if err := journal.Verify(); err != nil {
+		if err := record.verify(); err != nil {
 			return fmt.Errorf("the record of this write does not verify: %w", err)
 		}
+	}
+	if accessLog != "" && headPin == "" {
+		fmt.Fprintln(os.Stderr, "注意: -access-head が無いため、この記録は末尾の行の削除を検出できません")
 	}
 	return nil
 }
