@@ -306,3 +306,16 @@ Wails依存を外したGo Service/合成Adapterの試験と、実WebView起動�
 初回はD1のread-only Inspectで既存Result/診断から取得できる項目だけを出し、未実装の実Invoker identityやSource Closureを**推測で埋めない**。実Callerが異なるCLIとWailsは各自のAttemptを持ち、同じ資格条件下で比較する（別Callを「同一Attempt」とは呼ばない）。これをデバッグ画面の常設公開ABIにせず、まずCIで比較可能な限定Evidenceとして使用。
 
 **現時点の評価**：#3350/#3306/#3354のmain統合済み限定実証と、#3356/#3338の未統合設計・観測を区別。本追補の実CLI→Wails二Consumer、実Pluginロード/選択実呼出、H3・外部Sink、全Source Closure、Windows実機、Owner受理は**NOT RUN**。最初の欠けた辺を埋める優先順位（P0 Bundle/Source → P1 Actual Provider → P2 二Consumer）を変更しない。
+
+### 10.6 CLI観測とStudio UI表示の残る非同値・Hookの経路未接続
+<!-- tei-desktop-d1-client-contract-dogfood-d3-d10-20261108 -->
+
+[Draft #3356](https://github.com/hat47x/tei-platform/pull/3356)の固定実行物による第2回CLIドッグフードでは、D-3（`view`は`semanticFingerprint`のみで他の`inspect`/`catalog`系との版表現が揃わない）、D-9（設計文書を意味へ取り込めない）、D-10（`validate`診断が二重構造のまま）が残存として観測された。**これらは本PRのコード修正ではなく、Desktopで不完全な証拠を完了表示しないための既存未達条件**。
+
+| 下流の検証を追加する場所 | 異質Consumerの期待結果と責務 |
+| --- | --- |
+| DS-D1-B／#1824（CLIとWorkbench） | `InspectSubject`のWorld/SourceIndex fingerprintをUIの表示版識別に用いる範囲と、`view`の`semanticFingerprint`しか存在しない範囲を**別形式として観測**する。見た目が同じでも同一World・Source epochを補完しない。D-3の契約統一は#3149/#2824のOwnerと調整し、Workbenchだけに独立Revisionを作らない |
+| DS-D1-E／#2514（診断・文書） | `validate`の`Direct`/Diagnostics配列とCLI `diagnostics[]`の構造差を、その場限りの正規化と元応答の保持に分ける。`missing`・`null`・`[]`・`not-run`を「診断0件」へ丸めず、未解析の設計文書をMeaning候補として自動受理しない |
+| DS-07／#1158（後続Write、現D1外） | [main #3348](https://github.com/hat47x/tei-platform/pull/3348)でHookの位相順、warn継続、不成立・失敗時の停止位置を`RunSequence`のGo局所試験で固定。ただしCLI/Studio実行経路への呼出しは未接続。Hook順序の表示・広告を、実行した事実／Transaction境界／Plugin選択／外部Effectと同一視しない |
+
+**First Missing Edgeの更新**：実Read-only Inspectorへの次の一手は、`requiredDomainClosure`がunknown/partialの場合に**Provider選択へ先行させないこと**ではなく、十分に収集できた範囲を限定表示し、未実証の追加Source/Role/Relationを欠落と誤判定しないこと。実Provider D1で要求されるSource/Contract/Disclosure閉包が揃わない場合、`qualifiedInvoke=false`のまま実呼出適格性を否定する。これは設計候補であり、現CLI/Hostの既存Result Schema/Permission/Owner受理を上書きする強制的な新boolean fieldではない。
