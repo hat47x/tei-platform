@@ -187,3 +187,21 @@ tei grants -workspace reference/workspace -grants-out grants.json
 拒否のときは `obs.json` が作られず、同じログに許可も残ります。
 
 **この記録が示さないこと**: 記録が改竄されないこと（`access.File` は追記のみで、ハッシュ鎖を持ちません）。鎖つきの記録は `tools/reference-audit-log` に別途ありますが、ここでは接続していません。
+## 19. 記録の権限を揃える（2026-11-07 追記）
+
+付与ファイルは `0600` でしたが、**記録ファイルは `0644`** でした。記録を読める者は、誰がどの能力に何を許したか、どの実行が完了したかを読めます。書き換えられる者は自分の履歴を書き換えられます。
+
+四つの記録を `0600`（所有者のみ）に揃えました。
+
+| 記録 | 場所 |
+| --- | --- |
+| 判定（アクセス） | `access.File` |
+| 発行 | `access.IssueFile` |
+| 実行 | `runlog.File` |
+| 効果 | `effectlog.File` |
+
+鎖つきの `access.ChainFile` は既に `0600` でした。
+
+**試験**: それぞれ `TestFileIsOwnerOnly`（`runlog`・`effectlog`）と `TestAccessJournalIsOwnerOnly`・`TestIssueLogIsOwnerOnly` で固定します。Windows では POSIX の権限ビットが観測できないため**スキップ**し、CI の Linux で判定します。
+
+**この追記が示さないこと**: 記録が改竄されないこと。`ChainFile` は改竄を**検出**しますが、他の三つは検出しません。Windows の権限はプラットフォームの ACL に委ねています。
