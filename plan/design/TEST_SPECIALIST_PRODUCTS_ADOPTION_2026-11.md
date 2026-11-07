@@ -657,7 +657,7 @@ P-1aが`partial`を返した場合、T1用Context Packetは次の**既知の部�
 
 ### 18.1 別チャットの実装・設計から抽出した、残る「空振り合格」
 
-前節の#3284で実行した `tools/reference-issue-test-ability/context_gate.py`（main、Source blob `0c9873e7fcc129151668f3b0c4cbc74c74e9bc4a`）は、既存CLI 9応答のschema、Source inventory + `readByLoader`、Subject、World/Index fingerprintを照合し、JSONの重複キー・非有限値・余剰Object・途中切断等を**test-only Consumerで拒否**する。この前進は、独立したRequired Universeの閉包やTool受領を証明する**製品API**ではない。特に、**構文的に正しいJSONへ再構成した末尾欠落**は、既知の対象だけでSource/Subject/FPの一致を維持し得る。必要な独立Required、Enumeration終端、開示可能なManifest、受信者ACKがなければ「その対象以外が存在しない」とは言えない。
+main統合済み#3284に続く[main #3296](https://github.com/hat47x/tei-platform/pull/3296)は、既存の `tools/reference-issue-test-ability/context_gate.py`（main Source blob `0c9873e7fcc129151668f3b0c4cbc74c74e9bc4a`）**一つだけ**を拡張し、既存CLI 9応答のschema、Source inventory + `readByLoader`、Subject、World/Index fingerprintを照合する。**既存7＋Manifest/Root 2＋Tool Reply byte改変7＝16件**の限定拒否条件は、exact main `d6a452f79023744e7926669c3556d2699f546697` の[push CI #42371592023](https://github.com/hat47x/tei-platform/actions/runs/42371592023)で成功。JSON重複キー・非有限値・余剰Object・途中切断等を**test-only Consumerで拒否**する。しかし合成copyの破損検出は、独立したRequired Universeの閉包や**実外部Tool受領**を証明する製品APIではない。特に、**構文的に正しいJSONへ再構成した末尾欠落**は、既知の対象だけでSource/Subject/FPの一致を維持し得る。必要な独立Required、Enumeration終端、開示可能なManifest、受信者ACKがなければ「その対象以外が存在しない」とは言えない。
 
 並行して[Function/Build/Entry Draft #3283](https://github.com/hat47x/tei-platform/pull/3283)は、Function定義→意味→実Build収録→Entry公開→現在Grant→実Effectを**独立資格**とした。[HTTP Decision Graph main #3289](https://github.com/hat47x/tei-platform/pull/3289)のHDG-21は、静的 `onTerminal` ラベルが全種類揃い、`after` 順序ヒントがあっても、**各short-circuit実Pathを通ったAuditの因果証拠にはならない**という限定Characterization（V8 2/2）である。実HTTP HostのAuditバイパスが立証されたという意味ではない。
 
@@ -715,4 +715,4 @@ TT-56〜63は**横断Verification Obligation**であり、#3283 Build/Entry試�
 
 **停止条件**：正常なJSONだけで全Required確認済み、Function定義だけで全Build/Entry到達、Auditラベルだけでshort-circuit Path監査成立、他Target C1へGoのC0転用、HTTP 202/Job ACKを業務完了、Trait宣言を実Impl/Grant、個別Plugin PASSを合成BOM PASSとする主張。
 
-**状態**：#3284の限定実CIと#3289の2ケースV8 Characterizationは他Ownerの限定実証済み。#3283は設計Draft。TT-56〜63と新P-1b/Entry/実Audit/T1の製品E2E・MCP/Studio・Owner意味受理は**NOT RUN / NOT ACCEPTED**。この節はGitHub Source/設計の突合に基づく計画追加であり、新Runtime/Resolver/Host/Registry/Runner/Scenario SSOTを作らない。
+**状態**：#3284/#3296の限定実main CI（後者は16 Controls）と#3289の2ケースV8 Characterizationは他Ownerの有限実証済み。#3283は設計Draft。今回提案したTT-56（**構文的に有効なままRequired要素を欠落させる独立反例**）〜TT-63、新P-1b/Entry/実Audit/T1の製品E2E・MCP/Studio・Owner意味受理は**NOT RUN / NOT ACCEPTED**。この節はGitHub Source/設計の突合に基づく計画追加であり、新Runtime/Resolver/Host/Registry/Runner/Scenario SSOTを作らない。
