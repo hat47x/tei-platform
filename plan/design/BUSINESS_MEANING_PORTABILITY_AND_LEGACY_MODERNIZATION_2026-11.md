@@ -272,3 +272,55 @@ P0は段階Aの一つのQuery/Commandと段階BのSource-static/Observedの分�
 - **変更時の失効**：Required Source/Schema/Role定義、業務Rule/Accepted revision、Plugin/Binder、Target/Artifact、Disclosure/Grant、実旧Writerやコード変換表の有効期間が変われば、影響するClaimを再評価。意味不変でもArtifactと実Target資格の再確認は必要。A→B→Aで旧RunのOwner/Grant/Effectを自動復活させない。
 
 **証拠の上限**：#3248のRole語彙/誤記拒否はmain実装と既存試験記録に基づく。#3262の限定実CLI/Scenario実測は同Issue側の既存Runに帰属し、このPRが再実行したわけではない。C0〜C4のLegacy税額例、V1 Binder、Java/.NET/Wails/HTTP/File実比較、Source closure全件・実Provider効果・Owner採用は**NOT RUN**。P0 Self-Build #2831・Studio #1124の既存直接ブロッカーに新しいHard Dependencyを追加しない。
+
+## 14. 変更から再資格化までの影響範囲：旧・新TargetとConsumerの差分引継ぎ（2026-11-08、設計／NOT RUN）
+
+この節は第13節の**初回資格**に対する**変更後の再資格化**の補足である。変化したSourceを全件再パースするか、ビルドを再実行するかだけではなく、**どのClaimが現在も利用できるか**と**どのConsumerで再取得/再検証が必要か**を判別する。既存[Source改版追跡](SOURCE_REVISION_CORRESPONDENCE_AND_CONSUMER_IMPACT_2026-11.md)の版間対応候補と、#2582の依存伝播、#2600の増分Build、#2604の一式公開、#2516の開示判断を引き継ぐ。新しいImpact Engine・Evidence Store・正本となる変更IDは作らない。
+
+### 14.1 再生成・再資格化・再公開・現在実行の四つを独立にする
+
+```text
+固定した受理Meaning / Source + 独立Required Operation Closure
+             │                  （不足・Unknownを明記）
+      ┌──────┴────────┐
+      │               │
+  変更前Witness   変更後Source / Role / Policy / Provider / Toolchain
+      │               │
+      └──────┬────────┘
+             ↓ read-only 影響候補（確実な無影響・要再検査・未知）
+  ┌──────────┼────────────┬─────────────┐
+  ↓          ↓            ↓             ↓
+Meaning     Build/      Publication/   Current Execution/
+re-review   Artifact    Consumer Read  Effect/Grant/Owner
+             ↓            ↓             ↓
+          実消費入力      実Reader      実Invocation/独立Read
+```
+
+**保持してよいのは、該当Claimに必要な独立Required閉包が既知で、変更がその依存・意味・使用条件を変えないことを証拠で説明できる場合のみ**。Fingerprint一致や差分0行だけで「必要な依存が存在しない」とはしない。Unknownな依存が関連し得るなら局所再確認候補を残す。各Claimの以前のPASSは歴史として保持できるが、**現在の利用資格を自動復活させない**。
+
+| 一因子だけ変える例（固定した一つのOrder Function） | Meaningの再評価 | Build/Artifactの再確認 | 公開・Consumerの再確認 | Current Grant/Effectの再確認 |
+| --- | --- | --- | --- | --- |
+| **Δ1 文書レイアウトのみ**。実Source/Meaning/依存は同一と独立に判明 | 原則不要候補。Source→Meaning対応が曖昧なら保留 | 表示Artifactのみ変更時に対象を絞る | 表示ConsumerのByte/Disclosureを再照合 | 書込を伴わなければ過去Effectを再実行しない |
+| **Δ2 元Sourceの内容/位置変更**。旧ID・Roleの対応が多対多 | 版間候補をOwner判断へ。値/Schema/Meaning不変を推測しない | 実Builderが消費した対象のみ特定。必要閉包未知は保留 | SourceRef、旧リンク、公開Projectionを再確認 | 同一画面ID/Action名でも現在Owner/Grantを再照合 |
+| **Δ3 未選択Plugin変更／Default Provider追加** | 意味変更は自動発生しない | 未選択が実Binaryへ混入していないか、選択が変わったかを別検査 | 実公開入口・Capabilityの差のみ確認 | Provider選択や現在Grantが変われば再資格化 |
+| **Δ4 TargetのBuilder/Templateだけ更新** | Accepted Meaning自体の再受理は通常不要候補 | 生成byte・依存/実消費・Target適合を再評価 | Manifest/Readerの版・OS正規化を再検証 | 過去のReceiptを新Buildの実行実績に使わない |
+| **Δ5 Disclosure/Grant・Recipient変更** | 業務意味は保持できる場合がある | 同byteなら再Build不要候補 | 閲覧範囲・受領宛先集合・開示資格を再評価 | **現在**の認可・主体/旧Client失効・効果を再照合 |
+| **Δ6 A→B→A**。Source byte/Content ID/Artifact digestが以前と同じ | 意味の現在版・Owner Decisionの有効性を確認 | 古いBuild成果物の再利用可否は依存閉包で別判断 | 新しいAttemptのManifest/Reader/開示を再確認 | 以前のGrant/Receipt/Owner Cutover資格を再利用しない |
+
+この表は無条件の「差分種類→再検査フラグ」の固定ルールではない。**実際のDependent Set、Target、Consumer、Authorityを既存Ownerから収集できる場合に限る条件付き候補**である。データは同じでも、業務時点・コード変換表・行集合・集計/順位や未公開列への依存が変われば別のClaimとして再評価する。内部変更の種類・件数・欠落理由を権限のないConsumerへ明かさない。
+
+### 14.2 Subsystem境界と差分の独立性
+
+[サブシステム分割 Draft #3255](https://github.com/hat47x/tei-platform/pull/3255)が区別する**所属だけの再割当**と**Owner境界修復（委譲Command/Function split/Business redesign）**を混ぜない。固定されたOwner/Direct CUDのもとで越境Updateの下界が残る場合、Subsystemの箱を配置し直すだけで越境Effectが消えたと主張しない。Command委譲を加えるなら、Meaning revision、Source Dependency、Provider/Transaction、部分成功・Recovery、旧WriterのCutoverはすべて影響候補。図のレイアウトのみの編集でBusiness Meaningを失効させるのも誤り。
+
+### 14.3 既存Issueへ返す最小の反証と計測
+
+**P0 — 1 Function / 1 Required Slice / 2 Consumer**：まず[Design Context #3262](TEI_DESIGN_CONTEXT_TEST_HARNESS_INTEGRATION_2026-11.md)の独立Required 3 Rule＋Relation/Source Anchorの限定資料を参照し、**必須Ruleが一つ消えても旧Fingerprintが同じ**場合と**必須Ruleは維持して表示順序だけ変える**場合を分ける。Source変更実行・実Rule修正は#3262のOwnerへ留め、このPRは結果とClaimの依存を照合する。
+
+**P1 — 変更の有無ではなく影響の誤分類を測る**：既存#2505/#2582/#2600/#2604の各FixtureにΔ1〜Δ6のうち該当する一因子を対応させ、(a)必要なのに再検証しない **false retained**、(b)本来保持できる独立Claimまで再検証する **unnecessary invalidation**、(c)Dependency未知を無影響扱いする **unknown erased**、(d)Consumerごとの旧版混在/非開示漏洩、を**別々の母数**で報告する。分母が未知なら率は算出せず件数/未評価として残す。
+
+**P2 — 本番を副作用で検証しない**：旧→新Target、HTTP/非HTTP、File/ETLの一つの実Operationで、実Builder入力、選択Provider/Grant、独立Expected、Publisher/Recipientの実Byte、Effect/Readback/Ownerを**同一試行に相対化して比較**する。ただし実副作用の重複検証は隔離DB/安全なread-only routeに限定。実MFT配送・外部H3 Tool Receiver・異Target Runtimeは既存Ownerの独立EvidenceなしにQualifiedとしない。
+
+**閉包が分からない場合の正しい出口**は、「全変更不要」でも「全モデル確定」でもなく、対象Operation・Consumerの利用資格が未確認であることと、次に取得すべきSource/Binding/Authorityを明示すること。これを、生成AIの支援で計画・図表・テスト案を作る際にも保つ。セルフビルド#2831のStage1→Stage2実プロセス実証やStudio #1124の実CLI→Workbench接合には新たなHard Dependencyを増やさない。
+
+**本節の証拠上限**：既存main/関連Issue・Draftの静的照合と、再資格化の比較票／計画追加。Δ1〜Δ6の実TEI試験、Legacy実行・Java/.NET/Go/Wails再生成、外部Consumer実受領、DB/Cutover/Owner受理は**NOT RUN**。他担当のCI 14/14や限定実CLI11 Replyを本PRの新実証と混同しない。
