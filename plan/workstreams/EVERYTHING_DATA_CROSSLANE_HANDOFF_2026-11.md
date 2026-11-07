@@ -3032,9 +3032,9 @@ HEAD `e0cfebf14d40db81bdef77d6c3e4898ed75d999f`に対する[GitHub Actions #4203
 | 現行実装・証拠 | 直接確認できるもの | まだ示していないもの |
 | --- | --- | --- |
 | [main #3112](https://github.com/hat47x/tei-platform/pull/3112)／[main #3118](https://github.com/hat47x/tei-platform/pull/3118) | Executorが宣言効果を返さない場合`ReportedEffectMissing`を記録。呼出し側が`commandadapter.Executor.Effect`を渡した場合はCommitted/Replayedの`Result.Effect`に掲載。指定なしはreceipt-only互換 | 宣言効果を返したこと自体は、実ProviderでそのDataが更新され、現在値が読める証拠ではない |
-| [main #3124](https://github.com/hat47x/tei-platform/pull/3124) | `PersistenceState`を`not-applicable`（durable storeなし）／`not-observed`（durableがあり独立読取未設定・失敗）／`observed`（Observer成功）に分離。Reference Commandは`persisted:false` | `DurableStore`はCompositionの明示申告、Observer成功が何を観測したかの**対象種別**を含まない。`not-observed`を未保存・no-effectと読まない |
-| [main #3127](https://github.com/hat47x/tei-platform/pull/3127) | `commandadapter.Executor.Lookup=true`で同Request/OperationID/Payload/Grantの`Runner.Lookup`を実行し`StatusReplayed`を得た場合に`observed`へ。adapter単体Go/CI済み | Lookupは**Receipt行を照会するだけで、`objects`の現在値を読まない**。したがって`persisted:true`表示から業務Data/Relationship/Granularityの実物再読取を推論しない |
-| [open #3131](https://github.com/hat47x/tei-platform/pull/3131) | 実PostgreSQLでReceipt Lookup成功とReceipt削除後の不一致を反証。**exact HEAD `ed1af3b1` の[実PG CI #42318032659](https://github.com/hat47x/tei-platform/actions/runs/42318032659)はcompleted/success**。Job `128235431770`ログで`TestPostgresCommandObservesACommittedReceiptByLookup`の**非SKIP PASS**を確認（3実行）。ローカルDSN無しでのskipとは別 | Receiptの行と実Business ResourceのPost-imageは別。PRはOpenで未merge。実Resource値/Scopeの独立再読取・Owner意味受理・正式Provider全効果を証明しない |
+| [main #3124→#3155](https://github.com/hat47x/tei-platform/pull/3155) | 初期#3124の三状態は歴史的な実装。現在mainは`not-applicable`／`not-observed`／`receipt-observed`／`resource-observed`を区別し、**`persisted:true`はresource-observedのときのみ** | `DurableStore`はComposition申告。観測結果の時点・権限/Scope・レプリカ・Relation全件性は別資格。`not-observed`を未保存・no-effectと読まない |
+| [main #3127→#3155](https://github.com/hat47x/tei-platform/pull/3155) | `Lookup=true`でReceiptを照会すれば`receipt-observed`、`ResourceRead=true`で別pool接続の`objects.version/value`とCommit payloadの一致を確認できれば`resource-observed`。詳細観測法を区別する | Receipt成功では**persisted:false**。資源値一致も契約で選択した1資源・その読取時点の限定証拠であり、全関係・外部Effect・業務意味の検証ではない |
+| [main #3131](https://github.com/hat47x/tei-platform/pull/3131) | Receipt Lookupの実PG CI [#42318032659](https://github.com/hat47x/tei-platform/actions/runs/42318032659)をexact HEADで確認、対象Testは**非SKIP PASS**（3実行）。ローカルDSN未設定でのskipと区別 | これはReceipt-only負例。追加の[main #3155](https://github.com/hat47x/tei-platform/pull/3155)の実Resource Readは別試験であり、合算して業務全件Readの証明にはしない |
 
 **#2998/#1174の独立Expectedに加える二つの不一致**：P-REC1：同OperationIDのReceiptは存在してLookup成功、しかし対象の`objects`／業務Readは変化・欠損・別Tenant/Replica遅延で現値と不一致。このとき`receipt-observed`だけは真、**`resource-effect-observed`は未充足**。P-REC2：`objects`に変更が見えるがReceiptが消失・不読込なら、観測対象が違うので`PersistenceState=not-observed`とDataの現値を自動同一視しない。必要なら既存CLI/Studioの`persisted:true`に**何を観測したか（receipt／resource、対象ID、時点、独立接続）**を結び付ける小さなProjectionを#2998/CLI契約担当が検討する。新しい永続化真理値/Proof Storeは設けず、Value/Commit/Receipt/Observer/Consumer・現在Grantを別Claimのまま保つ。
 
@@ -3043,8 +3043,39 @@ HEAD `e0cfebf14d40db81bdef77d6c3e4898ed75d999f`に対する[GitHub Actions #4203
 ### 60.3 優先順：新Blocking Gateを増やさず、観測欠落を実試験で詰める
 
 1. **外部Harness**（TEI #2509/TAI #168）：まず`pwsh`等のTool Resultの**完全受領**・raw stdout/stderr分離・Reviewer資料/Skill rootへの実Read拒否と送出範囲を、合成公開情報だけで計測。新GroupのH2一セッション→H3実Skill Load→残り二セッションとITT/PPの分母固定を継続。H2 Tool call実測は達成済みだが、H2比較のEligible 1/4ではない。
-2. **実Provider**（TEI #2998/#1174/#2564）：#3131の実PG exact-head Jobを確認し、Receipt Lookupと別接続の**実資源値Read**を同一OperationID/Target/版の独立期待値で比較。Replay／ACK喪失／Grant失効／部分集合を加え、`observed`の意味をReceiptとDataに分離した結果だけをConsumerへ開示。
+2. **実Provider**（TEI #2998/#1174/#2564）：#3131 Receipt実PGと**#3155の別接続ResourceRead実PGを達成済みの限定基線**とし、次は同一OperationID/Target/版で現在のTenant・Relation多重度・必要集合・Replica時点・Grant失効を独立期待値へ固定。ReceiptとDataを混同せず、Consumerには`receipt-observed`／`resource-observed`の区別を表示する。
 3. **実Builder**（TEI #2831）：[main #3091](https://github.com/hat47x/tei-platform/pull/3091)の隔離Module preflightで`missing-module`を観測済み。[Draft #3130](https://github.com/hat47x/tei-platform/pull/3130)の空・stdlib-onlyで`go list`結果に**非標準対象Moduleが0でもsupportedとする空虚な合格**を`unknown`へ直す候補を独立検証。外部Module事前供給（SB-0b）、実G4 L1/L2/L3は依然別資格で、H2/H3実CLI接続の先行条件にはしない。
 4. **検証基準/Attestation**（TEI #2514/TAI #514）：OKF Attested Computationは定義・typed params・実Executor/Receipt・決定的Attesterを既存Evidenceに結ぶ**後続候補**。`verified`やモデルの自己申告をOwner意味受理/外部Grant/正しい独立期待値としない。既存H2/H3の初回Blocking条件・試験Task byte・Case IDは増やさない。[意図的Mutant #3128](https://github.com/hat47x/tei-platform/pull/3128)は**絶対にmainへ統合しない**。対象AI Scenario自身の失敗が固定HEADログで確認できるまで新Mutant kill認定なし。
 
-**検証資格と役割**：本§60は実ソース／提出PR／既存CIを照合した**docs-onlyの横断追補**。#3113はOpen（完全Raw Harness Logと隔離未確定）、#3131はOpen（実PG Job未確定）、#3130はDraft。Readerの`*.tei.md`正式受理／外部H2-H3四Session／資源現在値read／G4 Self-build／EKI外部Effect再実行／業務Owner受理は本追補では**NOT RUN/UNQUALIFIED**。#2667に新Verifier、Host、Scenario Runner、Source Registryを追加しない。
+**検証資格と役割（2026-11-07昼時点で更新）**：本§60は実ソース／提出PR／既存CIを照合した**docs-onlyの横断追補**。#3113はOpen（Raw Harness Log完全性・隔離未確定）、#3131と#3155はmain統合・実PGそれぞれ限定PASS、#3130はDraft。`*.tei.md`正式Reader／外部H2-H3四Session／**業務全関係・必要集合・時点を満たす資源Read**／G4 Self-build／EKI外部Effect再実行／業務Owner受理は本追補では**NOT RUN/UNQUALIFIED**。#2667に新Verifier、Host、Scenario Runner、Source Registryを追加しない。
+
+## 61. 現行Resource再読取・DSH副次送出・Build資格・表現型の接続を再資格化（2026-11-07昼）
+
+### 61.1 Resource観測は製品実装へ到達：それでも「全データ受理」とは違う
+
+- **main [#3155](https://github.com/hat47x/tei-platform/pull/3155)**で`DetailedPersistenceObserver`/`ResourceRead`を実装し、PostgreSQL別poolから`objects`の`version/value`を読みCommit payloadと照合。**exact PR HEAD `19f00c7e`の[実PG workflow #42328707393](https://github.com/hat47x/tei-platform/actions/runs/42328707393) はsuccess**、job `128269964949`の`TestPostgresCommandObservesTheStoredResource`は非SKIP PASS（ログで複数回確認）。同実装により`receipt-observed`は`persisted:false`、一致した`resource-observed`のみ`persisted:true`。前節の三状態／Receipt-onlyでpersisted trueという記述は**旧実装の歴史**として扱い、現在のConsumerへは使わない。
+- **次の意味上の不足**：`ResourceRead=true`は既定Compositionへ接続済みとは限らず、別Pool Readが比較した1資源の現在値以外、業務Relationの集合・時点・Tenant横断、別Provider/Replica、Grant撤回競合を証明しない。#1174/#2998/#1163は、AのReceiptは有効でもBによる後続更新後にAのPostimageではない負例、同一OperationIDでReceiptありだがResourceRead denied/partial、Read snapshotの時点ずれを既存独立Expectedで検証。Present/Unknown/NotObservedの意味を正本化し、新グローバルProof Engineは作らない。
+
+### 61.2 外部AIの「read-only」は非開示ではない：Readと副次送出の実測が進んだ
+
+- **Open [#3173](https://github.com/hat47x/tei-platform/pull/3173)**のDSH `0.2.2-rc.1` read-only＋ローカルMockによる**合成canary**：許可投影、`raw/secret.txt`、`raw/.env`、cwd外`peer.txt`の4つが2回とも全て`completed`で読め、**モデル入力と`dsh_session_log`（同一eventが2箇所）へ露出**。拒否0件。Sourceは観測資料まで確認。これは機密実データ流出の試験ではなく、**現在のRead防御が期待するH6-E1を満たさない反例**。PRは未統合・全体Health未確定。機密断定や外部本番送出と混同しない。
+- **main [#3161](https://github.com/hat47x/tei-platform/pull/3161)**のローカルMockでは、**出荷既定ProfileでSession Log拡張が45,491 bytes**入り、503時は受理水位が進まず同一範囲を後続題名生成要求で再送、200でも`message_stop`なしの空SSEは`STREAM_CLOSED`で水位が進まない。`enabled:false`を設定した別試行の実Provider/Egress 0証明ではない。MockのRequest byte出現≠実Provider側保存。送出統制は`read-only`/Profile名ではなく、OS identity・ACL・mount・network allowlistを実拒否で検証（TEI #2515／TAI #232）。
+- **製品の閉じ込め機能とは責務が異なる**：[main #3152](https://github.com/hat47x/tei-platform/pull/3152)の`os.OpenRoot`を用いたFileSystemはジャンクション等でのRoot外**書込み**を実OSで拒否するが、外部DSH Processの許可外**読取り**、通信先、別API呼出しまで制限しない。[main #3166](https://github.com/hat47x/tei-platform/pull/3166)の記録file `0600`はPOSIX owner-only作成の限定保証で、Windows ACL・改竄検出・実Egress防止を証明しない。
+- **実CLI作用も広告面だけから決めない**：[Open #3162](https://github.com/hat47x/tei-platform/pull/3162)の固定Binary dogfoodingでは、`view`がread-onlyと広告されても`-execute -operation-log`はJSONL、`-execute -lifecycle-state`はSQLite fileを書いた。`effect=read-only`な見せ方をTool Invocation全体のFile/Network/Provider効果へ伝播させない。実Tool引数/選択Adapter/Host効果を同一Attemptに束縛（#1155/#2507/#2509）。
+
+### 61.3 セルフビルドは実Artifact生成と閉包資格を別々に判定する
+
+- [main #3142](https://github.com/hat47x/tei-platform/pull/3142)は`cmd/tei`に選択された**12件**の外部Go Module（`go.mod`宣言17件とは別）を、隔離供給・`go.sum`の実byte/h1照合へ束縛。未選択5件の欠落は不合格としない。Source Closure/Artifact/G4をそのまま受理する機構ではない。
+- [Open #3156](https://github.com/hat47x/tei-platform/pull/3156)のWSL実測は同一Target `./cmd/tei`、供給のみで`buildSucceeded=true`かつ`artifactDigest=sha256:a512ffba…`、一方`ResolveSourceClosure`は`rejected`、したがって**`artifactProducedDespiteUnqualifiedClosure=true`**。実Buildの存在はSource閉包の資格を埋めない。CI/2Build同値/Stage1→Stage2自己再入・外部Module Trustは未確認。G4は引き続きUNQUALIFIED。#2831/#1090/#1251がSource/供給/Artifact資格をそれぞれ持ち、新Builderを作らない。
+
+### 61.4 標準データ構造×標準表現型はFunction内で初めて使用可能：Operation適用とは別
+
+最新のTEI構想に合わせ、**標準データ構造（型・多重度・Identity・時点・Null・取得範囲・数学facetなど）**と、**標準表現型（Panel／TextBox／Select／Toggle／Slider／Table／Tree／Graph／Map／FileSystem等）**を別の候補概念として扱う。ただし標準表現型の**利用可能なInstanceはFunction／Data Context／入力・出力Purpose・Actor Scopeに束縛した場合のみ**とし、表現型カタログ単体を業務Actionや実行可能画面と見なさない。これはUser方針に対する設計引継ぎで、採用済みCore Schemaや実装済みBindingと主張しない。
+**最小の4段階**：(1) DataTopology/Facet（Graph 1:N、複合Key、Collection partialなど）、(2) Representation候補と保存/欠落情報の法則、(3) Function Context/Role/View Targetへの明示Binding、(4) 掲示したAction Offerの適用条件・Host Grant・実Effect。Functionを覆うUIは(3)までの成立で、(4)を暗黙付与しない。表示のためのTree化で多重Parentを削除したり、Tableの表示ソート順をPK順、Graph layoutをEdge identity、単一Selectを複数選択に取り違えない。
+**実Owner境界**：標準構造・Facetの探索=#2495、Projection loss/逆写像=#2497、Function/Pattern適用=#2507/#2616、Studio/Component=#1824/#997、Authoring=#2621、Provider/Host Effect=#1174。最近[main #3167](https://github.com/hat47x/tei-platform/pull/3167)の実CLI観測は宣言Pattern 5→6でも導出Operation 8が不変、`create/update binding`全件nullで、**宣言Patternと導出Operationの統一条件が未実装**。対応表を検討する[Open #3172](https://github.com/hat47x/tei-platform/pull/3172)は候補・未採用。Read-only commandで宣言Effectが無いからといって書込みActionを補完しない。既存#2497 MPケースと#2507の受入を使い、第二の表示Core/Function Registryを作らない。
+
+### 61.5 PoC自律化の新しい運営境界を認可・意味の捏造へ転化しない
+
+[main #3150](https://github.com/hat47x/tei-platform/pull/3150)でADR-0035のA3機械受理／A4外部不可逆効果の人確認へ開発方針を改訂。PoC内のコード・Issue・計画・試験をOwnerの毎回の手動承認で止めない一方、**リポジトリ内の自律PR統合＝製品側の業務意味受理やHost権限Grantではない**。秘密/顧客情報の送出、外部削除・破壊的移行・対外公開は別A4。本§61はdocs-onlyの受渡しであり、認可定義を変えない。
+
+**状態と実行順**：Resource現在値の単一対象の実PG観測=#3155 completed/success。DSH canary read許可外/Mock送出=#3173のローカル実測だが未merge、実Provider送出は未測定。SB-0b供給検証=#3142 merged、SB-X1実Build≠閉包資格=#3156 Open。Pattern/Representation実Binding/Studio GUI/Function実Provider→Consumer一気通貫/H2-H3四Session/真のG4/外部Effectを伴うEKI回復は**NOT RUN**。最新PRの局所試験を業務Owner受理・新Global Gateへ加算しない。
