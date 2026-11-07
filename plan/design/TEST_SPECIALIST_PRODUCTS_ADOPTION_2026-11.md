@@ -1086,7 +1086,7 @@ G1の最小比較対象は同一ifのtrue/false、false側が空のif、ifの&&�
 
 | 層と問うこと | 現時点で根拠のある実装 | 必要だがまだ別資格の証拠 |
 | --- | --- | --- |
-| **S：Source/Required**　対象Rule・Relation・Functionが必要Scopeに存在するか | #3324/#3326各CIは局所PASS。統合候補[Draft #3354](https://github.com/hat47x/tei-platform/pull/3354)が11件の既存CLI Replyを1個の`context_gate.py`で消費し、3 Rule＋1 Focused Canonical/Relationを照合、既存16＋追加16＝32件の合成判別を持つ | #3354 exact HEAD CI、原子的Read cohort、Function/Business/Meaning完全閉包。Draftを合格済みmainとしない |
+| **S：Source/Required**　対象Rule・Relation・Functionが必要Scopeに存在するか | #3324/#3326各CIは局所PASS。統合候補[Draft #3354](https://github.com/hat47x/tei-platform/pull/3354)は11件の既存CLI Replyを1個の`context_gate.py`で消費し、3 Rule＋1 Focused Canonical/Relationを照合。exact HEAD `0ab2b99f028a867da6681239f8b79691b9a877b4` の[専用CI #42391707962](https://github.com/hat47x/tei-platform/actions/runs/42391707962) **completed/success**：既存16＋追加16＝32件の合成判別、既存6 pinned Step＋T1-A候補1 Stepの限定実行 | #3354のRepository Healthは当時in_progress、main統合/原子的Read cohort/Function/Business/Meaning全閉包は未証明。Draftを合格済みmainとしない |
 | **C：Capability/Invocation**　選択した機能が実際に到達するか | [merged #3337](https://github.com/hat47x/tei-platform/pull/3337)はWorkspaceの宣言能力と環境選択を参照一覧化。12能力中6を当時の算定基準でunselectedと報告 | [Draft #3350](https://github.com/hat47x/tei-platform/pull/3350)は既存`SupportsDatabaseProvider`を使い技術名→能力対応を是正すると選択なしは4件。いずれも**選択≠実Plugin Consumer Load/Invoke/Grant**。unselected≠欠陥 |
 | **E：Effect/Outcome**　どのFlag/Entryで何を変更し、どのResultになるか | [merged #3333](https://github.com/hat47x/tei-platform/pull/3333)は`tei commands`の`writeFlags`を実ファイル生成で検証。[merged #3340](https://github.com/hat47x/tei-platform/pull/3340)は`-h`とDiscoveryが同じ引数値/既定値を参照。#3351 Draftは`validationeval.Evaluate`の10件で業務不成立と技術的失敗を分離 | Command全argv・明示Output・OS実書込・現在Grant/EffectUnknown・実Providerの独立Read。read-onlyという宣言や`-execute`という語だけで安全/禁止を判定しない |
 | **R：Receipt/Delivery**　Observerは実結果を完全に受け取ったか | [Draft #3309](https://github.com/hat47x/tei-platform/pull/3309)は合成canaryを使いDSH headless stdoutと永続Session Log双方への保存を限定実測。連結zstd frameの一部だけ展開するとcanaryを見落とす | 実外部Harnessの全Reply/End/Actor/Scope、全SinkのDisclosure/保持、Host/Resource Receipt。内部CLI成功やLogへの一回の出現を完全配送・安全保持としない |
@@ -1114,7 +1114,7 @@ S/C/E/Rの全条件を一個の`qualified` booleanへ畳まない。まず`known
 
 ### 25.4 MVPの作業順と停止条件（既存パイプラインに追加する最小横断）
 
-1. **TT-56を一候補へ一本化**：#3354の現HEAD実CIを観測し、旧#3324/#3326の両局所価値が1 Consumerで成立するか、Readerの追加によりTool Budget/外部Disclosureが増えないかを再検収。既存Expectedを新しく作り直さない。
+1. **TT-56を一候補へ一本化**：#3354のexact-head専用CI #42391707962は成功。11実CLI Reply・Context合成32条件・既存6＋T1-A第7 Stepを同一Jobで限定観測。次はRepository Health・main追随と、Reader追加時のTool Budget/外部Disclosureの独立実測。旧#3324/#3326の別Branch PASSを新たな製品E2Eへ加算しない。
 2. **実Run Admissionを一件だけ**：公開合成Rule `line_number_positive`で、必要Rule ref/Target/Source/CLI binary/全argv/実File Effect/Expected/Receiverを同じAttemptへ束縛。未知Source/Grant/Plugin実Loadは`unknown`として局所実験は継続可、**外部や製品全体のqualifiedには昇格しない**。
 3. **実Provider接続の一辺**：#2586実ProviderからのQuery/Read Sliceを、`validationeval`の空/失敗/不成立と結合する前に`complete/partial/unavailable`を明示。#3351のtest double結果を実DBへ転用しない。
 4. **T1-Bを独立実験**：事前未提示Rule Gapと秘匿Holdoutを独立Reviewerが固定し、既存Scenario/CLIで生成Agentの提案→Target到達→正負判別を測る。S/C/E/Rの必要証拠を満たさないTrialは不適格、C1未計測のままならC1改善を主張しない。
