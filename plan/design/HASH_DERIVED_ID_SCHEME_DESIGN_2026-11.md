@@ -400,3 +400,51 @@ flowchart TD
 `CompareUntrustedReadClaims` の成功は**二つのCaller申告が整合するだけ**であり、`authority="none"`、`sourceReaderVerified=false`、`sourceAccepted=false` を固定する。命名にVerified/Acceptedを用いず、単に一致した値へ権限を付与しない。実Provider/Source Readerの証拠がない場合は `unknown` のまま保持する。
 
 **後続P0の最小接続順**：① 既存Reader/Source Indexが提供するqualified subjectとrevision/attemptを同一実行から取得、② 実Generator/Headless Consumerが読んだByteと独立に照合、③ A→B→A・別Scope・同名別Subject・一部Sourceだけ合致を反例に固定、④ 同一EvidenceをStudio/CLIでreadonly表示。W3のTarget保存とW5の旧ID移行は最後まで別Owner Gateとする。今回、既存Source Readerの公開APIやSource Index正本の変更、CLIの自動受理は実施しない。
+
+
+### 9.9 既存TEI Source Indexによる局所束縛（2026-11-07、実Reader接続前のReference）
+
+前節の`ReadClaim`比較を、既にmainに存在するSource Indexの**実関数に接合**した。目的は第二のSource Reader／ModelRevision計算系を作らず、Hash IDの派生結果がどの粒度の根拠から導かれたかを検証可能にすることである。
+
+確認した既存実装：
+- [`sourceindex.NewArtifact`/`Fingerprint`/`ModelRevision`](https://github.com/hat47x/tei-platform/blob/main/internal/sourceindex/model.go)：1ファイルのFingerprintは`sha256:<hex>`。ModelRevisionは管理対象Artifactの**PathとFingerprintの組をPath順に列挙した集合のDigest**である。`ReadClaim.SourceSHA256`（生byteのlowercase 64hex）と、1ファイルFingerprintと、管理集合ModelRevisionは**異なる意味の値**。ModelRevisionは単調増加する編集epochではない。
+- [`operations.readWorkspaceSource`](https://github.com/hat47x/tei-platform/blob/main/internal/operations/trace_workspace.go)：Workspace rootを`os.OpenRoot`でピン留めし、正規化した相対Pathの単一通常ファイルを上限付きで開く実Read経路が存在する。ただし`Read`は`[]byte`を返し、`ReadAttemptID`・実Tool消費・複数ファイルの原子的Snapshotを発行するAPIではない。
+- [`operations.WorkspaceTrace`](https://github.com/hat47x/tei-platform/blob/main/internal/operations/trace_workspace.go)：Snapshot/World/SourceIndex Fingerprintを持つread-only Projection。これらが同じ文字列でも、実Generatorの同一AttemptやTargetへの保存権限は得られない。
+
+今回の`tools/reference-hash-id/read_claim_sourceindex.go`は既存`tei/internal/sourceindex`を**直接import**し、`CompareDeclaredSourceIndexRead(index, path, claim, consumerBytes)`として局所比較を行う。受け取ったIndexの全Artifact Pathを正準化・重複排除／fingerprint形式確認し、対象PathのArtifact Fingerprintと実引渡しbyteの`sourceindex.Fingerprint`、Caller申告のraw SHA-256、Caller申告Revisionと`sourceindex.ModelRevision(index)`を照合する。パスは正準Workspace相対Pathのみ。
+
+| 反例 | 判定 | 未保証の正確な範囲 |
+| --- | --- | --- |
+| 対象Source Aは同一byte、別管理Source Bだけ変更 | 全Artifact集合のModelRevisionが変わるため、旧Claimは拒否 | 変更したBの実byteを本Referenceは読まない。Callerが新Indexを自己申告すれば真正性は不明 |
+| ファイルBの内容は同じだが管理Pathをrename | ModelRevisionはPathも含むので旧Claimを拒否 | renameの意味的同一性・受理済み履歴・旧参照の移行は#1120/#2505 |
+| 対象Artifactが欠落／重複／Path曖昧・不正Fingerprint | 静的Index整合性をfail-closedで拒否 | 正本Source集合の網羅性・Indexの出所・Disclosureの完全性は未保証 |
+| 同一管理Source集合 A→B→A | ModelRevisionも元に戻り得る。旧Claimの再利用を受理済み改版とはみなさない | 単調なepoch/Attempt、実Readerと実Consumerの同一取得、Acceptance Ledgerが必要 |
+| Indexの`References`からSource所属Subject／Scopeを推定 | 今回は実装しない。比較成功の`qualifiedSubjectVerified=false`、`sourceScopeVerified=false`を維持 | `Index.Artifacts`は`Scope`／`ReadAttemptID`を発行しない。型付き`modelref.Key`とReaderの同一Attempt証跡が必要 |
+
+成功時も`status=caller-index-bytes-consistent-only`、`authority=none`、`sourceReaderVerified=false`、`sourceAccepted=false`、`allSourceBytesVerified=false`。これは**Index宣言と渡された一ファイルのbyteが局所的に一致した**という診断だけである。実際のPinned Readerによる取得、`Workspace.Load`と同一AttemptでのSource Index生成、Build/Interpreter実消費byteの同一性、実Target Provider一意受理は検証しない。
+
+**工程別のフィンガープリントを混同しない**：
+```mermaid
+flowchart TD
+    S["Workspace managed Source paths + bytes（実Reader同一Attemptは未接続）"]
+    F["File Artifact Fingerprint: sha256:hex（既存TEI）"]
+    M["ModelRevision: all paths + fingerprints（既存TEI）"]
+    C["Caller Index + one consumerBytes（今回のReference）"]
+    D["CompareDeclaredSourceIndexRead / local consistency"]
+    H["HashIdScheme + derive-only or caller Target preflight"]
+    O["HashIdText（非権威的物理ID候補）"]
+    A["Accepted Source Revision + Actual Consumption Attempt（Owner未接続）"]
+    T["Atomic Target Allocation + Independent Readback（Owner未接続）"]
+    S -.-> F
+    F --> M
+    M --> C
+    C --> D
+    D -.-> H
+    H --> O
+    D -.-> A
+    O -.-> T
+```
+
+この図の`D→H`も**未接続の破線**である。`CompareDeclaredSourceIndexRead`は独立したGo Reference関数で、現`hashid-probe` CLI／正式Generatorへは結線していない。図中の`A`と`T`も別Ownerであり、図に記載があることは実行・許可を意味しない。
+
+**次のP0受入条件**：既存#1017/#2595/#1124において、同一Case・Reader/Open Handle・Source Set・Consumed Bytes・Attempt／Revision証拠を観測し、`Index`をCallerが書き換えた場合と、変更後に同じContent Hashへ戻した場合の双方を反例にする。そこで初めて`Source Reader Verified`と`Accepted`を別の資格として論じる。Hash IDのReference側ではそれまで`unknown`とする。
