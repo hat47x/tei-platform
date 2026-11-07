@@ -232,3 +232,53 @@ Wails依存を外したGo Service/合成Adapterの試験と、実WebView起動�
 各列の正本は #997/#1158/#1130/#943/#2598/#1174 の**既存Owner**。DS試験は同一試行で照合できた列と未実証列を表示するだけとする。
 
 **受入段階**：P0 契約・Build mappingのread-only説明 → P1 Web/React Slot/Actionの実試験 → P2 Studio Wails service/Window/UI拡張の実OS検証 → P3 **生成**Desktopの第二Target独立比較 → P4 分割Build・混在配備と復旧。UX-08〜14は #997 の追補に置いた。すべて実OS/実Provider/生成Artifactの新規E2Eは **NOT RUN**。新OS permission engine、Kit独自ABI、Scheduler、常駐TEI Hostはこの節では採用しない。
+
+## 10. 2026-11-08 実装に着手するDesktop D1の限定受入：Inspector・Source・配布資産・作用を混同しない
+<!-- tei-desktop-host-d1-proof-limits-20261108 -->
+
+**状態**：#1824 Studio Hostの実装・テストに関する*受入計画*。§1〜9のHost/Target分離を維持し、#1251/#951/#1016のPlugin Contract/Resolver一般論、#3262のDesign Context、#2514/#1180のExpected/Scenario、#1174のEffect・Receiptを第二正本として複製しない。最初の契約は既存read-only `inspect` 一操作だけ。正式な公開API/Enum/ABI、UI Extension/Go Backendをここでは増設しない。
+
+### 10.1 現mainとDraftの事実上限（固定して扱う）
+
+| 観測済み事実 | ここで承認しない拡張 |
+| --- | --- |
+| `internal/operations/inspect.go::InspectSubject` とCLI、Wails `StudioBridge.InspectSubject` → `studiohost.ReadOnly` の既存Callはある。戻るWorld/SourceIndex fingerprintはread-only投影識別 | **選択したPlugin Providerを実Invokeした**、Sourceが完全、CAS可能、Accepted Meaningが現在も有効、とは言えない |
+| `reference/tei-studio-workbench/main.ts` のCatalog/Inspect/Graphはread-only。Graphは単親Catalog最大8 Entry、`createResponseScope`は旧UI結果を失効する | Function Data Context/Provider Rowset、多重Relation/Graph Path、現在Disclosure/Grantの証明ではない |
+| [main統合 #3318](https://github.com/hat47x/tei-platform/pull/3318)の標準業務Data例を受け、[main統合 #3334](https://github.com/hat47x/tei-platform/pull/3334)で`ApplicationView.standardBusiness`の `tax/exchange/numbering/holiday` を`tei view`とStudio **bootstrap `/`**の`assets/view-format.mjs`へ宣言投影した | 別Surface `/workbench/` Inspectorの二Consumerを満たした、実データの税額計算/DB読取/書戻しや本番Grantが成立した、とは言えない |
+| [main統合 #3340](https://github.com/hat47x/tei-platform/pull/3340)はCLI `inspect/trace/view/knowledge-context`の`-h`とdiscoveryに許容値・既定値の共通出典を追加 | Helpに表示された引数・Plugin/Hook/Operation Offerが実Provider経由で到達可能、とは言えない |
+| [#3327 exact-head CI #42385644277](https://github.com/hat47x/tei-platform/actions/runs/42385644277)でNode24 Workbench `npm test` **20/20**（A→B→A旧成功/失敗2件を含む）、typecheck/buildはPASS | 同じCIの**embedded bundle byte比較はFAIL**（dist/main.js対Wails組込main.js、649340 byte位置）。PR全体GREEN/配布一致/実WebView OKとしない |
+| [main統合 #3284/#3296](https://github.com/hat47x/tei-platform/pull/3296)の9既存CLI返却・16合成負例による限定Design Context Gateは`partial`、`qualifiedTestGeneration=false` | Function/Business/Relation Required Closure・実Provider Read・外部Harnessへの完全受領資格を満たさない |
+| [Draft #3328](https://github.com/hat47x/tei-platform/pull/3328)はExecutor後Recorder/Lifecycle書込み失敗を`EffectUnknown`へ保つ修正候補。 [Draft #3338](https://github.com/hat47x/tei-platform/pull/3338)は実行可能Offer・受信側Sink・不可逆Projectionを分離する横断設計 | 現mainの全Command ClientでUnknown UIや再送Fenceが完成、Provider read-onlyならAI/CLI/DevTools/Logの受信側への保存・外部転送も無い、とは言えない |
+
+**Studioの二つのSurface**：`/`のPoC A bootstrap（`cmd/tei-studio/assets/main.js`と`view-format.mjs`）と`/workbench/`（`reference/tei-studio-workbench/main.ts`をBuildして埋め込む）は別のFrontend Artifact・RPC利用者。D1は`CLI inspect`と実`/workbench/`の二Consumerに絞る。`CLI view`／bootstrap `view`との同値検収は次の別Caseで行い、見た目・JSONが同一でも同じContract Provider/Artifact/Source Scopeとは推認しない。
+
+### 10.2 D1で先に不足する証拠：Provider選択→実呼出しの一本
+
+1. **Source/Caller**：同じ宣言Workspace名ではなく、実Root/Manifest byte identity/Source Index、受理資格・必要Domain Closure、CLIとStudioのCaller/公開Scopeを明示する。Source未読込・未Parse・対象外・非開示を`not-found`や完全な空集合に変えない。
+2. **Selection**：既存#951/#1016のContract ID/Scope・Provider版・選択Lockと依存閉包を固定し、Plugin不在・Trait実装義務欠落・曖昧な複数選択・変更後の古いLockを未適格にする。Authoring ConsumerにRuntime用Providerを暗黙昇格しない。
+3. **Actual Invoke**：既存`InspectSubject`のService adapterを再利用して、選択したProviderと実際に呼ばれたInvoker ID/Version/Artifactを**同一Attempt**で照合。Bを選択したのにAへディスパッチした場合、A/Bが同一JSONを返してもFAIL。既存静的CLI/Wailsコードへ無断fallbackしない。
+4. **Two Consumer**：CLI `inspect` JSONとWails `/workbench/`実RPC/DOMを別call-siteからInvokeし、Result/Failure/Source/Disclosure/Unknownの扱いと実Provider IDを一致照合する。Node単体テストだけではWails Windowの資格を与えない。
+5. **Actual Host/Effect境界**：D1はRead専用。ただしProviderへのRead requestと、Studio・Tool/Session・ログ・Screenによる**結果の受領・保存・公開**は別の観測。外部Sinkの保存/送出は当該Principal/環境/用途のDisclosure条件で扱う。D1を使った認可の横展開や書込みGrantを許さない。
+
+### 10.3 検収・失敗先行の最小表（新Scenario SSOTではなく既存DS/#2514へ渡す）
+
+| Desktop検収 | 一因子差・Expected | Product受入上限 |
+| --- | --- | --- |
+| **DS-D1-A** 実選択と呼出し | Contract Provider A/B、Pin B→実Invoke AをFAIL、Pin B→Bだけ局所合格。同じReply bytesに影響されない | 新規実テスト **NOT RUN** |
+| **DS-D1-B** 二Surfaceと二Consumer | `/` Bootstrap Application Viewと`/workbench/` Inspectを区別し、D1のCLI Inspector ↔ Workbench Inspectorの別call-site実RPC/Invokerを突合 | 新規E2E **NOT RUN** |
+| **DS-D1-C** Workspace/Subject ABA | A1→B→A2に戻っても旧A1成功・失敗を反映しない。別Windowを不必要に巻込まず、Source/Context revisionとUI response epochは別記録 | #3327 Node24 **20/20局所PASS**、実UI/Provider **NOT RUN** |
+| **DS-D1-D** Artifact配布閉包 | Source/lock/build出力digestと実埋込みJSを比較し、差異を不合格にする。**現#3327の埋込み不一致を修復未確認のまま消さない**。既存Workflowが検出した差は別のOwner/根因で再確認 | 既存埋込み比較 **FAIL**。本書は修復しない |
+| **DS-D1-E** Providerと受信側 | ProviderはReadでもCLI/Studio/AI Session/Trace/Logの保存先/送出Scopeが異なる負例。必要な部分受領/遮断/切断を`complete`へ昇格させない | 現CLI Context Gateは`partial`、実Sink適合 **NOT RUN** |
+| **DS-D1-F** 将来のWrite/Unknown | 実行前拒否、送出後記録失敗`EffectUnknown`、ACK喪失、Receipt Lookup、独立Resource Readを別結果とする。`failure`から自動再送しない | #3328はDraft、Desktop Write **NOT RUN** |
+
+### 10.4 実装順・運用と統合衝突の回避
+
+- **P0 Source／Bundle**：既存`/workbench/`とCLIの実入口/Source/依存を固定。#3327で観測した`dist`対Wails埋込み不一致は、**main既存資産と同一Toolchainで再現するかを先に確認**する。失敗は`Source-Distribution-Mismatch`の構築資格として扱い、NodeのABA PASSと分ける。大きな生成JSの手書き修正を前提にしない。
+- **P1 Provider**：#1251/#951/#1016のD1a shadow→D1b実選択へ。契約・Trait・Resolverの一つの仕組みをAuthoring `inspect`の既存Operationから消費し、二重Registry/Resolverを作らない。Probe/Adapterを既存Service境界へ接続する。
+- **P2 実CLI/Wails二Consumer**：DS-D1-A/B/C/Dの実証。新UIの総当たりではなく現在の`inspect`1操作で完結させる。実Targetで広告と実引数/Outcomeの一致・Source Scope・Failure・Disclosure・Data mutabilityを別Claimで記録。
+- **P3 Function実Read**：#2586のQuery→実Provider Row/Field/Scope/cohort→#2506のData Contextから、#2507/#3222の多表現を検証。現Catalog parent Graphに業務Relation多重性・集計結果・非可逆編集を推測合成しない。再読取/完全性が不明ならAction Offerを停止。
+- **P4 Host/異質Target**：#3270 Data Source WorkbenchのSchema CRUD・JSONL、#3274 HTTP Decision Graph、SHO/SUI、生成Go Desktop Target、#3267 BOM 2×2は**別の実配置・実Consumer**として比較。Studio PoC成功を生成アプリに転用しない。
+
+**正本とPR配置**：本§10はDesktop/Wails固有の検収**Owner #1824**。広域Plugin-first契約は[main統合 #3285](https://github.com/hat47x/tei-platform/pull/3285)の`plan/design/PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md`§8〜13、[Draft #3338](https://github.com/hat47x/tei-platform/pull/3338)§14がOwner。従来[Draft #3301](https://github.com/hat47x/tei-platform/pull/3301)のDC-01〜06からDesktop固有部分のみ移送した**置換候補**であり、#3301を同じPlugin共通文書へ並行mergeするのではなく、差分・受入票を照合して二重計画を解消する。既存#2514/#1180 Test/Expected SSOT、#3262 Design Context、#1163 Evidence、#1174 Host Effectを別名で再発行しない。
+
+**今回の証拠区分**：確認したGitHubのmain Source/merged PR/固定CIの事実と、この文書の計画は別。**本書追加をもって、Go/Node/Wails/Windows実機/実Provider/実DB/実External Sink・Owner意味受理が完了したとはしない**。
