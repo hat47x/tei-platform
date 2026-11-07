@@ -248,7 +248,7 @@ W1で`docs/reference.md`をReadして完全path一致を観測後、**文書byte
 **次にM1を検証するためのゲートではない受入手順**：①現在の実SEI Methodで選べるProbeの表現を確認、②両側に同じ初期Report/Q/現在Source/実Tool/Scope/Grant/予算を提供、③正解Scopeと独立Rを隠す、④Methodが提案したScopeに対して**同じToolで実Read**、⑤Read結果のSHA/時点/失敗/Consumer開示と費用で評価、⑥1回Budgetでの失敗と2回Budgetでの改善を混ぜない。Methodによる選択にModelの追加情報があるならその出典・開示資格を別記。#2514がOracle、SEI #767がMethod、#2533が比較、#2516がDisclosure、TAI #271が再資格化を所有。ADR-0038と業務Meaningの受理はOwner未決。新Host/Registry/正式Proof Store/製品Gateを追加しない。
 
 <!-- tei-devctx-p2c-profile-cohort-20261107 -->
-## 13. P2-2c：候補のGo構成適合と複数Readの共同成立を区別する（2026-11-07、提案・NOT RUN）
+## 13. P2-2c：候補のGo構成適合と複数Readの共同成立を区別する（原案2026-11-07／CC-12〜15の後続実証は§15〜16）
 
 **位置づけ・確認したSource**：完了済み[#2196](https://github.com/hat47x/tei-platform/issues/2196)と[統合済PR #2669](https://github.com/hat47x/tei-platform/pull/2669)の既存T/CC試験を再利用する。mainの tools/reference-developer-context/main.go（blob dc69dc3a204085801ca509bdda2e2e27b91fa204）の Discover は、Goテストのファイル名・stem本文一致・文書の参照文字列で候補を収集し、Goのbuild profileを解釈しない。targetと各candidateは別々に readInside され、readInside は EvalSymlinks → Lstat → os.ReadFile の順で実行される。**個々のSHA-256が正しいことは、単一の原子的なRead cohortや実Open対象の永続同一性を示さない**。この所見は静的Source確認であり、競合攻撃や実漏洩の成功を意味しない。
 
@@ -299,7 +299,7 @@ PR [#3176](https://github.com/hat47x/tei-platform/pull/3176)の test-only `tools
 | H2→H3→H3→H2の実四Session completed | 技術的な実Session到達とSkill提示の有無は観測済み | H2-A再利用、Taskの論理Path差、隔離不足、許可外Tool、独立採点無し。TAIの**比較適格0/4**は不変 |
 | `read-only`を指定してもDSHが作業場所外SourceをReadした | 宣言mode≠OS/physical scope証拠 | Allowed Workspace/Tool/SourceやSecret不受領を自己申告しない。実隔離はTEI #2515／TAI #232 |
 | 旧TEI実CLIでは一部kindの`trace`が`SUBJECT_NOT_FOUND`と誤返却していたが、[merged #3208](https://github.com/hat47x/tei-platform/pull/3208)で未対応kindを`UNSUPPORTED_SUBJECT_KIND`へ分離 | 現行mainの投影対象外は機械可読な未対応。固定旧DSH Binaryの過去Tool結果は歴史的な旧挙動のまま | 検証したCLI build/ABIを示さず「未対応ではない」「関係不在」と推論しない。別の投影範囲・実Consumer再受領は未確認 |
-| 実CLI replyにmanifest identityが無い[#3181](https://github.com/hat47x/tei-platform/issues/3181)、viewの`read-only`宣言でもflagにより局所FSへ書く[#3182](https://github.com/hat47x/tei-platform/issues/3182) | Reviewerは実argv・root realpath・manifest byte・出力先・実Effectを一試行へ別束縛 | WorldFP＝Workspace ID、command family read-only＝実Invocation無書込みを推測しない |
+| 旧固定CLI replyにはmanifest identityが無かったが、現mainはWorkspace Identityを一部出力する[#3181](https://github.com/hat47x/tei-platform/issues/3181)。一方viewの`read-only`宣言でもflagにより局所FSへ書く[#3182](https://github.com/hat47x/tei-platform/issues/3182) | Reviewerは実argv・root realpath・manifest byte・実Binaryの版・出力先・実Effectを一試行へ別束縛 | WorldFP＝Workspace ID、現mainの新項目＝旧DSH受領済み、command family read-only＝実Invocation無書込み、を推測しない |
 
 ### 14.3 P2比較の最小Evidence ladder（正式Schemaではない）
 
@@ -375,7 +375,7 @@ Goの[Traversal-resistant file APIs（Go公式）](https://go.dev/blog/osroot)�
 <!-- tei-devctx-cognition-data-representation-20261107 -->
 ## 17. Standard Data・表現型・Atomic Traitを認知の証拠層へ安全に投影する（2026-11-07、統合設計・新実証NOT RUN）
 
-**横断の成熟した方向**：[TEI Draft #3236](https://github.com/hat47x/tei-platform/pull/3236)（標準データ構造×標準表現型の合成写像）と[TEI Draft #3282](https://github.com/hat47x/tei-platform/pull/3282)（Atomic Traitの実装義務・合成衝突）、[TEI #2507](https://github.com/hat47x/tei-platform/issues/2507)のFunction Binding、[TEI #2516](https://github.com/hat47x/tei-platform/issues/2516)の用途相対Contextを参照。表現型・Traitの新たな全体モデルを本Issueでは作らず、認知Methodがどのデータの何を観測できたかを失わず引き渡す。
+**横断の設計参照（両PRは2026-11-08照合時にclosed・未merge）**：[TEI #3236](https://github.com/hat47x/tei-platform/pull/3236)（標準データ構造×標準表現型の合成写像）と[TEI #3282](https://github.com/hat47x/tei-platform/pull/3282)（Atomic Traitの実装義務・合成衝突）、[TEI #2507](https://github.com/hat47x/tei-platform/issues/2507)のFunction Binding、[TEI #2516](https://github.com/hat47x/tei-platform/issues/2516)の用途相対Contextを参照。表現型・Traitの新たな全体モデルを本Issueでは作らず、認知Methodがどのデータの何を観測できたかを失わず引き渡す。
 
 **観測の分解**：元の標準データ構造（Record/Collection/Relation/Graph/時系列等）・対象範囲と粒度・Relationの向き/多重度・時点/単位・NULL/未取得/非開示、FunctionのSelection/Query/Rule依存、表示先の標準表現型（Table/Tree/Graph/Panel等）、実Consumerへ渡されたSlice、を別欄にする。Function Bindingは接続の意味を所有し、Rendererの見た目やExportされたOKF/SHO文書は元構造の完全な逆写像を保証しない。
 
