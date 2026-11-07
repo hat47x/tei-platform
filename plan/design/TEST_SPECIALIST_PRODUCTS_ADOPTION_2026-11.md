@@ -1027,21 +1027,21 @@ G1の最小比較対象は同一ifのtrue/false、false側が空のif、ifの&&�
 
 ### 24.1 文書上のCoverage Definitionを実Evaluatorの10条件へ接続
 
-[Draft PR #3351](https://github.com/hat47x/tei-platform/pull/3351)（初回Code HEAD \`4d45124218e6311df1759ccf879ee1749aca5243\`）に、既存\`internal/semantic/validationeval.Evaluate\`だけを対象とするtest-only \`error_branch_obligations_test.go\`を追加した。第二Runner/Host/Oracleを新設せず、既存\`go test\`で実行する。
+[Draft PR #3351](https://github.com/hat47x/tei-platform/pull/3351)（初回Code HEAD `4d45124218e6311df1759ccf879ee1749aca5243`）に、既存`internal/semantic/validationeval.Evaluate`だけを対象とするtest-only `error_branch_obligations_test.go`を追加した。第二Runner/Host/Oracleを新設せず、既存`go test`で実行する。
 
 | 独立Obligation | テスト入力（test-only Source） | 必要なExpected | 実測の資格 |
 | --- | --- | --- | --- |
 | VE-01 Source未指定 | nil Source | empty Result + Go error、Source callなし | 結果の型付けのみ |
-| VE-02 数値取得エラー | \`Number\`がsentinel error | empty Result + wrapped error、Number call 1 | Source errorを業務拒否に変換しない |
-| VE-03 数値未取得 | \`Number\`が\`nil,nil\` | empty Result + Go error、Number call 1 | Missing Valueと零値の混同禁止 |
-| VE-04 正・ゼロ | \`Number\`が1/2または0 | 正= satisfied, 零=not-satisfied、errorなし | 同じRule内の正常／業務拒否対照 |
-| VE-05 Relation取得エラー | \`RelationKeys\`がsentinel error | empty Result + wrapped error、Relation call 1 | Partial/失敗を空集合の一意性へ混入しない |
-| VE-06 Relation重複・一意・空 | \`RelationKeys\`が3条件 | 重複=not-satisfied、他=satisfied、errorなし | test-onlyの明示的な完全Sliceでの結末に限定 |
+| VE-02 数値取得エラー | `Number`がsentinel error | empty Result + wrapped error、Number call 1 | Source errorを業務拒否に変換しない |
+| VE-03 数値未取得 | `Number`が`nil,nil` | empty Result + Go error、Number call 1 | Missing Valueと零値の混同禁止 |
+| VE-04 正・ゼロ | `Number`が1/2または0 | 正= satisfied, 零=not-satisfied、errorなし | 同じRule内の正常／業務拒否対照 |
+| VE-05 Relation取得エラー | `RelationKeys`がsentinel error | empty Result + wrapped error、Relation call 1 | Partial/失敗を空集合の一意性へ混入しない |
+| VE-06 Relation重複・一意・空 | `RelationKeys`が3条件 | 重複=not-satisfied、他=satisfied、errorなし | test-onlyの明示的な完全Sliceでの結末に限定 |
 | VE-07 unsupported kind | Rule Kindに未知値 | empty Result + Go error、Source callなし | unsupportedのsilent fallback禁止 |
 
-具体的Go testは10 subtestsで、成功の判定は単なるexit0ではなく、\`Result\`、\`error\`の有無・\`errors.Is\`と実際に呼んだSource operation／回数を区別する。業務拒否は処理できた結果であり、業務結果が得られない技術的失敗とは別である。部分集合やProvider不完全性の一般論はこのtest doubleでは保証されない。
+具体的Go testは10 subtestsで、成功の判定は単なるexit0ではなく、`Result`、`error`の有無・`errors.Is`と実際に呼んだSource operation／回数を区別する。業務拒否は処理できた結果であり、業務結果が得られない技術的失敗とは別である。部分集合やProvider不完全性の一般論はこのtest doubleでは保証されない。
 
-**Code C0/C1主張**：最初のDraftの実装・保存だけではGo Test PASSの証拠なし。Go Test実行結果が得られても、10個のScenario/独立Result条件を確認した範囲でのみ合格とし、\`go test -cover\`はstatementのC0相当、C1の分岐ごとの実観測は別。1 Test名に10 subtestsがあることは独立した10 Required Ruleや全Conditionの網羅を意味しない。正式なOwner Meaning Acceptance/実DB/Host/外部Harness/現在開示資格は別。
+**Code C0/C1主張**：最初のDraftの実装・保存だけではGo Test PASSの証拠なし。Go Test実行結果が得られても、10個のScenario/独立Result条件を確認した範囲でのみ合格とし、`go test -cover`はstatementのC0相当、C1の分岐ごとの実観測は別。1 Test名に10 subtestsがあることは独立した10 Required Ruleや全Conditionの網羅を意味しない。正式なOwner Meaning Acceptance/実DB/Host/外部Harness/現在開示資格は別。
 
 ### 24.2 GoのCoverageツールを「観測の種類」と「実消費対象」で比較する
 
@@ -1049,24 +1049,24 @@ G1の最小比較対象は同一ifのtrue/false、false側が空のif、ifの&&�
 
 | 候補 | 何を追加観測できるか | 向かないClaim・導入時に独立検査すること |
 | --- | --- | --- |
-| Go標準\`go test -coverprofile\`、\`go build -cover\`、\`GOCOVERDIR\` | Unit/Integration CLIで実行したstatement/blockの対象範囲・実際のGo Build/Package | Code C1ではない。Build Tags、nested modules、\`-coverpkg\`、除外条件と各Runを束縛 |
+| Go標準`go test -coverprofile`、`go build -cover`、`GOCOVERDIR` | Unit/Integration CLIで実行したstatement/blockの対象範囲・実際のGo Build/Package | Code C1ではない。Build Tags、nested modules、`-coverpkg`、除外条件と各Runを束縛 |
 | gobco | 比較・論理条件の真偽別の**condition coverage**。標準Go coverの補助（BSD-2-Clause） | C1全Branch・MC/DCと同義でない。未使用Functionやselectの検出がないので別Required集合が必要。現Go Toolchain適合を先に試す |
 | Tobari | TestまたはRequest単位のScoped Coverage、Test×Blockの到達と重なりを観測（MIT） | Scopeの分母は到達Functionの依存から導く候補であり、独立Requirement/Source Requiredの分母ではない。Shared worker goroutineでは別requestのBlockが混ざる既知制限あり。Runtime/Go/Library/CLIの同版Pinと正しいScopeを検証 |
 | Model Decision Trace | TEIのAccepted Rule/Guard、HTTP Response Graphの実実行EdgeとClient ReactionをScenarioへ束縛 | Go C1に加算不可。宣言Graphだけ、Mock Resultだけ、外部Tool全Reply未受領なら実到達資格なし |
 
 **採用判断を早めない**：既存Go標準が第一基線。gobcoはCondition Coverage PoC、TobariはAgentに特に有用な**Test→Block対応/冗長候補探索**のPoCである。両者ともC1完全実装の代用品とはせず、Backend対応版・ライセンス・Instrumentation副作用・ビルド閉包/排他性・Source改版・CI時間・未到達の偽陽性/偽陰性を計測してからPlugin候補とする。Test名単位のScopeはProductの同一Function/Operation/Actor/Targetに正しく対応しているか検査しない限り、業務Scenario単位のCoverageにならない。
 
-**重要な非推論**：同じBlock集合を実行するテストが二つあっても、Independent Expected、Error Outcome、Temporal/Authorization/NULL、Source Identity、負例判別力が異なれば片方を削除してはいけない。\`>95% overlap\`はReview候補の推薦閾値になり得ても、削除資格にはならない。Tobariの依存到達可能性から推定したdenominatorも、#3262の独立Requiredや非出力依存・業務Function全件を自動補完しない。
+**重要な非推論**：同じBlock集合を実行するテストが二つあっても、Independent Expected、Error Outcome、Temporal/Authorization/NULL、Source Identity、負例判別力が異なれば片方を削除してはいけない。`>95% overlap`はReview候補の推薦閾値になり得ても、削除資格にはならない。Tobariの依存到達可能性から推定したdenominatorも、#3262の独立Requiredや非出力依存・業務Function全件を自動補完しない。
 
 ### 24.3 最小PoCと偽陽性対照
 
-- **CB-01**：#3351の10条件を同一Go Head・Toolchain・選択Packageで\`go test -count=1 -run TestEvaluationErrorsAreDistinctFromBusinessRejections -v ./internal/semantic/validationeval\`。named subtestの列挙、各結果、Go exit、Target SHAを証拠化。1 subtestを落としたときに計測上の差を観測。
-- **CB-02**：Go標準\`-coverprofile\`で、追加テスト単独／既存Test suiteを別実行して対象Packageのstatement差分を比較。実Sourceの分母・\`coverpkg\`・編集前後を明記。
+- **CB-01**：#3351の10条件を同一Go Head・Toolchain・選択Packageで`go test -count=1 -run TestEvaluationErrorsAreDistinctFromBusinessRejections -v ./internal/semantic/validationeval`。named subtestの列挙、各結果、Go exit、Target SHAを証拠化。1 subtestを落としたときに計測上の差を観測。
+- **CB-02**：Go標準`-coverprofile`で、追加テスト単独／既存Test suiteを別実行して対象Packageのstatement差分を比較。実Sourceの分母・`coverpkg`・編集前後を明記。
 - **CB-03**：gobco/Tobariを現Go Toolchainにpinして隔離した短期試験。Source error/undefined value/zeroの3ケースについて同一Go Blockを共有していても別Independent Expectedであることを記録。Condition・Block・Branch/Guardを別列にし、計測の非互換/過大主張を検出。
-- **CB-04**：Tobariのper-test結果が同じFunction内の10 subtestsを区別できるか。別Source/Target、shared worker、カバレッジ対象外Package、Build Tagの切替と、実Run選択を区別。未観測なら\`unknown\`。
-- **CB-05**：ミニMutation（\`nil Number\`を\`not-satisfied\`へ誤変換、Source errorを握り潰す、\`relation-unique\`で重複を見逃す）を**本番ブランチへ統合せず隔離**して、対象subtest自身が独立Expected違反を観測することを確認。単なるCI FailureはKillでない。
+- **CB-04**：Tobariのper-test結果が同じFunction内の10 subtestsを区別できるか。別Source/Target、shared worker、カバレッジ対象外Package、Build Tagの切替と、実Run選択を区別。未観測なら`unknown`。
+- **CB-05**：ミニMutation（`nil Number`を`not-satisfied`へ誤変換、Source errorを握り潰す、`relation-unique`で重複を見逃す）を**本番ブランチへ統合せず隔離**して、対象subtest自身が独立Expected違反を観測することを確認。単なるCI FailureはKillでない。
 
-\`CB-01\`以外のInstrumenter評価とMutationは設計候補で、**未実行**。CB-01もPR新規コミットの初回CIを確認してから「実Go PASSED」とする。既存#3017の意図的Mutant成功を今回の新subtestsへ流用しない。
+`CB-01`以外のInstrumenter評価とMutationは設計候補で、**未実行**。CB-01もPR新規コミットの初回CIを確認してから「実Go PASSED」とする。既存#3017の意図的Mutant成功を今回の新subtestsへ流用しない。
 
 ### 24.4 最短の受入順とOwner
 
