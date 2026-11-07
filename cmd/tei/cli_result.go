@@ -224,8 +224,8 @@ func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environ
 			var resolved plugin.ResolvedSet
 			var resolveErr error
 			if pluginLockPath != "" {
-				var lock plugin.Lock
-				if decodeErr := decodeJSONFile(pluginLockPath, &lock); decodeErr != nil {
+				lock, decodeErr := decodePluginLockFile(pluginLockPath)
+				if decodeErr != nil {
 					fail(resultCodeInvalidPluginLock, decodeErr.Error())
 				} else {
 					resolved, resolveErr = catalog.ResolveEnvironmentWithLock(env, lock)
@@ -280,9 +280,9 @@ func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environ
 		if command == "plugin-resolve" {
 			var r plugin.ResolvedSet
 			if pluginLockPath != "" {
-				var lock plugin.Lock
-				if err := decodeJSONFile(pluginLockPath, &lock); err != nil {
-					return emitResult(out, resultFailure(command, resultCodeInvalidPluginLock, err), 2)
+				lock, lockErr := decodePluginLockFile(pluginLockPath)
+				if lockErr != nil {
+					return emitResult(out, resultFailure(command, resultCodeInvalidPluginLock, lockErr), 2)
 				}
 				r, err = catalog.ResolveEnvironmentWithLock(env, lock)
 			} else {
@@ -293,9 +293,9 @@ func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environ
 			}
 			return emitResult(out, resultEnvelope(command, "", r), 0)
 		}
-		var lock plugin.Lock
-		if err := decodeJSONFile(pluginLockPath, &lock); err != nil {
-			return emitResult(out, resultFailure(command, resultCodeInvalidPluginLock, err), 2)
+		lock, lockErr := decodePluginLockFile(pluginLockPath)
+		if lockErr != nil {
+			return emitResult(out, resultFailure(command, resultCodeInvalidPluginLock, lockErr), 2)
 		}
 		plan, err := pluginruntime.BuildPlan(catalog, env, lock)
 		if err != nil {

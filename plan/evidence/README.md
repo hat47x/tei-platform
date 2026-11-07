@@ -79,5 +79,6 @@
 - [二回の独立Buildにおける再現性の観測](TEI_GO_BUILD_REPRODUCIBILITY_2026-11-07.md)（`cmd/tei`を別々の試行ID・別の隔離stateで二回Buildし、同じartifact digestを得た記録。Builder信頼・受入・権限は未確認。SB-N8 / #2831）
 
 - [DSH外部HarnessのHost棚卸し](DSH_H6E0_HOST_INVENTORY_2026-11-07/README.md)（#2515 H6-E0。Tool ProcessからOS・mount・環境変数・loopback到達性を列挙し、read-onlyのConstrainedLanguageと危険modeの差、親の環境変数が子へ継承されないことを観測。別Host・実Egress制御はNOT RUN）
+- [DSH外部HarnessのLane分離](DSH_H6E4_LANE_SEPARATION_2026-11-07/README.md)（#2515 H6-E4・#2509。ディレクトリ分離だけの2 Laneで、各Laneが相手Laneの合成canaryをcompletedで読み、モデル入力とSession Logへ載ったことを記録。worktreeだけでは分離にならない。別Identity/ACL/mount/egressの実拒否はNOT RUN）
 - [フックの宣言外呼出し拒否の確認](XTEA_LOWCODE_HOOK_DECLARED_CALLS_2026-11.md)（参照実装の試験記録。Command境界への接続は未実装）
 - [外部Moduleを含む選択Sourceの観測](TEI_GO_SOURCE_CLOSURE_OBSERVATION_2026-11-07.md)（`cmd/tei`の選択入力をリポジトリ内318件と外部Module 12件・325メンバーに分けて列挙し、資格は常に`false`として閉包方針を変えない記録。SB-A1 / #2831）
