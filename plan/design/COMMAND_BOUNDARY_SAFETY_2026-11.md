@@ -200,7 +200,36 @@ CLIとStudioは `persisted`（`observed` のときだけtrue）と `persistence`
 - `Replayed` の経路で観測を行うか。Replayは現在値の読取りではなく記録の再確認なので、別の観測が必要。
 - `DurableStore` をcompositionから自動で決める方法。現状は呼出し側の明示的な宣言。
 
-## 10. この文書が主張しないこと
+## 10. どの認可判断で実行したかを応答に載せる（#2997 追補）
+
+### 見つかった差
+
+#3042 で `Authorizer` 未設定を拒否し、参照実行は `ReferenceAuthorizer` を明示するようにした。しかし応答からは、その実行が**どの認可判断**で通ったのか読めなかった。`ReferenceAuthorizer`（全許可）と `AllowListAuthorizer`（能力名だけ許可）と本物の規則は、どれも「認可された」と同じ形で現れる。
+
+### 決めたこと
+
+`command.Result.AuthorizationMode` を追加し、Invokerが実行後に設定する。値は次の三つ。
+
+| 値 | 意味 |
+| --- | --- |
+| `reference-allow-all` | `ReferenceAuthorizer`。主体・規則・資源を評価していない |
+| `reference-allow-list` | `AllowListAuthorizer`。名前の一致だけを見た参照判断 |
+| `external` | それ以外の `Authorizer`。どの規則・付与を参照したかは境界からは分からない |
+
+CLIの `referenceCommandRun` とStudioの `CommandRunValue` に `authorizationMode` を追加し、テキストと画面にも表示する。欄の追加であり、`tei.cli.view/v0` の互換な変更の範囲に収まる。
+
+### この表示が防ぐこと
+
+- 参照実行の全許可を、本物の権限判断と読み違えない。
+- `AllowListAuthorizer` を、主体・資源・規則を含む認可と読み違えない。
+
+### まだ決めていないこと
+
+- `external` の内訳（どの規則・付与を参照したか）を応答に載せるか。載せる場合は認可の正本・開示境界の設計が要る。
+- `authorizationMode` を必須欄にするか、省略可能のままにするか。
+- StudioでAllowListを指定しない実行が全許可になることを、画面で警告として出すか。
+
+## 11. この文書が主張しないこと
 
 - 本物の認可・主体・権限・メニュー制御が実装されたこと。
 - `ReferenceAuthorizer`が本番で使えること。
