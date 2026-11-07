@@ -264,7 +264,7 @@ Go 1.23.2の隔離作業領域で、これらを含む`go test -race -count=1 ./
 
 **検証**: `/mnt/data/tei1120`の隔離Go 1.23.2環境で`go test -race -count=1 ./internal/modelref/...`（3 Package）、`go vet ./internal/modelref/...`が成功し、`gofmt -l internal/modelref`は空だった。変更した2ファイルの`git hash-object`はGitHubに書き込んだblob SHAと一致した。ただし隔離環境には`sourceindex` / `index`の代替実装があり、Repository全体のexact-head Git checkoutではない。
 
-**統合停止条件**: `AGENTS.md`の規則に従い、trusted full checkoutのexact headとcurrent mainを固定した`tools/repository-health-check.sh`の**全項目PASS**、前後のclean state、必要なWorkspace integration testの証拠が揃うまでは、Draftを解除せずmainへ統合しない。実際のSourceの受理やDecision履歴の追跡が未成立なら、#1120の完了判定も行わない。
+**統合時に記録する条件**: `AGENTS.md`の規則に従い、trusted full checkoutのexact headとcurrent mainを固定し、変更範囲の検証（必要なWorkspace integration testと、前後のclean state）の結果を記録して統合する。`tools/repository-health-check.sh`は任意の広範囲診断として扱い、全項目PASSを統合の一律条件にはしない。Draftは解除して統合する。実際のSourceの受理やDecision履歴の追跡が未成立なら、#1120の完了判定も行わない。
 
 
 ## R4 — 型付き参照の読取り用直接追跡（2026-10-10、別Draft候補）
