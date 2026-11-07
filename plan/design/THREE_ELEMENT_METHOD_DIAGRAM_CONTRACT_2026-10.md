@@ -476,3 +476,30 @@ Node.js 22.16.0で`node --test /tmp/tei-tea-ref/public-slice.test.mjs`を実行�
 直接クリティカルパスは従来どおり[#1124](https://github.com/hat47x/tei-platform/issues/1124) M0実CLI→M1同一Workbenchの曖昧0/一意1 InspectとGraph旧DOM拒否。三要素MethodはこのConsumerへ**すでに資格確認されたSlice/Role/Claim**を渡すのを優先し、Method独自の認可・Source Writer・Plugin Resolver・Assessmentを新設しない。並行Referenceの次の最小一巡は`sales.order.status`について同一Source/Scope/Attemptを固定し、(1)実Script/Roleの必須Source・Parser診断、(2)実Sourceで観測されたJava/DB/Function制約、(3)既存Trait Ownerによる比較・現在Disclosure、(4)実Workbench三視点の同一根拠表示を順に結ぶ。実Providerが不在なら`unverified`を出し、架空の独立Expectedを採用しない。
 
 **停止**: 方法論Plugin更新や表示だけでAccepted Meaningが変わる、Java EnumからMECEを証明したことにする、未知Writerを0件とみなす、Private Traitの存在を件数やBadgeで漏らす、局所PASSを全Consumer／Production／セルフビルドの資格へ昇格する場合には、受入対象を縮小・撤回して既存Ownerへ返す。
+
+
+### 19.4 三者Snapshotの結合不足を閉じる限定Reference（2026-11-08）
+
+[Draft #2972](https://github.com/hat47x/tei-platform/pull/2972)の前版は、`Envelope.snapshot = Claim.snapshot`を検査していたが、**実際の公開ProjectionにSnapshotがなく**、同じ`viewId`を持つ旧図へ新Claimを結べた。Sourceの現在性とは別の、合成Reference内部の欠陥である。新Referenceは`projectPublicTeaSlice(publicSlice, callerSnapshot)`が公開されたOccurrenceに**任意の呼出元世代Witness**を付与できるようにし、`bindPublicTraitClaims`で`Projection.snapshot = Envelope.snapshot = 各Claim.snapshot`を要求する。Stampなしの従来Projectionは単独閲覧を維持するが、Trait結合を拒否。旧版と新版で同じ`viewId`のまま、前者を新Envelopeに渡す反例とStamp未提供の負例を加えた。
+
+**追加の限定検証**: GitHubから実ソース4件を取得し、そのままV8内で読み込んだNode test互換ハーネスで**22/22件PASS**（`public-slice`10件＋`trait-attachments`12件、うち新規T12 Projection世代差・未Stamp拒否）。これは正規の`node --test`による実行ではなく、GitHub最新HEADのRepository Health結果も別途必要。新コードの固定Git blobは`public-slice.mjs=265206ab45a3a8d357e113dd9e02a65e2137ed59`、`trait-attachments.mjs=2d9e2eefdb2e4edb2370471c0a1c1ce0c7b29b13`、テストは`ca83ee66a97550213653db5a8a0bf8c8282afbe0`／`3795cbedbbff2cf1bf6f7f2dee55468ec9a41f19`。旧§19.2の10件Node PASSは更新前の履歴で、今回の最新資格と混ぜない。
+
+**重要な非主張**: このSnapshotは呼出元が割り当てる**等値Witness**であって、改版した実Source、Source Index、Role/Operator実bytes、現在のGrant、Producerが実読んだ対象、Callback時の表示世代を独立して証明しない。同じ文字列の再利用・ABAや偽Stampを単体では検知できない。#1124 M0/M1と#2516の実Consumerでは、Source/Role/Policy/Consumerの独立現行証拠と画面上の失効・後着拒否を別assertする。いま達成したのは、**明示的に異なる表示世代の合成Reference内誤結合を拒否すること**だけである。
+
+## 20. サブシステム分割候補の三視点表示（2026-11-08、未採用・未実行）
+
+他チャットの[Issue #3250](https://github.com/hat47x/tei-platform/issues/3250)／[Draft #3255](https://github.com/hat47x/tei-platform/pull/3255)で提案される**更新凝集を基準としたサブシステム分割**を、本TEA Methodからは「計算アルゴリズム」ではなく**提案と根拠の三視点Projection**として扱う。#1132は越境Direct CUDのread-only診断Ownerであり、TEAは最適化・Owner受理・Shared Acceptance・実DB Effectを再実装しない。
+
+| Data | Function | Business |
+| --- | --- | --- |
+| 業務Dataの所有候補、Relation、ER範囲と外部参照を保持。物理DB配置・代理PKと混同しない | **宣言上のDirect C/U/D**、Read、別Functionへの委譲、**潜在／観測済みEffective Effect**を別Relationとして示す | Procedure、Manual Step、担当Actor、Trigger、委譲による業務責務・制約を示す。Actorは実Authorization Principalでない |
+
+**局所契約**: `Accepted Source/Qualified Subject/Scope/Revision/解析Policy/必要Closure/現在Disclosure`を固定できる部分についてだけ同じDiagram/CRUD表/Subsystem別ER図を照合する。分割案は`proposal`、規則に照らした比較は`derived assessment`、実現されたFunction/DB/Effectは別Evidence。提案の見た目や境界移動だけで実SourceのDirect CRUDを消したことにしない。未知のFunction/Relation、未読込Source、非公開CUDは`0`へ変換せず、母集団の被覆不明なら「図にない＝全Sourceに存在しない」と主張しない。View間の同名端点はQualified identityとRelation roleが確定するまで保留。公開用配置・線は既存T06の開示Slice境界を守り、秘密の越境Edge数・評価点を漏らさない。
+
+| TEA専用受入候補 | 反証すべき誤結合 | 所有する独立証拠 |
+| --- | --- | --- |
+| **T14 Scope固定の越境Direct CUD** | Sales FunctionがInventory Dataへ直接`Update`を持つとき、別Subsystemへの`Read`だけと同列に扱う／未読込辺を0本とする | #3250の計算・#1132のCUD診断、#1124の同一Consumer、#2881の限定被覆 |
+| **T15 委譲による境界修復** | Function所属変更と、Command委譲による実行契約の変更を同じ可逆図面操作とする／Direct CUD削除だけでEffective Effect・Tx・Recoveryが保証されたとする | #3255のpartition-only／repair区別、#1121/#1174の実Effect、#267 Shared Acceptance |
+| **T16 Proposalの表示と開示** | 最適化候補やOwner/ScoreをAcceptedと表示する／非公開Dataの追加でPublic図の位置・候補数・評価を変える | #3250の候補証拠、#2516/T06の二世界、#1124 Studio |
+
+**優先順・停止線**: #1124の実CLI→同一Workbench Consumer結合を最優先のまま維持する。T14は既存#3250/#1132の*同じAccepted Sourceと解析範囲*を持つread-only結果が得られた後、T15/T16は委譲/Current PolicyのOwner証拠が揃った場合のみ検証を起動する。新たなSubsystem ID正本、最適化エンジン、Graph schema、権限主体、実行Provider/DB移行、トランザクション制御をTEAに導入しない。**T14〜T16は設計Caseであり、Go/Node・実Source/Policy/Studioの試験もOwner採用もNOT RUN。**
