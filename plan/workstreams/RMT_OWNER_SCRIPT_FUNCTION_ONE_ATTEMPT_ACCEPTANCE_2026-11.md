@@ -820,3 +820,28 @@ RMT E01/02の独立Requiredには、単に名前が見つかっただけでな�
 この章で**E Product SQL実行、実Header/Lines Rowset、旧X-TEA Windows Driver、実Host/MCP/SHO、Owner正式意味受理は新たに実施していない**。C Route隔離PGはReferenceの有限成功、Provider選択は宣言解決、Context11 Replyは限定候補取得。G1/G2はUNQUALIFIED。次は#2586のE Route Query実SQL＋status→実PG Reader→Function Data Context／Consumer一試行を、#1163同一Attempt Packetと#2514独立Expectedで実証。その後に明細全L・Handoff/Disclosure・二入口保存前拒否・実K/O/業務Bへ接続する。新Go/Fixture/Scenario/Hostの第二正本は追加しない。
 
 今回の変更は本RMT計画Markdown 1ファイルのみ。変更前HEAD fc8f8b83f4f1b82ab1920027ce8529bb15b19250 の[Health #42391972484](https://github.com/hat47x/tei-platform/actions/runs/42391972484)はcompleted/success。**新HEADのCIは別結果が出るまでPASSとしない**。
+
+## 22. 11/8追加：Browse操作契約の実効性と部分テスト受領をP0-R1の次の判別にする
+
+§14/§18/§21ですでに特定した**唯一の初回不足辺**（Eの`BuildBrowse`定義投影後、選択Query/SQL Source→実物理Provider Read→Rowset/Function Contextが未接続）を置き換えない。2026-11-08現行main `5c28427b4e705f0428d2dc2f8e065892fc96d607`の4 Source（`patterns/recent-orders.tei`、`queries/recent_orders.tei`、`queries/recent_orders.sql`、`internal/applicationview/browse.go`と`cmd/tei/cli_view.go`）を直接再照合。**新しい発見は、実Readができた後もPatternのフィルタ・整列・範囲契約の各一項目を別に検収しなければならないこと**である。
+
+| 現行Sourceで確かめた契約 | Source-staticに確認した差 | 初回Product Read後の既存Caseに追加する独立判別・合格上限 |
+| --- | --- | --- |
+| **Filter / parameter** | Patternは`filter sales.order.status {eq ne} parameter status`、Queryは`input status std.code`、現SQLは`where status = :status`。`BuildBrowse`は`FilterRef`を返すが入力値や演算子を実SQLへ実適用しない | **HR-01/02**：`eq`の値・型・selected SQL+bindを実証する。`ne`は許可UI選択肢だが、固定SQLが`ne`を実現したとは認定しない。実Provider/上位Operatorの明示実装と負例がなければ`ne`実行資格はunknown。未bind、NULL、誤値、異Tenant/同名別SQLによる偽一致を分離 |
+| **Order / page** | Patternは`sort sales.order.status asc`と`page-size 20`を宣言。一方、現SQL原文には`ORDER BY`/`LIMIT`がなく、BrowseViewはSortRef/PageSizeの**定義値**を保持するだけ | **HR-03**：21件以上・同statusのtie・2ページ・途中追加/削除の反例で、実行側のOrder/Limit/Continuation/Snapshotを計測する。単なる昇順という表示の存在や「20件返った」だけで安定Order/完全性としない。SQL外の実変換があるなら実呼出し位置／処理済み行を証拠化 |
+| **非出力列 / 対象粒度** | 現Query resultは`order_id`/`customer_id`の2列、`status`は非出力のFilter/Sort依存。SQLにTenant述語はなく、明細Lineも出力しない | **HR-02/04/05**：非出力statusが実DB Predicate/Sortで評価されたかとConsumerの公開2列を分ける。Tenant分離は物理Instance/RLS/明示Scopeの実証がある場合のみ主張し、**EのSourceに存在しないTenant列やLine2件をEの独立Expectedに紛れ込ませない**。RのOwner TargetSet L/明細は別Read/別Claim |
+| **SQL source と実Dialect** | `sql postgres file "recent_orders.sql"`のSourceと`:status`、`sales.order`という表記は見える。Product CLI `view`のBrowse分岐は`applicationview.BuildBrowse`を呼んで定義だけ返す | **HR-01/02**：実SQL byte→選択Dialect／実テーブル識別・Named Parameter変換→Provider SQL/args→別観測のRow IDを一致させる。原文のPostgreSQL適否・escape/quote変換・実接続を静的推測しない。UNBOUND_DATASOURCEは別の未充足Guard、宣言上のPlugin selectedは物理Connectionではない |
+
+### 22.1 他レーンの「限定PASS」を一つのRead資格に足し算しない
+
+- [Draft #3365](https://github.com/hat47x/tei-platform/pull/3365)は既存6-Step pinned Scenarioへの**部分受領目録**を試験し、`notObserved`と`untestedConfirmed=[]`、局所Stepの肯定と全体Coverage `unknown`を分離。exact HEAD `1e2531fede563ed4b1d32cca0e78ccaf69fe364c`の[専用Dogfood CI #42394673357](https://github.com/hat47x/tei-platform/actions/runs/42394673357)と[Repository Health #42394673331](https://github.com/hat47x/tei-platform/actions/runs/42394673331)はcompleted/success。ただし**test-only投影、部分目録コピーの7反例、Draft未統合**。E HR-01/02で実Reader Caseが見当たらないことを「未テストが確定」へ変換しない。必要Caseがdiscovered/attempted/actual PASSかは既存#1180/#2514/#1163へ確認する。
+- [Draft #3378](https://github.com/hat47x/tei-platform/pull/3378)はCLIとStudio Hostで同じData/Rule/Relationの**直接Inspect**結果を比較する製品Go試験候補。両方とも`operations.InspectSubject`へ直接進むため、成功してもPlugin Provider呼出し／`order_entry.recent_orders`の実SQL Read／WebViewへの実Row受領にはならない。照合時exact HEAD `d871afc75ca196fd05d0a4329cb7efb33020d271`のHealth #42396412440はqueued、**PASS未認定**。D1 InspectorをP0-R1の前提にしない。
+- [Draft #3379](https://github.com/hat47x/tei-platform/pull/3379)の過去`database-provider`選択Evidenceは、`ruleFingerprint`が変われば同じPlugin/Version/能力IDでも再利用失格となるcharacterization候補。現main #3350のselected数補正は既存の履歴として維持し、実Provider Build/Load/Invoke/現在Grant証明とは分ける。照合時Health #42396431442はqueued、**PASS未認定**。P0-R1では実選択Rule/Provider版をW1〜W4へ束縛して流用不可を判定するだけで、Verified BOMを先行Hard dependencyにしない。
+
+### 22.2 既存Issueへの最小受渡し／No-go
+
+- **#2586 HR-01/02を先行**：Eに一意の実Connection/Source SQL+Status Bindを与える合成隔離環境で、固定Independent Expectedと実Provider 2列Rowsの一往復を先に検収。実Readerへの未接続なら`product-read-not-connected`で止め、`BuildBrowse`のResult Projectionを実Rowsetに格上げしない。**次の限定受入**として`eq/ne`、sort/page、hidden `status`の実行適合をHR-02/03へ追加する。新CLI Command/第二SQL Engineを勝手に設計しない。
+- **#2622/#2611**：`sales`→`sales_core`→Physical Instance、実選択Dialect/Placeholder/SQL/args、statusの非出力依存、`ne`・stable pagingの真のRuntime能力を`supported/unsupported/unknown`で実測。未Binding、未許可、partial、empty、data-redacted、無結果とSQL失敗を同じ0件へ正規化しない。
+- **#1163/#2514**：Query原文、Pattern操作意図、実Applied Filter/Sort/Page/Scope、Readerの実Rowset/Read epoch/extent、独立Expected、Case receiptの実受領と完全性を**同じE Attempt**へ束縛。別W/C実PGのPASS、CLI/Studio Inspect、Draft部分目録の局所PASSをEの実Read資格に加算しない。必要なら#2516が低権限公開Bodyの二世界対照を担う。R原典Parity／K EffectReceipt／Owner Bは別Claimで保留。
+
+**現況**：Source-staticの契約比較と既存別HEAD CI確認を実施。新しいE Product Go/SQL/実PG/Studio実Read、Windows旧Driver、実Owner受理、同一Functionの独立PG Rowsetは**NOT RUN／UNQUALIFIED**。既存G1/G2/G4、#2586/2622の正式Owner基準、新Runner/Host/Proof Registry/Scenario正本を変更しない。#2783はDraft維持。変更後HEADのCIは新結果が出るまで未認定。
