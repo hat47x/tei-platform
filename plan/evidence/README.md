@@ -82,4 +82,4 @@
 
 - [DSH外部HarnessのHost棚卸し](DSH_H6E0_HOST_INVENTORY_2026-11-07/README.md)（#2515 H6-E0。Tool ProcessからOS・mount・環境変数・loopback到達性を列挙し、read-onlyのConstrainedLanguageと危険modeの差、親の環境変数が子へ継承されないことを観測。別Host・実Egress制御はNOT RUN）
 - [DSH外部HarnessのLane分離](DSH_H6E4_LANE_SEPARATION_2026-11-07/README.md)（#2515 H6-E4・#2509。ディレクトリ分離だけの2 Laneで、各Laneが相手Laneの合成canaryをcompletedで読み、モデル入力とSession Logへ載ったことを記録。worktreeだけでは分離にならない。別Identity/ACL/mount/egressの実拒否はNOT RUN）
-
+- [DSH `workspace-write` の書込み・読取り非対称](DSH_WORKSPACE_WRITE_ASYMMETRY_2026-11-07/README.md)（#2515 P0-a・H6-E1。宣言root外への書込みは`UnauthorizedAccessException`で拒否されファイルも作られない一方、同じroot外のファイルは絶対・相対pathとも読めた。`DSH_PERMISSION_MODE`は空、`LanguageMode`はFullLanguage。読取り拒否の実OS構成はNOT RUN）
