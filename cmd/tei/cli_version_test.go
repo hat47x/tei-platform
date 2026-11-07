@@ -133,4 +133,34 @@ func TestVersionCommandInBuiltProcess(t *testing.T) {
 	if _, code := run("version", "-workspace", "."); code != 2 {
 		t.Fatalf("version must reject unrelated flags: exit=%d", code)
 	}
+
+	// #2993: with -json, an argument failure must leave standard output empty
+	// and report on standard error, so a caller may parse stdout whenever the
+	// exit code is 0. The helper test fixes the writer; this one fixes the
+	// streams of the real process.
+	for _, args := range [][]string{
+		{"version", "-json", "-x"},
+		{"version", "-json", "-workspace", "."},
+	} {
+		command := exec.Command(binary, args...)
+		command.Env = append(os.Environ(), "GIT_DIR=")
+		var stdout, stderr bytes.Buffer
+		command.Stdout, command.Stderr = &stdout, &stderr
+		err := command.Run()
+		code := 0
+		if exit, ok := err.(*exec.ExitError); ok {
+			code = exit.ExitCode()
+		} else if err != nil {
+			t.Fatalf("run %v: %v", args, err)
+		}
+		if code != 2 {
+			t.Fatalf("argv=%q: exit=%d want 2", args, code)
+		}
+		if stdout.Len() != 0 {
+			t.Fatalf("argv=%q wrote stdout=%q; a -json caller must be able to parse stdout at exit 0 only", args, stdout.String())
+		}
+		if stderr.Len() == 0 {
+			t.Fatalf("argv=%q reported nothing on stderr", args)
+		}
+	}
 }
