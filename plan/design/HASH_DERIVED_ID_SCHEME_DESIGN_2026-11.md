@@ -448,3 +448,22 @@ flowchart TD
 この図の`D→H`も**未接続の破線**である。`CompareDeclaredSourceIndexRead`は独立したGo Reference関数で、現`hashid-probe` CLI／正式Generatorへは結線していない。図中の`A`と`T`も別Ownerであり、図に記載があることは実行・許可を意味しない。
 
 **次のP0受入条件**：既存#1017/#2595/#1124において、同一Case・Reader/Open Handle・Source Set・Consumed Bytes・Attempt／Revision証拠を観測し、`Index`をCallerが書き換えた場合と、変更後に同じContent Hashへ戻した場合の双方を反例にする。そこで初めて`Source Reader Verified`と`Accepted`を別の資格として論じる。Hash IDのReference側ではそれまで`unknown`とする。
+
+
+### 9.10 論理Subsystem・物理Target・用途相対開示の分離（2026-11-07、採用前設計）
+
+[Subsystem分割 #3250](https://github.com/hat47x/tei-platform/issues/3250)は、CRUD更新凝集度／越境CUD／Effect/Txを使う**論理的分割候補**と物理配置・Owner Authorityを明確に区別する。Hash由来IDはこの区別の境界に置く**Target物理名の候補**であり、Subsystemを分割しただけで正本ID・DB PK・Artifact Fingerprint・Delivery Keyを自動生成し直さない。
+
+| 区分 | 使うべき独立の意味 | 自動同一視を禁止する相手 |
+| --- | --- | --- |
+| **Logical Subsystem** | Data/Function/Procedureの変更・更新責任、設計分割候補、受理済みMeaning | Source Scope、Deployment Unit、DB/Schema、Target物理Namespace |
+| **Qualified Source Scope + Identity** | どのSource／Workspace／Roleに属する意味参照か。既存#1120/#1124 | Hash Scheme Scope、表示/行ID、短い生成文字列 |
+| **Scheme.Scope + Scheme.Purpose** | ハッシュ計算の決定論的ドメイン分離。明示変化は異なる候補IDを作る | 変更後の業務Identity／Owner／Targetへの移動・移行受理 |
+| **TargetProfile.Namespace** | 保存先側の実文字集合・照合順序・衝突空間／一意性の**Caller宣言** | Subsystem内所有、Source Rev、実DBやファイルストアの保存資格 |
+| **Execution/Delivery Attempt** | 実Builder／ETL／MFTの消費・発行・配送・Receiptと現在性 | Hashの一致・ModelRevisionの一致 |
+
+特に「Subsystem AのレコードをBへ分ける」変更は、業務Identityの移管、Sourceのrename/Scope変更、物理Targetの新配置・移行、旧IDの参照保持、権限・Effectの委譲という**独立したDecision**を要し得る。Hash IDの`Scheme.Scope`を新Subsystem名に自動変更して正本IDや物理名を一括再発行してはならない。旧表現と新表現の並存・dual-read／mapping／rollbackはW5の別Owner Gateに維持する。Read-only候補Projectionは受理前に旧・新SourceからのEvidenceを混同しない。
+
+[用途相対Construction Context #2516](https://github.com/hat47x/tei-platform/issues/2516)および[認識的文脈 #958](https://github.com/hat47x/tei-platform/issues/958)も併用する。Studio／AI設計支援／CLI／ETL Consumerごとに、`HashIdText`だけでなく検証に必要な`SchemeWire`／Source Index・Revision／TargetProfile／上界／未決事項を**受理済み開示Policyに従って**投影する。公開できないSource/主体/割当を空文字や「存在しない」に置換せず、`withheld`または`unknown`と区別する。発行者が供給したClaimの一致はDisclosure済み・有効Grant・Verified Readerを示さない。
+
+**後続の最小反証候補（未実行）**：同じSource BytesでSubsystemだけ変更／Scheme Scopeだけ変更／Target Namespaceだけ変更／表示レイアウトだけ変更の4件を直交させる。意図的にHash出力の変化を許す場合でも、Source Identity、既存Target Binding、実Effect、開示資格がその変更だけで確定しないことを確認する。適格性の最終判断は既存#3250/#1120/#2516/Target Ownerに委譲し、新Core Scope enumや第二Acceptanceを導入しない。
