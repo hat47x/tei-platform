@@ -325,3 +325,60 @@
 - **#3030 / #988 / #2823（Authoringと実Read）**：旧`*.tei`でのReceipt/Lookup成功と、未実装の新`*.tei.md`定義の実消費を別に扱う。同一Meaning/Source/Revision・Operationでつながっていない別々のCI成功を製品一往復へ合算しない。
 
 **状態**：main #3124/#3127/#3118の静的実Sourceと既存テスト/PR記録、計画への引継ぎに基づく**設計上の矛盾候補と検収の補強**。今回のR/O対照を実Go/PG/Windows/GUIで新たに走らせたものではない。Ownerが公開`persisted`契約の意味を修正採用したわけでも、実Provider・Resource Postimage・正式Business受理が成功したわけでもない。第二Provider/Host/Runtime/Meaning Registry・新業務状態表は作らない。
+
+## 13. 11/7横断追補：標準データ構造と標準表現型を独立に定義し、具体的表現はFunction内へ配置する（設計・未受理）
+
+### 13.1 三視点に対する新しい整理と既存Ownerの境界
+
+X-TEAではDBテーブルの1:1・1:NトポロジーをXFxxxの単票/明細機能種別に結び付け、機能の連携で全体の画面を覆う構成が中心だった。TEIでは以下を**別の記述単位**として取り扱う設計案を採る。標準表現型の候補語彙そのものをTEI Coreの固定UI enumに直ちに採用するものではない。
+
+| 記述単位 | 意味・責務 | ここへ置かないもの |
+| --- | --- | --- |
+| **標準データ構造（Data Shape）** | Scalar/Record/Collection/Relation/Tree/Graph/時系列/空間等の形と、Identity・粒度・多重性・順序・NULL・時間・完全性の制約。DBテーブルから独立 | XF型・UI widget名・画面レイアウト・Host Grant |
+| **標準表現型（Representation Kind）** | Panel/Tab/Text Input/単一・複数選択/Toggle/Slider/Table/Tree/File-like/各種Graph等の**再利用可能な表示・入力方式の契約**。必要な値域/形・表示/操作適合・情報損失を記述 | 特定業務のEntity、業務Rule、利用者の現在権限、単独で成立する画面/機能Instance |
+| **Function Data Context** | Functionが使うData Shapeの対象・Relation path・Field・Record grain/Result grain・必要集合/取得Scope・選択時点を特定 | Data Modelに関係があるというだけの暗黙取得、Renderer固有の意味 |
+| **Function内のRepresentation Instance/Slot** | 選択した表現型をFunctionのData Context/Roleへ**具体的に束縛**して配置。表示/入力/選択/Navigation/任意のAction Offerを合成 | 新たなAccepted Meaning/権限正本、SQLやDB更新を直接確定するWidget |
+| **Business Procedure・Action / Host Effect** | 手順・業務上の判断・受理対象の版を定義し、ViewChangeを既存型付きIntent/Command/Providerへ渡す | Tab移動・Slider操作・Button表示だけから推論した業務責任、承認・実Commit |
+
+**所有規則の提案**：再利用可能な*表現型の定義*は独立して存在してよいが、**データへ束縛された具体的な表現Instanceは必ず何らかのFunction/Tool FunctionのContext内に所属**する。Functionは表現を0個（Headless/Batch）、1個、複数個持てる。StudioのData InspectorやSHOのPreviewも、業務機能の第二正本ではなく「Inspect/PreviewというTool Functionが生成した派生表示」として説明できる。画面構成・Slotの入れ子構造をData Model上の1:Nや業務フローの階層へ自動転写しない。
+
+この境界は既存[#2507](https://github.com/hat47x/tei-platform/issues/2507)のRequired Data Shape/Required Operation/Presentation Bindingに**Instance所有規則を追加する差分**である。データ形状の正本は#1126/#2495、形状間ProjectionとLossは#2497、Function Context/Patternは#2506/#2507、標準CRUD生成は#1127、Renderer/Framework/案件Slotは#997、Studio編集逆写像は#1124、表示編集からActionへの型付きIntentは#2500、実Host/Providerの資格は#1174が所有。ここで第二のRepresentation Registry/Parser/Owner Meaning/Hostを設けない。
+
+### 13.2 型の独立性とFunction内での適合を混同しない
+
+| 表現型の類型と候補 | 必要な束縛・適合の例 | 保持・非推論 |
+| --- | --- | --- |
+| **配置容器**：Panel/Tab/Split | 同一Function内の子Slot・表示順・Selectionを配置。容器自身には業務値の粒度を要求しない場合がある | Tab数・順序≠DB Relation/Cardinality/Workflow Step |
+| **単一値**：Text Box・Checkbox/Toggle・Slider | Value Role/型、nullable/未取得/非開示、単位・精度、Sliderなら有効範囲・刻み・値変換 | NULLをfalse/0へ潰さない。閾値やstepを画面側から業務Ruleとして採用しない |
+| **選択**：Radio/Select・Checkbox Group | 選択肢のIdentity・単一/複数性・値域・現在の候補集合と取得完全性、Source revision | 画面に出た選択肢が全対象とは限らない。選択だけでEntityやRelationを自動生成しない |
+| **集合**：Table/List・Header/Detail | Row/Entity/Result grain、Identity、多重性、ソート、ページ・Filter・取得範囲。Header/DetailのRelation pathを明示 | JOIN増幅/集計表示/ページ分割後の行を、実Entity全件と誤認しない |
+| **構造**：Tree/File System風/Graph | Node/Edge identity、方向・複数親・循環・辺属性、Selection、表示に使った展開規則 | Graph→Treeで隠れた辺を削除しない。「ファイル表示」≠実Filesystemへの読書き権限 |
+| **解析・可視化**：各種Chart/時系列/地図等 | Aggregate grain、Window/Snapshot、欠損・NULL・単位・CRS、非可逆な写像を明示 | Chart点・棒/折れ線を、業務Rowへの編集可能な1:1逆写像とみなさない |
+
+一つのData Shapeから複数の表現候補を選べる一方、一つの表現型は異なるData Shapeへ適用可能である。ただし**何を保持・失うか、Data/Value/Roleの必要条件、Function Actionとの関係**をFunction InstanceのBindingで検証する。名前やWidget種別の一致だけで自動適合としない。Displayが可能でもEdit/Select/Action Offerが可能とは限らず、実行可能性と開示可否は現在の権限・Provider・Consumerで独立判定する。
+
+### 13.3 現行mainの観測と実装方針を混ぜない
+
+[main統合 #3145](https://github.com/hat47x/tei-platform/pull/3145)の[固定Source実測](https://github.com/hat47x/tei-platform/blob/main/plan/evidence/OPERATION_SURFACE_DECLARED_PATTERN_GAP_2026-11-07/README.md)では、同じ参照Workspaceへ見積候補を重ねて`function-definition`にPattern 6件が現れWorld/Model revisionも変化したが、`tei operations`は依然**derived 8件・declared 0件・gaps 0件**だった。現main `internal/operations/surface.go`（確認Blob `ad414e82a19fb7572f02a2ea7c1e8bcd12434bbe`）では生成側で`Origin="declared"`が付く経路を確認できず、設計W3未着手という記録と整合する。
+
+この実測から言えるのは、**宣言したFunction PatternのActionが現行の導出Operation Surfaceへ自動反映されていない**ことまで。だからといってPatternを無条件にCRUDへ変換する/一覧へ追加する判断をしない（Pattern `command`とOperation `list/read/create/update`の意味適合・効果が未決）。新しいRepresentation Slot/画面側の操作Offerが必要なActionを解決できるのか、`function-definition`のSourceと現行Operation Surface/Service Carrierを**明示的に接続する受入**が先となる。
+
+[main統合 #3120](https://github.com/hat47x/tei-platform/pull/3120)でStudioの検証画面にSource版付き・`Accepted=false`の修正案表示が加わったことも、**表現と正式な採用・実行の分離**を裏付ける限定Referenceであり、表現型体系の採用/実GUI統合を証明しない。
+
+### 13.4 一つの受注Function/同一Data Contextで既存独立検証基準へ加える反例
+
+以下は既存#2586の親H・明細D1(2行)・独立配送D2(3行)の**同一公開合成Fixtureと独立期待値**へ追加する比較観点。別のFixture正本・番号体系を作らない。
+
+1. **同じD1、Table↔Tree↔Chart/CUI**：表示を切替えてもL1/L2のEntity identity、必要ReadのScopeとOwner意味は不変。JOIN 2×3=6は6業務Entityにならず、集計値1本は1レコードへ無根拠にWriteBackできない。
+2. **Panel/Tabだけ追加・並べ替え**：DataのRelation、Business ProcedureのStep順、Action Effectは変化しない。別Functionへの遷移をLayoutのTab構造から推論しない。
+3. **Graphの多重親をTreeへ投影**：第二親/循環/Edge identityは投影損失を明示。Tree上のMove/Deleteを元Graphへ曖昧に逆写像しない。
+4. **Single/Multi/ToggleのNULL・partial**：未取得/非開示/NULLをfalseや未選択と断定しない。候補集合が部分取得なら「他の候補なし」と言わず、現在Selection epochを固定。
+5. **Sliderの数値範囲・単位**：例えば税率/金額/時間を同じNumber Sliderへ表示できても、Role・scale・丸め・業務閾値・承認条件の同一性は成立しない。UI min/max/stepはOwner受理済みBusiness Constraintに昇格しない。
+6. **Function Patternの宣言追加**：#3145のとおり現行`tei operations`が不変でも、それを「Actionが存在しない」「Actionが選択済み」「全Offer検証済み」のいずれにも転用しない。必要なPattern/Capability/Source/Operation identityを未接続として報告。
+7. **同じFunction Contextに複数Widgetを配置**：一方のButtonやChartの表示可否を、他Slotが参照する非公開Dataset/Grantの存在へ連動させない。Action Offerを出す場合は現在Disclosure/Target/Host Grantと実Provider Routeを再照合。
+8. **古い選択を経由した編集**：表の行L1選択後に選択ContextがL2へ変わり、旧Graph/Sliderの操作が遅延到着した場合、旧epoch/Source/RowVersionから新対象へのActionを生成しない。
+
+**実施順**：P0は#2586で同一Read-only Context→表/木/グラフ/CUIのCandidate適合・Identity保持/損失・未対応を比較すること（#2497/#2507）。次に#997/#1124でFunction内の複数SlotとRendererの差替え/編集逆写像を確認し、#3145のOperation Surface Gapを#1127/#2507のOwnerへ渡す。最後に必要なActionだけ#2500/#2598/#1174で現在資格・実Receipt/保存後独立Readを確認する。**Headless Functionが画面なしで成立すること**も正例に含める。
+
+**証拠資格**：ここまでの表現型分類・Function所有規則・具体的Binding契約は**設計案／Owner未受理**。#3145の既存CLI実測と#3120の局所試験は確認できるが、今回のTable/Tree/Chart/Widget比較、`*.tei.md` Reader、Web/Studio GUI、実Provider・Host・Owner Meaning/Business Acceptanceの実行は**NOT RUN**。新UI Core、独自Host、二重意味正本、万能表現型Editorを導入しない。
+
