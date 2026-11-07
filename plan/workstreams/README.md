@@ -20,3 +20,4 @@
 - [判断材料: マイルストーンと契約枠への位置づけ](MILESTONE_CONTRACT_DECISION_BRIEF_2026-11.md)
 - [上流計画から担当作業への展開](UPSTREAM_BREAKDOWN_2026-09.md)
 - [X-TEA設計を参照する際の代替手順](UPSTREAM_XTEA_DESIGN_FALLBACK_PROTOCOL.md)
+- [TEI自身の設計をCLIで扱うドッグフーディングの実測と課題](TEI_DOGFOODING_CLI_SELF_DESIGN_2026-11.md)（#3149。read-only CLIでTEI自身の設計記述を発見・読取り・検証し、10件の課題を起票対象として整理。修正は未着手）
