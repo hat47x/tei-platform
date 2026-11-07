@@ -92,6 +92,131 @@ def negative(proc: subprocess.CompletedProcess[str], *diagnostic_fragments: str)
             )
 
 
+
+def scoped_step_coverage(required: set[str], received: list[dict],
+                         scenario_sha: str, actual_source_sha: str,
+                         end_received: bool) -> dict:
+    """Read-only scope projection over independently checked real CLI receipts.
+
+    Absence in a partial or malformed inventory is never proof of an untested
+    obligation. Presence in a complete pinned *Scenario* is still not proof
+    of all Product requirements, semantic Rule coverage, or current Grant.
+    Caller supplies the independent required step set and actual Source digest.
+    """
+    if scenario_sha != actual_source_sha:
+        return {
+            "inventory": "source-mismatch",
+            "localObserved": [],
+            "notObserved": sorted(required),
+            "untestedConfirmed": [],
+            "productCoverage": "unknown",
+            "claimCeiling": "unqualified",
+        }
+    indexed: dict[str, bool] = {}
+    for row in received:
+        if not isinstance(row, dict) or not isinstance(row.get("stepId"), str):
+            return {
+                "inventory": "invalid-receipt",
+                "localObserved": [],
+                "notObserved": sorted(required),
+                "untestedConfirmed": [],
+                "productCoverage": "unknown",
+                "claimCeiling": "unqualified",
+            }
+        key = row["stepId"]
+        if key not in required or key in indexed:
+            return {
+                "inventory": "unexpected-or-duplicate-step",
+                "localObserved": [],
+                "notObserved": sorted(required),
+                "untestedConfirmed": [],
+                "productCoverage": "unknown",
+                "claimCeiling": "unqualified",
+            }
+        indexed[key] = row.get("verified") is True
+    verified = {key for key, is_verified in indexed.items() if is_verified}
+    complete = (end_received is True and set(indexed) == required
+                and len(indexed) == len(required) and all(indexed.values()))
+    return {
+        "inventory": "complete-for-one-pinned-scenario" if complete else "partial",
+        "localObserved": sorted(verified),
+        "notObserved": sorted(required - verified),
+        # No negative test-absence verdict: the Scenario step listing is not
+        # a verified complete inventory of all possible tests for a Rule.
+        "untestedConfirmed": [],
+        "productCoverage": "unknown",
+        "claimCeiling": "six-pinned-scenario-steps-only" if complete else "partial-only",
+    }
+
+
+def scoped_step_selftest(required: set[str], actual: dict[str, dict],
+                         scenario_sha: str) -> tuple[dict, dict[str, str]]:
+    """TT-105/106 using validated real CLI observations plus copy-only controls."""
+    receipts = [{"stepId": key, "verified": True} for key in sorted(actual)]
+    baseline = scoped_step_coverage(required, receipts, scenario_sha,
+                                    scenario_sha, True)
+    if not (baseline["inventory"] == "complete-for-one-pinned-scenario"
+            and baseline["localObserved"] == sorted(required)
+            and baseline["productCoverage"] == "unknown"
+            and not baseline["untestedConfirmed"]):
+        raise AssertionError("actual six-step bounded observation not retained")
+    controls: dict[str, str] = {}
+
+    # TT-105: this synthetic *partial receipt* omits an independently
+    # required step. It is NOT proof that the step was never tested.
+    dropped = [entry for entry in receipts if entry["stepId"] != "validate-denied"]
+    missing = scoped_step_coverage(required, dropped, scenario_sha, scenario_sha, False)
+    if not (missing["inventory"] == "partial"
+            and "validate-denied" in missing["notObserved"]
+            and "validate-positive" in missing["localObserved"]
+            and missing["untestedConfirmed"] == []):
+        raise AssertionError("TT-105: partial inventory falsely established untested")
+    controls["TT-105-partial-step-inventory"] = "absence-unqualified"
+
+    # TT-106: a narrow positive witness survives lost unrelated inventory,
+    # while all-requirement coverage remains unknown.
+    if missing["productCoverage"] != "unknown":
+        raise AssertionError("TT-106: local coverage leaked into whole Product")
+    controls["TT-106-positive-local-but-global-unknown"] = "bounded-observation-maintained"
+
+    # Receiving every step without an end witness does not close the report.
+    incomplete = scoped_step_coverage(required, receipts, scenario_sha,
+                                      scenario_sha, False)
+    if incomplete["inventory"] != "partial" or incomplete["productCoverage"] != "unknown":
+        raise AssertionError("complete-looking inventory missing end marker")
+    controls["TT-105-complete-looking-without-end"] = "incomplete"
+
+    # A fake end marker with a missing step is not a closed inventory.
+    partial_with_end = scoped_step_coverage(required, dropped, scenario_sha,
+                                             scenario_sha, True)
+    if partial_with_end["inventory"] != "partial" or partial_with_end["untestedConfirmed"]:
+        raise AssertionError("missing receipt was misclassified as complete")
+    controls["TT-105-false-end-claim"] = "incomplete"
+
+    changed = scoped_step_coverage(required, receipts, scenario_sha,
+                                   "sha256:different-source", True)
+    if changed["inventory"] != "source-mismatch" or changed["localObserved"]:
+        raise AssertionError("foreign Source digest qualified an old receipt")
+    controls["stale-source-receipts"] = "unqualified"
+
+    duplicate = scoped_step_coverage(required, receipts + [receipts[0]],
+                                     scenario_sha, scenario_sha, True)
+    if duplicate["inventory"] != "unexpected-or-duplicate-step":
+        raise AssertionError("duplicate Step receipt was accepted")
+    controls["duplicate-receipt"] = "unqualified"
+
+    unverified = [{"stepId": x["stepId"], "verified": False
+                  if x["stepId"] == "validate-positive" else True} for x in receipts]
+    verdict = scoped_step_coverage(required, unverified, scenario_sha,
+                                   scenario_sha, True)
+    if (verdict["inventory"] != "partial"
+            or "validate-positive" in verdict["localObserved"]
+            or verdict["untestedConfirmed"]):
+        raise AssertionError("unverified receipt became qualified positive")
+    controls["unverified-positive-receipt"] = "partial"
+    return baseline, controls
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", type=Path, default=Path("."))
@@ -303,6 +428,7 @@ def main() -> None:
         always_satisfied = {rule: "satisfied" for rule in RULES}
         assert always_satisfied != independent_rule_properties(denied)
 
+    scoped_inventory, scoped_controls = scoped_step_selftest(STEPS, measured, digest(source))
     coverage = subprocess.run(["go", "tool", "cover", "-func", str(args.coverage.resolve())],
                               cwd=root, capture_output=True, text=True, check=True)
     last = coverage.stdout.strip().splitlines()[-1]
@@ -315,6 +441,8 @@ def main() -> None:
                           "requiredSourceRead": design["observations"]["requiredSourceRead"],
                           "sourceIndexFingerprint": design["observations"].get("observedFingerprints", {}).get("sourceIndexFingerprint")},
         "execution": "real built CLI, actual generated pinned Scenario commands",
+        "scenarioInventory": scoped_inventory,
+        "scenarioInventoryControls": scoped_controls,
         "tested": sorted(measured),
         "observed": measured,
         "independentRuleObligation": {
@@ -355,6 +483,8 @@ def main() -> None:
     print("PASS: 6 real pinned Scenario steps; "
           "6 actual CLI input/pin/plan rejection controls plus "
           "2 independent obligation/oracle controls; no injected Product code mutant")
+    print("TT-105/106: " + scoped_inventory["inventory"] +
+          "; observed local steps without claiming complete Product coverage")
     print("C0:", last, " / C1: unmeasured; overall requirements/NFR: not-qualified")
     print("Scenario SHA256:", digest(source), " / binary SHA256:", digest(cli.read_bytes()))
 
