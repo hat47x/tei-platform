@@ -24,6 +24,9 @@ type Request struct {
 type Result struct {
 	Outcome *semantic.Outcome    `json:"outcome,omitempty"`
 	Effect  *semantic.DataEffect `json:"effect,omitempty"`
+	// AuthorizationMode names the authorization decision that let this
+	// execution run. It is set by the Invoker, never by an Executor.
+	AuthorizationMode AuthorizationMode `json:"authorizationMode,omitempty"`
 	// Applied lists the data operations the executor actually applied. An
 	// executor that cannot enumerate them leaves it nil, and the record then
 	// holds only the declared and reported effects.
@@ -142,6 +145,7 @@ func (i Invoker) Invoke(ctx context.Context, request Request) (Result, error) {
 	if err := i.Authorizer.Authorize(ctx, request); err != nil {
 		return Result{}, &ExecutionError{Code: "COMMAND_UNAUTHORIZED", Message: err.Error(), Cause: err}
 	}
+	mode := authorizationModeOf(i.Authorizer)
 	var plannedEffect *semantic.DataEffect
 	if plan.Effect != nil {
 		plannedEffect = &semantic.DataEffect{Kind: semantic.DataEffectKind(plan.Effect.Kind), Data: plan.Effect.Data}
@@ -158,6 +162,7 @@ func (i Invoker) Invoke(ctx context.Context, request Request) (Result, error) {
 			return result, err
 		}
 		result.Persistence = i.observePersistence(ctx, request, declaredEffect(plan))
+		result.AuthorizationMode = mode
 		return result, nil
 	}
 	transaction, err := i.UnitOfWork.Begin(ctx)
@@ -186,6 +191,7 @@ func (i Invoker) Invoke(ctx context.Context, request Request) (Result, error) {
 		}
 	}
 	result.Persistence = i.observePersistence(ctx, request, declaredEffect(plan))
+	result.AuthorizationMode = mode
 	return result, nil
 }
 
