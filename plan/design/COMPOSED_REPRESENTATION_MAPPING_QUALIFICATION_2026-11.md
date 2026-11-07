@@ -448,3 +448,34 @@ main統合[Reference #3325](https://github.com/hat47x/tei-platform/pull/3325)は
 
 **本節の実行資格**：既存main統合済み#3304/#3325・#3296/#3299の実試験記録と、#3324/#3326の未統合Draft Source/CIの照合を既存設計票へ追補。新しい製品Go/PG/Studio/Graph/Host/MCP実試行と独立ExpectedのOwner意味受理は**今回NOT RUN**。この計画の変更自体は実装・製品受理を意味しない。新Parser/Resolver/Runner/Domain Registry/Host/Gate・第二Scenario正本は導入しない。
 
+<!-- tei-modeler-context-two-greens-selected-actual-effects-20261108 -->
+## 16. 必要Rule取得の二方式・Plugin Selected/Actual・CLI副作用を同じ製品受入へ接続（2026-11-08）
+
+本節は§12〜15の **P0-M（三視点・CRUD）／P0-R（Product実Read）／P0-C（同一Identity・Scopeの接合）**を維持し、新たにmainへ統合された実測を正確な段階へ割り当てる。Go/CLI実行の新しい正本・Plugin契約・Domain Registryを定義するものではない。
+
+### 16.1 Design Context：二つのTT-56実装は両方Green、ただし同じ資格ではない
+
+[Draft #3324](https://github.com/hat47x/tei-platform/pull/3324) HEAD `4f4b114aa826b1a603044c5eef34407f536f186d` は既存`inspect`をSemantic Validationの単一必須Ruleへ追加し、Required Rule／Attribute／Role／Source Index Anchorを突き合わせる**1 RuleのConsumer**。 [専用CI #42385606408](https://github.com/hat47x/tei-platform/actions/runs/42385606408) と[Health #42385606448](https://github.com/hat47x/tei-platform/actions/runs/42385606448)は固定HEADでcompleted/success。
+
+[Draft #3326](https://github.com/hat47x/tei-platform/pull/3326) HEAD `c2d2da10cc93022697204e66e83c30248b3810a0` は既存`source-index`の**subjectモードとは別のworkspace全件indexモード**を10番目の応答として追加し、公開合成Validation 3 Ruleの独立Requiredと照合する。[専用CI #42385726717](https://github.com/hat47x/tei-platform/actions/runs/42385726717) と[Health #42385726733](https://github.com/hat47x/tei-platform/actions/runs/42385726733) は固定HEADでcompleted/success。初回の`wrong-mode`失敗は**試験Consumerの取得モード誤認**であり、製品SourceにRuleが無かった証拠ではない。両PRは既存`tools/reference-issue-test-ability/context_gate.py`と同じCI/Design文書を変更しており、**同時に機械的mergeできるかは未確認**。CI Greenの足算だけでRequired情報の真の完結を証明しない。
+
+**統合時の独立対照（Owner #3262/#2514）**：同じSemantic Validation 1件（さらに他2件を加える拡張）に対し、(1)必須だけ欠ける整形式/同一FP、(2)subject/indexモード取り違え、(3)Index古版、(4)非Required欠落をそれぞれ両手法へ入力し、`required/discovered/loaded/parsed/returned/received` とUnknown理由、Byte/Tool応答量を比較する。一つの採用ConsumerがOwner決定した**用途別Required**を満たせば十分であり、「全件Indexがあるから全業務Ruleが必ず必要」とはしない。**選定までは両方Draft**、実MCP/外部Harness完全受領・T1-B・C1・正式Owner意味受理は未成立。
+
+### 16.2 宣言されたData／Plugin能力と、実行・適用・保存を切り離す
+
+| 確認対象 | mainの成立済み局所証拠 | 次の受入で要求する追加Witness・非推論 |
+| --- | --- | --- |
+| **Data役割→Application/Studio表示** | [#3334](https://github.com/hat47x/tei-platform/pull/3334) は税／為替／採番／休日という標準業務Dataの**宣言済みData ID・属性Role**を`ApplicationView.standardBusiness`とStudio表示へ投影した。Go/Node限定試験とCLI例の観測あり | Roleの表示は行レベルの税計算・為替換算・番号発行・休日判定の実実行でない。Function/Rule/Providerの実Consumerと同じMeaning/Scopeで再照合 |
+| **Capability宣言とEnvironmentの選択** | [#3337](https://github.com/hat47x/tei-platform/pull/3337) は参照Workspaceで`provides`12件に対し未選択を6件と出す**当時の参照実装**を統合 | 技術名`postgres`/`oracle`と能力IDの字面照合は誤判定し得る。[未統合 #3350](https://github.com/hat47x/tei-platform/pull/3350) は既存`SupportsDatabaseProvider`を使う参照修正候補で、未選択は4件に減る**別ルール／別Fingerprint**。現main参照の6件を実Provider不足と断定せず、#3350未マージの4件を採用済みとして報告しない |
+| **Pluginの実Selected→Actual Invoked** | main統合[#3300](https://github.com/hat47x/tei-platform/pull/3300) はCLIとStudioの直接`InspectSubject`呼び出し、旧Service Carrierの`application-runtime`専用Scopeを実Sourceで照合した | 同じProvider Contractの明示selected/invoked/Resultを**CLI・Studio 2 Consumer**で観測し、Provider B選択時にA実Invokeという負例を拒否。D1実Plugin配線は[#3301](https://github.com/hat47x/tei-platform/pull/3301)/#951/#1251の未実装領域。静的Go LinkとRuntime/Host Grantも別 |
+| **CLI read-only広告と環境副作用** | main統合[#3333](https://github.com/hat47x/tei-platform/pull/3333) は`tei commands` の`view.writeFlags`として`-operation-log`と`-lifecycle-state`を列挙し、`view -execute`による実ファイル生成とno-flag時の無生成を局所Go試験した | `effect:read-only`は**業務意味の非変更**であり、OSファイル・Trace・送出・外部DBの無効果の断言ではない。実Call Variant・Host Scope・Named Outputと実観測を一緒に記録する（#3182/#2515/#1174）。`writeFlags`は完全Effect Modelではない |
+| **Build側invokerとinvoked** | main統合[#3336](https://github.com/hat47x/tei-platform/pull/3336) はStage Driverが子Go Buildを起動し、実行ファイルdigest/argv/exitとディスク実Artifact digestを別観測できる参照を追加 | Stage1生成成果物自身がinvokerとなるL3のself-build、Product Plugin/Provider Bind、Owner Meaning/現在Grantは未証明。機能の`declared`・Build`included`・`consumer received`・`currently invocable`は別資格（#2831/[Draft #3283](https://github.com/hat47x/tei-platform/pull/3283)） |
+
+### 16.3 実証の順序・停止線（新Runner／第二資格表なし）
+
+1. **P0-Mの1 Subject／2 Canvas／複数Relation**：[#3263](https://github.com/hat47x/tei-platform/pull/3263)の合成Fixtureの実Go契約試験は[最新HEAD Health #42385303844](https://github.com/hat47x/tei-platform/actions/runs/42385303844)がfailure。Fixture Input/ExpectedのAI草案同士の内部一致やCanvas共有Occurrenceがあっても、製品TEI Loader→Graph/CRUD→Edge/Cell Source逆引き→Consumer受領のPASSにしない。実TEI Sourceから現行モデルを取り込める範囲を明示し、Sourceに無いRole/Relationを推定生成しない。
+2. **P0-Rの1 Function／1 Query／1 physical Provider**：`order_entry.recent_orders`のProduct SQLと`public.tei_web_scoped_orders_reference`の隔離PG Referenceは**別Statement/母集団**。Function→実selected Query/SQL byte+`:from`→physical Provider・実Rowset/Scope→Contextの最初の不足辺を[#2586](https://github.com/hat47x/tei-platform/issues/2586) HR-01/02で一つのAttemptへ接続。Plugin能力の環境selected／DB Instance存在／自動導出Operation／Read-only CLI表示を代替Witnessにしない。
+3. **P0-Cの2 Consumer**：Data構造とFunction-owned Presentation Instanceは別。Form/Table・Graph/CRUDが同じSemantic IDを表示しても、Source/Workspace manifest・Read Cohort・Role・Occurrence・Grain・現在のDisclosure/Grant一致を別に証明する。Plugin D1、Client Reaction/HTTP、Rule T1-B、SHO/SUI、書込みIntentと独立再Readは各Ownerの別のClaimにする。
+
+**状態／非主張**：これは現行mainの有限参照/Go/CLI実測と未統合Draftの差分を製品受入へ引き継ぐ**設計計画**。本節で新たなGo/Node/PG/CLI/Studio/EKI/SHO/Browser E2Eを実行していない。実三図/CRUD、実Product Read、Plugin二Consumer実Provider Invoke、Runtime Self-Build L3、未知RuleのT1-B、現Host Grant/Business Effect、正式Owner Meaning Acceptanceは**NOT RUN／NOT ACCEPTED**。既存#3262/#2586/#3263/#1251/#951/#2514/#1180/#2831のCase/Ownerへ追加し、第二Reader/Runner/Host/Parser/Authority/Registry・第二Independent Expected正本を作らない。
+
