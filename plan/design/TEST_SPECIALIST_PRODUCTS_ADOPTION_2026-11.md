@@ -1314,3 +1314,51 @@ QueryやGraphを扱う「不在に関するTest Pattern」は、Positive Witness
 5. **P2 C1・NFR・Effect**：Go Code C1/Scenario Rule判別/HTTP Graph Guard/現DB Effect/NFRは、それぞれ独立分母と実行証拠で検収する。全Stepの実行だけで業務・C1・SLO達成を名乗らない。
 
 **Claim ceiling**：§27の新実装は既存実CLIの受領済みStepと改変コピーを扱うbounded test-dogfood。真の外部Tool配送欠落、実Provider部分故障、Product全体Rule Universe、Method/Holdoutを隠したT1-B、Go C1・正式Owner受理を証明しない。新Source/Plugin Resolver、Test Runner、認可/Authority、専用Proof Storeは導入しない。
+
+<!-- tei-test-real-qualification-patterns-20261108 -->
+## 27. 2026-11-08：新しい局所実装を「対になった反例」で評価し、T1-Bの真のTestabilityへ接続する
+
+### 27.1 今回取り込む実装事実と、取り込まない上位Claim
+
+最新mainの[#3354](https://github.com/hat47x/tei-platform/pull/3354)は既存 `context_gate.py` 一本にTT-56の3 Validation/Focused Rule+Relation、全Source Index/Loader/Canonical Anchor照合を集約し、[PR exact-head CI #42391707962](https://github.com/hat47x/tei-platform/actions/runs/42391707962)で**11 CLI Reply・32局所Consumer判別**を確認した。main統合は確認済み、**統合後mainの別push成功は未確認**。既知T1-Aの第7 Stepも限定実行済みだが、**AIの未知Rule発見T1-Bではない**。
+
+別レーンの具体的な実例には、[merged #3353](https://github.com/hat47x/tei-platform/pull/3353)の**空集合でも未確認Handoffを完了としない**修正、[merged #3358](https://github.com/hat47x/tei-platform/pull/3358)の**休日Calendarの値域が閉じている場合に限り宣言外値を拒否**する局所実装、[merged #3350](https://github.com/hat47x/tei-platform/pull/3350)の**Provider能力を技術対応で解決**するReference改善がある。3件とも特定Code/Referenceの限定成果で、実業務の他者受領、未知暦全Domain、実Provider Invoke/Grantの合格ではない。
+
+進行中の[#3359](https://github.com/hat47x/tei-platform/pull/3359)はHookへ渡す宣言済み `reads` の事前検査候補だが、Providerからの取得やCLI/RunSequenceへの結線は未実証。[#3363](https://github.com/hat47x/tei-platform/pull/3363)は既存Capability Supports*による24 Binding中selected 22/missing 2の**read-only参照算定**を提案し、`editor.database_workbench` のmissingを直ちに製品不具合とはしない。[#3360](https://github.com/hat47x/tei-platform/pull/3360)は自己再構築可能な**参照Driver**についてStage1生成物がStage2を実駆動した局所L3 trueを実測したが、**cmd/teiのL3・全Source Closureではない**。それぞれの現実の観測を、テストPatternの独立対照へ変換する。
+
+### 27.2 Patternを単なる入力値集ではなく「性質を変える一軸と不変部分」の組にする
+
+Pattern候補の適用と判別に、少なくとも **(a) 対象のAccepted/Provisional obligation・Source、(b) 合法なPositive、(c) 変える一条件と期待するNegative、(d) 変えてはいけない他の条件、(e) 実Consumer/Entry/Expectedと必要Observer、(f) 適用条件/欠損時停止、(g) 版・Scope・Grant・開示、(h) 誤ってPass/Failになる既知対照** を要求する。これは#1180 Scenario／#2514 Independent Expectedを参照するread-onlyな推薦規則であり、新しいテストDSL、検証器、Oracle正本の追加ではない。
+
+**正と負の双方を持つこと**だけで判別力が保証されるわけではない。両者が別のTarget/SQL版やTenant、異なるSourceを使った場合は比較不適格である。また一条件の変更が他のRule/Effectを壊す場合は「目的のRuleを検出した」とは認定しない。未確認値を既定値で埋めると、異常が成立せずfalse-qualifiedになるため、**missing・null・empty・not-observed・partial・permission-deniedを入力契約上分ける**。
+
+### 27.3 他チャットの実装から得た「一軸差」候補
+
+| Test Pattern / 対照（TT-115〜TT-122） | 最小Positive ⇄ Negativeと独立に判定すること | 実証境界・Owner |
+| --- | --- | --- |
+| **TT-115 空集合のCompletion** | Targets=0・EmptyJustified=true、HandoffConfirmed=true ⇄ false。他条件固定でfalseをCompletionUnverifiedへ。Denyは確定拒否として保持 | #3353は既存semanticの局所修正・テスト、**実RecipientのReceiptは別**。#1125/#2514 |
+| **TT-116 開いた／閉じた暦値域** | 宣言されたCalendarDomainの合法値 ⇄ 宣言外値では拒否。一方Domain Valuesが未宣言ならopenであり「宣言外」として自動拒否しない | #3358の型値域局所実証、実HolidayRowsForCalendar自動配線・旧DBは未。#1126/#2514 |
+| **TT-117 HookのDeclared Reads** | 宣言済みAttributeだけを値ごと渡す ⇄ 未宣言Attributeを追加/宣言値が未観測なら実装呼出前に拒否。コピーへの後追い追加も拒否 | #3359 Draftの局所8件。CLI/RunSequence/Provider取得・実Hostは未。Hook Owner/#951 |
+| **TT-118 Plugin Capability選択の粒度** | DB Providerは`SupportsDatabaseProvider`で実対応 ⇄ 能力IDと技術名を文字列比較し誤unselected。選択済だがInvoke未観測の別Worldも比較 | #3350 main参照：unselected6→4（算定方式変更）。#3363は24 Binding中22 selected/2 missingのDraftで**製品Validationより広い参照**。#3279/#951 |
+| **TT-119 実Build再入主体** | Stage2 invoker digest = Stage1 artifact digest、同child recipe・実disks再照合 ⇄ invoker違い／異recipe／artifact違い | #3360はReference Driver限定のL3 trueであり、実TEI `cmd/tei` L3/G4資格ではない。#2831 |
+| **TT-120 技術失敗と業務不成立** | Numeric 0,nil はRule not-satisfied ⇄ Number nil,nil、Source errorはEvaluation failure。正常正値はsatisfied | #3351のGo test-only Draft、実Providerのpartial/permission deniedは別。#2514/#1180 |
+| **TT-121 部分Journalと原子的Receipt** | 完全なLog/Chainを独立PinでRead ⇄ 中途に壊れたJSONL行を挿入。前行が返ってもErrorを無視して「ログ全件、完了」としない。末尾削除をPinなしで検知可能とは言わない | #3357の共有JSONL Readerはmain、#3364のChain共有化はDraft。Receipt Owner #1163/#1174 |
+| **TT-122 同一Rule／別Consumerの非開示** | 同一許可Public SliceのW0/W1でPrivate Role件数のみ変更。CLI BodyだけでなくTool Reply・stderr・Session Log・保存sinkで許可外差異ゼロを要求 | #3309 DSH合成canaryは保存先の限定観測、OS/実外部Providerの安全非干渉は未。#2509/#2515/#2516 |
+
+上表は**各Ownerの既存Source・テスト・Expectedを参照した適用候補**であり、Referenceの実測をあたかも本試験で再実行したようには扱わない。互いに異なるドメインのCaseを「成功したテスト件数」へ単純加算しない。Positive/Negativeが同一Attempt/同一Dataset上で同一変異として独立比較できない場合は、`non-comparable`として残す。
+
+### 27.4 現実のT1-Bと製品Readを妨げない、二本の最短切り口
+
+**A. 既存Context/Scenario上のTT-105/106を実行優先**：main #3354のRule/Relation実CLIの既知限定Sliceに対し、①Scenario目録の最後を意図的に不完全にしても、現受信分に存在する**局所の実観測済みRule**は保持、②一覧に見つからないRuleを`untested`でなく`inventory-partial`、③全体Coverage分母はunknown、④完全な目録へ差し替える正の対照では局所の有無を厳密に決められる、という4対照を**既存test-only ConsumerとDriver Scenario出力だけで**判別する。元Source/Rule/Scenarioを改変せず、結論は局所。実装で不足するResponse End/required setは#3262へ返す。
+
+**B. 実Product Functionの最初のReadを別Ownerで並行**：#2586のE `examples/xtea-lowcode` の `order_entry.recent_orders` を固定し、Function→実選択Query/SQL byte→`:status` actual bind→physical Provider→Result Slice/Context→実Consumerの**同一Attempt**の最初の不足辺へ接続する。W `reference/workspace` の`:from` SQLとCの隔離PG Reference成功をEへ合算しない。Queryが0件ならScope/SQL Predicate/Target Readerのcompleteを証明するまでは「不存在」としない。図面/CRUDのP0-M、実ReadのP0-R、同一Identity投影のP0-Cは並列に進めてよいが、AのHard Dependencyにはしない。
+
+**T1-B**はA/Bの**全完成を待たず**、対象一局所Ruleの必要Source/Meaningと受領資格が満たされる場合に、生成者へ未提示のGapを独立Reviewerが選び、前節のB0/B1/B2/BXで盲検提案・既存Scenario/CLI実行・独立判別を進める。既知T1-A=行番号0や公開済みMutantは盲検評価の加点にしない。テスト実行の候補が多いことより**独立に正しい不足を発見し、誤った完了Claimを出さないこと**を測定する。
+
+### 27.5 C0/C1・現在資格への引渡し
+
+Go標準 `go test -coverprofile` はstatement系Coverageであり、分岐の結果別到達をそのまま保証しない（[Go公式](https://go.dev/doc/build-cover)）。#3351の10分岐Outcomeは独立Expectedと実Goテストの対象であって、Target別全Code C1の数値ではない。§24のCB PoCでInstrumenter/SourceMapの対象とFalse Positive・Toolchain/Build版を固定する。新Coverageの集計では **Required-known / Unknown-required / Measured-denominator / Observed-reached / Independent-checked / Current-eligible** を別に表示する。閲覧者向けに非公開件数を明示できない場合は公開可能なScopeだけを表す。
+
+**停止条件**：空集合のCase自体を完了、未宣言Enumをclosed、Hook宣言を実Provider Read、Plugin選択を実Invocation、Reference L3をcmd/teiのL3、JSONL途中までを全Journal、T1-Aの再提示をT1-B新発見、C0局所をC1/全製品Coverage、Owner未受理のCandidateを正式業務テストと呼ぶこと。
+
+**本節の検証状態**：各Ownerのmain/Draftと本設計文書を照合した**計画更新のみ**。本節のTT-115〜122全体、TT-105/106の新実行、T1-B盲検Trial、A/B両経路のProduct実結合、実H2/H3外部受領、Code C1、現Host Grant/Effect、Owner正式Meaning AcceptanceはNOT RUN／NOT ACCEPTED。Mainに統合済みの個別試験結果はそのSourceの限定Claimに限って引用する。
