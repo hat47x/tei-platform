@@ -97,6 +97,7 @@
 | [`SEMANTIC_LOGICAL_IDENTITY_FD_AUTHORING.md`](SEMANTIC_LOGICAL_IDENTITY_FD_AUTHORING.md) | 論理候補キーと関数従属性を正本ソースで明示宣言する、読み取りと静的検証の最小実装（[GitHub #1126](https://github.com/hat47x/tei-platform/issues/1126)） |
 | [`RELATION_HISTORICAL_IMPACT_2026-10.md`](RELATION_HISTORICAL_IMPACT_2026-10.md) | Relationの削除・改名・分割で、変更前の状態から過去の参照を取り出す読み取り専用の拡張（[GitHub #1126](https://github.com/hat47x/tei-platform/issues/1126)） |
 | [`PLUGIN_SELF_BUILD_PRODUCTION_CONTRACT_2026-10.md`](PLUGIN_SELF_BUILD_PRODUCTION_CONTRACT_2026-10.md) | プラグインのセルフビルドの最小契約と移行Gateの検討案。production仕様の採用ではない |
+| [`EXTERNAL_GO_MODULE_ADMISSION_CONTRACT_2026-11.md`](EXTERNAL_GO_MODULE_ADMISSION_CONTRACT_2026-11.md) | 外部Go Module入力をSource閉包へ入れられるかの判断材料。観測済みの事実と三つの選択肢・既定案・覆す条件を並べた検討案で、方針の採用ではない（[GitHub #2831](https://github.com/hat47x/tei-platform/issues/2831)） |
 | [`REFERENCE_PORT_IMPLEMENTABILITY_GAP_TRIAGE_2026-10.md`](REFERENCE_PORT_IMPLEMENTABILITY_GAP_TRIAGE_2026-10.md) | 参照モデルの実装可否と欠落機能を、原典側で止まった理由から製品側の責務へ渡す照合方法の設計案（[GitHub #1969](https://github.com/hat47x/tei-platform/issues/1969)） |
 | [`REPOSITORY_ARCHITECTURE_DEPENDENCY_GUARD_2026-10.md`](REPOSITORY_ARCHITECTURE_DEPENDENCY_GUARD_2026-10.md) | リポジトリの依存方向を守る最小ガードの実装候補 |
 | [`RUNTIME_TARGET_BINARY_COMPOSITION_DESIGN.md`](RUNTIME_TARGET_BINARY_COMPOSITION_DESIGN.md) | 多様な実行環境に向けた最小ランタイムと配備単位の設計候補（評価待ち） |
