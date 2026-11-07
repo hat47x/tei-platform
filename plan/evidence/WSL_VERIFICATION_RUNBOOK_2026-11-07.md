@@ -28,6 +28,14 @@ attrib -h -s D:\GIT\hat47x\<worktree>\.git
 
 書き換えたあとも Windows の git はそのまま動きます（相対パスは両方で解決できる）。
 
+**この破損が試験の失敗として現れる形**：`gobuilder.ResolveSourceClosure`は`git ls-files`で追跡ファイルを確認するため、git が使えないと次のように報告されます。
+
+```text
+self-contained target was not closure-qualified: rejected (read Git-tracked source paths: exit status 128)
+```
+
+一見「閉包の資格がない」という**内容の失敗**に見えますが、実際は環境の破損です。閉包の`rejected`を読むときは、まず git 自体が動くかを確かめてください。実際にこの誤読を起こしました。
+
 ## 落とし穴2: ログインシェルの PATH が壊れている
 
 `bash -lc` は WSL の `/etc/profile` などを読み、Windows の PATH を取り込もうとして `export: ...: not a valid identifier` を大量に出します。検証では **ログインシェルを使わない** こと。
