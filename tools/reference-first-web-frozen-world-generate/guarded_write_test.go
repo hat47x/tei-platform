@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"tei/internal/access"
@@ -72,6 +73,31 @@ func TestWriteLineageWithGrantsStillWritesWithoutAnAccessLog(t *testing.T) {
 	}
 	if _, err := os.Stat(path); err != nil {
 		t.Fatalf("a write without a log must still happen: %v", err)
+	}
+}
+
+// TestWriteLineageWithGrantsRefusesAChangedAccessLog checks that a journal which
+// was already changed does not silently gain a valid-looking line. The write has
+// already happened by then, so the caller is told the record is not trustworthy;
+// the next run starts from a journal that verifies again.
+func TestWriteLineageWithGrantsRefusesAChangedAccessLog(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "lineage.json")
+	accessLog := filepath.Join(dir, "access.jsonl")
+	grant := permission.Spec{Kind: permission.KindFilesystem, Access: permission.AccessWrite, Scope: path}
+
+	if err := writeLineageWithGrants(path, []byte("{}"), []permission.Spec{grant}, accessLog); err != nil {
+		t.Fatalf("first write: %v", err)
+	}
+	raw, err := os.ReadFile(accessLog)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(accessLog, []byte(strings.Replace(string(raw), `"allowed":true`, `"allowed":false`, 1)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeLineageWithGrants(path, []byte("{}"), []permission.Spec{grant}, accessLog); err == nil {
+		t.Fatal("a changed record must not gain a valid-looking line")
 	}
 }
 
