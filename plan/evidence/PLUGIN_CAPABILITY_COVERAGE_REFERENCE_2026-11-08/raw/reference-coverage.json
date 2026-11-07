@@ -1,0 +1,128 @@
+{
+  "schema": "tei.reference.plugin-capability-coverage/v0",
+  "authority": "derived-read-only",
+  "ruleId": "tei.reference.plugin-capability-coverage",
+  "ruleVersion": "v0",
+  "ruleFingerprint": "sha256:a2e4a4895dc932e4e916ed8f81417ed781502d00e613b49d9b4adbdab9a9118a",
+  "environments": [
+    "development",
+    "production"
+  ],
+  "capabilities": [
+    {
+      "plugin": "tei.database.observer.reference",
+      "version": "1.0.0",
+      "kind": "observation-provider",
+      "id": "database.observer",
+      "status": "selected",
+      "environments": [
+        "development",
+        "production"
+      ]
+    },
+    {
+      "plugin": "tei.database.oracle",
+      "version": "1.0.0",
+      "kind": "contract-query-executor",
+      "id": "database.query.oracle",
+      "status": "unselected"
+    },
+    {
+      "plugin": "tei.database.oracle",
+      "version": "1.0.0",
+      "kind": "database-provider",
+      "id": "database.oracle",
+      "status": "unselected"
+    },
+    {
+      "plugin": "tei.database.postgres",
+      "version": "1.0.0",
+      "kind": "contract-query-executor",
+      "id": "database.query.postgres",
+      "status": "unselected"
+    },
+    {
+      "plugin": "tei.database.postgres",
+      "version": "1.0.0",
+      "kind": "database-provider",
+      "id": "database.postgres",
+      "status": "unselected"
+    },
+    {
+      "plugin": "tei.editor.intelligence.sql",
+      "version": "1.0.0",
+      "kind": "editor-intelligence",
+      "id": "editor.sqlglot",
+      "status": "unselected"
+    },
+    {
+      "plugin": "tei.health.reference",
+      "version": "1.0.0",
+      "kind": "evidence-provider",
+      "id": "health.reference",
+      "status": "selected",
+      "environments": [
+        "development",
+        "production"
+      ]
+    },
+    {
+      "plugin": "tei.migration.atlas",
+      "version": "1.0.0",
+      "kind": "deployment-executor",
+      "id": "migration.atlas",
+      "status": "selected",
+      "environments": [
+        "development",
+        "production"
+      ]
+    },
+    {
+      "plugin": "tei.migration.atlas",
+      "version": "1.0.0",
+      "kind": "migration-provider",
+      "id": "migration.atlas",
+      "status": "unselected"
+    },
+    {
+      "plugin": "tei.runtime.reference",
+      "version": "1.0.0",
+      "kind": "deployment-executor",
+      "id": "runtime.reference",
+      "status": "selected",
+      "environments": [
+        "development",
+        "production"
+      ]
+    },
+    {
+      "plugin": "tei.runtime.reference",
+      "version": "1.0.0",
+      "kind": "observation-provider",
+      "id": "runtime.observer",
+      "status": "selected",
+      "environments": [
+        "development",
+        "production"
+      ]
+    },
+    {
+      "plugin": "tei.traffic.reference",
+      "version": "1.0.0",
+      "kind": "deployment-executor",
+      "id": "traffic.reference",
+      "status": "selected",
+      "environments": [
+        "development",
+        "production"
+      ]
+    }
+  ],
+  "unselectedCount": 6,
+  "notes": [
+    "unselected means no Environment binding names this Kind+ID; it is not proof that the plugin is unused",
+    "a selection is a declaration, not Provider conformance, artifact trust or Host authority",
+    "database-provider capabilities always appear unselected: an Environment instance names a provider technology (postgres/oracle), not the Capability ID (database.postgres)",
+    "lease policies, grants and external requirements are not counted as selection"
+  ]
+}
