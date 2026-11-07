@@ -261,3 +261,17 @@ OKF §10のtype: Attested Computationは独立Conceptにruntime、typed paramete
 **即停止**：独立Requiredがないcomplete、Loss不明のroundtrip、未分類Itemの自動意味分類、文書typeを見たAction自動Dispatch、raw変換を視覚等価で隠すこと、秘匿Count/ID漏えい、verified→Owner受理/Grant自動昇格、未選択PluginのBuild/init混入、実Receipt・Result未読のAttested PASS。書込み/外部送出/自動Import/恒久公開は既存Host・Ownerの別資格まで行わない。
 
 **証拠資格（現在）**：SUI投影非単射・通常Markdown Draft、SHO合成ReaderのOS別回帰、TEI Context試験用Consumerの負例は**別々の局所実測**。OKF Validator実装、OKF Bundleの実2 Consumer、SUI→SHO実One-File H1、元Source→OKF→Consumer全件、SHO Writer、SEI Import、TEI Meaning受理、Attester/Provider Effectは**NOT RUN/UNQUALIFIED**。今回の変更は文書とOwnerへの受渡しのみ。
+
+
+### 10.6 Traitの強制力・C0/C1・独立検証基準をP0受入へ加える
+
+**Plugin Trait/RoleはOKF typeと別**：TEIではTraitを原子的な必要条件として合成し、付与したTraitが要求するContract/Shape/Operationを既定実装または明示的な実装必須診断で満たす設計を比較している。OKF側の自由なtype/tags/拡張キーの出現だけではTraitを適用しない。明示Mappingがある場合も、受理済みRole・Required Shape・Plugin Pin・実Provider Conformance・Current Grantを別票とする。候補Trait A+Bの合成が個別成立する一方で複合実装は不足、Aだけ実装済み、Aの版だけ変更、同名Traitだが別Scopeという4反例を#988/#2620/#1251/#951の既存受入へ渡す。OKF Readerが正常でもTEI専門Plugin Contractを満たしたとはしない。
+
+**P0 Evidence Acceptanceの五つの欄**（新Gateではなく#2514/#1163/#3262/#1180の記録項目）：
+1. **独立Required**：対象Function/Bundle/Consumer/用途と、必要Source・Role・Relation・Claim・Concept・Negative dependencyの集合を実Producerの都合から独立に先に定める。不可視Scopeは開示せず内部で必要条件を判定。
+2. **Actual Consumed/Delivered**：実Root/Manifest/CLI Binary/Tool/Plugin/Source Revision、実Read/Parser/Provider取得、全Page/Reply/Part digest、Consumerの受領確認を同一Attemptで照合。K0/K1の計画が存在するだけではPASSにしない。
+3. **独立Expected/判別力**：正常正例と一要因負例の両側で判別。ExpectedをCandidate/Exporter/Attesterと同じ実装・生成器から機械的に作らない。Known Mutantを対象Case自身が検出したかを区別し、他のCI job失敗をMutant killとしない。
+4. **Coverage**：宣言されたObligationの分母、実検証された分子、行/分岐C0/C1、Source/Relationship/Disclosure/Effectの必要条件を**別々に記録**。#3262の試験用Context Gateの局所C0相当10.1%や16負例を、TEI製品全体のC0/C1、未カバー要件のゼロ件証明として扱わない。AIが新しい未検証Ruleを発見した場合は候補のまま#2514/#2018へ。
+5. **Current Qualification**：OKF形式/SHO Reader/TEI Meaning/実Host Grant/Provider ReadまたはEffect/Attested Run/Recipient Disclosure/Owner正式受理は独立資格。過去CI PASS・同一Bundle SHA・verified・実Tool一回成功で現在適用を自動資格化しない。
+
+**P0での具体的な独立負例**：Required Concept 2件に対して実Readerが1件だけ受領したのにindexがcompleteと示す、Consumerの最後のPage/end markerが欠落、同名WorkspaceでManifestが異なる、Role A/BのうちBだけ未実装、2 Canvasに同じItemがあるので独立根拠2件と誤計数する、AIが作ったExpectedとExporterが同じ欠損を共有する、という6つの差をそれぞれ既存OK-08/09/10/11/13と#2514/#3262のテストOwnerへ接続する。T0実Readerの確認が成立した部分に限り、新義務発見のT1テスト生成を提案。新Reader/Runner/型強制の採用・C1達成・製品OKF E2E・正式Owner受理は**NOT RUN**。
