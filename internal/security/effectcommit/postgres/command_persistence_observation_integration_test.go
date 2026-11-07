@@ -57,8 +57,8 @@ func TestPostgresCommandObservesACommittedReceiptByLookup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Persistence != command.PersistenceResourceObserved {
-		t.Fatalf("persistence=%q, want observed", result.Persistence)
+	if result.Persistence != command.PersistenceReceiptObserved {
+		t.Fatalf("persistence=%q, want receipt-observed", result.Persistence)
 	}
 	if value, version := readE2EObject(t, f); value != "updated" || version != 1 {
 		t.Fatalf("committed object=%q/%d", value, version)
