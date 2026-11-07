@@ -256,6 +256,11 @@ func classifyModuleRoots(root string, roots []ModuleRoot, unresolved []Unresolve
 	if len(unresolved) > 0 {
 		return ModuleClosureMissing, fmt.Sprintf("%d selected package(s) could not be resolved offline", len(unresolved))
 	}
+	// A successful resolver command that selected no non-standard packages
+	// does not establish that the requested target module was observed.
+	if len(roots) == 0 {
+		return ModuleClosureUnknown, "resolver observed no non-standard package or target module root"
+	}
 	var external []string
 	for _, entry := range roots {
 		if entry.Path == "" {
