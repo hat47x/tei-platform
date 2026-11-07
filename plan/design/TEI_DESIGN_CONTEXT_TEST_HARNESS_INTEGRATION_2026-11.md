@@ -108,3 +108,38 @@ main [#3284](https://github.com/hat47x/tei-platform/pull/3284) と [#3296](https
 - **後続T2／T3**：Plugin組合せBOMは#3267、DB/実Resource Readは#2586/#3238、Consumer Disclosureは#2515/#2516、SHO保存/再開とData/Function/Business図面は既存SHO/Modeler Owner、TEI実Self-Build L3は#2831へ渡す。同じ実行Runから取れない資格はunknown/not-runのまま維持する。
 
 **計測値の扱い**：新CIが走る前の本節は**試験実装・期待結果の計画**であり、実測成功ではない。後からPR exact HEAD、main、実Binary、Artifact、失敗理由をそれぞれ記録する。既存の局所C0=10.1%を新testのC1や全Requirement母集団のCoverageに換算しない。
+
+## 7. T1-A：既知だが未実行のRule境界をAI支援でScenario候補へ変換する最小実走
+
+### 7.1 現時点の現実的な入口と独立性の限界
+
+2026-11-07のmainでは、[#3273](https://github.com/hat47x/tei-platform/pull/3273)が**未カバーRule `sales.order_line.line_number_positive`の行番号0負例**をT1候補として提示している。ただしDraftはdocs-onlyであり、生成済み実TEI CLI Scenarioでの新Case実行証拠ではない。T0/T0.6の6 pinned Stepを何度再実行しても、当該境界を新たに検査したとはいえない。
+
+この差分は、既知候補を**生成AIが参照したDesign Contextから試験用Candidateに落とし込む**初回ドッグフーディングとして、実ファイルに基づく独立の基準と実TEI CLIを接続する。
+
+- 入力の根拠：公開`reference/workspace/semantic/sales/validation.tei`の`validation sales.order_line.line_number_positive positive`（現実のRule構文）と、[#3273](https://github.com/hat47x/tei-platform/pull/3273)の未実施境界。Canonically解釈するのは既存TEI Loader/Evaluatorであり、試験用Pythonは**第二DSL Parserではない**。
+- 候補：既存`order-entry-pattern-smoke.json`の**一時コピー**へ`validate-line-number-zero-proposal`を1 Stepだけ追加。合成Fixtureは既存の数量正・Relation Key一意を保持し、`line_number=0`だけを変える。CandidateはOwner採用前の試験用表現であり、#1180の保存済みScenario正本を勝手に書き換えない。
+- 独立性：期待する正数特性は、Candidateに書かれたExpectedの自己コピーでなく、数値`line_number>0`の独立Propertyとの照合を行う。行番号1で正常、0で業務not-satisfiedを確認。さらに**Expectedだけ偽装**、**Fixtureだけ正常に変更**、**Plan後Fixture改変**の3つの負例が実CLIで拒否されることを照合。
+- Product実行：既存CLIの`scenario verify`では未評価扱い、`generate`でScenario/World/Plugin Lock/FixtureのPinを生成し、`check`で改ざんなし、`run`で実`validationeval.Evaluate`から3 Ruleの状態を取得する。
+- 事前資格：#3262の既存9 CLI Reply/16欠落・陳腐化検査で`partial/exploration-only`を維持し、`qualifiedTestGeneration=false`。これは**T1候補の実行許可を限定的に与えるだけ**で、全設計の自動テスト生成資格を意味しない。
+
+### 7.2 受入と、今回取得しない証拠
+
+| 軸 | 最小Expected | 判定上限 |
+| --- | --- | --- |
+| **新たなCaseの実TEI CLI実行** | 既存6 Stepを保存したまま候補7番目を一時挿入し、generate/checkから正確なPinned run、業務`line_number_positive=not-satisfied`、他2 Ruleはsatisfied | **候補1件の実行能力**。全Rule/全要件/意味Ownerは未受理 |
+| **テスト判別力** | 独立Property（0 vs 1）、嘘Expected、Fixtureのみ変更、古いFixture Pinの**3負例**が実CLIで拒否される | Rule Evaluatorへの**実GoコードMutant killではない**。常時拒否の偽陽性を防ぐ正常対照を保持 |
+| **生成AIの貢献** | 既存#3273が示す未実行境界を、AIが実Scenario/Fixture/CLI手順に翻訳して検収 | **盲検の未知Case発見ではない**。AI Agent/Harnessが新規にこのObligationを発見したか、外部H3のSkill実ロードにより品質改善したかは未計測 |
+| **SourceとHarness** | validation.teiの原byteハッシュ、基点Scenario SHA、実CLI Binary SHA、設計Context状態、実生成Pin、CI run/Artifactを記録 | Source→Parser/全Required閉包、現在Consumer Grant、外部Harness受領完全性、独立Holdout秘匿は未資格 |
+| **CoverageとSelf-Build** | 新規Rule境界1件、Go局所statement C0とC1を別報告 | 未確定Required分母を覆わず、実DB/Host/HTTP/Web、G4 L3を推論しない |
+
+試験実装は`tools/reference-issue-test-ability/t1_line_number_candidate.py`。**設計の正本・既存Rule・Scenario本体は変更しない。** 候補の採用は#1180/#3273のOwner判断。将来この候補を恒久Scenarioに追加する場合は、本試験の6→7の一時コピーと独立Expectedを、保存済みScenarioの版・Case IDへ昇格する差分としてレビューする。統合前にCaseを勝手にAccepted Meaningへ変更しない。
+
+### 7.3 次に必要な盲検T1-B
+
+1. #3262 P-1b1で、**別の未カバーRuleを含む**狭いFunction ContextのSource/Role/Parser/Relation閉包をQualifiedにする。欠損があれば既存`context_gate.py`の`unknown`に返す。
+2. 生成AIの要求入力・出力Schema・Tool予算・Context Revisionを固定し、**独立Holdoutの具体値/欠陥版を生成側に知らせず**候補を提案させる。旧#3273の行番号0という先行ヒントを与えたSessionは、真の「未知発見」ベンチマーク分母から除く。
+3. 候補をOwner Reviewして既存Scenario契約へ登録し、実CLI/必要Targetに生成→Pinned実行する。#2514の第三者Holdoutに対し実EvaluatorコードMutant・Source欠落/NULL・scope/粒度/単位違いの検出とfalse-qualifiedを測定。
+4. Skillなし/H3 Skillありの比較は[#2509](https://github.com/hat47x/tei-platform/issues/2509)の同一Participant/同一Tool受領・実OS/Network開示資格が整った時だけ実施する。外部Tool受領が切断されたSessionの失敗/時間/コストはITТ分母に残し、Skill有効性の比較には採用しない。
+
+**新実走前の状態**：この節は候補の試験実装と受入条件。実CI/run/Goの新結果は専用PR HEADを確認して追補する。T1-B、実GoコードMutant、H3の盲検比較、C1、全Required/NFR、Owner Meaning Acceptanceは**NOT RUN**。
