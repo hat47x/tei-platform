@@ -232,6 +232,65 @@ def main() -> None:
                       "-workspace", WORKSPACE, "-plan", str(tampered_path), success=False)
         negative(changed, "stale or modified CLI plan")
 
+        # Negative N7: change a real Canonical Source file *after* a plan was
+        # generated, within an isolated Workspace copy, not an in-memory CLI
+        # reply. A stale pinned World must not execute against this new model.
+        isolated = temp / "mutation-world-source"
+        shutil.copytree(root / WORKSPACE, isolated)
+        src = isolated / "semantic/sales/order.tei"
+        original_src = src.read_bytes()
+        before_world = as_json(run(cli, root, "scenario", "generate", "-scenario",
+                                   str(SCENARIO), "-workspace", str(isolated)))
+        source_run = next(c["argv"] for c in before_world["commands"]
+                          if c["stepId"] == "validate-positive")
+        before_run = as_json(run(cli, root, *source_run[1:]))
+        expect_real_evidence(before_run, "validate-positive")
+        anchor = b"attribute externalId type std.text"
+        if original_src.count(anchor) != 1:
+            raise AssertionError("Source mutant anchor absent or ambiguous")
+        changed_src = original_src.replace(anchor, b"attribute externalId type std.code")
+        if changed_src == original_src:
+            raise AssertionError("Source mutation was ineffective")
+        src.write_bytes(changed_src)
+        after_world = as_json(run(cli, root, "scenario", "generate", "-scenario",
+                                  str(SCENARIO), "-workspace", str(isolated)))
+        if before_world["worldSha256"] == after_world["worldSha256"]:
+            raise AssertionError("real Source mutation changed no resolved World revision")
+        stale_source = run(cli, root, *source_run[1:], success=False)
+        negative(stale_source, "Canonical World fingerprint differs")
+        src.write_bytes(original_src)
+        restored = as_json(run(cli, root, *source_run[1:]))
+        expect_real_evidence(restored, "validate-positive")
+        # A -> B -> A is accepted by the content pin after restoration. This
+        # proves current-content equality only, NOT history-free qualification,
+        # Source observation identity or a stable Provider/Authority revision.
+        if digest(src.read_bytes()) != digest(original_src):
+            raise AssertionError("Source not restored after A-B-A test")
+
+        # Negative N8: alter only the Plugin Lock *byte content* between
+        # generation and execution. The Scenario pin catches stale Lock bytes,
+        # but says nothing about actual Plugin Consumer load or authorization.
+        isolated = temp / "mutation-plugin-lock"
+        shutil.copytree(root / WORKSPACE, isolated)
+        lock = isolated / ".tei/plugin-lock.json"
+        original_lock = lock.read_bytes()
+        before_lock = as_json(run(cli, root, "scenario", "generate", "-scenario",
+                                  str(SCENARIO), "-workspace", str(isolated)))
+        lock_run = next(c["argv"] for c in before_lock["commands"]
+                        if c["stepId"] == "validate-positive")
+        original_fragment = b'"formatVersion": 2,'
+        if original_lock.count(original_fragment) != 1:
+            raise AssertionError("Plugin Lock mutation anchor absent or ambiguous")
+        # JSON-equivalent whitespace is enough to change a byte-level Lock pin.
+        lock.write_bytes(original_lock.replace(original_fragment, b'"formatVersion": 2 ,'))
+        after_lock = as_json(run(cli, root, "scenario", "generate", "-scenario",
+                                 str(SCENARIO), "-workspace", str(isolated)))
+        if before_lock["pluginLockSha256"] == after_lock["pluginLockSha256"]:
+            raise AssertionError("Plugin Lock byte mutation escaped the pin")
+        stale_lock = run(cli, root, *lock_run[1:], success=False)
+        negative(stale_lock, "Plugin Lock fingerprint differs")
+        lock.write_bytes(original_lock)
+
         # Negative N5: a shortened Scenario may still be executable, but
         # cannot satisfy the independent six-step testing obligation.
         reduced = copy.deepcopy(scenario)
@@ -268,10 +327,14 @@ def main() -> None:
             "false-Scenario-expected": "real-cli-rejected",
             "stale-fixture-pin": "real-cli-rejected",
             "tampered-generated-plan": "real-cli-rejected",
+            "changed-real-canonical-source": "real-cli-stale-world-rejected",
+            "changed-real-plugin-lock": "real-cli-stale-lock-rejected",
             "omitted-required-step": "independent-obligation-rejected",
             "always-satisfied-grader": "independent-property-rejected",
         },
         "productTestEvidence": "synthetic Canonical Validation and Browse/Observation; no real DB",
+        "sourceReversionObservation": "A-B-A returns to identical Source bytes and old pin succeeds; intervening history/Authority not proven",
+        "pluginLockQualification": "byte pin only; actual plugin Consumer Load/Provider Behavior not measured",
         "coverage": {
             "requiredScenarioSteps": len(STEPS),
             "observedPinnedSteps": len(measured),
