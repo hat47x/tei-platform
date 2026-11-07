@@ -562,3 +562,23 @@ Source移行では、`plugin.tei.md`を選んだ意図Bと、固定名Loaderが`
 - [main統合 #3131](https://github.com/hat47x/tei-platform/pull/3131)のPostgreSQL Receipt Lookupは**receipt行の永続観測**に限定。Receiptが`observed`でも資源の最新値の独立再読取、選択Source/Providerの資格、Ownerが期待する業務効果を保証しない。
 
 **K1→K6の新たな検収単位を作らず、既存の独立列を接合する**：Required Source→実Read→Grammar/Role/Operator→選択Target Moduleのroot数・供給改ざん検査→実BuilderのSource/Module閉包→Artifact Digest/実Binary→Invocation Identity→Hostの現在Record/Grant→Receipt/独立Read。入口で観測0件は`UNKNOWN`、実Build成果物は`artifactProduced`、既存Closureが拒否していれば`closure=unqualified`と両方残し、単純な緑色合格へ圧縮しない。BS-07/14および#2831/#1251/#951/#1174/#2514のOwnerを維持し、新Status Enum/Registry/Builder/Attester/Receipt Store/Acceptance Engineは増設しない。
+
+
+<!-- tei-dsl-bootstrap-dogfood-context-test-ability-handoff-20261107 -->
+### 13.16 実CLIドッグフーディングのT0をBootstrapのK1～K4へ結び、設計Contextの「未知」を保存する
+
+2026-11-07の[main統合 #3264](https://github.com/hat47x/tei-platform/pull/3264)と[main統合 #3266](https://github.com/hat47x/tei-platform/pull/3266)は、Bootstrapとは別の**実プロセス**の制約を明らかにした。[限定T0 main push実CI #42359610226](https://github.com/hat47x/tei-platform/actions/runs/42359610226)では、既存CLI read-only 9種、Product Skill静的14件、固定Scenario 6 Step、実CLIへの故障注入4件＋独立検証基準の負例2件を扱う。#3268はScenario/Source等の変更で専用Workflowが発火するpath対象を拡張した。これは**既存Scenarioを実行・既知の誤りを区別するT0**であって、AIが新たな設計Context全体を集め、新しいScenarioを提案・生成したT1ではない。局所statement coverage C0相当10.1%、C1未計測はBS-01～15のカバレッジでもない。
+
+本Bootstrapの検収へ引き渡す、**新規IDや別Query Schemaを増やさない**5つのContract条件：
+
+| 既存責務 | 実Consumerに渡すべき情報／独立期待値 | 主張を止める条件 |
+| --- | --- | --- |
+| **BS-02/07、K0/K1** | `Intent/Required Source`（対象Scopeと必要集合の出典）、`Managed`／`ReadByLoader`／`Parsed`／`Subject Reference`を別欄。同じ固定Workspaceでも必要なLanguage/Operator/Roleの未観測を列挙。 | `validate.ok=true`、9 CLIの取得完了、`SourceIndex`へのArtifact掲載、`readByLoader=true`のみでは`Required complete`としない。 |
+| **BS-03/06、K2/K4** | Source byte/occurrence/span、exact Language Contract+Implementation Pin、exact Operator Contract、Candidate／Owner Accepted Meaningを別Claimで返す。 | 同じ`semantic-data:sales.order`が読めても、Function/Business/Rule/Operatorの非取得を`absent`へ昇格しない。 |
+| **BS-10/15、K0→K4** | CLI/Skillが返すJSONの実schemaVersion/mode/successShapeとTool受領（page/terminal marker）、Source/Grant改訂、未受理の理由を照合。 | 途中切断、旧版ページの混合、未取得のRole、初回Grammar自己解釈、AI生成Expectedの自己追認があれば`not-proven`。 |
+| **BS-07/10、K4→Test** | Design Contextが**独立に根拠付けた**Required閉包へ到達した部分だけ、既存Scenario SSOT（#1180）と独立Expected（#2514）を参照。T0は既存Case、T1は未カバーRuleに対する**新規Case**。 | T0の6 Step PASSや既知故障注入のkillを、未知Dependencyの完備性、新たなCase生成能力、C1/全NFRへ昇格しない。 |
+| **K5/K6、Self-Build** | Target選択、Providerの実Build-consumed Source、Module supply/closure資格、Artifact byte、実Target Image/Invocation、Hostのcurrent Record/Grantを**各々同一改訂・Attempt**でJOIN。 | #3156のようにArtifactが生成されてもSource Closureが`rejected`なら完成扱いしない。 |
+
+**最小の次の縦切り**：[#3262](https://github.com/hat47x/tei-platform/issues/3262)のP-1bで「1 Subject/同一SourceRevisionのDesign Context」だけを読み、既存BS-07の`candidateDeclaredRequired=[]`と、独立`independentRequired=[operator/sum-v1]`に対応する**必要集合の出典差**をPacketに残す。正例は必要なSource/Contractの実Readと独立Expected照合が揃ったときのみ限定`complete-in-scope`、反例はそれが無ければ`unknown/incomplete`。Bootstrap Fixtureの15件・Existing Scenario・Test Ability Probeを複製せず、#3262のContext Consumer/#3223のCoverage推薦を経由してT1（[Draft #3273](https://github.com/hat47x/tei-platform/pull/3273) TG-01～06）へ接続する。製品共通Design Context Query/CLI/MCP、Harness H2/H3、AIによる新Case生成、正式Owner意味受理、実Plugin Host、T1は**まだNOT RUN**。
+
+**保守上の実反例（同日CI）**：main統合されたIssue→設計文書`ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md`が`plan/design/README.md`に未登録となり、[mainへのPR `#3268` のRepository Health #42359595347](https://github.com/hat47x/tei-platform/actions/runs/42359595347)で`TestPlanReadmesMentionEveryEntry`がFAIL。原因は実Jobログで確認済み。Bootstrap PRへ横取りせず、**独立の最小索引修正PR #3290**へ切り分けた。次の合格は#3290の**新HEAD CI**でのみ判断し、対象外のT0専用Workflow成功で全Repository Healthを上書きしない。
