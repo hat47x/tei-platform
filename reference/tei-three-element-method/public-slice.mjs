@@ -25,7 +25,9 @@ const onlyFields = (value, allowed) => {
     });
 };
 
-export function projectPublicTeaSlice(slice) {
+export function projectPublicTeaSlice(slice, snapshot = null) {
+  // Optional caller-supplied equality witness; NOT a current Source/Policy proof.
+  if (snapshot !== null && !text(snapshot)) invalid();
   if (!onlyFields(slice, fields.slice) || !text(slice.scope) ||
       !Array.isArray(slice.subjects) || !Array.isArray(slice.relations)) invalid();
   const identities = new Set();
@@ -76,6 +78,7 @@ export function projectPublicTeaSlice(slice) {
   edges.sort((a, b) => cmp(a.id, b.id));
   publicDiagnostics.sort((a, b) => cmp(JSON.stringify(a), JSON.stringify(b)));
   // This says nothing about elements or relations outside the authorized slice.
-  return {views, relationTable: edges, publicDiagnostics,
+  return {...(snapshot === null ? {} : {snapshot}), views, relationTable: edges,
+    publicDiagnostics,
     coverage: {scope: slice.scope, allSourceCompleteness: "not-proven"}};
 }
