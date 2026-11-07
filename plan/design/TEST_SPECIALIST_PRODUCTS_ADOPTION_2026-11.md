@@ -716,3 +716,70 @@ TT-56〜63は**横断Verification Obligation**であり、#3283 Build/Entry試�
 **停止条件**：正常なJSONだけで全Required確認済み、Function定義だけで全Build/Entry到達、Auditラベルだけでshort-circuit Path監査成立、他Target C1へGoのC0転用、HTTP 202/Job ACKを業務完了、Trait宣言を実Impl/Grant、個別Plugin PASSを合成BOM PASSとする主張。
 
 **状態**：#3284/#3296の限定実main CI（後者は16 Controls）と#3289の2ケースV8 Characterizationは他Ownerの有限実証済み。#3283は設計Draft。今回提案したTT-56（**構文的に有効なままRequired要素を欠落させる独立反例**）〜TT-63、新P-1b/Entry/実Audit/T1の製品E2E・MCP/Studio・Owner意味受理は**NOT RUN / NOT ACCEPTED**。この節はGitHub Source/設計の突合に基づく計画追加であり、新Runtime/Resolver/Host/Registry/Runner/Scenario SSOTを作らない。
+
+<!-- tei-test-t06-content-pin-effect-cross-source-20261107 -->
+## 19. 2026-11-07 横断深化：T0.6実Source/Lock試験とAI用Contextの安全な入場判定（設計・未実装）
+
+### 19.1 mainで前進したT0.6は本物の変更拒否。T1は依然未達
+
+[#3299](https://github.com/hat47x/tei-platform/pull/3299)を統合したmain exact `04498c41475db7ac71fbf0fdd0c8919c40108258`の[push CI #42373611474](https://github.com/hat47x/tei-platform/actions/runs/42373611474)は**completed/success**。同一main・単一Go Binaryの9 read-only CLIと既存Context Readiness 16 Controls、生成済み6 pinned Scenario Step、**実CLI拒否6件（従来4＋実Canonical Source改変・実Plugin Lock byte改変の2件）＋独立義務/Oracle拒否2件**を実行。C0相当10.1%はcmd/teiの局所1 Test、C1はunmeasured。Artifact保存は7日保持の限定参照。実Evaluator Code Mutantを8件殺した意味ではない。
+
+新2件は**実一時Workspaceファイルを生成Plan後に改変**した試験であり、§18の受領済みJSONコピーを破損させる16 Controlsとは異なる。Sourceの型変更ではWorld fingerprint、Plugin Lockの意味等価な空白変更ではLockの原byte SHAが変わり、旧pinned runが拒否された。**A→B→AでSource原byteへ戻すと旧pinは再び成功**した。よってContent Pinが示すのは必要byteの現在一致であり、履歴上の無変更、最新Accepted Meaning、Ownerの再受理、現在Host/Disclosure Grantではない。これらは独立した現在資格を要求するか、必要Evidenceがなければunknownに止める。新たな全変更History Storeを本テスト設計だけで導入しない。
+
+### 19.2 AIに渡す最小入力を「不足を分類する取得票」とする
+
+AIに与える最短指示（「このFunctionの未カバーテストを提案」）の前に、**取得したDomain Contextがなぜ十分/不十分なのか**を利用者にも機械にも同じ表で返す。既存#3262 Design Context Query／main `context_gate.py`を利用し、別のPacket Readerや同名SchemaのSSOTを追加しない。
+
+| 独立に判断するGap | 欠けている証拠 | 直ちに薦める行動 | Candidateの扱い |
+| --- | --- | --- | --- |
+| **Required/Source gap** | Requirement、Business/Rule/Relation closure、Loader/Parser Role、Non-output dependency、Source revision | Design Contextの追加取得・Model/Ownerへの不足の引継ぎ | Ideaはprovisional。存在しないというNegativeやCoverage分母の完成を宣言しない |
+| **Meaning/Oracle gap** | Contextの受理範囲、Unit/Time、Independent Expected・Baseline合法性、Holdout境界 | 候補の説明・第三者/Ownerによる期待値固定を先に要求 | AI生成Expectedで自己採点不可。正式Scenario採用は保留 |
+| **Execution/Target gap** | 実Buildの収録、Entry/Dispatcher、Plugin Lockとactual Load、Tool Reply、Provider/Target Observation | 既存#1180の実Target接続か、最初の欠損辺の診断 | テスト案は出せるがexecuted/coveredと表示しない |
+| **Freshness/Disclosure gap** | Source/Lock/Tool/Scopeの時点一致、Current Grant、受信者Complete Delivery | 同一Scopeの再取得または外部送出拒否 | 許可されないRaw/存在・件数・digestを出さない。Content Pin一致を現在Grantとしない |
+| **Genuine uncovered obligation** | 適格なRequired集合には含まれるが、実Scenario/独立Observationが未到達 | Domain Patternから新Case候補を提案し、#1180へReview引継ぎ | **新規テスト提案の価値を評価できる唯一の入口**。旧Scenario再Runを生成実績としない |
+
+この「診断優先のPattern推薦」は、あらゆる未知に対してテストを生成して埋める方式とは異なる。**未カバーの理由がSource不足なら追加取込、Oracle不足なら独立Review、Runtime不足なら接続試験、真のTest Gapなら新Case生成**を勧める。ユーザー向けMarkdown、生成AI向けtyped JSON、将来MCP Toolは同じRequirement/Ref/Statusの投影でよい。トップ3推薦等のUX順序は#3223 §12候補を維持し、新CLIコマンド名は未実装の案としてのみ扱う。
+
+### 19.3 呼出しの安全性はTool名でなく「全argv／実File Effect」に束縛
+
+現mainに対する実観測 [#3182](https://github.com/hat47x/tei-platform/issues/3182) では、tei commandsのread-only広告に載るviewが、実際は **-execute + -operation-log / -lifecycle-state** で名前付きファイルを生成できる。[#3302 Draft](https://github.com/hat47x/tei-platform/pull/3302)はread-only discoveryを非execute previewへ限定し、excludedFlagNamesを追加して3種flag表記を実ファイルEffectで検証する**修正候補**（main採用・新CI完了は本節では未確認）。したがって：
+
+- T1のDesign Context探索は実binary identity・command＋**完全なargv**・flagsの意味・working directory・read対象・書込み先・効果観測をScopeに束縛。command catalogのread-only表記を実書込み禁止・OS隔離・外部送出許可と同一視しない。
+- Skill/AIのread-only profileでは、非executeの読取経路だけを選び、実際に- execute相当のflagが混入した場合はpreflightを拒否。argvが後段で変わるなら実Process受領argvで再確認。flag名の除外広告をOSのwrite防止と呼ばない。
+- 生成したTest Case/Scenarioの実行はread-only探索とは**別のEffect Profile**、Disposable Source・Output Path、独立Expected・Receiptを要求。Source/Plugin LockのA→B→AはContent Pinに現在Authを付与しない。
+- 結果stdoutに個人情報や非公開Sourceが直接ない場合でも、Tool結果、stderr、Session Log、診断、集計件数/成否のSide Channelは個別Disclosure対象（#2515/#2509/#2516）。
+
+### 19.4 同名Query／Graph／表現の間に「同じ実験である」という錯覚を作らない
+
+[#2586](https://github.com/hat47x/tei-platform/issues/2586)のRMT検証で同じ `recent_orders` の名を持つものをE（examples/xtea-lowcodeのstatus引数SQL）、W（reference/workspaceのordered_at + from SQL）、C（Web Reference PostgreSQLの別物理Table/Tenant Scope）へ区別している。[#3238](https://github.com/hat47x/tei-platform/pull/3238)のCの実PG成功は、E/Wで実選択されたSQL/引数/物理Provider/Contextを証明しない。**Project/Workspace、Function/Query Source byte、DataSource+Provider Instance、param、Scope/epoch、Rowset/Consumer**が合致したときだけ一つのTest TraceへJoinする。
+
+三視点図面・CRUDについては、旧総合Draft [#3236](https://github.com/hat47x/tei-platform/pull/3236) が**Closed/Unmerged**となり、現main向けの置換[Draft #3303](https://github.com/hat47x/tei-platform/pull/3303)へ引継がれた。[#3263](https://github.com/hat47x/tei-platform/pull/3263)の合成Entity9/Relation7/Function4/Business Action3のInputとExpectedはAI作成の別Blobであり、実Parser Source/独立Oracleの資格ではない。Graph/CRUD Matrixに見える欠落・Cell空欄を「業務上存在しない」へ昇格しない。P0-M（Source→図）、P0-R（実Read）、P0-C（両者の同一性）を**分けて計測**し、T1のHard Dependencyにはしない。
+
+### 19.5 独立した横断負例 TT-64〜TT-72
+
+| ID | 入力・負例 | 判定すべき事柄 | Owner |
+| --- | --- | --- | --- |
+| **TT-64 実Source TOCTOU** | Context取得・Plan生成後にCanonical Source型変更 | 旧World Pinを拒否し、実Run/Consumerはstale。旧Contextを現在Meaningと呼ばない。#3299 mainで一時Source変更の拒否は実測済み | #3262/#1180/#2514 |
+| **TT-65 実Lock TOCTOU** | Plugin Lockを意味同値だが原byte違いに変更 | 旧Lock Pinを拒否。ただし実Provider Link/Invoke/Grantの不適格を新たに証明したとはしない。#3299で局所実測 | #3267/#951/#2600 |
+| **TT-66 A→B→A** | Source変更後に原byteへ復元し旧pinned Planが再受理 | 現在Content一致だけ成立、途中無変更/現意味受理/Grantや旧Evidenceの無条件復活は禁止。#3299で再成功を観測 | #2600/#3262/#2514 |
+| **TT-67 Tool argv Effect** | read-only Discoveryのviewを実-execute + named outputで呼ぶ | 読取専用Harness資格は拒否/別Profileへ。実File Effectを観測し、Discoveryと効果/隔離を別々に判定。#3182現挙動、#3302未統合候補 | #3182/#1155/#2605 |
+| **TT-68 同名SQLの取り違え** | E/W/Cのrecent_orders・別SQL/Physical Providerの結果を一つに合算 | SQL実消費byte/params/Scope/epoch/Consumerが異なると別Claim。Cの実PG PASSをE/W製品へ転用しない | #2586/#2506/#2514 |
+| **TT-69 三視点Source不在** | Synthetic Diagram/CRUDが自己整合PASSでも実TEI Loaded/Parsed Sourceから生成されない | 内部Fixture一致まで。Owner独立Expected・実Graph/Matrix Source ref・表示/Consumer実受領は不適格 | #3263/#3303/#2514 |
+| **TT-70 Gap誤分類** | Requirementが未読込なのに未カバーテストとしてCase生成/coverage改善済みと表示 | Source gapとして提示、provisional案は可、独立Oracle/現在Coverage改善は不可 | #3262/#3273 |
+| **TT-71 生成者自己採点** | AIが入力とExpected/Mutantを同じ文脈から生成し、旧6 Stepと同内容を新規Caseと申告 | 新規性・独立性不成立。Holdout独立評価、新しいline_number=0のCase/Step ID・観測が必要 | #3273/#2514/#1180 |
+| **TT-72 不正な部分開示** | Toolに返すJSONは短くしたがSession LogやMarkdown診断に秘密Scopeの件数が含まれる | Disclosure/実Sink/OS隔離が未確認ならExternal-ready=false。完全性レジャーも秘密Countを公開しない | #2509/#2515/#2516 |
+
+TT-64〜66の*限定実Source/Lock試行*のみ#3299の実証を引用する。TT-67は#3182実コード挙動観測、#3302は修正候補。TT-68はCのReference PG、TT-69は合成Fixtureに限定。他の**横断した生成/拒否/非開示のE2Eは未実施**であり、旧Caseの結果を新Caseの独立PASSに付け替えない。
+
+### 19.6 最短の実装・検収順を更新
+
+1. **現main T0.6を固定**：main `04498c...` の9 CLI、Context 16 Controls、Scenario 6 Step、CLI Negative6＋独立Negative2、Local C0/Unmeasured C1をSource・Build・Attemptごとに記録。これを新たなAI T1/Context Full Closureへ昇格しない。
+2. **P-1b Source/Rule/Gap説明**：既存Reader/Context Gateでテスト用の部分的なDesign Contextを提示し、ReasonをSource/Oracle/Execution/Freshness/真のTest Gapへ分類。§18 TT-56の「parseableな必須情報欠落」は**独立Requiredが確認可能な一局所Scope**で先に反証。必要な追加契約だけ#3262へ戻す。
+3. **T1は一つだけ実生成**：[#3273](https://github.com/hat47x/tei-platform/pull/3273)の新しい行番号0のRule負例を、実行できた現9 CLIと固定Skill/Allowed ContextからAIがprovisional生成し、別Holdout/Expectedを持つReviewer→既存Scenario SSOT→新pinned CLI→独立Rule結果へ接続。後段の実Source/Lock Pin拒否はT0.6の実挙動を再利用し、同じ実験Scopeで再照合。
+4. **CLI Effect/Skillを先行対照**：#3302が採用される場合も、Discovery optional欄の一致だけでなく**完全argvの実ファイルEffect**を実検証する。read-only Skill比較の条件を変えるときは別版・別Runとし、旧H2/H3四Sessionに事後追加しない。
+5. **D/T/R/P/B/Eを並列投影**：#3283の設計(D)、新Test(T)、実Provider Read(R)、Presentation(P)、実Build/Entry(B)、業務Effect(E)を**6軸**で記録し、未完成軸を消さない。P0-M三視点図とP0-R実Readは並列可、P0-Cの同一性は両方実観測後。
+6. **経済性と昇格**：#2018へ(利用者指示回数/Tool ReplyとToken/欠損正答/False-qualified/Source再読・CI費用)を送る。新Test Case数だけでなく、**何の欠損を先に教えたか**、不足が修復した後に初めて独立Expectedへ到達できたかを評価する。
+
+**横断停止線**：fingerprint一致→歴史・認可有効、read-only tool名→副作用なし、同名Query→同一Target SQL、合成Graph/CRUD一致→Product Source/独立Oracle、LLM自己Expected→Business Accepted、CLI T0.6→T1生成PASS、各Target/要件/C1/NFRのCoverage分母合算、未許可Scopeの存在/件数を説明に含めること。
+
+**今回の実施状態**：本節はGitHub mainの実T0.6・#3182現行観測・別チャットのRMT/Modeler/Plugin/SHO議論を、既存#3262/#3273/#2514/#1180/#1119のOwnerに割当て直した**設計追補**。新Go/CLI/PG/実Harness/AI新Case/T1/Tool ACL/Function-Provider-MCP実連結は**NOT RUN**。#3302/#3303/#3263の正式採用、Owner Meaning Acceptanceも未成立。新Engine/Schema/Host/Resolver/Scenario/Oracle正本を追加しない。
