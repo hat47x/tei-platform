@@ -142,7 +142,12 @@ def assess(docs: dict[str, dict], failures: list[str] | None = None) -> dict:
     # authored rule is accepted or that an actual Provider was exercised.
     val = docs.get("validate", {})
     root_findings = val.get("sourceRootFindings")
-    if isinstance(root_findings, list) and root_findings:
+    workspace_findings = docs.get("workspace-files", {}).get("result", {}).get("sourceRootFindings")
+    # These are two different projections of Source Root findings. A Consumer
+    # must not infer "no missing roots" from only one successful command when
+    # the other read-only Tool reply actually reports missing/unknown roots.
+    if ((isinstance(root_findings, list) and root_findings) or
+            (isinstance(workspace_findings, list) and workspace_findings)):
         blockers.append("source-root-findings")
     diagnostics = val.get("diagnostics")
     diagnostic_count = len(diagnostics) if isinstance(diagnostics, list) else None
@@ -229,6 +234,77 @@ def selftest(docs: dict[str, dict], baseline: dict) -> dict[str, str]:
     return controls
 
 
+def manifest_selftest(docs: dict[str, dict]) -> dict[str, str]:
+    """Check Source inventory and root diagnosis from *both* CLI projections."""
+    cases = {}
+    mutant = copy.deepcopy(docs)
+    mutant["workspace-files"]["result"]["sourceRootFindings"] = [
+        {"synthetic": "workspace-files-only-unknown-root"}
+    ]
+    result = assess(mutant)
+    if result["boundedReference"] != "blocked" or "source-root-findings" not in result["blockers"]:
+        raise AssertionError("workspace-files Source root findings bypassed readiness")
+    cases["workspace-files-root-only"] = "blocked"
+
+    mutant = copy.deepcopy(docs)
+    managed = mutant["workspace-files"]["result"]["managedFiles"]
+    selected = next((x for x in managed if x.get("path") == REQUIRED_SOURCE), None)
+    if selected is None:
+        raise AssertionError("reference required Source disappeared")
+    managed.append(copy.deepcopy(selected))
+    result = assess(mutant)
+    if result["boundedReference"] != "blocked" or "required-source:ambiguous" not in result["blockers"]:
+        raise AssertionError("duplicate Required Source inventory bypassed readiness")
+    cases["duplicate-required-source"] = "blocked"
+    return cases
+
+
+def transport_selftest(folder: Path) -> dict[str, str]:
+    """Corrupt real received CLI JSON bytes, not just an in-memory decoded dict.
+
+    A syntactically valid first page is *not* a qualified complete Tool reply.
+    Keep this checker test-only; the actual Source/Runner/Workspace is untouched.
+    """
+    import tempfile
+
+    cases = {}
+    with tempfile.TemporaryDirectory(prefix="tei-context-transport-") as directory:
+        scratch = Path(directory)
+        for command in COMMANDS:
+            (scratch / (command + ".json")).write_bytes(
+                (folder / (command + ".json")).read_bytes())
+        target = scratch / "catalog.json"
+        original = target.read_bytes()
+        corruptions = {
+            "tool-reply-omitted": None,
+            "tool-reply-truncated": original[:max(10, len(original) // 2)] + b"\n",
+            "tool-reply-not-terminated": original.rstrip(b"\r\n"),
+            "json-duplicate-member":
+                b'{"schemaVersion":"tei.cli.model/v0","schemaVersion":"tei.cli.model/v0","ok":true}\n',
+            "json-escaped-duplicate":
+                b'{"id":1,"\\u0069d":2}\n',
+            "json-nonfinite":
+                b'{"schemaVersion":"tei.cli.model/v0","ok":true,"value":NaN}\n',
+            "json-trailing-object": original + b'{"extra":true}\n',
+        }
+        for name, data in corruptions.items():
+            if data is None:
+                target.unlink()
+            else:
+                target.write_bytes(data)
+            docs, failures, _ = load(scratch)
+            verdict = assess(docs, failures)
+            if not any(entry.startswith("catalog:") for entry in failures):
+                raise AssertionError(f"{name}: corrupt received byte reply was accepted")
+            if (verdict["boundedReference"] != "blocked" or
+                    verdict["testExecutionAdmission"] != "blocked" or
+                    verdict["qualifiedTestGeneration"] is not False):
+                raise AssertionError(f"{name}: incorrect qualification {verdict}")
+            cases[name] = "rejected-before-readiness"
+            target.write_bytes(original)
+    return cases
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--in", dest="folder", type=Path, required=True)
@@ -239,11 +315,14 @@ def main() -> None:
     controls = selftest(docs, baseline)
     report = dict(baseline)
     report["syntheticControls"] = controls
+    report["additionalManifestControls"] = manifest_selftest(docs)
+    report["transportByteControls"] = transport_selftest(args.folder)
     report["localReplyEvidence"] = byte_evidence
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"PASS: bounded Design Context {baseline['boundedReference']}; "
-          f"{len(controls)} negative/unknown controls; "
+          f"{len(controls)} base controls + {len(report['additionalManifestControls'])} manifest "
+          f"+ {len(report['transportByteControls'])} byte-reply rejection controls; "
           "test generation qualification withheld")
 
 
