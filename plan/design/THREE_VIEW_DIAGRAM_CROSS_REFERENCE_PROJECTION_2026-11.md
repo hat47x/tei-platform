@@ -285,3 +285,50 @@ RQ-035/RQ-036・横断Indexは[Draft #3297](https://github.com/hat47x/tei-platfo
 - #2507/#2497/SHO：表・図・文書で空欄に変換する際、局所的な`unknown`と確認済み`none`と明示`R`が視覚上合流した場合、逆編集や不存在推論を許可しない。
 
 **証拠状態**：この追補時点でGoテストSourceはブランチへ追加済みだが、当該commitの正式Repository Health/Go Test結果は別途照合する。仮に局所テストがPASSしても、実TEI Parser・Graph/CRUD projector・CLI/Studio/SHO Consumer・Function/Business全Required Closure・独立Owner Oracle・実Provider/Host Effectは**未検証**。新しいCore Enum/Parser/Runner/Authorityは追加しない。
+
+## 19. 現mainへ追随したSource入場の最小縦断（2026-11-08）
+
+### 19.1 最初の欠落は描画器ではなくReader→Meaning→Cross-reference
+
+同日の実ドッグフーディング[#3346](https://github.com/hat47x/tei-platform/issues/3346)により、`docs/`・`plan/`のMarkdownをWorkspace manifestの`sources`へ指定しても、`managedFiles`上の発見と`readByLoader`は一致せず、現Loaderでは`*.tei`以外の文書が設計意味として読まれない場合があると確認された。**ファイル存在・Blob読取・Roleとしての意味Parse・Accepted Meaning・Current Scopeでの投影**を独立に評価する。`*.tei.md`を含むMarkdown Authoring契約は#2621、Everything is Dataは#2619、Workspace読取りの製品挙動は#3346/#3262のOwner。SHOのMarkdown原文ReaderもTEI Parserと同一であるとは限らない。
+
+**P0-M最初の実Product試験では、当合成JSONを受理済みTEI Sourceと偽装して使わない。** 現時点で実Readerが認識する`reference/workspace`等のSourceに存在する一つの実Data/Relation/Function/Business対象を先に選び、`workspace-files` `model catalog` `source-index` `inspect` `trace`の実Resultから、必要Sourceの所在とRoleを一つのSnapshot/Scopeに対応付ける。図面表示とCRUD導出に必要なRelation/Function CRUD/Business Actionのいずれかが得られない場合、その欄を **`unavailable/unsupported`** とし「Graph完成」ではなく**First Missing Edge**として報告する。既存`modelref`・ER/物理表Reference・Business DFD DOT・Studio Graphは局所のProducer能力比較に利用できるが、別Sourceや別Loaderからの合成結果を仮想の同一Accepted Worldとして扱わない。
+
+| 用途 | 閉包で必要な根拠 | 出力資格の停止線 |
+| --- | --- | --- |
+| Data Graph | Entity/RelationのRole、ID、方向、多重辺・Key/FD、Source ref、Scope | Edgeが未解決、旧Xead固有Tokenだけ、非公開Edgeの識別不能 |
+| Function Diagram/CRUD | Functionの宣言、Data参照と明示CRUD、列挙範囲・否定依存 | 不完全なFunctionの明示Rを消す、未列挙をnoneとする、actual Provider Readと混同 |
+| Business/Function対応 | Action/Task、manual、Functionへの参照、関係の出典と粒度 | manualをMissing Functionエラー化、潜在pathをactual business Effect化 |
+| 複数Canvas・SHO引用 | Semantic IDとOccurrence ID、Source rev、Projection/Renderer rule、Disclosure | Viewが非表示にした辺を削除扱い、古い引用図からSourceを書戻し |
+| Product Function実Read | 実Query SQL raw+args/physical Provider/結果Slice/取得時点/Attempt | GraphやCRUD表のRセルで実DB読取があったと主張 |
+
+ここから汎用CLI/MCP/schemaを先に増やさず、既存Read-only Context Packetから用途相対の欠落を示す最小Consumerを先行する。P0-MをP0-Rの完成待ちにせず、P0-Cでのみ同World・Scope・Role・Revision・Grain・Consumer Receiptを突き合わせる。
+
+### 19.2 同一性・鮮度の比較範囲を明示する
+
+実CLIの[#3345](https://github.com/hat47x/tei-platform/issues/3345)が示す`view -format json`の`semanticFingerprint`はApplicationが使う名前空間に限定され、`worldFingerprint`や`sourceIndexFingerprint`と同じ値にはならない。比較範囲が異なるFingerprintを等値検査して偽の不整合・偽の再資格化を起こさない。Source/World/Projection/Context/Build/Asset・Consumerの各版は**対象と何をHashしているか**を明記し、一方が存在しない場合はcurrent-use資格を未確認とする。
+
+[#3347](https://github.com/hat47x/tei-platform/issues/3347)では、CLIの`diagnostics`配列の二重ラップ、`requirements.result`の配列形、builtin標準定義が`model catalog.entries`に混在、Plugin Lockの二重版といった**実応答形の相違**が観測されている。Diagram/MatrixのConsumerは、既存Schemaのversion/mode/成功・失敗形を確認し、知らない形を勝手な標準形へFlattenしない。非互換な応答変更はCLI契約Ownerへ返し、図面専用の第二Envelopeを作らない。
+
+同じ正本を後続のStudio/SHOへ届ける際には、**実Producer出力→Asset生成→対象Consumerでの受領→表示/参照資格**を別観測とする。Hash一致は内容証拠の一部であり、実際に誰が閲覧・操作できるかのGrant/Disclosure資格ではない。表示のViewport/Canvas partialと、Source全体の完全性を同じ列で表さない。
+
+### 19.3 P0-M/P0-R/P0-C・Testの最小切り分け
+
+| 次の実証 | 作業と判断可能な出力 | 検証/Owner |
+| --- | --- | --- |
+| **M1 Source Admission** | 現実の1 Source/Roleの`declared→discovered→loaded→parsed→bound`とScope/Reader mode、Source locatorを固定し、業務Relation・CRUDのRequired Gapを記録。ドキュメントのRaw保存とMeaning入場は別 | #3262/#3346/#2621。Sourceは実際に現行Readerが扱う形式に限定 |
+| **M2 Graph/CRUD** | 同じ実Acceptedまたは資格が明示されたModel RevisionからData/Function/Businessの各1 projectionとFunction×Data matrixをHeadless出力し、Edge/Cell→source refを確認 | #1124/#1125/#1126/#2497。ReferenceとProduct Pathの区別 |
+| **M3 Consumer/Edit** | 同じSubjectのCanvas間選択同期、一つの**可逆**Relation属性変更のPreview→Accepted Source Patch→reparse→再投影、非単射拒否 | #1124/#2500/#997。意味受理は既存Owner |
+| **R1 Physical Read** | `order_entry.recent_orders`の実Function選択SQL byte+args→PostgreSQL Provider→Header rows→Function Data Contextの同一Attempt観測 | #2586/#2506/#2507。既存Reference PG局所PASSとは別 |
+| **C1 Join** | M2のData identityとR1のResult occurrence/Scope/Read Epochを照合。異なるWorkspace・旧Result/部分取得・単に`CRUD R`の例を拒否 | #3262/#2514/#1180。互いの不存在や業務完了を推論しない |
+| **D1 Delivery** | CLI→Studioと、別にSHO図引用へ出力し、受信bytes・Asset/Source rev・Disclosure/文書Occurrence・Lossを検収 | #997/SHO #5/#6/#19。文書出版・外部配信は別 |
+
+いずれも**新Gate名ではなく既存Ownerへの手順・停止条件の分解**。P0-Mに未取得があってもP0-Rの独立実証を進め、P0-Cだけは双方の現在資格が満たされるまで保留する。Test側は既存#2514独立Expected・#1180 Scenarioを使用し、今回のAI草案ExpectedやGo Fixture Test成功を実製品の合格として採点しない。
+
+### 19.4 Go Fixture CIから得た正しい結論とブランチ更新
+
+旧PR HEAD `2bc0d0f3aa3960751d57745209d94a8253538d72`の[Repository Health #42385303844](https://github.com/hat47x/tei-platform/actions/runs/42385303844)は**failure**。実Logでは追加`reference/diagram-crossref` packageなどのGo tests、`gofmt -l . is empty`はPASS、唯一の失敗は`tools/repository-plan-check`による**本設計文書が`plan/design/README.md`に未掲載**というもの。ほかのRQ/索引不足をこのHEADの失敗原因に混同しない。
+
+そのため旧ブランチを現mainの固定commit `6cf510d6301a1e133ebbe69ad7bf004f03361b54`と**履歴を保つ二親merge**で統合し、最新main内容を保持した`plan/design/README.md`へこの設計文書の索引1件を追加。差分は本Design、合成Input/Expected、Fixture Go Test、Indexの5ファイルのみ。二親commit `6d3eb7f6cf7fc68c4401947faf9cad157ae565af`の作成後比較で**main比ahead22/behind0、5ファイルのみ**を確認した。これは既存PRのreview候補更新であってmainへのmergeではない。
+
+**新HEADのexact CI（Health/脆弱性）や新実Consumer・Owner正式採用は別に確認する**。古いGo PASSや旧失敗理由を新HEADへ無条件転記しない。
