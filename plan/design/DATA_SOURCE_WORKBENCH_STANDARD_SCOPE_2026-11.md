@@ -197,6 +197,12 @@ W0の静的コード照合は本書へ記録したが、**実行コードと同�
 - 標準の提供形態はGo静的合成を先に検証し、単一実行ファイルの**実Build/Link閉包・未使用要素の非干渉**を検査する。外部Process、Java/.NET Hostは同じService Contractを満たせる別実現とし、方式選定は隔離・契約適合・配布と実測コストを見て段階判断する。
 - Verified Composition BOM（#3267）は**exact Contract＋実Provider＋Consumer/Target＋Build/Invocation＋Independent Expectedの組合せ**が通った場合だけ「検証済み」と表明する。各Plugin単体の合格や同一semver、Providerの静的Capability広告だけでは、CLI/Studio/Go生成Runtimeの全組合せを合格としない。
 
+### 原子的Traitの最新案との照合（#3278）
+
+2026-11-07にmainへ統合された[原子的Traitの実装義務・合成・履行検証](TRAIT_ATOMIC_COMPOSITION_AND_FULFILLMENT_2026-11.md)は、Trait/Contract/Provider/Hintを明確に分離する。Workbenchでも`Read`、`Versioned`、`ConditionalWrite`、`HistoricalQuery`等は**各用途に必要な保証と失敗条件**へ展開し、Generated/Standard/Manual/External実装のうち何が履行するかと独立Expectedを結ぶ。NoSQL Documentが編集可能に見えても`ConditionalWrite`の不一致時非更新を保証できないなら、編集Operation Offerは不成立にする（Readは維持）。
+
+Trait集合の合成は原則として交換・結合・冪等であり、同じ要求を別の順序で与えても選択・不足診断を変えない。同じTraitの異なるParameter/Scopeは後勝ちせず衝突または明示の両立性評価へ送る。Providerの対応宣言や単体Conformanceから、合成した全体を自動PASSとしない。実際のData Source Instanceと現在Grantまで評価する。Workbench独自のTrait Registryや複合Trait Core enumを作らず、#3278/#951の実証結果を参照する。
+
 ### 用途別の責務／実装差し替え（比較用。正式Schema・Plugin名未採用）
 
 | 組合せる役割 | 先行する実Provider/Reference | CLI・Studio Consumer | 生成Go Runtime Consumer |
@@ -248,7 +254,11 @@ W0の静的コード照合は本書へ記録したが、**実行コードと同�
 | WB-35 | Inspector/ProviderのPluginだけ別版へ差替え、同じFunctionをCLI/Goで実行 | exact Lock/Target別に再検証。個別Plugin Conformanceを組合せ合格へ流用しない |
 | WB-36 | File Readerはlocal FS権限のみ、Cloud ReaderはNetwork/Secretを要求 | 最小GrantをSource別に分離。ログ内容や秘密情報をAI Harnessへ自動送出しない |
 | WB-37 | 独立NoSQL/JSONL ProviderがNative filterを実装せず、実Sourceは巨大 | 無音の全量取得・ローカルfallback禁止。予算/情報源のコスト/scopeを開示 |
+| WB-38 | `Read+Versioned` / `Versioned+Read` / `Read+Read+Versioned`を同一Scopeで要求 | 合成要求/未充足が順序・重複によらず同一、別Parameterの後勝ちなし（#3278） |
+| WB-39 | NoSQL Providerが`ConditionalWrite`を必須宣言したが失敗時非更新の実装/試験欠落 | Read-only表示は可能でもWrite Offerは`required-missing`または`unverified`。Hint扱いで迂回しない |
+| WB-40 | PluginがPublisherの許可なしに同名・互換高版のContractを差し込む | Contract ID/semverだけで採用せず#951のAuthority/Conformance境界へ拒否、既存Stableを黙って置換しない |
+| WB-41 | 時間窓のログ集計で遅着・訂正が発生、旧MaterializationがCache hit | Watermark/入力閉包/訂正の反映根拠がない限り完全集計・業務確定値を主張せず、#3271/#1641の失効診断 |
 
-受入順は**WB-26/27/29（D1に接合）→WB-30/31（実Read）→WB-34（DDL安全）→WB-32/35（実Build／BOM）**。WB-33/36/37はどの段階でも安全性を損なうなら停止する固定負例。性能測定は経路別に初回接続時間、ページ取得時間、メモリ/Bytes、Plugin導入に必要な編集ファイル数・Core改修数、静的Buildの含有差、CLI/Studio/Runtimeの実呼出差を計測する。未取得値は`not-run`と記載し、仮の性能目標や完全合格率を生成しない。
+受入順は**WB-26/27/29（D1に接合）→WB-30/31（実Read）→WB-34（DDL安全）→WB-32/35（実Build／BOM）**。WB-33/36/37/39/40/41はどの段階でも安全性や意味・履行保証を損なうなら停止する固定負例。性能測定は経路別に初回接続時間、ページ取得時間、メモリ/Bytes、Plugin導入に必要な編集ファイル数・Core改修数、静的Buildの含有差、CLI/Studio/Runtimeの実呼出差を計測する。未取得値は`not-run`と記載し、仮の性能目標や完全合格率を生成しない。
 
 **本節のClaim ceiling**：現行コードと既存PRの静的観測、Source Fixture・独立Expected・Fixture自身の回帰テストの作成まで（テスト実行・実Provider Conformanceは未確認）。実PostgreSQL、CLI/Studio同一Plugin呼出し、生成GoのLink/Invoke、JSONL Reader、DB Apply、P0〜P2の実試験は未実施。#1251のD1/D2契約、#2586のRead、#2892のHistory、#3267のBOM、#951のResolverを重複実装しない。
