@@ -382,3 +382,61 @@ P0-M三視点の先行作業やP0-R製品実Readを停止させず、**P0-D（�
 直近の担当順は、①#3346の未解釈文書が「不在」でないことの正確なCLI診断、②#3262のRequired/Mode誤不存在と実Reader閉包、③#3345/#3347の比較資格とCLI JSON互換、④#2586実Readと#1124 Modeler read-onlyをP0-C接合、⑤#1251 Inspector実Providerの二Consumer、⑥#2515/#2516の受信Sink/外部開示資格である。重複する新Test SSOT/Loader/Hostは作らない。
 
 **本追補の検証限界**：2026-11-08時点のGitHub Source/Issue/PRと会話上の設計を照合した文書計画のみ。新Product CLI/DB/Studio/HTTP/SHO/OS/Egress/Harness試験はNOT RUN。公開合成と元Sourceの相互検証、OwnerによるMeaning採用、現Grant、正式Gateは未受理。
+
+<!-- tei-design-intake-third-pass-20261108 -->
+### 14.11 取込の「適格性」は用途とClaimごとに計算する
+
+P0-D/P0-IのReadが一部成立したとき、Workspace全体を「未完成」または「完成」の二択にしない。以下の区別は既存Source/Role/Context/Evidenceに対する**Queryと診断の投影**であり、新しい状態管理表や万能Admission Engineを追加する提案ではない。
+
+| 対象Claimと用途 | 要求される実証 | 許可できる作業の例 | 不足時に拒否する昇格 |
+| --- | --- | --- | --- |
+| Raw保存・再閲覧 | 出典/byte・Source identity・許可されたRead/Save・保存後別Read | 非管理Draftや未分類Itemを全文で保管・閲覧 | Role自動確定、Function実行、Rawの無許可外部送出 |
+| 構造の暫定探索 | Parser/Reader実到達、位置/Role候補、unknown・曖昧さ、Source版 | Candidate図、説明表、質問・次Probe | Canonical Meaningの正式採用、偽の「不存在」 |
+| 特定Roleの意味的利用 | 対象のSource/Role/Operator/Owner Decisionと、用途相対Required閉包 | 受理済み部分に対するinspect/静的な照合 | 未受理部分の自動Lowering、他Function全域の受理 |
+| テスト候補の作成 | Case対象の必要Rule/Relation/Sourceと独立Required、適用条件、未知領域 | 部分ContextのGap報告と局所的な提案 | 独立Expected無しの合格認定、未知Ruleの盲検発見達成 |
+| 実Read・Build/Plugin | Function→Query/SQL→実Provider Rowset、またはContract→選択→実Link/Invokeの同一Attempt | 観測されたTarget/Providerの限定主張 | 同Logical IDの別SQLやselectedのみのProviderを実利用とする |
+| Write・公開・外部Consumer | 対象/版/Scope/Host Grant、実Effect/Receipt、開示Policy、受領End/別Read | 資格化したOperationとConsumerだけ利用 | Receiptを現在値/許可とする、未観測Sinkで漏洩なしとする |
+
+同じDocument内の`total`だけ意味受理済みで`discount`は未受理、という場合は`total`への限定Queryを阻害しない。一方、`discount`を利用するFunction/Build/Testについては明示的に停止する。既存[#2621](https://github.com/hat47x/tei-platform/issues/2621)/[#3030](https://github.com/hat47x/tei-platform/pull/3030)の部分受理・Loader仕様を再利用し、現行`*.tei.md` Loaderの一括拒否を「部分Meaning利用できた」と読み替えない。**Raw保存可能という将来要件と、現行Loaderが意味Sourceとして受理する能力は別**である。
+
+「読取らない」を意図して選んだ非管理Draftと、必要なのに読取れなかったSourceは別である。前者を常時Build Errorにしないことと、後者を無音で飛ばさないことは両立する。未読込・部分・未許可の件数やIDを外部Consumerへ開示するかどうかも用途別Policyに従う。
+
+### 14.12 OKF交換とTEI Authoringを、同じRawから異なる用途へ分岐させる
+
+横断で既に提案された[OKF導入Draft #3329](https://github.com/hat47x/tei-platform/pull/3329)のK0/K1を、設計取込が対応すべき**異質な入力の圧力試験**に使う（新しいFixtureは作らず、同Draftの公開合成資産を再利用する）。同Draftが記録するcanonical OKF v0.2 Source固定は**上流形式へのPin**であり、TEI World/Plugin/Host/意味の固定とは別。K1のroot index＋3 ConceptにはData Entity、Function、未分類Draft、未知追加key、broken link、scope-only resource、単一`verified`を含む。FixtureとExpected候補が同じ作成Attempt由来で、正式な独立Oracle資格はない。
+
+| 比較する段階 | 既存Fixtureで問いにすること | 不正な自動昇格 |
+| --- | --- | --- |
+| K0・形式としての読取 | 未知type/追加key、broken link、Raw bytesを保存し、形式の未知を欠落/TEI構文エラーへ安易に畳まない | OKFを読めた→TEI Role/Meaningを受理 |
+| K1・Role候補と関係 | Data/Function/未分類Draftをそれぞれ出典へ辿り、同ID/同名・Referenceの未解決を表示 | 未分類Draftを強制Concept/Function化。未解決linkを「参照先なし」と確定 |
+| K1・利用Admission | `verified`・scope-only resourceと実Source Read/Authority/Owner Decisionを別に検査 | OKF `verified`をTEI Accepted Meaningや本人認証とみなす |
+| K2・二Consumer | TEI CLIの原資料・Role候補・UnknownとSHO/外部Consumerの同一対象・Revision・欠落表示を比較 | Markdown化・保存完了だけでSource→Consumer同一世代の完全受領を宣言 |
+
+OKF Reader/Attested Computation、SHO保存、外部Provider Fetch、Tool Egressの適合は各既存Owner（#2619/#2621/#2514/#2515/#2516、SHO #18、TAI #514）の担当とする。P0-IにOKFの全面対応を強制しない。まず**同じ原資料がReaderなしでも安全にRaw保存されること**、Role選択後に必要な依存と欠落を表示することを別検証する。Attesterの決定論的実行が成立しても、独立ExpectedやOwner Acceptanceは導出できない。
+
+### 14.13 変化時の局所失効と再資格化（Source固定だけで済ませない）
+
+「Sourceに変更があったらすべて再構築」でも「Source byteが同じなら旧PASSを再利用」でもない。#2582/#2600/#3271のDependency/Cache、#1163のEvidence、#3262のContext、#951/#1251のPlugin、#2516のConsumerが所有する既存範囲で、**何を変え、どのClaimが旧結果に依存していたか**を明示する。以下は新しい世界状態・変更エンジンの仕様でなく、再検証対象を見つける比較票である。
+
+| 変化・反例 | 再確認の対象 | 不変のまま保持し得る対象／禁止する推論 |
+| --- | --- | --- |
+| Source移動・同bytes、Reference解決先変更・A→B→A | Source locator、read actual path、Ref availability、Read cohort、Meaning依存、現在のGrant | 既存Source原byteの値自体は保持可能。ただしAに戻ったことから過去の未観測変更を消せない |
+| 構造CandidateやRole/Operator pin変更、未受理Meaning更新 | 当該Role/Meaningを使うContext、診断、Generated artifact、資格付きScenario | 無関係なRaw保存は保持可。Meaning DecisionをAI候補で自動上書きしない |
+| RequiredにRule/Relationを追加、Reader modeやTool schema変更 | Required−Loaded/Parsed/Bound/Returned差分、Mode、Result format、Consumerの実パース | 旧CLI JSON正常/FP一致が新Requiredの全閉包を保証しない |
+| 同Logical Query IDにDB専用SQLを追加、Provider選択・Plugin/traitの版変更 | Negative dependency（候補探索）、実SQL/args、Provider selection/Link/Invoke/BOM、Target | 旧common SQL bytesが同じでも新Realization候補・Build/Runtime資格の再検査が必要 |
+| FunctionのSelection epoch、Result grain/Scope、非公開PredicateやTime軸変更 | Claim成立域、Graph/Tab/Chart表示、可逆Write範囲、現在Disclosure | 画面だけの位置変更からDomain Mutationを推論しない。片側局所Claimの維持と撤回を分離 |
+| 実Effect/ACK unknown、Consumer受信・Session再開・公開Policy変更 | 同OperationID Receipt Lookup、別Readの現Resource、Reply完了、Sink/Log、現在Grant | 過去Effect事実を撤回したと推論しない。一方旧Receipt/旧Replyから現在値・再送資格・公開可を導かない |
+
+とくに、[merged #3337](https://github.com/hat47x/tei-platform/pull/3337)のPlugin選択集計は12宣言・6未選択という**その集計規則下での観測**であり、[merged #3350](https://github.com/hat47x/tei-platform/pull/3350)でDatabase Provider技術適合を既存Validationの`SupportsDatabaseProvider`へ接続した結果、同Fixtureの未選択は4となった。**観測規則・Provider能力の意味が変われば、Source Worldが同じでも集計結果が変わる**。新対応表を増やさず、選択済みと実Link/Invoke/Grantを別に保持する。この2つの歴史的数値を「以前の履歴が誤り」「今の4件は欠陥」「全Provider実利用」と扱わない。
+
+またSourceが不変でも、`go test`で選択されるテストのProfile/テスト実装自体、Build toolchain、出力を受け取るConsumer、公開Policyが変化すればEvidenceの現在資格は再判定する。#2533/#2514の独立Test/Expectedを再利用し、当該ScopeのPASS/Fail/未Runを別記録にする。
+
+### 14.14 実証の最短単位と、生成AIが読む結果の形
+
+**最初の2ケースは別の問いである**。Case Aは現行`reference/workspace`の一Structured Subjectについて既存CLI Reader・独立Required・Rule/Relationの正負対照を使う（#3262）。Case BはMarkdown/OKFのRaw保管と、Reader/Role未対応診断、原文/参照未解決を確かめる（#3346/#2621/#3329）。Bが未成立でもAの限定Inspector/Modeler/実Read実験は進められる。両者を「TEIがMarkdownを完全に理解できた」一件として足さない。
+
+各Caseの内部的な検証票は、既存のSource/Scenario/Evidenceから導く**利用者・生成AI向けの投影候補**とし、新たな保存Schemaを定義しない。最低限、`task + required scope`、実際に呼んだ`command/mode/args`、対象`source/role/revision`、`required/observed/missing/unknown`、`test/expected provenance`、`consumer/end-of-reply`、`current claim ceiling`、`next concrete probe`を自然な認知順に返す。CLI JSONは型付きrefとstatusを持ち、Markdown/Studio/SUIでは同情報の読みやすい投影を行う。未知の件数や秘密のIDを無許可Consumerへ出すことは要求しない。
+
+P0の完了は「全Domainへ一般化」ではなく、**どの根拠が揃えばこの用途のClaimに進めるか、揃わなければどこで停止するかを実CLIから独立に判定可能**な最小例とする。T1-Aの既知Rule実走は到達済みの限定証拠だが、未知RuleをAIが発見するT1-B、C1/NFR全被覆、正式Markdown Reader、異Provider E2E、Owner受理は後続。新たなT1期待値/Fixtureは#2514/#1180が検証し、本文はCaseの複製正本にしない。
+
+**本追補の資格**：GitHub mainの現行計画・関連PRの実証範囲と、他チャットの設計方針を突合した文書上の成熟差分。OKF K1のTEI Reader/SHO二Consumer、再資格化の全負例、実Product Function/Plugin/Host、追加Go/DB/GUI/Harness試験を今回実行したものではない。
