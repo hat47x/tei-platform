@@ -4,6 +4,7 @@
 
 - [製品品質の検証計画](PRODUCT_QUALITY_EVIDENCE_PLAN_2026-09.md)
 - [製品要求と実証状況の照合](PRODUCT_REQUIREMENT_GAP_AUDIT.md)
+- [Plugin-firstのCLI/Studio共通InspectorへのD1 Fit/Gap](PLUGIN_FIRST_D1_AUTHORING_ROUTE_FIT_GAP_2026-11.md)（現行Go経路の静的監査と具体的な検証計画。実Provider二Consumerは未実証）
 - [E1合成証拠の8件原本保全と再検証](TEI_E1_SYNTHETIC_ARCHIVE_README_20261013.md)（試験用証拠。製品Gateは未資格）
 - [E2a-1実PostgreSQL先行証拠の原本保全](TEI_E2A1_REAL_POSTGRES_ARCHIVE_20261013.md)（手書きSQL／同一プロセス別pool。製品G2は未資格）
 - [E1合成WebとE2a-1実DBの横断証拠誤結合防止](TEI_E1_E2_JOIN_LIMITS_20261013.md)（異なる版・Application・Authority。8件のG2阻害条件）
