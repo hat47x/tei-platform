@@ -154,12 +154,13 @@ func fixtureProblems(f fixture, want expectation) []string {
 			declared[u.Data] = strings.Join(operations, "")
 		}
 		for id := range entities {
+			// Incomplete enumeration does not erase explicitly declared operations.
+			// It only makes the not-enumerated cells unknown rather than none.
 			expected := "unknown-not-enumerated"
-			if fn.DeclaredCrudComplete {
+			if op, ok := declared[id]; ok {
+				expected = op
+			} else if fn.DeclaredCrudComplete {
 				expected = "none"
-				if op, ok := declared[id]; ok {
-					expected = op
-				}
 			}
 			if row[id] != expected {
 				add(fmt.Sprintf("CRUD cell %s/%s expected %q got %q", fn.ID, id, expected, row[id]))
@@ -352,5 +353,33 @@ func TestFixtureAuditRejectsFiveKnownMutations(t *testing.T) {
 				t.Fatal("synthetic mutant escaped fixture audit")
 			}
 		})
+	}
+}
+
+func TestPartialFunctionCRUDKeepsKnownCellsAndUnknownRemainder(t *testing.T) {
+	f, e := readFixtures(t)
+	// Use an existing declared R as the single known cell of an otherwise
+	// incompletely enumerated Function; do not introduce a second fixture.
+	if len(f.Functions) < 4 || f.Functions[3].ID != "fn.external.dispatch" ||
+		f.Functions[3].DeclaredCrudComplete ||
+		len(f.Functions[0].Uses) < 3 || f.Functions[0].Uses[2].Data != "data.customer" {
+		t.Fatal("unexpected pinned fixture shape")
+	}
+	f.Functions[3].Uses = append(f.Functions[3].Uses, f.Functions[0].Uses[2])
+	row := e.ExpectedFunctionDeclaredCrudMatrix.Cells["fn.external.dispatch"]
+	row["data.customer"] = "R"
+	if problems := fixtureProblems(f, e); len(problems) != 0 {
+		t.Fatalf("explicit R within incomplete CRUD scope must survive: %v", problems)
+	}
+	// A false unknown must not overwrite the one positively known R.
+	row["data.customer"] = "unknown-not-enumerated"
+	if problems := fixtureProblems(f, e); len(problems) == 0 {
+		t.Fatal("erasure of an explicitly known R escaped fixture audit")
+	}
+	row["data.customer"] = "R"
+	// A cell outside the incomplete declaration is unknown, not 'none'.
+	row["data.order"] = "none"
+	if problems := fixtureProblems(f, e); len(problems) == 0 {
+		t.Fatal("unlisted cell promoted to none escaped fixture audit")
 	}
 }
