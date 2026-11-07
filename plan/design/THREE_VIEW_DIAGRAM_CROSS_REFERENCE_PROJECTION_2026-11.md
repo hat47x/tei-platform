@@ -173,3 +173,46 @@ TEI: #1119 #1124 #1125 #1126 #1031 #1131 #1132 #1803 #2497 #997 #2621 #2506 #250
 | Headless Graph/CRUD/CUI | NOT RUN | 開発する場合は#1124/CLI既存入口を拡張 |
 | Source Patch/Studio/SHO実Consumer | NOT RUN | Writer/Renderer実装とArtifact資格は別 |
 | Actual Provider/Owner受理/Production | NOT RUN / NOT ACCEPTED | 既存Gate・Authorityを迂回しない |
+
+## 13. Source AdmissionとCLI実装Fit/Gap（11/07実Sourceに基づくP-1停止線）
+
+別レーンの[#3262](https://github.com/hat47x/tei-platform/issues/3262)が「用途・Subjectに相対的なRequired closureを満たすDesign Context Query」を所有している。ここでは**Diagram/Matrixに対する具体的なConsumer requirements**だけを返し、第二Design Context QueryやGraph-only Registryは導入しない。
+
+今回の[現行 `cmd/tei/cli_contract.go`](../../cmd/tei/cli_contract.go)の静的照合では、`tei.cli.discovery/v0` は `selected-read-only-commands` を範囲とし、`model catalog`、`workspace-files`、`inspect`、`trace`、`source-index`、`knowledge-context`、`validate` などを列挙する。一方、**独立したDiagram/CRUD投影を返す公開CLIの契約は、このcatalog内では確認できない**。別の内部Readerや古いLegacy Reference Toolまで存在しないと断定するものではない。`cmd/tei/main.go`の未知コマンド拒否と、旧`tools/reference-xead-cross-view/main.go`のlocal/private Projectionを参照し、公開CLIとLegacy専用観測・製品Canonical意味を混同しない。実CLI起動、`*.tei.md`のParser/admission、Diagram consumerは今回NOT RUN。
+
+**最小Request（概念比較票、採用済みABIではない）**: `workspace/scope + subject IDs + intended view(Data/Function/Business/CRUD) + source revision + required relations/operation granularity + admissible disclosure scope + expected closure + page budget`。
+
+**最小Response（既存Readerから本当に観測できるものだけ）**:
+
+| 列 | 役割 | 完全性・安全性 |
+| --- | --- | --- |
+| `requested/declared/discovered/loaded/parsed/bound/returned` | 対象集合の各段階の観測 | Source未読込と業務上の対象ゼロを混同しない |
+| Subject/Edge ID、Relation/Path occurrence、source locator | Source→三視点→Matrixセルの根拠 | 同じ表示ラベルと同じ業務対象を同一視しない |
+| `view scope/revision/rule` と `coverage/unknown/unresolved` | ユーザが現在理解できる範囲 | 未取得を「存在しない」へ、partialを全件へ昇格しない |
+| `selected cell constituting edges` | MatrixがどのFunction宣言、Business path、Provider Observationに由来するか | scalarな`C`/空文字では根拠が失われる |
+| `page index/continuation/end marker` | 大規模図・Harness向けの完全受領 | exit0でも途中切断・後着・混合Revならcomplete不可 |
+| `loss + allowed operations + reason` | 逆編集可能か、read-onlyか、別Action要か | UI資格をHost Grant/Meaning Acceptanceへ昇格させない |
+
+**戻り値の重要な意味論**: 行列の空セルは、declared operationの列挙閉包が当該Function/Data/時点/Scopeについて**確認できたときだけ** `none` とする。それ以外は `unknown-not-enumerated` など明示の未確定値を使う。現在の例では `fn.external.dispatch` の全9セルをunknownにし、独立Oracle側も同じ区別を求める。Businessの`TaskAction→Function→Table`はFunction-level potential pathで、Business-specific actual CUDではない。
+
+**P-1入口を満たすために取得する実証**: 一つの合成Subjectで `workspace-files`とLoader、`model catalog`、`inspect`、`trace`、`source-index`、`validate`の実結果を同じcheckout/Scopeへ帰属させ、source byte とLoader parsed/read、Candidate Meaning、Acceptedの区別を一覧化する。Graph/Matrixを要求したのに公式Readerが未提供なら`unsupported`とし、Fixture JSONを`tee`しただけの自作描画を製品Projection合格としない。参照Xead XMLからの観測結果を新Canonicalとして扱わない。
+
+Sourceを`*.tei.md`へ統一する方針は#2621に従い、現状のLoader/Parser Gapが残る場合は実行資格を未実証にする。CLI/MCP/Skillで同一用途の応答を比較する際には、対象閉包・出力の実byte数・Tool Reply件数・end marker・Disclosureを記録する。#3262の既存DCQ-01〜10をこの製品Diagram/Matrix Consumerへ適用し、新番号の同等試験は重複起票しない。
+
+## 14. 最小のFixture監査を実Go Testへ追加
+
+[合成Fixture](../../reference/diagram-crossref/pressure-input-v0.json)と[AI草案Expected](../../reference/diagram-crossref/expected-v0.json)について、[fixture契約Test](../../reference/diagram-crossref/fixture_contract_test.go)を追加。**これはモデルParser/Projection/CLIのテストではなく、入出力のテスト前段で必要なFixture自身の整合検査**である。
+
+チェック内容: Entity/Edge/Function/Business Actionの重複ID、Relation端点、同端点の多重辺、同ラベル別ID、Function-level declared CRUD表の全列、宣言不完全時のunknown、既知Mutation ID対応。さらに、edge欠落、identityの衝突、宣言不完全の誤完全扱い、参照切れという4種類の改変がFixture監査に検出されることを確認する。今回の12種の`knownMutantRejections`は**12種類の失敗を実ProductのProjectionで検出した結果ではない**。実際のMutant Scoreは検証対象の実現と各CaseのRun Receiptに基づき#2514/#2811で集計する。
+
+初回ローカルのGo試験はGo 1.23.2/隔離された簡略化Stub入力で2つのTest FunctionがPASS（4 subtestを含む）。これはGitHubに保存した**実JSONのGoテスト実行と同一ではない**。リポジトリ内での実Fixture TestとRepository Healthは、新しいcommit headに対するCIとログで別途検収する。上位CLI/Studio/SHO/実Provider、Owner意味受理はNOT RUN。
+
+## 15. 次の最小実装への判定（図面Tooling側で独立に所有しないもの）
+
+- **L0/Source**: #3262/#2621のDesign Context/Loaderを通ったSubject/Relationのみを図面の入力候補にする。旧Xead local projectionのsource-tokenやクロスビューの計数をAccepted Domainへ暗黙昇格させない。
+- **L1/Graph・CrossRef**: #1124/#1031/#1125/#1126のReader/ProjectionにSource ID、Edge ID、direct vs derived、unknown、selection scopeを保持させる。不可逆ならread-only。
+- **L2/CLI Consumer**: `model catalog`/inspect/trace等の既存コマンドを使い切ってから、Diagram/Matrix独自不足を最小契約として補う。新コマンド・新MCPスキーマを先に標準化しない。
+- **L3/Studio Consumer**: 同じ構造をGraph/Table二つの標準表現で照合し、最初の可逆な図上編集1件を既存Proposal/Acceptanceへ往復させる。Sourceの一意性・現行Revision・Selection epochを厳守。
+- **L4/SHO Consumer**: 同じGraphを引用するだけの読み取り経路と、SHOのMermaid風Authoring本文／図解Assetを別正本で扱い、旧図・未取得・秘匿・納品欠落を説明する。
+
+このL0〜L4は説明用の作業分解であり、既存G0〜G4やP0のGateを新設・置換しない。図面Core/Runtimeに特別扱いを固定する前に**業務三視点とHTTP Response Graphという二つの異質Consumer**へ同一契約が成立するか測る。
