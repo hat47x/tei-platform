@@ -203,3 +203,46 @@ Subject / SourceRev / RequiredScope / TraitContractRev
 - **#3262/#1158**：生成AI向けの `inspect→requirements→validate→explain` は将来のOperation Projection候補。開示条件/Source scopeに合わせて情報を返し、未実装コマンドを実在すると説明しない。
 
 **状態**：本追補は横断した契約と受入票の成熟化のみ。T1-R/T1-M、TC-11〜15、実Go Build/CLI/Wails/DB、Conformance、Performance計測、Owner Meaning Acceptanceはすべて未実施。実行上の成果は各OwnerのEvidence/Issueに限って記録する。
+
+
+## 10. 2026-11-07後半の実証を反映：Traitの「必要集合」とCapabilityの「選択率」は別の指標
+
+新しくmainへ統合された [Plugin能力選択のReference #3337](https://github.com/hat47x/tei-platform/pull/3337) とその[技術名解決の修正](https://github.com/hat47x/tei-platform/commit/641fff18d1a40591543461f043c827d86e090c8b)、[Context部分集合の負例 #3354](https://github.com/hat47x/tei-platform/pull/3354)、[実行経路を持たないHookの検出 #3306](https://github.com/hat47x/tei-platform/pull/3306)から、要求の閉包を証明せずに「Traitが充足された」「未使用」とする危険が具体化した。
+
+**実際に観測された限定事実**：[先行Reference](../evidence/PLUGIN_CAPABILITY_COVERAGE_REFERENCE_2026-11-08/README.md)は候補能力12件のうち6件を `unselected` と表示した。これは当時の分類規則に `database-provider` の技術名→能力解決が含まれなかったためで、[後続修正の実行記録](../evidence/PLUGIN_CAPABILITY_COVERAGE_TECHNOLOGY_RESOLUTION_2026-11-08/README.md)は**同じ12件中4件**を `unselected` とした。旧Evidenceは当時のSource/Rule Fingerprintに束縛した歴史的な記録として残す。新しい結果が旧Evidenceと矛盾したことを、無条件に「環境が変わった」「利用率が上がった」と説明しない。**分類規則のRevisionが変わった**ためである。
+
+このReferenceはあくまで「宣言されたCapabilityがEnvironmentのBindingへ関連付くか」を報告する**read-only候補観測**。同じPluginがEnvironmentへ明示選択されていても、そのPluginの個々のCapabilityのBindingがなければ選択済みとはならない。同じPluginの一能力が使われても、他能力は使われないことがある。さらに `database-provider` のように提供技術へ複数候補が一致した場合、Referenceは**両方をselectedと表示し得る**。これは一意なProvider解決・実装適合・Invocationの証拠ではない。
+
+### 10.1 分母と対象集合を混同しない
+
+| 問い | 分母／独立根拠 | 結果とClaim上限 |
+| --- | --- | --- |
+| Candidate Inventory | 指定したSource/Environmentで読めたPlugin `provides` の集合 | 候補の観測に限定。未読込・権限外Pluginの不存在は主張しない |
+| Capability Binding Coverage | その候補と環境Bindingの照合（解決規則版も必須） | `selected/unselected` はBindingの一致。実Provider一意性・利用実績を主張しない |
+| **Required Trait Coverage** | **独立に固定したFunction/Consumer/Target/ScopeのRequired Trait/Operation集合** | Requirementsが完全に取得できた範囲でのみ `fulfilled/missing/unverified/not-applicable` を判定 |
+| Actual Fulfillment | exact Provider・Artifact・Call-site・結果・Independent Expectedと実Target観測 | そのAttempt/Scopeで成立したContractのみ。現在Grant、業務受理、配送受領は独立 |
+| Test Coverage | #1180/#2514の独立Scenario/C0/C1/NFR/Negativeの母数 | Test caseの提案・発見・実行・PASS・実Provider資格を分離 |
+
+**未観測のRequired Traitをゼロとしてはいけない。** #3354の実CLI Context検査では、見かけ上正常なJSON/Revisionでも必要なRule/Relation/Sourceが欠け得ることを限定例で検出した。Traitについても、`Required=[]` が自己申告されただけ、CLIが1ページ返しただけ、非開示Contextが省略されただけなら「必要Traitなし」や「充足率100%」にはならない。Required Closureが `partial/unknown/permission-denied` であれば、**母数と充足率を `unknown` とし、限定的に観測済みの事実だけを返す**。秘匿Traitの有無・件数を診断から漏らさない。
+
+### 10.2 既存Referenceを壊さず追加する具体的Pressure
+
+今回の[小さな回帰試験](../../tools/reference-plugin-capability-coverage/coverage_test.go)は**既存read-only Referenceの分類境界**だけを固定する。実Trait API・Resolver・Conformance・実DBを実装しない。
+
+| ID | 入力差分 | 独立Expectedと引継ぎ |
+| --- | --- | --- |
+| **TC-16** | EnvironmentがPlugin Packageを明示選択するが、そのPluginが宣言する個別CapabilityにBindingなし | Package選択 ≠ Capability選択。Referenceでは当該能力を `unselected` として残し、使用不能／欠陥とは断定しない（#1251/#951） |
+| **TC-17** | 1 Pluginが2 Capabilityを宣言し、1つだけEnvironmentがBinding | 同じPlugin内でも能力単位でselected/unselectedを分離。他能力を自動充足しない（#3279） |
+| **TC-18** | 1 DB技術を2 Providerがサポート | Coverage上は両候補selectedを取り得るが、一意Provider解決の成功ではない。Resolverが曖昧診断を出せるかは#951の**別実証** |
+| **TC-19** | Required Rule/Traitを含むSourceの1つを隠す/途中切断する。残りのJSONとFingerprintは見かけ上正常 | Independent Required Closureを根拠に不足を検出。`absent`や`100%`を返さず`partial/unknown`、秘密情報の開示もなし（#3262/#2514） |
+| **TC-20** | Source/Environmentは同じで分類規則だけ変更し、12候補中`unselected`が6→4へ変わる | Rule Fingerprintを比較し、古い結果の資格を現在版に無断移植しない。`selection improved`等の実環境変化として誤報しない（#2600/#3267） |
+
+### 10.3 最短の導入手順と判断境界
+
+1. **P0-A**：現在mainの `reference-plugin-capability-coverage` でTC-16〜18を実行し、実Environment/Source/Rule Fingerprintを同じAttemptへ束縛。これはCapability Coverageの負例であり、Trait Conformanceとは呼ばない。
+2. **P0-B**：#3262のread-only Required Closureを利用して、一つのFunction/Inspectorに必要なTrait/Contract集合を**独立Fixtureで固定**し、Declared vs Selected vs Missing vs Unknownを比較。#3338のFunction内配置・Topology Bindingは別Owner／Draftに置き、ここで重複実装しない。
+3. **P1**：#951の既存Resolverと#1251の実Consumerへ実際に渡し、`selected`→`linked`→`invoked`→`conformance-observed`の不足辺を測る。#3267 BOMのexact tupleや#1119の既存Gateへ必要な観測だけを受け渡す。
+
+**採用・撤回基準**：Trait固有の巨大Catalogや第二Resolverを作らず、追加したTraitに対して「どの必要操作が、なぜ利用できるか／できないか」がSource/Scope/実証に基づいて説明できること。実Providerへ到達しないのにCoverage%だけ改善する場合は新しい抽象・画面を増やさない。
+
+**状態**：#3337・技術名解決修正・#3354・#3306はリポジトリの限定的な既存実証。今回のTrait Required Closure、TC-19/20の一連の実行、CLI/Studio actual two consumer、正式Trait Schema、Owner意味受理は**NOT RUN / NOT ACCEPTED**。履行資格を既存Issueの権限・証拠へ委譲する。

@@ -1,4 +1,4 @@
-# 受入条件と検証根拠
+﻿# 受入条件と検証根拠
 
 要求が受け入れシナリオや検証根拠にどう結び付くかを整理する文書を置きます。要求そのものは[`requirements/`](../../requirements/README.md)、段階判定の記録と実行手順は[`gate/`](../gate/README.md)、現在の実装状況は[`docs/status.md`](../../docs/status.md)を参照してください。
 
@@ -33,6 +33,7 @@
 - [フックの宣言外呼出し拒否の確認](XTEA_LOWCODE_HOOK_DECLARED_CALLS_2026-11.md)（参照実装の試験記録。Command境界への委譲は[#3108](https://github.com/hat47x/tei-platform/pull/3108)）
 - [フック実行の配線と失敗の区別の確認](XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)（参照実装の試験記録。Runnerからの配線、NotSatisfiedと実行失敗の区別、参照規則。実PluginとCLI・Studioの配線は未実装）
 - [フック宣言の印刷面への反映の確認](XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md)（参照実装の試験記録。画面と同じフック宣言が印刷面にも出る。実印刷・用紙面の版照合は未確認）
+- [フックの位相順序と途中停止の確認](XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md)（参照実装の試験記録。位相の実行順、不成立での停止位置、`warn`の続行、未対応位相の拒否。CLI・Studioへの配線は未実装）
 - [フックが使う能力のcommand Pattern不在の拒否](XTEA_LOWCODE_HOOK_COMMAND_REACHABILITY_2026-11.md)（参照実装の試験記録。実行経路の無いフック宣言を検証で拒否。複数commandの曖昧さは未診断）
 - [Studio検証結果の修正案表示の確認](XTEA_LOWCODE_STUDIO_PROPOSALS_2026-11.md)（参照実装の試験記録。案を受理する操作は未実装）
 - [暦の宣言と期間への結合の確認](XTEA_LOWCODE_CALENDAR_DECLARATION_2026-11.md)（参照実装の試験記録。日付計算と税・通貨・採番は未実装）
@@ -49,7 +50,9 @@
 - [役割と型の対応検査の確認](XTEA_LOWCODE_ROLE_TYPE_CHECK_2026-11.md)（参照実装の試験記録。要求プリミティブの拡張は未実装）
 - [例の標準業務Dataの宣言と結合の確認](XTEA_LOWCODE_EXAMPLE_STANDARD_DATA_2026-11.md)（参照実装の試験記録。行データ・実DBは未確認）
 - [標準業務Dataの投影の確認](XTEA_LOWCODE_STANDARD_BUSINESS_PROJECTION_2026-11.md)（参照実装の試験記録。行データとWails RPC経由の確認は未実施）
-- [複数暦の休日Dataの確認](XTEA_LOWCODE_MULTI_CALENDAR_HOLIDAY_2026-11.md)（参照実装の試験記録。行の値と暦宣言の照合、例への追加は未実装）
+- [複数暦の休日Dataの確認](XTEA_LOWCODE_MULTI_CALENDAR_HOLIDAY_2026-11.md)（参照実装の試験記録。例への追加は未実装）
+- [休日Dataの暦識別値の検査の確認](XTEA_LOWCODE_CALENDAR_DOMAIN_2026-11.md)（参照実装の試験記録。例への追加は未実装）
+- [休日の結合と暦識別検査を一続きにする確認](XTEA_LOWCODE_HOLIDAY_RESOLVE_2026-11.md)（参照実装の試験記録。例での複数暦利用と実DBは未確認）
 - [X-TEA受容要件の実装対応](XTEA_LOWCODE_ACCEPTANCE_TRACE_2026-11.md)（`AC-1`〜`AC-11`・`RQ-C1`〜`RQ-C3`の参照実装と未確認事項。受容判断は仮承認）
 - [実DBで実行時の判断を確かめる計画](REAL_DATABASE_RUNTIME_DECISION_PLAN_2026-11.md)（期間・権限・効果の判断を実DBで見る案。**NOT RUN**）
 
@@ -75,6 +78,7 @@
 - [宣言されたプラグイン能力は環境から選ばれているか](PLUGIN_CAPABILITY_COVERAGE_REFERENCE_2026-11-08/README.md)（`tools/reference-plugin-capability-coverage` で参照Workspaceを集計し、宣言12件のうち6件がどの環境からも選ばれていないことを記録。database-provider 2件は instance が提供技術名を指すための数え方の限界、editor-intelligence はプラグインが明示選択されているのに能力のBindingが無い例、migration.atlas は能力の一部だけが選ばれている例。選ばれていないことを欠陥とはしない）
 
 - [database-providerの選択を技術名ではなく能力で解決する](PLUGIN_CAPABILITY_COVERAGE_TECHNOLOGY_RESOLUTION_2026-11-08/README.md)（先行記録では instance の提供技術名を能力IDと文字列比較していたため database-provider 2件を数えなかった。既存の validation と同じ Capability.SupportsDatabaseProvider で解決すると両方が selected になり、未選択は6件から4件に減る。先行記録は履歴として残し、訂正しない）- [操作面は宣言されたPatternを読んでいるか](OPERATION_SURFACE_DECLARED_PATTERN_GAP_2026-11-07/README.md)（受注Workspaceと見積もり候補の重ねで`tei operations`を比較し、World指紋は変わるのに操作面8件と`summary.declared=0`が不変であることを記録。W3未着手の設計記述と一致し、AのOperationとBの業務ActionをA側で結ぶ手掛かりが現状無いことを示す。権限・意味の受理は示さない）
+- [環境のBindingを、能力の対応表で一括して解決する](PLUGIN_SELECTION_MATRIX_REFERENCE_2026-11-08/README.md)（`tools/reference-plugin-selection-matrix` で6種類のBindingを既存の `Supports*` だけで解決し、参照Workspaceの24件のうち22件が selected・2件が missing・ambiguous 0件を記録。missing は `editor.database_workbench` の2件で、現行の検証が機能のうち `editor.sql_analysis` だけを能力と突き合わせるための差であり、製品の診断ではないと明記）
 
 - [DSH外部HarnessからのTEI read-only CLI実起動](DSH_H2_TOOL_ONLY_READ_ONLY_2026-11-07/README.md)（#2509。外部AIハーネスの1実Sessionで固定実行物の実起動・実引数・実出力を同一ログで突合。H3・四Session比較・正答採点・Egressは未実施）
 - [DSH実HarnessでのH2/H3四Session実行](DSH_H2_H3_FOUR_SESSION_2026-11-07/README.md)（#2509・TAI #168。H2→H3→H3→H2を同一Taskで実行し、H3のSkill実Load byteを確認。回答採点・Skill効果の因果・Egressは未確認）
@@ -105,3 +109,6 @@
 - [外部Go Module入力の明示opt-in受入](TEI_GO_EXTERNAL_MODULE_ADMISSION_OPTIN_2026-11-07.md)（既定の拒否方針は不変のまま、供給を明示した呼び出しだけが外部Moduleメンバーを含む閉包を受ける参照実装。受入記録に方針・根拠・拒否理由を残す。SB-B / 案C / #2831）
 - [起動主体と被起動主体を分けたBuild駆動の記録](TEI_GO_BUILD_STAGE_DRIVER_2026-11-07.md)（`cmd/tei`を子プロセスとして駆動し、invoker/invokedの実行ファイルdigest・argv・exitと、子の主張とディスク実物のartifact digestが一致することを記録。L3・受入・権限は未確認。SB-C0/C1 / #2831）
 - [セルフビルドP0の証拠台帳](TEI_SELF_BUILD_P0_EVIDENCE_LEDGER_2026-11-08.md)（SB-0a〜SB-C1の統合済みEvidenceをClaim別に並べ、L1で成立したもの・未成立のもの・L3までの残差を一か所にした索引。本稿は新規の主張ではなく、各項目の再実行もしていない。SB-P0 / #2831）
+- [SB-N13の自称invoker照合](TEI_GO_STAGE_DRIVER_INVOKER_CLAIM_2026-11-08.md)（駆動主体が自称するdigestを実行中process imageと照合する欄をstage driverへ追加。一致しても`l3Claimed`はfalseのまま。独立した失敗は連結して保持する。SB-C0/C1 / #2831）
+
+- [stage1の生成物がstage2を駆動する（L3）](TEI_GO_SELF_BUILD_TWO_STAGE_L3_2026-11-07.md)（stage1のartifactをstage2のinvokerとして実起動し、invoker一致・同一レシピ・artifact一致が揃うことを記録。Seed Trust・受入・権限・別OS一般化は未確認。SB-C1 / #2831）

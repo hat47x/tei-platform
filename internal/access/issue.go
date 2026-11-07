@@ -1,13 +1,10 @@
 package access
 
 import (
-	"bufio"
-	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"tei/internal/core"
+	"tei/internal/jsonl"
 	"tei/internal/permission"
 )
 
@@ -108,51 +105,11 @@ type IssueFile struct {
 
 // AppendIssue implements IssueLog.
 func (f IssueFile) AppendIssue(record Issued) error {
-	if err := os.MkdirAll(filepath.Dir(f.Path), 0o755); err != nil {
-		return fmt.Errorf("prepare issue log %s: %w", f.Path, err)
-	}
-	file, err := os.OpenFile(f.Path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
-	if err != nil {
-		return fmt.Errorf("open issue log %s: %w", f.Path, err)
-	}
-	defer file.Close()
-	line, err := json.Marshal(record)
-	if err != nil {
-		return fmt.Errorf("encode issued grant: %w", err)
-	}
-	if _, err := file.Write(append(line, '\n')); err != nil {
-		return fmt.Errorf("write issue log %s: %w", f.Path, err)
-	}
-	return nil
+	return jsonl.Append(f.Path, "issue log", record)
 }
 
 // Issues reads the issued grants. A missing file is empty; a damaged line is an
 // error and the records before it are returned.
 func (f IssueFile) Issues() ([]Issued, error) {
-	file, err := os.Open(f.Path)
-	if os.IsNotExist(err) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, fmt.Errorf("open issue log %s: %w", f.Path, err)
-	}
-	defer file.Close()
-	var records []Issued
-	scanner := bufio.NewScanner(file)
-	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
-	for line := 1; scanner.Scan(); line++ {
-		text := scanner.Bytes()
-		if len(text) == 0 {
-			continue
-		}
-		var record Issued
-		if err := json.Unmarshal(text, &record); err != nil {
-			return records, fmt.Errorf("issue log %s line %d: %w", f.Path, line, err)
-		}
-		records = append(records, record)
-	}
-	if err := scanner.Err(); err != nil {
-		return records, fmt.Errorf("read issue log %s: %w", f.Path, err)
-	}
-	return records, nil
+	return jsonl.Read(f.Path, "issue log", jsonl.DecodeJSON[Issued])
 }
