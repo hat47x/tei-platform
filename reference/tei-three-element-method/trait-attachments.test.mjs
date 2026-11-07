@@ -1,14 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {bindPublicTraitClaims} from "./trait-attachments.mjs";
+import {projectPublicTeaSlice} from "./public-slice.mjs";
 const snapshot = "source:R1|role:P1|policy:G1";
 const subject = {scope: "sales", kind: "semantic-data", id: "order-status"};
 const viewId = role => JSON.stringify([role, subject.scope, subject.kind, subject.id]);
-const projection = () => ({views: Object.fromEntries(["data", "function", "business"].map(role =>
-  [role, [{viewId: viewId(role), ref: {scope: subject.scope,
-    subject: {kind: subject.kind, id: subject.id}}, x: 80, y: 40}]])),
-  relationTable: [], publicDiagnostics: [],
-  coverage: {scope: "sales", allSourceCompleteness: "not-proven"}});
+const projection = () => projectPublicTeaSlice({scope: "sales", subjects: [
+  {scope: subject.scope, kind: subject.kind, id: subject.id,
+    roleStates: {data: "accepted", function: "accepted", business: "accepted"}},
+], relations: []});
 const c = (claimId, role, lane, state) => ({claimId, scope: subject.scope, kind: subject.kind, subjectId: subject.id,
   role, traitId: "closed-domain", lane, state, evidenceId: `E-${claimId}`, snapshot});
 // Attachments refer to one Subject. They are not computed conformance results.
