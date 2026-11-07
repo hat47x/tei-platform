@@ -156,14 +156,14 @@ func TestEvaluateCompletionEmptySetPolicies(t *testing.T) {
 		},
 		{
 			name:       "handoff empty with independent emptiness but no acceptance is unverified",
-			capability: completionCapability(""),
+			capability: completionCapability(EmptyPolicyRequiresEvidence),
 			kind:       EmptyPolicyHandoff,
 			evidence:   CompletionEvidence{Coverage: CoverageComplete, EmptyJustified: true},
 			want:       CompletionUnverified,
 		},
 		{
 			name:       "handoff empty with independent emptiness and acceptance holds",
-			capability: completionCapability(""),
+			capability: completionCapability(EmptyPolicyRequiresEvidence),
 			kind:       EmptyPolicyHandoff,
 			evidence:   CompletionEvidence{Coverage: CoverageComplete, EmptyJustified: true, HandoffConfirmed: true},
 			want:       CompletionHolds,
@@ -191,7 +191,7 @@ func TestEvaluateCompletionEmptySetPolicies(t *testing.T) {
 		},
 		{
 			name:       "handoff empty not independently justified remains unverified",
-			capability: completionCapability(""),
+			capability: completionCapability(EmptyPolicyRequiresEvidence),
 			kind:       EmptyPolicyHandoff,
 			evidence:   CompletionEvidence{Coverage: CoverageComplete, HandoffConfirmed: true},
 			want:       CompletionUnverified,
