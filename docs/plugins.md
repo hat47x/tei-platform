@@ -7,6 +7,8 @@
 
 TEIでは、プラグインを業務上の意味を表す最小単位とはせず、**機能の実装を配布する単位**として扱います。
 
+プラグインの実現方式と最適化を検討するときは、[Target別の実現・最適化要件（2026-11、設計候補）](../plan/design/PLUGIN_REALIZATION_AND_OPTIMIZATION_REQUIREMENTS_2026-11.md)を参照します。Contract/Provider選択、物理Artifact、実行時のAuthority、性能測定を別々に確認し、未実装・未実行の提案を現行Runtimeの保証とみなしません。
+
 > **名前空間の設計候補（2026-10-26）**：予約ルートを`tei.*`とし、`tei.std.*`・`tei.experimental.*`・`tei.contrib.*`を区別する案を[設計候補](../plan/design/PLUGIN_NAMESPACE_AND_OPTIONAL_COMPOSITION_2026-10.md)に整理しています。これは現行の`std.*`や`tei.migration.*`の実装IDを変更した報告ではありません。既存ID、Lock、Consumerの移行は未実施で、契約・公開権限の正本は引き続き#951・ADR-0032の境界に従います。
 
 ## 識別子を分ける
