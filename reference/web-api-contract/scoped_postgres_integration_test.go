@@ -292,7 +292,7 @@ func TestScopedTenantPostgresAgainstIsolatedDatabase(t *testing.T) {
 		// The declared finite test population is exactly orders {3,9};
 		// the actual full read matches that independently fixed population.
 		capability := semantic.Capability{
-			ID: "order_entry.recent_orders",
+			ID:          "order_entry.recent_orders",
 			EmptyPolicy: semantic.EmptyPolicyRequiresEvidence,
 		}
 		if decision := semantic.EvaluateCompletion(capability, semantic.EmptyPolicyUniversal,
