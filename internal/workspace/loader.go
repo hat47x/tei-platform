@@ -70,6 +70,7 @@ type Result struct {
 	// imports. The manifest is NOT a Source Index Artifact (adding it would
 	// change every accepted revision); it is recorded here instead.
 	sourceManifest        ManifestIdentity
+	sourceManifestName    string
 	sourceImportsDeclared bool
 	// Format version declared by the Workspace manifest. Semantic files may
 	// declare their own header; when they do, it must agree with this value.
@@ -100,6 +101,28 @@ type ManifestIdentity struct {
 // ManifestIdentity reports the manifest bytes read by Load (zero for a Result
 // not produced by Load).
 func (r Result) ManifestIdentity() ManifestIdentity { return r.sourceManifest }
+
+// WorkspaceIdentity names which Workspace a read result came from. Several
+// Workspaces may declare the same Canonical IDs with different meanings, and
+// worldFingerprint describes content, not the Workspace, so a caller that
+// mixes results needs this. Name is the author-written `workspace:` value and
+// may be empty (a manifest without it still loads). Manifest is the bytes
+// identity and FormatVersion the declared version. None of these is an
+// acceptance record, a path, or a lock.
+type WorkspaceIdentity struct {
+	Name          string           `json:"name,omitempty"`
+	FormatVersion int              `json:"formatVersion,omitempty"`
+	Manifest      ManifestIdentity `json:"manifest"`
+}
+
+// Identity reports the Workspace identity Load recorded (#3181).
+func (r Result) Identity() WorkspaceIdentity {
+	return WorkspaceIdentity{
+		Name:          r.sourceManifestName,
+		FormatVersion: r.manifestFormatVersion,
+		Manifest:      r.sourceManifest,
+	}
+}
 
 func Load(root string) (Result, error) {
 	return loadWithStack(root, map[string]bool{})
@@ -150,6 +173,7 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 	var roots []string
 	var imports []WorkspaceImport
 	var manifestID ManifestIdentity
+	manifestName := ""
 	manifestFormatVersion := 0
 	if src, err := readPinnedWorkspaceFile(sourceRoot, "tei.workspace.yaml"); err == nil {
 		manifest, parseErr := parseWorkspaceManifestYAML(string(src))
@@ -172,12 +196,13 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 			return Result{}, fmt.Errorf("%s: unsupported workspace formatVersion %d (supported: 1, 2)", manifestYAML, manifest.FormatVersion)
 		}
 		manifestFormatVersion = manifest.FormatVersion
+		manifestName = manifest.Name
 		roots, imports = manifest.Sources, manifest.Imports
 		manifestID = ManifestIdentity{Path: "tei.workspace.yaml", SHA256: sourceindex.Fingerprint(src)}
 	} else if src, legacyErr := readPinnedWorkspaceFile(sourceRoot, "tei.workspace.tei"); legacyErr == nil {
 		manifestID = ManifestIdentity{Path: "tei.workspace.tei", SHA256: sourceindex.Fingerprint(src)}
 		var parseErr error
-		roots, parseErr = syntax.NewParser(string(src)).ParseWorkspace()
+		manifestName, roots, parseErr = syntax.NewParser(string(src)).ParseWorkspace()
 		if parseErr != nil {
 			return Result{}, fmt.Errorf("%s: %w", manifestTEI, parseErr)
 		}
@@ -214,6 +239,7 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 		sourceSnapshot:              make(map[string][]byte),
 		sourceReadRoot:              sourceRoot,
 		sourceManifest:              manifestID,
+		sourceManifestName:          manifestName,
 		sourceImportsDeclared:       len(imports) > 0,
 		manifestFormatVersion:       manifestFormatVersion,
 	}

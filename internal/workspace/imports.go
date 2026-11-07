@@ -35,6 +35,10 @@ type ResolvedImport struct {
 }
 
 type workspaceManifest struct {
+	// Name is the `workspace:` value the author wrote. It is the identity a
+	// caller may cite when several Workspaces use the same Canonical IDs. It
+	// is not a path, a version, or an acceptance record.
+	Name          string
 	FormatVersion int
 	Sources       []string
 	Imports       []WorkspaceImport
@@ -53,6 +57,13 @@ func parseWorkspaceManifestYAML(src string) (workspaceManifest, error) {
 			continue
 		}
 		if strings.HasPrefix(line, "workspace:") {
+			// The name is informational identity, not a source root or import.
+			// A manifest without it keeps loading (historical fixtures), and the
+			// CLI reports an empty name rather than inventing one.
+			if out.Name != "" {
+				return workspaceManifest{}, fmt.Errorf("line %d: duplicate workspace name", n+1)
+			}
+			out.Name = strings.TrimSpace(strings.TrimPrefix(line, "workspace:"))
 			continue
 		}
 		if strings.HasPrefix(line, "formatVersion:") {
