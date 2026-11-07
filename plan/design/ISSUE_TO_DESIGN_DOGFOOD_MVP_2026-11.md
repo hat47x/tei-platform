@@ -155,3 +155,11 @@ DF-02/03/09はこのPRのCIで**JSON投影に対する合成Mutation**として�
 **T3（Self-Build並行）**：TEI自身のTest CapabilityのSource・Scenario・Build定義・実ArtifactをTEI標準構造で管理し、Stage1実TEIがテスト能力も再現する。#2831のL1/L2/L3とは異なる資格を混同しない。
 
 **現時点**：本節は実装PR候補として作成。新たなCIの実検証結果はこの文書に履歴として追記する。MCP/SkillによるAIテスト自動生成、C1計測、実DB/Host、正式Owner意味受理は**NOT RUN**。
+
+## 11. テスト能力の初回実行記録（2026-11-07、Run単位で区別）
+
+- **最初の失敗Run [#42358779661](https://github.com/hat47x/tei-platform/actions/runs/42358779661)**：Job `128362515378`の既存Product Skill/Design Context StepはPASS、限定`TestRegenerateScenarioArgvAndStdinPlan`のGo testもcoverage `10.1% statements`でPASS。ただし新Test Ability Probeは実`observe-synthetic`の`observationResult`を`{"kind":"string","data":"pending"}`と期待してFAIL。実装はTyped Valueの`Decode()`後、値`"pending"`を返す。**テスト側がTyped Input表現と観測Value表現を混同していた**。正本実装のSourceを確認し、独立Expectedを修正。旧失敗を製品Failと断定しない。
+- **修正後実Run [#42358886968](https://github.com/hat47x/tei-platform/actions/runs/42358886968)**：Head `5d06a49a99f988946fe778fec4e32197bd6e7718`、Job `128362831125`は`completed/success`。PR仮統合Checkout `54ab2672550ea828f27506cc9dc1e70f3a6bdb67`、実Binary SHA256 `058d205707194c0a36b3bcb99fada7ccbc33a7c5f9c543e2a9a8ae9ba7c7ecb9`。Generated-pinned Scenarioの6 stepを実TEI CLI別プロセスで実行し、正常Validation／数量0の業務拒否／Browse／Observationの状態を確認。**実CLIで4種の負例**（Key重複・Expected嘘・古いFixture・改変Plan）を検出。**独立限定検証で2種**（必須step欠落・常時satisfied）を検出。計6件の判別Control。Go局所statement C0相当`10.1%`、**C1未計測**、全業務要求/NFR未計測。
+- **第三段階のEvidence保存**：実Runの`test-ability.json`、`report.json`、`tei-scenario-c0.cover`は従来runner一時領域にあり、Action Artifactとしては保存されていなかった。新commitでGitHub Actionsの公開合成テスト証拠のみを7日間のArtifactとして保持するStepを追加。これ以降のPR HEAD/Runは**別Evidence**とし、上記旧Runの成功を代用しない。
+
+この限定検証が証明するのは**テスト実行と既知負例を見分ける能力**であり、生成AIがIssueから適切なテストを新規生成できる能力ではない。T1では既知HoldoutをSkill/生成Agentへ見せず、同じQualified Sourceから提案されたテストが独立Mutantを判別するかを比較する。実Go EvaluatorコードMutantについては#2514/#3017の独立証拠を維持する。
