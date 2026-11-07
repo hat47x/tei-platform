@@ -182,7 +182,7 @@ PoCのコード/合成Fixture/内部CIは採用済みADR-0035の自律開発区�
 
 [テスト基本設計 Draft #3223](https://github.com/hat47x/tei-platform/pull/3223) のTT-73〜80/81〜88を**追加のテスト正本として複製せず**、既知Case焼直し・偽Mutant kill・C1のC0代用・未知BOMを合格とする誤判定を、この初回実証の独立負例に再利用する。C0相当の局所数値とC1・要件/NFR Coverage・Tool受領・実Rule Closureはすべて異なる分母。未知母集団や欠落Dependencyから`100%`を出さない。
 
-**現時点**：#3324はDraft/未統合・PR作成時点exact-head CI **未確認**で、`qualifiedTestGeneration=false`のまま。#3304の既知T1-Aはmain統合済みだが、**T1-B盲検発見/独立採点、P-1b完全投影、実Harness配送の全件・禁制資料拒否はNOT RUN**。
+**現在の証拠更新（2026-11-08）**：#3324の固定HEAD `4f4b114a` は[専用CI #42385606408](https://github.com/hat47x/tei-platform/actions/runs/42385606408)、Repository Health #42385606448、依存チェック #42385606458 がいずれも completed/success。別Draft #3326の固定HEAD `c2d2da10` も[専用CI #42385726717](https://github.com/hat47x/tei-platform/actions/runs/42385726717)、Health #42385726733、依存 #42385726722 がいずれも completed/success。**両方式の統合はNOT RUN／両Draftは未マージ**、`qualifiedTestGeneration=false`を維持。#3304の既知T1-Aはmain統合済みだが、**T1-B盲検発見/独立採点、P-1b完全投影、実Harness配送の全件・禁制資料拒否はNOT RUN**。
 
 ### 8.2 実CLIのwriteFlagsとOS隔離を連結して検証する
 
@@ -206,3 +206,44 @@ Plugin-first Inspectorの[D1 Draft #3292](https://github.com/hat47x/tei-platform
 - **P1別レーン**：#3292の一Inspector実Plugin Invoke、#3334の表示と#2586実Provider readを比較。Plugin/Workbench/BOM全部、`*.tei.md` Reader・Host・OKF本番E2EはP0-CのHard dependencyにしない。
 
 **本節は受入条件の更新のみ**。実P0-A/B/C、新AI候補生成、実CLI/Studio Plugin同一Provider利用、実DB・Host・C1は今回**NOT RUN**。Scenario/Expected/Tool/Host/Policy/Readerの第二実装や新しい総合Gateを設けない。
+
+
+## 9. TT-56を一つのSource資格に収束させ、選択・起動・受理を混同しない（2026-11-08）
+
+### 9.1 #3324と#3326の独立成功を、一本の検査へ接合する
+
+両PRは**同じ既存**`tools/reference-issue-test-ability/context_gate.py`・Workflow・Design Context計画を変更しており、併置・両方の新Gate採用はSource SSOTを分裂させる。各PRのexact HEAD CIは§8.1のとおり成功したが、**相互統合HeadのCI／main pushは未検証**。
+
+| 既存候補 | 良い点・実測済みの限定境界 | 一本化時の位置づけ |
+| --- | --- | --- |
+| [Draft #3326](https://github.com/hat47x/tei-platform/pull/3326) | 独立に固定した**必須Validation 3件**と、実CLIの`source-index` **indexモード**全件（従来のsubjectモードとの違いが旧CI #42385502023 failureで判明）を照合。7件の不整合＋非必須省略1件の正対照 | **集合の全件性・欠落・正当な非必須省略の基線**に採用する候補。実取得のSource Index mode/RawとRequiredの由来を明示 |
+| [Draft #3324](https://github.com/hat47x/tei-platform/pull/3324) | `inspect-validation`から**特定RuleのCanonical Positive属性・Relation・Source Anchor/Role**まで照合。Rule/Relationが見えていても定義や関係がずれる8一時コピー負例 | #3326基線の**必要な一Ruleに対する詳細資格**として取込可否を比較。全件Indexに対する二つ目のRequired集合を新設しない |
+
+**統合前の差分試験**：候補となる単一Branchへ、(1) 独立Required 3 Rule（全件Index対照）→(2) 必要な1 RuleのInspect Canonical/Relation/Attribute/Source Anchor→(3) 既存16欠落・変形負例＋#3326の8対照＋#3324固有の意味参照ずれ負例を**重複排除**して移植、(4) 完全な実CLI応答とSource/World Fingerprintを要求する。実際に相違点がない負例は二回数えず、必要でないRuleの非公開・未取得をfalse/欠陥としない。結果は`required`、`observed`、`unresolved`、`Consumer Received`の各集合を分ける。
+
+この段階でSource Root/FP一致は**連続10回のread-only CLI起動を同時刻の原子的Snapshotへ束縛しない**。A→B→Aの旧Source/Plugin再資格、実Tool Reply終端・分割全Byte、Role/Parser実消費、外部Principal・Tenant/Disclosureは引き続き別Claim。さらにHuman/OwnerのMeaning Acceptance・External Host Grant・Provider Effect/ResultはこのContext Validatorに実装しない。
+
+**採否とOwner**：#3262がP-1b Required/Observed Contextの一つの検査を所有し、#3324/#3326の重複Branchを**Ownerの差分判断まで同時mergeしない**。#1180/#2514の独立Expectedと既知Mutantを再利用する。どちらのCI成功も`qualifiedTestGeneration=true`へ変更する根拠ではない。
+
+### 9.2 「宣言→選択→実装の存在→実呼出し→適格」も一つの真偽値にしない
+
+[main統合 #3337](https://github.com/hat47x/tei-platform/pull/3337)のread-only `reference-plugin-capability-coverage` は公開合成Workspaceで12 Capabilityのうち**現参照ルールでは6つがEnvironment Bindingから非選択**と報告し、Pluginの選択とその提供Capabilityの選択、同Pluginの一部Capabilityだけ選択されることを分離した。これは**現参照ルールに依存した観測**であり、[後続PR #3350](https://github.com/hat47x/tei-platform/pull/3350)は既存`Capability.SupportsDatabaseProvider(instance.Provider)`に揃えてdatabase-providerの技術名/Capability IDの誤比較を直す候補を提案（12中の未選択は**候補ルールでは4**）。#3350はOpen・未マージであり、先行6件を「実Pluginの欠陥」と再解釈したり、新候補4件を現在mainの結果としない。
+
+[main統合 #3336](https://github.com/hat47x/tei-platform/pull/3336)の子Process Build Referenceでは、**invoker executable digest**と**invoked executable digest/argv/exit**、child申告artifact digestと実Disk artifact digestの一致を別観測し、`l3Claimed=false`を維持した。Build開始主体が分かったことは、Go Source Closure qualified、Stage1生成物がStage2を再ビルドするSelf Build L3、実Runtime Provider Load、BOM tuple、Deployment Grantの資格を与えない（#2831/#1090/#3267）。
+
+AI/Plugin Inspectorの一縦切りは、**Declared Offer/Capability→Environment/Contract Selection→Source/Build pinned→actual executable/Provider Loaded→CLI/Studioの実Invoke→同Resultと独立Expected→Current Grant/Effect**を分けて記録する。選択Bで実呼出しAのままならResult値一致でも不合格。CLI/Studio二Surfaceの成功は、Provider二版×Consumer二版の組合せ試験・Trusted Evidenceを代替しない。#1251/#951/#3292を実装Ownerとし、新Resolver/Host/BOM発行をAI-first側へ追加しない。
+
+### 9.3 AIに公開する使い方を「説明が書いてある」から「実契約と同じ」へ
+
+[main #3340](https://github.com/hat47x/tei-platform/pull/3340)は`-h`の引数Value集合／DefaultをDiscoveryと**同じ内部変数**から投影するGo限定試験に成功した。[main #3333](https://github.com/hat47x/tei-platform/pull/3333)の`view.writeFlags`と併せて、Tool Profile/Skillが知る`Command + Flag + Value/Default + Effect`と、実Binary受理・実argv/副作用を比較する。Help/Discoveryの整合は**Permission/安全なShell/OS Egress**の実証ではない。Script/ToolのRead-only選択はcanonical meaning非変更と、named-output・Session Log・実Network送出を別資格にする。
+
+**同じSourceを複数利用する実例**：[main #3343](https://github.com/hat47x/tei-platform/pull/3343)は一Holiday Dataを複数Calendarで使う場合に`holiday-calendar`で行を選択し、Calendarを省略した曖昧Readを拒否する限定Code/Go試験を実装した。これは**同Data identityでもFunction/Calendar ContextとSelection条件でActual Sliceが異なる**ことの例であり、Provider取得した0行・単純行数一致から業務Scopeが網羅されたとは推定しない。行のCalendar値が宣言済みCalendarかの検査、実DB Reader/本番の休日計算はなお別。
+
+### 9.4 次のDoneは、新Runnerよりも「一本のRequiredと一回の実Consumer」
+
+1. **P0 Context**：#3262の既存参照Consumerで#3326の独立Required集合と#3324の意味参照・Relation差分を一本化し、合成の重複負例を整理。**統合Head／main pushのCI**で一RuleだけでもSource/Role/Attribute/Index/Inspectorの実観測を確保する。Scope/Source選択が不成立なら`partial`と不足を返し、全域`qualified`にしない。
+2. **P0 Tool/Holdout**：#2509/TAI #168の実H2を、実OS/Harness Forbidden Source/独立Expected拒否、Tool全Byte終端、CLI実argv/Session Log/ネットワークSinkを観測した一Sessionとして資格化。旧探索やMockの局所成功から比較四Sessionを成立扱いにしない。
+3. **P0 T1-B**：実Contextが照合できたScopeで、[既存#3273](https://github.com/hat47x/tei-platform/pull/3273)の盲検Candidateを1件選択し、#1180/#2514の独立Expected/Mutantで判別。**B0/B1/B2/BX**などの比較ラベルは既存テスト設計の範囲で使用し、新しいCase台帳・AI専用Expectedは作らない。
+4. **P1 Plugin/Build**：一つのread-only Inspectorの実Provider Invokeと、Build invoker/invoked・Source Closureの別証拠を接続。#3337の未選択Capability一覧や#3350の選択解決の改善候補は**診断**であり、実Host GrantやBOMの資格ではない。
+
+**実証の上限**：本節は既存のmainコード・固定HEAD CIとDraft仕様の照合による**設計/計画追補のみ**。#3324/#3326合同CI、新H2/H3比較、盲検T1-B、CLI/Studio実同一Plugin Invoke、実Provider DB、Owner正式Meaning受理、Self Build L3は今回**NOT RUN**。#3324/#3326、#3350の製品main導入を先取りしない。
