@@ -367,3 +367,19 @@ Data Workbench #3270、REST Decision Graph #3274、三要素モデルとCRUD/SHO
 **責務**：#2495構造分類、#2506 Data Context、#2507 Function Pattern適合、#2497投影、#2500逆写像、#2582反応/局所失効、#951/#1016 Resolver、#1251 CLI/Studio Plugin移行、#3278/#3279 Trait、#2600 Build/Cache、#3267 BOM、#1180/#2514試験、#2516開示。既存正本へ参照・引継ぎし、新Function Binding Store、第二Resolver/Renderer Engine/Cache/Runnerや新Gateは増やさない。
 
 **状態**：設計・負例・受入順の追補。新Function Bindingの正式Schema/ABI、PFBの実Go/Studio/GUI/Host/DB、製品Graph/Canvasの二Consumer、BOM資格、Ownerの意味受理は**NOT RUN/NOT ACCEPTED**。過去の合成Reference PASSをこの統合PASSとしない。
+
+
+### 15.5 三つのTopologyと媒体軸をPlugin Consumerが再解釈しない（PR #3192/#3222からの限定受入）
+
+二つの表現型を単純に並べるのでなく、**(a) Data topology**（同一性、Relation/Edge、集合/順序/量/時間・空間の意味）、**(b) Representation topology**（Panel/Tab/Tree/Graph/Chart/Media trackのSlot/軸/Occurrence）、**(c) Function-owned Binding topology**（どのContext/Relation occurrenceをどの表現Slot・軸へ接続し、何を変換・喪失するか）を分ける。Functionに属するのは表現型の**InstanceとBinding**であって、標準表現型のDefinitionそのものではない。各層は標準Record/Relation/Graphでread-onlyに説明可能な候補とし、独自Canvas Store/Binding Resolverを新設しない。
+
+**軸は名前だけで同一にしない**。元DataのDomain/Event time、SourceのObservation/Acquisition time、MediaのPlayback time、文書のStructural position（文字/段落/ページ）を区別する。文章→TTS朗読、数値→Sonification、ページ→動画のように新しい時間軸を生成する変換は、原データの時間軸を「保持」したと宣言できない。Source↔Playback/Span対応の変換版、部分対応、丸め・量子化、Source Revisionを根拠として記録し、同期Selectionを元Sourceへの編集や許可に自動昇格させない。Decimal sliderの有限stepでは高精度値を無損失更新できるとしない。Tree上で多親DAGの第二親を不可視にした場合も元Relationを消さない。
+
+**差分のOwner**：標準構造・軸/媒体の定義と既存RP-01〜08は [Draft PR #3192](https://github.com/hat47x/tei-platform/pull/3192)、複数View間のSelection/State/更新境界と既存MV-01〜08は [Draft PR #3222](https://github.com/hat47x/tei-platform/pull/3222)、Projection損失は#2497、Function Bindingは#2506/#2507、逆写像は#2500、Target Rendererは#997、Source書戻しは#1124を参照する。本Plugin-first計画は**そのRequirementがProvider選択・実Load/Invoke・Display/Write Offerへ正しく伝播するか**だけを検証し、RP/MV試験を重複定義しない。
+
+**Plugin側の追加拒否条件（PFB-12〜14）**：
+- **PFB-12**：再生時刻が一致しても原Event time・文書Source spanが異なる二Representation。選択同期は許容し得るがSource更新対象の一意性/原時刻一致を推定しない（#3192/#3222）。
+- **PFB-13**：Decimal値を低分解能Sliderへ投影。読み取り/近似表示は可能でも同じ正確値へWritebackできる保証がなければ編集不可（#3192/#2497）。
+- **PFB-14**：Function A/Bで同じ表現型Definitionを使うがContext/Disclosure/Selection epochが異なる。共有Plugin/Renderer実装は可、Functionの操作対象・現在Grant・保存/受信Sinkを共用しない（#2506/#2516）。
+
+**受入停止線**：#3192/#3222は現時点ではDraftであり、実Media/Renderer/複数Consumerの合格を示さない。Plugin-first D1 Inspectorに媒体/Graph GUIの完成を要求せず、PFB-12〜14は後続Consumer pressureに留める。既存Test/Independent Expected #1180/#2514へ接続し、第二テストRunnerを置かない。
