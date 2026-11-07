@@ -41,6 +41,7 @@
 - [税率Dataの宣言と行の結合の確認](XTEA_LOWCODE_TAX_RATE_BINDING_2026-11.md)（参照実装の試験記録。Workspace例への追加と実DBの実測は未実施）
 - [為替Dataの宣言と行の結合の確認](XTEA_LOWCODE_CURRENCY_BINDING_2026-11.md)（参照実装の試験記録。例への追加と年次・月次の優先順位の宣言は未実施）
 - [採番Dataの宣言と行の結合の確認](XTEA_LOWCODE_NUMBERING_BINDING_2026-11.md)（参照実装の試験記録。取引内の発行・取消、同時実行、例への追加は未実装）
+- [休日Dataの宣言と行の結合の確認](XTEA_LOWCODE_HOLIDAY_BINDING_2026-11.md)（参照実装の試験記録。例への追加と複数暦の識別は未実装）
 - [X-TEA受容要件の実装対応](XTEA_LOWCODE_ACCEPTANCE_TRACE_2026-11.md)（`AC-1`〜`AC-11`・`RQ-C1`〜`RQ-C3`の参照実装と未確認事項。受容判断は仮承認）
 - [実DBで実行時の判断を確かめる計画](REAL_DATABASE_RUNTIME_DECISION_PLAN_2026-11.md)（期間・権限・効果の判断を実DBで見る案。**NOT RUN**）
 
@@ -81,3 +82,4 @@
 
 - [DSH外部HarnessのHost棚卸し](DSH_H6E0_HOST_INVENTORY_2026-11-07/README.md)（#2515 H6-E0。Tool ProcessからOS・mount・環境変数・loopback到達性を列挙し、read-onlyのConstrainedLanguageと危険modeの差、親の環境変数が子へ継承されないことを観測。別Host・実Egress制御はNOT RUN）
 - [DSH外部HarnessのLane分離](DSH_H6E4_LANE_SEPARATION_2026-11-07/README.md)（#2515 H6-E4・#2509。ディレクトリ分離だけの2 Laneで、各Laneが相手Laneの合成canaryをcompletedで読み、モデル入力とSession Logへ載ったことを記録。worktreeだけでは分離にならない。別Identity/ACL/mount/egressの実拒否はNOT RUN）
+
