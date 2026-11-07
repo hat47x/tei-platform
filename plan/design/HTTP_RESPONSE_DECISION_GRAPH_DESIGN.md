@@ -220,7 +220,9 @@ Coverageの分母を **required node / edge / guard path / named outcome / clien
 
 **静的に発見した限定Gap（新規テストは未実施）**：`composeRequestPlan`は`terminalEvents`をStepから集めて集合包含で検査するが、「`rejected`に到達する**すべての実行経路**で実際にAudit/Recoveryが発火するか」は判定していない。構成の必須証拠とRuntime Path Coverageを分離する必要がある。現在の実コードに脆弱性が実在すると断定するものではない。
 
-次のP-1bは、この差を**現行Sourceの二世界の反例**で検証する。①従来と同じGuard依存DAG、②`onTerminal`を無到達Stepだけへ移し、③構成結果が受理でもAction/terminal経路の保証が存在しない場合を検出する。もし既存Runtime側が別の仕組みで全経路Auditを強制しているなら、追加Graph Validatorではなくその実証Evidenceへ接続して終了する。
+P-1bの第一歩として、[HDG-21 characterization test](../../reference/web-composition/plan-check.terminal-gap.test.mjs)を追加した。①Guard依存DAGが成立する一方、②terminal宣言だけを持ちActionの因果祖先にならないStepを置いた場合、③現行E1構成器は宣言済Terminal集合を受理する。独立した`requires`祖先探索では`invoke`へのAudit前提がないことを確認する。実HostがTerminal eventを別方式で必ず監査する可能性は残るため、この局所GapをRuntime脆弱性と呼ばない。
+
+**限定実行Evidence（2026-11-07）**：GitHub取得Blob `plan-check.mjs=cadfe94900fae4a7adc4fe99ddd27d27e087b5ea`、`plan-check.terminal-gap.test.mjs=e2fd7f571783f64332649dfb275c28e6e803aff2`をV8上で直接評価し、2件PASS/0 FAIL。Nodeの`node --test`、実Host分岐、Goテスト、実Provider・実Clientは**NOT RUN**。このPASSは**現在の静的Plannerの成立範囲を表すCharacterization**に限り、Audit Coverage適合のPASSではない。
 
 ## 9. Failureを三つの直交軸で表す：知っていること・運ぶこと・できること
 
