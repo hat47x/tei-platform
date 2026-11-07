@@ -61,9 +61,15 @@ type CatalogService interface {
 type ValidationService interface {
 	Validate() (operations.WorkspaceValidation, error)
 }
+// InspectionService is a host-selected, typed read-only service. Its presence
+// does not prove Plugin resolution, invocation provenance, or current authority.
+type InspectionService interface {
+	Inspect(subject sourceindex.Subject) (operations.SubjectInspection, error)
+}
 type RootServices struct {
 	Catalog    CatalogService
 	Validation ValidationService
+	Inspection InspectionService
 }
 
 // ServiceFactory is called only after the host has resolved an allowlisted ID.
@@ -233,7 +239,33 @@ func (h *ReadOnly) InspectSubject(id, kind, subjectID string) InspectionResponse
 	if denied != nil {
 		return InspectionResponse{Failure: denied}
 	}
-	value, err := operations.InspectSubject(root, sourceindex.Subject{Kind: kind, ID: subjectID})
+	subject := sourceindex.Subject{Kind: kind, ID: subjectID}
+	var value operations.SubjectInspection
+	var err error
+	if h.services == nil {
+		// Preserve the existing PoC path when no Host factory is configured.
+		// This path is not evidence of a selected Plugin Provider.
+		value, err = operations.InspectSubject(root, subject)
+	} else {
+		var services RootServices
+		services, err = h.services(root)
+		if err == nil && services.Inspection == nil {
+			// Do not silently fall back to the built-in Inspector when a
+			// Host-selected provider is absent or its binding is incomplete.
+			err = errors.New("inspection service is missing")
+		}
+		if err == nil {
+			value, err = services.Inspection.Inspect(subject)
+		}
+		if err == nil && (value.Subject != subject ||
+			value.SchemaVersion != "tei.operations.inspect/v0" ||
+			value.Effect != "read-only" ||
+			len(value.Canonical) == 0 ||
+			value.WorldFingerprint == "" ||
+			value.SourceIndexFingerprint == "") {
+			err = errors.New("inspection service returned an inconsistent projection")
+		}
+	}
 	if err != nil {
 		return InspectionResponse{Failure: operationFailure(err)}
 	}
