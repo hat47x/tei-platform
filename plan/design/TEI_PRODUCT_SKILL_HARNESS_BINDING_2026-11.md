@@ -192,7 +192,7 @@ S0cまでに発見した複合Shellの誤認に加え、**既知read-only Comman
 - **実TEI Product CLI**：#2605／merged #2607の公開Source実CLI S1は成立済み。TAIの別CIでも一SubjectのSource Indexと実Source byteを限定照合した。
 - **外部DSHでのH3 Skill実読込**：#2509、merged #3113と保存4 SessionではH3-A/BがSkill本文および参照文書を実Tool Readした。Source MarkdownとTool結果の比較ではfrontmatterの除去とLoaderのWrapper付与を別物として扱う。前節の「H3実Load NOT RUN」は歴史的記述であり最新状態ではない。
 - **正式比較は未成立**：H2-Aは過去Session再利用。Catalog結果は各8,192byteで途中切断、Tool Request 56／Reply 55、PowerShell stderr混入。比較適格は0/4で、Skillの独立効果採点は未成立。
-- **Design Context／Test**：#3262のmain統合済み試験用Consumerは既存CLIの9応答と限定16合成・Transport負例を判別した。merged #3304の行番号0は既知境界T1-Aの実CLI対照であり、未知RuleをAIが発見するT1-Bではない。#3324/#3326のTT-56は正常JSON・同じFingerprintでもRequired Rule/Relation/Sourceが欠け得ることをそれぞれ別PRで検査しており、統合候補の同一HEAD再資格化は独立。
+- **Design Context／Test（2026-11-08更新）**：#3262のmain統合済み試験用Consumerは、初期9応答／16負例から、[merged #3354](https://github.com/hat47x/tei-platform/pull/3354)の**11実CLI応答／32限定Consumer Control**へ進んだ。PRのexact-head [CI #42391707962](https://github.com/hat47x/tei-platform/actions/runs/42391707962) は成功し、実mainのConsumer Blob同一性も照合された。旧#3324/#3326はclosed/unmergedで重複加算しない。**main pushの別CIと外部Harness完全受領は未検収**。merged #3304の行番号0は既知境界T1-Aの実CLI対照であり、未知RuleをAIが発見するT1-Bではない。
 - **実効権限**：#2509のDSH read-only／workspace-writeでは許可外Readが観測され、Session LogへTool結果が複写されるMock実測もある。merged #3333のCLI discoveryはview.writeFlagsを公開し、read-only分類であっても実argv次第でローカル書込みがあることを区別した。全OS隔離・全Egressの無漏洩は未実証。
 
 ### 7.2 Claimに相対的な資格ベクトル（計画用語彙。正式Schema・新Gateではない）
@@ -244,3 +244,71 @@ Task／Claim／独立Required → Source Revisionと実Open root/bytes → 実Bi
 **計画上の依存関係**：P-1b1の一Function Requiredを固定する作業と、#2509/#2515の最初の適格H2一件は**並列**。T1-BでTest生成を採点するのは該当Required/Expectedが成立した範囲のみ。Plugin D1のCLI/Studio一操作を同一Contractで実Invokeする試験も並行させる。D1全移行、全機密Sink制御、二Harness、MCP、G4を最初のread-only探索の新Hard dependencyにしない。照合済みのClaimだけを#1119へ返す。
 
 **現状・採否**：本節は実証済み局所事実と計画上の成熟差分を接続した**文書変更**である。F0〜F5という正式API/Schema、新Trialの実行、OS物理隔離、全Tool result受領、T1-B盲検生成、実Plugin CLI/Studio二Consumer、実Provider Effect、Owner意味受理を実装済み・PASSとは扱わない。第二Reader/Resolver/Runner/Host/Permission Engine/Proof Storeも設けない。
+
+
+---
+
+<!-- harness-negative-claim-and-coverage-20261108 -->
+## 8. 2026-11-08：負のClaim、Coverage分母、Scope非互換をProduct Skillの判断基準にする
+
+### 8.1 既存成果と残る新問題
+
+[merged #3354](https://github.com/hat47x/tei-platform/pull/3354)の実CLI11応答／32限定Consumer Controlsは、Rule・Relation・Canonical・Source Anchorが正常JSON・同Fingerprintでも局所欠落し得ることを判別する。旧#3324/#3326はclosed/unmerged。PRのexact-head CI #42391707962は成功し、実mainの既存ConsumerとBlob同一性も別途確認された。ただし**main pushの別CI結果、Function全閉包、実H3 Tool配送、現在権限、T1-Bは未検収**。
+
+F0〜F5を区別してもAIが「Ruleは存在しない」「このRequirementは未テスト」「同Fingerprintなので受領済み」と断定する余地が残る。#2497/#2516/#3262が一般のProjection／完全性のOwnerであり、**本Product Skillは既存CLIからどこまで発言できるか、何を追加取得・差戻しするか**だけを所有する。
+
+### 8.2 「対象Scopeに存在しない」を言える条件
+
+独立に定めたTask／Claim Q、対象Scope U、Revision V、開示Audience A、必要集合 R(Q,U,V)に対し、「U内にXが存在しない」と言えるのは当該Claimについて次の条件を確認できた場合だけ。
+
+1. UでのSource/Role/Providerの列挙の完全性が独立に定義され、対象集合を実際に列挙・検査できた。全Workspace一般の不存在と拡張しない。
+2. 実Source root／realpathと必要RoleのLoader／Parser／Meaning消費を確認。Manifest、Inventory、Source Indexの宣言だけで代用しない。
+3. CLIの検索モード、意味粒度、namespace、RevisionをQと比較可能なScopeで固定し、必要なRule/Relation/Source Anchorの隠れた依存を取り落としていない。
+4. CLI Producerの必要な結果と、Harness Tool Consumer側のReply全byte・連番・終端を確認。途中切断・古いPageとの混在を「結果0件」にしない。
+5. 現在Grant／Disclosureがその否定命題の開示を許し、非開示、partial、unsupported、stale、未測定を不存在の根拠に含めていない。秘密の件数やpathも許可なしに明かさない。
+6. 出力のabsence claimに独立Expectedまたは受理済みSource意味の根拠があり、AIの自己申告・検索順位・件数0のみから推論していない。
+
+一つでも欠ければ、実際に確認できた肯定的な事実を維持しながら「限定Scopeでは未判定」と報告する。必要なら許可されたSourceだけ追加取得する。Sourceからの値の欠落、Reader未対応、非開示、Tool切断、不存在を同じエラーへ畳まない。
+
+### 8.3 現行CLIの具体的な非互換を失敗原因として扱う
+
+- **#3345 Fingerprint Scope**：viewのnamespace-scoped semanticFingerprintをmodel catalog等のWorld/SourceIndex fingerprintとそのまま比較せず、比較対象が異なる場合は「scope-not-comparable」。文字列差のみでSemantic Changeを宣言しない。
+- **#3346 未解釈Markdown**：docs/planをManaged Filesとして数えられてもLoaderの対象でない場合は「not-loaded/unsupported」。設計要求が不存在、意味が受理済み、変更不要とは言わない。正式Readerは#2621/#2619。
+- **#3347 JSONの形**：validateの診断二重構造、requirementsのresult配列、Catalog内のstdと利用者定義の混在を、既存コマンド別のSchemaで読む。共通Objectへの誤平坦化で欠落を捏造しない。新規Parser／新CLI Schemaの実装は#1155/#2354/#3347へ委譲。
+- **#3354 Source Index mode**：subject modeを全件index modeと誤認しない。全件Index利用には実AudienceとPayload Budget/Source消費の照合が必要。CLIの11 reply連続取得だけで一つの原子的Snapshotとはしない。
+- **履歴の再資格化**：Source/Test/Lock/GrantのA→B→Aで旧digestに戻っても旧PASSは自動復権しない。7日保持のCI Artifactが期限切れの場合はSource意味変更ではなく、独立監査時の再取得可能性不足として記録する。
+
+### 8.4 「見えない」ことを「未テスト」とする誤りを禁止
+
+Coverageの分母はScenario一覧から逆算せず、別途固定した対象Requirement/Rule/Decision Outcome/NFRで定義する。実取得済みScenario、実行Case、独立Expected、Mutant、Source/Testの現行版を各別列で保持する。
+
+既存6 Pinned Step、既知T1-A第7 Step、32合成Consumer Controlsは母集団が異なり合算できない。#3354のcmd/tei局所Go statement C0相当10.0%をGo branch C1や業務Decision GraphのCoverageへ換算しない。Scenario一覧が部分取得なら観測済みRuleの「covered」は残せるが、全体Coverageは「unknown」。空リストを「未テスト0件」「全体0%」に変換しない。
+
+T1-Bの本当の判別は、AIに既存T1-Aの境界入力や非公開Expectedを予告せず、独立に固定した一FunctionのRequiredから**既存6 Step＋既知T1-A以外の新しい負例**を提案させること。候補の新規性、実Pinned CLI、独立Expected、真のProduct Mutation Kill、Owner採否は別Evidenceとする。候補自作のExpectedで成功扱いしない。
+
+### 8.5 既存Consumer/Scenarioだけで試す10件の独立Pressure
+
+| Case | 変える条件 | Harnessに求める判別 |
+| --- | --- | --- |
+| HC-01 | 必須Ruleは存在するがSource Indexのsubject modeのみ取得 | wrong-mode／未判定。Rule不存在にしない |
+| HC-02 | view局所Fingerprintとcatalog World Fingerprintが不一致 | 異Scopeを識別。意味版変化と断定しない |
+| HC-03 | Markdown設計SourceをManagedのみでLoader未消費 | not-loaded/unsupported。不在としない |
+| HC-04 | validateの入れ子診断、requirements配列、std混在 | 既存CLIのSchemaに応じて解釈し、空判定やUser Source過算を防止 |
+| HC-05 | 同FPの正常JSONからRequired Ruleを削除／非Requiredを削除 | 必須欠落はpartial、合法な非Required省略は過剰拒否しない |
+| HC-06 | CLI Exit0だがTool Replyが切断／欠番 | F2不成立。先頭FP一致から全受信にしない |
+| HC-07 | 同じ公開Slice、異なる秘密Rule/件数の二世界 | 公開Consumerへ非開示の存在・数・pathを漏らさない（実OSとSink測定範囲を併記） |
+| HC-08 | Scenario目録が一部未取得 | 局所Coveredと全体Coverage unknownを併存させる |
+| HC-09 | 分割Read中にGrant/Source改版、あるいはA→B→A | 旧Page・旧PASSを現在資格へ合成しない |
+| HC-10 | CandidateとExpectedを同じAI誤仕様へ改変 | 独立Expected/Mutantが誤りを判別する |
+
+### 8.6 実行順と非重複の担当
+
+**#3262 P-1b1**：mainの単一Context Consumerを使用し、一Functionの独立Requiredを固定。HC-01〜05/08/09の必要な部分を既存CLIの実結果と一時コピーの負例で検証。既存の良い局所Coveredは保持し、全Source Closureが欠ける間は「探索のみ、正式Test採用不可」。
+
+**#2509/#2515とTAI #168**：新しい比較適格H2一Attemptを用い、HC-06/07とOS許可外Read拒否、実argv/Tool Reply/Session Log/Audienceを対照。OSやTool配送が不適格ならH2/H3効果比較へ混ぜない。
+
+**#1180/#2514/#3223**：独立Requiredが満たせる一RuleからHC-08/10のT1-B候補を既存Scenario verify/generate/check→Pinned実CLI→独立Expectedへ渡す。既知T1-Aの再実行を新発見としない。
+
+**その他のOwner**：Plugin/Trait/BOMは#951/#1251/#3278/#3267、三視点の表示・編集写像は#1124/#2497/#2586、副作用は#1174/#3328、Self-buildは#2831。一般の意味十分性は#2497/#2516、実機密非干渉は#2515のOwnerへ戻す。新しいReader/Parser/Runner/Resolver/Permission Engine/Proof Storeは追加しない。
+
+**状態**：main統合#3354の11 Reply/32合成Controls・既知T1-Aは局所実績。HC-01〜10の統合的な新Attempt、Function全閉包、実Harnessの完全Tool配送、T1-B、C1、現在Grant／独立Effect／Owner意味受理は**NOT RUN**。本節は検証義務を定める設計・計画の更新であり、新しい成功を宣言しない。
