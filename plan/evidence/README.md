@@ -65,6 +65,7 @@
 - [操作面はCLIの公開面に出ているか](OPERATIONS_COMMAND_PUBLICATION_GAP_2026-11-07/README.md)（`tei commands` は `selected-read-only-commands` の19件だけを載せ、CLIは53件を受け付ける。`operations` は公開されておらず、成功時は単段JSONで `ok`/`result` を持たず、失敗時はstdout 0バイトでエンベロープにならない。W5の3条件のうち満たすのは「動く」だけで、公開の可否は15章の未決1のまま）
 - [操作種別の語彙はどこに置くか](OPERATION_VOCABULARY_PLACEMENT_2026-11-07/README.md)（プラグインの `CapabilityKind` は7種の閉じた列挙で未知を宣言時に拒否し、操作面の種別は生成コード内の文字列で検査が無い。`operationKindRank` は未知を rank 5 として通す。設計49行が掲げる「規則の版で語彙を管理する」は未実装であることを示す。どちらへ置くかの判断は15章の未決2のまま）
 - [自律区分は何から導かれているか](OPERATION_AUTONOMY_DECLARATION_SURVEY_2026-11-07/README.md)（操作面が `unattended` を付けるのは読み取り操作だけで、`create`/`update` は `attended`、`human-gated` は0件。`Environment` にサービス主体の欄が無く、`surface.go` が `"human-gated"` を代入する箇所も無い。設計8章の「判断段階が未解決なら human-gated に倒す」は未実装で、未決3は宣言の置き場所と生成規則の新設の判断になる）
+- [実行時の照合は何を止められるか](OPERATION_DRIFT_CHECK_SURVEY_2026-11-07/README.md)（属性を1つ足すと `worldFingerprint` と `modelRevision` は変わるが、操作5件の `basis` は全件不変。`tei operations` に照合値を渡すフラグが無く、`OPERATION_SURFACE_STALE` はリポジトリ全体で0件、実行の入口 `period_guard.go` は指紋を比べない。未決4は「既定で有効にするか」の前に照合値の受け渡し経路の判断が要る）
 - [操作面は宣言されたPatternを読んでいるか](OPERATION_SURFACE_DECLARED_PATTERN_GAP_2026-11-07/README.md)（受注Workspaceと見積もり候補の重ねで`tei operations`を比較し、World指紋は変わるのに操作面8件と`summary.declared=0`が不変であることを記録。W3未着手の設計記述と一致し、AのOperationとBの業務ActionをA側で結ぶ手掛かりが現状無いことを示す。権限・意味の受理は示さない）
 
 - [DSH外部HarnessからのTEI read-only CLI実起動](DSH_H2_TOOL_ONLY_READ_ONLY_2026-11-07/README.md)（#2509。外部AIハーネスの1実Sessionで固定実行物の実起動・実引数・実出力を同一ログで突合。H3・四Session比較・正答採点・Egressは未実施）
@@ -90,4 +91,4 @@
 - [フックの宣言外呼出し拒否の確認](XTEA_LOWCODE_HOOK_DECLARED_CALLS_2026-11.md)（参照実装の試験記録。Command境界への接続は未実装）
 - [外部Moduleを含む選択Sourceの観測](TEI_GO_SOURCE_CLOSURE_OBSERVATION_2026-11-07.md)（`cmd/tei`の選択入力をリポジトリ内318件と外部Module 12件・325メンバーに分けて列挙し、資格は常に`false`として閉包方針を変えない記録。SB-A1 / #2831）
 
-
+- [DSH外部Harnessの再開と既送出Session Log](DSH_H6E7_RESUME_AFTER_DISCLOSURE_2026-11-07/README.md)（#2515 H6-E7・#2509。Raw canaryを読んだSessionを再開すると、Session Logは水位`27`から進み再送されない一方、モデル入力には過去の会話が再構成されcanaryが再び載る。Grant失効・ACK不明replayはNOT RUN）

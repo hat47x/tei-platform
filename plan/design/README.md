@@ -25,6 +25,7 @@
 
 | 文書 | 対象 |
 | --- | --- |
+| [`TRAIT_ATOMIC_COMPOSITION_AND_FULFILLMENT_2026-11.md`](TRAIT_ATOMIC_COMPOSITION_AND_FULFILLMENT_2026-11.md) | 原子的Traitの実装義務（手動/自動/Provider）、Profile合成、不適合診断、DerivedData/Pluginでの受入負例（[#3278](https://github.com/hat47x/tei-platform/issues/3278)、設計・実証候補） |
 | [`COMMAND_BOUNDARY_SAFETY_2026-11.md`](COMMAND_BOUNDARY_SAFETY_2026-11.md) | Command境界の未設定認可・期間状態の拒否、宣言外効果をunknownとして記録する判断と、参照実行の明示的認可（[#2996](https://github.com/hat47x/tei-platform/issues/2996)、[#2997](https://github.com/hat47x/tei-platform/issues/2997)、参照実装） |
 | [`EVERYTHING_DATA_MARKDOWN_SOURCE_FIDELITY_2026-11.md`](EVERYTHING_DATA_MARKDOWN_SOURCE_FIDELITY_2026-11.md) | Markdownの元シンタックスシュガーと書式・Source occurrenceを保存で保持する契約、局所Patch・競合・往復受入 |
 | [`TEI_PRODUCT_SKILL_HARNESS_BINDING_2026-11.md`](TEI_PRODUCT_SKILL_HARNESS_BINDING_2026-11.md) | TEI read-only Product Skillを既存CLIへ正確に結び、外部Harness/Consumerの受理・許可・開示・実実行と分ける設計候補（[#2605](https://github.com/hat47x/tei-platform/issues/2605)、未採用） |
@@ -120,6 +121,7 @@
 | [`XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md`](XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md) | X-TEAから回収したローコードの知見を、Core・Pattern・生成器・Plugin・Studio・要件のどこで受け止めるかの設計案（未採用）。パッケージ・対話フック・項目の役割・結果型・標準業務意味の判断候補を含む |
 | [`DATA_OPERATIONS_KEY_SPACE_AND_MULTIPLICITY_LOSS_2026-11.md`](DATA_OPERATIONS_KEY_SPACE_AND_MULTIPLICITY_LOSS_2026-11.md) | MS-09：多様なData Structure間のKey空間・多重度・逆更新の喪失を明示する |
 | [`GO_MODULE_SUPPLY_FOR_SELF_BUILD_SB0B_2026-11.md`](GO_MODULE_SUPPLY_FOR_SELF_BUILD_SB0B_2026-11.md) | セルフビルドで外部Go Moduleを入力として認める条件（供給manifest・`h1:`照合・`go mod verify`・`corrupt-supply`分類・成果物digestを供給同一性の根拠にしない負例）の設計候補（[#2831](https://github.com/hat47x/tei-platform/issues/2831) SB-0b、未採用） |
+| [`SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md`](SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md) | セルフビルドの再入（SB-C0）の入口契約案。`cmd/tei`に汎用Build入口が無いことの静的観測、薄いCLI接続・既存toolのsubprocess・Plugin偽装の三案と依存境界、拒否条件、`qualified`を常にfalseにする出力形、L3に必要な追加情報を整理（[#2831](https://github.com/hat47x/tei-platform/issues/2831)、未採用） |
 | [`EVERYTHING_DATA_GO_LANGUAGE_REFERENCE_BRIDGE_2026-11.md`](EVERYTHING_DATA_GO_LANGUAGE_REFERENCE_BRIDGE_2026-11.md) | Everything is Dataの複数表層を既存Go Language Plugin Referenceに接続する限定試験設計（#2619/#2620/#988、Draft #2639。新Core/正式意味受理・実Product/Hostは未実証） |
 | [`QUERY_QX31_DYNAMIC_PATH_AND_NEGATIVE_DEPENDENCY_2026-11.md`](QUERY_QX31_DYNAMIC_PATH_AND_NEGATIVE_DEPENDENCY_2026-11.md) | QX-31：SQLのRelation path再束縛、相関NOT EXISTSの0件・否定依存、Read Cohortと現在Claimの分離をSQLiteで反証する補助設計（[#2387](https://github.com/hat47x/tei-platform/issues/2387)、#2582、未採用） |
 | [`QUERY_STRUCTURAL_MODEL_AND_FIXTURE_WORKBENCH_2026-10.md`](QUERY_STRUCTURAL_MODEL_AND_FIXTURE_WORKBENCH_2026-10.md) | Query構造Explainのread-only投影と、QX-01〜32のSQL/共通Data Operator/Function Context/Provider・Target同義性、証拠・開示・完全性の境界を分ける継続検証計画（[#2387](https://github.com/hat47x/tei-platform/issues/2387)、Draft #2388、未採用） |
