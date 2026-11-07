@@ -28,3 +28,6 @@
 
 # Operation-surface pattern gap evidence is hashed as raw bytes.
 /plan/evidence/OPERATION_SURFACE_DECLARED_PATTERN_GAP_2026-11-07/** -text
+
+# Pattern/operation mapping evidence is hashed as raw bytes.
+/plan/evidence/PATTERN_KIND_OPERATION_MAPPING_2026-11-07/** -text
