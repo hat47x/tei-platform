@@ -381,6 +381,40 @@ OKF v0.2 [一次仕様 §10](https://github.com/GoogleCloudPlatform/open-knowled
 
 **今回の証拠上限**：既存S1実Product CLI/Indexed Source成功は固定公開Source・HEADに限る。本節は追加の設計・計画統合のみで、実H2/H3外部AI Harness、OKF Executor/Attester、Job/Receipt独立再Read、実Source移行・Owner Meaning Acceptance、現在実Host/ProviderのE2Eは**NOT RUN／NOT ACCEPTED**。
 
+## 5.10 実Harness接続の限定達成と「比較適格H2」への再設定（2026-11-07）
+
+### 5.10.1 前節§5.9の未実施表記を限定更新
+
+前節の「外部AI Harnessから最初の実Tool呼出し」および「実H2/H3外部Harnessは全てNOT RUN」という記述は**2026-11-07の新Evidenceより前の状態**。現在は[TEI実Evidence PR #3113](https://github.com/hat47x/tei-platform/pull/3113)（Open/未merge）と[TAI #168](https://github.com/hat47x/tai-pleroma/issues/168)から、**DSHからTEI実行物へのTool transport・実CLI起動とResult受信を1探索Sessionで限定観測済み**と訂正する。ただし**TAI SK-02の比較適格H2/H3試験は0/4で、Skill効果や独立正答は未確立**。この二つのClaimを同一の`H2 PASS`へまとめない。
+
+| Claimの段階 | 固定した実証・証拠 | 現在の上限 |
+| --- | --- | --- |
+| S1 実Product CLI・Source束縛 | [TEI #2605](https://github.com/hat47x/tei-platform/issues/2605)／TAI CI #42101157330、公開Subject `sales.order`、実BinaryとSource Index fingerprint | **限定成立**。外部AI Tool利用ではない |
+| H2-T 外部Harness Tool transport | [PR #3113のEvidence README](https://github.com/hat47x/tei-platform/blob/docs/dsh-h2-readonly-evidence-20261107/plan/evidence/DSH_H2_TOOL_ONLY_READ_ONLY_2026-11-07/README.md)、固定TEI `50ebf8014340fd1906f6b35cfa30173e0ee2fc6c`、DSH 0.2.2-rc.1 Windows、Participant Task digest `38a0b238…`。探索Session `h2-08`は`completed`、Tool call 56/Tool result 55、TEI実Binary起動32。CLI `commands/version/catalog/inspect/source-index/validate`を観測。実byteコピーと元worktreeでWorld/SourceIndex fingerprint一致 | **transportの限定成立**。同時Snapshotや全Source閉包、正答/権限の証明ではない |
+| H2-Q 比較適格なTool-only | 物理的にSkill・独立期待値・過去回答が不可視で、Tool/CLI/モデルTaskの割付、出力と実Consumer受領、現在開示範囲を保証する一Session | **NOT QUALIFIED：0/4**。作業ディレクトリ限定は実OS拒否でなかった |
+| H3 Product Skillあり | 固定Skill root+Referencesの実Loader読取とTool呼出しを、H2と同じTask/Tool Profileで観測 | **NOT RUN** |
+| SK-02 比較価値 | 新Trial Groupで割付`H2→H3→H3→H2`の4独立Sessionを全件計上、独立期待値/Warning/Unknown/Token/人手/実費用を別列で採点 | **NOT RUN**。探索9回から成功Sessionを事後抽出しない |
+
+**失敗の観測は活用するが比較の分母に混ぜない**：PR #3113の9探索AttemptはParticipant Task完了1、短い接続Task完了2、`MALFORMED_RESPONSE` 5、`INVALID_CONFIG` 1。モデルがTool call JSONを連結する問題は`maxParallelToolCalls:1`でも残った。Tool結果の成功だけで参加者Taskの完了・精度を認めない。未完了/Tool結果未受信と、実Toolの存在を別列にする。CLI `validate ok`／warning 3件はOwner Meaning・`*.tei.md`移行やRequired Input完全性を証明しない。
+
+### 5.10.2 次の最小Exitは「比較できるH2を一件取得」
+
+[TAI #168の既存Runbook §19〜24](https://github.com/hat47x/tai-pleroma/blob/docs/yi-harness-skills-20261102/docs/yi-constellation/first-real-skill-qualification-runbook-2026-11-02.md)をTrial/Task/Allocationの唯一の正本とし、#3113は既存探索RunのEvidence原本・限定技術的到達点、[#2509](https://github.com/hat47x/tei-platform/issues/2509)はDSH固有Profile・通信/Tool境界を所有する。新Trial Runner/基準票/Second Receipt Formatは作らない。
+
+1. **実到達の拒否を先に計測**：参加者H2からSkill本体/Reference、Reviewer-onlyの独立期待値、旧Session answer/log、別Workspace・元Worktreeへ物理Pathを変えてアクセス試行し、**拒否が実OS/Harness/Hostで観測された**範囲だけH2隔離適格とする。H2のisolated cwd、`read-only`設定、Tool allowlist、単なるSourceコピー、未配布という説明は拒否の証拠ではない。可能なら安全な合成Canaryを使う。Windows `workspace-write`の`SetNamedSecurityInfoW failed (Win32 5)`を設定成功と扱わない。禁制Pathへ到達できる場合は正式比較を開始しない。
+2. **開示と通信を別測定**：`session-log-deepseek.enabled:false`は「Request/Session Log/Telemetryの外向きbyteが0」の実証ではない。Tool stdout・stderr、DSH Request追加字段、保存Log、Child Process、ネットワークSink、CI artifactのうち実計測できたものと不明なものを[#2515](https://github.com/hat47x/tei-platform/issues/2515)/[TAI #232](https://github.com/hat47x/tai-pleroma/issues/232)へ分離。許可された公開合成Sourceの正常なProvider送信まで一律に「不正」とは扱わず、現在のAudience/目的に対する**許容範囲**を先に固定する。実OS全出口未計測なら全出口の非漏えいは未確立。
+3. **Trialを事前に固定**：新Trial Group、固定Participant Task raw SHA、公開Source/実Binary/Tool schema、DSH/model/provider/請求・Credential経路、H2非Skill/H3 Skill root+Refs版、current Disclosureと独立期待値/Review窓を試行**前**に記録。探索`h2-08`の正答らしい回答やTool不正JSONを、成功した比較Trialとして再利用しない。Model/Adapter修正は別Version Groupとし、H2/H3途中で片方のみ変更しない。
+4. **第一適格H2の一往復**：Harness request→OS/CLI実argv/cwd/Process identity/exit→Tool reply digest→実モデル最終回答→適格Consumerの実受領→独立Expected/Warning/Unknownの採点を同Sessionで照合。Tool call 56に対してresult 55という探索の欠落も独立観測。成功Sessionだけを残さず、事前割付された失敗・timeout・malformedをITT分母に残し、実提供D未達はPP区分へ分離。
+5. **その後H3・四Session**：H3の`SKILL.md`とReferenced Filesは**実Loaderから読まれたbyte/版**が必要。H2にはロードされない物理分離を担保。同じ独立ExpectedでSkillの効果/費用を比較し、優位性を前提にしない。DSHのモデル/価格/Tool Profile結果を他Harnessへ外挿しない。
+
+### 5.10.3 SourceとCompletionの新しい限定実装を独立に扱う
+
+[main統合 #3051](https://github.com/hat47x/tei-platform/pull/3051)では`semantic.EvaluateCompletion`の`deny + Targets=[]`について、**Coverage未確立なら`unverified`、完全と確認できた空集合なら`fails`**とする小修正が入り、部分取得中でも明白な反例1件があれば`fails`を維持。これは§5.7の「観測0件≠Owner対象0件」を実コードへ一部反映した成果だが、`CoverageComplete`をCallerが真と申告した場合の真偽を実Reader/Providerで検査するものではない。独立に決めた対象ID・Relation・Tenant/Snapshot・必要Field/Predicate・取得ページと実Provider Readを[#2514](https://github.com/hat47x/tei-platform/issues/2514)/[#2506](https://github.com/hat47x/tei-platform/issues/2506)で照合しなければ、全件性は未立証。
+
+[Draft #2935](https://github.com/hat47x/tei-platform/pull/2935)の`readByLoader`は`managed vs actual loader-read`という限定観測であり、Parse/Meaning/Build/Runtime actual inputは別。新`*.tei.md`のReader/ParserとSource切替後のConsumer資格は引き続き[#3030](https://github.com/hat47x/tei-platform/pull/3030)/[#3031](https://github.com/hat47x/tei-platform/pull/3031)が所有。DSL選択がPlugin Bになっても実Build/実Consumerが古いAを使用していれば無資格とし、Selected/Consumedの同一性を既存[#988](https://github.com/hat47x/tei-platform/issues/988)/#2595へ返す。
+
+**設計の停止線**：新たに認めるのは「DSH→実TEI Binary transportの探索成功」と「Completionの未知空集合処理の限定修正」であり、**比較適格H2/H3 0/4、独立回答採点、実OS拒否・Egress不在、Product Skill Load、OKF Attester、Provider read/write、Owner Meaning受理は未達**。AIの`read-only`能力、Host Grant、Provider Effect/Receipt、Audienceへの出力許可は別の実観測が必要。今回の§5.10も計画文書のみを更新し、実コード・本番設定・新Trial実行はしない。
+
 ## 6. 採否と現在の限界
 
 - **Owner方針として確認済み**：外部要件の十分な机上評価を基盤実装に先行させること、CUIと標準Pluginを並行開発すること、ヘッドレス実証を基準にGUIを後続実装すること。
