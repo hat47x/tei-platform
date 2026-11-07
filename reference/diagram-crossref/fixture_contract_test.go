@@ -301,7 +301,7 @@ func TestFixtureInternalConsistencyNotProductConformance(t *testing.T) {
 	}
 }
 
-func TestFixtureAuditRejectsFourKnownMutations(t *testing.T) {
+func TestFixtureAuditRejectsFiveKnownMutations(t *testing.T) {
 	f, e := readFixtures(t)
 	if problems := fixtureProblems(f, e); len(problems) != 0 {
 		t.Fatalf("baseline invalid: %v", problems)
