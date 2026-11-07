@@ -239,12 +239,23 @@ jobs:
           assert r["testExecutionAdmission"] == "exploration-only"
           assert r["qualifiedTestGeneration"] is False
           assert len(r["syntheticControls"]) == 7
+          assert len(r["additionalManifestControls"]) == 2
+          assert len(r["transportByteControls"]) == 7
+          assert r["requiredValidationSlice"]["status"] == "bounded-present"
+          assert r["requiredValidationSlice"]["requiredCount"] == 3
+          assert len(r["requiredValidationControls"]) == 8
+          assert sum(v == "blocked" for v in r["requiredValidationControls"].values()) == 7
+          assert r["requiredValidationControls"]["TT56-outside-required-scope-remains-partial"] == "bounded-scope-maintained"
+          assert r["qualifiedTestGeneration"] is False
           assert r["observations"]["requiredSourceRead"] == "read-by-loader"
           lines = [
               "## Design Context → Test Ability 事前資格（#3262）",
               "",
               "- 9既存CLI応答から**Source loaded/Subject/Fingerprintの限定部分**を確認。",
               "- 合成負例: Subject欠落、Inventory未Read、Fingerprint版混合、Reply欠落、Schema Drift、Source Root欠損 + 外部Provider/Grant未観測（7種）。",
+              "- **TT-56**：独立必須3 Validation を既存Catalog＋Source IndexのDefinition Role＋Loader Readへ結合。",
+              "- JSON正常・World/Index Fingerprint一致のまま必須Ruleだけ欠ける等**7件を拒否**。範囲外の1件は過剰拒否しない。",
+              "- 必須Ruleのこの小さな範囲が揃っても、Function/Business/ProcedureやOwner Meaningの全閉包は**未資格**。",
               "- Test生成資格: **false**。固定公開Scenarioの局所探索のみ可能。",
               "- Function/Business/RuleのRequired Closure、Parser/Meaning、Provider実Read、外部Harness完全受領/開示、C1/NFRは未知。",
           ]
