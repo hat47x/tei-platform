@@ -18,6 +18,7 @@
 - `plan/research/TECH_RESEARCH_INTEGRATION_2026-10.md` ：直近の調査結果を製品価値や既存の課題に結び付ける統合計画
 - `plan/REFERENCE_MODEL_TRANSFER_GATE_2026-10.md` ：成熟した外部の参照モデルをプラグイン中心で移し替え、TEIの表現力や暗黙の前提を横断的に検証する計画
 - `plan/design/ARTIFACT_SET_SCOPE_AND_CONSUMER_READ_EVIDENCE_2026-11.md` ：導出成果物の対象集合・内部整合・公開世代・実Consumer読取を分けて検証する**提案中**の計画（#2482／#2604。製品Gateや受理条件の変更ではない）
+- `plan/workstreams/TRIAD_MEANING_AND_CROSSLANE_ACCEPTANCE_HANDOFF_2026-11.md` ：Data・Function・Businessの意味を保ち、移植・DB移行・組織Relation・Plugin境界における既存Ownerの検収条件を照合する**提案中**の横断引渡し（#1125／#1126／#1129／#2619。新Gate・業務意味の採用ではない）
 
 ## 現在の主線
 
