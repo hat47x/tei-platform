@@ -594,6 +594,16 @@ Sourceの論理Workspace IDと物理root/realpathも別資格とし、Manifest�
 
 **製品E2の優先は不変**：main統合#2681のNative組織E1を起点に、[#2586](https://github.com/hat47x/tei-platform/issues/2586)で**一件のC1→D1を実Function→Query→Provider Read→Consumer**まで同じSource/Attemptで検証。旧[#3024](https://github.com/hat47x/tei-platform/pull/3024)と設計PR[#2389](https://github.com/hat47x/tei-platform/pull/2389)は**closed・unmerged**であり、その旧CI/未マージ草案から現main Product E2 PASSやOwner意味採用を主張しない。ここでの追補は**docs-only／独立期待・接続案**で、組織二Functionの実UI・実DB/Host・Procedure Instance、正式Owner受理はNOT RUN。
 
+## 2026-11-07 組織トポロジー・単位系と標準表現型の横断受入（#2386/#2495/#2593、採用前）
+
+[組織設計§85](design/ORGANIZATION_RELATION_GOVERNANCE_MODEL_2026-10.md)と[組織トポロジー・数量・表現型合成Profile](design/ORGANIZATION_TOPOLOGY_QUANTITY_REPRESENTATION_PROFILE_2026-11.md)に、**同じ組織の多軸Graph/多項Relation/時間・空間と、人数・FTE・予算・工数等のQuantity Kind／Unit/Basis／Rollup lawは直交するが互いに適合条件を持つ**という比較票を追加。組織を専用Tree Core型へ限定せず、#2495/#2544/#1705/#2593の一般Facetを組み合わせ、組織ProfileはRelation Role・用途別多重度・集計規範の不足分だけを与える。
+
+独立Expectedの最小例は合成P1(A1 D1=0.6 FTE,A2 D2=0.4 FTE)、P2(A3 D1=1.0 FTE)。**Unique Person全体2人／Membership3件／FTE2.0**を混同しない。H→D1→CとH→D2→Cの二Pathは、Cの同一0.4 FTE Factを自動で0.8へ増やさない。現mainの`Membership.allocation std.decimal`はFTE Unit/分母・60と0.6の換算Ruleを宣言していないため、合成期待値を実Sourceの業務計算済み資格へ昇格しない。#2510/§16/39のTopologyケース、#2593 MC、#2497 CX、#2514の独立Expectedへ差分を引き渡し、第二テスト正本を作らない。
+
+**表現型適合**はGraph、Tree、Matrix、Table、Chart、Timeline、Map、SHOの平易なMermaid風テキストを同じDataから構成し、用途/Scope/Unit/Path/時間/Disclosure・Lossと逆編集資格を別々に検証する。TEI表現インスタンスはFunction Data Contextに所属し、SHOは別Consumerとして再資格化。Readableな図の生成成功≠元Relationの再構成可能性／現在Grant／実編集Effect。標準の表現型と専門Profileを分離し、新Renderer/Topology Engineを組織専用で複製しない。
+
+**優先順位**：#2586の実C1→D1 Function→Query→Provider Read→Consumerを先行し、その後P0合成のGraph/Headcount/FTE、P1二Function/SHO表示、P2原本への一意なIntent/Host Effectを段階検証。#2506/#2507/#2516/#2510/#2497/#2593が対応Owner。新Go/DB/GUI/SHO実行、Owner Quantity/Meaning受理、実Provider実証は**NOT RUN**。既存の組織計画§84・§85と並行採用可否を評価し、無根拠な大量Core新設やP0実Readの延期を避ける。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
