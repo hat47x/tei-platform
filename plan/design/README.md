@@ -330,6 +330,7 @@ S1 realistic intent / candidate frontier
 | 文書 | 対象 |
 | --- | --- |
 | [`TEI_MD_UNIFIED_AUTHORING_MIGRATION_2026-11.md`](TEI_MD_UNIFIED_AUTHORING_MIGRATION_2026-11.md) | 新規TEI Authoring Sourceを *.tei.md に統一し、旧 *.tei を段階廃止するユーザー方針とLoader/Parser/OKF/SHO移行の独立検証計画 |
+| [`ETL_ELT_MFT_CROSSBOUNDARY_CONTRACT_PRESSURE_2026-11.md`](ETL_ELT_MFT_CROSSBOUNDARY_CONTRACT_PRESSURE_2026-11.md) | ETL・ELT／ファイル・メッセージ連携の意味・配送・一式公開・業務受理の保証境界と、既存Provider・RunPlanを再利用する限定Headless反証計画（#2827、提案・未実証） |
 | [`EVERYTHING_DATA_MARKDOWN_SOURCE_FIDELITY_2026-11.md`](EVERYTHING_DATA_MARKDOWN_SOURCE_FIDELITY_2026-11.md) | Markdownの元シンタックスシュガーと書式・Source occurrenceを保存で保持する契約、局所Patch・競合・往復受入 |
 | [`TEI_PRODUCT_SKILL_HARNESS_BINDING_2026-11.md`](TEI_PRODUCT_SKILL_HARNESS_BINDING_2026-11.md) | TEI read-only Product Skillを既存CLIへ正確に結び、外部Harness/Consumerの受理・許可・開示・実実行と分ける設計候補（[#2605](https://github.com/hat47x/tei-platform/issues/2605)、未採用） |
 | [`TEI_MEANING_TO_CAPABILITY_SKILL_WITNESS_2026-11.md`](TEI_MEANING_TO_CAPABILITY_SKILL_WITNESS_2026-11.md) | Everything is Dataの意味Role→標準Operation→限定CLI発見→Product Skill/Harness→実Host/SHO受渡しの資格差とSource-static・合成検証（#2619/#2605/#2614、未採用） |
