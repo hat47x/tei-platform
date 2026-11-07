@@ -221,7 +221,7 @@ H0/H1と異質領域の要件探索は並行可能。H2/H4の実Effect資格は�
 - [#3047](https://github.com/hat47x/tei-platform/pull/3047)導入`internal/command/grant_authorizer.go`（Blob `ba93c741620a6aea0cb904d1e772b5c927ef0eb1`）の`GrantAuthorizer`は**Capability宣言PermissionとCallerから渡されたGrant Specの被覆**を検査。対象Capabilityの宣言エントリ欠落を拒否するが、Issuer真正性・Host受理・実Resource別のSubject Ruleの検査ではない。[#3064](https://github.com/hat47x/tei-platform/pull/3064)後の`internal/security/legacyauthorization/commandbinding/commandauthorizer.go`（Blob `af12a1899d778eeb26107f6ffa4ebe8ce26d2412`）は**Subject＋Action＋Resource**を既存Ruleへ渡すが、Permission Spec/発行経路の真正性は検査しない。
 - **構成上の独立性**：`Invoker.Authorizer`は**単一の`Authorizer`インターフェイス値**。その位置に`GrantAuthorizer`または`CommandAuthorizer`の一方を入れて局所PASSしても、**両方の要求が製品実行時に評価された証拠にはならない**。すべての純粋/Read-only操作に両方を一律義務化する提案ではなく、当該業務Effectに必要とOwner/Hostが明示したobligationの充足を同じRequestで確認する。Compositionの実装方式は既存Host/#1174のOwner判断。
 - [#3035](https://github.com/hat47x/tei-platform/pull/3035)/[#3038](https://github.com/hat47x/tei-platform/pull/3038)の`Ground`/Consumer照合は発行Scopeを環境宣言に制約する局所機構。現`access/ground.go`（Blob `f68dde6a14ccbfb1e5fa9e615a0fcc5978f4a1cc`）でも`issuedBy/resolvedBy`文字列の署名・Hostによる真正性確認、実Effectの現行Grant Fenceは証明しない。
-- [#3054](https://github.com/hat47x/tei-platform/pull/3054)の`committed=true, persisted=false, durability=none`は**参照メモリUnitOfWork成功と永続化なし**を表示する有限な改善。[#3124](https://github.com/hat47x/tei-platform/pull/3124)で三状態`Persistence`を追加済みだが、実Providerでの`Receipt Lookup`と資源Readの違い、および`committed/persisted`の強い意味の採否は同設計§8〜§9のOwner判断として残る。
+- [#3054](https://github.com/hat47x/tei-platform/pull/3054)の参照用`committed=true, persisted=false, durability=none`は継続。実Providerでは[#3155](https://github.com/hat47x/tei-platform/pull/3155)がReceipt/Resourceの観測状態を分離済みで、`persisted:true`は資源値一致の場合のみ。**全Cascade・Owner意味受理・現在Grantはなお別証拠**。
 
 **重複を増やさない最小対照**（公開合成の同一`order_entry`、Meaning/Operation/Fixture/独立期待結果を固定し既存#1180/#2514へ引き継ぐ）：
 
@@ -254,22 +254,20 @@ H0/H1と異質領域の要件探索は並行可能。H2/H4の実Effect資格は�
 
 **状態**：本節はmainの実Sourceと統合済みPRから導いた**反証可能な設計／試験要求**。同namespace重複宣言・関連先ROの新Go試験、実DB強制、OKF Attesterの実Tool/Receipt、正式Owner Meaning Acceptanceは**NOT RUN／NOT ACCEPTED**。受理済み業務MeaningがRO先のCascadeを許容しているとは推測しない。
 
-#### Receiptの独立Lookupと業務資源の独立Readを取り違えない（2026-11-07）
+#### Receipt/Resource観測の4状態は実装済み：横断Claimに残る対象閉包（2026-11-07更新）
 
-**新mainの局所到達点と接合ギャップ**：[#3112](https://github.com/hat47x/tei-platform/pull/3112)で`ReportedEffectMissing`が`AppliedUnobserved`と独立に観測され、[#3104](https://github.com/hat47x/tei-platform/pull/3104)で効果無宣言なら適用操作比較自体を非適用とする区別が入った。[#3124](https://github.com/hat47x/tei-platform/pull/3124)の`internal/command/persistence.go`（確認Blob `be114c633dd7b41815ab713c18a33e0efd878da0`）は`Persistence=not-applicable/not-observed/observed`を導入し、`observed`を**「宣言された資源効果がCommit後の独立Readで確認された」**意味として説明する。`Invoker.DurableStore`は外部構成の申告であり、型が実永続Storeを保証するわけではない。CLIの`persisted`は`PersistenceObserved`の場合だけtrueになる。
+**旧課題の訂正**：旧[#3127](https://github.com/hat47x/tei-platform/pull/3127)ではReceipt Lookupだけで単一`observed`になったが、現在は**修正済み**。[merged #3155](https://github.com/hat47x/tei-platform/pull/3155)のmain `internal/command/persistence.go`（Blob `5e8fcec8eca81ded38c9305adba054f71ce168e9`）は`not-applicable`/`not-observed`/`receipt-observed`/`resource-observed`を区別。`persisted:true`は`resource-observed`の場合に限る。main `internal/security/effectcommit/commandadapter/executor.go`（Blob `7d1ccedd7dca5f8df8f5c84da0fca722ef8e9198`）では`Lookup`がReceipt、`ResourceRead`が別poolの資源値をCommit Payloadと比較する。両方を同じ「独立Read成功」へ畳まない。`DetailedPersistenceObserver`は観測Methodを返すが、旧`PersistenceObserver`だけを実装する場合はresource観測として扱う契約なので、**実Readerの来歴と資格はHost/Providerの検証に依存**する。
 
-一方、[#3127](https://github.com/hat47x/tei-platform/pull/3127)の`internal/security/effectcommit/commandadapter/executor.go`（確認Blob `6b854d7240a4401593c8b693bdea657aee8b5ff2`）が実装した`Executor.Observe`は、`Lookup=true`で`Runner.Lookup`を呼び**OperationID/RequestHashに対応するReceipt**を読み直す。そのCodeコメントも「資源の現在値を読まない」と明示する。ところが[結合単体試験 `TestExecutorObservesACommittedReceiptByLookup`](https://github.com/hat47x/tei-platform/blob/main/internal/security/effectcommit/commandadapter/executor_test.go)（確認Blob `6d9a282f54337a287322d1b127230adb025a3ba6`）では、`Invoker.PersistenceObserver = executor`としてReceipt Lookupだけで`PersistenceObserved`を返す。**Receipt観測の成功と資源状態の観測成功は、同じ`observed`の値からは区別できない構成が存在する**。このテストが確認する局所動作を、実Productの`persisted=true`＝業務データ確認済みと解釈しない。
+**実PGの限定証拠**：[Actions #42328707393](https://github.com/hat47x/tei-platform/actions/runs/42328707393) Job `128269964949`のログを直接確認。#3155 HEAD `19f00c7e3fd89aecbac791002cb081c00052bcfe`に対する`TestPostgresCommandObservesACommittedReceiptByLookup`と`TestPostgresCommandObservesTheStoredResource`は**それぞれPASS、対象SKIPなし**。前者はReceipt、後者は独立Resource値の一致とCommit後の値変更による不一致を判別する。これらは当該限定PG Provider/対象/Requestでの実証であり、全DB/複数Data・Owner業務完了・本番Host認可の合格ではない。
 
-| 同一OperationID・RequestHash・Receiptを固定した対照 | 独立期待結果・安全なClaim ceiling |
+| 既存基線を変更しない対照 | 適格な局所結果／残る課題 |
 | --- | --- |
-| **R1 Receiptのみ**：`Lookup`成功、だが`sales.order/O1`の別Readerは未接続 | `receipt lookup observed`まで。記録の存在、同一Operationの重複識別は確認できても、`resource state observed`・`business completed`は**unverified**。この構成が`PersistenceObserved`を返す現在のTest動作は**観測済み局所結果**であり、Product保存検収の独立期待結果とは分ける |
-| **R2 不一致の資源状態**：同じReceiptを返すが、独立ReadではO1が旧版／別値／未取得、あるいはProviderがpartial/遅延Replicaしか返さない | Receiptの値を変えずに、業務資源の確認だけ不成立／不明へ変わるべき。`persisted=true`をConsumerに許すには、Readerの実Source/Query・Target/Scope・Version/Read cohort・Coverage/一致値の検証が必要。現mainのこの製品縦断試験は**NOT RUN** |
-| **R3 資源Read一致**：同じReceiptに加え、Host/Providerから独立した対象Readerで要求する版・値を確認 | 当該Target/時点の`resource effect observed`候補へ進めるが、Grantの現在資格・他Dataへの`additional-scope`/RO違反・Owner業務完了は依然として別。対象が複数なら各対象／集計範囲の完全性を検証 |
-| **R4 Unknown/Replay**：Commit ACK喪失後のReceipt Lookup成功、または`StatusReplayed` | 未知だったOperationの記録が確認できた範囲だけ資格を更新し、**資源現在値の独立Readの代わりにしない**。同Keyの二重実行禁止・新Key再送禁止は#1174のFence/Idempotencyで別検査。Receiptが欠ければCommitしていないと断定しない |
+| **O1 同一OperationID・Receipt Lookupだけ** | `receipt-observed`、`persisted:false`。資源の現在値を確認済みと表示しない。**限定実PG PASS** |
+| **O2 同一Receiptで別pool Resource Read正常／Commit後に対象値を変更** | 正常は`resource-observed`、不一致は`not-observed`。**限定実PG PASS**。実Consumer別のSource/Scope/Read consistencyは別資格 |
+| **O3 主Order O1の資源は一致、Cascade U1は未取得／RO制約未確認** | O1の観測は有効でも**全Effect対象集合の確認はunverified**。#1129 Relation/Rule、#2586 Provider Data Read、#1174 Fenceを同Attemptで照合。新E2Eは**NOT RUN** |
+| **O4 ACK喪失・Replay後の履歴Receiptと現在Resourceの食い違い** | 同Keyの記録とResourceの現在値、Owner Meaning、現在Grantを分離。Receiptがあるから新Keyで安全に再送できるとは推定しない。横断新E2Eは**NOT RUN** |
 
-**最初の検証差分**：既存#3127のReceipt-only陽性テストを**変更せず対照基線**にする。その隣に、同一Receipt/OperationIDで資源Readの有無・取得値だけを一因子変更する**Consumer独立期待結果**を置き、(1)現`PersistenceState`、(2)実Receipt read、(3)資源の別接続Read、(4)`persisted`を見た外部Consumerが何を主張したかを別票にする。実Reader未接続なら`NOT RUN: resource-read-unbound`とし、`UNBOUND_DATASOURCE`を隠してReference MemoryStoreやReceipt Lookupで代用しない。Function→Query→Datasource→Provider実Readは既存[#2586](https://github.com/hat47x/tei-platform/issues/2586)、Host/Effect FenceとReceiptは[#1174](https://github.com/hat47x/tei-platform/issues/1174)、同一Attempt/独立Consumerは[#1163](https://github.com/hat47x/tei-platform/issues/1163)、独立Expectedは[#2514](https://github.com/hat47x/tei-platform/issues/2514)のOwnerとする。
-
-**設計判断の限界**：`PersistenceObserved`という既存コード上の戻り値自体を勝手に書き換えず、Receipt観測を消去しない。型/CLI契約を拡張するなら、**ReceiptとResourceの観測種類・Provenanceを分ける**案と、ConsumerごとのClaim ceilingによる読み分け案を比較し、互換性／Owner受理と実PG・独立Readで判断する。`tei.cli.view/v0`等の一律版上げ、新`Receipt` ABI、第二永続化Engine、全Actionへの書込み後Read義務は本節で採用しない。[#2614](https://github.com/hat47x/tei-platform/issues/2614)は現在closedであり、OKF/TEI Product Skillの継続窓口は[#2605](https://github.com/hat47x/tei-platform/issues/2605)とTAI #514を優先する。今回のProduct PG/資源Read/Owner受理の新試験は**NOT RUN／NOT ACCEPTED**。
+**次の受入境界**：旧「Receipt/Resource用の観測種別を新設する」要件は達成済みとし、`resource-observed`を**実Target/Version/Provider Route/Read Scope/Cohort・Function Context・現在Consumer**へ束縛する。観測対象が1件なら、未観測の関連Dataまで一般化しない。#1163同一Attempt、#2514独立検証基準、#2586実Read、#1174実Host/Effectの既存Ownerへ引き渡す。第二Receipt ABI/永続化Engine・一律書込み後全Provider Read強制は採用しない。正式Owner受理とProduct Gateは未達。
 
 #### 三領域で破綻しやすい残余
 
