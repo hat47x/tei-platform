@@ -3,6 +3,7 @@
 package studiohost
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -53,8 +54,8 @@ type InspectionResponse struct {
 
 // ReadOnly has no per-browser or selected-workspace state. The host supplies
 // and fixes the workspace allowlist on startup; browser calls supply IDs only.
-// CatalogService and ValidationService expose the generated services' concrete,
-// typed operations. They do not accept renderer-controlled filesystem paths.
+// The services expose the generated operations through concrete, typed
+// methods. They do not accept renderer-controlled filesystem paths.
 type CatalogService interface {
 	Catalog(namespace string) (operations.ModelCatalog, error)
 }
@@ -260,7 +261,7 @@ func (h *ReadOnly) InspectSubject(id, kind, subjectID string) InspectionResponse
 		if err == nil && (value.Subject != subject ||
 			value.SchemaVersion != "tei.operations.inspect/v0" ||
 			value.Effect != "read-only" ||
-			len(value.Canonical) == 0 ||
+			!json.Valid(value.Canonical) ||
 			value.WorldFingerprint == "" ||
 			value.SourceIndexFingerprint == "") {
 			err = errors.New("inspection service returned an inconsistent projection")
