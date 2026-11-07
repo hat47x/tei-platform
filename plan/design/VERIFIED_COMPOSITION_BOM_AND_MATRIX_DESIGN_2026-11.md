@@ -169,24 +169,24 @@ Product化で追加すべき要件は次の通り。
 
 ### 9.1 「存在するLockだけでPairwise」が解決できる範囲
 
-§8の\`PlanPairwise\`は宣言軸に含まれる値の**無制約直積**を前提とする。現実のPlugin依存は「Provider 2.1はContract 1.x非対応」「Go static Targetでは同一package二Majorを同時Linkできない」「あるProviderはTenant Bで使用不可」などの**制約付き候補空間**である。無制約Plannerで選んだ行から不成立行を後で削除すると、元の組合せ全体に必要なペアが脱落する可能性がある。
+§8の`PlanPairwise`は宣言軸に含まれる値の**無制約直積**を前提とする。現実のPlugin依存は「Provider 2.1はContract 1.x非対応」「Go static Targetでは同一package二Majorを同時Linkできない」「あるProviderはTenant Bで使用不可」などの**制約付き候補空間**である。無制約Plannerで選んだ行から不成立行を後で削除すると、元の組合せ全体に必要なペアが脱落する可能性がある。
 
-これを薄く確認するため、[PR #3269](https://github.com/hat47x/tei-platform/pull/3269)の限定Go Referenceに**\`PlanResolvedPairwise\`**を追加した。新しいResolverを作るのではなく、既存#951/#1016等から将来提供される**解決済みと申告された exact Lock の有限集合**を選択可能な行候補として入力する。候補間の2項ペアについて決定論的にgreedy set coverを計画し、どの選択行がどのLock Fingerprint由来かを保持する。
+これを薄く確認するため、[PR #3269](https://github.com/hat47x/tei-platform/pull/3269)の限定Go Referenceに**`PlanResolvedPairwise`**を追加した。新しいResolverを作るのではなく、既存#951/#1016等から将来提供される**解決済みと申告された exact Lock の有限集合**を選択可能な行候補として入力する。候補間の2項ペアについて決定論的にgreedy set coverを計画し、どの選択行がどのLock Fingerprint由来かを保持する。
 
 **ただし候補一覧自体は完全と検証していない**。実装は次の資格の境界を固定する。
 
 | フィールド／主張 | 正確に言えること | 言えないこと |
 | --- | --- | --- |
-| \`fullCartesianSize\` | 宣言軸から算出した全直積のサイズ | そのすべてが実現可能 |
-| \`candidateCount\` | 提供されたexact Lockの件数 | Catalog全件、実Provider起動可能件数 |
-| \`declaredPairs\` | 無制約宣言軸の全2項候補数 | そのすべてが実現可能 |
-| \`candidatePairs\` | 提供されたLock行に現れた2項集合の数 | 他の未発見候補を含む全実現可能ペア数 |
-| \`coveredCandidatePairs\` | 選択したLock行がカバーする**提供候補内の**ペア数 | 全可能なPlugin組合せの網羅率 |
-| \`unrepresentedDeclaredPairs\` | 宣言軸には存在しても、入力候補に現れないペアの数 | そのペアが「不可能」「拒否」「存在しない」と確定 |
-| \`candidateUniverseCompleteness: unknown\` | Source/Registry/Resolver列挙の完全性を未証明 | 完全な可行候補列挙 |
-| \`qualified:false, claimCeiling:planning-only\` | Test実行前の試験計画 | 検証済みBOM、実Contract/Runtime適合 |
+| `fullCartesianSize` | 宣言軸から算出した全直積のサイズ | そのすべてが実現可能 |
+| `candidateCount` | 提供されたexact Lockの件数 | Catalog全件、実Provider起動可能件数 |
+| `declaredPairs` | 無制約宣言軸の全2項候補数 | そのすべてが実現可能 |
+| `candidatePairs` | 提供されたLock行に現れた2項集合の数 | 他の未発見候補を含む全実現可能ペア数 |
+| `coveredCandidatePairs` | 選択したLock行がカバーする**提供候補内の**ペア数 | 全可能なPlugin組合せの網羅率 |
+| `unrepresentedDeclaredPairs` | 宣言軸には存在しても、入力候補に現れないペアの数 | そのペアが「不可能」「拒否」「存在しない」と確定 |
+| `candidateUniverseCompleteness: unknown` | Source/Registry/Resolver列挙の完全性を未証明 | 完全な可行候補列挙 |
+| `qualified:false, claimCeiling:planning-only` | Test実行前の試験計画 | 検証済みBOM、実Contract/Runtime適合 |
 
-**3軸×2候補**で宣言全直積8行、うち4行だけがexact Lockとして提供される負例では、宣言ペア12組のうち候補に現れた9組だけを検出する。Plannerが9/9を覆っても、残り3組は\`unrepresented\`であり「infeasible」とは言わない。入力のLock配列順によらず結果を固定。異TargetのLockを混在させるなら\`target\`軸を明示し、Lock.Targetと不一致なら拒否する。**Scope/Host Grant/契約意味/元Source等をこの文字列Lockの存在で証明しない**。
+**3軸×2候補**で宣言全直積8行、うち4行だけがexact Lockとして提供される負例では、宣言ペア12組のうち候補に現れた9組だけを検出する。Plannerが9/9を覆っても、残り3組は`unrepresented`であり「infeasible」とは言わない。入力のLock配列順によらず結果を固定。異TargetのLockを混在させるなら`target`軸を明示し、Lock.Targetと不一致なら拒否する。**Scope/Host Grant/契約意味/元Source等をこの文字列Lockの存在で証明しない**。
 
 このReferenceは供給された候補の2項集合をgreedyに被覆するだけで、最少ケース数を保証しないし、全互換性制約の解決もしない。選択しなかった合法候補の個別重要Caseを必要Scenarioから落としてはならない。
 
@@ -197,7 +197,7 @@ BOM-A（Query Provider＋DB Access）とBOM-B（Report Renderer＋Export）が�
 1. **Pattern上の合成**：必要Contract/Facet/Version rangeと負のConstraint、Open/unpromised依存を結合し、衝突を診断。これ自体はCandidateであり、推奨済み完成構成ではない。
 2. **Exact Lock合成**：#951/#1016の**既存解決**を再実行し、選択対象・Scope/Targetの一致と二重採用／ambiguous Providerを検出。旧Lockの単純連結は禁止。
 3. **Build/Artifact合成**：#1097の一物理Artifact多Plugin binding、#1251の同梱だが未選択要素非干渉、#2600の実Build closureに合わせる。別Artifactを同時配備した時のLink/Load/init問題を見落とさない。
-4. **試験合成**：BOM-A/Bで独立に実施したテストを履歴として保ち、**跨BOM辺**のContract/Effect/Function/Scopeを含む同一構成の統合Scenarioを#1180/#2514に要求する。共通部分は再利用可能でも未検証の横断部分は\`unverified\`にする。
+4. **試験合成**：BOM-A/Bで独立に実施したテストを履歴として保ち、**跨BOM辺**のContract/Effect/Function/Scopeを含む同一構成の統合Scenarioを#1180/#2514に要求する。共通部分は再利用可能でも未検証の横断部分は`unverified`にする。
 5. **BOM発行**：対象がexactに一致し、独立Test/Target/Source/Artifact/Consumer Disclosureの証拠が揃った部分だけ限定Claimとして発行する。発行者／Conformance Issuer/Runtime Host/OwnerのAuthorityは別。
 
 特に、BOMを**依存解決の優先順位（暗黙のProvider選択）として使わない**。BOMは推奨された既知組合せを示す選択ヒントであり、Consumerの要求・実Providerの互換性・Host現在権限に優先する第二Resolverではない。
@@ -215,9 +215,9 @@ BOM-A（Query Provider＋DB Access）とBOM-B（Report Renderer＋Export）が�
 | VCB-C07 | Open API依存のAdapter改版、上流未保証・対象Functionだけ再資格化 | 第三者BOMにPublisherのStable保証を虚偽付与 |
 | VCB-C08 | Scope/Source/Expected欠損、partial Catalog、古いArtifact/Evidence | 未発見を不可能、不完全試験をPASSへ昇格 |
 
-**実装済み範囲**：Goの\`supplied-locks-pairwise\`は構文上のLock候補集合と全2項を照合する**試験計画のみ**。入力の不変性とTarget混在の棄却を含む。孤立したGo試験で追加4 Test（うち255部分集合の全列挙）がPASS。**GitHub exact-head CI、#951/#1016実Resolver/実Provider、#1180実Runner、Constraintの完全Source Closure、Qualified BOMの真正発行、BOM-A∪BOM-B実ConformanceはNOT RUN。**
+**実装済み範囲**：Goの`supplied-locks-pairwise`は構文上のLock候補集合と全2項を照合する**試験計画のみ**。入力の不変性とTarget混在の棄却を含む。孤立したGo試験で追加4 Test（うち255部分集合の全列挙）がPASS。**GitHub exact-head CI、#951/#1016実Resolver/実Provider、#1180実Runner、Constraintの完全Source Closure、Qualified BOMの真正発行、BOM-A∪BOM-B実ConformanceはNOT RUN。**
 
-**次の最短縦断**：#3262 Design Contextで対象範囲と未収集を確定 → #951の既存解決結果をJSON候補として取得 → \`supplied-locks-pairwise\`でLock付き試験計画を生成 → #1180の既存Test Scenarioを各exact Target/Artifactへ実行 → #2514で完結度と独立Expectedを検査 → #3267で限定的BOM行へ物化。別Planner/Resolver/Runner/Publisher Authorityは追加しない。
+**次の最短縦断**：#3262 Design Contextで対象範囲と未収集を確定 → #951の既存解決結果をJSON候補として取得 → `supplied-locks-pairwise`でLock付き試験計画を生成 → #1180の既存Test Scenarioを各exact Target/Artifactへ実行 → #2514で完結度と独立Expectedを検査 → #3267で限定的BOM行へ物化。別Planner/Resolver/Runner/Publisher Authorityは追加しない。
 
 
 ## 10. Trait義務・設計Coverageと同一AttemptのWitness束縛（2026-11-07／横断・限定Reference）
