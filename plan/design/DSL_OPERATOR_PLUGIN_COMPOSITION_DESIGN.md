@@ -533,3 +533,32 @@ Source移行では、`plugin.tei.md`を選んだ意図Bと、固定名Loaderが`
 **次に本当に残るJOIN**：`Selected Source/Revision`（Root・Intentと`ReadByLoader`）→`Selected Language+Operator Contract`（K2/K4）→`Actual BuildPlan Sources`→`Physical Target Engine`→`PluginInvocation`を、同じSourceRevision/Target/Attempt・独立期待値で接続すること。既存Runtime実証を再作成するのではなく、**Bを選んだのにAをビルド・呼び出す（返値は等しい）**誤接合のSource→Selection列に実証の不足がある。必要なBuild/Target差分は#1251/#2885/#973、Authoring Sourceは#3030/#2823、消費者は#1016、Owner認可/Receiptは#1174。欠落がある場合は`not-proven`で停止。新Registry/Host/Proof Store/新独立Expected正本は作らない。
 
 **SHO/Studioとの分離**：[#1824](https://github.com/hat47x/tei-platform/issues/1824)で検討するRaw Markdown Writerは、`Workspace.Load`の意味受理の失敗と独立して設計する。Source Path/Raw bytesを扱うだけのDraft編集は可能でも、保存だけでK0 Seed、Semantic Admission、Build資格を付与しない。`*.tei.md`の意味Parser未Bindingを解除するのは#3030のParser/Loader側の検収による。
+
+
+<!-- tei-dsl-bootstrap-bs14-current-host-preflight-closure-evidence-20261107 -->
+### 13.15 BS-14の現在Host受理を実Sourceへ接続し、Build成功／閉包不適格を分離する
+
+**状態更新**：移行仕様[PR #3030](https://github.com/hat47x/tei-platform/pull/3030)は**2026-11-07にmainへマージ済み（docs-only）**。これは`*.tei.md`標準採用とM0〜M6/TM-01〜14受入設計の格納が確定したことを示すが、実Markdown Reader/Grammar/Legacy Source移行/正式Owner受理の実装ではない。未対応Sourceの暫定`TEI_MD_PARSER_UNBOUND`は[#3031](https://github.com/hat47x/tei-platform/pull/3031)の**未統合Draft**にとどまる。
+
+#### BS-14: ModelRevisionが戻っても現在のHost Readerを必ず再照合
+
+現mainには、専用の`internal/sourceacceptance/workspace.go: LoadVerifiedWorkspace`がある。これは**同じ`workspace.Load`に由来するSource Index**を`BuildSourceIndexFromLoad`で組み立て、Host側の`Reader.ReadCurrentAcceptedSource`が返す現在のRecordと照合する。Readerが無い・拒否・改訂不一致なら`VerifiedWorkspace`を返さず、Source列挙だけからRuntime資格を出さない。現在の`Record.AcceptanceKind`は`provisional/unspecified`のみであり、正式な人間の意味受理を実装したとみなさない。Trusted Readerの真正性・撤回履歴はHost側の責務であり、受理済みRecordをテスト自身が作れば本物になるという仕組みではない。
+
+そこで本Draftに`bootstrap_current_acceptance_test.go: TestBootstrapBS14ABARequiresCurrentHostRead`を追加。**既存のBS-14独立Expected** `review-current-qualification`を先に読み、同じ実Workspace/元SourceのA→B→A'を試す。
+
+| 段階 | 実入力／Hostの現在状態 | Go APIで期待する結果 | 誤昇格を防ぐもの |
+| --- | --- | --- | --- |
+| A | Native `semantic/model.tei`＋通常`README.md`、SourceIndex A、**合成**Host ReaderがAの暫定Recordを返す | `LoadVerifiedWorkspace`成功（Source受理の**合成正例**に限定） | 「何でも拒否」テストを許さない |
+| B | 未読込`README.md`のbytesだけ変更、ReaderはAを返す | `SOURCE_FINGERPRINT_MISMATCH`、VerifiedWorkspaceはゼロ値。Canonical WorldとSubject RefsはAのまま | Meaningが変わらなければSource閉包は照合不要、という誤り |
+| A' | 元のbytesに復元し`ModelRevision(A')=A`、しかしHost Readerが現在撤回を返す | `SOURCE_ACCEPTANCE_CURRENT_UNAVAILABLE`、World非公開、Hostの私的エラー文字列を外へ出さない | ハッシュ再一致で旧Owner受理が自動復活する誤り |
+
+このテストは実Source Readerと既存`sourceacceptance`の現在Reader IFを通すが、**Readerは試験用合成実装**。人間の正式な受理、署名の検証、revocation ledger、Current Host Grant、DB Effect/Receiptは存在しない。BS-14の「現在性確認経路」の限定証拠だけであり、Bootstrap K0→K6全体PASSではない。既存の`internal/sourceacceptance/workspace_test.go`が検証するR1→R2/非解釈文書改版/Reader失効を再実装せず、**一つのBS-14 A→B→Aと独立Expectedを結合するRegression**として位置づける。
+
+#### Build: Targetの実観測が空ならUNKNOWN、成果物があってもSource閉包が拒否なら未適格
+
+- 現mainの[#3091](https://github.com/hat47x/tei-platform/pull/3091)はGo選択Moduleのオフライン事前分類を追加。[Draft #3130](https://github.com/hat47x/tei-platform/pull/3130)は、`go list -deps -json -e`に**対象Module rootが0件**（空stream/標準ライブラリのみ）のとき、`supported`を返さず`unknown`とする修正を限定CIで確認。**Draft・未マージ**であることに注意し、このテスト結果を現mainの実装完了として主張しない。
+- [main統合 #3144](https://github.com/hat47x/tei-platform/pull/3144)は供給の破損を`corrupt-supply`として`missing-module`から分離した。ただし`go list`だけでは展開済みModuleの改変を見落とし得て、`go mod verify`等の追加検査が必要。分類語があるだけで供給の真正性を保証しない。
+- [main統合 #3156](https://github.com/hat47x/tei-platform/pull/3156)は隔離環境で`cmd/tei`の**実Build成功・artifact digestあり**と、同adapterの`ResolveSourceClosure`は`rejected`であることを独立に記録。理由には実Build側の供給とClosure Resolver側の外部Module受容方針の差がある。**Build artifactの生成成功と、認定されたSource閉包は別Claim**であり、片方を自動的にもう片方のPASS/FAILへ置き換えない。二回Build再現性、Providerの選択・実リンク、受理済みArtifact、正式Host Grantは別。
+- [main統合 #3131](https://github.com/hat47x/tei-platform/pull/3131)のPostgreSQL Receipt Lookupは**receipt行の永続観測**に限定。Receiptが`observed`でも資源の最新値の独立再読取、選択Source/Providerの資格、Ownerが期待する業務効果を保証しない。
+
+**K1→K6の新たな検収単位を作らず、既存の独立列を接合する**：Required Source→実Read→Grammar/Role/Operator→選択Target Moduleのroot数・供給改ざん検査→実BuilderのSource/Module閉包→Artifact Digest/実Binary→Invocation Identity→Hostの現在Record/Grant→Receipt/独立Read。入口で観測0件は`UNKNOWN`、実Build成果物は`artifactProduced`、既存Closureが拒否していれば`closure=unqualified`と両方残し、単純な緑色合格へ圧縮しない。BS-07/14および#2831/#1251/#951/#1174/#2514のOwnerを維持し、新Status Enum/Registry/Builder/Attester/Receipt Store/Acceptance Engineは増設しない。
