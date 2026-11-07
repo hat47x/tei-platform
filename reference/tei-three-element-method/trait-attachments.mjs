@@ -18,13 +18,16 @@ const record = (value, fields) => {
 const key = (role, scope, kind, id) => JSON.stringify([role, scope, kind, id]);
 const sortKey = x => JSON.stringify([x.viewId, x.lane, x.claimId]);
 
-// "snapshot" is a caller-supplied equality witness, NOT current-Source evidence.
+// "snapshot" must agree across projector, envelope, claims: local bind only.
+// Every witness is caller-supplied, NOT independent current-Source evidence.
 // "claims" is an already disclosed, already selected list: never raw private data.
 export function bindPublicTraitClaims(publicProjection, envelope) {
   if (!record(envelope, ["scope", "snapshot", "claims"]) ||
       !text(envelope.scope) || !text(envelope.snapshot) ||
       !Array.isArray(envelope.claims) ||
-      !record(publicProjection, ["views", "relationTable", "publicDiagnostics", "coverage"]) ||
+      !record(publicProjection, ["snapshot", "views", "relationTable", "publicDiagnostics", "coverage"]) ||
+      !text(publicProjection.snapshot) ||
+      publicProjection.snapshot !== envelope.snapshot ||
       !record(publicProjection.views, ["data", "function", "business"]) ||
       !record(publicProjection.coverage, ["scope", "allSourceCompleteness"]) ||
       publicProjection.coverage.scope !== envelope.scope) fail();
