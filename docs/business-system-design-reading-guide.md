@@ -347,36 +347,15 @@ tei knowledge-review-handoff
   -qualification-requirements <requirements.json>
 ```
 
-`-qualification-requirements`が読むJSONの最小形は次のとおりです。形は`internal/knowledgecontext/qualification.go`の`QualificationRequirements`が正本です。
+`-qualification-requirements`に渡すJSONは、`internal/knowledgecontext`の`QualificationRequirements`が受け付ける形です。既存の例として[`reference/business-system-design/order-entry-customer-reference-review-qualification.json`](../reference/business-system-design/order-entry-customer-reference-review-qualification.json)があります。
 
-```json
-{
-  "expectedKind": "semantic-data",
-  "requiredDependencies": [
-    {
-      "direction": "outgoing",
-      "relation": "targets",
-      "kind": "semantic-data",
-      "id": "customer.customer"
-    }
-  ]
-}
-```
+| 欄 | 必須 | 内容 |
+| --- | --- | --- |
+| `expectedKind` | 必須 | 対象の種類。`-subject-kind`と一致しないと`incompatible`（理由`expected-kind-mismatch`）になる。空文字・空白のみは`KNOWLEDGE_BUILD_FAILED`（終了コード2）で拒否される。 |
+| `application` | 任意 | `expectedKind`が`application-pattern`のときだけ指定できる。他の種類と併用すると`qualification application scope requires expectedKind=application-pattern`で拒否される。 |
+| `requiredDependencies` | 任意 | 配列。各要素は`direction`（`outgoing`／`incoming`）・`relation`・`kind`・`id`が必須で、`alias`は任意。同じ組の重複は拒否される。 |
 
-`expectedKind`だけを書いた`{"expectedKind":"semantic-data"}`も受理されます。`application`を使う場合は`expectedKind`を`application-pattern`にします。
-
-```json
-{
-  "expectedKind": "application-pattern",
-  "application": "order_entry"
-}
-```
-
-- `expectedKind`は必須です。省略すると`qualification expectedKind is required`で拒否されます。
-- `application`は`expectedKind`が`application-pattern`のときだけ受理されます。`semantic-data`などと組み合わせると`requires expectedKind=application-pattern`で拒否されます。
-- `requiredDependencies`は省略できます。項目を書く場合は`relation`・`kind`・`id`が必要で、`direction`は`outgoing`か`incoming`だけを受け付けます。`alias`は同じ依存を再度指すときの名前で、省略できます。
-- 未知の欄は`json: unknown field`で拒否されます。推測した欄名を足さず、上の三つだけを使ってください。
-- 要件が受理されるかは、宣言した要件と現在の定義・入力元索引の一致で決まります。同じ要件でも定義が違えば`incompatible`や`unknown`になります。要件JSONの受理は、知識を設計判断に適用してよいことの証明ではありません。
+最小形は`{"expectedKind":"semantic-data"}`です。依存を要求しない場合は`requiredDependencies`を省略します。未知の欄は`json: unknown field`で拒否され、末尾に別のJSON値を続けても拒否されます。UTF-8（BOMなし）で保存してください。BOM付きは`invalid character '\ufeff'`で拒否されます。`knowledge-qualify`も同じ形のファイルを受け取ります。
 
 引き継ぎには知識の本文を含めません。代わりに、確認計画の改訂番号と照合値、対象範囲、参照候補の区画、明示した適用条件、確認結果、情報源の検証根拠を結び付けます。適用可能で、正本性を裏付ける検証根拠と必要な依存関係の検証根拠が揃い、文脈と入力元索引にある対象の検証根拠が同じ改訂に基づく場合に限り、状態を`qualified-for-disclosure`にします。不明な状態は`blocked-unresolved`、不適合は`blocked-incompatible`として保持します。ここでいう`disclosure`は、AIの設計支援へ渡す知識の区画を選ぶことです。アクセス制御、秘匿、役割に基づく権限付与を表すものではありません。
 
