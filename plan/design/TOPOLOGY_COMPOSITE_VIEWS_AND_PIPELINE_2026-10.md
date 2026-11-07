@@ -499,3 +499,33 @@ Else absence remains unknown; no universal closed-world assumption.
 **exact HEAD証拠**：[GitHub Actions #42206842519](https://github.com/hat47x/tei-platform/actions/runs/42206842519)、head `8bf4347fa587a66bbc500a8a2fd5927d150437d2`、Go1.26.10実CLI二回＋Node24.21.0の受信比較 **PASS**、合成試験 **31+7 PASS**。追加後に継続する運用・CIは別資格。既存`TraceWorkspace`そのものを変更せず、read-only Reference Consumer側だけを修正した。
 
 **不変条件／採用停止線**：`Source-declared scope`、`Projection caller-scope`、`Workspace/Observation scope`、`Principal/AuthZ scope`は同じ文字列であっても、生成元と証拠が異なる限り同一概念へ畳まない。画面の表示グループ、namespace filter、ラベル、実CLIの`-scope`からSource側Relation ID/declaring scopeを推測しない。製品のScope/Source identity契約を拡張する場合は#1120/#1124/#2620の既存Ownerへ、実Source Readerと独立Source anchor・必要閉包の証拠を渡して判断する。**新しいScope Registry/Resolver、正式Role Schemaはここで作らない**。
+
+## 15. 2026-11-07：Intent／Realization／Assessment間のSource位置を同一Subjectへ束縛
+
+**位置づけ**：[研究計画PR #2966](https://github.com/hat47x/tei-platform/pull/2966)（2026-11-07 main統合済み）のIntent／Realization／Assessmentを前提とした、既存read-only実CLI観測Referenceの**具体的な境界修正**。三視点Source設計 [#2878](https://github.com/hat47x/tei-platform/pull/2878) とPlugin最適化要件 [#2933](https://github.com/hat47x/tei-platform/pull/2933) も同日時点で統合済み。これらの研究内容を第二正本化せず、PR #2881が所有する実CLI→Node ConsumerのSourceナビゲーション誤帰属だけを扱う。確認main `680646b8629ce7af5b9bb0ba7db3529151b63a4c`（2026-11-07）。
+
+### 15.1 成熟した小さな反例
+
+既存Go [`sourcebridge.Navigation`](https://github.com/hat47x/tei-platform/blob/680646b8629ce7af5b9bb0ba7db3529151b63a4c/internal/modelref/sourcebridge/source.go) は `Key` と `Status`（located/unresolved）、`References`、`AuthorityLimits` を持つ。一方、修正前のReference `observeDirectTrace` は **`source.status === "located"`だけ**を確認し、`trace.subject`と`source.key`が別Subject／別scopeでも`sourceNavigation:located-navigation-only`を返すことができた。これは同じCLI JSONに含まれた**Realizationの誤帰属**であり、Graph/Viewのkey整合とは独立した問題である。
+
+最小修正は、SourceNavigationの`key`を同一Traceの選択Subject（scope＋kind＋id）に照合し、SourceNavが`located`を名乗るなら空でない`References`を要求すること。未解決SourceNavは**直接Edgeの候補観測とは独立**して`unresolved`に保ち、Source位置や編集資格を捏造しない。型の不正な`ProjectionUnresolved`を「未解決0件」と解釈することも拒否する。
+
+| 境界 | 修正後の局所結果 | なお要求される独立根拠 |
+| --- | --- | --- |
+| **Direct Edge candidate** | `tei trace`のsubject/方向・完全な1ページとread-only資格を検査 | 実業務Relation ID／多項Role／完全なSource・Plugin依存の証明なし |
+| **Same-packet SourceNavigation** | Trace選択対象とNavigationのKeyが一致。LocatedならSource参照が少なくとも1件 | 同一時点の物理Source再読取・現在Grant・Authoring権限ではない |
+| **Query/Closure** | 未対応Role/WHERE/Windowや不明なProjectionは`unknown`。非存在の断定なし | 要求入力の全Root、Readerによる実解析、独立Expected |
+| **Disclosure** | 内部Referenceの結果を公開スライスと誤認しない | #2516のCurrent Policy／W0/W1二世界、実Producer→Consumer非干渉 |
+| **Intent／Assessment** | 正本Intentと今回のbounded observed direct edgeを区別し、同じSubjectへの帰属だけ検査 | Accepted Meaning・Source/Version一致・独立受入者・正否の業務判断 |
+
+この5段階は新たなCore enumではない。Role観測について #2620 が整理した **Inventoried → Read-by-Loader → Parsed/Anchored → Claim-Qualified → Currently Disclosable** を勝手に一本の成功フラグへ集約せず、Product Studio／AI／ETLと共通する**別Claimの集合**として扱う。特にSource IndexにNavigationが存在してもParser/Role意味が取得・受理されたとは判断しない。
+
+### 15.2 検証と停止線
+
+`direct-trace.test.mjs` に、(1)他Subjectのlocated Source Key、(2)同Subject ID／別scope、(3)Source Key欠落・Source未提供、(4)locatedだがSource参照が0、(5)unresolved Sourceは未解決のまま、(6)ProjectionUnresolvedの不正型を拒否する負例を加える。さらに実CLIで取得したJSONを**一箇所だけ意図的に変更**し、Navigation Keyの取り違えがNode Consumerで拒否されることを、実Go Source・実Consumer間のnegative controlとして確認する。
+
+**証拠階層**：合成負例PASS＝局所パーサーの防御。実CLI JSONを変更した負例PASS＝同一Attemptの通信文書に対する防御。実Source Reader＋独立Oracleの成功＝別途必要。実Current Policy、WebView/DOM/ARIA、Owner Meaning Acceptance、実Build/ETL/DB、認知負荷の改善は **NOT PROVEN**。旧CIは新HEADの証拠に転用しない。
+
+### 15.3 優先順位と他チャットの成果
+
+#1124のM0実CLI→同一Workbench M1四入口／M2 stale UI・Grantを直接P0とし、本PRのNode側をWorkbenchの受入に流用しない。#2831はBuildのDeclared／Selected／ActuallyConsumedとStage1生成物の再入を別に実証。#2542/#2827はTransfer/ImportのReceipt・ACKと外部Effectを独立判定する。#2620のRole自己記述と#2972の公開三視点は独立Producer/Policyの資格を持ち、今回のSourceNavigation Key検証を役割意味・開示保証へ昇格しない。複合図表研究に新Resolver、Host、Policy Engine、Writer、関係の第二正本を導入しない。
