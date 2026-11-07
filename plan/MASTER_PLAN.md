@@ -580,6 +580,22 @@ main統合済み[#3070](https://github.com/hat47x/tei-platform/pull/3070)の`int
 
 **本節の証拠上限**：既存`internal/workspace/loader.go`と#3024 E1c Go/CIの実照合に加え、#3031暫定Guardの固定HEAD限定CIと、#3030移行設計の実Sourceを確認済み。実`*.tei.md` Markdown Reader/意味Parser・Builder・Writer、移行後Org E1c、実Provider/DB、SHO/Consumer、Owner意味受理は**NOT RUN／未成立**。この文書は設計引継ぎであり、#3030/#3031が既に担当する詳細契約・Goコードを二重定義しない。
 
+## 2026-11-07 標準データ構造・標準表現型と合成写像の統合検証（採用前）
+
+X-TEAのDB 1:1／1:N→XF単票・明細という対応を、**物理テーブルと無関係な標準データ構造**、**Functionから独立した標準表現型の定義**、**Function Data Contextに所有される表現インスタンス**、**両側の構造間Mapping**へ一般化する検証を進めます。Container／Table／Tree／Chart／文書／音声等が同じ元Dataを異なる形に見せる際、表示能力・意味の保持・同期・編集候補・現在のHost Grant・Provider Effectを独立に評価します。
+
+### 成果を一本の現行main起点の候補計画へまとめる
+
+- [標準表現型と媒体時間軸](design/STANDARD_REPRESENTATION_TOPOLOGY_AND_MEDIA_AXES_2026-11.md)：Data/Representationの構造、Function-owned Instance、元データ時刻／取得時刻／Playback時間／文書位置、軸保持・変換・生成を分ける。旧[Draft #3192](https://github.com/hat47x/tei-platform/pull/3192)の成熟した設計記録を再利用。
+- [複数表現の選択・状態・同期](design/REPRESENTATION_CROSSVIEW_COORDINATION_2026-11.md)：Subject/Result/Path/View occurrence、selection epoch、Presentation-only変更と業務Actionを分ける。旧[Draft #3222](https://github.com/hat47x/tei-platform/pull/3222)の成熟した設計記録を再利用。
+- [合成写像の適格性・非単射・否定依存・開示](design/COMPOSED_REPRESENTATION_MAPPING_QUALIFICATION_2026-11.md)：Source→表示→他Consumerの各段でloss・Scope・unknown・Permissionを検収。局所表示成功から、合成後の完全性や逆編集を推論しない。SUI Tree/Island→SHO Outline、D1/D2 partial、空結果の否定依存、Research/Full Autoの操作モード、全出力面のDisclosureを実例とする。
+
+**受入順（新Gateではない）**：P0 HeadlessでCX-01〜03/08の非単射・集計・空集合の判別 → P1 CX-04〜06/10のConsumer非干渉・操作Mode・epoch/版 → P2 SHO/SUI/Mediaを異質ConsumerとしてCX-07/09へ接続 → P3 #2586の実Function→Query→Provider Readを経て、編集が必要な場合のみ#2500→#2598→#1174のIntent/実Request/Receipt/独立Readへ接続。旧PRのRP/MVと新CXは[#2514](https://github.com/hat47x/tei-platform/issues/2514)/[#1180](https://github.com/hat47x/tei-platform/issues/1180)の既存独立Expected/Scenarioへ**差分引継ぎ**し、第二のテスト正本を設けません。
+
+**担当を変更しない**：構造のFacet=#2495、Loss/Projection=#2497、Context/Result Slice=#2506、Pattern=#2507、変更影響=#2582、Renderer=#997、用途別開示=#2516、実Read=#2586、Writer/原文受理=SHO/TEI各Owner。今後のUI生成・Operation開発を早めるための設計であり、Core型列挙・共通Plugin Registry/Runtime/Host・第二Action/権限Engine・新Gateは追加しません。
+
+**証拠の上限**：これは現行mainを起点とした設計資料と計画の整備であり、CX-01〜10の新試験、実Provider/Media/Renderer/Host接合、SHO/SUI実受領、Owner意味受理は**NOT RUN**。局所PRのGo/CI実績や見かけの同一表示を、実Product E2E／現在の適合資格へ自動昇格させません。並行変更がある場合は統合前に同一HEAD/内容差分を再照合します。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
