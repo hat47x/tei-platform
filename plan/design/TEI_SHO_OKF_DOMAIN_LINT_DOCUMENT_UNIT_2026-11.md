@@ -275,3 +275,60 @@ OKF §10のtype: Attested Computationは独立Conceptにruntime、typed paramete
 5. **Current Qualification**：OKF形式/SHO Reader/TEI Meaning/実Host Grant/Provider ReadまたはEffect/Attested Run/Recipient Disclosure/Owner正式受理は独立資格。過去CI PASS・同一Bundle SHA・verified・実Tool一回成功で現在適用を自動資格化しない。
 
 **P0での具体的な独立負例**：Required Concept 2件に対して実Readerが1件だけ受領したのにindexがcompleteと示す、Consumerの最後のPage/end markerが欠落、同名WorkspaceでManifestが異なる、Role A/BのうちBだけ未実装、2 Canvasに同じItemがあるので独立根拠2件と誤計数する、AIが作ったExpectedとExporterが同じ欠損を共有する、という6つの差をそれぞれ既存OK-08/09/10/11/13と#2514/#3262のテストOwnerへ接続する。T0実Readerの確認が成立した部分に限り、新義務発見のT1テスト生成を提案。新Reader/Runner/型強制の採用・C1達成・製品OKF E2E・正式Owner受理は**NOT RUN**。
+
+---
+
+## 11. 2026-11-08：形式適合と利用資格、実効隔離、検証証拠の二次公開を分ける
+
+**位置づけ**：§9のK0〜K5、§10のItem/Source受領閉包と既存OK-01〜16を保持し、TEI #2515/#2516のOS/送出・監査Evidence、#3262のContext Gate、#2605の実CLI/Skill、SHO #18、SUI #3392、TAI #514を接続する。第二のReader/Policy Engine/Host/Fixture正本を作らない。**本節の追加実験はNOT RUN**。
+
+### 11.1 OKFは「寛容な形式Reader」＋「用途別Admission」の二段階
+
+一次仕様は [GoogleCloudPlatform/open-knowledge-format SPEC.md](https://github.com/GoogleCloudPlatform/open-knowledge-format/blob/main/SPEC.md) v0.2。今回確認できた原文の**blob SHAは c06e3eede0c910d0ecf12524c34204156f8795ac**であり、Repositoryのcommit Pinとは異なる。K0の実験にはSPECの**exact commitと原byte digest**を別途固定する。
+
+- **F0 OKF形式**：Conceptのparseable YAML frontmatter＋非空type、予約index/log構造を判定。未知type・追加key・任意情報欠落・broken link・index欠落はv0.2で形式拒否してはならない。verifiedが単一mappingで書かれたときは検証イベント1件として受け取る。root indexの将来版が不明でもbest-effortで読める部分を保持し、未解釈部分を隠さない。
+- **F1/F2と用途別資格**：形式PASSは業務用途のRoot・必要Source/Role/Relation/Domain・現在Grant・Consumer受領を保証しない。未取得や未知版は、その用途の未適格/unknownとして止めるが、通常MarkdownのRaw閲覧・保存は妨げない。管理対象の未対応 *.tei.md をTEI Loaderが明示拒否する境界とは分ける（#2621）。
+- **trustの限界**：verified.byにhuman:という接頭辞があるとOKF trust tier上はhuman-reviewedとなる。しかし文字列だけで実本人認証や業務Owner受理を証明しない。status省略時はOKF上stable扱いでもTEI Meaning Acceptedではない。stale_after期限内でもSource改版やOwner撤回による再資格が必要。
+- **Sourceの非一様性**：sources[].resourceには具体的なURL/Pathだけでなく、直接辿れない**集合・Scope descriptor**がある。全resourceを実原本URIとみなしてfetch・リンク解決・0件不存在証明を行わない。単なるMarkdown linkもSource Identity/実アクセス権/真正性ではない。
+
+**二段階の出力**：F0 valid/invalid、F1文書品質、F2 Domain valid/invalid/unknown/not-applicable、Consumerに実Loaded/Parsedされた範囲、独立Required closure、現在のDisclosure/Host資格を別列。形式がvalidでも用途が不適格なら静的閲覧のみ許し、意味Promotion/実行/公開は止める。未知拡張を消す・全Bundleを無条件拒否する・不明を完了へ昇格させる、の三誤りを検出する。
+
+### 11.2 OKFのMarkdown/Frontmatter/Executor参照は未信頼の入力データ
+
+OKF Bundleとそのindex/log、他者生成Markdown、executor/attester.resource、手順文を**Agentへの命令やTool許可として解釈しない**。初回F0/F1は本体のReader/Validatorだけで処理し、外部Sourceの取得、リンク修正、Plugin導入、SQL/Shell/Script実行、文書保存、公開は別Operation/現在Grantへ。
+
+**Source境界**：許可Root、実realpath、symlink・相対Path脱出、通常File/特殊File、サイズ制限、BOM/CRLF、Read中の変更、同名異実体を検査し、Source/Readerが確認できなかった範囲をpartial/unknownとする。SHO G1bの既存Reader契約を利用し、巨大PDF/Excel/WebをEditorの文字入力時に自動fetchしない。ファイル名・Root宣言と実OSアクセス制御は別である。
+
+**read-onlyの実効境界**：CLI read-onlyフラグやPluginの効果申告だけではOS上の無権限Read、外部Network、子Process、Tool result、stderr、Model input、Session Log、telemetryの送出を防げたといえない。TEI [#3113](https://github.com/hat47x/tei-platform/pull/3113)のDSH実試験では作業Root外のReadを許したため、H2/H3の本来の隔離条件を満たさなかった。初回OKF外部Harness実験では [#2515](https://github.com/hat47x/tei-platform/issues/2515) のOS Filesystem/Network denialの正負、実Sender/Receiver、未計測出口を別に記録する。これはK1のローカル純粋ReaderのHard dependencyにはしない。
+
+**Writerの境界**：F0/静的Lint/Readはno-op。保存/Auto-fix/Index書換/Remote Syncは明示的なIntentとCAS/Revision照合が必要。Plugin不在・壊れた未完成MarkdownでもRaw Draftを保存可能にし、Accepted TEI Sourceへの暗黙書戻し0。Dirty bufferに古い非同期解析結果が後着したら、本文と診断のVersionを照合し旧結果を現在値へ上書きしない。
+
+### 11.3 Evidenceの観測者と公開先を分離する
+
+TEI [#2515](https://github.com/hat47x/tei-platform/issues/2515)が扱うH6-E13〜15は、**検証器やMock Receiverが集めた生Evidence自体が別Agent、公開Issue、CI Artifactへ漏れる**問題を独立に扱う。OKF K2/K5へ接続する。
+
+- **保護領域の内部Observer**：無害の固定Synthetic canaryを用い、実Source/Network/Host/Tool経路のwire byte・Process identity・OS拒否点・Plugin/Tool版・見えたSinkの集合を記録。内部の生データを一般ログ・公開Issueへコピーしない。
+- **外部Viewerに出すProjection**：Recipientの現在Policyが許すCase ID、検査対象の公開可能なScope、確認できた成功/拒否/unknown/not-run、Reader/Verifier版、独立Expectedとの一致といった限定結果のみ。未公開Source path、ID/count、Ref、診断理由、Root構造の存在自体も漏らさない。元のReader Grantを再配布Grantへ自動引継がない。
+- **否定主張の上限**：あるMockで受信0件でも子Process、別Socket、DNS、Telemetry、Cloud側など未観測の送出出口が残る。全出口の非漏えいを推論せず、観測範囲と未計測経路を別票にする。漏えいした過去の送信は後のGrant撤回で取り消せない。
+
+**既存独立Expectedへ接続する負例**：公開World同一・秘密Worldだけ異なる2通り（SUI SU-OKF08）、診断に非公開ID/Countが含まれる、静的Readerが外部Linkへ自動アクセス、Source-Grant失効後に旧cacheがToolへ送出、Mock raw bodyをCI Artifactへ無条件添付、executor.resourceの文字列をAIが自動実行、拒否した理由から他Tenantの存在が漏れる。新Case IDや第二Disclosure Engineは作らず、#2515/#2516/#1178、SHO #18、TAI #514がOwnerとなる。
+
+### 11.4 Source更新から受信までの版・実入力競合
+
+R0（ProducerがSourceを読んだ時）、R1（派生Bundleが書かれConsumerが受領した時）、R2（文書を公開/Meaning Promotion/Attested Runする時）は別時点・別資格。Source A→B→A、同byte別Root、原Fileを読取中に置換、bundle Indexだけ新しい、Writer dirty buffer、Consumer旧Replyなどを独立負例へ。実Source/Manifest/World、Writer Document/Occurrence、Projection Loss、Artifact/Runtime、Audience資格を確認し、同じbyte SHAやOKF verifiedだけで旧Reviewを自動復権させない。別世界で同じMarkdownを生成できるSUI #3396の非単射はここでも有効。
+
+### 11.5 次のK0〜K2を既存Contractだけで実行できる形にする
+
+| 段階 | 先に固定する入力と実検査 | 合格主張の上限 |
+| --- | --- | --- |
+| K0 現行資産棚卸し | canonical SPECのexact commit/byte、既存CLI binary/version/help、実Workspace/Manifest/Required、SHO G1b Reader、Reader権限/公開Audience | 既存CLI/SHOの観測のみ。新OKF Adapterの実装とはしない |
+| K1-F0 Bundle検査 | 3 Concept+indexに未知type・追加key・broken link・単一verified・Scope-only resource・必須YAML/type不備を一因子注入 | OKF形式とF1/F2/用途別未資格を判別。既存Markdown ReaderをF0実Validatorと呼ばない |
+| K1-IO Source境界 | 許可Root/File、Root外symlink・古いcache・Source途中変更・未取得、明示Preview前の外部I/Oを観測 | Readerのlocalな非書込みとOS/Egress全経路証明を混同しない |
+| K2-Consumer実受領 | 同一RevisionのBundleをCLIとSHO/Studioで同じread-only Contract/Providerから実Read。Raw byte・Part/page終端・Scope/Source loss・Consumer側実受領を照合 | 実2 Consumer呼出とRequired closure、元出典/Current Grantを別資格にする |
+| K2-Publisher/Observer | 保護内部Mock/OS evidenceと、公開Viewerへの許可済み要約を対照 | 観測されたSinkでの限定結果。公開禁止情報の不在、未計測出口を別列に残す |
+
+**P0受入に必要な失敗の判別力**：形式上許容すべき未知typeを誤拒否しない、必須type欠落を誤合格しない、Source未取得を存在0としない、対象Bundleの全受領をReply一件で推論しない、Root外Read成功をread-only安全と呼ばない、内部Raw Evidenceが公開PR/Model入力へ漏れない、read-only実行不能なexecutor resourceから実効果を起こさない。既存OK-01/02/03/04/08/12/13/14、TEI #3262/#2514/#2515、SHO #4/#18、TAI #514の既存反例へ割当。
+
+**停止条件**：破損データをOKFから消してからPASS、閲覧できただけでAttested Run・Meaning/Owner受理、未計測出口込み漏えい0の断言、現在Audienceに無許可なSource/diagnostic公開、旧Evidenceの再資格化、実Kernel/OS Sandbox未確認のまま外部Harnessの資格主張。外部公開・外部Tool/RunPlan・不可逆なEffectは別のHost/Owner許可まで止める。
+
+**Owner/現状**：SHO #18（文書/Reader/Writer）、TEI #3262/#2514（独立Required/検証基準）、#2515/#2516/#1178（実隔離/二次Disclosure）、#1251/#951（Plugin選択）、#2621（Authoring）、#2600（失効）、SUI #3392／SEI #820（元関係・Claim）、TAI #514（Attestation/Skill）へ分担する。**今回の検証はGitHub一次資料・上流SPECの静的照合のみ**。新OKF Validator、Consumer実2経路、公開Observer/Viewer対照、OS/Network安全、Attester/実Provider/Owner AcceptanceはすべてNOT RUN。
