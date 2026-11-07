@@ -6,6 +6,9 @@
 - 既存の設計：[経路間の業務機能完全性とScenario由来E2E](CROSS_ROUTE_FUNCTIONAL_PARITY_AND_TEST_DERIVATION.md)。こちらの文書は置換しない。
 - 限界：本書の製品機能は2026-11-07確認時点の公式文書に基づく比較。性能、費用、TEIとの相互運用性、製品別ライセンス適合は未実測。OwnerのMeaning受理・実Host Grant・Production資格は含まれない。
 
+
+> **最新の実証状態（2026-11-07末時点／下記各節の古い「未実行」を上書きする進捗注記）**：main統合済み #3284/#3296 は実CLI 9応答・Design Contextの部分資格と16種類の限定負例、#3299 はSource/Lockの実改変と旧Pin拒否、[#3304](https://github.com/hat47x/tei-platform/pull/3304) は既知の新Rule境界を**一時Candidate第7 Stepとして実TEI CLIで実行**し、独立Propertyと3種類の負例で判別した。#3304のPR HEAD `02d4c624...` について[専用CI #42378033965](https://github.com/hat47x/tei-platform/actions/runs/42378033965)はsuccess。ただし後続docs更新を含む最終HEADおよび統合後mainの別Runの成功は、本書では再検収していない。これは**T1-A（既知提案を実走）**に限定され、**T1-B（未提示の欠落をAIが独力で発見）／全Required閉包／Owner受理／実Provider・H3 Delivery／C1**ではない。§17〜19の旧T1未実施記述は各観測当時の記録として残し、最新解釈は§20を優先する。
+
 ## 1. 守るべき不変条件
 
 TEIのテストは、単なる「実行した／PASSした」の収集ではなく、**テストの判別力・実入力の同一性・対象範囲・証拠の現在資格**を分離して扱う。専門製品の導入で新しいSemantic正本、第二Driver、第二Test Scenario、第二Host、第二Authority、共通Runtimeを増やさない。
@@ -783,3 +786,63 @@ TT-64〜66の*限定実Source/Lock試行*のみ#3299の実証を引用する。T
 **横断停止線**：fingerprint一致→歴史・認可有効、read-only tool名→副作用なし、同名Query→同一Target SQL、合成Graph/CRUD一致→Product Source/独立Oracle、LLM自己Expected→Business Accepted、CLI T0.6→T1生成PASS、各Target/要件/C1/NFRのCoverage分母合算、未許可Scopeの存在/件数を説明に含めること。
 
 **今回の実施状態**：本節はGitHub mainの実T0.6・#3182現行観測・別チャットのRMT/Modeler/Plugin/SHO議論を、既存#3262/#3273/#2514/#1180/#1119のOwnerに割当て直した**設計追補**。新Go/CLI/PG/実Harness/AI新Case/T1/Tool ACL/Function-Provider-MCP実連結は**NOT RUN**。#3302/#3303/#3263の正式採用、Owner Meaning Acceptanceも未成立。新Engine/Schema/Host/Resolver/Scenario/Oracle正本を追加しない。
+
+<!-- tei-test-t1a-to-blind-t1b-20261107 -->
+## 20. 2026-11-07 横断更新：T1-Aの実走を受けたT1-B盲検発見・証拠資格・Testabilityの次の受入
+
+### 20.1 成熟した実績を、観測した範囲だけに引き上げる
+
+| Gate | 観測済み | 今回も成立を主張しない項目 | Source/Owner |
+| --- | --- | --- | --- |
+| P-1a CLI/Context | #3284/#3296の9実CLI応答、Source/Subject/FPの限定照合、Contextの7+2+7=16拒否対照 | Required全体列挙、Parser Role/Meaning、Provider・外部Harness全受領 | #3262 |
+| T0/T0.6 Scenario | 既存6 pinned Step、CLI 6種＋独立義務2種の拒否、#3299の実Canonical Source/Plugin Lock改変 | A→B→A間の歴史、現在Grant、正式業務Effect、全C1 | #1180/#2514 |
+| **T1-A（今回の到達点）** | main統合済み#3304。既知の行番号正数Ruleに対する0境界を一時第7 Stepとして実CLI verify→generate→check→runし、偽Expected・偽Fixture・stale Pinを拒否。PRのCI #42378033965で限定成功 | AIが未提示Ruleを発見、別OwnerがScenario採択、真のProduct Code Mutant kill、実Source完全閉包 | #3273/#2514 |
+| **T1-B（次の未達）** | 実績なし。提案時点のRuleや行番号0は既に公開されており盲検に使えない | 独立Holdoutの非開示、AIによるGap同定、再現・独立判別、対照試験の比較適格性 | #3273/#2509/#2018 |
+| T2/T3 | T1と別受入 | 実Provider Query/Read・Host Effect・実Plugin/Trait合成・実Target配備・全体Self-Build | #2586/#2831/#3279 |
+
+**証拠の読み分け**：#3304専用CI successは、同PRが後続文書更新を行う前の確定プログラムHEAD 02d4c624... に対応する。最終PR HEAD 2e79d61c... と統合後mainのWorkflowは別のAttemptであり、旧HEADの結果を流用しない。現在のGateの合否を示す際には対象Commit・実Checkout・Binary SHA・Tool/Scenario bytes・独立期待値・Actor/Scopeを同Attemptに束縛する。
+
+### 20.2 T1-Bの最小実験は「盲検で未知Gapを選べるか」だけを独立に測る
+
+- **入力の事前固定**：独立Reviewerは対象ScopeのRequired Rule/Relation、合法Baseline、未カバー境界の選定理由、独立Expected、Targetと許可Scopeを固定し、生成側には出さない。生成側へは許されたDesign Contextの実受領済部分と、明示したUnknown/不完全性だけを与える。公開済み行番号0の再提案はT1-Aの再生でありT1-B新規発見に加算しない。
+- **発見と実行の分離**：生成AIは不足を診断し、Source/Rule ref・理由・最小差分・副作用となる他Ruleを提示する。Reviewerが候補を受け取った後に独立Expectedと照合し、採択は既存#1180 Scenario SSOT経由。実行は既存CLI pinned commandを使用し、第二Oracle/Runner/Authorityは設けない。Unknown Sourceから得た値はOwner受理済みExpectedへ昇格しない。
+- **資格の独立性**：生成した数でなく、選ばれた新規Obligation、実際に触れたRule、合法Baselineの維持、既知Mutantの判別を評価する。人工のテスト入力でProduct Targetを判別できたこと、実Providerで正しいRead/Effectを生んだこと、全要件をカバーしたことは別Claimとする。
+- **H2/H3比較の公平性**：同一Source版・Allowed Context・Model/Budget・独立Holdoutを固定し、Skill有無の実Sessionを順序効果と分離して比較する。ただし#2509で報告済みの8,192byte切断、56 Request/55 Reply等により、**全受領・非開示・外部Task完了が未資格化のSessionは評価不能（ineligible）**とし、AIの能力不足として誤採点しない。失われたResponseや秘匿値は自動補完しない。
+- **漏えいと再現性**：外部Harness/Issue/CIへ公開するのは許されたScopeと秘匿情報を含まない結果要約のみ。Hidden Expected/非公開Source ID・Digest・件数・canaryは生成Agentにも一般Artifactにも置かず、Owner境界内の独立保管とする。必要な公開evidenceは対象Revision/Attempt IDと判定状態の参照だけ。#2515のTool出力自体のEgressを独立検証する。
+
+### 20.3 Claim ledgerと差集合を一つのResultに保つ
+
+| 集合／状態 | 既存実行から取得するWitness | 不在時の安全な帰結 |
+| --- | --- | --- |
+| Required | 独立ScopeとSource/Role/Meaningの受理範囲、Dependency/負の依存 | 分母 unknown。見つかったRuleだけで「全件」を作らない |
+| Received | 実Tool Reply bytes、page/終端、ProducerとConsumer ACK、許可された開示Scope | delivery-unverified / partial。exit0やparseable JSONでは補えない |
+| Proposed | 生成候補のRule ref・根拠・合法Baselineとの差・生成前に知られていた境界の区別 | provisional。旧Caseや公開済み行番号0の焼直しはnewly-discovered=false |
+| Independently checked | 生成者から隔離したExpected、反例の予測結果、別版Mutantの検出条件 | expected-unqualified。生成者と同じ根拠の自己採点を不可 |
+| Executed/Observed | Scenario/Fixture/World/Lock/Binaryのpin、実Target argv・Result・Error・独立Resource Read | 実行レベルの範囲のみ成功。Receipt=Resource=業務完了としない |
+| Currently qualified | 現在Source/Model/Build/Scope/Grant/ConsumerとClaimの一致、Owner判断 | unknown/stale/not-runを保持。過去PASSを再利用しない |
+
+**二つのグラフ**：Design/Requirement Graphで「必要」を、Execution/Delivery Graphで「実際に消費・配備・到達・観測」を保持する。Node表示・Graph edge・関係表・Function内Presentationへの投影が一致しても、実Read/実Dispatch/Guard/Observerの因果は独立に測る。C0は観測したGo statementのみ、C1は真の分岐計測がない限りunmeasured、業務Obligation Coverageは独立Required分母がない限りunknown。
+
+### 20.4 重複しない横断の独立対照 TT-73〜TT-80
+
+| ID | 最小反例・入力 | 独立に判別すべき状態 | Owner |
+| --- | --- | --- | --- |
+| TT-73 | #3304の行番号0 Candidateを「AIが未知Case発見」と報告 | 既知提案の実走=T1-A、未提示Gap発見=T1-B。既存第7 StepのPASSを盲検発見へ転用しない | #3273/#2514 |
+| TT-74 | 行番号0だけ変え、Relation keyを旧値のままにする／Quantityも負にする | 複数Ruleを壊したFixtureを単一境界の判別力と数えない。独立Baseline・行とKeyの意味整合を確認 | #2514/#1180 |
+| TT-75 | 実TargetがResultを返したが、Toolの最後のReplyまたはPageが失われた | Target実行成功と受信側の完全受領を分離。欠落Trialは不適格で、負例が発見できなかったとの判定に入れない | #2509/#3262 |
+| TT-76 | Holdoutに事前公開RuleとExpectedを混ぜる／Generator自身が採点 | data leakage / shared-origin oracleを検知し、盲検新規発見資格を拒否 | #2514/#3273 |
+| TT-77 | Skill有/無のSessionでSource版、Budget、Allowed Context、Model、実受領数が異なる | 両群を直接比較しない。資格の揃ったPairだけを指示数・費用・正負判別の分母とする | #2509/#2018 |
+| TT-78 | validation.teiのテストコード内読込と宣言一致だけを製品Loader/Accepted Meaning扱い | T1-AのSource参照はtest-only witness。Product Reader/Parser/Meaning/実Rule Bindは独立にunknownを保持 | #3262/#2514 |
+| TT-79 | Candidateは拒否を観測したが実行経路は常時fail／実Guardに到達していない | 正の対照・偽Expected・Fixtureの逆転・実Path到達を要求。exit1だけでMutant killと認めない | #1180/#2514/#1163 |
+| TT-80 | H3のResultは適正でもCI/Issue/Session診断にHidden Holdout・非公開件数が流出 | 出力投影だけでなく各Sinkの許可と実送出を判定。秘密値は証拠に複写せず、非開示資格を別Gateとする | #2515/#2516/#2509 |
+
+### 20.5 実装・検収の順序（既存Ownerに限定）
+
+1. **P0／Mainの実績更新**：#3304の最終HEAD・統合後mainの専用CI Resultを別々に採録して、T1-Aの実観測1候補・3負例のCase×Attempt×Evidence票を#2514へ反映。PR CI #42378033965以外の新実行成功は取得前に主張しない。
+2. **P0／T1-Aの限界可視化**：#3262の限定Contextにvalidation.teiのSource/Loader/Parser/Meaningと未収集分母を明示し、Rule自身のSource宣言をtest-onlyコードが読んだ事実をProduct Consumed Sourceへ変換しない。必要なReaderの最小実装判断を#3262へ渡す。
+3. **P1／T1-Bの一件だけのBlind Holdout**：#3273/ #2509が生成者に非公開の独立Obligationを固定し、許可されたTool Replyの受領完全性確認→不足Rule候補提案→Owner Review→既存Scenario→独立判別の順で実施。欠測/未許可Scopeを不適格に分類し、比較適格0なら0と明記。
+4. **P1／Coverage分母を実施前後で比較**：Required/Loaded/Bound/Proposed/Reviewed/Executed/Killed/Currently-Qualifiedの差集合を#2514へ出す。業務C0/C1、Go C0/C1、Path/Guard Coverage、BOM Version Matrixを混ぜない。未知は数値0にしない。
+5. **P2／実Target・複合構造**：#2586の実Provider read、#3279のPlugin実Consumer、#3283 Function Build/Entry、HTTP Branch/Receipt/独立ReadをSource/Target/Scopeごとの独立Attemptとして検証し、#1163のEvidenceで結合可能な場合だけ上位Claimを評価する。
+
+**停止線**：既知Case再現からAI新発見を主張しない。生成者がHoldoutを閲覧したら盲検は失効。Reader証拠なしの「Source閉包成功」、CI実行結果なしの「実測成功」、正例なしの「拒否成功」、C0をC1に読み替える表示、external tool名だけでread-onlyとする扱いは不採用。本文は**設計の追加／実績の検証済み範囲の反映**であり、T1-B新実行・Hidden Holdout/外部Harness・実PG/Host・Owner受理はNOT RUN。
+
