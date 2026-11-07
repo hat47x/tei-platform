@@ -148,3 +148,18 @@ Sourceだけを保存・表示するRaw Editorと、Role/Meaningを提示するI
 **P0と並列の方針**：新しい全Source Reader／一括Markdown Parser／汎用Trait実装／Verified BOM製品／Recursive Self-buildの完成を、Inspector D1の先行条件にはしない。D0-P→D1-Pを最短のP0として継続し、D1-S/A/B/Tは同じ実ScenarioのClaimに必要な部分だけ連結する。Issue→DesignテストドッグフーディングではRaw保全・三視点・Function Readを各Ownerで並行させ、Source未読込を「未定義」と扱う誤PASSを共通D1で検出する。
 
 **今回の新規観測の限界**：現行GitHub Source・PR/Issue・過去の限定Reference結果を照合した。D1の実Provider選択→CLI/Studio実Call、上記AS-13〜20の新実行、最新版Coverageの実再計測、外部H3の完全受領・実DB/実WebView・Owner受理は**NOT RUN**。#3337/#3296/#3336/#3333の限定実装・既存実験結果を、今回の追加試験のPASSとして加算しない。
+
+## 10. Inspector CLI選択サービスの最小実装：Provider呼出経路の開口部（2026-11-08）
+
+**変更対象**：`cmd/tei/cli_inspect.go`、`cmd/tei/cli_inspect_service_test.go`、`internal/operations/inspect_projection.go`とテスト。2026-11-07〜08の別チャットで[Studio Inspector Host service injection Draft #3371](https://github.com/hat47x/tei-platform/pull/3371)が着手されたことを受け、**Studio PRと同じ編集ファイルを変更せず**、CLI側の同型のCall Siteを独立して用意した。今回の成果は「注入した型付きInspectorが実行され、欠落・誤応答を拒否する」までであって、#951 Resolverからの選択済みBindingや実Providerの独立Adapterへの接続、実Studio Host/Wails、Target Artifactまでには至らない。
+
+- **旧CLI入口の保全**：既存`inspectWorkspaceJSON`はHost実装を明示した`builtinCLIInspectionService`を経由する。既存CLIコマンドフラグやOutput Envelopeを無断改版せず、現在のBuilt-inは**選択済みPluginという資格を名乗らない**。
+- **選択後の入口**：`inspectWorkspaceJSONWithService`へHost側で選択した`Inspect(typed Subject)`を注入可能にした。RootはHost内部Serviceへ束縛し、Plugin/CLI Surfaceで勝手にRoot/Grantを生成しない。nil serviceなら`INSPECTION_PROVIDER_MISSING`で停止、旧Built-inへfallbackしない。
+- **共通結果検査**：`operations.ValidateInspectionProjection`でSubject、`tei.operations.inspect/v0`、read-only、JSON Canonical、WorldとSource IndexのFingerprint有無を機械検査する。Studio Draft #3371が独自に行っている同型検査の将来共有先として使えるが、**現時点のStudio Draftがこの関数を利用しているわけではない**。
+- **Errorの防御**：既存の分類済みInspection/Load/Source Index失敗コードを保持。未分類のPlugin内部エラーはHost-private path/tokenを出力せず一般化する。ただし実Filesystem/Egress read-only、正しい現在Scope、実Provider ID、Conformanceとartifact digestをこれで証明できるわけではない。
+- **限定テスト**：正常な注入Service一回だけの呼出し／nil Service拒否／不正CLI引数でService未呼出／異Subject・Effect・Schema・Fingerprints・Canonical欠落/JSON不正を拒否／Provider秘密文字列非露出／Typed Not Foundの従来Exit Code維持。検査関数の単体負例を別に保存。
+- **実経路でまだ結ばれていない箇所**：`main.go`のproduction CLI invocationから`#951/#1016 Selected Provider`を供給するHost Composition、`Studio`の#3371と同じ選択根への接続、SelectionとActual Invocation identity/Artifact digestの照合、実Go Build closure/Current Grant/実Wails確認。
+
+**次工程／合格条件**：#3371がレビュー・採用される場合、両Surfaceの`Inspect(subject)` portを重複定義したまま恒久化せず、`operations.ValidateInspectionProjection`等の共通検査を使ってData/Failureの意味を揃える。**次に一つだけ**Host-owned Selection→Binding→実Provider instanceを接続し、AS-01/02/03を実Callで検証する。Capability Coverage 6 unselected（#3337）やBinding Matrix 22/24 selected（#3363）は旧Capability宣言/選択の観測であり、これをInspectorの実Binding/Invoke成功に足さない。実Source Root/Required Closure、Disclosure、Build実Artifact、Provider実Callは別列に残す。
+
+**検証上限**：この小実装の静的Source/テスト追加はD1-Pの中間段階に当たる。CI/Go実行の成否はPRの**exact-head**結果で別途判定し、仮にGo TestがPASSしても一ProviderのCLI/Studio両Consumer E2EやAS-02の実Composition否定試験の成功とは扱わない。
