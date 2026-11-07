@@ -393,3 +393,47 @@ R0（ProducerがSourceを読んだ時）、R1（派生Bundleが書かれConsumer
 5. **Owner/CI**：#2514/#1180の独立Expectedとmutant判別力、#3262のRequired→Received、#1251/#951のPlugin実選択、#2515の安全な実Sink検証を使い、合格した実段階だけ進める。完了した証拠はtestdataや計画から自動昇格させず、既存Evidence票とその実CI/Receiptへリンクする。
 
 **今回の到達点**：K0の**上流仕様Source Pin成立**、K1の**固定合成Input＋暫定Expected＋原byte EOL制御のGit実配置とReadback（CI負例のリンクを修正した最新版の再照合は別記録）**。まだK0の実Product依存閉包、独立Expectedの正式受理、K1 F0 YAML Parser/Validatorの実行、K2実2 Consumer、SHO Writer、SEI Import、OS/Egress拒否、外部Harness/Attester/Owner Meaningは**NOT RUN／NOT QUALIFIED**。§9〜11の計画全体が成功したという主張ではない。
+
+---
+
+## 13. 2026-11-08 K1実CI負例とK2の現Main Reader/Context再利用
+
+**位置づけ**：この節は第12節で追加した固定合成Fixtureを実Go検査へ接続する狭い差分と、並行mainで成熟したTEI Design Context/Plugin-firstの実測を接合する。新しい第二OKF Parser/Context Query/Host/Scenario正本は作らない。上流OKF v0.2 F0適合を既存TEI Go testで代用しない。
+
+### 13.1 最初のRepository Health FAILを運用要件へ吸収する
+
+旧PR HEAD `665ce2042277f5f62371684900b2f42363333dbe` の [CI #42392171058](https://github.com/hat47x/tei-platform/actions/runs/42392171058) は Repository Healthが**FAIL**。実ログの原因は既存 `tools/repository-plan-check/plancheck_test.go` `TestMarkdownRelativeLinksResolve` が、（a）公式OKF形式では有効なBundle-root absolute link `/data/order.md` と、（b）OKF F0が許容するbroken link `/business/missing.md` の双方を「TEIリポジトリ内の相対Markdownリンク解決失敗」として報告したこと。リンク許容範囲が異なるためであり、**OKF仕様非適合という意味ではない**。
+
+**修正済み設計入力（最新CI確認前）**：コミットする正常BundleのLinkは `../data/order.md` に統一。broken linkとbundle-root absolute linkは`testdata/okf-k1-v02.expected.json`の**一要因Mutant**として、実行時に作る一時Copyへ注入する。これにより、TEIのRepository Healthを弱めず、OKF F0の許容性とF1/Source Resolverの注意表示を両方検査できる。負例を消して検査を回避したのではなく、**常設の正常入力と実行時負例の置き場所を分離**した。旧HEADのCI FAILは失敗の証拠として保持し、修正HEADのCI Successを未確認の段階ではPASSと書かない。
+
+### 13.2 Test-only Witness追加の実装資格
+
+[tools/repository-plan-check/okf_k1_witness_test.go](../../tools/repository-plan-check/okf_k1_witness_test.go)を**既存テストPackage**に追加した。これはReader/Parser/Pluginではなく、K1に固定した元Markdown4ファイルと暫定Expectedの原Byte/SHA-256、UTF-8/LF、Requiredファイル集合、検証資格が`PROVISIONAL`/F0 `NOT RUN`/Owner `NOT RUN`のままかを検査する。試験内のCopyにだけリンクMutant文字列を作り、管理Sourceを書き換えない。これが正常実行されても、**raw-source integrityのみの局所Witness**であり、OKF YAML解析・Conformance・SHO Consumer・Source/Meaning/Grantまで認定しない。
+
+**既存Repo Healthへの適合条件**：新テストを、既存`go test ./tools/repository-plan-check`と`go test ./...`で実際に走らせ、原ファイル改変によるDigest不一致が**そのテスト自身でFAIL**することを確認する。Gofmt/Vet、他のPlan Link検査と別に受入。CI全体の赤だけでは本テストが実行されたか/Mutantを殺したか判別しない。独立Expectedの正式採用は#2514のOwner判断が要る。今回のGoテスト実行・Mutant kill・最新HEADのRepository Health CI結果は確認前のため**NOT RUN / UNQUALIFIED**と記載する。
+
+### 13.3 既存mainのDesign Context・CLI実績を先行利用する
+
+[main統合 #3354](https://github.com/hat47x/tei-platform/pull/3354) が、既存単一`tools/reference-issue-test-ability/context_gate.py`へ**11種類の実read-only CLI Reply＋32合成Consumer Controls**をまとめ、[PR exact CI #42391707962](https://github.com/hat47x/tei-platform/actions/runs/42391707962)で限定PASS。3 Required Validation RuleのSource Index/Loader/Role/PathとRule Canonical/Relationを狭いScopeで対照する。初期9 Reply/16負例は歴史的ベースラインとし、二つのRunnerを並存させない。
+
+**ただしK1/K2は以下を混同しない**：
+- **実Read対象**：TEI [#3346](https://github.com/hat47x/tei-platform/issues/3346)のドッグフードではdocs/plan MarkdownがmanagedFilesに列挙されても`readByLoader:false`。K1のOKF概念もファイル存在・Markdown Reader受領でTEI Meaningへ自動登録されない。選択された`*.tei.md`の正常Parserは#2621の別Owner。
+- **版と範囲**：[TEI #3345](https://github.com/hat47x/tei-platform/issues/3345)のview namespace局所FingerprintとWorld/Source全体Fingerprintを横並びで「同じHash」とみなさない。別Scopeは比較適格がない。Source Root/manifest、実Consuming Reader、Parser/Provider、Current Consumerの要求Scopeを別に記録する。
+- **正常応答の異形**：[TEI #3347](https://github.com/hat47x/tei-platform/issues/3347)と[Draft #3370](https://github.com/hat47x/tei-platform/pull/3370)は、requirementsの正常応答`result: []`がObjectでなくArrayであることを明示する。JSON parse/正常空配列/必要Rule未取得/形式不正/Tool Reply終端欠落は各々別事象である。全Commandに同じ`schemaVersion/resultShape/mode`を推定しない。#3370の改善は正式に統合されるまでDraft資格。
+- **局所肯定と不在証明**：[Draft #3365](https://github.com/hat47x/tei-platform/pull/3365)のTT-105/106は部分Scenario目録でも受領済Stepの局所観測を保持するが、未表示Stepを『未テスト確定』としない。OKF indexが部分的でも、**実受領したConceptのraw hashは証拠**にできる一方、未表示Conceptを不存在、Required全件取得済み、全公開可能と主張しない。全体Coverageと未計測のSinkはunknown。
+- **Plugin初期化資格**：[main統合 #3338](https://github.com/hat47x/tei-platform/pull/3338)のPlugin-first設計はProvider Hook/Operation宣言、Invoke Variant/Effect、Sink、Itemの複数Occurrenceを独立に要求。K1は現在のRaw/Consumerテスト、K2は#1251/#951のProvider/Lock/実二call-site、K4はTAI #514のTyped Bind/Receiptへ。Plugin宣言がある、合成Packageがある、Go binaryに同梱された、実呼出されたを別に判定する。
+
+### 13.4 K2へ渡す限定的な結果モデル（新公開Schemaなし）
+
+| 入力の実例 | その時点で肯定できる局所的な事実 | 禁止する不当な否定・昇格 |
+| --- | --- | --- |
+| Required=3、CLIで1 Conceptを実受信 | 当該1 Conceptは実Read・raw hashを持つ | 残る2を不存在/未許可/未テスト確定、全受信complete |
+| 正常`result: []` | 応答の配列は正常に受領 | 必要Source 0件証明、JSON破損扱い |
+| managed .md、readByLoader:false | 管理Sourceとして発見済み、Semantic Loaderは未読 | TEI Meaning accepted、業務Roleの不存在 |
+| 同じ本文、別Canvas/IslandやSource Root | 公開Markdown本文が同じ | 元World/Source identity同一、独立根拠件数倍増 |
+| Index欠落／broken linkの一時Mutant | OKF F0では許容される**仕様上の候補** | 実Source取得済み、Domain/品質F1/F2がPASS |
+| 正常Raw WitnessのみPASS | 原Byte/SHAとRequiredファイル集合に限定して証拠取得 | YAML parse/F0 validator、実SHO Writer、2 Consumer、Attestation、Host Grant |
+
+ここでの「局所肯定」は対象Scopeが定義された受信結果の事実であり、配布Permissionや業務意味受理と無関係。必要Conceptを独立に定めたうえで、実Read/Parse/Reply到達・欠落、RecipientのDisclosure範囲を評価する。**TEI #3262の既存Context Gateが受け取れないOKF専用情報は、受信できたことにせずunsupported/not-runとして残す**。
+
+**Owner/採否**：#2514は独立Expected・Raw/Mutant判別力、#3262はScope相対Contextと受領、#3149/#3345/#3346/#3347は実CLI Gap、#1251/#951/#3338はPlugin-first、SHO #18/#21はReader/原Byte、SUI #3392/SEI #820は出典・Lossと公開、TAI #514/#271はActivity/Attestationの受け手。#1119の製品Gate/Harness H2/H3を本節の実験で変更しない。**今回の実施範囲はFixtureのリンク修正・既存HealthへTest-only Raw Witness追加・静的Repo/Issue照合**。修正HEADのGo Test/CI、K1製品F0、K2実Plugin二Consumer/Current Scope、独立Oracle正式資格は**未検証**。
