@@ -846,3 +846,66 @@ TT-64〜66の*限定実Source/Lock試行*のみ#3299の実証を引用する。T
 
 **停止線**：既知Case再現からAI新発見を主張しない。生成者がHoldoutを閲覧したら盲検は失効。Reader証拠なしの「Source閉包成功」、CI実行結果なしの「実測成功」、正例なしの「拒否成功」、C0をC1に読み替える表示、external tool名だけでread-onlyとする扱いは不採用。本文は**設計の追加／実績の検証済み範囲の反映**であり、T1-B新実行・Hidden Holdout/外部Harness・実PG/Host・Owner受理はNOT RUN。
 
+<!-- tei-test-coverage-obligation-pattern-selection-20261108 -->
+## 21. 2026-11-08：Coverage Obligationを先に確定する生成規則と、T1-Bの判別力検収
+
+### 21.1 「カバレッジ」を一つの数字へ合成しない
+
+テスト推薦に渡す最小単位は、**対象Scopeにおける検証義務（Obligation）**。これは新しいTEI Core型・第二Scenario正本の採用提案ではなく、#3262のDesign Context、#1180のScenario、#2514のIndependent Expected、#1163のEvidenceから得るread-only投影の概念的な行である。各行は少なくとも \`Claim/Requirement ref、検証する条件・分岐・境界、対象Function/Rule/Relation/Guard、Sourceと受理範囲、Version/Target/Scope、独立Expected ref、必要な実Observation、既存Test/Receipt、取得・開示・資格状態\` を参照する。判定前に、Source/解析・Meaning・独立Expected・実Entry・Tool受領・現在Grantの不足を別々に残す。
+
+| 別々の指標 | 分母と観測方法 | 不正な昇格を止める条件 |
+| --- | --- | --- |
+| **Code C0** | 対象Build/Package/Source versionの計測可能な文・命令と、実際に実行した集合。Go statement coverageはここに限定 | 単一Packageの10.1%を全Productの値にしない |
+| **Code C1** | 実instrumentした分岐ごとの結果（true/false、switch各辺、error path等）の到達。計測対象・除外根拠を保持 | Go標準のstatement coverage、Rule正負一件、Graph構成EdgeをC1と呼ばない |
+| **Model/Rule/Guard** | AcceptedなRule境界と業務Decision/例外経路。実Result・必要なら実Guard到達で判定 | Ruleを宣言・Catalog列挙しただけではcoveredでない |
+| **Requirements／Scenario** | 独立に特定された機能・非機能Obligation、Target/Consumerの必要観測 | Source未取得・Requirement unknownを分母ゼロや達成扱いにしない |
+| **Discriminative／Mutation** | 独立Expectedの正例・負例と、対象Mutationを候補Case自身が識別した件数 | CI全体failure、常時拒否、別Caseのfailureはmutant killでない |
+| **Plugin/BOM組合せ** | exact Contract/Provider/Consumer/Target/Lock tupleの必要組合せ | pairwise生成済み・部品単体PASSを実tuple合格へ加算しない |
+| **NFR／Effect／UI** | 時間・負荷・中断・秘匿・可用性等の宣言SLO/測定環境／実Read/Effect／実表示操作 | 合成Fixtureやmock、warm cacheのみの結果を実業務・実UIへ昇格しない |
+
+各分母は \`required-known / required-unresolved / excluded-with-reason\` を分ける。独立Requiredの閉包が未証明なら「既知部分に対する局所率」だけを対象・revision付きで示し、**全体率の確定値は unknown** とする。Coveredも \`planned、generated、reviewed、executed、observed、independently-qualified、currently-usable\` を混ぜない。Test生成によって単に候補数が増えたことは、C0/C1/業務Coverageの上昇ではない。
+
+### 21.2 Pattern推薦は、まず「なぜ未カバーか」を選ぶ
+
+#3262のRequired Closureと受信完全性を先に照合し、**Source/Parser不足、Meaning未受理、独立Oracle不足、実Target/Consumer未到達、Grant/Disclosure失効、真にTest未実行**を分類する。最初の五つに対しては不足を埋める操作・追加調査を優先推薦し、最後だけ新Test Candidateへ進む。AIはTool/DSL出力の形式から暗黙に意味・権限を補わない。
+
+真のGapへ適用するTest Patternは \`必要なMeaning/型/Unit/Grain/Scope、前提、最小入力変更、合法Baseline、変えてはいけない独立Invariant、Expectedの取得先、実Entry/Observer、故障注入可能点、失効条件\` を持つ。初期の候補群は次のように一般化する。
+
+- **Rule境界型**：範囲端点・NULL/欠損・精度・一意性／複合キー・時刻境界を、型とOwner受理済みRuleに応じて選ぶ。既知行番号0例を新発見に流用しない。
+- **Topology／Query型**：1:N×1:Nの行増幅、Entity/Relation/Occurrence別粒度、空と未取得、部分集合・NOT EXISTS、別時点Sourceを反例化する。実ProviderとQueryの選択byteがない場合は「未実証」。
+- **Decision／Client反応型**：HTTP/CLIの業務拒否、技術失敗、再試行、監査終了をGraphの宣言Edgeだけでなく実Guard・型付きResult・Client Reactionで照合する。
+- **Trait／Plugin／Version型**：manual-required欠落、Target unsupported、同名/同Version異digest、Provider×Consumer exact tuple、失効後の旧Evidence誤Reuseを検出する。
+- **非機能・Interaction型**：負荷・遅延・取消・アクセス拒否・秘密漏えい・GUI/CLI/MCP別受信／実表示・実Effectを対象環境ごとの別Obligationとして保持する。
+
+推薦順位は単なるCase件数最大化ではなく、(a)未検証の重要なObligationが対象か、(b)前提・Oracle・Targetが揃うか、(c)他のRuleを壊さない独立判別力があるか、(d)実行と再現の費用、(e)情報開示・副作用制約で比較する。未閉包のObligationを低スコアで黙って捨てない。使いやすいPatternはPlugin/Dataとして交換可能にし、Code固定の巨大なTest Generatorや別Runnerへしない。
+
+### 21.3 T1-B最小試験を、盲検発見と「誤って通るテスト」の検出に分解する
+
+**事前登録**：Independent Evaluatorが、既出 \`line_number=0\` と公知#3017 Mutantとは異なる一つのQualified Scopeを選び、未カバーObligation、合法Baseline、正負Expected、比較用の正しい実装と意図的誤実装（可能なら無関係の対照変更）を固定。保管は#2514のOwner境界。AIにはRuleを理解するのに許されたSource/Design Contextは開示するが、選択された隠れたGap一覧、採点・Mutation・期待値表・Holdout手順は見せない。Rule Meaning自体を隠して不可能問題にしない。実受領が不完全なら \`ineligible\` とする。
+
+**提案**：Generatorが \`Rule ref、未カバー理由、合法Baseline→入力差分、正例＋負例、変えてはいけない他のRule/状態、実行入口・必要観測\` を返す。既存Caseと等価なInput/Target/Expectationの重複を判定し、Case IDや文章が新しいだけでは \`novel=false\`。候補はprovisionalで、永続Scenario SSOTへ無審査追加しない。
+
+**独立評価**：Reviewerは候補受付後にHoldoutへ照合し、既存#1180の一時Scenario→verify/generate/check→pinned実CLIを走らせ、(1)正常実装で合法Baselineが合格、(2)目的の負例だけが指定Rule/Guardを拒否、(3)実Targetに到達している、(4)偽Expected・無関係の変更・常時fail・別Case failureでは誤ってkill認定しない、(5)対象Mutantに対し**当該Caseが**独立Expectedと異なる結果を観測、を別々に判定する。Mutationを利用できない対象ではMutation結果はnot-runとして残す。
+
+**比較**：AIなし／既存手順／AI＋Design Context／AI＋Skill等を比較する場合、Source・Allowed Scope・Target/Tool・Budget・Model・Oracle・実Tool全受領の適格性を揃える。例数1のT1-Bは技術成立の局所証拠であり、生成AI能力の一般的優位・全体網羅・業務Owner受理を主張しない。
+
+### 21.4 変更・Reuseに対する義務単位の再資格化
+
+Source・Rule・Relation/negative dependency・Target/Plugin Lock・Generator・Toolchain・Independent Expected・Observer・Audience Grantの変化を、Obligation→Scenario→実Build/Entry→Evidenceの依存関係へ投影する。変化のない局所テストは必要以上に失効させず、**古いPASSの再表示と現在の利用資格**を切り離す。A→B→A、実Readのpartial、同Version別byte、Tool Page欠落、別Tenant、Build中のSource変更で「現在の完全な資格」を自動回復しない。依存がunknownなら再利用判定をunknown/拒否とし、性能優位の評価はその後に行う（#2600/#3267/#3271）。
+
+### 21.5 次の判別負例（TT-81〜TT-88、すべて新規実行NOT RUN）
+
+| ID | 狙い | 正しい判定／主Owner |
+| --- | --- | --- |
+| TT-81 | Go statementの実行だけで分岐両辺C1達成と報告 | C1 unmeasured／#2514 |
+| TT-82 | Required Rule未列挙でも「発見済Case数=分母」として100% | Product Coverage unknown／#3262 |
+| TT-83 | Known Caseを別名で複製しT1-B新発見と申告 | novelty=false、T1-Aの再生／#2514/#1180 |
+| TT-84 | 正しい実装でも常時失敗するTestがMutantも落とす | invalid baseline、killを認定しない／#2514 |
+| TT-85 | Candidate自身は実Targetへ到達せず他のGo TestがMutantで落ちる | target-not-reached／inconclusive、kill不可／#2514/#1163 |
+| TT-86 | GraphのException宣言は網羅、Client Reaction/実Guardが欠落 | Model coverageと実HTTP/Client coverageを分離／#3274/#1180 |
+| TT-87 | Provider 2×2のPairwise計画を生成、実Runは3 PASS＋1 SKIP | verified=3、matrix-complete=false、実Target qualification不可／#3267 |
+| TT-88 | NFR遅延をmock・warm cacheのみで測り実Provider・cold/warm・負荷のSLO合格と報告 | 環境別実測のみ採用、実Provider/NFR qualification不可／#2586/#2600 |
+
+**実装の最短順**：(1) Draft #3324のexact HEADと統合後mainを別々に検収し、一Ruleの必要Source/Relation閉包が不足ならT1-B範囲を狭める → (2) 既出Caseと重ならない一Obligationを独立事前登録 → (3) 既存CLI/Skill受領でAI Candidateと正例・負例を生成 → (4) #1180/#2514/#1163でTarget到達・独立Expected・Mutation対照・Coverage差集合を観測 → (5) Source/Plugin/Target変更で再資格化判定 → (6) 必要時にだけ実Provider・HTTP・Studio/MCP・Version Matrixへ拡張。
+
+**非主張とOwner**：この§21の追加はCoverage/Pattern/Blind Trialの設計を既存#3262（Context）、#2514（独立判別）、#1180（Scenario SSOT）、#1163（Evidence）、#2509（Harness配送）、#3274（HTTP）、#3267（BOM）、#2600（Reuse）へ割り当てるもの。新しい正式Schema・CLIコマンド、Test Engine/Oracle、Host/Grant、CI実行、T1-B発見、C1実測、正式Meaning Acceptanceは**実施していない**。
