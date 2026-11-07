@@ -33,7 +33,7 @@
 
 ### `goSumBinding`が主張すること、しないこと
 
-`goSumBinding`は「**Go toolchainが`go.sum`と一致しないModule byteを拒否する**ので、その検査に依拠した」と記録します。本resolverが同じbyteを再検証した、とは書きません。独立したbyte照合は[SB-0bの参照実装](../../reference-go-module-supply-verify/README.md)が担います。
+`goSumBinding`は「**Go toolchainが`go.sum`と一致しないModule byteを拒否する**ので、その検査に依拠した」と記録します。本resolverが同じbyteを再検証した、とは書きません。独立したbyte照合は[SB-0bの参照実装](../../tools/reference-go-module-supply-verify/README.md)が担います。
 
 ## 実装上の判断
 
