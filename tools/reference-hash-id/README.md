@@ -55,6 +55,16 @@ Wireの文字列表現自体は **証明・意味IDではない**。 `encodedDig
 
 `cshake_standard_test.go` は[NIST SP 800-185のcSHAKE公開サンプル](https://csrc.nist.gov/projects/cryptographic-standards-and-guidelines/example-values)（X=00010203、N=空、S="Email Signature"、512bit出力）と、N/S両空の場合にcSHAKE256がSHAKE256と一致する性質を独立に確認する。**標準Primitiveの適合試験とTEI独自のFrame・暗号Adapterの相互運用試験は別**。
 
+## Source Read Claimの非権威的な比較（P0接続候補）
+
+`read_claim.go` は、既存Source Reader／実Consumerから提供されることを想定した**申告データの比較器**である。正式なSource Reader、Source Index、Acceptance、Reader Adapter、正本Revisionを新設しない。
+
+`ReadClaim`は`QualifiedSubject`、`SourceScope`、`SourceRevision`、`ReadAttemptID`、`SourceSHA256`を保持する。`CompareUntrustedReadClaims(declared, consumed, consumedBytes)`は5項目の一致と実際に渡されたByteのDigestを検査する。異Subject／異Scope／異Revision／異Attempt／Digest不一致を拒否し、成功しても`status="caller-claims-consistent-only"`、`authority="none"`、`sourceReaderVerified=false`、`sourceAccepted=false`を返す。
+
+**SourceScope ≠ Scheme.Scope**：Source ScopeはQualified Sourceの所属、Scheme ScopeはHash導出ドメインであり、それぞれ独立に宣言・比較する。Source内容が同一でもOwnerの意味的同一性は不明。A→B→Aで古いRevision／Attemptを再利用した申告はこの比較器でも見抜けず、実Source Readerが発行した同一Attempt証拠が必要である。
+
+`read_claim_test.go`には同バイト／別Subject・別Scope・別Revision・別Attempt・不一致バイトの拒否、Source A→B→Aで旧Claimの再利用が成立し得る反例を含めた。**現行CLIにはまだ接続していない**。接続する場合、実Readerの資格のないCaller Claimを`Verified`と表示せず、#1017/#1124/#2595のOwnerが実消費Byteと同一Attemptの根拠を提供する必要がある。単一Fileの局所比較をBuild/ETLのSource Closure全量保証とみなさない。
+
 ## 最初のHeadless Consumer：read-only `hashid-probe`（W4候補）
 
 `cmd/hashid-probe/` に、実行基盤・Studio・Hostへ依存しない最小CLIを配置する。保存済みの**正準Scheme Wire**と**raw byteの入力ファイル**、呼出元が明示する`subject`から`Derive`を実行する。必要であればローカルの`target-probe`（宣言Profile＋既存割当Snapshot）を読み、`CheckTargetBinding`による**事前診断だけ**を行う。
