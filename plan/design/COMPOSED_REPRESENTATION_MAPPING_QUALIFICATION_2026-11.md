@@ -201,3 +201,49 @@ Private World W0/W1が**当該Consumerへ開示可能な情報としては同じ
 
 実際の一Attempt証拠としては `Workspace/Source → Function/Query selected → Provider physical Read/Scope → Result Slice → Context → Form/Table Projection → Consumer` の最初に未接続の辺を**一箇所だけ**記録し、同一試行に含まれない物理Read・Effect/Receipt・独立期待値を合算しない。実Product R1/二表現/WorkspaceまたぎGUI/ER Editorの検証と正式採用は今回NOT RUN。
 
+
+
+## 10. 実SQLの出典を分ける：Product Queryと限定PG Referenceの非同一性（2026-11-07追補）
+
+§8のR1実証を実ファイルに結び直した。**同じLogical Query IDの登場**、**同じsales_coreに関連する読み取り**、**実PGから受け取ったRowset**を、同じSource/Statement/Target集合の実行と混同しない。初回Readが曖昧なままForm/Table二表現を同じContextへ束縛するなら、表示値が合ってもProduct E2資格は不成立。
+
+### 10.1 実mainで確認した入力の相違（現時点の固定Blob）
+
+| 観測項目 | Product Source：現main `reference/workspace/` | 隔離PG Reference：現main `reference/web-api-contract/` |
+| --- | --- | --- |
+| 定義元 | `applications/order-entry/queries/recent_orders.tei`（Blob `a570bceddc7d61aae62ac315a886cc9aedcac082`） | `fixtures/postgres_scoped_orders.sql`（Blob `5113f47d131da7c6b00c7f00dd67fcd7298a53da`）、`scoped_postgres_integration_test.go` |
+| 実SQL出典 | `sql postgres file "recent_orders.sql"`。SQL別Blob `ecc4fb7daab99bd8f03d490f56f7af47c9ebd97a` | `ScopedPostgresOrdersReference` が隔離PG上で動作する専用実装 |
+| 物理的なFROM/対象 | `FROM public.orders AS o` | `public.tei_web_scoped_orders_reference` を試験用にCREATE/INSERT |
+| 選択/絞込 | `WHERE o.ordered_at >= :from`。`ORDER BY o.ordered_at DESC`。SELECTには `order_id, customer_id, ordered_at, status, total_amount` | Tenant A/B専用Scope Authorityで `tenant_id` を制約。ReadPlanの `$select`、`$orderby=orderId asc/desc`、`$top=1` 等を比較。試験では `from=2026-10-01T00:00:00Z` を受渡す |
+| Target/認可 | Queryは `datasource sales`。Applicationは `database sales { target sales_core; access read-write }` を宣言 | TestのProviderも `Database: sales_core` を指定するが、Authorityは固定合成 `isolatedTenantScopeAuthority` であり実Product/Host Policyではない |
+| 成功の上限 | 実Sourceは存在する。現時点でProduct Function選択→そのSQL byte/args→実Physical Providerに渡った証拠はない | 固定HEADのDraft #3238／PG Workflow #42346176936に隔離PGの限定PASSがある。実行SQL/Source/Targetの違うProduct E2 PASSへ転記不可 |
+
+**重要**：Product SQLの目視上 `tenant_id` 条件が無いことから、実ProviderのRLS/ACLが無いとは推論しない。逆にApplicationの`database sales → sales_core`宣言、ReferenceでのTenant test Green、同じQuery IDの出現だけで、Product実Providerが当該TenantへScopedとなったとも推論しない。実際のSource/Physical Statement/Parameters/Policy/Readerの観測が要る。
+
+### 10.2 初めて欠ける受渡し辺：Queryの選択と実行を同一Attemptで結ぶ
+
+Product R1-0〜4の検証では、独立Referenceの `ExecuteScopedCanonicalRead` をそのまま「`order_entry.recent_orders`が実行された」と呼ばない。初回E2の実証に必要なのは以下の**実際に消費された**結合である：
+
+`Function/Pattern instance → selected Query ID/source rev → SQL file resolved actual raw bytes → runtime parameters (:from) + datasource sales binding → selected physical Provider/actual statement + bind → observed Rowset/Field/Scope/read epoch → Function Data Context/Result Slice → Form & Table`
+
+- `recent_orders.tei`・`recent_orders.sql` のSource両方の実取得/解析/実消費と、SQL-only変更の失効を分離。名前の一致やLoader列挙だけで実実行Inputとはしない。新`*.tei.md`移行後のReader/grammarは#3030/#3031/#2621に委譲し、旧Source正常動作から新形式PASSを推論しない。
+- `:from`の値・時区間・Timezone・NULL/未供給時の扱いが未確認なら、`SQL_INPUT_UNRESOLVED`相当の**未資格**として扱う（この語彙は診断候補であって公開Error Code採用ではない）。
+- `ordered_at >= :from`という窓の外側についての不存在や、先頭ページから母集団全体についての全称Claimを立証しない。SQLの `ORDER BY ordered_at DESC` とReferenceの `ORDER BY orderId asc/desc` は異なる。ページ内先頭が同じIDになる場合も、選択順序・全件被覆の同値証拠にはしない。
+- `result.status`がSELECT Mappingに現れることと、業務Predicate `status=READY` が**当該Read Attempt/Scopeで実評価されたこと**は別。必要なPredicate witnessはWHERE/Operator/実比較で確認し、必要以上にstatusを低権限Consumerへ公開しない。
+- Headlessで同一Context/Read SliceからForm/Tableへ投影する場合でも、両Viewの**個別受領と版**を照合する。Context IDが同じだけで別Read/Replica/時間窓の**joint snapshotが成立する**とは推論しない。両者で同じRead Resultを使うのか、各々が再Readしたのかを明示。共同Snapshotが必要なClaimだけ既存#1708/#2514の資格を求める。
+- 複数候補のQuery実現/Provider Aliasがある場合は候補集合・選択根拠・不採用候補の否定依存を保持。SQLが同じでもrealization/physical DB/policyが違えば現行Effect/Disclosure資格を再利用しない。これは#2387/#2862/#2611の既存Ownerに受渡す。
+
+### 10.3 独立Expectedに追加する最小Source差分（QS-01〜06、今回の新実行なし）
+
+| ID | 対照条件 | 独立に期待する判定 | 所有先 |
+| --- | --- | --- | --- |
+| QS-01 | 同じ `order_entry.recent_orders` Query IDでProduct `public.orders`と隔離PG `public.tei_web_scoped_orders_reference` | ReferenceのPG PASSはそのSource/Providerに限定。Product function Query選択と物理実行はunverified | #2586/#2514 |
+| QS-02 | `:from`を変更／欠落／誤Time zoneで実行 | Read対象の時間窓を別々に扱う。未束縛は成功とせず、当該Window外の不存在を証明しない | #2387/#2586 |
+| QS-03 | `ordered_at DESC`と`orderId ASC`の同件数同ID／異順序 | Output順とPage/Topの意味を分け、同数・同IDでも順序差があるならページ同値を証明しない | #2497/#2506 |
+| QS-04 | `sales_core` logical target同一、実Provider instance/Tenant/RLS異なる | 同じDB名を同じ物理Reader/Current Authorityとしない | #2611/#2516 |
+| QS-05 | SQL-only byte改版、Query definition byte/IDは同じ | 実SQL選択入力とQuery SourceContributorの失効を検出。旧Model/Receipt/Output資格を保持しない | #2595/#2600/#3030 |
+| QS-06 | 同一ContextからForm/Table、同じSubjectだが片方が後着/別Read cohort | 局所の値/Identityを保ち、joint snapshotと現在の共同Claimはunknown。別epochを勝手に統合しない | #2506/#2582/#2514 |
+
+検収順を **QS-01/02：実Source→SQL/引数/Provider binding→実Rowset**、次に **QS-03/06：実Rowset→二Viewの同一性・時点**、並列に **QS-04/05：Scope・Plugin/SQL改版負例** とする。実行計画は#2586 HR-01/02を正本とし、#2514/#1180の固定Fixture/Independent Expectedを再利用。新Runner/SQL Executor/Read Registry/新Proof Storeは追加しない。
+
+**今回の証拠限界**：GitHub上の上記Source/SQL/fixture/試験ファイルのBlobと本文を実確認した。SQLの実行結果は#3238固定HEADの公開された限定CI記録に依存する。本追補のQS-01〜06、製品Query/DB read、Function→Context→二表現、実joint snapshot/Owner意味受理は**NOT RUN／未実証**。現在mainの将来変更はBlobごと再照合する。
