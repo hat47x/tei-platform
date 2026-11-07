@@ -428,3 +428,46 @@ Pattern推薦の順位は **未カバーObligationへの寄与・リスク/影�
 [統合Draft #3236](https://github.com/hat47x/tei-platform/pull/3236)のData→View→Consumer、Representation Instance、非単射・Loss/Presence・否定依存・Disclosureの独立Expectedを**新たなテスト正本として複製しない**。Patternは各変換で維持すべきIdentity/Time/Unit/Multiplicity/Scopeと、合成後に失われた/unknownとなる性質をObligationへ投影する。例えば二つのRelation occurrenceがTree一行へ畳まれれば、読取り表示テストは提案できても自動逆Patchテストを「成功見込」とせず、拒否/unknownをExpectedとする。
 
 Plugin Compositionも既存Graph/Relation/Contract表現と#951の解決・#943/#2600の実Artifact・#1174の現在Grantを参照し、解決候補の存在と**実ConsumerがどれをLoadし実行したか**を分ける。新Graph Schema/第二Resolver/第二Authority/第二Test Scenarioは作らない。局所PatternのPASSから合成Target全体のPASSを推論しない。TT-41/42の専門Ownerが提供する実Resultで欠落の有無を判断し、実験未実施の部分をunknownとして残す。
+
+<!-- tei-design-context-query-pretest-20261107 -->
+## 14. テスト生成より前のP-1：Design Context QueryとCLI/MCP/Skill共通取得（#3262／設計）
+
+### 14.1 最初に解決すべき対象情報の不足
+
+テストパターン推薦の入力には、受理済みSource/Meaning、Function Data Context、Data/Function/Business、Unit/Time/Relation/Rule/Procedure/Organization、既存Scenario/Fixture、RequirementとC0/C1/NFRの未カバー集合が要る。しかし**既存のread-only CLI呼出を足しただけでは、必要な情報のすべてが実際にLoader/Parserへ到達し、同じ版で解釈された証拠にならない**。#2822空Workspaceとbuiltinの区別、#2823 managed inventoryと実Loaderの差、#2506部分取得、#2514独立Required集合の欠落を先に埋める。
+
+実装済みの現行入口として、mainの cmd/tei/cli_contract.go に tei.cli.discovery/v0 selected-read-only-commands：model catalog、workspace-files、inspect、trace、source-index、requirements、validate、knowledge-context、plugin-lock/resolve等がある。ただし**全Capabilityの列挙ではない**。worldはraw JSON、version -jsonはidentity形、commandごとにmode・schemaVersionが異なり得る。view -execute等は大分類read-onlyの説明だけでargvの実File/Provider効果を保証しない。#1155を再実装せず、#1158の型付きRequest/Result境界の再利用可能性を調べる。
+
+### 14.2 同じQuery、用途別の表現
+
+新製品独自の知識正本を追加せず、**Design Context Query（仮称）**というread-only取得・合成の契約を検討する。入力＝Workspace/Subject Kind+Stable ID/Required Domain View/目的(test design等)/期待Source・Model版/Relation・依存閉包/要求Scope+as-of/Tenant/Consumer・開示資格/表示budget。出力＝一枚の概要、typed ref index、完全性・未達・影響、詳細へ辿れる同版参照。
+
+- **Machine JSON**：Stable Subject/Relation occurrence、Source span、Model/Source/Loader/Parser/Accepted/Scenario/Target版、result kind、scope、grain、unit、時間、ProvisionalとAccepted、Known/Unknown、診断を失わない。読取り専用、失敗時も構造化して明示。
+- **Human Markdown/表/図**：同じ意味の投影を「概要→関係→診断→詳細」の認知順に。省略した項目は明示し、詳細refへ戻れること。別の意味正本を文章Renderer内に作らない。
+- **Harness Product Skill**：存在するCLIを発見してから手順を構成し、受領したResultの完全性を点検して不確実なClaimを拒否。Skillの説明・実Toolロード・実Source読込・実Tool返信・Owner権限を独立扱い。TEI単体実行にSkill/TAI/MCPを必須化しない。
+- **MCP**：同じ型付きread-only Queryの将来Adapter。Tool/Resourceへの対応、pagination、Resource scope、Result errorsは実CLI一往復の成功後に選定。新しい第二Reader/Host/Authority/Loaderを組み込まない。
+
+### 14.3 「漏れなく」の明確な意味と転送完了
+
+Design情報の完全性は**指定したRequirement/Subject/Relation/Rule/Procedure・外部依存集合とScopeに相対的**。次を別々に観測する：
+
+1. **Required Closure**：独立に要求されたData/Function/Business、非出力Rule列、Relation path、Function Context、Manual Step、Source Import、Plugin Provider、Scenario/Requirementの集合。requiredを発見済みCase数から逆算しない。
+2. **Source Closure**：Manifest宣言、Discovery、実Loader read、実Parser occurrence、Accepted Binding。欠けた場合はnot-loaded/unresolved。builtinだけのvalidate.okを利用者Domain完成とはしない。
+3. **Semantic/Observation Closure**：Requested Claimに必要な粒度、NULL・未取得・非開示、Query/ContextのResult Slice、実Provider/Hostは設計Sourceと分離。静的バインドを実Effectと誤認しない。
+4. **Delivery Closure**：要求したRef/Case/Sourceが**Toolの受信者まで完全に到達**したか。ページ数、連番、受信byte、限定公開範囲のdigest、terminal marker、next cursorと呼出結果IDを検証。DSH #2509ではH3実Skill Readが観測済みだが、model catalogの8,192byte切断、56 Request/55 Reply、stderr混入、比較適格0/4が残る。旧「H3未ロード」ではなく、不完全なDeliveryを未確定として扱う。
+
+大量応答の既定は**短いSummary＋Typed index＋追加ページ**。安定順・Page Budget（実Harness観測で決める）・同版Snapshot固定・明示continuationを要求する。Page間にSource/Grant/Disclosureが変わればstaleとし混ぜない。外部LLM/ログへのread-only送出も現在のDisclosure/実OS強制を要する。非公開情報の件数、digest、ID、存在・診断内容を未許可相手へ漏らさない（#2515/#1178）。
+
+### 14.4 独立受入 DCQ-01〜10と最短の縦切り
+
+**DCQ-01〜10の正負対照・Owner詳細は#3262を唯一のIssue正本とする。** ここでは同じD1 2行/D2 3行の合成FixtureにRequired Subject/Scenarioを加え、1 Subjectで次の順に受入：
+
+- P-1a：実Binaryのcommands/version→workspace-files/Source Reader→model catalog/inspect/trace/requirements/validateを利用して独立Closure比較票を作成。Sourceの実Loader/Parser到達を捉えられない場合はunknown。
+- P-1b：同じデータをMachine/人間向けに別投影し、欠けたData・Rule・Function Procedure・RequirementのRef/Unknownを隠さない。0/未取得/非開示とDescriptionだけの差を識別。
+- P-1c：既存Product Skillを使う最小指示で同じ設計Contextを取得。H2/H3は#2509/TAI #168で比較、Skill有無の正答率とTool Call・Token・漏れ・切断誤認を別計測。
+- P-1d：必要性が実測できた後、型付き同一QueryのMCP AdapterでCLIとの意味同値を評価。
+- **その次がテスト生成P0**：Qualified ContextだけをTT-35〜43／Pattern推薦／#1180 Driver Scenario採用へ流す。Context未取得を空Fixtureや全件完了にしてはいけない。
+
+**停止条件**：JSON parse／exit0／validate.ok／Catalog非0／1ページ／Tool successを全情報の証拠にする、未解析Source・hidden Relation・非出力Rule・Manual Procedure・未カバーNFRを消す、別版ページを連結、現Grantなしで機密Raw/件数を外部送出、未実装のMCPを実在するToolとしてSkillに記述する、という動作。
+
+**状態**：本節は#3262の受入要件をテスト生成計画の前段として接続した**設計のみ**。実CLI一貫Read・Design Context Query・MCP・Harness全受領・新Test Pattern E2EはNOT RUN、正式なSchema/Owner受理はNOT ACCEPTED。
