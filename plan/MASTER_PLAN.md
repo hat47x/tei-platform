@@ -703,6 +703,17 @@ X-TEA Modeler由来の**Data/Function/Businessの3図とCRUD cross-reference**�
 
 まずP0-Mの実Fixture受入と一つのSource-backed Graph/CRUD結果の独立Expected照合を完了し、その後P0-Rの実Provider経路とP0-Cの結合へ進む。#2514/#1180の既存独立Oracle/Scenarioを使い、第二Parser/Graph Runtime/Policy/Runnerを増やさない。今回の新実TEI Diagram生成・Go Test・Studio/SHO・HostのE2E、正式Owner意味受理は**NOT RUN**。この追補と設計索引の更新は**採用前計画・CI修復の一部**である。
 
+
+### 複数Canvasと部分CRUDの既知事実を失わない検収（2026-11-08）
+
+[統合Draft #3303 §18](design/COMPOSED_REPRESENTATION_MAPPING_QUALIFICATION_2026-11.md)に、[#3263の実Go Fixture契約テスト](https://github.com/hat47x/tei-platform/pull/3263)を踏まえた、**全体partialでも明示済みの局所事実を消さない**検収を追加。Function`declaredCrudComplete=false`でも、明示された`data.customer:R`はRのまま残り、未列挙の`data.order`は`unknown-not-enumerated`であって`none`ではない。必要Rule/Relationの不足を空のCRUD表とせず、Context GateでRequired/Receivedの差を提示する。実DB Readerや業務Effectを宣言Rから推論しない。
+
+**複数Canvas同一Subject**では、一つのSemantic Subject/Relationを二Canvasへ異なるView Occurrenceとして配置できる。カード／図の移動・Canvas分割・片側Occurrence削除はSemantic Item/Relationの削除・意味変更ではない。Edge ID／向き／Role／Source RevisionとCanvas内OccurrenceのIDを分離。図でCard表示できない長大な未整理Itemでも、直接開くデータとして保持でき、カード化を強制しない。図のRead-only Graph/CRUD合格、逆編集適格性、Consumer受領、SHO Writerの資格は別。MC-01〜04を既存#2514/#1180へ一因子差分として渡し、新しいItem/Task/Core型や第二Registryは定義しない。
+
+**空集合Handoffの現行更新**：[main統合 #3353](https://github.com/hat47x/tei-platform/pull/3353)は`Targets=[]`・`EmptyJustified=true`でもHandoff未確認なら`CompletionUnverified`に留める局所修正と6回帰Testを持つ。固定HEADの[Health #42391982442](https://github.com/hat47x/tei-platform/actions/runs/42391982442)はsuccessだが、`CoverageComplete`／`HandoffConfirmed`はCaller申告であり、相手方ReceiptやProvider実結果は未証明。空CRUDセル（未知・不在）とBusiness Outcome（Handoff済・未確認）を混同しない。
+
+既存P0-M（Data/Function/Business Source→Graph/CRUD）、P0-R（Function→実SQL/Provider→Context→Form/Table）は**並行P0**、P0-Cは十分なSource/Scope/Revision/Read Cohortが一致した時だけ接合する。#3263のFixture監査は実製品Graph/CRUD生成のPASSではなく、新Go/CLI/Studio/SHO/実Provider E2E、Ownerの意味受理は今回**NOT RUN**。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
