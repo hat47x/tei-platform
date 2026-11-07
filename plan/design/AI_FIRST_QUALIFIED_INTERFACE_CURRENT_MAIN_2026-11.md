@@ -33,11 +33,15 @@
 
 ### 3.1 外部Harness：技術的接続は実証、比較適格は未成立
 
-[main Evidence #3113](https://github.com/hat47x/tei-platform/pull/3113)はDSH 0.2.2-rc.1／Windows／公開`sales.order`、実Trial `h2-08`でTool call 56、Result 55、TEI実Binary起動32を観測した。**H2-T技術的transportは限定成立**。ただし[TEI #2509](https://github.com/hat47x/tei-platform/issues/2509)の現物点検では、`cli-model-catalog.txt`が8,192 byteで途中終了し、stdout JSONにPowerShell stderrが付属する。Resultを受け取ったというだけでは完全なJSON/必要Sourceの全件受領ではない。Skill/Reviewer期待値・別Worktreeがread-onlyの外に読めてしまい、固定4Session比較**0/4適格**、H3 Skill実Load、独立回答採点・費用比較は未実施。
+[main Evidence #3113](https://github.com/hat47x/tei-platform/pull/3113)はDSH 0.2.2-rc.1／Windows／公開`sales.order`、実Trial `h2-08`でTool call 56、Result 55、TEI実Binary起動32を観測した。**H2-T技術的transportは限定成立**。ただし[TEI #2509](https://github.com/hat47x/tei-platform/issues/2509)の現物点検では、`cli-model-catalog.txt`が8,192 byteで途中終了し、stdout JSONにPowerShell stderrが付属する。Resultを受け取ったというだけでは完全なJSON/必要Sourceの全件受領ではない。Skill/Reviewer期待値・別Worktreeがread-onlyの外に読めてしまい、**比較適格は0/4**、独立回答採点・費用比較は未実施。**一方、後続の[4 Session原Evidence](https://github.com/hat47x/tei-platform/blob/main/plan/evidence/DSH_H2_H3_FOUR_SESSION_2026-11-07/README.md)ではH2-A→H3-A→H3-B→H2-Bを探索実行し、H3-A/Bで同じProduct Skill本文（各5,482 byte）と参照1件を実Toolから読んだ**限定H3 Load**は成立した**。H2-Aは先行Session再利用で独立試験群ではない。Skill本文のTool-result wrapperを元Markdown Source byteと同一扱いしない。
 
 [main Mock Evidence #3153/#3161](https://github.com/hat47x/tei-platform/pull/3161)は`dsh_session_log`が**既定ON**で約45KB送出、Toolの合成MarkerがモデルInput以外のSession Logの2箇所へ複写、Off→Onや503/Stream切断後に同Watermarkが再送されることをローカルMockで実測。[main #3200](https://github.com/hat47x/tei-platform/pull/3200)では子Tool ProcessでConstrainedLanguageによる一部.NET/CIM操作制限が働き、親の合成Credential様環境変数は継承されず、loopback Mockへの接続はできた。**これはDSHの全OS/FS/Network隔離、実Credential、実Provider Egress無漏出の証拠ではない**。
 
 **次のH2出口**：[TAI #168の固定Runbook](https://github.com/hat47x/tai-pleroma/issues/168)のTask/独立ExpectedとH2→H3→H3→H2割付を保持し、(a)禁制Source/Skill/期待値への実アクセス拒否、(b)実公開Tool allowlistと既定Session LogのAudience・Sinkを観測、(c)stdout/stderr分離・JSON全体性・Result数・警告/Unknown、(d)AnswerとConsumer受信を**新たな一適格Session**で確認する。探索9試行の成功を事後選抜しない。#2509はDSH接続、#2515/TAI #232は実隔離・送出、#2605はSkillの実Byte/Load、TAI #168はTrial比較のOwner。第二Harness Runnerは作らない。
+
+
+
+**再開時の二つの流れ**：[実測PR #3237](https://github.com/hat47x/tei-platform/pull/3237)（Open・未統合）の合成Canaryでは、同じSessionを再開すると既ACK区間の`dsh_session_log`に過去Canaryは載らなかった一方、モデル向け`messages`に過去会話が再構成され、Toolを再呼出しする前からCanaryが入った。**Logの非再送≠モデル入力の非再開示**。失効後に再開するときは現在Audience/Policyを`messages`とLog/Tool別に再評価し、過去のRawを自動的に再送可とはしない。これは実Provider/全ネットワーク／Grant失効後再開の合格証拠ではない。
 
 ### 3.2 CLIが動くこと・公開してよいこと・業務Actionがあることを分離
 
@@ -45,22 +49,32 @@
 
 [Dogfooding Draft #3162](https://github.com/hat47x/tei-platform/pull/3162)で`view effect: read-only`でも`-execute -operation-log`等がローカル状態を書いた。発見契約の`modes/successShape`はmain #3148/#3160で改善されたが、**実オプションごとの副作用・stdout/stderr/消費・Source identity**を別に検査する。[`modelRevision`の厳密化 #3163](https://github.com/hat47x/tei-platform/pull/3163)は管理Source Index版でありWorld/意味の資格ではない。
 
+
+
+**Workspace IDと引数契約の実消費**：[実装PR #3247](https://github.com/hat47x/tei-platform/pull/3247)（Open・未統合）は、5つの読み取り応答に宣言されたWorkspace名・manifest format/version/path/SHAを付け、固定Windows Go/実CLIで限定検証した。ただし`name`は作者の任意文字列で一意・不変のIdentityではない。`source-index`の対象なし応答とWorld直接入口に同情報は無く、対象Source/実Read/Consumer epochへ同一性を引継ぐには追加照合が必要。[未決 #3242](https://github.com/hat47x/tei-platform/issues/3242)では`tei commands`の引数型・enum・defaultが機械可読でないため、Skillが`subject-kind`などを推測してしまう問題が残る。Discoveryを充実するか文書＋両方向試験で固定するかは既存CLI Ownerが決める。新Tool全公開や第二契約Schemaをこの文書で要求しない。
+
 ### 3.3 実Read／Build／実保存のそれぞれの閉包
 
-[Draft #3175](https://github.com/hat47x/tei-platform/pull/3175)の同HEAD局所CIは、Q05同件数異集合、Q06 TOP-1、Q07非出力Predicateについて**観測不足から`holds`を導かない**合成反例を実行した。だが実Provider/Function Readの資格は別（#2586/#2506/#2514）。Consumerに非出力Fieldを露出しない場合でも、SQL/OperatorがそのFieldとPredicateを実評価した証拠があれば有効な証人となりうる。Source選択→実Read Plan→必要行列/時点/結果/受信まで同一Claimで結ぶ。
+[現行main向けDraft #3238](https://github.com/hat47x/tei-platform/pull/3238)は旧#3175のQ00/Q05〜07合成試験を再配置し、**専用PostgreSQLの実Read**を追加した。固定HEAD `469cdbadb1fcf23d65526ec3c5899f4d94e8390b` の[専用CI #42346176936](https://github.com/hat47x/tei-platform/actions/runs/42346176936)では、隔離DB `tei_web_scoped_e2e` 上でTenant Aの独立Expected `{3,9}`に対し`$top=2`→`[[3],[9]]`、`$top=1`→`[[3]]`を実取得・PASS（SKIPなし）と報告されている。**実Rowset対照が一件成立**した点を従来の「実Providerは全てNOT RUN」から更新する。ただし専用Web Referenceの限定Readであり、TEI製品のFunction→Query選択→Provider→Context/Consumerを同じAttemptで検証したわけではない。CallerがTOP1に誤って`CoverageComplete`を与えると局所`holds`になり得るため、Coverage根拠は独立TargetSet/実Readと結び付ける。Q07非出力Predicateは実SQL/Operator評価が観測された範囲だけ根拠とし、Consumerへの非公開Fieldの開示を要求しない。実Product縦断のOwnerは#2586/#2506/#2514。
 
 [実Build観測 Draft #3156](https://github.com/hat47x/tei-platform/pull/3156)では、隔離Go Module供給から`cmd/tei` artifact buildはexit 0だった一方、既存`ResolveSourceClosure`は`rejected`。**Artifact Produced / Source Closure Qualified / Toolchain Trust /実Consumer Read**を別欄にする。Go Module `go.sum`との一致確認[main #3142](https://github.com/hat47x/tei-platform/pull/3142)は供給元の署名・Authorityまで証明しない。外部Module根の方針をAIだけで変更しない（#2831/#1090/#2595）。
 
 [main #3124/#3127/#3131/#3155](https://github.com/hat47x/tei-platform/pull/3155)はReceipt Lookupと別接続のResource現在値観測を別々に扱う。`persistence:not-applicable/not-observed/receipt-observed/resource-observed`、`persisted:true`はResource一致の場合だけ。現Principal/Target/Scope/Owner Meaning/業務Outcomeはさらに別。RunPlan旧Attempt書込み防止[main #3139](https://github.com/hat47x/tei-platform/pull/3139)は局所成功だが原子的な排他保証ではない。
 
+### 3.4 操作候補が古くなったことを実行時に見分ける
+
+[mainに統合された実測 #3254](https://github.com/hat47x/tei-platform/pull/3254)では、固定合成Workspaceに属性1個を追加すると`worldFingerprint`と`modelRevision`は変化したが、`tei operations`の5件と各`basis`は不変だった。`basis`は派生根拠であり、World全体のRevisionではない。`tei operations`には比較相手のRevisionを渡す引数がなく、観測した`period_guard.go`には版の照合がない。従って**古いOperation Surfaceのまま現在WorldでActionを許可できる、というClaimは未成立**。
+
+既存#2598/#1125/#1174のRequest/Dispatch境界で、`proposed action / selected workspace manifest / observed World+Model revision / operation basis / current Target+Period / actual current Host Grant`の**各版の出所と照合先**を別々に記録する。1個の一致しないRevisionで直ちに副作用が起きたとは推定せず、既定でrejectするか・再導出するか・保存済みOperationに版を渡すかは担当Ownerが決める。Recorderや後段Stageが失敗した時のEffect/Receiptは#1174へ残し、Unknownをno-effectに変換しない。新Admission Engine/第二Operation正本を作らない。
+
 ## 4. 実装順と受入の最小Done
 
 | 既存Owner・並列レーン | 次の最小Done | そこで止めるClaim |
 | --- | --- | --- |
-| **Harness H2-Q**：TAI #168／TEI #2509/#2515/#2605 | 既存固定Taskで**隔離・送出・Tool Result完全性が検証されたH2一Session**。H3実Loadと残り3Sessionは同Groupの後続 | Tool transport ≠ 回答正答 ≠ Skill効果 ≠ Egress非漏えい |
-| **Source/Runtime P0-L**：#2586/#2506/#2514 | 旧`*.tei`一Function/Queryから**実Provider read-only結果**とScope/Target/独立Expectedを照合。対象集合がpartialなら局所Claimのみ | `validate ok`・行件数・合成Completion PASS ≠ 実Read完全性 |
+| **Harness H2-Q**：TAI #168／TEI #2509/#2515/#2605 | 既存固定Taskで**隔離・送出・Tool Result完全性が検証されたH2一Session**。H3実Load自体は探索で限定観測済み。**隔離済み新Groupでの再測定**と残り3適格Sessionは後続 | Tool transport ≠ 回答正答 ≠ Skill効果 ≠ Egress非漏えい |
+| **Source/Runtime P0-L**：#2586/#2506/#2514 | #3238の専用PG Reference実Readを有限対照として保持し、旧`*.tei`一Function/Queryから**実Provider read-only結果**とScope/Target/独立Expectedを照合。対象集合がpartialなら局所Claimのみ | `validate ok`・行件数・合成Completion PASS ≠ 実Read完全性 |
 | **Authoring P0-M→P0-J**：#3030/#3031/#988/#267 | 新`*.tei.md`の実Reader/Parser/Source-span・Build実消費後、旧形式とは別Revision/Sourceで同一独立Expectedへ合流。固定Candidate→Shared Acceptance→実Reload | suffix／Markdownの未受理文書 ≠ Parser適格、Source更新 ≠ Owner Meaning受理 |
-| **Effect P1**：#1174/#2598/#1163 | 実Host current GrantとOperationID/Targetに束縛したCommit/Unknown、ReceiptおよびResource readを別確認し、適格Consumerへ戻す | Receipt再読取だけで`persisted`・業務完了にしない |
+| **Effect P1**：#1174/#2598/#1163 | #3254の古いOperation/World版の実行直前照合先を定め、実Host current GrantとOperationID/Targetに束縛したCommit/Unknown、ReceiptおよびResource readを別確認し、適格Consumerへ戻す | Receipt再読取だけで`persisted`・業務完了にしない |
 | **Build P1並列**：#2831/#1090/#2595 | 選択Module・供給byte・Source閉包・Build artifact・実Consumer inputを別測定 | Artifactができたことから閉包資格、配備資格、再現性を導かない |
 
 すでに実証済みのDSH transportや局所Go/PG結果を同一Attemptの横断PASSへ合算しない。P0-LとP0-MおよびH2実験は相互にHard dependencyを置かず、**一つのSource/Attempt/独立期待値を軸に別資格を接続する**。実験のFixtureと期待値は既存#1180/#2514/TAI Runbookが正本で、新Case群・新Runner・第二Meaning/Host/Policy Storeを増やさない。
@@ -72,4 +86,4 @@
 3. **業務・対外効果**：PoC A3の開発自律性と、外部不可逆効果A4の人への確認を維持。AI Candidateの形式的Validationや`Attested Computation`、Main CI・Mutation kill、参照用Grantから製品業務意味・本番権限・実Outcomeを自動推論しない。
 4. **統合前の整合**：PR #2492の現行mainからの大幅乖離を踏まえ、旧PRの全文移植ではなく、実装に必要な成熟Contractだけを本書と[基本計画](../MASTER_PLAN.md)へ移送する。旧PRの研究・基礎データ・要求の残余は各Ownerが別途差分採否を判断。最新mainと[Draft #3179](https://github.com/hat47x/tei-platform/pull/3179)のMASTER_PLAN追補は両立を確認する。ここで旧PRや既存Fixtureの自動Closeはしない。
 
-**未実証**：比較適格H2/H3（0/4）、実Skill Load、非公開データを含む実Egress拒否、全Source/Target閉包を持つ新`*.tei.md` Reader、実Providerの一Function read-only縦断、AI Proposalの正式Source更新一往復、実HostのGrant→業務Outcome、OKF Executor/Attester一往復。実測済みClaimは上記の有限実装・HEAD・環境に限る。
+**未実証**：比較適格H2/H3（0/4）、適格TrialでのSkill Load/効果・費用採点（探索H3実Loadは限定観測済み）、非公開データを含む実Egress拒否、全Source/Target閉包を持つ新`*.tei.md` Reader、実Providerの一Function read-only縦断、AI Proposalの正式Source更新一往復、実HostのGrant→業務Outcome、OKF Executor/Attester一往復。実測済みClaimは上記の有限実装・HEAD・環境に限る。
