@@ -82,3 +82,14 @@ func TestNoIndependentExpectedNoPass(t *testing.T) {
 		t.Fatalf("got %+v", got.Rows[0])
 	}
 }
+
+func TestProjectDoesNotMutateInput(t *testing.T) {
+	x := base()
+	orig := append([]string(nil), x.Axes[0].Options...)
+	if _, err := Project(x); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(x.Axes[0].Options, orig) {
+		t.Fatalf("project mutated shared options: %v", x.Axes[0].Options)
+	}
+}
