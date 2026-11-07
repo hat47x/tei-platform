@@ -1,11 +1,12 @@
 {
   "fixture": "okf-k1-v02",
-  "purpose": "Independent synthetic expectations for future K1 reader; not a test run",
+  "purpose": "Provisional specification-derived test expectations, separate from the future reader implementation; authored with fixture and NOT an independently owner-qualified oracle",
   "okf": {
     "version": "0.2",
     "repository": "GoogleCloudPlatform/open-knowledge-format",
     "spec_commit": "ad30107c31c06aec8a7d5636e0d1058118604e6f",
-    "spec_blob_git_sha": "c06e3eede0c910d0ecf12524c34204156f8795ac"
+    "spec_blob_git_sha": "c06e3eede0c910d0ecf12524c34204156f8795ac",
+    "spec_sha256_utf8": "26aa5da029278939f914e578107242d9607d4f2dc5fe153272b82f9ed1030101"
   },
   "required_files": [
     "index.md",
@@ -68,7 +69,22 @@
     "runtime attestation",
     "external publication grant",
     "full Source closure",
-    "SUI tree/island recoverability"
+    "SUI tree/island recoverability",
+    "independent oracle qualification based only on this JSON or same-author fixture"
   ],
-  "expected_runtime_status": "NOT RUN"
+  "expected_runtime_status": "NOT RUN",
+  "oracle_qualification": "PROVISIONAL: created in same design attempt as fixture; separate independent specification review and mutant kill proof required before acceptance",
+  "raw_sha256_utf8": {
+    "index.md": "53ed2efbe2b5ac8fb3eb628c5ac6a3ddb152badd7f2d9e7bec7b55b9efeccd59",
+    "data/order.md": "e199969f714240a573128432b30704cb7960505d00e991994d1fae28e47fe2c5",
+    "functions/submit.md": "4f2593b1f2552d3311ed86c6992f5edd4661eace53568e2d6d8c7198c63fad46",
+    "business/submit.md": "5b8ce60571a7e76d186d5402d7454b509139d99c94403a386c18e7f7298ba161"
+  },
+  "validation_status": {
+    "github_file_readback": "PASS",
+    "raw_sha256_algorithm": "two standard SHA-256 known vectors PASS",
+    "yaml_parse_with_product_reader": "NOT RUN",
+    "okf_formal_conformance": "NOT RUN",
+    "owner_review": "NOT RUN"
+  }
 }
