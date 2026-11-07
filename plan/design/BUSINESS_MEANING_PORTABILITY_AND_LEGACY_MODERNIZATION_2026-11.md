@@ -150,11 +150,11 @@ Self-Build #2831と重なるのは「同じ定義から必要なBuild/Artifact�
 
 ## 10. 最初の有限な実証と移行時の停止線（既存Ownerへの受渡し）
 
-**段階A：同一Accepted Meaning、異なる入口。** 既存\`order_entry\`から一つのQueryと一つのCommandを選ぶ。既存Driver Scenarioと独立Expectedをそのまま使い、GoのHTTP/JSON経路と非HTTP/in-processまたは既存CLI経路のResult/拒否/対象/独立Readを比較。未対応Operationをstubで通さず、必要な入口が未接続なら明示して停止（#1656/#1158/#1180）。File ExportはFileSpec/Manifestの独立資格、ODataは採用判断待ち、Generated Wails Desktopは第二Targetで個別資格（#259）。
+**段階A：同一Accepted Meaning、異なる入口。** 既存`order_entry`から一つのQueryと一つのCommandを選ぶ。既存Driver Scenarioと独立Expectedをそのまま使い、GoのHTTP/JSON経路と非HTTP/in-processまたは既存CLI経路のResult/拒否/対象/独立Readを比較。未対応Operationをstubで通さず、必要な入口が未接続なら明示して停止（#1656/#1158/#1180）。File ExportはFileSpec/Manifestの独立資格、ODataは採用判断待ち、Generated Wails Desktopは第二Targetで個別資格（#259）。
 
 **段階B：旧コードの一点抽出。** 旧JavaまたはC#の小さな関数/Queryについて、Sourceの静的事実と実観測を別収集する。特に(1)欠損/NULL/default、(2)Decimal丸め、(3)Enum範囲外、(4)外部Effect/例外の**正負対**を独立Oracleへ結ぶ。元言語→TEI→同言語の再生成を先に比較し、意味抽出誤差と言語変更誤差を区別する。旧実Targetや動作Oracleが得られないときはsource-static／proposed止まりとする（#2387/#2498/#2555）。
 
-**段階C：安全な段階移行。** 旧と新の両方へ同じ変更系Operationを本番Mirroringしない。Read-only shadow/合成Snapshotの比較は可能だが、Writeは隔離された使い捨てProvider・独立Readに限定した検証から始める。並走・CDC・書込Ownerの切替、旧Clientの失効、Rollback/再同期は#2555の既存受理範囲に委譲する。実DBの接続・\`dbcheck\`成功だけでMigration Cutover、無副作用、全Consumer適合を名乗らない。
+**段階C：安全な段階移行。** 旧と新の両方へ同じ変更系Operationを本番Mirroringしない。Read-only shadow/合成Snapshotの比較は可能だが、Writeは隔離された使い捨てProvider・独立Readに限定した検証から始める。並走・CDC・書込Ownerの切替、旧Clientの失効、Rollback/再同期は#2555の既存受理範囲に委譲する。実DBの接続・`dbcheck`成功だけでMigration Cutover、無副作用、全Consumer適合を名乗らない。
 
 **最小の拒否ケース（新Test SSOTを作らない）**:
 
@@ -175,7 +175,7 @@ P0は段階Aの一つのQuery/Commandと段階BのSource-static/Observedの分�
 
 例：旧販売Functionが受注Orderを登録し、在庫Stockへ直接SQL UPDATEする構造を考える。新実現では販売Functionから在庫Ownerが管理する明示Commandへ委譲する設計候補を評価できる。しかしこれは単にtransportをHTTPに替える話ではない。Go/Wailsのin-process、Java/.NET内のmethod、HTTP、MQなど**どの実現形でも**、在庫を更新する主体と承認、順序、部分成功、再試行、回復、独立観測を示す必要がある。
 
-\`\`\`text
+```text
 【旧実装】販売Function ── Direct U(Stock) ──→ 旧DB
        │                  （Source-static候補／実Effectは別）
        └── C(Order) ────────────────────────→ 旧DB
@@ -187,7 +187,7 @@ P0は段階Aの一つのQuery/Commandと段階BのSource-static/Observedの分�
                  在庫Owner Command ── U(Stock) → 対象DB/Provider
                      ↓
                  Result / Receipt / independent Read
-\`\`\`
+```
 
 直接越境CUDがゼロになっても、委譲経路は依存として残す。もとの単一DB transactionを、別サービスへの呼出しに変更しただけではatomicityは保持されない。新Targetが同一プロセスでも実Providerの権限と失敗・観測境界を飛ばしてはならない。現行Targetが必要なtransaction/compensation/reconciliation能力を満たさなければ **incompatible / unresolved** とする。分割のために新しい業務手続・状態を暗黙に採用するのではなくShared Acceptanceへ戻す。
 
@@ -206,7 +206,7 @@ P0は段階Aの一つのQuery/Commandと段階BのSource-static/Observedの分�
 
 [意味的特性の設計](SEMANTIC_TRAIT_CLAIMS_AND_CONFORMANCE_2026-11.md)の**Trait Claim / Source fact / 実装側Enforcement / Assessment**を再利用する。Java/C#のEnumや定数表、SQLのCHECK/UNIQUE、ファイルのコード体系、OData EDM、OpenAPI Schemaは、特性を調べるための別個のSource/Target証拠となる。**これらの記述が一致しても、それだけでMECE・強属性・業務キー・全Writerにわたる制約強制が受理されたとは言えない**。
 
-例：Java \`OrderStatus {NEW, ACTIVE, CLOSED}\` に対して、DB列が \`VARCHAR NOT NULL\` で、旧ファイル経路から \`HOLD\` が書き込める可能性があるとする。Java Enumの3値だけを取り込んでTEIの業務値域を自動確定すると、ファイルを利用していたConsumerや旧レコードの意味が失われ得る。逆に未知値を無条件に\`NEW\`へ置換すると、欠落した検証・履歴・業務判断を隠す。Source-staticの3値、DBで保証されたNOT NULL、別Writerの実到達性、Ownerが意図した分類・有効時点は**別Claim**とする。
+例：Java `OrderStatus {NEW, ACTIVE, CLOSED}` に対して、DB列が `VARCHAR NOT NULL` で、旧ファイル経路から `HOLD` が書き込める可能性があるとする。Java Enumの3値だけを取り込んでTEIの業務値域を自動確定すると、ファイルを利用していたConsumerや旧レコードの意味が失われ得る。逆に未知値を無条件に`NEW`へ置換すると、欠落した検証・履歴・業務判断を隠す。Source-staticの3値、DBで保証されたNOT NULL、別Writerの実到達性、Ownerが意図した分類・有効時点は**別Claim**とする。
 
 | 対象の変形 | 保存を検証する性質 | 必要な停止線・Owner |
 | --- | --- | --- |
@@ -218,11 +218,57 @@ P0は段階Aの一つのQuery/Commandと段階BのSource-static/Observedの分�
 
 ### 12.1 一つの変更で両方を見られる最小負例
 
-- **MS-01（値域に対する閉包不足）**：Java Enumは3値、DBに値域CHECKはなく、別ファイルWriter未観測。\`closed-domain\`はSource-staticに留め、全業務閉値域・MECE PASSを主張しない。業務上\`HOLD\`を新値として採るか拒否するかはOwner判断。
-- **MS-02（時点と変換表）**：同じ旧コード\`A\`が有効期間によって別の新コードへ対応する。ファイル取込時点と業務上の適用時点を明示せずに最新表へ変換し、過去再実行を一致と主張しない（#2555）。
-- **MS-03（契約は同じ、配備が変化）**：在庫引当を同期Callから非同期Messageへ置換。公開Action IDと入力が同じでも、応答時点の確定性と再試行可能性は異なる。未確定の\`accepted-to-queue\`を\`stock-reserved\`としない（#1174/#2542）。
+- **MS-01（値域に対する閉包不足）**：Java Enumは3値、DBに値域CHECKはなく、別ファイルWriter未観測。`closed-domain`はSource-staticに留め、全業務閉値域・MECE PASSを主張しない。業務上`HOLD`を新値として採るか拒否するかはOwner判断。
+- **MS-02（時点と変換表）**：同じ旧コード`A`が有効期間によって別の新コードへ対応する。ファイル取込時点と業務上の適用時点を明示せずに最新表へ変換し、過去再実行を一致と主張しない（#2555）。
+- **MS-03（契約は同じ、配備が変化）**：在庫引当を同期Callから非同期Messageへ置換。公開Action IDと入力が同じでも、応答時点の確定性と再試行可能性は異なる。未確定の`accepted-to-queue`を`stock-reserved`としない（#1174/#2542）。
 - **MS-04（非可逆Projection）**：OData/画面へ公開した列には元の区分・Source identityが欠落。これを元データの同等性や変更権限の証明に使わない（#2497/#2516）。
 
 これらは#1180/既存独立Expected/各Ownerへの**既存Caseの差分条件**であり、新しいHarness、第二のTrait Engine、Migration Mapping Registry、全方式共通の意味論や正式仕様を増やす根拠ではない。必要な実Target・実Consumer・Owner/Policy評価が無ければ**NOT RUN / not qualified**と記録する。
 
 **本追補の主張上限**：Subsystem分割、Source抽出、同言語再生成、Java/.NET/Go/Wailsの同一Scenario、REST/OData/File/MFT実連携、現行Grant・実DB・Cutoverの追加実証は行っていない。設計の責務接合と最小反証条件のみであり、[Draft #3255](https://github.com/hat47x/tei-platform/pull/3255)・#2555・Trait各Ownerの採用判断を代行しない。
+
+## 13. 一つの業務Functionに対する再生成準備の有限判定（2026-11-08、設計／NOT RUN）
+
+この節の独自の問いは、**現行TEIが何を実際に読み・解釈・受理・利用できたなら、特定Operationの旧→新再生成を資格ありと呼んでよいか**である。単なるReader成功・生成成功・2 Targetの値一致では足りない。他のOwnerがすでに持つRole→Type/Bindingの[ST-02/03/04/09](PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md)、[Design Context #3262](TEI_DESIGN_CONTEXT_TEST_HARNESS_INTEGRATION_2026-11.md)、[Trait履行 #3278](TRAIT_ATOMIC_COMPOSITION_AND_FULFILLMENT_2026-11.md)を、**対象Operationだけ**に絞って組み合わせる。追加の永続Schema/Readiness Engine/Scenario正本を作らない。
+
+### 13.1 現行コードと未成立を分ける
+
+2026-11-08にmainから静的に確認した `internal/validation/validation.go` の `attributeRoles` には、`tax-value`、`tax-rounding`、`currency-rate-*`、`numbering-*`、`holiday-date` など [PR #3248](https://github.com/hat47x/tei-platform/pull/3248) の17語彙がある。対応試験は**Role文字列の認識と誤記拒否**を証明する範囲である。`tax-value` に `std.decimal` が要求されるか、Precision/Scaleや有効日・税率選択をどう照合するか、Java/.NET/CSV/OData実Targetが同一結果を返すかは別で、現状このRole語彙受理からは導けない。実際のBusiness Role→Type/Binder検査は未実装と[確認記録](../evidence/XTEA_LOWCODE_ROLE_VOCABULARY_2026-11.md)に明記されている。
+
+[Issue #3262](https://github.com/hat47x/tei-platform/issues/3262)には実CLI 9 read-only reply、保存済み6 Stepの局所基線があるが、**要求対象Functionの全Required Source/Role/Parser/Rule/Relation/Meaning閉包や、AIによる未知Ruleの自動発見を実証したわけではない**。一部のScenario Test/CIがPASSしても、Legacy移行の独立Expectedや全書込み経路が揃ったことにはならない。
+
+### 13.2 対象限定Witnessの判別列（実Schema提案ではない）
+
+| 判別列（Operation一つ・固定Scopeに限る） | 必要な根拠 | 欠落時の扱い／Owner |
+| --- | --- | --- |
+| **Required closure** | 対象OperationのData/Function/Business/Rule/Relation/Scenario/Sourceと外部Writer候補を、Sourceから独立に必要集合として列挙 | 必要集合が定義できない場合は `unknown-required`。#3262/#2823。空集合へ勝手に縮約しない |
+| **Actually loaded & interpreted** | 実Source byte・Parser/Role version、実Loaded occurrence、意味として解釈を許すSource Binding | read-only結果に項目が見えたことは、全Sourceを読んだ証拠でない。#2620/#3030 |
+| **Meaning qualification** | 属性Role・値域/時点/Unit・Semantic TypeRef、業務OwnerのAccepted revisionと未解決 | Role名を受理しただけなら `vocabulary-only`。#1223/#2495/#267。Owner受理に自動昇格しない |
+| **Selected & actually consumed** | Target生成器の選択Provider/Plugin/Binding、実ロード/呼出、Source/Artifact digestと実Toolchain | 候補解決と実消費を混同しない。#951/#1121/#2831 |
+| **Target obligation** | 必要なValidation/ConditionalWrite/Failure/Transaction/Recoveryを実Targetが満たす証拠 | Traitラベル・実装署名・Hintだけなら `unverified`。#3278/#259/#1174 |
+| **Independent Scenario & observation** | 元コードと生成結果を別Oracleで検査したInput/Outcome/Effect、独立Read、現行Authority | 自己生成Expected・一つのHTTP 200・CSV ACKは不足。#1180/#2514/#2542/#2555 |
+
+**判定規則の提案**：一つの必須列に `unknown/partial/unsupported` があれば、対象Operationについては **qualified migration / qualified regenerationを宣言しない**。別の用途では `read-only inventory`、`candidate generation`、`source-static analysis` の限定成果を記録してよい。すべての列が揃っても、Target別実権限・実外部Effect・Owner Cutoverの追加資格を自動的に付与しない。判別列を一つのBooleanや固定Core enumへ縮退させない。
+
+### 13.3 もっとも小さい実験候補：注文の税額と旧ファイルWriter
+
+**架空の業務変更例**：注文金額に税を適用する旧Java Functionと、旧固定長/CSV入力経路があると仮定する。意味上必要なものは、金額・通貨・税区分・税率の有効日・丸め規則・不明値の扱い・注文の書込対象。現実の旧ソース・実環境にこれらが存在すると主張するものではない。
+
+| 比較段階 | 期待する限定成果 | 誤ったPASSの反例 |
+| --- | --- | --- |
+| **C0 Source inventory** | 旧Java/DB/ファイルScript、未観測Writer、必要な税Rate・日付・丸め規則の有無をSource位置付きで記す | Java側だけ検査し、他のWriterが未取得なのに「全入口で同じ税計算」と主張 |
+| **C1 Role/Type meaning** | `tax-value` の既存Role検査と、必要なDecimal/Rate/Date/Scale/RuleのBinder不足を**別の診断**で記す | Role文字列が合法だから税額計算のSemantic/Provider適合も成立とする |
+| **C2 Generated target** | 同じAccepted Rule/Scenarioを固定してGo/Java/.NET候補へ明示Binding。使った実Source/Toolchain/Generated bytesを識別 | TypeRefの名前が同じだけでTarget実行・丸め同等性・Grant同等性を認定 |
+| **C3 Cross-route consumer** | 非HTTP内部QueryとHTTP Read、File/ETL Consumerで同じ対象・時点・可視範囲の**必要な観測**を比較 | JSON/CSVのNULL、Decimal scale、順序/未認識コード、公開範囲の損失を無視 |
+| **C4 Effect / cutover** | 隔離実DBで旧/新を独立実行し、Action対象・Receipt・独立Readを照合。旧Writer停止/権限切替は別Owner | 非同期送信受理を税額確定、または旧DB Write Owner切替済みと報告 |
+
+**最初の実装可能な差分**は、新Parser・Providerや全Targetの生成ではない。#3262が進めるP-1b1の対象FunctionのRequired/Loaded/Parsed/Role/Meaningの欠損を、既存#1180のScenario候補・#1223のST-02/03および本書の三角検収へ**同じSource revisionと独立Expected**で受け渡すこと。少なくとも `vocabulary-only` と `required-source-unobserved` を誤成功にしない負例が独立に判別できれば、次の実Consumerを選べる。旧Codeの本番書込みと生成Targetの本番二重実行はしない。
+
+### 13.4 既存計画に対する優先順・失効
+
+- **P0 (この横断レーン)**：#3262の **一Functionの必要集合／実Source閉包**と、#3248の **V0 Role語彙**の上限を一つの比較票に束ねる。Role→Type/Binder V1が未実装なら不足として表示して終了し、要求全体を「Validation不成立」と一括解釈しない。
+- **P1**：#1223 ST-02/03、#2498の既存外部表現反例へ、Decimal/NULL/時点の一因子変更を渡し、二Consumerで保存/損失を別判定する。ファイル輸送・受領は#2542/#2604が担当。
+- **P2**：同言語再生成→異Target比較、Wails ApplicationとStudio Hostを別資格、現行Grantと旧Writer失効を別検証。#259/#2555を主担当とし、このPRに新Driver/Runtime/Targetを実装しない。
+- **変更時の失効**：Required Source/Schema/Role定義、業務Rule/Accepted revision、Plugin/Binder、Target/Artifact、Disclosure/Grant、実旧Writerやコード変換表の有効期間が変われば、影響するClaimを再評価。意味不変でもArtifactと実Target資格の再確認は必要。A→B→Aで旧RunのOwner/Grant/Effectを自動復活させない。
+
+**証拠の上限**：#3248のRole語彙/誤記拒否はmain実装と既存試験記録に基づく。#3262の限定実CLI/Scenario実測は同Issue側の既存Runに帰属し、このPRが再実行したわけではない。C0〜C4のLegacy税額例、V1 Binder、Java/.NET/Wails/HTTP/File実比較、Source closure全件・実Provider効果・Owner採用は**NOT RUN**。P0 Self-Build #2831・Studio #1124の既存直接ブロッカーに新しいHard Dependencyを追加しない。
