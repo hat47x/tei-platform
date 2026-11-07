@@ -78,7 +78,7 @@
 - 過去headのCI成功を現headへ移さない。新しく追加した負例のexact-head CIが成功するまで、その新ケースは**NOT VERIFIED**。
 - CLI output／Rule契約／Artifact Bodyが変わった場合は、各Consumerにとって何を同値とすべきかをOwnerへ返す。むやみに全属性のbyte同値を強制しない。
 - 実Providerや業務意味、現在認可、Manifest/Consumer不足範囲を「モデルとArtifactが一致したから成立」に昇格しない。
-- 他Issueの確定意味・ADR/Gate・main固定版を更新しない。この作業は独立ブランチDraftで保持し、資格確認まで統合しない。
+- 他Issueの確定意味・ADR/Gate・main固定版を更新しない。この作業は独立ブランチで行い、変更範囲の検証結果を記録して統合する。Draftは作業中の表示であり、解除して統合する。
 
 
 ## 7. 実Go CLIのexact-head CI観測と、完成度が一致しない反例（2026-11-03）
