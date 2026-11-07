@@ -281,3 +281,56 @@ Product R1-0〜4の検証では、独立Referenceの `ExecuteScopedCanonicalRead
 **テストデータ生成との接続**：Data/Function/Businessから制約付き正負Datasetを導く新しい並行Draft [#3258](https://github.com/hat47x/tei-platform/pull/3258)・[#3259](https://github.com/hat47x/tei-platform/pull/3259)・[#3260](https://github.com/hat47x/tei-platform/pull/3260)・[#3261](https://github.com/hat47x/tei-platform/pull/3261)は全てDocs-onlyの**競合する採用前候補**として扱い、#3236へ第二Generator/Dataset/Scenario SSOTを持ち込まない。将来受理される制約付きDatasetがあれば、上記の「非公開Sourceだけ変える」「Operation/Roleだけ変える」などの対照要因を#1131の既存Dataset／#1180 Scenarioと#2514の**独立Expected**へ配分する。原典未確認の「強属性」をToggle/Slider等の適合条件に自動昇格させず、既存Facet/Value Domainの受理済み制約だけを使う。
 
 **次工程と責務**：P0=SUIの局所非単射・TEIの操作面driftという有限な**既存の実測**を、#2497/#2507/#2582のread-only資格票へ持ち込む。P1=#2586の実Function→SQL/Provider ReadにSource/Context/Scope Witnessを加え、同じResult SliceからTable/Form二表現を局所比較。P2=#2500/#2598/#1174で一意なInverse/現在Grant/Effectを**別試験**にする。既存#2514/#1180へ候補と既知Mutantだけ渡す。新Go/Node test、実TEI Product 二View、実Provider/Reverse Write、Owner意味受理は**今回NOT RUN**。
+
+
+## 12. Product Readと三視点Diagramを並列P0にする：共通Source/Identity・異なる資格（2026-11-07追補）
+
+### 12.1 優先度を修正する理由
+
+[三視点Diagram/CRUD製品受入 Draft #3263](https://github.com/hat47x/tei-platform/pull/3263) はX-TEA Modeler由来のData/Function/Business各図面の表示・編集、CRUD等のcross-referenceを**TEIモデラーのP0**と位置づけている。§8〜10の「Product Header実Read→Form/Table」を**唯一のP0**として図面/CRUDをその後に置くと、標準Modelerとしての中心価値を遅らせる。次の二つを**並列P0**とし、同じSource/Meaning/Identity証拠へ合流させる。
+
+| レーン | 実証対象／最初の独立Expected | 必須Witness | 完了と呼ばないもの |
+| --- | --- | --- | --- |
+| **P0-M Model→Diagram/CRUD** | 受理済みの限定 Data / Function / Business Sourceから、3図面とFunction×Data CRUD表を**headless read-only**で導出し同じSource IDへnavigate。複合Key、1:Nの関係Role違い、手作業・DFDを含む | Required Design Source/Relation/Role/CRUD宣言の閉包、出典Span/Revision、ノード・辺・Occurrenceと表セルの型/根拠、未解決・非開示 | 正しいRendererの可読性、可逆Editor/Studio実接続、実Runtime DB Effect、SHO納品 |
+| **P0-R Function→実Read→二表現** | §8/§10の `order_entry.recent_orders` Product Query/SQL/Provider実Readを同一Attemptで束縛して、Result Slice→Data Context→Form/Tableを読み取り専用比較 | Function/Query選択、実SQL raw+args、Physical Provider、Row/Field/Scope/Read epoch、Subject/Context | 参照PG局所PASSだけでProduct E2、全OrderLine母集団、実Edit/Commit、同Contextだけで共同Snapshot |
+| **P0-C 接合の品質** | P0-Mで図上の `sales.order` とP0-RのHeader Subjectが一致するか。**同じ表示Keyではなく型付きSource/Identity/Scope**で結ぶ | 元Source revision/Locator、関係Role、対象粒度、Target Occurrence、Query Result/Provider readが支持する範囲 | CRUD表の `R`宣言からそのQuery実行完了を推論、`C/U/D`宣言から現在Grantや実Provider Effectを推論 |
+
+P0-MはP0-Rに**依存しない**。Data/Function/Business Sourceの閉包があれば、DB未接続でも図の構造・CRUD宣言のread-only適格性を検証できる。P0-Cでは両方のWitnessが存在する部分だけjoinし、片方が欠測なら対応セルを`unverified/unresolved`として記録する。これが「Modelerのモデリング能力」と「生成Applicationの実行能力」の境界である。
+
+### 12.2 図・表・操作を同じ構造へ合成するが、意味正本は増やさない
+
+TEI標準構造は `Subject/Relation/Occurrence/Role/Identity/Time/Scope` を保持し、別の**表現型Instance**がDiagram（Graph）、CRUD Matrix（Table）、Form/Tableを投影する。Diagram Profileは配置・表示順・強調・属性と具体例の並置を表すが、表示座標や行列セルをData/Business/Functionの新正本へ格上げしない。汎用Graphの辺ID/方向/多重性を保ち、Relationの1:N表示だけで組成・参照・複合定義域を同一視しない。
+
+Cross-reference各セルは用途ごとの根拠を区別する：
+
+- **declared**：Function/Business Sourceに明記されたread/create/update/delete・手作業・外部授受。
+- **derived candidate**：依存経路/Business Procedure/Ruleから可能性として導出された操作（採用済みOperationや実行済みCommandではない）。
+- **observed effect**：特定Attemptにおける実Request→Provider Effect/Receipt/独立Readで観測された範囲（実対象・版・Grant次第）。
+
+`not declared`、`not observed`、`not fetched`、`withheld`、`partial`、`proven absent` は別状態。行列の空欄は越境CUD=0や全網羅を示さず、閉包が証明されるまで断定しない。実Effectや業務Procedure InstanceとDFDのデータ授受を混同しない（#1125/#1129/#1174/#3250）。
+
+図上編集は(a)配置だけのPresentation Change、(b)一意に逆写像できる型付きSource Proposal、(c)非単射で逆変換不可能な表示変更、(d)実Action Intentに区分。Meaning Proposalを保存する前にはSource位置/現在Revision/Owner Acceptance、実Operationの前には現在Grant/RequestとEffectをそれぞれ検証。Mermaid風SHO図解は独立した文書ソース/RendererのConsumerであり、TEI図への参照Bindingがない限り自動的にTEI Meaningを変更しない。M-01〜10の独立Expectedと具体的Editor/SHO受入は既存#3263/#1124/#2497、SHO #5/#6/#19に置く。
+
+### 12.3 テスト生成の前段：Required Design Closureと受領完全性
+
+[#3262](https://github.com/hat47x/tei-platform/issues/3262) のDesign Context QueryはP0-M/P0-R双方の**生成前提**である。Required Source/Meaning/Role/Relation/Requirement/Scenarioを用途相対に定め、`declared → discovered → loaded → parsed → bound → returned → received`を同一Workspace/Revision/Consumer Scopeで照合。CLI/将来MCP/Studioは**同じ閉包の別投影**とし、CLI一覧やTool呼出しの成功を全Source受領に昇格させない。
+
+- [main統合 #3264](https://github.com/hat47x/tei-platform/pull/3264) の限定実証：単一実TEI Binaryで9種類のread-only CLI、Product Skill静的14件、Required Source `readByLoader:true`、欠落/異版/未読込の合成負例を検査。**Design Contextの全Required集合・実MCP/SHO/外部Harness受領完結は未実証**。
+- [main統合 #3266](https://github.com/hat47x/tei-platform/pull/3266)/[#3268](https://github.com/hat47x/tei-platform/pull/3268)：既存Pinned Scenario 6 Step、実CLI負例4/独立義務2による**限定的な判別力の検証**とSource/Scenario変更で起動するCI Pathの拡張。Go局所statement coverageはC0相当（限定試行10.1%）、C1/全要件/NFRは未計測。**新しいModel→図/CRUDのテストデータ生成が実装済みとの主張ではない**。
+- [#3273](https://github.com/hat47x/tei-platform/pull/3273) は未カバーRuleから**新しい**Scenario負例を提案・評価するT1のDocs-only Draft。P0-Mは既存#1180 Scenario/ #2514 Independent ExpectedへM-01〜10のRequiredを示し、#1131のDataset/AI生成器や第二Oracleを#3236で作らない。
+- 実Toolの戻りが途中切断・欠落し、別Revision/SourceのPageが混在したら`incomplete/stale`。非開示Subjectの存在・件数・Hintまで外部Consumerへ洩らさない。Expectedは同じ生成AI/RendererのGot出力から逆算せず、Owner受理モデル/固定Fixture/既知Mutant等の**独立根拠**を持つ（#2514）。
+
+### 12.4 既存Driver Scenarioへ手渡す最小の横断受入票（新Runner/Case SSOTなし）
+
+| 識別 | 一因子変更 | 独立Expected／実証可能な否定 | 既存Owner |
+| --- | --- | --- | --- |
+| DM-01 | 1:N数値多重度同一、Relationの役割だけ変更 | 図の辺Role/出典が変化。CRUDセルや業務Compositionを同一視しない | #1126/#3263 |
+| DM-02 | Business DFD矢印だけ追加、Procedure Step実行証拠なし | データ授受を説明、Workflow/実行順/Provider Effectの完了は未確認 | #1125/#3263 |
+| DM-03 | あるFunctionの`R`宣言を追加、実Product Readerなし | CRUD宣言のセルは変わるが実SQL/Rowset/Provider Readはunknown | #1127/#2586 |
+| DM-04 | 図レイアウト/Markdown説明だけ変更 | Model意味/CRUD宣言は不変。納品Artifactは変わり得るためRenderer/SHOを局所再確認 | #2497/#1124/SHO #19 |
+| DM-05 | Diagramの表示グループが複数元Relationに対応 | グループから特定Source/Edgeを一意に選んで自動Reverse Patchしない | #2497/#2500 |
+| DM-06 | Design Queryの1 Page/Tool返信が欠落してCRUD=0に見える | Required/Received閉包不成立なら`partial/incomplete`、不在の証明へ昇格しない | #3262/#2514 |
+| DM-07 | 同一`sales.order`だが別Workspace/Source RevのDiagramとForm | Cross-view選択/編集/Actionを同一現行Subjectと扱わない | #3181/#2506 |
+| DM-08 | Pattern宣言は同じ、BOM/Plugin/Provider版だけ変更 | 図の局所不変部分とCurrent Renderer/Adapter/Operation適格性を分離し、未検証版を実行資格へ昇格しない | #3267/#951/#2582 |
+
+これは要求探索と**実装計画の接合表**であって、現在の製品内で自動検出されているCase群ではない。G0/G1/G2等のOwner/Gateは#1119、実Go/CLI P0-M、Product P0-R、Studio/SHO Diagram、Formal Meaning Acceptance、実MCP/Harness/Provider/Writeの実行はすべて**今回NOT RUN**。P0-CのHeadless側で初めに揃えるべき出力は「三図・CRUDの同一Source参照」「不適格セル・失効位置」「Function→Query→Provider/Outputとの差」であり、ピクセル完全一致・独自Diagram DSL・固有Hostはこの段階の前提にしない。
