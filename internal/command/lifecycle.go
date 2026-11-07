@@ -176,14 +176,12 @@ func (l *Lifecycle) MarkUnknown(commandID, owner string, generation int, reason 
 	return nil
 }
 
-// MayReplayは、同じowner/generationで再送してよいかを返す。unknownとobservedは
-// 再送できない。
+// MayReplayは、同じcommandを新たにDispatchできるかを返す。
+// dispatchedは既に実行中、unknownは不明な副作用があり、observedは
+// 結末を記録済みのため、いずれも再送できない。
 func (l *Lifecycle) MayReplay(commandID string) bool {
-	existing, ok := l.attempts[commandID]
-	if !ok {
-		return true
-	}
-	return existing.Stage != StageUnknown && existing.Stage != StageObserved
+	_, alreadyDispatched := l.attempts[commandID]
+	return !alreadyDispatched
 }
 
 // StageLifecycleは、Command試行の段階を保持する境界である。in-memoryの
