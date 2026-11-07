@@ -218,3 +218,69 @@ BOM-A（Query Provider＋DB Access）とBOM-B（Report Renderer＋Export）が�
 **実装済み範囲**：Goの\`supplied-locks-pairwise\`は構文上のLock候補集合と全2項を照合する**試験計画のみ**。入力の不変性とTarget混在の棄却を含む。孤立したGo試験で追加4 Test（うち255部分集合の全列挙）がPASS。**GitHub exact-head CI、#951/#1016実Resolver/実Provider、#1180実Runner、Constraintの完全Source Closure、Qualified BOMの真正発行、BOM-A∪BOM-B実ConformanceはNOT RUN。**
 
 **次の最短縦断**：#3262 Design Contextで対象範囲と未収集を確定 → #951の既存解決結果をJSON候補として取得 → \`supplied-locks-pairwise\`でLock付き試験計画を生成 → #1180の既存Test Scenarioを各exact Target/Artifactへ実行 → #2514で完結度と独立Expectedを検査 → #3267で限定的BOM行へ物化。別Planner/Resolver/Runner/Publisher Authorityは追加しない。
+
+
+## 10. Trait義務・設計Coverageと同一AttemptのWitness束縛（2026-11-07／横断・限定Reference）
+
+### 10.1 Atomic TraitがBOMに追加する「検証前の義務」
+
+[#3279](https://github.com/hat47x/tei-platform/issues/3279)ではTraitを、Provider/Pluginに実装を強制する**原子的・合成可能な契約**として管理する。Trait Profileは集合の便宜的な投影であって単一の巨大契約ではない。Required Traitを宣言しても実Providerの存在を保証せず、`generated`・`provided`・`manual-required`・`external`のようなFulfillment方式と対象Target、実Source/Artifact、Conformanceを別に照合する。**manual-requiredなのに実装がない状態**は設計／開発環境で明示的に拒否できることを基本要件にする。
+
+BOMは既存#951のContract解決結果に対し、Traitごとに`Required → Bound Implementation → Fulfillment Check → Conformance Evidence`という**追加の依存／検査義務**をread-onlyに投影する。Trait名一致、Interfaceの型一致、標準実装の存在、Open APIへのアクセス可能性は、当該組合せで実動作検証済みであることを意味しない。
+
+BOM再利用では、次の変更を異なる再資格条件として扱う。
+
+| 変更 | BOMへの影響 |
+| --- | --- |
+| Open/unpromised上流APIの更新 | 依存下流Adapterと該当Trait/Contract/Scenarioの再検査。PublisherのStable保証を偽造しない |
+| 手動実装が欠落したTrait | 該当Target/Plugin構成を実行前にunfulfilled。別のデフォルト実装へ無断fallbackしない |
+| 実装は存在するがIndependent Expected未取得 | 構造的なFulfillment候補まで。Conformance未検証を維持 |
+| Generator/Toolchainのみ変化 | 実消費ClosureとArtifactに基づく当該Tupleの再資格化。無関係Pluginは非干渉 |
+| Tenant/Grantのみ失効 | 過去BOM/Conformance履歴は保持。現在の開示・Operation/Effectを拒否 |
+| 新CLI/Studio Adapterだけ追加 | 選択された実Consumer/Buildへの影響を実測。全Targetを無条件に再ビルドしない |
+
+### 10.2 Coverageは少なくとも四つの異なる分母を持つ
+
+| 指標 | 分母 | 誤って推論してはいけないこと |
+| --- | --- | --- |
+| **Version Pairwise Coverage** | 宣言軸の二項、または存在が確認された候補Universeの二項 | 2項100%を全組合せの相互作用/実PASSとする |
+| **Requirement/Scenario Coverage** | #3262で対象Scopeに必要と確定した機能・非機能・負例・Trait obligation | 未Loaded要件やunknown依存を「不要」とする |
+| **Code C0/C1 Coverage** | 実BuildしたSource/Target/Package・計測器で観測可能な命令/分岐 | C0/C1が高ければ正しいIndependent Expected/意味を検証したとする |
+| **Decision Graph/Client Reaction Coverage** | #3274 HTTP Graphの必須Node/Edge/GuardとClient/Recovery分岐 | HTTPレスポンス受信や描画ノードだけでServer Guard/Effectを実証したとする |
+
+[#3273](https://github.com/hat47x/tei-platform/issues/3273)のIssue→Design Context→未カバー義務→AI候補→独立Expected→実CLI TestというDogfoodを、#3267のMatrix planと合成する。**Versionだけの差分で変化する義務**と**Source/要件/Rule/Client Contract変更で増える義務**を分ける。両方のRequired Closureが閉じたと説明できない場合は「未計測／未知」を保持する。AIがテスト生成しただけ、静的Skillが存在しただけでBOMのEvidenceを発行しない。
+
+### 10.3 合成したTest PASSが別Attempt・Artifact/Scopeのものなら発行しない
+
+既存の`Project`は外部から与えられた`Check`を`lockFingerprint`で単純束縛する限定Referenceであり、当初から`qualified:false`だった。ここに別の純粋関数`AuditWitnessBindings`（[witness_audit.go](../../tools/reference-verified-composition-bom/witness_audit.go)）を追加し、**同じAttemptオブジェクトの中で**全必須Checkが完了していることを確認する。
+
+- 固定した`Lock fingerprint`、`Source fingerprint`、`Artifact digest`、`Target`、`Scope`、`Scenario digest`、`Independent Expected digest`と、送られてきたAttempt記録が一致するかを照合する。
+- 必須CheckはCandidate Attempt側の報告ではなく、**要求側で先に固定**する。0 Step、途中打切り、SKIP、TIMEOUT、Partial、Unknown、Evidence Ref欠落をPASSにしない。
+- 同じLockへ複数Attemptが送られた場合は`ambiguous-attempt`として拒否し、最新時刻・配列順・最大PASS数による自動選択を行わない。実行元が特定AttemptをPinして再投入する必要がある。
+- 一つのEvidence Refを異なるAttemptへ再利用した報告、未知Lock、重複Checkを受理しない。同一Attempt内でのみ複数Checkが一つの実Runを構成する。
+- 結果は`not-run / ambiguous-attempt / identity-mismatch / incomplete / reported-failure / reported-pass`。**`reported-pass`は入力JSON相互の一致にすぎず、独立Expectedの真正性、実Providerのロード/Invoke、Conformance Issuer、現在Grantを証明しない**。常に`qualified:false,claimCeiling:fixture-identity-consistency-only`。
+
+この関数はBOM「発行」ではない。#1180/#2514の実Driver/Independent Expected/Run Evidence、#943/#2600の実Build Closure、#951のResolver、#1174のHost Effect/Receiptを同一Attemptに接続して初めて、Qualified-in-Scope BOM発行を検討できる。
+
+### 10.4 HTTP/Client Reactionを同じPlugin組合せの追加テスト対象にする
+
+[#3274](https://github.com/hat47x/tei-platform/issues/3274)が所有するREST例外系では、OpenAPIで示した成功/例外レスポンス型だけでは**HTTP応答喪失・Client Reaction・副作用確定不明・回復観測**を定められない。BOM対象Version/Targetが変わった際、同じServer/Client/HTTP Adapterの組合せで次のDriver負例を再実行する義務を設ける。ClientがGo/Web/Desktopそれぞれで別Transportを持つ場合はTarget別に評価する。
+
+| ケース | Check/受入 |
+| --- | --- |
+| API Response/Problem Type版変更 | Problem Details/typed Outcome/Client Reactionの写像。HTTP `detail`文字列解析に依存しない |
+| 更新後のACK喪失・Commit unknown | Idempotent Operation identity/Receipt/独立Readの経路。無条件再送で二重書込みしない |
+| 401/403/409/412/422/429/503とRetry-After | 機能/Host Grant/情報秘匿を守り、Retry Hintをwrite許可へ昇格させない |
+| Graph Node/Edge/Guard更新 | Source ID/条件/必須Guardを保ち、Graph表示済みを実Guard動作済みとしない |
+
+Server/ClientのGraph構造、HTTP Adapter、Conformance EvidenceをBOMに**リンク**するだけで、専用HTTP Runtimeや別RunnerをBOM側へ導入しない。具体的な実践は#3274と#1180へ委譲する。
+
+### 10.5 次に実装すべき縦断（P0の昇格条件）
+
+1. #3262の一Function read-only Contextに、Required Contract/Atomic Trait/Test Obligation/Targetを**不足とともに**表示する。未Loadedと不在を混同しない。
+2. #951/#1016の実Resolverが返した**同一Revision**の候補Lockを`supplied-locks-pairwise`へ渡す。候補Universe不足は`unknown`とする。
+3. #1180既存Scenario/Independent Expectedと#943実Target Builderで、Provider 2版×Consumer 2版の実Runを取得する。C0/C1、Version Pairwise、要求、HTTP ReactionのCoverageを別票にする。
+4. 今回の`AuditWitnessBindings`相当のjoinを**実Execution Receiptの正本から**読み出し、実Source/Artifact/Target/Scope/Scenario/Expected/Attempt一致を再確認する。別RunのPASS合算を拒否する。
+5. 当該SubjectのOwner受理・Trust/Grant/Disclosureが別に成立した場合だけ#3267の限定BOMを発行。単独Reference PASSや履歴Cache hitは資格条件を満たさない。
+
+**実施状況**：設計は本節へ反映。Trait/HTTP Graph/Test Coverage/C0/C1の製品統合は未実施。`witness_audit.go`および合成テストは新規追加したが、最新GitHub HEADのCI結果を確認するまでは実装上の合格を主張しない。Trusted/actual E2EとOwner受理はNOT RUN。
