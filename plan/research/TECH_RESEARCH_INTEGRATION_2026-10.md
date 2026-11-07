@@ -727,10 +727,10 @@ mainへ統合された[#3124](https://github.com/hat47x/tei-platform/pull/3124)�
 | --- | --- | --- |
 | CommandがCommitを返す | UnitOfWork / Provider boundaryの応答 | 永続化、独立観測、Owner受理は未確認 |
 | Receipt Lookupが同じOperationIDを再取得 | #3131の特定PostgreSQL経路でのReceipt existence/replay | **対象行が現在も期待値であるとは言えない**。Receipt削除とResource保持を対照 |
-| 独立Data ReaderがResourceを再読取 | Resource ID・Version・列・Scope・Snapshot／時点を固定しActualとExpected比較 | **このReader経路の同一Attempt本格E2EはNOT RUN**。Row 0件／RLS／Replica遅延をresource不存在としない |
+| 独立Data ReaderがResourceを再読取 | **main #3155で実装・実PG局所CI成功**。別poolでobjectsのVersion/Valueを読み、Commit payloadに一致した場合だけresource-observedとする | すべてのCompositionでの既定化・Current Grant・RLS/Replica遅延・Owner/Consumer一改訂E2EはNOT RUN。Row 0件を不存在としない |
 | Consumerが現在の結果を受領 | Schema/Policy/Disclosureと対象・改訂・Attempt一致 | Business Completion/Meaning Acceptance/現在Grantの自動導出は禁止 |
 
-**研究の最小反例**：一つの合成受注に対してA：Receiptあり・objects現在値がExpectedどおり、B：Receiptあり・後続更新でobjectsが違う、C：Receipt削除・objects値は保持、D：Commit応答喪失でLookup=unknown、E：Receiptあり・別Tenant/別OperationID、F：Providerなしの参照MemoryUoW。A〜Fは独立Expectedを先に固定し、Receipt Lookup successとResource Result正しさを混同して判定するConsumer／Attesterを失格とする。既存#2998/#1174/#1163/#2514/TAI #514に属し、別の共通Persistence Engine/Receipt ABIを作らない。**新A〜F実統合試験とOwner受理はNOT RUN**。
+**研究の最小反例**：一つの合成受注に対してA：Receiptあり・objects現在値がExpectedどおり、B：Receiptあり・後続更新でobjectsが違う、C：Receipt削除・objects値は保持、D：Commit応答喪失でLookup=unknown、E：Receiptあり・別Tenant/別OperationID、F：Providerなしの参照MemoryUoW。A〜Fは独立Expectedを先に固定し、Receipt Lookup successとResource Result正しさを混同して判定するConsumer／Attesterを失格とする。既存#2998/#1174/#1163/#2514/TAI #514に属し、別の共通Persistence Engine/Receipt ABIを作らない。**A〜FのうちResource一致／不一致・Receipt削除はmain #3155と#3131で局所実証に進んだ。全A〜Fの同一Consumer横断試験とOwner受理はNOT RUN**。
 
 [main #3133](https://github.com/hat47x/tei-platform/pull/3133)はAccess判定ログ用ChainFileで途中改変を検出できるが、既存ツールの-access-logはなお従来Fileで、ChainFileを未使用。末尾削除は外部Pin headがなければ検出できず、全履歴を再ハッシュできる者や虚偽判定本文の正しさも防げない。**Record存在／記録連鎖整合／決定の真偽／Hostによる現在認可**は別の検証列とする。
 
@@ -749,3 +749,51 @@ mainへ統合された[#3124](https://github.com/hat47x/tei-platform/pull/3124)�
 [main #3121](https://github.com/hat47x/tei-platform/pull/3121)では、参照Toolの環境Grantを追加しようとすると、Provider CapabilityがPlugin Catalogへ解決できず PERMISSION_GRANT_CAPABILITY_NOT_RESOLVED が実発生した。これは**ToolをPluginへ正規化するか、別種のPrincipal/Grantとして定義するかが未決**であり、GrantのValidationを緩めてSource/Capabilityの未解決を通してはいけない。OKF AttesterやDSH/MCP Adapterを接続する際にも、Skill/Tool文書の存在を環境Grantとして推論しない。既存#951/#1174/#1251およびAccess設計Ownerで決定し、Research Draftで新しいHost/Plugin登録方式を先行採用しない。
 
 **優先して実証する順序は不変**：read-only Source/Provider/Consumerの実Read閉包→必要な場合の同一OperationIDでのEffect/Receipt/Data Readback→Meaning/Grant/Attesterの用途別再資格化。H2/H3隔離・G4・SHO Writerを互いにHard Dependencyにしない。
+
+
+### 10.31 機能に束縛される標準表現型：データ構造とRendererの間に置く契約（2026-11-07、標準データ構造・標準表現型のOwner議論を既存Issueへ還元）
+
+X-TEAのテーブル1:1／1:N→XF単票・明細→遷移の固定対応を、TEIの形式正本へそのまま昇格させない。ユーザーが提起した「テーブルから独立した標準データ構造」と「機能から独立した標準表現型」は別の再利用単位であり、具体的な表示・入力Instanceは**FunctionのData Contextと操作目的に束縛されることで初めて意味を持つ**。型定義やPalette Previewが単独で存在できることと、業務上有効な機能Instanceが単独成立することは別。
+
+**既存の単一Owner**：[Issue #2495](https://github.com/hat47x/tei-platform/issues/2495)が構造・多重Facet、[#2497](https://github.com/hat47x/tei-platform/issues/2497)がProjection忠実度と逆写像、[#2507の2026-11-07成熟追補](https://github.com/hat47x/tei-platform/issues/2507#issuecomment-6701694460)が標準表現型・Function合成、[#2506](https://github.com/hat47x/tei-platform/issues/2506)がData Context/Result Slice、[#997](https://github.com/hat47x/tei-platform/issues/997)が実UI Renderer、[#1127](https://github.com/hat47x/tei-platform/issues/1127)がFunction Patternを所有する。Research #3022に第二の表現型Catalog、Core enum、Renderer、Case SSOTは作らない。
+
+| 層 | 契約・再利用対象 | 独立して存在できない／保証しないもの |
+| --- | --- | --- |
+| Standard Data Structure | Record、Relation、Bag/Sequence、Hierarchy、Graph、Time/Spatial/N-D等。Entity/Edge occurrence identity、Grain、Cardinality、Order、Null/Missing、Read Scope/Completeness、Unit/時点は複数Facetで表現 | RDB table名・PK型＝業務意味、関係の存在＝実Query取得、全件の観測、編集許可 |
+| Standard Representation Type | Panel/Tab/Group等のレイアウト、Text/Single・Multi-select/Toggle/Slider等の値入力、Table/Tree/File-system/Graph/Chart/Timeline/Map等の構造・分析投影。定義・Preview自体は独立可 | Widget選択＝Data Relation、Tab非表示＝Data不存在、Slider範囲＝Business Rule、File-tree表示＝OS実権限 |
+| Function Binding | 明示的Data Context/Result Slice＋Field/Role/Relation path/Occurrence・選択集合＋Function Intent＋投影のloss/編集可否を適用 | 表現型だけで業務Function/Action成立、型名一致＝適格、UIで見える＝現在Disclosure許可 |
+| Operation/Host/Consumer | ViewChange→typed Intent→既存Operation/Grant/Provider/Receiptと、Web・Desktop・CUIの実Projection | Tab/Sort/ZoomやdragだけでCommit、Offer表示＝Host Grant、受理済みモデル編集＝実業務Data編集 |
+
+**検証の最小差分（試験正本は#2507のP-Form/Layout/TableChart/TreeGraph/Action/Dual-use）**：同じData Context上のPanel↔Tab／Table↔Chart／Tree↔Graphの切替で原Entity/Edge ID・Completeness・Source版・ActionのTargetが不変か、表示で失う情報を明示できるかを既存FP-01/02で判別する。Treeの単親化で隠れたEdgeを消さない。集計Chartの点を元明細1行に暗黙Patchしない。Slider stepと金額/数量Precisionが合わないならLossを宣言、未取得のSelect候補や非表示Tabを不存在としない。Form/Modeler/CUIの操作面が違っても同じBusiness Action IDの現在Grant・EffectをUIコンポーネントで捏造しない。最初から全UI種類の実装をGateにしない。
+
+**状態**：既存Issueへ反映済みの成熟設計候補を研究目線で橋渡し。正式標準表現型schema/DSL、実Renderer/Designer、Studio/SUIの全UI、Owner意味受理はNOT RUN。先行はHeadless Function→Binding→Projectionの説明可能性と二種類の異質Consumer、後続に実UI/Readback。
+
+### 10.32 Pattern宣言はまだ操作面へ実消費されない：Bindingの欠けた一辺を測る
+
+[main #3145](https://github.com/hat47x/tei-platform/pull/3145)の合成CLI観測では、見積り機能のPattern候補を追加してWorld/ModelRevisionが変わっても、tei operationsは8件のderivedのみ・declared 0・gaps 0のまま変化しなかった。[main #3167](https://github.com/hat47x/tei-platform/pull/3167)で受理済みWorld（Pattern5件）とCandidate World（6件）を実比較してもOperationは8件で同一。これは**Function/Patternが宣言されていることと、Operation Surfaceがその宣言を実消費したことは別**という反証である。
+
+照合の手掛かりはData ID、Capability ID、Relation targetの3系統だが、Data IDだけではread/list等のKindが曖昧、効果無宣言のread-only commandには対応Operationが無く、Relation targetはOperation側にない。[Draft #3172](https://github.com/hat47x/tei-platform/pull/3172)はW3のKind対応表と衝突/上書き条件を設計候補として整理しただけで、実配線・採用・意味受理はNOT RUN。読み取りcommandの未結合を勝手に書込Effect付き操作へ補完せず、origin=declared/out-of-scopeの扱いはOwner判断に戻す。
+
+さらに[main #3163](https://github.com/hat47x/tei-platform/pull/3163)の実試験で、modelRevisionは**管理対象Sourceの版**であり、Loaded World版・Function実消費版ではないことを固定した。空Workspaceでも空入力hashのmodelRevision／非空のstd catalog／declarationCounts.total=0は共存する。Functionへの表現BindingとOperationを検証する場合、World Fingerprint／modelRevision／Function Context source／actual consumed Pattern／Operation bindingを別証拠にする。名前・hash・8件Operations・validate okだけで閉包を成立としない。
+
+**次の最小一因子試験**：同じSource/ContextのPatternを1件だけ追加し、(a) World/Source Indexに宣言は実在、(b) 選択Patternが必要なRole/Scopeを満たす、(c) Operation Bindingが実表示されない現行結果、(d) 明示的に結べた候補だけにOperation ID／Action・Revision・Disclosureが引き継がれる将来結果、を独立Expectedと別列で対照。既存#2507/#2586/#2514/#1180がOwner。新Binding Engine、W3の先行採用はしない。
+
+### 10.33 ReceiptとResourceの観測資格がmainで分離実装された（旧§10.28の現況を更新）
+
+[main #3155](https://github.com/hat47x/tei-platform/pull/3155) exact HEAD 19f00c7e3fd89aecbac791002cb081c00052bcfe により、receipt-observedとresource-observedは明示的に別状態となり、persisted=trueは**Resource実再読取によるpayload/Version一致**に限定された。DetailedPersistenceObserver、effectcommit.ResourceReader、postgres.Provider.ReadResource、commandadapter.ResourceReadが追加され、別pool Connectionでobjectsを読む。既存Observerの互換契約は保全。
+
+[実PostgreSQL CI #42328707393](https://github.com/hat47x/tei-platform/actions/runs/42328707393)（postgres-conformance）はcompleted/success。Job #128269964949の実ログ926〜927・991〜992・1056〜1057行で、TestPostgresCommandObservesTheStoredResourceが3回RUN/PASS（SKIP無し）。Receipt確認の[#3131](https://github.com/hat47x/tei-platform/pull/3131)に続き、**実データの現在値確認に限定した一つの入口が成立**した。
+
+ただし、ResourceReadを実Product Compositionへ既定で有効化するか、読取権限・別poolの時点一貫性・Concurrent Update・Replay時の確認方法、Resultの現在DisclosureとOwner Business Completionは未決。resource-observedは**観測時点の特定Resourceの一致**であり、将来も不変・全Action scope完了・Owner Meaning acceptedを含まない。途中更新でReadが不一致となったとき、Commitが起きなかったと逆推論せず、Receipt/Resource両方を独立観測する。既存#2998/#1174/#1163/#2514で再資格化し、第二Receipt Store/Observerは作らない。
+
+### 10.34 Go供給・実Artifact・Source閉包と、外部Harness隔離を分離する
+
+**Build**：[main #3142](https://github.com/hat47x/tei-platform/pull/3142)で、選択された12 Moduleの.mod/.zipをgo.sumのh1と独立照合し、非選択5 Moduleは欠落で不合格にしない限定SB-0bが成立。Host cache非継承、1-byte tamperを検出する実測と[Health #42331834213](https://github.com/hat47x/tei-platform/actions/runs/42331834213)成功。ただし供給元Trustや正式Source閉包のOwner Acceptanceではない。[Open #3156](https://github.com/hat47x/tei-platform/pull/3156)では固定WSL2/Go1.27.3の隔離環境で供給からcmd/tei Buildが実成功しArtifact SHAを記録、一方既存ResolveSourceClosureは同じ対象をrejectedと判定。実Build成功≠Source Closure qualifiedの差が実証された。#3156の当該HEAD Healthは照合時in_progress、main未統合、G4はUNQUALIFIED。同一Stage1 Builder実使用・Stage2再入・二回Bit一致も未実証。#2831/#1090のSource Closure方針をResearch側で勝手に緩めない。
+
+**OSファイル制限**：[main #3152](https://github.com/hat47x/tei-platform/pull/3152)ではaccess.FileSystemの文字列Prefix照合だけだとRoot内junction→外側ファイル操作が通った実負例を踏まえ、Go os.OpenRootによるOS同一操作時の拒否へ切替。外向きリンクと、場合によってはRoot内の正当なリンクも拒否する局所特性・OS差を別記録し、[main #3159](https://github.com/hat47x/tei-platform/pull/3159)へ説明更新。ただしこれは**FileSystem API一経路**の制限で、外部DSHハーネスの全Tool/exec/Web/NetworkやProcessのSandbox成立にはならない。TAI #232/TEI #2515が隔離Owner。
+
+**外部送出**：[main #3153](https://github.com/hat47x/tei-platform/pull/3153)のDSH 0.2.2-rc.1ローカルMockでは、Agentが読んだ合成Markerがモデル入力だけでなくdsh_session_logのtool/result eventに2箇所現れ、Tool Resultの二次送出がある。[main #3161](https://github.com/hat47x/tei-platform/pull/3161)では**既定Profileでもsession log extensionが約45.5KB**のRequestに載り、503返答と200空body STREAM_CLOSEDで水位が進まず再送された。これらは実Mock HTTP観測であり、実外部Providerへの送信・保存・全Egressや通信遮断の実効性はNOT RUN。H2/H3のSkill/Expected Holdout非露出はPath/Tool/Session/Networkを含めて実強制した場合だけ比較適格とする。
+
+**合成禁止の境界**：go.sum一致・実Build artifact、os.OpenRoot拒否、DSH read-only session、OKF verified、Recorder Hash Chainの個別PASSを一つのWorld/Host security Gateに合算しない。現在実Readしたbytes、実接続境界、現在のGrant・Disclosure、実Network送出、Source ClosureとOwner QualificationをClaimごとに保持する。
+
+**次の実証優先**：P0=Function Data Context→標準表現Binding→read-only Operation/Consumerの一改訂実投影（#2507/#2586、未知とlossを保持）。P1=既に局所合格したResource現在値Readを実Function/Action Compositionへ連結（#2998/#1174/#1163）。P2=SB-BのBuild成功とSource閉包不適格が分岐する理由を#1090のOwner Contractへ戻す。P3=既存TAI #168のH2/H3隔離とDSH二次送出を実観測。実GUI/Writer/Provider Full E2E、Self-Build G4、外部通信の安全資格、正式Owner Meaning AcceptanceはNOT RUN。
