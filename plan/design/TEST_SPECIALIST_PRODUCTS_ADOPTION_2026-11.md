@@ -1232,11 +1232,11 @@ QueryやGraphを扱う「不在に関するTest Pattern」は、Positive Witness
 ---
 
 <!-- tei-test-source-and-proof-round2-20261108 -->
-## 27. 2026-11-08 第二ラウンドDogfoodingと実装境界：テスト生成の入力資格・実行経路・証拠の破れ目
+### 26.8 2026-11-08 第二ラウンドDogfoodingと実装境界：テスト生成の入力資格・実行経路・証拠の破れ目
 
 **差分の性格**：§18〜26のRequired/Observed/Qualified原則を再定義せず、現行mainで新たに**実観測された不連続箇所**を既存テストOwnerへ割り振る。T1-B（未知Ruleの盲検発見）を新しい机上試験一覧ではなく、実Source Reader・実Toolと独立Expectedを使う一往復に限定する。各PRの状態は本節作成時点のGitHubで確認したものであり、今後のmainへの統合・CI結果を先取りしない。
 
-### 27.1 Sourceを渡したつもりでも、実Loaderが設計を読んでいない
+#### 26.8.1 Sourceを渡したつもりでも、実Loaderが設計を読んでいない
 
 [第2ラウンドDogfood #3356](https://github.com/hat47x/tei-platform/pull/3356) は実TEI CLIの再測定（Go 1.27.3 / WSL2）により、修復済みのD-1/2/4〜8と、未解決の**D-3（`view`のFingerprint）、D-9（設計文書の実Loader不消費）、D-10（JSON形状差）**を分離した。製品独自の開発用MCP Server/Commandは今回確認できず、**CLI実測・MCP NOT RUN**。[#3346](https://github.com/hat47x/tei-platform/issues/3346)、[#3345](https://github.com/hat47x/tei-platform/issues/3345)、[#3347](https://github.com/hat47x/tei-platform/issues/3347)が個別の実現Owner。
 
@@ -1244,7 +1244,7 @@ QueryやGraphを扱う「不在に関するTest Pattern」は、Positive Witness
 - **D-3**：`view -format json`の`semanticFingerprint`は利用Namespaceに限定した指紋で、catalog/inspect/validate等の`worldFingerprint`・`sourceIndexFingerprint`と**対象範囲が異なる**。等しくないこと自体を版漂流と判定せず、同種同Scopeの指紋が揃わない場合にのみstale/unknown。欄の追加/Schema v1は#3345の契約判断。
 - **D-10**：`validate -json`の`diagnostics[]`は二重構造、`requirements.result`は配列、`model catalog`にbuiltin/stdが混在し、`plugin-lock`に独立形式版がある。単一共通`result.object`や全entries=業務宣言をConsumerが仮定すると**偽の欠損/過剰Required**を作る。実Command別Schema/Modeを正規化するのは読み手の明示責務だが、新しい第二意味正本・CLI偽MCP APIは作らない。
 
-### 27.2 「宣言した意味」「実装した作用」「実際のReader」は別の試験対象
+#### 26.8.2 「宣言した意味」「実装した作用」「実際のReader」は別の試験対象
 
 | 新たに成立した／計画された実装証拠 | 本テスト設計へ取り込む区別・資格上限 |
 | --- | --- |
@@ -1255,7 +1255,7 @@ QueryやGraphを扱う「不在に関するTest Pattern」は、Positive Witness
 | [Open #3363](https://github.com/hat47x/tei-platform/pull/3363) 環境Binding×既存Supports*の参照Matrix。24 Bindings中22 selected、2 missing（`editor.database_workbench`） | **参照Candidate Matrix**と製品Validatorの責務を分離。現Validatorは`editor.sql_analysis`等の限定Checkであり、Reference上missing 2件は製品Rejectや実Plugin Load Failureを意味しない。selected→actual invoked/Artifact/Grantは未確認（#3279/#951/#3267）。 |
 | [Open #3361](https://github.com/hat47x/tei-platform/pull/3361) Product Skill/Harness F0〜F5 | 実Source Read、Required充足、外部Tool完全受領、現在Disclosure、独立Expected、実Effectは6つの観測軸。H3限定Tool Read≠OS強制非漏洩・8,192byte切断解決・56/55 Reply欠落解決。新規H2の一Session実受領・Egressは未実証（#2509/#2515）。 |
 
-### 27.3 独立反例と受入条件 TT-115〜TT-122（既存Fixtureへ参照し、新Scenario SSOTを作らない）
+#### 26.8.3 独立反例と受入条件 TT-115〜TT-122（既存Fixtureへ参照し、新Scenario SSOTを作らない）
 
 | ID | 一つだけ変える対照入力 | 期待する局所診断・非主張 | 実行Owner |
 | --- | --- | --- | --- |
@@ -1268,7 +1268,7 @@ QueryやGraphを扱う「不在に関するTest Pattern」は、Positive Witness
 | **TT-121 Self-build claim substitution** | stage2の自称Process digestだけをStage1 artifactと合わせ、実Invokerが違う | L3拒否。Stage1 artifact→Stage2 process・child/argv・artifactの実独立照合が必要。Reference PASS≠`cmd/tei` G4 | #3360/#3362/#2831 |
 | **TT-122 Plugin Matrix reference-only missing** | 24 Binding中`editor.database_workbench` 2件に対応宣言なし。Validatorは当該Featureを能力照合しない | 参照`missing=2`は保持、製品不適合はunknown/別判断。selected 22も実Load/Invoke資格なし | #3363/#3279 |
 
-### 27.4 次に走らせる最小縦切りと、実装の優先順
+#### 26.8.4 次に走らせる最小縦切りと、実装の優先順
 
 1. **P0-R（Source Admission実測）**：#3356 D-9/D-10の現状を同一実Binaryの`workspace-files`/`validate`/`source-index`/`model catalog`で再実行。意図的に管理Markdownだけを加える試験と、宣言3 Ruleの実`*.tei` Sourceを残す試験を対照にし、**未読込FileをTest Requiredへ昇格しない一方、独立に指定済みRequiredを消さない**ことを検収。一般MarkdownのParserをこのテストで勝手に採用しない。
 2. **P0-C（Consumer契約）**：現main [#3354](https://github.com/hat47x/tei-platform/pull/3354)の11実CLI Reply/32合成Controlの同一Consumerから、D-3/D-10のmode/schema/FP Scopeの相違を**誤Missingと誤Completeの両方向**で試験。main pushの独立CI、実Response raw byteとTool Deliveryを別々に確認する。新Readerや第二Packetは追加しない。
