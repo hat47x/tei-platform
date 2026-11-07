@@ -57,7 +57,7 @@ func TestPostgresCommandObservesACommittedReceiptByLookup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Persistence != command.PersistenceObserved {
+	if result.Persistence != command.PersistenceResourceObserved {
 		t.Fatalf("persistence=%q, want observed", result.Persistence)
 	}
 	if value, version := readE2EObject(t, f); value != "updated" || version != 1 {
@@ -78,5 +78,59 @@ func TestPostgresCommandObservesACommittedReceiptByLookup(t *testing.T) {
 	}
 	if value, version := readE2EObject(t, f); value != "updated" || version != 1 {
 		t.Fatalf("receipt removal changed the object: %q/%d", value, version)
+	}
+}
+
+// TestPostgresCommandObservesTheStoredResource checks the stronger observation:
+// after Commit, ResourceRead reads the stored value through a separate pool
+// connection and compares it with the committed payload. Changing the stored
+// value afterwards makes the same configuration report not-observed even though
+// the receipt still exists.
+func TestPostgresCommandObservesTheStoredResource(t *testing.T) {
+	f := openFixture(t)
+	ctx := context.Background()
+	for _, statement := range []string{
+		"INSERT INTO " + f.schema + ".authority(application,capability,subject,action,resource,source,subject_link,membership,policy,enabled) " +
+			"VALUES ('order_entry','sales.submit','editor','write','order-1','postgres-authority',1,1,1,TRUE)",
+		"INSERT INTO " + f.schema + ".objects(application,resource,version,value) VALUES ('order_entry','order-1',0,'original')",
+	} {
+		if _, err := f.pool.Exec(ctx, statement); err != nil {
+			t.Fatal(err)
+		}
+	}
+	grant := f.grant(t)
+	newInvoker := func() command.Invoker {
+		executor := commandadapter.Executor{
+			Runner:          effectcommit.Runner{Provider: f.provider},
+			Grant:           grant,
+			OperationID:     "resource-observe-op",
+			ExpectedVersion: 0,
+			Payload:         []byte("updated"),
+			Effect:          &semantic.DataEffect{Kind: semantic.DataEffectUpdate, Data: "sales.order"},
+			ResourceRead:    true,
+		}
+		return command.Invoker{
+			Authorizer:          command.ReferenceAuthorizer{},
+			World:               commandWorldE2E(),
+			Executor:            executor,
+			DurableStore:        true,
+			PersistenceObserver: executor,
+		}
+	}
+	result, err := newInvoker().Invoke(ctx, commandRequestE2E())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Persistence != command.PersistenceResourceObserved {
+		t.Fatalf("persistence=%q, want resource-observed", result.Persistence)
+	}
+	// Change the stored value behind the receipt. The same ResourceRead must
+	// stop claiming the committed payload is visible.
+	if _, err := f.pool.Exec(ctx, "UPDATE "+f.schema+".objects SET value='changed' WHERE application='order_entry' AND resource='order-1'"); err != nil {
+		t.Fatal(err)
+	}
+	observation, err := newInvoker().Executor.(commandadapter.Executor).ObservePersistence(ctx, commandRequestE2E(), semantic.DataEffect{Kind: semantic.DataEffectUpdate, Data: "sales.order"})
+	if err == nil {
+		t.Fatalf("resource observation after value change succeeded: %+v", observation)
 	}
 }
