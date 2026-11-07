@@ -122,6 +122,10 @@ func main() {
 		return
 	}
 	if command == "commands" {
+		if len(os.Args) == 3 && (os.Args[2] == "-h" || os.Args[2] == "-help") {
+			io.WriteString(os.Stdout, "usage: tei commands\n\tdiscovery of the selected read-only commands; no arguments\n")
+			return
+		}
 		if len(os.Args) != 2 {
 			fmt.Fprintln(os.Stderr, "commands does not accept arguments")
 			os.Exit(2)
@@ -213,6 +217,11 @@ func main() {
 	var statePaths pathList
 	fs.Var(&statePaths, "state", "database compatibility state JSON; repeatable")
 	parseErr := fs.Parse(os.Args[2:])
+	if errors.Is(parseErr, flag.ErrHelp) {
+		printHelp(os.Stdout, fs, command)
+		return
+	}
+
 	// dbcheck needs neither a workspace nor a world: it reports whether a
 	// database can be used, so it runs before those requirements apply.
 	if command == "dbcheck" {
