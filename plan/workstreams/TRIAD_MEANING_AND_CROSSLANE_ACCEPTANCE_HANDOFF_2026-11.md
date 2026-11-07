@@ -514,3 +514,47 @@ main統合済み[ #3264 ](https://github.com/hat47x/tei-platform/pull/3264)は�
 **順序**：既存#1119のGatesを増やさず、(i) #3262で対象設計Required閉包の不足を可視化 → (ii) #2586の一Function・一Query・一実Provider R1 → (iii) #2506/#2514のCoverage/非出力依存と#2516の開示 → (iv) #2507/#997の同Context複数表現 → (v) 必要な実Action/Host/HTTP Decision Graph → (vi) #3267/#3271で結合済み実証の適切な再利用とT1新規負例、という順。Read-only R1に実HTTP/本番認可/媒体Rendererを**前提要件として過剰に課さない**。本書はOwnerの採用・本番許可やProduct E2/G2合格を決定しない。
 
 **証拠資格（2026-11-07時点）**：この追補は既存main Source/PR exact-head CI/Issueに基づく**文書更新**。#3238の実隔離PG・#3264等の実CLI/Scenario実行は各担当の既存限定証拠であり、**今回**新たなGo/DB/Harness/Studio/Clientを実行したものではない。実Product Function→実Reader→Context/Claim→Form/Table→Client、Owner業務意味受理、実Host Grant/実Provider完了の同一試行は**NOT RUN / NOT ACCEPTED**。
+
+<!-- tei-triad-parallel-modeler-read-and-context-readiness-20261107 -->
+## 15. 11/7横断追補：三視点Modelerと実Function Readを並行させ、結合資格だけを後段で検証する
+
+### 15.1 一つの直列P0で塞がず、「意味からの図面」「実Read」「二者の照合」を分離
+
+[Draft #3236](https://github.com/hat47x/tei-platform/pull/3236)は標準構造/表現型の合成写像の統合候補を更新し、**P0-M（三視点Modeler read-only）とP0-R（実Function→Provider Read）を互いに独立した最小実証として並行実施**し、次に**P0-C（cross-view結合）**を行う順を示した。これは§14が最初に強調したP0-Rを撤回するものではなく、#1124の旧X-TEA三視点図面／CRUD cross-referenceという**モデリング製品固有の主要価値をProvider実装待ちにしない**ための境界修正である。
+
+| 並行レーン | 最小の入出力・独立期待値 | まだ主張しない資格とOwner |
+| --- | --- | --- |
+| **P0-M：三視点のread-only導出** | 同じ受理Source/RevisionのData Entity/Relation、Function/Pattern、Business Procedure/Step/Actorから、Data・Function・Businessの3図とCRUD Matrixを**Headless CLI/JSONの投影**として説明。Node/Edge/Source Location、宣言と派生、欠落/非開示/部分集合を保持。 | Product実Row Read、実Effect、画面上編集・逆Patch、業務Ownerの新規意味受理は未実施。#1124/#1125/#1126、[Draft #3263](https://github.com/hat47x/tei-platform/pull/3263)が設計・検証Owner |
+| **P0-R：Functionの実Read** | 実Function/Pattern→実Query Source/SQL byte/parameters→Physical Provider/Scope→Actual Rowset/Field Presence/Read Cohort→Contextを**一Attempt**で接続（§14）。 | CRUD表のC/U/Dの実行、図面の編集資格、全Function一般化を主張しない。#2586/#2506/#2387/#2514 |
+| **P0-C：Model/Readの照合** | その**同じSource Subject/Workspace/Revision・Function/Query Binding・Entity identity/grain・Scope/Time**を使って、P0-M側のData/Function/CRUD RowとP0-R側のActual Read Slice/Consumerを照合する。未一致は解決せず差分として返す。 | Nodeのラベル一致だけで意味・取得対象/Host Grant一致を確定しない。合成写像#3236、正本/投影#2497、同一試行#1163、設計取得#3262 |
+
+**非推論**：CRUD表の「R」はFunctionが対象データを**参照すると宣言/派生された**ことを表す分類であり、物理RowsetをそのFunctionが取得したことのReceiptではない。C/U/Dも実業務更新の記録やAuthorityではない。またP0-Rの実PostgreSQL成功を三視点図面の正本・意味受理へ逆流させない。**P0-M単独とP0-R単独の独立合格を尊重**し、双方が揃っていないことだけで「図面導出不可」としない。
+
+### 15.2 Design Contextの「探索利用可」と「検証済みモデル/テスト生成」を区別する
+
+main統合[#3284](https://github.com/hat47x/tei-platform/pull/3284)は`tools/reference-issue-test-ability/context_gate.py`（main Blob `0c9873e7fcc129151668f3b0c4cbc74c74e9bc4a`）を追加。既存のread-only CLI Reply 9種についてSubjectの特定、Source Inventory/Loader、world/index Fingerprint、返信欠損/Source Rootを検査し、7種の限定負例を判別する。実Sourceでは**正常な限定Referenceでも**`boundedReference=partial`、`testExecutionAdmission=exploration-only`、`qualifiedTestGeneration=false`。この結果は[該当CI #42370519406](https://github.com/hat47x/tei-platform/actions/runs/42370519406)のPR限定実測に基づきmainへ取り込まれた。**AIが新規テストを設計できる製品資格が成立したわけではない**。
+
+この実装を三視点Modelerへ**転用する際の判断はscope相対**である：
+
+- **P0-M探索・候補図面**：必要なData/Function/Business Sourceが部分なら、観測できた部分を`candidate/partial`として表示できる。ただし未知のRelation/Function/Actorや非開示Edgeを「存在しない」と描かず、Matrixの空セルでCRUDが無いと主張しない。
+- **P0-Mの完成Claim**：必要な三視点のSubject/Source/Meaning/Relation/Function/Business閉包、版・Scope・Source Locationが受理可能な形で揃った場合に限り、対象範囲内の完成を判定する。既存Gateの9 Replyはこの全面閉包の証明ではない。
+- **テスト生成候補**：探索用に負例を提案できても`qualifiedTestGeneration=false`を変更しない。**独立Required/Owner RuleとExpected、Source version、Mutant検出力、C0/C1およびNFR coverage gap**を既存#3223/#3273/#2514/#1180で検査した後に用途別に認める。テスト生成資格の正本は#3262/#3284のOwnerとし、本計画に第二Gateを作らない。
+- **Consumer受領**：CLI JSONが正しくてもMCP/外部Skill/Studio/SHOが全Replyを受け、権限内で同じ結果を再構成できたとは言えない。古いFP、途中切断/欠落Tool Reply、非公開行の件数等による漏洩を別Consumer別Witnessにする。
+
+### 15.3 既存Fixtureに対する独立の負例と最小進行順
+
+| 対照（新Fixtureを作らず既存Sourceを再利用） | 期待する判定と配置 |
+| --- | --- |
+| **M+ / R?**：受理Sourceから三図とCRUD Matrixを導出し、物理Providerは未接続 | 三視点read-only投影は対象Sourceの範囲で評価可能。Rセルは実Read成功を意味せず、P0-R/P0-Cは`not-observed`（#3263/#2586） |
+| **M? / R+**：#3238の隔離PGでRowsetは読めたがFunction選択・Model Source/Query byteは未照合 | 実参照Readerの局所Readは保持。TEIの受注FunctionのCRUD R/Business Meaningへ自動帰属させない（§14.3、#2586） |
+| **M+ / R+ / Revision違い**：同名のEntity/Function、旧Sourceや別Workspace/Queryへ束縛 | P0-Cはunresolved。Labelや行ID一致を同一Subject/同一SQL/同一Attemptとみなさない（#1124/#1163） |
+| **図の同名2 Node/多重EdgeとJOIN 2×3** | Entity/Relation Edge IdentityとOccurrence、多重性を保存。集計棒・表の6行・Graph表示Node数をCRUD対象Entityの6件とみなさない（#3263/#2497） |
+| **業務Actorの手作業StepとCUDの宣言** | 手作業・潜在的Function参照と実Command/Grant/Receiptを区別。Actor≠認可Principal、導出Potential Path≠実Effect（#1125/#1174） |
+| **未読込Business Source／非開示Relation** | 図・Matrixには`unknown/partial/withheld`の資格を残し、空セル・空集合を「業務上不存在」へ昇格させない（#3262/#2516） |
+| **Source/Rule変更後に図だけ再生成** | P0-Mの差分は表示可でも旧P0-R/旧Test T0/旧Artifactの適合を自動再利用しない。Source+Query+Context/Mapping+Consumer/Targetの失効範囲を比較（#2582/#2600） |
+
+**重要な独立Expectedの上限**：[Draft #3263](https://github.com/hat47x/tei-platform/pull/3263)には三図/CRUDの合成入力と期待JSONが別ファイルで存在し、内部整合15項目の静的確認が記録されているが、**両方ともAI草案**。出力Expectedがファイルとして分離されているだけでは、#2514が要求する意味上独立した検証基準・Mutation検出力・Owner受理にならない。P0-Mを実Go/CLI実行し、既存Mutationを誤成功として通さない追加試験が必要。#3236のRP/MV/CXケースをこの表で再定義・複製しない。
+
+**実装順**：P0-Mは既存Source/CLI/Modeler ProjectionからData→Function→Business→CRUDをread-onlyで独立実行し、P0-Rは§14のSource→Actual SQL→Provider行の接合を独立実行する。P0-Cは双方の**受理Source/版・Subject/Role・Function Binding・実Data同一性・Scope/時点**が揃った後だけ実施する。図上編集、SHO文書Consumer、Studio GUI、Host Write、HTTP Decision GraphをP0-Mの開始条件にしない。P0-C成功後も現在Grant/Business確定とは別資格。#1119の既存Gate・Critical Pathを変更せず、担当Issueの実証を受入可能な形で横断照合する。
+
+**証拠資格**：main #3284の限定read-only Consumerテストや#3238の隔離PG、Draft #3263の合成Artifactを参照した**設計計画の更新**であり、この§15の三図・CRUD生成/Mutation/Function Product実Read/P0-Cを新たに実行したわけではない。人間/OwnerのMeaning採用や実Web/Studio/SHO/本番Host・Providerの一往復は**NOT RUN/NOT ACCEPTED**。新Source Registry/Renderer/Acceptance Engine/独立Expected正本/テストRunnerは設けない。
