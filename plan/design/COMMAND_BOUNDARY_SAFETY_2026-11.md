@@ -190,7 +190,7 @@ CLIとStudioは `persisted`（`observed` のときだけtrue）と `persistence`
 
 - これは**receiptの観測**であり、資源の現在値の観測ではない。Lookupは同じDB境界で記録を照会するだけで、`objects` の現在値を読まない。
 - `Lookup` の結果が `not-recorded`・`denied`・`conflict` なら `not-observed`。エラーも `not-observed`。
-- 実PostgreSQLでのこの観測経路は、まだ結合試験に組み込んでいない。
+- 実PostgreSQLの結合試験 `TestPostgresCommandObservesACommittedReceiptByLookup` を追加した。Commit→Lookupで `observed` になり、receipt行を削除すると同じ設定の `Observe` が失敗する（資源の現在値は変わらない）ことを確かめる。`TEI_EFFECT_POSTGRES_DSN` 未設定の環境ではskipする。
 
 ### まだ決めていないこと
 
