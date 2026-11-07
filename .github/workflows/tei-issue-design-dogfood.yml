@@ -275,6 +275,9 @@ jobs:
           assert report["claimCeiling"].startswith("bounded-test-ability")
           assert len(report["tested"]) == 6
           assert len(report["mutantsKilled"]) == 8
+          assert report["discriminationCounts"]["realCliFixtureExpectedPlanSourceAndLock"] == 6
+          assert report["discriminationCounts"]["independentObligationAndOracle"] == 2
+          assert report["discriminationCounts"]["actualProductEvaluatorCodeMutant"] == "not-run-in-this-probe"
           assert report["mutantsKilled"]["changed-real-canonical-source"] == "real-cli-stale-world-rejected"
           assert report["mutantsKilled"]["changed-real-plugin-lock"] == "real-cli-stale-lock-rejected"
           assert report["coverage"]["goC1BranchCoverage"] == "unmeasured"
