@@ -1,4 +1,4 @@
-namespace sales
+﻿namespace sales
 
 data Order {
     candidate-key OrderIdentity {
@@ -26,9 +26,15 @@ capability submit_order {
     outcome submitted sales.order
     effect update sales.order
 }
+calendar sales.fiscal {
+    fiscal-year starts month 4
+    week starts monday
+}
+
 period sales.month {
     data sales.order
     business-date sales.order.order_date
+    calendar sales.fiscal
     states open closing closed
     closed-rejects update
 }
