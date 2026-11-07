@@ -21,10 +21,9 @@ import (
 // no arguments it prints text, so it is asked for -json.
 //
 // `version -json` also does not carry ok/error: it returns the build identity
-// object with schemaVersion at the top level. The catalogue still labels it
-// "enveloped", so this test only requires the schemaVersion to match for that
-// command and leaves the label question to the contract document and #2824
-// rather than tightening a v0 field from a test.
+// object with schemaVersion at the top level. The catalogue labels it
+// successShape "identity", and cli_discovery_shape_test.go checks that body.
+// This test still requires the schemaVersion to match for that command.
 //
 // Negative control, run by hand before the PR: changing the advertised
 // `tei.cli.model/v0` to `tei.cli.model/v9` in cli_contract.go makes this test

@@ -31,6 +31,12 @@ type cliCommandRecord struct {
 	// plugin-lock and plugin-resolve switch shape with a flag and say so with
 	// `mode` as well.
 	Modes []string `json:"modes,omitempty"`
+	// SuccessShape names the body a successful response has. "envelope" is
+	// the ok/result/error envelope; "identity" is the `version -json` build
+	// identity, which carries schemaVersion at the top level but no ok and no
+	// result. Declaring it here stops a caller from assuming `ok` after reading
+	// jsonContract "enveloped" (#2824).
+	SuccessShape string `json:"successShape,omitempty"`
 }
 
 func commandCatalog() cliCommandCatalog {
@@ -38,7 +44,7 @@ func commandCatalog() cliCommandCatalog {
 		SchemaVersion: "tei.cli.discovery/v0",
 		Scope:         "selected-read-only-commands",
 		Commands: []cliCommandRecord{
-			{Name: "version", Effect: "read-only", Required: []string{"none"}, Optional: []string{"-json"}, Output: "text; json when -json", SchemaVersion: "tei.cli.version/v0", JSONContract: "enveloped"},
+			{Name: "version", Effect: "read-only", Required: []string{"none"}, Optional: []string{"-json"}, Output: "text; json when -json", SchemaVersion: "tei.cli.version/v0", JSONContract: "enveloped", SuccessShape: "identity"},
 			{Name: "model catalog", Effect: "read-only", Required: []string{"-workspace"}, Optional: []string{"-namespace"}, Output: "json", SchemaVersion: "tei.cli.model/v0", JSONContract: "enveloped"},
 			{Name: "workspace-files", Effect: "read-only", Required: []string{"-workspace"}, Output: "json", SchemaVersion: "tei.cli.workspace-files/v0", JSONContract: "enveloped"},
 			{Name: "inspect", Effect: "read-only", Required: []string{"-workspace", "-subject-kind", "-subject-id"}, Output: "json", SchemaVersion: "tei.cli.inspect/v0", JSONContract: "enveloped"},
