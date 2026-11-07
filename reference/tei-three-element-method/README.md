@@ -113,3 +113,14 @@ output in the same Consumer and attempt. Existing Owners: #3027 (Trait
 assessment, merged design), #1126 (Data identity/FD), #2620 (Role
 interpretation), #2516 (Disclosure), #1124 (Studio), #267 (Acceptance).
 This Reference is **not** an implementation of any of those Owners.
+
+
+### Repeatable exact-head Node qualification
+
+[Focused CI](../../.github/workflows/tei-tea-three-view-reference-node.yml)
+checks out the exact PR head, pins Node 22.16.0, records the actual Git blobs
+of both modules and tests, runs **native** `node --test` on the 10 + 12 synthetic
+cases and asserts a clean checkout afterwards. The workflow is not a new
+Product/Gate B/C or policy qualification; it is a repeatable focused test.
+V8 test-shim results and workflow creation do not establish GitHub Actions
+PASS until that workflow's **exact head** reports its completed result.
