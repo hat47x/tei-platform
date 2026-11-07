@@ -1,4 +1,4 @@
-# TEIの業務システム設計を読むための案内
+﻿# TEIの業務システム設計を読むための案内
 
 この文書は、[`business-system-design.md`](business-system-design.md)で定める内容について、**業務知識やモデリング経験が少ない人でも、なぜその境界が必要なのかを理解できるようにする案内**です。
 
@@ -346,6 +346,43 @@ tei knowledge-review-handoff
   -subject-id <id>
   -qualification-requirements <requirements.json>
 ```
+
+`-qualification-requirements`が読むJSONの最小形は次のとおりです（#3186）。`expectedKind`は対象のSubject種別と同じ値でなければならず、`knowledge-qualify`はここで指定した種別と対象が一致しなければ`incompatible`を返します。
+
+```json
+{
+  "expectedKind": "semantic-data"
+}
+```
+
+`tei knowledge-qualify -workspace reference/workspace -subject-kind semantic-data -subject-id sales.order -qualification-requirements <上記>` は、終了コード0で `status: "applicable"` を返します。
+
+依存関係の確認も要求する場合は`requiredDependencies`を足します。各要素は`direction`（`outgoing`または`incoming`）、`relation`（関係名）、`kind`（相手のSubject種別）、`id`（相手のID）が必須で、`alias`は任意です。`kind`は`knowledge-context`の`outgoing`／`incoming`が返す値（`semantic-data`・`semantic-element`・`semantic-capability`・`application-pattern`など）に合わせます。
+
+```json
+{
+  "expectedKind": "semantic-data",
+  "requiredDependencies": [
+    {"direction": "outgoing", "relation": "customer", "kind": "semantic-data", "id": "customer.customer"}
+  ]
+}
+```
+
+この例の`sales.order`は`customer`への出方向の宣言済み関係を持たないため、`status: "incompatible"`と`required-dependency-missing`が返ります。要求を満たす例は`tei knowledge-context`の出力から作ります。たとえば`sales.order.submit`（`semantic-capability`）は`input`で`sales.order`（`semantic-element`）へ出方向の辺を持つため、上記の`relation`・`kind`・`id`をそれに合わせると、依存関係の欠落ではなく、根拠の不備を示す`required-dependency-authoritative-evidence-unavailable`（`status: "unknown"`）になります。**`incompatible`（要求と合わない）と`unknown`（判断する根拠が足りない）は別の結末**であり、どちらも適用可能を意味しません。
+
+`application`は`expectedKind`が`application-pattern`のときだけ指定できます。`status: "applicable"`まで到達する例は次のとおりです。`order_entry.customer_reference`が宣言している`contract-query`の依存を、そのまま要求として書きます。
+
+```json
+{
+  "expectedKind": "application-pattern",
+  "application": "order_entry",
+  "requiredDependencies": [
+    {"direction": "outgoing", "relation": "contract-query", "kind": "database-contract-query", "id": "master_data.customer/find_by_id"}
+  ]
+}
+```
+
+このファイルは未知の欄を厳密に拒否するため（`unknown field`）、上記以外の欄は書かないでください。
 
 引き継ぎには知識の本文を含めません。代わりに、確認計画の改訂番号と照合値、対象範囲、参照候補の区画、明示した適用条件、確認結果、情報源の検証根拠を結び付けます。適用可能で、正本性を裏付ける検証根拠と必要な依存関係の検証根拠が揃い、文脈と入力元索引にある対象の検証根拠が同じ改訂に基づく場合に限り、状態を`qualified-for-disclosure`にします。不明な状態は`blocked-unresolved`、不適合は`blocked-incompatible`として保持します。ここでいう`disclosure`は、AIの設計支援へ渡す知識の区画を選ぶことです。アクセス制御、秘匿、役割に基づく権限付与を表すものではありません。
 
