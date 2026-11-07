@@ -715,6 +715,8 @@ Registryは**発見の索引**、Issuerは証拠の発行主体、Host/Ownerは�
 
 ### 25.2 Receipt-only → Persistedの誤昇格を防ぐ一因子対照
 
+**後続main反映による訂正（2026-11-07）**：[merged #3155](https://github.com/hat47x/tei-platform/pull/3155)で以下の旧問題は修正された。現在は `not-applicable`／`not-observed`／`receipt-observed`／`resource-observed` に分離し、`persisted:true` は `resource-observed` の場合だけ。旧§25.1・以下の段落に登場する `PersistenceObserved`／`persistence:"observed"` は **#3127時点の歴史的問題記述**であり、現mainの現行仕様・未修正事項ではない。現物の `DetailedPersistenceObserver` と `ResourceRead` で区別できるが、後述の実Composition配線・Resource Reader権限・同時変更/Replica/Replayは未検証。
+
 [main `internal/command/persistence.go`](https://github.com/hat47x/tei-platform/blob/main/internal/command/persistence.go)では `PersistenceObserved` は「宣言した効果が独立読取で見えた」状態であり、`observePersistence` はObserverからのnil応答で `observed` を返す。一方[main `internal/security/effectcommit/commandadapter/executor.go`](https://github.com/hat47x/tei-platform/blob/main/internal/security/effectcommit/commandadapter/executor.go)のReceipt Lookupは、実データの現在値を読まずに成功する。両者の**合成時の意味**を#2998で照合する。
 
 - **OBS-01（同一Commit後の正常対照）**：同一Operation/Grant/Target/ExpectedVersionのCommit→Receipt Lookup→別接続で業務Row/Fieldを独立Read。三つを同一時点と仮定せず、観測Version/時刻を別記。Receiptあり、Rowは期待post-imageなら各々をその事実の範囲でqualifiedにする。
@@ -722,10 +724,41 @@ Registryは**発見の索引**、Issuerは証拠の発行主体、Host/Ownerは�
 - **OBS-03（まだ読めない場合）**：Receipt Lookup成功・独立Row Read失敗／権限拒否／Replicaが旧版なら、Receipt観測は成功として残しても**データの観測はnot-observed/unknown**。現在の開示許可も別に評価する。Receipt不在をEffect 0とも断定しない。
 - **OBS-04（記録障害と再送）**：既存§24.6 RC-03/05のRecorder/Lifecycle記録失敗後、Receipt LookupとRow Readを使う。観測失敗をクリーンな拒否とせず、同Operationの照会と再送停止を維持する。mainの `COMMAND_RECORD_FAILED`／`lifecycleRecordError` は今回の静的確認時点ではEffectUnknown伝播が未修正で、実故障注入はNOT RUN。
 
-**受入の暫定ルール**：既存 `persistence` 1欄をSource的に「receiptを観測した／effectを観測した」の双方に使わない。現契約がEffect Post-imageの意味ならReceipt-only Observerで `observed` を返す利用を制限し、Receipt観測の成功と実データ観測の成否を既存Receipt/独立Read欄へ区別して表示する。別Enum・Universal Effect Coordinatorの導入を先に決めず、まず現#2998のConsumer契約と独立期待値を固定する。
+**現mainの受入ルール（#3155後）**： `receipt-observed` を業務資源の再読取済み／ `persisted:true` と読まない。`resource-observed` は別poolから読んだ現在の `objects` のpayloadが比較時に一致したという事実であり、Owner意味受理・現在Grant・Tenant越境不能・未来も変わらないことを示さない。`not-observed` は実効果0でなく、`ResourceRead=false`／Reader権限不足／レプリカ遅延・不一致を区別して検証する。新しい状態Enumや二重Observerを作らず、実Compositionでの明示配線と既存独立期待値を最優先する。
 
 ### 25.3 DSH実証の次の比較資格
 
 [PR #3113のEvidence](https://github.com/hat47x/tei-platform/tree/docs/dsh-h2-readonly-evidence-20261107/plan/evidence/DSH_H2_TOOL_ONLY_READ_ONLY_2026-11-07)は**実起動32件を含む限定1 Session**。提示されたTAI側の4 Session比較に転用しない。未完の条件は、実Taskのanswerを独立期待値で採点すること、比較参加者へ渡す情報とそれ以外を**実OS拒否で隔離**すること、許可済みSourceとの正常対照、Harnessが取得したRaw Tool resultと外部送出の観測、Skillの実byte/実Load、H2/H3の同条件比較。read-onlyが作業ディレクトリ外を読める事実を隠すために全Hostの観測を消さず、**Participantへ見せる公開範囲をOwnerの許可で絞った実環境**で再実証する。比較のTask/採点/Skill正本はTAI #168、TEI接続実証は#2509、情報境界は#2515/#2516に委譲。
 
-**検収優先順位・状態**：P0は上記OBS-02/03を#2998/#1174で実Post-imageとReceipt区別の回帰として固定。次にRC-03/05の故障注入（独立Effect観測）。外部Harnessは#2509で隔離条件を先に実証してから比較資格を判定し、Go静的D1の実Buildは#1251で独立。**OBS-01〜04、実PostgreSQL・失効・Resource Read、隔離適格DSH Session、D1実Link/Invoke、Owner意味受理は新規NOT RUN**。既存の成功記録を消したり、第二のSource/Host/Registry/Runbookを作らない。
+**検収優先順位・状態（#3155後）**：#3131のReceipt Lookupと#3155の実Resource Readは **main統合済み**で、#3157は `postgres-conformance` の限定実証を記録する。OBS-01〜04全体を未実装と呼ばない。未完了なのは本番に相当する実Compositionで `ResourceRead` をどの権限・実接続・観測時点で使うか、OBS-02/03のRevision/権限/Replica/別Operationの反証、RC-03/05の記録障害、Consumer開示、隔離適格DSH比較、D1実Link/Invoke、Owner受理。新Core/Host/Registry/別Runbookは作らない。
+
+## 26. 外部Harnessの送出・読取境界を実測から再資格化する（2026-11-07、Scope/Disclosure横断追補。実測は既存#2515を正本とする）
+
+本節はDSHの公開構成や想定上のリスクではなく、[main統合 #3153](https://github.com/hat47x/tei-platform/pull/3153)／[#3161](https://github.com/hat47x/tei-platform/pull/3161)の**ローカルMock要求の実byte/構造観測**、[#2515](https://github.com/hat47x/tei-platform/issues/2515)の合成Canary、[main #3152](https://github.com/hat47x/tei-platform/pull/3152)のTEI FileSystem境界、[PR #3162](https://github.com/hat47x/tei-platform/pull/3162)のCLI実探索を照合する。データ保護の判断権限・実Egress/OS隔離の正本は#2515／TAI #232であり、この文書で新たなPolicy Engineを定義しない。
+
+### 26.1 三つの保護面は独立し、Plugin Scopeの許可を継承しない
+
+| 保護面 | 限定的に実証済みのこと | 禁止する推論と必要Witness |
+| --- | --- | --- |
+| **TEI管理のFileSystem** | #3152：`os.OpenRoot` を使ったTEI FileSystem操作では、Windows junctionを通じたRoot外書込みをOSが拒否した。通常パス書込みは成功、Linux/Windowsの対象試験を記録 | 外部DSHの `read`／`pwsh`、子Processや直接OS/APIへの読取まで閉じ込めたとは言えない。OS identity/ACL/mount/Network境界で当該Consumer/Targetの正負対照が必要 |
+| **Harnessが読めるSource** | #3113：DSH read-onlyでもParticipant cwd外の固定Workspaceを読めた。#2515の合成Canaryでは `allowed/projection.txt`・`raw/secret.txt`・`.env`・cwd外 `peer.txt` がいずれも読取完了 | `read-only`／cwd／Plugin Indexに載らない／Tool広告がread-only から、非公開Sourceの非到達性を推定しない。許可Sourceのみ読め、Canaryを実OS/Server境界で拒否した記録が必要 |
+| **Harnessからの送出** | #3153のMockでは合成Tool markerがモデル入力に1回・`dsh_session_log`に2回。#3161ではDSH `0.2.2-rc.1`の**既定ProfileでSession Log fieldが有効**。503または200空SSEでは水位が進まず後続要求で同区間を再送 | `enabled:false`・read-only・応答503・Session閉鎖・Prompt上の秘密保持を実Egress禁止や外部Provider非保存へ昇格しない。ネットワーク送信先・フィールド・条件・実OS/Proxy拒否を別に観測 |
+
+**重要な因果区別**：#3153/#3161は `127.0.0.1` のMock Receiverであり、実クラウドProviderへ当該秘密を送った観測ではない。しかし送出内容にはUser/System指示、cwd、Tool結果が含まれることを実測した。副次送出は「明示したOutputを開示したか」だけでは捉えられない。Runtime/Disclosure Scopeは **Tool本体＋結果＋Session Event/Retry/タイトル生成＋送出先** を区別し、機密情報の存在、診断、件数を含めて必要な投影以外を露出しない条件で評価する。実Customer DataやCredentialを使って再現しない。
+
+### 26.2 独立期待値へ返す最小一因子対照（EGR-01〜04、今回の新E2EはNOT RUN）
+
+| 対照 | 固定と一因子変更 | 独立期待値・追加の停止線 |
+| --- | --- | --- |
+| **EGR-01 許可済と禁止Canary** | 同じDSH Profile/Tool、許可Projectionから `raw/secret.txt` / `.env` / cwd外へPathだけ変更 | 許可は正常Read、禁止Pathは**Tool実アクセス前に拒否**、実外送Content 0。既存Mockで「読めた」対照はあるが、実OS/Server拒否の正例は未取得 |
+| **EGR-02 Session Log既定と制御** | `enabled:true`／`false`／overlayなしを一因子変更 | 既定ONの実Mock結果を保持。falseで当該fieldが消えても他Egressが0とは推定しない。再有効化時のBacklogを改めて確認。外部Provider/他Endpointは未観測 |
+| **EGR-03 再送・未受理** | 正常stream／503／200空SSEを同じSession Eventで比較 | 受理watermark、同payload再送の有無、送出先、回数を分離。同イベントの再送を新しい業務Effect/新Sessionとして重複計数しない。Ack未達は送出0でない |
+| **EGR-04 Read-only表明と局所書込** | 同じ `tei view` で `-execute`＋ `-operation-log` / `-lifecycle-state` の有無だけ変更 | [#3162](https://github.com/hat47x/tei-platform/pull/3162)の実探索はファイル生成（215B/12288B）を記録。Command宣言のread-onlyを「ファイル副作用なし」に読み替えず、RunPlan/Journal/Temporary/Networkを別々に宣言・許可・実観測。参照実行の `persistence:not-applicable` と補助記録のファイル生成は矛盾しない |
+
+**完了判定**：#2515／TAI #232で OS/Serverによる非公開Source読取拒否と実Egress阻止の両方を証明する前に、比較適格H2/H3の合格としない。#3113実Tool起動32回は歴史的限定PASSとして保持するが、H2/H3正式比較の分母へ入れない。#3152のFileSystem修正を外部Harness全体の隔離資格としない。#3161の既定ON/再送は実測済みであり、未知の全送出路が安全だとも実Providerに当該情報が届いたとも推定しない。#2516がAudienceごとのProjection、#2509が接続実験、#2899が方式研究、#2885/#1251がD0/D1/D2方式を所有。新しいAgent Runtime、System-wide Sandbox、Universal Registry、Fixture正本、Permission Schemaを増設しない。
+
+### 26.3 Plugin採用と実行方式の判断への適用
+
+**方式の候補を選べることと安全な物理隔離は別**。D2外部Processでは、PluginやHarnessがTEI FileSystem Brokerを通らない読取・通信を行う場合、`os.Root`/Grant検査の限定PASSを全Processの保証へ拡張できない。D1静的合成では同一Processの呼出し境界が実際にどこまで強制されるかを確認し、D0純粋計算へ不要なOS隔離義務を課さない。方式の採否は[#2885](https://github.com/hat47x/tei-platform/pull/2885)へ委譲し、Consumer別のSource Disclosure・Effect/Grant・実行環境適合が未確認なら「方式が実装可能」から「採用可」へ進めない。
+
+**提案／採用の区分**：#3152/#3153/#3155/#3161はmainの限定実装・実測結果。#3162はDraftでなく未統合の実探索報告。EGR-01〜04として記述した追加の厳密な横断比較、実OS隔離＋Egress非送出、H3 Skillロード／4 Session比較、機密Profile、Owner受理は未実施。ADR-0035のA3機械確認とA4外部効果の確認は別に扱い、旧来の「すべての業務意味・権限変更はA4で人へ戻す」という一般化をここで復活させない。
