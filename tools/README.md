@@ -111,6 +111,7 @@
 | [`reference-build-attempt-evidence/`](reference-build-attempt-evidence/) | ビルド失敗を含む実行記録の保管 |
 | [`reference-build-authoring-intent/`](reference-build-authoring-intent/) | 人・生成AIが書くビルド宣言から、確定したビルド計画を導出する境界の確認 |
 | [`reference-build-execution-binding/`](reference-build-execution-binding/) | ビルド実行と主体・対象の結び付け |
+| [`reference-go-module-closure-preflight/`](reference-go-module-closure-preflight/) | Go対象の選択Module閉包をオフラインで分類する事前観測。`supported`/`external-unresolved`/`missing-module`/`unknown`を区別し、Build・Artifact・権限は行わない（#2831 SB-0a） |
 | [`reference-builder-contract-resolution/`](reference-builder-contract-resolution/) | Builder契約の解決と適用 |
 | [`reference-studio-composition-evidence-7/`](reference-studio-composition-evidence-7/) | TEI Studioの静的合成を実装外から検査する限定的な黒箱検査器（#1824 / #7） |
 | [`reference-host-acceptance/`](reference-host-acceptance/) | 暫定のHost Acceptance Storeへ、issuerが署名したDecisionを鍵生成・署名・取込み・失効する参照ツール。効果許可は与えない（#267 / #1121） |

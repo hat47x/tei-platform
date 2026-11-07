@@ -1854,6 +1854,12 @@ func (p *Parser) ParseSemanticFile() (semantic.Namespace, error) {
 				return ns, err
 			}
 			ns.Validations = append(ns.Validations, v)
+		case "calendar":
+			cal, err := p.parseSemanticCalendar(nsID)
+			if err != nil {
+				return ns, err
+			}
+			ns.Calendars = append(ns.Calendars, cal)
 		case "period":
 			prd, err := p.parseSemanticPeriod(nsID)
 			if err != nil {
@@ -1873,7 +1879,7 @@ func (p *Parser) ParseSemanticFile() (semantic.Namespace, error) {
 			}
 			ns.RunPlans = append(ns.RunPlans, plan)
 		default:
-			return ns, p.errAt(t, "expected type, data, capability, or validation")
+			return ns, p.errAt(t, "expected type, data, capability, validation, calendar, period, effect-rule, or run-plan")
 		}
 	}
 	return ns, nil
@@ -2476,6 +2482,13 @@ func (p *Parser) parseSemanticPeriod(namespace core.CanonicalID) (semantic.Perio
 				return period, err
 			}
 			period.ClosedRejects = values
+		case "calendar":
+			_, _ = p.next()
+			value, err := p.expectCanonicalReference()
+			if err != nil {
+				return period, err
+			}
+			period.Calendar = value
 		case "close-requires":
 			_, _ = p.next()
 			value, err := p.expectCanonicalReference()
@@ -2494,7 +2507,7 @@ func (p *Parser) parseSemanticPeriod(namespace core.CanonicalID) (semantic.Perio
 			}
 			period.Correction = value
 		default:
-			return period, p.errAt(t, "expected data, business-date, states, close-requires, closed-rejects, or correction")
+			return period, p.errAt(t, "expected data, business-date, calendar, states, close-requires, closed-rejects, or correction")
 		}
 	}
 	return period, nil

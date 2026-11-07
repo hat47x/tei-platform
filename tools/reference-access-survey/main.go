@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -268,9 +269,44 @@ func render(report Report) ([]byte, error) {
 	return append(raw, '\n'), nil
 }
 
+// summary renders the numbers a document quotes, without the per-file detail.
+// A reader who wants to check "859 calls, 762 of them filesystem" should not
+// have to read a 180 KB file to find three integers; the detail stays available
+// through the JSON, which is what a comparison between runs uses.
+func summary(report Report) string {
+	var builder strings.Builder
+	fmt.Fprintf(&builder, "scanned %d / withAccess %d / guarded %d / calls %d\n",
+		report.Totals.FilesScanned, report.Totals.FilesWithAccess, report.Totals.FilesGuarded, report.Totals.DirectCalls)
+	categories := make([]string, 0, len(report.Totals.ByCategory))
+	for name := range report.Totals.ByCategory {
+		categories = append(categories, name)
+	}
+	sort.Strings(categories)
+	parts := make([]string, 0, len(categories))
+	for _, name := range categories {
+		parts = append(parts, name+" "+strconv.Itoa(report.Totals.ByCategory[name]))
+	}
+	fmt.Fprintf(&builder, "%s\n", strings.Join(parts, " / "))
+	for _, entry := range report.ByDirectory[:min(10, len(report.ByDirectory))] {
+		fmt.Fprintf(&builder, "  %-58s %4d calls (%d files, %d guarded)\n", entry.Directory, entry.Calls, entry.Files, entry.Guarded)
+	}
+	return builder.String()
+}
+
+// min keeps the summary's slice bounded; Go's builtin min arrived in 1.21 and the
+// module targets a version that has it, but naming it here keeps the loop read
+// as "the first ten" rather than as an expression.
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 func main() {
 	out := flag.String("out", "", "write the survey here instead of stdout")
 	includeTests := flag.Bool("tests", false, "count test files too")
+	onlySummary := flag.Bool("summary", false, "print the totals and the busiest directories instead of the JSON")
 	flag.Parse()
 	roots := flag.Args()
 	if len(roots) == 0 {
@@ -280,6 +316,10 @@ func main() {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
+	}
+	if *onlySummary {
+		_, _ = fmt.Print(summary(report))
+		return
 	}
 	raw, err := render(report)
 	if err != nil {

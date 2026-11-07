@@ -6,10 +6,13 @@
 
 ```sh
 go run ./tools/reference-access-survey                    # 標準出力へ JSON
+go run ./tools/reference-access-survey -summary           # 合計と上位ディレクトリだけ
 go run ./tools/reference-access-survey -out survey.json   # ファイルへ
 go run ./tools/reference-access-survey -tests             # 試験ファイルも数える
 go run ./tools/reference-access-survey internal cmd       # 対象を絞る
 ```
+
+`-summary` は、文書に引用する数だけを出します。全体の JSON は約 180 KB あり、三つの整数を確かめるのにそれを読ませるのは無駄です。JSON は実行同士を比べるための成果物として残します。
 
 既定の対象は `internal`・`cmd`・`tools` です。`vendor`・`node_modules`・`testdata` は辿りません。
 
@@ -39,6 +42,12 @@ go run ./tools/reference-access-survey internal cmd       # 対象を絞る
 
 - 示す: **直接呼んでいる箇所の数**と、その分布。同じ手順で何度でも数え直せる。
 - 示さない: 実行時に実際に何が起きるか。`access.Guard` を通っていても拒否されない経路はありうるし、`guarded` は「その層を経由する」以上の意味を持ちません。**強制の証拠ではありません**。
+
+### 数えられないもの（既知の穴）
+
+**値を通した呼び出し**は数えません。`client.Do(req)` のように、送信先が変数で決まる呼び出しは `http.Get` でも `net.Dial` でもないため、この計器の対象外です（`TestSurveyDoesNotCountAnOutboundRequestThroughAClientValue` が固定しています）。
+
+`Do` という名前のメソッドを全部数えるのは、もっと悪い数え方です（`Do` はありふれた名前で、通信でないものまで入ります）。したがって**この穴は塞がず、数字を完全なものとして読まない**ことを選びました。`tools/reference-order-assist-provider-offline` のように `http.Client` を値として持つツールは、この穴に落ちます。
 
 ## 試験
 
