@@ -169,3 +169,48 @@ AI/CUI/Studioには、新しい「組織専用Widget一覧」の網羅を要求�
 | **ORG-XV-07 Source版ABA／後着** | A→B→AのSource/Selection復帰と旧Response到着 | 出力一致だけで旧Owner Meaning・Receipt・現在Grant・編集Offerを復権させない |
 
 上記は**既存§16/39/84/85、#2593 MC、#3236 CX、#1124 M0〜M3、#1125 DFD、#2514独立検証**へ交差参照するための診断対照で、第二Fixture SSOTではない。最初のP0は構造・Measure・図/表のread-only反証、P1は#2586の実一件Read→Function Contextからの三視点/Quantity導出、P2は一意なモデル変更候補と受理後再Projection。Modeler/SHO/外部Hostでの実一往復とCRUD実更新、Owner正式受理は**NOT RUN**。
+
+## 8. モデルから導く組織検証義務とC0/C1・業務Coverage（2026-11-07、他チャットのAI-firstテスト設計との接合）
+
+### 8.1 実装を自己採点させない導出順序
+
+他チャットの[モデル由来テスト生成Draft #3258](https://github.com/hat47x/tei-platform/pull/3258)・[#3259](https://github.com/hat47x/tei-platform/pull/3259)・[#3260](https://github.com/hat47x/tei-platform/pull/3260)・[#3261](https://github.com/hat47x/tei-platform/pull/3261)は、三要素の制約からDataset/Scenario/独立期待値候補を作る**未統合・互いに重複し得る設計案**である。組織側は第二のAI Generator・Driver Scenario・独立Expected Storeを採用せず、**検証義務の判別対象と合成World**だけを提供する。
+
+導出手順は、(a) **実際に取得・受理された**Data/Function/Businessの意味制約とSource/Role/時点を固定、(b) Required Obligationと必要入力・対象集合・未取得依存を列挙、(c) 独立した固定Expected（本節の手書き有限値・Ownerに受理されたRule等）と既知Mutantを対応づけ、(d) #1131が型付きDataset/Snapshotの**候補**を生成、(e) #1180の保存Driver Scenarioが受理されてから各TargetのCLI/Web等を導出、(f) #2514の独立検証基準でMutant検出力と適用範囲を測り、(g) #1163のexact-HEAD/Attempt/Provider/Consumer証拠へ接続する順とする。
+
+**Important**：モデル由来の説明を読んだLLMが、Candidate/Implementation/Expectedの三者を同じ推論で作った場合は独立検証としない。未受理の「強属性」・FTE換算・組織の権限継承規程を生成時に補完しない。Syntactic `std.decimal` から業務FTEの正例・負例を生成するためには、別途受理されたFixture契約が必要になる。
+
+### 8.2 独立Expectedと故意の誤実装を最小に揃える
+
+§3/§7で定義した閉じた合成World W0（P1→D1=0.6 FTE、P1→D2=0.4 FTE、P2→D1=1.0 FTE、同時点・同Scope・全3 Membership実体が揃う）に基づき、最初の**固定Expected**は全体Unique Person=2人、Membership=3件、FTE=2.0、D1 FTE=1.6とする。これらは本番TEI意味やProviderのActualではなく、**テスト独立期待値の候補**である。
+
+| 義務（#1131/#2514への引渡し識別用） | 一因子変更・正例と固定Expected | 落とすべき既知Mutant／停止線 |
+| --- | --- | --- |
+| **ORG-TG-01｜対象同一性** | W0の全体Unique Person=2、Relation件数=3。Person P1は2つのMembershipを持つ | `COUNT(Membership)`をHeadcountとして3と出す／JOINの同じPersonを別ID扱いする |
+| **ORG-TG-02｜FTEと数量型** | W0のFTE=2.0。A1だけ0.6→0.5なら独立Expectedは全体FTE=1.9、D1=1.5、Unique Person=2、Membership=3 | 同じ行数で旧FTE=2.0をキャッシュ継続／FTEとHeadcountを同一Quantityとして比較／60を0.6へ無宣言換算 |
+| **ORG-TG-03｜二経路と配賦係数** | 同じCへ2つのPath、C固有の一Fact=0.4。Entityに相対した集計=0.4。OwnerがPath重み0.5/0.5を明示した場合のみ0.2+0.2=0.4 | Graph展開行数×0.4=0.8を無条件に合格／`DISTINCT`で正当な経路係数まで消去 |
+| **ORG-TG-04｜用途別Relation** | H→Cの端点とIDを保ち、Axisだけ`command`→`budget`。Command到達の依存Claimは再資格化、同一MembershipからのHC/FTEは別条件が変わらない限り維持可能 | 軸を無視したTreeを同じ指揮図として通す／全Facetの不必要な失効／Axisの変更から新Grantを発行 |
+| **ORG-TG-05｜不完全な取得** | Required IDs={A1,A2,A3}、Observed={A1,A1,A3}／またはTOP1のみ。A2の完備を独立に証明できないので全体FTE/全件所属は`unverified`。A1の存在という局所Claimは維持し得る | 件数3一致で`CoverageComplete`自己申告／不足Allocationを0へ置換／Partialの局所正例も一律偽にする |
+| **ORG-TG-06｜非単射の図と編集** | Cに至る2経路をSHOの1行へ簡約／D1 FTE1.6のChart Cellを1.4へ編集。元Node IDを保持したread-only説明は可能、直接更新先は`ambiguous` | 1行表示から一意の関係Edge／A1・A3の更新値を創作し、画面編集を直接PATCH |
+| **ORG-TG-07｜業務DFDと実効果** | D1→D2の引継ぎProcedureの矢印だけ変更、CaseRecord C1の実DB/Hostに操作なし。業務Designの差分のみ | DFDの見た目変更をCase担当移管Commit／人手受領の完了とする |
+| **ORG-TG-08｜現在資格と公開範囲** | Public図は同一でPrivate Membership/Delegationだけ異なる2 World。許可されたPublic Consumerに差がない範囲だけ表示可能。Grant/Policy版・Source/epoch ABAではAction Eligibilityを再検査 | 非公開関係の個数がTooltip・SHO・diagnostics/Tool Logへ漏れる／旧Action Offerを現行Grantとして再利用 |
+
+**空虚なVerifierを落とす正例**：A1だけFTE変更したとき、旧FTEを維持する実装と、何も出力しない実装の双方を不合格とする。Axisがbudgetへ切り替わった場合は、新たなbudget表示が必要ならそのPurposeで出力が変わる正例を別途固定する。「一律unverifiedなら安全」という実装も合格にしない。変異実装のExpected自体をCandidate Generatorへ再生成させない。
+
+### 8.3 Coverageは三種類の分母と一つの証拠列を分ける
+
+- **C0／C1（コード側）**：**C0=実行されたコードの文/命令、C1=実行された分岐の真偽（分岐Coverage）**を、具体的な生成Go/Target／Plugin／Runnerのexact Artifact/Versionごとに測る。組織のMeaning SourceからC0/C1達成を推定しない。異TargetのC1はInstrumentation/分母が違うため総計を無条件に合算しない。
+- **意味・要件Coverage（モデル側）**：受理済みOrg Relation/Role／Measure/単位・Rollup／Function Operation／Business Procedure・Handoff/現在Grantの各Obligationが分母。関連Data/Function/Businessの同じMeaning IDを参照し、未受理・unsupported・未読込を分母から無言で消さない。
+- **判別力（独立検証側）**：独立Expectedに対する正例・一因子負例の両方、既知Mutantの`killed/survived/not run`を記録。UI表示テスト件数・Go PASS件数だけで「この組織ドメインをカバーした」と宣言しない。
+
+**検証状態を同じ一枚にする列（新Core schemaではない）**：`Obligation / Domain Source+accepted meaning ref / required population & fields / generated dataset & seed / independent Expected ref / known mutant / required consumer + branch / located & loaded / actual executed target+HEAD+Attempt / actual Provider/Disclosure/Receipt if relevant / C0-C1 instrumentation / observation / qualified or unresolved`。分母不明ならCoverage率を100%と算出しない。必要なのに存在しないRule・未出力Predicate・手作業Step・実Provider Readerは`not run`や`unsupported`のまま報告する。生成したテストがすべてSKIPでもCoverageを加算しない。
+
+### 8.4 最短実行順：構造→数量→三視点→Product E2
+
+1. **P0-a／モデル探索**：main統合済み#2681 Native `model.tei`を実CLI/Sourceから取得し、存在するPerson/OrgUnit/Membership/Position/Occupancy/CaseRecordと、**存在しない**FTE QuantityKind・Allocation分母・正式Org Parent Graph/Procedure Bindingを観測資格つきで区別する。合成W0のFTE契約は本番Nativeへ暗黙移入しない。
+2. **P0-b／独立Expected**：ORG-TG-01/02/03/05の固定正常値と故意の誤結果を、#1131/#2514の既存Fixture/Expectedへ渡し、#2811のAI-first候補でどのMutantが落とせるか比較する。生成候補が受理前なら`candidate`、新Go/CI未実行なら`NOT RUN`。
+3. **P1／三視点と変更検証**：#1124/#1125/#1803にORG-TG-04/06/07の型付きGraph/Tree/Function/CRUD/DFDのRead-only OutとSource/Role/版を渡す。SHOは別Consumer資格、図面上で一意なSourceがない変更はPreviewまでに留める。
+4. **既存最重要Product E2**：#2586のC1→D1実Function→Query→Provider Read→Consumerを同一Attemptでつなぎ、FTE/人数等の追加Claimは必要な実Field/Scope/Populationを別々に観測した後に限り組み込む。P0-a/bの別合成PASSをProduct E2へ足し込まない。
+5. **P2／Effectと受入**：実関係更新、Host Grant、Receipt、独立再Read、Owner業務Ruleは#1174/#1163/Org Ownerの既存境界を通す。#3258〜61の複数Draftから新Org専用Test Generator/SSOTを作らない。
+
+**受入状態**：本節は**既存Org Profileの追加診断・適合計画**であり、ORG-TG-01〜08の新実行・C0/C1測定・AI Generator実装・Product SQL/Org DB/GUI/SHO/Owner Meaning受理は **NOT RUN**。既存完了・実証済みの局所テストと混ぜて新たな一気通貫PASSを宣言しない。
