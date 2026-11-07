@@ -334,3 +334,47 @@ Cross-reference各セルは用途ごとの根拠を区別する：
 | DM-08 | Pattern宣言は同じ、BOM/Plugin/Provider版だけ変更 | 図の局所不変部分とCurrent Renderer/Adapter/Operation適格性を分離し、未検証版を実行資格へ昇格しない | #3267/#951/#2582 |
 
 これは要求探索と**実装計画の接合表**であって、現在の製品内で自動検出されているCase群ではない。G0/G1/G2等のOwner/Gateは#1119、実Go/CLI P0-M、Product P0-R、Studio/SHO Diagram、Formal Meaning Acceptance、実MCP/Harness/Provider/Writeの実行はすべて**今回NOT RUN**。P0-CのHeadless側で初めに揃えるべき出力は「三図・CRUDの同一Source参照」「不適格セル・失効位置」「Function→Query→Provider/Outputとの差」であり、ピクセル完全一致・独自Diagram DSL・固有Hostはこの段階の前提にしない。
+
+## 13. 三視点FixtureとDesign Context Gateを実装入口へ接続（2026-11-07追補）
+
+### 13.1 現行コードの具体的Fit/Gapを固定する
+
+[Draft #3263](https://github.com/hat47x/tei-platform/pull/3263) HEAD `d45fdbe8996882528f3fd6aeff99cca2152a22f3` は `reference/diagram-crossref/pressure-input-v0.json`（Blob `ddc1c8bae70a04135db60853057a811e4902e6e6`）と `expected-v0.json`（Blob `1b083589fd7644dd518bb2231e218566d60de82e`）を保存した。ただし**両者は合成・AI草案**で、前者は**TEI Parserに読める形式ではない**。内部整合15/15から独立Expectedの業務受理や現行CLI受領を推論しない。
+
+現mainの確認済みコード：
+
+| 実装入口 | 今ある機構 | Diagram/CRUD E2Eまでの最初の欠落 |
+| --- | --- | --- |
+| `internal/modelref/model.go` | `Key{Scope,Subject}`、`Ref{Scope,Subject,Version}`、型付きEdgeのRelation／出典Evidence、厳格なRef解決・検査 | ProductのData/Function/Businessを**一つの実Loader revision**で対応付けた根拠付きProjectionと、図上Occurrenceへの逆参照は別。`modelref.Edge.Relation`を表示辺の位置や一意な実更新先とみなさない |
+| `tools/reference-er-table-crossview/projection.go` | 受理構造のread-only ER/物理表のProjection。Data/Relation/Key/FD/Physical Mappingの比較・Unresolvedを出す | **Function×Data CRUD**／Business Action×Function/Procedure／manual handoffの結合はこのToolの現在責務ではない。第二ERP正本を作らない |
+| `tools/reference-business-dfd/diagram_context.go` | Handoff/Actor/Triggerの候補をDOTへ描く。HandoffはRuntime処理順ではない | 図の矢印を実Effect/Receiptへ昇格させず、Business Data FlowのSource/Role/Function pathと突き合わせる |
+| `reference/tei-studio-graph/graph.ts` | `GraphNode.id`、`GraphEdge.id/source/target`、多重辺を保持し、endpoint不在を拒否。表示・Node selectのReference | `onSelect`は**nodeId**。Edge/Field slot選択、元Relationの型付きSource/Revisionへの復帰、逆編集の可否判定は現実装で保証されない。自己辺は`unsupported_self_edge`として診断対象 |
+| `cmd/tei/cli_contract.go` | `model catalog`/`source-index`/`inspect`等の**選択された**read-only CLI入口 | 現契約に `diagram` / `crud-matrix` の製品コマンドを確認できない。仮のCLI名を既存機能としてSkillへ広告しない |
+| `tools/reference-issue-test-ability/context_gate.py` | main統合[#3284](https://github.com/hat47x/tei-platform/pull/3284)/[#3296](https://github.com/hat47x/tei-platform/pull/3296)で9実CLI ReplyのSource/指紋／不完全受領を試験側で評価 | 固定Requiredは公開Referenceの`semantic-data:sales.order`が中心。**Function/Business/Role/Relationの独立Required Closure**は未資格。Gateで`partial`／`qualifiedTestGeneration=false`となる範囲を、三視点図/CRUDの「complete」へ格上げしない |
+
+**新たな実証済み基線**：[PR #3296固定HEADの専用CI #42371310577](https://github.com/hat47x/tei-platform/actions/runs/42371310577)で、旧7＋Manifest/Root 2＋Tool Reply Byte 7、計16の限定Synthetic ControlがPASS。既存Pinned Scenario 6 Step/6判別対照もPASS。7 Byte Mutantは受領済みJSONの**一時コピーを改変**したもので外部H3 Toolの生応答断絶を観測した証拠ではない。Source/Parser/Function/Business全閉包、実MCP、C1、Graph/CRUD Projectionは未実証。この基線に対して二つ目の`packet.py`を持つ[未マージ・Closed #3293](https://github.com/hat47x/tei-platform/pull/3293)を復活させず、既存Gate/Scenarioへ追加Requiredを渡す。
+
+### 13.2 「一枚の図・一表の受入」を実行できる最小分解
+
+**P0-M0（Input資格の明示）**：#3263 synthetic JSONをそのままTEI Workspaceとして扱わない。まず受理済みSource/既存`reference/workspace`の意味表現に対応できる部分を照合し、**未表現のRole/Relation/Business宣言はunresolved**。不足するDSL/Readerは#1125/#1126/#2621へ戻す。Required集合にはSource locator・Model revision・Entity/Relation/Function/Business/CRUD宣言・Disclosure/Loader実消費が含まれる。#3262 Gateで該当Familyの閉包が不足なら`qualified=false`として検証可能な局所Projectionだけ続ける。
+
+**P0-M1（read-only Projectionと元Sourceへの逆引き）**：同名別IDの`data.order.status`/`data.flow.status`、同端点の二Relation `rel.line.sku.primary`/`rel.line.sku.alt`、一つの関係が`contained-child`、もう一つが`reference`である差を入力に取り、Node ID、**Edge ID・方向・Role・元Relation qualified ref**を失わずGraphへ投影する。Source端点が欠損した場合は無音で辺を捨てずUnresolved。図上選択・Source navigationを付与する段階では、現Graph Referenceがnode-onlyであることを明示し、**Edge選択/元関係復帰は未実装ならFAIL/UNSUPPORTED**とする（フロント表示のPASSを遡及可能性のPASSとしない）。
+
+**P0-M2（CRUDの別根拠付きCells）**：`fn.order.register`→`data.order`のC／`fn.ship.finalize`→`data.stock`のU、`fn.external.dispatch`の`declaredCrudComplete:false`を対照に、**明示宣言・候補Path・実Provider Effect観測**を別列とする。未列挙Functionのセルは`unknown-not-enumerated`であり`none`にしない。手作業`action.phone.confirm`にFunction/CRUD/Commitを捏造しない。JOINのO100/L1,L2とO100/P1,P2,P3から6行が出ても、明細6件としない。
+
+**P0-M3（検証基準の独立化）**：#3263 expected-v0.jsonは**固定候補**として扱い、#2514のOwner/別検証基準で①Source宣言に対する期待を独立チェック、②Positive Controlで公開ID/Role変更時の変化を確認、③N01〜N12の少なくとも1件を実Product Projectionへ投入し対象Testが直接FAILすることを示してから、限定Conformanceに利用する。JSON内部の15項目一致・全Mutantを単純`FAIL`と列挙しただけでは判別力を認定しない。#1180 Scenario正本を用い、別Verifier/Case SSOTを増やさない。
+
+**P0-M4（Consumer分離）**：CLI→Studioは同じGraph/Matrix Source・Scope・Policy・Revisionの`received`と描画・Selectに限定。TEI参照図→SHO Writer、Document/Caption変更、実ファイル再読込、HTTP Decision Graphへの横断投影、Plugin/BOMの実Conformanceは各Ownerで別証拠。**Graphのノードをクリックできること≠Relation編集の資格**。Diagram Layout保存≠Model Accepted Meaning変更。
+
+### 13.3 最初の合否を曖昧にしない４つの対照（新Go/CLIは今回NOT RUN）
+
+| 検査 | Positive/Negativeの独立対照 | 確定してよい結論の上限 |
+| --- | --- | --- |
+| DGX-01 | 同端点2辺・同名2 Subjectを保持。Mutantは辺IDを消す／labelでSubjectをマージ | Headless GraphのID・多重辺を保持できたか。Source read完備やWrite資格ではない |
+| DGX-02 | `declaredCrudComplete=true`の関係外セル`none`と、`false`の未知セルを比較。Mutantは両者を空欄へ潰す | Function宣言の局所Closed Scopeについての不在だけ。実Provider Effect 0ではない |
+| DGX-03 | Gate入力のRoot欠落/JSON途中切断/古いFPでblocked。正常限定入力も`partial`で留める | Design Contextの有限Consumer負例。三視点Required Closureを網羅した証明ではない |
+| DGX-04 | 同じ表・DiagramでもProvider/Plugin/Source版変更。Sourceだけ同じ・Renderer版変更を別対照に | ローカルProjectionの再利用とCurrent Consumer/Action/Artifact/Grant資格を独立に診断。BOM全互換の証拠ではない |
+
+Ownerは#3263（Fixture・三視点独立期待）、#1124/#1125/#1126（Source/Modeler）、#2497（Loss/逆写像）、#3262（Design Context Closure）、#2514/#1180（独立Expected/Scenario）、#2586（実Product Read）、#997（Target/Studio）、#3267（BOM）。**最初に不足する辺は、合成JSONの存在→TEIの実Source/Loader/Meaning→Required Closure→Projection Output→Consumer Received**である。実行可能なPoCの順をこの境界に沿わせ、Provider実Readがまだ無いことを図面Read-only実証の一般的ブロッカーにしない。
+
+今回新たなGo/CLI/Studio/Provider/SHO/外部Harness動作、独立Expected受理、実Ownerの意味採用は**NOT RUN**。この節は検収作業の実装方式を決定する**採用前のFit/Gap**であり、正式Schema、MCP、第二Parser/Source Registry/Graph Model/Runnerを固定しない。
