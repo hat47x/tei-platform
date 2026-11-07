@@ -206,6 +206,14 @@ SQL/NoSQLのデータ、ログファイル、クラウド情報源は別々の�
 **対応する製品要求は[RQ-035](../requirements/TEI_PRODUCT_REQUIREMENTS.md#rq-035-一般開発者が異種データソースのデータと構造を管理できること)**。2026-11-07に現行コードを静的確認した結果、`internal/database/provider/provider.go`のDB専用SPI、PostgreSQL `Introspect`、`internal/workbench/database/model.go`の派生投影、`cmd/tei/main.go`のSchema Diff/Migration入口は存在する。一方、異種Sourceを含む実Provider Read→完全性付きFunction Data Context→標準表現型の一往復は未確認であり、#2586と最初の不足一辺を検証する。Schema Historyのunknown→applied誤分類候補は既存#2892へ渡す。Trait・Decision Graph・C0/C1・独立期待値への接続とWB-15〜25は上記設計書の11〜15節に集約し、ここへ第二の契約正本を作らない。静的確認は実Provider/Go/GUIの実行成功を意味しない。**
 
 
+
+### Core外PluginによるWorkbenchの同一契約実証（2026-11-07、#3270×#1251）
+
+[#3277](https://github.com/hat47x/tei-platform/pull/3277)の[Plugin-first CLI/Studio/Runtime設計](design/PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md) D1/D2/D4/D5とWorkbench W0〜W5を**依存関係で接続**する。最初にCLI/Studio共通のInspector一操作を同一Contract/Providerで通し、次に**PostgreSQL実ReadとJSONLファイルRead→Function Data Context→Table/Tree/Timeline**を、同じContract選択と異質なProviderで比較する。成果物を読む`workbench-model`と実Provider Row Readは別資格。次に既存Schema Diff/Migrationの隔離DB適用、最後に同じRead/Validator契約を開発用Surfaceなしの生成Goバイナリへ組み込む。
+
+[設計書の§16〜18](design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)に実ソースの接続点、Selected/Linked/Invoked、異Alias競合、CLIの呼出別Effect表示、WB-26〜37の独立期待値と停止線を配置し、[合成SQL＋JSONLのFixture](../examples/data-source-workbench/README.md)を受入入力に固定する。Provider/Plugin/Contract Resolverの実装は#951/#1251、実Row→Data Contextは#2586、異DB Aliasは#2611、CLI Effect語彙は#3182、Migration Historyは#2892、検証済みBOMは#3267がOwner。新しいPlugin Registry、Host、Query/Cache/Authority正本を作らない。**この段階では静的コード確認＋Fixture作成のみで、実Plugin選択/Build/Provider接続/Studio/Goテストは未実施**。
+
+
 ## 作業領域E：設計の実行と検証
 
 ### 目的
