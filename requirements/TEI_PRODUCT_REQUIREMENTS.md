@@ -518,6 +518,20 @@ TEI CLIは、Canonical meaning、Source、Dependency、Validation、Conformance�
 
 Agent Adapter、TEI固有のdeveloper MCP、統合Service等を追加することは妨げません。ただし、それらは特定環境との連携や利便性を高める任意機能とし、標準的なGit / CLIやHost-provided MCPによる開発、Canonical sourceへの到達に必要な前提にはしません。
 
+## RQ-035 検証済みPlugin構成のBOMと複数バージョンの組合せ試験を標準機能として提供できること
+
+TEIは、複数のService Contract、Provider、Operator、Generator、UI/表現型等を組み合わせた構成について、**検証したバージョンと適用範囲を含むBOM（Bill of Materials）**を標準データ構造から導出・保存・再利用・配布できなければなりません。案件のApplication Composition Profileを一つのPackageに固定せず、同じ構成パターンを別Targetや案件へ適用する際は、必要な再資格化を明示します。
+
+依存者はContract版範囲、Required/Optional、Target/Scope、Open（上流が互換性を保証しない）等の要件を宣言でき、実際の採用バージョンは既存Resolver/Lockで厳密に固定できる必要があります。BOM発行のために上流Pluginへ全APIの個別export注釈・Stable保証・追加管理画面を必須にしてはいけません。技術的な発見可能性、Publisherが許した公開面、契約の互換保証、実行時の現在Grantは別の責務です。
+
+標準のTest/Scenarioと独立Expected、実Build入力・ArtifactSet・Target、Conformance Evidenceを組み合わせ、**複数Pluginと複数バージョンの候補を小さな指示でMatrix化して試験できる**必要があります。全直積だけでなく対象Scope、変更差分、境界値、pairwise等のCoverage計画を選べる余地を持ちます。ただし未実行の組合せや高次の交互作用、個別Plugin単独のPASSを「結合済み・検証済み」と扱ってはいけません。
+
+BOMには対象のContract/Provider/Source revision、選択Lock、Artifact/Target、Test Profile/Independent Expected/Run Evidence、Coverageと未知・未実施・不適合を相互参照できる必要があります。歴史上の検証済み組合せと、現在の採用・署名・Publisher信頼・Host権限・業務Meaning受理・実DB Effectを混同してはいけません。製品標準のVerified BOMと、単なる依存在庫を表すSBOM（CycloneDX/SPDX等への輸出）は別の投影です。
+
+検証済みパターンの提案、差分による再試験候補の選定、依存元の破壊的変更へのAI支援修正、CLI/MCP/Studio/外部Hostでの同じ限定Claimの表示を可能にします。BOMの実現は既存RQ-003の単一正本、RQ-021のConformance、RQ-032/033のPlugin合成、RQ-018〜020の実行境界を再利用し、第二Resolver、独立Test Runner、別Lock/Registry/Authorityを必須にしてはいけません。
+
+実証Owner：[Issue #3267](https://github.com/hat47x/tei-platform/issues/3267)、[BOM設計案](../plan/design/VERIFIED_COMPOSITION_BOM_AND_MATRIX_DESIGN_2026-11.md)。設計・限定Go Referenceが存在しても、実製品Matrix、実Providerの組合せConformance、Qualified BOMの発行は別途検証します。
+
 ## 要求を実装へ落とすときの原則
 
 個別IssueやADRを起票するときは、どのProduct Requirementの不確実性を減らす作業なのかを明記します。
