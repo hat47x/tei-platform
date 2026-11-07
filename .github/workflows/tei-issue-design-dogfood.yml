@@ -73,6 +73,7 @@ jobs:
           "$cli" workspace-files -workspace reference/workspace > "$out/workspace-files.json"
           "$cli" model catalog -workspace reference/workspace > "$out/catalog.json"
           "$cli" inspect -workspace reference/workspace -subject-kind semantic-data -subject-id sales.order > "$out/inspect.json"
+          "$cli" inspect -workspace reference/workspace -subject-kind semantic-validation -subject-id sales.order_line.line_number_positive > "$out/inspect-validation.json"
           "$cli" source-index -workspace reference/workspace -subject-kind semantic-data -subject-id sales.order > "$out/source-index.json"
           "$cli" trace -workspace reference/workspace -scope reference-observation -subject-kind semantic-relation -subject-id sales.order.customer -direction both -mode summary > "$out/trace.json"
           "$cli" requirements -workspace reference/workspace > "$out/requirements.json"
@@ -86,7 +87,7 @@ jobs:
 
           folder = Path(os.environ["RUNNER_TEMP"]) / "issue-to-design"
           names = ("commands", "version", "workspace-files", "catalog", "inspect",
-                   "source-index", "trace", "requirements", "validate")
+                   "inspect-validation", "source-index", "trace", "requirements", "validate")
           docs = {}
           sizes = {}
           for name in names:
@@ -100,13 +101,14 @@ jobs:
           assert docs["commands"].get("schemaVersion") == "tei.cli.discovery/v0"
           assert docs["commands"].get("scope") == "selected-read-only-commands"
           assert docs["version"].get("schemaVersion") == "tei.cli.version/v0"
-          for name in ("workspace-files", "catalog", "inspect", "source-index",
-                       "trace", "requirements", "validate"):
+          for name in ("workspace-files", "catalog", "inspect", "inspect-validation",
+                       "source-index", "trace", "requirements", "validate"):
               assert docs[name].get("ok") is True, (name, docs[name].get("error"))
           schemas = {
               "workspace-files": "tei.cli.workspace-files/v0",
               "catalog": "tei.cli.model/v0",
               "inspect": "tei.cli.inspect/v0",
+              "inspect-validation": "tei.cli.inspect/v0",
               "source-index": "tei.cli.source-index/v0",
               "trace": "tei.cli.trace/v0",
               "requirements": "tei.cli.requirements/v0",
@@ -239,14 +241,22 @@ jobs:
           assert r["testExecutionAdmission"] == "exploration-only"
           assert r["qualifiedTestGeneration"] is False
           assert len(r["syntheticControls"]) == 7
+          assert len(r["additionalManifestControls"]) == 2
+          assert len(r["transportByteControls"]) == 7
+          assert len(r["additionalRequiredRuleControls"]) == 8
+          assert r["observations"]["requiredRuleSourceRead"] == "read-by-loader"
+          assert r["observations"]["requiredRule"] == "cataloged"
+          assert r["observations"]["requiredRelation"] == "cataloged"
+          assert r["observations"]["requiredRuleCanonical"] == "matched"
+          assert r["observations"]["requiredRuleAnchor"] == "definition-source-indexed"
           assert r["observations"]["requiredSourceRead"] == "read-by-loader"
           lines = [
               "## Design Context → Test Ability 事前資格（#3262）",
               "",
-              "- 9既存CLI応答から**Source loaded/Subject/Fingerprintの限定部分**を確認。",
-              "- 合成負例: Subject欠落、Inventory未Read、Fingerprint版混合、Reply欠落、Schema Drift、Source Root欠損 + 外部Provider/Grant未観測（7種）。",
+              "- 10実CLI応答からData/Validationの2 Source、Rule Canonical/Definition Anchor、Relation、Fingerprintの限定部分を確認。",
+              "- 既存16判別Controlに加え、同一FPでRule/Relationのみ省略、Rule重複、Canonical属性変更、定義Anchor/Role欠落、Source Loader未消費、Ruleの版混合の8負例を拒否。",
               "- Test生成資格: **false**。固定公開Scenarioの局所探索のみ可能。",
-              "- Function/Business/RuleのRequired Closure、Parser/Meaning、Provider実Read、外部Harness完全受領/開示、C1/NFRは未知。",
+              "- これは1つのRule/RelationとSourceの必要条件のみ。Function/Business/全Rule・Parser包括/Accepted Meaning・実Provider Read・外部Harness完全受領/開示・C1/NFRは未知。",
           ]
           print("\n".join(lines))
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as o:
