@@ -812,3 +812,5 @@ main統合済み[PR #2894](https://github.com/hat47x/tei-platform/pull/2894)の`
 **再資格・権限境界**：Tenant/Parent Relation occurrence、Owner集合・Ruleの粒度、`status`等の必要Field、Query filter/order/top、Source/Plugin/Manifest/Operator版、Provider Grant/RLS、Snapshot/selection epoch、Consumer用途が変われば**影響Claimだけ**を再評価する。`.tei.md`形式移行ではIndex反映と実Parser/Meaning消費を分ける。OKF deterministic Attester/`verified`もExpectedの独立性・Source消費・実Read集合・Host Grant/Owner Acceptanceを証明しない。
 
 **責務と次の停止線**：#2811は検収順・証拠台帳リンクのみを所有。独立期待値の判別力=#2514、Case集合=#1180、Result Slice=#2506、実Query/Provider=#2586/#2622、同一改訂Packet=#1163、開示=#2516、Source移行=#3030。新しいRuntime/Runner/独立期待値Store・Owner認可は追加しない。**当該R05〜07の新テスト、PG実行、CallerからCompletionへの実連結、Owner受理、OKF実Attestationは今回NOT RUN**。
+
+**統合ブランチの再適用条件（2026-11-07照合時）**：本Draft #2811 は現mainと大きく分岐している（照合時点のGitHub Compareでahead 57／behind 925）。mainの同名計画書は別Blob `722e1711e74c08ca967efb9554325a2ed9891f79`、本台帳ファイルはmainに未配置。したがって、Draft内で章を増補・旧CI成功を確認しても**現在mainに計画が採用されたことにはならない**。マージ前にmainの現行Source/文書・既存Owner責務との重複を再照合し、影響した本文だけを新しいmain基線へ移植／コンフリクト解決する。古い成果の一括上書きやDraft 57コミットの無条件合算を禁止し、新しい統合HEADでDiff・リンク・必要CI/必要Obligationを再検収する。これは**統合作業の未実施条件**であり、今回rebase/mergeや統合後のテストを行ったものではない。
