@@ -61,6 +61,7 @@
 - [突き合わせ規則の反例](OPERATION_PATTERN_CROSSWALK_COUNTEREXAMPLES_2026-11-07/README.md)（同じWorkspaceに宣言を一つだけ足す5つの場合で、一致・不一致・衝突が1件ずつ変わることを記録。効果を宣言する能力は `command` を一致させ、参照先DataのPersistenceは `reference` を一致させ、同じDataを指す2つ目の `browse` は衝突として両方の名前を出して選ばない。効果の宣言だけでは標準操作が導出されないことも `missing-input` として残る）
 - [操作面はCLIの公開面に出ているか](OPERATIONS_COMMAND_PUBLICATION_GAP_2026-11-07/README.md)（`tei commands` は `selected-read-only-commands` の19件だけを載せ、CLIは53件を受け付ける。`operations` は公開されておらず、成功時は単段JSONで `ok`/`result` を持たず、失敗時はstdout 0バイトでエンベロープにならない。W5の3条件のうち満たすのは「動く」だけで、公開の可否は15章の未決1のまま）
 - [操作種別の語彙はどこに置くか](OPERATION_VOCABULARY_PLACEMENT_2026-11-07/README.md)（プラグインの `CapabilityKind` は7種の閉じた列挙で未知を宣言時に拒否し、操作面の種別は生成コード内の文字列で検査が無い。`operationKindRank` は未知を rank 5 として通す。設計49行が掲げる「規則の版で語彙を管理する」は未実装であることを示す。どちらへ置くかの判断は15章の未決2のまま）
+- [自律区分は何から導かれているか](OPERATION_AUTONOMY_DECLARATION_SURVEY_2026-11-07/README.md)（操作面が `unattended` を付けるのは読み取り操作だけで、`create`/`update` は `attended`、`human-gated` は0件。`Environment` にサービス主体の欄が無く、`surface.go` が `"human-gated"` を代入する箇所も無い。設計8章の「判断段階が未解決なら human-gated に倒す」は未実装で、未決3は宣言の置き場所と生成規則の新設の判断になる）
 - [操作面は宣言されたPatternを読んでいるか](OPERATION_SURFACE_DECLARED_PATTERN_GAP_2026-11-07/README.md)（受注Workspaceと見積もり候補の重ねで`tei operations`を比較し、World指紋は変わるのに操作面8件と`summary.declared=0`が不変であることを記録。W3未着手の設計記述と一致し、AのOperationとBの業務ActionをA側で結ぶ手掛かりが現状無いことを示す。権限・意味の受理は示さない）
 
 - [DSH外部HarnessからのTEI read-only CLI実起動](DSH_H2_TOOL_ONLY_READ_ONLY_2026-11-07/README.md)（#2509。外部AIハーネスの1実Sessionで固定実行物の実起動・実引数・実出力を同一ログで突合。H3・四Session比較・正答採点・Egressは未実施）
