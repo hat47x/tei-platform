@@ -59,7 +59,7 @@ go run ./tools/reference-generator-attestation/cmd/tei-generator-attest \
 | statementとreceiptのdigest、候補のsource/binary digest | 候補の正しさ・実Provider/実Targetの動作 |
 | 署名のnamespace | trust root・鍵の失効・承認workflow |
 
-署名が成立しても、意味の受理・権限付与・本番配備の許可にはならない。Authorityは#951 / #2016 / ADR-0035の境界へ戻す。
+署名が成立しても、意味の受理・権限付与・本番配備の許可にはならない。Authorityは#951 / #2016の境界と、[ADR-0035](../../plan/adr/0035-autonomy-levels-and-verification-packets.md)のA4（外部効果の確認）で扱う。
 
 ## 鍵の扱い
 
