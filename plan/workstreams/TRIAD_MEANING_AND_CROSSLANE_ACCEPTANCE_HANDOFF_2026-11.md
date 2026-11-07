@@ -427,3 +427,28 @@ X-TEAではDBテーブルの1:1・1:NトポロジーをXFxxxの単票/明細機�
 [main #3167](https://github.com/hat47x/tei-platform/pull/3167)は同じWorld内の宣言Patternと`tei operations`を比較し、Data IDの一致候補はあってもlist/read等のKindを決められず、Capability ID/Relation Targetの一致は得られないと実測した。読み取り専用の`preview_order_quote` `command`には対応する導出Operationが無く、`binding=null`は副作用を宣言しない能力を勝手に書込みへ昇格しない結果である。
 
 [main #3172](https://github.com/hat47x/tei-platform/pull/3172)はW3のKind対応表/Relation変換/Command一致/複数Kindの優先順位を**採用前の設計候補**として追加したが、**W3自体は未実装**。Function内Representation SlotがそのDataを表示できても、正しいActionが発見される・導出CRUDに置換してよい・現在Grantがある、のいずれも推論しない。#1127/#2507の同一受注例で「Data IDだけ一致」「Capability不一致」「effectなしCommand」「明示Accepted Action Binding」を別対照とする。Actionの意味をRendererへ重複定義せず、実Invoker/Provider資格は#2598/#1174が担当する。
+
+<!-- tei-triad-autonomy-offer-qualification-20261107 -->
+### 13.7 選択同期・操作発見・自律区分・現在権限は、同一Functionでも別の資格
+
+[main #3226](https://github.com/hat47x/tei-platform/pull/3226)で、Interactionを持たないPattern Viewの処理が統合された。実Source `internal/applicationview/view.go`（確認Blob `e5faa4631129ae35ba20da42056a3322c9672325`）では`pattern.Interaction == nil`なら空の`application.Interaction{}`を使ってDataのViewを組み立てる。**Function/Patternの閲覧と、操作やCommandの存在は同義でない**。従って標準表現型Slotを表示できるだけではAction Offerを製品が提供したことにはならない。
+
+[調査PR #3231](https://github.com/hat47x/tei-platform/pull/3231)は現行`tei operations`の自律区分を、参照・CRUD合成Workspaceで実測した**未統合の記録**。実Source `internal/operations/surface.go`（確認Blob `ad414e82a19fb7572f02a2ea7c1e8bcd12434bbe`）の生成箇所はList/Readへ`Autonomy="unattended"`、Create/Updateへ`"attended"`を付け、`human-gated`生成は確認できない。設計`OPERATION_SURFACE_DESIGN_2026-11.md` §8は自律の判定候補としてサービス主体、冪等性、人的判断の有無を記すが、**現行Derived Operationの自律ラベルはそれらを検証した結果ではない**。これを実装欠陥・正式自律Policy違反と断定するのではなく、表示ラベルをどこまで業務/AIが根拠にできるかという**限定事項**として扱う。自律判定W4の受入・採否は#1127/Operations Surface Ownerが担当する。
+
+| 同一Functionの利用段階 | 必要な観測 | そこからは言えないこと |
+| --- | --- | --- |
+| **Representation Display** | Function/Context/Role/SlotとReader/Disclosureの表示資格 | PatternにInteraction/Commandがある、操作可 |
+| **Cross-view Coordination** | Context Instance、Source/Result/Path/View Occurrence、Selection epoch、非開示の切り分け（[Draft #3222](https://github.com/hat47x/tei-platform/pull/3222)） | 選択されたView位置が一意なBusiness Entity・更新Targetである |
+| **Operation Discovery / Action Offer** | Pattern/Capabilityの実宣言とOrigin、Data IDに加えKind/Target/Binding適合。#3145/#3167の未接続を検査 | `tei operations`の数・`gaps=0`だけで宣言Actionが全件ある／実行可能 |
+| **Autonomy classification** | 採用された区分規則、その判定に実消費したサービス主体・冪等/人判断等の証拠、区分の対象Scope/版 | `unattended`だけで現在のGrant・外部送信許可・ビジネス承認がある |
+| **Actual invocation / Effect** | 現在Host Grant/Resource、Intent→Request Target、Provider Effect/Receipt/資源独立Read、必要なBusiness Meaning | read-only、画面enabled、HTTP成功、Receiptのどれか一つでBusiness完了 |
+
+**既存固定H/D1/D2・O1/C9での非重複対照**：
+
+1. **Viewのみ**：Patternに`interaction`が無くてもDataは表示可能。Operation数0/Command欄空を壊れたDataと見なさず、表現Instanceへ架空のWrite Actionを補完しない。
+2. **表示間Selection**：L1をTableからChartへ伝えたがChart集計groupはL1と1:1でない。選択・Focus・Filter・Seekは表示状態であり、Business Targetの編集・Action Offer/Grantを暗黙に生成しない（#3222 MV）。
+3. **`unattended`を持つread**：Data Contextはpartial、現在Consumer Disclosureが許さない、または外部送信先が未承認。**自律区分とRead/Disclosure/Delivery資格が別**であることを示し、非公開Dataを画面/AI出力に出さない。読み取り専用は「外部へ一切送らない」ことも意味しない（#2515/#2516）。
+4. **`attended`を持つwrite／人的承認候補**：UIが操作可能でも、実Host Grant、必要な現在Business Approval、Operation Scope、Rollback/Unknown Effect判断を再取得する。設計上の`human-gated`を実装が出力しなかったことだけで、人による判断が業務上不要だとは推定しない。
+5. **Patternを追加してもOperation不変**：Data ID一致に留まり、Kind/Capability未一致なら未接続と報告。Operationが`unattended`でも新Patternの宣言読込やCapability Targetの適合は別に検証する（#3167/#3172）。
+
+**Owner/実証の割付**：PatternとRepresentation適合は#2507、表現間Coordinationは#3222、Derived Operation/W3/W4は#1127と[PR #3231](https://github.com/hat47x/tei-platform/pull/3231)、Current Context/Selectionは#2506/#2582、Action変換は#2500/#2598、DisclosureとDeliveryは#2515/#2516、実Host/Effectは#1174。新Autonomy Policy/Prompt Approval Engine・状態Enum・第二Action Registryを本計画に新設しない。**本節は既存Go Sourceと#3231合成CLI観測の引渡しであり、今回この5対照の製品E2E、実権限・実媒体/GUI・Owner正式受理はNOT RUN**。
