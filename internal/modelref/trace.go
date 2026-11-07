@@ -214,6 +214,22 @@ func TraceDirect(graph Graph, rules []Rule, subject Key, options TraceOptions) (
 	return result, nil
 }
 
+// TraceDirections and TraceModes are the closed value sets TraceDirect accepts.
+// They are exported so the CLI advertises exactly what it validates (#3242).
+var (
+	TraceDirections = []string{"outgoing", "incoming", "both"}
+	TraceModes      = []string{"summary", "full"}
+)
+
+func containsValue(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
+}
+
 // ValidateTraceRequest returns the *TraceError that TraceDirect reports for the
 // subject and options alone, before it looks at any graph, or nil. A caller that
 // would otherwise do expensive work for a request that is certain to be
@@ -236,12 +252,10 @@ func normalizeTraceRequest(subject Key, options TraceOptions) (TraceOptions, err
 	if options.Mode == "" {
 		options.Mode = "full"
 	}
-	switch options.Direction {
-	case "outgoing", "incoming", "both":
-	default:
+	if !containsValue(TraceDirections, options.Direction) {
 		return options, &TraceError{Code: "INVALID_ARGUMENT", Message: "direction must be outgoing, incoming, or both"}
 	}
-	if options.Mode != "summary" && options.Mode != "full" {
+	if !containsValue(TraceModes, options.Mode) {
 		return options, &TraceError{Code: "INVALID_ARGUMENT", Message: "mode must be summary or full"}
 	}
 	if options.Offset < 0 || options.Limit < 0 || options.Mode == "summary" && (options.Offset != 0 || options.Limit != 0) {
