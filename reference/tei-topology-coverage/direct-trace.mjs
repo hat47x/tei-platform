@@ -26,6 +26,21 @@ export function observeDirectTrace(envelope) {
       !Array.isArray(trace.rows)) return unknown('unqualified_trace_shape');
   if ((trace.offset ?? 0) !== 0 || trace.nextOffset !== undefined || trace.rows.length !== trace.total)
     return unknown('incomplete_direct_trace_page');
+  // SourceBridge Navigation carries the subject it located. A "located"
+  // status from another subject must not be attached to this trace selector.
+  // This is a same-packet consistency check, NOT a second Source or Policy read.
+  if (!record(r.source) || !['located','unresolved'].includes(r.source.status))
+    return unknown('source_navigation_unqualified');
+  const sourceKey = key(r.source.key);
+  if (!sourceKey) return unknown('source_navigation_unqualified');
+  if (!equalKey(selected, sourceKey)) return unknown('source_navigation_identity_mismatch');
+  if (r.source.status === 'located' &&
+      (!Array.isArray(r.source.references) || r.source.references.length === 0))
+    return unknown('source_navigation_unqualified');
+  if (r.projectionUnresolved !== undefined &&
+      (!Array.isArray(r.projectionUnresolved) ||
+       r.projectionUnresolved.some(x => !exact(x))))
+    return unknown('invalid_projection_unresolved');
   const edges=[];
   let unresolved=0;
   for(const row of trace.rows){
