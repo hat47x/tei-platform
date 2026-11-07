@@ -1,11 +1,15 @@
 package generatorartifactstore
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 	"sync"
@@ -227,6 +231,13 @@ func TestPutAndGetJavaArtifact(t *testing.T) {
 	if _, err := exec.LookPath("javac"); err != nil {
 		t.Skip("javac is not available")
 	}
+	if _, err := exec.LookPath("java"); err != nil {
+		t.Skip("java is not available")
+	}
+	// Keep implicit classpaths and injected Java options out of this attempt.
+	for _, key := range []string{"CLASSPATH", "JAVA_TOOL_OPTIONS", "JDK_JAVA_OPTIONS", "JDK_JAVAC_OPTIONS"} {
+		t.Setenv(key, "")
+	}
 	workspace, contract, fixtures, _ := selectionPaths(t)
 	candidates := filepath.Join(t.TempDir(), "candidates")
 	if _, err := generatorselection.GenerateVersion(contract, "java-template", "1",
@@ -277,6 +288,108 @@ func TestPutAndGetJavaArtifact(t *testing.T) {
 	if !got.Passed || got.BinaryDigest != put.BinaryDigest {
 		t.Fatalf("java artifact was not read back: %+v", got)
 	}
+
+	// JR-01 characterization: Put/Get verify the saved Main.class, not the
+	// complete Java class closure. Do not treat the expected launch failure as
+	// proof of restore-to-run acceptance or as a permanent product requirement.
+	artifact, err := os.ReadFile(filepath.Join(got.ObjectPath, "artifact"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	controlClasses := t.TempDir()
+	compile := exec.Command("javac", "-d", controlClasses, "Main.java")
+	compile.Dir = filepath.Join(candidates, "java-template")
+	if output, err := compile.CombinedOutput(); err != nil {
+		t.Fatalf("control javac failed: %v: %s", err, output)
+	}
+	mainClass, err := os.ReadFile(filepath.Join(controlClasses, "Main.class"))
+	if err != nil || !bytes.Equal(mainClass, artifact) {
+		t.Fatalf("Get artifact differs from independently compiled Main.class: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(controlClasses, "Main$Input.class")); err != nil {
+		t.Fatalf("full Java build lacks required nested class: %v", err)
+	}
+
+	completeCopy := t.TempDir()
+	classCount := 0
+	err = filepath.WalkDir(controlClasses, func(classPath string, entry os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		rel, err := filepath.Rel(controlClasses, classPath)
+		if err != nil {
+			return err
+		}
+		if !strings.HasSuffix(rel, ".class") {
+			return fmt.Errorf("unexpected output in Java classes directory: %s", rel)
+		}
+		content, err := os.ReadFile(classPath)
+		if err != nil {
+			return err
+		}
+		classCount++
+		t.Logf("JR-01 control class %s bytes=%d sha256=%x", filepath.ToSlash(rel), len(content), sha256.Sum256(content))
+		target := filepath.Join(completeCopy, rel)
+		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			return err
+		}
+		return os.WriteFile(target, content, 0o644)
+	})
+	if err != nil || classCount < 2 {
+		t.Fatalf("full class closure could not be enumerated: classCount=%d err=%v", classCount, err)
+	}
+
+	fixtureRaw, err := os.ReadFile(fixtures)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fixture struct {
+		Cases []struct {
+			ID    string          `json:"id"`
+			Input json.RawMessage `json:"input"`
+			Want  json.RawMessage `json:"want"`
+		} `json:"cases"`
+	}
+	if err := json.Unmarshal(fixtureRaw, &fixture); err != nil || len(fixture.Cases) != 10 {
+		t.Fatalf("invalid reference fixture: cases=%d err=%v", len(fixture.Cases), err)
+	}
+	runFixtures := func(classDir string) {
+		t.Helper()
+		for _, tc := range fixture.Cases {
+			cmd := exec.Command("java", "-cp", classDir, "Main")
+			cmd.Stdin = bytes.NewReader(tc.Input)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("java -cp %s Main, fixture %s: %v: %s", classDir, tc.ID, err, output)
+			}
+			var gotJSON, wantJSON any
+			if json.Unmarshal(output, &gotJSON) != nil || json.Unmarshal(tc.Want, &wantJSON) != nil ||
+				!reflect.DeepEqual(gotJSON, wantJSON) {
+				t.Fatalf("fixture %s: got %s, want %s", tc.ID, output, tc.Want)
+			}
+		}
+	}
+	// A: complete direct build is runnable; C: the same full set copied into
+	// another clean classpath is runnable, but is NOT a Store restoration.
+	runFixtures(controlClasses)
+	runFixtures(completeCopy)
+
+	// B: only the artifact actually returned by Put/Get is restored.
+	storeOnly := t.TempDir()
+	if err := os.WriteFile(filepath.Join(storeOnly, "Main.class"), artifact, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("java", "-cp", storeOnly, "Main")
+	cmd.Stdin = bytes.NewReader(fixture.Cases[0].Input)
+	output, launchErr := cmd.CombinedOutput()
+	if launchErr == nil || !bytes.Contains(output, []byte("NoClassDefFoundError: Main$Input")) {
+		t.Fatalf("current single-class Store unexpectedly runnable or failed differently: exit=%v output=%s", launchErr, output)
+	}
+	t.Logf("JR-01: Store.Put/Get passed (binary=%s), full classes=%d (10/10 twice), "+
+		"Store-only launch fails because Main$Input.class is absent: %v", got.BinaryDigest, classCount, launchErr)
 }
 
 func TestPutAndGetSourceOnlyArtifacts(t *testing.T) {
