@@ -714,6 +714,15 @@ X-TEA Modeler由来の**Data/Function/Businessの3図とCRUD cross-reference**�
 
 既存P0-M（Data/Function/Business Source→Graph/CRUD）、P0-R（Function→実SQL/Provider→Context→Form/Table）は**並行P0**、P0-Cは十分なSource/Scope/Revision/Read Cohortが一致した時だけ接合する。#3263のFixture監査は実製品Graph/CRUD生成のPASSではなく、新Go/CLI/Studio/SHO/実Provider E2E、Ownerの意味受理は今回**NOT RUN**。
 
+
+### 三視点のSource入場を三層に分ける（2026-11-08）
+
+三視点P0-Mを最初に製品へ接続する際は、**Accepted TEI Source／管理Markdown／DB物理Schema観測**を別資格で扱う。[#3346](https://github.com/hat47x/tei-platform/issues/3346)の実CLIでは`docs/plan`のMarkdownはmanagedでも`readByLoader:false`であり、意味上のData/Function/Business宣言として読めたことにはならない。[main統合#3354](https://github.com/hat47x/tei-platform/pull/3354)固定CI[#42391707962](https://github.com/hat47x/tei-platform/actions/runs/42391707962)は11実CLI Reply/32合成Consumer Controlで限定Rule/Relation/Sourceの照合まで実証したが、Function・Business・全Requiredの閉包や新規テスト生成資格は`partial`のまま。これを三視点図/CRUD完備に昇格させない。
+
+[Workbench Draft #3372](https://github.com/hat47x/tei-platform/pull/3372)はCatalog経由で物理FK/UNIQUE・複合列・観測時刻/指紋を**候補として保持する製品コード変更**を提案し、fake Catalogのテストを追加した。未マージ・実PG未実証。Observed Physical FKとAccepted Business Relation/CRUDを区別し、Constraint不在を業務Relation不在へ推論しない。この最小Read-only逆取込をP0-M0の**独立入力候補**として扱い、受理済みSourceを代替する正本にはしない。
+
+[合成写像検収§19](design/COMPOSED_REPRESENTATION_MAPPING_QUALIFICATION_2026-11.md)のSA-01〜06を#3263/#3270/#1126（Diagram/DB候補）、#3262（実Reader/Required Closure）、#2514/#1180（独立Expected/Scenario）、#3346/#2621（Markdown Authoring）に渡す。最初は**限定実TEI Source→Qualified Data/Relation Graph→元Source/Roleへ戻る**一辺を製品実行し、Function/Business/CRUDの未取得を明示する。並列P0-Rの実SQL/Provider Read、P0-Cの相互Source照合も維持。新Reader/Parser/Graph Engine/第二Semantic Registryや一括Hard Gateは作らず、実Product Diagram/CRUD/Workbench×実DB/Host、Ownerの業務意味受理は**NOT RUN**。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
