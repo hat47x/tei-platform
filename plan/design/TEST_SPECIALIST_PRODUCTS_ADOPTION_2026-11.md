@@ -1277,3 +1277,40 @@ QueryやGraphを扱う「不在に関するTest Pattern」は、Positive Witness
 5. **P1-B（Build・Plugin）**：#3360 stage-driver限定再入性→#3362 process-image→#2831 `cmd/tei`再入契約、#3363 Ref Matrix→#951実選択・Provider Load/Invoke→#3267 exact Tupleの順。各別PRのlocal PASS、Source・Artifact・Target・Granted Runtimeの合成適合を分ける。CLI/Studio双方で同じInspector Pluginを実呼出す最短D1を並行して進める。
 
 **観測済と未実施の境界**：#3357/#3358/#3348/#3354はmain統合済みの限定成果。#3356はドッグフーディング第2ラウンドの実測を報告する**未統合PR**。#3359/#3360/#3361/#3362/#3363は各PRが報告した局所試験/提案であって、本節で新しく実行した試験ではない。TT-115〜122は**受入計画・NOT RUN**。外部H2/H3受領、MCP、T1-B、新しい実Provider/Host、`cmd/tei` G4、Owner Meaning Acceptanceは**未証明**。実施済みの局所結果を合算して全E2E/製品テストCoverageを作らない。
+
+<!-- tei-test-partial-inventory-dogfood-20261108 -->
+## 27. 2026-11-08：部分Scenario目録でも局所正証人を保持する実装（TT-105/106）
+
+### 27.1 実装への昇格と責務の絞り込み
+
+[新Draft #3365](https://github.com/hat47x/tei-platform/pull/3365) は、main統合済み[#3354](https://github.com/hat47x/tei-platform/pull/3354)の限定Design Contextの上で、既存#1180 Scenarioの実Go生成・Pinned実TEI CLI検証が取得した**6 Step各一件のEvidence**を使い、§26の「対象を観測できない」ことと「未テストが確定する」ことを区別する試験用read-only投影を追加した。新しい製品APIや第二Scenario/Runner/Oracle/Hostではない。
+
+- 既存 `tools/reference-issue-test-ability/probe.py` に `scoped_step_coverage` を置き、**独立のRequired Step集合**、実CLIの `expect_real_evidence` が検査したStep結果、対象Scenario Source Digest、受信Endの有無を**別条件**で扱う。
+- 正常な6 Step実入力から、`localObserved`はその6件とするが、`productCoverage`は常に`unknown`。これは**Scenarioの限定Step到達**でありRule条件のC1・Requirement網羅・現在Grantではない。
+- TT-105は受信目録のコピーから `validate-denied` を外した場合、そのStepを `notObserved` とするが、`untestedConfirmed` は空。**削除されたReceiptは真の未実行を示さない**。
+- TT-106は同じ部分目録でも実測 `validate-positive` の局所正証人は保持し、全ProductのCoverageはunknownとする。正の証拠を認めるのに全世界の分母完全性を要求せず、全体Coverageの推論を許さない。
+- 追加対照は、必要なEndが欠ける6件の見かけ上の完備／欠落のある偽End／Source Digest不一致／重複Step Receipt／`verified`欠落。出力は既存 `test-ability.json` の `scenarioInventory` と `scenarioInventoryControls` に**試験用属性**を追加。Report既存Schemaの正式製品API採用とはしない。
+- .github/workflows/tei-issue-design-dogfood.yml で現存の実Pinned CLI Step結果の後に7 ControlsとReportの入場判定を検証する。Code変更の本PR exact HEAD CI合否と、その後のmain統合可否は別途検収。
+
+### 27.2 失敗診断をモデルのテスト不足から分離する
+
+| 受領／実行の実態 | 範囲相対の正しい表現 | 追加取得すべき証拠 |
+| --- | --- | --- |
+| 特定Stepの実Pinned CLI Evidenceはverified、他のStep Replyは欠落 | 当該Stepのobservedを維持、欠落Stepはnot-observed-in-received-inventory | Request/Response/EOFまたは明示Skipped、全Step実選択 |
+| 6件のStepが揃うがEnd未取得 | six-steps-seen、inventory partial | 実受信End marker（外部HarnessではRequest ID/ordered parts/digestも） |
+| Endがあるが一件欠損／重複 | incomplete／ambiguous、未テスト確定不可 | Subject/Step ID、実選択・届いた独立Receipt |
+| Scenario Source Digest/実Run Revision不一致 | stale/unqualified。古い局所証人を現対象へ転用しない | Source/Plan/Artifactの同一Attempt束縛 |
+| Scenarioの6 Stepがすべて実行済 | 当該Pinned Scenario内の6 Stepについて局所観測 | 別途独立Rule/Requirementと適用Scopeの全分母 |
+| Business拒否・技術失敗・EffectUnknown・Provider部分取得 | Status/実ResultとStepの履歴を独立保存 | #2514のIndependent Expected、#1174の実Effect/Receipt、#2506のSlice completeness |
+
+重要な非推論：部分目録の一件欠損は、新規Test Patternの必要性を確定しない。一方、正しく観測済のStepを全体不明ゆえに消去する必要もない。**テスト不足候補を推薦する前に、どの集合（Requirement/Case Manifest/選択済Test/実行Receipt/外部受信）が不完全なのか説明**する。自律テスト生成の「最小指示・無駄なケースを増やさない」UXはここに置く。
+
+### 27.3 今後の実装・検収順
+
+1. **P0 現PR**：#3365の実CLI＋7対照を同一exact HEAD CIで実測し、Report中のStep局所正証人とProduct unknownの両立を確認。実CLI/Scenarioの別版・健康診断成功を本PRへ流用しない。新PRは作成時Draft・未受入。
+2. **P0 H2/H3比較**：#2509/#2515に依頼する実外部Tool受信で、受領Step・End/Part・stdout以外のSink/Session再開も検査。今回は既存Runner内の合成受信目録なのでH2/H3が資格化したとは言わない。読取Providerがread-onlyでもログ・Cache・後続Agent sinkが保存/送出するEffectは別扱い。
+3. **P1 AI Test Gap**：#3262がQualifiedな必要部分とPartial/Unknownを供給し、#3273/#1180のCase候補からまだ未提示の独立Obligationを#2514が盲検採点。**受信不足の修復**を新たな未テストの発見として採点しない。
+4. **P1 多Consumer/Plugin**：同一独立ObligationをCLI/Studio/SHOやPlugin/Trait/BOMへ投影する場合、同じSubject IDの見かけの複製を分母へ加算せず、実読み込み/実呼出・View occurrence/Provider exact tupleは別軸で比較する。#1251/#951/#3279/#3267が実走Owner。
+5. **P2 C1・NFR・Effect**：Go Code C1/Scenario Rule判別/HTTP Graph Guard/現DB Effect/NFRは、それぞれ独立分母と実行証拠で検収する。全Stepの実行だけで業務・C1・SLO達成を名乗らない。
+
+**Claim ceiling**：§27の新実装は既存実CLIの受領済みStepと改変コピーを扱うbounded test-dogfood。真の外部Tool配送欠落、実Provider部分故障、Product全体Rule Universe、Method/Holdoutを隠したT1-B、Go C1・正式Owner受理を証明しない。新Source/Plugin Resolver、Test Runner、認可/Authority、専用Proof Storeは導入しない。
