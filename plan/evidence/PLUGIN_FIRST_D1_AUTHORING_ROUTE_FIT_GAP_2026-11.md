@@ -81,3 +81,70 @@
 ## 5. 状態と採否
 
 この時点では**静的コード検査のみ**。Scopeの既存拒否、Studio/CLIの直呼出、Operationのfingerprint項目、Compositionの既存APIは確認したが、AS-01〜12の新規実行はしていない。並行するDraft [#3280](https://github.com/hat47x/tei-platform/pull/3280)（Desktop固有）、[#3282](https://github.com/hat47x/tei-platform/pull/3282)（Trait）、[#3292](https://github.com/hat47x/tei-platform/pull/3292)（Master PlanのD1）と、提案内容を分担し、先行Draftの完成を推論しない。旧`service_carrier`は今のままapplication-runtime専用のまま保持し、authoring専用Contract/Providerの実接続は未実装として扱う。既存Source/Meaning/Runtime AuthorityのOwnerと現在資格を保存し、**二重Contract/Registry/Host/Runner/Lockを追加しない**。
+
+---
+
+## 6. 2026-11-08横断実装差分：Plugin選択・Capability選択・実Providerは別の事実
+
+**基線**：main `6cf510d6301a1e133ebbe69ad7bf004f03361b54`。この追補はPR #3300のAS-01〜12を置き換えず、11/7〜8に実装・議論が進んだ他レーンを**Inspector D1の実際の前提**へ取り込む。Source、Observed、Selected、Invoked、Qualifiedの単語を同じ意味に使わない。
+
+[PR #3337](https://github.com/hat47x/tei-platform/pull/3337)でmainへ入った`tools/reference-plugin-capability-coverage/`は、`World.Plugins[*].Provides`と`Environment`のBindingを使い、`Capability Kind + Capability ID`の**宣言上の選択**を調べるread-only Referenceである。確認済み`coverage.go`は`Selected/Unselected`と`ruleFingerprint`を返す。**実Providerの選択、Contract Conformance、実Link・実Invocation、Current Grantは実行しない**。これはD1の宣言の棚卸しには使えるが、選択済Inspectorが呼ばれた証拠ではない。
+
+特に現行`internal/plugin/model.go`の`CapabilityKind`は固定列挙であり、Inspectorの新Contractを`editor-intelligence`等へ便宜的に押し込むことや、D1のために固定enumを増やすことは目標#951に反する。**InspectorはTooling ScopeのContract/Providerとして扱い、legacy Kind/ID行は必要な範囲でのみ橋渡し**する。
+
+| 観測の段階 | 既存の確認入口 | 満たしたとき初めて言えること | まだ言えないこと |
+| --- | --- | --- | --- |
+| Plugin declared / installed | `World.Plugins`／Catalog | 定義がある | その能力が要求・選択された |
+| Capability selected by Environment | `reference-plugin-capability-coverage`、`Environment` Binding | legacy Kind+IDが宣言に一致している（対象Bindingに限る） | Plugin全能力が選択された、実Providerが確定した |
+| Contract/Provider resolved | #951/#1016のexact Contract/Scope/Version/Epoch | 一つの実装候補への決定論的選択 | Buildに収録された、適合・権限が確認された |
+| Build/Load actual | #943/#1089/#1167、対象Go module・Artifact | 対象の実装・実Sourceが当該Artifactに含まれる | 実呼出された、Grantを得た |
+| Invocation actual | CLIとStudioの別call-site → Provider entry、Attempt | 選択した実Providerが当該要求で呼ばれた | Required Source完全、現Host Grant・Effect・外部Consumer受領が成立した |
+| Qualified use | #3262/#2514/#1174/#2516/#3267 | 対象Claim・Scope・Target・Expected相対で支持された事実 | 他Host/版/組合せへ自動継承できる |
+
+**実測上の修正履歴に注意**：[初回Reference Evidence](PLUGIN_CAPABILITY_COVERAGE_REFERENCE_2026-11-08/README.md)は12能力のうち6をunselectedとして記録したが、そのうち`database-provider`2件は`database-instance.Provider=postgres/oracle`という**技術名**とCapability ID `database.postgres`等の文字列比較不能に由来する数え方の限界。現在の`coverage.go`では、既存Validationと同じ`Capability.SupportsDatabaseProvider`で技術名から選択を導出するよう変更されている。従って**初回の6という件数を最新ルールの現在値として再利用しない**。現在値は同じSource World・RuleFingerprint・Toolchainで再実行し、生データとともに比較する。さらに`editor-intelligence`はPluginとして選択されても能力Bindingがなく、`migration-provider`も同じPlugin内の別Capabilityだけが選択され得る。「Plugin選択済み⇒全Capability選択済み」という推論を拒否する。
+
+**D1への適用**：Inspector Contractを選ぶとき、(a)要求したOperation/Scope、(b)Provider Offer、(c)実選択、(d)実Build、(e)実Invocationを**別欄**に記録する。Legacy Capability Coverageが`unselected`でも、汎用Tooling Contractの未提供・失敗と即断しない（Coverageの表現対象範囲が異なる）。逆にlegacyで`selected`でも実Inspectorの選択と認定しない。選択なし／曖昧な候補／別ScopeならD1bは停止。既存サービスCarrierの`application-runtime`制約は維持する。
+
+## 7. 「Inspectorの正常JSON」だけでは、Design Contextを読めたことにならない
+
+[PR #3296](https://github.com/hat47x/tei-platform/pull/3296)のDesign Context実CLI Referenceは9応答と16の負例を対象に限定した取得・受領の判別を追加しており、未達領域を`partial`として保持する。これをD1実ProviderのテストPASSに合算しない。最新の[Markdown Source Gap #3346](https://github.com/hat47x/tei-platform/issues/3346)では、`docs/`・`plan/`を`sources`で管理しても、Loaderが`*.tei`しか解釈せず、Markdownは`managedFiles`に載っても`readByLoader:false`、`model catalog/inspect/trace`の意味的対象ではない事実が報告されている。**ファイルが管理対象≠Loaderが実読込≠Parser/Roleが解釈≠Accepted Meaning≠Required Closureが完結**。
+
+新しいInspectorのD1は最初に**現行Loaderが実読込でき、Source Indexへ到達する小さな`*.tei`**を正例に使う。一般Markdown/SHO文章/Raw Item、未採用`*.tei.md`の解釈方式はこの正例へ黙って加えず、[Markdown Authoring #2621](https://github.com/hat47x/tei-platform/issues/2621)のOwnerで並行検証する。対応PluginがないRaw ItemやCanvas occurrenceも保持対象とし、意味不明をデータ消滅と扱わない。
+
+[CLI出力契約Gap #3345](https://github.com/hat47x/tei-platform/issues/3345)/[#3347](https://github.com/hat47x/tei-platform/issues/3347)の`view`専用semanticFingerprintとWorld/Source Index Fingerprintの比較範囲差、`validate`のdiagnostics二重構造・`requirements`のresult配列、standard entries混在を踏まえ、**異なるScope・Schema/ProjectionのFingerprintをbyte同一であるかのように比較しない**。D1の比較は意味契約で選んだVersion、Subject/Source Actual Root、World/Index Scope、Unknown/Partial、実Recipientが受領したpage/endの範囲を先に固定する。Source Indexに現れないRoleを「不存在」と返さず`unobserved/unsupported`として扱う。
+
+Sourceだけを保存・表示するRaw Editorと、Role/Meaningを提示するInspectorを別資格とする。Rawの保全は未対応Pluginのデータ消去を禁止する一方、それだけで意味受理やCLIのテスト自動生成資格を与えない。これはIssue→Design Context→Testの既存#3262/#1180/#2514経路に引き渡す。
+
+## 8. ビルドの実起動主体・ローカル書込・外部Tool受領を混同しない
+
+[PR #3336](https://github.com/hat47x/tei-platform/pull/3336)でmainへ入った`reference-go-build-stage-driver`は、起動側のexecutable digest、子プロセス側のdigest/argv/PID/exit、子が報告したArtifact digestとディスク上の実digestを分離して記録する。局所実験では子ProcessによるGo Buildが観測されたが、`l3Claimed=false`を保持し**Stage1 TEIがStage2 Buildを主導したTEI self-build L3とは主張しない**。D1でCLI/Studio Providerを同じ物理Artifactへ収録したと主張するときにも、`selected provider`と`actual binary/actual invoker/actual invoked process`を別欄にする。root `go test`が成功しても別nested moduleのStudio実Buildまで自動合格としない（#1251 PB-10）。
+
+[CLI実ファイル書込検証 #3333](https://github.com/hat47x/tei-platform/issues/3333)では、`view`がDiscovery上`effect:read-only`でも、`-execute`と`-operation-log`／`-lifecycle-state`によって実ファイルが生成される。mainの`writeFlags`は指定オプションの書込入口を明示するが、Effect語彙の正式再定義ではない。D1の`inspect`自体がread-onlyでも、shadow比較・テスト実行・Hostのログ／キャッシュ／Tool応答永続化／外部Harness送出は**別の作用と権限**。Payloadの中に`read-only`と書かれているだけではOS書込・外部送出禁止の証拠にならない。検証時に監視する対象（Workspace Source／Local Report／Tool Transport／外部Egress）を分離する。
+
+## 9. 横断成熟差分から更新するD1最短Gate（新Hard Gateは増やさない）
+
+| 順位 | 使用する既存資産とOwner | 次の実装者が実際に確認する一点 | それでも未成立なClaim |
+| --- | --- | --- | --- |
+| **D0-P** | #3337のCapability Coverage、#951のContract、#1016 Profile | legacy Kind+ID、Plugin単位選択、Tooling Contract選択の三つを分け、Inspector Offerが存在しないときは候補・不足を明示 | legacy `selected`だけではProvider適合・Build収録なし |
+| **D1-P** | #1251/#1158/#1824、既存Studio allowlistと`operations.InspectSubject` | **Tooling Scopeでexact選択したInspector**をCLIとStudioの二つの実call-siteから同一実Providerへ呼ぶ。B selected→A actualの出力同一負例 | Source Required Closure、WebView GUI画面動作、他Targetは別 |
+| **D1-S** | #3262/#3296、#3346/#3345/#3347 | 受信できたJSONと実Loader/Role、Source実path/FP scope、Required集合、Complete/Partialの一致を保ち、未読込を不在と誤読しない | Markdown文書すべてが意味的に読めるわけではない |
+| **D1-A** | #1174/#2516、#3333、#2509 | Host ScopeとWorkspace許可、実Filesystem Writeと外部Deliveryの範囲を別に確認し、Pluginの自己宣言をGrantにしない | 本番Host Effect/Disclosure資格なし |
+| **D1-B** | #943/#1251/#2831、#3336 | 選択Provider→実Build Source/Module→binary digest→invoker/invoked/Provider callを当該Attemptに束縛 | stage1→stage2再帰Self-build L3、BOM Qualifiedは別 |
+| **D1-T** | #3278/#3267/#1180/#2514 | Required TraitのFulfillmentと独立Expected、Provider/Consumer 2×2 exact組合せを採否を分けて記録 | 個別Conformanceや候補Planを合成Verifiedにしない |
+
+**追加の独立Expected観点**（既存Scenario SSOTに委譲し新Runner/テスト定義正本を作らない）：
+
+| ID | 対照 | Expected |
+| --- | --- | --- |
+| AS-13 | Plugin選択済み、対象Capability Bindingなし | Inspector実Provider選択済みと偽らない。別のCapabilityが選択されても同一視しない |
+| AS-14 | Kind違いの同ID、DB provider `postgres` vs Capability ID `database.postgres` | tech名とIDを文字列一致で照合せず、既存`SupportsDatabaseProvider`に沿う。Tooling InspectorへDB方式選択を流用しない |
+| AS-15 | 初回Coverage raw=6 unselectedと、改訂RuleFPのSourceからの出力を混合 | stale/mismatchedの比較を拒否。再実行のない現在件数を主張しない |
+| AS-16 | 管理対象Markdownだが`readByLoader:false`、Rule宣言は本文にある | `inspected`／`accepted`／`requiredComplete`をfalse/unknownとして保持。非存在とは診断しない |
+| AS-17 | `view` semantic FPを`inspect` World FPへ代入、またはSource Index fingerprintだけが一致 | Scope違いのFingerprintを同等資格にしない。同一Subject/実Source/Role閉包を別検査 |
+| AS-18 | CLI/Studioで同じProvider結果だがTool replyは途中切断、外部H3へ一部だけ配信 | Provider成功≠Consumer受領完了。外部送出現在資格も独立 |
+| AS-19 | Pluginの`read-only`広告、`view -execute`でLocal Journal生成 | 宣言Effectと実OS書込を別検査。ログ生成を業務Source変化とは誤認しない |
+| AS-20 | invoker digest≠invoked digestでArtifact bytes一致、またはselected ProviderがBinaryへ不収録 | 参照Build成功／byte一致のみでD1実Provider Link/Call、TEI self-build L3を認定しない |
+
+**P0と並列の方針**：新しい全Source Reader／一括Markdown Parser／汎用Trait実装／Verified BOM製品／Recursive Self-buildの完成を、Inspector D1の先行条件にはしない。D0-P→D1-Pを最短のP0として継続し、D1-S/A/B/Tは同じ実ScenarioのClaimに必要な部分だけ連結する。Issue→DesignテストドッグフーディングではRaw保全・三視点・Function Readを各Ownerで並行させ、Source未読込を「未定義」と扱う誤PASSを共通D1で検出する。
+
+**今回の新規観測の限界**：現行GitHub Source・PR/Issue・過去の限定Reference結果を照合した。D1の実Provider選択→CLI/Studio実Call、上記AS-13〜20の新実行、最新版Coverageの実再計測、外部H3の完全受領・実DB/実WebView・Owner受理は**NOT RUN**。#3337/#3296/#3336/#3333の限定実装・既存実験結果を、今回の追加試験のPASSとして加算しない。
