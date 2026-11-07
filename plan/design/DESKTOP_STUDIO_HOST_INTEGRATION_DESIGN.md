@@ -342,7 +342,7 @@ Wails依存を外したGo Service/合成Adapterの試験と、実WebView起動�
 ### 10.8 D1の実装候補を限定受入へ接続し、選択表示と実利用を区別する
 <!-- tei-desktop-inspection-port-slice-20261108 -->
 
-**実行に着手した範囲**：[#3371](https://github.com/hat47x/tei-platform/pull/3371)は、§10.7で指摘した`ReadOnly.InspectSubject`のServiceFactory迂回に対し、既存`RootServices`へ`InspectionService`を加える**小さなGo変更のDraft**。Factory無しのPoC read-only経路は維持し、Factory非nilのときInspector未提供なら暗黙の`operations.InspectSubject`へfallbackせず拒否する。Subject/schema/effect/Canonical非空/World・Source Index fingerprintが一致しない応答は成功扱いしない。Root allowlist/Identity検査はFactory呼出前に維持し、Host固有エラーは公開Responseへそのまま返さない。
+**実行に着手した範囲**：[#3371](https://github.com/hat47x/tei-platform/pull/3371)は、§10.7で指摘した`ReadOnly.InspectSubject`のServiceFactory迂回に対し、既存`RootServices`へ`InspectionService`を加える**小さなGo変更のDraft**。Factory無しのPoC read-only経路は維持し、Factory非nilのときInspector未提供なら暗黙の`operations.InspectSubject`へfallbackせず拒否する。Subject/schema/effect/Canonicalの妥当なJSON/World・Source Index fingerprintが欠落・不整合となる応答は成功扱いしない。Root allowlist/Identity検査はFactory呼出前に維持し、Host固有エラーは公開Responseへそのまま返さない。
 
 **新Go試験の役割**：Factoryからの一回の実Service呼出し、旧built-inへの無断fallback拒否、誤Subject・Effect・版/内容欠落、許可外Workspace/Root差替えのFactory呼出0回、Host-private error秘匿を対照する。これらは**Host-selected typed Inspector入口の局所試験候補**であり、PluginのContract/Provider exact選択、実Composition Lock→actual invoked Providerの対応、CLIとWailsが二つの独立Consumerとして同じProviderを利用した証拠ではない。初回PRの[Actions](https://github.com/hat47x/tei-platform/actions)は作成時queued/pendingで、Go/CIのPASSは未確認。ここでDS-D1-A/Bを`PASS`にしない。
 
@@ -355,4 +355,4 @@ Wails依存を外したGo Service/合成Adapterの試験と、実WebView起動�
 
 **判断上の留意**：Studioが扱うread-only結果でも、CLI／Tool／Session Log等の受信側は保存・送出し得る。Source/ResultのDisclosureとSinkの観測は#2515/#3338に委ねる。#3354の11実CLI Reply・32局所対照はRule/Source Closureの**一部を拒否できる**証拠で、全設計情報・外部Tool配送やWails側の実選択資格ではない。#3359のHook Reads限定はDraftで、RunnerからCLI/Studioへの配線とProduces sideは未実証。FunctionのOfferやHook宣言が画面に見えても実行可能・意味受理済みとは表示しない。
 
-**計画統合の状態**：本§は同じDesktop設計Draftへ実装候補の所在・依存関係・不合格条件を追記したもの。#3371は別Draft、#3352はまだmain未統合、#3363/#3359も未統合。新しいWails/Windows/Provider/CLI+Studio二Consumer・外部Sinkの試験を本節では実施していない。§10.1〜10.7や#1180/#2514の独立Expected/Gateは維持する。
+**計画統合の状態**：本§は同じDesktop設計Draftへ実装候補の所在・依存関係・不合格条件を追記したもの。#3371は別Draft、#3352はまだmain未統合、#3363/#3359も未統合。新しいWails/Windows/Provider/CLI+Studio二Consumer・外部Sinkの試験を本節では実施していない。**既存FactoryのCatalog/Validation専用ConsumerがInspectを呼ぶ場合の後方互換は別途実Call Site調査を要し、Factory非nilでInspector未提供を黙って成功に戻さない。**§10.1〜10.7や#1180/#2514の独立Expected/Gateは維持する。
