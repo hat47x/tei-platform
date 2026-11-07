@@ -9,16 +9,16 @@ type cliCommandCatalog struct {
 }
 
 type cliCommandRecord struct {
-	Name     string   `json:"name"`
-	Effect   string   `json:"effect"`
+	Name   string `json:"name"`
+	Effect string `json:"effect"`
 	// ExcludedFlags lists invocations which must NOT be treated as covered by
 	// this read-only discovery record, even when the command accepts them.
 	// This is an invocation-specific effect boundary, not a CLI flag ban.
 	// A caller must not infer read-only safety for an excluded variant.
 	ExcludedFlags []string `json:"excludedFlags,omitempty"`
-	Required []string `json:"required"`
-	Optional []string `json:"optional,omitempty"`
-	Output   string   `json:"output"`
+	Required      []string `json:"required"`
+	Optional      []string `json:"optional,omitempty"`
+	Output        string   `json:"output"`
 	// SchemaVersion is the schemaVersion the command returns, when it has one.
 	// A command with an empty value is either text-only at this invocation or
 	// outside the stable JSON contract; JSONContract says which.
