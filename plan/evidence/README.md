@@ -76,3 +76,4 @@
 - [DSH外部Harnessが暗黙に取り込むContextの実測](DSH_H6E3_IMPLICIT_CONTEXT_2026-11-07/README.md)（#2515 H6-E3・#2509。AGENTS.md・CLAUDE.md・Skillのdescriptionが、Toolで読まずにモデル入力とSession Logへ載ることを合成canaryで観測。Skill本文は未ロード。Tool poison・実OS拒否はNOT RUN）
 - [二回の独立Buildにおける再現性の観測](TEI_GO_BUILD_REPRODUCIBILITY_2026-11-07.md)（`cmd/tei`を別々の試行ID・別の隔離stateで二回Buildし、同じartifact digestを得た記録。Builder信頼・受入・権限は未確認。SB-N8 / #2831）
 
+- [DSH外部HarnessのHost棚卸し](DSH_H6E0_HOST_INVENTORY_2026-11-07/README.md)（#2515 H6-E0。Tool ProcessからOS・mount・環境変数・loopback到達性を列挙し、read-onlyのConstrainedLanguageと危険modeの差、親の環境変数が子へ継承されないことを観測。別Host・実Egress制御はNOT RUN）
