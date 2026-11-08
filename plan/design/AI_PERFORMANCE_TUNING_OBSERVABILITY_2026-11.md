@@ -189,3 +189,110 @@ AIの出力は**提案**にとどめる。予測効果（estimated）と実測�
 - Go: [Diagnostics](https://go.dev/doc/diagnostics)。pprof等は実Targetで費用を測って利用する。
 - Raychaudhury et al., [Coresets for Robust Query Optimization](https://doi.org/10.1145/3801896) (2026)。不確かなCardinality推定の下で頑健な実行計画を選ぶ研究例。特定アルゴリズムをTEI標準に直結させない。
 
+
+## 9. 横断統合：性能要求から実装とEvidenceまでの最小契約（2026-11-08追補）
+
+本追補は#3271 Cache/Snapshot、#2582 Data Context、#3278 Trait、#3503 Lifecycle、#3509 B2C、#2600 Build再利用を、既存AI Tuning Packet設計と接続する。**各分野の正本を作り直さず、組込み標準と案件固有実装を同一条件で比較可能にする**ことが目的。以下の名称・Schema/API・Plugin Roleは設計候補であり、採用済みの公開契約ではない。
+
+### 9.1 最適化の判定単位
+
+最適化の単位は Subject × Workload × Requirement/Guardrail × Realization × Evidence とする。
+
+| 軸 | 記録したい内容 | 失敗させる誤認 |
+| --- | --- | --- |
+| Subject | Function/Operation/Query/Derived ClaimのTyped Ref、Source位置、Meaningと受理範囲 | Query文字列一致を業務的同一性とする |
+| Workload | Target/Host/環境、Window、データ量と分布、Read/Write比、同時数、操作Mix、Cold/Warm、Variant、Sampling/欠測 | 観測した一部を全利用者・全時点とみなす |
+| Requirement | SLO、p95/p99、throughput、CPU/Memory/DB/Network/Storage費、鮮度、整合性、可用性、現在Authority/Disclosure | 未設定の性能目標をAIが補完して合格扱い |
+| Realization | selected/built/invoked/qualifiedの各Provider/Plugin/Target・exact Lock、実DB Plan、Cache Policy | 構成にあるProviderが実際に呼ばれたと推測 |
+| Evidence | 独立Expected、結果粒度、実Benchmark、統計母数と誤差、計測負担、独立再観測、Receipt、現在の資格 | Hit率・DB推定Cost・AI予測を実改善と呼ぶ |
+
+判定は**意味・現在の使用資格・正しさを保ち、対象Workloadの事前に定めた制約を満たす**こととする。速度の改善とp99/書込み負荷/費用の退行は別列で示す。品質に新しい正本を作らず、#565のQuality Envelopeと既存Scenario/Evidenceに用途別投影する。
+
+### 9.2 最適化の候補探索と撤回可能性
+
+発見の起点は (1)不要な実行・N+1・過大取得を減らす、(2)SQL/Index/Batch/Stream/並列/Renderingを改善する、(3)Derived/Cache/Snapshotで再利用する、の三種類。ただし適用順と採否は実測と制約で決める。**Cacheなし、TEI共通Runtime非介在、標準UIなしの完全Headlessも正式な比較候補**とする。
+
+| 対象 | 主な候補 | 異質なリスク |
+| --- | --- | --- |
+| 取得・演算 | Query Pushdown、N+1除去、Batch、Provider native SQL | NULL、粒度、非単調差分、DB書込負荷 |
+| Function / Context | 依存Claimごとの局所維持・再計算、再取得Scope | 部分取得、NOT EXISTS、Top-N、JOIN撤回 |
+| Materialization | request-local memo、Memory/Local、分散Cache、Snapshot、Edge配信 | 世代・失効・Stampede、Tenant、Grant、Storage/egress |
+| Target / UI / Delivery | Pool、Backpressure、Stream、仮想化、SSR/CDN | p99、追加Hop、初期描画・データの開示 |
+
+分散Cache、独立常駐Agent、自動Adaptive制御はP0の前提にしない。最適化のためだけに新たなCache Host、第二Query Planner、第二Resolver、第二認可基盤を設けない。
+
+## 10. Typed Lifecycle Graphを最適化の入力にする
+
+#3503のOperation/Interaction/Generation Lifecycleを区別したうえで、Read/Derivedの標準フロー、案件差分、合成後の実効Flowを同じTyped Graph/Roleから導出する。**説明図だけで終えず、Generator/検証入力としてSource/Lock/Target/実呼出しを照合する**。#1124/#2497の図表・投影意味と統合し、独自の二重Flow正本は作らない。
+
+~~~text
+Function / Operation Read
+ → Context・現在のAuthority/Disclosureを検査
+ → Strategyの適用可能性を判定
+ → Cache reuse判定 または Source/Query Providerへ
+ → 必要時のDerived再計算・Materialization
+ → Result Scope/Completeness/Revision/Freshnessを検査
+ → Consumerに応答（必要なCurrent Disclosureを再検証）
+~~~
+
+上は論理的説明であり、全Targetの固定Runtime順序ではない。実装は分岐・省略・合成・静的生成・Target nativeを認める。固定するのは**業務意味、型、必要なSource/Dependency/時点、現在Grant、必要なEffect/Receipt、独立Expected**という保証である。権限チェックの具体位置はHost/Target契約に従い、論理図の1ノードを実行するだけで保証したと主張しない。
+
+| Graphで示す分類 | 変更可能性 | 確認すること |
+| --- | --- | --- |
+| 不変の保証境界 | Pluginでは迂回不可 | 意味、現在Grant/Disclosure、業務確定値、unknown Effect |
+| Typed Extension Binding | 交換可能 | Provider/Adapter/Targetの実選択・実呼出し、生成結果の同等性 |
+| Performance Policy | 制約付き調整 | TTL/容量/Prefetch/Samplingが保証を弱めないか |
+| Observation / Hint | 任意、除去可能 | Instrumentationの無効化で結果を変えず、余計なHopを残さない |
+
+CLI/Studio/SHOはModel全体、個別ノード、固定/Custom/実効フロー、Typed Ref、Source、Plugin Lock、未解決箇所を同じRead-only情報から案内する。全体集合が不明ならcompleteを主張しない。Graph変更がGeneratorに反映され、Target動作に到達したことを独立実証する。
+
+## 11. Pluginの実装方式と安全なAdaptive Strategy
+
+### 11.1 三段階の選定
+
+1. 標準Function/Rule/Target-nativeで要件を満たせるかを先に検討する。
+2. 不足する場合だけ既存#951 Contract/Provider/CompositionへObserver、Analyzer、Proposer、Strategy、Provider、Verifier等の**役割Binding**を追加する。これらをCore固定enumや独立Resolverへ昇格させない。
+3. Go単一バイナリに適した静的合成・コード生成を既定候補にし、既存APM/DB/CacheへのAdapterを許す。独立プロセス・動的ロードは更新・隔離・実測利得が必要な案件に限る。
+
+#3278原子的Traitは、Requiredなら実装義務とConformanceを要求し、Advisoryはヒントとしてのみ扱う。Cacheable等の名称だけでは保証にならない。Capability自己宣言、実現、実Target Evidence、現在の実行権限を区別する。Plugin Bundle配布と選択した構成、実Build依存の閉包を分離し、未選択Pluginが結果・ビルド・Cache Keyへ混入しないことを確認する。
+
+### 11.2 安全な最適化の競合とFallback
+
+- **同時Missの合流**：Request Coalescingは純粋なReadでQuery/parameter、Source revision、Context epoch、鮮度条件、Tenant/Disclosure scopeが両立する単位に限定。異なる現在権限や不確定な結果を一つのFutureへ束ねない。書込みの重複防止はCacheでなく既存Operation ID/Effect契約が所有する。
+- **旧値復活**：Aが旧版を読みBが更新・失効後、Aが旧版を書き戻す競合では、Sourceの世代・条件付き書込み等が有効な場合にだけ防止保証を主張。Provider能力が未知なら強い鮮度を表明せず、条件に応じ再取得・利用不可・unknownへ戻す。
+- **キーと資格の分離**：Key hitでもInput Closure、Rule/Operator/Toolchain/Schema、Snapshot Scope/Completeness、現在Grantを再照合する。Cache evictionは業務確定保存値を上書き・削除する理由にならない。
+- **Query意味保存**：Native SQL/Pushdown/Batchの同等性はNULL/missing/非開示、集合粒度、時点、Collation、精度、ORDER、部分取得と非単調なRetractまで検証する。
+- **Adaptive**：P0/P1は自由な本番自動書換えを行わず、事前に適合性を検証したStrategyだけを切替候補とする。後続の適応制御ではヒステリシス、最小保持時間、切替数上限、欠測/Exporter障害時の安全なFallback、変更履歴とRollbackを検査する。採用前の提案はSource・業務意味・権限を変更しない。
+
+## 12. 検証に追加する反例（AT-15〜24、すべてNOT RUN）
+
+既存AT-01〜14、#3271 CS-01〜10、#2582 RC-01〜09および#1180/#2514の独立Expectedを再利用する。新しいScenario正本を作らない。
+
+| ID | 操作・故障注入 | 独立Expected |
+| --- | --- | --- |
+| AT-15 | Query形状・値は同じだがContext epoch、Tenant、Principal、B2C Variantが異なる | Metric集約の可否とResult/Coalescing/Cache共有の資格を分離。不明な共有は拒否 |
+| AT-16 | Cache Miss集中と同時更新、旧値読取り後の失効、CAS拒否、再起動 | Backend負荷と旧値復活の両方を確認。未保証はunknown |
+| AT-17 | Memory/Localの交換、Selected Provider Bで実Invoked A、未選択Plugin混入 | exact Lock/Build/実Call・Artifact/Consumerを一Attemptで区別 |
+| AT-18 | 同じHash/TTLでもRule/Schema/Source revisionとOwner資格が変化 | 旧結果の再利用と現在資格・必要再検証を分離 |
+| AT-19 | TEI QueryとNative SQL/BatchでJOIN・NULL・NOT EXISTS・部分取得が混在 | Entity/grain・Retract・空集合/未取得が一致しない場合、最適化棄却 |
+| AT-20 | 少数標本・偏ったSampling・p99比較・Trace欠落 | 母数/誤差/代表性/欠測を示し改善確定を拒否 |
+| AT-21 | p50とHit率改善、一方でp99/DB write latency/Memory/egress退行 | 変更前に指定したGuardrailで棄却またはRollback可能 |
+| AT-22 | Lifecycle Hook・Generator・Targetの変更と手動拡張の再生成 | 固定/差分/実効Graph、実Call、必要保証とTarget別Evidenceを検証 |
+| AT-23 | APM/Profiler停止、Exporter障害、Clientは完全Headless | 本体の意味を維持し、未観測を0ms・未実行と解釈しない |
+| AT-24 | Adaptive Strategyが負荷変動で頻繁に反転する | 切替抑制/Fallback/履歴・現在資格を確認し、未検証Strategyに切替えない |
+
+比較票の論理列は Subject/Revision、actual selected+invoked Provider/Target/Artifact、Workload fingerprint、Source/Schema/Rule、Independent Expected、Measured distribution/overhead、Correctness、Guardrail、Grant、Verdict、Unknownとする。固定の公開JSON Schemaと誤認しない。
+
+## 13. 段階的な統合先・停止条件
+
+| 段階 | 具体的な縦断 | 既存の正本と完了条件 |
+| --- | --- | --- |
+| T0：Fit/Gap | 実CLI/Query/Design Context/Provider/Telemetry/Scenarioの現行能力を照合 | #951/#3262/#2387、存在しないCLIを標準化せずunknownを保持 |
+| T1：Read-only | 既存order_entryの実ReadでFunction→Query/SQL→DB Provider→Context ResultとSpan/Metricを同一Attemptへ結合 | #2586/#3270/#3262。実Providerと結果Scope/欠測・権限を照合 |
+| T2：異質な2方式 | N+1除去またはSQL Pushdown、Cacheなし→Memory/Localの比較 | #2582/#3271/#1180。独立Expected、cold/warm、同時負荷、p99/費用・更新競合 |
+| T3：AI Candidate | Design Context read-only投影→説明可能な改善候補→Plan/独立Benchmark→採否・事後観測 | #3262/#2516/#1180。AI推定は未受理、DDL/Effectは既存Grant/Receipt |
+| T4：複数実Consumer | Go、Web/Desktop/完全Headless、後続Java/.NETのうち実際に実行したものだけ比較 | #1121/#3503/#3509/#3267。別TargetのPASSを流用しない |
+
+#2600は実消費入力・Artifact再利用・Build省略・Evidence再資格化の所有先、#3271はCache/SnapshotとBackend、#2582はContext依存、#3278はTraitの実装義務、#3503/#1124は型付きFlow・図表とGeneratorの所有先とし、本書は**横断の最適化判定と受渡し**だけを所有する。#1119の既存G0〜G4へ追加Hard Gateを設けない。プロセスやPluginを増やしたのに実際の価値・正しさ・待ち時間改善を示せない場合は、その抽象を縮小/撤回する。
+
+**現況**：これは設計と計画の成熟化。AT-15〜24、T1〜T4、実OTel/実DB、AI実適用、実Target性能改善と正式Owner受理は**NOT RUN / NOT ACCEPTED**。既存の限定Reference PASSや過去のGate B/Cを新性能の合格証拠と読み替えない。
