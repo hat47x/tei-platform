@@ -79,8 +79,6 @@ type selfBuildOuterArgs struct {
 	// ChildArgs is the extra argv the caller passes to the child as JSON. The
 	// outer shape does not invent those arguments, but it must forward them.
 	ChildArgs string
-	// IntentFile is the declared build intent. It is required by SC0-01.
-	IntentFile string
 	// SupplyVerifier is an exact executable that runs SB-0b's classification.
 	// When named, its result is required before the builder starts (SC0-02).
 	SupplyVerifier string
@@ -110,13 +108,12 @@ func parseSelfBuildOuterArgs(args []string) (selfBuildOuterArgs, error) {
 	fs.SetOutput(io.Discard)
 	fs.StringVar(&parsed.Workspace, "workspace", "", "TEI workspace that declares the build intent")
 	fs.StringVar(&parsed.Intent, "intent", "", "build intent ID; recorded, not resolved by this entry")
-	fs.StringVar(&parsed.IntentFile, "intent-file", "", "build intent JSON this entry holds and hands to the child")
+	fs.StringVar(&parsed.IntentFile, "intent-file", "", "declared build intent JSON this entry holds and hands to the child (required, SC0-01)")
 	fs.StringVar(&parsed.Supply, "supply", "", "offline module supply passed to the child")
 	fs.StringVar(&parsed.State, "state", "", "isolated state directory for this attempt (required)")
 	fs.StringVar(&parsed.Output, "output", "", "artifact path written by the child (no-clobber)")
 	fs.StringVar(&parsed.Child, "child", "", "exact child executable (required; never resolved from PATH)")
 	fs.StringVar(&parsed.ChildArgs, "child-arg", "", "extra child arguments as a JSON array of strings")
-	fs.StringVar(&parsed.IntentFile, "intent-file", "", "declared build intent JSON (required)")
 	fs.StringVar(&parsed.SupplyVerifier, "supply-verifier", "", "exact executable that classifies the supply (SB-0b)")
 	fs.StringVar(&parsed.SupplyVerifierArg, "supply-verifier-arg", "", "extra arguments for the supply verifier as a JSON array")
 	if err := fs.Parse(args); err != nil {
