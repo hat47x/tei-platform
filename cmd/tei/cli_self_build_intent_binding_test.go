@@ -122,11 +122,15 @@ func TestSelfBuildOuterBindsTheDeclarationBytesItHeld(t *testing.T) {
 	dir := t.TempDir()
 	child := buildIntentReportingChild(t, dir)
 	workspace := outerWorkspace(t, dir)
-	intentFile := filepath.Join(dir, "intent.json")
-	if err := os.WriteFile(intentFile, []byte(`{"formatVersion":1,"subject":{"kind":"plugin","id":"intent.sample"}}`), 0o600); err != nil {
+	// The declaration must pass the strict reader that the entry now shares with
+	// the reference resolver (SB-C0 §4.13 I-1a), so this is a real declaration
+	// rather than an arbitrary JSON object.
+	intentFile := outerIntentFile(t, dir)
+	rawIntent, err := os.ReadFile(intentFile)
+	if err != nil {
 		t.Fatal(err)
 	}
-	wantDigest := digestOfBytes([]byte(`{"formatVersion":1,"subject":{"kind":"plugin","id":"intent.sample"}}`))
+	wantDigest := digestOfBytes(rawIntent)
 	output := filepath.Join(dir, "artifact")
 	// Compute the digest the child will produce so the artifact check matches.
 	if err := os.WriteFile(output, []byte("artifact-bytes"), 0o600); err != nil {
@@ -186,10 +190,7 @@ func TestSelfBuildOuterDetectsAChildThatReadADifferentDeclaration(t *testing.T) 
 	dir := t.TempDir()
 	child := buildIntentReportingChild(t, dir)
 	workspace := outerWorkspace(t, dir)
-	intentFile := filepath.Join(dir, "intent.json")
-	if err := os.WriteFile(intentFile, []byte(`{"formatVersion":1,"subject":{"kind":"plugin","id":"intent.sample"}}`), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	intentFile := outerIntentFile(t, dir)
 	output := filepath.Join(dir, "artifact")
 	if err := os.WriteFile(output, []byte("artifact-bytes"), 0o600); err != nil {
 		t.Fatal(err)
@@ -247,10 +248,7 @@ func TestSelfBuildOuterRecordsWhyTheByteCheckWasNotPerformed(t *testing.T) {
 	child := buildSelfBuildChild(t, dir)
 	workspace := outerWorkspace(t, dir)
 	output := filepath.Join(dir, "artifact")
-	intentFile := filepath.Join(dir, "intent.json")
-	if err := os.WriteFile(intentFile, []byte(`{"formatVersion":1,"subject":{"kind":"plugin","id":"intent.sample"}}`), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	intentFile := outerIntentFile(t, dir)
 	report, _ := runOuterShapeWithIntent(t,
 		"-child", child,
 		"-workspace", workspace,
