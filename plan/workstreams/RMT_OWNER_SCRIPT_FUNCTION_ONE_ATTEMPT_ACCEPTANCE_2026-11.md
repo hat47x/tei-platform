@@ -845,3 +845,29 @@ RMT E01/02の独立Requiredには、単に名前が見つかっただけでな�
 - **#1163/#2514**：Query原文、Pattern操作意図、実Applied Filter/Sort/Page/Scope、Readerの実Rowset/Read epoch/extent、独立Expected、Case receiptの実受領と完全性を**同じE Attempt**へ束縛。別W/C実PGのPASS、CLI/Studio Inspect、Draft部分目録の局所PASSをEの実Read資格に加算しない。必要なら#2516が低権限公開Bodyの二世界対照を担う。R原典Parity／K EffectReceipt／Owner Bは別Claimで保留。
 
 **現況**：Source-staticの契約比較と既存別HEAD CI確認を実施。新しいE Product Go/SQL/実PG/Studio実Read、Windows旧Driver、実Owner受理、同一Functionの独立PG Rowsetは**NOT RUN／UNQUALIFIED**。既存G1/G2/G4、#2586/2622の正式Owner基準、新Runner/Host/Proof Registry/Scenario正本を変更しない。#2783はDraft維持。変更後HEADのCIは新結果が出るまで未認定。
+
+### 22.3 11/8現行mainのRead前段資格：入口で使う情報の意味を狭くする
+
+基準main `2a9849dafdfe2c2d2d6a51991669c9dddd739de2`。既存P0-R1、RMT-HR-01〜05、E/W/CのSource分離、P0-R2の後段配置を維持する。次の5実装は**main統合済みの限定機能**として受け入れるが、いずれも`order_entry.recent_orders`の実SQL/Provider/Rowsetの代用にしない。
+
+| main実装／確定した局所結果 | 今のHR-01/02への利用と独立停止条件 |
+| --- | --- |
+| [#3390](https://github.com/hat47x/tei-platform/pull/3390) `internal/syntax/semantic_anchor.go` | `type Status from std.code values {...}`のSource Index anchor走査を修正し、当該合成Workspaceの`source-index`/`validate`が以前のexit 2から成功に変化。**値域の合法性/業務Role/全Loader消費/実Query実行を保証しない**。ロード直後と実Reader時のSource/SQL原byte・Source Indexをなお照合（Draft #3383はSource-only driftの別負例、全Health [#42396735631](https://github.com/hat47x/tei-platform/actions/runs/42396735631) はfailureで未統合）。 |
+| [#3404](https://github.com/hat47x/tei-platform/pull/3404) `internal/operations.ModelCatalogEntry.prelude` | `examples/xtea-lowcode`のCatalog全76 entry中、標準13 entryを`prelude:true`で区別可能。**必要業務Rule・Query・Relationの分母は独立Requiredから固定**し、13標準型が列挙されたことを利用者Sourceの存在証明にしない。preludeはSource Indexに現れないためSource absenceとは別。 |
+| [#3403](https://github.com/hat47x/tei-platform/pull/3403) `tools/reference-mcp-readonly-adapter` | CLIと同じCatalog/Inspect/Trace/Validateの4読取結果を参照MCP Adapterで比較し一致。**製品MCP契約・実Harness受領・Function Query/Provider実Readではない**。P0-R1は実CLI経路で先行し、MCP提供をHard Gateとしない。将来のMCP Consumersは同Source/Required/実Result Replyへの完全受領を別検収。 |
+| [#3408](https://github.com/hat47x/tei-platform/pull/3408) Feature selection実測 | `editor.sql_analysis`のPlugin欠落は`ENVIRONMENT_FEATURE_PLUGIN_MISSING`になるが、`editor.database_workbench`の同種欠落は`tei validate exit 0`になり得た（構成コピーを使った限定観測）。**この事例はEditor Featureの選択検査の非対称性であり、sales DB Providerの実Missingを直接示さない**。一般則として`validate ok`／`Capability selected`で全Required Provider Loaded/Invoked/Current Grantを証明しない。Eの`UNBOUND_DATASOURCE`も独立に検出・停止。 |
+| [#3401](https://github.com/hat47x/tei-platform/pull/3401) `hook.RunSequence`／`ReadsFor` | 各Hook位相は宣言されたReadだけを受け取り、不足時は`HOOK_READ_NOT_OBSERVED`で停止。**値はCaller提供で実DB取得せず、`produces`/CLI・Studio/実Plugin・実Providerは未接続**。Rの同Rule二入口／Data Script/Hook受理で参照するが、E HR-01をHook依存にしない。 |
+
+以上のmain限定機能は各実装PRのRepository Health成功を確認済み（#3390 [#42440925085](https://github.com/hat47x/tei-platform/actions/runs/42440925085)、#3404 [#42438438836](https://github.com/hat47x/tei-platform/actions/runs/42438438836)、#3403 [#42440216932](https://github.com/hat47x/tei-platform/actions/runs/42440216932)、#3408 [#42439322869](https://github.com/hat47x/tei-platform/actions/runs/42439322869)、#3401 [#42445671940](https://github.com/hat47x/tei-platform/actions/runs/42445671940)）。**別HEADであり、E Product SQL Readのテストは今回NOT RUN**。
+
+### 22.4 Product Readへの先行順をさらに限定する
+
+既存Query/SQLと`BuildBrowse`があるのに実Readの結果が無い現況で、**必要な新実装は「一つの実Binding→Provider Readerの接続」であり、Context/Reader/MCP/Hookの別Engineではない**。最初の正常Caseは`status`のeq実入力・必要なSchema/物理Instance/Provider確定・SQL byte/実args/Row identity/Read scopeを既存#2586 HR-01/#2514/#1163に束縛する。失敗理由は`no-instance-binding`・`no-product-reader-invocation`・`bind-invalid`・`sql-failed`・`read-partial`・`read-empty-qualified`・`host-denied`・`independent-read-not-run`を**Packet上の診断例**として区別（新製品enumを追加しない）。実Rowsetを一度得た後に、§22.1の`ne`、sort asc、page20、hidden status、Tenant/Disclosureを各Operatorの独立負例で検収する。Result 2列の成功をOrderLine全L/Business Bへ再利用しない。
+
+追加の**Source-only drift**の圧力：Draft [#3383](https://github.com/hat47x/tei-platform/pull/3383)ではWorldの正規化JSONが同じでもSourceIndex fingerprintが変わるLF差分をCharacterize。固定Fixtureの旧Scenarioが走ることと現在Contextの資格が維持されることは別。**このPRはDraft・全Health failure**なので当RMT一Attemptの実成功へ加算せず、Source実消費・Build Input・選択SQLの現在版を照合する負例としてのみ使用する。
+
+### 22.5 第22章前HEADのCI失敗と統合判断
+
+本Draft前HEAD `a2ee4cc4fec4c07241ff9dbd80e5310136308b88`の[Repository Health #42396891587](https://github.com/hat47x/tei-platform/actions/runs/42396891587)は**completed/failure**。Job logでは`go vet ./...`、`go test -count=1 -timeout 60m ./...`、`tei validate -workspace reference/workspace`はPASSし、**Go 1.26.10の`gofmt -l .`が`tools/reference-plugin-capability-coverage/coverage_test.go`のdriftを検出**したことが失敗原因。RMTのMarkdown追加やProduct Reader test失敗を原因としない。mainでは[#3391](https://github.com/hat47x/tei-platform/pull/3391)/[#3398](https://github.com/hat47x/tei-platform/pull/3398)等でCI Go版の整形差へ対処済み。ただし**古いDraft branchが自動的に修正されたわけではない**。
+
+最終統合では、古いBranchのまま連続追補をMergeせず、mainの最新Go Toolchain/Source/Planとの必要差分を再検査し、**RMT自身のMarkdown＋既存SQLite Fixtureだけを意図した変更として再資格化**する。現在Branchの大量behindを無検証のRebase/Force pushで処理しない。新HEADのHealthが成功しなければ`docs-branch-health-unqualified`、新実Provider Readが未接続なら`product-read-not-connected`をそれぞれ独立に保持。製品Main／DB／Windows/旧Driver／正式Owner Bは本追補では変更・実行せず、G1/G2はUNQUALIFIED。
