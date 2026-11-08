@@ -386,6 +386,8 @@ WP10 統合と引継ぎ
 | フックの位相の重複宣言の拒否 | 実装 | 付録C.5、`internal/validation` |
 | フックの位相順序と途中停止の記録（`RunSequence`） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md) |
 | フックの宣言した読み取りだけの授受（`ReadsFor`） | 実装 | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_DECLARED_READS_2026-11.md) |
+| 位相ごとの読み取り範囲（`RunSequence`） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_PER_PHASE_READS_2026-11.md) |
+| 提案された値の宣言照合（`ProducesFor`） | 実装 | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_DECLARED_PRODUCES_2026-11.md) |
 | フックが使う能力の`command` Pattern不在の拒否 | 実装 | 付録C.5、`internal/validation` |
 | フックの実行境界（reject/warn） | 実装 | 付録C.5 |
 | 未使用属性の表示 | 実装 | 付録C.5 |

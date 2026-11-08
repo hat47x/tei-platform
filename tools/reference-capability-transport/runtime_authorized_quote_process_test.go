@@ -83,7 +83,7 @@ func TestIndependentQuoteRunsThroughExistingRuntimeAuthorityBoundary(t *testing.
 		[]byte("module example.invalid/quote-runtime-boundary\n\ngo 1.23\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	binary := filepath.Join(t.TempDir(), "order-quote")
+	binary := hostExecutable(t.TempDir(), "order-quote")
 	build := exec.CommandContext(buildCtx, "go", "build", "-o", binary, ".")
 	build.Dir = work
 	build.Env = append(os.Environ(), "GOWORK=off", "GOTOOLCHAIN=local")

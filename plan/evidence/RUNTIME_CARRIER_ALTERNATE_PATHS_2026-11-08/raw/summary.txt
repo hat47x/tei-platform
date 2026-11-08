@@ -1,0 +1,3 @@
+== counts ==
+non-test importers of plugin/runtime: 30
+among those, also importing servicehost: 0

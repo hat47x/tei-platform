@@ -1,0 +1,1 @@
+{"schemaVersion":"tei.cli.inspect/v0","ok":false,"error":{"code":"UNSUPPORTED_SUBJECT_KIND","message":"inspect does not support subject kind \"not-a-kind\""}}
