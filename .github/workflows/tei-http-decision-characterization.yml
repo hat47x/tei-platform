@@ -20,11 +20,6 @@ on:
       - 'internal/driver/observation.go'
       - 'internal/semantic/capabilityinvoke/invocation.go'
       - 'reference/legacy-auth/**'
-      - 'reference/web-composition/go-host/**'
-      - 'reference/workspace/semantic/sales/order.tei'
-      - 'reference/workspace/tei.workspace.yaml'
-      - 'internal/semantic/capabilityinvoke/invocation.go'
-      - 'reference/legacy-auth/**'
   push:
     branches: [main]
     paths:
@@ -40,10 +35,6 @@ on:
       - 'reference/workspace/tei.workspace.yaml'
       - 'internal/driver/invocation.go'
       - 'internal/driver/observation.go'
-      - 'internal/semantic/capabilityinvoke/invocation.go'
-      - 'reference/legacy-auth/**'
-      - 'reference/workspace/semantic/sales/order.tei'
-      - 'reference/workspace/tei.workspace.yaml'
       - 'internal/semantic/capabilityinvoke/invocation.go'
       - 'reference/legacy-auth/**'
 
@@ -79,7 +70,6 @@ jobs:
           printf 'e1-go-fixture-blob=%s\n' "$(git rev-parse HEAD:reference/web-composition/e1-go-route-pair.fixture.json)"
           printf 'e1-go-node-test-blob=%s\n' "$(git rev-parse HEAD:reference/web-composition/e1-go-route-pair.test.mjs)"
           node --test reference/web-composition/plan-check.terminal-gap.test.mjs reference/web-composition/e1-go-route-pair.test.mjs
-          node --test reference/web-composition/plan-check.terminal-gap.test.mjs
       - name: 対象版Goを準備
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
@@ -118,14 +108,6 @@ jobs:
             gofmt -d reference/web-composition/go-host/e1_real_workspace_command_binding_test.go
             gofmt -d reference/web-composition/go-host/e1_real_workspace_driver_invocation_test.go
             gofmt -d reference/web-composition/go-host/effect_unknown_observation_test.go
-          go version
-          go test -count=1 -v ./reference/web-composition/go-host
-          if [[ -n "$(gofmt -l reference/web-composition/go-host/decision_path_test.go reference/web-composition/go-host/e1_go_route_pair_test.go reference/web-composition/go-host/e1_workspace_source_admission_test.go reference/web-composition/go-host/e1_real_workspace_command_binding_test.go reference/web-composition/go-host/e1_real_workspace_driver_invocation_test.go)" ]]; then
-            gofmt -d reference/web-composition/go-host/decision_path_test.go
-            gofmt -d reference/web-composition/go-host/e1_go_route_pair_test.go
-            gofmt -d reference/web-composition/go-host/e1_workspace_source_admission_test.go
-            gofmt -d reference/web-composition/go-host/e1_real_workspace_command_binding_test.go
-            gofmt -d reference/web-composition/go-host/e1_real_workspace_driver_invocation_test.go
             echo "Focused Go witness source is not gofmt-clean" >&2
             exit 1
           fi
