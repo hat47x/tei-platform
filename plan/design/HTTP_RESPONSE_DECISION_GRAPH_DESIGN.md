@@ -467,7 +467,36 @@ SEIを意思決定の主体とする構想は、本件では**Candidate decision
 - **未実証**：E1宣言が実Loaded Application Patternから**生成**されたこと、実Resolver/Providerが`sales.order.submit`を選択・Invokeしたこと、実TEI GraphのNode/Edge occurrence一意性、Client Reaction、実効果、現在Authority、同一SnapshotのRequired Source closure。
 - **次の最短一辺**：#951/#1043/#1158の現在のResolver/Host/Command受理契約を**実Pattern+Capability IDに基づいてread-onlyで対応表へ投影**する。Route名の一致から選択済みProviderを推測せず、`selected→loaded→invoked`を異なる証拠へ分ける。GraphのOwnerは#1124/#2497/#2620、Function完備性は#3262、exact Artifact/Plugin/BOMは#3267/#3279。第二Registryや第二Hostは設けない。
 
-## 17. 参考資料と採否
+## 17. 2026-11-08 P0-B：実Workspace→既存DriverでCommand Bindingを解決する
+
+### 実装の現在値と前段CIの資格
+
+[前段PR #3501](https://github.com/hat47x/tei-platform/pull/3501)の[限定Node/Go CI #42464774706](https://github.com/hat47x/tei-platform/actions/runs/42464774706)、[全体Health #42464774715](https://github.com/hat47x/tei-platform/actions/runs/42464774715)、既知脆弱性確認 #42464774725は**同じ前段HEADでcompleted/success**。P0-Sの実Workspace Pattern/Capability `InspectSubject`はこの範囲で実Go PASS。前段§16に記載したQueuedは作成時点の履歴であり、現在の実行資格とは区別する。
+
+現行 `internal/driver/resolver.go` と `internal/driver/binding.go` を実コード照合したところ、`ResolveCommandBinding(applicationID, patternID)` は、`ResolvePattern`でcommand→Capability参照を読み、`ResolveCapabilityBinding`でApplication-scopedな `CustomGoBinding` を実解決する。既存の`realization.ResolveCustomGoBinding`が対象Bindingの**0件・重複2件以上を拒否**する。実Source `reference/workspace/applications/order-entry/realizations/submit-order.tei` には `realize sales.order.submit with custom go` があり、正規化されたBindingの実Identityは `order_entry/sales.order.submit` である（ファイル名由来の実装推測ではない）。
+
+今回[Go Referenceテスト](../../reference/web-composition/go-host/e1_real_workspace_command_binding_test.go)では実`workspace.Load`→`driver.NewResolver`→`ResolveCommandBinding`を**本物のDriver APIで実呼出し**する。二視点FixtureのAction ID・前段実SourceのPattern ID・Capability ID・Application-scoped Binding Identityを**独立固定Expected**で比較し、結果が同じ文字列になるだけでTarget Providerの実起動を断言しない。新しい独自Resolverや`Binding`製品型は導入しない。
+
+| ケース | 入力・負例の加工 | 独立Expectedと保証の上限 |
+| --- | --- | --- |
+| HDG-R01 | 実Reference Workspace、`order_entry.submit_order` | `Pattern(command)→sales.order.submit→order_entry/sales.order.submit`の実Driver解決成功。Provider Adapter実ロード／Invokeは未資格 |
+| HDG-R02 | test-only Worldから該当Bindingを削除 | 明示Bindingがなければ`ResolveCommandBinding`はエラー。名前やファイルパス推測による代替禁止 |
+| HDG-R03 | 同じApplication/CapabilityのBindingを複製 | 曖昧な選択を拒否。任意一件への暗黙選択は禁止 |
+| HDG-R04 | PatternのCapability参照だけ、別の**有効な**`security.authorize`に差し替え | Driverが別の有効なBindingを解決できても、固定Expected `sales.order.submit`とは不一致。構成可能性≠業務上の正しいAction |
+
+Source Indexを前段P0-Sで読めても、このDriver解決は`Source Index→Application Bindings`の**実読込・解決の限定一辺**であり、既存`reference/workspace`の全部署・全Relation、原子的Source Snapshot、Versioned BOM、実Host Gatewayを証明しない。今回の負例はメモリ上で`World`をコピーして加工し、固定Gate B/Cの`*.tei`やBusiness Accepted Meaningを変更しない。
+
+### 他チャットの統合境界
+
+- **共通Application API / ADR-0048・#1158**：Application Pattern→Capability→Bindingの意味は媒体非依存。CLI・MCP・HTTP・Desktopはその選択と結果を利用するが、**宣言の解決＝実Adapter呼出し**ではない。共有OperationのConsumerとして実行し、媒体ごとに別のCommand/Policy Engineを作らない。
+- **Plugin/Trait / #951・#3267・#3297**：`selected→loaded→invoked→received`を区別する。今回の`ResolveCommandBinding`は**resolved／declared**までであり、Plugin Provider Bの実選択／Adapter実呼出しや現在資格、BOM Artifactsは未実証。`CustomGoBinding`という既存方式から一般的な動的Plugin方式へ結論を飛躍させない。
+- **Design Context / #3262・#3482**：`sales.order.submit`の限定Required Sourceが現行CLIで一部確認されていても、HTTP Graph Required Node/Edge/Guard・公開資格・単一Snapshot・全Function closureは未資格。新テストによって独立Expectedを「全Required完備」と誤認しない。
+- **三視点Graph/SHO・KON**：Binding解決で得たPattern/CapabilityをGraphへ投影する場合、Canonical Relationshipと元Source occurrenceを保存する。Document/Graphの保存版、Runtime Bindingと現行Grantの鮮度を個別に検証する。#3492の三視点実Source ConsumerがこのHTTPテストによってPASSしたとはしない。
+- **HTTP実行/Client Reaction / #1043・#1656・#1174**：次の一辺は、解決された`CustomGoBinding`が**実Reference Hostの選択済みAction Invocationで使われた**という同一Attemptの証拠。未到達ならunbound。HTTP 202やGo Audit completedでEffect Commit・Client受信を推測せず、unknown/Receipt/独立readを保持する。
+
+**本PRの実CIが成功するまではHDG-R01〜04はNOT VERIFIED**。Go Host packageの本Runner成功後も成立するのは限定Resolverの正負例だけ。次に独立Target Provider/Adapter実呼出しを確認し、HTTP Handlerの有効経路とDecision Graphを突合する。
+
+## 18. 参考資料と採否
 
 - [Liberator repository](https://github.com/clojure-liberator/liberator) ― ClojureのREST decision modelの先行例。ライブラリ移植ではない。
 - [Webmachine mechanics](https://webmachine.github.io/mechanics.html)、[Decision flow](https://webmachine.github.io/diagram.html)、[Resource functions](https://webmachine.github.io/resources.html) ― decision flow・契約・処理に分離する参考資料（古いHTTP版があるため仕様の正本にはしない）。
