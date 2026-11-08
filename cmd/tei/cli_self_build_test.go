@@ -106,7 +106,7 @@ func TestSelfBuildRecordsBothIdentitiesAndCrossChecksArtifact(t *testing.T) {
 	var stdout bytes.Buffer
 	code, err := runSelfBuildCommand([]string{
 		"-child", child,
-		"-child-arg", `["-artifact","` + artifact + `","-digest","sha256:deadbeef"]`,
+		"-child-arg", childArgs(t, "-artifact", artifact, "-digest", "sha256:deadbeef"),
 		"-artifact", artifact,
 	}, &stdout)
 	if code != 0 || err != nil {
@@ -147,7 +147,7 @@ func TestSelfBuildRejectsAClaimedDigestThatDiffersFromTheImage(t *testing.T) {
 	var stdout bytes.Buffer
 	code, err := runSelfBuildCommand([]string{
 		"-child", child,
-		"-child-arg", `["-artifact","` + artifact + `","-digest","sha256:deadbeef"]`,
+		"-child-arg", childArgs(t, "-artifact", artifact, "-digest", "sha256:deadbeef"),
 		"-artifact", artifact,
 		"-claimed-self", "sha256:not-this-process",
 	}, &stdout)
@@ -191,7 +191,7 @@ func TestSelfBuildRecordsAMatchingClaimWithoutClaimingL3(t *testing.T) {
 	var stdout bytes.Buffer
 	code, err := runSelfBuildCommand([]string{
 		"-child", child,
-		"-child-arg", `["-artifact","` + artifact + `","-digest","sha256:deadbeef"]`,
+		"-child-arg", childArgs(t, "-artifact", artifact, "-digest", "sha256:deadbeef"),
 		"-artifact", artifact,
 		"-claimed-self", selfDigest,
 	}, &stdout)
