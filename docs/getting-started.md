@@ -1,4 +1,4 @@
-﻿# TEIを動かす
+# TEIを動かす
 
 この文書では、TEIを取得して動作を確認するまでの手順を説明します。設計の考え方から知りたい場合は、[はじめてTEIを知る方へ](for-readers.md)を参照してください。
 
@@ -78,7 +78,7 @@ Workspaceがモデル要素を1つも宣言していない場合、`validate`は
 
 `model catalog`の`modelRevision`は、管理対象Sourceのファイルpathと生バイトの組をsha256で並べた値です。**読み込んだWorldの内容の版ではありません。** 管理対象Sourceが1件も無いWorkspaceでは、空入力のSHA-256（`sha256:e3b0c442…b855`）になります。標準意味型（`std`）の`entries`は`modelRevision`の計算に入らないため、`entries`が0件でなくてもこの値になり得ます。空かどうかを判別するには、`modelRevision`ではなく`declarationCounts.total`を使ってください。`modelRevision`は「管理対象Sourceを1バイトも読まなかった」ことの証拠であり、モデルの同一性・受理・整合性の証拠ではありません。
 
-`validate -json`・`model catalog`・`inspect`・`trace`・`workspace-files`・`view -format json`・`source-index`・`knowledge-context`・`requirements`・`plugin-lock`・`plugin-resolve`・`plugin-runtime-plan`は、結果に`workspace`を返します。`-world`ファイルだけを入力したコマンドは、manifestを読んでいないため`workspace`を返しません。`name`は`tei.workspace.yaml`の`workspace:`に書かれた値、`formatVersion`はmanifestの版、`manifest.sha256`は読んだmanifestのバイトの照合値です。同じCanonical IDが複数のWorkspaceに別の意味で存在し得るため、`worldFingerprint`は内容の同一性を示しますが、どのWorkspaceかは示しません。両者を組み合わせて、結果の混在を防いでください。`workspace:`を書かないmanifestは読み込まれ、`name`は空になります（パスから名前を作りません）。これらは読んだ版の識別子であり、受理・権限・排他ロックではありません。`source-index`の参照一覧は、0件でも`[]`で返り、`null`にはなりません。
+`validate -json`・`model catalog`・`inspect`・`trace`・`workspace-files`・`view -format json`・`source-index`・`knowledge-context`・`requirements`・`plugin-lock`・`plugin-resolve`・`plugin-runtime-plan`は、結果に`workspace`を返します。`-world`ファイルだけを入力したコマンドは、manifestを読んでいないため`workspace`を返しません。`name`は`tei.workspace.yaml`の`workspace:`に書かれた値、`formatVersion`はmanifestの版、`manifest.sha256`は読んだmanifestのバイトの照合値です。同じCanonical IDが複数のWorkspaceに別の意味で存在し得るため、`worldFingerprint`は内容の同一性を示しますが、どのWorkspaceかは示しません。両者を組み合わせて、結果の混在を防いでください。`workspace:`を書かないmanifestは読み込まれ、`name`は空になります（パスから名前を作りません）。`tei.workspace.yaml`の先頭に1つだけあるUTF-8 BOMは、`.tei`と同じく読み飛ばします（WindowsのエディタやPowerShellの`Out-File`が付けるBOMで、手で編集するmanifestでも起きます）。読み飛ばすのは先頭の1つだけで、途中のBOMは未知の項目として拒否します。`manifest.sha256`は読み飛ばしの有無にかかわらず生バイトの照合値なので、BOMの有無は別の版として現れます（[#3556](https://github.com/hat47x/tei-platform/issues/3556)）。これらは読んだ版の識別子であり、受理・権限・排他ロックではありません。`source-index`の参照一覧は、0件でも`[]`で返り、`null`にはなりません。
 
 ```bash
 go run ./cmd/tei model catalog -workspace reference/workspace

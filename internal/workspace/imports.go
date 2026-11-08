@@ -47,10 +47,19 @@ type workspaceManifest struct {
 // parseWorkspaceManifestYAML accepts the existing small workspace YAML subset
 // plus explicit single-namespace imports. It deliberately does not pretend to
 // be a general YAML parser. All unsupported entries fail with a source line.
+//
+// One leading UTF-8 BOM is ignored, matching the .tei lexer: an editor or a
+// Windows PowerShell redirect that saves "UTF-8" can prefix the BOM, and the
+// manifest is a hand-edited file. The manifest digest stays computed over the
+// raw bytes the caller read, so the BOM is still part of the identity that
+// `manifest.sha256` reports (issue #3556).
 func parseWorkspaceManifestYAML(src string) (workspaceManifest, error) {
 	var out workspaceManifest
 	section := ""
 	current := -1
+	// A BOM anywhere but the first byte stays an unsupported entry: it is not
+	// a prefix, and treating it as whitespace would hide a corrupted file.
+	src = strings.TrimPrefix(src, "\ufeff")
 	for n, raw := range strings.Split(src, "\n") {
 		line := strings.TrimSpace(strings.SplitN(raw, "#", 2)[0])
 		if line == "" {
