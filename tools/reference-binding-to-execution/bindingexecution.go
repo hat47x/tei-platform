@@ -92,10 +92,10 @@ type Report struct {
 	// validity. Refused is strictly before that call. Unverified is a subset
 	// of Ran: the executor was called but no valid acknowledgement followed.
 	// None of these counters establishes an external business effect.
-	Ran        int `json:"ranCount"`
-	Refused    int `json:"refusedCount"`
-	Unverified int `json:"unverifiedCount"`
-	Notes   []string `json:"notes"`
+	Ran        int      `json:"ranCount"`
+	Refused    int      `json:"refusedCount"`
+	Unverified int      `json:"unverifiedCount"`
+	Notes      []string `json:"notes"`
 }
 
 // Run resolves the environment's binding for each command and dispatches
