@@ -690,3 +690,23 @@ Ontology DSL／Decision Twin／外部シミュレーションSDKの本格製品�
 
 **本節の上限**：main #3482の限定専用CI／#3485の合成Route Test、#3479/#3486の未統合候補と実Sourceを照合した計画更新。実Go/CLI/PG/Studio/HTTP/MCP/SHO/H3の新規Product E2E、実Provider Rowset・現在Grant、Legacy/Target実比較、Owner Meaningの正式受理は**今回NOT RUN**。
 
+<!-- tei3483-m1a-typed-subject-handoff-20261108 -->
+### 14.32 実Workspaceの「二つのSubjectを読めた」を、一つのFunctionの依存・実Readと取り違えない
+
+**新たに確認された最小M1a入口**：[置換Draft #3492](https://github.com/hat47x/tei-platform/pull/3492)は旧#3263を現行mainへ移植し、`reference/diagram-crossref/real_workspace_admission_test.go`を追加した。既存`operations.InspectSubject`で**`query:order_entry.recent_orders`**と**`semantic-relation:sales.order.lines`**を各々実Workspaceから読み、Canonical JSON／Source refs／Workspace identity／World・Source Index FPを検査する限定Goテストである。これはSynthetic Graphだけではない**実Source Readerの入口**だが、当該Draftの**最新HEAD CIはまだ未確定**。仮に局所Goテストが成功しても、以下は別の未成立Claimとなる。
+
+**Identityを先に型で分ける**：`semantic-capability:sales.order.submit`（#3482でRequired/Source宣言を確認）、`application:order_entry`、`query:order_entry.recent_orders`、`semantic-relation:sales.order.lines`はそれぞれ**異なる種類・異なるIDのSubject**である。Applicationの`uses semantic sales`は名前空間の使用宣言であり、特定Capability→特定Query→Relation pathの実Bindingを立証しない。`recent_orders`は**Query Subject**であって、存在するFunction Instanceや実行Entryと自動的に同一視しない。#3482の13実CLI/42局所Controlと#3492の2実Inspectを足して「一Functionの全Designが揃った」とは言えない。
+
+| 接続辺／別々の問い | 証拠候補と独立Expected | 不足時の停止・次の実証Owner |
+| --- | --- | --- |
+| **M1a: Subject実Read** | 同一既知WorkspaceのQuery/Relationそれぞれの`InspectSubject`、原Source ref、Reader mode、実取得byte/FP | #3492/#3262。各Subjectの限定肯定事実は保持。別々のRead＝原子的同時Snapshot／必要Closureではない |
+| **M1b: Function→Query/Relation** | 対象**Function stable ID**・実Function Data Context・Query Bindingと必要Relation Role/Path・Accepted Meaning/依存を明示的に解決 | #2586/#2506/#1124。名前・Namespace・Applicationが似るだけなら`unbound/unknown`。ここが現段階の最初の実証不足辺 |
+| **M2: Graph/CRUD Projection** | M1bで確認したSource/Roleに沿うTyped Edge、方向/多重性/RoleとStable Source locator、宣言Rと未列挙unknownの別表示 | #3492/#1124/#2497。合成Graphで元の多重Relation IDを逆引きできないならSource-edit/writeback不可 |
+| **R0: 実Product Read** | 実Bindingが選択した`recent_orders` SQL原bytes/`from`引数・Target Provider/Scope・Rowset/Grain/Completeness・同AttemptのContext | #2586/#2622。Query静的解析や他SQLのPG成功は不可。実Provider接続以前は`NOT RUN` |
+| **X0: Cross-view/Consumer** | M1a/M1b/M2/R0の実際に一致したRevision/Source occurrence/Scope/Read cohort・完全受領・独立Expected | #3262/#2516/#1163/#2514。世界FPの文字列一致だけでは別Reader時点の原子性を宣言しない |
+
+この連結には**誤陽性と過剰拒否の両方の反例**を置く。①`submit`が完全に宣言されても`recent_orders`のFunction→Query Bindingが無ければX0へ進めない、②Query/RelationのSource refsが両方存在してもそれらのRelation Roleが当該Queryで本当に使用されたとは言えない、③Relation Sourceが移動・変更／Imported ProviderのRaw・Manifestだけ改版した場合、現在のRead cohort/引用資格だけを影響に応じ再評価し、無関係なAccepted Meaningを自動抹消しない、④当該Contextに必要なRule/Relationがないという**独立に閉じたRequired**が提示されている場合に限り、非該当を確定できる。否定証拠がなければ既知の肯定Edgeは維持し、未取得部分はunknownにする。
+
+**最小実験の順**は、mainで合格済みの`submit`限定13 Reply/42 controlsはD1のSource構造回帰として維持しつつ、#3492のM1a限定実Readを別実験として計測→#2586でFunction stable IDと`recent_orders`の明示Binding有無を実コード・Sourceで確認→あれば同一Contextの三図/CRUDと実Product SQL Readへ、無ければ**このBindingの不足をfirst missing edgeとしてOwnerへ返す**。新しい共通Provider/Query Resolver、証明エンジン、Graph SSOTは作らず、#1180/#2514の独立Expectedと既存Scenarioにのみ検査を引き渡す。
+
+**資格上限**：今回の追補は#3492のDraft実装内容、main #3482の限定CLI証拠、既存#2586/#3262の実装計画を照合したdocs-only。新しいGo/CLI/Provider/Studio/MCP/DB実走・原子的多Reader Snapshot、Owner Meaning受理は**今回NOT RUN**。#3492の新HEAD専用CIがPASSになるまではM1a局所Goも未合格として扱う。
