@@ -136,6 +136,7 @@
 | [`reference-native-plugin-builder/`](reference-native-plugin-builder/) | ネイティブPluginの構築例 |
 | [`reference-plugin-capability-contract/`](reference-plugin-capability-contract/) | Pluginが提供する機能の契約確認 |
 | [`reference-plugin-package-builder/`](reference-plugin-package-builder/) | Plugin配布物の組立て例 |
+| [`reference-plugin-package-build-child/`](reference-plugin-package-build-child/) | 計画を消費してPlugin配布物を作り、消費した計画の照合値を申告するchild（SB-C0 §4.10 P-1 / #2831） |
 | [`reference-plugin-self-build/`](reference-plugin-self-build/) | Plugin自身が構築手順を提供する場合の確認 |
 | [`reference-plugin-build-supply/`](reference-plugin-build-supply/) | 技術検証用サンプル`plugin-build-supply`の工程1〜4の通しの検証。構築意図と実ファイル・観測したGoから`tei.process.reference`の計画を確定し、その照合値を、ホストが発行する発生識別子つきの二回の実構築と内容アドレスの保管庫、既存の自己構築の実行器の検証根拠(二回構築、段階の収束、ホスト登録)、保管庫から再取得したバイト列のプロセス通信の版1での呼出しまで引き継ぐ。提供元の曖昧さ・追加・信頼の失効、部分出力を残す失敗・二回構築の不一致・一回の実行の二重計上・同時の試行の強制終了、汚れた作業ツリー・外部モジュール・ソースとツールチェーンの食い違い・ホストのGo設定、工程間の識別の差替えと工程の欠落を注入する(同じ機械の上の実際のGoの構築。提供元のカタログと信頼の失効は合成) |
 | [`reference-order-multilingual-operation/`](reference-order-multilingual-operation/) | 技術検証用サンプル`order-multilingual-operation`の工程1〜6の通しの検証。複製した作業領域に受注の所有プラグイン、`std.message`、言語プラグインを加え、所有者・環境・原文言語・項目名を一組にして既存の多言語資産を変更せずに呼ぶ。日本語原文を一回改訂した前後の同じ対象一覧の突合表で、従属訳だけの失効と配布候補の再生成を確かめる。許可・受理・固定情報の失効と言語プラグインの撤去、配布候補の訳文の書換えと固定情報の差替え、改訂直後の旧配布候補、翻訳器の失敗・取消し・結果不明と機密の外部送信、翻訳中の同時編集、PostgreSQLとSQLiteの並びの差を注入する(合成のホスト、模擬の翻訳器、PostgreSQLの一つのインスタンス、SQLiteはPythonの標準モジュールでのファイル、Node) |
