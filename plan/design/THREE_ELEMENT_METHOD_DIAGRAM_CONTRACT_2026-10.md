@@ -535,6 +535,8 @@ Code Generatorの入力は「TEIのAuthoringで宣言したPattern」だけで�
 
 ### 19.7 Lifecycle・イベント・対話を型付きGraphとして合成し、生成器入力へつなぐ（他チャットのPlugin/Lifecycle/AI Chat横断、採用前の方式候補）
 
+**【同一テストの重複回避】**：Lifecycle Graph/Patchの方式検討・Runtime/Target Loweringへの引渡しは[Draft #3507 のHook/Interaction Flow設計](https://github.com/hat47x/tei-platform/pull/3507)を、原子的TraitとGraph全経路保証のOwnerは**main統合済み[#3510](https://github.com/hat47x/tei-platform/pull/3510)**の[設計§15](TRAIT_ATOMIC_COMPOSITION_AND_FULFILLMENT_2026-11.md)を参照する。本§19.7が所有するのは**RQ-036の図表への表示、分かりやすいナビゲーション、欠落診断、標準／Patch／実効Graphの同一Ref・Revisionでの比較受入**のみ。MAP-11〜16はそこでの表示・資格の観点を追加するもので、#3510のTLG-01〜08や#3507のLGXケースと別のScenario SSOT・Runner／Validatorを増やす提案ではない。実装を採用・実行した証拠は本節から発行しない。
+
 **設計上の補正**：§19.3／§19.6で「標準固定」と呼ぶのは、全ドメインに単一の固定**手続き順**を強いることではない。固定対象は、型付き参照／Guard/Authorityの迂回拒否、承認が必要なEffectのCommit資格、出典追跡、Effect/Receipt、失敗の伝播、版・Scopeの整合、要求する前提と事後保証などの**成立義務**である。これを守りながら、業務Graphの経路／Step／イベント群／State／Plugin Hook／Target適用を構成時に可変とする。互換なGraph Patchの導入は**意味変更**として扱う。Layout/Notationだけの変更とは区別する。
 
 受理された同じWorldに、**Roleが付いた型付きData/Graph**をProjectionできることを最小要件とし、新しいWorkflow専用Canonical、固定Runtime Dispatcher、独立Graph Storeを導入しない。各Viewは以下の**論理属性**を持つが、この表を新たなGo公開構造体や正式DSL宣言として固定しない。
