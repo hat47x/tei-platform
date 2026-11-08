@@ -13,15 +13,15 @@ import (
 // This is an in-memory counterfactual, not an external effect receipt.
 // The acknowledgement can be lost or invalid *after* Execute changed state.
 type effectUnknownExecutor struct {
-	support   bool
-	change    bool
-	fail      bool
-	wrongID   bool
-	calls     int
-	state     string
+	support bool
+	change  bool
+	fail    bool
+	wrongID bool
+	calls   int
+	state   string
 }
 
-func (e *effectUnknownExecutor) ID() string { return "migration.atlas" }
+func (e *effectUnknownExecutor) ID() string                     { return "migration.atlas" }
 func (e *effectUnknownExecutor) Supports(executor.Command) bool { return e.support }
 
 func (e *effectUnknownExecutor) Execute(_ context.Context, cmd executor.Command) (executor.Result, error) {
@@ -37,11 +37,11 @@ func (e *effectUnknownExecutor) Execute(_ context.Context, cmd executor.Command)
 		id = "unrelated.executor"
 	}
 	return executor.Result{
-		ExecutorID: id,
-		ActionID: cmd.ActionID,
+		ExecutorID:     id,
+		ActionID:       cmd.ActionID,
 		IdempotencyKey: cmd.IdempotencyKey,
-		AttemptID: "synthetic-attempt",
-		Outcome: executor.OutcomeAccepted,
+		AttemptID:      "synthetic-attempt",
+		Outcome:        executor.OutcomeAccepted,
 	}, nil
 }
 
@@ -72,16 +72,16 @@ func TestBindingExecutionDifferentiatesPreflightFromPostInvokeUnknown(t *testing
 		t.Run(tc.name, func(t *testing.T) {
 			impl := &effectUnknownExecutor{
 				support: tc.support,
-				change: tc.change,
-				fail: tc.fail,
+				change:  tc.change,
+				fail:    tc.fail,
 				wrongID: tc.wrongID,
-				state: "pending",
+				state:   "pending",
 			}
 			report, err := Run(writeWorkspace(t), "development", []executor.Command{{
-				ActionID: "db/apply",
+				ActionID:       "db/apply",
 				IdempotencyKey: "synthetic-key",
-				Kind: string(deployment.ActionDatabaseRelease),
-				Database: "sales_core",
+				Kind:           string(deployment.ActionDatabaseRelease),
+				Database:       "sales_core",
 			}}, map[core.CanonicalID]executor.Executor{"migration.atlas": impl})
 			if err != nil {
 				t.Fatalf("reference Run failed: %v", err)
