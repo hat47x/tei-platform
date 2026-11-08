@@ -793,3 +793,31 @@ Required Trait Fulfillment（この範囲のみ）
 **判定点を固定**：新しいTraitの名前・適用箇所が増えたことではなく、(1) 旧実装と比べて必要なImplementation不足を確実に検知、(2) 原子Traitの独立追加にCore変更不要、(3) 複数Traitの要求合成が順序非依存、(4) 選択Providerと実Callの同一性・Source資格を証拠で説明、(5) 異Targetでも同じRequired/Failure/Effect意味を維持、(6) 開発者と生成AIが未充足の**最初の一辺**を取得できる、ことを測る。達成できなければTraitの独立抽象を減らし、既存Contract/OperationのRequired Constraintへ縮小する。
 
 **境界**：§18はGitHubの現在mainの製品実装とCI結果に基づく**計画の現行化**。通常CLI/Wails Product S2実Call、実BinaryのProvider Artifact真正性、Manual Trait連動、P1 Graph/Hook、実Query/Browser性能、独立の横断E2E、Owner Meaning Acceptanceは**NOT RUN／NOT ACCEPTED**。既存#1119のHard Gateは増設せず、Product Scopeとローカル合成テストの成果を区別する。
+
+
+### 18.4 RQ-036全体マップへの実装義務の投影：可視化で保証の母数を捏造しない（2026-11-08追補）
+
+現行mainの[RQ-036](../../requirements/TEI_PRODUCT_REQUIREMENTS.md)は、利用者にドメインの全容・標準と変更可能箇所・イベント／状態／Function／Providerの関係を示す**採用済み製品要求**である。[Typed Model Map Draft #3518](https://github.com/hat47x/tei-platform/pull/3518)は、`internal/operations/model_map.go`に**read-onlyの部分的Graph Projection**を追加する未統合候補であり、`coverage: partial-projection`が示すように、まだModel全体の存在／Trait Requiredの完全取得／実Provider履行を証明しない。DraftのNode/Edgeは表示可能な観測に限る。**TraitをMapに表示できることと、モデル要素にTraitが正式にBoundされていることを分離**する。
+
+本件で新たに決めるのは、MapのRendererや第二Registryではなく、**既存のRequired/Fulfillment/Source/Conformanceをどの条件でナビゲーションへ投影してよいか**である。
+
+| 投影する関係（実装時の候補） | 必要な識別・資格 | 未資格なら表示すること |
+| --- | --- | --- |
+| Subject→Source/Role/Facet | Subject Kind+Canonical ID、Source occurrence/Revision、Candidate/Acceptedの区別 | 未読込・部分・意味未受理を明示。単なる名前の一致で意味受理としない |
+| Subject/Operation→Required Trait | Operation Variant、Target/Scope、Trait Contract Rev、**Required Closureの取得完全性** | 未Loaded/unknown/permission-deniedを「Traitなし／Requiredゼロ」にしない |
+| Required→Selected Implementation | 既存#951/#1016が選択したProvider/実装Ref、exact Contract/Binding/Scope | 未選択、競合、unsupported、manual-requiredを分ける。選択＝実呼出しとはしない |
+| Implementation→Actual Consumer/Conformance | CLI/Studio/Runtime別のHost実Call、独立Expected、Target・Artifact・Assessment範囲 | ローカル合成Go試験、登録Function、同じResultだけでは製品Fulfillment未証明 |
+| Standard Flow→Patch→Effective Flow | 固定保証／設定可能／明示Hook Slot、選択済みPlugin Patch、受理SourceとのDiff | Layoutだけの差分とGuard/Effect変更を区別。Hook追加で現在権限を生まない |
+
+**Mapの完全性は、表示済みNode数を分母にしない。** ユーザーが辿ろうとしているQuery/Function/Operationに必要なSource/Role/Traitの閉包に対して、取得できた要素、未取得／非開示／未選択／未解決の要素を区別する。閉包の一部が秘匿される場合は、その名称・個数・パス・「何かが存在する」と分かる分類も無権限Consumerへ出さない。閲覧できた範囲の`partial`は表示してよいが、非開示領域の実態について推測しない。Partial Sourceでは既知の`manual-required`不足を報告できても、**全体がFulfilledという結論は保留**する。
+
+**次の最小実証は新しいMap APIではなく既存Consumerへのread-only投影**：
+- MTP-01：同じ`sales.order`を既存InspectorとModel Map候補で辿る。Map上の同名ラベル／同じSource FPからRequired Traitを捏造せず、対象Kind+ID+Occurrenceが一致する既存Bindingのみ表示する。
+- MTP-02：選択済みInspector Bはin-process Go Callで通過したが通常CLI／実Wailsから未呼出。Mapでは**「局所S1の適合」**と**「製品S2未実証」**を別々に表示し、フローを一本の緑線で確定表現しない。
+- MTP-03：Traitを宣言した`*.tei.md`がRaw管理下にあるがLoader未解釈／Roleが曖昧。Source保全はできても、Required 0・Default実装有効・Owner受理としない。
+- MTP-04：必要Trait集合の一部が非開示。許されたConsumerへは閲覧範囲の不完全性と権限制限だけを伝え、秘匿対象の存在・件数を返さない。
+- MTP-05：Plugin PatchがGuardを迂回、または同じ結果を返す別Providerへ誤配線。Map表示の形式的整合は維持しても、実効Path／Actual Invoke／Trait合成適合を**別の不適合**として示す。
+
+これらは既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)の独立Expectedに渡す**受入観点・NOT RUN**であり、Draft #3518へ新たな正式Graph Schemaや実行権限を要求しない。実装は#3262（Required Design Context）、#3278/#3279（Trait）、#1251（Inspector S2）、RQ-036/#1124（Map）、#3503（Flow/Graph）の**既存Ownerのread-only成果を再利用する範囲**に限る。
+
+**採否**：開発者・生成AIが「モデル上のどのTraitが未履行か」「そのためにどのProvider/Operation/Targetの何が不足か」「表示情報がどの範囲で不完全か」を追加の正本なしで辿れた場合に、TraitのMap投影を有効な標準機能候補とする。全件解決できないMapで完成図や全体合格を表示するなら、局所Map Projectionへ縮小する。現時点でMTP-01〜05、新たな実Target、全体Model Mapの正式採用、完全なTrait Coverageは**未実証**。
