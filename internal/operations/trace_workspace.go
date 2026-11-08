@@ -174,6 +174,7 @@ func TraceWorkspace(root string, key modelref.Key, options modelref.TraceOptions
 		}
 	}
 	identity := loaded.Identity()
+	result.ContinuationFingerprint = snapshotFP
 	out := WorkspaceTrace{
 		SchemaVersion:          "tei.operations.trace/v0",
 		SnapshotFingerprint:    snapshotFP,

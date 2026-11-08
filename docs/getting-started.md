@@ -192,7 +192,7 @@ go run ./cmd/tei trace \
   -direction both -mode full
 ```
 
-`-scope`には、呼出し元が**関係図を作る際の文脈を識別する値**を指定します。作業領域名や業務上の所属名前空間、受理の状態、認可の範囲を自動的に証明するものではありません。`-mode summary`は件数・未解決件数を取得し、`-mode full`では宣言された直接の参照を省略せず返します。大規模な結果を分割する場合のみ`-limit 100`のように指定し、`result.trace.nextOffset`と**`result.snapshotFingerprint`（作業領域全体の継続用トークン）**を次回の`-offset`、`-expected-fingerprint`へ渡してください。`result.trace.snapshotFingerprint`は関係図、関係規則、選択条件の照合値であり、コマンドラインで結果の取得を続けるためには使いません。入力した関係図、対象や方向、正規化した全体モデル、入力元索引（元ファイルの内容や場所を含む）が変化している場合、`STALE_SNAPSHOT`で継続を拒否します。
+`-scope`には、呼出し元が**関係図を作る際の文脈を識別する値**を指定します。作業領域名や業務上の所属名前空間、受理の状態、認可の範囲を自動的に証明するものではありません。`-mode summary`は件数・未解決件数を取得し、`-mode full`では宣言された直接の参照を省略せず返します。大規模な結果を分割する場合のみ`-limit 100`のように指定し、`result.trace.nextOffset`と、その隣にある**`result.trace.continuationFingerprint`**（作業領域全体の継続用トークン）を次回の`-offset`、`-expected-fingerprint`へ渡してください。同じ値は従来どおり`result.snapshotFingerprint`にもあります（#3625で追加した別名）。`result.trace.snapshotFingerprint`は関係図、関係規則、選択条件の照合値であり、コマンドラインで結果の取得を続けるためには使いません。入力した関係図、対象や方向、正規化した全体モデル、入力元索引（元ファイルの内容や場所を含む）が変化している場合、`STALE_SNAPSHOT`で継続を拒否します。
 
 結果に含まれる`worldFingerprint`と`sourceIndexFingerprint`は、`inspect`が返す同名の項目と比較できます。意味の正本を識別する前者が同じでも、入力元ファイルの移動や注記の変更があれば、後者は変わります。結果の`source`は選択要素の元定義、`relatedSources`は全件出力のそのページに登場した参照先・参照元の情報源の候補を示します。`projectionUnresolved`は、派生索引を作った時点で解決できなかった参照を示します。関係の`resolved`は宣言の解決に成功したことのみを意味し、実行の成功・人間による承認・書込み許可を意味しません。入力元索引と原ファイルの間で生じる同時更新は、一つの処理として固定できていません。
 

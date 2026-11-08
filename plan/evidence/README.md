@@ -184,3 +184,4 @@
 - [空文字列の引数と既定値の食い違い](TEI_DOGFOODING_ROUND8_EMPTY_ARGUMENT_2026-11-09/README.md)（#3605・#3420・ADR-0048 §2.4。値集合と省略時の既定はCLIとMCPで一致したが、空文字列を渡すとCLIだけが別の既定（`mode=full`）へ落ちた。traceの3引数を拒否へ揃え、回帰試験で固定）
 - [空文字列の引数の修正を統合後に再実測](TEI_DOGFOODING_ROUND9_EMPTY_ARGUMENT_REMEASURE_2026-11-09/README.md)（#3605・#3420。`0067d6a1e`で、空文字列はCLIが`INVALID_ARGUMENT`・MCPが`-32602`で拒否し、省略時だけ既定`mode=summary`を使う。残る差は符号のみで、分類統一は#3420）
 - [inspect・traceの実プロセス同値と失敗分類](TEI_DOGFOODING_ROUND10_CAPI2A_PARITY_2026-11-09/README.md)（#3420 CAPI-2a。8ケース中7ケースで成否と`error.code`が一致。必須引数の欠落だけが`INVALID_SUBJECT`と`-32602`の層の違い。実CLI・実MCPの別プロセスで固定し、符号を変える変異2種を検出）
+- [traceの継続トークンが2つの同名欄に分かれている](TEI_DOGFOODING_ROUND11_TRACE_CONTINUATION_2026-11-09/README.md)（#3625・#3420 T06。同名の`snapshotFingerprint`が2つあり、継続に使えるのは外側だけ。`nextOffset`の隣の値を渡すと`STALE_SNAPSHOT`になる。`continuationFingerprint`を同じ階層に追加し、回帰試験で固定）

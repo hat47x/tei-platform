@@ -53,6 +53,12 @@ type TraceResult struct {
 	Offset              int        `json:"offset,omitempty"`
 	Rows                []TraceRow `json:"rows,omitempty"`
 	NextOffset          *int       `json:"nextOffset,omitempty"`
+	// ContinuationFingerprint is the value a caller passes back as
+	// expectedFingerprint to continue this query. It is filled by the layer
+	// that also knows the World and Source Index snapshots, so it sits next to
+	// NextOffset instead of one level up where a reader cannot tell it apart
+	// from this package's graph-only SnapshotFingerprint (#3625).
+	ContinuationFingerprint string `json:"continuationFingerprint,omitempty"`
 }
 
 // TraceDirect selects and validates one-hop edges from the existing typed

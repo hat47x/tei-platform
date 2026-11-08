@@ -569,3 +569,13 @@ ADR-0048 §2.4 の「既定値の適用は共通契約で定める」を、CLI �
 - `inspect -workspace /no/such/dir` は MCP では tool 引数で表現できない（起動時に固定する設計）。起動時の `-workspace` が無い／manifest が壊れている場合、MCP は `WORKSPACE_LOAD_FAILED` を返し、CLI と同じ符号だった。差は「いつ分かるか」だけ。
 - **必須引数の欠落だけが層の違い**である。CLI は `INVALID_SUBJECT`（exit 2）、MCP は `-32602`。両方拒否するが文字列の符号が揃わない。ADR-0048 §2.3「失敗」の未決。
 - `inspect_trace_parity_test.go` を追加し、成功2件・失敗5件の値と符号、成功時の `result` の byte 一致を実プロセスで固定した。符号をわざと変える2種の変異はどちらも検出した。
+
+## 17. 第11ラウンド（2026-11-09）: traceの継続トークン
+
+第10ラウンドで「`trace` のページ継続は未検査」と記録した。T06 を実測した結果、**同じ名前で値の違う `snapshotFingerprint` が2つあり、継続に使えるのは外側だけ**であることを見つけた。生出力は[第11ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND11_TRACE_CONTINUATION_2026-11-09/README.md)にある。
+
+- ページング自体は動く。`-mode full` は全4行、`-limit 2` は2行と `nextOffset: 2`、`-offset 2 -limit 2` は残り2行で `nextOffset` を省く。`-offset 99` は0行で成功。MCP の `tei_trace` も `limit` を受け同じ結果。
+- 同じ入力なら `result.snapshotFingerprint` は安定し、ページを変えても変わらない。
+- しかし `result.snapshotFingerprint`（作業領域全体）と `result.trace.snapshotFingerprint`（グラフ・規則・対象・方向のみ）が同名で併存し、`nextOffset` は内側にある。**`nextOffset` の隣の値をそのまま `-expected-fingerprint` に渡すと `STALE_SNAPSHOT` になる。**
+- 外側の値を `result.trace.continuationFingerprint` として `nextOffset` と同じ階層にも載せた（既存の2欄は改名せず残す）。その値で継続すると成功し、内側を渡すと拒否される。回帰試験は `internal/operations/trace_workspace_continuation_test.go`。
+- 欄の改名・移動と、`-scope`・`-direction` 変更時の拒否は未確認。起票は [#3625](https://github.com/hat47x/tei-platform/issues/3625)。
