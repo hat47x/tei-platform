@@ -54,9 +54,13 @@ type PlanReceipt struct {
 	L2Claimed                bool   `json:"l2Claimed"`
 	BindingNote              string `json:"bindingNote,omitempty"`
 	FailureCause             string `json:"failureCause,omitempty"`
+	// ReceiptJSON is the resolver's raw stdout. The entry keeps it so the plan
+	// fingerprint can be recomputed from the plan the receipt carries, instead
+	// of trusting the reported value.
+	ReceiptJSON string `json:"-"`
 }
 
-const planReceiptBindingNote = "the entry passed the same declaration file to a resolver child and compared the resolver's planFingerprint with a caller-declared value; it did not recompute the plan, and it cannot prove that the builder child used the same reading"
+const planReceiptBindingNote = "the entry passed the same declaration file to a resolver child, recomputed the plan fingerprint from the plan inside the receipt, and compared it with a caller-declared value; it cannot prove that the builder child used the same reading"
 
 // resolveIntentVia runs an exact resolver executable and reads one JSON receipt
 // from its stdout. A non-zero exit, an unparseable receipt, a receipt that is
@@ -107,6 +111,7 @@ func resolveIntentVia(exactResolver string, resolverArgs []string, expectedPlanF
 		receipt.FailureCause = "intent resolver output is not one JSON object: " + err.Error()
 		return receipt
 	}
+	receipt.ReceiptJSON = raw
 	receipt.ReceiptDigest = digestOfBytes([]byte(raw))
 	receipt.FormatVersion = parsed.FormatVersion
 	receipt.Authority = parsed.Authority

@@ -11,7 +11,8 @@
 - `tools/` の参照ツールは、Linux CI（`ubuntu-24.04`）の結果を正とします。Windowsで `go test ./...` を回すと、環境前提の差で失敗または skip になる検査があります（[#3460](https://github.com/hat47x/tei-platform/issues/3460) に原因別の一覧）。
 - 外部コマンドを `bash -c` で起動する試験（`reference-cognition-port`・`reference-generator-selection`）は POSIXシェル前提です。Windowsでは `cp <Windowsパス>` が解決できないため、該当試験は理由を付けて skip します（[#3461](https://github.com/hat47x/tei-platform/issues/3461)）。skip は「この環境では検査していない」の記録であり、成功と同じには扱いません。
 - POSIXのファイル権限（`0600` など）や rename の置換を前提にした検査は、Windowsでは skip または別経路に分けます。
-
+- checkoutのclean（`git status` が空）を前提にする比較試験（`reference-plugin-self-build`・`reference-transform-runtime-engine-build` の historical parity）は、`go test ./...` で並列に走る他のパッケージが checkout へ書き込むと、前提を満たさずに落ちます（[#3460](https://github.com/hat47x/tei-platform/issues/3460)）。2026-11-09から、この前提を満たさない場合は**理由付きで skip** し、比較そのものは実行しません。clean な checkout で単体実行すれば従来どおり比較します（`go test ./tools/reference-transform-runtime-engine-build -run TestHistoricalRuntimeEngineRunnerParity -count=1`）。
+- 同じ理由で、`go test ./...` の結果だけで「checkout を前提にした比較が成立した」とは読みません。skip の理由に `repository must be clean` が出ていれば、その比較は未実行です。
 ## リポジトリ検査と共通部品
 
 | 場所 | 役割 |
