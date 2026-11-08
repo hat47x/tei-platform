@@ -421,3 +421,67 @@ Independent Expected / Conformance / Receipt / Current Grant
 - **費用対効果**：追加の原子Trait定義／Bindingが、対応する手書き分岐・実装漏れ・再テスト対象・Target間の矛盾をどれだけ減らすかを、P0-T/P0-Rの**同一条件対照**で測る。効果が確認できなければ、Trait定義を増やさず既存Operation/Provider Requirementへ縮小する。
 
 **現在の資格（本追補）**：実Source fileとmain統合[#3481](https://github.com/hat47x/tei-platform/pull/3481)、[#3482](https://github.com/hat47x/tei-platform/pull/3482)、[#3498](https://github.com/hat47x/tei-platform/pull/3498)の限定成果を照合した**設計・受入計画**。上記P0-T/P0-Rの実Provider連結、CLI/Studio actual two consumer、Trait Fulfillment独立Expected、正式Source/Query実Rowset、実Browser/Studio UI、BOM資格、Owner意味受理は**この変更ではNOT RUN／NOT ACCEPTED**。既存各Ownerの実際のCI Evidenceを越えて合格を主張しない。
+
+
+## 14. Traitと共通Hook Slot：生成・カスタマイズ・状態フローの横断接続（2026-11-08）
+
+**新しい横断要件（設計・未実証）**：API／Web／Desktop／CLI／MCP／VUIの標準動作を、TEIで記述・生成したカスタムロジックで差し替えたり前後に追加できる。ただしTraitの原子性を損なわず、人が把握しやすい**どの操作の・どの段階を・何に置換したか**を説明できること。[共通Operation ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)、[Application Extension #2110](https://github.com/hat47x/tei-platform/issues/2110)、[Table/Data lifecycle #1129](https://github.com/hat47x/tei-platform/issues/1129)、[Plugin-first #1251](https://github.com/hat47x/tei-platform/issues/1251)、[Trait Fulfillment #3279](https://github.com/hat47x/tei-platform/issues/3279)のOwnerは変えない。追加の汎用Hook Runner・独自Host／第二Operation Graph／第二Resolverは前提としない。
+
+### 14.1 TraitとHook Slotは別概念
+
+- **Trait**は、対象が**満たすべき原子的な保証・実装義務**（例：ConditionalWriteの原子性、Readableの必要操作）を宣言する。Required/Hintを区別し、Default/Generated/Manual/Externalのどの経路が履行したかを追う。
+- **Hook Slot**は、既存Operation／Build／Representation／Flowの**拡張可能な位置**を示す。Slotの存在・Bindingは、そのSlotの実装がすべてのTraitを満たすことやHost認可を意味しない。
+- **Custom Implementation**は、SlotにBindingする具体的実装。TEIで記述したFunction/Rule/Operationから生成する方式を第一の候補とするが、既存外部Provider/手動コードでも適格ならよい。生成済みコードを人が直編集して再生成で消す方式を標準にしない（手動コード境界 #2090）。
+- **Hook Order / Effect Wiring**は、複数拡張の適用順・Result変換・再検証・失敗伝播を定める有向関係で、Trait要求集合の可換な合成とは独立。同じSlotに複数のReplaceがある場合、Plugin列挙順やlast-winsで決めず明示選択か競合診断とする。
+
+Slotの最小照合キー候補（**正式Schema/APIではない**）：
+`(Operation ID, Variant, phase, Subject/Scope, Required Input/Result/Failure/Effect, allowed mutation, cardinality, ordering constraints, exact Contract Rev, Source occurrence, Implementation Ref, Target)`。Raw SourceやPlugin Capabilityの名前一致だけで実挿入済みにしない。
+
+| 操作・変換の候補 | 具体的な意味 | 守る条件 |
+| --- | --- | --- |
+| `Observe` | 結果・診断のread-only観測や付随するログ記録 | ログは独立したEffect/Sink。機密開示と用途外送出を許さない |
+| `Validate` / `Guard` | 必要条件の追加確認。既存拒否を緩めない | 既存必須Validation/現在Host Grantを削除・迂回しない |
+| `Transform` | 型付きRequest/Resultを許可した範囲で変換 | Validate後の入力/Subject/Scope変更なら検証・選択を再実施 |
+| `Replace` | 明示された一つの標準Implementationを別実装へ差替え | 同一Operation ContractとRequired Traitの保証を維持。権限・Effect Fenceの置換は不可 |
+| `Compose` | 二つ以上の既存実装を明示Pipeline/Flowで接続 | 順序、失敗/取消、重複・部分作用、Receipt、State版を明示 |
+
+これらは構成**操作の候補ラベル**であって、独立したCore Trait一覧ではない。`Validate` と `Guard` の意味の最終分割も、実Provider/Action一例を測ってから決定する。`replace`は一律に許可せず、Host／契約Ownerが明示公開したSlotに限る。特に**Authorize／Commit／Receipt／現在の開示判定の保証は、業務拡張のReplace対象にしない**。実行時に渡すTokenやGrantはPlugin自身が発行できない。
+
+### 14.2 三つのLifecycleを混ぜない
+
+| Lifecycle | 候補Hookの適用点と責務 | 禁止する短絡 |
+| --- | --- | --- |
+| **Application Operation** | Intent → Prepare → Validate → Authorization/Effect Fence → Execute → Observe → Typed Result。適切なSlotへ追加・差替え | UI表示時のValidateと実Commit時の再検証を同一視しない。副作用の結果不明時に自動再送しない |
+| **Interaction / Stateful Flow（VUIを含む）** | Input → Decode/Interpret → State/Context Read → Transition Candidate → Validate/Authorize → Operation Invoke → Persist/Receipt → Respond | VUIを単なる音声Renderer/Transportとせず、**状態を扱うAPI＋フロー制御のConsumer**として検討。Voice/画面/UI入力自体を権限・業務意味の正本にしない |
+| **Generator / Build** | Model受理 → 生成計画 → Target Lowering → Template/Implementation Binding → Build → Artifact/Evidence | Generator Hookの存在でRuntime Callback実行・Owner Meaning受理・Artifact再利用資格を保証しない |
+
+共通化するのは **Source／Operation Contract／Trait Obligation／実装選択／Evidenceの関係**。すべてを一つのフック一覧にしない。Build-time Pluginが生成した静的GoバイナリへRuntime Pluginが動的挿入されるとは仮定しない。生成Go・Java/.NET・Browserについて静的合成／外部Process／Target-nativeを個別に実証する（#2390/#943/#1121）。
+
+**VUIの状態契約**：Conversation/Session Identity、Flow/State Revision、業務Event/Transition、Caller/Tenant/Host Grant、Suspend/Resume、Outcome/Receiptを独立に照合する。途中入力や未送信Intentは一般に非破棄のManaged Stateであり、検索候補・再表示用ヒントのようなDerivedDataだけをDisposableにする。発話・認識に曖昧性があれば候補を提示できるが、確定Operation/副作用へ推測で昇格しない。音声に固有のCodec・タイミングはAdapterの能力であって業務Flowの正本ではない。
+
+### 14.3 再利用する既存OwnerとPlugin Dogfoodの位置
+
+- **#1158／ADR-0048**：Operation ID・Input/Output/Failure/Effectの唯一の共通契約。HookはOperationの観測可能なSlotに対する要求であり、別Dispatcher/新API体系ではない。
+- **#951/#1016/#1251/#2110**：Plugin/Implementationの候補・exact選択・Build結合・実Call・世代切替。必要ContractにないHookをPluginが自己追加して既存Host Grantを超えることはできない。
+- **#3278/#3279**：SlotにBindingされたImplementationが原子Traitをすべて履行しているか。あるTraitのDefaultをReplaceしてもそのTrait保証を暗黙に減らさない。
+- **#1129/#1174/#3274**：Validation/Mutation/Side-effect/HTTP unknown/Receipt。Callbackが何回呼ばれてもよいと暗黙に置かず、重複・再入・取消・不確定効果を区別。
+- **#2620/#2090/#943/#2600**：TEIモデル由来のカスタムロジック生成・手動拡張の保持・Source/Generator/BOM・Build失効。Plugin ManifestとSourceは独立Revision。
+- **#3271/#1043/#361相当の既存Flow Owner**：Session Scope/Temporal/Derived・State Transitionの責任を維持し、独立Workflow RuntimeをTrait追加の前提にしない。
+
+### 14.4 最小反証パケット：新名称を増やすより実動作を測る（全てNOT RUN）
+
+| Case | 圧力入力 | 独立Expected／Owner |
+| --- | --- | --- |
+| **TC-34 Slot≠Trait** | `inspect`に結果ObserverをBindingしたが、要求TraitのImplementationが欠落 | Observerが呼べてもRequired Traitは`unfulfilled`。#3278/#3279 |
+| **TC-35 Custom Generated** | 同じread-only Operationを標準実装→TEI生成Custom Providerへ明示差替え | 同じ型付き契約と独立Expected。選択Providerの実CallとGenerator/Source/Artifact Revisionを比較。#1251/#2090 |
+| **TC-36 Hook conflict** | 同一Slotに適格なReplaceを2件、記述順を反転 | 暗黙last-wins禁止。曖昧解決は失敗、または明示選択した一実装のみ。#951/#1016 |
+| **TC-37 Revalidation** | Prepare/Validate後のTransformが業務ID/価格/Scopeを変更 | 変更された対象で再Validate/Authorize/Revision照合がなければExecute拒否。#1129/#1174 |
+| **TC-38 Unknown effect** | Retryable + Audited + 書込Hook、Timeout/202でEffect不明 | Receipt照合なしに自動再試行不可。監査回数・Operation Identityを独立に検証。#1174/#3274 |
+| **TC-39 VUI resume** | 同一Flow/SessionでInterrupt→Resume、旧State Revisionから二重に承認Intentを送信 | CAS/現在Grant/Business Confirmationなしに2 Commitなし。未確定入力・EventはCache Evictionで喪失させない。#1043/#1125/#3271 |
+| **TC-40 Cross-surface** | 同一OperationをCLI／MCP／Web／Desktop／VUI Consumerから呼ぶ | 同一Meaning/Failure/Effect要求、Surface別の現在Grant/実Providerを検証。利用できない媒体はunsupported、VUIだけで新業務Dispatcherを作らない。#1158/#1251 |
+
+**現行の新しい基線**：[main統合PR #3378](https://github.com/hat47x/tei-platform/pull/3378) は、既存**直接Operation**経由のCLI／Studio Inspectorについて六対象と不存在の比較を製品Goテストへ追加した。ただし**D1aのShadow互換**であり、実Plugin Provider Selection/Load/Invocation、Trait Hook、実Wails/TargetのD1bを保証しない。既存Draft [#3381](https://github.com/hat47x/tei-platform/pull/3381)／[#3371](https://github.com/hat47x/tei-platform/pull/3371)は実Host注入口候補で、main統合前・適合未資格として扱う。
+
+**P0で着手する順序**：①#3378のD1a基線を維持し、#1251で実選択Inspector ProviderのCLI/Studio D1bに到達 → ②**read-only結果Observerまたは限定Result Transformの一Slotだけ**にDefault/Manual/TEI生成の差を試す（この順をD1bのHard Dependencyにはしない） → ③#2110のread-only Application拡張1件に同じSlot/Contractを適用 → ④VUI stateful Flow・Write／Undo・Cross-target Buildへ展開。途中の失敗時は、最初の未充足（Source／Binding／実Provider／Hook Invocation／Conformance／Grant）を正確に提示する。
+
+**停止条件**：Slot一覧が巨大な固定enumに膨張する、Traitの単一保証が複数無関係責務を要求する、生成カスタムコードが標準生成物の手修正で維持される、HookがHost Authority/Effect Fence/Owner Meaningを迂回する、VUIのStateをDisposable Cacheと混同する、同名Operation・同じResultを実Provider呼出しの証拠にするなら設計を縮小する。新しいHook DSL、正式Slot ABI、実Go Callbacks、VUI Flow Engine、TC-34〜40、新Target/BOMの実試験は **未採用／NOT RUN**。
