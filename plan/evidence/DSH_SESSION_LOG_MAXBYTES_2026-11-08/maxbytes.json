@@ -81,5 +81,13 @@
         }
       ]
     }
-  ]
+  ],
+  "correction": {
+    "date": "2026-11-08",
+    "claim": "maxBytes=512 で field が 518 bytes 載り上限を超えた",
+    "observedRawSpanBytes": 474,
+    "recomputedSpanBytes": 518,
+    "correctedReading": "生byteは474で上限512以下。518は復号後に再直列化した値であり、上限判定の単位ではない。",
+    "followUp": "plan/evidence/DSH_SESSION_LOG_SPLIT_AND_STALL_2026-11-08/README.md"
+  }
 }
