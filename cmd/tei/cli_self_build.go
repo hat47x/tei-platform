@@ -49,6 +49,12 @@ type selfBuildEntryEvidence struct {
 	L3Claimed      bool             `json:"l3Claimed"`
 	FailureCause   string           `json:"failureCause,omitempty"`
 	Boundary       string           `json:"claimBoundary"`
+	// The child's own report about the declaration it read (§4.8). They are
+	// copied from the child's JSON and never compared by the primitive form;
+	// the outer shape does the comparison.
+	ChildIntentBytesDigest string `json:"childIntentBytesDigest,omitempty"`
+	ChildIntentFingerprint string `json:"childIntentFingerprint,omitempty"`
+	ChildPlanFingerprint   string `json:"childPlanFingerprint,omitempty"`
 }
 
 func runSelfBuildCommand(args []string, out io.Writer) (int, error) {
@@ -201,6 +207,11 @@ func driveSelfBuild(childPath string, childArgs []string, artifactPath, claimedS
 	var child struct {
 		SchemaVersion  string `json:"schemaVersion"`
 		ArtifactDigest string `json:"artifactDigest"`
+		// The child's own readings of the declaration it read (§4.8). They are
+		// optional: a child that does not interpret a declaration omits them.
+		IntentBytesDigest string `json:"intentBytesDigest"`
+		IntentFingerprint string `json:"intentFingerprint"`
+		PlanFingerprint   string `json:"planFingerprint"`
 	}
 	if err := json.Unmarshal([]byte(stdout), &child); err != nil {
 		appendSelfBuildFailure(&evidence, "child output is not one JSON object: "+err.Error())
@@ -208,6 +219,9 @@ func driveSelfBuild(childPath string, childArgs []string, artifactPath, claimedS
 	}
 	evidence.ChildSchema = child.SchemaVersion
 	evidence.ChildArtifact = child.ArtifactDigest
+	evidence.ChildIntentBytesDigest = child.IntentBytesDigest
+	evidence.ChildIntentFingerprint = child.IntentFingerprint
+	evidence.ChildPlanFingerprint = child.PlanFingerprint
 
 	actual, err := digestOfFile(artifactPath)
 	if err != nil {

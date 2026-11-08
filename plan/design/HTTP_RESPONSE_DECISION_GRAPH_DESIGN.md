@@ -346,6 +346,9 @@ Serverの応答生成に成功してもClient受信に成功したとは限ら�
 
 **次に必要な最小一往復**：必要なHTTP Graph Contextの取得→Source/Graphの本物のLoader消費→Node/Edge/Function/Guardの同一性確認→静的構成とshort-circuit経路の差→既存Go HostでのRuntime audit/witness→ClientでのResponse受領＋Effect unknownの保持、という順に段階分けする。1段階だけ成立しても次段階へ無条件に昇格させない。
 
+## 14. 参考資料と採否
+## 8. 参考資料と採否
+## 13. 参考資料と採否
 ## 14. 2026-11-08：実Node完了・実Go Hostの分岐観測へ進む（P-1c）
 
 ### 14.1 前回CIの完了資格を更新
