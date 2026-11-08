@@ -26,6 +26,7 @@ var rolePrimitives = map[string]string{
 	"currency-rate-middle":         "decimal",
 	"currency-rate-buying":         "decimal",
 	"currency-rate-selling":        "decimal",
+	"currency-rate-fallback":       "", // any type: a rule name
 	"numbering-counter":            "integer",
 	"numbering-digits":             "integer",
 	"numbering-prefix":             "",

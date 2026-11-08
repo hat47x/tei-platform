@@ -71,6 +71,7 @@ X-TEA（XEAD）の Driver が持つ**標準業務ライブラリ**（日付・�
 | 税 | `tax-category` | 任意 |
 | 通貨 | `currency-rate-currency`・`currency-rate-fiscal-year`・`currency-rate-month-sequence`・`currency-rate-middle` | 必須 |
 | 通貨 | `currency-rate-buying`・`currency-rate-selling` | 任意 |
+| 通貨 | `currency-rate-fallback` | 任意（値は`none`か`annual`。行ごとに一致させる） |
 | 採番 | `numbering-counter`・`numbering-digits` | 必須 |
 | 採番 | `numbering-prefix`・`numbering-check`・`numbering-overflow` | 任意 |
 | 休日 | `holiday-date` | 必須（休日Dataを宣言する場合） |
@@ -247,6 +248,7 @@ X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設�
 - [評価時点の決定性](EVALUATION_CONTEXT_DETERMINISM_2026-10.md)
 - [移行計画](../workstreams/XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)（WP8）
 - [受容要件](../../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md)（RQ-C3）
+
 
 
 
