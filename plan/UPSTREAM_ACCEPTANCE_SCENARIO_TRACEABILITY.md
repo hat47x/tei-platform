@@ -510,6 +510,23 @@ ChatGPTなどのチャット実行環境・Codex・Claude Code・一般的なIDE
 
 参照事例では、エージェントのセッション・チェックポイント・一般的な検証状態などをTEIの製品状態に追加せずに、この一連の作業が成立するか確認します。専用のエージェント接続部品や独自の変更セットがなくても成立することを、導入しない境界として検証します。
 
+
+### RQ-035 — 異種データソースと構造定義の開発者向け管理（対応候補）
+
+主となるPAS-03では、同じProvider・対象Instance・Scopeを条件として、宣言された構造と実観測の差、Migration計画、許可されたDDLの実適用、適用後の再観測を区別する。PAS-01は観測構造と受理済み論理意味の分離、PAS-02はFunction/Providerのデータ操作、PAS-04はCLI/Studio等のTarget別投影を補う。SQL/NoSQL固有のQueryが失われないこと、部分取得・非開示・権限拒否・実効果不明が成功に丸められないことを独立に受け入れる。TEI標準の職掌にはSchema CRUDを含む一方、クラスタ運用・バックアップなどのDBA業務は標準外とする。
+
+**これは受入シナリオの割当であってPAS-03の実適合ではない。** 実NoSQL/ログ/Cloud、動的Grant、破壊的DDL、実DB変更・再読取、CLI/MCP/Studio同一Consumer、OwnerによるMeaning受理の一連の証拠は未取得。仕様の正本はRQ-035、受入計画のOwnerは[#3270](https://github.com/hat47x/tei-platform/issues/3270)と[データソースワークベンチ設計](design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)を参照する。
+
+#### RQ-035の一機能P0受入入口（2026-11-08・計画、未実行）
+
+最初の利用者可視な検収を、既存[横断最短経路（#3481）](https://github.com/hat47x/tei-platform/pull/3481)と[共通Operation・Harness判断（#3487）](https://github.com/hat47x/tei-platform/pull/3487)に接続する。一対象`order_entry.recent_orders`／`sales.order`、[既存PostgreSQL 3行＋JSONL 5行Fixture](../examples/data-source-workbench/README.md)を使用し、**Source → Query → 明示Alias／実DB Instance → Selected Provider → Actual Provider Read → Function Data Context → Consumer（CLI/Studio）**を同一Attemptで追跡する。FixtureのSQLに3行あるだけでは、実DBへの投入・3行の実取得を証明できない。
+
+- **PAS-02のReadと契約**：既知IDの1件、条件に一致しない0件、Provider Errorを独立期待値で判別。0件を母集団全体の不存在に変換せず、Declared/Requested Scope、Actual Retrieved Range、Disclosed Range、Cursor/end／completeness、Source/版、Grant/Consumerを区別する。同一Semantic Dataに対する`primary`／`archive`の曖昧なBindingは止める。CLIとStudioの静的Service選択・実Provider Invocationを別Witnessとする（#2586/#2611/#1251/#951/#3262）。
+- **PAS-03の構造変更と失敗**：Catalogから観測できたFK/UNIQUE/Index、実DBで強制・使用可能な制約状態、Ownerが受理した業務Rule/Key/Relationを**三つの異なる資格**として検収。観測した`Valid/Ready/Live`はその時点のProvider-owned事実であり、Migration Planの適用許可や現在の権限ではない。Schema Diff→DDL Apply直前に実Instance・History・Grant・Scope/Revisionが変化したら再照合し、unknown/ACK喪失でAppliedや盲目の再送へ進まない（#3270/#2892/#2887/#1163）。
+- **資格と試験の引継ぎ**：この一機能の詳細受渡しは[WB Read P0: RD-01〜06（#3270）](https://github.com/hat47x/tei-platform/issues/3270#issuecomment-6719326679)に委譲し、既存WB-01〜54・F-01〜10の第二正本を作らない。実Provider／実Consumerの独立試験と、異質なJSONL Source、BDD/SHO/REA/KON等の後続接続は別の合格列である。SUI/SEI/SHO/KONの製品完成をP0の新しい必須依存にしない。
+
+**受入状態：NOT RUN／RQ-035のProduct資格未成立。** [Workbenchの物理Schema投影PR #3486](https://github.com/hat47x/tei-platform/pull/3486)は旧[#3372](https://github.com/hat47x/tei-platform/pull/3372)を未統合で置換したDraftの**合成Catalog限定コード変更**であり、本書が実PostgreSQL/Function Read/共通Operation/Schema Apply/Owner受理の成立を宣言するものではない。
+
 ## 11. Requirement → Primary PAS mapping
 
 | Requirement | Primary PAS | Secondary / cross-cutting |
@@ -548,7 +565,7 @@ ChatGPTなどのチャット実行環境・Codex・Claude Code・一般的なIDE
 | RQ-032 | PAS-06 | PAS-01 / PAS-07 |
 | RQ-033 | PAS-06 | PAS-01 |
 | RQ-034 | PAS-06 | PAS-01 |
-| RQ-035 | PAS-02 | PAS-03 / PAS-06 |
+| RQ-035 | PAS-03 | PAS-01 / PAS-02 / PAS-04 / PAS-07 |
 
 Primaryは最初に具体化する代表的なPASを示し、要求の網羅率を表す点数ではありません。
 

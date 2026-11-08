@@ -83,6 +83,10 @@ type Set struct {
 	Rounding       Rounding
 	Locale         *time.Location
 	Rates          []Rate
+	// Fallback names what happens when a monthly rate is missing. An empty
+	// value means FallbackNone, so a caller does not get a fallback it did not
+	// ask for.
+	Fallback Fallback
 }
 
 func (s Set) validate() error {

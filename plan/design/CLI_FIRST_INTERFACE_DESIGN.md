@@ -1,5 +1,7 @@
 # CLIを主入口とするTEIインターフェース設計（初期案）
 
+> 2026-11-08 方針の具体化: [ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)を採用。CLI-firstは共通APIを先に実装して各入口から使う順序を指し、CLI自体に意味処理を所有させる方針ではない。HTTPサーバーは必須にせず、CLI/MCP/HTTP/Web/Desktopの共通意味とAdapter責務・移行手順は同ADRを参照する。過去の候補・検証記録はその時点のものとして残す。
+
 - **状態**: 評価・実装着手中（2026-10-10）。初期のCLI参照実装はPR内の候補であり、mainへ統合済みとは扱わない。
 - **担当課題**: [#1155](https://github.com/hat47x/tei-platform/issues/1155)。
 - **関連文書**: [全体構成](../../docs/architecture.md)、[案件ごとのPlugin構成](PROJECT_PLUGIN_COMPOSITION_DESIGN.md)、[Web構成](WEB_APPLICATION_COMPOSITION_DESIGN.md)、[開発手順](../../CONTRIBUTING.md)。

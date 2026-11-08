@@ -37,6 +37,12 @@ type cliCommandRecord struct {
 	// result. Declaring it here stops a caller from assuming `ok` after reading
 	// jsonContract "enveloped" (#2824).
 	SuccessShape string `json:"successShape,omitempty"`
+	// ResultShape describes the JSON type of result on success, not the outer
+	// successShape envelope. "array" marks an otherwise surprising shape.
+	// If omitted, no shape claim is made: callers must inspect the actual result.
+	// In particular, omitted does not mean "object". This field is descriptive,
+	// not a new validator or permission to infer semantic completeness (#3347).
+	ResultShape string `json:"resultShape,omitempty"`
 	// ArgumentValues lists the closed value sets of this command's flags. A
 	// caller that needs -subject-kind, -format, -mode, -direction, -disclose or
 	// -data-design-candidate-kind had to guess or read prose (#3242). Open-ended
@@ -77,7 +83,7 @@ func commandCatalog() cliCommandCatalog {
 			{Name: "knowledge-data-design-candidate-review", Effect: "read-only", Required: []string{"-workspace", "-subject-kind", "-subject-id", "-data-design-candidate-kind", "-data-design-candidate-fingerprint"}, Optional: []string{"-expected-data-design-fingerprint", "-expected-data-design-candidate-evidence-requirement-fingerprint", "-expected-data-design-candidate-review-fingerprint"}, Output: "json", SchemaVersion: "tei.cli.knowledge-data-design-candidate-review/v0", JSONContract: "enveloped", Modes: []string{"review"}, ArgumentValues: valueSets("knowledge-data-design-candidate-review"), ArgumentType: valueTypes("knowledge-data-design-candidate-review")},
 			{Name: "validate", Effect: "read-only", Required: []string{"exactly one of -workspace or -world"}, Optional: []string{"-json (workspace only)"}, Output: "text; json when -workspace -json", SchemaVersion: "tei.cli.validate/v0", JSONContract: "enveloped"},
 			{Name: "world", Effect: "read-only", Required: []string{"exactly one of -workspace or -world"}, Output: "json", JSONContract: "raw"},
-			{Name: "requirements", Effect: "read-only", Required: []string{"exactly one of -workspace or -world"}, Output: "json", SchemaVersion: "tei.cli.requirements/v0", JSONContract: "enveloped"},
+			{Name: "requirements", Effect: "read-only", Required: []string{"exactly one of -workspace or -world"}, Output: "json", SchemaVersion: "tei.cli.requirements/v0", JSONContract: "enveloped", ResultShape: "array"},
 			{Name: "plugin-lock", Effect: "read-only", Required: []string{"exactly one of -workspace or -world"}, Optional: []string{"-environment"}, Output: "json", SchemaVersion: "tei.cli.plugin-lock/v0", JSONContract: "enveloped", Modes: []string{"", "environment"}},
 			{Name: "plugin-resolve", Effect: "read-only", Required: []string{"exactly one of -workspace or -world", "-environment"}, Optional: []string{"-plugin-lock", "-diagnostic-candidates"}, Output: "json", SchemaVersion: "tei.cli.plugin-resolve/v0", JSONContract: "enveloped", Modes: []string{"", "unvalidated-candidates"}},
 			{Name: "plugin-runtime-plan", Effect: "read-only", Required: []string{"exactly one of -workspace or -world", "-environment", "-plugin-lock"}, Output: "json", SchemaVersion: "tei.cli.plugin-runtime-plan/v0", JSONContract: "enveloped"},
