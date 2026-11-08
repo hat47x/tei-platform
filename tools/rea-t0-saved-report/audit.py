@@ -25,6 +25,8 @@ def _read(root, name, limit):
 
 def audit(root):
     root = Path(root)
+    if root.is_symlink() or not root.is_dir():
+        raise ValueError('report directory must be an actual directory, not a symlink')
     raw_exit = _read(root, 'exit-code.txt', 32)
     if raw_exit is None:
         raise ValueError('missing exit-code.txt; invocation status unknown')
@@ -46,6 +48,7 @@ def audit(root):
         'stderrBytes': len(stderr) if stderr is not None else None,
         'stderrSHA256': hashlib.sha256(stderr).hexdigest() if stderr is not None else None,
         'reportShape': 'absent', 'reportedParseFailures': None,
+        'reportedOK': None, 'processReportConsistency': 'not-observed',
         'analysisQualification': 'unknown',
         'externalSourceClosure': 'not-observed',
         'providerInvocation': 'not-observed',
@@ -63,7 +66,13 @@ def audit(root):
     result['reportShape'] = 'json-document' if isinstance(obj, dict) else 'other-json'
     if not isinstance(obj, dict):
         return result
-    if obj.get('ok') is False:
+    reported_ok = obj.get('ok')
+    if type(reported_ok) is bool:
+        result['reportedOK'] = reported_ok
+        result['processReportConsistency'] = (
+            'consistent' if reported_ok == (code == 0) else 'conflict'
+        )
+    if reported_ok is False:
         result['analysisQualification'] = 'reported-failure'
         return result
     stats = obj.get('data')
@@ -82,13 +91,25 @@ def jsonl_audit(path, *, object_collection):
     path = Path(path)
     if path.is_symlink() or path.stat().st_size > MAX_REPORT:
         raise ValueError('unsafe or oversized JSONL T0 view')
-    lines = path.read_text(encoding='utf-8').splitlines()
+    try:
+        lines = path.read_text(encoding='utf-8').splitlines()
+    except UnicodeDecodeError:
+        return {'framing': 'invalid-jsonl', 'rowsSeen': 0}
     records = []
     for line in lines:
         try:
             records.append(json.loads(line))
         except json.JSONDecodeError:
             return {'framing': 'invalid-jsonl', 'rowsSeen': len(records)}
+    # REA error records are control records, never ordinary data rows.
+    # A consumer must recognize them in either JSONL framing mode.
+    controls = [
+        (i, record.get('type'))
+        for i, record in enumerate(records)
+        if isinstance(record, dict) and record.get('$rea') == 'jsonl/v1'
+    ]
+    if any(kind == 'error' for _, kind in controls):
+        return {'framing': 'reported-error', 'rowsSeen': len(records)}
     if not object_collection:
         return {'framing': 'bare-array-without-completeness-proof', 'rowsSeen': len(records)}
     if not records or not isinstance(records[-1], dict):
@@ -96,6 +117,8 @@ def jsonl_audit(path, *, object_collection):
     terminal = records[-1]
     if terminal.get('$rea') != 'jsonl/v1' or terminal.get('type') != 'metadata':
         return {'framing': 'missing-metadata', 'rowsSeen': len(records)}
+    if len(controls) != 1 or controls[0] != (len(records) - 1, 'metadata'):
+        return {'framing': 'extra-control-record', 'rowsSeen': len(records) - 1}
     emitted = terminal.get('records', {}).get('emitted') if isinstance(terminal.get('records'), dict) else None
     if not isinstance(emitted, int) or isinstance(emitted, bool) or emitted != len(records) - 1:
         return {'framing': 'count-mismatch', 'rowsSeen': len(records) - 1}
