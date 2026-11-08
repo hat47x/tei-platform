@@ -1080,3 +1080,43 @@ CLIの各ReplyにはEnvelope Schema、resultShape、Read Mode、Fingerprintの**
 **CI真偽とベース差異**：前§20のコミット `e0a60786ffe84bc68c4e27bfa59c37a1944cb241` の[Health #42396595545](https://github.com/hat47x/tei-platform/actions/runs/42396595545)はcompleted/**failure**。実ログで Go test/vet/tei validateはPASS、gofmt FAILが指すファイルは `tools/reference-plugin-capability-coverage/coverage_test.go` で、当PRのGo新Testではなく並行mainから仮統合に含まれたもの。依存の脆弱性検査はsuccess。新テスト追加の現在HEADについてGo/Healthの合格を未確認のままにし、他レーンのFormatting失敗を自分のRole Testの意味不一致と誤報しない。既存mainの整形修正は該当Ownerが対応し、本Draftでは無関係ファイルを巻き取らない。
 
 **実装上の次手**：まず既存CLI/Studio [Draft #3381](https://github.com/hat47x/tei-platform/pull/3381)/[#3371](https://github.com/hat47x/tei-platform/pull/3371)の型付きInspector注入点を同一Contractへ整合させ、#951のexact Selected Provider→実Call siteをTraceする。Role/Rate値の一般化は選択済Interpreterを介した実受入が成立した後の比較とし、現在のmain #3410を過大一般化しない。OwnerとTargetを変更しない第二Resolver/Host/Meaning Writer/BOM Engineは作らない。今回のOntological/REA/SEI横断はO0設計・有限Fixtureだけであり、将来のO2/O3/O4を現P0の直列Hard Gateにしない。
+
+---
+
+<!-- tei-role-domain-source-row-triangle-20261108 -->
+## 22. 2026-11-08：Role定義・行観測・原資料改訂の三つの時計を実Workspaceで分離
+
+### 22.1 今回の実装Sliceと受入の位置
+
+main[#3410](https://github.com/hat47x/tei-platform/pull/3410)の為替フォールバックは `Attribute.Role="currency-rate-fallback"` と行値で業務規則を選ぶ最初の具体的な実用例である。前§21ではDomain `ir.World` をGoで合成した既存ReferenceとRaw文書改訂のProduct API試験を区別していた。今回は既存[Draft #2860](https://github.com/hat47x/tei-platform/pull/2860)の `reference/dsl-language-plugin/self_description_workspace_boundary_test.go` に **`TestSelfDescriptionWorkspaceRoleFeedsExistingCurrencyFallback`** を追加。実`.tei`ファイル→実`workspace.Load`→同一LoadからSource Index→`currencyrate.ResolveFallback`→`FallbackRows`の有限接続をコードに固定した（追加元[commit 84e77bc4](https://github.com/hat47x/tei-platform/commit/84e77bc4857d948c49d2becc3651bc7d75c5f32b)、別Data値対照[commit a55f973a](https://github.com/hat47x/tei-platform/commit/a55f973acd7905ff83f6b11c297e45521c6eb848)）。**Go Test実行/CIはこのコード追加時点NOT VERIFIED**。本試験は`-workspace`を通したParsed Worldを業務専用Go処理へ渡すもので、実DB/Providerの行取得・汎用Language Pluginのexact選択・正式Role Required Shape/Owner受理ではない。
+
+同じ実行で以下の非同値を識別する：(i) `.tei`にRoleあり＋2行`annual`→`annual`、(ii)同じRole Sourceで2行`none`→`none`、(iii)未知行値／同一Data内の規則混在→拒否、(iv)同じ行値でもSourceからRole注釈除去→`none`。さらにRoleがあるのにRows未取得(`nil`)の場合も現Domain APIは`none`となるという**観測値**を固定するが、Read Completenessなしにその出力を『実世界で代替規則が不要』というAccepted Meaningへ昇格しない。
+
+### 22.2 三つのRevisionと資格の失効を混同しない
+
+| 変更内容（固定対照） | 原Source/Index revision | Parsed World/Role meaning candidate | 実Rowset/Domain result | 独立して確認する資格 |
+| --- | --- | --- | --- | --- |
+| **Raw `.md` 文面A→Bのみ** (§21の実Test) | Raw Artifact Fingerprintは変化 | Semantic World/Referenceは同一 | 未観測・影響不明 | Context PacketのSource Index Pinはstale候補。意味計算の再利用候補と別 |
+| **`.tei` のRole付与を外す** (§22の実Test) | Source Artifactは改版 | 同Data IDでもRole意味が異なる | 同じ行で`annual`→`none` | Domain規則の再計算が必要。Role解釈に必要なVersion/Ownerを再検査 |
+| **Role Source固定・行値`annual`→`none`** (§22の実Test) | Source/Role定義は固定 | Parsed Worldは同一 | Domain resultが変化 | 実Read completeness・Provider/Scope/AsOfが無ければ現在の業務結論は未資格 |
+| **選択Provider/Rule/Toolchain改版**（既存#1251/#2600の設計負例） | Sourceが同じ場合もある | Role Descriptorが同じ場合もある | 解釈/結果の同義は未保証 | selected→actual call、Conformance、Build/Owner Evidenceの再資格化が別途必要 |
+
+Source Fingerprint一致だけでは現在のResult同値を保証しない。また**Semantic Worldが同一でもSource Indexが改版されたら、旧Context Packetを現在の出典証拠として使い回せない**。main統合[PR #3477](https://github.com/hat47x/tei-platform/pull/3477)が実CLI Context→ScenarioでWorld同一・SourceIndex変更（LF追記）の旧Packet拒否を検証済み。逆にRaw文書の文面変更だけで**依存していない全計算を必ず再実行する**必要もない。『意味上の再計算候補』と『現在のSource/Packet資格』を別々の依存判定として扱う。#2600が再生成、#1163がEvidence Packet、#3262がDesign Contextの既存正本。
+
+### 22.3 Context Required拡張はmainで進行：申告の存在はFunction Invokeではない
+
+本節執筆時の[main統合 #3482](https://github.com/hat47x/tei-platform/pull/3482)は、固定 `sales.order.submit` Capability/`order_entry` Application/Source・3 Rule・DB申告を既存**単一Context Consumer**に追加した。対象PR exact HEADの[専用CI #42462672188](https://github.com/hat47x/tei-platform/actions/runs/42462672188)およびmerge後mainの[push専用CI #42462861657](https://github.com/hat47x/tei-platform/actions/runs/42462861657)がcompleted/success：**13実read-only CLI Reply／42限定的なConsumer Controls**。同World/SourceIndexのContext Packet freshnessと6 Pinned Scenario＋既知T1-Aの局所検証を保持する。C1/NFR/外部H3/未知T1-Bは対象外であり、全Repository HealthやOwner受理と同義ではない。
+
+最重要の非主張は、`Capability`/`Application`/`uses semantic sales`等が揃っても**Function Invocation Binding、Query/Provider actual Read、Host Grant/Effectが `not-observed`**ということ。`sales.order`の宣言閉包と今回の`fx.rate`専用Role試験は**異なるSubject/用途/Attempt**であり足し合わせて『一Function→Role Interpreter→Provider実行』の成功としない。Role専用の第二Context Readerを増設せず、#3262のRequiredSet・#951のactual Provider/ABI・#2586実Function Read・#2514独立Expectedにそれぞれ引き渡す。
+
+### 22.4 収束させる最短受入、二重正本と過剰計画を排除
+
+**S0（今回実装・CI判定待ち）**：一つの`fx.rate`実SourceのRoleあり/なしと、同じSourceの異なる行値を固定独立Expectedで判別する。これがGreenでも『Domain-specific `ResolveFallback`実行』まででSD-3汎用Interpreter合格ではない。部分/非開示Readゼロと`FallbackRows(nil)`の差は#2586/Rate Ownerで将来のRowset completeness入力を検討する。Rate APIの現在動作をここで黙って変更しない。
+
+**S1（main基線を再利用）**：#3482の13実CLI・42限定Controlに同一用途の必要Role/Value/Operator Source Closureが加えられる場合だけ、Source/World/Context PacketのRevisionを比較する。新しいRole受入は元`fx.rate`とは別fixtureであり、旧 `sales.order`へのRole付与を勝手に行わない。
+
+**S2（先行Draftとの接合）**：[CLI Service seam #3381](https://github.com/hat47x/tei-platform/pull/3381)と[Studio Host seam #3371](https://github.com/hat47x/tei-platform/pull/3371)の両DraftにあるInspector注入口を、既存#951のexact Provider selectionへ一Consumerずつ実配線する。B選択→A actual callをResult同値でも拒否、Plugin構造の説明だけで成功認定しない。Role Interpreterへの接続はread-only Inspectorのactual-providerが成立した後。
+
+**後続**：`*.tei.md`の意味Source読取は#2621（[closed #3346](https://github.com/hat47x/tei-platform/issues/3346)は未読込が明示されるProduct挙動の限定合格、正式Parserではない）、REA/SHO由来EvidenceのCandidate採用は#3394/#267、SEI判断は[Ontology #3475](https://github.com/hat47x/tei-platform/issues/3475)のO0設計比較に留める。セルフビルドの物理L3とBuild Intent解釈/G4は#2831で別審査。現行Critical Path G0〜G4を変更せず、Raw資料の存在やRole文字列からRuntime権限・SEI Decision・DB更新を生成しない。
+
+**追加独立反例（Scenario正本への提案・この節で実行しない）**：ESD-45 同Role Source・異Row値、ESD-46 同Row値・Role除去、ESD-47 Source-only改訂でWorld同一の旧Packet不正流用、ESD-48 Capability/Application全宣言有りでも実Invoke欠落、ESD-49 Rate規則Rows0件のcomplete/partial/非開示区別。新Runner/Registry/文法/Host、第二Evidence SSOTは作らない。
