@@ -127,3 +127,4 @@
 
 - [TEIのread-only MCP AdapterによるCLI/MCP一致の実測](TEI_DOGFOODING_MCP_ROUND_2026-11-08/README.md)（#3400・#3149。参照実装のAdapterで `model catalog`・`inspect`・`trace`・`validate` をMCPから呼び、CLIと同じ値（`worldFingerprint`・`snapshotFingerprint`・`schemaVersion`）になることを確認。製品のMCP契約・実Host・認可・外部送出はNOT RUN）
 
+- [二回の独立した駆動試行でも同じstage2成果物になること](TEI_GO_SELF_BUILD_TWO_STAGE_REPEAT_2026-11-08.md)（`-work`を分けた2回の実行で、両方L3に到達しstage1/stage2のartifact digestが一致することを記録。Seed Trust・受入・権限・OS間一致は未確認。SB-C1 / #2831）
