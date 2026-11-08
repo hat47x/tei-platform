@@ -91,3 +91,36 @@
 
 # Feature-check asymmetry output is hashed as raw bytes by its README.
 /plan/evidence/FEATURE_SELECTION_CHECK_ASYMMETRY_2026-11-08/** -text
+
+# Child-process reach observations are hashed as raw bytes.
+/plan/evidence/DSH_CHILD_PROCESS_REACH_2026-11-08/** -text
+
+# Resurvey output is hashed as raw bytes by its README.
+/plan/evidence/COMPOSITION_COLOCATION_RESURVEY_2026-11-08/** -text
+
+# Gate dependency recheck output is hashed as raw bytes by its README.
+/plan/evidence/COMPOSITION_GATE_DEPENDENCY_RECHECK_2026-11-08/** -text
+
+# Servicehost connection survey output is hashed as raw bytes by its README.
+/plan/evidence/SERVICEHOST_CONNECTION_PATH_SURVEY_2026-11-08/** -text
+
+# Session-log size-limit observations are hashed as raw bytes.
+/plan/evidence/DSH_SESSION_LOG_MAXBYTES_2026-11-08/** -text
+
+# Runtime alternate paths output is hashed as raw bytes by its README.
+/plan/evidence/RUNTIME_CARRIER_ALTERNATE_PATHS_2026-11-08/** -text
+
+# Unpinned path purpose scan is hashed as raw bytes by its README.
+/plan/evidence/RUNTIME_UNPINNED_PATH_PURPOSES_2026-11-08/** -text
+
+# Session-log split/stall observations are hashed as raw bytes.
+/plan/evidence/DSH_SESSION_LOG_SPLIT_AND_STALL_2026-11-08/** -text
+
+# Deployment executor survey output is hashed as raw bytes by its README.
+/plan/evidence/DEPLOYMENT_EXECUTOR_BINDING_SURVEY_2026-11-08/** -text
+
+# Executor binding consumer survey output is hashed as raw bytes by its README.
+/plan/evidence/EXECUTOR_BINDING_CONSUMER_SURVEY_2026-11-08/** -text
+
+# Answer fact-presence reports are hashed as raw bytes.
+/plan/evidence/DSH_ANSWER_FACT_PRESENCE_2026-11-08/** -text

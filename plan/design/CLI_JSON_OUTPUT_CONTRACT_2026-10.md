@@ -1,4 +1,4 @@
-﻿# CLI読取りコマンドのJSON出力契約（schemaVersionと失敗時の形式）の現状調査と追加案
+# CLI読取りコマンドのJSON出力契約（schemaVersionと失敗時の形式）の現状調査と追加案
 
 - **状態**: 調査と案（提案中、未採用）。一覧は2026-10-31時点のorigin/main `cd47b6fa4` のコードと、WSL go1.26.9でbuildした`tei`による実行結果の記録である。
 - **担当課題**: [#2354](https://github.com/hat47x/tei-platform/issues/2354)。
@@ -60,6 +60,7 @@
 - `-h`／`-help`は引数不正ではない（#3185）。2026-11-07から、`inspect`・`view`・`trace`・`workspace-files`・`knowledge-*`・`commands`・`version`・`model catalog`は、終了コード0・標準出力に`usage: tei <command> [options]`とそのコマンドが広告するflagの説明を書き、標準エラーは空にする。未知のflag（`-not-a-flag`など）は従来どおり`INVALID_ARGUMENT`・終了コード2で、`-h`とは区別する。`cmd/tei/cli_help_test.go`が両方を実プロセスで検査する。`validate`は元からflag packageの既定（標準エラーに`Usage of`、終了コード0）で、この変更の対象外である。
 - `tei commands`の`output`欄は、同じentryの`jsonContract`と一貫していることを`cmd/tei/cli_advertised_output_test.go`が検査する（#2824）。`json`／`text; json when …`と`enveloped`の組合せ、`raw`と`json`の組合せを定数で照合し、あわせて実プロセスでtext既定の3コマンドがJSONエンベロープを書かないこと、json既定の5コマンドが引数不足でも標準出力へ1件のエンベロープを書くことを確かめる。負例は`world`の`output`を`text`へ変えると失敗する。
 - `validate -json`の失敗JSONは`diagnostics`を常に空配列として持ち、`error.code`と`error.message`のみで種別を伝える。
+- `validate -json`の`diagnostics[]`は、要素が`{"diagnostic":{…},"sources":[…],"unresolvedSourceOrigins":[…]}`という**入れ子**の形で、同じ応答の`proposals[]`（`code`・`severity`・`diagnostic`・`accepted`・`revision`を持つ平坦な要素）とは異なる。この差は意図的に残している（#3347）。`diagnostics[]`は位置情報（`sources`）を要素側に持つため、診断本体を`diagnostic`の下へ置くと位置と診断の対応が1つの要素で読める。`proposals[]`は受理候補の表示用で、位置を要素ごとに持たない。平坦化は既存の読み手（`diagnostics[].diagnostic.code`を読む経路）の解釈を変えるため、v1を要する破壊的変更として別の判断に残す。`cmd/tei/cli_validation_test.go`の`TestValidateJSONDiagnosticsKeepNestedDiagnostic`が、v0の要素に入れ子の`diagnostic`があり、最上位に`code`が無いことを固定する。
 - `validate -json`は、2026-11-07から`sourceRootFindings`を返す。`sources`の存在しないrootは`severity:"error"`（`ok:false`・終了コード1）、Loaderが解釈しない未知rootと、Loaderが読まない近似名の管理ファイルは`severity:"warning"`である。Canonical Subjectを持たないため`diagnostics`とは別の欄にする（#2823）。
 - 空のWorkspace（モデル要素0件）は`validate`が`WORKSPACE_DECLARES_NO_MODEL_ELEMENTS`（warning）を返す。`ok:true`・終了コード0のままなので、`diagnostics`のwarningを確認する（#2822）。
 - `validate -json`と`model catalog`は、2026-11-07から`declarationCounts`を返す。`std`の標準意味型を除いたWorkspace自身の宣言件数であり、空のWorkspace（`total:0`）と宣言のあるWorkspaceを機械的に区別できる（#2822）。
@@ -71,6 +72,7 @@
 - 2026-11-07から、`tei commands`の各entryは、閉じた値集合を持つ引数について`argumentValues`（許容値）、`argumentType`（受け付ける形。`-disclose`はカンマ区切り）、`argumentDefaults`（省略時の値）を持つ。対象は`inspect`・`trace`の`-subject-kind`（両者は集合が違う）、`trace`の`-direction`と`-mode`、`view`の`-format`、`knowledge-context`の`-disclose`、`knowledge-data-design-candidate-review`の`-data-design-candidate-kind`である。値集合は実装の検証に使う変数（`operations.InspectionSubjectKinds`・`operations.TraceSubjectKinds`・`modelref.TraceDirections`・`modelref.TraceModes`・`knowledgecontext.SelectableDisclosureSections`）を参照しており、定数を別に複製していない。`cmd/tei/cli_discovery_argument_values_test.go`が、広告値の全件を実プロセスで受理し、集合外の値を拒否すること、広告と実装の集合が一致することを検査する。パス・ID・fingerprint・scopeのように閉じた集合を持たない引数は載せない（#3242）。
 - 2026-11-07から、`view`のentryは`writeFlags`（`-operation-log`・`-lifecycle-state`）を持つ。`effect: "read-only"`は**正本の意味を書き換えない**ことを示し、プロセスがファイルを書かないことまでは示さない。`view -execute`は、これらのflagで指定した場所にだけ記録・段階storeを作る（指定しなければ書かない）。ファイル書込みを禁じる呼び手は、`effect`だけでなく`writeFlags`のいずれも渡っていないことを確認する。`cmd/tei/cli_discovery_write_flags_test.go`が、実バイナリでflagごとにファイルが作られること、flagなしでは作業ディレクトリに何も作られないことを検査する（#3182）。
 - 2026-11-07から、`-h`（と`-help`）の出力に、`argumentValues`・`argumentDefaults`と同じ値集合と既定値を表示する（`values:`／`default:` 行）。値集合は discovery と同じ変数を参照しており、`-h` と `tei commands` のどちらも正本にならない。`cmd/tei/cli_help_values_test.go`が、`inspect`／`trace`／`view`／`knowledge-context` の `-h` が discovery と同じ集合と既定値を出し、閉じた集合を持たない flag には `values:` 行を出さないことを検査する（#3242）。
+- 2026-11-08から、`knowledge-context` は `-subject-kind` の `semantic` を名前空間として解決する（従来の`semantic-namespace`も受け付ける）。`model catalog` の `entries[].subject.kind` と `inspect`・`trace` は名前空間を `semantic` と呼ぶため、catalog の値をそのまま渡した呼び手が `result.semanticElement` 無しの `ok:true` を受け取り、「定義が無い」と誤読していた。`cmd/tei/cli_knowledge_context_kind_test.go` が、catalog が広告する kind と `semantic-namespace` の両方が `semanticElement` を解決すること、未知の kind は解決せず subject を書き換えないことを実バイナリで検査する（#3242の後続）。
 
 ## 5. v0の中での互換な変更と版を上げる変更（規則案）
 

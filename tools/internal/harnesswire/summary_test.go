@@ -10,7 +10,7 @@ func TestSummarizeSeparatesModelInputFromSessionLog(t *testing.T) {
 	  "stream": true,
 	  "max_tokens": 4096,
 	  "messages": [{"role": "user", "content": "MARKER_MODEL_INPUT"}],
-	  "tools": [{"type": "function"}, {"type": "function"}],
+	  "tools": [{"type": "function", "function": {"name": "read"}}, {"type": "function", "function": {"name": "pwsh"}}],
 	  "dsh_session_log": {
 	    "afterSeq": -1,
 	    "throughSeq": 18,
@@ -115,5 +115,48 @@ func TestSummarizeOmitsNullSessionLog(t *testing.T) {
 	}
 	if sum.SessionLog != nil {
 		t.Fatalf("null extension must be treated as absent: %+v", sum.SessionLog)
+	}
+}
+
+// Advertised names are data, not proof of use: a name may appear in the list
+// and never be called. The summary reports both forms the harnesses emit.
+func TestToolNamesRecordsBothSchemaForms(t *testing.T) {
+	body := []byte(`{
+  "model": "m",
+  "messages": [],
+  "tools": [
+    {"type": "function", "function": {"name": "read"}},
+    {"type": "function", "function": {"name": "pwsh"}},
+    {"name": "flat_name"},
+    {"type": "function", "function": {}},
+    {"type": "function", "function": {"name": "read"}}
+  ]
+}`)
+	sum, err := Summarize(body, nil)
+	if err != nil {
+		t.Fatalf("summarize: %v", err)
+	}
+	if sum.ToolCount != 5 {
+		t.Fatalf("tool count: %d", sum.ToolCount)
+	}
+	want := []string{"read", "pwsh", "flat_name", "read"}
+	if len(sum.ToolNames) != len(want) {
+		t.Fatalf("names: %v", sum.ToolNames)
+	}
+	for i, name := range want {
+		if sum.ToolNames[i] != name {
+			t.Fatalf("names[%d] = %q, want %q", i, sum.ToolNames[i], name)
+		}
+	}
+}
+
+func TestToolNamesAbsentWhenNoToolsAdvertised(t *testing.T) {
+	body := []byte(`{"model":"m","messages":[]}`)
+	sum, err := Summarize(body, nil)
+	if err != nil {
+		t.Fatalf("summarize: %v", err)
+	}
+	if sum.ToolCount != 0 || len(sum.ToolNames) != 0 {
+		t.Fatalf("tools must be empty: count=%d names=%v", sum.ToolCount, sum.ToolNames)
 	}
 }

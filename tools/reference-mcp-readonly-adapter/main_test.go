@@ -142,15 +142,20 @@ func TestAdapterMatchesTheSameOperationResults(t *testing.T) {
 			name:    "validate",
 			request: []byte(`{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"tei_validate","arguments":{}}}`),
 			check: func(t *testing.T, body map[string]any) {
-				result := body["result"].(map[string]any)
-				if result["worldFingerprint"] != validation.WorldFingerprint {
-					t.Fatalf("validate worldFingerprint = %v", result["worldFingerprint"])
+				// validate is not wrapped in result: the CLI writes its
+				// fingerprints, diagnostics and declarations at the top level,
+				// and the adapter now writes the same document (#3420).
+				if body["worldFingerprint"] != validation.WorldFingerprint {
+					t.Fatalf("validate worldFingerprint = %v", body["worldFingerprint"])
 				}
-				if result["sourceIndexFingerprint"] != validation.SourceIndexFingerprint {
-					t.Fatalf("validate sourceIndexFingerprint = %v", result["sourceIndexFingerprint"])
+				if body["sourceIndexFingerprint"] != validation.SourceIndexFingerprint {
+					t.Fatalf("validate sourceIndexFingerprint = %v", body["sourceIndexFingerprint"])
 				}
 				if body["schemaVersion"] != "tei.cli.validate/v0" {
 					t.Fatalf("validate schemaVersion = %v", body["schemaVersion"])
+				}
+				if _, ok := body["diagnostics"].([]any); !ok {
+					t.Fatalf("validate diagnostics is not an array: %T", body["diagnostics"])
 				}
 			},
 		},
