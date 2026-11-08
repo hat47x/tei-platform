@@ -436,7 +436,38 @@ SEIを意思決定の主体とする構想は、本件では**Candidate decision
 
 **停止・撤回条件**：Routeペアの比較だけでSecurity/Audit/Effectが保証されたと記録する、同一FixtureからExpectedを自動生成して独立証拠と呼ぶ、E1/Host二側のSourceを本実装の単一Canonicalモデルへ無根拠に統合する、Scope/Grant変更に対し旧Bindingを再利用する、これらのいずれかが起きた場合は資格を撤回。局所PoCの価値が低ければFixtureはtest-onlyに留め、プロダクト側へ移植しない。
 
-## 16. 参考資料と採否
+## 16. 2026-11-08 P0-S：実WorkspaceのPattern→Capability参照をread-onlyで検査
+
+### Source経路を一つだけ実消費する
+
+前段§15のE1/Go二視点比較は**両側とも合成宣言**だった。今回は既存の`internal/operations.InspectSubject`（ADR-0048のApplication API方針に接続するread-only API）を、[実Goテスト](../../reference/web-composition/go-host/e1_workspace_source_admission_test.go)から直接呼び出す。Referenceの実Sourceは以下の二つである。
+
+| 実Source（読み込み、変更しない） | Canonical Subjectと固定Expected | 段階 |
+| --- | --- | --- |
+| `reference/workspace/applications/order-entry/patterns/submit-order.tei` | `application-pattern:order_entry.submit_order`、`kind=command`、`capability=sales.order.submit` | 実Workspace Loader→正規化IR→Source Index→`InspectSubject` |
+| `reference/workspace/semantic/sales/order.tei` | `semantic-capability:sales.order.submit` | 同上。独立Subjectとして取得 |
+
+**独立して証明する最小条件**：両Subjectの`Canonical`が期待IDと参照先を保持し、`SourceStatus=indexed`で同SubjectのSource Reference・Artifactが取得されること。二回の`InspectSubject`が同じ`WorldFingerprint`と`SourceIndexFingerprint`を返すこと。さらに前段のtest-only E1/Go Fixtureが指定したActionIDが、**実Workspaceから得たPattern IDと一致**すること。正しいGraph Edgeを描いたと主張するわけではなく、`Pattern→Capability`という一つの実Canonically-authored参照を確認する。
+
+**反例**：双方のRoute/Actionを同じ架空ID `order_entry.unknown_action`に変更すれば宣言ペアとしては一致しても、`InspectSubject(application-pattern,...)`の実結果は`SUBJECT_NOT_FOUND`であるべき。**一致した文字列からCanonical存在を逆推論しない**。そしてPattern/Capabilityを読み込めても、Runtime Providerや選択済みHostでの実呼出し、Action Authorization/Grant、DB効果は不明のまま（HDG-S03）。
+
+| ケース | 実テストの対象 | この時点の独立Expected／限界 |
+| --- | --- | --- |
+| HDG-S01 | 実Workspaceの2 Subject＋E1/Go宣言 | Source位置とCanonical参照の限定一貫性。二回のreadは原子的Snapshotを保証しない |
+| HDG-S02 | Route pairは完全一致、Canonical Patternは未存在 | `SUBJECT_NOT_FOUND`。Route一致をSource採用に昇格しない |
+| HDG-S03 | Patternが実Capabilityへ参照している | Provider選択、実Invoke、実効果は**NOT QUALIFIED** |
+
+既存`InspectSubject`は一件ずつWorkspaceを読む。fingerprintが同じことは内容一致の**限定観測**であり、Workspace Rootの移動・Source A→B→A・権限/Grant・TOCTOU・完全Required Closureの証拠ではない。実`*.tei`を先行し、未実証の`*.tei.md`完全Readerや独自Graph Loaderを仮定しない。#3492の進行中の三視点実Source入場作業へは共通OperationとSource Referenceの利用例として引き渡し、同PRの別の受入判定を奪わない。
+
+**専用CIに追加**：実Go Host packageテストを継続し、対象`submit-order.tei`、`order.tei`、追加GoテストのGit Blobを同一checkoutで記録する。関連Sourceの変更でもCIを再実行する。CIでGo PASSを確認するまではHDG-S01〜03の実行資格は未成立。
+
+### 製品縦断へ進むための停止線
+
+- **済みの局所証拠**：実E1静的検査、Go Hostの有限分岐Audit、test-only E1/Go宣言ペア。今回の追加試験は、実Source Readerの一辺を確認する段階。
+- **未実証**：E1宣言が実Loaded Application Patternから**生成**されたこと、実Resolver/Providerが`sales.order.submit`を選択・Invokeしたこと、実TEI GraphのNode/Edge occurrence一意性、Client Reaction、実効果、現在Authority、同一SnapshotのRequired Source closure。
+- **次の最短一辺**：#951/#1043/#1158の現在のResolver/Host/Command受理契約を**実Pattern+Capability IDに基づいてread-onlyで対応表へ投影**する。Route名の一致から選択済みProviderを推測せず、`selected→loaded→invoked`を異なる証拠へ分ける。GraphのOwnerは#1124/#2497/#2620、Function完備性は#3262、exact Artifact/Plugin/BOMは#3267/#3279。第二Registryや第二Hostは設けない。
+
+## 17. 参考資料と採否
 
 - [Liberator repository](https://github.com/clojure-liberator/liberator) ― ClojureのREST decision modelの先行例。ライブラリ移植ではない。
 - [Webmachine mechanics](https://webmachine.github.io/mechanics.html)、[Decision flow](https://webmachine.github.io/diagram.html)、[Resource functions](https://webmachine.github.io/resources.html) ― decision flow・契約・処理に分離する参考資料（古いHTTP版があるため仕様の正本にはしない）。

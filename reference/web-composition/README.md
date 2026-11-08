@@ -12,7 +12,7 @@ Go Reference Host側は`NewHost`の`defer Audit`と既存の拒否・loopback・
 
 E1 Plannerの`onTerminal`をRuntime Hostのdefer Auditへ**実Bindingした証拠は依然としてない**。限定PathのCallback観測からすべての未観測経路やProduction IdP・Provider・Client Receiptの安全性を主張しない。
 
-**2026-11-08限定前進（#3274）**：[専用Node+Go CI #42461546535](https://github.com/hat47x/tei-platform/actions/runs/42461546535)はcompleted/success（Node HDG-21 2件＋Go Host 10経路）。さらに[E1/Go二視点Fixture](e1-go-route-pair.fixture.json)を[Node](e1-go-route-pair.test.mjs)と[Go](go-host/e1_go_route_pair_test.go)の双方で読む**独立宣言Routeの一致・不一致テスト**を追加した。Host/E1が各々構成可能でもPathまたはActionが異なると明示比較では不一致になる。Provider issuerを変えてもRoute一致のままであり、Route一致をAuthorityやTerminal Coverageの証拠には使えない。**追加した二視点テストの実CI成功は本PRのRun結果で判定**する。正式Binding・実TEI Graph Loader・実Providerは未実証。
+**2026-11-08限定前進（#3274）**：[専用Node+Go CI #42461546535](https://github.com/hat47x/tei-platform/actions/runs/42461546535)はcompleted/success（Node HDG-21 2件＋Go Host 10経路）。さらに[E1/Go二視点Fixture](e1-go-route-pair.fixture.json)を[Node](e1-go-route-pair.test.mjs)と[Go](go-host/e1_go_route_pair_test.go)の双方で読む**独立宣言Routeの一致・不一致テスト**を追加した。Host/E1が各々構成可能でもPathまたはActionが異なると明示比較では不一致になる。Provider issuerを変えてもRoute一致のままであり、Route一致をAuthorityやTerminal Coverageの証拠には使えない。二視点Fixtureの追加テストは[実CI #42462531490](https://github.com/hat47x/tei-platform/actions/runs/42462531490)でNode 7/7とGo Host packageがPASS済み。さらに[実Workspace Source admission Goテスト](go-host/e1_workspace_source_admission_test.go)で、既存`operations.InspectSubject`からCanonical Pattern `order_entry.submit_order` とCapability `sales.order.submit` を読み、Source Index・Source参照・固定IDの一貫性を検査する。**このGo Source admission追加分の成否は当該PRの専用CI完了で確認する**。局所Canonical Subject取得はE1/Host正式Binding・Graph Required全閉包・実Providerを証明しない。
 
 プラグインを組み合わせるとき、HTTP要求の実行前に次の問題を発見できるかを確かめます。
 
