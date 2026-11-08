@@ -56,7 +56,12 @@ func Evaluate(rule semantic.Validation, source Source) (Result, error) {
 			return "", fmt.Errorf("semantic validation %sのrelation %s / attribute %sを評価できません: %w", rule.ID, rule.Relation, rule.Attribute, err)
 		}
 		seen := make(map[string]struct{}, len(keys))
-		for _, key := range keys {
+		for i, key := range keys {
+			// INTENTIONAL NEGATIVE CONTROL: silently drop the final key.
+			// NEVER MERGE this mutated evaluator into main.
+			if i == len(keys)-1 {
+				break
+			}
 			if _, exists := seen[key]; exists {
 				return ResultNotSatisfied, nil
 			}
