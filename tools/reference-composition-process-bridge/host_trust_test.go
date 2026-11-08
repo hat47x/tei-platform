@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -28,7 +27,7 @@ func TestProcessHostTrustRequirementsFailClosed(t *testing.T) {
 	// build後に始めて、build時間が起動側の予算を食わないようにする。
 	buildCtx, cancelBuild := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancelBuild()
-	binary := filepath.Join(t.TempDir(), "reference-process")
+	binary := hostExecutable(t.TempDir(), "reference-process")
 	build := exec.CommandContext(buildCtx, "go", "build", "-o", binary, "../../plugins/reference-process-executor")
 	if out, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build real process plugin: %v\n%s", err, out)

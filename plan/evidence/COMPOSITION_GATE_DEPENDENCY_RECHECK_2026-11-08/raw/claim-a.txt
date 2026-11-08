@@ -1,0 +1,4 @@
+== tei/cmd/tei ==
+includes internal/composition: 0
+includes internal/operations: 1
+includes internal/servicehost: 0
