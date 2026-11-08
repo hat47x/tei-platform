@@ -158,6 +158,7 @@ func TestRecordedWasmCandidateIsSelectable(t *testing.T) {
 }
 
 func TestExternalCommandRecordsPythonCandidate(t *testing.T) {
+	requirePOSIXShellForExternalCommands(t)
 	if _, _, ok := findPython(); !ok {
 		t.Skip("python3/python is not available")
 	}
