@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {observeDirectTrace} from './direct-trace.mjs';
+import {observeDirectTrace, compareObservedLoadContext} from './direct-trace.mjs';
 const K=(scope,kind,id)=>({scope,subject:{kind,id}});
 const selected=K('reference-observation','semantic-relation','sales.order.customer');
 const customer=K('reference-observation','semantic-data','customer.customer');
@@ -152,4 +152,48 @@ test('Source Index reference subject must match trace Kind/ID independently of s
   bad.result.source.references[0].artifactPath='';
   assert.deepEqual(observeDirectTrace(bad),
     {status:'unknown',reason:'source_reference_unqualified'});
+});
+
+test('same World and Source Index bytes do not join different Workspace manifests',()=>{
+  const first=fixture(),other=fixture();
+  other.result.workspace.name='other';
+  other.result.workspace.manifest.sha256='sha256:other-manifest';
+  // Deliberately leave the World, Source Index, and trace fingerprint identical.
+  assert.equal(first.result.worldFingerprint,other.result.worldFingerprint);
+  assert.equal(first.result.sourceIndexFingerprint,other.result.sourceIndexFingerprint);
+  assert.equal(first.result.snapshotFingerprint,other.result.snapshotFingerprint);
+  assert.deepEqual(compareObservedLoadContext(first,other),
+    {status:'unknown',reason:'workspace_manifest_mismatch'});
+  assert.notDeepEqual(observeDirectTrace(first).workspaceLoad,
+    observeDirectTrace(other).workspaceLoad);
+});
+
+test('two caller-scope views of the same Workspace may only share bounded load context',()=>{
+  const first=fixture(),other=fixture();
+  const another=K('alternate-observation','semantic-relation','sales.order.customer');
+  const endpoint=K('alternate-observation','semantic-data','customer.customer');
+  const parentAlt=K('alternate-observation','application-pattern','order_entry.customer_reference');
+  other.result.trace.subject=another;
+  other.result.source.key=another;
+  other.result.trace.rows[0].edge.from=another;
+  other.result.trace.rows[0].edge.to=endpoint;
+  other.result.trace.rows[0].resolvedTo=endpoint;
+  other.result.trace.rows[1].edge.from=parentAlt;
+  other.result.trace.rows[1].edge.to=another;
+  other.result.trace.rows[1].resolvedTo=another;
+  assert.deepEqual(compareObservedLoadContext(first,other),
+    {status:'same-observed-load-context-only',authority:'read-only-candidate',
+      sourceAndPluginClosure:'unproven',absentClaim:'unknown'});
+  other.result.sourceIndexFingerprint='sha256:different-source';
+  assert.deepEqual(compareObservedLoadContext(first,other),
+    {status:'unknown',reason:'read_snapshot_mismatch'});
+});
+
+test('manifest identity alone cannot rescue malformed or undisclosed trace qualification',()=>{
+  const first=fixture(),other=fixture();other.result.trace.mode='summary';
+  assert.deepEqual(compareObservedLoadContext(first,other),
+    {status:'unknown',reason:'trace_unqualified'});
+  const a=observeDirectTrace(first);
+  assert.equal(a.workspaceIdentity,'load-manifest-observed-only');
+  assert.equal(a.authority,'read-only-candidate');
 });
