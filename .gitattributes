@@ -115,3 +115,6 @@
 
 # Session-log split/stall observations are hashed as raw bytes.
 /plan/evidence/DSH_SESSION_LOG_SPLIT_AND_STALL_2026-11-08/** -text
+
+# Deployment executor survey output is hashed as raw bytes by its README.
+/plan/evidence/DEPLOYMENT_EXECUTOR_BINDING_SURVEY_2026-11-08/** -text
