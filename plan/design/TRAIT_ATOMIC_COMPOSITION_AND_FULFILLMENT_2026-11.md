@@ -108,7 +108,6 @@ tei trait explain <subject> --target <target>
 
 **停止条件**：別Resolverや第二Meaning正本が必要になる、Trait名からGrantが発生する、未テスト保証をPASS扱いする、DerivedDataの削除が業務確定記録を消す、Providerの実特性を無視して一律保証する場合。実験の不足は個別Issueの未充足として記録し、既存[#1119](https://github.com/hat47x/tei-platform/issues/1119)へHard Gateを追加しない。
 
-
 ## 7. 他レーンの成熟差分：Traitを「必要な能力の有向グラフ」に接続する
 
 2026-11-07のPlugin-first D1、Data Source Workbench、Verified Composition BOM、Design Contextとテスト能力の議論を照合した結果、Traitを導入する価値は**実装義務を宣言したこと**だけでなく、**その義務が選択・実呼出・検証まで到達したことを説明できる**点にある。既存[#951](https://github.com/hat47x/tei-platform/issues/951)/[#1016](https://github.com/hat47x/tei-platform/issues/1016)のResolver/Composition、[#3262](https://github.com/hat47x/tei-platform/issues/3262)のDesign Context、[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)の独立Expectedに投影し、第二のTrait Resolver/Runnerを新設しない。
@@ -204,7 +203,6 @@ Subject / SourceRev / RequiredScope / TraitContractRev
 
 **状態**：本追補は横断した契約と受入票の成熟化のみ。T1-R/T1-M、TC-11〜15、実Go Build/CLI/Wails/DB、Conformance、Performance計測、Owner Meaning Acceptanceはすべて未実施。実行上の成果は各OwnerのEvidence/Issueに限って記録する。
 
-
 ## 10. 2026-11-07後半の実証を反映：Traitの「必要集合」とCapabilityの「選択率」は別の指標
 
 新しくmainへ統合された [Plugin能力選択のReference #3337](https://github.com/hat47x/tei-platform/pull/3337) とその[技術名解決の修正](https://github.com/hat47x/tei-platform/commit/641fff18d1a40591543461f043c827d86e090c8b)、[Context部分集合の負例 #3354](https://github.com/hat47x/tei-platform/pull/3354)、[実行経路を持たないHookの検出 #3306](https://github.com/hat47x/tei-platform/pull/3306)から、要求の閉包を証明せずに「Traitが充足された」「未使用」とする危険が具体化した。
@@ -246,3 +244,58 @@ Subject / SourceRev / RequiredScope / TraitContractRev
 **採用・撤回基準**：Trait固有の巨大Catalogや第二Resolverを作らず、追加したTraitに対して「どの必要操作が、なぜ利用できるか／できないか」がSource/Scope/実証に基づいて説明できること。実Providerへ到達しないのにCoverage%だけ改善する場合は新しい抽象・画面を増やさない。
 
 **状態**：#3337・技術名解決修正・#3354・#3306はリポジトリの限定的な既存実証。今回のTrait Required Closure、TC-19/20の一連の実行、CLI/Studio actual two consumer、正式Trait Schema、Owner意味受理は**NOT RUN / NOT ACCEPTED**。履行資格を既存Issueの権限・証拠へ委譲する。
+
+## 11. Traitの付与先と有効化境界：Source記述から実装義務へ飛躍しない（2026-11-08追補）
+
+[#3368](https://github.com/hat47x/tei-platform/pull/3368)がmainへ統合した限定回帰（Capability宣言・Environment選択の境界）と、他レーンの `*.tei.md` Authoring、Role/Facet、標準データ構造、Function内の表現配置／Topology Binding、Design Context、Browser/Session/DerivedDataを照合した。**新しい成熟点は、Traitの付与先（何に保証を与えるか）と、Traitがいつ実装義務として有効化されるかを独立にすること**である。名称・構文・表示から実装を暗黙導入しない。
+
+### 11.1 一つのTrait名でも付与先の同一性を変えると保証は変わる
+
+`Versioned` を例にすると、`Product.price` の履歴取得、`Product` 行全体の競合制御、`ProductStore` ProviderのCAS能力、`UpdatePrice` Operationの前提Revision検査は**別Subject／別Effect境界**である。Row更新と項目履歴は物理実装を共有し得るが、物理Column/Go Methodが共通だから全てにTrait Bindingが存在するとは判断しない。
+
+| 付与先（例） | 明示的に要求される保証の単位 | 実装選択・観測の責務 |
+| --- | --- | --- |
+| Data Field | 対象値・業務有効期間・欠損/NULLの意味 | Field→保存Mapping→履歴/Query。行全体の履歴は暗黙に含めない |
+| Table / Relation | 行Identity・多重度・書込み・保存期間 | DB Resource/Providerの実制約とMigration結果。1項目の要求からDDL成功を推測しない |
+| Function / Operation | 入出力、使用Context、整合性/Effectの前後条件 | Function内の実Read/Write Mapと現在Grant。Reference同名でも異Scopeは別 |
+| Plugin / Provider / Resource Instance | Offers/Requires・実Implementation・Target/InstanceのCapability | 選択済Providerと実Load/Invoke。自己申告、Provider技術名の候補一致は適合ではない |
+| UI Representation / Session | Functionに配置された表現インスタンスの状態共有、Lifecycle、表示/編集能力 | Data topologyと表示topologyの明示Mapping、User/Tenant/Session権限。表現可能≠編集許可 |
+
+`@Trait` 相当のMarkdownテキストは、ファイルがManagedであるだけではBindingにならない。**Raw Source保全→実Loader Read→構文/Role認識→Typed Subject/Scopeへの束縛→Meaning Intentの採否→必要Contractの解決**を区別する。Provider PluginがdisableされてもRaw Sourceは保持する。未Parsed/未BoundのTraitを「要求がない」「実装済み」に数えない（[#2620](https://github.com/hat47x/tei-platform/issues/2620)、[#3262](https://github.com/hat47x/tei-platform/issues/3262)、[#3030](https://github.com/hat47x/tei-platform/pull/3030)）。
+
+### 11.2 Trait義務の起動条件と診断の非対称性
+
+実行前判定に使う **Required Closure** を独立に固定し、現在のRead Scopeに対する完全性を確認する。取得できた一部の `provides`／Capability Bindingだけを分母にしない。独立に確認できた **known missing** は即診断できる一方、未取得のRequiredが残る場合は「missing 0」とも「complete」とも判定しない。
+
+| Source/Meaning・Required closure | Known Requiredの履行 | 許されるAssessment |
+| --- | --- | --- |
+| 完全で、対象Intentが受理済み | 必要な全実装と適合証拠がScope内で存在 | そのScope・Targetに限定した `satisfied` 候補。現在Grantは別 |
+| 完全 | 実装が一つ以上欠落 | `unfulfilled`。失敗点をBinding/Contract/Implementationで示す |
+| 部分的・未Loaded・権限外・途中切断 | 観測済みRequiredの一つが欠落 | **既知の未充足**を示しつつ、全体Assessmentは `partial/unknown`。秘匿分母は非開示 |
+| 部分的・未Loaded・権限外・途中切断 | 観測済みRequiredは全て履行 | 全体は `unknown`。100%・Required空集合・利用資格へ昇格しない |
+| 全入力が確認されRequired集合が空 | 対応するConsumer/Use-siteには義務がない | `not-required`。未読込による空集合と区別する |
+
+この表は新しいCore status enumや第二Readerの提案ではなく、既存のContract/Design Context/Conformanceを参照する**読み取り側の判定規則**。非開示Requiredの件数・名前・PathはUnauthorized Consumerへ返さない。
+
+### 11.3 実装方式の選択は「どの時点で拒否するか」とも接続する
+
+- **Authoring時**：未BoundのTrait、適用対象の不一致、Profile/Required集合の矛盾、手動実装の必要箇所を診断。候補作業を保存することは許すが正式な利用可能Operationを公開しない。
+- **Build/Generation時**：受理されたRequired Contractに対しGenerated/Provided/Manual/Externalのいずれかの実現を解決。選択済みImplementationの実Build/Input Closureを確認。Generatorが出力しただけでは実Target Conformanceでない。
+- **Runtime/Operation時**：既存Host/Providerによる現在Grantと実Load/Invokeを確認。Sourceが変化した場合、古いEvidenceを再利用する前にその資格を再評価。認証/監査Sessionの削除をCache Evictionへ委ねない。
+
+既存のD1 read-only Inspector（T1-R）は**Authoring→選択→実Invocation**、ConditionalWrite（T1-M）は**Manual→契約不充足診断→実ProviderのCAS検証**を分担する。両者を一つの新Hard Gateへ統合せず、[#3279](https://github.com/hat47x/tei-platform/issues/3279)のFulfillment Owner、[#951](https://github.com/hat47x/tei-platform/issues/951)のResolverへ引き渡す。
+
+### 11.4 追加の最小反例と独立Expected（全て提案／NOT RUN）
+
+| Case | 操作／改変 | 期待される最初の不足・拒否 |
+| --- | --- | --- |
+| **TC-21** | Fieldに`HistoricalQuery`を付与。行履歴は存在するが対象Fieldの有効時点を保存していない | Row版のみでField時点Query義務を充足させない。Field→History Mappingが不足 |
+| **TC-22** | `*.tei.md`にTrait文字列を置くがLoader未解釈、またはSourceのRole Bindingが曖昧 | Raw textを保持したまま`not-loaded/unbound`。Required 0や自動Default Implementationを生成しない |
+| **TC-23** | 独立FixtureがRequired [A,B]。AだけReaderから観測可能、BはSource欠落。AのProviderはselected | Coverageはpartial/unknown。Aの選択とBの不在証明/全Trait適合を混同しない |
+| **TC-24** | `ConditionalWrite`をManual実装したが、実体は通常Read→無条件Put。二つの同一Expected Revision更新を同時実行 | 署名/逐次テストPASSではなく、隔離実Targetで**一件だけCommit可、他方はConflict、Post-image一致**を確認できなければConformance未成立。テスト環境では独立Barrier/Receiptが必要 |
+| **TC-25** | Browser Cacheの`Disposable`と、同じ値由来の確定Temporal Record/未同期Session入力を格納 | Cache Evictionで正本・時点観測・未同期編集を消さない。Data IdentityとRetention Subjectを別に束縛 |
+| **TC-26** | Traitの標準実装Pluginを無効化。旧Sourceが保持され、旧Build Result/Cache byteが一致 | Raw Authoringは可、Required Operation Offer/Runtime資格は保留。旧Direct fallbackで暗黙利用しない |
+
+**直近の実装判断**：新しいTrait構文・Core enum・中央Evaluatorを作る前に、TC-22/23を既存Design Context Consumer、TC-24を既存Provider/Scenario Conformance、TC-26をPlugin-first D1の受入票で再現し、どの不足が既存契約では表現できないかを記録する。受入前はすべて `design-only`、同じCounterexampleを別Issueへ複製して第二Expected正本を作らない。
+
+**採用判断**：Traitが単にメタデータを増やすだけでなく、具体的なImplementation Obligation・Missing Diagnostic・安全な自動構成・独立検証のいずれかを実際に改善する場合に限定して標準Trait候補へ進める。実Provider/CLI/Studio/DB、C0/C1の新規実行やOwner意味受理は本追補では行っていない。

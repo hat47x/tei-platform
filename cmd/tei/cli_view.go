@@ -15,6 +15,7 @@ import (
 	"tei/internal/command"
 	"tei/internal/command/lifecyclesqlite"
 	"tei/internal/core"
+	"tei/internal/operations"
 	"tei/internal/periodstate"
 	"tei/internal/semantic"
 	"tei/internal/workspace"
@@ -58,10 +59,17 @@ type referenceCommandRun struct {
 }
 
 type cliViewReport struct {
-	SchemaVersion string                `json:"schemaVersion"`
-	OK            bool                  `json:"ok"`
-	Result        any                   `json:"result,omitempty"`
-	Error         *cliInspectionFailure `json:"error,omitempty"`
+	SchemaVersion string `json:"schemaVersion"`
+	OK            bool   `json:"ok"`
+	Result        any    `json:"result,omitempty"`
+	// WorldFingerprint and SourceIndexFingerprint are the same read-only
+	// observations `model catalog`, `inspect`, `validate -json` and `trace`
+	// report. `result.semanticFingerprint` is a different value: it covers only
+	// the namespaces the Application uses, so the two must not be compared
+	// (#3345). They are filled only for -format json.
+	WorldFingerprint       string                `json:"worldFingerprint,omitempty"`
+	SourceIndexFingerprint string                `json:"sourceIndexFingerprint,omitempty"`
+	Error                  *cliInspectionFailure `json:"error,omitempty"`
 }
 
 // runViewCommandは、Application Patternの対話契約を解決し、textまたはjsonで返す。
@@ -139,6 +147,24 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	loaded, err := workspace.Load(*root)
 	if err != nil {
 		return fail("WORKSPACE_LOAD_FAILED", err.Error(), 2)
+	}
+	if *format == "json" {
+		// The JSON projection reports the same read-only observations the other
+		// read commands report (#3345). `result.semanticFingerprint` stays as it
+		// is: it covers only the namespaces this Application uses, so it is a
+		// narrower value, not a different name for worldFingerprint.
+		//
+		// A Workspace whose Source Index cannot be built keeps returning the
+		// view: the projection is of the loaded World, and refusing here would
+		// make `view` fail where it previously succeeded. The two fields are
+		// omitted in that case rather than filled with a value the call did not
+		// observe.
+		if idx, indexErr := workspace.BuildSourceIndex(*root, loaded); indexErr == nil {
+			if worldFP, sourceFP, fingerprintErr := operations.WorkspaceProjectionFingerprints(loaded.World, idx); fingerprintErr == nil {
+				report.WorldFingerprint = worldFP
+				report.SourceIndexFingerprint = sourceFP
+			}
+		}
 	}
 	if *patternID == "" && *packageID == "" && *commandID == "" {
 		if *format != "text" && *format != "json" {

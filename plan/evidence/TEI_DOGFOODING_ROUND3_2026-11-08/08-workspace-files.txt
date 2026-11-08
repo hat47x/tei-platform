@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "tei.cli.workspace-files/v0",
+  "ok": true,
+  "result": {
+    "managedFiles": [
+      {
+        "path": "applications/request-log/application.tei",
+        "sourceRoot": "applications",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "semantic/intake/request.tei",
+        "sourceRoot": "semantic",
+        "extension": ".tei",
+        "readByLoader": true
+      }
+    ],
+    "workspace": {
+      "name": "first_model_change",
+      "formatVersion": 1,
+      "manifest": {
+        "path": "tei.workspace.yaml",
+        "sha256": "sha256:b8ce0bc4a2939586a20247ef707692e7e5b7f1152c5e3525e79ea3bf4191629e"
+      }
+    }
+  }
+}
