@@ -20,6 +20,7 @@ on:
       - 'internal/driver/observation.go'
       - 'internal/semantic/capabilityinvoke/invocation.go'
       - 'reference/legacy-auth/**'
+      - 'reference/web-composition/go-host/**'
   push:
     branches: [main]
     paths:
@@ -70,6 +71,7 @@ jobs:
           printf 'e1-go-fixture-blob=%s\n' "$(git rev-parse HEAD:reference/web-composition/e1-go-route-pair.fixture.json)"
           printf 'e1-go-node-test-blob=%s\n' "$(git rev-parse HEAD:reference/web-composition/e1-go-route-pair.test.mjs)"
           node --test reference/web-composition/plan-check.terminal-gap.test.mjs reference/web-composition/e1-go-route-pair.test.mjs
+          node --test reference/web-composition/plan-check.terminal-gap.test.mjs
       - name: 対象版Goを準備
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
@@ -108,6 +110,10 @@ jobs:
             gofmt -d reference/web-composition/go-host/e1_real_workspace_command_binding_test.go
             gofmt -d reference/web-composition/go-host/e1_real_workspace_driver_invocation_test.go
             gofmt -d reference/web-composition/go-host/effect_unknown_observation_test.go
+          go version
+          go test -count=1 -v ./reference/web-composition/go-host
+          if [[ -n "$(gofmt -l reference/web-composition/go-host/decision_path_test.go)" ]]; then
+            gofmt -d reference/web-composition/go-host/decision_path_test.go
             echo "Focused Go witness source is not gofmt-clean" >&2
             exit 1
           fi
