@@ -257,7 +257,6 @@ tests:
 
 **実施状況**：2026-11-07の他チャット・現行main・既存Issueの静的突合と移行条件の設計追補。PD-0〜PD-7、Trait合成、actual two consumer、実Go Build/Studio/UI/Host、CLI Skill/MCP、実DB/HTTP副作用、Self-buildの新規試験は**NOT RUN**。正式Schema/ABI、数値Budget、Owner Meaning Acceptanceは**NOT ACCEPTED**。本追補は#1119のG0〜G4を置換せず、実証時の必要証拠を既存Gateへ渡す。
 
-
 ## 14. 横断収束：実行可能Offer・表示逆写像・受信側SinkをD1の契約監査へ接続（2026-11-08案）
 
 **位置づけ**：#1251のD1/PD-1〜5に渡す最小の検証差分。#951/#1016のContract/Provider/Resolution、#3278のAtomic Trait、#1158のOperation/Surface、#1180/#2514のScenario/Independent Expected、#3267のBOM、#2516のDisclosure、#2497のProjection/逆写像が各正本。新しいCore enum、第二Resolver、権限・Evidence・Scenario SSOT、共通TEI Hostを作らない。以下のOperation Offerは**説明上の集合名**であり、正式Schema/ABIの採用ではない。
@@ -309,7 +308,6 @@ Data Workbench #3270、REST Decision Graph #3274、三要素モデルとCRUD/SHO
 4. **費用対効果**：新しいContract/Providerを一つ追加するためのCore差分、Consumer別特別処理、Open APIへのAdapter変更量、D1誤PASS/誤失効、Sinkの未観測割合、Build closure混入、入力/出力配送の完全性を記録する。第二正本や新Core enumが必要になれば抽象境界を見直す。
 
 **状態**：横断議論とGitHub上の既存Issue/PRからの**設計・受入案**。PO-01〜09をTEI製品経路で実行したわけではない。Plugin実2 Consumer、実BOM資格、SUI/SHO Writeback、実MCP Disclosure/Sink、正式Owner Meaning Acceptanceは未受理・未実証。旧/進行中PRの局所PASSをこの統合全体のPASSへ拡張しない。
-
 
 ## 15. Function配置・Topology Binding・変更影響をPlugin-first適合に接続（2026-11-08横断案）
 
@@ -367,7 +365,6 @@ Data Workbench #3270、REST Decision Graph #3274、三要素モデルとCRUD/SHO
 **責務**：#2495構造分類、#2506 Data Context、#2507 Function Pattern適合、#2497投影、#2500逆写像、#2582反応/局所失効、#951/#1016 Resolver、#1251 CLI/Studio Plugin移行、#3278/#3279 Trait、#2600 Build/Cache、#3267 BOM、#1180/#2514試験、#2516開示。既存正本へ参照・引継ぎし、新Function Binding Store、第二Resolver/Renderer Engine/Cache/Runnerや新Gateは増やさない。
 
 **状態**：設計・負例・受入順の追補。新Function Bindingの正式Schema/ABI、PFBの実Go/Studio/GUI/Host/DB、製品Graph/Canvasの二Consumer、BOM資格、Ownerの意味受理は**NOT RUN/NOT ACCEPTED**。過去の合成Reference PASSをこの統合PASSとしない。
-
 
 ### 15.5 三つのTopologyと媒体軸をPlugin Consumerが再解釈しない（PR #3192/#3222からの限定受入）
 
