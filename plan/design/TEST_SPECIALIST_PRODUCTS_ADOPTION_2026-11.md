@@ -1497,9 +1497,9 @@ T1-Bが参照した設計Sourceの**必要依存集合**を、少なくとも次
 **今回の状態**：main #3403/#3439/#3458/#3477/#3482/#3485、#3440の実装・実証文書と既存PR証拠をGitHubで確認した設計更新。新しい本章のTT-139〜146統合E2E、外部H2/H3、T1-B盲検Agent、正式Plugin/Provider実Invoke、Go C1/NFR、現在のHost Grant/Effect/Owner Accepted Meaningは**NOT RUN / UNQUALIFIED**。Draft #3479/#3365はmain資格へ昇格させない。
 
 <!-- tei-test-adr48-mcp-function-closure-two-source-drift-20261108 -->
-## 30. 2026-11-08：ADR-0048共通Operation・実MCP・一Function宣言・二種Source失効をTest Admissionへ（現mainとの差分）
+## 31. 2026-11-08：ADR-0048共通Operation・実MCP・一Function宣言・二種Source失効をTest Admissionへ（現mainとの差分）
 
-### 30.1 確定できた実績と、これから必要な一辺
+### 31.1 確定できた実績と、これから必要な一辺
 
 | 最新のSource・実装 | 実際に成立した観測・CI | その証拠では成立しないこと |
 | --- | --- | --- |
@@ -1514,7 +1514,7 @@ T1-Bが参照した設計Sourceの**必要依存集合**を、少なくとも次
 
 上表はVersion/Scopeの異なる証拠の**並列表**であり、相互結合した一つのEnd-to-End試験ではない。Product Skillが受領する正規の答えは新Schemaではなく、既存Source/Operation/Scenario/Independent Expected/Evidenceを用途別に投影した結果と、その**不足理由・Claim Ceiling**である。
 
-### 30.2 共通Operationをテスト生成の「取得口」として使う際の受入
+### 31.2 共通Operationをテスト生成の「取得口」として使う際の受入
 
 ADR-0048の既定フローは **共通Application Operation → CLI/MCP/HTTP/Studio Adapter**。共通化するのは意味対象・入力、Typed Result/Failure、作用、必要な現在資格であり、argv／JSON-RPC数値Error／HTTP Status／画面書式そのものではない。共通APIをWeb ServerやTEI独自Runtimeへ集約しない。
 
@@ -1522,7 +1522,7 @@ ADR-0048の既定フローは **共通Application Operation → CLI/MCP/HTTP/Stu
 
 受入時には **(1) Source/Scope/Versionの意味同一性、(2) fail/error/isErrorの対応、(3) Result Shape/nullable/empty、(4) Recipientに届いたbyte/end、(5) Reader側に許された開示範囲** を別々に測る。参照MCPの入力にpath/rootがないことは任意のResourceへアクセス不能の証明ではなく、実Host隔離も別。#3420の残件（未知欄・不正型・NULL・サイズ制限・initialize/通知・protocol失敗）をそのまま利用する。MCPを必須Hard Gateとせず、T1-Bを同一実CLIで先行検証できる。
 
-### 30.3 Source指紋とSnapshot資格を「何を含む指紋か」で切り分ける
+### 31.3 Source指紋とSnapshot資格を「何を含む指紋か」で切り分ける
 
 | 変更の位置 | Consumer World | Consumer Source Index | 対象Provider Raw | 判定できる範囲 |
 | --- | --- | --- | --- | --- |
@@ -1533,7 +1533,7 @@ ADR-0048の既定フローは **共通Application Operation → CLI/MCP/HTTP/Stu
 
 よって実Source/Meaning/Build/外部引用を**一つのFingerprintだけで共通失効・共通再利用**しない。Consumer-owned SourceとImported Providerの**Source occurrence/Location/Raw revision**を区別し、必要なProvider実消費入力のClosureを独立Requiredと比較する。Rawが変わったから全Buildを失効させるのも、Worldが同じなら全Consumerの再利用を認めるのも禁止する。新しいFingerprint Service、Source Store、中央履歴Authorityは本計画で設けない。#2600/#3267/#2743/#3262が失効・実利用範囲の既存Owner。
 
-### 30.4 Test Patternに落とす独立反例 TT-139〜TT-150
+### 31.4 Test Patternに落とす独立反例 TT-139〜TT-150
 
 | ID | 一つだけ変える負例と正の対照 | 必要な判定・Owner |
 | --- | --- | --- |
@@ -1552,7 +1552,7 @@ ADR-0048の既定フローは **共通Application Operation → CLI/MCP/HTTP/Stu
 
 上記は**既存OwnerへのTest Obligation引渡し**であり、正式な新Scenario/Oracle/Transport Schemaを採用しない。main各PRで実証された局所値と、本表の異なる横断ケースを一つのPASS数へ足し算しない。TT-139のvalidate限定、TT-141の宣言、TT-143の同Workspace Source-only、TT-145のGo Host10 Path、TT-147の限定L3が先行実績。それ以外の**製品実E2E・別Targetの独立Expected・外部H3 Receipt**は再検収が必要。
 
-### 30.5 2026-11-08現在の実装順：最初の有用な返答→本当のT1-B→横断効果
+### 31.5 2026-11-08現在の実装順：最初の有用な返答→本当のT1-B→横断効果
 
 1. **P0-F｜取得根拠の機械可読な一返答**：main #3482の実13 CLI／42 bounded controlsと既存Packetを使い、公開合成sales.order.submitの**宣言Requiredがどこまで届いたか**、**Function actual Entry/Query/Providerが未観測であること**、Source index mode／import/loaderの不足を一つの用途別read-only Briefへ。モデルの独立Required全世界を自称completeにしない。新MCP Tool名やSchemaを仮実装済みとして広告しない。
 2. **P0-C｜同じ意味を返すCLI/MCPの局所対照**：main #3458 validate parityを維持し、#3420のCatalog/Inspect/Traceと不正入力のfail-closedを実stdio Adapter／実CLIで追加。返信の字面が完全一致しなくてもOperation結果と同じClaim/Failureを独立比較。Provider/Host/外部H3の成功を待たせない。
@@ -1644,3 +1644,38 @@ KON Dataspaceは独立・任意のData Source候補であり、TEIのテスト�
 **P1**：#2509の外部Harness終端・ACK、#2515のDisclosure/OS送出、#2586の実Provider、#3420のCLI/MCP Transportは各OwnerのEvidenceを参照する。新しいReceipt Store/Runner/Authority/第二Coverage Engineは作らない。
 
 **資格**：本節は実コードの静的照合と既存PRの試験結果に基づく**設計上の欠落指摘**。TT-147〜151の新しい実Go/CLI/外部H3テストは今回**NOT RUN**。#3365はDraft/未main統合であり、局所test-onlyのPASSを製品の実行証明に昇格させない。
+
+<!-- tei-test-lrh-evidence-provenance-20261108 -->
+## 32. 2026-11-08：実行結果の出所とHandoff対象集合を分けるTest Evidence契約
+
+### 32.1 結論：観測が三段階に分かれるときの「覆われた」の意味
+
+他チャットのHandoff/三視点モデルで確立した **L/R/H**（L=業務上選定された対象、R=実Providerが取得した集合、H=外部Consumerが受領確認した集合）を、テスト生成とCoverage判定で**独立した対照集合**として使う。集合の同一性は名称や件数一致ではなく、**Subject/Relation ID、Source/Provider revision、Predicate/Scope、時点、Grain、Recipient/Attempt**で照合する。空集合でもHandoff確認がなければHはunverified。宣言されたLが正しいこと、Rが実際にすべて取得されたこと、Hが相手に届いたことは三つの異なる証拠であり、単一ReceiptやCI成功で合算しない。
+
+| 試験の問い | 必要な観測と期待する診断 | 所有する既存Owner |
+| --- | --- | --- |
+| Lの義務が何か | Accepted Meaningの範囲・Revision、Relationの多重性・時間・NULL、Function/Action/Ruleと否定依存。未受理/partialならLの全分母はunknown | #1120/#1126/#2514/#3262 |
+| Rは対象を実取得したか | 実Providerのselected→loaded→invokedを区別、実SQL byte/Bind・Predicate/Scope・Source/Manifest/Rowset/Result completeness・Snapshot。Rにない対象を「DBに存在しない」としない | #951/#1251/#2586/#2506 |
+| Hは実受領されたか | Consumer/Host/ToolのRequest/Reply ID・最後のPart/End・Audience/Disclosure・ACKを同Attemptに束縛。0件でもACK欠落なら未確認 | #2509/#2515/#1163 |
+| 実行Targetに到達したか | Source/Scenario Revision、既存verify/generate/checkのPin、実Step ID/Operation/Evidence、Independent Expectedの一致。Policy/Grant/Effectも必要なClaimだけ別途照合 | #1180/#2514/#1174 |
+| これらを再利用してよいか | Content/Provider raw/Toolchain/Rule policy fingerprint/Build Artifact/Consumer Scope/Current Grantのうち必要依存だけを再照合 | #2600/#3271/#3267/#1163 |
+
+このL/R/H構造は独立の業務Expected・二次データストア・新Provenance Registryではなく、既存データ構造と観測Receiptを比較する**テスト判定の観点**。データ源が異なるときの同名snapshot token、設計と実行で違うProvider、事実として未公開のHは結合しない。Provider Rawのみ変更してConsumerのWorld/SourceIndexが同じケースは既存[Draft #3479](https://github.com/hat47x/tei-platform/pull/3479)の別版証拠を要し、「同じ指紋でFresh」には昇格しない。
+
+### 32.2 TT-105/106の成果を実Resultへ繋ぐ境界
+
+[Draft #3365](https://github.com/hat47x/tei-platform/pull/3365)の最初のexact HEAD `1e2531fede563ed4b1d32cca0e78ccaf69fe364c`は、[専用CI #42394673357](https://github.com/hat47x/tei-platform/actions/runs/42394673357)・[Health #42394673331](https://github.com/hat47x/tei-platform/actions/runs/42394673331)・依存確認 #42394673273がcompleted/success。既存実Pinned CLIの6 Stepを観測し、**試験用受領目録の7 Controls**で未受領・部分・End欠落・重複・未verifiedを「未テスト確定」へ変換しない局所結果。PRは**Draft/未統合**であり、あとから追加した8番目の`same stepId / wrong Operation`負例、Sourceの実行後再読取とそのHEADは**新CIの確認を要する**。
+
+実Step入場条件では、Test側が`verified=True`を自作してはならない。実CLI EvidenceのStep ID/Operation/verifiedと元Scenarioの期待Operationを照合し、**名前が同じ別Operationの結果を転用しない**。Source digest比較も同じ変数の自己一致では証拠にならないので、生成前と実CLI完了後の別Readを区別する。ただしこの二Readの一致は途中のA→B→A、実Binaryが読んだbyte、Runtime/Host Grantを証明しない。Test-only受信Endは実外部ProtocolのEOF/Deliveryとは別。
+
+次の独立の同一Attempt実験は、公開一Functionの独立Expectedを事前固定し、L対象ID、R実Query/Provider Rowset、H実受領を**それぞれ正/部分/空/未確認の対照**として観測する。Rが空でHも空でもHandoff ACKが欠ければ「実受領済の空」としない。Rがpartialで正の一件が確実ならその一件の局所観測は維持し、Lの全Coverage/不存在はunknown。BOMとPluginの`selected`だけではR=acquiredにせず、Owner Accepted/DB実Readがない段階で本番の意味適合を示さない。
+
+### 32.3 直近の実装順・証拠の停止線
+
+1. **P0 既存Codeを検収**：#3365の最新HEADに対し実6 Step Evidence、8つの限定copy-only負例、独立Scenario期待Operationの一致、実行後Source Readを同じ専用CIで検証。Go code / Workflow CI / Repo Healthを別票にし、他PR HEADの成功を移植しない。
+2. **P0 担当差分を縮小**：Design Context #3262の13実CLI/42局所Controls・一Functionの宣言Sliceを基準にする。宣言されたCapabilityは実Provider選択/実Call/実Readではない。正しい正常Array、空の`[]`、subject/index mode、root/fingerprintの範囲を意図的な欠落と区別（CLI #3370 / #3467）。
+3. **P1 L/R/Hで一Function**：#2586/#2509と共有する一つのFunction/Operation Scopeで、Provider実Read (R) と受信Consumer (H) を別接続し、その間の例外・欠落・重複・時点混合を故障注入。外部Toolのログ保存・別Recipient開示は別資格。
+4. **P1 検証基準の独立性**：T1-Bの未提示Rule/Gap・Independent Expected/Target Mutantは#2514が保有し、TT-105コピー負例を「AIが未知Gapを発見した証拠」としない。正常Provider/Target到達、実Action/Effect・未知の依存を隠さず採点する。
+5. **P2 領域拡張**：Plugin/Trait/BOMのRule policy fingerprint、Graph/CRUD/REA→SHOの多重Identity、Go HTTPの202/AuditとEffect、KON/SUI/SEIの二Consumer差分を既存Ownerの局所Claimに束縛する。C1/NFR/完全G4を分母なしの百分率で報告しない。
+
+**状態**：本節は#3365の旧exact-head CI成功と新変更の未検収、および既存モデル/Source/Provider/Handoffの計画差分を統合したもの。L/R/H実Provider/実外部Handoffの同一Attempt、完全なSource/BOM Input Closure、現在Owner/Host Grant、T1-B、全Product C1/NFRは**NOT RUN/NOT QUALIFIED**。第二Runner/Reader/Source Store/Host/Authority/Oracleは追加しない。
