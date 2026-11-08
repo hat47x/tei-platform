@@ -2,7 +2,7 @@
 
 - 対象Issue: [#2509](https://github.com/hat47x/tei-platform/issues/2509)（DSH外部Harness実証）、[#2515](https://github.com/hat47x/tei-platform/issues/2515)（実効隔離・全送出経路Conformance）。機密境界の正本は[TAI #232](https://github.com/hat47x/tai-pleroma/issues/232)、比較計画は[TAI #168](https://github.com/hat47x/tai-pleroma/issues/168)。
 - 状態: **既存の実行記録を並べた索引**。新しい実測は行っていない。個々の合否・Owner受理は各記録とIssueの担当。
-- この文書の役割: 16件の実行記録が**それぞれ何を確定させ、何を確定させていないか**を1枚で見えるようにし、同じ測り方の重複を避ける。記録本文の複製はせず、各記録へ参照で結ぶ。
+- この文書の役割: 17件の実行記録が**それぞれ何を確定させ、何を確定させていないか**を1枚で見えるようにし、同じ測り方の重複を避ける。記録本文の複製はせず、各記録へ参照で結ぶ。
 
 ## 1. なぜ台帳が要るか
 
@@ -24,7 +24,8 @@
 | [maxBytes上限](./DSH_SESSION_LOG_MAXBYTES_2026-11-08/README.md) | 送出の上限 | 上限が小さいと水位で止まり、運べるevent数が減る | 分割送出（追測で確認）、単一eventの停滞 |
 | [backlog分割と停滞](./DSH_SESSION_LOG_SPLIT_AND_STALL_2026-11-08/README.md) | 送出の上限 | 後続要求へ分割送出（`6`→`9`）、上限256ではfieldが一度も作られない、上限判定は生byte | 004以降が載らない理由、停滞の警告 |
 | [H6-E0 Host棚卸し](./DSH_H6E0_HOST_INVENTORY_2026-11-07/README.md) | 実行環境 | read-onlyはConstrainedLanguage、親のenvは子へ継承されない、loopbackへ到達可 | 別Host、他Tool経路、実Egress |
-| [H6-E1 read境界](./DSH_H6E1_READ_BOUNDARY_2026-11-07/README.md) | 読取り | `read-only`でもraw配下・`.env`・cwd外を読める | 実OS/ACLでの拒否 |
+| [H6-E1 read境界](./DSH_H6E1_READ_BOUNDARY_2026-11-07/README.md) | 読取り | `read-only`でもraw配下・`.env`・cwd外を読める | AppContainer・別User・mount名前空間での拒否 |
+| [H6-E1 OSのACL](./DSH_H6E1_OS_ACL_2026-11-09/README.md) | 読取りの強制点 | `icacls`で拒否したファイルは`read-only`でも`danger-full-access`でも`PermissionDenied`。同Userへ権限を足すと同じProbeが成功する（正負対） | 別User・AppContainer・mount名前空間、Network egress、存在の推測 |
 | [workspace-write非対称](./DSH_WORKSPACE_WRITE_ASYMMETRY_2026-11-07/README.md) | 書込み | root外への書込みは拒否、同じroot外の読取りは通る | 読取り拒否の実OS構成 |
 | [子Process到達範囲](./DSH_CHILD_PROCESS_REACH_2026-11-08/README.md) | Process | 子`cmd.exe`は親の読取り範囲を引き継ぎ、書込みはmodeに従う | 別OS資格での子起動、連鎖起動 |
 | [H6-E3 暗黙Context](./DSH_H6E3_IMPLICIT_CONTEXT_2026-11-07/README.md) | 暗黙入力 | AGENTS.md・CLAUDE.md・Skill `description`がTool未読で載る | 解決範囲、Tool poison |
@@ -35,7 +36,7 @@
 
 ## 3. 横断して言えること（複数記録の一致）
 
-1. **DSHのSandbox modeは読取りの境界を与えない**。`read-only`（H6-E1）・`workspace-write`（非対称）・子Process（H6-E2b）の3経路すべてで、宣言root外の読取りが成立した。
+1. **DSHのSandbox modeは読取りの境界を与えない**。`read-only`（H6-E1）・`workspace-write`（非対称）・子Process（H6-E2b）の3経路すべてで、宣言root外の読取りが成立した。境界になるのは**OSのACL**であり、そこを拒否すればmodeに関係なく止まる（H6-E1 OSのACL・正負対）。
 2. **読んだ内容は複数の経路で外へ出る**。モデル入力・Session Log・stdout・永続ログ（H6-E6）。Session Logの複製はTool結果1件につき2箇所（`data.message`と`data.meta`）。
 3. **Process生成はmodeで止まらない**。子Process（H6-E2b）も候補の子起動（H6-E5）も成立した。止まるのは書込みと言語モード。
 4. **利用者が指定しない入力が入る**。AGENTS.md・CLAUDE.md・Skill `description`（H6-E3）。Skill本文は載らず、一覧提示と本文Loadは別。
@@ -44,7 +45,7 @@
 
 ## 4. まだ根拠が無いこと
 
-- **実OS/ACL/AppContainerでの読取り拒否**。1〜3の帰結として、機密Profileの成立には別Identity・ACL・mount・Network境界の構成と、その実拒否の観測が要る。
+- **別Identity（AppContainer・別User・別Session・mount名前空間）での読取り拒否**。同一Userに対するOSのACLによる拒否は[H6-E1 OSのACL](./DSH_H6E1_OS_ACL_2026-11-09/README.md)で確認したが、Harnessや子Processが**別の資格**で動く場合に同じ拒否が効くかは未確認。Network境界の実拒否も同様。
 - **実Providerの保存・保持・二次利用**、Telemetry・MCP・Subagent経路の網羅。
 - **単一eventが`maxBytes`を超えた場合の停滞**（プラグインの警告文と挙動）。
 - **Skillの増分価値**。四Sessionは未採点で、Task path不一致とSession再利用を含む。
