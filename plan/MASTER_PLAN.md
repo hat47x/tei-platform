@@ -431,7 +431,7 @@ reload / Conformance
 **CIの実務順**：新しい抽象設計やProvider追加の前に、上記3 Draftを**各Ownerの既存PR内でGo1.26のgofmtだけ修正**し、exact HEAD Healthと各専用Workflowを再検収する。Go TestがPASSしたことをCI全体PASSとは呼ばず、Health PASS後もS2通常CLI／Studio実B呼出し・S3同一Input Closureと現在権限は別の欠落辺として残す。CI修復のために第二Test Runner／新Plugin Runtimeを設けない。
 **次の一件をS2の実装と検収に固定**：同じ公開`reference/workspace`・同じ`semantic-data:sales.order`・exact`authoring-tool` Contractを用い、(a)CLI通常dispatch、(b)Studio Hostの実Bridgeから、それぞれ実選択BのGo関数へ入ったことを**別のCall-site記録**で確認する。BをAへ取り違える／Serviceなし／Source ABA／Host Guard失効／部分応答の各負例では、旧Builtinへ自動fallbackせず診断を返す。公開されるCall証拠は受信先の権限と#2516のDisclosureに従い、内部Root/Secretを誤開示しない。実バイナリとWebViewの適格性はS3で別に測る。
 
-**予定の帰属**：S0/S1は各Draft PRの実Go試験、S2のProduct統合は#1251/#1824、S3のDesign Requiredは#3262、履歴Sourceと再利用判定は#2600、版Matrix/BOMは#3267、Trait実装義務はmain #3480/#3278、Scenario/独立Expectedは#1180/#2514。新しいResolver/Registry/Host/Scenario SSOT、HTTP常駐必須化、Legacy `application-runtime` CarrierのScope緩和は行わない。本節自体は計画の更新で、S2/S3の実試験成功・Owner Meaning受理を**主張しない**。
+**予定の帰属**：S0はStudio main #3371／CLI Draft #3381、S1はCLI Draft #3381の局所実Go試験、S2のProduct統合は#1251/#1824、S3のDesign Requiredは#3262、履歴Sourceと再利用判定は#2600、版Matrix/BOMは#3267、Trait実装義務はmain #3480/#3278、Scenario/独立Expectedは#1180/#2514。新しいResolver/Registry/Host/Scenario SSOT、HTTP常駐必須化、Legacy `application-runtime` CarrierのScope緩和は行わない。本節自体は計画の更新で、S2/S3の実試験成功・Owner Meaning受理を**主張しない**。
 
 **2026-11-08 S2追補：D1a既存基線とTyped Error秘匿・Atomic Trait二Consumerの判定**（既存S0〜S3の変更なし）
 
