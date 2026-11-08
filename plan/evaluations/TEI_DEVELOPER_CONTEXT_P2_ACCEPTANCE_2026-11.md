@@ -705,7 +705,7 @@ TEI #3262の不足は単純な`Read more`ではない。**どの問いQの必要
 | [SUI merged #3396](https://github.com/hat47x/sui-sensemaking/pull/3396)、[CI #42345896949](https://github.com/hat47x/sui-sensemaking/actions/runs/42345896949) | 異なる元Source cue/Island所属でも**同じ公開Projection全体**を得る実Product 3/3 PASS | 元Source Reader・意味同値・逆Write・外部配送 |
 | [SUI Draft #3397](https://github.com/hat47x/sui-sensemaking/pull/3397)、[CI #42370271882](https://github.com/hat47x/sui-sensemaking/actions/runs/42370271882) | 公開Projection→**固定UTF-8 Markdown byte**生成を含むfrontend CI成功。明示的なopt-in時には新規絶対pathへ `wx` で書く試験入口がある | CIでは**opt-in未設定で実ファイルProducer出力はNOT RUN**。実受領・出典復元・正式Writerは未成立 |
 | [SHO merged #21](https://github.com/hat47x/sho-composer/pull/21)／[#22](https://github.com/hat47x/sho-composer/pull/22) | SHO実G1b Reader、Raw SHA/Markdown Link Occurrence、POSIX FIFO事前拒否の限定回帰 | #21の**同じ実SUI Producer作成FileをSHO CLIが開くH1**はCIでSKIP。合成Fixture読取が実H1を代替しない |
-| [SHO merged #24](https://github.com/hat47x/sho-composer/pull/24)、[Draft #25](https://github.com/hat47x/sho-composer/pull/25) | G2-Pは独立byte-span Patch Planner。#25 HEAD `eb12e0cc2eff01ef0be9270c3a0a6adb77b3a09a`の[W1 CI #42461729731](https://github.com/hat47x/sho-composer/actions/runs/42461729731)を含む5本の当該HEAD workflowはcompleted/success。**実Fileへの別名Working Copy作成→close→別Open/Reader再読取**と部分作用の限定検査 | #25はDraft・test-only。正式Editor Save/Source Revision・Grant/CAS/atomic/fsync、実SUI Producer→SHO一File連結は未成立 |
+| [SHO merged #24](https://github.com/hat47x/sho-composer/pull/24)、[Draft #25](https://github.com/hat47x/sho-composer/pull/25) | G2-Pは独立byte-span Patch Planner。#25の**検証済み固定HEAD** `eb12e0cc2eff01ef0be9270c3a0a6adb77b3a09a`の[W1 CI #42461729731](https://github.com/hat47x/sho-composer/actions/runs/42461729731)を含む5本の当該HEAD workflowはcompleted/success。**実Fileへの別名Working Copy作成→close→別Open/Reader再読取**と部分作用の限定検査 | #25はDraft・test-only。正式Editor Save/Source Revision・Grant/CAS/atomic/fsync、実SUI Producer→SHO一File連結は未成立 |
 
 この段階の最短課題は、新しい共通Source Registryや「原典ID」新規発明ではなく、**各既存Productの本物の入口を同じ固定Source/Attemptで走らせ、どこまで実際に届いたかを別々のWitnessで照合すること**である。
 
@@ -743,5 +743,5 @@ CC-25の前半はSUI #3396の**実Product非単射**に基づく帰結だが、�
 
 **既存Owner**：TEI #2533＝問い相対の不足・次Probe比較、#2514＝独立Expected、#2516＝Consumer/Disclosure、#2497＝非単射Projection、SEI #767＝Method。実Producer/公開ProjectionはSUI #3397/#3396、Markdown実Reader/H1はSHO #21/#16、編集・保存実EffectはSHO #24/#25/#4/#3、Harnessの実受領・隔離はTAI #168/#271。**TEI側に共通Writer/Source Registry/Receipt Storeを追加しない。**
 
-**今回の状態**：SUI #3396実公開Projection反例PASS、SUI #3397固定Byte試験CI PASS（opt-in実File NOT RUN）、SHO #21実Reader限定PASS（H1 SKIP）、SHO #25 test-only Working CopyのUbuntu/Windows限定PASSは**既存別Runの事実**。本CC-25〜27の実SUI→SHO同一Attempt H1、SEI実M1、正式Editor Save・実Host Grant/Delivery・Owner意味受理は**NOT RUN**。この節の追加自体は**設計/計画更新**であり、Product合格ではない。
+**今回の状態**：SUI #3396実公開Projection反例PASS、SUI #3397固定Byte試験CI PASS（opt-in実File NOT RUN）、SHO #21実Reader限定PASS（H1 SKIP）、SHO #25 test-only Working CopyのUbuntu/Windows限定PASSは**既存別Runの事実**。本CC-25〜27の実SUI→SHO同一Attempt H1、SEI実M1、正式Editor Save・実Host Grant/Delivery・Owner意味受理は**NOT RUN**。この節の追加自体は**設計/計画更新**であり、Product合格ではない。 **SHO #25は後続HEAD `81aa7cdfa20037300f2f9a2b1dd3401dd6a8941d`へ進んでおり、当該HEADのCIは確認時queued（PASS未判定）**。
 
