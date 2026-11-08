@@ -533,6 +533,24 @@ entry側（`cmd/tei`）は**変更不要**だった。childが申告するよう
 
 **より小さい一歩**として、childがsubject identityに加えて**`outputKind`・`target`・`profile`もplanと比べる**ことができる。§4.8の(c)を直接埋めはしないが、**宣言とplanが同じbuild座標を指す**ことを増やせる。
 
+### 4.15 宣言とplanのbuild座標を照合する（2026-11-09）
+
+§4.14末尾の「より小さい一歩」を実装した。§4.14ではsubject identity（PluginのIDとversion）だけを比べていたが、**identityが一致しても別のbuildを指す場合がある**（`outputKind`・`target`・`profile`）。
+
+| 座標 | 何が変わるか |
+| --- | --- |
+| `outputKind` | 配布物か実行物か。消費経路とauthorityが変わる |
+| `target` | どのOS・arch向けか |
+| `profile` | releaseかdebugか |
+
+**三つを一つずつ比べ、違えばartifactを書いた後にreportを出さずexit 1にする。** reportを返すと、照合できなかった組み合わせが「返ってきた」と読まれるためである。どの座標が違ったかはstderrで名指しする。
+
+**`profile`の省略は一致と読まない。** 宣言が`profile`を書かないことは「planのprofileと同じ」ではない。これは`unperformed`を`matched`と読ませない原則と同じ扱いである。
+
+**それでもL2-bではない。** 座標の一致が示すのは「宣言とplanが同じbuildを指す」ことであり、`l2bClaimed`は`false`のままである。(c)も`bound`では出ない。宣言の他の欄（`sources`・`builder`・`recipe`・`dependencies`・`parameters`・`secretRequirements`）は未照合である。
+
+**座標照合をさらに広げるより、I-1bとしてまとめて扱う方がよい。** 欄ごとに照合を足していくと「照合した」が「導出した」に見えやすくなる。§4.8が禁じた混同そのものである。
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
@@ -594,7 +612,8 @@ entry側（`cmd/tei`）は**変更不要**だった。childが申告するよう
 - [x] **I-1a**（`ParseIntent`・`IntentFingerprint`を`internal/`の新パッケージへ移し、entryが宣言を自分で読む）の実装（§4.14、[記録](../evidence/TEI_GO_SELF_BUILD_ENTRY_INTENT_FINGERPRINT_2026-11-09.md)、`f522e8c65`）
 - [x] §4.8の(a)(b)（builder childが宣言byteを申告し、entryの保持byteと一致する）の実装（§4.14、[記録](../evidence/TEI_GO_SELF_BUILD_CHILD_DECLARATION_2026-11-09.md)、`ee7148138`）
 - [ ] entryまたはchildが宣言から**計画まで**独立に導く経路（I-1b。`ResolutionContext`の設計判断を伴う。§4.14末尾）
-- [ ] 宣言とplanの**build座標**（`outputKind`・`target`・`profile`）の照合（§4.14末尾）
+- [x] 宣言とplanの**build座標**（`outputKind`・`target`・`profile`）の照合（[#3652](https://github.com/hat47x/tei-platform/pull/3652)。childが三座標を一つずつ比べ、違えばartifactを書いた後にreportを出さずexit 1。[記録](../evidence/TEI_GO_SELF_BUILD_BUILD_COORDINATES_2026-11-09.md)）
+- [ ] 宣言の他の欄（`sources`・`builder`・`recipe`・`dependencies`・`parameters`・`secretRequirements`）の照合。座標照合を広げるよりI-1bとしてまとめる方が「導出した」と「照合した」の混同を避けられる（§4.15末尾）
 - [ ] D-1（catalogの`scope`拡張）を採るかどうかの契約判断（採る場合のみ、catalogの広告と実応答の一致を照合へ載せる）
 
 **A-1（`gobuilder`移動）は採らないため、影響範囲の洗い出しは終了条件から外した。** 29ファイルの内訳は[記録](../evidence/TEI_GO_INTERNAL_RULE_AND_BUILDER_MOVE_2026-11-07.md)として残す。I-1は「採らない」から「I-1aとして着手」へ改めた（§4.13）。`ParseFixtureCatalog`（fixture catalog）は`tools/`に残す。
