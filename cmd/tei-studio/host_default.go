@@ -43,7 +43,5 @@ func (s localValidationService) Validate() (operations.WorkspaceValidation, erro
 	return operations.ValidateWorkspace(s.root)
 }
 
-var (
-	_ studiohost.CatalogService = localCatalogService{}
-	_ studiohost.ValidationService = localValidationService{}
-)
+var _ studiohost.CatalogService = localCatalogService{}
+var _ studiohost.ValidationService = localValidationService{}
