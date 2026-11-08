@@ -74,6 +74,7 @@ X-TEA（XEAD）の Driver が持つ**標準業務ライブラリ**（日付・�
 | 通貨 | `currency-rate-fallback` | 任意（値は`none`か`annual`。行ごとに一致させる） |
 | 採番 | `numbering-counter`・`numbering-digits` | 必須 |
 | 採番 | `numbering-prefix`・`numbering-check`・`numbering-overflow` | 任意 |
+| 採番 | `numbering-rule` | 任意（複数規則を1つのDataに置く場合） |
 | 休日 | `holiday-date` | 必須（休日Dataを宣言する場合） |
 | 休日 | `holiday-calendar` | 任意（複数の暦が1つのDataを共有する場合。型が値域を宣言していれば、宣言外の識別は報告される） |
 
@@ -234,7 +235,7 @@ X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設�
 | 残り | 理由 | 何が分かれば決まるか |
 | --- | --- | --- |
 | 月内の締め（20日締めなど）の期間化 | X-TEAの「締め日を過ぎた日付を翌月へずらす」規則（`getMSeqOfDate` L2476–2484）を引き継がない方針にしたため、月内締めは独立した期間として宣言する必要がある | 期間キーに日を含めるか、期間を分けるかの宣言 |
-| 採番表の行の識別 | `IDNUMBER`に相当する役割を定義していない（`Reserve`の`ruleID`は呼出し側の文字列） | 複数規則を1表に置くか、Dataを分けるか |
+| 採番の`Reserve`と規則名の一続きの経路 | `RowsFor`で規則ごとに行を絞る形は用意したが、`Reserve`まで繋ぐ関数は未実装 | 規則名から予約までを1関数にするか |
 | 為替の月次・年次を別Dataに分ける構成 | 参照実装は1つのDataに月順序0の年次行を置く形だけを試した | 別Dataにする場合の結合規則 |
 | 番号の取引境界とCommand側`UnitOfWork`の共通化 | 番号側に独立した小さな契約を置いた | 両者を1つの取引実装へ寄せるか |
 | 利用者設定 | 設計のみ | 宣言された設定項目の形と、受理の対象範囲 |
@@ -253,6 +254,7 @@ X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設�
 - [評価時点の決定性](EVALUATION_CONTEXT_DETERMINISM_2026-10.md)
 - [移行計画](../workstreams/XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)（WP8）
 - [受容要件](../../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md)（RQ-C3）
+
 
 
 

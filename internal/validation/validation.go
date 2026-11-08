@@ -49,7 +49,7 @@ var attributeRoles = map[string]bool{
 	"currency-rate-buying": true, "currency-rate-selling": true,
 	"currency-rate-fallback": true,
 	"numbering-counter":      true, "numbering-digits": true, "numbering-prefix": true,
-	"numbering-check": true, "numbering-overflow": true,
+	"numbering-check": true, "numbering-overflow": true, "numbering-rule": true,
 	"holiday-date": true, "holiday-calendar": true,
 }
 
