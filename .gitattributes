@@ -83,6 +83,9 @@
 # Selection matrix output is hashed as raw bytes by its README.
 /plan/evidence/PLUGIN_SELECTION_MATRIX_REFERENCE_2026-11-08/** -text
 
+# Candidate-escape observations are hashed as raw bytes.
+/plan/evidence/DSH_H6E5_CANDIDATE_ESCAPE_2026-11-07/** -text
+
 # Selection rule scan output is hashed as raw bytes by its README.
 /plan/evidence/PLUGIN_SELECTION_RULE_SURVEY_2026-11-08/** -text
 
