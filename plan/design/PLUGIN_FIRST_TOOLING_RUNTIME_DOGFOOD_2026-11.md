@@ -554,7 +554,7 @@ Data Workbench #3270、REST Decision Graph #3274、三要素モデルとCRUD/SHO
 
 ### 16.7 Source-only driftでSemantic再利用・Source来歴・実Provider適格性を別票にする（#3477／Draft #3479）
 
-**新たに成立した観測**：main統合[#3477](https://github.com/hat47x/tei-platform/pull/3477)は、同一Workspace内のRaw末尾LFだけを変更し、Canonical Worldは不変でもSource Index FPは変化するケースについて、**実TEI CLI**のContext→Scenario消費前後の再照合で旧Contextを拒否した（限定Fixture/単一Process環境）。一方[Draft #3479](https://github.com/hat47x/tei-platform/pull/3479)は、**import先ProviderのRaw Source**を同じくLFだけ変更し、ConsumerのWorld、Import Semantic Digest、Consumer-owned Source Index Artifact/Reference/Model Revisionは維持されるのに、`LocateImportedSource`が再読取したProviderのSource Fingerprintだけ変化することを、既存`externalPair`のGo負例で検査する。#3479の**exact-head CIはsuccess**だが、2026-11-08時点でDraft/未統合。二例は同じ「Source-only」でも**再取得する所属・観測可能なSource集合が異なる**。#3477の成功を外部Importの完全取得へ拡大しない。
+**新たに成立した観測**：main統合[#3477](https://github.com/hat47x/tei-platform/pull/3477)は、同一Workspace内のRaw末尾LFだけを変更し、Canonical Worldは不変でもSource Index FPは変化するケースについて、**実TEI CLI**のContext→Scenario消費前後の再照合で旧Contextを拒否した（限定Fixture/単一Process環境）。一方[Draft #3479](https://github.com/hat47x/tei-platform/pull/3479)は、**import先ProviderのRaw Source**を同じくLFだけ変更し、ConsumerのWorld、Import Semantic Digest、Consumer-owned Source Index Artifact/Reference/Model Revisionは維持されるのに、`LocateImportedSource`が再読取したProviderのSource Fingerprintだけ変化することを、既存`externalPair`のGo負例で検査する。#3479の旧HEAD `f6934fd4`ではexact-head CIが成功したが、その後HEADが更新されており、**現HEAD `1451bf69`のCIは別途確認が必要**。2026-11-08時点でDraft/未統合。二例は同じ「Source-only」でも**再取得する所属・観測可能なSource集合が異なる**。#3477の成功を外部Importの完全取得へ拡大しない。
 
 **区分を共有するが新Kernel Fingerprintを作らない**：現在の資格は既存#3262 Design Context/Source Index、#2743／外部Reference、#951/#1016 Plugin Resolver/Lock、#943/#2600 Build/Evidence、#3267 BOM、#1158 Operation、#1174 Current Grantの**用途別read-only照合**から導く。単一`worldFingerprint`、`sourceIndexFingerprint`、`semanticDigest`、`pluginVersion`のどれかだけを「全入力現在一致」の証明にしない。対象ProviderのRaw Bytes/Source Occurrenceと、Consumer側のCanonical meaning/managed Source Indexは独立。外部Plugin/Providerの実装Source/Contract/Generator inputにSource provenanceが必要な場合は、**実Build・Selection・Invocationと同じAttemptのProvider側の観測**を別に要求する。
 
@@ -582,7 +582,7 @@ Data Workbench #3270、REST Decision Graph #3274、三要素モデルとCRUD/SHO
 
 **最短順序とOwner**：#3477の**既に実行済みの同一Workspace差分**をBaseline、#3479の**Draftの外部Provider差分**を別LaneのReferenceとし、後続#1251 D1 Inspector実ProviderでPDC-16/18/19を一Targetだけで実際に圧力試験する。P0bのSource/Import Full Input Closureは#2743／#3262／#2812、Provider Raw/Load/Provenanceは外部Reference Owner、実Builder・再利用は#2600、BOM 2×2のexact行資格は#3267、Function依存の独立Required集合は[#3482](https://github.com/hat47x/tei-platform/pull/3482)の別Consumerが担当。第2Resolver/Source Store/Fingerprint Service/BOM Engine/Runnerは置かない。
 
-**採用境界**：#3477は限定的なmain実Source-only CLI試験。#3479はDraftのGo反証テストとCI成功であり、main実装のProvider Source Closure完成を意味しない。PDC-15〜20の一組としてのD1実二Consumer、Provider/Build/同一Attempt、現Host Grant、正式BOM/Owner Meaning Acceptanceは**NOT RUN／NOT QUALIFIED**。
+**採用境界**：#3477は限定的なmain実Source-only CLI試験。#3479はDraftのGo反証テスト候補であり、旧HEADの局所CI成功は現HEAD／mainへの統合と同一ではない。Provider Source Closure完成を意味しない。PDC-15〜20の一組としてのD1実二Consumer、Provider/Build/同一Attempt、現Host Grant、正式BOM/Owner Meaning Acceptanceは**NOT RUN／NOT QUALIFIED**。
 
 ## 17. Traitの原子性と実装義務：Extension TypeからPlugin/BOM/CLI/Studioへ（2026-11-07追補）
 
