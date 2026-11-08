@@ -259,6 +259,27 @@ D-3を採る場合、§4.1の「広告」欄は「`acceptedCommands`へ追加し
 
 I-2の制約は明記する。**intent解決をchildへ委ねると、「この`cmd/tei`が宣言を解釈した」とは言えなくなる。** 言えるのは「この`cmd/tei`が、指定したchildに宣言を渡し、その結果を受けた」ことだけである。L2のClaimを立てるときは、この差を明記する必要がある。
 
+### 4.8 L2のClaimをどこで切るか（2026-11-08）
+
+I-2を採ると、L2のClaimは**二段**に分かれる。混ぜると、childが解釈した宣言を「この`cmd/tei`が解釈した」と読ませてしまう。
+
+| 層 | 何を言えるか | 何を言えないか |
+| --- | --- | --- |
+| **L2-a（受け渡し）** | この`cmd/tei`が、指定したchildへ**特定の宣言を渡した**。渡したバイトのdigestと、childの出力を受けたことを記録できる | 宣言が意味的に妥当か。childがその宣言をどう解釈したか |
+| **L2-b（解釈）** | childが宣言を読み、確定したBuild Planを導出し、その照合値を返した | この`cmd/tei`が解釈したこと。導出の正しさ（宣言と照合値の突合が要る） |
+
+L2-aは既存の入口（`tei self-build`）が既に持つ情報（invoked.argv・childの出力digest）で記録できる。**L2-bはchild側の記録（`reference-build-authoring-intent`の`ResolvedBuildReceipt`）を入口が受け取り、宣言のdigestと突き合わせて初めて成立する。**
+
+したがって`-intent`を実装するときは、次の三つを一つの出力に含める。
+
+1. 渡した宣言の**byte digest**（`IntentFingerprint`ではなく、渡したファイルそのもののdigest）
+2. childが返した`IntentFingerprint`と`BuildPlanFingerprint`
+3. 両者の突合結果（宣言のdigestがchildの読んだものと一致するか）
+
+2だけを記録すると、childが**別の宣言**を読んで別の計画を返した場合を検出できない。1と3がその検出を担う。
+
+**この節はL2のClaimを立てていない。** L2-a/L2-bの切り分けと、必要な記録の列挙だけである。
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
@@ -275,6 +296,8 @@ I-2の制約は明記する。**intent解決をchildへ委ねると、「この`
 | SC0-10 | Stage1が起動したchildのdigestと、記録したdigestが違う | L3不可。SB-N13と同じ扱い |
 | SC0-11 | `tei self-build`を`cliCommandCatalog`へ`effect: writes-artifact`で足す | `cli_contract_test.go:17`が`read-only`以外を拒否して落ちる（§4.5）。D-1の契約判断なしにcatalogへ載せない |
 | SC0-12 | 既存の`scope: selected-read-only-commands`を「書込み系も含む」と読み直す | 既存consumerの前提を変える。D-1の契約判断なしに行わない |
+| SC0-13 | childが**別の宣言**を読んで別のBuild Planを返す（渡した宣言のdigestとchildの読んだものが違う） | L2-b不可。§4.8の3（突合結果）で検出する |
+| SC0-14 | childの`IntentFingerprint`だけを記録し、渡した宣言のbyte digestを記録しない | L2-b不可。照合値は宣言のbyteそのものではない |
 
 ## 6. 未決事項
 
@@ -283,8 +306,10 @@ I-2の制約は明記する。**intent解決をchildへ委ねると、「この`
 - ~~A-1とBのどちらを採るか~~ → **§3.4でBに確定**（A-1は採らない）
 - ~~`StdioProcessLauncher`をBuild用child起動へそのまま使えるか~~ → **§3.3で不要と判明**。`reference-go-build-stage-driver`が独自にchildを起動して記録する形で成立した
 - ~~catalogへ`effect: writes-artifact`を足せるか~~ → **§4.5でD-3（catalogへ載せない）を既定案に**。D-1/D-2は別の契約判断
-- **`cmd/tei`からchild driverを起動する薄い入口**の実装（Bを採った後の最初の作業）
-- `cmd/tei`を対象にしたL3の実験手順（`reference-self-build-two-stage`の形を当てる）
+- ~~`cmd/tei`からchild driverを起動する薄い入口~~ → **§4.6で実装済み**（`tei.cli.self-build-entry/v0`、#3433）
+- ~~`cmd/tei`を対象にしたL3~~ → **実測済み**（[記録](../evidence/TEI_SELF_BUILD_CMD_TEI_L3_2026-11-08.md)、`bb7fc01bb`）
+- ~~`-intent`を入口へ足せるか~~ → **§4.7でI-2（childとして起動）を既定案に**。L2のClaimは§4.8の二層に分ける
+- **`-intent`の実装（I-2）と、宣言byte digest・childの照合値・突合結果の三つを一つの出力に載せること**（§4.8）
 - `-self-digest`の取得方法（実行ファイル自身のdigestをどう自己参照するか）
 - 出力のschemaVersionと、既存`tei.cli.*`との命名一貫性
 - Seed Trustの扱い（stage0のGoは外部seed。TEI自身によるGoコンパイラのself-hostingではない）
@@ -297,8 +322,10 @@ I-2の制約は明記する。**intent解決をchildへ委ねると、「この`
 - [x] discovery面の制約の実測と既定案の決定（§4.5、D-3）
 - [x] `cmd/tei`からchild driverを起動する薄い入口の実装（§4.6、`tei.cli.self-build-entry/v0`。SC0-04・SC0-06・SC0-07・SC0-09・SC0-10相当を試験で固定）
 - [x] `-intent`を足す前の接続制約の実測と既定案の決定（§4.7、I-2）
+- [x] L2のClaimを二層に分ける設計（§4.8、L2-a/L2-bと必要な記録の列挙）
 - [x] `cmd/tei`を対象にしたL3の実測（[記録](../evidence/TEI_SELF_BUILD_CMD_TEI_L3_2026-11-08.md)、`bb7fc01bb`）
-- [ ] §4の外形（`-intent`・`-supply`・`-state`・`-output`・`qualified`欄）の実装とSC0-01〜05の実試験
+- [ ] `-intent`（I-2）の実装とSC0-01〜05・SC0-13・SC0-14の実試験
+- [ ] §4の外形の残り（`-supply`・`-state`・`-output`・`qualified`欄）の実装
 - [ ] D-1（catalogの`scope`拡張）を採るかどうかの契約判断（採る場合のみ、catalogの広告と実応答の一致を照合へ載せる）
 
 **A-1（`gobuilder`移動）は採らないため、影響範囲の洗い出しは終了条件から外した。** 29ファイルの内訳は[記録](../evidence/TEI_GO_INTERNAL_RULE_AND_BUILDER_MOVE_2026-11-07.md)として残す。I-1（intent解析の`internal/`への切り出し）も、I-2を既定案にしたため本稿では行わない。

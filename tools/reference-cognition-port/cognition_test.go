@@ -140,6 +140,7 @@ func TestUnknownProposalIsPreserved(t *testing.T) {
 }
 
 func TestExternalCommandProposalAndFailure(t *testing.T) {
+	requireExternalCommandHost(t)
 	fixture := testdata(t, "proposals", "validation.json")
 	command := fmt.Sprintf("cp %q \"$TEI_COGNITION_OUTPUT\"", fixture)
 	receipt, err := Propose(context.Background(), testdata(t, "request.json"), testdata(t, "providers", "external-local.json"), command)
@@ -186,6 +187,7 @@ func TestProposalCannotAcceptItself(t *testing.T) {
 }
 
 func TestAbsentBasisIsRejected(t *testing.T) {
+	requireExternalCommandHost(t)
 	raw, err := os.ReadFile(testdata(t, "proposals", "validation.json"))
 	if err != nil {
 		t.Fatal(err)
