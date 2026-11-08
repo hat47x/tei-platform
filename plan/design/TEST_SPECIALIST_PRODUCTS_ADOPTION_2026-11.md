@@ -6,6 +6,13 @@
 - 既存の設計：[経路間の業務機能完全性とScenario由来E2E](CROSS_ROUTE_FUNCTIONAL_PARITY_AND_TEST_DERIVATION.md)。こちらの文書は置換しない。
 - 限界：本書の製品機能は2026-11-07確認時点の公式文書に基づく比較。性能、費用、TEIとの相互運用性、製品別ライセンス適合は未実測。OwnerのMeaning受理・実Host Grant・Production資格は含まれない。
 
+
+<!-- tei-test-nov08-1136z-qualification-delta -->
+> **検収更新（2026-11-08 11:36Z、旧queued記録を上書き）**：
+> - **TT-154が局所実証へ進んだ**。[Draft #3365](https://github.com/hat47x/tei-platform/pull/3365) exact HEAD `e8745c6cbb7596da48da62becdb48417f3ce8dd6` の[専用dogfood #42465435223](https://github.com/hat47x/tei-platform/actions/runs/42465435223)、[Health #42465435270](https://github.com/hat47x/tei-platform/actions/runs/42465435270)、[依存 #42465435235](https://github.com/hat47x/tei-platform/actions/runs/42465435235)は**すべてcompleted/success**。同一専用Runで13実CLI Reply／42 bounded Controls／6実Pinned Step／9 test-only受領目録対照。独立固定`STEP_OPERATIONS`を用いるOracleは、`expected_operations`とReceiptの`operation`を**同じ誤値へ変異**させた場合も拒否した。これは§35で「次の一件」とした**TT-154の局所試験合格**であり、なおDraft/未main統合。外部End/ACK、Product全Coverage、実Provider、T1-Bは未資格。
+> - **Provider Source/Manifest負例はmainへ統合**。[merged #3479](https://github.com/hat47x/tei-platform/pull/3479) は2026-11-08 11:08Zに統合。最終PR HEAD `6f0a9735cae71cb577296ffc4dc947870331824d` の[Health #42470247004](https://github.com/hat47x/tei-platform/actions/runs/42470247004)と[再検証 #42474407926](https://github.com/hat47x/tei-platform/actions/runs/42474407926)は**completed/success**。ConsumerのWorld/IndexだけでImport ProviderのSource/Manifest raw revision不変を推定できない局所Go反例を採用。ただしmain pushの**別exact-head Runは本カードで未検収**。同一Atomic Nested Load、外部Consumer受領、全Input Closureは証明していない。
+> - **次のゲートを更新**：①#3365のOwner検収・main統合後の別Runを確認、②#3273の**未知Gap Blind T1-B**を#2514独立Expectedと隠したMutantで一件実施、③#2586の実Provider Read(R)→#2509/#2515の外部受領(H)を同一Attemptで限定接続する。§35の「TT-154は未実施」は**当時の計画履歴**とし、最新解釈は本更新を優先する。新たな本番Go/CLI/Blind/H3実行は**この文書更新ではNOT RUN**。
+
 <!-- tei-test-20261108-current-acceptance-card -->
 > **現行受入カード（2026-11-08 08:45Z時点。下記の過去時点の記録より優先。CIはexact HEADごとに再検収）**
 >
