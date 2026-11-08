@@ -751,3 +751,68 @@ SHOのConsumer Bはprivate repo側のReader/Adapterから同一Providerを呼び
 5. **正式採用前**：F0の独立Expected/Owner審査、F1の必要Source閉包、F2のMeaning/Host/Disclosure/Attesterを別々に受理。KONやSHO Writerの実装完了をK2の前提にしない。
 
 **実証状態**：#3482/#3439のmain統合は確認済み。#3479/#3378/#3371はDraft。K2の選択B＝実Invoke B、同一Attemptの実消費Source/Manifest、SHOとの同一Provider二Consumerは**NOT RUN**。この節は横断設計の成熟成果をK2の受入条件へ反映したもので、製品実装済みという宣言ではない。
+
+
+---
+
+## 20. 2026-11-08 横断収束：K2をライフサイクル・観測可能性・独立証拠に組み込む
+
+### 20.1 K2は独立した「Reader呼出し」ではなく、共通ライフサイクルの一部分
+
+最新の静的／Hybrid／動的生成、横断Plugin、テスト、Source鮮度の検討を踏まえ、OKF Readerを次の既存ライフサイクルへ位置付ける。**各段階はモデル上で表示・追跡できるが、Pluginが安全上の必須検証を省略できない**。
+
+```text
+Source (raw bytes, scope, origin, revision)
+  → Resolve / Read (realpath, current permission, Loaded Source Set)
+  → Structural Observation (parser pin, grammar, evidence)
+  → Meaning Candidate (Owner未受理のまま)
+  → Provider Selection (capability, chosen ID, lock)
+  → Build / Bind (source + manifest + toolchain)
+  → Actual Invoke (entrypoint, args, host grant, effect)
+  → Consumer Receipt (TEI / SHO independently)
+  → Required Closure (independent expected, missing/partial)
+  → Review / Acceptance (Owner, scope, audience)
+  → Artifact / Publish Approval / External Verification (別資格)
+```
+
+Source→Resolve/ReadとProvider Selection→Actual Invokeは互いに依存するが、**前者のraw同一性と後者の実呼出しは別の証拠**。Read-only K1R成功を後続Build/PublishやWriterの権限に昇格しない。Static/Hybrid/Dynamicのいずれもこの段階構造を共有できるが、具体的な実装経路・効果・失敗処理はCapabilityごとに異なる。
+
+### 20.2 K2-A実装に先立つ証拠の最小スキーマ
+
+製品の新規Schemaを作るのではなく、既存のHarness/Plugin/CLI Receiptへ以下の**概念上の必須フィールド**をマッピングする。現在の実API名や実装済みフィールドだと断定しない。
+
+| 分類 | 必須識別・状態 | 単独では証明できないこと |
+| --- | --- | --- |
+| Source | `source_id`、raw SHA、origin、revision、read timestamp、realpath、loaded set | 全Referenceの取得、Meaning、Grant |
+| Selection | `capability_id`、`selected_provider_id`、provider version、lock fingerprint | Provider実Load/実Invoke |
+| Build/Bind | 消費したSource digest、Manifest digest、generator/toolchain、artifact digest | 同一SourceをRuntimeが実消費したこと |
+| Invocation | `actual_provider_id`、entrypoint、invocation/attempt ID、input binding、effect class | Consumerへの完全配送、Owner許可 |
+| Consumer | Consumer ID、actual raw received digest、parser scope、reply/partial/error、required/received差集合 | 未解析部分や別Audienceへの開示資格 |
+| Authority | Owner decision、reviewed scope、current host grant、disclosure audience、receipt verifier | 他段階からの暗黙承認 |
+
+**不変条件**：`selected_provider_id == actual_provider_id` を実Call Receiptで判定する。双方の値を静的Configから転記しただけなら不合格。Source-only／Manifest-only改訂を反映した実Build/Loadの版を同一Attemptに結び付ける。異なるAttemptの成功Receiptを合成してK2成功としない。
+
+### 20.3 失効と再利用の行列
+
+| 変化 | Source Observation | Build/Binding | Consumer Receipt | Meaning/Authority |
+| --- | --- | --- | --- | --- |
+| 原文A→B→A | 再観測。中間履歴はSHA同値から証明不可 | 消費版を再照合 | 旧Receiptを現在受領へ転用不可 | Owner受理範囲・時点を再確認 |
+| Manifestのみ変更 | 原文は維持可能 | Provider選択・Load・生成資格を再検証 | 新実Callの要否を判断 | 自動受理しない |
+| Provider/Toolchain更新 | 原文は維持可能 | 生成・実Invokeの資格を再検証 | Parser/結果差を確認 | 意味の同一性を推定しない |
+| Required Source追加 | 観測済み部分は維持可能 | 依存閉包を再計算 | 未取得を明示 | 完備・意味受理を停止 |
+| 権限撤回・Audience変更 | Cacheの存在は保持し得る | Current Grantを再評価 | 新AudienceへRawを送らない | 開示資格を停止 |
+| 外部Source unavailable/partial | `unavailable`/`partial`を保持 | 旧Artifact再利用を独立判定 | 欠落を正常空結果にしない | Ownerが未確認のまま許可しない |
+
+Artifact再利用、Build省略、Evidence再利用は別の判断である。Source/Model/Artifact Revisionを一つのFingerprintに畳み込まない。外部参照はfresh/stale/unavailable/partial/not-found/permission-deniedを区別する。
+
+### 20.4 テスト計画への受渡し
+
+- **P0 / 現mainコード探索**：実装されている`selected→loaded→invoked→received`の各辺を実Call Siteで列挙。文書・Offer・CI緑だけの辺は「未実装」と表示。
+- **P1 / K2-A**：選択B、A/B両方の実体、実呼出しB、独立Expected、Source-only/Manifest-only変更を一つのAttemptで照合。誤ってAを呼べば同じ出力でもFAIL。
+- **P1 / K2-B/C**：SHOのprivate所有CIから同じProviderを実Invokeし、TEI側と別のConsumer Receiptを取得。Requiredを事前固定し、未解析Markdown・部分集合をUNKNOWNとする。
+- **P2 / K2-D**：Source ABA、Provider版更新、Required追加、権限撤回、途中失敗、同じラベルの異Identity、未選択/曖昧を一因子負例にする。
+- **後続の公開・保存**：静的サイト生成やDocument保存のLifecycleと連携可能だが、K2のread-only合格はPublish Approval、実デプロイ、外部再取得、正式Writer、Owner受理を意味しない。
+
+**現状の確定証拠**：K1上流Reference限定CI、SHO実G1b K1R CI、TEI PR #3329の旧exact HEAD `0d035db63b1410c6cba36a0e4ee98e9e18da7449` に対する全体健全性・脆弱性・OKF専用CIの3件は**completed/success**。ただしmainは当時のブランチより36コミット進み、PRはmergeable=false。旧HEADの緑をmain統合後や本節追加後のCIへ転用しない。K2-A/B/C/Dの実Plugin Invoke、正式F0/Owner、公開・保存は**NOT RUN**。
+
+**情報配置上の境界**：本計画はOKF/TEIの実Provider受入契約のみを記載し、他製品の独立した固有設計・決定を本ファイルへ転記しない。
