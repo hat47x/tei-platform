@@ -160,7 +160,8 @@ def scoped_step_coverage(required: set[str], received: list[dict],
 
 
 def scoped_step_selftest(required: set[str], actual: dict[str, dict],
-                         scenario_sha: str, expected_operations: dict[str, str]
+                         scenario_sha: str, observed_source_sha: str,
+                         expected_operations: dict[str, str]
                          ) -> tuple[dict, dict[str, str]]:
     """TT-105/106 using validated real CLI observations plus copy-only controls."""
     # Carry the actual CLI evidence fields, never fabricate verified=True.
@@ -170,8 +171,10 @@ def scoped_step_selftest(required: set[str], actual: dict[str, dict],
          "operation": actual[key].get("operation")}
         for key in sorted(actual)
     ]
+    # Re-read Source after real CLI Step execution. This detects a persistent
+    # local change between observations, not A->B->A or actual Runtime input.
     baseline = scoped_step_coverage(required, receipts, scenario_sha,
-                                    scenario_sha, True, expected_operations)
+                                    observed_source_sha, True, expected_operations)
     if not (baseline["inventory"] == "complete-for-one-pinned-scenario"
             and baseline["localObserved"] == sorted(required)
             and baseline["productCoverage"] == "unknown"
@@ -463,7 +466,7 @@ def main() -> None:
         assert always_satisfied != independent_rule_properties(denied)
 
     scoped_inventory, scoped_controls = scoped_step_selftest(
-        STEPS, measured, digest(source),
+        STEPS, measured, digest(source), digest(original_scenario.read_bytes()),
         {step: record["operation"] for step, record in scenario_steps.items()},
     )
     coverage = subprocess.run(["go", "tool", "cover", "-func", str(args.coverage.resolve())],
