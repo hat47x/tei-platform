@@ -32,7 +32,9 @@ go build -o /tmp/tei-mcp ./tools/reference-mcp-readonly-adapter
 | `tei_trace` | `operations.TraceWorkspace` | `tei trace` |
 | `tei_validate` | `operations.ValidateWorkspace` | `tei validate -workspace ... -json` |
 
-各 tool の結果は `content[0].text` に、CLI と同じ `schemaVersion`・`ok`・`result`／`error` の**JSON 1件**として入ります。読取りに失敗したときは `isError: true` を付け、`error.message` の先頭に `error.code` を置きます。
+各 tool の結果は `content[0].text` に、CLI と同じ `schemaVersion`・`ok`・`result`／`error` の**JSON 1件**として入ります。`error.code` は CLI と同じ**文字列**です（JSON-RPC の数値 `error` とは別に保ちます）。読取りに失敗したときは `isError: true` を付けます。
+
+`tei_validate` は `result` で包まず、CLI の `validate -workspace ... -json` と同じ最上位の形（`diagnostics`・`worldFingerprint`・`sourceIndexFingerprint`・`declarationCounts`・`workspace`）を返します。検証の不合格も `isError: true` です。文書の組み立ては `internal/operations` の1つの投影を CLI と共有します（[#3420](https://github.com/hat47x/tei-platform/issues/3420)）。
 
 ## 境界
 
@@ -48,6 +50,7 @@ go build -o /tmp/tei-mcp ./tools/reference-mcp-readonly-adapter
 
 - 公開する tool が上の4つだけで、名前に書込み系の語を含まないこと
 - 4つの tool の結果が、同じ Workspace に対する `operations` の戻り値と一致すること（`worldFingerprint`・`sourceIndexFingerprint`・`snapshotFingerprint`・`schemaVersion`）
+- `tei_validate` の文書が、実 CLI の `validate -workspace ... -json` と同じ欄と同じ値を持ち、`isError` と `ok` が対応すること（`validate_parity_test.go`）
 - 未対応の対象種類が `isError: true` と `UNSUPPORTED_SUBJECT_KIND` で返ること
 - `initialize` の応答と、通知に返答しないこと
 - tool の入力スキーマに `workspace`・`path`・`root`・`file` を含めないこと
