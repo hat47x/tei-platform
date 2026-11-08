@@ -1697,3 +1697,40 @@ KON Dataspaceは独立・任意のData Source候補であり、TEIのテスト�
 5. **P2 領域拡張**：Plugin/Trait/BOMのRule policy fingerprint、Graph/CRUD/REA→SHOの多重Identity、Go HTTPの202/AuditとEffect、KON/SUI/SEIの二Consumer差分を既存Ownerの局所Claimに束縛する。C1/NFR/完全G4を分母なしの百分率で報告しない。
 
 **状態**：本節は#3365の旧exact-head CI成功と新変更の未検収、および既存モデル/Source/Provider/Handoffの計画差分を統合したもの。L/R/H実Provider/実外部Handoffの同一Attempt、完全なSource/BOM Input Closure、現在Owner/Host Grant、T1-B、全Product C1/NFRは**NOT RUN/NOT QUALIFIED**。第二Runner/Reader/Source Store/Host/Authority/Oracleは追加しない。
+
+
+---
+
+<!-- tei-test-gate-checklist-20261108 -->
+## 35. 2026-11-08：文書の増殖を止め、実証の受入ゲートを固定する（P0実行計画）
+
+### 35.1 設計上の成熟度と実装上の成熟度を分ける
+
+§1〜34のTTは、独立Expected/Scenario/Source/Deliveryの反例を十分に抽出した**設計候補**であり、番号が増えたことを実装進捗に数えない。これ以降の通常運用は**一つの実装PRにつき一つの新しい判別可能な負例**を優先し、未検収の章・TTを無制限に増やさない。既存Ownerに受入基準を引き継ぎ、同じテスト・実行結果を複数の設計書にコピーしない。
+
+### 35.2 次の一件の厳密な実行票：独立Scenario Operationへの到達
+
+| 観点 | 受入条件 |
+| --- | --- |
+| **Given** | #1180の既存Pinned Scenarioから、対象Step IDと**独立に固定した**期待Operation/Source/Scenario revisionを取得。実CLI binary/revisionと独立Expectedは#2514で固定 |
+| **When 正常** | 同一CLI Attemptで指定Stepだけを実行し、実ResultのStep ID/Operation/verified/Targetと、外部固定の期待Operationを比較 |
+| **When 異常** | `scoped_step_coverage`に渡す`expected_operations`とReceiptの`operation`を**同じ別Operationへ置換**。関数内自己一致だけでは通る場合があるため、独立Scenario Sourceに対する外側の検証が**明示的に拒否**すること |
+| **独立Oracle** | 変異していない#1180 Scenario Source（実Byte/Revision）と#2514 Expected。生成者がコピーした`verified`や`end_received`を独立Expectedに使用しない |
+| **出力** | actual binary/Scenario/Source revision、対象Step、実CLI invocation、元Result evidence、期待Operation、観測Operation、判定理由、CI exact HEADを含む最小Receipt |
+| **合格上限** | `one-step-operation-bound`。Function全Rule Coverage、実Provider R、外部Consumer H、Host/Grant、C1、AI T1-Bは`unknown/unqualified` |
+| **停止** | Source改訂が異なる、実CLI Replyが不完全、期待Operationの独立固定がない、Targetが未到達、CI exact HEAD未完了の場合、PASSではなく`ineligible`または`insufficient-evidence` |
+
+この一件は既存[Draft #3365](https://github.com/hat47x/tei-platform/pull/3365)のtest-only投影を製品のCoverage Engineへ拡張する提案ではない。既存#1180 Driver Scenarioと実CLIの境界で比較する。必要ならテスト専用Assertionのみ追加し、Production APIや新Runner/Registryは追加しない。
+
+### 35.3 2026-11-08 08:47Z時点のexact-head検収状況
+
+- [Draft #3365](https://github.com/hat47x/tei-platform/pull/3365) 最新HEAD `f7de811d0ac6c92c696e7f36069ae47350cca5f8`：専用dogfood CI `42463616468` **queued**、Repo Health `42463616418` **in_progress**、依存 `42463616407` **pending**。旧HEADの成功は現在HEADの資格でない。
+- [Draft #3479](https://github.com/hat47x/tei-platform/pull/3479) 最新HEAD `fff65f0ab6ae7bd9ad88d18df7a756e8fbb4ae31`：Repo Health `42464022323` **queued**、dogfood `42464022308` **queued**、Desktop WebView smoke `42464022395`のみ **completed/success**。これをImport Provider Source/ManifestのGo検証合格へ読み替えない。
+- [Draft #3223](https://github.com/hat47x/tei-platform/pull/3223)の直前HEAD `dd7de5ae203a269ce423bab3598eb3dc45f60854`にworkflow runは確認されず、文書保存と実行合格は別扱い。
+- CIの状態語`queued`/`pending`/`in_progress`/`completed`と結論`success`/`failure`/`cancelled`を区別し、同じHEADに結び付ける。CI完了でも**観測したScopeだけ**がPASSする。
+
+### 35.4 T1-Bへの昇格を認める条件
+
+このP0 Operation負例が独立に検出され、実CLI/Scenario/Source/Resultの資格が揃った後にのみ、#3273で未知Gapを生成AIへ隠したBlind Trialを実施する。**新規テスト候補が生成されたこと**、**指定Targetへ到達したこと**、**独立ExpectedとMutantを判別したこと**、**実外部受領が成立したこと**を別列で記録する。候補の多さやドキュメント追記数は成功指標にしない。
+
+**この章の実施状態**：GitHubの現HEAD/CI状態を確認し、既存受入票を実行可能な一件へ絞り込んだ**計画更新**。新しいGo/CLIテスト、T1-B Agent、外部H2/H3、実Provider R/Hの実行は**NOT RUN**。
