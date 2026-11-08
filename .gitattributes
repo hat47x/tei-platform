@@ -113,8 +113,14 @@
 # Unpinned path purpose scan is hashed as raw bytes by its README.
 /plan/evidence/RUNTIME_UNPINNED_PATH_PURPOSES_2026-11-08/** -text
 
+# Session-log split/stall observations are hashed as raw bytes.
+/plan/evidence/DSH_SESSION_LOG_SPLIT_AND_STALL_2026-11-08/** -text
+
 # Deployment executor survey output is hashed as raw bytes by its README.
 /plan/evidence/DEPLOYMENT_EXECUTOR_BINDING_SURVEY_2026-11-08/** -text
 
 # Executor binding consumer survey output is hashed as raw bytes by its README.
 /plan/evidence/EXECUTOR_BINDING_CONSUMER_SURVEY_2026-11-08/** -text
+
+# Answer fact-presence reports are hashed as raw bytes.
+/plan/evidence/DSH_ANSWER_FACT_PRESENCE_2026-11-08/** -text

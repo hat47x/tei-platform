@@ -444,6 +444,7 @@ D-1・D-2・D-4〜D-8 の対応が `main` に入り、対応する Issue はす�
 | D-1 `trace` の未対応kind | 解消（`UNSUPPORTED_SUBJECT_KIND`・終了コード2） | なし |
 | D-2 Workspace同一性 | 解消（`workspace` 欄） | なし |
 | D-3 版の欄の不統一 | 実測時点（`4fd88c2b1`）は残る（`view` は `semanticFingerprint` のみ）。**実測後に #3366（`9bc015876`）で解消**し、現在の main は応答の最上位に `worldFingerprint`・`sourceIndexFingerprint` を返す（#3345 は Closed） | なし（残るのは `semanticFingerprint` の範囲を名前で示すかの設計判断のみ） |
+| D-3 版の欄の不統一 | **残る**（`view` は `semanticFingerprint` のみ、`worldFingerprint` を持たない） | `view` の版の欄をどう揃えるかは未決。`#2824`・`#2822` の範囲で扱う |
 | D-4 `view` の作用の広告 | 解消（`writeFlags` に `-operation-log`・`-lifecycle-state`） | `effect` の語彙（`read-only-with-named-output` など）の統一は未着手 |
 | D-5 `plugin-lock` のround-trip | 解消 | なし |
 | D-6 不正lockの終了コード | 解消（間接確認。個別再実行は未実施） | 必要なら個別に再実行する |
@@ -458,6 +459,7 @@ D-1・D-2・D-4〜D-8 の対応が `main` に入り、対応する Issue はす�
 - **discovery が引数の許容値と出力flagを広告するようになった。** `commands` の出力は 6,957 バイトから 9,513 バイトへ増え、`argumentValues`・`argumentType`・`argumentDefaults`・`writeFlags` を持つ。生成AIが「何を渡せるか」を文書なしで知る経路ができた。
 - **D-3 は実測後に解消した。** #3366 が `view -format json` の応答の最上位へ `worldFingerprint`・`sourceIndexFingerprint` を足し、`result.semanticFingerprint` と並べて3つの値が別物として読めるようになった（#3345 は Closed、`9bc015876`）。実測時点の観測は変えず、追補を[実測記録](../evidence/TEI_DOGFOODING_ROUND2_2026-11-08/README.md) §9に置いた。
 - **残るのは D-9 と D-10 の2件。** D-9 はMarkdownを意味として扱うかの設計判断（#3346）、D-10 は `v0` の互換性判断（#3347）を含み、いずれも単一の欄の追加では閉じない。
+- **残る3件はいずれも単一の欄の追加では閉じない。** D-3 は版の語彙と置き場所の設計、D-9 はMarkdownを意味として扱うかの設計判断、D-10 は `v0` の互換性判断を含む。
 
 次に必要な作業:
 
@@ -479,3 +481,21 @@ D-1・D-2・D-4〜D-8 の対応が `main` に入り、対応する Issue はす�
 1. **MCP入口を作るか**（#3400）。作る場合の範囲は、この参照実装が扱った4操作（`model catalog`・`inspect`・`trace`・`validate`）に限る案を推す。`commands` の discovery と同じ範囲で、第二の正本を作らない制約をそのまま維持できる。
 2. 作らない場合は、外部AIハーネスからはホスト提供のMCP経由で `tei` CLIを起動する経路に限られる（#2509 の実測と同じ形）。その場合は本節の参照実装を製品へは残さない。
 3. どちらを選んでも、`docs/architecture.md` の「別の正本を作らない」制約を維持する。
+
+## 9. 第3ラウンド（2026-11-08）: 設計文書の扱いと応答の同一性
+
+第2ラウンドの後に main が進み、読み取りコマンドの応答を横断して調べた。生出力は[応答同一性の実測記録](../evidence/TEI_DOGFOODING_ROUND3_IDENTITY_2026-11-08/README.md)にある。
+
+| 観点 | 実測前（`3b4f5519d`） | 対応 |
+| --- | --- | --- |
+| D-9 設計文書が意味として読まれない | `docs`／`plan`を`sources`に置くと`readByLoader:false`、`validate`の`diagnostics`は0件、`source-index`の`references`は`null` | **残る**（#3346は設計判断を#2621へ送ってクローズ済み） |
+| Workspace同一性の有無 | `view`・`source-index`・`knowledge-context`・`requirements`に`workspace`欄が無い | **#3455として起票し、修正した** |
+| 空の一覧の直列化 | `source-index`の`references`が`null` | **#3456として起票し、修正した** |
+
+#3455 と #3456 の修正:
+
+- 読み取りコマンドの応答すべてに`workspace`（`name`・`formatVersion`・`manifest`）を付けた。`-world`ファイルだけを入力した場合は、manifestを読んでいないため値を推測せず省く。
+- `internal/sourceindex.Index`の`MarshalJSON`が、空の`artifacts`・`references`を`[]`にする。
+- 公開契約の互換性: 既存欄は変えず、欄の追加と「0件を`null`から`[]`へ」の変更だけ。`null`を「欄が無い」と解釈していた読み手には告知が必要（[CLI JSON出力契約](../design/CLI_JSON_OUTPUT_CONTRACT_2026-10.md)）。
+
+D-9は残る。CLIは設計文書を索引に載せるが、意味の定義として読まない。変更するなら、Markdownを意味として扱う設計判断（#2621）が前提になる。
