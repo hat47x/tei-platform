@@ -84,6 +84,13 @@ export function observeDirectTrace(envelope) {
     selected,
     scopeOrigin:'caller-supplied-projection-scope',
     workspaceIdentity:'load-manifest-observed-only',
+    // Internal comparison metadata. NOT a public-disclosure or acceptance token.
+    workspaceLoad:{
+      name:ws.name ?? null,
+      formatVersion:ws.formatVersion,
+      manifestPath:ws.manifest.path,
+      manifestSha256:ws.manifest.sha256,
+    },
     edges,
     snapshotFingerprint:r.snapshotFingerprint,
     graphFingerprint:trace.snapshotFingerprint,
@@ -95,4 +102,23 @@ export function observeDirectTrace(envelope) {
     absentClaim:'unknown',
     authority:'read-only-candidate',
   };
+}
+
+/** Check whether two traces may be compared as the *same observed load
+ * context*. This remains read-only / no completeness, Policy, or Acceptance.
+ * Caller must first qualify any public release through the real Policy.
+ */
+export function compareObservedLoadContext(first, second) {
+  const a=observeDirectTrace(first), b=observeDirectTrace(second);
+  if (a.status !== 'direct-edge-candidates' || b.status !== 'direct-edge-candidates')
+    return unknown('trace_unqualified');
+  if (JSON.stringify(a.workspaceLoad) !== JSON.stringify(b.workspaceLoad))
+    return unknown('workspace_manifest_mismatch');
+  if (first.result.worldFingerprint !== second.result.worldFingerprint ||
+      first.result.sourceIndexFingerprint !== second.result.sourceIndexFingerprint)
+    return unknown('read_snapshot_mismatch');
+  // Caller scopes may differ. No inference about Source-declared scope, grants,
+  // general Relation identity, or whether the actual read roots are closed.
+  return {status:'same-observed-load-context-only',authority:'read-only-candidate',
+    sourceAndPluginClosure:'unproven',absentClaim:'unknown'};
 }
