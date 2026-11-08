@@ -295,3 +295,47 @@ A〜Hは既存TEI CLIが返したJSONの**test-onlyメモリ上のコピー**を
 - **[#3360](https://github.com/hat47x/tei-platform/pull/3360)／[#2831](https://github.com/hat47x/tei-platform/issues/2831)**：Stage1生成**参照ビルドドライバ**によるStage2再入は実証済みだが、`cmd/tei`本体／TEI Build Intent GraphでのL2/L3・G4資格は未達。Context FreshnessからG4成功を推論しない。
 
 **受入ゲート**：新main基底のPR HEADで実11 CLI／32局所Control＋既存6 pinned Scenario＋T1-Aと**上記Source-only改訂の新実CLI negative**がPASSし、同PRの差分に旧main計画やWorkflow Packetの逆行がないこと。専用dogfoodと全体Repo Healthは別々に結果を記録し、統合後main pushを再実行して確認する。**検証前の新PR成功は未主張**。C1/全業務・NFR要件、Blind T1-B、実DB/Host、Owner Accepted Meaning、現在Grantは引き続き未資格。
+
+## 11. P-1b1単一Function：宣言上の必要集合と実行可能性を分離する（2026-11-08）
+
+### 11.1 現行mainの実基線と独立Required
+
+[#3477](https://github.com/hat47x/tei-platform/pull/3477)のmain統合版 `29d367198af2281fc8a390eda959ba91088d8542` は、従来11 read-only CLI、32試験用Negative/Over-rejection Control、限定Design Context Packet/9負例、6実Pinned Scenario＋T1-A既知行番号0候補、**Worldが同じでSource Indexのみ変化する実CLI Replay負例**を統合した。[main push専用Run #42461058083](https://github.com/hat47x/tei-platform/actions/runs/42461058083)は**completed/success**。PRへの組込みに使ったRun #42460897028も成功した。ただし局所C0相当9.4%、C1/未知T1-B/外部H3 Provider/Owner Meaning/全Requiredは未資格。
+
+次の最小独立Requiredを既存Product DSLの**公開Referenceから、試験用の独立契約**として固定する。生成したCatalogやScenarioのExpectedをRequiredの出典にはしない。
+
+| 必要な独立要素 | 固定した正答（試験用） | 実TEI CLIの観測・残る資格 |
+| --- | --- | --- |
+| Capability | `semantic-capability:sales.order.submit`、入力 `order:sales.order`、出力 `sales.order` | 既存`tei inspect -subject-kind semantic-capability` Canonical + Catalog一意性。**業務実行可能とは言わない** |
+| Application | `application:order_entry` | 既存`tei inspect -subject-kind application` Canonical + Catalog一意性 |
+| NamespaceとRule依存 | Applicationの`semanticUses`に`sales`、3 Validationを一意に参照 | これは**Namespace Uses**であり**Capability invocation bindingではない**。直接call/Entryは未観測 |
+| DB requirement（宣言のみ） | `alias=sales`、`target=sales_core`、`access=read-write` | DB契約の存在やアクセス申告を、現在のProvider実Read／Host Grant／DB Commitへ変換しない |
+| Source原文・Role | `semantic/sales/order.tei`と`applications/order-entry/application.tei` | `workspace-files`のLoader Read、`source-index`全件の`definition` Role、Inspect Source Reference/Artifact Fingerprintとの一致 |
+| 既存対象Rule・Relation | 既存の3 Validation + `sales.order.lines` Relation | #3354の局所Required検査を再利用。Function/Business全Graph/Query全閉包には拡張しない |
+
+**実装する差分**：既存`tools/reference-issue-test-ability/context_gate.py`へ`boundedFunctionSlice`と10判別Controlを追加。実CLI Replyは従来11に上記**既存Inspector操作を2つだけ**追加して計13。11+2は同一製品CLI実Binaryだが連続Snapshotではない。従来32 Controlに**9拒否+1過剰拒否防止＝10**を追加し、累計42試験用判別Controlとして区別する。`tools/reference-design-context-packet/packet.py`の9 Reply／限定Data Packet正本を改変しない（PacketはFunction閉包の受理ではない）。
+
+### 11.2 テストとして固定する不成立・過剰拒否防止
+
+| Case | 独立に変える受領済みCLI JSONの試験用Copy | 必要なReject／非Reject |
+| --- | --- | --- |
+| F-01 | Catalogの必須Capabilityだけを削除 | missing（FP文字列が同じでもblocked） |
+| F-02 | CatalogのApplicationだけを削除 | missing（FP同じでもblocked） |
+| F-03/F-04 | Capabilityの入力型／出力型を変更 | Canonical signature不一致でblocked |
+| F-05/F-06 | Applicationから`sales` uses／必須Validation参照を一つ欠落 | 宣言上の必要集合不一致でblocked |
+| F-07 | Applicationの`sales` DatabaseのTargetを変更 | Requiredデータソース申告不一致でblocked |
+| F-08 | CapabilityのInspect Source definition Referenceだけを削除 | CatalogがあってもSource Role/Anchor未充足でblocked |
+| F-09 | Application SourceがInventoryにあるが`readByLoader:false` | 管理対象ファイルの存在と実Readを区別してblocked |
+| F-10 | 必要集合外の`semantic-type:std.money`のみCatalogから削除 | **この限定Requiredでは過剰拒否しない**。Workspace全件完全性の主張は依然false |
+
+上記は**Sourceファイルを破損させるE2Eではなく、実TEI CLIから取得したJSONのメモリ上Copyを変更するConsumer判別テスト**。`FPの一致`が必要集合の完備を意味しないことを確認する。FPへの署名・改訂・全依存グラフの原子性も新たに認定しない。
+
+### 11.3 現在の資格・次の縦断辺
+
+局所`boundedFunctionSlice.declarationStatus=bounded-present`は、**指定したCapability宣言/入出力型/Application uses/Source・Role**という観測範囲の一致に限定する。最終的な`boundedReference`は依然`partial`、`testExecutionAdmission=exploration-only`、`qualifiedTestGeneration=false`。`functionInvocationBinding=not-observed`、`queryOrProviderRead=not-observed`、`hostGrantAndEffect=not-observed`を明示する。
+
+次に[#2586](https://github.com/hat47x/tei-platform/issues/2586)と照合すべき不足辺は、**Capability宣言がどのFunction/Build Entry/Query・Providerを通って実Consumerに到達するか**の有界な必要集合である。Applicationの`uses semantic sales`から**具体Capabilityを実呼出し済みと推定しない**。Query/Rowsetの部分観測・0件・NULL、現在Provider選択/実呼出し、Host/Disclosure/Owner meaning、Scenario独立Expectedを別Witnessとして保持する。
+
+この選定は他チャットのPlugin-first Inspector（CLI/Studioで実選択Bと呼出Bを一致させる）、REA/SHO三視点と物理FK/UNIQUE観測、KON交換、SEI委譲にも共通する。いずれも**モデルの存在やSource Index一致をAction資格やデジタルツイン全意味に自動昇格させない**。参照用Build DriverのStage再入成功も`cmd/tei`自身のL2/L3/G4資格とは分離。
+
+**新PRの受入**：actual CLI 13 Reply、従前のContext Packet/9負例・既存32 Control・Scenario6＋T1-A/SourceIndex失効に追加10判別が、**同じ実CIで全てPASS**したこと。そのうえでexact PR HEADとmain pushの実バイナリdigest/Artifactを別々に検査する。新PRの実CI成功を確認するまでは未検証とする。
