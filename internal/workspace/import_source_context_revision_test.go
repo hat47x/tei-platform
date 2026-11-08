@@ -190,8 +190,8 @@ func TestImportedProviderManifestOnlyDriftNeedsSeparateManifestIdentity(t *testi
 // NOT evidence of a single atomic multi-file read cohort.
 func TestImportedProviderSourceAndManifestRevisionsFormIndependentMatrix(t *testing.T) {
 	cases := []struct {
-		name           string
-		sourceChanged  bool
+		name            string
+		sourceChanged   bool
 		manifestChanged bool
 	}{
 		{name: "baseline"},
@@ -256,12 +256,12 @@ func TestImportedProviderSourceAndManifestRevisionsFormIndependentMatrix(t *test
 				t.Fatal(err)
 			}
 			current := observed{
-				consumerWorld: consumerLoad,
-				consumerIndex: idx,
+				consumerWorld:    consumerLoad,
+				consumerIndex:    idx,
 				consumerManifest: consumerLoad.ManifestIdentity(),
-				semanticDigest: consumerLoad.Imports[0].SemanticDigest,
-				sourceSHA: origin.Artifact.Fingerprint,
-				manifestSHA: providerLoad.ManifestIdentity().SHA256,
+				semanticDigest:   consumerLoad.Imports[0].SemanticDigest,
+				sourceSHA:        origin.Artifact.Fingerprint,
+				manifestSHA:      providerLoad.ManifestIdentity().SHA256,
 			}
 			if current.sourceSHA != sourceExpected || current.manifestSHA != manifestExpected {
 				t.Fatalf("provider raw fixture hashes not independently reproduced: %+v", current)
