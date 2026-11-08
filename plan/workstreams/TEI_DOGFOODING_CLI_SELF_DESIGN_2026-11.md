@@ -550,3 +550,13 @@ ADR-0048 §2.4 の「既定値の適用は共通契約で定める」を、CLI �
 - `model catalog -namespace ""` と `inspect -subject-kind ""` は変更していない。前者は「絞り込み無し」の意味があり、後者は「拒否する」点で MCP と同じで符号だけが違う（#3420）。
 
 起票は [#3605](https://github.com/hat47x/tei-platform/issues/3605)。
+
+## 15. 第9ラウンド（2026-11-09）: 空文字列の修正を統合後に再実測
+
+第8ラウンドの修正が `main`（`0067d6a1e`、PR #3607）に統合された後、CLI と MCP の両方から再測定した。生出力は[第9ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND9_EMPTY_ARGUMENT_REMEASURE_2026-11-09/README.md)にある。
+
+- `-mode ""`・`-direction ""`・`-expected-fingerprint ""` は、CLI が `INVALID_ARGUMENT`（exit 2）、MCP が `-32602` で、両方とも拒否する。
+- 3引数を省略すると `ok:true`・`mode=summary`。`-mode full` は `mode=full`。省略時の既定は保たれている。
+- 残る差は符号だけ（`INVALID_ARGUMENT` と `-32602`）。失敗分類の統一は #3420 の未決で、本ラウンドでは変更していない。
+
+#3605 は解消として扱える。Issue を閉じ、残る分類統一は #3420 に残す。
