@@ -410,6 +410,23 @@ Apache Kafkaは、Kafka Topic間ではtransactional producerとconsumer offset�
 
 **次の受入順**: (i) #3256 exact HEADの11 Python例＋actual Go CLI CI結果、(ii) #2604が所有する**正規Manifestを維持したR1/R2公開競合と独立Consumer pin/GC**、(iii) #2542 EF-01〜03で実送達/ImportUnit/期間、(iv) Owner承認付きEffect。新Renderer、Publication Mappingの正式API、専用Completion Engineの先行採用は不要。製品E2E・Windows/FS差・実MFT・業務Owner受理は引き続きNOT RUN。
 
+
+### 12.5 2026-11-08 正規ManifestでのWriter実挙動と旧世代pinの残余（P1候補）
+
+**背景と変更範囲**: 既存#2604 AP-01〜03のmain統合済み`cli_operations_artifacts_publication_test.go`は`WorkspaceSet.Manifest`をゼロ値のままWriterへ渡す**逐次書込の特性試験**。一方、[#3256](https://github.com/hat47x/tei-platform/pull/3256)のPython Readerはfresh-directoryの正常Publish＋Body/Pathに限定した資格を得た。**両実装を含む最初の小さな接続**として、同一Go Writerで`artifact.NewManifest`が成功するR1/R2の実Fileを保存し、次の3つの観測を追加した。今回の試験の採否・CIは更新HEADごとに別記する。
+
+| 既存Ownerのケースへ渡す観測 | 実行方法（局所Go実ファイル） | 証拠の上限／禁止する飛躍 |
+| --- | --- | --- |
+| **正の基線** AP-08/10 | 2 Member `a/b`、同一R1 InputRevisionで`Artifact.New`→`NewManifest`→`Verify`し`writeArtifactFiles`出力。保存された`manifest.json`をファイルから再読取・Verifyし、双方の実Bodyを比較 | **Go内のdisk read**であって別Process Consumerや独立に受理したPublication Bindingではない |
+| **途中失敗** AP-01/06 | R1は正規Manifest/2 Memberで公開。R2で`a/b/c`を選び、新Member `c`宛先へ事前にDirectoryを作り書込み失敗を注入。`b`はR2に置換され、R1 Manifestは改訂されない | 論理Manifest Verify成功でもR1の物理Read一致は成立しない。**観測上のReader拒否を検査**するだけでAtomic Publisherの修正ではない |
+| **正常R2への移行と旧pin** AP-06/09 | R1のManifest版を固定後、同じ出力Directoryへ正常R2を書き込み、旧Memberの保存Byteが取り出せるか比較 | R2が正常でもこのDirectoryにはR1の実Body保持機構がない。旧版Readerは別世代Pin/Retention契約なしに同一版と主張しない |
+
+**最小の計画差分**: テスト専用`cmd/tei/cli_operations_artifacts_valid_manifest_readback_test.go`（production Writer変更なし）を既存`tei-one-revision-capability.yml`のexact-HEAD Go unitへ追加し、既存Python Readerの**11ケース/実CLI**とは別Stepで結果を取得する。これらを#2604のAP-01/06/08/09へ戻す。**次の実製品P1**は#2604 Ownerがimmutable generation／stage→pointer／pin+verifyのどれを選ぶか、実Consumer2プロセス・FS条件・GCに照合して判断する。Providerの整合・暗号化/署名・Business Owner認証、MFTの実配送/Importは#2542等の別レーンを保持する。
+
+**他チャットとの契約境界**: [merged #3313](https://github.com/hat47x/tei-platform/pull/3313)は選択した外部Go Moduleをopt-inでBuild Source Closureへ供給できることに関する実装であり、Artifact Publication／MFT Transferの一式性を自動保証しない。Build閉包とReceiver実Readは対象・Attempt・実質的な保証が別。#3244外部Registry/Release Readerの署名・現在Trustも別Ownerであり本テストに含めない。
+
+**状態**: 設計は今回の試験候補を記録する。追加Go 3件のCI、最新mainとのmerge時資格はHEADごとに確認する。新Core型、第二Publisher、汎用Manifest Mapping、Scheduler、Hostは未導入。外部Consumer/実MFT/Business Effect/Owner採用はNOT RUN。
+
 ### 追加一次資料（製品・仕様の版に依存する事実）
 
 - Apache Iceberg spec, snapshots / optimistic concurrency: https://iceberg.apache.org/spec/
