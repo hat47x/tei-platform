@@ -384,23 +384,22 @@ Wails依存を外したGo Service/合成Adapterの試験と、実WebView起動�
 **状態とOwner**：ここで新しいGo/Node/CLI/MCP/Studio/Provider/Windows実試験は**NOT RUN**、本§は設計だけ。採用済ADR-0048とmerged #3458/#3477、未統合Draft #3371/#3381/#3378/#3479/#3488を明示的に区別。共通APIは#1158/#3419〜3422、Resolver/Providerは#951/#1016/#1251、Source鮮度は#2743、Build/BOMは#2600/#3267、実UI/配布は#1824、シナリオと独立Expectedは#1180/#2514。既存§10.1〜10.8・DS-D1-A〜I・PD/Gateを上書きしない。
 
 
-### 10.9 共通Operation・Host選択・外部Provider原文の三つの資格（2026-11-08）
+### 10.10 Desktop固有のHost接続・Graph・Window状態の追加ストレス（2026-11-08）
+<!-- tei-desktop-d1-host-graph-window-negatives-20261108 -->
 
-採用済み[ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)の共通アプリケーションAPIは、CLI/MCP/HTTP/Desktopで業務意味を複製しないための契約。一方、#1251/#951/#1016のHost-selected Providerは、**どの実装が実際に呼ばれたか**の証拠である。同じOperation ID・JSON結果・Workspace IDでもProviderの実呼出しは証明されない。#3371のInspector Factory seamは限定候補であり、Plugin Resolver/現在Grant/実Wailsが完成したわけではない。
+§10.9の**共通Application Operation／実Plugin選択／Imported Source鮮度**に対し、本節は実`/workbench/`・Wails Hostの固有反例だけを補う。Contract/Provider選択の方式、Source/Build/Design Context、独立ExpectedのOwnerは§10.9と#951/#1016/#1180/#2514を参照する。第二Registry/Dispatcher/Graph Engine/Scenario正本は作らない。
 
-- **D1a 共通意味**：同一Subject・Source/World Revision・Host方針・許可Scopeでcatalog/inspect/trace/validateの意味Result、failure.code、検証合否、partial、staleをCLI/MCP/Desktop間で比較する。MCP受領≠Operation完了。既存Owner #3419〜#3422、#1158、#3378に委譲し、Desktop独自DTOや第二dispatcherを作らない。
-- **D1b Host-selected実呼出し**：Host allowlist root→選択Service identity→実Invoke→結果→Provider Revision/Attemptを追う。Factory非nilでInspection未Binding、別Subject、書込みeffect、不正Canonical、指紋欠落はfail closed。Factory nilのBuiltin互換経路はPlugin成功ではない。#3371の限定Go試験と#951/#1016の実Resolver/Providerを別に検収する。
-- **D1c 外部Source鮮度**：main #3477のConsumer管理Source-only driftとDraft #3479のImported Provider Source/Manifest-only driftを区別。Consumer World/SourceIndex/Semantic Digest不変でもProvider Rawの引用資格は推論不可。Provider Source occurrence・Manifest identity・読取Attempt・現在Disclosureを別に照合し、再読取を原子的Snapshotと呼ばない。ErrImportsNotBoundを完全取得/不存在に変換しない。
-- **D1d 表示と作用**：Workbench relatedGraphはCatalog Entryのparent関係から最大8件を抽出する参照ナビゲーションで、業務Relation多重度、Query grain、Result occurrenceの証拠ではない。UI response epoch/World指紋一致でもProvider原文改訂、A→B→A、秘匿辺、現在Grantは未証明。#3192/#3222の独立Expectedを再利用する。印刷Hook宣言の表示≠Hook実Invoke/Print結果。
-- **D1e Desktop固有**：実Wails service registration/IPC許可、Window再起動、asset digest、実Windows/WebView2・Chromium起動を個別観測する。CLI/Go/Node試験を実OS合格へ昇格させない。
+- **Host Serviceの接続**：Factoryを有効にした既存`RootServices`はCatalog/ValidationへのService注入が先行しているが、mainのInspectorはbuilt-in直呼出し。[Draft #3371](https://github.com/hat47x/tei-platform/pull/3371)のInspector Portは未統合で、Factory非nilかつInspector Binding欠落をfail closedとする変更と既存Go試験の期待変更を**同じHEAD**で確認する必要がある。Factory nilのPoCは互換性経路であってPlugin資格ではない。
+- **Workbench Graphの意味限界**：現`relatedGraph`は単親Catalogから最大8 Entryの参照ナビゲーションを作るだけ。#3192/#3222の多重Relation/Result grain/Representation occurrence、部分取得・非開示・集約の負例を実Data Graphの資格へ拡張しない。印刷Hookの宣言が描けても実Hook Invoke／印刷効果と同一ではない。
+- **Window／配布の独立性**：Node側のUI後着拒否・A→B→Aテストは、実WebView2 Window再起動・複数Window、実Wailsに埋め込まれたFrontend Asset digest、Host/Provider Read cohort・Grant・Receiver Sinkの完全性を証明しない。Bootstrap`/`と`/workbench/`も別のFrontend Artifact/Consumerである。
 
-| 既存DS/#2514へ渡す追加照合 | 反例 | 停止条件 |
+| 既存DS/#2514へ渡す追加照合 | 一因子反例 | 必須の停止条件 |
 | --- | --- | --- |
-| DS-D1-11 | FactoryはCatalog/Validationのみ提供 | 両操作は選択Serviceを使い、InspectorはOPERATION_FAILED。Builtinへ暗黙Fallbackしない |
-| DS-D1-12 | Inspectorが別Subject/非read-only/欠落指紋を返す | 成功投影せず拒否 |
-| DS-D1-13 | Consumer指紋不変でImported Provider Rawのみ変更 | Consumer Context再利用とProvider引用鮮度を別判定 |
-| DS-D1-14 | CLI/MCP/Desktopの片入口だけ配送失敗 | Application OutcomeとTransportを分離し、無断local fallback・自動Effect再送を拒否 |
-| DS-D1-15 | Catalog graphに多重Relation・集約Row・非開示辺を投影 | Navigation一致を実Relation/Disclosure資格にしない |
-| DS-D1-16 | 旧応答後着・A→B→A・Window再起動 | UI epochのみで現在Source/Grantを受理しない |
+| **DS-D1-11** | FactoryはCatalog/Validationのみ提供 | 既存2操作は注入Serviceを利用し、Inspectorは`OPERATION_FAILED`。built-in暗黙fallback不可。Factory nilの正常系を対照 |
+| **DS-D1-12** | Inspectorが別Subject／write Effect／不正Canonical JSON／欠落指紋を返す | 誤Projectionを成功表示しない。Host-private errorをRendererへ流さない |
+| **DS-D1-13** | Consumer FP不変・Imported Provider Raw／Manifestだけが変化 | 現在のProvider Source引用とConsumer World Contextを別に判定（Source版の主張は§10.9／#3479） |
+| **DS-D1-14** | CLI/MCP/Desktopの片入口だけ受領が欠落し、同じApplication Operationは処理済み | Transport配送とOperation/Effectを分離。無断local fallback・write自動再送なし |
+| **DS-D1-15** | Catalog Graphに多重Relation・集約Row・秘匿Edgeを入力 | Catalog navigationの一致は実Relation多重度や現在Disclosureの証拠ではない |
+| **DS-D1-16** | 旧Inspect応答が再選択A→B→AのA2やWindow再起動後に届く | UI epochで旧応答を拒否。Source Revision/Provider Raw/Host Grant・実Effectまで自動再受理しない |
 
-**検証状態**：#3371旧HEAD a42df66の[Studio PoC A CI](https://github.com/hat47x/tei-platform/actions/runs/42395396780)では旧Builtin Inspectorを期待したTestInjectedOperationsOnlyReceiveAllowlistedResolvedRootが失敗し、gofmt driftもあった。#3371はその後、旧テストをfail-closed契約へ修正したが、修正後exact-head CIの成功を別途確認する。#3479のSource/Manifest-only負例も各HEADのCI結果を分離する。この追補は**計画文書のみ**。実Provider・実Wails・実DB・Owner意味受理はNOT RUN。ADR-0048や既存Issue/PRの第二正本を作らない。
+**実測と計画の線引き**：#3371旧HEAD `a42df66` の[Studio PoC A CI #42395396780](https://github.com/hat47x/tei-platform/actions/runs/42395396780)は旧Direct Inspector期待でFAILし、Healthも整形差を検出。旧Testは新しいfail-closed期待へ改訂されたが、最新exact HEADの合否は別。#3479のProvider Raw/Manifest-only Source実負例もそのPRの最新HEADと独立に検証する。本節は**計画・検収票のみ**で、Wails実UI／CLI-Plugin実Invoke／実Provider Read／Owner Meaning AcceptanceはNOT RUN。
