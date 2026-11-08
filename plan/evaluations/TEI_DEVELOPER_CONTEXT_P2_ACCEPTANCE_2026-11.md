@@ -864,3 +864,19 @@ M1の提案はD1と同じAllowed Tool・Read Budget・Q/Grant/独立Expectedで�
 **H3-X02の実験への含意**：初回Methodの提案をSEIへ保存しても、それだけでは実TEI Rule取得・実Tool Request/Reply・現在Provider/Grant・独立Expected資格が生まれない。SEIでの`proposed/recorded/resumed`とTEIの`invoked/received/source-matched`、TAIの`grant-checked/end-received`を**同一物理Runの別Witness**として整列させること。SEIにTEIの外部Raw Reader、第二Context Gate、未採用Recommendationを勝手にUnresolved化するStore/Schemaを増やさない。
 
 **停止線**：#3482のConsumer判別合格≠機能実行、#3458 MCP Adapter一致≠実外部Harness Tool受領、SEI Resume再開≠TEI Source再確認、#3176のGo named event≠Owner Business Meaning。実H3-X02 D0/D1/M1同条件Tool比較、SEI Recommendation保存のA-02〜04、実Provider/Rowset、外部OS拒否/Current Grantは本節ではNOT RUN。
+
+<!-- tei-devctx-eg09-cross-boundary-to-method-20261108 -->
+### 26.6 Source型とOperator結果型の同一性を、業務意味の受理と混同しない（横断EG-09／実Go試験を再利用）
+
+**追加する具体的な判別線**：[TEI merged #2639](https://github.com/hat47x/tei-platform/pull/2639)の実Go試験 `TestEverythingDataBoundDataIDCannotProveModelSemanticEquality`（現mainの`reference/dsl-language-plugin/everything_data_cross_surface_test.go`）では、Data ID `sales.order`、属性ID `sales.order.amount`、Operator `std.where`、出力 `rows/sales.order` が同じ二つのNamespaceでも、属性TypeRefを `std.decimal` と `std.string` に変えると、**限定Binderの結果型だけは同じ**になる。これはType/Meaning差分があることと、既存Binderの狭い契約がそれを表示しないことの**実Go Characterization**であり、正式Semantic Workspace Validate、実SQL/計算、丸め/金額制約、Ownerの受理・リビジョン再資格化まで合格した証拠ではない。
+
+**§26.5のmain #3482と結合する際の順序**：
+1. 宣言・Loader・Function/Rule/Source Indexと実CLI Replyを取得できたことは、まず**その範囲のDefinition witness**。同PRの13実Reply／42 bounded Controlsを、属性の意味同値・Provider実Invoke・Resultの業務適格性に自動昇格しない。
+2. 問いQが「`sales.order.amount`を金額/Decimalとして使用できるか」なら、独立Required R(Q)に**属性TypeRef、単位/精度、必要Rule/Relation、対象Function Binding、適用Revision**を必要な分だけ指定。TEIの実Parser/Source Readerから**本当に読み取った項目**と一致させ、Data IDと出力 `rows/sales.order` だけで充足としない。単位や丸めはSource/Ownerで未定義なら `unknown`。
+3. 結果型・Role名・SUIのCard/SHO Markdownにある金額語を、TEI Accepted Meaningへ自動変換しない。SUIの探索は元Observation、SHOは文章とSource位置、TEIは型付きCandidate/Rule/FunctionとOwnerの意味受理という**別資格**。出典元が存在しても、同一Source Revisionの必要型がParser/Loaderを通ってConsumerまで届いた証拠がなければQは部分的なまま。
+4. **D0/D1/M1の最小追加Q**：「Result `rows/sales.order` が同じときに型変更を検出し、どのReader/Toolで意味の不足を埋めるか」。D0は変化を認定できないと報告。D1は現に利用可能・許可済みのAttribute/Source照会を**一Probe**選ぶ（実入口不明なら `unsupported`）。M1は同じQ・公開Source/Tool/Grant/予算・blind Expectedで次Probeを選ぶ。必要型が実Read/実Consumer受領されたか、誤った意味同一判断、追加読取Costを別採点する。実SEI Methodと新しいTool経路の実試験は**NOT RUN**。
+
+**既存の担当を維持**：EG-09の狭いParser/Binderは#2639/#2619/#2620、実Source/型とRule必要閉包は#3262/#1180、独立Required/Expectedは#2514、外部Source候補/SHO文書のMeaning境界は#2516、実Query/Provider/Host Effectは#2586/#1174、MethodはSEI #767/#824。Ontology/Decision Twin #3475とREA→SHO #3394は将来の別Ownerで、初回H3-X02/Function実InvokeのBlocking条件にしない。新Parser/Provider/Proof Store/Owner Engineはここに追加しない。
+
+**状態**：#2639の実GoテストSourceとmerged事実を再利用する**計画追補**。この§26.6で新たなGo Test、CLI Predicate実実行、独立型Oracle実受領、SEI D0/D1/M1、Provider/DB、Owner受理は**NOT RUN**。
+
