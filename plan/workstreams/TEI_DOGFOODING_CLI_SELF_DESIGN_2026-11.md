@@ -530,3 +530,11 @@ ADR-0048 §2.6 の「各入口の広告が独立した正本にならないこ�
 - 実プロセス比較が固定されているのは `validate` の1操作だけ（`validate_parity_test.go`）。`catalog`・`inspect`・`trace` は `operations` の戻り値との比較にとどまる。
 
 新しい欠陥は検出しなかったため起票はしない。広告の突き合わせと4操作の実プロセス比較は、それぞれ #3419（対応表）と #3420 CAPI-2a が既に持つ範囲である。
+
+## 13. 第7ラウンド（2026-11-09）: discoveryの突き合わせ試験を置く
+
+第6ラウンドで「CLI discovery と MCP `tools/list` を比べる試験が無い」と記録した。ADR-0048 §2.6 の「生成または一致試験でずれを検出する」に沿って、最小の回帰試験を追加した。生出力は[第7ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND7_CROSS_SURFACE_2026-11-09/README.md)にある。
+
+- `discovery_parity_test.go` が、実CLIをビルドして `commands` を実行し、4 tool の対応コマンドの存在・`effect` が `read-only`・`writeFlags` が無い・`schemaVersion`・`jsonContract` の5点を突き合わせる。対応付けは文字列変換ではなく表で宣言する。
+- 現行 `main` では PASS した。加えて、故意のずれ6種（adapter 側3・CLI 側3）を入れると6件すべて FAIL し、戻すと PASS に戻ることを確認した。両面のどちらを変えても検出できる。
+- 突き合わせるのは discovery の一致だけである。`catalog` の namespace 失敗と `validate` の byte 一致は既存の試験が持ち、`inspect`・`trace` の実プロセス比較は #3420 CAPI-2a が持つ。
