@@ -371,3 +371,45 @@ AI/CUI/Studioには、新しい「組織専用Widget一覧」の網羅を要求�
 既存の`org-synthetic-r7`を改変せず、[#3380](https://github.com/hat47x/tei-platform/pull/3380)へ試験用`ORG-KH-01〜04`を追加した。これらのExpectedは「後日取込を当時のTEI知識へ遡及させない」「上流アーカイブ≠TEIの閲覧」「当時のTEI観測があってもSubject/Scope/Source版に束縛された**存在Witness候補**にすぎない」「版・Scope・Occurrence不一致なら同じ表示でも不適格」の4対照である。合成`observer/observedAt`値は自己申告の例であり、実受信Receiptや実Providerトレースとして使わない。Source版や配布先Consumerの実観測がなければ、`knownAt`からの当時開示・業務承認を`unknown/unqualified`に保つ。
 
 **既存基盤への最小引渡し**：外部REA Evidence・SUI Item・SHO文書からTEI Source候補への橋では、原本版／所在・実取得時点・内容fingerprint、Sourceが述べる記録時点、TEIでの受理時点、Consumer Disclosureを混ぜない。Read-only Readerで得た候補はまだOwnerに採用された`*.tei.md`意味ではない。#2510がOrganization Corpus、#2514/#1180が独立Expected、#2586/#2622が実Provider Read、#2516がConsumer Disclosure、#2386が業務意味受理を担当。TEIは新しい汎用履歴Store／Source別Temporal Engine／専用Approval Runtimeを追加しない。実外部Reader、HR原本Archive、DB History、User/Host Grant、各Consumer実送出、Owner Acceptanceは**NOT RUN**。
+
+
+## 11. 組織のSource閉包・二時点・実Read・引継ぎを同一主張へ結ぶ：独立Producer資格（2026-11-08）
+
+### 11.1 既存実装の成熟部分と、そのまま移せない証拠
+
+他チャットのDesign Context [#3482](https://github.com/hat47x/tei-platform/pull/3482) はmain統合済み。公開Reference `sales.order.submit` の**Capability宣言・入出力型・Application用途・必要Rule・Source/Role**を、実CLIの13 Replyと42個の局所判別Controlで**限定Required**へ照合する。ただしApplicationの`semanticUses=sales`はCapability呼出Bindingではなく、Case実Query/ProviderとFunction Data Contextまでの到達を証明しない。組織へそのまま「閉包達成」とコピーせず、まず`organization.case_record`と実Case Functionが**同じWorkspace／実Loader消費／Source revision**に含まれるかを別件Requiredとして固定する（#3262）。
+
+main統合済み[ADR-0048](https://github.com/hat47x/tei-platform/blob/main/plan/adr/0048-shared-application-api-and-transport-adapters.md)およびCLI/MCPの4 read-only参照操作[#3403](https://github.com/hat47x/tei-platform/pull/3403)は、**共通アプリケーション操作の意味**とCLI/MCP/将来Studio/SHOのTransportを分ける。Workspace名・一致するJSON・MCP Tool広告は、同じ実Consumer受信・実Provider読取・Current Authorityの資格ではない。MCPをOrg P0-Rの前提にはしない。
+
+組織二時点の[Draft #3380](https://github.com/hat47x/tei-platform/pull/3380)では、合成Fixtureに対するTM/TS/KH（valid/known／Source記録時点／TEI観測時点）の16 Node試験がある。**現HEAD `8e4d44162f9c483479590602611d3ad003751a13` の[Node CI #42462892409](https://github.com/hat47x/tei-platform/actions/runs/42462892409)はcompleted/success**だが、同HEADの全体Repository Healthは確認時点in_progress、かつ合成値は実HR受信・実DB履歴・Ownerの当時の認識の証拠ではない。
+
+実CatalogをWorkbenchへ導出する[Draft #3486](https://github.com/hat47x/tei-platform/pull/3486)は、複合/並列FK・Unique/Index・Source fingerprintの保持を検査する。ただし**物理FKは受理済みOrg Relation/Business Roleではない**。外部ProviderのSource-only改訂を、ConsumerのWorld/Source Index/Import Digestだけでは見落とす[Draft #3479](https://github.com/hat47x/tei-platform/pull/3479)の負例も重要。後者はProvider Manifest・Source occurrenceを**別に読んで版帰属を確認**する必要があることを示すが、単一原子Snapshotや実Read/外部送出を保証していない。
+
+### 11.2 一つのCase Claimを提出する際の照合順序
+
+**対象は組織C1／D1の既存最小例**。P0-Dで取れた宣言上の必要Source集合を `D`、業務Ownerが受け入れる対象集合を `L`、実Function/Providerが観測したCase集合を `R`、人手・外部受領の適用集合を `H` とする。これは**照合用の4集合であって新Core型や権限正本ではない**。P0-MはSource/Meaningの派生Diagram/CRUDであり、`D`の存在だけで実`R`の非空や`H`の成立を導かない。
+
+| 照合対象 | P0で必要な最低資格 | 接続できない場合 |
+| --- | --- | --- |
+| **D：定義の必要閉包** #3262 | `CaseRecord.caseId/handlingUnitId`・Relation Role、対象Function/Query/Provider Bindingの原Source、`found/loaded/parsed/bound/returned`と不明理由、受理意味の版。未存在と未探索/未権限を区別 | `product-read-not-connected`。Design Contextがpartialでも確認済みRelationの説明は維持 |
+| **P：外部Source版・物理Schema** #2622/#2611/#3479/#3486 | Provider/Database Aliasと実物理Target、Source/Manifest/Schema fingerprint、複合FKの向きと粒度、同一Read Cohort。FKだけから受理されたCase Relationを作らない | `provider-input-unqualified`、手元のWorld/Import Digest一致だけで再利用禁止 |
+| **R：実行された読取** #2586 | 同一Function Attemptでの実Query ID/SQL/args、行ID/必要Field、Tenant/Scope、ページ・predicate・snapshot、実Producerと受信Consumerを照合 | `physical-read-unavailable`／`partial`／`unverified`。Rの件数一致はLの完全性でない |
+| **時間と判断** #2510/#2386 | Sourceが述べる`validFrom/knownFrom`、TEIが実観測した時刻、照会時点、判断時点/Owner Meaningを**別の根拠**として保持 | 後日のHR記録から「当時TEIが知っていた」や現在Grantを自動推定しない |
+| **H：受領の適用範囲** #1125/#1444 | 個別ACKまたはOwnerが認めた一括ACKの対象ID/版/Scope/相手方/時点、必要な現在資格 | `HandoffConfirmed=false/unverified`。同一ACK二重計上や旧版ACKは全件真としない |
+| **Consumer／実Effect** ADR-0048/#1174/#1163 | M/R/Hの当該Consumerへの許可された投影・実受領、WriteのOperation ID/Receipt/独立Resource再Readをそれぞれ独立観測 | CLI/MCP JSON一致やRead/Receiptだけから完了・外部副作用を主張しない |
+
+`P`は上表のProvider観測欄の略記であり、`R`とは別の独立した業務対象集合を増やすものではない。**最初の成立判定はC1を一件実Readした局所証人**に限定し、`L={C1,C2}`の全件Handoffへ飛躍しない。構文的なSourceあり・Graph表示あり・Constraint一致はProduct E2の代替にならない。
+
+### 11.3 一因子負例と受入・撤回線（既存Ownerへの引渡し）
+
+| Case | 一因子だけ変える合成状況 | 独立Expected |
+| --- | --- | --- |
+| **ORG-EC-01** | ConsumerのWorld/Source Index不変、Imported ProviderのSource/Manifestのみ改訂 | 新しいPを要する。旧Context／旧実Read資格を再使用せず`unqualified`（#3479）。同一値でも可 |
+| **ORG-EC-02** | 物理FKがC1→D1に一致するが、OwnerのhandlingUnit Roleの意味が未受理 | 構造候補・物理観測に留める。Grant/承認候補/Case移管を生成しない（#3486） |
+| **ORG-EC-03** | HR `knownFrom=4/1`、TEI実観測`7/5`、業務照会`6/15` | HRが当時記録した可能性は残すがTEI当時の知識／閲覧／承認は未確認（#3380 KH） |
+| **ORG-EC-04** | L={C1,C2}、R={C1,C2}、H={C1}。CallerのGlobal Handoffフラグだけtrue | 全件完了は`unverified`。#3353の空集合修正だけでは足りない（§9.5） |
+| **ORG-EC-05** | Design Contextの必須Functionは存在するが、実Invocation/Query Bindingなし | Dの宣言レベルだけ確認済み。Rの実Product Readは不成立（#3482） |
+| **ORG-EC-06** | CLI/MCPのRead結果値が一致するが、受信先のWorkspace/Source revまたは権限が異なる | Transport・Workspace/Scope・現在Disclosureを再照合。値一致だけで同一資格へしない（ADR-0048） |
+| **ORG-EC-07** | 実C1 Readは成立したが、Case側Source/Scopeに対応する図面Edge・CRUDセルが欠落 | P0-Rを局所合格のまま保持し、P0-M/P0-Cは未確定。read-onlyモデル表示でSource/Relationを補完しない（#3263） |
+
+**工程順は変更しない**：P0-DのCase定義・取得資格調査、P0-MのData/Function/Business projection、P0-Rの**実C1一件Read**をそれぞれ並行実証し、P0-Cで同じMeaning/Source/Provider・Scope/時点の証拠だけを接合。Handoff全件・SHO/Studio二Consumer・Current Host Effectは後続。ORG-EC-01〜07は**独立Expected／担当Issueへの提案であって実Go/DB/Host/CLI/外部Consumerの新試験ではない**。#2514/#1180が独立Scenario、#2510が組織Corpus、#2586がRead、#3262がD、#1125/#1444がHを所有し、第二Runner/TempStore/Org専用Completion/新Plugin Hostは作らない。
