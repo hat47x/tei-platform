@@ -1,4 +1,4 @@
-name: HTTP Decision Graph 限定Node Characterization
+name: HTTP Decision Graph 限定Node/Go Characterization
 
 # 既存Web構成E1の宣言検査とRuntime Path証明の差だけを実行する。
 # このWorkflowが成功しても実Host監査・実DB Effect・Graph Loaderは未検証。
@@ -9,6 +9,7 @@ on:
       - '.github/workflows/tei-http-decision-characterization.yml'
       - 'reference/web-composition/plan-check.mjs'
       - 'reference/web-composition/plan-check.terminal-gap.test.mjs'
+      - 'reference/web-composition/go-host/**'
   push:
     branches: [main]
     paths:
@@ -45,3 +46,27 @@ jobs:
         run: |
           set -euo pipefail
           node --test reference/web-composition/plan-check.terminal-gap.test.mjs
+      - name: 対象版Goを準備
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+      - name: Go Hostの実Branch/Guard/Audit witnessを限定検証
+        shell: bash
+        env:
+          GOENV: off
+          GOWORK: off
+          GOFLAGS: ''
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          printf 'go-host-blob=%s\n' "$(git rev-parse HEAD:reference/web-composition/go-host/host.go)"
+          printf 'go-path-test-blob=%s\n' "$(git rev-parse HEAD:reference/web-composition/go-host/decision_path_test.go)"
+          go version
+          go test -count=1 -v ./reference/web-composition/go-host
+          if [[ -n "$(gofmt -l reference/web-composition/go-host/decision_path_test.go)" ]]; then
+            gofmt -d reference/web-composition/go-host/decision_path_test.go
+            echo "Focused Go witness source is not gofmt-clean" >&2
+            exit 1
+          fi

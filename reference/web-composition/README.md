@@ -6,7 +6,11 @@
 
 ## 目的
 
-**HTTP Decision Graphとの境界（2026-11-07限定監査）**：[設計 #3274](../../plan/design/HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md)を参照。`composeRequestPlan`はGuardの契約依存DAGとTerminalイベント**宣言集合**を検査するが、実HTTP分岐の全Terminal PathでのAudit強制を証明するわけではない。[HDG-21 characterisation](plan-check.terminal-gap.test.mjs)では、Action因果祖先にならないTerminal宣言Stepがあっても構成上は受理される点を記録した。限定V8で2/2 PASS。追加の[限定Node CI Workflow](../../.github/workflows/tei-http-decision-characterization.yml)はexact checkoutのPlanner/Test Blobを記録して`node --test reference/web-composition/plan-check.terminal-gap.test.mjs`を実行する。**当該Workflowの実Run成功が確認されるまではNode本実行は未検証**。実Hostの分岐・監査については未検証であり、**このGapを実Hostの監査バイパス脆弱性と断定しない**。E1の検査をRuntime Audit Conformanceに昇格させない。
+**HTTP Decision Graphとの境界（2026-11-08実証更新）**：[設計 #3274](../../plan/design/HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md)を参照。`composeRequestPlan`はGuardの契約依存DAGとTerminalイベント**宣言集合**を検査し、実HTTP分岐の全Terminal PathでのAudit強制とは区別する。[HDG-21 Node Characterization](plan-check.terminal-gap.test.mjs)は、[実Node専用CI #42396614454](https://github.com/hat47x/tei-platform/actions/runs/42396614454)で**completed/success**（当該PR exact HEAD、Go Hostとの縦断適合ではない）。同PRの全体Healthは別SourceのGo整形差によりFAIL、Go vet/test/Workspace validateはPASS。
+
+Go Reference Host側は`NewHost`の`defer Audit`と既存の拒否・loopback・panic試験を持つ。[新しい経路Witness試験](go-host/decision_path_test.go)は拒否7・Action到達3の計10経路についてCallback順序・HTTP status・Audit Stageを比較する。専用CIはNodeとGoの同一checkout限定試験を行い、**このGo追加分のCI結果が確定するまで実Go新テストPASSとは記載しない**。HTTP 202と`Audit.Stage=completed`はHandler処理結果に過ぎず、Business Commit/Effect Observationではない。202送出後のpanicではHost Stageがerrorになり得る。
+
+E1 Plannerの`onTerminal`をRuntime Hostのdefer Auditへ**実Bindingした証拠は依然としてない**。限定PathのCallback観測からすべての未観測経路やProduction IdP・Provider・Client Receiptの安全性を主張しない。
 
 プラグインを組み合わせるとき、HTTP要求の実行前に次の問題を発見できるかを確かめます。
 
