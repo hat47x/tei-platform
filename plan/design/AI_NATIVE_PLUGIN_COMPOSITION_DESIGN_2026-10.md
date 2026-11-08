@@ -859,6 +859,8 @@ Registryは**発見の索引**、Issuerは証拠の発行主体、Host/Ownerは�
 
 ### 27.7 実Selection Matrix・Studio Host入口・T0.5・MCP非必須・L3の実証状態を更新する（2026-11-08、過去の未達記述の訂正・実装着手の接合点）
 
+**後続mainとの照合注記（2026-11-08）**：§27.7の「MCP入口なし」「cmd/tei自身のL3未実施」は当時の観測として保存する。現在はmainにMCP参照Adapter #3403、正式接続対象を採用したADR-0048 #3439、CLI/MCP validate同値の限定実証 #3458、cmd/tei Stage1→Stage2の限定L3 #3440が存在する。ただし製品MCPと実Plugin D1、全Build閉包の資格は成立していない。現在の判定は§27.8を優先する。
+
 本節は[mainにあるPlugin-first計画](PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md)と[Inspector D1 Fit/Gap main #3300](https://github.com/hat47x/tei-platform/pull/3300)の設計正本を変更しない。§27.5/27.6で既に決めた「一つの`inspect`をCLI/Studioで同じSelected Providerから実Callする」を、**今回新しく確認できたGo縦断・実Reference・実CLIテスト**に基づき次の実行順へ更新する。
 
 #### 27.7.1 前回の未確定事項は、どこまで実証済みになったか
@@ -891,3 +893,34 @@ Registryは**発見の索引**、Issuerは証拠の発行主体、Host/Ownerは�
 **次の優先順**：PATH-01の既存read-only照合→PATH-02のStudio Host Service正負対照→PATH-03のCLI二Consumer同一Selected Providerのactual Invoke→PATH-04 Required Source/Ruleを拡張→必要な段階でのみPATH-05の実Build/Effect資格。MCPが必要となるConsumerを特定するまでは新MCP Serverや第二Tool Registryを実装順の前提にしない。Provider/ToolのOS隔離・機密情報送出と保持の資格は既存#2515／TAI #232で別検証する。
 
 **実装・資格状態**：main統合は#3350/#3354/#3360/#3362/#3363の限定Reference／局所Test。Studio Host入口#3371、Command効果不明#3328、MCP第2ラウンドEvidence #3356は各Open/Draft。今回の§27.7は**docs-only**で、Studio/CLI共通実Provider・OS/外部Harness送出拒否・MCP実入口・`cmd/tei` L3・実PG/ReceiptとOwner意味受理を新たに実行したものではない。#1119のGates／ADR-0035のA3/A4を変更せず、第二Host/Resolver/Registry/Scenario正本を導入しない。
+
+### 27.8 共通API採用後のPlugin実呼出しと、Imported Provider原文のSource-only失効を独立させる（2026-11-08、現行mainと他チャットの成熟差分）
+
+**参照正本**：Plugin-first実装順は[main Plugin-first計画](PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md)／[統合#3384](https://github.com/hat47x/tei-platform/pull/3384)、一機能の横断順は[main #3481](https://github.com/hat47x/tei-platform/pull/3481)、共通APIは[採用ADR-0048 #3439](https://github.com/hat47x/tei-platform/pull/3439)、Import原文の失効は[外部参照設計](EXTERNAL_SEMANTIC_ACCEPTANCE_HANDOFF_2026-10.md)／[Draft #3479](https://github.com/hat47x/tei-platform/pull/3479)。本書はDSH由来の反例とPlugin実使用の資格境界だけを所有する。
+
+#### 27.8.1 旧判定の更新と主張の上限
+
+| 対象と現物 | 成立した限定事実 | なお認定できないこと |
+| --- | --- | --- |
+| [MCP参照Adapter #3403](https://github.com/hat47x/tei-platform/pull/3403)／[ADR-0048 #3439](https://github.com/hat47x/tei-platform/pull/3439)／[CLI/MCP validate #3458](https://github.com/hat47x/tei-platform/pull/3458)（main） | 4 read-only操作を実行するstdio MCP参照入口が存在し、validateでは共通投影を使って正常・読み込み失敗・意味エラーの限定CLI/MCP同値をGoで確認。ADR-0048はCLI/MCP/API/Web/Desktopの共通アプリケーションAPIを採用。ローカルHTTP Hostは必須でない | 正式製品MCP全Protocol／実外部H3は未認定。Transport同値・共通API応答一致は、選択されたPlugin Providerの実Call、現在Grant、業務Effectの証拠にはならない |
+| [Source Index版確認 #3477](https://github.com/hat47x/tei-platform/pull/3477)／[Function独立Required #3482](https://github.com/hat47x/tei-platform/pull/3482)（main） | 同一WorkspaceではWorldが同値でもSource Indexだけ変わる原文差を実CLIで判別。sales.order.submitのCapability・Application・Source限定Requiredは、13 CLI Reply／42局所Controlのmain-push CIで成功 | Function宣言が必要範囲で観測済みでもFunction→Query→実Provider Read/Host/Effectは未証明。C1、全Function/Business Closure、Owner受理は別 |
+| [Imported Provider Source-only負例 #3479](https://github.com/hat47x/tei-platform/pull/3479)（Draft） | 別ProviderのImport原文のみが改訂され、ConsumerのWorld・Source Index・Model Revisionは同値のままになり得るというGo反証を追加。Provider原文のSHAと現在参照位置の指紋は別に変わる想定 | focused Go Testとexact-head CIの合否は本節では未認定。Consumer側FP一致からProvider Sourceの現在性、同一Load byte、選択Impl・BOM・現在実行資格を証明しない |
+| [cmd/tei自身の段階Build #3440](https://github.com/hat47x/tei-platform/pull/3440)／[self-build入口 #3463](https://github.com/hat47x/tei-platform/pull/3463)（main） | Stage1生成のcmd/tei実行物がStage2のBuildを駆動する限定L3を実測。旧§27.7の「参照Driverのみ」は歴史状態となった | Goは外部seed、Source Closureはrejected、Build Intentの解決・現在受理／Grant・独立二試行は未成立。入口のqualified:falseは維持。実Plugin BのGo Link/InvokeやVerified BOM 2×2とは別 |
+
+#### 27.8.2 Consumer版とProvider原文版は異なる鮮度軸
+
+最初のread-only Inspectorは、**ConsumerのWorld／Source Index／Model Revision**と、実際に参照・選択された**外部ProviderのSource occurrence／manifest／原文byte／Revision**を別の依存として報告する。Consumer側の指紋が同じでも、Provider Rawが変更されていれば、元のSource引用が現在でも正しいとは限らない。逆に改行だけのRaw変更で業務意味が必ず変わったと断定もしない。
+
+用途ごとの再利用判断は三つに分ける。意味計算の再利用候補、Source引用・Inspector実入出力の鮮度、Build/Plugin BOM・現在Grantの資格である。必要なProvider側の実Loadまたは取得byteの証拠が無ければ、そのClaimだけをunknown／unqualifiedに止める。すべてを一律に再Build、またはConsumerのWorldFP一致を理由にすべて再利用、という両極端を採らない。
+
+| 既存Ownerへ渡す最小反証 | 独立Expectedと停止条件 |
+| --- | --- |
+| **CRS-01 共通APIとProvider呼出し** | 同じWorkspaceの4 read-only操作をCLIとMCP参照で比較し、入口別の成功・検証不合格・失敗符号を照合する。**別証拠**としてauthoring Provider Bを選択した各CLI/Studio CallerがBをactual Invokeした事実を確認。単に同じJSONをBuiltinから返すならD1未達。#3419/#3420/#1251/#1824 |
+| **CRS-02 Consumer内Source-only** | #3477／#3482の実CLIでWorld同値・SourceIndex変更を対照。旧Design Context／Scenarioの引用資格を停止するが、元byteへ戻るA→B→Aで中間変更が不存在と推定しない。#3262/#2514 |
+| **CRS-03 外部Import Source-only** | #3479の別Provider Rawを改訂し、Consumer側両FP不変でもProvider引用がstale/未観測になることを別に検査。Provider実取得byte／同一Loadが確認できるまで実Plugin選択・Build/BOM/Source引用を無条件にqualifiedとしない。#1570/#1017/#1251/#3267 |
+| **CRS-04 L3とPlugin実収録** | cmd/tei L3の限定正例とSource Closure rejectedを保持。選択Provider Bの実Go Link/Callを独立試験し、Self-buildをD1やRuntime Grantの合格に流用しない。#2831/#1251/#3267 |
+| **CRS-05 外部Harnessの広告・送出** | [main #3444](https://github.com/hat47x/tei-platform/pull/3444)が測る広告Tool名は実Tool呼出しではない。[main #3451](https://github.com/hat47x/tei-platform/pull/3451)／[Open #3470](https://github.com/hat47x/tei-platform/pull/3470)のLocal MockではSession LogがmaxBytes（**生byte**）で分割され、過小値ではfieldなしでもSession completedになる。Session Log非送出だけで暗黙Context・モデル入力・別Sinkへの非送出を証明しない。実OS拒否・実Provider保管は未実証。#2509/#2515／TAI #232 |
+
+**実装順**：既存#3384／#3300の単一read-only Inspector D1aから、exact Provider B選択→CLI・Studio実B呼出しを先に成立させる。MCP/HTTP/Studioの共通API投影を新しいPlugin Resolverとして実装しない。次に一つの外部Import Providerの原文証拠を同一Attemptへ取り込み、Consumer版とProvider版の二軸を照合。その後Build／Trait／BOM／現在Grantを別々に受け入れる。外部Harnessは[MASTER_PLANの増分効果検証案 #3487](https://github.com/hat47x/tei-platform/pull/3487)のB0=決定的CLI/API、B1=既存HarnessのSkill比較、B2=薄いAdapterを用い、実測されない独自Harnessの先行構築を要求しない。
+
+**現在の状態**：#3403/#3439/#3458/#3477/#3482/#3440/#3463/#3444/#3451はmainの限定実績。#3479/#3470/#3487はOpen/Draftの別Owner結果であり、承認済み成果と呼ばない。本節はdocs-only。実D1 Provider Bの二Consumer呼出し、Import Sourceの同一Load完全閉包、製品MCP全適合、H3実配送・実OS/Egress拒否、実BOM 2×2、Host実Grant、Owner意味受理は今回NOT RUN。第二Runtime／Host／Registry／Resolver／Scenario正本は追加しない。
