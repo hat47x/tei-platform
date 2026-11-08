@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -56,12 +57,17 @@ func digest(b []byte) string {
 	return "sha256:" + hex.EncodeToString(sum[:])
 }
 
+// safeRelative accepts only a nonempty, slash-separated, workspace-relative
+// path that is already normalized. It cleans with the slash-based `path`
+// package, not `path/filepath`: filepath.Clean rewrites `/` to `\` on Windows,
+// so a caller-provided `internal/validation/validation.go` would never equal
+// its own cleaning result and every target would be rejected there.
 func safeRelative(p string) (string, error) {
 	if p == "" || filepath.IsAbs(p) || filepath.VolumeName(p) != "" || strings.Contains(p, "\\") {
 		return "", errors.New("target must be a nonempty workspace-relative slash path")
 	}
-	cleaned := filepath.Clean(p)
-	if cleaned == "." || cleaned == ".." || strings.HasPrefix(cleaned, ".."+string(filepath.Separator)) || cleaned != p {
+	cleaned := path.Clean(p)
+	if cleaned == "." || cleaned == ".." || strings.HasPrefix(cleaned, "../") || cleaned != p {
 		return "", errors.New("target path is not normalized or escapes workspace")
 	}
 	return cleaned, nil
