@@ -310,3 +310,25 @@ Server/ClientのGraph構造、HTTP Adapter、Conformance EvidenceをBOMに**リ�
 **P0の接続**：#3262からRequired Source/Rule/Relation/Loader/Targetの閉包を得る→main #3337/#3350/#3363の現行`Capability Report`を**現在の規則で再生成**→#951の合法解決/Version Lock→#1251の実Inspector Provider A/B→#1180/#2514の独立Expectedと同一Attempt/Artifact→#3267の限定BOM行。BOM発行は本節を読んだだけでは可能にならない。
 
 **資格上限**：#3379は過去/現在のReference Ruleの**読取結果を比べるだけ**。実Provider選択、Go実Link/Invoke、CLI/Studioの二Consumer、Runtime/Grant、Trusted Conformance、BOM配布は**NOT RUN**。#3297自体もmainからdivergeしたDraft・未統合であり、新Targetや新Hard Gate、第二Resolver/Runner/Cache/Authorityを追加しない。
+
+
+## 12. BOM再利用の三つの鮮度境界と実Call-site依存（2026-11-08／現mainへの引継ぎ）
+
+[#3490](https://github.com/hat47x/tei-platform/pull/3490)は、**現在のmain**から分岐したPlugin-first計画§18と、Capability Coverageの歴史Rule比較Go回帰の統合Draftである。旧[#3379](https://github.com/hat47x/tei-platform/pull/3379)はbaseが古く、Goテスト/vetが通っても`coverage_test.go`のgofmt差でHealth失敗し、現mainの計画更新を上書きしないようclosed/unmergedで引継いだ。歴史raw Evidenceは変更しない。
+
+BOMの`reusable/needs-recheck`は少なくとも**三つの異なる鮮度判断**を含む。
+
+1. **Consumer Managed Source**：main統合[#3477](https://github.com/hat47x/tei-platform/pull/3477)はWorld同値でもSource Index FPが変わり得るSource-only改訂を、実TEI CLI／Scenario Contextで有限実証した。外部Tool完全配送・全Source原子的Snapshotは別。
+2. **Imported Provider Source**：[Draft #3479](https://github.com/hat47x/tei-platform/pull/3479)はConsumer WorldとSource Indexが不変でも外部Providerのraw byteとLocateImportedSource fingerprintが変わり得る実Go負例を提案。exact-headの合格・Provider Nested Load原子性・Build Inputの実消費はまだ必要。Consumer内FPを外部Plugin依存全体のハッシュと扱わない。
+3. **Producer Rule/Implementation**：main統合#3337の履歴Capability Coverage（当時6/12未選択）は、main #3350/#3363のDB Capability選択Rule変更後の`selected/unselected`と同じ意味の資格として使えない。Schema/RuleVersionラベルが同じでも`ruleFingerprint`差分に基づき再導出し、影響する正確なProvider/Environment/Targetだけ再検査する。
+
+さらにmain統合[#3446](https://github.com/hat47x/tei-platform/pull/3446)の静的Caller調査では、`servicehost.NewSelectedServiceCarrierInvoker`の非試験呼出し元が0だった。既存Consumerへ選択済みProviderが実配線された証拠がない以上、上の三つのFPが全部一致しても、実CLI/Studio Invoke資格・Verified BOMには達しない。
+
+**VCB-F01〜F05（#1180/#2514へ渡す、NOT RUN）**：
+- **F01** Consumer内Sourceだけ変更・World不変→Source IndexとScenario Requiredを再照合。
+- **F02** Consumer World/Index不変、Imported Provider rawのみ変更→必要Reference Source occurrence/fingerprint/actual consumptionを再照合。ない場合`unverified`。
+- **F03** RuleVersion文字列不変、Rule Fingerprint/選択結果変更→旧Policy由来SelectionをBOMに流用しない。
+- **F04** 無関係な未選択Plugin資産だけ変更→実Closureが非干渉なら全組合せを誤失効させない。
+- **F05** CLI/Studio双方のtyped Result一致・旧Builtin直呼び→実Selected Provider/Host側Callsite未観測ならBOM実呼出しのClaimは成立しない。
+
+**組込み順**：#3262の目的相対Required/Source Closure→#951/#1016 exact SelectionとRule Producer鮮度→#1251 D1実Read-only Inspector Provider/実Host-origin Call→#943/#2600実Build/Toolchain/依存Closure→#1180/#2514同Target/Attempt・独立Expected→#3267限定BOM。外部Referenceの意味受理・現在Grant/Disclosure・Publisher保証は引き続き別。**D1と4組合せ実E2E、Conformance、BOM発行は未実施**。#3297はmainとdivergedしたDraftなので、現main §18で先に受入判断し、同内容を競合した長命PRから無確認mergeしない。
