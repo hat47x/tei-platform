@@ -111,6 +111,7 @@
 
 - [DSH外部Harnessの再開と既送出Session Log](DSH_H6E7_RESUME_AFTER_DISCLOSURE_2026-11-07/README.md)（#2515 H6-E7・#2509。Raw canaryを読んだSessionを再開すると、Session Logは水位`27`から進み再送されない一方、モデル入力には過去の会話が再構成されcanaryが再び載る。Grant失効・ACK不明replayはNOT RUN）
 - [DSH外部Harnessが読んだ内容の保存先棚卸し](DSH_H6E6_SINK_INVENTORY_2026-11-07/README.md)（#2515 H6-E6・#2509。1 Sessionで読んだ合成canaryが、headless stdoutと永続Session Logの2つに残り、`storages`・`cache`・`attachments`には残らなかった。永続Session Logは9連結zstd frameで、単一frame展開では見落とす。Issue/CI/外部ProviderのsinkはNOT RUN）
+- [DSH外部Harness上での生成候補の逸脱試行](DSH_H6E5_CANDIDATE_ESCAPE_2026-11-07/README.md)（#2515 H6-E5・#2509。合成候補から、非許可の隣接Sourceは読め、子Processは起動でき、自己書換えはConstrainedLanguageの初期化失敗で止まった。自己書換えが書込みPolicyで拒否された証拠ではない。workspace-writeでの再試行・D1→D2・Selector同一Source証明はNOT RUN）
 
 - [外部Go Module入力の明示opt-in受入](TEI_GO_EXTERNAL_MODULE_ADMISSION_OPTIN_2026-11-07.md)（既定の拒否方針は不変のまま、供給を明示した呼び出しだけが外部Moduleメンバーを含む閉包を受ける参照実装。受入記録に方針・根拠・拒否理由を残す。SB-B / 案C / #2831）
 - [起動主体と被起動主体を分けたBuild駆動の記録](TEI_GO_BUILD_STAGE_DRIVER_2026-11-07.md)（`cmd/tei`を子プロセスとして駆動し、invoker/invokedの実行ファイルdigest・argv・exitと、子の主張とディスク実物のartifact digestが一致することを記録。L3・受入・権限は未確認。SB-C0/C1 / #2831）
@@ -121,4 +122,5 @@
 
 - [TEI自身の設計をCLIで扱う実測 第2ラウンド](TEI_DOGFOODING_ROUND2_2026-11-08/README.md)（#3149。現行main `4fd88c2b1` の単一実行物（SHA-256 `16c9090d…`）で再実測し、第1ラウンドの10課題のうち7件が解消、D-3・D-9・D-10 が残ることを記録。MCP入口は未実装のため CLI 経路のみ）
 
-- [外部Go Module入力の明示opt-in受入](TEI_GO_EXTERNAL_MODULE_ADMISSION_OPTIN_2026-11-07.md)（既定の拒否方針は不変のまま、供給を明示した呼び出しだけが外部Moduleメンバーを含む閉包を受ける参照実装。受入記録に方針・根拠・拒否理由を残す。SB-B / 案C / #2831）
+
+- [TEIのread-only MCP AdapterによるCLI/MCP一致の実測](TEI_DOGFOODING_MCP_ROUND_2026-11-08/README.md)（#3400・#3149。参照実装のAdapterで `model catalog`・`inspect`・`trace`・`validate` をMCPから呼び、CLIと同じ値（`worldFingerprint`・`snapshotFingerprint`・`schemaVersion`）になることを確認。製品のMCP契約・実Host・認可・外部送出はNOT RUN）
