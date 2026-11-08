@@ -347,6 +347,28 @@ P-1のchildが実装できたとして、観測できるのは次である。
 
 したがってP-1を実装しても、`l2bClaimed`は`false`のままでなければならない。**次に詰めるのは(c)である。**
 
+### 4.11 (c)をどう実装したか（2026-11-09）
+
+(c)を「plan fingerprintとartifact digestを一つの検証済み束ね型にする」として実装した。`planCrossCheck`とは**別の欄**にしたのが要点である。計画の一致とartifactの結び付けを同じ欄に混ぜると、`matched`を(c)の代わりに読ませてしまう。
+
+| 材料 | 出所 | entryが独立に確かめたこと |
+| --- | --- | --- |
+| 計画のidentity（Plugin・outputKind・target・profile） | 解決childのreceiptの`plan`本体 | 要約欄ではなくplan本体から読む |
+| builderの`planFingerprint` | childのstdout | 解決childの値と一致するか（不一致は`mismatched`） |
+| builderの`artifactDigest` | childのstdout | **ディスクのバイト**と一致するか |
+
+これらから`internal/plugin`の`BuildArtifactLock`を組み立て、`Validate`と`BuildArtifactLockFingerprint`を通す。lockが検証を通らない、またはディスクが読めない場合は`unperformed`であり、`bound`として扱わない。
+
+| `state` | 意味 | `ok`への影響 |
+| --- | --- | --- |
+| `bound` | 検証済みlockが組め、artifact digestがディスクと一致した | 影響なし |
+| `mismatched` | 計画fingerprintが解決値と違う、またはartifact digestがディスクと違う | **`ok=false`・`failureCause`** |
+| `unperformed` | receiptが無い／childが申告しない／lockが検証を通らない／ディスクが読めない | 影響なし（理由を`unperformedReason`へ） |
+
+**`bound`でもL2-bではない。** lockに載る`planFingerprint`と`artifactDigest`は**どちらもbuilder childの自己申告**である。entryが独立に確かめたのは、artifact digestがディスクと合うことと、lockが`internal/plugin`の検証を通ることだけである。よって`l2bClaimed`は`false`のままであり、境界文がそう述べる。
+
+**(c)を`bound`で満たしたと読まないこと。** (c)が本来問うのは「**その計画がそのartifactを生んだか**」であり、`bound`が示すのは「**その計画fingerprintとそのartifact digestが一つのlockとして整合し、digestが実体と合う**」ことである。この差は、builderが自己申告を偽らないという前提に依存している。前提を観測で置き換えるには、builderの出力そのものをentryが検証する経路（例: builderが`plugin.LockedBuild`を自分で作って返す）が要る。
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
@@ -395,9 +417,10 @@ P-1のchildが実装できたとして、観測できるのは次である。
 - [x] `-intent`（I-2）の実装。SC0-01〜05は外形の拒否条件として、SC0-13・SC0-14は`intentBinding`と`planCrossCheck`として実装・実試験済み（§4.9）
 - [x] §4の外形（`-supply`・`-state`・`-output`・`qualified`欄）の実装（[#3463](https://github.com/hat47x/tei-platform/pull/3463)・[#3476](https://github.com/hat47x/tei-platform/pull/3476)）
 - [x] 計画突合の3状態を実プロセスで観測（[記録](../evidence/TEI_GO_SELF_BUILD_PLAN_CROSS_CHECK_ACTUAL_2026-11-09.md)、`3a4ddeba6`）
-- [x] 既存toolの走査と、`unperformed`の実質的な原因の特定（§4.10.1）
-- [ ] **P-1**（`internal/plugin`の`BuildPlan`を消費し、artifactを書き、`planFingerprint`を返すchild）の実装と、実プロセスでの`planCrossCheck=matched`観測
-- [ ] **(c) artifactがその計画の出力であること**の観測（`plugin.LockedBuild`のような束ね型を使う。§4.10.3）
+- [x] **P-1**（`internal/plugin`の`BuildPlan`を消費し、artifactを書き、`planFingerprint`を返すchild）の実装と、実プロセスでの`planCrossCheck=matched`観測（[記録](../evidence/TEI_GO_SELF_BUILD_PLAN_MATCHED_2026-11-09.md)、`e4b478581`）
+- [x] (c)の一歩目（`planArtifactBinding`。検証済みlockで計画fingerprintとartifact digestを束ね、digestをディスクと突き合わせる。§4.11）
+- [ ] `planCrossCheck=matched`と`planArtifactBinding=bound`の**同時**実測
+- [ ] builderが自分で`BuildArtifactLock`を作って返す経路（自己申告への依存を減らす。§4.11の末尾）
 - [ ] D-1（catalogの`scope`拡張）を採るかどうかの契約判断（採る場合のみ、catalogの広告と実応答の一致を照合へ載せる）
 
 **A-1（`gobuilder`移動）は採らないため、影響範囲の洗い出しは終了条件から外した。** 29ファイルの内訳は[記録](../evidence/TEI_GO_INTERNAL_RULE_AND_BUILDER_MOVE_2026-11-07.md)として残す。I-1（intent解析の`internal/`への切り出し）も、I-2を既定案にしたため本稿では行わない。
