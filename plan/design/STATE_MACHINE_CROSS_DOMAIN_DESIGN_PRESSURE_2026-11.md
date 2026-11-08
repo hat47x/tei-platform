@@ -380,6 +380,47 @@ Itemは未整理の情報を乱暴に保持してよい一般の単位であり�
 
 **Claim ceiling**：これは既存GitHub Issue/採用済み境界と過去会話を照合した文書上の実装順/反証計画であり、REAの実解析、SUIからTEIの実翻訳・Parser/Owner受理、SHO実Writer、TEI生成SDK、SEI実Message、EKI実Task、独立Provider Commit/Receipt、Ontology Twinはこの追補では**すべてNOT RUN／NOT ACCEPTED**。将来Gateの技術成功をOwnerの意思決定や本番の実権限へ昇格しない。
 
+
+### 7.14 外部Evidence・意思決定Artifact・Transportの「到達証拠」と実権限を分ける受入票（2026-11-08）
+
+<!-- tei-20261108-handoff-claim-witness-and-real-path-admission -->
+
+§7.13でSUI/REA→TEI→SEI→実Host/EKIという**責務**を確定した。今回は「それぞれの境界で何が実際に到達・解釈され、何がまだ起きていないか」を同一Attemptで示す受入列へ絞る。新たなTransport、Decision Schema、Evidence Registryを実装する計画ではない。単なるメッセージ送信、静的Analysis、選択Plugin、テストFixtureのPASSを後段の成功へ誤伝播させないことを目的にする。
+
+**現行の具体的な実装差分（各Issueの正本にのみ帰属）**：
+
+1. **外部解析の二経路**：[TEI #3394](https://github.com/hat47x/tei-platform/issues/3394)はREAのRaw Evidence読取 **T1-A External Observation** と、専門家が選択・翻訳した候補をTEI Authoring Sourceへ投入する **T1-B** を区別している。標準Authoringの *.tei.md 方針は[main #3030](https://github.com/hat47x/tei-platform/pull/3030)で設計採用済みだが正式Reader/Parserの製品接続は未完成。REA JSONを拡張子だけ変えて正式TEI Sourceにしたことにはならない。T1-AはT1-Bを待たず実証できる一方、旧Runtimeとの同値はさらに別のT2である。
+2. **必要設計情報の到達**：[TEI #3262](https://github.com/hat47x/tei-platform/issues/3262)/[merged #3354](https://github.com/hat47x/tei-platform/pull/3354)の限定11 Reply・3 Required Rule・32 Consumer Controlsは、読取り結果の欠落を検出する基線。完全なTEI Function/Business closure、atomic Snapshot、外部Harness配送まで証明したわけではない。実Source/Provider版とReplyの最終受領を独立に確認する。
+3. **SEIに届くこととDecision recordになること**：[SEI #785](https://github.com/hat47x/sei-cognition/issues/785)のTAI由来Decision投影artifactは、現在のIssueでSEI内部契約・実使用箇所・Decision recordへの変換が未決。平坦なRecordにbasis_refs/scope等の必須根拠が無いまま「受理済みSEI Decision」へ自動変換することを禁じる。先行するDecision Inquiry自体も[TEI #3475](https://github.com/hat47x/tei-platform/issues/3475)のO0設計比較にとどめ、実Messageは後続。
+4. **EKI Data Deliveryの基線**：[EKI #753](https://github.com/hat47x/eki-fabric/issues/753)は固定6 EventのReference意味と改変負例を[merged #785](https://github.com/hat47x/eki-fabric/pull/785)で試験したが、**Local IPC/Connectの実Data Adapter配送は未検証**。実Lease/Grant/Transport遅延・実Payload受領やTEI Business Receiptではない。通信方式の採否は[#754](https://github.com/hat47x/eki-fabric/issues/754)で実Adapter計測後とし、本PRから先行してWebRTC/Transportを選ばない。EKI外部Task Input/Result取得は[#112](https://github.com/hat47x/eki-fabric/issues/112)の独立した未解決Contractである。
+
+**同一Attemptの「ClaimとWitness」の最小列**（製品Schemaでなく既存#1163/#3262の受入票に追加する比較軸）：
+
+| 対象のClaim | Positive Witnessに必要なもの | 誤った代用品 |
+| --- | --- | --- |
+| 外部Sourceを観測 | 元Source cohort/byte・実解析Provider/argv/版・実Bundle readback・coverage/unknown | REA summary、JSONの名前変更、Tool exit 0のみ |
+| TEI正式Authoringとして解釈 | 選択された *.tei.md byte/spanの正式Loader consumed→Parser/Role/Source Index結果＋意味受理の独立記録 | Markdownファイルが保存されている／旧 *.tei ReaderがPASS |
+| 必要なDesign Contextを取得 | 用途・対象相対の独立Required集合とObserved Loader/Rule/Relation/Anchor、分割終端・実Consumer受領 | 同一Fingerprint、catalog件数、11 Replyの一部だけ |
+| 判断InquiryがSEIへ到達し判断された | Inquiry scope/basis/unknown/Request版と、実受信→受理/保留→Decision Recordを独立観測 | TAI Projection JSON、sent ACK、単なるDecision文 |
+| EKI上で実Data/Taskが配送された | 実AdapterのInput/Output byte/digestとAttempt/Lease epoch・Result retrieval・実Consumer受領 | Reference Test 7 PASS、Task admitted/completed、Fixtureのみ |
+| 実業務Actionが完了 | 現在Grant/Target/ExpectedVersion、Owner write Tx/Receipt、独立Provider ReadとCompletion/Handoff | SEI allow、EKI Event fresh、Replicaの空結果 |
+
+**反証候補（HC-01〜08、すべて今回の製品実試験NOT RUN）**
+
+| ID | Pressure | 独立Expected／受入先 |
+| --- | --- | --- |
+| HC-01 | REAのRaw JSONを order.tei.md として保存 | T1-AのEvidenceを残すがT1-B正式Parse成功/Meaning受理を拒否。#3394/#2621 |
+| HC-02 | 外部Source二件が別時点・一方partial、SHO文書だけ最新版 | 同一Business Snapshotとしない。文書Revision≠Source/Meaning current。#3394/SHO #6 |
+| HC-03 | 11 Reply内のRule詳細が一件欠落、または外部Toolで途中切断 | #3262のRequired/Observed不足と受領欠落を区別し、完全なContext成功にしない |
+| HC-04 | SEI向けArtifactにDecision文はあるがbasis_refs/scopeがない | #785決定前には正式Decision/採用済みMeaningへ変換しない。問合せは保留/未対応 |
+| HC-05 | SEIにACKされた後にRule/Source版が変わり旧allowが返る | Reply受領は記録するが現在Grant/Owner writeを禁止し、影響分だけ再審査 |
+| HC-06 | EKI Reference意味のテストはPASS、Local IPC/Connect実Adapter未接続 | Reference PASSのみ。実Delivery/Latency/Transport選定はNOT RUN。#753/#754 |
+| HC-07 | 旧Lease epochのResultが接続後に到着、freshと誤判定される | Identity/epoch/Attemptを検査し、旧Claimを受理しない。実Provider Effect有無は別 |
+| HC-08 | EKI Task.completedまたはSEI Decision済、外部Output/Owner DB Receiptなし | Job/Decisionの履歴は保持、Owner Completedを保留。#1130/#1174/#1163 |
+
+**実装順と停止条件**：P0は既存§7.12のRead-only Required/Observed、Plugin実呼出、一Function実Provider Read、実Effectの順を維持。今回まず **HC-01/03** を同一公開合成Sourceについて「External Observation T1-A、Authoring Admission T1-B、Design Context受領」の別列に置く試験設計へ接続する。HC-04/05のSEIは#3475のO0契約比較、HC-06/07のEKIは#753の実Data Adapterと#112の外部API Ownerが実証してから連結する。実SEI Handoff/新Ontology SDK・Simulation/デジタルツインの着手はセルフビルド/SUI基礎の既存Gateを越えない。TEIの実行資格が不明ならread-only観測だけを保持して止める。
+
+**証拠の上限**：本節はGitHub現行OwnerのIssue/PRと設計本文の照合であり、今回のREA実CLI、TEI Authoring Parser、Source→SEI実転送、EKI実Data Adapter、実PG/Host Provider、組織によるDecision受理・製品CIは**NOT RUN／NOT ACCEPTED**。他Repoのテスト結果をこのDraftのPASSとして再主張しない。Source/Schema/Transport/Grant変更後の旧Witnessを現在資格へ自動再利用しない。
 ## 8. 今回の結論と検証の状態
 
 **成熟した設計入力として置くもの**：状態機械の適用対象は業務に限らない／図・状態表・遷移表・交差マトリクスは同一意味を異なる形で投影する／意味Core・実行・保存・UI・文書を直結せず明示Bindingする／業務IFを全部置換しない／実Runtimeの一般化は別の採用判断とする。
