@@ -151,3 +151,6 @@
 
 # Subagent egress observations are hashed as raw bytes.
 /plan/evidence/DSH_SUBAGENT_EGRESS_2026-11-09/** -text
+
+# Subagent fork observations are hashed as raw bytes.
+/plan/evidence/DSH_SUBAGENT_FORK_2026-11-09/** -text
