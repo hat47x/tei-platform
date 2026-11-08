@@ -1,30 +1,28 @@
-# `planCrossCheck=matched`と`planArtifactBinding=bound`の同時実測（§4.11）
+# `matched`と`bound`を同じ1回の試行で観測する（§4.11の同時実測）
 
-[#2831](https://github.com/hat47x/tei-platform/issues/2831) のSB-C0 §7が残作業に挙げた**「`matched`と`bound`の同時実測」**を、1回の試行で観測した記録です。
+[#2831](https://github.com/hat47x/tei-platform/issues/2831) のSB-C0 §4.11が残作業とした「`planCrossCheck=matched`と`planArtifactBinding=bound`の同時実測」を行った記録です。
 
-**L2-bは依然として成立しません。** 本記録が増やすのは「計画突合と計画・成果物の結合が、同じ試行で同時に成立した」ことです。
+**L2-bは依然として成立しません。** `l2bClaimed`は`false`のままです。本記録が増やすのは、**計画の一致と計画とartifactの結合が、同じ1回の`tei self-build`で同時に成立すること**です。
 
-## これまでとの違い
+## なぜ「同時」が要るか
 
-| 記録 | 観測したもの |
-| --- | --- |
-| [`TEI_GO_SELF_BUILD_PLAN_MATCHED_2026-11-09.md`](TEI_GO_SELF_BUILD_PLAN_MATCHED_2026-11-09.md) | P-1のchildで`planCrossCheck=matched` |
-| `§4.11`（[#3638](https://github.com/hat47x/tei-platform/pull/3638)） | `planArtifactBinding`の実装。単体試験のみで、実プロセスの`bound`は未観測 |
-| **本記録** | **同じ1回の試行で`matched`と`bound`の両方** |
+`planCrossCheck`と`planArtifactBinding`は別の欄であり、別々の試行で確かめても「同じ試行で両方が成り立つ」ことは言えません。片方だけが成り立つ組み合わせ（計画は一致したがartifactへ束ねられない、逆に束ねられたが計画が一致しない）は、**読み違えの余地**を残します。同時に観測することで、その余地を狭めます。
 
 ## 実行条件
 
 | 項目 | 値 |
 | --- | --- |
-| checkout | `origin/main` = `04e3089bb`（§4.11統合後） |
+| 作業領域 | 隔離worktree（`origin/main` = `dff9f0cd0`） |
 | OS / Go | WSL2 Ubuntu 22.04、`go1.27.3 linux/amd64` |
-| 宣言 | `outputKind: plugin-package`のprobe宣言（`plugin tei.plugin.mb_probe v1.0.0`） |
-| 解決child | `tools/reference-build-authoring-intent`、`sha256:90865a1a…` |
-| builder child | `tools/reference-plugin-package-build-child`（P-1）、`sha256:c83c7a1d…` |
-| 計画 | 解決childのreceiptから`plan`を取り出して`-plan`で渡す（`planFingerprint=6ab80253…`） |
-| state | `/tmp/mb/state`（1回の試行で独立） |
+| `tei` 実行物 | `sha256:79e85bcfbb0e32a8be67f6c39d033f4750d3b6ee45e0b09a4d5cc36c829c9bda` |
+| 解決child | `tools/reference-build-authoring-intent`、`sha256:abb0f12b33f2b6e5af68820210a3ab3386a08b0e4a0baeb15bd47b09e6244acd` |
+| builder child | `tools/reference-plugin-package-build-child`、`sha256:b3646a6aab02e675fd7595ee7dadea40d4786d602a6799d3edc4e5725ba677fd` |
+| 宣言 | `outputKind: plugin-package`のprobe宣言（`plugin tei.plugin.both_probe v1.0.0`） |
+| カタログ | `tools/reference-build-authoring-intent/testdata/catalog.json` |
+| 解決計画fingerprint | `2e51544f8daad6d60a0c5b30b85e71cd084242fda83be1b1bbc226fff43262d5` |
+| state | 試行ごとに独立（`/tmp/both/state`） |
 
-`tei`実行物は`sha256:8ccddd91…`。builderのargvは`-plan <plan.json> -plugin <plugin.tei> -artifact-out <package.json> -state <state>`で、entryが`-artifact-out`と`-state`を付けたことを記録に残しています。
+宣言は固定fixture（`testdata/intent.json`、`outputKind: runtime-artifact`）ではなく、**`outputKind: plugin-package`のprobe宣言**を使いました。builder childが配布物を作るためです。
 
 ## 観測結果
 
@@ -32,48 +30,47 @@
 | --- | --- |
 | `ok` | `true` |
 | `qualified` | **`false`** |
-| `planReceipt.state` | `resolved`（`authority: derived-cache`） |
-| `planReceipt.receiptDigest` | `sha256:ab9f2680…` |
-| `planReceipt.planFingerprint` | `6ab80253f55da1634bb9a5079813584e4938f21eb4ff387e508992aad8ba3f48` |
-| `planRecompute.state` | `matched`（再計算値が名乗りと一致） |
-| **`planCrossCheck.state`** | **`matched`**（`matched=true`, `l2bClaimed=false`） |
-| `planCrossCheck.builderReportedPlanFingerprint` | `6ab80253…`（解決計画と同じ） |
-| **`planArtifactBinding.state`** | **`bound`**（`matched=true`, `l2bClaimed=false`） |
-| `planArtifactBinding.artifactDigest` | `sha256:376e2e77…` |
-| `planArtifactBinding.artifactDigestOnDisk` | `sha256:376e2e77…`（**ディスク実体と一致**） |
-| `planArtifactBinding.lockFingerprint` | `581c02e5…` |
+| `planReceipt.state` | `resolved` |
+| `planReceipt.planMatchesExpected` | `true` |
+| `planRecompute.state` / `matched` | `matched` / `true` |
+| **`planCrossCheck.state` / `matched`** | **`matched` / `true`** |
+| `planCrossCheck.l2bClaimed` | **`false`** |
+| **`planArtifactBinding.state` / `matched`** | **`bound` / `true`** |
+| `planArtifactBinding.planFingerprint` | `2e51544f…`（解決計画と同一） |
+| `planArtifactBinding.artifactDigest` | `sha256:c2164a594e91edde3f2f451767ad07509d0286a56b94e5491a8e10254af5117b` |
+| `planArtifactBinding.artifactDigestOnDisk` | **同じ値**（ディスクのバイトと一致） |
+| `planArtifactBinding.lockFingerprint` | `e8c3c549b75317bb22773ae65ede60c46284c82d953cd7c6dae076f9403d3d3e` |
+| `planArtifactBinding.l2bClaimed` | **`false`** |
+| `intentBinding.intentByteCheckPerformed` | `false` |
 | `childRun.artifactCrossCheckMatched` | `true` |
-| `childRun.invoked.exitCode` | `0` |
 
-**artifact照合・計画突合・計画と成果物の結合が、同じ1回の試行で同時に成立しました。** §4.10.2でP-3（childを2つに増やす）を避けた理由（1 child・1 artifactの契約維持）を、実際に満たしています。
+`artifactCrossCheckMatched`、`planArtifactBinding.artifactDigest`、`artifactDigestOnDisk`はすべて同じ値です。**childの申告・lockの記載・ディスクの実体が三者一致しています。**
 
-## この同時成立が言えること・言えないこと
+## この同時観測が言えること
 
-言える。
+- 同じ1回の試行で、計画の一致（`planCrossCheck=matched`）、receiptの内部整合（`planRecompute=matched`）、計画とartifactの検証済み結合（`planArtifactBinding=bound`）が**同時に成立した**
+- `bound`のartifact digestは、childの申告とディスクの実体が一致した
 
-- 解決childの計画と、builder childが実際に読み込んだ計画の照合値が一致した
-- その計画fingerprintと、builder childが書いたartifactのdigestを**1つの検証済み`BuildArtifactLock`として束ねられ**、lockが`internal/plugin`の検証を通った
-- artifactのdigestはディスクのバイトと独立に一致した
+## この同時観測が言えないこと
 
-言えない。
-
-- **L2-b（解釈の成立）**。`l2bClaimed`は`planCrossCheck`も`planArtifactBinding`も`false`のまま。理由は次の二点
-  - **`intentByteCheckPerformed=false`**。builder childは`-plan`のファイルを読んでおり、**entryが保持した宣言そのものではない**。宣言と計画の結び付けは`intentBinding`の範囲で、今回は成立していない
-  - lockに載る計画fingerprintとartifact digestは、**どちらもbuilder childの自己申告**である。entryが独立に確かめたのは「digestがディスクと合う」「lockが検証を通る」だけ
+- **L2-b（解釈の成立）。** `l2bClaimed`は三つの欄すべてで`false`である
+  - builder childが読んだのは`-plan`のファイルであり、**entryが保持した宣言そのものではない**。この試行でも`intentByteCheckPerformed=false`（childが宣言byteを申告しない）
+  - (c)が本来問う「**その計画がそのartifactを生んだか**」は`bound`では出ない。lockに載る二つの値はどちらもbuilder childの自己申告であり、entryが独立に確かめたのは「digestがディスクと合う」「lockが`internal/plugin`の検証を通る」ことだけである（§4.11）
 - 意味の受理・Runtime Authority・供給のTrust・Seed Trust
+- Windows、別Go版
 
 ## 次に詰めること
 
-設計§4.11の末尾が挙げた**「builderが自分で`BuildArtifactLock`を作って返す経路」**である。lockの二つの値をbuilder自身が自分の内部状態から作れば、entryが組み立てる自己申告の束ねではなくなる。あわせて`intentBinding`の(a)（builderが読んだ宣言byteの申告）を埋める必要がある。
+§4.11の末尾が挙げた**builder自身が`BuildArtifactLock`を作って返す経路**である。今はentryが二つの自己申告からlockを組むため、builderが申告を偽れば`bound`は成立してしまう。builderが自分でlockを`Validate`して返せば、少なくとも**そのプロセス内での整合**はbuilder側の責任で証明される。
 
 ## 再現に使ったprobe宣言
 
-`tools/`の固定fixtureは`outputKind: runtime-artifact`で、P-1のchildが配布物を作れない。この実測では次の2ファイルを用意した（カタログは`tools/reference-build-authoring-intent/testdata/catalog.json`をそのまま使用）。
+固定fixture（`testdata/intent.json`）は`outputKind: runtime-artifact`で、P-1のchildが配布物を作れない。この記録では次の2ファイルを用意した（カタログは`tools/reference-build-authoring-intent/testdata/catalog.json`をそのまま使用）。
 
 ```json
 {
   "formatVersion": 1,
-  "subject": {"kind": "plugin", "id": "tei.plugin.mb_probe", "version": "1.0.0", "definitionSource": "definition"},
+  "subject": {"kind": "plugin", "id": "tei.plugin.both_probe", "version": "1.0.0", "definitionSource": "definition"},
   "sources": [{"kind": "plugin-definition", "id": "definition", "ref": "plugin.tei"}],
   "builder": {"contract": "tei.plugin-build", "compatibleMajor": 1},
   "recipe": {"kind": "go-package", "entrypoint": "plugin.tei"},
@@ -84,9 +81,9 @@
 ```
 
 ```text
-plugin tei.plugin.mb_probe v1.0.0 {
+plugin tei.plugin.both_probe v1.0.0 {
     runtime builtin
-    provides deployment-executor runtime.mb_probe {
+    provides deployment-executor runtime.both_probe {
         action application-start
     }
 }
@@ -98,18 +95,21 @@ plugin tei.plugin.mb_probe v1.0.0 {
 2. `tei self-build`を`-intent-resolver`付きで起動し、builder childには`-child-arg`で`-plan`と`-plugin`を渡す
 3. 出力の`planCrossCheck`と`planArtifactBinding`を読む
 
+`planCrossCheck`と`planArtifactBinding`は別の欄なので、**片方だけが成り立つ組み合わせ**（計画は一致したがartifactへ束ねられない、逆に束ねられたが計画が一致しない）を同時観測で排除できる。
+
 ## 検証
 
-- `go build ./cmd/tei`・`go build ./tools/reference-plugin-package-build-child`：PASS
-- 解決childの実行：exit 0、`planFingerprint=6ab80253…`、`outputKind=plugin-package`
-- `tei self-build`の実行：exit 0、`ok=true`、`planCrossCheck=matched`、`planArtifactBinding=bound`
+- `go build ./cmd/tei`：PASS
+- `go build ./tools/reference-build-authoring-intent`：PASS
+- `go build ./tools/reference-plugin-package-build-child`：PASS
+- 上記1回の実行：`ok=true`、`planCrossCheck=matched`、`planArtifactBinding=bound`、exit 0
 - `go test ./tools/repository-plan-check -count=1`：PASS
 
-**NOT RUN**：Windows（同じprobe宣言での再観測）、二回の独立試行での比較、別Go版、builder側lock生成、CI。
+**NOT RUN**：二回目の独立試行、Windows、別Go版、CI。
 
-## 限界
+## 参照
 
-- **1回の観測である。** 二回の独立試行での比較（SB-N8の形）は別途必要。
-- **probe宣言は`tools/`の固定fixtureではなく、この実測のために用意した。** `outputKind: plugin-package`の宣言が必要だったため。カタログは固定fixtureをそのまま使っている。
-- `intentBinding`のbyte検査は未実施のまま（`intentByteCheckPerformed=false`）。
-- G4は`UNQUALIFIED`のまま。
+- 設計：[`SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md`](../design/SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md) §4.8・§4.11
+- 計画とartifactの結合：[`TEI_GO_SELF_BUILD_PLAN_ARTIFACT_BINDING_2026-11-09.md`](TEI_GO_SELF_BUILD_PLAN_ARTIFACT_BINDING_2026-11-09.md)
+- 計画突合の実測：[`TEI_GO_SELF_BUILD_PLAN_MATCHED_2026-11-09.md`](TEI_GO_SELF_BUILD_PLAN_MATCHED_2026-11-09.md)
+- 台帳：[`TEI_SELF_BUILD_P0_EVIDENCE_LEDGER_2026-11-08.md`](TEI_SELF_BUILD_P0_EVIDENCE_LEDGER_2026-11-08.md)
