@@ -819,3 +819,23 @@ G1〜G5で各観測は取得時点が異なる。要求するのは**同一瞬�
 **実装に進むための狭い契約**（新Engine/Registryを作らない）：①Providerを**宣言Selection→実接続Capability→Current Target/Grant→Execution**の順で確認し、②`Observation`と`Execute`の間に成立した保証（同接続のLock/Tx/DDL制約/対象Fingerprint再読取/Target Epoch）を**実Host側で観測できる証拠**として残し、③非Tx・部分副作用・Reader errorでfail-closedにする。単なる`fingerprint==`ではABAやCatalog完全性を証明できない。④同じFixtureをWorkbench ReverseとMigrationの**二Consumer**で走らせ、読取Projection/候補とApply Admissionの結果を別Expectとする。テスト・C0/C1・BOMは#1180/#2514/#3267の既存仕組みを使う。
 
 **今回のexact-head CI根拠**：前HEAD `2f7e2a11cf7b37e6741fa63710dd18e8ada5a709` のGitHub Actionsは7件中6件success、Repository Healthのみfailure。Jobログで`go vet ./...`、`go test -count=1 -timeout 60m ./...`、`tei validate -workspace reference/workspace`は**PASS**。失敗要因は`tools/reference-plugin-capability-coverage/coverage_test.go`の`gofmt`のみで、Migration Test failureではない。このGo fileはその後の`main`のBlobが異なり、**当時のHEADと新mainのCIを混同せず、最新main合流後のexact-head CIを再確認**する。追加MA-11単体・現行本番Target・PG実Read/Apply・Meaning/Ownerは**NOT RUN/NOT ACCEPTED**。
+
+<!-- tei-db-migration-external-observation-authoring-20261108 -->
+### 20.12 External-observed DBとTEI管理対象の区別：REA二経路のDB移行入場条件（2026-11-08、既存#214/#3394を接続）
+
+**新しい受入上の区別**：第一Referenceの`master_data`は[既存#214](https://github.com/hat47x/tei-platform/issues/214)で`external-observed`として扱い、外部管理DBの物理Query/Schemaを読取証拠として利用することと、**TEIが当該DBのSchema変更・Migration履歴・正本移管を所有すること**は別である。Workbench RQ-035がSchema CRUDを標準範囲へ追加しても、その操作の現在Target/Owner/Grantが自動で割り当てられるわけではない。Owner移管・明示適用契約が未確定なら、構造Diff/Plan候補を生成できても**外部Targetへの実Applyは不許可**。外部ツールの履歴やDBA作業をTEI自身の`RepoApplied`証拠へ写像しない。
+
+[REA担当#3394](https://github.com/hat47x/tei-platform/issues/3394)の**現行優先設計「二経路」**をG0の入場に適用する。Aは`External Observation (read-only)`：REA Raw Evidence/Bundle、旧DB Catalog、Source occurrence、実解析Provider/入力閉包、観測時点・取得Scope・partial/unknownを参照し、TEI Semantic Worldへ暗黙登録しない。Bは`TEI Authoring Proposal`：特定の出典付き構造候補だけを、Ownerの操作でTEI標準`*.tei.md` Draftへ提案し、**実Loader/Parser/Role/Source Indexが解釈できたこと**と**OwnerによるMeaning受理**を別に判定する。RAW REA JSONをそのまま正式TEI DSL/Sourceとして読む設計は採らない。SHOの文書保存やDiagram/CRUD表示をSource受理・Apply権限と同一視しない。
+
+**既存P/A/EとK/O/Bに加える証拠の列**：`sourceCustody`（外部原本/Revision、観測許諾・開示）、`authoringAdmission`（候補Source→正式Loader→意味受理の範囲）、`migrationAuthority`（Targetを管理するOwner/具体的DDL許可・現在Grant/適用世代）、`historyProvenance`（外部Tool履歴/TEI実行履歴の区別）。これらは**既存#1163 Evidence Packetの試験票上の観測欄**であり、新Core enum、Authority Registry、Migration Runner、REA専用Parserを追加しない。次の失敗条件を新しいProgram Gateとして増やさず、MA/MG/REの既存台帳へ接続する。
+
+| 既存Gate/Fixtureへ接続する負例 | 独立Expected |
+| --- | --- |
+| **MA-12a：external-observedに完全Schemaを取り込めたが、対象のmigrationAuthority未受理** | G0でReverse/候補/Planのread-only利用は可。G1で実DDL呼出しは**0件**、履歴`RepoApplied`を新規推定しない。宣言Capability/Provider selectedだけで変更権限を得ない |
+| **MA-12b：同じLogical DB名・Schema fingerprintで別実Instanceを指定、または外部OwnerからTEIへ管理移管を申告のみ** | 物理Instance/Schema Scope/現在Grant・Ownerの受け渡しとHistory基線を独立検証するまでG1`unknown/not-admitted`。名称・byte一致、文書上の譲渡だけでは不十分 |
+| **MA-12c：外部ツールが先にDDLを行い、Migration Historyに未受理状態または外部適用記録のみ存在** | Actual Schema OとHistory Kを別に表示。TEIのPlan完了・未適用と外部作用済みを混同せず、再実行を自動許可しない（既存HIST-02/03、MA-07） |
+| **RE-13〜18との共有Fixture：REA Evidence JSONL部分受領、異時点DB Source、旧SHO/古いAccepted Meaning** | Aはpartial/unknownを保持し、Bは正式Loader・Source revision・Meaning受理を独立判定。G0のPlanが生成できてもG1/G4への資格は未取得。Source A→B→AやCache hitで現Grantを復活させない |
+
+**最小の実行順**：①`external-observed master_data`をread-only/Planだけで検査し、**実DB Schemaを書き換えない**ことを確認（#214/#3270）；②権利・版・Raw Evidence closureのあるREA異種二Sourceを外部観測として比較（#3394）、正式`*.tei.md` Reader未完成ならBの入場は`NOT RUN`；③独立した**Disposable PostgreSQL**でのみ、実Host/Providerが明示Ownership/Grantを持つMA-12正例と所有権なし負例を同じExpectedで実行し、観測→Apply→別接続再読取を確認；④旧新Writer・CDC/SHO・外部Consumer・Cutoverは#2555のOwner受理と実観測を待つ。#3030はAuthoring形式の設計文書統合であって、既存REA RawのReader完成ではない。
+
+**今回の事実の上限**：[PR #2887のHEAD `e91553ed4f4550b96e047627a69c1af18771de34`](https://github.com/hat47x/tei-platform/pull/2887)のGitHub Actionsは**7/7 completed/success**（Repository Healthを含む）。このGo/Workspace/他workflowの適合性は、今回追記するMA-12の実Provider拒否・REA実呼出し・`*.tei.md`正式Loader・Owner/Authority移管・実DB効果・Cutoverを実証しない。実装Ownerは#214/#3394（External Source）、#2611/#2622（Target/Provider）、#2892（History）、#2555（Ownership移転/Cutover）、#1163/#2514（証拠/独立Expected）を維持。**本節はdocs-only設計の受入追補、MA-12a〜cはNOT RUN。**
