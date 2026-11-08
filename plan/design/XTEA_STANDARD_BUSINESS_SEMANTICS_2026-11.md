@@ -165,7 +165,7 @@ X-TEAの採番は、表の行・桁・接頭辞・チェックディジット・
 | 検査数字 | 付すか、方式は何か | モジュラス10 |
 
 - **桁あふれの巻き戻しは危険**です。TEIの既定は「停止」にし、巻き戻しは宣言で選ぶ形にします。X-TEAの既定（巻き戻し）は、一意性を壊します。
-- 採番の発行は、取引の中で行い、失敗時に取り消せるようにします。X-TEAは`commit`の外側で更新する経路がありました。`internal/numbering`は`Reserve`で予約し、`Commit`で確定、`Release`でカウンタを戻します。予約の間に別の呼出しが発行した場合は`ErrNumberingConflict`で報告し、後続の発行を上書きしません。
+- 採番の発行は、取引の中で行い、失敗時に取り消せるようにします。X-TEAは`commit`の外側で更新する経路がありました。`internal/numbering`は`Reserve`で予約し、`Commit`で確定、`Release`でカウンタを戻します。予約の間に別の呼出しが発行した場合は`ErrNumberingConflict`で報告し、後続の発行を上書きしません。`ReserveInTransaction`は番号の発行と呼出し側の変更を同じ取引に入れ、取引Commitが失敗したらカウンタを戻します。
 
 ### 3.6 日付の数え方は列挙にする
 
@@ -248,6 +248,7 @@ X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設�
 - [評価時点の決定性](EVALUATION_CONTEXT_DETERMINISM_2026-10.md)
 - [移行計画](../workstreams/XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)（WP8）
 - [受容要件](../../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md)（RQ-C3）
+
 
 
 
