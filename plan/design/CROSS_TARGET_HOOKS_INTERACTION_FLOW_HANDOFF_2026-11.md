@@ -1,6 +1,8 @@
 # API / Web / Desktop / CLI / MCP / VUI横断：生成ExtensionとInteraction Flowの統合引渡し（2026-11-08）
 
-> **2026-11-08 後続研究・設計上の修正候補**：LifecycleとHookの点の一覧を先に固定した上で後から拡張を載せるだけでは不十分。実行可能な型付きLifecycle Graph（意味Node/Edge・契約・状態・守るべきObligation）を**コード生成の直接入力**とし、PluginのGraph Patchでライフサイクル自体を拡張できる設計を最優先で検証する。以下§3の「Operation/Interaction/Generationの3系列」は**暫定的な観測/Projection**であり、不可変な共通Core enumや固定順序ではない。詳細・研究根拠・AI Web Chat対応は[Lifecycle Graph研究](../research/LIFECYCLE_GRAPH_VARIABILITY_AND_AGENT_CHAT_REFERENCES_2026-11.md)へ。
+> > **具体的な実装引渡し**：[Lifecycle Graph Compiler Contract・最小縦断検証](LIFECYCLE_GRAPH_COMPILATION_CONTRACT_AND_REFERENCE_SLICES_2026-11.md)に、型付きGraph Role、Obligation、Patch競合規則、L0〜L6、LG-01〜16、B2C Headless/Chat/Voiceの非干渉を整理。既存#2090は完了済みの限定PoCであり、Graph拡張の実装完了を意味しない。
+
+**2026-11-08 後続研究・設計上の修正候補**：LifecycleとHookの点の一覧を先に固定した上で後から拡張を載せるだけでは不十分。実行可能な型付きLifecycle Graph（意味Node/Edge・契約・状態・守るべきObligation）を**コード生成の直接入力**とし、PluginのGraph Patchでライフサイクル自体を拡張できる設計を最優先で検証する。以下§3の「Operation/Interaction/Generationの3系列」は**暫定的な観測/Projection**であり、不可変な共通Core enumや固定順序ではない。詳細・研究根拠・AI Web Chat対応は[Lifecycle Graph研究](../research/LIFECYCLE_GRAPH_VARIABILITY_AND_AGENT_CHAT_REFERENCES_2026-11.md)へ。
 
 - **状態**：設計候補・既存Ownerへの引渡し。新しいDSL構文、Flow Engine、Plugin ABI、Target生成器、実VUI、実音声Provider、Ownerの意味受理は **NOT ACCEPTED / NOT RUN**。この文書は第二の仕様正本・優先順位表・実装完了宣言ではない。
 - **判断の基線**：[ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)（共通型付きApplication Operation）、[ADR-0043](../adr/0043-target-native-artifacts-without-tei-host.md)（共通TEI Host不要）、[ADR-0036](../adr/0036-delivery-forms-as-plugin-composition.md)（提供形態はPlugin合成）。
