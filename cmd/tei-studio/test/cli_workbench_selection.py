@@ -158,10 +158,17 @@ async def inspect_events(browser, base_url: str, cli_catalog: dict, cli_unique: 
         assert "対象未確定" in await page.locator("#subjects").inner_text()
 
         await page.locator("#search").fill(A["id"])
+        # Search also matches child IDs, so select exact semantic-data rows.
         candidates = page.locator("#subjects button")
-        assert await candidates.count() == 2, await candidates.all_text_contents()
+        a_indexes = await candidates.evaluate_all(
+            "(nodes, id) => nodes.flatMap((node, index) => "
+            "node.querySelector('small')?.textContent === "
+            "`semantic-data · ${id} · 対象未確定` ? [index] : [])",
+            A["id"],
+        )
+        assert len(a_indexes) == 2, (a_indexes, await candidates.all_text_contents())
         before = recorder.request_count
-        await candidates.first.click()
+        await candidates.nth(a_indexes[0]).click()
         await page.wait_for_function(
             """() => document.querySelector('#source-status')?.textContent === '対象未確定'
               && document.querySelector('#editor .cm-content')?.textContent?.includes('SUBJECT_AMBIGUOUS')"""
@@ -171,9 +178,15 @@ async def inspect_events(browser, base_url: str, cli_catalog: dict, cli_unique: 
         # An unrelated unique J still works, in *the same* Browser page.
         await page.locator("#search").fill(J["id"])
         unique_buttons = page.locator("#subjects button")
-        assert await unique_buttons.count() == 1, await unique_buttons.all_text_contents()
+        j_indexes = await unique_buttons.evaluate_all(
+            "(nodes, id) => nodes.flatMap((node, index) => "
+            "node.querySelector('small')?.textContent === "
+            "`semantic-data · ${id}` ? [index] : [])",
+            J["id"],
+        )
+        assert len(j_indexes) == 1, (j_indexes, await unique_buttons.all_text_contents())
         before = recorder.request_count
-        await unique_buttons.first.click()
+        await unique_buttons.nth(j_indexes[0]).click()
         record = await recorder.wait_for(
             INSPECT, [WORKSPACE_ID, J["kind"], J["id"]], after_request=before
         )
