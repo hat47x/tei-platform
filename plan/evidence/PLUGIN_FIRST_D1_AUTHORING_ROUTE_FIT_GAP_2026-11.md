@@ -195,6 +195,8 @@ Sourceだけを保存・表示するRaw Editorと、Role/Meaningを提示するI
 
 **残る本当の接続点**：現状の成功は`Registry.Select`とHostから与えられたGo関数の局所実callを実装テストで結ぶ段階まで。次は`cmd/tei/main.go`またはそのHost所有Compositionが`authoring-tool`の選択を受理し、実Build登録済みInspectorを選んで**通常のCLI `inspect`呼出**へ渡す。続いてStudioの実`/workbench/` Consumerが同じProvider登録元からInspectorを消費し、B/A誤配線を同一Attemptで検出する。2つのSurfaceで同じMockを表示しただけならD1b完成としない。
 
+**ADR-0048 Failure contract補強**：共通Operationが返す型付き`InspectionError`も、Providerの自己申告値をそのままCLIへ表示してよいわけではない。新CLI Adapterでは既知4種のcodeに限定し、選択済み実装から受けたMessageは定型化する。未知codeや未知errorのMessageを信用せず、`INSPECTION_FAILED`へ縮退。従来Builtin由来の既知code+Messageは互換性のため保持する。これによりProviderが秘密Path/Tokenを`InspectionError.Message`や偽codeへ入れた反例を追加試験で拒否する。ただしError表示の秘密非漏洩だけでTool DeliveryやOS Egressの完全な安全証明にはならない。
+
 **並行PRと既知CI負例**：本変更は[Draft #3381](https://github.com/hat47x/tei-platform/pull/3381)に保存。[Studio Draft #3371](https://github.com/hat47x/tei-platform/pull/3371)はHost選択Serviceが存在しないときfail closedにする変更により、旧`readonly_services_test.go`のInspector直接呼出期待と衝突していた。#3371 exact-headのRepo Health・Wails Hostは当時FAIL（`TestInjectedOperationsOnlyReceiveAllowlistedResolvedRoot`）、原稿の仕様不整合と整形driftを分けて修正する必要がある。#3381の旧HEAD Repo Healthは`coverage_test.go`の別ブランチ由来gofmt driftでFAILしたが、Go Testの失敗とは混同しない。**最新版HEADのCI結果と採否は別確認**。
 
 本節の新しいGo試験が通っても、正式Profile、実Wails/CLI E2E、実Provider Artifact/Host Approval、Contract Conformance、Owner Meaning Acceptanceは**NOT PROVEN**。D1という既存のGateを細分化したもので、新Hard Gateは作らない。
