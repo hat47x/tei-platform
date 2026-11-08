@@ -438,7 +438,7 @@ main統合済み[ADR-0048](https://github.com/hat47x/tei-platform/blob/main/plan
 - **E1dまで**は既存Loaderが読む`CaseRecord`／`org_view.case_read`／SQL／Application Aliasから既存PostgreSQL Executorへ直接渡していた。必要な実行契約の一部分であって、Application FunctionやConsumerが解決した証拠ではない。
 - **E1f追加**は**同じ一時Workspace**へ、製品DSLの`pattern org_view.case_browse browse { data organization.case_record; query org_view.case_read }`相当を別ファイルとして**明示Authoring**し、再度`workspace.Load`したものを`driver.NewResolver(World).ExecuteBrowseQuery`へ入力する。Runtime Driverは既存Query/DB Aliasの対応をそのまま使い、Postgres Executor/Test Connectorが受け取った`C1`/SQL、逆順Raw列から明示Result Mappingした`C1→D1`を照合する。Pattern Source位置・ModelRevisionの帰属とOperationSurfaceのread-only/AuthorityLimits不変も検査する。
 - **E1f負例**は未宣言Patternと間違った`Database`を明示的に拒否し、SQL Test Connectorへの到達も禁止する。受理していないRelationの自動走査や、語の一致によるFunction Query推測ではない。
-- **E1e（物理Read）**は`verifyNativeCaseReadWithPostgres`の厳格な隔離PGオプトインを継続するが、E1fの合成Test Connectorと独立に採点する。PGの実0行もそのScopeの物理結果であり、全案件・全時点の不存在証明ではない。
+- **E1e（物理Read）の再接合**では、`verifyNativeCaseReadWithPostgres`の厳格な隔離PGオプトインを、E1fでAuthoringした**同一Native Browse Pattern／`driver.NewResolver(World).ExecuteBrowseQuery`**へ付け替えた。実DBを使用できる場合、C1→D1・C2→D2・C3→0行が実PostgreSQLから正しいQuery／Data／Aliasへ帰属するかを確認する。合成ConnectorのPASSと物理PGのSKIP／PASSは独立に採点する。PGの0行もそのScopeの物理結果であり、全案件・全時点の不存在証明ではない。
 
 **重要な不成立**：Browse Patternは利用者機能への**入口候補**であり、#2506で扱うFunction Data Context Definition/Instance・Selection Epoch・Result Slice/Completeness・対象Principal・現在Scope・Consumer受信の証拠を自動生成しない。また、物理`postgresquery.Executor`は未スコープの実行器なので、Web/APIへ公開する場合は[#1656](https://github.com/hat47x/tei-platform/issues/1656)の適切なTrusted Read Plan/Scoped Provider・先行Authorizationが別途必須。Node Synthetic Temporal 16件（#3380）はこのGo Pattern実行が二時点Queryに対応している証拠にはならない。
 
