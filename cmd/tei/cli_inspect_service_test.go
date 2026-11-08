@@ -167,8 +167,8 @@ func TestCLIInspectTypedProviderNotFoundPreservesExitAndErrorCode(t *testing.T) 
 func TestCLIInspectMasksForgedProviderFailureCodeAndMessage(t *testing.T) {
 	const secret = "private-provider-token"
 	for _, tc := range []struct {
-		name string
-		code string
+		name     string
+		code     string
 		wantCode string
 		wantExit int
 	}{
