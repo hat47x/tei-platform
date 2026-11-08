@@ -21,6 +21,8 @@ on:
       - 'internal/semantic/capabilityinvoke/invocation.go'
       - 'reference/legacy-auth/**'
       - 'reference/web-composition/go-host/**'
+      - 'reference/workspace/semantic/sales/order.tei'
+      - 'reference/workspace/tei.workspace.yaml'
   push:
     branches: [main]
     paths:
@@ -38,6 +40,8 @@ on:
       - 'internal/driver/observation.go'
       - 'internal/semantic/capabilityinvoke/invocation.go'
       - 'reference/legacy-auth/**'
+      - 'reference/workspace/semantic/sales/order.tei'
+      - 'reference/workspace/tei.workspace.yaml'
 
 permissions:
   contents: read
@@ -112,9 +116,10 @@ jobs:
             gofmt -d reference/web-composition/go-host/effect_unknown_observation_test.go
           go version
           go test -count=1 -v ./reference/web-composition/go-host
-          if [[ -n "$(gofmt -l reference/web-composition/go-host/decision_path_test.go reference/web-composition/go-host/e1_go_route_pair_test.go)" ]]; then
+          if [[ -n "$(gofmt -l reference/web-composition/go-host/decision_path_test.go reference/web-composition/go-host/e1_go_route_pair_test.go reference/web-composition/go-host/e1_workspace_source_admission_test.go)" ]]; then
             gofmt -d reference/web-composition/go-host/decision_path_test.go
             gofmt -d reference/web-composition/go-host/e1_go_route_pair_test.go
+            gofmt -d reference/web-composition/go-host/e1_workspace_source_admission_test.go
             echo "Focused Go witness source is not gofmt-clean" >&2
             exit 1
           fi

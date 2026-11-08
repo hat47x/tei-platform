@@ -648,6 +648,7 @@ Source Indexを前段P0-Sで読めても、このDriver解決は`Source Index→
 
 ## 21. 参考資料と採否
 ## 16. 参考資料と採否
+## 17. 参考資料と採否
 
 - [Liberator repository](https://github.com/clojure-liberator/liberator) ― ClojureのREST decision modelの先行例。ライブラリ移植ではない。
 - [Webmachine mechanics](https://webmachine.github.io/mechanics.html)、[Decision flow](https://webmachine.github.io/diagram.html)、[Resource functions](https://webmachine.github.io/resources.html) ― decision flow・契約・処理に分離する参考資料（古いHTTP版があるため仕様の正本にはしない）。
