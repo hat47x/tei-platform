@@ -339,3 +339,25 @@ AI/CUI/Studioには、新しい「組織専用Widget一覧」の網羅を要求�
 **履歴上の状態訂正**：第9.4節の『#3353はDraft・未統合』は当時の記録である。[PR #3353](https://github.com/hat47x/tei-platform/pull/3353)は**2026-11-08 JST時点でmerged**。現main `internal/semantic/completion.go`に空Handoffで`HandoffConfirmed=false`なら`unverified`へ変更する限定修正が存在する。ただし`HandoffConfirmed`はCaller申告で、独立受領・実Provider集合の完全性・組織業務完了は未実証。既存第9節のP0-R→P0-Cを維持する。
 
 **採用・未検証の境界**：採用済みなのはADRに従う共通Data/Plugin/Host非必須の基本方針であり、本節の半開規約・Position排他/兼務制約・TM-01〜08は**参考合成契約／受入候補・Owner未受理**。固定Synthetic Reference/Native E1/Completion局所修正が存在しても、今回の時間重複の実Go/Node Mutant試行、実DB/Provider/Host/SHO、全体Owner Meaning受理は**NOT RUN**。新Org Temporal Engine／第二Grant／Root Registryを作らず、#1119のCritical Pathと現行mainを変更しない。
+
+### 10.5 当時の現在性・Provider観測・履歴の保存資格を分ける（2026-11-08、他チャットのTemporalData設計との交差）
+
+**新しい差分**：§10.2〜10.4の`validAt/knownAt`と時点境界を実行可能なReferenceに接続したうえで、他Workstreamの「時点SnapshotはTemporalDataとして扱い、削除によって当時の現在性を失わない」「Origin（Original/Derived）、Temporal Semantics（Current/Historical/Observational/Bitemporal）、Preservationは別軸」を、組織Modelの具体的な**再現可能なClaim**へ写像する。この節は新しいTemporalData Core型／全Target共通履歴DB／Snapshot保存義務の採用ではない。
+
+- **Business-valid**：D1のMembership A2が業務上いつ有効か（`validAt`）。組織発効日とDB切替時点は異なる。
+- **Knowledge-known**：その業務事実のどの記録版を、判断当時知り得たか（`knownAt`）。遡及訂正により現在の再解釈が変わっても、過去に実際に知り得た記録・判断の出典を「新しい現在値」で上書きしない。
+- **Read-observed**：どのSource/実Provider/DB alias/physical snapshot・取得時刻・rowset・field・Scope/Cohortから観測したか。これは業務有効期間でも`knownAt`の記録版でもない。Providerの`snapshot=s7`ラベルだけでは実Cohortの同一性も履歴保存も証明できない。
+- **Decision/Effect**：その時点の業務判断・Owner受理、現在Host Grant、実Operation/Commit・Receipt/独立再Readはさらに別。過去OccupancyやMembershipで現在Grantを復元しない。
+
+合成のA2は`knownAt=2027-07-01`で`validAt=2027-06-15`のD1所属に数えられ、`knownAt=2027-07-03`で同`validAt`のD1から外れる。これは**当時の認識と後日の遡及訂正の両方を同一Referenceから再現できる**試験用正例であり、旧Version/観測証拠を削除・書換してよい根拠ではない。ただしNative `model.tei`のMembershipは`validFrom/knownFrom`を宣言していても`validTo/knownTo`・物理History/Provider読取保証がなく、実行先が「当時の現在性」を再取得できるとは主張しない。
+
+| 既存Fixtureからの追加試験 | 固定Expected | 未検証の範囲 |
+| --- | --- | --- |
+| **ORG-TS-01** A2遡及訂正後に同じvalidAtを過去knownAtと最新knownAtで照会 | D1のOccurrenceは当時`{A1,A2}`、訂正後`{A1}`。過去の認識切り口を現在値で潰さない | 実DB履歴保持、Source Evidence保全、Ownerの遡及訂正規範 |
+| **ORG-TS-02** 合成ReplicaとPrimaryの`snapshot=s7`が同名で、`knownAt`は7/1と7/3 | 前者のD1は`{A1,A2}`、後者は`{A1}`。同名Snapshotや同一validAtはRead Cohortの同一性でない | 実PG/Replicaの一貫性、Provider内部履歴/読取、Current Host Authority |
+
+この2件は既存[#2596](https://github.com/hat47x/tei-platform/pull/2596)のSource/Scenarioを直接使う[#3380](https://github.com/hat47x/tei-platform/pull/3380)の`verify-temporal.mjs`へ追加した。**先行HEAD** `0fabf18b`ではNode Reference workflow [#42396433833](https://github.com/hat47x/tei-platform/actions/runs/42396433833)がcompleted/success（`node --test` 215件／fail 0、うちTM 10件）だった一方、Repository Health [#42396433705](https://github.com/hat47x/tei-platform/actions/runs/42396433705)は**別領域`tools/reference-plugin-capability-coverage/coverage_test.go`のgofmt差分**で失敗（Go vet/test/Workspace validateはPASS）。当該Goファイルは後続mainで整形済みだったため、#3380はmain更新分を**履歴保持の二親merge**で取り込み、PR差分を従来3ファイルのみに保った。最新のTS-01/02追加HEADに対するexact-head CI結果は**別途検収するまで未資格**とする。古いHEADのNode成功を最新HEADへ流用しない。
+
+**受入の区分**：合成で再構成可能な時点値を`TemporalData`の普遍的保存契約と呼ばず、Snapshot削除・再生成については「Source fact原文・当時の知識版・観測Receipt・Derived Cache」のどの保持資格が必要かを対象Consumerごとに選ぶ。Derived Cacheは再生成可能でも、独立Provider観測や当時の受理・送出が再現可能とは限らない。Historyを失うと当時認識を再現できないClaimでは、欠落を`unavailable/unqualified`として残し、現在値から偽の過去を補完しない（#2582/#2516/#2600/#1163）。
+
+**次の既存Owner**：#2510はTM/TS Corpus、#2514/#1180は固定Expected・不適切な常時unknownの検出・必要検証集合、#2586/#2622/#2611は実Function→Query→Provider Read/時点Cohort、#2386は業務期間規範と意味受理、#1174は現在Grant/実Effectを担う。P0-M/R→P0-Cの接合は同一Meaning・Source版・Row/Field/Scope・Provider/Observation・Consumerの一致後とし、Node合成PASSだけで組織Product E2を満たさない。**新Core/別Temporal Engine/追加Runtime/第二Ledgerなし**。12件のTS/TM合成・実DB/Host/SHO・正式Owner受理を混同しない。
