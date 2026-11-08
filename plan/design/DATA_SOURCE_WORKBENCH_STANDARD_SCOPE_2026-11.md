@@ -355,3 +355,36 @@ DDL Plan→Applyでは、実DB Instance／Provider、Scope、Actual Schema Revis
 既存WB-02/04/05（Schema/History unknown）、WB-29/31/32（Binding/Consumer/Build）、WB-42〜54（物理Schemaと意味の区別）を使い、新Runnerやテスト正本を重複させない。Source/Revision、選択Provider、実Read、Function Binding、開示、Effect、Independent Expectedの**同一Attempt**を検収する。#3354のCLI＋合成Consumerの限定成功と本PRのFake Catalog Go試験は、実DB・Studio/SHO・Owner Meaning・DDL安全性の合格には転用しない。
 
 **撤回条件**：新しい共通Host/中央Registry/第二認可・Schema正本・暗黙の全件Read・Provider固有のSource意味喪失を要するなら、Provider局所Contractに縮小する。
+
+
+## 22. 単一FunctionのWorkbench実Read入場：最新Design Contextの限定実証を正しく受け取る（2026-11-08）
+
+### 22.1 既存の限定成功と対象差
+
+[main #3482](https://github.com/hat47x/tei-platform/pull/3482)は固定`semantic-capability:sales.order.submit`について、Application `order_entry`と必要Source/Ruleの**13件の実CLI応答・42件の合成Consumer判別**を専用・main pushのCIで検証した。これは宣言存在の限定証拠であって、Workbench側で初めに実Readを試みる**Query `order_entry.recent_orders`**のBinding／SQL／DB Instance／Rowset／Function Data Context／Current Grantを検証したものではない。Application名・Namespace・物理Schema名が一致しても、別FunctionのRequired閉包を移植しない。
+
+現状の`workbench-model`は`PhysicalSchemas`と解析済みQuery/Planの**派生Indexを表示するだけ**で、実Data ProviderからReadを行ったConsumerではない。#3486の物理FK/Index投影も同じ資格。Workbenchが一つのFunctionについて「データを実際に表示できた」と主張するのは、最低でも次の**同一Attemptの別観測**が揃ったときだけにする。
+
+| 観測位置 | 必須の内容・現状 | 禁止する短絡 |
+| --- | --- | --- |
+| **F: Function/Query** | `order_entry.recent_orders`の実Source、Semantic Data/Role、Required Query/Mapping、粒度、出力/非出力列・依存を、このFunctionを対象として独立指定。未Loaded/未解析を`unknown`。#3262/#2586へ | `sales.order.submit`の13 Replyを共有してFを`complete`と宣言 |
+| **S: Actual Source** | 対象Instance、実Provider/版本体、Source SQL候補と選択理由、Query原文byte/解析版、暗黙Alias競合、外部Imported Providerの原文・Manifest改訂を別々に記録。Source指紋が変わらなくても外部参照の再解決要件が残る（Draft #3479） | SQL ID一致／Workspace Fingerprint一致を実SQL・外部Providerの不変証明とする |
+| **R: Actual Read** | 選択済みProviderと**実呼出Provider**、実投入SQL/Bind、Reader行・Field・Occurrence・NULL/欠損・Result Grain・Read Scope/Time/Completeness、部分失敗を記録。#1251/#951/#2586が実装Owner | `Provider selected`や`Capabilities true`、SchemaのCapturedAtだけでRowset実取得とする |
+| **D: Disclosure/Consumer** | Hostが対象に許可する開示範囲、同一RevisionのCLI／Studio／MCP Adapter実受領、必要な分割Part/end、Table/Tree/Timelineへの投影。ADR-0048は**共通APIの採用設計**で全入口の実装済み保証ではない | 画面にTableが描けた、JSON 1ページをParseできた、Tool exit0というだけで完全受領・更新可能とする |
+| **E: Expected/Evidence** | 実装から独立したExpected、Source/Rowset/Consumer Receipt/実Build Targetの版と同一Attempt、既存HJ/QXとWB負例、C0/C1/NFRの対象母集団を明記 | 異HEAD・異Source・別Function・合成データ・旧BOMの各PASSを足して製品QUALIFIEDにする |
+
+この表は新公開API Schemaではなく**既存Ownerへ渡す受入票**。観測なしの欄は`not-run/unknown`、Providerが対応しない欄は`unsupported`、開示不可は開示判断そのものを権限に応じて抑制する。失敗時にSQL全件取得・ローカル全置換・別Alias/別Providerへの無言切替を行わない。
+
+### 22.2 Schema CRUD・Legacy/Target三世界への接続
+
+同じ画面で物理観測の設計編集を許しても、外部DBへのSchema DDL Applyが許可されたわけではない。**Legacy Observed Actual**、**Ownerが受理したDesired**、**Target Observed Actual**を区別し、Physical FK/IndexからOwner Accepted Relationを自動生成しない。Draft [#2887](https://github.com/hat47x/tei-platform/pull/2887)のMA-11/12、Issue [#2892](https://github.com/hat47x/tei-platform/issues/2892)の`AppliedUnknown`/partial History、#1163の同一実Target・独立確認はApplyの別入場条件。実施直前にActual Schema/History/Grant/Targetを再照合できない場合は、Planが有効に見えても**停止**する。
+
+入力Source/Desired/Applied側の版・Ownerを混ぜない例：REAの旧SQL解析からFKを観測→TEIの候補Relationとして提示→Ownerが論理Roleを受理→SHOへ図面出力→別の権限でTarget Migration Plan/Apply。REA解析、SUIカード、SHO図面、SEIのDecision Message、KONからのデータ参照はいずれもこの受理やApplyの代行者にはならない。
+
+### 22.3 次の最短作業と終了条件
+
+**最初の実装順**は、既存[Inspector D1のCLI Host-selected Port Draft #3381](https://github.com/hat47x/tei-platform/pull/3381)と[Studio Port Draft #3371](https://github.com/hat47x/tei-platform/pull/3371)のContract/Selection/actual Invokeを#1251のOwnerで一件合わせることと、#2586で`order_entry.recent_orders`の独立Required/実Read→Function Data Contextを**小さな同一Attempt**で接続すること。両者は並列で進められ、どちらかの局所成功だけから二Consumer完結を推論しない。次に同じ型付きAPIで実JSONL Log Reader（既存Fixture 5行）を実装してSQL専用の前提・NULL/missing/重複/時刻順を圧力試験する。
+
+**受入・停止線**：①実Provider/実Sourceと現在Grantを証明できないならReadをQualifiedにしない、②Functionが未宣言ならCRUDを空=不操作と確定しない、③外部Sourceが変更されたのにConsumer World/Indexが同じでも再利用資格を推論しない、④現在の物理Schema投影から旧新業務状態の一致や安全なDDL Applyを推論しない。性能は初回Read/分割取得時間・Byte量・API費用・Memoryを各Providerで測るが、実測のない値は記入しない。
+
+この節は**既存WB-01〜54、#2586 HJ/QX、#3262独立Required、#2514 Expectedの再構成**であり、55番以降の追加Case・新Gate・新Runner・新Host・第二Schema SSOTを提案しない。#3486の現行コード試験は合成PostgreSQL Catalog→read-only Workbenchに限定され、Function実Read、MCP/Studio/SHO実Consumer、実DDL、正式業務意味は**NOT RUN**。
