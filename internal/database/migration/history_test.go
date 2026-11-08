@@ -108,3 +108,25 @@ func TestCompareHistoryStillReportsConfirmedFailure(t *testing.T) {
 		t.Fatalf("confirmed failure must remain failed: %#v", got.Entries)
 	}
 }
+
+func TestCompareHistoryRejectsUnknownOrphan(t *testing.T) {
+	db := core.MustCanonicalID("sales_core")
+	h := migration.HistorySnapshot{
+		Database: db, Tool: migration.ToolAtlas,
+		Entries: []migration.AppliedMigration{{
+			Database: db, ID: "orphan-001",
+			State: migration.AppliedUnknown, Tool: migration.ToolAtlas,
+		}},
+	}
+	if got, err := migration.CompareHistory(db, nil, h); err == nil {
+		t.Fatalf("orphan with unknown application status was certified: %#v", got.Entries)
+	}
+	h.Entries[0].State = migration.AppliedSucceeded
+	got, err := migration.CompareHistory(db, nil, h)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Entries) != 1 || got.Entries[0].State != migration.RepoOrphanApplied {
+		t.Fatalf("confirmed orphan must retain its classification: %#v", got.Entries)
+	}
+}
