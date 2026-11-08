@@ -377,6 +377,16 @@ reload / Conformance
 
 **予定の帰属**：S0/S1は各Draft PRの実Go試験、S2のProduct統合は#1251/#1824、S3のDesign Requiredは#3262、履歴Sourceと再利用判定は#2600、版Matrix/BOMは#3267、Trait実装義務はmain #3480/#3278、Scenario/独立Expectedは#1180/#2514。新しいResolver/Registry/Host/Scenario SSOT、HTTP常駐必須化、Legacy `application-runtime` CarrierのScope緩和は行わない。本節自体は計画の更新で、S2/S3の実試験成功・Owner Meaning受理を**主張しない**。
 
+
+**2026-11-08 S2追補：D1a既存基線とTyped Error秘匿・Atomic Trait二Consumerの判定**（既存S0〜S3の変更なし）
+
+- **D1a基線を実績として固定する**：[main統合 #3378](https://github.com/hat47x/tei-platform/pull/3378)では既存CLI／Studioの直接Operation経路でData/Rule/Relation/Capability/Application/Patternの6 Subjectを読み取り、Canonical・Source位置・World/Source Index FP・EffectとNotFoundの同値を検証。exact HEAD [Health #42463508044](https://github.com/hat47x/tei-platform/actions/runs/42463508044)はcompleted/success。**D1a direct同値PASS**であって、D1b Provider Bの実Selected／actual Invokeではない。D1aを作り直さず、S2では同じSubject/Expectedで呼出ProviderのIDと実Call-siteを追加観測する。
+- **Host-selected Inspectorの失敗時開示を独立P0にする**：[Studio Draft #3371](https://github.com/hat47x/tei-platform/pull/3371)のGo Sourceに、Providerが`operations.InspectionError`のCodeとMessageへ絶対Path/Token/内部Causeを埋め込める反例が追加された。非nil Factoryの選択Serviceだけに適用する`selectedInspectionFailure`は4つの許容Codeを固定Messageに変換し、それ以外を`OPERATION_FAILED`とする。通常CLIも別ConsumerとしてPublic Code＋秘密Message／Private Code＋秘密Message／Generic Errorの一因子負例でClient実受領を確認し、**Providerからの型付きErrorを既に安全な公開診断だと扱わない**。Draftの新HEADのCIとWailsの実公開結果は独立検証を要求する。
+- **Traitは二種類の実Consumerで検収する**：[main統合 #3502](https://github.com/hat47x/tei-platform/pull/3502)により、P0-T=CLI/Studio read-only Inspector、P0-R=`pattern order_entry.recent_orders browse`→`query order_entry.recent_orders`→`recent_orders.sql (:from)`→`datasource sales`→`application order_entry.sales_core` Alias→実Provider Rowset→Function Contextを**別のRequired/Expected/Attempt**に固定。共通化するのはTraitのDefinition／Binding／Implementation／Invocation／Conformanceの証拠形だけ。Provider Instance/Source/Target/Current Grantは共通正本化しない。`sales.order.submit`のMutation/Transaction TraitをBrowseに暗黙継承させず、Manual Required不足とProvider未選択と実Readerの0件／partialを別に拒否する。P0-Rは#2586/#3270、Trait履行の正本は#3278/#3279。
+
+**受入の次の最小追加条件（独立Expected #2514へ委譲）**：D1B-ERR=Typed Provider ErrorのCode/Message両方を非信頼として匿名化、D1B-TRF=TとRのTrait Required集合を別検査、D1B-CALL=同じ6 SubjectでB選択→B実Invokeを各通常CLI/Studio Call-siteで証明。**局所S1だけの成功、暫定Builtin Studio Host、Direct D1a同値、二Consumer間のTrait証拠形式同値をD1bやP0-R実Provider Readの合格へ昇格させない**。新Resolver/Runner/Host/二重Scenarioを追加せず、旧Carrierの`application-runtime`限定も緩めない。本追補は計画文書のみ、追加Go/実DB/実Wails/実Provider/Owner意味受理はNOT RUN。
+
+
 ### トポロジーと複合図表の評価順（未採用の追加検証候補）
 
 [トポロジー・複合図表・開発パイプラインの共通表現](design/TOPOLOGY_COMPOSITE_VIEWS_AND_PIPELINE_2026-10.md)を、既存契約を重複実装しないための横断的な設計・検証候補として参照します。現行のIssue優先順位、製品受入条件、実装済み機能の説明は変更しません。
