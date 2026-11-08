@@ -1402,6 +1402,58 @@ Requiredが全社、Authorized/ActualがTenant A限定なら「Tenant Aの対象
 
 **責務の返却**：#2622がData Rule/Providerの意味・実Read、#951/#3278/#3279がTrait実装義務/既存Resolver、#3267がComposition MatrixとBOM資格、#3262がread-only Design Context、#1180/#2514がScenarioと独立Expected、#2600が差分失効、#2544がLean Law、#1130が無画面Checkの実行契約を担当する。§62のT0実CLI・限定Mutantの既存成功は参考にするが、**このQTPを実行した証拠ではない**。本節はDocs-only／NOT RUN／新しいTrait ID・BOM Schema・Provider API・Lean Target・実行性能のOwner採用は未決。
 
+
+### 27.12 旧システムの観測事実と移行後の品質保証――REA External ObservationとDesired Ruleを混同しない（2026-11-08横断追補）
+
+> **設計・実証引継ぎのみ。新しい実REA／実DB／TEI移行品質E2E、Owner受理はNOT RUN。** §27.9〜27.11の上流・下流突合、独立Expected、Target/Provider実適合を、11/8の#3394 **REA先行External Observation／TEI Authoringの二経路**と、#3262 Design ContextのD（入力資格）／T（実受領）／G（独立評価）へ接続する。§63の最初のPlugin Inspector実呼出しを横取りせず、現行#1119/G0〜G4の優先順位を維持する。将来のOntology/Decision Twinは#3475で**セルフビルド・SUI基礎完成後**の長期検討対象であり、夜間品質検査の新必須基盤にしない。
+
+#### 27.12.1 三つの判定基準は相互に代替しない
+
+| 比較する基準 | 証拠の出所と主張できること | 自動的には言えないこと |
+| --- | --- | --- |
+| **Legacy Observed Actual**（旧動作） | 旧実装Source・実DB Snapshot・実旧Runtimeに対する読取/出力/効果の**個別実観測**。REA等が生成した解析結果はSource/Provider/版/選択範囲に束縛したObservation Candidate | 静的SQL/REA要約が旧Runtimeの実出力・完全DB取得・正しい業務仕様に相当すること |
+| **Owner Accepted Desired Meaning**（移行後仕様） | TEIの意味Ownerが受理したRule・Relation・Identity・時間・NULL・集計粒度・訂正/取消の意味と、その版に対し**独立に固定したExpected** | 旧ソフトウェアが実際にその通りだったこと、SHOで文書が保存されたこと、AI/REA推測がOwner受理されたこと |
+| **Target Observed Actual**（移行先） | 新Targetの実消費Source/Artifact/Provider/Host、実Read Scope・Snapshotと、必要な場合のCommit・独立post-image | Go/SQLの生成成功、Task成功、Quality Checkが0違反、旧Snapshotからの現在性 |
+
+**評価は二つの別方向**：①Legacy→Targetの**behavior-preservation**（当時実際に観測された動作をどこまで再現したか）、②Desired→Targetの**business-conformance**（受理済みDesired契約を満たしたか）。前者の不一致は**必ずしも欠陥ではなく**、旧実装の不具合を意図的に修正した結果かもしれない。後者の不一致は旧動作と同じでも、仕様不適合である。移行品質レポートは二列を残し、旧動作と違うだけで新Targetを誤検知・不合格にしない。**不一致の意図性**はOwnerの版付き受理とReason/Scopeに裏付け、AIの説明から自動的に「意図した修正」と推論しない。
+
+**REA接合は二経路**：A = Source original→REA実Raw Evidence/保存Bundle/readback→scope/unknown付き**External Observation**をread-only参照。B = Ownerが選んだCandidate→TEI Authoringの**提案Draft**→正式Reader/Role/Meaning/受理。REAのRaw JSONを `*.tei.md` に改名しただけではTEI DSLとしてLoadedされない（#3394のT1-A/T1-B、#3030/#3031）。Aが限定成立してもBがParser unboundなら、設計候補は残せるがAccepted Rule・派生品質CheckSetの生成完了とは主張しない。REAのMaterialized Evidenceは再生成可能なDerived Dataであり得るが、過去の観測を示す履歴Witnessを一律削除/上書きしない（#3271/#2600）。
+
+#### 27.12.2 「独立の母集団」は旧DBでもTEIモデルでも自動生成しない
+
+§27.9のQRE-01上流O1/O2受理、下流O1欠落のケースを**旧新移行**として固定する。移行前の実Source/Control RecordのO1=100・O2=200という二Occurrence、旧DBの実保存状態、旧Runtimeの実出力、移行後Expected、移行先DBの実Readは、名前や数値が同じでも**互いに独立した証拠列**とする。旧DBがO2を落としている場合、旧DBの全件Scanだけでは「本来あるべきO2」を発見できない。逆に移行先がO2を正しく復元した場合、旧実装との単純なbyte一致だけでは意図した改善を正しく評価できない。
+
+外部解析Providerの実能力を確認する段階と、品質照合の基準を得る段階も別：
+- **Analysis admitted**：正しい版のSource/権限・REA exact CLI/Provider/実呼出・Evidence raw byte/readback・選択范围・missing/unknownを記録した限定観測。静的解析結果をLegacy Runtime receiptと呼ばない。Evidence抜粋・JSONL行列のみで全Source Closure/解析完了を推論しない。
+- **Data population admitted**：独立に承認された上流受理Source、旧DBの実Snapshot、必要な期間・Occurrence/Mapping・Row/Field/Relationの完全性・watermarkを固定。外部Root未ロード、旧Sourceと現Sourceの時点ずれ、同一Aliasの別DBはunknown/scope限定。
+- **Comparison admitted**：受理済みCorrespondence 1:1/1:N/N:1・金額/単位・取消/遡及・NULL/非開示、OwnerのDesired版と独立Expectedを固定。#2514のOracle独立性、#2611のDB Alias、#2593のgrain、#2622の実Provider Readを再利用。
+- **Migration Outcome qualified**：Target実Read/必要Effect receipt、Legacy実観測（比較する場合）、Owner Intent/受理、Scoped Quality Finding、必要なCurrent Grant/Consumer Deliveryを**Claim単位・同一版のWitness**へ束縛。Readに成功しただけで旧新の業務結果や本番切替成功を認定しない。
+
+#### 27.12.3 最初の固定反例 QML-01〜08（既存Scenario/Oracleへ追加する差分候補）
+
+| ID | 独立に固定する観測と故障 | 期待する二軸の判定 |
+| --- | --- | --- |
+| **QML-01 旧欠落・新修正** | 上流O1/O2は受理済み。旧DB/実RuntimeはO1のみ、OwnerがO2も必要と受理し、新DBはO1/O2 | Legacy reproduction = **不一致**（意図した修正の可能性）、Desired conformance = 範囲内合格候補。Owner受理なしに「改善済」と断言しない |
+| **QML-02 旧欠落を再現** | 上流O1/O2、旧DBも新DBもO1のみ、DesiredはO1/O2 | Legacy reproductionは一致し得るが、Desiredは**Missing O2**。旧バグを温存して品質PASSにしない |
+| **QML-03 静的解析のみ** | REAがSQL条件を検出、旧Runtime/実DBの当該Scope/時点は未読取 | Legacy behavior **unknown**。SQL発見から実Effect/旧品質欠陥を捏造しない |
+| **QML-04 External vs Authoring** | REA Bundle完全にreadback、一方で対応する `*.tei.md` Readerは未対応 | External Observationの局所PASS、TEI Authoring unbound/unsupported、Derived Checkはnot-run。Raw JSONは正式Sourceではない |
+| **QML-05 Snapshot/分割** | 上流1件100が下流60/40に合法分割、旧新DB alias/Watermarkが相違 | Correspondence・grain・時点のOwner条件なしに「取込漏れ」や「100=100全体合格」としない（§27.10） |
+| **QML-06 観測版の失効** | 旧Source byteは同一だがREA Profile/Providerを変更し観測が変化、A→B→Aも発生 | Derived Observationを再資格化。Accepted Meaning・旧SHO Review・現在Read/Grantを自動更新/復権しない |
+| **QML-07 局所PASSの誤合算** | 旧Snapshotはpartial、REA実結果はsummaryのみ、TEI Targetは全件Go read-only合格 | Target内部PASSだけ保持。Legacy/Desired横断一致はunqualified。missing/withheld/unknownを違反0にしない |
+| **QML-08 Repair/切替** | 過去の旧不整合を夜間検査で発見、移行先は既に是正済み／Cutover中Commit unknown | 現行Primary/Hostで独立Read・現在Grantを照合し、旧Findingによる自動二重修正/再実行を拒否。Repairは#1174/#1129へ |
+
+QMLの独立Expectedは**試験前に確定**する。QML-01/02の相違は「legacy behavior-preserving か／Owner Desiredに適合したか」を分離することで初めて検出できる。旧Runtimeを再現可能なSource/環境が無ければ、旧動作の列は `NOT RUN: legacy-runtime-unavailable` とし、静的解析の結果で穴埋めしない。Intentが未受理なら「旧動作との不一致」だけで新Targetを欠陥・改善と採点しない。
+
+#### 27.12.4 最短の実行順と他レーンへの引渡し
+
+1. **M0 Read-only**：#3262の現在のDesign Context Consumer（実11 CLI Reply/限定Required/32合成判別）を**再実装せず**、一受注RuleについてRequired集合・Source/Reader/Role/Unresolvedの足りない項目を出す。D（必要設計入力）とT（Tool全件実受領）とG（独立評価）を分離。最新mainの限定T0を全面的なFunction completeへ昇格しない。
+2. **M1 Legacy根拠**：#3394のREA T0/T1-A（External Observation）の**実ReadとSource Closure**を別Ownerで確認する。機密/権限・プロセス副作用を事前評価し、REAを使えない場合は既存#950等のSource/旧実行観測へfallback可能な**検査基準候補**を使う。REAや新Ontology SDKを品質検査の必須依存としない。
+3. **M2 二方向Comparison**：#1180 Scenarioと#2514独立ExpectedでQML-01/02/03の正負をまず固定。旧実行観測のないケースはそのままunknown。#2622実Provider Readと#2611 Alias選択を同一Source cohortで結び、Owner Desiredを受理してからTarget適合の資格を判断する。
+4. **M3 実行・費用**：#1130既存read-only JobでScoped Checkを実行。Go streaming/SQL pushdown、Full/Incremental、Replica/実DBの欠落・NULL/Decimalとp95/CPU/IO・検出時間を実測。QML-08で旧Finding→現行再読→既存Host Repair Intentの境界を検収する。必要ならEKIに実行管理のみ委譲。
+5. **M4 可視化/引渡し**：#3263 TEI三視点/CRUD、SHO Writerは**それぞれの製品資格が成立した時だけ**Observation／Accepted Desired／Actual Resultsを出典・版付きの異なる列で投影。図や文書の保存/公開をOwner Acceptance/品質PASSにしない。現段階では新しいGraph Editorや品質DashboardをP0の前提にしない。
+
+**Owner/非採用**：#3394がREA外部解析の実観測・候補受渡し、#3270が実DB構造観測、#3262がRequired Design Context、#951/#3278/#3267が選択Provider/履行/BOM、#2621/#3030が正式 `*.tei.md` Reader/Authoring、#2514/#1180が独立Expected/Scenario、#2622/#2611が実Read/Alias/Correspondence、#2497/#3263がLoss-aware三視点、#1130がJob、#1174/#1129が現在修正Effect、#2600がEvidence資格の失効。第二外部解析Engine・TEI Host・Quality Registry・移行向け別Ontology正本・新CLI DSL/正式Trait ID/自動修正Agentを導入せず、既存P0で確かめられる一Ruleのread-only実証を先行する。**本節はDocs-only。REAプロセス接続、実2Source/旧Runtime、正式Reader、Go/SQL/Replica/Lean/EKI、Owner受理の新E2Eは未実施。**
+
 ## 28. 一改訂のValue／Flow／Job／Consumer縦断――参照実行と外部実行を混同しない（2026-11-03横断追補）
 
 ### 28.1 並行する三つのOwner計画を、別の正本を作らずにつなぐ
