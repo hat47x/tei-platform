@@ -3,6 +3,7 @@ package languagereference
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 	"testing"
@@ -450,4 +451,105 @@ func TestSelfDescriptionManagedRawDocumentDoesNotBecomeSemanticRole(t *testing.T
 		}
 	}
 	t.Fatal("original Load-time raw asset disappeared from Source Index")
+}
+
+
+// Raw document edits change a managed Source Artifact but not the parsed
+// semantic World. This is a bounded, real Loader/Index comparison; it does
+// not qualify the document for disclosure or independently accept its meaning.
+func TestSelfDescriptionRawDocumentRevisionIsNotSemanticRoleRevision(t *testing.T) {
+	root := t.TempDir()
+	for _, dir := range []string{"semantic", "docs"} {
+		if err := os.MkdirAll(filepath.Join(root, dir), 0755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	const semanticPath = "semantic/probe.tei"
+	const documentPath = "docs/design.md"
+	manifest := []byte("workspace: raw_revision\nformatVersion: 1\nsources:\n  - semantic\n  - docs\n")
+	semanticBytes := []byte("namespace probe\ndata item {\n  attribute value type std.money\n}\n")
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), manifest, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(semanticPath)), semanticBytes, 0600); err != nil {
+		t.Fatal(err)
+	}
+	// Both revisions mention something resembling a Role definition, but
+	// neither is a selected semantic language source.
+	rawA := []byte("# Working notes\nrole candidate_amount\n")
+	rawB := []byte("# Revised notes\nrole approved_amount\n")
+	document := filepath.Join(root, filepath.FromSlash(documentPath))
+	if err := os.WriteFile(document, rawA, 0600); err != nil {
+		t.Fatal(err)
+	}
+	load := func() (workspace.Result, sourceindex.Index) {
+		t.Helper()
+		result, err := workspace.Load(root)
+		if err != nil {
+			t.Fatalf("load actual Workspace: %v", err)
+		}
+		index, err := workspace.BuildSourceIndexFromLoad(root, result)
+		if err != nil {
+			t.Fatalf("index Load-time bytes: %v", err)
+		}
+		return result, index
+	}
+	before, beforeIndex := load()
+	if err := os.WriteFile(document, rawB, 0600); err != nil {
+		t.Fatal(err)
+	}
+	after, afterIndex := load()
+	if before.ManifestIdentity().SHA256 != after.ManifestIdentity().SHA256 {
+		t.Fatal("unchanged manifest acquired a different byte identity")
+	}
+	if !reflect.DeepEqual(before.World, after.World) {
+		t.Fatal("a raw, unparsed document edit changed the semantic World")
+	}
+	if !reflect.DeepEqual(before.Sources, after.Sources) {
+		t.Fatal("a raw document edit silently created or changed a semantic Source")
+	}
+	for _, result := range []workspace.Result{before, after} {
+		found := false
+		for _, file := range result.ManagedFiles {
+			if file.Path == documentPath {
+				found = true
+				if file.ReadByLoader {
+					t.Fatal("raw Markdown became parsed semantic source")
+				}
+			}
+		}
+		if !found {
+			t.Fatal("raw Markdown was not inventoried")
+		}
+	}
+	artifactDigest := func(index sourceindex.Index) string {
+		t.Helper()
+		for _, artifact := range index.Artifacts {
+			if artifact.Path == documentPath {
+				return artifact.Fingerprint
+			}
+		}
+		t.Fatal("no Load-time Artifact for managed raw document")
+		return ""
+	}
+	if got := artifactDigest(beforeIndex); got != sourceindex.Fingerprint(rawA) {
+		t.Fatalf("before raw artifact fingerprint = %s", got)
+	}
+	if got := artifactDigest(afterIndex); got != sourceindex.Fingerprint(rawB) {
+		t.Fatalf("after raw artifact fingerprint = %s", got)
+	}
+	if artifactDigest(beforeIndex) == artifactDigest(afterIndex) {
+		t.Fatal("different raw Source bytes collapsed into one indexed revision")
+	}
+	if !reflect.DeepEqual(beforeIndex.References, afterIndex.References) {
+		t.Fatal("raw document revision changed canonical semantic references")
+	}
+	for _, reference := range afterIndex.References {
+		if reference.ArtifactPath == documentPath {
+			t.Fatalf("raw Markdown acquired a definition Reference: %+v", reference)
+		}
+	}
+	if len(afterIndex.ReferencesFor(sourceindex.Subject{Kind: "semantic-data", ID: "probe.item"})) != 1 {
+		t.Fatal("canonical subject reference missing after raw document edit")
+	}
 }
