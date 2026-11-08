@@ -1,0 +1,26 @@
+name: TEI AI tuning observation reference
+
+on:
+  pull_request:
+    paths:
+      - 'tools/reference-ai-tuning-observation/**'
+      - '.github/workflows/tei-ai-tuning-reference-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/reference-ai-tuning-observation/**'
+      - '.github/workflows/tei-ai-tuning-reference-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-controls:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Independent synthetic negative controls
+        run: |
+          python3 --version
+          python3 -m unittest discover -s tools/reference-ai-tuning-observation -p 'test_*.py' -v
+          python3 -m compileall -q tools/reference-ai-tuning-observation
