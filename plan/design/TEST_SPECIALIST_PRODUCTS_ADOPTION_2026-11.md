@@ -6,6 +6,22 @@
 - 既存の設計：[経路間の業務機能完全性とScenario由来E2E](CROSS_ROUTE_FUNCTIONAL_PARITY_AND_TEST_DERIVATION.md)。こちらの文書は置換しない。
 - 限界：本書の製品機能は2026-11-07確認時点の公式文書に基づく比較。性能、費用、TEIとの相互運用性、製品別ライセンス適合は未実測。OwnerのMeaning受理・実Host Grant・Production資格は含まれない。
 
+<!-- tei-test-20261108-current-acceptance-card -->
+> **現行受入カード（2026-11-08 08:45Z時点。下記の過去時点の記録より優先。CIはexact HEADごとに再検収）**
+>
+> | 対象 | 現在確認した資格 | 未証明のまま保持する範囲 |
+> | --- | --- | --- |
+> | Design Context / 一Function | **main #3482** の13実CLI Reply／42限定Controls、main push専用CI #42462861657 success。Required Functionの宣言・Source存在を局所検証 | Function実Invoke・Provider Read・全Required閉包・Blind T1-B |
+> | 共通入口 | **main #3403/#3439/#3458** で参照stdio MCPとADR-0048、`validate`局所Parity | 外部H3完全受領、全Tool/Studio/Webの同一Operation/Grant/Effect |
+> | Scenario Coverage | [Draft #3365](https://github.com/hat47x/tei-platform/pull/3365) は実Pinned 6 Stepとtest-only受領目録。**最新HEAD `f7de811d0ac6c92c696e7f36069ae47350cca5f8`の専用CI #42463616468は確認時点queued**。旧HEADのCI成功を転用しない | Product Coverage、独立Step→Operation実Receiptの全閉包、外部End/ACK、同一AttemptのL/R/H |
+> | 外部Source鮮度 | **main #3477** のWorkspace Source-only drift実証。[Draft #3479](https://github.com/hat47x/tei-platform/pull/3479) はProvider Source/Manifestを分離。**最新HEAD `fff65f0ab6ae7bd9ad88d18df7a756e8fbb4ae31`の全体Health #42464022323は確認時点queued** | Consumer二FPだけによるImport Providerの鮮度断定、A→B→A、同一Snapshot/現在Grant |
+> | 外部Harness | [Draft #3494](https://github.com/hat47x/tei-platform/pull/3494) はSource/受領/独立検証の差分を文書化。Skill限定CI #42463453193 success、全体Health #42463453204は確認時点in_progress | H2/H3実完全配送、Tool実Recipient ACK、外部Sourceの全Input Closure |
+>
+> **本書の正本運用**：テスト専用製品の比較は参考資料であり、実テスト義務は#2514、Scenarioは#1180、Design Contextは#3262、実Providerは#2586、Deliveryは#2509/#2515、構成判断と実行順は#1119および既存MASTER_PLANを正とする。§30〜34のTT番号は**横断参照用**であり、独立Oracle/Runner/Registryを増やさない。§34のL/R/Hは選定L・実取得R・受領Hの**集合と時点を分けた比較**であり、同一件数や`verified:true`のコピーから実到達を推定しない。
+>
+> **次の実装一件**：#3365の最新exact-head CI成功を確認したうえで、#1180が保持するStep→Operationを外部固定し、実CLI Resultとの**同一Attempt照合**を一件実行する（§33 TT-154に相当）。その後に#3262の限定Contextから#3273の未知Gap Blind T1-Bへ進む。#3479のImport Source/Manifest失効と#2586の実Provider Readは並行検証。**本カードは設計更新であり、新CLI/Go/H3/Blind T1-B実行ではない。**
+
+
 
 > **最新の実証状態（2026-11-07末時点／下記各節の古い「未実行」を上書きする進捗注記）**：main統合済み #3284/#3296 は実CLI 9応答・Design Contextの部分資格と16種類の限定負例、#3299 はSource/Lockの実改変と旧Pin拒否、[#3304](https://github.com/hat47x/tei-platform/pull/3304) は既知の新Rule境界を**一時Candidate第7 Stepとして実TEI CLIで実行**し、独立Propertyと3種類の負例で判別した。#3304のPR HEAD `02d4c624...` について[専用CI #42378033965](https://github.com/hat47x/tei-platform/actions/runs/42378033965)はsuccess。ただし後続docs更新を含む最終HEADおよび統合後mainの別Runの成功は、本書では再検収していない。これは**T1-A（既知提案を実走）**に限定され、**T1-B（未提示の欠落をAIが独力で発見）／全Required閉包／Owner受理／実Provider・H3 Delivery／C1**ではない。§17〜19の旧T1未実施記述は各観測当時の記録として残し、最新解釈は§20を優先する。
 
