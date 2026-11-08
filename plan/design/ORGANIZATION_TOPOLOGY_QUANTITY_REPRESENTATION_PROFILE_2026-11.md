@@ -501,3 +501,52 @@ main統合済み[ADR-0048](https://github.com/hat47x/tei-platform/blob/main/plan
 | J：多Consumerと図面 | StudioのFlowとCLIの表が同一Typed Identity/Scope/Gapsを示し、SHOの説明文を第二のBusiness正本にしない。EventやState Source未受理なら両者とも`unresolved`を保持 |
 
 この検証は#1124（Graph/Navigation）、#1125（Event Flow）、#2620（Lifecycle Role）、#2507（Plugin/Pattern）、#1174（実Effect/Host）、#2514（独立Expected）の共通受入へ戻す。新たなOrg専用状態機械／API／Generatorは追加しない。P0-MでRead-only Graph／欠落と競合、P0-Cで同一Source／Provider／Consumer資格、P1でTarget生成と実行中移行の境界をそれぞれ確認する。**受入案の追加のみで実Graph生成やOwner受理はNOT RUN**。
+
+
+<!-- org-causal-cutover-fence-20261109 -->
+## 13. 組織改編・担当移管・承認の改訂境界：Readと実行時判断の因果関係（2026-11-09、採用前）
+
+### 13.1 既存時点の区別だけでは判別できない反例
+
+案件C1の担当がD1からD2へ変更され、D1の承認候補が失効する。旧C1→D1を表示した画面からD1担当者が承認を送った時点では、別Providerに新C1→D2が公開済みかもしれない。**画面の表示成功／同じ業務validAt／同じWorld Fingerprint／Query IDの一致は、Commit時の業務判断やGrantの現在性を保証しない**。一方、監査用の過去表示を現在状態へ無断置換するのも誤り。
+
+「全Providerが共有する強整合Snapshot」「グローバルな単一時計」「TEI独自の認可Engine」は前提にしない。必要なのは、当該Operationが依存する改訂を実際に観測したか、**改訂間の比較が契約上可能か**という用途別の判定である。異なるDB/APIの時刻・revision番号・digestの大小から因果順序を推論しない。比較可能なtokenや同一Cohortの証人が欠けるなら unknown/unverified とする。上流SourceのknownAtとTEI observedAtは別（§10.6）。
+
+参考は[W3C ORG](https://www.w3.org/TR/vocab-org/)のPost/Membership区別、[NIST SoD](https://csrc.nist.gov/glossary/term/Separation_of_Duty)の静的・動的・履歴に依存する職務分掌、[Zanzibar論文](https://research.google/pubs/zanzibar-googles-consistent-global-authorization-system/)のACL変更と対象Content変更の因果順序。これらは**設計上の反例・参考**であって、TEIがW3C内部Schema／NIST RBAC Engine／Zanzibarのtokenやストレージを採用する意味ではない。
+
+### 13.2 同じAttemptで照合する5つの独立した観測
+
+| 観測 | 必要な束縛 | 停止すべき誤推論 |
+| --- | --- | --- |
+| Meaning/Target | C1のhandlingUnit Relation occurrence、Person/Membership/Occupancy、Accepted Meaning、Source revision、業務有効時点 | 名称／グラフ到達／旧担当を現在責任としない |
+| Read | Function→Query/Patternの明示Binding、Selected/Invoked Provider、実SQL/args、Scope/Tenant、read cohort、Result Slice/Field Presence/完全性 | 同じQuery ID・画面JSON・0行を同じ実対象集合としない |
+| Business Decision | Rule版、判断時点、必要Relation、候補選定とその根拠、申請者・代理・承認者の関係 | 通知先／Position／候補を現在承認可能としない |
+| Host Authority/Effect | 実Principal、acting/delegationの源と範囲、現Grant、対象Case/Relation改訂、条件付き更新とReceipt | Role／委任候補／事前許可をCommit成功としない |
+| Handoff | Owner必要集合L、実Read集合R、相手方受領集合H、ACK対象・版・Scope・時点 | 受領bool・ACK件数・旧担当のACKを全件完了としない |
+
+同一Authority domainが比較可能なrevision/epochを保証するときに限り「改訂X以降を読んだ」と記録できる。別Provider間では共通の時刻値だけからこの主張を立てない。副作用を伴うOperationは実Host/Providerの現在GrantとEffect前条件を再照合する。遠隔更新をまたぐ全体原子性がない場合は、各Effect・Receipt・補償の資格を分ける。TEI Coreへ新しい分散Transaction・Global Clock・第二Ledgerを導入しない。
+
+**用途別の結論**：historical readは時点と取得範囲を明示した過去事実、previewは現在性不足を表示した候補、commitは実行境界で必要なRule・Scope・Grant・対象改訂を再確認した結果、handoff completionは同一対象・版・範囲でL/R/Hの照合を終えた結果、として分ける。比較不能なときは hold/unverified。業務上の明示deny、実Host deny、未確認を一つのfalseに丸めない。
+
+### 13.3 ORG-CF-01〜08：独立Expected案（既存C1/D1/D2合成Worldを再利用）
+
+| ID | 対照入力 | 独立Expected／落とす誤実装 |
+| --- | --- | --- |
+| CF-01 正常Read | C1→D1が同一Bound Source/Scopeで実ReadされConsumerへ届く | read-onlyの局所Claimのみ候補。Grant/業務完了に自動昇格しない |
+| CF-02 担当切替 | Preview後C1→D2。旧D1担当が送信 | old-readで新Caseを承認せず、実行境界で現在Case/Rule/Grantを再照合 |
+| CF-03 Grant失効 | Caseは不変、表示後に代理権限取消 | 旧委任／旧Grantの根拠をCommitへ再利用しない |
+| CF-04 Replica遅延 | ReplicaがD1、PrimaryがD2。validAtとQuery IDは一致 | Provider/actual scope/cohortを照合。同一現在状態の主張を保留 |
+| CF-05 改訂比較不能 | Case DB revision 8、IdP epoch 12 | 数字の大小で新旧を決めない。比較不能をUnknownとして返す |
+| CF-06 動的SoD | 作成者と承認者が兼務・代理で同じ実Principal | Ownerが要求した実行時SoDなら自己承認を拒否。PersonとPrincipalを混同しない |
+| CF-07 遅延・重複ACK | L={C1,C2}、C1のACKが2通／旧D1のC1 ACK | 重複をH={C1}として全件完了を拒否。ACK scope/revision不明はunverified |
+| CF-08 遡及訂正 | Source knownFromを過去に訂正、TEIは後日初取得 | 当時のTEI既知／Consumer受領／当時Grantを遡及して捏造しない |
+
+既知Mutantは latestTimestampWins、sameWorldMeansSameSnapshot、candidateMeansGrant、ackCountMeansCoverage、samePersonMeansSamePrincipal、validTimeMeansObservedTime。**各試験の実行資格**は source-only / synthetic / instrumented / actual Provider / actual Host / Owner accepted を別々に記録する。全SKIP、別々の局所PASS、設計Expectedだけでは製品のE2成立を宣言しない。
+
+### 13.4 既存Ownerへ渡す最小順序
+
+1. **P0-Rを優先維持**：[Draft #3500](https://github.com/hat47x/tei-platform/pull/3500)のE1f（Native Pattern→既存Driver→instrumented DB）を実PG opt-inとは別資格のまま、[#2586](https://github.com/hat47x/tei-platform/issues/2586)でC1一件のFunction Data Context→実Provider/Scope→Consumerを同一Attemptで接合。まずCF-01/CF-04の観測欄を加える。現在のE1f CI結果をFunction Context/Trust Scope/物理PG資格へ転記しない。
+2. **P1**：CF-02/03/05/06の業務Rule・代理・SoD・現在Host Grant/Effectの実行時判定を[#1174](https://github.com/hat47x/tei-platform/issues/1174)/[#2499](https://github.com/hat47x/tei-platform/issues/2499)へ引継ぎ。新Authorization Engineは作らない。
+3. **P1/P2**：CF-07/08を[#1125](https://github.com/hat47x/tei-platform/issues/1125)/[#1444](https://github.com/hat47x/tei-platform/issues/1444)、[Draft #3380](https://github.com/hat47x/tei-platform/pull/3380)、[#2514](https://github.com/hat47x/tei-platform/issues/2514)/[#1180](https://github.com/hat47x/tei-platform/issues/1180)の既存確認・Temporal・Independent Expectedへ差分として還流する。
+
+**資格**：本節は既存Source/PRと公開研究に基づく採用前の設計・独立Expected案であり、ORG-CF-01〜08の新たなGo/Node/実DB/Host/外部Consumer実行、Owner意味受理、全件Handoffは **NOT RUN / NOT ACCEPTED**。§11のinstrumented Test Connectorは実PostgreSQL／Trusted Scope Provider／現在Authorizationの代用ではない。
