@@ -204,8 +204,8 @@ X-TEAの`setVariant`・`setUserValueOf`は、スクリプトから任意の値�
 | 1. 暦の宣言と休日Data | `internal/syntax/semantic_calendar.go`、`internal/validation/calendar.go`、`internal/businesscalendar/holiday_binding.go` | `business-day excludes <data>`（暦が休日Dataを名指す）、`holiday-date`（Dataが日付属性を名指す） | [暦の宣言と期間への結合](../evidence/XTEA_LOWCODE_CALENDAR_DECLARATION_2026-11.md) |
 | 2. 期間との結び付き | `period`の`calendar`、`internal/businesscalendar` | 期間が従う暦を名指す（未知・別名前空間は拒否） | [暦からの日付導出](../evidence/XTEA_LOWCODE_CALENDAR_CALCULATION_2026-11.md)、[期間キーの導出](../evidence/XTEA_LOWCODE_PERIOD_KEY_2026-11.md) |
 | 3. 税 | `internal/taxrate` | `tax-applies-from`・`tax-applies-until`・`tax-category`・`tax-value`・`tax-rounding` | [税率の適用期間と端数処理](../evidence/XTEA_LOWCODE_TAX_RATE_2026-11.md)、[Data結合](../evidence/XTEA_LOWCODE_TAX_RATE_BINDING_2026-11.md) |
-| 4. 通貨 | `internal/currencyrate` | `currency-rate-currency`・`-fiscal-year`・`-month-sequence`・`-middle`・`-buying`・`-selling` | [通貨換算の率の種類と方向](../evidence/XTEA_LOWCODE_CURRENCY_RATE_2026-11.md)、[Data結合](../evidence/XTEA_LOWCODE_CURRENCY_BINDING_2026-11.md) |
-| 5. 採番 | `internal/numbering` | `numbering-counter`・`numbering-digits`・`numbering-prefix`・`numbering-check`・`numbering-overflow` | [採番の契約](../evidence/XTEA_LOWCODE_NUMBERING_2026-11.md)、[Data結合](../evidence/XTEA_LOWCODE_NUMBERING_BINDING_2026-11.md) |
+| 4. 通貨 | `internal/currencyrate`（年次フォールバックは`currency-rate-fallback`の宣言で選ぶ） | `currency-rate-currency`・`-fiscal-year`・`-month-sequence`・`-middle`・`-buying`・`-selling`・`-fallback` | [通貨換算の率の種類と方向](../evidence/XTEA_LOWCODE_CURRENCY_RATE_2026-11.md)、[Data結合](../evidence/XTEA_LOWCODE_CURRENCY_BINDING_2026-11.md) |
+| 5. 採番 | `internal/numbering`（`ReserveInTransaction`で取引に参加） | `numbering-counter`・`numbering-digits`・`numbering-prefix`・`numbering-check`・`numbering-overflow` | [採番の契約](../evidence/XTEA_LOWCODE_NUMBERING_2026-11.md)、[Data結合](../evidence/XTEA_LOWCODE_NUMBERING_BINDING_2026-11.md) |
 | 6. 利用者設定 | 未実装 | — | — |
 
 三段の分け方には理由があります。
@@ -233,12 +233,17 @@ X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設�
 
 | 残り | 理由 | 何が分かれば決まるか |
 | --- | --- | --- |
-| Workspace例への税・通貨・採番Dataの追加 | 役割名は新しい語彙で、例へ入れると受理済み意味の変更になる | 例を受理経路へ載せるか、別の例を足すかの判断 |
 | 月内の締め（20日締めなど）の期間化 | X-TEAの「締め日を過ぎた日付を翌月へずらす」規則（`getMSeqOfDate` L2476–2484）を引き継がない方針にしたため、月内締めは独立した期間として宣言する必要がある | 期間キーに日を含めるか、期間を分けるかの宣言 |
-| 為替の年次・月次の優先順位 | X-TEAの「月次率0なら年次表へ」は0を制御値にしていたため引き継がない | フォールバックを宣言にするか、行の欠落を報告に留めるか |
-| 採番の発行と取消の取引結合 | `State`を返す形にしたが、取引への参加は呼出し側の責務として残した | 取引境界（`UnitOfWork`）との接続方法 |
-| 採番表の行の識別 | `IDNUMBER`に相当する役割を定義していない | 複数規則を1表に置くか、Dataを分けるか |
+| 採番表の行の識別 | `IDNUMBER`に相当する役割を定義していない（`Reserve`の`ruleID`は呼出し側の文字列） | 複数規則を1表に置くか、Dataを分けるか |
+| 為替の月次・年次を別Dataに分ける構成 | 参照実装は1つのDataに月順序0の年次行を置く形だけを試した | 別Dataにする場合の結合規則 |
+| 番号の取引境界とCommand側`UnitOfWork`の共通化 | 番号側に独立した小さな契約を置いた | 両者を1つの取引実装へ寄せるか |
 | 利用者設定 | 設計のみ | 宣言された設定項目の形と、受理の対象範囲 |
+
+実装が進んだことで、以前ここに挙げていた項目のうち次の3つは解消しました。
+
+- **Workspace例への税・通貨・採番Dataの追加**: `examples/xtea-lowcode`へ役割付きで追加済み（[確認記録](../evidence/XTEA_LOWCODE_EXAMPLE_STANDARD_DATA_2026-11.md)）。
+- **為替の年次・月次の優先順位**: `currency-rate-fallback`役割で宣言する形にした（[確認記録](../evidence/XTEA_LOWCODE_CURRENCY_FALLBACK_ROLE_2026-11.md)）。
+- **採番の発行と取消の取引結合**: `ReserveInTransaction`で呼出し側の取引と同じ境界に入れた（[確認記録](../evidence/XTEA_LOWCODE_NUMBERING_RESERVATION_TRANSACTION_2026-11.md)）。
 
 ## 7. 関連
 
@@ -248,6 +253,8 @@ X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設�
 - [評価時点の決定性](EVALUATION_CONTEXT_DETERMINISM_2026-10.md)
 - [移行計画](../workstreams/XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)（WP8）
 - [受容要件](../../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md)（RQ-C3）
+
+
 
 
 
