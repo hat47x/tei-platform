@@ -1862,6 +1862,6 @@ P0R-01〜07で得られたRead証拠を、#3273 **TEST-T1B**、#3271 **PERF-T0�
 - **CLI/MCP**：ADR-0048の共通Application Operationは採用済み。参照MCP 4 Toolと`validate`局所同値は実装済みだが、Read用の全Tool・外部Harnessでの実受領、権限/送出、完全JSON／Pagingは独立。Tool正常応答をProvider実ReadやBusiness成功へ使い回さない。
 - **CI/Health**：main #3520専用合成19件の実成功と、元HEADの全Health不合格・脆弱性DB通信失敗を分離。[main統合 #3527](https://github.com/hat47x/tei-platform/pull/3527)はIndex/Workflowの衛生修正であり、既存失敗Runを遡及的PASSにせず、新HEAD/main pushの独立Runで検収する。
 
-**実行優先順位は維持**：今すぐ別のテスト設計文書を作るのではなく、#2586へP0R-01〜05の一件ずつの**実Read境界**を返し、#3273へBlind TEST-T1B一件のHoldoutを別ルートで提示し、既存#1180/#2514で判別する。P0R-06〜07、PERF、外部H3、SHO等の追加Consumerは並列Pressureとし、最初の実Readを待たせない。**KONを含む別製品の責務や詳細を、このTEI文書へ新規移植しない。**
+**実行優先順位は維持**：今すぐ別のテスト設計文書を作るのではなく、#2586へP0R-01〜05の一件ずつの**実Read境界**を返し、#3273へBlind TEST-T1B一件のHoldoutを別ルートで提示し、既存#1180/#2514で判別する。P0R-06〜07、PERF、外部H3、SHO等の追加Consumerは並列Pressureとし、最初の実Readを待たせない。**他製品の責務や詳細を、このTEI文書へ新規移植しない。**
 
 **今回のEvidence資格**：既存GitHub実PR・main・CI、Source/計画の照合に基づく実装受入票。ここでの新P0R-01〜07、TEST-T1B新Trial、対象Queryの実PG/Consumer/物理Grant・Go C1・実性能改善・現在Owner Meaningは**NOT RUN／未受理**。新Core、第二Reader、Resolver、Host、Oracle、Runner、Provider Registryは追加しない。
