@@ -1,7 +1,7 @@
-# TEI自身の設計をCLIで扱う実測 第3ラウンド（2026-11-08）
+# CLI応答のWorkspace同一性と空一覧の実測（2026-11-08、WSL2）
 
 - 対象課題: [#3149](https://github.com/hat47x/tei-platform/issues/3149)、[#3455](https://github.com/hat47x/tei-platform/issues/3455)、[#3456](https://github.com/hat47x/tei-platform/issues/3456)。
-- 前ラウンド: [第1ラウンド](../TEI_DOGFOODING_CLI_SELF_DESIGN_2026-11-07/README.md)、[第2ラウンド](../TEI_DOGFOODING_ROUND2_2026-11-08/README.md)、[MCP経路](../TEI_DOGFOODING_MCP_ROUND_2026-11-08/README.md)。
+- 関連記録: [第1ラウンド](../TEI_DOGFOODING_CLI_SELF_DESIGN_2026-11-07/README.md)、[第2ラウンド](../TEI_DOGFOODING_ROUND2_2026-11-08/README.md)、[MCP経路](../TEI_DOGFOODING_MCP_ROUND_2026-11-08/README.md)。同名の「第3ラウンド」記録が Windows 環境であり、こちらは応答の同一性に絞った別の実測である。
 - 実行日: 2026-11-08（Asia/Tokyo）。
 - 状態: **read-only の実測**。書込み・受理・権限付与・配備は行っていない。
 

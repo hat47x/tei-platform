@@ -149,4 +149,4 @@
 
 
 - [`tei self-build`の§4外形](TEI_GO_SELF_BUILD_OUTER_SHAPE_2026-11-08.md)（workspace・intent・supply・state・outputの外形とSC0-01〜05の拒否条件を実装し、実Buildをchildへ委ねて記録する。`-intent`の解決・`-supply`の照合・L2は未実装。`qualified`は常にfalse。SB-C0 §4 / #2831）
-- [TEI自身の設計をCLIで扱う実測 第3ラウンド](TEI_DOGFOODING_ROUND3_2026-11-08/README.md)（#3149・#3455・#3456。現行mainの読み取りコマンド横断でWorkspace同一性と空一覧の直列化を確認し、2件の修正を実測。設計文書が意味として読まれない D-9 は残る）
+- [CLI応答のWorkspace同一性と空一覧の実測](TEI_DOGFOODING_ROUND3_IDENTITY_2026-11-08/README.md)（#3149・#3455・#3456。読み取りコマンド横断でWorkspace同一性と空一覧の直列化を確認し、2件の修正を実測。同名の第3ラウンド記録は別ディレクトリにある）
