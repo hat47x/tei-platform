@@ -296,6 +296,57 @@ L2-aは既存の入口（`tei self-build`）が既に持つ情報（invoked.argv
 
 **未了のまま残るもの**：builder childが自分の読んだ宣言と導いた計画を報告する経路。実測に使った`tools/reference-go-build-with-supply`は`planFingerprint`を返さないため、実プロセスでは`planCrossCheck`が`unperformed`になる。単体試験では報告するfixtureで`matched`を確かめている。
 
+### 4.10 計画突合を`unperformed`から抜ける道筋（2026-11-09）
+
+§4.9の未了事項を詰める。結論を先に書く。**「報告するchildを用意すれば済む」は成り立たない。** 既存のtoolを走査すると、`tei self-build`のchild文法（`-artifact-out`と`-state`でartifactを書き、1件のJSONをstdoutへ出す）を満たしながら計画fingerprintも申告するtoolが**1つも無い**。
+
+### 4.10.1 走査した結果
+
+`tools/reference-*/main.go` を機械的に走査した（stdoutへJSONを出すか、`PlanFingerprint`を扱うか）。
+
+| tool | stdout JSON | plan fingerprint | `tei self-build`のchildとして使えるか |
+| --- | --- | --- | --- |
+| `reference-go-build-with-supply` | あり | **無し**（`BuildEvidence`に欄が無い） | **使える**（`-artifact-out`・`-state`・`-supply`）。ただし計画を名乗らない |
+| `reference-build-execution-binding` | あり | あり（`ExecutionPlanFingerprint`） | **使えない**。flagを取らず、固定fixtureを出すだけ |
+| `reference-build-attempt-evidence` | あり | あり（13箇所） | **使えない**。flagを取らず、失敗を模擬して常にexit 1 |
+| `reference-plugin-self-build` | あり | あり（13箇所） | **使えない**。`-repo`・`-go`等はあるが`-artifact-out`・`-state`を取らない |
+| `reference-plugin-package-builder` | **無し**（stderrのみ） | **無し** | 使えない。`-plugin`・`-plan`・`-out`でartifactは書くが、結果をstdoutへ出さない |
+| `reference-build-authoring-intent` | あり | あり | 使えない。**計画を導出する側**でartifactをbuildしない |
+
+**計画を名乗るtoolは、いずれも`tei self-build`のchild文法を持たない。** child文法を持つtoolは、計画を名乗らない。この非対称が`unperformed`の実質的な原因である。
+
+### 4.10.2 三つの道筋
+
+| 案 | 内容 | 何が確かめられるか | 何が残るか |
+| --- | --- | --- | --- |
+| **P-1: 計画を消費するchildを用意する** | `internal/plugin`の`BuildPlan`を入力として受け、`-artifact-out`と`-state`でartifactを書き、`planFingerprint`をstdoutへ返すchildを新設する | **1回の試行で**artifact照合と計画突合が両方観測できる | 新しい参照toolを1つ増やす |
+| P-2: `reference-go-build-with-supply`に`planFingerprint`欄を足す | 呼び手が`-child-arg`で渡した値を転記する | 欄が埋まる | **転記に過ぎない。** このchildは計画を解釈しないので、単体試験のfixtureと同じ意味しか持たない |
+| P-3: 二つのchildを1回の試行に並べる | 計画を名乗るchildとartifactを書くchildの両方を起動する | 両方の観測を1回で取れる | `tei self-build`は**childを1つしか起動しない**。契約の変更が要る |
+
+**P-2は採らない。** 計画を解釈しないchildに欄を足しても、「builderがその計画を導いた」証拠にはならない。§4.8の(a)(b)(c)のうち(b)を形式的に埋めるだけで、実測の意味が増えない。**この案を採ると`unperformed`が`matched`に変わるが、主張の強さは変わらない**——それこそが避けたい読み違えである。
+
+**P-3は本稿では採らない。** childを2つにすると`tei self-build`の契約（1 child・1 artifact・no-clobber）が変わり、SC0-03（state分離）とSC0-04（no-clobber）の意味も変わる。契約変更は別の設計判断である。
+
+**P-1を次の一歩とする。** ただし新設するchildは**artifactを書く主体**でもあるため、`tei self-build`の1 child・1 artifactの契約を変えずに済む。
+
+### 4.10.3 P-1で観測できること・できないこと
+
+P-1のchildが実装できたとして、観測できるのは次である。
+
+| 観測 | 言えること |
+| --- | --- |
+| `planCrossCheck.state=matched` | 解決childとbuilder childが**同じplan fingerprintを名乗った** |
+| `planReceipt.planMatchesExpected=true` | 呼び手の宣言値と解決計画が一致した |
+| `childRun.artifactCrossCheckMatched=true` | childの申告digestとディスク実体が一致した |
+
+**それでもL2-bではない。** L2-bを言うには§4.8の(a)(b)(c)が要る。
+
+- (a) builderが読んだ宣言byteの申告 — P-1のchildが返せば記録できる
+- (b) entryの保持byteとの一致 — `intentBinding`が担う
+- **(c) artifactがその計画の出力であること** — これは`matched`では出ない。計画とartifactの結び付けは、`plugin.LockedBuild`（`PlanFingerprint`と`ArtifactDigest`を束ねる型）のような**別の観測**を要する
+
+したがってP-1を実装しても、`l2bClaimed`は`false`のままでなければならない。**次に詰めるのは(c)である。**
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
@@ -343,9 +394,14 @@ L2-aは既存の入口（`tei self-build`）が既に持つ情報（invoked.argv
 - [x] `cmd/tei`を対象にしたL3の実測（[記録](../evidence/TEI_SELF_BUILD_CMD_TEI_L3_2026-11-08.md)、`bb7fc01bb`）
 - [x] `-intent`（I-2）の実装。SC0-01〜05は外形の拒否条件として、SC0-13・SC0-14は`intentBinding`と`planCrossCheck`として実装・実試験済み（§4.9）
 - [x] §4の外形（`-supply`・`-state`・`-output`・`qualified`欄）の実装（[#3463](https://github.com/hat47x/tei-platform/pull/3463)・[#3476](https://github.com/hat47x/tei-platform/pull/3476)）
-- [ ] builder childの計画申告経路と、実プロセスでの`planCrossCheck=matched`の観測（§4.9）
+- [x] 計画突合の3状態を実プロセスで観測（[記録](../evidence/TEI_GO_SELF_BUILD_PLAN_CROSS_CHECK_ACTUAL_2026-11-09.md)、`3a4ddeba6`）
+- [x] 既存toolの走査と、`unperformed`の実質的な原因の特定（§4.10.1）
+- [ ] **P-1**（`internal/plugin`の`BuildPlan`を消費し、artifactを書き、`planFingerprint`を返すchild）の実装と、実プロセスでの`planCrossCheck=matched`観測
+- [ ] **(c) artifactがその計画の出力であること**の観測（`plugin.LockedBuild`のような束ね型を使う。§4.10.3）
 - [ ] D-1（catalogの`scope`拡張）を採るかどうかの契約判断（採る場合のみ、catalogの広告と実応答の一致を照合へ載せる）
 
 **A-1（`gobuilder`移動）は採らないため、影響範囲の洗い出しは終了条件から外した。** 29ファイルの内訳は[記録](../evidence/TEI_GO_INTERNAL_RULE_AND_BUILDER_MOVE_2026-11-07.md)として残す。I-1（intent解析の`internal/`への切り出し）も、I-2を既定案にしたため本稿では行わない。
+
+**P-2（`reference-go-build-with-supply`への欄追加）は採らない。** 計画を解釈しないchildに欄を足すと`unperformed`が`matched`に変わるが、主張の強さは変わらない（§4.10.2）。
 
 本書は計画の正本を増やすものではない。SB-C0の**入口の外形と拒否条件**だけを固定し、#2831のP0順序（SB-0a → SB-0b → SB-A → SB-B → SB-C）のうちSB-C0を詰めた設計候補である。最終判断は元計画・ADR・actual Evidenceへ返す。
