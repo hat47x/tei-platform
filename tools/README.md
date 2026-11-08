@@ -6,6 +6,12 @@
 
 独立した参照プラグインの検査入口は [`check-reference-plugin-isolation.sh`](check-reference-plugin-isolation.sh) です。`plugins/`配下の参照実装を一時Goモジュールへ複製してオフラインで検証します。
 
+## 実行環境の前提
+
+- `tools/` の参照ツールは、Linux CI（`ubuntu-24.04`）の結果を正とします。Windowsで `go test ./...` を回すと、環境前提の差で失敗または skip になる検査があります（[#3460](https://github.com/hat47x/tei-platform/issues/3460) に原因別の一覧）。
+- 外部コマンドを `bash -c` で起動する試験（`reference-cognition-port`・`reference-generator-selection`）は POSIXシェル前提です。Windowsでは `cp <Windowsパス>` が解決できないため、該当試験は理由を付けて skip します（[#3461](https://github.com/hat47x/tei-platform/issues/3461)）。skip は「この環境では検査していない」の記録であり、成功と同じには扱いません。
+- POSIXのファイル権限（`0600` など）や rename の置換を前提にした検査は、Windowsでは skip または別経路に分けます。
+
 ## リポジトリ検査と共通部品
 
 | 場所 | 役割 |
