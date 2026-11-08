@@ -187,3 +187,144 @@ DB/Schema Access/SQL方言/Transaction実装は本ドキュメントの設計範
 - VUIをP0 Product Gateへ前倒しし既存CLI/Provider接続を停止すること。
 
 本計画は**既存の検証済み契約へ一段ずつ適用し、反例を満たせた範囲だけ標準候補として昇格**させる。実装がなくても概念を追加しただけで「Everything is Pluginsが成立」「全Target parity」「VUI対応済み」としない。
+
+
+## 11. 2026-11-08 横断収束：図表優先・不変保証・異質なConsumer（実装前の設計候補）
+
+**本節の目的**は、既存の他レーンが並行して作成した成果を第二の仕様正本へ複製せず、Lifecycleを構成する際の共通判断と実装順を合意可能な形にすること。詳細な受入票は各Ownerが持つ。
+
+- [Draft #3505](https://github.com/hat47x/tei-platform/pull/3505)／RQ-036候補：全体MapからData/Function/Business/Event/State/Pattern/Rule/Provider/Targetへ辿れる図表・ナビゲーション、標準/設定可能/Hook可能/案件置換/観測のみの凡例。これは**人が全体像を読めることを最優先**する要求で、Graph Compiler完成を前提にしない。PR未統合の仕様・実装実績と混同しない。
+- [Draft #3510](https://github.com/hat47x/tei-platform/pull/3510)／#3278：原子的Traitの要求集合と、合成後の実効Graphの**全経路**で成立する保証は別物。Traitを備えるPluginが存在するだけでGuard通過・実Callを保証できない。TLG-01〜08は既存#2514/#1180の独立Expectedへ帰属させる。
+- [#3509](https://github.com/hat47x/tei-platform/issues/3509)：B2Cは完全Native/Headless Frontend、独自SSR/Router/UX/実験を妨げない。Journey/Experiment Graphは意味上のActionと開示/実Effectへ参照するが、画面・計測・CV推定をBusiness Completionへ昇格しない。
+- [#3274](https://github.com/hat47x/tei-platform/issues/3274)：HTTP Decision/Client Reaction/Recovery Graphは**Application Outcome/Execution Effectの用途別Projection**。HTTP statusやProblem Detailsに業務意味を持たせない。#1174のunknown commitと再送拒否を守る。
+- [#2497/#3303](https://github.com/hat47x/tei-platform/pull/3303)：Data D→Function-owned Representation V→媒体Wの写像は一般に非可逆。Flow Diagramの画面上のEdgeやCanvas occurrenceをSemantic Subject/Source Identityへ自動同一視しない。
+- #2620/#2619（Everything is Data）、#1124（Modeler）、#1125/#1129（Business/Rule）、#951/#1016（Plugin）、#1121（Lowering）、#2600（Build鮮度）、#3271（Cache）、#3262（Context）を既存Ownerとして維持。異なるGraph型の共通データ表現は許すが、**一個の万能Graph Engine／単一の全種状態表／中心Event Bus**を義務化しない。
+
+### 11.1 標準Lifecycleの「不変」と「可変」は分類ではなく契約の責務
+
+不変とは、全Operationで同じNode列を置くことではない。**当該Operation/Target/Scopeに適用される受理済み契約のObligation**を、Plugin合成後も守ること。Obligation自体も業務/Effect/Targetに相対的であり、静的read-onlyまでログイン画面や事前承認を強制しない。
+
+| Layer | 不変と扱う根拠（適用条件付き） | Plugin/案件による変更可能部分 | 未確定・禁止 |
+| --- | --- | --- | --- |
+| Accepted meaning | Function/業務Outcome・対象・Rule・Source/Authorityの受理範囲 | Proposal→Owner受理を経た業務変更 | 画面/LLM/Graph案からの自動受理 |
+| Operation/Effect | 型、必要Validation、現在Auth、effect identity、unknown/receipt、開示 | Validator追加・Provider選択・分岐・観測実現 | Guard迂回、UnknownをSuccessへ変換 |
+| Lifecycle structure | 適用するObligation、Graph/Transitionの追跡可能性 | Node/Edge/Subflow/Guard/タイマー/並行分岐 | 登録順依存、競合Patchの黙殺 |
+| Presentation/Interaction | 表示からIntentへ復元するための必要ID/時点/Scope、Disclosure | Web/VUI/Chat/CLIの表示/補助対話/Native UI | 非可逆の表示値から更新対象を捏造 |
+| Realization/Delivery | exact Plugin Lock、必要Target Capability、Toolchain/Source束縛 | Go/Java/.NET/Browser/native、Headless、静的/動的合成 | 全TargetへのTEI Host/JS/HTTP常駐強制 |
+| Runtime/Measurement | effect/consent/Subject/Request/Resourceの現在資格、独立Observation | Cache/UX/実験割当/計測/通知/非同期Provider | KPI計測値を受理済み業務結果へ格上げ |
+
+**優先する編集体験**：利用者に最初からGraphの内部属性を見せず、ドメイン全体Map → 業務上の操作と例外 → Lifecycle標準部分 → 選択されたPlugin差分 → 合成後の実効Flow → 実Call/失敗の証拠、の認知順を用意する。標準Graph・差分・実効Graphは同じstable IDを共有し、凡例で「固定／設定／Hook可／交換可／観測のみ」と受理/未受理を分ける。生成コードを先に読むことを要求しない。
+
+### 11.2 Graphの形：実行Graphと他のGraphを「型付き参照」で接続する
+
+同一標準Graph表現を**媒体や説明用途まで一つの実行セマンティクスに正規化しない**。少なくとも次のRoleが相互参照できることを目標とする。
+
+| Role別Graph | 主な意味 | Generator／Consumerでの利用 |
+| --- | --- | --- |
+| Business Procedure/Workflow | Actor、手作業、引渡し、業務状態・時間条件 | Operation参照、Business Diagram、業務試験 |
+| Operation Lifecycle | 型付き処理、Guard、Effect、Failure、Observation | 実行Plan、Generator、Authority検証 |
+| Interaction Flow | 入力/確認/提示/中断/再開の状態遷移 | CLI/Web/Chat/VUI AdapterのFlow |
+| Presentation/Journey | 表示型のインスタンス/選択/画面導線/体験 | Renderer、B2C Native Frontend binding |
+| HTTP/Transport Reaction | Protocol状態・Client Reaction・Recovery | HTTP/IPC/MCP等への変換とエラー復旧 |
+| Build/Dependency | Plugin、Generator、Resource、入力閉包と失効 | Target Artifact生成/再利用 |
+
+各GraphのNode/Edge identityを、Source/Revision/semantic roleで限定し、他Graphへの関係は明示Referenceで辿る。Operation参照を業務フロー内に置いても、業務フロー自体が再定義されたOperationを自動所有するわけではない。見えない標準GuardやRenderer固有制約は「なし」と扱わず、未表示/未取得/未対応の状態と件数を表示する（#3262、Draft #3505）。
+
+### 11.3 Graph Patchを安全に合成するための最小アルゴリズム候補
+
+~~~text
+Source @ R / Accepted Meaning / selected Profile
+   ↓ Existing resolver: exact Provider & Plugin Lock L
+Base graph G + selected patches P1..Pn
+   ↓ Check patch target stable ID, version & preconditions
+   ↓ Build dependency DAG and detect collisions
+   ↓ Apply only a deterministic, explainable order
+   ↓ Normalize effective typed graph G* (layout excluded)
+   ↓ Check path obligations / disclosure / effect / version
+   ↓ Lower to Target-neutral plan, then target-specific emit
+   ↓ Independently verify actual Build / Provider Invocation / Effect
+~~~
+
+- **Patch選択**：既存Compositionで選択済みのPluginのみを対象。未選択のPluginは、編集可能なCatalogに見えても実効GraphやBuildへ混入させない。
+- **Patch識別**：Base Graph Revision、stable node/edge ID、Hook Contract Version、Source位置、作用Scope、要求Trait、選択Providerの組を残す。描画上のlabel、座標、登録順をIDにしない。
+- **構成順序**：順序不要な要求集合は重複排除・正規化。効果/状態に関与するGraph Patchは依存順を明示。同じ対象を変更する非可換Patchは依存/競合の証拠がない限り拒否。
+- **変換安全性**：型整合・Relation/対象粒度/NULL/時点・必須参照の閉包、Entry/Exit/terminal、分岐と並行合流を確認。削除/移動は必要なObligationを壊し得るため初期Referenceでは制限する。
+- **Guard検査**：あるExecuteへ「Auth Nodeが存在する」だけでは不十分。選択されたContextと入力版が実行時に有効であることを検査し、迂回経路と**Guard後に入力が変更される経路**を独立に拒否する。Graph上の支配関係（dominator）だけで権限保証を立証したことにしない。
+- **費用対効果**：大規模な全般Model Checker導入を前提にせず、最初は限定したreachable-path/型/Obligation/競合検査とDriver ScenarioのMutation Testで実証。判定不能はUNKNOWN、静的PASSは実Runtimeの権限保証ではない。
+- **変更時の資格**：Base/Patch/Pluginが変更された場合、旧Graphの適合Evidenceは原則そのまま新Graphへ移植しない。Source byte/Meaning/Graph semantic/Plugin/Generator/Artifact/Runtime/Observationをそれぞれ別のrevisionとして説明する（#2600等）。
+
+### 11.4 代表例：受注確定に案件固有の承認を挿入する
+
+~~~text
+標準 Operation / Accepted Source:
+  order.input → order.validate → order.execute → order.observe
+
+案件Plugin Patch（受注金額が閾値を超えた場合）:
+  after order.validate:
+    branch(high_value)
+    → wait_supervisor_approval
+    → resume_and_revalidate
+
+合成後の実効Graph（概念）:
+  input → validate → high_value?
+                       ├─ no ──────────────────────────┐
+                       └─ yes → approval_wait          │
+                                         ↓              │
+                                      approved?         │
+                                         ↓              │
+                         resume → recheck input/rev/auth│
+                                         └──────────────┤
+                                                        ↓
+                                               execute → observe
+~~~
+
+上図は例示であり、承認待ちのStateをどこへ永続化するか、承認Policy、Concurrent approval、期限、補償を固定するものではない。**どの経路でも実Execute直前の現在Authを検査**し、入力変更後やResume後には適切な再検証が必要。図の「approval_wait」が表示されたことはHost Grant/External Effectを与えない。
+
+**同一Referenceを4つの異質なConsumerで試す**：
+- CLI：構造化Eventを入力し、標準/追加Patch両経路の typed Operation Intent を比較。
+- Web/Native B2C：完全独自Frontendから同じOperationを呼び出せる。画面表示/実験露出は変えても承認・Effectの意味を変えない。
+- VUI：曖昧な「はい」、発話途中、無音・再開後の旧確認を拒否し、表示された承認対象とEventを束縛。
+- AI Web Chat：未完成Tool JSON・streaming token・Regenerateを実Operationへ直接接続しない。Tool Callの確定/確認/Host権限が成立した場合だけ同じOperationへ到達。
+
+### 11.5 変更・失効・再生成の判定：Graph意味と媒体の独立性
+
+| 変更 | Meaning再受理 | Graph/Generator | 特に失効するEvidence |
+| --- | --- | --- | --- |
+| Diagramの座標/スタイルだけ | 不要 | 意味Graph/Operationの再生成不要 | 表示品質/レイアウト関連のみ |
+| 表示順/文言/Reader/Voiceテンプレート | 通常不要（ただし確認内容を変えるなら再検証） | 対象Presentation生成・配信の更新 | UI/Voice/a11y/開示、Confirmation binding |
+| Edge/Guard/State/対象Rule変更 | 適用するAccepted Meaningに影響するなら必要 | Graphを再解決→検証→依存Targetを再生成 | 経路Coverage/Outcome、旧Flow resume |
+| Hookだけ変更（同じContract） | 実装変更だけなら通常不要 | Provider/Artifact/実Call再検証 | Hook/Target conformance・Build |
+| Plugin/Generator versionのみ変更 | 意味受理を自動変更しない | lock/build/再生成資格を再検証 | 旧Provider/Build/Target Evidence |
+| B2C実験配分/Creativeだけ | 業務意味を変更しない限り不要 | Experimental/Frontend資産・必要Cacheだけ | Exposure/Consent/Variant/SEO/性能 |
+| Run中のFlow revision変更 | 過去の意味を上書きしない | 旧版継続か明示Migration、新旧の状態互換検証 | replay/resume/authority/Effect |
+| 外部参照Source変更（同名内容変更・ABA） | 参照に関わるMeaning再確認が必要な場合あり | Source closure・受理・生成器資格を別判定 | Source依存/Observation/Build。fingerprint一致だけで復活しない |
+
+**反例**：B2Cの実験設定だけ変えたときに、業務意味の全Owner再受理を要求するのは過剰。一方、Voice確認文言で金額が省略されたなら「見た目だけの変更」ではない。分類は変更ファイル名でなく、適用Contractへの影響から決める。
+
+### 11.6 独立Expectedへ渡す追加の判別力（新Test SSOTは作らない）
+
+| 追加Case | 反例 | 検証する期待 |
+| --- | --- | --- |
+| LGX-01 | 標準とPlugin Patch/実効Graphが見た目では同じ、内部のEdge方向だけ違う | stable ID/向き/多重辺をSourceから追跡。Effective Planは正しい方向だけを使う |
+| LGX-02 | 提示図から必須Guardが隠れたまま「完全」と表示 | 指定Scope・Required集合に対する表示済み/未取得/秘匿のCountを分離 |
+| LGX-03 | 複数Pluginの順序を逆転、同一Edgeをreplace | 純粋集合のみ順序非依存。非可換な変更は競合診断 |
+| LGX-04 | validate/authorize後に値をGraph Patchで書換える | 実Execute時に古い検証/権限を利用できず、Effect 0回 |
+| LGX-05 | Graphの同名別ノード、同端点多重EdgeをDiagramで編集→Sourceへ書戻し | node/edge stable identity/Source spanの保存。曖昧な逆編集は拒否 |
+| LGX-06 | Voice/Web Chatのpartial Intent/regenによる重複Tool call | 途中値は実Operationへ流入せず、二重Effectや成功捏造なし |
+| LGX-07 | Native B2C routeでTEI Renderer/JS/Hostを全除去 | 契約済みOperationは利用でき、不要なRuntime依存が強制されない |
+| LGX-08 | Graph Source/Plugin差替え・旧Flow Resume・A→B→A | 旧Build/Graph/Authority/Evidenceは自動的に現行適合へ復活しない |
+| LGX-09 | Graph schema/Consumerが一部未知・非対応のまま図面だけ成功 | 可能なread-only投影とExecutable/Editable資格を分離し、部分結果をPASSにしない |
+| LGX-10 | 標準処理とPlugin差込時にレイテンシ/DB read数が増えた | Host/Target/Scenario固定でCPU/IO/Alloc/Cache/Traceを差分観測。性能改善は測定して採否判断 |
+
+LGXは**独立Expectedの設計候補**であり、既存#1180/#2514へ具体的Fixtureとして帰属させる。#3505のMAP-01〜10、#3510のTLG-01〜08、#3274のHDG群と検証概念を重複しても、新しいTest Runnerや硬いGateは作らない。
+
+### 11.7 最短の実装依存と責務の返却
+
+1. **既存最優先**：#1251の同一selected Providerが実CLI/Studio二Consumerから呼ばれることを確認。Source/Target/Host文脈を別証拠にする。
+2. **Graph読取り/完全性**：#1124/#3262とDraft #3505。現行Source→Role→Lifecycle Node/Edge→標準/拡張/実効のread-only Mapを最小一Operationで表現し、必要な部分が未Loadedならそれを表示。
+3. **Graph Extension**：#2090/#951/#1016/#1121。read-only Hook 1個とBranch Patch 1個を既存Contractへ束縛し、競合とGuard迂回を負例検証。まず簡易Graphを手入力した合成Fixtureで構わないが、その証拠を「TEI Loader済み」としない。
+4. **Diagram→Source→Generator**：#1124/#2497/#2620/#1121。図面からの変更候補がSource/Revisionへ正しく戻り、必要なAcceptanceを通りTarget Codeへ反映されることを同一Attemptで確認。
+5. **異質媒体**：#3503/#997/#2093/#259/#3509。Web Chatのstreaming/Tool、VUI確認/中断、完全Native B2Cの三つを同じOperationで比較し、媒体固有の実適合を独立取得。
+6. **性能・再利用**：#3271/#2600。Graph/Hook/Renderer/Cacheの変更影響範囲を限定し、不要な再生成や高レイテンシの強制を診断する。
+
+これらの番号は本設計の**依存順候補**であり、別の中央Program/Gateを立てるものではない。関連Ownerの既存Issueで必要条件を検収し、追加実装をしないで済む箇所はそのまま再利用する。実Graph Compiler、実Editor書戻し、生成AI Chat/Voice Target、正式Source/Meaning/Authorityの通し実証は引き続き**NOT RUN**。
