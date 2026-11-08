@@ -32,6 +32,7 @@ import (
 	"tei/internal/environment"
 	"tei/internal/index"
 	"tei/internal/ir"
+	"tei/internal/modelref"
 	"tei/internal/plugin"
 	pluginruntime "tei/internal/plugin/runtime"
 	"tei/internal/query/analyzer"
@@ -159,8 +160,10 @@ func main() {
 	subjectKind := fs.String("subject-kind", "", "Source Index subject kind")
 	subjectID := fs.String("subject-id", "", "Source Index subject ID")
 	traceScope := fs.String("scope", "", "scope for typed modelref trace projection")
-	traceDirection := newSetStringFlag(fs, "direction", "both", "trace incoming, outgoing, or both")
-	traceMode := newSetStringFlag(fs, "mode", "summary", "trace summary or full")
+	// The CLI flag default, `tei commands` and the MCP adapter read these two
+	// values from modelref instead of each keeping a copy (#3605).
+	traceDirection := newSetStringFlag(fs, "direction", modelref.TraceDefaultDirection, "trace incoming, outgoing, or both")
+	traceMode := newSetStringFlag(fs, "mode", modelref.TraceDefaultMode, "trace summary or full")
 	traceOffset := fs.Int("offset", 0, "explicit full trace result offset")
 	traceLimit := fs.Int("limit", 0, "explicit full trace page size; 0 returns all rows")
 	traceExpectedFingerprint := newSetStringFlag(fs, "expected-fingerprint", "", "expected typed trace snapshot fingerprint for continued pages")

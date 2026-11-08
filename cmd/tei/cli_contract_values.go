@@ -78,7 +78,12 @@ func valueDefaults(name string) map[string]string {
 func argumentDefaults(name string) map[string]string {
 	switch name {
 	case "trace":
-		return map[string]string{"direction": "both", "mode": "summary"}
+		// The same values the flag defaults use, so an advertised default cannot
+		// drift from the value an omitted flag applies (#3605).
+		return map[string]string{
+			"direction": modelref.TraceDefaultDirection,
+			"mode":      modelref.TraceDefaultMode,
+		}
 	case "view":
 		return map[string]string{"format": "text"}
 	}
