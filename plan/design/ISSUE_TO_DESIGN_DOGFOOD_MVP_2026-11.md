@@ -753,3 +753,25 @@ Ontology DSL／Decision Twin／外部シミュレーションSDKの本格製品�
 **実装への最短引渡し**：まず#2586で`order_entry.recent_orders`の**Function stable IDとQuery Bindingの有無**を実Source/Operationから判定する。存在しない場合は`first missing edge = Function→Query`として止める。存在する場合だけ、その同じFunction/Scopeで実SQL/Provider Rowsetを読み、#3492/#3518のMap/Graph候補へSource locator付きで逆照合する。並行して#1251のS2では通常CLIと実Studio Bridgeから**同じ選択済みB**を実呼出ししたかを別Attemptで検証し、双方の実Consumerを満たした部分だけX0へ引き渡す。既存#1180/#2514の独立Expected、#1163のEvidence、#1119のGateを使い、新しいResolver/Runner/Host/Registry/Graph正本を作らない。
 
 **本節の資格上限**：GitHub上のmerged/Draft・Go限定CI・SKIP・docs-onlyを区別した計画更新。新Go/PG/Studio/Wails/CLI/MCP/外部Consumer/Plugin Artifact/Host Grantの製品E2E、Owner Meaning受理は**今回NOT RUN**。本Draftのexact HEAD CIは別確認し、既存局所成功を横断PASSへ加算しない。
+
+<!-- tei3483-p0-contract-one-attempt-20261108 -->
+### 14.35 「一Functionの実証」を操作・設計・実Read・受領の一Attempt契約に収束する（2026-11-08）
+
+直近[main #3532](https://github.com/hat47x/tei-platform/pull/3532)は、Inspector局所Go 2 Consumerを原子的Trait履行の**製品S2未成立**として更新した。[Draft #3486](https://github.com/hat47x/tei-platform/pull/3486)は物理Schema FK/Indexのread-only Workbench保持と同一Function M1bの受入境界を定義したが、実PostgreSQL・DDL Apply・Owner Meaningは未実証。したがって、図面・Workbench・Trait・Inspector・実Queryを別々に進めても、**一つのFunctionにおける実行・受領の一貫した資格**を失わないよう、既存#2586/#1251/#3262の共通引渡しを次の最小契約に固定する。
+
+| 一Attemptで確認する項目 | 必須の観測 | 成功と見なさない代替 |
+| --- | --- | --- |
+| **F：Function Identity** | Stable Function ID、Application/Operation、実SourceとAccepted Meaning Role、必要Dependencyの独立Required | `sales.order.submit`の宣言成功を`recent_orders`のFunction成功へ流用 |
+| **M：Model Binding** | 当該Function→Query/Relationの明示型付きLink、Source locator、Context Scope/Revision、unknown/ambiguousの診断 | Model Mapの`resolved`、同名Application、物理FKからの業務Relation推測 |
+| **S：Source Cohort** | Reader実取得Source bytes/Index mode/外部Provider parsed Source・Manifest revisionと同Load資格、変化時の局所失効 | World/Source Index FP文字列一致、別Loadの原文を一時点Snapshotと呼ぶ |
+| **P：Provider実Invoke** | Contract/Operation/Selection/Scope/Epoch、実Provider B/Host Callback、実SQL byte・bind・RowsetとCompleteness | 選択Bだけ、Builtin A同値出力、instrumented別Case Query、PG opt-in SKIP |
+| **C：Consumer/Effect** | 通常CLI／実Studio Bridgeの各受信・部分Reply/失効Grant・Disclosure・Read/Effect種別、同Attempt Receipt | Go helperだけの2 call-site、HTTP送信成功、画面表示、Observer統計だけ |
+| **E：Independent Expected** | #1180/#2514の独立Expectedと失敗負例、未実行と不合格の区別、#1163への引用 | 合成SourceからExpectedを自己生成、別Function/別HEADの成功の合算 |
+
+**必要な反例**：①`M`がunboundならPを走らせず、既知F/Sourceを保持してX0を不適格とする。②選択Bに対し通常CLIがBuiltin Aを使えば結果同値でもS2失敗。③Provider Manifestのみ改訂されても旧P/Cの再利用資格を再判定する。④物理FKがあるだけで業務RelationやCRUD Rを受理しない。⑤`provided/manual-required` Traitは手動履行の独立証拠がなければ未充足。⑥Consumerが途中切断された場合、Provider成功を完全受領に昇格しない。⑦実Rowset 0件は適切なScope/Required Closureがなければ不存在証拠でない。
+
+**実装優先順**：まず既存`order_entry.recent_orders`に対するF→Mの有無を#2586の実Source/Operationで調べる。Mがあれば同一Functionに限りPとCを追加し、三視点/CRUDは同じF/M/Sのread-only Projectionに限定する。Mがなければ**first missing edge = Function→Query Binding**を返し、別の`org_view.case_browse`のGo局所成功で埋めない。並行する#1251の製品S2は、通常CLI dispatchと実Wails Bridgeで**selected B = actual B**を独立Expectedで実証する。実Product二Consumerが成立する前にVerified BOM、Effect許可、AI判断移譲の完了を宣言しない。
+
+**記録の最小単位**：既存Evidence/RunLog/Source Indexに、`Attempt ID／Function ID／Query ID／Source Cohort／Selection Epoch／actual Provider／Consumer／Required Closure／Expected ID／Result(PASS|FAIL|SKIP|NOT-RUN|UNKNOWN)`を**read-onlyで照合**する。これは新しい共通Ledger・Schema・Runnerを義務化するものではない。証拠が複数Attemptに分散する場合は一Attemptと偽装せず、比較可能な範囲だけ引用する。
+
+**今回の資格上限**：#3532はmain統合済みの設計更新、#3486はDraftの実装候補。ここで追加したのはdocs-onlyの検収契約であり、新Go/CLI/Wails/実PG/Provider/Receipt/Owner意味受理は**NOT RUN**。本PRのexact-head CI/現在mainとの整合を別途検証する。
