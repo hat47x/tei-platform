@@ -195,7 +195,7 @@ func Build(d index.Derived) Model {
 			for _, fk := range t.ForeignKeys {
 				tv.ForeignKeys = append(tv.ForeignKeys, ForeignKeyView{
 				Name: fk.Name, NameGenerated: fk.NameGenerated,
-				Columns: append([]string(nil), fk.Columns...),
+				Columns:          append([]string(nil), fk.Columns...),
 				ReferencedSchema: fk.ReferencedSchema, ReferencedTable: fk.ReferencedTable,
 				ReferencedColumns: append([]string(nil), fk.ReferencedColumns...),
 			})
