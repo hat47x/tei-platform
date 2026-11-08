@@ -661,7 +661,7 @@ Ontology DSL／Decision Twin／外部シミュレーションSDKの本格製品�
 
 **受入Fixtureは一つに絞り、Owner別の実験を合算せず接合する**。対象は既存のProduct Query `order_entry.recent_orders`を使用する一Functionと、そのData/Function/Businessの必要Source/Relationを明示した限定Read Scenario。外部REA観測・SEI判断委譲は**別入力として任意に追加できる**が、先行するP0-M／P0-R／Plugin D1の実装前提にはしない。
 
-- **A：Design側**：main #3354の11実CLI/限定RequiredからSource/Role/Relationと欠落を取得し、Source IndexとImported Provider occurrenceが必要な場合は別照合。図面/CRUDで既知Rとunknownを保ち、同じSource locatorへ逆参照。Reader unsupportedなら最初の欠けた辺を止める（#3262/#3263）。
+- **A：Design側**：main #3354の11実CLI/限定Requiredから（後続main #3482の13実CLIは`sales.order.submit`宣言専用の追加2検査として別計上し、`recent_orders`へ横流ししない）Source/Role/Relationと欠落を取得し、Source IndexとImported Provider occurrenceが必要な場合は別照合。図面/CRUDで既知Rとunknownを保ち、同じSource locatorへ逆参照。Reader unsupportedなら最初の欠けた辺を止める（#3262/#3263）。
 - **B：Runtime側**：同じFunctionが選んだProduct SQL原byte/params/実Provider/Rowset/grain/scopeを取得し、AのData Contextと比較する。別Reference SQLのPG成功はProduct R0の代用にならない（#2586）。
 - **C：Plugin側**：ADR-0048共通Operationの`inspect`一件について、CLI/Studioからexact selected Provider Bをactual Invokeできたかを照合し、A呼出し/暗黙Builtin fallbackを拒否。Trait manual-required欠落は別資格（#1251/#3480/#3267）。
 - **D：Consumer側**：実CLI/参照MCP/SHO等のうち、**実際に存在し同一Source/ScopeのReplyを完全受領したConsumer**だけ比較に入れる。Source版混合、未許可情報の件数漏れ、受信終端欠落、保存後別Readの不在を未合格にする（#2516/#2509）。
@@ -670,3 +670,23 @@ Ontology DSL／Decision Twin／外部シミュレーションSDKの本格製品�
 **Exitの最小単位**は、`actual observed Source/World/Role/Scope/Reader mode + required+observed+missing + exact consumed implementation/Result + independent Expected + Claim ceiling + first missing edge`の組である。これを既存Evidence #1163／Test SSOT #1180/#2514と既存Gate #1119へ引き渡す。新Test Runner・認可Engine・Runtime Host・Registry・グラフ正本・万能Reasonerを追加しない。
 
 **本追補の資格**：2026-11-08の他チャットで成熟した判断とGitHub各Issue/PRの現在状態を照合した設計・計画追補。新REA実行、SEI/EKI Message Delivery、実Plugin Runtime、Product recent_orders実DB/Studio、異Target Verified BOM、セルフビルド再実証、Owner正式Meaning受理、外部H2/H3完全受領は**今回NOT RUN**。本追補のCIもexact HEADごとに別確認。
+
+<!-- tei-intake-submit-versus-recent-import-manifest-20261108 -->
+### 14.31 既知Functionの設計充足と、別Functionの製品Readを連続成功として数えない（2026-11-08）
+
+**mainで新たに限定実証された範囲**：[PR #3482](https://github.com/hat47x/tei-platform/pull/3482)は既存の`context_gate.py`で`semantic-capability:sales.order.submit`の入力`order:sales.order`／出力`sales.order`、`application:order_entry`の`uses semantic sales`・必要Validation 3・`sales_core` DB requirementを、Source Location/Definition Roleと独立Requiredで突き合わせた。従来11に同じ`inspect`を2件追加した**13実CLI Reply／42限定Consumer Controls**が[main push専用CI #42462861657](https://github.com/hat47x/tei-platform/actions/runs/42462861657)で成功した。Local Go statement C0相当9.4%、C1/NFR・全Business/Function Closure・外部Tool完全受領は未測定。**`uses semantic sales`はCapabilityの具体的なInvocation Bindingではない**。Business Ruleの用途・依存が見えるだけでは選択Queryや実Providerへ到達しない。
+
+**別Claimのまま保持する対象**：P0-Rの`order_entry.recent_orders`（実SQL byte／`:from`／physical Provider／Rowset/Scope/Function Data Context）は上記`sales.order.submit`と同じFunction IDでない。両者が同じ`order_entry` Applicationや`sales.order`に関係しても、#3482の13 Replyを`recent_orders`のRequired閉包／実Read合格へ無音で再利用しない。必要なら**別独立Required Slice・別Attempt**で追加し、#2586に一番早い未接続辺を示す。
+
+| 現物からつなぐ辺 | すでに確認できた範囲 | 受入の次の負例と停止線 |
+| --- | --- | --- |
+| **宣言→Function Entry**（#3262/#2586） | main #3482の`sales.order.submit` Source/Role/Required限定照合 | 同名Namespaceが`uses`にあっても、呼出し先Capability Entryが未Bound／別Capabilityなら拒否。Build・Host/Grant・実Effectは未実証 |
+| **別Function→実Read**（#2586） | Product `recent_orders`の業務SQL/Providerを現物で一連に繋ぐ受入条件がある | 別`submit` Requiredが合格でも`recent_orders`のSQL実選択・`:from`・実Rowsetが無ければR0は未成立 |
+| **Imported Provider Source/Manifest→Consumer**（#3479/#3262/#2600） | main #3477は同一Workspace SourceIndex改版を検出。未統合#3479旧HEADの限定Source-only Go負例はHealth成功 | Imported ProviderのRaw Source末尾改行だけ／Manifest末尾改行だけ変えても、Consumer World/Source Index FPが不変となる反例を別々に固定。Provider Source raw fingerprint、Manifest identity、実Nested Readを混ぜずに追跡。#3479新HEADはCI未確定、Product自動失効は未実装 |
+| **E1 Plan Route/Action→Go Host**（#3274/#3485） | main統合[#3485](https://github.com/hat47x/tei-platform/pull/3485)はNodeのE1 PlanとGo Hostのmethod/path/actionIdという**独立の宣言**を合成Fixtureで対照する | 二側が個別PASSでもペア不一致なら統合PASSとしない。これはTest-onlyのRouteペア判別であり、実Hostが選択したProviderのInvoke、HTTP Client Reaction、DB Effect/Receiptは未証明 |
+| **Physical Schema→Meaning/Diagram**（#3270/#3486） | [Draft #3486](https://github.com/hat47x/tei-platform/pull/3486)は旧#3372を置換し、Workbenchへ物理FK/UNIQUE/Index・観測版を伝える候補。Fake Catalog経路のTestに限定 | 物理FKやIndexから業務Relation／Function CRUDを自動受理しない。別Accepted Meaning Sourceが無いならGraph/CRUDの未確定Roleはunknown、実PG/Studio/SHOのE2EはNOT RUN |
+
+**判別の単位**：`exact subject/function ID + Required Purpose + source occurrence + imported provider raw/manifest revision + invoked implementation/target + read cohort/scope + consumer receipt + independent Expected`を既存#1163/#1180/#2514の証拠と比較する。必要な情報が一つでも不足した辺で`partial/unknown`として停止。これを**一つの巨大な新しい公開Status SchemaやTest Harnessへ実装せず**、既存Ownerの判定列に分配する。先行P0-M/R/DとP1 Inspector D1を並行で進め、実SEI／SHO・異Targetへの転記は該当Consumer受領とOwner受理が可能な段階まで保留する。
+
+**本節の上限**：main #3482の限定専用CI／#3485の合成Route Test、#3479/#3486の未統合候補と実Sourceを照合した計画更新。実Go/CLI/PG/Studio/HTTP/MCP/SHO/H3の新規Product E2E、実Provider Rowset・現在Grant、Legacy/Target実比較、Owner Meaningの正式受理は**今回NOT RUN**。
+
