@@ -708,3 +708,46 @@ TEI設計情報の既存実CLI 13応答／Consumer判別42件、Context Gate、S
 - **正式製品導入前**：KON、SHO、SUI、SEI、TAIに共通の新Host/Registry/Policyを設けず、TEI既存契約を明示Adapterで再利用。KONの権限管理・物理DB配置は独立した製品判断を尊重。
 
 **状態**：本節は既存実証を用いた計画更新であり、K2-A/B/C/D、業務DB実Provider Read、2 Provider×2 Consumer、外部H2/H3、正式Owner受理を実行した記録ではない。
+
+
+---
+
+## 19. 2026-11-08 K2の選択Provider実呼出し・改訂鮮度・共通APIへの接続
+
+### 19.1 新たに確認した実装基線
+
+TEIの横断レーンを再照合した結果、[PR #3482](https://github.com/hat47x/tei-platform/pull/3482)（独立RequiredをCapability/Application/Sourceに結ぶ設計Context検証）と[PR #3439](https://github.com/hat47x/tei-platform/pull/3439)（CLI/MCP/API/Web/Desktop共通アプリケーションAPIのADR-0048）は**mainへマージ済み**。これらはK2のConsumerと入口の再利用基線であるが、選択Providerの実Load・実Invoke・OKF意味解釈を証明しない。
+
+[PR #3479](https://github.com/hat47x/tei-platform/pull/3479)（外部Provider SourceとManifestを独立改訂要因として扱うGo負例）、[PR #3378](https://github.com/hat47x/tei-platform/pull/3378)（CLI/Studio Inspectorの限定Parity）、[PR #3371](https://github.com/hat47x/tei-platform/pull/3371)（Studio Host Inspector選択Service）は**Draft・未マージ**。Draft内の局所テストと、現在mainの正式な実装資格を混同しない。
+
+SHOのG2-W1実Working CopyとG2-W2のSave As／無変更Save／既存更新は別工程。W2-E1で条件付き更新を保証できない場合、原本を上書きせずDraftを保持する。K1Rのread-only受領をWriterの権限に昇格させない。
+
+### 19.2 K2-Aで最初に証明するべき「選択＝実呼出し」
+
+K2-Aの初回受入は、Providerを一つだけ用意して成功させるテストでは不十分。**A/Bの2候補を用意し、Bを選択したときに実際にBを呼び、Aを呼んだ場合は結果が同じでも失敗**とする。
+
+| 観測 | 最低限記録する値 | 失敗条件 |
+| --- | --- | --- |
+| 選択 | Capability、候補A/B、選択B、選択根拠、Provider Lock | 未選択・曖昧・B以外 |
+| ビルド | Bの実Source digest、Manifest digest、組込Artifact、Toolchain/Generator版 | Lock一致のみ、Source-only/Manifest-only改訂を無視 |
+| 実行 | Actual Invoked Provider ID=B、実Module/Entry Point、Invocation ID、Host境界 | Bを選択したのにAを呼ぶ、Call記録なし |
+| 受領 | TEI CLIの実Replyと独立Expected、Source Scope/Required差分 | 空resultを完全取得とする、未読MarkdownをMeaningに昇格 |
+| 再利用 | World/Model/Artifactの版と実消費Source/Manifest、実行Receiptを別々に記録 | 二つのdigest取得だけで同一Load消費を推論 |
+
+Sourceだけ変更／Manifestだけ変更／両方変更／どちらも変更なしの**2×2改訂行列**を、PR #3479の負例へ接続する。これは実Provider呼出しの実証前段であり、実LoadしたBがどのSource/Manifestを消費したかの同一Attempt証明が次のゲート。単にSourceとManifestのFingerprintを記録しただけではK2-A PASSにしない。
+
+### 19.3 共通APIとCLI/Studio/SHOを同じ意味経路に置く
+
+ADR-0048の共通アプリケーションAPIを入口とし、CLI/Studio/MCPを独立した意味ParserやProvider Selectorにしない。CLI→既存Harness→薄いAdapterを先行し、必要性を実測するまで独自Harnessを追加しない。CLI/StudioのShadow ParityはData/Validation/Relation/Capability/Application/Patternの**限定6対象**について、実選択B・実Call B・同一独立Expectedを照合する後続ゲートであり、現Draftの表示一致だけでは達成しない。
+
+SHOのConsumer Bはprivate repo側のReader/Adapterから同一Providerを呼び、別々の実Receiptを残す。TEIとSHOのCIのGitHub認可境界を尊重し、公開TEIのCIへprivate SHO用のPATやSourceを追加しない。Source受領後のOwner Meaning、外部開示、実Effect、KON Dataspaceの永続化・認可は別資格とする。
+
+### 19.4 計画差分と停止条件
+
+1. **P0（実装探索）**：mainのProvider Selector→Build組込→Actual Invoke経路をコード・テストで確認。未実装の辺を一つだけ特定する。
+2. **P1（K2-A）**：選択B→B実組込→B実呼出し→独立Expected。A誤呼出しは同一結果でもFAIL。Source/Manifestの改訂4ケースと実消費証拠を同一Attemptへ束縛。
+3. **P1（K2-B/C）**：同一ProviderをSHO実Reader境界から呼び、CLI/SHO別々の受領Receiptと独立Required差分を照合。
+4. **P2（K2-D）**：未選択・曖昧・Source-only/Manifest-only・ABA・Grant撤回・途中配送・不一致Providerを負例化。CLI/Studio Parityと2 Provider×2 Consumerの4 tupleはこの段階で評価。
+5. **正式採用前**：F0の独立Expected/Owner審査、F1の必要Source閉包、F2のMeaning/Host/Disclosure/Attesterを別々に受理。KONやSHO Writerの実装完了をK2の前提にしない。
+
+**実証状態**：#3482/#3439のmain統合は確認済み。#3479/#3378/#3371はDraft。K2の選択B＝実Invoke B、同一Attemptの実消費Source/Manifest、SHOとの同一Provider二Consumerは**NOT RUN**。この節は横断設計の成熟成果をK2の受入条件へ反映したもので、製品実装済みという宣言ではない。
