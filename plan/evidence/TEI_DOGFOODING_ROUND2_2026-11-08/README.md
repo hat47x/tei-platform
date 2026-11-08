@@ -4,6 +4,7 @@
 - 第1ラウンド: [TEI_DOGFOODING_CLI_SELF_DESIGN_2026-11-07/README.md](../TEI_DOGFOODING_CLI_SELF_DESIGN_2026-11-07/README.md)（課題 D-1〜D-10 の起票元）。
 - 実行日: 2026-11-08（Asia/Tokyo）。作業開始時点の `origin/main` は `4fd88c2b1`。
 - 状態: **read-only の再実測**。意味の受理、権限付与、本番配備、書込みは行っていない。
+- 追補: 実測後に main が進み、D-3 は #3366（`9bc015876`）で解消した。当初の観測は `4fd88c2b1` の時点のもので、現在の main の値は§9に別途記録する。
 
 ## 1. このラウンドの目的
 
@@ -51,6 +52,9 @@
 | `22-mcp-surface-survey.txt` | MCP入口の調査（CLI広告・Goソースのgrep・文書の位置づけ） | — |
 | `30-view-json.txt`・`31-model-catalog.txt` | D-3の確認（`view` と `model catalog` の版の欄） | 0 |
 | `32-validate-markdown-workspace.txt`・`33-files-markdown-workspace.txt` | 設計文書をWorkspaceにした `validate`・`workspace-files` | 0 |
+| `addendum/after-view-json.txt` | 実測後の main（`768d8ef3b`）で `view … -format json` | 0 |
+| `addendum/after-validate-markdown-workspace.txt` | 実測後の main で設計文書Workspaceを `validate` | 0 |
+| `addendum/after-validate-xtea.txt` | 実測後の main で `validate -workspace examples/xtea-lowcode` | 0 |
 
 ## 4. 観測
 
@@ -60,7 +64,7 @@
 | --- | --- | --- |
 | D-1 `trace` の未対応kind | `UNSUPPORTED_SUBJECT_KIND`・終了コード2。`SUBJECT_NOT_FOUND`（1）と区別できる（`03`） | **閉じた** |
 | D-2 Workspace同一性 | `validate` の最上位と `model catalog`・`inspect`・`trace` の `result.workspace` に `name`・`formatVersion`・`manifest` が入る（`04`・`09`・`10`） | **閉じた** |
-| D-3 版の欄の不統一 | `view -format json` の `result` は `application`・`patterns`・`schemaVersion`・`semanticFingerprint`・`semanticUses` のみ。`worldFingerprint` を持たず、`semanticFingerprint` は `sha256:f6c4cf29…` で `model catalog` の `worldFingerprint` `sha256:c92de09f…` と異なる（`30`・`31`） | **残る** |
+| D-3 版の欄の不統一 | 実測時点（`4fd88c2b1`）は `view -format json` の `result` が `application`・`patterns`・`schemaVersion`・`semanticFingerprint`・`semanticUses` のみで、`worldFingerprint` を持たなかった（`30`・`31`）。**その後 #3366（`9bc015876`）で解消**し、現在の main は応答の最上位に `worldFingerprint`・`sourceIndexFingerprint` を返す（§9） | 実測時点は残る／現在は解消 |
 | D-4 `view` の作用と広告 | `view` は `effect: read-only` のまま、`writeFlags` に `-operation-log`・`-lifecycle-state` を挙げる（`01`） | **閉じた**（`effect` 語彙の統一は未着手） |
 | D-5 `plugin-lock` のround-trip | envelopeをそのまま `-plugin-lock` へ渡して成功（`06`、終了コード0） | **閉じた** |
 | D-6 不正lockの終了コード | 第1ラウンドで観測した2コマンドの差は、mainの修正で終了コード2に揃った（個別の再実行はしていない） | 閉じた（間接確認） |
@@ -121,3 +125,29 @@ sha256sum /tmp/tei-r2-bin   # 16c9090d0c4fa1b08bb25b412aede508489179cbd1260b673a
 ## 8. 位置付け
 
 第1ラウンドと同じく、この記録は read-only の実測であり、意味の受理・権限・本番適格性を示さない。課題の現況は「どの振る舞いが観測できたか」の記録であり、修正の採否は各Ownerの判断に属する。
+
+## 9. 実測後の追補（main が進んだ分）
+
+実測に使った `4fd88c2b1` の後で main が進み、D-3 が解消した。実測時点の観測を書き換えず、**現在の main の値**を別の実行物で記録する。
+
+| 要素 | 値 |
+| --- | --- |
+| Source | `origin/main` の `768d8ef3b`（実測後の main。D-3 を直した #3366 `9bc015876` を含む） |
+| 実行物 | 同commitのworktreeで `go build -o /tmp/tei-r2c ./cmd/tei` を作り、`vcsRevision` が `2489dbc3d…`（記録ブランチのHEAD）であることを確認した |
+| 追補の生出力 | `addendum/after-view-json.txt`・`addendum/after-validate-markdown-workspace.txt`・`addendum/after-validate-xtea.txt` |
+
+### 9.1 D-3（#3345 / #3366）
+
+- 実測時点（`4fd88c2b1`）: `view -format json` の応答は `result.semanticFingerprint` だけを持ち、`worldFingerprint` も `sourceIndexFingerprint` も持たなかった（`30-view-json.txt`）。
+- 現在の main: 応答の**最上位**に `worldFingerprint`（`sha256:c92de09f…`）と `sourceIndexFingerprint`（`sha256:1827f4b4…`）を返し、`result.semanticFingerprint` は `sha256:f6c4cf29…` のまま残る（`addendum/after-view-json.txt`）。3つの値が別物として並ぶため、範囲の違いが名前と置き場所から読める。
+- #3345 は 2026-11-07T17:31Z に閉じている。閉じた根拠は #3366 の統合と、mainの実バイナリでの確認である。
+
+### 9.2 D-9・D-10（#3346・#3347、いずれも Open）
+
+- D-9: 現在の main でも `docs/`＋`plan/` を `sources` にした Workspace は `ok:true`・`WORKSPACE_DECLARES_NO_MODEL_ELEMENTS`・`sourceRootFindings`（`docs`・`plan`）のままで、設計記述はCLIの意味として読まれない（`addendum/after-validate-markdown-workspace.txt`）。
+- D-10: 現在の main でも `validate` の `diagnostics[]` は要素が `diagnostic` の下に入る二重構造で、`proposals[]` は平坦である（`addendum/after-validate-xtea.txt`）。
+- どちらも設計判断を含むため、本記録は観測を渡すだけに留め、採否は各Issueへ委ねる。
+
+### 9.3 MCP
+
+実測後に追加されたMCP実装は無い（`22-mcp-surface-survey.txt` の調査は `4fd88c2b1` 時点のもので、その後の main の変更にはMCPサーバーの追加を含まない）。MCP経路は引き続き `NOT RUN`。

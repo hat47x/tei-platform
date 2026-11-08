@@ -419,7 +419,7 @@ TEI自身の設計は、`docs/`と`plan/`のMarkdownで書かれている。こ�
 | --- | --- | --- |
 | D-1 `trace` の未対応kind | 解消（`UNSUPPORTED_SUBJECT_KIND`・終了コード2） | なし |
 | D-2 Workspace同一性 | 解消（`workspace` 欄） | なし |
-| D-3 版の欄の不統一 | **残る**（`view` は `semanticFingerprint` のみ、`worldFingerprint` を持たない） | `view` の版の欄をどう揃えるかは未決。`#2824`・`#2822` の範囲で扱う |
+| D-3 版の欄の不統一 | 実測時点（`4fd88c2b1`）は残る（`view` は `semanticFingerprint` のみ）。**実測後に #3366（`9bc015876`）で解消**し、現在の main は応答の最上位に `worldFingerprint`・`sourceIndexFingerprint` を返す（#3345 は Closed） | なし（残るのは `semanticFingerprint` の範囲を名前で示すかの設計判断のみ） |
 | D-4 `view` の作用の広告 | 解消（`writeFlags` に `-operation-log`・`-lifecycle-state`） | `effect` の語彙（`read-only-with-named-output` など）の統一は未着手 |
 | D-5 `plugin-lock` のround-trip | 解消 | なし |
 | D-6 不正lockの終了コード | 解消（間接確認。個別再実行は未実施） | 必要なら個別に再実行する |
@@ -432,7 +432,8 @@ TEI自身の設計は、`docs/`と`plan/`のMarkdownで書かれている。こ�
 
 - **MCP 入口は存在しない。** `commands` 19件にMCP関連の名前は無く、GoソースにもMCPサーバー実装は無い。`docs/architecture.md` は「TEI独自の開発用MCPサーバーは必須にしない」「将来追加しても別の正本を作らない」と位置づけている。依頼の範囲が CLI/MCP に広がったが、**実測できたのは CLI 経路だけ**であり、MCP経路は未実装として `NOT RUN` に置く。
 - **discovery が引数の許容値と出力flagを広告するようになった。** `commands` の出力は 6,957 バイトから 9,513 バイトへ増え、`argumentValues`・`argumentType`・`argumentDefaults`・`writeFlags` を持つ。生成AIが「何を渡せるか」を文書なしで知る経路ができた。
-- **残る3件はいずれも単一の欄の追加では閉じない。** D-3 は版の語彙と置き場所の設計、D-9 はMarkdownを意味として扱うかの設計判断、D-10 は `v0` の互換性判断を含む。
+- **D-3 は実測後に解消した。** #3366 が `view -format json` の応答の最上位へ `worldFingerprint`・`sourceIndexFingerprint` を足し、`result.semanticFingerprint` と並べて3つの値が別物として読めるようになった（#3345 は Closed、`9bc015876`）。実測時点の観測は変えず、追補を[実測記録](../evidence/TEI_DOGFOODING_ROUND2_2026-11-08/README.md) §9に置いた。
+- **残るのは D-9 と D-10 の2件。** D-9 はMarkdownを意味として扱うかの設計判断（#3346）、D-10 は `v0` の互換性判断（#3347）を含み、いずれも単一の欄の追加では閉じない。
 
 次に必要な作業:
 
