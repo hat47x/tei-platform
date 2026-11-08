@@ -3319,3 +3319,29 @@ HEAD `e0cfebf14d40db81bdef77d6c3e4898ed75d999f`に対する[GitHub Actions #4203
 **責務・Gate**：#1251/#951＝D1 Contract/Provider/Resolution、#3262/#2514/#1180＝Requiredと独立Expected、#3278/#3279＝Trait Required Closure、#3267＝exact BOM、#1824/#1158＝Studio/CLI両Consumer、#2509/#2515＝外部Tool受領、#1119＝既存Gateの優先順。G1/G2業務PG／G4全体Self-buildは既存独立実証のまま。新Host・Schema・Reader・Oracle・Registryなし。
 
 **証拠の上限**：この§63はmain既存局所CIとDraft実装案を照合して**計画本文へ記録しただけ**。D1で選択された実ProviderのCLI/Studio呼出、Trait手動実装Conformance、Verified BOM、外部比較適格H2/T1-B、実PG/SHO、正式Owner Meaning受理を新たに実行したものではない。
+
+
+<!-- tei-20261108-actual-function-vs-inspector-import-contract -->
+### 63.4 11/8夕方の新しい接合条件：実Function宣言、Inspector実Provider、外部Import原文、共通APIを別の資格として受入
+
+前節§63で計画した「Inspector一機能のactual selected Invoke」を変更せず、[main #3482](https://github.com/hat47x/tei-platform/pull/3482)と[Draft #3479](https://github.com/hat47x/tei-platform/pull/3479)の新Evidenceによって、その前後に必要な**対象一致／Source鮮度／transport資格**を狭く追加する。独立Expected・Scenario正本は#1180/#2514、一改訂の接合は#1163、共通操作契約は[ADR-0048](https://github.com/hat47x/tei-platform/blob/main/plan/adr/0048-shared-application-api-and-transport-adapters.md)・#1158に残す。新しい横断DTO・Revision Registry・Runner・Hostを採用しない。
+
+**第一の重要な区別：同じsales名前空間でも、別のSubject／別の機能。** [main #3482](https://github.com/hat47x/tei-platform/pull/3482)で実証されたのは `semantic-capability:sales.order.submit`、`application:order_entry` の**限定Declaration/Required Source/3 Validation/DB requirement**の読取判別である。Sourceの同じファイルへ関連していても、§63の `semantic-data:sales.order` を読む**Inspector**や、#2586の `order_entry.recent_orders` の実Query、`order_entry.submit_order` の実Commandとは異なる。この4つの一往復を**同一FunctionのProduct E2Eと呼ばない**。明示されたFunction→Data/Query/Action/ProviderのBindingと実Entry/Effect/Readが各々観測された時だけ接続する。
+
+| 境界と現在のEvidence | 成立してよい限定Claim | 未充足／次の担当 |
+| --- | --- | --- |
+| **F0: Capability・Application・Requiredの実Read** | main #3482の[専用CI #42462672188](https://github.com/hat47x/tei-platform/actions/runs/42462672188)、main push[再検証 #42462861657](https://github.com/hat47x/tei-platform/actions/runs/42462861657) は **13実CLI Reply / 42 test-only Consumer Controls**、Pinned Scenario、既知T1-A、Source-only driftを限定PASS。実物のGo局所Statement C0相当は9.4%、C1は未計測 | `boundedFunctionSlice.declarationStatus=bounded-present` は実Function Runnableでも全Role/Rule Required Closureでもない。#3262/#3482でSource/Dependencyを独立保持、実SQL/Entry/Grantは#2586/#1174 |
+| **F1: 同一Workspace Sourceのみ改訂** | main #3477はWorld/意味Revが変わらなくても、Consumer-owned Source Indexを用いたDesign Context→Scenario鮮度判定の限定実装 | 全Workspace/Provider/Importが完全に取り込まれたと推定しない。#3262/#2600 |
+| **F2: Imported Provider Rawのみ改訂** | [Draft #3479](https://github.com/hat47x/tei-platform/pull/3479) はProviderのraw末尾LFのみ変更するGo負例。Consumer World/Semantic/SourceIndex/ModelRevisionが不変でも、Provider raw SHAと新しい`LocateImportedSource`のfpが変わり、`BuildSourceIndexFromLoad`の`ErrImportsNotBound`が残る。現行HEADの独立CIは別確認 | **Consumer側の二FingerprintだけでImport先引用の鮮度・Build実入力閉包・Plugin実Sourceを資格化しない**。#2743/#3479/#3488で「過去Load時原byte」と「現在再読取byte」を区別。全Build失効も全再利用も自動決定しない |
+| **F3: 実Inspector Provider** | #3378 direct CLI/Studio基線、#3371 Studio typed seam、#3381 CLI typed seamのDraft候補 | #951/#1251がexact Providerを選択し、**selected B→actual B invoked**のArg/Result/Source・Target/Scope/Caller確認。B要求→A呼出やmissing Provider→Builtin暗黙fallbackを拒否。具体BindingなしにF0/F2から実Invoke合格を作らない |
+| **F4: CLI/MCP/HTTP/Studio共通API** | [ADR-0048](https://github.com/hat47x/tei-platform/blob/main/plan/adr/0048-shared-application-api-and-transport-adapters.md)の採用、[main #3487](https://github.com/hat47x/tei-platform/pull/3487)でMaster PlanにB0/B1/B2の実測順が追補 | 共通型付き操作とTransport Adapterの同値性は#3419/#3420で `catalog/inspect/trace/validate` の**result/meaning validity/diagnostic/failure code/Source版**を比較。CLI/MCP同値PASSはPlugin Provider実Invoke・Web/実IPC・Host Grant・外部H3配送の証拠ではない |
+
+**最小で実行可能な反証票（既存#1180へ引渡し、第二Case正本を作らない）**：
+
+1. **FJ-01 Subject混同**：`sales.order.submit`の13 Replyが全て成功しても、Inspectorや`recent_orders`のactual Provider/SQLが未観測なら、それぞれのRunnable/Read Claimを`unknown`に保つ。Source/Functionの名前が近いことをIdentity Bindingとしない。
+2. **FJ-02 Imported Source-only drift**：同Consumer RevisionでProvider rawだけLF変更。Semantic再利用候補は維持可能でも、原Source引用・Current Location/Consumer Disclosureはstale/unverifiedにし、Providerを実Buildで消費したか不明ならBuild skip資格unknown。Provider再取得が`Load`時原子的Snapshotの証拠にはならない。
+3. **FJ-03 Provider取り違え**：同じCanonical JSONを返すProvider A/Bで、B選択→A実呼出を拒否。未選択Bundle提供、Selected Capability、Trait名、BOM candidate、CLI Adapter parityはactual invokeの代用でない。
+4. **FJ-04 共通APIの偽成功**：`validate`のTransport実呼出が成功しても、Validationがfailed/partialだった場合にCLI/MCPで同じ業務結果・診断・文字列failure codeを残す。`isError=false`やexit0だけで意味PASSにしない。未知型や不足Tool Replyも空結果へ落とさない。
+5. **FJ-05 局所Coverageと外部Harness**：13 Reply/42局所Controlは**当該公開Contextの観測済み判別**だけ。blind T1-B・完全Required・外部H2/H3 Tool raw bytes/OS/Sinkは別。B0=決定的CLI/API、B1=既存Harness Skill有無、B2=不足を補う薄いAdapterを独立Expected＋実Cost/Disclosureで比較し、新Agent Runtimeは必要性が実証されるまで採用しない（#2509/#2515/#2018）。
+
+**着手順と停止**：P0は現在mainの#3482を再実装せず、`sales.order.submit`のRequiredで足りない**実Function→Provider/Query/Entry Bindingの一箇所**を#2586/#1129の担当に渡す。同時に#3479のP0b原文証拠と#1251 Inspector A/B実Callを並行実証。最初のread-only Inspector実CallにStudio二Consumer・BOM 2×2・SHO/REA/KON・Self-build G4・T1-B盲検・実PG WriteをHard Dependencyとして増やさない。実証後に一つの正しいBindingでF0→F3→F4を同じTarget/Scope/Attemptに束縛し、必要なSource引用と実Consumer受領を検査する。今回の文書は新Product GO Test・CLI/MCP/Studio実同一Provider・外部H2・Owner意味受理・実DB Writerを**実行していない**。#3479/#3488はDraftであり、新しい採用判断ではない。
