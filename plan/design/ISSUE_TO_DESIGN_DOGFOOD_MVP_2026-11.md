@@ -645,7 +645,7 @@ Ontology DSL／Decision Twin／外部シミュレーションSDKの本格製品�
 
 [main ADR-0048 #3439](https://github.com/hat47x/tei-platform/pull/3439)はCLI/MCP/HTTP/Desktopが**同じApplication Operation契約を異なるAdapterで公開**する方針を採用した。[main #3480](https://github.com/hat47x/tei-platform/pull/3480)は原子的Required Trait→既存Contract/Composition/Provider選択→Default/Generated/Manual/External履行→actual Invoke→独立Expectedの足りない辺を計画へ結合した。Operation/Resultの入口同値は、Traitの実実装、Host Current Grant、Provider Effectを証明しない。
 
-意味役割の既存実装についても、特定RoleがGoの業務固有処理へ接続されていても、任意のRole/Operatorを汎用Interpreterが実行可能という意味ではない。Readerが返した型付き値と、その**集合の母数/粒度/完整性・NA/NULL/非公開**を別に扱う。空集合0行を「この対象は存在しない」、一部取得のRuleを「全体で成立」としない。構造/型一致から単位・丸め・業務受理・実Permissionを導かない。
+意味役割の既存実装についても、特定RoleがGoの業務固有処理へ接続されていても、任意のRole/Operatorを汎用Interpreterが実行可能という意味ではない。Readerが返した型付き値と、その**集合の母数/粒度/完全性・未取得/NULL/非公開**を別に扱う。空集合0行を「この対象は存在しない」、一部取得のRuleを「全体で成立」としない。構造/型一致から単位・丸め・業務受理・実Permissionを導かない。
 
 一方[main #3440](https://github.com/hat47x/tei-platform/pull/3440)/[#3463](https://github.com/hat47x/tei-platform/pull/3463)は`tei self-build`の子Process・Artifact実測とCLI外形を進めたが、**Build Intentの意味的解釈、Supplyの完全照合、独立環境、G4資格は未成立**。Buildが再現可能でもProvider実Invocationの資格やTrait Manual Required履行を代替しない。
 
@@ -659,7 +659,7 @@ Ontology DSL／Decision Twin／外部シミュレーションSDKの本格製品�
 
 ### 14.30 次の実証を「一Functionの条件付き比較」に限定する
 
-**受入Fixtureは一つに絞り、Owner別の実験を合算せず接合する**。対象は既存`order_entry.recent_orders`と、対応するData/Function/Businessの必要Source/Relationを明示した限定Read Scenario。外部REA観測・SEI判断委譲は**別入力として任意に追加できる**が、先行するP0-M／P0-R／Plugin D1の実装前提にはしない。
+**受入Fixtureは一つに絞り、Owner別の実験を合算せず接合する**。対象は既存のProduct Query `order_entry.recent_orders`を使用する一Functionと、そのData/Function/Businessの必要Source/Relationを明示した限定Read Scenario。外部REA観測・SEI判断委譲は**別入力として任意に追加できる**が、先行するP0-M／P0-R／Plugin D1の実装前提にはしない。
 
 - **A：Design側**：main #3354の11実CLI/限定RequiredからSource/Role/Relationと欠落を取得し、Source IndexとImported Provider occurrenceが必要な場合は別照合。図面/CRUDで既知Rとunknownを保ち、同じSource locatorへ逆参照。Reader unsupportedなら最初の欠けた辺を止める（#3262/#3263）。
 - **B：Runtime側**：同じFunctionが選んだProduct SQL原byte/params/実Provider/Rowset/grain/scopeを取得し、AのData Contextと比較する。別Reference SQLのPG成功はProduct R0の代用にならない（#2586）。
