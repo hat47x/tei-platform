@@ -121,3 +121,6 @@
 
 # Executor binding consumer survey output is hashed as raw bytes by its README.
 /plan/evidence/EXECUTOR_BINDING_CONSUMER_SURVEY_2026-11-08/** -text
+
+# Answer fact-presence reports are hashed as raw bytes.
+/plan/evidence/DSH_ANSWER_FACT_PRESENCE_2026-11-08/** -text
