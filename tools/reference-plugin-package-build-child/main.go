@@ -48,6 +48,55 @@ type childReport struct {
 	ArtifactDigest  string `json:"artifactDigest,omitempty"`
 	StateDir        string `json:"stateDir,omitempty"`
 	Boundary        string `json:"claimBoundary"`
+	// Lock is the binding this process forms and validates itself, so a caller
+	// no longer has to trust two separate self-reports. It ties the plan this
+	// process loaded to the artifact it wrote.
+	Lock *selfLock `json:"buildArtifactLock,omitempty"`
+}
+
+// selfLock is the child's own validated plan-to-artifact binding. The child
+// checks it with internal/plugin before writing anything, so a malformed
+// digest or a missing identity field stops the run instead of being reported.
+type selfLock struct {
+	FormatVersion   int    `json:"formatVersion"`
+	PlanFingerprint string `json:"planFingerprint"`
+	ArtifactDigest  string `json:"artifactDigest"`
+	LockFingerprint string `json:"lockFingerprint"`
+	Validated       bool   `json:"validated"`
+	Boundary        string `json:"boundary"`
+}
+
+const lockBoundary = "this process validated one BuildArtifactLock over the plan it loaded and the artifact it wrote; validation shows the lock is well formed, not that the plan produced the artifact"
+
+// formSelfLock builds and validates the lock from the values this process
+// actually holds: the plan it loaded and the bytes it wrote.
+func formSelfLock(plan plugin.BuildPlan, planFingerprint, artifactDigest string) (selfLock, error) {
+	lock := plugin.BuildArtifactLock{
+		FormatVersion: plugin.BuildArtifactLockFormatVersion,
+		Builds: []plugin.LockedBuild{{
+			Plugin:          plan.Plugin,
+			OutputKind:      plan.OutputKind,
+			Target:          plan.Target,
+			Profile:         plan.Profile,
+			PlanFingerprint: planFingerprint,
+			ArtifactDigest:  artifactDigest,
+		}},
+	}
+	if err := lock.Validate(); err != nil {
+		return selfLock{}, fmt.Errorf("the plan-to-artifact lock does not validate: %w", err)
+	}
+	fingerprint, err := plugin.BuildArtifactLockFingerprint(lock)
+	if err != nil {
+		return selfLock{}, fmt.Errorf("the lock fingerprint could not be derived: %w", err)
+	}
+	return selfLock{
+		FormatVersion:   plugin.BuildArtifactLockFormatVersion,
+		PlanFingerprint: planFingerprint,
+		ArtifactDigest:  artifactDigest,
+		LockFingerprint: fingerprint,
+		Validated:       true,
+		Boundary:        lockBoundary,
+	}, nil
 }
 
 func main() {
@@ -140,6 +189,15 @@ func materialize(planPath, pluginPath, artifactOut, stateDir string) (childRepor
 		}
 	}
 
+	artifactDigest := digestOf(artifact)
+	// Form and validate the lock in this process, from the values it holds. A
+	// lock that does not validate stops the run before the report is written,
+	// so a caller never receives a binding this process could not check.
+	lock, err := formSelfLock(plan, fingerprint, artifactDigest)
+	if err != nil {
+		return childReport{}, err
+	}
+
 	report := childReport{
 		SchemaVersion:   childSchema,
 		Nature:          "one child process that consumes an exact BuildPlan and materializes its Plugin package",
@@ -150,9 +208,10 @@ func materialize(planPath, pluginPath, artifactOut, stateDir string) (childRepor
 		PluginVersion:   plan.Plugin.Version,
 		OutputKind:      string(plan.OutputKind),
 		ArtifactPath:    artifactOut,
-		ArtifactDigest:  digestOf(artifact),
+		ArtifactDigest:  artifactDigest,
 		StateDir:        stateDir,
 		Boundary:        childBoundary,
+		Lock:            &lock,
 	}
 	return report, nil
 }

@@ -49,11 +49,29 @@ stdoutへ1件のJSONを出します。`tei self-build`が読む欄は`artifactDi
 | 試験 | 確かめていること |
 | --- | --- |
 | 報告 | plan byte digestとplan fingerprintが別値で、`internal/plugin`の導出値と一致する |
+| **自分のlock** | `buildArtifactLock`が`validated: true`で、fingerprintが非空、plan/artifactがreportと一致する |
 | artifact照合 | 申告digestがディスクのバイトと一致する |
 | 不正plan | artifactを書かず、stdoutへJSONを出さず、exit 1 |
 | 定義不一致 | artifactを書かず、exit 1 |
 | 文法 | 必須flag欠落はexit 2と理由 |
 
+## child自身のlock
+
+reportは`buildArtifactLock`を持つ。**このchildが自分で組み立て、`internal/plugin`の`Validate`を通した束縛**である。
+
+| 欄 | 意味 |
+| --- | --- |
+| `validated` | `Validate`を通したか |
+| `lockFingerprint` | childが導いたlockの照合値 |
+| `planFingerprint` / `artifactDigest` | lockに載せた値（childが実際に保持したもの） |
+| `boundary` | 「lockが整っていることは、その計画がそのartifactを生んだ証明ではない」 |
+
+lockが`Validate`を通らなければ、**artifactを書いた後にreportを出さずexit 1**にする。reportを返すと、検証できなかった束縛が「返ってきた」と読まれるためである。
+
+`tei self-build`はこのlockを、自分が独立に導いたlockと比べる。**経路の違う二つの組み立てが同じfingerprintになる**ことが、ここで増える観測である。それでも、両方がchildの申告に依存している点は変わらない。
+
 ## 実行した確認
 
-`tei self-build`を解決child（`tools/reference-build-authoring-intent`）とこのchildで起動し、**実プロセスで`planCrossCheck.state=matched`を観測**しました。記録は[`TEI_GO_SELF_BUILD_PLAN_MATCHED_2026-11-09.md`](../../plan/evidence/TEI_GO_SELF_BUILD_PLAN_MATCHED_2026-11-09.md)にあります。**`l2bClaimed`は`false`のままです。**
+`tei self-build`を解決child（`tools/reference-build-authoring-intent`）とこのchildで起動し、**実プロセスで`planCrossCheck.state=matched`を観測**しました。記録は[`TEI_GO_SELF_BUILD_PLAN_MATCHED_2026-11-09.md`](../../plan/evidence/TEI_GO_SELF_BUILD_PLAN_MATCHED_2026-11-09.md)にあります。
+
+child自身のlockを足した後の実測では、**entryが導いたlockとchildのlockが同じfingerprint**になりました。記録は[`TEI_GO_SELF_BUILD_CHILD_LOCK_2026-11-09.md`](../../plan/evidence/TEI_GO_SELF_BUILD_CHILD_LOCK_2026-11-09.md)にあります。**`l2bClaimed`はどちらも`false`のままです。**
