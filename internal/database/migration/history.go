@@ -74,6 +74,7 @@ type RepositoryState string
 
 const (
 	RepoApplied       RepositoryState = "applied"
+	RepoUnknown       RepositoryState = "unknown"
 	RepoPending       RepositoryState = "pending"
 	RepoFailed        RepositoryState = "failed"
 	RepoDiverged      RepositoryState = "diverged"
@@ -165,6 +166,11 @@ func CompareHistory(database core.CanonicalID, defs []Definition, history Histor
 			e.State = RepoPending
 		case a.State == AppliedFailed:
 			e.State = RepoFailed
+		case a.State != AppliedSucceeded:
+			// A missing, unknown, or unrecognized tool outcome must not
+			// become a verified repository application, even when the
+			// definition checksum happens to match.
+			e.State = RepoUnknown
 		case a.Checksum != "" && e.RepositoryChecksum != a.Checksum:
 			e.State = RepoDiverged
 		default:
