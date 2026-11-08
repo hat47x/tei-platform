@@ -95,7 +95,7 @@ def negative(proc: subprocess.CompletedProcess[str], *diagnostic_fragments: str)
 
 def scoped_step_coverage(required: set[str], received: list[dict],
                          scenario_sha: str, actual_source_sha: str,
-                         end_received: bool) -> dict:
+                         end_received: bool, expected_operations: dict[str, str]) -> dict:
     """Read-only scope projection over independently checked real CLI receipts.
 
     Absence in a partial or malformed inventory is never proof of an untested
@@ -133,6 +133,16 @@ def scoped_step_coverage(required: set[str], received: list[dict],
                 "productCoverage": "unknown",
                 "claimCeiling": "unqualified",
             }
+        if (expected_operations.get(key) is None
+                or row.get("operation") != expected_operations[key]):
+            return {
+                "inventory": "operation-mismatch",
+                "localObserved": [],
+                "notObserved": sorted(required),
+                "untestedConfirmed": [],
+                "productCoverage": "unknown",
+                "claimCeiling": "unqualified",
+            }
         indexed[key] = row.get("verified") is True
     verified = {key for key, is_verified in indexed.items() if is_verified}
     complete = (end_received is True and set(indexed) == required
@@ -150,11 +160,18 @@ def scoped_step_coverage(required: set[str], received: list[dict],
 
 
 def scoped_step_selftest(required: set[str], actual: dict[str, dict],
-                         scenario_sha: str) -> tuple[dict, dict[str, str]]:
+                         scenario_sha: str, expected_operations: dict[str, str]
+                         ) -> tuple[dict, dict[str, str]]:
     """TT-105/106 using validated real CLI observations plus copy-only controls."""
-    receipts = [{"stepId": key, "verified": True} for key in sorted(actual)]
+    # Carry the actual CLI evidence fields, never fabricate verified=True.
+    receipts = [
+        {"stepId": actual[key].get("stepId"),
+         "verified": actual[key].get("verified"),
+         "operation": actual[key].get("operation")}
+        for key in sorted(actual)
+    ]
     baseline = scoped_step_coverage(required, receipts, scenario_sha,
-                                    scenario_sha, True)
+                                    scenario_sha, True, expected_operations)
     if not (baseline["inventory"] == "complete-for-one-pinned-scenario"
             and baseline["localObserved"] == sorted(required)
             and baseline["productCoverage"] == "unknown"
@@ -165,7 +182,7 @@ def scoped_step_selftest(required: set[str], actual: dict[str, dict],
     # TT-105: this synthetic *partial receipt* omits an independently
     # required step. It is NOT proof that the step was never tested.
     dropped = [entry for entry in receipts if entry["stepId"] != "validate-denied"]
-    missing = scoped_step_coverage(required, dropped, scenario_sha, scenario_sha, False)
+    missing = scoped_step_coverage(required, dropped, scenario_sha, scenario_sha, False, expected_operations)
     if not (missing["inventory"] == "partial"
             and "validate-denied" in missing["notObserved"]
             and "validate-positive" in missing["localObserved"]
@@ -181,26 +198,26 @@ def scoped_step_selftest(required: set[str], actual: dict[str, dict],
 
     # Receiving every step without an end witness does not close the report.
     incomplete = scoped_step_coverage(required, receipts, scenario_sha,
-                                      scenario_sha, False)
+                                      scenario_sha, False, expected_operations)
     if incomplete["inventory"] != "partial" or incomplete["productCoverage"] != "unknown":
         raise AssertionError("complete-looking inventory missing end marker")
     controls["TT-105-complete-looking-without-end"] = "incomplete"
 
     # A fake end marker with a missing step is not a closed inventory.
     partial_with_end = scoped_step_coverage(required, dropped, scenario_sha,
-                                             scenario_sha, True)
+                                             scenario_sha, True, expected_operations)
     if partial_with_end["inventory"] != "partial" or partial_with_end["untestedConfirmed"]:
         raise AssertionError("missing receipt was misclassified as complete")
     controls["TT-105-false-end-claim"] = "incomplete"
 
     changed = scoped_step_coverage(required, receipts, scenario_sha,
-                                   "sha256:different-source", True)
+                                   "sha256:different-source", True, expected_operations)
     if changed["inventory"] != "source-mismatch" or changed["localObserved"]:
         raise AssertionError("foreign Source digest qualified an old receipt")
     controls["stale-source-receipts"] = "unqualified"
 
     duplicate = scoped_step_coverage(required, receipts + [receipts[0]],
-                                     scenario_sha, scenario_sha, True)
+                                     scenario_sha, scenario_sha, True, expected_operations)
     if duplicate["inventory"] != "unexpected-or-duplicate-step":
         raise AssertionError("duplicate Step receipt was accepted")
     controls["duplicate-receipt"] = "unqualified"
@@ -208,12 +225,24 @@ def scoped_step_selftest(required: set[str], actual: dict[str, dict],
     unverified = [{"stepId": x["stepId"], "verified": False
                   if x["stepId"] == "validate-positive" else True} for x in receipts]
     verdict = scoped_step_coverage(required, unverified, scenario_sha,
-                                   scenario_sha, True)
+                                   scenario_sha, True, expected_operations)
     if (verdict["inventory"] != "partial"
             or "validate-positive" in verdict["localObserved"]
             or verdict["untestedConfirmed"]):
         raise AssertionError("unverified receipt became qualified positive")
     controls["unverified-positive-receipt"] = "partial"
+    # A different Operation with the same Step ID is not the requested target.
+    wrong = [dict(entry) for entry in receipts]
+    wrong_target = next(x for x in wrong if x["stepId"] == "validate-positive")
+    wrong_target["operation"] = "resolve-pattern"
+    wrong_verdict = scoped_step_coverage(required, wrong, scenario_sha,
+                                         scenario_sha, True, expected_operations)
+    if (wrong_verdict["inventory"] != "operation-mismatch"
+            or wrong_verdict["localObserved"]
+            or wrong_verdict["untestedConfirmed"]
+            or wrong_verdict["productCoverage"] != "unknown"):
+        raise AssertionError("same step id with wrong Operation was qualified")
+    controls["wrong-operation-for-step-id"] = "unqualified"
     return baseline, controls
 
 
@@ -301,7 +330,12 @@ def main() -> None:
                 or ev.get("evidenceNature") != "synthetic-independent-observation-read"
             ):
                 raise AssertionError("synthetic Observation not independently read")
-            measured[step] = {"operation": ev["operation"], "nature": ev["evidenceNature"]}
+            measured[step] = {
+                "stepId": ev["stepId"],
+                "operation": ev["operation"],
+                "verified": ev["verified"],
+                "nature": ev["evidenceNature"],
+            }
 
         # Negative N1: actual canonical relation-unique evaluator must reject
         # duplicated keys while the unchanged Scenario expects unique keys.
@@ -428,7 +462,10 @@ def main() -> None:
         always_satisfied = {rule: "satisfied" for rule in RULES}
         assert always_satisfied != independent_rule_properties(denied)
 
-    scoped_inventory, scoped_controls = scoped_step_selftest(STEPS, measured, digest(source))
+    scoped_inventory, scoped_controls = scoped_step_selftest(
+        STEPS, measured, digest(source),
+        {step: record["operation"] for step, record in scenario_steps.items()},
+    )
     coverage = subprocess.run(["go", "tool", "cover", "-func", str(args.coverage.resolve())],
                               cwd=root, capture_output=True, text=True, check=True)
     last = coverage.stdout.strip().splitlines()[-1]
