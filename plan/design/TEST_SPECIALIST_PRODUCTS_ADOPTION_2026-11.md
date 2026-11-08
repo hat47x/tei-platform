@@ -1562,3 +1562,49 @@ ADR-0048の既定フローは **共通Application Operation → CLI/MCP/HTTP/Stu
 6. **P2-E｜Effect/Build/NFR/外部Harness**：#3478/#3485の実Go Host Path、#3440のL3、#3415/#3470の外部Session Log sinkを、実Receipt/Action/Current Grant、G4完全Source/Seed、外部H2/H3実Delivery、C1/NFRと別の評価軸へ。SEI判断移譲・KON/SUI/SHOの追加ConsumerはP0-TのHard Dependencyにしない。
 
 **採用済みと未決**：共通アプリケーションAPIとAdapter方向は**ADR-0048で採用済み**、MCP4 read-only参照入口とvalidate同値はmainに存在する。Feature/Build/Sourceの実完全性、外部Disclosure/Host、MCP全契約、現在Owner業務意味、T1-B盲検生成、実Provider/全C1/G4は**NOT QUALIFIED**。本節は既存GitHub実証から**テスト要件と担当順序を更新した設計差分**であり、新Go/CLI/MCP/PG/Wails/H3実行や受理をこの変更自身で行っていない。新Core型/Host/Registry/Resolver/Parser/Reader/Runner/Oracle/History Storeの重複実装は要求しない。
+
+<!-- tei-test-actual-operation-and-receipt-chain-20261108 -->
+## 31. 2026-11-08：受領Step IDだけでなく実Operationへ束縛する――Scenario局所Witnessの強化
+
+### 31.1 新しい実装差分：テスト用の「検証済み=true」を独立の実観測へ戻す
+
+[Draft #3365](https://github.com/hat47x/tei-platform/pull/3365) の初回HEAD `1e2531fede563ed4b1d32cca0e78ccaf69fe364c` は、[専用Dogfood #42394673357](https://github.com/hat47x/tei-platform/actions/runs/42394673357)、[Health #42394673331](https://github.com/hat47x/tei-platform/actions/runs/42394673331)、[依存確認 #42394673273](https://github.com/hat47x/tei-platform/actions/runs/42394673273) の3件が**completed/success**。ここまでの実証は、既存6件の実TEI Pinned CLI Stepと、そこから作った7件の試験用受領目録対照である。
+
+追加調査で、旧 `scoped_step_selftest` は各Stepの実CLI Evidenceを `measured` に保持した後、目録を `{"stepId": ..., "verified": true}` と**試験側で再構成**していたことが判明。これでは後続の「局所Observed」は既存 `expect_real_evidence` の成功に間接依存するが、実Receiptの `verified` 値そのものには直接結合していなかった。また同じStep IDが別のOperationを意味する場合に、目録が正しいTargetへ到達したとは限らない。
+
+[同PR追加commit `8adbf0d` → `1ffcba5` → `b81a764`](https://github.com/hat47x/tei-platform/pull/3365) では、**実TEI CLIが返した `stepId`／`operation`／`verified` をそのまま `measured` へ引き継ぎ**、既存Scenario Sourceで指定されたStep→Operationの対応と照合するよう変更。Step IDだけを同じにして `evaluate-validations` を `resolve-pattern` に差し替えた負例は `operation-mismatch` として局所認定を拒否する。従来のTT-105/106＋受領目録対照7件にこの1件を加え、**test-only 対照8件**を同一WorkflowでAssertion対象にした。
+
+**重要な限界**：ここでの `end_received=True` は試験Consumerが渡す**合成終端フラグ**であり、外部Harnessのordered Tool part/endを観測した証拠ではない。Step実行の詳細Resultは既存 `expect_real_evidence` が照合した内容の範囲でのみ信頼し、`scoped_step_coverage` 自体を新Oracleとみなさない。Operation一致は**宣言されたStepとの整合性**であり、Providerの実Load/Invoke・Host Actor・Effect Receiptを証明しない。新変更HEADのCIは追加時点NOT RUN、旧HEADのsuccessを引き継がない。
+
+### 31.2 Evidenceを「同じ名前」ではなく、必要依存の各辺で束縛する
+
+他チャットで成熟した、外部Sourceの `knownFrom` とTEIの `observedAt` の分離（[Draft #3380](https://github.com/hat47x/tei-platform/pull/3380)）、Imported Provider Sourceだけの変化（[Draft #3479](https://github.com/hat47x/tei-platform/pull/3479)）、宣言した配備Routingと実Executorの断絶（[merged #3474](https://github.com/hat47x/tei-platform/pull/3474)）、HTTP 202/Host監査と資源効果の分離（[merged #3478](https://github.com/hat47x/tei-platform/pull/3478)）を、テストのClaim別の必須辺へ適用する。
+
+| Witnessの辺 | 本当に別に必要な観測 | これだけでは不適格な主張 |
+| --- | --- | --- |
+| Source／受理 | Source原byteとoccurrence、Loader実消費、必要なRole/Relation、意味受理のScope。Imported Provider原Manifest/取得時点はConsumer World/Indexと別 | Fingerprint一致＝全依存同版、外部Sourceの履歴・受理済業務意味 |
+| Test selection／実行 | 独立Required、Scenario Source digest、Step ID、**Step→Operation**、実選択/Run Target、実Receiptのverified/Outcome | Case名・Test名・exit0だけでTargetへ到達、AIが未知Gapを新発見 |
+| Time／cohort | 外部記録のknownFrom、TEI観測のobservedAt、実Attempt時点、Consumer受領時点、Current Grantの有効時点を必要範囲で照合 | 過去のSource時点＝当時TEIが知っていた、同一日時文字列＝原子的Snapshot |
+| Consumer／Delivery | CLI/MCP/Studio等のActor・Audience、ordered Tool Reply/end、Payload bytes、Session再開とSinkの保存・送出 | 内部Go/CLI PASS＝外部Agentに完全配送、Provider read-only＝Sinkも無副作用 |
+| Provider／Effect | Selected/Built/Loaded/Invoked、実Provider結果・Scope/粒度/NULL/partial、CommitUnknown時の独立Receipt/Read-back | Route plan＝実Routing、HTTP 202／Audit completed＝業務完了、BOM検証済＝Host Grant |
+
+許されたScopeで独立に検証した局所正のWitnessは残す。ただし**一つのReply/Source/Stepに未証明の辺があれば、当該上位Claimだけをunknown/unqualifiedに止める**。外部Source改版で全Workspaceを無条件失効させない一方、World二Fingerprintの一致だけで当該Importに依存するテスト結果を再利用しない。
+
+KON Dataspaceは独立・任意のData Source候補であり、TEIのテスト基本能力の必須依存にはしない。SHOの文書投影もTEI Accepted MeaningやTarget実行の第二正本にしない。既存#1163 Evidence、#2514独立Expected、#3262 Design Context、#1180 ScenarioのAuthorityを維持する。
+
+### 31.3 小さな次の独立対照（既存担当へ割当、製品実行を新たに認定しない）
+
+| ID | 一か所を変える対照 | 判定と実装範囲 |
+| --- | --- | --- |
+| **TT-147 receipt target binding** | 実Pinned CLIの `stepId` はそのまま、`operation` だけ別の既存Operationにする | 同じIDでも `operation-mismatch`。#3365の試験用メモリコピーでコード化、**追加HEAD CI未検収** |
+| **TT-148 receipt verified provenance** | `verified` を実CLI Evidenceから抜く／falseにする | 該当Stepの局所正証人を認定しない。合成対照は既存。外部受信者の署名/真正性は未実証 |
+| **TT-149 temporal knowledge** | 上流Source `knownFrom` を昔にし、TEI `observedAt` だけ後日にする | 当時TEIが認識したという時点Claimを拒否。Draft #3380は別Target |
+| **TT-150 imported Source/Provider only** | 外部Provider Manifest原Byteが変化、Consumer World/SourceIndexは不変 | Imported Source依存のClaimだけ再資格化を要求。Draft #3479へ委譲 |
+| **TT-151 declared routing but not invoked** | Binding/Route planは正しいが実Executorは別経路を使う | plannedとactual runを別票。#3474の静的観測を実E2Eとみなさない |
+| **TT-152 HTTP accepted≠business committed** | HTTP 202とAudit completedはあるが、Command Receipt・Client完全受領なし | 技術的応答とEffect/業務成功を分離。#3478の有限Host試験をG1/G2へ無条件に合算しない |
+
+### 31.4 実装順序と停止線
+
+**P0-1** #3365の追加HEADで、実CLI `stepId/operation/verified` が目録へ転記され、wrong-Operation負例が必要な理由で拒否されることをCIの同一Attemptで検収。**P0-2** #3273/#2514の本来の未知Gapを一つBlind Pre-registrationし、#3262の既存13 CLI等のContextを必要Subsetだけで使ってT1-Bへ進む。実Provider Readは#2586、Import Provenanceは#3479と並行。**P1** #2509で外部Tool End/Disclosure/Session Resume、#951/#1251で実Plugin Invocation、#3274で実Host/Client/Effectを別資格化。**P2** Go Code C1、Target version 2×2 BOM、NFRはそれぞれの独立分母で測定。
+
+**今回実施した範囲**：PR #3365の既存test-only Code・専用CI Assertionの変更、および本計画への追記。既存初回HEADでの3 CI successは確認済み。追加HEADの結果、製品全体Coverage、T1-B盲検、外部H2/H3 Tool受領、Provider実Invoke、現在Grant、正式Owner Meaning、Go C1/NFRはこの文書だけでは認定しない。
