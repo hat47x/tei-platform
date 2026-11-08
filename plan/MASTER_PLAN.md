@@ -630,6 +630,9 @@ Sourceの論理Workspace IDと物理root/realpathも別資格とし、Manifest�
 
 **優先はP0-R一件Case実Readのまま**。組織実Case Function/Provider Binding・同一Snapshot観測・複数Consumerの実受領、全件Handoff/正式Owner受理は未成立。局所GoやSynthetic NodeのPASSをOrg E2/業務完了へ流用しない。
 
+<!-- org-cf-plan-20261109 -->
+**2026-11-09 組織改編・承認の時間整合差分（設計・未実行）**：組織Profile [§13](design/ORGANIZATION_TOPOLOGY_QUANTITY_REPRESENTATION_PROFILE_2026-11.md) にORG-CF-01〜08を追加。C1→D1/D2の担当切替・旧Read・失効Grant・Replica遅延・比較不能revision・動的職務分掌・重複ACK・遡及Source訂正を、業務valid/known、TEI observed、実Provider Scope/Read Cohort、Business Rule、現在Host Grant、相手方Handoffの**別証拠**で判定する。異なるAuthority domainの時刻／版の大小を因果順序とみなさない。**#2586の一件P0-R実Readを先行**し、ORG-CF-01/04の読み取り観測を既存Attemptへ添付。その後、実行時再確認は#1174/#2499、受領と時間訂正は#1125/#1444/#3380、独立Expectedは#2514/#1180へ渡す。新Token、Global Clock、Authorization Engine、Provider、Gateを作らず、CF新テスト・実DB/Host・Owner受理はNOT RUN。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
