@@ -516,6 +516,17 @@ ChatGPTなどのチャット実行環境・Codex・Claude Code・一般的なIDE
 主となるPAS-03では、同じProvider・対象Instance・Scopeを条件として、宣言された構造と実観測の差、Migration計画、許可されたDDLの実適用、適用後の再観測を区別する。PAS-01は観測構造と受理済み論理意味の分離、PAS-02はFunction/Providerのデータ操作、PAS-04はCLI/Studio等のTarget別投影を補う。SQL/NoSQL固有のQueryが失われないこと、部分取得・非開示・権限拒否・実効果不明が成功に丸められないことを独立に受け入れる。TEI標準の職掌にはSchema CRUDを含む一方、クラスタ運用・バックアップなどのDBA業務は標準外とする。
 
 **これは受入シナリオの割当であってPAS-03の実適合ではない。** 実NoSQL/ログ/Cloud、動的Grant、破壊的DDL、実DB変更・再読取、CLI/MCP/Studio同一Consumer、OwnerによるMeaning受理の一連の証拠は未取得。仕様の正本はRQ-035、受入計画のOwnerは[#3270](https://github.com/hat47x/tei-platform/issues/3270)と[データソースワークベンチ設計](design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)を参照する。
+### RQ-035 — 異種データソースのデータと構造を一般開発者が管理する
+
+主にPAS-02のデータ・機能の実利用を対象とし、RDB/NoSQL/ログ/APIから実データを調査し、Providerが許す範囲のデータCRUD・スキーマ／コレクション等の構造定義を既存の意味Source/Provider/Authorityで扱えることを確認する。PAS-03でDesired/Actual/Diff/Migrationと本番への安全な適用を、PAS-06でCLI/MCP/Studioを通した同一Contractの探索を横断確認する。
+
+標準DBA機能の提供は要求しない。Snapshotの推測同一性、Sample結果を全件とみなすこと、Native SQLやOData固有意味の破棄、DDL Plan生成を実DB Commitとみなすことは禁止。実DB/Provider/権限・独立Readによる受入は[#3270](https://github.com/hat47x/tei-platform/issues/3270)が所有し、現段階では要求の追加のみでPAS成立とはしない。
+
+### RQ-036 — 検証済みPlugin BOMとVersion組合せ試験
+
+主にPAS-06の「既存の意味・Pluginを探索して再利用する」を、実際に検証した構成として再使用できるところまで確認する。PAS-04では同一Contractの異Target/ビルド版の適用範囲、PAS-02では構成したFunctionが実際のScenarioを満たすかを別に確認する。
+
+受入例は、実Provider/Consumer各2版のexact Lock→実Target Build/Artifact→同じAttemptで独立Expected/必要Checkを実行→合格組合せだけを限定BOMへ登録、という一往復。Pairwise計画の2項Coverage、C0/C1、Requirement/Trait/Graph分岐Coverageを異なる分母で示し、未実行・Tool切断・別Tenant/Grant・古いArtifact/ExpectedをPASSへ合算しない。実Providerが存在しない段階の合成ReferenceはPAS成立のEvidenceではない。Ownerは[#3267](https://github.com/hat47x/tei-platform/issues/3267)、設計は[Verified Composition BOM](design/VERIFIED_COMPOSITION_BOM_AND_MATRIX_DESIGN_2026-11.md)へ接続し、第二Resolver/Runnerを作らない。
 
 ## 11. Requirement → Primary PAS mapping
 
@@ -556,6 +567,8 @@ ChatGPTなどのチャット実行環境・Codex・Claude Code・一般的なIDE
 | RQ-033 | PAS-06 | PAS-01 |
 | RQ-034 | PAS-06 | PAS-01 |
 | RQ-035 | PAS-03 | PAS-01 / PAS-02 / PAS-04 / PAS-07 |
+| RQ-035 | PAS-02 | PAS-03 / PAS-06 |
+| RQ-036 | PAS-06 | PAS-04 / PAS-02 |
 
 Primaryは最初に具体化する代表的なPASを示し、要求の網羅率を表す点数ではありません。
 
