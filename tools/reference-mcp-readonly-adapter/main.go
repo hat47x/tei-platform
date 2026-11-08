@@ -80,7 +80,10 @@ func errorEnvelope(schemaVersion string, err error) envelope {
 	var trace *modelref.TraceError
 	var failure *operations.ValidationFailure
 	var missing *workspaceLoadFailure
+	var catalog *operations.CatalogError
 	switch {
+	case errors.As(err, &catalog):
+		code = catalog.Code
 	case errors.As(err, &inspection):
 		code = inspection.Code
 	case errors.As(err, &trace):
@@ -280,6 +283,12 @@ func dispatch(name string, arguments map[string]json.RawMessage, workspace strin
 		if err != nil {
 			return errorEnvelope("tei.cli.model/v0", err), true, nil
 		}
+		// A namespace that names nothing is a failed answer, not an empty
+		// catalog. The projection owns the decision so the CLI and MCP adapter
+		// answer the same code and message (#3420).
+		if failure := result.NamespaceFilterError(); failure != nil {
+			return operationFailureEnvelope("tei.cli.model/v0", failure.Code, failure.Message), true, nil
+		}
 		return okEnvelope("tei.cli.model/v0", result), false, nil
 	case "tei_inspect":
 		if err := rejectUnknownArguments(arguments, "subjectKind", "subjectId"); err != nil {
@@ -343,6 +352,13 @@ func dispatch(name string, arguments map[string]json.RawMessage, workspace strin
 	default:
 		return nil, false, fmt.Errorf("unknown tool %q", name)
 	}
+}
+
+// operationFailureEnvelope carries a typed operation failure that is not a load
+// error, using the CLI's string code so a client compares the two answers.
+func operationFailureEnvelope(schemaVersion, code, message string) envelope {
+	return envelope{SchemaVersion: schemaVersion, OK: false,
+		Error: &operations.ValidationReportFailure{Code: code, Message: message}}
 }
 
 // validationFailureEnvelope carries the CLI's validate failure contract: the
