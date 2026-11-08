@@ -432,3 +432,61 @@ T1-Bの本当の判別は、AIに既存T1-Aの境界入力や非公開Expected�
 **最短実行順**：①#3479が現行Go FixtureのSource/Manifest変化の反例をexact HEADで検収、②#3262が同じRequired一FunctionでImport時の未報告Sourceを `unknown` と扱えることを実Consumerで確認、③そのSourceを必要とするH2/H3 TrialではTool Replyと外部Source occurrenceの両方を固定、④Product Function→actual Provider→Rowsetは#2586、正式BOM/Build/EffectはそれぞれのOwnerで検証する。**外部Importを用いない最初の公開合成H2を#3479の完了待ちで停止させない**。
 
 **状態**：#3477・#3481はmain統合済み。#3479はDraft、実Provider Import Closureの製品読取・実H2/H3受領・Source原子的Snapshot・SHO/REA/KON実連携、T1-B/Owner意味受理は未成立。HI-19〜24は既存テストの重複カウントを禁止した**受入設計**であり、この節の追加による新しい実行PASSではない。
+
+
+---
+
+<!-- harness-observer-scoped-claim-20261108 -->
+## 11. 2026-11-08：Observer相対の資格・不開示・外部実Readを同じClaim境界へ
+
+### 11.1 何を証明したかではなく、誰に対してどのClaimを証明したか
+
+[Design Context #3262](https://github.com/hat47x/tei-platform/issues/3262)のD/T/G分離と、[外部Harness隔離 #2515](https://github.com/hat47x/tei-platform/issues/2515)のH6-E13〜15を組み合わせ、既存Harness Receipt/Contextの読み方を次のように限定する。
+
+- **D / Design Input**：当該Function/Taskの独立Requiredが、Scope・Source・Role・Rule・Relation・外部Import occurrenceを含めて実取得されたか。現mainの11実CLI Reply/32合成Controlsは、外部Importを含む任意のRequired閉包の証明ではない。
+- **T / Delivered**：同一Attemptの実CLI stdout/stderr/Tool Reply parts/end markerが、指定Consumerに欠落なく届いたか。Harnessの56 Request/55 Replyや8,192 byte切断の負例を、ローカルJSON Copy検査のPASSで埋めない。
+- **G / Generation**：独立Expected/Mutantによって、既知T1-Aと未知T1-Bを分離して採点したか。DとTが成立してもGを自動Qualifiedにしない。
+- **A / Audience & Authorization**：同じ内部Evidenceでも、`internal observer`、`public viewer`、`AI harness`、`SHO/Studio`のどの受領者が、**現時点**でどのProjectionを見てよいか。内部で`permission-denied`と`not-found`を区別できても、公開Viewerへその差を返してよいとは限らない。
+- **E / Effect**：実Provider/DB/外部操作の効果と独立再Readを確認したか。Query結果が空、Tool exit 0、Plugin選択済みという事実から業務効果を導かない。
+
+**Claim資格はD/T/G/A/Eの全項目が常に必要という意味ではない**。例えば公開合成Sourceのローカル説明にはEを要しない。一方、`safe to disclose`にはA、`AI generated a valid new Test`にはD/T/G、`real database-backed Function works`には実Read/Bindingと必要なA/Eが要る。各Claimが必要とする条件だけを独立Requiredに固定し、未観測軸を`unknown`に保つ。新しい共通Gate/Schema/Proof Storeは作らない。
+
+### 11.2 非表示・欠測・空集合を混同しない
+
+[Scoped Coverage #3365](https://github.com/hat47x/tei-platform/pull/3365)の考え方、#2515のObserver差異、[Query/Function #2586](https://github.com/hat47x/tei-platform/issues/2586)を横断する負例を既存のOwnerへ追加する。
+
+| 条件 | 内部の正当な観測 | 公開／外部Consumerの上限 |
+| --- | --- | --- |
+| Requiredの一部が非取得・途中切断 | `partial/not-loaded`と欠測地点を記録 | `complete`、全体Coverage、`qualifiedTestGeneration`にしない |
+| 非可視Row/Sourceがある／存在しない | 権限を持つ内部Observerが拒否理由を区別 | 未許可なら両者を識別可能な診断・件数・Traceを出さない |
+| Filter後0行、実Query未実行、Provider未選択 | `empty-result`／`not-executed`／`unbound`を分離 | 0行を「データなし」や「対象全件検査済み」と断定しない |
+| Local Testの一部だけCovered | 局所Coverageと全体Unknownを併記 | 未観測のRule/RelationをCoverage分母から暗黙除外しない |
+| 以前のSessionにはRawがあったが権限失効 | Historical Receiptと現在Grantを別管理 | Session Resume/Log Replayで旧Rawを新Audienceへ再送しない |
+| 内部Mock/ProxyでEgressが観測されない | 実観測SinkとOS Profileを記録 | 子Process/DNS/Telemetry等未測定の出口まで非漏えいを主張しない |
+
+これは**可視性を理由にRequired不足を隠す設計ではない**。当該Audienceに必要な情報が開示できないなら、内部で不足理由を保持したまま、そのAudience向けClaimは`unqualified/unknown`とする。内部理由の詳細を公開するかは既存Host/Policyの責務。
+
+### 11.3 Product DB実Read・Plugin Trait・SHO/KONを接続する最小Witness
+
+[Draft #3500](https://github.com/hat47x/tei-platform/pull/3500)は、既存Loader Resultからnative Case Queryを組み立て、隔離PostgreSQLの実ExecutorとQuery Mapを使う**オプトイン**の実Read試験を提案する。隔離DB名確認と既存Table拒否を前提とし、環境変数がなければSKIP。したがって通常Go TestのPASS、Fake ProviderのPASS、または本DraftのCIだけから実PG Readが成立したとは言えない。
+
+実DB Readが後日成立しても、`Function Data Context`／Tenant Scope／現在Grant／そのAudienceへの安全なDelivery／Owner意味受理／Product E2は別。必要なら実際に読んだDatabase Identity、Native SQL、Bind Parameter、Result Mapping、Consumer受領を**同一Attempt**で接続する。新しいQuery Executorは作らず既存 `postgresquery.Executor`／`queryresult.Map`を使う。
+
+[Plugin Trait #3278](https://github.com/hat47x/tei-platform/issues/3278)の`Selected / Built-in-included / Loaded-or-Invoked / Exposed / Authorized / Effect-observed`も同様に別資格。選択A・実Invoke B、Trait Contract同版・実装のみ変更、`Retryable`なのに副作用不明、`Encrypted`なのにBrowser plaintext保存を合格にしない。2 Provider×2 Consumerの各tupleは実Build/Invoke/独立Expectedで個別判定し、別TargetのPASSを転記しない。
+
+SHOではCLIからのSource出力とSHO Readerの**実再読取**、Working Copyと保存後再開、Source引用の鮮度を区別する。KON DataspaceはSource/Documentの将来の受け皿候補として検討しても、TEIのDB/Query/意味正本を移さない。SUI側でRaw保存→Reader再取得→複数Canvas投影→Revision/権限/履歴を確認するまで、KON独立運用・SHOクラウド受領の成立を主張しない。
+
+### 11.4 次の最小受入順と既存Issueへの引渡し（HO-25〜30）
+
+| ID | 最小の反証 | 担当・検収境界 |
+| --- | --- | --- |
+| **HO-25** | 必要Ruleが欠落するが局所CoverageはPASS | #3262/#3365/#2514：Task RequiredとCoverage分母、Unknownを分離 |
+| **HO-26** | 内部Observerにはpermission-denied、公開Viewerには対象存在が非可視 | #2515/#1178：公開投影の観測同値。実OS/Policy受理は別 |
+| **HO-27** | 途中切断・空Result・実Query未起動の三ケース | #3262/#2586/#2509：Tool受領とQuery実行の別証拠 |
+| **HO-28** | 実PG未設定でGo PASS、設定後に実Read成功または拒否 | #3500/#2586：SKIPを実PG成功にしない。実DBの隔離実行は未測定 |
+| **HO-29** | Plugin選択済みAだが実Invoke B／Trait Contract同版実装変更 | #3278/#3267/#951：Lock、Build、実Invoke、Effectを別資格 |
+| **HO-30** | SHO/Studio/KON候補へ旧Sourceを引用、Resume時にAudience Grant変更 | #2515/#3262/SHO・KON各Owner：実Reader・Current Disclosure・履歴を別確認 |
+
+**実行順**：①外部Importなし公開一FunctionのD不足を#3262で判別、②独立Expected付きの初回比較適格H2一Sessionを#2509/#2515で取得、③そのTaskが実Providerを必要とするときだけ#3479のImport occurrenceと#3500の実DB Witnessを接続、④SHO/Studio/KONの実Consumer受領とPlugin 2×2を別受入とする。**外部Import、実DB、KON独立化を初回H2の新しい前提条件にはしない**。
+
+**証拠上限**：本節はOwner間の受入設計であり、HO-25〜30、実OS拒否、実PG接続、実H2/H3、未知T1-B、SHO/KON実Reader、Plugin 2×2の新しいPASSは**NOT RUN**。#3500/#3479/#3365等のDraftは現main製品能力として数えない。
