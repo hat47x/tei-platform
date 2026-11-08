@@ -70,10 +70,24 @@ func inspectWorkspaceJSONWithService(out io.Writer, root, world, kind, id string
 		failure := &cliInspectionFailure{Code: "INSPECTION_FAILED", Message: "workspace inspection failed"}
 		switch {
 		case errors.As(err, &inspection):
-			failure.Code = inspection.Code
-			failure.Message = inspection.Message
-			if inspection.Code == operations.InspectionNotFound || inspection.Code == operations.InspectionAmbiguous {
-				code = 1
+			// A third-party implementation can construct arbitrary errors,
+			// including a forged code or host-private text. Preserve the
+			// legacy builtin's diagnostic, but accept only classified
+			// Inspector codes from an injected implementation.
+			switch inspection.Code {
+			case operations.InspectionInvalidSubject,
+				operations.InspectionUnsupportedKind,
+				operations.InspectionNotFound,
+				operations.InspectionAmbiguous:
+				failure.Code = inspection.Code
+				if _, builtin := service.(builtinCLIInspectionService); builtin {
+					failure.Message = inspection.Message
+				} else {
+					failure.Message = "inspection service reported " + inspection.Code
+				}
+				if inspection.Code == operations.InspectionNotFound || inspection.Code == operations.InspectionAmbiguous {
+					code = 1
+				}
 			}
 		case errors.As(err, &stage):
 			switch stage.Stage {
