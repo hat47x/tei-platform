@@ -1474,7 +1474,7 @@ QMLの独立Expectedは**試験前に確定**する。QML-01/02の相違は「le
 
 #### 27.13.2 Schema/履歴/データを同一「検査済み」へ圧縮しない
 
-移行前後・Schema変更後に、`Schema compatible`／`Migration applied`／`Data conforms`／`Read permitted`／`Effect observed`は相互に代替しない。**品質Jobが対象として使うSchemaと実ReadのDB Instance/時点/現在Grant**を一致させる。実DDl Changeの前は、既存#2887のMA-11へSource/History/Grant/対象Instanceを直前再確認し、ACK喪失をBlind Retryしない。夜間Checkはread-onlyで実施し、DDL/補修を実行しない。
+移行前後・Schema変更後に、`Schema compatible`／`Migration applied`／`Data conforms`／`Read permitted`／`Effect observed`は相互に代替しない。**品質Jobが対象として使うSchemaと実ReadのDB Instance/時点/現在Grant**を一致させる。実DDL Changeの前は、既存#2887のMA-11へSource/History/Grant/対象Instanceを直前再確認し、ACK喪失をBlind Retryしない。夜間Checkはread-onlyで実施し、DDL/補修を実行しない。
 
 - #2892 **HIST-01〜05を再利用**：適用状態Unknown、History欠落・部分、checksum欠落、Schema一致でもHistory Unknownを個別に保留。History未取得を「Migrationなし」、History Unknownを「適用済み」としない。Schema/Historyが不明でも限定Data Readが可能なら、そのScopeにおける観測事実だけは保持し、**Schema全面資格/移行完了へ昇格しない**。
 - #3270 **WB-42〜54を再利用**：複合FK/有向多重辺・式/部分/NULL Indexのdeep copy/版と、fake Catalog→read-only Projectionの範囲。合成Goテストが通っても実Provider Index強制やMigration Applyを合格にしない。
