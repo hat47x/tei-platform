@@ -24,6 +24,7 @@
 - [trace/inspectの段別費用](CLI_TRACE_STAGE_COST_2026-11-09.md)（`-limit 1`が`full`と同じ段を通り費用も同等であること、`reference/workspace`規模ではプロセス起動約1秒が支配的で段の差が出ないことを実測。二重解析の共有・並列化は未実施）
 - [空文字列の引数の拒否](CLI_EMPTY_ARGUMENT_REJECTION_2026-11-09.md)（`-mode ""`が広告既定の`summary`ではなく`full`へ落ちていたのを、明示の空文字列として`INVALID_ARGUMENT`で拒否。省略時は既定維持。内部`modelref`の既定は未集約）
 - [MCP Adapterの4MiB超過要求](MCP_OVERSIZED_REQUEST_2026-11-09.md)（行長超過でプロセスが終了し以降の要求を失っていたのを、`-32600`で拒否してループを続けるよう修正。上限の値の妥当性・同時接続・実HostはNOT RUN）
+- [traceの既定値の一元化](CLI_TRACE_DEFAULT_SINGLE_SOURCE_2026-11-09.md)（CLI flag・`commands`の`argumentDefaults`・MCP Adapterが別々に持っていた`mode`/`direction`の既定を`modelref`の定数1か所へ寄せた。内部の空Mode→fullは残存）
 - [`version`の自己申告revision](CLI_VERSION_DECLARED_REVISION_2026-11-09.md)（`-buildvcs=false`の実行物が`-ldflags`注入でrevisionを示せるようにし、`vcsRevision`と`declaredRevision`・`source`を区別した。自己申告はtoolchain証拠ではない。署名・来歴はNOT RUN）
 - [健康診断receipt（`005bbee7` / Actions 42152908986）](QUALIFICATION_FULL_HEALTH_005BBEE7_42152908986.json)と[暫定audit結果](REAL_PROVIDER_PROVISIONAL_AUDIT_005BBEE7.json)（`UNQUALIFIED`、残る診断は `E2_PROVIDER_GUARANTEE_NOT_ATOMIC` と `PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE`）
 - [D8〜D11暫定経路のaudit](PROVISIONAL_CHAIN_AUDIT_005BBEE7.json)と[Runner Evidence](PROVISIONAL_CHAIN_RUNNER_EVIDENCE_005BBEE7.json)（`atomic-with-commit` の暫定宣言。`PROVISIONAL_GRANT_NOT_G2_EVIDENCE` 等は暫定オーナー判断。chain testは単一経路と同じ健康診断receipt入力に対応）

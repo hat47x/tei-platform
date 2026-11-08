@@ -221,6 +221,21 @@ var (
 	TraceModes      = []string{"summary", "full"}
 )
 
+// TraceDefaultDirection and TraceDefaultMode are the values an adapter applies
+// when the caller omits the flag. They are exported so the CLI flag defaults,
+// `tei commands` argumentDefaults, the MCP adapter and the checks in this
+// package read one value instead of three copies (#3605).
+//
+// An adapter must not treat an explicit empty string as "use the default":
+// omitted flags carry these values, and an explicit "" is rejected before the
+// call (see cmd/tei/cli_flag_contract.go and the MCP adapter). normalizeTraceRequest
+// still maps an empty Mode to "full" for direct in-process callers; that is not
+// an adapter default and TraceDefaultMode is not it.
+const (
+	TraceDefaultDirection = "both"
+	TraceDefaultMode      = "summary"
+)
+
 func containsValue(values []string, want string) bool {
 	for _, value := range values {
 		if value == want {
@@ -247,9 +262,12 @@ func normalizeTraceRequest(subject Key, options TraceOptions) (TraceOptions, err
 		return options, &TraceError{Code: "INVALID_SUBJECT", Message: "scope, kind, and id are required"}
 	}
 	if options.Direction == "" {
-		options.Direction = "both"
+		options.Direction = TraceDefaultDirection
 	}
 	if options.Mode == "" {
+		// Not an adapter default: the adapters reject an explicit empty string
+		// and pass TraceDefaultMode when the flag is omitted. This branch only
+		// serves direct in-process callers and keeps its historical value.
 		options.Mode = "full"
 	}
 	if !containsValue(TraceDirections, options.Direction) {
