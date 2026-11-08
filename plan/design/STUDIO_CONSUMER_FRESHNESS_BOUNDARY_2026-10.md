@@ -2,7 +2,7 @@
 
 - 状態: **未採用のConsumer設計補足**。実装・製品Gate・実行テストの成功を意味しない。
 - 対象: [#1124](https://github.com/hat47x/tei-platform/issues/1124)のread-only Consumer、特に第4追補(f)。[#1120](https://github.com/hat47x/tei-platform/issues/1120)の型付き参照、[#267](https://github.com/hat47x/tei-platform/issues/267)のShared Acceptance、[#1121](https://github.com/hat47x/tei-platform/issues/1121)/[#1126](https://github.com/hat47x/tei-platform/issues/1126)/[#1127](https://github.com/hat47x/tei-platform/issues/1127)の実現準備判定を再実装しない。
-- 方針: [Draft PR #2226](https://github.com/hat47x/tei-platform/pull/2226)のTEI独自共通Host非必須方針を前提とする。PR/ADRの統合済み状態は主張しない。
+- 方針: 検討時は[PR #2226](https://github.com/hat47x/tei-platform/pull/2226)のTEI独自共通Host非必須案を前提とした。その後、[PR #2426](https://github.com/hat47x/tei-platform/pull/2426)で[ADR-0043](../adr/0043-target-native-artifacts-without-tei-host.md)が統合され、方針は採用済み。本書のConsumer設計や実装の受入を意味しない。
 - 静的照合基準: main `b36ffdfd609bbc73bb1be93867576280c913f9d9`（2026-10-26）。本書の概念型は公開APIではない。
 
 ## 既存の保証（重複実装しない）
