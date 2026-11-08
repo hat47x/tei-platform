@@ -95,4 +95,3 @@ func primitiveOf(typeRef core.CanonicalID, types map[core.CanonicalID]semantic.T
 	}
 	return "", false
 }
-
