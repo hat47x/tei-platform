@@ -162,3 +162,36 @@ Web Chatのために「Agent専用業務Engine」を作らず、AG-UIはstream/s
 - **#1180/#2514/#259**：独立Expected、Graph mutation反例、Scenario、実Target証拠。R0〜R4を完了条件の追加ではなく必要な担当へ段階引渡し。
 
 **未決**：Coreの最小Graph型（標準Graph既存型へのrole追加のみでよいか）、Graph patch記法/拘束力、実行Graphの静的生成とRuntime Interpreterの切分け、AI ChatのRun StateとBusiness Workflowの境界、正式なSCXML/BPMN互換範囲。実Consumer/Target/Source証拠を得るまで固定しない。
+
+
+## 9. 2026-11-08 後続比較：DCR Graphsと状態機械の重ね合わせ（研究補足）
+
+**追加研究**：Typed Lifecycle Graphは全てを固定順序のフローチャートに還元しない。とくに医療・承認・継続した対話・可変な業務には、「どのイベントが次に許されるか」「どのイベントが発生した後に何が義務になるか」を宣言するモデルも比較する価値がある。
+
+- Hildebrandt & Mukkamala, *Declarative Event-Based Workflow as Distributed Dynamic Condition Response Graphs*：DCR Graphsはイベント間の**condition、response、include、exclude**関係と役割によって、全順序を列挙せず許容される挙動を記述する。研究概要： https://researcher.itu.dk/en/publications/declarative-event-based-workflow-as-distributed-dynamic-condition
+- Hildebrandt et al., *Decision Modelling in Timed Dynamic Condition Response Graphs with Data*（BPM 2021 Workshops収録、2022刊行）：時間・決定・データを組み込んだDCRの形式意味と安全性/活性を比較。 https://researchprofiles.ku.dk/en/publications/decision-modelling-intimed-dynamic-condition-response-graphs-with/
+- *Formalizing smart contract design patterns with DCR graphs*（Software and Systems Modeling、2026）：DCRでの制約型のプロセス記述・動的なMarkingについて議論。 https://link.springer.com/article/10.1007/s10270-026-01366-w
+- *Model to mitigate: Using DCR graphs to prevent vulnerabilities in smart contracts*（Journal of Logical and Algebraic Methods in Programming、2026）：高水準モデルと実行Traceの対応、順序・Role・時間条件を実装前に検討する例。 https://www.sciencedirect.com/science/article/pii/S2352220826000234
+- W3C SCXML 1.0 §3.13等：同時に有効な遷移の競合を、階層・文書順を利用した優先則で解決する仕様例。 https://www.w3.org/TR/scxml/
+- Temporal Workflow replay/versioning：既存Executionの履歴・版と新定義の変更を区別。 https://docs.temporal.io/workflows / https://github.com/temporalio/documentation/blob/main/docs/develop/go/workflows/versioning.mdx
+
+### 設計上の比較仮説
+
+| モデルの観点 | 得意な表現 | TEIでの利用候補 | 留意点 |
+| --- | --- | --- | --- |
+| 順序付きStatecharts/SCXML系 | state/entry/exit、入力Eventごとの優先遷移、階層・並行 | VUI/Chatのセッション状態、UI対話 | 文書順を優先則として流用すると表示/並び変更が意味に混入し得る。TEIでは明示priorityか競合拒否を検討 |
+| Constraint/declarative DCR系 | condition/response/include/exclude、発生後に残る義務、柔軟な順序 | 承認、業務Procedure、複数人/外部Actorの未処理義務 | 誰が最終Effectを保証するかは別。DCRに全ての更新SQLやUIを内包しない |
+| Operation/DAG型 | prepare/validate/execute等の依存、並行、副作用 | GeneratorのTarget-neutral Planと安全Guard | 固定前後列だけで会話・時間依存の全意味を扱えない |
+| Plugin Graph Patch | Baseの任意のGraphへの差分編集 | Hook追加、業務フロー固有化、Target実現 | 変換の意味・Precondition・非可換Patchの競合・実効Pathの検証が必要 |
+
+**提案**：標準Graphの物理構造は可能な限り共有してよいが、Graph Roleごとに**別の操作意味/解析Provider**を持てるようにする。BPMN/SCXML/DCRの全構文を標準Coreで統合した単一形式を初期目標にしない。まず一つの二段階承認を、A:順序状態機械、B:イベント義務の二方式でモデリングし、(i)人の可読性、(ii)構成差分の量、(iii)検証/失敗時の説明、(iv)CodeGen・TestGenの単純さを比較する。
+
+### 不変保証をGuard Nodeの「存在」だけで判断しない
+
+Graph内でAuthorize/Validate Nodeが見つかっても、**当該入力・対象・Actor・Revision・現在のGrantに対して適切な時点で強制されたか**は別。Reachability/dominatorの静的検査に加え、変異後の入力再検査、Response loss、Concurrent approval、Provider B選択→実A呼出し、Run中のGraph更新を独立Expectedで検証する。宣言的制約や形式検査はRuntime Hostの実権限・独立Effect Receiptの代替ではない。
+
+### 設計書優先のインターフェース
+
+TEIの最初の成果物を実行コードではなく**可読な設計情報**とみなし、全体Map→標準/案件差分/実効Flow→Source/Contract/Provider/Effectを自然な認知順で示す。読取りGraph、変更可能Graph、実行可能Graphは別資格。Graph変更が必ずコード生成に繋がるという説明より先に、表示範囲/未取得/非開示/外部Source・依存の不明が読者に伝わることを確認する。Draft #3505の全体Map、Draft #3510のTrait全経路義務、#3509のHeadless B2C圧力、#3274のHTTP Decision Graphとは重複実装しない。
+
+**実装の優先基線は変えない**：#1251のselected Provider実二Consumer Call → read-only Graph/Hook実Binding → 同一Source/Diagram PatchからTarget生成 → 実Web Chat/VUI/B2Cで違いを検証。正式Graph Schema/Runtime/DSLの選択はこれらを経て判断する。すべて新規実実行はNOT RUN。
