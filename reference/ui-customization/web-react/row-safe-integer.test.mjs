@@ -9,6 +9,8 @@ function mount(invoke) {
   const states = [];
   const React = {
     createElement: (type, props, ...children) => ({type, props: props ?? {}, children}),
+    // Both the current starter and the separate in-flight guard Draft #2864.
+    useRef: (initial) => ({current: initial}),
     useState: (initial) => {
       const index = states.length;
       states.push(initial);
