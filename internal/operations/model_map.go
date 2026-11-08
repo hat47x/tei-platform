@@ -33,7 +33,8 @@ type ModelMapLink struct {
 	Resolution string              `json:"resolution"`
 }
 
-// MapWorkspace reads each Workspace source once for the navigation candidate.
+// MapWorkspace uses one Loader result and its Source Index for the
+// navigation candidate. The Loader/Index is not an atomic filesystem snapshot;
 // ModelRevision is informative and cannot authorize edit or execute.
 func MapWorkspace(root string) (ModelMap, error) {
 	if strings.TrimSpace(root) == "" || root != strings.TrimSpace(root) {
