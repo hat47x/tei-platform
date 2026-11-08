@@ -1722,12 +1722,14 @@ KON Dataspaceは独立・任意のData Source候補であり、TEIのテスト�
 
 この一件は既存[Draft #3365](https://github.com/hat47x/tei-platform/pull/3365)のtest-only投影を製品のCoverage Engineへ拡張する提案ではない。既存#1180 Driver Scenarioと実CLIの境界で比較する。必要ならテスト専用Assertionのみ追加し、Production APIや新Runner/Registryは追加しない。
 
-### 35.3 2026-11-08 08:47Z時点のexact-head検収状況
+### 35.3 2026-11-08 10:05Z時点のexact-head検収状況（旧08:47Z記録を更新）
 
-- [Draft #3365](https://github.com/hat47x/tei-platform/pull/3365) 最新HEAD `f7de811d0ac6c92c696e7f36069ae47350cca5f8`：専用dogfood CI `42463616468` **queued**、Repo Health `42463616418` **in_progress**、依存 `42463616407` **pending**。旧HEADの成功は現在HEADの資格でない。
-- [Draft #3479](https://github.com/hat47x/tei-platform/pull/3479) 最新HEAD `fff65f0ab6ae7bd9ad88d18df7a756e8fbb4ae31`：Repo Health `42464022323` **queued**、dogfood `42464022308` **queued**、Desktop WebView smoke `42464022395`のみ **completed/success**。これをImport Provider Source/ManifestのGo検証合格へ読み替えない。
-- [Draft #3223](https://github.com/hat47x/tei-platform/pull/3223)の直前HEAD `dd7de5ae203a269ce423bab3598eb3dc45f60854`にworkflow runは確認されず、文書保存と実行合格は別扱い。
-- CIの状態語`queued`/`pending`/`in_progress`/`completed`と結論`success`/`failure`/`cancelled`を区別し、同じHEADに結び付ける。CI完了でも**観測したScopeだけ**がPASSする。
+- **[Draft #3365](https://github.com/hat47x/tei-platform/pull/3365)** 最新HEAD `e8745c6cbb7596da48da62becdb48417f3ce8dd6` は[実CLI dogfood #42465435223](https://github.com/hat47x/tei-platform/actions/runs/42465435223)、[Repo Health #42465435270](https://github.com/hat47x/tei-platform/actions/runs/42465435270)、依存確認 #42465435235がいずれも**completed/success**。同一dedicated runで**13実CLI read-only Reply、Required Rule/Functionの局所42 Controls、6実Pinned Scenario、9つのtest-only受領目録対照**を検収。TT-154の「ExpectedとResultが同時に同じ誤Operationへ改変」負例は実際に独立固定Operation Oracleで拒否。Go `cmd/tei`局所statement C0相当 **9.4%**、C1・全要件は未計測。Artifactは同Run #13611941224。**Draft/未main統合**であり、Product実Function/Provider/H3・独立Blind T1-B/Owner受理は未実証。
+- **[Draft #3479](https://github.com/hat47x/tei-platform/pull/3479)** HEAD `fff65f0ab6ae7bd9ad88d18df7a756e8fbb4ae31` は[dogfood #42464022308](https://github.com/hat47x/tei-platform/actions/runs/42464022308)とDesktop一部などがsuccess。一方[Repo Health #42464022323](https://github.com/hat47x/tei-platform/actions/runs/42464022323)は**failure**で、logには`internal/workspace/import_source_context_revision_test.go`の**gofmt drift**が明記される。Go Productの失敗と同一視しないが、PR全体を合格としてmainへ引き渡せない。Import Provider原Byte/ManifestのRevision差をConsumer二指紋だけで検出できない負例は引き続きDraft上の限定Evidence。
+- **[Draft #3494](https://github.com/hat47x/tei-platform/pull/3494)** ではHarnessのSource/受領/独立検証を再統合し、当該HEADに対するProduct Skill限定資格CI #42464624666およびRepo Health #42464624729はsuccess。これは実DSH比較4Slotの完備性、現在のOS隔離、外部H3完全受領の証明ではない。
+- [Draft #3223](https://github.com/hat47x/tei-platform/pull/3223)自身は計画書を保存した段階であり、個別ProductのGo/CLI CIに代わるものではない。異なるPRの成功を同一Attemptへ合算しない。
+
+**次のP0は文書章やTTの追加ではなく**、#3365の局所試験を受入候補として保持しつつ、#2586の単一Functionについて独立Expected／合法Baseline／実Entry／Query・Data Context／Provider Readのうちどこまで**同一実行Attempt**で観測できるかを一件で判別すること。実Provider Readの証拠がない場合、既存の42局所Controlや9対照をその代わりにしない。
 
 ### 35.4 T1-Bへの昇格を認める条件
 
@@ -1748,4 +1750,4 @@ KON Dataspaceは独立・任意のData Source候補であり、TEIのテスト�
 
 この新機構は**独立に固定した合成Referenceに対する検証**であり、業務Meaning Owner Acceptance、Scenario→実Function→Provider、実外部Harness end/ACKを証明しない。C1、Blind T1-B、Current Grant/Disclosureは引き続きunknown/NOT RUN。
 
-**採用順**：#3365のexact HEAD CIで9対照・実6 Stepの限定成立を検収→その後だけ既存#2514/#1180の実証範囲を更新。実際の次一件は、#3482の`sales.order.submit`限定Source宣言と、Driverの`evaluate-validations`という別Operationの間に実Bindingを観測できるか。宣言だけと実行を混ぜず、実呼出が未確認なら`not-observed`で止める。外部Import ProviderのRaw-only drift (#3479) とCLI/MCP参照Transportは、この同一Attemptの外側の別検収条件とする。**新Core/Reader/Runner/Oracle正本を作らない**。
+**採用順（最新）**：#3365のexact HEAD CIにおける9対照・実6 Stepの限定成立は**2026-11-08のRun #42465435223で確認済み**。ただしDraft/未mainなので製品に統合済みとはしない。#2514/#1180へはこの限定受入範囲だけを伝える。実際の次一件は、#3482の`sales.order.submit`限定Source宣言と、Driverの`evaluate-validations`という別Operationの間に実Bindingを観測できるか。宣言だけと実行を混ぜず、実呼出が未確認なら`not-observed`で止める。外部Import ProviderのRaw-only drift (#3479) とCLI/MCP参照Transportは、この同一Attemptの外側の別検収条件とする。**新Core/Reader/Runner/Oracle正本を作らない**。
