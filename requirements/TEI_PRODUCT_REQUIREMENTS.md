@@ -537,19 +537,6 @@ TEIは、RDB、Document／Key-Value／GraphなどのNoSQL、ファイル／ロ�
 
 この要求はRQ-001〜008、RQ-010〜011、RQ-018〜021、RQ-034の境界を継承します。実装・受入計画は[#3270](https://github.com/hat47x/tei-platform/issues/3270)と[横断設計](../plan/design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)に置き、要求の成立と現行参照実装の到達範囲を混同しません。
 
-## RQ-036 検証済みPlugin構成のBOMと複数バージョンの組合せ試験を標準機能として提供できること
-
-TEIは、複数のService Contract、Provider、Operator、Generator、UI/表現型等を組み合わせた構成について、**検証したバージョンと適用範囲を含むBOM（Bill of Materials）**を標準データ構造から導出・保存・再利用・配布できなければなりません。案件のApplication Composition Profileを一つのPackageに固定せず、同じ構成パターンを別Targetや案件へ適用する際は、必要な再資格化を明示します。
-
-依存者はContract版範囲、Required/Optional、Target/Scope、Open（上流が互換性を保証しない）等の要件を宣言でき、実際の採用バージョンは既存Resolver/Lockで厳密に固定できる必要があります。BOM発行のために上流Pluginへ全APIの個別export注釈・Stable保証・追加管理画面を必須にしてはいけません。技術的な発見可能性、Publisherが許した公開面、契約の互換保証、実行時の現在Grantは別の責務です。
-
-標準のTest/Scenarioと独立Expected、実Build入力・ArtifactSet・Target、Conformance Evidenceを組み合わせ、**複数Pluginと複数バージョンの候補を小さな指示でMatrix化して試験できる**必要があります。全直積だけでなく対象Scope、変更差分、境界値、pairwise等のCoverage計画を選べる余地を持ちます。ただし未実行の組合せや高次の交互作用、個別Plugin単独のPASSを「結合済み・検証済み」と扱ってはいけません。
-
-BOMには対象のContract/Provider/Source revision、選択Lock、Artifact/Target、Test Profile/Independent Expected/Run Evidence、Coverageと未知・未実施・不適合を相互参照できる必要があります。歴史上の検証済み組合せと、現在の採用・署名・Publisher信頼・Host権限・業務Meaning受理・実DB Effectを混同してはいけません。製品標準のVerified BOMと、単なる依存在庫を表すSBOM（CycloneDX/SPDX等への輸出）は別の投影です。
-
-検証済みパターンの提案、差分による再試験候補の選定、依存元の破壊的変更へのAI支援修正、CLI/MCP/Studio/外部Hostでの同じ限定Claimの表示を可能にします。BOMの実現は既存RQ-003の単一正本、RQ-021のConformance、RQ-032/033のPlugin合成、RQ-018〜020の実行境界を再利用し、第二Resolver、独立Test Runner、別Lock/Registry/Authorityを必須にしてはいけません。
-
-実証Owner：[Issue #3267](https://github.com/hat47x/tei-platform/issues/3267)、[BOM設計案](../plan/design/VERIFIED_COMPOSITION_BOM_AND_MATRIX_DESIGN_2026-11.md)。設計・限定Go Referenceが存在しても、実製品Matrix、実Providerの組合せConformance、Qualified BOMの発行は別途検証します。
 ## RQ-036 ドメインの全容を図表とナビゲーションで理解・拡張できること
 
 TEIは、ドメインやシステムを構成するData、Function、Business Procedure、Event／Event Group、State／Transition、Rule、Pattern、Operation、Provider、外部連携、適用されたPluginや拡張点について、**一貫した全体像をTEI自身から図表として導出**しなければなりません。個別Patternやデータ定義が単独で説明されるだけでは不十分です。利用者が事前のドメイン知識を持たなくても、全体像から「何を扱うか、何がきっかけで、誰／何が動き、状態がどう変わり、どの機能を使い、どこを変更できるか」を段階的に理解し、対応する定義へ移動できなければなりません。
@@ -561,6 +548,7 @@ TEIは、ドメインやシステムを構成するData、Function、Business Pr
 「全容」の保証は、対象となるWorld、必要なSource集合、Scope／公開資格、Model／Generator／Pluginの版に相対的なものとします。必要要素が未取得・未解決・非開示・未対応・競合・失効しているときは、その範囲と原因をガイドと図表に明示し、表示できた部分だけを全体として扱ってはいけません。出典に根拠のない関連・説明や将来状態をAI／UIが自動補完して確定してはいけません。導出された図表は意味の第二正本とせず、SourceとAccepted Meaningへ戻れる必要があります。
 
 本要求はRQ-002／003／008／010／011／014／025／026／028／031／032の境界を継承します。具体的な図表の組、ナビゲーション、標準／拡張箇所の凡例、必要集合・完全性の検収、横断的なHook/Generator実効Flowは[三要素MethodとDiagramの横断設計§19](../plan/design/THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)で扱います。**要求の追加は、その機能が現行TEIに実装済みであることを意味しません**。
+
 ## 要求を実装へ落とすときの原則
 
 個別IssueやADRを起票するときは、どのProduct Requirementの不確実性を減らす作業なのかを明記します。
