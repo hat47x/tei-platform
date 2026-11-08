@@ -20,6 +20,7 @@ on:
       - 'reference/web-composition/plan-check.terminal-gap.test.mjs'
       - 'reference/web-composition/e1-go-route-pair.test.mjs'
       - 'reference/web-composition/e1-go-route-pair.fixture.json'
+      - 'reference/web-composition/go-host/**'
 
 permissions:
   contents: read
