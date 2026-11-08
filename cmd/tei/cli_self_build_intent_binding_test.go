@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -123,10 +124,13 @@ func TestSelfBuildOuterBindsTheDeclarationBytesItHeld(t *testing.T) {
 	child := buildIntentReportingChild(t, dir)
 	workspace := outerWorkspace(t, dir)
 	intentFile := filepath.Join(dir, "intent.json")
-	if err := os.WriteFile(intentFile, []byte(`{"intent":"sample"}`), 0o600); err != nil {
+	// The declaration must satisfy what the entry accepts (formatVersion and a
+	// subject id), and its bytes are what the byte check compares.
+	pins := []byte(`{"formatVersion":1,"subject":{"id":"intent.sample"}}`)
+	if err := os.WriteFile(intentFile, pins, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	wantDigest := digestOfBytes([]byte(`{"intent":"sample"}`))
+	wantDigest := digestOfBytes(pins)
 	output := filepath.Join(dir, "artifact")
 	// Compute the digest the child will produce so the artifact check matches.
 	if err := os.WriteFile(output, []byte("artifact-bytes"), 0o600); err != nil {
@@ -187,7 +191,9 @@ func TestSelfBuildOuterDetectsAChildThatReadADifferentDeclaration(t *testing.T) 
 	child := buildIntentReportingChild(t, dir)
 	workspace := outerWorkspace(t, dir)
 	intentFile := filepath.Join(dir, "intent.json")
-	if err := os.WriteFile(intentFile, []byte(`{"intent":"sample"}`), 0o600); err != nil {
+	// The same accepted declaration as the byte-binding case: the child claims a
+	// different digest, so the mismatch is what the test checks.
+	if err := os.WriteFile(intentFile, []byte(`{"formatVersion":1,"subject":{"id":"intent.sample"}}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	output := filepath.Join(dir, "artifact")
@@ -233,14 +239,18 @@ func TestSelfBuildOuterDetectsAChildThatReadADifferentDeclaration(t *testing.T) 
 	}
 }
 
-// SC0-14: a logical ID without the declaration bytes cannot be byte-checked,
-// so the entry records why instead of leaving the field unexplained.
-func TestSelfBuildOuterRecordsWhyTheByteCheckWasNotPerformed(t *testing.T) {
+// SC0-01 and SC0-14 conflict: SC0-01 requires the declaration (-intent-file) before
+// any build, while SC0-14 describes recording why a byte check was not performed
+// when only a logical ID is given. The entry keeps SC0-01 (fail closed): a logical
+// ID alone is refused, and the refusal says the declaration is what is missing. The
+// byte check's absence is therefore never reached, so no unperformed record is
+// emitted for this case.
+func TestSelfBuildOuterRefusesALogicalIDWithoutTheDeclaration(t *testing.T) {
 	dir := t.TempDir()
 	child := buildSelfBuildChild(t, dir)
 	workspace := outerWorkspace(t, dir)
 	output := filepath.Join(dir, "artifact")
-	report, _ := runOuterShapeWithIntent(t,
+	report, code := runOuterShapeWithIntent(t,
 		"-child", child,
 		"-workspace", workspace,
 		"-intent", "intent.sample",
@@ -248,17 +258,13 @@ func TestSelfBuildOuterRecordsWhyTheByteCheckWasNotPerformed(t *testing.T) {
 		"-output", output,
 		"-child-arg", childArgs(t, "-artifact", output, "-digest", "sha256:deadbeef"),
 	)
-	binding := report.IntentBinding
-	if binding == nil {
-		t.Fatal("no intent binding was recorded for a logical ID")
+	if code != 2 {
+		t.Fatalf("a logical ID alone was not refused: code=%d %+v", code, report.Error)
 	}
-	if binding.CheckPerformed {
-		t.Fatal("the byte check was reported as performed without declaration bytes")
+	if report.Error == nil || !strings.Contains(report.Error.Message, "-intent-file is required") {
+		t.Fatalf("the refusal does not name the missing declaration: %+v", report.Error)
 	}
-	if binding.UnperformedReason == "" {
-		t.Fatal("the missing byte check had no stated reason")
-	}
-	if binding.L2BClaimed {
-		t.Fatal("L2-b was claimed")
+	if report.IntentBinding != nil {
+		t.Fatalf("an intent binding was recorded for a refused attempt: %+v", report.IntentBinding)
 	}
 }
