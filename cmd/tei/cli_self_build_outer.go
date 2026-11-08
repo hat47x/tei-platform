@@ -50,7 +50,10 @@ type selfBuildOuterEvidence struct {
 	// builder's reported plan, compared. Agreement of two self-reports still
 	// does not establish L2-b.
 	PlanCrossCheck *planCrossCheck `json:"planCrossCheck,omitempty"`
-	Error          *cliFailure     `json:"error,omitempty"`
+	// PlanRecompute is the entry's own derivation of the receipt's plan
+	// fingerprint. It checks the resolver's arithmetic, not the builder's work.
+	PlanRecompute *planRecompute `json:"planRecompute,omitempty"`
+	Error         *cliFailure    `json:"error,omitempty"`
 }
 
 // selfBuildIntentBinding separates "which declaration this entry held" from
@@ -213,6 +216,21 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 		resolverArgs = append(resolverArgs, "-intent", parsed.IntentFile)
 		receipt := resolveIntentVia(parsed.IntentResolver, resolverArgs, parsed.ExpectedPlanFingerprint)
 		report.PlanReceipt = &receipt
+		// The entry recomputes the plan fingerprint from the plan the receipt
+		// carries. A receipt whose plan does not hash to its own reported
+		// fingerprint stops the attempt: the resolver's arithmetic is part of
+		// what the entry is relying on.
+		if receipt.State == intentResolutionResolved {
+			recompute := recomputeReceiptPlanFingerprint(receipt.ReceiptJSON)
+			report.PlanRecompute = &recompute
+			if recompute.State == planRecomputeMismatched {
+				report.Error = &cliFailure{Code: selfBuildCodeIntentResolutionFailed, Message: recompute.FailureCause}
+				if encodeErr := encodeIndented(out, report); encodeErr != nil {
+					return 2, encodeErr
+				}
+				return 2, nil
+			}
+		}
 		if receipt.State != intentResolutionResolved {
 			report.Error = &cliFailure{Code: selfBuildCodeIntentResolutionFailed, Message: receipt.FailureCause}
 			if encodeErr := encodeIndented(out, report); encodeErr != nil {

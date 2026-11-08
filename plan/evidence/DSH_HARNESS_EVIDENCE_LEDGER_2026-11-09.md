@@ -2,7 +2,7 @@
 
 - 対象Issue: [#2509](https://github.com/hat47x/tei-platform/issues/2509)（DSH外部Harness実証）、[#2515](https://github.com/hat47x/tei-platform/issues/2515)（実効隔離・全送出経路Conformance）。機密境界の正本は[TAI #232](https://github.com/hat47x/tai-pleroma/issues/232)、比較計画は[TAI #168](https://github.com/hat47x/tai-pleroma/issues/168)。
 - 状態: **既存の実行記録を並べた索引**。新しい実測は行っていない。個々の合否・Owner受理は各記録とIssueの担当。
-- この文書の役割: 19件の実行記録が**それぞれ何を確定させ、何を確定させていないか**を1枚で見えるようにし、同じ測り方の重複を避ける。記録本文の複製はせず、各記録へ参照で結ぶ。
+- この文書の役割: 22件の実行記録が**それぞれ何を確定させ、何を確定させていないか**を1枚で見えるようにし、同じ測り方の重複を避ける。記録本文の複製はせず、各記録へ参照で結ぶ。
 
 ## 1. なぜ台帳が要るか
 
@@ -25,6 +25,8 @@
 | [backlog分割と停滞](./DSH_SESSION_LOG_SPLIT_AND_STALL_2026-11-08/README.md) | 送出の上限 | 後続要求へ分割送出（`6`→`9`）、上限256ではfieldが一度も作られない、上限判定は生byte | 004以降が載らない理由、停滞の警告 |
 | [maxBytesのしきい値](./DSH_SESSION_LOG_MAXBYTES_THRESHOLD_2026-11-09/README.md) | 送出のしきい値 | 307では載り水位`4`まで1eventずつ、**306では6要求すべてで載らない**。しきい値は最初のeventを包むfieldの直列化サイズ | 同じSessionで上限を上げた再実行（次行で確認）、停滞の警告 |
 | [停滞後の再開](./DSH_SESSION_LOG_STALL_THEN_GROW_2026-11-09/README.md) | 停滞分の再送出 | 上限を上げた同じSessionの再実行で`afterSeq -1`から`9`まで10 event・1,273 bytesが1要求に載り、合計13 eventが流れた（停滞分は失われない） | `maxBytes`変更だけで自動送出されるか、詰まっているeventの可視化 |
+| [停滞の可視性](./DSH_SESSION_LOG_STALL_VISIBILITY_2026-11-09/README.md) | 停滞の検知 | `maxBytes=306`でfieldが6要求すべて送られない状態を、**stdout・stderr・永続Logの3面を別々に**調べた。stdout 6,176 bytes・stderr **0 bytes**・永続Log展開51,196 bytesのいずれにも該当語0件・警告種別eventなし・終了コード0 | 他の面（Telemetry・UI・別flag）、非停滞との同条件比較、単一eventが上限超過時の挙動 |
+| [停滞の検知](./DSH_SESSION_LOG_STALL_DETECTION_2026-11-09/README.md) | 停滞の検知可能性 | 停滞（306）と非停滞（4096）を**stderrを混ぜずに同条件**で比較。stdout・stderrは**両方とも警告なし**、差は永続Logの`session-log-deepseek/delivery-accepted`のみで非停滞4件・停滞**0件** | Telemetry・UI・別flag、単一event超過時の挙動、他版で同じevent名・意味になるか |
 | [H6-E0 Host棚卸し](./DSH_H6E0_HOST_INVENTORY_2026-11-07/README.md) | 実行環境 | read-onlyはConstrainedLanguage、親のenvは子へ継承されない、loopbackへ到達可 | 別Host、他Tool経路、実Egress |
 | [H6-E1 read境界](./DSH_H6E1_READ_BOUNDARY_2026-11-07/README.md) | 読取り | `read-only`でもraw配下・`.env`・cwd外を読める | AppContainer・別User・mount名前空間での拒否 |
 | [H6-E1 OSのACL](./DSH_H6E1_OS_ACL_2026-11-09/README.md) | 読取りの強制点 | `icacls`で拒否したファイルは`read-only`でも`danger-full-access`でも`PermissionDenied`。同Userへ権限を足すと同じProbeが成功する（正負対） | 別User・AppContainer・mount名前空間、Network egress、存在の推測 |
@@ -43,13 +45,13 @@
 3. **Process生成はmodeで止まらない**。子Process（H6-E2b）も候補の子起動（H6-E5）も成立した。止まるのは書込みと言語モード。
 4. **利用者が指定しない入力が入る**。AGENTS.md・CLAUDE.md・Skill `description`（H6-E3）。Skill本文は載らず、一覧提示と本文Loadは別。
 5. **設定の表示と実効制限が一致しない**。`DSH_PERMISSION_MODE`は空のまま（H6-E0・非対称）。モード名を権限判断の根拠にできない。
-6. **送出の停止は「安全」と同義ではない**。`maxBytes`を小さくするとLogの送出が止まるが、作業は続く（分割と停滞）。止まる境界は**1byte単位で特定でき**（307で送られ306で送られない）、止めた分は上限を戻した再実行で**1要求のburstとして戻る**（停滞後の再開）。恒久的な抑止として扱えない。
+6. **送出の停止は「安全」と同義ではない**。`maxBytes`を小さくするとLogの送出が止まるが、作業は続く（分割と停滞）。止まる境界は**1byte単位で特定でき**（307で送られ306で送られない）、止めた分は上限を戻した再実行で**1要求のburstとして戻る**（停滞後の再開）。恒久的な抑止として扱えない。さらに、**止まったことはstdout・stderr・永続Logのどこにも現れない**（停滞の可視性）ため、「送出していない」と「設定が効いている」を出力だけから区別できない。非停滞と同条件で比べると、差は永続Logの`delivery-accepted`の有無だけで、**警告ではなく成功記録の不在としてしか分からない**（停滞の検知）。
 
 ## 4. まだ根拠が無いこと
 
 - **別Identity（AppContainer・別User・別Session・mount名前空間）での読取り拒否**。同一Userに対するOSのACLによる拒否は[H6-E1 OSのACL](./DSH_H6E1_OS_ACL_2026-11-09/README.md)で確認したが、Harnessや子Processが**別の資格**で動く場合に同じ拒否が効くかは未確認。Network境界の実拒否も同様。
 - **実Providerの保存・保持・二次利用**、Telemetry・MCP・Subagent経路の網羅。
-- **停滞を検知する手段（警告文・状態表示）**。しきい値は[しきい値](./DSH_SESSION_LOG_MAXBYTES_THRESHOLD_2026-11-09/README.md)で、止めた分が戻ることは[停滞後の再開](./DSH_SESSION_LOG_STALL_THEN_GROW_2026-11-09/README.md)で確認したが、**止まったことが利用者に見えるか**、単一eventが上限を超えた場合にどう振る舞うかは未確認。
+- **停滞の検知手段を用意した場合の実効性**。3面に警告が出ないことと、非停滞との差が`delivery-accepted`の不在だけであることは[停滞の可視性](./DSH_SESSION_LOG_STALL_VISIBILITY_2026-11-09/README.md)・[停滞の検知](./DSH_SESSION_LOG_STALL_DETECTION_2026-11-09/README.md)で確認したが、Telemetry・UI・別flagを含む**他の面**、単一eventが上限を超えた場合の`delivery-accepted`の振る舞い、**他版で同じevent名・意味になるか**（この版の観測であって契約ではない）は未確認。
 - **Skillの増分価値**。四Sessionは未採点で、Task path不一致とSession再利用を含む。
 - **独立Expectedによる採点**（RunbookのReviewer-only）。
 

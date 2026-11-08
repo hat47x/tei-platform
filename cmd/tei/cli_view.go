@@ -56,6 +56,10 @@ type referenceCommandRun struct {
 	// reference-allow-all, reference-allow-list, or external. It is evidence
 	// about which check ran, not a grant of authority (#2997).
 	AuthorizationMode string `json:"authorizationMode,omitempty"`
+	// Hooks records the pattern hooks this run consulted before the command.
+	// A refusal here is why the command did not run; an after-change hook is
+	// named as skipped, because the reference run has no after-change point.
+	Hooks *cliHookReport `json:"hooks,omitempty"`
 }
 
 type cliViewReport struct {
@@ -217,6 +221,29 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 			return fail("VIEW_FAILED", err.Error(), 1)
 		}
 		if *execute {
+			// A declared hook runs before the command when the reference run
+			// can reach it: a before-change phase whose declared reads the
+			// caller supplied. Everything else is reported as skipped or not
+			// evaluated with a reason, so a phase that did not run never reads
+			// as a phase that passed.
+			hookReport, hookErr := runDeclaredHooks(context.Background(), loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*patternID), values)
+			if hookErr != nil {
+				if hookReport != nil {
+					run := referenceCommandRun{
+						SchemaVersion: applicationview.SchemaVersion,
+						Mode:          "reference",
+						Plan:          plan,
+						Hooks:         hookReport,
+					}
+					report.OK = false
+					report.Result = run
+					if *format == "json" {
+						return writeViewReport(out, report, 1)
+					}
+					return writeReferenceRunText(out, run)
+				}
+				return fail("COMMAND_FAILED", hookErr.Error(), 1)
+			}
 			invoker := command.Invoker{
 				Authorizer: command.ReferenceAuthorizer{},
 				World:      loaded.World,
@@ -307,6 +334,7 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 				AppliedUnobserved:     appliedUnobserved,
 				ReportedEffectMissing: reportedEffectMissing,
 				AuthorizationMode:     string(result.AuthorizationMode),
+				Hooks:                 hookReport,
 			}
 			report.OK = true
 			report.Result = run
@@ -783,6 +811,52 @@ func writeCommandPatternText(out io.Writer, view applicationview.CommandPatternV
 	return 0, nil
 }
 
+// writeHookReportText prints which declared hooks ran, which were skipped, and
+// why. A skipped phase is printed with its reason so the absence of a phase is
+// not read as a pass.
+func writeHookReportText(out io.Writer, report cliHookReport) (int, error) {
+	if _, err := fmt.Fprintf(out, "hooks: %s (%d executed, %d warned, %d skipped)\n", report.Pattern, len(report.Executed), len(report.Warned), len(report.Skipped)); err != nil {
+		return 2, err
+	}
+	for _, phase := range report.Executed {
+		if _, err := fmt.Fprintf(out, "  hook %s: executed\n", phase); err != nil {
+			return 2, err
+		}
+	}
+	for _, phase := range report.Warned {
+		if _, err := fmt.Fprintf(out, "  hook %s: warned (on-failure warn)\n", phase); err != nil {
+			return 2, err
+		}
+	}
+	for _, phase := range report.NotEvaluated {
+		if _, err := fmt.Fprintf(out, "  hook %s: not evaluated (%s)\n", phase, report.Reasons[phase]); err != nil {
+			return 2, err
+		}
+	}
+	for _, phase := range report.Skipped {
+		if hookReportHolds(report.NotEvaluated, phase) {
+			continue
+		}
+		if _, err := fmt.Fprintf(out, "  hook %s: skipped (%s)\n", phase, report.Reasons[phase]); err != nil {
+			return 2, err
+		}
+	}
+	if report.Refused != "" {
+		if _, err := fmt.Fprintf(out, "  hook %s: refused", report.Refused); err != nil {
+			return 2, err
+		}
+		if report.Outcome != "" {
+			if _, err := fmt.Fprintf(out, " (%s)", report.Outcome); err != nil {
+				return 2, err
+			}
+		}
+		if _, err := fmt.Fprintln(out); err != nil {
+			return 2, err
+		}
+	}
+	return 0, nil
+}
+
 func writeReferenceRunText(out io.Writer, run referenceCommandRun) (int, error) {
 	if _, err := fmt.Fprintln(out, "mode: reference (no durable effects)"); err != nil {
 		return 2, err
@@ -803,6 +877,11 @@ func writeReferenceRunText(out io.Writer, run referenceCommandRun) (int, error) 
 	if run.Effect != nil {
 		if _, err := fmt.Fprintf(out, "effect: %s %s\n", run.Effect.Kind, run.Effect.Data); err != nil {
 			return 2, err
+		}
+	}
+	if run.Hooks != nil {
+		if code, err := writeHookReportText(out, *run.Hooks); err != nil {
+			return code, err
 		}
 	}
 	if _, err := fmt.Fprintf(out, "committed: %t (reference unit of work)\n", run.Committed); err != nil {

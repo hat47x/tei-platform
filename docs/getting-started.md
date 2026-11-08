@@ -8,6 +8,8 @@ TEIは現在、設計上の境界をGoのコードで検証している段階で
 
 主要な手順を試すには、Goの開発環境が必要です。必要なGoの版は、リポジトリ直下の`go.mod`にある`go`行が示す版以上です。この文書は版の数値を複製しません。`go.mod`の更新のたびに文書が古くなるためです。2026-11-07時点の`go.mod`は`go 1.26.10`を要求します。数値は必ず`go.mod`で確認してください。
 
+
+`tools/` の参照ツールのうち、外部コマンドを `bash -c` で起動する試験（`tools/reference-cognition-port`・`tools/reference-generator-selection`）は **POSIXシェルを前提**にしています。Windowsでは、WSL または Git Bash の `bash` でも `cp <Windowsパス>` を解決できない場合があるため、該当試験は明示的に skip し、Linux CI の結果を正とします（#3461）。skip は失敗ではなく「この環境では検査していない」という記録です。`go test ./...` の結果を読むときは、skip の理由も確認してください。
 ```bash
 grep '^go ' go.mod
 go version
@@ -22,6 +24,14 @@ go version
 リポジトリ全体のGo試験は、`go test ./...`の一部として、どのworkflowからも参照されていなかったNode.js試験5ファイルを実行します（`tools/repository-node-tests/`）。Node.jsが無い環境ではskipし、GitHub Actionsでは必須です。手元でNode.js試験を再現する場合はNode.jsを用意してください。
 
 個別の参照ツールは、それぞれの`package.json`の`engines`が要求版を示します。2026-11-07時点では、`reference/tei-studio-independent-consumer`が`>=22.16.0`、`reference/tei-studio-workbench`が`>=24`です。workflowには`22`・`22.16.0`・`24`・`24.21.0`が混在しており、単一の版へ統一していません。使うツールの`package.json`を確認し、版が合わない場合はそのツールの試験を実行しないでください。この混在を解消するかは未決です（[#2953](https://github.com/hat47x/tei-platform/issues/2953)）。
+
+### Windowsでの`go test ./...`
+
+`tools/reference-cognition-port`と`tools/reference-generator-selection`の外部コマンド試験は、コマンドを`bash -c`で起動し、`cp <fixture> $TEI_...`のようにfixtureのパスを渡します。Windowsのfixtureのパスは`D:\GIT\...`の形で、WSLの`bash.exe`にもGit Bashにもそのままでは解決されません。このため、この2パッケージの外部コマンド試験はWindowsでは理由付きでskipします。`bash`が見つからない環境でもskipします。
+
+- skipは通過と同じ意味ではありません。Windowsでは、外部コマンドを経由する経路は未検証です。Linuxで実行した結果を正とします。
+- 実装の契約（`bash -c`で外部コマンドを実行する）は変えていません。
+- この扱いは暫定です。Windowsでも成立する形へ契約を変えるか、`tools/reference-change-packet`など`bash`を前提にする他のツールへ広げるかは、[#3461](https://github.com/hat47x/tei-platform/issues/3461)で決めます。
 
 ## 最初の小さな作業領域から始める
 

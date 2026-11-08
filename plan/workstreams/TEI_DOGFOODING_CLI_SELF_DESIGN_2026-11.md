@@ -538,3 +538,34 @@ ADR-0048 §2.6 の「各入口の広告が独立した正本にならないこ�
 - `discovery_parity_test.go` が、実CLIをビルドして `commands` を実行し、4 tool の対応コマンドの存在・`effect` が `read-only`・`writeFlags` が無い・`schemaVersion`・`jsonContract` の5点を突き合わせる。対応付けは文字列変換ではなく表で宣言する。
 - 現行 `main` では PASS した。加えて、故意のずれ6種（adapter 側3・CLI 側3）を入れると6件すべて FAIL し、戻すと PASS に戻ることを確認した。両面のどちらを変えても検出できる。
 - 突き合わせるのは discovery の一致だけである。`catalog` の namespace 失敗と `validate` の byte 一致は既存の試験が持ち、`inspect`・`trace` の実プロセス比較は #3420 CAPI-2a が持つ。
+
+## 14. 第8ラウンド（2026-11-09）: 空文字列の引数と既定値
+
+ADR-0048 §2.4 の「既定値の適用は共通契約で定める」を、CLI と MCP で確かめた。生出力は[第8ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND8_EMPTY_ARGUMENT_2026-11-09/README.md)にある。
+
+- `direction` と `mode` の値集合は、CLI の `argumentValues` と MCP の `inputSchema.enum` が同じ値を持つ。省略時の既定も両方 `direction=both`・`mode=summary` で一致した。
+- 一方、**空文字列を渡すと CLI だけが「未指定」として扱い、既定とは別の値へ落ちた**。`-mode ""` は結果が `mode=full`（rows=4）になり、省略時の `summary`（rows=0）と異なる。MCP は `-32602` で拒否する。
+- `-expected-fingerprint ""` は照合を省略するため、呼出し元が「空なら照合しない」つもりでいると、CLI では別Workspaceの結果を継続として使う経路が開く。
+- `trace` の3引数（`-direction`・`-mode`・`-expected-fingerprint`）を、フラグを書いたうえで値が空なら `INVALID_ARGUMENT`（exit 2）で拒否するよう修正した。省略時は従来どおり既定を使う。回帰試験は `cmd/tei/cli_trace_empty_argument_test.go`。
+- `model catalog -namespace ""` と `inspect -subject-kind ""` は変更していない。前者は「絞り込み無し」の意味があり、後者は「拒否する」点で MCP と同じで符号だけが違う（#3420）。
+
+起票は [#3605](https://github.com/hat47x/tei-platform/issues/3605)。
+
+## 15. 第9ラウンド（2026-11-09）: 空文字列の修正を統合後に再実測
+
+第8ラウンドの修正が `main`（`0067d6a1e`、PR #3607）に統合された後、CLI と MCP の両方から再測定した。生出力は[第9ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND9_EMPTY_ARGUMENT_REMEASURE_2026-11-09/README.md)にある。
+
+- `-mode ""`・`-direction ""`・`-expected-fingerprint ""` は、CLI が `INVALID_ARGUMENT`（exit 2）、MCP が `-32602` で、両方とも拒否する。
+- 3引数を省略すると `ok:true`・`mode=summary`。`-mode full` は `mode=full`。省略時の既定は保たれている。
+- 残る差は符号だけ（`INVALID_ARGUMENT` と `-32602`）。失敗分類の統一は #3420 の未決で、本ラウンドでは変更していない。
+
+#3605 は解消として扱える。Issue を閉じ、残る分類統一は #3420 に残す。
+
+## 16. 第10ラウンド（2026-11-09）: inspect・trace の実プロセス同値と失敗分類
+
+#3420 CAPI-2a の範囲を実測した。生出力は[第10ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND10_CAPI2A_PARITY_2026-11-09/README.md)にある。
+
+- 8ケースのうち7ケースで、CLI と MCP の成否と `error.code` が一致した（`SUBJECT_NOT_FOUND`・`UNSUPPORTED_SUBJECT_KIND`・`STALE_SNAPSHOT`・`INVALID_ARGUMENT`・`NAMESPACE_NOT_FOUND`）。
+- `inspect -workspace /no/such/dir` は MCP では tool 引数で表現できない（起動時に固定する設計）。起動時の `-workspace` が無い／manifest が壊れている場合、MCP は `WORKSPACE_LOAD_FAILED` を返し、CLI と同じ符号だった。差は「いつ分かるか」だけ。
+- **必須引数の欠落だけが層の違い**である。CLI は `INVALID_SUBJECT`（exit 2）、MCP は `-32602`。両方拒否するが文字列の符号が揃わない。ADR-0048 §2.3「失敗」の未決。
+- `inspect_trace_parity_test.go` を追加し、成功2件・失敗5件の値と符号、成功時の `result` の byte 一致を実プロセスで固定した。符号をわざと変える2種の変異はどちらも検出した。
