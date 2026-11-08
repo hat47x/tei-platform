@@ -29,6 +29,47 @@ go version
 
 手順は[最初の意味変更を試す](../examples/first-workspace/README.md)に記載しています。Goの開発環境だけで実行できます。ただし、これはモデルの検証例であり、画面の生成やデータの登録・照会・更新・削除はできません。
 
+
+### 外部の呼出し元が書く最小の作業領域
+
+外部の呼出し元が文書だけを読んで作れる最小の形は、次の2ファイルです。`workspace:` の名前は任意で、`formatVersion` と `sources` は必須です（`formatVersion` がないと `WORKSPACE_LOAD_FAILED`、`sources` が空だと `sources must contain at least one source root`）。
+
+```text
+my-workspace/
+  tei.workspace.yaml
+  semantic/model.tei
+```
+
+```yaml
+# tei.workspace.yaml
+workspace: scn001
+formatVersion: 1
+sources:
+  - semantic
+```
+
+```tei
+namespace scn
+
+data RuleCandidate {
+    attribute sourceVersion type std.text
+}
+```
+
+この2ファイルで `go run ./cmd/tei validate -workspace my-workspace -json` は `ok:true`、`declarationCounts` は `namespaces:1`・`data:1`・`attributes:1`・`total:3` になります（`types` は `std` しか無いため0）。`model catalog` の `entries` には `semantic` / `scn`・`semantic-data` / `scn.rule_candidate`（`symbol:RuleCandidate`）・`semantic-attribute` / `scn.rule_candidate.source_version`（`symbol:sourceVersion`）が出ます。標準定義の `std` は `prelude:true` で印を付けます。
+
+**宣言名はCanonical IDへ変換されます。** identifier（namespace・data・attributeなど）は、宣言した `symbol` ではなく、次の規則で作ったCanonical IDを `subject.id` として持ちます（`core/identity`）。
+
+| 宣言 | 変換 | 例 |
+| --- | --- | --- |
+| namespace | 名前をそのまま小文字のまま使う | `namespace scn` → `scn` |
+| data | `namespace.` + symbolをsnake_caseへ | `data RuleCandidate` → `scn.rule_candidate` |
+| attribute | 親dataのID + `.` + symbolをsnake_caseへ | `attribute sourceVersion` → `scn.rule_candidate.source_version` |
+| relation・candidate-key・functional-dependency | 親dataのID + `.` + symbolをsnake_caseへ | `relation OrderLines` → `scn.order.order_lines` |
+| capability・validation・type | `namespace.` + symbolをsnake_caseへ | `type OrderStatus` → `scn.order_status` |
+
+snake_caseへの変換は、大文字の前に`_`を置き、`-`・空白・連続する`_`を1つの`_`にまとめ、前後の`_`を落とす操作です。`sourceVersion` は `source_version`、`SourceVersion` も同じ `source_version` になります。**大文字小文字だけが違う2つの宣言は同じIDへ潰れ、`DUPLICATE_SEMANTIC_ELEMENT` になります**。`model catalog` の `entries[].symbol` は宣言した綴り、`subject.id` は変換後のIDです。呼出し元が宣言と応答を突き合わせるときは、`symbol` ではなくこの変換を経た `subject.id` を使ってください。
+
 ## コマンドラインを生成AIや自動化から使う
 
 当面はコマンドラインから`tei`を操作する方法を基本とします。現在使える主な読み取り専用コマンドは、次のコマンドが返すJSON形式の一覧で確認できます。
@@ -65,6 +106,20 @@ go run ./cmd/tei validate \
 `workspace-files`の各要素は`readByLoader`を持ちます。`true`はそのファイルのバイト列をLoad中にdomain loaderが読んだこと、`false`は管理対象だが解釈されていないことを示します。`workspace-files`の`sourceRootFindings`は、未知・存在しないsource rootを名指しします。`readByLoader:true`だけではParserの意味受理や整合性合格を意味しません。
 
 `validate -json`の応答には`sourceRootFindings`が入ります。`tei.workspace.yaml`の`sources`に存在しないrootがあれば`severity:"error"`（`ok:false`、終了コード1）、Loaderが解釈しない未知のrootなら`severity:"warning"`です。`workspace-files`に載るがLoaderが読まない近似名のファイル（`.tei.bak`・`Application.tei`など）も`file`付きのwarningとして返します。これらはCanonical Subjectを持たないため`diagnostics`ではなく別の欄です。
+
+`tei.workspace.yaml`はYAML全体ではなく、次の部分集合です。表に無い書き方は`WORKSPACE_LOAD_FAILED`（終了コード2）で拒否され、エラー文に行番号が付きます（2026-11-09から）。
+
+| 要素 | 受理する形 | 拒否・注意 |
+| --- | --- | --- |
+| ファイル先頭 | UTF-8。先頭のBOMは1つだけ無視する | 2つ目のBOM、途中のBOMは拒否する（#3556） |
+| `workspace:` | 名前（省略可）。`"…"`または`'…'`で囲んだ値も受理し、引用符を外して応答の`workspace.name`に返す | 閉じ引用符の欠落、引用符内の同じ引用符の未エスケープ、閉じ引用符の後ろの文字は拒否する |
+| `formatVersion:` | `1`または`2`の**引用符なし**の整数。`sources`より前に置く | `"1"`のような引用符付き、0以下、非整数、重複、`sources`の後ろは拒否する |
+| `sources:` | 次の行に`- `で始まるrootを1行1つ。最小1つ | インライン配列（`sources: [semantic]`）は拒否する。`- "semantic"`は引用符を外してroot名にする |
+| `imports:` | `- alias:`で始め、続く`path:`・`namespace:`・`semanticDigest:`を書く | 各値は引用符を外せる。未知の項目は拒否する |
+| コメント | 行頭の`#`、または空白の後ろの`#`から行末まで | 値の途中の`#`は値の一部として扱う（`workspace: scn#1`の名前は`scn#1`）（#3557） |
+| 未知のキー | — | 拒否する（`description: hi`など） |
+
+引用符の中のエスケープ（`\"`・`\n`など）は解釈しません。引用符を外した文字列をそのまま使うため、引用符内で同じ種類の引用符を使うときは値を引用符なしで書いてください。`#`を含む名前に空白の後ろの`#`を使うと、そこからコメントになります。`workspace: "scn #1"`のように引用符で囲むと、`#`以降も名前の一部として残ります。
 
 Workspaceがモデル要素を1つも宣言していない場合、`validate`は`WORKSPACE_DECLARES_NO_MODEL_ELEMENTS`（warning）を返します。`ok:true`のまま終了コード0ですが、`diagnostics`にこのwarningがあるため「宣言が読み込まれて検証を通った」と読み違えないでください。標準意味型（`std`）は宣言として数えません。
 

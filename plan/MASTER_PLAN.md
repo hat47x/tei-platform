@@ -373,7 +373,6 @@ reload / Conformance
 
 **当時の計画変更の上限**：PGD-01〜06を同一HEAD・同一AttemptのCLI/Studio/Frontend/Hostで検証したわけではない。なお後続[main #3440](https://github.com/hat47x/tei-platform/pull/3440)で**cmd/tei自身の限定3段Self-build L3実測**は成立したが、Plugin Bの実Link/Call、Build Source全閉包、現在のGrant、2×2 BOM、Owner業務受理への資格移転はない。実B呼出のProduct二Consumerは引き続き **NOT PROVEN**。
 
-
 #### 2026-11-08 D1の実装差分：局所Provider Callから実二Consumerへ（最新mainに基づく引継ぎ）
 
 後続で[ADR-0048（main #3439）](adr/0048-shared-application-api-and-transport-adapters.md)が採用され、CLI/MCP/API/Web/Desktopは**共通Application Operationの意味**とTransport表現を分ける方針になった。[main #3458](https://github.com/hat47x/tei-platform/pull/3458)は`validate`のCLI/MCP間での限定投影同値に成功したが、`inspect`のPlugin経由実行・二Consumerの資格を代替しない。
@@ -399,7 +398,7 @@ reload / Conformance
 
 **予定の帰属**：S0はStudio main #3371／CLI main #3381、S1はmain #3381のComposition選択B→Host登録Bへの局所実Go呼出とCLI/Studio Host API二経路試験（製品S2ではない）、S2のProduct統合は#1251/#1824、S3のDesign Requiredは#3262、履歴Sourceと再利用判定は#2600、版Matrix/BOMは#3267、Trait実装義務はmain #3480/#3278、Scenario/独立Expectedは#1180/#2514。新しいResolver/Registry/Host/Scenario SSOT、HTTP常駐必須化、Legacy `application-runtime` CarrierのScope緩和は行わない。本節自体は計画の更新で、S2/S3の実試験成功・Owner Meaning受理を**主張しない**。
 
-
+**2026-11-09 C-1/C-2・Hook・公開Tool契約の横断追補（設計引継ぎ）**：[Trait設計§20](design/TRAIT_ATOMIC_COMPOSITION_AND_FULFILLMENT_2026-11.md)で、新しい[入口比較実測](evidence/CONNECT_POINT_C1_C2_2026-11-09/README.md)と[Service Carrier限定実行](evidence/SERVICE_CARRIER_CONNECT_REFERENCE_2026-11-09/README.md)を踏まえ、**C-1配備動作とC-2世代固定Service要求は必ずしも代替ではない**と精密化した。採否・C-4外部実行は引き続き未決。main #3579に入った機能定義書のHook位相/reads/uses/produces表示は**宣言の投影**であり、実Hook/業務Effect・Trait履行は未実証。main #3563/#3582のCLI/MCP失敗整合と未統合#3590のTool Discovery差分を踏まえ、広告／Required Closure／実Provider／結果を別々に観測する。TCR-01〜06は#3278/#3279→#2110/#1129/#3419/#3420/#1180/#2514へ委譲し、新Core Trait/Host/Runnerを追加しない。
 
 **2026-11-09 原子的Traitの実行主体・BOM資格の境界（受入計画）**：[Trait設計§19](design/TRAIT_ATOMIC_COMPOSITION_AND_FULFILLMENT_2026-11.md)で、Required Traitの実装義務と、製品内実行／外部Host実行の選択（[構成の繋ぎ目判断材料](workstreams/COMPOSITION_CONNECT_POINT_BRIEF_2026-11.md)のC-1〜C-4）を独立させた。C-4「TEIでは実行に接続しない」も正当な候補であり、本計画がその採否を決めない。#3540は通常CLI/StudioのS2へ向けた**未統合Draft**、#3538/#3541のRQ-037 BOM要求・Matrixも**未統合候補**。実ProviderのTrait履行、外部Receipt、同一Attempt/TargetのQualified BOM、現在Grantをそれぞれ別に検証し、TEB-01〜06は#3278/#3279→#1251/#3267/#1180/#2514への未実行受入観点として引き渡す。新Host/Resolver/Runner/Hard Gateなし。製品S2と外部Hostのどちらかを他方の前提にしない。
 
@@ -414,6 +413,9 @@ reload / Conformance
 - **Traitは二種類の実Consumerで検収する**：[main統合 #3502](https://github.com/hat47x/tei-platform/pull/3502)により、P0-T=CLI/Studio read-only Inspector、P0-R=`pattern order_entry.recent_orders browse`→`query order_entry.recent_orders`→`recent_orders.sql (:from)`→`datasource sales`→`application order_entry.sales_core` Alias→実Provider Rowset→Function Contextを**別のRequired/Expected/Attempt**に固定。共通化するのはTraitのDefinition／Binding／Implementation／Invocation／Conformanceの証拠形だけ。Provider Instance/Source/Target/Current Grantは共通正本化しない。`sales.order.submit`のMutation/Transaction TraitをBrowseに暗黙継承させず、Manual Required不足とProvider未選択と実Readerの0件／partialを別に拒否する。P0-Rは#2586/#3270、Trait履行の正本は#3278/#3279。
 
 **受入の次の最小追加条件（独立Expected #2514へ委譲）**：D1B-ERR=Typed Provider ErrorのCode/Message両方を非信頼として匿名化、D1B-TRF=TとRのTrait Required集合を別検査、D1B-CALL=同じ6 SubjectでB選択→B実Invokeを各通常CLI/Studio Call-siteで証明。**局所S1だけの成功、暫定Builtin Studio Host、Direct D1a同値、二Consumer間のTrait証拠形式同値をD1bやP0-R実Provider Readの合格へ昇格させない**。新Resolver/Runner/Host/二重Scenarioを追加せず、旧Carrierの`application-runtime`限定も緩めない。本追補は計画文書のみ、追加Go/実DB/実Wails/実Provider/Owner意味受理はNOT RUN。
+**実装候補の進捗（2026-11-08）**：[Draft #3371](https://github.com/hat47x/tei-platform/pull/3371)では既存`studiohost.RootServices/ServiceFactory`へ型付き`InspectionService`を追加し、Factoryを設定した場合の旧`operations.InspectSubject`への無音fallback拒否、Subject/Effect/Schema/Fingerprint等の不一致拒否をGoコードと試験へ具体化している。ただし**未統合Draft／作成時点Go CI未検収**であり、実Compositionで選択したProviderのHost側供給、CLIの同じProviderへの接続、WebView/Build/actual Invocationの証拠は別。P0-b/cの候補として既存#1251/#1824が検証し、Studio seamの追加だけでD1bを完了扱いしない。
+
+**今回の上限**：main統合済み参照結果の引用と、実Consumerに残る不足の計画反映。PGD-01〜06を同一HEAD・同一attemptで実CLI/Studio/Go/Frontend/Host検証したわけではない。新Contract Schema/ABI、実B呼出、G4 L3、BOM組合せの本番資格、Owner業務受理は **NOT RUN／NOT PROVEN**。
 
 
 ### トポロジーと複合図表の評価順（未採用の追加検証候補）
