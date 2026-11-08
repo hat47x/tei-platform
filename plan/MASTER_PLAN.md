@@ -341,6 +341,63 @@ AIによる提案には、意味の正本を変更する権限はありません
 
 AIの自律的な作業と実行権限を区別します。AIがツールを直接呼び出せることを、能力や利用許可の仕組みの代わりにはしません。
 
+### AI-first資格分離の初回実証（2026-11-07、現在mainへの成熟差分）
+
+[AI-first資格・実測対応](design/AI_FIRST_QUALIFIED_INTERFACE_CURRENT_MAIN_2026-11.md)を横断受入の現行基線として参照する。旧[PR #2492](https://github.com/hat47x/tei-platform/pull/2492)は現行mainから大きく乖離しているため、**全追補を機械移植しない**。本節は成熟したAI受入条件だけを移すもので、同PRに含まれる別件の要求・基礎データ・研究の自動採否ではない。既存Owner/ADR・TAI Runbookと競合する第二の正本・中央Agent Hostを作らない。
+
+**三経路**：AIの自由なMeaning Proposalは#267のShared Acceptance、受理済みComputationの型付きParameter Bindは正規実行物・Receipt・独立Attester、Provider等のEffectful Intentは現在Host Grant/OperationID/Receipt・Resource再Readへ分ける。`validation.Accept`局所フラグ・Studio未受理案、PoCの機械検証によるADR-0035 A3、OKFの`verified`、本番のMeaning/Grant/Effectを相互に代替しない。
+
+**現行実績と制限**：DSHからTEI実BinaryへのTool transportは[#3113](https://github.com/hat47x/tei-platform/pull/3113)で探索限定成功。ただしCatalog Tool Result 8,192 byteの途中終了、Tool call 56/Result 55、stdout/stderr付着、参加者の禁制資料へのアクセス拒否未確立により、TAI #168のH2/H3比較適格は**0/4**。[#3200](https://github.com/hat47x/tei-platform/pull/3200)のTool子Process環境実測、[#3153/#3161](https://github.com/hat47x/tei-platform/pull/3161)のDSH Session Log既定送出・再送は、モデルPrompt以外のSinkと実OS隔離を明示確認する根拠。これらは実Providerの全Egress非漏えいやSkill増分価値の証明ではない。
+
+**Tool選択・Source完全性**：[main #3210](https://github.com/hat47x/tei-platform/pull/3210)ではCLI受理53／公開discovery19という実差があり、非公開34は意図的な選択。AI側がCLIで呼べることと公開Tool/Host資格は別。[Draft #3162](https://github.com/hat47x/tei-platform/pull/3162)の`read-only`表示でも`-execute`でローカル書込みがある反例を残す。SourceはRequired→Discovered→Loaded→Parsed→Actual Consumed、ProviderはRequired Target Set→Observed Result Slice→Predicate Evaluation/Scopeを照合。[現main向けDraft #3238](https://github.com/hat47x/tei-platform/pull/3238)は旧#3175合成Q05〜07を再配置し、隔離PostgreSQLでTenant A `{3,9}`の`$top=2`対`$top=1`を実Reader/独立Expectedで確認（[限定CI #42346176936](https://github.com/hat47x/tei-platform/actions/runs/42346176936)）。**有限Reference実Readを実Product Function→Query全件保証へ拡張しない**。[Draft #3156](https://github.com/hat47x/tei-platform/pull/3156)の実Build成功・Source閉包拒否も、artifactと資格を分ける実例として扱う。
+
+**2026-11-07最新の資格差分**：[TEI #2509](https://github.com/hat47x/tei-platform/issues/2509)の4 Session原EvidenceでH3-A/BのProduct Skill本文各5,482 byte・参照文書の**実Tool Readは限定成立**。しかしH2-Aは旧Session再使用で事前隔離・割付が揃わず、Skill効果/独立回答の比較適格性は**0/4のまま**。新TrialではG0読取拒否→G1許可送出→G2 Tool Result全体性を満たし、Skill Source原byteとLoader wrapper/実消費本文を区別する。[再開の実測 #3237](https://github.com/hat47x/tei-platform/pull/3237)はSession Logの既ACK区間が非再送でも、再開`messages`へ旧Canaryが再出現。**Log非再送≠モデル入力非再開示**なので、再開時Audience/Disclosureを別に照合する。
+
+**CLI/実行時のCurrentness**：[実装PR #3247](https://github.com/hat47x/tei-platform/pull/3247)はWorkspace名・manifest SHA・形式版を5つのCLI応答へ追加して限定実験済みだが未統合で、名称自体は一意IDではなく`source-index`の対象なし応答にも未対応。[Issue #3242](https://github.com/hat47x/tei-platform/issues/3242)は`tei commands`の引数型・enum・default未広告を担当。Hostへ渡すTyped Intentの元となるWorkspace/CLI/Tool Requestを**実解決・実消費した版**で束縛する。[main実測 #3254](https://github.com/hat47x/tei-platform/pull/3254)ではSource属性追加でWorld/Model版が変わってもOperation `basis`と件数は不変で、現実行面に期待Revision照合入口はない。#2598/#1125/#1174のOwnerへ、保存済み操作面の選択時点・実行直前World/Model・現Target/Grantの照合を渡す。**実装方式や既定の拒否判断は未決**、参照`basis`一致・CLI/Studio表示だけを実行資格としない。
+
+**次の小さいDone**：(1) TAI #168／TEI #2509/#2515/#2605で、OSの禁止Source拒否・許可Egress/Tool Result完全性・Answer/Consumer受信を備えた**比較適格H2一Session**を新Trialで成立させる。(2) #2586/#2514/#2506で旧`*.tei`の一Function→実Provider read-onlyと独立期待値を照合する。(3) #3030/#3031で新`*.tei.md` Reader/旧新意味比較、#267で正式Source受理/再Loadへ接続する。(4) #1174/#2598で現在Host Grant・Receipt／Resource観測・業務Outcomeを段階別に確認する。(5) OKF Attested Computationは初回H2/H3比較条件を変更せず、TAI #514の後続read-only PoCへ置く。
+
+**停止線**：隔離・独立採点を満たした新H2/H3の4Session（探索の限定4Sessionとは別）、実非公開Egress拒否、実Providerの全件閉包、`*.tei.md`実Parser、AI正式Meaning受理・本番Host一往復は**NOT RUN／NOT ACCEPTED**。PoC内A3の自律開発を停止させず、対外不可逆効果のA4と製品側資格を別に評価する。[Draft #3179](https://github.com/hat47x/tei-platform/pull/3179)の標準構造・機能内表現のMASTER_PLAN差分とは独立の節とし、merge前に最新mainとの差分を照合する。
+
+**Design Context→T1新負例の最短経路（2026-11-07更新）**：[AI-first資格設計§6](design/AI_FIRST_QUALIFIED_INTERFACE_CURRENT_MAIN_2026-11.md)へ、#3262の**用途相対Required Design Context read-only投影**を、AI Test Generatorより先の前提として配置。P-1a＝[main #3264](https://github.com/hat47x/tei-platform/pull/3264)の実CLI 9応答／Subject・Source Index一致／`readByLoader:true`／欠落・異版・未読込の3負例は限定実証済み、**全Data/Function/Business/Rule/Procedure閉包・新Context APIは未実証**。T0＝[main #3266](https://github.com/hat47x/tei-platform/pull/3266)の実Binary pinned Scenario 6 Step／実CLI4負例＋独立義務2負例／局所statement C0相当10.1%（C1未計測）。[main #3268](https://github.com/hat47x/tei-platform/pull/3268)でSource/CLI/Skill等変更時のCI再発火範囲を拡張したが、完全な依存Closureや全要求Coverageではない。
+
+**次の新規検証はT1一件**：公開`sales.order`の「行番号は正」のRuleについて、#3262の実消費Source/Rule/Requirementと必要Context/未取得を読取り専用で照合し、**既存Scenarioが網羅していない行番号0の負例**を最小CLI/AI操作で候補生成する。独立Expected/Holdoutを生成Agentへ渡さず、#1180 Scenarioの実CLI実行と#2514の既知Mutant/独立判別で「提案が新しい欠落を検出した」と示す。P-1bの機械／人間両用の整形、T1の新Candidate実行、C1/NFR Coverageは未実装・未検収。案の競合[Draft #3258/#3259/#3260/#3261](https://github.com/hat47x/tei-platform/pull/3258)を第二のTest/Expected/Runner正本にせず、実装Owner #1131/#1126/#1125/#1180/#2514/#3223/#2811へ帰属させる。
+
+**後続・並行レーン**：[三要素Diagram/CRUD Draft #3263](https://github.com/hat47x/tei-platform/pull/3263)は同じSource/RoleからのProjectionにとどめ、Function文脈の表現型Instance、SHO図解・表示/編集を初回T1のBlockingにしない。[基本機能 #3267](https://github.com/hat47x/tei-platform/issues/3267)のVerified Composition BOM／[Reference Draft #3269](https://github.com/hat47x/tei-platform/pull/3269)のexact-lock／pairwise候補は`qualified:false`の計画・表示段階であり、実Plugin組合せPASSや現Host Grantではない。[Snapshot/Cache #3271](https://github.com/hat47x/tei-platform/issues/3271)も実消費・Input/Artifact・現在資格の後続再利用で、新P0 Hard Gateにしない。既存P0-L実ProviderとP0-M`*.tei.md` Reader、および比較適格H2/H3は相互に独立して並走する。**本追加はDocsのみ、P-1b/T1実Run・BOM実Build/Provider/Host・意味受理はNOT RUN**。
+
+### T1-Aの実走とT1-B盲検・Plugin実Consumerの分岐（2026-11-08）
+
+[AI-first資格・実測対応§7](design/AI_FIRST_QUALIFIED_INTERFACE_CURRENT_MAIN_2026-11.md)へ、既存テストとPlugin-firstの新しい証拠を追加する。**新たな実装達成を意味するのではなく、実証した範囲だけの受入順補正**である。
+
+- **Design Contextの準備**：[main #3296](https://github.com/hat47x/tei-platform/pull/3296)は実CLI9応答＋合成不足/Tool Reply改変16負例を限定CIで検出し、[main #3299](https://github.com/hat47x/tei-platform/pull/3299)はSource/Plugin Lock実byteの変化後に旧Scenarioを拒否した。しかしContextは`partial`、`qualifiedTestGeneration=false`。外部Harnessの切断Tool Result完全性、実Plugin Loader・Operator実消費、Current Grant、全Requirement/Source閉包は別。
+- **T1の実績更新**：[main #3304](https://github.com/hat47x/tei-platform/pull/3304)の旧HEAD専用CIは、既存6 Stepと別の一時第7 Step「行番号=0」を実CLIで判別し、偽Expected/Fixture/旧Pinの3負例を検出。これは**既提案境界のT1-A実走**であり、AIが非公開Holdoutを見ずに未知条件を発見する**T1-BはNOT RUN**。#3262の一Subject・用途限定Design Context→#1180 Scenario→#2514独立Expected/既知Mutant→同Attempt受領の最初の盲検試行を次の実験とし、C0 10.1%局所・C1未計測・NFR未測定をそのまま表示する。外部H2/H3比較とは並列に進め、第二Generator/Runnerを作らない。
+- **Plugin-firstの次のConsumer**：[main #3277](https://github.com/hat47x/tei-platform/pull/3277)の開発機能Plugin化要求に従い、[#3292](https://github.com/hat47x/tei-platform/pull/3292)のread-only Inspector一機能で**Selected Providerと実Invoked Provider、CLIとStudioの実Consumer**を照合する。2 SurfaceとProvider×Consumer 2×2は別の検証軸。Workbenchの[main #3287](https://github.com/hat47x/tei-platform/pull/3287)は合成Fixtureまで、実Provider/共通Invokeは未実証。標準業務Role/型・Dataの[main #3308/#3318](https://github.com/hat47x/tei-platform/pull/3318)を後続Domain負例に利用するが、DB実Rowとはみなさない。
+- **既存Owner・未統合を尊重**：[Draft #3297](https://github.com/hat47x/tei-platform/pull/3297)のRQ-035 Workbench／RQ-036 BOM・PAS/Gap Auditと2×2 Witnessは既存担当に保持。`qualified:false`を正式BOMへ変えない。[Draft #3302](https://github.com/hat47x/tei-platform/pull/3302)のread-only `view -execute`除外案や、closed/unmerged[#3315](https://github.com/hat47x/tei-platform/pull/3315)のWorkspace Identity欄を、現mainに導入済みと扱わない。#3241の設計PR、#3292/#3297の計画Draft、#3303三視点図面Draftは各Ownerの役割が異なり、二重の正本を作らず統合時に最新mainとの差分を比較する。
+
+**残るP0**：T1-Bの初回盲検Candidate、比較適格H2/H3の4Session、旧`*.tei`一Function→実Provider read-only、新`*.tei.md` Reader/実意味比較は**未成立**。既存局所CI Greenを正式Meaning/Authority/EffectやBuild G4適格に昇格させず、ADR-0035のPoC A3自律実装を不必要に止めない。
+
+### 正常JSONでも必要Ruleが欠ける場合の停止条件とTool実効果（2026-11-08）
+
+[AI-first資格・実測対応§8](design/AI_FIRST_QUALIFIED_INTERFACE_CURRENT_MAIN_2026-11.md)で、**T1-Bへの入力の実資格と、AIに渡すToolの実効果**を二つの独立したP0に具体化した。先行する[main #3296](https://github.com/hat47x/tei-platform/pull/3296)の9件の実CLI応答＋合成欠落/破損16負例は、正常JSON/同Fingerprintのまま必要Rule・Relationだけ欠落する反例を検査しきらない。[Draft #3324](https://github.com/hat47x/tei-platform/pull/3324)は`inspect-validation`を加えた10応答で、`validation.tei` Loader実読取・Rule/Relation Identity/Canonical Attribute/Source Anchor/Definition Roleを比較し、Tool Reply一時コピー8負例を拒否する変更候補。ただし**Draft/CI未確認、Context`partial`/`qualifiedTestGeneration=false`**であり、実Tool配送・Function/Business全Requirement・新AIテストの資格へ昇格しない。
+
+**実Toolの権限・副作用**：[main #3333](https://github.com/hat47x/tei-platform/pull/3333)は`tei.cli.discovery/v0`に`view.writeFlags=[-operation-log,-lifecycle-state]`を互換追加し、実ローカルFile書込みを限定Go試験で検証した。`effect:read-only`はCanonical Meaning非変更であり、File/Network無変更の証明ではない。H2/T1-Bでは許可Command/Flag/実argv・File/Session Log・Audienceを明示し、Holdout/Reviewer-only資料へ**実OS/Harnessで到達拒否できた**場合のみBlind資格を与える（#2509/#2515/TAI #168）。旧Draft #3302の別提案欄は現mainの実Contractではない。
+
+**次の最小Done**：P0-A=#3262/#3324による一Ruleの独立RequiredとActual Source/Rule closure・不足理由の検査（まずDraft exact-head CI）、P0-B=#2509/#2515のHoldout物理隔離/Tool Result全体性・副作用/送出境界、P0-C=#3273/#1180/#2514の**未知Rule Gapからの盲検T1-B候補一件→独立Expected/Mutantの判別**。一件の狭いSourceが成立しても全Workspaceの`qualifiedTestGeneration`は別。#3304の既知行番号0のT1-A成功をT1-Bに転用しない。設計Contextが`partial`なら取得済みScopeの探索に限り、全域PASSを返さない。従来の適格H2/H3比較と、旧`*.tei`実Provider read-only、新`*.tei.md` Parser移行は**別の並行レーン**。
+
+**後続Plugin/Consumer**：[main #3334](https://github.com/hat47x/tei-platform/pull/3334)の税・為替・採番・休日DataのApplication/Studio投影は実装済みだが、行取得/実DB Bind・Wails E2Eではない。[Draft #3292](https://github.com/hat47x/tei-platform/pull/3292)のInspector一機能で選択Plugin/Providerと実Loaded/Invoked Provider、CLI/Studio二Consumer、Current Scope/Independent Expectedを別々に確認。Studio ABAの[Draft #3327](https://github.com/hat47x/tei-platform/pull/3327)は旧UI応答を採用しない2件の局所成功だけで、Hostの旧Effect取消ではない。Verified BOM/Workbench/Cache/OKF/図面はP0-CのHard dependencyにしない。**今回の変更はDocs/Planのみで、新P0-A/B/C、実Provider・正式Owner受理・Host E2E・C1はNOT RUN**。追加Runner/第二Scenario/Registry/Hostなし。
+
+### TT-56の二候補を一本化し、実Capability選択とBuild主体を分離する（2026-11-08）
+
+[AI-first資格・実測対応§9](design/AI_FIRST_QUALIFIED_INTERFACE_CURRENT_MAIN_2026-11.md)に、**Draftの二つのTT-56実装候補を統合前に一本化する**採否手順を記録した。[#3324](https://github.com/hat47x/tei-platform/pull/3324)は必要な一Ruleの`inspect-validation`/Canonical Attribute/Relation/Source Anchor、[#3326](https://github.com/hat47x/tei-platform/pull/3326)は独立Required 3 Ruleと`source-index` **indexモード**の全件照合を実装候補とする。**両PRの最終固定HEADで、専用Dogfood／Repository Health／依存チェック3系統ともcompleted/success**（#3324 CI #42385606408/#42385606448/#42385606458、#3326 CI #42385726717/#42385726733/#42385726722）。ただし**Draft未マージ・合体HEAD未試験**。#3262を唯一のDesign Context Required/Observed Ownerとし、#3326の独立Required集合＋#3324の特定Rule/Relation/属性/Source Spanを重複なく一つの検証へ照合する。必須でないRuleの省略は正例に残し、重複Caseを二重計数しない。連続するCLI readは原子的Snapshotの証明ではない。
+
+**P0の次の順序**：① #3262でRequired 3 Rule全件Indexと一Rule詳細を実CLI/Source版/返却byteで確認、合同HEAD・main pushは別CI。② #2509/#2515/TAI #168で独立Expectedへの物理アクセス拒否、Tool Reply終端・実argv/Session Log Egressを確認。③ #3273/#1180/#2514でAIが未予告Gapから独立に新Candidateを発見したか**T1-B盲検**を測る。#3304の既知行番号0 T1-A成功を再利用しない。Sourceが`partial`なら可観測Scopeの探索に限り、`qualifiedTestGeneration=false`のまま。不適格なRuleやTool全体を不可視のまま合格としない。
+
+**選択・起動・Buildの実証差**：[main #3337](https://github.com/hat47x/tei-platform/pull/3337)の参照Capability Coverageでは12宣言中6件が**その参照方式では未選択**。後続[Open #3350](https://github.com/hat47x/tei-platform/pull/3350)は既存`SupportsDatabaseProvider`の技術名対応を使って未選択を4件とする改善候補で、現main結果とは異なる。**Declared→Selected Capability→実Plugin Loaded/Invoked→Provider/Consumer適合**は別資格。未選択は必ずしも欠陥でなく、選択済みも実装・権限・BOM合格ではない。[main #3336](https://github.com/hat47x/tei-platform/pull/3336)の子Build駆動記録はInvoking/Invoked executable digest・argv/exit・実Artifactを区別するが`l3Claimed=false`／Source Closure未資格。Plugin-first Inspectorの実Invoke（#3292）とSelf-Build L3（#2831）は後続別検証で、**T1-B開始条件にしない**。
+
+**Tool/標準Dataの横断反例**：[main #3340](https://github.com/hat47x/tei-platform/pull/3340)の`-h` Value/Default とDiscoveryの同一変数化はTool説明の整合改善。実Flag許容・writeFlags #3333・OS/Network送出は別。標準Dataの[main #3343](https://github.com/hat47x/tei-platform/pull/3343)では複数Calendarが一Holiday Dataを共有できるが、Calendar省略の曖昧Readは拒否。**同じData ID／件数でも選択Contextが違えばProviderの実Sliceは別**とする。実DB Row、Studio実Provider、業務完了は未実証。
+
+**新たな実装・試験の上限**：今回の変更は本計画とAI-first設計のDocs更新のみ。合同TT-56、T1-B、比較適格H2/H3、実CLI/Studio共通Provider、Go L3/外部Host/Owner AcceptanceはNOT RUN。新Runner/第二Test/Resolver/Hostを作らず、既存Draftの採否・main追随は個別Ownerが担う。
+
 ## 作業領域I：周辺技術との連携と本番運用の境界
 
 ### 目的
