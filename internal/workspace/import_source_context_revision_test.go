@@ -98,3 +98,88 @@ func TestImportedSourceOnlyDriftNeedsProviderOccurrenceBeyondConsumerRevision(t 
 		}
 	}
 }
+
+
+// The selected provider Manifest is a separate dependency from the
+// Namespace's normalized meaning and from its current Source anchor.
+// A manifest-only formatting edit must not be "proved absent" by matching
+// consumer World/SourceIndex and provider Source fingerprint.
+func TestImportedProviderManifestOnlyDriftNeedsSeparateManifestIdentity(t *testing.T) {
+	consumer, provider := externalPair(t)
+	manifestPath := filepath.Join(provider, "tei.workspace.yaml")
+	target := sourceindex.Subject{Kind: "semantic-type", ID: "os.process_id"}
+
+	rawManifestA, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	providerA, err := workspace.Load(provider)
+	if err != nil {
+		t.Fatal(err)
+	}
+	consumerA, err := workspace.Load(consumer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	indexA, err := workspace.BuildSourceIndex(consumer, consumerA)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sourceA, err := workspace.LocateImportedSource(consumer, consumerA, "os", target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// This explicit provider Load and the nested Load above are separate
+	// observations. Their equality in this stable fixture is NOT atomicity.
+	fingerprint := func(raw []byte) string {
+		return fmt.Sprintf("sha256:%x", sha256.Sum256(raw))
+	}
+	if providerA.ManifestIdentity().Path != "tei.workspace.yaml" ||
+		providerA.ManifestIdentity().SHA256 != fingerprint(rawManifestA) {
+		t.Fatalf("original provider Manifest hash does not match raw fixture: %+v", providerA.ManifestIdentity())
+	}
+
+	// A second newline is syntactically inert in this controlled fixture.
+	rawManifestB := append(append([]byte(nil), rawManifestA...), '\n')
+	writeExternalFixture(t, manifestPath, string(rawManifestB))
+	providerB, err := workspace.Load(provider)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if providerB.ManifestIdentity().SHA256 != fingerprint(rawManifestB) ||
+		providerB.ManifestIdentity().SHA256 == providerA.ManifestIdentity().SHA256 {
+		t.Fatal("provider-only Manifest byte change was not observed")
+	}
+	consumerB, err := workspace.Load(consumer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	indexB, err := workspace.BuildSourceIndex(consumer, consumerB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sourceFromOldConsumer, err := workspace.LocateImportedSource(consumer, consumerA, "os", target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(consumerA.World, consumerB.World) ||
+		!reflect.DeepEqual(indexA.Artifacts, indexB.Artifacts) ||
+		!reflect.DeepEqual(indexA.References, indexB.References) ||
+		sourceindex.ModelRevision(indexA) != sourceindex.ModelRevision(indexB) ||
+		consumerA.ManifestIdentity() != consumerB.ManifestIdentity() {
+		t.Fatal("provider-only Manifest edit unexpectedly changed consumer World, managed index or own Manifest")
+	}
+	if len(consumerA.Imports) != 1 || len(consumerB.Imports) != 1 ||
+		consumerA.Imports[0].SemanticDigest != consumerB.Imports[0].SemanticDigest ||
+		sourceFromOldConsumer.Artifact.Fingerprint != sourceA.Artifact.Fingerprint ||
+		sourceFromOldConsumer.Artifact.Path != sourceA.Artifact.Path {
+		t.Fatal("manifest-only edit unexpectedly changed selected meaning or provider Source occurrence")
+	}
+	// A caller has no basis to call the entire import input set current from
+	// these equal consumer and Source-anchor values.
+	for _, loaded := range []workspace.Result{consumerA, consumerB} {
+		if _, err := workspace.BuildSourceIndexFromLoad(consumer, loaded); !errors.Is(err, workspace.ErrImportsNotBound) {
+			t.Fatalf("manifest-only drift was falsely qualified as a complete import: %v", err)
+		}
+	}
+}
