@@ -12,6 +12,8 @@ Go Reference Host側は`NewHost`の`defer Audit`と既存の拒否・loopback・
 
 E1 Plannerの`onTerminal`をRuntime Hostのdefer Auditへ**実Bindingした証拠は依然としてない**。限定PathのCallback観測からすべての未観測経路やProduction IdP・Provider・Client Receiptの安全性を主張しない。
 
+**2026-11-08限定前進（#3274）**：[専用Node+Go CI #42461546535](https://github.com/hat47x/tei-platform/actions/runs/42461546535)はcompleted/success（Node HDG-21 2件＋Go Host 10経路）。さらに[E1/Go二視点Fixture](e1-go-route-pair.fixture.json)を[Node](e1-go-route-pair.test.mjs)と[Go](go-host/e1_go_route_pair_test.go)の双方で読む**独立宣言Routeの一致・不一致テスト**を追加した。Host/E1が各々構成可能でもPathまたはActionが異なると明示比較では不一致になる。Provider issuerを変えてもRoute一致のままであり、Route一致をAuthorityやTerminal Coverageの証拠には使えない。**追加した二視点テストの実CI成功は本PRのRun結果で判定**する。正式Binding・実TEI Graph Loader・実Providerは未実証。
+
 プラグインを組み合わせるとき、HTTP要求の実行前に次の問題を発見できるかを確かめます。
 
 - 必須保護（本人確認・要求元保護・業務操作の認可）の不足。
