@@ -490,3 +490,53 @@ SHOではCLIからのSource出力とSHO Readerの**実再読取**、Working Copy
 **実行順**：①外部Importなし公開一FunctionのD不足を#3262で判別、②独立Expected付きの初回比較適格H2一Sessionを#2509/#2515で取得、③そのTaskが実Providerを必要とするときだけ#3479のImport occurrenceと#3500の実DB Witnessを接続、④SHO/Studio/KONの実Consumer受領とPlugin 2×2を別受入とする。**外部Import、実DB、KON独立化を初回H2の新しい前提条件にはしない**。
 
 **証拠上限**：本節はOwner間の受入設計であり、HO-25〜30、実OS拒否、実PG接続、実H2/H3、未知T1-B、SHO/KON実Reader、Plugin 2×2の新しいPASSは**NOT RUN**。#3500/#3479/#3365等のDraftは現main製品能力として数えない。
+
+
+---
+
+<!-- harness-api-portability-hv-evaluation-20261108 -->
+## 12. 2026-11-08：共通APIの限定同値とHarness方式選定を、実際の判断品質で評価する
+
+### 12.1 mainへ到達した根拠を更新する
+
+- [merged #3439](https://github.com/hat47x/tei-platform/pull/3439)で**ADR-0048**が共通型付きApplication APIを採用した。CLI/MCP/Studio/Web/Desktopの同一意味・Target・権限を目標とするが、採用決定は全Transport実行同値の実証ではない。
+- [merged #3403](https://github.com/hat47x/tei-platform/pull/3403)で4 read-only MCP参照Adapterを追加し、[merged #3458](https://github.com/hat47x/tei-platform/pull/3458)では`validate`のCLI/MCP応答を正常・読込失敗・重複宣言の限定3系列で照合した。**MCP Adapterが存在すること**と、外部H2/H3 Harnessの実Tool Reply/Current Grant/完全配送を確認したことは別。
+- [merged #3482](https://github.com/hat47x/tei-platform/pull/3482)は`sales.order.submit`について、独立RequiredのCapability/Application/Validation/Source位置を**実CLI 13 Reply／Consumer判別42件**で限定検証した。以前のmain #3354の**11 Reply／32合成Controls**と同一試験の上書き・加算をしない。いずれもProduct Provider実Invoke／Owner業務受理／未知T1-Bを証明しない。
+- [Draft #3470](https://github.com/hat47x/tei-platform/pull/3470)のSession Log backlog分割送出／停滞の記録修正は、`request`／`reply`／`wire segment`／`receiver accepted`／`model input replay`を別単位で採点する必要性を補強する。Draftをmain実装済みとしない。
+
+### 12.2 実Harnessの選定は方式名ではなく独立Expectedとの対照で決める
+
+同一Task／Source／独立Required／Audience／Tool Allowlist／Cost条件を固定し、必要な段階だけ比較する。
+
+| 段階 | 比較する構成 | 成功と判定できる上限 |
+| --- | --- | --- |
+| **HV-0** | 決定的なCLI/既存Testのみ（AIなし） | D/実Source/独立Expectedのベースライン。AIの価値は主張しない |
+| **HV-1** | LLM＋明示Tool（最小ループ） | 同一Taskでの不足検出・保留・根拠追跡とTool完全受領 |
+| **HV-2** | 既存の外部Harness＋CLI | 実Tool起動・送出/隔離/再開・Cost/操作負担の観測 |
+| **HV-3** | 既存Harness＋TEI/SEIのProduct Skill/Plugin | HV-2比で独立Expectedの判断品質／負例検出／作業効率が改善するか |
+| **HV-4** | TEI独自の実行ループ | HV-3では満たせない具体的Requiredが実測され、代替不能性・運用費を含めて承認された場合だけ検討 |
+
+**HV-4を製品構成の前提にしない**。既存Harness＋Plugin/Skillで必要な判断が成立するなら、独自ループは作らない。MCPは必要な実操作の薄いAdapterであり、初回H2/H3に新MCP Protocolを必須化しない。A/BのTool-only/Skill比較はモデル・Source・Tool・権限・Run単位を固定し、途中で新Skill説明やMCPを加えたものを同一Groupへ混ぜない。
+
+**評価票**：独立Expectedに対する重大誤判断、未知Required発見、根拠Sourceの鮮度と位置、必要な保留の正しさ、非開示の漏えい、実Tool配送完全性、再現性、実行時間・Token/金額・人間介入回数。回答文の自然さや単純なTool成功率を主要な合否にしない。HV-0〜4の比較実験そのものは**NOT RUN**。
+
+### 12.3 判断結果の保存・再開と実行を混同しない
+
+TEIのSource/Function/Query Read、SEIのRecommendation、SHOの記述、KONの保存候補は**同じ証拠を参照し得るが、同じAuthorityを持たない**。
+
+- TEIから受けた実Read Evidenceと、SEIが記録する`Recommendation`の**実際の推薦者**を分離する。モデル生成の提案をTEIのOwner受理済み意味へ帰属させない。
+- 決定的なD0/D1で十分なTaskでは、M1（モデル利用）を自動採用しない。M1の追加価値を独立Expected／保留／コストで検証する。
+- 保存後に`Decision`だけを再開できても、未解決の`Question/Unknown/Conflict`が保存・再読取できたことにはならない。H3のResume受入では、未解決項目の**存在・Source・状態・開示範囲**を独立に再照合する。
+- Legacy/REA観測、AIの構造候補、Owner Accepted Desired、Target Observed Actualは別票。SHOの文章化、SEIのRecommendation保存、KONのRaw保持、TEIのBuild/Effectのいずれも、他の意味受理・実実行を自動的に成立させない。
+
+### 12.4 既存Ownerで検証する追加の差分（HP-31〜35）
+
+| ID | 最小対照 | 受入とOwner |
+| --- | --- | --- |
+| **HP-31** | 同一`validate`正常／読込失敗／重複宣言をCLI/MCPで取得 | 同じ対象・版・結果を限定比較。既存#3458を再計上しない。#3403/#1158 |
+| **HP-32** | `sales.order.submit`のRequired 1要素を意図的に欠落／Scope変更 | #3482の13 Reply/42 Controlsを起点にDだけ再資格化。T/G/実Providerはunknown。#3262/#2514 |
+| **HP-33** | HV-0〜HV-3の同一Taskで未知Required・誤判断・保留・費用を比較 | HV-3で充足ならHV-4を棄却。#2509/TAI #168／SEI担当 |
+| **HP-34** | H3終了→再開でDecisionは残るがQuestion/Unknown/Conflictが欠落 | Resume不合格。Recommendationの実推薦者とTEI Read Sourceを別保持。SEI担当／#2515 |
+| **HP-35** | Tool Reply一部欠落・Session Log分割／backlog・モデル入力への旧Raw再出現 | request/reply/wire/receiver/model-inputを別観測。#2509/#2515／Draft #3470 |
+
+**最短順**：#3482の限定Dを採用しつつ、初回H2の実Tool Receipt/完全配送（T）を先行する。必要なSkill差分を測ってからHV-3を評価し、独自Harness HV-4の必要性を判断する。SEI H3保存再開・外部Provider Import・実DB/Plugin Invocationはそれぞれ独立並走。**HP-31〜35の新たな実行、HV比較、外部H2/H3、SEI実保存再開、Owner意味受理はNOT RUN**。
