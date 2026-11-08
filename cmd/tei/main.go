@@ -1310,6 +1310,24 @@ func decodeJSONFile(path string, dst any) error {
 	return json.NewDecoder(f).Decode(dst)
 }
 
+// loadWorldWithIdentity is loadWorld plus the Workspace identity, when the
+// World came from a Workspace. A -world file has no manifest to identify, so
+// the identity stays nil and no value is invented (#3455).
+func loadWorldWithIdentity(worldPath, workspacePath string) (ir.World, *workspace.WorkspaceIdentity, error) {
+	if workspacePath != "" {
+		r, err := workspace.Load(workspacePath)
+		if err != nil {
+			return ir.World{}, nil, err
+		}
+		return r.World, workspaceIdentityPointer(r), nil
+	}
+	w, err := loadWorld(worldPath, workspacePath)
+	if err != nil {
+		return ir.World{}, nil, err
+	}
+	return w, nil, nil
+}
+
 func loadWorld(worldPath, workspacePath string) (ir.World, error) {
 	if workspacePath != "" {
 		r, err := workspace.Load(workspacePath)
