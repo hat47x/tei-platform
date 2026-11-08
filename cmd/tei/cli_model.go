@@ -43,6 +43,18 @@ func runModelCommand(args []string, out io.Writer) (int, error) {
 		*namespace != strings.TrimSpace(*namespace) {
 		return fail("INVALID_ARGUMENT", "model catalog requires an exact -workspace and optional exact -namespace, without positional arguments", 2)
 	}
+	// An explicit -namespace "" is a different claim from an omitted flag (#3605):
+	// the shared-flag check cannot see this FlagSet, so the same rule is applied
+	// here. Omitting -namespace still means "no filter".
+	explicitNamespace := false
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "namespace" {
+			explicitNamespace = true
+		}
+	})
+	if explicitNamespace && *namespace == "" {
+		return fail("INVALID_ARGUMENT", "model catalog: -namespace must not be an empty string; omit the flag to use no filter", 2)
+	}
 	result, err := operations.CatalogWorkspace(*root, *namespace)
 	if err != nil {
 		code := "MODEL_CATALOG_FAILED"

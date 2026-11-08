@@ -538,3 +538,15 @@ ADR-0048 §2.6 の「各入口の広告が独立した正本にならないこ�
 - `discovery_parity_test.go` が、実CLIをビルドして `commands` を実行し、4 tool の対応コマンドの存在・`effect` が `read-only`・`writeFlags` が無い・`schemaVersion`・`jsonContract` の5点を突き合わせる。対応付けは文字列変換ではなく表で宣言する。
 - 現行 `main` では PASS した。加えて、故意のずれ6種（adapter 側3・CLI 側3）を入れると6件すべて FAIL し、戻すと PASS に戻ることを確認した。両面のどちらを変えても検出できる。
 - 突き合わせるのは discovery の一致だけである。`catalog` の namespace 失敗と `validate` の byte 一致は既存の試験が持ち、`inspect`・`trace` の実プロセス比較は #3420 CAPI-2a が持つ。
+
+## 14. 第8ラウンド（2026-11-09）: 空文字列の引数と既定値
+
+ADR-0048 §2.4 の「既定値の適用は共通契約で定める」を、CLI と MCP で確かめた。生出力は[第8ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND8_EMPTY_ARGUMENT_2026-11-09/README.md)にある。
+
+- `direction` と `mode` の値集合は、CLI の `argumentValues` と MCP の `inputSchema.enum` が同じ値を持つ。省略時の既定も両方 `direction=both`・`mode=summary` で一致した。
+- 一方、**空文字列を渡すと CLI だけが「未指定」として扱い、既定とは別の値へ落ちた**。`-mode ""` は結果が `mode=full`（rows=4）になり、省略時の `summary`（rows=0）と異なる。MCP は `-32602` で拒否する。
+- `-expected-fingerprint ""` は照合を省略するため、呼出し元が「空なら照合しない」つもりでいると、CLI では別Workspaceの結果を継続として使う経路が開く。
+- `trace` の3引数（`-direction`・`-mode`・`-expected-fingerprint`）を、フラグを書いたうえで値が空なら `INVALID_ARGUMENT`（exit 2）で拒否するよう修正した。省略時は従来どおり既定を使う。回帰試験は `cmd/tei/cli_trace_empty_argument_test.go`。
+- `model catalog -namespace ""` と `inspect -subject-kind ""` は変更していない。前者は「絞り込み無し」の意味があり、後者は「拒否する」点で MCP と同じで符号だけが違う（#3420）。
+
+起票は [#3605](https://github.com/hat47x/tei-platform/issues/3605)。
