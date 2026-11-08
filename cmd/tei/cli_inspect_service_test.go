@@ -163,3 +163,34 @@ func TestCLIInspectTypedProviderNotFoundPreservesExitAndErrorCode(t *testing.T) 
 		t.Fatalf("typed error misclassified: %+v", envelope)
 	}
 }
+
+func TestCLIInspectMasksForgedProviderFailureCodeAndMessage(t *testing.T) {
+	const secret = "private-provider-token"
+	for _, tc := range []struct {
+		name string
+		code string
+		wantCode string
+		wantExit int
+	}{
+		{name: "known-error-code", code: operations.InspectionNotFound, wantCode: operations.InspectionNotFound, wantExit: 1},
+		{name: "forged-code", code: "LEAK_" + secret, wantCode: "INSPECTION_FAILED", wantExit: 2},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			service := cliInspectionServiceFunc(func(sourceindex.Subject) (operations.SubjectInspection, error) {
+				return operations.SubjectInspection{}, &operations.InspectionError{Code: tc.code, Message: secret}
+			})
+			var out bytes.Buffer
+			exit, err := inspectWorkspaceJSONWithService(&out, t.TempDir(), "", "semantic-data", "sales.order", 0, service)
+			if err != nil || exit != tc.wantExit || strings.Contains(out.String(), secret) {
+				t.Fatalf("forged classification leaked: exit=%d err=%v out=%s", exit, err, out.String())
+			}
+			var response cliInspectionReport
+			if err := json.Unmarshal(out.Bytes(), &response); err != nil {
+				t.Fatal(err)
+			}
+			if response.OK || response.Error == nil || response.Error.Code != tc.wantCode {
+				t.Fatalf("unexpected error classification: %+v", response)
+			}
+		})
+	}
+}
