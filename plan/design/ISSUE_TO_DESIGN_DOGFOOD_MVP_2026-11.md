@@ -732,3 +732,24 @@ Ontology DSL／Decision Twin／外部シミュレーションSDKの本格製品�
 **利用者向けの共通Navigation契約**：各図表のNode/Edge/Actionから、Source Occurrence→Required/Observed/Missing→Accepted Meaning Revision→選択実装と実Call→Effect/Consumer→独立Expectedへ段階的に辿れるようにする。宣言だけのResolved、実行可能性、取得済みResult、業務効果を単一の「動作中」へ縮約しない。標準フロー・変更差分・実効フローの3面を保持し、変更できない固定部分と正当なPlugin Hookだけを明示する。M0→M1をP0-Mとして、同一Function実ReadのP0-Rと並列に進め、P0-Cは同Source/Scope/Revision/Read Cohort/実Consumerの一致する部分のみ接合する。
 
 **Evidence ceiling**：採用済みRQ-036とmain #3516/#3520、未統合#3518/#3500の実装・限定CI記録を既存計画へ反映したdocs-only更新である。新Go/実PG・Studio/SHO UI・Product実Provider/Grant/Effect・AI Benchmark・外部H3・正式Owner受理は今回NOT RUN。新Diagram正本・万能Resolver/Host/Runnerや独立Expectedの第二正本は作らない。
+
+<!-- tei3483-qualified-m1b-s2-20261108 -->
+### 14.34 M1bの欠落を「Model Map解決」と「Inspector実呼出し」で埋めたことにしない（2026-11-08）
+
+直近の他Ownerの実装は、M1b/R0を進める**別々の足場**として扱う。[main統合 #3381](https://github.com/hat47x/tei-platform/pull/3381)と[main #3531](https://github.com/hat47x/tei-platform/pull/3531)により、既存Compositionが選んだInspector BとHost登録Go Bの局所実Call、CLI型付きHelper・Studio Host APIの6 Subject×2 call-site、B選択→A登録/Scope/Epoch/Host撤回時の拒否が**Go実装としてmainに存在する**。ただし、通常CLI dispatch／実Wails BridgeのProduct配線は**S2未実証**であり、実Plugin Artifact/Current Grant/Qualified BOMではない。旧Draft #3517はclosed/unmergedで、別の実装成果として二重計上しない。
+
+一方[採用済みRQ-036 #3505](https://github.com/hat47x/tei-platform/pull/3505)の全体Model Map要件に対し、[Draft #3518](https://github.com/hat47x/tei-platform/pull/3518)は`MapWorkspace/MapWorld`で**同一Load/Source Indexから**Data/Query/Pattern/Relation等のread-only typed linkを導くM0候補を実装した。`resolved`はCatalog内の宣言先発見であって、Accepted Meaning／Function Data Context Binding／Provider Invoke／全体Closureではない。`unresolved/ambiguous/partial-projection`を残し、Event/State/Hook・全体ナビ・Generatorは後段とする。#3518はDraftであり、exact-head CIとmain統合は別確認。
+
+さらに[Draft #3500](https://github.com/hat47x/tei-platform/pull/3500)は、**別の`org_view.case_browse`**についてNative Pattern→既存Driver Resolver→Postgres Executor→明示Semantic mappingをinstrumented Connectorで局所接続した。専用Go CIは成功したが、isolated PostgreSQL opt-inは**SKIP**。これは`order_entry.recent_orders`のFunction Binding／実PG Rowset／Consumer実Readではない。別Function/別WorkspaceのReferenceをR0の合格に転用しない。
+
+| 既存成果を受ける境界 | 今回採用する判定 | 追加する一つの反証 |
+| --- | --- | --- |
+| M1a→M1b：Source/Model Map | #3492の二Subject個別Readと#3518のtyped Linkは**宣言・投影の局所肯定**。Function stable ID→Query/Relationの必要Context/Bindingは#2586の別Expected | `MapWorld`が`resolved`でもFunction Data ContextにQuery Bindingが無ければ`unbound`。同名ApplicationやPatternでは補完しない |
+| M1b→R0：Native Query/Driver | #3500のCase Browse instrumented Callbackは異SubjectのE1f候補。Product `recent_orders`のSQL原byte/`:from`/Provider/Scope/Rowsetを#2586で独立計測 | `org_view.case_browse`がPASSしても`recent_orders`は`NOT RUN`。opt-in PGのSKIPを実DB成功にしない |
+| M1b→P1-P：Plugin D1 | main #3381のSelected B→Host Go Bの局所実Invokeは採用。通常CLI/Studio Product S2は#1251/#1824のOwnerで検収 | 同じ結果を返すBuiltin Aを通常CLIが使っても、選択BのProduct Invokeと認めない。実Wails Bridgeが未接続ならStudio S2未合格 |
+| Source鮮度→Consumer | main [#3479](https://github.com/hat47x/tei-platform/pull/3479)のConsumer FP不変でもProvider raw/Manifest driftの負例は採用。[Draft #3524](https://github.com/hat47x/tei-platform/pull/3524)のprivate same-Load parsed-byte/Manifest witnessは未統合の実装候補 | 別Loadの二fingerprint一致をatomic Snapshotと呼ばない。private witnessを外部CLI/MCP/SHOへ無条件公開しない |
+| Graph/Hook/性能の横断 | main [#3525](https://github.com/hat47x/tei-platform/pull/3525)/[#3530](https://github.com/hat47x/tei-platform/pull/3530)の全Path Obligation、WIT-01〜09、AI T0〜T4/AT-01〜24は既存Ownerで受入。#3507はDraftのGraph Patch計画 | Lifecycle DiagramやAI統計が一致しても実Target Path・Current Grant・Provider Call/Effectは別。P0-M/R/S2を新Graph Engineの完成待ちにしない |
+
+**実装への最短引渡し**：まず#2586で`order_entry.recent_orders`の**Function stable IDとQuery Bindingの有無**を実Source/Operationから判定する。存在しない場合は`first missing edge = Function→Query`として止める。存在する場合だけ、その同じFunction/Scopeで実SQL/Provider Rowsetを読み、#3492/#3518のMap/Graph候補へSource locator付きで逆照合する。並行して#1251のS2では通常CLIと実Studio Bridgeから**同じ選択済みB**を実呼出ししたかを別Attemptで検証し、双方の実Consumerを満たした部分だけX0へ引き渡す。既存#1180/#2514の独立Expected、#1163のEvidence、#1119のGateを使い、新しいResolver/Runner/Host/Registry/Graph正本を作らない。
+
+**本節の資格上限**：GitHub上のmerged/Draft・Go限定CI・SKIP・docs-onlyを区別した計画更新。新Go/PG/Studio/Wails/CLI/MCP/外部Consumer/Plugin Artifact/Host Grantの製品E2E、Owner Meaning受理は**今回NOT RUN**。本Draftのexact HEAD CIは別確認し、既存局所成功を横断PASSへ加算しない。
