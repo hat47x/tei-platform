@@ -88,7 +88,7 @@ func (h *LocalInspectorHost) Bind(trustedRoot string) (*Selected, error) {
 		ProviderID: h.selection.ProviderID, ArtifactDigest: h.digest, Generation: 1,
 	}
 	registration := Registration{
-		ProviderID: LocalInspectorProviderID,
+		ProviderID:     LocalInspectorProviderID,
 		ArtifactDigest: h.digest,
 		Inspect: func(subject sourceindex.Subject) (operations.SubjectInspection, error) {
 			return operations.InspectSubject(trustedRoot, subject)
