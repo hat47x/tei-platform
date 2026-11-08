@@ -195,6 +195,13 @@ jobs:
             --workspace ../../reference/workspace \
             --base-url http://127.0.0.1:43123
 
+          # M0 real CLI A/J -> the same Workbench Initial/List DOM events.
+          # Reuses RPCRecorder; no test adapter or additional Host/runner.
+          "$RUNNER_TEMP/tei-studio-playwright/bin/python" test/cli_workbench_selection.py \
+            --cli "$RUNNER_TEMP/tei-cli" \
+            --server "$RUNNER_TEMP/tei-studio-server" \
+            --expected-head "$(git rev-parse HEAD)"
+
           runtime_url=http://127.0.0.1:43123/wails/runtime
           runtime_call='{"object":0,"method":0,"args":{"call-id":"studio-ci-list-workspaces","methodName":"main.StudioBridge.ListWorkspaces","args":[]}}'
           runtime_status=$(curl -sS --max-time 5 -o "$RUNNER_TEMP/studio-runtime-success.json" -w '%{http_code}' -X POST "$runtime_url" \
