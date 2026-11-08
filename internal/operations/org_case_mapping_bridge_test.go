@@ -175,6 +175,11 @@ func TestOrgCaseExplicitPersistenceEnablesReadCandidateOnly(t *testing.T) {
 		t.Fatal("native SQL file is not traced as a separate Query source contribution")
 	}
 
+	// E1d: real native Query bytes -> selected datasource -> existing PostgreSQL
+	// Executor -> raw physical columns -> explicit Semantic result mapping.
+	// The injected connection is an instrumented test double (no real DB).
+	verifyNativeCaseQuerySQLProbe(t, withQuery)
+
 	// The Query may be described, but it does not automatically create an
 	// executable Function or grant Provider/Host authority.
 	surfaceWithQuery, err := SurfaceWorkspace(copyRoot, "org_view")
