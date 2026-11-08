@@ -380,3 +380,55 @@ T1-Bの本当の判別は、AIに既存T1-Aの境界入力や非公開Expected�
 **Claim単位の証拠接合**：Q/Required → 実Function/Query選択＋選択されなかった候補集合の根拠 → SQL Source/actual bind → 実物理Provider/Rowset/Grain/Extent/Predicate evaluation → Tool Reply/Consumer → Scope/as-of/Current Grant → Independent Expected → 出力Claim／Unknown／再資格化対象。セッション再開ではさらに歴史的モデル入力・送出Sinkと現在Audienceを別接合する。これは既存#1163 Evidence Packet/TAI Runbookの**観測欄の接続**であり、Universal Evidence Engineや新Host、SQL Runner、Session SSOT、権限Engineは追加しない。
 
 **今回の作業資格**：#3354 mainの11 Reply/32局所Consumer Controls、Q05〜09の限定Go/PG実証、#2515のH6-E7 Mock再開／過去モデル入力へのRaw再登場は**既存の固定条件下での証拠**。本HW-11〜18のProduct Function E2、現在Grant縮小後の実再開拒否、第二Harness/Egress全経路、T1-B、Owner業務意味は**NOT RUN**。前節HC-01〜10とHW-11〜18は試験計画の数であり、新たな実行PASS数ではない。
+
+
+---
+
+<!-- harness-imported-provider-occurrence-20261108 -->
+## 10. 2026-11-08：外部Provider Sourceの見落としを防ぐ依存閉包と再資格化
+
+### 10.1 現行mainと新反例の差
+
+- **実装済みの狭い事実**：[merged #3477](https://github.com/hat47x/tei-platform/pull/3477)では、同一Workspace内のValidation Sourceを末尾LFだけ変更した場合、Canonical World FPが不変でもSource Index FPの変化を実CLIで検出し、旧Design ContextからScenarioへの採用を拒否する限定試験がmainへ統合された。A→B→Aで元Fingerprintに戻っても**過去の実行・改訂履歴の消失は証明しない**。これを真のAI未知Test生成や実外部Provider Importの成功にはしない。
+- **まだ閉じていない反例**：[Draft #3479](https://github.com/hat47x/tei-platform/pull/3479)の現行Go Fixtureは、**別WorkspaceからimportしたProviderの原文末尾LF**、および**Provider Manifestだけ**を変更する。ConsumerのWorld／Semantic Digest／Managed Source Index（Artifact/Reference/ModelRevision）が不変でも、Provider raw SHA／ManifestIdentityは変わり得る。同じConsumer FPから「外部参照先Sourceはfresh」と判定できない。#3479のexact HEAD試験は確認時CI進行中であり、**このDraftのCharacterizationをmainへ統合済みのProduct修正としない**。
+- **現在の安全側挙動**：外部Importを含むLoadについて、Consumerだけから完全なSource Indexを組み立てる既存経路は `ErrImportsNotBound` で拒否する。これはSource/Manifest occurrenceの必要性を示すが、正しい複数Provider Snapshot・Current Grant・全Consumer受領の自動保証ではない。
+- **上位計画との重複回避**：[merged #3481](https://github.com/hat47x/tei-platform/pull/3481)が `plan/MASTER_PLAN.md` にP0-D（Source）、P0-M/R/C（三視点と実Read）、P1-P（Plugin）、P1-T/C（AI/Context）、P2-B（2×2 BOM）の実装順を反映済み。本節はその繰返しでなく、**Harness ConsumerがどのSource occurrenceを読んだのか**と、再利用/引用できるClaimの資格だけを扱う。
+
+### 10.2 「同じ意味」「同じSource」「同じ受領・実行」は別の同一性
+
+| 比較対象 | 一致からいえること | 一致からはいえないこと |
+| --- | --- | --- |
+| ConsumerのSemantic/World FP | そのConsumerで観測されたCanonical内容の一致 | 外部Provider raw/Manifestの不変、全Import閉包 |
+| ConsumerのManaged Source Index FP | Consumer自身の管理対象Sourceの限定同一性 | Consumer外のProvider Source occurrence・実Import先までの不変 |
+| Provider raw SHA／ManifestIdentity | その一対象の原文Byte／Manifest Byte一致 | 実Provider選択・Nested Loadの原子的性質・意味Owner受理 |
+| Provider/Plugin Lock・Artifact | 宣言／選択／Build入力等の当該範囲での照合 | 実Load/Invocation、Host認可、現在Disclosure、実結果 |
+| Tool Reply body／Session Resume | 受領したTool Byteや履歴の一部 | 必要なすべての外部Source依存、将来の開示許可、現Revisionの正しさ |
+| Accepted Meaning／Scenario PASS | 受理範囲での業務意味またはそのTest版の既往結果 | Source引用の鮮度、別Toolchain/Consumerでの現在実行資格 |
+
+外部Sourceの改訂が**Canonical意味を変更しない**場合にも、Sourceへの位置付き引用・設計書出典・Test候補・実Build入力の鮮度は別々に再確認が必要である。逆に、原文Byteが変更されたというだけで、Ownerの意味受理、無関係なSourceや全Scenarioを一律撤回しない。対象Claimから必要な依存Occurrenceへさかのぼれる範囲だけを失効／再資格化する。
+
+### 10.3 Task相対のImport Closureを、既存Resolverの証拠として取得する
+
+一つの公開合成Task／Functionで外部ProviderをRequiredとしている場合、最小受領票に以下の**観測できたものだけ**を束縛する。
+
+`consumerWorkspace/root+revision | Task/Required/Role+Source Anchor | imported provider identity+actual target path | provider raw source occurrence+manifest identity | import/loader/parser resolution status | selected contract/provider+exact version | actual consumer read+Tool reply | disclosure/as-of/current grant | independent expected | unknown/expiry cause`。
+
+- **Import対象の特定**は既存 `LocateImportedSource`／Source Index／Resolver経路に委譲し、新しいProvider Registry、第二解析器、横断Snapshot保証APIを作らない。
+- **閉包が未証明**なら、ConsumerのWorld/Index FPが一致していてもSource freshnessのClaimは `unknown/stale-needs-check`。Source「不存在」や正式Test生成可へ自動変換しない。
+- **同時性の限界**：ConsumerとProviderの別Open・別Tool Callで各digestが一致しても一つの原子的Snapshotを得たとは限らない。実読込時のSource/Manifest/Import Bindingと受領時点の版ずれを発見できる限度で記録する。A→B→Aの履歴、権限失効、外部Repository移動は別反例。
+- **MeaningとEvidence**：REAによる旧資産取込、SHOの文章/図面、KON DataspaceのProvider、Plugin BOM等は、このTask相対のProvenanceを消費する先であって、本章が新たな意味受理・Tool/Host認可を発行する先ではない。
+
+### 10.4 外部参照を使う場合だけ追加する反証（HI-19〜24）
+
+| ID | 変更する一条件 | 正しい判定とOwner |
+| --- | --- | --- |
+| **HI-19** | Consumer内のValidation Source末尾LFを変更（Canonical不変） | Source Indexの時点差で旧Contextを拒否。**main #3477の既存限定試験**を再計上しない |
+| **HI-20** | 外部Provider rawだけ末尾LF変更、Consumer FP不変 | 外部Source occurrence未照合ならfreshを否定し再確認。**Draft #3479**のGo反例、#3262のDesign Contextに渡す |
+| **HI-21** | Provider Manifestだけ変更、Consumer World/Source Index不変 | Manifest Identityと実選択先を別途照合。Draft #3479のGo反例、#951/#1251のProvider Contractへ |
+| **HI-22** | Provider raw A→B→A、またはSource移動・別bytes同名 | 現在のraw同値から途中履歴／旧Receipt再資格を導かない。#2514/#3176の既存反例に照合 |
+| **HI-23** | Consumer Source/Meaning同じ、実Plugin版／Nested Import／Build入力だけ変更 | 選択・Build収録・実Invoke・BOM tuple／実Consumer資格をそれぞれ再確認。#3267/#2600/#2831に引渡し |
+| **HI-24** | H2/H3 Session再開時に元の外部参照が変わり、旧Rawだけ会話へ残存 | 過去Readの歴史と現在Source freshness/Disclosureを区別。旧Rawを新Audienceへ再送不可なら別隔離Session。#2509/#2515/TAI #168 |
+
+**最短実行順**：①#3479が現行Go FixtureのSource/Manifest変化の反例をexact HEADで検収、②#3262が同じRequired一FunctionでImport時の未報告Sourceを `unknown` と扱えることを実Consumerで確認、③そのSourceを必要とするH2/H3 TrialではTool Replyと外部Source occurrenceの両方を固定、④Product Function→actual Provider→Rowsetは#2586、正式BOM/Build/EffectはそれぞれのOwnerで検証する。**外部Importを用いない最初の公開合成H2を#3479の完了待ちで停止させない**。
+
+**状態**：#3477・#3481はmain統合済み。#3479はDraft、実Provider Import Closureの製品読取・実H2/H3受領・Source原子的Snapshot・SHO/REA/KON実連携、T1-B/Owner意味受理は未成立。HI-19〜24は既存テストの重複カウントを禁止した**受入設計**であり、この節の追加による新しい実行PASSではない。
