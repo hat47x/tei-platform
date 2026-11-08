@@ -33,7 +33,20 @@ on:
       - "go.sum"
   push:
     branches:
+      - main
       - "poc/issue-design-dogfood-*"
+      - "test/issue-dogfood-trigger-*"
+    paths:
+      - ".github/workflows/tei-issue-design-dogfood.yml"
+      - "plan/design/ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md"
+      - "tools/reference-issue-test-ability/**"
+      - "skills/yi-tei-modeling/**"
+      - "reference/driver-scenarios/**"
+      - "reference/workspace/**"
+      - "cmd/tei/**"
+      - "internal/**"
+      - "go.mod"
+      - "go.sum"
   workflow_dispatch:
 
 permissions:
