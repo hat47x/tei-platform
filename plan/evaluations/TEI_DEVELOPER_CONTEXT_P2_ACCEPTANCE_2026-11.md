@@ -745,3 +745,55 @@ CC-25の前半はSUI #3396の**実Product非単射**に基づく帰結だが、�
 
 **今回の状態**：SUI #3396実公開Projection反例PASS、SUI #3397固定Byte試験CI PASS（opt-in実File NOT RUN）、SHO #21実Reader限定PASS（H1 SKIP）、SHO #25 test-only Working CopyのUbuntu/Windows限定PASSは**既存別Runの事実**。本CC-25〜27の実SUI→SHO同一Attempt H1、SEI実M1、正式Editor Save・実Host Grant/Delivery・Owner意味受理は**NOT RUN**。この節の追加自体は**設計/計画更新**であり、Product合格ではない。 **SHO #25後続HEAD `81aa7cdfa20037300f2f9a2b1dd3401dd6a8941d`も[実W1 CI #42461901303](https://github.com/hat47x/sho-composer/actions/runs/42461901303)を含む専用5 workflowがcompleted/successと追認済み**。ただしH1実Producer→SHO同一File・正式Editor Save/Storage資格は変わらず未成立。
 
+<!-- tei-devctx-cc28-29-h3x02-preregister-20261108 -->
+## 25. CC-28/29：実Consumer版・CLI応答形状の資格と、SEI H3-X02の実Probe事前登録（2026-11-08）
+
+### 25.1 今回確認した横断進捗と役割
+
+[SEI Draft #824](https://github.com/hat47x/sei-cognition/pull/824) §9.2は、H3-X01〜08でSource/Binding/Transport/Generation/Authorityの不足を分け、**H3-X02「必要Ruleの取得Mode」を最初のD0/D1/M1実比較**へ進める計画を追加した。本節は同じケースのTEI側の実Tool/Source受入票であり、SEI側に第二CLI Readerや評価Oracleを作らない。
+
+- [TEI merged #3354](https://github.com/hat47x/tei-platform/pull/3354)は既存`context_gate.py`で**実11 CLI read-only Reply／32合成Consumer対照**（必須Validation3件、Source Indexのsubject/indexモード、Canonical/Relation/Anchorを含む）を限定実証済み。[CI #42391707962](https://github.com/hat47x/tei-platform/actions/runs/42391707962)成功。ただし正しいModeのRaw Reply受領≠必要全Sourceの同一Snapshot／意味受理／外部HarnessのTool完全配送。
+- [TEI merged #3370](https://github.com/hat47x/tei-platform/pull/3370)は実`requirements`の`result`が**配列**であることを現CLI実試験に基づき`tei commands`の`resultShape: "array"`へ追加。広告のないコマンドは`unspecified`であり、推定`object`ではない。[merged #3366](https://github.com/hat47x/tei-platform/pull/3366)で`view -format json`の`worldFingerprint`と`sourceIndexFingerprint`が提供されても、`semanticFingerprint`・元Source Revision・現在Grantとの同値は証明されない。
+- [SHO merged #21](https://github.com/hat47x/sho-composer/pull/21)の実Readerと[SHO Draft #25](https://github.com/hat47x/sho-composer/pull/25)のWorking Copy実readbackは別能力。#25の**現HEAD `81aa7cdfa20037300f2f9a2b1dd3401dd6a8941d`**について[実W1 CI #42461901303](https://github.com/hat47x/sho-composer/actions/runs/42461901303)はUbuntu/Windowsの両Job success（W18〜20を含む）。Output Fileの実体差替えと歴史的A→B→A、Identity未観測を区別。正式Editor Save/Source CAS・H1実One-file成功へ転用しない。
+- [SUI Draft #3397](https://github.com/hat47x/sui-sensemaking/pull/3397)の独立Expected 354-byte Markdown Producerは通常CI成功。ただしopt-in実File書込はCIでは未起動。[SHO `sui-sho-onefile-p0.cjs`](https://github.com/hat47x/sho-composer/blob/main/scripts/sui-sho-onefile-p0.cjs)の試験専用Runnerをソース照合すると、Producer起動前にSUI root全体のtracked-clean・正規Frontend layout・**固定SUI HEAD**を検査し、SHOの実HEADは記録する。真正二Checkout間での実Producer→実SHO Readerの**同一実File H1はSKIP/未実施**。
+
+### 25.2 CC-28：同じRaw SHAを受け取ってもConsumer版の事前受理は別
+
+**Q28：「このConsumerが独立に受理された実装版で、指定Sourceから実際に読んだか」**。W28aは既存RunnerのSUI固定HEAD・実Producer byte/SHA・SHO Reader結果と`shoHead`の記録が一致、しかし**SHOの事前許可版・依存実効byte・現在Host Grantは未確認**。W28bは同じ354 bytes/SHAとMarkdown Link数を返す別のcleanなSHO checkoutであり、現在のRunnerはConsumer HEADを記録できても**事前Pinがあることを証明しない**。
+
+したがって`same file / same raw byte / selected reader`、`actual reader invoked`、`observed consumer code revision`、`prequalified consumer build`、`current disclosure/host grant`は別の証拠。Producer PinとConsumer Pinを対称にしたい場合はSHO Ownerが**受理するConsumer HEAD/Build tupleを事前に固定**する。これはH1の**正式Consumer版認定**を要求するときの追加Gateであり、まず限定的な実H1を行うこと自体を停止しない。旧SUI fake checkout拒否負例からSHO consumer版の受理済みを推論しない。
+
+本W28a/bは**ソースから確認した未検証の反例設計**。偽SHO Checkoutを実起動した、または実H1が成立したとは主張しない。元SUI Projectionの非単射性から、Raw Markdown一致を元Card/Island/独立Source数の同一へ昇格しない。
+
+### 25.3 CC-29：`result`形状の読み違いは「不存在」ではない
+
+| 設計上の反例 | 現状の実Productで使える証拠 | 正しい不足・次Probe |
+| --- | --- | --- |
+| W29a 正常な`tei requirements`の配列`result`をobject専用Readerが誤って空と解釈 | mainの`resultShape: "array"`と実CLI byte | `consumer-shape-mismatch`。必要Requirementが無いとは言わず、既存`tei commands`＋受領Raw Replyと照合 |
+| W29b 正常な`result: []`だがSource/Required Scope/Providerの取得範囲が部分的 | `resultShape`は形状だけの情報 | `required-unresolved`。空配列から全対象不存在やTest coverage 0を推論しない。独立R(Q)、Read Scope/Mode/終端を確認 |
+| W29c `view`の`semanticFingerprint`が同じだがWorld/SourceIndex Fingerprintは異なる | #3366の実CLI 3種類のFingerprint | 意味的な表示の同一性とSource Revision/実Read cohortを分離。必要なFPを同じScopeで比較し、意味受理・現在Grantは別 |
+
+#3370/#3366の限定実CLIテストは**既存の製品実証**。W29a〜cをこのPRで別途実Go/AI/Harnessに通した証拠はない。正常配列・正常Source Indexを同一の欠落扱いにする第二Consumerを追加せず、**既存CLI Contractの読取り条件**としてSEI H3-X01/02へ引渡す。
+
+### 25.4 H3-X02を具体的に始めるための最小受入票（新ABIではない）
+
+**問いQ**：「独立に固定した公開`sales.order`の必須Validation 3件が、現在の許可された設計Sourceに定義されていると主張できるか」。Participantへ**必要IDの3件、同一Q・Tool Allowlist/Scope・Grant・初期実CLI Reply**を渡す。一方、Ruleの本当の存在/欠落、Index Modeを取り違えた理由、非開示・部分配送の真相、Source改版後の独立Expectedは**採点側に隔離**する。秘密の実Source/Reviewer-only pathをParticipantに見せない。正の答えの根拠を別の公開Toolで取得することは許可された範囲に限る。
+
+| 実施段階 | 必要な観測／合格条件 | 危険な昇格 |
+| --- | --- | --- |
+| **M1R-0 Fixture/Tool固定** | TEI mainの実`tei commands`、`workspace-files`、`source-index`（subject/indexを別引数として固定）、`catalog`、`inspect-validation`、必要なFP/Raw Reply/Producer Binary。独立Required 3 Rule＋範囲外Rule1件の対照を準備 | Tool名を提示しただけで実Invoke可能・Current Grantありとしない |
+| **M1R-1 D0/D1の対照** | D0は追加Readなしで`wrong-mode`／`required-missing`／`unknown`を識別。D1は**同じTool Profileのindex-mode取得を一回**行い、実Replyを再照合 | `source-index` subjectモードの空結果を「Ruleが存在しない」と誤断言 |
+| **M1R-2 M1実Method** | SEI既存Method経路が**同じ初期bytes、同じBudget=1、Grant/Disclosure、公開Q**で一つだけProbeを選択する。Decision proposalと実Tool invocation/実Received bytesを別票記録 | 模擬Methodの提案を実Read完了とする、D1と同じProbeで純増効果を主張 |
+| **M1R-3 Blind Expected** | 正常・subject-mode違い・本当の必要Rule欠落・途中切断・範囲外変更の5条件で、正答、誤不存在、過剰停止、必要Witness、不要Read/Cost/Latencyを別採点 | 合成Control PASSを実Product Provider/全Required／C1へ上げる |
+| **M1R-4 外部受領（後続）** | TAI #168の実H2/H3でRequest↔Reply/part digest/end・物理Expected非露出・現行Grantを同一Sessionで立証した場合だけ資格を移譲 | 現在のDSH実Tool呼出し成功（56 calls/55 replies）を比較適格4SessionのPASSに再計上 |
+
+**初回実験の合格条件**：同じ`Q`と独立ExpectedでD0/D1/M1の判定差が記録され、`proposed / invoked / received-complete / required-witness / false-absence / unnecessary-read / cost`の各列に実測値があること。**M1がD1を改善しないなら、Methodを必須とする新Gateは採用しない**。改善があっても、実Method/外部Harnessの権限・Tool終端・物理隔離は別承認。今回実D0/D1/M1 Tool実験と非露出検証はNOT RUN。
+
+### 25.5 優先順位と保留した構想
+
+- **今すぐ使う実物**：#3354の11 CLI＋32限定Controls、#3370の`resultShape`、#3366のView FP、#3176のCC-12〜18実Go Probe。次に**一Functionの必要R(Q)を実Loader/Parser/Rule/Providerへ通す**のはTEI #3262/#2586、SEI Methodによる選択比較はSEI #767/#824がOwner。重複Fixture/Runner/Oracleは増やさない。
+- **文書・Raw二Consumer**：SHO #21の既存One-file Runnerで、同じSUI Producer HEAD・同じ出力Fileの実SHO CLI非Skip H1を**一つの公開合成Attempt**で走らせるのが次の実不足。SHO #25のWorking Copy readbackは別資格。G2-W2の正式Editor保存とH1を同じ「保存済」Claimにしない。
+- **長期**：[TEI #3475](https://github.com/hat47x/tei-platform/issues/3475)のOntology DSL/Decision TwinはO0 Fit/Gapまでを現在の知見として扱い、O1以降のDigital Twin・SEI Decision委譲・実Simulationを初回MethodのBlocking条件にしない。[TEI #3394](https://github.com/hat47x/tei-platform/issues/3394)のREA解析→Authoring/SHO、KON Dataspaceの公開APIによるRaw保持も各Ownerの**将来交換**として扱い、TEIの現Contextに架空のReader／KON DB直接アクセスを作らない。SUIは共通データ基盤の許可された公開APIのみを使う設計方針を維持する。
+- **非採用**：二つ目のContext Gate、独自Agent/Meaning/Authority Host、SHO/KONをTEIの必須Runtime、Result Shape全コマンド一律object、Source SHA＝Meaning受理、Preview/Working Copy＝正式Save、SUI Card＝TEI Accepted Rule、提出されたMethod Proposal＝実Effect。
+
+**実証状態**：CC-28/29とM1R-0〜4はここでは設計・検証手順として登録し、Go/Product/Method実試験は**NOT RUN**。既存#3354/#3370/#3366/#3176/#3396/SHO #25の限定CI結果を正本ごとに保持。本文は新しいTEI Product契約、正式OS/Sandbox認可、Owner意味受理、実H1成功を採用したものではない。
