@@ -1,4 +1,4 @@
-﻿# CLI読取りコマンドのJSON出力契約（schemaVersionと失敗時の形式）の現状調査と追加案
+# CLI読取りコマンドのJSON出力契約（schemaVersionと失敗時の形式）の現状調査と追加案
 
 - **状態**: 調査と案（提案中、未採用）。一覧は2026-10-31時点のorigin/main `cd47b6fa4` のコードと、WSL go1.26.9でbuildした`tei`による実行結果の記録である。
 - **担当課題**: [#2354](https://github.com/hat47x/tei-platform/issues/2354)。
@@ -71,6 +71,7 @@
 - 2026-11-07から、`tei commands`の各entryは、閉じた値集合を持つ引数について`argumentValues`（許容値）、`argumentType`（受け付ける形。`-disclose`はカンマ区切り）、`argumentDefaults`（省略時の値）を持つ。対象は`inspect`・`trace`の`-subject-kind`（両者は集合が違う）、`trace`の`-direction`と`-mode`、`view`の`-format`、`knowledge-context`の`-disclose`、`knowledge-data-design-candidate-review`の`-data-design-candidate-kind`である。値集合は実装の検証に使う変数（`operations.InspectionSubjectKinds`・`operations.TraceSubjectKinds`・`modelref.TraceDirections`・`modelref.TraceModes`・`knowledgecontext.SelectableDisclosureSections`）を参照しており、定数を別に複製していない。`cmd/tei/cli_discovery_argument_values_test.go`が、広告値の全件を実プロセスで受理し、集合外の値を拒否すること、広告と実装の集合が一致することを検査する。パス・ID・fingerprint・scopeのように閉じた集合を持たない引数は載せない（#3242）。
 - 2026-11-07から、`view`のentryは`writeFlags`（`-operation-log`・`-lifecycle-state`）を持つ。`effect: "read-only"`は**正本の意味を書き換えない**ことを示し、プロセスがファイルを書かないことまでは示さない。`view -execute`は、これらのflagで指定した場所にだけ記録・段階storeを作る（指定しなければ書かない）。ファイル書込みを禁じる呼び手は、`effect`だけでなく`writeFlags`のいずれも渡っていないことを確認する。`cmd/tei/cli_discovery_write_flags_test.go`が、実バイナリでflagごとにファイルが作られること、flagなしでは作業ディレクトリに何も作られないことを検査する（#3182）。
 - 2026-11-07から、`-h`（と`-help`）の出力に、`argumentValues`・`argumentDefaults`と同じ値集合と既定値を表示する（`values:`／`default:` 行）。値集合は discovery と同じ変数を参照しており、`-h` と `tei commands` のどちらも正本にならない。`cmd/tei/cli_help_values_test.go`が、`inspect`／`trace`／`view`／`knowledge-context` の `-h` が discovery と同じ集合と既定値を出し、閉じた集合を持たない flag には `values:` 行を出さないことを検査する（#3242）。
+- 2026-11-08から、`knowledge-context` は `-subject-kind` の `semantic` を名前空間として解決する（従来の`semantic-namespace`も受け付ける）。`model catalog` の `entries[].subject.kind` と `inspect`・`trace` は名前空間を `semantic` と呼ぶため、catalog の値をそのまま渡した呼び手が `result.semanticElement` 無しの `ok:true` を受け取り、「定義が無い」と誤読していた。`cmd/tei/cli_knowledge_context_kind_test.go` が、catalog が広告する kind と `semantic-namespace` の両方が `semanticElement` を解決すること、未知の kind は解決せず subject を書き換えないことを実バイナリで検査する（#3242の後続）。
 
 ## 5. v0の中での互換な変更と版を上げる変更（規則案）
 
