@@ -229,6 +229,22 @@ function summarizeCommand(view) {
 
 // differenceSections lists the operations the declaration did not describe, so
 // a reader can see which data the execution reached beyond the declared effect.
+// hookSummary renders the hook report a reference execution returned. It
+// counts executed, warned, and not-evaluated phases, and names the phases that
+// did not run so the summary does not imply a pass.
+function hookSummary(hooks) {
+  if (!hooks || typeof hooks !== "object") return "not declared";
+  const executed = Array.isArray(hooks.executed) ? hooks.executed : [];
+  const warned = Array.isArray(hooks.warned) ? hooks.warned : [];
+  const notEvaluated = Array.isArray(hooks.notEvaluated) ? hooks.notEvaluated : [];
+  const skipped = Array.isArray(hooks.skipped) ? hooks.skipped : [];
+  const parts = [`executed ${executed.length}`, `warned ${warned.length}`];
+  if (notEvaluated.length) parts.push(`not evaluated ${notEvaluated.join(",")}`);
+  if (skipped.length) parts.push(`skipped ${skipped.join(",")}`);
+  if (hooks.refused) parts.push(`refused ${hooks.refused}`);
+  return parts.join("; ");
+}
+
 function differenceSections(differences) {
   if (!Array.isArray(differences) || !differences.length) return [];
   return [{
@@ -291,6 +307,10 @@ export function summarizeView(value) {
         ["differences", Array.isArray(value.differences) ? String(value.differences.length) : "0"],
         ["difference-check", value.appliedUnobserved ? "not observed" : "checked"],
         ["reported-effect", value.reportedEffectMissing ? "missing" : "reported"],
+        // The hook row names what the reference execution did with the pattern's
+        // declared hooks. A phase that did not run is listed as not evaluated,
+        // so an empty row never reads as "the hooks passed".
+        ["hooks", hookSummary(value.hooks)],
       ],
     }]).concat(differenceSections(value.differences));
   }

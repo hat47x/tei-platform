@@ -390,6 +390,7 @@ WP10 統合と引継ぎ
 | 提案された値の宣言照合（`ProducesFor`） | 実装 | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_DECLARED_PRODUCES_2026-11.md) |
 | フック宣言の機能定義書への反映 | 実装 | 付録C.5、`internal/artifact`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_FUNCTION_DEFINITION_2026-11.md) |
 | CLI参照実行からのフック呼出し | 実装（参照） | 付録C.5、`cmd/tei`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_CLI_WIRING_2026-11.md) |
+| Studio参照実行からのフック呼出し | 実装（参照） | 付録C.5、`internal/studiohost`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_STUDIO_WIRING_2026-11.md) |
 | フックが使う能力の`command` Pattern不在の拒否 | 実装 | 付録C.5、`internal/validation` |
 | フックの実行境界（reject/warn） | 実装 | 付録C.5 |
 | 未使用属性の表示 | 実装 | 付録C.5 |

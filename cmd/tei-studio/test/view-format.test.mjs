@@ -1,4 +1,4 @@
-﻿import test from "node:test";
+import test from "node:test";
 import assert from "node:assert/strict";
 import {summarizeView} from "../assets/view-format.mjs";
 
@@ -85,6 +85,36 @@ test("command run includes the plan and the reference execution", () => {
   assert.equal(rows[8][1], "0");
   assert.equal(rows[9][0], "differences");
   assert.equal(rows[9][1], "0");
+  const hooksRow = rows.find((row) => row[0] === "hooks");
+  assert.ok(hooksRow, "the summary has no hooks row");
+  assert.equal(hooksRow[1], "not declared");
+});
+
+test("a reference run with a declared hook names the phases that did not run", () => {
+  const sections = summarizeView({
+    mode: "reference",
+    committed: true,
+    persistence: "not-applicable",
+    durability: "none",
+    plan: {
+      capability: "sales.order.submit",
+      inputs: [{name: "order", type: "sales.order", value: "ORD-1", provided: true}],
+      outcomes: [{name: "submitted", payload: "sales.order"}],
+    },
+    hooks: {
+      pattern: "order_entry.order_record",
+      executed: ["before-read"],
+      skipped: ["before-update", "after-update"],
+      notEvaluated: ["before-update"],
+      reasons: {"before-update": "no data source for the declared read"},
+    },
+  });
+  const rows = sections[sections.length - 1].rows;
+  const hooksRow = rows.find((row) => row[0] === "hooks");
+  assert.ok(hooksRow, "the summary has no hooks row");
+  assert.match(hooksRow[1], /executed 1/);
+  assert.match(hooksRow[1], /not evaluated before-update/);
+  assert.match(hooksRow[1], /skipped before-update,after-update/);
 });
 
 test("package view is summarized into members and requirements", () => {

@@ -49,6 +49,10 @@ type CommandRunValue struct {
 	// AuthorizationMode names how the run was authorized. The Studio reference
 	// host uses reference-allow-all when no capability allow list is supplied.
 	AuthorizationMode string `json:"authorizationMode,omitempty"`
+	// Hooks records the pattern hooks this run consulted before the command.
+	// It mirrors the CLI report: a phase that could not be evaluated is named
+	// with a reason instead of being shown as a pass.
+	Hooks *HookRunReport `json:"hooks,omitempty"`
 }
 
 // CommandRunResponse is the result of a reference execution.
@@ -153,6 +157,14 @@ func (h *ReadOnly) executeCommand(workspaceID, applicationID, patternID, capabil
 	if err != nil {
 		return CommandRunResponse{Failure: &Failure{Code: "VIEW_FAILED", Stage: "command", Message: err.Error()}}
 	}
+	// A declared hook runs before the command when this reference execution can
+	// reach it: a before-change phase whose declared reads the caller supplied.
+	// Everything else is reported as skipped or not evaluated with a reason, so
+	// a phase that did not run never reads as a phase that passed.
+	hookReport, hookErr := h.runHooks(loaded.World, core.CanonicalID(applicationID), core.CanonicalID(patternID), inputs)
+	if hookErr != nil {
+		return CommandRunResponse{Failure: &Failure{Code: "COMMAND_FAILED", Stage: "command", Message: hookErr.Error()}}
+	}
 	invoker := command.Invoker{
 		World:      loaded.World,
 		Executor:   command.ReferenceExecutor{World: loaded.World},
@@ -215,5 +227,6 @@ func (h *ReadOnly) executeCommand(workspaceID, applicationID, patternID, capabil
 		AppliedUnobserved:     recordAppliedUnobserved(recorder.Records, plan.Effect != nil),
 		ReportedEffectMissing: recordReportedEffectMissing(recorder.Records),
 		AuthorizationMode:     string(result.AuthorizationMode),
+		Hooks:                 hookReport,
 	}}
 }
