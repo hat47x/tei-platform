@@ -106,3 +106,6 @@
 
 # Session-log size-limit observations are hashed as raw bytes.
 /plan/evidence/DSH_SESSION_LOG_MAXBYTES_2026-11-08/** -text
+
+# Runtime alternate paths output is hashed as raw bytes by its README.
+/plan/evidence/RUNTIME_CARRIER_ALTERNATE_PATHS_2026-11-08/** -text
