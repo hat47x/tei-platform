@@ -31,7 +31,7 @@
 
 **完全性の意味**：指定したWorld／Source Scope／Consumer公開資格に対し、要求される図表・関係・Pattern／Event／Stateの対象集合と、実際に解決／表示した集合、未解決・非公開・未対応の集合を区別して表示すること。必要集合自体が未確認なら「全体像はpartial」と説明し、表示したものだけで完全性を主張しない。図表・表・CLIは共通のAccepted Meaning/Sourceから導出し、手書きのガイド図やAI説明を第二正本にしない。
 
-**実装／受入の標準接続**は[三要素Method設計§19](design/THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)に集約する。具体的な初回受入案はMAP-01〜10（全容Catalog、Event→Lifecycle、Pattern位置づけ、固定/Custom/実効フロー、初心者の段階ナビゲーション、Scope・Coverage、複数Consumerの一致）。#1124をDiagram/Navigation、#1125をEvent/Business Flow、#1126をData、#1127/#2507をFunction/Pattern、#2497を投影意味の保持、#2619/#2620をEverything is Data/役割、#2514/#1180を独立Expectedの既存Ownerとする。最初は**read-onlyのModel Map→明示Gap→複数図表へのジャンプ**を検証し、その後にHook差分・Typed Edit・Target実効動作を扱う。現時点では標準要求を計画へ反映した段階で、全図表Generator／全媒体Navigation／全Patternの実装完了は**未確認**。既存Gate B/Cを遡及して変更しない。
+**実装／受入の標準接続**は[三要素Method設計§19](design/THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)に集約する。具体的な初回受入案はMAP-01〜10（全容Catalog、Event→Lifecycle、Pattern位置づけ、固定/Custom/実効フロー、初心者の段階ナビゲーション、Scope・Coverage、複数Consumerの一致）を基本とし、**MAP-11〜16**でLifecycleを可変の型付きGraphとして組み立てる際の保証、Plugin競合、到達不能、編集中と実行中のRevision差、AIチャットのInteractionと業務Effectの分離を反証する。固定するのは**不変の保証**であり、全Domainに一律の手順列を強制しない。#1124をDiagram/Navigation、#1125をEvent/Business Flow、#1126をData、#1127/#2507をFunction/Pattern、#2497を投影意味の保持、#2619/#2620をEverything is Data/役割、#2514/#1180を独立Expectedの既存Ownerとする。最初は**read-onlyのModel Map→明示Gap→複数図表へのジャンプ**を検証し、その後にHook差分・Typed Edit・Target実効動作を扱う。現時点では標準要求を計画へ反映した段階で、全図表Generator／全媒体Navigation／全Patternの実装完了は**未確認**。既存Gate B/Cを遡及して変更しない。
 
 ## 現在の主線
 
