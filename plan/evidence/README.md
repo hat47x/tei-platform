@@ -142,6 +142,7 @@
 
 - [knowledge-contextの名前空間kind名](KNOWLEDGE_CONTEXT_NAMESPACE_KIND_2026-11-08.md)（catalogの`semantic`を渡すと`semanticElement`無しの成功になっていた。`semantic`と`semantic-namespace`の両方を受け付け、未知kindは解決しない。実Provider・他kindの全件突合は未確認）
 - [validateのCLI/MCP応答の一致](CLI_MCP_VALIDATE_SHAPE_2026-11-08.md)（`tei_validate`が`result`包み・数値error.code・意味エラーでisError:falseになっていたのを、CLIと同じ投影と文字列code、`!ok`のisErrorへ寄せた。実Host・認可・外部送出はNOT RUN）
+- [source-indexの空の参照一覧](CLI_SOURCE_INDEX_EMPTY_REFS_2026-11-08.md)（`mode=index`が`references: null`を返していたのを`[]`へ統一。指紋は索引から計算するため不変であることを`reference/workspace`で実測。`null`の意味の全コマンド統一は未決）
 - [二回の独立した駆動試行でも同じstage2成果物になること](TEI_GO_SELF_BUILD_TWO_STAGE_REPEAT_2026-11-08.md)（`-work`を分けた2回の実行で、両方L3に到達しstage1/stage2のartifact digestが一致することを記録。Seed Trust・受入・権限・OS間一致は未確認。SB-C1 / #2831）
 
 
