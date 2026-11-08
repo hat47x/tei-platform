@@ -130,3 +130,6 @@
 
 # maxBytes threshold observations are hashed as raw bytes.
 /plan/evidence/DSH_SESSION_LOG_MAXBYTES_THRESHOLD_2026-11-09/** -text
+
+# Binding-to-execution reference output is hashed as raw bytes by its README.
+/plan/evidence/BINDING_TO_EXECUTION_REFERENCE_2026-11-09/** -text
