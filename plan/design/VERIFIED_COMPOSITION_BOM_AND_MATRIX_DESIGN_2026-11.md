@@ -284,3 +284,76 @@ Server/ClientのGraph構造、HTTP Adapter、Conformance EvidenceをBOMに**リ�
 5. 当該SubjectのOwner受理・Trust/Grant/Disclosureが別に成立した場合だけ#3267の限定BOMを発行。単独Reference PASSや履歴Cache hitは資格条件を満たさない。
 
 **実施状況**：設計は本節へ反映。Trait/HTTP Graph/Test Coverage/C0/C1の製品統合は未実施。`witness_audit.go`および合成テストは新規追加したが、最新GitHub HEADのCI結果を確認するまでは実装上の合格を主張しない。Trusted/actual E2EとOwner受理はNOT RUN。
+
+
+## 11. 履歴Capability EvidenceのProducer規則変更をVersion Matrixに組み込む（2026-11-08／限定検査）
+
+### 11.1 実際に発生した差分：表示上の`v0`は同じでも選択規則が変わる
+
+[main merged #3337](https://github.com/hat47x/tei-platform/pull/3337)の初回実記録は`reference/workspace`で12個の宣言Capabilityのうち6個が`unselected`だった。これは`database-instance`の技術名`postgres`とCapability ID `database.postgres`を直接文字列照合する**当時の限定計測規則に依存した記録**であり、実Providerが使われていない事実ではない。その後の[main merged #3350](https://github.com/hat47x/tei-platform/pull/3350)・[#3363](https://github.com/hat47x/tei-platform/pull/3363)では`SupportsDatabaseProvider`に基づく、既存Validatorに合わせた選択判定に変更された。同じ`Schema`と`RuleVersion:v0`の**ラベル**でも`ruleFingerprint`が変わる。
+
+[closed/unmerged #3379](https://github.com/hat47x/tei-platform/pull/3379)を引き継いだ[main統合 #3490](https://github.com/hat47x/tei-platform/pull/3490)は保存済み歴史的raw JSONと現行`workspace.Load`→`plugincoverage.Derive`を同じPlugin/Version/Kind+ID単位で照合し、古い規則に由来する`unselected`→新規則の`selected`とProducer Rule差を反証するテストを追加した。旧rawを現在の選択資格へ書き換えない。
+
+### 11.2 BOMに再利用可能な証拠の判定表（新Coreスキーマではなく受入規則）
+
+| 歴史的Claim | 変更後の判断 | 不正な推論 |
+| --- | --- | --- |
+| Plugin/Capabilityが`unselected`（旧Ruleで観測） | 当時の歴史的Observationを保持し、現行World/Rule/Environment/Scopeで再導出 | 未選択が永続的に必要能力欠落／欠陥 |
+| 同じPlugin Package/Version文字列 | `Kind+Capability ID+Contract/Provider Implementation`、Target/Scopeを再照合 | 同Packageだから全Trait/Capabilityが使われた |
+| `Schema`/`RuleVersion`表示が同じ | ルール内容の`ruleFingerprint`と実Producer Implementation、Source Closureを照合 | 表示上同じ`v0`ならTest Witness流用可 |
+| 新Ruleで`selected`になった | 合法なCandidate/Bindingとして選択済みの**範囲**のみ。#951のProvider一意解決、#1251実Load/Invokeへ別送 | `selected`→実Provider呼出→Conformance PASS |
+| Build Report／Stage Driverの自己報告 | #3336のinvoker/invokedと実ディスクArtifactの再取得、#2600の実消費Closureで照合 | Self-report、Tool Exit0、cache hitが正式BOMを認定 |
+| 同じ2×2 Version Matrixを再計画 | 先にProducer/Required Context/Source/Target/Rule再資格。合法な候補2項集合と全4行の実独立Testを別票へ | 既存Pairwise計画100%がRule変更後も互換性100% |
+
+**対象相対の失効**：宣言や選択数が変化したからといって全PluginのSemantic Source/Build Artifact/過去Test結果を無条件に失効させない。変わったProducer Ruleを実際に用いた**Selection/Eligibilityの派生Claim**を再導出し、実選択・実Build入力・必要Testの依存経路で影響範囲を限定する。対象依存が不完全なら`unknown`に保つ。旧`unselected=6`と現行の値を「改善KPI」へ自動変換しない（測定規則が違うため）。
+
+**P0の接続**：#3262からRequired Source/Rule/Relation/Loader/Targetの閉包を得る→main #3337/#3350/#3363の現行`Capability Report`を**現在の規則で再生成**→#951の合法解決/Version Lock→#1251の実Inspector Provider A/B→#1180/#2514の独立Expectedと同一Attempt/Artifact→#3267の限定BOM行。BOM発行は本節を読んだだけでは可能にならない。
+
+**資格上限**：main #3490は過去/現在のReference Ruleの**読取結果を比べるだけ**。実Provider選択、Go実Link/Invoke、CLI/Studioの二Consumer、Runtime/Grant、Trusted Conformance、BOM配布は**NOT RUN**。#3297自体もmainからdivergeしたDraft・未統合であり、新Targetや新Hard Gate、第二Resolver/Runner/Cache/Authorityを追加しない。
+
+
+## 12. BOM再利用の三つの鮮度境界と実Call-site依存（2026-11-08／現mainへの引継ぎ）
+
+[main統合 #3490](https://github.com/hat47x/tei-platform/pull/3490)ではPlugin-first計画§18とCapability Coverageの歴史Rule比較Go回帰を限定実証した。旧[#3379](https://github.com/hat47x/tei-platform/pull/3379)はbaseが古く、Goテスト/vetが通っても`coverage_test.go`のgofmt差でHealth失敗し、現mainの計画更新を上書きしないようclosed/unmergedで引継いだ。歴史raw Evidenceは変更しない。
+
+BOMの`reusable/needs-recheck`は少なくとも**三つの異なる鮮度判断**を含む。
+
+1. **Consumer Managed Source**：main統合[#3477](https://github.com/hat47x/tei-platform/pull/3477)はWorld同値でもSource Index FPが変わり得るSource-only改訂を、実TEI CLI／Scenario Contextで有限実証した。外部Tool完全配送・全Source原子的Snapshotは別。
+2. **Imported Provider Source**：[main統合 #3479](https://github.com/hat47x/tei-platform/pull/3479)はConsumer WorldとSource Indexが不変でも外部Providerのraw byteとLocateImportedSource fingerprintが変わり得る実Go負例を提案。exact-headの合格・Provider Nested Load原子性・Build Inputの実消費はまだ必要。Consumer内FPを外部Plugin依存全体のハッシュと扱わない。
+3. **Producer Rule/Implementation**：main統合#3337の履歴Capability Coverage（当時6/12未選択）は、main #3350/#3363のDB Capability選択Rule変更後の`selected/unselected`と同じ意味の資格として使えない。Schema/RuleVersionラベルが同じでも`ruleFingerprint`差分に基づき再導出し、影響する正確なProvider/Environment/Targetだけ再検査する。
+
+さらにmain統合[#3446](https://github.com/hat47x/tei-platform/pull/3446)の静的Caller調査では、`servicehost.NewSelectedServiceCarrierInvoker`の非試験呼出し元が0だった。既存Consumerへ選択済みProviderが実配線された証拠がない以上、上の三つのFPが全部一致しても、実CLI/Studio Invoke資格・Verified BOMには達しない。
+
+**VCB-F01〜F05（#1180/#2514へ渡す、NOT RUN）**：
+- **F01** Consumer内Sourceだけ変更・World不変→Source IndexとScenario Requiredを再照合。
+- **F02** Consumer World/Index不変、Imported Provider rawのみ変更→必要Reference Source occurrence/fingerprint/actual consumptionを再照合。ない場合`unverified`。
+- **F03** RuleVersion文字列不変、Rule Fingerprint/選択結果変更→旧Policy由来SelectionをBOMに流用しない。
+- **F04** 無関係な未選択Plugin資産だけ変更→実Closureが非干渉なら全組合せを誤失効させない。
+- **F05** CLI/Studio双方のtyped Result一致・旧Builtin直呼び→実Selected Provider/Host側Callsite未観測ならBOM実呼出しのClaimは成立しない。
+
+**組込み順**：#3262の目的相対Required/Source Closure→#951/#1016 exact SelectionとRule Producer鮮度→#1251 D1実Read-only Inspector Provider/実Host-origin Call→#943/#2600実Build/Toolchain/依存Closure→#1180/#2514同Target/Attempt・独立Expected→#3267限定BOM。外部Referenceの意味受理・現在Grant/Disclosure・Publisher保証は引き続き別。**D1と4組合せ実E2E、Conformance、BOM発行は未実施**。#3297はmainとdivergedしたDraftなので、現main §18で先に受入判断し、同内容を競合した長命PRから無確認mergeしない。
+
+
+## 13. RQ-037現行mainへの前方移植と資格境界（2026-11-08）
+
+本設計とGo Referenceは、旧[Draft #3297](https://github.com/hat47x/tei-platform/pull/3297)の限定成果として作られ、その後現mainにもBOM固有のGoコードと本設計の§1〜10が存在する。旧PRが変更した`requirements/TEI_PRODUCT_REQUIREMENTS.md`、PAS、Product Gap Auditと大量のDesign Index差分を一括移植していない。理由は、現在mainの**RQ-036＝ドメイン全容Model Map**が旧PRの**RQ-036＝BOM**と衝突するためである。現mainで旧RQ-036のBOM監査混入が判明し、[修復Draft #3592](https://github.com/hat47x/tei-platform/pull/3592)でRQ-037の要求・PAS・Audit・Masterの正確な対応を修復中（旧Draft #3538は移植元）。**RQ-035 Workbench／RQ-036 Model Map／RQ-037 Verified BOM**をそれぞれ独立のOwner／Evidenceで扱う。
+
+### 13.1 今回のReferenceができること
+
+- Full Cartesianの宣言版列挙、決定的Pairwise Coverage、既に解決済みのexact Lock候補集合に**限定した**Pairwise計画。
+- 外部提供されたSource/Artifact/Target/Scope/Scenario/Independent Expected/Attemptおよび必須Checkの整合性照合。
+- 被覆不足・複数Attempt・結果欠落・指紋不一致・部分取得／SKIP／TIMEOUT／UNKNOWN・Evidence再利用の誤報告拒否。
+- `qualified:false`を維持し、サンプル入力がすべて一致しても正式Conformanceの発行・実Permission付与を行わない。
+
+このGoコードは自前のPlugin Resolver、Builder、Runtime Invoker、Scenario Runner、Evidence Issuer、Artifact Storeを持たず、上位が渡した値を**純粋な入力データとしてチェックするReference**である。型付き`PlanPairwise`の二項網羅は完全なConstraint Solverや3-way/full Cartesian保証ではない。ReferenceのRule/Lockの実在やPublisher署名もここでは保証できない。
+
+### 13.2 次の製品受入の最短経路
+
+1. **S2**：main統合[#3381](https://github.com/hat47x/tei-platform/pull/3381)の局所Go選択Provider B呼出を、通常`tei inspect`のDispatchと実Studio Bridgeから**別々に**呼ぶ。CLI Helper/Studio Host APIの同一Goテストだけなら製品二Consumer資格にしない。選択B→実Aが同じ結果を返してもreject。
+2. **Source/Manifestの束縛**：main[#3477](https://github.com/hat47x/tei-platform/pull/3477)（Consumer Source-only）、[#3479](https://github.com/hat47x/tei-platform/pull/3479)（外部Provider raw/Manifest-only）、[#3490](https://github.com/hat47x/tei-platform/pull/3490)（Capability Rule Fingerprint）のそれぞれをProviderの実消費Closureと照合。各局所ReferenceのPASSを合算して全Source完全性としない。
+3. **S3**：#951のexact Selectionと#943/#2600の実Build/Artifact、#1180/#2514の独立Expected/実Runnerの**同一Scope/Target/Attempt**へ束縛。その実証されたCaseごとにBOMの適格範囲を示す。今回の`AuditWitnessBindings`のJSON上の一致はTrusted Witness発行ではない。
+4. **2×2**：実Provider二版×実Consumer二版を4行個別実行し、未実行/不可能/未知を残す。元来S2の「CLIとStudioの2 Surface」と混同しない。Host Grant/Disclosure/Effect/Owner Meaningは同様に独立。
+
+**状態**：本節は現在の要求修復Draft #3592と、mainに存在する限定Referenceツールの実装／受入を混同しないための設計追補である。新ブランチのexact-head CI、現mainとの変更閉包、Reviewer/Owner判断は別検収が必要。実2×2 Conformance、通常CLI＋実Studioの製品S2、BOM正式発行・本番権限は**NOT RUN**。
+
+**次の検証の区別（2026-11-09）**：[Draft #3540](https://github.com/hat47x/tei-platform/pull/3540)の通常CLIとStudio Hostへの静的参照Provider接続（S2-reference）は、正式な別Providerに差し替えた製品S2でも、Publisher保証・外部Host Grantでもない。また[main #3583](https://github.com/hat47x/tei-platform/pull/3583)が示すC-1配備CommandとC-2 Service Requestの異質性を前提とし、二者択一を先行固定しない。C-4外部Host委譲を選ぶ場合もReceipt未受領をConformance PASSへ変換しない。
