@@ -19,6 +19,8 @@
 - [PoCの仮説と、上流へ戻る条件](POC_HYPOTHESES_2026-11.md)
 - [判断材料: マイルストーンと契約枠への位置づけ](MILESTONE_CONTRACT_DECISION_BRIEF_2026-11.md)
 - [判断材料: 操作面の未決4件と、決める順序](OPERATION_SURFACE_DECISION_BRIEF_2026-11.md)（公開面・語彙の置き場所・`unattended` の条件・drift 照合の既定について、`main` 上の4つの実行記録を束ね、決めると後続が解ける順序と、最初に答えるべき「照合値をどこから渡すか」を示す。決定そのものは行わない）
+- [判断材料: 実行の側をどこで宣言へ繋ぐか](COMPOSITION_CONNECT_POINT_BRIEF_2026-11.md)（6本の実行記録から、宣言→検証→計画→実行の間に繋ぎ目が無い形を示し、C-1 routing.Router・C-2 servicehost・C-3 能力IDの解決・C-4 繋がない、の4案と決める順序を整理する。どれも推薦せず、C-4を正当な選択肢として扱う。決定はGateと成立状況の担当）
 - [上流計画から担当作業への展開](UPSTREAM_BREAKDOWN_2026-09.md)
 - [X-TEA設計を参照する際の代替手順](UPSTREAM_XTEA_DESIGN_FALLBACK_PROTOCOL.md)
 - [TEI自身の設計をCLIで扱うドッグフーディングの実測と課題](TEI_DOGFOODING_CLI_SELF_DESIGN_2026-11.md)（#3149。read-only CLIでTEI自身の設計記述を発見・読取り・検証し、10件の課題を起票対象として整理。修正は未着手）
+- [TEI自身の設計をCLIで扱うドッグフーディング 第2ラウンド](TEI_DOGFOODING_CLI_SELF_DESIGN_2026-11.md)（#3149。現行main `4fd88c2b1` の実行物で再実測し、D-1・D-2・D-4〜D-8 が閉じたことと、D-3・D-9・D-10 が残ることを確認。MCP入口は未実装のため CLI 経路のみ実測）

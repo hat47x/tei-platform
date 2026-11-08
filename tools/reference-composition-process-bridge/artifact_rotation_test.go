@@ -7,7 +7,6 @@ import (
 	"errors"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -34,7 +33,7 @@ func TestRejectedProcessArtifactStageRetainsVerifiedProvider(t *testing.T) {
 	defer cancelBuild()
 	build := func(revision string) (string, string) {
 		t.Helper()
-		path := filepath.Join(t.TempDir(), "process-"+revision)
+		path := hostExecutable(t.TempDir(), "process-"+revision)
 		cmd := exec.CommandContext(buildCtx, "go", "build", "-ldflags", "-X main.referenceRevision="+revision,
 			"-o", path, "../../plugins/reference-process-executor")
 		if out, err := cmd.CombinedOutput(); err != nil {

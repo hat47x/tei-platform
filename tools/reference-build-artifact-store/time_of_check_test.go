@@ -28,6 +28,7 @@ func replaceWithSameBytes(t *testing.T, path string, value []byte) {
 }
 
 func TestGetRejectsObjectReplacedBetweenLstatAndOpen(t *testing.T) {
+	requirePOSIXInodeReplacement(t)
 	store := openTestStore(t, 1<<20)
 	value := []byte("replaced between lstat and open")
 	receipt, err := store.PutBytes(value)
@@ -52,6 +53,7 @@ func TestGetRejectsObjectReplacedBetweenLstatAndOpen(t *testing.T) {
 }
 
 func TestGetRejectsPathReplacedAfterRead(t *testing.T) {
+	requirePOSIXInodeReplacement(t)
 	store := openTestStore(t, 1<<20)
 	value := []byte("replaced after read")
 	receipt, err := store.PutBytes(value)
