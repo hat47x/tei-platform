@@ -354,3 +354,21 @@ Else absence remains unknown; no universal closed-world assumption.
 | **Direct Edge** | Read-only Full/Unpaged/方向/解決・未解決を区別したCLI JSON | `Edge.Relation`種別文字列が独立Relation ID/多項Role、0件が業務Relationの不存在である |
 
 **受入と停止線**：負例で別Subjectの`located`誤帰属、Manifest欠落、scope変更、CLI partial、0行の不存在への誤昇格を拒否。基準GoコードとCI固定headで試験し、実CLIを使用しても非公開二世界・現在Grant・Studio M0/M1・セルフビルドStage2は未証明とする。結果の受理は実施したexact-head CIとOwner Reviewが別途必要。新Core Relation Registry、第二Source Reader、共通Host、専用Query DSLは設けない。
+
+### 11.6 同じWorld/Source Indexでも別Workspaceを結合しない（2026-11-08）
+
+**関連議論**：[統合済み研究 #2966](https://github.com/hat47x/tei-platform/pull/2966)はIntent/Realization/Assessmentを、[#3255](https://github.com/hat47x/tei-platform/pull/3255)は論理Subsystem/更新Owner/実Effectを、[#2831](https://github.com/hat47x/tei-platform/issues/2831)はRequired/Declared/ActuallyConsumed/Observedを別に扱う。これはSource断片の同一ハッシュから異なるWorkspace・Target・Ownerの同一性を推論してはいけない、という共通の制約につながる。これらの別Ownerの正本・Runnerを本設計では再実装しない。
+
+**新しい実CLI負例（P1 Referenceの契約）**：同じ`reference/workspace`を一時ディレクトリにコピーし、`tei.workspace.yaml`の`workspace:`名だけを変更する。両者の業務Sourceと直接Edgeは同じでも、Load-time Workspaceの`name`と`manifest.sha256`は変わる。このケースでWorld／Source Index fingerprintが一致するかを実CLIで照合し、**仮に一致しても同一Workspaceの根拠としてJoinしない**。`WorkspaceTrace.Workspace`が保持するManifestのPath/SHA256とFormatVersion、Name（省略可能）を照合する。これらはLoad時の観測値であり、Accepted Meaning・実Read-set閉包・Lock/Grantではない。
+
+| 変更・比較 | 同一観測コンテキストとして許すか | 根拠と停止条件 |
+| --- | --- | --- |
+| 同じWorkspace、同じSource/World、Callerだけscopeを変更 | **限定的に比較可能** | Manifest/FormatVersion/NameとWorld/Source Index FPが同じ。Subjectのqualified keyやTrace token自体は別 |
+| 同じWorld/Source Index FP、別WorkspaceのManifest/Name | **不許可** | `workspace_manifest_mismatch`。元Sourceに対する意味OwnerやTargetの同一性を推論しない |
+| 同じManifestだがWorld/Source Index FPが変化 | **不許可** | `read_snapshot_mismatch`。必要Read-setが閉じているとの断定も禁止 |
+| Manifest不足／不正SourceNavigation／未解決・旧Trace | **不許可** | `trace_unqualified`等へ退避。旧成功を新Attemptへ移送しない |
+| Manifest・Source FPすべて同じ | **read-only比較候補にとどまる** | Current Disclosure、Role/Authority、実Target、実Effect、Source/Plugin全Rootの独立資格は残る |
+
+read-only Referenceは`compareObservedLoadContext`をテスト専用の候補比較として提供する。新たな正本Identity/Resolver/Policy Engineではなく、異なるWorkspaceを一つのGraph/関係表へ誤結合しないための局所停止線とする。外部Consumerがこれを使う場合は別途#2516の現在開示と、#1124のScope/Source/描画Epochの受入が必要。**実Runner、ActualConsumed、Graph/Tableの多項Relation全被覆や不存在証明には流用しない。**
+
+**証拠の区分**：Nodeの合成反例は局所比較関数の検証。Go `tei trace`を一時Workspaceに実行して初めて、実ReaderによるWorld／Source FPの一致/不一致とManifest差を観測したことになる。どちらの成功もOwner Meaning AcceptanceやSource Closureを意味しない。CI headと結果はPR #3321に版固定で記録し、以後のmainへの追随時に再資格化する。
