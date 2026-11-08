@@ -8,6 +8,8 @@ TEIは現在、設計上の境界をGoのコードで検証している段階で
 
 主要な手順を試すには、Goの開発環境が必要です。必要なGoの版は、リポジトリ直下の`go.mod`にある`go`行が示す版以上です。この文書は版の数値を複製しません。`go.mod`の更新のたびに文書が古くなるためです。2026-11-07時点の`go.mod`は`go 1.26.10`を要求します。数値は必ず`go.mod`で確認してください。
 
+
+`tools/` の参照ツールのうち、外部コマンドを `bash -c` で起動する試験（`tools/reference-cognition-port`・`tools/reference-generator-selection`）は **POSIXシェルを前提**にしています。Windowsでは、WSL または Git Bash の `bash` でも `cp <Windowsパス>` を解決できない場合があるため、該当試験は明示的に skip し、Linux CI の結果を正とします（#3461）。skip は失敗ではなく「この環境では検査していない」という記録です。`go test ./...` の結果を読むときは、skip の理由も確認してください。
 ```bash
 grep '^go ' go.mod
 go version
@@ -37,6 +39,47 @@ go version
 
 手順は[最初の意味変更を試す](../examples/first-workspace/README.md)に記載しています。Goの開発環境だけで実行できます。ただし、これはモデルの検証例であり、画面の生成やデータの登録・照会・更新・削除はできません。
 
+
+### 外部の呼出し元が書く最小の作業領域
+
+外部の呼出し元が文書だけを読んで作れる最小の形は、次の2ファイルです。`workspace:` の名前は任意で、`formatVersion` と `sources` は必須です（`formatVersion` がないと `WORKSPACE_LOAD_FAILED`、`sources` が空だと `sources must contain at least one source root`）。
+
+```text
+my-workspace/
+  tei.workspace.yaml
+  semantic/model.tei
+```
+
+```yaml
+# tei.workspace.yaml
+workspace: scn001
+formatVersion: 1
+sources:
+  - semantic
+```
+
+```tei
+namespace scn
+
+data RuleCandidate {
+    attribute sourceVersion type std.text
+}
+```
+
+この2ファイルで `go run ./cmd/tei validate -workspace my-workspace -json` は `ok:true`、`declarationCounts` は `namespaces:1`・`data:1`・`attributes:1`・`total:3` になります（`types` は `std` しか無いため0）。`model catalog` の `entries` には `semantic` / `scn`・`semantic-data` / `scn.rule_candidate`（`symbol:RuleCandidate`）・`semantic-attribute` / `scn.rule_candidate.source_version`（`symbol:sourceVersion`）が出ます。標準定義の `std` は `prelude:true` で印を付けます。
+
+**宣言名はCanonical IDへ変換されます。** identifier（namespace・data・attributeなど）は、宣言した `symbol` ではなく、次の規則で作ったCanonical IDを `subject.id` として持ちます（`core/identity`）。
+
+| 宣言 | 変換 | 例 |
+| --- | --- | --- |
+| namespace | 名前をそのまま小文字のまま使う | `namespace scn` → `scn` |
+| data | `namespace.` + symbolをsnake_caseへ | `data RuleCandidate` → `scn.rule_candidate` |
+| attribute | 親dataのID + `.` + symbolをsnake_caseへ | `attribute sourceVersion` → `scn.rule_candidate.source_version` |
+| relation・candidate-key・functional-dependency | 親dataのID + `.` + symbolをsnake_caseへ | `relation OrderLines` → `scn.order.order_lines` |
+| capability・validation・type | `namespace.` + symbolをsnake_caseへ | `type OrderStatus` → `scn.order_status` |
+
+snake_caseへの変換は、大文字の前に`_`を置き、`-`・空白・連続する`_`を1つの`_`にまとめ、前後の`_`を落とす操作です。`sourceVersion` は `source_version`、`SourceVersion` も同じ `source_version` になります。**大文字小文字だけが違う2つの宣言は同じIDへ潰れ、`DUPLICATE_SEMANTIC_ELEMENT` になります**。`model catalog` の `entries[].symbol` は宣言した綴り、`subject.id` は変換後のIDです。呼出し元が宣言と応答を突き合わせるときは、`symbol` ではなくこの変換を経た `subject.id` を使ってください。
+
 ## コマンドラインを生成AIや自動化から使う
 
 当面はコマンドラインから`tei`を操作する方法を基本とします。現在使える主な読み取り専用コマンドは、次のコマンドが返すJSON形式の一覧で確認できます。
@@ -53,6 +96,17 @@ go build -o tei ./cmd/tei
 ```
 
 `go run`や`-buildvcs=false`でbuildした場合はコミットが埋め込まれないため、`source`が`unavailable`になります。識別は再現の手掛かりであり、配布の承認や署名ではありません。
+
+checkoutの外でbuildするなど、toolchainがコミットを埋め込めない場合は、buildする側がrevisionを注入できます。
+
+```bash
+go build -buildvcs=false \
+  -ldflags="-X main.teiDeclaredRevision=$(git rev-parse HEAD)" \
+  -o tei ./cmd/tei
+./tei version -json
+```
+
+この場合、`source`は`ldflags`になり、値は`vcsRevision`ではなく`declaredRevision`へ入ります。`declaredRevision`は**buildした側の自己申告**で、実行物がそのcommitのsourceから作られたことを証明するものではありません。toolchainの`vcsRevision`がある場合は、より強い証拠として`source`は`build-info`のままです（両方を持つ場合も`declaredRevision`は残ります）。注入しないbuildは、従来どおり`source`が`unavailable`になります。
 
 モデルや定義の整合性を調べる場合、生成AIなどの呼出し元は次のようにJSON形式の診断結果を取得できます。
 

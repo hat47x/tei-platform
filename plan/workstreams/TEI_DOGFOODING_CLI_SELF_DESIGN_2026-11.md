@@ -509,3 +509,54 @@ D-9は残る。CLIは設計文書を索引に載せるが、意味の定義と�
 - `validate`の診断と`sourceRootFindings`は変わらず、D-9（設計文書が意味として読まれない）は残る。
 
 この記録はCLIのread-only観測である。HTTP・MCP・Desktopの各入口の同値性は #3419〜#3421 の担当で、未実行（NOT RUN）のままである。
+
+## 11. 第5ラウンド（2026-11-09）: CLIとMCP参照Adapterの一致と入力検証
+
+`main` `4f97c86cf` の CLI と `tools/reference-mcp-readonly-adapter` を同じWorkspaceへ向けて実行し、値・失敗・入力検証を比較した。生出力は[第5ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND5_CLI_MCP_2026-11-09/README.md)にある。
+
+- 4操作（`validate`・`model catalog`・`inspect`・`trace`）の成功応答は、キー集合と型の差が0件だった。`SUBJECT_NOT_FOUND`・`UNSUPPORTED_SUBJECT_KIND` もCLIと同じ文字列符号で、MCPは `isError:true` と `ok:false` を併せて返した。
+- 基準の版では、**宣言していない引数はMCPだけが無視して成功した**。CLIは `INVALID_ARGUMENT` で拒否する。これを #3575 として起票した。
+- 起票のあと、`main` の `b88759643`（#3420 CAPI-2b）が同じ問題を直し、`rejectUnknownArguments` で不正値を `-32602` にすることを確認した。現行 `main` の実行物では未知欄・`workspace`欄・`null`・型不正がすべて拒否され、既存4操作の成功は変わらない。#3575 は重複として閉じる。
+- 必須欠落の符号はCLIが `INVALID_SUBJECT`、MCPが `-32602` で、意味層とプロトコル層の対応は #3420 の未決である。値と代表的な失敗は揃ったが、失敗分類の統一は未達。
+- `commands` の19件に操作ID・入口の欄は無く、入口ごとの対応はIssueと文書でしか辿れない。#3419 の対応表で扱う。
+
+## 12. 第6ラウンド（2026-11-09）: discoveryの広告と実行の突き合わせ
+
+ADR-0048 §2.6 の「各入口の広告が独立した正本にならないこと」を確かめるため、`tei commands` の19件と MCP `tools/list` の4件を、実際の受理と突き合わせた。生出力は[第6ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND6_DISCOVERY_2026-11-09/README.md)にある。
+
+- 広告した subject-kind 12種（`inspect`）・10種（`trace`）のすべてで、実在しないIDに対する結果が `SUBJECT_NOT_FOUND`（exit 1）、実在するIDでは成功だった。広告と実行の食い違いは検出されなかった。
+- フラグの条件（`-offset and -limit (full only)`・`-json (workspace only)`・`-input and -execute with -command`・`at most one of -pattern, -package, -command` など）も、実行時の受理と一致した。`effect` は19件すべて `read-only`、`writeFlags` は `view` のみ。
+- 一方で、**CLI の discovery と MCP の `tools/list` を突き合わせる試験は無い**。MCP の tool 宣言は `inputSchema` と `description` だけで、`effect`・`schemaVersion`・`annotations` を持たない。応答版は `dispatch` の文字列リテラルが持つ。
+- 実プロセス比較が固定されているのは `validate` の1操作だけ（`validate_parity_test.go`）。`catalog`・`inspect`・`trace` は `operations` の戻り値との比較にとどまる。
+
+新しい欠陥は検出しなかったため起票はしない。広告の突き合わせと4操作の実プロセス比較は、それぞれ #3419（対応表）と #3420 CAPI-2a が既に持つ範囲である。
+
+## 13. 第7ラウンド（2026-11-09）: discoveryの突き合わせ試験を置く
+
+第6ラウンドで「CLI discovery と MCP `tools/list` を比べる試験が無い」と記録した。ADR-0048 §2.6 の「生成または一致試験でずれを検出する」に沿って、最小の回帰試験を追加した。生出力は[第7ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND7_CROSS_SURFACE_2026-11-09/README.md)にある。
+
+- `discovery_parity_test.go` が、実CLIをビルドして `commands` を実行し、4 tool の対応コマンドの存在・`effect` が `read-only`・`writeFlags` が無い・`schemaVersion`・`jsonContract` の5点を突き合わせる。対応付けは文字列変換ではなく表で宣言する。
+- 現行 `main` では PASS した。加えて、故意のずれ6種（adapter 側3・CLI 側3）を入れると6件すべて FAIL し、戻すと PASS に戻ることを確認した。両面のどちらを変えても検出できる。
+- 突き合わせるのは discovery の一致だけである。`catalog` の namespace 失敗と `validate` の byte 一致は既存の試験が持ち、`inspect`・`trace` の実プロセス比較は #3420 CAPI-2a が持つ。
+
+## 14. 第8ラウンド（2026-11-09）: 空文字列の引数と既定値
+
+ADR-0048 §2.4 の「既定値の適用は共通契約で定める」を、CLI と MCP で確かめた。生出力は[第8ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND8_EMPTY_ARGUMENT_2026-11-09/README.md)にある。
+
+- `direction` と `mode` の値集合は、CLI の `argumentValues` と MCP の `inputSchema.enum` が同じ値を持つ。省略時の既定も両方 `direction=both`・`mode=summary` で一致した。
+- 一方、**空文字列を渡すと CLI だけが「未指定」として扱い、既定とは別の値へ落ちた**。`-mode ""` は結果が `mode=full`（rows=4）になり、省略時の `summary`（rows=0）と異なる。MCP は `-32602` で拒否する。
+- `-expected-fingerprint ""` は照合を省略するため、呼出し元が「空なら照合しない」つもりでいると、CLI では別Workspaceの結果を継続として使う経路が開く。
+- `trace` の3引数（`-direction`・`-mode`・`-expected-fingerprint`）を、フラグを書いたうえで値が空なら `INVALID_ARGUMENT`（exit 2）で拒否するよう修正した。省略時は従来どおり既定を使う。回帰試験は `cmd/tei/cli_trace_empty_argument_test.go`。
+- `model catalog -namespace ""` と `inspect -subject-kind ""` は変更していない。前者は「絞り込み無し」の意味があり、後者は「拒否する」点で MCP と同じで符号だけが違う（#3420）。
+
+起票は [#3605](https://github.com/hat47x/tei-platform/issues/3605)。
+
+## 15. 第9ラウンド（2026-11-09）: 空文字列の修正を統合後に再実測
+
+第8ラウンドの修正が `main`（`0067d6a1e`、PR #3607）に統合された後、CLI と MCP の両方から再測定した。生出力は[第9ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND9_EMPTY_ARGUMENT_REMEASURE_2026-11-09/README.md)にある。
+
+- `-mode ""`・`-direction ""`・`-expected-fingerprint ""` は、CLI が `INVALID_ARGUMENT`（exit 2）、MCP が `-32602` で、両方とも拒否する。
+- 3引数を省略すると `ok:true`・`mode=summary`。`-mode full` は `mode=full`。省略時の既定は保たれている。
+- 残る差は符号だけ（`INVALID_ARGUMENT` と `-32602`）。失敗分類の統一は #3420 の未決で、本ラウンドでは変更していない。
+
+#3605 は解消として扱える。Issue を閉じ、残る分類統一は #3420 に残す。
