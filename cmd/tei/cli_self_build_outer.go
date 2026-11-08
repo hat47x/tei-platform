@@ -38,18 +38,44 @@ type selfBuildOuterEvidence struct {
 	SupplyRecord  *SupplyCheck            `json:"supplyCheck,omitempty"`
 	Boundary      string                  `json:"claimBoundary"`
 	ChildRun      *selfBuildEntryEvidence `json:"childRun,omitempty"`
+	// IntentBinding is §4.8: the bytes this entry held, the fingerprints the
+	// child reported, and whether the two readings agree. It is present only
+	// when -intent-file is given.
+	IntentBinding *selfBuildIntentBinding `json:"intentBinding,omitempty"`
 	Error         *cliFailure             `json:"error,omitempty"`
 }
+
+// selfBuildIntentBinding separates "which declaration this entry held" from
+// "which declaration the child read". Recording only the child's fingerprint
+// would not detect a child that read a different declaration (§4.8, SC0-13).
+type selfBuildIntentBinding struct {
+	// IntentPath and IntentBytesDigest describe the bytes this entry held.
+	IntentPath        string `json:"intentPath"`
+	IntentBytesDigest string `json:"intentBytesDigest"`
+	ChildIntentDigest string `json:"childIntentBytesDigest,omitempty"`
+	ChildIntentFP     string `json:"childIntentFingerprint,omitempty"`
+	ChildPlanFP       string `json:"childPlanFingerprint,omitempty"`
+	CheckPerformed    bool   `json:"intentByteCheckPerformed"`
+	CheckMatched      bool   `json:"intentByteCheckMatched"`
+	L2BClaimed        bool   `json:"l2bClaimed"`
+	BoundaryStatement string `json:"boundary"`
+	UnperformedReason string `json:"byteCheckNotPerformedReason,omitempty"`
+}
+
+const selfBuildIntentBindingBoundary = "the entry held the declaration and the child reported its own readings; l2bClaimed is always false: agreement of digests is not proof that the child derived the same plan from the same meaning"
 
 const selfBuildOuterBoundary = "one child build launched by this TEI binary from a validated workspace; qualified is always false: an artifact is not acceptance, L3, or runtime authority"
 
 type selfBuildOuterArgs struct {
 	Workspace string
 	Intent    string
-	Supply    string
-	State     string
-	Output    string
-	Child     string
+	// IntentFile is the declaration this entry holds and hands to the child.
+	// -intent stays the logical ID; the file is the byte-level input (§4.8).
+	IntentFile string
+	Supply     string
+	State      string
+	Output     string
+	Child      string
 	// ChildArgs is the extra argv the caller passes to the child as JSON. The
 	// outer shape does not invent those arguments, but it must forward them.
 	ChildArgs string
@@ -71,7 +97,7 @@ func looksLikeOuterShape(args []string) bool {
 			name = arg[:index]
 		}
 		switch name {
-		case "-workspace", "-intent", "-supply", "-state", "-output":
+		case "-workspace", "-intent", "-intent-file", "-supply", "-state", "-output":
 			return true
 		}
 	}
@@ -84,6 +110,7 @@ func parseSelfBuildOuterArgs(args []string) (selfBuildOuterArgs, error) {
 	fs.SetOutput(io.Discard)
 	fs.StringVar(&parsed.Workspace, "workspace", "", "TEI workspace that declares the build intent")
 	fs.StringVar(&parsed.Intent, "intent", "", "build intent ID; recorded, not resolved by this entry")
+	fs.StringVar(&parsed.IntentFile, "intent-file", "", "build intent JSON this entry holds and hands to the child")
 	fs.StringVar(&parsed.Supply, "supply", "", "offline module supply passed to the child")
 	fs.StringVar(&parsed.State, "state", "", "isolated state directory for this attempt (required)")
 	fs.StringVar(&parsed.Output, "output", "", "artifact path written by the child (no-clobber)")
@@ -208,6 +235,33 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 			return 2, fmt.Errorf("INVALID_ARGUMENT: -child-arg is not a JSON array of strings: %w", err)
 		}
 	}
+	// §4.8 L2-a: this entry records the declaration bytes it holds. The bytes
+	// are hashed before anything starts, so a later change to the file cannot
+	// be mistaken for the declaration that was handed over.
+	var intentBinding *selfBuildIntentBinding
+	if strings.TrimSpace(parsed.IntentFile) != "" {
+		rawIntent, readErr := os.ReadFile(parsed.IntentFile)
+		if readErr != nil {
+			return selfBuildOuterPrecondition(out, report, "cannot read -intent-file: "+readErr.Error())
+		}
+		intentBinding = &selfBuildIntentBinding{
+			IntentPath:        parsed.IntentFile,
+			IntentBytesDigest: digestOfBytes(rawIntent),
+			L2BClaimed:        false,
+			BoundaryStatement: selfBuildIntentBindingBoundary,
+		}
+		// The declaration is forwarded to the child so both sides read the same
+		// bytes. The child reports its own digest and fingerprints back.
+		childArgs = append(childArgs, "-intent", parsed.IntentFile)
+	} else if strings.TrimSpace(parsed.Intent) != "" {
+		// A logical ID without a declaration cannot be byte-checked. Record why
+		// rather than leaving the absence unexplained (SC0-14).
+		intentBinding = &selfBuildIntentBinding{
+			L2BClaimed:        false,
+			BoundaryStatement: selfBuildIntentBindingBoundary,
+			UnperformedReason: "-intent names a logical ID only; -intent-file is required to bind the declaration bytes",
+		}
+	}
 	if parsed.Supply != "" {
 		childArgs = append(childArgs, "-supply", parsed.Supply)
 	}
@@ -217,6 +271,24 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 		return 1, err
 	}
 	report.ChildRun = &evidence
+	// §4.8: read the child's own report of what it read. Only a matching
+	// declaration digest plus matching fingerprints make the check performed;
+	// the result still does not claim L2-b.
+	if intentBinding != nil && intentBinding.IntentBytesDigest != "" {
+		intentBinding.ChildIntentDigest = evidence.ChildIntentBytesDigest
+		intentBinding.ChildIntentFP = evidence.ChildIntentFingerprint
+		intentBinding.ChildPlanFP = evidence.ChildPlanFingerprint
+		if evidence.ChildIntentBytesDigest != "" {
+			intentBinding.CheckPerformed = true
+			intentBinding.CheckMatched = evidence.ChildIntentBytesDigest == intentBinding.IntentBytesDigest
+			if !intentBinding.CheckMatched {
+				appendSelfBuildFailure(&evidence, "child reported a different declaration byte digest than the one this entry held")
+			}
+		} else {
+			intentBinding.UnperformedReason = "child did not report the declaration byte digest it read"
+		}
+	}
+	report.IntentBinding = intentBinding
 	report.OK = evidence.CrossCheckOK && evidence.FailureCause == ""
 	if !report.OK {
 		report.Error = &cliFailure{Code: "SELF_BUILD_CHILD_FAILED", Message: evidence.FailureCause}
