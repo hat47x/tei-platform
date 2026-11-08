@@ -51,6 +51,7 @@
 
 観測の補足:
 
+- **`requirements`だけは現行の成功時`result`がJSON配列**。`tei commands`の`requirements` entryに`resultShape: "array"`を追加する変更候補（#3347）は、既存の`tei.cli.requirements/v0`応答を変えずに例外を発見可能にする。`successShape`（外側の成功応答の構造）・`jsonContract`（エンベロープ等の扱い）・`resultShape`（`result`のJSON型）は異なる概念。`resultShape`を省略した他のコマンドは**object保証ではなく未宣言**であり、`world`のraw JSONや`version -json`のidentityに`result`があると推定しない。現在の`requirements`を実ビルド済CLIで検査する回帰試験に結び、他コマンドの`result`/diagnostics平坦化やbuiltin混在は本件で無断変更せず#3347で別判定とする。
 - 引数の未対応flagは、#2332で全広告コマンドが拒否するようになった。拒否も標準エラー（`inspect`、`trace`、`validate -json`はJSON）で、flag解析のusageの分だけstderrが長くなるコマンドがある（例: `knowledge-context`に未知のflag）。`version -json`の引数不正も、2026-11-07から実装が標準エラーへ返す（表の記載と一致）。
 - 2026-11-07から、`validate -json`・`model catalog`・`inspect`・`trace`・`workspace-files`の成功応答は`workspace`を持つ。`name`はmanifestの`workspace:`、`formatVersion`はmanifestの版、`manifest.sha256`はmanifestのバイトの照合値である。複数のWorkspaceが同じCanonical IDを持つ場合に、`worldFingerprint`（内容の同一性）だけでは読み元を識別できないためで、既存の欄を変えずに足す互換な変更とする（#3181）。`workspace:`を書かないmanifestは読み込まれ、`name`は空になる。この欄は受理・権限・排他の証拠ではない。
 - 2026-11-08から、`model catalog`の各`entries`要素は`prelude`を持つ。`true`はプロセス内の標準意味型（`std`名前空間とその型）であり、Workspaceが宣言したものではない（#3347）。`entries`だけを見ても、標準定義13件と利用者の宣言が混ざっていたためである。`declarationCounts.total`は`prelude`の要素を含まないので、空のWorkspaceは`entries`が13件でも`total:0`になる。欄の追加であり、`tei.cli.model/v0`と`tei.operations.model-catalog/v0`の既存欄は変えない。
