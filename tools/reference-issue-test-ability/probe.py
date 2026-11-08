@@ -222,8 +222,8 @@ def scoped_step_selftest(required: set[str], actual: dict[str, dict],
         raise AssertionError("duplicate Step receipt was accepted")
     controls["duplicate-receipt"] = "unqualified"
 
-    unverified = [{"stepId": x["stepId"], "verified": False
-                  if x["stepId"] == "validate-positive" else True} for x in receipts]
+    unverified = [dict(x, verified=False if x["stepId"] == "validate-positive"
+                       else x["verified"]) for x in receipts]
     verdict = scoped_step_coverage(required, unverified, scenario_sha,
                                    scenario_sha, True, expected_operations)
     if (verdict["inventory"] != "partial"
