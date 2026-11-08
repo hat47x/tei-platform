@@ -268,9 +268,34 @@ func (h *ReadOnly) InspectSubject(id, kind, subjectID string) InspectionResponse
 		}
 	}
 	if err != nil {
+		if h.services != nil {
+			// Provider-supplied typed errors may embed private roots, tokens,
+			// or a forged code. Treat both fields as untrusted at this boundary.
+			return InspectionResponse{Failure: selectedInspectionFailure(err)}
+		}
 		return InspectionResponse{Failure: operationFailure(err)}
 	}
 	return InspectionResponse{OK: true, Value: &value}
+}
+
+// selectedInspectionFailure preserves only the closed set of public Inspector
+// error codes. A Host-selected Provider must not set arbitrary client-visible
+// codes or include its private diagnostics in a typed InspectionError message.
+// Direct built-in Inspector behavior is intentionally kept separate.
+func selectedInspectionFailure(err error) *Failure {
+	var inspection *operations.InspectionError
+	if errors.As(err, &inspection) {
+		switch inspection.Code {
+		case operations.InspectionInvalidSubject,
+			operations.InspectionUnsupportedKind,
+			operations.InspectionNotFound,
+			operations.InspectionAmbiguous:
+			return &Failure{Code: inspection.Code, Message: "inspector could not resolve the requested subject"}
+		default:
+			return &Failure{Code: "OPERATION_FAILED", Message: "inspection service failed"}
+		}
+	}
+	return operationFailure(err)
 }
 
 func operationFailure(err error) *Failure {
