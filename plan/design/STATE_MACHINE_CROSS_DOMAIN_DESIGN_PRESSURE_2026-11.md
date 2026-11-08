@@ -434,7 +434,7 @@ Itemは未整理の情報を乱暴に保持してよい一般の単位であり�
 
 <!-- tei-20261108-d1-s2-context13-api-adr-refinement -->
 
-**実行順のOwnerは既に[Draft #3499](https://github.com/hat47x/tei-platform/pull/3499)のMASTER_PLAN作業領域GでS0〜S3に整理済み**。S0=CLI/Studio typed Service、S1=選択Providerの局所in-process Call、**S2=通常CLI dispatchとStudio Bridgeの実Call-siteを同一Contract/Sourceで結線**、S3=Build/Source/Authority/独立Expected/BOMの資格化。したがって本節のPX-01/02は新たな並行実装Issueを起こさず、#3499の**S2最優先**と#1251/#951/#1016のOwnerに接続する。Draft [#3378](https://github.com/hat47x/tei-platform/pull/3378)のCLI/Studio六Subject shadow parityはBuiltin/direct-Operation基準であり、Provider実呼出しの代用品ではない。
+**実行順の正本はmain統合済み[#3481](https://github.com/hat47x/tei-platform/pull/3481)の[MASTER_PLAN「一機能で検収する横断の最短経路」](https://github.com/hat47x/tei-platform/blob/main/plan/MASTER_PLAN.md)**とし、P0-D/M/R/C→P1-P/T/C→P2-Bの順序を本Draftで再定義しない。Inspector D1の局所的なS0〜S3補正は[Draft #3499](https://github.com/hat47x/tei-platform/pull/3499)がMASTER_PLAN作業領域Gで担当する。S0=CLI/Studio typed Service、S1=選択Providerの局所in-process Call、**S2=通常CLI dispatchとStudio Bridgeの実Call-siteを同一Contract/Sourceで結線**、S3=Build/Source/Authority/独立Expected/BOMの資格化。したがって本節のPX-01/02は新たな並行実装Issueを起こさず、#3499の**S2最優先**と#1251/#951/#1016のOwnerに接続する。Draft [#3378](https://github.com/hat47x/tei-platform/pull/3378)のCLI/Studio六Subject shadow parityはBuiltin/direct-Operation基準であり、Provider実呼出しの代用品ではない。
 
 **現在性の分離**：SourceIndexだけの変更（main #3477）、外部Providerの原文・Manifest変化（Draft #3479）、判定規則Fingerprint変化（Draft #3490）は異なる失効原因。World FPや同じJSONだけで選択・実呼出し・受理の現在性を再利用しない。各Ownerの既存検査へ委譲し、新鮮度Registryや第二Evidence Engineを作らない。
 
