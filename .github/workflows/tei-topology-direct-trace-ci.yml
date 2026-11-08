@@ -97,9 +97,25 @@ jobs:
             -subject-kind semantic-relation \
             -subject-id sales.order.customer \
             -direction both -mode full > "$RUNNER_TEMP/tei_trace_b.json"
+          # A second Workspace with identical semantic Sources but changed
+          # manifest bytes/name can produce the same World and Source Index FP.
+          # Create only outside the checkout; do not modify repository fixtures.
+          mkdir -p "$RUNNER_TEMP/tei_trace_other_workspace"
+          cp -a reference/workspace/. "$RUNNER_TEMP/tei_trace_other_workspace/"
+          sed -i 's/^workspace: tei_reference$/workspace: tei_reference_copy/' \
+            "$RUNNER_TEMP/tei_trace_other_workspace/tei.workspace.yaml"
+          grep -qx 'workspace: tei_reference_copy' \
+            "$RUNNER_TEMP/tei_trace_other_workspace/tei.workspace.yaml"
+          go run ./cmd/tei trace \
+            -workspace "$RUNNER_TEMP/tei_trace_other_workspace" \
+            -scope reference-observation \
+            -subject-kind semantic-relation \
+            -subject-id sales.order.customer \
+            -direction both -mode full > "$RUNNER_TEMP/tei_trace_other_workspace.json"
           node reference/tei-topology-coverage/verify-cli-trace.mjs \
             "$RUNNER_TEMP/tei_trace_a.json" \
-            "$RUNNER_TEMP/tei_trace_b.json"
+            "$RUNNER_TEMP/tei_trace_b.json" \
+            "$RUNNER_TEMP/tei_trace_other_workspace.json"
       - name: Verify repository checkout unchanged
         if: always()
         shell: bash
