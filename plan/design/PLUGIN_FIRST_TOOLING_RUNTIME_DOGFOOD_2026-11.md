@@ -256,3 +256,130 @@ tests:
 - https://github.com/WebAssembly/component-model/blob/main/design/mvp/WIT.md
 
 **実施状況**：2026-11-07の他チャット・現行main・既存Issueの静的突合と移行条件の設計追補。PD-0〜PD-7、Trait合成、actual two consumer、実Go Build/Studio/UI/Host、CLI Skill/MCP、実DB/HTTP副作用、Self-buildの新規試験は**NOT RUN**。正式Schema/ABI、数値Budget、Owner Meaning Acceptanceは**NOT ACCEPTED**。本追補は#1119のG0〜G4を置換せず、実証時の必要証拠を既存Gateへ渡す。
+
+
+## 14. 横断収束：実行可能Offer・表示逆写像・受信側SinkをD1の契約監査へ接続（2026-11-08案）
+
+**位置づけ**：#1251のD1/PD-1〜5に渡す最小の検証差分。#951/#1016のContract/Provider/Resolution、#3278のAtomic Trait、#1158のOperation/Surface、#1180/#2514のScenario/Independent Expected、#3267のBOM、#2516のDisclosure、#2497のProjection/逆写像が各正本。新しいCore enum、第二Resolver、権限・Evidence・Scenario SSOT、共通TEI Hostを作らない。以下のOperation Offerは**説明上の集合名**であり、正式Schema/ABIの採用ではない。
+
+### 14.1 「広告できる」と「実行できる」の間に残る空白
+
+一つの操作の受入で、次の独立観測を揃える。異なる層を一つの `available=true` に潰さない。
+
+| 層 | 既存Ownerと確認対象 | 不成立時にしてはいけない推論 |
+| --- | --- | --- |
+| 意味・型 | #2619/#2620/#3278：Role、Trait義務、型、NULL、Effect、Failure | 名前/構文が合うだけで意味が満たされたとしない |
+| 広告・入力 | #1155/#1158/#3242：CLI/MCP/Studioに投影する引数許容値、既定値、条件付きEffect | Help/Discoveryに載っただけで全入力Variantが実呼出し可としない |
+| 到達可能性 | #1251/#951/#1016、Hookの既存Validation：必要なPattern/Handler/ProviderとScopeが実接続される | HookやSurface Contributionの宣言だけで実行済み・実装済みとしない |
+| 実構成 | #943/#1089/#1251：選択Provider、実Build input、linked Artifact、Host入口で観測した実Provider | 選択B・実呼出A、同じResult bytesを合格にしない |
+| 現在の効果 | #1174/#2516：Operation Variant、実Write/Receipt、対象・Grant、Unknown | `read-only`名義のNamed File Outputや実DB unknownを無作用扱いしない |
+| 受信・公開 | #2509/#2515/#2516/#3262：CLI/stdout、MCP Tool、AI Harness Session/Log、Studio/SHOへの配送と保存/外部送出の観測 | ProviderがReadであるだけで結果の非永続・非外部送出・完全受領を保証しない |
+
+**既存実例への接続**：
+- Draft [#3306](https://github.com/hat47x/tei-platform/pull/3306) はHook `uses` がApplicationの `command` Patternへ到達しない場合を検証時に拒否する実装候補。PluginのOfferでも同種の「宣言はあるが実Handlerが無い」をD1負例にする。HookのCommand経路をそのままPlugin専用Core固定仕様へ転用しない。
+- [#3307](https://github.com/hat47x/tei-platform/pull/3307) は既存CLI Discoveryの引数許容値・既定値と実受理を一致させる限定的変更。これを、全Input/Operation Variant/Provider適合が既に自動導出された証拠とはしない。
+- 実CLI [#3182](https://github.com/hat47x/tei-platform/issues/3182) とDraft [#3302](https://github.com/hat47x/tei-platform/pull/3302)：`view`の`-execute` VariantはNamed Local Fileへ書ける。実出力と契約上のEffect広告を別々に検証し、実DB Commitへは昇格しない。
+- [#3309](https://github.com/hat47x/tei-platform/pull/3309) が報告するDSH headlessの**合成canary限定**観測は、read-onlyで取得したTool結果が永続Session Logにも現れ得ることを示す。他のSink、TEI製品、第三者環境へ無条件に一般化しない。受信側保存先の実測は別Ownerで継続。
+
+### 14.2 表現型Pluginと標準データ構造の境界
+
+**データのIdentity/Relation/Topologyは、Canvas・Table・Graph・Markdown・SHOの表示上のCardやNodeとは別**。SUI/KJ/マインドマップで同じItemが複数Canvasへ現れても、Itemの同一性・Source/Accepted Meaning・依存を重複して複製しない。未分類のRaw ItemはPlugin未導入・無効化後も保持し、未解釈を「存在しない」に縮退させない（#2044/#2497）。表示Pluginは必要なShape/Axis/Unit/Source/Multiplicity/Orderを契約として要求し、非単射・損失あるProjectionは `renderable` と `editable/writeback` を区別する。逆写像の対象Identity/Revision/権限が一意に定まらない限り自動Writeを拒否する。新しい万能ItemKindやCanvas専用Core型を要求しない。
+
+Data Workbench #3270、REST Decision Graph #3274、三要素モデルとCRUD/SHO、SUI Canvasを**異種Consumer**として使う。どれも同じContract/Providerの意味とEvidenceを参照できるが、画面で操作できることから元データへのWrite資格を推論しない。Source保存は開示や業務意味受理とは別Claim。
+
+### 14.3 最小追加負例（既存#1180/#2514のIndependent Expectedへ委譲）
+
+| ID | 反例 | Expected / 既存受入Owner |
+| --- | --- | --- |
+| PO-01 | Plugin Surface/HookがOperationを宣言、実Handler/Pattern到達経路なし | `declared`のみ、`executable`不成立と診断。#1251/#1158／Hook類似#3306 |
+| PO-02 | CLI広告の許容値/既定値/条件付きEffectと実Provider受理が違う | Offerの対象Variantを拒否・診断。#1155/#1158/#3182 |
+| PO-03 | Bを選択したがCLIまたはStudioがAへ実呼出、返却bytes一致 | Host由来の実Entry不一致でFAIL。#1251 D1-W01〜03 |
+| PO-04 | Read-only SourceをToolで取得し、受信Harnessが結果を永続Sessionへ記録 | Provider EffectのReadと受信SinkのWriteを別観測。Grant/開示とSinkの実測範囲外はunknown。#2515/#2516 |
+| PO-05 | 同一Itemを二Canvasへ表示し片方で非可逆編集を試す | 同一Identity・重複計数なし。逆写像/Revision未確定ならWrite禁止。#2497/#1124 |
+| PO-06 | Renderer Plugin無効化、未知Raw Itemが存在 | Raw Source/Refは保持、対応するView/Write/Meaningだけunknown/unsupported。#2044 |
+| PO-07 | NULL・単位・時点が不適合なProviderを型名だけで選択 | Structural/semantic Conformanceを別検証し不適合を拒否。#951/#3278 |
+| PO-08 | 4バージョンtuple中Synthetic Witnessが1件だけ実Call未観測 | 実組合せQualifiedへ加えずmatrix-incomplete。#3267 |
+| PO-09 | 同じLockでも受信先のDisclosure/GrantまたはSource Revisionが変化 | 過去のResult/Cache/BOM Evidenceを現在の開示・実行資格へ流用しない。#3262/#3271/#2516 |
+
+### 14.4 最短の実装順と停止線
+
+1. **D1を肥大化させない**：既存`inspect`一操作を、A/B Provider・CLI実Call-site・Studio実Call-site・Host観測で実証。PO-01/02/03/07を優先し、同一結果bytesの誤配線を検出する。
+2. **独立した横断pressure**：D1で得たTyped Offerのread/unknown/closureを一つのData Workbench Readerへ接続する。別レーンでPO-04の受信Sink実験を#2515へ、PO-05/06の非可逆表示・Raw保持を#2497へ返す。これらをD1完了のHard Dependencyにしない。
+3. **資格の引渡し**：実選択・実Build/Invoke・独立Expectedだけを#3267に渡す。合成witnessや独立Tool PASSのUnionからVerified BOMを作らない。外部Host、実DB Effect、SHO/SUI双方向編集、G4 Self-buildはそれぞれ実Target証拠で後続評価する。
+4. **費用対効果**：新しいContract/Providerを一つ追加するためのCore差分、Consumer別特別処理、Open APIへのAdapter変更量、D1誤PASS/誤失効、Sinkの未観測割合、Build closure混入、入力/出力配送の完全性を記録する。第二正本や新Core enumが必要になれば抽象境界を見直す。
+
+**状態**：横断議論とGitHub上の既存Issue/PRからの**設計・受入案**。PO-01〜09をTEI製品経路で実行したわけではない。Plugin実2 Consumer、実BOM資格、SUI/SHO Writeback、実MCP Disclosure/Sink、正式Owner Meaning Acceptanceは未受理・未実証。旧/進行中PRの局所PASSをこの統合全体のPASSへ拡張しない。
+
+
+## 15. Function配置・Topology Binding・変更影響をPlugin-first適合に接続（2026-11-08横断案）
+
+**今回の差分**：§14は「Plugin Operationを宣言・表示・実呼出できるか」を扱った。本節はその次の独立条件、すなわち**同じ能力をどのFunction Data Contextの、どの粒度・関係・表示インスタンスへ適用できるか**を限定する。他チャットの標準データ構造／標準表現型分離（#2495/#2497/#2507）、Functionに置く表現インスタンスとData Context（#2506/#1127）、ViewChange→Intent（#2500）、依存範囲の再資格化（#2582/#2600）、Plugin-first（#1251/#951/#1016）を接続する。正式新Schema/ABI/Core列挙を本節で採用しない。
+
+### 15.1 機能の提供とFunction内の適用・配置は異なる
+
+- **Representation Definition / Pluginの能力**：Table/Tree/Graph/Timeline/Audio/Video等の表現型、必要Shape・Axis・Unit・Cardinality・編集Intent・Target制約を宣言する。Pluginがinstall/discoverされたことは実装選択・Function配置・現在Grantを意味しない。
+- **Data Context Definition/Instance**：Functionが参照するSemantic Subject/Relation path、Entity/Edge/Path occurrence/Aggregate等の粒度、取得Sliceの完全性/partial/unknown、Source/Query/Rule Revision・selection epochを持つ（#2506）。複数Contextを一つのJOIN出力へ無断同一化しない。
+- **Representation Instance in Function**：表現型の実利用は必ずFunction内のインスタンスとして配置し、どのContextとRelation/Topologyに接続するかを明示する。表現型Pluginの登録時に全Functionへ自動配置しない。複数Canvasが一つのItemを別Occurrenceとして表示してもData Identityを複製しない。
+- **Structure/Topology Binding**：Data側の同一性・向き・多重辺・順序・時間軸/座標系・単位・NULL・部分集合を、表現型側でどの範囲まで保持/変換/喪失するかを宣言する。形状適合と用途適切性（例えば集計値を個別Entityとして編集できるか）は独立に診断。自動推測で元の関係を増減しない。
+- **Operation Intent／Writeback**：表示で可能なSelect/Drag/Editは、元のEntity/Edge/Path occurrenceとRevisionへ一意に戻せるときだけ型付きIntent候補を作る。Provider適合・Host現在Grant・実Commit/独立Readはその後の別資格（#2500/#1174）。非単射な表・Graph・SHO文章の逆書戻しは原則拒否し、Candidate/Reviewへ戻す。
+- **Openな拡張との両立**：未知の表現Pluginや独自Traitでも、契約を満たす範囲を表示・適用候補にできる。ただしOpen/Stable/Internalの公開保証、利用可否、Owner Meaning Acceptance、現在実行権限は別。Trait Fulfillmentの正本は#3278、Consumer実証は#3279。
+
+**解釈上の重要点**：`Plugin selected`、`Function-bound`、`renderable`、`editable`、`operation-offered`、`executable-now`、`effect-observed`は、同じBooleanで管理しない。必要な既存契約の結果をread-onlyに合成した用途相対の判断とし、第二Availability Registryを作らない。
+
+### 15.2 変更時には「何を再Buildするか」と「どの表示・操作Claimを再確認するか」を別々に判断
+
+| 変更 | 表示／Functionへの影響 | Build/BOM／実行資格への影響 |
+| --- | --- | --- |
+| 未選択の表現Plugin/Provider追加 | Catalog候補のみ変化。Functionの既存Bindingは原則維持。ただしDefault選択へ作用する場合はSelection再確定 | 実Build input不変ならArtifact維持候補。実import/init/Embed混入時は再評価（#1251/#2600） |
+| 選択Pluginの実装改版、Contract意味は同じ | 対象Representation/AdapterのConformanceを再確認。受理済みData Meaningを自動変更しない | 実Provider/Artifact/Targetのexact資格を再確認。旧BOMのVersion文字列一致だけではPASSにしない |
+| Function内の表示位置・スタイルだけ変更 | 表示Artifact/Occurrenceは変更。Entity/Relationと独立の意味・データClaimは維持候補 | Buildへ実消費された範囲だけ変更。UIだけの編集をRuntime/DB全体失効にしない |
+| DataのRelation/多重度/軸・単位/粒度の変更 | 該当Binding、集計、操作Intentの意味・逆写像を再確認。別Contextの無影響は依存根拠がある場合のみ維持 | Data/Query/Provider/Generatorの実消費閉包を照合し局所再Build |
+| D2部分取得・親Selection epoch更新・遅延旧応答 | D2依存Claimはpartial/stale。独立D1 Claimまで無根拠に失効させず、旧結果を新Contextへ混ぜない | Plugin実装が同じならBinaryを再Buildする理由とは限らない。Current disclosure/Action資格は再評価 |
+| Provider/Source A→B→A、旧Lock・Grant再登場 | 見かけの表示一致だけで旧現在資格は復活させない。必要時に再取得・再解決 | #2600/#3267の旧Evidence再利用条件・Artifact来歴とCurrent Grantを別判定 |
+| 表現Plugin無効化・不明Source | 未解釈Raw Item/Sourceを保持、対応Viewはunsupported/unknown。存在しない・削除済みへ変換しない | 選択済みProvider欠落時は黙ってDefault/旧直呼出へfallbackしない |
+
+**増分更新は追加だけではない**：#2582のLEFT JOINの未一致行、NOT EXISTS、Top-N、集計のように、入力追加で既存表示が消える場合は`retract/replace`の必要性を明示する。Producerが部分取得しか保証できないとき、0件と「存在しない」の同一化を拒否。Cache hitやBOM適合履歴でCurrent Result/Disclosureを保証しない。
+
+### 15.3 既存Scenario/Independent Expectedへ渡す追加圧力（PFB-01〜11）
+
+| ID | 自作最小ケース | 独立Expected／担当 |
+| --- | --- | --- |
+| PFB-01 | Table Plugin install済み、FunctionにRepresentation Instance未配置 | CatalogでdiscoverableでもFunction-bound/renderedとしない。#2507/#1251 |
+| PFB-02 | 同一ItemをCanvas A/Bに二Occurrenceとして表示 | Item Identityは1件、View Occurrenceは2件。片側の位置変更でDataを複製/意味変更しない。#2497/#1124 |
+| PFB-03 | 同labelのNode 2件＋同source/targetの異なるEdge 2件をGraphへ投影 | Node/Edge ID・方向・多重性を保持。表示label一致を同一Entity/Edgeへ畳み込まない。#2495/#2497 |
+| PFB-04 | 子D1=2件、D2=3件、JOIN投影6行とD1集計1行 | 6表示行≠子Entity 6件。集計行から個別書戻し不可。#2506/#2507/#2500 |
+| PFB-05 | D1全件、D2先頭ページのみ。D1だけの合計とD1×D2のJOIN集計 | D1依存の限定Claimは維持候補。D2依存の全件Claimはpartial/unknown。#2582/#2586 |
+| PFB-06 | Window1で親A→B、AのProvider応答が遅延到着。Window2はAを表示中 | W1のB Contextへ旧A結果を混ぜず、W2のAまで誤失効しない。#2506/#2582 |
+| PFB-07 | Tree/Graphで多親のEdgeをdrag/edit、表示上はEntityカードを移動 | Edge/Path occurrenceを型付き対象にし、Entity deleteや全親削除へ変換しない。対象曖昧ならIntent拒否。#2500/#2497 |
+| PFB-08 | RendererのAxis/Unit/時点/座標系不適合、形状だけは成立 | Render候補と適切性/変換資格を分離し、無音の単位変換・意味受理を禁止。#2495/#2507 |
+| PFB-09 | 未選択Plugin追加／Default変更／実Buildへの`init`混入の3例 | Catalog変更・Selection変化・実Build混入を判別し、不要失効と誤Reuseの双方を拒否。#1016/#1251/#2600 |
+| PFB-10 | 同Resultを返すProvider A/B、Bを選択・Aを実Invoke | 値一致でも実Callの不一致をFAIL。Function Bindingが正しくても実Implementation資格は別。#1251/#951 |
+| PFB-11 | Plugin取り外し・Raw Itemのみ残存、CLI/Studio/SHOは異なるRenderer | Source/Identity保持と表現不能を区別。開示不能の件数/Pathを無断表示しない。#2044/#2516 |
+
+### 15.4 段階・Owner・非目標
+
+- **P0／D1既存優先**：#1251のInspector一操作、A/B Provider、CLI/Studio実call-site、Hostでの実Entry観測と独立Expectedを先に通す。PFB-10はD1-Wと同じScenarioを再利用し、別Runnerを作らない。
+- **P0並行／Headless Binding**：#2506/#2507/#2497/#2500の既存FixtureからPFB-01〜05/07/08を対象に、一つのFunction、二Context、Table+Graphの二表現インスタンスを**read-only**でinspectする。合成入力だけならReferenceとして明記し、Product Parser/Studioでの実利用と区別する。
+- **P1／変更影響**：PFB-06/09と#2582/#2600の依存Closureを結合し、Build Artifactの失効とFunction表示/Action Readinessの失効を別票で実測。未知依存はunknown。BOMのexact tuple資格は#3267が所有する。
+- **P1以降／Writeback/Target**：#2500/#1174で非単射View→Intent候補→Host実Grant→実Effect→独立Readを順に検証。Java/.NET/Go、SUI/SHO/Studioは必要な実Consumerだけ選択し、新TEI Host前提を設けない。
+- **測定**：Core変更数、Plugin独自Adapter数、誤Entity/Edge対象数、NULL/partial過大Claim、無関係Context/Artifactの誤失効、依存変更見落とし、CLI/Studioの意味差、独立Expectedの負例検出率、構成手順・生成AI指示数。新特別機構のコストが優位なら本抽象案を縮小/撤回する。
+
+**責務**：#2495構造分類、#2506 Data Context、#2507 Function Pattern適合、#2497投影、#2500逆写像、#2582反応/局所失効、#951/#1016 Resolver、#1251 CLI/Studio Plugin移行、#3278/#3279 Trait、#2600 Build/Cache、#3267 BOM、#1180/#2514試験、#2516開示。既存正本へ参照・引継ぎし、新Function Binding Store、第二Resolver/Renderer Engine/Cache/Runnerや新Gateは増やさない。
+
+**状態**：設計・負例・受入順の追補。新Function Bindingの正式Schema/ABI、PFBの実Go/Studio/GUI/Host/DB、製品Graph/Canvasの二Consumer、BOM資格、Ownerの意味受理は**NOT RUN/NOT ACCEPTED**。過去の合成Reference PASSをこの統合PASSとしない。
+
+
+### 15.5 三つのTopologyと媒体軸をPlugin Consumerが再解釈しない（PR #3192/#3222からの限定受入）
+
+二つの表現型を単純に並べるのでなく、**(a) Data topology**（同一性、Relation/Edge、集合/順序/量/時間・空間の意味）、**(b) Representation topology**（Panel/Tab/Tree/Graph/Chart/Media trackのSlot/軸/Occurrence）、**(c) Function-owned Binding topology**（どのContext/Relation occurrenceをどの表現Slot・軸へ接続し、何を変換・喪失するか）を分ける。Functionに属するのは表現型の**InstanceとBinding**であって、標準表現型のDefinitionそのものではない。各層は標準Record/Relation/Graphでread-onlyに説明可能な候補とし、独自Canvas Store/Binding Resolverを新設しない。
+
+**軸は名前だけで同一にしない**。元DataのDomain/Event time、SourceのObservation/Acquisition time、MediaのPlayback time、文書のStructural position（文字/段落/ページ）を区別する。文章→TTS朗読、数値→Sonification、ページ→動画のように新しい時間軸を生成する変換は、原データの時間軸を「保持」したと宣言できない。Source↔Playback/Span対応の変換版、部分対応、丸め・量子化、Source Revisionを根拠として記録し、同期Selectionを元Sourceへの編集や許可に自動昇格させない。Decimal sliderの有限stepでは高精度値を無損失更新できるとしない。Tree上で多親DAGの第二親を不可視にした場合も元Relationを消さない。
+
+**差分のOwner**：標準構造・軸/媒体の定義と既存RP-01〜08は [Draft PR #3192](https://github.com/hat47x/tei-platform/pull/3192)、複数View間のSelection/State/更新境界と既存MV-01〜08は [Draft PR #3222](https://github.com/hat47x/tei-platform/pull/3222)、Projection損失は#2497、Function Bindingは#2506/#2507、逆写像は#2500、Target Rendererは#997、Source書戻しは#1124を参照する。本Plugin-first計画は**そのRequirementがProvider選択・実Load/Invoke・Display/Write Offerへ正しく伝播するか**だけを検証し、RP/MV試験を重複定義しない。
+
+**Plugin側の追加拒否条件（PFB-12〜14）**：
+- **PFB-12**：再生時刻が一致しても原Event time・文書Source spanが異なる二Representation。選択同期は許容し得るがSource更新対象の一意性/原時刻一致を推定しない（#3192/#3222）。
+- **PFB-13**：Decimal値を低分解能Sliderへ投影。読み取り/近似表示は可能でも同じ正確値へWritebackできる保証がなければ編集不可（#3192/#2497）。
+- **PFB-14**：Function A/Bで同じ表現型Definitionを使うがContext/Disclosure/Selection epochが異なる。共有Plugin/Renderer実装は可、Functionの操作対象・現在Grant・保存/受信Sinkを共用しない（#2506/#2516）。
+
+**受入停止線**：#3192/#3222は現時点ではDraftであり、実Media/Renderer/複数Consumerの合格を示さない。Plugin-first D1 Inspectorに媒体/Graph GUIの完成を要求せず、PFB-12〜14は後続Consumer pressureに留める。既存Test/Independent Expected #1180/#2514へ接続し、第二テストRunnerを置かない。
