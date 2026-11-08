@@ -665,3 +665,78 @@ Browser Memory／localStorage／IndexedDB／Redis／Local Fileは同じ抽象的
 **停止条件**：Traitを増やしても標準実装・手動不足診断・合成適合・最適化効果のいずれにも具体的改善がない、演算の非単調性を依存宣言で過少評価、退避すべき確定値をDisposableとして削除、測定未実施を性能改善と呼ぶ、独立的なCache Authority/Planner/Resolverを導入する場合は、Trait化せず既存Query/Resource/Policyの表現へ戻す。
 
 **今回の資格**：他レーンの既存#2582/#3271/Optimization契約と#3278/#3279の照合・受入候補の追加だけ。正式Incremental Trait ID/DSL、Native Browser Provider、実Cold/Warm Bench、TCO-01〜09、実Go/Studio/SQL/DB、Owner Meaning Acceptanceは**NOT RUN／NOT ACCEPTED**。
+
+
+## 17. AI性能チューニングの観測を原子的Traitの履行へ接続する（2026-11-08横断・受入案）
+
+### 17.1 今回確認した現行main：合成Referenceの成功と実Providerの資格を分ける
+
+[AI性能チューニング設計§9〜10](AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md)と[main統合PR #3520](https://github.com/hat47x/tei-platform/pull/3520)により、**設計上のHint／合成Call Observation／統計Window／Provider選択・呼出し申告／開示・分割受領を、同じ条件で照合する限定Reference**が存在する。同PRの`synthetic-controls`はGitHub Checkでsuccessと確認できた。Referenceは19件の独立合成Expectedを保持するが、実TEI Source、実DB Query、実Provider、Host現在Grant、実Tool配送、AI改善、実性能計測を実行していない。この範囲を**「input-consistent／調査候補」**と呼び、Runtime Trait Fulfillment／BOM Qualified／Performance Improvementへ昇格させない。#3520の同HEADでは別のroot `govulncheck` checkにfailureがあり、**Repository全体が無条件にPASSしたという主張はしない**。
+
+また[main #3371](https://github.com/hat47x/tei-platform/pull/3371)はStudio Hostの型付きInspector入口を前進させたが、通常CLI起動側の[Draft #3381](https://github.com/hat47x/tei-platform/pull/3381)と組み合わせた**二つの実Consumerにおけるexact selected Provider実Callback**は未資格のまま。[main #3516](https://github.com/hat47x/tei-platform/pull/3516)は**実Go HTTP Host→既存Driver→合成Adapter Invoke**の限定経路を実証したが、実業務DB Commit、Trait合成BOM、CLI/Studio D1bを証明しない。[main #3479](https://github.com/hat47x/tei-platform/pull/3479)はImported Provider Source-only driftをConsumer Source Indexとは別に検出する実Go Referenceを加えた。**観測できたものの粒度でClaimを止める**。
+
+### 17.2 Performance Profile、Trait、Hint、Instrumentationの役割分担
+
+最適化用の`Interactive`／`ReadHeavy`／`WriteHeavy`等の**Performance Profileは「典型的なWorkload／Budget／実装選択制約」の候補集約**であり、単独で `Fast`、`LowMemory`、`Fresh` という**実測済み保証や原子Traitにはしない**。ProfileはOwnerが定義したNFR、Target/Resource制約、必要な原子Trait、Advisory Hintに展開する。RuntimeやUIの既定実装も無条件に固定しない。
+
+| 宣言層 | 宣言によって必ず起こること | 必ずしも発生しないこと |
+| --- | --- | --- |
+| **Required atomic Trait** | そのSubject/Scope/Targetでの必要Operation/Invariantと、Default/Generated/Provider/Manualのいずれかによる履行または未実装診断 | 生のTrace、特定Profiler、既定の外部Collector、本番Grant |
+| **Required measurement contract（候補）** | 指定Operation/Window/計測範囲で、必要な観測点・単位・Sampling/欠測・収集失敗を実装/検証する。手動実装を要求してもよい | 遅延ゼロ、全件Trace、全環境での同一p99、計測値の正しさまでの自動証明 |
+| **Advisory optimization Hint** | 候補生成・選択の際に使われたか／無視されたかを説明できる | Optimizerの自動実行、対象のTrait Requiredを満たすこと |
+| **Performance Profile** | 必要なNFR/候補Trait/Hintの解決と、各不足の診断。対象Workload/Targetを明示 | プロファイル名から一律の物理キャッシュ、DB Index、Batch、SSR、Telemetry常駐を強制 |
+| **Observed measurement** | 取得Source/Window/Attempt/Scopeと実観測または合成申告の資格を明示 | SLO達成、改善率、Source Meaning Acceptance、今の権限 |
+
+Traitに`Observable`という曖昧な大型保証を追加するよりも、**何を誰がどの範囲で観測する義務か**を既存Operation/Provider/ScenarioのContractに束縛する。**計測機能の未設置でも動く対象**と、SLO検収などのため**計測をRequiredにした対象**を区別する。必須Telemetryが未提供の場合は観測義務の`unfulfilled/unknown`であり、業務Operationを停止すべきかどうかは別の適用Policyで判断する。機密漏洩の危険や独立測定手段がない場合に、Profilerを黙って有効化しない。
+
+### 17.3 AIの最適化提案はGraph PatchやPlugin選択に戻すが、証明を飛ばさない
+
+```text
+Typed Source + Required Traits + Scope / Accepted Meaning
+             │
+ Design Hint / existing Workload Profile
+             │
+ Real Observation? ─── Synthetic Reference (input-consistent only)
+             │                              │
+             ▼                              └→ investigate / unknown
+ Optimization Proposal（AIが提示する候補）
+             │  Target/Effect/Cost/Expected/Hook Slot
+             ▼
+ Existing Provider Selection / Effective Lifecycle Graph / Generator
+             │  Source/Provider/Rule Rev、Graph Patch、Target exact Lock
+             ▼
+ Independent Correctness & Effect Conformance
+             │
+ Same Workload Benchmark + Measurement overhead
+             │
+ Owner/Host-approved apply → Actual Invoke / Receipt
+             │
+ Post-change Observation / rollback qualification
+```
+
+AIはSource内のCardinality、Relation、Query Sort/Limit、Nullable、Negative Dependency、Data Context epoch、Cached/DerivedのRebuildability、Provider/Hookの適用箇所から**設計上のヒント**を抽出できる。一方、実行回数・Rows・Pool滞留・Latency・DB計画は**測定された期間・範囲にのみ帰属する**。`queryReadCalls>=3`のような合成条件は「反復調査候補」であり、N+1と確定したことやBatchで改善した証拠ではない。Agentが生成するOptimization Proposalを直接Provider Override/DB DDL/Runtime Grantとして実行しない。
+
+**Graphとの結合**：Performance Observer、Analyzer、Strategy、Verifierは新Core enumでなく既存Plugin/Functionの実装Role候補。OptimizerがLifecycle Graphの許容Hook SlotへPatchを出す場合は§15の**全経路Trait Obligation／Effect Boundary／再検証／Target Lowering**を経る。性能Observerを追加したことで新たな外部送信・Storage Effectが生じる場合、そのEffectも明示し、既存のread-only保証、秘密保護、現在Grantと衝突していないか評価する。**Hookを入れた＝実観測した、Graphで選んだ＝Providerを呼んだ、前後二つの数値＝改善した**、の三つを拒否する。
+
+**Evidenceの失効を三重に判定**：Consumer managed Source/World変更、Imported Provider raw/Manifest変更（#3479）、Capability Rule/選択実装変更（main #3490）を別々に観測し、実依存閉包に影響するTrait Binding・Benchmark・BOMの行だけ再資格化する。同じ表示Version、出力byte、過去のCache hit、同一World fingerprint、A→B→Aから旧計測やCurrent Disclosureを復活させない。部分的なDesign Context・欠落したTrace・未受領のTool Reply・不一致Histogramから全Workloadのp99/SLOを確定しない。
+
+### 17.4 追加の受入圧力：既存AIチューニングとTraitテストの共通照合列
+
+次表は[AI性能チューニングAT-01〜14](AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md)と§16 TCO-01〜09、[#3279 TR-01〜11](https://github.com/hat47x/tei-platform/issues/3279)の**結合点**であり、独立Expectedの第二正本・新Test Runnerではない。実行はそれぞれ既存#1180/#2514に委譲する。
+
+| ID | 一要因だけ変える | Trait／実装／性能の期待する切り分け |
+| --- | --- | --- |
+| **TAT-01** | 計測をAdvisory→Requiredに変更、Observerは未配置 | 業務Operationが動いても**計測の実装義務は未充足**。Hintのみなら必須機能の欠落としない |
+| **TAT-02** | 合成Referenceで`input-consistent`かつ19件の合成ExpectedをPASS | 「調査候補」のみ。実Provider Invocation/本番Telemetry/SLO/BOM資格には昇格不可 |
+| **TAT-03** | 同じOperation/Queryの低Cardinality summary、Sampling/Histogram境界だけ変更 | 両期間のp99・改善率の機械比較は不可。Sample Coverageと欠測範囲を説明 |
+| **TAT-04** | 性能ObserverのHookがRaw SQL/Principalを外部送信する、またはTargetで未呼出し | 意図しないEffect／Disclosure違反、Actual Invoke欠落を拒否。Observer選択だけでTrait履行としない |
+| **TAT-05** | AI提案によりQuery Pushdown/Batch/Cache Placementを変更、Result値は同じ | NULL/粒度/順序/Grant/Effect/Sourceと独立Expectedを照合し、同条件のp50/p95/費用を別評価。性能未測定なら改善未確認 |
+| **TAT-06** | Source Index不変でImported Provider rawのみ変更／Capability Selection Ruleのみ変更 | 影響したProvider/Rule/Trait Evidence・Benchmarkの資格を保留。無関係Scopeの全Artifact失効は避ける |
+| **TAT-07** | 計測有効化でCPU/Memory/p95退行、またはCollectorが停止 | 実測した計測費を記録し、必須契約に従った限定縮退/拒否。業務のEffect結果をTelemetry障害により捏造しない |
+| **TAT-08** | ReadHeavy ProfileをBrowser/Go static Targetへ合成し、一方はStorage非対応 | 不足する必要Trait／ResourceをTarget別に診断。Profile名だけでCache必須／永続性保証とはしない |
+
+**次の実証一辺（P0維持）**：まず#1251/#3381の**通常CLI Dispatcherとmain #3371 Studio Host**にexact-selected Inspector Providerの実Invocationを接続し、既存#3279のManual Required不足診断を同じ読み取り系で示す。並行して#2586の`order_entry.recent_orders`一Queryを実Provider Readへ接続し、#3520合成Referenceの入力列を**実Call/Scope/Window**から構成できるか検証する。次に#3271/#2582の安全なfull-refresh baselineと一つの最適化候補を独立Expected・同Target/負荷で比較する。#3503のGraph/Chat/VUIや#3509のB2Cは後続Consumerとして圧力検証し、P0のHard Dependencyにしない。
+
+**停止線**：19合成テストの成功を実性能Evidenceと誤表示する、新たな常駐計測Host/Collector／中心Optimizer／第二Resolverを必須化する、Profile名から無条件にCore Traitを追加する、Scope/Targetの欠落をperformance PASSで覆う、Profiler/Telemetryの有害EffectをObserverという名称で隠す、実Provider/独立ExpectedがないのにAI改善を適用する場合は本設計を縮小する。
+
+**現時点の到達範囲**：main #3520の合成Referenceと局所CI、main #3371/#3516/#3479/#3490のそれぞれ限定成果を踏まえた設計・受入案。TAT-01〜08、実DB/Provider計測、実CLI/Studio二Consumer、実Benchmark、AI提案の適用・Rollback、正式Profile／Measurement Trait Schema／Owner意味受理は**NOT RUN / NOT ACCEPTED**。
