@@ -314,9 +314,10 @@ jobs:
           ])
           assert report["scenarioInventory"]["untestedConfirmed"] == []
           assert report["scenarioInventory"]["productCoverage"] == "unknown"
-          assert len(report["scenarioInventoryControls"]) == 7
+          assert len(report["scenarioInventoryControls"]) == 8
           assert report["scenarioInventoryControls"]["TT-105-partial-step-inventory"] == "absence-unqualified"
           assert report["scenarioInventoryControls"]["TT-106-positive-local-but-global-unknown"] == "bounded-observation-maintained"
+          assert report["scenarioInventoryControls"]["wrong-operation-for-step-id"] == "unqualified"
           lines = [
               "## TEI Test Ability — 独立検証基準（#2514 / #1180）",
               "",
@@ -328,7 +329,7 @@ jobs:
               "- Source A→B→Aで元pinは再び有効になる。中間履歴、Owner受理、Plugin実Load、現在Grantは未証明。",
               f"- Go局所statement C0: `{report['coverage']['goC0StatementCoverageForCmdTei']}`。",
               "- **C1は未計測**。全要求Coverage/NFR/実DB/GUI/正式意味受理も未評価。",
-              "- **TT-105/106**：実6 stepから限定局所証人を保持。Scenario receiptを部分取得した7対照では未テスト断定を拒否し、Product全体Coverageはunknown。",
+              "- **TT-105/106**：実6 stepから限定局所証人を保持。Scenario receiptを部分取得した8対照では未テスト断定を拒否し、Product全体Coverageはunknown。",
               "- 結果は限定JSONとActions Artifactに保持。全製品のテスト能力証明ではない。",
           ]
           print("\n".join(lines))
