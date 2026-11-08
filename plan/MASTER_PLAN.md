@@ -23,6 +23,16 @@
 - `plan/design/TRAIT_ATOMIC_COMPOSITION_AND_FULFILLMENT_2026-11.md` ：原子的Traitの実装義務、Manual/Generated/Providerでの履行、合成・不適合診断を既存#951/#2495/#3271/#3267へ接合する**設計・実証候補**（[#3278](https://github.com/hat47x/tei-platform/issues/3278)）。新Resolver/新Hard Gateや実装完了を意味しない。
 - `plan/design/HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md` ：Web/Desktop APIの例外・Client Reaction・Graph/Table/Traceの**横断設計と段階的な実証計画**（[#3274](https://github.com/hat47x/tei-platform/issues/3274)）。**P-1a/b**：E1の構成時Guard DAGとRuntime HTTP Decision Pathを区別し、[実Node専用CI #42396614454](https://github.com/hat47x/tei-platform/actions/runs/42396614454)の限定HDG-21 CharacterizationはPASS。全体Healthは同PRでgofmt不一致（別Source）によりFAIL、Go vet/test/Workspace validateはPASS。**P-1c**：既存Go Reference Hostのdefer Auditと10経路Callback/Status/Stageを、[Node+Go専用CI #42461546535](https://github.com/hat47x/tei-platform/actions/runs/42461546535)で限定PASS。**P0-R（限定実証）**：E1・Goの独立宣言は両側が局所的に構成可能でも不一致になることを[Node/Go実CI #42462531490](https://github.com/hat47x/tei-platform/actions/runs/42462531490)で確認（Node 7/7＋Go package全PASS）。**P0-S（新規実Source入場）**：既存`operations.InspectSubject`を使い、実`reference/workspace`の`application-pattern:order_entry.submit_order`と`semantic-capability:sales.order.submit`、Source Index/Canonical参照を限定Go testで検証する（[設計§16](design/HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md)）。局所Source読取をE1→Host正式Binding・Graph/Required全閉包・Provider実Invokeへ昇格しない。**P0以降**：実CLI Design Context（#3262/#3354）の必須集合、標準Graphの多重Edge/出典・実Consumer（#1124/#2497）、現Command Unknown（#1174）、Trait/Provider/BOMの実資格（#3279/#3267）を接続する。E1 plan→Go HostのBinding、実TEI Graph Loader、Actual Provider/Client/Effectは未証明。既存Gate B/Cと各Ownerを維持する。
 
+## TEI標準要件：モデル全容の図表化と、標準／カスタムの理解可能性（2026-11-08）
+
+**基本要求（利用者明示）**：TEIのすべての標準機能は、業務／システムの対象構造、イベント群、状態遷移、Function、Pattern、Data、Rule、Operation、Providerと外部連携が、**TEI自ら導出する一貫した図表体系**の中に位置づけられることを前提とする。各Patternだけを個別に説明しても標準機能として十分ではない。利用者が事前知識なしに「全体として何をするか・何が起きるか・どこを変えられるか」を理解・探索できる標準ガイド／ナビゲーションを備える。Web/Desktop/API/CLI/MCP/VUIなど媒体ごとに別の意味正本を作らず、異質なConsumerにも同じ型付き参照と適用資格を渡す。
+
+**標準とカスタムを見分けられること**も機能要件とする。標準固定の意味・Guard・Authority/Effect境界、設定可能な既定値、明示Extension Slot/Hook、案件で置換可能な部分、観測のみの部分を、Flow・Graph・Matrix・CLI説明で同じように区別する。差し込みのある個所は**標準フロー／差分／合成後の実効フロー**を相互参照可能にし、Plugin/Generator/Targetの版と受理資格を隠さない。ドメイン別のEvent/State定義は必要に応じてカスタムできるが、型・Source・現在権限・実副作用の検査をPresentation変更として迂回しない。
+
+**完全性の意味**：指定したWorld／Source Scope／Consumer公開資格に対し、要求される図表・関係・Pattern／Event／Stateの対象集合と、実際に解決／表示した集合、未解決・非公開・未対応の集合を区別して表示すること。必要集合自体が未確認なら「全体像はpartial」と説明し、表示したものだけで完全性を主張しない。図表・表・CLIは共通のAccepted Meaning/Sourceから導出し、手書きのガイド図やAI説明を第二正本にしない。
+
+**実装／受入の標準接続**は[三要素Method設計§19](design/THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)に集約する。具体的な初回受入案はMAP-01〜10（全容Catalog、Event→Lifecycle、Pattern位置づけ、固定/Custom/実効フロー、初心者の段階ナビゲーション、Scope・Coverage、複数Consumerの一致）。#1124をDiagram/Navigation、#1125をEvent/Business Flow、#1126をData、#1127/#2507をFunction/Pattern、#2497を投影意味の保持、#2619/#2620をEverything is Data/役割、#2514/#1180を独立Expectedの既存Ownerとする。最初は**read-onlyのModel Map→明示Gap→複数図表へのジャンプ**を検証し、その後にHook差分・Typed Edit・Target実効動作を扱う。現時点では標準要求を計画へ反映した段階で、全図表Generator／全媒体Navigation／全Patternの実装完了は**未確認**。既存Gate B/Cを遡及して変更しない。
+
 ## 現在の主線
 
 第1版の参照アプリケーション`order_entry`を中心に、現在は次の順で進めます。
