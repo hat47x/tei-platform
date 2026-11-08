@@ -437,3 +437,60 @@ R0（ProducerがSourceを読んだ時）、R1（派生Bundleが書かれConsumer
 ここでの「局所肯定」は対象Scopeが定義された受信結果の事実であり、配布Permissionや業務意味受理と無関係。必要Conceptを独立に定めたうえで、実Read/Parse/Reply到達・欠落、RecipientのDisclosure範囲を評価する。**TEI #3262の既存Context Gateが受け取れないOKF専用情報は、受信できたことにせずunsupported/not-runとして残す**。
 
 **Owner/採否**：#2514は独立Expected・Raw/Mutant判別力、#3262はScope相対Contextと受領、#3149/#3345/#3346/#3347は実CLI Gap、#1251/#951/#3338はPlugin-first、SHO #18/#21はReader/原Byte、SUI #3392/SEI #820は出典・Lossと公開、TAI #514/#271はActivity/Attestationの受け手。#1119の製品Gate/Harness H2/H3を本節の実験で変更しない。**今回の実施範囲はFixtureのリンク修正・既存HealthへTest-only Raw Witness追加・静的Repo/Issue照合**。修正HEADのGo Test/CI、K1製品F0、K2実Plugin二Consumer/Current Scope、独立Oracle正式資格は**未検証**。
+
+---
+
+## 14. 2026-11-08 K1実CI判定とSHO G2-P統合：Raw Reader→Patch候補→保存の段階資格
+
+**この節の変更目的**：前回のK1原文Witnessを実CIで照合し、main統合されたSHO G1b/P0 Handoff・G2-P局所Patchを、OKF交換・TEI設計Contextの将来のConsumerへ**過剰な資格なしで**接続する。§9〜13のK0〜K5/OK-01〜16と既存Ownerを置換せず、Plugin/Reader/Writer/Attesterの第二実装を提案しない。
+
+### 14.1 PR #3329の旧CIはK1 Rawテスト失敗ではない
+
+固定HEAD `62397d07de84e22fc7e694b679ea13896659d048` の [Actions #42397002393](https://github.com/hat47x/tei-platform/actions/runs/42397002393) が `completed/failure` だった理由を実Jobログで特定した。
+
+- `go test -count=1 -timeout 60m ./...` **PASS**、`tei validate -workspace reference/workspace` **PASS**、`go vet ./...` **PASS**。
+- 失敗は `gofmt -l . is empty` の対象外ファイル `tools/reference-plugin-capability-coverage/coverage_test.go` の整形差分（1 byte規模）。今回のOKF Fixture/Raw Witnessは旧HEADの全Go testとして実行された限定成果であり、**形式ValidatorやKnown YAML Mutant killではない**。
+- 現mainの同ファイルblobは旧PR HEADと異なる修正版になっている。ただし**最新main合成PR HEADのCI再実行を見ずに修正済みPASSとはしない**。失敗原本と修正後の合格証拠を同じCI Resultに合成しない。
+- 直前の旧CI [#42392171058](https://github.com/hat47x/tei-platform/actions/runs/42392171058) でのMarkdownリンク2件のFAILは§13.1で修正済み。**異なる2コミットの失敗理由（Link失敗→Gofmt失敗）を混同しない**。
+
+### 14.2 SHO側実装の到達点を更新する
+
+2026-11-08時点の実リポジトリ状態：
+
+| 担当 | main統合・局所実証 | K1/K2/K5としては未資格の領域 |
+| --- | --- | --- |
+| [SHO #21](https://github.com/hat47x/sho-composer/pull/21) | **merged**。合成354-byte SUI Raw Markdown受領のG1b試験・起動前の偽Checkout拒否。Ubuntu/Windows Jobはsuccess | 実SUI Producerの**同一物理File**をSHO CLIが同一Attemptで読んだH1は通常CIでSKIP。OKF F0ではない |
+| [SHO #24](https://github.com/hat47x/sho-composer/pull/24) | **merged**。実 `experiments/g2_byte_patch/plan.cjs` のpure G2-P。Ubuntu/Windowsの[Actions #42397128510](https://github.com/hat47x/sho-composer/actions/runs/42397128510)はいずれもsuccess。実G1b回帰＋**14個のG2-P局所テスト**を実施 | memory候補生成だけ。実Disk Writer、G1bからの正確なUTF-8 span解決、同一Source RevisionでのReader→Planner配線、保存後再Open、CAS/ABA/Owner、OKF F0・全Bundle受領ではない |
+
+G2-Pの入力は`actual sourceBytes/baseSha256/startByte/endByte/expectedBytes/replacementBytes`、出力は`candidateBytes/candidateSha256/changed`と明示された`effect=none-planner-only, sourceRevision=unknown`。明示spanはCallerが別途解決する。G1bのLink line/ordinalを自動的にbyte spanや永続Occurrence Identityと推論しない。新test-only Plannerを正式なOKF Writer/APIへ昇格させない。
+
+### 14.3 次の実験を最短で分割する：K1R→K2C→K5W
+
+**K1R（実Raw Readerの同一Source観測）**：
+- 公式Pin済みK1 3 Concept+Indexの4 Fileそれぞれについて、SHO mainの実G1b `sho-inspect`が実バイトを読むこと、Raw SHA-256・Parser版/Grammar scope・受信範囲を観測する。G1bはCommonMarkの`link_open`限定Readerであり、**YAML frontmatter/OKF type/status/sourcesの解析をF0として保証しない**。TEI Raw WitnessのPASSとSHO G1b実Readは**別repo・別実Consumer**。
+- Readerごとに `requestedPath/actualRoot/manifest/revision/exact bytes` を確認可能なところだけ記録。未提供なら`unsupported`とし、Scope descriptorから実Source read・owner意味受理を推測しない。
+- 固定Bundleと独立ExpectedのSpec reviewを通した後、K1 F0 Parser/Validatorを選択Providerへ接続。正常Bundle、必須type/YAML不備、未知type/key、broken link、bundle-root absolute link、index省略、verified singletonは**F0とF1別列**。旧Repo Link TestはF0判定器にしない。
+
+**K2C（共通Contract二Consumerの実入力と閉包）**：
+- TEI `tei commands`等の既存CLI能力とSHO G1b実CLIが別々に原文を読めた、という2件の観測を「同じ選択済みOKF Pluginを使った二Consumer実証」と呼ばない。**Resolved Provider ID/Plugin Lock/実Call-Site/実argv/実Read Content digest/Consumer Delivery Scope/Current Audience**が同一Attemptで追えることを別に検収する（TEI #1251/#951、#3262）。
+- [TEI #3346](https://github.com/hat47x/tei-platform/issues/3346)は**closed**。「docs/planをSource inventoryへ置くと `readByLoader:false` とRoot警告が実応答に出る」ことが実確認され、MarkdownをTEI Meaningとして読む開発は**採用せず#2621へ委譲**。Issueを「製品Markdown Meaning Reader完成」と読み替えない。
+- [TEI #3354](https://github.com/hat47x/tei-platform/pull/3354)はmain統合済み11実CLI Reply／32合成Controls、既存単一Context Gateの局所限定実証。K2では`managed/loaded/parsed/accepted`、`received/partial`、`source_index mode`、`requirements.result:[]`、`view-specific FP vs World FP`を別軸に保持し、正常JSONや現Source IndexだけでRequired概念の全読取を証明しない。
+- K1 F0単体の実行を、Plugin-first Inspector（CLI/Studio）や正式H2/H3の完了までブロックしない。K2の実Plugin/二Consumer claimは同一Contract/Providerの実選択・実呼出しが必要。
+
+**K5W（OKF Writerと保存後検証は後続）**：
+- 初回は完全なBundle Writerを作らず、**SHO単独の通常MarkdownのRead→人の局所編集意図→G2-P pure Candidate→保存前Base/Fragment再照合→実Disk CAS Writer→別プロセスReopen/Raw確認**を最小縦切りとする。OKF Concept化/外部Sync/TEI意味逆書戻しを付加しない。
+- Write前後のSource identity/Root/Actual bytes、同じContentのA→B→Aと別Root同Bytes、no-op時物理Write0、二重Write/競合拒否、partial effect/Crash、Owner/Grant、BOM/CRLF保持、別Readerの実再開を既存SHO #4/#16/#19/#20で検収。G2-Pのno-op候補`changed=false`をDisk Writer no-opの証拠としない。
+- K5でOKF Bundleを保存・再読み取りする段階になっても、同一Item複数Canvas・Topology Loss、非公開Source/Count、文書trust`verified`とTEI Meaning/Host資格、実Attestation Receiptを混ぜない。SUI→SHO H1は引き続き独立試験とする。
+
+### 14.4 資格票を縮小し、重複したGateを設けない
+
+| 証拠 | 到達済みの限定結果 | 次に不足する一個の資格 | 既存Owner |
+| --- | --- | --- | --- |
+| 上流v0.2 Spec + K1固定Raw | exact SPEC commit・各Raw digest・実Git Readback。旧HEAD Go全体test PASS | 公式F0 YAML Readerの実解析・7変異の独立判別 | TEI #2514、SHO #18 |
+| SHO G1b + SUI合成Fixture | read-only Markdown Reader/異OS raw合成候補はmain実装 | SUI実Producer→SHO実CLIへの同一物理File H1 | SHO #21、SUI #3397 |
+| SHO pure G2-P | 14局所編集計画テスト、両OS成功 | 実Disk Writer・no-op write0・CAS・再Open | SHO #4/#19/#20 |
+| TEI Context Consumer | main統合11実CLI Reply・32合成Controls | 本用途のRequired Function/Business/Relation＋Source actually consumed・外部受領終端 | TEI #3262/#3346/#2621 |
+| Plugin Reader/CLI・Studio | Plugin-first計画main統合、D1実二Consumer未達 | 同一選択Provider/Bundleの二Call-Site実Invoke | TEI #1251/#951 |
+| K4 Attested Run | 上流OKF仕様とTAI #514の段階設計のみ | typed input→実Provider/Receipt→独立Attester/Result再Read | TAI #514 |
+
+**正式の合否**：実Git/G1b/G2-P/旧CIの局所証拠をそのまま記録し、F0合格・K2同一Provider/二Consumer・K5実Write・Current Grant/Owner受理を**NOT RUN**とする。本節による製品Gate達成・Plugin実行能力・OKF全束到達の新しい主張はない。
