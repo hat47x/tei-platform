@@ -17,7 +17,7 @@ func modelRefFromSyntheticFixture(f fixture) (modelref.Graph, []modelref.Rule) {
 	for _, entity := range f.Entities {
 		g.Nodes = append(g.Nodes, modelref.Node{
 			Key: modelref.Key{
-				Scope:   scope,
+				Scope: scope,
 				Subject: subject.Subject{
 					Kind: "data",
 					ID:   entity.ID,

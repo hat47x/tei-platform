@@ -189,16 +189,16 @@ func Build(d index.Derived) Model {
 			}
 			for _, c := range t.UniqueConstraints {
 				tv.UniqueConstraints = append(tv.UniqueConstraints, UniqueConstraintView{
-				Name: c.Name, NameGenerated: c.NameGenerated, Columns: append([]string(nil), c.Columns...),
-			})
+					Name: c.Name, NameGenerated: c.NameGenerated, Columns: append([]string(nil), c.Columns...),
+				})
 			}
 			for _, fk := range t.ForeignKeys {
 				tv.ForeignKeys = append(tv.ForeignKeys, ForeignKeyView{
-				Name: fk.Name, NameGenerated: fk.NameGenerated,
-				Columns: append([]string(nil), fk.Columns...),
-				ReferencedSchema: fk.ReferencedSchema, ReferencedTable: fk.ReferencedTable,
-				ReferencedColumns: append([]string(nil), fk.ReferencedColumns...),
-			})
+					Name: fk.Name, NameGenerated: fk.NameGenerated,
+					Columns:          append([]string(nil), fk.Columns...),
+					ReferencedSchema: fk.ReferencedSchema, ReferencedTable: fk.ReferencedTable,
+					ReferencedColumns: append([]string(nil), fk.ReferencedColumns...),
+				})
 			}
 			for _, idx := range t.Indexes {
 				tv.Indexes = append(tv.Indexes, copyObservedIndex(idx))
