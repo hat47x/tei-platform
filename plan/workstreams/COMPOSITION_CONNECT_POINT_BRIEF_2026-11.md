@@ -104,3 +104,12 @@
 **上流の実行接続Gateに追加する条件**：選択するC-1/C-2/C-4のどれでも、実行前拒否と呼出し後不確定を別々に伝えること。再試行・取消・補償の判断は既存#1174/#2999のOperation identity・Effect fence／現在Authorityに戻し、`EXECUTOR_NOT_REGISTERED`とPost-Invoke Failureを一つの「再試行可能エラー」にまとめない。CLIがJSONで拒否を報告して**終了コード0**を返すという現状のReference挙動も、無人Harnessの成功判定へ無条件に流用しない。
 
 この追補も**C-1採用の決定ではない**。CLI通常dispatch／実Studio BridgeのPlugin-first Inspector S2、実Provider/Artifact、実DB Receipt/Observation、Client Reactionの全実装と検証は各Ownerへ残す。
+
+## 10. 実行記録による追記（2026-11-09）
+
+- C-1 は、既存の `routing.RouteCommand`・`routing.Router.Dispatch`・`routing.ValidateResult` だけで Binding から実行まで繋げられることを、参照実装で確かめました（[記録](../evidence/BINDING_TO_EXECUTION_REFERENCE_2026-11-09/README.md)）。
+- C-2 も、既存の `BindHostApplicationEnvironmentRoute`・`composition.NewSelectedCoordinator`・`NewSelectedServiceCarrierInvoker` を順に呼んで試験の外でも組み立てられることを確かめました（[記録](../evidence/SERVICE_CARRIER_CONNECT_REFERENCE_2026-11-09/README.md)）。
+- **両方とも、新しい解決器や選択の仕組みを作らずに動きました。** しかし、これは「繋げられる」ことの証明であって、「繋ぐべき」ことの証明ではありません。
+- C-1 と C-2 は対象が違います（配備の動作と Service の要求）。第 4 節の「両方を選ぶと 2 つの経路ができる」は、同じ対象を取り合う場合の話です（[記録](../evidence/CONNECT_POINT_C1_C2_2026-11-09/README.md)）。
+- **C-3 はまだ実行していません。** 第 4 節の順序（C-4 → C-1/C-2 → C-3）と、決定の Owner は変わりません。
+- 第 9 節が指摘した「実行前拒否と呼出し後の不確定を分ける」条件は、この追記でも満たしていません。両方の参照は `refusedCount` にまとめており、第 9 節の分類（入場前停止と入場後不確定）を実装していません。
