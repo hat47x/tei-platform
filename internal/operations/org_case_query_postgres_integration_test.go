@@ -11,13 +11,13 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"tei/internal/core"
-	"tei/internal/driver/queryresult"
+	"tei/internal/driver"
 	postgresquery "tei/internal/driver/queryruntime/postgres"
 	"tei/internal/workspace"
 )
 
 // verifyNativeCaseReadWithPostgres is opt-in. It uses the very same native
-// CaseRecord Query loaded by the E1c Go characterization, not a second SQL
+// CaseRecord Query + Browse Pattern loaded by the E1f Go characterization, not a second SQL
 // interpretation or a new Source fixture. It is NOT a Function Data Context,
 // scoped authorization, Host Grant or product-level read certification.
 func verifyNativeCaseReadWithPostgres(t *testing.T, loaded workspace.Result) {
@@ -85,6 +85,7 @@ func verifyNativeCaseReadWithPostgres(t *testing.T, loaded workspace.Result) {
 		t.Fatalf("native SQL datasource not resolved uniquely: %+v", ds)
 	}
 	executor := postgresquery.Executor{DB: db, Database: ds.TargetDatabase}
+	resolver := driver.NewResolver(loaded.World)
 	for _, tc := range []struct {
 		name string
 		caseID string
@@ -95,16 +96,22 @@ func verifyNativeCaseReadWithPostgres(t *testing.T, loaded workspace.Result) {
 		{name: "actual missing C3 is zero physical rows", caseID: "C3", want: [][]any{}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := executor.ExecuteBrowseQuery(ctx, q, ds, map[string]any{"case_id": tc.caseID})
+			execution, err := resolver.ExecuteBrowseQuery(ctx, "org_view", "org_view.case_browse",
+				executor, map[string]any{"case_id": tc.caseID})
 			if err != nil {
-				t.Fatalf("native authored SQL did not execute on actual PostgreSQL: %v", err)
+				t.Fatalf("native Case Pattern/Query did not execute on actual PostgreSQL: %v", err)
 			}
-			mapped, err := queryresult.Map(q, result.Raw)
-			if err != nil {
-				t.Fatalf("physical raw columns did not satisfy explicit Semantic mapping: %v", err)
+			if execution.Resolution.Query == nil || execution.Resolution.Query.ID != q.ID ||
+				execution.Resolution.Datasource == nil ||
+				execution.Resolution.Datasource.TargetDatabase != ds.TargetDatabase ||
+				execution.Resolution.Data == nil ||
+				execution.Resolution.Data.ID != "organization.case_record" {
+				t.Fatalf("real DB result was not attributed to the native Case Pattern/Query/Data: %+v",
+					execution.Resolution)
 			}
-			if !reflect.DeepEqual(mapped.Rows, tc.want) {
-				t.Fatalf("Case business identity/handlingUnit mismatch: actual=%+v want=%+v", mapped.Rows, tc.want)
+			if !reflect.DeepEqual(execution.Result.Mapped.Rows, tc.want) {
+				t.Fatalf("physical Case business identity/handlingUnit mismatch: actual=%+v want=%+v",
+					execution.Result.Mapped.Rows, tc.want)
 			}
 		})
 	}
