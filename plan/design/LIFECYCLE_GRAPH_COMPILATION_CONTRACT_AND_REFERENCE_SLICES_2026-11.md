@@ -116,3 +116,53 @@ L1が既存Plugin-firstの重要な未完ゲートであり、L2以降の研究�
 - **反例の追加観点**：B2Cの未使用Plugin故障非干渉、Chat partial tool args→実Call 0回、Diagram layout-only→Semantic/Build資格不変、Graph Edge変更→Source/Owner再受理、Plugin版A→B→A→過去のEvidence自動復活禁止をLGケースの期待に含める。新たな第二テストSSOTは作らない。
 
 **補足**：本節は既存LG-01〜16に検証観点を追加するもので、番号体系や実装完了を変更しない。実装担当は#3503/#2090/#1124/#1180/#1223/#3509の既存Ownerに返す。
+
+## 10. 実装前の最小縦断Fixtureと「何を検証すれば十分か」（2026-11-08）
+
+上記のL2/L3を大規模Graph Compiler構築へ直結させない。**同一Operation・同一Expectedを用いる3構成**で、必要な最小IRとPlugin拡張の費用対効果を比較する。
+
+| Fixture | 構成 | 必須Expected |
+| --- | --- | --- |
+| F0 Baseline | 既存の受理済みOperationとProvider Bを、Graphに投影するだけ。実行は既存の経路 | Graphを導入しても既存のselected B→actual B・Outcome・Effectが変わらない |
+| F1 Validation extension | 同一Operationへ、既存Contractに適合する追加Ruleを一つGraph Patchで挿入 | 正常・拒否・NULL/Absentの独立Expectedが維持され、Ruleが実際に呼ばれる |
+| F2 Approval branch | 条件付き承認、Wait/Resume、再検証を追加（承認の業務意味はOwnerの受理を要する） | 対象/版/Grantの変更時は旧承認を再利用せず、unknown commitを再実行しない |
+
+**独立Expectedの原則**：期待結果はGraph Compilerや生成物から逆算しない。既存のOperation/Rule/Effect契約と独立Fixtureを基準とし、生成したGraphの形だけ一致してもPASSにしない。
+
+### 10.1 最小のデータ交換境界
+
+Graph自体は既存の標準Graphデータ構造を再利用する候補とし、Generatorへ渡すものは、少なくとも以下の**意味情報を失わない読み取り専用のPlan View**とする。新しい永続テーブルや第二正本を前提にしない。
+
+~~~text
+GraphPlanView {
+  source_ref, accepted_meaning_ref, graph_revision,
+  selected_plugin_lock, target_capabilities,
+  nodes: [stable_id, role, contract_ref, typed_ports, effect_class, source_span],
+  edges: [stable_id, from, to, event, guard_ref, dependency],
+  obligations: [id, scope, required_predicate, evidence_requirement],
+  bindings: [contract_ref, selected_provider, provider_version],
+  patch_lineage, normalization_digest
+}
+~~~
+
+これは**契約確認用の擬似スキーマ**であり、TEI DSL/Go struct/JSON Schemaの採用を意味しない。Source→Graph→Plan→Artifactのどの段階でも、表示名や図面レイアウトを意味IDに代用しない。
+
+### 10.2 合成と検証の最小アルゴリズム
+
+1. SourceとOwner受理範囲を確定し、既存Resolverが選択したPlugin Lockを取得する。
+2. Patchの対象stable ID・expected revision・依存を照合し、非可換競合を拒否する。
+3. 型付きGraphを正規化し、同じ意味入力なら同じdigestになることを検証する。
+4. Effectful Operationへ至る経路のObligationを検査し、静的に判定不能な部分はTargetで強制される実行時検査へ明示的に引き渡す。
+5. 既存LoweringへPlan Viewを渡し、対象Targetで選択Providerの**実Invocation**と結果/Receiptを観測する。
+6. Diagram/DSLで同一変更を行った場合の意味Graph一致を確認する。Layout変更だけの場合はSemantic digestが不変となる。
+
+**失敗時の契約**：競合・未解決Provider・Graph意味欠落・Guard迂回・実行時検査未提供は、黙ってベース処理にフォールバックせず診断して停止する。既存CLIや未選択Pluginまで巻き添えにして停止する必要はない。
+
+### 10.3 横断的な採否判断
+
+- **継続**：F0〜F2でSource/Graph/Provider/Targetの証拠を一連で結べ、既存Contractを二重化せずに2種類のPatchを合成できる。
+- **限定導入**：静的合成だけで成立する場合、Interpreterや常駐Workflow Hostを導入せず、Graphをビルド時の構成入力に限定する。
+- **方式見直し**：図面からの編集帰還に意味欠落がある、既存Resolverを複製する、Graph導入によって未選択Pluginの障害が波及する、または実Provider呼出しが証明できない。
+- **未判定**：AI Chat/VUIの長期セッションやB2C実験配信は、F0〜F2だけで実装適合を宣言しない。別Target/Profileの追加検証に進む。
+
+このFixtureは既存L0〜L6/LG-01〜16を具体化する**補助入力**であり、新しいGateや第二のScenario SSOTではない。
