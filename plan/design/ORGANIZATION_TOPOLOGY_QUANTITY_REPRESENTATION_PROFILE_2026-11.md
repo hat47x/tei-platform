@@ -445,3 +445,42 @@ main統合済み[ADR-0048](https://github.com/hat47x/tei-platform/blob/main/plan
 **最短の次工程（#2586 Owner）**：E1fの同一Native Query/Patternを起点に、既存Contextのtyped Binding／Case ID→Relation occurrence、Provider実ReadのSource・Physical Row/Field／時点・Cohort・Result Slice、実受信ConsumerのDisclosureを一つのAttemptとして観測する。技術上の`Function Data Context`を新たな第二意味正本／第二API/Host/Plugin Resolverとして構築せず、既存[#2506](https://github.com/hat47x/tei-platform/issues/2506)とADR-0048の責務に委ねる。採用済みの`org_view` DSLを勝手に永続書換せず、`t.TempDir()`へのSourceコピーでPressureする。
 
 **結果帰属**：#3500のE1f・E1d・E1eは同一Go Testから開始されるが、E1eは実PGと確認変数がない限りSKIP、CI全体・実DB／Scope・Owner受理はそれぞれ独立判定。第9節のP0-D/M/R→P0-Cは変更しない。新しい組織専用実行RuntimeやFile正本は作らない。
+
+## 12. TEI標準の全容モデルマップを組織・イベント・状態遷移へ適用する（2026-11-08、基本機能要求からの組織受入）
+
+利用者から**TEI標準機能として**「組織モデリング、Event Group、状態遷移の全容はTEI自身が図表に表示し、個別Patternをすべて全体の中へ位置づけ、予備知識のない利用者がガイド／ナビゲーションとして理解でき、標準固定節とカスタム可能節の境界を明示する」と指定された。[横断設計PR #3505](https://github.com/hat47x/tei-platform/pull/3505)の[三要素Method設計§19](https://github.com/hat47x/tei-platform/blob/docs/standard-complete-model-map-20261108/plan/design/THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)を**共通受入正本**とし、本節では組織の最小データで検収する差分だけを記す。Org専用Map Engine、別Canonical、独立ガイド文書正本は作らない。
+
+### 12.1 初めて見る利用者の全容ガイドと、現在のAuthoringで説明できる限界
+
+最上位の案内は「誰が、どの部署に、いつ所属・在任し、案件の担当がどう変わるのか」。説明を次の関係へ段階的に結ぶ。
+
+| ガイド上の問い | TEIで参照する意味対象 | データ／図上の位置と不足情報 |
+| --- | --- | --- |
+| 人・組織とは何か | `Person`、`OrgUnit` | Data/Organization Graphと定義元。単なる表示LabelではIDを代用しない |
+| 所属と役職はどう違うか | `Membership`（Person→OrgUnit）、`Position`（OrgUnit）、`Occupancy`（Person→Position） | 兼務・異動・後任交代は**関係Occurrenceごと**に扱う。Person件数でMembershipを代替しない |
+| いつの所属・認識なのか | `validAt`、`knownAt`、Source記録・TEI観測 | §10のTM/TS/KH。実Sourceが二時点履歴を保持しない場合は`history-unverified` |
+| 案件は誰が扱うか | `CaseRecord`→`OrgUnit`のhandlingUnit Relation | C1→D1。Relation＝現Tenant/Host Grantではない |
+| どのイベントで変化するのか | 所属発効／所属訂正／在任開始・交代／担当変更／引継ぎ確認の**候補群** | **現在のNative Sourceに業務Event Group/Transitionを全件受理済みとする証拠はない**。Event Flowには未定義候補枠として示し、勝手に実Functionを生やさない |
+| どの機能から見て・変えられるか | `org_view`、`Query`、`Pattern`、`OperationSurface` | 現NativeではMembership list/read候補。C1 `case_browse`は[Draft #3500](https://github.com/hat47x/tei-platform/pull/3500)の一時Workspaceに限った検証用追加で、製品Sourceへ受理された標準Functionとは表示しない |
+| 誰が何をカスタムできるか | Standard/Custom Hook、Typed Change Intent、Guard/Effect | Owner承認された意味の可変部／描画設定を区別。未定義Slotなら「ここに追加できる」と偽表示しない |
+
+**必須画面・出力の組**は、組織全体マップ、Data階層/兼務Graph、Event Group一覧＋Flow、State Transition Graph＋Transition表、Function/Patternの配置図、Data×Function CRUD表、Event×State×Action Matrix、固定/Custom差分図、Source/Read/Disclosure Traceとする。完全に認識できた`(World,Scope,SourceRev,Consumer)`の範囲だけを「全容」と呼び、観測したEntityが少ない場合も**不明のイベント・状態・Patternがあるか**をCoverage表で明示する。Model Mapの根からすべての表示へリンクし、逆にPatternから元の業務イベントとData/Stateへ戻れるようにする。
+
+### 12.2 固定／変更可能なフローを組織Exampleで区別する
+
+**固定の横断契約**：Identity・Relation粒度・Sourceの出典・時点帰属、Stateの許可と現在認可の分離、遷移前提／Commit時ガード／Effect/Receipt、Source変更による失効、欠落の可視化。業務上どの部署がどの案件を承認するかという具体値は一律固定せず**意味として受理された構成**を参照する。
+
+**カスタム可能とする候補**：組織固有の追加Membership/Position Role、Event Triggerの別実装、受理されたState/Transition追加、案件別Approvalルート、Pattern合成、表示Layout／用語表記、Target別の実装Plugin。ただしそれぞれ`configuration`・`extension hook`・`explicit replacement`・`layout only`を分け、Hookの契約／配置位置／発火条件／Owner／版を実効Flowのノードとして示す。例として「担当変更に承認を一段追加する」場合、標準State遷移の前後条件を黙って飛ばさず、**標準の受理済み流れ → 追加承認Stepと失敗・未承認分岐 → 合成後の有効流れ**の3視点を生成する。未受理Event/Hookは`candidate/unbound`の点線相当の表記と説明に留め、実行可能と表示しない。
+
+同じPatternをWeb/CLI/MCP/Desktop/VUIから使う場合にも、そのPatternがData/Business/State中で何を担当するかは同一。VUIの「聞く→確認→送信」等の媒体対話状態と、業務Caseの正式状態・Commitを別に描く。Diagram上の遷移矢印から現UserのGrant、Provider実ReadやHandoff完了を推論しない。
+
+### 12.3 最初の受入（共通MAP-01〜10のOrg Case）
+
+- **ORG-MAP-A**：`Person/OrgUnit/Membership/Position/Occupancy/CaseRecord`を同一Model/Scopeの俯瞰マップからData、Business、Functionへ辿れる。`Membership`と`Occupancy`を同Label・同線へ潰したら不合格。
+- **ORG-MAP-B**：例示Event「部署異動→有効期間→担当変更→Handoff」から、それを受け取るRole・State・Guard・Function/Pattern・結果をMatrixで辿る。ただし現Sourceに存在しない意味は明示Gapとして残す。存在しないEventから実Actionを自動生成したら不合格。
+- **ORG-MAP-C**：`case_browse`は仮置きPatternとしてCase/handlingUnit/Query/Provider候補へ位置づけるが、[Draft #3500](https://github.com/hat47x/tei-platform/pull/3500)の試験用一時Workspaceにしか存在しない場合は**採用済みモデルの全Pattern数へ計上しない**。
+- **ORG-MAP-D**：標準/設定可/追加Hook/業務置換/観測限定を、フロー・遷移表・CLI表示で同義に区別する。標準GuardをCustom Stepで無効化した場合はPreview拒否。
+- **ORG-MAP-E**：2つの`knownAt`、Source記録時刻とTEI観測時刻、曖昧Overlap、未取得、partial結果で、同じ表示IDでも適用Scope/Claim資格を区別し、図表とPatternナビが古い現在状態を提示しない。
+- **ORG-MAP-F**：UI未表示のSource/Element／Event候補／Pattern Hookがあるとき「全体図として完全」と主張せず、欠落数・理由・定義への導線をガイドに残す。
+
+**工程**：P0-D（対象の必要閉包）→P0-M（Data/Business/Function/Event/State/Patternのread-only Catalog＋Matrix、Unknown表示）とP0-R（C1実Read）を並行→P0-C（同一World/Source/Scope/Consumerへの照合）→合成Hook差分Preview→Typed Intentの既存受理→実Target／複数Consumer検証。図が美しいだけでP0-M合格ではなく、**各Event/State/Patternの説明・位置づけ・出典・欠落**を確認する。独立Expectedは#2514/#1180、Modeler #1124、業務Flow #1125、状態 #2620、Pattern #2507/#1127、Read #2586の既存Ownerが担う。**ORG-MAP-A〜Fは新規受入提案／実TEI生成・GUI・外部Consumer試験NOT RUN**。
