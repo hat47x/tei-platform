@@ -849,7 +849,7 @@ M1の提案はD1と同じAllowed Tool・Read Budget・Q/Grant/独立Expectedで�
 
 1. **CC-30を検収**：exact Test Source commitの実Go Focused CIで上記3 argv/Named Eventを検証し、後続Plan HEADのCI/Healthとは別結果として記録。CC-12〜18は先行の実Go証拠のまま。
 2. **TEI #3262の一Function（宣言側13 Reply/42対照）はmain統合済み**：[PR #3482](https://github.com/hat47x/tei-platform/pull/3482)の[専用CI #42462672188](https://github.com/hat47x/tei-platform/actions/runs/42462672188)と[main push CI #42462861657](https://github.com/hat47x/tei-platform/actions/runs/42462861657) successを受領。次は**宣言→実Capability Invocation Binding→実Query/Provider→Rowset→Consumer**の最初の未接続辺を実証し、Host Grant/副作用を独立観測。データ不存在と権限不足を区別する。
-3. **最小M1比較**：H3-X02一問から、D0／固定D1／SEI M1を**同じSource・Tool/Profile・権限・Budget 1・隠れたExpected**で実行。Test FilterとRaw/SHOは**次の別Q**として比較し、初回一問と同じ成績として合算しない。
+3. **H3-A0→A1の順で実Method比較**：まずTEI実CLIの観測からSEIのRecommendation保存・resume再読取までを**一つのローカル試行**で検収する（§26.7）。次にH3-X02のD0／固定D1／SEI M1を**同じSource・Tool/Profile・権限・Budget 1・隠れたExpected**で比較する。Test FilterとRaw/SHOは**次の別Q**とし、SEI記録成功を実Method/Tool受領成功として合算しない。
 4. **文書経路**：SHO #27 K1Rの実4原文読取を基線とし、K2のProduct Plugin実選択と両Consumer実Invoke／SUI実Producer→SHO同一物理File H1を各Ownerで測る。**Product Writerの正式保存**はさらに別のPermission/Version/Effect資格。
 
 **強制的な保留**：外部MCP実Transport/Host、SEI M1実Method試行、H3-X02 Blind Win、AI未知T1-B生成、全Business Source Closure、実DB/Provider Commit、実SHO Editor Save／SUI Producer H1、Owner Accepted Meaning、Current Grantはいずれも**NOT RUN／未受理**。#3477 SourceIndex A→B→Aの復元から歴史が無かったことを推論せず、#3458 Adapterがあるから全TEI ToolがMCP経由で実使用できると宣言しない。第二Reader/Source正本/Permission Engine/認知Host/Runnerを新設しない。
@@ -879,4 +879,22 @@ M1の提案はD1と同じAllowed Tool・Read Budget・Q/Grant/独立Expectedで�
 **既存の担当を維持**：EG-09の狭いParser/Binderは#2639/#2619/#2620、実Source/型とRule必要閉包は#3262/#1180、独立Required/Expectedは#2514、外部Source候補/SHO文書のMeaning境界は#2516、実Query/Provider/Host Effectは#2586/#1174、MethodはSEI #767/#824。Ontology/Decision Twin #3475とREA→SHO #3394は将来の別Ownerで、初回H3-X02/Function実InvokeのBlocking条件にしない。新Parser/Provider/Proof Store/Owner Engineはここに追加しない。
 
 **状態**：#2639の実GoテストSourceとmerged事実を再利用する**計画追補**。この§26.6で新たなGo Test、CLI Predicate実実行、独立型Oracle実受領、SEI D0/D1/M1、Provider/DB、Owner受理は**NOT RUN**。
+
+<!-- tei-devctx-h3a0-sei-record-resume-20261108 -->
+### 26.7 H3-A0→A1→A2：TEI実観測からSEI記録再開へ進む最短受入（2026-11-08）
+
+**新Runtime／Runner／Store／Schemaを作らない。** [SEI Draft #824](https://github.com/hat47x/sei-cognition/pull/824)のH3-A0→A1→A2と、現行runtime/go/seicli/seicli.goの実CLI実装を照合した。SEIには「init」「add recommendation」「resume --json」と、snapshot digest付きのrecord-id再読取入口が存在する。他方、Recommendationに「--unresolved」はなく、このFlagはDecisionにのみ存在する。「--basis kind:id」は論理参照、「--source」は**推薦を生成した人物／Toolの申告**であり、TEI実Source byte・版・Current Grantの検証機能ではない。
+
+| 受入段階 | 必要な一試行の実証 | 誤って合格としない内容 |
+| --- | --- | --- |
+| **A0-1 TEI実観測** | 固定した公開Workspace、実TEI binary版とSHA、source-indexの**subject／index両Mode**の実argv・exit・stdout/stderr原byteとdigest・resultMode・対応するWorld/SourceIndex版を保持。独立Required Validation 3件の範囲を採点側で先に固定する | subject modeの空＝Rule不存在、index mode表示＝全Required closure、result配列空＝配送欠落 |
+| **A0-2 SEIへ提案を保存** | 同じ試行に隔離した許可済み一時SEI data rootでsei initを実行。実観測から未到達の必要Sourceを説明するRecommendationを、現実に存在する「sei add recommendation --id ... --statement ...」で**記録する**。元TEI Response digestは評価票へ別保持する | Recommendationのbasis/source欄があること＝TEI Source/Tool Receiptを検証済み、Proposal＝実Tool呼出し、保存＝Owner Accepted Meaning |
+| **A0-3 独立Resume** | 別のsei resume --json呼出しでSEI store snapshot digestを取得し、「--json --record-id ID --snapshot-digest DIGEST」で元記録のID/statement/basis/sourceを照合する。途中更新で旧snapshot digestが不適合になれば拒否を維持する | SEI storeのsnapshot digestをTEI World/SourceIndex digestへ読み替えること、Resume成功＝TEI Source現在資格の復活 |
+| **A0-4 負例** | Recommendationへ未対応の--unresolvedを与えたら拒否する。未決Question/Unknownを保存するために架空のDecisionを作らない。Read Scope/Mode/Source版が欠けたときはunknown／needs-revalidationと報告する | 未決一覧が空＝未決なし、Recommendation保存＝SEI Method採用、CLIが表示できるTool＝現在の実行Grant |
+| **A1 陰性対照付き比較** | A0の記録再開が成立して初めて、H3-X02の同一Q・公開Tool・Grant・Budget=1・blind ExpectedでD0（不足説明）／D1（決定的なindex-mode取得）／M1（SEI Methodが一Probe選択）を比較する。提案、実Invoke、Raw Reply完全受領、必要R(Q)到達、費用を別スコアにする | H3-X02はD1で解ける**陰性対照**。M1がD1と同じProbeを選んだだけなら追加価値を認めない |
+| **A2 未決の継続** | Decision前のQuestion/Unknown/Conflictのネイティブ保存資格が必要ならSEI #711/#678のOwner判断に返す | SEIに既に任意の未解決Inquiry Storeが存在すると仮定しない |
+
+**A0合格の上限**：一つのTEI実CLI Reply集合を読んだことと、その不足を提案するRecommendationをSEI実Storeへ保存・別呼出しで再読取したことを、二つの実Binary/原Byte/別Digestで束縛できた場合に限り、**限定ローカル記録往復PASS**。これだけではTEI生SourceのSEI Method受取、Tool実Invoke、H2/H3外部Harnessの終端受領、権限/Disclosure、Provider実行、Owner意味受理は成立しない。SEI側のProduct試行は#824/#767が担当し、TEIは#2533/#2514/#2516の既存Oracle／Source受入だけを再利用する。
+
+**現在の実証状態**：既存TEI #3482の13実CLI Reply・42限定Controlsと、実SEI CLI Sourceの契約を照合した**計画追補**。新しい二製品H3-A0実Run・A1/A2・実SEI Method・OS/Host受領・Owner判断は**NOT RUN**。
 
