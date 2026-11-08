@@ -87,9 +87,9 @@ func verifyNativeCaseReadWithPostgres(t *testing.T, loaded workspace.Result) {
 	executor := postgresquery.Executor{DB: db, Database: ds.TargetDatabase}
 	resolver := driver.NewResolver(loaded.World)
 	for _, tc := range []struct {
-		name string
+		name   string
 		caseID string
-		want [][]any
+		want   [][]any
 	}{
 		{name: "actual C1 handlingUnit D1", caseID: "C1", want: [][]any{{"C1", "D1"}}},
 		{name: "actual C2 handlingUnit D2", caseID: "C2", want: [][]any{{"C2", "D2"}}},
