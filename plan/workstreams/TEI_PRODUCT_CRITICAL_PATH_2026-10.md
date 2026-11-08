@@ -1458,3 +1458,37 @@ version-pinned BuildIntent / Source revision
 5. **他レーンの競合回避**：[Draft #3117](https://github.com/hat47x/tei-platform/pull/3117)はStudio製品Bootstrap `cmd/tei-studio/assets/main.js`のD0後着防止候補であり、`reference/tei-studio-workbench/main.ts`のM0/M1検証そのものではない。[Draft #3303](https://github.com/hat47x/tei-platform/pull/3303)の三視点図面・Representation計画、[Draft #3301](https://github.com/hat47x/tei-platform/pull/3301)のPlugin-first inspector D1も独立Owner。Studio/Headless間の同じCLI・Provider意味を実験では共有しても、第二Consumer/Policy/Gateを新設しない。
 
 **資格・実行宣言**：この§38は2026-11-07固定main/PR/Issue/Workbenchソース/Actionsの**GitHub照合による計画更新**であり、今回この節のためにGo/Node/Browser/WebView2/実PGを実行したものではない。#1のM0→M1固有PR、#4/#8固定レビュー結果、PR2/PR3実E2EはGitHub検索・既知の他チャット引継ぎでは確認できない。欠落を失敗確定や不存在とは断定しない。実Provider効果・Authorization・Owner意味受理は既存Ownerの証拠と判断を要する。
+
+
+## 39. 2026-11-08 #1環境未確認・#3117 CI変更経路・#2833 W1/W2の資格更新
+
+<!-- tei-studio-m0-m4-e0-e4-3117-evr0-w2-20261108 -->
+
+**照合時点**：main [`7cd70eaee39e608fd0401649bb4c68a7b1d7b1e4`](https://github.com/hat47x/tei-platform/commit/7cd70eaee39e608fd0401649bb4c68a7b1d7b1e4)（2026-11-08 01:48:27 UTC）。§38は11/07固定版の履歴として保存し、本節の主張と混同しない。既存[Draft #3317](https://github.com/hat47x/tei-platform/pull/3317)のroadmapファイル**のみ**を追記。#1124はScript-first / Everything is Dataの同一Consumer一往復、#2391はE0→E3 Headless先行・E4後続opt-in、ADR-0043による**Host非必須**を維持。
+
+### A. 更新版 M0〜M4 / E0〜E4の実績・担当・未実証
+
+| Gate／担当 | 実装済み・実行記録（限定） | 提案・担当成果物と残る未実証 |
+| --- | --- | --- |
+| **M0→M1 P0：#1** | [merged #2626](https://github.com/hat47x/tei-platform/pull/2626)実CLI Source/Trace、[merged #2583](https://github.com/hat47x/tei-platform/pull/2583)Catalog global ambiguity保持と共通Guard、[merged #2457](https://github.com/hat47x/tei-platform/pull/2457)qualified-selection独立Reference。既存PoC A `cli_catalog_parity.py` / `browser_smoke.py` / `browser_isolation_smoke.py` は再利用候補。 | **#1の環境が稼働・利用可能か、#1が実装を開始/完了したか、専用branch/PR/実行ログは未確認**。環境不在/timeoutを「実装失敗」と断定しない。最小成果は実CLI由来A(異Scope同kind/idの曖昧)・J(独立unique)の**same-attempt input→同一Workbench Initial/List実イベント→Inspect全要求数0/1と引数→表示**。初期選択順をfixtureで固定し、実CLI出力の正真性/読取version/SourceIndexとTest adapterを別記する。 |
+| **M1 PR2 / #4・#8独立レビュー** | 現main `reference/tei-studio-workbench/main.ts` blob `9582c85db4c27c1f89d8594f5b212984d755c9c0`にはGraph/List/Initial/Command→共通`inspect()`の構造配線と`inspectEligibility`がある。 | #4はA/J異Scope・Source locator・Authority/Policy・初期選択・後着Inspectの負例を、#8はCLI/Browser同一Target・RPCRecorderの**全要求数**・実Wails RPC vs Test adapterを独立点検する。**#4/#8の固定HEAD査読完了・実GUI上での4入口0/1は未確認**。構造配線を実イベントPASSとしない。 |
+| **M1 PR3 / qualified Graph** | #2457独立`publishGraph`は統合済み。現mainの`main.ts`は`graph.update(related.input)`であり、そのReferenceの実import/結線はない。 | Source/scope/render epoch一致、G2拒否後のG1旧DOM/ARIA click拒否、R10→R11 Source移動・後着を**0 Inspect/0誤Source navigate**で確認。別表示世代・選択epoch・Source現在性・Grant現在性を混同しない。**NOT RUN**。 |
+| **M2 / Source・Decision・資格失効** | #267既存Shared Acceptance、#2626 Source移動、[Draft #2829](https://github.com/hat47x/tei-platform/pull/2829)合成Review ABAは別Ownerの証拠。 | 既表示失効、後着抑止、Source/Decision ledger別readback、部分成功`accepted+sourceChanged=true`後の自動再Accept 0、Policy/Grant/Review/Source epochを別測定。Studio製品での縦断は**未実証**。 |
+| **M3 / W1・W2と[Draft #2833](https://github.com/hat47x/tei-platform/pull/2833)** | #2833は**Open Draft / HEAD `b99dd33dd85752eea757feb3cd8ec7d540491d9b`**。W1の旧HEAD独立Node 24.21.0 **8/8 PASS** はPR本文の検証記録。新HEAD [専用EV-R0 CI #42055355800](https://github.com/hat47x/tei-platform/actions/runs/42055355800)の`ev-r0-node`を含む11 check-runsは**completed/success**（合成8件、exact-HEAD）。 | **W2独立担当・実施・結果の記録は今回のPR会話/API/他チャット文脈では未確認**。W1をW2二者レビュー完了へ読み替えない。合成`prepared-public-fixture`はGrant/Policyではない。実Source/Decision/Artifact Reader/実Provider、二世界DOM/ARIA/Tool JSON/Network、Recipient受領、Owner受理は**未実証**。実Provider `EffectUnknown`を現Presenterで`failed`/`unobserved`へ丸めない。 |
+| **M4 / Script-first編集・三視点** | #1124のSource/standard Projection/typed Preview/Shared Acceptanceと、11/07の三視点Graph/CRUD/Canvas追加案は区分済み。 | 正確なSource span/Revisionに結び付くtyped change→Preview→#267 Acceptance→実Source再parse/reproject、No-op Save byte不変は**NOT RUN**。図上編集/複数Canvas P0追加は[11/07 Issue追補](https://github.com/hat47x/tei-platform/issues/1124#issuecomment-6704500042)時点の**設計提案・未採用**で、#1の最小Harnessには追加しない。 |
+| **#2391 E0→E2（別Owner並列）** | 既存CLI/標準Operation/Role/Plugin/Scenario一式の局所Referenceあり。 | 外部要件圧力→CUI＋標準Plugin→Provider/Grant/Bindingの同一実Target適合、Owner採用は未実証。Draft #2492を採用済みmainとは呼ばない。 |
+| **#2391 E3（別Owner並列）** | [merged #2853](https://github.com/hat47x/tei-platform/pull/2853)製品Invoker→実PG、[merged #2854](https://github.com/hat47x/tei-platform/pull/2854)別Reference ABA、[merged #2857](https://github.com/hat47x/tei-platform/pull/2857)暫定Web→実PG一改訂E2Eの**対象限定結果**。 | #1180保存Scenario→Operation/Driver→Provider/Effect/Receipt→独立Readの同一Attempt／正式Grant・Owner受理は未実証。#2857監査は`INCOMPLETE/UNQUALIFIED`。 |
+| **#2391 E4（後続・opt-in）** | Web/Desktop及び#1824の局所Browser/Bridge smokeは存在。 | 外部UI act/observe→独立業務Read、実OS/Network開示、Test/Production配布実byteと起動Artifact同一性、**Test専用制御面のProduction物理除去**は未実証。通常UI/a11yは維持。業務用MCP Target #2093とUIテスト用制御MCPを分離し、Host/Wails/MCPを必須としない。 |
+
+### B. #3117のCI重複についての固定事実・割当
+
+- [Draft #3117](https://github.com/hat47x/tei-platform/pull/3117) **open、HEAD `b75df7a54a27a540e51c57778fd173213752491f`、現main比較 ahead 5 / behind 728**。旧#3036は**closed・not merged**。変更5パス：`.github/workflows/tei-studio-async-lanes-ci.yml`、`.github/workflows/tei-studio-wails-poc-a-ci.yml`、`cmd/tei-studio/assets/main.js`、`cmd/tei-studio/test/bootstrap_async_smoke.py`、`cmd/tei-studio/test/main-async-scope.test.mjs`。
+- #3117 exact HEAD のGitHub check-runs **13/13 completed/success**：専用Node、Server/Chromium Bootstrap、Windows WebView2/生成Workbench smoke、Repo Health等。これらは**Bootstrap `/`のD0非同期失効**という限定機能の試験であり、Desktop `/workbench/`にある**別`reference/tei-studio-workbench/main.ts`**のM0→M1 A/J + Inspect Spy E2Eではない。UI response discardは既Effectの取消し/本番Grantでもない。
+- **変更パスの重複リスク**：#1が`.github/workflows/tei-studio-wails-poc-a-ci.yml`や`cmd/tei-studio/test/**`に追記するなら、#3117の変更範囲と作業分担を先に明示する。現時点、`.github/workflows/tei-studio-wails-poc-a-ci.yml`の**current main blobと#3117 head blobは双方 `a7e2498ab8a1eaf7afbe4e763561dbb5115e9e94` で同内容**。従って**現在の同ファイル内容競合は確認されず**、単にpathが重なる可能性と現在の差分を混同しない。
+- #1がまず既存の`reference/tei-studio-workbench/**`と独立の小テスト/adapter/Recorder拡張で受入できるなら、**#3117のBootstrapコード/CIに干渉しない**のが望ましい。Wails PoC A既存CIへ同一Workbench実DOM受入を追加する必要がある場合だけ、現行mainの正規Workflowを基線に#3117 Ownerと差分を一本化し、同じJob/Pathを別PRで二重実装しない。#3117のCI Greenを#1の実CLI由来A/J同一試行PASSへ流用しない。
+
+### C. 判定条件と未実証宣言
+
+- **最初の次の成果**：#1の環境・担当branch/PR・固定SHAの所在が確認できること。未稼働なら実装可否の具体的障害を明記し、代替の別Harnessを無断で作らない。次に同一CLI出力A/J→Workbench Initial/List→Inspect 0/1→表示と#4/#8の独立負例を**同じAttempt**に束ねる。
+- **レビュー条件**：#4/#8は当該#1 HEAD、W1は#2833旧HEAD独立結果、W2は**未確認**をそれぞれ区別する。未報告を不合格とせず、レビュー結果や修正PRが確認されるまで正式な受入済みとはしない。
+- **この追補の作業資格**：GitHub Issues/PR/mainソース/CIチェックの再照合とロードマップ文書変更。**今回新規にGo/Node/Browser/Wails/WebView2/実PG/Source編集・OS開示・実Policyを実行していない**。既存Owner/Authority/#1180 Scenario・#1119 Gate、TargetごとのHost optionalを維持し、実装PR/Reviewerを重複させない。
