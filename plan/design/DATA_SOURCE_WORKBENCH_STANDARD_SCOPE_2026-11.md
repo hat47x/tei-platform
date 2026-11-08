@@ -398,3 +398,44 @@ DDL Plan→Applyでは、実DB Instance／Provider、Scope、Actual Schema Revis
 - Migration Historyの[Draft #3497](https://github.com/hat47x/tei-platform/pull/3497)はUnknown State→RepoAppliedを止める局所修正候補。空履歴と部分/取得不能Historyの区別は未解決なので、Workbench DDLの安全性資格は変えない。
 
 この追補はmain統合済みの限定結果と進行中Draftの**証拠範囲を整列するだけ**であり、新規の成功判定やCI実行を含まない。
+
+
+## 23. 実Read一Functionの最小受入票と異種Sourceへの展開（2026-11-08）
+
+### 23.1 一般論より先に固定する、実行で判別可能な最小対象
+
+最新mainの[Inspector Host-selected CLI/Studio局所Go検証 #3381](https://github.com/hat47x/tei-platform/pull/3381)と[Studio選択Port #3371](https://github.com/hat47x/tei-platform/pull/3371)、[RQ-035 PAS入口 #3498](https://github.com/hat47x/tei-platform/pull/3498)を前提にする。ただしこれらの局所合格は、実`order_entry.recent_orders`のProvider SQL/Rowsetに未接続である。
+
+Product最初の一往復を**`Function ID → explicit Query/Relation/Role Binding → Host-selected Provider → actual Read → Function Data Context → Table等のread-only表示`**に限定する。名前が近い、同一Applicationの`uses`である、同じ物理FKを指す、Graphの別ノードとして読めた、という状況だけではBindingを補わない。Functionの独立した新Registryを設けず、既存Data/Query/Rule/Operation/Business/Patternからの**根拠付きView**として追跡する。
+
+| 受入点 | 固定する入力と実際の比較 | 判定すべき結果 |
+| --- | --- | --- |
+| 入力閉包 | 一FunctionのRequired Subject/Role/Output Field/粒度/時点/Query/Schema Source | 実Loader未対応は`not-loaded`、依存未束縛は`unbound`、解析・参照なしは`unknown`。単なる名前一致を`bound`へ昇格させない |
+| Provider到達 | selected Provider ID・Manifest/Raw/lock Rev、実登録実体、呼出時Current Grant/Target/Source Basis | selected A→invoked Bや旧Bキャッシュは拒否。Target未確定はread-only検査の候補提示に留め、別DB Aliasへ自動切替しない |
+| SQL/Read | 実選択SQL byte/parameter、実DB Instance/Reader、Row/Field presence/NULL/欠損、partial/empty/error、表示Grain | **「結果0件」≠「完全な空集合」**、partial受領≠全件取得。実ReadなしのSchema ViewやExplainをデータとして偽装しない |
+| Consumer | 共通Operation ResultをCLI/Studioで対象・同じAttempt/Scope/版に束縛、実受領Part/end、Disclosure | payload不一致・許可外情報・片側受領欠落で二Consumer成功としない。MCP参照Adapter/SHO文書作成は別Consumer資格 |
+| 独立期待値 | [合成PG 3行＋JSONL 5行](../../examples/data-source-workbench/README.md)の原データ・指定出力、独立Expected、異常入力 | Fixtureの期待値は固定するが、実Providerで実取得したという結果は**実行ログでのみ**得る。WB-01〜54、#2586 HJ/QX、#2514を再利用 |
+
+まずRDBの現行Query一本で正常1件／正常0件（独立Full Scope）／部分Read／Provider Error／権限拒否／Source-only改訂を独立判別し、同じBinding構造の第二SourceとしてJSONLを扱う。JSONLは重複Event ID、取得順とEvent Time順の不一致、明示JSON null、キー不在を区別する。SQLのRLS/Grant/実RowsetとJSONLのReader Scope/ファイル時点は**同じSource意味ではない**。共通にするのは必要入力と結果・失敗の契約であり、無制限にどちらかの実装に寄せない。
+
+### 23.2 標準Model Mapとの関係：表示は資格の表現であって資格の生産者ではない
+
+main統合済み[RQ-036](../../requirements/TEI_PRODUCT_REQUIREMENTS.md#rq-036-ドメインの全容を図表とナビゲーションで理解拡張できること)に従い、標準のData/Function/BusinessとOperation/Plugin/Runtimeのどこまでが**fixed**で、どこが**customizable**かを、既存Model Map/Graph/Standard Representationへ投影する。図面の`resolved`はCatalog内の型付き宣言が解決したという**限定意味**に留める。[Model Map M0 Draft #3518](https://github.com/hat47x/tei-platform/pull/3518)の`partial-projection`はFunction実Read／業務関連の完全性と異なる。Graphの観測0件、未受理Relation、未表示のState/Effect/Pluginを「存在しない」と書かない。
+
+一件のWorkBench Form/Tableから、同一Data/Query/Relation/Function identityとSource positionへナビゲートできても、そこから編集／DDLの対象を確定しない。Model Mapを新Canonical Layer、Runtime Host、SQL Executorにせず、同じ受理済みデータの導出Projectionとして保つ。
+
+### 23.3 AI利用・高度チューニングの再利用範囲
+
+[mainのAI性能観測の限定Reference #3520](https://github.com/hat47x/tei-platform/pull/3520)はSynthetic Joinの統計/Hintを比べるための足場であり、実DBのLatency/Throughput改善を立証したものではない。Workbenchの性能測定を開始する場合も、**Provider実Read・解析/Build・Consumer描画・Cache hit/miss**を分離し、単位、行数、取得Scope、Query/Plan/Provider/Toolchain/Cache Revisionを紐づける。欠落した測定を推定値で埋めない。チューニングHintが結果値・実Read対象・開示/権限を黙って変えることを拒否する。性能改善のみで意味・Source・独立ExpectedのGateを省略しない。
+
+### 23.4 周辺製品との境界：早期の独立化を要件にしない
+
+- **KON Dataspace** は正式名称および`kon-dataspace`というリポジトリ名を維持するが、Workbenchの最初の縦断実証のために独立サービス・中央Registry・新認可基盤を起動しない。まずSUI内のRaw保存/Reader再取得/複数Canvas/Source Revision/Scope/Disclosureが必要な範囲で実証されてから、Providerとして分離する合理性を評価する。
+- **REA／SHO** はLegacy Actual・Owner Accepted Desired・Target Actualの独立比較と、出典付き図面/Writer Working Copyの独立検証を後続Consumerとして受ける。観測や文書生成を外部Sourceの意味採用、正式納品、Targetへの移行完了に昇格させない。
+- **SEI／EKI** の判断要求・配送応答・実Effect/Receiptは別ライフサイクル。Workbench read-onlyの受入に外部Decision Agentや新しいセッション実装を必須化しない。
+
+### 23.5 終了条件と継続位置
+
+この節の目的は**既存M1b→R0→X0、D1のProduct S2、WB/HJ/QXを一枚の受入順序にすること**であり、設計を大量に増やすことではない。現行PR #3486のProduct Scopeは合成Catalogの物理情報read-only投影に限定する。実データReaderとFunction Contextは[#2586](https://github.com/hat47x/tei-platform/issues/2586)、CLI/Studio Provider Production Bindingは[#1251](https://github.com/hat47x/tei-platform/issues/1251)、History Fail-Closedは[#2892](https://github.com/hat47x/tei-platform/issues/2892)、正式Graph/CRUDは[#3492](https://github.com/hat47x/tei-platform/pull/3492)に分担する。各々が**実入力／実Call／独立Expected／Current Scope／Consumer Receipt**を提示した場合に限り、その対象の資格を上げる。
+
+**確認の限界**：本追補は計画Markdownの更新であり、新しい実PostgreSQL/JSONL Reader、Current Grant、通常CLI＋Wails Bridgeの同一Provider実Invocation、Migration適用、KON/SHO/SEI実E2E、Owner Meaning受理の実証ではない。
