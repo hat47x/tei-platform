@@ -33,6 +33,23 @@ Issueの要求を、生成AIが最低限の指示で**漏れを見つけなが�
 **新しい阻害点**：Source Root findingは`validate`と`workspace-files`という異なる投影に現れる可能性がある。片側だけを読んだConsumerが「必要Sourceは揃っている」と誤判定すれば、候補生成の前提資格を誤る。今回の最小修正で両方をチェックし、片側だけに不正が出る合成負例を追加した。これは**本当のRequired Source/Parser/Meaning閉包が実現した証拠ではない**。
 
 **外部Harness受領**：#2509実H3 Skill Loadの限定観測は先行するが、8,192byte Catalog途中切断やRequest/Reply欠落を解決したとは主張しない。ローカルTool Reply単位で安全でも、外部AIへのDeliveryは現在もunknownとする。
+## 2. P-1b：Design Context Packetの最小境界
+
+今回のReferenceは`tools/reference-design-context-packet/packet.py`で、**既存TEI CLIの9種類のJSON出力を読み取るConsumer**を構成する。TEI Source/DSLの新Parser、第二Resolver、権限判定器、製品MCP Serverではない。Obligationの独立定義は`tools/reference-design-context-packet/obligations.json`に固定し、観測済Catalogの行からRequired集合を逆生成しない。
+
+| 投影フィールド | 意味 | 現時点の主張上限 |
+| --- | --- | --- |
+| `obligations` | 対象Kind/ID、独立Required Sourceと必須観点 | 今回は`semantic-data:sales.order`と`semantic/sales/order.tei`のみ。Issue全体Requiredは未解決 |
+| `cliEvidence` | 実CLI応答ごとのByte長・SHA256と完全受領 | CI Runner内のローカルJSON。外部Harnessの受領ではない |
+| `versionAgreement` | catalog/inspect/trace/validateのWorldとSource Index指紋 | 同一文字列であってもSourceの読み取り中変化や実Target資格を証明しない |
+| `sourceLedger` | Required SourceのInventoryと`readByLoader` | `readByLoader=true`でもParsed occurrence/Role/Meaningは未観測 |
+| `data/facets` | Dataの実Subject同定、Function/Business/Rule/Dependency等の未充足 | `observed-subject-only`はData全閉包でもOwner採用でもない |
+| `delivery` | ローカルToolから外部LLMへの完全受領・Disclosure | このReferenceでは`null`（unknown）。外部送出しない |
+| `state/claimCeiling` | 不完全・版競合・部分観測と、昇格できない資格 | 本Referenceは`partial`上限。complete/test-generation-qualifiedを偽装しない |
+
+合成負例は9件：Subjectが消える、Required Sourceが未Load/消滅、SourceIndex指紋競合・World指紋欠落、Source root findingがある、Tool reply欠落・切断・別Schema。部分受領を空集合へ畳まず、欠落時は`incomplete`、競合時は`stale`へ倒す。ローカル完全JSONだけでは#2509の8,192byte途中切断や56 Request/55 Replyを解決しないので、**外部Deliveryは引き続きunknown**。
+
+**成熟してもまだ不足する点**：新Packetが`partial`を返すことで「誤ったcomplete」を拒否できるが、意味的なRequired Domain/Function/Business/Rule全閉包を生成する機能自体を実装したわけではない。正式P-1bでは既存read-only Typed Application ServiceからParsed/Source occurrence/Dependency/Current Disclosureを取得し、CLI/MCP/Skill/人間向け表へ**同じ意味の投影**として提供する。中核をPython Consumerへ固定しない。
 
 ## 3. T1：未知のテストを生む能力の判別
 
@@ -69,6 +86,7 @@ T1不合格例：候補は作ったがRuleに届かない、正答Holdoutの混�
 | --- | --- | --- |
 | **P-1a** 実CLI部分取得 | 9実応答、Binary/Source指紋とSource Loaderの区別。誤completeの負例 | **限定main T0既実行** |
 | **P-1b0** Consumer Readiness強化 | 既存独立Required/9実CLI応答を使い、Byte異常7種＋Source Inventory異常2種を新規判別（既存7件は変更なし） | **本PRの新実験。CI結果が必要** |
+| **P-1b0** Consumer Packet | 独立Requiredと9実応答を結び、9負例でfail closed、Artifact保管 | **本PRの新実験。CI結果が必要** |
 | **P-1b1** 製品Typed Design Context | Requirement/Function/Business/Rule、Source occurrence/Parser/Role/Meaning/Disclosure/Deliveryの用途相対Closure | **NOT RUN** |
 | **P-1c / T1** AI Test Proposal + Holdout | 実Harness/Skill Load、Tool完全受領、候補新Case、独立ExpectedでMutant判別、false-qualified、Token/時間 | **NOT RUN**（#3273 Draftは設計のみ） |
 | **T2** cross-target | 同一ScenarioのCLI/Web/Desktop/HTTP・実Provider/Host Evidenceと独立再Read | **NOT RUN** |

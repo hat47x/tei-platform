@@ -94,3 +94,6 @@
 
 # Child-process reach observations are hashed as raw bytes.
 /plan/evidence/DSH_CHILD_PROCESS_REACH_2026-11-08/** -text
+
+# Resurvey output is hashed as raw bytes by its README.
+/plan/evidence/COMPOSITION_COLOCATION_RESURVEY_2026-11-08/** -text
