@@ -1734,3 +1734,18 @@ KON Dataspaceは独立・任意のData Source候補であり、TEIのテスト�
 このP0 Operation負例が独立に検出され、実CLI/Scenario/Source/Resultの資格が揃った後にのみ、#3273で未知Gapを生成AIへ隠したBlind Trialを実施する。**新規テスト候補が生成されたこと**、**指定Targetへ到達したこと**、**独立ExpectedとMutantを判別したこと**、**実外部受領が成立したこと**を別列で記録する。候補の多さやドキュメント追記数は成功指標にしない。
 
 **この章の実施状態**：GitHubの現HEAD/CI状態を確認し、既存受入票を実行可能な一件へ絞り込んだ**計画更新**。新しいGo/CLIテスト、T1-B Agent、外部H2/H3、実Provider R/Hの実行は**NOT RUN**。
+
+<!-- tei-test-independent-operation-oracle-20261108 -->
+### 35.5 独立Operation Oracleの実コードへの反映と次の合格線（2026-11-08）
+
+[Draft #3365](https://github.com/hat47x/tei-platform/pull/3365)の旧HEAD `f7de811d0ac6c92c696e7f36069ae47350cca5f8`は、[専用dogfood CI #42463616468](https://github.com/hat47x/tei-platform/actions/runs/42463616468)・Repo Health #42463616418・依存確認 #42463616407 がcompleted/success。これは**実CLIの6 Stepと8つのtest-only copy controls**を含む局所証拠であり、その後の新実装の受入ではない。
+
+新実装は、`probe.py`の公開6 Stepに対する**独立固定Step→Operation表**（`STEP_OPERATIONS`）を導入し、以下を同一実Pinned Scenarioの検査へ接続した。
+
+- **正の条件**：Sourceから読んだScenario Step→Operationが固定Referenceの独立表と一致すること、実CLI Evidenceの`stepId`/`operation`/`verified`が要求と一致すること、実行後Scenario SourceのByte digestが読取時と一致すること。これらは実Provider/Host/異時点の完全な共同Snapshotではない。
+- **判別負例 TT-154**：受領目録の`operation`と呼出元の`expected_operations`を**同時に別Operationへ変更**すると、`scoped_step_coverage`内の自己一致は見かけ上PASSする。だが**同じ独立Operation Oracleを実際に呼び出す**と拒否する。期待値と観測値を一緒に作る同源の検証基準では独立性を満たせないことを、test-only copyで対照化する。
+- **CI受入**：既存7→8→**9つの限定Control**（TT-105/106の部分目録、終端、Source差、重複、未Verified、異Operation、TT-154共謀誤値）を、実6 Stepの成功後に現行WorkflowでAssertする。数値はProduct Mutant kill件数でも全Requirement分母でもない。
+
+この新機構は**独立に固定した合成Referenceに対する検証**であり、業務Meaning Owner Acceptance、Scenario→実Function→Provider、実外部Harness end/ACKを証明しない。C1、Blind T1-B、Current Grant/Disclosureは引き続きunknown/NOT RUN。
+
+**採用順**：#3365のexact HEAD CIで9対照・実6 Stepの限定成立を検収→その後だけ既存#2514/#1180の実証範囲を更新。実際の次一件は、#3482の`sales.order.submit`限定Source宣言と、Driverの`evaluate-validations`という別Operationの間に実Bindingを観測できるか。宣言だけと実行を混ぜず、実呼出が未確認なら`not-observed`で止める。外部Import ProviderのRaw-only drift (#3479) とCLI/MCP参照Transportは、この同一Attemptの外側の別検収条件とする。**新Core/Reader/Runner/Oracle正本を作らない**。
