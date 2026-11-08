@@ -94,3 +94,6 @@
 
 # Resurvey output is hashed as raw bytes by its README.
 /plan/evidence/COMPOSITION_COLOCATION_RESURVEY_2026-11-08/** -text
+
+# Gate dependency recheck output is hashed as raw bytes by its README.
+/plan/evidence/COMPOSITION_GATE_DEPENDENCY_RECHECK_2026-11-08/** -text
