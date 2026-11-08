@@ -1550,7 +1550,7 @@ QMLの独立Expectedは**試験前に確定**する。QML-01/02の相違は「le
 
 **小さな検証に絞る**：まず#3500の実行済み合成Probeの実SQL/param/逆順列を「Provider間実契約の局所基線」として使用し、QR-B/Cに必要な差分（real DSN・Provider/Instance・Read Cohort・Consumer受領）を列挙する。次に既存#2586の`order_entry.recent_orders`と同一Functionを使う**一回の実Read**でQR-A〜Dを試す。§27.13.4の`sales_order`+JSONL FixtureはDB ReaderのRaw/NULL/重複識別という**別局所検査**であり、その成功を`recent_orders`のOwner Accepted Meaning・実Function Data Context・全件品質へ合算しない。夜間品質JobはQR-Dが限定成立してから派生生成を検証し、オンラインGuardや認可を削除しない。
 
-**禁止する成功の合算**：#3500のsynthetic CI、#3489/#3497のMigration Go CI、#3479のSource失効試験、#3486のWorkbench physical metadata、#3490のBOM、#3371/#3381のInspectorを単純に加算して「Read→Quality E2E PASS」と書かない。品質EvidenceはSource、Owner Rule、selected/actual Provider、実Artifact、実DB Read、独立Expected、Result/Consumerの**必要集合**によってのみ昇格する。新しいHost/Registry、第二Oracle正本、KON必須配備、RAG/Lean必須化、正式新DSLを導入しない。
+**禁止する成功の合算**：#3500のsynthetic CI、#3489/#3497のMigration Go CI、#3479のSource失効試験、#3486のWorkbench physical metadata、#3490のBOM、#3371/#3381のInspectorを単純に加算して「Read→Quality E2E PASS」と書かない。品質EvidenceはSource、Owner Rule、selected/actual Provider、実Artifact、実DB Read、独立Expected、Result/Consumerの**必要集合**によってのみ昇格する。新しいHost/Registry、第二Oracle正本、別製品の必須配備、RAG/Lean必須化、正式新DSLを導入しない。
 
 ## 28. 一改訂のValue／Flow／Job／Consumer縦断――参照実行と外部実行を混同しない（2026-11-03横断追補）
 
