@@ -72,9 +72,24 @@ type selfBuildIntentBinding struct {
 	ChildPlanFP       string `json:"childPlanFingerprint,omitempty"`
 	CheckPerformed    bool   `json:"intentByteCheckPerformed"`
 	CheckMatched      bool   `json:"intentByteCheckMatched"`
-	L2BClaimed        bool   `json:"l2bClaimed"`
-	BoundaryStatement string `json:"boundary"`
-	UnperformedReason string `json:"byteCheckNotPerformedReason,omitempty"`
+	// EntryIntentFingerprint is what the entry itself derived from the bytes it
+	// held (SB-C0 §4.13, I-1a). It is a second, independent basis for comparing
+	// readings: the byte check above depends on the child reporting the bytes it
+	// read, while this depends only on the entry's own reading.
+	EntryIntentFingerprint string `json:"entryIntentFingerprint,omitempty"`
+	// FingerprintCheckPerformed is true only when both sides produced a
+	// fingerprint. An absent side leaves it false with the reason, never true.
+	FingerprintCheckPerformed bool `json:"intentFingerprintCheckPerformed"`
+	// FingerprintMatched compares the child's reported intent fingerprint with
+	// the entry's own. It is a different question from the byte check: two
+	// different byte sequences cannot produce the same declaration fingerprint
+	// unless they normalise to the same declaration, and the same bytes always
+	// do. Disagreement means the child read a different declaration.
+	FingerprintMatched bool   `json:"intentFingerprintMatched"`
+	L2BClaimed         bool   `json:"l2bClaimed"`
+	BoundaryStatement  string `json:"boundary"`
+	UnperformedReason  string `json:"byteCheckNotPerformedReason,omitempty"`
+	FingerprintReason  string `json:"fingerprintCheckNotPerformedReason,omitempty"`
 }
 
 const selfBuildIntentBindingBoundary = "the entry held the declaration and the child reported its own readings; l2bClaimed is always false: agreement of digests is not proof that the child derived the same plan from the same meaning"
@@ -318,6 +333,13 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 			L2BClaimed:        false,
 			BoundaryStatement: selfBuildIntentBindingBoundary,
 		}
+		// The entry's own reading of the same bytes, derived with the package the
+		// reference resolver shares. This is the basis the byte check cannot
+		// provide: the byte check needs the child to report what it read, while
+		// this needs nobody but the entry.
+		if report.IntentRecord != nil {
+			intentBinding.EntryIntentFingerprint = report.IntentRecord.Fingerprint
+		}
 		// The declaration is NOT injected into the builder's argv: the entry does
 		// not invent child arguments, and the builder it is pointed at may have no
 		// -intent flag at all. A caller that wants the byte check passes the
@@ -356,6 +378,23 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 			}
 		} else {
 			intentBinding.UnperformedReason = "child did not report the declaration byte digest it read"
+		}
+
+		// The fingerprint comparison runs on its own evidence: the entry's
+		// derived value and the child's reported one. It does not inherit the
+		// byte check's outcome, so a child that reports a fingerprint but not
+		// the bytes it read still gets compared.
+		switch {
+		case intentBinding.EntryIntentFingerprint == "":
+			intentBinding.FingerprintReason = "the entry derived no intent fingerprint from the declaration it held"
+		case evidence.ChildIntentFingerprint == "":
+			intentBinding.FingerprintReason = "the child did not report the intent fingerprint of the declaration it read"
+		default:
+			intentBinding.FingerprintCheckPerformed = true
+			intentBinding.FingerprintMatched = evidence.ChildIntentFingerprint == intentBinding.EntryIntentFingerprint
+			if !intentBinding.FingerprintMatched {
+				appendSelfBuildFailure(&evidence, "child reported an intent fingerprint that differs from the one this entry derived")
+			}
 		}
 	}
 	report.IntentBinding = intentBinding
