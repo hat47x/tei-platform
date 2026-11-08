@@ -23,6 +23,7 @@ func modelOptions(t *testing.T, out, command string) ModelOptions {
 }
 
 func TestExternalCommandIsRecordedAndSelectable(t *testing.T) {
+	requirePOSIXShellForExternalCommands(t)
 	workspaceDir, contract, fixtures, candidates := paths(t)
 	root := t.TempDir()
 	source := filepath.Join(candidates, "template", "main.go")
@@ -44,6 +45,7 @@ func TestExternalCommandIsRecordedAndSelectable(t *testing.T) {
 }
 
 func TestExternalCommandFailureIsRejected(t *testing.T) {
+	requirePOSIXShellForExternalCommands(t)
 	root := t.TempDir()
 	out := filepath.Join(root, "recorded")
 	_, err := GenerateWithCommand(context.Background(), modelOptions(t, out, "exit 7"))
@@ -56,6 +58,7 @@ func TestExternalCommandFailureIsRejected(t *testing.T) {
 }
 
 func TestExternalCommandWithoutSourceIsRejected(t *testing.T) {
+	requirePOSIXShellForExternalCommands(t)
 	root := t.TempDir()
 	out := filepath.Join(root, "recorded")
 	_, err := GenerateWithCommand(context.Background(), modelOptions(t, out, "true"))
@@ -65,6 +68,7 @@ func TestExternalCommandWithoutSourceIsRejected(t *testing.T) {
 }
 
 func TestExternalCommandRefusesExistingOutput(t *testing.T) {
+	requirePOSIXShellForExternalCommands(t)
 	root := t.TempDir()
 	out := filepath.Join(root, "existing")
 	if err := os.Mkdir(out, 0o755); err != nil {
