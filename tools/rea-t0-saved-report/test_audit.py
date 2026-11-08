@@ -98,18 +98,24 @@ class ReportAudit(unittest.TestCase):
     def test_jsonl_error_control_record_in_object_view(self):
         path = self.root / 'view.jsonl'
         path.write_text('{"$rea":"jsonl/v1","type":"error","ok":false,"result":{"code":"invalid_input"}}\n')
-        self.assertEqual(audit_mod.jsonl_audit(path, object_collection=True)['framing'], 'reported-error')
+        out = audit_mod.jsonl_audit(path, object_collection=True)
+        self.assertEqual(out['framing'], 'reported-error')
+        self.assertEqual(out['rowsSeen'], 0)
 
     def test_jsonl_error_control_record_in_bare_view(self):
         path = self.root / 'view.jsonl'
         path.write_text('{"$rea":"jsonl/v1","type":"error","ok":false}\n')
-        self.assertEqual(audit_mod.jsonl_audit(path, object_collection=False)['framing'], 'reported-error')
+        out = audit_mod.jsonl_audit(path, object_collection=False)
+        self.assertEqual(out['framing'], 'reported-error')
+        self.assertEqual(out['rowsSeen'], 0)
 
     def test_jsonl_duplicate_control_rejected(self):
         path = self.root / 'view.jsonl'
         line = '{"$rea":"jsonl/v1","type":"metadata","records":{"emitted":1}}'
         path.write_text(line + '\n' + line + '\n')
-        self.assertEqual(audit_mod.jsonl_audit(path, object_collection=True)['framing'], 'extra-control-record')
+        out = audit_mod.jsonl_audit(path, object_collection=True)
+        self.assertEqual(out['framing'], 'extra-control-record')
+        self.assertEqual(out['rowsSeen'], 0)
 
     def test_jsonl_invalid_utf8_is_not_a_valid_view(self):
         path = self.root / 'view.jsonl'
