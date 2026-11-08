@@ -186,3 +186,4 @@
 - [空文字列の引数の修正を統合後に再実測](TEI_DOGFOODING_ROUND9_EMPTY_ARGUMENT_REMEASURE_2026-11-09/README.md)（#3605・#3420。`0067d6a1e`で、空文字列はCLIが`INVALID_ARGUMENT`・MCPが`-32602`で拒否し、省略時だけ既定`mode=summary`を使う。残る差は符号のみで、分類統一は#3420）
 - [inspect・traceの実プロセス同値と失敗分類](TEI_DOGFOODING_ROUND10_CAPI2A_PARITY_2026-11-09/README.md)（#3420 CAPI-2a。8ケース中7ケースで成否と`error.code`が一致。必須引数の欠落だけが`INVALID_SUBJECT`と`-32602`の層の違い。実CLI・実MCPの別プロセスで固定し、符号を変える変異2種を検出）
 - [`tei self-build`の計画指紋の再計算](TEI_GO_SELF_BUILD_PLAN_RECOMPUTE_2026-11-09.md)（receiptが運ぶ`plan`から`plugin.BuildPlanFingerprint`をentryが再計算し、名乗りと比べる。不一致はbuilder起動前に停止、計画を運ばないreceiptは`unperformed`と理由を残す。`l2bClaimed`は常にfalse。SB-C0 §4.8 / #2831）
+- [`tei self-build`の計画値をWindowsとLinuxで再観測](TEI_GO_SELF_BUILD_CROSS_OS_2026-11-09.md)（同じ宣言と同じ解決childから、`intentBytesDigest`・`receiptDigest`・`planFingerprint`・再計算値がOSを跨いで一致し、実行体とartifactのdigestは一致しないことを記録。`planCrossCheck`は両OSで`unperformed`。台帳§2.4の「別OS再観測」のOS軸。 #2831）
