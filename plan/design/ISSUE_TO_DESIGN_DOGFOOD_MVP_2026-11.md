@@ -565,7 +565,7 @@ P1 Inspectorでまず判別するのは、①Contractと対象Operationの宣言
 
 [main #3477](https://github.com/hat47x/tei-platform/pull/3477)では、**同一Workspace内**のSource-only変更（`validation.tei`末尾改行のみ）に対して、World FPが不変でもSource Index FPの差によって古いDesign Context→Scenario引渡しを拒否する限定実Go/CLI経路が統合された。これは「二指紋で外部Sourceも検出できる」ことの証明ではない。
 
-[後継Draft #3479](https://github.com/hat47x/tei-platform/pull/3479)（旧Draft #3386はclosed/unmerged）は、`workspace.Load`でimportする**別ProviderのRaw Source**だけを改版した場合、ConsumerのWorld／Semantic Digest／Source Index Artifact・Reference・ModelRevisionが不変になり得る一方、Provider Raw SHAと`LocateImportedSource`の現行Fingerprintは変わる、という再現試験を新たに提案した。現行`BuildSourceIndexFromLoad`の`ErrImportsNotBound`も、Consumer IndexがProvider全入力を覆わないことの区別に使う。**このDraftのfocused Go Testやexact-head CIの成否は個別確認するまでは未資格**。
+[main統合 #3479](https://github.com/hat47x/tei-platform/pull/3479)（旧Draft #3386はclosed/unmerged）は、`workspace.Load`でimportする**別ProviderのRaw Source**だけを改版した場合、ConsumerのWorld／Semantic Digest／Source Index Artifact・Reference・ModelRevisionが不変になり得る一方、Provider Raw SHAと`LocateImportedSource`の現行Fingerprintは変わる、という再現試験を新たに提案した。現行`BuildSourceIndexFromLoad`の`ErrImportsNotBound`も、Consumer IndexがProvider全入力を覆わないことの区別に使う。**同PRの固定HEAD Health #42474407926はcompleted/success**。ただし実外部Import Consumerへの統合Source鮮度通知、原子的Nested Load、実BOM／Host資格は未実装・未受理。
 
 | 外部Referenceの変化 | Context/意味Claim | 引用・再利用の資格 |
 | --- | --- | --- |
@@ -682,13 +682,13 @@ Ontology DSL／Decision Twin／外部シミュレーションSDKの本格製品�
 | --- | --- | --- |
 | **宣言→Function Entry**（#3262/#2586） | main #3482の`sales.order.submit` Source/Role/Required限定照合 | 同名Namespaceが`uses`にあっても、呼出し先Capability Entryが未Bound／別Capabilityなら拒否。Build・Host/Grant・実Effectは未実証 |
 | **別Function→実Read**（#2586） | Product `recent_orders`の業務SQL/Providerを現物で一連に繋ぐ受入条件がある | 別`submit` Requiredが合格でも`recent_orders`のSQL実選択・`:from`・実Rowsetが無ければR0は未成立 |
-| **Imported Provider Source/Manifest→Consumer**（#3479/#3262/#2600） | main #3477は同一Workspace SourceIndex改版を検出。未統合#3479旧HEADの限定Source-only Go負例はHealth成功 | Imported ProviderのRaw Source末尾改行だけ／Manifest末尾改行だけ変えても、Consumer World/Source Index FPが不変となる反例を別々に固定。Provider Source raw fingerprint、Manifest identity、実Nested Readを混ぜずに追跡。#3479新HEADはCI未確定、Product自動失効は未実装 |
+| **Imported Provider Source/Manifest→Consumer**（#3479/#3262/#2600） | main #3477は同一Workspace SourceIndex改版を検出。main統合#3479の限定Source-only／Manifest-only Go反例は固定HEAD Health成功 | Imported ProviderのRaw Source末尾改行だけ／Manifest末尾改行だけ変えても、Consumer World/Source Index FPが不変となる反例を別々に固定。Provider Source raw fingerprint、Manifest identity、実Nested Readを混ぜずに追跡。#3479固定HEAD Health #42474407926は成功、Product自動失効は未実装 |
 | **E1 Plan Route/Action→Go Host**（#3274/#3485） | main統合[#3485](https://github.com/hat47x/tei-platform/pull/3485)はNodeのE1 PlanとGo Hostのmethod/path/actionIdという**独立の宣言**を合成Fixtureで対照する | 二側が個別PASSでもペア不一致なら統合PASSとしない。これはTest-onlyのRouteペア判別であり、実Hostが選択したProviderのInvoke、HTTP Client Reaction、DB Effect/Receiptは未証明 |
 | **Physical Schema→Meaning/Diagram**（#3270/#3486） | [Draft #3486](https://github.com/hat47x/tei-platform/pull/3486)は旧#3372を置換し、Workbenchへ物理FK/UNIQUE/Index・観測版を伝える候補。Fake Catalog経路のTestに限定 | 物理FKやIndexから業務Relation／Function CRUDを自動受理しない。別Accepted Meaning Sourceが無いならGraph/CRUDの未確定Roleはunknown、実PG/Studio/SHOのE2EはNOT RUN |
 
 **判別の単位**：`exact subject/function ID + Required Purpose + source occurrence + imported provider raw/manifest revision + invoked implementation/target + read cohort/scope + consumer receipt + independent Expected`を既存#1163/#1180/#2514の証拠と比較する。必要な情報が一つでも不足した辺で`partial/unknown`として停止。これを**一つの巨大な新しい公開Status SchemaやTest Harnessへ実装せず**、既存Ownerの判定列に分配する。先行P0-M/R/DとP1 Inspector D1を並行で進め、実SEI／SHO・異Targetへの転記は該当Consumer受領とOwner受理が可能な段階まで保留する。
 
-**本節の上限**：main #3482の限定専用CI／#3485の合成Route Test、#3479/#3486の未統合候補と実Sourceを照合した計画更新。実Go/CLI/PG/Studio/HTTP/MCP/SHO/H3の新規Product E2E、実Provider Rowset・現在Grant、Legacy/Target実比較、Owner Meaningの正式受理は**今回NOT RUN**。
+**本節の上限**：main #3482の限定専用CI／#3485の合成Route Test、#3479のmain統合済み局所Go反例と#3486の未統合候補を照合した計画更新。実Go/CLI/PG/Studio/HTTP/MCP/SHO/H3の新規Product E2E、実Provider Rowset・現在Grant、Legacy/Target実比較、Owner Meaningの正式受理は**今回NOT RUN**。
 
 <!-- tei3483-m1a-typed-subject-handoff-20261108 -->
 ### 14.32 実Workspaceの「二つのSubjectを読めた」を、一つのFunctionの依存・実Readと取り違えない
