@@ -69,8 +69,9 @@ const selfBuildOuterBoundary = "one child build launched by this TEI binary from
 type selfBuildOuterArgs struct {
 	Workspace string
 	Intent    string
-	// IntentFile is the declaration this entry holds and hands to the child.
-	// -intent stays the logical ID; the file is the byte-level input (§4.8).
+	// IntentFile is the declaration this entry holds and hands to the child,
+	// and the declared build intent required by SC0-01. -intent stays the
+	// logical ID; the file is the byte-level input (§4.8).
 	IntentFile string
 	Supply     string
 	State      string
@@ -79,8 +80,6 @@ type selfBuildOuterArgs struct {
 	// ChildArgs is the extra argv the caller passes to the child as JSON. The
 	// outer shape does not invent those arguments, but it must forward them.
 	ChildArgs string
-	// IntentFile is the declared build intent. It is required by SC0-01.
-	IntentFile string
 	// SupplyVerifier is an exact executable that runs SB-0b's classification.
 	// When named, its result is required before the builder starts (SC0-02).
 	SupplyVerifier string
