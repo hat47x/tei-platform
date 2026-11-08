@@ -13,6 +13,18 @@ import (
 // File moves may preserve the World fingerprint but change Source references.
 // These hashes are not Shared Acceptance revisions or transactional locks.
 func workspaceProjectionFingerprints(world ir.World, idx sourceindex.Index) (worldFP, sourceFP string, err error) {
+	return WorkspaceProjectionFingerprints(world, idx)
+}
+
+// WorkspaceProjectionFingerprints exposes the two read-only observations that
+// the JSON projections report as `worldFingerprint` and
+// `sourceIndexFingerprint`. A new command must use this function rather than
+// compute a third version for the same Workspace (#3345).
+//
+// Neither value is a Shared Acceptance revision, a lock, or proof that the
+// Workspace is valid. A file move may preserve the World while changing the
+// Source Index.
+func WorkspaceProjectionFingerprints(world ir.World, idx sourceindex.Index) (worldFP, sourceFP string, err error) {
 	worldFP, err = worldFingerprint(world)
 	if err != nil {
 		return "", "", err
