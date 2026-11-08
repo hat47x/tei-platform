@@ -379,3 +379,49 @@ RQ-035/RQ-036・横断Indexは[Draft #3297](https://github.com/hat47x/tei-platfo
 - **Reverse Edit/Consumer**: Canvas/Studio/SHO/実Provider/Hostで、一意性・適用可能性・実配送/実効果を既存Owner/Scenario/独立Expectedで検証する。
 
 上の5資格を一つの`PASS`としない。新`modelref_fitgap_test.go`のgo test、gofmt、GitHub Health、最後の変更HEADは**その実Runで確認してから**判定する。
+
+## 21. 外部逆解析・Provider Source変化・同一Consumer受入（11/08）
+
+### 21.1 REA／Workbenchからの構造観測はModeler正本の別入口
+
+[REA連携 #3394](https://github.com/hat47x/tei-platform/issues/3394)の現行「二経路」設計を本三視点Consumerへ接続する。**REA JSON・SQLite Snapshot・旧X-TEA XML・物理DB FKをTEI標準`*.tei.md`のAccepted Sourceとして直接Loaderへ投入しない**。具体的には次の二経路の責任を分ける。
+
+| Lane | 入力・出力 | 図面とCRUDが宣言できる範囲 |
+| --- | --- | --- |
+| External Observation（read-only） | 元Source bytes／Snapshot、実行したREA/DB Provider、Raw Evidence／FK・UNIQUE・実SQL発見、Source locator、観測時刻、unknown／coverage | **観測された構造・Potential CRUD・未解決Relationの候補図**。元のバグやSQL UPDATE構文を「あるべき業務仕様」またはActual Commitにしない |
+| Explicit TEI Authoring/Acceptance | 選択した候補を専門家可読`*.tei.md`等のSource Draftへ変換、実Loader/Parser/Role、Source span、既存Ownerの意味受理 | **適格な意味モデルの三視点・CRUD図**。Reader未対応なら`parser-unbound`で保留し、SHO上のドラフト保存だけでは受理済みとしない |
+
+**個々のIDを合同化しない**：REA Evidence/Module ID、外部DBの物理Table/Key、TEI Candidate ID、受理済みData/Function/Business ID、Graph Edge ID、Canvas View Occurrence、SHO Document Occurrenceは別名前空間。多対多の出典付きMappingとして扱い、見かけの同名・同型・同digest・同Source pathだけで一意同義にしない。SHOの再編やREA再解析は、TEI Sourceへ暗黙のPatchを送らない。外部REAの実解析・Bundle readback、`*.tei.md` Authoring Reader、SHO Writer/再開、旧新Runtime比較はいずれも本PRでNOT RUN。#3394のT0/T1-A/T1-B/T2が所有し、本PRに第二のImporter/Parserを設けない。
+
+[Workbench Draft #3372](https://github.com/hat47x/tei-platform/pull/3372)で保持する物理FK/UNIQUE・Index・CapturedAt/Fingerprintも同じ**Physical Observation→Structural Candidate→Owner Accepted Relation**の順序を適用。複合キー・非ユニーク・式/部分Index・外部表が存在するとき、UIの「Relation 1本」に単純変換して多重性や制約のlossを隠さない。
+
+### 21.2 ConsumerのWorld revision一致だけでは外部Sourceの鮮度は保証できない
+
+[main統合#3477](https://github.com/hat47x/tei-platform/pull/3477)の同一WorkspaceのSource-only改訂拒否を、外部Provider Source全体への保証と誤拡張しない。[Draft #3479](https://github.com/hat47x/tei-platform/pull/3479)は**importしたProvider raw**がConsumerの`Source Index`に入らない場合、ConsumerのWorld/Model/Source Index digestが不変でも元Providerのraw bytes・locatorの現在版が変わり得る反例を検討中。本PRではimported Provider側の試験コードを複製しない。
+
+Diagram/CRUD/SHO引用の資格に必要なのは、消費先Workspaceだけの`sourceIndexFingerprint`ではなく、**対象を導出するのに現実に使ったSource/Import/REA Providerの依存閉包・取得時点・exact byte/locator・Plugin/Rule・開示・Reader mode**である。閉包が未観測なら「現在も有効な図」を示さず、Read-only Candidate/partialへ降格する。物理Evidence fingerprintをStable Semantic Relation IDへ転用しない。
+
+Go側は[modelref Fit/Gapテスト](../../reference/diagram-crossref/modelref_fitgap_test.go)を拡張し、**合成GraphのEdgeでSource Observationのfingerprintのみを変えると`reference-evidence-changed`になり、SourceTokenがあってもartifact fingerprintがなければ`unbound-source-evidence`で拒否する**ことを検査する。これは`modelref`が**明示的に渡された**Evidence変化を検出できるという局所的能力であり、実Loaderが外部Provider rawを読んだ、入力closureが完全、現在Grantを満たす、という証明ではない。未解決のEdge IDや編集対象一意性も引き続き不足（§20）。
+
+### 21.3 Headless／CLI／Studio／SHO間の引渡し条件
+
+- [CLI実ドッグフーディング #3455](https://github.com/hat47x/tei-platform/issues/3455)で、`view`・`source-index`・`knowledge-context`等はWorkspace identityが応答から欠落する実例が確認された。修正候補[PR #3467](https://github.com/hat47x/tei-platform/pull/3467)は未統合として扱う。**現行Responseで取得されていない欄を補って等値比較してはならない**。一時的にはCallerがrealpath/manifest byte・actual flags・result modeと対象Revisionを記録し、正しい結合が証明できなければ`incomplete`。API正式対応は#3419/#3455のOwner。
+- Studioは選択したInspector Plugin/Capabilityが実際に呼ばれたWitnessを検査する。Graph/CRUDのNodeを表示しただけ、CLIと見た目が同じだけでは二Consumerの同一Model/同一Provider適格としない（#3279/#3371）。
+- SHOではSource/Document occurrence、Renderer/BOM、納品Asset、Reader readbackと開示を区別。Source/Provider変更後の旧引用は歴史図として表示可能でも、Current/Edit資格は再検査が必要。
+- [HTTP Graph main統合 #3478](https://github.com/hat47x/tei-platform/pull/3478)は既存Go Hostの実Handlerの10経路に限定したAudit/Branch検査を進めた。**HTTP 202やAudit completedを業務Effect確定としない**。同じ標準Graph/Diagram Rendererの別ドッグフード対象に使うが、Host PathとTEI一般Graphが接続済みとは主張しない。
+- [Ontology/Twin長期Issue #3475](https://github.com/hat47x/tei-platform/issues/3475)は、型付き対象・Relation・時系列・Decision Inquiryを本基礎の先へ延長する構想。SEIへの判断移譲・SUI Canvasの実装・KON Dataspace Provider化は**セルフビルド/SUI基礎より後の別Owner**に置く。三視点Graph/CRUDのP0に第二Ontology CanonicalやKON必須依存を持ち込まない。
+
+### 21.4 受入ケースと優先実装の再確認
+
+| 試験（新しいRunner/Gate番号ではない） | 入力対照 | 期待する確かな結論 |
+| --- | --- | --- |
+| Source evidence drift | Node/Relation意味不変・観測Source fingerprintだけ変更 | 現`modelref.Diff`は局所`reference-evidence-changed`。**実Providerの変更検知**は#3479が別に確認する |
+| Unbound imported observation | SourceTokenあり・fingerprintなし | `modelref.Validate`は`unbound-source-evidence`、正当なGraph→Source逆編集不可 |
+| REA vs TEI Source | REA Raw JSONを`*.tei.md`と改名 | 未対応Reader/Roleを正式Authoringに昇格しない。T1-Aだけ局所PASSでもT1-Bはpending |
+| Physical FK→Relation | 複合物理FK・同名別Table・業務意味未受理 | Physical/Structural Candidateを図示し、Accepted Business Relationと別表示。Owner reviewを要求 |
+| Multi-Consumer | CLI ContextのWorkspace未証明／SHO旧Source引用 | `partial/unqualified`で継続・表示は可能だが、元SourceへのPatchとCurrent Claimを拒否 |
+| HTTP graph | HandlerのGuard/Audit順と実Business Outcome | 実Host Pathの局所観測を保持。静的GraphとHTTP応答だけでEffect確定しない |
+
+**当面の最短実装**は変更しない。M1で実Loader/Roleへ入場できた一つのSourceを選び、M2でStable Subject・2つの別Relation occurrenceとCRUDセルをSourceへ逆引きできることを最初に示す。次にM3で**一意な1本だけ**のSource Patchを実行し、非単射・source-only drift・権限なしを拒否する。M1が未成立なら今回のSource Evidence TestのPASSをM2/M3に昇格しない。独立Expected・実Runの適格性は#2514/#1180/#1163がOwner。
+
+本節の情報は既存Ownerの実装事実と未検証構想を分けた計画更新であり、Core API/ABI、Protocol、REA Adapter、Twinエンジン、Registryや新受入Gateを正式採用するものではない。
