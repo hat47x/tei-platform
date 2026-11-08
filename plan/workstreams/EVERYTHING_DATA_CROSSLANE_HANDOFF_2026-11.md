@@ -1454,6 +1454,52 @@ QMLの独立Expectedは**試験前に確定**する。QML-01/02の相違は「le
 
 **Owner/非採用**：#3394がREA外部解析の実観測・候補受渡し、#3270が実DB構造観測、#3262がRequired Design Context、#951/#3278/#3267が選択Provider/履行/BOM、#2621/#3030が正式 `*.tei.md` Reader/Authoring、#2514/#1180が独立Expected/Scenario、#2622/#2611が実Read/Alias/Correspondence、#2497/#3263がLoss-aware三視点、#1130がJob、#1174/#1129が現在修正Effect、#2600がEvidence資格の失効。第二外部解析Engine・TEI Host・Quality Registry・移行向け別Ontology正本・新CLI DSL/正式Trait ID/自動修正Agentを導入せず、既存P0で確かめられる一Ruleのread-only実証を先行する。**本節はDocs-only。REAプロセス接続、実2Source/旧Runtime、正式Reader、Go/SQL/Replica/Lean/EKI、Owner受理の新E2Eは未実施。**
 
+
+### 27.13 物理制約・実適用・業務Ruleの三つの品質資格――Data Source Workbenchの11/8実装候補を受入へ（2026-11-08横断追補）
+
+> **設計・実証引継ぎのみ／この品質試験の実Go・実PostgreSQL・Owner受理はNOT RUN。** §27.6〜27.12の検査Coverage/独立Oracle/Provider Trait/移行比較を、11/8の物理Schema read-only WorkbenchとMigration Historyの**最新事実**へ接続する。#3270の旧Draft [#3372](https://github.com/hat47x/tei-platform/pull/3372)は差分0件問題で**未merge closed/superseded**、レビュー対象は **[Draft #3486](https://github.com/hat47x/tei-platform/pull/3486)**（新HEAD `65c63553…`、物理FK/UNIQUE/式・部分Index・観測版のread-only Projection、合成Catalog Go Test 2件）。main実装・実DB Conformance済みと呼ばない。#2892の`AppliedUnknown`→`RepoApplied`偽分類は未解決であり、品質監査の前提証拠として安全側へ止める。
+
+#### 27.13.1 DBの「制約がある」と「業務の全件品質が保証された」を分ける
+
+| 段階／Owner | 観測・要求する事実 | 不当な合格主張 |
+| --- | --- | --- |
+| **Accepted Business Rule**（#2622/#1126/#2514） | Ownerが受理したIdentity/キー/Relation、適用期間、NULL・欠損/非開示、粒度・単位、全体/局所Scope、独立Expected | テーブル名・PK/FK/UNIQUEの存在から業務Relationや全業務キーを受理 |
+| **Observed Physical Definition**（#3270/#3486） | 実Provider/DB Alias/Instance、DDL/Schema Snapshot、Index keys（列/式）、partial predicate、include/opclass/collation、NULL固有規則、Index/制約の有効・準備・稼働状態、参照先・複合列・観測時刻 | Workbenchの表示、fake Catalog、Fingerprint、`CREATE INDEX`構文から現在実DBの全件強制を確定 |
+| **Actual Enforcement & Migration qualification**（#2892/#2887/#1174） | 選択した実DB Instanceでの現在の制約状態・権限/Schema Revision・履歴取得完全性・Applied/Unknown、DDL適用のResult/必要な独立Read | History `AppliedUnknown`・partial/空HistoryをApplied/Pendingへ丸める、旧Snapshot/ACK成功から現制約を保証 |
+| **Observed Data Conformance**（#2586/#2622/#1130） | Function→Query→選択DB Binding→実Provider SQL/API Read、Row/Field/Relationの完全なScope/Snapshot、独立Expectedによる違反/未検証、現在のGrant/Disclosure | DB Indexの存在、実Readが0行、RunPlanの終了、合成Mock CatalogでのPASSから業務Data品質PASS |
+
+**DBの物理制約はオンライン境界の重要な実現手段だが、品質保証の正本ではない**。例えば`UNIQUE ... WHERE active=true`はPredicate外に及ばない。また`UNIQUE (customer_id, external_id)`と「全Tenantで一意なexternal_id」は異なる。列とIndexのNULL規則、式`lower(email)`と照合順序、無効/準備中のIndexの実強制・可視性はProvider固有に確認する。FKが観測されたことは元モデルの対応候補を増やせても、時間条件・取消・業務Relationの多重性がOwner受理されたことを意味しない。逆に物理FKがなくても、別Provider上の業務Relationが存在しないとは結論しない。
+
+**Ruleの実現方法は差分として説明する**：Ownerが「全件」と受理した条件がDBのpartial indexでは満たされない場合、(a)DB側の追加制約を検討、(b)オンラインGuardを保持、(c)読取専用Nightly Checkを補助として派生、のいずれかを**現在の実運用/性能/Effect上の制約付きで比較**する。ただしNightlyが検出するまで危険なCommandを許容してよいと自動判断しない。逆に実DB制約が十分強いなら、同じ重い全件Checkをオンラインの全行hot pathで重複実施しない（§25）。新たな中央Constraint Registry/Validator Engineは設けない。
+
+#### 27.13.2 Schema/履歴/データを同一「検査済み」へ圧縮しない
+
+移行前後・Schema変更後に、`Schema compatible`／`Migration applied`／`Data conforms`／`Read permitted`／`Effect observed`は相互に代替しない。**品質Jobが対象として使うSchemaと実ReadのDB Instance/時点/現在Grant**を一致させる。実DDl Changeの前は、既存#2887のMA-11へSource/History/Grant/対象Instanceを直前再確認し、ACK喪失をBlind Retryしない。夜間Checkはread-onlyで実施し、DDL/補修を実行しない。
+
+- #2892 **HIST-01〜05を再利用**：適用状態Unknown、History欠落・部分、checksum欠落、Schema一致でもHistory Unknownを個別に保留。History未取得を「Migrationなし」、History Unknownを「適用済み」としない。Schema/Historyが不明でも限定Data Readが可能なら、そのScopeにおける観測事実だけは保持し、**Schema全面資格/移行完了へ昇格しない**。
+- #3270 **WB-42〜54を再利用**：複合FK/有向多重辺・式/部分/NULL Indexのdeep copy/版と、fake Catalog→read-only Projectionの範囲。合成Goテストが通っても実Provider Index強制やMigration Applyを合格にしない。
+- #2586 **既存QX-01〜05を再利用**：Logical Query選択・SQL方言/DB Alias・Query実消費・Rowset Scope。Go/SQLの結果が同値でも別Alias/RLS/Snapshot/Read Cohortが異なれば、品質Claimは別。
+
+#### 27.13.3 最小の独立Expectedと優先順位（QPC、正式公開Schemaではない）
+
+| ID | 先に固定する反例 | 期待される品質判定／停止条件 |
+| --- | --- | --- |
+| **QPC-01 Partial UNIQUE** | Owner Rule「全顧客external_id一意」、実DBは`UNIQUE (external_id) WHERE active=true`、inactiveにも重複 | Index定義観測は正しいが**業務Ruleを全件強制しない**。正常Active部分と全母集団の未保証・実違反を分離 |
+| **QPC-02 NULL・式Index** | 複合UNIQUEのNULL含有Row、式`lower(email)`と照合規則差、重複候補 | Provider固有のNULL/式/照合範囲とOwner Ruleを独立比較。列名一致や見た目の値一致を正解としない |
+| **QPC-03 FKと時点** | 物理FKは成立、組織Membershipは有効期間重複・別Role/二多重辺 | Physical relation intactでもBusiness temporal conformanceは違反候補。FK不存在もBusiness Relation不存在の証拠でない |
+| **QPC-04 Index状態/読取** | CatalogにIndex定義があるが無効・準備中、またはSchema FPのみ同じで実DB Instanceが別 | Workbench Projection成功≠Index実強制≠全件Data PASS。実Instance・Provider/native statusを要す |
+| **QPC-05 History Unknown** | HistoryでAppliedUnknown、または取得失敗で空Entries、Schema見た目はDesiredと一致 | Migration資格unknown（#2892）、DB適用済み・全データ検証済みと報告しない。独立局所Readは別観測 |
+| **QPC-06 Read未接続/Scope差** | Synthetic FK/IndexのGo Test PASS、Function→SQL候補あり、実PG RowReadなし／別DB Aliasへfallback | Schema/静的候補の局所PASSのみ。Data QualityはNOT RUN/unknown。Provider選択と実呼出し差も拒否 |
+| **QPC-07 Schema変更直前競合** | ValidなDDL Planの後にSchema/Grant/History変化、ACK lost、古い品質Jobが完了 | DDL/補修の自動Retry禁止。現Instance再確認、旧Quality Claimは時点限定。Nightly Jobはread-only |
+
+**着手順は既存Ownerを優先した四段階**：
+1. **P0-a：Design/Schemaの前提を限定確認**。#3354の実11 CLI Reply/32合成Consumer対照はDesign Contextの既知一RuleのRequired部分にだけ使用。#3486の合成物理Constraint/Index投影は**PR exact HEADのCI結果を確認後**に局所採用。Required Rule/物理Observed/実DB資格を別列に固定。
+2. **P0-b：唯一の実データ不足辺を埋める**。#1251/#951の実選択Inspector Provider→実呼出しを先に狭く通し、#2586の**受注一FunctionのQuery→DB Binding→実Provider Read**で、固定人工受注O1/O2と独立Expected・SQL Byte・actual Row/Field/Snapshotを照合する。別Issueで新PG Runnerや第三Providerを作らず、既存の#3155実PG `resource-observed`は**Commitした1資源の現在値**の限定参考であって、この全件Data Readの代替ではない。
+3. **P1：Indexの意味差とHistory Unknown**。QPC-01/02/04は#3270/#2622のContract差、QPC-05は#2892のHISTの修正・実History Adapter後に実DBで比較。実DDL/Migrationは#3270/#2887/#1174が隔離DBの現在Authority/Receipt/独立Readで実施し、品質Job本体からは実行しない。
+4. **P2：read-only夜間Checkとして派生**。同じOwner RuleでPhysical-only/Snapshot-limited/Full Provider Readの3 Claimを別々に返し、Go streamingまたはSQL Pushdownの一方式から#1130の無人RunPlan/Output Consumerへ接続。§27.8の独立Mutant・§27.11 exact BOM、§27.12旧Desired比較への昇格は**実個別証拠が揃ってから**。性能/Replica/別DB/AIは後続で定量評価。
+
+**責務**：#3270/現Draft #3486＝物理Schema/Indexの忠実なread-only Projection、#2892/#2887＝History/DDL資格、#2622/#2586＝Data Rule/Query→実ReadとProvider差、#951/#1251＝実選択→呼出し、#2514/#1180＝Owner Ruleから独立のExpected、#1130＝Job、#1174＝現在Effect、#1163＝一改訂Evidence。未知を成功へ丸めず、**新しい品質Engine・DSL・Registry・Host/DB Agent・上位Gateは不採用**。本節はDocs-onlyであり、QPCの実Provider・Index enforcement・History/DDL、Go/SQL Job、CI/性能、正式Owner Acceptanceの新実行はNOT RUN。
+
 ## 28. 一改訂のValue／Flow／Job／Consumer縦断――参照実行と外部実行を混同しない（2026-11-03横断追補）
 
 ### 28.1 並行する三つのOwner計画を、別の正本を作らずにつなぐ
