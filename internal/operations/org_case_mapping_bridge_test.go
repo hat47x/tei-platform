@@ -246,9 +246,9 @@ func TestOrgCaseExplicitPersistenceEnablesReadCandidateOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if sqlChanged.ModelRevision == surfaceWithQuery.ModelRevision ||
-		sqlChanged.WorldFingerprint == surfaceWithQuery.WorldFingerprint {
+	if sqlChanged.ModelRevision == surfaceWithPattern.ModelRevision ||
+		sqlChanged.WorldFingerprint == surfaceWithPattern.WorldFingerprint {
 		t.Fatalf("native SQL source change must invalidate the read-only world's revision: before=%s after=%s",
-			surfaceWithQuery.ModelRevision, sqlChanged.ModelRevision)
+			surfaceWithPattern.ModelRevision, sqlChanged.ModelRevision)
 	}
 }
