@@ -122,11 +122,14 @@ func TestSelfBuildOuterBindsTheDeclarationBytesItHeld(t *testing.T) {
 	dir := t.TempDir()
 	child := buildIntentReportingChild(t, dir)
 	workspace := outerWorkspace(t, dir)
-	intentFile := filepath.Join(dir, "intent.json")
-	if err := os.WriteFile(intentFile, []byte(`{"intent":"sample"}`), 0o600); err != nil {
+	// The declaration must pass the SC0-01 reader (#3476), so it is a real
+	// build intent rather than an arbitrary JSON object.
+	intentFile := outerIntentFile(t, dir)
+	rawIntent, err := os.ReadFile(intentFile)
+	if err != nil {
 		t.Fatal(err)
 	}
-	wantDigest := digestOfBytes([]byte(`{"intent":"sample"}`))
+	wantDigest := digestOfBytes(rawIntent)
 	output := filepath.Join(dir, "artifact")
 	// Compute the digest the child will produce so the artifact check matches.
 	if err := os.WriteFile(output, []byte("artifact-bytes"), 0o600); err != nil {
@@ -186,10 +189,7 @@ func TestSelfBuildOuterDetectsAChildThatReadADifferentDeclaration(t *testing.T) 
 	dir := t.TempDir()
 	child := buildIntentReportingChild(t, dir)
 	workspace := outerWorkspace(t, dir)
-	intentFile := filepath.Join(dir, "intent.json")
-	if err := os.WriteFile(intentFile, []byte(`{"intent":"sample"}`), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	intentFile := outerIntentFile(t, dir)
 	output := filepath.Join(dir, "artifact")
 	if err := os.WriteFile(output, []byte("artifact-bytes"), 0o600); err != nil {
 		t.Fatal(err)
@@ -233,8 +233,9 @@ func TestSelfBuildOuterDetectsAChildThatReadADifferentDeclaration(t *testing.T) 
 	}
 }
 
-// SC0-14: a logical ID without the declaration bytes cannot be byte-checked,
-// so the entry records why instead of leaving the field unexplained.
+// SC0-14: a child that does not report the declaration digest it read leaves
+// the byte check unperformed, and the entry states why instead of implying a
+// match it never made.
 func TestSelfBuildOuterRecordsWhyTheByteCheckWasNotPerformed(t *testing.T) {
 	dir := t.TempDir()
 	child := buildSelfBuildChild(t, dir)
@@ -243,17 +244,23 @@ func TestSelfBuildOuterRecordsWhyTheByteCheckWasNotPerformed(t *testing.T) {
 	report, _ := runOuterShapeWithIntent(t,
 		"-child", child,
 		"-workspace", workspace,
-		"-intent", "intent.sample",
+		"-intent-file", outerIntentFile(t, dir),
 		"-state", filepath.Join(dir, "state"),
 		"-output", output,
 		"-child-arg", childArgs(t, "-artifact", output, "-digest", "sha256:deadbeef"),
 	)
 	binding := report.IntentBinding
 	if binding == nil {
-		t.Fatal("no intent binding was recorded for a logical ID")
+		t.Fatal("no intent binding was recorded")
+	}
+	if binding.IntentBytesDigest == "" {
+		t.Fatal("the held declaration digest was not recorded")
 	}
 	if binding.CheckPerformed {
-		t.Fatal("the byte check was reported as performed without declaration bytes")
+		t.Fatal("the byte check was reported as performed without a child report")
+	}
+	if binding.CheckMatched {
+		t.Fatal("the byte check was reported as matched without a child report")
 	}
 	if binding.UnperformedReason == "" {
 		t.Fatal("the missing byte check had no stated reason")
