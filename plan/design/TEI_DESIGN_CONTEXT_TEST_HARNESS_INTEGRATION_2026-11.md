@@ -339,3 +339,47 @@ A〜Hは既存TEI CLIが返したJSONの**test-onlyメモリ上のコピー**を
 この選定は他チャットのPlugin-first Inspector（CLI/Studioで実選択Bと呼出Bを一致させる）、REA/SHO三視点と物理FK/UNIQUE観測、KON交換、SEI委譲にも共通する。いずれも**モデルの存在やSource Index一致をAction資格やデジタルツイン全意味に自動昇格させない**。参照用Build DriverのStage再入成功も`cmd/tei`自身のL2/L3/G4資格とは分離。
 
 **新PRの受入**：actual CLI 13 Reply、従前のContext Packet/9負例・既存32 Control・Scenario6＋T1-A/SourceIndex失効に追加10判別が、**同じ実CIで全てPASS**したこと。そのうえでexact PR HEADとmain pushの実バイナリdigest/Artifactを別々に検査する。新PRの実CI成功を確認するまでは未検証とする。
+**現時点**：本文は統合変更の受入規定。新統合HEADのCI結果を検収するまでは**NOT QUALIFIED / NOT MERGED**。T1-Bの生成AI盲検発見、C1/全NFR、外部Harness Reply End、実DB/Host、Owner受理・G4 Self-buildの新実証はまだない。
+
+## 10. Source Index版を含むContext→Scenario引渡し：意味の変わらないSource変更を見逃さない
+
+### 10.1 mainで確認済みの先行成果（2026-11-08 JST）
+
+[#3354](https://github.com/hat47x/tei-platform/pull/3354)はmain `39d4debae386442c11149c7d3995bcfffa711c20`へ統合済み。main push [Actions #42392054820](https://github.com/hat47x/tei-platform/actions/runs/42392054820)、Job `128461490209` は**completed/success**、checkoutは同じcommit。11 read-only CLI Reply（9＋全Source Index＋Validation Inspect）、既存16＋3 Rule独立Requiredの8＋Canonical/Relation/Source照合の8＝**32の限定判別Control**、6既存Pinned Scenario Step＋旧6実CLI拒否・2独立拒否、さらにT1-A候補1 Step＋3拒否がPASS。Artifact ID `13581529076`、7日保持。Go局所statement C0相当**10.0%**、C1未計測。これは新しいFunction/Business全Required資格ではなく、外部Harness実受領・Owner Meaning Acceptanceも未実証。
+
+### 10.2 新しく明確になった欠落：同じWorldでも異なるSource Index
+
+**Contextの時点**：既存`context_gate.py`は各CLI応答の`worldFingerprint`と`sourceIndexFingerprint`を照合し、対象3 Rule/Relation/Sourceの必要要素を確かめた。ただし**Contextとその後のScenario実行は別時点の観測**であり、Contextの成功判定だけを保存して再利用することは不適切。
+
+**Scenarioの時点**：実`cmd/tei/scenario.go`の生成済みPlanは、Scenario source byte、正規化WorldのJSON byte、Plugin Lock byte、Fixture byteをpinする。一方、**Source Index（Source byte・位置・role）RevisionはPlanのPinに含まれていない**。これはPlanの意味評価範囲を超えたSource Authoringの全版資格を、成功したScenario実行から推論できないという境界である。
+
+したがって次の二段階を同じ試験Consumerに追加する。
+
+1. 実TEI CLIの`model catalog`を**Scenario候補を作る直前とPinned実行直後**に改めて呼び、Context Reportの`observations.observedFingerprints`中の**WorldとSource Index両方**に完全一致することを求める。既存Model CatalogをConsumerが読むだけで、第2パーサー・Scanner・Hostは作らない。
+2. 実TEI CLIの`scenario generate`が返した`worldSha256`と、元Contextの`worldFingerprint`（`sha256:`＋hex）を照合する。両者は既存Goの`json.Marshal(normalized World)`に対するSHA-256であり、**同じSourceから別々のReadが作成したWorldの一致**を検査する。Plugin Lock/Fixture/Scenarioの既存Pinを変更しない。
+
+### 10.3 業務意味が不変でもSource改訂が必要な負例
+
+公開合成Workspaceの**破棄する一時コピー**で、既存`validation.tei`の末尾にLFを1文字追加する。実TEI CLIの`model catalog`を変更前後で呼び、**Canonical World FPは同じ／Source Index FPだけ異なる**ことを観測する。このとき元PlanのWorld/Lock/Fixture/Scenario Pinを付けた`scenario run`は、別Workspaceの同一Canon Worldに対し**成功し得る**。これはRuntime Rule Evaluationの失敗ではないが、**過去のDesign ContextからSource位置・Source Revisionまで現在と認定してよい理由にはならない**。
+
+独立Requiredの照合側はWorldが同じでもSource Index改訂を拒否する。一時Copyの元Source byteへ復元するとA→B→AでSourceIndex指紋は元に戻るが、それは**中間変更がなかったこと、現在Owner Grantが継続すること、外部Harnessが同版を完全受領したことの証明にならない**。別Workspaceの同名ManifestはWorkspace rootの同一性も保証しない。テストは版・内容の必要条件を示すだけで、根拠記録がないSource epochやCurrent Host Authorizationを捏造しない。
+
+| 観測 | 新しいExpected | 禁止する主張 |
+| --- | --- | --- |
+| Context→Scenario生成 | Context World FP = Scenario Planの`sha256:`＋WorldSHA256 | World一致だけでSource位置・Grant一致とはしない |
+| Scenarioの前後 | 現在CLI CatalogのWorld/Source Index両FPがContextと一致 | 連続時間の原子的Snapshot、A→B→A不存在を推論しない |
+| Source末尾LF追加 | Canonical World不変、SourceIndexだけ変化 | 処理結果が正しいことをSource Revision同一に代用しない |
+| 元Plan＋改変後WorkspaceのScenario Pinned実行 | World同一条件では実行が成立し得る事実を照合 | 実行成立を旧Contextの最新性・Owner意味受理へ昇格しない |
+| Consumerの失効判定 | SourceIndex FPが異なる限り対象Contextの再利用を拒否 | 自動再解釈してAccepted Meaning/実Provider資格を与えない |
+| Source A→B→A | 内容指紋が復元する | 中間履歴/Authorization/Tool完全受領が復元すると仮定しない |
+
+### 10.4 後続Issueとの調整
+
+- **#3262**：Context Readinessの正本を増設せず、`t1_line_number_candidate.py`が限定的に**既存CLIを直前・直後に再観測**する。将来の製品Scope Queryはatomic transactionの有無、Source Snapshotと実ConsumerのVersion/Role/Grantを明記する。
+- **#2514/#1180**：業務拒否の独立Expected・Product Mutant killと、Context RevisionのFreshness負例を**別種類**として計測。今回のSource LFはGo実EvaluatorコードMutantでなく、Source Index変更の失効テスト。
+- **#3365**：Scenario目録の欠落とCoverage分母（TT-105/106）は別Draftで検討中。今回のContext→Pin比較は目録・カバレッジを推測せず、既存T1-A候補の時間境界だけ担当する。競合する`probe.py`を変更しない。
+- **#3361/#2509**：外部AI Harnessが受領した実Request/Reply/EOF/Disclosure/Scopeと、この**ローカルCLI**の前後観測を混同しない。
+- **#3360/#2831**：Stage1で再構築した**reference-go-build-stage-driver**がStage2を駆動した実プロセス試行は成立している。一方、対象は`cmd/tei`ではなく、TEI標準Build Intent/Graphを使ったTEI本体の再入L2/L3は**未実証**。外部Go Seed Trust、単一OS/toolchain/Recipeの制約を残し、G4全体は`UNQUALIFIED`。Context→Scenario成功をSelf-build資格と混同しない。
+- **#3267/#3278**：Plugin Lock byte差分を2×2Verified BOM・実Provider Consumer/Invocationへ昇格しない。Source ContextとProvider Contract/TargetのVersion/Current Grantは別Witness。
+
+**今回の変更予定**は`tools/reference-issue-test-ability/t1_line_number_candidate.py`と既存dogfood CI・本計画に限定。新実CI成功確認までは実験結果を**NOT RUN**とする。外部H3の盲検T1-B新Case生成、C1/NFR/全Requirement、実DB/Provider、Owner Accepted Meaning、現在Grantは新規受入しない。
