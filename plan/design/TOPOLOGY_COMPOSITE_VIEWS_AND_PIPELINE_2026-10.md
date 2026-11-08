@@ -371,4 +371,6 @@ Else absence remains unknown; no universal closed-world assumption.
 
 read-only Referenceは`compareObservedLoadContext`をテスト専用の候補比較として提供する。新たな正本Identity/Resolver/Policy Engineではなく、異なるWorkspaceを一つのGraph/関係表へ誤結合しないための局所停止線とする。外部Consumerがこれを使う場合は別途#2516の現在開示と、#1124のScope/Source/描画Epochの受入が必要。**実Runner、ActualConsumed、Graph/Tableの多項Relation全被覆や不存在証明には流用しない。**
 
-**証拠の区分**：Nodeの合成反例は局所比較関数の検証。Go `tei trace`を一時Workspaceに実行して初めて、実ReaderによるWorld／Source FPの一致/不一致とManifest差を観測したことになる。どちらの成功もOwner Meaning AcceptanceやSource Closureを意味しない。CI headと結果はPR #3321に版固定で記録し、以後のmainへの追随時に再資格化する。
+**実観測の結果（2026-11-08）**：[GitHub Actions #42434859063](https://github.com/hat47x/tei-platform/actions/runs/42434859063)で、Go1.26.10の実`tei trace`を同じWorkspace/別Caller scopeの2回と、Manifest名だけ異なる一時Workspaceの1回、計3回実行した。元Workspaceと別Manifestのコピーは**World FP・Source Index FPだけでなく、Operation-level Snapshot tokenも等しかった**（CI `snapshot-token-equal=true`）。にもかかわらずManifest Name/SHAは異なり、read-only比較は`workspace_manifest_mismatch`として拒否した。Node24.21.0の17件の合成試験も**17/17 PASS**。これは「意味内容のFingerprintだけでWorkspaceをJoinしてはいけない」の実証であり、**受理済み意味や実Source全依存が同じ／異なるという証明ではない**。
+
+**証拠の区分**：Node合成反例は局所比較関数の検証、実CLIの3つの観測は現行ReaderとManifestの分離を再現した限定証拠。これらはいずれもOwner Meaning Acceptance、現在Policy/Grant、ActualConsumed、Source/Plugin Closure、Studio本番の選択資格を意味しない。正確なGitHub head・試験結果をPR #3321に固定し、後続mainへの追随は別途再資格化する。
