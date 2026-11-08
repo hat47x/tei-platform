@@ -83,5 +83,46 @@ class ReportAudit(unittest.TestCase):
         self.assertEqual(audit_mod.jsonl_audit(path, object_collection=True)['framing'], 'count-mismatch')
 
 
+    def test_exit_report_conflict_on_zero_exit(self):
+        out = self.saved(0, b'{"ok":false,"result":{"category":"invalid_request"}}')
+        self.assertEqual(out['reportedOK'], False)
+        self.assertEqual(out['processReportConsistency'], 'conflict')
+        self.assertEqual(out['analysisQualification'], 'reported-failure')
+
+    def test_exit_report_conflict_on_nonzero_exit(self):
+        out = self.saved(2, b'{"ok":true,"data":{}}')
+        self.assertEqual(out['reportedOK'], True)
+        self.assertEqual(out['processReportConsistency'], 'conflict')
+        self.assertEqual(out['analysisQualification'], 'unknown')
+
+    def test_jsonl_error_control_record_in_object_view(self):
+        path = self.root / 'view.jsonl'
+        path.write_text('{"$rea":"jsonl/v1","type":"error","ok":false,"result":{"code":"invalid_input"}}\\n')
+        self.assertEqual(audit_mod.jsonl_audit(path, object_collection=True)['framing'], 'reported-error')
+
+    def test_jsonl_error_control_record_in_bare_view(self):
+        path = self.root / 'view.jsonl'
+        path.write_text('{"$rea":"jsonl/v1","type":"error","ok":false}\\n')
+        self.assertEqual(audit_mod.jsonl_audit(path, object_collection=False)['framing'], 'reported-error')
+
+    def test_jsonl_duplicate_control_rejected(self):
+        path = self.root / 'view.jsonl'
+        line = '{"$rea":"jsonl/v1","type":"metadata","records":{"emitted":1}}'
+        path.write_text(line + '\\n' + line + '\\n')
+        self.assertEqual(audit_mod.jsonl_audit(path, object_collection=True)['framing'], 'extra-control-record')
+
+    def test_jsonl_invalid_utf8_is_not_a_valid_view(self):
+        path = self.root / 'view.jsonl'
+        path.write_bytes(b'\\xff')
+        self.assertEqual(audit_mod.jsonl_audit(path, object_collection=True)['framing'], 'invalid-jsonl')
+
+    def test_symlink_report_directory_rejected(self):
+        (self.root / 'exit-code.txt').write_text('0\\n')
+        alias = self.root / 'alias'
+        alias.symlink_to(self.root, target_is_directory=True)
+        with self.assertRaises(ValueError):
+            audit_mod.audit(alias)
+
+
 if __name__ == '__main__':
     unittest.main()
