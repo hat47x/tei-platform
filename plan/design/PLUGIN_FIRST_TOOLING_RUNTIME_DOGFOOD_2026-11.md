@@ -656,3 +656,12 @@ Data Workbench #3270、REST Decision Graph #3274、三要素モデルとCRUD/SHO
 **所有権と順序**：#3262 Source/Required Closureと#3479 External Source、#951 Selection、#3278/#3279 Trait/Consumer、#1251実Inspector→実Call、#943/#2600 Build/Artifact、#1180/#2514独立Expected/Attempt、#3267 RQ-036 BOM。**BFRをここで独自Runnerや第二BOM Registryとして実装しない**。CLI/Studioという2 Consumerで実Providerの同一性を示すD1は依然P0。#3478の実HTTP Host Branch/監査、#3440の限定Self-buildは別Target・別Claimであり、このBOM行を自動で資格化しない。
 
 **受理状況**：#3477/#3337/#3350/#3363はmain履歴、#3479と今回の履歴Policy比較Go RegressionはDraft、BFR-01〜07を横断する製品Inspector/Version Matrix実行、現在Host Grant、真正なTrusted Witness・Owner受理は**NOT RUN**。完成済みE2E/BOMではなく、既存計画に必要な再資格化判別を増やした段階である。
+
+
+### 18.4 Consumer実行の断絶を閉じるには、呼出し元を確認する（Host/Plugin D1）
+
+[main統合 #3446](https://github.com/hat47x/tei-platform/pull/3446)の静的走査では`internal/servicehost.NewSelectedServiceCarrierInvoker`の**非試験Callerが0**、`BindHostApplicationEnvironmentRoute`も非試験Callerが0（ただし`composition.NewSelectedCoordinator`等の部品を非試験で使う経路は別にある）。つまり「Provider選択部品が実装済み」「テスト内でService CarrierがInvokeできる」「一部のCLI/Studioが同じtyped Resultを返す」だけでは、現実のTooling Consumerから**選択済みProviderへ到達した事実をまだ得られない**。既存の`servicehost`経由を全Hostの義務にするのではなく、どの入口で実Routeを組み立てるかを選択した構成ごとに確定する。
+
+[Draft #3371 Studio](https://github.com/hat47x/tei-platform/pull/3371)／[Draft #3381 CLI](https://github.com/hat47x/tei-platform/pull/3381)は型付きInspectorのfail-closed seamとして利用できる候補だが、当時のCI Health FAILを実Plugin適合のPASSへ転記しない。**D1の次のコード変更で必要な最小証拠**は、(a) exact Contract+SelectionをRunner/Host側で読み、(b) 実CLI/Studioの別call-siteがそのImplementation identityを呼び、(c) B選択時にAへ誤接続した同一結果の負例を拒否し、(d) 実Buildに含まれるSource/Target/ArtifactをProvider証拠へ束縛すること。Shadow比較で既存Builtinを呼んだだけの場合は`reference-parity`、実経路の切替確認後だけ`consumer-invocation-observed`とする。どちらも単独でBOMのqualifiedではない。
+
+**BFR-08**：同一`Inspector`入力で旧Builtinと新typed Serviceの結果が等しくても、実Plugin Contract Resolution/Host Route/Provider Callを通らなければ不合格。既存実行入口が0なのにMock内部でだけService Carrierが呼ばれるケースを必須負例にする（#1251/#1158/#3279）。この検査は#1180/#2514へ渡す候補であり、製品CLI/Studioの実Bindingが成立したことはまだ**NOT RUN**。
