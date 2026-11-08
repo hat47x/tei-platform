@@ -218,7 +218,7 @@ func TestOrgCaseExplicitPersistenceEnablesReadCandidateOnly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("native Case browse Pattern could not be loaded: %v", err)
 	}
-	if loc, ok := withPattern.Sources["pattern:org_view.case_browse"]; !ok ||
+	if loc, ok := withPattern.Sources["application-pattern:org_view.case_browse"]; !ok ||
 		filepath.ToSlash(loc.File) != "applications/org-view/patterns/case-browse.tei" {
 		t.Fatalf("browse Pattern is not bound to its exact source: %+v", withPattern.Sources)
 	}
