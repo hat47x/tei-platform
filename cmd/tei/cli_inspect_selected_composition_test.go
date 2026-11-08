@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"strings"
 	"testing"
 
@@ -98,10 +97,5 @@ func TestCLIInspectTraversesSelectedAuthoringProvider(t *testing.T) {
 	}
 	if failed.OK || failed.Error == nil || failed.Result != nil {
 		t.Fatalf("stale Inspector returned success: %+v", failed)
-	}
-	// This adapter is intentionally not a new public contract conformance
-	// publisher, and the registration digest is not an on-disk link proof.
-	if !errors.Is(composition.ErrStaleRegistry, composition.ErrStaleRegistry) {
-		t.Fatal("stale sentinel must remain stable")
 	}
 }
