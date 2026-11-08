@@ -527,6 +527,14 @@ ChatGPTなどのチャット実行環境・Codex・Claude Code・一般的なIDE
 
 **受入状態：NOT RUN／RQ-035のProduct資格未成立。** [Workbenchの物理Schema投影PR #3486](https://github.com/hat47x/tei-platform/pull/3486)は旧[#3372](https://github.com/hat47x/tei-platform/pull/3372)を未統合で置換したDraftの**合成Catalog限定コード変更**であり、本書が実PostgreSQL/Function Read/共通Operation/Schema Apply/Owner受理の成立を宣言するものではない。
 
+### RQ-036 — 全容モデルマップ・ナビゲーションと標準／カスタムFlowの説明（対応候補）
+
+**主PASはPAS-07**：同一受理World/必要Source集合/公開Scope/Revisionから、Data・Function・Business・Event Group・State Transition・Patternの相互リンクを含む全体マップ、イベントと状態遷移、CRUD/イベント×状態×作用の表を導出する。所属・案件（組織）だけでなく、人工知能チャット／外部Eventなど異質なInteractionでも意味と表示の混同を避ける。**すべてのPatternが全体のどのData／Event／State／Functionに属するか、該当しない／未受理ならなぜ未接続か**を説明する。未取得・非開示・不明の要素は「存在しない」扱いにせず、(World, Source, Scope, Consumer)に相対的な被覆と欠落理由を提示する。
+
+**PAS-01**では、標準不変契約／設定可能／拡張Hook／明示置換／観測のみの型付き区分と、標準Flow→Custom差分→合成後実効FlowをPreviewし、意味変更はShared Acceptanceへ、単なるLayout変更は意味の不変へ接続する。**PAS-04**ではCLI/Studio/SHO/Targetから型付きRef・版・Disclosure・Gapを同義に読めるか、**PAS-06**では予備知識のない利用者やAIが「何か・なぜ・どこで変えるか」を出典へ辿れるかを検証する。
+
+**段階**：#1124の共通Diagram/Navigationの既存M0→M4に、MAP-01〜16を追加した[横断§19](design/THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)を受入基準として接続する。組織の具体例は[Draft #3243 §12](https://github.com/hat47x/tei-platform/pull/3243)。全体Catalog/Read-only Graph＋Gap→Pattern/State/Flowの型付き跳躍→標準/Custom/実効Flow→Target/Consumerの実観測の順に確認し、合格しない試験を新しい既成PASに数えない。ADR-0017のApplication Patternの所有、提案中ADR-0046のLifecycle Role、生成時のPlugin/Target実選択・実Invokeの資格を守り、新しいEngine・Graph正本を作らない。新RQ-036の採用は**製品要件を定める**ことであり、GUI/Generator/初心者試験/MAP-01〜16の実装完了・Owner意味受理は**NOT RUN**。現Gate B/CやPAS-07既存受理を遡及して変えない。
+
 ## 11. Requirement → Primary PAS mapping
 
 | Requirement | Primary PAS | Secondary / cross-cutting |
@@ -566,6 +574,7 @@ ChatGPTなどのチャット実行環境・Codex・Claude Code・一般的なIDE
 | RQ-033 | PAS-06 | PAS-01 |
 | RQ-034 | PAS-06 | PAS-01 |
 | RQ-035 | PAS-03 | PAS-01 / PAS-02 / PAS-04 / PAS-07 |
+| RQ-036 | PAS-07 | PAS-01 / PAS-04 / PAS-06 |
 
 Primaryは最初に具体化する代表的なPASを示し、要求の網羅率を表す点数ではありません。
 
