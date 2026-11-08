@@ -339,6 +339,47 @@ Itemは未整理の情報を乱暴に保持してよい一般の単位であり�
 **非採用/保留**：Canvas固有の必須Core型階層、固定Task/Action/Event enum、Raw Textの自動意味受理、中央Trait Resolver/BOM/Host/新認可Engine、全Domain共通State Machine Runtime。複数Canvasの実UI・協働編集、正式Role Syntax、CLI/Studio共通Plugin実呼出、実Query Provider、Owner受理は本追補では未採用/未実証。
 
 **Evidence ceiling**：GitHub現行Issue・main統合PRの限定証拠を引用したdocs-onlyの横断設計。CR-01〜08の実製品試験、Studio/Web/SHO/EKI E2E、Provider/Host実行、CI、正式意味受理はこの変更で**NOT RUN**。過去PRが証明した限定試験を本PRで実行したとは記載しない。
+
+### 7.13 SUI探索・REA原典解析からTEIモデル、SEI判断へ至る「翻訳と決定権限」の分離（2026-11-08、既存契約の受渡し）
+
+<!-- 20261108-crosslane-sui-rea-sei-decision-handoff -->
+
+**今回の確定的な設計制約と新しい接続点**：
+- SUIの探索/Canvas/Item/関係候補はTEIの業務意味正本に**直接・自動変換しない**。人間または生成AIが出典と未決を見ながら翻訳してTEIへの入力候補を作り、TEI側のParser/Role/Owner Acceptanceを経る。SHOは必要時の文章化・出典保存・Reviewを担うが必須の中継Hostではない。Document/Item/Graph/Canvasの共通コンポーネント利用は可能でも、SUIの解釈やTEIの業務意味を同一DBレコード・同一ID・同一Authorityへ統合しない。
+- 既存システムの解析は[TEI #3394 REA入場](https://github.com/hat47x/tei-platform/issues/3394)で外部Provider Candidate/Observationとして扱う。REA保存Evidence・選択View・SQL/旧DBの観測範囲を元Sourceと別に記録し、静的なPotential CRUDをRuntime Commit事実に昇格しない。旧画面に「実行可能」とあることも、移植先の許可されたActionを証明しない。
+- [TEI #3475 Ontology/Decision Twin](https://github.com/hat47x/tei-platform/issues/3475)は、**今はO0設計研究と既存契約へのFit/Gapのみ**。Ontology DSL/SDK・動的Twin・予測/シミュレーション・実SEI委譲の製品化は後続OwnerのGateに従う。TEI全体セルフビルド #2831とSUI基本機能の実受入前に、O2/O3の開発を本PRから起動しない。既存P0業務縦断やGo単一バイナリ基本構成を遅らせない。
+- 判断の主体は原則として**SEI**に置く。[SEI #677](https://github.com/hat47x/sei-cognition/issues/677)のGoal/Constraint、異論/未決、Knowledge照合、用途別受渡しを尊重する。ただし人間が受理した決定的Data Ruleで完結する通常のValidation/単純処理にSEI照会を義務化しない。新しい裁量判断・相反する目標・追加知識を要する場合はTEIが**Decision Inquiry候補**を作ってSEIに判断を依頼する。Inquiry作成/送信/ACK/SEI受領/判断/Host実認可/実Effectはそれぞれ別の事実。
+- 神経反射に相当する現場即応は**あらかじめOwner/実Hostが認めた対象・作用範囲・期限・Fail-safeを限定した手続きのみ**。通信断を理由に権限を拡大しない。現場の実行結果/Receipt/観測を後でSEIへ伝えても、後送ACKだけで判断や正当性を遡及承認したことにはならない。EKIが資源/Taskを実行しても、TEIの業務RuleやSEIの意思決定主体をEKIへ移譲したことにはしない。
+
+**一つの対象を通す時の所有権と証拠**（新公開SchemaやMessage Transport実装を決めるものではない）
+
+| 相 | 最小入力・証拠 | 判断/Stopと既存Owner |
+| --- | --- | --- |
+| S0 Explore | SUI Item/Canvasの元Source/Revision/Occurrence、出典、保留・異論、部分的Relation | Itemの表示/連結≠TEIの正式Entity/State。SUIが探索・保存を所有 |
+| S1 Observe | 必要ならREAの実Raw Evidence、実Read/解析Profile/版/coverage、旧Code/SQL/DBの時点 | 静的Query候補やSource Snapshotを外部Commitとしない。TEI #3394、#3270 |
+| S2 Translate | 人間/AIによるIdentity・Field/Relation・Rule・Actionの翻訳案、元文脈、loss/unknown、出典範囲 | **直接Auto-Promote禁止**。TEI #267/#2620/#2497/#1124のMeaning/Binding/SourceへCandidateとして提出 |
+| S3 Accept & Inspect | Ownerが受理したScope/Rule/State/Version、Function必要ContextとSourceのRequired/Observed差分 | #3262/#3354の限定CLI等で必要なSliceが揃わない場合、完全モデルと呼ばない。業務意味の採否はOwner |
+| S4 Decide | 既知の決定的IF/Guardなら現在Rule適用。裁量を要する場合はSEIへのInquiry（Question/Goal/Constraint/Evidence/Unknown/Correlation） | SEI受信ACK≠判断済み。旧Rule/Source版・非開示・相反条件なら再確認・保留。SEI #677/#767、TEI #3475 |
+| S5 Execute | SEI判断または受理済みRuleに基づくAction Intent、実Target/Provider/Grant/CAS、必要なら限定EKI Task | SEIが決定しても実Hostの現在権限/Tx/Receiptは別。実Effect UNKNOWNでは無条件再試行を避ける。TEI #1174/#1129、EKI #112 |
+| S6 Explain & Reconcile | 実Effect/独立Readと不明範囲を元Source/SHO説明/SEI判断履歴へ照合 | Model更新、説明文更新、Canvas更新、業務Event、SEI Memory更新はそれぞれ独立。遅れた旧応答で現在版を上書きしない |
+
+**既存Projectへ非重複で返す反証（SH-01〜08、今回新規実装はNOT RUN）**
+
+| ID | 合成圧力 | 独立Expectedの要点 |
+| --- | --- | --- |
+| SH-01 | SUIで関係を結んだがRule/Owner/元Source範囲が不明 | TEIへ翻訳Candidateのみ。Graphの操作で業務状態は変わらない |
+| SH-02 | 同一Itemが2 Canvas、SHOに別引用Occurrence | Source identityと表示/引用Occurrenceを区別。重複Decision/Actionなし |
+| SH-03 | REAは一Source解析成功、別DB時点未取得／旧Runtime未観測 | 外部候補の範囲のみ。TEIモデル・旧新同値・業務実Commitを成功としない |
+| SH-04 | REA/SUIが同じ名前の別Entity、時点・Scopeが異なる | Stable ID/Relationの自動結合禁止。翻訳/受理までunresolved |
+| SH-05 | 機械的Ruleは判定可能、別件は目標間で衝突 | 前者はSEI必須化せず既存IF Guardへ、後者はDecision Inquiryの候補にしてSEI応答待ち。必要なAuthorityは別 |
+| SH-06 | Inquiry送信ACK後にRule/観測が改版、旧版でSEIがallow | 古い回答を現在の実行資格として使わず、再照合/保留 |
+| SH-07 | 通信断で現場の停止が必要だが、反射Profileの範囲外 | 実Hostでfail-safe/明示拒否。許可済みの狭いProfileは効果と実Receiptを別に観測しSEIへ後送 |
+| SH-08 | Twin風のScenario/仮想EdgeまたはEKI Task完了 | Simulation/Derived/Task/Artifact/業務確定の区別。Self-build/SUI基礎未達ならOntology Twin本格実装へ進まない |
+
+**実行順と非目標**：現行のP0-M/P0-D/P0-P/P0-R/P0-E（§7.12）を維持する。まず公開合成のSUI探索記録と旧Source Evidenceについて、*人/AI翻訳Candidate → read-only TEI Data/Function/Business候補 → Source/Meaning必要条件の不足表示 → SHO任意引用*を**設計比較票**として評価する。TEI実Providerの1 Function/1 Readが未接続なら、SEIへの実InquiryやTwin運用を先に作らない。後続のSEI連携は実Decision Ownerの#3475、外部REAは#3394、SHO文書の実保存はSHO #4/#6のOwnerに戻す。第二Shared Registry/Workflow Host/Decision Engine/Direct SUI→TEI importer/TEI内シミュレータを提案しない。
+
+**Claim ceiling**：これは既存GitHub Issue/採用済み境界と過去会話を照合した文書上の実装順/反証計画であり、REAの実解析、SUIからTEIの実翻訳・Parser/Owner受理、SHO実Writer、TEI生成SDK、SEI実Message、EKI実Task、独立Provider Commit/Receipt、Ontology Twinはこの追補では**すべてNOT RUN／NOT ACCEPTED**。将来Gateの技術成功をOwnerの意思決定や本番の実権限へ昇格しない。
+
 ## 8. 今回の結論と検証の状態
 
 **成熟した設計入力として置くもの**：状態機械の適用対象は業務に限らない／図・状態表・遷移表・交差マトリクスは同一意味を異なる形で投影する／意味Core・実行・保存・UI・文書を直結せず明示Bindingする／業務IFを全部置換しない／実Runtimeの一般化は別の採用判断とする。
