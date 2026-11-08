@@ -620,6 +620,20 @@ func TestSelfDescriptionWorkspaceRoleFeedsExistingCurrencyFallback(t *testing.T)
 		t.Fatal("selected Role accepted row order-dependent fallback rules")
 	}
 
+	// The same parsed Role declaration can produce a different rule from
+	// different input rows. Domain data values are not semantic Source bytes.
+	noneRows := []map[core.CanonicalID]string{
+		{"fx.rate.fallback": "none"},
+		{"fx.rate.fallback": "none"},
+	}
+	fromDifferentRows, err := role.FallbackRows(noneRows)
+	if err != nil || fromDifferentRows != currencyrate.FallbackNone {
+		t.Fatalf("same Role declaration with different rows did not select none: rule=%q err=%v", fromDifferentRows, err)
+	}
+	if fromDifferentRows == got {
+		t.Fatal("different row values collapsed into the same domain rule")
+	}
+
 	// Change only the annotated Role, not the Data/Attribute or row values.
 	// A domain-specific reader must not infer the role from a column name.
 	withoutRole := strings.Replace(withRole, " role currency-rate-fallback", "", 1)
