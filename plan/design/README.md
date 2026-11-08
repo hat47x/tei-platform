@@ -174,6 +174,8 @@
 | [`REPRESENTATION_CROSSVIEW_COORDINATION_2026-11.md`](REPRESENTATION_CROSSVIEW_COORDINATION_2026-11.md) | TEI 表現型間の選択・状態連携・更新境界（2026-11-07） |
 | [`STANDARD_REPRESENTATION_TOPOLOGY_AND_MEDIA_AXES_2026-11.md`](STANDARD_REPRESENTATION_TOPOLOGY_AND_MEDIA_AXES_2026-11.md) | 標準データ構造と標準表現型：構造間Binding・媒体時間軸の設計案（2026-11-07） |
 
+| [`VERIFIED_COMPOSITION_BOM_AND_MATRIX_DESIGN_2026-11.md`](VERIFIED_COMPOSITION_BOM_AND_MATRIX_DESIGN_2026-11.md) | [RQ-037](../../requirements/TEI_PRODUCT_REQUIREMENTS.md)の検証済みPlugin／Provider×Consumer Version BOM設計と、exact Lock／Pairwise／同一Attempt Witnessの**合成Reference**。本物のProvider Build/InvokeとQualified BOMは未実施（[#3267](https://github.com/hat47x/tei-platform/issues/3267)） |
+
 ## 関連する参照事例と評価
 
 `DESIGN_SYNTHESIS_CROSS_VIEW_PROOF_DESIGN.md`の評価順序は、後続の読み取り専用の検証結果に合わせ、R1～R6へ反映済みです。当初、変更や古い状態の再評価として扱う予定だった論点は、R3～R5を先に個別に評価したうえで、R6のスナップショットの失効として扱います。
