@@ -189,3 +189,63 @@ AIの出力は**提案**にとどめる。予測効果（estimated）と実測�
 - Go: [Diagnostics](https://go.dev/doc/diagnostics)。pprof等は実Targetで費用を測って利用する。
 - Raychaudhury et al., [Coresets for Robust Query Optimization](https://doi.org/10.1145/3801896) (2026)。不確かなCardinality推定の下で頑健な実行計画を選ぶ研究例。特定アルゴリズムをTEI標準に直結させない。
 
+## 9. 第2段：Hint・Observationの結合に「実行資格」と「統計上の根拠」を持たせる（2026-11-08）
+
+[#3514](https://github.com/hat47x/tei-platform/pull/3514)で成立した**設計計画**を、試験可能な最小判別条件に下ろす。性能に関する「Hint」は、設計者の意図、Sourceに実際にある構造、生成AIの仮説、運用統計を混ぜた単一の指示文ではない。既存のTyped Reference/Role/Claim/Observation/Assessmentを利用し、Design Hintは**検索・分析の手掛かり**、Performance Observationは**測定事実**、Optimization Proposalは**提案**、Candidate Resultは**独立テストの結果**として切り分ける。新しいPerformance意味正本や万能Optimizerは設けない。
+
+### 9.1 AIが自力で抽出できる「設計上のヒント」
+
+| Sourceからの手掛かり | 何を推定できるか | 機械的に確定してはいけないこと |
+| --- | --- | --- |
+| Entity/Relation多重度、FK/Index、必須・NULL、取得粒度 | N+1、JOIN増幅、Index候補の探索範囲 | DB上の実Cardinality、コスト、業務上の多重度をDDLだけで確定 |
+| Query Predicate/Sort/Limit、選択されるPhysical Provider | Pushdown/Batch/ページングの候補 | SELECTの見た目だけで実SQL・実Rowsetの等価性を確定 |
+| Derived Ruleと正/負依存、non-monotonic演算（NOT EXISTS/LEFT JOIN/Top-N等） | 再計算できる候補、差分適用の危険範囲 | 部分集合での不存在、insert-onlyでの安全な増分更新 |
+| Function/Contextの選択epoch、表示パターン、Page/Stream設定 | 同一画面の冗長取得、初期表示遅延の調査対象 | 異なるContext/Principal/epochのCache再利用 |
+| Operation/Effect/Receipt/Host Grant | 更新に伴うCache失効の契機候補 | ACK・Command成功・古いReceiptをDB更新確定や現在認可に昇格 |
+| Plugin/Target Lock、Hook/Generator/Binding | 観測・最適化を配置できる場所、Provider能力 | 宣言/選択から実Loader/Invocationや計測動作を確定 |
+| NFR/SLO/業務優先度、保持/鮮度制約 | 目的関数とGuardrailの候補 | 未記載の速度閾値、業務価値、更新回数をAIが正本化 |
+
+**隠れた依存と負の依存も含める**。SQL本文不変でも新しいDialect候補が追加されると選択結果が変わる（#2586 QX-01）。Schema/Plugin/Provider/Grant/Source Scopeの変化があれば旧Hint/統計/Benchmarkの適用資格を再判定する。A→B→Aでも旧Measurementを現在のEvidenceとして自動復活させない。**Source byte、World/Model Revision、Build Artifact、Provider/DB revision、Observation Window、Consumer資格**を用途別に照合する。
+
+### 9.2 計測地点と低負荷統計の段階的構成
+
+1. **常時・低費用**：Operation/Provider/Query summaryごとのcall count、latency histogram、error、cache admission/hit/miss/eviction、row countの許可された集約、Pool queue。集計キーにRaw SQL、Trace ID、Tenant/Principal、PK、パラメータを含めない。
+2. **条件付き詳細Trace**：特定のFunction/Query/障害Windowを対象に、実Callの時刻・処理段・選択/実呼出Provider・Source/Scope・Span連鎖を限定収集。Sampling/drop/遅延到着/境界を明示し、未観測から無処理を主張しない。
+3. **期間限定Profile/Plan**：CPU/Allocation/GC、DB EXPLAIN/実行計画、Index・統計鮮度。Profilerのオーバーヘッドを独立測定し、計測失敗を業務失敗に変換しない。
+4. **隔離Benchmark**：Baseline/Candidateを同一Source・必要な実Dataset・Workload/Target条件・Independent Expectedで対照。適用後は本番の独立観測を得る。実行統計を収集しただけでは改善を認定しない。
+
+OpenTelemetryのstable DB semantic conventionsでは低Cardinalityな `db.query.summary` を使える一方、Query本文・パラメータや一部の属性にはOpt-in/容量・秘匿の考慮が必要。生成Targetへ常時「全SQLパラメータをTraceへ書く」実装を強制しない。個別DBで提供される累積統計のQuery IDはTEIの永続Semantic IDではなく、Schema変更・DB版/再起動・統計resetの前後を同一測定とみなさない。
+
+**長期保持の基線**は低CardinalityなHistogram/CountとSource/Target/Window概要、**短期・限定保管**は高粒度Trace/Plan/Profileとする。保管場所/期間、収集許可、目的、region、事後削除は既存のSource/Provider/Disclosureへ接続。OTelを未導入でも計測無しで動くアプリを正式な生成形態として残す。
+
+### 9.3 「前後比較できる」ことを先に設計する
+
+単一計測から「改善率」「p99」「N+1」「実行計画が悪い」を確定しない。基準と候補で、(a)固定する条件、(b)観測Window/標本数、(c)計測オーバーヘッド、(d)CIや他負荷による交絡、(e)DBの統計鮮度、(f)実Provider/Target/Build、(g)意味・開示の同等性、を記録する。ヒストグラム境界・sampling・単位が違うp99を単純差分しない。統計が不完全なときは探索候補の優先順位付けに利用してよいが、SLO合格・性能向上の証拠へ昇格しない。
+
+既存 [CLI trace benchmark](../../tools/reference-cli-trace-benchmark/README.md) は、実際の段別ProfileとSource Indexの改善、出力同一性、同一環境での比較、競合検出を扱った実例である。ここで示された過去の計測値を、**生成アプリのDB Readや全TEIの現在性能の証拠へ転用しない**。同Referenceの「支配費用を観測→候補を絞る→変更→出力同一性・メモリ/時間を再測定」という手順のみを再利用する。
+
+## 10. P0の次に進むための限定Referenceと受入境界
+
+[reference-ai-tuning-observation](../../tools/reference-ai-tuning-observation/README.md) を**試験用Consumer**として追加する。設計SourceやDBを直接解釈する製品実装ではなく、外部から渡された合成Design/Call/Statistics/Delivery/Disclosureの「矛盾・欠落・取り違え」の判別能力だけを確認する。
+
+- 調査用の繰り返しReadの兆候は `investigate-repeated-reads` であり、N+1の確定やBatch化の受理ではない。
+- Source Revision、World Generation、対象のTyped Reference、Query、Provider選択/実呼出、Scope、Grant Epoch、統計Window、分割Replyの連番/end markerを一つの観測記録で照合する。
+- 元のJSON申告に一致するだけなら `input-consistent` としか言わない。**実Providerを呼んだこと、Reply digestが内容に結び付くこと、ユーザーの開示資格が実在することは未証明**。実際のRead接続（#2586）と独立Evidence（#1180/#2514）で後から資格を上げる。
+- 試験用Consumerが元データ・SQL・Tenant/Principal・Source pathをそのまま出力しないよう、Disclosure拒否は固定の `withheld` とする。これも実本番Authとは別。
+- 既存の観測統計を材料に提案する場合でも、発見した候補を Source/Contract の変更として扱い、変更後の independent correctness + measured performance を両方通す。
+
+### 次の実製品縦断（この追加では未実行）
+
+**対象は一つのFunctionと一つの実Query/Provider Readに限定**し、次の順に証拠を積む。
+
+| 順 | 担当Ownerと成果 | 非充足として残す境界 |
+| --- | --- | --- |
+| T0 | #3262で必要Source/Function/Rule/Relationと未取得・Partialを一つのRead Contextとして取得 | Design Contextの完全Closure、Tool Reply end-to-end |
+| T1 | #2586/#2622で同一AttemptのQuery Binding→実選択Provider→実Call→Rowset/Grain/Scopeを証明 | Preview/Mock/静的SQLを実Callにしない |
+| T2 | #3271/#2582で当該ReadのCache無し/Memory/Localと再取得・失効の正負例 | 再利用資格と開示を分離、見かけのHitだけでPASSにしない |
+| T3 | #3262/#2516でSource/実Call/Window/欠測/Grantをread-only AI向けPacketへ投影し、Tool受領を照合 | JSON parse/exit0/1ページだけを完全受領にしない |
+| T4 | #1180/#2514/#2600で候補前後のMeaning/Effect/性能/計測費を独立に比較 | 未実測のAI改善予想や合成結果を本番改善へ昇格しない |
+
+Targetはまず既存Go・SQLite/PostgreSQL等の**実在する接続経路**から選び、未知の新コマンドや第二Readerを設計正本にしない。各段階は既存のGateの上に載せるが、**追加Hard Gateではない**。P0の観測・検査だけで時間を使い切らず、最終的に有益な最適化が生まれるか（追加行数/負荷/運用費を含め）を実測する。
+
+**状態**：本追補・Reference追加で実DB/DB統計/実TEI Function/外部Tool/AI/改善結果が接続されたとは主張しない。合成Referenceの実行資格と、実Target実証の資格を独立に報告する。
