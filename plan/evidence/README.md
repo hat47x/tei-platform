@@ -152,3 +152,4 @@
 
 - [`tei self-build`の§4外形](TEI_GO_SELF_BUILD_OUTER_SHAPE_2026-11-08.md)（workspace・intent・supply・state・outputの外形とSC0-01〜05の拒否条件を実装し、実Buildをchildへ委ねて記録する。`-intent`の解決・`-supply`の照合・L2は未実装。`qualified`は常にfalse。SB-C0 §4 / #2831）
 
+- [`tei self-build`のIntent宣言と供給照合](TEI_GO_SELF_BUILD_INTENT_AND_SUPPLY_2026-11-08.md)（SC0-01の宣言検査とSC0-02の供給分類を実装し、子を起動する前に拒否する。分類器は複写せずexactな検証器へ委譲する。Intentは宣言のまま（`resolved: false`）。`qualified`は常にfalse。SB-C0 §4.6 / #2831）
