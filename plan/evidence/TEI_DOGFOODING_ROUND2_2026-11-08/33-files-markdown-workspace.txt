@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "tei.cli.workspace-files/v0",
+  "ok": true,
+  "result": {
+    "managedFiles": [
+      {
+        "path": "docs/overview.md",
+        "sourceRoot": "docs",
+        "extension": ".md",
+        "readByLoader": false
+      },
+      {
+        "path": "plan/CLI_JSON_OUTPUT_CONTRACT_2026-10.md",
+        "sourceRoot": "plan",
+        "extension": ".md",
+        "readByLoader": false
+      }
+    ],
+    "sourceRootFindings": [
+      {
+        "root": "docs",
+        "message": "source root \"docs\" is not interpreted by this Loader; its files are managed but not read",
+        "severity": "warning"
+      },
+      {
+        "root": "plan",
+        "message": "source root \"plan\" is not interpreted by this Loader; its files are managed but not read",
+        "severity": "warning"
+      }
+    ],
+    "workspace": {
+      "name": "docs_probe",
+      "formatVersion": 1,
+      "manifest": {
+        "path": "tei.workspace.yaml",
+        "sha256": "sha256:82a8d4109c4471bb6c010d2b288e42c2bf66381111f09c2931dd93f6aa9075e5"
+      }
+    }
+  }
+}
