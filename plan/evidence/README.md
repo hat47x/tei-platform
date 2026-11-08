@@ -84,6 +84,7 @@
 - [環境のBindingを、能力の対応表で一括して解決する](PLUGIN_SELECTION_MATRIX_REFERENCE_2026-11-08/README.md)（`tools/reference-plugin-selection-matrix` で6種類のBindingを既存の `Supports*` だけで解決し、参照Workspaceの24件のうち22件が selected・2件が missing・ambiguous 0件を記録。missing は `editor.database_workbench` の2件で、現行の検証が機能のうち `editor.sql_analysis` だけを能力と突き合わせるための差であり、製品の診断ではないと明記）
 
 - [構成検証の選択規則はBindingの形ごとに揃っているか](PLUGIN_SELECTION_RULE_SURVEY_2026-11-08/README.md)（internal/validation を走査し、6つのBinding形式すべてに対応なし・複数・能力非対応の診断があることを確認。ただし環境の機能だけは eature == environment.FeatureSQLAnalysis の分岐で対象が1つに限られ、editor.database_workbench は Known() の検査だけを受けて能力との突き合わせを受けない。docs/plugins.md の記述は6形式に当てはまり誤っていない）
+- [環境の機能は、すべて選択を検査されるか](FEATURE_SELECTION_CHECK_ASYMMETRY_2026-11-08/README.md)（受理済みWorkspaceを3つ複製し、有効な機能だけを変えて実行。プラグインも能力も無い条件で、editor.sql_analysis は ENVIRONMENT_FEATURE_PLUGIN_MISSING で終了コード1、editor.database_workbench は診断0件で終了コード0。受理済みの複製も0件で終わり、この差が受理済みでは見えないことを示す。検査を足すべきかは示さない）
 - [DSH外部HarnessからのTEI read-only CLI実起動](DSH_H2_TOOL_ONLY_READ_ONLY_2026-11-07/README.md)（#2509。外部AIハーネスの1実Sessionで固定実行物の実起動・実引数・実出力を同一ログで突合。H3・四Session比較・正答採点・Egressは未実施）
 - [DSH実HarnessでのH2/H3四Session実行](DSH_H2_H3_FOUR_SESSION_2026-11-07/README.md)（#2509・TAI #168。H2→H3→H3→H2を同一Taskで実行し、H3のSkill実Load byteを確認。回答採点・Skill効果の因果・Egressは未確認）
 
@@ -110,6 +111,7 @@
 
 - [DSH外部Harnessの再開と既送出Session Log](DSH_H6E7_RESUME_AFTER_DISCLOSURE_2026-11-07/README.md)（#2515 H6-E7・#2509。Raw canaryを読んだSessionを再開すると、Session Logは水位`27`から進み再送されない一方、モデル入力には過去の会話が再構成されcanaryが再び載る。Grant失効・ACK不明replayはNOT RUN）
 - [DSH外部Harnessが読んだ内容の保存先棚卸し](DSH_H6E6_SINK_INVENTORY_2026-11-07/README.md)（#2515 H6-E6・#2509。1 Sessionで読んだ合成canaryが、headless stdoutと永続Session Logの2つに残り、`storages`・`cache`・`attachments`には残らなかった。永続Session Logは9連結zstd frameで、単一frame展開では見落とす。Issue/CI/外部ProviderのsinkはNOT RUN）
+- [DSH外部Harness上での生成候補の逸脱試行](DSH_H6E5_CANDIDATE_ESCAPE_2026-11-07/README.md)（#2515 H6-E5・#2509。合成候補から、非許可の隣接Sourceは読め、子Processは起動でき、自己書換えはConstrainedLanguageの初期化失敗で止まった。自己書換えが書込みPolicyで拒否された証拠ではない。workspace-writeでの再試行・D1→D2・Selector同一Source証明はNOT RUN）
 
 - [外部Go Module入力の明示opt-in受入](TEI_GO_EXTERNAL_MODULE_ADMISSION_OPTIN_2026-11-07.md)（既定の拒否方針は不変のまま、供給を明示した呼び出しだけが外部Moduleメンバーを含む閉包を受ける参照実装。受入記録に方針・根拠・拒否理由を残す。SB-B / 案C / #2831）
 - [起動主体と被起動主体を分けたBuild駆動の記録](TEI_GO_BUILD_STAGE_DRIVER_2026-11-07.md)（`cmd/tei`を子プロセスとして駆動し、invoker/invokedの実行ファイルdigest・argv・exitと、子の主張とディスク実物のartifact digestが一致することを記録。L3・受入・権限は未確認。SB-C0/C1 / #2831）
@@ -121,4 +123,5 @@
 - [TEI自身の設計をCLIで扱う実測 第2ラウンド](TEI_DOGFOODING_ROUND2_2026-11-08/README.md)（#3149。現行main `4fd88c2b1` の単一実行物（SHA-256 `16c9090d…`）で再実測し、第1ラウンドの10課題のうち7件が解消、D-3・D-9・D-10 が残ることを記録。MCP入口は未実装のため CLI 経路のみ）
 
 
+- [TEIのread-only MCP AdapterによるCLI/MCP一致の実測](TEI_DOGFOODING_MCP_ROUND_2026-11-08/README.md)（#3400・#3149。参照実装のAdapterで `model catalog`・`inspect`・`trace`・`validate` をMCPから呼び、CLIと同じ値（`worldFingerprint`・`snapshotFingerprint`・`schemaVersion`）になることを確認。製品のMCP契約・実Host・認可・外部送出はNOT RUN）
 - [二回の独立した駆動試行でも同じstage2成果物になること](TEI_GO_SELF_BUILD_TWO_STAGE_REPEAT_2026-11-08.md)（`-work`を分けた2回の実行で、両方L3に到達しstage1/stage2のartifact digestが一致することを記録。Seed Trust・受入・権限・OS間一致は未確認。SB-C1 / #2831）
