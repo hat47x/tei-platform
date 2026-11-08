@@ -410,3 +410,33 @@ TEI自身の設計は、`docs/`と`plan/`のMarkdownで書かれている。こ�
 2. ~~課題の分割~~（完了。D-1・D-2・D-4〜D-8 を #3180〜#3186 として起票。D-3・D-9・D-10 は #3345〜#3347 として起票）。
 3. 修正の採否はOwner判断。本記録は候補と根拠を提示するに留める。#3180〜#3186 のいずれかを着手する場合は、本書 §3 の再現手順と生データから始める。
 4. 再実測は、`0b9c14a8…`ではなく修正後の`main`で行い、同じ実行物の識別（SHA-256）を記録する。改行の異なるcheckoutでの照合（`#2399`）と、大規模Workspaceでの完全性（`#1177`）は別途。
+
+## 7. 第2ラウンド（2026-11-08）: 修正後の再実測と MCP の位置づけ
+
+第1ラウンドの起票から修正が進んだため、現行 `main`（`4fd88c2b1`）の単一実行物（SHA-256 `16c9090d…`）で同じ手順を再実行した。生出力は[第2ラウンドの実測記録](../evidence/TEI_DOGFOODING_ROUND2_2026-11-08/README.md)にある。
+
+| 課題 | 現行main | 次に必要なこと |
+| --- | --- | --- |
+| D-1 `trace` の未対応kind | 解消（`UNSUPPORTED_SUBJECT_KIND`・終了コード2） | なし |
+| D-2 Workspace同一性 | 解消（`workspace` 欄） | なし |
+| D-3 版の欄の不統一 | 実測時点（`4fd88c2b1`）は残る（`view` は `semanticFingerprint` のみ）。**実測後に #3366（`9bc015876`）で解消**し、現在の main は応答の最上位に `worldFingerprint`・`sourceIndexFingerprint` を返す（#3345 は Closed） | なし（残るのは `semanticFingerprint` の範囲を名前で示すかの設計判断のみ） |
+| D-4 `view` の作用の広告 | 解消（`writeFlags` に `-operation-log`・`-lifecycle-state`） | `effect` の語彙（`read-only-with-named-output` など）の統一は未着手 |
+| D-5 `plugin-lock` のround-trip | 解消 | なし |
+| D-6 不正lockの終了コード | 解消（間接確認。個別再実行は未実施） | 必要なら個別に再実行する |
+| D-7 `-h` | 解消（終了コード0・usage） | なし |
+| D-8 要件JSONの例 | 解消（読み案内の表と実例ファイル） | 実例ファイルがパーサを通る回帰試験は未整備（下記） |
+| D-9 設計文書が意味として読まれない | **残る**（`readByLoader` 0件、`WORKSPACE_DECLARES_NO_MODEL_ELEMENTS`） | `#2619`・`#2621` の設計判断 |
+| D-10 出力の形の不統一 | **残る**（`diagnostics[]` の二重構造） | `v1` を要するか、`#2354` の決定に沿うか |
+
+第2ラウンドで新たに分かったこと:
+
+- **MCP 入口は存在しない。** `commands` 19件にMCP関連の名前は無く、GoソースにもMCPサーバー実装は無い。`docs/architecture.md` は「TEI独自の開発用MCPサーバーは必須にしない」「将来追加しても別の正本を作らない」と位置づけている。依頼の範囲が CLI/MCP に広がったが、**実測できたのは CLI 経路だけ**であり、MCP経路は未実装として `NOT RUN` に置く。
+- **discovery が引数の許容値と出力flagを広告するようになった。** `commands` の出力は 6,957 バイトから 9,513 バイトへ増え、`argumentValues`・`argumentType`・`argumentDefaults`・`writeFlags` を持つ。生成AIが「何を渡せるか」を文書なしで知る経路ができた。
+- **D-3 は実測後に解消した。** #3366 が `view -format json` の応答の最上位へ `worldFingerprint`・`sourceIndexFingerprint` を足し、`result.semanticFingerprint` と並べて3つの値が別物として読めるようになった（#3345 は Closed、`9bc015876`）。実測時点の観測は変えず、追補を[実測記録](../evidence/TEI_DOGFOODING_ROUND2_2026-11-08/README.md) §9に置いた。
+- **残るのは D-9 と D-10 の2件。** D-9 はMarkdownを意味として扱うかの設計判断（#3346）、D-10 は `v0` の互換性判断（#3347）を含み、いずれも単一の欄の追加では閉じない。
+
+次に必要な作業:
+
+1. D-3・D-9・D-10 は、それぞれの設計判断のIssueで扱う。本記録は現況の観測を渡すだけに留める。
+2. `docs/business-system-design-reading-guide.md` が参照する実例ファイルが `QualificationRequirements` として復号できることを、回帰試験で固定する余地がある（第2ラウンドでは未実施）。
+3. MCP入口が実装された時点で、同じ手順をMCP経由でも実行し、CLIとの結果一致を確認する。入口が無い現時点では `NOT RUN`。
