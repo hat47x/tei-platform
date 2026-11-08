@@ -105,3 +105,14 @@ L1が既存Plugin-firstの重要な未完ゲートであり、L2以降の研究�
 - #3509：B2C Headless/Conversion Engineeringの非干渉。
 
 **停止条件**：第二Host/Registry/Driver/Authorityの必要性を無批判に前提化する、GraphからSourceへの安全な帰還がない、必須Guardを任意Pluginが除去できる、Provider選択と実呼出しの違いを隠す、未受理AI提案を実行可能へ昇格、対象Targetを実行していないのにPARITY PASSを付ける。これらが現れた場合は構造を拡張する前に既存Ownerの契約へ差し戻す。
+
+## 9. 横断レビュー追補：Obligationの強度・実装の非干渉（2026-11-08）
+
+- **Obligationの種類**：必須のHost/Effect/Accepted Meaning保証と、Operation/Target/Profileが要求する条件付き保証を区別。Obligationを追加するPluginと、必須保証を弱めるPluginは同じ拡張権限を持たない。静的に判定不能な経路は実行時Guardの実証を要求し、未提供TargetはUNKNOWN/UNSUPPORTED。全read-only経路にwrite承認を強制しない。
+- **Graph/Diagram同時編集**：Graph Node/Edge IDとSource revisionに基づく楽観的競合検出を行い、表示名や座標でIdentityを推測しない。図面のみ編集とScriptのみ編集で、同じGraphの正規化結果・再生成結果を比較する。layout-onlyとsemantic patchの失効を分ける。
+- **Effectと再開**：resume/branch/regenerateは新Operation identityの発行と旧Effectの再実行を同義にしない。Graph definition revision、Session revision、Business Entity revision、Effect receipt、Plugin/Generator Lockを独立に記録する。長期稼働TargetのMigrationは#1223へ引き渡す。
+- **B2C非干渉**：#3509のHeadless/Custom Frontendで、TEIが関与しないRouteに追加JS/DOM/HTTP hopを要求しない。Graphは標準Rendererの強制手段ではなく、Operation/Scenario/契約の投影として利用できる。
+- **候補Patchの初期範囲**：add/branch/wrap/bind/eventを優先し、remove/move/任意runtime graph rewriteは独立ExpectedとOwnerの安全保証が揃うまで制限する。Pluginの登録順やUI図面上の配置で意味順序を決めない。
+- **反例の追加観点**：B2Cの未使用Plugin故障非干渉、Chat partial tool args→実Call 0回、Diagram layout-only→Semantic/Build資格不変、Graph Edge変更→Source/Owner再受理、Plugin版A→B→A→過去のEvidence自動復活禁止をLGケースの期待に含める。新たな第二テストSSOTは作らない。
+
+**補足**：本節は既存LG-01〜16に検証観点を追加するもので、番号体系や実装完了を変更しない。実装担当は#3503/#2090/#1124/#1180/#1223/#3509の既存Ownerに返す。
