@@ -361,3 +361,128 @@ Go単一バイナリにおける実証後、Web/Desktop/完全Headless/Java/.NET
 **撤回条件**：標準Rule/Target-nativeで十分、または構成選択が実Callへ到達しない、意味・Source/Scope/Authorityが保存できない、独立Expectedがない、追加観測/Plugin負荷が利得を超える場合は、当該抽象・自動選択を縮小/撤回する。実装の証拠がないCandidateをOwner受理や本番適用へ昇格しない。
 
 **現況（2026-11-08）**：追加AT-15〜24と上記新規統合試験は設計候補。§10の限定Referenceがあっても実DB Read/実OTel/生成Target性能改善・AI実適用・Owner意味受理は **NOT RUN / NOT ACCEPTED**。既存のGate B/Cや限定Reference PASSを新性能保証に読み替えない。
+
+
+## 16. 実ReadとConsumer受領の資格を分ける：性能計測の最小縦断（2026-11-08追加）
+
+### 16.1 並行領域で成立した証拠と、まだ成立していない証拠
+
+この節は現行§10のT0〜T4を置換するものではない。別チャット・別PRからの成果を**同じ到達度として足し算しない**ための接続票である。
+
+| 根拠・状態（2026-11-08） | 使える材料 | 成立しない主張 |
+| --- | --- | --- |
+| merged PR #3520：AI性能観測の19件の合成対照 | Design/Call/Statistics/Delivery/Disclosureの矛盾・欠測を試験用Consumerで判別 | 実DB Providerの呼出し、生成アプリの実計測、実AI改善、外部Tool完全配送 |
+| merged PR #3523：TraitとPerformance Observationの分離 | Atomic Trait/Measurement Contract/Optimization Hint/Profileの役割分離 | Traitを宣言すれば実装・Target性能・Owner受理が成立 |
+| merged PR #3525：Plugin実呼出しとLifecycle/観測の接続 | 選択と実呼出し、型付きHook、Current Grantの区別 | 対象FunctionのCache/Query最適化が実際に適用済み |
+| merged PR #3513：一Function実Readの計画 | order_entry.recent_ordersを入口にQuery→Provider→Rowset→Contextを一Attemptで照合する受入手順 | 実PostgreSQL Read、正しい結果やSource帰属が完結 |
+| Draft PR #3524：同一Loadの外部Source/Manifest証拠 | 選択NamespaceのSource原文・Manifestを同一Loadから保持する候補 | 現mainへ導入済み／全Input Closure／Provider全体Snapshotが成立 |
+| Draft PR #3527：AI観測Reference CI整備 | CI実行条件・索引の修正候補 | 現mainの全体CI合格や実性能測定 |
+| Draft PR #3515：Harness/Adaptive Flow横断検討 | Tool配送・Source完全性・実権限を分離する検討材料 | 外部Harnessから本番AI最適化が可能 |
+
+※本表のPR状態は2026-11-08の確認時点。並行作業の後続状態は作業前に再取得する。特定版の限定合成試験PASSを他Targetや現在のmain全体PASSへ転記しない。
+
+性能最適化の実証でまず必要なのは、**実際に処理されたものと、AI/Observerが受け取ったものの因果連鎖**である。観測用JSONの自己整合や実CLI exit=0だけでは、この連鎖は証明できない。
+
+### 16.2 対象一件の「発生 → 処理 → 観測 → 受領」を検証する
+
+初期対象は既存order_entry.recent_ordersのReadのみ。既存Source/Function、Query Binding、DB Provider、Result Sliceを利用し、試験専用の第二Readerや第二実行Hostを作らない。
+
+~~~text
+Source / Meaning (version + required closure)
+  → Function Data Context / Query Binding (parameter, predicate, epoch)
+  → Selected Provider (exact Contract/Instance/Lock)
+  → Actual Provider Invocation (attempt, actual SQL or native query)
+  → Actual Rowset / Mapping (grain, scope, completeness, source time)
+  → Consumer Result (actual projection, current disclosure)
+  ├─→ Runtime Trace / Aggregate Observation (sampling, gaps, overhead)
+  └─→ CLI / Tool Reply (segments, end marker, delivered bytes)
+        → AI Tuning Packet (read-only, purpose-limited)
+        → Candidate, never automatic Acceptance
+~~~
+
+一Attemptの既存ID/Traceの束縛により、以下を**別の資格列**とする。新しい中央資格判定器や公開Schemaではない。
+
+| 証拠列 | 必要な独立観測 | 合格しても証明しないこと |
+| --- | --- | --- |
+| Source observed | 取得された実byte/Manifest/Revisionと読取位置、未取得Source | 全依存Closure、Owner Meaning |
+| Provider selected | 実解決されたContract/Instance/Target exact Lock | 実際のProvider Call |
+| Provider invoked | 実Driver/Adapter/SQLの呼出しと入出力Attempt | DB側Commit、Rowsetの完全性 |
+| Result delivered | Mapping後のResult/Scope/部分性、ConsumerまでのReply全件とend marker | 現在の外部LLM開示許可、業務上の確定 |
+| Measurement observed | 実Span/Metric/Window、集計の標本・欠測・計測費用 | p99改善、因果性、SLO達成 |
+| Candidate qualified | 同じ入力範囲の独立ExpectedとBaseline/Candidateの比較 | Owner Meaning、外部配備、現在Grant |
+
+Current Grant/Disclosureはデータの所在や以前の資格と分離し、Consumer直前・実行時に既存Host/Providerで判定する。許可外のQuery文字列、Parameter、Rowset、Tenant/Principal、Source pathや件数、秘密のdigestをTrace・Tool・AI入力に出さない。実際の外部Consumer配送が確認できなければ、内部CLIでの検査成功は外部AI提案の資格にならない。
+
+## 17. Cacheの整合性・可用性・性能の同時設計
+
+### 17.1 「何を保持したか」を区別し、保存先を自動的に業務正本にしない
+
+| データの性格 | 代表例 | 再利用・失効・保存上の最小区別 |
+| --- | --- | --- |
+| 入力内容・生成Artifact | TEIの解析結果、Source指紋、生成ファイル | exact byte/実消費Closure、生成器・Toolchain版、ArtifactSet。再利用とEvidence再資格は別（#2600） |
+| ReadのSnapshot/Result Slice | 検索行、ページング済結果、外部API Snapshot | Predicate、粒度、取得範囲、observedAt/effectiveAt、complete/partial、Source版、現在のGrant |
+| 再生成できるDerivedData | 集計、在庫の参考値、表示用Projection | Ruleと正/負依存、変更時のretract/recompute、Materializationの破棄可能性 |
+| 業務上確定した事実 | 確定受注額、決済・承認の記録 | 業務Actionと権威あるProviderによる確定。Cache TTL/eviction/AI再計算では書き換えない |
+
+この分類はCore固定の巨大種別を提案するものではなく、#1641/#3271の既存意味契約へのRole投影である。KON Dataspaceは必要に応じた永続データ・版管理先の選択肢であり、**TEIの二つ目の意味正本や必須Web Host/常駐Cacheではない**。
+
+### 17.2 鮮度と障害時動作を機械的に判別できるようにする
+
+強い現在値保証、版付きSnapshot読取、明示的な古さ上限付き参考表示、完全に再生成可能なImmutable Artifactは**互換な性能Profileではない**。同じTTLで扱わず、用途ごとの有効な鮮度条件・Sourceの更新観測能力・失効経路・利用者への表示資格を確認する。
+
+| 不確実性・障害 | 安全な既定動作（用途依存） | 禁止する短絡 |
+| --- | --- | --- |
+| Cache HitだがSource revision/negative dependency不明 | Revalidate、再取得、またはunknown/利用不可 | 値一致・TTL残存を現在値の証拠にする |
+| Cache-aside旧Read→新Write＋invalidate→旧populate | Source世代/条件付Putが成立すれば拒否。なければ強い鮮度を主張しない | invalidate ACKで競合が消えたとする |
+| 複数ProviderでSnapshot時点不一致 | ソースごとの時点を出し、必要な横断一貫性がない結果を保留 | 単一全域Snapshotと偽る |
+| Partial/0件/permission-denied | 完全性と開示範囲に応じたClaimだけ利用 | 不存在・合計0・権限なしの件数を推論 |
+| Cache/Observerが停止 | 安全なRead Fallbackを持つ場合のみ継続。負荷上限と現在権限を維持 | 無制限のOrigin再取得、Effect再送、未観測0ms |
+| Edge/CDN配信・A/B Variant切替 | 配信Variant/Scopeと最終Server権威・Cache Key/Invalidationを別々に検査 | Purge ACKを全Edge失効、表示価格を確定価格とする |
+
+**Failure budgetの分離**：キャッシュ障害からのFallbackは無償ではない。Originの同時Read、Pool待機、Rate Limit、タイムアウト、Backpressure、Queue上限を含め、障害中も許容できる負荷を計測する。Stale-while-revalidateや古い値の提供は、目的と古さ上限が明示されたReadに限る。価格・在庫・決済・外部Effectでは現在の権威あるProviderによる最終検証を省略しない。
+
+### 17.3 最適化の設定粒度と構成衝突
+
+容量、Admit/Evict、TTL、Batchサイズ、並列数、Pool、Prefetch、計測率などは**最適化Policy**であり、業務意味や現在Grantではない。必要なScopeをFunction/Query/Provider Instance/Target/Environmentの中から限定し、設定値のSource・版・選択理由・実Targetへの反映を追跡する。異なるScopeで設定が衝突した場合は、既存#951/#1016の選択・構成結果から説明できない限り暗黙の後勝ちとしない。
+
+Profileは初期値や原子Trait要求集合を展開する便利な束であり、最適化の自動採用・性能保証にはしない。ホット変更する動的Policyも、変更が実際にTargetへ反映されたことと、影響したWindow・Rollback境界を別々に確認する。安全なStrategyの自動選択は事前適格な実装間の限定切替から始め、将来の自由な自動再生成/DDL/本番デプロイと分離する。
+
+## 18. 「速くなった」を判別するBenchmark契約と次の最小実証
+
+### 18.1 Benchmarkの比較条件
+
+最初の同等性と改善の比較対象は、同じFunctionと実Dataset/Workload、独立Expected、実Target、同じConsumer公開Scopeの **Baseline と Candidate** とする。両者に差があれば「どこを同等と扱ったか」を列挙する。
+
+- 目的関数・許容下限：p95/p99、throughput、CPU/Memory、DB Read/Write、Network/egress、運用費、測定費と鮮度・整合性を**比較前**に束縛。Hit率だけを最適化しない。
+- 試験入力：Read/Write混合、hot/coldキー、データ分布・偏り、結果サイズ、同時実行数、Batch、ページ境界、長時間稼働/再起動、Source/Schema/Provider exact revisionを保存。
+- 実行：Warmup/steady state/失効直後/Origin停止を区別し、試行順によるキャッシュ温度・DB統計変化の影響を抑える。反復・実行順・他負荷・マシン資源を記録し、観測しなかった条件を埋めない。
+- 統計：Histogramの単位・境界と標本数、Drop/Sampling、p99の低標本不確実性、計測On/Offによる遅延を保持する。平均やHit率が改善してもp99悪化なら条件次第で棄却。
+- 結果：正しさ（Entity Identity、NULL/欠損、Scope、Rule版、Order、Effect）と性能を別判定。実験VariantによるCVRや売上への影響は配信速度と同一Claimにしない（#3509）。
+- 適用：Candidate→Preview→独立Expected/Benchmark→変更承認/既存Host Grant→実適用→独立再観測。Index/DDLや外部副作用は既存#3270/#1174のPlan/Receiptに委譲。RollbackでSchemaや業務データが自動復旧すると主張しない。
+
+### 18.2 AT-25〜32：横断的な追加反例（Scenario正本は#1180／全件NOT RUN）
+
+| ID | 故障注入・差分 | 独立Expected・判別 |
+| --- | --- | --- |
+| AT-25 | 合成Observerは整合するが、実FunctionはProviderを呼ばない／別Providerを呼ぶ | 合成input-consistentとactual invokedを別判定。T1実Callがない限り性能改善資格なし |
+| AT-26 | CLI stdoutは全量でもHarness Tool Replyが途中切断/Part欠落/終端欠落 | 内部Read合格・外部Consumer受領不合格を分離。機密内容や件数は漏らさない |
+| AT-27 | Provider Manifest/選択規則だけ変更、元Query Source byteは同一 | 実選択Closureを再評価、未知負依存を未変更扱いしない。A→B→Aで旧Evidence/Grantを復活しない |
+| AT-28 | 同時MissとCache/Origin停止、Originへの一斉Fallback | CoalescingとBackpressure/上限、失効・タイムアウト・再試行増幅を別々に計測。Effect再送なし |
+| AT-29 | 完全性不明の0件ResultをNegative Cache、部分SnapshotでNOT EXISTS | 不存在の無断確定を拒否し、対象のQuery/Contextだけ未確定化 |
+| AT-30 | Profile/Policyを変更したが生成Targetに反映されない、異ScopeのPolicyが衝突 | selected/compiled/invokedを実比較。宣言だけの「最適化済み」を拒否 |
+| AT-31 | 同じBenchmark入力でもWarmup/サンプル不足/Histogram差/計測負荷が変化 | 有効な条件一致・標本/誤差がなければ改善は未確定、次回の追加測定を示す |
+| AT-32 | B2C SSR/Edgeの旧Variantと価格・在庫更新、Cache hit・画面表示は正常 | 配信Variant、Current Disclosure、Server最終確定を区別。表示値から受注/決済成功を導かない |
+
+### 18.3 既存T0〜T4への割付と停止条件
+
+| 既存段階 | 最短の次作業 | 追加CaseとOwner |
+| --- | --- | --- |
+| T0 | Source/Meaning/Query/Provider/Perf Requirementの必要Closureを一Functionで照合。外部Provider ManifestとBOM選択規則の未確認依存を可視化 | AT-27/30。#3262/#951/#1016、Source実消費の#2600 |
+| T1 | order_entry.recent_ordersの実Readを同じAttemptでSource→Binding→選択→実SQL/Adapter→Rowset/Context→計測→Consumerまで照合。実Provider到達を先に証明 | AT-25/26。#2586/#2622/#3270、送出/開示#2516 |
+| T2 | Cacheなし→Memory/Localのうち一つに限定し、同時Miss・Source更新・0件/部分集合・Origin障害を比較 | AT-28/29。#3271/#2582/#3278 |
+| T3 | 既存Design ContextとAI Tuning Packetに観測事実・欠測・適用資格を載せる。AIの候補が実Targetへ入ったと誤認しない | AT-26/30。#3262/#2516/#3503 |
+| T4 | 同じ独立Expected/WorkloadのBaseline/Candidateを実比較し、p95/p99・資源・観測費をMeasuredとUnknownに分ける | AT-31/32。#1180/#2514/#565/#3509 |
+
+**実装順の強制ではないが、主張の依存順は厳守する**。T0のSource/Contractが未知でも限定Traceの調査は可能。しかし実Call・Consumer・Independent Expectedを欠く状態で「AIが正しく自動最適化した」「本番SLOを満たした」と結論しない。Cache/Observerが不要な案件は当該PluginなしのTargetを選択可能とし、同じ保証を達成できる標準実装・Native SQL・案件固有コードを正規の選択肢に残す。
+
+**現在の資格（2026-11-08）**：本節は設計統合と独立反例の追加であり、AT-25〜32、実order_entry DB Provider Read、外部AI Consumer完全受領、Cacheの実同時負荷、実性能Benchmark、運用Adaptive適用、正式Owner意味受理は **NOT RUN / NOT ACCEPTED**。PR #3520の19合成対照・限定Referenceと異なるClaimである。
