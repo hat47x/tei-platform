@@ -38,7 +38,7 @@
 | Disclosure | 実保存先・アクセス権・必要保持期間、表示/外部AI送出の現在資格、伏せるID/path/件数 |
 | Qualification | T0 run局所PASS、T1-A external evidence qualified、T1-B TEI Loader/Parsed/Role、Owner Accepted、SHO Review、Target run/Expectedを独立列 |
 
-`World/SourceIndex Fingerprint`だけを全外部Sourceの一時点Snapshotとみなさない。[Draft #3479](https://github.com/hat47x/tei-platform/pull/3479)のProvider raw Source-only/Manifest-only driftではConsumer側の値が同じまま外部入力のbyteが変わり得る。古いConsumer Resultを用いた後日のProvider navigationを、古いAttemptの同一原子Source読込みと結び付けない（#3394 RE-25〜27）。同byteのA→B→Aでも前のReview/Grantの自動復活を禁止する。
+`World/SourceIndex Fingerprint`だけを全外部Sourceの一時点Snapshotとみなさない。[main統合済み #3479](https://github.com/hat47x/tei-platform/pull/3479)のProvider raw Source-only/Manifest-only driftではConsumer側の値が同じまま外部入力のbyteが変わり得る。古いConsumer Resultを用いた後日のProvider navigationを、古いAttemptの同一原子Source読込みと結び付けない（#3394 RE-25〜27）。同byteのA→B→Aでも前のReview/Grantの自動復活を禁止する。
 
 ## 3. T1-Aの入場・実装差分を限定する
 
@@ -56,3 +56,46 @@
 実測する指標は、(a)正/負例の独立判別力、(b)unknown消失・false complete件数、(c)readbackのsource/revision/record coverage、(d)再解析cold/warm実時間とEvidence byte量、(e)Source driftの過剰失効と誤再利用、(f)外部送出や保存の許可違反、(g)必要な新共通API型差分（最小化）。旧Runtimeを実行しない場合は**legacy equivalence unknown**。旧Actual一致とOwner Accepted Desired一致は別（#3394 RE-29、#2667 QML）。
 
 **今回の証拠上限**：この文書・PRはT0実実行、REA source artifact取得、TEI外部Adapter実装、Go/CI、T1-A/B、SHO Writer、旧新Target同値、正式Owner受理を完了したとは主張しない。Issue/ADRを実装の正本として残し、現行main実装とDraftを混ぜない。
+
+
+---
+
+<!-- rea-f0-f5-qualification-20261108 -->
+## 5. 他領域の成熟判断を統合：T0/T1-Aに対するF0〜F5の六面資格
+
+2026-11-08採用済み[ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)／[TEI #1158](https://github.com/hat47x/tei-platform/issues/1158)の共通Operation、[#1119](https://github.com/hat47x/tei-platform/issues/1119)の製品受入、[#1163](https://github.com/hat47x/tei-platform/issues/1163)の一Attempt Witnessへ接続する。以下のF0〜F5は**検証の観点**であって「必ずこの順に物理実行する」というWorkflowや新Gateではない。例えば解析Providerの呼出し（F3）はJSON表現の生成（F2）に先立つ。操作の実行順は既存Operation Lifecycleに従う。
+
+| 面 | 一Functionで要求する実観測 | 検出すべき偽PASS | 責務と最低停止条件 |
+|---|---|---|---|
+| **F0 Source** | Caller選択path≠実resolved path、実raw byte/digest、Provider manifest、対象集合/時点、必要な複数Source・Dependency closure | Consumer World/Indexが同じだから外部Provider byteも同じ | 既存Workspace/Source（main [#3479](https://github.com/hat47x/tei-platform/pull/3479) Source-only drift負例）。raw/manifest不足ならexternal closure=unknown |
+| **F1 API** | 型付きRequest、Operation ID/version、Hostに固定したScope、入力検証、Result/Failure、CLI/MCP経路 | CLI JSON成功がMCP/Studio受領または業務意味合格を示す | #1158/#3419〜3422。main [#3458](https://github.com/hat47x/tei-platform/pull/3458)は`validate`限定一致。REA操作の共通API型は必要差分が実観測されるまで新設しない |
+| **F2 Representation** | raw REA Evidence→bounded view→外部観測候補の写像、参照ID/Source位置、Loss/Unknown/NULL/部分Scope、三視点表示の情報損失 | Evidence JSONを`*.tei.md`へ改名・Graphを描画したことで意味受理/情報完全 | #2621/#3263/#2497。未受理のMapping、未観測Relation/Functionはcandidate/unknownで停止 |
+| **F3 Provider** | REA実binary/版、selected Providerと実loaded/invoked、CLI実argv、同じProfileとscope、実出力Source | 選択Bなのに実Call A、または静的sample成功を別Provider能力とみなす | #1251/#951/#1016。selected/loaded/invoked/receivedのどれが未確認か記録 |
+| **F4 Effect** | 実入力以外のFS書込み（report/tmp/lockを含む）・ネットワーク送出/権限/隔離、外部DBへの副作用の有無、実Resultと独立Expected | `read-only`指定から「どんなファイルも書かない」「安全」「Business Effect観測」と推定 | #1174/#2509/#2515／Host。無許可の実外部送出は禁止、old actual/desired/target actualは別判定 |
+| **F5 Delivery** | プロセスstdout/stderr/exit、raw output byte長・digest、JSON/JSONL終端、Tool Call↔Reply、別Consumerの実Read、現在Disclosure | 出力ファイルの存在や標準出力の一部取得で全件完備・Consumer受領とみなす | #1163/#3262／SHO #6。途中切断はpartial・未受領はunknown、成功でも未確認の母集団をcompleteとしない |
+
+**入場の判断**：T0ではF0/F3/F4/F5をまず直接観測し、F1/F2は対象範囲内だけ評価。T1-AではF0〜F5を一Functionの同一Scope/Attemptへ束縛する。**T1-B（正式`*.tei.md`のLoader/RoleとOwner Accepted Meaning）は別資格**。関係者へ渡す表は各面のPASS/FAIL/partial/unknown/NOT RUNと、どのEvidenceがその判定を支えるかを併記する。主張を六面の「総合PASS」へ無条件集約しない。
+
+## 6. JSON/JSONLの終端・Coverageを独立に扱う実用手順
+
+[REA CLIの上流仕様](https://github.com/morluto/rea/blob/main/docs/getting-started/cli.md)は、JSONLを**行志向の選択されたobject collection**に使う。複数collectionがある場合は明示選択が必要で、任意のreportやcolumnar rowsはJSONL投影できない。**bare top-level arrayにはmetadata終端が付かない**ため、どのJSONLにも終端制御行があると仮定する監査は誤り。first-class原本は保存済みの`analysis.json`とし、JSONLは限定Projectionとする。
+
+object collectionのJSONLでは最後に`{\"$rea\":\"jsonl/v1\",\"type\":\"metadata\"}`型のcontrol recordが存在し、`records.emitted/source`や`context.normalized_result.coverage`等を確認する。ただし`emitted==source`でも解析Source全量・Evidence完全とは限らず、`coverage.exhausted==false`なら次ページ/未探索を保持する。JSONLの`type:error`、非0 exit、control record欠落、metadataと実行版/母集団の不一致はそれぞれ別Failureにする。**null/empty/未取得/解析対象外/権限拒否の区別を最後の文章化まで維持**する。
+
+T0-04では上流REA 6.7.0の不正JS例について、まずraw JSONから`data.normalized_result.statistics.parse_failures`とcoverage limitationを確認し、その後で別Readerが部分結果をどう扱うかを比較する。上流に存在する欄を**別Provider/別版の必須Schemaとして決め打ちしない**。
+
+## 7. 公開・隔離とSnapshotの設計停止線
+
+- **非信頼入力**：元のSource、解析された文字列/コメント、出力Evidence、AIへ渡す抜粋は未信頼データ。解析結果中の説明文やコマンド風文字列を次のTool/Host命令へ昇格させない。REAのstatic分析対象を起動せず、外部CLIはHostが明示した固定実行物・argv・許可root・出力先で動かす。
+- **再現性**：上流example workflowは固定版参考。npm依存・runner画像・入力bytes・実Binary/Node/解析設定・実exitをそれぞれPinする。外部解析をNetwork接続可能な機密Workspaceで無許可に実行しない。GitHub artifactの保存先・公開範囲・retentionを明示し、原本の全量を外部AI/CIへ自動送出しない。
+- **外部Provider revision**：main [#3479](https://github.com/hat47x/tei-platform/pull/3479)のGo testはImported Provider raw/manifestの差分をConsumer World/Indexが見落とし得る**負例の限定確認**であり、外部Input Closureの完全なSnapshot実装ではない。 `WORKSPACE_IMPORTS_NOT_BOUND`を無効化して受理しない。位置が同じ・hashが同じ・値がA→B→Aで戻ることは、当時のGrant/Review/受理資格の復活ではない。
+- **原文改訂と納品を分離**：TEI Source Working Copy、受理済みMeaning、SHO Raw Draft/Document Revision、生成Artifact、公開/引渡し済みRevisionを混ぜない。出典付きの図表は**固定される構造／明示的に拡張できる表現**の境界を表示し、Raw Evidenceから業務意味・CRUD操作・実Writerを自動採用しない。SHOの通常Markdown保存はREA/TEI不在でも独立継続。
+- **旧新同値でなくDesiredも検証**：Legacy Observed Actual／Owner Accepted Desired／Target Observed Actualの三者を#2514/#1180の独立Expectedで比較。旧Runtimeを観測していなければlegacy-equivalence=unknown、新Targetが旧bugを複製した場合でもDesired適合へ自動合格にしない。
+
+## 8. 次の一回の実行に必要な証拠と差分受渡し
+
+**T0の実行票**：`upstream workflow commit + rea package version/actual CLI digest + Node/OS/runner + input source inventory/sha256 + argv + process stdout/stderr/exit + output raw sha256/readback + stats/coverage/limitations + known Expected + unknowns + actual CI/run ID`。一つのRunでT0-01正常とT0-04部分結果の比較を優先し、T0-02/03は非0/unsupportedの反証として残す。T0-05/06は別の限定Runでもよいが、別Runの結果をT1-A「同じSource Cohort/同一Attempt」へ足し合わせない。
+
+**実装の最初のMissing Edgeの調査**：REA上流が出したEvidenceを、既存read-only操作に**観測データとして投影**できるか先に見極める。型不足があれば最小のRequest/Resultの差だけ#1158/#3419へ、Provider selected→invoked差は#1251へ、Source-import closure差は#1163/Workspaceへ戻す。SHOへはSource-backed文書候補だけを#6経由で渡し、新しいSource Registry、意味正本、Runnerを追加しない。
+
+**この追補も設計文書の追加だけ**であり、REA T0/実Tool Call、CLI/MCP/Studio取込、`*.tei.md`Reader/Parser、SQL/DB実Provider、SHO Writer、旧Runtime比較、正式Owner意味受理は**NOT RUN**。main統合済みの#3479/#3458/#3482が持つ局所実績を、新しいREA縦断E2E実証と混ぜない。
