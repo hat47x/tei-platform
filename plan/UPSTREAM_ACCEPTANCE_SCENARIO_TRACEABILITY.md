@@ -557,6 +557,7 @@ ChatGPTなどのチャット実行環境・Codex・Claude Code・一般的なIDE
 | RQ-034 | PAS-06 | PAS-01 |
 | RQ-035 | PAS-02 | PAS-03 / PAS-06 |
 | RQ-035 | PAS-03 | PAS-01 / PAS-02 / PAS-04 |
+| RQ-035 | PAS-06 | PAS-07 |
 
 Primaryは最初に具体化する代表的なPASを示し、要求の網羅率を表す点数ではありません。
 
