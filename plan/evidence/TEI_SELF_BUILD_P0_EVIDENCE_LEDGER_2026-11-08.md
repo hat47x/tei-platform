@@ -103,9 +103,9 @@ SB-C0 §4.8でL2を二層に切り分けた。**両層とも未成立**だが、
 | 層 | 何を言えるか | 現状 | 根拠 |
 | --- | --- | --- | --- |
 | **L2-a（受け渡し）** | この`cmd/tei`が指定childへ**特定の宣言**を渡した。渡したbyteのdigestと、childの出力を受けたことを記録できる | **材料あり**（未成立のClaimとしては扱わない） | [`TEI_GO_SELF_BUILD_L2A_REOBSERVATION_2026-11-09.md`](TEI_GO_SELF_BUILD_L2A_REOBSERVATION_2026-11-09.md) |
-| **L2-b（解釈）** | childが宣言を読み確定Build Planを導出し照合値を返した | **未** | [`TEI_GO_SELF_BUILD_PLAN_CROSS_CHECK_ACTUAL_2026-11-09.md`](TEI_GO_SELF_BUILD_PLAN_CROSS_CHECK_ACTUAL_2026-11-09.md) |
+| **L2-b（解釈）** | childが宣言を読み確定Build Planを導出し照合値を返した | **未**（計画突合はP-1で実測`matched`になったが、(a)builderが読んだ宣言byteの申告と(c)artifactと計画の結び付けが未） | [`TEI_GO_SELF_BUILD_PLAN_MATCHED_2026-11-09.md`](TEI_GO_SELF_BUILD_PLAN_MATCHED_2026-11-09.md)・[`TEI_GO_SELF_BUILD_PLAN_CROSS_CHECK_ACTUAL_2026-11-09.md`](TEI_GO_SELF_BUILD_PLAN_CROSS_CHECK_ACTUAL_2026-11-09.md) |
 
-**「二つの自己申告が一致した」はL2-bではない。** 一致を言うには、少なくとも(a)builderが読んだ宣言のbyteをbuilder自身が申告し、(b)それがentryの保持したbyteと一致し、(c)artifactと計画の結び付けが別の観測で示される必要がある。(a)は`-child-arg`で報告引数を渡せば記録できるが、`reference-go-build-with-supply`は報告しないため実測では`unperformed`になる。
+**「二つの自己申告が一致した」はL2-bではない。** 一致を言うには、少なくとも(a)builderが読んだ宣言のbyteをbuilder自身が申告し、(b)それがentryの保持したbyteと一致し、(c)artifactと計画の結び付けが別の観測で示される必要がある。(a)は`-child-arg`で報告引数を渡せば記録できるが、`reference-go-build-with-supply`は報告しないため実測では`unperformed`になる。**P-1のchild（[`reference-plugin-package-build-child`](../../tools/reference-plugin-package-build-child/README.md)）を使うと計画突合は`matched`になるが、それでも(a)と(c)は埋まらない。** `matched`を`(c)`の代わりに読ませない。
 
 ### 2.4 残差
 
@@ -118,9 +118,9 @@ L3の**形**は二つの対象で成立した。残るのは次の三点であ�
 | 自称digestと実行imageの照合 | 済（SB-N13） | — |
 | Stage1の生成物をinvokerに据える | 済（driver自身と`cmd/tei`の両方） | — |
 | **SB-C0 §4の外形**（`-intent`・`-supply`・`-state`・`-output`・`qualified`） | 済（[#3463](https://github.com/hat47x/tei-platform/pull/3463)、[#3476](https://github.com/hat47x/tei-platform/pull/3476)）。Intentは宣言のまま（`resolved: false`）、供給はexactな検証器へ委譲 | 未決は§4の項目を参照 |
-| **SB-C0 §4.7・§4.8**（解決の委譲と計画突合） | 済（[#3571](https://github.com/hat47x/tei-platform/pull/3571)、計画突合の3状態を実測） | L2-bは別のClaim |
+| **SB-C0 §4.7・§4.8**（解決の委譲と計画突合） | 済（[#3571](https://github.com/hat47x/tei-platform/pull/3571)・[#3584](https://github.com/hat47x/tei-platform/pull/3584)・[#3610](https://github.com/hat47x/tei-platform/pull/3610)。P-1のchildで`planCrossCheck=matched`を実プロセスで観測、[記録](TEI_GO_SELF_BUILD_PLAN_MATCHED_2026-11-09.md)） | L2-bは別のClaim。`(c)`が未 |
 | Seed Trustと受入 | 未 | 別のClaim |
-| 別OS・別toolchainでの再観測 | 未 | 独立した比較 |
+| 別OS・別toolchainでの再観測 | **OS軸は済**（Windows／Linuxで計画側の値が一致、[記録](TEI_GO_SELF_BUILD_CROSS_OS_2026-11-09.md)）。toolchain軸と二回試行の比較は未 | 独立した比較 |
 
 **「L3の形が成立した」と「L2が成立した」を混同しない。** 前者は駆動主体の同一性であり、後者は意味からBuildへの結線である。**L2をさらに二層に分けた現在地は§2.5が正本である。**
 
