@@ -85,3 +85,6 @@
 
 # Selection rule scan output is hashed as raw bytes by its README.
 /plan/evidence/PLUGIN_SELECTION_RULE_SURVEY_2026-11-08/** -text
+
+# Feature-check asymmetry output is hashed as raw bytes by its README.
+/plan/evidence/FEATURE_SELECTION_CHECK_ASYMMETRY_2026-11-08/** -text
