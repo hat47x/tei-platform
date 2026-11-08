@@ -127,3 +127,6 @@
 
 # OS-ACL read-denial observations are hashed as raw bytes.
 /plan/evidence/DSH_H6E1_OS_ACL_2026-11-09/** -text
+
+# maxBytes threshold observations are hashed as raw bytes.
+/plan/evidence/DSH_SESSION_LOG_MAXBYTES_THRESHOLD_2026-11-09/** -text
