@@ -49,3 +49,47 @@ func TestFingerprintIgnoresDerivedRealizations(t *testing.T) {
 		t.Fatalf("derived realization changed fingerprint: %s != %s", fa, fb)
 	}
 }
+
+func TestCompareHistoryRejectsUnconfirmedAppliedState(t *testing.T) {
+	db := core.MustCanonicalID("sales_core")
+	def := migration.Definition{
+		ID: "001", Database: db, Recovery: migration.RecoveryForwardFix,
+		Steps: []migration.Step{{Kind: migration.StepVerify, Description: "confirm"}},
+	}
+	checksum, err := migration.Fingerprint(def)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tests := []struct {
+		name     string
+		state    migration.AppliedState
+		checksum string
+		want     migration.RepositoryState
+	}{
+		{name: "unknown-matching-checksum", state: migration.AppliedUnknown, checksum: checksum, want: migration.RepoUnknown},
+		{name: "unknown-mismatch", state: migration.AppliedUnknown, checksum: "sha256:other", want: migration.RepoUnknown},
+		{name: "missing-outcome", state: "", checksum: checksum, want: migration.RepoUnknown},
+		{name: "unrecognized-outcome", state: migration.AppliedState("uncertain"), checksum: checksum, want: migration.RepoUnknown},
+		{name: "failed", state: migration.AppliedFailed, checksum: checksum, want: migration.RepoFailed},
+		{name: "succeeded", state: migration.AppliedSucceeded, checksum: checksum, want: migration.RepoApplied},
+		{name: "succeeded-changed", state: migration.AppliedSucceeded, checksum: "sha256:other", want: migration.RepoDiverged},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			history := migration.HistorySnapshot{
+				Database: db, Tool: migration.ToolAtlas,
+				Entries: []migration.AppliedMigration{{
+					Database: db, ID: def.ID, State: tt.state,
+					Checksum: tt.checksum, Tool: migration.ToolAtlas,
+				}},
+			}
+			got, err := migration.CompareHistory(db, []migration.Definition{def}, history)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(got.Entries) != 1 || got.Entries[0].State != tt.want {
+				t.Fatalf("state=%#v, want %q", got.Entries, tt.want)
+			}
+		})
+	}
+}
