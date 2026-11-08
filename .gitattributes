@@ -91,3 +91,6 @@
 
 # Feature-check asymmetry output is hashed as raw bytes by its README.
 /plan/evidence/FEATURE_SELECTION_CHECK_ASYMMETRY_2026-11-08/** -text
+
+# Child-process reach observations are hashed as raw bytes.
+/plan/evidence/DSH_CHILD_PROCESS_REACH_2026-11-08/** -text
