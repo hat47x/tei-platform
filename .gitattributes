@@ -109,3 +109,6 @@
 
 # Unpinned path purpose scan is hashed as raw bytes by its README.
 /plan/evidence/RUNTIME_UNPINNED_PATH_PURPOSES_2026-11-08/** -text
+
+# Deployment executor survey output is hashed as raw bytes by its README.
+/plan/evidence/DEPLOYMENT_EXECUTOR_BINDING_SURVEY_2026-11-08/** -text
