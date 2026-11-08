@@ -218,6 +218,14 @@ SQL/NoSQL/ログ等のリバース結果は、**Physical Observation→Structura
 
 **2026-11-08 横断調整**：[Workbench設計§21](design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)にREAの外部原本→Evidence→正式TEI Source→実Read/SHO比較、SUI/SEI/KONの任意Consumer境界、共通Operation（ADR-0048）、Migration適用直前のInstance/History/Grant再照合を集約した。最短P0は実Provider Read→Function Data ContextとPlugin-first Inspector二Consumerであり、SUI・SEI・KON・SHOやOntology DSL製品完成を新たなHard dependencyにしない。**
 
+
+### Workbench一Function実Readの限定入場（2026-11-08、#3270×#2586）
+
+[詳細設計§22](design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)で、最初のProduct Query `order_entry.recent_orders`を**そのFunction固有のRequired→Source/Query/Provider選択→actual Read/Rowset→Function Data Context→Disclosure/Consumer→独立Expected**として一Attemptで束縛する。main統合[#3482](https://github.com/hat47x/tei-platform/pull/3482)の`sales.order.submit`に対する13実CLI Reply/42限定合成Consumer Controlsは別Functionの宣言確認であり、実Provider Read/同一Function ClosureのPASSには数えない。Imported Provider原文・Manifestだけが改訂されWorld/Source Indexの見かけが不変の負例（Draft #3479）をSource鮮度の再確認条件に置く。
+
+CLI/StudioのInspector/実選択は#1251/#3381/#3371、Query→Contextは#2586、外部参照・Required Closureは#3262/#3479、Function内Projectionは#2495/#3303、Schema DDLのApply前Target/History/Grant再照合は#2887/#2892がOwner。Workbenchは第二Reader/Query Runtime/権限機構を作らない。**既存WB-01〜54と各Issueの独立Expectedを再利用し、外部DBの実Applyや他製品接続をP0のHard dependencyへ増やさない。** 新Go Provider実Read、CLI/Studio/MCP二Consumer、外部Source再解決、実DDL Apply、正式Owner受理は現在の設計追補だけではNOT RUN。
+
+
 ## 作業領域E：設計の実行と検証
 
 ### 目的
