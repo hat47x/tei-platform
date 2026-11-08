@@ -38,6 +38,7 @@
 - [フック実行の配線と失敗の区別の確認](XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)（参照実装の試験記録。Runnerからの配線、NotSatisfiedと実行失敗の区別、参照規則。実PluginとCLI・Studioの配線は未実装）
 - [フック宣言の印刷面への反映の確認](XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md)（参照実装の試験記録。画面と同じフック宣言が印刷面にも出る。実印刷・用紙面の版照合は未確認）
 - [フックの位相順序と途中停止の確認](XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md)（参照実装の試験記録。位相の実行順、不成立での停止位置、`warn`の続行、未対応位相の拒否。CLI・Studioへの配線は未実装）
+- [CLI参照実行からのフック呼出しの確認](XTEA_LOWCODE_HOOK_CLI_WIRING_2026-11.md)（参照実装の試験記録。`view -command -execute`が宣言フックを呼び、未評価・不成立を区別して報告する。実PluginとStudioは未接続）
 - [フック宣言の機能定義書への反映の確認](XTEA_LOWCODE_HOOK_FUNCTION_DEFINITION_2026-11.md)（参照実装の試験記録。生成規則`function-definition/v1`に`hook`行を追加し、位相順で出す。実行結果の反映は未実装）
 - [フックが提案する値の宣言照合の確認](XTEA_LOWCODE_HOOK_DECLARED_PRODUCES_2026-11.md)（参照実装の試験記録。宣言外の提案の拒否、提案と読み取りの分離。保存・採用は未実装）
 - [フックの位相ごとの読み取り範囲の確認](XTEA_LOWCODE_HOOK_PER_PHASE_READS_2026-11.md)（参照実装の試験記録。狭い宣言の位相が広い宣言の値を受け継がないこと、未観測での停止。実データ取得は未実装）
