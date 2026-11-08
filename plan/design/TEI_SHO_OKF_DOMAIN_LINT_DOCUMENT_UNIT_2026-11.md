@@ -494,3 +494,47 @@ G2-Pの入力は`actual sourceBytes/baseSha256/startByte/endByte/expectedBytes/r
 | K4 Attested Run | 上流OKF仕様とTAI #514の段階設計のみ | typed input→実Provider/Receipt→独立Attester/Result再Read | TAI #514 |
 
 **正式の合否**：実Git/G1b/G2-P/旧CIの局所証拠をそのまま記録し、F0合格・K2同一Provider/二Consumer・K5実Write・Current Grant/Owner受理を**NOT RUN**とする。本節による製品Gate達成・Plugin実行能力・OKF全束到達の新しい主張はない。
+
+
+---
+
+## 15. 2026-11-08 上流Reference ReaderによるK1実検査と型境界の反例
+
+### 15.1 Parserを複製せず、固定済み上流ReferenceでK1の限定互換を試す
+
+上流 [GoogleCloudPlatform/open-knowledge-format](https://github.com/GoogleCloudPlatform/open-knowledge-format) の **exact commit ad30107c31c06aec8a7d5636e0d1058118604e6f** には、実装例 [src/reference_agent/bundle/document.py](https://github.com/GoogleCloudPlatform/open-knowledge-format/blob/ad30107c31c06aec8a7d5636e0d1058118604e6f/src/reference_agent/bundle/document.py) がある。Git blob **b770a92f33adf9942e2932529308d066430b02a6**。PyYAMLによりYAML frontmatterを解析し、Conceptの必須 type、verified singletonの正規化とmachine/human trust tierを判定する**参考実装**である。仕様文書とReference実装は別のSource/Revisionとして扱う。
+
+本PRに次をtest-onlyで追加した。
+
+- [tools/reference-okf-k1/official_reference_probe.py](../../tools/reference-okf-k1/official_reference_probe.py)：上流Git HEAD・Reference Document Blob・Spec SHA256・PyYAML 6.0.3を確認した後、K1の現実ファイル4件を実raw SHA-256/UTF-8で照合する。上流moduleだけを選択して読み、ADK/BigQuery等のProducer/Host/モデルには接続しない。実Codeからメモリ内で一要因Mutantを生成し、正規Conceptとroot indexを別扱い。実Fileには一切書き込まない。
+- [.github/workflows/tei-okf-k1-reference-ci.yml](../../.github/workflows/tei-okf-k1-reference-ci.yml)：Ubuntu上で**公開合成Fixtureのみ**を対象に、2リポジトリの正確なCommitをcheckout。contents:read権限、Secret/外部Dataset/Effect不要。PyYAMLをtest用仮想環境に6.0.3固定し、上流moduleをバイト検証して実行する。CIの結果はテスト用相互運用Witnessであって、製品のParserや隔離環境認定ではない。
+- [testdata/okf-k1-v02.expected.json](../../testdata/okf-k1-v02.expected.json)：上流Reader blob/versionと、**第8の一因子Mutant**「非空listをtypeに置く」を追加。従前7件のExpected・原byteピンをそのまま保持。FixtureとExpectedは同じ作成試行のため、**独立Oracleの正式資格は引き続き未獲得**。
+
+### 15.2 上流Reference Readerも完全な仕様Validatorではない
+
+公式OKF v0.2 §4.1ではConcept typeは**短い文字列**。一方、上流実装の OKFDocument.validate は実コードで type の truthinessを検査し、**truthyなYAML listを型違反として拒否しない**。ここには、参照実装と形式仕様の小さいが意味のある差がある。
+
+新Probeはこの反例を**期待通りReferenceは受け入れる／SPECのstring条件では拒否**という二列で出す。正式なOKF Conformanceを期待違反のまま合格したことにせず、既知のReferenceの制約として見えるようにする。なお、このProbeが追加するstring型確認は1条件のtest-only比較であり、TEI独自の**第2 YAML Parser／新Conformance標準／Producer Registry**ではない。
+
+**試験表（実行前はExpectedであり判定結果ではない）**：
+
+| 対照 | 上流Document Readerでの期待 | SPEC中のtype文字列条件 | 判定上限 |
+| --- | --- | --- | --- |
+| 正常3 Concept＋index | 受理、1 singleton verifiedをnormalize | 3 Conceptとも型string | 上流Reference互換・入力raw固定の限定証拠 |
+| type欠落 | 拒否 | 拒否 | 必須キーの局所判別 |
+| YAML破損 | 拒否 | 拒否 | parse失敗の局所判別 |
+| 未知type/未知frontmatter項目 | 受理 | 受理 | 未知Roleの業務採用ではない |
+| indexなし、broken link、Bundle-root絶対Link | ReaderはConcept parse/validateを受理 | formatでは拒否しない | Source/Relation品質とRequired閉包を未検証 |
+| **typeが非空YAML list** | **上流サンプルは受理する見込み** | **拒否** | 上流の適用限界。正式OKF F0合格とはしない |
+
+上流のReference Producerが提供するその他の実行・公開・Source取得機能をこの試験へ引き込まない。限定Moduleだけを読み、明示した公開K1ファイルしか処理しない。利用者から与えられたConcept中のexecutor URLや本文指示を実行しない。
+
+### 15.3 実証の順番と成功条件を厳密化する
+
+1. **K1外部Reference比較**：実GitHub CI exact HEADにて上流Reader 3 Conceptの解析・7正常/異常Mutantの一致と、**8つ目はReferenceの既知差**が出るか照合。失敗時は原Source/Reference/PyYAML版、Expectedの逸脱、Runner環境と結果を分離する。現段階では新CI成功を主張しない。
+2. **K1独立Oracle**：#2514 OwnerがSPECの型値域と他の形式負例を別に審査し、Referenceに同じ不備があれば独立Expected/Mutant killが必要と判断する。ReferenceとAI生成Fixtureの一致だけを公式仕様適合へ昇格させない。
+3. **K1R製品Consumer**：同じPinのRaw ConceptをSHO main G1b実CLIで受領し、Source原byte・リンク抽出・Grammar未列挙を記録する。これはYAML前処理の成功と別Receipt。TEI Markdownは#3346でmanaged/unreadを明示するだけで、意味Parserは#2621に残る。
+4. **K2**：正式に選択されたPlugin/Providerが同一Bundleを実際にCLIとSHO/Studioから呼ぶこと、別々のCurrent Required/Disclosure/受信終端を実験する。#3262の既存Context ConsumerとPlugin-first共通Contractを利用する。K1のReference Reader実行をK2二Consumer実達成へ変換しない。
+5. **K4/K5**：Attested Computationの実Executor/Receipt/独立Attester（TAI #514）と、SHOの実Disk Writer・CAS/ABA・再Open（SHO #4）は独立後続段階。G2-Pのpure候補やverifiedによる代替不可。
+
+**Ownerと判定**：本節のtest-only相互運用WitnessはTEI #2514/SHO #18へ引き渡す。#3262の必要Source定義と#1251/#951のPlugin実選択、TAI #514のAttestationを重複起票しない。**上流Reference文書をpinして試験コード・CI起動条件を配置した事実**と、**実GitHub ActionsでそのProbeが成功した事実**を別に扱う。後者は最新Runの実Jobログで確認できるまで**NOT RUN**。OKF正式F0全仕様、製品Reader/Plugin二Consumer、Owner意味受理・外部開示・OS/Network封鎖は引き続き**NOT QUALIFIED**。
