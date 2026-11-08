@@ -43,6 +43,9 @@ dispatch: servicehost.SelectedServiceCarrierInvoker.Invoke
 assembled by this reference: BindHostApplicationEnvironmentRoute + NewSelectedServiceCarrierInvoker
 refused when: the coordinator or route source is missing, the route is
               unavailable, or the route is for a different pinned Binding
+after invocation: ranCount is actual carrier entry; refusedCount is only
+              before that call; unverifiedCount is a subset of ranCount where
+              the carrier returned an error or an unusable answer
 not verified: that the Provider's answer reflects external state
 not issued: authentication, authority, permission, or a durable receipt
 `
@@ -60,6 +63,9 @@ type Outcome struct {
 	RequestID  string `json:"requestId"`
 	Generation uint64 `json:"generation"`
 	Pinned     bool   `json:"pinnedGeneration"`
+	// CarrierInvoked records entry into the pinned Service carrier only. It
+	// does not establish an external effect or a durable receipt.
+	CarrierInvoked bool `json:"carrierInvoked,omitempty"`
 	// Payload is what the Provider returned, verbatim.
 	Payload string `json:"payload,omitempty"`
 	// Error records a refusal or a carrier error as text. It is never a success.
@@ -76,9 +82,15 @@ type Report struct {
 	Application     string    `json:"application"`
 	Environment     string    `json:"environment"`
 	Outcomes        []Outcome `json:"outcomes"`
-	Ran             int       `json:"ranCount"`
-	Refused         int       `json:"refusedCount"`
-	Notes           []string  `json:"notes"`
+	// Ran counts entries into the pinned carrier, regardless of error or
+	// answer usability. Refused is strictly before that call. Unverified is a
+	// subset of Ran: the carrier ran but returned an error or an unusable
+	// answer, so an external effect may already exist. None of these counters
+	// establishes a business effect.
+	Ran        int      `json:"ranCount"`
+	Refused    int      `json:"refusedCount"`
+	Unverified int      `json:"unverifiedCount"`
+	Notes      []string `json:"notes"`
 }
 
 // Inputs is what a Host must supply. The reference invents none of them.
@@ -162,21 +174,34 @@ func Run(in Inputs, requests []Request) Report {
 	ordered := append([]Request(nil), requests...)
 	sort.Slice(ordered, func(i, j int) bool { return ordered[i].RequestID < ordered[j].RequestID })
 	for _, req := range ordered {
+		// The carrier is entered here. Whatever happens next, an external
+		// effect may already exist, so this is a Ran, not a Refused.
+		report.Ran++
 		invocation, invokeErr := invoker.Invoke(context.Background(), req.RequestID, req.Payload)
 		if invokeErr != nil {
-			report.Refused++
+			report.Unverified++
 			report.Outcomes = append(report.Outcomes, Outcome{
 				RequestID: req.RequestID, Generation: in.Binding.Generation,
-				Error: RefusedInvocation + ": " + invokeErr.Error(),
+				CarrierInvoked: true,
+				Error:          RefusedInvocation + ": " + invokeErr.Error(),
 			})
 			continue
 		}
-		report.Ran++
+		if invocation.Generation != in.Binding {
+			report.Unverified++
+			report.Outcomes = append(report.Outcomes, Outcome{
+				RequestID: req.RequestID, Generation: invocation.Generation.Generation,
+				CarrierInvoked: true,
+				Error:          RefusedBindingMismatch + ": the answer is not for the pinned generation",
+			})
+			continue
+		}
 		report.Outcomes = append(report.Outcomes, Outcome{
-			RequestID:  req.RequestID,
-			Generation: invocation.Generation.Generation,
-			Pinned:     invocation.Generation == in.Binding,
-			Payload:    string(invocation.Service.Runtime.Response.Payload),
+			RequestID:      req.RequestID,
+			Generation:     invocation.Generation.Generation,
+			Pinned:         true,
+			CarrierInvoked: true,
+			Payload:        string(invocation.Service.Runtime.Response.Payload),
 		})
 	}
 	return report
@@ -184,6 +209,7 @@ func Run(in Inputs, requests []Request) Report {
 
 func notes() []string {
 	return []string{
+		"ranCount counts carrier entry, refusedCount only pre-invocation and unverifiedCount post-invocation errors or an answer for another generation",
 		"an answer is the Provider responding, not proof that external state changed",
 		"the coordinator, runtime registry and route source are supplied by the Host",
 		"the Host's pinned Binding is compared with the route before anything runs",

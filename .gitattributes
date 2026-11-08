@@ -154,3 +154,6 @@
 
 # Subagent fork observations are hashed as raw bytes.
 /plan/evidence/DSH_SUBAGENT_FORK_2026-11-09/** -text
+
+# C-2 outcome v1 output is hashed as raw bytes by its README.
+/plan/evidence/SERVICE_CARRIER_CONNECT_OUTCOME_V1_2026-11-09/** -text
