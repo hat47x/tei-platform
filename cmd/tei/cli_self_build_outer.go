@@ -42,7 +42,11 @@ type selfBuildOuterEvidence struct {
 	// child reported, and whether the two readings agree. It is present only
 	// when -intent-file is given.
 	IntentBinding *selfBuildIntentBinding `json:"intentBinding,omitempty"`
-	Error         *cliFailure             `json:"error,omitempty"`
+	// PlanReceipt is §4.8 L2-b's material as recorded by the resolver child.
+	// Present only when the caller named a resolver. It never makes the entry
+	// claim L2: the artifact came from a different child.
+	PlanReceipt *PlanReceipt `json:"planReceipt,omitempty"`
+	Error       *cliFailure  `json:"error,omitempty"`
 }
 
 // selfBuildIntentBinding separates "which declaration this entry held" from
@@ -84,6 +88,14 @@ type selfBuildOuterArgs struct {
 	SupplyVerifier string
 	// SupplyVerifierArg is extra argv for the verifier as a JSON array.
 	SupplyVerifierArg string
+	// IntentResolver is an exact executable that resolves the declaration into
+	// a plan, per §4.7 I-2. It is started as a child; the entry reads its JSON.
+	IntentResolver string
+	// IntentResolverArg is extra argv for the resolver as a JSON array.
+	IntentResolverArg string
+	// ExpectedPlanFingerprint is a value the caller declared out of band. When
+	// given, the resolver's plan must equal it or the attempt stops.
+	ExpectedPlanFingerprint string
 }
 
 // looksLikeOuterShape reports whether the caller used any §4 flag. A caller that
@@ -116,6 +128,9 @@ func parseSelfBuildOuterArgs(args []string) (selfBuildOuterArgs, error) {
 	fs.StringVar(&parsed.ChildArgs, "child-arg", "", "extra child arguments as a JSON array of strings")
 	fs.StringVar(&parsed.SupplyVerifier, "supply-verifier", "", "exact executable that classifies the supply (SB-0b)")
 	fs.StringVar(&parsed.SupplyVerifierArg, "supply-verifier-arg", "", "extra arguments for the supply verifier as a JSON array")
+	fs.StringVar(&parsed.IntentResolver, "intent-resolver", "", "exact executable that resolves the declaration into a plan (I-2)")
+	fs.StringVar(&parsed.IntentResolverArg, "intent-resolver-arg", "", "extra arguments for the intent resolver as a JSON array")
+	fs.StringVar(&parsed.ExpectedPlanFingerprint, "expected-plan-fingerprint", "", "planFingerprint the resolved plan must equal")
 	if err := fs.Parse(args); err != nil {
 		return selfBuildOuterArgs{}, err
 	}
@@ -179,6 +194,36 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 		return 2, nil
 	}
 	report.IntentRecord = &declaration
+
+	// §4.7 I-2: resolution is delegated to an exact resolver child. The entry
+	// starts it, reads its receipt, and records what was resolved. A resolver
+	// that fails, or a receipt whose plan differs from the declared expectation,
+	// stops the attempt before the builder starts.
+	if strings.TrimSpace(parsed.IntentResolver) != "" {
+		resolverArgs := []string{}
+		if strings.TrimSpace(parsed.IntentResolverArg) != "" {
+			if err := json.Unmarshal([]byte(parsed.IntentResolverArg), &resolverArgs); err != nil {
+				return 2, fmt.Errorf("INVALID_ARGUMENT: -intent-resolver-arg is not a JSON array of strings: %w", err)
+			}
+		}
+		resolverArgs = append(resolverArgs, "-intent", parsed.IntentFile)
+		receipt := resolveIntentVia(parsed.IntentResolver, resolverArgs, parsed.ExpectedPlanFingerprint)
+		report.PlanReceipt = &receipt
+		if receipt.State != intentResolutionResolved {
+			report.Error = &cliFailure{Code: selfBuildCodeIntentResolutionFailed, Message: receipt.FailureCause}
+			if encodeErr := encodeIndented(out, report); encodeErr != nil {
+				return 2, encodeErr
+			}
+			return 2, nil
+		}
+		if parsed.ExpectedPlanFingerprint != "" && !receipt.PlanMatchesExpected {
+			report.Error = &cliFailure{Code: selfBuildCodePlanMismatch, Message: receipt.FailureCause}
+			if encodeErr := encodeIndented(out, report); encodeErr != nil {
+				return 2, encodeErr
+			}
+			return 2, nil
+		}
+	}
 
 	// SC0-02: when a verifier is named, its classification must pass before the
 	// builder starts. Without one, the record says the check was delegated and
@@ -247,9 +292,11 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 			L2BClaimed:        false,
 			BoundaryStatement: selfBuildIntentBindingBoundary,
 		}
-		// The declaration is forwarded to the child so both sides read the same
-		// bytes. The child reports its own digest and fingerprints back.
-		childArgs = append(childArgs, "-intent", parsed.IntentFile)
+		// The declaration is NOT injected into the builder's argv: the entry does
+		// not invent child arguments, and the builder it is pointed at may have no
+		// -intent flag at all. A caller that wants the byte check passes the
+		// reporting arguments through -child-arg; without them the check records
+		// why it was not performed.
 	} else if strings.TrimSpace(parsed.Intent) != "" {
 		// A logical ID without a declaration cannot be byte-checked. Record why
 		// rather than leaving the absence unexplained (SC0-14).
