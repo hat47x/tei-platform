@@ -164,3 +164,4 @@
 - [CLI応答のWorkspace同一性と空一覧の実測](TEI_DOGFOODING_ROUND3_IDENTITY_2026-11-08/README.md)（#3149・#3455・#3456。読み取りコマンド横断でWorkspace同一性と空一覧の直列化を確認し、2件の修正を実測。同名の第3ラウンド記録は別ディレクトリにある）
 - [修正後の再実測 第4ラウンド](TEI_DOGFOODING_ROUND4_2026-11-09/README.md)（#3455・#3456の修正後に、統合後の版`00ead5a98`で同じCLI操作を再測定。11応答すべてがWorkspace同一性を持ち、空の参照一覧は`[]`で返る。D-9は残る）
 - [`tei self-build`のIntent解決（I-2）とL2の切り分け](TEI_GO_SELF_BUILD_INTENT_RESOLUTION_2026-11-09.md)（§4.7の既定案I-2を実装し、宣言を解決childへ渡してreceiptを受け取る。未知のauthorityは拒否し、宣言済みplan fingerprintと一致しなければbuilderを起動しない。`l2Claimed`は常にfalse。SB-C0 §4.7/§4.8 / #2831）
+- [`tei self-build`の L2-a を別の作業領域で取り直す](TEI_GO_SELF_BUILD_L2A_REOBSERVATION_2026-11-09.md)（builder childを実Go Buildから自作probeへ差し替えても、同じ宣言から同じ`planFingerprint`が出て`planMatchesExpected=true`になることを記録。`l2Claimed`・`qualified`は両方false。L2-bは未成立。SB-C0 §4.7/§4.8 / #2831）
