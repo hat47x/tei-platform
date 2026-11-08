@@ -183,3 +183,109 @@ func TestImportedProviderManifestOnlyDriftNeedsSeparateManifestIdentity(t *testi
 		}
 	}
 }
+
+// A 2x2 control shows why one consumer revision or even one provider source
+// fingerprint cannot stand for the provider's entire import input identity.
+// Every Load and locator call here is a separate stable-fixture observation,
+// NOT evidence of a single atomic multi-file read cohort.
+func TestImportedProviderSourceAndManifestRevisionsFormIndependentMatrix(t *testing.T) {
+	cases := []struct {
+		name           string
+		sourceChanged  bool
+		manifestChanged bool
+	}{
+		{name: "baseline"},
+		{name: "source-only", sourceChanged: true},
+		{name: "manifest-only", manifestChanged: true},
+		{name: "both", sourceChanged: true, manifestChanged: true},
+	}
+	type observed struct {
+		consumerWorld    workspace.Result
+		consumerIndex    sourceindex.Index
+		consumerManifest workspace.ManifestIdentity
+		semanticDigest   string
+		sourceSHA        string
+		manifestSHA      string
+	}
+	var base observed
+	hash := func(raw []byte) string {
+		return fmt.Sprintf("sha256:%x", sha256.Sum256(raw))
+	}
+	for i, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			consumer, provider := externalPair(t)
+			sourcePath := filepath.Join(provider, "semantic", "os", "process.tei")
+			manifestPath := filepath.Join(provider, "tei.workspace.yaml")
+			sourceRaw, err := os.ReadFile(sourcePath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			manifestRaw, err := os.ReadFile(manifestPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.sourceChanged {
+				sourceRaw = append(sourceRaw, '\n')
+				writeExternalFixture(t, sourcePath, string(sourceRaw))
+			}
+			if tc.manifestChanged {
+				manifestRaw = append(manifestRaw, '\n')
+				writeExternalFixture(t, manifestPath, string(manifestRaw))
+			}
+			// The independent raw fixtures, not the provider's output fields,
+			// supply the expected hashes.
+			sourceExpected, manifestExpected := hash(sourceRaw), hash(manifestRaw)
+			providerLoad, err := workspace.Load(provider)
+			if err != nil {
+				t.Fatal(err)
+			}
+			consumerLoad, err := workspace.Load(consumer)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(consumerLoad.Imports) != 1 {
+				t.Fatalf("expected one selected namespace: %+v", consumerLoad.Imports)
+			}
+			idx, err := workspace.BuildSourceIndex(consumer, consumerLoad)
+			if err != nil {
+				t.Fatal(err)
+			}
+			origin, err := workspace.LocateImportedSource(consumer, consumerLoad, "os",
+				sourceindex.Subject{Kind: "semantic-type", ID: "os.process_id"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			current := observed{
+				consumerWorld: consumerLoad,
+				consumerIndex: idx,
+				consumerManifest: consumerLoad.ManifestIdentity(),
+				semanticDigest: consumerLoad.Imports[0].SemanticDigest,
+				sourceSHA: origin.Artifact.Fingerprint,
+				manifestSHA: providerLoad.ManifestIdentity().SHA256,
+			}
+			if current.sourceSHA != sourceExpected || current.manifestSHA != manifestExpected {
+				t.Fatalf("provider raw fixture hashes not independently reproduced: %+v", current)
+			}
+			if _, err := workspace.BuildSourceIndexFromLoad(consumer, consumerLoad); !errors.Is(err, workspace.ErrImportsNotBound) {
+				t.Fatalf("complete import closure must remain unqualified: %v", err)
+			}
+			if i == 0 {
+				base = current
+				return
+			}
+			if !reflect.DeepEqual(base.consumerWorld.World, current.consumerWorld.World) ||
+				!reflect.DeepEqual(base.consumerIndex.Artifacts, idx.Artifacts) ||
+				!reflect.DeepEqual(base.consumerIndex.References, idx.References) ||
+				sourceindex.ModelRevision(base.consumerIndex) != sourceindex.ModelRevision(idx) ||
+				base.consumerManifest != current.consumerManifest ||
+				base.semanticDigest != current.semanticDigest {
+				t.Fatal("provider-only drift changed the consumer World, own Manifest, index or selected meaning")
+			}
+			if (base.sourceSHA != current.sourceSHA) != tc.sourceChanged ||
+				(base.manifestSHA != current.manifestSHA) != tc.manifestChanged {
+				t.Fatalf("provider Source and Manifest revision channels are conflated: source changed=%t manifest changed=%t",
+					base.sourceSHA != current.sourceSHA, base.manifestSHA != current.manifestSHA)
+			}
+		})
+	}
+}
