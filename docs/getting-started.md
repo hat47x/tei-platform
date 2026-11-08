@@ -1,4 +1,4 @@
-﻿# TEIを動かす
+# TEIを動かす
 
 この文書では、TEIを取得して動作を確認するまでの手順を説明します。設計の考え方から知りたい場合は、[はじめてTEIを知る方へ](for-readers.md)を参照してください。
 
@@ -86,6 +86,17 @@ go build -o tei ./cmd/tei
 ```
 
 `go run`や`-buildvcs=false`でbuildした場合はコミットが埋め込まれないため、`source`が`unavailable`になります。識別は再現の手掛かりであり、配布の承認や署名ではありません。
+
+checkoutの外で`-buildvcs=false`を使ってbuildする場合は、`-ldflags`で自分が使ったコミットを渡せます。値は`declaredRevision`として返り、`source`は`ldflags`になります。`vcsRevision`とは別の欄なのは、これがbuild者の自己申告であり、toolchainが埋め込む値と同じ強さの証拠ではないためです。
+
+```bash
+go build -buildvcs=false \
+  -ldflags "-X main.declaredBuildRevision=$(git rev-parse HEAD)" \
+  -o tei ./cmd/tei
+./tei version -json
+```
+
+渡す値は40桁の16進（Gitの完全なcommit ID）だけを版として扱います。短いIDやブランチ名を渡した場合は採用されず、`source`は`unavailable`のままです。`vcsRevision`が同時にある場合（checkout内で`-X`も付けた場合）は`source`が`build-info`のままで、`declaredRevision`が併記されます。どちらがtoolchain由来かは名前と`source`で読み分けてください（[#3558](https://github.com/hat47x/tei-platform/issues/3558)）。
 
 モデルや定義の整合性を調べる場合、生成AIなどの呼出し元は次のようにJSON形式の診断結果を取得できます。
 
