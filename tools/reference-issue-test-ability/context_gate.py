@@ -563,8 +563,6 @@ def required_validation_selftest(docs: dict[str, dict], baseline: dict) -> dict[
     tests["TT56-outside-required-scope-remains-partial"] = "bounded-scope-maintained"
     return tests
 
-
-
 def focused_structure_selftest(docs: dict[str, dict], baseline: dict) -> dict[str, str]:
     """New discrimination not already covered by the three-Rule/Index tests."""
     if baseline["focusedStructureSlice"]["status"] != "bounded-present":
@@ -638,8 +636,6 @@ def focused_structure_selftest(docs: dict[str, dict], baseline: dict) -> dict[st
     check("Rule-inspection-mixed-revision", mixed_inspect_revision,
           "fingerprint:stale", structure_blocked=False)
     return controls
-
-
 def transport_selftest(folder: Path) -> dict[str, str]:
     """Corrupt real received CLI JSON bytes, not just an in-memory decoded dict.
 
@@ -708,6 +704,7 @@ def main() -> None:
           f"+ {len(report['transportByteControls'])} byte-reply rejection controls "
           f"+ {len(report['requiredValidationControls'])} bounded Rule-slice checks "
           f"+ {len(report['focusedStructureControls'])} Rule/Relation Canonical checks; "
+          f"+ {len(report['transportByteControls'])} byte-reply rejection controls; "
           "test generation qualification withheld")
 
 

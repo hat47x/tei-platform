@@ -80,3 +80,4 @@ git grep -n "ADR-0035" -- . ':!plan/adr/0035-autonomy-levels-and-verification-pa
 - [ADR-0045: 生成器と生成物を、版付き成果物・ライフサイクル・独立証拠の組として扱う](0045-generator-artifact-lifecycle-and-evidence.md)（提案中。ADR-0034・0037・0040・0041の統合案）
 - [ADR-0046: 業務状態遷移を、標準データ上のLifecycle役割とOwner Actionのガードとして扱う](0046-business-lifecycle-as-standard-data-role.md)（提案中。ADR-0024・0025の統合案）
 - [ADR-0047: ADR-0043・ADR-0044を既存ADRへ適用する範囲を定める](0047-applying-adr-0043-0044-to-existing-adrs.md)（提案中）
+- [ADR-0048: CLI・MCP・API・Web・Desktopの操作を共通アプリケーションAPIに集約する](0048-shared-application-api-and-transport-adapters.md)（採用。HTTPサーバー非必須、意味契約の共有と入口別Adapter、段階移行）

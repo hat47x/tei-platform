@@ -3,6 +3,7 @@
 - 状態：2026-11-07時点の**Owner方針を反映した設計・検証計画**。実装・実Provider適合・Ownerによる個々の業務意味の受理は別。
 - 担当課題：[ #3270 ](https://github.com/hat47x/tei-platform/issues/3270)。
 - 関連：[製品要求](../../requirements/TEI_PRODUCT_REQUIREMENTS.md) RQ-001〜008・010〜011・035、[現状](../../docs/status.md)、[全体計画](../MASTER_PLAN.md)。
+- 関連：[製品要求](../../requirements/TEI_PRODUCT_REQUIREMENTS.md) RQ-001〜008・010〜011、[現状](../../docs/status.md)、[全体計画](../MASTER_PLAN.md)。
 - 既存の責務：#2619・#2622（Data Operations/Provider）、#1126（論理・物理Data）、#1803・#2482（DDL成果物）、既存Database Schema Diff/Migration、#1127（Data-first Function）、#2495・#2497（標準構造と投影）、#2506・#2507（Data Context/Pattern）、#1824・#1124（Studio）、#2387（Query/Lineage）、#1641・#1708・#2582（鮮度・Snapshot・再取得）、#951（Provider）、#1174・#2598（実Target/Effect）、#1180・#2514（Test/独立Expected）、#3267（検証済み構成BOM）。
 
 ## 1. 結論：データ管理と基盤運用を区別する
