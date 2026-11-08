@@ -44,7 +44,7 @@ type orgCaseQueryConn struct{ probe *orgCaseQueryProbe }
 func (*orgCaseQueryConn) Prepare(string) (sqldriver.Stmt, error) {
 	return nil, sqldriver.ErrSkip
 }
-func (*orgCaseQueryConn) Close() error                  { return nil }
+func (*orgCaseQueryConn) Close() error                 { return nil }
 func (*orgCaseQueryConn) Begin() (sqldriver.Tx, error) { return nil, sqldriver.ErrSkip }
 func (c *orgCaseQueryConn) QueryContext(_ context.Context, statement string, args []sqldriver.NamedValue) (sqldriver.Rows, error) {
 	c.probe.statement = statement
