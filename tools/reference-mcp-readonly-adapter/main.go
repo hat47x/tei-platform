@@ -389,10 +389,10 @@ func dispatch(name string, arguments map[string]json.RawMessage, workspace strin
 			return nil, false, err
 		}
 		options := modelref.TraceOptions{}
-		if options.Direction, err = optionalString(arguments, "direction", "both"); err != nil {
+		if options.Direction, err = optionalString(arguments, "direction", modelref.TraceDefaultDirection); err != nil {
 			return nil, false, err
 		}
-		if options.Mode, err = optionalString(arguments, "mode", "summary"); err != nil {
+		if options.Mode, err = optionalString(arguments, "mode", modelref.TraceDefaultMode); err != nil {
 			return nil, false, err
 		}
 		if options.ExpectedFingerprint, err = optionalString(arguments, "expectedFingerprint", ""); err != nil {
