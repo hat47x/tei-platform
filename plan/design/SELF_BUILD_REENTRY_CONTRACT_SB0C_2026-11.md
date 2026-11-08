@@ -84,6 +84,32 @@ A-1のコストを踏まえると、B（`tools/reference-go-build-with-supply`�
 
 ただしBにも制約がある。Stage1のTEIがchildを起動するには、既存の`StdioProcessLauncher`を**そのまま使えるとは限らない**（Plugin用のwire protocolを前提にしている）。実際に使えるかは未確認であり、§6の未決事項に移す。
 
+### 3.3 Bの形は既に実測で成立している（2026-11-08 追補）
+
+§3.2で「Bの証拠の取り方」を推したが、その後、Bの形そのものが実装・実測された。[`tools/reference-self-build-two-stage`](../../tools/reference-self-build-two-stage/README.md)がそれである。
+
+| stage | 何が動くか |
+| --- | --- |
+| stage0 | 外部Go seedでdriverを構築（driven processではない） |
+| stage1 | stage0のdriverがchildを起動し、driver自身を再構築 |
+| stage2 | **stage1で得たdriver実行ファイル**をinvokerとして起動し、同じchildで再構築 |
+
+実測（WSL2 Ubuntu 22.04 / Go 1.27.3 linux/amd64、[記録](../evidence/TEI_GO_SELF_BUILD_TWO_STAGE_L3_2026-11-07.md)）では、stage2のinvoker digestがstage1のartifact digestと一致し、`l3Claimed=true`が成立した。
+
+**したがって§3.2の「Bにも制約がある」は、少なくともdriver自身については解消された。** `StdioProcessLauncher`をそのまま使えたのではなく、`reference-go-build-stage-driver`が独自にchildを起動してinvoker/invokedを記録する形で成立している。Plugin用のlauncherを流用する必要は無かった。
+
+### 3.4 本稿の第一候補を「B（`cmd/tei`からのsubprocess起動）」に確定する
+
+§3.1でAの前提が崩れ、§3.3でBの形が実測で成立した。**本稿の第一候補をBに確定する。** A-1（`gobuilder`の移動）は採らない。
+
+理由は次の三点である。
+
+1. A-1は29ファイル（Go 16・Markdown 12・CI 1）に触れ、Evidenceの実行手順の意味も変える。Bはそれらを変えない
+2. Bの形は`reference-self-build-two-stage`で実測済みであり、stage1のartifactがstage2のinvokerになることをdigestで示せた
+3. `cmd/tei`側に必要なのは「childを起動して、そのinvoker/invokedを記録する」入口だけであり、`reference-go-build-stage-driver`がその記録形式を既に持っている
+
+**ただし、これは`cmd/tei`のL3が成立したという意味ではない。** 対象はdriver自身であり、`cmd/tei`はBuild入口を持たない。Bを採る場合の作業は「`cmd/tei`からdriver相当を起動できる薄い入口を足す」ことであり、§4の外形はその入口の提案である。
+
 ## 4. SB-C0の最小契約（案）
 
 `cmd/tei`へ足す1コマンドの外形を固定する。名称は提案であり、確定ではない。
@@ -171,19 +197,24 @@ SB-C0の出力だけではL3を主張できない。L3には次が要る。
 
 - コマンド名（`self-build` / `build` / `artifact build`）
 - Build Intentの解決方式（`-intent`でID指定か、Workspace内の宣言から解決か）
-- **A-1（`gobuilder`の`internal/`への移動）とB（subprocess）のどちらを採るか**。§3.1・§3.2でBを推奨へ変更したが、A-1の移動コストを測っていない
-- `internal/plugin/runtime`の`StdioProcessLauncher`をBuild用child起動へ**そのまま使えるか**（Plugin用wire protocol前提であるため、未確認）
+- ~~A-1とBのどちらを採るか~~ → **§3.4でBに確定**（A-1は採らない）
+- ~~`StdioProcessLauncher`をBuild用child起動へそのまま使えるか~~ → **§3.3で不要と判明**。`reference-go-build-stage-driver`が独自にchildを起動して記録する形で成立した
+- **`cmd/tei`からchild driverを起動する薄い入口**の実装（Bを採った後の最初の作業）
+- `cmd/tei`を対象にしたL3の実験手順（`reference-self-build-two-stage`の形を当てる）
 - `-self-digest`の取得方法（実行ファイル自身のdigestをどう自己参照するか）
 - 出力のschemaVersionと、既存`tei.cli.*`との命名一貫性
-- SB-C1（Stage1実行によるStage2駆動）の実測手順
+- Seed Trustの扱い（stage0のGoは外部seed。TEI自身によるGoコンパイラのself-hostingではない）
 
 ## 7. この文書の終了条件
 
 - [x] §3の三案の比較と、Aの前提がGoのinternal規則に抵触することの実測（§3.1）
-- [ ] A-1とBのどちらを採るかの決定（ownerは[#1090](https://github.com/hat47x/tei-platform/issues/1090)と#2831）
-- [ ] `gobuilder`移動の影響範囲（15ファイルのimport pathと、`plan/evidence/TEI_GO_*`が引用する実行手順）の洗い出し
+- [x] Bの形が実測で成立することの確認（§3.3、[`reference-self-build-two-stage`](../../tools/reference-self-build-two-stage/README.md)）
+- [x] 第一候補をBに確定（§3.4、A-1は採らない）
+- [ ] `cmd/tei`からchild driverを起動する薄い入口の実装
 - [ ] `tei self-build`の実装とSC0-01〜10の実試験
 - [ ] `cli_contract.go`の広告と実応答の一致（既存のdiscovery照合へ載せる）
-- [ ] SB-C1の実測手順
+- [ ] `cmd/tei`を対象にしたL3の実測（`reference-self-build-two-stage`の形を当てる）
+
+**A-1（`gobuilder`移動）は採らないため、影響範囲の洗い出しは終了条件から外した。** 29ファイルの内訳は[記録](../evidence/TEI_GO_INTERNAL_RULE_AND_BUILDER_MOVE_2026-11-07.md)として残す。
 
 本書は計画の正本を増やすものではない。SB-C0の**入口の外形と拒否条件**だけを固定し、#2831のP0順序（SB-0a → SB-0b → SB-A → SB-B → SB-C）のうちSB-C0を詰めた設計候補である。最終判断は元計画・ADR・actual Evidenceへ返す。
