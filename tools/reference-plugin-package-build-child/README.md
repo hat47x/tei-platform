@@ -64,6 +64,8 @@ stdoutへ1件のJSONを出します。`tei self-build`が読む欄は`artifactDi
 | **宣言の申告** | `-intent`指定時に`intentBytesDigest`・`intentFingerprint`が入り、digestがディスクのバイトと一致する |
 | 別subjectの宣言 | artifactを書かず、reportを出さず、exit 1 |
 | `-intent`無し | 宣言の欄を出さない（沈黙を合格と読ませない） |
+| **座標の不一致** | `outputKind`・`target`・`profile`のいずれかが違えばartifactを書かず、reportを出さず、exit 1。違った座標を名指しする |
+| `profile`の省略 | planの値と一致しないものとして拒否する |
 
 ## child自身のlock
 
@@ -79,6 +81,22 @@ reportは`buildArtifactLock`を持つ。**このchildが自分で組み立て、
 lockが`Validate`を通らなければ、**artifactを書いた後にreportを出さずexit 1**にする。reportを返すと、検証できなかった束縛が「返ってきた」と読まれるためである。
 
 `tei self-build`はこのlockを、自分が独立に導いたlockと比べる。**経路の違う二つの組み立てが同じfingerprintになる**ことが、ここで増える観測である。それでも、両方がchildの申告に依存している点は変わらない。
+
+## 宣言とplanの座標
+
+`-intent`を渡すと、このchildは**subject identity**に加えて**build座標**もplanと比べる。
+
+| 座標 | 何を確かめるか |
+| --- | --- |
+| `outputKind` | 宣言とplanが同じ出力種を指すか |
+| `target` | 同じ対象環境を指すか |
+| `profile` | 同じ構成を指すか |
+
+違えば**artifactを書いた後にreportを出さずexit 1**にし、**どの座標が違ったかを名指しする**。identityが一致しても別のbuildを指す場合があるためである。
+
+**`profile`の省略は一致と読まない。** 宣言が`profile`を書かないことは「planの`profile`と同じ」ではなく「profileを宣言していない」である。
+
+座標の一致が言えるのは「**宣言とplanが同じbuildを指す**」ことまでで、「その宣言がそのplanを生んだ」ことではない。
 
 ## 実行した確認
 

@@ -261,6 +261,27 @@ func materialize(planPath, pluginPath, artifactOut, stateDir, intentPath string)
 				intent.Subject.ID, intent.Subject.Version, plan.Plugin.ID, plan.Plugin.Version,
 			)
 		}
+		// §4.14の次の一歩: the declaration's build coordinates must match the
+		// plan's. Identity alone says the two describe the same plugin; the
+		// coordinates say they describe the same build of it. Each mismatch is
+		// named separately so a caller can tell which coordinate disagreed.
+		coordinates := []struct {
+			name   string
+			intent string
+			plan   string
+		}{
+			{"outputKind", string(intent.OutputKind), string(plan.OutputKind)},
+			{"target", intent.Target, plan.Target},
+			{"profile", intent.Profile, plan.Profile},
+		}
+		for _, c := range coordinates {
+			if c.intent != c.plan {
+				return childReport{}, fmt.Errorf(
+					"the declaration's %s %q does not match the plan's %q",
+					c.name, c.intent, c.plan,
+				)
+			}
+		}
 		report.IntentBoundToPlan = true
 	}
 	return report, nil

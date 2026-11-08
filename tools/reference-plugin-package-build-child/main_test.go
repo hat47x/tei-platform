@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"tei/internal/core"
@@ -71,18 +72,53 @@ func writeFixture(t *testing.T) (string, string) {
 // writeDeclaration writes a Build Intent whose subject is the fixture plan's
 // plugin, so the child's identity check can pass. The target is the plan's
 // target so a reader can see the two inputs describe the same build.
-func writeDeclaration(t *testing.T, subjectID, subjectVersion string) string {
+// declarationCoordinates are the build coordinates a fixture declaration names.
+// They default to the fixture plan's, so a caller can vary one at a time.
+type declarationCoordinates struct {
+	SubjectID      string
+	SubjectVersion string
+	OutputKind     string
+	Target         string
+	Profile        string
+}
+
+func fixtureCoordinates(t *testing.T) declarationCoordinates {
+	t.Helper()
+	definition, err := syntax.NewParser(testPluginSource).ParsePlugin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// These match writeFixture's plan. Keeping them in one place means a plan
+	// change and a declaration change cannot drift apart silently.
+	return declarationCoordinates{
+		SubjectID:      string(definition.ID),
+		SubjectVersion: definition.Version,
+		OutputKind:     string(plugin.BuildOutputPluginPackage),
+		Target:         "plugin-package",
+		Profile:        "reference",
+	}
+}
+
+// writeDeclaration writes a declaration with the given coordinates. An empty
+// Profile omits the field, which is how a declaration that says nothing about
+// the profile looks.
+func writeDeclaration(t *testing.T, coordinates declarationCoordinates) string {
 	t.Helper()
 	root := t.TempDir()
 	path := filepath.Join(root, "intent.json")
 	body := `{
   "formatVersion": 1,
-  "subject": {"kind": "plugin", "id": "` + subjectID + `", "version": "` + subjectVersion + `", "definitionSource": "definition"},
+  "subject": {"kind": "plugin", "id": "` + coordinates.SubjectID + `", "version": "` + coordinates.SubjectVersion + `", "definitionSource": "definition"},
   "sources": [{"kind": "plugin-definition", "id": "definition", "ref": "plugin.tei"}],
   "builder": {"contract": "tei.plugin-build", "compatibleMajor": 1},
   "recipe": {"kind": "tei-plugin-package", "entrypoint": "plugin.tei"},
-  "outputKind": "plugin-package",
-  "target": "plugin-package"
+  "outputKind": "` + coordinates.OutputKind + `",
+  "target": "` + coordinates.Target + `"`
+	if coordinates.Profile != "" {
+		body += `,
+  "profile": "` + coordinates.Profile + `"`
+	}
+	body += `
 }
 `
 	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
@@ -260,11 +296,7 @@ func TestBuildChildReportsItsOwnDeclarationReadings(t *testing.T) {
 	root := t.TempDir()
 	artifactPath := filepath.Join(root, "package.json")
 
-	definition, err := syntax.NewParser(testPluginSource).ParsePlugin()
-	if err != nil {
-		t.Fatal(err)
-	}
-	intentPath := writeDeclaration(t, string(definition.ID), definition.Version)
+	intentPath := writeDeclaration(t, fixtureCoordinates(t))
 
 	var stdout, stderr bytes.Buffer
 	if code := run([]string{
@@ -305,7 +337,10 @@ func TestBuildChildRejectsADeclarationForADifferentSubject(t *testing.T) {
 	pluginPath, planPath := writeFixture(t)
 	root := t.TempDir()
 	artifactPath := filepath.Join(root, "package.json")
-	intentPath := writeDeclaration(t, "tei.package.other_probe", "1.0.0")
+	coordinates := fixtureCoordinates(t)
+	coordinates.SubjectID = "tei.package.other_probe"
+	coordinates.SubjectVersion = "1.0.0"
+	intentPath := writeDeclaration(t, coordinates)
 
 	var stdout, stderr bytes.Buffer
 	if code := run([]string{
@@ -345,5 +380,83 @@ func TestBuildChildOmitsDeclarationReadingsWithoutTheFlag(t *testing.T) {
 	}
 	if report.IntentBytesDigest != "" || report.IntentFingerprint != "" || report.IntentBoundToPlan {
 		t.Fatalf("declaration readings appeared without -intent: %+v", report)
+	}
+}
+
+// §4.14の次の一歩: identity alone only says the two inputs describe the same
+// plugin. The build coordinates say they describe the same build of it. Each
+// coordinate is checked separately so a caller learns which one disagreed.
+func TestBuildChildRejectsADeclarationWithDifferentBuildCoordinates(t *testing.T) {
+	cases := []struct {
+		name   string
+		mutate func(*declarationCoordinates)
+		want   string
+	}{
+		{
+			name:   "output kind",
+			mutate: func(c *declarationCoordinates) { c.OutputKind = "runtime-artifact" },
+			want:   "outputKind",
+		},
+		{
+			name:   "target",
+			mutate: func(c *declarationCoordinates) { c.Target = "host/windows/amd64" },
+			want:   "target",
+		},
+		{
+			name:   "profile",
+			mutate: func(c *declarationCoordinates) { c.Profile = "debug" },
+			want:   "profile",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			pluginPath, planPath := writeFixture(t)
+			root := t.TempDir()
+			artifactPath := filepath.Join(root, "package.json")
+			coordinates := fixtureCoordinates(t)
+			tc.mutate(&coordinates)
+			intentPath := writeDeclaration(t, coordinates)
+
+			var stdout, stderr bytes.Buffer
+			if code := run([]string{
+				"-plan", planPath,
+				"-plugin", pluginPath,
+				"-artifact-out", artifactPath,
+				"-intent", intentPath,
+			}, &stdout, &stderr); code != 1 {
+				t.Fatalf("a differing %s was not rejected: code=%d", tc.name, code)
+			}
+			if !strings.Contains(stderr.String(), tc.want) {
+				t.Fatalf("the rejection does not name the %s: %q", tc.name, stderr.String())
+			}
+			if stdout.Len() != 0 {
+				t.Fatalf("a rejected run still wrote a report: %s", stdout.String())
+			}
+		})
+	}
+}
+
+// A declaration that omits the profile describes a build without one, which is
+// not the same as the plan's "reference" profile. The omission must not read as
+// agreement.
+func TestBuildChildRejectsADeclarationThatOmitsTheProfile(t *testing.T) {
+	pluginPath, planPath := writeFixture(t)
+	root := t.TempDir()
+	artifactPath := filepath.Join(root, "package.json")
+	coordinates := fixtureCoordinates(t)
+	coordinates.Profile = ""
+	intentPath := writeDeclaration(t, coordinates)
+
+	var stdout, stderr bytes.Buffer
+	if code := run([]string{
+		"-plan", planPath,
+		"-plugin", pluginPath,
+		"-artifact-out", artifactPath,
+		"-intent", intentPath,
+	}, &stdout, &stderr); code != 1 {
+		t.Fatalf("an omitted profile was accepted: code=%d", code)
+	}
+	if !strings.Contains(stderr.String(), "profile") {
+		t.Fatalf("the rejection does not name the profile: %q", stderr.String())
 	}
 }
