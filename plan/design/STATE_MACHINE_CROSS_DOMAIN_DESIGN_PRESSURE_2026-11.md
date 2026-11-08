@@ -426,9 +426,17 @@ Itemは未整理の情報を乱暴に保持してよい一般の単位であり�
 
 <!-- tei-20261108-d1-and-real-selfbuild-g4-boundary -->
 
-**現mainの進展（先行§7.12〜14の「未実装」を一律には引き継がない）**：main [#3363](https://github.com/hat47x/tei-platform/pull/3363)では既存Capability Support関数を使い、Environment Binding 24件のうち22件selected／2件missingをread-only参照で実測。ただし2件の editor.database_workbench は現Validationの検査対象外であり、**missingを製品の不具合・拒否済みと断定しない**。Draft [#3381](https://github.com/hat47x/tei-platform/pull/3381)のCLI typed Inspection Service注入口とDraft [#3371](https://github.com/hat47x/tei-platform/pull/3371)のStudio Host-selected Inspection Service経路は、それぞれ局所コード・テストを追加したが、両者の**Production Composition Binding、選択Providerの実Load/Invoke、同一ProviderのCLI/Studio二Consumer実試行は未達**。
+**現mainの進展（先行§7.12〜14の「未実装」を一律には引き継がない）**：main [#3363](https://github.com/hat47x/tei-platform/pull/3363)では既存Capability Support関数を使い、Environment Binding 24件のうち22件selected／2件missingをread-only参照で実測。ただし2件の editor.database_workbench は現Validationの検査対象外であり、**missingを製品の不具合・拒否済みと断定しない**。Draft [#3381](https://github.com/hat47x/tei-platform/pull/3381)のCLI typed Inspection Service注入口とDraft [#3371](https://github.com/hat47x/tei-platform/pull/3371)のStudio Host-selected Inspection Service経路は、それぞれ局所コード・テストを追加したが、CLI Draft #3381の局所Composition Adapterでは**B選択→Bのin-process Go Call／B選択→Aの拒否**まで候補実装が進んだ。ただし**通常CLI dispatch／Studio Bridgeの両実Call-siteでのB実呼出し、実Build組込み、二Consumerの同一Provider資格は未達**。
 
 一方、セルフビルドの現状は以前の「Reference driverのみ」から前進した。main [#3440](https://github.com/hat47x/tei-platform/pull/3440)では、**stage1で生成された実 `cmd/tei` binary自身をstage2のinvokerとして起動**し、同じchildでTEIを再構築・artifact digest一致をWSL2/Go1.27.3の一環境で実測した。main [#3463](https://github.com/hat47x/tei-platform/pull/3463)は `tei self-build` の外形・拒否条件・実child起動を製品CLIへ追加した。**ただし `-intent` は記録のみでBuild Intent未解決、`-supply`未照合、sourceClosureState=rejected、`qualified=false`、別環境独立二回試行・Seed Trust・G4正式受理は未達**。先行§7.12〜14のP0の優先順は変えず、L3の局所実証をL2/G4へ自動昇格させない。
+
+**最新の実装・計画Ownerとの接続（同じ§7.15の精密化）**：main [#3482](https://github.com/hat47x/tei-platform/pull/3482)は`sales.order.submit`の限定Required/Observedを**13実CLI Reply・42 test-only Controls**へ拡張し、専用CIおよびmain push専用再実行がsuccess。これは1 Functionのbounded declaration/context evidenceであって実Function Invoke、Plugin実Provider、Studio第二Consumer、全Business閉包の資格ではない。main [#3439](https://github.com/hat47x/tei-platform/pull/3439)の**ADR-0048**はCLI/MCP/Web/Desktopの共通Application Operation契約を採用し、各Transport Adapterと実Host/Grantを分離した。CLI/MCPの限定validate比較（main #3458）をInspector実Providerの資格へ流用しない。
+
+<!-- tei-20261108-d1-s2-context13-api-adr-refinement -->
+
+**実行順のOwnerは既に[Draft #3499](https://github.com/hat47x/tei-platform/pull/3499)のMASTER_PLAN作業領域GでS0〜S3に整理済み**。S0=CLI/Studio typed Service、S1=選択Providerの局所in-process Call、**S2=通常CLI dispatchとStudio Bridgeの実Call-siteを同一Contract/Sourceで結線**、S3=Build/Source/Authority/独立Expected/BOMの資格化。したがって本節のPX-01/02は新たな並行実装Issueを起こさず、#3499の**S2最優先**と#1251/#951/#1016のOwnerに接続する。Draft [#3378](https://github.com/hat47x/tei-platform/pull/3378)のCLI/Studio六Subject shadow parityはBuiltin/direct-Operation基準であり、Provider実呼出しの代用品ではない。
+
+**現在性の分離**：SourceIndexだけの変更（main #3477）、外部Providerの原文・Manifest変化（Draft #3479）、判定規則Fingerprint変化（Draft #3490）は異なる失効原因。World FPや同じJSONだけで選択・実呼出し・受理の現在性を再利用しない。各Ownerの既存検査へ委譲し、新鮮度Registryや第二Evidence Engineを作らない。
 
 **次に実施する一対の局所試行（設計・NOT RUN）**：
 
