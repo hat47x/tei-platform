@@ -7,7 +7,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fixture, membershipVersionsAt } from './source-fixture.mjs';
+import { fixture, scenario, membershipVersionsAt } from './source-fixture.mjs';
 
 const active = (date, from, to) => from <= date && (to === null || date < to);
 const ids = rows => rows.map(row => row.id).sort();
@@ -150,4 +150,27 @@ test('a new Occupancy does not create an implied D1 Membership or Host Grant', (
   assert.equal(present.some(m => m.person === 'P3' && m.dept === 'D1'), false);
   // This reference has no trusted Principal/Tenant/Grant Provider.
   assert.equal(Object.hasOwn(fixture, 'hostGrant'), false);
+});
+
+test('ORG-TS-01: retroactive correction preserves the historical known-at observation', () => {
+  const historic = at('2027-06-15', '2027-07-01').filter(x => x.dept === 'D1');
+  const restated = at('2027-06-15', '2027-07-03').filter(x => x.dept === 'D1');
+  assert.deepEqual(ids(historic), ['A1', 'A2']);
+  assert.deepEqual(ids(restated), ['A1']);
+  // The old known-time cut remains queryable in this synthetic fixture.
+  // It does not establish retention of any real Provider snapshot.
+  assert.equal(fixture.sourceRevision, 'org-synthetic-r7');
+});
+
+test('ORG-TS-02: equal provider snapshot labels cannot erase known-at cohort differences', () => {
+  const [replica, primary] = scenario.syntheticProviderRoutes;
+  assert.equal(replica.snapshot, 's7');
+  assert.equal(primary.snapshot, 's7');
+  assert.equal(replica.validAt, primary.validAt);
+  assert.equal(replica.knownAt, '2027-07-01');
+  assert.equal(primary.knownAt, '2027-07-03');
+  assert.deepEqual(ids(at(replica.validAt, replica.knownAt).filter(x => x.dept === 'D1')), ['A1', 'A2']);
+  assert.deepEqual(ids(at(primary.validAt, primary.knownAt).filter(x => x.dept === 'D1')), ['A1']);
+  assert.equal(replica.alias === primary.alias, false);
+  // This is a synthetic negative control; no physical SQL/replica read occurred.
 });
