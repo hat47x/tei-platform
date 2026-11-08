@@ -839,3 +839,31 @@ G1〜G5で各観測は取得時点が異なる。要求するのは**同一瞬�
 **最小の実行順**：①`external-observed master_data`をread-only/Planだけで検査し、**実DB Schemaを書き換えない**ことを確認（#214/#3270）；②権利・版・Raw Evidence closureのあるREA異種二Sourceを外部観測として比較（#3394）、正式`*.tei.md` Reader未完成ならBの入場は`NOT RUN`；③独立した**Disposable PostgreSQL**でのみ、実Host/Providerが明示Ownership/Grantを持つMA-12正例と所有権なし負例を同じExpectedで実行し、観測→Apply→別接続再読取を確認；④旧新Writer・CDC/SHO・外部Consumer・Cutoverは#2555のOwner受理と実観測を待つ。#3030はAuthoring形式の設計文書統合であって、既存REA RawのReader完成ではない。
 
 **今回の事実の上限**：[PR #2887のHEAD `e91553ed4f4550b96e047627a69c1af18771de34`](https://github.com/hat47x/tei-platform/pull/2887)のGitHub Actionsは**7/7 completed/success**（Repository Healthを含む）。このGo/Workspace/他workflowの適合性は、今回追記するMA-12の実Provider拒否・REA実呼出し・`*.tei.md`正式Loader・Owner/Authority移管・実DB効果・Cutoverを実証しない。実装Ownerは#214/#3394（External Source）、#2611/#2622（Target/Provider）、#2892（History）、#2555（Ownership移転/Cutover）、#1163/#2514（証拠/独立Expected）を維持。**本節はdocs-only設計の受入追補、MA-12a〜cはNOT RUN。**
+
+<!-- tei-db-migration-three-state-oracle-and-consumer-closure-20261108 -->
+### 20.13 Legacy Actual／Accepted Desired／Target Actualの三状態比較とConsumer閉包（2026-11-08、横断統合）
+
+**比較の三つの対象を明示する**。REA/旧DBの観測結果は`L = Legacy Observed Actual`、TEIのOwner受理済みMeaning/契約は`D = Accepted Desired`、移行先の実Provider・実Hostで観測した結果は`T = Target Observed Actual`。三者は**別Source、別Revision、別観測時点、別Authority**を持つ。従来の`Schema Diff(actual,desired)`や`Migration Plan`は、L→D→Tのうち**物理Schemaに限った局所Projection**であり、旧実装のバグ、業務的な正解、旧新Runtimeの同値性、実Effectの有無を判定しない。
+
+| 比較面 | 何を問うか | 合格を主張できない条件 |
+| --- | --- | --- |
+| **L↔D：採否と変更意図** | 旧システムの観測挙動・物理構造のどれをDesiredへ採用/変更/廃止するか。Source occurrence・時点・NULL・履歴・Business ID・Owner判断を記録 | REAがSQL/FK/CRUD候補を発見しただけ、またはSHOに保存しただけ |
+| **D↔T：目標への実現** | Accepted Meaningの対象Function/Relation/Ruleが実Target・選択Provider・Current Grantで再現されたか。実Read/実Write/Receipt/別Readを操作別に区別 | SQL生成、Schema一致、Go Build、Provider宣言、Snapshot cache hitのみ |
+| **L↔T：互換性・回帰** | 同一Scenarioと**事前固定の独立Expected**で旧新Client/Query/Batch/外部Consumerを比較し、許容差異をOwnerが判定 | 旧Runtime未観測、Reader/Writer母集団不足、異時点Read/CDC lag、旧Clientを実行せずTEI-only PASS |
+| **D/Tの現在資格** | Source/Meaning/Provider/BOM/実Target/Owner・Grant/Receipt/Readの各世代が現在も有効か | 原本/Provider Manifest/実Call-site/Grantの改版をWorld/Source Index不変とみなす、A→B→Aで旧PASSを自動復活 |
+
+**受入上の追加負例（既存MA/MG/REへ付属、いずれもNOT RUN）**：
+
+| ID | 対照 | 独立Expected |
+| --- | --- | --- |
+| **MA-13a** | Lの旧実装に意図的な計算/更新バグ、DはOwner承認済み修正、TはDどおり | L↔Tの単純byte不一致を自動失敗にしない。L↔Dの意図的変更とD↔Tの正しさを別判定。旧Client互換要否はOwnerが指定 |
+| **MA-13b** | LとTの結果値が同じだが、DのBusiness Rule/更新Effectが未実現 | 値一致をMeaning/Effect同等性へ昇格しない。D↔Tは`unknown/block`、実Write/Receipt/別Readが必要 |
+| **MA-13c** | REA EvidenceとTEI Worldは不変、実Provider Manifest/実Call-siteが更新され別DBへRead | 実選択/含有/呼出/取得/開示のEvidenceが旧資格なら再検証。Provider原文・版・実Bindingの変化でD↔TとL↔Tの現在資格を失効 |
+| **MA-13d** | Schema G3 PASS後、旧Batch/直接SQL/外部Consumerが未列挙または新旧Sourceの水位が異なる | G4/G5は`unknown/block`。未列挙を0件とせず、Consumer/Writer母集団・観測窓・CDC watermarkを明示 |
+| **MA-13e** | Read-only InspectorのCLIとStudioが同じ説明を返すが、片方だけFake Provider／別Targetへ接続 | CLI/MCP/Studioの**応答一致**と実Provider Call-site/実Request/対象Instance/Resultの**一致**を別検証。共通Inspector表示成功を実Provider統合成功にしない |
+
+**横断の実装順**：P0-Rでは既存CLI/MCP Design Contextと#1251/#3270のread-only Inspectorを使い、`Function→Query→実Provider Read→Function Data Context→Consumer`を**一つのSource/Attempt/Target**に束縛する。P0-Cでは`Relation ID/validAt/knownAt/Source Scope/NULL・部分取得`を独立Expectedへ照合。P1ではMA-11/12のCurrent Target/Grant/LockとDDL/Receipt/独立ReadをDisposable DBで実証し、最後に#2555の旧新Client・CDC・Cutoverへ進む。生成AI用CLI/MCPと人間向けStudioは**同じ契約・診断**を使用するが、実Call-site・権限・効果を別証拠として残す。
+
+**Evidenceの引継ぎ**：#1163の既存Packetに、L/D/TのSource・Revision/Time/Scope/Completeness、Owner Acceptance、Provider Manifest/Selection/Actual Invoke、Host Grant、Build/BOMの**exact組合せ**、旧新Consumer/Writer cohort、Independent Expected、Effect/Receipt/別Readを**別の欄として記録**。外部Evidenceを収集してもAccepted Meaningへ暗黙登録せず、Snapshot Cacheの再生成可能性と当時のHistorical Observationを区別する（#2600/#3271）。再資格化は影響するClaimだけを失効し、未影響の歴史Evidenceは保持する。新しい三状態Engine、Snapshot Store、第二Test Harness/Resolverは導入しない。
+
+**事実・資格の上限**：本節は#3394/#3270/#2622/#2555/#1163の横断設計を既存Migration Gateへ割り付けた**設計追補**。MA-13a〜eは**NOT RUN**。前HEAD `ca6dc74c984278c68e4b1191729f3466076782f2`のGitHub Actionsは**7/7 completed/success**（Repository Health含む）だが、実REA/旧Runtime、実Provider Call-site、実DB Apply/DDL、正式`*.tei.md` Loader、業務Owner受理、異種DB Cutoverを検証したことにはならない。最新mainとの合流可能性/CIは新HEADで再評価する。
