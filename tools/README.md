@@ -272,3 +272,4 @@
 
 R7Bの一回限りの準備・公開・後処理を行うスクリプトは、統合と対象ブランチの終了後に削除しました。現在の根拠確認や再現に使う検査・取得ツールは上の一覧に残しています。
 | [`reference-self-build-two-stage/`](reference-self-build-two-stage/) | stage1で作った実行ファイルをstage2のinvokerとして実起動し、invoker一致・同一レシピ・artifact一致を別々に判定する。Seed Trust・受入・権限は扱わない（#2831 SB-C1） |
+| [`reference-harness-wire-summary/`](reference-harness-wire-summary/) | 外部AIハーネスがMock Providerへ送ったHTTP要求bodyを、モデル入力と拡張field（`dsh_session_log`）を別欄で要約する参照。bodyのbyte数・SHA-256・最上位キー・event種別・水位・合成markerの出現位置を出し、既存の出力を上書きしない。送出の許可・実OS隔離・Provider側の保存は判定しない（#2515 P0-b / #2509） |
