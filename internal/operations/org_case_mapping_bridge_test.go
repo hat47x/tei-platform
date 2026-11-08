@@ -12,8 +12,10 @@ import (
 )
 
 // This is an actual TEI workspace/Parser/Loader/OperationSurface characterization,
-// using a copied native .tei source. It does NOT call a Function, SQL Provider,
-// runtime Host grant or Consumer and is not a Product E2 pass.
+// using a copied native .tei source. It calls the real Driver/Executor with
+// a fake SQL Connector and offers opt-in isolated PostgreSQL execution. It
+// does NOT establish Function Data Context, Host authorization, Consumer
+// delivery, or Product E2 acceptance.
 func TestOrgCaseExplicitPersistenceEnablesReadCandidateOnly(t *testing.T) {
 	root := filepath.Join("..", "..", "reference", "org-headless-workspace")
 	before, err := SurfaceWorkspace(root, "org_view")
@@ -180,12 +182,6 @@ func TestOrgCaseExplicitPersistenceEnablesReadCandidateOnly(t *testing.T) {
 	// The injected connection is an instrumented test double (no real DB).
 	verifyNativeCaseQuerySQLProbe(t, withQuery)
 
-	// Opt-in proof with a disposable PostgreSQL server. A default SKIP is
-	// NOT real Provider evidence and is never counted as physical E2.
-	t.Run("isolated-postgres-opt-in", func(t *testing.T) {
-		verifyNativeCaseReadWithPostgres(t, withQuery)
-	})
-
 	// The Query may be described, but it does not automatically create an
 	// executable Function or grant Provider/Host authority.
 	surfaceWithQuery, err := SurfaceWorkspace(copyRoot, "org_view")
@@ -223,6 +219,13 @@ func TestOrgCaseExplicitPersistenceEnablesReadCandidateOnly(t *testing.T) {
 		t.Fatalf("browse Pattern is not bound to its exact source: %+v", withPattern.Sources)
 	}
 	verifyNativeCasePatternReadProbe(t, withPattern)
+
+	// The same native Browse Pattern can cross the real PostgreSQL boundary
+	// only with an explicitly isolated, opt-in database. Default is SKIP;
+	// this is not current Host authorization, nor a Function Data Context.
+	t.Run("isolated-postgres-opt-in", func(t *testing.T) {
+		verifyNativeCaseReadWithPostgres(t, withPattern)
+	})
 	// The read Pattern adds a source/meaning revision but never derives new
 	// Case grants or write operations merely from its presence.
 	surfaceWithPattern, err := SurfaceWorkspace(copyRoot, "org_view")
