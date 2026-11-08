@@ -1,72 +1,56 @@
-# entryが宣言を自分で読む（§4.13 I-1a）
+# entryの導出したintent fingerprintが参照resolverと一致することの検証
 
-[#2831](https://github.com/hat47x/tei-platform/issues/2831) のSB-C0 §4.13が次の一歩に決めた**I-1a（解析だけを`internal/`へ移す）**を実装した記録です。
+[#2831](https://github.com/hat47x/tei-platform/issues/2831) のSB-C0 §4.13（I-1a）は[#3647](https://github.com/hat47x/tei-platform/pull/3647)で実装済みです。この記録は、実装そのものではなく**実装が成り立っているかの検証**を足すものです。
 
-**L2-bは依然として成立しません。** 本記録が増やすのは「entryが保持した宣言について、**entry自身の照合値**を持てる」ことです。
+**L2-bは依然として成立しません。**
 
-## 何を移したか
+## なぜ検証を足すか
 
-`tools/reference-build-authoring-intent`のうち、**宣言の型と厳密な読み取りだけ**を`internal/buildintent`へ移しました。`Resolve`（計画の導出）は`tools/`に残しています。
+#3647 は`internal/buildintent`を新設し、entryが`intentDeclaration.intentFingerprint`を自分で導くようにしました。`internal/buildintent/intent_test.go`は**reader自体**を7件で固定しています。
 
-| 移した | 残した |
+しかし、**entryの導出値が参照resolverの導出値と一致するか**は、どこでも固定されていませんでした。両者が同じパッケージを使うため一致するはずですが、「同じパッケージを使っている」は実装の性質であり、観測ではありません。片方だけが別経路に変わったとき、テストが無ければ気づけません。
+
+## 足した検証
+
+`cmd/tei/cli_self_build_intent_reader_test.go` に3件を追加しました。
+
+| 検証 | 何を固定するか |
 | --- | --- |
-| `BuildIntent`以下の型8つ | `Resolve`・`MarshalReceipt`・`VerifyDerivedReceipt` |
-| `ParseIntent`（厳密JSON読み） | `ParseFixtureCatalog`・`NewFixtureContext`（fixture catalogは参照実装の固定入力） |
-| `ValidateIntent`相当の`Validate`・`ValidateSourceRef` | `ResolutionContext`の設計 |
-| `NormalizeIntent`・`IntentFingerprint` | `DirSourceResolver` |
-| `ValidateInputJSON`・`RejectKeyCaseVariants` | CLI（`main.go`） |
+| `TestIntentDeclarationMatchesTheReferenceDerivation` | entryの`readIntentDeclaration`が返す`intentFingerprint`が、**同じバイトを参照resolverに解かせたreceiptの`intentFingerprint`と一致する**。あわせて`digest`（バイト）と`intentFingerprint`（宣言の意味）が**別の値**であること |
+| `TestIntentDeclarationRefusesWhatTheSharedReaderRefuses` | 導出値を手書きした宣言は、entryが**拒否する**。fingerprintを導かない（読めない宣言の照合値を持たない） |
+| `TestIntentDeclarationStillRequiresFormatVersion` | `formatVersion`が無い宣言は従来どおり停止する |
 
-**`ParseFixtureCatalog`を移さなかった**のは§4.13の判断どおりです。fixtureは名前のとおり参照実装の固定入力であり、`internal/`へ置くと「fixture catalogが製品の一部」に見えます。
-
-## 二つの読みを区別して記録する
-
-`intentDeclaration`に欄を2つ足しました。
-
-| 欄 | 意味 |
-| --- | --- |
-| `digest` | entryが保持した**バイト**のdigest（従来から） |
-| `intentFingerprint` | そのバイトが**宣言として何を意味するか**をentry自身が導いた値（新） |
-| `strictlyRead` | 共有readerが通ったか |
-| `strictReadFailure` | 通らなかった理由 |
-
-**厳密読みが失敗しても記録は残します。** `strictlyRead=false`と理由を書き、`intentFingerprint`は空にします。**欄が無いことを一致と読ませない**ためです。`formatVersion`が無い場合は従来どおり停止します（entryが何を読んだか記述できないため）。
+1件目は**参照resolverのバイナリを実際にビルドして起動**し、その出力と比べます。同じ関数を2回呼ぶだけでは、呼び出し側が同じ値を別経路で加工する変化を捕れないためです。
 
 ## 実測
 
 | 検証 | 結果 |
 | --- | --- |
-| 参照fixture（`testdata/intent.json`）をentryが読む | `strictlyRead=true`、`intentFingerprint`非空 |
-| 同じバイトを参照resolverに解かせる | `receipt.intentFingerprint`が**entryの値と一致** |
-| 導出値を手書きした宣言 | `strictlyRead=false`、`intentFingerprint`空、理由を記録、`digest`は記録 |
-| `formatVersion`が無い宣言 | 従来どおり停止 |
-
-**entryの導出値と参照resolverの導出値が一致しました。** これまではentryが宣言の意味を読めず、`intentFingerprint`はchildの申告だけでした。
+| 参照fixture（`testdata/intent.json`）でentryの導出値 | 非空、`digest`と異なる |
+| 同じバイトを参照resolverに解かせる | `receipt.intentFingerprint`が**entryの導出値と一致** |
+| 導出値の手書き | entryが拒否、fingerprintは空 |
+| `formatVersion`なし | 従来どおり停止 |
 
 ## 何が増えて、何が増えないか
 
 | 増える | 増えない |
 | --- | --- |
-| entryが**保持した宣言**について、自分で導いた照合値を持てる | L2-b。計画の導出は依然`Resolve`（child）にある |
-| `intentBinding`の基準を「childの申告」から「entry自身の導出値」へ移せる土台 | `planCrossCheck`の限界（二つの自己申告の一致） |
-| 厳密読みの可否と理由が記録に残る | (c)（artifactがその計画の出力であること） |
-
-**計画の導出をentryが行う経路（I-1b）は未着手です。** `ResolutionContext`の設計判断を伴うため、別の設計判断として切り出す（§4.13）。
+| entryの導出値と参照resolverの導出値が**実測で一致する**ことの固定 | L2-b。計画の導出は依然`Resolve`（child/link側）にある |
+| 同じパッケージ共有が**観測**として確かめられていること | `planCrossCheck`の限界、(c) |
+| 読めない宣言からfingerprintを導かないことの固定 | 計画の導出をentryが行う経路（I-1b） |
 
 ## 検証
 
-- `gofmt`：差分なし（`internal/buildintent`・`tools/reference-build-authoring-intent`・`cmd/tei`）
-- `go vet ./internal/buildintent ./tools/reference-build-authoring-intent ./cmd/tei`：PASS
-- `go build ./...`：PASS
-- `go test ./internal/buildintent -count=1`：PASS（9件。厳密読み・派生値拒否・大小文字・未知key・末尾データ・source ref・digest形状・定義元・secret名）
-- `go test ./tools/reference-build-authoring-intent -count=1`：PASS（既存試験が新しい配置で通る）
-- `go test ./cmd/tei -count=1 -timeout 900s`：PASS（305秒）
-- `go test ./cmd/tei -run TestIntentDeclaration`：PASS（3件。参照resolverとの一致を含む）
+- `gofmt -l cmd/tei`：差分なし
+- `go vet ./cmd/tei`：PASS
+- `go test ./cmd/tei -count=1 -run TestIntentDeclaration -v`：3件PASS
+- `go test ./tools/repository-plan-check -count=1`：PASS
 
-**NOT RUN**：Windows、CI、`repository-plan-check`以外のリポジトリ全体チェック。
+**NOT RUN**：`go test ./cmd/tei -count=1`の全体（CIで確認）、Windows、別Go版、I-1b。
 
 ## 限界
 
-- **`IntentFingerprint`は宣言の意味の照合値であり、計画の照合値ではない。** `planReceipt.planFingerprint`とは別物として扱う。
-- **`intentBinding`はまだchildの申告に依存している。** entryが導出値を持てるようになったので、次の周で「entryの導出値とchildの申告を比べる」形へ移せる。
-- fixture catalogを移していないため、entryは依然として計画を導けない。
+- **`intentFingerprint`は宣言の意味の照合値であり、計画の照合値ではない。** `planFingerprint`とは別物として扱う。
+- この記録は**実装を含まない**。#3647 の実装が対象である。
+- `intentBinding`はまだchildの申告に依存している。entryが導出値を持てるようになったので、次は「entryの導出値とchildの申告を比べる」形へ移せる。
 - G4は`UNQUALIFIED`のまま。

@@ -1,15 +1,12 @@
-// Package buildintent holds the Build Intent declaration as a type and its
-// strict reader, so both the reference tool in tools/ and cmd/tei can read the
-// same declaration with one implementation.
+// Package buildintent reads a Build Intent declaration strictly and derives its
+// fingerprint. It exists so that both the reference resolver in tools/ and the
+// CLI entry in cmd/ can read the same declaration without one becoming a copy
+// of the other (SB-C0 §4.13 I-1a).
 //
-// SB-C0 §4.13 selected this move (I-1a) for one reason: the CLI could not read
-// a declaration at all, so an intent fingerprint was only ever a value a child
-// reported. Reading it here lets the CLI hold its own reading.
-//
-// This package does not resolve a declaration into a BuildPlan. Resolution
-// needs a ResolutionContext built from a fixture catalog, and moving that would
-// make the reference fixture look like a product surface (§4.13 case I-1b,
-// declined).
+// It deliberately does not resolve a BuildPlan. Resolution needs a
+// ResolutionContext (source bytes, builder catalog, dependency catalog, target
+// catalog), which is a fixture of the reference implementation rather than a
+// product concept. That stays in tools/reference-build-authoring-intent.
 package buildintent
 
 import (
@@ -30,19 +27,18 @@ import (
 )
 
 const (
-	// FormatVersion is the authoring format this package reads.
-	FormatVersion = 1
-	// ResolverVersion identifies the derivation rules the reference resolver
-	// applies. It is recorded in a resolution receipt, not used here.
+	// IntentFormatVersion は人・生成AIが管理するBuild Intentの形式版である。
+	IntentFormatVersion = 1
+	// ResolverVersion は導出規則の版であり、ResolutionContextの一部になる。
 	ResolverVersion = "tei.build-intent-resolver/reference-v1"
 
-	subjectKindPlugin    = "plugin"
-	sourceKindDefinition = "plugin-definition"
+	subjectKindPlugin     = "plugin"
+	sourceKindDefinition  = "plugin-definition"
+	builderAuthorityScope = "build-tool"
 )
 
-// BuildIntent is the declaration a person or a generator writes. It carries no
-// resolved digest or fingerprint: source bytes, the builder entity and
-// dependency artifacts are derived, not authored.
+// BuildIntent は人・生成AIが書く宣言である。解決済みのdigestやfingerprintは
+// 持たない。Source bytes、Builder実体、依存成果物の識別はResolverが導出する。
 type BuildIntent struct {
 	FormatVersion      int                     `json:"formatVersion"`
 	Subject            IntentSubject           `json:"subject"`
@@ -57,9 +53,9 @@ type BuildIntent struct {
 	SecretRequirements []SecretRequirement     `json:"secretRequirements,omitempty"`
 }
 
-// IntentSubject identifies what is being built. DefinitionSource names a
-// plugin-definition source inside Sources; the definition fingerprint itself is
-// never written by hand.
+// IntentSubject は何を構築するかの論理的な識別である。
+// DefinitionSource はSources内のplugin-definition Sourceを指すIDであり、
+// definition fingerprintそのものは書かない。
 type IntentSubject struct {
 	Kind             string           `json:"kind"`
 	ID               core.CanonicalID `json:"id"`
@@ -67,14 +63,14 @@ type IntentSubject struct {
 	DefinitionSource string           `json:"definitionSource"`
 }
 
-// IntentSource is a logical source reference. It holds no content digest.
+// IntentSource は論理的なSource参照である。Source内容のdigestは持たない。
 type IntentSource struct {
 	Kind string `json:"kind"`
 	ID   string `json:"id"`
 	Ref  string `json:"ref"`
 }
 
-// BuilderRequirement is a selection policy, not an exact artifact.
+// BuilderRequirement は選択方針である。exact artifactではない。
 type BuilderRequirement struct {
 	Contract        string          `json:"contract"`
 	CompatibleMajor int             `json:"compatibleMajor"`
@@ -82,34 +78,34 @@ type BuilderRequirement struct {
 	Pin             *ArtifactPin    `json:"pin,omitempty"`
 }
 
-// ProviderWiring is an explicit logical provider selection.
+// ProviderWiring は明示的な論理Provider選択である。
 type ProviderWiring struct {
 	Plugin         core.CanonicalID `json:"plugin"`
 	Implementation string           `json:"implementation,omitempty"`
 }
 
-// ArtifactPin is an exact pin a person writes on purpose. It is distinct from a
-// value the resolver observed; a mismatch stops resolution.
+// ArtifactPin は人が意図して書くexact pinである。Resolverが観測した値とは
+// 区別し、一致しない場合は停止する。
 type ArtifactPin struct {
 	ArtifactDigest string `json:"artifactDigest"`
 }
 
-// DependencyRequirement is a logical build dependency. The exact artifact
-// digest is derived from the dependency catalog.
+// DependencyRequirement はBuild依存の論理要求である。exact artifact digestは
+// ResolverがBuild依存Catalogから導出する。
 type DependencyRequirement struct {
 	Kind            string `json:"kind"`
 	ID              string `json:"id"`
 	CompatibleMajor int    `json:"compatibleMajor"`
 }
 
-// SecretRequirement declares a secret's name and the authority that provides
-// it. It never carries the value.
+// SecretRequirement はsecretの名前と取得元Authorityだけを宣言する。値は持たない。
 type SecretRequirement struct {
 	Name      string `json:"name"`
 	Authority string `json:"authority"`
 }
 
-// derivedKeys are values that must not be authored. Comparison ignores case.
+// derivedKeys は通常のauthoring sourceへ書いてはならない導出値の名前である。
+// 比較は大文字小文字を区別しない。
 var derivedKeys = map[string]struct{}{
 	"digest":                       {},
 	"artifactdigest":               {},
@@ -130,20 +126,16 @@ var derivedKeys = map[string]struct{}{
 	"runtimestate":                 {},
 }
 
-// secretLikeName stops a parameter name from carrying a secret value.
+// secretLikeName はParameter名にsecretを埋め込む運用を止めるための保守的な検査である。
 var secretLikeName = regexp.MustCompile(`(?i)(secret|password|passwd|token|credential|private[-_ ]?key|signing[-_ ]?key|api[-_ ]?key)`)
 
-var sha256Digest = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
+// SHA256Digest is the digest form an intended pin must use. It is exported so
+// callers that check derived digests use the same pattern instead of writing a
+// second one.
+var SHA256Digest = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
 
-// IsSHA256Digest reports whether value has the sha256:<64 lowercase hex> shape
-// the declaration accepts for an explicit pin.
-func IsSHA256Digest(value string) bool {
-	return sha256Digest.MatchString(value)
-}
-
-// ParseIntent reads authoring JSON strictly: unknown fields, hand-written
-// derived values, case-variant field names and trailing content are refused.
-// Field order does not affect the result.
+// ParseIntent はauthoring JSONを厳密に読む。未知のfield、導出値の手書き、
+// 末尾の余分なJSONを拒否する。field順は結果に影響しない。
 func ParseIntent(raw []byte) (BuildIntent, error) {
 	if err := ValidateInputJSON(raw); err != nil {
 		return BuildIntent{}, fmt.Errorf("build intent: %w", err)
@@ -183,8 +175,7 @@ func rejectDerivedKeys(v any, trail []string) error {
 		}
 		sort.Strings(keys)
 		for _, k := range keys {
-			// builder.pin.artifactDigest is the one derived-looking field a
-			// person writes on purpose.
+			// builder.pin.artifactDigestだけは人が意図として書くpinである。
 			if _, derived := derivedKeys[strings.ToLower(k)]; derived && !isIntendedPin(trail, k) {
 				return fmt.Errorf(
 					"derived field %q must not be authored (at %s); remove it and let the resolver derive it",
@@ -205,13 +196,54 @@ func rejectDerivedKeys(v any, trail []string) error {
 	return nil
 }
 
+// rejectKeyCaseVariants は構造体のjson名と大文字小文字まで一致しないkeyを拒否する。
+// 標準のdecodeは大文字小文字を区別せずに受け取るため、別綴りの同名keyが通る。
+func RejectKeyCaseVariants(v any, t reflect.Type, path string) error {
+	switch t.Kind() {
+	case reflect.Pointer:
+		return RejectKeyCaseVariants(v, t.Elem(), path)
+	case reflect.Slice:
+		list, ok := v.([]any)
+		if !ok {
+			return nil
+		}
+		for i, item := range list {
+			if err := RejectKeyCaseVariants(item, t.Elem(), fmt.Sprintf("%s[%d]", path, i)); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	node, ok := v.(map[string]any)
+	if !ok || t.Kind() != reflect.Struct {
+		return nil
+	}
+	fields := map[string]reflect.Type{}
+	for i := 0; i < t.NumField(); i++ {
+		name := strings.Split(t.Field(i).Tag.Get("json"), ",")[0]
+		if name != "" && name != "-" {
+			fields[name] = t.Field(i).Type
+		}
+	}
+	for key, child := range node {
+		ft, exact := fields[key]
+		if !exact {
+			return fmt.Errorf("input JSON key %q at %s does not match a field name exactly (case variants and unknown keys are rejected)", key, path)
+		}
+		if err := RejectKeyCaseVariants(child, ft, path+"."+key); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func isIntendedPin(trail []string, key string) bool {
 	return len(trail) == 2 && trail[0] == "builder" && trail[1] == "pin" && key == "artifactDigest"
 }
 
-// Validate checks the declaration's shape only. It reads no external state.
+// Validate は宣言の形だけを検査する。外部状態は参照しない。
 func (i BuildIntent) Validate() error {
-	if i.FormatVersion != FormatVersion {
+	if i.FormatVersion != IntentFormatVersion {
 		return fmt.Errorf("unsupported build intent format %d", i.FormatVersion)
 	}
 	if i.Subject.Kind != subjectKindPlugin {
@@ -254,7 +286,7 @@ func (i BuildIntent) Validate() error {
 			return fmt.Errorf("build intent builder provider plugin: %w", err)
 		}
 	}
-	if i.Builder.Pin != nil && !sha256Digest.MatchString(i.Builder.Pin.ArtifactDigest) {
+	if i.Builder.Pin != nil && !SHA256Digest.MatchString(i.Builder.Pin.ArtifactDigest) {
 		return fmt.Errorf("build intent builder pin must use sha256:<64 lowercase hex>")
 	}
 	if strings.TrimSpace(i.Recipe.Kind) == "" || strings.TrimSpace(i.Recipe.Entrypoint) == "" {
@@ -303,7 +335,8 @@ func (i BuildIntent) Validate() error {
 	return nil
 }
 
-// ValidateSourceRef refuses a reference that is not a clean relative slash path.
+// ValidateSourceRef rejects a Source reference that cannot be a clean relative
+// slash path inside the source root.
 func ValidateSourceRef(ref string) error {
 	if strings.TrimSpace(ref) == "" {
 		return fmt.Errorf("source ref is required")
@@ -311,8 +344,8 @@ func ValidateSourceRef(ref string) error {
 	if strings.Contains(ref, `\`) || strings.HasPrefix(ref, "/") {
 		return fmt.Errorf("source ref %q must be a relative slash path", ref)
 	}
-	// Volume names (C:/, c:) and alternate data streams are refused, and so are
-	// control characters, whose interpretation differs per host.
+	// ボリューム名（C:/、c:）と代替データ流を避けるため、':'は使わせない。
+	// 制御文字（NULを含む）もHostごとに解釈が分かれるため拒否する。
 	for _, r := range ref {
 		if r == ':' {
 			return fmt.Errorf("source ref %q must not contain ':' (volume names are not allowed)", ref)
@@ -327,7 +360,7 @@ func ValidateSourceRef(ref string) error {
 	return nil
 }
 
-// NormalizeIntent removes declaration order from the result.
+// NormalizeIntent は宣言順を結果から外す。
 func NormalizeIntent(i BuildIntent) BuildIntent {
 	out := i
 	out.Sources = append([]IntentSource(nil), i.Sources...)
@@ -346,8 +379,8 @@ func NormalizeIntent(i BuildIntent) BuildIntent {
 	return out
 }
 
-// IntentFingerprint is the declaration's own identity. It covers neither source
-// bytes nor catalog state.
+// IntentFingerprint は宣言そのもののidentityである。Source bytesや
+// Catalogの状態は含めない。
 func IntentFingerprint(i BuildIntent) (string, error) {
 	if err := i.Validate(); err != nil {
 		return "", err
@@ -355,8 +388,8 @@ func IntentFingerprint(i BuildIntent) (string, error) {
 	return FingerprintJSON(NormalizeIntent(i))
 }
 
-// FingerprintJSON is the shared normalised-JSON digest used by the declaration
-// and by the reference catalogs.
+// FingerprintJSON is the one place a derived value is hashed, so every caller
+// in the repository derives the same form.
 func FingerprintJSON(v any) (string, error) {
 	raw, err := json.Marshal(v)
 	if err != nil {
@@ -365,3 +398,6 @@ func FingerprintJSON(v any) (string, error) {
 	sum := sha256.Sum256(raw)
 	return hex.EncodeToString(sum[:]), nil
 }
+
+// BuilderAuthorityScope is the authority scope a builder provider must declare.
+const BuilderAuthorityScope = builderAuthorityScope

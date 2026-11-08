@@ -2,16 +2,15 @@ package buildintent
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 	"unicode"
 
 	"tei/internal/plugin/transform"
 )
 
-// ValidateInputJSON shares the existing strict value parser with plugin
-// transforms before decoding an authoring schema. It also rejects field aliases
-// that encoding/json would fold into the same struct member.
+// ValidateInputJSON runs the same strict value parser the plugin transforms
+// use before decoding a declaration. It also rejects field aliases that
+// encoding/json would fold into the same struct member.
 func ValidateInputJSON(raw []byte) error {
 	value, err := transform.ParseJSON(raw)
 	if err != nil {
@@ -20,9 +19,8 @@ func ValidateInputJSON(raw []byte) error {
 	return rejectFoldedInputFields(value)
 }
 
-// foldedInputField matches encoding/json's Unicode simple folding (including
-// Kelvin sign and long s), not only ASCII lowercasing. Using a set keeps field
-// checks linear.
+// Match encoding/json's Unicode simple folding (including Kelvin sign and
+// long s), not only ASCII lowercasing. Using a set keeps field checks linear.
 func foldedInputField(name string) string {
 	return strings.Map(func(r rune) rune {
 		smallest := r
@@ -54,48 +52,6 @@ func rejectFoldedInputFields(value transform.Value) error {
 			if err := rejectFoldedInputFields(item); err != nil {
 				return err
 			}
-		}
-	}
-	return nil
-}
-
-// RejectKeyCaseVariants refuses a key that does not match a struct's json name
-// exactly. encoding/json accepts case variants, which would let a differently
-// spelled key pass.
-func RejectKeyCaseVariants(v any, t reflect.Type, path string) error {
-	switch t.Kind() {
-	case reflect.Pointer:
-		return RejectKeyCaseVariants(v, t.Elem(), path)
-	case reflect.Slice:
-		list, ok := v.([]any)
-		if !ok {
-			return nil
-		}
-		for i, item := range list {
-			if err := RejectKeyCaseVariants(item, t.Elem(), fmt.Sprintf("%s[%d]", path, i)); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-	node, ok := v.(map[string]any)
-	if !ok || t.Kind() != reflect.Struct {
-		return nil
-	}
-	fields := map[string]reflect.Type{}
-	for i := 0; i < t.NumField(); i++ {
-		name := strings.Split(t.Field(i).Tag.Get("json"), ",")[0]
-		if name != "" && name != "-" {
-			fields[name] = t.Field(i).Type
-		}
-	}
-	for key, child := range node {
-		ft, exact := fields[key]
-		if !exact {
-			return fmt.Errorf("input JSON key %q at %s does not match a field name exactly (case variants and unknown keys are rejected)", key, path)
-		}
-		if err := RejectKeyCaseVariants(child, ft, path+"."+key); err != nil {
-			return err
 		}
 	}
 	return nil

@@ -1,83 +1,56 @@
 package main
 
-// The Build Intent declaration and its strict reader now live in
-// internal/buildintent (SB-C0 §4.13, I-1a), so cmd/tei can read the same
-// declaration with the same implementation.
-//
-// This file keeps the names the reference resolver and its tests already use as
-// thin aliases. Only the declaration surface moved; Resolve still lives here,
-// because resolution needs a fixture catalog and moving that would make the
-// fixture look like a product surface.
-
 import (
 	"reflect"
 
 	"tei/internal/buildintent"
 )
 
-const (
-	// IntentFormatVersion is the authoring format this resolver reads.
-	IntentFormatVersion = buildintent.FormatVersion
-	// ResolverVersion identifies these derivation rules. It is part of a
-	// ResolutionContext and therefore part of a receipt's fingerprint.
-	ResolverVersion = buildintent.ResolverVersion
+// This file keeps the reference resolver's own call sites unchanged while the
+// declaration reader lives in internal/buildintent (SB-C0 §4.13 I-1a). The
+// types are aliases, not copies: there is one BuildIntent definition in the
+// repository, so the CLI entry and this reference cannot drift apart.
+//
+// Resolution stays here. A ResolutionContext needs source bytes, a builder
+// catalog, a dependency catalog and a target catalog, which are fixtures of
+// this reference rather than product concepts.
 
-	subjectKindPlugin     = "plugin"
-	sourceKindDefinition  = "plugin-definition"
-	builderAuthorityScope = "build-tool"
+type (
+	BuildIntent           = buildintent.BuildIntent
+	IntentSubject         = buildintent.IntentSubject
+	IntentSource          = buildintent.IntentSource
+	BuilderRequirement    = buildintent.BuilderRequirement
+	ProviderWiring        = buildintent.ProviderWiring
+	ArtifactPin           = buildintent.ArtifactPin
+	DependencyRequirement = buildintent.DependencyRequirement
+	SecretRequirement     = buildintent.SecretRequirement
 )
 
-// BuildIntent is the declaration a person or a generator writes.
-type BuildIntent = buildintent.BuildIntent
+const (
+	IntentFormatVersion = buildintent.IntentFormatVersion
+	ResolverVersion     = buildintent.ResolverVersion
 
-// IntentSubject identifies what is being built.
-type IntentSubject = buildintent.IntentSubject
+	builderAuthorityScope = buildintent.BuilderAuthorityScope
+)
 
-// IntentSource is a logical source reference.
-type IntentSource = buildintent.IntentSource
+var sha256Digest = buildintent.SHA256Digest
 
-// BuilderRequirement is a builder selection policy.
-type BuilderRequirement = buildintent.BuilderRequirement
+// ParseIntent reads a declaration strictly. It delegates so that both this
+// reference and cmd/tei read the same bytes with the same rules.
+func ParseIntent(raw []byte) (BuildIntent, error) { return buildintent.ParseIntent(raw) }
 
-// ProviderWiring is an explicit logical provider selection.
-type ProviderWiring = buildintent.ProviderWiring
-
-// ArtifactPin is an exact pin written on purpose.
-type ArtifactPin = buildintent.ArtifactPin
-
-// DependencyRequirement is a logical build dependency.
-type DependencyRequirement = buildintent.DependencyRequirement
-
-// SecretRequirement declares a secret's name and providing authority.
-type SecretRequirement = buildintent.SecretRequirement
-
-// ParseIntent reads authoring JSON strictly.
-func ParseIntent(raw []byte) (BuildIntent, error) {
-	return buildintent.ParseIntent(raw)
-}
+// IntentFingerprint derives the declaration's identity.
+func IntentFingerprint(i BuildIntent) (string, error) { return buildintent.IntentFingerprint(i) }
 
 // NormalizeIntent removes declaration order from the result.
-func NormalizeIntent(i BuildIntent) BuildIntent {
-	return buildintent.NormalizeIntent(i)
-}
+func NormalizeIntent(i BuildIntent) BuildIntent { return buildintent.NormalizeIntent(i) }
 
-// IntentFingerprint is the declaration's own identity.
-func IntentFingerprint(i BuildIntent) (string, error) {
-	return buildintent.IntentFingerprint(i)
-}
+func fingerprintJSON(v any) (string, error) { return buildintent.FingerprintJSON(v) }
 
-func validateSourceRef(ref string) error {
-	return buildintent.ValidateSourceRef(ref)
-}
+func validateInputJSON(raw []byte) error { return buildintent.ValidateInputJSON(raw) }
 
-func validateInputJSON(raw []byte) error {
-	return buildintent.ValidateInputJSON(raw)
-}
+func validateSourceRef(ref string) error { return buildintent.ValidateSourceRef(ref) }
 
 func rejectKeyCaseVariants(v any, t reflect.Type, path string) error {
 	return buildintent.RejectKeyCaseVariants(v, t, path)
-}
-
-func fingerprintJSON(v any) (string, error) {
-	return buildintent.FingerprintJSON(v)
 }
