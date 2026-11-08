@@ -453,6 +453,8 @@ reload / Conformance
 
 **次に着手する唯一の本番経路**：既存#951/#1016のResolver/ProfileをHostが受け、CLIの通常`inspect`とStudioの実Wails Hostで**別々に**同じ選択済みProvider Bを注入する。その際「選択」が実Artifact/Provider Entryの真正性を意味しないため、Selection→actual Binding→実Call/Source/Effect/受領のReceiptを分割したまま#1180/#2514の独立Expectedで評価する。Lifecycle Graphの型付きPatch/Hook（#3503/#3510）、B2C Headless（#3509）、AIチューニング（#3520）は、最初のS2を阻害しない後続Consumer/圧力試験とする。新たなResolver、共通常駐Host、Inspector専用の意味受理機構、第二Runnerは作らない。
 
+**Atomic TraitとRQ-036全体マップの次の受入（既存S0〜S3の上で検証）**：[Trait設計§18](design/TRAIT_ATOMIC_COMPOSITION_AND_FULFILLMENT_2026-11.md)に、main #3381／#3531の**局所S1到達**と通常CLI／実Wailsの**製品S2未接続**を明記した。次のS2一件は既存`inspectoradapter.Selected`を再利用し、通常CLI／実Wailsそれぞれのactual B invokeを確認する。Traitの`manual-required`欠落診断は#3279の既存Contractに薄く接続する。RQ-036（main #3505）の全体ナビゲーションへTraitを表示する場合は、既存Source／Required Closure／Provider／Conformanceの**read-only参照**に限定し、Model Map Draft #3518のpartial観測を「全Trait実装済み」にしない。TMP-01〜07は既存#1180/#2514への**受入候補・未実行**であり、Source/実Provider/Build/Host Grant/意味受理の新資格を発行しない。
+
 **2026-11-08 S2追補：D1a既存基線とTyped Error秘匿・Atomic Trait二Consumerの判定**（既存S0〜S3の変更なし）
 
 - **D1a基線を実績として固定する**：[main統合 #3378](https://github.com/hat47x/tei-platform/pull/3378)では既存CLI／Studioの直接Operation経路でData/Rule/Relation/Capability/Application/Patternの6 Subjectを読み取り、Canonical・Source位置・World/Source Index FP・EffectとNotFoundの同値を検証。exact HEAD [Health #42463508044](https://github.com/hat47x/tei-platform/actions/runs/42463508044)はcompleted/success。**D1a direct同値PASS**であって、D1b Provider Bの実Selected／actual Invokeではない。D1aを作り直さず、S2では同じSubject/Expectedで呼出ProviderのIDと実Call-siteを追加観測する。

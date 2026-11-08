@@ -941,3 +941,61 @@ S2「Product Consumerが選択済Providerへ到達」の範囲限定結論
 **製品側の完成条件**：通常CLI・実Studio Bridgeという**別々のProduct入口**を使い、実選択Provider Bに到達し、値一致だけでは見逃す誤配線、失効、欠落、秘匿、型付きResult不適合を拒否できること。これと原子的TraitのRequired不足診断が同一Use-site/Source Scopeで説明できれば、次に正式Trait DSL/Schemaを設ける必要があるかを判断する。**到達していないのに新しいSchema/Core enum/Hostを先に固定しない**。
 
 **到達範囲**：上記のS2-C/S/Oは計画・受入対象であり、今回の文書追補では**NOT RUN／NOT QUALIFIED**。#3381の局所Go Caller試験コード、#3531のstatus、その他の限定Go/HTTP/AI合成Referenceがmainにある事実は保持するが、通常CLIディスパッチ／実Studio Bridge／実Provider Artifact資格・現在の権限・Owner意味受理・Cache性能は未証明である。
+
+## 18. 実装したInspector seamとモデル全容マップをTrait履行へ接続する（2026-11-08、S1達成後の実装引継ぎ）
+
+### 18.1 本当に前進した範囲を先に確定する
+
+[CLI選択Inspector PR #3381](https://github.com/hat47x/tei-platform/pull/3381)はmain統合済みで、[現行の実装状況 PR #3531](https://github.com/hat47x/tei-platform/pull/3531)もその範囲を記録している。以前の「型付き入口がDraft」の説明を今の実装状態へ持ち越さない。
+
+| 境界 | 現行mainで確認できるもの | 依然として欠けるもの |
+| --- | --- | --- |
+| **D1a：直接Operation** | 既存InspectorのCLI/Studio六SubjectのDirect Shadow Parity（main #3378） | Plugin経由の選択・実Invokeではない |
+| **S0：型付きPort** | `cmd/tei/cli_inspect.go` の `inspectWorkspaceJSONWithService` とStudio Hostの `InspectionService`。選択Service不在／不適切なResultを拒否 | 製品通常起動で選択済Providerを注入するComposition |
+| **S1：局所実選択・実Go Call** | `internal/inspectoradapter.Selected` が既存CompositionのContract/Scope/Provider/EpochとHost登録Go関数を照合。CLI HelperとStudio Host APIの**二つのin-process Call-site**から同じBを6 Subjectずつ呼ぶGo試験をmainに収録。A誤登録/Host Guard失効等を負例にする | Mock Artifact Digestの実Binary byte、Provider外部Source完全性、通常CLI／実Wailsを介した製品配線 |
+| **S2：製品入口** | `cmd/tei/main.go` の通常`inspect`分岐は今も `inspectWorkspaceJSON` を呼び、その内部でBuiltin Serviceを選ぶ | 通常CLIのHost-selected B、実Studio Wails BridgeのHost-selected B、二製品入口でのActual Invokeと独立Expected |
+| **S3：Target/Meaning/Evidence** | Source-only/Policy Rule失効の限定Referenceはmain (#3479/#3490) | exact Artifact構築/Load、Provider×Consumer Version Matrix、Current Grant、Owner Meaning Acceptance、実DB Effect |
+
+`#3381`のGo Testに選択Bの実関数呼出があることは、局所S1の**実装と試験コードの存在**として積極的に評価する。ただし本追補ではGo試験を新たに実行しておらず、**最新main全体のHealthがPASSしたとは主張しない**。#3531のexact HEAD Healthにはfailure表示があり、詳細修正と新HEAD検収はCI Ownerに委譲する。Synthetic/test double Providerが応答しても、製品のProvider真性・実BOMを証明したことにしない。
+
+### 18.2 原子的Traitの可視化はRQ-036のMapの「資格の投影」である
+
+[main採用RQ-036／PR #3505](https://github.com/hat47x/tei-platform/pull/3505)は、Data/Function/Business・Event/State・Pattern/Plugin/Extensionの全体像を、**標準と案件カスタムを区別しながらナビゲート**する製品要件である。[Typed Model Map Draft #3518](https://github.com/hat47x/tei-platform/pull/3518)は、その一部のread-only Source/World投影であり、現時点では**main未統合・partial coverageのCandidate**。モデル図にNodeやRelationが描かれているだけでは、そのモデル対象が実装済み・読み込まれた・受理された・権限内であるとは判断しない。
+
+このMapにTraitを出す場合は、新しいTrait Registryや独立したFulfillment正本を作らず、既存のTyped Subject／Source Index／Design Context／Contract-Provider解決結果／Conformance Assessmentへの**read-only navigation edge**とする。初期段階のMapで必要なのは以下の**区別の保持**であり、全Traitをリスト表示することではない。
+
+| Mapで辿る関係 | 表示・説明に必要な範囲 | 誤って確定しないこと |
+| --- | --- | --- |
+| `Subject → Declared Intent` | Role/Facet/Source occurrence、候補/受理状態 | Raw文字列やAI解釈をAccepted Meaningへ昇格 |
+| `Subject → Required Trait` | 使用するOperation/Variant・Scope・Target・Contract Revと**Required Closureの完全性** | 未Loaded/permission deniedのTraitを「要求なし」に分類 |
+| `Required → Fulfillment` | default/generated/manual/Providerの選択、Missing/Conflicts/Unsupported/Unknown | Provider Offer、メソッド名、Manifestのみで実装済み判定 |
+| `Fulfillment → Actual Evidence` | 選択実装・実Invoke・独立Expected・対象Build/Source/Scope/時点の識別 | Goの局所Test PASSで全製品/外部Target合格 |
+| `Standard → Custom → Effective Flow` | 標準/設定可/明示Hook/置換不可の保証、実効Graph Patchで影響を受けるTrait | 図のレイアウトやLLMが認可・Guard・Receiptを発行 |
+
+表示件数の分母は**取得対象に必要なContract/Source Closure**であり、表示されたNode集合ではない。Sourceが部分的・未受領・未許可ならMapに`partial`を表示し、未開示の存在・件数・Refを漏らさない。Trait可視化を現在のProvider選択やCurrent Grantの代用品にしない。Graphの変更→Source Patch→生成の権限と実装は既存#1124/#3503へ委譲する。
+
+### 18.3 次のS2一辺：選択済みProviderが公開入口から呼ばれたことを証明する
+
+**実装対象を一つの`inspect` Operationに限定**し、既存`inspectoradapter.Selected`と`cmd/tei/main.go`を活用する。新しい`TraitRuntime`、動的ローダー、Hostの一般的なPlugin解決基盤、Trait固定EnumをP0で追加しない。
+
+1. **Host-owned composition**：`authoring-tool`のexact Contract／Selection／Provider登録と現在のHost GuardをHost側が確定。必要なSource/Manifest/Implementationの情報が未取得ならQualifierを`unknown`とし、選択Bを実際のCompiled Member/外部Packageと同一だと自己証明しない。
+2. **公開CLI**：通常`cmd/tei inspect`がHost側から選択されたServiceを消費するよう接続。選択失敗/未提供/世代失効でBuiltinへ暗黙Fallbackしない。互換Builtinを残す場合も、**意図して選んだBuiltin**と、Plugin欠落を隠すFallbackを区別する。
+3. **公開Studio**：既存Wails BridgeをHost-owned Selected Serviceへ接続。CLI HelperやStudio Hostのin-processテストを再利用しても、Bridge／Session／Root Scope／型付きResultの実Consumer証拠は別。
+4. **独立Expected**：旧D1aの六Subjectを使用し、値が同一でも`B selected/A invoked`、旧epoch、A→B→A、Source-only drift、部分Required、Provider秘密エラー、Disclosure失効を適切なScopeで拒否する。結果値・Source位置・実Provider ID／Invocation・Qualified Buildを別票で比較する。
+5. **Trait追加**：S2で実Providerが確定した後に、単一のRequiredの`manual-required`不足を既存#3279 Contract/Conformanceへ投影。未実装診断が実Consumerから観測できることを確認してから、Generated/Providedの相互差を評価する。**S2完了をManual CAS実DBの完了待ちにしない**。
+
+### 18.4 追加の最小反証と経路別認定
+
+| Case | 入力差分 | 合否の境界（全て**新規NOT RUN**） |
+| --- | --- | --- |
+| **TMP-01：Helper vs Product** | 同じBを局所Helperで呼び、通常CLI `main.go`はBuiltinを呼ぶ | 局所S1のみ成立。製品S2は失敗 |
+| **TMP-02：Bridge差** | Studio Host APIは選択Bだが、Wails BridgeはBuiltin／別Rootへ送る | Host APIの正例を保ち、Studio実SurfaceのS2だけ拒否 |
+| **TMP-03：Manual欠落** | 適格なSource/Contract/Required Closureが完全、`manual-required`だけ未実装 | Trait不足をSource位置とOperation範囲付きで診断。Result一致/Hint/別ProviderのOfferで充足しない |
+| **TMP-04：Mapの部分性** | Model Mapが既知のPattern/Queryを表示、必要Plugin/Role/External Sourceの一部が未Loaded | 全体`complete`／全Trait実装済みと表示しない。非開示要素の存在/件数も漏らさない |
+| **TMP-05：Graph Patch資格** | Hook/Edgeの差分後も図のNode名と値が同一、Authorize回避経路が存在 | 個々のProvider TraitがPASSでも合成Pathは拒否。Layout-only変更は実行コード再生成の対象外 |
+| **TMP-06：古い実装資格** | Provider raw/Manifestだけ変更、Consumer Source FPとResult Byteが一致 | 影響するTarget/Contract/ObservationのEvidenceを再資格化。無関係Buildは維持可能 |
+| **TMP-07：観測との差** | 合成AI性能Referenceは整合、実Provider Observerは未呼出し | 調査候補のまま。Trait履行/実Measurement/SLO改善には昇格しない |
+
+**採否・停止**：S2を一件通すために、既存#951/#1016のResolverを再実装しない。RQ-036のMapでTrait不足を表示するためだけに第二Registry/Evaluatorを設けない。Unqualified Sourceを「要求なし」としない。Static Go単一バイナリ既定に動的Plugin導入を強制しない。S2に入る前に機械的に正当化できる最初の`manual-required`がないなら、抽象Traitの量産を停止し既存Contract Requiredの不足診断を優先する。
+
+**既存Ownerへの引渡し**：#1251/#1824は通常CLI＋実Bridge、#3279はManual Fulfillment、#3262はRead/Required Closure、#3505/RQ-036と#1124は型付きGraphの観測投影、#2600/#3267はTarget/BOM、#1180/#2514は独立Expected。今回確認した実装/採用済要求との差分を**計画へ追加しただけ**であり、TMP-01〜07の新実行、実Plugin Binary/Go実CLI/Wails、正式Trait Map Schema、全体Health PASS、Owner業務意味受理は**NOT RUN/NOT ACCEPTED**。
