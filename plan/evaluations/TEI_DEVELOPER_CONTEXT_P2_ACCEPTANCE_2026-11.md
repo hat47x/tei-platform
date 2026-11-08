@@ -841,15 +841,26 @@ CC-25の前半はSUI #3396の**実Product非単射**に基づく帰結だが、�
 | H3-X02 必須3 Ruleの存在 | SubjectモードではRequired Definition全件が見えない | **既存CLI** `source-index -workspace`（index mode）を一回取得し、独立R(Q)・Source Role・Revisionと照合 | `subject`の空をRule不存在とする、MCP Adapterの文書一致を実H3完整受領と呼ぶ |
 | CC-30 必須Named Testが実行済みか | `TestGoFiles`に存在するが`-run`が別Test／存在しないTestを指す | **実Go argvと同一Attemptのnamed Event**を検査。再実行するならTarget/Dependency/Mode/Revisionも同じProfileで確認 | `exit 0`または別Test`pass`を必要TestのPASSと扱う |
 | K1R/SHO Raw文書が意味資料として利用可能か | 4原文byte受領と、Source closure・Rule/Meaning Bindの間が未到達 | Tool側では**既存Raw Reader／参照位置と実消費Reader**へ。意味受理はOwnerの別Probe | K1 Reader成功＝K2 Plug-in適格／Owner意味受理 |
-| 一Function`sales.order.submit`が実行可能か | Capability宣言・Application uses と、実Invocation Binding/Query Provider間の辺 | [#3262](https://github.com/hat47x/tei-platform/issues/3262)の単一Function Required 13 CLI/42 Consumer対照の**追加試験計画**をOwnerが実施し、Provider Selected→Actual Invokedを別受領 | 宣言・`uses sales`・DB `read-write`の文字列を実Commit/実Providerと読む |
+| 一Function`sales.order.submit`が実行可能か | Capability宣言・Application uses と、実Invocation Binding/Query Provider間の辺 | [merged #3482](https://github.com/hat47x/tei-platform/pull/3482)の**実13 CLI／42 Consumer対照**を採用済み宣言資格として受け取り、次は具体Invocation Binding／Provider Selected→Actual Invokedを別受領 | 宣言・`uses sales`・DB `read-write`の文字列を実Commit/実Providerと読む |
 
 M1の提案はD1と同じAllowed Tool・Read Budget・Q/Grant/独立Expectedで評価し、**実 Tool Invocation／Raw Reply End／Consumer受領／必要Witness**を別票にする。外部SEI [#767](https://github.com/hat47x/sei-cognition/issues/767)／[Draft #824](https://github.com/hat47x/sei-cognition/pull/824)は方法選択、実TEI CLI/Adapterと各Rule RequiredはTEI、実TAI H2/H3のHost/Disclosure/OS/Egressは既存TAI Owner。TEI Adapterの成功でM1の実権限・配送完結を認定しない。
 
 ### 26.4 次の受入順序と終了条件
 
 1. **CC-30を検収**：exact Test Source commitの実Go Focused CIで上記3 argv/Named Eventを検証し、後続Plan HEADのCI/Healthとは別結果として記録。CC-12〜18は先行の実Go証拠のまま。
-2. **TEI #3262の一Function（宣言側13 Reply/42対照）**：既存Ownerが本計画§26.3のRule/Source/Function Requiredを一レーンで実証。実ProviderのInvocation/RDB Rowset・Host Grant/副作用は別Edgeで追跡し、データ不存在と権限不足を区別。
+2. **TEI #3262の一Function（宣言側13 Reply/42対照）はmain統合済み**：[PR #3482](https://github.com/hat47x/tei-platform/pull/3482)の[専用CI #42462672188](https://github.com/hat47x/tei-platform/actions/runs/42462672188)と[main push CI #42462861657](https://github.com/hat47x/tei-platform/actions/runs/42462861657) successを受領。次は**宣言→実Capability Invocation Binding→実Query/Provider→Rowset→Consumer**の最初の未接続辺を実証し、Host Grant/副作用を独立観測。データ不存在と権限不足を区別する。
 3. **最小M1比較**：H3-X02一問から、D0／固定D1／SEI M1を**同じSource・Tool/Profile・権限・Budget 1・隠れたExpected**で実行。Test FilterとRaw/SHOは**次の別Q**として比較し、初回一問と同じ成績として合算しない。
 4. **文書経路**：SHO #27 K1Rの実4原文読取を基線とし、K2のProduct Plugin実選択と両Consumer実Invoke／SUI実Producer→SHO同一物理File H1を各Ownerで測る。**Product Writerの正式保存**はさらに別のPermission/Version/Effect資格。
 
 **強制的な保留**：外部MCP実Transport/Host、SEI M1実Method試行、H3-X02 Blind Win、AI未知T1-B生成、全Business Source Closure、実DB/Provider Commit、実SHO Editor Save／SUI Producer H1、Owner Accepted Meaning、Current Grantはいずれも**NOT RUN／未受理**。#3477 SourceIndex A→B→Aの復元から歴史が無かったことを推論せず、#3458 Adapterがあるから全TEI ToolがMCP経由で実使用できると宣言しない。第二Reader/Source正本/Permission Engine/認知Host/Runnerを新設しない。
+
+<!-- tei-devctx-sei-persistence-and-main-3482-20261108 -->
+### 26.5 Main #3482の実証とSEI Record保存境界（横断追補）
+
+**新たに確定した実Productの範囲**：[main merged #3482](https://github.com/hat47x/tei-platform/pull/3482)（commit `8ed583790e63b63527c1dd8f8aecc1d6ce6e3260`）の[PR専用CI #42462672188](https://github.com/hat47x/tei-platform/actions/runs/42462672188)と[main push CI #42462861657](https://github.com/hat47x/tei-platform/actions/runs/42462861657)はそれぞれ実13 CLI Reply／42 Consumer Controls・Pinned Scenario6・T1-A・Source-only freshnessを**限定PASS**。CIにおける実バイナリSHAは別（PR `0a6712d9…`、main `ce9fa9b8…`）であり、同一実行・完全Reader closureとは呼ばない。42は試験用の不正Reply拒否等であって、42個の独立業務テストやProduct code mutantsではない。Capability `sales.order.submit`とApplication `order_entry`の**宣言・入出力型・uses/Validation/DB requirement・Source Definition/Loader一致**を満たしただけで、具体Function Binding／実Provider Invoke／実DB Commit／Host Effectをまだ示さない。ここで§26.3/26.4の「13/42は今後実施」という古い記述を更新した。
+
+**SEI record保存の意味をCLI source実読取で限定**：[SEI Draft #824](https://github.com/hat47x/sei-cognition/pull/824)のコード監査を、現在の`runtime/go/seicli/seicli.go`の読取で再照合した。`sei add recommendation`の引数に`--unresolved`はなく、`--unresolved`はDecision側に限られる。`BuildResume.Unresolved`はDecisionの`UnresolvedRefs`であって、任意の未提案Questionや保留Item全件を表すわけではない。`--basis kind:id`や`--source`は記録上の自己申告参照であり、TEIのSource byte/Revision/Current Grantを自動検証しない。`snapshot_digest`はSEI bundle bytesに対する観測でありTEI World/Source Index/Tool Result受領Digestとは異なる。**Recommendationの未採用、Questionの未解決、実Read不可能、ReferenceのUnavailableは別状態**。
+
+**H3-X02の実験への含意**：初回Methodの提案をSEIへ保存しても、それだけでは実TEI Rule取得・実Tool Request/Reply・現在Provider/Grant・独立Expected資格が生まれない。SEIでの`proposed/recorded/resumed`とTEIの`invoked/received/source-matched`、TAIの`grant-checked/end-received`を**同一物理Runの別Witness**として整列させること。SEIにTEIの外部Raw Reader、第二Context Gate、未採用Recommendationを勝手にUnresolved化するStore/Schemaを増やさない。
+
+**停止線**：#3482のConsumer判別合格≠機能実行、#3458 MCP Adapter一致≠実外部Harness Tool受領、SEI Resume再開≠TEI Source再確認、#3176のGo named event≠Owner Business Meaning。実H3-X02 D0/D1/M1同条件Tool比較、SEI Recommendation保存のA-02〜04、実Provider/Rowset、外部OS拒否/Current Grantは本節ではNOT RUN。
