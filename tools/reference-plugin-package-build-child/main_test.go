@@ -68,6 +68,29 @@ func writeFixture(t *testing.T) (string, string) {
 	return pluginPath, planPath
 }
 
+// writeDeclaration writes a Build Intent whose subject is the fixture plan's
+// plugin, so the child's identity check can pass. The target is the plan's
+// target so a reader can see the two inputs describe the same build.
+func writeDeclaration(t *testing.T, subjectID, subjectVersion string) string {
+	t.Helper()
+	root := t.TempDir()
+	path := filepath.Join(root, "intent.json")
+	body := `{
+  "formatVersion": 1,
+  "subject": {"kind": "plugin", "id": "` + subjectID + `", "version": "` + subjectVersion + `", "definitionSource": "definition"},
+  "sources": [{"kind": "plugin-definition", "id": "definition", "ref": "plugin.tei"}],
+  "builder": {"contract": "tei.plugin-build", "compatibleMajor": 1},
+  "recipe": {"kind": "tei-plugin-package", "entrypoint": "plugin.tei"},
+  "outputKind": "plugin-package",
+  "target": "plugin-package"
+}
+`
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
 // The child reports both the plan bytes it held and the fingerprint that
 // internal/plugin derives, and writes an artifact whose digest it also reports.
 func TestBuildChildReportsPlanBytesAndFingerprint(t *testing.T) {
@@ -226,5 +249,101 @@ func TestBuildChildRequiresItsGrammar(t *testing.T) {
 		if stderr.Len() == 0 {
 			t.Fatalf("args=%q: no stated reason", args)
 		}
+	}
+}
+
+// §4.14: when the caller names a declaration, the child reads it with the
+// shared strict reader and reports its own readings, so the entry can compare
+// them with the values it derived itself.
+func TestBuildChildReportsItsOwnDeclarationReadings(t *testing.T) {
+	pluginPath, planPath := writeFixture(t)
+	root := t.TempDir()
+	artifactPath := filepath.Join(root, "package.json")
+
+	definition, err := syntax.NewParser(testPluginSource).ParsePlugin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	intentPath := writeDeclaration(t, string(definition.ID), definition.Version)
+
+	var stdout, stderr bytes.Buffer
+	if code := run([]string{
+		"-plan", planPath,
+		"-plugin", pluginPath,
+		"-artifact-out", artifactPath,
+		"-intent", intentPath,
+	}, &stdout, &stderr); code != 0 {
+		t.Fatalf("child failed: code=%d stderr=%s", code, stderr.String())
+	}
+	var report childReport
+	if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
+		t.Fatalf("child did not emit one JSON object: %v", err)
+	}
+	if report.IntentBytesDigest == "" || report.IntentFingerprint == "" {
+		t.Fatalf("declaration readings missing: %+v", report)
+	}
+	if !report.IntentBoundToPlan {
+		t.Fatal("the identity check did not run or did not pass")
+	}
+	if report.IntentBindingNote == "" {
+		t.Fatal("the binding note is missing")
+	}
+	// The readings must describe the bytes on disk, not the child's guess.
+	intentBytes, err := os.ReadFile(intentPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.IntentBytesDigest != digestOf(intentBytes) {
+		t.Fatal("the reported declaration digest does not match the bytes read")
+	}
+}
+
+// A declaration that names a different subject must stop the run: the two
+// inputs would describe different things, and reporting both as readings would
+// invite a reader to compare values that cannot agree.
+func TestBuildChildRejectsADeclarationForADifferentSubject(t *testing.T) {
+	pluginPath, planPath := writeFixture(t)
+	root := t.TempDir()
+	artifactPath := filepath.Join(root, "package.json")
+	intentPath := writeDeclaration(t, "tei.package.other_probe", "1.0.0")
+
+	var stdout, stderr bytes.Buffer
+	if code := run([]string{
+		"-plan", planPath,
+		"-plugin", pluginPath,
+		"-artifact-out", artifactPath,
+		"-intent", intentPath,
+	}, &stdout, &stderr); code != 1 {
+		t.Fatalf("a declaration for another subject was not rejected: code=%d", code)
+	}
+	if stderr.Len() == 0 {
+		t.Fatal("rejection had no stated reason")
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("a rejected run still wrote a report: %s", stdout.String())
+	}
+}
+
+// Without -intent the report carries no declaration readings at all, so a
+// caller cannot mistake silence for a comparison that ran.
+func TestBuildChildOmitsDeclarationReadingsWithoutTheFlag(t *testing.T) {
+	pluginPath, planPath := writeFixture(t)
+	root := t.TempDir()
+	artifactPath := filepath.Join(root, "package.json")
+
+	var stdout, stderr bytes.Buffer
+	if code := run([]string{
+		"-plan", planPath,
+		"-plugin", pluginPath,
+		"-artifact-out", artifactPath,
+	}, &stdout, &stderr); code != 0 {
+		t.Fatalf("child failed: code=%d stderr=%s", code, stderr.String())
+	}
+	var report childReport
+	if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
+		t.Fatal(err)
+	}
+	if report.IntentBytesDigest != "" || report.IntentFingerprint != "" || report.IntentBoundToPlan {
+		t.Fatalf("declaration readings appeared without -intent: %+v", report)
 	}
 }
