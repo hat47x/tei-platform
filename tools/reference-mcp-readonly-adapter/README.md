@@ -36,6 +36,16 @@ go build -o /tmp/tei-mcp ./tools/reference-mcp-readonly-adapter
 
 `tei_validate` は `result` で包まず、CLI の `validate -workspace ... -json` と同じ最上位の形（`diagnostics`・`worldFingerprint`・`sourceIndexFingerprint`・`declarationCounts`・`workspace`）を返します。検証の不合格も `isError: true` です。文書の組み立ては `internal/operations` の1つの投影を CLI と共有します（[#3420](https://github.com/hat47x/tei-platform/issues/3420)）。
 
+## 入力の検査
+
+実行側でも `arguments` を検査します（`inputSchema` の宣言だけに頼りません）。次は JSON-RPC の `-32602`（invalid params）で拒否し、既定値へ置き換えません。
+
+- tool の入力に宣言のない欄（`workspace`・`path`・`root` を含む）
+- 文字列の欄に、文字列以外・`null`・空文字列を渡したとき
+- `offset`・`limit` に、整数以外・`null` を渡したとき
+
+欄を省いた場合だけ既定値（`direction=both`、`mode=summary` など）を使います。未指定と不正指定は区別されます（[#3420](https://github.com/hat47x/tei-platform/issues/3420)）。
+
 ## 境界
 
 - **Workspace は起動時に固定**します。tool の入力に path を取らないため、モデルが読取り範囲を広げられません。
@@ -54,6 +64,7 @@ go build -o /tmp/tei-mcp ./tools/reference-mcp-readonly-adapter
 - 未対応の対象種類が `isError: true` と `UNSUPPORTED_SUBJECT_KIND` で返ること
 - `initialize` の応答と、通知に返答しないこと
 - tool の入力スキーマに `workspace`・`path`・`root`・`file` を含めないこと
+- 型不正・`null`・空文字列・宣言のない欄を `-32602` で拒否し、省略時だけ既定値を使うこと（`strict_arguments_test.go`）
 
 実行:
 

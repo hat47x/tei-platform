@@ -499,3 +499,13 @@ D-1・D-2・D-4〜D-8 の対応が `main` に入り、対応する Issue はす�
 - 公開契約の互換性: 既存欄は変えず、欄の追加と「0件を`null`から`[]`へ」の変更だけ。`null`を「欄が無い」と解釈していた読み手には告知が必要（[CLI JSON出力契約](../design/CLI_JSON_OUTPUT_CONTRACT_2026-10.md)）。
 
 D-9は残る。CLIは設計文書を索引に載せるが、意味の定義として読まない。変更するなら、Markdownを意味として扱う設計判断（#2621）が前提になる。
+
+## 10. 第4ラウンド（2026-11-09）: 修正後の版での再実測
+
+#3455・#3456 の修正が `main`（`00ead5a98`、PR #3467）に統合された後、同じCLI操作で再測定した。生出力は[第4ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND4_2026-11-09/README.md)にある。
+
+- 読み取りを行う11コマンドの応答すべてが`workspace`（`name`・`formatVersion`・`manifest`）を返した。同一性の無い応答は0件。
+- 設計文書Workspaceの`source-index`は、参照0件を`[]`で返した（`artifacts`は2件）。
+- `validate`の診断と`sourceRootFindings`は変わらず、D-9（設計文書が意味として読まれない）は残る。
+
+この記録はCLIのread-only観測である。HTTP・MCP・Desktopの各入口の同値性は #3419〜#3421 の担当で、未実行（NOT RUN）のままである。
