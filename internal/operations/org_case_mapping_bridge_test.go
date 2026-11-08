@@ -180,6 +180,12 @@ func TestOrgCaseExplicitPersistenceEnablesReadCandidateOnly(t *testing.T) {
 	// The injected connection is an instrumented test double (no real DB).
 	verifyNativeCaseQuerySQLProbe(t, withQuery)
 
+	// Opt-in proof with a disposable PostgreSQL server. A default SKIP is
+	// NOT real Provider evidence and is never counted as physical E2.
+	t.Run("isolated-postgres-opt-in", func(t *testing.T) {
+		verifyNativeCaseReadWithPostgres(t, withQuery)
+	})
+
 	// The Query may be described, but it does not automatically create an
 	// executable Function or grant Provider/Host authority.
 	surfaceWithQuery, err := SurfaceWorkspace(copyRoot, "org_view")
