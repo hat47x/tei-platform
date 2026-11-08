@@ -586,6 +586,26 @@ external LLM
 
 判定段階BとCの`Ready`判定と過去の検証根拠は、それぞれの対象版に固定されています。現在は、判定段階Cの後に進める定義の記述・知識の活用・AI・二つ目の実行先の作業を重視します。以前の判定対象版で得た根拠を、現在の作業に対する検証根拠として無条件に引き継ぐことはしません。
 
+### 2026-11-08 一機能で検収する横断の最短経路（既存Ownerを横につなぐ実装順）
+
+判定段階B/Cの確定記録とマイルストーン5〜7の並行方針は維持する。そのうえで、直近の設計・実装・他製品連携の議論を、**一つの機能を通して最初の未接続箇所を特定する順序**へ収束させる。詳細契約・試験の正本をここに複製せず、各Issueを担当とする。本節は優先する**検証計画**であり、新しい製品Gate、Runner、Parser、Plugin Resolver、Host、意味の承認機構を設ける判断ではない。
+
+最初の対象候補は`order_entry.recent_orders`と関係する`sales.order`の一改訂とし、**同一Workspace名・Subject名だけで各出典や実Providerを接合しない**。Source/外部解析/設計/実Read/表示/Actionは、依存する実Revision・Scope・Attemptで比較する。Sourceを読み込めない場合でも、確認済みの局所情報は保持し、全体完了・不存在・実行許可は保留する。
+
+| 順序・同時実行性 | 次に実証する「一つの辺」 | 判定・引渡し先 |
+| --- | --- | --- |
+| **P0-D**（他P0と並行） | 管理対象ファイルと、実Loader/Parserが読んだSourceを区別し、Data/Function/Business/Ruleの必要閉包とSource位置を返す。通常Markdown、正式`*.tei.md`候補、従来Source、外部逆解析Rawの資格を混同しない | [#2621](https://github.com/hat47x/tei-platform/issues/2621)／[#3262](https://github.com/hat47x/tei-platform/issues/3262)／[設計取込Draft #3355](https://github.com/hat47x/tei-platform/pull/3355)。main [#3354](https://github.com/hat47x/tei-platform/pull/3354)の11実CLI・32限定判別は基線であり、全Source閉包ではない |
+| **P0-M** と **P0-R**（互いを待たない） | **M**：実Source→Data/Function/Business三視点とCRUD→元Relation/CellのSource locator。**R**：同一Product Function→実Query/args→実Provider Rowset→Function Context。Graph表示や別Reference SQLの成功を実Product Readとしない | M=[#3263 Draft](https://github.com/hat47x/tei-platform/pull/3263)／[#1124](https://github.com/hat47x/tei-platform/issues/1124)、R=[#2586](https://github.com/hat47x/tei-platform/issues/2586)。**P0-C**で同じSource cohort・Scope・Read時点・Consumerのときだけ接合する |
+| **P1-P**（P0-Dと並行試行可） | 開発ツールのread-only Inspector一操作を、CLIとStudioで **Contract→Provider選択→実ロード→実Handler Invoke→結果**まで共通契約でつなぐ。選択B／実呼出Aは結果が同じでも不適格。Commandのread-only表示と実argvのFilesystem効果は別に測る | [#3277 merged](https://github.com/hat47x/tei-platform/pull/3277)は設計・要求の基線。[#951](https://github.com/hat47x/tei-platform/issues/951)／[#1251](https://github.com/hat47x/tei-platform/issues/1251)が実装・適合のOwner。認証方式の選択・実Principal・Identity Link・Session・業務認可を分ける試験は新規[#3412](https://github.com/hat47x/tei-platform/issues/3412)および既存#1043/#1174が担当し、業務Roleや現在Grantへの自動昇格は禁止 |
+| **P1-T**（必要な設計が得られた範囲） | 設計入力の**D**（必要Source/Role/Ruleを実取得）・Tool/Consumer受領の**T**（Replyの完全受信）・生成候補の**G**（独立Expected/未知Rule/Mutant判別）を別評価。既知T1-A合格から未知T1-BやC1を認定しない | [#3262](https://github.com/hat47x/tei-platform/issues/3262)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)／[#1180](https://github.com/hat47x/tei-platform/issues/1180)。main [#3477](https://github.com/hat47x/tei-platform/pull/3477)の**同一Workspace** Source-only失効試験と、外部Import Provider原文がConsumerの指紋に反映されない[Draft #3479](https://github.com/hat47x/tei-platform/pull/3479)の反例は別資格として扱う |
+| **P1-C**（上記の結果を用途別に渡す） | 既存資産逆解析からの**観測事実→構造候補→Ownerが受理した意味→正式Authoring**を分離。SHOは出典付き文書のRead/候補Patch/正式Save・再Readを段階確認する。外部認知・意思決定へ渡すときも、局所即応・意思決定Intent・現在許可されたAction・実Effect/Receiptを別にする | [REA #3394](https://github.com/hat47x/tei-platform/issues/3394)／[TEI-EKI設計Draft #2744](https://github.com/hat47x/tei-platform/pull/2744)／[SHO計画 #2](https://github.com/hat47x/sho-composer/issues/2)。SHOの限定Reader/Plannerはあるが、試験用Working Copy Writer [Draft #25](https://github.com/hat47x/sho-composer/pull/25)を正式編集・保存やTEI Meaning受理としない |
+| **P2-B**（P1-Pの実呼出し成立後） | 実Plugin 2版×Consumer 2版の**4つのexact tuple**を、実Build・Invoke・独立Expectedでそれぞれ評価。PASS/FAIL/SKIP/NOT RUNを保持し、Current Host Grant・実DB Effect・Consumer開示は追加資格として検査する | [Verified BOM #3267](https://github.com/hat47x/tei-platform/issues/3267)／#951／#2514。候補一覧・静的Version一致・2件だけの試験を「互換な4件」としない |
+
+**一改訂の引渡し票**には、少なくとも対象Subject・使用目的・Source/外部参照の実Revision・World/Source Indexの比較範囲・Requiredの取得/未取得・Meaning受理状態・選択したContract/Providerとactual Invoke・Target/Artifact・Attempt・Consumer受領・独立Expected・現時点の権限/Effectを、**観測できた列だけ**記録する。これは[#1163](https://github.com/hat47x/tei-platform/issues/1163)の証拠と[#3262](https://github.com/hat47x/tei-platform/issues/3262)の設計Context等を束ねる表示・検収の観点であり、第二の台帳や共通Schemaではない。
+
+最初に判定すべき停止条件は、(a)実Loaderに届かない設計、(b)同一Workspaceの指紋では見えない外部Provider改訂、(c)図・CRUDから実Readに到達しない辺、(d)選択Providerと実呼出し先の不一致、(e)Tool正常終了だがConsumer受領欠落、(f)認証済み主体を業務権限へ誤写像、(g)未実行のBOM組合せをPASSとする誤判定、の七つとする。新たな抽象化より先に各Ownerの既存Scenario/独立Expectedで**一対の正常・負例**を実行し、最初に失敗した辺と次の必要なProbeを示す。古い確定Gate B/C、合成テスト、Draftの資料を現在の製品E2Eへ転用しない。
+
+
 ## 2026-11-01 深掘り設計の位置づけ（評価待ち）
 
 [Issueの深掘り対象の選定](workstreams/ISSUE_DEEPENING_2026-11.md)で選んだ5件と、その上流への接続（[深掘り設計の上流接続](workstreams/UPSTREAM_CONNECTION_2026-11.md)）を、既存の作業領域へ割り当てます。**優先順位と判定段階の条件は変更しません。**
