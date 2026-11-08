@@ -128,6 +128,7 @@
 - [DSH外部Harness上での生成候補の逸脱試行](DSH_H6E5_CANDIDATE_ESCAPE_2026-11-07/README.md)（#2515 H6-E5・#2509。合成候補から、非許可の隣接Sourceは読め、子Processは起動でき、自己書換えはConstrainedLanguageの初期化失敗で止まった。自己書換えが書込みPolicyで拒否された証拠ではない。workspace-writeでの再試行・D1→D2・Selector同一Source証明はNOT RUN）
 - [子Processは親Toolの到達範囲を引き継ぐ](DSH_CHILD_PROCESS_REACH_2026-11-08/README.md)（#2515 受入条件3・H6-E1・#2509。親`pwsh`が起動した子`cmd.exe`は、`read-only`でも宣言root外を読み、書込みは`read-only`で止まり`danger-full-access`で通った。子Processを境界にできず、実効保証は最弱の経路を基準に下げる必要がある。別OS資格・別Userでの子起動、Network到達性はNOT RUN）
 - [Session Log拡張の`maxBytes`上限とbacklog](DSH_SESSION_LOG_MAXBYTES_2026-11-08/README.md)（#2515 H6-E2・P0-b・#2509。`maxBytes`を2048と512へ下げて実測し、field全体が上限内なら水位`9`まで10 event、上限512では**518 bytes**（ヘッダ込みで上限超過）で水位`2`・3 eventに止まった。`maxBytes`は1要求の上限で総開示量の上限ではない。分割送出と単一eventの停滞は未確定）
+- [Session Logのbacklog分割送出と停滞、上限判定の単位](DSH_SESSION_LOG_SPLIT_AND_STALL_2026-11-08/README.md)（#2515 H6-E2・#2509。`maxBytes=1024`の4 Turnで水位`-1`→`6`→`9`と**後続要求へ分割送出**されることを確認し、`maxBytes=256`ではヘッダ込みで上限を超えるため**fieldが一度も作られず**作業だけが続いた。先行記録の「512で518 bytes＝上限超過」は再直列化した値による誤りで、生byteは474だったと訂正）
 
 - [外部Go Module入力の明示opt-in受入](TEI_GO_EXTERNAL_MODULE_ADMISSION_OPTIN_2026-11-07.md)（既定の拒否方針は不変のまま、供給を明示した呼び出しだけが外部Moduleメンバーを含む閉包を受ける参照実装。受入記録に方針・根拠・拒否理由を残す。SB-B / 案C / #2831）
 - [起動主体と被起動主体を分けたBuild駆動の記録](TEI_GO_BUILD_STAGE_DRIVER_2026-11-07.md)（`cmd/tei`を子プロセスとして駆動し、invoker/invokedの実行ファイルdigest・argv・exitと、子の主張とディスク実物のartifact digestが一致することを記録。L3・受入・権限は未確認。SB-C0/C1 / #2831）
