@@ -31,8 +31,14 @@
 | [`PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md`](PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md) | CLI/Studio/生成Runtimeに共通するPlugin Contract/Provider実証とTraitの分離（#1251） |
 | [`TEI_DESIGN_CONTEXT_TEST_HARNESS_INTEGRATION_2026-11.md`](TEI_DESIGN_CONTEXT_TEST_HARNESS_INTEGRATION_2026-11.md) | 設計Contextの完全性→Test Skill/Harness→独立Expectedへの段階的接続（#3262） |
 | [`TRAIT_ATOMIC_COMPOSITION_AND_FULFILLMENT_2026-11.md`](TRAIT_ATOMIC_COMPOSITION_AND_FULFILLMENT_2026-11.md) | 原子的Traitの実装義務（手動/自動/Provider）、Profile合成、不適合診断、DerivedData/Pluginでの受入負例（[#3278](https://github.com/hat47x/tei-platform/issues/3278)、設計・実証候補） |
+| [`AI_FIRST_QUALIFIED_INTERFACE_CURRENT_MAIN_2026-11.md`](AI_FIRST_QUALIFIED_INTERFACE_CURRENT_MAIN_2026-11.md) | AI-firstのSource・Tool公開・意味受理・現在Grant/Effect・Disclosureを実消費証拠で区別し、外部Harnessの限定実績と次の適格H2を現在mainに接続（旧#2492 AI-first成熟差分のみ） |
+| [`TRAIT_ATOMIC_COMPOSITION_AND_FULFILLMENT_2026-11.md`](TRAIT_ATOMIC_COMPOSITION_AND_FULFILLMENT_2026-11.md) | 原子的Traitの実装義務（手動/自動/Provider）、Profile合成、不適合診断、DerivedData/Pluginでの受入負例（[#3278](https://github.com/hat47x/tei-platform/issues/3278)、設計・実証候補） |
 | [`COMMAND_BOUNDARY_SAFETY_2026-11.md`](COMMAND_BOUNDARY_SAFETY_2026-11.md) | Command境界の未設定認可・期間状態の拒否、宣言外効果をunknownとして記録する判断と、参照実行の明示的認可（[#2996](https://github.com/hat47x/tei-platform/issues/2996)、[#2997](https://github.com/hat47x/tei-platform/issues/2997)、参照実装） |
 | [`EVERYTHING_DATA_MARKDOWN_SOURCE_FIDELITY_2026-11.md`](EVERYTHING_DATA_MARKDOWN_SOURCE_FIDELITY_2026-11.md) | Markdownの元シンタックスシュガーと書式・Source occurrenceを保存で保持する契約、局所Patch・競合・往復受入 |
+| [`DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md`](DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md) | RDB・NoSQL・ログ・APIの汎用データソース管理とSchema CRUDを開発者向け標準範囲とし、実Provider／DDL効果の未実証を分離（RQ-035・#3270） |
+| [`HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md`](HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md) | HTTP例外のServer／Client応答契約をGraph・表・Traceで照合する設計候補。実HTTP／UI検証は未実施（#3274） |
+| [`PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md`](PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md) | CLI／Studioの限定read-only OperationからApplication Runtimeまで同一Plugin契約を再利用する実装検証計画（#1251・#951） |
+| [`ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md`](ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md) | Issue #3262をTEI CLI実読取と設計票へ接続する限定ドッグフーディング。Design Contextの完全性、独立ExpectedとT0テスト判別力、T1/セルフビルドの未達を区別（#3264/#3266/#3268） |
 | [`TEI_PRODUCT_SKILL_HARNESS_BINDING_2026-11.md`](TEI_PRODUCT_SKILL_HARNESS_BINDING_2026-11.md) | TEI read-only Product Skillを既存CLIへ正確に結び、外部Harness/Consumerの受理・許可・開示・実実行と分ける設計候補（[#2605](https://github.com/hat47x/tei-platform/issues/2605)、未採用） |
 | [`TEI_MEANING_TO_CAPABILITY_SKILL_WITNESS_2026-11.md`](TEI_MEANING_TO_CAPABILITY_SKILL_WITNESS_2026-11.md) | Everything is Dataの意味Role→標準Operation→限定CLI発見→Product Skill/Harness→実Host/SHO受渡しの資格差とSource-static・合成検証（#2619/#2605/#2614、未採用） |
 | [`ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md`](ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md) | Everything is DataにおけるRole/Operator自己記述の有限bootstrap、eager/deferred循環、Pinと実利用資格を分離する設計案（[#2619](https://github.com/hat47x/tei-platform/issues/2619)／[#2620](https://github.com/hat47x/tei-platform/issues/2620)、未採用） |
@@ -56,6 +62,11 @@
 | [`MULTILINGUAL_BUSINESS_DATA_AND_AI_TRANSLATION_2026-10.md`](MULTILINGUAL_BUSINESS_DATA_AND_AI_TRANSLATION_2026-10.md) | 多言語の業務属性、記述の版・保存・検索・公開と、生成AIによる翻訳候補・確認・受理（[GitHub #1453](https://github.com/hat47x/tei-platform/issues/1453)、評価待ち） |
 | [`MULTILINGUAL_TRANSPARENT_PLUGIN_OVERLAY_2026-10.md`](MULTILINGUAL_TRANSPARENT_PLUGIN_OVERLAY_2026-10.md) | 通常プラグインへ多言語の表示情報を後付けする意味参照・適用許可・競合解決と合成（[GitHub #1551](https://github.com/hat47x/tei-platform/issues/1551)、参照実装検証中） |
 | [`CAPABILITY_INVOCATION_CONTEXT_DESIGN.md`](CAPABILITY_INVOCATION_CONTEXT_DESIGN.md) | 機能に渡す意味上の要求と、ホストが注入する実行時の文脈を分ける、評価待ちの設計（[GitHub #1118](https://github.com/hat47x/tei-platform/issues/1118)） |
+| [`DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md`](DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md) | 汎用データソース・ワークベンチの標準範囲（接続・閲覧・構造定義・Migration）と縦断実証の設計（[#3270](https://github.com/hat47x/tei-platform/issues/3270)、[RQ-035](../../requirements/TEI_PRODUCT_REQUIREMENTS.md)、設計・検証計画） |
+| [`HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md`](HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md) | HTTP応答のServer/Client例外契約と、Graph/Table/Traceの相互検証（[#3274](https://github.com/hat47x/tei-platform/issues/3274)、設計候補） |
+| [`ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md`](ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md) | Issueから設計文書を作るP0縦切りのドッグフーディング（[#3262](https://github.com/hat47x/tei-platform/issues/3262)、探索・受入条件候補） |
+| [`PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md`](PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md) | Core以外をPluginにする実装方式をCLI／StudioからApplication Runtimeまで同一基盤で検証する計画（方式設計候補） |
+| [`TEI_DESIGN_CONTEXT_TEST_HARNESS_INTEGRATION_2026-11.md`](TEI_DESIGN_CONTEXT_TEST_HARNESS_INTEGRATION_2026-11.md) | 設計ContextからTest Skill/Harnessを経て独立検証へ至る統合計画（[#3262](https://github.com/hat47x/tei-platform/issues/3262)、[#3223](https://github.com/hat47x/tei-platform/pull/3223)と接続） |
 | [`PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md`](PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md) | プラグイン間の依存を、受け渡す項目・パラメータ・値の出どころ・対応付けと変換・多重度・版の変化まで含めて整理する方式設計候補（[GitHub #1223](https://github.com/hat47x/tei-platform/issues/1223)、評価待ち） |
 | [`PLUGIN_NAMESPACE_AND_OPTIONAL_COMPOSITION_2026-10.md`](PLUGIN_NAMESPACE_AND_OPTIONAL_COMPOSITION_2026-10.md) | `tei.std` / `tei.experimental` / `tei.contrib` の管理名前空間と、Principal・DB・TransactionをCoreへ強制しない案件選択型Compositionの設計候補（提案中） |
 | [`SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md`](SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md) | SUIの既存実装を生かしながらTEIへ移行するための設計基準 |
@@ -157,6 +168,9 @@
 | [`SEMANTIC_TRAIT_CLAIMS_AND_CONFORMANCE_2026-11.md`](SEMANTIC_TRAIT_CLAIMS_AND_CONFORMANCE_2026-11.md) | 意味的特性の宣言・観測・適合：閉値域／MECE／属性同一性の横断設計（2026-11） |
 | [`TEI_MD_UNIFIED_AUTHORING_MIGRATION_2026-11.md`](TEI_MD_UNIFIED_AUTHORING_MIGRATION_2026-11.md) | TEI Authoring Source を .tei.md へ統一する段階移行計画 |
 | [`TEI_SHO_OKF_DOMAIN_LINT_DOCUMENT_UNIT_2026-11.md`](TEI_SHO_OKF_DOMAIN_LINT_DOCUMENT_UNIT_2026-11.md) | TEI/SHOのOKF知識バンドルとドメインLint：段階導入の検証計画 |
+| [`COMPOSED_REPRESENTATION_MAPPING_QUALIFICATION_2026-11.md`](COMPOSED_REPRESENTATION_MAPPING_QUALIFICATION_2026-11.md) | 標準表現型：合成写像の適格性・非単射・否定依存・開示（2026-11-07） |
+| [`REPRESENTATION_CROSSVIEW_COORDINATION_2026-11.md`](REPRESENTATION_CROSSVIEW_COORDINATION_2026-11.md) | TEI 表現型間の選択・状態連携・更新境界（2026-11-07） |
+| [`STANDARD_REPRESENTATION_TOPOLOGY_AND_MEDIA_AXES_2026-11.md`](STANDARD_REPRESENTATION_TOPOLOGY_AND_MEDIA_AXES_2026-11.md) | 標準データ構造と標準表現型：構造間Binding・媒体時間軸の設計案（2026-11-07） |
 
 ## 関連する参照事例と評価
 
