@@ -184,3 +184,45 @@ func TestInspectionDoesNotExposeHostFactoryErrors(t *testing.T) {
 		t.Fatalf("returned private factory error or success: %+v", got)
 	}
 }
+
+
+// TestHostSelectedInspectorTypedErrorsAreSanitized shows why typed errors
+// from a selected Provider are less trustworthy than the built-in Inspector:
+// the Provider controls both Message and Code. The Studio Host must expose
+// neither internal paths/tokens nor an arbitrary error classification.
+func TestHostSelectedInspectorTypedErrorsAreSanitized(t *testing.T) {
+	const secret = "private-provider-path-and-token"
+	tests := []struct {
+		name string
+		code string
+		want string
+	}{
+		{"not-found", operations.InspectionNotFound, operations.InspectionNotFound},
+		{"ambiguous", operations.InspectionAmbiguous, operations.InspectionAmbiguous},
+		{"unsupported-kind", operations.InspectionUnsupportedKind, operations.InspectionUnsupportedKind},
+		{"invalid-subject", operations.InspectionInvalidSubject, operations.InspectionInvalidSubject},
+		{"forged-private-code", "PRIVATE_PATH_" + secret, "OPERATION_FAILED"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			root := t.TempDir()
+			h, err := NewReadOnlyWithFactory([]string{root}, func(string) (RootServices, error) {
+				return RootServices{Inspection: inspectionServiceFunc(func(sourceindex.Subject) (operations.SubjectInspection, error) {
+					return operations.SubjectInspection{}, &operations.InspectionError{
+						Code: tt.code, Message: secret,
+					}
+				})}, nil
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := h.InspectSubject("workspace-1", "semantic-data", "sales.order")
+			if got.OK || got.Value != nil || got.Failure == nil ||
+				got.Failure.Code != tt.want ||
+				strings.Contains(got.Failure.Message, secret) ||
+				strings.Contains(got.Failure.Code, secret) {
+				t.Fatalf("selected Inspector leaked typed Provider details: %+v", got)
+			}
+		})
+	}
+}
