@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"tei/internal/core"
+	"tei/internal/semantic"
 )
 
 // Strict fixture authority for the isolated Postgres integration test only.
@@ -225,6 +227,103 @@ func TestScopedTenantPostgresAgainstIsolatedDatabase(t *testing.T) {
 			}
 		})
 	}
+	// For this fixed, isolated PostgreSQL fixture only: contrast an actual
+	// complete ReadPlan result with an actual top-one page before supplying
+	// CompletionEvidence. This does not make the caller's Coverage trustworthy
+	// for arbitrary tenants, changed snapshots, or unrelated Result Slices.
+	t.Run("actual tenant A whole fixture versus top-one completion witness", func(t *testing.T) {
+		pub := scopedPublication(t)
+		read := func(top string, since time.Time) [][]any {
+			t.Helper()
+			plan, err := AuthorizeBrowseRead(ctx, fixtureAuthorization(t), pub,
+				url.Values{"$select": {"orderId"}, "$orderby": {"orderId asc"}, "$top": {top}},
+				TrustedReadContext{
+					PrincipalID:    tenantA.PrincipalID,
+					RowScopeID:     tenantA.RowScopeID,
+					PolicyRevision: tenantA.PolicyRevision,
+				})
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := ExecuteScopedCanonicalRead(ctx, bridgeWorld(t), pub, plan,
+				scopedSupport(pub, plan),
+				ScopedPostgresOrdersReference{
+					DB: db, Database: core.MustCanonicalID("sales_core"), Authority: authority,
+				},
+				map[string]any{"from": since})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(got.Columns, []string{"orderId"}) {
+				t.Fatalf("unexpected returned projection: %v", got.Columns)
+			}
+			return got.Rows
+		}
+
+		full := read("2", from)
+		one := read("1", from)
+		// Independent expectations were fixed from the checked-in SQL fixture,
+		// not derived from the Result Slice or semantic evaluator.
+		if !reflect.DeepEqual(full, [][]any{{int64(3)}, {int64(9)}}) {
+			t.Fatalf("fixed tenant A fixture population mismatch: %v", full)
+		}
+		if !reflect.DeepEqual(one, [][]any{{int64(3)}}) {
+			t.Fatalf("fixed tenant A first page mismatch: %v", one)
+		}
+
+		// Positive control for a non-output predicate: the SQL WHERE clause
+		// evaluates ordered_at >= :from, but ReadPlan selects only orderId.
+		// The caller receives an ID, not the undisclosed ordered_at value.
+		t.Run("non-output SQL WHERE predicate is evaluated without projecting its field", func(t *testing.T) {
+			threshold := time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC)
+			filtered := read("2", threshold)
+			// Independently fixed fixture: order 3 occurred on Oct 1, order 9
+			// occurred on Oct 2. The real SQL predicate must exclude order 3.
+			if !reflect.DeepEqual(filtered, [][]any{{int64(9)}}) {
+				t.Fatalf("non-output ordered_at predicate not applied: %v", filtered)
+			}
+		})
+
+		evidenceFor := func(rows [][]any, coverage semantic.Coverage) semantic.CompletionEvidence {
+			t.Helper()
+			evidence := semantic.CompletionEvidence{Coverage: coverage}
+			for _, row := range rows {
+				if len(row) != 1 {
+					t.Fatalf("unexpected row grain: %v", row)
+				}
+				id, ok := row[0].(int64)
+				if !ok {
+					t.Fatalf("unexpected order ID type: %T", row[0])
+				}
+				evidence.Targets = append(evidence.Targets, semantic.TargetResult{
+					ID: fmt.Sprintf("tenant-a/order/%d", id), Holds: id > 0,
+				})
+			}
+			return evidence
+		}
+
+		// The declared finite test population is exactly orders {3,9};
+		// the actual full read matches that independently fixed population.
+		capability := semantic.Capability{
+			ID:          "order_entry.recent_orders",
+			EmptyPolicy: semantic.EmptyPolicyRequiresEvidence,
+		}
+		if decision := semantic.EvaluateCompletion(capability, semantic.EmptyPolicyUniversal,
+			evidenceFor(full, semantic.CoverageComplete)); decision.State != semantic.CompletionHolds {
+			t.Fatalf("fixture-qualified full population: %+v", decision)
+		}
+		if decision := semantic.EvaluateCompletion(capability, semantic.EmptyPolicyUniversal,
+			evidenceFor(one, semantic.CoveragePartial)); decision.State != semantic.CompletionUnverified {
+			t.Fatalf("actual top-one page falsely qualified as whole population: %+v", decision)
+		}
+		// A wrong caller claim still produces a local holds; the independent
+		// read witness above must prevent using that as whole-population proof.
+		if decision := semantic.EvaluateCompletion(capability, semantic.EmptyPolicyUniversal,
+			evidenceFor(one, semantic.CoverageComplete)); decision.State != semantic.CompletionHolds {
+			t.Fatalf("local evaluator's trust boundary unexpectedly changed: %+v", decision)
+		}
+	})
+
 	// A valid Browse grant cannot be replayed with a different policy,
 	// even if the attacker guesses an authorized Tenant ID.
 	pub := scopedPublication(t)
