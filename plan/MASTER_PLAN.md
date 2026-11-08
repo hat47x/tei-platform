@@ -623,6 +623,13 @@ Sourceの論理Workspace IDと物理root/realpathも別資格とし、Manifest�
 
 **全件Handoffの残余条件（組織Profile§9.5）**：Local Evaluatorの`HandoffConfirmed`はClaim単位のboolなので、`L={C1,C2}`に対してC1だけのACK・同じACK二重計上・適用集合不明の一括ACK・旧版のACKでも、Callerが`true`と報告すれば局所的に`holds`を返し得る。#1125/#1444はOwnerが受理した対象別／正確な集合に束縛した一括Handoff証拠`H`を、#2586/#2622は実Read集合`R`を、#2514は必要集合`L`の独立Expectedを所有する。`L/R/H`のID・Scope・Revision・確認者／適用時点の適格性が揃うまでProducerは全件`HandoffConfirmed`をTrueにしない。#3353の6 GoケースとORG-HC-01〜07は別検証段階であり、Hの実読取や組織製品一気通貫は未実施。新専用Ledger/Completion Engineは作らない。
 
+
+**外部Source・二時点・引継ぎ集合の再資格化（2026-11-08）**：[組織Profile§11](design/ORGANIZATION_TOPOLOGY_QUANTITY_REPRESENTATION_PROFILE_2026-11.md)に、mainへ統合された[#3482](https://github.com/hat47x/tei-platform/pull/3482)の**限定Function Design Context（実CLI 13 Reply／42局所Control、宣言上の必要集合のみ）**と[ADR-0048](adr/0048-shared-application-api-and-transport-adapters.md)／main [#3403](https://github.com/hat47x/tei-platform/pull/3403)の**共通API／CLI-MCP Adapter**を、組織C1の次の未接続辺へ接合する。前者はCapability宣言を実Function→Query→ProviderへBindingした証拠でなく、後者の同値JSON・Tool広告は実Consumer受領／現在Authorityではない。
+
+[#3380](https://github.com/hat47x/tei-platform/pull/3380)の二時点合成（現HEAD Node CI [#42462892409](https://github.com/hat47x/tei-platform/actions/runs/42462892409)成功、main未統合）、外部Provider Source-only driftの[Draft #3479](https://github.com/hat47x/tei-platform/pull/3479)、複合/並列FKの物理Catalog投影[Draft #3486](https://github.com/hat47x/tei-platform/pull/3486)は**別種の観測**。HRが申告する`knownFrom`≠TEI受信時刻、物理FK≠Owner受理Relation、Consumer World一致≠Imported Provider原Sourceの現在資格。Owner必要集合`L`／実Read`R`／対象に束縛された受領`H`と、必要Design Source`D`・Provider/Manifest観測を照合するORG-EC-01〜07を§11に配置した。正式Scenario/Runnerを複製せず#3262/#2586/#1125/#2514へ渡す。
+
+**優先はP0-R一件Case実Readのまま**。組織実Case Function/Provider Binding・同一Snapshot観測・複数Consumerの実受領、全件Handoff/正式Owner受理は未成立。局所GoやSynthetic NodeのPASSをOrg E2/業務完了へ流用しない。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
