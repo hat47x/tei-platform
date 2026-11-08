@@ -254,7 +254,7 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 		sourceManifest:              manifestID,
 		sourceManifestName:          manifestName,
 		sourceImportsDeclared:       len(imports) > 0,
-		sourceManifestBytes:        &manifestReadBytes{content: manifestRaw},
+		sourceManifestBytes:         &manifestReadBytes{content: manifestRaw},
 		manifestFormatVersion:       manifestFormatVersion,
 	}
 	// TEI standard semantic types are a library prelude, not Micro Kernel kinds.
