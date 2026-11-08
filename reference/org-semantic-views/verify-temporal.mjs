@@ -174,3 +174,63 @@ test('ORG-TS-02: equal provider snapshot labels cannot erase known-at cohort dif
   assert.equal(replica.alias === primary.alias, false);
   // This is a synthetic negative control; no physical SQL/replica read occurred.
 });
+
+
+/*
+ * ORG-KH-01..04: a source's claimed knownFrom is NOT proof that TEI, a
+ * particular decision maker, or a consumer actually knew that fact then.
+ * This toy qualification is scoped to existence of a synthetic observation;
+ * it is not a receipt verifier, authority grant or business decision engine.
+ */
+function asKnownWitness({ claimant, decisionAt, sourceRevision, relationId, scope, observation }) {
+  if (!observation || observation.observer !== claimant) return 'unverified-observer';
+  if (observation.observedAt > decisionAt) return 'unverified-late-observation';
+  if (observation.sourceRevision !== sourceRevision) return 'unverified-revision';
+  if (observation.scope !== scope || !observation.relationIds?.includes(relationId)) {
+    return 'unverified-target';
+  }
+  return 'toy-existence-witness-only';
+}
+const historicalClaim = Object.freeze({
+  claimant: 'tei', decisionAt: '2027-06-15', sourceRevision: fixture.sourceRevision,
+  relationId: 'A2', scope: 'D1',
+});
+
+test('ORG-KH-01: imported source knownFrom cannot backdate TEI observation', () => {
+  const imported = { observer: 'tei', observedAt: '2027-07-05',
+    sourceRevision: fixture.sourceRevision, scope: 'D1', relationIds: ['A2'],
+    sourceClaimedKnownFrom: '2027-04-01' };
+  assert.equal(imported.sourceClaimedKnownFrom < historicalClaim.decisionAt, true);
+  assert.equal(asKnownWitness({ ...historicalClaim, observation: imported }),
+    'unverified-late-observation');
+});
+
+test('ORG-KH-02: archived upstream witness is not automatically TEI knowledge', () => {
+  const upstream = { observer: 'external-hr-system', observedAt: '2027-05-01',
+    sourceRevision: fixture.sourceRevision, scope: 'D1', relationIds: ['A2'] };
+  assert.equal(asKnownWitness({ ...historicalClaim, observation: upstream }),
+    'unverified-observer');
+  assert.equal(asKnownWitness({ ...historicalClaim,
+    claimant: 'external-hr-system', observation: upstream }), 'toy-existence-witness-only');
+});
+
+test('ORG-KH-03: prior TEI observation qualifies only a toy existence witness', () => {
+  const teiSeen = { observer: 'tei', observedAt: '2027-06-14',
+    sourceRevision: fixture.sourceRevision, scope: 'D1', relationIds: ['A2'] };
+  assert.equal(asKnownWitness({ ...historicalClaim, observation: teiSeen }),
+    'toy-existence-witness-only');
+  // No consumer delivery, human comprehension, Owner decision, or current Grant is proven.
+  assert.equal(Object.hasOwn(teiSeen, 'hostGrant'), false);
+  assert.equal(Object.hasOwn(teiSeen, 'consumerDisclosure'), false);
+});
+
+test('ORG-KH-04: same visible relation is not enough across revision or scope', () => {
+  const before = { observer: 'tei', observedAt: '2027-06-14',
+    sourceRevision: fixture.sourceRevision, scope: 'D1', relationIds: ['A2'] };
+  assert.equal(asKnownWitness({ ...historicalClaim, observation:
+    { ...before, sourceRevision: 'org-synthetic-r6' } }), 'unverified-revision');
+  assert.equal(asKnownWitness({ ...historicalClaim, observation:
+    { ...before, scope: 'D2' } }), 'unverified-target');
+  assert.equal(asKnownWitness({ ...historicalClaim, observation:
+    { ...before, relationIds: ['A3'] } }), 'unverified-target');
+});
