@@ -149,7 +149,7 @@ X-TEAの率の種類（中値・買値・売値）は引数の文字列でした
 
 - `TTB`（買値）・`TTS`（売値）・中値は、`rate kind`の列挙にします。
 - 換算の方向（外貨→自国通貨、自国通貨→外貨）を、能力の入力として明示します。X-TEAは呼出し側の使い方に依存していました。
-- 年度単位と日次・月次の区別は、率Dataの粒度（`period`）として宣言します。
+- 年度単位と日次・月次の区別は、率Dataの粒度（`period`）として宣言します。年次へのフォールバックは`Fallback`（既定`none`、`annual`で年次行）として宣言し、月次行の欠落を0で埋めません。
 
 ### 3.5 採番は「契約」として持ち、形式は提供元に置く
 
@@ -247,6 +247,7 @@ X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設�
 - [評価時点の決定性](EVALUATION_CONTEXT_DETERMINISM_2026-10.md)
 - [移行計画](../workstreams/XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)（WP8）
 - [受容要件](../../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md)（RQ-C3）
+
 
 
 
