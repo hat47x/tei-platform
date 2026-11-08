@@ -49,3 +49,62 @@ func TestFingerprintIgnoresDerivedRealizations(t *testing.T) {
 		t.Fatalf("derived realization changed fingerprint: %s != %s", fa, fb)
 	}
 }
+
+func TestCompareHistoryRejectsUnconfirmedStates(t *testing.T) {
+	db := core.MustCanonicalID("sales_core")
+	m := migration.Definition{
+		ID: "001", Database: db, Recovery: migration.RecoveryForwardFix,
+		Steps: []migration.Step{{Kind: migration.StepVerify, Description: "v1"}},
+	}
+	fp, err := migration.Fingerprint(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name  string
+		state migration.AppliedState
+	}{
+		{name: "unknown", state: migration.AppliedUnknown},
+		{name: "omitted", state: ""},
+		{name: "unrecognized", state: migration.AppliedState("unexpected")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := migration.HistorySnapshot{
+				Database: db, Tool: migration.ToolAtlas,
+				Entries: []migration.AppliedMigration{{
+					Database: db, ID: "001", State: tc.state,
+					Checksum: fp, Tool: migration.ToolAtlas,
+				}},
+			}
+			if got, err := migration.CompareHistory(db, []migration.Definition{m}, h); err == nil {
+				t.Fatalf("unconfirmed history state %q was accepted: %#v", tc.state, got)
+			}
+		})
+	}
+}
+
+func TestCompareHistoryStillReportsConfirmedFailure(t *testing.T) {
+	db := core.MustCanonicalID("sales_core")
+	m := migration.Definition{
+		ID: "001", Database: db, Recovery: migration.RecoveryForwardFix,
+		Steps: []migration.Step{{Kind: migration.StepVerify, Description: "v1"}},
+	}
+	fp, err := migration.Fingerprint(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := migration.HistorySnapshot{
+		Database: db, Tool: migration.ToolAtlas,
+		Entries: []migration.AppliedMigration{{
+			Database: db, ID: "001", State: migration.AppliedFailed,
+			Checksum: fp, Tool: migration.ToolAtlas,
+		}},
+	}
+	got, err := migration.CompareHistory(db, []migration.Definition{m}, h)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Entries) != 1 || got.Entries[0].State != migration.RepoFailed {
+		t.Fatalf("confirmed failure must remain failed: %#v", got.Entries)
+	}
+}
