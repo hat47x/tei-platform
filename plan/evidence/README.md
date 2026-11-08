@@ -61,7 +61,8 @@
 - [採番の発行・取消の取引結合の確認](XTEA_LOWCODE_NUMBERING_TRANSACTION_2026-11.md)（参照実装の試験記録。取引実装との結合と実DBは未確認）
 - [採番の予約と取引の結合の確認](XTEA_LOWCODE_NUMBERING_RESERVATION_TRANSACTION_2026-11.md)（参照実装の試験記録。InvokerのUoW共通化と実DBは未実装）
 - [採番規則の行識別の確認](XTEA_LOWCODE_NUMBERING_RULE_IDENTITY_2026-11.md)（参照実装の試験記録。例への追加は未実装）
-- [採番規則から発行までの一続きの経路の確認](XTEA_LOWCODE_NUMBERING_RULE_RESERVE_2026-11.md)（参照実装の試験記録。例への追加とCommand側UoWとの共通化は未実装）
+- [採番規則から発行までの一続きの経路の確認](XTEA_LOWCODE_NUMBERING_RULE_RESERVE_2026-11.md)（参照実装の試験記録。例への追加は未実装）
+- [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
 - [X-TEA受容要件の実装対応](XTEA_LOWCODE_ACCEPTANCE_TRACE_2026-11.md)（`AC-1`〜`AC-11`・`RQ-C1`〜`RQ-C3`の参照実装と未確認事項。受容判断は仮承認）
 - [実DBで実行時の判断を確かめる計画](REAL_DATABASE_RUNTIME_DECISION_PLAN_2026-11.md)（期間・権限・効果の判断を実DBで見る案。**NOT RUN**）
 
@@ -148,3 +149,4 @@
 
 
 - [`tei self-build`の§4外形](TEI_GO_SELF_BUILD_OUTER_SHAPE_2026-11-08.md)（workspace・intent・supply・state・outputの外形とSC0-01〜05の拒否条件を実装し、実Buildをchildへ委ねて記録する。`-intent`の解決・`-supply`の照合・L2は未実装。`qualified`は常にfalse。SB-C0 §4 / #2831）
+
