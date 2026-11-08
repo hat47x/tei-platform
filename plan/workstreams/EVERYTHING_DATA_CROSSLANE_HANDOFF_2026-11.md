@@ -1519,6 +1519,39 @@ QMLの独立Expectedは**試験前に確定**する。QML-01/02の相違は「le
 
 **順序上の停止線**：最初にD1選択Providerを実Invoke→同じ一Functionを#2586のData Contextへ実Read→QPCの一Ruleと読取範囲を比較する。#3486 Draftの物理Catalogはこの実Row Readの代用品ではない。#3497が採用されても、History Unknownの失敗を品質検査の合格に代用できない。実Read/夜間Job/性能/Owner受理はこの計画追補ではNOT RUN。新しいDataset、業務Rule正本、Reader/Runner/Host/Quality Registryを先行構築しない。
 
+
+#### 27.13.5 11月8日実装更新の統合判断――未知Historyの単一採用と実Function Readの証拠接合（2026-11-08追加）
+
+> **レビューした実装は既存PRとmainの証拠。本文は計画・比較票であり、実Provider品質検査はNOT RUN。** §27.13.4の合成`sales_order`/JSONL Static Expectedと、他レーンで実装が進んだNative Organization Case Queryを**別Fixture/別Functionのまま保持**。別々のCI成功を一業務Functionの一Attempt Conformanceに合算しない。新Runner、Migration Engine、Quality Registry、専用Host、新Provider SDKは作らない。
+
+**最新の限定実装証拠**：
+- [main #3506](https://github.com/hat47x/tei-platform/pull/3506)は実Workspace→Driver Command Bindingの局所接続済み。ただしCommand Bindingが読取り専用Functionの実DB Rowset/Consumer受信を証明するわけではない。[main #3479](https://github.com/hat47x/tei-platform/pull/3479)は外部Provider Sourceだけの改版でも使用資格に影響する負例を統合済み。Source Revision、Binding、実Artifact、Target/Consumerの各pinを分離する。
+- [Draft #3500](https://github.com/hat47x/tei-platform/pull/3500) exact HEAD `40c1acc5a2079d4e71aa9a2a9e9191779a3f48ba`では、Native Org `CaseRecord` Workspace→Browse Pattern→Resolver→既存Postgres Executor→逆順raw列の明示Semantic Mappingを**instrumented database/sql Connector**で実行。専用Native Case workflow CI [#42469646869](https://github.com/hat47x/tei-platform/actions/runs/42469646869)がcompleted/success。一方隔離PostgreSQLのopt-in実試験はDSN不在で**SKIP**。これは合成ConnectorでのSQL・bind・列対応の局所成功であり、実DB、Function Data Contextの現在Scope/Grant、実Consumerの全行受領、Nightly Quality PASSにはならない。別途Wails/StudioジョブのFAILがあり、全workflowの一律PASSも主張しない。
+- [main #3371](https://github.com/hat47x/tei-platform/pull/3371)のStudio Host Inspector経路は統合済み、[Draft #3381](https://github.com/hat47x/tei-platform/pull/3381)のCLI選択済みProvider接合は未統合。**Providerを選んだ証拠**と**実際にそのProviderの関数が呼ばれた証拠**は別。#3490のBOM選択・失効局所試験がmainに入っていても、当該実Function/Provider/Reader tupleをQualified BOMと呼ばない。
+
+**重複修正の整理――#2892を唯一の採用Ownerとし、二Draftを同時統合しない**：
+
+| 候補・現在の証拠 | 優位性 | 統合前に満たすべきこと |
+| --- | --- | --- |
+| [Draft #3489](https://github.com/hat47x/tei-platform/pull/3489)：未確定履歴を`RepoUnknown`として返す | Entry単位の状態を失わず、独立した局所Claimsが可能。独立7 caseの既知テスト/HEAD Healthは局所SUCCESS | **unknown-orphan反例**：`!inRepo && inHistory && a.State=AppliedUnknown`が現switchの先行分岐で`RepoOrphanApplied`となり得る。これは「適用済みorphan」と未確定状態の混同。Orphan/Failed/Unknownの順序と全ConsumerのUnknown安全停止・状態追加互換を固定 |
+| [Draft #3497](https://github.com/hat47x/tei-platform/pull/3497)：未確定履歴をエラーでfail-closed | 公開`RepositoryState`列挙を追加せず、unknown-orphanも比較を停止できる。初期HEAD HealthはSUCCESS | 一つのUnknownで全Comparisonを停止するため、既知の他Entryの局所結果を失う。Callerがerrorを黙って空`Entries`へ変換しないことを実Consumerで確認。追加unknown-orphan回帰テスト（後続HEAD）は別CI判定 |
+
+**両者の共通未解決**：History Readerが失敗・権限不足・部分取得で`Entries=[]`を渡すと、いずれも`RepoPending`と誤解し得る。Checksum欠落でも`AppliedSucceeded`から適用定義同一性まで保証されるとは限らない。History `CapturedAt`／実DB Instance／Source・Grant／Reader completenessを独立にAdmissionし、`Schema Compatible`、`History Applied`、`Current Data Conformant`、`Current Effect Authorized`を別Claimに保持する。正式選択は**#2892 Ownerによる一方式への統合・比較ケースの受入・exact HEAD CI/Consumer実測後**。PR #3489/#3497の同時mergeは禁止し、未選択側は差分/テストを取り込んだうえでsupersededへ整理する。
+
+**次の実Readを同一試行に収束する受入票（#2586／#2514／#2622、現時点NOT RUN）**：
+
+| Gate相当の局所段階（新Program Gateではない） | 必要なActual/Independent Expected | 未成立なら許される主張 |
+| --- | --- | --- |
+| **QR-A Authoring/Required** | 一Function（第一候補`order_entry.recent_orders`）のraw byte、Loader consumed/Role、Owner受理済みRule・Relation/必要Row/Field、独立Expectedを一つの`Source cohort`に固定 | Descriptor/CLI Contextの局所PASSのみ。Rule不在を推定しない |
+| **QR-B Selection/Invocation** | 実Query/SQL Source・bind shape/actual parameters、DB alias・Provider/Version/選択理由・実Invoker identity・実Binary、Current Grant | #3500のOrg Case instrumentationは実装参考。別Functionや選択だけの成功を実呼出しへ外挿しない |
+| **QR-C Actual Provider Read** | 許可された隔離DBでの**SKIPなし**実Read、Row/Field/NULL・Decimal/Scope・Snapshot、Reader end/partial/zero、Provider/Consumer実受領 | SQL生成/Mock Connector成功は保持。ただし実DB品質は`NOT RUN` |
+| **QR-D Quality Claim** | QR-A/B/Cが同一Function/Source cohort/実Attemptで閉じ、元Ruleと**独立Expected**で正負を判別。未取得と真の0行を別解釈 | `pass-in-scope`だけ、またはunknown。全業務Population合格とはしない |
+| **QR-E Background Cost** | #1130 read-only RunPlan/Result/Reportへ限定投影。Queue/CPU/IO/Replica lagとオンラインp95を別計測、Current Grantと開示を確認 | Job done／Worker exit 0／旧ReplicaのPASSから現在Primaryを保証しない |
+
+**小さな検証に絞る**：まず#3500の実行済み合成Probeの実SQL/param/逆順列を「Provider間実契約の局所基線」として使用し、QR-B/Cに必要な差分（real DSN・Provider/Instance・Read Cohort・Consumer受領）を列挙する。次に既存#2586の`order_entry.recent_orders`と同一Functionを使う**一回の実Read**でQR-A〜Dを試す。§27.13.4の`sales_order`+JSONL FixtureはDB ReaderのRaw/NULL/重複識別という**別局所検査**であり、その成功を`recent_orders`のOwner Accepted Meaning・実Function Data Context・全件品質へ合算しない。夜間品質JobはQR-Dが限定成立してから派生生成を検証し、オンラインGuardや認可を削除しない。
+
+**禁止する成功の合算**：#3500のsynthetic CI、#3489/#3497のMigration Go CI、#3479のSource失効試験、#3486のWorkbench physical metadata、#3490のBOM、#3371/#3381のInspectorを単純に加算して「Read→Quality E2E PASS」と書かない。品質EvidenceはSource、Owner Rule、selected/actual Provider、実Artifact、実DB Read、独立Expected、Result/Consumerの**必要集合**によってのみ昇格する。新しいHost/Registry、第二Oracle正本、KON必須配備、RAG/Lean必須化、正式新DSLを導入しない。
+
 ## 28. 一改訂のValue／Flow／Job／Consumer縦断――参照実行と外部実行を混同しない（2026-11-03横断追補）
 
 ### 28.1 並行する三つのOwner計画を、別の正本を作らずにつなぐ
