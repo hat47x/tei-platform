@@ -1552,6 +1552,33 @@ QMLの独立Expectedは**試験前に確定**する。QML-01/02の相違は「le
 
 **禁止する成功の合算**：#3500のsynthetic CI、#3489/#3497のMigration Go CI、#3479のSource失効試験、#3486のWorkbench physical metadata、#3490のBOM、#3371/#3381のInspectorを単純に加算して「Read→Quality E2E PASS」と書かない。品質EvidenceはSource、Owner Rule、selected/actual Provider、実Artifact、実DB Read、独立Expected、Result/Consumerの**必要集合**によってのみ昇格する。新しいHost/Registry、第二Oracle正本、別製品の必須配備、RAG/Lean必須化、正式新DSLを導入しない。
 
+
+#### 27.13.6 次の一歩を二段に固定：実DB Read先行・Function Data Context後続（2026-11-08再編）
+
+> **計画更新／当該品質E2E・実PostgreSQL・実性能比較はNOT RUN。** §27.13.4〜5のQR-A〜EとQPCを廃止しない。11/8の別レーン実装（[Draft #3500](https://github.com/hat47x/tei-platform/pull/3500)、[main #3479](https://github.com/hat47x/tei-platform/pull/3479)、[main #3530](https://github.com/hat47x/tei-platform/pull/3530)、[main #3510](https://github.com/hat47x/tei-platform/pull/3510)）を踏まえ、**最初の実DB試験を、実際にRunnerが存在する一つの経路へ寄せる**。設計・一般化のために別Runner/Second Provider/新品質DSL/Registry/常駐TEI Hostを作らない。
+
+**順序の具体的な修正**：
+
+| 時点・Owner | 使う既存入口・固定Expected | 何を初めて検収できるか／まだ検収しないもの |
+| --- | --- | --- |
+| **P0-R0（既存局所基線）** | #3500の同一Native `org_view.case_browse` Source→Workspace Loader→Browse Pattern→Resolver→既存Postgres Executor→明示Semantic Map。instrumented Connectorの`C1→D1`、`C2→D2`、`C3→0行`、物理列逆順・named parameterを既存Expectedで判定 | exact HEADの専用CI成功は**合成Connectorでの局所実行**。実PostgreSQL・Host Grant・Function Data Context・実全件品質保証ではない |
+| **P0-R1（最初の実DB Read）** | **同じOrg Browse Pattern、同じQuery/Mapping**で、#3500に既にある`TEI_ORG_CASE_PG_DSN`と`TEI_ORG_CASE_PG_CONFIRM_ISOLATED`による明示opt-in。使い捨てDB実名と対象表の既存不存在をガードし、実ReaderのC1/D1・C2/D2・C3真の0行を固定 | SKIPなしに実Providerへ到達した範囲のread-only技術Witness。**実DBのread成功は未実施**であり、暗黙にDSNを用意した/成功と書かない。実Reader、Scope/Grant・Row/Field・Read Cohort/End・Consumer受信がなければ当該主張は局所に止まる |
+| **P0-C（業務Functionへの接合）** | #2586/#2506の**一つの受理済みFunction**に対し、必要Source/Rule・Independent Expected、DB Alias、selected/invoked Provider、実Query byte/params、Data ContextのOutput Grain・結果集合/NULL/partial/epoch、実Consumer receiptを同一Attemptへ束縛。候補`order_entry.recent_orders`はOrg Browseと**別Fixture/別資格** | Function Data Contextの`Scoped Result`／用途相対Claim。Org Browse実PG成功と受注Functionの静的解析成功を**別Subjectなのに足し合わせて製品E2E PASSとしない** |
+| **P1-Q（初の派生品質検査）** | P0-Cで確定した同じ業務Rule、Reader cohort、独立Expectedを#2622 Data Operations→#1130既存read-only Jobへ。正例・違反・true zero・未取得/partial・Provider誤選択を対照 | `pass-in-scope`と違反/unknown/overdueを分ける。未Owner受理のデータ間Identity/Index/重複は業務違反としない。夜間PASSでオンライン必須Input/Effect Guardを削除しない |
+| **P2-Cost（有効な比較だけ測る）** | #3530の**Subject/Workload/Guardrail/Realization/Evidence**に合わせ、同一Rule・件数/分布・Snapshot/Scope・Target/Buildを固定したBaselineと最適化案を比較。p50/p95/p99、DB IO・roundtrip、Replica lag、失効/再Run、通常RuntimeのGuard負担を別計測 | 実測前の改善率、キャッシュ命中/Job exit 0だけから品質/速度向上を主張しない。Cacheの再利用可否と**現在の業務データ品質**は別 |
+
+**最初の不成立4例は新Runnerを作らず、既存Scenario/Oracleに加える判別条件**：
+1. **QBR-01 true zero vs incomplete**：`C3`検索は実Readerが終端まで読み切ったときだけ当該Scopeの0行と主張。Reader途中停止、RLSでの非開示、timeout、Tool Reply切断の場合は`unknown/partial`。**全社にC3が不存在**とは言わない。
+2. **QBR-02 selected≠actual**：宣言の`org_store`→Provider Bを要求、別DB Alias／Provider Aが実行。返却Rowが同じでも実行候補をreject。#3500のApplication Alias pre-dispatch拒否と、#1251/#951の実Plugin Invoker Identityは**別辺**。
+3. **QBR-03 Source-only drift**：TEI World/Function/SQL byteと結果が変わらず、imported Provider Source/Index、Trait Fulfillment、実Target artifact、現在GrantまたはData Cohortが更新。main #3479/#3490の失効規則に従い、**古い検査結果の意味・Consumerへの開示資格**を自動復活させず、必要な部分だけ再検証。Source行列を全部キャッシュ無効にする過剰失効も別費用として記録。
+4. **QBR-04 lowering/regression**：二明細各100、配送三件、誤JOIN後600・`SUM(DISTINCT)`なら100。#2586の独立Expected=200を共有するが、Go/SQL同じ誤変換の一致では合格にしない。Providerの部分ReadをFull Scanとして扱わない。実Targetと独立Expectedがなければ`NOT RUN`。
+
+**CIを業務資格へ転用しない（2026-11-08実測）**：[Draft #3497](https://github.com/hat47x/tei-platform/pull/3497) HEAD `c2d5d621…`のRepository Healthは**completed/failure**。ログ上`tei/internal/database/migration`（Go Unit Test）、`gofmt`、`go vet`、`tei validate`はPASS。失敗したのは`tools/repository-plan-check`のAI性能設計文書の索引漏れと`tei-ai-tuning-reference-ci.yml`におけるSHA Pin/timeout欠落。**現mainのREADMEとWorkflowには双方の修正が確認できる**が、旧exact HEADの失敗を事後的にPASSへ書き換えない。#3489の前HEAD Health SUCCESSと#3497の局所Unit PASSは別証拠。二つのMigration Draftの統合判断は§27.13.5/#2892に残し、実験用の単一品質Proofへ混入させない。
+
+**最小納品形**：新しい公開Schemaを定義せず、既存一改訂Evidence Packet（#1163）に、`fixed Subject/Rule/Independent Expected`、`Loaded Source/World/Source Index`、`selected vs invoked Provider + actual Binary`、`actual Query byte/Params`、`Actual Row/Field/Reader-end/Snapshot`、`Scope/Current Grant/Disclosure`、`Target Verdict`、`Job/Timing`の**必須／不足／非適用**を列として出す。完全に揃わない場合でも局所P0-R0/P0-R1の観測は残せるが、**P0-C/P1-Qの合格に足し込まない**。
+
+**採用状況**：上表は「何を実行するか」を整理した既存Owner間の引継ぎである。実PG DSN/Driver、P0-C、夜間Check、AI tuning、実Replica、LEAN、Owner Meaning受理はこの追補で**実行していない**。#3500/Orgの技術Witnessを別Functionへ移植したという主張をしない。Product Gate #1119の順序は変更しない。
+
 ## 28. 一改訂のValue／Flow／Job／Consumer縦断――参照実行と外部実行を混同しない（2026-11-03横断追補）
 
 ### 28.1 並行する三つのOwner計画を、別の正本を作らずにつなぐ
