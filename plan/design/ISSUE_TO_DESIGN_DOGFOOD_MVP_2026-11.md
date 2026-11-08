@@ -710,3 +710,25 @@ Ontology DSL／Decision Twin／外部シミュレーションSDKの本格製品�
 **最小実験の順**は、mainで合格済みの`submit`限定13 Reply/42 controlsはDesign側のSource構造回帰として維持しつつ、#3492のM1a限定実Readを別実験として計測→#2586でFunction stable IDと`recent_orders`の明示Binding有無を実コード・Sourceで確認→あれば同一Contextの三図/CRUDと実Product SQL Readへ、無ければ**このBindingの不足をfirst missing edgeとしてOwnerへ返す**。新しい共通Provider/Query Resolver、証明エンジン、Graph SSOTは作らず、#1180/#2514の独立Expectedと既存Scenarioにのみ検査を引き渡す。
 
 **資格上限**：今回の追補は#3492のDraft実装内容、main #3482の限定CLI証拠、既存#2586/#3262の実装計画を照合したdocs-only。新しいGo/CLI/Provider/Studio/MCP/DB実走・原子的多Reader Snapshot、Owner Meaning受理は**今回NOT RUN**。#3492の新HEAD専用CIがPASSになるまではM1a局所Goも未合格として扱う。
+
+<!-- tei3483-modelmap-query-host-qualified-20261108 -->
+### 14.33 全体Model Map・実Query・実Host分岐を別々の局所証拠から接続する（2026-11-08）
+
+**標準要求と実装資格を分ける**：[main統合 #3505](https://github.com/hat47x/tei-platform/pull/3505)／RQ-036はData/Function/Businessに加え、Event Group・State/Lifecycle・Operation/Pattern/Rule・Provider/Target/Pluginを**利用者が全体像から相互探索できる図表**として標準化した。固定／設定可／Hook拡張可／案件置換可／観測のみの位置を凡例で分け、標準フロー・改訂差分・合成後の実効フローを示す。「全体」はWorld・Source・Scope・Consumerに相対的であり、未取得/非公開/未実装を不存在と扱わない。
+
+[Draft #3518](https://github.com/hat47x/tei-platform/pull/3518)の**read-only typed Model Map M0**は、既存World/Source Index/CatalogからPattern→Data/Query/Capability、Relation/Field、Navigationの型付き参照を導出する実Goの初期片である。Resolved＝Catalogに一意の宣言があるだけで、OwnerのMeaning受理・Provider実Call・現在Grantではない。UnresolvedとAmbiguousを保持し、Coverageは常にpartial-projectionでEvent/State/実Hook/Receipt/Disclosureは未収録。最新HEADの一部限定CI成功は、Repository Healthの完了やRQ-036のMAP-01〜16全実装・Studio/SHO/CLIの全容表示の合格ではない。
+
+**実Readの一段進展**：[Draft #3500](https://github.com/hat47x/tei-platform/pull/3500)は実TEI組織CaseのNative Browse Pattern→既存Postgres Executor→名前付き引数→明示Result Mappingを、合成instrumented SQL Connectorで観測する局所Go試験へ接続した。[専用CI #42469646869](https://github.com/hat47x/tei-platform/actions/runs/42469646869)と[Health #42469646964](https://github.com/hat47x/tei-platform/actions/runs/42469646964)は固定HEADでsuccess。ただし隔離実PostgreSQLのオプトイン試験はSKIPであり、Tenant/Host Grant・実DB行・Function Data Contextは未資格。別SubjectのCase C1→D1から、#2586のorder_entry.recent_orders製品SQLのRead成功を推論しない。
+
+**実Actionの一段進展**：[main統合 #3506](https://github.com/hat47x/tei-platform/pull/3506)と[#3516](https://github.com/hat47x/tei-platform/pull/3516)は、実WorkspaceのPattern/Capability/Go Bindingから、既存Go Host Handler→Canonical Authorizer→Driver→合成Adapter実Callの有限7経路を検証した。#3516の[専用CI #42474818698](https://github.com/hat47x/tei-platform/actions/runs/42474818698)はsuccess、同HEADの[Health #42474818899](https://github.com/hat47x/tei-platform/actions/runs/42474818899)はfailure。202やAudit completed／合成Adapter到達は、本番Provider実行・Business Commit・現在のHost Grant・Client完全受領の証拠にならない。
+
+| 最初に埋める受渡し辺 | 最小の正負対と停止線 | 既存Owner |
+| --- | --- | --- |
+| **Model Map M0→M1と三視点** | 同名別Subject・多重Edge・Target未宣言・Partial CRUDを保持。M0でDeclaredが解決しても元Relation/Source Occurrenceを特定できなければSource reverse editingは不可。Event/State/実効Hookが抜けたMapを全容図と呼ばない | #1124/#2497/#3263/#3518 |
+| **Native Query→Physical Provider** | 実TEI Query/SQL byte/Alias/bind/明示Mapping、合成Connector到達と実PG SKIPを別欄に。別Functionの成功をrecent_ordersのR0へ横流ししない | #2586/#3500/#2622 |
+| **HTTP Host→Effect/Consumer** | Canonical認可拒否、Adapter前後例外、202後の不確実、Client未受領とReceiptを別々に判定。実Go HostテストからProduct DB/Runtime Permissionを推測しない | #3274/#1174/#1656/#2516 |
+| **AI性能改善の観測Consumer** | [main #3520](https://github.com/hat47x/tei-platform/pull/3520)の19合成Join対照（Source/World/Scope、Selected対Invoked申告、Grant/Window、Reply parts）は後段Packetの**入力整合**まで。本当にProvider Bが呼ばれた実Host Witness、独立Benchmark、実Collectorと性能改善はNOT RUN | #3271/#2582/#2514 |
+
+**利用者向けの共通Navigation契約**：各図表のNode/Edge/Actionから、Source Occurrence→Required/Observed/Missing→Accepted Meaning Revision→選択実装と実Call→Effect/Consumer→独立Expectedへ段階的に辿れるようにする。宣言だけのResolved、実行可能性、取得済みResult、業務効果を単一の「動作中」へ縮約しない。標準フロー・変更差分・実効フローの3面を保持し、変更できない固定部分と正当なPlugin Hookだけを明示する。M0→M1をP0-Mとして、同一Function実ReadのP0-Rと並列に進め、P0-Cは同Source/Scope/Revision/Read Cohort/実Consumerの一致する部分のみ接合する。
+
+**Evidence ceiling**：採用済みRQ-036とmain #3516/#3520、未統合#3518/#3500の実装・限定CI記録を既存計画へ反映したdocs-only更新である。新Go/実PG・Studio/SHO UI・Product実Provider/Grant/Effect・AI Benchmark・外部H3・正式Owner受理は今回NOT RUN。新Diagram正本・万能Resolver/Host/Runnerや独立Expectedの第二正本は作らない。
