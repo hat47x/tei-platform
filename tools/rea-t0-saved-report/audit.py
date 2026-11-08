@@ -109,7 +109,7 @@ def jsonl_audit(path, *, object_collection):
         if isinstance(record, dict) and record.get('$rea') == 'jsonl/v1'
     ]
     if any(kind == 'error' for _, kind in controls):
-        return {'framing': 'reported-error', 'rowsSeen': len(records)}
+        return {'framing': 'reported-error', 'rowsSeen': len(records) - len(controls)}
     if not object_collection:
         return {'framing': 'bare-array-without-completeness-proof', 'rowsSeen': len(records)}
     if not records or not isinstance(records[-1], dict):
@@ -118,7 +118,7 @@ def jsonl_audit(path, *, object_collection):
     if terminal.get('$rea') != 'jsonl/v1' or terminal.get('type') != 'metadata':
         return {'framing': 'missing-metadata', 'rowsSeen': len(records)}
     if len(controls) != 1 or controls[0] != (len(records) - 1, 'metadata'):
-        return {'framing': 'extra-control-record', 'rowsSeen': len(records) - 1}
+        return {'framing': 'extra-control-record', 'rowsSeen': len(records) - len(controls)}
     emitted = terminal.get('records', {}).get('emitted') if isinstance(terminal.get('records'), dict) else None
     if not isinstance(emitted, int) or isinstance(emitted, bool) or emitted != len(records) - 1:
         return {'framing': 'count-mismatch', 'rowsSeen': len(records) - 1}
