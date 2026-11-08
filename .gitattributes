@@ -106,3 +106,6 @@
 
 # Runtime alternate paths output is hashed as raw bytes by its README.
 /plan/evidence/RUNTIME_CARRIER_ALTERNATE_PATHS_2026-11-08/** -text
+
+# Unpinned path purpose scan is hashed as raw bytes by its README.
+/plan/evidence/RUNTIME_UNPINNED_PATH_PURPOSES_2026-11-08/** -text
