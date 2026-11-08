@@ -915,3 +915,48 @@ RMT E01/02の独立Requiredには、単に名前が見つかっただけでな�
 既存#2586が**E Route Product BuildBrowse→Selected Query→SQL原Byte+status実Bind→sales→sales_core→physical Provider→order_id/customer_id Rows→Function Context/Consumer**を一試行で実証する。#2514の独立Expectedと#1163の同Attempt Evidenceを使用。その後に第22章のne／sort／page20・非出力status・明細完全集合L、#2516 Disclosure、#1125二入口/Handoff、#1174 Receipt KとResource Oへ進む。
 
 #3477/#3482/#3478/#3485はmainの**限定実証**、#3479/#3486は**未統合Draft**。製品E SQL Read・旧Windows Driver・実Host Provider/Studio/SHO Consumer受領・Owner正式Meaningは今回NOT RUN、G1/G2 UNQUALIFIED。本Draftへの変更は本Markdown一ファイルのみ、mainに統合された#3481 Master PlanやScenario正本へ重複変更しない。直前HEAD 20144e15e2e7a5329165524396828051fab9b205 の[Health #42461008246](https://github.com/hat47x/tei-platform/actions/runs/42461008246)はcompleted/success。新HEADのHealthは別判定。
+
+## 24. 11/8追加：Functionは導出View、Historyは実Schemaでない、UI値は実Action値でない
+
+第22〜23章の先行関係を変更しない。P0-R1最初のEの`recent_orders`は、実Query SQLのSource byteと`status`引数を物理Providerへ渡し、独立ExpectedのHeader行をFunction Context／Consumerが受領した一Attemptでのみ成立する。**概念Modelの宣言、Plugin能力選択、Schema移行履歴、表示UI、HTTP応答の個別PASSをこの一Attemptに足さない**。本章は他チャットのEverything is Data・共通Application API・Migration/Workbench・標準表現型・三視点/REA・Harnessの横断成果から、追加の不整合を独立テストへ配分する。新Function Registry、第二Runtime/Query/Host/Authority/Schema正本を導入しない。
+
+### 24.1 導出Functionの同一性と実Operation/ProviderのIdentityを分ける
+
+現行の[ADR-0048](https://github.com/hat47x/tei-platform/blob/main/plan/adr/0048-shared-application-api-and-transport-adapters.md)を前提に、[PR #3495](https://github.com/hat47x/tei-platform/pull/3495)が現mainで整理したように、業務Functionを新しいCanonical Element/Registryへ格上げするのでなく、**既存Application／Pattern／Query／Command／Procedure／Rule／Dataの参照関係から導かれるView**として扱う。CLI/MCP/Web/Desktopは共通Application APIの別Transportであり、結果形が一致しても**Callerの選択したOperation、現在のProvider、実Invocation、Clientへの完全配送**は別資格。#3495はdocs-onlyであり、共通APIの全Transport実装完了ではない。
+
+RMT Eでは`FunctionView=order_entry.recent_orders`の宣言存在、`Pattern→Query`のIdentity、選択SQL byteと`status`値／演算子、実Provider Instanceと行、Consumer Replyを**異なるWitness欄**で観測する。#3482の13 CLI/42限定Controlsが証明する`sales.order.submit`のCapability/Application/Source存在は、E Browseの実SQLやK/O Effectには流用しない。三視点[Draft #3492](https://github.com/hat47x/tei-platform/pull/3492)は実WorkspaceのQuery／Relationを`operations.InspectSubject`で読む限定M1a testを加えたが、**Graph/CRUDのProduct導出やSource逆編集、Function実Provider Readではない**。旧#3263を二重統合せず、P0-Mの同一Source候補として並走する。
+
+### 24.2 Migration Historyの未確定状態を適用済みSchemaへ昇格させない
+
+2026-11-08のmain`internal/database/migration/history.go:CompareHistory`を直接Readすると、履歴`AppliedFailed`とChecksum不一致を除く`default`で`RepoApplied`が返り得る。よって**AppliedUnknown、State空、未知StateでもChecksumが一致すると、成功したDDLと誤認する経路がある**。さらにHistory取得自体がUnavailable/Partialなのに空`Entries`と見なされた場合、`RepoPending`の判断も実欠損と混同する。`CompareHistory`のコメント自体が「移行履歴の比較はActual Schemaの一致を推論しない」と明記している。
+
+同じOwner #2892に[Draft #3489](https://github.com/hat47x/tei-platform/pull/3489)（結果に`RepoUnknown`を追加して下流に渡す方式）と[Draft #3497](https://github.com/hat47x/tei-platform/pull/3497)（`CompareHistory`が未確定Stateを**errorでfail-closed**する方式）が並行し、**結果型とConsumerが異なる**。両者を独立してそのままmergeしない。どちらを採るかは既存#2892/#2887 Ownerで、Workbench/CLI/Schema ApplyのConsumerが未確定を実行不可にできるか、`AppliedFailed`/`RepoDiverged`/Orphan/Pendingの従来意味を維持できるか、履歴Readerの独立Scope/Completenessを扱えるかで判断する。両Draftの最新exact-head CI/実DB Applyは今回未合格・未統合として扱う。
+
+| RMT/DBクライアントの独立対照 | 入力 | 受入上限 |
+| --- | --- | --- |
+| **MH-01 偽Applied** | 同Migration ID＋同ChecksumだがHistory StateがUnknown/空/未知 | `RepoApplied`や実Schema適合にしない。方式はerror／明示Unknownいずれもfail-closedなら候補 |
+| **MH-02 偽Pending** | History ReadがUnavailable/Partialなのに`Entries=[]` | 完全な空履歴ではない。履歴取得範囲・Provider・Grantを別票にする |
+| **MH-03 偽同版** | History Succeeded＋Checksum一致、Actual Table/Column/Constraintが違う | 履歴成功≠Actual Schema。物理Catalogの独立Readと列・型・制約比較が必要 |
+| **MH-04 事故の先送り防止** | Fixtureが既知Schemaで実ReadできるがMigration Toolの本番資格は未取得 | **P0-R1の隔離PG fixtureを別途固定し、実Catalog/Rowsを読む実験は先行可能**。正式DB移行/Cutoverの適格は別Gate |
+
+[Draft #3486](https://github.com/hat47x/tei-platform/pull/3486)のFK/Index Workbench構造保持はread-only Physical Snapshotの**有限Fake Catalog投影**であり、実PostgreSQL Schema取得・REA Business Role・DDL Applyの証拠ではない。これをRMTの`sales.order`テーブルの実存在/許可の代用にしない。DB初期化が固定Fixtureなら、そのDDL原Byte／実Catalog／実Statement/Rowsを一Attemptで計測できる。Migrationプラットフォーム全機能の完成を初回Header ReadのHard Gateにはしない。
+
+### 24.3 UIの整数・表示値とActionへ実渡した値を別Witnessにする
+
+[Draft #3491](https://github.com/hat47x/tei-platform/pull/3491)は現mainのReact Starter`reference/ui-customization/web-react/starter.mjs`で`row`を正規表現検証後`Number(values.row)`へ変換する経路を指摘。`9007199254740993`がIEEE754整数化で`9007199254740992`になり、任意の後段`invoke`へ原値と異なる番号が渡り得る。既存`action-port.mjs`は`Number.isSafeInteger`で独立拒否するため、**現在のorder_entry専用Action Portで誤ったDB更新が起きた証拠ではない**。#3491の早期拒否とNode負例は現時点Draft・新HEAD CI未確認。並行React修正との統合は別Owner。
+
+RMTの正負対照は、入力Raw文字列、型付き値/BigInt／Decimalの精度契約、実Action Invokeの引数、実ProviderのPK/Row Identity、UI/Consumer表示を**区別**して記録する。大きな行番号・採番・金額/数量の丸めは、表示時の仕様・業務単位／精度／Owner Meaningで決める。`MAX_SAFE_INTEGER`超は汎用JS Numberなら拒否または損失のない別表現を用い、丸めたままActionに渡さない。**RMT最初のRead-only Header E01/02**にUI Starter修正を新しいHard dependencyとせず、更新・二入口・明細Selectionや採番を検収する時点の独立受入に置く。
+
+### 24.4 Plugin/BOMのRule Producer差をImported Sourceと切り分ける
+
+[Draft #3490](https://github.com/hat47x/tei-platform/pull/3490)は[main #3350](https://github.com/hat47x/tei-platform/pull/3350)のPlugin能力選択規則変更によって、論理Capabilityと表示Rule Versionが同じでも`ruleFingerprint`が異なる過去Evidenceを流用しない局所Go試験を候補化。**Provider Source rawの変更**を扱う[Draft #3479](https://github.com/hat47x/tei-platform/pull/3479)とは異なる失効原因である。Consumer World/SourceIndex/ModelRevision、Imported Provider Raw occurrence、Plugin選択Rule Producer、実Build Artifact/Target、Host実Grant/Receiptを**相互代入しない**。#3479は照合中にさらにHEAD更新があり、最新実CIはqueuedなので前版PASSを現在HEADへ移さない。
+
+既存#951/#1251のProvider選択・実Callと#3267のBOMで扱い、P0-R1では**実選択Provider＋SQL実行結果**を先に計測する。選択済みCapabilityや同Ruleバージョンだけで実Link/Invokeを語らない。BOM 2 Provider版×2 Consumer版の四tupleは、初回E Read後のTarget互換性検収で独立Expectedにより比較し、先行の単一Readを無資格へ押し戻す一括Gateにはしない。
+
+### 24.5 最短順序と反証の保存先
+
+**実施順を維持**：#2586（E Product SQL raw byte＋`status` bind→隔離PG actual Provider→Header 2列Rows→Function Context/CLI Consumerの最初の不足辺）→#2506/#2514/#1163（page、隠れ`status`、対象集合L/Scope、独立Expectedと受領）→#1125/#1174（同Rule二入口、EffectUnknown、Receipt K／別Connection O、Owner Business B）へ進む。
+
+新たなMH-01〜04は既存#2892/#2887の履歴と実Schema、UI精度負例は既存#997/#1000/#2500、Plugin Rule失効は#1251/#3267、Graph M1aは#1124/#2497/#3492へ各Owner別に渡す。#3495のFunction派生View・共通APIは移植計画の機能Identity方針に取り込むが**新Canonical Kindや単一Hostへ組み換えない**。Read-only Source/Contextがpartialでも有限な探索・独立Expectedの用意は可能。ただし必須DB/SQL/ScopeやTool/Consumer実受領が未観測ならProduct ReadのPASS、G1/G2の受理はしない。
+
+**今回の作業範囲**：現mainのMigration History/React Starter/Query BrowseをGitHub Sourceで確認し、関連PRの実/未統合/CI結果を確認したうえで、このRMT Markdown一ファイルだけ更新。新Go/Node/実E Product PostgreSQL/Windows旧X-TEA Driver／UI実ReactDOM／Host Provider／外部SHO・H3／正式Owner Meaning試験は**NOT RUN**。前HEAD 4d9168e6c86f34eb4502f0dcc93517b9d066f60c の[Health #42463387148](https://github.com/hat47x/tei-platform/actions/runs/42463387148)は本作業確認時queued。旧HEADのCIを今回の新HEADへ転用せず、新HEADのCI完了まで`docs-branch-health-unqualified`。G1/G2はUNQUALIFIED。
