@@ -58,7 +58,7 @@ func verifyNativeCaseReadWithPostgres(t *testing.T, loaded workspace.Result) {
 	}
 	t.Logf("actual PostgreSQL CaseRecord read: db=%s server_version=%s", dbName, version)
 	if _, err := db.ExecContext(ctx,
-		"CREATE TABLE public.org_case_records (case_id TEXT PRIMARY KEY, handling_unit_id TEXT NOT NULL)"); err != nil {
+		"CREATE TABLE public.org_case_records (case_id VARCHAR PRIMARY KEY, handling_unit_id VARCHAR NOT NULL)"); err != nil {
 		t.Fatal("cannot create isolated CaseRecord fixture")
 	}
 	defer func() {
