@@ -379,6 +379,18 @@ jobs:
           assert r["case"]["observed"]["sales.order.lines.line_number_unique"] == "satisfied"
           assert r["case"]["executionMode"] == "generated-pinned"
           assert len(r["negativeControls"]) == 3
+          binding = r["contextToScenarioBinding"]
+          assert binding["generatedWorldMatchesDesignContext"] is True
+          assert binding["freshBeforeCandidate"] is True
+          assert binding["freshAfterPinnedRun"] is True
+          drift = binding["sourceOnlyDrift"]
+          assert drift["observedCanonicalWorldUnchanged"] is True
+          assert drift["observedSourceIndexChanged"] is True
+          assert drift["staleDesignContextRejectedByConsumer"] is True
+          assert drift["originalWorldPinnedScenarioStillExecutesInIsolatedCopy"] is True
+          assert drift["AtoBtoAOriginalFingerprintReturns"] is True
+          assert drift["intermediateHistoryOrCurrentGrantProven"] is False
+          assert binding["atomicReadOrExternalDeliveryProven"] is False
           assert r["independentBlindHoldoutApplied"] is False
           assert r["ownerMeaningAccepted"] is False
           assert r["scenarioSSOTChanged"] is False
@@ -390,6 +402,8 @@ jobs:
               "- 実TEI CLIの verify→generate→check→generated-pinned run を完了。",
               "- 行番号ゼロだけがnot-satisfied、数量正・行番号一意はsatisfied。業務拒否と技術エラーを区別。",
               "- 嘘Expected、異なる値のFixture、Plan生成後Fixture変更の3負例は実CLIで拒否。",
+              "- **Context→Scenario World束縛**：Context FPと生成Plan SHAの一致、実CLIを使ったSource Indexの生成前・Pinned実行後の版を再照合。",
+              "- **Source-only drift**：隔離Sourceの末尾LFでWorld不変／Source Index改版を観測。既存World PinでScenario自体は成功しても、旧Contextの採用は拒否。A→B→Aの履歴は証明しない。",
               "- **外部AI Harness/Skillからの盲検テスト生成ではない**。Issue #3273既知候補の初回実行に限定。",
               "- Contextはpartial/exploration-only。Scenario Owner採用、C1、全要件・実DB/Hostは未資格。",
           ]

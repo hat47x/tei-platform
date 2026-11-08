@@ -261,4 +261,37 @@ A〜Hは既存TEI CLIが返したJSONの**test-onlyメモリ上のコピー**を
 
 ベース#3326／#3324の各PR専用CI成功を、統合候補の実CI成功と取り違えない。PRのexact HEAD、統合後main push、実BinaryとEvidence Artifactは別々に確認する。統合候補が確認できた場合に限り、**#3324/#3326の別々のDraftを重複統合せず、後継PRへ置換してclose/unmerged**とする。監査証拠は各既存PRとmainの参照を残す。
 
-**現時点**：本文は統合変更の受入規定。新統合HEADのCI結果を検収するまでは**NOT QUALIFIED / NOT MERGED**。T1-Bの生成AI盲検発見、C1/全NFR、外部Harness Reply End、実DB/Host、Owner受理・G4 Self-buildの新実証はまだない。
+**main統合後の更新（2026-11-08）**：本§9の統合変更は[PR #3354](https://github.com/hat47x/tei-platform/pull/3354)によりmain `39d4debae386442c11149c7d3995bcfffa711c20`へ統合され、[main push CI #42392054820](https://github.com/hat47x/tei-platform/actions/runs/42392054820)は**success**。この成功は11実CLI応答・32局所Controls・既存Scenario6＋既知T1-Aの限定範囲で、完全設計受領／Owner意味受理の資格ではない。T1-Bの生成AI盲検発見、C1/全NFR、外部Harness Reply End、実DB/Host、Owner受理・G4 Self-buildの新実証はまだない。
+
+## 10. Context→Scenario Replay：Source Index改訂と実行時点の資格を分離する（2026-11-08）
+
+### 10.1 問題と先行検証
+
+[#3354](https://github.com/hat47x/tei-platform/pull/3354)の11実read-only CLI・32局所Control／既知T1-A Caseは、**Contextを取得した時刻と、Scenarioを実行した時刻の同一性**までは保証しない。実`cmd/tei/scenario.go`の生成Planは、Scenario byte、Canonical World、Plugin Lock byte、Fixture byteをPinする。一方、**Source Indexの改訂（Source byte/位置・ReferenceのRole）をそのPlanはPinしていない**。業務モデルが同一でもSourceの末尾改行でSource Indexが変化する反例があり、実行結果の一致をSource最新版やMeaning再受理へ昇格させてはならない。
+
+旧[Draft #3383](https://github.com/hat47x/tei-platform/pull/3383)の[専用dogfood CI #42396735765](https://github.com/hat47x/tei-platform/actions/runs/42396735765)は**completed/success**（実TEI CLIによるWorld不変・Source Index改版・旧Context拒否・既存World Pinの実Scenario実行を観測）。ただし同PRの**全体Repo Healthは`gofmt -l . is empty`でfailure**、mainもその後多数更新された。旧PRをそのままmergeして本計画・CI新Packetを上書きしない。**主張は専用dogfoodの実Runに限定し、現在mainへ非競合部分だけを移植して別CIで再検収する**。
+
+### 10.2 必要契約／実行する負例
+
+| 観測の箇所 | 参照する既存正本・実Product操作 | 受入条件／棄却条件 |
+| --- | --- | --- |
+| Context取得時 | 既存`context_gate.py`が保存した`observations.observedFingerprints` | `partial/exploration-only`、全Required資格は`false`のまま。WorldとSource Indexの両指紋を記録 |
+| Candidate作成直前 | **実TEI CLI** `model catalog`の再取得 | World/Source Indexが上記Contextと一致する。保存済み`partial`フラグ単独では許可しない |
+| Candidate生成 | 実CLI `scenario generate` → `worldSha256` | Context World FP = `sha256:` + 生成PlanのWorldSHA256（同じCanonical World JSONをGo側がSHA-256） |
+| 実際のPinned実行後 | 実CLI `model catalog`の再取得 | World/Source Indexが依然Contextと一致する。2度のReadは**原子的Snapshotではない** |
+| Source-only変更 | 一時Workspaceコピーの`semantic/sales/validation.tei`末尾へLF追加 | 実CLIで`World FP unchanged`かつ`Source Index FP changed`を観測し、**旧Contextを拒否** |
+| 元World Pinを使うScenario | 上記一時Workspaceに対し生成済み旧Pinned Argvを実行 | World/Lock/Scenario/Fixture Pinだけでは**実行が成立し得る**。成功を旧Source Indexの新鮮性へ昇格しない |
+| Source A→B→A | コピー内の原byteへ復元・実CLI再取得 | 元FP復帰は認めるが、途中の変更歴・現在のConsumer/Host Grant、Owner意味受理、実H3 Tool受領を証明しない |
+
+今回の変更は**試験専用`t1_line_number_candidate.py`と既存CIの受入条件だけ**。**第二Source Reader/Parser、Scenario SSOT、独自Host、権限Registry、追加Artifact Storeは作らない**。新しい観測は公開合成Workspaceの隔離Copyのみを変更し、正式Scenario・実運用DBは変更しない。3つの既存独立Expected偽装負例（期待値・Fixture・Pin）は保持し、Source改訂の負例を実Go EvaluatorコードMutation kill数に合算しない。
+
+### 10.3 他の進行レーンへの引渡し
+
+- **[#3262](https://github.com/hat47x/tei-platform/issues/3262)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)**：Source/Role/Revisionの最新性と、テストの真の検出力／独立Holdoutを別Gateとする。T1-Bでは未知のRequiredとHoldoutを生成側に伏せ、実Product Evaluatorのコード変異に対する検出率を別採点する。
+- **[#3365](https://github.com/hat47x/tei-platform/pull/3365)**：Scenario部分目録の未観測/未試験とC0/C1/NFRの分母は別Draftが担当し、今回の`probe.py`は変更しない。
+- **[#3361](https://github.com/hat47x/tei-platform/pull/3361)／[#2509](https://github.com/hat47x/tei-platform/issues/2509)**：CLIを逐次11回取得しただけでは実外部HarnessのTool Request/Reply/Part/EOF完全受領・開示Grantは成立しない。
+- **[#3372](https://github.com/hat47x/tei-platform/pull/3372)／SHO・REA・KON**：逆解析で得た物理FK/UNIQUEと業務Relation、ObservedとAcceptedを区別する。同じSource Identity/Revision/Meaning/DependencyでContextへ渡す設計候補に利用できるが、実Workbench→三視点編集→SHO再開・同一モデル生成は別E2E受入。
+- **[#3267](https://github.com/hat47x/tei-platform/issues/3267)／Plugin**：選択済み能力／Lock byte一致を同一Consumerの実Load/InvocationやExact Tuple Verified BOMへ置換しない。現在Scope/Target/Grantは別。
+- **[#3360](https://github.com/hat47x/tei-platform/pull/3360)／[#2831](https://github.com/hat47x/tei-platform/issues/2831)**：Stage1生成**参照ビルドドライバ**によるStage2再入は実証済みだが、`cmd/tei`本体／TEI Build Intent GraphでのL2/L3・G4資格は未達。Context FreshnessからG4成功を推論しない。
+
+**受入ゲート**：新main基底のPR HEADで実11 CLI／32局所Control＋既存6 pinned Scenario＋T1-Aと**上記Source-only改訂の新実CLI negative**がPASSし、同PRの差分に旧main計画やWorkflow Packetの逆行がないこと。専用dogfoodと全体Repo Healthは別々に結果を記録し、統合後main pushを再実行して確認する。**検証前の新PR成功は未主張**。C1/全業務・NFR要件、Blind T1-B、実DB/Host、Owner Accepted Meaning、現在Grantは引き続き未資格。
