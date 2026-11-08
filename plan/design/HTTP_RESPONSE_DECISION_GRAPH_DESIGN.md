@@ -496,7 +496,40 @@ Source Indexを前段P0-Sで読めても、このDriver解決は`Source Index→
 
 **本PRの実CIが成功するまではHDG-R01〜04はNOT VERIFIED**。Go Host packageの本Runner成功後も成立するのは限定Resolverの正負例だけ。次に独立Target Provider/Adapter実呼出しを確認し、HTTP Handlerの有効経路とDecision Graphを突合する。
 
-## 18. 参考資料と採否
+## 18. 2026-11-08 P0-I：実Go Host→既存Driver→合成Adapterの同一HTTP Attempt観測
+
+### 18.1 前段の合格と、本段階の識別対象
+
+前段[PR #3506](https://github.com/hat47x/tei-platform/pull/3506)の[専用CI #42470312187](https://github.com/hat47x/tei-platform/actions/runs/42470312187)（Node 7/7、Go Host package全PASS）、全体Health #42470312240、脆弱性確認 #42470312239 は**いずれもcompleted/success**。この結果により、実Workspaceからの`ResolveCommandBinding`によるPattern→Capability→Application-scoped Binding解決は局所資格を得た。ただし前段の成功を、新しいAdapter呼出し成功へ流用しない。
+
+現行実装を追った結果、すでに`driver.Resolver.InvokeCapability`が存在し、Canonical `Capability`の`CustomGoBinding`を再解決して、呼出し側の`BindingAdapterResolver.ResolveAdapter`へ渡し、`capabilityinvoke.Invoke`でAdapter本体を実呼出し・Result契約を検証する。`NewCanonicalActionAuthorizer`は実Reference Workspaceと`security.authorize`の既存Adapterを利用する。したがって追加のAdapter選択Core／Web Command Engineは不要。
+
+[新しいGo Test](../../reference/web-composition/go-host/e1_real_workspace_driver_invocation_test.go)は、この既存経路に合成`sales.order.submit` Adapterを挿入し、**実HTTP Handler内で**`NewHost`→実`NewCanonicalActionAuthorizer`→既存Driver `InvokeCapability`→合成Adapter `Invoke`→HTTP Status→Host Audit を一つのリクエスト内で観測する。ビジネス側Adapterは**テスト用関数**であり、DB書込・実外部Provider・永続Receiptは呼び出さない。
+
+| Witness | 固定Expected（Callback順は独立宣言） | 認定すること |
+| --- | --- | --- |
+| HDG-I01 | Session→CSRF→実Canonical Authorize→Binding Adapter resolve→Adapter invoke→Audit、HTTP 202 | 実Hostから実Driverへ到達して正しいBindingで**合成Adapterの実呼出し**。HTTP 202は業務Commitの証拠ではない |
+| HDG-I02 | Viewer認可拒否、403。Command Adapter resolve/invoke=0 | `security.authorize`の既存業務拒否はコマンド実行へ進まない |
+| HDG-I03 | CSRF拒否、403。Authorize/Command Adapter=0 | Host owned guardによる短絡を保持 |
+| HDG-I04 | Adapter resolverが障害、503。Invoke=0 | 解決失敗をBusiness deniedへ変えずExecution ErrorとしてHTTP側で処理 |
+| HDG-I05 | Adapter Invokeが障害、503。Invoke=1 | Adapterまで到達したが結果は不確定。作用なしとは推定できない |
+| HDG-I06 | Session拒否、401。Authorize/Command Adapter=0 | 未認証から業務権限を借用しない |
+| HDG-I07 | AdapterがCanonical result mode違反、503 | Result契約違反を正常Business Outcomeへ昇格しない |
+
+**重要な負例**：HDG-I05のHTTP 503やAudit Stage=errorは、Adapterへ渡った後の**業務副作用なし**を証明しない。HDG-I01の202/Audit completedも、Clientが全応答を受信したこと、業務上の永続Commitまたは独立Observationを証明しない。今回の`BusinessResult`はResultの**契約形状**だけを検証する。本番Credential、実OIDC、Browser Cookie、真のCSRF署名、外部DB/Service、分散再送の安全性は対象外。
+
+### 18.2 他チャットとの接続を限定資格で表す
+
+- **Plugin-first／Trait／Verified BOM**：宣言だけの`Binding resolved`から一歩進み、合成Adapterが実`ResolveAdapter`で返され、実`Invoke`が呼ばれたことを**同一HTTPリクエストのCallback列**で記録する。ただしAdapterはtest doubleでありPlugin Registry／Provider Artifact検証・署名・現在Grant・BOM exact tupleの資格ではない。既存Service CarrierとAtom TraitのOwner（#951/#3267/#3279）を維持する。
+- **Client Reaction／Effect Unknown**：HTTP 401/403は認証・承認条件の現在の拒否に関わる。503はService障害と業務効果の不確定性を分ける必要がある。Adapter実Invoke後の503は**実際の適用有無がunknown**とし、Clientによる非冪等Commandの自動再実行を禁止する次の検証の入力へ渡す（#1158/#1174/#1656）。
+- **Context Query／Graph・SHO**：実Driver経路を通ることは、HTTP Graphの**全Node/Edge・Guard BranchをSource Readerがenumerate**する証拠ではない。現在のCB実証をDesign Context Required集合、Source Occurrence、Graph/Table/Traceへ公開するには#3262/#3482/#1124/#2497側の実Consumerと同時に検査する。#3492三視点Graph/CRUD実Source入場は確認時点openであり、未マージ成果を現行main正式仕様と呼ばない。
+- **SEI／KON・組織/Workflow**：候補判断、Authority判定、現在のUser・Operation Grant、効果発生、独立観測、文書保存の時点と出典を分離する。同じLifecycleを外部Pluginが拡張する場合も、「Auditの宣言名」だけで実Terminateを保証せず既存Hostの所有する必須処理を残す。第二のHost、分散Transaction Coordinator、PluginレジストリをHTTP分野へ持ち込まない。
+
+### 18.3 次のP0の最短一辺
+
+今回の局所Go Witnessが**実CIで成功した場合のみ**、`Host request→Canonical Authorization→Driver binding→Adapter invoked→Host audit`を合成Referenceについてqualifiedとする。その次は`Route/Action/Contract ID`と`Binding`に加え、実Pluginのselected / artifact verified / provider invoked / effect receiptを同一Attemptで確認する。実World Fingerprintの一致は現在Authorityを意味せず、Grant RevocationやPlugin/Toolchain改版時にはEvidenceを再評価する。Client Reactionまでの縦断検証で一つでも未取得ならその欄をunknownのまま提示する。実装全体のProvider、Graph、BOM、Execution Receiptへの採用Gateは引き続き未到達。
+
+## 19. 参考資料と採否
 
 - [Liberator repository](https://github.com/clojure-liberator/liberator) ― ClojureのREST decision modelの先行例。ライブラリ移植ではない。
 - [Webmachine mechanics](https://webmachine.github.io/mechanics.html)、[Decision flow](https://webmachine.github.io/diagram.html)、[Resource functions](https://webmachine.github.io/resources.html) ― decision flow・契約・処理に分離する参考資料（古いHTTP版があるため仕様の正本にはしない）。
