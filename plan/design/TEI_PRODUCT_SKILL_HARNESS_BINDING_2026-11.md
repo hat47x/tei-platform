@@ -591,3 +591,69 @@ H3-A0が失敗した場合は既存SEI Reader/Writerの原因と、TEI Sourceの
 | **HF-41** | HV-3既存Harness+Skillが独立Expectedを満たす | HV-4独自Loopを棄却。実H2/H3資格とCostを比較。#2509/TAI #168 |
 
 **Critical Path**：P0は実Source/FunctionのDと比較適格H2（T/A）を**並列**に進める。H3-A0はSource参照の保存再読取という一つの縦切りで独立実施。Lifecycle/Flow/Pluginの追加実装は既存契約で表現不能な反例から起票し、独自Harness・新Host・新中央Registryを前提にしない。**HF-36〜41、実H3-A0/A1/A2、Plugin Hook実行、Flow図→Generator、HV-4比較は今回NOT RUN**。
+
+
+---
+
+<!-- harness-question-relative-csw-trial-20261108 -->
+## 14. 2026-11-08：問いQに対する十分性、CSW探索の増分価値、DSH適格試行の実行票
+
+### 14.1 D/T/G/A/Eは問いQ相対で評価し、空の実Readを不存在の証明にしない
+
+[SEI Cognitive Method #767](https://github.com/hat47x/sei-cognition/issues/767)と[main統合 #770](https://github.com/hat47x/sei-cognition/pull/770)の合成Referenceを接続する。#770で5 Module・計34件の**ローカルPython限定PASS**が記録された。GitHub Actionsは当面停止のため、CI成功／実SEI Product・TEI SQL Provider・実Hostの証拠にはしない。局所条件を検査する`test_negative_evidence_closure.py`は実行器でも実証明エンジンでもない。
+
+既存のD（必要Source）、T（実受領）、G（独立評価）、A（Audience）、E（Effect）を別の資格としたうえで、**Q = Question/Claim**ごとに必要なPredicate/Relation/対象Universe/Scope/Provider route/時点を独立Requiredとして確認する。これを新しい共通型・Gate・Storageにはしない。とくに否定Claimは片側非対称である。
+
+- `R=[]`というResultだけでは、未取得・対象外・部分結果・全件完全取得・非可視を区別できない。完全な対象集合、実Read、QuestionのPredicate/Relation、Provider routeとSnapshot、現在の開示資格が確認できない`NOT EXISTS`は**unknown**を維持する。
+- 返却値が同じ空配列でも、非出力WHERE Predicate／Relation occurrence／新規Dependency追加でQの意味や対象集合が変わる。Consumer World/Source Index Fingerprint、Tool exit 0、SQL IR中の依存候補だけで完全外延を宣言しない。
+- 一方、**許可された同じQの対象集合**に属する実Witnessが1件あれば、全件列挙がなくても当該`NOT EXISTS`への反証になり得る。ただし旧Predicate/Scope/GrantからのWitnessを現在Qの証人に流用しない。
+- SEI/CSWの責務は「根拠が足りない、次に何を確かめるか」の提案と理解の改善。必要な実Query/Source/Read/Host Grantの証拠はTEI/各Productが発行し、TAIは受領/現在のActivity再資格を扱う。SEIの`conditionally-absent-in-fixture`を業務的な「存在しない」へ昇格させない。
+- Audienceが非開示のPredicate/非可視IDによって判定不能なら、公開Consumerには許可済みProjectionで`unknown`を示し、内部の詳細拒否理由／原Path／件数／Secret-derived digestを無許可で出さない。判定を隠すために不存在を偽装しない。
+
+### 14.2 CSWを通常開発の上位承認者にせず、増分価値を独立に実証する
+
+CSW（探索・構造的批評のMethod）は、YIC/TEIの既存工程やOwner意味受理を置換しない。認知・研究段階の産物を`Hypothesis → Design Candidate → Validated → Accepted → Implemented → Observed`として区別するが、**この進行表は説明/評価用であり新しいTEI Core Workflow状態・実行許可の正本にはしない**。未検証のCSW仮説をコード/Policy/業務Meaningへ自動昇格させない。
+
+同一Taskで次の対照を設ける。
+
+| 条件 | 導入するもの | 観測する増分 |
+| --- | --- | --- |
+| **B0** | 通常のAI開発（既存Tool/Skill） | 基準となる発見・実装/テスト可能性・時間・費用 |
+| **B1** | 汎用の発想/独立批評Method | B0比の未知Required、反例、誤判断、冗長性 |
+| **B2** | CSW固有の構造探索/批評 | B1比の新規で検証可能な構造的発見、正当な保留、実採用効果 |
+
+B0/B1/B2は**HV-0〜4のHarness構成差と別軸**。モデル/Tool/Source/Task・独立Expected・担当者へ見せる情報を揃え、B2だけ追加で非公開Expectedを読める状態にしない。発見数の多さではなく、`独立レビューで採択された実質的に新しい欠落/反例`、`既存重複`、`危険な誤昇格`、`実装・テスト可能性`、`経過時間/Cost/人手`を対照する。CSWの優位が証明されなければ**任意の研究Method**として残し、TEI build/CI/ReviewerのHard Gateにしない。
+
+DSH採用順は**既存Skillの直接利用→標準Skill機構→明確な不足時だけPlugin/薄いAdapter→それでも不足すれば独自Harness検討**。新しいPluginごとにGoal/Tool/送出/OS権限が拡大するかを実測し、宣言上のread-only、別Worktree、モデルの自己評価を安全証拠にしない。
+
+### 14.3 初回H2/H3の実行票を、既存TAI #168の固定条件へ束縛する
+
+[TAI #168](https://github.com/hat47x/tai-pleroma/issues/168)と[Skill適合 #488](https://github.com/hat47x/tai-pleroma/issues/488)の基準を変更せず、**新しく比較適格な四Sessionを事前割付**する。既存のDSH h2-08では実CLI32起動・56 Tool Call/55 Resultを限定観測、H3-A/BではProduct Skill本文5,482 bytesと参照文書7,710 Result bytesの**実Read**があったが、物理的なWorktree越境Read、同条件不備、Reply不完全等のため正式な**比較適格H2/H3=0/4**。歴史的観測を「H2が未実行」「H3 Skillが一度も読まれていない」と書き換えず、正式資格へも昇格させない。
+
+固定4試行の開始前に記録するもの：
+`trialGroup / pre-registered H2→H3→H3→H2 order / public Task+hash / independent Expected held outside Model/Tool reach / TEI binary digest / DSH version+effective config / actual OS principal+FS/net policy / source Workspace+root+revision / tool allowlist+result budget / model+sampling / Skill root+raw digest / audience+current grant / output sink coverage / ITT denominator / stop&retry policy`。
+
+最低限の実観測順（実際の新規試行は別Ownerで実施）：
+
+1. **Preflight OS**：公開合成canaryを対象に許可内Source Readが成功し、禁止されたSkill/Expected/Worktree越境Readが**実OSで拒否**されることを正負で観測。OS policy適用失敗や拒否未観測ならTrial本体へ進めず、そのSetupをFAILED/PREFLIGHTとして記録する。Worktree分離だけを物理隔離扱いしない。
+2. **Egress/保管**：Model input、`dsh_session_log`追加request field、in-flight/backlog、Session JSONL・連結圧縮ログ、子Process/別Socket/DNS/Telemetry/CI Artifactを**実観測できた範囲だけ**固定。Mock Endpointに届かなかったことを全出口の非送出とせず、未観測出口はunknown。可視公開結果と保護された原Evidenceを分離。
+3. **Transport**：同一AttemptのTool request/CLI argv/stdout/stderr/Result parts/endを照合し、`requests ≠ replies`や8,192byte切断のような欠測を`complete`と数えない。外部HarnessのTool failure、モデル不正、OS deny、Product診断、Consumer未受領を別原因にする。
+4. **Blind evaluation**：H2とH3の各Runについて回答が実際にReviewerへ到達したこと、Modelが独立Expectedに接触していないことを検証。割付後の失敗・不正モデル応答もITT分母へ残す。事後に成功試行だけ選別しない。H3ではSkill root/referenceの実Readと**判断価値の増分**を別に採点する。
+5. **Outcome/再開**：現在Grantの変化や旧RawのResume入力再出現、Source revisionだけの変更を別反例にする。CLI Tool起動/exit0がBusiness Operation成功、SEI継続、実Provider Effectを意味しない。
+
+**P0とP1の順序**：初回比較適格H2の一件成立がP0。4件が成立して初めてH2/H3比較品質を述べる。CSW B0/B1/B2、SEI Question十分性の実Product Probe、EKI実Worker配送、SHO/KON実Handoffは**P1以降の並列試験**。これらを最初のH2の追加阻害条件としない。
+
+### 14.4 検収用の最小差分（HQ-42〜49）
+
+| ID | 一条件変更の反証 | Owner／合格上限 |
+| --- | --- | --- |
+| **HQ-42** | 同じ`R=[]`で対象Universe/取得完了を変更 | SEI #767/#770は合成基準、TEI #2586/#2516は実Read/全件条件。実不存在は未実証 |
+| **HQ-43** | 非出力Predicate/Relation occurrenceだけ変更、Resultは不変 | TEI #2634/#2586とSEI #767。旧不存在Claimの再利用を拒否 |
+| **HQ-44** | 一件の現行Witnessと旧版/対象外Witnessを対照 | 問いQとRead/Scope/Grantの一致が必要。SEI #767、TEI #2516 |
+| **HQ-45** | B0/B1/B2で新規反例の発見/重複/誤昇格を比較 | CSW研究・TAI #422/#488。CSW採用を事前確定しない |
+| **HQ-46** | OS隔離下で許可Read成功／禁止Expected Read拒否 | TAI #168/#232、TEI #2515。実OS拒否を前提にH2開始 |
+| **HQ-47** | Tool Requestを受けるがReply欠落、または受信途中切断 | TAI #168、TEI #3262/#2509。Tool実起動と完全Consumer Deliveryは別 |
+| **HQ-48** | H2→H3→H3→H2の途中失敗・再実行・Goal不能 | ITT分母と事前割付を保持。TAI #168、TEI #2509 |
+| **HQ-49** | H3でSkill本文は実読込、独立回答品質は不改善 | Product Skill Loadと採用価値・正式比較資格を別判定。TAI #488/#422 |
+
+**成熟度の区別**：SEI #770の局所34件は合成Methodの限定PASS。TAI既存Tool/Skill Readは歴史的な技術Witness。HQ-42〜49の**新しい実験、CSW B0/B1/B2、比較適格H2/H3四Session、実OS/全Egress拒否、実Provider負の証明、Owner意味受理はNOT RUN**。AI発見→業務採用の新中央認可、第二Query/Method Engine、別Harness Runner/Hostは作らない。
