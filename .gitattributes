@@ -142,3 +142,6 @@
 
 # Service carrier connect reference output is hashed as raw bytes by its README.
 /plan/evidence/SERVICE_CARRIER_CONNECT_REFERENCE_2026-11-09/** -text
+
+# Stall-visibility observations are hashed as raw bytes.
+/plan/evidence/DSH_SESSION_LOG_STALL_VISIBILITY_2026-11-09/** -text
