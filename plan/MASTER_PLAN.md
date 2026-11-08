@@ -306,7 +306,7 @@ reload / Conformance
 
 ### 2026-11-07 Plugin-first D1：実CLI／Studioの最初の不足辺を固定する（実装・受理前）
 
-[main統合済みPR #3277](https://github.com/hat47x/tei-platform/pull/3277)の[Plugin-first移行計画](design/PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md) D0〜D6と、[#1016の構成→実使用Witness](https://github.com/hat47x/tei-platform/issues/1016#issuecomment-6704666016)、[#1251の実Go D1引継ぎ](https://github.com/hat47x/tei-platform/issues/1251#issuecomment-6704672969)を、**作業領域Gの一つの実装切り口**として接続する。main統合[#3300](https://github.com/hat47x/tei-platform/pull/3300)のD1 Fit/Gap（AS-01〜12）と[#3367](https://github.com/hat47x/tei-platform/pull/3367)の追加条件（AS-13〜20）を検収正本とし、[Desktop Draft #3352](https://github.com/hat47x/tei-platform/pull/3352)および[Plugin Contract Draft #3369](https://github.com/hat47x/tei-platform/pull/3369)と重複する仕様を増やさない。既存#1119のG0〜G4／B/C判定を変更しない。
+[main統合済みPR #3277](https://github.com/hat47x/tei-platform/pull/3277)の[Plugin-first移行計画](design/PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md) D0〜D6と、[#1016の構成→実使用Witness](https://github.com/hat47x/tei-platform/issues/1016#issuecomment-6704666016)、[#1251の実Go D1引継ぎ](https://github.com/hat47x/tei-platform/issues/1251#issuecomment-6704672969)を、**作業領域Gの一つの実装切り口**として接続する。main統合[#3300](https://github.com/hat47x/tei-platform/pull/3300)のD1 Fit/Gap（AS-01〜12）と[#3367](https://github.com/hat47x/tei-platform/pull/3367)の追加条件（AS-13〜20）を検収正本とし、[Desktop Draft #3352](https://github.com/hat47x/tei-platform/pull/3352)および[mainのPlugin-first設計§16](design/PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md)（旧Draft #3369は閉鎖・未統合）と重複する仕様を増やさない。既存#1119のG0〜G4／B/C判定を変更しない。
 
 **コード上の出発点（2026-11-07、GitHub mainの静的照合）**：
 - `internal/operations/inspect.go` の `InspectSubject(root,subject)` はWorld/Source Indexのread-only投影で、`worldFingerprint`、`sourceIndexFingerprint`、`sourceStatus`を返す。ただし**Required Domain ClosureがすべてLoaded/Parsed/Boundされた証明**でも、expected Revisionでの実行前CASでもない。
@@ -355,12 +355,27 @@ reload / Conformance
 **Owner／完了線**：#1251/#1158/#1824がD1コードと2実Consumer、#951/#1016は正式Selection、#3262はContext必要集合とReply受領、#2514/#1180はExpected/Scenario、#2515/#2516はSink・Disclosure、#943/#2831はBuild、#3267はBOMを担当する。[main統合#3368](https://github.com/hat47x/tei-platform/pull/3368)はPlugin選択≠Capability選択≠一意Provider解決≠Required Trait履行として3つのReference負例を追加したが、Go実行・Trait履行の完了は未証明。#3278/#3279はRequired/Default/manual/hintと合成の義務のOwnerとし、Go固定Kindや新Trait Runnerを作らない。Graph/三視点/Function表現型（#1124/#2497/#2507）は同じ出典Factの別投影であって、それを実Selection/実Effectの証拠にしない。
 
 
-**今回の計画から外へ委譲した詳細**：AS-01〜20の逐次・Provider／Scope負例は[main #3300/#3367のEvidence](evidence/PLUGIN_FIRST_D1_AUTHORING_ROUTE_FIT_GAP_2026-11.md)に帰属し、本節のPGD-01〜06はそれらを独立に再定義するテスト群でなく**横断の完了票**とする。原子的Traitの組合せ詳細とTC-16〜20は[main #3368](https://github.com/hat47x/tei-platform/pull/3368)、Provider×Consumer版Matrixは[#3267](https://github.com/hat47x/tei-platform/issues/3267)／[Draft #3297](https://github.com/hat47x/tei-platform/pull/3297)、CLI/StudioのOfferとFunction内表現Bindingは[Draft #3338](https://github.com/hat47x/tei-platform/pull/3338)、Studio/Wailsの実Frontend資格は[Draft #3352](https://github.com/hat47x/tei-platform/pull/3352)が保有する。複数Issue/PRの件数やPASSを一つのContract/Functionの合格へ足し合わせない。
+**今回の計画から外へ委譲した詳細**：AS-01〜20の逐次・Provider／Scope負例は[main #3300/#3367のEvidence](evidence/PLUGIN_FIRST_D1_AUTHORING_ROUTE_FIT_GAP_2026-11.md)に帰属し、本節のPGD-01〜06はそれらを独立に再定義するテスト群でなく**横断の完了票**とする。原子的Traitの組合せ詳細とTC-16〜20は[main #3368](https://github.com/hat47x/tei-platform/pull/3368)、Provider×Consumer版Matrixは[#3267](https://github.com/hat47x/tei-platform/issues/3267)／[Draft #3297](https://github.com/hat47x/tei-platform/pull/3297)、CLI/StudioのOfferとFunction内表現Bindingは[main統合#3338](https://github.com/hat47x/tei-platform/pull/3338)、Studio/Wailsの実Frontend資格は[Draft #3352](https://github.com/hat47x/tei-platform/pull/3352)が保有する。複数Issue/PRの件数やPASSを一つのContract/Functionの合格へ足し合わせない。
 
 **P0開始時の不変条件**：既存`internal/plugin/runtime/service_carrier.go`は`application-runtime`以外のScopeを拒否する。Tooling/Authoring Inspectorの実装は当該制約を緩めず、既存`composition` SelectionとHost-owned`studiohost` Seamの不足辺だけを修正する。画面がSourceを読めたことと、Function Data ContextやOwner Accepted Meaningを満たすことは異なる。
 
-**今回の上限**：main統合済み参照結果の引用と、実Consumerに残る不足の計画反映。PGD-01〜06を同一HEAD・同一attemptで実CLI/Studio/Go/Frontend/Host検証したわけではない。新Contract Schema/ABI、実B呼出、G4 L3、BOM組合せの本番資格、Owner業務受理は **NOT RUN／NOT PROVEN**。
+**当時の計画変更の上限**：PGD-01〜06を同一HEAD・同一AttemptのCLI/Studio/Frontend/Hostで検証したわけではない。なお後続[main #3440](https://github.com/hat47x/tei-platform/pull/3440)で**cmd/tei自身の限定3段Self-build L3実測**は成立したが、Plugin Bの実Link/Call、Build Source全閉包、現在のGrant、2×2 BOM、Owner業務受理への資格移転はない。実B呼出のProduct二Consumerは引き続き **NOT PROVEN**。
 
+
+#### 2026-11-08 D1の実装差分：局所Provider Callから実二Consumerへ（最新mainに基づく引継ぎ）
+
+後続で[ADR-0048（main #3439）](adr/0048-shared-application-api-and-transport-adapters.md)が採用され、CLI/MCP/API/Web/Desktopは**共通Application Operationの意味**とTransport表現を分ける方針になった。[main #3458](https://github.com/hat47x/tei-platform/pull/3458)は`validate`のCLI/MCP間での限定投影同値に成功したが、`inspect`のPlugin経由実行・二Consumerの資格を代替しない。
+
+| 段階と責務 | 現時点の実装候補・確認対象 | 合格としない状態／次の不足辺 |
+| --- | --- | --- |
+| **S0 Typed Port**（#1158/#1824） | [CLI Draft #3381](https://github.com/hat47x/tei-platform/pull/3381)の`inspectWorkspaceJSONWithService`、[Studio Draft #3371](https://github.com/hat47x/tei-platform/pull/3371)の`RootServices.Inspection`。指定Service欠落・出力契約不一致・未許可Root時はfail-closedを検査 | 両方**未main統合**。通常CLI `main.go`はBuiltin経路。型付きService注入が可能でも実Plugin選択をしたことにはならない |
+| **S1 selected Provider（局所）**（#951/#1016/#1251） | CLI Draft #3381の`internal/inspectoradapter`が既存Registry/Selection/SelectedCoordinator/Host guardを使ってB選択→B実Go Call／B選択→A登録拒否／epoch/Grant失効を**局所in-process**で検査する候補 | 合成ID/digest・登録Functionだけでは配布Binaryの実Member/Entry/Conformanceを証明しない。正常なReturnが得られてもTarget実Entry・Authorityは別 |
+| **S2 CLI/Studio実Consumer**（#1251/#1824） | HostだけがTrust Rootとexact Selectionを保持し、**通常起動のCLI dispatchと実Wails Studio Bridge**を同じ契約・各自のTargetへ接続する。[Draft #3378](https://github.com/hat47x/tei-platform/pull/3378)の従来Direct経路の比較は移行前Baselineとしてのみ利用 | UIがCLI JSONを表示しただけ／factory nilでBuiltinへフォールバック／別revisionから得た同値JSONを二Consumer成功としない。B selected→A Callは同値ResultでもFAIL |
+| **S3 Source・Artifact・Effect実証**（#3262/#2600/#3267） | [main #3482](https://github.com/hat47x/tei-platform/pull/3482)の限定Function Required（13実CLI Reply/42局所Controls）と[main #3477](https://github.com/hat47x/tei-platform/pull/3477)のSource-only失効を、実S2 Attemptで得たSource/Provider/Artifact/Scope/独立Expectedへ照合 | 13 Replyは原子的SnapshotでなくFunction実行資格もない。[Draft #3479](https://github.com/hat47x/tei-platform/pull/3479)の外部Provider raw/Manifestのみ改訂、[Draft #3490](https://github.com/hat47x/tei-platform/pull/3490)の選択規則fingerprint変更は追加の失効反例であり、Consumer World FPの一致だけでfreshにしない |
+
+**次の一件をS2の実装と検収に固定**：同じ公開`reference/workspace`・同じ`semantic-data:sales.order`・exact`authoring-tool` Contractを用い、(a)CLI通常dispatch、(b)Studio Hostの実Bridgeから、それぞれ実選択BのGo関数へ入ったことを**別のCall-site記録**で確認する。BをAへ取り違える／Serviceなし／Source ABA／Host Guard失効／部分応答の各負例では、旧Builtinへ自動fallbackせず診断を返す。公開されるCall証拠は受信先の権限と#2516のDisclosureに従い、内部Root/Secretを誤開示しない。実バイナリとWebViewの適格性はS3で別に測る。
+
+**予定の帰属**：S0/S1は各Draft PRの実Go試験、S2のProduct統合は#1251/#1824、S3のDesign Requiredは#3262、履歴Sourceと再利用判定は#2600、版Matrix/BOMは#3267、Trait実装義務はmain #3480/#3278、Scenario/独立Expectedは#1180/#2514。新しいResolver/Registry/Host/Scenario SSOT、HTTP常駐必須化、Legacy `application-runtime` CarrierのScope緩和は行わない。本節自体は計画の更新で、S2/S3の実試験成功・Owner Meaning受理を**主張しない**。
 
 ### トポロジーと複合図表の評価順（未採用の追加検証候補）
 
