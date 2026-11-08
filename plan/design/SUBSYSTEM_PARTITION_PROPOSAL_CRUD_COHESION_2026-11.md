@@ -315,3 +315,75 @@ A(f)が空なら分割候補自体が不成立。A(f)がすべてのOwner group�
 | SP-26 | 同じCRUD表だが旧実装と新生成物の業務結果が異なる | CRUD一致だけで互換/意味適合のPASSを出さない |
 
 **優先順**：P0-aでAccepted Producer/Scope/coverageの実際の欠落を先に解く。その後P0-bの小規模独立Referenceで構造的な下界・不変条件を確認し、Studio図表/P2、旧資産移行・複数Target/P3へ進む。既存#1119/#1124/#2831の直接P0に新たなHard Dependencyを置かない。上記のSP試験は**すべて提案・NOT RUN**。
+
+
+## 20. P0 Source/Owner bridge：現mainで実在する入力境界（2026-11-08、設計／NOT RUN）
+
+優先は新Solverではなく、**受理済みSourceに結び付いたCRUD/Owner事実の取得資格**である。Source Index、管理Source集合、実Reader消費、Parser/Role、意味受理、Current Grantは別Claimであり、単一のfingerprint一致から全てを推論しない。
+
+| 静的確認対象 | 現在確認できる契約 | 不足を埋めずに残す範囲 |
+| --- | --- | --- |
+| [reference-subsystem-cud main.go](https://github.com/hat47x/tei-platform/blob/main/tools/reference-subsystem-cud/main.go) | WorldからsemanticsのData IDとapplicationsのPattern IDを読む。Owner/FunctionIO/ProcedureStepは別途callerが与えるcandidate facts | checker自体に受理済みOwner/FunctionIOのProducer/Authority認定はない |
+| [Reference README](https://github.com/hat47x/tei-platform/blob/main/tools/reference-subsystem-cud/README.md) | World/facts bytesのdigest一致、Procedure Source Indexの位置候補検証 | candidate digest一致はAccepted Source・完全なFunction CRUD・実Effectを証明しない |
+| [#1127](https://github.com/hat47x/tei-platform/issues/1127) | UI向けderived CRUD Operationの検討・限定試験 | Derived Operationを受理済みFunction direct writeへ自動転用しない |
+| [#2620](https://github.com/hat47x/tei-platform/issues/2620) | Required／Declared／Resolved-Consumed／Observed-DisclosedのClaimを分離 | Loaderが読んだRoleを解析済み／受理済み／現在開示可能とみなさない |
+
+以上は**このcheckerの静的事実**である。TEI repository全体にProducerが存在しないと断定せず、#1120の型付き関係、#267のAcceptance、現在のReader・Role・Source Indexを実際に照合して不足を確定する。
+
+### Bridgeが渡すべき照合項目（新しい正本Schemaではない）
+
+- typed Subject / Scope / Workspace / current accepted revisionと、関係のData・Function・Procedure粒度を固定。
+- Claim相対Required Source closure、選択済みSource、実Readerが読んだbytes、Parsed/Anchored関係を突合する。未読込・未Parse・未知SQL/Trigger/ETLの理由を区別。
+- Owner/Function direct CRUDはAccepted宣言か・caller候補か・source抽出かを区別し、適用時点・Scope・未解決を保持。
+- Evidence/projectionのバージョンと実Consumer Attemptを結び、Source digest一致だけではApprovalやCurrent Grantを出さない。
+- 意味上の宣言CRUDの完全性と、実装上のNative SQL/Trigger/Job/外部Writerの完全性は**別の閉包**で評価する。宣言側のclosed-worldはactual effectの不存在を証明しない。
+
+**P0の合否**：既存Sourceからaccepted ownerとaccepted function-data operationの両方を同一Scope/Revisionで構成できるか実測する。不可の場合は「未結線」と報告し、合成factsをAcceptedとして改名しない。
+
+## 21. 候補の証明資格：Feasible・Lower bound・Optimalityを別表示
+
+固定Ownerの既知Write集合から得たLB_fixedは**下界**であり、ゼロ達成の実現可能性やOptimizer最適性の証明ではない。
+
+| Claim | 証拠 | 誤認を防ぐ条件 |
+| --- | --- | --- |
+| Feasible | 具体的な所属割当と全hard constraintの確認 | 実現可能だが最適とは限らない |
+| Lower bound | 対象edge・Owner group重み・allowed membership・固定前提 | 計算上の最小下界であり達成可能とは限らない |
+| Optimality | feasible候補値が証明済み下界に一致、または独立の全列挙/厳密証明 | heuristicの探索終了だけでは最適性を認定しない |
+| Infeasible/Unknown | 矛盾する制約の証跡、または探索/Sourceの不足 | 未探索と数学的不可能を混同しない |
+
+**SP-27の合成反例**：Owner(A)=S1、Owner(B)=S2、fAはAのみU、fBはBのみU。fA/fBとも所属候補はS1/S2。独立したFunctionごとのLBは双方0となる。しかしmust-link(fA,fB)により二機能が同じサブシステムに所属しなければならないなら、S1でもS2でも必ず直接越境Uが1本残る。ゆえにLB=0はゼロ達成可能の証明ではない。二候補の独立全列挙Oracleで、合成例の最適越境本数が1であることを確認する（試験自体は未実施）。
+
+Candidateの説明には、固定Problem identity、Source closure/解析Policy、受理済みOwner/Function scope、allowed membership/hard constraints、原Direct Write集合、所属配置、更新辺のInternal/Cross分類、LBと適用仮定、solver実装/版、feasible/optimalityの独立Witness、Unknown/Disclosure状態を含める。これは既存Proposal/Assessmentへの要求であり、第二Canonicalや新Core列挙型の採用ではない。
+
+## 22. 秘密Edgeが候補順位・Scoreから漏れる問題（Disclosure）
+
+設計図から秘密のData nodeを消すだけでは不十分である。**private write edgeが変わることで公開候補の順位・Score・診断数・表示サイズが変われば、秘密の存在を推測し得る**。全体Optimizerと低権限Consumerの資格を分ける。
+
+- Current Policyが事前にQualifiedした**Public Sliceだけ**を公開向けAnalyzerへ渡す。Private Worldを丸ごと最適化し、最後にRendererで秘密nodeだけ非表示にする方法は公開非干渉を保証しない。
+- 公開Sliceで求めた候補は公開Slice**相対**の候補であり、全世界の最適化結果と呼ばない。秘密制約に依存する全体候補は許可されたConsumerだけに扱わせる。
+- 低権限Consumerへ「非公開Writerがある」「非公開制約で候補が除外された」などの件数・拒否理由を漏らさない。必要であれば既存#2516 Policy結果で説明の範囲を制限・拒否する。
+- 二世界W0/W1で公開Sliceは同一、private write edgeのみ異なるとき、低権限の候補・順位・Score・件数・診断・図形・DOM/ARIA・Tool JSONが同一であるか実Producer→実Consumerを比較する。Timing/caching副作用まで保証したと主張しない。
+- Source改版・Grant失効をConsumerが観測したら旧表示と旧結果の新規開示資格を**別々に**確認する。未観測の即時失効を保証せず、#1124/#2516の既存Ownerに委譲する。
+
+公開可能な依存閉包と「未解析のSource」は別の観点であり、private edge数をunresolved件数に転写しない。「図中になければ無い」は対象と公開可能閉包が確定した場合に限定する。
+
+## 23. Design Decision Reviewと最小受入順
+
+Studio/CLI/AIで共通の設計判断Reviewは、**既存Source Proposal/Impact/Acceptanceのread-only Projection**として実現する。候補配置を比較する時点から、Ownerの業務判断、実行資格、物理Target適用を分離する。
+
+最小のReview表示に必要なのは、比較可能なProblem binding、提案所属差分、Hard制約、元のDirect Write edge集合、越境再分類、LB/Feasible/Optimalの根拠、影響を受けるFunction/Data/Procedure/ER/Source、Unresolved/Disclosure状態である。SourceをR10→R11→R10と変更した場合、digestが一致しても過去のAttempt/Accept/Grantが現在有効であるとは限らない。旧Proposalの自動再受理はしない。
+
+| ID | 反証入力（すべて設計候補、NOT RUN） | 期待する結果 |
+| --- | --- | --- |
+| SP-27 | 各Functionの独立下界0、must-linkによりゼロ不可 | LBと実現可能性を分離、全列挙Oracleで最小1を検証 |
+| SP-28 | heuristicが停止し改善候補を返した | 可行性は示せても最適性証明は出さない |
+| SP-29 | caller作成factsとWorld digest一致 | accepted Owner/FunctionIOの根拠にはせずcandidate-only |
+| SP-30 | LoaderはSourceを読んだがRole/Required closure未確定 | 未解析を「更新関係無し」にしない |
+| SP-31 | 同一Public Slice、秘密write関係だけ異なる二世界 | 低権限の順位・Score・診断・図形等が変化しない |
+| SP-32 | 全世界の最適候補から秘密nodeだけ消去 | Public-only再計算またはPolicy拒否。全世界の最適性表示禁止 |
+| SP-33 | Source R10→R11→R10のABA、同digest・異Attempt | 旧Review/Selection/現在権限を自動復活させない |
+| SP-34 | 所属変更後の外部Relation/手順が未再評価 | 図の一致だけで変更・意味受理完了としない |
+| SP-35 | 一部Subsystemの変更による差分再評価 | unaffected側を最小再評価できても、依存閉包不足を隠さない |
+| SP-36 | 公開向けScoreから非公開Writer数を推定できる | 既存開示境界に従って出力不可・不変を検証 |
+
+**実装提案の順**：(a) accepted Producerと現在の#1132 checkerのGapを実Sourceで固定、(b)SP-27/28の二機能二Dataの独立全列挙Reference、(c)候補/影響表示はSource修正なしのread-only Consumer、(d)Disclosure二世界のProduct受入は既存#2516/#1124へ引継ぐ。新Optimizer/Core/Host/Policy engineを先行実装しない。既存#1119 Gate、Studio直接P0、セルフビルドP0へHard Dependencyを増やさない。
