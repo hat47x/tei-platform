@@ -743,5 +743,5 @@ CC-25の前半はSUI #3396の**実Product非単射**に基づく帰結だが、�
 
 **既存Owner**：TEI #2533＝問い相対の不足・次Probe比較、#2514＝独立Expected、#2516＝Consumer/Disclosure、#2497＝非単射Projection、SEI #767＝Method。実Producer/公開ProjectionはSUI #3397/#3396、Markdown実Reader/H1はSHO #21/#16、編集・保存実EffectはSHO #24/#25/#4/#3、Harnessの実受領・隔離はTAI #168/#271。**TEI側に共通Writer/Source Registry/Receipt Storeを追加しない。**
 
-**今回の状態**：SUI #3396実公開Projection反例PASS、SUI #3397固定Byte試験CI PASS（opt-in実File NOT RUN）、SHO #21実Reader限定PASS（H1 SKIP）、SHO #25 test-only Working CopyのUbuntu/Windows限定PASSは**既存別Runの事実**。本CC-25〜27の実SUI→SHO同一Attempt H1、SEI実M1、正式Editor Save・実Host Grant/Delivery・Owner意味受理は**NOT RUN**。この節の追加自体は**設計/計画更新**であり、Product合格ではない。 **SHO #25は後続HEAD `81aa7cdfa20037300f2f9a2b1dd3401dd6a8941d`へ進んでおり、当該HEADのCIは確認時queued（PASS未判定）**。
+**今回の状態**：SUI #3396実公開Projection反例PASS、SUI #3397固定Byte試験CI PASS（opt-in実File NOT RUN）、SHO #21実Reader限定PASS（H1 SKIP）、SHO #25 test-only Working CopyのUbuntu/Windows限定PASSは**既存別Runの事実**。本CC-25〜27の実SUI→SHO同一Attempt H1、SEI実M1、正式Editor Save・実Host Grant/Delivery・Owner意味受理は**NOT RUN**。この節の追加自体は**設計/計画更新**であり、Product合格ではない。 **SHO #25後続HEAD `81aa7cdfa20037300f2f9a2b1dd3401dd6a8941d`も[実W1 CI #42461901303](https://github.com/hat47x/sho-composer/actions/runs/42461901303)を含む専用5 workflowがcompleted/successと追認済み**。ただしH1実Producer→SHO同一File・正式Editor Save/Storage資格は変わらず未成立。
 
