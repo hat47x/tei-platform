@@ -38,4 +38,3 @@ func selectedInspectorUnavailable(out io.Writer) (int, error) {
 // Compile-time proof that the selected implementation has the CLI port.
 // The actual Selection/Host binding is performed in inspectoradapter.
 var _ cliInspectionService = (*inspectoradapter.Selected)(nil)
-
