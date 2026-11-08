@@ -425,3 +425,42 @@ Go側は[modelref Fit/Gapテスト](../../reference/diagram-crossref/modelref_fi
 **当面の最短実装**は変更しない。M1で実Loader/Roleへ入場できた一つのSourceを選び、M2でStable Subject・2つの別Relation occurrenceとCRUDセルをSourceへ逆引きできることを最初に示す。次にM3で**一意な1本だけ**のSource Patchを実行し、非単射・source-only drift・権限なしを拒否する。M1が未成立なら今回のSource Evidence TestのPASSをM2/M3に昇格しない。独立Expected・実Runの適格性は#2514/#1180/#1163がOwner。
 
 本節の情報は既存Ownerの実装事実と未検証構想を分けた計画更新であり、Core API/ABI、Protocol、REA Adapter、Twinエンジン、Registryや新受入Gateを正式採用するものではない。
+
+## 22. 実Workspaceの限定M1入場とADR-0048の共通API契約（2026-11-08）
+
+### 22.1 検証対象をSynthetic Graphから実Sourceの二つのSubjectへ進める
+
+従来の`modelref_fitgap_test.go`は合成9 Node/7 Relationを実`modelref`へ渡す**構造・Diffの局所試験**だった。これと独立に、今回[real_workspace_admission_test.go](../../reference/diagram-crossref/real_workspace_admission_test.go)を追加。現行`internal/operations.InspectSubject`を実際の`reference/workspace`に適用し、次の**二つの明示Subject**を読む。
+
+| Subject | 操作 | 確認する最小証拠 | できない推論 |
+| --- | --- | --- | --- |
+| `query:order_entry.recent_orders` | `operations.InspectSubject(root, query)` | `tei.operations.inspect/v0`、Source Index上の参照、Canonical JSON、World/Source Index fingerprint、Workspace identity | 実SQL/Provider Read実行、FunctionのCRUD、Queryと下記Relationの依存確定 |
+| `semantic-relation:sales.order.lines` | 同じInspector、別指定Subject | 同じ操作型で明示Relation IDがSourceへ遡れるか、観測Fingerprint・Workspace identity一致 | すべてのData/Relation/FD閉包、Graph Edge Instance ID、Business Action・可逆Patch |
+
+この試験は**実TEI Source→Workspace Loader→World＋Source Index→型付きApplication Operation**に限る。候補を勝手に生成せず、`SourceStatus=indexed`とSource refの非空・スキーマ・Workspace identityをテストする。読み取りは2回の独立`InspectSubject`呼出しなので、結果の`worldFingerprint/sourceIndexFingerprint`が同じでも原子的な同一Read SnapshotやHost Grantの保証にはならない。Source Indexに含まれない外部Provider rawはここでは追跡しない（#3479）。「同一Workspaceの二つの適格なSubjectをReaderから引けた」という上限でM1を評価し、**M2三図・CRUD自動生成ができたことにしない**。
+
+### 22.2 採用済み共通API方針とMCP参照実装の現在位置
+
+[ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)（[main統合PR #3439](https://github.com/hat47x/tei-platform/pull/3439)）は、**CLI・MCP・HTTP/Web・Desktopで共通の型付きアプリケーション操作を使用する方針を採用済み**。APIはHTTP Serverを意味せず、`internal/operations`を出発点とする。よって本Diagram/CRUD ProducerをCLI専用コマンド本体として増設するのでなく、既存の意味・ReaderのOwnerと接続する共通Operationの可否を先に比較する。標準データGraphに特殊なGraph Hostや第二Registry、巨大万能dispatcherを設けない。
+
+[main統合PR #3403](https://github.com/hat47x/tei-platform/pull/3403)の`tools/reference-mcp-readonly-adapter/main.go`は、**実装済みのread-only参照MCP入口**である。起動時にWorkspaceを固定し、4 tool（`tei_model_catalog`、`tei_inspect`、`tei_trace`、`tei_validate`）を既存`internal/operations`へ委譲する。以前の「MCP入口なし」は誤り。逆に、`tei_source_index`、`tei_diagram`、`tei_crud_matrix`、`tei_edit`等のMCP toolは**この参考Adapterの公開4 toolに存在しない**。本PRで公開MCP/CLI Schemaを推測・追加しない。
+
+[ADR-0048 §2.3〜2.5](../adr/0048-shared-application-api-and-transport-adapters.md)の意味を図面Consumerに適用する。
+
+- **共通Operationで同じ意味の結果**と、CLI exit/stdout・MCP JSON-RPC/tool content・HTTP status/Problem・Desktop IPCのTransport Shapeを分離。JSON-RPCの数値Error Codeを業務/操作のFailure Codeの代わりにしない。
+- **MCP参考Adapterの内部Resultは全CLI応答と同型・同じ成否ではない**。採用ADRでも`validate`診断・`isError`・`result`の違いが未解決と明記されている（#3420）。指紋や数欄一致を全操作・全失敗の同値性として扱わない。
+- MCP側の固定Workspaceはモデルからのパス指定による拡大防止であり、OS symlink・Root置換や許可されたActor/Disclosureの独立認証証明ではない。Graph/CRUDにより非公開Entity/Relationの件数・存在を漏らさない。
+- CLIやStudioの`view`等の「read-only」は**意味正本を変更しない**ことと、ファイル/外部効果の不在を同時に保証しない。実Invocation VariantとWriteFlags、Hostの適用権限を別に観測する。
+- 初期のDiagram/CRUDがまだOperation未提供なら、各Transportは`unsupported`の根拠を示す。MCP専用の仮Graphを作ってCLIとは別正本にしない。
+
+### 22.3 最初の実ReadからGraph＋CRUDへの切断面
+
+| 段階 | 独立に検収するもの | 既存Owner・止める条件 |
+| --- | --- | --- |
+| **M1a: 2 Subject実Read** | それぞれの`Canonical`と`Sources.References`、Workspace/World/Source Indexの観測FP、Reader実呼出しの結果 | 今回のGo Test。2 Subjectより広い閉包や原子的Snapshotを主張しない |
+| **M1b: Role/Dependency closure** | RelationのFrom/To/Key/FDとFunction→Data Context/CRUD、Business Action→Functionの必要なSource帰属を同じRevision/Scopeで解決 | #3262/#3346/#2621、全Requiredに未読込があれば`partial` |
+| **M2: Projection** | 適格WorldのData/Function/BusinessからGraph/CRUDを一度導出、同型2 Relationの安定ID・Source/Cell Locator、Loss保持 | #1124/#1125/#1126/#2497。Graph EdgeID不明ならread-only |
+| **M3: Safe Edit** | View Occurrence→一意Semantic Relation→適格Source Span→Preview/Acceptance→Patch→再読込 | #1124/#2500。Scope/Revision/Grant/選択epoch不適格なら拒否 |
+| **D1: 共通Operationと受領** | 同じOperation入力をCLI/MCP/Studio/SHOの対応可能なConsumerへ投影し、版・Disclosure・実受領を比較 | ADR-0048、#3419〜3422、SHO #5/#19。Transport/Host差と業務意味差を区別 |
+
+**設計順序としてM1aを単独実証できても、M1b/M2へ自動進級させない。** Source参照の件数や`worldFingerprint`だけから業務対象の完全性を推測しない。Go codeの実CI結果・exact HEAD、実Provider・CLI/MCP/Studio/SHO Consumer・Owner意味受理は後続の別票に留める。
