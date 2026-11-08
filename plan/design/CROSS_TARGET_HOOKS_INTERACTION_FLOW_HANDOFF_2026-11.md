@@ -4,6 +4,8 @@
 
 **2026-11-08 後続研究・設計上の修正候補**：LifecycleとHookの点の一覧を先に固定した上で後から拡張を載せるだけでは不十分。実行可能な型付きLifecycle Graph（意味Node/Edge・契約・状態・守るべきObligation）を**コード生成の直接入力**とし、PluginのGraph Patchでライフサイクル自体を拡張できる設計を最優先で検証する。以下§3の「Operation/Interaction/Generationの3系列」は**暫定的な観測/Projection**であり、不可変な共通Core enumや固定順序ではない。詳細・研究根拠・AI Web Chat対応は[Lifecycle Graph研究](../research/LIFECYCLE_GRAPH_VARIABILITY_AND_AGENT_CHAT_REFERENCES_2026-11.md)へ。
 
+> **横断レビューの追加**：[Lifecycle Graph Compiler Contract](LIFECYCLE_GRAPH_COMPILATION_CONTRACT_AND_REFERENCE_SLICES_2026-11.md) §9に、Obligation強度と条件付き保証、Diagram/Script同時編集の競合、稼働中Graphの版・Effect、B2C Headless非干渉、Patchの初期制限を追補。既存LG-01〜16へ引き渡し、新たなGraph契約の並列正本を作らない。
+
 - **状態**：設計候補・既存Ownerへの引渡し。新しいDSL構文、Flow Engine、Plugin ABI、Target生成器、実VUI、実音声Provider、Ownerの意味受理は **NOT ACCEPTED / NOT RUN**。この文書は第二の仕様正本・優先順位表・実装完了宣言ではない。
 - **判断の基線**：[ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)（共通型付きApplication Operation）、[ADR-0043](../adr/0043-target-native-artifacts-without-tei-host.md)（共通TEI Host不要）、[ADR-0036](../adr/0036-delivery-forms-as-plugin-composition.md)（提供形態はPlugin合成）。
 - **検証Owner**：[Interaction Flow #3503](https://github.com/hat47x/tei-platform/issues/3503)。各実装のOwnerは§9を参照。
