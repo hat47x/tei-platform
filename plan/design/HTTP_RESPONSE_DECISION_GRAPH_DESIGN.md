@@ -529,7 +529,41 @@ Source Indexを前段P0-Sで読めても、このDriver解決は`Source Index→
 
 今回の局所Go Witnessが**実CIで成功した場合のみ**、`Host request→Canonical Authorization→Driver binding→Adapter invoked→Host audit`を合成Referenceについてqualifiedとする。その次は`Route/Action/Contract ID`と`Binding`に加え、実Pluginのselected / artifact verified / provider invoked / effect receiptを同一Attemptで確認する。実World Fingerprintの一致は現在Authorityを意味せず、Grant RevocationやPlugin/Toolchain改版時にはEvidenceを再評価する。Client Reactionまでの縦断検証で一つでも未取得ならその欄をunknownのまま提示する。実装全体のProvider、Graph、BOM、Execution Receiptへの採用Gateは引き続き未到達。
 
-## 19. 参考資料と採否
+## 19. 2026-11-08 P0-E：HTTP結果とEffectの確定性を実観測で切り分ける
+
+### 19.1 実行経路の成熟差分と最小実験
+
+[PR #3516](https://github.com/hat47x/tei-platform/pull/3516)の限定[CI #42474818698](https://github.com/hat47x/tei-platform/actions/runs/42474818698)は、実`NewHost`→実`NewCanonicalActionAuthorizer`→実`driver.InvokeCapability`→合成Adapterの有限7経路でcompleted/success。これにより「Adapter到達」の局所資格を得た。一方、[同HEAD全体Health #42474818899](https://github.com/hat47x/tei-platform/actions/runs/42474818899)は**failure**。失敗箇所は`tools/repository-plan-check/TestPlanReadmesMentionEveryEntry`であり、並行追加された`AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md`を当時の`plan/design/README.md`が列挙していなかった。Go vetとWorkspace validateはPASS、専用HTTPテストはPASS。**現在mainのREADMEでは当該文書を列挙済み**であるが、異なるHEADを根拠に過去の全体CI failureをsuccessへ書き換えない。
+
+ここまでの証拠だけでは、HTTP 202・503をEffectの有無やClient側再試行可能性に写像できない。新しい[Go Test](../../reference/web-composition/go-host/effect_unknown_observation_test.go)では、既存の実Reference Workspace、`NewCanonicalActionAuthorizer`、`driver.InvokeCapability`、`NewHost`を再利用し、合成`sales.order.submit` Adapterに**テスト専用状態**を持たせる。HTTP実行中には**独立readを呼ばず**、後続の`driver.ExecuteObservationRead`に明示的なread identityと`ObservationEvidenceSynthetic`を渡した場合にだけ状態が観測できるかを検査する。実DB Commit、Operation Receipt、Provider適格性を実装したものではない。
+
+| ケース | 合成Adapter内の作用とHTTP表面 | 独立readの固定Expected | 合格範囲 |
+| --- | --- | --- | --- |
+| **HDG-E01** | 状態を`submitted`へ更新した後にerror。HTTP **503**／Audit error | 後続readは`submitted` | 503・Adapter errorから**未適用**を推定できない |
+| **HDG-E02** | 更新せず正常outputを返す。HTTP **202**／Audit completed | 後続readは`pending` | 202・正常outputから**適用済み**を推定できない |
+| **HDG-E03** | 更新して正常outputを返す。HTTP **202** | 後続readは`submitted` | 同じHTTP 202でも業務状態は異なる |
+| **HDG-E04** | 更新前にerror。HTTP **503** | 後続readは`pending` | 同じ503でもE01と実際の作用が異なる |
+| **HDG-E05** | 更新してerror。HTTP **503**、独立read自体が障害 | Observation結果なし、read identityと`synthetic` natureだけ保持 | read失敗を「未適用」に書換えない |
+
+全ケースでHost認可を既存`security.authorize`経由で通し、実Driverの`BindingAdapterResolver`と`capabilityinvoke`で合成Adapterを実呼出しする。HTTP中の暗黙read=0、Adapter invocation=1、明示read=1、Command自動再実行=0を比較する。固定のtest-only`operationRef`は読取対象の対応付けを示すだけで、**製品Operation IDや冪等キー、Receiptを新たに定義しない**。同一メモリの合成readは外部系からの独立した永続証拠ではない。
+
+**境界**：P0-Eが実CIで成功した場合も、合格するのはHTTP応答／監査と、別の読み取り経路が示す**合成状態**の区別のみ。実DBのCommitted、実Clientによる応答完了、非冪等Commandの安全な再試行、Hostによる長期効果照合、現在のGrant、Source/BOM鮮度、実Plugin Providerの検証済み実行は引き続きUNKNOWN。
+
+### 19.2 Lifecycle Graph・共通Application API・Plugin-firstへの接続
+
+他領域で成熟しているLifecycle Graphの考え方を、この実験の**型付き責務境界**として扱う。実行可能Graphを固定の逐次手順に閉じず、Guard、拒否、取消、Retry、補償、非同期応答を扱えるようにする一方、全実行可能経路で`Authorize→Effect`、必要なHost guard、実Effect後の結果不確定性を迂回しないことを不変条件とする。**構成時GraphとPlugin適用後Graph、生成物の制御フロー、実走行Traceは別証拠**であり、`onTerminal`という宣言名やAudit callback 1回だけから完全Graphを推論しない。
+
+製品横断の**先行P0/S2**は、[Plugin-first方針 #3525](https://github.com/hat47x/tei-platform/pull/3525)／[Inspector状態整理 #3531](https://github.com/hat47x/tei-platform/pull/3531)のとおり、**通常`tei inspect`と実Studio Bridgeから、同じ選択済みInspector ContractのProvider Bをそれぞれ実呼出しすること**である。HTTP側に専用Plugin Registryを新設してそのS2を横取りしない。HTTPの次段は、既存Service Carrier／Plugin Runtimeの**選択・Artifact/Policy・実Invoke・現在Authority・同一Attemptの結果**が揃ってから同じClient Reaction/Evidence分類を利用する。CLI/StudioのProvider Bとこの合成Submit Adapterを同一資格として扱わない。
+
+- **Graph／SHO**：E01とE04は`503/error`表面が同じだが内部Effectが違う。Graph/Table/Traceでは`HTTP branch/status`、`Adapter invoked`、`Effect disposition (unknown)`、`observation nature/result`を別列で表し、出典Occurrence・Node/Edge identityを保持する。全Required Node/Guard/Relationの取得は#3262/#1124/#2497で別途検証。
+- **TEI性能観測／最適化**：`HTTP 503`の件数から「失敗した更新件数」や「再試行可能件数」を推定しない。技術的タイミング・Adapter呼出し・実業務確定・read後の状態を別指標として扱い、実統計・独立Before/After比較がない最適化は候補にとどめる。
+- **KON Dataspace／SEI／Effect管理**：将来の保存・決定・再開・再送はOperation identity、現在Authority、Receipt、独立Observationと鮮度を別々に保持する。ここで追加する合成状態はKONへの保存証拠ではない。既存#1158/#1174/#1656がClient ReactionとResult／EffectのOwnerであり、HTTP専用の第二Operation LedgerやTransaction Managerは作らない。
+
+### 19.3 受入順序
+
+まず今回の`HDG-E01〜E05`について、**新規テスト自体のCI PASS**を独立に取得する。その後のP0一辺は、既存実Provider/Service Carrierの同一Attemptにおける選択・Artifact資格・実呼出し・Result受領と、外部Observationを**異なる資格票**として結合すること。完了した部分だけを昇格し、Client完全受領／実DB/外部Effectの意味受理は独立確認が得られるまでUNKNOWNとする。
+
+## 20. 参考資料と採否
 
 - [Liberator repository](https://github.com/clojure-liberator/liberator) ― ClojureのREST decision modelの先行例。ライブラリ移植ではない。
 - [Webmachine mechanics](https://webmachine.github.io/mechanics.html)、[Decision flow](https://webmachine.github.io/diagram.html)、[Resource functions](https://webmachine.github.io/resources.html) ― decision flow・契約・処理に分離する参考資料（古いHTTP版があるため仕様の正本にはしない）。
