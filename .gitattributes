@@ -82,3 +82,6 @@
 
 # Selection matrix output is hashed as raw bytes by its README.
 /plan/evidence/PLUGIN_SELECTION_MATRIX_REFERENCE_2026-11-08/** -text
+
+# Selection rule scan output is hashed as raw bytes by its README.
+/plan/evidence/PLUGIN_SELECTION_RULE_SURVEY_2026-11-08/** -text
