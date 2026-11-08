@@ -192,3 +192,4 @@
 - [inspect・traceの実プロセス同値と失敗分類](TEI_DOGFOODING_ROUND10_CAPI2A_PARITY_2026-11-09/README.md)（#3420 CAPI-2a。8ケース中7ケースで成否と`error.code`が一致。必須引数の欠落だけが`INVALID_SUBJECT`と`-32602`の層の違い。実CLI・実MCPの別プロセスで固定し、符号を変える変異2種を検出）
 - [`tei self-build`の計画指紋の再計算](TEI_GO_SELF_BUILD_PLAN_RECOMPUTE_2026-11-09.md)（receiptが運ぶ`plan`から`plugin.BuildPlanFingerprint`をentryが再計算し、名乗りと比べる。不一致はbuilder起動前に停止、計画を運ばないreceiptは`unperformed`と理由を残す。`l2bClaimed`は常にfalse。SB-C0 §4.8 / #2831）
 - [`tei self-build`の計画値をWindowsとLinuxで再観測](TEI_GO_SELF_BUILD_CROSS_OS_2026-11-09.md)（同じ宣言と同じ解決childから、`intentBytesDigest`・`receiptDigest`・`planFingerprint`・再計算値がOSを跨いで一致し、実行体とartifactのdigestは一致しないことを記録。`planCrossCheck`は両OSで`unperformed`。台帳§2.4の「別OS再観測」のOS軸。 #2831）
+- [`planCrossCheck=matched`と`planArtifactBinding=bound`の同時実測](TEI_GO_SELF_BUILD_MATCHED_AND_BOUND_2026-11-09.md)（1回の試行で計画突合と計画・成果物の結合が同時に成立し、artifact digestがディスクと一致することを観測。`intentByteCheckPerformed=false`と自己申告への依存は未解消で、`l2bClaimed`はfalse。§4.11 / #2831）
