@@ -387,3 +387,72 @@ Studio/CLI/AIで共通の設計判断Reviewは、**既存Source Proposal/Impact/
 | SP-36 | 公開向けScoreから非公開Writer数を推定できる | 既存開示境界に従って出力不可・不変を検証 |
 
 **実装提案の順**：(a) accepted Producerと現在の#1132 checkerのGapを実Sourceで固定、(b)SP-27/28の二機能二Dataの独立全列挙Reference、(c)候補/影響表示はSource修正なしのread-only Consumer、(d)Disclosure二世界のProduct受入は既存#2516/#1124へ引継ぐ。新Optimizer/Core/Host/Policy engineを先行実装しない。既存#1119 Gate、Studio直接P0、セルフビルドP0へHard Dependencyを増やさない。
+
+
+## 24. Must-linkの連結成分による厳密最小値（2026-11-08／設計候補）
+
+### 24.1 追加の数理的結論
+
+§17のFunction独立下界を一段強める。**固定Data Owner、同一既知Write辺集合、Function非分割、各Function単一所属、非負辺重み、hard constraintが「所属許可集合」と「Function間must-link」だけ**という条件に限定する。
+
+must-linkによる無向グラフの連結成分 C に含まれるFunctionは、必ず同一Subsystemへ所属する。連結成分Cについて、許容所属は
+
+    A(C) = intersection_{f in C} A(f)
+
+となる。A(C)が空集合なら、この条件系自体が不成立である。Dataの固定Owner g に対する既知Direct Write重みは、成分内の全Functionについて集計した W(C,g) とする。成分の合計更新重みを W_total(C) とすると、越境更新の最小値は
+
+    OPT_mustlink = Σ_C [ W_total(C) - max_{s in A(C)} W(C,s) ]
+
+で**厳密に達成できる**。理由は、成分内の全機能は同じ所属を選ばなければならない一方、異なる成分間には追加の結合制約がなく、各成分はそれぞれ内部更新重みを最大にする所属を独立に選べるためである。
+
+この条件下では必要な計算は、must-linkの連結成分、所属許可集合の積集合、Owner別Write重み集計、確定的tie-breakで足りる。専用の大規模Solver/DSLは必要ない。
+
+**適用外**：cannot-link、サブシステム定員/規模、部分集合同居や各成分の相互依存、Owner改版・業務操作の書換え・Time-varying ownership、負の重み、未解決Direct Write。これらを含む場合、成分別の値は（前提が有効なら）下界であってGlobal最適性証明にはならない。明示的なhard constraint不成立と、Source closureの不足による不明を混同しない。
+
+### 24.2 Zero-write-crossingの判定
+
+上記に限定すれば、全成分について (a) A(C) が非空、(b) Cが更新するDataの固定Owner groupがゼロ個か一個、(c) 一個ならそのOwnerがA(C)に含まれる、という三条件が**既知Direct Write辺に対するゼロ越境可否の必要十分条件**になる。Writerのいない成分は任意の許可所属先へ配置できる。
+
+ただしこのゼロ可否は受理済みOwnerと対象known Eを固定した数学的事実であり、全Sourceの閉包、実Effect、複数Ownerの解消、実認可、実Target配置、公開Sliceの完全性を証明しない。
+
+### 24.3 独立全列挙との比較（小例の計算確認、製品Test NOT RUN）
+
+| 入力 | 成分別の結果 | 独立全列挙の最適値 |
+| --- | --- | --- |
+| fA→S1 U(1)、fB→S2 U(1)、must-linkなし | 0 | 0（4配置中） |
+| 同じ2 Functionにmust-linkを追加 | 1 | 1（2可行配置） |
+| fA→S1(2)、fB→S2(3)、fC→S3(4)、三者must-link。許可所属の共通部分S1/S2 | 6 | 6（2可行配置） |
+| fA許可S1のみ、fB許可S2のみ、must-link | 所属集合空・不成立 | 可行配置なし |
+
+数値は説明用の非負重みであり、業務頻度の実測値ではない。小例の列挙はこの設計検討で実施した独立計算であり、TEI Repoに追加したGo/CI/Accepted Sourceの試験結果ではない。
+
+## 25. 最新mainのSource/三視点契約への接続更新
+
+[新しい三視点・CRUD Draft #3492](https://github.com/hat47x/tei-platform/pull/3492)は、古い#3263を現mainから再基準化し、既存Workspace Inspectorで特定Subjectを読むM1aの限定的なGo試験を含む。Source refs、Workspace Identity、WorldとSource Index fingerprintを照合するが、**正式なTEI三視点Graph/CRUDの全Product Projection、完全Function/Business closure、Accepted Subsystem Owner、逆編集、実DB Providerは未証明**である。
+
+本IssueのP0 Bridgeはこの実Workspace Inspector Readを再実装しない。段階を次に改める。
+
+1. M1aの実Workspace Subject Readで取得された実Source/Scope・Reader証拠を**入力側の限定基線**として確認する（Draft試験が本Issueで実行済みとはしない）。
+2. そのSame Subject/Workspace/Revisionで、Accepted Data Owner、Function direct CUD、ProcedureとEffectへの別Relationが**本当に受理済みProducerから解決できるか**照合する。欠落するならcandidate-onlyを維持。
+3. 既存#1132の診断と接続し、fixed owner / unknown / conflicting ownerを区別する。UI向けDerived Operation・既存Reference factsをaccepted writerに繰り上げない。
+4. 条件が成立する範囲だけ、§24のmust-link exact evaluatorを独立の小Referenceとして試す。条件外は下界/Unknown/修復検討の別分類へ送る。
+5. #1124 Studio、#2516 Disclosure、#267 Acceptance、#1180/#2514 Expected、#2831 Self-build、#3252既存移行検収は別Ownerとし、実効果/権限/物理配置を候補スコアで確定しない。
+
+最新mainには採用ADR-0048の共通Application API（CLI/MCP/Web/Desktop各Adapter）とread-only MCP参照Adapterがある。これらの入口へ同じ分析結果を提示する場合も、共通API契約とCurrent Consumer認可・受領の受入を分け、新Analyzer固有の第二Transportを作らない（[Draft #3303](https://github.com/hat47x/tei-platform/pull/3303)、[Draft #3495](https://github.com/hat47x/tei-platform/pull/3495)参照）。
+
+## 26. 証拠・再現性・新しい反証票（SP-37〜44）
+
+| ID | 条件付き反例（新実行 NOT RUN） | 期待 |
+| --- | --- | --- |
+| SP-37 | 独立2機能は下界0、二者must-linkで相異なるOwnerへU | 成分の厳密最小値1、既知越境ゼロ不可 |
+| SP-38 | must-linkが推移的に3機能へ波及 | 連結成分単位にOwner別更新を集約し全列挙と一致 |
+| SP-39 | must-link成分の許可所属集合の積集合が空 | InfeasibleとSource条件を示し、Unknown Sourceと混同しない |
+| SP-40 | must-link成分では最良0だが別成分とのcannot-link/容量制約がある | 成分値をGlobal最適性証明と呼ばない |
+| SP-41 | Writeが0件の成分、Allowedが非空 | Ownerなしを偽のWriter/違反と扱わない |
+| SP-42 | 実Workspace M1aのSourceは読めるがAccepted Owner/FunctionIOが欠落 | candidate-onlyに停止し実Source Read≠Accepted CRUDとする |
+| SP-43 | 同じReadがCLI/MCP/Studioで見えるがCurrent Grantや実受領が異なる | 同一Answer/Hashから現在資格・同一Attemptを推測しない |
+| SP-44 | 修復でFunction→Owner Commandへ変更しEffect/Txが未実証 | Partition-onlyの厳密最小と別にし、既存受理・独立Expectedへ渡す |
+
+**実装順**：P0は#3492の実Workspace Readの限定範囲と、受理済みOwner/Function I/OのGapを確定する。P1はmust-linkのみの厳密評価と独立全列挙Oracleを最小のread-only Referenceで比較し、cannot-link/容量/業務意味が現れた段階で初めてSolverや追加評価の費用を検討する。専用Core型・第二Graph/Acceptance・新Host/Policy/Transportを導入しない。
+
+現#3255はmainから大きく乖離したDraftである。本文の数理的結論とSource接続の最小契約を保存した上で、**mainの文書を消さない非強制追随・差分再確認**を行う。旧HEAD時点のtest結果や他PRの合成greenを現在HEADの製品受理に転用しない。
