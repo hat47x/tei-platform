@@ -1,4 +1,4 @@
-﻿# TEIドッグフーディング：生成AIがCLIだけでTEI自身の設計を扱えるかの実測と課題
+# TEIドッグフーディング：生成AIがCLIだけでTEI自身の設計を扱えるかの実測と課題
 
 - **状態**: 2026-11-07 実測と課題の起票を完了。本書と実測記録は `main` に統合済み（PR #3162、merge commit `6fa253312`）。D-1・D-2・D-4〜D-8 は #3180〜#3186 として起票し、**すべて main へ統合済み**（2026-11-07〜08）。D-3・D-9・D-10 は #3345〜#3347 として起票済み。各課題の対応PRは §3.12 にまとめた。
 - **D-1〜D-8 の修正**（main で確認済み）: D-1 `trace` の未対応kind→`UNSUPPORTED_SUBJECT_KIND`（#3180、`48163352a`）、D-2 応答の`workspace`欄（#3181、`dae251693`）、D-4 `writeFlags`（#3182、`2c8f083f2`系）、D-5 `-plugin-lock`のenvelope受理（#3183、`76f5da576`）、D-6 入力不正の終了コード統一（#3184、`c55498903`）、D-7 `-h`成功化（#3185、`575518c0f`）、D-8 要件JSONの例（#3186、`50b9eaa27`・`90d1fe518`）。D-3「版の名前と置き場所」は #3345、D-9 は #3346、D-10 は #3347。**いずれも未着手**。
@@ -356,6 +356,13 @@ TEI自身の設計は、`docs/`と`plan/`のMarkdownで書かれている。こ�
 
 - `diagnostics`の二重構造は`v0`の既存形であり、変えるなら`v1`が要る（`CLI_JSON_OUTPUT_CONTRACT_2026-10.md`§5）。`#2354`の決定を待つ。
 - `model catalog`の`entries`に`origin: declared｜prelude`のような欄を足し、標準定義を機械的に除外できるようにする。`#2822`と重なるため、同Issueへ追記するのが適切。
+
+**対応（2026-11-08）**
+
+- `model catalog`の`entries`は`prelude: true`で標準意味型（`std`）を印付けする形にした（PR #3404、merge `6a51aeedd`）。`declarationCounts.total`と併用し、`entries`の側からも宣言と標準定義を区別できる。
+- `requirements`の`result`が配列であることは、`tei commands`のentryに`resultShape: "array"`を足して発見可能にした（PR #3370、merge `a46e421e3`）。省略した他のコマンドは「object保証」ではなく未宣言と契約文書に明記した。
+- `validate`の`diagnostics[]`は、要素が`diagnostic`を持つ入れ子の形を`v0`の契約として維持する。`proposals[]`が平坦なのは、位置情報を持つ`diagnostics[]`と役割が違うためで、平坦化は既存の読み手の解釈を変える`v1`の判断に残した（`CLI_JSON_OUTPUT_CONTRACT_2026-10.md`§4・`cmd/tei/cli_validation_test.go`）。
+- 追跡は[#3347](https://github.com/hat47x/tei-platform/issues/3347)（Closed）。形の統一をv0のまま進めるかv1を新設するかは、未決の設計判断として残る。
 
 ### 3.11 マージ後main相当での再確認（2026-11-07 追記）
 
