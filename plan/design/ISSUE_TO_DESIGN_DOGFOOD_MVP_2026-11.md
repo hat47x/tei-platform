@@ -556,6 +556,9 @@ P1 Inspectorでまず判別するのは、①Contractと対象Operationの宣言
 | MCP Reference Adapter | main #3403の4 read-only Toolと限定CLI同値 | 実Host/外部HarnessのRequest/Reply終端、Scope/Grant/Disclosure/秘密開示はNOT RUN |
 | Typed APIの変更・実行 | [ADR-0048／#3422](https://github.com/hat47x/tei-platform/issues/3422)でCLI/MCP/HTTP/IPC共通境界を検証対象にする | read-only Tool一致からChange Acceptance、Command Receipt、Host認可を自動公開しない |
 
+<!-- tei3483-validate-cli-mcp-parity-specific-20261108 -->
+**CLI/MCPで何が一致したか**：[main統合 #3458](https://github.com/hat47x/tei-platform/pull/3458)は`validate`の実CLI JSONを共通`WorkspaceValidationReport`から投影し、MCP参照Adapterでも同じ**最上位のdiagnostics、World/Source Index Fingerprint、文字列error.code、意味不成立の`ok:false/isError:true`**を限定試験した。正常・Load失敗・重複宣言の三系統が対象で、旧「MCPはValidate失敗も成功のように返す」状態はこの範囲で改善済み。ただし他3 Toolの全Body同値、SDKの互換、外部HarnessでのReply End/Grant、HTTP/Desktop Client Reactionには一般化しない。
+
 第一の製品縦断ではCLIと参照MCPを**同一実Source/Role/Revisionの二つのRead Consumer**として比較できる。ただし出力Bodyが等しいだけではTool配送完全性・秘匿・実Provider接続を証明しない。MCP採用はP0-M／P0-Rの前提にしない。
 
 ### 14.23 取込Providerの原文変更が、Consumer二指紋から見えない反例
@@ -588,6 +591,9 @@ P1 Inspectorでまず判別するのは、①Contractと対象Operationの宣言
 そのうえでTEIのOntology/REA Role候補（Resource/Event/Agentや業務Relation）を使う場合でも、外部RDBのPK/FK/時点観測（#3372）はPhysical Observationであり、Business Event・経済的意味・代理権限ではない。受理済みRoleと条件がある部分だけ、TEI標準Data/Function/Businessと実Read/Scenarioの候補へ接続する。**逆設計書を出力できたこと自体は業務意味受理でも実DB移行成功でもない**。
 
 意思決定や予測の提案はSEI等の外部主体の責務とし、TEIから引き渡すのはSource/Role/Scope/Revision/Uncertainty/Allowed Actionの型付き根拠まで。実Operationは現在のHost/Provider/EKI等の権限・Idempotency/Receiptに従う。SHOの文章・Diagram引用OccurrenceにはSource版/現在の開示/保存後Readを保持し、保存済文書の意味をTEIが無断更新しない。SUI→TEI→意思決定→実Effect→新Observationの一往復は提案の検証軸であり、現行の製品E2E合格ではない。
+
+<!-- tei3483-sho-g2w1-workingcopy-evidence-20261108 -->
+**SHO編集とTEI Meaningの受入を分ける独立Writer境界**：[SHO Draft #25](https://github.com/hat47x/sho-composer/pull/25)では、G1b Reader/G2-Pの固定Source byte spanとSHAを利用し、**別名のWorking Copy**へ実書込み→close→別FD再Open→独立Expectedによるbyte照合をUbuntu/Windowsで限定実証した。移動後に同bytesの別ファイルへ置換された場合のSource File Identity差と、出力を別Open前に改変する負例は検出可能な範囲がある。一方、同一File内A→B→Aは最終SHA/FD Identityが一致して**中間改訂を証明できない**。これは正式Editor Save/atomic publish/fsync/CAS/Grant/Source History、TEI Accepted Meaning更新、二Consumerの保存後実Readまでの資格ではない。P1 Writer実証は#25のOwnerに残し、TEI P0-DのSource Location/byte、P0-Cの引用Revision/Scopeの再照合と必要なときだけ接続する。SUIのRaw ItemやCanvas Occurrenceと文書Spanを同じIdentityとして黙って扱わない。
 
 **判別する一件**：同名だが異なる対象がSUIに2件、関係候補が複数、外部RDBに同端点を持つ2 FK/Relation、TEI Meaningは片方だけ受理済みというFixture。TEI三視点/CRUDでは既知肯定だけを示し、未受理Role・多重Edgeをunknown/Source参照付きで残す。SEIの提案と実Action/Host Receiptの差を保ち、SHOへ出すときに引用と情報損失を明示する。#1180/#2514の独立Expectedを通すまで実行資格を与えない。
 
