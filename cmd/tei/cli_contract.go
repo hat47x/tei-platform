@@ -31,6 +31,12 @@ type cliCommandRecord struct {
 	// plugin-lock and plugin-resolve switch shape with a flag and say so with
 	// `mode` as well.
 	Modes []string `json:"modes,omitempty"`
+	// WritesToNamedOutput names the flags that make this command write files.
+	// They are named by the caller, never the Workspace, and omitting them means
+	// nothing is written. `effect: read-only` therefore means "does not change
+	// the Workspace's Source"; a command with this field is still safe to call
+	// as long as the caller checks the paths it passes (#3182).
+	WritesToNamedOutput []string `json:"writesToNamedOutput,omitempty"`
 	// SuccessShape names the body a successful response has. "envelope" is
 	// the ok/result/error envelope; "identity" is the `version -json` build
 	// identity, which carries schemaVersion at the top level but no ok and no
@@ -73,6 +79,7 @@ func commandCatalog() cliCommandCatalog {
 			{Name: "workspace-files", Effect: "read-only", Required: []string{"-workspace"}, Output: "json", SchemaVersion: "tei.cli.workspace-files/v0", JSONContract: "enveloped"},
 			{Name: "inspect", Effect: "read-only", Required: []string{"-workspace", "-subject-kind", "-subject-id"}, Output: "json", SchemaVersion: "tei.cli.inspect/v0", JSONContract: "enveloped", ArgumentValues: valueSets("inspect"), ArgumentType: valueTypes("inspect")},
 			{Name: "view", Effect: "read-only", Required: []string{"-workspace", "-application"}, Optional: []string{"-format", "at most one of -pattern, -package, -command", "-input and -execute with -command", "-period-state with -execute", "-allow-capability with -execute", "-operation-log with -execute", "-lifecycle-state and -lifecycle-command with -execute", "-lifecycle-owner and -lifecycle-generation with -lifecycle-state"}, Output: "text; json when -format json", SchemaVersion: "tei.cli.view/v0", JSONContract: "enveloped", ArgumentValues: valueSets("view"), ArgumentType: valueTypes("view"), ArgumentDefaults: valueDefaults("view"), WriteFlags: []string{"-operation-log", "-lifecycle-state"}},
+			{Name: "view", Effect: "read-only", Required: []string{"-workspace", "-application"}, Optional: []string{"-format", "at most one of -pattern, -package, -command", "-input and -execute with -command", "-period-state with -execute", "-allow-capability with -execute", "-operation-log with -execute", "-lifecycle-state and -lifecycle-command with -execute", "-lifecycle-owner and -lifecycle-generation with -lifecycle-state"}, Output: "text; json when -format json", SchemaVersion: "tei.cli.view/v0", JSONContract: "enveloped", ArgumentValues: valueSets("view"), ArgumentType: valueTypes("view"), ArgumentDefaults: valueDefaults("view"), WritesToNamedOutput: []string{"-operation-log", "-lifecycle-state"}},
 			{Name: "trace", Effect: "read-only", Required: []string{"-workspace", "-scope", "-subject-kind", "-subject-id"}, Optional: []string{"-direction", "-mode", "-offset and -limit (full only)", "-expected-fingerprint"}, Output: "json", SchemaVersion: "tei.cli.trace/v0", JSONContract: "enveloped", ArgumentValues: valueSets("trace"), ArgumentType: valueTypes("trace"), ArgumentDefaults: valueDefaults("trace")},
 			{Name: "source-index", Effect: "read-only", Required: []string{"-workspace"}, Optional: []string{"-subject-kind and -subject-id together"}, Output: "json", SchemaVersion: "tei.cli.source-index/v0", JSONContract: "enveloped", Modes: []string{"index", "subject"}},
 			{Name: "knowledge-context", Effect: "read-only", Required: []string{"-workspace"}, Optional: []string{"-subject-kind", "-subject-id", "-disclose", "-expected-data-design-fingerprint", "-expected-disclosure-fingerprint"}, Output: "json", SchemaVersion: "tei.cli.knowledge-context/v0", JSONContract: "enveloped", Modes: []string{"context", "disclosure"}, ArgumentValues: valueSets("knowledge-context"), ArgumentType: valueTypes("knowledge-context")},
