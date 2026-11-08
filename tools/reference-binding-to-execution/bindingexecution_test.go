@@ -112,7 +112,7 @@ func TestNoBindingIsRefused(t *testing.T) {
 	}
 }
 
-func TestAResultFromAnotherExecutorIsRefused(t *testing.T) {
+func TestAResultFromAnotherExecutorIsUnverifiedAfterInvocation(t *testing.T) {
 	root := writeWorkspace(t)
 	report, err := Run(root, "development", []executor.Command{{
 		ActionID: "db/apply", IdempotencyKey: "k1",
@@ -125,8 +125,10 @@ func TestAResultFromAnotherExecutorIsRefused(t *testing.T) {
 	if err != nil {
 		t.Fatalf("run: %v", err)
 	}
-	if report.Ran != 0 || report.Refused != 1 {
-		t.Fatalf("a mismatched acknowledgement was accepted: %+v", report)
+	if report.Ran != 1 || report.Refused != 0 || report.Unverified != 1 ||
+		len(report.Outcomes) != 1 || !report.Outcomes[0].ExecutorInvoked ||
+		report.Outcomes[0].BindingResolved || report.Outcomes[0].Error == "" {
+		t.Fatalf("a post-invocation invalid acknowledgement was classified as no-execution: %+v", report)
 	}
 }
 

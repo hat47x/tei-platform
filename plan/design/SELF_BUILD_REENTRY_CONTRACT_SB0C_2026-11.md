@@ -280,12 +280,28 @@ L2-aは既存の入口（`tei self-build`）が既に持つ情報（invoked.argv
 
 **この節はL2のClaimを立てていない。** L2-a/L2-bの切り分けと、必要な記録の列挙だけである。
 
+### 4.9 実装済みの状態（2026-11-09）
+
+§4.8の三項目は、次の形で`tei self-build`に載った。**どれもL2-bを主張しない。**
+
+| §4.8の項目 | 実装 | 出力欄 | 記録 |
+| --- | --- | --- | --- |
+| 1. 渡した宣言のbyte digest | 起動前にファイルを読み、`sha256`を取る | `intentBinding.intentBytesDigest` | [#3544](https://github.com/hat47x/tei-platform/pull/3544) |
+| 2. childが返した`IntentFingerprint`と`BuildPlanFingerprint` | 解決child（`-intent-resolver`）のreceiptから読む | `planReceipt.intentFingerprint`・`planReceipt.planFingerprint` | [#3571](https://github.com/hat47x/tei-platform/pull/3571) |
+| 3. 両者の突合結果 | 解決childの`planFingerprint`とbuilder childの申告を比べる | `planCrossCheck.state`（`matched`/`mismatched`/`unperformed`） | [#3584](https://github.com/hat47x/tei-platform/pull/3584) |
+
+**項目2と3は別のchildの発言を突き合わせている。** 項目3が`matched`でも、それは解決childとbuilder childが同じfingerprintを名乗ったことに過ぎない。**builderがその宣言からその計画を導いた証明ではない**（`planCrossCheckBoundary`）。このため`l2bClaimed`は常に`false`である。
+
+`-intent-resolver`を指定しない場合、`planReceipt`と`planCrossCheck`は出力されない。**欄が無いことを合格と読ませない**ためであり、`supplyCheck`の`delegated-to-child`と同じ扱いである。
+
+**未了のまま残るもの**：builder childが自分の読んだ宣言と導いた計画を報告する経路。実測に使った`tools/reference-go-build-with-supply`は`planFingerprint`を返さないため、実プロセスでは`planCrossCheck`が`unperformed`になる。単体試験では報告するfixtureで`matched`を確かめている。
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
 | --- | --- | --- |
-| SC0-01 | `tei self-build`を`-intent`無しで実行 | 引数エラー。Buildを開始しない |
-| SC0-02 | `-supply`に破損Moduleを渡す | `corrupt-supply`で停止（SB-0bの分類を再利用） |
+| SC0-01 | `tei self-build`を`-intent`も`-intent-file`も無しで実行 | 引数エラー（`SELF_BUILD_PRECONDITION_FAILED`）。Buildを開始しない（実装済み） |
+| SC0-02 | `-supply`に破損Moduleを渡す | `corrupt-supply`で停止。分類は`-supply-verifier`のexactな実行ファイルへ委譲し、`verified: false`なら停止（実装済み） |
 | SC0-03 | `-state`を二回の試行で共有 | 拒否。共有stateを「二回」と数えない |
 | SC0-04 | `-output`が既存ファイル | no-clobberで拒否。上書きfallbackなし |
 | SC0-05 | `validate`がerrorのWorkspace | Buildを開始しない |
@@ -296,8 +312,8 @@ L2-aは既存の入口（`tei self-build`）が既に持つ情報（invoked.argv
 | SC0-10 | Stage1が起動したchildのdigestと、記録したdigestが違う | L3不可。SB-N13と同じ扱い |
 | SC0-11 | `tei self-build`を`cliCommandCatalog`へ`effect: writes-artifact`で足す | `cli_contract_test.go:17`が`read-only`以外を拒否して落ちる（§4.5）。D-1の契約判断なしにcatalogへ載せない |
 | SC0-12 | 既存の`scope: selected-read-only-commands`を「書込み系も含む」と読み直す | 既存consumerの前提を変える。D-1の契約判断なしに行わない |
-| SC0-13 | childが**別の宣言**を読んで別のBuild Planを返す（渡した宣言のdigestとchildの読んだものが違う） | L2-b不可。§4.8の3（突合結果）で検出する |
-| SC0-14 | childの`IntentFingerprint`だけを記録し、渡した宣言のbyte digestを記録しない | L2-b不可。照合値は宣言のbyteそのものではない |
+| SC0-13 | childが**別の宣言**を読んで別のBuild Planを返す（渡した宣言のdigestとchildの読んだものが違う） | L2-b不可。`intentBinding.intentByteCheckMatched`がfalseになり、`planCrossCheck`が`mismatched`になる（実装済み） |
+| SC0-14 | childの`IntentFingerprint`だけを記録し、渡した宣言のbyte digestを記録しない | L2-b不可。entryは`intentBinding.intentBytesDigest`を必ず記録し、childの`IntentFingerprint`だけでは突合しない（実装済み） |
 
 ## 6. 未決事項
 
@@ -309,7 +325,8 @@ L2-aは既存の入口（`tei self-build`）が既に持つ情報（invoked.argv
 - ~~`cmd/tei`からchild driverを起動する薄い入口~~ → **§4.6で実装済み**（`tei.cli.self-build-entry/v0`、#3433）
 - ~~`cmd/tei`を対象にしたL3~~ → **実測済み**（[記録](../evidence/TEI_SELF_BUILD_CMD_TEI_L3_2026-11-08.md)、`bb7fc01bb`）
 - ~~`-intent`を入口へ足せるか~~ → **§4.7でI-2（childとして起動）を既定案に**。L2のClaimは§4.8の二層に分ける
-- **`-intent`の実装（I-2）と、宣言byte digest・childの照合値・突合結果の三つを一つの出力に載せること**（§4.8）
+- ~~`-intent`の実装（I-2）と、宣言byte digest・childの照合値・突合結果の三つを一つの出力に載せること~~ → **§4.9で実装済み**（`-intent-resolver`のreceiptと`planCrossCheck`。`l2bClaimed`は常にfalse）
+- **builder childが自分の読んだ宣言と導いた計画を報告する経路**。これが無いと`planCrossCheck`は実プロセスで`unperformed`のままである（§4.9）
 - `-self-digest`の取得方法（実行ファイル自身のdigestをどう自己参照するか）
 - 出力のschemaVersionと、既存`tei.cli.*`との命名一貫性
 - Seed Trustの扱い（stage0のGoは外部seed。TEI自身によるGoコンパイラのself-hostingではない）
@@ -324,8 +341,9 @@ L2-aは既存の入口（`tei self-build`）が既に持つ情報（invoked.argv
 - [x] `-intent`を足す前の接続制約の実測と既定案の決定（§4.7、I-2）
 - [x] L2のClaimを二層に分ける設計（§4.8、L2-a/L2-bと必要な記録の列挙）
 - [x] `cmd/tei`を対象にしたL3の実測（[記録](../evidence/TEI_SELF_BUILD_CMD_TEI_L3_2026-11-08.md)、`bb7fc01bb`）
-- [ ] `-intent`（I-2）の実装とSC0-01〜05・SC0-13・SC0-14の実試験
-- [ ] §4の外形の残り（`-supply`・`-state`・`-output`・`qualified`欄）の実装
+- [x] `-intent`（I-2）の実装。SC0-01〜05は外形の拒否条件として、SC0-13・SC0-14は`intentBinding`と`planCrossCheck`として実装・実試験済み（§4.9）
+- [x] §4の外形（`-supply`・`-state`・`-output`・`qualified`欄）の実装（[#3463](https://github.com/hat47x/tei-platform/pull/3463)・[#3476](https://github.com/hat47x/tei-platform/pull/3476)）
+- [ ] builder childの計画申告経路と、実プロセスでの`planCrossCheck=matched`の観測（§4.9）
 - [ ] D-1（catalogの`scope`拡張）を採るかどうかの契約判断（採る場合のみ、catalogの広告と実応答の一致を照合へ載せる）
 
 **A-1（`gobuilder`移動）は採らないため、影響範囲の洗い出しは終了条件から外した。** 29ファイルの内訳は[記録](../evidence/TEI_GO_INTERNAL_RULE_AND_BUILDER_MOVE_2026-11-07.md)として残す。I-1（intent解析の`internal/`への切り出し）も、I-2を既定案にしたため本稿では行わない。

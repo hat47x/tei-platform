@@ -85,3 +85,22 @@
 | C-3 Capability ID導出 | 名称一致ではなく実Canonically selected Binding/実Invoke先を比較できるか |
 
 **本追補の判定**は依然「判断材料・未確定」。C-4→C-1/C-2→C-3の順序と正本のOwnerは変えない。追加のHTTP専用Routing/ResolverやProduct schemaは、実行接続の選択前に導入しない。通常`tei inspect`と実Studio Bridgeの同一selected Inspector Provider B実呼出し（#3525/#3531の残るS2）は、局所Go test Helper二経路の成功から区別する。
+
+## 9. C-1参照実行後の不確定性をHTTP/Command側の実証と結ぶ（2026-11-09）
+
+[PR #3573](https://github.com/hat47x/tei-platform/pull/3573)は、[C-1の実測](../evidence/BINDING_TO_EXECUTION_REFERENCE_2026-11-09/README.md)として既存の`routing.RouteCommand→Router.Dispatch→ValidateResult`を用い、Environment Bindingから**Host登録の記録用Executor**まで到達することを参照実装で確認した。この**技術的成立**をC-1の製品採用、実配備、外部Effect、Current Grantの確定へは昇格しない。C-4→C-1対C-2→C-3の判断順序は変更しない。
+
+この新しい参照をHTTP側[HDG-E01〜E05](../design/HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md)と照合すると、v0 `bindingexecution.Run`に具体的な情報喪失がある。**実Executor呼出し後**に`Dispatch`がエラーを返した場合や`ValidateResult`が不正な返答を検出した場合にも、v0は`refusedCount`を増やしていた。しかし、拒否＝未呼出しとして読むConsumerでは、**既に作用した可能性を隠す**。
+
+対策の最小差分は既存`Router`とHost所有のExecutor registryをそのまま使い、`Execute`入口への到達をtest-only witnessで観測すること。Reference report v1では`ranCount`を**Executor.Execute入場**、`refusedCount`を**入場前停止**、`unverifiedCount`を**入場後エラー・不正応答（ranCountの内数）**と分ける。 `executorInvoked`も入場事実だけであり、Receipt、Host Authority、実外部更新を表さない。[参照実装の仕様](../../tools/reference-binding-to-execution/README.md)と[限定反例テスト](../../tools/reference-binding-to-execution/bindingexecution_effect_unknown_test.go)が対応する。**[限定Go CI #42505232348](https://github.com/hat47x/tei-platform/actions/runs/42505232348)で本v1コードのBXE-01〜06と既存RouterテストはPASS**（Go vet/gofmtもPASS）。この事実は参照実装の局所合格であり、製品実行C-1採用や実外部Effectの受理ではない。
+
+| 反例 | v0で生じた誤読 | v1の独立Expected／残る未資格 |
+| --- | --- | --- |
+| Executorが`Supports`拒否 | `refusedCount=1` | 入場0、refused1。これだけは実行前停止 |
+| 実Executorが状態変更後エラー | `refusedCount=1`として未実行に見える | 入場1、refused0、unverified1。**作用有無はunknown** |
+| Executorが更新後に別IDの応答を返す | Validate失敗で同じくrefused扱い | 入場1、refused0、unverified1。妥当なACKとして受理しない |
+| ExecutorがAcceptedを返すが状態変更なし | `ranCount=1` | 入場1・妥当ACK1でも実Effectは証明されない |
+
+**上流の実行接続Gateに追加する条件**：選択するC-1/C-2/C-4のどれでも、実行前拒否と呼出し後不確定を別々に伝えること。再試行・取消・補償の判断は既存#1174/#2999のOperation identity・Effect fence／現在Authorityに戻し、`EXECUTOR_NOT_REGISTERED`とPost-Invoke Failureを一つの「再試行可能エラー」にまとめない。CLIがJSONで拒否を報告して**終了コード0**を返すという現状のReference挙動も、無人Harnessの成功判定へ無条件に流用しない。
+
+この追補も**C-1採用の決定ではない**。CLI通常dispatch／実Studio BridgeのPlugin-first Inspector S2、実Provider/Artifact、実DB Receipt/Observation、Client Reactionの全実装と検証は各Ownerへ残す。
