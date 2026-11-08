@@ -440,3 +440,18 @@ TEI自身の設計は、`docs/`と`plan/`のMarkdownで書かれている。こ�
 1. D-3・D-9・D-10 は、それぞれの設計判断のIssueで扱う。本記録は現況の観測を渡すだけに留める。
 2. `docs/business-system-design-reading-guide.md` が参照する実例ファイルが `QualificationRequirements` として復号できることを、回帰試験で固定する余地がある（第2ラウンドでは未実施）。
 3. MCP入口が実装された時点で、同じ手順をMCP経由でも実行し、CLIとの結果一致を確認する。入口が無い現時点では `NOT RUN`。
+
+## 8. MCP経路（2026-11-08）: 参照AdapterでのCLI/MCP一致
+
+依頼の範囲が `CLI/MCP` に広がったが、#3400 のとおり **TEIにMCP入口は無い**。そこで「入口を作る場合に、CLIと同じ結果を返せるか」だけを、参照実装で確かめた。生出力は[MCP経路の実測記録](../evidence/TEI_DOGFOODING_MCP_ROUND_2026-11-08/README.md)にある。
+
+- **参照実装**: [tools/reference-mcp-readonly-adapter](../../tools/reference-mcp-readonly-adapter/README.md)。`internal/operations` の `CatalogWorkspace`・`InspectSubject`・`TraceWorkspace`・`ValidateWorkspace` を呼ぶだけで、第二の正本解釈・知識の保存先・検証規則・権限モデルを持たない。
+- **結果**: 同じ Workspace に対して、`model catalog`・`validate`・`inspect`・`trace` の `worldFingerprint`・`sourceIndexFingerprint`・`snapshotFingerprint`・`sourceStatus`・`declarationCounts`・`schemaVersion` が **CLIと一致**した（不一致0件）。未対応の対象種類は `isError: true` と `UNSUPPORTED_SUBJECT_KIND` で返り、成功の空結果にしなかった。
+- **境界**: Workspace は起動時に固定し、tool の入力に path を取らない。書込み・受理・配備・付与・実行の tool は無い。認可・開示範囲は Adapter では判定しない。
+- **未確認**: 製品のMCP契約、MCPの版ごとの差、実Host・実Harnessからの接続、認可、外部送出、期限・再接続・同時実行。
+
+### 8.1 次の判断
+
+1. **MCP入口を作るか**（#3400）。作る場合の範囲は、この参照実装が扱った4操作（`model catalog`・`inspect`・`trace`・`validate`）に限る案を推す。`commands` の discovery と同じ範囲で、第二の正本を作らない制約をそのまま維持できる。
+2. 作らない場合は、外部AIハーネスからはホスト提供のMCP経由で `tei` CLIを起動する経路に限られる（#2509 の実測と同じ形）。その場合は本節の参照実装を製品へは残さない。
+3. どちらを選んでも、`docs/architecture.md` の「別の正本を作らない」制約を維持する。
