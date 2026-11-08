@@ -575,7 +575,7 @@ TEI #3262の不足は単純な`Read more`ではない。**どの問いQの必要
 ### 21.4 統合計画と担当への差分
 
 1. **P0（完了した限定実測を固定）**：CC-12〜18／TT-56単一Consumer #3354の各exact Run・Source・限定結果、TT-105/106 Draft #3365の7合成ControlをPlan上で区別。旧二案選定と「まだTT-56は2 Draftのみ」という作業を**取り消す**。#3365はCI成功だが**Draftのまま**。
-2. **P1（次のProduct適格化）**：#3262のDesign Contextから、一つのFunctionの独立Required／実Source Reader・Parser／Validation/Relation／実Scenario/Go Targetを`R(Q)`で接続。#3356のMCP無しを理由にCLIを止めない。Source Loaded≠Meaning Accepted、11 Reply≠共同Epoch、6 Test Step≠全体C1を保持。
+2. **P1（次のProduct適格化）**：#3262のDesign Contextから、一つのFunctionの独立Required／実Source Reader・Parser／Validation/Relation／実Scenario/Go Targetを`R(Q)`で接続。#3356の当時のMCP入口未確認をCLI停止理由にしない（その後main #3458で参照MCP AdapterのCLI同内容・限定Go試験は成立。ただし外部MCP Host/Grant/Tool送出は未検証）。Source Loaded≠Meaning Accepted、11 Reply≠共同Epoch、6 Test Step≠全体C1を保持。
 3. **P2（実SEI Method効果）**：Q相対のD0/D1/M1実Probe比較を、独立Expected、同じTool/Grant/Read Budgetと実Receiptで実行。外部AI/LLMへHidden Expectedが渡らないことの実際の境界検証を先行し、空の記録を不在とみなさない。
 4. **P3（後続）**：T1-A既知Ruleを超えるT1-B盲検の新Obligation検出、実Function→Query→Provider→Context、Pluginの宣言→選択→実Load/Invocation、三視点図面/CRUDのProduct Consumer、実Operation/Host/OS/Effect、Full Coverageは各Ownerへ。複数のDraftで同一正式Gate/読取器を競合実装しない。
 
@@ -797,3 +797,59 @@ CC-25の前半はSUI #3396の**実Product非単射**に基づく帰結だが、�
 - **非採用**：二つ目のContext Gate、独自Agent/Meaning/Authority Host、外部文書・データサービスをTEIの必須Runtimeとすること、Result Shape全コマンド一律object、Source SHA＝Meaning受理、Preview/Working Copy＝正式Save、SUI Card＝TEI Accepted Rule、提出されたMethod Proposal＝実Effect。
 
 **実証状態**：CC-28/29とM1R-0〜4はここでは設計・検証手順として登録し、Go/Product/Method実試験は**NOT RUN**。既存#3354/#3370/#3366/#3176/#3396/SHO #25の限定CI結果を正本ごとに保持。本文は新しいTEI Product契約、正式OS/Sandbox認可、Owner意味受理、実H1成功を採用したものではない。
+
+<!-- tei-devctx-cc30-execution-selection-and-h3-mcp-20261108 -->
+## 26. CC-30：Runner引数・実Eventと最新Product Context、MCP参照Adapterを分ける（2026-11-08）
+
+### 26.1 前回から変化した実装基線
+
+同じ「見えない／受領できない／実行していない」を、Ownerごとに区別する。
+
+| Owner／確認した固定点 | 正の限定Witness | 次の第一不足Edge |
+| --- | --- | --- |
+| [TEI merged #3477](https://github.com/hat47x/tei-platform/pull/3477)（[main専用CI #42461058083](https://github.com/hat47x/tei-platform/actions/runs/42461058083)） | 既存Context Packet・11 CLI・32 Controlsを残し、**World一致でもSource Indexの改版で古いContextを拒否**する実CLI source-only LF／A→B→Aの限定実証。旧Draft #3383はclosed/unmerged | 実World/SourceIndexを複数回読んだこと≠原子的Snapshot、実Provider・Host・Owner Meaning／有効なCurrent Grant |
+| [TEI merged #3458](https://github.com/hat47x/tei-platform/pull/3458) | **参照MCP read-only Adapterの`validate`応答**がCLIの文書構造・finding失敗と一致する実Go試験。参照Adapterの入口は存在する | 実外部MCP Host/TransportのRequest↔Reply、認可、送出、Consumerの完全受信とDisclosure。旧#3356/#3396の「MCP入口なし」は**調査時点の記録**であり現在のProduct全体へ敷衍しない |
+| [TEI merged #3370](https://github.com/hat47x/tei-platform/pull/3370)、[#3366](https://github.com/hat47x/tei-platform/pull/3366) | `requirements.resultShape=array`・`view`のWorld/SourceIndex FPは実CLI契約として確認済み | Raw Resultの正常空配列、未定義Shape、Source/意味/Grantの不足を`not found`へ縮約しない。§25 CC-29は判別実行未実施 |
+| [TEI Draft #3365](https://github.com/hat47x/tei-platform/pull/3365)（[CI #42394673357](https://github.com/hat47x/tei-platform/actions/runs/42394673357) success） | 6 pinned Scenarioの局所観測とpartial receiptの`notObserved`、7 synthetic controls | 実H3 Reply/End、全Requirement Coverage、C1、ProductのTest Universe閉包。Draft/未統合 |
+| [TEI Draft #3329](https://github.com/hat47x/tei-platform/pull/3329)（[OKF K1 CI #42462571037](https://github.com/hat47x/tei-platform/actions/runs/42462571037) success）、[SHO Draft #27](https://github.com/hat47x/sho-composer/pull/27) | **固定4本の物理Markdown原文・Raw byte/SHA**を、TEI側の固定Bundle試験とSHO実CLI Readerで各々確認。SHO側のCIは独立に保つ | 全Reference Closure、K2共通Pluginの実選択／二Consumer Invoke、正式Writer/Save/Permission。固定Fixture読取をSUI実Producer→SHO同一File H1へ加算しない |
+| [SHO Draft #25](https://github.com/hat47x/sho-composer/pull/25)（[CI #42461901303](https://github.com/hat47x/sho-composer/actions/runs/42461901303) success） | Ubuntu/WindowsでWorking Copy実File書込・別Open readbackと限定部分作用の試験 | Production Editor Save/CAS/Atomic Publish/Owner/Current Grant、実SUI H1は未達 |
+
+**Source／Target／Toolの版を相互代用しない**。#3477の旧Context拒否、#3458のCLI≒MCP Adapter文書一致、SHO K1Rの同Raw SHA、#3365の局所Step Witnessは**別のAttempt／実Consumer／要求宇宙**。これらを一つの全域PASSへ合成しない。
+
+### 26.2 CC-30：TestGoFilesは同じ、Go test exit0、しかし必要Testは未実行
+
+既存[Draft #3176](https://github.com/hat47x/tei-platform/pull/3176)に合成Goの`TestDiscoveryProfileCC30RunFilterDoesNotQualifyRequiredNamedTest`（`tools/reference-developer-context/test_invocation_characterization_test.go`）を追加した。これは#2533の**実Test Invocationの意味**をCC-16/17/18から一段深める独立負例であり、新Runner／正式Test Receipt型ではない。
+
+同じ`qualification.go`、同じ`qualification_test.go`（`TestRequired`・`TestUnrelated`を定義）、同じ実Go `TestGoFiles`、同じ`Discover` Target/候補Report、同じGo package／GOOSを固定し、**`go test -json -count=1 -run <filter> .`**の実argvのみを変える。
+
+| 実argvの`-run` | Process Exit（期待） | 必要`TestRequired`の実Go named Event | 受入判断 |
+| --- | --- | --- | --- |
+| `^TestRequired$` | 0 | `run`＋`pass` | **この一Named Test／このAttempt**に限り実行の肯定Witness |
+| `^TestUnrelated$` | 0 | **なし**（他Testの`pass`あり） | 必要Testの`pass`にはならない |
+| `^TestNoSuchTest$` | 0 | **なし**（実Named Eventは0） | 「テストが成功」ではなく**当該要求Test未実行／未観測** |
+
+**報告条件**：指定`TestRequired`がGoのファイル選択に含まれること・Process Exit=0・同一Source digestの**3つを合わせても**そのTestの実行は証明できない。必要Witnessは実argv／Runner Profile／Source・Binary／同一Attemptの`TestRequired:run`＋`TestRequired:pass`。Go Package単位`ok`、無関係なTest pass、条件式を含むTest Codeの存在は独立Expected／Business Acceptanceではない。全Named Eventがない場合の正しい出力は`required-test-not-observed-on-this-attempt`であり、当該Testが一度も実行されたことがない、とは断定しない。
+
+**実証上限**：これは一時Go Moduleの実`go test -json`による最小負例。生成済TEIの実Run／外部TAI Harness／OS Process Audit／完全Coverage／Go Code Mutantではない。コード保存と**exact SHA CI**は別記録で判定し、CI成功前に「PASS」を宣言しない。
+
+### 26.3 既存Method/Context計画との統合：「最初に欠けているEdge」を選ぶ
+
+次の評価に**新しい共通Schema/Proof Storeは不要**。§25で固定した最初の実Probe H3-X02と、新CC-30の実Runner-filter問題を、既存の問い相対`Claim / Witness / Missing Edge / Probe / Owner`票で扱う。
+
+| Q | 最初の候補不足Edge | D0→D1→M1で評価する`next probe` | 不適切な近道 |
+| --- | --- | --- | --- |
+| H3-X02 必須3 Ruleの存在 | SubjectモードではRequired Definition全件が見えない | **既存CLI** `source-index -workspace`（index mode）を一回取得し、独立R(Q)・Source Role・Revisionと照合 | `subject`の空をRule不存在とする、MCP Adapterの文書一致を実H3完整受領と呼ぶ |
+| CC-30 必須Named Testが実行済みか | `TestGoFiles`に存在するが`-run`が別Test／存在しないTestを指す | **実Go argvと同一Attemptのnamed Event**を検査。再実行するならTarget/Dependency/Mode/Revisionも同じProfileで確認 | `exit 0`または別Test`pass`を必要TestのPASSと扱う |
+| K1R/SHO Raw文書が意味資料として利用可能か | 4原文byte受領と、Source closure・Rule/Meaning Bindの間が未到達 | Tool側では**既存Raw Reader／参照位置と実消費Reader**へ。意味受理はOwnerの別Probe | K1 Reader成功＝K2 Plug-in適格／Owner意味受理 |
+| 一Function`sales.order.submit`が実行可能か | Capability宣言・Application uses と、実Invocation Binding/Query Provider間の辺 | [#3262](https://github.com/hat47x/tei-platform/issues/3262)の単一Function Required 13 CLI/42 Consumer対照の**追加試験計画**をOwnerが実施し、Provider Selected→Actual Invokedを別受領 | 宣言・`uses sales`・DB `read-write`の文字列を実Commit/実Providerと読む |
+
+M1の提案はD1と同じAllowed Tool・Read Budget・Q/Grant/独立Expectedで評価し、**実 Tool Invocation／Raw Reply End／Consumer受領／必要Witness**を別票にする。外部SEI [#767](https://github.com/hat47x/sei-cognition/issues/767)／[Draft #824](https://github.com/hat47x/sei-cognition/pull/824)は方法選択、実TEI CLI/Adapterと各Rule RequiredはTEI、実TAI H2/H3のHost/Disclosure/OS/Egressは既存TAI Owner。TEI Adapterの成功でM1の実権限・配送完結を認定しない。
+
+### 26.4 次の受入順序と終了条件
+
+1. **CC-30を検収**：exact Test Source commitの実Go Focused CIで上記3 argv/Named Eventを検証し、後続Plan HEADのCI/Healthとは別結果として記録。CC-12〜18は先行の実Go証拠のまま。
+2. **TEI #3262の一Function（宣言側13 Reply/42対照）**：既存Ownerが本計画§26.3のRule/Source/Function Requiredを一レーンで実証。実ProviderのInvocation/RDB Rowset・Host Grant/副作用は別Edgeで追跡し、データ不存在と権限不足を区別。
+3. **最小M1比較**：H3-X02一問から、D0／固定D1／SEI M1を**同じSource・Tool/Profile・権限・Budget 1・隠れたExpected**で実行。Test FilterとRaw/SHOは**次の別Q**として比較し、初回一問と同じ成績として合算しない。
+4. **文書経路**：SHO #27 K1Rの実4原文読取を基線とし、K2のProduct Plugin実選択と両Consumer実Invoke／SUI実Producer→SHO同一物理File H1を各Ownerで測る。**Product Writerの正式保存**はさらに別のPermission/Version/Effect資格。
+
+**強制的な保留**：外部MCP実Transport/Host、SEI M1実Method試行、H3-X02 Blind Win、AI未知T1-B生成、全Business Source Closure、実DB/Provider Commit、実SHO Editor Save／SUI Producer H1、Owner Accepted Meaning、Current Grantはいずれも**NOT RUN／未受理**。#3477 SourceIndex A→B→Aの復元から歴史が無かったことを推論せず、#3458 Adapterがあるから全TEI ToolがMCP経由で実使用できると宣言しない。第二Reader/Source正本/Permission Engine/認知Host/Runnerを新設しない。
