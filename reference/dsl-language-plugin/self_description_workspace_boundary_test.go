@@ -453,7 +453,6 @@ func TestSelfDescriptionManagedRawDocumentDoesNotBecomeSemanticRole(t *testing.T
 	t.Fatal("original Load-time raw asset disappeared from Source Index")
 }
 
-
 // Raw document edits change a managed Source Artifact but not the parsed
 // semantic World. This is a bounded, real Loader/Index comparison; it does
 // not qualify the document for disclosure or independently accept its meaning.
