@@ -63,6 +63,40 @@
 
 §4.11の末尾が挙げた**builder自身が`BuildArtifactLock`を作って返す経路**である。今はentryが二つの自己申告からlockを組むため、builderが申告を偽れば`bound`は成立してしまう。builderが自分でlockを`Validate`して返せば、少なくとも**そのプロセス内での整合**はbuilder側の責任で証明される。
 
+## 再現に使ったprobe宣言
+
+固定fixture（`testdata/intent.json`）は`outputKind: runtime-artifact`で、P-1のchildが配布物を作れない。この記録では次の2ファイルを用意した（カタログは`tools/reference-build-authoring-intent/testdata/catalog.json`をそのまま使用）。
+
+```json
+{
+  "formatVersion": 1,
+  "subject": {"kind": "plugin", "id": "tei.plugin.both_probe", "version": "1.0.0", "definitionSource": "definition"},
+  "sources": [{"kind": "plugin-definition", "id": "definition", "ref": "plugin.tei"}],
+  "builder": {"contract": "tei.plugin-build", "compatibleMajor": 1},
+  "recipe": {"kind": "go-package", "entrypoint": "plugin.tei"},
+  "outputKind": "plugin-package",
+  "target": "host/linux/amd64",
+  "profile": "release"
+}
+```
+
+```text
+plugin tei.plugin.both_probe v1.0.0 {
+    runtime builtin
+    provides deployment-executor runtime.both_probe {
+        action application-start
+    }
+}
+```
+
+手順は3段である。
+
+1. 解決childで宣言を計画へ解決し、receiptの`plan`を取り出して`plan.json`へ書く
+2. `tei self-build`を`-intent-resolver`付きで起動し、builder childには`-child-arg`で`-plan`と`-plugin`を渡す
+3. 出力の`planCrossCheck`と`planArtifactBinding`を読む
+
+`planCrossCheck`と`planArtifactBinding`は別の欄なので、**片方だけが成り立つ組み合わせ**（計画は一致したがartifactへ束ねられない、逆に束ねられたが計画が一致しない）を同時観測で排除できる。
+
 ## 検証
 
 - `go build ./cmd/tei`：PASS
