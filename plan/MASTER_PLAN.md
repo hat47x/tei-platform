@@ -10,6 +10,7 @@
 
 関連文書は次のとおりです。
 
+- `plan/workstreams/CROSS_DOMAIN_VERTICAL_QUALIFICATION_2026-11.md` ：Core以外のPlugin化、通常CLIでの実選択・実呼出し、DB/Effect、Lifecycle図面生成、Headless Consumer、Cache/最適化を**同一試行の資格段階で分けて検証する提案**。既存の#1119/#1251/#3503/#2600/#3509等に責務を戻し、新Gate／第二正本を作らない。P0〜P2の縦断E2Eは**NOT RUN**。
 - `product/`
 - `requirements/`
 - `plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
