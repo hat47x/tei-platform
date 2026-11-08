@@ -99,7 +99,6 @@ func TestImportedSourceOnlyDriftNeedsProviderOccurrenceBeyondConsumerRevision(t 
 	}
 }
 
-
 // The selected provider Manifest is a separate dependency from the
 // Namespace's normalized meaning and from its current Source anchor.
 // A manifest-only formatting edit must not be "proved absent" by matching
