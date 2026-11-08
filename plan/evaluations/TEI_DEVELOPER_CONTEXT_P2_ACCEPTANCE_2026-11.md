@@ -7,12 +7,12 @@
 | 優先 | 現実に成立している入口と次に検証する一つの不足 | 完了判定 |
 | --- | --- | --- |
 | **P0 定義観測（main限定PASS）** | TEI main #3482の13実CLI Reply／42限定Consumer Controls、#2639 EG-09の同結果型・異Attribute Type反例を再利用。Function/Rule/Sourceの**宣言**と必要な型・Meaningを分ける | 実Source/Loader/Ruleの局所Source資格まで。実Function Binding/Provider/Rowset/Owner Meaningは未成立 |
-| **P1 H3-A0（次に一回実行）** | TEI source-indexのsubject/index両Modeの実Raw Replyを固定し、SEI既存CLIのRecommendationを実保存・別resumeで原記録を再読する（§26.7） | 物理的な二製品の**限定記録往復**だけがPASS条件。Method、Inquiry未決の永続化、現在Grantは別 |
-| **P2 H3-A1（A0後）** | 同じQ/Tool/Scope/Grant/Budget=1・blind ExpectedでD0/D1/M1を比較。決定的index-mode再取得D1を**陰性対照**にする（§25.4・§26.7） | M1がD1と同じProbeなら増分価値なし。実Invoke/完全Reply/必要R(Q)・費用を別欄で採点 |
+| **P1 H3-A0（限定実Go PASS）** | TEIとSEIの実CLIを別々にbuildし、TEI source-index subject/index両Modeを取得→SEI Recommendationの保存→独立resume原記録再読取（§26.8） | 固定TEI/SEI Source SHA・専用CI #42474971439で実証。SEI Method・未解決InquiryのNative保存・現在Grant/外部Harnessは未実証 |
+| **P2 H3-A1（次の未実証）** | 同じQ/Tool/Scope/Grant/Budget=1・blind ExpectedでD0/D1/M1を比較。決定的index-mode再取得D1を**陰性対照**にする（§25.4・§26.7） | M1がD1と同じProbeなら増分価値なし。実Invoke/完全Reply/必要R(Q)・費用を別欄で採点 |
 | **P2 並行・別Owner** | 実SUI Producer→実SHO Reader同一File H1、TEI実Function Invocation Binding→実Provider、外部TAI H2/H3隔離・完全受領 | 個別CI／Working Copy／TEI CLI↔MCP Adapter一致を横断PASSへ合算しない |
 | **P3 保留** | SEI Decision前Question/UnknownのNative継続、正式SHO Editor Save、Ontology/Decision Twin、REA・KONの拡張 | 初回A0/A1のBlocking条件にはしない。新Host/Registry/第二Source・Proof Storeを設けない |
 
-**現時点の変更**は試行を実行しやすくする受入順序の整理であり、H3-A0/A1、実SUI H1、Function Provider、実SEI Method、Owner意味受理は**NOT RUN**。Draft #3176も未merge。SourceやWorkflowの正本を当計画に移さない。
+**現在の証拠**：H3-A0は固定した二つの実Goバイナリと実Source Index応答・実SEI Storeの限定往復について**PASS**（§26.8）。H3-A1/A2、実SUI H1、Function Provider、実SEI Method、外部Harness、Owner意味受理は**NOT RUN**。Draft #3176も未merge。SourceやWorkflowの正本を当計画に移さない。
 
 
 
@@ -913,4 +913,30 @@ M1の提案はD1と同じAllowed Tool・Read Budget・Q/Grant/独立Expectedで�
 **A0合格の上限**：一つのTEI実CLI Reply集合を読んだことと、その不足を提案するRecommendationをSEI実Storeへ保存・別呼出しで再読取したことを、二つの実Binary/原Byte/別Digestで束縛できた場合に限り、**限定ローカル記録往復PASS**。これだけではTEI生SourceのSEI Method受取、Tool実Invoke、H2/H3外部Harnessの終端受領、権限/Disclosure、Provider実行、Owner意味受理は成立しない。SEI側のProduct試行は#824/#767が担当し、TEIは#2533/#2514/#2516の既存Oracle／Source受入だけを再利用する。
 
 **現在の実証状態**：既存TEI #3482の13実CLI Reply・42限定Controlsと、実SEI CLI Sourceの契約を照合した**計画追補**。新しい二製品H3-A0実Run・A1/A2・実SEI Method・OS/Host受領・Owner判断は**NOT RUN**。
+
+<!-- tei-devctx-h3a0-real-two-cli-ci-20261108 -->
+### 26.8 H3-A0の実二製品ローカル試行：保存・独立再読取まで限定PASS（2026-11-08）
+
+#### 固定した製品と実観測
+
+[Draft TEI PR #3176](https://github.com/hat47x/tei-platform/pull/3176)へ実Goテストを追加した。[H3-A0のGo試験](https://github.com/hat47x/tei-platform/blob/26b79a68473e073d0e77719a25c9d6723161d94d/tools/reference-developer-context/h3a0_tei_sei_actual_record_test.go)は、現TEIの固定版をビルドして「source-index」のsubject/index両Modeを**別の実CLIプロセスとして**呼び出し、独立に固定したRequired Validation 3件がindexに存在することを確認する。その後、SEIの実CLIを別にビルドし、隔離した新規Data RootへRecommendationを保存、独立した「resume --json」と「resume --json --record-id … --snapshot-digest …」で原記録を再読取する。Recommendationで未対応の「--unresolved」を拒否し、拒否後にSEI Store digestと件数が変わらないことも検証する。
+
+| Witness | 実Source/観測の固定値 | 判定 |
+| --- | --- | --- |
+| **TEI実Product CLI** | TEI commit **26b79a68473e073d0e77719a25c9d6723161d94d**、Go単体バイナリ。実index Raw stdout digest **sha256:e6f9d38477dda0e9b538ba43b551498f682d4177a72168747022ae3ad79a6700**。subject Raw stdout digest **sha256:ce7552eb6ab8ad4a63d5225feb55da8a8b31e418b3d66dc4d4ab6df49f56d056**。対象は公開reference/workspace | CLI別実行・JSON契約の局所PASS。Source全件閉包・共同Atomic Snapshotではない |
+| **SEI実Product CLI** | pin **6d98ddf2d1080a1c3a308294fb342c231a08294d**。新規隔離Store、Recommendation 1件、別CLIからresume JSON・snapshot digest付きrecord-id再読取。記録が改変されない負例を含む | ローカルStore往復の限定PASS。未決QuestionのNative永続化やMeaning受理ではない |
+| **実CI実行** | [TEI push Workflow #42474971439](https://github.com/hat47x/tei-platform/actions/runs/42474971439) の2 Job（bounded-discovery・tei-sei-h3a0）completed/success。実Goログに「TestH3A0ActualTEIToSEIRecommendationResume」PASSを確認 | **同じ実TEI commit**上でのH3-A0局所受入PASS。PR WorkflowはGitHubの合成merge SHAで試行されるため、push側の固定HEADを一次証拠とする |
+| **失敗と部分効果** | RecommendationでDecision専用Flagを指定した呼出しは失敗し、その後のStore digest/件数は不変 | 拒否の実Go負例PASS。失敗一般・OS/ネットワークの無作用は保証しない |
+
+SEI Storeのsnapshot digestは試行ごとに作成日時を含む別Sourceであり、TEI World/Source Indexのfingerprintと一致すべき値ではない。実ログの一回の例は **sha256:6bfdf22af4ea7ac0a54f6d5fcaea6afd1ac57d63f8d49b25d01a496b5034eef3**。この値を将来の再開に使える現行SEI Storeとして共有せず、**当該CI一時ファイルだけの記録**として扱う。
+
+#### 成立したClaimと、成立しないClaim
+
+- **成立した**：固定した同一公開WorkspaceでのTEI実Source Index subject/indexモード読取、独立Required3件のindex照合、事前固定した**評価用Recommendation**のSEI実Store保存と再読取、未対応Flagの拒否/Store不変。
+- **成立しない**：TEIの生Raw SourceがSEIのCognitive Methodへ渡されたこと、モデルが自律的にProbeを提案したこと、SEIの任意Question/UnknownのNative保存、Tool実行Grant/Consumer公開・実外部Harnessの完全受領、実Provider Invocation/Result、Source改訂の同一Snapshot保証、Owner Accepted Meaning。Recommendation文面はテストに固定された**評価者の文**であり、認知Methodによる生成結果ではない。
+- **実Toolの制限**：二つのTEI CLI Invocationは同じ公開Workspaceを使うが、atomic Workspace Snapshot/変更監視の保証は別Owner。二製品のRaw bytes/digest・Command実行/受領とSEI Store digestを同じ語「証拠」で上書きしない。
+- **次のP2**：H3-A1のD0/D1/M1を、今度はMethodが選ぶ一Probeと決定的D1が選ぶ一Probeの同条件比較へ進める。D1でindex-modeを読めば解けるH3-X02は**陰性対照**。A1のMethod効果・実Tool選択／実Replyの評価はNOT RUN。
+- **既存Owner**：本PRはTEI #2533の認知評価Go試験だけを追加。SEIの推薦の契約と未決管理は#824/#767/#711/#678、TEI独立Requiredは#2514、External Deliveryと開示は#2516/TAI #168、実Function/Providerは#3262/#2586のまま。新Host/Runner/SEI Store/schema追加なし。
+
+**今回の実行状態**：**H3-A0限定PASS、H3-A1/A2 NOT RUN**。本計画修正自体はMarkdown変更であり、次HEADの全Repository Health／依存ScannerはGoの専用CIと別判定する。
 
