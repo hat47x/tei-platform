@@ -410,6 +410,71 @@ childのlockが無い場合は`childLockChecked=false`のままにする（**欄
 
 entryのlockもchildの`planFingerprint`と`artifactDigest`から作るため、依存は完全には消えていない。計画側もentryが独立に持つには、`-intent-resolver`のreceiptではなく**entry自身が宣言から計画を導く経路**が要る。それは§4.7でI-1（intent解析の`internal/`への切り出し）を採らなかった制約に戻る。
 
+### 4.13 entryが宣言から計画を独立に導くには（I-1の実測見積り）
+
+§4.12の残る限界を詰めるため、I-1の**実際の作業量**を測った。結論から書く。**I-1は「配置の移動」ではなく「パッケージ境界の新設」であり、`tools/`側の参照実装を分割する作業になる。**
+
+#### 対象の実測
+
+`tools/reference-build-authoring-intent`は8ファイル・2205行（うち試験1074行）である。
+
+| ファイル | 行数 | 関数 | 役割 |
+| --- | --- | --- | --- |
+| `intent.go` | 384 | 9 | `BuildIntent`の型・`ParseIntent`・`NormalizeIntent`・`IntentFingerprint` |
+| `resolve.go` | 267 | 4 | `Resolve`・`MarshalReceipt`・`VerifyDerivedReceipt` |
+| `fixture.go` | 406 | 21 | `DirSourceResolver`・`ParseFixtureCatalog`・`NewFixtureContext` |
+| `input_json.go` | 58 | 3 | `transform.ParseJSON`を使う厳密JSON読み |
+| `main.go` | 79 | 2 | CLI |
+| 試験4ファイル | 1082 | 34 | — |
+
+**32のexported関数がある。** `internal/`へ移すのはこのうち再導出に必要な部分だけでよく、CLI（`main.go`）と試験は`tools/`に残せる。
+
+#### 依存の実測
+
+`internal/`側から見ると、参照実装が使うのは次の4つだけである。
+
+| import | 用途 |
+| --- | --- |
+| `tei/internal/core` | `ParseCanonicalID`・`ValidNumericVersion` |
+| `tei/internal/plugin` | `BuildPlan`・`BuildPlanFingerprint`・`BuildDependency` |
+| `tei/internal/plugin/transform` | `ParseJSON`（厳密JSON） |
+| `tei/internal/syntax` | Plugin定義の構文解析 |
+
+**すべて`internal/`配下であり、`cmd/tei`からも届く。** つまり新しいパッケージを`internal/`に置けば、`cmd/tei`と`tools/`の両方からimportできる。§3.1で問題になった`tools/internal/gobuilder`とは違い、**internal規則が障害にならない**。
+
+#### 三つの案と採否
+
+| 案 | 内容 | 作業量 | 何が得られるか |
+| --- | --- | --- | --- |
+| **I-1a: 解析だけを移す** | `ParseIntent`・`IntentFingerprint`・`ParseFixtureCatalog`を`internal/`の新パッケージへ移し、`Resolve`は`tools/`に残す | 中（型と解析の移動、試験の分割） | entryが**宣言の解釈と照合値の導出**を自分でできる。計画の導出はchildのまま |
+| I-1b: 導出まで移す | `Resolve`も`internal/`へ移す | 大（`ResolutionContext`とfixture catalogも移す） | entryが**計画まで**自分で導ける。L2-bの依存が最も減る |
+| I-1c: 移さない | 現状維持（I-2） | なし | — |
+
+**I-1aを次の一歩とする。** 理由は次の三点である。
+
+1. **§4.12の依存は計画側にある。** entryがchildの`planFingerprint`を受け取らずに済むには、entryが計画を**導出**する必要がある。しかしその前段の「宣言を厳密に読み、意図の照合値を出す」は独立にでき、これだけで**宣言byteの突合をentryが行える**
+2. **I-1bは`ResolutionContext`の設計まで動かす。** `fixture`は名前のとおり参照実装の固定入力であり、`internal/`へ移すと「fixture catalogが製品の一部」に見える。この誤読は避けたい
+3. **I-1cは残る限界をそのまま残す。** §4.12が明示した依存が消えない
+
+#### I-1aで増える観測と、増えないもの
+
+**増える観測**：entryが`ParseIntent`と`IntentFingerprint`を**自分で**呼べるため、childの`intentFingerprint`申告に依存せずに「entryが読んだ宣言の照合値」を持てる。`intentBinding`が今は「childの申告との一致」しか言えないのに対し、**entry自身の導出値**を基準にできる。
+
+**増えないもの**：**L2-b**。計画の導出は依然childにあり、`planCrossCheck`の限界（二つの自己申告の一致）は変わらない。**(c)も変わらない。**
+
+**I-1aの後に残るもの**：計画の導出をentryが行う経路（I-1b）。これは`ResolutionContext`の設計判断を伴うため、別の設計判断として切り出す。
+
+#### I-1aの作業範囲（見積り）
+
+| 作業 | 対象 |
+| --- | --- |
+| 新パッケージの作成 | `intent.go`の型・`ParseIntent`・`NormalizeIntent`・`IntentFingerprint`、`input_json.go` |
+| `ParseFixtureCatalog`の扱い | これは`BuildPlan`の解決に使う。I-1aでは**移さない**（`tools/`に残す）。entryが宣言だけを読む用途では不要 |
+| `tools/`側の追随 | `intent.go`の残りが新パッケージをimportする形へ変更。`Resolve`はそのまま |
+| 試験 | `intent`関連の試験を新パッケージ側へ複製せず、**新パッケージの試験として書き直す**（`tools/`側は`Resolve`の試験を残す） |
+
+**この見積りは本節の範囲では実行しない。** 実装は次の周へ回す。
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
@@ -464,10 +529,12 @@ entryのlockもchildの`planFingerprint`と`artifactDigest`から作るため、
 - [x] (c)の一歩目（`planArtifactBinding`。検証済みlockで計画fingerprintとartifact digestを束ね、digestをディスクと突き合わせる。§4.11）
 - [x] `planCrossCheck=matched`と`planArtifactBinding=bound`の**同時**実測（[記録](../evidence/TEI_GO_SELF_BUILD_MATCHED_AND_BOUND_2026-11-09.md)、`99b220ae0`）
 - [x] builderが自分で`BuildArtifactLock`を作って返す経路（§4.12。entryのlockとの一致を実測。[記録](../evidence/TEI_GO_SELF_BUILD_CHILD_LOCK_2026-11-09.md)、`669bc83f0`）
-- [ ] entryが宣言から計画を独立に導く経路（§4.12末尾。§4.7でI-1を採らなかった制約に戻る）
+- [x] I-1の実測見積りと案の選択（§4.13。**I-1a（解析だけを`internal/`へ移す）**を次の一歩に）
+- [ ] **I-1a**（`ParseIntent`・`IntentFingerprint`を`internal/`の新パッケージへ移し、entryが宣言を自分で読む）の実装
+- [ ] entryが計画まで独立に導く経路（I-1b。`ResolutionContext`の設計判断を伴う。§4.13）
 - [ ] D-1（catalogの`scope`拡張）を採るかどうかの契約判断（採る場合のみ、catalogの広告と実応答の一致を照合へ載せる）
 
-**A-1（`gobuilder`移動）は採らないため、影響範囲の洗い出しは終了条件から外した。** 29ファイルの内訳は[記録](../evidence/TEI_GO_INTERNAL_RULE_AND_BUILDER_MOVE_2026-11-07.md)として残す。I-1（intent解析の`internal/`への切り出し）も、I-2を既定案にしたため本稿では行わない。
+**A-1（`gobuilder`移動）は採らないため、影響範囲の洗い出しは終了条件から外した。** 29ファイルの内訳は[記録](../evidence/TEI_GO_INTERNAL_RULE_AND_BUILDER_MOVE_2026-11-07.md)として残す。I-1は「採らない」から「I-1aとして着手」へ改めた（§4.13）。`ParseFixtureCatalog`（fixture catalog）は`tools/`に残す。
 
 **P-2（`reference-go-build-with-supply`への欄追加）は採らない。** 計画を解釈しないchildに欄を足すと`unperformed`が`matched`に変わるが、主張の強さは変わらない（§4.10.2）。
 
