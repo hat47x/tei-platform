@@ -1776,3 +1776,50 @@ KON Dataspaceは独立・任意のData Source候補であり、TEIのテスト�
 この新機構は**独立に固定した合成Referenceに対する検証**であり、業務Meaning Owner Acceptance、Scenario→実Function→Provider、実外部Harness end/ACKを証明しない。C1、Blind T1-B、Current Grant/Disclosureは引き続きunknown/NOT RUN。
 
 **採用順（最新）**：#3365のexact HEAD CIにおける9対照・実6 Stepの限定成立は**2026-11-08のRun #42465435223で確認済み**。ただしDraft/未mainなので製品に統合済みとはしない。#2514/#1180へはこの限定受入範囲だけを伝える。次のP0-Rは本§35.3の `order_entry.recent_orders` 読取を先行し、`sales.order.submit` のCommand/Effect系とはOwnerもExpectedも分離する。宣言だけと実行を混ぜず、実呼出が未確認なら`not-observed`で止める。外部Import ProviderのRaw-only drift (#3479) とCLI/MCP参照Transportは、この同一Attemptの外側の別検収条件とする。**新Core/Reader/Runner/Oracle正本を作らない**。
+
+<!-- tei-test-single-read-multi-purpose-admission-20261108 -->
+### 35.6 実Readの一つのAttemptを、テスト・性能観測・表示の別資格に使う（2026-11-08 横断更新）
+
+**今回の結論**：テスト生成、AI性能チューニング、Function Data Context、Studio/SHO表示が同じ業務データを使う場合も、**別試行で得たSource/Provider/Replyを一つの「実行済み」へ合成しない**。共有するのは新しい証拠正本ではなく、既存のSource/Operation/Provider/Context/Result/Receiptに付く**参照可能な同一Attempt識別子と必要条件の照合手順**とする。#2586のP0-R `order_entry.recent_orders`を先行Targetに固定し、Submit系のCommand/Effect実行とは分ける。
+
+#### 35.6.1 先行実装の確定と範囲
+
+| 実装/Owner | 確認できた限定成果 | テスト・AI観測へ流用できない未実証 |
+| --- | --- | --- |
+| [main #3479](https://github.com/hat47x/tei-platform/pull/3479) / #3262 | Consumer World/SourceIndexが同じでもImported ProviderのRaw/Manifest改訂を別途再観測すべきという実Go反例をmain統合 | 原子的Nested Input Closure、現在のGrant、実Consumer Load/Invocation、再資格化完了 |
+| [main #3516](https://github.com/hat47x/tei-platform/pull/3516) / #3274 | 実WorkspaceのCanonical/認可→Go Host→既存Driver→**合成Adapter**へ到達した一HTTP試行。専用Go/Nodeで7 Caseの限定証拠 | 実SQL ProviderのRead/Write・本番Plugin Build/権限・Business Effect/外部Client完全受領 |
+| [Draft #3500](https://github.com/hat47x/tei-platform/pull/3500) / #2586 | **別Domainの**Native Organization Case Query→実Resolver/既存Postgres Executor/Mapperにinstrumented Connectorを接続したGo試験。オプトイン物理PGも実装候補 | `order_entry.recent_orders`自身の実Read、物理PGのSKIPなし確認、Function Data Context/消費先同一Attempt。Draftまま |
+| [main #3520](https://github.com/hat47x/tei-platform/pull/3520) / #3271 | Design Hint/申告されたProvider呼出・Statistics/Delivery/Disclosureの**19件の合成照合**を実装・main統合。専用CI #42476197836成功 | 実TEI Provider呼出・統計採取・外部Tool完全受領・性能改善。対応するHEADの脆弱性確認#42476197787はvuln DB取得時の通信失敗でworkflow failure、安全性PASSでない |
+| [Draft #3365](https://github.com/hat47x/tei-platform/pull/3365) / #2514 | 実6 Pinned Scenario Stepと9 test-only目録対照、独立Step→Operationを[exact HEAD CI #42465435223](https://github.com/hat47x/tei-platform/actions/runs/42465435223)でPASS | 6 Stepの外側のRule/Requirement分母、実Function Read、外部H2/H3配送、AIのBlind新規テスト発見 |
+
+#### 35.6.2 P0-Rに渡す最小受入票（別のProduct Schemaにはしない）
+
+同じ`order_entry.recent_orders`の一試行から、既存Ownerの記録を参照して次の属性を**個別に観測**する。すべてを一つの巨大なPacketに強制するのではなく、どの属性が同じAttemptで得られ、どの属性が別時点/未取得なのかを診断する。
+
+| 辺 | 実際に観測するもの | 反例／保留 |
+| --- | --- | --- |
+| D（Source） | 実Loaderが消費したPattern・Query・SQL原Byte、Source/Role/Revision。外部Importが必要ならProvider Raw/Manifest occurrenceも別束縛 | Consumer World/Index同一でも実SQL/Import Rawが改版、またはSQL Role未取得 → stale/unknown |
+| B（選択） | 実Request/Scope、QueryとDatasource alias、**選択されたProvider instance**、実呼出し先の関係 | Declared BなのにCalled A → 不一致。等しいRaw Rowsetでも一致認定不可 |
+| R（実Read） | 実Executor/Statement+args、物理Column/RowとMapper出力、欠損/NULL・grain・時点とResult completeness | instrumented Connectorだけを物理PG実Readと報告しない。partial 1/3や0件で「全件・不存在」を推論しない |
+| T（テスト） | 同じAttemptの実Target/Operation到達、別保管のIndependent Expected、正常/負例と実際に識別したMutant | Step IDだけ合致、生成AIが自作したExpectedと同源、別Operationの実成功 → TEST-PASS不可 |
+| O（性能） | Provider実Readと結び付く測定点、Window/Count/Missing、計測負荷、同一Query/Scopeでの候補前後比較 | 合成19対照・N+1ヒント・p99推定のみでは実測改善不可。性能最適化提案と採用を混同しない |
+| H/A（受領・開示） | Consumer別の実Part/End/ACK、現在のTenant/Scope/Grant/Disclosureと送出先 | 内部CLI exit 0や入力`end=true`を実外部受領としない。許可外ID/件数も出さない |
+
+**局所の正の証拠は残す**：D/B/Rが確認できても独立ExpectedのTや性能のO、外部H/Aは自動で合格にならない。逆に、H/Aが未測でも独立に検証されたRの物理Rowset自体を消さない。ProductのFull Coverage/Benchmark/Effectは、必要な独立分母と実測が揃うまでunknown。
+
+#### 35.6.3 呼称の衝突を防ぐ（既存Issue/履歴IDは改番しない）
+
+他チャットで`T1-B`を**TEI Source化→再Parse→Source出典比較**の段階として使う計画と、本テスト基本設計の**生成AIによる未提示Gapの盲検発見**として使う計画がある。両者は別の受入試験であり、同じ`T1-B PASS`を共有してはならない。旧文書の番号を一斉変更せず、新しい横断報告では必ず**領域接頭辞とOwner**を添える。
+
+- **SRC-T1B**（Source取込/再Parse）＝原文→正式Source→Parser/Source出典照合。Source採用・Owner Meaningはさらに別資格。
+- **TEST-T1B**（#3273/#2514）＝未知の独立ObligationをAIが発見し、実Target・Pinned Scenario・Independent Expected/Mutantを判別。既知の行番号0 T1-Aは加点しない。
+- **READ-P0R / HJ-09**（#2586）＝Function→Query→選択/実呼出Provider→実Rowset/Contextの一Attempt検証。上の二つの前提や代替成功ではない。
+- **PERF-T0〜T4**（#3520/#3271）＝Hint/合成Observationから実Profiler/実Read/別Benchmarkへ段階的に昇格。TEST-T1Bの採点と区別。
+
+#### 35.6.4 次の一件の判断と停止線
+
+**最初の一往復**：既存`order_entry.recent_orders`の一Requestに対して D→B→R を実証し、`selected=B, invoked=A`を**同じ結果でも拒否**する。成功時に申告できるのは`read-observed-for-one-attempt`など範囲相対の資格まで。#3500の別Domain Connector試験や#3516のCommand合成Adapterが成功しても、その代替にはしない。実PGが無ければ`instrumented-connector-only`と明記する。
+
+次に#2514の独立ExpectedでT（業務Rowset/NULL/粒度）を検収し、#3271の統計観測を**実Rに結び付けた場合だけ**Oを実測として受け入れる。外部H2/H3実配送、現在Grant、Owner Meaning、Source全閉包、Go C1、全NFRは並列Ownerの別Gate。**第二Runner/Resolver/Provider/Optimizer/認可・テスト正本を作らない**。
+
+**今回の実施区分**：main/既存DraftのSource/CIをGitHubで確認して受入票へ反映した計画更新。新しい`order_entry.recent_orders`実Provider/PG/Function Context/外部Delivery/生成AI TEST-T1B試行/実性能Benchmarkは**NOT RUN**。
