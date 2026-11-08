@@ -369,6 +369,47 @@ P-1のchildが実装できたとして、観測できるのは次である。
 
 **(c)を`bound`で満たしたと読まないこと。** (c)が本来問うのは「**その計画がそのartifactを生んだか**」であり、`bound`が示すのは「**その計画fingerprintとそのartifact digestが一つのlockとして整合し、digestが実体と合う**」ことである。この差は、builderが自己申告を偽らないという前提に依存している。前提を観測で置き換えるには、builderの出力そのものをentryが検証する経路（例: builderが`plugin.LockedBuild`を自分で作って返す）が要る。
 
+### 4.12 child自身がlockを作る（2026-11-09）
+
+§4.11の末尾が挙げた経路を実装した。**builder childが自分の`BuildArtifactLock`を組み立て、`internal/plugin`の検証を通してから返す。entryはそれを、自分が独立に導いたlockと比べる。**
+
+| 段 | §4.11の実装 | §4.12の実装 |
+| --- | --- | --- |
+| lockを作る主体 | entryのみ | **childも作る** |
+| lockの検証 | entryが`Validate` | **childも`Validate`**。通らなければreportを出さずexit 1 |
+| 突合 | なし | **entryのlock fingerprintとchildのlock fingerprintを比較** |
+
+#### child側
+
+reportへ`buildArtifactLock`を足した。`validated`・`lockFingerprint`・`planFingerprint`・`artifactDigest`・`boundary`を持つ。lockが`Validate`を通らない場合は**artifactを書いた後にreportを出さずexit 1**にする。reportを返すと、検証できなかった束縛が「返ってきた」と読まれるためである。
+
+#### entry側
+
+`planArtifactBinding`へ次を足した。
+
+| 欄 | 意味 |
+| --- | --- |
+| `childLockChecked` | childのlockを比べたか |
+| `childLockValidated` | childが検証済みと申告したか |
+| `childLockMatched` | entryのlock fingerprintと一致したか |
+| `childLockFingerprint` | childのlock fingerprint |
+
+childのlockが無い場合は`childLockChecked=false`のままにする（**欄が無いことを合格と読ませない**）。あるのに一致しない場合は`mismatched`として`ok=false`・`failureCause`にする。
+
+#### この段で増えた観測と、増えなかったもの
+
+**増えた観測**：経路の違う二つの組み立てが**同じlock fingerprint**になったこと。childは自分が読んだplanと自分が書いたバイトから、entryはreceiptのplan identityとchildの申告からlockを作る。一致すれば、両方の読みが同じ束縛を指している。
+
+**増えなかったもの**：**L2-b**。`l2bClaimed`は`false`のままである。
+
+- builderが読んだのは`-plan`のファイルであり、entryが保持した宣言そのものではない
+- **(c)が問う「その計画がそのartifactを生んだか」は、lockが一致しても出ない。** lockが示すのは「計画identity・planFingerprint・artifactDigestの三つ組が、二つの独立した組み立てで同じになった」ことである
+- **childのlockもchildの申告に依存する。** entryが比べられるのは、entry自身が導いた値との一致までである
+
+#### 残る限界と次の一歩
+
+entryのlockもchildの`planFingerprint`と`artifactDigest`から作るため、依存は完全には消えていない。計画側もentryが独立に持つには、`-intent-resolver`のreceiptではなく**entry自身が宣言から計画を導く経路**が要る。それは§4.7でI-1（intent解析の`internal/`への切り出し）を採らなかった制約に戻る。
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
@@ -387,6 +428,8 @@ P-1のchildが実装できたとして、観測できるのは次である。
 | SC0-12 | 既存の`scope: selected-read-only-commands`を「書込み系も含む」と読み直す | 既存consumerの前提を変える。D-1の契約判断なしに行わない |
 | SC0-13 | childが**別の宣言**を読んで別のBuild Planを返す（渡した宣言のdigestとchildの読んだものが違う） | L2-b不可。`intentBinding.intentByteCheckMatched`がfalseになり、`planCrossCheck`が`mismatched`になる（実装済み） |
 | SC0-14 | childの`IntentFingerprint`だけを記録し、渡した宣言のbyte digestを記録しない | L2-b不可。entryは`intentBinding.intentBytesDigest`を必ず記録し、childの`IntentFingerprint`だけでは突合しない（実装済み） |
+| SC0-15 | childが自分のlockを作るが`Validate`を通らない | reportを出さずexit 1。検証できなかった束縛を「返ってきた」と読ませない（§4.12） |
+| SC0-16 | childのlock fingerprintとentryのlock fingerprintが違う | `planArtifactBinding.state=mismatched`・`childLockMatched=false`・`ok=false`（§4.12） |
 
 ## 6. 未決事項
 
@@ -419,8 +462,9 @@ P-1のchildが実装できたとして、観測できるのは次である。
 - [x] 計画突合の3状態を実プロセスで観測（[記録](../evidence/TEI_GO_SELF_BUILD_PLAN_CROSS_CHECK_ACTUAL_2026-11-09.md)、`3a4ddeba6`）
 - [x] **P-1**（`internal/plugin`の`BuildPlan`を消費し、artifactを書き、`planFingerprint`を返すchild）の実装と、実プロセスでの`planCrossCheck=matched`観測（[記録](../evidence/TEI_GO_SELF_BUILD_PLAN_MATCHED_2026-11-09.md)、`e4b478581`）
 - [x] (c)の一歩目（`planArtifactBinding`。検証済みlockで計画fingerprintとartifact digestを束ね、digestをディスクと突き合わせる。§4.11）
-- [ ] `planCrossCheck=matched`と`planArtifactBinding=bound`の**同時**実測
-- [ ] builderが自分で`BuildArtifactLock`を作って返す経路（自己申告への依存を減らす。§4.11の末尾）
+- [x] `planCrossCheck=matched`と`planArtifactBinding=bound`の**同時**実測（[記録](../evidence/TEI_GO_SELF_BUILD_MATCHED_AND_BOUND_2026-11-09.md)、`99b220ae0`）
+- [x] builderが自分で`BuildArtifactLock`を作って返す経路（§4.12。entryのlockとの一致を実測。[記録](../evidence/TEI_GO_SELF_BUILD_CHILD_LOCK_2026-11-09.md)、`669bc83f0`）
+- [ ] entryが宣言から計画を独立に導く経路（§4.12末尾。§4.7でI-1を採らなかった制約に戻る）
 - [ ] D-1（catalogの`scope`拡張）を採るかどうかの契約判断（採る場合のみ、catalogの広告と実応答の一致を照合へ載せる）
 
 **A-1（`gobuilder`移動）は採らないため、影響範囲の洗い出しは終了条件から外した。** 29ファイルの内訳は[記録](../evidence/TEI_GO_INTERNAL_RULE_AND_BUILDER_MOVE_2026-11-07.md)として残す。I-1（intent解析の`internal/`への切り出し）も、I-2を既定案にしたため本稿では行わない。
