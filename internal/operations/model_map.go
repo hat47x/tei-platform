@@ -15,13 +15,13 @@ import (
 // that absent events, transitions, plugins or external providers do not exist.
 // Renderer, model editor and generator decisions are separate qualifications.
 type ModelMap struct {
-	SchemaVersion          string          `json:"schemaVersion"`
-	Effect                 string          `json:"effect"`
-	Catalog                ModelCatalog    `json:"catalog"`
-	Links                  []ModelMapLink  `json:"links"`
-	Coverage               string          `json:"coverage"`
-	UnqualifiedRoles       []string        `json:"unqualifiedRoles"`
-	AuthorityLimits        []string        `json:"authorityLimits"`
+	SchemaVersion    string         `json:"schemaVersion"`
+	Effect           string         `json:"effect"`
+	Catalog          ModelCatalog   `json:"catalog"`
+	Links            []ModelMapLink `json:"links"`
+	Coverage         string         `json:"coverage"`
+	UnqualifiedRoles []string       `json:"unqualifiedRoles"`
+	AuthorityLimits  []string       `json:"authorityLimits"`
 }
 
 // Map links identify the semantic subject by KIND and ID, not by rendered
