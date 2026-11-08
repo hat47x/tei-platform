@@ -160,7 +160,7 @@ python3 tools/rea-t0-saved-report/audit.py /absolute/path/to/saved-rea-report \
 
 ### 今回確認した証拠と限界
 - **ローカル実行の実績**：Python **3.13.5**、`python3 -m unittest discover -s /mnt/data/rea_audit_verify -v` で**18 tests/18 PASS/0 fail**、`py_compile` PASS。
-- **ソース同一性**：検証時の `git hash-object` は `audit.py=5ead9309c7eb3c4a024b014d417b3c383421bd28`、`test_audit.py=8128d8b4b0e1e25c8646494d39f145fc0d324886`。**GitHub branch上の各Blob SHAと一致**。この一致は、その2ファイルの実試験と保存byteの対応だけを示す。
+- **ソース同一性**：検証時の `git hash-object` は `audit.py=0238add9a25408b256b45d672d0925935de12501`、`test_audit.py=26177bb9bbefd391d354a5f397360f9bfe547165`。**GitHub branch上の各Blob SHAと一致**。この一致は、その2ファイルの実試験と保存byteの対応だけを示す。
 - **CI/製品の状態**：test-only GitHub Workflowは存在するが、この段階の`fetch_commit_workflow_runs`／combined statusには該当headの結果が表示されていない。**exact-head Actions PASSは未確認**。REA実プロセス、実Provider、T1-A、T1-B、旧新Runtime、SHO実Writer、Owner Accepted MeaningはNOT RUN。16MiB上限とFile Pathの`is_symlink`チェックは軽量T0ローカル入力向けで、厳密なOSのrace-free sandbox/Access Grantを保証しない。
 
 ### 他チャットの進捗と矛盾しない合流順
