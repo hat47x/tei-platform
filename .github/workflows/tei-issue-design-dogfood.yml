@@ -76,9 +76,10 @@ jobs:
           "$cli" model catalog -workspace reference/workspace > "$out/catalog.json"
           "$cli" inspect -workspace reference/workspace -subject-kind semantic-data -subject-id sales.order > "$out/inspect.json"
           "$cli" inspect -workspace reference/workspace -subject-kind semantic-validation -subject-id sales.order_line.line_number_positive > "$out/inspect-validation.json"
+          "$cli" inspect -workspace reference/workspace -subject-kind semantic-capability -subject-id sales.order.submit > "$out/inspect-capability.json"
+          "$cli" inspect -workspace reference/workspace -subject-kind application -subject-id order_entry > "$out/inspect-application.json"
           "$cli" source-index -workspace reference/workspace -subject-kind semantic-data -subject-id sales.order > "$out/source-index.json"
           "$cli" source-index -workspace reference/workspace > "$out/source-index-all.json"
-          "$cli" source-index -workspace reference/workspace -subject-kind semantic-data -subject-id sales.order > "$out/source-index.json"
           "$cli" trace -workspace reference/workspace -scope reference-observation -subject-kind semantic-relation -subject-id sales.order.customer -direction both -mode summary > "$out/trace.json"
           "$cli" requirements -workspace reference/workspace > "$out/requirements.json"
           "$cli" validate -workspace reference/workspace -json > "$out/validate.json"
@@ -91,7 +92,8 @@ jobs:
 
           folder = Path(os.environ["RUNNER_TEMP"]) / "issue-to-design"
           names = ("commands", "version", "workspace-files", "catalog", "inspect",
-                   "source-index", "source-index-all", "inspect-validation", "trace", "requirements", "validate")
+                   "source-index", "source-index-all", "inspect-validation",
+                   "inspect-capability", "inspect-application", "trace", "requirements", "validate")
           docs = {}
           sizes = {}
           for name in names:
@@ -105,7 +107,7 @@ jobs:
           assert docs["commands"].get("schemaVersion") == "tei.cli.discovery/v0"
           assert docs["commands"].get("scope") == "selected-read-only-commands"
           assert docs["version"].get("schemaVersion") == "tei.cli.version/v0"
-          for name in ("workspace-files", "catalog", "inspect", "inspect-validation", "source-index",
+          for name in ("workspace-files", "catalog", "inspect", "inspect-validation", "inspect-capability", "inspect-application", "source-index",
                        "source-index-all", "trace", "requirements", "validate"):
               assert docs[name].get("ok") is True, (name, docs[name].get("error"))
           schemas = {
@@ -113,9 +115,10 @@ jobs:
               "catalog": "tei.cli.model/v0",
               "inspect": "tei.cli.inspect/v0",
               "inspect-validation": "tei.cli.inspect/v0",
+              "inspect-capability": "tei.cli.inspect/v0",
+              "inspect-application": "tei.cli.inspect/v0",
               "source-index": "tei.cli.source-index/v0",
               "source-index-all": "tei.cli.source-index/v0",
-              "source-index": "tei.cli.source-index/v0",
               "trace": "tei.cli.trace/v0",
               "requirements": "tei.cli.requirements/v0",
               "validate": "tei.cli.validate/v0",
@@ -259,7 +262,18 @@ jobs:
           assert len(r["syntheticControls"]) == 7
           assert len(r["additionalManifestControls"]) == 2
           assert len(r["transportByteControls"]) == 7
-          assert r["observations"]["localReplies"] == "11/11"
+          assert r["observations"]["localReplies"] == "13/13"
+          assert r["boundedFunctionSlice"]["declarationStatus"] == "bounded-present"
+          assert r["boundedFunctionSlice"]["signature"] == "matched"
+          assert r["boundedFunctionSlice"]["namespaceAndValidationUses"] == "matched"
+          assert r["boundedFunctionSlice"]["capabilitySource"]["definition"] == "same-indexed-definition"
+          assert r["boundedFunctionSlice"]["applicationSource"]["definition"] == "same-indexed-definition"
+          assert r["boundedFunctionSlice"]["functionInvocationBinding"] == "not-observed"
+          assert r["boundedFunctionSlice"]["queryOrProviderRead"] == "not-observed"
+          assert r["boundedFunctionSlice"]["functionQualifiedForTestGeneration"] is False
+          assert len(r["boundedFunctionControls"]) == 10
+          assert sum(x == "blocked" for x in r["boundedFunctionControls"].values()) == 9
+          assert r["boundedFunctionControls"]["TT-function-unrequired-prelude-omitted"] == "bounded-partial-only"
           assert r["focusedStructureSlice"]["status"] == "bounded-present"
           assert r["focusedStructureSlice"]["relationState"] == "matched"
           assert r["focusedStructureSlice"]["canonical"] == "matched"
@@ -277,12 +291,14 @@ jobs:
           lines = [
               "## Design Context → Test Ability 事前資格（#3262）",
               "",
-              "- 実11 CLI応答＝既存9＋全Source Index＋Validation Inspectで、3 Rule・Relation・Canonical・Source Anchor/FPを限定照合。",
+              "- 実13 CLI応答＝既存11にCapability Inspect／Application Inspectを追加。3 Rule・Relation・Canonical・Source Anchor/FPを限定照合。",
+              "- **P-1b1 Function**：sales.order.submitのCapability signature、order_entryのnamespace/validation/database宣言、Source Index definitionとLoader Readを1つの独立Requiredで対照。",
+              "- 同FP・正常JSONでもCapability/Application/入出力/namespace/Rule/use/DB/Source欠落9件を拒否。必要集合外のPrelude 1件は過剰拒否しない。",
               "- 合成負例: Subject欠落、Inventory未Read、Fingerprint版混合、Reply欠落、Schema Drift、Source Root欠損 + 外部Provider/Grant未観測（7種）。",
               "- **TT-56**：独立必須3 Validation を既存Catalog＋Source IndexのDefinition Role＋Loader Readへ結合。",
               "- JSON正常・World/Index FP一致でも3 Ruleの必須欠落など7件を拒否、不要な1件は過剰拒否しない。",
               "- さらにRelation欠落・二重・親差分、Rule kind/attribute差、Inspect/Source IndexのSource差、Inspect版混合の8件を拒否。",
-              "- 必須Ruleのこの小さな範囲が揃っても、Function/Business/ProcedureやOwner Meaningの全閉包は**未資格**。",
+              "- Function宣言の限定部分が揃っても**実Function入口・Query/Provider Read・Build収録/Host・Owner Meaningの全閉包は未資格**。",
               "- Test生成資格: **false**。固定公開Scenarioの局所探索のみ可能。",
               "- Function/Business/RuleのRequired Closure、Parser/Meaning、Provider実Read、外部Harness完全受領/開示、C1/NFRは未知。",
           ]
