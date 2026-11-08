@@ -8,6 +8,8 @@ TEIは現在、設計上の境界をGoのコードで検証している段階で
 
 主要な手順を試すには、Goの開発環境が必要です。必要なGoの版は、リポジトリ直下の`go.mod`にある`go`行が示す版以上です。この文書は版の数値を複製しません。`go.mod`の更新のたびに文書が古くなるためです。2026-11-07時点の`go.mod`は`go 1.26.10`を要求します。数値は必ず`go.mod`で確認してください。
 
+
+`tools/` の参照ツールのうち、外部コマンドを `bash -c` で起動する試験（`tools/reference-cognition-port`・`tools/reference-generator-selection`）は **POSIXシェルを前提**にしています。Windowsでは、WSL または Git Bash の `bash` でも `cp <Windowsパス>` を解決できない場合があるため、該当試験は明示的に skip し、Linux CI の結果を正とします（#3461）。skip は失敗ではなく「この環境では検査していない」という記録です。`go test ./...` の結果を読むときは、skip の理由も確認してください。
 ```bash
 grep '^go ' go.mod
 go version

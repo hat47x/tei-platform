@@ -22,6 +22,7 @@
 - [実データベースでの確認手順](REAL_DATABASE_VERIFICATION_PROCEDURE_2026-11.md)（PostgreSQL 16.14で実行。CAS試験の同期不足を修正し、DDL・NULL・Web E2Eまで確認。健康診断receiptで `TRUSTED_FULL_HEALTH_NOT_RECORDED` を解消し、残る2診断は暫定オーナー判断。実Provider・本番Authorityは未実行）
 - [model catalogのCLI/MCP一致](CLI_MCP_CATALOG_PARITY_2026-11-08.md)（名前空間不在がMCPだけ`ok:true`の空結果になっていたのを、投影の判定を両入口で共有して`NAMESPACE_NOT_FOUND`・`isError:true`に揃えた。実Host・認可・外部送出はNOT RUN）
 - [trace/inspectの段別費用](CLI_TRACE_STAGE_COST_2026-11-09.md)（`-limit 1`が`full`と同じ段を通り費用も同等であること、`reference/workspace`規模ではプロセス起動約1秒が支配的で段の差が出ないことを実測。二重解析の共有・並列化は未実施）
+- [空文字列の引数の拒否](CLI_EMPTY_ARGUMENT_REJECTION_2026-11-09.md)（`-mode ""`が広告既定の`summary`ではなく`full`へ落ちていたのを、明示の空文字列として`INVALID_ARGUMENT`で拒否。省略時は既定維持。内部`modelref`の既定は未集約）
 - [`version`の自己申告revision](CLI_VERSION_DECLARED_REVISION_2026-11-09.md)（`-buildvcs=false`の実行物が`-ldflags`注入でrevisionを示せるようにし、`vcsRevision`と`declaredRevision`・`source`を区別した。自己申告はtoolchain証拠ではない。署名・来歴はNOT RUN）
 - [健康診断receipt（`005bbee7` / Actions 42152908986）](QUALIFICATION_FULL_HEALTH_005BBEE7_42152908986.json)と[暫定audit結果](REAL_PROVIDER_PROVISIONAL_AUDIT_005BBEE7.json)（`UNQUALIFIED`、残る診断は `E2_PROVIDER_GUARANTEE_NOT_ATOMIC` と `PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE`）
 - [D8〜D11暫定経路のaudit](PROVISIONAL_CHAIN_AUDIT_005BBEE7.json)と[Runner Evidence](PROVISIONAL_CHAIN_RUNNER_EVIDENCE_005BBEE7.json)（`atomic-with-commit` の暫定宣言。`PROVISIONAL_GRANT_NOT_G2_EVIDENCE` 等は暫定オーナー判断。chain testは単一経路と同じ健康診断receipt入力に対応）
@@ -37,6 +38,7 @@
 - [フック実行の配線と失敗の区別の確認](XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)（参照実装の試験記録。Runnerからの配線、NotSatisfiedと実行失敗の区別、参照規則。実PluginとCLI・Studioの配線は未実装）
 - [フック宣言の印刷面への反映の確認](XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md)（参照実装の試験記録。画面と同じフック宣言が印刷面にも出る。実印刷・用紙面の版照合は未確認）
 - [フックの位相順序と途中停止の確認](XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md)（参照実装の試験記録。位相の実行順、不成立での停止位置、`warn`の続行、未対応位相の拒否。CLI・Studioへの配線は未実装）
+- [CLI参照実行からのフック呼出しの確認](XTEA_LOWCODE_HOOK_CLI_WIRING_2026-11.md)（参照実装の試験記録。`view -command -execute`が宣言フックを呼び、未評価・不成立を区別して報告する。実PluginとStudioは未接続）
 - [フック宣言の機能定義書への反映の確認](XTEA_LOWCODE_HOOK_FUNCTION_DEFINITION_2026-11.md)（参照実装の試験記録。生成規則`function-definition/v1`に`hook`行を追加し、位相順で出す。実行結果の反映は未実装）
 - [フックが提案する値の宣言照合の確認](XTEA_LOWCODE_HOOK_DECLARED_PRODUCES_2026-11.md)（参照実装の試験記録。宣言外の提案の拒否、提案と読み取りの分離。保存・採用は未実装）
 - [フックの位相ごとの読み取り範囲の確認](XTEA_LOWCODE_HOOK_PER_PHASE_READS_2026-11.md)（参照実装の試験記録。狭い宣言の位相が広い宣言の値を受け継がないこと、未観測での停止。実データ取得は未実装）
@@ -140,6 +142,7 @@
 - [`maxBytes`の停止しきい値](DSH_SESSION_LOG_MAXBYTES_THRESHOLD_2026-11-09/README.md)（#2515 H6-E2。同じ4 Tool呼出しSessionで上限だけを320→307→306→300→288と下げ、**307ではfieldが載り（水位`4`まで1eventずつ）、306では6要求すべてで載らなかった**。しきい値は最初のeventを包むfieldの直列化サイズで、その値なら送られ1byte下回ると送られない。止まったことは実行ログに現れず、Sessionは`completed`で終わる）
 - [送出できなかったbacklogは上限を上げた再実行でまとめて流れる](DSH_SESSION_LOG_STALL_THEN_GROW_2026-11-09/README.md)（#2515 H6-E2。`maxBytes=306`で6要求すべてfield無しのSessionを、同じSession IDで`maxBytes=4096`にして再実行すると最初の要求が`afterSeq -1`から`9`まで**10 event・1,273 bytes**を一度に運び、合計13 eventが流れた。上限を小さくして止めた状態は恒久的な抑止ではなく、再開時に**溜まった分が1要求のburst**として出る）
 - [停止したSession Log送出は利用者から見えない](DSH_SESSION_LOG_STALL_VISIBILITY_2026-11-09/README.md)（#2515 H6-E2。`maxBytes=306`でfieldが6要求すべて送られない状態を、**stdout・stderr・永続Session Logの3面を別々に**採取して調べた。stdout 6,176 bytes・stderr **0 bytes**・永続Log展開51,196 bytes/51行のいずれにも`maxBytes`関連の語や警告種別のeventは無く、終了コードは0。「送出していない」と「設定が効いている」を出力から区別できない）
+- [停滞は「受理eventの不在」としてのみ観測できる](DSH_SESSION_LOG_STALL_DETECTION_2026-11-09/README.md)（#2515 H6-E2。停滞（`maxBytes=306`）と非停滞（4096）を**stderrを混ぜずに同条件**で比べた。stdout・stderrは**両方とも警告を出さない**（stderrは両方0 bytes）。差は永続Logの`session-log-deepseek/delivery-accepted`だけで、非停滞4件（`throughSeq`=`9`,`9`,`11`,`12`）・停滞**0件**。警告ではなく**成功記録の不在**としてしか分からない）
 - [Session Log拡張の`maxBytes`上限とbacklog](DSH_SESSION_LOG_MAXBYTES_2026-11-08/README.md)（#2515 H6-E2・P0-b・#2509。`maxBytes`を2048と512へ下げて実測し、field全体が上限内なら水位`9`まで10 event、上限512では**518 bytes**（ヘッダ込みで上限超過）で水位`2`・3 eventに止まった。`maxBytes`は1要求の上限で総開示量の上限ではない。分割送出と単一eventの停滞は未確定）
 - [Session Logのbacklog分割送出と停滞、上限判定の単位](DSH_SESSION_LOG_SPLIT_AND_STALL_2026-11-08/README.md)（#2515 H6-E2・#2509。`maxBytes=1024`の4 Turnで水位`-1`→`6`→`9`と**後続要求へ分割送出**されることを確認し、`maxBytes=256`ではヘッダ込みで上限を超えるため**fieldが一度も作られず**作業だけが続いた。先行記録の「512で518 bytes＝上限超過」は再直列化した値による誤りで、生byteは474だったと訂正）
 
@@ -178,4 +181,5 @@
 - [CLI discoveryとMCP tool宣言の突き合わせ試験](TEI_DOGFOODING_ROUND7_CROSS_SURFACE_2026-11-09/README.md)（#3419・#3420・ADR-0048 §2.6。実CLIの`commands`と4 toolの対応・effect・schemaVersion・jsonContractを回帰試験で固定。故意のずれ6種すべてを検出し、現行版では一致）
 - [`tei self-build`の L2-a を別の作業領域で取り直す](TEI_GO_SELF_BUILD_L2A_REOBSERVATION_2026-11-09.md)（builder childを実Go Buildから自作probeへ差し替えても、同じ宣言から同じ`planFingerprint`が出て`planMatchesExpected=true`になることを記録。`l2Claimed`・`qualified`は両方false。L2-bは未成立。SB-C0 §4.7/§4.8 / #2831）
 - [空文字列の引数と既定値の食い違い](TEI_DOGFOODING_ROUND8_EMPTY_ARGUMENT_2026-11-09/README.md)（#3605・#3420・ADR-0048 §2.4。値集合と省略時の既定はCLIとMCPで一致したが、空文字列を渡すとCLIだけが別の既定（`mode=full`）へ落ちた。traceの3引数を拒否へ揃え、回帰試験で固定）
+- [空文字列の引数の修正を統合後に再実測](TEI_DOGFOODING_ROUND9_EMPTY_ARGUMENT_REMEASURE_2026-11-09/README.md)（#3605・#3420。`0067d6a1e`で、空文字列はCLIが`INVALID_ARGUMENT`・MCPが`-32602`で拒否し、省略時だけ既定`mode=summary`を使う。残る差は符号のみで、分類統一は#3420）
 - [`tei self-build`の計画指紋の再計算](TEI_GO_SELF_BUILD_PLAN_RECOMPUTE_2026-11-09.md)（receiptが運ぶ`plan`から`plugin.BuildPlanFingerprint`をentryが再計算し、名乗りと比べる。不一致はbuilder起動前に停止、計画を運ばないreceiptは`unperformed`と理由を残す。`l2bClaimed`は常にfalse。SB-C0 §4.8 / #2831）
