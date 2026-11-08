@@ -1830,3 +1830,38 @@ KON Dataspaceは独立・任意のData Source候補であり、TEIのテスト�
 main統合[#3520](https://github.com/hat47x/tei-platform/pull/3520)の専用CI [#42476197836](https://github.com/hat47x/tei-platform/actions/runs/42476197836) は19合成対照がsuccess。一方、同HEADの[Repo Health #42476197803](https://github.com/hat47x/tei-platform/actions/runs/42476197803) は**completed/failure**。実ログで、(1)`plan/design/README.md`にAI性能観測文書が未掲載、(2)新WorkflowのCheckoutがcommit SHA固定でない、(3)Job timeout未設定、と切り分けた。Go Formatter/Vet/Workspace Validateの別PASSと、`go test ./...`/CI契約テストFAILを混同しない。また脆弱性確認[#42476197787](https://github.com/hat47x/tei-platform/actions/runs/42476197787)はvuln DB取得時の通信失敗でworkflow failureとなっており、安全性検証のPASSではない。
 
 修正は、新しいFeature/Collector/Proof Storeを作らず**[Draft #3527](https://github.com/hat47x/tei-platform/pull/3527)**の2ファイルに限定：設計索引を1行補充し、既存と同一のcheckout固定SHA・`persist-credentials:false`・`timeout-minutes:10`へ統一。この修正PRのexact HEAD Health・専用19対照・依存確認を別々に検収する。**作成直後のCIはqueuedで、新HEADのPASSは未認定**。Syntheticの入力整合が実Provider Read・実性能改善やOwner受理を保証しないという停止線は維持する。
+
+<!-- tei-test-p0r-case-matrix-observation-ceiling-20261108 -->
+### 35.7 P0-Rの最小実行票を確定する：正常な0件と未取得を混同しない
+
+**実装対象は一つだけ**。#2586の既存Read課題 `order_entry.recent_orders` を使い、同一Attemptの `Function Entry → Source-backed Query/SQL → Datasource Binding → selected Provider → actual invoked Provider → Executor/Mapper → Rowset → Function Data Context` を段階別に観測する。#3500の**別Domain**に対するinstrumented Connector Goテストや#3516のCommand系**合成Adapter**呼出成功は、P0-Rにおける実DB Readの代用品としない。
+
+検証者が先に独立Expectedを固定し、実行対象とソースを一つずつ変えた次の**必要な正負対照**を既存#1180/#2514へ渡す。新しいCase/Oracle正本は作らない。
+
+| 受入対照（#2586） | 実入力／観測の必要条件 | 成功時の主張と拒否すべき誤判定 |
+| --- | --- | --- |
+| **P0R-01 対象1件** | 既存Functionに対する同一Requestから、実SQL原Byte・Bind args・selected/actual Provider・実Row/Column・MapperのResultと粒度を記録。独立Expectedは要求Scope内の1行を固定 | 当該Query/Provider/Mapperの局所観測。実物理DBへ未接続なら `executor-mapping-bounded` まで。1件成功を全Dataset完全性としない |
+| **P0R-02 正常な0件** | 認可済み・実Read完了・指定Filter/Scopeに実際に0行。独立Expectedも0行 | `empty-complete-for-query-scope` は成立し得るが、Source/Domainの不存在、隠れた行や他Tenantの0件を証明しない |
+| **P0R-03 部分取得・途中障害** | 第1ページ取得後に第2ページ失敗、Tool/Mapper/Providerの通信途絶、またはCaller中断 | 最初の確認済み行の局所正証人は維持しても、全Rowset完了・0件・Business成功は禁止。失敗部位と受信終端を別記録 |
+| **P0R-04 Datasource未解決** | SQL/Function宣言あり、必要Aliasが未Binding（既存診断の `UNBOUND_DATASOURCE` 等を照合） | 正式Provider実呼出しは起きず、未解決と診断。空Rowsetの成功に変換しない。既存実コードの安定Failure Code以外を新規創作しない |
+| **P0R-05 選択と呼出しの相違** | declared/selected Bに対して実invoked Aが**同じRowset**を返す。正例はselected B→invoked B | 出力の値・SQL自体が同じでもProvider Binding不一致を拒否する。Target/Build/Plugin exact identity・Current Grantは別資格 |
+| **P0R-06 同名Queryの異物混同** | examples/workspace/別DBの`recent_orders`が名前のみ一致、実SQL/引数/Database/Snapshot/Row scopeが異なる | Query name同値だけでTest/Performanceの母集団へ合算しない。物理・論理Rowのidentity/grain、Data Contextの依存を区別 |
+| **P0R-07 Contextの鮮度差** | Query Source/Source Indexまたはimport Provider Raw/Manifestだけを読取前後に変更。World値が同じになる負例も用意 | 当該必要Source occurrenceに依存する資格だけstale/unknown。Source観測の二回取得は原子的Snapshotの証明ではない |
+
+**数値・表示上の判定**：`0`（実際の結果件数）、`null`（業務値）、`missing`（必要Column欠損）、`partial`（結果一部のみ）、`unknown`（取得／観測資格なし）、`error`（実技術障害）を異なる状態で保持。とくにProviderから0件が返っても、Requestの当該Scopeと終端受領を確認するまでは`0 complete`へ昇格させない。
+
+**既存工程への到達レベル**：`declaration-observed`（#3482）→`binding-observed`→`executor-mapping-bounded`（#3500の別Domainで局所先行）→`physical-read-observed`（隔離PGでSKIPなしの当該Query実行）→`function-context-observed`（Mapper/粒度/NULL/Scope一致）→`consumer-delivery-observed`（明示Audienceと受領証拠）。これらは説明用の**Claim Label案**であり、新しい製品Schema/Enumへ自動採用しない。同じAttempt内で接続できない段階は、別試行として残す。
+
+### 35.8 Test・性能・Plugin・Consumerの間で共有するのはAttempt参照だけ
+
+P0R-01〜07で得られたRead証拠を、#3273 **TEST-T1B**、#3271 **PERF-T0〜T4**、#1251 **Inspector D1**、#3262 **Design Context**の入力へ渡す際、**新しいEvidence StoreやTest Generatorの所有者を増やさない**。特定の試行に紐づくSource/Invocation/Rowset・Provider Selected/Invoked・Request Scope・Contract/Grantと、受け取ったConsumerを参照する。
+
+- **TEST-T1B**：独立Reviewerが先に固定した未知ObligationとHoldout/Expectedを生成Agentへ開示しない。T1-A既知行番号0、Context42 test-only対照、Provider instrumented Connector成功は未知Gap発見と数えない。実Pinned Scenarioで新Ruleに到達し独立Mutantを判別したときのみ限定成功。
+- **PERF**：実Readと紐づく計測点・期間・件数・条件と改善前Baselineがなければ、合成19対照やN+1候補が成功しても「性能改善」を宣言しない。同一Query/Scopeの変更前後で独立比較できるまで提案段階。
+- **Inspector／Plugin**：main統合済み#3371/#3378/#3381の型付きService seamと局所同値Go検査は保持するが、通常CLI／Wails Studioが**選択Bを実際に呼んだ**というProduction S2に昇格しない。#951/#1016の実選択と#1251の実Call/Grantを必要な一辺として扱う。
+- **CLI/MCP**：ADR-0048の共通Application Operationは採用済み。参照MCP 4 Toolと`validate`局所同値は実装済みだが、Read用の全Tool・外部Harnessでの実受領、権限/送出、完全JSON／Pagingは独立。Tool正常応答をProvider実ReadやBusiness成功へ使い回さない。
+- **CI/Health**：main #3520専用合成19件の実成功と、元HEADの全Health不合格・脆弱性DB通信失敗を分離。[main統合 #3527](https://github.com/hat47x/tei-platform/pull/3527)はIndex/Workflowの衛生修正であり、既存失敗Runを遡及的PASSにせず、新HEAD/main pushの独立Runで検収する。
+
+**実行優先順位は維持**：今すぐ別のテスト設計文書を作るのではなく、#2586へP0R-01〜05の一件ずつの**実Read境界**を返し、#3273へBlind TEST-T1B一件のHoldoutを別ルートで提示し、既存#1180/#2514で判別する。P0R-06〜07、PERF、外部H3、SHO等の追加Consumerは並列Pressureとし、最初の実Readを待たせない。**KONを含む別製品の責務や詳細を、このTEI文書へ新規移植しない。**
+
+**今回のEvidence資格**：既存GitHub実PR・main・CI、Source/計画の照合に基づく実装受入票。ここでの新P0R-01〜07、TEST-T1B新Trial、対象Queryの実PG/Consumer/物理Grant・Go C1・実性能改善・現在Owner Meaningは**NOT RUN／未受理**。新Core、第二Reader、Resolver、Host、Oracle、Runner、Provider Registryは追加しない。
