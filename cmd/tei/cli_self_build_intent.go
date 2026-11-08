@@ -8,6 +8,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"tei/internal/buildintent"
 )
 
 // This file closes two of the refusal conditions that §4.6 recorded as still
@@ -39,6 +41,16 @@ type IntentDeclaration struct {
 	RecipeEntry    string `json:"recipeEntrypoint,omitempty"`
 	Resolved       bool   `json:"resolved"`
 	ResolutionNote string `json:"resolutionNote,omitempty"`
+	// IntentFingerprint is the entry's OWN derivation from the declaration it
+	// read (SB-C0 §4.13, I-1a). Before this, the only intent fingerprint in the
+	// record came from a child's report, so the entry could not compare a
+	// reading it held against one it was told.
+	IntentFingerprint string `json:"intentFingerprint,omitempty"`
+	// StrictlyRead reports whether the declaration satisfied the same reader
+	// the reference resolver uses. A declaration that only looks like JSON is
+	// recorded with false and the reason, not silently accepted.
+	StrictlyRead         bool   `json:"strictlyRead"`
+	StrictReadFailedNote string `json:"strictReadFailure,omitempty"`
 }
 
 // SupplyCheck records what the entry learned about the supply before starting
@@ -55,9 +67,17 @@ type SupplyCheck struct {
 
 const intentResolutionNote = "read and digested, not resolved: the entry does not derive a BuildPlan from the intent"
 
-// readIntentDeclaration reads the declared intent as a JSON object and records
-// a few top-level fields. It deliberately does not treat those fields as a
-// resolved build plan; a declaration that parses is not a resolved plan.
+// readIntentDeclaration reads the declaration with the same strict reader the
+// reference resolver uses (SB-C0 §4.13, I-1a), then records the entry's own
+// intent fingerprint beside the declaration's byte digest.
+//
+// The two are different readings and the record keeps them apart:
+//   - Digest is the bytes this entry held.
+//   - IntentFingerprint is what those bytes mean as a declaration.
+//
+// A declaration that the shared reader refuses is still recorded, with
+// StrictlyRead=false and the reason, so a caller learns why the entry's
+// fingerprint is absent instead of reading silence as agreement.
 func readIntentDeclaration(path string) (IntentDeclaration, error) {
 	absolute, err := filepath.Abs(path)
 	if err != nil {
@@ -117,6 +137,21 @@ func readIntentDeclaration(path string) (IntentDeclaration, error) {
 		}
 	}
 	declaration.RecipeEntry = recipe.Entrypoint
+
+	// The entry's own reading, through the package the reference resolver now
+	// shares. This is not resolution: no BuildPlan is derived.
+	intent, readErr := buildintent.ParseIntent(raw)
+	if readErr != nil {
+		declaration.StrictlyRead = false
+		declaration.StrictReadFailedNote = readErr.Error()
+		return declaration, nil
+	}
+	declaration.StrictlyRead = true
+	if fingerprint, err := buildintent.IntentFingerprint(intent); err == nil {
+		declaration.IntentFingerprint = fingerprint
+	} else {
+		declaration.StrictReadFailedNote = "intent fingerprint could not be derived: " + err.Error()
+	}
 	return declaration, nil
 }
 

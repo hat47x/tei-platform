@@ -195,3 +195,4 @@
 - [`tei self-build`の計画指紋の再計算](TEI_GO_SELF_BUILD_PLAN_RECOMPUTE_2026-11-09.md)（receiptが運ぶ`plan`から`plugin.BuildPlanFingerprint`をentryが再計算し、名乗りと比べる。不一致はbuilder起動前に停止、計画を運ばないreceiptは`unperformed`と理由を残す。`l2bClaimed`は常にfalse。SB-C0 §4.8 / #2831）
 - [`tei self-build`の計画値をWindowsとLinuxで再観測](TEI_GO_SELF_BUILD_CROSS_OS_2026-11-09.md)（同じ宣言と同じ解決childから、`intentBytesDigest`・`receiptDigest`・`planFingerprint`・再計算値がOSを跨いで一致し、実行体とartifactのdigestは一致しないことを記録。`planCrossCheck`は両OSで`unperformed`。台帳§2.4の「別OS再観測」のOS軸。 #2831）
 - [`matched`＋`bound`の二回独立試行での比較](TEI_GO_SELF_BUILD_MATCHED_BOUND_REPEAT_2026-11-09.md)（別state・別プロセスで二回走らせ、計画fingerprint・lock fingerprint・artifact digestが完全一致することを観測。PIDだけが異なる。再現性の観測でありL2-bではない。§4.12 / #2831）
+- [entryが宣言を自分で読む（§4.13 I-1a）](TEI_GO_SELF_BUILD_INTENT_READER_2026-11-09.md)（宣言の型と厳密readerを`internal/buildintent`へ移し、entryが保持バイトから`intentFingerprint`を自分で導く。参照resolverの導出値と一致することを実測。厳密読みの失敗は理由つきで記録し、fingerprintを空にする。計画の導出は`tools/`に残す。L2-bは未。 #2831）

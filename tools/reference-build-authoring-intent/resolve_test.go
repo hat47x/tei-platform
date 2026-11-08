@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"tei/internal/buildintent"
 	"tei/internal/plugin"
 )
 
@@ -141,7 +142,7 @@ func TestResolveDerivesExactBuildPlanFromIntentWithoutAuthoredDigests(t *testing
 		t.Fatalf("dependency digest was not derived from the catalog: %+v", first.Plan.Dependencies)
 	}
 	for _, s := range first.Plan.Sources {
-		if !sha256Digest.MatchString(s.Digest) {
+		if !buildintent.IsSHA256Digest(s.Digest) {
 			t.Fatalf("source %s digest %q was not derived from bytes", s.ID, s.Digest)
 		}
 	}
