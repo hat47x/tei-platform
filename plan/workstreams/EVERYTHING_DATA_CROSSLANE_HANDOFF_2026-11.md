@@ -3345,3 +3345,31 @@ HEAD `e0cfebf14d40db81bdef77d6c3e4898ed75d999f`に対する[GitHub Actions #4203
 5. **FJ-05 局所Coverageと外部Harness**：13 Reply/42局所Controlは**当該公開Contextの観測済み判別**だけ。blind T1-B・完全Required・外部H2/H3 Tool raw bytes/OS/Sinkは別。B0=決定的CLI/API、B1=既存Harness Skill有無、B2=不足を補う薄いAdapterを独立Expected＋実Cost/Disclosureで比較し、新Agent Runtimeは必要性が実証されるまで採用しない（#2509/#2515/#2018）。
 
 **着手順と停止**：P0は現在mainの#3482を再実装せず、`sales.order.submit`のRequiredで足りない**実Function→Provider/Query/Entry Bindingの一箇所**を#2586/#1129の担当に渡す。同時に#3479のP0b原文証拠と#1251 Inspector A/B実Callを並行実証。最初のread-only Inspector実CallにStudio二Consumer・BOM 2×2・SHO/REA/KON・Self-build G4・T1-B盲検・実PG WriteをHard Dependencyとして増やさない。実証後に一つの正しいBindingでF0→F3→F4を同じTarget/Scope/Attemptに束縛し、必要なSource引用と実Consumer受領を検査する。今回の文書は新Product GO Test・CLI/MCP/Studio実同一Provider・外部H2・Owner意味受理・実DB Writerを**実行していない**。#3479/#3488はDraftであり、新しい採用判断ではない。
+
+
+<!-- tei-20261108-value-preservation-migration-state-evidence -->
+## 64. UI値忠実度とMigration履歴の偽成功を、Provider実Effect前の二つの独立Gateとして扱う（2026-11-08）
+
+### 64.1 新しい実コード由来の反例と既存の責務
+
+[Draft #3491](https://github.com/hat47x/tei-platform/pull/3491)は、現行React Starterの\`row\`文字列 \`9007199254740993\` が正規表現を通過した後、JavaScript \`Number\` で \`9007199254740992\` に丸められ、**汎用\`invoke\`へ入力とは異なる値が渡り得る**実コード由来の反例を記録した。既存専用\`action-port.mjs\`は\`Number.isSafeInteger\`で拒否するため、これを「実DBの誤更新が発生した」とは扱わない。Draftの修正はStarterで\`invoke\`前に安全整数を確認する局所変更であり、正式な業務数値契約・任意精度整数/金額/NULLの一般保証ではない。
+
+[Draft #3497](https://github.com/hat47x/tei-platform/pull/3497)は、Migrationの\`CompareHistory\`でChecksumが一致しても\`AppliedUnknown\`・空・未知のAppliedStateを\`RepoApplied\`へ偽昇格させない局所修正を提案する。ただしHistory Providerの**取得失敗・partialが空Entriesへ落ちる**別経路、実Migration Adapter・実DB適用・独立Readは未解決。履歴判定をfail-closedにしても、履歴集合の完全性は保証されない。
+
+この2件は同じ「境界を越えた値・状態の改変による偽成功」だが、**同じValidatorへ統合しない**。UI入力は#997/#1000のPresentation/Action Port、Migration履歴は#2892のHistory Consumerが所有し、#1158/#1174の実Command/Effectと#2514の独立Expectedが下流の資格を判断する。新しいCore enum、Migration/Action共通エンジン、第二Runner、Hostは不要。
+
+### 64.2 一つのCommand検収に渡す、二種類の独立負例
+
+| ケース | 独立Expectedと観測点 | 合格を主張してはいけないこと |
+| --- | --- | --- |
+| VP-01 UI境界 | raw input \`9007199254740993\` をそのまま保持し、Starterの\`invoke\`回数0で拒否。通常整数と境界整数はraw→typed→invokeの値一致。**表示用NumberをCommand識別子の正本にしない** | fakeReact/Node局所試験から実ReactDOM・CLI/Studio・DB・全数量型の安全性 |
+| VP-02 Adapter差 | 専用Action Port経由は既に拒否する対照を維持し、汎用Starter直結の旧経路だけを負例化。実Action Payload/OperationID/Subjectが別値にならないことを独立照合 | 旧汎用Starterの値変化を専用Action Portでの実DB誤更新と断定 |
+| VP-03 Migration State | checksum一致＋\`AppliedUnknown\`/空/未知Stateで\`RepoApplied\`を拒否。\`AppliedSucceeded\`と\`AppliedFailed\`の従来意味は保存 | Checksum一致を実DDL/データ整合・Cutover完了・Owner受理へ昇格 |
+| VP-04 Migration Observation | Providerの実Readが**complete-empty**の場合と、\`partial/unavailable/permission-denied\`なのに空Entriesを返す場合を区別。後者は「履歴なし／適用不要」へ昇格しない | 局所\`CompareHistory\`の修正だけで実Provider completenessを保証 |
+| VP-05 Effect handoff | 事前Gateの成功とは別に、実Target/Current Grant/OperationID/Receipt/独立DB ReadでCommand結果を判断。ACK喪失・CommitUnknown・再実行を独立Expectedで拒否またはunknown保持 | UI入力妥当性・Migration履歴一致・Provider selectedから実Effect成功を推論 |
+
+### 64.3 実装順・採用停止線
+
+P0は#3491の**raw→typed→invoke境界**と#3497の**History State**を、それぞれ既存の限定Node/Go CIでexact HEAD確認する。どちらもDraftのため、現時点では修正をmain採用済みと扱わない。P1で#2892の実History Consumerがpartial/unknownをどのように受けるかを確認し、Observation completeness/Scopeを既存Providerの資格に沿って引き渡す。P2で実Commandの一Attemptに必要な値・選択・Grant・Effect/Receiptを接続するが、**Migrationを全Actionの実行前必須依存にしない**。実際に対象DBの移行資格が必要なAction/Releaseにだけ条件を適用する。
+
+この節の成果は**実コード・PR・既存計画の照合に基づく受入計画**である。新Node/Go/PG実行、実ReactDOM、実Migration Adapter、実Provider Invoke、Owner受理、正式Release資格は今回**NOT RUN**。#3491/#3497の個別修正と#2892/#1174の既存Ownerを維持し、#1119のG0–G4を増やさない。
