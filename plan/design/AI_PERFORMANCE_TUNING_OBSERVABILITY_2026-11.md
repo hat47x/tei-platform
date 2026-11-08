@@ -256,6 +256,10 @@ Targetはまず既存Go・SQLite/PostgreSQL等の**実在する接続経路**か
 
 ### 11.1 最適化の判定単位
 
+## 9. 横断統合：性能要求から実装とEvidenceまでの最小契約（2026-11-08追補）
+
+### 9.1 最適化の判定単位
+
 最適化の単位は Subject × Workload × Requirement/Guardrail × Realization × Evidence とする。
 
 | 軸 | 記録したい内容 | 失敗させる誤認 |
@@ -269,6 +273,7 @@ Targetはまず既存Go・SQLite/PostgreSQL等の**実在する接続経路**か
 判定は**意味・現在の使用資格・正しさを保ち、対象Workloadの事前に定めた制約を満たす**こととする。速度の改善とp99/書込み負荷/費用の退行は別列で示す。品質に新しい正本を作らず、#565のQuality Envelopeと既存Scenario/Evidenceに用途別投影する。
 
 ### 11.2 最適化の候補探索と撤回可能性
+### 9.2 最適化の候補探索と撤回可能性
 
 発見の起点は (1)不要な実行・N+1・過大取得を減らす、(2)SQL/Index/Batch/Stream/並列/Renderingを改善する、(3)Derived/Cache/Snapshotで再利用する、の三種類。ただし適用順と採否は実測と制約で決める。**Cacheなし、TEI共通Runtime非介在、標準UIなしの完全Headlessも正式な比較候補**とする。
 
@@ -282,6 +287,7 @@ Targetはまず既存Go・SQLite/PostgreSQL等の**実在する接続経路**か
 分散Cache、独立常駐Agent、自動Adaptive制御はP0の前提にしない。最適化のためだけに新たなCache Host、第二Query Planner、第二Resolver、第二認可基盤を設けない。
 
 ## 12. Typed Lifecycle Graphを最適化の入力にする
+## 10. Typed Lifecycle Graphを最適化の入力にする
 
 #3503のOperation/Interaction/Generation Lifecycleを区別したうえで、Read/Derivedの標準フロー、案件差分、合成後の実効Flowを同じTyped Graph/Roleから導出する。**説明図だけで終えず、Generator/検証入力としてSource/Lock/Target/実呼出しを照合する**。#1124/#2497の図表・投影意味と統合し、独自の二重Flow正本は作らない。
 
@@ -309,6 +315,9 @@ CLI/Studio/SHOはModel全体、個別ノード、固定/Custom/実効フロー�
 ## 13. Pluginの実装方式と安全なAdaptive Strategy
 
 ### 13.1 三段階の選定
+## 11. Pluginの実装方式と安全なAdaptive Strategy
+
+### 11.1 三段階の選定
 
 1. 標準Function/Rule/Target-nativeで要件を満たせるかを先に検討する。
 2. 不足する場合だけ既存#951 Contract/Provider/CompositionへObserver、Analyzer、Proposer、Strategy、Provider、Verifier等の**役割Binding**を追加する。これらをCore固定enumや独立Resolverへ昇格させない。
@@ -317,6 +326,7 @@ CLI/Studio/SHOはModel全体、個別ノード、固定/Custom/実効フロー�
 #3278原子的Traitは、Requiredなら実装義務とConformanceを要求し、Advisoryはヒントとしてのみ扱う。Cacheable等の名称だけでは保証にならない。Capability自己宣言、実現、実Target Evidence、現在の実行権限を区別する。Plugin Bundle配布と選択した構成、実Build依存の閉包を分離し、未選択Pluginが結果・ビルド・Cache Keyへ混入しないことを確認する。
 
 ### 13.2 安全な最適化の競合とFallback
+### 11.2 安全な最適化の競合とFallback
 
 - **同時Missの合流**：Request Coalescingは純粋なReadでQuery/parameter、Source revision、Context epoch、鮮度条件、Tenant/Disclosure scopeが両立する単位に限定。異なる現在権限や不確定な結果を一つのFutureへ束ねない。書込みの重複防止はCacheでなく既存Operation ID/Effect契約が所有する。
 - **旧値復活**：Aが旧版を読みBが更新・失効後、Aが旧版を書き戻す競合では、Sourceの世代・条件付き書込み等が有効な場合にだけ防止保証を主張。Provider能力が未知なら強い鮮度を表明せず、条件に応じ再取得・利用不可・unknownへ戻す。
@@ -325,6 +335,7 @@ CLI/Studio/SHOはModel全体、個別ノード、固定/Custom/実効フロー�
 - **Adaptive**：P0/P1は自由な本番自動書換えを行わず、事前に適合性を検証したStrategyだけを切替候補とする。後続の適応制御ではヒステリシス、最小保持時間、切替数上限、欠測/Exporter障害時の安全なFallback、変更履歴とRollbackを検査する。採用前の提案はSource・業務意味・権限を変更しない。
 
 ## 14. 検証に追加する反例（AT-15〜24、すべてNOT RUN）
+## 12. 検証に追加する反例（AT-15〜24、すべてNOT RUN）
 
 既存AT-01〜14、#3271 CS-01〜10、#2582 RC-01〜09および#1180/#2514の独立Expectedを再利用する。新しいScenario正本を作らない。
 
@@ -343,7 +354,6 @@ CLI/Studio/SHOはModel全体、個別ノード、固定/Custom/実効フロー�
 
 比較票の論理列は Subject/Revision、actual selected+invoked Provider/Target/Artifact、Workload fingerprint、Source/Schema/Rule、Independent Expected、Measured distribution/overhead、Correctness、Guardrail、Grant、Verdict、Unknownとする。固定の公開JSON Schemaと誤認しない。
 
-
 ## 15. 既存T0〜T4へ接続する実装順・所有先
 
 上記の横断検討によって新しいT0〜T4や別の最適化工程を作らない。現行§10の「次の実製品縦断」をそのまま利用し、**到達証拠に追加する検証項目**だけを以下のように重ねる。
@@ -361,7 +371,6 @@ Go単一バイナリにおける実証後、Web/Desktop/完全Headless/Java/.NET
 **撤回条件**：標準Rule/Target-nativeで十分、または構成選択が実Callへ到達しない、意味・Source/Scope/Authorityが保存できない、独立Expectedがない、追加観測/Plugin負荷が利得を超える場合は、当該抽象・自動選択を縮小/撤回する。実装の証拠がないCandidateをOwner受理や本番適用へ昇格しない。
 
 **現況（2026-11-08）**：追加AT-15〜24と上記新規統合試験は設計候補。§10の限定Referenceがあっても実DB Read/実OTel/生成Target性能改善・AI実適用・Owner意味受理は **NOT RUN / NOT ACCEPTED**。既存のGate B/Cや限定Reference PASSを新性能保証に読み替えない。
-
 
 ## 16. 実ReadとConsumer受領の資格を分ける：性能計測の最小縦断（2026-11-08追加）
 
@@ -486,3 +495,16 @@ Profileは初期値や原子Trait要求集合を展開する便利な束であ�
 **実装順の強制ではないが、主張の依存順は厳守する**。T0のSource/Contractが未知でも限定Traceの調査は可能。しかし実Call・Consumer・Independent Expectedを欠く状態で「AIが正しく自動最適化した」「本番SLOを満たした」と結論しない。Cache/Observerが不要な案件は当該PluginなしのTargetを選択可能とし、同じ保証を達成できる標準実装・Native SQL・案件固有コードを正規の選択肢に残す。
 
 **現在の資格（2026-11-08）**：本節は設計統合と独立反例の追加であり、AT-25〜32、実order_entry DB Provider Read、外部AI Consumer完全受領、Cacheの実同時負荷、実性能Benchmark、運用Adaptive適用、正式Owner意味受理は **NOT RUN / NOT ACCEPTED**。PR #3520の19合成対照・限定Referenceと異なるClaimである。
+## 13. 段階的な統合先・停止条件
+
+| 段階 | 具体的な縦断 | 既存の正本と完了条件 |
+| --- | --- | --- |
+| T0：Fit/Gap | 実CLI/Query/Design Context/Provider/Telemetry/Scenarioの現行能力を照合 | #951/#3262/#2387、存在しないCLIを標準化せずunknownを保持 |
+| T1：Read-only | 既存order_entryの実ReadでFunction→Query/SQL→DB Provider→Context ResultとSpan/Metricを同一Attemptへ結合 | #2586/#3270/#3262。実Providerと結果Scope/欠測・権限を照合 |
+| T2：異質な2方式 | N+1除去またはSQL Pushdown、Cacheなし→Memory/Localの比較 | #2582/#3271/#1180。独立Expected、cold/warm、同時負荷、p99/費用・更新競合 |
+| T3：AI Candidate | Design Context read-only投影→説明可能な改善候補→Plan/独立Benchmark→採否・事後観測 | #3262/#2516/#1180。AI推定は未受理、DDL/Effectは既存Grant/Receipt |
+| T4：複数実Consumer | Go、Web/Desktop/完全Headless、後続Java/.NETのうち実際に実行したものだけ比較 | #1121/#3503/#3509/#3267。別TargetのPASSを流用しない |
+
+#2600は実消費入力・Artifact再利用・Build省略・Evidence再資格化の所有先、#3271はCache/SnapshotとBackend、#2582はContext依存、#3278はTraitの実装義務、#3503/#1124は型付きFlow・図表とGeneratorの所有先とし、本書は**横断の最適化判定と受渡し**だけを所有する。#1119の既存G0〜G4へ追加Hard Gateを設けない。プロセスやPluginを増やしたのに実際の価値・正しさ・待ち時間改善を示せない場合は、その抽象を縮小/撤回する。
+
+**現況**：これは設計と計画の成熟化。AT-15〜24、T1〜T4、実OTel/実DB、AI実適用、実Target性能改善と正式Owner受理は**NOT RUN / NOT ACCEPTED**。既存の限定Reference PASSや過去のGate B/Cを新性能の合格証拠と読み替えない。

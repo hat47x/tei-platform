@@ -2,7 +2,7 @@
 
 - 対象Issue: [#2509](https://github.com/hat47x/tei-platform/issues/2509)（DSH外部Harness実証）、[#2515](https://github.com/hat47x/tei-platform/issues/2515)（実効隔離・全送出経路Conformance）。機密境界の正本は[TAI #232](https://github.com/hat47x/tai-pleroma/issues/232)、比較計画は[TAI #168](https://github.com/hat47x/tai-pleroma/issues/168)。
 - 状態: **既存の実行記録を並べた索引**。新しい実測は行っていない。個々の合否・Owner受理は各記録とIssueの担当。
-- この文書の役割: 17件の実行記録が**それぞれ何を確定させ、何を確定させていないか**を1枚で見えるようにし、同じ測り方の重複を避ける。記録本文の複製はせず、各記録へ参照で結ぶ。
+- この文書の役割: 19件の実行記録が**それぞれ何を確定させ、何を確定させていないか**を1枚で見えるようにし、同じ測り方の重複を避ける。記録本文の複製はせず、各記録へ参照で結ぶ。
 
 ## 1. なぜ台帳が要るか
 
@@ -23,6 +23,8 @@
 | [既定・再試行・切断](./DSH_SESSION_LOG_RETRY_AND_DEFAULT_2026-11-07/README.md) | 送出の状態差 | 出荷既定でON、非2xxと空streamでは未受理で再送 | agent要求自体の自動再試行、Crash重複 |
 | [maxBytes上限](./DSH_SESSION_LOG_MAXBYTES_2026-11-08/README.md) | 送出の上限 | 上限が小さいと水位で止まり、運べるevent数が減る | 分割送出（追測で確認）、単一eventの停滞 |
 | [backlog分割と停滞](./DSH_SESSION_LOG_SPLIT_AND_STALL_2026-11-08/README.md) | 送出の上限 | 後続要求へ分割送出（`6`→`9`）、上限256ではfieldが一度も作られない、上限判定は生byte | 004以降が載らない理由、停滞の警告 |
+| [maxBytesのしきい値](./DSH_SESSION_LOG_MAXBYTES_THRESHOLD_2026-11-09/README.md) | 送出のしきい値 | 307では載り水位`4`まで1eventずつ、**306では6要求すべてで載らない**。しきい値は最初のeventを包むfieldの直列化サイズ | 同じSessionで上限を上げた再実行（次行で確認）、停滞の警告 |
+| [停滞後の再開](./DSH_SESSION_LOG_STALL_THEN_GROW_2026-11-09/README.md) | 停滞分の再送出 | 上限を上げた同じSessionの再実行で`afterSeq -1`から`9`まで10 event・1,273 bytesが1要求に載り、合計13 eventが流れた（停滞分は失われない） | `maxBytes`変更だけで自動送出されるか、詰まっているeventの可視化 |
 | [H6-E0 Host棚卸し](./DSH_H6E0_HOST_INVENTORY_2026-11-07/README.md) | 実行環境 | read-onlyはConstrainedLanguage、親のenvは子へ継承されない、loopbackへ到達可 | 別Host、他Tool経路、実Egress |
 | [H6-E1 read境界](./DSH_H6E1_READ_BOUNDARY_2026-11-07/README.md) | 読取り | `read-only`でもraw配下・`.env`・cwd外を読める | AppContainer・別User・mount名前空間での拒否 |
 | [H6-E1 OSのACL](./DSH_H6E1_OS_ACL_2026-11-09/README.md) | 読取りの強制点 | `icacls`で拒否したファイルは`read-only`でも`danger-full-access`でも`PermissionDenied`。同Userへ権限を足すと同じProbeが成功する（正負対） | 別User・AppContainer・mount名前空間、Network egress、存在の推測 |
@@ -41,13 +43,13 @@
 3. **Process生成はmodeで止まらない**。子Process（H6-E2b）も候補の子起動（H6-E5）も成立した。止まるのは書込みと言語モード。
 4. **利用者が指定しない入力が入る**。AGENTS.md・CLAUDE.md・Skill `description`（H6-E3）。Skill本文は載らず、一覧提示と本文Loadは別。
 5. **設定の表示と実効制限が一致しない**。`DSH_PERMISSION_MODE`は空のまま（H6-E0・非対称）。モード名を権限判断の根拠にできない。
-6. **送出の停止は「安全」と同義ではない**。`maxBytes`を小さくするとLogの送出が止まるが、作業は続く（分割と停滞）。
+6. **送出の停止は「安全」と同義ではない**。`maxBytes`を小さくするとLogの送出が止まるが、作業は続く（分割と停滞）。止まる境界は**1byte単位で特定でき**（307で送られ306で送られない）、止めた分は上限を戻した再実行で**1要求のburstとして戻る**（停滞後の再開）。恒久的な抑止として扱えない。
 
 ## 4. まだ根拠が無いこと
 
 - **別Identity（AppContainer・別User・別Session・mount名前空間）での読取り拒否**。同一Userに対するOSのACLによる拒否は[H6-E1 OSのACL](./DSH_H6E1_OS_ACL_2026-11-09/README.md)で確認したが、Harnessや子Processが**別の資格**で動く場合に同じ拒否が効くかは未確認。Network境界の実拒否も同様。
 - **実Providerの保存・保持・二次利用**、Telemetry・MCP・Subagent経路の網羅。
-- **単一eventが`maxBytes`を超えた場合の停滞**（プラグインの警告文と挙動）。
+- **停滞を検知する手段（警告文・状態表示）**。しきい値は[しきい値](./DSH_SESSION_LOG_MAXBYTES_THRESHOLD_2026-11-09/README.md)で、止めた分が戻ることは[停滞後の再開](./DSH_SESSION_LOG_STALL_THEN_GROW_2026-11-09/README.md)で確認したが、**止まったことが利用者に見えるか**、単一eventが上限を超えた場合にどう振る舞うかは未確認。
 - **Skillの増分価値**。四Sessionは未採点で、Task path不一致とSession再利用を含む。
 - **独立Expectedによる採点**（RunbookのReviewer-only）。
 
