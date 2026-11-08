@@ -44,6 +44,62 @@ type workspaceManifest struct {
 	Imports       []WorkspaceImport
 }
 
+// manifestLine returns the content of one manifest line with the comment and
+// the surrounding space removed. A `#` starts a comment only outside a quoted
+// value and only at the start of the line or after whitespace, so `scn#1` keeps
+// its hash instead of being silently read as `scn` (#3557).
+func manifestLine(raw string, number int) (string, error) {
+	inSingle, inDouble := false, false
+	for i := 0; i < len(raw); i++ {
+		switch raw[i] {
+		case '\'':
+			if !inDouble {
+				inSingle = !inSingle
+			}
+		case '"':
+			if !inSingle {
+				inDouble = !inDouble
+			}
+		case '#':
+			if inSingle || inDouble {
+				continue
+			}
+			if i == 0 || raw[i-1] == ' ' || raw[i-1] == '\t' {
+				raw = raw[:i]
+				i = len(raw)
+			}
+		}
+	}
+	if inSingle || inDouble {
+		return "", fmt.Errorf("line %d: unterminated quoted value", number)
+	}
+	return strings.TrimSpace(raw), nil
+}
+
+// manifestScalar unwraps one manifest value. A value may be quoted with ' or "
+// when it contains a `#`, a space at either end, or a character the subset
+// otherwise reads structurally; the quotes are not part of the value. Text
+// after the closing quote is rejected instead of silently dropped (#3557).
+func manifestScalar(value string, number int) (string, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "", nil
+	}
+	quote := value[0]
+	if quote != '\'' && quote != '"' {
+		return value, nil
+	}
+	end := strings.IndexByte(value[1:], quote)
+	if end < 0 {
+		return "", fmt.Errorf("line %d: unterminated quoted value", number)
+	}
+	rest := strings.TrimSpace(value[end+2:])
+	if rest != "" {
+		return "", fmt.Errorf("line %d: unexpected text after quoted value: %q", number, rest)
+	}
+	return value[1 : end+1], nil
+}
+
 // parseWorkspaceManifestYAML accepts the existing small workspace YAML subset
 // plus explicit single-namespace imports. It deliberately does not pretend to
 // be a general YAML parser. All unsupported entries fail with a source line.
@@ -61,7 +117,10 @@ func parseWorkspaceManifestYAML(src string) (workspaceManifest, error) {
 	// a prefix, and treating it as whitespace would hide a corrupted file.
 	src = strings.TrimPrefix(src, "\ufeff")
 	for n, raw := range strings.Split(src, "\n") {
-		line := strings.TrimSpace(strings.SplitN(raw, "#", 2)[0])
+		line, err := manifestLine(raw, n+1)
+		if err != nil {
+			return workspaceManifest{}, err
+		}
 		if line == "" {
 			continue
 		}
@@ -72,7 +131,11 @@ func parseWorkspaceManifestYAML(src string) (workspaceManifest, error) {
 			if out.Name != "" {
 				return workspaceManifest{}, fmt.Errorf("line %d: duplicate workspace name", n+1)
 			}
-			out.Name = strings.TrimSpace(strings.TrimPrefix(line, "workspace:"))
+			name, err := manifestScalar(strings.TrimPrefix(line, "workspace:"), n+1)
+			if err != nil {
+				return workspaceManifest{}, err
+			}
+			out.Name = name
 			continue
 		}
 		if strings.HasPrefix(line, "formatVersion:") {
@@ -82,7 +145,10 @@ func parseWorkspaceManifestYAML(src string) (workspaceManifest, error) {
 			if out.FormatVersion != 0 {
 				return workspaceManifest{}, fmt.Errorf("line %d: duplicate formatVersion", n+1)
 			}
-			value := strings.TrimSpace(strings.TrimPrefix(line, "formatVersion:"))
+			value, err := manifestScalar(strings.TrimPrefix(line, "formatVersion:"), n+1)
+			if err != nil {
+				return workspaceManifest{}, err
+			}
 			version, err := strconv.Atoi(value)
 			if err != nil || version < 1 {
 				return workspaceManifest{}, fmt.Errorf("line %d: formatVersion must be a positive integer", n+1)
@@ -103,14 +169,20 @@ func parseWorkspaceManifestYAML(src string) (workspaceManifest, error) {
 			if !strings.HasPrefix(line, "-") {
 				return workspaceManifest{}, fmt.Errorf("line %d: unsupported workspace manifest entry %q", n+1, line)
 			}
-			value := strings.TrimSpace(strings.TrimPrefix(line, "-"))
+			value, err := manifestScalar(strings.TrimPrefix(line, "-"), n+1)
+			if err != nil {
+				return workspaceManifest{}, err
+			}
 			if value == "" {
 				return workspaceManifest{}, fmt.Errorf("line %d: empty source root", n+1)
 			}
 			out.Sources = append(out.Sources, value)
 		case "imports":
 			if strings.HasPrefix(line, "- alias:") {
-				alias := strings.TrimSpace(strings.TrimPrefix(line, "- alias:"))
+				alias, err := manifestScalar(strings.TrimPrefix(line, "- alias:"), n+1)
+				if err != nil {
+					return workspaceManifest{}, err
+				}
 				out.Imports = append(out.Imports, WorkspaceImport{Alias: alias})
 				current = len(out.Imports) - 1
 				continue
@@ -123,17 +195,29 @@ func parseWorkspaceManifestYAML(src string) (workspaceManifest, error) {
 				if out.Imports[current].Path != "" {
 					return workspaceManifest{}, fmt.Errorf("line %d: duplicate import path", n+1)
 				}
-				out.Imports[current].Path = strings.TrimSpace(strings.TrimPrefix(line, "path:"))
+				value, err := manifestScalar(strings.TrimPrefix(line, "path:"), n+1)
+				if err != nil {
+					return workspaceManifest{}, err
+				}
+				out.Imports[current].Path = value
 			case strings.HasPrefix(line, "namespace:"):
 				if out.Imports[current].Namespace != "" {
 					return workspaceManifest{}, fmt.Errorf("line %d: duplicate import namespace", n+1)
 				}
-				out.Imports[current].Namespace = strings.TrimSpace(strings.TrimPrefix(line, "namespace:"))
+				value, err := manifestScalar(strings.TrimPrefix(line, "namespace:"), n+1)
+				if err != nil {
+					return workspaceManifest{}, err
+				}
+				out.Imports[current].Namespace = value
 			case strings.HasPrefix(line, "semanticDigest:"):
 				if out.Imports[current].SemanticDigest != "" {
 					return workspaceManifest{}, fmt.Errorf("line %d: duplicate import semanticDigest", n+1)
 				}
-				out.Imports[current].SemanticDigest = strings.TrimSpace(strings.TrimPrefix(line, "semanticDigest:"))
+				value, err := manifestScalar(strings.TrimPrefix(line, "semanticDigest:"), n+1)
+				if err != nil {
+					return workspaceManifest{}, err
+				}
+				out.Imports[current].SemanticDigest = value
 				if !validImportSemanticDigest(out.Imports[current].SemanticDigest) {
 					return workspaceManifest{}, fmt.Errorf("line %d: invalid import semanticDigest: expected sha256 followed by 64 lowercase hex digits", n+1)
 				}

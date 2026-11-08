@@ -29,6 +29,21 @@ go version
 
 手順は[最初の意味変更を試す](../examples/first-workspace/README.md)に記載しています。Goの開発環境だけで実行できます。ただし、これはモデルの検証例であり、画面の生成やデータの登録・照会・更新・削除はできません。
 
+### `tei.workspace.yaml` に書ける書式
+
+`tei.workspace.yaml`は汎用のYAMLではなく、次だけを受け付ける小さな部分集合です。それ以外の書き方（インライン配列、未知のキー、複数行の値、アンカー）は`unsupported workspace manifest entry`として拒否します。拒否は行番号つきで返るため、黙って別の値になることはありません。
+
+| 項目 | 書式 | 例 |
+| --- | --- | --- |
+| 名前（任意） | `workspace:` の後に1つの値。前後の空白は値ではない | `workspace: tei_reference` |
+| 版（必須） | `formatVersion:` の後に正の整数。`sources:`・`imports:`より前に1回だけ | `formatVersion: 1` |
+| ソースの根 | `sources:` の下に`- <root>`を1行ずつ。1つ以上必要 | `sources:` の下に `  - semantic` |
+| import | `imports:` の下に`- alias:`、続けて`path:`・`namespace:`、任意で`semanticDigest:` | `  - alias: sui` の下に `    path: ../provider` |
+| 引用符 | 値に`#`・前後の空白・構造として読む文字を含めるときは`'`または`"`で囲む。引用符は値に含めない | `workspace: "scn #1"` |
+| コメント | 行頭、または空白の直後の`#`から行末まで。引用符の中の`#`は値の一部 | `formatVersion: 1  # 2026-11-02` |
+
+引用符を閉じない場合と、閉じた引用符の後に文字が続く場合は、どちらも行番号つきで拒否します。`workspace: scn#1`のように引用符なしで`#`を含めた値は、`scn#1`として読まれます（コメントにはなりません）。同じ値が`workspace.name`として応答に返るため、呼出し元はmanifestに書いた名前をそのまま照合できます（[#3557](https://github.com/hat47x/tei-platform/issues/3557)）。
+
 ## コマンドラインを生成AIや自動化から使う
 
 当面はコマンドラインから`tei`を操作する方法を基本とします。現在使える主な読み取り専用コマンドは、次のコマンドが返すJSON形式の一覧で確認できます。
