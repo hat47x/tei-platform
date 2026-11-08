@@ -448,6 +448,11 @@ reload / Conformance
 
 **予定の帰属**：S0はStudio main #3371／CLI Draft #3381、S1はCLI Draft #3381の局所実Go試験、S2のProduct統合は#1251/#1824、S3のDesign Requiredは#3262、履歴Sourceと再利用判定は#2600、版Matrix/BOMは#3267、Trait実装義務はmain #3480/#3278、Scenario/独立Expectedは#1180/#2514。新しいResolver/Registry/Host/Scenario SSOT、HTTP常駐必須化、Legacy `application-runtime` CarrierのScope緩和は行わない。本節自体は計画の更新で、S2/S3の実試験成功・Owner Meaning受理を**主張しない**。
 
+
+**2026-11-08 実装の新しい基線（main #3381／Plugin計画 #3525）**：[PR #3381](https://github.com/hat47x/tei-platform/pull/3381)がmain（統合 `f8896886c4528920a0d0cb3a2f67181971402987`）へ入り、`internal/inspectoradapter.Selected`で`authoring-tool`のexact Selection/Epoch/Host guard/Host登録Go実関数を接合、CLI注入入口とStudio Host Serviceで、Data・Rule・Relation・Capability・Application・Patternの6 Subjectを**二つの局所Go call-siteから同一Bへ合計12呼出し**する試験コードを収録した。B選択→A登録、Scope/Contract/Artifact不一致、Host Grant撤回、Epoch失効、Secret型付きError等の拒否もテストに含む。これらはS0と**限定S1**の実装であり、通常CLI `main.go`からのB自動選択、実Wails `StudioBridge`配線、実Plugin Binary/Source/Current Grantの真正性、外部Tool配信、2×2 Verified BOMはなお**S2/S3未成立**。PR旧HEADのGo package試験は一部索引漏れだけで全Health FAILし、索引を補正した新HEADを統合したが、**新HEAD全体CIの最終結論はこの追記時点では未確認**。この関係は[現行実装状況](../docs/status.md)と[Plugin計画 §19](design/PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md)へ接続した。
+
+**次に着手する唯一の本番経路**：既存#951/#1016のResolver/ProfileをHostが受け、CLIの通常`inspect`とStudioの実Wails Hostで**別々に**同じ選択済みProvider Bを注入する。その際「選択」が実Artifact/Provider Entryの真正性を意味しないため、Selection→actual Binding→実Call/Source/Effect/受領のReceiptを分割したまま#1180/#2514の独立Expectedで評価する。Lifecycle Graphの型付きPatch/Hook（#3503/#3510）、B2C Headless（#3509）、AIチューニング（#3520）は、最初のS2を阻害しない後続Consumer/圧力試験とする。新たなResolver、共通常駐Host、Inspector専用の意味受理機構、第二Runnerは作らない。
+
 **2026-11-08 S2追補：D1a既存基線とTyped Error秘匿・Atomic Trait二Consumerの判定**（既存S0〜S3の変更なし）
 
 - **D1a基線を実績として固定する**：[main統合 #3378](https://github.com/hat47x/tei-platform/pull/3378)では既存CLI／Studioの直接Operation経路でData/Rule/Relation/Capability/Application/Patternの6 Subjectを読み取り、Canonical・Source位置・World/Source Index FP・EffectとNotFoundの同値を検証。exact HEAD [Health #42463508044](https://github.com/hat47x/tei-platform/actions/runs/42463508044)はcompleted/success。**D1a direct同値PASS**であって、D1b Provider Bの実Selected／actual Invokeではない。D1aを作り直さず、S2では同じSubject/Expectedで呼出ProviderのIDと実Call-siteを追加観測する。
