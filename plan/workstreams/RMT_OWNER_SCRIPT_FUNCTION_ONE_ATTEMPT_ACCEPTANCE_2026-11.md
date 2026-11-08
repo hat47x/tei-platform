@@ -871,3 +871,47 @@ RMT E01/02の独立Requiredには、単に名前が見つかっただけでな�
 本Draft前HEAD `a2ee4cc4fec4c07241ff9dbd80e5310136308b88`の[Repository Health #42396891587](https://github.com/hat47x/tei-platform/actions/runs/42396891587)は**completed/failure**。Job logでは`go vet ./...`、`go test -count=1 -timeout 60m ./...`、`tei validate -workspace reference/workspace`はPASSし、**Go 1.26.10の`gofmt -l .`が`tools/reference-plugin-capability-coverage/coverage_test.go`のdriftを検出**したことが失敗原因。RMTのMarkdown追加やProduct Reader test失敗を原因としない。mainでは[#3391](https://github.com/hat47x/tei-platform/pull/3391)/[#3398](https://github.com/hat47x/tei-platform/pull/3398)等でCI Go版の整形差へ対処済み。ただし**古いDraft branchが自動的に修正されたわけではない**。
 
 最終統合では、古いBranchのまま連続追補をMergeせず、mainの最新Go Toolchain/Source/Planとの必要差分を再検査し、**RMT自身のMarkdown＋既存SQLite Fixtureだけを意図した変更として再資格化**する。現在Branchの大量behindを無検証のRebase/Force pushで処理しない。新HEADのHealthが成功しなければ`docs-branch-health-unqualified`、新実Provider Readが未接続なら`product-read-not-connected`をそれぞれ独立に保持。製品Main／DB／Windows/旧Driver／正式Owner Bは本追補では変更・実行せず、G1/G2はUNQUALIFIED。
+
+## 23. 11/8再資格：Imported Sourceの鮮度・Function Required・実Hostを一試行の別証拠に
+
+前章のE（examples/xtea-lowcode の recent_orders／status）、W（reference/workspace の from）、C（Web Reference実PG）を別Source/SQL/Scopeとして維持する。最優先は **E Product Function→選択SQL原Byte/実引数→physical Provider Read→Header Rowset→Function Context/Consumer** で変えない。横断Master Planは[main統合 #3481](https://github.com/hat47x/tei-platform/pull/3481)ですでにP0-D→並行P0-M/R→P0-Cを保持するため、重複修正しない。
+
+### 23.1 同一WorkspaceのSource-only改訂は実証済み、外部ImportのRaw鮮度は別
+
+[main #3477](https://github.com/hat47x/tei-platform/pull/3477)は、隔離Workspaceのvalidation.teiに末尾LFだけ追加してもCanonical Worldは変わらず、Source Index fingerprintだけが変化するため、古いWorld-pinned Scenarioは動いても旧Design Contextは拒否すべきことを**実CLI**で検証した。A→B→Aで原Byteと指紋が戻っても中間履歴や現在Grantは証明できない。[Health #42461032028](https://github.com/hat47x/tei-platform/actions/runs/42461032028)はcompleted/success。前章の旧Draft #3383の状況を現在の実装状況と誤認しない。
+
+一方、[Draft #3479](https://github.com/hat47x/tei-platform/pull/3479)は**外部Import Providerの原文がConsumer側Source Indexに現れない**境界を検証中。Consumer World／Semantic Digest／Source Index／ModelRevision不変でも、Provider Raw末尾LFの変更で原Byte SHA256とLocated Source fingerprintが変わり、BuildSourceIndexFromLoadがErrImportsNotBoundを返すケースを既存externalPairで提示している。照合時HEAD 1451bf69fdf53592366be5a4a549e7e7d9560249 の[Health #42463036749](https://github.com/hat47x/tei-platform/actions/runs/42463036749)はqueued。**Draft・Go実テスト結果未確認**であり、main #3477の成功を外部Imported Sourceへ流用しない。
+
+| Case | 不変なもの／変化するもの | 独立Expectedと停止 |
+| --- | --- | --- |
+| **SC-L1：ローカルRawのみ変更** | World FP不変、同一Workspace SourceIndex FP変化 | 旧Context拒否。#3477の限定Go CLIでPASS |
+| **SC-I1：Imported Provider Rawのみ変更** | Consumer World/Index不変、Provider raw digest/Located Source改訂 | Imported Sourceを必要とする資格は再検査。#3479は未統合/CI待ち |
+| **SC-I2：Import未束縛** | Consumer側の一見正常なIndex／ErrImportsNotBound | Source未取得を0行・不存在・成功へ変換しない。Nested Load共同Snapshotは未証明 |
+| **SC-I3：A→B→A** | 現在byte・fingerprint復帰 | 中間履歴／Owner受理／実Grantを自動再利用しない |
+
+**現在のE受注SQL recent_orders.sqlはローカルファイル**。Imported Provider Sourceの追加ReadinessをHR-01/02の新しいHard Gateにしない。外部Importが実際に依存として登場したAttemptのみ、Provider側Source occurrence・原Byte・Revision/Location・Load観測とConsumer Scopeを#1163へ追加する。後時点の再Fetchを最初のLoadの証拠にしない。
+
+### 23.2 bounded Function Requiredは13 CLI Replyへ。Product SQL実行へは未接続
+
+[main #3482](https://github.com/hat47x/tei-platform/pull/3482)は独立Requiredに、sales.order.submit の入力order／出力sales.order、order_entry Applicationのsales namespace・3 Validation・sales_core DB requirementを追加。既存11実CLI ReplyにTyped Inspectを2件追加し、**13実CLI Reply・42件の局所合成Consumer Controls**を実行した。PR専用[CI #42462672188](https://github.com/hat47x/tei-platform/actions/runs/42462672188)とmain squash 8ed583790e63b63527c1dd8f8aecc1d6ce6e3260 の[push専用CI #42462861657](https://github.com/hat47x/tei-platform/actions/runs/42462861657)はsuccess。全体Health #42462835497は本照合時in_progressなので合格を先取りしない。
+
+これは**Command/FunctionのSource宣言の局所存在**であり、uses semantic sales は特定CapabilityのInvoke Bindingを示さず、13回のReadが一つの原子的Snapshotとも限らない。現在も boundedReference=partial、qualifiedTestGeneration=false。42件はProduct Go Code MutantではなくConsumer Replyの合成判別である。何より **sales.order.submitの宣言観測は、Eのrecent_orders Query/SQL/Provider実Readではない**。
+
+| 既存レーン | 成立した限定事実 | 最初の不足 |
+| --- | --- | --- |
+| **P0-I Design Context** | #3482によるCapability/Application/Rule必須Sourceの局所検査 | 全Function/Business閉包、現在Grant・実Invoke |
+| **P0-R E Browse** | Pattern/Query/SQL SourceとBuildBrowseの定義投影 | **#2586：status Bind→実PostgreSQL Provider→Header2列Rows→Function Context/Consumer** |
+| **P0-E Command** | #3155の単一Resource別読取、[main #3472](https://github.com/hat47x/tei-platform/pull/3472)のCommand/Numbering型Adapter | 一つの実DB Tx／Receipt K／別Connection資源O／Owner B |
+| **P0-X Consumer** | [main #3403](https://github.com/hat47x/tei-platform/pull/3403)の参照MCP Adapter、[main #3458](https://github.com/hat47x/tei-platform/pull/3458)のvalidate CLI/MCP文書同値 | 実Function Rowsetの同一Scope・Epoch・Disclosureと完全受領 |
+
+### 23.3 実Go HostのHTTP応答とREA/SHO向けSchemaは別資格
+
+[main #3478](https://github.com/hat47x/tei-platform/pull/3478)は実Go Host Handlerの10 HTTP経路とAudit/Status/Stage順を[専用CI #42461546535](https://github.com/hat47x/tei-platform/actions/runs/42461546535)で検証。**HTTP 202＋Audit completedはHost Requestの終結でありBusiness Effect／Receiptではない**。202送出後panicではAudit errorでもResponse Statusは202のままになり得るため、#1174のEffectUnknownと#1125の外部Handoffへ独立負例として渡す。[main #3485](https://github.com/hat47x/tei-platform/pull/3485)はE1 PlanとGo Hostが個別に正しくてもmethod/path/actionIdのペアが誤る合成二視点負例を追加し、[専用Node/Go CI #42462531490](https://github.com/hat47x/tei-platform/actions/runs/42462531490)はsuccess。ただし実TEI Graph→Host Binding、現在Grant、実Provider、Client受領は未証明。
+
+[Draft #3486](https://github.com/hat47x/tei-platform/pull/3486)は既存Physical Schema Snapshotの複合PK/UNIQUE/FK、式・条件・Include・状態付きIndexをread-only Workbench Modelへ保持する実装候補。Fake Catalog→Provider.Introspect→Projectionの局所テストであり、**実PostgreSQL Catalog／REA業務Role・三視点CRUD・SHO意味のOwner受理、実Function Rowsetではない**。旧#3372を二重採用しない。P0-Mの構造Candidateとして参照し、物理FKから業務Key・Function CUD・現在Grantを自動確定しない。
+
+### 23.4 次の一Attemptと判定上限
+
+既存#2586が**E Route Product BuildBrowse→Selected Query→SQL原Byte+status実Bind→sales→sales_core→physical Provider→order_id/customer_id Rows→Function Context/Consumer**を一試行で実証する。#2514の独立Expectedと#1163の同Attempt Evidenceを使用。その後に第22章のne／sort／page20・非出力status・明細完全集合L、#2516 Disclosure、#1125二入口/Handoff、#1174 Receipt KとResource Oへ進む。
+
+#3477/#3482/#3478/#3485はmainの**限定実証**、#3479/#3486は**未統合Draft**。製品E SQL Read・旧Windows Driver・実Host Provider/Studio/SHO Consumer受領・Owner正式Meaningは今回NOT RUN、G1/G2 UNQUALIFIED。本Draftへの変更は本Markdown一ファイルのみ、mainに統合された#3481 Master PlanやScenario正本へ重複変更しない。直前HEAD 20144e15e2e7a5329165524396828051fab9b205 の[Health #42461008246](https://github.com/hat47x/tei-platform/actions/runs/42461008246)はcompleted/success。新HEADのHealthは別判定。
