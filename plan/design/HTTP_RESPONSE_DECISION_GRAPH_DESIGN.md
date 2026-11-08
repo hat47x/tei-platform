@@ -346,8 +346,97 @@ Serverの応答生成に成功してもClient受信に成功したとは限ら�
 
 **次に必要な最小一往復**：必要なHTTP Graph Contextの取得→Source/Graphの本物のLoader消費→Node/Edge/Function/Guardの同一性確認→静的構成とshort-circuit経路の差→既存Go HostでのRuntime audit/witness→ClientでのResponse受領＋Effect unknownの保持、という順に段階分けする。1段階だけ成立しても次段階へ無条件に昇格させない。
 
-## 14. 参考資料と採否
-## 8. 参考資料と採否
+## 14. 2026-11-08：実Node完了・実Go Hostの分岐観測へ進む（P-1c）
+
+### 14.1 前回CIの完了資格を更新
+
+PR [#3382](https://github.com/hat47x/tei-platform/pull/3382) exact head `c31ade7851a4de5576845a88ee2ac0e9f2772f56` に対する[専用CI #42396614454](https://github.com/hat47x/tei-platform/actions/runs/42396614454) は**completed/success**。実Nodeのcheckout・版記録・`node --check`・`node --test`各Stepはsuccess。これによりHDG-21の**現在の構成器の限定Characterization**は、V8だけでなく実Node test runnerの成功として報告できる。ただしSourceで明示される`configurationAccepted=true, pathAuditProof=false, runtimeAudit=unknown`を上書きしない。
+
+同PRの[全体Health #42396614480](https://github.com/hat47x/tei-platform/actions/runs/42396614480)は**completed/failure**。Jobログでは`go vet ./...`、`go test -count=1 -timeout 60m ./...`、参照Workspace validateがそれぞれPASSし、失敗したのは`gofmt -l . is empty`（`tools/reference-plugin-capability-coverage/coverage_test.go` の整形ドリフト）。**当該PRのGo/HTTP機能が全体資格を獲得したという意味ではない**。整形ドリフトの所有範囲と、HTTP実証の対象変更は分離する。
+
+### 14.2 現行Go Hostの実装を読んだFit/Gap
+
+現行 `reference/web-composition/go-host/host.go` blob `407aadbb87fdee4f59f96cf2d2b2f8115ed31281` は `NewHost`で必須Callbacks（`VerifySession`・`VerifyCSRF`・`Authorize`・`Invoke`・`Audit`）の非nilを要求し、**各request handlerに`defer`で`AuditRecord`を一回出力する**実装を持つ。認証失敗・Issuer差・CSRF拒否・Authorize障害・Handler成功・panicの経路を通る。既存`host_test.go` blob `d1abb5db50ec523c61a784c8a5dad30c1779c93c`には、拒否Pathの監査、Loopbackの202/403、レスポンス開始後のpanicを検査するGo試験がすでにある。
+
+**以前の『実Hostの監査は全く未検証』という表現は不正確**。正確には、合成Go Hostに**監査の実装と既存試験はある**が、**E1静的構成DAGの`onTerminal`宣言がこのGo Hostの実際の分岐/監査にBindingされ、すべての必要なRuntime/Effect経路で強制されるという縦断証拠がない**。ここを#1043が担当する。独立Graph Runnerや第二Audit Engineを作る理由にはならない。
+
+さらに、`AuditRecord.Stage`はこのHostでは**HTTP Handler処理の終了状態**であり、正式Business OutcomeやEffect確定状態ではない。HTTP 202と`Stage=completed`が同時に現れても、Business Commit/独立read証拠は存在しない。Handlerが202を送出してからpanicすると、**Client visible statusは202のまま、Host監査は`Stage=error`**になり得る。この差は既存の`TestPanicAfterResponseStartedRemainsAuditError`にも現れる。Problem Details/WWW-Authenticate等のProtocol conformanceは、実際の採用Auth Scheme・HTTP API profileが未決の段階でこのsynthetic Hostへ一律強制しない（#1656）。
+
+### 14.3 Go Hostの分岐Witnessを同じ受入軸へ追加
+
+[新テスト `decision_path_test.go`](../../reference/web-composition/go-host/decision_path_test.go)は、現行Go HostのCallback実通過順とAuditを**独立した期待順序**で比較する（Go HTTP Handlerを実際に動かす）。実行対象と独立Expectedは次の10経路に限定する。
+
+| Path ID | 期待HTTP | 通過Callbackの要点 | 最低限の資格 |
+| --- | ---: | --- | --- |
+| HDG-H01 | 404 | Auditのみ | route不一致で他Guard不実行 |
+| HDG-H02 | 405 | Auditのみ | method不一致でAction不実行 |
+| HDG-H03 | 401 | Session→Audit | Session拒否 |
+| HDG-H04 | 401 | Session→Audit | Issuer不一致 |
+| HDG-H05 | 403 | Session→CSRF→Audit | Origin/CSRF拒否 |
+| HDG-H06 | 403 | Session→CSRF→Authorize→Audit | Action認可拒否 |
+| HDG-H07 | 503 | Session→CSRF→Authorize→Audit | 認可Service障害 |
+| HDG-H08 | 202 | Session→CSRF→Authorize→Invoke→Audit | `Audit.Stage=completed`だがEffect未確定 |
+| HDG-H09 | 422 | Session→CSRF→Authorize→Invoke→Audit | Handler呼出後の拒否、no-effectは未証明 |
+| HDG-H10 | 202 | Session→CSRF→Authorize→Invoke→Audit | Header送出後panic、`Audit.Stage=error` |
+
+このWitnessは**Go Reference HostのCallbackのみ**の実観測。Route/Methodの内部処理、Authorization Providerの本物の妥当性、任意のMiddleware/Proxy、Browserでの完全受領、実業務Action Effect、TEI標準Graph Loader、全可到達Pathの網羅性は証明しない。Sourceに安定Node/Edge IDを新設していないため、表のPath IDも**テストケース識別子**に限り、TEI Canonical Edge identityへ昇格させない。
+
+既存専用Workflowは**NodeのHDG-21限定テストとGo Hostのこの限定経路試験の双方**を同一checkoutで走らせる候補へ拡張する。結果が得られるまではGo新テストを実Go PASSと記載しない。全Repo HealthとGo Host局所PASSは別資格とする。
+
+### 14.4 他チャットで成熟した計画との統合と、次の一辺
+
+- **#3262 / merged #3354**：実CLI11種と必要Validation/Relation/Sourceの限定Context Consumerを活用するが、そのTT-56の一部のSource集合が**HTTP GraphのRequired Node/Edge/Guard分母**に一致するわけではない。`required/discovered/loaded/parsed/bound/returned`をHTTP対象で独立に固定し、未消費GraphはUNKNOWNのまま保留する。
+- **#1124 / #2497 / SUI・SHO Consumer**：同名Nodeと多重Edge、Graph→表→Markdownの非単射、Canvas/OccurrenceのUI選択とSemantic Subjectの区別を維持。CLIから実Graph Edge identityがLoaderを経由して来るまで、Mermaidの見た目やテストPath名で欠落したRelationを補わない。投影表示の現在資格と、過去に受信したエラーの保持を別に検証する。
+- **#3278 / #3279 / #951 / #3267**：`TerminalCoverage`と`ClientReactionPolicy`をatomic Traitの**義務候補**として保持する。Plugin宣言・Provider選択・実呼出・Conformance・Runtime Grant・BOM exact tupleを区別し、標準Pluginへ移すのは現Hostの実Callback Evidenceから必要な不足が特定できた後。
+- **#1174 / #1158 / #997 / KON/SEI**：ClientはBusiness Decisionの正本でも分散Effect coordinatorでもない。将来KON Dataspace等がData Provider、SEIが意思決定先となっても、Response Interpretation → Reaction Qualification → 認可済みAction/Effect → 独立Observationの分離を維持し、それら別製品のHostや認可正本をHTTP Graphへ移植しない。
+
+次のP0最小縦切りは**既存Go Hostの10経路Witnessを基線に、E1構成DAG側のRoute/Guard/Terminal宣言とRuntime実装をread-onlyの照合票で結ぶ**こと。対応が証明できない項目は`unbound/unknown`として停止し、同名のGuardやHTTP statusからBindingを捏造しない。続いて1 Functionの実TEI Source Reader→Required Relation/Edge/Guard→Graph/Table投影を実Consumerで通してはじめてP0 Graph資格を評価する。既存の三視点・Scenario・Effect EvidenceのOwnerを維持する。
+
+## 15. 2026-11-08 P0-R：E1宣言とGo Hostの明示Route照合（Source二視点・限定PoC）
+
+### 15.1 今回の最小実験と資格の限界
+
+前回統合PR [#3478](https://github.com/hat47x/tei-platform/pull/3478)の専用CI [#42461546535](https://github.com/hat47x/tei-platform/actions/runs/42461546535) は**completed/success**。その実行でNodeの2件Characterizationと、Go Hostの実Callback順序10経路がPASSした。これらは**別々の試験**であり、E1 `composeRequestPlan`のGuard/TerminalがGo Hostの同名実処理へ*選択・ロード・束縛*された証拠ではない。前段§14の「Go新テストは未実行」は**当時の記録**として読み、現在の限定証拠をこの節で更新する。PR全体Healthは本節作成時点では継続確認中であり、専用CIのPASSを全体Healthyへ昇格しない。
+
+そこで[二視点の合成Fixture](../../reference/web-composition/e1-go-route-pair.fixture.json)を共有して、[実Node試験](../../reference/web-composition/e1-go-route-pair.test.mjs)と[Go Host試験](../../reference/web-composition/go-host/e1_go_route_pair_test.go)で、**現行コードが受け入れる宣言と、比較可能なRouteの差**を確認する。Fixtureに同じRoute/Actionが書かれていても、それは**Reference内で宣言上の値が一致する**ことを示すだけ。TEIの実Source Reader、正式Binding、Provider選択・実呼出、Endpoint生成の経路を通っていない。
+
+| 独立に判定する段階 | 現在の実証／これからの実証 | 合格しても成立しないこと |
+| --- | --- | --- |
+| E1 declaration qualified | 実`composeRequestPlan`とrequired Guard DAG / Terminal label集合 | Terminal全経路強制、Runtime Grant |
+| Go Host construction qualified | 実`NewHost`で構成拒否／受理を観測 | そのHostがE1選択結果から作られたこと |
+| Route pair identity qualified | E1とGoそれぞれのRoute method/path/actionIdを独立比較 | Auth/CSRF/Issuer/Effect Providerの同一性、Source意味の正式受理 |
+| Runtime path observed | 10経路のGo Callback順・Audit Stage | Graph実Edge、Client応答完全受領、業務Commit/部分適用 |
+| Semantic / Effect / Consumer qualified | **未達**：実TEI Source→Role/Edge→Host Binding→Client/Receipt/独立Read | 前段の局所PASSから推測しない |
+
+### 15.2 Counterfactual：構成双方が局所PASSでも対応付けはFAIL
+
+| ID | 独立Expected（Fixtureは固定、変更は一方だけ） | 局所で成立すること／拒否する推論 |
+| --- | --- | --- |
+| HDG-B01 | E1のRoute `POST /scenario/submit` とGoのPath/Actionが一致 | 宣言Routeだけpaired。Runtimeは未資格 |
+| HDG-B02 | E1またはGoのPathを別の**有効な**Pathへ変更 | 両者は各々構成可能、明示ペアの同一性はFAIL |
+| HDG-B03 | 一方のAction IDを別の**有効な**IDへ変更 | 各側の構成可能性は残る、Action BindingはFAIL |
+| HDG-B04 | Go Host MethodをGETへ変更 | E1 pairは不一致、Go Host自身もProtected Writeとして拒否 |
+| HDG-B05 | Route等値のままGo Hostのissuer/providerを改版 | route pairingは同一でも、Subject/Provider/Grant/実Invocation資格はUNKNOWN |
+
+これらは**テスト専用の比較関数**であり、公開Resolver、共通Graph Registry、第二Web Host、正式Schemaではない。今の`Graph Edge`識別子をRoute IDと同一にしない。#1124/#2497の同名Node・多重Edgeの原Source Occurrenceが実Loaderから届くまでは、分岐関係の`stable ID`を捏造しない。#3263の三視点Graph/CRUD計画はDraft段階なので、同PRにあるEdge identity検討をmain正式機能として数えない。
+
+### 15.3 TEI/SHO/SUI/SEI/KONとの責務分離
+
+今回の「構成＝実Bindingではない」は、他チャットの構想にもそのまま適用する。TEIのモデル・DSLがデジタルツインと意思決定候補を記述しても、SUIの提示済みCardやSHOの草稿、SEIへ送るメッセージ、KON DataspaceのObject/Revision保存は、**業務上のDecision採用・現在のGrant・実Effectの証拠ではない**。SUI Canvas上の表示EdgeやDocument内のリンクから元Relation/Authorityが逆復元できるとしない。
+
+SEIを意思決定の主体とする構想は、本件では**Candidate decision→権限ある主体の判断→認可済みAction→現在Effectの独立観測**の境界として参照する。KONはデータ保存・履歴や取得Providerの候補であって、本件のAuth/Commit authority正本を代替しない。EKI等のMessagingがRetry/Redeliveryしても、HTTPのACKだけを理由に非冪等Actionを再実行しない。これらの製品の実接続・Ontology DSL実装・SEI意思決定の実運用は**NOT RUN**。HTTP案件専用の分散Transaction Coordinatorや第二意思決定主体を増やさない。
+
+### 15.4 次のP0ゲート（Owner別、第二正本なし）
+
+1. **本PRの局所実Node/Go CI**：HDG-B01〜05と旧HDG-21/Go 10経路についてexact HEAD / Source Blob / runner exitを確認。Failedまたは未受領なら本段階は不成立。
+2. **#1043/#951**：実際のHost Compositionが`E1 plan→selected Plugin/provider→Go Host Policy/Callback`を消費・実結合する証拠を得る。現在のRoute二視点fixtureを本番Runtime入力へ昇格させない。
+3. **#3262/#1124/#2497/#2620**：HTTP対象1 Functionで独立Required / discovered / loaded / parsed / bound / returned / disclosableを固定し、実TEI SourceからのNode・多重Edge・Branch/Guard・Relation occurrenceを同じConsumerが受け取る。部分・不明なら合格停止。
+4. **#1158/#1174/#1656/#1180/#2514**：同じOperationのtyped Result→HTTP/IPC→Client Reaction→Receipt/独立Readを結合。202/401/422/Response loss/再送の各場合にExpectedとActual、Run Receiptを別々に照合。
+5. **#3278/#3279/#3267**：上述の必要実装が存在すると確認してからAtomic Trait fulfillmentとProvider/Client exact BOMを検証。選択済み／宣言済みを実利用可能、またBOM同名を同一実Artifactと呼ばない。
+
+**停止・撤回条件**：Routeペアの比較だけでSecurity/Audit/Effectが保証されたと記録する、同一FixtureからExpectedを自動生成して独立証拠と呼ぶ、E1/Host二側のSourceを本実装の単一Canonicalモデルへ無根拠に統合する、Scope/Grant変更に対し旧Bindingを再利用する、これらのいずれかが起きた場合は資格を撤回。局所PoCの価値が低ければFixtureはtest-onlyに留め、プロダクト側へ移植しない。
+
+## 16. 参考資料と採否
 
 - [Liberator repository](https://github.com/clojure-liberator/liberator) ― ClojureのREST decision modelの先行例。ライブラリ移植ではない。
 - [Webmachine mechanics](https://webmachine.github.io/mechanics.html)、[Decision flow](https://webmachine.github.io/diagram.html)、[Resource functions](https://webmachine.github.io/resources.html) ― decision flow・契約・処理に分離する参考資料（古いHTTP版があるため仕様の正本にはしない）。
