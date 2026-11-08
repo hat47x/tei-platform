@@ -4,7 +4,6 @@ import (
 	"io"
 
 	"tei/internal/inspectoradapter"
-	"tei/internal/operations"
 )
 
 // inspectWorkspaceJSONSelected is the normal CLI entry for the explicitly
@@ -40,6 +39,3 @@ func selectedInspectorUnavailable(out io.Writer) (int, error) {
 // The actual Selection/Host binding is performed in inspectoradapter.
 var _ cliInspectionService = (*inspectoradapter.Selected)(nil)
 
-// Keep the direct builtin Reference testable for compatibility. This
-// declaration is not a guarantee that Source/Meaning has been accepted.
-var _ = operations.InspectSubject
