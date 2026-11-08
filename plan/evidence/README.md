@@ -83,6 +83,7 @@
 - [Runtimeへの経路は servicehost だけではない](RUNTIME_CARRIER_ALTERNATE_PATHS_2026-11-08/README.md)（plugin/runtime をimportする非試験ファイル30件のうち servicehost もimportするものは0件。Runtimeへの入口は2つあり、InvokeSelectedServiceCarrier（Host世代のピン留め）の非試験の呼出し元は servicehost の1件だけ、InvokeWithProvenance（ピン留めなし）を直接呼ぶ非試験の経路は3件。ピン留めされた経路だけが未接続であることを示し、どちらを使うべきかは示さない）
 - [ピン留めしない3経路は、何のためにRuntimeを直接呼ぶのか](RUNTIME_UNPINNED_PATH_PURPOSES_2026-11-08/README.md)（InvokeWithProvenance を直接呼ぶ非試験の3経路の呼出し箇所と語彙を読む。3経路とも composition.Coordinator を使わず、generation の語も持たない。用途は製品パッケージ内の配備実行アダプタ・参照実装の配備実行・参照実装のContract Queryで互いに異なる。ピン留めを必要としないことの証明ではないと明記）
 - [配備実行アダプタは、誰がどう組み立てているか](DEPLOYMENT_EXECUTOR_BINDING_SURVEY_2026-11-08/README.md)（DeploymentExecutor を名指す19箇所のうち非試験は4件。いずれも参照実装（tools/・examples/）で、4件とも composition.Coordinator を使わず、CapabilityID は直書きかローカル変数で Environment の deployment-executor Binding を通らない。製品パッケージ内の型を組み立てるのは参照実装だけであることを記録する。世代を固定すべきかは示さない）
+- [環境の配備実行Bindingは、どこまで使われるか](EXECUTOR_BINDING_CONSUMER_SURVEY_2026-11-08/README.md)（DeploymentExecutors を読む非試験の箇所は7つ、実行の経路として読むのは routing.RouteCommand だけ。Binding を実行へ繋ぐ routing.Router は非試験で組み立てられず、CLIは RouteCommands の結果を計画JSONとして書き出すだけで executor.Execute を呼ばない。実行する3件は参照実装で固定の能力を直叩きする。servicehost と同じ形の断絶を配備実行側にも記録。断絶が問題かは示さない）
 - [宣言されたPatternと導出された操作はどこで結べるか](PATTERN_KIND_OPERATION_MAPPING_2026-11-07/README.md)（同じWorldから `tei operations` の導出操作8件と `tei artifacts` の `pattern` 5件を取り、Data ID・能力ID・Relation target の三つの手掛かりごとに一致と限界を記録。受理済み基準では書込み操作の `binding` が全件nullで、読み取り専用の `command` は構造上どの導出操作とも結ばれない。結合規則の採否は示さない）
 - [操作とPatternの突き合わせを参照実装で試す](OPERATION_PATTERN_CROSSWALK_REFERENCE_2026-11-07/README.md)（W3の対応表を `tools/reference-operation-pattern-crosswalk` として実装し、受理済みと見積もり候補のWorkspaceに当てた記録。`browse`/`record`/`header-detail` は一致4件、`command` は効果を宣言しない能力で一律 `out-of-scope`、`reference` は参照先Dataに `read` が無いため `missing-input`。既定値で埋めないことと、W3未着手のままであることを示す）
 - [突き合わせ規則の反例](OPERATION_PATTERN_CROSSWALK_COUNTEREXAMPLES_2026-11-07/README.md)（同じWorkspaceに宣言を一つだけ足す5つの場合で、一致・不一致・衝突が1件ずつ変わることを記録。効果を宣言する能力は `command` を一致させ、参照先DataのPersistenceは `reference` を一致させ、同じDataを指す2つ目の `browse` は衝突として両方の名前を出して選ばない。効果の宣言だけでは標準操作が導出されないことも `missing-input` として残る）
@@ -137,6 +138,7 @@
 - [stage1の生成物がstage2を駆動する（L3）](TEI_GO_SELF_BUILD_TWO_STAGE_L3_2026-11-07.md)（stage1のartifactをstage2のinvokerとして実起動し、invoker一致・同一レシピ・artifact一致が揃うことを記録。Seed Trust・受入・権限・別OS一般化は未確認。SB-C1 / #2831）
 
 - [TEI自身の設計をCLIで扱う実測 第2ラウンド](TEI_DOGFOODING_ROUND2_2026-11-08/README.md)（#3149。現行main `4fd88c2b1` の単一実行物（SHA-256 `16c9090d…`）で再実測し、第1ラウンドの10課題のうち7件が解消、D-3・D-9・D-10 が残ることを記録。MCP入口は未実装のため CLI 経路のみ）
+- [TEI自身の設計をCLIで扱う実測 第3ラウンド（Windows）](TEI_DOGFOODING_ROUND3_2026-11-08/README.md)（#3149。main `9a8b9e214` の単一実行物（SHA-256 `7abce6ff…`、Windows・go1.27.0）で、D-1〜D-8の解消とD-3の`view`版欄の解消を再確認。D-9とD-10の形の統一判断は残る。実DB・実Host・MCPはNOT RUN）
 - [値域付き型宣言のanchor走査](SYNTAX_TYPE_VALUES_ANCHOR_2026-11-08.md)（`type ... values { ... }` が Source Index と validate を失敗させていた記録。anchor 走査の読み飛ばしのみで、値集合の意味検証は未確認）
 
 
@@ -149,4 +151,6 @@
 
 
 - [`tei self-build`の§4外形](TEI_GO_SELF_BUILD_OUTER_SHAPE_2026-11-08.md)（workspace・intent・supply・state・outputの外形とSC0-01〜05の拒否条件を実装し、実Buildをchildへ委ねて記録する。`-intent`の解決・`-supply`の照合・L2は未実装。`qualified`は常にfalse。SB-C0 §4 / #2831）
+
+- [`tei self-build`のIntent宣言と供給照合](TEI_GO_SELF_BUILD_INTENT_AND_SUPPLY_2026-11-08.md)（SC0-01の宣言検査とSC0-02の供給分類を実装し、子を起動する前に拒否する。分類器は複写せずexactな検証器へ委譲する。Intentは宣言のまま（`resolved: false`）。`qualified`は常にfalse。SB-C0 §4.6 / #2831）
 - [CLI応答のWorkspace同一性と空一覧の実測](TEI_DOGFOODING_ROUND3_IDENTITY_2026-11-08/README.md)（#3149・#3455・#3456。読み取りコマンド横断でWorkspace同一性と空一覧の直列化を確認し、2件の修正を実測。同名の第3ラウンド記録は別ディレクトリにある）

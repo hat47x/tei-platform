@@ -115,3 +115,6 @@
 
 # Deployment executor survey output is hashed as raw bytes by its README.
 /plan/evidence/DEPLOYMENT_EXECUTOR_BINDING_SURVEY_2026-11-08/** -text
+
+# Executor binding consumer survey output is hashed as raw bytes by its README.
+/plan/evidence/EXECUTOR_BINDING_CONSUMER_SURVEY_2026-11-08/** -text

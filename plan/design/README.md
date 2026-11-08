@@ -27,8 +27,10 @@
 | --- | --- |
 | [`DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md`](DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md) | 異種Data Sourceの開発者向け閲覧・データ管理・Schema DDLとDBA境界（#3270、設計・未適格） |
 | [`HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md`](HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md) | REST例外とClient ReactionのGraph/Table/Trace同一性、再試行とCommit unknown（#3274、設計候補） |
+| [`AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md`](AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md) | AIによる性能改善の設計ヒント・観測統計・Provider実行・独立Benchmarkを、合成対照と実測の資格を分離して扱う設計（#3271／#2586、限定Reference） |
 | [`ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md`](ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md) | TEI自身のIssue→Design Context→実CLI・テスト能力の限定ドッグフーディング（#3262） |
 | [`PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md`](PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md) | CLI/Studio/生成Runtimeに共通するPlugin Contract/Provider実証とTraitの分離（#1251） |
+| [`AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md`](AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md) | AIによる性能チューニングのための設計ヒント・実統計・観測費用・独立比較を既存Context/Plugin/Targetに接続する設計・実証候補（未実装・未適格） |
 | [`TEI_DESIGN_CONTEXT_TEST_HARNESS_INTEGRATION_2026-11.md`](TEI_DESIGN_CONTEXT_TEST_HARNESS_INTEGRATION_2026-11.md) | 設計Contextの完全性→Test Skill/Harness→独立Expectedへの段階的接続（#3262） |
 | [`TRAIT_ATOMIC_COMPOSITION_AND_FULFILLMENT_2026-11.md`](TRAIT_ATOMIC_COMPOSITION_AND_FULFILLMENT_2026-11.md) | 原子的Traitの実装義務（手動/自動/Provider）、Profile合成、不適合診断、DerivedData/Pluginでの受入負例（[#3278](https://github.com/hat47x/tei-platform/issues/3278)、設計・実証候補） |
 | [`AI_FIRST_QUALIFIED_INTERFACE_CURRENT_MAIN_2026-11.md`](AI_FIRST_QUALIFIED_INTERFACE_CURRENT_MAIN_2026-11.md) | AI-firstのSource・Tool公開・意味受理・現在Grant/Effect・Disclosureを実消費証拠で区別し、外部Harnessの限定実績と次の適格H2を現在mainに接続（旧#2492 AI-first成熟差分のみ） |
