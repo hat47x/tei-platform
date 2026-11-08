@@ -328,3 +328,91 @@ LGXは**独立Expectedの設計候補**であり、既存#1180/#2514へ具体的
 6. **性能・再利用**：#3271/#2600。Graph/Hook/Renderer/Cacheの変更影響範囲を限定し、不要な再生成や高レイテンシの強制を診断する。
 
 これらの番号は本設計の**依存順候補**であり、別の中央Program/Gateを立てるものではない。関連Ownerの既存Issueで必要条件を検収し、追加実装をしないで済む箇所はそのまま再利用する。実Graph Compiler、実Editor書戻し、生成AI Chat/Voice Target、正式Source/Meaning/Authorityの通し実証は引き続き**NOT RUN**。
+
+## 12. 2026-11-08 実装前に確定する最小意味論：Graphは「形」だけでなく遷移の契約（横断引渡し）
+
+**位置づけ**：§11で整理した標準/差分/実効Graphの設計を実装へ渡すため、他レーンの成果と現在mainに統合済みの[#3510](https://github.com/hat47x/tei-platform/pull/3510)（Trait × Lifecycle Graph、TLG-01〜08）を接続して、**まだ未確定なGraph評価・拡張契約**を局所検証可能な形に絞る。Draft #3505のRQ-036（全体Mapと編集凡例）・#3509のB2C・Draft #3515のAdaptive Flowと責務を重複させない。ここで新たなCore DSL・Graph Runtime・検証済み製品能力を採用しない。
+
+### 12.1 「GraphをGeneratorの入力にする」の四つの異なる対象
+
+| 役割 | Source/Authority | 情報として必要なもの | 書戻し・生成の条件 |
+| --- | --- | --- | --- |
+| **Authoring Graph** | 既存Script/DSL/Markdown/表のauthoritative SourceをLoaderが解釈したRole付き型付き構造 | Node/Edgeのstable qualified identity、Source span、Version、Relation/多重度、未解決 | 単独の第二Sourceではない。図面の編集はSourceへ戻して受理 |
+| **Effective Graph** | 既存#951/#1016が選んだPlugin Patch/ProviderとAccepted Sourceを合成した**派生モデル** | 選択済み契約、Patch差分、Node/Edge/Guard/Effect、実TargetのCapability、適用Obligation | #1121で型付きPlanにLower。静的Graphは実Host認可の代用ではない |
+| **Diagram/Navigation Graph** | Authoring/Effective Graphの、人・生成AI・SHO向けProjection | 全体Map、固定/設定/Hook可/交換可/観測のみの凡例、対象集合・開示範囲 | 表示位置だけの編集は実コード再生成不要。非可逆表示はread-only |
+| **Observed Trace Graph** | 実Client/Provider/Host/Receiptの観測Evidence | attempt、実呼出し先、Flow/Plugin/Artifact/Policy版、Effect known/unknown、未観測 | 実際に通った経路の主張。設計上の「到達可能」と同値でない |
+
+「Graphの絵が同じ」「ログ上で結果が同じ」「Source bytesが同じ」は、それぞれ型付き意味、実Provider選択、現在適合を証明しない。Graphの多重辺・同名異ID・出典・時間をLossy Projectionから推測してSourceへ逆投入しない。読取り・編集・生成・実呼出しの各資格を独立表示する。
+
+### 12.2 生成器に渡すNode/Edgeは型だけでなく動作契約を持つ
+
+**候補の最小Role**（既存標準データ構造へ投影し、Core enum追加を前提にしない）：
+
+- **Node**：stable ID、Operation/State/Rule/Handler/Presentation/Boundary等のRole、input/output type、欠落・NULL・単位/精度、作用区分、Provider/Function参照、Source occurrence、対象/Scope/Version。
+- **Edge**：source/targetの独立ID、Flow control／Event trigger／Data dependency／Authority or obligation dependency／Effect observation／Presentation bindingなどの**関係Role**、Guardの型付き参照とイベントの版。複数Edgeが同じNode間を結ぶことを許す。線の見た目・並べ方からEdge Roleを決定しない。
+- **Boundary**：subflowのentry/exit、Scope、instance/correlation、failure/cancel/timeout/unknown終端、parallel joinの成立条件、runtime capability。業務TaskとLLM Tool invocationを同じNode kindへ強制しない。
+- **Evidence reference**：受理Source・World・Graph・Patch・Plugin Lock・Generator・Build・Run/Attempt・Authority/Receiptの識別を別に保持。Traceの未取得/部分/失効は成功の空集合と区別。
+
+初回ReferenceではControl/Guard/Effect/Observationに必要な役割だけを既存Data/Roleへ投影し、網羅的なGraph型体系を先に固定しない。Graphviz/Mermaid/BPMN/SCXMLをSource互換と無条件に呼ばない。記法の変換はSource位置・Identity・多重辺・編集可能性の保全が確認できた用途に限定する。
+
+### 12.3 動作の単位：Event、Transition、Operation、Effectは同じ「完了」ではない
+
+**実行時の共通約束候補**：
+
+1. 外部Input（音声候補、Web入力、MCP Tool、Chat streaming、timer、CloudEvents等）をまず**Source/Occurrence/Instance付きのEvent Candidate**として受領。Clientが送ったactor/roleを信頼済みContextと扱わない。
+2. 対象のFlow/Graph Revision・現在State・必要Resourceを束縛し、型と必要条件を検証してから確定Event/Operation Intentにする。推論・音声/LLMの非決定性は**確定EventまでのProvider側**に隔離し、未完のTool引数で実行しない。
+3. 同一Flow instanceで同時に二つのEventが到達した場合、**採用順序か排他/競合の規則を明示**。通信到着順が安定だと仮定しない。並行Regionは因果依存・joinとEffectの衝突を別に扱う。
+4. Transitionを評価する際、Flow StateとInput/Policy/Providerの観測Revisionを参照し、正規化したNext StateとOperation Intentを導く。時刻・乱数・外部Readの実値はEvidence/入力として確定してから評価する。timeoutも観測されたEventであり、wall clock値だけから再現性を捏造しない。
+5. Operationは現在のHost Grantと必要なValidation、Subject/Target/Expected Revisionを**実Execute境界で検査**。Graph上のAuthorize Nodeを一度通過しただけでは、Resume後の実行許可は成立しない。
+6. Tool/Operation受理、Business Outcome、Durable Effect、Receiptと独立Read、Transport成功、Streamの最終表示は別の成否。通信断・中断・結果不明では重複副作用を避け、明示した観測/回復経路へ進む。
+7. 実行中Graph更新は、新Revision・Plugin Lock・State Migrationの適合が確認されるまで旧Graphを維持するか停止する。旧Sessionの確認・AI Regenerate・Chat branchで過去Effectを無条件に再実行しない。
+
+この意味論は**単一の汎用Event Queueを持つRuntime**の導入要求ではない。Go静的結合でコンパイルした関数群、Web/IPC呼出し、外部Workflow Provider、Chat Stream Adapterなど、Targetによって物理実現が異なってよい。必要なTarget Capabilityを満たせない場合は未対応を明示する。
+
+**参考**：SCXMLのevent queue/entry-exit/transitionの明示規則 https://www.w3.org/TR/scxml/ 、CloudEventsのsource+idとメタデータ https://github.com/cloudevents/spec/blob/main/cloudevents/spec.md 、AG-UIのRun/Tool/State event family https://github.com/ag-ui-protocol/ag-ui/blob/main/docs/spec/1.0/basic/index.mdx 。これらは意味設計の比較材料であり、TEIのProtocol採用・準拠を決めたものではない。
+
+### 12.4 PluginがLifecycleを変えるときの安全な適用順
+
+**二段階のPatchを分ける**：
+
+- **構成時のGraph Patch**：標準SubflowへのRule/Branch/Guard/Presentation/Provider参照追加、限定Replace。契約IDと対象RevisionへBindingし、依存順・非可換競合を確認してGraphを合成→適用Obligationを検証→#1121でTarget別生成。純粋Rule集合の登録順と、Effectを伴うPipeline順を混同しない。
+- **稼働中の選択**：受理済みの状態と、事前に選択・資格確認された選択肢の間で遷移するだけ。LLMが新規の未審査GraphやPluginを要求した場合はProposal→Source/Owner受理→新Lock/Build/Host配備で扱い、当該Runの能力を即時拡張しない。
+
+GraphのPatch合成は次の要件を満たす。①選択されていないPluginのPatchが実効Graphへ入らない、②同じSlotへの複数Replaceや循環・無根拠の順序を診断、③Source/Node/Edge Identityを保持、④Obligationを満たさないEffect到達を拒否、⑤不明なSource closure/動的分岐を未検証として表示、⑥Plugin版・Generator版・Artifact版が変わる場合は旧Proofを安易に再利用しない。
+
+静的に「Authorizeが全経路を支配する」と判定できても、実行時の入力差替え、失効Grant、外部Effectの成功までは保証しない。**静的Path検査・生成された実関数のHook呼出し・Hostの現在権限・独立Observation**を別Evidenceとして要求する。
+
+### 12.5 人が理解する図面を最初に出し、完全性を詐称しない
+
+#3505の全体図ナビゲーション要求とX-TEA由来の「設計書として読めることを先に確保」を採用候補として尊重する。標準全体像→Operation/State→必須保証→変更可能箇所→Plugin差分→実効Graph→生成先→実Call/Evidence、の順序で表示する。
+
+表示の凡例は**標準固定／設定可／Hook追加可／Provider交換可／現在の観測のみ**を一貫させる。固定とは図形を絶対に移動できないという意味でなく、対応するMeaning/Authority/Effect契約をカスタムすることを禁止・制限する意味である。各図はScope/World/Source/Current Disclosure相対のrequired setと、表示・未取得・秘匿・非対応・不明を別に示す。RoleごとのGraphが未解決なら「図が描けた＝全容」とはしない。
+
+Diagram上の意味変更は安定IDのGraph Patchを生成し、Sourceへ戻せることを**適用前に確認**する。Sourceへの曖昧な書戻し、異内容同名Sourceへの誤接続、現在権限のないPatch適用、旧Revision Patchは拒否。位置/表示だけの変更はLayoutを更新し、Business Meaningと実コードは変更しない。SHOは同じGraphの文書投影を扱い、第二の受理済みLifecycle正本を持たない。
+
+### 12.6 Chat / VUI / B2C / Automationを同じOperationへ接続する範囲
+
+| Consumer | 固有の制御/状態 | 共通Contractへ渡すもの | 不当に昇格させないもの |
+| --- | --- | --- | --- |
+| AI Web Chat | Conversation/Thread/Turn/Run/Message/Stream/Tool/Approval/Branch/Resume | **確定した型付きTool Intent**と適切な現在Authority、Result投影 | partial Tool JSON、Streaming delta、生成カード、Regenerate |
+| VUI | ASR候補/確認対象/無音/interrupt/session revision/TTS | 確定Event→同じOperation | 認識候補、読み上げ済み表示、古い同意 |
+| Web/Desktop/CLI/MCP | Form/argv/IPС/Tool、transport・Host lifecycle | typed Request/Result/FailureとEffect identity | HTTP 200/JSON-RPC成功、CLI exit、UIの成功表示 |
+| B2C Headless | Native SSR/Hydration/Route、Experiment/Exposure/Marketing Consent | 権威あるCart/Checkout等のOperation | 推定CV、Analytics event、Client価格、Frontend上の完了 |
+| 外部Scheduler/Automation | timer/event subscription/job retry/endpoint availability | 確定Event、対象/Correlation、許可済みOperation | 期限発生=処理完了、Job受付=Effect確定、無条件Retry |
+
+AG-UI等はChatの増分表示/Tool境界、A2UI等は宣言的Presentationの候補であり、どちらもTEI OperationやBusiness Meaningの所有者としない。Webhook/CloudEvents/外部イベントProviderを増やす場合も既存Hook選択・Source/Authority・Effectの同じ境界を適用する。**KON Dataspaceは任意のSource/Record保管・版/参照基盤、EKIは選択された分散実行のAttempt/Resource委譲、SHOは文書Projection**の候補であり、いずれもTEI独自の中央Hostとして前提化しない。
+
+### 12.7 追加の最小実装受入票（既存TLG/LGXに重複SSOTを作らない）
+
+| 圧力入力 | 具体的な反証 | 既存の引渡し先と必要Evidence |
+| --- | --- | --- |
+| **Event order** | 同一Session/GraphにConfirmとCancelが並行到着。到着順を逆転させる | #3503/#2514：選択規則/State revision/二重Effectなし。未定義なら競合拒否 |
+| **Timeout/replay** | timeout Event発火後に旧Sessionの確認応答、さらにGraph版更新 | #3503/#1180：期限/旧確認の失効、旧Graph再開拒否か明示Migration |
+| **Stream candidate** | Chatのpartial tool argsが最終JSONと異なり、UIが先にToolを起動 | #1158/#2093：確定前Operation 0回、current Auth/入力検証は別 |
+| **Cross-Graph boundary** | Business Stateの承認済み表示だけ変わり、Effectはunknownのまま | #1125/#1129/#1174：Business State・Flow State・Effect dispositionを独立証拠に |
+| **Patch/Source** | Diagramで同名別IDのparallel edge変更、Source途中変更・ABA | #1124/#2497/#2600：Typed Patchの正確なSource帰還、古いEvidence再利用拒否 |
+| **Actual target trace** | 一方のTargetで必須Hook呼出しが脱落、別Targetで同じResult | #1251/#1121/#259：selected→built→invoked→observed、Coverage差を不合格 |
+
+この表はLGX-01〜10/TLG-01〜08/MAP-01〜10/HDG群の**既存独立Expectedに足す入力変異**であり、新Runnerや新Product Gateではない。これらを一つの巨大なGoテストとして先に作らず、(a) 実selected Provider二Consumer（#1251）、(b) read-only HookのTarget binding（#2090）、(c) read-only Graph→Source roundtrip（#1124）、(d) FlowのCLI構造化Event一往復（#3503）、(e) Chat/VUIの部分入力と再開、の順で反証する。
+
+**成果を評価する基準**：Graphを経由したことで「人にとってSource/変更位置が追跡しやすい」「Generator側の未実装/Guard迂回を早く検出できる」「Source/Plugin/Target別の再生成を必要最小限に絞れる」ことが、実Source/Target/独立Expectedで測定できるか。単に図面項目やHook点の数を増やすことは成果ではない。これらの試験とOwner受理は現時点で**NOT RUN**。
