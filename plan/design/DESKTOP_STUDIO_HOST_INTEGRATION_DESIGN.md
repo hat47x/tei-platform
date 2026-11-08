@@ -356,3 +356,29 @@ Wails依存を外したGo Service/合成Adapterの試験と、実WebView起動�
 **判断上の留意**：Studioが扱うread-only結果でも、CLI／Tool／Session Log等の受信側は保存・送出し得る。Source/ResultのDisclosureとSinkの観測は#2515/#3338に委ねる。#3354の11実CLI Reply・32局所対照はRule/Source Closureの**一部を拒否できる**証拠で、全設計情報・外部Tool配送やWails側の実選択資格ではない。#3359のHook Reads限定はDraftで、RunnerからCLI/Studioへの配線とProduces sideは未実証。FunctionのOfferやHook宣言が画面に見えても実行可能・意味受理済みとは表示しない。
 
 **計画統合の状態**：本§は同じDesktop設計Draftへ実装候補の所在・依存関係・不合格条件を追記したもの。#3371は別Draft、#3352はまだmain未統合、#3363/#3359も未統合。新しいWails/Windows/Provider/CLI+Studio二Consumer・外部Sinkの試験を本節では実施していない。**既存FactoryのCatalog/Validation専用ConsumerがInspectを呼ぶ場合の後方互換は別途実Call Site調査を要し、Factory非nilでInspector未提供を黙って成功に戻さない。**§10.1〜10.7や#1180/#2514の独立Expected/Gateは維持する。
+
+### 10.9 共通Application API・Plugin実利用・Source鮮度の三つの受入を交差させる（2026-11-08）
+<!-- tei-desktop-adr0048-source-drift-20261108 -->
+
+**追加判断の正本**：[merged #3439 / ADR-0048](https://github.com/hat47x/tei-platform/pull/3439)により、CLI/MCP/HTTP/Web/Desktopは**同じ型付きApplication Operation**を異なるAdapterから利用する方針が採用済み。これは#1251/#951/#1016の**実際のPlugin Provider選択・実Invoke**とは別の条件であり、どちらか一方のPASSからもう一方を推論しない。共通APIはHTTP必須でなく、StudioはHostが許可したRootからプロセス内／IPCで呼んでよい。CAPI-1〜4の全体受入は[#3419〜3422](https://github.com/hat47x/tei-platform/issues/1158)がOwnerであり、本節はDesktop`/workbench/` Consumerの失効・表示・配布を限定して扱う。
+
+**観測済みの段差**：
+- [merged #3458](https://github.com/hat47x/tei-platform/pull/3458)は`validate`についてCLIと**参照MCP Adapter**の共通投影、ロード失敗、意味エラーの`isError`／`ok`／文字列failure.codeを実Go対照で修正・検証した。CLI JSONが同byteでもStudioの`ValidationResponse`・UI診断・実IPC・現在Disclosureが同値になった証拠ではない。`catalog/inspect/trace`の全MCP envelope・未知フィールド・MCP規格適合も別。
+- **Go Portの状態**：[Draft #3371](https://github.com/hat47x/tei-platform/pull/3371)はHost-selected`InspectionService`への委譲、[Draft #3381](https://github.com/hat47x/tei-platform/pull/3381)はCLI側`inspectWorkspaceJSONWithService`の型付き注入口、[Draft #3378](https://github.com/hat47x/tei-platform/pull/3378)は旧Direct CLI↔Studioのshadow parity。**3件ともmain未統合**であり、通常起動の`inspect`がCompositionで選ばれたProviderを実Invokeしたという証拠は無い。
+- **検証の実際**：#3371旧HEAD `a42df66...` の[Studio PoC A CI #42395396780](https://github.com/hat47x/tei-platform/actions/runs/42395396780)は**FAIL**（既存`TestInjectedOperationsOnlyReceiveAllowlistedResolvedRoot`が旧「InspectorはFactory非経由」期待で失敗）。全体[Health #42395396786](https://github.com/hat47x/tei-platform/actions/runs/42395396786)も`readonly.go`と当時の`coverage_test.go`のgofmt、上記Go testでFAIL。#3371には旧テストのfail-closed契約への更新が追加されたが、**最新HEADのCI成功は独立再確認が必要**。#3381／#3378の旧HEAD Health FAILも別Scopeの整形や環境差を含むため原因を確認し、PASSとは扱わない。
+- **Source-only driftの異なる二つの観測**：[merged #3477](https://github.com/hat47x/tei-platform/pull/3477)はConsumer所有Source Indexだけが変わる実CLI事例を検出。[Draft #3479](https://github.com/hat47x/tei-platform/pull/3479)はImported Provider Raw／Manifestだけが変わり、ConsumerのWorld／SourceIndex／ModelRevision・意味digestが**変わらない**反例を追加。後者はProvider原文・Manifestの再取得による限定試験で、同一の原子的Provider Snapshotや実D1 Provider Artifactの失効範囲は未証明。詳細なSource/Build/BOM適格性は[#3488](https://github.com/hat47x/tei-platform/pull/3488)と#2743/#2600/#3267へ委ねる。
+
+**Desktop固有の受入（#1180/#2514の既存Scenario/独立Expectedへ引き渡し、新しい正本を作らない）**：
+
+| ID | 反例／比較条件 | Desktopで期待する処置と判定上限 |
+| --- | --- | --- |
+| **DS-D1-J／CAPI** | 同じHost許可Workspace・Source版で`validate`のCLI/MCPを共通APIから取得。別途Studio`/workbench/`も表示。意味不合格と操作失敗・Transport失敗を変える | `ok`と検証合否・警告・Source Locationを混ぜない。MCP `isError`はプロトコル用、安定failure.codeは意味用。Studioは独立実IPC/DOM観測が無ければ未合格 |
+| **DS-D1-K／Plugin** | Typed Resultは一致しても、HostでProvider Bをselected／実Invoke A、またはPortだけ注入／Actual Sourceなし、Service未提供でBuiltinへfallback | `B selected→A invoked`はFAIL。Port有り・結果一致・Scope/Capability selectedだけではPlugin-backed Operationを広告しない。#3371のFactory nil PoCはcompatibility lane |
+| **DS-D1-L／Imported Source** | Consumer World/SourceIndex/Context epoch不変のままImported ProviderのRaw末尾LF／Manifestだけが変化。Inspector画面・Source引用・Result cacheを再表示 | Meaning投影の再計算要否と、**Source Anchor/引用の鮮度・Disclosure**を分ける。Consumer FP一致だけで`source current`/引用保証を表示せず、対象Provider revisionの再観測が無いとstale/unknownに留める。変化した全Providerで一律Build再実行も要求しない |
+| **DS-D1-M／Delivery** | `/workbench/` Nodeテスト成功だが、生成`dist/main.js`とWailsへ実埋込んだbyteが違う。さらにA→B→A旧応答、Receiver Session/Log保存あり | 実配布Asset SHAとCLI/Studio Source/Resultの両方を別資格として確認。旧`#3327`の[Node24 UI20/20とbundle byte FAIL](https://github.com/hat47x/tei-platform/pull/3327)を消さない。UI世代失効は実Provider Cancellationや秘密のSink非残留を証明しない |
+
+**一改訂の最小実証順**：①CAPIは既存`validate`共通投影の結果型/失敗を**CLI・参照MCP**の限定基線として固定（新Go Core共通Serviceや第二HTTP Hostを作らない）→②`inspect`について#3371/#3381の**既存型付きPortの契約差**を検査し、重複Result guardの有無を確認してから共通Operationへ束縛→③Authoring scopeでHost-selected exact Provider→actual invoked identityを一Consumerから試験→④CLIと実`/workbench/`の別Attempt／別Call-siteで同一Contract・Source／Workspace／DisclosureとUI後着を比較→⑤Imported Provider Raw/Manifest Source-only driftをSource引用UIとCacheから圧力試験→⑥Bundle byte・Windows WebView2・Receiver Sinkを実Targetの独立資格で検収する。最初から`validate`のMCP合格を`inspect`のProvider合格や全DesktopのContract実装完了に昇格させない。
+
+**Product表示への制約**：`Inspection.Subject/Canonical`をRendererへ渡せても、Required Relation/Function ClosureやHost Grantは推測補完しない。取得範囲外は空集合・検証合格ではなく明示的に未観測／部分とする。外部Providerの出典が変化したときは画面上のSource引用の現在性を再判定し、未受理の別Meaningへ変更したと扱わない。現`readInspection`が照合するWorld/SourceIndex二Fingerprintと`createResponseScope`のUI応答世代はこれらの外部Source/Provider資格の代替ではない。
+
+**状態とOwner**：ここで新しいGo/Node/CLI/MCP/Studio/Provider/Windows実試験は**NOT RUN**、本§は設計だけ。採用済ADR-0048とmerged #3458/#3477、未統合Draft #3371/#3381/#3378/#3479/#3488を明示的に区別。共通APIは#1158/#3419〜3422、Resolver/Providerは#951/#1016/#1251、Source鮮度は#2743、Build/BOMは#2600/#3267、実UI/配布は#1824、シナリオと独立Expectedは#1180/#2514。既存§10.1〜10.8・DS-D1-A〜I・PD/Gateを上書きしない。
