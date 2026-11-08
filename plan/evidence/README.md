@@ -34,6 +34,7 @@
 - [フック実行の配線と失敗の区別の確認](XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)（参照実装の試験記録。Runnerからの配線、NotSatisfiedと実行失敗の区別、参照規則。実PluginとCLI・Studioの配線は未実装）
 - [フック宣言の印刷面への反映の確認](XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md)（参照実装の試験記録。画面と同じフック宣言が印刷面にも出る。実印刷・用紙面の版照合は未確認）
 - [フックの位相順序と途中停止の確認](XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md)（参照実装の試験記録。位相の実行順、不成立での停止位置、`warn`の続行、未対応位相の拒否。CLI・Studioへの配線は未実装）
+- [フックが読むのは宣言した属性だけであることの確認](XTEA_LOWCODE_HOOK_DECLARED_READS_2026-11.md)（参照実装の試験記録。未観測・宣言外の読み取りを実装へ渡す前に拒否。実データの取得と`produces`は未実装）
 - [フックが使う能力のcommand Pattern不在の拒否](XTEA_LOWCODE_HOOK_COMMAND_REACHABILITY_2026-11.md)（参照実装の試験記録。実行経路の無いフック宣言を検証で拒否。複数commandの曖昧さは未診断）
 - [Studio検証結果の修正案表示の確認](XTEA_LOWCODE_STUDIO_PROPOSALS_2026-11.md)（参照実装の試験記録。案を受理する操作は未実装）
 - [暦の宣言と期間への結合の確認](XTEA_LOWCODE_CALENDAR_DECLARATION_2026-11.md)（参照実装の試験記録。日付計算と税・通貨・採番は未実装）
@@ -112,3 +113,5 @@
 - [SB-N13の自称invoker照合](TEI_GO_STAGE_DRIVER_INVOKER_CLAIM_2026-11-08.md)（駆動主体が自称するdigestを実行中process imageと照合する欄をstage driverへ追加。一致しても`l3Claimed`はfalseのまま。独立した失敗は連結して保持する。SB-C0/C1 / #2831）
 
 - [stage1の生成物がstage2を駆動する（L3）](TEI_GO_SELF_BUILD_TWO_STAGE_L3_2026-11-07.md)（stage1のartifactをstage2のinvokerとして実起動し、invoker一致・同一レシピ・artifact一致が揃うことを記録。Seed Trust・受入・権限・別OS一般化は未確認。SB-C1 / #2831）
+
+- [TEI自身の設計をCLIで扱う実測 第2ラウンド](TEI_DOGFOODING_ROUND2_2026-11-08/README.md)（#3149。現行main `4fd88c2b1` の単一実行物（SHA-256 `16c9090d…`）で再実測し、第1ラウンドの10課題のうち7件が解消、D-3・D-9・D-10 が残ることを記録。MCP入口は未実装のため CLI 経路のみ）
