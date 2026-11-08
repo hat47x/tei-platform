@@ -345,7 +345,7 @@ Itemは未整理の情報を乱暴に保持してよい一般の単位であり�
 <!-- 20261108-crosslane-sui-rea-sei-decision-handoff -->
 
 **今回の確定的な設計制約と新しい接続点**：
-- SUIの探索/Canvas/Item/関係候補はTEIの業務意味正本に**直接・自動変換しない**。人間または生成AIが出典と未決を見ながら翻訳してTEIへの入力候補を作り、TEI側のParser/Role/Owner Acceptanceを経る。SHOは必要時の文章化・出典保存・Reviewを担うが必須の中継Hostではない。Document/Item/Graph/Canvasの共通コンポーネント利用は可能でも、SUIの解釈やTEIの業務意味を同一DBレコード・同一ID・同一Authorityへ統合しない。
+- SUIの探索/Canvas/Item/関係候補はTEIの受理済み業務意味へ**無審査で自動昇格させない**（未受理CandidateをTEIへ直接渡すAdapterは許容）。人間または生成AIが出典と未決を見ながら翻訳してTEIへの入力候補を作り、TEI側のParser/Role/Owner Acceptanceを経る。SHOは必要時の文章化・出典保存・Reviewを担うが必須の中継Hostではない。Document/Item/Graph/Canvasの共通コンポーネント利用は可能でも、SUIの解釈やTEIの業務意味を同一DBレコード・同一ID・同一Authorityへ統合しない。
 - 既存システムの解析は[TEI #3394 REA入場](https://github.com/hat47x/tei-platform/issues/3394)で外部Provider Candidate/Observationとして扱う。REA保存Evidence・選択View・SQL/旧DBの観測範囲を元Sourceと別に記録し、静的なPotential CRUDをRuntime Commit事実に昇格しない。旧画面に「実行可能」とあることも、移植先の許可されたActionを証明しない。
 - [TEI #3475 Ontology/Decision Twin](https://github.com/hat47x/tei-platform/issues/3475)は、**今はO0設計研究と既存契約へのFit/Gapのみ**。Ontology DSL/SDK・動的Twin・予測/シミュレーション・実SEI委譲の製品化は後続OwnerのGateに従う。TEI全体セルフビルド #2831とSUI基本機能の実受入前に、O2/O3の開発を本PRから起動しない。既存P0業務縦断やGo単一バイナリ基本構成を遅らせない。
 - 判断の主体は原則として**SEI**に置く。[SEI #677](https://github.com/hat47x/sei-cognition/issues/677)のGoal/Constraint、異論/未決、Knowledge照合、用途別受渡しを尊重する。ただし人間が受理した決定的Data Ruleで完結する通常のValidation/単純処理にSEI照会を義務化しない。新しい裁量判断・相反する目標・追加知識を要する場合はTEIが**Decision Inquiry候補**を作ってSEIに判断を依頼する。Inquiry作成/送信/ACK/SEI受領/判断/Host実認可/実Effectはそれぞれ別の事実。
@@ -421,6 +421,28 @@ Itemは未整理の情報を乱暴に保持してよい一般の単位であり�
 **実装順と停止条件**：P0は既存§7.12のRead-only Required/Observed、Plugin実呼出、一Function実Provider Read、実Effectの順を維持。今回まず **HC-01/03** を同一公開合成Sourceについて「External Observation T1-A、Authoring Admission T1-B、Design Context受領」の別列に置く試験設計へ接続する。HC-04/05のSEIは#3475のO0契約比較、HC-06/07のEKIは#753の実Data Adapterと#112の外部API Ownerが実証してから連結する。実SEI Handoff/新Ontology SDK・Simulation/デジタルツインの着手はセルフビルド/SUI基礎の既存Gateを越えない。TEIの実行資格が不明ならread-only観測だけを保持して止める。
 
 **証拠の上限**：本節はGitHub現行OwnerのIssue/PRと設計本文の照合であり、今回のREA実CLI、TEI Authoring Parser、Source→SEI実転送、EKI実Data Adapter、実PG/Host Provider、組織によるDecision受理・製品CIは**NOT RUN／NOT ACCEPTED**。他Repoのテスト結果をこのDraftのPASSとして再主張しない。Source/Schema/Transport/Grant変更後の旧Witnessを現在資格へ自動再利用しない。
+
+### 7.15 11月8日実装進展の再照合：Plugin実呼出とTEI自身の再ビルドを分離する（横断計画）
+
+<!-- tei-20261108-d1-and-real-selfbuild-g4-boundary -->
+
+**現mainの進展（先行§7.12〜14の「未実装」を一律には引き継がない）**：main [#3363](https://github.com/hat47x/tei-platform/pull/3363)では既存Capability Support関数を使い、Environment Binding 24件のうち22件selected／2件missingをread-only参照で実測。ただし2件の editor.database_workbench は現Validationの検査対象外であり、**missingを製品の不具合・拒否済みと断定しない**。Draft [#3381](https://github.com/hat47x/tei-platform/pull/3381)のCLI typed Inspection Service注入口とDraft [#3371](https://github.com/hat47x/tei-platform/pull/3371)のStudio Host-selected Inspection Service経路は、それぞれ局所コード・テストを追加したが、両者の**Production Composition Binding、選択Providerの実Load/Invoke、同一ProviderのCLI/Studio二Consumer実試行は未達**。
+
+一方、セルフビルドの現状は以前の「Reference driverのみ」から前進した。main [#3440](https://github.com/hat47x/tei-platform/pull/3440)では、**stage1で生成された実 `cmd/tei` binary自身をstage2のinvokerとして起動**し、同じchildでTEIを再構築・artifact digest一致をWSL2/Go1.27.3の一環境で実測した。main [#3463](https://github.com/hat47x/tei-platform/pull/3463)は `tei self-build` の外形・拒否条件・実child起動を製品CLIへ追加した。**ただし `-intent` は記録のみでBuild Intent未解決、`-supply`未照合、sourceClosureState=rejected、`qualified=false`、別環境独立二回試行・Seed Trust・G4正式受理は未達**。先行§7.12〜14のP0の優先順は変えず、L3の局所実証をL2/G4へ自動昇格させない。
+
+**次に実施する一対の局所試行（設計・NOT RUN）**：
+
+| ID | 実際に比較する入力・結果 | 独立Expectedと資格上限 |
+| --- | --- | --- |
+| PX-01 | 一公開合成SubjectでInspector Provider Bを選択、実CLI binary/argv/selected implementation digest/actual invoked implementation digest/Resultを記録 | B選択→B実Callのみ局所適格。B選択→A実CallはResult JSONが同一でもFAIL。Provider欠落・契約違反はfail closed。CLI既定Builtin成功をPlugin実呼出しと数えない |
+| PX-02 | PX-01と同じContract/Source/TargetをStudioへ渡し、Host factoryが選んだ実Providerと実Call-siteを別に記録 | CLIとStudioの結果一致だけでProvider同一を推論しない。#3371/#3381のDraft単体テストを二Consumer実製品PASSに合算しない |
+| SB-17 | main #3440のstage1 invoker実測を、`tei self-build -workspace ... -intent ...` のBuild Intent解決・実Source closure・外部module供給と別列で照合 | 再入L3の局所証拠は保持するが、未解決Intent・未照合Supply・`qualified=false`ならL2/G4はUNQUALIFIED |
+| SB-18 | 同一binary digestでもSource/Provider/Toolchain/実argv/供給元・Current Grantが異なる別Attemptを比較 | digest一致だけで同じMeaning、実Provider資格、Owner受理、配備認可を推論しない |
+
+**実装先は既存Ownerへ**：PX-01/02は#951/#1016/#1251およびDraft #3381/#3371、Source/Required/Consumer受領は#3262/#1163、SB-17/18は#2831/#3142。SUIのItem/CanvasやREAのRaw Observationは直接AdapterでTEIの**未受理Candidate**へ渡してよいが、SHOを必須中継点にせず、Accepted Meaning/Grant/Eventへ自動昇格しない。SUI→TEIの直接データ経路の可否と、意味受理の禁止を混同しない。SEIは判断Owner、EKIは配送・資源実行の独立Ownerであり、これらの完了をTEI Provider EffectのReceiptとしない。
+
+**状態**：本節は既存main/並行Draftの実証範囲を照合した設計・試験順の追補。PX-01/02・SB-17/18の新規試験、CLI/Studio共通Production Provider、実Provider Read/PG、G1/G2/G4の統合一Attempt、正式Owner受理は**NOT RUN／UNQUALIFIED**。新Host/Resolver/Registry/Runner/独立Evidence正本は作らない。
+
 ## 8. 今回の結論と検証の状態
 
 **成熟した設計入力として置くもの**：状態機械の適用対象は業務に限らない／図・状態表・遷移表・交差マトリクスは同一意味を異なる形で投影する／意味Core・実行・保存・UI・文書を直結せず明示Bindingする／業務IFを全部置換しない／実Runtimeの一般化は別の採用判断とする。
