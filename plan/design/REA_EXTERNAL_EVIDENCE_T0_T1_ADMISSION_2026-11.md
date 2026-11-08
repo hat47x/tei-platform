@@ -119,3 +119,31 @@ TEIの三視点統合[#1124](https://github.com/hat47x/tei-platform/issues/1124)
 | **FLOW-E** | Ownerが設定した標準/拡張Hook候補と、旧コード中の挿入箇所 | 挿入位置の一致をHookの実Contract・Provider/Authorityへ昇格させない |
 
 上記は**T1-AでSource-backed構造候補を投影する追加圧力**であって、T0 REA静的分析のPASS条件を拡大しない。実際のFlow実装・Generator・異媒体のOperation/Scenario E2Eは[#3503](https://github.com/hat47x/tei-platform/issues/3503)/[#1180](https://github.com/hat47x/tei-platform/issues/1180)等の責務とする。未実行の実UI/実Commit/旧Runtime Actuationはunknown。
+
+
+---
+
+<!-- rea-t0-readonly-consumer-sho-e0-w2-20261108 -->
+## 10. 保存済みREA出力の独立Consumer試験（Test-only実装）とSHO編集の適格性
+
+**実装**：本Draftの`tools/rea-t0-saved-report/audit.py`と`test_audit.py`は、REAを起動しない読取り専用の**テストConsumer**。REA上流の `analysis.json` / `analysis.stderr` / `exit-code.txt` を対象に、実終了コードとreport parsingを別列にし、raw byte長/SHA-256、標準出力・診断の別保管、`parse_failures`の限定検出、JSONL object collectionのterminal metadata/row countを監査する。`jsonl`のbare top-level arrayには終端metadataがないという上流仕様を保持し、どちらのJSONL形式でも**Source全件完備を主張しない**。
+
+**実行方法（試験用・製品CLIコマンドではない）**：
+```bash
+python3 -m unittest discover -s tools/rea-t0-saved-report -v
+python3 tools/rea-t0-saved-report/audit.py /absolute/path/to/saved-rea-report
+python3 tools/rea-t0-saved-report/audit.py /absolute/path/to/saved-rea-report \
+  --jsonl-view /absolute/path/to/view.jsonl --jsonl-object-collection
+```
+レポートは小さな公開T0入力に限定。Python監査プログラムは`analysis.json`が16MiBを超えると拒否するため、数百MiB級の実Evidenceを読み切る汎用Parserではない。対象のディレクトリ内Symlink Report・入力としての不正JSON・非正規exit codeを拒否し、Source/Evidence値を出力せず観測メタデータだけ返す。**rootの実Path・ファイル開閉のTOCTOU/ACL保証・Provider実実行検証の機能ではない**。Provider version/input source/manifest/scope/Host authorizationが取得されていなければ`not-observed`を返す。新規Runner/Registry/Authorityや製品型は作らない。
+
+**独立Expectedの実行結果（この作業環境、GitHub CIではない）**：2026-11-08の作業環境 Python 3.13.5で `python -m unittest discover -s /mnt/data/rea_t0_probe -v` の**11/11 PASS**と`py_compile`成功。これはGitHub branchに登録する前の同内容Test-onlyコードに対する**合成JSON/JSONL**の試験。実REAプロセス・実Provider/version・本Repo exact-head Actions CIに対する資格を与えない。新しいGitHub上のソースを再読込みし、その差分と試験内容を照合すること。
+
+**SHO Writerへの接続が初めて具体化した点**：
+- [SHO Draft #29](https://github.com/hat47x/sho-composer/pull/29)のEditor UTF-16選択→原文UTF-8 byte span（E0-MAP、17件合成試験）は、REAが同じDocumentの二番目のOccurrenceを示した場合のSource Position受渡しに活用する。ただし実Editorの`isDirty/version`同期観測、同Rawだが別Originの出典一意性、Writerの物理Patchは未成立。
+- [SHO Draft #28](https://github.com/hat47x/sho-composer/pull/28)のSave As relative-link preflight（SAS-01〜11）は、Evidence文書のpath移動時に、Raw SHAとMarkdownリンク文字列が同じでも参照先が変わる反例に対応。現在はMarkdown G1bで把握できるリンクの**名目的な差分**のみで、実解決先・symlink・HTML/特殊リンク・正式Save As・Review/Disclosureへは拡張しない。
+- 両Draftの限定CI成功を足しても、REA Source Referenceの現在性、TEI Semantic Acceptance、SHO正式Writer Save/別Process reopen、外部送出Grantは合格しない。**REA Evidence ID／TEI Candidate/Accepted ID／SHO Document+Occurrence IDは別名前空間**。出典と編集対象が同一であることは`Raw digest一致`だけでは保証されない。
+
+**次の実験**：T0公式保存ファイルに本試験Consumerを実接続し、`analysis.json`と実SHA/exit/coverageを現物で確認する。T1-AではProvider Source/Manifest read cohortと候補Scopeを別取得し、T1-Bにはパーサ受理・Owner Meaningの根拠を独立のまま渡す。SHOに渡す時点ではsource locator、byte span、現在Document URI/versionとEditor dirty、Save As後の相対リンク変化を独立判定。これはテストConsumerの観点であり、新仕様上の必須API Schemaとしない。
+
+**資格上限**：本Draftで今回実行したのは**合成Python test-only監査の11件**のみ。実REA T0の解析とGitHub Actions、REA→TEI実Plugin/CLI/Studio、SHO正式Editor保存・Writer、T1-A/B/T2、旧新実比較、Owner受理は**NOT RUN**。
