@@ -155,7 +155,6 @@ func TestReportStatesAuthorityAndIsDeterministic(t *testing.T) {
 	}
 }
 
-
 func TestSelectedPluginDoesNotImplySelectedCapability(t *testing.T) {
 	// An Environment can select the plugin package without binding its
 	// editor capability. Do not elevate package selection to capability use.
