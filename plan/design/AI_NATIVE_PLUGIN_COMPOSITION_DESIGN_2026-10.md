@@ -924,3 +924,24 @@ Registryは**発見の索引**、Issuerは証拠の発行主体、Host/Ownerは�
 **実装順**：既存#3384／#3300の単一read-only Inspector D1aから、exact Provider B選択→CLI・Studio実B呼出しを先に成立させる。MCP/HTTP/Studioの共通API投影を新しいPlugin Resolverとして実装しない。次に一つの外部Import Providerの原文証拠を同一Attemptへ取り込み、Consumer版とProvider版の二軸を照合。その後Build／Trait／BOM／現在Grantを別々に受け入れる。外部Harnessは[MASTER_PLANの増分効果検証案 #3487](https://github.com/hat47x/tei-platform/pull/3487)のB0=決定的CLI/API、B1=既存HarnessのSkill比較、B2=薄いAdapterを用い、実測されない独自Harnessの先行構築を要求しない。
 
 **現在の状態**：#3403/#3439/#3458/#3477/#3482/#3440/#3463/#3444/#3451はmainの限定実績。#3479/#3470/#3487はOpen/Draftの別Owner結果であり、承認済み成果と呼ばない。本節はdocs-only。実D1 Provider Bの二Consumer呼出し、Import Sourceの同一Load完全閉包、製品MCP全適合、H3実配送・実OS/Egress拒否、実BOM 2×2、Host実Grant、Owner意味受理は今回NOT RUN。第二Runtime／Host／Registry／Resolver／Scenario正本は追加しない。
+
+### 27.9 局所Selected Callから通常CLI・Studioへ：三つの独立した鮮度軸とD1の最後の接続（2026-11-08、他チャット・最新Go実Sourceに基づく狭い統合）
+
+**正本の変更なし**：実装順は[main統合Plugin-first計画#3384](https://github.com/hat47x/tei-platform/pull/3384)と[MASTER_PLAN S0〜S3 Draft #3499](https://github.com/hat47x/tei-platform/pull/3499)、共通APIはADR-0048、Sourceは#2743/#3479、BOMは#3267/[#3490](https://github.com/hat47x/tei-platform/pull/3490)。DSH本書は外部Harnessと実Provider資格を誤接続しない受入差分だけを引き継ぐ。
+
+**新しく実装されたS1局所Call**：[CLI Draft #3381](https://github.com/hat47x/tei-platform/pull/3381)の実Source internal/inspectoradapter/selected.go は、既存Composition Registry.Select→NewSelectedCoordinator→Host登録Registration.Inspectを通し、Scope=authoring-tool、exact Contract/ProviderID/ArtifactDigest、呼出直前のRevision/Host Guardと結果を検査する。現Go TestはB選択→B Go関数を実呼出し、B選択→A登録の拒否、失効後拒否を区別する。**登録したArtifactDigestはHost側の申告値で、実Go Linkされたバイナリbyteの独立証明ではない**。Go局所呼出しはS1候補であって、通常CLIのmain.goからの実B Invokeをまだ示さない。最新HEADのexact CIは本節で未確認。
+
+**Studio S0の実装経過**：[Draft #3371](https://github.com/hat47x/tei-platform/pull/3371)はFactoryが非nilならInspector欠落・誤応答をfail closedに変更。旧TestがBuiltinフォールバックを期待した衝突を修正後、実generated HostにInspectorが未登録で失敗する不備を検出し、cmd/tei-studio/host_generated.goにHost選択の暫定selectedBuiltinInspectorを**明示登録**した。このBindingはBuiltin operations.InspectSubjectの橋渡しであり、Plugin B実選択ではない。旧CIの失敗を現HEADの成功に読み替えない。[Draft #3378](https://github.com/hat47x/tei-platform/pull/3378)のCLI/Studio直接Operation同値はD1a基線であってD1bではない。
+
+**三種類の鮮度は互換でない**：(A) Consumer World／Managed SourceIndex・Model Revision（main #3477）、(B) Imported Providerのraw Source とManifest各Revision（[Draft #3479](https://github.com/hat47x/tei-platform/pull/3479)）、(C) Capabilityを選択した**RuleFingerprint・適用Scope**（[Draft #3490](https://github.com/hat47x/tei-platform/pull/3490)）。改訂Scopeが異なればWorld FP同値でもSource引用、実Build入力、Provider現在資格を自動再利用しない。逆にRaw改訂だけで意味再計算・全Artifact再Buildを必須とせず、用途に必要な依存だけ失効させる。#3337の12宣言／6未選択と#3350の未選択4は規則の違う歴史Evidenceである。
+
+| 実装受入に渡す次の一因子反証 | 独立Expectedと資格上限 |
+| --- | --- |
+| **S2-01 通常CLI** | cmd/tei/main.goの通常dispatchでexact authoring Provider Bが実Invokeされ、そのGo CallがCount/Identityで観測できる。局所inspectWorkspaceJSONWithServiceを直接呼ぶだけなら未達。B選択→A呼出、明示B不足→Builtin黙示fallbackは拒否 |
+| **S2-02 通常Studio** | generated Hostの暫定Builtin登録をexact選択Bへ明示交換し、実Studio BridgeでB実Invoke。Service欠落・別Subject/Schema/Effect/Result FP・root置換・後着ABAは拒否。Factory Go TestだけでWails配布資格としない |
+| **S2-03 三軸失効** | Consumer FP一定でProvider Rawだけ、Manifestだけ、次にRuleFingerprintだけ改訂。必要Source/Manifestの実Load byte・Provider Entry・選択規則を同一Attemptで確認できなければ、該当する引用/Build/BOMだけunqualifiedとする。旧Registrationの自称Digest一致は十分でない |
+| **S2-04 共通APIと外部Harness** | ADR-0048のCLI/MCP validate限定同値を実Plugin B Callと分ける。Tool広告≠実Invoke、CLI read-only≠外部Session Logや別Sinkへの送出無し。実Host/OS Read Deny、Consumer Disclosure、Tool完全受領を#2509/#2515に委譲 |
+
+**最新の証拠上限**：[main統合 #3487](https://github.com/hat47x/tei-platform/pull/3487)は既存Harness・薄いAdapter・独自Harnessの増分効果比較を計画化したが比較試験完了ではない。#3479の旧HEADはSource-only Go単体[Health #42461871730](https://github.com/hat47x/tei-platform/actions/runs/42461871730)成功だが、新たなManifest-only／Source×Manifest 2×2を加えた後のHEADはその成功に便乗できず、現HEAD CI合否は本節で未認定。#3490のRuleFingerprint/Imported Source/BOM資格もDraft。D1b通常CLI/Studio二Consumer・実Go Link／Provider Source同一Load閉包・Qualified 2×2 BOM・実H2/H3 OS拒否・Owner業務意味受理は今回NOT RUN。
+
+**次の一件を固定**：S1局所Go試験のexact HEADを確認し、S0 Studio明示Builtinの互換/fail-closedを確認してから、**S2-01の通常CLI→S2-02の実Studio Bridge**で同じSelected B実Callを成立させる。S3のProvider Source/Manifest、RuleFingerprint、実Artifact、Trait/BOM、現在Host GrantはそれぞれのOwnerと独立Expectedで照合。旧application-runtime CarrierのScopeを便宜的に拡張せず、第二Resolver/Host/Registry/Runner/Scenario SSOTを追加しない。
