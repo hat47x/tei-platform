@@ -116,7 +116,11 @@ func TestBindRejectsWrongScopeAndContractAndArtifact(t *testing.T) {
 	}{
 		{"different-scope", func() composition.Selection { x := selection; x.Scope = "application-runtime"; return x }(), binding, testInspectorContract, registration},
 		{"contract-changed", selection, binding, composition.Contract{ID: "other", Version: "0", Shape: "other"}, registration},
-		{"artifact-changed", selection, binding, testInspectorContract, func() Registration { x := registration; x.ArtifactDigest = "sha256:" + strings.Repeat("b", 64); return x }()},
+		{"artifact-changed", selection, binding, testInspectorContract, func() Registration {
+			x := registration
+			x.ArtifactDigest = "sha256:" + strings.Repeat("b", 64)
+			return x
+		}()},
 		{"implementation-missing", selection, binding, testInspectorContract, func() Registration { x := registration; x.Inspect = nil; return x }()},
 	} {
 		t.Run(test.name, func(t *testing.T) {
