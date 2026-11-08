@@ -538,3 +538,38 @@ G2-Pの入力は`actual sourceBytes/baseSha256/startByte/endByte/expectedBytes/r
 5. **K4/K5**：Attested Computationの実Executor/Receipt/独立Attester（TAI #514）と、SHOの実Disk Writer・CAS/ABA・再Open（SHO #4）は独立後続段階。G2-Pのpure候補やverifiedによる代替不可。
 
 **Ownerと判定**：本節のtest-only相互運用WitnessはTEI #2514/SHO #18へ引き渡す。#3262の必要Source定義と#1251/#951のPlugin実選択、TAI #514のAttestationを重複起票しない。**上流Reference文書をpinして試験コード・CI起動条件を配置した事実**と、**実GitHub ActionsでそのProbeが成功した事実**を別に扱う。後者は最新Runの実Jobログで確認できるまで**NOT RUN**。OKF正式F0全仕様、製品Reader/Plugin二Consumer、Owner意味受理・外部開示・OS/Network封鎖は引き続き**NOT QUALIFIED**。
+
+
+---
+
+## 16. 2026-11-08 K1上流Readerの実CIとSHO製品Readerへの物理ファイル受渡し
+
+### 16.1 これまでのK1初回実証に対する限定的な結論
+
+[TEI PR #3329固定HEAD 2d4e8508 のCI #42461299002](https://github.com/hat47x/tei-platform/actions/runs/42461299002) は**実Job completed/success**。実ログには次を記録した。
+
+- 上流OKF commit ad30107c31c06aec8a7d5636e0d1058118604e6f / Reference Document git blob b770a92f33adf9942e2932529308d066430b02a6 / SPEC raw SHA256 26aa5da029278939f914e578107242d9607d4f2dc5fe153272b82f9ed1030101 / PyYAML 6.0.3の固定版に対し、3 Conceptとroot indexの実rawファイルを読込。
+- 正常3 Conceptの上流Reference parse/validate **PASS**、verified singletonのイベント件数1・synthetic processのmachine-confirmed扱い、原Byte SHAの固定を観測。
+- 既存7一因子Mutantは**7 MATCH**。第8Mutantのtype非空YAML listは、上流Reference \`OKFDocument.validate()\` が**受理**し、SPEC中の文字列条件では**拒否**となる差分を、実ログで**KNOWN_REFERENCE_GAP**として観測。
+- これで「K1の**上流実装による限定互換試験を実行した**」と言える。Reference自体が全仕様Validatorではないため、公式OKF F0全適合、独立Owner Oracle適格、全Relation解決、Product Reader、Source/Disclosure/Runtime Grantを推論しない。§15.3の「Probe NOT RUN」はこの**後続CIにより歴史的状態**となったが、記載時点の状態を遡及改ざんしない。
+
+### 16.2 実SHO G1b CLIが同一K1物理ファイルを読めるかの最小P0
+
+この次のSource受渡しには、test-only [tools/reference-okf-k1/sho_g1b_receipt_probe.py](../../tools/reference-okf-k1/sho_g1b_receipt_probe.py)を追加し、既存のK1 GitHub Actionsに**別Job k1-sho-main-raw-reader**を増設した。新たな製品Parser/Runtime/共通Registryは追加していない。
+
+- **Producer側Sourceの定義**：同じTEI Git checkoutの\`testdata/okf-k1-v02/\`実4 Markdown file。各実FileのSHA-256・bytesを既存Expectedから再照合。Sourceを手作業でSHO fixtureへコピーして「同じ実ファイル」とは呼ばない。
+- **Consumer側実装**：SHO mainの固定Git HEAD \`fc0127400733bac161b3fc0d556f451991d0a510\` に存在する現行\`bin/sho-inspect.cjs\`、\`src/g1b-reader.cjs\`、\`markdown-it 14.3.3\`をtest専用で実呼出し。Node22／npm lockから依存固定。CLI JSONの\`source.sha256/byteLength/revision\`、Parser grammar scope、\`link_open\`件数、\`coverage\`を比較する。
+- **否定対照**：不存在のK1 Fileに対してReader CLIが\`not-found\`/異常終了し、正常なゼロLinkファイルと混同されないことを確認。Grammar外の未定義参照・全Footnote・外部Sourceは\`allDocumentReferencesEnumerated=false\`等の局所実応答から評価する。G1b ReaderにYAML Concept type/verifiedの理解は要求しない。
+- **Host/権限**：既存SHO実CLIで固定TEI公開FixtureをローカルReadするテストであり、既存SOH/TEI Plugin Host、SHO G2 Writer、外部Network/Egressの否定証明やSUI実ProducerのH1とは分ける。実跨製品入力は**TEIのK1物理file→SHO G1b Reader**に限定され、**「共通OKF Providerを用いたTEI CLI＋SHO二Consumer」K2ではない**。
+
+| 個別Claim | 必須Witness | 状態 |
+| --- | --- | --- |
+| K1公式SPEC/上流サンプルのScope限定相互運用 | pinされた上流moduleの実parse/validate＋八Mutantの内訳 | **PASS**（#42461299002）。非文字列typeのupstream gapを含む |
+| K1R SHO Markdown実受信 | TEI Git実ファイルをSHO固定実CLIが実Readしたbyte/Reader結果・missing負例 | 新Job配置。exact HEAD CI成功の実ログを確認するまで**NOT RUN** |
+| 形式F0の全仕様適合 | 独立OwnerによるSPEC全条件/未知・悪意入力の判別 | **NOT QUALIFIED** |
+| K2二Consumer同一選択Provider | 現World/Manifest/Plugin Lock/2実Call Site＋Recipient Required→Received | **NOT RUN** |
+| K5実WriterとK4実Attested Run | 別のCurrent Grant/実Effect/Receipt/独立検査 | **NOT RUN** |
+
+**最小の次工程**：まずSHOの実CLI Jobが固定Markdown4ファイルを読むか赤緑判定し、成功ならK1Rの限定Witnessだけを更新する。そこからK2実Reader契約を設計する際、上流PythonやSHO G1bのParserをTEI Coreへコピーしない。Plugin-first選択・Provider実Load/Invoke、TEIのRequired Sourceが\`readByLoader:false\`のままか、SHO/StudioのReader実呼出しを#3262/#1251/#951/#2621に分担し、同一Productの別Runnerを増やさない。
+
+**証拠管理**：上流module・参照ファイルの固定Pin、PythonとNodeの試験結果は**test-onlyのGitHub Action Receipt**。本節は正本のOKF仕様や正式なMeaning/Owner/Hostの代替ではない。実H2/H3、正式なProduct間引継ぎ、Disclosure、源資料真正性の未測定は維持する。
