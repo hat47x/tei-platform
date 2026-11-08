@@ -1500,6 +1500,25 @@ QMLの独立Expectedは**試験前に確定**する。QML-01/02の相違は「le
 
 **責務**：#3270/現Draft #3486＝物理Schema/Indexの忠実なread-only Projection、#2892/#2887＝History/DDL資格、#2622/#2586＝Data Rule/Query→実ReadとProvider差、#951/#1251＝実選択→呼出し、#2514/#1180＝Owner Ruleから独立のExpected、#1130＝Job、#1174＝現在Effect、#1163＝一改訂Evidence。未知を成功へ丸めず、**新しい品質Engine・DSL・Registry・Host/DB Agent・上位Gateは不採用**。本節はDocs-onlyであり、QPCの実Provider・Index enforcement・History/DDL、Go/SQL Job、CI/性能、正式Owner Acceptanceの新実行はNOT RUN。
 
+
+#### 27.13.4 実装済み候補の境界と最短の実Read対照（2026-11-08、優先順位更新）
+
+**既存#2892の実偽成功に対し、[Draft PR #3497](https://github.com/hat47x/tei-platform/pull/3497)を新規作成**した。現在mainの`CompareHistory`は`AppliedUnknown`・未認識Stateを`RepoApplied`にし得る。#3497は未確定/空/不明Stateを明示エラーとしてfail-closedにする最小コード変更と、3負例＋`AppliedFailed`正常分類の回帰テストを提案する。**Draft・CI/Consumer適合/実Provider未検収でありmain修正済みではない**。採用は#2892 Ownerとexact HEAD Healthで判定する。依然残る「History取得失敗/partialを空`Entries`として扱うと`RepoPending`になる」問題は、この変更では解決しない。HistoryのReaderが実Scope/Completeness/取得失敗を証明する契約は、別の受入条件として保留する。
+
+**最短P0は既存合成Fixtureを使い、新しいExpected正本を作らない**。mainの`examples/data-source-workbench/postgres_seed.sql`と`events.jsonl`、[READMEのF-01〜10](https://github.com/hat47x/tei-platform/blob/main/examples/data-source-workbench/README.md)を固定し、#2586のFunction→Provider実Read未接続を狭く検証する。SQLは`sales_order`に `O-001/120.50`, `O-002/0.00`, `O-003/5.25`の3行を**記述**しているが、未Apply時は実Row0/未読を意味しない。JSONLは原文5行・ユニーク`event_id`4、`evt-B`の反復、`evt-C.ingest_time`明示NULL、`evt-D.ingest_time`欠損を含む。これらは**独立したSource-static expected**であり、旧システムや本番業務の業務Ruleとして受理された意味ではない。
+
+| 最小対照 | 実際に揃える証拠 | 合格とする上限 |
+| --- | --- | --- |
+| **DQ-R0 Source-only** | 二つのRaw Source byte/sha・行数/金額/JSONLキー・F-01〜10。実DB未接続/実Loader未消費を明示 | 合成Fixtureの静的Expectedに限定。DB品質PASSでもProvider実行でもない |
+| **DQ-R1 Actual PostgreSQL read** | **隔離専用DB**に明示Seed Applyした記録、選択Instance/Principal/実Query byte、別Readerが取得した3行・`NUMERIC`精度・Scope/Snapshot、Query実Consumerへ完全受領 | 実際に読めた隔離DBの当該Snapshot/Row/Fieldのみ。Schema/Indexの観測・DB Apply・RLS資格は別 |
+| **DQ-R2 JSONL Actual read** | Readerが5物理行を位置付きで読んだRead Cohort、重複・NULL vs missing・4ユニーク`event_id`、終端・byte count | JSONL取得契約の局所適合。イベント重複を**業務上の違反**と未受理のまま断定しない |
+| **DQ-R3 Cross-source candidate** | SQLの`id`とJSONLの`order_id`が同文字列でも、Identity Mapping、時点、Source Scope、末尾行の有無と独立Expectedを別列 | 物理対応**候補**。Relation/受渡し完了・全件Orderがイベントを持つという業務RuleはOwner未受理のためunknown |
+| **DQ-R4 Offline Check admission** | DQ-R1〜3で使ったSource/実Readerと選択されたProvider/Target/Rule/独立Expectedを**同一Attempt**に束縛したread-only検査候補 | RuleがOwner受理され、実Check/Scope/独立Oracle/消費Artifactが揃った場合のみ`pass-in-scope`候補。実検査未実行ならnot-run |
+
+**失敗を見逃さない3負例**：① `O-003`を途中ページ/JSONL最終行で読み落とす→`partial`で停止し不存在/PASSとしない。② JSONL`evt-B`重複をset化して4行にする→ReaderのRaw行数Expected=5へ不適合。ただし「業務不正イベント」と判定しない。③ Provider選択Bなのに実呼出A／実Queryが別DB Aliasを読む→返却Rowが同じでもselected≠invokedを拒否（§63/#1251）。採用前の前提として、Source入力のOwned/Loadedと独立Expectedを#3262/#2514で確認し、CLI/Studio 2 Surface・Verified BOM・REA・SHO・LeanはこのP0の必須条件にしない。
+
+**順序上の停止線**：最初にD1選択Providerを実Invoke→同じ一Functionを#2586のData Contextへ実Read→QPCの一Ruleと読取範囲を比較する。#3486 Draftの物理Catalogはこの実Row Readの代用品ではない。#3497が採用されても、History Unknownの失敗を品質検査の合格に代用できない。実Read/夜間Job/性能/Owner受理はこの計画追補ではNOT RUN。新しいDataset、業務Rule正本、Reader/Runner/Host/Quality Registryを先行構築しない。
+
 ## 28. 一改訂のValue／Flow／Job／Consumer縦断――参照実行と外部実行を混同しない（2026-11-03横断追補）
 
 ### 28.1 並行する三つのOwner計画を、別の正本を作らずにつなぐ
