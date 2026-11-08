@@ -403,3 +403,22 @@ Wails依存を外したGo Service/合成Adapterの試験と、実WebView起動�
 | **DS-D1-16** | 旧Inspect応答が再選択A→B→AのA2やWindow再起動後に届く | UI epochで旧応答を拒否。Source Revision/Provider Raw/Host Grant・実Effectまで自動再受理しない |
 
 **実測と計画の線引き**：#3371旧HEAD `a42df66` の[Studio PoC A CI #42395396780](https://github.com/hat47x/tei-platform/actions/runs/42395396780)は旧Direct Inspector期待でFAILし、Healthも整形差を検出。旧Testは新しいfail-closed期待へ改訂されたが、最新exact HEADの合否は別。#3479のProvider Raw/Manifest-only Source実負例もそのPRの最新HEADと独立に検証する。本節は**計画・検収票のみ**で、Wails実UI／CLI-Plugin実Invoke／実Provider Read／Owner Meaning AcceptanceはNOT RUN。
+
+
+### 10.11 選択Providerの局所実呼出しReferenceをDesktop実Consumerへ接続する停止線（2026-11-08）
+<!-- tei-desktop-selected-inspector-actual-reference-20261108 -->
+
+**今回増えた実装証拠**：[Draft #3381](https://github.com/hat47x/tei-platform/pull/3381)は型付きCLI Portに加え、既存Composition Registryのauthoring-tool選択とHost登録済みInspector関数を結ぶ内部Adapterを実装した。局所Goテストは、Bを選択→B実呼出、B選択→A登録の拒否、Contract/Scope/Artifact不一致、Host Guard撤回、Registry epoch失効・A→B→A、無関係Scope変更、Result不適合を対象とする。**Reference内の実関数呼出しが存在する**ことは前進だが、既定CLI起動のBuiltin経路やStudioのWails Bridgeは未接続。選択ID/合成digestだけで実Build Artifact・署名・現在認可を証明しない。
+
+**二Consumer化の最小変更境界**：①#3381の既存Selected CoordinatorをCLI起動から利用するHost-owned設定・失敗経路を検証する。②[Draft #3371](https://github.com/hat47x/tei-platform/pull/3371)のStudio InspectionServiceへ同じContractのHost登録済み実装を注入する。③[Draft #3378](https://github.com/hat47x/tei-platform/pull/3378)の既存Direct CLI/Studio shadow parityは**移行前の比較基線**として維持し、両Consumerの実Provider呼出し・Attempt/Source/Disclosureの独立Expectedを別途要求する。CLIとStudioが同一Go関数を偶然呼ぶだけではPluginの選択同一性の証拠にしない。新Resolver、第二Application API、別Host、第二Graph Engineを作らない。
+
+| 次の受入 | 正例・負例の最小条件 | 資格の上限 |
+| --- | --- | --- |
+| D1-R1 | 同一LockでB選択→CLI通常起動がBを実呼出。B選択→A実呼出/未Bindingは拒否 | テスト専用注入経路のPASSを通常CLI起動へ流用しない |
+| D1-R2 | 同じHost選択BをStudio Factoryへ接続、実Wails /workbench/の別Call siteでBを実呼出。Factory nil Builtinを対照 | Studio Go Host単体・Node DOMだけでWails実Consumer PASSにしない |
+| D1-R3 | CLI/Studio別Attemptの同一Contract/Scope/Source版、Provider Raw drift、Disclosure、unknown/partial、選択撤回、A→B→A | 値一致・World FP一致だけでProvider Revision/現在Grantを受理しない |
+| D1-R4 | 実Link/Bundle/Frontend Assetの選択版一致、異版混入、WebView2での実操作 | Reference Registryの合成IDを実Binary/Conformance/Verified BOM資格にしない |
+
+**関連する別系統の進展**：[Draft #3492](https://github.com/hat47x/tei-platform/pull/3492)の三視点Graph/CRUD、[Draft #3496](https://github.com/hat47x/tei-platform/pull/3496)のREA外部Evidence、[Draft #3491](https://github.com/hat47x/tei-platform/pull/3491)のUI整数精度、[Draft #3497](https://github.com/hat47x/tei-platform/pull/3497)のMigration履歴Unknownは、Desktopに接続し得るが、現D1 Inspectorの受入を拡張・合格させる根拠ではない。Data/Function/Businessの意味受理、外部Observation、表示値と型付きAction引数、DB Apply履歴を別のSource/Effect資格として維持する。
+
+**実測状態**：#3381最新HEAD 5cdd3b9、#3371最新HEAD e5510f4の各Actionsは確認時queued/pendingが多く、**exact-head Go/Health全PASSは未確認**。#3371のWebView smoke単独SUCCESSは、D1-R2の実Provider呼出し成功ではない。#3378の既存Direct parity試験もSelected Providerを通さない。ここでは計画Markdownだけを更新し、実Go/Windows/DB/REA/Graph/Owner受理はNOT RUN。
