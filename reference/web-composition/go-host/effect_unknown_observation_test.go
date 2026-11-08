@@ -120,8 +120,8 @@ func TestHDGHttpResultDoesNotSubstituteForIndependentEffectObservation(t *testin
 				Providers: map[string]string{editor.ProviderID: editor.Issuer},
 			}, Dependencies{
 				VerifySession: func(*http.Request) (Principal, error) { return editor, nil }, // synthetic verifier
-				VerifyCSRF: func(*http.Request, Principal) bool { return true },             // synthetic verifier
-				Authorize: authorizer, Invoke: action,
+				VerifyCSRF:    func(*http.Request, Principal) bool { return true },           // synthetic verifier
+				Authorize:     authorizer, Invoke: action,
 				Audit: func(record AuditRecord) { audit = append(audit, record) },
 			})
 			if err != nil {
