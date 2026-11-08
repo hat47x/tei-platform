@@ -41,6 +41,12 @@ LINE_UNIQUE = "sales.order.lines.line_number_unique"
 RULES = {QUANTITY, LINE_POSITIVE, LINE_UNIQUE}
 
 
+def assert_independent_step_operations(observed: dict[str, str]) -> None:
+    """Reject a co-corrupted Scenario/receipt pair against a fixed Reference."""
+    if observed != STEP_OPERATIONS:
+        raise AssertionError("Scenario Step->Operation differs from independent obligation")
+
+
 def digest(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
@@ -273,8 +279,13 @@ def scoped_step_selftest(required: set[str], actual: dict[str, dict],
     )
     if self_consistent["inventory"] != "complete-for-one-pinned-scenario":
         raise AssertionError("coupled-error control did not exercise self-consistency gap")
-    if coupled_expected == STEP_OPERATIONS:
-        raise AssertionError("independent expectation failed to reject coupled error")
+    try:
+        assert_independent_step_operations(coupled_expected)
+    except AssertionError as exc:
+        if "independent obligation" not in str(exc):
+            raise
+    else:
+        raise AssertionError("independent expectation accepted co-corrupted Operation")
     controls["TT-154-coupled-operation-corruption"] = "independent-obligation-rejected"
     return baseline, controls
 
@@ -314,8 +325,9 @@ def main() -> None:
     # The Step ID and requested Operation must independently match the public
     # Reference obligation. Otherwise Scenario and CLI can agree on a wrong
     # Operation and still appear to constitute a covered test.
-    if {key: item.get("operation") for key, item in scenario_steps.items()} != STEP_OPERATIONS:
-        raise AssertionError("Scenario Step->Operation differs from independent obligation")
+    assert_independent_step_operations(
+        {key: item.get("operation") for key, item in scenario_steps.items()}
+    )
 
     fixture_dir = original_scenario.parent / "fixtures"
     valid = json.loads((fixture_dir / "order_valid.json").read_text(encoding="utf-8"))
