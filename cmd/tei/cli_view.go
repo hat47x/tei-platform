@@ -70,6 +70,8 @@ type cliViewReport struct {
 	WorldFingerprint       string                `json:"worldFingerprint,omitempty"`
 	SourceIndexFingerprint string                `json:"sourceIndexFingerprint,omitempty"`
 	Error                  *cliInspectionFailure `json:"error,omitempty"`
+	// Workspace identifies which Workspace the view was read from (#3455).
+	Workspace *workspace.WorkspaceIdentity `json:"workspace,omitempty"`
 }
 
 // runViewCommandは、Application Patternの対話契約を解決し、textまたはjsonで返す。
@@ -148,6 +150,9 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	if err != nil {
 		return fail("WORKSPACE_LOAD_FAILED", err.Error(), 2)
 	}
+	// Every view shape is a read of this Workspace, so the identity belongs on
+	// the report next to the fingerprints (#3455).
+	report.Workspace = workspaceIdentityPointer(loaded)
 	if *format == "json" {
 		// The JSON projection reports the same read-only observations the other
 		// read commands report (#3345). `result.semanticFingerprint` stays as it

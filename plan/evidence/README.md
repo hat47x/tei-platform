@@ -139,3 +139,4 @@
 - [二回の独立した駆動試行でも同じstage2成果物になること](TEI_GO_SELF_BUILD_TWO_STAGE_REPEAT_2026-11-08.md)（`-work`を分けた2回の実行で、両方L3に到達しstage1/stage2のartifact digestが一致することを記録。Seed Trust・受入・権限・OS間一致は未確認。SB-C1 / #2831）
 
 
+- [TEI自身の設計をCLIで扱う実測 第3ラウンド](TEI_DOGFOODING_ROUND3_2026-11-08/README.md)（#3149・#3455・#3456。現行mainの読み取りコマンド横断でWorkspace同一性と空一覧の直列化を確認し、2件の修正を実測。設計文書が意味として読まれない D-9 は残る）

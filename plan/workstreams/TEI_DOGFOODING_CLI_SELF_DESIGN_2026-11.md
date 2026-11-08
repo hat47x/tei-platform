@@ -479,3 +479,21 @@ D-1・D-2・D-4〜D-8 の対応が `main` に入り、対応する Issue はす�
 1. **MCP入口を作るか**（#3400）。作る場合の範囲は、この参照実装が扱った4操作（`model catalog`・`inspect`・`trace`・`validate`）に限る案を推す。`commands` の discovery と同じ範囲で、第二の正本を作らない制約をそのまま維持できる。
 2. 作らない場合は、外部AIハーネスからはホスト提供のMCP経由で `tei` CLIを起動する経路に限られる（#2509 の実測と同じ形）。その場合は本節の参照実装を製品へは残さない。
 3. どちらを選んでも、`docs/architecture.md` の「別の正本を作らない」制約を維持する。
+
+## 9. 第3ラウンド（2026-11-08）: 設計文書の扱いと応答の同一性
+
+第2ラウンドの後に main が進み、読み取りコマンドの応答を横断して調べた。生出力は[第3ラウンドの実測記録](../evidence/TEI_DOGFOODING_ROUND3_2026-11-08/README.md)にある。
+
+| 観点 | 実測前（`3b4f5519d`） | 対応 |
+| --- | --- | --- |
+| D-9 設計文書が意味として読まれない | `docs`／`plan`を`sources`に置くと`readByLoader:false`、`validate`の`diagnostics`は0件、`source-index`の`references`は`null` | **残る**（#3346は設計判断を#2621へ送ってクローズ済み） |
+| Workspace同一性の有無 | `view`・`source-index`・`knowledge-context`・`requirements`に`workspace`欄が無い | **#3455として起票し、修正した** |
+| 空の一覧の直列化 | `source-index`の`references`が`null` | **#3456として起票し、修正した** |
+
+#3455 と #3456 の修正:
+
+- 読み取りコマンドの応答すべてに`workspace`（`name`・`formatVersion`・`manifest`）を付けた。`-world`ファイルだけを入力した場合は、manifestを読んでいないため値を推測せず省く。
+- `internal/sourceindex.Index`の`MarshalJSON`が、空の`artifacts`・`references`を`[]`にする。
+- 公開契約の互換性: 既存欄は変えず、欄の追加と「0件を`null`から`[]`へ」の変更だけ。`null`を「欄が無い」と解釈していた読み手には告知が必要（[CLI JSON出力契約](../design/CLI_JSON_OUTPUT_CONTRACT_2026-10.md)）。
+
+D-9は残る。CLIは設計文書を索引に載せるが、意味の定義として読まない。変更するなら、Markdownを意味として扱う設計判断（#2621）が前提になる。
