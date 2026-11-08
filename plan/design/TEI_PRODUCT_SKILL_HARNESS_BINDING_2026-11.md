@@ -540,3 +540,54 @@ TEIのSource/Function/Query Read、SEIのRecommendation、SHOの記述、KONの�
 | **HP-35** | Tool Reply一部欠落・Session Log分割／backlog・モデル入力への旧Raw再出現 | request/reply/wire/receiver/model-inputを別観測。#2509/#2515／Draft #3470 |
 
 **最短順**：#3482の限定Dを採用しつつ、初回H2の実Tool Receipt/完全配送（T）を先行する。必要なSkill差分を測ってからHV-3を評価し、独自Harness HV-4の必要性を判断する。SEI H3保存再開・外部Provider Import・実DB/Plugin Invocationはそれぞれ独立並走。**HP-31〜35の新たな実行、HV比較、外部H2/H3、SEI実保存再開、Owner意味受理はNOT RUN**。
+
+
+---
+
+<!-- harness-adaptive-activity-interaction-flow-20261108 -->
+## 13. 2026-11-08：Adaptive ActivityとInteraction Flowを分離し、独自Harnessの採否を確定可能にする
+
+### 13.1 「AIが次に何をするか」と「業務操作がどう進むか」は異なる
+
+[TAI Harness/Skill Draft #270](https://github.com/hat47x/tai-pleroma/pull/270)と他製品の横断設計を、既存ADR-0048・TEI Plugin/Operation契約に整合させる。
+
+| 層 | 主な責務 | 担当と境界 |
+| --- | --- | --- |
+| **Adaptive Activity** | 不足を発見し、次の調査・Tool候補・保留・人への引継ぎを選ぶ | TAI/SEIのHarness・Method・Skill。TEIのOwner意味受理・Host実行権限は発行しない |
+| **Interaction Flow** | UI・会話・Tool・外部イベントの入力から、型付きOperationへ進む明示的な状態と遷移をモデル化 | TEIのFunction/Representation/共通Application API。AI専用状態機械に固定しない |
+| **Business Operation** | 実業務のValidate/Authorize/Execute/Observe/Resultと効果 | TEI契約＋実行Host/Provider。Harnessの成功/終了コードは業務Effectではない |
+| **Evidence & Persistence** | Source/Raw/Meaning/Decision/Unknown/Receiptの版・参照・再読取 | 各製品の既存正本とConsumer。KONは保存先候補であり、意味・権限の中央正本ではない |
+
+これらを一つの「AI Workflow」定義へ畳み込まない。Interaction Flowは**AIを使わないUI/業務フローでも成立**し、Adaptive Activityは固定Flowの外側で次の観測や推薦を選べる。ただしAdaptive Activityが型付きOperationを呼ぶときは同じ契約・権限・監査点を通す。
+
+### 13.2 共通Lifecycleの不変部とPluginによる可変部
+
+Operationの候補Lifecycleは `Intent → Prepare → Validate → Authorize → Execute → Observe → Result`。これは**横断設計上の候補**であり、現在の製品APIが全Stage/Hookを実装・検証済みという意味ではない。既存ADR-0048、#1158、#3278/#951、実Hostに接続し、Hook追加による実行順序変更や権限迂回を許さない。
+
+- 不変境界：実Source/Operation identity、入力/出力型、Current Authority、実Effect/Receipt、公開Disclosure。副作用あるExecute前のHost認可、再試行と冪等性の判断をAI/Pluginの自己申告だけで確定しない。
+- 可変部：表示・質問・Tool提案・データ変換・Operation前後の拡張・検証・再開。Pluginは能力発見、情報投影、操作前検査、実行/結果変換、結果検証、再開/引継ぎに接続できるが、`Selected → Loaded → Invoked → Consumer Received`を各段階で観測する。
+- Flow図表はモデルの入力とし、**図表の変更が実際のGenerator/Target出力へ到達する**ことを独立Expectedで検証する。説明図だけ更新して実行Flow不変なら製品Flow変更の資格はない。
+- 「全Lifecycle自体をPluginで差し替える」場合も、上記不変境界とHost/Ownerの責務を越えられない。既存のHook/Operationモデルで表現不能な最小反例が出るまでは第二Workflow Engineを作らない。
+
+### 13.3 H3で必要なSource付きRecommendationと未解決事項の再開
+
+H2は既存CLI/Tool-onlyの実配送・隔離・Current Grantの資格を先に取る。H3のProduct Skill/SEI連携は次の順序で検証し、H2の前提にしない。
+
+- **H3-A0（最小縦切り）**：TEI実CLI `source-index`等から観測したSource/Role/Revisionを、SEIの既存`Recommendation`に参照として記録し、保存後の`resume --json`で**同一のSource参照が実再取得できる**ことを独立に照合する。TEI SourceがSEIの推薦者やOwner意味受理へ化けないことも確認。
+- **H3-A1（追加価値）**：決定的なD0/D1とMethod/LLM利用M1を同一Task・独立Expectedで比較し、未知Required・誤判断・保留・Costの差を測る。M1の説明品質だけで採用しない。
+- **H3-A2（未解決の継続）**：Decision/Recommendationの保存と、`Question / Unknown / Conflict`の保存・再読取を別資格にする。現SEI CLIで未実装/未確認の保存型を「既に再開可能」と扱わない。
+
+H3-A0が失敗した場合は既存SEI Reader/Writerの原因と、TEI Sourceの取得/Revision原因を分離する。SEIへ第二TEI Parser/Registryを作らず、SHO/KON/TAIの実保存・Consumer受領も独立に確認する。
+
+### 13.4 最小の実行可能な検収（HF-36〜41）
+
+| ID | 一条件だけ変える反証 | 受入のOwner |
+| --- | --- | --- |
+| **HF-36** | 同一FunctionのInteraction FlowでAIなし／AIありを切替 | TEI FlowのOperation/Grant/Effectは同じ契約、Adaptive Activityは推薦のみ。#1158/#3278 |
+| **HF-37** | PluginがAuthorize前後のHook順序を変更し、未認可Executeを提案 | Hostが拒否し、Hook提案/実Invoke/実Effectを別票。#951/#2515 |
+| **HF-38** | Flow図表だけ変更、Generator出力は不変 | 実Flow変更は不合格。図表→モデル→生成物の差を確認。三視点/Modeler Owner |
+| **HF-39** | SEI Recommendation保存後、TEI Source revisionだけ変更 | H3-A0のSource再読取/失効を別表示。SEI H3/TAI #168 |
+| **HF-40** | Decisionのみ再開、Question/Unknown/Conflictは未保存 | H3-A2の未解決継続は不合格。SEI Writer/Reader Owner |
+| **HF-41** | HV-3既存Harness+Skillが独立Expectedを満たす | HV-4独自Loopを棄却。実H2/H3資格とCostを比較。#2509/TAI #168 |
+
+**Critical Path**：P0は実Source/FunctionのDと比較適格H2（T/A）を**並列**に進める。H3-A0はSource参照の保存再読取という一つの縦切りで独立実施。Lifecycle/Flow/Pluginの追加実装は既存契約で表現不能な反例から起票し、独自Harness・新Host・新中央Registryを前提にしない。**HF-36〜41、実H3-A0/A1/A2、Plugin Hook実行、Flow図→Generator、HV-4比較は今回NOT RUN**。
