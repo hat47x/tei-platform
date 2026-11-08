@@ -350,7 +350,7 @@ func main() {
 		return
 	}
 	if command == "inspect" {
-		code, err := inspectWorkspaceJSON(os.Stdout, *workspacePath, *worldPath, *subjectKind, *subjectID, fs.NArg())
+		code, err := inspectWorkspaceJSONSelected(os.Stdout, *workspacePath, *worldPath, *subjectKind, *subjectID, fs.NArg())
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}
