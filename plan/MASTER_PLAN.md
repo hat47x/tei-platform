@@ -605,6 +605,27 @@ external LLM
 
 最初に判定すべき停止条件は、(a)実Loaderに届かない設計、(b)同一Workspaceの指紋では見えない外部Provider改訂、(c)図・CRUDから実Readに到達しない辺、(d)選択Providerと実呼出し先の不一致、(e)Tool正常終了だがConsumer受領欠落、(f)認証済み主体を業務権限へ誤写像、(g)未実行のBOM組合せをPASSとする誤判定、の七つとする。新たな抽象化より先に各Ownerの既存Scenario/独立Expectedで**一対の正常・負例**を実行し、最初に失敗した辺と次の必要なProbeを示す。古い確定Gate B/C、合成テスト、Draftの資料を現在の製品E2Eへ転用しない。
 
+#### 共通アプリケーションAPIの採用と既存Harness比較の入口（2026-11-08、ADR-0048／新Host不要）
+
+**採用済みの設計判断**：[ADR-0048](adr/0048-shared-application-api-and-transport-adapters.md)により、CLI・MCP・HTTP/API・Web・Desktopから原則として**同じ型付きアプリケーション操作**を利用する。これはHTTPサーバーを常駐させる判断ではなく、localはプロセス内、remoteは明示した接続先で呼ぶ。開発者向けCLI、Editor/Studio、外部Harnessは同じ意味の操作を使うが、HostのWorkspace解決・開示・認可・副作用をこのAPIの内部に暗黙統合しない。現段階で全入口の同値性が実装・検証されたという意味ではない。
+
+既存[#3419](https://github.com/hat47x/tei-platform/issues/3419)／[#3420](https://github.com/hat47x/tei-platform/issues/3420)のCAPI-1/2では、最初の4操作を **catalog / inspect / trace / validate** に限定する。特に`validate`で、呼出しの正常終了、意味Validationの合否、warning、Source root不在、missing/unknown、`failure.code`とsource範囲を型付きで区別し、CLI v0 wireは互換投影で保持する。MCP参照Adapterには同じ成功／失敗を返さない既知の差があり、現実行経路の同値試験はまだ完了していない。CAPI-3[#3421](https://github.com/hat47x/tei-platform/issues/3421)のHTTP/StudioとCAPI-4[#3422](https://github.com/hat47x/tei-platform/issues/3422)のProposal／受理／実行はその後の別資格とし、read-onlyだけで現在Grant/Effectを許可しない。Plugin側[#951](https://github.com/hat47x/tei-platform/issues/951)／[#1251](https://github.com/hat47x/tei-platform/issues/1251)の選択→実Handler呼出しとも一つに潰さない。
+
+**独自AI Harnessは当面、実装決定ではなく追加価値の比較対象**とする。判別したい問いは「TEIの製品操作・Plugin・Skillで提供できない、再現可能な価値が独自Harnessの追加責務にあるか」である。固定Fixture/同一Source・Task・モデル/予算・Tool権限・開示条件を揃え、次を別々に評価する。
+
+| 対照 | 実行する範囲 | 対象とする価値・比較不可の範囲 |
+| --- | --- | --- |
+| **B0** 決定的な共通API/CLI直接操作 | 4 read-only操作の取得、Source/診断/版/Requiredの確認 | データ取得・判別の基線。未知Ruleの自律生成は対象外であり、その非生成を「Harness品質不足」と採点しない |
+| **B1** 既存外部Harness＋同じCLI/Tool（Skillなし／あり） | 独立Sessionで同じD（設計入力）・T（Tool受領）を検証し、G（未知Ruleのテスト候補生成）は別に盲検採点 | 既存Skillの純増分、Tool呼出回数、Token、待ち時間、コスト、誤肯定／誤不存在、不要操作を測定。単なるSkillロードやTool Exit0を増分成果にしない |
+| **B2** 既存Harnessの薄いTool/Plugin Adapter（必要時だけ） | B1で反復して確認された一つの不足（例：型付き失敗/受領境界）が共通API＋薄いAdapterで解決するか対照 | Adapterで足りれば独自Agent Runtimeは作らない。Model/Providerを追加した改善と専用Harnessによる改善を混ぜない |
+
+既存[DSH #2509](https://github.com/hat47x/tei-platform/issues/2509)のH2/H3では実Tool読取とSkill本文の限定一致を観測しているが、`model catalog`の各8,192-byte切断、56 Tool Request対55 Result、stderr付着、再利用Sessionの混入により**独立比較適格は0/4**。その過去4件を再採点して価値証明に転用せず、[#2515](https://github.com/hat47x/tei-platform/issues/2515)が持つ実OS/Network/Log送出と、[#2514](https://github.com/hat47x/tei-platform/issues/2514)が持つ独立Expected／Mutantを満たす**新しい独立4 Session**を優先する。Dを取得できてもTが途中切断なら、Gの成否と推定ROIを`not-qualified`にする。
+
+最初の比較Taskは、P0-Dの一Function・3 Required RuleのContextと、T1-Bの**未提示Rule由来の新規負例を1件選択する能力**を別々の問いに分割する。Harnessに独立ExpectedやBlind Mutantを渡さず、旧Source改訂、欠落Relation、0件/partial Rowset、Selected Provider Bと実Invocation Aの取り違えを既存Scenarioへ委譲する。結果票には成否だけでなく、対象Run/Sourceのbyte・契約・actual Tool/Provider・応答終端・独立採点、実隔離と送出、使用Token/時間/費用、再試行を残し、任意の過大主張を拒否する。Domainを一つ追加しても差が残るか確認し、用途特化が必要なら汎用Harnessではなく**Domain Plugin/Skill/Policy Adapter**で足りる可能性を先に評価する。
+
+**採否の停止線**：B1で既存機構の不足が独立に再現され、B2でも解消しない明確な機能差があり、少なくとも異なる2種類のTask/Domainで正確性・再現性・費用/運用負担・実効隔離の改善を確認するまでは、独自共通Harnessや新常駐Agent RuntimeをTEIの必須配備に追加しない。比較用の局所PoCは継続できるが、新しい証拠台帳・Owner・Test SSOTは作らず、#2509/#2514/#2515/#3262の既存経路へ結果を記録する。**今回の追加は計画のみ**。共通API実運用、CLI/MCP/Studioの完全同値、外部Harnessの新比較、独自Harnessの効果、OwnerのMeaning受理はNOT RUN/未検証。
+
+
 
 ## 2026-11-01 深掘り設計の位置づけ（評価待ち）
 
