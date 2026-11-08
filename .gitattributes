@@ -130,3 +130,6 @@
 
 # Binding-to-execution reference output is hashed as raw bytes by its README.
 /plan/evidence/BINDING_TO_EXECUTION_REFERENCE_2026-11-09/** -text
+
+# Connect point comparison output is hashed as raw bytes by its README.
+/plan/evidence/CONNECT_POINT_C1_C2_2026-11-09/** -text
