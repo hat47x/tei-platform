@@ -1613,7 +1613,7 @@ KON Dataspaceは独立・任意のData Source候補であり、TEIのテスト�
 ---
 
 <!-- tei-test-20261108-coverage-provenance-direct-binding -->
-## 31. 2026-11-08 実コード照合で発見したCoverage証拠の出所ギャップ（TT-147〜151）
+## 32. 2026-11-08 実コード照合で発見したCoverage証拠の出所ギャップ（TT-147〜151）
 
 ### 31.1 #3365の限定成功と、まだ未証明の直接結合
 
