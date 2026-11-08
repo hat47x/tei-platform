@@ -588,3 +588,23 @@ G2-Pの入力は`actual sourceBytes/baseSha256/startByte/endByte/expectedBytes/r
 この移動による**権限の実装差は一つ**である。TEI・SHO間の実Plugin/BOM/Host Grantを設計し直すのではなく、GitHub CI RunnerのSourceアクセス権が属する**Repo Ownership**へJobを配置した。SHO Private→TEI Publicの読取は、その限られた公開Fixtureを同一Attemptで受け取るためだけに使う。公開済みK1のSourceを別Audienceへ再配布できる根拠ではない。
 
 **検証資格**：TEI CI #42461670105のcheckout前拒否は実ログで**FAILを観測**したが、非公開Repo Readerの本体は未起動。SHO Draft #27の最新exact HEAD Jobの成功・実CLI Receiptが確認できるまではK1Rを**NOT RUN**とする。K2二Consumer・G2 Writer・SUI H1・Owner Meaning/Disclosure・外部H2/H3は引き続き未達。
+
+
+### 16.4 Private SHO実Readerの同一物理Source受領を実CIで確認
+
+[SHO Draft PR #27](https://github.com/hat47x/sho-composer/pull/27)の修正HEAD \`ec169bf63f5010c3dc5d3389ee4efe2522419775\` に対する [実CI #42462172893](https://github.com/hat47x/sho-composer/actions/runs/42462172893) は**completed/success**、実Jobログに\`actual_local_sho_reader=PASS\`が4ファイル分あり、固定\`sha256\`と同一Byte長に一致。
+
+| TEI K1現物 → SHO G1b実CLI | Raw Bytes | Scoped \`link_open\` | 文書内全Reference |
+| --- | ---: | ---: | --- |
+| index.md | 309 | 3 | UNKNOWN |
+| data/order.md | 480 | 0 | UNKNOWN |
+| functions/submit.md | 600 | 1 | UNKNOWN |
+| business/submit.md | 492 | 1 | UNKNOWN |
+
+不存在の合成PathをCLIが\`not-found\`/失敗とする**負例もPASS**。いずれも公開TEIの固定Commit \`52908f5f4fe95d7049c0beb4d2dd60ee04e80858\` にある実物理Fileであり、SHO私有Repo内のコピーFixtureではない。SHO側の実Codeはpin済み\`fc0127400733bac161b3fc0d556f451991d0a510\`、Parserは\`markdown-it 14.3.3\`、Source revisionは\`unknown\`のまま。
+
+**赤→緑の追加反例**：初回[SHO CI #42461984903](https://github.com/hat47x/sho-composer/actions/runs/42461984903)では、実CLIの4 File Receiptは全件出ていたが、CI終了時の\`git status --untracked-files=all\`が\`npm ci\`で作る\`node_modules\`を不正なSource編集と誤認してFAIL。修正後は追跡対象Fileに実差分がないことを\`git diff --quiet\`と\`git diff --cached --quiet\`で確認し、同じ実ReadのStepも**全Job success**。\`node_modules\`の存在を製品Build/BOM/実Runtime意味資格へ転用しない。
+
+**Claim ceilingの更新**：K1Rの**「SHO実G1bが公開TEIのPinされたMarkdown原Byteを直接受領」**は実証済み。従来の「実SHO CLI試行NOT RUN」は履歴状態に変更。これはTEIのK1 Scopeであり、SUI実Producer H1（通常CI SKIP）、SHO G2実Disk Writer、OKFの正式type/frontmatter F0全適合、TEI/SHO同一Plugin二Consumer K2、Owner採用、非公開Source Disclosure、TAI Attested Computationを満たさない。
+
+**次の最小P0**：この実Readの経路を、将来の選択済みOKF Reader/Validator Contractに接続する場合、\`Content SHA一致\`、\`Spec subset解析\`、\`Required→Received\`、\`Current Principal/Disclosure\`、\`Plugin実Invoke\`を別票に保つ。TEI/SHOそれぞれで既存Router/Inspector/Readerを使い、第二のパーサ/Host/Registry/Policy Engineを追加しない。PR #27もDraftのまま、Ownerの正式受理を推論しない。
