@@ -775,3 +775,21 @@ Ontology DSL／Decision Twin／外部シミュレーションSDKの本格製品�
 **記録の最小単位**：既存Evidence/RunLog/Source Indexに、`Attempt ID／Function ID／Query ID／Source Cohort／Selection Epoch／actual Provider／Consumer／Required Closure／Expected ID／Result(PASS|FAIL|SKIP|NOT-RUN|UNKNOWN)`を**read-onlyで照合**する。これは新しい共通Ledger・Schema・Runnerを義務化するものではない。証拠が複数Attemptに分散する場合は一Attemptと偽装せず、比較可能な範囲だけ引用する。
 
 **今回の資格上限**：#3532はmain統合済みの設計更新、#3486はDraftの実装候補。ここで追加したのはdocs-onlyの検収契約であり、新Go/CLI/Wails/実PG/Provider/Receipt/Owner意味受理は**NOT RUN**。本PRのexact-head CI/現在mainとの整合を別途検証する。
+
+<!-- tei3483-optional-headless-kon-sho-consumer-20261108 -->
+### 14.36 標準UIを必須としないConsumerと、KON・SHO・B2Cの任意連携を受入に接続する
+
+**採用する製品境界**：TEIは受理済みData/Function/Businessの意味、型付きOperationと共通Application APIを提供するが、エンドユーザーの標準Form/Panel/Table採用を要求しない。RQ-036の全体Model Mapは設計・理解・診断の標準であって、個別の高付加価値B2C画面にTEI WebViewやTEI/KON JSを組み込む義務ではない。完全Headless/独自UX・独自Design System・頻繁なExperimentは第一級のConsumerとして受入対象にする。Experience Intent、Conversion指標と業務Meaning/Current Grant/実Effectは別々に評価する。B2C詳細の正本は[Issue #3509](https://github.com/hat47x/tei-platform/issues/3509)、[設計Draft #3512](https://github.com/hat47x/tei-platform/pull/3512)、[横断Draft #3529](https://github.com/hat47x/tei-platform/pull/3529)に残す。
+
+**基盤の非強制性**：KON Dataspaceは必要時に選べるStorage/Version/Publish/Data Providerであり、TEIの必須Host/中央Meaning Registryではない。SHO ComposerはSource引用を保持する文書構成Consumerであり、TEIの解析・意味受理を上書きしない。CLI→Git→静的Artifact配信はKONなしで独立受入でき、非技術者向けWeb画面が必要な場合も編集・Preview・Revision・公開操作だけを既存共通Application APIと選択Adapterから提供する。全TEIをWebアプリ化すること、第二Parser・第二TEI Runtime・第二Auth Engineの先行実装は避ける。詳細は[横断Draft #3528](https://github.com/hat47x/tei-platform/pull/3528)／#943に委譲。
+
+| 消費経路 | 必要な独立Expected・負例 | 先行条件と停止線 |
+| --- | --- | --- |
+| CLI生成→静的配信 | 実Artifact byte/配備Revision/外部Consumer再取得を区別。Git Push/Publish ACK成功でも実配信Byteが違えば不合格。外部Provider原文改版とCache旧版を拒否 | #943/#1163/#3479/#2516。KON/Studio/全TEI Web化は前提にしない |
+| 完全Headless B2C | 独自UIで同じOperation/Scope/Grant/実Readを利用、TEI UI部品ゼロでも成立。A/B結果、Conversion/CVRを独立Experimentで比較。別Audienceの非公開情報流用を拒否 | #3509/#3512、ADR-0048、#1251。実CVR上昇は未検証 |
+| 任意KON付きWeb編集 | Document Storage byte/Revision/条件付き更新/公開権限とTEI Source・Meaning版を分離。KON未接続のCLI Routeを不当に拒否しない。版競合と取消を別判定 | KON Dataspace／#1124。正式KON実Service APIの存在を仮定しない |
+| SHO文書出力・引用 | Original Source location/byte span、文書Occurrence、Working Copy、別Open再Read、Publisher/開示Scopeを分離。SHO Draft #25の限定保存を正式Publishとしない | [SHO #25](https://github.com/hat47x/sho-composer/pull/25)／#2621。正式Writer・Source再資格は別 |
+
+**初回一Functionの優先順位は不変**：#2586の実Function→Query→Provider Read、#1124の三視点Source/Meaning、#1251の通常CLI・実Wails S2を並走し、同じActor/Scope/Source Revision/Read Cohortが確認された部分だけP0-Cで接合する。静的公開／KON／B2C／SHO／AI性能改善は任意のPressure/Consumer試験であり、初回Product R0のHard Gateに追加しない。標準表現の変更とBusiness Meaning/Effectの変更を自動同一化しない。
+
+**資格上限**：#3505/#3439の採用設計と#3528/#3529/#3512の未統合Draftから抽出した受入境界のみ。新Web/KON/静的配信/B2C商用Checkout/SHO正式Writer/Browser/実CVRの製品E2E・Owner Meaning受理は今回NOT RUN。新独立Expected正本、万能Gateway、専用Runner、Auth/Runtimeを追加しない。
