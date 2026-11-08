@@ -1613,7 +1613,7 @@ KON Dataspaceは独立・任意のData Source候補であり、TEIのテスト�
 ---
 
 <!-- tei-test-20261108-coverage-provenance-direct-binding -->
-## 33. 2026-11-08 実コード照合で発見したCoverage証拠の出所ギャップ（TT-147〜151）
+## 33. 2026-11-08 実コード照合で発見したCoverage証拠の出所ギャップ（TT-153〜151）
 
 ### 33.1 #3365の限定成功と、まだ未証明の直接結合
 
@@ -1627,11 +1627,11 @@ KON Dataspaceは独立・任意のData Source候補であり、TEIのテスト�
 
 | ID | 変更する一軸 | 期待する診断・禁止する主張 | Owner |
 | --- | --- | --- | --- |
-| **TT-147 Receipt出所のすり替え** | `verified:true`とStep IDだけコピーした別AttemptのReceiptを混入 | `verified`だけでは`observed-in-current-attempt`に昇格不可。実CLI invocation/Source/Scenario/Resultへの参照と同一Attemptの一致が必要 | #3365/#1180/#2514 |
-| **TT-148 Operation共謀誤値** | `expected_operations`とReceiptの`operation`を同じ別Operationへ置換 | 自己一致はPASSし得るが、独立Scenario SSOTのStep→Operation固定値と実Resultの照合で拒否 | #3365/#1180 |
-| **TT-149 正常Stepの証拠と異常Receipt混在** | 正常Step Receiptは独立に検証済み、別Stepだけ重複/不正 | 不正行を含む**目録全体**はinvalid。ただし個別Attemptで独立検証済みの正常Step Witnessは、Source/Identity/Disclosureが比較可能なら別途保持。現`scoped_step_coverage`の全消去挙動を全体Coverage意味へ流用しない | #3365/#2514 |
-| **TT-150 終端自己申告** | Callerが`end_received=True`、実外部受信にはend/ACKなし | `complete-for-one-pinned-scenario`を外部Tool Delivery完全性に昇格不可。受信Stream/Session/Count/ACKの別Witnessが必要 | #2509/#3365/#2515 |
-| **TT-151 Function存在とRule到達の乖離** | main #3482のCapability/Application/Source Requiredは一致、実Scenarioが別Operation/Ruleを評価 | Function `bounded-present`を実Rule Coveredにしない。Scenario→実Target→Rule Evaluator→Independent Expectedの同一Attempt連鎖を確認 | #3262/#2586/#1180/#2514 |
+| **TT-153 Receipt出所のすり替え** | `verified:true`とStep IDだけコピーした別AttemptのReceiptを混入 | `verified`だけでは`observed-in-current-attempt`に昇格不可。実CLI invocation/Source/Scenario/Resultへの参照と同一Attemptの一致が必要 | #3365/#1180/#2514 |
+| **TT-154 Operation共謀誤値** | `expected_operations`とReceiptの`operation`を同じ別Operationへ置換 | 自己一致はPASSし得るが、独立Scenario SSOTのStep→Operation固定値と実Resultの照合で拒否 | #3365/#1180 |
+| **TT-155 正常Stepの証拠と異常Receipt混在** | 正常Step Receiptは独立に検証済み、別Stepだけ重複/不正 | 不正行を含む**目録全体**はinvalid。ただし個別Attemptで独立検証済みの正常Step Witnessは、Source/Identity/Disclosureが比較可能なら別途保持。現`scoped_step_coverage`の全消去挙動を全体Coverage意味へ流用しない | #3365/#2514 |
+| **TT-156 終端自己申告** | Callerが`end_received=True`、実外部受信にはend/ACKなし | `complete-for-one-pinned-scenario`を外部Tool Delivery完全性に昇格不可。受信Stream/Session/Count/ACKの別Witnessが必要 | #2509/#3365/#2515 |
+| **TT-157 Function存在とRule到達の乖離** | main #3482のCapability/Application/Source Requiredは一致、実Scenarioが別Operation/Ruleを評価 | Function `bounded-present`を実Rule Coveredにしない。Scenario→実Target→Rule Evaluator→Independent Expectedの同一Attempt連鎖を確認 | #3262/#2586/#1180/#2514 |
 
 ### 33.3 実装への接続順序
 
@@ -1643,7 +1643,7 @@ KON Dataspaceは独立・任意のData Source候補であり、TEIのテスト�
 
 **P1**：#2509の外部Harness終端・ACK、#2515のDisclosure/OS送出、#2586の実Provider、#3420のCLI/MCP Transportは各OwnerのEvidenceを参照する。新しいReceipt Store/Runner/Authority/第二Coverage Engineは作らない。
 
-**資格**：本節は実コードの静的照合と既存PRの試験結果に基づく**設計上の欠落指摘**。TT-147〜151の新しい実Go/CLI/外部H3テストは今回**NOT RUN**。#3365はDraft/未main統合であり、局所test-onlyのPASSを製品の実行証明に昇格させない。
+**資格**：本節は実コードの静的照合と既存PRの試験結果に基づく**設計上の欠落指摘**。TT-153〜151の新しい実Go/CLI/外部H3テストは今回**NOT RUN**。#3365はDraft/未main統合であり、局所test-onlyのPASSを製品の実行証明に昇格させない。
 
 <!-- tei-test-lrh-evidence-provenance-20261108 -->
 ## 34. 2026-11-08：実行結果の出所とHandoff対象集合を分けるTest Evidence契約
