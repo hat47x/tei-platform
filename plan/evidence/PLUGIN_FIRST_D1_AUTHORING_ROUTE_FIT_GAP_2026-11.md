@@ -148,3 +148,36 @@ Sourceだけを保存・表示するRaw Editorと、Role/Meaningを提示するI
 **P0と並列の方針**：新しい全Source Reader／一括Markdown Parser／汎用Trait実装／Verified BOM製品／Recursive Self-buildの完成を、Inspector D1の先行条件にはしない。D0-P→D1-Pを最短のP0として継続し、D1-S/A/B/Tは同じ実ScenarioのClaimに必要な部分だけ連結する。Issue→DesignテストドッグフーディングではRaw保全・三視点・Function Readを各Ownerで並行させ、Source未読込を「未定義」と扱う誤PASSを共通D1で検出する。
 
 **今回の新規観測の限界**：現行GitHub Source・PR/Issue・過去の限定Reference結果を照合した。D1の実Provider選択→CLI/Studio実Call、上記AS-13〜20の新実行、最新版Coverageの実再計測、外部H3の完全受領・実DB/実WebView・Owner受理は**NOT RUN**。#3337/#3296/#3336/#3333の限定実装・既存実験結果を、今回の追加試験のPASSとして加算しない。
+
+
+## 10. D1aの実Product直結Baseline：CLIとStudioの同一Source投影（2026-11-08）
+
+**この段階で固定するのは既存の直接Operation経路の互換性だけ**。新しいPlugin Provider経路の成功ではない。mainの実 `cmd/tei/cli_inspect.go` は `operations.InspectSubject` を直接呼ぶ。一方、現在mainの `internal/studiohost/readonly.go` はHost allowlistの検査後に同じOperationを直接呼ぶ。両経路が同じライブラリを用いることと、二つの独立したSurfaceの結果が揃うことを混同しない。
+
+- 新製品Goテスト `cmd/tei/cli_inspect_studio_shadow_test.go` は既存 `reference/workspace` の**Data `sales.order`、Validation `sales.order_line.line_number_positive`、Relation `sales.order.lines`**を同じabsolute Workspaceに対してCLI JSON helperとStudio Host APIの**別呼出し**で実取得する。Source/Subject/Canonical/Workspace Identity/World Fingerprint/Source Index Fingerprint/Operation Effectを、当該既存呼出しの互換基準として照合する。
+- 負例では存在しない `semantic-data` Subjectを二つのConsumerへ渡し、CLIはexit 1・`SUBJECT_NOT_FOUND`、Studioも同じ意味の`SUBJECT_NOT_FOUND`を返し、成功や空集合へ縮退しないことを確認する。CLIとStudioのEnvelope形・Workspace Host許可の差はそのまま保持する。
+- [#3371](https://github.com/hat47x/tei-platform/pull/3371) は**Draft**としてStudio Hostへ `InspectionService` を注入する候補。Providerが未提供なら旧直接経路へ無断fallbackしない正例・負例は提案済みだが、CLI側にはまだ同じ選択されたServiceがなく、`composition.Registry`のexact Contract/ProviderとBuild/Invokedの証拠束縛もない。既存の直結Parity Testが通っても、**D1bのPlugin-first二Consumer証明は未達**。
+- [#3337](https://github.com/hat47x/tei-platform/pull/3337)／[#3350](https://github.com/hat47x/tei-platform/pull/3350)／[#3363](https://github.com/hat47x/tei-platform/pull/3363) のPlugin/Capability Bindingと、[#3336](https://github.com/hat47x/tei-platform/pull/3336)／[#3360](https://github.com/hat47x/tei-platform/pull/3360) のBuild Stage Witnessは**別Fact**。本Parity Testの`reflect.DeepEqual`は実選択Provider Identity、Build member、Plugin Loadや同一Attemptの証明ではない。相互参照する際は既存#951/#1016のResolver、#1180/#2514の独立Expected、#3267のBOM Claim Ceilingを用いる。
+
+**次の実装順（既存D1-Pを進め、新Gateを増やさない）**：
+
+| 段階 | 観測と拒否する負例 | 資格の上限 |
+| --- | --- | --- |
+| D1a直接Baseline | 同じabsolute WorkspaceのData/Rule/RelationがCLI・Studioで別々に読める／欠落Subjectを両方拒否 | 直結Operationの同一Source互換 |
+| D1a Host Service Shadow | #3371のHost選択Serviceが前段Baselineと同等のResult/Failureを返す。Missing Service・wrong Source/Subject・異Schema・書込みEffectは拒否 | Studio Hostの型付きService縦切り。まだPlugin選択ではない |
+| D1b実Provider二Consumer | Provider A/Bの選択と**実CLI/Studioそれぞれのcall site→actual invoked Provider**を同一Source/Scope/Revision/Artifact/Runへ束縛。**B selected→A invoked（値が同一）**でも不合格。未選択Providerの物理混入も別に照合 | 選択済みInspectorの実Consumer適合。現在Grant/他Target/意味受理は別 |
+| D1+独立Required Test | #3354の11実Reply/32局所Controlsと本3 Subject受領を別母数とし、Function/BusinessのRequired Closure、Not-loaded Markdown #3346、部分／未知、完全な外部Tool Replyを別に検収 | 全Functionの完全性、AI盲検T1-B、C1／G1/G2/G4合格を主張しない |
+
+**受入証拠の現状**：この追補および新Go Testは独立Draftの候補。Go Codeを既存の製品CLI/Studio公開方法で比較するが、**新PR exact-head CI実測前はPASSを宣言しない**。いずれの発見済みOwnerのGateやSource/Accepted Meaningを変更しない。新Kernel/Host/Resolver/Runnerは追加しない。
+
+## 11. 2026-11-08 Function Capability/API同一Surfaceの限界と最短引渡し
+
+現mainに統合済み [#3482](https://github.com/hat47x/tei-platform/pull/3482) は、**同一1 Functionに対する独立Required**を、`semantic-capability:sales.order.submit`・`application:order_entry`・Source/Rule/Relationへ接続し、実CLI **13 reply／42個の試験専用Controls**で限定照合した（専用CI成功）。だがこれはCLI 1 ConsumerのRequired sliceであり、Studioとの同一操作結果やPlugin実Providerを測ったものではない。
+
+D1aの製品試験へ、既存Data/Validation/Relationの3 Subjectに加え、**Capability `sales.order.submit`／Application `order_entry`／Application Pattern `order_entry.submit_order`**の3 Subjectを追加した。CLI JSON helperとStudio Host APIを、それぞれ現行の直接`operations.InspectSubject`経路から別々に呼び、型付きResult/Source/Workspace/World・Index Fingerprintと`SUBJECT_NOT_FOUND`の既存不変条件を照合する。この6 Subjectの直接Parityを「1 Functionの全Required Source/Business/OperationがComplete」とはしない。Required/Observed/unknownは#3262/#3482が判定する。
+
+並行する[CLI Selected Inspector Draft #3381](https://github.com/hat47x/tei-platform/pull/3381)は`inspectWorkspaceJSONWithService`の型付き注入口と共有Result Validatorを持つが、[Studio Host Selected Inspector Draft #3371](https://github.com/hat47x/tei-platform/pull/3371)は現時点で同等の型・Resultチェックを独立に実装している。**両PRが実mainに統合されるまで、それらを同じContract/Providerの実呼出し成功と扱わない。** #3371の従来TestがBuiltin fallbackを期待していた問題は、新しいfail-closed契約と整合するようPR内で修正候補を追加した。正例にはactual selected Provider BをCLI/StudioそれぞれのServiceへ注入し、**B選択→A実Invokeを値が同じでも拒否**する追加のHost-side witnessが必要。単に型付きService injectionが成功しただけではPlugin/built artifact/現在Grantを主張しない。
+
+さらに[外部Provider Source-only drift Draft #3479](https://github.com/hat47x/tei-platform/pull/3479)は、Consumer側World／Source Index FPが不変でも**importされたProviderの原文byteだけが変わり得る**という別Scopeの反例。D1aで同じConsumer FPと同じResultが取れても、D1b Provider/Contract/BOMの再利用資格はProvider原文の現在revision/observationと別照合する。新`Source FP`一種類へ合算しない。
+
+**状態**：本追補は既存direct APIの製品対照Goテストと、並行Draftの受入境界を更新したもの。#3378の改訂HEADでGo/CI実行を確認する前に新3 Subject PASSとは呼ばない。真のPlugin Resolution/Build inclusion/二Consumer invocation/Independent Expected/外部Source freshness/Qualified BOMとOwner Meaningは**未実証**。第二Service Registry／MCP専用Host／新Test Runnerは作らない。
