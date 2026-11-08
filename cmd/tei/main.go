@@ -159,11 +159,11 @@ func main() {
 	subjectKind := fs.String("subject-kind", "", "Source Index subject kind")
 	subjectID := fs.String("subject-id", "", "Source Index subject ID")
 	traceScope := fs.String("scope", "", "scope for typed modelref trace projection")
-	traceDirection := fs.String("direction", "both", "trace incoming, outgoing, or both")
-	traceMode := fs.String("mode", "summary", "trace summary or full")
+	traceDirection := newSetStringFlag(fs, "direction", "both", "trace incoming, outgoing, or both")
+	traceMode := newSetStringFlag(fs, "mode", "summary", "trace summary or full")
 	traceOffset := fs.Int("offset", 0, "explicit full trace result offset")
 	traceLimit := fs.Int("limit", 0, "explicit full trace page size; 0 returns all rows")
-	traceExpectedFingerprint := fs.String("expected-fingerprint", "", "expected typed trace snapshot fingerprint for continued pages")
+	traceExpectedFingerprint := newSetStringFlag(fs, "expected-fingerprint", "", "expected typed trace snapshot fingerprint for continued pages")
 	expectedDataDesignFingerprint := fs.String("expected-data-design-fingerprint", "", "expected Data Design Context fingerprint; knowledge-context fails on mismatch")
 	dataDesignCandidateKind := fs.String("data-design-candidate-kind", "", "Data Design candidate kind: business-identity|functional-dependency")
 	dataDesignCandidateFingerprint := fs.String("data-design-candidate-fingerprint", "", "current Data Design candidate fingerprint")
@@ -336,10 +336,26 @@ func main() {
 		}
 	}
 	if command == "trace" {
+		// An explicitly empty -direction/-mode is not "the flag was omitted":
+		// the CLI advertises direction=both and mode=summary, and the typed
+		// normalizer would otherwise turn "" into mode=full, which returns rows
+		// the caller did not ask for (#3605).
+		if traceDirection.set && traceDirection.value == "" ||
+			traceMode.set && traceMode.value == "" ||
+			traceExpectedFingerprint.set && traceExpectedFingerprint.value == "" {
+			report := cliTraceReport{SchemaVersion: "tei.cli.trace/v0",
+				Error: &cliInspectionFailure{Code: "INVALID_ARGUMENT",
+					Message: "trace -direction, -mode and -expected-fingerprint must not be empty when supplied"}}
+			code, writeErr := writeTraceReport(os.Stdout, report, 2)
+			if writeErr != nil {
+				fmt.Fprintln(os.Stderr, writeErr)
+			}
+			os.Exit(code)
+		}
 		code, err := traceWorkspaceJSON(
 			os.Stdout, *workspacePath, *worldPath, *traceScope,
-			*subjectKind, *subjectID, *traceDirection, *traceMode,
-			*traceExpectedFingerprint, *traceOffset, *traceLimit, fs.NArg(),
+			*subjectKind, *subjectID, traceDirection.value, traceMode.value,
+			traceExpectedFingerprint.value, *traceOffset, *traceLimit, fs.NArg(),
 		)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -1310,6 +1326,24 @@ func decodeJSONFile(path string, dst any) error {
 	return json.NewDecoder(f).Decode(dst)
 }
 
+// loadWorldWithIdentity is loadWorld plus the Workspace identity, when the
+// World came from a Workspace. A -world file has no manifest to identify, so
+// the identity stays nil and no value is invented (#3455).
+func loadWorldWithIdentity(worldPath, workspacePath string) (ir.World, *workspace.WorkspaceIdentity, error) {
+	if workspacePath != "" {
+		r, err := workspace.Load(workspacePath)
+		if err != nil {
+			return ir.World{}, nil, err
+		}
+		return r.World, workspaceIdentityPointer(r), nil
+	}
+	w, err := loadWorld(worldPath, workspacePath)
+	if err != nil {
+		return ir.World{}, nil, err
+	}
+	return w, nil, nil
+}
+
 func loadWorld(worldPath, workspacePath string) (ir.World, error) {
 	if workspacePath != "" {
 		r, err := workspace.Load(workspacePath)
@@ -1328,6 +1362,29 @@ func loadWorld(worldPath, workspacePath string) (ir.World, error) {
 		return ir.World{}, err
 	}
 	return w, nil
+}
+
+// setStringFlag records the value and whether the caller supplied the flag.
+// An omitted flag and an explicitly empty value are different requests; only
+// the first may take the advertised default (#3605).
+type setStringFlag struct {
+	value string
+	set   bool
+}
+
+func (f *setStringFlag) String() string { return f.value }
+
+func (f *setStringFlag) Set(raw string) error {
+	f.value = raw
+	f.set = true
+	return nil
+}
+
+// newSetStringFlag registers a set-aware flag with its advertised default.
+func newSetStringFlag(fs *flag.FlagSet, name, defaultValue, usage string) *setStringFlag {
+	f := &setStringFlag{value: defaultValue}
+	fs.Var(f, name, usage)
+	return f
 }
 
 func findEnvironment(w ir.World, id core.CanonicalID) (environment.Environment, bool) {
