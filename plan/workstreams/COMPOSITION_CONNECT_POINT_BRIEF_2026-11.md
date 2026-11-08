@@ -92,7 +92,7 @@
 
 この新しい参照をHTTP側[HDG-E01〜E05](../design/HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md)と照合すると、v0 `bindingexecution.Run`に具体的な情報喪失がある。**実Executor呼出し後**に`Dispatch`がエラーを返した場合や`ValidateResult`が不正な返答を検出した場合にも、v0は`refusedCount`を増やしていた。しかし、拒否＝未呼出しとして読むConsumerでは、**既に作用した可能性を隠す**。
 
-対策の最小差分は既存`Router`とHost所有のExecutor registryをそのまま使い、`Execute`入口への到達をtest-only witnessで観測すること。Reference report v1では`ranCount`を**Executor.Execute入場**、`refusedCount`を**入場前停止**、`unverifiedCount`を**入場後エラー・不正応答（ranCountの内数）**と分ける。 `executorInvoked`も入場事実だけであり、Receipt、Host Authority、実外部更新を表さない。[参照実装の仕様](../../tools/reference-binding-to-execution/README.md)と[限定反例テスト](../../tools/reference-binding-to-execution/bindingexecution_effect_unknown_test.go)が対応する。**本変更のGo CI実行が完了するまではv1合格を主張しない**。
+対策の最小差分は既存`Router`とHost所有のExecutor registryをそのまま使い、`Execute`入口への到達をtest-only witnessで観測すること。Reference report v1では`ranCount`を**Executor.Execute入場**、`refusedCount`を**入場前停止**、`unverifiedCount`を**入場後エラー・不正応答（ranCountの内数）**と分ける。 `executorInvoked`も入場事実だけであり、Receipt、Host Authority、実外部更新を表さない。[参照実装の仕様](../../tools/reference-binding-to-execution/README.md)と[限定反例テスト](../../tools/reference-binding-to-execution/bindingexecution_effect_unknown_test.go)が対応する。**[限定Go CI #42505232348](https://github.com/hat47x/tei-platform/actions/runs/42505232348)で本v1コードのBXE-01〜06と既存RouterテストはPASS**（Go vet/gofmtもPASS）。この事実は参照実装の局所合格であり、製品実行C-1採用や実外部Effectの受理ではない。
 
 | 反例 | v0で生じた誤読 | v1の独立Expected／残る未資格 |
 | --- | --- | --- |
