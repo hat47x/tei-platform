@@ -46,7 +46,11 @@ type selfBuildOuterEvidence struct {
 	// Present only when the caller named a resolver. It never makes the entry
 	// claim L2: the artifact came from a different child.
 	PlanReceipt *PlanReceipt `json:"planReceipt,omitempty"`
-	Error       *cliFailure  `json:"error,omitempty"`
+	// PlanCrossCheck is §4.8's third observation: the resolver's plan and the
+	// builder's reported plan, compared. Agreement of two self-reports still
+	// does not establish L2-b.
+	PlanCrossCheck *planCrossCheck `json:"planCrossCheck,omitempty"`
+	Error          *cliFailure     `json:"error,omitempty"`
 }
 
 // selfBuildIntentBinding separates "which declaration this entry held" from
@@ -333,6 +337,17 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 		}
 	}
 	report.IntentBinding = intentBinding
+
+	// §4.8's third observation: compare the resolver's plan with the plan the
+	// builder reports. This runs after both children, so a mismatch is recorded
+	// as a finding instead of being mistaken for a precondition.
+	if report.PlanReceipt != nil {
+		record := crossCheckPlan(report.PlanReceipt.PlanFingerprint, evidence.ChildPlanFingerprint)
+		report.PlanCrossCheck = &record
+		if record.State == planCrossCheckMismatched {
+			appendSelfBuildFailure(&evidence, planMismatchCause().Error())
+		}
+	}
 	report.OK = evidence.CrossCheckOK && evidence.FailureCause == ""
 	if !report.OK {
 		report.Error = &cliFailure{Code: "SELF_BUILD_CHILD_FAILED", Message: evidence.FailureCause}
