@@ -799,3 +799,23 @@ G1〜G5で各観測は取得時点が異なる。要求するのは**同一瞬�
 **短期の責務と停止線**：#951/#3350はResolver宣言選択、#3270/#3372は物理情報の非損失投影、#2611/#2622は実DB Target/Provider能力・Apply Admission、#2892はHistory Reader、#1163/#2514はExpectedと実入力の照合、#2555はCutoverのOwner。新しいPhysical Relation正本、Migration向けPlugin Resolver、Project-level History Registryは作らない。§20.8のMA-01/02特性試験は現挙動を特徴付けた段階であり、安全なAdapter拒否・実PG・SHO/Studio実利用・Owner受理は**NOT RUN**。
 
 **統合に関する検証上限**：前HEAD `0675d019c9a3f19ff6edbc4538b229d37e52a2a4` のRepository Healthは**failure**（ほか6つのWorkflowはsuccess）。Jobログでは`internal/database/migration/postgres_apply_test.go`のgofmtと、`RQ-035`の要求マッピング2箇所、設計索引4箇所の不一致を特定。gofmt 1箇所は本PRの後続commit `882e99d5b52141953a01e25400a8c25c330be1b7`で整列し再読取済み。**RQ-035マッピングと索引4箇所は、その後の最新mainに記録が存在することを確認した**ためPR側で重複編集せず、最新mainの内容を損失なく合成する。新exact-headでCI完了するまでGoテスト合格は未認定。
+
+<!-- tei-db-migration-apply-fence-rea-source-handoff-20261108 -->
+### 20.11 観測直後の競合窓とReverse→Meaning→Migrationの証拠引継ぎ（2026-11-08、判別負例追加）
+
+**現行Codeで分かったこと**：`internal/database/migration/postgres_apply.go`の`ApplyPostgresWithFreshObservation`は、`observe(ctx)`の結果でPostgreSQL SQL文列を再Renderし、その直後に別の`execute(ctx, statements)` Callbackを呼ぶ。両Callbackの署名は**同一DB Instance/Session/Transaction/Lock/Grant Epochを束縛しない**。従って、事前のSnapshotが正しく、`BasedOnActualFingerprint`と一致し、再RenderしたSQLが同一でも、**観測後・実Effect直前の別ActorによるSchema/Grant変更（TOCTOU）を防止した証拠にはならない**。一般のDDLにトランザクションがあることだけを根拠に、別接続のReadとExecutorが同一隔離境界にあるとは推論しない。
+
+**新しい特性試験 MA-11（Source保存済み、実PG未検証）**：`internal/database/migration/postgres_apply_test.go`へ`TestMA11ObservationCallbackDoesNotFenceExecution`を追加。合成Callbackが最初に`fp-before`を返し、後続Executor Callback内でSchema世代を`fp-after`へ変更する。現関数が観測Callbackを一度呼び、Executor Callbackを一度呼び、エラーなく戻り得ることを**現挙動として固定する**。これは実DBの並行トランザクションを再現しないため、競合発生率・DDL実効果・ロックの安全性を証明しない。**独立Expected**：正式Apply経路ではTargetとGuardを固定した同一保護境界を検査し、保護できないなら`executeCalls=0`（または具体的なProvider保証条件を満たすまで停止）。Lockの粒度/取得順、接続Pool/DDLの非Tx条件、実Host Grantは#2611/#2622/#2555の実装責務。
+
+**他チャットのReverse/SHO・REA議論の限定的な接続**：既存システムからのReverse成果は`Raw Source → Source Observation → Structural Candidate → Accepted Meaning → Desired Schema/Function/Business → Provider Realization → DB Effect → Independent Observation`の**異なる資格**を持つ。REAから出力した設計資料、観測PK/FK、テーブル同名一致、SHO図面やCRUD生成は、**物理スキーマ変更のOwner受理・移行前提・Target Grant・Cutoverの根拠にはならない**。Source位置/Revision/Scope/欠損・非開示・部分取得、候補採用のOwner/適用範囲/版、Generated SQLのTarget/Generator版を既存#1163 Evidence Packetへ**別欄**で結ぶ。原本変更やA→B→A、参照先移動・取得不能時は、候補/意味/Artifact/Applyの各資格を別に失効させる。外部のReverse連携が存在しても、実Targetへ適用されたことや旧新Client同値性は証明しない。**他プロダクトのリポジトリや独立データ基盤へここから設計判断を書き出さない**。
+
+| 既存Case/工程 | 入力・対立条件 | この段階での独立Expected |
+| --- | --- | --- |
+| **MA-11／G1 Apply Admission** | 直前Readは`fp-before`、別ActorがRead後〜Effect前に`fp-after`へ変更。観測CallbackとExecutorのConnection/Lock/Grant束縛は未提示 | `not-admitted/unknown`のまま、実Execを許容した証明を出さない。使い捨てPGの2接続・同期Barrier・同一/別Tx・DDL/Lock負例で`executeCalls=0`または実競合拒否を独立に実証する |
+| **MA-09・RE-13/14/15／G0** | REA/WorkbenchのCatalog Readerが部分集合・途中切断・異ProviderのSourceを返し、同名テーブル/FKが一部だけ存在 | Rawの部分性、ObservationのScope、Candidateのunknownを保持し、空/不存在を推定しない。Schema DiffのPlan候補はApplyの許可ではない |
+| **MG-05/07・RE-16/17/18／G2〜G5** | Reverse原本やAccepted Meaningが改版・失効し、古いProjection/Artifact/Cacheまたは異時点のSchema Readが混入 | Source/Meaning/Generator/Provider/Actualの版を独立に拘束し、旧成果物一致/SQL一致だけではCurrent Schemaと業務意味の合格にしない。Owner受理・旧新Client/CDCは別 |
+| **MA-07／G1〜G3** | DDL Effectの後History Writer/CLI ACKに失敗。Receipt Kが不明、観測Oも未完了 | 実Effect unknownを維持し同Attemptを再読。誤った新ID再送/重複DDLを禁止。Receiptの有無を現在Schema Oや業務Bへ昇格しない |
+
+**実装に進むための狭い契約**（新Engine/Registryを作らない）：①Providerを**宣言Selection→実接続Capability→Current Target/Grant→Execution**の順で確認し、②`Observation`と`Execute`の間に成立した保証（同接続のLock/Tx/DDL制約/対象Fingerprint再読取/Target Epoch）を**実Host側で観測できる証拠**として残し、③非Tx・部分副作用・Reader errorでfail-closedにする。単なる`fingerprint==`ではABAやCatalog完全性を証明できない。④同じFixtureをWorkbench ReverseとMigrationの**二Consumer**で走らせ、読取Projection/候補とApply Admissionの結果を別Expectとする。テスト・C0/C1・BOMは#1180/#2514/#3267の既存仕組みを使う。
+
+**今回のexact-head CI根拠**：前HEAD `2f7e2a11cf7b37e6741fa63710dd18e8ada5a709` のGitHub Actionsは7件中6件success、Repository Healthのみfailure。Jobログで`go vet ./...`、`go test -count=1 -timeout 60m ./...`、`tei validate -workspace reference/workspace`は**PASS**。失敗要因は`tools/reference-plugin-capability-coverage/coverage_test.go`の`gofmt`のみで、Migration Test failureではない。このGo fileはその後の`main`のBlobが異なり、**当時のHEADと新mainのCIを混同せず、最新main合流後のexact-head CIを再確認**する。追加MA-11単体・現行本番Target・PG実Read/Apply・Meaning/Ownerは**NOT RUN/NOT ACCEPTED**。
