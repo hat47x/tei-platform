@@ -432,3 +432,155 @@ T1-Bの本当の判別は、AIに既存T1-Aの境界入力や非公開Expected�
 **最短実行順**：①#3479が現行Go FixtureのSource/Manifest変化の反例をexact HEADで検収、②#3262が同じRequired一FunctionでImport時の未報告Sourceを `unknown` と扱えることを実Consumerで確認、③そのSourceを必要とするH2/H3 TrialではTool Replyと外部Source occurrenceの両方を固定、④Product Function→actual Provider→Rowsetは#2586、正式BOM/Build/EffectはそれぞれのOwnerで検証する。**外部Importを用いない最初の公開合成H2を#3479の完了待ちで停止させない**。
 
 **状態**：#3477・#3481はmain統合済み。#3479はDraft、実Provider Import Closureの製品読取・実H2/H3受領・Source原子的Snapshot・SHO/REA/KON実連携、T1-B/Owner意味受理は未成立。HI-19〜24は既存テストの重複カウントを禁止した**受入設計**であり、この節の追加による新しい実行PASSではない。
+
+---
+
+<!-- harness-observer-scoped-claim-20261108 -->
+## 11. 2026-11-08：Observer相対の資格・不開示・外部実Readを同じClaim境界へ
+
+### 11.1 何を証明したかではなく、誰に対してどのClaimを証明したか
+
+[Design Context #3262](https://github.com/hat47x/tei-platform/issues/3262)のD/T/G分離と、[外部Harness隔離 #2515](https://github.com/hat47x/tei-platform/issues/2515)のH6-E13〜15を組み合わせ、既存Harness Receipt/Contextの読み方を次のように限定する。
+
+- **D / Design Input**：当該Function/Taskの独立Requiredが、Scope・Source・Role・Rule・Relation・外部Import occurrenceを含めて実取得されたか。現mainの11実CLI Reply/32合成Controlsは、外部Importを含む任意のRequired閉包の証明ではない。
+- **T / Delivered**：同一Attemptの実CLI stdout/stderr/Tool Reply parts/end markerが、指定Consumerに欠落なく届いたか。Harnessの56 Request/55 Replyや8,192 byte切断の負例を、ローカルJSON Copy検査のPASSで埋めない。
+- **G / Generation**：独立Expected/Mutantによって、既知T1-Aと未知T1-Bを分離して採点したか。DとTが成立してもGを自動Qualifiedにしない。
+- **A / Audience & Authorization**：同じ内部Evidenceでも、`internal observer`、`public viewer`、`AI harness`、`SHO/Studio`のどの受領者が、**現時点**でどのProjectionを見てよいか。内部で`permission-denied`と`not-found`を区別できても、公開Viewerへその差を返してよいとは限らない。
+- **E / Effect**：実Provider/DB/外部操作の効果と独立再Readを確認したか。Query結果が空、Tool exit 0、Plugin選択済みという事実から業務効果を導かない。
+
+**Claim資格はD/T/G/A/Eの全項目が常に必要という意味ではない**。例えば公開合成Sourceのローカル説明にはEを要しない。一方、`safe to disclose`にはA、`AI generated a valid new Test`にはD/T/G、`real database-backed Function works`には実Read/Bindingと必要なA/Eが要る。各Claimが必要とする条件だけを独立Requiredに固定し、未観測軸を`unknown`に保つ。新しい共通Gate/Schema/Proof Storeは作らない。
+
+### 11.2 非表示・欠測・空集合を混同しない
+
+[Scoped Coverage #3365](https://github.com/hat47x/tei-platform/pull/3365)の考え方、#2515のObserver差異、[Query/Function #2586](https://github.com/hat47x/tei-platform/issues/2586)を横断する負例を既存のOwnerへ追加する。
+
+| 条件 | 内部の正当な観測 | 公開／外部Consumerの上限 |
+| --- | --- | --- |
+| Requiredの一部が非取得・途中切断 | `partial/not-loaded`と欠測地点を記録 | `complete`、全体Coverage、`qualifiedTestGeneration`にしない |
+| 非可視Row/Sourceがある／存在しない | 権限を持つ内部Observerが拒否理由を区別 | 未許可なら両者を識別可能な診断・件数・Traceを出さない |
+| Filter後0行、実Query未実行、Provider未選択 | `empty-result`／`not-executed`／`unbound`を分離 | 0行を「データなし」や「対象全件検査済み」と断定しない |
+| Local Testの一部だけCovered | 局所Coverageと全体Unknownを併記 | 未観測のRule/RelationをCoverage分母から暗黙除外しない |
+| 以前のSessionにはRawがあったが権限失効 | Historical Receiptと現在Grantを別管理 | Session Resume/Log Replayで旧Rawを新Audienceへ再送しない |
+| 内部Mock/ProxyでEgressが観測されない | 実観測SinkとOS Profileを記録 | 子Process/DNS/Telemetry等未測定の出口まで非漏えいを主張しない |
+
+これは**可視性を理由にRequired不足を隠す設計ではない**。当該Audienceに必要な情報が開示できないなら、内部で不足理由を保持したまま、そのAudience向けClaimは`unqualified/unknown`とする。内部理由の詳細を公開するかは既存Host/Policyの責務。
+
+### 11.3 Product DB実Read・Plugin Trait・SHO/KONを接続する最小Witness
+
+[Draft #3500](https://github.com/hat47x/tei-platform/pull/3500)は、既存Loader Resultからnative Case Queryを組み立て、隔離PostgreSQLの実ExecutorとQuery Mapを使う**オプトイン**の実Read試験を提案する。隔離DB名確認と既存Table拒否を前提とし、環境変数がなければSKIP。したがって通常Go TestのPASS、Fake ProviderのPASS、または本DraftのCIだけから実PG Readが成立したとは言えない。
+
+実DB Readが後日成立しても、`Function Data Context`／Tenant Scope／現在Grant／そのAudienceへの安全なDelivery／Owner意味受理／Product E2は別。必要なら実際に読んだDatabase Identity、Native SQL、Bind Parameter、Result Mapping、Consumer受領を**同一Attempt**で接続する。新しいQuery Executorは作らず既存 `postgresquery.Executor`／`queryresult.Map`を使う。
+
+[Plugin Trait #3278](https://github.com/hat47x/tei-platform/issues/3278)の`Selected / Built-in-included / Loaded-or-Invoked / Exposed / Authorized / Effect-observed`も同様に別資格。選択A・実Invoke B、Trait Contract同版・実装のみ変更、`Retryable`なのに副作用不明、`Encrypted`なのにBrowser plaintext保存を合格にしない。2 Provider×2 Consumerの各tupleは実Build/Invoke/独立Expectedで個別判定し、別TargetのPASSを転記しない。
+
+SHOではCLIからのSource出力とSHO Readerの**実再読取**、Working Copyと保存後再開、Source引用の鮮度を区別する。KON DataspaceはSource/Documentの将来の受け皿候補として検討しても、TEIのDB/Query/意味正本を移さない。SUI側でRaw保存→Reader再取得→複数Canvas投影→Revision/権限/履歴を確認するまで、KON独立運用・SHOクラウド受領の成立を主張しない。
+
+### 11.4 次の最小受入順と既存Issueへの引渡し（HO-25〜30）
+
+| ID | 最小の反証 | 担当・検収境界 |
+| --- | --- | --- |
+| **HO-25** | 必要Ruleが欠落するが局所CoverageはPASS | #3262/#3365/#2514：Task RequiredとCoverage分母、Unknownを分離 |
+| **HO-26** | 内部Observerにはpermission-denied、公開Viewerには対象存在が非可視 | #2515/#1178：公開投影の観測同値。実OS/Policy受理は別 |
+| **HO-27** | 途中切断・空Result・実Query未起動の三ケース | #3262/#2586/#2509：Tool受領とQuery実行の別証拠 |
+| **HO-28** | 実PG未設定でGo PASS、設定後に実Read成功または拒否 | #3500/#2586：SKIPを実PG成功にしない。実DBの隔離実行は未測定 |
+| **HO-29** | Plugin選択済みAだが実Invoke B／Trait Contract同版実装変更 | #3278/#3267/#951：Lock、Build、実Invoke、Effectを別資格 |
+| **HO-30** | SHO/Studio/KON候補へ旧Sourceを引用、Resume時にAudience Grant変更 | #2515/#3262/SHO・KON各Owner：実Reader・Current Disclosure・履歴を別確認 |
+
+**実行順**：①外部Importなし公開一FunctionのD不足を#3262で判別、②独立Expected付きの初回比較適格H2一Sessionを#2509/#2515で取得、③そのTaskが実Providerを必要とするときだけ#3479のImport occurrenceと#3500の実DB Witnessを接続、④SHO/Studio/KONの実Consumer受領とPlugin 2×2を別受入とする。**外部Import、実DB、KON独立化を初回H2の新しい前提条件にはしない**。
+
+**証拠上限**：本節はOwner間の受入設計であり、HO-25〜30、実OS拒否、実PG接続、実H2/H3、未知T1-B、SHO/KON実Reader、Plugin 2×2の新しいPASSは**NOT RUN**。#3500/#3479/#3365等のDraftは現main製品能力として数えない。
+
+<!-- harness-api-portability-hv-evaluation-20261108 -->
+## 12. 2026-11-08：共通APIの限定同値とHarness方式選定を、実際の判断品質で評価する
+
+### 12.1 mainへ到達した根拠を更新する
+
+- [merged #3439](https://github.com/hat47x/tei-platform/pull/3439)で**ADR-0048**が共通型付きApplication APIを採用した。CLI/MCP/Studio/Web/Desktopの同一意味・Target・権限を目標とするが、採用決定は全Transport実行同値の実証ではない。
+- [merged #3403](https://github.com/hat47x/tei-platform/pull/3403)で4 read-only MCP参照Adapterを追加し、[merged #3458](https://github.com/hat47x/tei-platform/pull/3458)では`validate`のCLI/MCP応答を正常・読込失敗・重複宣言の限定3系列で照合した。**MCP Adapterが存在すること**と、外部H2/H3 Harnessの実Tool Reply/Current Grant/完全配送を確認したことは別。
+- [merged #3482](https://github.com/hat47x/tei-platform/pull/3482)は`sales.order.submit`について、独立RequiredのCapability/Application/Validation/Source位置を**実CLI 13 Reply／Consumer判別42件**で限定検証した。以前のmain #3354の**11 Reply／32合成Controls**と同一試験の上書き・加算をしない。いずれもProduct Provider実Invoke／Owner業務受理／未知T1-Bを証明しない。
+- [Draft #3470](https://github.com/hat47x/tei-platform/pull/3470)のSession Log backlog分割送出／停滞の記録修正は、`request`／`reply`／`wire segment`／`receiver accepted`／`model input replay`を別単位で採点する必要性を補強する。Draftをmain実装済みとしない。
+
+### 12.2 実Harnessの選定は方式名ではなく独立Expectedとの対照で決める
+
+同一Task／Source／独立Required／Audience／Tool Allowlist／Cost条件を固定し、必要な段階だけ比較する。
+
+| 段階 | 比較する構成 | 成功と判定できる上限 |
+| --- | --- | --- |
+| **HV-0** | 決定的なCLI/既存Testのみ（AIなし） | D/実Source/独立Expectedのベースライン。AIの価値は主張しない |
+| **HV-1** | LLM＋明示Tool（最小ループ） | 同一Taskでの不足検出・保留・根拠追跡とTool完全受領 |
+| **HV-2** | 既存の外部Harness＋CLI | 実Tool起動・送出/隔離/再開・Cost/操作負担の観測 |
+| **HV-3** | 既存Harness＋TEI/SEIのProduct Skill/Plugin | HV-2比で独立Expectedの判断品質／負例検出／作業効率が改善するか |
+| **HV-4** | TEI独自の実行ループ | HV-3では満たせない具体的Requiredが実測され、代替不能性・運用費を含めて承認された場合だけ検討 |
+
+**HV-4を製品構成の前提にしない**。既存Harness＋Plugin/Skillで必要な判断が成立するなら、独自ループは作らない。MCPは必要な実操作の薄いAdapterであり、初回H2/H3に新MCP Protocolを必須化しない。A/BのTool-only/Skill比較はモデル・Source・Tool・権限・Run単位を固定し、途中で新Skill説明やMCPを加えたものを同一Groupへ混ぜない。
+
+**評価票**：独立Expectedに対する重大誤判断、未知Required発見、根拠Sourceの鮮度と位置、必要な保留の正しさ、非開示の漏えい、実Tool配送完全性、再現性、実行時間・Token/金額・人間介入回数。回答文の自然さや単純なTool成功率を主要な合否にしない。HV-0〜4の比較実験そのものは**NOT RUN**。
+
+### 12.3 判断結果の保存・再開と実行を混同しない
+
+TEIのSource/Function/Query Read、SEIのRecommendation、SHOの記述、KONの保存候補は**同じ証拠を参照し得るが、同じAuthorityを持たない**。
+
+- TEIから受けた実Read Evidenceと、SEIが記録する`Recommendation`の**実際の推薦者**を分離する。モデル生成の提案をTEIのOwner受理済み意味へ帰属させない。
+- 決定的なD0/D1で十分なTaskでは、M1（モデル利用）を自動採用しない。M1の追加価値を独立Expected／保留／コストで検証する。
+- 保存後に`Decision`だけを再開できても、未解決の`Question/Unknown/Conflict`が保存・再読取できたことにはならない。H3のResume受入では、未解決項目の**存在・Source・状態・開示範囲**を独立に再照合する。
+- Legacy/REA観測、AIの構造候補、Owner Accepted Desired、Target Observed Actualは別票。SHOの文章化、SEIのRecommendation保存、KONのRaw保持、TEIのBuild/Effectのいずれも、他の意味受理・実実行を自動的に成立させない。
+
+### 12.4 既存Ownerで検証する追加の差分（HP-31〜35）
+
+| ID | 最小対照 | 受入とOwner |
+| --- | --- | --- |
+| **HP-31** | 同一`validate`正常／読込失敗／重複宣言をCLI/MCPで取得 | 同じ対象・版・結果を限定比較。既存#3458を再計上しない。#3403/#1158 |
+| **HP-32** | `sales.order.submit`のRequired 1要素を意図的に欠落／Scope変更 | #3482の13 Reply/42 Controlsを起点にDだけ再資格化。T/G/実Providerはunknown。#3262/#2514 |
+| **HP-33** | HV-0〜HV-3の同一Taskで未知Required・誤判断・保留・費用を比較 | HV-3で充足ならHV-4を棄却。#2509/TAI #168／SEI担当 |
+| **HP-34** | H3終了→再開でDecisionは残るがQuestion/Unknown/Conflictが欠落 | Resume不合格。Recommendationの実推薦者とTEI Read Sourceを別保持。SEI担当／#2515 |
+| **HP-35** | Tool Reply一部欠落・Session Log分割／backlog・モデル入力への旧Raw再出現 | request/reply/wire/receiver/model-inputを別観測。#2509/#2515／Draft #3470 |
+
+**最短順**：#3482の限定Dを採用しつつ、初回H2の実Tool Receipt/完全配送（T）を先行する。必要なSkill差分を測ってからHV-3を評価し、独自Harness HV-4の必要性を判断する。SEI H3保存再開・外部Provider Import・実DB/Plugin Invocationはそれぞれ独立並走。**HP-31〜35の新たな実行、HV比較、外部H2/H3、SEI実保存再開、Owner意味受理はNOT RUN**。
+
+<!-- harness-adaptive-activity-interaction-flow-20261108 -->
+## 13. 2026-11-08：Adaptive ActivityとInteraction Flowを分離し、独自Harnessの採否を確定可能にする
+
+### 13.1 「AIが次に何をするか」と「業務操作がどう進むか」は異なる
+
+[TAI Harness/Skill Draft #270](https://github.com/hat47x/tai-pleroma/pull/270)と他製品の横断設計を、既存ADR-0048・TEI Plugin/Operation契約に整合させる。
+
+| 層 | 主な責務 | 担当と境界 |
+| --- | --- | --- |
+| **Adaptive Activity** | 不足を発見し、次の調査・Tool候補・保留・人への引継ぎを選ぶ | TAI/SEIのHarness・Method・Skill。TEIのOwner意味受理・Host実行権限は発行しない |
+| **Interaction Flow** | UI・会話・Tool・外部イベントの入力から、型付きOperationへ進む明示的な状態と遷移をモデル化 | TEIのFunction/Representation/共通Application API。AI専用状態機械に固定しない |
+| **Business Operation** | 実業務のValidate/Authorize/Execute/Observe/Resultと効果 | TEI契約＋実行Host/Provider。Harnessの成功/終了コードは業務Effectではない |
+| **Evidence & Persistence** | Source/Raw/Meaning/Decision/Unknown/Receiptの版・参照・再読取 | 各製品の既存正本とConsumer。KONは保存先候補であり、意味・権限の中央正本ではない |
+
+これらを一つの「AI Workflow」定義へ畳み込まない。Interaction Flowは**AIを使わないUI/業務フローでも成立**し、Adaptive Activityは固定Flowの外側で次の観測や推薦を選べる。ただしAdaptive Activityが型付きOperationを呼ぶときは同じ契約・権限・監査点を通す。
+
+### 13.2 共通Lifecycleの不変部とPluginによる可変部
+
+Operationの候補Lifecycleは `Intent → Prepare → Validate → Authorize → Execute → Observe → Result`。これは**横断設計上の候補**であり、現在の製品APIが全Stage/Hookを実装・検証済みという意味ではない。既存ADR-0048、#1158、#3278/#951、実Hostに接続し、Hook追加による実行順序変更や権限迂回を許さない。
+
+- 不変境界：実Source/Operation identity、入力/出力型、Current Authority、実Effect/Receipt、公開Disclosure。副作用あるExecute前のHost認可、再試行と冪等性の判断をAI/Pluginの自己申告だけで確定しない。
+- 可変部：表示・質問・Tool提案・データ変換・Operation前後の拡張・検証・再開。Pluginは能力発見、情報投影、操作前検査、実行/結果変換、結果検証、再開/引継ぎに接続できるが、`Selected → Loaded → Invoked → Consumer Received`を各段階で観測する。
+- Flow図表はモデルの入力とし、**図表の変更が実際のGenerator/Target出力へ到達する**ことを独立Expectedで検証する。説明図だけ更新して実行Flow不変なら製品Flow変更の資格はない。
+- 「全Lifecycle自体をPluginで差し替える」場合も、上記不変境界とHost/Ownerの責務を越えられない。既存のHook/Operationモデルで表現不能な最小反例が出るまでは第二Workflow Engineを作らない。
+
+### 13.3 H3で必要なSource付きRecommendationと未解決事項の再開
+
+H2は既存CLI/Tool-onlyの実配送・隔離・Current Grantの資格を先に取る。H3のProduct Skill/SEI連携は次の順序で検証し、H2の前提にしない。
+
+- **H3-A0（最小縦切り）**：TEI実CLI `source-index`等から観測したSource/Role/Revisionを、SEIの既存`Recommendation`に参照として記録し、保存後の`resume --json`で**同一のSource参照が実再取得できる**ことを独立に照合する。TEI SourceがSEIの推薦者やOwner意味受理へ化けないことも確認。
+- **H3-A1（追加価値）**：決定的なD0/D1とMethod/LLM利用M1を同一Task・独立Expectedで比較し、未知Required・誤判断・保留・Costの差を測る。M1の説明品質だけで採用しない。
+- **H3-A2（未解決の継続）**：Decision/Recommendationの保存と、`Question / Unknown / Conflict`の保存・再読取を別資格にする。現SEI CLIで未実装/未確認の保存型を「既に再開可能」と扱わない。
+
+H3-A0が失敗した場合は既存SEI Reader/Writerの原因と、TEI Sourceの取得/Revision原因を分離する。SEIへ第二TEI Parser/Registryを作らず、SHO/KON/TAIの実保存・Consumer受領も独立に確認する。
+
+### 13.4 最小の実行可能な検収（HF-36〜41）
+
+| ID | 一条件だけ変える反証 | 受入のOwner |
+| --- | --- | --- |
+| **HF-36** | 同一FunctionのInteraction FlowでAIなし／AIありを切替 | TEI FlowのOperation/Grant/Effectは同じ契約、Adaptive Activityは推薦のみ。#1158/#3278 |
+| **HF-37** | PluginがAuthorize前後のHook順序を変更し、未認可Executeを提案 | Hostが拒否し、Hook提案/実Invoke/実Effectを別票。#951/#2515 |
+| **HF-38** | Flow図表だけ変更、Generator出力は不変 | 実Flow変更は不合格。図表→モデル→生成物の差を確認。三視点/Modeler Owner |
+| **HF-39** | SEI Recommendation保存後、TEI Source revisionだけ変更 | H3-A0のSource再読取/失効を別表示。SEI H3/TAI #168 |
+| **HF-40** | Decisionのみ再開、Question/Unknown/Conflictは未保存 | H3-A2の未解決継続は不合格。SEI Writer/Reader Owner |
+| **HF-41** | HV-3既存Harness+Skillが独立Expectedを満たす | HV-4独自Loopを棄却。実H2/H3資格とCostを比較。#2509/TAI #168 |
+
+**Critical Path**：P0は実Source/FunctionのDと比較適格H2（T/A）を**並列**に進める。H3-A0はSource参照の保存再読取という一つの縦切りで独立実施。Lifecycle/Flow/Pluginの追加実装は既存契約で表現不能な反例から起票し、独自Harness・新Host・新中央Registryを前提にしない。**HF-36〜41、実H3-A0/A1/A2、Plugin Hook実行、Flow図→Generator、HV-4比較は今回NOT RUN**。
