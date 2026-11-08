@@ -1,4 +1,4 @@
-﻿# TEIを動かす
+# TEIを動かす
 
 この文書では、TEIを取得して動作を確認するまでの手順を説明します。設計の考え方から知りたい場合は、[はじめてTEIを知る方へ](for-readers.md)を参照してください。
 
@@ -65,6 +65,20 @@ go run ./cmd/tei validate \
 `workspace-files`の各要素は`readByLoader`を持ちます。`true`はそのファイルのバイト列をLoad中にdomain loaderが読んだこと、`false`は管理対象だが解釈されていないことを示します。`workspace-files`の`sourceRootFindings`は、未知・存在しないsource rootを名指しします。`readByLoader:true`だけではParserの意味受理や整合性合格を意味しません。
 
 `validate -json`の応答には`sourceRootFindings`が入ります。`tei.workspace.yaml`の`sources`に存在しないrootがあれば`severity:"error"`（`ok:false`、終了コード1）、Loaderが解釈しない未知のrootなら`severity:"warning"`です。`workspace-files`に載るがLoaderが読まない近似名のファイル（`.tei.bak`・`Application.tei`など）も`file`付きのwarningとして返します。これらはCanonical Subjectを持たないため`diagnostics`ではなく別の欄です。
+
+`tei.workspace.yaml`はYAML全体ではなく、次の部分集合です。表に無い書き方は`WORKSPACE_LOAD_FAILED`（終了コード2）で拒否され、エラー文に行番号が付きます（2026-11-09から）。
+
+| 要素 | 受理する形 | 拒否・注意 |
+| --- | --- | --- |
+| ファイル先頭 | UTF-8。先頭のBOMは1つだけ無視する | 2つ目のBOM、途中のBOMは拒否する（#3556） |
+| `workspace:` | 名前（省略可）。`"…"`または`'…'`で囲んだ値も受理し、引用符を外して応答の`workspace.name`に返す | 閉じ引用符の欠落、引用符内の同じ引用符の未エスケープ、閉じ引用符の後ろの文字は拒否する |
+| `formatVersion:` | `1`または`2`の**引用符なし**の整数。`sources`より前に置く | `"1"`のような引用符付き、0以下、非整数、重複、`sources`の後ろは拒否する |
+| `sources:` | 次の行に`- `で始まるrootを1行1つ。最小1つ | インライン配列（`sources: [semantic]`）、引用符なし以外の形は拒否する。`- "semantic"`は引用符を外してroot名にする |
+| `imports:` | `- alias:`で始め、続く`path:`・`namespace:`・`semanticDigest:`を書く | 各値は引用符を外せる。未知の項目は拒否する |
+| コメント | 行頭の`#`、または空白の後ろの`#`から行末まで | 値の途中の`#`は値の一部として扱う（`workspace: scn#1`の名前は`scn#1`）（#3557） |
+| 未知のキー | — | 拒否する（`description: hi`など） |
+
+引用符の中のエスケープ（`\"`・`\\n`など）は解釈しません。引用符を外した文字列をそのまま使うため、引用符内で同じ種類の引用符を使うときは値を引用符なしで書いてください。`#`を含む名前に空白の後ろの`#`を使うと、そこからコメントになります。`workspace: "scn #1"`のように引用符で囲むと、`#`以降も名前の一部として残ります。
 
 Workspaceがモデル要素を1つも宣言していない場合、`validate`は`WORKSPACE_DECLARES_NO_MODEL_ELEMENTS`（warning）を返します。`ok:true`のまま終了コード0ですが、`diagnostics`にこのwarningがあるため「宣言が読み込まれて検証を通った」と読み違えないでください。標準意味型（`std`）は宣言として数えません。
 
