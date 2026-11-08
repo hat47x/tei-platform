@@ -560,3 +560,12 @@ ADR-0048 §2.4 の「既定値の適用は共通契約で定める」を、CLI �
 - 残る差は符号だけ（`INVALID_ARGUMENT` と `-32602`）。失敗分類の統一は #3420 の未決で、本ラウンドでは変更していない。
 
 #3605 は解消として扱える。Issue を閉じ、残る分類統一は #3420 に残す。
+
+## 16. 第10ラウンド（2026-11-09）: inspect・trace の実プロセス同値と失敗分類
+
+#3420 CAPI-2a の範囲を実測した。生出力は[第10ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND10_CAPI2A_PARITY_2026-11-09/README.md)にある。
+
+- 8ケースのうち7ケースで、CLI と MCP の成否と `error.code` が一致した（`SUBJECT_NOT_FOUND`・`UNSUPPORTED_SUBJECT_KIND`・`STALE_SNAPSHOT`・`INVALID_ARGUMENT`・`NAMESPACE_NOT_FOUND`）。
+- `inspect -workspace /no/such/dir` は MCP では tool 引数で表現できない（起動時に固定する設計）。起動時の `-workspace` が無い／manifest が壊れている場合、MCP は `WORKSPACE_LOAD_FAILED` を返し、CLI と同じ符号だった。差は「いつ分かるか」だけ。
+- **必須引数の欠落だけが層の違い**である。CLI は `INVALID_SUBJECT`（exit 2）、MCP は `-32602`。両方拒否するが文字列の符号が揃わない。ADR-0048 §2.3「失敗」の未決。
+- `inspect_trace_parity_test.go` を追加し、成功2件・失敗5件の値と符号、成功時の `result` の byte 一致を実プロセスで固定した。符号をわざと変える2種の変異はどちらも検出した。
