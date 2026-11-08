@@ -1,4 +1,4 @@
-# TEIを動かす
+﻿# TEIを動かす
 
 この文書では、TEIを取得して動作を確認するまでの手順を説明します。設計の考え方から知りたい場合は、[はじめてTEIを知る方へ](for-readers.md)を参照してください。
 
@@ -73,12 +73,12 @@ go run ./cmd/tei validate \
 | ファイル先頭 | UTF-8。先頭のBOMは1つだけ無視する | 2つ目のBOM、途中のBOMは拒否する（#3556） |
 | `workspace:` | 名前（省略可）。`"…"`または`'…'`で囲んだ値も受理し、引用符を外して応答の`workspace.name`に返す | 閉じ引用符の欠落、引用符内の同じ引用符の未エスケープ、閉じ引用符の後ろの文字は拒否する |
 | `formatVersion:` | `1`または`2`の**引用符なし**の整数。`sources`より前に置く | `"1"`のような引用符付き、0以下、非整数、重複、`sources`の後ろは拒否する |
-| `sources:` | 次の行に`- `で始まるrootを1行1つ。最小1つ | インライン配列（`sources: [semantic]`）、引用符なし以外の形は拒否する。`- "semantic"`は引用符を外してroot名にする |
+| `sources:` | 次の行に`- `で始まるrootを1行1つ。最小1つ | インライン配列（`sources: [semantic]`）は拒否する。`- "semantic"`は引用符を外してroot名にする |
 | `imports:` | `- alias:`で始め、続く`path:`・`namespace:`・`semanticDigest:`を書く | 各値は引用符を外せる。未知の項目は拒否する |
 | コメント | 行頭の`#`、または空白の後ろの`#`から行末まで | 値の途中の`#`は値の一部として扱う（`workspace: scn#1`の名前は`scn#1`）（#3557） |
 | 未知のキー | — | 拒否する（`description: hi`など） |
 
-引用符の中のエスケープ（`\"`・`\\n`など）は解釈しません。引用符を外した文字列をそのまま使うため、引用符内で同じ種類の引用符を使うときは値を引用符なしで書いてください。`#`を含む名前に空白の後ろの`#`を使うと、そこからコメントになります。`workspace: "scn #1"`のように引用符で囲むと、`#`以降も名前の一部として残ります。
+引用符の中のエスケープ（`\"`・`\n`など）は解釈しません。引用符を外した文字列をそのまま使うため、引用符内で同じ種類の引用符を使うときは値を引用符なしで書いてください。`#`を含む名前に空白の後ろの`#`を使うと、そこからコメントになります。`workspace: "scn #1"`のように引用符で囲むと、`#`以降も名前の一部として残ります。
 
 Workspaceがモデル要素を1つも宣言していない場合、`validate`は`WORKSPACE_DECLARES_NO_MODEL_ELEMENTS`（warning）を返します。`ok:true`のまま終了コード0ですが、`diagnostics`にこのwarningがあるため「宣言が読み込まれて検証を通った」と読み違えないでください。標準意味型（`std`）は宣言として数えません。
 
@@ -92,7 +92,7 @@ Workspaceがモデル要素を1つも宣言していない場合、`validate`は
 
 `model catalog`の`modelRevision`は、管理対象Sourceのファイルpathと生バイトの組をsha256で並べた値です。**読み込んだWorldの内容の版ではありません。** 管理対象Sourceが1件も無いWorkspaceでは、空入力のSHA-256（`sha256:e3b0c442…b855`）になります。標準意味型（`std`）の`entries`は`modelRevision`の計算に入らないため、`entries`が0件でなくてもこの値になり得ます。空かどうかを判別するには、`modelRevision`ではなく`declarationCounts.total`を使ってください。`modelRevision`は「管理対象Sourceを1バイトも読まなかった」ことの証拠であり、モデルの同一性・受理・整合性の証拠ではありません。
 
-`validate -json`・`model catalog`・`inspect`・`trace`・`workspace-files`は、結果に`workspace`を返します。`name`は`tei.workspace.yaml`の`workspace:`に書かれた値、`formatVersion`はmanifestの版、`manifest.sha256`は読んだmanifestのバイトの照合値です。同じCanonical IDが複数のWorkspaceに別の意味で存在し得るため、`worldFingerprint`は内容の同一性を示しますが、どのWorkspaceかは示しません。両者を組み合わせて、結果の混在を防いでください。`workspace:`を書かないmanifestは読み込まれ、`name`は空になります（パスから名前を作りません）。これらは読んだ版の識別子であり、受理・権限・排他ロックではありません。
+`validate -json`・`model catalog`・`inspect`・`trace`・`workspace-files`・`view -format json`・`source-index`・`knowledge-context`・`requirements`・`plugin-lock`・`plugin-resolve`・`plugin-runtime-plan`は、結果に`workspace`を返します。`-world`ファイルだけを入力したコマンドは、manifestを読んでいないため`workspace`を返しません。`name`は`tei.workspace.yaml`の`workspace:`に書かれた値、`formatVersion`はmanifestの版、`manifest.sha256`は読んだmanifestのバイトの照合値です。同じCanonical IDが複数のWorkspaceに別の意味で存在し得るため、`worldFingerprint`は内容の同一性を示しますが、どのWorkspaceかは示しません。両者を組み合わせて、結果の混在を防いでください。`workspace:`を書かないmanifestは読み込まれ、`name`は空になります（パスから名前を作りません）。これらは読んだ版の識別子であり、受理・権限・排他ロックではありません。`source-index`の参照一覧は、0件でも`[]`で返り、`null`にはなりません。
 
 ```bash
 go run ./cmd/tei model catalog -workspace reference/workspace

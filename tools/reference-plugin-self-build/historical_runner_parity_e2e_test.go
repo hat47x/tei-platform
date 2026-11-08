@@ -197,6 +197,16 @@ func TestHistoricalProcessPluginRunnerEvidenceParity(t *testing.T) {
 		// historical runner ignores the variable.
 		cmd.Env = append(os.Environ(), "GOENV=off", "GOWORK=off", "GOFLAGS=", "GOTOOLCHAIN=local", "GOPROXY=off",
 			"TEI_WORKSPACE_ALLOW_UNSPECIFIED_FORMAT=1")
+		if runtime.GOOS == "windows" {
+			// The runners create isolated build state with os.MkdirTemp("", ...).
+			// A Windows host that runs the executable from a non-system drive
+			// cannot create directories under the system temp directory
+			// (observed as `mkdir ...: Access is denied`), while the same
+			// executable can when TMP/TEMP point at a directory on its own
+			// volume. Point the inherited temp variables at the comparison
+			// directory, which is already allocated on that volume.
+			cmd.Env = append(cmd.Env, "TMP="+temp, "TEMP="+temp, "TMPDIR="+temp)
+		}
 		var stdout, stderr bytes.Buffer
 		cmd.Stdout, cmd.Stderr = &stdout, &stderr
 		if err := cmd.Run(); err != nil {

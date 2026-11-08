@@ -566,7 +566,42 @@ Source Indexを前段P0-Sで読めても、このDriver解決は`Source Index→
 
 まず今回の`HDG-E01〜E05`について、**新規テスト自体のCI PASS**を独立に取得する。その後のP0一辺は、既存実Provider/Service Carrierの同一Attemptにおける選択・Artifact資格・実呼出し・Result受領と、外部Observationを**異なる資格票**として結合すること。完了した部分だけを昇格し、Client完全受領／実DB/外部Effectの意味受理は独立確認が得られるまでUNKNOWNとする。
 
-## 20. 参考資料と採否
+## 20. 2026-11-09 横断統合：HTTP効果観測の実証とComposition接続判断を分離する
+
+### 20.1 実行済み証拠と資格票を確定
+
+前段[PR #3537](https://github.com/hat47x/tei-platform/pull/3537)はmainへ統合済み。exact HEAD `a3448847bac5fcefac304f3f32b08150a1e3f282`の[限定CI #42486408608](https://github.com/hat47x/tei-platform/actions/runs/42486408608)は**completed/success**で、Node 7/7、Go Host package全PASS、HDG-E01〜E05の各サブテストとGo formatting PASS。脆弱性確認 #42486408701もsuccess。同HEADの[全体Health #42486408590](https://github.com/hat47x/tei-platform/actions/runs/42486408590)は**completed/failure**。全体`gofmt/go vet/go test ./.../tei validate`は**すべてPASS**したが、別ステップの`tools/ci-workflows-test.py`が、並行追加の`tei-ai-tuning-reference-ci.yml`の`actions/checkout@v4`未ピン留めと`synthetic-controls`の`timeout-minutes`欠落を検出した。現行mainの当該WorkflowはSHAピン留め・10分timeoutへ修正済み（**異なるHEAD**）。以前のfailureをsuccessへ改変しない。
+
+| 証拠面 | 実証した最小事実 | 残る資格 |
+| --- | --- | --- |
+| Canonical / Driver | 実`order_entry.submit_order→sales.order.submit→CustomGoBinding`を既存Driverで解決 | 現在の業務意味Owner受理、外部Provider適格性 |
+| Runtime HTTP | 実Reference Host・Canonical認可・Driverの有限Guard/分岐と**合成**Adapter実Invoke／Audit | E1静的`onTerminal`→Runtime全Branch保証、実IdP／Cookie／CSRF |
+| Effect | 合成Adapterの更新前後と別`ExecuteObservationRead`の値の違い（503/202で一意でない） | 実DB Commit/Receipt、外部Observation、現在Snapshot、Client受領 |
+| Plugin/Composition | 既存`servicehost`／Service Carrierのtest-only selected／Invoke witnessは別テストに存在 | **製品**CLI/Studio/Runtimeの宣言→実行への接続、実Provider B／Artifact・Authority |
+| Design Context / Graph | Required Source、Source Index、Pattern/Capability等の別検証実績がある | HTTPの全Required Graph Node/Edge/Branchを同Source/Versionで実Consumerへ投影 |
+
+**Client Reactionの非推論規則**：HTTP `202`でも「業務成功・保存済み」と表示せず、`503`でも「未適用だから非冪等POSTを再送してよい」と判断しない。Result/Receipt/Observationの未取得・不明・staleを明示し、実行後不確定なら現在Grant／Operation identityに束縛した**既存**のCommand Lifecycle/Effect fence（#1174/#2999）へ戻す。この表は**設計上の停止線**であり、製品Clientに自動Retry抑止機構が実装済みとの主張ではない。
+
+### 20.2 他チャットのComposition実行接続判断が先行Gate
+
+[構成接続点の判断資料（PR #3549）](../workstreams/COMPOSITION_CONNECT_POINT_BRIEF_2026-11.md)の6つの実測記録によれば、現在の**製品**`cmd/tei`は`operations`入口を持つが`composition`を直接使わず、Reference`go-host`は別経路で`composition`を使う。`servicehost`の非試験呼出し元は無く、宣言されたEnvironment Bindingは検証・計画へ届いても、非試験`routing.Router`の組立てにはまだ届いていない。この**発見は参考実装中のHost→selected Service Carrier呼出し成功と矛盾しない**。test-onlyの局所結合と、製品入口の宣言→実実行配線は別である。
+
+| 上流の未決選択 | HTTPでの意味 | 今回扱う/扱わない |
+| --- | --- | --- |
+| C-4: 製品が宣言→実行を接続せず外部Hostへ委ねる | 外部Host契約が、現在Authority/Plugin artifact/Effect receiptの実行資格を所有し得る | **有効な選択肢として保持**。HTTP分野が暗黙にC-4を棄却しない |
+| C-1: `routing.Router`を製品CLI入口で組立てる | Deployment Commandの宣言を実実行へ接続する候補 | 上流Gate決定以前にHTTP独自CLI Routerを新設しない |
+| C-2: `servicehost`をCLI/Hostへ接続する | ProviderのHost世代ピン留めとGateway配線の候補 | 既存Referenceの成功を製品実行の受理へ昇格しない |
+| C-3: `DeploymentExecutor`のCapability IDをBinding由来にする | Reference固定ID呼出しの宣言との一致を強化し得る | C-1/C-2決定と固定Referenceの目的を検討するまで保留 |
+
+優先判断は**C-4 → C-1対C-2 → C-3**。Ownerは[Composition Kernel移行Gate](../gate/COMPOSITION_KERNEL_MIGRATION_GATE_2026-10.md)と製品成立状況（`docs/status.md`）であり、このHTTP設計で選択・採用を決定しない。C-1とC-2を両方標準経路として追加することは避ける。#3525/#3531で残る**通常CLI dispatchと実Studio Bridgeから同じSelected Inspector Provider Bへ到達するS2**も、Go Helper二経路での成功と区別し、HTTP本番結合をそれより先に採用しない。
+
+### 20.3 次の最小Exitを「追加参考テスト」ではなく実Consumerに置く
+
+**次の成果物候補は新しいGraph engine/Resolverではない**。上流C-4の判断を得るか、外部Hostに委ねる場合の現在資格・実行証拠IFを定めた後、選んだ**一つの製品実入口**で、同一`Operation`について（1）宣言のSource/Version、（2）実選択・Artifact/Host Grant、（3）Provider invoked/received、（4）Effect Receipt/独立観測、（5）HTTP Client Reactionの各Evidenceを別々に記録する。各証拠は一部のみ得られても残りを`unknown`として保持する。SUI/SHOへGraph/Table/Traceを描く場合、`Source occurrence`と実Attemptを区別し、KON/SEIに保存された履歴・提案を現在の権限や実Effectへ昇格しない。
+
+性能計測の接続では、`503件数`や`Audit completed件数`を「反映失敗／成功件数」に読み替えない。[AI性能チューニング設計](AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md)の**統計・ヒント・実測・独立比較**を区別する方針に従い、正しい分母は`eligible attempts / actually invoked / externally observed`等の観測定義を固定してから計測する。AIの推奨・予測だけでContext Cache、Plugin Provider、Retry Policyを適用しない。
+
+## 21. 参考資料と採否
 
 - [Liberator repository](https://github.com/clojure-liberator/liberator) ― ClojureのREST decision modelの先行例。ライブラリ移植ではない。
 - [Webmachine mechanics](https://webmachine.github.io/mechanics.html)、[Decision flow](https://webmachine.github.io/diagram.html)、[Resource functions](https://webmachine.github.io/resources.html) ― decision flow・契約・処理に分離する参考資料（古いHTTP版があるため仕様の正本にはしない）。
