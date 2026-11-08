@@ -1424,7 +1424,7 @@ Requiredが全社、Authorized/ActualがTenant A限定なら「Tenant Aの対象
 §27.9のQRE-01上流O1/O2受理、下流O1欠落のケースを**旧新移行**として固定する。移行前の実Source/Control RecordのO1=100・O2=200という二Occurrence、旧DBの実保存状態、旧Runtimeの実出力、移行後Expected、移行先DBの実Readは、名前や数値が同じでも**互いに独立した証拠列**とする。旧DBがO2を落としている場合、旧DBの全件Scanだけでは「本来あるべきO2」を発見できない。逆に移行先がO2を正しく復元した場合、旧実装との単純なbyte一致だけでは意図した改善を正しく評価できない。
 
 外部解析Providerの実能力を確認する段階と、品質照合の基準を得る段階も別：
-- **Analysis admitted**：正しい版のSource/権限・REA exact CLI/Provider/実呼出・Evidence raw byte/readback・選択范围・missing/unknownを記録した限定観測。静的解析結果をLegacy Runtime receiptと呼ばない。Evidence抜粋・JSONL行列のみで全Source Closure/解析完了を推論しない。
+- **Analysis admitted**：正しい版のSource/権限・REA exact CLI/Provider/実呼出・Evidence raw byte/readback・選択範囲・missing/unknownを記録した限定観測。静的解析結果をLegacy Runtime receiptと呼ばない。Evidence抜粋・JSONL行列のみで全Source Closure/解析完了を推論しない。
 - **Data population admitted**：独立に承認された上流受理Source、旧DBの実Snapshot、必要な期間・Occurrence/Mapping・Row/Field/Relationの完全性・watermarkを固定。外部Root未ロード、旧Sourceと現Sourceの時点ずれ、同一Aliasの別DBはunknown/scope限定。
 - **Comparison admitted**：受理済みCorrespondence 1:1/1:N/N:1・金額/単位・取消/遡及・NULL/非開示、OwnerのDesired版と独立Expectedを固定。#2514のOracle独立性、#2611のDB Alias、#2593のgrain、#2622の実Provider Readを再利用。
 - **Migration Outcome qualified**：Target実Read/必要Effect receipt、Legacy実観測（比較する場合）、Owner Intent/受理、Scoped Quality Finding、必要なCurrent Grant/Consumer Deliveryを**Claim単位・同一版のWitness**へ束縛。Readに成功しただけで旧新の業務結果や本番切替成功を認定しない。
