@@ -132,6 +132,27 @@ func TestBuildChildReportsPlanBytesAndFingerprint(t *testing.T) {
 	if report.PlanFingerprint != want {
 		t.Fatalf("planFingerprint=%q, want %q", report.PlanFingerprint, want)
 	}
+
+	// The child forms and validates the lock itself. A caller that receives it
+	// no longer has to trust two separate self-reports.
+	if report.Lock == nil {
+		t.Fatal("the child did not report a plan-to-artifact lock")
+	}
+	if !report.Lock.Validated {
+		t.Fatal("the reported lock was not validated")
+	}
+	if report.Lock.LockFingerprint == "" {
+		t.Fatal("the lock fingerprint was not recorded")
+	}
+	if report.Lock.PlanFingerprint != report.PlanFingerprint {
+		t.Fatal("the lock names a different plan than the report")
+	}
+	if report.Lock.ArtifactDigest != report.ArtifactDigest {
+		t.Fatal("the lock names a different artifact than the report")
+	}
+	if report.Lock.Boundary == "" {
+		t.Fatal("the lock lost its boundary statement")
+	}
 }
 
 // A plan that does not validate must not produce an artifact: otherwise a

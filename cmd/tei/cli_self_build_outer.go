@@ -378,6 +378,7 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 			evidence.ChildPlanFingerprint,
 			evidence.ChildArtifact,
 			evidence.CrossChecked,
+			evidence.ChildLock,
 		)
 		report.PlanArtifactBinding = &binding
 		if binding.State == planArtifactMismatched {

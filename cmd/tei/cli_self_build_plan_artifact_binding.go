@@ -40,6 +40,13 @@ type planArtifactBinding struct {
 	Boundary             string `json:"boundary"`
 	UnperformedReason    string `json:"unperformedReason,omitempty"`
 	FailureCause         string `json:"failureCause,omitempty"`
+	// §4.11: when the child forms its own lock, the entry compares it with the
+	// lock it derived. Two independently formed locks that agree mean both
+	// readings describe the same binding.
+	ChildLockChecked     bool   `json:"childLockChecked"`
+	ChildLockValidated   bool   `json:"childLockValidated"`
+	ChildLockMatched     bool   `json:"childLockMatched"`
+	ChildLockFingerprint string `json:"childLockFingerprint,omitempty"`
 }
 
 const planArtifactBoundary = "the entry formed one validated BuildArtifactLock from the resolver's plan identity and the builder child's reported plan fingerprint and artifact digest, and the artifact digest matched the bytes on disk; both bound values are the builder child's self-report, so this is not proof that the builder derived the plan from the declaration this entry held, and not acceptance or runtime authority"
@@ -47,7 +54,7 @@ const planArtifactBoundary = "the entry formed one validated BuildArtifactLock f
 // bindPlanToArtifact forms and validates the lock. It runs only after both
 // children finished, so a failure here is a recorded finding, never a
 // precondition that could have stopped the build.
-func bindPlanToArtifact(receipt *PlanReceipt, builderPlanFingerprint, builderArtifactDigest, artifactOnDiskDigest string) planArtifactBinding {
+func bindPlanToArtifact(receipt *PlanReceipt, builderPlanFingerprint, builderArtifactDigest, artifactOnDiskDigest string, childLock *childSelfLock) planArtifactBinding {
 	record := planArtifactBinding{
 		L2BClaimed: false,
 		Boundary:   planArtifactBoundary,
@@ -114,6 +121,22 @@ func bindPlanToArtifact(receipt *PlanReceipt, builderPlanFingerprint, builderArt
 	record.ArtifactDigest = builderArtifactDigest
 	record.ArtifactDigestOnDisk = artifactOnDiskDigest
 	record.LockFingerprint = fingerprint
+
+	// §4.11: when the child formed and validated its own lock, compare it with
+	// the one the entry derived. The entry's identity comes from the receipt's
+	// plan; the child's comes from the plan file it loaded. Two independently
+	// formed locks that agree mean both readings name the same identity.
+	if childLock != nil {
+		record.ChildLockFingerprint = childLock.LockFingerprint
+		record.ChildLockValidated = childLock.Validated
+		record.ChildLockChecked = true
+		record.ChildLockMatched = childLock.LockFingerprint != "" && childLock.LockFingerprint == fingerprint
+		if !record.ChildLockMatched {
+			record.State = planArtifactMismatched
+			record.FailureCause = "the child's own lock fingerprint differs from the lock this entry formed, so the two readings do not describe the same binding"
+			return record
+		}
+	}
 
 	// The artifact must be the bytes on disk. Without this the lock would bind
 	// a plan to a digest the child merely asserts.
