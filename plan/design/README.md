@@ -25,6 +25,7 @@
 
 | 文書 | 対象 |
 | --- | --- |
+| [`AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md`](AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md) | 生成AIによる性能チューニングの設計ヒント・統計の実測と、Source／Function／Query／Provider／受領の資格を分けた独立Benchmark・改善検証（#3271・#3262・#2586、設計・実証候補） |
 | [`DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md`](DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md) | 異種Data Sourceの開発者向け閲覧・データ管理・Schema DDLとDBA境界（#3270、設計・未適格） |
 | [`HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md`](HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md) | REST例外とClient ReactionのGraph/Table/Trace同一性、再試行とCommit unknown（#3274、設計候補） |
 | [`AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md`](AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md) | AIによる性能改善の設計ヒント・観測統計・Provider実行・独立Benchmarkを、合成対照と実測の資格を分離して扱う設計（#3271／#2586、限定Reference） |
