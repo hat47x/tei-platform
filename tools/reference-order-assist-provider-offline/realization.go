@@ -150,6 +150,13 @@ func BuildRealizations(ctx context.Context, repoRoot, dir string) (*RealizationS
 	if err != nil {
 		return nil, fmt.Errorf("%w: node: %v", ErrToolMissing, err)
 	}
+	// The reference stdio launcher rejects an executable path containing
+	// whitespace, and Windows installs Node.js under "Program Files". Stage a
+	// copy inside dir, whose path the caller supplies and does not contain
+	// whitespace, so the launch path stays a single path (#3460).
+	if node, err = stageExecutable(node, dir); err != nil {
+		return nil, err
+	}
 	goBin, err := exec.LookPath("go")
 	if err != nil {
 		if alt := filepath.Join(runtime.GOROOT(), "bin", "go"); fileExists(alt) {
@@ -174,7 +181,7 @@ func BuildRealizations(ctx context.Context, repoRoot, dir string) (*RealizationS
 		if err := copyGoSources(src.goDir, module, fmt.Sprintf("example.invalid/order-quote-gen%d", gen)); err != nil {
 			return nil, err
 		}
-		native := filepath.Join(dir, fmt.Sprintf("gen%d-native", gen))
+		native := hostExecutablePath(filepath.Join(dir, fmt.Sprintf("gen%d-native", gen)))
 		if err := goBuild(ctx, goBin, module, native, runtime.GOOS, runtime.GOARCH); err != nil {
 			return nil, err
 		}
@@ -199,6 +206,42 @@ func BuildRealizations(ctx context.Context, repoRoot, dir string) (*RealizationS
 }
 
 func fileExists(p string) bool { _, err := os.Stat(p); return err == nil }
+
+// hostExecutablePath returns the path `go build -o` actually writes. On
+// Windows the tool appends .exe to a name without an extension, and Windows
+// does not execute an extensionless PE file, so the launcher must be given the
+// resolved path (#3460).
+func hostExecutablePath(path string) string {
+	if runtime.GOOS == "windows" && filepath.Ext(path) == "" {
+		return path + ".exe"
+	}
+	return path
+}
+
+// stageExecutable returns a path to the same executable that the launcher
+// accepts. The reference stdio launcher rejects an executable path containing
+// whitespace because it cannot tell a path from an argument; Windows installs
+// Node.js under "Program Files", so the discovered path is copied into dir and
+// only the copy's path is used. On hosts where the path has no whitespace the
+// executable is used as found.
+func stageExecutable(path, dir string) (string, error) {
+	if !strings.ContainsAny(path, " \t\r\n") {
+		return path, nil
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return "", err
+	}
+	dest := filepath.Join(dir, "node"+filepath.Ext(path))
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	if err := os.WriteFile(dest, raw, info.Mode().Perm()|0o111); err != nil {
+		return "", err
+	}
+	return dest, nil
+}
 
 func copyGoSources(src, dst, module string) error {
 	entries, err := os.ReadDir(src)
