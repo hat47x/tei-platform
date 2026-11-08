@@ -580,3 +580,88 @@ B2Cでは、**TEIのGraph/型付きActionを使うだけで、実フロントエ
 **採否基準**：Graphを経由することで、Trait/Hookの履行漏れ・未到達・安全でないバイパス・生成対象の過不足・モデル変更時のSource/Artifact資格を、直接手書き実装より**具体的に早く／正確に**検出できること。図表の充実だけでGenerator・Product実行・Owner Meaning Acceptanceが成立したと報告しない。Graphの書戻しが原Source/Meaningを破壊する、別Runtime/Hostを必要とする、P0の実Provider接続を妨げる、B2Cの自由なFrontendへ負担を強制するなら対象機能をread-only ProjectionまたはPlugin Profileへ縮小する。
 
 **状況・責務**：本節は[#3503](https://github.com/hat47x/tei-platform/issues/3503)／[Draft #3507](https://github.com/hat47x/tei-platform/pull/3507)、[Draft #3505](https://github.com/hat47x/tei-platform/pull/3505)、[#3509](https://github.com/hat47x/tei-platform/issues/3509)の意図と[#3278](https://github.com/hat47x/tei-platform/issues/3278)のTrait履行を接続する設計段階。正式Trait Graph Schema、Source writer、Graph generator、実Host Callback、AI Chat/VUI実Target、B2C計測、TLG-01〜08は**NOT RUN／NOT ACCEPTED**。これらを本節で採用済み製品機能へ昇格させない。
+
+
+## 16. DerivedData・高度チューニングを原子的Traitで拘束する（2026-11-08横断）
+
+### 16.1 付与したTraitから、実際に何が強制されるか
+
+最新のCache／DerivedData／Function Data Context／高度チューニングの議論では、**性能のヒントと、正しさの保証と、物理保存の保証をTrait一つへ押し込めない**ことが明確になった。既存[#3271 Cache/Snapshot](https://github.com/hat47x/tei-platform/issues/3271)は保存/再利用、[#2582 Data Context Reactive](https://github.com/hat47x/tei-platform/issues/2582)は依存と再評価、[#2387 SQL演算依存](https://github.com/hat47x/tei-platform/issues/2387)は演算意味、[#2600](https://github.com/hat47x/tei-platform/issues/2600)はBuild再利用、[Pluginの安全な最適化計画](PLUGIN_REALIZATION_AND_OPTIMIZATION_REQUIREMENTS_2026-11.md)は計測と方式選定のOwnerである。本節は**これらをTraitの原子契約として要求・実装・検査する判断だけ**を扱う。
+
+| 宣言の性質 | 具体的に拘束する実装・検証 | 勝手に含めない保証 |
+| --- | --- | --- |
+| `Derivable`（原子Trait候補） | 型付きの導出Ruleと必要Input/Operator版の解決、欠落時の明示診断 | 実Sourceがいつでも取得可能、再計算結果の業務意味が受理済み |
+| `Rebuildable` | 指定Snapshot/入力閉包・版・Time/Scope・非決定要因を満たしたときの再構成、再構成不可状態の説明 | 失われた外部観測／承認／LLM出力を無条件に再生成できる |
+| `Disposable` | **対象をMaterialization identityに限定**し、削除しても正本・Temporal Record/未同期入力を消さない | オフラインでの利用可能性、署名付き確定値の破棄 |
+| `Materialized`／`Cached` | 選択Providerで書込み／読取りと失効・不整合検出が可能。**必須永続保存かbest-effort cacheか**をOperation/Policyで明示 | 保存成功＝永続性／Freshness、Store不可＝元計算Operation失敗 |
+| `Scoped` | User/Tenant/Session/Principal/取得ScopeとCurrent Grantを実使用条件へBinding | Scope文字列のみで認可、同じBrowser Origin＝同じUser |
+| `IncrementalMaintenance`（候補） | **宣言したDelta種別・Query演算・Snapshot前提について**独立Expectedと差分適用が一致するImplementationを要求 | `DependencyTracked`だけで集計・NOT EXISTS・Top-N等を安全に差分適用できる |
+
+ここに挙げた名前は**候補ラベル**であり、新Core固定Enum・正式DSLを確定しない。便利な`DerivedData`などはProfileとして原子Traitへ展開可能だが、Profile一つで`Disposable`／`Retained`の実体を混同しない。Traitの実装方式はDefault／Generated／Provider／Manual Requiredがあり、**手動実装を必要とする場合もRequiredを検証する**。単なる`@hint(cheap_to_rebuild)`はImpl選択に使えてもRequired Obligationを満たした証拠にしない。
+
+特に`Cached`を必須Traitとする際、**キャッシュ利用を試みる義務**と**保存実体が利用中ずっと存在するという保証**を区別する。前者はbest-effort保存＋失敗時計算Fallbackで成立し得るが、後者は対応Resourceの持続性・容量・可用性条件に裏付けられない限りRequiredとして成立しない。ブラウザーのLocalStorage／IndexedDBの強制削除を、保存保証違反でなく通常のcache missとして扱える場合と、オフライン必須データ欠落で機能要求に不適合となる場合を区別する。
+
+### 16.2 増分計算は「依存関係が分かる」より強いTrait義務
+
+`IncrementalMaintenance`を宣言したとき、**何に対して**増分が正しいかを束縛する必要がある。最小適用範囲候補は
+`(query/operator revision, result shape, supported delta kinds [insert|update|delete|retract|upsert|late-correction], snapshot/consistency, time/window, source scope, target/provider)`。
+
+- `LEFT JOIN`：右辺が新たに一致すると、従来の未一致`(left,NULL)`は**撤回**され得る。行追加だけのmergeでは正しくない。
+- `NOT EXISTS`：否定条件を満たす行が追加されると、**元の結果行が消える**。存在しない依存（negative dependency）の監視・完全取得証拠が必要。
+- `Top-N`／`ORDER BY LIMIT`：新しい上位行により既存境界行が押し出され、ソートキー更新でも順位が変わる。必要な候補集合/再評価Windowが不明なら安全なDeltaを宣言できない。
+- `SUM`等の集計：削除・訂正・遅着、NULL、重複・JOIN多重度、精度・丸めとSnapshot境界に応じて補償（retract）が必要。
+- 時間Window：Event timeとObserved/Recorded time、水位線（watermark）、遅着・訂正を区別。再計算した過去有効時点の値で「当時観測・承認した値」を上書きしない。
+
+**決定規則**：Input ClosureとPredicate/否定依存を含む完全性・Delta適用範囲・実Providerの能力が確認できるときだけ増分更新を選択する。前提が欠けたら、(a) 要求Contractが許す範囲では**全量再読込・安全な再計算**にFallbackして、その方式をResult/Evidenceに記録する、(b) 差分計算そのものが厳格に必須で代替不可なら`unsupported/unfulfilled`として拒否する、(c) 正本も取得できなければ`unknown/unavailable`として保持する。**全量Fallbackを実施した実行を「増分更新が成功」と表示しない**。
+
+### 16.3 性能の最適化と正しさの保証を別の検証列にする
+
+```text
+Business/Function freshness + availability + retention requirements
+                          │
+Required Atomic Trait / Operation Contract
+                          │
+Existing Provider/Resource Capability + exact Selection
+                          │
+Complete dependency/negative dependency + snapshot/watermark
+                          │
+Correctness gate (full recompute / independent Expected)
+                          │
+Optional optimization selection (incremental / cache / batch / placement)
+                          │
+Same-target same-workload measurement + current Grant
+                          │
+Target-specific Adoption/Reject/Rollback record
+```
+
+性能改善の提案は`advisory`で構わないが、採用した**実装の正しさ・失効条件・必要Effect**はRequiredで検証する。例えば「推奨：IndexedDB」「推奨：差分更新」と表示されても、実Resource選択/Query Delta/Current Grantを自動的に資格化しない。強いFreshnessを業務要件として宣言した場合、`T_detect + T_queue + T_derive + T_validate + T_publish`のBudgetと実Clock/Source Observationを確認する。**TTLだけでは同時点Snapshot／最新値／SLA充足を証明しない**。過去の結果を「参考として表示」してもよい条件と、その結果を使う業務Actionの許可は別。
+
+Browser Memory／localStorage／IndexedDB／Redis／Local Fileは同じ抽象的`Resource Instance`から利用できても、容量・同期/非同期・TTL/atomic write/CAS・権限・持続性・競合の能力は別。複数Tab/Workerが旧結果を遅延書込みして新しい世代を上書きすることを禁止し、選択ProviderがCASを保証しないならepoch／Revisionを正しく隔離する別実装・Fallbackを要求する。`Cached + Shared`の同一値KeyはTenant/Principal/Source Scope/検索条件/Rule版/現在の開示資格を省略してよい理由にならない。事実の保存義務・退避/削除方針と最適化用Materializationのevictionは別Storage Subjectに束縛する。
+
+**チューニング計測の最小受渡し**（計測主体は既存Optimization Owner）：対象のContract/Target/Provider/Lock・Workload・Source Input／Rule Fingerprint／Snapshot条件・Cold/Warm/Hit/Miss／Rebuild/Refresh/Purge時間・p50/p95／CPU/Memory/容量／Freshness lag／unsupported/fallback件数／誤失効と過剰失効／コスト。原生QueryやSecret/Personal Dataを無制限にログへ記録しない。**契約適合PASS、機能の可用性、性能改善PASSは別票**とし、未計測Budgetは`unknown`。新しい統計収集エンジンはTrait導入の前提にせず、既存Provider/Traceで最低限の計測を実装可能かを先に確認する。
+
+### 16.4 独立ExpectedのPressure：最初の一Providerへ還元する（全て設計・未実行）
+
+下記は[#2582 RC-01〜09](https://github.com/hat47x/tei-platform/issues/2582)、[#3271 CS-01〜10](https://github.com/hat47x/tei-platform/issues/3271)の**Trait Fulfillmentとしての追加観点**であり、第二のScenario/Expected正本を作らない。
+
+| ID | 差分・故障注入 | Trait側で拒否／区別するべきこと |
+| --- | --- | --- |
+| **TCO-01** | `LEFT JOIN`の未一致結果へ右辺一致行を挿入。Providerはinsert-only deltaしか宣言しない | `IncrementalMaintenance`の要求に必要なretractが欠落。旧未一致行を残したまま`conformant`としない |
+| **TCO-02** | `NOT EXISTS`の否定依存を一つ未Loadedにした状態で結果をcache hit | Required Input Closureがpartial。真の0件/不存在、cached freshness、差分更新完了を宣言しない |
+| **TCO-03** | Top-Nの境界行変更・集計への削除/遅着訂正 | 実施可能なDeltaの対象範囲だけ資格を与える。Unsupported時は宣言したfull-refresh fallbackまたは拒否 |
+| **TCO-04** | Browserで最新世代Bの生成後、遅延した旧世代Aの保存、途中QuotaExceeded/Storage eviction | stale-overwriteなし。保存失敗と正本からの計算成功を別。オフラインAvailability保証を捏造しない |
+| **TCO-05** | Tenant/Grant/Source Scope変更、結果ByteとCache Keyが同一 | 現在の開示不可。事実上の存在・件数・KeyをUnauthorizedへ漏らさない |
+| **TCO-06** | 原価格に遡及訂正。再計算可能な売上集計と当時確定した受注記録を同じ見た目で保存 | 集計だけ失効・再生成、確定Temporal Record/Owner acceptanceは維持 |
+| **TCO-07** | 同Provider/Rule表示Versionで実Rule/Operator/GeneratorのByteだけ変更、結果値同一 | 旧Trait Conformance/Build Evidenceの再資格が必要な範囲を提示。同Byte/Cache hitで旧Qualification復活なし |
+| **TCO-08** | `@hint(incremental_candidate)`のみ、Manual Required不足、または実Providerがfull refreshで対応 | HintはRequiredを満たさない。Fallbackは`full-refresh`として観測。増分方式必須なら不適合 |
+| **TCO-09** | 同じDatasetを再読込・安全なdelta・高頻度cacheで比較 | 独立Expected一致を先に検査、実Target/負荷のLatency/Memory/Source lag/容量/コストを別評価。改善未計測なら採用しない |
+
+**実施順**：
+- **P0を妨げない**：#1251のInspector D1b（CLI/Studio実選択Provider呼出し）と#3279 Manual Required欠落診断を先行する。TCO試験のために第二Cache Engineや第二SQL Query Plannerを構築しない。
+- **P0-C（read-only Fixture）**：#2582で`LEFT JOIN`／`NOT EXISTS`／Top-Nの既存演算依存とSource Scopeを一例ずつ確定し、#3278で`required`と`hint`の違い・unsupported/fallbackの診断だけを既存Resolver/CLI read-only結果へ追加できるか評価。
+- **P1（実Backend/Storage）**：#3271のMemory/Local/Browser相当の一Provider上で、Source→Derive→Cache→Invalidate→Rebuild／Fallbackと、Temporal保存義務との非干渉を**独立Expected**と実Targetで比較。Browser実媒体とGo headlessは異なる資格。
+- **P2（測定・最適化）**：最低限の再取得/full recomputeと最適化候補を同Target/Loadで比較して効果が出た場合にのみ特性・Profileの標準提供範囲を決める。外部Redis/Edge/Streaming/B2Cへの展開をP0の必須条件にしない。
+
+**停止条件**：Traitを増やしても標準実装・手動不足診断・合成適合・最適化効果のいずれにも具体的改善がない、演算の非単調性を依存宣言で過少評価、退避すべき確定値をDisposableとして削除、測定未実施を性能改善と呼ぶ、独立的なCache Authority/Planner/Resolverを導入する場合は、Trait化せず既存Query/Resource/Policyの表現へ戻す。
+
+**今回の資格**：他レーンの既存#2582/#3271/Optimization契約と#3278/#3279の照合・受入候補の追加だけ。正式Incremental Trait ID/DSL、Native Browser Provider、実Cold/Warm Bench、TCO-01〜09、実Go/Studio/SQL/DB、Owner Meaning Acceptanceは**NOT RUN／NOT ACCEPTED**。
