@@ -202,3 +202,131 @@ AIに渡すのは **Measure + Evidence + Constraint + Counterexample + Candidate
 - 運用上のCVRや売上の向上は未検証。非導入との開発負担・正しさ・性能比較が成立するまでは「キラー機能」と正式認定しない。
 
 **結論**：高度B2Cへの対応を「標準UIの多機能化」と同一視しない。TEIを採用しながらUIの全自由度を維持できることを第一に保証する。そのうえで、TEI独自の意味・操作・Graph・Evidenceを活用して、施策変更と実業務効果を安全かつ迅速に検証できるPlugin群を、実Consumerで選抜する。
+
+
+<!-- b2c-cross-chat-maturation-20261108 -->
+## 10. 横断成果の反映：Experienceの自由と標準Model Mapを両立する
+
+本章は、2026-11-08の全体Model Map/RQ-036、Lifecycle Graph→生成実装、原子的Trait/Hook、AI向けCLI/共通Operation、KON/SHO分担、Cache・性能最適化を、高度B2Cの異質Consumerへ適用した追加設計である。既存の意味正本・Resolver・Host・Graph Writer・Harnessを再構築せず、実装済みの証拠も再発行しない。
+
+### 10.1 Experience Intentは業務意味の正本ではない
+
+ブランド、訴求、導線、体験実験の自由度を保つため、顧客体験の意図を既存の標準Record/Graph/Roleへ **Experience Proposal/Projection** として束縛する可能性を検証する。新Canonical Experience型の採用宣言ではない。
+
+| 視点 | 具体例 | 正本の権威 | 変更した場合 |
+| --- | --- | --- | --- |
+| Business Meaning | 商品・契約・価格計算・在庫確定・注文状態 | 既存OwnerのAccepted Meaning/Host/Commerce Provider | 変更案とOwner受理・実Effect検証 |
+| Experience Intent | 誰に何をどの順序で提示し、何を検証するか | 案件UX/Brand/Experiment Source | 実験・配信の版固定、関連Operationの適合検査 |
+| Presentation | 独自Frontend/DOM/CSS/Asset/SSR | 案件コードとFramework/Target | Browser/SEO/a11y/性能・Renderer/Hook適合 |
+| Observation | Variant露出、行動、Provider Effect、実測値 | 計測元・外部Backendの限定観測 | 欠測/旧版を保持し意味と権限へ昇格しない |
+
+- 文言・デザインをTEI標準表現型へ強制変換しない。表示の自由と型付きAction契約への接続を両立する。
+- 価格・契約条件・同意に関係する表示は「単なるUX」と偽装して業務・法務受理を省略しない。
+- 同じBusiness Meaningでも、Flow-oriented / Balanced / Rich/Case-oriented等の異なる体験を採用できる。速度や省操作数だけを普遍的なUX正解としない。
+
+### 10.2 全体MapにB2C導線の位置づけを示す
+
+標準の全体図・固定/可変・Source navigationは[#3505](https://github.com/hat47x/tei-platform/pull/3505)／RQ-036／[三要素図表共通契約](THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)へ委譲する。B2C専用の第二Diagram正本を設けない。
+
+~~~text
+Journey / Campaign / Experiment (案件Experience投影)
+  ├─ Touchpoint / Variant / Exposure → 計測Eventと対象母集団
+  ├─ UI Event / Confirm              → Interaction Flow (#3503)
+  ├─ Action Intent                   → Typed Operation (#1158)
+  ├─ Business Outcome                → Provider Effect / Receipt (#1174)
+  ├─ Data Dependency                 → Data/Function/Business / Cache (#3271)
+  ├─ Hook / Plugin                   → Trait / Effective Graph (#3278)
+  └─ Source / Target / Release       → Generator / Artifact / Conformance
+~~~
+
+「全体」は**World/Source/Scope/Consumer相対**である。required、resolved、unresolved、unavailable、permission-denied、out-of-scope（説明用分類）の対象数と理由を持ち、未取得Analyticsや未接続Commerce APIを「イベントなし」と断定しない。Layout変更とEdge/Guard変更を区別し、合成前・Plugin Patch・実効Graphを追跡する。表示Label・DOM ID・外部Event名の一致だけでBusiness Identityや実Effectを結合しない。
+
+## 11. 高頻度変更のための「変更レーン」
+
+すべての販促変更に完全な業務再受理を強制すれば変更速度を損なう。一方、すべてを軽い承認経路に通せば注文・契約・顧客情報を危険にさらす。既存Source/Impact/Acceptance/Build/Release契約上で、**変更の実質的な影響**に応じた検査集合を合成する。新Approval Engineは作らない。
+
+| Lane（評価用） | 例 | 主な再検証 | 変更責任 |
+| --- | --- | --- | --- |
+| C0 Content | 通常のバナー・画像・文言 | Asset/公開Revision、CDN Cache、SEO・a11y | Content Owner |
+| C1 Presentation | CSS、配置、アニメ、UI Kit差替え | Frontend Artifact、Browser/CWV、Actionの結合 | UX/Frontend Owner |
+| C2 Interaction | 入力順、確認/申込導線、Event Binding | Flow/Guard/Operation・同意・負例Scenario | Interaction Owner |
+| C3 Business/Effect | 価格・割引条件・在庫・決済・契約条件 | Meaning、現在Grant、権威Provider、Effect/別Read | 業務Owner/Host |
+| C4 Provider/Release | CDN、Edge、Experiment/Commerce Provider更新 | exact BOM、実Load/Call、Version、Cache失効・Rollback | Platform/Release Owner |
+
+- 一つの変更が複数Laneにまたがる場合、必要な義務を合成する。変更の名称でC3の権限や保証を迂回しない。
+- 法的表示や規約を変更する場合、表面上C0であっても必要な受理へ昇格させる。
+- 計測タグ追加は純粋な文言変更ではなく、Consent/CSP/外部送信/サプライチェーン/性能の再検査を要求する。
+- Experiment停止・Frontend Rollbackは **新規公開/Variant配信の停止** であり、既に確定した注文の取消ではない。既存Effectの補償は別の権限付きOperation/Receiptに従う。
+- 生成AIは変更差分からLane・依存・期待する再試験を提案できるが、Ownerの承認と実Provider適格性を代行しない。
+
+### 11.1 B2CをEC一例へ閉じない
+
+| 異質Consumer | 成功と誤りやすいUIイベント | 確定の権威 | 圧力条件 |
+| --- | --- | --- | --- |
+| EC | 購入ボタン、決済ページ到達 | Order/Payment Providerの最終状態 | 値引き/在庫/返品/二重Effect |
+| 予約・席/枠販売 | 入力送信・仮押さえ表示 | 予約Providerの確定枠 | 同時予約、期限、キャンセル、時間帯 |
+| 会員・Subscription | 会員登録・無料Trial開始 | 契約/課金/会員権限の実状態 | Trial→課金→解約、期間跨ぎの継続率 |
+
+B1はEC一縦切りで十分だが、B4のKit採用前に**EC以外の少なくとも一Consumerで再利用できる範囲・Gap**を評価する。全Consumerの実Target実装は新P0 Hard Dependencyにしない。
+
+## 12. コンバージョンの観測と事業成果の評価を分ける
+
+- **計画時**：実験ID/Revision、ランダム化単位、対象母集団、primary metric、guardrail、評価期間、停止条件、複数施策への対応を固定する。
+- **計測時**：Assignment≠Exposure≠Click≠Intent≠Operation Result≠Effect≠Revenue Uplift。SRM、重複、欠測、Event time/Processing time、同意、クロスデバイス/ログイン移行の結合前提を診断する。
+- **効果評価**：CVRだけでなく、粗利益、返品/取消、継続率、取得単価、ユーザー体験の悪化をGuardrail候補として扱う。計測Providerから取得していない指標や定義不明の金額をTEIが創作しない。
+- **因果推論**：適正なランダム化、評価母集団、測定窓、欠測・偏りの検査を持つ実験と、単なる相関観測を区別する。サブグループ後付けや途中結果の恣意的採用によって因果効果を断定しない。
+- **承認**：Experiment AssessmentもAI提案もOwnerの最終公開権限・Host Grantを生まない。導入効果は実測から初めて判定する。
+
+Performance/Conversion/Checkout/ConsentのGuardrail閾値は案件別のRequired/Advisory契約とし、TEI Coreに普遍的な一律CVR・売上閾値を固定しない。複数の指標が競合した場合、その判断は業務/プロダクトOwnerへ残す。
+
+## 13. AI Harness、テスト、KON/SHOの分担
+
+B2Cで有用なのは、特定のHarnessの常時搭載ではなく、**既存契約とEvidenceを利用して変更案を安全に評価できる足場**である。DSH型のEverything-is-Plugin方式や外部AI Harnessでも、TEI Runtimeに第二Resolver/Host/Source Writer/Test Runnerを導入しない。
+
+~~~text
+任意のAI/Harness
+  Inspect（Model Map / Source / Performance / Provider Evidence）
+    → Propose（UX/Experiment/Cache/Plugin変更案）
+    → Generate（案件Native Frontend / Adapter / Scenario候補）
+    → Check（独立Expected / 実Browser / 実Provider / CI）
+    → Compare（正しさ・性能・計測品質・変更コストを別票）
+    → Review & Apply（既存Owner/Hostが許可したReleaseのみ）
+           ↓
+既存TEI Contract / Operation / Source / Evidence
+~~~
+
+- テストはGUI/Browserスクリーンショットだけでなく、構造化CLI/CUI/HTTP/実Providerの**同Scenario・独立Expected**を利用する。見た目の回帰をBusiness Effectの証拠へ昇格しない。
+- Plugin・外部Analytics Script・Web取得テキスト・AI生成コードは信頼済み入力ではない。実際の外部送出、Consent/Privacy、必要なCapability、Provider実Callを独立検証する。
+- **KON Dataspace**は公開版・永続ID・素材・来歴・権限/公開境界を担う任意候補。TEIのAccepted Meaning、Query/Transaction、Host Grant、第二Plugin Registryにはしない。既存CMS/PIM/Commerceを優先利用してよい。
+- **SHO Composer**は自然言語主体の販促テキスト/コンテンツ編集とSource provenanceを担えるが、商品/契約の確定規則を上書きしない。Web UI化する場合も全TEI StudioをB2Cへ常駐させず、共通Application APIとPublish Adapterを使用する。
+- **EKI**等の分散転送を計測/通知へ用いる余地はあるがP0必須依存ではない。配信成功と実業務Effect成功を混同しない。
+
+## 14. 追加の独立Expected候補と製品化判断
+
+| Case | 故障・変更 | 固定するExpected | Stage |
+| --- | --- | --- | --- |
+| BC-16 | 通常バナー/文言だけ変更 | Meaning再受理を不要に保ちつつ配信版/SEO/a11y/Cacheは追跡 | B2 |
+| BC-17 | 文言変更に規約/料金条件が混入 | C0扱いを拒否し必要なMeaning/Authorityへ差分を接続 | B2 |
+| BC-18 | 図のLayout移動とEdge/Guard編集を混在 | Layoutは実装更新不要、意味Graph変更はSource Proposal/実効Graphへ | B0/B2 |
+| BC-19 | Analytics/Commerce外部参照の未取得/Permission denied | 不足件数と理由を保持し、完全Journey/欠落ゼロと主張しない | B0/B1 |
+| BC-20 | CVR上昇・粗利益や返品が悪化 | 単独CVRで自動採用せず評価窓/Guardrail/欠測を報告 | B3 |
+| BC-21 | Trial登録を課金完了に誤計上 | 契約/課金/解約を異なるEffectと時間条件へ分離 | B4前のGap |
+| BC-22 | AIがUI修正後、実Providerを見ずに改善と判定 | UI観測・Backend Effect・統計的因果を別資格に分ける | B2/B3 |
+| BC-23 | Variant停止を既存注文のUndoと解釈 | 配信Rollbackと権限付き補償Operationを分離、二重取消を拒否 | B2 |
+| BC-24 | Native Frontendを別Frameworkへ交換しTEI UI Plugin除去 | DOM/Router/Stateの自由を維持し、同Operationを利用できる | B1/B4 |
+
+### B4の採否を撤回可能にする
+
+| 評価軸 | 必要な比較と証拠 | 保留・棄却の例 |
+| --- | --- | --- |
+| 非拘束性 | 同じFrontendでTEI有/無のScript/通信/DOM/SSR差分、Plugin脱着 | 必須Runtime負担、Framework拘束、Headless移行不能 |
+| 生産性 | UX変更→審査→公開→Rollbackの時間、生成AIの修正量 | 学習/保守/Plugin追従負担が利益を上回る |
+| 計測品質 | 欠落/二重/不明Effect、SRM/Guardrail診断の実検出率 | Contractだけ存在し、実Consumerの誤りを検出できない |
+| 安全性 | Checkout/Price/Consent/Cache/unknown commit負例 | 実Targetで権限/Scope/Effectの保証が崩れる |
+| 既存ツールとの共存 | 外部Analytics/Flag/CMS/Commerceを置換せず接続 | 新たな中央Runtime/Registryが必須になる |
+| 収益性 | 事前に固定した母集団・指標・評価期間・独立Baseline | 因果の根拠なし、後付け指標、欠測 |
+| 再利用 | EC以外の予約/Subscriptionで共通契約を再利用できる部分 | 一用途専用ロジックを標準Coreへ昇格させる |
+
+**優先順**：B0のFit/Gapはread-onlyで開始し、既存#1119のP0/E2およびD1b実Provider Callを先行する。B1の実Effectが未実証のままB2のBrowser/Experiment成功を注文確定の証拠にしない。ただしSEO/a11y/性能など独立検査は並行可。B2差分は#997/#3503/#3278/#3271、B3は#2600と既存性能設計、B4のPlugin採否は#951/#1016/#259へ還元する。
+
+以上は**設計・独立Expected候補**。現行TEIの実製品機能、実Browser/Commerce/Experiment Provider適合、CVR向上、Owner Meaning受理は **NOT RUN / NOT ACCEPTED** とする。
