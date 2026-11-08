@@ -133,7 +133,8 @@ tei inspect -workspace examples/xtea-lowcode -subject-kind semantic-data -subjec
 
 - `view`の`semanticFingerprint`は`sha256:f6c4cf29…`、同じWorkspaceの`worldFingerprint`は`sha256:c92de09f…`で**異なる**（`cli-view-application.json`と`cli-model-catalog-reference.json`）。
 - `trace`は`result.snapshotFingerprint`と`result.trace.snapshotFingerprint`の2つを持ち、片方は継続トークン、片方は関係図の識別子である（`getting-started.md`はこの区別を説明している）。
-- 意味の版を`semanticFingerprint`、世界全体を`worldFingerprint`と呼び分けているが、名前だけでは「どちらが正規化モデルか」は分からない。
+
+- 2026-11-09（#3625）: 内側の`result.trace.snapshotFingerprint`を`result.trace.graphFingerprint`へ改名し、旧名は1 cycleのaliasとして同値を残す。継続ページには`nextOffset`の隣へ`result.trace.continuation.fingerprint`（外側と同値）と`field`を足し、どの値を`-expected-fingerprint`へ渡すかを応答の中だけで判別できるようにした。- 意味の版を`semanticFingerprint`、世界全体を`worldFingerprint`と呼び分けているが、名前だけでは「どちらが正規化モデルか」は分からない。
 
 **期待との差**
 

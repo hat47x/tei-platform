@@ -41,8 +41,19 @@ type TraceRow struct {
 // returns counts. "full" has no implicit truncation; a supplied positive Limit
 // enables explicit paging through NextOffset.
 type TraceResult struct {
-	SchemaVersion       string     `json:"schemaVersion"`
-	SnapshotFingerprint string     `json:"snapshotFingerprint"`
+	SchemaVersion string `json:"schemaVersion"`
+	// GraphFingerprint identifies this candidate graph, its rules and the
+	// selected subject and direction. It is NOT the continuation token: the
+	// CLI continuation value is result.snapshotFingerprint (outer), which also
+	// binds the World and the Source Index. It used to be called
+	// snapshotFingerprint, the same name as the outer value, so a reader that
+	// took the field next to nextOffset out of habit got STALE_SNAPSHOT (#3625).
+	GraphFingerprint string `json:"graphFingerprint"`
+	// SnapshotFingerprint is the deprecated alias of GraphFingerprint. It is
+	// emitted with the same value for one v0 cycle so existing readers keep
+	// working; new readers use graphFingerprint. It must never be passed as the
+	// continuation fingerprint.
+	SnapshotFingerprint string     `json:"snapshotFingerprint,omitempty"`
 	RuleFingerprint     string     `json:"ruleFingerprint"`
 	Subject             Key        `json:"subject"`
 	Direction           string     `json:"direction"`
@@ -53,6 +64,21 @@ type TraceResult struct {
 	Offset              int        `json:"offset,omitempty"`
 	Rows                []TraceRow `json:"rows,omitempty"`
 	NextOffset          *int       `json:"nextOffset,omitempty"`
+	// Continuation, when present, names the fingerprint to pass as the
+	// continuation token for NextOffset. The Workspace-level caller fills it
+	// because only it can bind the World and the Source Index; modelref alone
+	// cannot (#3625). It sits next to NextOffset so the value a reader needs
+	// is not mistaken for this graph's own fingerprint.
+	Continuation *TraceContinuation `json:"continuation,omitempty"`
+}
+
+// TraceContinuation names the token that continues this page. Fingerprint is
+// the Workspace-level continuation value (the CLI's result.snapshotFingerprint
+// placed beside nextOffset); it is descriptive and is not an acceptance
+// revision or a write token.
+type TraceContinuation struct {
+	Fingerprint string `json:"fingerprint"`
+	Field       string `json:"field"`
 }
 
 // TraceDirect selects and validates one-hop edges from the existing typed
@@ -190,8 +216,9 @@ func TraceDirect(graph Graph, rules []Rule, subject Key, options TraceOptions) (
 	}
 	result := TraceResult{
 		SchemaVersion: "tei.modelref.trace/v0", Subject: subject,
-		SnapshotFingerprint: snapshotFingerprint, RuleFingerprint: policyFingerprint,
-		Direction: options.Direction, Mode: options.Mode, Authority: "candidate-read-only",
+		GraphFingerprint: snapshotFingerprint, SnapshotFingerprint: snapshotFingerprint,
+		RuleFingerprint: policyFingerprint,
+		Direction:       options.Direction, Mode: options.Mode, Authority: "candidate-read-only",
 		Total: total, Unresolved: unresolved,
 	}
 	if options.Mode == "summary" {
