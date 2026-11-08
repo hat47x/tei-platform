@@ -12,29 +12,39 @@ import (
 	"tei/internal/workspace"
 )
 
-func buildKnowledgeContext(root, subjectKind, subjectID string) (knowledgecontext.Context, error) {
+// buildKnowledgeContextWithIdentity is buildKnowledgeContext plus the Workspace
+// identity the read observed (#3455). The plain builder stays for callers that
+// only need the Context.
+func buildKnowledgeContextWithIdentity(root, subjectKind, subjectID string) (knowledgecontext.Context, *workspace.WorkspaceIdentity, error) {
 	if strings.TrimSpace(root) == "" {
-		return knowledgecontext.Context{}, fmt.Errorf("knowledge-context requires -workspace")
+		return knowledgecontext.Context{}, nil, fmt.Errorf("knowledge-context requires -workspace")
 	}
 	kind := strings.TrimSpace(subjectKind)
 	id := strings.TrimSpace(subjectID)
 	if kind == "" || id == "" {
-		return knowledgecontext.Context{}, fmt.Errorf("knowledge-context requires -subject-kind and -subject-id")
+		return knowledgecontext.Context{}, nil, fmt.Errorf("knowledge-context requires -subject-kind and -subject-id")
 	}
 
 	loaded, err := workspace.Load(root)
 	if err != nil {
-		return knowledgecontext.Context{}, err
+		return knowledgecontext.Context{}, nil, err
 	}
 	sources, err := workspace.BuildSourceIndex(root, loaded)
 	if err != nil {
-		return knowledgecontext.Context{}, err
+		return knowledgecontext.Context{}, nil, err
 	}
 	return knowledgecontext.Build(
 		loaded.World,
 		sources,
 		subject.Subject{Kind: kind, ID: id},
-	), nil
+	), workspaceIdentityPointer(loaded), nil
+}
+
+// buildKnowledgeContext keeps the Context-only signature used by the other
+// knowledge builders and the existing tests.
+func buildKnowledgeContext(root, subjectKind, subjectID string) (knowledgecontext.Context, error) {
+	context, _, err := buildKnowledgeContextWithIdentity(root, subjectKind, subjectID)
+	return context, err
 }
 func buildDataDesignCandidateReview(
 	root, subjectKind, subjectID, candidateKind, candidateFingerprint,

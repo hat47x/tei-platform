@@ -34,8 +34,16 @@ type sourceIndexSubjectView = operations.SubjectSources
 // The Source Index fingerprint is computed from the index itself, not from this
 // projection, so normalizing here does not change any reported fingerprint.
 type sourceIndexIndexView struct {
-	Artifacts  []sourceindex.Artifact  `json:"artifacts"`
-	References []sourceindex.Reference `json:"references"`
+	Artifacts  []sourceindex.Artifact       `json:"artifacts"`
+	References []sourceindex.Reference      `json:"references"`
+	Workspace  *workspace.WorkspaceIdentity `json:"workspace,omitempty"`
+}
+
+// sourceIndexSubjectValue is the single-subject projection with the Workspace
+// identity the read observed (#3455).
+type sourceIndexSubjectValue struct {
+	operations.SubjectSources
+	Workspace *workspace.WorkspaceIdentity `json:"workspace,omitempty"`
 }
 
 func newSourceIndexIndexView(index sourceindex.Index) sourceIndexIndexView {
@@ -71,7 +79,9 @@ func buildSourceIndexInspection(root, subjectKind, subjectID string) (any, strin
 		return nil, "", &sourceIndexStageError{Stage: sourceIndexStageBuild, Err: err}
 	}
 	if kind == "" {
-		return newSourceIndexIndexView(index), resultModeIndex, nil
+		view := newSourceIndexIndexView(index)
+		view.Workspace = workspaceIdentityPointer(result)
+		return view, resultModeIndex, nil
 	}
 
 	// Reuse the index built for this invocation, rather than reloading the
@@ -88,5 +98,8 @@ func buildSourceIndexInspection(root, subjectKind, subjectID string) (any, strin
 	if subjects.Artifacts == nil {
 		subjects.Artifacts = []sourceindex.Artifact{}
 	}
-	return subjects, resultModeSubject, nil
+	return sourceIndexSubjectValue{
+		SubjectSources: subjects,
+		Workspace:      workspaceIdentityPointer(result),
+	}, resultModeSubject, nil
 }
