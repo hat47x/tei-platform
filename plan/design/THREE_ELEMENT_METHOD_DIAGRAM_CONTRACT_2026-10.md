@@ -532,3 +532,37 @@ Code Generatorの入力は「TEIのAuthoringで宣言したPattern」だけで�
 **完成Model Mapでの見せ方**：①標準参照Flow、②変更したHook/Stepと入力・出力・権限／版、③生成Targetごとの合成後Flow、④同じ対象のGraph/Matrix/Traceにおける影響集合、をリンクして提示する。CLIなど図形描画不可のConsumerには同型の階層表/ASCII graph/Typed JSONを用意する。これは特定の正規化JSON Schema採用ではなく、既存のRole付標準データとProjectionを使う標準受入要求である。
 
 **追加負例**（既存MAP-05/08/10へ集約）：Generator Templateのみ変更でSemantic World fingerprint不変の場合もTarget生成資格を再評価する。Plugin宣言だけ追加・実選択なしなら合成後Flowに「非稼働」と示す。標準Guardの無いTargetへ配置する場合は警告を消して固定部分を描くのではなく`unsupported/unqualified`を明示する。Hookで前後のEvent順を入れ替えてContext/Effectを破壊する場合は適合拒否。**コードジェネレータのHook実装やTarget実証は本PRではNOT RUN**。
+
+### 19.7 Lifecycle・イベント・対話を型付きGraphとして合成し、生成器入力へつなぐ（他チャットのPlugin/Lifecycle/AI Chat横断、採用前の方式候補）
+
+**設計上の補正**：§19.3／§19.6で「標準固定」と呼ぶのは、全ドメインに単一の固定**手続き順**を強いることではない。固定対象は、型付き参照／Guard/Authorityの迂回拒否、承認が必要なEffectのCommit資格、出典追跡、Effect/Receipt、失敗の伝播、版・Scopeの整合、要求する前提と事後保証などの**成立義務**である。これを守りながら、業務Graphの経路／Step／イベント群／State／Plugin Hook／Target適用を構成時に可変とする。互換なGraph Patchの導入は**意味変更**として扱う。Layout/Notationだけの変更とは区別する。
+
+受理された同じWorldに、**Roleが付いた型付きData/Graph**をProjectionできることを最小要件とし、新しいWorkflow専用Canonical、固定Runtime Dispatcher、独立Graph Storeを導入しない。各Viewは以下の**論理属性**を持つが、この表を新たなGo公開構造体や正式DSL宣言として固定しない。
+
+| Graph要素／束縛 | 必要な意味・由来・検証 |
+| --- | --- |
+| Node / Relation / Edge | Qualified identity、役割（Event/State/Guard/Action/Effect/Observation/Interaction/Join/Retry/Timeout/Handoff）、端点ID／方向／多重性／必要なら順序・条件、意味版とSource位置 |
+| Port / Trait / Contract | Input/Output型・Result/NULL/partial、粒度、前提／保証、Owner、Hook挿入契約。Traitは原子的義務であり**Hook Slotという編集許可自体ではない** |
+| Event Group / Correlation | 発生源、業務時点と観測時点、correlation/causation、重複・遅延・欠落、start/end/acceptance。発生・受信・適用・完了を混同しない |
+| State / Transition | 有効な状態とfrom/to、禁止・不明、Guard、Owner Action、Commit再評価、明示取消／補償。認証の方式は固定せず、束縛した場合にだけ挿入する |
+| Graph Extension / Patch | 変更対象のQualified node/edge、base revision、追加・削除・置換可能なslot、Plugin identity/Version、適用Scope/Target、期待する型・前提／保証、競合と順序。任意edgeの書換権限を暗黙付与しない |
+| Effective Graph / Generation | Standard Graphと受理済みProject Graph、選択Plugin/Provider/Hookの実Bindingを合成。各Targetへの生成候補・未対応・生成器版・Artifact/Evidenceを別版で持つ |
+
+**処理構成の順**：①Source/Role/Scopeと必要集合の閉包を列挙→②標準Graphに受理済み案件Graphと宣言されたPatchを合成→③同一node/edge・Priority・強制順序を巡る競合、型・Trait・pre/post・入出力粒度を診断→④Guard/Authorization／Effect Fenceを迂回する経路、到達不能Node、合流の条件不一致、無期限待機、部分成功の未処理、Cancel/TimeoutやRetryの欠落を検査→⑤Target別に実装可能な部分だけを生成し、Source/Generator/Plugin版を束縛→⑥実Targetが本当にそのFlowをロード／Invoke／Receive／Commitしたかは別の実証で確認。①〜⑤の一段でも不足があれば**生成済み図があること**をRuntime適合や完全性の証拠としない。
+
+Graphを**描いていること**、Graphの**構文と型が通ること**、受理したMeaningとRequired Contractを**意味保存していること**、Targetへ**生成可能であること**、選択したPluginが**実呼出しされたこと**、実行Effectが**確定したこと**は全て別の合格列。Model Map／Pattern詳細／Generator Previewはこの区分を同一IDとRevisionで表示する。編集中にSourceが変更されたときは、初期Graph・Patch対象・Revisionを再解決して競合を拒否する。すでに走っている長期Executionを新Graphへ暗黙に移し替えず、実行継続／Migration／Resumeの資格は#1174/#2390等既存Runtime Ownerの別課題とする。
+
+**異質な検証領域：生成AIのWebチャット**。Webチャットの`message`／`turn`／`run`／`streaming`／`tool-call`／`tool-result`／`approval`／`regenerate`／`branch`は、**Interaction FlowのState/Event候補**として同じGraph体系に位置づける。Tool応答の未受信・部分Streaming・中断・承認待ち・二重送出・Branch Resumeを明示し、会話画面上の「回答完了」を業務TransactionのCommitや現在Tool Grantへ自動昇格しない。UI Adapter/ProtocolはGraphの入出力であり、AG-UI等のEvent Transport、A2UI等の宣言的UI記述、MCP等のOperation Adapterは**可能な外部比較対象**にとどめ、いずれかの採用や実対応をこの要求から強制しない。AIがGraphを解釈・改善提案しても、Ownerの意味受理やHostの実行権限を代行しない。
+
+**独立反例（MAP-11〜16、全件新規試験NOT RUN）**：
+
+| ケース | 独立に比較する期待 | 実装を不合格とする条件 |
+| --- | --- | --- |
+| MAP-11 | 標準FlowのGuardを保持しつつ、許可済みApproval Stepを途中へ加えた合成後GraphとTarget別Diff | 形状が異なるだけで一律拒否、またはGuardを迂回して成功 |
+| MAP-12 | 同じExtension Slotを二Pluginが異なるOutput契約で同時置換した際のConflictと未選択表示 | 先着Pluginを黙って採用、見た目だけ競合解消 |
+| MAP-13 | State Graphの未接続／到達不能／合流Guard矛盾／Timeout未処理を独立Diagnosticsにする | 正規化だけ成功して全Graphが有効と表示 |
+| MAP-14 | 配置・Notationのみ変更ならMeaning/Generator inputは不変、型付きEdge/Hook変更は生成・検証対象 | 表示変更で意味変更を起こす、意味変更なのにLayout更新として無検証 |
+| MAP-15 | Graph Revision変更後も既存Running Attemptを自動切替せず、別案／移行資格／停止を明示 | 新しいGraphができたので実行中も暗黙に切替 |
+| MAP-16 | AI chatのStreaming/Tool/Approval/BranchをInteraction側に示し、Tool未受信・Host Grant未照合をUnknownに保持 | メッセージ表示済み＝外部Effect確定／AIの承認済みと表示 |
+
+**既存Ownerへの分担**：Everything is Data・Role #2619/#2620、PatternのAssume/Guarantee #2507、Rule/Operator #988、標準Plugin/Trait #951/#3278、生成器契約 #2090/#2092/#2096、Event/Business Flow #1125、Lifecycleの採否 ADR-0046/#1174、実AI Interaction/Tool #2390、Graph表示／参照 #1124、独立Expected #2514/#1180。三要素Methodは投影・案内・差分の**共通受入窓口**であって、これらのDefinition/Runtime正本を複製しない。
