@@ -70,3 +70,18 @@
 - [プラグインと配布一式](../../docs/plugins.md)（選択の規則の正本）
 - [操作面の設計候補](../design/OPERATION_SURFACE_DESIGN_2026-11.md)（15章の未決4件）
 - [判断材料: 操作面の未決4件と、決める順序](OPERATION_SURFACE_DECISION_BRIEF_2026-11.md)（同じ形式の先例）
+
+## 8. HTTP Decision Graphの局所実証を、この判断にどう使うか（2026-11-09追補）
+
+[HTTP実行設計§19〜20](../design/HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md)には、実Reference Workspace→Canonical認可→Driver→**合成**AdapterのGo Host試験がある。さらに合成状態について、503後に適用済みの場合と未適用の場合、202後に適用済みの場合と未適用の場合、およびread失敗を、それぞれ[限定CI #42486408608](https://github.com/hat47x/tei-platform/actions/runs/42486408608)でPASSと確認している。これは**既存部品の局所結合ができる**証拠であり、製品の実CLI/Studio/Providerの接続先が決まった証拠ではない。
+
+この実験からC-1〜C-4に対して追加できる**採否の制約**は、選択した実行Ownerが誰でも、(1)実行するAction/Provider・Current Grantの一意の出所を持つ、(2)Commit/ReceiptとHTTP Ackを混ぜない、(3)unknownの場合に非冪等Commandを安易に再送しない、(4)明示Observationを別の読取り・鮮度として記録できること、の4条件である。**条件を満たせるかはC-1〜C-4のどれについても未検証**であり、本追補でC-1/C-2を推奨したりC-4を棄却したりしない。
+
+| C案 | HTTP実証から持ち越す最小の検証質問 |
+| --- | --- |
+| C-4 外部Hostへ委譲 | 外部HostがどのAuthority・Operation・Effect readの証拠を返すか。外部の確認責務をTEIが所有したことにはしない |
+| C-1 Router | Routerの決定した宣言IDが実Executor/Adapterの呼出しへ到達し、HTTPへの返却とEffect Evidenceを同一Attemptで対応付けるか |
+| C-2 Service Host | Host-pinned generationと実Provider/Artifact/Scopeが、失効後の別Attemptに流用されないか |
+| C-3 Capability ID導出 | 名称一致ではなく実Canonically selected Binding/実Invoke先を比較できるか |
+
+**本追補の判定**は依然「判断材料・未確定」。C-4→C-1/C-2→C-3の順序と正本のOwnerは変えない。追加のHTTP専用Routing/ResolverやProduct schemaは、実行接続の選択前に導入しない。通常`tei inspect`と実Studio Bridgeの同一selected Inspector Provider B実呼出し（#3525/#3531の残るS2）は、局所Go test Helper二経路の成功から区別する。
