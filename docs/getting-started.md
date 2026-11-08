@@ -1,4 +1,4 @@
-﻿# TEIを動かす
+# TEIを動かす
 
 この文書では、TEIを取得して動作を確認するまでの手順を説明します。設計の考え方から知りたい場合は、[はじめてTEIを知る方へ](for-readers.md)を参照してください。
 
@@ -86,6 +86,24 @@ go build -o tei ./cmd/tei
 ```
 
 `go run`や`-buildvcs=false`でbuildした場合はコミットが埋め込まれないため、`source`が`unavailable`になります。識別は再現の手掛かりであり、配布の承認や署名ではありません。
+
+`-buildvcs=false` のようにtoolchainがcheckoutを見ないbuildでも、builderが版を渡せます（2026-11-09から）。
+
+```bash
+go build -buildvcs=false \
+  -ldflags "-X main.declaredSourceRevision=$(git rev-parse HEAD)" \
+  -o /tmp/tei ./cmd/tei
+/tmp/tei version -json
+```
+
+| buildの仕方 | `source` | 版の欄 |
+| --- | --- | --- |
+| checkout内で通常の `go build` | `build-info` | `vcsRevision`（toolchainが観測した値） |
+| checkout内、未commitの変更あり | `build-info` | `vcsRevision` + `vcsModified:true` |
+| `-buildvcs=false` + 上の`-ldflags` | `declared` | `declaredRevision` と `declaredRevisionFrom:"ldflags"` |
+| `-buildvcs=false` + 宣言なし | `unavailable` | 版の欄なし |
+
+`declaredRevision` は**buildした呼出し元の申告**であり、toolchainの観測ではありません。`vcsRevision` と取り違えないでください。両方ある場合は `vcsRevision` を優先し、`declaredRevision` は付けません。テキスト出力では `revision=<値> (declared)` のように印を付けます。この値の正しさ（申告したcommitから実際にbuildしたか）は、実行物だけでは確かめられません。
 
 モデルや定義の整合性を調べる場合、生成AIなどの呼出し元は次のようにJSON形式の診断結果を取得できます。
 

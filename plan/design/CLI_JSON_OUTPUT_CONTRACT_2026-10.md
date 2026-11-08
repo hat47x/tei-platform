@@ -18,6 +18,7 @@
 
 - `world`を除く、`tei commands`が広告する読取り専用JSONコマンドは`tei.cli.<command>/v0`を持ち、失敗時は`ok: false`と`error.code`を標準出力のJSON 1件で返す。終了コードの意味（0/1/2）は従来どおり。
 - **`ok`/`result`を持つ成功時の形は、`version -json`には当てはまらない。** `version -json`は`ok`を持たず、build識別（`goVersion`等）を`schemaVersion`と同じ階層に並べて返す。2026-11-07から`tei commands`は`version`の`successShape`を`identity`として広告するので、呼び手は成功時に`ok`を仮定しない。`jsonContract`の`enveloped`は失敗時の形（`schemaVersion`と`error.code`）を指し、成功時の本体は`successShape`が示す（#2824）。
+- 2026-11-09から、`version -json`はtoolchainが観測しなかった版を`declaredRevision`（builderが`-ldflags "-X main.declaredSourceRevision=…"`で申告した値）と`declaredRevisionFrom`として返す。`source`は`build-info`（toolchainの観測）・`declared`（申告のみ）・`unavailable`（どちらも無い）の3値であり、`declaredRevision`を`vcsRevision`として読ませない。両方ある場合は`vcsRevision`を優先し、申告は付けない（#3558）。欄の追加は互換な変更とする。
 - `world`は例外で、`tei.cli.*`のエンベロープを持たない。`tools/reference-critical-path-evidence-audit/live-r1-smoke.mjs`が`tei world`の生標準出力SHA-256を受理済みDecisionの`derivedWorldSha256`と照合するため、インデントやエンベロープの追加は証跡照合と両立しない。`world`は内部・証跡用途であり、外部の安定JSON契約の対象外とする（2026-11-02 Owner判断）。
 - 実測では、製品CLI（`cmd/tei`）が外部のGo moduleに依存しないのと同様に、**広告された読取りコマンドのうち`tei.cli.*/v0`を持たない出力は、内部構造体の変更がそのまま外部向け変更になる**。`world`はこの例外として扱い、その他のコマンドは投影型で版固定する。
 

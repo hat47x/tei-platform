@@ -36,9 +36,67 @@ func TestBuildIdentityFromStampedBuildInfo(t *testing.T) {
 
 func TestBuildIdentityWithoutBuildInfoIsExplicitlyUnavailable(t *testing.T) {
 	identity := buildIdentity(nil, false)
+	if identity.DeclaredRevision != "" || identity.DeclaredRevisionFrom != "" {
+		t.Fatalf("a declaration leaked into a build without one: %+v", identity)
+	}
 	if identity.Source != "unavailable" || identity.VCSRevision != "" || identity.VCSModified ||
 		identity.GoVersion != runtime.Version() || identity.GOOS != runtime.GOOS || identity.GOARCH != runtime.GOARCH {
 		t.Fatalf("missing build info must be reported, not guessed: %+v", identity)
+	}
+}
+
+// A builder that turns VCS stamping off may declare the revision it built
+// from. It must appear under its own name and never as vcsRevision (#3558).
+func TestBuildIdentityReportsADeclaredRevisionWithoutClaimingVCS(t *testing.T) {
+	previous := declaredSourceRevision
+	declaredSourceRevision = "0123456789abcdef0123456789abcdef01234567"
+	t.Cleanup(func() { declaredSourceRevision = previous })
+
+	identity := buildIdentity(nil, false)
+	if identity.Source != "declared" {
+		t.Fatalf("source=%q want %q", identity.Source, "declared")
+	}
+	if identity.DeclaredRevision != "0123456789abcdef0123456789abcdef01234567" ||
+		identity.DeclaredRevisionFrom != "ldflags" {
+		t.Fatalf("declaration lost: %+v", identity)
+	}
+	if identity.VCSRevision != "" || identity.VCSModified {
+		t.Fatalf("a declared revision was reported as a toolchain observation: %+v", identity)
+	}
+}
+
+// When the toolchain did stamp a revision, that observation wins and the
+// declaration is not attached: two competing revisions in one answer would
+// leave the reader to guess which one the build used.
+func TestBuildIdentityPrefersTheToolchainObservationOverADeclaration(t *testing.T) {
+	previous := declaredSourceRevision
+	declaredSourceRevision = "declared-value"
+	t.Cleanup(func() { declaredSourceRevision = previous })
+
+	info := &debug.BuildInfo{
+		GoVersion: "go1.26.9",
+		Settings: []debug.BuildSetting{
+			{Key: "vcs.revision", Value: "0123456789abcdef0123456789abcdef01234567"},
+		},
+	}
+	identity := buildIdentity(info, true)
+	if identity.Source != "build-info" || identity.VCSRevision == "" {
+		t.Fatalf("toolchain observation lost: %+v", identity)
+	}
+	if identity.DeclaredRevision != "" {
+		t.Fatalf("declaration attached beside a toolchain observation: %+v", identity)
+	}
+}
+
+// An empty or whitespace-only declaration is not a revision.
+func TestBuildIdentityIgnoresAnEmptyDeclaration(t *testing.T) {
+	previous := declaredSourceRevision
+	declaredSourceRevision = "   "
+	t.Cleanup(func() { declaredSourceRevision = previous })
+
+	identity := buildIdentity(nil, false)
+	if identity.Source != "unavailable" || identity.DeclaredRevision != "" {
+		t.Fatalf("blank declaration changed the identity: %+v", identity)
 	}
 }
 

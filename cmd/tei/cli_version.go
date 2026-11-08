@@ -24,15 +24,39 @@ type cliBuildIdentity struct {
 	// VCSModified reports uncommitted changes at build time. A modified build
 	// cannot be reproduced from VCSRevision alone.
 	VCSModified bool `json:"vcsModified,omitempty"`
+	// DeclaredRevision is the revision the builder declared at build time with
+	// -ldflags "-X main.declaredSourceRevision=…". It is deliberately NOT
+	// vcsRevision: the toolchain did not observe a checkout, so the value is
+	// only the caller's statement and must be read with DeclaredRevisionFrom.
+	DeclaredRevision string `json:"declaredRevision,omitempty"`
+	// DeclaredRevisionFrom is the source setting the caller declared, for
+	// example "ldflags". It is empty when nothing was declared.
+	DeclaredRevisionFrom string `json:"declaredRevisionFrom,omitempty"`
 	// BuildSettings lists the toolchain settings that change the binary.
 	BuildSettings []string `json:"buildSettings,omitempty"`
 	// Source identifies where the identity came from: "build-info" when the
-	// toolchain stamped it, "unavailable" when it did not (for example
-	// -buildvcs=false or a source build outside a checkout).
+	// toolchain stamped it, "declared" when only the builder's declaration
+	// exists, and "unavailable" when neither did (for example
+	// -buildvcs=false with no declaration, or a source build outside a checkout).
 	Source string `json:"source"`
 }
 
-const buildIdentityUnavailable = "unavailable"
+const (
+	buildIdentityUnavailable = "unavailable"
+	buildIdentityDeclared    = "declared"
+)
+
+// declaredSourceRevision is stamped with
+// -ldflags "-X main.declaredSourceRevision=<commit>". It is never read from a
+// file or a working tree, so a stale checkout cannot silently change it.
+// Builders that turn VCS stamping off can use it to hand over the revision the
+// binary was built from (#3558). It is a declaration, not an observation.
+var declaredSourceRevision string
+
+// declaredSourceRevisionFrom records which mechanism supplied the declaration.
+// It exists so the JSON can say why the declaration is there; a caller that
+// only needs the value ignores it.
+var declaredSourceRevisionFrom string
 
 // buildIdentity reads the identity the Go toolchain stamped into this binary.
 // It never runs git or reads the working tree, so the answer describes the
@@ -47,7 +71,7 @@ func buildIdentity(info *debug.BuildInfo, ok bool) cliBuildIdentity {
 		Source:        buildIdentityUnavailable,
 	}
 	if !ok || info == nil {
-		return identity
+		return withDeclaredRevision(identity)
 	}
 	if info.GoVersion != "" {
 		identity.GoVersion = info.GoVersion
@@ -64,7 +88,32 @@ func buildIdentity(info *debug.BuildInfo, ok bool) cliBuildIdentity {
 	}
 	if identity.VCSRevision != "" {
 		identity.Source = "build-info"
+		return identity
 	}
+	// The toolchain did not observe a checkout. A builder may still have
+	// declared the revision; report it under its own name so it cannot be
+	// mistaken for a toolchain observation (#3558).
+	return withDeclaredRevision(identity)
+}
+
+// withDeclaredRevision attaches the builder's declaration, if any, without
+// changing a toolchain observation. The declaration is reported under its own
+// field and source, so a reader can tell "the toolchain saw this" from "the
+// builder said so".
+func withDeclaredRevision(identity cliBuildIdentity) cliBuildIdentity {
+	if identity.VCSRevision != "" {
+		return identity
+	}
+	declared := strings.TrimSpace(declaredSourceRevision)
+	if declared == "" {
+		return identity
+	}
+	identity.DeclaredRevision = declared
+	identity.DeclaredRevisionFrom = "ldflags"
+	if from := strings.TrimSpace(declaredSourceRevisionFrom); from != "" {
+		identity.DeclaredRevisionFrom = from
+	}
+	identity.Source = buildIdentityDeclared
 	return identity
 }
 
@@ -93,10 +142,16 @@ func runVersionCommand(args []string, out io.Writer) (int, error) {
 		return 0, nil
 	}
 	revision := identity.VCSRevision
-	if revision == "" {
-		revision = buildIdentityUnavailable
-	} else if identity.VCSModified {
+	switch {
+	case revision != "" && identity.VCSModified:
 		revision += " (modified)"
+	case revision != "":
+	case identity.DeclaredRevision != "":
+		// A declared revision is not an observation, so the text says so
+		// instead of printing it as if the toolchain had stamped it (#3558).
+		revision = identity.DeclaredRevision + " (declared)"
+	default:
+		revision = buildIdentityUnavailable
 	}
 	fmt.Fprintf(out, "tei %s %s/%s go=%s revision=%s\n",
 		identity.SchemaVersion, identity.GOOS, identity.GOARCH, identity.GoVersion, revision)
