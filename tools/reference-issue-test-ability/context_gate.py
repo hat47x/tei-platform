@@ -965,7 +965,6 @@ def main() -> None:
           f"+ {len(report['requiredValidationControls'])} bounded Rule-slice checks "
           f"+ {len(report['focusedStructureControls'])} Rule/Relation Canonical checks "
           f"+ {len(report['boundedFunctionControls'])} bounded Function checks; "
-          f"+ {len(report['transportByteControls'])} byte-reply rejection controls; "
           "test generation qualification withheld")
 
 
