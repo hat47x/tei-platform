@@ -102,11 +102,10 @@ func projectFixturePlainCandidate(syntax PipelineSyntax, pins, catalog []Operato
 	return result, nil
 }
 
-// fixtureLanguagePins is written as named values rather than one return
-// statement with two composite literals. gofmt for go1.26.10 (the CI toolchain)
-// and gofmt for go1.27.0 indent a multiline composite literal inside `return`
-// differently, so the one-expression form cannot satisfy both. Naming the
-// values keeps the same behaviour and makes both formatters agree.
+// fixtureLanguagePins names the two values instead of returning both composite
+// literals from one `return`. gofmt for go1.26.10 (the CI toolchain) and gofmt
+// for go1.27.0 indent such a literal differently, so a one-expression form cannot
+// satisfy both. The named form keeps the same behaviour and both agree.
 func fixtureLanguagePins() (Selection, Selection) {
 	pipe := Selection{
 		LanguageID: "fixture.pipe", ContractVersion: "1",
@@ -121,8 +120,8 @@ func fixtureLanguagePins() (Selection, Selection) {
 	return pipe, json
 }
 
-// fixtureOperators uses the same shape as fixtureLanguagePins for the same
-// toolchain reason.
+// fixtureOperators uses the same named form as fixtureLanguagePins for the
+// same cross-toolchain reason.
 func fixtureOperators() (OperatorContract, OperatorContract) {
 	where := OperatorContract{
 		ID: "std.where", Version: "1", Fingerprint: "where-fixture-1",
