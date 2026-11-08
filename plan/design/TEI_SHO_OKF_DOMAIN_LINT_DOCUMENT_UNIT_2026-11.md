@@ -550,16 +550,16 @@ G2-Pの入力は`actual sourceBytes/baseSha256/startByte/endByte/expectedBytes/r
 
 - 上流OKF commit ad30107c31c06aec8a7d5636e0d1058118604e6f / Reference Document git blob b770a92f33adf9942e2932529308d066430b02a6 / SPEC raw SHA256 26aa5da029278939f914e578107242d9607d4f2dc5fe153272b82f9ed1030101 / PyYAML 6.0.3の固定版に対し、3 Conceptとroot indexの実rawファイルを読込。
 - 正常3 Conceptの上流Reference parse/validate **PASS**、verified singletonのイベント件数1・synthetic processのmachine-confirmed扱い、原Byte SHAの固定を観測。
-- 既存7一因子Mutantは**7 MATCH**。第8Mutantのtype非空YAML listは、上流Reference \`OKFDocument.validate()\` が**受理**し、SPEC中の文字列条件では**拒否**となる差分を、実ログで**KNOWN_REFERENCE_GAP**として観測。
+- 既存7一因子Mutantは**7 MATCH**。第8Mutantのtype非空YAML listは、上流Reference `OKFDocument.validate()` が**受理**し、SPEC中の文字列条件では**拒否**となる差分を、実ログで**KNOWN_REFERENCE_GAP**として観測。
 - これで「K1の**上流実装による限定互換試験を実行した**」と言える。Reference自体が全仕様Validatorではないため、公式OKF F0全適合、独立Owner Oracle適格、全Relation解決、Product Reader、Source/Disclosure/Runtime Grantを推論しない。§15.3の「Probe NOT RUN」はこの**後続CIにより歴史的状態**となったが、記載時点の状態を遡及改ざんしない。
 
 ### 16.2 実SHO G1b CLIが同一K1物理ファイルを読めるかの最小P0
 
 この次のSource受渡しには、test-only [tools/reference-okf-k1/sho_g1b_receipt_probe.py](../../tools/reference-okf-k1/sho_g1b_receipt_probe.py)を追加し、既存のK1 GitHub Actionsに**別Job k1-sho-main-raw-reader**を増設した。新たな製品Parser/Runtime/共通Registryは追加していない。
 
-- **Producer側Sourceの定義**：同じTEI Git checkoutの\`testdata/okf-k1-v02/\`実4 Markdown file。各実FileのSHA-256・bytesを既存Expectedから再照合。Sourceを手作業でSHO fixtureへコピーして「同じ実ファイル」とは呼ばない。
-- **Consumer側実装**：SHO mainの固定Git HEAD \`fc0127400733bac161b3fc0d556f451991d0a510\` に存在する現行\`bin/sho-inspect.cjs\`、\`src/g1b-reader.cjs\`、\`markdown-it 14.3.3\`をtest専用で実呼出し。Node22／npm lockから依存固定。CLI JSONの\`source.sha256/byteLength/revision\`、Parser grammar scope、\`link_open\`件数、\`coverage\`を比較する。
-- **否定対照**：不存在のK1 Fileに対してReader CLIが\`not-found\`/異常終了し、正常なゼロLinkファイルと混同されないことを確認。Grammar外の未定義参照・全Footnote・外部Sourceは\`allDocumentReferencesEnumerated=false\`等の局所実応答から評価する。G1b ReaderにYAML Concept type/verifiedの理解は要求しない。
+- **Producer側Sourceの定義**：同じTEI Git checkoutの`testdata/okf-k1-v02/`実4 Markdown file。各実FileのSHA-256・bytesを既存Expectedから再照合。Sourceを手作業でSHO fixtureへコピーして「同じ実ファイル」とは呼ばない。
+- **Consumer側実装**：SHO mainの固定Git HEAD `fc0127400733bac161b3fc0d556f451991d0a510` に存在する現行`bin/sho-inspect.cjs`、`src/g1b-reader.cjs`、`markdown-it 14.3.3`をtest専用で実呼出し。Node22／npm lockから依存固定。CLI JSONの`source.sha256/byteLength/revision`、Parser grammar scope、`link_open`件数、`coverage`を比較する。
+- **否定対照**：不存在のK1 Fileに対してReader CLIが`not-found`/異常終了し、正常なゼロLinkファイルと混同されないことを確認。Grammar外の未定義参照・全Footnote・外部Sourceは`allDocumentReferencesEnumerated=false`等の局所実応答から評価する。G1b ReaderにYAML Concept type/verifiedの理解は要求しない。
 - **Host/権限**：既存SHO実CLIで固定TEI公開FixtureをローカルReadするテストであり、既存SOH/TEI Plugin Host、SHO G2 Writer、外部Network/Egressの否定証明やSUI実ProducerのH1とは分ける。実跨製品入力は**TEIのK1物理file→SHO G1b Reader**に限定され、**「共通OKF Providerを用いたTEI CLI＋SHO二Consumer」K2ではない**。
 
 | 個別Claim | 必須Witness | 状態 |
@@ -570,19 +570,19 @@ G2-Pの入力は`actual sourceBytes/baseSha256/startByte/endByte/expectedBytes/r
 | K2二Consumer同一選択Provider | 現World/Manifest/Plugin Lock/2実Call Site＋Recipient Required→Received | **NOT RUN** |
 | K5実WriterとK4実Attested Run | 別のCurrent Grant/実Effect/Receipt/独立検査 | **NOT RUN** |
 
-**最小の次工程**：まずSHOの実CLI Jobが固定Markdown4ファイルを読むか赤緑判定し、成功ならK1Rの限定Witnessだけを更新する。そこからK2実Reader契約を設計する際、上流PythonやSHO G1bのParserをTEI Coreへコピーしない。Plugin-first選択・Provider実Load/Invoke、TEIのRequired Sourceが\`readByLoader:false\`のままか、SHO/StudioのReader実呼出しを#3262/#1251/#951/#2621に分担し、同一Productの別Runnerを増やさない。
+**最小の次工程**：まずSHOの実CLI Jobが固定Markdown4ファイルを読むか赤緑判定し、成功ならK1Rの限定Witnessだけを更新する。そこからK2実Reader契約を設計する際、上流PythonやSHO G1bのParserをTEI Coreへコピーしない。Plugin-first選択・Provider実Load/Invoke、TEIのRequired Sourceが`readByLoader:false`のままか、SHO/StudioのReader実呼出しを#3262/#1251/#951/#2621に分担し、同一Productの別Runnerを増やさない。
 
 **証拠管理**：上流module・参照ファイルの固定Pin、PythonとNodeの試験結果は**test-onlyのGitHub Action Receipt**。本節は正本のOKF仕様や正式なMeaning/Owner/Hostの代替ではない。実H2/H3、正式なProduct間引継ぎ、Disclosure、源資料真正性の未測定は維持する。
 
 
 ### 16.3 公開TEI→非公開SHOの実Read権限断絶とOwned-CIへの変更
 
-2026-11-08の追加試験で、**公開リポジトリのGitHub Actionsのcontents:read権限では、非公開SHO Repoを別Repositoryとしてcheckoutできない**ことを実観測した。[TEI CI #42461670105](https://github.com/hat47x/tei-platform/actions/runs/42461670105)では上流Reference Reader Jobは成功したが、新設SHO G1b Jobはcheckout段階の\`repository not found\`で**Reader実行前にFAIL**。この赤を「SHO Parser不適合」「K1 Concept不正」「SHO G1bの実受信失敗」とはしない。
+2026-11-08の追加試験で、**公開リポジトリのGitHub Actionsのcontents:read権限では、非公開SHO Repoを別Repositoryとしてcheckoutできない**ことを実観測した。[TEI CI #42461670105](https://github.com/hat47x/tei-platform/actions/runs/42461670105)では上流Reference Reader Jobは成功したが、新設SHO G1b Jobはcheckout段階の`repository not found`で**Reader実行前にFAIL**。この赤を「SHO Parser不適合」「K1 Concept不正」「SHO G1bの実受信失敗」とはしない。
 
 **変更した配置**：
 
 1. 公開TEI [tei-okf-k1-reference-ci.yml](../../.github/workflows/tei-okf-k1-reference-ci.yml)から非公開SHO Repoのcheckout Jobを削除。公式公開SPEC・上流Reference・公開合成Fixtureの限定検査だけを維持し、PAT/Secret/クロスRepo権限を追加しない。
-2. 非公開SHO側に [Draft PR #27](https://github.com/hat47x/sho-composer/pull/27) を起票し、Private SHOの実CLI \`fc0127400733bac161b3fc0d556f451991d0a510\` と公開TEI実Fixture/Reader受領Probe \`52908f5f4fe95d7049c0beb4d2dd60ee04e80858\` を**別々にPin**して同一JobでRead。合成公開Dataのみのread-onlyであり、Raw秘密やSHO Codeを公開TEI repoへ複製しない。
+2. 非公開SHO側に [Draft PR #27](https://github.com/hat47x/sho-composer/pull/27) を起票し、Private SHOの実CLI `fc0127400733bac161b3fc0d556f451991d0a510` と公開TEI実Fixture/Reader受領Probe `52908f5f4fe95d7049c0beb4d2dd60ee04e80858` を**別々にPin**して同一JobでRead。合成公開Dataのみのread-onlyであり、Raw秘密やSHO Codeを公開TEI repoへ複製しない。
 3. 実ファイル毎のByte SHA/長さ、G1b Reader Grammar/coverage、missing File対照を**SHO自身の実CI結果**で検査する。TEI upstream ReferenceのPASSや、PRのGit checkout作成成功だけでSHOのK1R資格を確定しない。
 
 この移動による**権限の実装差は一つ**である。TEI・SHO間の実Plugin/BOM/Host Grantを設計し直すのではなく、GitHub CI RunnerのSourceアクセス権が属する**Repo Ownership**へJobを配置した。SHO Private→TEI Publicの読取は、その限られた公開Fixtureを同一Attemptで受け取るためだけに使う。公開済みK1のSourceを別Audienceへ再配布できる根拠ではない。
@@ -592,19 +592,66 @@ G2-Pの入力は`actual sourceBytes/baseSha256/startByte/endByte/expectedBytes/r
 
 ### 16.4 Private SHO実Readerの同一物理Source受領を実CIで確認
 
-[SHO Draft PR #27](https://github.com/hat47x/sho-composer/pull/27)の修正HEAD \`ec169bf63f5010c3dc5d3389ee4efe2522419775\` に対する [実CI #42462172893](https://github.com/hat47x/sho-composer/actions/runs/42462172893) は**completed/success**、実Jobログに\`actual_local_sho_reader=PASS\`が4ファイル分あり、固定\`sha256\`と同一Byte長に一致。
+[SHO Draft PR #27](https://github.com/hat47x/sho-composer/pull/27)の修正HEAD `ec169bf63f5010c3dc5d3389ee4efe2522419775` に対する [実CI #42462172893](https://github.com/hat47x/sho-composer/actions/runs/42462172893) は**completed/success**、実Jobログに`actual_local_sho_reader=PASS`が4ファイル分あり、固定`sha256`と同一Byte長に一致。
 
-| TEI K1現物 → SHO G1b実CLI | Raw Bytes | Scoped \`link_open\` | 文書内全Reference |
+| TEI K1現物 → SHO G1b実CLI | Raw Bytes | Scoped `link_open` | 文書内全Reference |
 | --- | ---: | ---: | --- |
 | index.md | 309 | 3 | UNKNOWN |
 | data/order.md | 480 | 0 | UNKNOWN |
 | functions/submit.md | 600 | 1 | UNKNOWN |
 | business/submit.md | 492 | 1 | UNKNOWN |
 
-不存在の合成PathをCLIが\`not-found\`/失敗とする**負例もPASS**。いずれも公開TEIの固定Commit \`52908f5f4fe95d7049c0beb4d2dd60ee04e80858\` にある実物理Fileであり、SHO私有Repo内のコピーFixtureではない。SHO側の実Codeはpin済み\`fc0127400733bac161b3fc0d556f451991d0a510\`、Parserは\`markdown-it 14.3.3\`、Source revisionは\`unknown\`のまま。
+不存在の合成PathをCLIが`not-found`/失敗とする**負例もPASS**。いずれも公開TEIの固定Commit `52908f5f4fe95d7049c0beb4d2dd60ee04e80858` にある実物理Fileであり、SHO私有Repo内のコピーFixtureではない。SHO側の実Codeはpin済み`fc0127400733bac161b3fc0d556f451991d0a510`、Parserは`markdown-it 14.3.3`、Source revisionは`unknown`のまま。
 
-**赤→緑の追加反例**：初回[SHO CI #42461984903](https://github.com/hat47x/sho-composer/actions/runs/42461984903)では、実CLIの4 File Receiptは全件出ていたが、CI終了時の\`git status --untracked-files=all\`が\`npm ci\`で作る\`node_modules\`を不正なSource編集と誤認してFAIL。修正後は追跡対象Fileに実差分がないことを\`git diff --quiet\`と\`git diff --cached --quiet\`で確認し、同じ実ReadのStepも**全Job success**。\`node_modules\`の存在を製品Build/BOM/実Runtime意味資格へ転用しない。
+**赤→緑の追加反例**：初回[SHO CI #42461984903](https://github.com/hat47x/sho-composer/actions/runs/42461984903)では、実CLIの4 File Receiptは全件出ていたが、CI終了時の`git status --untracked-files=all`が`npm ci`で作る`node_modules`を不正なSource編集と誤認してFAIL。修正後は追跡対象Fileに実差分がないことを`git diff --quiet`と`git diff --cached --quiet`で確認し、同じ実ReadのStepも**全Job success**。`node_modules`の存在を製品Build/BOM/実Runtime意味資格へ転用しない。
 
 **Claim ceilingの更新**：K1Rの**「SHO実G1bが公開TEIのPinされたMarkdown原Byteを直接受領」**は実証済み。従来の「実SHO CLI試行NOT RUN」は履歴状態に変更。これはTEIのK1 Scopeであり、SUI実Producer H1（通常CI SKIP）、SHO G2実Disk Writer、OKFの正式type/frontmatter F0全適合、TEI/SHO同一Plugin二Consumer K2、Owner採用、非公開Source Disclosure、TAI Attested Computationを満たさない。
 
-**次の最小P0**：この実Readの経路を、将来の選択済みOKF Reader/Validator Contractに接続する場合、\`Content SHA一致\`、\`Spec subset解析\`、\`Required→Received\`、\`Current Principal/Disclosure\`、\`Plugin実Invoke\`を別票に保つ。TEI/SHOそれぞれで既存Router/Inspector/Readerを使い、第二のパーサ/Host/Registry/Policy Engineを追加しない。PR #27もDraftのまま、Ownerの正式受理を推論しない。
+**次の最小P0**：この実Readの経路を、将来の選択済みOKF Reader/Validator Contractに接続する場合、`Content SHA一致`、`Spec subset解析`、`Required→Received`、`Current Principal/Disclosure`、`Plugin実Invoke`を別票に保つ。TEI/SHOそれぞれで既存Router/Inspector/Readerを使い、第二のパーサ/Host/Registry/Policy Engineを追加しない。PR #27もDraftのまま、Ownerの正式受理を推論しない。
+
+
+---
+
+## 17. 2026-11-08 K2を既存Plugin-first／Source受領契約へ接続する実装計画
+
+### 17.1 現mainとDraftの再照合（履歴ではなく現在の実装基線）
+
+- TEI PR #3338（実行Offer・Function Binding・変更影響）は**mainへマージ済み**。ただし、横断計画の統合はOKF Providerの実選択・Load・Invoke・受領を自動的には実装しない。Plugin-firstをK2の入口とし、OKF専用の第二Registry／Host／Policy Engineを作らない。
+- TEI PR #3354（TT-56の3 Rule/Canon/Relation/Sourceを実CLIゲートで照合）とPR #3370（requirementsのresult配列をDiscoveryに明示）も**mainへマージ済み**。これらはK2で「正常な空result」と「Sourceの未取得」を区別する既存Consumer基線に使えるが、K1のMarkdownがTEI Loaderで意味読取済みとは言えない。
+- SHO Draft PR #25（G2-W1 Working Copyの保存・別Open再読取）は**未マージ**。K1RでSHOのread-only実CLIが受け取ったRawと、Working Copy／正式Writer／競合処理の成果を分離する。SHO Draft #27の実CIはK1R限定PASSであり、SHOのOKF意味ParserやK2共通Providerを証明しない。
+- SUIのItem/Card/Canvas/Occurrenceは独立Identity。投影後に欠けたSource・Relation・Ownerの意味をMarkdownから逆推定しない。OKFの未知typeを未分類Itemとして保管できても、意味Roleの確定にはならない。
+
+### 17.2 K2の最小Contractと一つの成功経路
+
+**K2の実験単位は「一つのProviderが実際に選択・起動され、二つのConsumerが同じ固定Sourceを別々に受け取ること」**。Bundleファイル一致だけではK2成功としない。既存のPlugin-first Capability/Provider BindingとTEI Context Query/SHO G1b Readerを使い、次の観測を一つのAttemptに束縛する。
+
+| 境界 | 必須の実観測 | 取り違え禁止 |
+| --- | --- | --- |
+| Source | Rootの実realpath、ファイル原Byte SHA、対象Scope、取得時刻、Spec/Parser Pin | Bundle内のindexやリンクだけで全Sourceを列挙したとしない |
+| Binding | Capability要求、選択されたProvider Identity/Version、Plugin Lock、曖昧・未選択・利用不可の理由 | Offer宣言、Plugin BOM列挙、選択済み、実Loadを同一視しない |
+| Execution | Providerの実LoadとInvoke、実argv/operation/effect、現在のHost Grant、当該AttemptのReceipt | `effect:read-only`の宣言や前回のReceiptで実作用を認定しない |
+| Consumer A（TEI CLI） | 既存read-only Queryの実Tool Call/Reply、Required Source/Role/RelationとReceived、unsupported/unreadの内訳 | `result:[]`をSource不在・全件取得・意味受理のいずれにも自動変換しない |
+| Consumer B（SHO） | 実G1b CLIの原Byte受領、限定Markdown token、未解析のReferenceと実Reader版 | Markdown tokenの受領をOKF YAML・Meaning・Writerの受理へ昇格しない |
+| Cross-consumer | 同一World/Source Revision/Provider選択の証明、各Consumerの独立Receipt、必要Source差集合 | 二つのCIがそれぞれPASSしただけで同一Providerの二Consumerとしない |
+| Admission | F0形式の適用範囲、F1 Required閉包、F2 Owner Accepted Meaning/Disclosure/Grantの個別状態 | verified/human:、source fingerprint、形式F0合格をF2へ転用しない |
+
+**導入の分割**：K2-Aは合成Bundleを一つの選択済みReader ProviderからTEI CLIに実受領させる。K2-Bは同じProviderをSHOの既存Reader境界から実呼出し、同じSourceの原ByteとConsumer別の限定結果を保存する。K2-Cで独立Requiredを先に固定し、両ConsumerのCurrent Receivedを比較する。K2-Dで一方だけ失敗、Provider曖昧、Source ABA、権限撤回、途中部分応答を試す。**K2-A/B/C/Dのいずれも現時点ではNOT RUN**。
+
+### 17.3 追加する一因子の負例と受入条件
+
+| 負例 | 期待する拒否・未資格 | 既存担当 |
+| --- | --- | --- |
+| Capabilityを宣言したがProviderが未選択／複数候補 | Binding ambiguous/unselected。自動で最初のProviderを選ばない | Plugin-first既存Issue |
+| Plugin LockのProviderと実Loadした実体が異なる | K2-A/Bを拒否。BOMの検証済み組合せを実行済みとは呼ばない | Plugin/BOM既存Issue |
+| TEI Context Queryが正常に空配列を返すが独立Requiredに一件不足 | Source欠落／未Loadを明示し、C0/Meaning/二Consumerの完備とはしない | TEI #3262 |
+| SHOのMarkdown linkは読めるがTEI LoaderはMarkdownをreadByLoader:false | K1Rは維持、K2のTEI意味受領は拒否 | TEI #2621／SHO #18 |
+| 同じSHAでもOwner Meaning受理・Host Grant・Audienceが異なる | Source一致のみ認め、Meaning/Disclosure/Executionを拒否 | TEI #2514／#2515 |
+| ReaderがSourceを読んだ後に原文がA→B→Aと変化 | 観測間の履歴を未証明とし、Receiptの時点・入力を区別 | SHO #4／TEI Harness既存Issue |
+| SUIのCanvas投影から原Relation/Occurrenceが消える | 受領済み表示と原Meaningの完全性を分離。補完生成しない | SUI既存Projection Issue |
+| 旧Session Logやstdoutに残ったRawが別Audienceへ見える | 内部Observerの保有と外部Viewer開示を別Grantで検査 | TEI #2515／TAI #514 |
+
+**最小合格**：同一PinされたProvider/Source/Worldに対して、二つの**実Call Site**とそれぞれの独立受領Receiptが存在し、Required→Receivedの差分が機械的に列挙できること。どれかが未観測なら、K1/K1Rの局所成功は維持したままK2を不合格／未実施とする。実Readerの共通化は既存Plugin ContractへのAdapterとして扱い、OKF固有Hostや第二のデータ正本は導入しない。
+
+### 17.4 既存PR健全性の赤を成果へ混入させない
+
+TEI Draft #3329のHEAD `dece223d233ac38e814dd3e789c58187f78fad2b` に対する [PR健全性CI #42462570959](https://github.com/hat47x/tei-platform/actions/runs/42462570959) は**completed/failure**。実Jobログの失敗は `tools/repository-plan-check/TestMarkdownHasNoEscapedBackticks` が本設計文書553行目で不正なバックスラッシュ付きバッククォートを検出したため。上流Reference Readerの独立CI #42462571037と依存の既知脆弱性CIは成功。**前回の「健全性実行中」を成功へ読み替えない**。今回の文書更新で当該エスケープを除去し、最新HEADの実Go/PR Healthが成功するまで全体PASSを保留する。これをOKF形式やSHO Readerの失敗と誤分類しない。
