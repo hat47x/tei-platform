@@ -58,11 +58,13 @@ type rpcResponse struct {
 
 // envelope mirrors the CLI's schemaVersion/ok/result/error document so a client
 // can compare the MCP answer and the CLI answer without translating shapes.
+// Its Error is the CLI's string code; the JSON-RPC numeric error stays in
+// rpcResponse, because the two carry different meanings (#3420).
 type envelope struct {
-	SchemaVersion string    `json:"schemaVersion"`
-	OK            bool      `json:"ok"`
-	Result        any       `json:"result,omitempty"`
-	Error         *rpcError `json:"error,omitempty"`
+	SchemaVersion string                              `json:"schemaVersion"`
+	OK            bool                                `json:"ok"`
+	Result        any                                 `json:"result,omitempty"`
+	Error         *operations.ValidationReportFailure `json:"error,omitempty"`
 }
 
 func okEnvelope(schemaVersion string, result any) envelope {
@@ -92,7 +94,7 @@ func errorEnvelope(schemaVersion string, err error) envelope {
 		code = "WORKSPACE_LOAD_FAILED"
 	}
 	return envelope{SchemaVersion: schemaVersion, OK: false,
-		Error: &rpcError{Code: 1, Message: code + ": " + message}}
+		Error: &operations.ValidationReportFailure{Code: code, Message: message}}
 }
 
 // workspaceLoadFailure is unused today; it keeps the switch above readable when
@@ -316,30 +318,34 @@ func dispatch(name string, arguments map[string]json.RawMessage, workspace strin
 	case "tei_validate":
 		result, err := operations.ValidateWorkspace(workspace)
 		if err != nil {
-			return errorEnvelope("tei.cli.validate/v0", err), true, nil
+			return validationFailureEnvelope(err), true, nil
 		}
-		return validateEnvelope(result), false, nil
+		// The same projection the CLI writes, so a client compares documents
+		// instead of translating two shapes (#3420). A validation finding that
+		// is not an operation error is a failed answer here too, not a success
+		// with isError false.
+		report := operations.WorkspaceValidationReportFrom(result)
+		return report, !report.OK, nil
 	default:
 		return nil, false, fmt.Errorf("unknown tool %q", name)
 	}
 }
 
-// validateEnvelope mirrors cmd/tei's validate projection for the fields the
-// adapter exposes. Unlike the CLI, the declared Workspace carries no syntax
-// finding path here because a Direct finding means no World was built; the
-// adapter reports it as an error instead of a partial document.
-func validateEnvelope(result operations.WorkspaceValidation) envelope {
-	if result.Direct != nil {
-		return envelope{SchemaVersion: "tei.cli.validate/v0", OK: false,
-			Error: &rpcError{Code: 1, Message: result.Direct.Code + ": " + result.Direct.Message}}
+// validationFailureEnvelope carries the CLI's validate failure contract: the
+// document keeps `diagnostics` as an empty array and puts the string code in
+// `error.code`, so a client compares it with the CLI answer directly (#3420).
+func validationFailureEnvelope(err error) operations.WorkspaceValidationReport {
+	code := "WORKSPACE_VALIDATION_FAILED"
+	var failure *operations.ValidationFailure
+	if errors.As(err, &failure) {
+		switch failure.Stage {
+		case operations.StageLoad:
+			code = "WORKSPACE_LOAD_FAILED"
+		case operations.StageSourceIndex:
+			code = "SOURCE_INDEX_FAILED"
+		}
 	}
-	return okEnvelope("tei.cli.validate/v0", map[string]any{
-		"worldFingerprint":       result.WorldFingerprint,
-		"sourceIndexFingerprint": result.SourceIndexFingerprint,
-		"diagnostics":            result.Diagnostics,
-		"declarationCounts":      result.Declarations,
-		"sourceRootFindings":     result.SourceRootFindings,
-	})
+	return operations.WorkspaceValidationFailureReport(code, err.Error())
 }
 
 func requireSubject(arguments map[string]json.RawMessage) (string, string, error) {
