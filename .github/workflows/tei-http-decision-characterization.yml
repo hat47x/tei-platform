@@ -12,6 +12,9 @@ on:
       - 'reference/web-composition/e1-go-route-pair.test.mjs'
       - 'reference/web-composition/e1-go-route-pair.fixture.json'
       - 'reference/web-composition/go-host/**'
+      - 'reference/workspace/applications/order-entry/patterns/submit-order.tei'
+      - 'reference/workspace/semantic/sales/order.tei'
+      - 'reference/workspace/tei.workspace.yaml'
   push:
     branches: [main]
     paths:
@@ -21,6 +24,9 @@ on:
       - 'reference/web-composition/e1-go-route-pair.test.mjs'
       - 'reference/web-composition/e1-go-route-pair.fixture.json'
       - 'reference/web-composition/go-host/**'
+      - 'reference/workspace/applications/order-entry/patterns/submit-order.tei'
+      - 'reference/workspace/semantic/sales/order.tei'
+      - 'reference/workspace/tei.workspace.yaml'
 
 permissions:
   contents: read
@@ -72,11 +78,15 @@ jobs:
           printf 'go-host-blob=%s\n' "$(git rev-parse HEAD:reference/web-composition/go-host/host.go)"
           printf 'go-path-test-blob=%s\n' "$(git rev-parse HEAD:reference/web-composition/go-host/decision_path_test.go)"
           printf 'go-route-pair-test-blob=%s\n' "$(git rev-parse HEAD:reference/web-composition/go-host/e1_go_route_pair_test.go)"
+          printf 'workspace-command-source-blob=%s\n' "$(git rev-parse HEAD:reference/workspace/applications/order-entry/patterns/submit-order.tei)"
+          printf 'workspace-capability-source-blob=%s\n' "$(git rev-parse HEAD:reference/workspace/semantic/sales/order.tei)"
+          printf 'source-admission-test-blob=%s\n' "$(git rev-parse HEAD:reference/web-composition/go-host/e1_workspace_source_admission_test.go)"
           go version
           go test -count=1 -v ./reference/web-composition/go-host
-          if [[ -n "$(gofmt -l reference/web-composition/go-host/decision_path_test.go reference/web-composition/go-host/e1_go_route_pair_test.go)" ]]; then
+          if [[ -n "$(gofmt -l reference/web-composition/go-host/decision_path_test.go reference/web-composition/go-host/e1_go_route_pair_test.go reference/web-composition/go-host/e1_workspace_source_admission_test.go)" ]]; then
             gofmt -d reference/web-composition/go-host/decision_path_test.go
             gofmt -d reference/web-composition/go-host/e1_go_route_pair_test.go
+            gofmt -d reference/web-composition/go-host/e1_workspace_source_admission_test.go
             echo "Focused Go witness source is not gofmt-clean" >&2
             exit 1
           fi
