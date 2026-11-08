@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"tei/internal/core"
+	"tei/internal/currencyrate"
 	"tei/internal/semantic"
 	"tei/internal/sourceindex"
 	"tei/internal/syntax"
@@ -550,5 +552,99 @@ func TestSelfDescriptionRawDocumentRevisionIsNotSemanticRoleRevision(t *testing.
 	}
 	if len(afterIndex.ReferencesFor(sourceindex.Subject{Kind: "semantic-data", ID: "probe.item"})) != 1 {
 		t.Fatal("canonical subject reference missing after raw document edit")
+	}
+}
+
+// The actual TEI workspace syntax is consumed by the existing domain Role
+// reader. It proves a narrow Source -> Load -> IR Role -> domain rule path,
+// not an exact-selected Language Plugin, Provider Read, or owner acceptance.
+func TestSelfDescriptionWorkspaceRoleFeedsExistingCurrencyFallback(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "semantic"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	manifest := "workspace: currency_role_probe\nformatVersion: 1\nsources:\n  - semantic\n"
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte(manifest), 0600); err != nil {
+		t.Fatal(err)
+	}
+	const sourcePath = "semantic/rate.tei"
+	withRole := "namespace fx\ndata Rate {\n  attribute fallback type std.code role currency-rate-fallback\n}\n"
+	sourceFile := filepath.Join(root, filepath.FromSlash(sourcePath))
+	if err := os.WriteFile(sourceFile, []byte(withRole), 0600); err != nil {
+		t.Fatal(err)
+	}
+	load := func() (workspace.Result, sourceindex.Index) {
+		t.Helper()
+		w, err := workspace.Load(root)
+		if err != nil {
+			t.Fatalf("load TEI semantic file: %v", err)
+		}
+		idx, err := workspace.BuildSourceIndexFromLoad(root, w)
+		if err != nil {
+			t.Fatalf("index TEI semantic file: %v", err)
+		}
+		return w, idx
+	}
+	loaded, index := load()
+	if len(index.ReferencesFor(sourceindex.Subject{Kind: "semantic-data", ID: "fx.rate"})) != 1 {
+		t.Fatal("real Workspace did not index the declared rate Data")
+	}
+	if got := selfDescriptionAttribute(t, loaded.World.Semantics[0], "fx.rate", "fx.rate.fallback"); got.Role != currencyrate.RoleFallback {
+		t.Fatalf("actual Workspace dropped the fallback Role: %+v", got)
+	}
+	role, err := currencyrate.ResolveFallback(loaded.World, core.CanonicalID("fx.rate"))
+	if err != nil {
+		t.Fatalf("domain Role resolver failed on the actual Workspace World: %v", err)
+	}
+	if role.Attribute != "fx.rate.fallback" {
+		t.Fatalf("domain resolver selected wrong attribute: %+v", role)
+	}
+	rows := []map[core.CanonicalID]string{
+		{"fx.rate.fallback": "annual"},
+		{"fx.rate.fallback": "annual"},
+	}
+	got, err := role.FallbackRows(rows)
+	if err != nil || got != currencyrate.FallbackAnnual {
+		t.Fatalf("role and explicit row values did not yield annual: rule=%q err=%v", got, err)
+	}
+	if _, err := role.FallbackRows([]map[core.CanonicalID]string{
+		{"fx.rate.fallback": "annual"},
+		{"fx.rate.fallback": "unknown"},
+	}); err == nil {
+		t.Fatal("selected Role accepted an unknown row rule")
+	}
+	if _, err := role.FallbackRows([]map[core.CanonicalID]string{
+		{"fx.rate.fallback": "annual"},
+		{"fx.rate.fallback": "none"},
+	}); err == nil {
+		t.Fatal("selected Role accepted row order-dependent fallback rules")
+	}
+
+	// Change only the annotated Role, not the Data/Attribute or row values.
+	// A domain-specific reader must not infer the role from a column name.
+	withoutRole := strings.Replace(withRole, " role currency-rate-fallback", "", 1)
+	if err := os.WriteFile(sourceFile, []byte(withoutRole), 0600); err != nil {
+		t.Fatal(err)
+	}
+	after, afterIndex := load()
+	if len(afterIndex.ReferencesFor(sourceindex.Subject{Kind: "semantic-data", ID: "fx.rate"})) != 1 {
+		t.Fatal("removing Role also removed the data source reference")
+	}
+	unannotated, err := currencyrate.ResolveFallback(after.World, core.CanonicalID("fx.rate"))
+	if err != nil {
+		t.Fatalf("no-Role declaration should still be readable: %v", err)
+	}
+	if unannotated.Attribute != "" {
+		t.Fatalf("domain inferred Role from the same row/column name: %+v", unannotated)
+	}
+	noRule, err := unannotated.FallbackRows(rows)
+	if err != nil || noRule != currencyrate.FallbackNone {
+		t.Fatalf("no-Role data unexpectedly selected a fallback rule: rule=%q err=%v", noRule, err)
+	}
+	// This is a characterization of the existing domain API, not evidence
+	// that an empty or incomplete Provider Read was independently qualified.
+	empty, err := role.FallbackRows(nil)
+	if err != nil || empty != currencyrate.FallbackNone {
+		t.Fatalf("unexpected current empty-row behavior: rule=%q err=%v", empty, err)
 	}
 }
