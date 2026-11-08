@@ -15,12 +15,14 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
 
 	"tei/internal/modelref"
@@ -267,11 +269,12 @@ func callTool(params json.RawMessage, workspace string) (toolResult, error) {
 func dispatch(name string, arguments map[string]json.RawMessage, workspace string) (any, bool, error) {
 	switch name {
 	case "tei_model_catalog":
-		var namespace string
-		if raw, ok := arguments["namespace"]; ok {
-			if err := json.Unmarshal(raw, &namespace); err != nil {
-				return nil, false, fmt.Errorf("namespace must be a string")
-			}
+		if err := rejectUnknownArguments(arguments, "namespace"); err != nil {
+			return nil, false, err
+		}
+		namespace, err := optionalString(arguments, "namespace", "")
+		if err != nil {
+			return nil, false, err
 		}
 		result, err := operations.CatalogWorkspace(workspace, namespace)
 		if err != nil {
@@ -279,6 +282,9 @@ func dispatch(name string, arguments map[string]json.RawMessage, workspace strin
 		}
 		return okEnvelope("tei.cli.model/v0", result), false, nil
 	case "tei_inspect":
+		if err := rejectUnknownArguments(arguments, "subjectKind", "subjectId"); err != nil {
+			return nil, false, err
+		}
 		kind, id, err := requireSubject(arguments)
 		if err != nil {
 			return nil, false, err
@@ -289,24 +295,29 @@ func dispatch(name string, arguments map[string]json.RawMessage, workspace strin
 		}
 		return okEnvelope("tei.cli.inspect/v0", result), false, nil
 	case "tei_trace":
+		if err := rejectUnknownArguments(arguments, "scope", "subjectKind", "subjectId",
+			"direction", "mode", "offset", "limit", "expectedFingerprint"); err != nil {
+			return nil, false, err
+		}
 		scope, kind, id, err := requireTrace(arguments)
 		if err != nil {
 			return nil, false, err
 		}
-		options := modelref.TraceOptions{
-			Direction:           optionalString(arguments, "direction", "both"),
-			Mode:                optionalString(arguments, "mode", "summary"),
-			ExpectedFingerprint: optionalString(arguments, "expectedFingerprint", ""),
+		options := modelref.TraceOptions{}
+		if options.Direction, err = optionalString(arguments, "direction", "both"); err != nil {
+			return nil, false, err
 		}
-		if raw, ok := arguments["offset"]; ok {
-			if err := json.Unmarshal(raw, &options.Offset); err != nil {
-				return nil, false, fmt.Errorf("offset must be an integer")
-			}
+		if options.Mode, err = optionalString(arguments, "mode", "summary"); err != nil {
+			return nil, false, err
 		}
-		if raw, ok := arguments["limit"]; ok {
-			if err := json.Unmarshal(raw, &options.Limit); err != nil {
-				return nil, false, fmt.Errorf("limit must be an integer")
-			}
+		if options.ExpectedFingerprint, err = optionalString(arguments, "expectedFingerprint", ""); err != nil {
+			return nil, false, err
+		}
+		if options.Offset, err = optionalInt(arguments, "offset"); err != nil {
+			return nil, false, err
+		}
+		if options.Limit, err = optionalInt(arguments, "limit"); err != nil {
+			return nil, false, err
 		}
 		result, err := operations.TraceWorkspace(workspace, modelref.Key{
 			Scope: scope, Subject: subject.Subject{Kind: kind, ID: id},
@@ -316,6 +327,9 @@ func dispatch(name string, arguments map[string]json.RawMessage, workspace strin
 		}
 		return okEnvelope("tei.cli.trace/v0", result), false, nil
 	case "tei_validate":
+		if err := rejectUnknownArguments(arguments); err != nil {
+			return nil, false, err
+		}
 		result, err := operations.ValidateWorkspace(workspace)
 		if err != nil {
 			return validationFailureEnvelope(err), true, nil
@@ -349,48 +363,101 @@ func validationFailureEnvelope(err error) operations.WorkspaceValidationReport {
 }
 
 func requireSubject(arguments map[string]json.RawMessage) (string, string, error) {
-	var kind, id string
-	if raw, ok := arguments["subjectKind"]; ok {
-		if err := json.Unmarshal(raw, &kind); err != nil {
-			return "", "", fmt.Errorf("subjectKind must be a string")
-		}
+	kind, err := requiredString(arguments, "subjectKind")
+	if err != nil {
+		return "", "", err
 	}
-	if raw, ok := arguments["subjectId"]; ok {
-		if err := json.Unmarshal(raw, &id); err != nil {
-			return "", "", fmt.Errorf("subjectId must be a string")
-		}
-	}
-	if kind == "" || id == "" {
-		return "", "", fmt.Errorf("subjectKind and subjectId are required")
+	id, err := requiredString(arguments, "subjectId")
+	if err != nil {
+		return "", "", err
 	}
 	return kind, id, nil
 }
 
 func requireTrace(arguments map[string]json.RawMessage) (string, string, string, error) {
-	var scope string
-	if raw, ok := arguments["scope"]; ok {
-		if err := json.Unmarshal(raw, &scope); err != nil {
-			return "", "", "", fmt.Errorf("scope must be a string")
-		}
+	scope, err := requiredString(arguments, "scope")
+	if err != nil {
+		return "", "", "", err
 	}
 	kind, id, err := requireSubject(arguments)
 	if err != nil {
 		return "", "", "", err
 	}
-	if scope == "" {
-		return "", "", "", fmt.Errorf("scope is required")
-	}
 	return scope, kind, id, nil
 }
 
-func optionalString(arguments map[string]json.RawMessage, key, fallback string) string {
+// rejectUnknownArguments refuses a member the tool's input schema does not
+// declare. A misspelled key would otherwise be dropped and the call would
+// succeed with the default, which hides the caller's mistake (#3420).
+func rejectUnknownArguments(arguments map[string]json.RawMessage, allowed ...string) error {
+	var unknown []string
+	for key := range arguments {
+		known := false
+		for _, name := range allowed {
+			if key == name {
+				known = true
+				break
+			}
+		}
+		if !known {
+			unknown = append(unknown, key)
+		}
+	}
+	if len(unknown) == 0 {
+		return nil
+	}
+	sort.Strings(unknown)
+	return fmt.Errorf("unknown argument %q", unknown[0])
+}
+
+// stringArgument decodes one string member. null, a non-string and an empty
+// string are invalid values; they are never replaced by a default, so an
+// unspecified member and an invalid one stay distinguishable (#3420).
+func stringArgument(arguments map[string]json.RawMessage, key string) (string, bool, error) {
 	raw, ok := arguments[key]
 	if !ok {
-		return fallback
+		return "", false, nil
 	}
 	var value string
-	if err := json.Unmarshal(raw, &value); err != nil || value == "" {
-		return fallback
+	if err := json.Unmarshal(raw, &value); err != nil || bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
+		return "", true, fmt.Errorf("%s must be a string", key)
 	}
-	return value
+	if value == "" {
+		return "", true, fmt.Errorf("%s must not be an empty string", key)
+	}
+	return value, true, nil
+}
+
+func requiredString(arguments map[string]json.RawMessage, key string) (string, error) {
+	value, present, err := stringArgument(arguments, key)
+	if err != nil {
+		return "", err
+	}
+	if !present {
+		return "", fmt.Errorf("%s is required", key)
+	}
+	return value, nil
+}
+
+func optionalString(arguments map[string]json.RawMessage, key, fallback string) (string, error) {
+	value, present, err := stringArgument(arguments, key)
+	if err != nil {
+		return "", err
+	}
+	if !present {
+		return fallback, nil
+	}
+	return value, nil
+}
+
+func optionalInt(arguments map[string]json.RawMessage, key string) (int, error) {
+	raw, ok := arguments[key]
+	if !ok {
+		return 0, nil
+	}
+	var value int
+	if err := json.Unmarshal(raw, &value); err != nil || bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
+		return 0, fmt.Errorf("%s must be an integer", key)
+	}
+	return value, nil
 }
