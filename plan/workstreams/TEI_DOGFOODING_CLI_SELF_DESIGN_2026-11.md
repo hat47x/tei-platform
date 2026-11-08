@@ -519,3 +519,14 @@ D-9は残る。CLIは設計文書を索引に載せるが、意味の定義と�
 - 起票のあと、`main` の `b88759643`（#3420 CAPI-2b）が同じ問題を直し、`rejectUnknownArguments` で不正値を `-32602` にすることを確認した。現行 `main` の実行物では未知欄・`workspace`欄・`null`・型不正がすべて拒否され、既存4操作の成功は変わらない。#3575 は重複として閉じる。
 - 必須欠落の符号はCLIが `INVALID_SUBJECT`、MCPが `-32602` で、意味層とプロトコル層の対応は #3420 の未決である。値と代表的な失敗は揃ったが、失敗分類の統一は未達。
 - `commands` の19件に操作ID・入口の欄は無く、入口ごとの対応はIssueと文書でしか辿れない。#3419 の対応表で扱う。
+
+## 12. 第6ラウンド（2026-11-09）: discoveryの広告と実行の突き合わせ
+
+ADR-0048 §2.6 の「各入口の広告が独立した正本にならないこと」を確かめるため、`tei commands` の19件と MCP `tools/list` の4件を、実際の受理と突き合わせた。生出力は[第6ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND6_DISCOVERY_2026-11-09/README.md)にある。
+
+- 広告した subject-kind 12種（`inspect`）・10種（`trace`）のすべてで、実在しないIDに対する結果が `SUBJECT_NOT_FOUND`（exit 1）、実在するIDでは成功だった。広告と実行の食い違いは検出されなかった。
+- フラグの条件（`-offset and -limit (full only)`・`-json (workspace only)`・`-input and -execute with -command`・`at most one of -pattern, -package, -command` など）も、実行時の受理と一致した。`effect` は19件すべて `read-only`、`writeFlags` は `view` のみ。
+- 一方で、**CLI の discovery と MCP の `tools/list` を突き合わせる試験は無い**。MCP の tool 宣言は `inputSchema` と `description` だけで、`effect`・`schemaVersion`・`annotations` を持たない。応答版は `dispatch` の文字列リテラルが持つ。
+- 実プロセス比較が固定されているのは `validate` の1操作だけ（`validate_parity_test.go`）。`catalog`・`inspect`・`trace` は `operations` の戻り値との比較にとどまる。
+
+新しい欠陥は検出しなかったため起票はしない。広告の突き合わせと4操作の実プロセス比較は、それぞれ #3419（対応表）と #3420 CAPI-2a が既に持つ範囲である。
