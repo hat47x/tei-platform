@@ -203,6 +203,35 @@ SB-C0の出力だけではL3を主張できない。L3には次が要る。
 
 D-3を採る場合、§4.1の「広告」欄は「`acceptedCommands`へ追加し、catalogへは載せない」に読み替える。`tei self-build -h`は既存の`-h`経路（終了コード0・標準出力）で自分のflagを説明する。
 
+### 4.6 実装した最小の入口（2026-11-08）
+
+§4の外形（`-intent`・`-supply`・`-state`・`-output`）は**まだ実装していない**。代わりに、その**一段下**の入口を実装した。`cmd/tei self-build`は、child実行ファイルを起動してinvoker/invokedを記録するだけで、Build Planの解決もBuild Intentの解釈もしない。
+
+| flag | 意味 |
+| --- | --- |
+| `-child` | 起動する実行ファイル。**PATH解決しない** |
+| `-child-arg` / `-child-arg-file` | childへ渡す引数一式（JSON配列） |
+| `-artifact` | childが書くartifactのパス。既存なら**起動前に拒否**（no-clobber） |
+| `-claimed-self` | このバイナリが自称するdigest。実行中imageと照合する |
+
+出力は`tei.cli.self-build-entry/v0`であり、`tei.cli.*`のエンベロープを名乗らない。catalogへ載せないため、read-onlyコマンドと同じ成功形を名乗ると読み違えを招く。
+
+`l3Claimed`は常に`false`である。この入口は**駆動の記録**を作るところまでで、stage1の生成物をinvokerに据える実験（SB-C1）は別に行う。
+
+実装の検証は`cmd/tei/cli_self_build_test.go`が固定する。少なくとも次を含む。
+
+| 試験 | 確かめていること |
+| --- | --- |
+| 発見面 | `self-build`が`acceptedCommands`にあり、`commandCatalog`に**無い** |
+| invoker/invoked | 二つのdigestが別々に記録され、argvの先頭がexact child |
+| artifact照合 | 子の主張が違えば`artifactCrossCheckMatched=false`と`failureCause` |
+| SB-N13 | 誤った`-claimed-self`は`invokerClaimMatched=false`と`failureCause` |
+| 一致する自称 | `invokerClaimMatched=true`でも`l3Claimed=false` |
+| no-clobber | 既存artifactは起動前に拒否 |
+| 引数不正 | 必須flag欠落・位置引数は`INVALID_ARGUMENT`・終了コード2 |
+
+**§4の外形とこの入口の差**が、次に埋めるべき部分である。`-intent`の解決、`-supply`の照合（SB-0bの分類）、`-state`の分離、`qualified`欄は未実装である。
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
@@ -239,8 +268,8 @@ D-3を採る場合、§4.1の「広告」欄は「`acceptedCommands`へ追加し
 - [x] Bの形が実測で成立することの確認（§3.3、[`reference-self-build-two-stage`](../../tools/reference-self-build-two-stage/README.md)）
 - [x] 第一候補をBに確定（§3.4、A-1は採らない）
 - [x] discovery面の制約の実測と既定案の決定（§4.5、D-3）
-- [ ] `cmd/tei`からchild driverを起動する薄い入口の実装
-- [ ] `tei self-build`の実装とSC0-01〜12の実試験
+- [x] `cmd/tei`からchild driverを起動する薄い入口の実装（§4.6、`tei.cli.self-build-entry/v0`。SC0-04・SC0-06・SC0-07・SC0-09・SC0-10相当を試験で固定）
+- [ ] §4の外形（`-intent`・`-supply`・`-state`・`-output`・`qualified`欄）の実装とSC0-01〜05の実試験
 - [ ] D-1（catalogの`scope`拡張）を採るかどうかの契約判断（採る場合のみ、catalogの広告と実応答の一致を照合へ載せる）
 - [ ] `cmd/tei`を対象にしたL3の実測（`reference-self-build-two-stage`の形を当てる）
 
