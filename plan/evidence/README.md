@@ -177,3 +177,4 @@
 - [discoveryと実行の突き合わせ](TEI_DOGFOODING_ROUND6_DISCOVERY_2026-11-09/README.md)（#3419・#3420・ADR-0048 §2.6。広告したsubject-kind 12/10種とフラグ条件は実行と一致。CLI discoveryとMCP tools/listを比べる試験は無く、実プロセス比較はvalidate 1操作のみ。`main` `22131acc8` のCLI・MCP実行物で実測）
 - [CLI discoveryとMCP tool宣言の突き合わせ試験](TEI_DOGFOODING_ROUND7_CROSS_SURFACE_2026-11-09/README.md)（#3419・#3420・ADR-0048 §2.6。実CLIの`commands`と4 toolの対応・effect・schemaVersion・jsonContractを回帰試験で固定。故意のずれ6種すべてを検出し、現行版では一致）
 - [`tei self-build`の L2-a を別の作業領域で取り直す](TEI_GO_SELF_BUILD_L2A_REOBSERVATION_2026-11-09.md)（builder childを実Go Buildから自作probeへ差し替えても、同じ宣言から同じ`planFingerprint`が出て`planMatchesExpected=true`になることを記録。`l2Claimed`・`qualified`は両方false。L2-bは未成立。SB-C0 §4.7/§4.8 / #2831）
+- [空文字列の引数と既定値の食い違い](TEI_DOGFOODING_ROUND8_EMPTY_ARGUMENT_2026-11-09/README.md)（#3605・#3420・ADR-0048 §2.4。値集合と省略時の既定はCLIとMCPで一致したが、空文字列を渡すとCLIだけが別の既定（`mode=full`）へ落ちた。traceの3引数を拒否へ揃え、回帰試験で固定）
