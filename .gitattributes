@@ -148,3 +148,6 @@
 
 # Stall-detection comparison is hashed as raw bytes.
 /plan/evidence/DSH_SESSION_LOG_STALL_DETECTION_2026-11-09/** -text
+
+# Subagent egress observations are hashed as raw bytes.
+/plan/evidence/DSH_SUBAGENT_EGRESS_2026-11-09/** -text
