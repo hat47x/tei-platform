@@ -53,7 +53,11 @@ type selfBuildOuterEvidence struct {
 	// PlanRecompute is the entry's own derivation of the receipt's plan
 	// fingerprint. It checks the resolver's arithmetic, not the builder's work.
 	PlanRecompute *planRecompute `json:"planRecompute,omitempty"`
-	Error         *cliFailure    `json:"error,omitempty"`
+	// PlanArtifactBinding is §4.8(c): one validated BuildArtifactLock tying the
+	// reported plan fingerprint to the artifact digest, with the digest
+	// independently read back from disk.
+	PlanArtifactBinding *planArtifactBinding `json:"planArtifactBinding,omitempty"`
+	Error               *cliFailure          `json:"error,omitempty"`
 }
 
 // selfBuildIntentBinding separates "which declaration this entry held" from
@@ -364,6 +368,20 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 		report.PlanCrossCheck = &record
 		if record.State == planCrossCheckMismatched {
 			appendSelfBuildFailure(&evidence, planMismatchCause().Error())
+		}
+		// §4.8(c): bind the builder's plan fingerprint to the artifact digest it
+		// reported, and confirm that digest against the bytes on disk. This is a
+		// separate record from the cross-check: agreement of two plan fingerprints
+		// says nothing about which artifact came out.
+		binding := bindPlanToArtifact(
+			report.PlanReceipt,
+			evidence.ChildPlanFingerprint,
+			evidence.ChildArtifact,
+			evidence.CrossChecked,
+		)
+		report.PlanArtifactBinding = &binding
+		if binding.State == planArtifactMismatched {
+			appendSelfBuildFailure(&evidence, planArtifactMismatchCause(binding))
 		}
 	}
 	report.OK = evidence.CrossCheckOK && evidence.FailureCause == ""
