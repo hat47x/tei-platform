@@ -3,8 +3,8 @@
  */
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {observeDirectTrace} from './direct-trace.mjs';
-if(process.argv.length !== 4) throw Error('usage: node verify-cli-trace.mjs <exact-cli-json> <alternate-scope-cli-json>');
+import {observeDirectTrace,compareObservedLoadContext} from './direct-trace.mjs';
+if(process.argv.length !== 5) throw Error('usage: node verify-cli-trace.mjs <exact-cli-json> <alternate-scope-cli-json> <other-workspace-cli-json>');
 const raw=JSON.parse(readFileSync(process.argv[2],'utf8'));
 const observed=observeDirectTrace(raw);
 assert.equal(observed.status,'direct-edge-candidates',JSON.stringify(observed));
@@ -51,6 +51,22 @@ assert.equal(observed.scopeOrigin,'caller-supplied-projection-scope');
 assert.equal(observed.workspaceIdentity,'load-manifest-observed-only');
 assert.deepEqual(raw.result.workspace, alternateRaw.result.workspace,
   'caller-scope-only observations must not silently switch Workspaces');
+assert.equal(compareObservedLoadContext(raw,alternateRaw).status,
+  'same-observed-load-context-only');
+const otherWorkspaceRaw=JSON.parse(readFileSync(process.argv[4],'utf8'));
+const otherWorkspace=observeDirectTrace(otherWorkspaceRaw);
+assert.equal(otherWorkspace.status,'direct-edge-candidates',JSON.stringify(otherWorkspace));
+assert.deepEqual(otherWorkspace.selected,observed.selected);
+assert.equal(raw.result.worldFingerprint,otherWorkspaceRaw.result.worldFingerprint,
+  'manifest-only Workspace change unexpectedly affected World projection');
+assert.equal(raw.result.sourceIndexFingerprint,otherWorkspaceRaw.result.sourceIndexFingerprint,
+  'manifest-only Workspace change unexpectedly affected Source Index projection');
+assert.notDeepEqual(raw.result.workspace,otherWorkspaceRaw.result.workspace,
+  'Workspace identity must reflect changed manifest bytes and name');
+assert.deepEqual(compareObservedLoadContext(raw,otherWorkspaceRaw),
+  {status:'unknown',reason:'workspace_manifest_mismatch'},
+  'equal World/Source fingerprints must not join different Workspace manifests');
+
 assert.equal(alternate.absentClaim,'unknown');
 const withoutProjectionScope = x => x.edges.map(e=>({
   from:e.from.slice(1),to:e.to?.slice(1) ?? null,
@@ -62,4 +78,4 @@ assert.equal(raw.result.worldFingerprint,alternateRaw.result.worldFingerprint);
 assert.equal(raw.result.sourceIndexFingerprint,alternateRaw.result.sourceIndexFingerprint);
 assert.notEqual(observed.snapshotFingerprint,alternate.snapshotFingerprint,
   'selector-bound snapshot should change when the caller scope changes');
-console.log('actual-cli-direct-reference-observation=PASS; caller-scope-only=OBSERVED; source-closure=NOT-PROVEN; relation-identity=NOT-PROVEN');
+console.log('actual-cli-direct-reference-observation=PASS; caller-scope-only=OBSERVED; different-manifest-same-world=REJECTED; snapshot-token-equal='+ (raw.result.snapshotFingerprint===otherWorkspaceRaw.result.snapshotFingerprint) +'; source-closure=NOT-PROVEN; relation-identity=NOT-PROVEN');
