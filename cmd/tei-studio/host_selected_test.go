@@ -22,7 +22,15 @@ func TestNormalStudioBridgeUsesHostSelectedLocalInspector(t *testing.T) {
 		t.Fatal("Studio Bridge exported surface changed")
 	}
 	got := bridge.InspectSubject("workspace-1", "semantic-data", "sales.order")
-	want, err := operations.InspectSubject(root, sourceindex.Subject{Kind: "semantic-data", ID: "sales.order"})
+	absoluteRoot, err := filepath.Abs(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	trustedRoot, err := filepath.EvalSymlinks(absoluteRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := operations.InspectSubject(trustedRoot, sourceindex.Subject{Kind: "semantic-data", ID: "sales.order"})
 	if err != nil {
 		t.Fatal(err)
 	}
