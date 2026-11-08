@@ -573,3 +573,18 @@ G2-Pの入力は`actual sourceBytes/baseSha256/startByte/endByte/expectedBytes/r
 **最小の次工程**：まずSHOの実CLI Jobが固定Markdown4ファイルを読むか赤緑判定し、成功ならK1Rの限定Witnessだけを更新する。そこからK2実Reader契約を設計する際、上流PythonやSHO G1bのParserをTEI Coreへコピーしない。Plugin-first選択・Provider実Load/Invoke、TEIのRequired Sourceが\`readByLoader:false\`のままか、SHO/StudioのReader実呼出しを#3262/#1251/#951/#2621に分担し、同一Productの別Runnerを増やさない。
 
 **証拠管理**：上流module・参照ファイルの固定Pin、PythonとNodeの試験結果は**test-onlyのGitHub Action Receipt**。本節は正本のOKF仕様や正式なMeaning/Owner/Hostの代替ではない。実H2/H3、正式なProduct間引継ぎ、Disclosure、源資料真正性の未測定は維持する。
+
+
+### 16.3 公開TEI→非公開SHOの実Read権限断絶とOwned-CIへの変更
+
+2026-11-08の追加試験で、**公開リポジトリのGitHub Actionsのcontents:read権限では、非公開SHO Repoを別Repositoryとしてcheckoutできない**ことを実観測した。[TEI CI #42461670105](https://github.com/hat47x/tei-platform/actions/runs/42461670105)では上流Reference Reader Jobは成功したが、新設SHO G1b Jobはcheckout段階の\`repository not found\`で**Reader実行前にFAIL**。この赤を「SHO Parser不適合」「K1 Concept不正」「SHO G1bの実受信失敗」とはしない。
+
+**変更した配置**：
+
+1. 公開TEI [tei-okf-k1-reference-ci.yml](../../.github/workflows/tei-okf-k1-reference-ci.yml)から非公開SHO Repoのcheckout Jobを削除。公式公開SPEC・上流Reference・公開合成Fixtureの限定検査だけを維持し、PAT/Secret/クロスRepo権限を追加しない。
+2. 非公開SHO側に [Draft PR #27](https://github.com/hat47x/sho-composer/pull/27) を起票し、Private SHOの実CLI \`fc0127400733bac161b3fc0d556f451991d0a510\` と公開TEI実Fixture/Reader受領Probe \`52908f5f4fe95d7049c0beb4d2dd60ee04e80858\` を**別々にPin**して同一JobでRead。合成公開Dataのみのread-onlyであり、Raw秘密やSHO Codeを公開TEI repoへ複製しない。
+3. 実ファイル毎のByte SHA/長さ、G1b Reader Grammar/coverage、missing File対照を**SHO自身の実CI結果**で検査する。TEI upstream ReferenceのPASSや、PRのGit checkout作成成功だけでSHOのK1R資格を確定しない。
+
+この移動による**権限の実装差は一つ**である。TEI・SHO間の実Plugin/BOM/Host Grantを設計し直すのではなく、GitHub CI RunnerのSourceアクセス権が属する**Repo Ownership**へJobを配置した。SHO Private→TEI Publicの読取は、その限られた公開Fixtureを同一Attemptで受け取るためだけに使う。公開済みK1のSourceを別Audienceへ再配布できる根拠ではない。
+
+**検証資格**：TEI CI #42461670105のcheckout前拒否は実ログで**FAILを観測**したが、非公開Repo Readerの本体は未起動。SHO Draft #27の最新exact HEAD Jobの成功・実CLI Receiptが確認できるまではK1Rを**NOT RUN**とする。K2二Consumer・G2 Writer・SUI H1・Owner Meaning/Disclosure・外部H2/H3は引き続き未達。
