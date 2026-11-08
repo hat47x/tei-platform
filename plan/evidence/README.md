@@ -168,3 +168,4 @@
 - [修正後の再実測 第4ラウンド](TEI_DOGFOODING_ROUND4_2026-11-09/README.md)（#3455・#3456の修正後に、統合後の版`00ead5a98`で同じCLI操作を再測定。11応答すべてがWorkspace同一性を持ち、空の参照一覧は`[]`で返る。D-9は残る）
 - [`tei self-build`のIntent解決（I-2）とL2の切り分け](TEI_GO_SELF_BUILD_INTENT_RESOLUTION_2026-11-09.md)（§4.7の既定案I-2を実装し、宣言を解決childへ渡してreceiptを受け取る。未知のauthorityは拒否し、宣言済みplan fingerprintと一致しなければbuilderを起動しない。`l2Claimed`は常にfalse。SB-C0 §4.7/§4.8 / #2831）
 - [CLIとMCP参照Adapterの一致と入力検証](TEI_DOGFOODING_ROUND5_CLI_MCP_2026-11-09/README.md)（#3400・#3420・#3575。4操作の成功応答と2つの失敗はCLIと一致し、基準の版では未知の引数だけMCPが無視した。現行`main`の`b88759643`で `-32602` の拒否を確認。CLI・MCP実行物で実測）
+- [`tei self-build`の計画突合](TEI_GO_SELF_BUILD_PLAN_CROSS_CHECK_2026-11-09.md)（解決childとbuilder childの`planFingerprint`を比べる`planCrossCheck`を足し、不一致を発見として記録し、片方が報告しない場合は`unperformed`と理由を残す。`l2bClaimed`は常にfalse。SB-C0 §4.8 / #2831）
