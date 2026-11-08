@@ -533,7 +533,7 @@ ChatGPTなどのチャット実行環境・Codex・Claude Code・一般的なIDE
 
 **PAS-01**では、標準不変契約／設定可能／拡張Hook／明示置換／観測のみの型付き区分と、標準Flow→Custom差分→合成後実効FlowをPreviewし、意味変更はShared Acceptanceへ、単なるLayout変更は意味の不変へ接続する。**PAS-04**ではCLI/Studio/SHO/Targetから型付きRef・版・Disclosure・Gapを同義に読めるか、**PAS-06**では予備知識のない利用者やAIが「何か・なぜ・どこで変えるか」を出典へ辿れるかを検証する。
 
-**段階**：#1124の共通Diagram/Navigationの既存M0→M4に、MAP-01〜10を追加した[横断§19](design/THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)を受入基準として接続する。組織の具体例は[Draft #3243 §12](https://github.com/hat47x/tei-platform/pull/3243)。全体Catalog/Read-only Graph＋Gap→Pattern/State/Flowの型付き跳躍→標準/Custom/実効Flow→Target/Consumerの実観測の順に確認し、合格しない試験を新しい既成PASに数えない。ADR-0017のApplication Patternの所有、提案中ADR-0046のLifecycle Role、生成時のPlugin/Target実選択・実Invokeの資格を守り、新しいEngine・Graph正本を作らない。新RQ-036の採用は**製品要件を定める**ことであり、GUI/Generator/初心者試験/MAP-01〜10の実装完了・Owner意味受理は**NOT RUN**。現Gate B/CやPAS-07既存受理を遡及して変えない。
+**段階**：#1124の共通Diagram/Navigationの既存M0→M4に、MAP-01〜16を追加した[横断§19](design/THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)を受入基準として接続する。組織の具体例は[Draft #3243 §12](https://github.com/hat47x/tei-platform/pull/3243)。全体Catalog/Read-only Graph＋Gap→Pattern/State/Flowの型付き跳躍→標準/Custom/実効Flow→Target/Consumerの実観測の順に確認し、合格しない試験を新しい既成PASに数えない。ADR-0017のApplication Patternの所有、提案中ADR-0046のLifecycle Role、生成時のPlugin/Target実選択・実Invokeの資格を守り、新しいEngine・Graph正本を作らない。新RQ-036の採用は**製品要件を定める**ことであり、GUI/Generator/初心者試験/MAP-01〜16の実装完了・Owner意味受理は**NOT RUN**。現Gate B/CやPAS-07既存受理を遡及して変えない。
 
 ## 11. Requirement → Primary PAS mapping
 
