@@ -146,4 +146,28 @@ python3 tools/rea-t0-saved-report/audit.py /absolute/path/to/saved-rea-report \
 
 **次の実験**：T0公式保存ファイルに本試験Consumerを実接続し、`analysis.json`と実SHA/exit/coverageを現物で確認する。T1-AではProvider Source/Manifest read cohortと候補Scopeを別取得し、T1-Bにはパーサ受理・Owner Meaningの根拠を独立のまま渡す。SHOに渡す時点ではsource locator、byte span、現在Document URI/versionとEditor dirty、Save As後の相対リンク変化を独立判定。これはテストConsumerの観点であり、新仕様上の必須API Schemaとしない。
 
-**資格上限**：本Draftで今回実行したのは**合成Python test-only監査の11件**のみ。実REA T0の解析とGitHub Actions、REA→TEI実Plugin/CLI/Studio、SHO正式Editor保存・Writer、T1-A/B/T2、旧新実比較、Owner受理は**NOT RUN**。
+**この第10節を作成した時点の資格上限（履歴）**：実行済みは**合成Python test-only監査の11件**のみ。その後の18件への拡張は第11節に記載。実REA T0の解析とGitHub Actions、REA→TEI実Plugin/CLI/Studio、SHO正式Editor保存・Writer、T1-A/B/T2、旧新実比較、Owner受理は**NOT RUN**。
+
+
+---
+
+<!-- rea-t0-process-report-conflict-s2-progress-20261108 -->
+## 11. 実際に見つかった監査の抜けを閉じる：報告・制御レコード整合と現行main引継ぎ
+
+**今回変更した試験用コード**：`tools/rea-t0-saved-report/audit.py`／`test_audit.py` を既存Draft内で更新。独立した監査に、(a) process `exit-code.txt`とREA JSON envelope `ok`の矛盾 `processReportConsistency=conflict`（`reportedOK`はboolのみ）、(b) REA JSONLの `{\"$rea\":\"jsonl/v1\",\"type\":\"error\"}`をデータ行として数えない、(c) JSONLの重複・終端より前の制御レコードを`extra-control-record`として拒否、(d) 非UTF-8 JSONLの`invalid-jsonl`分類、(e) report root自体がsymlinkの場合の拒否を追加。解析結果の「成功／失敗」「解析の網羅性」「Consumerへの配送完了」は依然として**別Claim**。
+
+**独立反例の更新**：11件→**18件**。追加7件は、終了0＋JSON `ok=false`、非0＋`ok=true`、JSONL `type=error`をobject/bare両選択で判別、duplicate metadata、invalid UTF-8、symlink root。既存のexit0＋parse_failures>0、empty、missing exit、truncated JSON、bare array非metadata等は維持。**parse_failures=0やmetadata数一致を全Source解析完備としない**。JSONL制御行が存在しても原Evidenceとの同一性・raw/derived連結は別であり、保存元のSource Cohort/Provider Manifestと実解析を監査したことにはならない。
+
+### 今回確認した証拠と限界
+- **ローカル実行の実績**：Python **3.13.5**、`python3 -m unittest discover -s /mnt/data/rea_audit_verify -v` で**18 tests/18 PASS/0 fail**、`py_compile` PASS。
+- **ソース同一性**：検証時の `git hash-object` は `audit.py=5ead9309c7eb3c4a024b014d417b3c383421bd28`、`test_audit.py=8128d8b4b0e1e25c8646494d39f145fc0d324886`。**GitHub branch上の各Blob SHAと一致**。この一致は、その2ファイルの実試験と保存byteの対応だけを示す。
+- **CI/製品の状態**：test-only GitHub Workflowは存在するが、この段階の`fetch_commit_workflow_runs`／combined statusには該当headの結果が表示されていない。**exact-head Actions PASSは未確認**。REA実プロセス、実Provider、T1-A、T1-B、旧新Runtime、SHO実Writer、Owner Accepted MeaningはNOT RUN。16MiB上限とFile Pathの`is_symlink`チェックは軽量T0ローカル入力向けで、厳密なOSのrace-free sandbox/Access Grantを保証しない。
+
+### 他チャットの進捗と矛盾しない合流順
+1. **S0/T0は外部REAの実出力が先**：公式の固定サンプルを実静的解析（元コードは実行しない）し、raw JSON/stderr/exit＋Input/Analyzer版＋Source Cohortを別実証。今回の18件の合成PASSはT0の代替ではない。
+2. **Plugin本線 S1とS2は別**：[main統合済み #3371](https://github.com/hat47x/tei-platform/pull/3371)と[main統合済み #3381](https://github.com/hat47x/tei-platform/pull/3381)でStudio/CLIの限定Inspector Service seamは進んだが、**通常製品CLI/Studioから同じselected Providerをactually invokedするS2は[Draft #3540](https://github.com/hat47x/tei-platform/pull/3540)**。Service helperの局所成功を実Wails/製品Plugin/実Provider Byte資格に昇格させない。T0はS2の完成をブロッカーにしない。
+3. **Design本線は実Workspace M1入場までの候補**：[Draft #3492](https://github.com/hat47x/tei-platform/pull/3492)のQuery/Relation ID・Kind厳密Readを参照するが、Data/Function/Business Graph/CRUD 完全、Source逆Write、実Provider DB Readは別。REA Evidenceを構造化しただけで三視点・CRUDに受理しない。
+4. **SHO本線はRaw byte span/Save As preflightの限定前進**：[SHO Draft #29](https://github.com/hat47x/sho-composer/pull/29)（UTF-16 Editor位置→原UTF-8 byte span）と[SHO Draft #28](https://github.com/hat47x/sho-composer/pull/28)（相対リンク先変化）を出典引用の前提候補にする。両実装の試験成功を正式Writer/Review・実TEI Accepted Sourceと足し合わせない。
+5. **全体計画／索引の衝突に注意**：[Draft #3542](https://github.com/hat47x/tei-platform/pull/3542)は `plan/design/README.md`の重複を整理する別Owner。#3496の既存索引追加1行と重複させず、PR取込前に**最新mainと差分を再基準化**する。本節では索引を再編集せず、文書追加の唯一の場所としてこのPRを維持。
+
+**検収線**：read-only Local T0 Auditorの18件PASSは、REAのEvidenceを受領したと主張できる証拠ではない。次の意味のある一歩は、**実REA T0が生成した現物の`analysis.json`/`analysis.stderr`/`exit-code.txt`を同じAttempt・独立Source SHA/実解析Versionに結び、このAuditorで検査し、独立Expectedに照合すること**。完了するまでExternal Observation qualificationを部分/unknownで保持し、T1-A/T1-B/SHO/Target成功へ昇格しない。
