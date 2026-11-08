@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"io"
 	"strings"
 
@@ -42,6 +43,12 @@ func runModelCommand(args []string, out io.Writer) (int, error) {
 	if fs.NArg() != 0 || strings.TrimSpace(*root) == "" || *root != strings.TrimSpace(*root) ||
 		*namespace != strings.TrimSpace(*namespace) {
 		return fail("INVALID_ARGUMENT", "model catalog requires an exact -workspace and optional exact -namespace, without positional arguments", 2)
+	}
+	if name := emptyStringFlag(fs, emptyStringFlagsNotAllowed["model catalog"]); name != "" {
+		// An explicit -namespace "" is not "no namespace": it used to reach
+		// the catalog as an empty filter and return every entry, which is a
+		// third outcome beside "omitted" and "a namespace ID" (#3605).
+		return fail("INVALID_ARGUMENT", fmt.Sprintf("model catalog: -%s must not be an empty string; omit the flag to list every namespace", name), 2)
 	}
 	result, err := operations.CatalogWorkspace(*root, *namespace)
 	if err != nil {

@@ -336,6 +336,21 @@ func main() {
 		}
 	}
 	if command == "trace" {
+		if name := emptyStringFlag(fs, emptyStringFlagsNotAllowed["trace"]); name != "" {
+			// An explicitly empty -mode or -direction is not "the caller
+			// omitted the flag": the trace default is summary/both, and an
+			// empty value used to select a third outcome (#3605).
+			report := cliTraceReport{SchemaVersion: "tei.cli.trace/v0"}
+			report.Error = &cliInspectionFailure{
+				Code:    "INVALID_ARGUMENT",
+				Message: fmt.Sprintf("trace: -%s must not be an empty string; omit the flag to use its default", name),
+			}
+			code, err := writeTraceReport(os.Stdout, report, 2)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+			}
+			os.Exit(code)
+		}
 		code, err := traceWorkspaceJSON(
 			os.Stdout, *workspacePath, *worldPath, *traceScope,
 			*subjectKind, *subjectID, *traceDirection, *traceMode,
@@ -350,6 +365,18 @@ func main() {
 		return
 	}
 	if command == "inspect" {
+		if name := emptyStringFlag(fs, emptyStringFlagsNotAllowed["inspect"]); name != "" {
+			report := cliInspectionReport{SchemaVersion: "tei.cli.inspect/v0"}
+			report.Error = &cliInspectionFailure{
+				Code:    "INVALID_SUBJECT",
+				Message: fmt.Sprintf("inspect: -%s must not be an empty string; omit the flag to use its default", name),
+			}
+			code, err := writeInspectionReport(os.Stdout, report, 2)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+			}
+			os.Exit(code)
+		}
 		code, err := inspectWorkspaceJSON(os.Stdout, *workspacePath, *worldPath, *subjectKind, *subjectID, fs.NArg())
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
