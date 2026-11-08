@@ -485,3 +485,98 @@ Slotの最小照合キー候補（**正式Schema/APIではない**）：
 **P0で着手する順序**：①#3378のD1a基線を維持し、#1251で実選択Inspector ProviderのCLI/Studio D1bに到達 → ②**read-only結果Observerまたは限定Result Transformの一Slotだけ**にDefault/Manual/TEI生成の差を試す（この順をD1bのHard Dependencyにはしない） → ③#2110のread-only Application拡張1件に同じSlot/Contractを適用 → ④VUI stateful Flow・Write／Undo・Cross-target Buildへ展開。途中の失敗時は、最初の未充足（Source／Binding／実Provider／Hook Invocation／Conformance／Grant）を正確に提示する。
 
 **停止条件**：Slot一覧が巨大な固定enumに膨張する、Traitの単一保証が複数無関係責務を要求する、生成カスタムコードが標準生成物の手修正で維持される、HookがHost Authority/Effect Fence/Owner Meaningを迂回する、VUIのStateをDisposable Cacheと混同する、同名Operation・同じResultを実Provider呼出しの証拠にするなら設計を縮小する。新しいHook DSL、正式Slot ABI、実Go Callbacks、VUI Flow Engine、TC-34〜40、新Target/BOMの実試験は **未採用／NOT RUN**。
+
+
+## 15. Lifecycle Graphを生成入力にするためのTrait証明義務（2026-11-08、他レーンからの差分）
+
+### 15.1 今回解く一つの不足：Graphの編集を実装差分・検証差分に結びつける
+
+ユーザーが明示した「**Lifecycle全体の共通設計／不変と可変の区分／PluginによるLifecycleそのものの拡張／図表をGenerator入力にする**」を、既存Traitの**実装義務を生成前後に保持する一辺**として具体化する。研究・Graph拡張の詳細は[#3503 Interaction Flow](https://github.com/hat47x/tei-platform/issues/3503)／[Draft #3507 横断Hook・Lifecycle Graph研究](https://github.com/hat47x/tei-platform/pull/3507)、全容図とナビゲーションの製品要件は[Draft #3505 RQ-036](https://github.com/hat47x/tei-platform/pull/3505)、B2C適応の圧力は[#3509](https://github.com/hat47x/tei-platform/issues/3509)へ委譲する。**本節は第二Graph Compiler、第二Source Writer、第二Generator、第二Resolverを作らない**。上記Draftは統合前の資料であり、本節によってその採用・実装を先取りしない。
+
+ここで区別するもの：
+
+| 層 | 位置付け | Trait/実装義務と結ぶ点 |
+| --- | --- | --- |
+| Raw Source + Accepted Meaning | 保存・意味受理の権限ある入力。Markdown/表/専用DSLを含み得る | Subject/Occurrence/Scope/Revision、意味上の必要Trait |
+| **Typed Lifecycle Graph** | 上記を参照する構造化モデル。Node、Edge、多重性、Guard、State/Effect、Hook Slot、Trait Binding、実装Refを型付きで保持 | ノード/エッジ/経路が満たす**原子的Obligation**を解決可能にする |
+| **Diagram／Editor** | Graphの可視化と変更提案。レイアウト、色、ナビゲーションは独立 | 編集が実Graph Patchになったのか、単なる表示変更かを区別 |
+| Expanded Effective Graph | Base Graph＋選択済Plugin Patchを、exact Contract/Scope/Targetで合成したもの | 全経路で実装義務の成立を静的照合。未解決Patch/Slot/Requiredをpartialに保持 |
+| Build／Target Code | 受理済みEffective Graphと選択ImplementationをLoweringした成果物 | Source/Graph/Patch/Provider/Generator revision、実組込、Target-native適合 |
+| Runtime／Evidence | 実際のCallback、State Transition、Typed Outcome、Effect/Receipt | 静的Graph成立を**実呼出しや現在Grantの証明へ昇格させない** |
+
+「図をGenerator入力にする」は画像のピクセルや座標をコンパイルすることではない。**Diagramが編集可能なTyped Graphを忠実に操作し、そのGraphを生成入力とする**。表示位置だけ変わるならBusiness Meaning/コードを再生成する必要はない。一方、Node/Edge/Guard/Hook/Target/Scopeが変われば、Semantic Diffと依存関係に沿った再生成・Conformanceを検討する。GraphからSourceへ戻せない表現はread-only Projectionとして表示する。SourceやMeaningをEditorが勝手に受理したことにしない。
+
+### 15.2 不変なのは「Nodeの固定順」ではなく、すべての実効経路に要求される保証
+
+原子Traitの宣言集合 `T` とLifecycle Graph `G` がそれぞれ存在するだけでは保証は成立しない。対象Operation/Target/Scopeに対して、**選択・合成済みGraphのすべての該当実行経路上に、各Traitの要求を満たす実装と順序・効果条件があるか**を別に検証する必要がある。
+
+- **Path obligation**：例えば書込みが発生する実効経路には、適切なRevision/入力/権限の検査が当該Effectより前に存在する。実行時に検査後Subject/金額/Scopeが変化するなら、必要な再検証を経ずにEffectへ到達できない。公開read-only経路へ一律ログイン画面を要求する、という**固定Node列ではない**。
+- **Hook obligation**：`Replace`されたProviderは元Implementationが要求したTraitを失わせてはならない。`Add`された観測Hookに外部送出・書込みがあれば、読取り専用と宣言したGraphのEffect契約と再照合する。
+- **Branch／Join obligation**：実Targetで未対応Node、未定義の失敗/timeout/cancel/unknown終端、Join後の欠測Contextや二重Effectがあれば、局所TraitだけがPASSでも合成適合は**unverified／failed under scope**。並列化による順序保証や原子性を推測で追加しない。
+- **Authority boundary**：Authorization、Owner Meaning Acceptance、Receiptの真正性を、案件PluginのGuard置換やChat/Voiceの確認発話で発行できない。変更提案と実行許可は別。
+- **Bounded proof**：グラフの一部が未Loaded、Dynamic Plugin/LLM分岐が未確定、Source/Provider Scopeが非公開なら、列挙した有限経路だけの局所検査に留める。すべての実行を証明したとはしない。複雑な並列/無限ループ解析は必要になったときのModel Checking Provider候補。
+
+この**経路上の不変条件の検証**は、Trait個々の実装の存在検査とは別の`composition-conformance`の責務である。Traitの合成 `A+B=B+A`（要求集合）は維持しつつ、Execution Pipeline／Graphの順序は自由合成ではなく明示選択・検証する。Graph Patch自体はContract/Providerとして既存#951/#1016で解決し、未選択PluginのPatchが実効Graphへ混入しないようにする。
+
+### 15.3 図表のカスタマイズから実装を生成する一往復
+
+```text
+Authoritative Source @ R + Accepted Meaning / Scope
+           │
+           ▼
+Typed Lifecycle Graph G(R)
+           │      ← Diagram/View（表示変更は意味変更でない）
+           │
+   Graph Edit → Typed Patch P(SourceRef, expected R, author, intent)
+           │
+           ▼
+Review / Owner Acceptance / Source write-back（許可された範囲のみ）
+           │
+           ▼
+Plugin Selection / Contract + Trait Obligation Resolution
+           │
+           ▼
+Effective Graph G' = compose(G, selected P) → Graph/Path Validation
+           │
+           ├── fail → 競合/不適合/不完全性を返し、旧成果物を保持
+           ▼
+Target Lowering / Generator → exact Build Artifact + Revision
+           │
+           ▼
+Target Consumer actual Invoke → Independent Expected / Effect Evidence
+```
+
+Source側はScript-first/Everything is Dataを維持する。Graphの`stable node ID`・Edge occurrence、Source span、業務State Identity、Trait Binding/Implementation IDを保存する。Layout DiffとSemantic Diff、Graph Patchと実行中のState Change、Plugin版とGenerator版、Build成果物と現在Grantは別。**実行中Flowは開始時のGraph/Plugin Lockを参照**し、Graph変更時に途中Stateを新Graphへ勝手に再開しない（旧版継続／明示Migration／停止を区別）。SourceのA→B→AをByte一致の理由で「過去に変更なし」としない。
+
+### 15.4 異質なConsumerへ同じ仕組みを当てて破綻しないか
+
+| Consumer | Graphが扱う主な関係 | 標準にしてはいけない仮定 |
+| --- | --- | --- |
+| **CLI/Studio Inspector** | read-only Operation→Selected Provider→Result/Diagnostics、限定Observe Hook | Direct Shadow parityだけで選択Providerが実呼出しされたとしない（[main #3378](https://github.com/hat47x/tei-platform/pull/3378)） |
+| **Application API／DB** | Function Query/Action→Guard/Effect→Data/Receipt | Query宣言から実DB Read/Commitを推測しない。Schema Applyのunknownを済扱いしない |
+| **AI Web Chat** | Turn/Run、Token/Event Stream、Tool候補→承認→Typed Operation、Interrupt/Branch/Resume、Client State | Stream delta＝確定Assistant返答／Tool引数／Effectではない。LLMの提案で任意の新Graph/Grantを自動有効化しない |
+| **VUI** | ASR候補→確認済みEvent→Flow/State→Operation→TTS、割込・再開・重複 | 音声認識＝業務Intent確定ではない。Sessionの未同期入力をDisposable Cacheへしない |
+| **B2C Journey/Experiment** | Route/Touchpoint→Exposure/Variant→Conversion Action→確定Outcome/計測 | UX・SSR・Hydration・CDN・CreativeをTEI標準Rendererに固定しない。購入完了はUI表示や分析Eventでなく権威あるProvider/Receiptで確かめる |
+
+B2Cでは、**TEIのGraph/型付きActionを使うだけで、実フロントエンドは完全Headless・独自React等とする選択**を正規の経路として扱う。例えばExperiment Graph Patchが「商品の表示／販促文言」を変えても、CheckoutのCurrent Price/Inventory/Grant/Effectの保証は自動的に弱めない。TEIを使わないRouteにJS wrapper/追加network hopを要求しない。B2C固有のConversion Engineering Kitと、効果指標CVR/実運用性能の評価は[#3509](https://github.com/hat47x/tei-platform/issues/3509)に委譲する。
+
+### 15.5 最小反証：旧来のread-only経路を先に通す
+
+次は**新しいScenario Runnerや二重Expectedではない**。各Ownerが既存#1180/#2514のScenarioへ追加すべき**独立Expectedの圧力入力候補**である。
+
+| ID | 操作・差分 | 必須観測（未実行） | 主Owner |
+| --- | --- | --- | --- |
+| **TLG-01 Layout vs meaning** | Graph Nodeの位置だけ変更、次にEdge/Guardを一か所変更 | 前者はSemantic/Build input同一、後者は型付きGraph/該当依存のみ変更・再検証。丸ごと無条件再Buildや完全無効化もしない | #1124/#2497/#2600 |
+| **TLG-02 Non-reversible diagram** | 表示図から多重Edge ID/Source Rangeを落とす | 一見同じ図でも書戻し不可を明示。Raw保全、正式Source Patch拒否 | #1124/#2620/#2090 |
+| **TLG-03 Bypass path** | Plugin PatchでAuthorize／Revision Guardを避けるEffectへ分岐 | パス保証の不履行を検出して生成/利用候補を拒否。Plugin Trait個別PASSでも合成FAIL | #3278/#1174/#3503 |
+| **TLG-04 Wrong provider** | selected B、実Invocation A、結果Bytes同一 | 最初の不足点`actual-provider-mismatch`を示す。GraphでBが描けても合格せず | #1251/#951 |
+| **TLG-05 Conflicting graph patches** | 同SlotへP1/P2がReplace、Plugin順序逆転 | 暗黙last-wins禁止、安定した曖昧診断。明示解決前に新Buildを資格化しない | #951/#1016/#3503 |
+| **TLG-06 In-flight revision** | チャット/音声でFlow中断→Resume前にGraph/Provider版変更 | 旧Lock、現在Grant、明示State Migrationの要否を別判定。重複Effectなし | #3503/#1174 |
+| **TLG-07 AI delta/tool** | Tool引数がpartial streaming中にUIが確定値として扱う、または未承認Toolを呼ぶ | 不完全なdeltaは候補として保持、Operation 0回。確定後も現在Grantが別途必要 | #3503/#1158 |
+| **TLG-08 B2C escape** | 専用Frontendの1 Sectionだけ標準UIへ変更し戻す／Experiment Patchを解除 | Operation Meaning同一、変更した対象Target/Artifactのみ再生成・検証。購買のEffectと露出Eventは別 | #3509/#997/#1121 |
+
+**実装順**：**P0**は[main #3378](https://github.com/hat47x/tei-platform/pull/3378)のInspector直接経路を保持し、#1251の**通常CLI/Studio選択済Provider実Call**を先に確立する。**P0+**として上記同一Operationに`Observe`一SlotをBindingし、Graph上の追加差分／Adapter／実呼出しを単一Targetで検証する（D1の新Hard Gateにしない）。**P1**で一つの受理済みread-only FunctionのGraph Node/Edge 1変更→Source Patch→Generator/Conformanceへ接続し、`G`と`G'`のCounterexampleを固定。**P2**のChat/VUI/B2Cはそれぞれ固有Provider/State/UXを持つ後続圧力試験で、最初から全部をCoreに標準実装しない。
+
+**採否基準**：Graphを経由することで、Trait/Hookの履行漏れ・未到達・安全でないバイパス・生成対象の過不足・モデル変更時のSource/Artifact資格を、直接手書き実装より**具体的に早く／正確に**検出できること。図表の充実だけでGenerator・Product実行・Owner Meaning Acceptanceが成立したと報告しない。Graphの書戻しが原Source/Meaningを破壊する、別Runtime/Hostを必要とする、P0の実Provider接続を妨げる、B2Cの自由なFrontendへ負担を強制するなら対象機能をread-only ProjectionまたはPlugin Profileへ縮小する。
+
+**状況・責務**：本節は[#3503](https://github.com/hat47x/tei-platform/issues/3503)／[Draft #3507](https://github.com/hat47x/tei-platform/pull/3507)、[Draft #3505](https://github.com/hat47x/tei-platform/pull/3505)、[#3509](https://github.com/hat47x/tei-platform/issues/3509)の意図と[#3278](https://github.com/hat47x/tei-platform/issues/3278)のTrait履行を接続する設計段階。正式Trait Graph Schema、Source writer、Graph generator、実Host Callback、AI Chat/VUI実Target、B2C計測、TLG-01〜08は**NOT RUN／NOT ACCEPTED**。これらを本節で採用済み製品機能へ昇格させない。
