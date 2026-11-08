@@ -484,3 +484,20 @@ main統合済み[ADR-0048](https://github.com/hat47x/tei-platform/blob/main/plan
 - **ORG-MAP-F**：UI未表示のSource/Element／Event候補／Pattern Hookがあるとき「全体図として完全」と主張せず、欠落数・理由・定義への導線をガイドに残す。
 
 **工程**：P0-D（対象の必要閉包）→P0-M（Data/Business/Function/Event/State/Patternのread-only Catalog＋Matrix、Unknown表示）とP0-R（C1実Read）を並行→P0-C（同一World/Source/Scope/Consumerへの照合）→合成Hook差分Preview→Typed Intentの既存受理→実Target／複数Consumer検証。図が美しいだけでP0-M合格ではなく、**各Event/State/Patternの説明・位置づけ・出典・欠落**を確認する。独立Expectedは#2514/#1180、Modeler #1124、業務Flow #1125、状態 #2620、Pattern #2507/#1127、Read #2586の既存Ownerが担う。**ORG-MAP-A〜Fは新規受入提案／実TEI生成・GUI・外部Consumer試験NOT RUN**。
+
+### 12.4 Lifecycle Graphの構成変更は、表示変更でも単純なPattern選択でもない
+
+[TEI標準RQ-036と三要素Method§19.7](https://github.com/hat47x/tei-platform/pull/3505)の不変保証とTyped Graph構成を、組織の「異動・在任交代・担当移管」に当てはめる。**固定すべきものは全業務に共通のStep順ではなく**、(1)Person／OrgUnit／Case Relation occurrenceとSource／時点の整合、(2)受理済みGuardと現在のAuthority照合、(3)Effect/Receipt／引継ぎの完了条件、(4)既知の失敗／未知／部分受領を成功へ丸めないこと、(5)実行中AttemptのRevision固定などの保証である。
+
+**構成候補**：`異動Event → 有効時点の評価 → 新Membershipの受理 → Case担当の再割当候補 → 承認Hook（構成時選択） → Action/Effect → 受信・Handoff ACK`。これは**説明用のGraph Patch候補**であり、現Native Org SourceでこれらのEvent/Stateが全件受理済みとか実行できるという意味ではない。Ownerが追加Approval Stepを受理した場合は`standard / custom diff / effective graph`の三つを生成対象とし、差し込みの前提・出力・順序・失敗と権限を明示。単一受信Eventを多重に取り込む場合のCorrelation、時間点のずれ、以前の担当者の未完了Work、重複ReceiptをConflict/Unresolvedとして残す。
+
+**組織の追加独立負例（ORG-MAP-G〜J、新規NOT RUN）**：
+
+| 受入 | 期待／失格にする挙動 |
+| --- | --- |
+| G：形の変更と保証 | 承認Stepを追加してもGuardとCommit条件を維持できれば有効候補。順序が変わったという理由だけで拒否する実装、またはGuard飛ばしで承認済みにする実装は不合格 |
+| H：Hook競合と実効Graph | 競合Pluginが異なる承認先／Effectを同じSlotに設定すれば曖昧として拒否。宣言されたPluginが未選択・未Invokeの場合、実行済みとして描かない |
+| I：古い担当・時間点 | Bの担当変更時にA向け遅延処理が到着しても、当時のSource known/observed、現在Scope、Case Selection epochを混同しない。新Graphに実行中Attemptを無断で移さない |
+| J：多Consumerと図面 | StudioのFlowとCLIの表が同一Typed Identity/Scope/Gapsを示し、SHOの説明文を第二のBusiness正本にしない。EventやState Source未受理なら両者とも`unresolved`を保持 |
+
+この検証は#1124（Graph/Navigation）、#1125（Event Flow）、#2620（Lifecycle Role）、#2507（Plugin/Pattern）、#1174（実Effect/Host）、#2514（独立Expected）の共通受入へ戻す。新たなOrg専用状態機械／API／Generatorは追加しない。P0-MでRead-only Graph／欠落と競合、P0-Cで同一Source／Provider／Consumer資格、P1でTarget生成と実行中移行の境界をそれぞれ確認する。**受入案の追加のみで実Graph生成やOwner受理はNOT RUN**。
