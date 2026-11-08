@@ -683,3 +683,58 @@ Data Workbench #3270、REST Decision Graph #3274、三要素モデルとCRUD/SHO
 | **BFR-12** | `ErrImportsNotBound`またはProvider Manifest/Sourceが取得不能だがConsumer Contextの既知部分だけが正常 | Required Closure不足を`absent`/完全/無変更としない。必要な用途の資格はunknown/unverified。#2743/#3262/#2514 |
 
 **実行順を変更しない**：まず#3378で旧Builtin二入口のBaselineを独立固定し、#3381が候補提示した既存Composition`→`Host登録の`inspectoradapter`局所実Go呼出・負例、#3371のStudio Factory、通常CLI/Studio入口への実Bindingを別の合否にする。次に同じAttemptでSource/Manifest/Build Artifact/現在Grant/実二Consumerの独立Expectedを照合し、#3267の2×2実BOMへ渡す。今回の文書追補・#3490の歴史Rule比較と#3479の外部Sourceテストを結合しただけでは、実Plugin二Consumer、原子的Import Snapshot、正式Trusted WitnessまたはOwner受理は**NOT RUN／NOT PROVEN**。新Source Store／Resolver／Contract Schema／Host／Test Runnerは設けない。
+
+
+## 19. 実呼出しの証拠をLifecycle・HTTP・性能観測へ接続する（2026-11-08横断受入案）
+
+### 19.1 現mainで成立したことと、未成立のProduct経路
+
+[ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)に従い、CLI/MCP/HTTP/Web/Desktopの共通部分は**Operationの意味、入力・結果・失敗・Effect・前提**であって、同じHostプロセス・同じTransport・同じ実Plugin Binaryを要求しない。
+
+- [main #3371](https://github.com/hat47x/tei-platform/pull/3371)：Studio Hostの型付きInspector Serviceと、明示Serviceがない場合のfail-closed、Provider由来の非信頼Error Code/Messageの秘匿処理が成立。生成Hostへ暫定Builtin Inspectorを明示Bindingしており、Plugin B実選択とは別。
+- [main #3378](https://github.com/hat47x/tei-platform/pull/3378)：6 SubjectのCLI/Studio **従来direct Operation**のread-only同値基線。Pluginの選択・実呼出しの証拠ではない。
+- [Draft #3381](https://github.com/hat47x/tei-platform/pull/3381)：既存Composition→Host登録Go関数を使うB選択/B実Call・A誤登録拒否、CLI・Studioの**二つの局所Go Consumer**から同一Bを呼ぶ試験コードを統合候補に集約。**通常CLI`main.go`／Wails Bridgeの製品起動経路は依然未接続**であり、PR最新HEADのHealth・main統合とは別判定。旧重複Draft #3517はclosed/unmerged。
+- [main #3516](https://github.com/hat47x/tei-platform/pull/3516)：実Workspace・実Go HTTP Host・Canonical認可・Driver・**合成Adapterの実Callback**を7正負例で検査。限定HTTP Characterization Workflowは成功、全Repo Healthは別にfailure。HTTP Adapterへの到達は確認できても、任意の本番Plugin Artifactが選択・実Linkされたことも実DB Commitも、`503`後の無副作用も証明しない。
+- [main #3520](https://github.com/hat47x/tei-platform/pull/3520)：AI性能チューニング用の合成Design/Call/Statistics/Delivery/Disclosure Joinを19独立Expectedで局所検査。専用CIは成功するが、`input-consistent`は**Consumerが受け取った自己申告JSONの整合性**でありHostによるB実Callの独立証言ではない。実Function/DB/Telemetry・改善幅は未実証。
+- [main #3510](https://github.com/hat47x/tei-platform/pull/3510)／[Draft #3507](https://github.com/hat47x/tei-platform/pull/3507)：Trait原子義務とLifecycle Graph/Hook Patchの**全経路上の不変条件**を別Ownerで扱う。Graph/Diagramの描画と実Targetで通ったPathを同一視しない。
+
+### 19.2 共通に利用する「実経路の証拠」：第二Ledgerではなく読み取り専用Join
+
+既存Source Index／Composition Selection／Build Evidence／Host Call-site／Effect・Run Journal／Tool Deliveryを**同一Attempt・同一用途Scope**へ関連付けて表示する。以下は要求する照合項目であり、新Product Schema・永続Store・Trusted Attesterの採用決定ではない。
+
+| 区別する観測 | 証拠の所在と判定 | それだけでは証明できないこと |
+| --- | --- | --- |
+| **要求されたOperation** | ID/Variant、Subject・Workspace実Root、Required Source/Role、入力Revision、Consumer/Target、必要Traitと独立Expected | 原文の存在だけで意味受理や実行資格があること |
+| **構成上の選択** | 選択されたContract/Provider/Scope/epoch、Capability Kind/ID、選択規則FingerprintとHost側候補解決の不在・曖昧さ | 宣言・選択だけで実BinaryへLink済み／実Invoke済み |
+| **実行可能な成果物** | Target、実Build Source/Plugin memberとArtifact digest、Hostが実Load/RegistrationしたEntryとの一致 | Programに含まれるだけでそのEntryが呼ばれたこと |
+| **実際の呼出し** | Host側Call-site、実Entry/Handler/Provider、入力・Attempt、開始／終了と失敗段階、SelectionからInvocationまでの変更・撤回 | Provider自己申告の`invoked`、Callbackが返っただけで業務Effectが確定したこと |
+| **受領とEffect** | Consumer別のResult/Failure投影、partial/end・Tool Replyの完結、Local Journal／外部Sink・実Effect／独立Observation・現在Disclosure | 同じJSON＝同じActor／同じ結果＝同じ業務Commit／`read-only`＝出力ゼロ |
+| **図表・統計への投影** | 上記Factへqualified Refで到達するEffective Lifecycle Graph・Runtime Trace・計測Window／欠測／Sampling Context | GraphにEdgeが描かれているだけで当該Pathが通ったこと／同一Query名だけで計測値が比較可能であること |
+
+必要な一列が`unknown/partial/stale/withheld`なら、その列を他のFingerprint一致やChart表示の成功で補完しない。外部Providerのraw Source/Manifest、Consumer Source Index、選択RuleのFingerprintは[main #3479](https://github.com/hat47x/tei-platform/pull/3479)・[main #3490](https://github.com/hat47x/tei-platform/pull/3490)により**独立の失効契機**と分かっている。Semantic計算の再利用、Source引用の鮮度、実Build/Callの資格、現在Grantは必要な範囲だけ再判定する。
+
+### 19.3 Lifecycleの不変部分・Pluginによる可変部分・実効Graph
+
+[#3503](https://github.com/hat47x/tei-platform/issues/3503)と[Draft #3507](https://github.com/hat47x/tei-platform/pull/3507)のLifecycle Graph案を利用し、Authoritative Source→Typed Graph→選択Plugin Patch→**Effective Graph**→Target生成→**Observed Path**を別段階として扱う。標準Data/Relation/Graph・三視点/Navigation（[main #3505](https://github.com/hat47x/tei-platform/pull/3505)）からの投影であり、描画座標はSource/業務コードを変更しない。
+
+**不変部分**は固定Node列ではなく、Operation/Scope/Variantごとに要求されたValidation、現在Host Grant、Effect/Unknown、情報開示、Required Trait等の**すべての実行可能Path上の義務**である。可変部分はHook Slot/Guard/Step順序/Target Adapter/外部イベント等のPlugin Patch。各PatchはSource位置・契約・選択Scope・版・適用順序・拒否理由を持つ候補とし、未選択Patchの混入／順序だけでの不変条件迂回／選択BからAへの実配線を拒否する。RuleやPatchを削除してValidation Pathが消えた場合、Diffが空だから無変更とは扱わない。
+
+音声・Web ChatのStreaming delta、Tool Call、承認前入力、Resume、B2C ExperimentのExposure等は**イベント候補・観測**として扱い、Operation確定・Business Effect・Grantへ自動昇格しない。各TargetがNative/Headless/Static/Hybrid/動的実装を選んでも、共通Operationと必要な経路義務を維持する。新中央Workflow Host・Graph Compiler・VUI固有認証基盤を本節から要求しない。
+
+### 19.4 既存Scenarioへ委譲する小さな反証（WIT-01〜09、実行前）
+
+| ID | 最初に試す一因子変更 | 独立Expected／帰属 |
+| --- | --- | --- |
+| **WIT-01** | `inspect` Provider B選択、通常CLI dispatchと実Studio BridgeでそれぞれBのHost Entryを呼ぶ | 二つの実Call-siteと同版のSelection/Result。単なる局所Go二Consumerやdirect shadowを製品S2へ加算しない。#1251/#1824 |
+| **WIT-02** | B選択のまま実Host登録をAへ切替、AとBのReturnを同一byteにする | 選択/実Call不一致でFAIL。値一致・統計一致・Trace自己申告で救済しない。#951/#1251 |
+| **WIT-03** | Selection直後にProvider Manifest/SourceまたはRuleFingerprintを変更し、Consumer Worldを保持 | 用途相対Source/Selection再資格化まで旧Evidenceをfreshにしない。無関係Sourceだけの変更で全面再Buildもしない。#3262/#2600/#3267 |
+| **WIT-04** | Host Grant失効とProvider Error内の秘密Path/Tokenを同時に与える | 実Invoke前に拒否、公開応答は許可Code/固定文、Internal Causeは外部に出ない。失敗後Effect未知を勝手に無作用にしない。#1174/#2516 |
+| **WIT-05** | 呼出し成功だがTool Reply一部欠損／Session Logだけが別Sinkに保存 | Provider実CallとConsumer完全受領・Disclosureを別々に表示。Part/end/書込先不明なら後者はunverified。#2509/#2515 |
+| **WIT-06** | HTTP Hostで認可拒否／CSRF／Adapter障害／Invoke後503を切替 | 主体・Driver・Callback順とHost Auditを照合。合成Adapter試験PASSを実Plugin/DB Commit/無副作用に広げない。#3274/#3516 |
+| **WIT-07** | Hook Graph PatchでAuthorize/Validateを迂回する別Pathを追加 | 選択済みGraphが全Path Obligationに不適合ならTarget生成・実行資格を拒否。図として表示できることは合格でない。#3503/#3278 |
+| **WIT-08** | 性能統計を同一Query名の旧Provider A／別WindowからBの最新Attemptへ付け替える | Attempt・Provider・Scope・Window・Sample欠損を比較し、AI最適化の根拠として不適格。19合成Testは実Provider測定ではない。#3520/#3271 |
+| **WIT-09** | Provider B1/B2×Consumer C1/C2の4候補のうち1件だけ未実行 | 3件の結果同値でも4件目をVerified BOMにしない。実Artifact/Entry/独立Expected/同一Attemptを各行で固定。#3267 |
+
+**順序・停止条件**：P0は[#1251](https://github.com/hat47x/tei-platform/issues/1251)の**通常CLI／Studioから選択済みBを実呼出しする一Operation**。そのProduct経路が成立したらread-only Hook一Slotを選び、Effective Graphが実Targetで通ったPathと一致する限定試験をP1とする。HTTP・音声/Chat・B2C・性能統計・Verified BOMはP0を妨げず、P1以降の**異質Consumerまたは反証用Pressure**として並行させる。WITのExpected／採否記録は#1180/#2514がOwnerであり、ここに第二Test Runnerや正式Gateを設けない。
+
+**今回の上限**：既存コード/限定CI/他チャットの設計判断を横断した**仕様・実証順序の提案**。WIT-01〜09の同一実行、実Plugin二Consumer、Lifecycle Graph Target生成、実AI最適化、本番HTTP Plugin/実DB、外部Harness完全受領、Owner Meaning Acceptanceは **NOT RUN／NOT ACCEPTED**。部分的なGo/Node/Python Reference成功やmainへの文書統合は、この未完了資格を埋めない。
