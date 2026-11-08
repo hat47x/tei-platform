@@ -17,14 +17,14 @@ func modelRefFromSyntheticFixture(f fixture) (modelref.Graph, []modelref.Rule) {
 	for _, entity := range f.Entities {
 		g.Nodes = append(g.Nodes, modelref.Node{
 			Key: modelref.Key{
-				Scope: scope,
+				Scope:   scope,
 				Subject: subject.Subject{
 					Kind: "data",
 					ID:   entity.ID,
 				},
 			},
 			DisplayName: entity.Label,
-			Evidence: []modelref.Evidence{{Authority: "proposal"}},
+			Evidence:    []modelref.Evidence{{Authority: "proposal"}},
 		})
 	}
 	rules := []modelref.Rule{
@@ -34,11 +34,11 @@ func modelRefFromSyntheticFixture(f fixture) (modelref.Graph, []modelref.Rule) {
 	for _, relation := range f.Relations {
 		g.Edges = append(g.Edges, modelref.Edge{
 			From: modelref.Key{
-				Scope: scope,
+				Scope:   scope,
 				Subject: subject.Subject{Kind: "data", ID: relation.From},
 			},
 			To: modelref.Ref{
-				Scope: scope,
+				Scope:   scope,
 				Subject: subject.Subject{Kind: "data", ID: relation.To},
 			},
 			Relation: relation.Kind,
@@ -112,4 +112,64 @@ func TestExistingModelRefDiffDetectsParallelEdgeCountButNotWhichID(t *testing.T)
 	// The identity of the removed domain relation is intentionally NOT a
 	// modelref.Diff result: the old Edge representation did not carry it.
 	// UI reverse editing requires separate qualified source-locator evidence.
+}
+
+func TestExistingModelRefDistinguishesSourceEvidenceDriftFromStructure(t *testing.T) {
+	f, expected := readFixtures(t)
+	before, rules := modelRefFromSyntheticFixture(f)
+	target := -1
+	for i, relation := range f.Relations {
+		if relation.ID == expected.ExpectedGraph.ParallelEdgePair[1] {
+			target = i
+			break
+		}
+	}
+	if target < 0 {
+		t.Fatal("missing alternate source relation in pressure fixture")
+	}
+	before.Edges[target].Evidence = []modelref.Evidence{{
+		Authority:           "source-observation",
+		SourceToken:         "external-provider/relationships/alternative",
+		ArtifactFingerprint: "provider-raw-revision-1",
+	}}
+	after := before
+	after.Edges = append([]modelref.Edge(nil), before.Edges...)
+	after.Edges[target].Evidence = []modelref.Evidence{{
+		Authority:           "source-observation",
+		SourceToken:         "external-provider/relationships/alternative",
+		ArtifactFingerprint: "provider-raw-revision-2",
+	}}
+	for _, g := range []modelref.Graph{before, after} {
+		if diagnostics := modelref.Validate(g, rules); len(diagnostics) != 0 {
+			t.Fatalf("valid proposed source observation rejected: %+v", diagnostics)
+		}
+	}
+	changes := modelref.Diff(before, after)
+	if len(changes) != 1 || changes[0].Kind != "reference-evidence-changed" ||
+		changes[0].Key.Subject.ID != "data.line" {
+		t.Fatalf("source-only drift must invalidate reference evidence, not semantic topology: %+v", changes)
+	}
+	// This only proves that explicit Evidence updates invalidate modelref.
+	// It does not prove that an imported Provider source revision is present
+	// in the Consumer Workspace Source Index or was actually re-read.
+	// SourceToken is provenance, not a durable domain relation identity.
+}
+
+func TestExistingModelRefRejectsUnboundSourceEvidence(t *testing.T) {
+	f, _ := readFixtures(t)
+	g, rules := modelRefFromSyntheticFixture(f)
+	g.Edges[0].Evidence = []modelref.Evidence{{
+		Authority:   "source-observation",
+		SourceToken: "external-provider/relations/unknown-revision",
+	}}
+	diagnostics := modelref.Validate(g, rules)
+	found := false
+	for _, diagnostic := range diagnostics {
+		if diagnostic.Code == "unbound-source-evidence" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("missing source fingerprint must not look like qualified observation: %+v", diagnostics)
+	}
 }
