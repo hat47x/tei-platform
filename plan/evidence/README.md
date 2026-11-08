@@ -34,6 +34,7 @@
 - [フック実行の配線と失敗の区別の確認](XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)（参照実装の試験記録。Runnerからの配線、NotSatisfiedと実行失敗の区別、参照規則。実PluginとCLI・Studioの配線は未実装）
 - [フック宣言の印刷面への反映の確認](XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md)（参照実装の試験記録。画面と同じフック宣言が印刷面にも出る。実印刷・用紙面の版照合は未確認）
 - [フックの位相順序と途中停止の確認](XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md)（参照実装の試験記録。位相の実行順、不成立での停止位置、`warn`の続行、未対応位相の拒否。CLI・Studioへの配線は未実装）
+- [フックが読むのは宣言した属性だけであることの確認](XTEA_LOWCODE_HOOK_DECLARED_READS_2026-11.md)（参照実装の試験記録。未観測・宣言外の読み取りを実装へ渡す前に拒否。実データの取得と`produces`は未実装）
 - [フックが使う能力のcommand Pattern不在の拒否](XTEA_LOWCODE_HOOK_COMMAND_REACHABILITY_2026-11.md)（参照実装の試験記録。実行経路の無いフック宣言を検証で拒否。複数commandの曖昧さは未診断）
 - [Studio検証結果の修正案表示の確認](XTEA_LOWCODE_STUDIO_PROPOSALS_2026-11.md)（参照実装の試験記録。案を受理する操作は未実装）
 - [暦の宣言と期間への結合の確認](XTEA_LOWCODE_CALENDAR_DECLARATION_2026-11.md)（参照実装の試験記録。日付計算と税・通貨・採番は未実装）
@@ -53,6 +54,8 @@
 - [複数暦の休日Dataの確認](XTEA_LOWCODE_MULTI_CALENDAR_HOLIDAY_2026-11.md)（参照実装の試験記録。例への追加は未実装）
 - [休日Dataの暦識別値の検査の確認](XTEA_LOWCODE_CALENDAR_DOMAIN_2026-11.md)（参照実装の試験記録。例への追加は未実装）
 - [休日の結合と暦識別検査を一続きにする確認](XTEA_LOWCODE_HOLIDAY_RESOLVE_2026-11.md)（参照実装の試験記録。例での複数暦利用と実DBは未確認）
+- [為替の年次フォールバックの宣言の確認](XTEA_LOWCODE_CURRENCY_FALLBACK_2026-11.md)（参照実装の試験記録。例への追加は未実装）
+- [為替フォールバックの宣言語彙の確認](XTEA_LOWCODE_CURRENCY_FALLBACK_ROLE_2026-11.md)（参照実装の試験記録。例への追加と別Data構成は未実装）
 - [X-TEA受容要件の実装対応](XTEA_LOWCODE_ACCEPTANCE_TRACE_2026-11.md)（`AC-1`〜`AC-11`・`RQ-C1`〜`RQ-C3`の参照実装と未確認事項。受容判断は仮承認）
 - [実DBで実行時の判断を確かめる計画](REAL_DATABASE_RUNTIME_DECISION_PLAN_2026-11.md)（期間・権限・効果の判断を実DBで見る案。**NOT RUN**）
 
@@ -80,6 +83,8 @@
 - [database-providerの選択を技術名ではなく能力で解決する](PLUGIN_CAPABILITY_COVERAGE_TECHNOLOGY_RESOLUTION_2026-11-08/README.md)（先行記録では instance の提供技術名を能力IDと文字列比較していたため database-provider 2件を数えなかった。既存の validation と同じ Capability.SupportsDatabaseProvider で解決すると両方が selected になり、未選択は6件から4件に減る。先行記録は履歴として残し、訂正しない）- [操作面は宣言されたPatternを読んでいるか](OPERATION_SURFACE_DECLARED_PATTERN_GAP_2026-11-07/README.md)（受注Workspaceと見積もり候補の重ねで`tei operations`を比較し、World指紋は変わるのに操作面8件と`summary.declared=0`が不変であることを記録。W3未着手の設計記述と一致し、AのOperationとBの業務ActionをA側で結ぶ手掛かりが現状無いことを示す。権限・意味の受理は示さない）
 - [環境のBindingを、能力の対応表で一括して解決する](PLUGIN_SELECTION_MATRIX_REFERENCE_2026-11-08/README.md)（`tools/reference-plugin-selection-matrix` で6種類のBindingを既存の `Supports*` だけで解決し、参照Workspaceの24件のうち22件が selected・2件が missing・ambiguous 0件を記録。missing は `editor.database_workbench` の2件で、現行の検証が機能のうち `editor.sql_analysis` だけを能力と突き合わせるための差であり、製品の診断ではないと明記）
 
+- [構成検証の選択規則はBindingの形ごとに揃っているか](PLUGIN_SELECTION_RULE_SURVEY_2026-11-08/README.md)（internal/validation を走査し、6つのBinding形式すべてに対応なし・複数・能力非対応の診断があることを確認。ただし環境の機能だけは eature == environment.FeatureSQLAnalysis の分岐で対象が1つに限られ、editor.database_workbench は Known() の検査だけを受けて能力との突き合わせを受けない。docs/plugins.md の記述は6形式に当てはまり誤っていない）
+- [環境の機能は、すべて選択を検査されるか](FEATURE_SELECTION_CHECK_ASYMMETRY_2026-11-08/README.md)（受理済みWorkspaceを3つ複製し、有効な機能だけを変えて実行。プラグインも能力も無い条件で、editor.sql_analysis は ENVIRONMENT_FEATURE_PLUGIN_MISSING で終了コード1、editor.database_workbench は診断0件で終了コード0。受理済みの複製も0件で終わり、この差が受理済みでは見えないことを示す。検査を足すべきかは示さない）
 - [DSH外部HarnessからのTEI read-only CLI実起動](DSH_H2_TOOL_ONLY_READ_ONLY_2026-11-07/README.md)（#2509。外部AIハーネスの1実Sessionで固定実行物の実起動・実引数・実出力を同一ログで突合。H3・四Session比較・正答採点・Egressは未実施）
 - [DSH実HarnessでのH2/H3四Session実行](DSH_H2_H3_FOUR_SESSION_2026-11-07/README.md)（#2509・TAI #168。H2→H3→H3→H2を同一Taskで実行し、H3のSkill実Load byteを確認。回答採点・Skill効果の因果・Egressは未確認）
 
@@ -105,6 +110,7 @@
 - [外部Moduleを含む選択Sourceの観測](TEI_GO_SOURCE_CLOSURE_OBSERVATION_2026-11-07.md)（`cmd/tei`の選択入力をリポジトリ内318件と外部Module 12件・325メンバーに分けて列挙し、資格は常に`false`として閉包方針を変えない記録。SB-A1 / #2831）
 
 - [DSH外部Harnessの再開と既送出Session Log](DSH_H6E7_RESUME_AFTER_DISCLOSURE_2026-11-07/README.md)（#2515 H6-E7・#2509。Raw canaryを読んだSessionを再開すると、Session Logは水位`27`から進み再送されない一方、モデル入力には過去の会話が再構成されcanaryが再び載る。Grant失効・ACK不明replayはNOT RUN）
+- [DSH外部Harnessが読んだ内容の保存先棚卸し](DSH_H6E6_SINK_INVENTORY_2026-11-07/README.md)（#2515 H6-E6・#2509。1 Sessionで読んだ合成canaryが、headless stdoutと永続Session Logの2つに残り、`storages`・`cache`・`attachments`には残らなかった。永続Session Logは9連結zstd frameで、単一frame展開では見落とす。Issue/CI/外部ProviderのsinkはNOT RUN）
 
 - [外部Go Module入力の明示opt-in受入](TEI_GO_EXTERNAL_MODULE_ADMISSION_OPTIN_2026-11-07.md)（既定の拒否方針は不変のまま、供給を明示した呼び出しだけが外部Moduleメンバーを含む閉包を受ける参照実装。受入記録に方針・根拠・拒否理由を残す。SB-B / 案C / #2831）
 - [起動主体と被起動主体を分けたBuild駆動の記録](TEI_GO_BUILD_STAGE_DRIVER_2026-11-07.md)（`cmd/tei`を子プロセスとして駆動し、invoker/invokedの実行ファイルdigest・argv・exitと、子の主張とディスク実物のartifact digestが一致することを記録。L3・受入・権限は未確認。SB-C0/C1 / #2831）
@@ -112,3 +118,7 @@
 - [SB-N13の自称invoker照合](TEI_GO_STAGE_DRIVER_INVOKER_CLAIM_2026-11-08.md)（駆動主体が自称するdigestを実行中process imageと照合する欄をstage driverへ追加。一致しても`l3Claimed`はfalseのまま。独立した失敗は連結して保持する。SB-C0/C1 / #2831）
 
 - [stage1の生成物がstage2を駆動する（L3）](TEI_GO_SELF_BUILD_TWO_STAGE_L3_2026-11-07.md)（stage1のartifactをstage2のinvokerとして実起動し、invoker一致・同一レシピ・artifact一致が揃うことを記録。Seed Trust・受入・権限・別OS一般化は未確認。SB-C1 / #2831）
+
+- [TEI自身の設計をCLIで扱う実測 第2ラウンド](TEI_DOGFOODING_ROUND2_2026-11-08/README.md)（#3149。現行main `4fd88c2b1` の単一実行物（SHA-256 `16c9090d…`）で再実測し、第1ラウンドの10課題のうち7件が解消、D-3・D-9・D-10 が残ることを記録。MCP入口は未実装のため CLI 経路のみ）
+
+

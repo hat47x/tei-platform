@@ -1,4 +1,4 @@
-# CLI読取りコマンドのJSON出力契約（schemaVersionと失敗時の形式）の現状調査と追加案
+﻿# CLI読取りコマンドのJSON出力契約（schemaVersionと失敗時の形式）の現状調査と追加案
 
 - **状態**: 調査と案（提案中、未採用）。一覧は2026-10-31時点のorigin/main `cd47b6fa4` のコードと、WSL go1.26.9でbuildした`tei`による実行結果の記録である。
 - **担当課題**: [#2354](https://github.com/hat47x/tei-platform/issues/2354)。
@@ -29,7 +29,7 @@
 | --- | --- | --- | --- | --- |
 | `version -json` | `tei.cli.version/v0` | JSON | 引数不正は標準エラー | いいえ（投影型） |
 | `commands` | `tei.cli.discovery/v0` | JSON | 引数不正は標準エラー | いいえ（投影型） |
-| `model catalog` | `tei.cli.model/v0` | JSON（`declarationCounts`を含む） | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`、`SOURCE_INDEX_FAILED`、`NAMESPACE_NOT_FOUND`） | いいえ（投影型。内側に`tei.operations.model-catalog`の版を持つ） |
+| `model catalog` | `tei.cli.model/v0` | JSON（`declarationCounts`を含み、各`entries`要素は標準意味型を`prelude:true`で示す） | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`、`SOURCE_INDEX_FAILED`、`NAMESPACE_NOT_FOUND`） | いいえ（投影型。内側に`tei.operations.model-catalog`の版を持つ） |
 | `inspect` | `tei.cli.inspect/v0` | JSON | JSON（`INVALID_ARGUMENT`、`SUBJECT_NOT_FOUND`、`INSPECTION_FAILED`、`WORKSPACE_LOAD_FAILED`、`SOURCE_INDEX_FAILED`） | いいえ（投影型） |
 | `trace` | `tei.cli.trace/v0` | JSON | JSON（`INVALID_ARGUMENT`、`INVALID_SUBJECT`、`SUBJECT_NOT_FOUND`（終了コード1）、`SUBJECT_AMBIGUOUS`（1）、`STALE_SNAPSHOT`（1）、`UNSUPPORTED_SUBJECT_KIND`（2）、`TRACE_FAILED`、`WORKSPACE_LOAD_FAILED`、`SOURCE_INDEX_FAILED`）。**`inspect`と違い、`semantic-candidate-key`・`semantic-functional-dependency`は投影しないため`UNSUPPORTED_SUBJECT_KIND`になる（#3180）** | いいえ（投影型） |
 | `view` | `tei.cli.view/v0` | JSON（`-format json`。内側の`result`に`tei.applicationview/v0`を持ち、外側に`worldFingerprint`・`sourceIndexFingerprint`を持つ） | JSON（終了コード2: `INVALID_ARGUMENT`・`WORKSPACE_LOAD_FAILED`・`PERIOD_STATE_LOAD_FAILED`。終了コード1: `VIEW_FAILED`・`VIEW_UNSUPPORTED`・`COMMAND_REFUSED`・`COMMAND_FAILED`・`COMMAND_LIFECYCLE_REFUSED`・`COMMAND_EFFECT_UNKNOWN`・`OPERATION_LOG_WRITE_FAILED`・`LIFECYCLE_STATE_FAILED`） | いいえ（投影型） |
@@ -54,6 +54,7 @@
 - **`requirements`だけは現行の成功時`result`がJSON配列**。`tei commands`の`requirements` entryに`resultShape: "array"`を追加する変更候補（#3347）は、既存の`tei.cli.requirements/v0`応答を変えずに例外を発見可能にする。`successShape`（外側の成功応答の構造）・`jsonContract`（エンベロープ等の扱い）・`resultShape`（`result`のJSON型）は異なる概念。`resultShape`を省略した他のコマンドは**object保証ではなく未宣言**であり、`world`のraw JSONや`version -json`のidentityに`result`があると推定しない。現在の`requirements`を実ビルド済CLIで検査する回帰試験に結び、他コマンドの`result`/diagnostics平坦化やbuiltin混在は本件で無断変更せず#3347で別判定とする。
 - 引数の未対応flagは、#2332で全広告コマンドが拒否するようになった。拒否も標準エラー（`inspect`、`trace`、`validate -json`はJSON）で、flag解析のusageの分だけstderrが長くなるコマンドがある（例: `knowledge-context`に未知のflag）。`version -json`の引数不正も、2026-11-07から実装が標準エラーへ返す（表の記載と一致）。
 - 2026-11-07から、`validate -json`・`model catalog`・`inspect`・`trace`・`workspace-files`の成功応答は`workspace`を持つ。`name`はmanifestの`workspace:`、`formatVersion`はmanifestの版、`manifest.sha256`はmanifestのバイトの照合値である。複数のWorkspaceが同じCanonical IDを持つ場合に、`worldFingerprint`（内容の同一性）だけでは読み元を識別できないためで、既存の欄を変えずに足す互換な変更とする（#3181）。`workspace:`を書かないmanifestは読み込まれ、`name`は空になる。この欄は受理・権限・排他の証拠ではない。
+- 2026-11-08から、`model catalog`の各`entries`要素は`prelude`を持つ。`true`はプロセス内の標準意味型（`std`名前空間とその型）であり、Workspaceが宣言したものではない（#3347）。`entries`だけを見ても、標準定義13件と利用者の宣言が混ざっていたためである。`declarationCounts.total`は`prelude`の要素を含まないので、空のWorkspaceは`entries`が13件でも`total:0`になる。欄の追加であり、`tei.cli.model/v0`と`tei.operations.model-catalog/v0`の既存欄は変えない。
 - 2026-11-08から、`view -format json`の応答は外側に`worldFingerprint`と`sourceIndexFingerprint`を持つ。`model catalog`・`inspect`・`trace`・`validate -json`と同じ計算（`operations.WorkspaceProjectionFingerprints`）であり、同じWorkspaceなら値が一致する（#3345）。`result.semanticFingerprint`は残すが、こちらはApplicationが使用する名前空間だけを対象にした**別の観測**であり、`worldFingerprint`と比較してはならない。両方の欄はテキスト・HTML・printの出力には出さない（JSON契約の欄である）。Source Indexを構築できないWorkspaceでは2欄を省き、`view`自体は従来どおり応答する。
 - 引数不正の出力先は、`cmd/tei/cli_argument_failure_streams_test.go`が実プロセスの標準出力と標準エラーを分けて検査する（#2993）。`version`・`commands`は標準出力を空のまま標準エラーへ理由を書き、`validate -json`は同じ失敗を標準出力の1 JSONで返す。この差はコマンドごとの決定であり、CLI全体の既定として読まない。
 - `-h`／`-help`は引数不正ではない（#3185）。2026-11-07から、`inspect`・`view`・`trace`・`workspace-files`・`knowledge-*`・`commands`・`version`・`model catalog`は、終了コード0・標準出力に`usage: tei <command> [options]`とそのコマンドが広告するflagの説明を書き、標準エラーは空にする。未知のflag（`-not-a-flag`など）は従来どおり`INVALID_ARGUMENT`・終了コード2で、`-h`とは区別する。`cmd/tei/cli_help_test.go`が両方を実プロセスで検査する。`validate`は元からflag packageの既定（標準エラーに`Usage of`、終了コード0）で、この変更の対象外である。
