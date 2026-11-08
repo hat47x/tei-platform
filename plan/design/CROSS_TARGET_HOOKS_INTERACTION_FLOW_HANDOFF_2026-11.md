@@ -194,7 +194,7 @@ DB/Schema Access/SQL方言/Transaction実装は本ドキュメントの設計範
 **本節の目的**は、既存の他レーンが並行して作成した成果を第二の仕様正本へ複製せず、Lifecycleを構成する際の共通判断と実装順を合意可能な形にすること。詳細な受入票は各Ownerが持つ。
 
 - [Draft #3505](https://github.com/hat47x/tei-platform/pull/3505)／RQ-036候補：全体MapからData/Function/Business/Event/State/Pattern/Rule/Provider/Targetへ辿れる図表・ナビゲーション、標準/設定可能/Hook可能/案件置換/観測のみの凡例。これは**人が全体像を読めることを最優先**する要求で、Graph Compiler完成を前提にしない。PR未統合の仕様・実装実績と混同しない。
-- [Draft #3510](https://github.com/hat47x/tei-platform/pull/3510)／#3278：原子的Traitの要求集合と、合成後の実効Graphの**全経路**で成立する保証は別物。Traitを備えるPluginが存在するだけでGuard通過・実Callを保証できない。TLG-01〜08は既存#2514/#1180の独立Expectedへ帰属させる。
+- [main統合済み PR #3510](https://github.com/hat47x/tei-platform/pull/3510)／#3278：原子的Traitの要求集合と、合成後の実効Graphの**全経路**で成立する保証は別物。Traitを備えるPluginが存在するだけでGuard通過・実Callを保証できない。TLG-01〜08は既存#2514/#1180の独立Expectedへ帰属させる。
 - [#3509](https://github.com/hat47x/tei-platform/issues/3509)：B2Cは完全Native/Headless Frontend、独自SSR/Router/UX/実験を妨げない。Journey/Experiment Graphは意味上のActionと開示/実Effectへ参照するが、画面・計測・CV推定をBusiness Completionへ昇格しない。
 - [#3274](https://github.com/hat47x/tei-platform/issues/3274)：HTTP Decision/Client Reaction/Recovery Graphは**Application Outcome/Execution Effectの用途別Projection**。HTTP statusやProblem Detailsに業務意味を持たせない。#1174のunknown commitと再送拒否を守る。
 - [#2497/#3303](https://github.com/hat47x/tei-platform/pull/3303)：Data D→Function-owned Representation V→媒体Wの写像は一般に非可逆。Flow Diagramの画面上のEdgeやCanvas occurrenceをSemantic Subject/Source Identityへ自動同一視しない。
