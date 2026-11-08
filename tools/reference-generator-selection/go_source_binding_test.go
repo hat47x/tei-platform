@@ -64,10 +64,6 @@ func TestGoDeclaredSourceDiffersFromBuiltFileIsRejected(t *testing.T) {
 	if !control.Passed {
 		t.Fatalf("control candidate (declared == built) was not qualified: %+v", control)
 	}
-	if control.BuildEvidence == nil || mismatch.BuildEvidence == nil {
-		t.Fatalf("build evidence is missing: control=%+v mismatch=%+v", control.BuildEvidence, mismatch.BuildEvidence)
-	}
-
 	// 宣言Source D1(audit.go)と、go buildへ渡るD2(main.go)が別の候補は拒否する。
 	if mismatch.Passed {
 		t.Fatalf("declared/built source mismatch was qualified: %+v", mismatch)
@@ -75,7 +71,7 @@ func TestGoDeclaredSourceDiffersFromBuiltFileIsRejected(t *testing.T) {
 	if !strings.Contains(mismatch.RejectReason, "not among the files passed to go build") {
 		t.Fatalf("unexpected reject reason: %q", mismatch.RejectReason)
 	}
-	if mismatch.BuildEvidence != nil && mismatch.BinaryDigest != "" {
+	if mismatch.BuildEvidence != nil || mismatch.BinaryDigest != "" {
 		t.Fatalf("rejected candidate must not carry a built binary: %+v", mismatch)
 	}
 }
