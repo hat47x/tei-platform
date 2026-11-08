@@ -1533,24 +1533,26 @@ ADR-0048の既定フローは **共通Application Operation → CLI/MCP/HTTP/Stu
 
 よって実Source/Meaning/Build/外部引用を**一つのFingerprintだけで共通失効・共通再利用**しない。Consumer-owned SourceとImported Providerの**Source occurrence/Location/Raw revision**を区別し、必要なProvider実消費入力のClosureを独立Requiredと比較する。Rawが変わったから全Buildを失効させるのも、Worldが同じなら全Consumerの再利用を認めるのも禁止する。新しいFingerprint Service、Source Store、中央履歴Authorityは本計画で設けない。#2600/#3267/#2743/#3262が失効・実利用範囲の既存Owner。
 
-### 31.4 Test Patternに落とす独立反例 TT-139〜TT-150
+### 31.4 Test Patternに落とす独立反例 TT-158〜TT-169
+
+本節の旧TT-139〜TT-150は§30・§32の既存TT番号と衝突したため、**意味・Expected・Ownerを変えずTT-158〜TT-169へ再採番**した。章番号ではなくCase IDと独立Expectedで追跡し、別の対象を同一TTとして合算しない。
 
 | ID | 一つだけ変える負例と正の対照 | 必要な判定・Owner |
 | --- | --- | --- |
-| **TT-139 CLI/MCP意味失敗の同値** | 同Workspaceのvalidate正常→重複宣言/Source Load失敗へ変える | CLI exit／Typed failure.codeとMCP isError／意味上codeが一致。#3458 main限定実証。残る3 Operationは#3420 |
-| **TT-140 MCP入力を補正してしまう誤成功** | 正規Tool args→未知Field・型違い・NULL・Root変更／Protocol通知異常 | 不正入力はFail-closed、Workspace Root固定。Protocol errorと業務Failureを混同しない。#3420（新全ケース未実行） |
-| **TT-141 Function宣言と実Invocation混同** | sales.order.submitのSource/Schema/3 Rule/DB Requirementが全Present、しかしEntry/Provider実選択が欠ける | bounded declaration-present維持・invocation/read/host effectをnot-observed。#3482 main限定実証／実Providerは#2586 |
-| **TT-142 PacketのPartialをCompleteへ偽昇格** | 実13 CLI＋42限定Controlsと局所Packet/9が成功したが、全Function/Business/RoleのRequiredが未閉包 | ローカルpositive保持、qualifiedTestGeneration=false／missingを明示。#3262／#2514 |
-| **TT-143 同Workspace Source-only drift** | World同一でSource Indexだけ改版したContextを候補生成前後に再使用 | 旧Context引用資格を拒否、旧World Pin Scenario自体の実行成功を否定しない。#3477 main |
-| **TT-144 Imported Provider Raw-only drift** | Consumer World/Indexは不変だがProvider Raw改版／LocateImportedSource現在値変化 | 引用・Build input・実Providerの資格はunknown/stale。別Providerを自動的に再実行・再受理しない。#3479 Draft／#2743/#2600 |
-| **TT-145 HTTP 202・監査と効果** | 202正常・202送信後panicでAudit Stageがcompleted⇄error | 実Host Path証人は保持、業務完了・Effect Receipt/Client受領はunknown。#3478 main/#1174 |
-| **TT-146 E1／Go Host二視点の経路不一致** | E1 method/path/actionだけを変更、Go Host Policyは不変 | 両方の局所PASSを保ちながらCross-Binding不一致を検出。#3485 main限定／#3274 |
-| **TT-147 self-buildの過剰なG4主張** | stage1成果物＝stage2 invoker＋artifact一致だがSource closure rejected | 局所L3 witness保持、G4と現在DeliveryはUNQUALIFIED。#3440/#2831 |
-| **TT-148 物理FKからの業務Relation誤生成** | Fake Catalogで同対象への2 FK／複合Key・部分Indexを保持、Owner Meaningなし | Physical Observationは保持、Accepted Business Relation/Function CRUDはunknown。旧#3372でなく#3486が実装Owner |
-| **TT-149 Harness二重送出・送出上限** | 同じTool内容がモデルInputとSession Log extensionに別載せ／maxBytes超でextension省略 | Raw HTTP request byteとModel/Extension/Sinkを別計測。Session完了≠外部送出なし、公開許可なしに生Sourceを出さない。#3415/#3470/#2515 |
-| **TT-150 Legacy一致・Desired欠損の逆転** | 旧Runtime/新Targetとも同じRowを落とす⇄移行後Desiredでは当該Rowが必須 | Legacy Actualの一致とOwner Desired／Target Actual適合を独立判定。旧新同じバグを移植してもmigration-qualifiedにしない。REA #3394／#2514/#2586 |
+| **TT-158 CLI/MCP意味失敗の同値** | 同Workspaceのvalidate正常→重複宣言/Source Load失敗へ変える | CLI exit／Typed failure.codeとMCP isError／意味上codeが一致。#3458 main限定実証。残る3 Operationは#3420 |
+| **TT-159 MCP入力を補正してしまう誤成功** | 正規Tool args→未知Field・型違い・NULL・Root変更／Protocol通知異常 | 不正入力はFail-closed、Workspace Root固定。Protocol errorと業務Failureを混同しない。#3420（新全ケース未実行） |
+| **TT-160 Function宣言と実Invocation混同** | sales.order.submitのSource/Schema/3 Rule/DB Requirementが全Present、しかしEntry/Provider実選択が欠ける | bounded declaration-present維持・invocation/read/host effectをnot-observed。#3482 main限定実証／実Providerは#2586 |
+| **TT-161 PacketのPartialをCompleteへ偽昇格** | 実13 CLI＋42限定Controlsと局所Packet/9が成功したが、全Function/Business/RoleのRequiredが未閉包 | ローカルpositive保持、qualifiedTestGeneration=false／missingを明示。#3262／#2514 |
+| **TT-162 同Workspace Source-only drift** | World同一でSource Indexだけ改版したContextを候補生成前後に再使用 | 旧Context引用資格を拒否、旧World Pin Scenario自体の実行成功を否定しない。#3477 main |
+| **TT-163 Imported Provider Raw-only drift** | Consumer World/Indexは不変だがProvider Raw改版／LocateImportedSource現在値変化 | 引用・Build input・実Providerの資格はunknown/stale。別Providerを自動的に再実行・再受理しない。#3479 Draft／#2743/#2600 |
+| **TT-164 HTTP 202・監査と効果** | 202正常・202送信後panicでAudit Stageがcompleted⇄error | 実Host Path証人は保持、業務完了・Effect Receipt/Client受領はunknown。#3478 main/#1174 |
+| **TT-165 E1／Go Host二視点の経路不一致** | E1 method/path/actionだけを変更、Go Host Policyは不変 | 両方の局所PASSを保ちながらCross-Binding不一致を検出。#3485 main限定／#3274 |
+| **TT-166 self-buildの過剰なG4主張** | stage1成果物＝stage2 invoker＋artifact一致だがSource closure rejected | 局所L3 witness保持、G4と現在DeliveryはUNQUALIFIED。#3440/#2831 |
+| **TT-167 物理FKからの業務Relation誤生成** | Fake Catalogで同対象への2 FK／複合Key・部分Indexを保持、Owner Meaningなし | Physical Observationは保持、Accepted Business Relation/Function CRUDはunknown。旧#3372でなく#3486が実装Owner |
+| **TT-168 Harness二重送出・送出上限** | 同じTool内容がモデルInputとSession Log extensionに別載せ／maxBytes超でextension省略 | Raw HTTP request byteとModel/Extension/Sinkを別計測。Session完了≠外部送出なし、公開許可なしに生Sourceを出さない。#3415/#3470/#2515 |
+| **TT-169 Legacy一致・Desired欠損の逆転** | 旧Runtime/新Targetとも同じRowを落とす⇄移行後Desiredでは当該Rowが必須 | Legacy Actualの一致とOwner Desired／Target Actual適合を独立判定。旧新同じバグを移植してもmigration-qualifiedにしない。REA #3394／#2514/#2586 |
 
-上記は**既存OwnerへのTest Obligation引渡し**であり、正式な新Scenario/Oracle/Transport Schemaを採用しない。main各PRで実証された局所値と、本表の異なる横断ケースを一つのPASS数へ足し算しない。TT-139のvalidate限定、TT-141の宣言、TT-143の同Workspace Source-only、TT-145のGo Host10 Path、TT-147の限定L3が先行実績。それ以外の**製品実E2E・別Targetの独立Expected・外部H3 Receipt**は再検収が必要。
+上記は**既存OwnerへのTest Obligation引渡し**であり、正式な新Scenario/Oracle/Transport Schemaを採用しない。main各PRで実証された局所値と、本表の異なる横断ケースを一つのPASS数へ足し算しない。TT-158のvalidate限定、TT-160の宣言、TT-162の同Workspace Source-only、TT-164のGo Host10 Path、TT-166の限定L3が先行実績。それ以外の**製品実E2E・別Targetの独立Expected・外部H3 Receipt**は再検収が必要。
 
 ### 31.5 2026-11-08現在の実装順：最初の有用な返答→本当のT1-B→横断効果
 
