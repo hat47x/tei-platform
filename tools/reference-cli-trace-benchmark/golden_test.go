@@ -21,6 +21,11 @@ import (
 // 規則は、internal/workspace/source_index_anchor_table_test.goで検査する。
 // 値を更新するときは、変更前の実装が出力した根拠をPRに残すこと。
 //
+// 2026-11-09の更新: #3625でtraceの応答にcontinuationFingerprintを足した。
+// 成功時のJSON全体（traceの各operation）が変わったが、pagedRowsとsourceIndexは
+// 変わっていない。行の内容・順序・ページ継続の結果が同じであることは、
+// この試験の pagedRows 比較と、変更前の値（git履歴）で別に確認した。
+//
 // 2026-11-07の更新: #3181でtraceの成功応答がworkspace識別子を持つようになり、
 // 成功時のJSON全体が変わった。モデルの内容・行の順序・ページ継続の結果が変わって
 // いないことは、上の各比較（pagedRowsとfullの一致、Workspace更新後のSTALE_SNAPSHOT）で
