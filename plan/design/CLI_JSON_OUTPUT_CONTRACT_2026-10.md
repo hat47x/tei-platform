@@ -1,4 +1,4 @@
-﻿# CLI読取りコマンドのJSON出力契約（schemaVersionと失敗時の形式）の現状調査と追加案
+# CLI読取りコマンドのJSON出力契約（schemaVersionと失敗時の形式）の現状調査と追加案
 
 - **状態**: 調査と案（提案中、未採用）。一覧は2026-10-31時点のorigin/main `cd47b6fa4` のコードと、WSL go1.26.9でbuildした`tei`による実行結果の記録である。
 - **担当課題**: [#2354](https://github.com/hat47x/tei-platform/issues/2354)。
