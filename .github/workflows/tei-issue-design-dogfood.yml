@@ -407,6 +407,18 @@ jobs:
           assert drift["AtoBtoAOriginalFingerprintReturns"] is True
           assert drift["intermediateHistoryOrCurrentGrantProven"] is False
           assert binding["atomicReadOrExternalDeliveryProven"] is False
+          pin = r["contextToScenarioBinding"]
+          assert pin["generatedWorldMatchesDesignContext"] is True
+          assert pin["freshBeforeCandidate"] is True
+          assert pin["freshAfterPinnedRun"] is True
+          source_only = pin["sourceOnlyDrift"]
+          assert source_only["observedCanonicalWorldUnchanged"] is True
+          assert source_only["observedSourceIndexChanged"] is True
+          assert source_only["staleDesignContextRejectedByConsumer"] is True
+          assert source_only["originalWorldPinnedScenarioStillExecutesInIsolatedCopy"] is True
+          assert source_only["AtoBtoAOriginalFingerprintReturns"] is True
+          assert source_only["intermediateHistoryOrCurrentGrantProven"] is False
+          assert pin["atomicReadOrExternalDeliveryProven"] is False
           assert r["independentBlindHoldoutApplied"] is False
           assert r["ownerMeaningAccepted"] is False
           assert r["scenarioSSOTChanged"] is False
@@ -420,6 +432,8 @@ jobs:
               "- 嘘Expected、異なる値のFixture、Plan生成後Fixture変更の3負例は実CLIで拒否。",
               "- **Context→Scenario World束縛**：Context FPと生成Plan SHAの一致、実CLIを使ったSource Indexの生成前・Pinned実行後の版を再照合。",
               "- **Source-only drift**：隔離Sourceの末尾LFでWorld不変／Source Index改版を観測。既存World PinでScenario自体は成功しても、旧Contextの採用は拒否。A→B→Aの履歴は証明しない。",
+              "- **Context→Scenario版束縛**：ContextのWorld FPと生成Plan WorldSHA一致、Source Indexを実CLIで実行前後に再観測。",
+              "- **Source-only TOCTOU**：隔離WorkspaceのSource末尾改行でCanonical Worldは不変、Source Indexだけ変化。World-pinned Scenario実行だけでは失効を検出できず、Context Consumerが拒否。A→B→Aの履歴は不明。",
               "- **外部AI Harness/Skillからの盲検テスト生成ではない**。Issue #3273既知候補の初回実行に限定。",
               "- Contextはpartial/exploration-only。Scenario Owner採用、C1、全要件・実DB/Hostは未資格。",
           ]

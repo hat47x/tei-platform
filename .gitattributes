@@ -127,3 +127,6 @@
 
 # OS-ACL read-denial observations are hashed as raw bytes.
 /plan/evidence/DSH_H6E1_OS_ACL_2026-11-09/** -text
+
+# Binding-to-execution reference output is hashed as raw bytes by its README.
+/plan/evidence/BINDING_TO_EXECUTION_REFERENCE_2026-11-09/** -text
