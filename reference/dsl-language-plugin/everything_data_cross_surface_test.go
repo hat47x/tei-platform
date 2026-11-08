@@ -104,24 +104,24 @@ func projectFixturePlainCandidate(syntax PipelineSyntax, pins, catalog []Operato
 
 func fixtureLanguagePins() (Selection, Selection) {
 	return Selection{
-		LanguageID: "fixture.pipe", ContractVersion: "1",
-		ContractFingerprint: "pipe-1", ImplementationID: "fixture.pipe.impl",
-		ImplementationFingerprint: "pipe-source-1",
-	}, Selection{
-		LanguageID: "fixture.json", ContractVersion: "1",
-		ContractFingerprint: "json-1", ImplementationID: "fixture.json.impl",
-		ImplementationFingerprint: "json-source-1",
-	}
+			LanguageID: "fixture.pipe", ContractVersion: "1",
+			ContractFingerprint: "pipe-1", ImplementationID: "fixture.pipe.impl",
+			ImplementationFingerprint: "pipe-source-1",
+		}, Selection{
+			LanguageID: "fixture.json", ContractVersion: "1",
+			ContractFingerprint: "json-1", ImplementationID: "fixture.json.impl",
+			ImplementationFingerprint: "json-source-1",
+		}
 }
 
 func fixtureOperators() (OperatorContract, OperatorContract) {
 	return OperatorContract{
-		ID: "std.where", Version: "1", Fingerprint: "where-fixture-1",
-		Effect: "pure", InputType: "rows/order", OutputType: "rows/order",
-	}, OperatorContract{
-		ID: "std.sum", Version: "1", Fingerprint: "sum-fixture-1",
-		Effect: "pure", InputType: "rows/order", OutputType: "decimal",
-	}
+			ID: "std.where", Version: "1", Fingerprint: "where-fixture-1",
+			Effect: "pure", InputType: "rows/order", OutputType: "rows/order",
+		}, OperatorContract{
+			ID: "std.sum", Version: "1", Fingerprint: "sum-fixture-1",
+			Effect: "pure", InputType: "rows/order", OutputType: "decimal",
+		}
 }
 
 func TestEverythingDataRealPinnedPipelineCrossSurface(t *testing.T) {
