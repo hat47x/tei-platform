@@ -1722,20 +1722,33 @@ KON Dataspaceは独立・任意のData Source候補であり、TEIのテスト�
 
 この一件は既存[Draft #3365](https://github.com/hat47x/tei-platform/pull/3365)のtest-only投影を製品のCoverage Engineへ拡張する提案ではない。既存#1180 Driver Scenarioと実CLIの境界で比較する。必要ならテスト専用Assertionのみ追加し、Production APIや新Runner/Registryは追加しない。
 
-### 35.3 2026-11-08 10:05Z時点のexact-head検収状況（旧08:47Z記録を更新）
+### 35.3 2026-11-08 11:06Z時点：exact-head検収と、実Read一機能の停止線
 
-- **[Draft #3365](https://github.com/hat47x/tei-platform/pull/3365)** 最新HEAD `e8745c6cbb7596da48da62becdb48417f3ce8dd6` は[実CLI dogfood #42465435223](https://github.com/hat47x/tei-platform/actions/runs/42465435223)、[Repo Health #42465435270](https://github.com/hat47x/tei-platform/actions/runs/42465435270)、依存確認 #42465435235がいずれも**completed/success**。同一dedicated runで**13実CLI read-only Reply、Required Rule/Functionの局所42 Controls、6実Pinned Scenario、9つのtest-only受領目録対照**を検収。TT-154の「ExpectedとResultが同時に同じ誤Operationへ改変」負例は実際に独立固定Operation Oracleで拒否。Go `cmd/tei`局所statement C0相当 **9.4%**、C1・全要件は未計測。Artifactは同Run #13611941224。**Draft/未main統合**であり、Product実Function/Provider/H3・独立Blind T1-B/Owner受理は未実証。
-- **[Draft #3479](https://github.com/hat47x/tei-platform/pull/3479)** HEAD `fff65f0ab6ae7bd9ad88d18df7a756e8fbb4ae31` は[dogfood #42464022308](https://github.com/hat47x/tei-platform/actions/runs/42464022308)とDesktop一部などがsuccess。一方[Repo Health #42464022323](https://github.com/hat47x/tei-platform/actions/runs/42464022323)は**failure**で、logには`internal/workspace/import_source_context_revision_test.go`の**gofmt drift**が明記される。Go Productの失敗と同一視しないが、PR全体を合格としてmainへ引き渡せない。Import Provider原Byte/ManifestのRevision差をConsumer二指紋だけで検出できない負例は引き続きDraft上の限定Evidence。
-- **[Draft #3494](https://github.com/hat47x/tei-platform/pull/3494)** ではHarnessのSource/受領/独立検証を再統合し、当該HEADに対するProduct Skill限定資格CI #42464624666およびRepo Health #42464624729はsuccess。これは実DSH比較4Slotの完備性、現在のOS隔離、外部H3完全受領の証明ではない。
-- [Draft #3223](https://github.com/hat47x/tei-platform/pull/3223)自身は計画書を保存した段階であり、個別ProductのGo/CLI CIに代わるものではない。異なるPRの成功を同一Attemptへ合算しない。
+| 対象 | 実際に確かめた範囲 | まだ成立しない範囲 |
+| --- | --- | --- |
+| [Draft #3365](https://github.com/hat47x/tei-platform/pull/3365) HEAD `e8745c6cbb7596da48da62becdb48417f3ce8dd6` | [専用dogfood #42465435223](https://github.com/hat47x/tei-platform/actions/runs/42465435223)、Health #42465435270、依存 #42465435235は**completed/success**。同一実CLIで13 Reply・42限定Context対照・6 Pinned Step・9 test-only目録対照、TT-154共謀誤値を独立Operation期待で拒否。Go `cmd/tei`局所statement C0相当9.4% | Draft/未main、C1/全Rule Coverage/実Provider/Tool実外部受領/AI盲検T1-B/Owner意味受理は未資格 |
+| [Draft #3500](https://github.com/hat47x/tei-platform/pull/3500) HEAD `40c1acc5a2079d4e71aa9a2a9e9191779a3f48ba` | 実Native Organization Case Sourceを既存Pattern→Resolver→Query→PostgreSQL Executor→明示Semantic Column Mappingで接続。instrumented SQL Connectorによる[専用Go CI #42469646869](https://github.com/hat47x/tei-platform/actions/runs/42469646869)およびRepo Health #42469646964はsuccess | **実PostgreSQL Case試験は環境変数未設定でSKIP**。Function Data Context・実Provider Grant・Consumer Handoff・業務意味は未接続。別のStudio Wails系2ジョブにはfailureがあり全ジョブsuccessではない |
+| main [#3482](https://github.com/hat47x/tei-platform/pull/3482)／[#3501](https://github.com/hat47x/tei-platform/pull/3501) | 前者は `sales.order.submit` Capability/Application/Sourceの限定宣言照合。後者は実WorkspaceのSubmit Pattern/Capabilityを既存Inspectorでそれぞれ取得し、架空ActionのSource不存在も識別 | **Submitの実Invocation・Host Effectの証拠ではない**。上のBrowse/Case実Readの証拠をSubmitへ移植しない |
+| [PR #3479](https://github.com/hat47x/tei-platform/pull/3479) HEAD `6f0a9735cae71cb577296ffc4dc947870331824d` | Source-only/Manifest-onlyのImported Provider改訂でConsumer World/Index同値でも必要Source鮮度が別になる負例。書式修正後の[Health #42470247004](https://github.com/hat47x/tei-platform/actions/runs/42470247004)とdedicated dogfood #42470246942はsuccess | 未main統合。外部Imported Providerを実Consumerが同一Attemptで読んだ完全な原子的Input Closure・現Grant・Build/Invokeは未証明 |
+| main [#3502](https://github.com/hat47x/tei-platform/pull/3502)／[Draft #3505](https://github.com/hat47x/tei-platform/pull/3505) | Trait/Pluginの独立Consumer検収条件を既存設計へ反映。図表/ナビゲーションを標準製品要求RQ-036の候補として、全体Map・標準/拡張/変更可能域・未取得/非公開を明示する受入をDraftで整理 | 現段階で実Plugin二Consumer Invoke、実Diagram/Navigation生成やユーザー操作試験は済んでいない。Mapで見える範囲≠全Domain Requiredの閉包 |
 
-**次のP0は文書章やTTの追加ではなく**、#3365の局所試験を受入候補として保持しつつ、#2586の単一Functionについて独立Expected／合法Baseline／実Entry／Query・Data Context／Provider Readのうちどこまで**同一実行Attempt**で観測できるかを一件で判別すること。実Provider Readの証拠がない場合、既存の42局所Controlや9対照をその代わりにしない。
+**次のP0-Rは `order_entry.recent_orders` の一機能・一Attempt**に限定する。main上に存在するBrowse Pattern、`recent_orders.tei`、SQL実ファイルとDatabase/QueryのBindingから始め、Source/Query/選択Provider/実SQL+args/Rowset/Function Data Contextを独立Expectedへつなぐ。#3500のOrganization Case実Executorは「既存実装経路がある」という**補助証人**であって、別Domainの`order_entry.recent_orders`実Readを実証しない。 `sales.order.submit` は**別のCommand/Effect実証**として#1174/#1127に接続し、Browse正例から業務登録成功へ昇格しない。
+
+| HJ-09の既存Ownerに帰属する受入辺 | 必要な正の証拠 | 同じAttemptで落とすべき一つの負例 |
+| --- | --- | --- |
+| **D／設計Source** #3262/#2387 | 実Loaderが読んだPattern、Query、SQL fileとSource role・正確なrevision | Query IDは同じだが必要SQL Rawが改版／未ロード |
+| **B／実選択・Binding** #951/#2622 | `sales` Datasourceが実Provider・対象DBに解決された証拠 | 同名Provider Aを宣言、別Provider Bが呼ばれた |
+| **R／実Read** #2586/#2506 | 同じRequestから実ExecutorのSQL/args、実Row/Column、Mapper ResultとContext粒度が追跡可能 | Fake Connectorだけが行を返し、実DBを読んだと報告する |
+| **S／完全性と意味** #2497/#2514 | 独立ExpectedでRowsetのgrain、必要列、null/欠損、時点・取得Scopeを比較 | 1/3部分Rowsetまたは0件を全件・不存在へ昇格 |
+| **H／受領・表示** #2509/#2515/#3505 | 実Consumerに届いた受領範囲・End/Grantと、Map上での局所PASS/unknown表示 | UI/図では全体が可視に見えるが非公開・未取得の依存がある |
+
+**試行の段階**：instrumented Connectorでの実Query/Mapper実行は`executor-mapping-bounded`、隔離PostgreSQLのSKIPなし実Readは`physical-read-observed`、必要Scopeを備えたFunction Data Contextと実Consumer受領はそれぞれ追加の独立資格。後段が不明でも前段の正証人は保持する。Goの局所statement C0とC1、Rule/Requirement Coverage、Product全体のE2、Owner Meaningはこれらから推論しない。
 
 ### 35.4 T1-Bへの昇格を認める条件
 
 このP0 Operation負例が独立に検出され、実CLI/Scenario/Source/Resultの資格が揃った後にのみ、#3273で未知Gapを生成AIへ隠したBlind Trialを実施する。**新規テスト候補が生成されたこと**、**指定Targetへ到達したこと**、**独立ExpectedとMutantを判別したこと**、**実外部受領が成立したこと**を別列で記録する。候補の多さやドキュメント追記数は成功指標にしない。
 
-**この章の実施状態**：GitHubの現HEAD/CI状態を確認し、既存受入票を実行可能な一件へ絞り込んだ**計画更新**。新しいGo/CLIテスト、T1-B Agent、外部H2/H3、実Provider R/Hの実行は**NOT RUN**。
+**この章の実施状態（更新）**：#3365のGo/CLI既存検査と9つのtest-only controls、#3500のinstrumented SQL Connectorによる実Go検査は各exact-head CIで限定PASS。一方、**本章のHJ-09 `order_entry.recent_orders` 実Provider／Function Context／Consumer接続とT1-B Agent TrialはNOT RUN**。外部H2/H3独立完備比較、Source/Grantの同一Attempt、C1と正式意味受理も未資格。
 
 <!-- tei-test-independent-operation-oracle-20261108 -->
 ### 35.5 独立Operation Oracleの実コードへの反映と次の合格線（2026-11-08）
@@ -1750,4 +1763,4 @@ KON Dataspaceは独立・任意のData Source候補であり、TEIのテスト�
 
 この新機構は**独立に固定した合成Referenceに対する検証**であり、業務Meaning Owner Acceptance、Scenario→実Function→Provider、実外部Harness end/ACKを証明しない。C1、Blind T1-B、Current Grant/Disclosureは引き続きunknown/NOT RUN。
 
-**採用順（最新）**：#3365のexact HEAD CIにおける9対照・実6 Stepの限定成立は**2026-11-08のRun #42465435223で確認済み**。ただしDraft/未mainなので製品に統合済みとはしない。#2514/#1180へはこの限定受入範囲だけを伝える。実際の次一件は、#3482の`sales.order.submit`限定Source宣言と、Driverの`evaluate-validations`という別Operationの間に実Bindingを観測できるか。宣言だけと実行を混ぜず、実呼出が未確認なら`not-observed`で止める。外部Import ProviderのRaw-only drift (#3479) とCLI/MCP参照Transportは、この同一Attemptの外側の別検収条件とする。**新Core/Reader/Runner/Oracle正本を作らない**。
+**採用順（最新）**：#3365のexact HEAD CIにおける9対照・実6 Stepの限定成立は**2026-11-08のRun #42465435223で確認済み**。ただしDraft/未mainなので製品に統合済みとはしない。#2514/#1180へはこの限定受入範囲だけを伝える。次のP0-Rは本§35.3の `order_entry.recent_orders` 読取を先行し、`sales.order.submit` のCommand/Effect系とはOwnerもExpectedも分離する。宣言だけと実行を混ぜず、実呼出が未確認なら`not-observed`で止める。外部Import ProviderのRaw-only drift (#3479) とCLI/MCP参照Transportは、この同一Attemptの外側の別検収条件とする。**新Core/Reader/Runner/Oracle正本を作らない**。
