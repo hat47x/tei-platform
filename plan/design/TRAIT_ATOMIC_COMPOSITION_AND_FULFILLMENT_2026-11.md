@@ -368,3 +368,56 @@ Independent Expected / Conformance / Receipt / Current Grant
 **合格条件**：採用済み共通Operationと既存Contract/Resolver/Scenarioを使用し、原子Traitが「実装か不足診断」という可観測な差を生み、Source/Required/Provider/Actual Invocation/Independent Expected/Effect/Scopeが同一Attempt上で照合できること。**失敗時は、足りない一辺を正確に返し、不要なTrait Core enum／新Host／第二Operation正本／第二Trait Resolver・Test Runnerを作らない。**
 
 **今回の到達範囲**：ADR-0048採用と各main PRの限定成果の静的照合に基づく設計・実証条件の更新。TC-27〜33、D1 CLI/Studio actual two consumer、Trait Manual Conformance、実DB／Web／外部Host、Qualified BOMの新規実行は **NOT RUN／NOT ACCEPTED**。この追補のMarkdown統合と、実Provider適合・Owner意味受理を混同しない。
+
+
+## 13. 実装を前進させる二つの独立Consumer：Trait義務と実Provider Readを一件ずつ証明する（2026-11-08追加）
+
+**横断で成熟した判断**：共通API/Plugin/Traitの図をさらに増やす段階を終え、**互いに混同できない二つの実Consumerを並行して通す**。先行するCLI/Studio Inspector D1（開発ツール側）と、`order_entry.recent_orders` のFunction/Query/実データReader（生成アプリ側）は、**同じ契約照合方式**を利用するが、同じProvider Instance・Host Grant・Build Target・Source Meaningを強制しない。共通化するのは `Subject + Required Obligation → selected Implementation → actual invocation → independent verification` という証拠の**形**である。
+
+他チャットの[一機能横断受入 #3481](https://github.com/hat47x/tei-platform/pull/3481)と[Design Context 13応答の限定実証 #3482](https://github.com/hat47x/tei-platform/pull/3482)、[Data Workbenchの受入入口 #3498](https://github.com/hat47x/tei-platform/pull/3498)を、#2586（実Function Read）、#1251（Plugin-first D1）、#3279（Trait Fulfillment）の**独立Ownerが衝突しない接点**として整理する。#3482の `sales.order.submit` はSemantic Capabilityの観測対象であり、`order_entry.recent_orders` の実Browse/Queryが選択・実行された証拠ではない。
+
+### 13.1 固定済みSourceから要求を過大生成しない
+
+現行mainの `reference/workspace` に存在する**実Source宣言**は次のとおり。ここで記述されているのはCandidateの接続であり、実ProviderがそのSQLを実行したという観測ではない。
+
+| 既存Source | 確認できる宣言上の事実 | Trait/Operationとして未証明のもの |
+| --- | --- | --- |
+| `applications/order-entry/patterns/recent-orders.tei` | `pattern order_entry.recent_orders browse` が `data sales.order` と `query order_entry.recent_orders` を指す | そのPatternがProduct Function/実OperationのCall siteで使われた事実 |
+| `applications/order-entry/queries/recent_orders.tei` | `datasource sales`、`sql postgres file "recent_orders.sql"`、Column→Semantic Field対応を宣言 | SQL byteと引数の実Loader Read、実Row/Field対応、Result完全性 |
+| `applications/order-entry/queries/recent_orders.sql` | `public.orders`、`:from`、`ordered_at DESC` を含む | `:from` の実Binding/Time Zone、実DB取得件数・並び順 |
+| `applications/order-entry/application.tei` | Application `order_entry` が論理 `database sales` を `target sales_core` へ要求 | 実Environment Alias/Instance/Grant/Providerの一意選択・現在権限 |
+| `semantic/sales/order.tei` | `sales.order` の属性・関係、および別途 `capability sales.order.submit` を宣言 | `submit` に由来するWrite/Transaction Traitを `recent_orders browse` へ自動伝播させること |
+
+**原子Traitの必要性は実Use-site相対**。Browseでは例えばRead/Query Parameter Binding/Typed Result等の義務を独立に照合し、`sales.order.submit` が別途存在するだけでMutation/CAS/Retryが必須だと推測しない。これらの英語名は**Contract要素候補**であり、Trait IDの固定・Core enumへの追加ではない。逆にSourceを全部取得できていない場合、Read義務が十分だという完全性Claimも禁止する。
+
+### 13.2 二Consumerで共有すべきWitnessの最小列
+
+| Witness（論理形のみ） | 開発ツールConsumer：CLI/Studio Inspector | 業務Consumer：`recent_orders` Query Read |
+| --- | --- | --- |
+| Subject & Source | 対象Kind/ID、Workspace Root、実Source Index/World Revision | Pattern→Query→SQL Source bytes→Semantic Field→Application DB Aliasの出典 |
+| Required Obligation | `inspect` 共通OperationのTyped Input/Result/Failure、必要Read/Inspect契約 | Browseが実際に要求するQuery Read/Parameter Mapping/Result Shape/Scope |
+| Selected & Built | #951/#1016のexact Tooling Provider/実Binary、CLI/Studio別Call site | `sales_core` のEnvironment Instance、選択Data Provider、実Query/args/Target Artifact |
+| Actual Invoke | CLIとStudioが別々に**実選択Provider**を呼んだRecord | SQL/argsを選択Providerが実行してRowset/Field/Scope/Cohortを返したRecord |
+| Independent Expected | 同値値でも選択B／実Aの不一致、Provider欠落、古いRoot、未Loadedを拒否 | 既知ID・完全な0件・Provider Error、`:from`境界、未取得/NULL/partial/Join増幅を独立に比較 |
+| Claim Ceiling | Provider未Link/未InvokeならD1のPlugin利用は未資格 | 実SQL/実DB/実Rowsetの観測なしではProduct Read未資格。BOM/Grant/Meaningは別 |
+
+**Constraint：同じ出力値であっても、選択Provider以外のHandlerから返されたら不合格**。Read/DerivedDataのCache hitから過去のSQL/Source実消費・現在Grant・業務確定Temporal記録を復元したと主張しない。二Consumerのどちらも、保存先やSession Scope、利用時の鮮度要求を必要な独立契約として検証する。ローカル・BrowserのDisposable Resultと、保持すべきObservation/未同期入力は別Subjectとする。
+
+### 13.3 進行順：既存Issueを完成させるための具体的な不足一辺
+
+**P0-T（Tooling；#1251/#1158/#1824）**：先行CLI typed Inspector D1の[Draft #3381](https://github.com/hat47x/tei-platform/pull/3381)とHost選択Studioの[Draft #3371](https://github.com/hat47x/tei-platform/pull/3371)を、main基底の既存Service/Resolver/OperationへFit/Gapした上で、Provider A/Bについて**実Consumer二本のCallback**を証拠化する。Draftの「型付き注入口」だけをProvider実選択完了としない。A/B出力が同一になる負例は既存TC-11・PGD-03に委譲し、第二Test Runnerを追加しない。
+
+**P0-R（業務Read；#2586/#2506/#2514）**：既存`order_entry.recent_orders`のSource/SQL/Parameter/DB Aliasの**最初に欠ける一辺**を1 Function・1 Query・1 Providerについて確定する。[#3482](https://github.com/hat47x/tei-platform/pull/3482)の13 Reply/Capability・Application限定観測はReadinessの一部に限定し、実ReadのOracleにしない。実DBへの投入と実Provider Query実行を同Attemptで観測できるまで、Query結果に由来するTraitを`conformance-observed`へ進めない。詳細は#2586のHR-01/02、#3270のRD-01〜06に委譲。
+
+**P0-F（Fulfillment；#3278/#3279）**：上記二経路を同じ**照合列の構造**へ投影し、一つの原子的Read相当の契約が `default/generated/manual` のどの経路で満たされたか、または`required-missing/unknown`かを表示する。手動`ConditionalWrite`の実CAS試験は既存T1-M/TC-24で並行し、read-only二経路のHard Dependencyにしない。
+
+**P1-C（Cross-target；#3267/#3271/#1124）**：両経路の実Target Witnessがある範囲だけで、Version Matrix、DerivedData/Cache、Function Data Context→Panel/Tableの異質Consumerに拡張する。受注がSQLから取れたことと表現型のEdit/Write能力、Cache再利用資格、正式なOwner意味受理は別資格のまま。SHO/KONを新しいTrait RuntimeやAuthorityの所有者にしない。
+
+### 13.4 停止条件・次の判断
+
+- **実装停止**：新Trait enum、独立Registry/Resolver、専用Trait Runtime、第二Operation Reader/Scenario SSOTを先行導入しない。既存Contract/Relationで不足の具体例が取れた部分だけ拡張する。
+- **意味の停止**：`sales.order.submit`の存在だけでBrowseのMutation要求を加えない。Sourceの同名・World Fingerprint一致、Partial Required、`validate ok`で実使用/Source読込/Provider適合を断言しない。
+- **権限の停止**：Trait Fulfillmentの正例は現Host Grant、DB Schema Apply、外部Egress、Business Meaning Acceptanceを許可しない。
+- **費用対効果**：追加の原子Trait定義／Bindingが、対応する手書き分岐・実装漏れ・再テスト対象・Target間の矛盾をどれだけ減らすかを、P0-T/P0-Rの**同一条件対照**で測る。効果が確認できなければ、Trait定義を増やさず既存Operation/Provider Requirementへ縮小する。
+
+**現在の資格（本追補）**：実Source fileとmain統合[#3481](https://github.com/hat47x/tei-platform/pull/3481)、[#3482](https://github.com/hat47x/tei-platform/pull/3482)、[#3498](https://github.com/hat47x/tei-platform/pull/3498)の限定成果を照合した**設計・受入計画**。上記P0-T/P0-Rの実Provider連結、CLI/Studio actual two consumer、Trait Fulfillment独立Expected、正式Source/Query実Rowset、実Browser/Studio UI、BOM資格、Owner意味受理は**この変更ではNOT RUN／NOT ACCEPTED**。既存各Ownerの実際のCI Evidenceを越えて合格を主張しない。
