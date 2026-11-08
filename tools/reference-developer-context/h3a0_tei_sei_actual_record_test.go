@@ -64,9 +64,7 @@ func h3A0Invoke(t *testing.T, ctx context.Context, bin string, args ...string) (
 	command.Stdout = &stdout
 	command.Stderr = &stderr
 	if err := command.Run(); err != nil {
-		t.Fatalf("actual CLI invocation %q failed: %v
-stdout=%s
-stderr=%s",
+		t.Fatalf("actual CLI invocation %q failed: %v\nstdout=%s\nstderr=%s",
 			filepath.Base(bin), err, stdout.String(), stderr.String())
 	}
 	return stdout.Bytes(), stderr.Bytes()
@@ -74,8 +72,7 @@ stderr=%s",
 
 func h3A0JSON(t *testing.T, body []byte, dest any) {
 	t.Helper()
-	if !json.Valid(body) || !bytes.HasSuffix(body, []byte("
-")) {
+	if !json.Valid(body) || !bytes.HasSuffix(body, []byte("\n")) {
 		t.Fatalf("CLI result must be a complete newline-terminated JSON document: %q", body)
 	}
 	if err := json.Unmarshal(body, dest); err != nil {
@@ -138,10 +135,8 @@ func TestH3A0ActualTEIToSEIRecommendationResume(t *testing.T) {
 	}
 	var full h3A0Index
 	var scoped h3A0SourceView
-	h3A0JSON(t, append(append([]byte(nil), indexReply.Result...), '
-'), &full)
-	h3A0JSON(t, append(append([]byte(nil), subjectReply.Result...), '
-'), &scoped)
+	h3A0JSON(t, append(append([]byte(nil), indexReply.Result...), '\n'), &full)
+	h3A0JSON(t, append(append([]byte(nil), subjectReply.Result...), '\n'), &scoped)
 	if scoped.Subject != rule {
 		t.Fatalf("unexpected subject-mode source: got=%+v want=%+v", scoped.Subject, rule)
 	}
