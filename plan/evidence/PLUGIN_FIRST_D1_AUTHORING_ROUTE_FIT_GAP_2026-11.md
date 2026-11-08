@@ -163,3 +163,38 @@ Sourceだけを保存・表示するRaw Editorと、Role/Meaningを提示するI
 **次工程／合格条件**：#3371がレビュー・採用される場合、両Surfaceの`Inspect(subject)` portを重複定義したまま恒久化せず、`operations.ValidateInspectionProjection`等の共通検査を使ってData/Failureの意味を揃える。**次に一つだけ**Host-owned Selection→Binding→実Provider instanceを接続し、AS-01/02/03を実Callで検証する。Capability Coverage 6 unselected（#3337）やBinding Matrix 22/24 selected（#3363）は旧Capability宣言/選択の観測であり、これをInspectorの実Binding/Invoke成功に足さない。実Source Root/Required Closure、Disclosure、Build実Artifact、Provider実Callは別列に残す。
 
 **検証上限**：この小実装の静的Source/テスト追加はD1-Pの中間段階に当たる。CI/Go実行の成否はPRの**exact-head**結果で別途判定し、仮にGo TestがPASSしても一ProviderのCLI/Studio両Consumer E2EやAS-02の実Composition否定試験の成功とは扱わない。
+
+## 11. ADR-0048と現行Go Compositionの接続：実選択を通すInspector D1a-1（2026-11-08）
+
+**本節の実装**：`internal/inspectoradapter/selected.go` / `selected_test.go`と`cmd/tei/cli_inspect_selected_composition_test.go`。第10節のCLI typed `Inspect` call-siteへ、**既存`composition.Registry.Apply/Select`→`NewSelectedCoordinator`→Host-owned`Registration`→実`Inspect`**を入れる中間段階を加えた。`internal/operations`はComposition非依存のまま維持する。Studio用の新Runtime/Resolver/Hostを追加せず、`authoring-tool` scopeのHost側Adapterへ責務を置く。
+
+**2026-11-08の上位判断との整合**：[ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)はCLI/MCP/API/Web/Desktopの**共通操作契約**を正式方針として採用した。これは全入口HTTP必須、同じプロセス/同じ権限、またはPlugin自体が共通Operationの意味を所有するという意味ではない。`internal/operations.InspectSubject`相当の型付き意味、`operations.ValidateInspectionProjection`の結果条件は共通。Hostが選択したProviderとそのCurrent Grantは依然#951/#1016/#1174、CLI/StudioのtransportやDisclosureは#1158/#1824/#2516が所有する。`validate`のCLI/MCP同値化[merged #3458](https://github.com/hat47x/tei-platform/pull/3458)はこの接合の妥当性を示す**別Operation**の証拠であり、Inspector Providerの実呼出し成立を自動的に保証しない。
+
+### 結線したもの・まだ結線していないもの
+
+| 証拠・振る舞い | 現在の実装／試験が実際に扱う範囲 | 未証明・別Owner |
+| --- | --- | --- |
+| Contract選択 | existing Composition `Contract{ID,Version,Shape}`の一致。2 ProviderからHostがBを`Select` | 正式Contract Publisher/Required Context/意味Conformance（#951） |
+| Scope/Generation/Host guard | `authoring-tool`限定、`NewSelectedCoordinator`のRegistry Epoch・Host guardを`Acquire`で照合 | 実OS Grant/実Artifact可用性。旧`service_carrier`の`application-runtime`制約は変更しない |
+| 実登録のIdentity | Hostからの`Registration.ProviderID`/digestをBindingと照合。**B selected→A registered**は、A/Bが同一JSONを返しても呼出前拒否 | ホスト登録元が実Binary byteを真正に検査したこと、closure内のBが隠れてAを呼ばないことは未証明（#943/#1370） |
+| CLI実Provider経路 | `inspectWorkspaceJSONWithService`へ選択済みAdapterを渡し、**TEI Manifestを持たない一時Workspaceでも**注入されたBの実Go関数が呼ばれる局所テスト | 通常`cmd/tei/main.go`起動は依然Builtin。CLI製品Selection/Lifecycle実配線と実別Binaryは未接続 |
+| 共有Projection | request Subject／v0/schema／read-only／Canonical JSON／World/SourceIndex FPの検査 | Source全部読込・Role適用・Owner意味受理・Current Disclosure・本当のread-only外部Sink (#3262/#2515) |
+| Studio対向 | #3371 DraftはHost ServiceFactoryのInspector seamを提案 | 両Surfaceが**同一exact選択Binding**を実Consumeすること、Wails/Frontend実画面、既存Studioテスト修正 |
+| Build/Self-build | このReferenceで使うArtifactDigestは合成値。実Link/実Digestの実証ではない | #3440の限定`tei self-build` L3は別実験で成立したが、今回のInspector Plugin選択実Builder/実Invokeは未証明 (#2831/#1251) |
+| Trait obligation | 必須TraitをこのInspector Portへ自動貼付しない | #3480/#3278のTC-27〜33はRequired→Fulfillment→実Providerに対して別に検証する |
+
+**独立Expectedの追加（テストの正本は#1180/#2514）**：
+
+| Case | 独立Expected |
+| --- | --- |
+| AS-21 | Tooling ScopeでInspector Bを選び、Host登録BをCLI注入入口から呼出。Builtinが失敗する一時Workspaceでも成功しB call count=1。これは局所in-process consumerのみ |
+| AS-22 | B選択、Host登録A（返却JSONがBと完全同一でも）。Binding作成時に拒否してA/B call count=0 |
+| AS-23 | Host guard撤回、B削除、同IDで再登録した場合は旧epochを拒否。一方、無関係ScopeへのProvider追加は不要失効しない |
+| AS-24 | Inspector応答の別Subject・invalid Canonical・write Effectを拒否。CLIの既存NotFound失敗code/exitは変えない。未知Provider内部のpath/secretは外へ出さない |
+| AS-25 | `Selection`/Registrationの合成digestを実Build/Conformance/現在権限へ昇格しない。アーティファクト実byte照合が無ければ未証明と返す |
+
+**残る本当の接続点**：現状の成功は`Registry.Select`とHostから与えられたGo関数の局所実callを実装テストで結ぶ段階まで。次は`cmd/tei/main.go`またはそのHost所有Compositionが`authoring-tool`の選択を受理し、実Build登録済みInspectorを選んで**通常のCLI `inspect`呼出**へ渡す。続いてStudioの実`/workbench/` Consumerが同じProvider登録元からInspectorを消費し、B/A誤配線を同一Attemptで検出する。2つのSurfaceで同じMockを表示しただけならD1b完成としない。
+
+**並行PRと既知CI負例**：本変更は[Draft #3381](https://github.com/hat47x/tei-platform/pull/3381)に保存。[Studio Draft #3371](https://github.com/hat47x/tei-platform/pull/3371)はHost選択Serviceが存在しないときfail closedにする変更により、旧`readonly_services_test.go`のInspector直接呼出期待と衝突していた。#3371 exact-headのRepo Health・Wails Hostは当時FAIL（`TestInjectedOperationsOnlyReceiveAllowlistedResolvedRoot`）、原稿の仕様不整合と整形driftを分けて修正する必要がある。#3381の旧HEAD Repo Healthは`coverage_test.go`の別ブランチ由来gofmt driftでFAILしたが、Go Testの失敗とは混同しない。**最新版HEADのCI結果と採否は別確認**。
+
+本節の新しいGo試験が通っても、正式Profile、実Wails/CLI E2E、実Provider Artifact/Host Approval、Contract Conformance、Owner Meaning Acceptanceは**NOT PROVEN**。D1という既存のGateを細分化したもので、新Hard Gateは作らない。
