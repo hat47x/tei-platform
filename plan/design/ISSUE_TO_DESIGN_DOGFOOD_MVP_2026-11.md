@@ -610,3 +610,63 @@ P1 Inspectorでまず判別するのは、①Contractと対象Operationの宣言
 **受領・表示契約**は「分かったこと／unknownの理由／許可された用途／first missing edge／次のProbe／引用元Version」の順。C0/S0/R0/P0は並行実験が可能だが、X0で同一Source/World/Role/Scope/Read Cohort/実Consumerの関係が成立した部分以外を一括PASSにしない。Open Issues/Draftsを統合実装とみなさない。現在はDesign Context一部/CLI・MCP参照/Go型試験/物理Workbench Candidateに有限の証拠があり、実Modeler三図/CRUD、実Product Function Read、CLI/Studio同一Plugin、二Target Verified BOM、Owner正式受理は未資格。
 
 **今回の変更の資格**：本節は2026-11-08時点の現行main/既存Issue・PRの新事実を、以前の§14.1〜14.21の上に付加する**計画文書**。本作業自体は新しいGo/PG/Studio/MCP/SHO/外部Host H3/Owner試験を実施していない。実Go TestやCLI/HTTP/CIの成功は各該当PRのexact HEADと既存Ownerの範囲に限定し、別系統の成果を加算しない。旧Draft #3355を後継へ移す場合、その差分/PR状態と新CIを別に確認する。
+
+<!-- tei-intake-legacy-decision-role-proof-20261108 -->
+### 14.27 REA移行で比較する三つの世界を、同じ「現行仕様」に畳まない
+
+[REA外部逆解析Owner #3394](https://github.com/hat47x/tei-platform/issues/3394)と横断計画#2667の成熟判断を受け、設計取込から移行の比較票へ引き渡すのは**Legacy Observed Actual／Owner Accepted Desired／Target Observed Actual**の三つの別世界とする。さらに、LegacyやTargetを観測するためのRaw Source/REA Evidence・TEIのStructural Candidate・SHO文書Occurrenceを別レイヤーとする。REAの出力を`*.tei.md`へ改名するだけではTEI正式Sourceにならず、Legacyの実動作（バグ・一時的運用・旧仕様を含み得る）をDesiredへ自動昇格しない。
+
+| 比較対象 | 必要なSource／観測／判断 | 進めてよいことと停止条件 |
+| --- | --- | --- |
+| Legacy Observed Actual（現状） | 原Binary/SQL/DB Snapshot、実観測の入力・出力・時点/範囲/未知、REA Provider版と実Call、Raw byte/Source locator | 証拠のある振舞いを記述。静的SQLのUPDATE発見は潜在的CRUDであり、実DB更新Receiptではない |
+| Owner Accepted Desired（移行後の意図） | 明示された変更要求、Owner Decision/受理Scope、TEI Role/Rule/Context・意味版、未解決差分 | Legacyから維持する部分と意図的に変更する部分を分ける。未受理のRoleやKeyを「旧新同値」の基準にしない |
+| Target Observed Actual（移行後の実装） | 受理済みTarget版、実Provider/Host/Schema/Grant、同等入力・Scope、実Rowset／Effect Receipt／別Read | LegacyとTargetの同一入力比較と、Desiredとの別比較を行う。Generated Code完成やSHO保存だけで移行成功としない |
+
+**三つの比較は別判定**：Legacy↔Targetの実振舞い同値、Desired↔Targetの要求適合、Legacy↔Desiredの変更差分を独立Expectedで扱う。例：旧実装が割引の誤丸めを持つ場合、Targetが誤丸めを再現してもDesired適合は不合格となり得る。逆に意図的に修正したTargetはLegacyと不一致でもDesired適合になり得る。REAの解析結果と異Source同名の対応・部分SQLite Snapshot／未観測行、業務有効日と観測日が異なるケースを`unknown`に留める。三視点/CRUDの既知肯定Relationを維持しつつ、Physical FKとBusiness Relationの間にはOwner受理が必要。
+
+初手は#3394既存T0→T2と#3263/#1124のRead-only図面に**実REA Source/実TEI Sourceの二つの出典を同じCaseで並べる**こと。REA未実行ならExternal ObservationはSynthetic候補であると明示し、実解析・旧Runtime・移行Target・SHO二Consumerの合格に偽装しない。新Importer/Grammar/Reverse Engine、第二Meaning正本、独立Test SSOTは作らない。
+
+### 14.28 TEIからSEIへ「判断の問い」を渡す際の受信・判断・実効果の分離
+
+[Ontology/Decision Twinの長期Owner #3475](https://github.com/hat47x/tei-platform/issues/3475)とSUI/SEI/SHO連携の成熟成果を、**P0-CがConsumerへ渡す証拠の検収条件**だけに還元する。SUIはRaw・矛盾・複数仮説を保持、TEIはOwnerが受理したData/Function/Business・Rule・State/Action候補と根拠を提供し、SEIは主体としての記憶・知識照合・判断を担う。外部Host/Provider/EKIは現在の権限のもと実Operation/Deliveryを担当し、SHOは説明・引用・改訂履歴を表示する。KON Dataspaceは必要時のData Provider/共通データ基盤であり、P0-Cの必須Host/判断正本にはしない。
+
+| 境界 | 最低限別々に検証すること | 禁止する昇格 |
+| --- | --- | --- |
+| TEI→SEI Decision Handoff | question/目的、Subject/Scope、Source/Meaning/Role/Rule版、観測/推論/提案、必要Evidence・unknown、allowed response、current disclosure | TEI Rule合格／生成AI回答をSEI自身の採用判断とみなさない |
+| Message Delivery→SEI受信 | Sender/recipient identity、Message/Attempt identity、送信・到達・受領・順序/期限/重複、受信側が実ReadしたEvidence範囲 | EKI送信ACK／キュー格納だけでSEIの根拠確認・判断済みとはしない |
+| SEI判断→Operation Offer/Host | 採用/差戻し/保留/拒否のDecision ID・理由・対象Revision、Hostの現在Grant/Target/Precondition | 判断採用を実行許可やProvider Commitとみなさない。古いGrant・別Scopeで再利用しない |
+| Host Effect→独立Observation | Operation ID/Attempt/EffectUnknown/Receipt、独立Read、Consumerの実受領・開示と次のSource Revision | HTTP 202/Audit終了・旧Receipt・表示UpdatedからBusiness完了を推定しない |
+
+**二つの偽陽性を先に潰す**：①SEIが同一メッセージを二度受信し、二度採用しても同一操作の多重効果を許可しない（#1174のOperation Identity/Fenceを利用）、②TEIの元Sourceが保持されたままRequired/Provider Raw・Policy・Grantが失効したとき、旧SEI Decisionの採用結果を現在のAction Eligibilityへ復活させない。実SEI Message受信、EKI再送、Host Effect/Receiptは本計画では未実行であり、仮のJSON同値やSource digestだけでは資格化しない。
+
+Ontology DSL／Decision Twin／外部シミュレーションSDKの本格製品化は#3475が明示する**TEI全体セルフビルドとSUI基礎完成後**の研究・後続工程に置く。神経反射的な現場即応が必要な場合も、既存Hostの明示的なScope/Authority/Guardと独立安全試験に委ね、TEIから中央判断を無条件に迂回する新しい実行経路をP0へ持ち込まない。
+
+### 14.29 Trait履行・情報完全性・Self-buildの3つを「存在した」だけで合格にしない
+
+[main ADR-0048 #3439](https://github.com/hat47x/tei-platform/pull/3439)はCLI/MCP/HTTP/Desktopが**同じApplication Operation契約を異なるAdapterで公開**する方針を採用した。[main #3480](https://github.com/hat47x/tei-platform/pull/3480)は原子的Required Trait→既存Contract/Composition/Provider選択→Default/Generated/Manual/External履行→actual Invoke→独立Expectedの足りない辺を計画へ結合した。Operation/Resultの入口同値は、Traitの実実装、Host Current Grant、Provider Effectを証明しない。
+
+意味役割の既存実装についても、特定RoleがGoの業務固有処理へ接続されていても、任意のRole/Operatorを汎用Interpreterが実行可能という意味ではない。Readerが返した型付き値と、その**集合の母数/粒度/完整性・NA/NULL/非公開**を別に扱う。空集合0行を「この対象は存在しない」、一部取得のRuleを「全体で成立」としない。構造/型一致から単位・丸め・業務受理・実Permissionを導かない。
+
+一方[main #3440](https://github.com/hat47x/tei-platform/pull/3440)/[#3463](https://github.com/hat47x/tei-platform/pull/3463)は`tei self-build`の子Process・Artifact実測とCLI外形を進めたが、**Build Intentの意味的解釈、Supplyの完全照合、独立環境、G4資格は未成立**。Buildが再現可能でもProvider実Invocationの資格やTrait Manual Required履行を代替しない。
+
+| 対照ケース（#2514/#1180へ引渡し、ここにTest SSOTを複製しない） | 独立Expected／停止線 |
+| --- | --- |
+| Required Trait宣言、Provider能力選択済み、Manual実装なし | 必要Impl missingを拒否。HintやDefault候補があっても手動義務を暗黙充足しない（#3278/#3480） |
+| CLI/MCPのInspector Result一致、selected B／actual A | 結果が同値でもD1不適格。実Provider/Version/Artifact/Scopeと二Consumer受領の同一Attemptを要求（#1251/#951） |
+| Function結果0行、Source/Providerはpartialまたはwithheld | 局所0行は保持。全域不存在、CRUD none、Test Coverage completeは未証明（#2586/#3262） |
+| Self-build stage0→1→2 artifact同値、Intent未解決 | 限定Build witnessは保持、TEI-defined build/Source closure/G4を不合格・未資格のまま表示（#2831） |
+| Imported Provider Rawのsource-only改変、Consumer二Fingerprint一致 | #3479が検証するProvider occurrence/実Readを再照合。旧Accepted Meaningそのものを自動抹消・再受理しない（#3262/#2600） |
+
+### 14.30 次の実証を「一Functionの条件付き比較」に限定する
+
+**受入Fixtureは一つに絞り、Owner別の実験を合算せず接合する**。対象は既存`order_entry.recent_orders`と、対応するData/Function/Businessの必要Source/Relationを明示した限定Read Scenario。外部REA観測・SEI判断委譲は**別入力として任意に追加できる**が、先行するP0-M／P0-R／Plugin D1の実装前提にはしない。
+
+- **A：Design側**：main #3354の11実CLI/限定RequiredからSource/Role/Relationと欠落を取得し、Source IndexとImported Provider occurrenceが必要な場合は別照合。図面/CRUDで既知Rとunknownを保ち、同じSource locatorへ逆参照。Reader unsupportedなら最初の欠けた辺を止める（#3262/#3263）。
+- **B：Runtime側**：同じFunctionが選んだProduct SQL原byte/params/実Provider/Rowset/grain/scopeを取得し、AのData Contextと比較する。別Reference SQLのPG成功はProduct R0の代用にならない（#2586）。
+- **C：Plugin側**：ADR-0048共通Operationの`inspect`一件について、CLI/Studioからexact selected Provider Bをactual Invokeできたかを照合し、A呼出し/暗黙Builtin fallbackを拒否。Trait manual-required欠落は別資格（#1251/#3480/#3267）。
+- **D：Consumer側**：実CLI/参照MCP/SHO等のうち、**実際に存在し同一Source/ScopeのReplyを完全受領したConsumer**だけ比較に入れる。Source版混合、未許可情報の件数漏れ、受信終端欠落、保存後別Readの不在を未合格にする（#2516/#2509）。
+- **E：将来の移行・意思決定側**：同じSubjectについてLegacy Actual・Owner Desired・Target Actualと、SEI Handoff/Decision/Host Effectを別Attemptとして記録する。各段階に必要な独立Expectedと実Receiverがなければ探索候補までに止める（#3394/#3475）。
+
+**Exitの最小単位**は、`actual observed Source/World/Role/Scope/Reader mode + required+observed+missing + exact consumed implementation/Result + independent Expected + Claim ceiling + first missing edge`の組である。これを既存Evidence #1163／Test SSOT #1180/#2514と既存Gate #1119へ引き渡す。新Test Runner・認可Engine・Runtime Host・Registry・グラフ正本・万能Reasonerを追加しない。
+
+**本追補の資格**：2026-11-08の他チャットで成熟した判断とGitHub各Issue/PRの現在状態を照合した設計・計画追補。新REA実行、SEI/EKI Message Delivery、実Plugin Runtime、Product recent_orders実DB/Studio、異Target Verified BOM、セルフビルド再実証、Owner正式Meaning受理、外部H2/H3完全受領は**今回NOT RUN**。本追補のCIもexact HEADごとに別確認。
