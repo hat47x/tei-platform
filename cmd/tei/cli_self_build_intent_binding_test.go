@@ -116,6 +116,10 @@ func buildIntentReportingChild(t *testing.T, dir string) string {
 	return child
 }
 
+// The binding check only needs bytes, but SC0-01 also requires the
+// declaration shape (formatVersion and subject.id), so the fixture carries both.
+const declarationBytes = `{"formatVersion":1,"subject":{"kind":"plugin","id":"tei.plugin.self_build","version":"1.0.0","definitionSource":"definition"},"intent":"sample"}`
+
 // §4.8: the entry hashes the declaration it held before starting anything, and
 // records the child's digest beside its own.
 func TestSelfBuildOuterBindsTheDeclarationBytesItHeld(t *testing.T) {
@@ -123,10 +127,10 @@ func TestSelfBuildOuterBindsTheDeclarationBytesItHeld(t *testing.T) {
 	child := buildIntentReportingChild(t, dir)
 	workspace := outerWorkspace(t, dir)
 	intentFile := filepath.Join(dir, "intent.json")
-	if err := os.WriteFile(intentFile, []byte(`{"intent":"sample"}`), 0o600); err != nil {
+	if err := os.WriteFile(intentFile, []byte(declarationBytes), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	wantDigest := digestOfBytes([]byte(`{"intent":"sample"}`))
+	wantDigest := digestOfBytes([]byte(declarationBytes))
 	output := filepath.Join(dir, "artifact")
 	// Compute the digest the child will produce so the artifact check matches.
 	if err := os.WriteFile(output, []byte("artifact-bytes"), 0o600); err != nil {
@@ -187,7 +191,7 @@ func TestSelfBuildOuterDetectsAChildThatReadADifferentDeclaration(t *testing.T) 
 	child := buildIntentReportingChild(t, dir)
 	workspace := outerWorkspace(t, dir)
 	intentFile := filepath.Join(dir, "intent.json")
-	if err := os.WriteFile(intentFile, []byte(`{"intent":"sample"}`), 0o600); err != nil {
+	if err := os.WriteFile(intentFile, []byte(declarationBytes), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	output := filepath.Join(dir, "artifact")

@@ -79,8 +79,6 @@ type selfBuildOuterArgs struct {
 	// ChildArgs is the extra argv the caller passes to the child as JSON. The
 	// outer shape does not invent those arguments, but it must forward them.
 	ChildArgs string
-	// IntentFile is the declared build intent. It is required by SC0-01.
-	IntentFile string
 	// SupplyVerifier is an exact executable that runs SB-0b's classification.
 	// When named, its result is required before the builder starts (SC0-02).
 	SupplyVerifier string
@@ -116,7 +114,6 @@ func parseSelfBuildOuterArgs(args []string) (selfBuildOuterArgs, error) {
 	fs.StringVar(&parsed.Output, "output", "", "artifact path written by the child (no-clobber)")
 	fs.StringVar(&parsed.Child, "child", "", "exact child executable (required; never resolved from PATH)")
 	fs.StringVar(&parsed.ChildArgs, "child-arg", "", "extra child arguments as a JSON array of strings")
-	fs.StringVar(&parsed.IntentFile, "intent-file", "", "declared build intent JSON (required)")
 	fs.StringVar(&parsed.SupplyVerifier, "supply-verifier", "", "exact executable that classifies the supply (SB-0b)")
 	fs.StringVar(&parsed.SupplyVerifierArg, "supply-verifier-arg", "", "extra arguments for the supply verifier as a JSON array")
 	if err := fs.Parse(args); err != nil {
@@ -167,21 +164,24 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 			return selfBuildOuterPrecondition(out, report, "workspace has validation errors at "+diagnostic.Code+": "+diagnostic.Message)
 		}
 	}
-	// SC0-01: the build intent must be declared. A path is required, and the
-	// declaration must be a JSON object with a formatVersion and a subject id.
-	// The entry records the declaration; it does not derive a BuildPlan from it.
-	if strings.TrimSpace(parsed.IntentFile) == "" {
-		return selfBuildOuterPrecondition(out, report, "-intent-file is required: a build attempt needs a declared build intent")
+	// SC0-01: a build attempt must declare its intent. Either a declaration
+	// path or a logical intent ID satisfies that; only the declaration path
+	// carries bytes this entry can hash, so the absence of bytes is recorded
+	// rather than treated as a declaration (§4.8 L2-a, SC0-14).
+	if strings.TrimSpace(parsed.IntentFile) == "" && strings.TrimSpace(parsed.Intent) == "" {
+		return selfBuildOuterPrecondition(out, report, "one of -intent-file or -intent is required: a build attempt needs a declared build intent")
 	}
-	declaration, err := readIntentDeclaration(parsed.IntentFile)
-	if err != nil {
-		report.Error = &cliFailure{Code: selfBuildCodeIntentInvalid, Message: err.Error()}
-		if encodeErr := encodeIndented(out, report); encodeErr != nil {
-			return 2, encodeErr
+	if strings.TrimSpace(parsed.IntentFile) != "" {
+		declaration, err := readIntentDeclaration(parsed.IntentFile)
+		if err != nil {
+			report.Error = &cliFailure{Code: selfBuildCodeIntentInvalid, Message: err.Error()}
+			if encodeErr := encodeIndented(out, report); encodeErr != nil {
+				return 2, encodeErr
+			}
+			return 2, nil
 		}
-		return 2, nil
+		report.IntentRecord = &declaration
 	}
-	report.IntentRecord = &declaration
 
 	// SC0-02: when a verifier is named, its classification must pass before the
 	// builder starts. Without one, the record says the check was delegated and
