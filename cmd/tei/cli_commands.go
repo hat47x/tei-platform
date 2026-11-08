@@ -54,6 +54,12 @@ var acceptedCommands = []string{
 	"schema-diff",
 	"solution-release-graph",
 	"source-index",
+	// self-build dispatches a child builder and writes an artifact. It is in
+	// acceptedCommands so the CLI can dispatch it, but it is deliberately not
+	// in the read-only catalog (SB-C0 §4.5, D-3): the catalog is scoped to
+	// read-only commands, and adding writes-artifact would break the scope and
+	// effect invariants that catalog consumers rely on.
+	"self-build",
 	"trace",
 	"validate",
 	"version",
