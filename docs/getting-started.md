@@ -1,4 +1,4 @@
-# TEIを動かす
+﻿# TEIを動かす
 
 この文書では、TEIを取得して動作を確認するまでの手順を説明します。設計の考え方から知りたい場合は、[はじめてTEIを知る方へ](for-readers.md)を参照してください。
 
@@ -68,7 +68,7 @@ go run ./cmd/tei validate \
 
 Workspaceがモデル要素を1つも宣言していない場合、`validate`は`WORKSPACE_DECLARES_NO_MODEL_ELEMENTS`（warning）を返します。`ok:true`のまま終了コード0ですが、`diagnostics`にこのwarningがあるため「宣言が読み込まれて検証を通った」と読み違えないでください。標準意味型（`std`）は宣言として数えません。
 
-`validate -json`の応答には`declarationCounts`が入ります。これはWorkspace自身が宣言した要素の件数で、プロセス内の標準意味型（`std`）を含みません。`ok:true`でも`declarationCounts.total`が`0`なら、そのWorkspaceはモデル要素を何も宣言していません。`model catalog`の応答にも同じ`declarationCounts`があります。標準定義だけの13件の`entries`は、利用者の宣言を意味しません。
+`validate -json`の応答には`declarationCounts`が入ります。これはWorkspace自身が宣言した要素の件数で、プロセス内の標準意味型（`std`）を含みません。`ok:true`でも`declarationCounts.total`が`0`なら、そのWorkspaceはモデル要素を何も宣言していません。`model catalog`の応答にも同じ`declarationCounts`があります。標準定義だけの13件の`entries`は、利用者の宣言を意味しません。`model catalog`の各`entries`要素は、標準意味型（`std`）に属するものを`prelude:true`で示します（2026-11-08から）。`prelude`が無い要素が、Workspace自身の宣言です（#3347）。
 
 終了コードは`0`が検証成功（警告を含む）、`1`が検証不成立、`2`が入力・読込みなどの実行失敗です。`-json`で返す結果を利用するときも終了コードを確認してください。`commands`はすべてのコマンドや拡張機能を列挙する完全な登録簿ではありません。詳細とウェブやデスクトップへの接続方針は[コマンドライン優先のインターフェース設計](../plan/design/CLI_FIRST_INTERFACE_DESIGN.md)を参照してください。
 
