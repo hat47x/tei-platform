@@ -4,8 +4,8 @@ package main
 
 import (
 	"tei/internal/inspectoradapter"
+	"tei/internal/operations"
 	"tei/internal/studiohost"
-	"tei/internal/studiohost/staticservices"
 )
 
 // The normal Studio Host uses the same explicitly compiled reference
@@ -24,9 +24,26 @@ func newStudioHost(paths []string) (*studiohost.ReadOnly, error) {
 				return studiohost.RootServices{}, err
 			}
 			return studiohost.RootServices{
-				Catalog:    staticservices.NewCatalogService(trustedRoot),
-				Validation: staticservices.NewValidateService(trustedRoot),
+				Catalog:    localCatalogService{root: trustedRoot},
+				Validation: localValidationService{root: trustedRoot},
 				Inspection: selected,
 			}, nil
 		}, studioXeadObserver{})
 }
+
+type localCatalogService struct{ root string }
+
+func (s localCatalogService) Catalog(namespace string) (operations.ModelCatalog, error) {
+	return operations.CatalogWorkspace(s.root, namespace)
+}
+
+type localValidationService struct{ root string }
+
+func (s localValidationService) Validate() (operations.WorkspaceValidation, error) {
+	return operations.ValidateWorkspace(s.root)
+}
+
+var (
+	_ studiohost.CatalogService = localCatalogService{}
+	_ studiohost.ValidationService = localValidationService{}
+)
