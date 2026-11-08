@@ -552,6 +552,38 @@ Data Workbench #3270、REST Decision Graph #3274、三要素モデルとCRUD/SHO
 **証拠範囲**：#3439は採用方針、#3458は`validate`限定実コード、#3474は静的依存経路、#3408は限定`validate`実行、#3440は限定セルフビルド、#3445はread-only CLI実測。これらを全体のPlugin-first End-to-end合格と合算しない。D1実Provider×CLI/Studio、BOM実4組合せ、実DB/外部Host、Owner正式意味受理は未実証。
 
 
+### 16.7 Source-only driftでSemantic再利用・Source来歴・実Provider適格性を別票にする（#3477／Draft #3479）
+
+**新たに成立した観測**：main統合[#3477](https://github.com/hat47x/tei-platform/pull/3477)は、同一Workspace内のRaw末尾LFだけを変更し、Canonical Worldは不変でもSource Index FPは変化するケースについて、**実TEI CLI**のContext→Scenario消費前後の再照合で旧Contextを拒否した（限定Fixture/単一Process環境）。一方[Draft #3479](https://github.com/hat47x/tei-platform/pull/3479)は、**import先ProviderのRaw Source**を同じくLFだけ変更し、ConsumerのWorld、Import Semantic Digest、Consumer-owned Source Index Artifact/Reference/Model Revisionは維持されるのに、`LocateImportedSource`が再読取したProviderのSource Fingerprintだけ変化することを、既存`externalPair`のGo負例で検査する。#3479の**exact-head CIはsuccess**だが、2026-11-08時点でDraft/未統合。二例は同じ「Source-only」でも**再取得する所属・観測可能なSource集合が異なる**。#3477の成功を外部Importの完全取得へ拡大しない。
+
+**区分を共有するが新Kernel Fingerprintを作らない**：現在の資格は既存#3262 Design Context/Source Index、#2743／外部Reference、#951/#1016 Plugin Resolver/Lock、#943/#2600 Build/Evidence、#3267 BOM、#1158 Operation、#1174 Current Grantの**用途別read-only照合**から導く。単一`worldFingerprint`、`sourceIndexFingerprint`、`semanticDigest`、`pluginVersion`のどれかだけを「全入力現在一致」の証明にしない。対象ProviderのRaw Bytes/Source Occurrenceと、Consumer側のCanonical meaning/managed Source Indexは独立。外部Plugin/Providerの実装Source/Contract/Generator inputにSource provenanceが必要な場合は、**実Build・Selection・Invocationと同じAttemptのProvider側の観測**を別に要求する。
+
+| 変化の所在／現象 | 限定的に維持できるClaim | 再照合を要するClaim・拒否する誤推論 |
+| --- | --- | --- |
+| Consumer自己管理SourceのLFだけ変更、World不変、Source Index変更（main #3477） | 観測済みの同一Semantic Worldに基づく純粋意味計算は再利用**候補** | Source位置・Design Context/Scenario PacketのCurrent性は失効し得る。World不変→Source Indexも現在一致、は誤り |
+| 外部Import ProviderのLFだけ変更、Consumer World/IndexとSemantic Digest不変（Draft #3479） | Consumerの限定Semantic Model/生成結果は実消費依存を照合して維持**候補** | Imported Source occurrenceの原Byte/位置、Provider Raw、P0b完全Load/独立Source provenanceはConsumerの2指紋からは判定不能 |
+| Sourceは同じだがCapability分類規則/Contract/Selected Provider変更（#3379／#3267） | 確定済みの無関係Source読取観測は維持候補 | 過去の`selected`/Trait履行/BOM資格を新Rule/Lockへ無断流用しない |
+| Provider実装/Generator/Build Closure変更、同一Resultを返す | 旧Artifactと旧AttemptのHistorical Evidenceは保存 | 実Build member/Host entry/Targetが異なればexact tuple再資格化。結果のByte一致だけでPASSにしない |
+| Raw Providerからの`LocateImportedSource`をConsumerの古いResultで再呼出 | Consumerの旧Meaning revisionという歴史的主張 | **新しく読んだProviderの現在位置情報**を旧Import snapshotで取得済みと詐称しない。複数Source・A→B→Aの原子的時点は未証明 |
+| Source/Artifactが同じでもDisclosure/Host Grant/受信Sinkが変化 | 過去の受理済み設計判断とByte Evidence | **現在の実行許可や開示・保存先**は別資格。過去のCurrent Permissionを復活させない |
+
+**Plugin-first最小接続**：D1 S1（exact選択）→S2（CLI/Studio実Provider Entry）→S3（Build/Artifact同一Attempt）の通常正例の**前後**で、Consumer管理Source／外部Provider RawをそれぞれSource-only変更する。変更後に旧Resultを無条件で`fresh`として採用しない。Semantic Digestが変わらない場合、既存Semantic資格を必ず全失効させるわけでもない。まず`unknown/partial/stale`を対象Claim相対で記録し、現Source occurrenceと必要Closureを再取得・照合できた場合だけその用途のCurrent性を回復する。入力と出力の整合性は**単一Attemptだけ**の主張であり、異時点の二回Loadをatomic snapshotとは呼ばない。Provider Source取得経路が`ErrImportsNotBound`を返す場合、空集合／完全取得／BOM資格へ読み替えない。
+
+**独立Expectedへ委譲する追加反例（既存#1180/#2514に載せる、実装していない）**：
+
+| ID | 独立入力と既存観測 | 期待する停止線 |
+| --- | --- | --- |
+| **PDC-15** | Consumer Raw LFだけ変更、World同じ、Source Index違い（#3477の実CLI） | Semantic再利用候補とSource/Scenario Context拒否を分離。旧PacketはCurrent SourceとしてPASSにしない |
+| **PDC-16** | 外部Provider Raw LFだけ変更、Consumer World/Index同一（#3479の限定Go反例） | Consumerの両FP一致だけでImported Provider Raw Freshと表示しない。Provider occurrenceの独立照合が必要 |
+| **PDC-17** | `before`のConsumer Resultに対し改変後の`LocateImportedSource`を呼ぶ | Fresh Provider readを旧Immutable Snapshotの一部としない。Sourceの実取得Attemptを記録 |
+| **PDC-18** | P0b Provider Sourceが`ErrImportsNotBound`、Provider/Contract/Result bytesは一致 | Required Source Closure未確認でPlugin/Inspector/BOMの**完全資格**を拒否。既に観測した部分Claimは保持 |
+| **PDC-19** | Consumer ModelとSourceIndexが同じ・Provider実装Sourceだけ改版、CLI A/Studio Bが同じResult | 同値PayloadでもBuilder/Provider実Entry/Source/Target/Attemptが揃わなければ2 Consumer qualifiedとしない |
+| **PDC-20** | A→B→AでFingerprint復帰、またはRead中にProvider Raw置換 | Byte一致した二観測から中間履歴不存在・multi-file同時性・Current Grantを推定しない |
+
+**最短順序とOwner**：#3477の**既に実行済みの同一Workspace差分**をBaseline、#3479の**Draftの外部Provider差分**を別LaneのReferenceとし、後続#1251 D1 Inspector実ProviderでPDC-16/18/19を一Targetだけで実際に圧力試験する。P0bのSource/Import Full Input Closureは#2743／#3262／#2812、Provider Raw/Load/Provenanceは外部Reference Owner、実Builder・再利用は#2600、BOM 2×2のexact行資格は#3267、Function依存の独立Required集合は[#3482](https://github.com/hat47x/tei-platform/pull/3482)の別Consumerが担当。第2Resolver/Source Store/Fingerprint Service/BOM Engine/Runnerは置かない。
+
+**採用境界**：#3477は限定的なmain実Source-only CLI試験。#3479はDraftのGo反証テストとCI成功であり、main実装のProvider Source Closure完成を意味しない。PDC-15〜20の一組としてのD1実二Consumer、Provider/Build/同一Attempt、現Host Grant、正式BOM/Owner Meaning Acceptanceは**NOT RUN／NOT QUALIFIED**。
+
 ## 17. Traitの原子性と実装義務：Extension TypeからPlugin/BOM/CLI/Studioへ（2026-11-07追補）
 
 **位置づけ**：他レーンで具体化した「拡張型を明示すると、デフォルト実装が選ばれるか、手動実装が必須と診断される」「Traitは合成できるよう原子的にする」という要求を、上記 D1〜D6 の実証条件へ接続する。正式Trait DSL、Core enum、特定実装方式の採用ではない。既存[#2619](https://github.com/hat47x/tei-platform/issues/2619)/[#2620](https://github.com/hat47x/tei-platform/issues/2620) のEverything is Data・Semantic Role、[#951](https://github.com/hat47x/tei-platform/issues/951) のContract/Resolver、[#2507](https://github.com/hat47x/tei-platform/issues/2507) の型付きFunction Pattern適合、[#3267](https://github.com/hat47x/tei-platform/issues/3267) のVerified BOMを第二の正本なしに再利用する。
