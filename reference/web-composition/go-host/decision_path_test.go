@@ -15,9 +15,9 @@ import (
 // paths are covered, or that any business effect has been independently read.
 func TestHDG21HostDecisionPathWitness(t *testing.T) {
 	valid := Principal{
-		ProviderID: "corporate",
-		Issuer:     "https://issuer.example.invalid/tenant1",
-		Subject:    "subject-1",
+		ProviderID:  "corporate",
+		Issuer:      "https://issuer.example.invalid/tenant1",
+		Subject:     "subject-1",
 		PrincipalID: "employee-1",
 	}
 
@@ -54,7 +54,7 @@ func TestHDG21HostDecisionPathWitness(t *testing.T) {
 			records := make([]AuditRecord, 0)
 			h, err := NewHost(Policy{
 				Path: "/scenario/submit", Method: http.MethodPost,
-				ActionID: "order_entry.submit_order",
+				ActionID:  "order_entry.submit_order",
 				Providers: map[string]string{"corporate": valid.Issuer},
 			}, Dependencies{
 				VerifySession: func(*http.Request) (Principal, error) {
