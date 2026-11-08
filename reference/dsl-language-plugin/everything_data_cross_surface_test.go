@@ -113,11 +113,6 @@ func fixtureLanguagePins() (Selection, Selection) {
 		ImplementationFingerprint: "pipe-source-1",
 	}
 	json := Selection{
-	return Selection{
-		LanguageID: "fixture.pipe", ContractVersion: "1",
-		ContractFingerprint: "pipe-1", ImplementationID: "fixture.pipe.impl",
-		ImplementationFingerprint: "pipe-source-1",
-	}, Selection{
 		LanguageID: "fixture.json", ContractVersion: "1",
 		ContractFingerprint: "json-1", ImplementationID: "fixture.json.impl",
 		ImplementationFingerprint: "json-source-1",
@@ -137,13 +132,6 @@ func fixtureOperators() (OperatorContract, OperatorContract) {
 		Effect: "pure", InputType: "rows/order", OutputType: "decimal",
 	}
 	return where, sum
-	return OperatorContract{
-		ID: "std.where", Version: "1", Fingerprint: "where-fixture-1",
-		Effect: "pure", InputType: "rows/order", OutputType: "rows/order",
-	}, OperatorContract{
-		ID: "std.sum", Version: "1", Fingerprint: "sum-fixture-1",
-		Effect: "pure", InputType: "rows/order", OutputType: "decimal",
-	}
 }
 
 func TestEverythingDataRealPinnedPipelineCrossSurface(t *testing.T) {
