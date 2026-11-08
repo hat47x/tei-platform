@@ -673,7 +673,7 @@ Browser Memory／localStorage／IndexedDB／Redis／Local Fileは同じ抽象的
 
 [AI性能チューニング設計§9〜10](AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md)と[main統合PR #3520](https://github.com/hat47x/tei-platform/pull/3520)により、**設計上のHint／合成Call Observation／統計Window／Provider選択・呼出し申告／開示・分割受領を、同じ条件で照合する限定Reference**が存在する。同PRの`synthetic-controls`はGitHub Checkでsuccessと確認できた。Referenceは19件の独立合成Expectedを保持するが、実TEI Source、実DB Query、実Provider、Host現在Grant、実Tool配送、AI改善、実性能計測を実行していない。この範囲を**「input-consistent／調査候補」**と呼び、Runtime Trait Fulfillment／BOM Qualified／Performance Improvementへ昇格させない。#3520の同HEADでは別のroot `govulncheck` checkにfailureがあり、**Repository全体が無条件にPASSしたという主張はしない**。
 
-また[main #3371](https://github.com/hat47x/tei-platform/pull/3371)はStudio Hostの型付きInspector入口を前進させたが、通常CLI起動側の[Draft #3381](https://github.com/hat47x/tei-platform/pull/3381)と組み合わせた**二つの実Consumerにおけるexact selected Provider実Callback**は未資格のまま。[main #3516](https://github.com/hat47x/tei-platform/pull/3516)は**実Go HTTP Host→既存Driver→合成Adapter Invoke**の限定経路を実証したが、実業務DB Commit、Trait合成BOM、CLI/Studio D1bを証明しない。[main #3479](https://github.com/hat47x/tei-platform/pull/3479)はImported Provider Source-only driftをConsumer Source Indexとは別に検出する実Go Referenceを加えた。**観測できたものの粒度でClaimを止める**。
+また[main #3371](https://github.com/hat47x/tei-platform/pull/3371)はStudio Hostの型付きInspector入口を前進させ、後続の[main #3381](https://github.com/hat47x/tei-platform/pull/3381)はexact selected Provider Bを**CLI HelperとStudio Host APIという二つの局所Go Call-site**から呼ぶ試験コードを統合した。一方、**通常の`tei inspect`ディスパッチと実Wails `StudioBridge`からの同一Provider実Callbackは未資格**のまま（現行状態は§18）。[main #3516](https://github.com/hat47x/tei-platform/pull/3516)は**実Go HTTP Host→既存Driver→合成Adapter Invoke**の限定経路を実証したが、実業務DB Commit、Trait合成BOM、CLI/Studio D1bを証明しない。[main #3479](https://github.com/hat47x/tei-platform/pull/3479)はImported Provider Source-only driftをConsumer Source Indexとは別に検出する実Go Referenceを加えた。**観測できたものの粒度でClaimを止める**。
 
 ### 17.2 Performance Profile、Trait、Hint、Instrumentationの役割分担
 
@@ -740,3 +740,55 @@ AIはSource内のCardinality、Relation、Query Sort/Limit、Nullable、Negative
 **停止線**：19合成テストの成功を実性能Evidenceと誤表示する、新たな常駐計測Host/Collector／中心Optimizer／第二Resolverを必須化する、Profile名から無条件にCore Traitを追加する、Scope/Targetの欠落をperformance PASSで覆う、Profiler/Telemetryの有害EffectをObserverという名称で隠す、実Provider/独立ExpectedがないのにAI改善を適用する場合は本設計を縮小する。
 
 **現時点の到達範囲**：main #3520の合成Referenceと局所CI、main #3371/#3516/#3479/#3490のそれぞれ限定成果を踏まえた設計・受入案。TAT-01〜08、実DB/Provider計測、実CLI/Studio二Consumer、実Benchmark、AI提案の適用・Rollback、正式Profile／Measurement Trait Schema／Owner意味受理は**NOT RUN / NOT ACCEPTED**。
+
+
+## 18. 最新mainのGo局所実証をProduct Trait履行へ引き上げる（2026-11-08 S1→S2接続）
+
+### 18.1 現行実装で確認できたこと／できないこと
+
+main [#3381](https://github.com/hat47x/tei-platform/pull/3381)（merge `f8896886c4528920a0d0cb3a2f67181971402987`）と[status更新 #3531](https://github.com/hat47x/tei-platform/pull/3531)（merge `1e48411748daaf88dba061d46d9bebe652c57933`）を現物コードで照合した。前節までの「#3381はDraft」等は**記録当時の状態**であり、現在の実装基線はここを優先する。
+
+| 観測対象・既存箇所 | 現行mainで存在する機能 | まだ満たしていない資格 |
+| --- | --- | --- |
+| `internal/inspectoradapter/selected.go` | 既存Compositionの`authoring-tool`契約／選択B／Host登録Bを照合し、Callback前にRegistry世代・Host guardを再検査。誤登録A、実装欠落、撤回、staleを拒否 | 合成`ArtifactDigest`文字列から実Goバイナリ内のコードの出所・現在Grantを証明できない |
+| `cmd/tei/cli_inspect.go` | `inspectWorkspaceJSONWithService`という型付きService注入口。Provider欠落時にfail closed、Result Contractの検査、非信頼エラーのCode/Message開示制限 | **通常の`cmd/tei/main.go`が呼ぶ`inspectWorkspaceJSON`は現状Builtin**で、製品CLIの選択済Plugin実利用ではない |
+| `internal/studiohost/readonly.go` | Studio Hostへ選択されたInspectionServiceを渡す入口。従来Builtinの直呼びとは分離 | 実Wails `StudioBridge`の通常起動・画面操作から同じ選択済Providerへ実到達したか未確認 |
+| `cmd/tei/cli_inspect_studio_selected_parity_test.go` 等 | 6 Subjectを二つの**局所Go Consumer**から同じBへ呼ぶテストコードと、B選択→A登録拒否・不整合Resultの負例 | 二つのProductプロセス/Surface／実Plugin package/選択Build閉包／Tool完全受領／2×2 BOM |
+| `docs/status.md`／`plan/MASTER_PLAN.md` | #3531が上記の限定実装と次のS2 Product Wiringを状態・全体計画へ反映済み | Status/Plan記載は実動作の新Evidenceではない |
+
+**CIの条件**：main #3531のexact commit `1e484117...` では根moduleの`govulncheck`等はsuccessだが、`repository-health`は**completed/failure**。旧#3381のheadでもRepository Healthはfailureであり、個々のGoテスト・専用Job・統合済み状態を無条件の全体CI PASSに合算しない。Jobの具体的な失敗原因の断定はログ確証を取得してから行う。今回の文書変更はCIを修復したと主張しない。
+
+### 18.2 Traitの「原子性」を実コードで測る最小境界
+
+**これから一つだけ扱うTrait候補**は、Inspector Operationが必要とする`read-onlyな型付きProjectionを返す`という原子的保証である。現行`tei.operations.inspect/v0`のResult Validationを、**既存Contractに投影可能なRequired Obligation**として扱えるかを実証する。正式な`Inspectable`等のCore Trait ID、別Validator/Resolverを先に新設しない。
+
+```text
+Source + complete Required + (Subject, Operation=inspect, Scope=authoring-tool)
+             ↓
+exact selected Provider B + accepted Contract/Host registration
+             ↓
+actual Product Entry (ordinary CLI dispatch / actual Studio Bridge)
+             ↓
+B callback invoked + typed Inspector Result validated
+             ↓
+independent Expected + current Runtime/Disclosure check
+             ↓
+S2「Product Consumerが選択済Providerへ到達」の範囲限定結論
+```
+
+必要なContractが**Known RequiredだがManual実装未提供**なら、不足を実装義務として返す。Provider Bの`Inspect`メソッド署名があるだけで、Result正当性／Read-onlyという**現実の無副作用**／利用時の開示保証を証明しない。Result上の`effect: read-only`は投影契約の検査であり、Providerが密かにI/Oをしない実行証拠とは別。必要集合自体がpartialなら全Trait履行率は未確定とする。
+
+**移行Policy**：既存Builtin互換モードと、明示的に選択したProviderを必要とするモードを区別する。後者でPluginがmissing/stale/unsupportedなら**Builtinへの暗黙fallbackは禁止**。ただし移行中の既定Builtinを廃止すること、任意外部Pluginのロードや新CLI Flagを今すぐ追加することは要求しない。Host側の現在Grant／宣言されたEffectと実Runtime Effect／未取得Sourceについて、名前の一致や合成digestから資格を発行しない。
+
+### 18.3 実装の最小1往復と再利用する検証
+
+1. **S2-C（CLI）**：`cmd/tei/main.go`の通常`inspect`入口が、信頼されたComposition Hostから**選択済Bを取得**して`inspectWorkspaceJSONWithService`に渡す一辺を設ける。未選択Builtinは既存互換経路にとどめる。Product CLIの実binary起動と、B callback回数/Subject/Result/Exitを固定する。
+2. **S2-S（Studio）**：実`StudioBridge`から既存`studiohost.ReadOnly`のHost-selected Serviceへ到達する一辺を設ける。CLI HelperとStudio Host APIの局所Go一致だけでS2-Sを合格にしない。
+3. **S2-O（Trait fulfillment）**：**同じRequired Contract**を一つのDefault/Provided実装と一つのManual欠落に当て、`satisfied-under-scope`／`required-missing`の差を表示。合成Provider A/Bを値同一にして「B selected、A invoked」を拒否し、Stale Providerを復活させない。独立Expectedは既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)、選択は[#951](https://github.com/hat47x/tei-platform/issues/951)/[#1016](https://github.com/hat47x/tei-platform/issues/1016)、Product D1は[#1251](https://github.com/hat47x/tei-platform/issues/1251)/[#1824](https://github.com/hat47x/tei-platform/issues/1824)、Trait履行は[#3279](https://github.com/hat47x/tei-platform/issues/3279)がOwner。
+4. **S3（後続）**：実Buildに含まれるProvider Source/Manifest/ArtifactのByteと、Consumer／Target／現在Disclosureを別途照合し、Verified BOMの**exact 2 Provider × 2 Consumer**へ進む。S2の局所成功を他Provider/Targetへ自動転記しない。
+
+**既存負例と相互参照**：[Plugin-first設計§19 WIT-01〜09](PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md)のWIT-01/02/03/04/05/09、[Trait設計§9 TC-11〜15](#9-テストへの接続traitのカバレッジと実target資格は別)、[§14 TC-34〜40](#14-traitと共通hook-slot生成カスタマイズ状態フローの横断接続2026-11-08)、[§17 TAT-01〜08](#17-ai性能チューニングの観測を原子的traitの履行へ接続する2026-11-08横断受入案)が必要な正負例のOwnerである。**重複IDの新設や第二Test Runnerは避ける**。Observable/Cache/Graph/AI Hint/SHO/KON/HeadlessのConsumerへの展開はS2のHard Dependencyにしない。
+
+**製品側の完成条件**：通常CLI・実Studio Bridgeという**別々のProduct入口**を使い、実選択Provider Bに到達し、値一致だけでは見逃す誤配線、失効、欠落、秘匿、型付きResult不適合を拒否できること。これと原子的TraitのRequired不足診断が同一Use-site/Source Scopeで説明できれば、次に正式Trait DSL/Schemaを設ける必要があるかを判断する。**到達していないのに新しいSchema/Core enum/Hostを先に固定しない**。
+
+**到達範囲**：上記のS2-C/S/Oは計画・受入対象であり、今回の文書追補では**NOT RUN／NOT QUALIFIED**。#3381の局所Go Caller試験コード、#3531のstatus、その他の限定Go/HTTP/AI合成Referenceがmainにある事実は保持するが、通常CLIディスパッチ／実Studio Bridge／実Provider Artifact資格・現在の権限・Owner意味受理・Cache性能は未証明である。
