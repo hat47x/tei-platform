@@ -98,13 +98,38 @@ func TestXTEAExampleDeclaresStandardBusinessRoles(t *testing.T) {
 		t.Fatalf("exchange rates=%+v", exchangeRates)
 	}
 
-	contract, state, err := sequence.Bind(map[core.CanonicalID]string{
-		"master.numbering_rule.counter":  "41",
-		"master.numbering_rule.digits":   "5",
-		"master.numbering_rule.prefix":   "ORD-",
-		"master.numbering_rule.check":    "T",
-		"master.numbering_rule.overflow": "stop",
-	})
+	// The example declares the rule identity, so one Data holds several rules
+	// and a caller names the one it issues from.
+	binding, err := sequence.BindRule(loaded.World)
+	if err != nil {
+		t.Fatalf("rule binding: %v", err)
+	}
+	if binding.Attribute != "master.numbering_rule.rule" {
+		t.Fatalf("rule binding=%+v", binding)
+	}
+	rows := []map[core.CanonicalID]string{
+		{
+			"master.numbering_rule.rule":     "order",
+			"master.numbering_rule.counter":  "41",
+			"master.numbering_rule.digits":   "5",
+			"master.numbering_rule.prefix":   "ORD-",
+			"master.numbering_rule.check":    "T",
+			"master.numbering_rule.overflow": "stop",
+		},
+		{
+			"master.numbering_rule.rule":     "invoice",
+			"master.numbering_rule.counter":  "7",
+			"master.numbering_rule.digits":   "3",
+			"master.numbering_rule.prefix":   "INV-",
+			"master.numbering_rule.check":    "F",
+			"master.numbering_rule.overflow": "stop",
+		},
+	}
+	rules, err := numbering.ResolveRules(loaded.World, "master.numbering_rule", rows)
+	if err != nil {
+		t.Fatalf("resolve rules: %v", err)
+	}
+	contract, state, err := rules.BindRule("order")
 	if err != nil {
 		t.Fatalf("numbering bind: %v", err)
 	}
