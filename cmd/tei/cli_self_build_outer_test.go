@@ -167,7 +167,7 @@ func TestSelfBuildOuterRecordsTheChildRunAndTheArtifact(t *testing.T) {
 		"-state", filepath.Join(dir, "state"),
 		"-output", output,
 		"-intent", "intent.sample",
-		"-child-arg", childArgJSON(t, []string{"-artifact", output, "-digest", "sha256:deadbeef"}))
+		"-child-arg", childArgs(t, "-artifact", output, "-digest", "sha256:deadbeef"))
 	if code != 1 {
 		// The fake child reports a wrong digest on purpose, so the cross-check
 		// fails and the entry reports a child failure while still recording
@@ -214,7 +214,7 @@ func TestSelfBuildOuterSucceedsOnAMatchingReport(t *testing.T) {
 		"-workspace", workspace,
 		"-state", filepath.Join(dir, "state"),
 		"-output", output,
-		"-child-arg", childArgJSON(t, []string{"-artifact", output, "-digest", digest}))
+		"-child-arg", childArgs(t, "-artifact", output, "-digest", digest))
 	if code != 0 {
 		t.Fatalf("a matching child report was not accepted: code=%d %+v", code, report.Error)
 	}
@@ -238,7 +238,7 @@ func TestSelfBuildKeepsThePrimitiveForm(t *testing.T) {
 	var out bytes.Buffer
 	code, err := runSelfBuildCommand([]string{
 		"-child", child,
-		"-child-arg", childArgJSON(t, []string{"-artifact", artifact, "-digest", "sha256:deadbeef"}),
+		"-child-arg", childArgs(t, "-artifact", artifact, "-digest", "sha256:deadbeef"),
 		"-artifact", artifact,
 	}, &out)
 	if code != 0 || err != nil {

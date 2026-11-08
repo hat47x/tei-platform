@@ -106,7 +106,7 @@ func TestSelfBuildRecordsBothIdentitiesAndCrossChecksArtifact(t *testing.T) {
 	var stdout bytes.Buffer
 	code, err := runSelfBuildCommand([]string{
 		"-child", child,
-		"-child-arg", childArgJSON(t, []string{"-artifact", artifact, "-digest", "sha256:deadbeef"}),
+		"-child-arg", childArgs(t, "-artifact", artifact, "-digest", "sha256:deadbeef"),
 		"-artifact", artifact,
 	}, &stdout)
 	if code != 0 || err != nil {
@@ -147,7 +147,7 @@ func TestSelfBuildRejectsAClaimedDigestThatDiffersFromTheImage(t *testing.T) {
 	var stdout bytes.Buffer
 	code, err := runSelfBuildCommand([]string{
 		"-child", child,
-		"-child-arg", childArgJSON(t, []string{"-artifact", artifact, "-digest", "sha256:deadbeef"}),
+		"-child-arg", childArgs(t, "-artifact", artifact, "-digest", "sha256:deadbeef"),
 		"-artifact", artifact,
 		"-claimed-self", "sha256:not-this-process",
 	}, &stdout)
@@ -191,7 +191,7 @@ func TestSelfBuildRecordsAMatchingClaimWithoutClaimingL3(t *testing.T) {
 	var stdout bytes.Buffer
 	code, err := runSelfBuildCommand([]string{
 		"-child", child,
-		"-child-arg", childArgJSON(t, []string{"-artifact", artifact, "-digest", "sha256:deadbeef"}),
+		"-child-arg", childArgs(t, "-artifact", artifact, "-digest", "sha256:deadbeef"),
 		"-artifact", artifact,
 		"-claimed-self", selfDigest,
 	}, &stdout)
@@ -233,16 +233,4 @@ func TestSelfBuildRefusesAnExistingArtifactAndMissingFlags(t *testing.T) {
 			t.Fatalf("args=%q: code=%d err=%v, want INVALID_ARGUMENT and exit 2", args, code, err)
 		}
 	}
-}
-
-// childArgJSON renders child arguments with encoding/json. Building the array by
-// string concatenation breaks on Windows paths, whose backslashes are invalid
-// JSON escapes.
-func childArgJSON(t *testing.T, args []string) string {
-	t.Helper()
-	raw, err := json.Marshal(args)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return string(raw)
 }

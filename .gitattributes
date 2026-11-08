@@ -103,3 +103,6 @@
 
 # Servicehost connection survey output is hashed as raw bytes by its README.
 /plan/evidence/SERVICEHOST_CONNECTION_PATH_SURVEY_2026-11-08/** -text
+
+# Runtime alternate paths output is hashed as raw bytes by its README.
+/plan/evidence/RUNTIME_CARRIER_ALTERNATE_PATHS_2026-11-08/** -text
