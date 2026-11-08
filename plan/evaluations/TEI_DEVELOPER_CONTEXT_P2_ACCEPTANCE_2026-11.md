@@ -693,3 +693,55 @@ TEI #3262の不足は単純な`Read more`ではない。**どの問いQの必要
 
 **停止線／NOT RUN**：元Source/Raw Reader・理解履歴・SUI→TEI/SEI同一Attempt Delivery・実M1/外部Harness・Hash跨言語実検証・Owner Meaning/Grantは未実証。Hash一致＝Source一致、Hash差＝意味変更、現在表示一致＝理由/履歴なし、Probe提案＝実Read、をいずれも認めない。追加の認知Host・Proof Store・Hash Store・Policy Engine・正式Product Gateを作らない。
 
+<!-- tei-devctx-cc25-27-real-byte-handoff-vs-origin-and-write-20261108 -->
+## 24. Raw文書の引渡し・同一ファイル・Working Copyを、Source/Meaningの認知資格と分離する（2026-11-08）
+
+### 24.1 前§23から成熟した新しい実測：Reader・Writer候補はあるが「同一実Producer→Consumer」は未成立
+
+この節は、§22のRaw Item/Canvas、§23の非単射Projection/ハッシュと、新たな**実ファイルへの読取・作業コピー書込**の限定実証を接続する。なお、製品間に新しい統合Reader/Writer/Transportや別のSource正本を設計するものではない。
+
+| Source/Owner | 今回受け取る狭い実測事実 | 依然として未成立のこと |
+| --- | --- | --- |
+| [SUI merged #3396](https://github.com/hat47x/sui-sensemaking/pull/3396)、[CI #42345896949](https://github.com/hat47x/sui-sensemaking/actions/runs/42345896949) | 異なる元Source cue/Island所属でも**同じ公開Projection全体**を得る実Product 3/3 PASS | 元Source Reader・意味同値・逆Write・外部配送 |
+| [SUI Draft #3397](https://github.com/hat47x/sui-sensemaking/pull/3397)、[CI #42370271882](https://github.com/hat47x/sui-sensemaking/actions/runs/42370271882) | 公開Projection→**固定UTF-8 Markdown byte**生成を含むfrontend CI成功。明示的なopt-in時には新規絶対pathへ `wx` で書く試験入口がある | CIでは**opt-in未設定で実ファイルProducer出力はNOT RUN**。実受領・出典復元・正式Writerは未成立 |
+| [SHO merged #21](https://github.com/hat47x/sho-composer/pull/21)／[#22](https://github.com/hat47x/sho-composer/pull/22) | SHO実G1b Reader、Raw SHA/Markdown Link Occurrence、POSIX FIFO事前拒否の限定回帰 | #21の**同じ実SUI Producer作成FileをSHO CLIが開くH1**はCIでSKIP。合成Fixture読取が実H1を代替しない |
+| [SHO merged #24](https://github.com/hat47x/sho-composer/pull/24)、[Draft #25](https://github.com/hat47x/sho-composer/pull/25) | G2-Pは独立byte-span Patch Planner。#25 HEAD `eb12e0cc2eff01ef0be9270c3a0a6adb77b3a09a`の[W1 CI #42461729731](https://github.com/hat47x/sho-composer/actions/runs/42461729731)を含む5本の当該HEAD workflowはcompleted/success。**実Fileへの別名Working Copy作成→close→別Open/Reader再読取**と部分作用の限定検査 | #25はDraft・test-only。正式Editor Save/Source Revision・Grant/CAS/atomic/fsync、実SUI Producer→SHO一File連結は未成立 |
+
+この段階の最短課題は、新しい共通Source Registryや「原典ID」新規発明ではなく、**各既存Productの本物の入口を同じ固定Source/Attemptで走らせ、どこまで実際に届いたかを別々のWitnessで照合すること**である。
+
+### 24.2 新しい判別反例：CC-25〜27（TEI横断実試験はNOT RUN）
+
+| ケースと問いQ | 独立に固定する二世界・入力 | 失敗させるべき誤Claimと必要なProbe |
+| --- | --- | --- |
+| **CC-25 Source由来の非復元**「このMarkdownは同じ原典を引用しているか」 | W25a/b：元Card Source cue/Island所属は異なるが、公開Projectionは同じ。その両方を**同じ許可済みMarkdown生成規則**へ通せば、同一Raw Markdown bytes・SHA・SHO Link Occurrenceが成立し得る | SUI→Markdown→SHOで同一Raw SHA/Reader PASSでも元Source/Topology/独立証拠数は復元不可。元出典に関するQには許可されたSUI Source/Review・原文Readerの別Witnessが必要。秘密Source IDを公開Markdownへ追加して解決しない |
+| **CC-26 Fixture成功と実H1の混同**「実SUI Producerが作ったFileをSHOが読んだか」 | W26a：固定bytesをSHO側Fixtureで作りG1bが読んだ。W26b：実SUI Producerが書込後、実SHO CLIが**同一実File**を開いた。Reader結果（bytes/SHA/Link数）は一致し得る | W26aのReader成功を実SUI H1の成功として採点しない。Producer process、実書込先/出力SHA、対象Fileの引渡し・実Reader起動/受信Raw byte/exit、独立Expected、権限/開示を同一Attemptで束縛。実入口未起動ならH1=NOT RUN |
+| **CC-27 作業コピーと正式保存の混同**「文書は現在の正本として安全に保存されたか」 | W27a：SHO #25の別名 `wx` Working Copyが書込・実readback一致。W27b：同一SourceをA→B→Aと途中変更しても、Source SHA/FD identityが復元しWorking Copyの読取一致は起こり得る。さらにSource変更／部分出力・出力改変で`needs-reconciliation`が生じる | `working-copy-readback-verified`は作業コピーbytesの限定証拠であり、原文正本へのSave/Current Revision・Writer Grant・Durability/Owner受理ではない。**No-op候補で新規Working Copyは生成される**ため、実Editor `Save(no-change)` の物理write0とは別。実Fileを改変した後の拒否を未作用と表示しない |
+
+CC-25の前半はSUI #3396の**実Product非単射**に基づく帰結だが、同一Markdown/SHO CLIを**その二世界で通した横断試験は未実施**。CC-26の両側を実H1として比較するコードも本PRでは作らない。CC-27のSHO側W15〜W17は限定CIで実証されているが、TEI/SEIのSource/Meaning Writer試験を行った証拠ではない。
+
+### 24.3 既存のReader・Source Evidenceに接合する受入票（新ABIではない）
+
+| 段階 | 同一Attemptに必要な観測 | Claimの上限 |
+| --- | --- | --- |
+| 1. **生成前の公開境界** | 公開対象Projection/元Source側の許可範囲、制限モード、明示除外と現在利用可能な出典資格 | Projectionの内容は元Source全件でも、すべてを再配布可能な意味でもない |
+| 2. **実Producer書込** | 実argv/env、Source/Project Rev、出力File pathと実Open/Write、Raw SHA、失敗時の部分作用 | 合成固定Vector/オプトイン未実行は実配送ではない |
+| 3. **実Reader実受信** | 同じFileの実Open対象/FD、Raw bytes/SHA、Path/revの照合、Link Occurrence、Process exit、Consumer取得時点 | Readerの文法解析/Link抽出成功≠元Source復元・意味受理・原本同一Snapshot |
+| 4. **局所候補編集** | 編集意図・明示byte範囲/旧Fragment、独立Expected、候補Preview/承認の有無 | Planner PASSや別名Copyは正式Editor Save承認ではない |
+| 5. **Working Copy実Effect** | `wx`作成・実byte書込・close/別Open readback、元Sourceの前後実Read、partial/effect/status、未解決SourceRev/Grant | `readback-verified`≠原文正本への永続Save、失敗≠作用0 |
+| 6. **現在のConsumer利用資格** | Scope/Grant/外部Recipientの実受取、独立に必要なR(Q)、Owner受理・実操作資格の有無 | Hash一致・Local CI PASS・Tool呼出しのみでは現行Source/Meaningの資格は確定しない |
+
+**一Source単位の実試行を最優先**にし、Source→Projection→Draft→File→Readerの真正Producer/Consumerをまず接続する。元SUIの非公開来歴は公開SHO Markdownへ無条件に追加しない。G2-W1の同一実File上の局所保存は、その次の独立Product能力として用い、H1が成立したというClaimへ合算しない。エラー時の`needs-reconciliation`はSHO Owner側で観測し、TEIに新Writer/Recovery Engineを作らない。
+
+### 24.4 次のD0/D1/M1とOwnerを限定する
+
+**次に比較するQ**を二つだけ追加する。Q26「SHOの受領は実SUI Producerの同一Fileに由来するか」、Q27「現在のSource Revisionに対して実正式Saveが成立したか」。全条件で初期Observation/実Tool Allowlist・Root/Grant・Disclosure/Reader能力・Read予算を固定する。
+
+- D0：Fixture・実Producer・Reader・Working Copy・正式保存に関する未取得段階を報告し、未知を成功へ昇格しない。
+- D1：利用可能な実Product Toolから、Producer→Readerの実H1、またはSource Revision/正式Writer/保存後独立Readの不足する片側を**最小の1 Probe**として選ぶ。既存入口がなければ`unsupported`。
+- M1：SEI Methodが同じTool/Grant/Scope・非公開Expected無しで1 Probeを提案し、実Tool起動/実受領と必要R(Q)到達を**別スコア**で検証。D1と同じ選択ならModel固有の追加価値は0。
+- 「同じ文字列・同じSHA」だけに依存する答案はCC-25で減点し、実A→B→Aや出力中断後の`needs-reconciliation`をCurrent Source受理に昇格した答案はCC-27で拒否する。
+
+**既存Owner**：TEI #2533＝問い相対の不足・次Probe比較、#2514＝独立Expected、#2516＝Consumer/Disclosure、#2497＝非単射Projection、SEI #767＝Method。実Producer/公開ProjectionはSUI #3397/#3396、Markdown実Reader/H1はSHO #21/#16、編集・保存実EffectはSHO #24/#25/#4/#3、Harnessの実受領・隔離はTAI #168/#271。**TEI側に共通Writer/Source Registry/Receipt Storeを追加しない。**
+
+**今回の状態**：SUI #3396実公開Projection反例PASS、SUI #3397固定Byte試験CI PASS（opt-in実File NOT RUN）、SHO #21実Reader限定PASS（H1 SKIP）、SHO #25 test-only Working CopyのUbuntu/Windows限定PASSは**既存別Runの事実**。本CC-25〜27の実SUI→SHO同一Attempt H1、SEI実M1、正式Editor Save・実Host Grant/Delivery・Owner意味受理は**NOT RUN**。この節の追加自体は**設計/計画更新**であり、Product合格ではない。
+
