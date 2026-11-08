@@ -35,19 +35,21 @@ import (
 const (
 	// Schema identifies the report. It is a reference output, not a product
 	// contract.
-	Schema = "tei.reference.binding-to-execution/v0"
+	Schema = "tei.reference.binding-to-execution/v1"
 	// Authority states what the report is allowed to claim.
 	Authority = "derived-reference"
 
 	RuleID      = "tei.reference.binding-to-execution"
-	RuleVersion = "v0"
+	RuleVersion = "v1"
 )
 
 // rulePolicy is covered by the fingerprint.
-const rulePolicy = `binding-to-execution/v0
+const rulePolicy = `binding-to-execution/v1
 selection: routing.RouteCommand over the Environment's deployment-executor binding
 dispatch: routing.Router.Dispatch with an explicit executor registry
 refused when: the binding is missing, ambiguous, or names an unregistered executor
+after dispatch: ranCount is actual Execute entry; refusedCount is only before Execute
+unverified: Execute returned error or an acknowledgement that failed binding validation
 not verified: that the executor's acknowledgement reflects external state
 not issued: authentication, authority, permission, or a durable receipt
 ordering: commands are processed in ActionID order, as routing.RouteCommands does
@@ -69,6 +71,9 @@ type Outcome struct {
 	AttemptID       string `json:"attemptId,omitempty"`
 	RawOutcome      string `json:"outcome,omitempty"`
 	BindingResolved bool   `json:"bindingResolved"`
+	// ExecutorInvoked records entry into Executor.Execute only. It does not
+	// establish an external effect, a valid result or a durable receipt.
+	ExecutorInvoked bool `json:"executorInvoked,omitempty"`
 	// Error records a refusal or an executor error as text. It is never a
 	// success.
 	Error string `json:"error,omitempty"`
@@ -83,11 +88,14 @@ type Report struct {
 	RuleFingerprint string    `json:"ruleFingerprint"`
 	Environment     string    `json:"environment"`
 	Outcomes        []Outcome `json:"outcomes"`
-	// Ran counts commands dispatched to an executor. Refused counts commands
-	// that never reached one.
-	Ran     int      `json:"ranCount"`
-	Refused int      `json:"refusedCount"`
-	Notes   []string `json:"notes"`
+	// Ran counts entries into Executor.Execute, regardless of error or result
+	// validity. Refused is strictly before that call. Unverified is a subset
+	// of Ran: the executor was called but no valid acknowledgement followed.
+	// None of these counters establishes an external business effect.
+	Ran        int      `json:"ranCount"`
+	Refused    int      `json:"refusedCount"`
+	Unverified int      `json:"unverifiedCount"`
+	Notes      []string `json:"notes"`
 }
 
 // Run resolves the environment's binding for each command and dispatches
@@ -112,8 +120,6 @@ func Run(
 			Notes:           notes(),
 		}, nil
 	}
-	router := routing.Router{Executors: executors}
-
 	report := Report{
 		Schema: Schema, Authority: Authority,
 		RuleID: RuleID, RuleVersion: RuleVersion,
@@ -147,37 +153,68 @@ func Run(
 			})
 			continue
 		}
+		// Router.Dispatch may refuse an unregistered, mismatched or unsupported
+		// Executor before Execute. Observe the actual Execute entry without
+		// changing the existing selection logic or the caller-owned registry.
+		witness := &executorInvocationWitness{Executor: executors[routed.ExecutorID]}
+		router := routing.Router{Executors: map[core.CanonicalID]executor.Executor{
+			routed.ExecutorID: witness,
+		}}
 		result, dispatchErr := router.Dispatch(context.Background(), env, cmd)
+		if witness.invoked {
+			report.Ran++
+		}
 		if dispatchErr != nil {
-			report.Refused++
+			if witness.invoked {
+				report.Unverified++
+			} else {
+				report.Refused++
+			}
 			report.Outcomes = append(report.Outcomes, Outcome{
-				ActionID:   cmd.ActionID,
-				ExecutorID: string(routed.ExecutorID),
-				Error:      dispatchErr.Error(),
+				ActionID:        cmd.ActionID,
+				ExecutorID:      string(routed.ExecutorID),
+				ExecutorInvoked: witness.invoked,
+				Error:           dispatchErr.Error(),
 			})
 			continue
 		}
-		// ValidateResult compares the acknowledgement against the binding, so a
-		// result from another executor cannot be recorded as this command's.
+		if !witness.invoked {
+			return Report{}, fmt.Errorf("routing returned an acknowledgement without entering Executor.Execute for action %s", cmd.ActionID)
+		}
+		// A result from another executor is invalid, but Execute already
+		// happened and may have changed external state.
 		if validateErr := routing.ValidateResult(env, cmd, result); validateErr != nil {
-			report.Refused++
+			report.Unverified++
 			report.Outcomes = append(report.Outcomes, Outcome{
-				ActionID:   cmd.ActionID,
-				ExecutorID: string(routed.ExecutorID),
-				Error:      validateErr.Error(),
+				ActionID:        cmd.ActionID,
+				ExecutorID:      string(routed.ExecutorID),
+				ExecutorInvoked: true,
+				Error:           validateErr.Error(),
 			})
 			continue
 		}
-		report.Ran++
 		report.Outcomes = append(report.Outcomes, Outcome{
 			ActionID:        cmd.ActionID,
 			ExecutorID:      result.ExecutorID,
 			AttemptID:       result.AttemptID,
 			RawOutcome:      string(result.Outcome),
 			BindingResolved: true,
+			ExecutorInvoked: true,
 		})
 	}
 	return report, nil
+}
+
+// executorInvocationWitness observes the call boundary only. It does not
+// grant authority, inspect effects, retry or validate a provider artifact.
+type executorInvocationWitness struct {
+	executor.Executor
+	invoked bool
+}
+
+func (w *executorInvocationWitness) Execute(ctx context.Context, cmd executor.Command) (executor.Result, error) {
+	w.invoked = true
+	return w.Executor.Execute(ctx, cmd)
 }
 
 func findEnvironment(envs []environment.Environment, id core.CanonicalID) (environment.Environment, bool) {
@@ -193,10 +230,12 @@ func fingerprint() string { return fmt.Sprintf("sha256:%x", sha256.Sum256([]byte
 
 func notes() []string {
 	return []string{
+		"ranCount counts Executor.Execute entry, refusedCount only pre-invocation and unverifiedCount post-invocation errors or invalid acknowledgements",
 		"an acknowledgement is the executor accepting the intent, not proof that external state changed",
 		"the executor registry is supplied by the Host; this reference constructs no executor",
 		"the environment binding selects the executor; Supports is only a conformance check",
 		"no authentication, authority, permission or durable receipt is issued here",
+		"never infer no-effect, safe automatic retry or committed state from an unverified acknowledgement",
 	}
 }
 

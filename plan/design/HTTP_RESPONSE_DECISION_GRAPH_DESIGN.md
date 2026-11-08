@@ -601,7 +601,26 @@ Source Indexを前段P0-Sで読めても、このDriver解決は`Source Index→
 
 性能計測の接続では、`503件数`や`Audit completed件数`を「反映失敗／成功件数」に読み替えない。[AI性能チューニング設計](AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md)の**統計・ヒント・実測・独立比較**を区別する方針に従い、正しい分母は`eligible attempts / actually invoked / externally observed`等の観測定義を固定してから計測する。AIの推奨・予測だけでContext Cache、Plugin Provider、Retry Policyを適用しない。
 
-## 21. 参考資料と採否
+## 21. 2026-11-09 C-1 Bridge：配備Executorの呼出し後不確定とHTTP Responseを同じ停止線へ置く
+
+他チャットから統合された[PR #3573](https://github.com/hat47x/tei-platform/pull/3573)はEnvironmentの`deployment-executor` Bindingを、既存`routing.RouteCommand→routing.Router.Dispatch→routing.ValidateResult`で**Host登録の記録用Executor**へ渡すC-1のReferenceである。これは前段§20の`C-1/C-2/C-4`判断を解決しないが、HTTP Command処理と共通の重要な失敗境界を持つことが分かった。
+
+`tools/reference-binding-to-execution/bindingexecution.go`のv0では、`Router.Dispatch`失敗後、または`ValidateResult`の応答不一致後に`refusedCount++`とした。ところが`Router.Dispatch`の既存コードは**実`Executor.Execute`を呼んだ後に失敗する場合がある**。後から届くエラーを「Executorへ未到達」という意味のRefusedへ再分類すると、HTTP 503を未適用と誤認するHDG-E01と同じ情報喪失が起きる。
+
+**成熟差分（Reference v1）**：新たな製品型ではなく、既存のHost登録Executorにread-onlyの呼出し観測ラッパーを被せて`Execute`入口だけを識別する。`ranCount`＝実呼出し入口、`refusedCount`＝入口以前の拒否、`unverifiedCount`＝入口以後のエラーまたは不正応答（`ranCount`の内数）として別々に報告する。`executorInvoked`は外部Effect/Grant/Receiptの証拠ではない。`Report Schema/RuleVersion/RuleFingerprint`はv1へ更新し、[旧v0実測](../evidence/BINDING_TO_EXECUTION_REFERENCE_2026-11-09/README.md)を上書きしない。
+
+| C-1 Reference反例 | HTTP E系との意味対応 | 不変条件 |
+| --- | --- | --- |
+| `Supports=false`、未呼出し | Session/CSRF/Authorization拒否でCommand Adapter未到達 | Refused。未実行という**限定**観測 |
+| Executeで合成更新後にエラー／不正ID ACK | HTTP 503後に合成状態が`submitted`にもなり得る | **実呼出し済み・Result未検証**。Effect適用有無は別Observation |
+| Executeで更新前にエラー | HTTP 503後に状態が`pending`にもなり得る | 同じエラー形から自動再送を許可しない |
+| Accepted ACK、合成状態は更新なし | HTTP 202後にも`pending`があり得る | `OutcomeAccepted`≠Commit/永続保存 |
+
+[テストBXE-01〜06](../../tools/reference-binding-to-execution/bindingexecution_effect_unknown_test.go)は本物の`Router.Dispatch`経由、合成Executorの呼出し回数とメモリ状態を独立Expectedで照合する。**[限定Go CI #42505232348](https://github.com/hat47x/tei-platform/actions/runs/42505232348)がcompleted/success**で、実`Router.Dispatch`によるBXE-01〜06・元の別Executor ACK回帰・Go vet/gofmtはPASS。ここでqualifiedなのはこのReference v1の有限Caseだけであり、製品のC-1採用、外部Provider/実Effect、完全なGraph/Client Reactionではない。先行する[HDG-E01〜05の専用CI成功 #42486408608](https://github.com/hat47x/tei-platform/actions/runs/42486408608)は別HEAD/別実装の証拠であり、今回のC-1変更のテスト合格に流用しない。
+
+**次のExit**はHTTP専用の第二Result EngineやDeployment Executorへ自動Retryを組み込むことではない。#1174/#2999の既存Operation identity・Effect fence、#951/#3279/#3267のProvider/Host資格と、#3262のDesign Context出典を**製品で選択された一つのOwner/Consumer**へ接続する。C-4外部Host委譲も有効な選択肢。SUI/SHO/StudioとCLIが同じ種別のResultを表示するときも、`pre-execute refused`と`post-execute unverified`を同じ業務拒否や無条件再試行可能エラーに平坦化しない。実外部Effect/Client受領/Owner受理は引き続き未実証。
+
+## 22. 参考資料と採否
 
 - [Liberator repository](https://github.com/clojure-liberator/liberator) ― ClojureのREST decision modelの先行例。ライブラリ移植ではない。
 - [Webmachine mechanics](https://webmachine.github.io/mechanics.html)、[Decision flow](https://webmachine.github.io/diagram.html)、[Resource functions](https://webmachine.github.io/resources.html) ― decision flow・契約・処理に分離する参考資料（古いHTTP版があるため仕様の正本にはしない）。
