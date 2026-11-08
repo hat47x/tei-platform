@@ -62,3 +62,43 @@ jobs:
             --upstream upstream-okf
           test -z "$(git -C tei status --porcelain=v1 --untracked-files=all)"
           test -z "$(git -C upstream-okf status --porcelain=v1 --untracked-files=all)"
+
+
+  k1-sho-main-raw-reader:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: TEI fixed K1 Markdown fixture
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          path: tei
+          persist-credentials: false
+      - name: Pinned actual SHO main G1b product Reader
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: hat47x/sho-composer
+          ref: fc0127400733bac161b3fc0d556f451991d0a510
+          path: sho
+          persist-credentials: false
+      - name: Node 22 runtime for existing SHO CLI
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install only existing SHO Reader dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --prefix sho --ignore-scripts --no-audit --no-fund
+      - name: Read the very same physical TEI K1 files with the real SHO CLI
+        shell: bash
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          set -euo pipefail
+          node --version
+          python3 -B tei/tools/reference-okf-k1/sho_g1b_receipt_probe.py \
+            --bundle tei/testdata/okf-k1-v02 \
+            --expected tei/testdata/okf-k1-v02.expected.json \
+            --sho sho
+          test -z "$(git -C tei status --porcelain=v1 --untracked-files=all)"
+          test -z "$(git -C sho status --porcelain=v1 --untracked-files=all)"
