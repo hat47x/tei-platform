@@ -376,7 +376,7 @@ Itemは未整理の情報を乱暴に保持してよい一般の単位であり�
 | SH-07 | 通信断で現場の停止が必要だが、反射Profileの範囲外 | 実Hostでfail-safe/明示拒否。許可済みの狭いProfileは効果と実Receiptを別に観測しSEIへ後送 |
 | SH-08 | Twin風のScenario/仮想EdgeまたはEKI Task完了 | Simulation/Derived/Task/Artifact/業務確定の区別。Self-build/SUI基礎未達ならOntology Twin本格実装へ進まない |
 
-**実行順と非目標**：現行のP0-M/P0-D/P0-P/P0-R/P0-E（§7.12）を維持する。まず公開合成のSUI探索記録と旧Source Evidenceについて、*人/AI翻訳Candidate → read-only TEI Data/Function/Business候補 → Source/Meaning必要条件の不足表示 → SHO任意引用*を**設計比較票**として評価する。TEI実Providerの1 Function/1 Readが未接続なら、SEIへの実InquiryやTwin運用を先に作らない。後続のSEI連携は実Decision Ownerの#3475、外部REAは#3394、SHO文書の実保存はSHO #4/#6のOwnerに戻す。第二Shared Registry/Workflow Host/Decision Engine/Direct SUI→TEI importer/TEI内シミュレータを提案しない。
+**実行順と非目標**：現行のP0-M/P0-D/P0-P/P0-R/P0-E（§7.12）を維持する。まず公開合成のSUI探索記録と旧Source Evidenceについて、*人/AI翻訳Candidate → read-only TEI Data/Function/Business候補 → Source/Meaning必要条件の不足表示 → SHO任意引用*を**設計比較票**として評価する。TEI実Providerの1 Function/1 Readが未接続なら、SEIへの実InquiryやTwin運用を先に作らない。後続のSEI連携は実Decision Ownerの#3475、外部REAは#3394、SHO文書の実保存はSHO #4/#6のOwnerに戻す。第二Shared Registry/Workflow Host/Decision Engine/TEI内シミュレータや、SUI候補を受理済み意味へ無審査で昇格するImporterは提案しない。出典・未受理を保持する限定的なSUI→TEI直接Adapterは妨げない。
 
 **Claim ceiling**：これは既存GitHub Issue/採用済み境界と過去会話を照合した文書上の実装順/反証計画であり、REAの実解析、SUIからTEIの実翻訳・Parser/Owner受理、SHO実Writer、TEI生成SDK、SEI実Message、EKI実Task、独立Provider Commit/Receipt、Ontology Twinはこの追補では**すべてNOT RUN／NOT ACCEPTED**。将来Gateの技術成功をOwnerの意思決定や本番の実権限へ昇格しない。
 
