@@ -62,6 +62,7 @@ type CatalogService interface {
 type ValidationService interface {
 	Validate() (operations.WorkspaceValidation, error)
 }
+
 // InspectionService is a host-selected, typed read-only service. Its presence
 // does not prove Plugin resolution, invocation provenance, or current authority.
 type InspectionService interface {
