@@ -23,6 +23,14 @@ go version
 
 個別の参照ツールは、それぞれの`package.json`の`engines`が要求版を示します。2026-11-07時点では、`reference/tei-studio-independent-consumer`が`>=22.16.0`、`reference/tei-studio-workbench`が`>=24`です。workflowには`22`・`22.16.0`・`24`・`24.21.0`が混在しており、単一の版へ統一していません。使うツールの`package.json`を確認し、版が合わない場合はそのツールの試験を実行しないでください。この混在を解消するかは未決です（[#2953](https://github.com/hat47x/tei-platform/issues/2953)）。
 
+### Windowsでの`go test ./...`
+
+`tools/reference-cognition-port`と`tools/reference-generator-selection`の外部コマンド試験は、コマンドを`bash -c`で起動し、`cp <fixture> $TEI_...`のようにfixtureのパスを渡します。Windowsのfixtureのパスは`D:\GIT\...`の形で、WSLの`bash.exe`にもGit Bashにもそのままでは解決されません。このため、この2パッケージの外部コマンド試験はWindowsでは理由付きでskipします。`bash`が見つからない環境でもskipします。
+
+- skipは通過と同じ意味ではありません。Windowsでは、外部コマンドを経由する経路は未検証です。Linuxで実行した結果を正とします。
+- 実装の契約（`bash -c`で外部コマンドを実行する）は変えていません。
+- この扱いは暫定です。Windowsでも成立する形へ契約を変えるか、`tools/reference-change-packet`など`bash`を前提にする他のツールへ広げるかは、[#3461](https://github.com/hat47x/tei-platform/issues/3461)で決めます。
+
 ## 最初の小さな作業領域から始める
 
 大きな参照用作業領域である`reference/workspace`を調べる前に、独立した小さな作業領域で、業務上の意味を一か所変更し、検証と入力元索引で結果を確認できます。

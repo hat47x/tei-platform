@@ -6,6 +6,8 @@
 
 独立した参照プラグインの検査入口は [`check-reference-plugin-isolation.sh`](check-reference-plugin-isolation.sh) です。`plugins/`配下の参照実装を一時Goモジュールへ複製してオフラインで検証します。
 
+Windowsでは、`bash -c`で外部コマンドを起動する`reference-cognition-port`と`reference-generator-selection`の外部コマンド試験を理由付きでskipします。skipは通過ではなく、Windowsでの外部コマンド経路は未検証です。理由と暫定の扱いは[はじめに](../docs/getting-started.md)の「Windowsでの`go test ./...`」と[#3461](https://github.com/hat47x/tei-platform/issues/3461)にあります。
+
 ## リポジトリ検査と共通部品
 
 | 場所 | 役割 |
