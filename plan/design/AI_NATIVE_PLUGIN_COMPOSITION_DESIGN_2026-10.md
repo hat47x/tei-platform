@@ -945,3 +945,19 @@ Registryは**発見の索引**、Issuerは証拠の発行主体、Host/Ownerは�
 **最新の証拠上限**：[main統合 #3487](https://github.com/hat47x/tei-platform/pull/3487)は既存Harness・薄いAdapter・独自Harnessの増分効果比較を計画化したが比較試験完了ではない。#3479の旧HEADはSource-only Go単体[Health #42461871730](https://github.com/hat47x/tei-platform/actions/runs/42461871730)成功だが、新たなManifest-only／Source×Manifest 2×2を加えた後のHEADはその成功に便乗できず、現HEAD CI合否は本節で未認定。#3490のRuleFingerprint/Imported Source/BOM資格もDraft。D1b通常CLI/Studio二Consumer・実Go Link／Provider Source同一Load閉包・Qualified 2×2 BOM・実H2/H3 OS拒否・Owner業務意味受理は今回NOT RUN。
 
 **次の一件を固定**：S1局所Go試験のexact HEADを確認し、S0 Studio明示Builtinの互換/fail-closedを確認してから、**S2-01の通常CLI→S2-02の実Studio Bridge**で同じSelected B実Callを成立させる。S3のProvider Source/Manifest、RuleFingerprint、実Artifact、Trait/BOM、現在Host GrantはそれぞれのOwnerと独立Expectedで照合。旧application-runtime CarrierのScopeを便宜的に拡張せず、第二Resolver/Host/Registry/Runner/Scenario SSOTを追加しない。
+
+#### 27.9.1 D1a互換Baseline・非信頼Error・原子的Traitの独立二Consumer（2026-11-08、main統合済みの成熟差分と現Draft実Sourceから最短工程を補正）
+
+**既存D1aの証拠は確定したがD1bではない**：[main統合 #3378](https://github.com/hat47x/tei-platform/pull/3378) は既存CLIとStudioの**直接Builtin Operation経路**を、Data／Rule／Relation／Semantic Capability／Application／Patternの計6 Subjectで個別呼出しして比較。Canonical・Source Anchor・World/SourceIndex FP・Effect・NotFoundを検査し、exact PR HEAD [Health #42463508044](https://github.com/hat47x/tei-platform/actions/runs/42463508044) はsuccess。これをD1aの固定互換Baselineとするが、同じ結果を返すだけではSelected Provider Bを実Callしたことにならない。D1bの正負Expectedは既存#1180/#2514へ委譲する。
+
+**Traitの共通性は証拠形式に限定**：[main統合 #3502](https://github.com/hat47x/tei-platform/pull/3502) はAtomic Traitを**T=開発環境Inspector**と**R=業務Function Reader**の二つの独立したConsumerで検証する計画を既存Trait設計へ統合した。共通にするのはDefinition／Binding／Implementation／Invocation／Conformanceの証拠形であり、Provider Instance／Target／Build／Source／Current Grantや必要Traitの集合ではない。Rの具体縦断は `pattern order_entry.recent_orders browse` → `query order_entry.recent_orders` → `recent_orders.sql (:from)` → `datasource sales` → `application order_entry` の `sales_core` Alias →実Provider Rowset→Function Context。`sales.order.submit`は別のSemantic Capabilityであり、BrowseにMutation／Transaction Traitを暗黙に与えない。Rの実Reader/DB/0件/partialとAuthorityは#2586/#3270へ引き継ぐ。D1 Tの合格からRを合格にしない。
+
+**Host-selected Serviceの型付きErrorは非信頼入力**：[Studio Draft #3371](https://github.com/hat47x/tei-platform/pull/3371) で、Providerが `operations.InspectionError` のCodeだけでなくMessageも任意に作れるため、一般的な `errors.New` の匿名化では秘密のPath/Token/内部Causeが漏れ得ることが判明。現Draftの `selectedInspectionFailure` は既知の4 Codeを固定公開Messageへ変換し、未知Codeを `OPERATION_FAILED` に縮退するGo Sourceと5負例を追加している。これは非nil Factoryでのfail-closed／暫定Builtin明示登録の追加措置。旧Builtinの表示契約は変更しない。最新HEADのCI/実Wailsから見た非開示成功をこのSource記載だけで認定しない。
+
+| 最小受入 | 独立Expected・停止線 |
+| --- | --- |
+| **S2-05 D1a→D1b** | main #3378の6 SubjectとNotFoundを互換Baselineとして保持。通常CLIと実Studio BridgeがBを実Callして同等Resultを出すか**実Call site**で判定。Bを選んでA実Call（結果同一）は不合格。Source完全閉包・現在Grantは別 |
+| **S2-06 型付きErrorのClient開示** | Host選択ProviderからPublic Code＋秘密Message、Private Code＋秘密Message、Generic Errorを返し、既知安定Code／固定文以外のProvider Code/Message/CauseがClientへ出ないことを確認。CLIとStudioで別Consumer実受領を計測 |
+| **S2-07 Trait二用途** | T=Inspector read-only、R=Function BrowseのRequired Traitを別々に評価。Manual Requiredの未履行・Provider未選択・Readerの0件／partialを別判定。BrowseへMutationを自動継承しない。Rの実DB・Function Contextは既存#2586の独立Attemptで扱う |
+
+**実装順の修正**：D1aの同一Result比較を再作成せず、#3381のS1局所Selected Go Call、#3371のStudio ServiceとError保護のexact HEADを検証してから、通常CLI dispatch→実Studio Bridgeへ同一Bを接続する。その一件が終わる前にTrait R側実DBや正式BOMをD1のHard dependencyへ追加しない。#3502は設計main統合でありRの実Provider Readと実Trait履行の完了ではない。今回の文書更新はdocs-onlyで、S2-05〜07の新しい製品統合試験・Owner Accepted MeaningはNOT RUN。
