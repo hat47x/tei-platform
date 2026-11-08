@@ -99,3 +99,23 @@ T0-04では上流REA 6.7.0の不正JS例について、まずraw JSONから`data
 **実装の最初のMissing Edgeの調査**：REA上流が出したEvidenceを、既存read-only操作に**観測データとして投影**できるか先に見極める。型不足があれば最小のRequest/Resultの差だけ#1158/#3419へ、Provider selected→invoked差は#1251へ、Source-import closure差は#1163/Workspaceへ戻す。SHOへはSource-backed文書候補だけを#6経由で渡し、新しいSource Registry、意味正本、Runnerを追加しない。
 
 **この追補も設計文書の追加だけ**であり、REA T0/実Tool Call、CLI/MCP/Studio取込、`*.tei.md`Reader/Parser、SQL/DB実Provider、SHO Writer、旧Runtime比較、正式Owner意味受理は**NOT RUN**。main統合済みの#3479/#3458/#3482が持つ局所実績を、新しいREA縦断E2E実証と混ぜない。
+
+
+---
+
+<!-- rea-event-flow-topology-intake-20261108 -->
+## 9. 逆解析からフロー・図表への写像：静的発見と実動作を分ける
+
+TEIの三視点統合[#1124](https://github.com/hat47x/tei-platform/issues/1124)、業務手順[#1125](https://github.com/hat47x/tei-platform/issues/1125)、[Interaction Flow #3503](https://github.com/hat47x/tei-platform/issues/3503)、汎用Representation[#2497](https://github.com/hat47x/tei-platform/issues/2497)を既存Ownerとする。逆解析で発見した画面遷移、イベントハンドラ、SQLの更新候補、業務手順らしい呼出し列は、**同じFlow種類ではない**。少なくとも **Interaction Flow／Business Operation Flow／Adaptive Activity・Lifecycle** の役割と、Data/Function/Businessの三視点における対応位置を**候補**として区別する。用語・既定Flow Schema・Generatorの正式採用はそれぞれのOwnerが行い、本T0/T1-A実験で第二Flow DSLを新設しない。
+
+表示上は「全体像→部分Graph/表→Source occurrence」というナビゲーションを持ち、利用者に専用Domain用語の事前理解を要求しないことを受入圧力に含める。各Node/EdgeにはSource Evidence参照、観測と推論の区別、Relation identity/向き/多重性、取得した版/Scope、不確実性、現在のOwner Reviewを示す。**標準的に固定する遷移・Guard・Hook Slotと、Profile/案件側が拡張可能な部分**を区別するが、見つかった外部コードの分岐から「TEI標準固定部」が成立したとは推論しない。専門Web/Chat/VUIなどの媒体別Flowは、共通Operationの意味と分離して必要に応じて投影する。
+
+| 対照 | 外部解析で観測し得るもの | 正しく保留すべき内容 |
+|---|---|---|
+| **FLOW-A** | `onclick`→handler→API候補の静的参照 | 実画面で押下・送信・状態遷移した事実／唯一の実Path |
+| **FLOW-B** | SQL UPDATEや保存関数へのコード参照 | 旧DBへ実Commitしたこと／業務操作として受理済みであること |
+| **FLOW-C** | 非同期callbackや条件分岐、同名イベント複数出現 | 実行順・再試行回数・対話状態の一意性 |
+| **FLOW-D** | 同一Node間に異なるRelation IDで複数Edge | 一本へ縮約しない。編集先Sourceが一意でない間はread-only |
+| **FLOW-E** | Ownerが設定した標準/拡張Hook候補と、旧コード中の挿入箇所 | 挿入位置の一致をHookの実Contract・Provider/Authorityへ昇格させない |
+
+上記は**T1-AでSource-backed構造候補を投影する追加圧力**であって、T0 REA静的分析のPASS条件を拡大しない。実際のFlow実装・Generator・異媒体のOperation/Scenario E2Eは[#3503](https://github.com/hat47x/tei-platform/issues/3503)/[#1180](https://github.com/hat47x/tei-platform/issues/1180)等の責務とする。未実行の実UI/実Commit/旧Runtime Actuationはunknown。
