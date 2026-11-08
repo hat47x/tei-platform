@@ -27,6 +27,11 @@ func TestDirectInspectorCLIStudioShadowParity(t *testing.T) {
 		{Kind: "semantic-data", ID: "sales.order"},
 		{Kind: "semantic-validation", ID: "sales.order_line.line_number_positive"},
 		{Kind: "semantic-relation", ID: "sales.order.lines"},
+		// #3482 independently fixes the public Capability/Application slice.
+		// This adds a *second consumer* baseline, not a Function/Provider proof.
+		{Kind: "semantic-capability", ID: "sales.order.submit"},
+		{Kind: "application", ID: "order_entry"},
+		{Kind: "application-pattern", ID: "order_entry.submit_order"},
 	} {
 		t.Run(subject.Kind+"/"+subject.ID, func(t *testing.T) {
 			var out bytes.Buffer
