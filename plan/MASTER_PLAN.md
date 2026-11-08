@@ -22,6 +22,7 @@
 
 - `plan/design/TRAIT_ATOMIC_COMPOSITION_AND_FULFILLMENT_2026-11.md` ：原子的Traitの実装義務、Manual/Generated/Providerでの履行、合成・不適合診断を既存#951/#2495/#3271/#3267へ接合する**設計・実証候補**（[#3278](https://github.com/hat47x/tei-platform/issues/3278)）。新Resolver/新Hard Gateや実装完了を意味しない。
 - `plan/design/HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md` ：Web/Desktop API例外・Client Reaction・Graph/Table/Traceの横断ドッグフーディング（[#3274](https://github.com/hat47x/tei-platform/issues/3274)）。構成時Guard DAGとRuntime HTTP Decision Pathの差、Effect確定性・Response受領性・Client現在資格の分離を維持。**P-1a**は現E1のTerminal宣言集合が実経路Audit証明でないことを限定V8 Characterization 2/2で観測。**P-1b**にexact-head/Node実Runnerの対象限定CIを設け、結果は当該Runで評価。**P0以降**は#3262で既に存在する試験用Design Context Consumerから必要Source/Edge/Graphの欠落を検査し、#2497/#1124の投影損失と後着/開示失効、#1174の現Command Unknown伝播、#3279/#3267のTrait/BOM実組合せを独立Expectedで圧力試験する。HDG-23〜28を追加。実TEI Graph Loader/Host Path/Client/外部Providerの成立、正式契約採用は未確認。既存Gate B/Cや各Ownerを変更しない。
+- `plan/design/HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md` ：Web/Desktop APIの例外結果、Client Reaction、HTTP Decision Graphと表・実行トレースの**提案中**の横断ドッグフーディング計画（[#3274](https://github.com/hat47x/tei-platform/issues/3274)）。既存#1043/#1656/#1158/#1174/#2620/#1180のOwnerを維持し、実装・正式採用・実Target E2Eの成立を意味しない。
 
 ## 現在の主線
 
