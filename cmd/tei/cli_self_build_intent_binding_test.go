@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -116,6 +117,10 @@ func buildIntentReportingChild(t *testing.T, dir string) string {
 	return child
 }
 
+// declaredIntentFixture is a minimal build intent that the SC0-01 reader accepts:
+// it needs a formatVersion and a subject id, or the entry refuses the file.
+const declaredIntentFixture = `{"formatVersion":1,"subject":{"kind":"plugin","id":"tei.plugin.fixture"}}`
+
 // §4.8: the entry hashes the declaration it held before starting anything, and
 // records the child's digest beside its own.
 func TestSelfBuildOuterBindsTheDeclarationBytesItHeld(t *testing.T) {
@@ -123,10 +128,10 @@ func TestSelfBuildOuterBindsTheDeclarationBytesItHeld(t *testing.T) {
 	child := buildIntentReportingChild(t, dir)
 	workspace := outerWorkspace(t, dir)
 	intentFile := filepath.Join(dir, "intent.json")
-	if err := os.WriteFile(intentFile, []byte(`{"intent":"sample"}`), 0o600); err != nil {
+	if err := os.WriteFile(intentFile, []byte(declaredIntentFixture), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	wantDigest := digestOfBytes([]byte(`{"intent":"sample"}`))
+	wantDigest := digestOfBytes([]byte(declaredIntentFixture))
 	output := filepath.Join(dir, "artifact")
 	// Compute the digest the child will produce so the artifact check matches.
 	if err := os.WriteFile(output, []byte("artifact-bytes"), 0o600); err != nil {
@@ -187,7 +192,7 @@ func TestSelfBuildOuterDetectsAChildThatReadADifferentDeclaration(t *testing.T) 
 	child := buildIntentReportingChild(t, dir)
 	workspace := outerWorkspace(t, dir)
 	intentFile := filepath.Join(dir, "intent.json")
-	if err := os.WriteFile(intentFile, []byte(`{"intent":"sample"}`), 0o600); err != nil {
+	if err := os.WriteFile(intentFile, []byte(declaredIntentFixture), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	output := filepath.Join(dir, "artifact")
@@ -240,7 +245,9 @@ func TestSelfBuildOuterRecordsWhyTheByteCheckWasNotPerformed(t *testing.T) {
 	child := buildSelfBuildChild(t, dir)
 	workspace := outerWorkspace(t, dir)
 	output := filepath.Join(dir, "artifact")
-	report, _ := runOuterShapeWithIntent(t,
+	// SC0-01 requires a declaration file, so a logical ID alone is refused before
+	// any binding is recorded: there are no declaration bytes to check.
+	report, code := runOuterShapeWithIntent(t,
 		"-child", child,
 		"-workspace", workspace,
 		"-intent", "intent.sample",
@@ -248,17 +255,13 @@ func TestSelfBuildOuterRecordsWhyTheByteCheckWasNotPerformed(t *testing.T) {
 		"-output", output,
 		"-child-arg", childArgs(t, "-artifact", output, "-digest", "sha256:deadbeef"),
 	)
-	binding := report.IntentBinding
-	if binding == nil {
-		t.Fatal("no intent binding was recorded for a logical ID")
+	if code != 2 {
+		t.Fatalf("a logical ID without -intent-file was not refused: code=%d", code)
 	}
-	if binding.CheckPerformed {
-		t.Fatal("the byte check was reported as performed without declaration bytes")
+	if report.Error == nil || !strings.Contains(report.Error.Message, "-intent-file is required") {
+		t.Fatalf("refusal had no stated reason: %+v", report.Error)
 	}
-	if binding.UnperformedReason == "" {
-		t.Fatal("the missing byte check had no stated reason")
-	}
-	if binding.L2BClaimed {
-		t.Fatal("L2-b was claimed")
+	if report.IntentBinding != nil {
+		t.Fatal("a binding was recorded although the declaration bytes are unknown")
 	}
 }
