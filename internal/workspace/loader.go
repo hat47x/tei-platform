@@ -80,7 +80,7 @@ type Result struct {
 	// Retained privately for the selected nested Provider's same-Load input.
 	// Do not include raw Manifest or Provider Source in a public projection.
 	sourceManifestBytes *manifestReadBytes
-	importedParsedLoads  map[string]*importedParsedLoad
+	importedParsedLoads map[string]*importedParsedLoad
 
 	// Format version declared by the Workspace manifest. Semantic files may
 	// declare their own header; when they do, it must agree with this value.
