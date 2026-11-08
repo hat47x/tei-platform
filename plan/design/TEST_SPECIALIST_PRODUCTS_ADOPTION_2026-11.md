@@ -18,6 +18,10 @@
 > ③ **CLI契約の現行圧力**：[第2ラウンド #3356](https://github.com/hat47x/tei-platform/pull/3356)の実CLI調査ではD-9（管理MarkdownはLoaderの意味入力でない）とD-10（CLI JSON形状不統一）が残り、MCP Server入口は**未確認・MCP NOT RUN**。一方[#3366](https://github.com/hat47x/tei-platform/pull/3366)は`view -format json`にWorld/SourceIndex Fingerprintを加える**未統合PR**で、同HEADの限定/全体CI成功は現時点の検証証拠。見える欄が増えることとSource全件のReader資格は別。
 > ④ **次の実行順（既存Ownerへ委譲）**：P0は #3365 のmain統合後Run資格確認→#3262の3 Required Rule/Source/実選択Modeと受領完了の局所判定→#3273の**未知Obligationを生成者から隠したT1-B**、同時並行で #2586 の実Product Function→SQL/Provider Read。P1は`End marker`・`verified`を呼出元booleanと実Receiver/Runの独立Witnessへ分ける否定対照、#3356のD-9/D-10と#3366の各Version/Scope相違をCLI/Skillに透過しない比較、#3279 Plugin実選択と実Invoke、#2831の`cmd/tei`再入を追加。**T1-B盲検／実Product Provider／外部H3完全受領／Go C1／Owner Meaningは依然未資格**。
 
+
+<!-- tei-test-currentmain-api-13reply-42controls-20261108 -->
+> **現行mainに基づく補正（2026-11-08、§30を優先）**：ADR-0048はCLI／MCP／HTTP／Desktopで共有する型付きアプリケーションAPI方針として**採用済み**（#3439）。実TEI MCP入口がないという旧調査は履歴であり、main #3403には4 read-only Toolの**参照MCP Adapter**が存在する。#3458は実CLI／参照MCPのvalidate正常・意味失敗・Source Load失敗の投影を限定的に揃えた。main #3482の[push CI #42462861657](https://github.com/hat47x/tei-platform/actions/runs/42462861657)は**13実CLI Reply、42限定Consumer Controls、Design Context Packet/9、既存Scenario6＋T1-A／Source-only失効**で成功。全Domainは引き続きpartial／qualifiedTestGeneration=false、実Function Invocation・Provider Read・外部H3 Delivery・T1-B・C1・Owner意味受理は未達。#3477の同Workspace Source-only改版と#3479のimport元Provider Raw改版は別の失効問題。Workbench旧Draft #3372はclosed/unmerged、後継は[#3486](https://github.com/hat47x/tei-platform/pull/3486)（Draft）である。過去節の「MCPなし」「11 Reply」「#3370未統合」「#3372現行」はそれぞれ記載当時の状態とみなす。
+
 ## 1. 守るべき不変条件
 
 TEIのテストは、単なる「実行した／PASSした」の収集ではなく、**テストの判別力・実入力の同一性・対象範囲・証拠の現在資格**を分離して扱う。専門製品の導入で新しいSemantic正本、第二Driver、第二Test Scenario、第二Host、第二Authority、共通Runtimeを増やさない。
@@ -1491,3 +1495,70 @@ T1-Bが参照した設計Sourceの**必要依存集合**を、少なくとも次
 **受入経路と停止条件**：P0-I #3482の独立Required限定Contextを実消費→P0-T #3273真の盲検T1-B（対象1件、独立Holdout）をまず一往復。P0-R #2586の実Provider Readは並行。P1 #3420の残るCLI/MCP 3 Tool契約／#951実Plugin Invoke／#3274 E1→実Host Bindingを別Ownerで実施、P2 #3267 BOM exact TupleとC1/NFR。**各OwnerのCase/Scenario/Oracleを別ファイルへコピーしない**。資格の源泉はSourceと実行Attemptであり、Markdown中の合否欄ではない。
 
 **今回の状態**：main #3403/#3439/#3458/#3477/#3482/#3485、#3440の実装・実証文書と既存PR証拠をGitHubで確認した設計更新。新しい本章のTT-139〜146統合E2E、外部H2/H3、T1-B盲検Agent、正式Plugin/Provider実Invoke、Go C1/NFR、現在のHost Grant/Effect/Owner Accepted Meaningは**NOT RUN / UNQUALIFIED**。Draft #3479/#3365はmain資格へ昇格させない。
+
+<!-- tei-test-adr48-mcp-function-closure-two-source-drift-20261108 -->
+## 30. 2026-11-08：ADR-0048共通Operation・実MCP・一Function宣言・二種Source失効をTest Admissionへ（現mainとの差分）
+
+### 30.1 確定できた実績と、これから必要な一辺
+
+| 最新のSource・実装 | 実際に成立した観測・CI | その証拠では成立しないこと |
+| --- | --- | --- |
+| [main #3439](https://github.com/hat47x/tei-platform/pull/3439) ADR-0048 | 共通の型付きApplication APIを正式な設計方針として採用。CLI/MCP/Web/DesktopをTransport/Presentation Adapterとし、ローカルHTTP常駐や新TEI Hostを必須にしない | 4 Transportの本番実装、全Operation同値、Provider/Host Grant |
+| [main #3403](https://github.com/hat47x/tei-platform/pull/3403)／[main #3458](https://github.com/hat47x/tei-platform/pull/3458) | read-only MCP参照AdapterでCatalog/Inspect/Trace/Validateの4 Tool。Validateについて共有operations投影・実CLI／実MCP正常・Source load失敗・意味失敗の一部同値とMCP isError対応を検証 | catalog/inspect/traceの**全失敗・全wire同値**、未知Field/不正型/NULL/上限／MCP protocol全準拠、外部Harness H2/H3の受領・現Disclosure |
+| [main #3482](https://github.com/hat47x/tei-platform/pull/3482) | **main exact 8ed583790e63b63527c1dd8f8aecc1d6ce6e3260**／[push実CI #42462861657](https://github.com/hat47x/tei-platform/actions/runs/42462861657) completed/success。13実CLI Reply・従前32＋10の**42 bounded Controls**。sales.order.submit Capability、order_entry Application、入出力型、3 Rule、sales_core Database申告、Loader／Role／Source Definitionを独立Requiredで限定照合。既存Design Context Packet/9、Scenario6＋T1-A/Source-only失効を保持 | **具体FunctionのInvocation/Target Entry/Query→Provider実Read**、原子的13 Reply共同Snapshot、全Business意味、外部Tool受領。boundedFunctionSlice.declarationStatus=bounded-presentでもqualifiedTestGeneration=false |
+| [main #3477](https://github.com/hat47x/tei-platform/pull/3477) | 同一WorkspaceのSource末尾LF変更で**World Fingerprint不変／Source Index Fingerprint変更**。World-pinned Scenarioは実行できるが、取得済みDesign Contextの引用資格が失効する実CLI対照 | A→B→A履歴不変・意味再受理、Imported ProviderのRaw鮮度 |
+| [Draft #3479](https://github.com/hat47x/tei-platform/pull/3479) | Import先Provider Rawの末尾LF変更により、Consumer World／Semantic／Consumer Source Indexが変わらない場合でもProvider Raw／LocateImportedSourceの現観測は変わるという**別反例を追加**。PR版別の実CIは個別判定 | 新しいImported Provider Readを原子的Snapshotと呼ぶこと、Consumer二指紋一致→Provider Source/Builder Input Closure。現PR未統合・全Source資格なし |
+| [main #3478](https://github.com/hat47x/tei-platform/pull/3478)／[main #3485](https://github.com/hat47x/tei-platform/pull/3485) | 実Reference Go HTTP Hostの**10経路**のCallback/Audit・202後panic、E1 PlanとGo HostのRoute/Action差分を限定対照。#3485専用Node/Go [CI #42462531490](https://github.com/hat47x/tei-platform/actions/runs/42462531490) success | 実TEI E1→Host選択・実Provider Bind/Grant、202からBusiness Completion/Effect Receipt、全Path/C1 |
+| [main #3440](https://github.com/hat47x/tei-platform/pull/3440) | cmd/tei自身のstage1成果物がstage2 invokerとして作動した**限定L3**、同Child・Artifact一致を独立欄で観測 | Full Source Closure／Seed Trust／Host実行資格／G4。sourceClosureState=rejected・G4=UNQUALIFIEDを保持 |
+| [Draft #3486](https://github.com/hat47x/tei-platform/pull/3486) | 旧#3372 closed/unmergedを置換。物理FK/UNIQUE/Index・複合/多重参照・観測Source/版を合成Catalog→Workbenchで保持する製品修正候補 | 現PR HEADの全CI・実PG/Function Read・業務Relation/CRUD意味受理・DDL適用／Receipt |
+
+上表はVersion/Scopeの異なる証拠の**並列表**であり、相互結合した一つのEnd-to-End試験ではない。Product Skillが受領する正規の答えは新Schemaではなく、既存Source/Operation/Scenario/Independent Expected/Evidenceを用途別に投影した結果と、その**不足理由・Claim Ceiling**である。
+
+### 30.2 共通Operationをテスト生成の「取得口」として使う際の受入
+
+ADR-0048の既定フローは **共通Application Operation → CLI/MCP/HTTP/Studio Adapter**。共通化するのは意味対象・入力、Typed Result/Failure、作用、必要な現在資格であり、argv／JSON-RPC数値Error／HTTP Status／画面書式そのものではない。共通APIをWeb ServerやTEI独自Runtimeへ集約しない。
+
+**初回Contractの比較対象は4 read-only Operationだけ**。validateは#3458の投影を基線として、次はCatalog/Inspect/Traceについて同じ許可Workspaceで実バイナリ・Adapterを独立起動し、正常・不在・未対応Kind・Source Load失敗・Meaning Warning・部分・Unknownを比較する。差異はTransport固有表現と明示Reasonだけに許し、JSONの「ok」やTool annotationからMeaning/Disclosure/実Result資格を発行しない。
+
+受入時には **(1) Source/Scope/Versionの意味同一性、(2) fail/error/isErrorの対応、(3) Result Shape/nullable/empty、(4) Recipientに届いたbyte/end、(5) Reader側に許された開示範囲** を別々に測る。参照MCPの入力にpath/rootがないことは任意のResourceへアクセス不能の証明ではなく、実Host隔離も別。#3420の残件（未知欄・不正型・NULL・サイズ制限・initialize/通知・protocol失敗）をそのまま利用する。MCPを必須Hard Gateとせず、T1-Bを同一実CLIで先行検証できる。
+
+### 30.3 Source指紋とSnapshot資格を「何を含む指紋か」で切り分ける
+
+| 変更の位置 | Consumer World | Consumer Source Index | 対象Provider Raw | 判定できる範囲 |
+| --- | --- | --- | --- | --- |
+| 同Workspace内Sourceの意味不変なRaw変更（#3477） | 同一になり得る | 変わる | 対象外 | Contextの旧Source引用を拒否。World pin実行成功とは別 |
+| 別WorkspaceからimportしたProvider Rawのみ変更（#3479） | 同一になり得る | 同一になり得る | 変わる | Consumerの2指紋だけでは新Provider Source鮮度を認定しない |
+| A→B→Aで同Rawへ復帰（#3299） | 戻り得る | 戻り得る | 戻り得る | 同byte現在一致と、変更履歴・Owner再受理・Current Grantを区別 |
+| Function宣言は同じでProviderのSelected/Loaded/Invokedが変化（#3482/#951） | 同じことがある | 同じことがある | 同じことがある | 実Invocation/Build/Target/Grantの別Witnessが必要 |
+
+よって実Source/Meaning/Build/外部引用を**一つのFingerprintだけで共通失効・共通再利用**しない。Consumer-owned SourceとImported Providerの**Source occurrence/Location/Raw revision**を区別し、必要なProvider実消費入力のClosureを独立Requiredと比較する。Rawが変わったから全Buildを失効させるのも、Worldが同じなら全Consumerの再利用を認めるのも禁止する。新しいFingerprint Service、Source Store、中央履歴Authorityは本計画で設けない。#2600/#3267/#2743/#3262が失効・実利用範囲の既存Owner。
+
+### 30.4 Test Patternに落とす独立反例 TT-139〜TT-150
+
+| ID | 一つだけ変える負例と正の対照 | 必要な判定・Owner |
+| --- | --- | --- |
+| **TT-139 CLI/MCP意味失敗の同値** | 同Workspaceのvalidate正常→重複宣言/Source Load失敗へ変える | CLI exit／Typed failure.codeとMCP isError／意味上codeが一致。#3458 main限定実証。残る3 Operationは#3420 |
+| **TT-140 MCP入力を補正してしまう誤成功** | 正規Tool args→未知Field・型違い・NULL・Root変更／Protocol通知異常 | 不正入力はFail-closed、Workspace Root固定。Protocol errorと業務Failureを混同しない。#3420（新全ケース未実行） |
+| **TT-141 Function宣言と実Invocation混同** | sales.order.submitのSource/Schema/3 Rule/DB Requirementが全Present、しかしEntry/Provider実選択が欠ける | bounded declaration-present維持・invocation/read/host effectをnot-observed。#3482 main限定実証／実Providerは#2586 |
+| **TT-142 PacketのPartialをCompleteへ偽昇格** | 実13 CLI＋42限定Controlsと局所Packet/9が成功したが、全Function/Business/RoleのRequiredが未閉包 | ローカルpositive保持、qualifiedTestGeneration=false／missingを明示。#3262／#2514 |
+| **TT-143 同Workspace Source-only drift** | World同一でSource Indexだけ改版したContextを候補生成前後に再使用 | 旧Context引用資格を拒否、旧World Pin Scenario自体の実行成功を否定しない。#3477 main |
+| **TT-144 Imported Provider Raw-only drift** | Consumer World/Indexは不変だがProvider Raw改版／LocateImportedSource現在値変化 | 引用・Build input・実Providerの資格はunknown/stale。別Providerを自動的に再実行・再受理しない。#3479 Draft／#2743/#2600 |
+| **TT-145 HTTP 202・監査と効果** | 202正常・202送信後panicでAudit Stageがcompleted⇄error | 実Host Path証人は保持、業務完了・Effect Receipt/Client受領はunknown。#3478 main/#1174 |
+| **TT-146 E1／Go Host二視点の経路不一致** | E1 method/path/actionだけを変更、Go Host Policyは不変 | 両方の局所PASSを保ちながらCross-Binding不一致を検出。#3485 main限定／#3274 |
+| **TT-147 self-buildの過剰なG4主張** | stage1成果物＝stage2 invoker＋artifact一致だがSource closure rejected | 局所L3 witness保持、G4と現在DeliveryはUNQUALIFIED。#3440/#2831 |
+| **TT-148 物理FKからの業務Relation誤生成** | Fake Catalogで同対象への2 FK／複合Key・部分Indexを保持、Owner Meaningなし | Physical Observationは保持、Accepted Business Relation/Function CRUDはunknown。旧#3372でなく#3486が実装Owner |
+| **TT-149 Harness二重送出・送出上限** | 同じTool内容がモデルInputとSession Log extensionに別載せ／maxBytes超でextension省略 | Raw HTTP request byteとModel/Extension/Sinkを別計測。Session完了≠外部送出なし、公開許可なしに生Sourceを出さない。#3415/#3470/#2515 |
+| **TT-150 Legacy一致・Desired欠損の逆転** | 旧Runtime/新Targetとも同じRowを落とす⇄移行後Desiredでは当該Rowが必須 | Legacy Actualの一致とOwner Desired／Target Actual適合を独立判定。旧新同じバグを移植してもmigration-qualifiedにしない。REA #3394／#2514/#2586 |
+
+上記は**既存OwnerへのTest Obligation引渡し**であり、正式な新Scenario/Oracle/Transport Schemaを採用しない。main各PRで実証された局所値と、本表の異なる横断ケースを一つのPASS数へ足し算しない。TT-139のvalidate限定、TT-141の宣言、TT-143の同Workspace Source-only、TT-145のGo Host10 Path、TT-147の限定L3が先行実績。それ以外の**製品実E2E・別Targetの独立Expected・外部H3 Receipt**は再検収が必要。
+
+### 30.5 2026-11-08現在の実装順：最初の有用な返答→本当のT1-B→横断効果
+
+1. **P0-F｜取得根拠の機械可読な一返答**：main #3482の実13 CLI／42 bounded controlsと既存Packetを使い、公開合成sales.order.submitの**宣言Requiredがどこまで届いたか**、**Function actual Entry/Query/Providerが未観測であること**、Source index mode／import/loaderの不足を一つの用途別read-only Briefへ。モデルの独立Required全世界を自称completeにしない。新MCP Tool名やSchemaを仮実装済みとして広告しない。
+2. **P0-C｜同じ意味を返すCLI/MCPの局所対照**：main #3458 validate parityを維持し、#3420のCatalog/Inspect/Traceと不正入力のfail-closedを実stdio Adapter／実CLIで追加。返信の字面が完全一致しなくてもOperation結果と同じClaim/Failureを独立比較。Provider/Host/外部H3の成功を待たせない。
+3. **P0-T｜T1-BのBlind一件**：#3273の既知line_number=0（T1-A）は除外。#3262の有界Required/Allowed Sourceと、Reviewerが事前固定した非公開Holdout/独立Expectedを分け、生成AIが未知Gapと最小一差分Caseを提案→#1180の既存Scenario→実Pinned CLI Rule結果→#2514/1163独立検証。Source insufficient／Reply partial／未Loadedの場合はCase乱造でなく次の取得行動を提案し、false-qualifiedを測る。§29の#3365 TT-105/106（PR exact HEAD成功・未統合）は局所Receipt目録の根拠にのみ利用。
+4. **P1-R｜Product一Functionの未接続一辺**：#2586の実Source Query SQL byte/args→selected physical Provider→Rowset/Field・partial/empty/NULL→Context/Consumerを**同一Attempt**で。#3482のApplication namespace usesを具体Capability invocationに変換しない。Importer Source RawとConsumer版が不一致ならContextの引用・Test Qualificationを分けて停止。
+5. **P1-D｜Plugin Inspector／三視点へ派生**：#1251/#951/#3371のSelected Provider B→実Invoked BをCLI/Studioで同条件検査し、暗黙Builtin fallbackを拒否。#3486の物理Metaと#3263/#3303の三視点Data/Function/Business・CRUD、REA Raw→Structural Candidate→Owner Acceptedを段階別に扱う。正式Meaningが未受理なら機械生成したTest PatternのExpectedを確定しない。
+6. **P2-E｜Effect/Build/NFR/外部Harness**：#3478/#3485の実Go Host Path、#3440のL3、#3415/#3470の外部Session Log sinkを、実Receipt/Action/Current Grant、G4完全Source/Seed、外部H2/H3実Delivery、C1/NFRと別の評価軸へ。SEI判断移譲・KON/SUI/SHOの追加ConsumerはP0-TのHard Dependencyにしない。
+
+**採用済みと未決**：共通アプリケーションAPIとAdapter方向は**ADR-0048で採用済み**、MCP4 read-only参照入口とvalidate同値はmainに存在する。Feature/Build/Sourceの実完全性、外部Disclosure/Host、MCP全契約、現在Owner業務意味、T1-B盲検生成、実Provider/全C1/G4は**NOT QUALIFIED**。本節は既存GitHub実証から**テスト要件と担当順序を更新した設計差分**であり、新Go/CLI/MCP/PG/Wails/H3実行や受理をこの変更自身で行っていない。新Core型/Host/Registry/Resolver/Parser/Reader/Runner/Oracle/History Storeの重複実装は要求しない。
