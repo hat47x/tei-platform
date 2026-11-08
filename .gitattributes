@@ -91,3 +91,6 @@
 
 # Feature-check asymmetry output is hashed as raw bytes by its README.
 /plan/evidence/FEATURE_SELECTION_CHECK_ASYMMETRY_2026-11-08/** -text
+
+# Resurvey output is hashed as raw bytes by its README.
+/plan/evidence/COMPOSITION_COLOCATION_RESURVEY_2026-11-08/** -text
