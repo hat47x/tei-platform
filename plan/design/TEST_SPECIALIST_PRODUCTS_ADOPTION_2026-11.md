@@ -1429,3 +1429,65 @@ AIに対する推薦が`未カバーのテストを追加`か`まだ必要情報
 **更新した設計判断**：テスト基盤は「生成する/しない」のbinaryではなく、**対象となる業務Obligationに対して、局所的に確認できた正の事実、まだ閉じていない探索範囲、真正に未カバーと判断できる領域を分離し、次にどのReader/Observer/Reviewを必要とするか推薦する**。その同じ結果をCLI/Skill/MCP/Studioへ用途別に整形して渡す。別のSemantic Store、Coverage Engine、Host、Authority、Test Runnerを初手で増設しない。
 
 **本節の資格**：#3365 exact HEAD CI＋Healthのsuccess、#3370の限定dogfood CI成功はGitHubから実確認した他Branchの結果。#3371は一部CIだけ成功、#3372の重要CIは未確定。**今回のGitHub作業は設計文書・Owner引渡しだけ**。新実CLI/Go/実Provider/CLI↔Studio同一Consumer、T1-B盲検、MCP・外部H3、Go C1、Owner正式意味受理はNOT RUN/NOT ACCEPTED。
+
+
+---
+
+<!-- tei-test-nov08-function-parity-source-provenance-p0 -->
+## 30. 2026-11-08 横断統合：13 CLI/42 Controls、CLI/MCP局所同値、Source occurrence鮮度をT1-B入場基準へ反映
+
+### 30.1 現mainの実証基線を更新（旧各章は観測当時の履歴）
+
+| 分離するClaim | 2026-11-08の実装事実と限定Evidence | 依然成立しないClaim |
+| --- | --- | --- |
+| **対象Ruleの局所Required** | main統合[#3354](https://github.com/hat47x/tei-platform/pull/3354)は11実CLI Reply／32合成Consumer Controls。局所Validation 3件とFocused Relation/Canonical/Sourceを検査 | 全Data/Function/Business/Scenarioの独立Required閉包、原子的Read |
+| **指定Functionの局所存在** | **main統合[#3482](https://github.com/hat47x/tei-platform/pull/3482)**は`sales.order.submit`の独立RequiredをCapability／Application／Sourceへ束縛。main push commit `8ed583790e63b63527c1dd8f8aecc1d6ce6e3260` の[専用CI #42462861657](https://github.com/hat47x/tei-platform/actions/runs/42462861657)は**completed/success**。13実CLI Reply・既存32+新10=**42合成Controls**、別Context Packet 9負例、6 Pinned Scenario＋T1-A、Source-only drift負例を同じmain Runで確認 | `sales.order.submit`の実Function Entry/Build収録・実Provider Invoke・全Business Rule/Host Grant・現行実Effect |
+| **Scenario Stepの局所肯定** | [Draft #3365](https://github.com/hat47x/tei-platform/pull/3365)のexact-head専用CI #42394673357とHealthはsuccess。実6 pinned Stepの試験用受領目録を使いTT-105/106を検査 | main統合、全Step送信/外部Tool完全受領、未知のTest未実施や全Product Coverage |
+| **CLIとMCPの接続** | **main統合[#3403](https://github.com/hat47x/tei-platform/pull/3403)**で4 read-only Toolの**参照stdio MCP Adapter**が実在。**main統合[#3439](https://github.com/hat47x/tei-platform/pull/3439)**でADR-0048の共通Application API方針を採用。**main統合[#3458](https://github.com/hat47x/tei-platform/pull/3458)**で`validate`の正常・Load失敗・意味エラーに対してCLIとMCPの文書・成否を局所回帰 | 正式な全Transport共通APIの完成、4 Tool全応答のByte同値、実外部H2/H3 Harness完全受領、実OS/Host/Disclosure・配備資格 |
+| **同Workspace Source-only drift** | **main統合[#3477](https://github.com/hat47x/tei-platform/pull/3477)**で`validation.tei`末尾改行だけの変更時、World同一／SourceIndex版差による旧Context拒否・実CLI Pin比較を移植 | Importした別Provider Sourceの変更、A→B→Aの履歴不変・原子的Snapshot、現在のMeaning/Grantの再受理 |
+| **Imported Provider Source-only drift** | [Draft #3479](https://github.com/hat47x/tei-platform/pull/3479)はConsumerのWorld/SourceIndex二Fingerprintが不変でもImport Providerの原文が変わる対照を設計し、Provider occurrence/sourceが別に必要とする | Draft exact-head Go/CI合格・nested source全Byte・real Consumer Source-use、全Plugin/BOMの再資格化 |
+| **HTTP構成とGo Hostの対応** | main統合[#3478](https://github.com/hat47x/tei-platform/pull/3478)は実Go Hostの有限10経路を対象とし、main統合[#3485](https://github.com/hat47x/tei-platform/pull/3485)はE1とGo Hostで片側宣言が異なるケースのRoute/Action比較を追加 | 実E1宣言→正式TEI Loader→選択済Provider実Invoke、全Audit/Client Receipt・Effect結果 |
+| **セルフビルド** | main統合[#3440](https://github.com/hat47x/tei-platform/pull/3440)は`cmd/tei`自身が駆動するstage0→stage1→stage2の限定実行を観測。三つの実プロセス/Artifact関係を区別 | Source Closure `rejected`、Trusted Supply、全G4再現性/配備/Owner資格。参照Driverだけの旧「cmd/tei L3なし」は履歴 |
+
+**新旧状態の優先関係**：§14/§17/§25/§29の「MCP入口なし」「11 CLIが最新」「#3370はDraft」等は当時の記録であり、最新の実証上限は本§30を優先。main統合済み[#3370](https://github.com/hat47x/tei-platform/pull/3370)の`requirements.resultShape=array`は、正常配列の契約であって全Required存在の証明ではない。別PR/別CIの局所PASSを同一Attemptへ加算しない。
+
+### 30.2 Design Contextの鮮度は一つのFingerprint比較では閉じない
+
+T1-Bが参照した設計Sourceの**必要依存集合**を、少なくとも次の別集合で照合する。新World Registry/Provenance Engineは作らず、既存Source/Loader/Provider/Build/ConsumerのEvidenceへrefとして結び付ける。
+
+- **World/Canonical**：実Loaderが消費したSemantic WorldのIdentity、用途相対のAccepted MeaningとSource/Role。World同値だけではSource byte同値を保証しない。
+- **Source Index/Location**：Query mode、Source path・span、原Byte revision、index版。末尾LFだけの改訂でもSource Indexに依存するReader/Scenarioはstaleとなり得る。変更影響のない別対象の証拠を全失効させない。
+- **Import Provider occurrence**：実選択した外部Source URL/Provider/Plugin/Revision/取得時点と必要なByte/Content fingerprint。Consumer World/Indexが不変でもProvider原文が変わり得る。Providerが未Load/未選択/未消費なら`unknown`のまま。A→B→Aは最後のByte同値で途中履歴を「無かったこと」にしない。
+- **Execution/Delivery**：Scenario Pin、実CLI/MCPのAdapter/Tool版、Tool Resultの実受領、Selected→Loaded→Invoked、現在Grant/Disclosureと必要Effect/Read-back。CLI/MCPで`validate`の文書が一致しても外部HarnessのACKや実Provider読取は別資格。
+
+**差分対応**：Src same/Import changedなら対象Imported Roleに依存するTest Claimだけ再資格化、Src changed/World sameならIndex/Locationを使うReaderの再検収、Source same/Tool shape changedならResult Shape/Adapterの再検収、Adapter same/Grant revokedなら実行・外部開示の現在資格だけ拒否。いずれも独立Requiredの分母を「観測できたもの」に縮めてはならない。
+
+### 30.3 T1-Bを本当に盲検にするための一回の実験契約
+
+**実行は既存#1180 Scenario SSOTと#2514 Independent Expectedの範囲内**。対象は公開合成の一Domainで、検証者が先に独立Required Gap・合法Baseline・Rule/Relation/必要Source・対象Target・Positive/Negativeと少なくとも一つの識別可能なKnown Mutantを固定する。生成者は**HoldoutのGap ID、変異箇所、Expected/Mutant答えを受け取らない**。公開済み行番号0 T1-Aや既知のRequired3 Ruleを繰り返したものは新規発見に加点しない。
+
+1. **Pre-register**：Reviewerは必要Gapを独立記録し、固定Source/Tool/ScopeをPin。Probe入力とAIに渡すSource/Rule情報の許可部分集合を別票とする。未公開Hidden値はIssue/CI公開Artifactへ出さない。
+2. **Readiness**：main #3482の13実CLI／42合成Controlsは限定初期Witness。T1-B対象の正確なRule/Source/Import occurrence/合法BaselineとTool Replyの適格性を別判定。Scope外/partialなら`insufficient-context`、開示失敗なら`ineligible`とする。
+3. **Generate**：短い指示「対象Functionの必要な未カバー検証を提案して」に対し、生成者は根拠Ref、変更する一条件、変えないInvariant、PositiveとNegative、必要Observer、欠落情報を提示。追加Parameterを連続質問する前に既存Patternを合成する。
+4. **Review/Execute**：候補を既存ScenarioのReview Candidateに写像。独立ReviewerがExpectedを別経路で比較し、採択した候補のみ実pinned CLIに渡す。Rule Resultだけでなく実Target/Source/Tool Receiptを照合する。
+5. **Discriminate**：Fixed legitimate Positiveと目的Negative、Known Mutant、意図的にTarget未到達/Response欠落の対照を区別。生成Caseが実対象の欠陥に到達しない場合、独立Expectedが正しくても「Mutantを検出した」とはしない。
+6. **Report**：required-known、required-unknown、found-valid、rejected-ineligible、executed、independently-discriminated、currently-qualifiedの差集合と、操作回数・Tool予算・開示/Source再取得費用を表示。**検証不足の修復と、新たなRuleテストの発見は別成果**。
+
+外部Harness比較は同じHoldout/Source/Budget・現行Disclosure・Tool byte受信完全性が揃うSessionのみeligibleとする。#2509の欠落受信Sessionへ新しいProduct Skill成功率を付けない。Go C0は局所Statementのみ、Go C1・全NFRはunmeasuredのまま。正式AI Trial・生成者のBlind条件の成立は、この章の追記では**NOT RUN**。
+
+### 30.4 最小追加の横断対照 TT-139〜TT-146（Ownerへ委譲）
+
+| ID | Positiveと意図的差分 | 独立Expected・検出する偽Claim | Owner |
+| --- | --- | --- | --- |
+| **TT-139 Source-only index drift** | World固定、`validation.tei`末尾LFだけ改訂 | 古いContext/Source index資格を拒否。ただし旧Worldと新Worldの意味同値を「権限/歴史不変」と呼ばない。#3477は実CLI限定PASS | #3262/#3477/#2514 |
+| **TT-140 Import occurrence drift** | Consumer World/Index双方不変、必要Import Providerの原Byteだけ変更 | Consumer二FPが同値でも当該外部Sourceの引用/Rule資格はstaleかunknown。Draft #3479の独立Go testと製品実Readは別 | #3479/#3262/#2600 |
+| **TT-141 CLI/MCP validation parity** | 同Workspace正常、Load失敗、意味重複の三条件をCLI vs参照MCPで比較 | bodyの診断/文字列error code/成否を区別。主張は`validate`局所同値のみ。#3458の実回帰はmain、外部H3完全受領は未 | #3420/#1158 |
+| **TT-142 Result shape≠Required zero** | `tei requirements`の正常な`result: []`、Source Requiredは別集合 | arrayをobject受信失敗と誤判定せず、0要素を「業務Required 0」と断定しない。#3370はmain | #3347/#3262/#2514 |
+| **TT-143 Function declared≠invoked** | `sales.order.submit`のCapability/Application/Source Requiredが存在、実Entry未到達 | #3482の`bounded-present`は限定正の証人。実Function/Provider/Grant・業務結果Coverageは未証明 | #3482/#2586/#1180 |
+| **TT-144 E1/Host route split** | E1のRoute/Action片側だけ変更、Go Hostが旧対応のまま | NodeとGo各ローカルPASSでも統合Bindingは不一致。#3485の合成二視点試験と実Plugin/Authorityを分ける | #3485/#3274/#951 |
+| **TT-145 Blind test selection** | 既知T1-A=行番号0 ⇄ 独立Reviewerだけが知る新Gap（Sourceと合法Baselineだけ許可公開） | 既出Case再生を新発見に加点しない。独立Expected/実Pinned Run/Known Mutant到達とTool完全性が揃う場合だけ局所T1-B成立 | #3273/#2514/#1180 |
+| **TT-146 Source cohort overmerge** | 同時点に見えるConsumer World/Indexを保持し、外部Import Source/Scenario/Tool Replyの版を差し替える | 独立Requiredから導出した必要依存Occurrenceごとの整合がなければ`unknown/stale`。CLI/MCP結果一致から原子的共同Readや現在Grantを推論しない | #3262/#3479/#1163 |
+
+**受入経路と停止条件**：P0-I #3482の独立Required限定Contextを実消費→P0-T #3273真の盲検T1-B（対象1件、独立Holdout）をまず一往復。P0-R #2586の実Provider Readは並行。P1 #3420の残るCLI/MCP 3 Tool契約／#951実Plugin Invoke／#3274 E1→実Host Bindingを別Ownerで実施、P2 #3267 BOM exact TupleとC1/NFR。**各OwnerのCase/Scenario/Oracleを別ファイルへコピーしない**。資格の源泉はSourceと実行Attemptであり、Markdown中の合否欄ではない。
+
+**今回の状態**：main #3403/#3439/#3458/#3477/#3482/#3485、#3440の実装・実証文書と既存PR証拠をGitHubで確認した設計更新。新しい本章のTT-139〜146統合E2E、外部H2/H3、T1-B盲検Agent、正式Plugin/Provider実Invoke、Go C1/NFR、現在のHost Grant/Effect/Owner Accepted Meaningは**NOT RUN / UNQUALIFIED**。Draft #3479/#3365はmain資格へ昇格させない。
