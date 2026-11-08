@@ -13,8 +13,12 @@ on:
       - 'reference/web-composition/e1-go-route-pair.fixture.json'
       - 'reference/web-composition/go-host/**'
       - 'reference/workspace/applications/order-entry/patterns/submit-order.tei'
+      - 'reference/workspace/applications/order-entry/realizations/submit-order.tei'
       - 'reference/workspace/semantic/sales/order.tei'
       - 'reference/workspace/tei.workspace.yaml'
+      - 'internal/driver/invocation.go'
+      - 'internal/semantic/capabilityinvoke/invocation.go'
+      - 'reference/legacy-auth/**'
   push:
     branches: [main]
     paths:
@@ -25,8 +29,12 @@ on:
       - 'reference/web-composition/e1-go-route-pair.fixture.json'
       - 'reference/web-composition/go-host/**'
       - 'reference/workspace/applications/order-entry/patterns/submit-order.tei'
+      - 'reference/workspace/applications/order-entry/realizations/submit-order.tei'
       - 'reference/workspace/semantic/sales/order.tei'
       - 'reference/workspace/tei.workspace.yaml'
+      - 'internal/driver/invocation.go'
+      - 'internal/semantic/capabilityinvoke/invocation.go'
+      - 'reference/legacy-auth/**'
 
 permissions:
   contents: read
@@ -81,12 +89,20 @@ jobs:
           printf 'workspace-command-source-blob=%s\n' "$(git rev-parse HEAD:reference/workspace/applications/order-entry/patterns/submit-order.tei)"
           printf 'workspace-capability-source-blob=%s\n' "$(git rev-parse HEAD:reference/workspace/semantic/sales/order.tei)"
           printf 'source-admission-test-blob=%s\n' "$(git rev-parse HEAD:reference/web-composition/go-host/e1_workspace_source_admission_test.go)"
+          printf 'workspace-realization-source-blob=%s\n' "$(git rev-parse HEAD:reference/workspace/applications/order-entry/realizations/submit-order.tei)"
+          printf 'resolver-source-blob=%s\n' "$(git rev-parse HEAD:internal/driver/binding.go)"
+          printf 'command-binding-test-blob=%s\n' "$(git rev-parse HEAD:reference/web-composition/go-host/e1_real_workspace_command_binding_test.go)"
+          printf 'driver-invocation-blob=%s\n' "$(git rev-parse HEAD:internal/driver/invocation.go)"
+          printf 'capability-invocation-blob=%s\n' "$(git rev-parse HEAD:internal/semantic/capabilityinvoke/invocation.go)"
+          printf 'host-adapter-dispatch-test-blob=%s\n' "$(git rev-parse HEAD:reference/web-composition/go-host/e1_real_workspace_driver_invocation_test.go)"
           go version
           go test -count=1 -v ./reference/web-composition/go-host
-          if [[ -n "$(gofmt -l reference/web-composition/go-host/decision_path_test.go reference/web-composition/go-host/e1_go_route_pair_test.go reference/web-composition/go-host/e1_workspace_source_admission_test.go)" ]]; then
+          if [[ -n "$(gofmt -l reference/web-composition/go-host/decision_path_test.go reference/web-composition/go-host/e1_go_route_pair_test.go reference/web-composition/go-host/e1_workspace_source_admission_test.go reference/web-composition/go-host/e1_real_workspace_command_binding_test.go reference/web-composition/go-host/e1_real_workspace_driver_invocation_test.go)" ]]; then
             gofmt -d reference/web-composition/go-host/decision_path_test.go
             gofmt -d reference/web-composition/go-host/e1_go_route_pair_test.go
             gofmt -d reference/web-composition/go-host/e1_workspace_source_admission_test.go
+            gofmt -d reference/web-composition/go-host/e1_real_workspace_command_binding_test.go
+            gofmt -d reference/web-composition/go-host/e1_real_workspace_driver_invocation_test.go
             echo "Focused Go witness source is not gofmt-clean" >&2
             exit 1
           fi

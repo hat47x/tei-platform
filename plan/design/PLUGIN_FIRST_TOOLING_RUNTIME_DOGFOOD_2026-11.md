@@ -616,3 +616,70 @@ Data Workbench #3270、REST Decision Graph #3274、三要素モデルとCRUD/SHO
 **比較参考（TEI固有方式の採用ではない）**：Rust Traitは実装必須memberとDefault memberを区別する（https://doc.rust-lang.org/reference/items/traits.html）。Go interfaceはMethod Set/埋込みを合成し、同名別Signatureの合成は不正である（https://go.dev/ref/spec）。Java interfaceのDefault実装は多重継承時に衝突し得る（https://docs.oracle.com/javase/tutorial/java/IandI/multipleinheritance.html）。TEIはこれらの言語記法を日常DSLへ露出せず、原子性・実装必須・適合診断・明示Conflict解決という振る舞いだけを候補にする。
 
 **現在の資格**：本節はIssue・現行Code・他チャット方針を照合した設計計画であり、Trait公開Schema/DSL、実Plugin移行、TRF-01〜12、新しいGo/CLI/Studio/Provider試験、Owner正式採用は **NOT RUN／未採用**。本DocのD1試験を通したときだけ、実装方式の判断を更新する。
+
+
+## 18. Verified BOMの証拠鮮度：Source変更と選択規則変更を独立に追跡する（2026-11-08横断・受入案）
+
+### 18.1 実mainとDraftが示した三つの非同値
+
+- **Consumer内Source-only変更**：main統合[#3477](https://github.com/hat47x/tei-platform/pull/3477)の限定実CLI負例では、Source末尾だけ変更してもCanonical Worldが同じまま、Source Index FingerprintとScenario利用資格が変わり得る。旧Context→旧Scenarioの再利用には現在のSource Index照合が必要。これは実H3完全受領や原子的Workspace snapshotを証明しない。
+- **Consumer外部のImported Provider Source変更**：[#3479](https://github.com/hat47x/tei-platform/pull/3479)は現在**Draft／未統合**で、Provider raw末尾の差分をConsumerのWorld、Semantic Digest、Source Indexが捉えられない反例を実Go Testで提案している。外部Reference/Providerの**実Source occurrence/raw fingerprint／Binding/取得時点**はConsumerのSource Indexと別の依存辺。#3479のTest/CIが確定するまで「実証済み」と呼ばず、現行#2812のNested Load snapshot受理も推測しない。
+- **Capability選択Rule変更**：main統合[#3337](https://github.com/hat47x/tei-platform/pull/3337)の初回raw JSONは`unselected=6/12`、その後のmain #3350/#3363でDB Providerの選択規則が変わり、過去の`ruleFingerprint`と現在のものが異なる。見かけの`schema=v0`／`ruleVersion=v0`が一致しても履歴選択結果を再利用できない。[旧Draft #3379](https://github.com/hat47x/tei-platform/pull/3379)の歴史vs現在Regressionは、[後継Draft #3490](https://github.com/hat47x/tei-platform/pull/3490)として新main基線に移植した（実CIは別途確認）。旧rawは上書きせず出典を維持する。
+
+これらは**同じ「リビジョン変更」という一個の真偽値へ圧縮できない**。Source Index、外部Reference/実消費、Rule implementation、Build closure、Test run、現在Grantが別々のOwnerを持つためである。
+
+### 18.2 Requalificationの最小依存票（新Schema/新Engineではない）
+
+| 変更するもの | 何を再確認するか | 自動的に失効させないもの |
+| --- | --- | --- |
+| Consumer managed Sourceだけ変更 | #3262のSource Index/Required Rule/関係/Source位置と、#1180のScenario Context pin | 既に不変と確認した無関係Target Artifact・Plugin選択 |
+| 外部Provider raw/取得位置・Authority変更、Consumer World/Index不変 | 外部Reference契約（Source identity/revision/raw fingerprint／Provider実消費）と、そのProviderに依存した選択/Build/Test/BOM行 | 実消費しなかった別Provider/PluginのBOM行 |
+| Capability適用Ruleの内容・実装だけ変更 | Rule Fingerprint、適用されたEnvironment/Scope/Kind+ID・現在のBindingとTrait Required Closure | 無関係ProviderのArtifact byte・業務Meaning |
+| Builder/Generator/Toolchain変更 | 旧実消費closureと新Artifact実byte、Target/Hostの呼出し入口、必要独立Expected | 旧Artifact履歴／現在Grantとは別の意味受理 |
+| Host Grant・Disclosureのみ失効 | 今このConsumerに公開/呼出/Effect可能かを現在のHost側へ再照合 | 過去の受理済み意味・歴史的Conformance記録 |
+| 参照A→B→A／途中受領／取得不可 | 履歴の完全性・Source occurrence・欠落/非開示/partialの再確認 | Aへのbyte復帰を「途中で変わらなかった」証拠と扱わない |
+
+**判定するのは要求された用途に相対的な依存閉包だけ**。必要なSource/Rule/Provider/Host/Build入力が未取得なら`unknown/not-loaded/stale`を保持し、`not-required/compatible/qualified`へ偽装しない。キャッシュ（#3271/#2600）のhitやVerified Compositionの過去の行は、新しいSource/Rule適格性または現在Grantを発行しない。
+
+### 18.3 既存Scenarioへ渡す負例（BFR-01〜07）
+
+| Case | 一要因だけ変える | 独立Expected／Claim上限 |
+| --- | --- | --- |
+| **BFR-01** | 消費元Worldを保持、Consumer managed Sourceの改行だけ変更 | World同一でSource Index changed。必要Context再取得まで旧Scenarioの利用資格保留（main #3477の限定既存反例） |
+| **BFR-02** | Consumer World/Source Indexを保持、Imported Provider原文だけ変更 | 必要なExternal Ref/Provider occurrenceの鮮度を未確認として停止。#3479はDraftで追加実証待ち |
+| **BFR-03** | 同じScope/Source/Plugin表示VersionのままCapability Rule内容だけ変更 | 旧`selected/unselected`は現在の選択資格ではない。Rule Fingerprint違いを拒否 |
+| **BFR-04** | Provider Package選択は同じ、必要Kind+ID Bindingのみ削除 | selected packageとselected capability／Trait fulfillmentを分離。実Invoke不可 |
+| **BFR-05** | Bを選択、実CallはA（戻り値同一） | 実Host側Provider identity/Artifact Call traceとSelectionが不一致。2×2の対象行はqualified不可 |
+| **BFR-06** | 未選択・未消費のPlugin資産だけ更新 | 実依存closureで非干渉が示された行のEvidenceを機械的に全失効させない。過剰失効を検出 |
+| **BFR-07** | 同じ構成で実Target/Build/Snapshotを変える、あるいは同一Attemptだが欠落Check | 同じ源のTest証拠が無ければ旧PASSを合算しない。別Target/OS/Scope、現Grantも独立 |
+
+**所有権と順序**：#3262 Source/Required Closureと#3479 External Source、#951 Selection、#3278/#3279 Trait/Consumer、#1251実Inspector→実Call、#943/#2600 Build/Artifact、#1180/#2514独立Expected/Attempt、#3267 RQ-036 BOM。**BFRをここで独自Runnerや第二BOM Registryとして実装しない**。CLI/Studioという2 Consumerで実Providerの同一性を示すD1は依然P0。#3478の実HTTP Host Branch/監査、#3440の限定Self-buildは別Target・別Claimであり、このBOM行を自動で資格化しない。
+
+**受理状況**：#3477/#3337/#3350/#3363はmain履歴、#3479と今回の履歴Policy比較Go RegressionはDraft、BFR-01〜07を横断する製品Inspector/Version Matrix実行、現在Host Grant、真正なTrusted Witness・Owner受理は**NOT RUN**。完成済みE2E/BOMではなく、既存計画に必要な再資格化判別を増やした段階である。
+
+
+### 18.4 Consumer実行の断絶を閉じるには、呼出し元を確認する（Host/Plugin D1）
+
+[main統合 #3446](https://github.com/hat47x/tei-platform/pull/3446)の静的走査では`internal/servicehost.NewSelectedServiceCarrierInvoker`の**非試験Callerが0**、`BindHostApplicationEnvironmentRoute`も非試験Callerが0（ただし`composition.NewSelectedCoordinator`等の部品を非試験で使う経路は別にある）。つまり「Provider選択部品が実装済み」「テスト内でService CarrierがInvokeできる」「一部のCLI/Studioが同じtyped Resultを返す」だけでは、現実のTooling Consumerから**選択済みProviderへ到達した事実をまだ得られない**。既存の`servicehost`経由を全Hostの義務にするのではなく、どの入口で実Routeを組み立てるかを選択した構成ごとに確定する。
+
+[Draft #3371 Studio](https://github.com/hat47x/tei-platform/pull/3371)／[Draft #3381 CLI](https://github.com/hat47x/tei-platform/pull/3381)は型付きInspectorのfail-closed seamとして利用できる候補だが、当時のCI Health FAILを実Plugin適合のPASSへ転記しない。**D1の次のコード変更で必要な最小証拠**は、(a) exact Contract+SelectionをRunner/Host側で読み、(b) 実CLI/Studioの別call-siteがそのImplementation identityを呼び、(c) B選択時にAへ誤接続した同一結果の負例を拒否し、(d) 実Buildに含まれるSource/Target/ArtifactをProvider証拠へ束縛すること。Shadow比較で既存Builtinを呼んだだけの場合は`reference-parity`、実経路の切替確認後だけ`consumer-invocation-observed`とする。どちらも単独でBOMのqualifiedではない。
+
+**BFR-08**：同一`Inspector`入力で旧Builtinと新typed Serviceの結果が等しくても、実Plugin Contract Resolution/Host Route/Provider Callを通らなければ不合格。既存実行入口が0なのにMock内部でだけService Carrierが呼ばれるケースを必須負例にする（#1251/#1158/#3279）。この検査は#1180/#2514へ渡す候補であり、製品CLI/Studioの実Bindingが成立したことはまだ**NOT RUN**。
+
+
+### 18.5 Provider Manifest-only変更と、Selection→Invoke間の同一性（#3479・#3381・#3482の非重複差分）
+
+前節の`Source/Rule`鮮度に加え、**ProviderのManifest原byte変更と、Selection完了後に実Host Entryが変わる場合**を独立に検査する。[Draft #3479](https://github.com/hat47x/tei-platform/pull/3479)は、外部ProviderのRaw Source改訂だけでなく、**Provider Manifestの末尾改行のみ改訂してもConsumer World/SourceIndexとProvider Source Anchorが不変**となる別のGo負例を追加した。ImportしたProvider側のManifest Revisionは、Consumer Context二指紋やRaw Source Anchorから導出できない。#3479の追加後HEADは独立したCI検収が必要であり、別Provider Loadの照合結果を「同一原子Snapshot」とは宣言しない。
+
+**D1で必要な観測**：Consumer Subject/World/IndexとRequired Closure、#951のexact Provider Selectionに用いた**Provider raw Source occurrence／Manifest identity／Classifier rule fingerprint**、#1016によりHost登録した実Implementation/Target/Artifact member、実`Inspect`のEntry/AttemptとOperation結果を**別欄で結ぶ**。内部ファイルの改訂を発見しても、そのProviderを実際に使用するFunction/Operation/Build Closure以外のArtifactを全失効させない。逆に同じ結果Canonical、同じConsumer World/SourceIndex、同じPlugin表示Versionを根拠に旧Provider Source引用・Build/Invoke資格を使い回さない。
+
+特に、**時点を一個に潰してはいけない**。`select(B)`後`invoke()`前にBのManifestが差し替わった、またはHostのEntryがAへ置き換わった場合、BとAが同じJSONを返しても実選択資格の成立ではない。`Selected`と`Actually Invoked`の整合はHost側の実呼出し観測で照合し、単なるProvider自己申告値やSynthetic Testの結果一致で保証しない。Source/Manifestを選択時に観測し、Invoke時の実消費と同時版であることが証明できなければ**unverified**とする。検査の再実行が原子的Snapshotにならない場合、未証明をPASSへ変換しない。
+
+| Case | 一要因の対照 | 必要な独立Expected／既存Owner |
+| --- | --- | --- |
+| **BFR-09** | 外部Provider Manifest末尾のみ変更、Provider Raw Source/Consumer World・Indexは同じ | Manifest identity/必要Selection/実消費閉包を再照合。Provider Source FP一致だけで現在のBOM資格を維持しない。#3479/#951 |
+| **BFR-10** | BのManifestを選択後に変更／Hostの実EntryをAへ交換（Result byteはBと同じ） | 実Host Entry・Source/Manifest版・Selection/Target不一致で対象Attemptをqualifiedにしない。#1251/#3381/#3371/#3267 |
+| **BFR-11** | main [#3482](https://github.com/hat47x/tei-platform/pull/3482)の`sales.order.submit`宣言Requiredは13 CLI Reply／42限定Controlで一致するが、実Query/Provider Entryは未取得 | `boundedFunctionSlice.declarationStatus=bounded-present`のみ。Function実Invocation・Trait Fulfillment・Host Effect・BOM行を証明済みにしない。#3262/#2586 |
+| **BFR-12** | `ErrImportsNotBound`またはProvider Manifest/Sourceが取得不能だがConsumer Contextの既知部分だけが正常 | Required Closure不足を`absent`/完全/無変更としない。必要な用途の資格はunknown/unverified。#2743/#3262/#2514 |
+
+**実行順を変更しない**：まず#3378で旧Builtin二入口のBaselineを独立固定し、#3381が候補提示した既存Composition`→`Host登録の`inspectoradapter`局所実Go呼出・負例、#3371のStudio Factory、通常CLI/Studio入口への実Bindingを別の合否にする。次に同じAttemptでSource/Manifest/Build Artifact/現在Grant/実二Consumerの独立Expectedを照合し、#3267の2×2実BOMへ渡す。今回の文書追補・#3490の歴史Rule比較と#3479の外部Sourceテストを結合しただけでは、実Plugin二Consumer、原子的Import Snapshot、正式Trusted WitnessまたはOwner受理は**NOT RUN／NOT PROVEN**。新Source Store／Resolver／Contract Schema／Host／Test Runnerは設けない。
