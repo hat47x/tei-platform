@@ -20,6 +20,7 @@
 - [操作面・成果物・束縛実行の検証記録](SURFACE_AND_ARTIFACT_VERIFICATION_2026-11.md)
 - [候補ビューの実変更履歴での負担測定](CANDIDATE_VIEW_REAL_HISTORY_MEASUREMENT_2026-11.md)（`reference/workspace` の4変更。合成ではない変更で候補件数とSource修正量を測定。major変更の実履歴はなし）
 - [実データベースでの確認手順](REAL_DATABASE_VERIFICATION_PROCEDURE_2026-11.md)（PostgreSQL 16.14で実行。CAS試験の同期不足を修正し、DDL・NULL・Web E2Eまで確認。健康診断receiptで `TRUSTED_FULL_HEALTH_NOT_RECORDED` を解消し、残る2診断は暫定オーナー判断。実Provider・本番Authorityは未実行）
+- [model catalogのCLI/MCP一致](CLI_MCP_CATALOG_PARITY_2026-11-08.md)（名前空間不在がMCPだけ`ok:true`の空結果になっていたのを、投影の判定を両入口で共有して`NAMESPACE_NOT_FOUND`・`isError:true`に揃えた。実Host・認可・外部送出はNOT RUN）
 - [健康診断receipt（`005bbee7` / Actions 42152908986）](QUALIFICATION_FULL_HEALTH_005BBEE7_42152908986.json)と[暫定audit結果](REAL_PROVIDER_PROVISIONAL_AUDIT_005BBEE7.json)（`UNQUALIFIED`、残る診断は `E2_PROVIDER_GUARANTEE_NOT_ATOMIC` と `PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE`）
 - [D8〜D11暫定経路のaudit](PROVISIONAL_CHAIN_AUDIT_005BBEE7.json)と[Runner Evidence](PROVISIONAL_CHAIN_RUNNER_EVIDENCE_005BBEE7.json)（`atomic-with-commit` の暫定宣言。`PROVISIONAL_GRANT_NOT_G2_EVIDENCE` 等は暫定オーナー判断。chain testは単一経路と同じ健康診断receipt入力に対応）
 - [chain経路の健康診断receipt（`f887ab97` / Actions 42195019838）](QUALIFICATION_FULL_HEALTH_F887AB97_42195019838.json)と[receipt適用後のaudit](PROVISIONAL_CHAIN_AUDIT_F887AB97.json)（`TRUSTED_FULL_HEALTH_NOT_RECORDED` が解消し、残る診断は暫定3件）
@@ -34,6 +35,7 @@
 - [フック実行の配線と失敗の区別の確認](XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)（参照実装の試験記録。Runnerからの配線、NotSatisfiedと実行失敗の区別、参照規則。実PluginとCLI・Studioの配線は未実装）
 - [フック宣言の印刷面への反映の確認](XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md)（参照実装の試験記録。画面と同じフック宣言が印刷面にも出る。実印刷・用紙面の版照合は未確認）
 - [フックの位相順序と途中停止の確認](XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md)（参照実装の試験記録。位相の実行順、不成立での停止位置、`warn`の続行、未対応位相の拒否。CLI・Studioへの配線は未実装）
+- [フック宣言の機能定義書への反映の確認](XTEA_LOWCODE_HOOK_FUNCTION_DEFINITION_2026-11.md)（参照実装の試験記録。生成規則`function-definition/v1`に`hook`行を追加し、位相順で出す。実行結果の反映は未実装）
 - [フックが提案する値の宣言照合の確認](XTEA_LOWCODE_HOOK_DECLARED_PRODUCES_2026-11.md)（参照実装の試験記録。宣言外の提案の拒否、提案と読み取りの分離。保存・採用は未実装）
 - [フックの位相ごとの読み取り範囲の確認](XTEA_LOWCODE_HOOK_PER_PHASE_READS_2026-11.md)（参照実装の試験記録。狭い宣言の位相が広い宣言の値を受け継がないこと、未観測での停止。実データ取得は未実装）
 - [フックが読むのは宣言した属性だけであることの確認](XTEA_LOWCODE_HOOK_DECLARED_READS_2026-11.md)（参照実装の試験記録。未観測・宣言外の読み取りを実装へ渡す前に拒否。実データの取得と`produces`は未実装）
@@ -85,6 +87,8 @@
 - [配備実行アダプタは、誰がどう組み立てているか](DEPLOYMENT_EXECUTOR_BINDING_SURVEY_2026-11-08/README.md)（DeploymentExecutor を名指す19箇所のうち非試験は4件。いずれも参照実装（tools/・examples/）で、4件とも composition.Coordinator を使わず、CapabilityID は直書きかローカル変数で Environment の deployment-executor Binding を通らない。製品パッケージ内の型を組み立てるのは参照実装だけであることを記録する。世代を固定すべきかは示さない）
 - [環境の配備実行Bindingは、どこまで使われるか](EXECUTOR_BINDING_CONSUMER_SURVEY_2026-11-08/README.md)（DeploymentExecutors を読む非試験の箇所は7つ、実行の経路として読むのは routing.RouteCommand だけ。Binding を実行へ繋ぐ routing.Router は非試験で組み立てられず、CLIは RouteCommands の結果を計画JSONとして書き出すだけで executor.Execute を呼ばない。実行する3件は参照実装で固定の能力を直叩きする。servicehost と同じ形の断絶を配備実行側にも記録。断絶が問題かは示さない）
 - [宣言のBindingから実行までを、参照実装で繋いでみる](BINDING_TO_EXECUTION_REFERENCE_2026-11-09/README.md)（`tools/reference-binding-to-execution` として判断材料のC-1を実装。既存の RouteCommand・Router.Dispatch・ValidateResult だけでBinding から実行まで繋がることを示す。未登録の executor を指す Binding は実行せず拒否し、存在しない環境は0件で終わる。Executor の registry は Host が渡すため実配備の成立は示さない）
+- [C-2を試験の外で組み立て、C-1と同じ土台で比べる](SERVICE_CARRIER_CONNECT_REFERENCE_2026-11-09/README.md)（`tools/reference-service-carrier-connect` として判断材料のC-2を実装。Hostが渡したCoordinator・Runtime registry・RouteSourceからInvokerを組み立て、ピン留めした世代で要求を運ぶ。Routeが無い場合はInvokerを呼ぶ前に拒否し、別Binding用のRouteも拒否し、入力不足も拒否する。実配備の成立は示さない）
+- [C-1とC-2は、同じ問いの2案か](CONNECT_POINT_C1_C2_2026-11-09/README.md)（判断材料が並べたC-1 routing.Router と C-2 servicehost の入口を比べ、入力の型・世代の有無・到達可能性が違うことを示す。C-1は配備の動作を実行しC-2はServiceの要求を運ぶため、両方を選ぶことは経路の重複ではない。C-2は非試験の呼出し元がまだ0件であることを記録。どちらを先に入れるべきかは示さない）
 - [宣言されたPatternと導出された操作はどこで結べるか](PATTERN_KIND_OPERATION_MAPPING_2026-11-07/README.md)（同じWorldから `tei operations` の導出操作8件と `tei artifacts` の `pattern` 5件を取り、Data ID・能力ID・Relation target の三つの手掛かりごとに一致と限界を記録。受理済み基準では書込み操作の `binding` が全件nullで、読み取り専用の `command` は構造上どの導出操作とも結ばれない。結合規則の採否は示さない）
 - [操作とPatternの突き合わせを参照実装で試す](OPERATION_PATTERN_CROSSWALK_REFERENCE_2026-11-07/README.md)（W3の対応表を `tools/reference-operation-pattern-crosswalk` として実装し、受理済みと見積もり候補のWorkspaceに当てた記録。`browse`/`record`/`header-detail` は一致4件、`command` は効果を宣言しない能力で一律 `out-of-scope`、`reference` は参照先Dataに `read` が無いため `missing-input`。既定値で埋めないことと、W3未着手のままであることを示す）
 - [突き合わせ規則の反例](OPERATION_PATTERN_CROSSWALK_COUNTEREXAMPLES_2026-11-07/README.md)（同じWorkspaceに宣言を一つだけ足す5つの場合で、一致・不一致・衝突が1件ずつ変わることを記録。効果を宣言する能力は `command` を一致させ、参照先DataのPersistenceは `reference` を一致させ、同じDataを指す2つ目の `browse` は衝突として両方の名前を出して選ばない。効果の宣言だけでは標準操作が導出されないことも `missing-input` として残る）
@@ -131,6 +135,8 @@
 - [外部Harness四回答のFact出現チェック](DSH_ANSWER_FACT_PRESENCE_2026-11-08/README.md)（#2509・TAI #168。四Session実行の4回答が、同じ実行物のCLI応答に現れた13の事実（属性ID・型・記号、関係、Source path・digest、World指紋、診断コード）をすべて含むことを機械的に確認した。**正答の採点ではなく**、意味・未確認の扱い・Source版の区別は未評価。属性は`customerId`等の記号で書かれるため、IDと記号の両方を照合する必要があった）
 - [DSH外部Harness実測の台帳](DSH_HARNESS_EVIDENCE_LEDGER_2026-11-09.md)（#2509・#2515。16件の実行記録が**何を確定させ、何を確定させていないか**を1枚で対応づけた索引。Sandbox modeは読取りの境界を与えない・読んだ内容は複数経路で出る・Process生成は止まらない など、2件以上の記録が一致した横断所見だけを載せ、1件の観測を横断の結論に昇格させない。新しい実測・合否判定は無し）
 - [OSのACLが読取りを拒否する（正負対）](DSH_H6E1_OS_ACL_2026-11-09/README.md)（#2515 P0-a・H6-E1。`icacls`で継承を切りSYSTEM/Administratorsのみ与えたファイルは、`read-only`でも`danger-full-access`でも`PermissionDenied`で読めず、canaryは一度も現れなかった。同じユーザーへ読取り権限を足すと同じProbeが成功するため、境界はHarnessのmodeではなく**OSのACL**である。`read-only`のConstrainedLanguageは`GetType()`を拒否し、Probeの書き方で結論が変わる）
+- [`maxBytes`の停止しきい値](DSH_SESSION_LOG_MAXBYTES_THRESHOLD_2026-11-09/README.md)（#2515 H6-E2。同じ4 Tool呼出しSessionで上限だけを320→307→306→300→288と下げ、**307ではfieldが載り（水位`4`まで1eventずつ）、306では6要求すべてで載らなかった**。しきい値は最初のeventを包むfieldの直列化サイズで、その値なら送られ1byte下回ると送られない。止まったことは実行ログに現れず、Sessionは`completed`で終わる）
+- [送出できなかったbacklogは上限を上げた再実行でまとめて流れる](DSH_SESSION_LOG_STALL_THEN_GROW_2026-11-09/README.md)（#2515 H6-E2。`maxBytes=306`で6要求すべてfield無しのSessionを、同じSession IDで`maxBytes=4096`にして再実行すると最初の要求が`afterSeq -1`から`9`まで**10 event・1,273 bytes**を一度に運び、合計13 eventが流れた。上限を小さくして止めた状態は恒久的な抑止ではなく、再開時に**溜まった分が1要求のburst**として出る）
 - [Session Log拡張の`maxBytes`上限とbacklog](DSH_SESSION_LOG_MAXBYTES_2026-11-08/README.md)（#2515 H6-E2・P0-b・#2509。`maxBytes`を2048と512へ下げて実測し、field全体が上限内なら水位`9`まで10 event、上限512では**518 bytes**（ヘッダ込みで上限超過）で水位`2`・3 eventに止まった。`maxBytes`は1要求の上限で総開示量の上限ではない。分割送出と単一eventの停滞は未確定）
 - [Session Logのbacklog分割送出と停滞、上限判定の単位](DSH_SESSION_LOG_SPLIT_AND_STALL_2026-11-08/README.md)（#2515 H6-E2・#2509。`maxBytes=1024`の4 Turnで水位`-1`→`6`→`9`と**後続要求へ分割送出**されることを確認し、`maxBytes=256`ではヘッダ込みで上限を超えるため**fieldが一度も作られず**作業だけが続いた。先行記録の「512で518 bytes＝上限超過」は再直列化した値による誤りで、生byteは474だったと訂正）
 
@@ -162,3 +168,5 @@
 - [CLI応答のWorkspace同一性と空一覧の実測](TEI_DOGFOODING_ROUND3_IDENTITY_2026-11-08/README.md)（#3149・#3455・#3456。読み取りコマンド横断でWorkspace同一性と空一覧の直列化を確認し、2件の修正を実測。同名の第3ラウンド記録は別ディレクトリにある）
 - [修正後の再実測 第4ラウンド](TEI_DOGFOODING_ROUND4_2026-11-09/README.md)（#3455・#3456の修正後に、統合後の版`00ead5a98`で同じCLI操作を再測定。11応答すべてがWorkspace同一性を持ち、空の参照一覧は`[]`で返る。D-9は残る）
 - [`tei self-build`のIntent解決（I-2）とL2の切り分け](TEI_GO_SELF_BUILD_INTENT_RESOLUTION_2026-11-09.md)（§4.7の既定案I-2を実装し、宣言を解決childへ渡してreceiptを受け取る。未知のauthorityは拒否し、宣言済みplan fingerprintと一致しなければbuilderを起動しない。`l2Claimed`は常にfalse。SB-C0 §4.7/§4.8 / #2831）
+- [CLIとMCP参照Adapterの一致と入力検証](TEI_DOGFOODING_ROUND5_CLI_MCP_2026-11-09/README.md)（#3400・#3420・#3575。4操作の成功応答と2つの失敗はCLIと一致し、基準の版では未知の引数だけMCPが無視した。現行`main`の`b88759643`で `-32602` の拒否を確認。CLI・MCP実行物で実測）
+- [`tei self-build`の計画突合](TEI_GO_SELF_BUILD_PLAN_CROSS_CHECK_2026-11-09.md)（解決childとbuilder childの`planFingerprint`を比べる`planCrossCheck`を足し、不一致を発見として記録し、片方が報告しない場合は`unperformed`と理由を残す。`l2bClaimed`は常にfalse。SB-C0 §4.8 / #2831）

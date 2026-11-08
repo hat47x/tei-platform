@@ -57,18 +57,11 @@ func runModelCommand(args []string, out io.Writer) (int, error) {
 		}
 		return fail(code, err.Error(), 2)
 	}
-	if !result.NamespaceMatched {
-		// A namespace that does not exist is not "a namespace with no entries".
-		// Return a typed failure so a caller cannot read an empty success as
-		// evidence that the namespace declares nothing.
-		message := "namespace " + result.NamespaceFilter + " is not a semantic namespace in this workspace"
-		switch result.NamespaceMatchKind {
-		case "application":
-			message = "application " + result.NamespaceFilter + " is not a semantic namespace; omit -namespace or use a namespace ID"
-		case "query":
-			message = "query " + result.NamespaceFilter + " is not a semantic namespace; omit -namespace or use a namespace ID"
-		}
-		return fail("NAMESPACE_NOT_FOUND", message, 1)
+	// A namespace that does not exist is not "a namespace with no entries".
+	// The projection owns that decision so the MCP adapter answers the same
+	// code and message instead of inventing its own (#3420).
+	if failure := result.NamespaceFilterError(); failure != nil {
+		return fail(failure.Code, failure.Message, 1)
 	}
 	response.OK = true
 	response.Result = &result

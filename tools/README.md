@@ -207,6 +207,7 @@
 | [`reference-plugin-capability-coverage/`](reference-plugin-capability-coverage/) | プラグインが宣言した能力のうち、どの環境のBindingからも選ばれていないものを一覧する参照。database-instanceは提供技術名を指すため、能力IDと文字列で比べず SupportsDatabaseProvider で解決します。選ばれていないことは欠陥の証明ではありません |
 | [`reference-plugin-selection-matrix/`](reference-plugin-selection-matrix/) | 環境のBinding（配備実行・状態観測・検証根拠・database instance・環境の機能・移行）ごとに、対応するプラグイン能力を既存の `Supports*` で一括して解決し、selected/missing/ambiguous を一覧する参照。ambiguous は解消せず両方を列挙します。診断の権限は internal/validation が持ちます |
 | [`reference-binding-to-execution/`](reference-binding-to-execution/) | 環境の deployment-executor Binding を既存の routing.RouteCommand で解決し、routing.Router.Dispatch で実行、routing.ValidateResult で照合する参照。Executor の registry は Host が渡し、参照は組み立てません。未登録の executor を指す Binding や結果の不一致は実行せず拒否します。実配備の成立は示しません |
+| [`reference-service-carrier-connect/`](reference-service-carrier-connect/) | 判断材料のC-2を試験の外で組み立てる参照。Hostが渡したCoordinator・Runtime registry・RouteSourceから BindHostApplicationEnvironmentRoute と NewSelectedServiceCarrierInvoker を順に呼び、ピン留めした世代でService要求を運びます。Routeが無い・別Binding用・入力不足は実行前に拒否します。実配備の成立は示しません |
 | [`reference-accounting-period/`](reference-accounting-period/) | 業務日付とシステム時刻を分け、期間の状態・締め済み期間の直接更新拒否・赤黒訂正・締め後の到着方針・順序鍵と版による再生・締め時点の照合値を判定する参照（#2144） |
 | [`reference-partial-import-plan/`](reference-partial-import-plan/) | 別Workspaceから選んだData定義の取込み結果を分類する読取り専用の参照（#1805） |
 | [`reference-table-definition-document/`](reference-table-definition-document/) | 受理済みの意味から表定義書を導出する参照（#1803） |
