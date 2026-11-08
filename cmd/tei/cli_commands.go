@@ -52,6 +52,7 @@ var acceptedCommands = []string{
 	"release-graph",
 	"scenario",
 	"schema-diff",
+	"self-build",
 	"solution-release-graph",
 	"source-index",
 	"trace",
@@ -121,6 +122,17 @@ func helpText(fs *flag.FlagSet, command string) string {
 			fmt.Fprintf(&out, "  -namespace string\n    \toptional exact semantic namespace ID\n")
 			return out.String()
 		}
+		if command == "self-build" {
+			// self-build is dispatched but deliberately absent from the
+			// read-only discovery catalog, so "run `tei commands`" would
+			// point at a list that does not contain it (#3414 §4.5).
+			fmt.Fprintf(&out, "  -child string\n    \texact child executable to start (never resolved from PATH)\n")
+			fmt.Fprintf(&out, "  -child-arg string\n    \tchild arguments as a JSON array of strings\n")
+			fmt.Fprintf(&out, "  -child-arg-file string\n    \tJSON array of child arguments in a file\n")
+			fmt.Fprintf(&out, "  -artifact string\n    \tpath the child writes its artifact to (required, no-clobber)\n")
+			fmt.Fprintf(&out, "  -claimed-self string\n    \tdigest this binary claims about itself; compared with the running image\n")
+			return out.String()
+		}
 		fmt.Fprintf(&out, "run `tei commands` for the advertised commands\n")
 		return out.String()
 	}
@@ -140,6 +152,15 @@ func helpText(fs *flag.FlagSet, command string) string {
 		fmt.Fprintf(&out, "%s\n", line)
 		if usage != "" {
 			fmt.Fprintf(&out, "    \t%s\n", usage)
+		}
+		// A closed value set is part of the grammar, not prose the caller has
+		// to find in a document (#3242). Print the same sets `tei commands`
+		// advertises, and do not restate them by hand.
+		if values, ok := valueSets(command)[f.Name]; ok {
+			fmt.Fprintf(&out, "    \tvalues: %s\n", strings.Join(values, ", "))
+		}
+		if value, ok := valueDefaults(command)[f.Name]; ok {
+			fmt.Fprintf(&out, "    \tdefault: %s\n", value)
 		}
 	})
 	return out.String()

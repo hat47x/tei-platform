@@ -54,7 +54,7 @@ func TestIndependentBusinessQuoteOverExistingGenericProcessTransport(t *testing.
 	// Build the complete source of the standalone business plugin in an
 	// unrelated offline Go module. Copying only main.go could silently omit a
 	// newly added source file from the verification.
-	binary := filepath.Join(t.TempDir(), "order-quote")
+	binary := hostExecutable(t.TempDir(), "order-quote")
 	work := t.TempDir()
 	sourceDir := "../../plugins/reference-order-quote"
 	entries, err := os.ReadDir(sourceDir)

@@ -1,0 +1,443 @@
+name: TEI Issue-to-Design read-only dogfood
+# Re-run the bounded test-ability probe when its actual CLI, domain models,
+# semantic evaluator, Scenario sources or Go dependency closure change.
+# Path filters are a scheduling aid, not proof of complete dependency closure.
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/tei-issue-design-dogfood.yml"
+      - "plan/design/ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md"
+      - "tools/reference-issue-test-ability/**"
+      - "tools/reference-design-context-packet/**"
+      - "skills/yi-tei-modeling/**"
+      - "reference/driver-scenarios/**"
+      - "reference/workspace/**"
+      - "cmd/tei/**"
+      - "internal/**"
+      - "go.mod"
+      - "go.sum"
+  push:
+    branches:
+      - main
+      - "poc/issue-design-dogfood-*"
+      - "test/issue-dogfood-trigger-*"
+    paths:
+      - ".github/workflows/tei-issue-design-dogfood.yml"
+      - "plan/design/ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md"
+      - "tools/reference-issue-test-ability/**"
+      - "tools/reference-design-context-packet/**"
+      - "skills/yi-tei-modeling/**"
+      - "reference/driver-scenarios/**"
+      - "reference/workspace/**"
+      - "cmd/tei/**"
+      - "internal/**"
+      - "go.mod"
+      - "go.sum"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bounded-design-context:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      GOENV: off
+      GOWORK: off
+      PYTHONDONTWRITEBYTECODE: "1" # Product Skill unit tests must not dirty checkout
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Verify existing Product Skill documents and bounded examples
+        run: |
+          python3 skills/yi-tei-modeling/verify_skill.py
+          python3 -m unittest discover -s skills/yi-tei-modeling/tests -p 'test_*.py' -v
+      - name: Build exact TEI CLI and run bounded read-only queries
+        shell: bash
+        run: |
+          set -euo pipefail
+          cli="$RUNNER_TEMP/tei"
+          out="$RUNNER_TEMP/issue-to-design"
+          mkdir -p "$out"
+          test -z "$(git status --porcelain=v1)"
+          go build -o "$cli" ./cmd/tei
+          printf 'checkout=%s\n' "$(git rev-parse HEAD)"
+          printf 'go=%s\n' "$(go version)"
+          sha256sum "$cli"
+          "$cli" commands > "$out/commands.json"
+          "$cli" version -json > "$out/version.json"
+          "$cli" workspace-files -workspace reference/workspace > "$out/workspace-files.json"
+          "$cli" model catalog -workspace reference/workspace > "$out/catalog.json"
+          "$cli" inspect -workspace reference/workspace -subject-kind semantic-data -subject-id sales.order > "$out/inspect.json"
+          "$cli" inspect -workspace reference/workspace -subject-kind semantic-validation -subject-id sales.order_line.line_number_positive > "$out/inspect-validation.json"
+          "$cli" inspect -workspace reference/workspace -subject-kind semantic-capability -subject-id sales.order.submit > "$out/inspect-capability.json"
+          "$cli" inspect -workspace reference/workspace -subject-kind application -subject-id order_entry > "$out/inspect-application.json"
+          "$cli" source-index -workspace reference/workspace -subject-kind semantic-data -subject-id sales.order > "$out/source-index.json"
+          "$cli" source-index -workspace reference/workspace > "$out/source-index-all.json"
+          "$cli" trace -workspace reference/workspace -scope reference-observation -subject-kind semantic-relation -subject-id sales.order.customer -direction both -mode summary > "$out/trace.json"
+          "$cli" requirements -workspace reference/workspace > "$out/requirements.json"
+          "$cli" validate -workspace reference/workspace -json > "$out/validate.json"
+          python3 - <<'PY'
+          import copy
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          folder = Path(os.environ["RUNNER_TEMP"]) / "issue-to-design"
+          names = ("commands", "version", "workspace-files", "catalog", "inspect",
+                   "source-index", "source-index-all", "inspect-validation",
+                   "inspect-capability", "inspect-application", "trace", "requirements", "validate")
+          docs = {}
+          sizes = {}
+          for name in names:
+              raw = (folder / (name + ".json")).read_bytes()
+              sizes[name] = len(raw)
+              if not raw or not raw.endswith(b"\n"):
+                  raise AssertionError(f"{name}: incomplete or non-terminated JSON output")
+              docs[name] = json.loads(raw)
+              if not isinstance(docs[name], dict):
+                  raise AssertionError(f"{name}: object expected")
+          assert docs["commands"].get("schemaVersion") == "tei.cli.discovery/v0"
+          assert docs["commands"].get("scope") == "selected-read-only-commands"
+          assert docs["version"].get("schemaVersion") == "tei.cli.version/v0"
+          for name in ("workspace-files", "catalog", "inspect", "inspect-validation", "inspect-capability", "inspect-application", "source-index",
+                       "source-index-all", "trace", "requirements", "validate"):
+              assert docs[name].get("ok") is True, (name, docs[name].get("error"))
+          schemas = {
+              "workspace-files": "tei.cli.workspace-files/v0",
+              "catalog": "tei.cli.model/v0",
+              "inspect": "tei.cli.inspect/v0",
+              "inspect-validation": "tei.cli.inspect/v0",
+              "inspect-capability": "tei.cli.inspect/v0",
+              "inspect-application": "tei.cli.inspect/v0",
+              "source-index": "tei.cli.source-index/v0",
+              "source-index-all": "tei.cli.source-index/v0",
+              "trace": "tei.cli.trace/v0",
+              "requirements": "tei.cli.requirements/v0",
+              "validate": "tei.cli.validate/v0",
+          }
+          for name, expected in schemas.items():
+              assert docs[name].get("schemaVersion") == expected, (name, docs[name].get("schemaVersion"))
+          assert docs["source-index"].get("mode") == "subject"
+          assert docs["source-index-all"].get("mode") == "index"
+          # Independently declared minimal source obligation: an indexed Subject
+          # cannot alone prove that the required Source file was consumed.
+          required_source = "semantic/sales/order.tei"
+          managed = docs["workspace-files"]["result"].get("managedFiles", [])
+          assert isinstance(managed, list), "workspace-files: managedFiles is not a list"
+          matches = [entry for entry in managed
+                     if isinstance(entry, dict) and entry.get("path") == required_source]
+          assert len(matches) == 1, ("required source inventory missing/ambiguous", matches)
+          assert matches[0].get("readByLoader") is True, (
+              "required source not read by domain loader", matches[0])
+          def source_read_state(records):
+              actual = [entry for entry in records
+                        if isinstance(entry, dict) and entry.get("path") == required_source]
+              if len(actual) != 1:
+                  return "incomplete"
+              return "read-by-loader" if actual[0].get("readByLoader") is True else "not-loaded"
+          mutated_managed = [dict(e) if isinstance(e, dict) else e for e in managed]
+          for e in mutated_managed:
+              if isinstance(e, dict) and e.get("path") == required_source:
+                  e["readByLoader"] = False
+          assert source_read_state(mutated_managed) == "not-loaded", "DF-09 not killed"
+          target = {"kind": "semantic-data", "id": "sales.order"}
+          entries = docs["catalog"]["result"]["entries"]
+          inspected = docs["inspect"]["result"]
+          assert inspected.get("subject") == target, inspected.get("subject")
+          assert isinstance(entries, list)
+
+          def assess(catalog_entries, inspect_result):
+              if not any(x.get("subject") == target and not x.get("ambiguous", False)
+                         for x in catalog_entries):
+                  return "incomplete"
+              values = {}
+              for key in ("worldFingerprint", "sourceIndexFingerprint"):
+                  observed = [
+                      docs["catalog"]["result"].get(key),
+                      inspect_result.get(key),
+                      docs["trace"]["result"].get(key),
+                      docs["validate"].get(key),
+                  ]
+                  values[key] = observed
+                  if any(not isinstance(x, str) or not x for x in observed):
+                      return "incomplete"
+                  if len(set(observed)) != 1:
+                      return "stale"
+              # No complete claim: this does not prove parser/required/Business closure.
+              return "partial"
+
+          assert assess(entries, inspected) == "partial", "bounded fixture changed"
+          mutated_entries = [e for e in entries if e.get("subject") != target]
+          assert assess(mutated_entries, inspected) == "incomplete", "DF-02 not killed"
+          modified_inspect = copy.deepcopy(inspected)
+          modified_inspect["sourceIndexFingerprint"] = "synthetic-mismatched-fingerprint"
+          assert assess(entries, modified_inspect) == "stale", "DF-03 not killed"
+
+          warnings = [x for x in docs["validate"].get("diagnostics", [])
+                      if isinstance(x, dict) and str(x.get("severity", "")).lower() == "warning"]
+          index_mode = docs["source-index"].get("mode", "not-declared-in-output")
+          report = {
+              "schema": "tei.reference.issue-design-dogfood/v0",
+              "issue": "hat47x/tei-platform#3262",
+              "subject": target,
+              "checkout": os.environ.get("GITHUB_SHA", "unknown"),
+              "cliResults": [{"command": name, "bytes": sizes[name],
+                              "sha256": hashlib.sha256((folder / (name + ".json")).read_bytes()).hexdigest()}
+                             for name in names],
+              "requiredSource": required_source,
+              "requiredSourceReadByLoader": True,
+              "boundedDataClaim": "partial",
+              "missingClaims": ["Function/Business/Rule/Procedure closure",
+                                "independent Required set over all sources",
+                                "Parser/Accepted Meaning qualification",
+                                "external Harness/MCP delivery and current disclosure",
+                                "self-build Stage1 process re-entry"],
+              "sourceIndexMode": index_mode,
+              "validationDiagnostics": len(docs["validate"].get("diagnostics", [])),
+              "warnings": len(warnings),
+              "syntheticControls": {"DF-02-missing-subject": "incomplete",
+                                    "DF-03-fingerprint-mismatch": "stale",
+                                    "DF-09-required-source-unloaded": "not-loaded"},
+              "ownerMeaningAccepted": False,
+              "deliveryCompleteToExternalHarness": None,
+          }
+          (folder / "report.json").write_text(
+              json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+          lines = [
+              "## Issue #3262 → TEI設計Context（限定ドッグフーディング）",
+              "",
+              f"- Checkout: `{report['checkout']}`",
+              f"- Subject: `semantic-data:sales.order`（catalog/inspectで特定）",
+              f"- 実TEI CLI応答: {len(names)}件、単一Binary、JSON/exit 0。詳細Bytes/digestはrunnerのreport.json。",
+              f"- 設計Claim: **{report['boundedDataClaim']}**。全設計情報の完全取得ではない。",
+              f"- validate: 診断 {report['validationDiagnostics']}件、Warning {report['warnings']}件（passと混同しない）",
+              f"- Required Source: `{required_source}` はreadByLoader:true。Parser/Meaning受理は別。",
+              f"- 合成負例: DF-02 → incomplete、DF-03 → stale、DF-09 → not-loaded（実Source改変ではない）",
+              "",
+              "### 未充足（既存Issueへ戻す）",
+          ]
+          lines += [f"- {gap}" for gap in report["missingClaims"]]
+          lines += [
+              "",
+              "根拠: CLIのread-only JSONを実行時照合。要求とOwnerは plan/design/ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md。",
+              "**非主張**: Skill実ロード、実MCP、外部受領、意味受理、全Workspace/Stage Self-BuildはNOT RUN。",
+          ]
+          summary = "\n".join(lines) + "\n"
+          print(summary)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as target_summary:
+              target_summary.write(summary)
+          print("PASS: bounded real CLI + Product Skill static check, partial claim, 3 synthetic controls")
+          PY
+      - name: Refuse false test readiness on partial, missing, or mixed Design Context
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/reference-issue-test-ability/context_gate.py \
+            --in "$RUNNER_TEMP/issue-to-design" \
+            --out "$RUNNER_TEMP/issue-to-design/context-readiness.json"
+      - name: Compose bounded Design Context Packet from actual read-only replies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/reference-design-context-packet/packet.py \
+            --input-dir "$RUNNER_TEMP/issue-to-design" \
+            --obligations tools/reference-design-context-packet/obligations.json \
+            --output "$RUNNER_TEMP/issue-to-design/context-packet.json"
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          r = json.loads((Path(os.environ["RUNNER_TEMP"]) / "issue-to-design/context-readiness.json").read_text())
+          assert r["boundedReference"] == "partial"
+          assert r["testExecutionAdmission"] == "exploration-only"
+          assert r["qualifiedTestGeneration"] is False
+          assert len(r["syntheticControls"]) == 7
+          assert len(r["additionalManifestControls"]) == 2
+          assert len(r["transportByteControls"]) == 7
+          assert r["observations"]["localReplies"] == "13/13"
+          assert r["boundedFunctionSlice"]["declarationStatus"] == "bounded-present"
+          assert r["boundedFunctionSlice"]["signature"] == "matched"
+          assert r["boundedFunctionSlice"]["namespaceAndValidationUses"] == "matched"
+          assert r["boundedFunctionSlice"]["capabilitySource"]["definition"] == "same-indexed-definition"
+          assert r["boundedFunctionSlice"]["applicationSource"]["definition"] == "same-indexed-definition"
+          assert r["boundedFunctionSlice"]["functionInvocationBinding"] == "not-observed"
+          assert r["boundedFunctionSlice"]["queryOrProviderRead"] == "not-observed"
+          assert r["boundedFunctionSlice"]["functionQualifiedForTestGeneration"] is False
+          assert len(r["boundedFunctionControls"]) == 10
+          assert sum(x == "blocked" for x in r["boundedFunctionControls"].values()) == 9
+          assert r["boundedFunctionControls"]["TT-function-unrequired-prelude-omitted"] == "bounded-partial-only"
+          assert r["focusedStructureSlice"]["status"] == "bounded-present"
+          assert r["focusedStructureSlice"]["relationState"] == "matched"
+          assert r["focusedStructureSlice"]["canonical"] == "matched"
+          assert r["focusedStructureSlice"]["definitionReference"] == "same-definition-reference"
+          assert r["focusedStructureSlice"]["sourceArtifact"] == "same-indexed-artifact"
+          assert len(r["focusedStructureControls"]) == 8
+          assert all(x == "rejected" for x in r["focusedStructureControls"].values())
+          assert r["requiredValidationSlice"]["status"] == "bounded-present"
+          assert r["requiredValidationSlice"]["requiredCount"] == 3
+          assert len(r["requiredValidationControls"]) == 8
+          assert sum(v == "blocked" for v in r["requiredValidationControls"].values()) == 7
+          assert r["requiredValidationControls"]["TT56-outside-required-scope-remains-partial"] == "bounded-scope-maintained"
+          assert r["qualifiedTestGeneration"] is False
+          assert r["observations"]["requiredSourceRead"] == "read-by-loader"
+          lines = [
+              "## Design Context → Test Ability 事前資格（#3262）",
+              "",
+              "- 実13 CLI応答＝既存11にCapability Inspect／Application Inspectを追加。3 Rule・Relation・Canonical・Source Anchor/FPを限定照合。",
+              "- **P-1b1 Function**：sales.order.submitのCapability signature、order_entryのnamespace/validation/database宣言、Source Index definitionとLoader Readを1つの独立Requiredで対照。",
+              "- 同FP・正常JSONでもCapability/Application/入出力/namespace/Rule/use/DB/Source欠落9件を拒否。必要集合外のPrelude 1件は過剰拒否しない。",
+              "- 合成負例: Subject欠落、Inventory未Read、Fingerprint版混合、Reply欠落、Schema Drift、Source Root欠損 + 外部Provider/Grant未観測（7種）。",
+              "- **TT-56**：独立必須3 Validation を既存Catalog＋Source IndexのDefinition Role＋Loader Readへ結合。",
+              "- JSON正常・World/Index FP一致でも3 Ruleの必須欠落など7件を拒否、不要な1件は過剰拒否しない。",
+              "- さらにRelation欠落・二重・親差分、Rule kind/attribute差、Inspect/Source IndexのSource差、Inspect版混合の8件を拒否。",
+              "- Function宣言の限定部分が揃っても**実Function入口・Query/Provider Read・Build収録/Host・Owner Meaningの全閉包は未資格**。",
+              "- Test生成資格: **false**。固定公開Scenarioの局所探索のみ可能。",
+              "- Function/Business/RuleのRequired Closure、Parser/Meaning、Provider実Read、外部Harness完全受領/開示、C1/NFRは未知。",
+          ]
+          print("\n".join(lines))
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as o:
+              o.write("\n".join(lines) + "\n")
+          p = Path(os.environ["RUNNER_TEMP"]) / "issue-to-design/context-packet.json"
+          packet = json.loads(p.read_text(encoding="utf-8"))
+          assert packet["state"] == "partial"
+          assert packet["complete"] is False
+          assert packet["candidateTestGenerationQualified"] is False
+          assert len(packet["syntheticControls"]) == 9
+          assert packet["data"]["subjectObserved"] is True
+          assert len(packet["sourceLedger"]) == 1
+          assert packet["sourceLedger"][0]["loaderObservation"] == "read-by-loader"
+          assert packet["sourceLedger"][0]["parsedAndRole"] == "not-observed"
+          assert packet["delivery"]["externalHarnessReplyComplete"] is None
+          lines = [
+              "## Design Context Packet — #3262 P-1b bounded consumer",
+              "",
+              "- 実CLIの9出力を**同一限定Subject**で検査し、独立Required集合と観測を分離。",
+              "- Source read-by-loaderとParser/Role/Meaning受理を分離。",
+              "- 9つの負例：欠落Subject、未Load/消えたSource、異版、欠落版、root finding、Tool reply欠落/切断/Schema変更をfail closed。",
+              "- **Packet=partial、テスト生成の資格なし**。Function/Business/Rule/Dependency、外部Delivery/Disclosureは未観測。",
+              "- 本Packetは外部AI/Skillへ送信していない。第二Reader、Product CLI、MCP、Host実装ではない。",
+          ]
+          print("\n".join(lines))
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
+              f.write("\n".join(lines) + "\n")
+          PY
+      - name: Qualify test discrimination against real pinned Scenario CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Go's coverage is statement-based (C0-equivalent); it is NOT C1.
+          go test ./cmd/tei -run '^TestRegenerateScenarioArgvAndStdinPlan$' \
+            -count=1 -coverprofile="$RUNNER_TEMP/tei-scenario-c0.cover"
+          python3 tools/reference-issue-test-ability/probe.py \
+            --root . \
+            --cli "$RUNNER_TEMP/tei" \
+            --coverage "$RUNNER_TEMP/tei-scenario-c0.cover" \
+            --context "$RUNNER_TEMP/issue-to-design/context-readiness.json" \
+            --out "$RUNNER_TEMP/issue-to-design/test-ability.json"
+          test -z "$(git status --porcelain=v1)"
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          p = Path(os.environ["RUNNER_TEMP"]) / "issue-to-design/test-ability.json"
+          report = json.loads(p.read_text(encoding="utf-8"))
+          assert report["claimCeiling"].startswith("bounded-test-ability")
+          assert len(report["tested"]) == 6
+          assert len(report["mutantsKilled"]) == 8
+          assert report["discriminationCounts"]["realCliFixtureExpectedPlanSourceAndLock"] == 6
+          assert report["discriminationCounts"]["independentObligationAndOracle"] == 2
+          assert report["discriminationCounts"]["actualProductEvaluatorCodeMutant"] == "not-run-in-this-probe"
+          assert report["mutantsKilled"]["changed-real-canonical-source"] == "real-cli-stale-world-rejected"
+          assert report["mutantsKilled"]["changed-real-plugin-lock"] == "real-cli-stale-lock-rejected"
+          assert report["coverage"]["goC1BranchCoverage"] == "unmeasured"
+          lines = [
+              "## TEI Test Ability — 独立検証基準（#2514 / #1180）",
+              "",
+              "- 実TEI Binaryで生成済み版固定Scenario commandを **6/6 step** 実行。",
+              "- 正常Validation、業務拒否、synthetic Browse、synthetic Observationを別々に観測。",
+              "- **実CLIで検出**：重複Key、誤ったScenario Expected、変更済Fixture pin、改変済生成Plan（4種）。",
+              "- **独立の検査義務で検出**：必須Step欠落、常時satisfiedの偽検証基準（2種）。",
+              "- **実Workspaceの一時コピーで検出**：Plan生成後のCanonical Source改変／Plugin Lock改変による旧pinの拒否（2種）。",
+              "- Source A→B→Aで元pinは再び有効になる。中間履歴、Owner受理、Plugin実Load、現在Grantは未証明。",
+              f"- Go局所statement C0: `{report['coverage']['goC0StatementCoverageForCmdTei']}`。",
+              "- **C1は未計測**。全要求Coverage/NFR/実DB/GUI/正式意味受理も未評価。",
+              "- 結果は限定JSONとActions Artifactに保持。全製品のテスト能力証明ではない。",
+          ]
+          print("\n".join(lines))
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
+              f.write("\n".join(lines) + "\n")
+          PY
+      - name: Execute proposed uncovered Rule boundary via existing pinned TEI Scenario
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/reference-issue-test-ability/t1_line_number_candidate.py \
+            --root . \
+            --cli "$RUNNER_TEMP/tei" \
+            --context "$RUNNER_TEMP/issue-to-design/context-readiness.json" \
+            --out "$RUNNER_TEMP/issue-to-design/t1-line-number-candidate.json"
+          test -z "$(git status --porcelain=v1)"
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          r = json.loads((Path(os.environ["RUNNER_TEMP"]) / "issue-to-design/t1-line-number-candidate.json").read_text())
+          assert r["case"]["observed"]["sales.order_line.line_number_positive"] == "not-satisfied"
+          assert r["case"]["observed"]["sales.order_line.quantity_positive"] == "satisfied"
+          assert r["case"]["observed"]["sales.order.lines.line_number_unique"] == "satisfied"
+          assert r["case"]["executionMode"] == "generated-pinned"
+          assert len(r["negativeControls"]) == 3
+          binding = r["contextToScenarioBinding"]
+          assert binding["generatedWorldMatchesDesignContext"] is True
+          assert binding["freshBeforeCandidate"] is True
+          assert binding["freshAfterPinnedRun"] is True
+          drift = binding["sourceOnlyDrift"]
+          assert drift["observedCanonicalWorldUnchanged"] is True
+          assert drift["observedSourceIndexChanged"] is True
+          assert drift["staleDesignContextRejectedByConsumer"] is True
+          assert drift["originalWorldPinnedScenarioStillExecutesInIsolatedCopy"] is True
+          assert drift["AtoBtoAOriginalFingerprintReturns"] is True
+          assert drift["intermediateHistoryOrCurrentGrantProven"] is False
+          assert binding["atomicReadOrExternalDeliveryProven"] is False
+          assert r["independentBlindHoldoutApplied"] is False
+          assert r["ownerMeaningAccepted"] is False
+          assert r["scenarioSSOTChanged"] is False
+          assert r["context"]["qualifiedTestGeneration"] is False
+          lines = [
+              "## T1候補：未実行Rule境界を実CLIで確認（#3273）",
+              "",
+              "- 公開line_number_positiveの0境界を候補として一時Scenarioへ追加（正本Scenarioは無変更）。",
+              "- 実TEI CLIの verify→generate→check→generated-pinned run を完了。",
+              "- 行番号ゼロだけがnot-satisfied、数量正・行番号一意はsatisfied。業務拒否と技術エラーを区別。",
+              "- 嘘Expected、異なる値のFixture、Plan生成後Fixture変更の3負例は実CLIで拒否。",
+              "- **Context→Scenario World束縛**：Context FPと生成Plan SHAの一致、実CLIを使ったSource Indexの生成前・Pinned実行後の版を再照合。",
+              "- **Source-only drift**：隔離Sourceの末尾LFでWorld不変／Source Index改版を観測。既存World PinでScenario自体は成功しても、旧Contextの採用は拒否。A→B→Aの履歴は証明しない。",
+              "- **外部AI Harness/Skillからの盲検テスト生成ではない**。Issue #3273既知候補の初回実行に限定。",
+              "- Contextはpartial/exploration-only。Scenario Owner採用、C1、全要件・実DB/Hostは未資格。",
+          ]
+          print("\n".join(lines))
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as file:
+              file.write("\n".join(lines) + "\n")
+          PY
+      - name: Preserve bounded synthetic test-ability evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tei-issue-test-ability
+          path: |
+            ${{ runner.temp }}/issue-to-design/report.json
+            ${{ runner.temp }}/issue-to-design/context-readiness.json
+            ${{ runner.temp }}/issue-to-design/context-packet.json
+            ${{ runner.temp }}/issue-to-design/test-ability.json
+            ${{ runner.temp }}/issue-to-design/t1-line-number-candidate.json
+            ${{ runner.temp }}/tei-scenario-c0.cover
+          if-no-files-found: warn
+          retention-days: 7

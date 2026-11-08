@@ -29,6 +29,11 @@ type ModelCatalog struct {
 	NamespaceMatchKind     string `json:"namespaceMatchKind,omitempty"`
 	WorldFingerprint       string `json:"worldFingerprint"`
 	SourceIndexFingerprint string `json:"sourceIndexFingerprint"`
+	// Workspace names the Workspace this catalog was read from (#3181). The
+	// same Canonical ID may exist in several Workspaces with different meaning,
+	// and worldFingerprint identifies content rather than the Workspace. It is
+	// absent when the caller supplied a World directly (CatalogWorld).
+	Workspace *workspace.WorkspaceIdentity `json:"workspace,omitempty"`
 	// ModelRevision is the revision of the managed Source set, not of the
 	// loaded World. An empty Workspace (no managed Source read) reports the
 	// SHA-256 of the empty input while still listing the standard prelude,
@@ -41,8 +46,22 @@ type ModelCatalog struct {
 	AuthorityLimits   []string            `json:"authorityLimits"`
 }
 
+// preludeSubject reports whether a catalog subject belongs to the in-process
+// standard semantic prelude. The prelude is the std namespace and every
+// subject whose ID is std or starts with std.; the Loader always adds it, so
+// no source can own it. The check is by ID because that is the identity the
+// prelude uses, not by Source Status (the prelude is never indexed).
+func preludeSubject(s sourceindex.Subject) bool {
+	return s.ID == "std" || strings.HasPrefix(s.ID, "std.")
+}
+
 type ModelCatalogEntry struct {
-	Subject      sourceindex.Subject  `json:"subject"`
+	Subject sourceindex.Subject `json:"subject"`
+	// Prelude is true for the in-process standard semantic prelude (the std namespace
+	// and its types). It is always loaded, so its presence does not mean the Workspace
+	// declared anything (#2822). Without this flag a caller cannot tell a std entry from
+	// a source-authored one without matching IDs (#3347).
+	Prelude      bool                 `json:"prelude,omitempty"`
 	Parent       *sourceindex.Subject `json:"parent,omitempty"`
 	Symbol       string               `json:"symbol,omitempty"`
 	Detail       string               `json:"detail,omitempty"`
@@ -71,7 +90,10 @@ func CatalogWorkspace(root, namespace string) (ModelCatalog, error) {
 	if err != nil {
 		return ModelCatalog{}, err
 	}
-	return CatalogWorld(loaded.World, idx, namespace, worldFP, sourceFP), nil
+	catalog := CatalogWorld(loaded.World, idx, namespace, worldFP, sourceFP)
+	identity := loaded.Identity()
+	catalog.Workspace = &identity
+	return catalog, nil
 }
 
 // namespaceMatch reports whether a namespace filter names something in the
@@ -198,6 +220,9 @@ func CatalogWorld(world ir.World, idx sourceindex.Index, namespace, worldFP, sou
 		if seen[out.Entries[i].Subject] > 1 {
 			out.Entries[i].Ambiguous = true
 		}
+		// The standard prelude is always loaded; marking it keeps a caller from
+		// reading its presence as a Workspace declaration (#3347).
+		out.Entries[i].Prelude = preludeSubject(out.Entries[i].Subject)
 	}
 	sort.SliceStable(out.Entries, func(i, j int) bool {
 		a, b := out.Entries[i], out.Entries[j]

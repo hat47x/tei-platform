@@ -1,0 +1,3 @@
+sql-only exit=1
+workbench-only exit=0
+accepted exit=0

@@ -18,7 +18,9 @@
 | [`repository-node-tests/`](repository-node-tests/) | どのworkflowからも実行されなかったNode.js試験5ファイルをgo testから実行する（#2346） |
 | [`check-public-boundary/`](check-public-boundary/) | 追跡ファイルに、非公開資料の名前・所在のマーカーが入っていないかを検査する（#2342 / #2436） |
 | [`repositoryqualification/`](repositoryqualification/) | リポジトリ検証条件の共通処理 |
+| [`reference-ai-tuning-observation/`](reference-ai-tuning-observation/) | AI性能チューニング用の設計/観測/統計/Provider/開示/受領の**合成入力のみ**を照合する試験用Consumer。実Provider/業務意味/実性能は未証明（#3271/#3262、設計文書 §9〜10）。 |
 | [`reference-cli-trace-benchmark/`](reference-cli-trace-benchmark/) | 合成Workspaceによるtraceの処理段別の時間・メモリ計測と出力不変の確認 |
+| [`reference-mcp-readonly-adapter/`](reference-mcp-readonly-adapter/) | 既存の読み取り操作（model catalog・inspect・trace・validate）をMCPのtoolとして公開する参照Adapter。Workspaceは起動時に固定し、CLIと同じ `internal/operations` を呼ぶ（#3400） |
 | [`reference-change-packet/`](reference-change-packet/) | 変更範囲・危険度・検証・停止条件をJSONで宣言し、範囲確認と検証実行・証拠記録を行う参照（#2017） |
 | [`reference-generator-selection/`](reference-generator-selection/) | 受理済み契約に対する生成器候補を固定fixtureで比較し、source/binary digest、実行言語・runtime、Go/Java/WASM/WASIのsource path非依存な反復build一致、case実行のexit/stderr digestと結果をreceiptへ残す参照。Go・Python・JavaScript・Java・WASM・WASI、long-running候補、registryの版・置換・失効も確認する（#2016 / #2077） |
 | [`reference-generator-attestation/`](reference-generator-attestation/) | 選抜receiptから候補のcanonical statementを作り、ssh-keygenの署名で改変を検出する参照。署名者のAuthority・trust rootは検証しない（#2016） |
@@ -113,6 +115,7 @@
 | [`reference-build-execution-binding/`](reference-build-execution-binding/) | ビルド実行と主体・対象の結び付け |
 | [`reference-go-module-closure-preflight/`](reference-go-module-closure-preflight/) | Go対象の選択Module閉包をオフラインで分類する事前観測。`supported`/`external-unresolved`/`missing-module`/`unknown`を区別し、Build・Artifact・権限は行わない（#2831 SB-0a） |
 | [`reference-go-build-with-supply/`](reference-go-build-with-supply/) | 供給だけを使う隔離環境で実Buildし、成果物digestとSource閉包の資格を別々に記録する。両者が食い違うX1を明示する（#2831 SB-B事前確認） |
+| [`reference-go-build-stage-driver/`](reference-go-build-stage-driver/) | Buildを別プロセスの起動として駆動し、invoker/invoked の実行ファイルdigest・argv・exit と、子の主張とディスク実物のartifact digestを別々に記録する。L3は主張しない（#2831 SB-C0/C1） |
 | [`reference-go-module-supply-verify/`](reference-go-module-supply-verify/) | オフラインGo Module供給を、対象の実選択Moduleと`go.sum`の`h1`へ束縛して再解決する検証。供給元・署名・Build権限は扱わない（#2831 SB-0b） |
 | [`reference-go-build-reproducibility/`](reference-go-build-reproducibility/) | 同じ対象を隔離した二つの状態で実Buildし、成果物digestの一致と試行の同一性を別々に記録する。Builder信頼・受入・権限は扱わない（#2831 SB-N8） |
 | [`reference-go-module-supply-verify/`](reference-go-module-supply-verify/) | オフラインGo Module供給を、対象の実選択Moduleと`go.sum`の`h1`へ束縛して再解決する検証。供給元・署名・Build権限は扱わない（#2831 SB-0b） |
@@ -199,6 +202,9 @@
 | [`reference-design-output/`](reference-design-output/) | 受理済みの意味から表・機能・対応一覧・DDL・静的HTML索引を一つのrevisionへ束縛して導出する参照。書式（markdown/text）を差し替えても意味の行を保ち、編集できる正本の位置と、宣言された利用／観測された副作用を別々に示す（#1803） |
 | [`reference-access-matrix/`](reference-access-matrix/) | Application × Dataの宣言された利用の対応表を導出する参照（#1803） |
 | [`reference-operation-pattern-crosswalk/`](reference-operation-pattern-crosswalk/) | 受理済みの意味から、宣言されたPatternと導出された標準操作を、Data ID・能力ID・Relation targetの三つの宣言だけで突き合わせる参照。一致は読み取りであり実行権限ではありません。一致しない宣言は operation-surface の gap 語彙で返し、既定値で埋めません（W3の設計候補を試すためのもの） |
+| [`reference-operation-drift-check/`](reference-operation-drift-check/) | 操作面を後から保存した照合値（WorldFingerprint・ModelRevision）と比べ、一致しなければ STALE_OPERATION_SURFACE を返す参照。Basis は persist 写像の値で属性追加では変わらないため比べません。未指定は unchecked として current と区別します。既定で有効にするかは未決のままです |
+| [`reference-plugin-capability-coverage/`](reference-plugin-capability-coverage/) | プラグインが宣言した能力のうち、どの環境のBindingからも選ばれていないものを一覧する参照。database-instanceは提供技術名を指すため、能力IDと文字列で比べず SupportsDatabaseProvider で解決します。選ばれていないことは欠陥の証明ではありません |
+| [`reference-plugin-selection-matrix/`](reference-plugin-selection-matrix/) | 環境のBinding（配備実行・状態観測・検証根拠・database instance・環境の機能・移行）ごとに、対応するプラグイン能力を既存の `Supports*` で一括して解決し、selected/missing/ambiguous を一覧する参照。ambiguous は解消せず両方を列挙します。診断の権限は internal/validation が持ちます |
 | [`reference-accounting-period/`](reference-accounting-period/) | 業務日付とシステム時刻を分け、期間の状態・締め済み期間の直接更新拒否・赤黒訂正・締め後の到着方針・順序鍵と版による再生・締め時点の照合値を判定する参照（#2144） |
 | [`reference-partial-import-plan/`](reference-partial-import-plan/) | 別Workspaceから選んだData定義の取込み結果を分類する読取り専用の参照（#1805） |
 | [`reference-table-definition-document/`](reference-table-definition-document/) | 受理済みの意味から表定義書を導出する参照（#1803） |
@@ -267,3 +273,5 @@
 | [`check-transform-wasm-conformance.sh`](check-transform-wasm-conformance.sh) | js/wasmの実行がネイティブのTransform wire契約を保つことの確認 |
 
 R7Bの一回限りの準備・公開・後処理を行うスクリプトは、統合と対象ブランチの終了後に削除しました。現在の根拠確認や再現に使う検査・取得ツールは上の一覧に残しています。
+| [`reference-self-build-two-stage/`](reference-self-build-two-stage/) | stage1で作った実行ファイルをstage2のinvokerとして実起動し、invoker一致・同一レシピ・artifact一致を別々に判定する。Seed Trust・受入・権限は扱わない（#2831 SB-C1） |
+| [`reference-harness-wire-summary/`](reference-harness-wire-summary/) | 外部AIハーネスがMock Providerへ送ったHTTP要求bodyを、モデル入力と拡張field（`dsh_session_log`）を別欄で要約する参照。bodyのbyte数・SHA-256・最上位キー・event種別・水位・合成markerの出現位置を出し、既存の出力を上書きしない。送出の許可・実OS隔離・Provider側の保存は判定しない（#2515 P0-b / #2509） |

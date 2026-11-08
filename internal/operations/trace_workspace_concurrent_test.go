@@ -229,7 +229,7 @@ func TestTraceWorkspaceReportsTraceErrorBeforeSourceIndexFailure(t *testing.T) {
 	}
 
 	// グラフを見て初めて分かる失敗（存在しない主体）は、Source Index側の失敗より優先する。
-	// 検査対象外の種別なので、inspectCanonicalでは弾かれず、TraceDirectが返す。
+	// 投影する種別なので、inspectCanonicalを通過し、TraceDirectが返す。
 	missing := modelref.Key{Scope: "reference-observation", Subject: subject.Subject{Kind: "semantic-data", ID: "no-such-subject"}}
 	_, err = TraceWorkspace(root, missing, modelref.TraceOptions{Mode: "summary"})
 	var failure *ValidationFailure
@@ -238,6 +238,14 @@ func TestTraceWorkspaceReportsTraceErrorBeforeSourceIndexFailure(t *testing.T) {
 	}
 	if !errors.As(err, &traceErr) || traceErr.Code != "SUBJECT_NOT_FOUND" {
 		t.Fatalf("expected SUBJECT_NOT_FOUND from the trace, got %v", err)
+	}
+
+	// 投影しない種別は、世界を読む前のUNSUPPORTED_SUBJECT_KINDとして返る（#3180）。
+	// 存在しない識別子と同じSUBJECT_NOT_FOUNDにしない。
+	unprojected := modelref.Key{Scope: "reference-observation", Subject: subject.Subject{Kind: "semantic-candidate-key", ID: "sales.order.order_identity"}}
+	_, err = TraceWorkspace(root, unprojected, modelref.TraceOptions{Mode: "summary"})
+	if !errors.As(err, &traceErr) || traceErr.Code != "UNSUPPORTED_SUBJECT_KIND" {
+		t.Fatalf("expected UNSUPPORTED_SUBJECT_KIND for an unprojected kind, got %v", err)
 	}
 }
 

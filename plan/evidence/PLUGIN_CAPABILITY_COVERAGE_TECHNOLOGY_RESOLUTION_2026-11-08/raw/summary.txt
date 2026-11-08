@@ -1,0 +1,16 @@
+declared: 12
+unselected: 4
+  selected  tei.database.observer.reference observation-provider   database.observer      development,production
+  unselected tei.database.oracle            contract-query-executor database.query.oracle  -
+  selected  tei.database.oracle            database-provider      database.oracle        development,production
+  unselected tei.database.postgres          contract-query-executor database.query.postgres -
+  selected  tei.database.postgres          database-provider      database.postgres      development,production
+  unselected tei.editor.intelligence.sql    editor-intelligence    editor.sqlglot         -
+  selected  tei.health.reference           evidence-provider      health.reference       development,production
+  selected  tei.migration.atlas            deployment-executor    migration.atlas        development,production
+  unselected tei.migration.atlas            migration-provider     migration.atlas        -
+  selected  tei.runtime.reference          deployment-executor    runtime.reference      development,production
+  selected  tei.runtime.reference          observation-provider   runtime.observer       development,production
+  selected  tei.traffic.reference          deployment-executor    traffic.reference      development,production
+
+ruleFingerprint: sha256:319077584a43514838adce63403af48fbdd6a68e5f30426cf0d50c0cd557167b
