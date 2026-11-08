@@ -232,6 +232,33 @@ D-3を採る場合、§4.1の「広告」欄は「`acceptedCommands`へ追加し
 
 **§4の外形とこの入口の差**が、次に埋めるべき部分である。`-intent`の解決、`-supply`の照合（SB-0bの分類）、`-state`の分離、`qualified`欄は未実装である。
 
+### 4.7 `-intent` を入口へ足す前に解くべき接続（2026-11-08）
+
+`-intent`を足すには、Build Intentの宣言を読んで確定計画を導出する処理を`cmd/tei`から呼ぶ必要がある。その呼び出しは**現状のままでは組めない**。実測で確かめた。
+
+| 観測 | 結果 |
+| --- | --- |
+| Build Intentの宣言を読む実装 | `tools/reference-build-authoring-intent`にある（`ParseIntent`・`Resolve…`） |
+| そのパッケージ種別 | **全ファイルが`package main`**（8ファイル） |
+| 別パッケージからのimport | `import "tei/tools/reference-build-authoring-intent" is a program, not an importable package` で**拒否**（`go vet`で実測） |
+| もう一つの実装 | `tools/reference-plugin-build-supply/stage1.go`にも`ParseIntent`があるが、これも`package main` |
+
+つまり`-intent`を`cmd/tei`へ足すには、次のいずれかが要る。
+
+| 案 | 内容 | 影響 |
+| --- | --- | --- |
+| I-1: intent解析を`internal/`のパッケージへ切り出す | `reference-build-authoring-intent`の解析部分をモジュール直下の`internal/`配下の新パッケージへ移し、`tools/`側はそれをimportする | 既存参照実装のimport pathと試験が動く。`internal/`は`tools/`からも`cmd/`からも届く |
+| I-2: `cmd/tei`が参照実装を**childとして起動**する | `-intent`の解決もsubprocessに任せ、結果のJSONを読む | 入口の記録形式（invoker/invoked）をそのまま使える。ただしintent解決が別プロセスになり、`qualified`の意味が薄まる |
+| I-3: `cmd/tei`側に解析を**書き直す** | 同じJSON契約を読む第二実装を持つ | 二重実装。§35.2が禁じた「第二Runner」に近づく |
+
+**I-2を本稿の既定案とする。** 理由は次の三点である。
+
+1. `tei self-build`は既にchild起動とinvoker/invokedの記録を持つ。intent解決も同じ形に載せれば、新しい記録形式を作らない
+2. I-1は`tools/`側の参照実装の配置を変える。SB-C0 §3.1と同じく、移動は影響範囲が広い
+3. I-3は二重実装であり、宣言の解釈が二箇所に分かれる
+
+I-2の制約は明記する。**intent解決をchildへ委ねると、「この`cmd/tei`が宣言を解釈した」とは言えなくなる。** 言えるのは「この`cmd/tei`が、指定したchildに宣言を渡し、その結果を受けた」ことだけである。L2のClaimを立てるときは、この差を明記する必要がある。
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
@@ -269,10 +296,11 @@ D-3を採る場合、§4.1の「広告」欄は「`acceptedCommands`へ追加し
 - [x] 第一候補をBに確定（§3.4、A-1は採らない）
 - [x] discovery面の制約の実測と既定案の決定（§4.5、D-3）
 - [x] `cmd/tei`からchild driverを起動する薄い入口の実装（§4.6、`tei.cli.self-build-entry/v0`。SC0-04・SC0-06・SC0-07・SC0-09・SC0-10相当を試験で固定）
+- [x] `-intent`を足す前の接続制約の実測と既定案の決定（§4.7、I-2）
+- [x] `cmd/tei`を対象にしたL3の実測（[記録](../evidence/TEI_SELF_BUILD_CMD_TEI_L3_2026-11-08.md)、`bb7fc01bb`）
 - [ ] §4の外形（`-intent`・`-supply`・`-state`・`-output`・`qualified`欄）の実装とSC0-01〜05の実試験
 - [ ] D-1（catalogの`scope`拡張）を採るかどうかの契約判断（採る場合のみ、catalogの広告と実応答の一致を照合へ載せる）
-- [ ] `cmd/tei`を対象にしたL3の実測（`reference-self-build-two-stage`の形を当てる）
 
-**A-1（`gobuilder`移動）は採らないため、影響範囲の洗い出しは終了条件から外した。** 29ファイルの内訳は[記録](../evidence/TEI_GO_INTERNAL_RULE_AND_BUILDER_MOVE_2026-11-07.md)として残す。
+**A-1（`gobuilder`移動）は採らないため、影響範囲の洗い出しは終了条件から外した。** 29ファイルの内訳は[記録](../evidence/TEI_GO_INTERNAL_RULE_AND_BUILDER_MOVE_2026-11-07.md)として残す。I-1（intent解析の`internal/`への切り出し）も、I-2を既定案にしたため本稿では行わない。
 
 本書は計画の正本を増やすものではない。SB-C0の**入口の外形と拒否条件**だけを固定し、#2831のP0順序（SB-0a → SB-0b → SB-A → SB-B → SB-C）のうちSB-C0を詰めた設計候補である。最終判断は元計画・ADR・actual Evidenceへ返す。

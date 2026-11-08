@@ -52,6 +52,13 @@ type selfBuildEntryEvidence struct {
 }
 
 func runSelfBuildCommand(args []string, out io.Writer) (int, error) {
+	// The §4 workspace form and the primitive -child/-artifact form share one
+	// command. A caller that names any §4 flag is routed to the form that
+	// checks the workspace, the state, and no-clobber before starting anything;
+	// the primitive form keeps its exact grammar (SB-C0 §4.6).
+	if looksLikeOuterShape(args) {
+		return runSelfBuildOuterShape(args, out)
+	}
 	fs := flag.NewFlagSet("self-build", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	child := fs.String("child", "", "exact child executable to start (never resolved from PATH)")

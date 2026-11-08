@@ -1,4 +1,4 @@
-namespace master
+﻿namespace master
 
 // Standard business data the example binds by declared role rather than by
 // column name. The roles are the vocabulary in
@@ -28,9 +28,11 @@ data ExchangeRate {
 }
 
 data NumberingRule {
+    attribute rule type std.identifier display "規則" role numbering-rule
     attribute counter type std.integer display "現在値" role numbering-counter
     attribute digits type std.integer display "桁数" role numbering-digits
     attribute prefix type std.text display "接頭辞" role numbering-prefix
     attribute check type std.code display "検査数字" role numbering-check
     attribute overflow type std.code display "桁あふれ" role numbering-overflow
 }
+
