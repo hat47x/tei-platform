@@ -159,6 +159,8 @@ func CompareHistory(database core.CanonicalID, defs []Definition, history Histor
 			e.Tool = a.Tool
 		}
 		switch {
+		case inHistory && a.State != AppliedSucceeded && a.State != AppliedFailed:
+			return HistoryComparison{}, fmt.Errorf("migration %s history state %q is not a confirmed outcome", id, a.State)
 		case !inRepo && inHistory:
 			e.State = RepoOrphanApplied
 		case inRepo && !inHistory:
