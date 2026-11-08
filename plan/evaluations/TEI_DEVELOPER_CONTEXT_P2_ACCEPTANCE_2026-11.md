@@ -638,3 +638,58 @@ TEI #3262の不足は単純な`Read more`ではない。**どの問いQの必要
 
 **状態**：本節は他チャットの成熟要件をP2の反証可能な計画へ翻訳した**設計更新のみ**。CC-19/20/21、Canvas実Reader・分割/結合、実D0/D1/M1、実Owner Meaning/Grantの試験は**NOT RUN**。既存#3176のCC-12〜18実Go限定証拠と区別し、新しい共通Cognition Host、第二Source正本、Universal Item Type/Policy Engine/Gateを追加しない。
 
+<!-- tei-devctx-cc22-24-projection-hash-cognitive-history-20261108 -->
+## 23. 問い相対の原典同一性・理解の変化を公開Projection／ハッシュから誤推定しない（2026-11-08、横断計画）
+
+### 23.1 最新の実証と設計上の未決
+
+- **実SUI Productの限定PASS**：[merged SUI #3396](https://github.com/hat47x/sui-sensemaking/pull/3396) HEAD a7893f9c4114d140dc19c7ff2f565693c5b1b29b、[frontend CI #42345896949](https://github.com/hat47x/sui-sensemaking/actions/runs/42345896949)。実buildContextProjectionの試験**3/3 PASS**。元Card.meta.sourceやIsland所属・座標を変えても公開Projection全体が同じになる公開合成二世界を実確認。可視本文・レビュー済み島題名の変更は区別可能。これはProjectionの**非単射性**の限定証拠で、元Raw Reader・逆Patch拒否・SHO/SEI実受領を証明しない。
+- **SUIの一次価値に対する追加の問い**：[SUI #3400](https://github.com/hat47x/sui-sensemaking/issues/3400)は「違和感→関係発見→理解の変化→共有・再開」を人間が後から検討できる体験として評価する**未採用・未実行の計画**。理由を言語化できない保留・異論を失敗とせず、後から記した理由を当時の発話や判断にすり替えない。SUIの既存ADR-0089/CVIのOwner判断を置換しない。
+- **公開ハッシュの比較規則は未決**：[SUI #3389](https://github.com/hat47x/sui-sensemaking/issues/3389)はcontext-projection.v1のbundleHashとlocaleCompare／関係等の配列順の依存を既存Ownerとして調査中。IDの混在ケース・relation type Tie Break・他言語での固定ベクトル／旧保存値の版対応が未決。実ロケール横断での具体的Hash差はここで実Runしていない。
+- **TEI側の実証境界**：PR #3176のCC-12〜18は実Go Source/Profile/Test/Source Cohortであり、上記SUI実ProductからTEIへRaw Readerが配送された証拠ではない。前§22 CC-19〜21は未実施の設計反例。
+
+### 23.2 CC-22：公開Projection一致・公開Hash一致はSource/Topology/Meaning一致の証拠ではない
+
+**Q22：二つの公開表示は同じ原典と同じ関係を持ち、出典再確認を省略できるか。**
+
+| 世界 | 見える状態 | 独立Expected |
+| --- | --- | --- |
+| W22a | 許可されたカード文章、島題名、公開ProjectionとHashがW22bと同一 | Source cue A、元Island所属X |
+| W22b | W22aと完全に同じ公開Projection | Source cue C、元Island所属Y |
+
+**判定**：一致する公開Projection/Hashは「公開された表現の同値」以上の結論を保証しない。元Source ID・Item ID・Revision・Graph edge/Island所属・意味同値・独立根拠数・Owner受理・逆Write資格を復元しない。CC-20の複数Occurrenceを同一原典証人の数へ直結しない。
+
+**追加Probe**：Qが出典の同一性なら許可された元Item/Source ReaderのID・位置・Revision、Qが関係なら元Relation/Island/Tree、引用の現在性ならSource/Consumer Grant・開示Scopeを確認する。Product側に実Readerがなければ unsupported/unknown。非公開Source ID・Item数・pathを公開診断から漏らさない。**SUI #3396による非単射のみ実Product PASS**、TEI/SUI同一Attempt Reader/DeliveryとMethod実選択はNOT RUN。
+
+### 23.3 CC-23：現在表示が同じでも「どう理解が変わったか」は異なる
+
+**Q23：何に違和感を覚え、何が再解釈を促し、何が保留・異論として残るか。**
+
+- W23a：Raw資料と最終可視カード本文しか残っておらず、旧見立て・判断の履歴は未観測。
+- W23b：現在の同じ可視本文に到達したが、歴史として initial Q → provisional grouping → hold（理由なしも可）→ new source → changed interpretation → remaining dissent が時点付きで実記録される。
+- 独立Expectedは各履歴の**実記録と時点**、補足理由の追加時点、旧Source Revision、Reviewer/Ownerの資格を別に凍結する。理由なしの違和感をAIが「本当の理由」で穴埋めしない。後日書いた理由を当時の記録へ遡及改ざんしない。
+- 同じ最終Byte/公開Projectionに復帰してもA→B→Aの中間履歴は消えない。TEI CC-17/18の実Go Test/依存ABAとは**現在の表示/一致から過去の実行・判断を再資格化できない**という条件のみ共有し、SUI人間の意味変化をGo Test Receiptと同一物にしない。
+- D0は履歴の実Readがなければ history-not-observed と説明。D1/M1は、現在許される履歴/Raw Source Readerで最もQを判別する1 Probeを同条件で選び、実Byte・Scope/時点・Consumer受領後にのみ根拠を更新する。
+
+### 23.4 CC-24：Projection Hashの用途を具体的に制限する
+
+| 対照 | 避ける偽推論 | 検証Owner／状態 |
+| --- | --- | --- |
+| 同じ公開Projection・異なる元Source | Hash一致＝同一Item/Source/Meaning | SUI #3396の非単射**限定PASS**。実Raw Reader未接続 |
+| 同じDocument、異なる元配列順／Relation type | Hash差＝意味変更、Hash固定＝位置/関係保存 | SUI #3389の契約未決。固定テストベクトルと並び順変更の受入はNOT RUN |
+| 同じDocument、異なるLocale/実装言語 | Hashは環境差を超えて再計算できると断定 | SUI #3389がcanonical order/Hash versionを決めるまで保留。TEI Go相互検算NOT RUN |
+| 同じProjection Hash、欠けたTool Reply | Hashがある＝Consumerに完全配送済み | TAI #168／TEI #2516の実受領・Current Grantは別 |
+
+採用前にSUI Ownerが配列順（ID比較／文書順）、relation Tie Break、canonical JSON/Hash version、保存済みHashの移行を判断する。TEIで別Canonicalizerを作らない。評価票のSource content identity／projection identity／serialized byte identity／実受領／Meaning／Current Grantを混ぜない。
+
+### 23.5 同条件のD0/D1/M1へ接続する最短の検証
+
+1. **P0：既存証拠を固定**。SUI #3396 Product 3/3とTEI #3176 CC-12〜18の限定Goを別根拠に保持。SUI #3400は実ユーザー価値の計画、#3389はHash仕様の未決。未実装Raw ReaderとSUI→TEI Deliveryは未知とする。
+2. **P1：一つの元Source/履歴への実Read**。同一Source Revisionと公開Projectionが照合できる実SUI Reader・許可範囲を既存Ownerと確認する。Tool入口なしならunsupportedのまま。新Item/Canvas Schemaや共通DBを先行導入しない。
+3. **P2：Q22・Q23のBlind比較**。同じ初期Projection・Q・Tool一覧/Grant・Scope/Read BudgetをD0=不足診断、D1=決定的次Probe、M1=SEI Methodによる次Probeへ渡す。元Raw Sourceと履歴のIndependent Expectedを参加側から物理的に隠す。採点列は proposed／invoked／received complete／Required R(Q) attained／correct current claim／false identity・fabricated history／unnecessary reads・latency・cost。M1がD1と同じProbeを選ぶだけなら追加価値は認めない。
+4. **P3：Sensemakingの価値試験はSUI Owner**。SUI #3400のAIなし→候補→再配置→後日再開、異論・違和感保持と新しい気付きの価値は同Issue/ADR-0089でT1/T2を評価。TEI Synthetic CCのPASSをSUI実利用者の価値証拠へ昇格しない。
+
+**担当**：TEI #2533＝問い相対の認知Method比較、#2497＝Projection Loss、#2514＝独立Expected、#2516＝Consumer開示、SEI #767＝次Probe、TAI #168/#271＝実受領/再資格化、SUI #3400＝Sensemakingの価値、SUI #3389＝Hash契約、SUI #3396＝実Projectionの限定Evidence、SHOは文書Readerの実受入Owner。
+
+**停止線／NOT RUN**：元Source/Raw Reader・理解履歴・SUI→TEI/SEI同一Attempt Delivery・実M1/外部Harness・Hash跨言語実検証・Owner Meaning/Grantは未実証。Hash一致＝Source一致、Hash差＝意味変更、現在表示一致＝理由/履歴なし、Probe提案＝実Read、をいずれも認めない。追加の認知Host・Proof Store・Hash Store・Policy Engine・正式Product Gateを作らない。
+
