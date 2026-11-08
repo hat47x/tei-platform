@@ -1025,3 +1025,58 @@ CLIの各ReplyにはEnvelope Schema、resultShape、Read Mode、Fingerprintの**
 第19節で追加したRaw Markdownテストを含む exact HEAD e14aab213f6057f17744a4881e32e4a6ed7eac33 の[Repository Health #42394860575](https://github.com/hat47x/tei-platform/actions/runs/42394860575)は**completed/failure**。実Jobログでは `go vet ./...`、`go test -count=1 -timeout 60m ./...`、`tei validate -workspace reference/workspace`がPASSし、`reference/dsl-language-plugin`パッケージの試験もPASS。一方 `gofmt -l . is empty` はFAIL、対象は追加した `reference/dsl-language-plugin/self_description_workspace_boundary_test.go`。この段階の総合結果をPASSと報告しない。
 
 失敗理由をGo Test failure / Doc Plan failure / Formatting failureに分類したうえで、追加関数直前の不要な空行1行だけを[commit 1668d617](https://github.com/hat47x/tei-platform/commit/1668d617a7b47202feff345f742a286713972637)で除去した。既存FixtureとExpected/Assertionは変更なし。**修正後のPR HEADでCI completed/successを取得するまではRepository Health未資格**。過去のGo Test PASSは元HEAD限定、修正後の現HEADへ無条件に転用しない。正式Meaning/実Role Provider/Runtime Authorityへも昇格しない。
+
+---
+
+<!-- tei-role-actual-rule-and-decision-evidence-20261108 -->
+## 21. 2026-11-08：実Roleを使う業務規則・Ontology判断根拠・外部REA候補の受理境界（実Go差分とO0計画）
+
+**今回採用する範囲**：既存mainの`currency-rate-fallback`という具体的なRole→行値→業務規則の実実装を、SD-2/3への限定的な圧力事例として使用する。§17〜20のSource/Independent Required/actual Provider資格を上書きしない。[Ontology構想 #3475](https://github.com/hat47x/tei-platform/issues/3475)のO0静的Fit/Gapだけを自己記述へ接続し、実Digital Twin/Sim/SDK/SEI Hostは現在のP0実装に追加しない。REAの外部原資料→観測Evidence→TEI Candidateも別経路として保持し、役割・業務同義・現在Grantを自動受理しない。
+
+### 21.1 mainに存在する最初の具体的な『Role宣言＋Data値でRuleを決める』Reference
+
+[main統合 #3410](https://github.com/hat47x/tei-platform/pull/3410) の `internal/currencyrate/fallback_declaration.go` は `RoleFallback = "currency-rate-fallback"` を導入し、既存 `ir.World.Semantics`内の `Attribute.Role` を `ResolveFallback` で参照する。行値を`FallbackRows`で読むことにより`none`/`annual`という規則候補を選び、知らない文字列・空文字・複数行の規則不一致を拒否する。`internal/validation`にRoleを追加し、5 Go Testの対象を固定。X-TEAの旧動的ランタイムに埋もれた月次0比較を、少なくとも**モデル宣言と行値の組合せで観測できる**有限なProduct実装である。
+
+ただしこれは**ドメイン実装が固定Role名と値を理解する**実績であり、[Draft #2860](https://github.com/hat47x/tei-platform/pull/2860) のtest-only `ParseSelected`が選択した汎用Role Interpreterや、Plugin-first D1のactual Providerを通じた自己記述実行ではない。`RoleFallback`はコードに定数として存在し、汎用Descriptor定義から意味契約を生成した事実はない。この実装をSD-1/SD-2の実用的な入口とし、SD-3『自分で定義したRoleを選択済み実Interpreterが解釈』の受入上限を越えない。
+
+**既存実コードから判別できる見落とし候補（まだ不具合認定しない）**：`FallbackRows`は `[]map[CanonicalID]string` を受けるが、引数に実Read/Completeness/Scope/Source/AsOfがない。Roleが指定されたDataでも`len(rows)==0`では現実装が`FallbackNone`を返す。`row[d.Attribute]`は未存在Keyと明示空値をGoの同じ空文字として読む。現在の5試験では、全行取得済みの本当の0件と部分取得/非開示での0件、未存在とNULL相当と明示空、同じ値だが別Scope/Providerの比較、旧Rate Revision改訂の再資格化を実証していない。**行0件⇒フォールバック無しを一般的な真の結論とするには、用途別独立Read/Completeness証拠が必要**。変更要否は業務Owner/Rate機能の別判断であり、ここで失敗コード・新Loader・必須APIを直接変更しない。
+
+### 21.2 世界の一部分を決定へ渡すときの自己記述Roleは、完全性の説明も必要
+
+[Ontology DSL・Decision Twin #3475](https://github.com/hat47x/tei-platform/issues/3475)がO0で求めるのは、判断に必要なSubject/Relation/State/Rule/Sourceの**用途相対の切出し（Decision Context Slice）**。必要集合はモデル候補/AI自身が`required=[]`と宣言して確定させず、#3262の独立Required・#2514の独立Expectedに束縛する。取得できた集合・取得できなかった必要集合・取得不能の理由・粒度・観測時刻/有効期間・改訂・現在Disclosureを分ける。
+
+同じSource/Modelでも Observation、Inferred、Desired、Committed、Predictedは異なる意味Roleであり、表示・外部SDKの同型値を使うことがあっても無音で同一状態に変換しない。Caseとして『在庫18と見える古い記録、現物10、確保6、未確定入荷8』のような、見かけの同一値に対し時点・権限・未確定性が異なる外部資料を使えるが、具体的な業務Expectedは#3475/SEI #677が所有し、#2620で第二Decision Engine/シミュレーション/主体性を生やさない。
+
+**自己記述のDecision/Action役割もCandidateに留める**。現場の即応・局所手続きでさえ、Role=Action宣言は現在のHost実行資格を与えない。SEI側へ渡すときは `Inquiry`（判断要求）、`Delivery/Reply`（通信）、`Decision`（主体の判断）、`Operation`（実行意図）、`Receipt`（外部Effect証跡）、`Outcome`（観測）のIdentity/Attemptを別に管理する。TEIにSEIの目的・記憶・承認を置き換える万能Hostは作らない。現状は**O0の設計比較・read-only ContextのFit/Gapのみ**。実Ontology DSL・SDKは後続O1、実Twin/Simは#3475で定めたセルフビルドとSUI基本機能完成後のGateを維持する。
+
+### 21.3 REA由来SourceとSHO/SUI文書では、同じRole文字列でも意味の根拠が違う
+
+リバースエンジニアリングで発見された旧SQL・実テーブル・転記文書・DB観測は、最初は外部Evidence/Structural Candidateである。TEIの型/Relation/Roleと同名でも、原版、取得手法、Source位置、Identity/Temporal Grain、暗黙条件、NULL/部分集合、Ownerが許した受理範囲を保存しない限り正式Semanticや更新対象へ昇格させない。REAの正本/Adapterは既存#950/#3394系、Authoring・`*.tei.md` Readerは#2621/#988/#2823、SHOのSource backlink/ProvenanceはSHO固有Ownerへ委譲する。
+
+通常MarkdownからRoleのような文字列を読めても、Loaderの `ManagedFiles.ReadByLoader=false` なら意味として未解釈である。[Issue #3346](https://github.com/hat47x/tei-platform/issues/3346) は**closed**だが、閉鎖を `*.tei.md` 正式Loader/Parserが成立した証明としない。[Draft #3031](https://github.com/hat47x/tei-platform/pull/3031) は未対応Sourceを拒否する限定Guard、正式Readerは未接続。同一Item/SubjectのCanvas表示Occurrenceと原文/Meaning受理は別、表示ProjectionのLossから逆編集先を推測しない（#2497）。OntologyのSDK/SHO文書を生成できても、Source相対のMeaningと現在Host資格は再検証する。
+
+### 21.4 増分再生成と自己ビルド：ついにcmd/teiの実Stage2再入、ただしG4とは別
+
+前§20時点では driver 自身の限定再入だけを参照したが、[main統合 #3433](https://github.com/hat47x/tei-platform/pull/3433)で `tei self-build`の薄いchild起動入口、[main統合 #3440](https://github.com/hat47x/tei-platform/pull/3440)で**cmd/tei自身のstage0→stage1→stage2物理再入実測**に進んだ。stage1 Artifactの実digestがstage2 Invoker digestと一致し、同一child/Artifact比較が成立する限定証拠が記録されている。さらに[main統合 #3463](https://github.com/hat47x/tei-platform/pull/3463)はWorkspace/State/Outputを明示した呼出外形とFail-closedを追加した。
+
+ただし #3463 の `-intent` はまだ**記録のみで実Build Intent解釈をしない**。`qualified=false`を維持し、実Source Closure既定資格はrejected、Seed Trust/供給Trust/Owner受理は別。従って **SB-C1物理L3の限定的成功≠TEI標準ModelのBuild Intentを自己解釈して全体を再構築したG4成功**。Role/DSL自体の自己解釈SD-3も、物理再入によって成立したとはしない。SDK/Role DefinitionからGenerated Artifactへの変更影響はSource/Model/Toolchain/Provider/Target別に必要な範囲のみ失効させる。新Build Host/Registryを追加しない。
+
+### 21.5 追加する限定反例 ESD-38〜44（独立Scenarioへの委譲、現時点NOT RUN）
+
+| Case | 一軸を変える観測 | 必要な判別／Owner |
+| --- | --- | --- |
+| ESD-38 | RoleなしRate Data vs `currency-rate-fallback`付与、双方2行完全取得 | 宣言無いときのみ明示規則なし。Roleの有無と行値の妥当性は別。実mainの#3410局所Referenceを使用。#2620/#2514 |
+| ESD-39 | Role宣言済・0行完全取得 vs 部分取得/権限で見えない0行 | `FallbackRows`の現戻値が同じでも、用途相対の確定規則は未保証。独立Read Completenessがない場合はunknown。Rate Owner/#2586 |
+| ESD-40 | 指定Role行Keyを欠落、明示空、NULL相当とする | Go map lookupの空文字同値を意味上の同値としない。Missing/NULL/Explicit Emptyの受入をRate/Standard Data Ownerに確認。#2495/#2514 |
+| ESD-41 | 同じ正しいRule文字列だが、Role/Plugin/World/AsOfの一つだけ変更 | 旧Conformance/SDK/生成物の現在資格を無条件再利用しない。無関係なSourceは過剰失効しない。#2600/#951 |
+| ESD-42 | REAから同名Data/Roleを採取し、旧SQLにのみ更新条件を発見 | 構造候補を保持し、独立ExpectedとOwner受理までTEI Action/Source Patch/実Commitを認めない。#950/#267 |
+| ESD-43 | Role付きSubjectを判断Contextへ渡すが、必要な負の制約Ruleだけ未Loaded | Rule不在ではなく判断Context partial/unknown。SEIへ存在断定/Decision/Grantを自動伝播しない。#3262/#3475 |
+| ESD-44 | cmd/teiのStage2再入は成功、Build Intentは未解決／sourceClosure rejected | SB-C1物理再入の限定成功とG4未資格を併記。Role SD-3・Target実行認可を付与しない。#2831 |
+
+### 21.6 新規実Go ReferenceとCIの再資格化
+
+**追加テスト（保存済・実CI判定前）**：`reference/dsl-language-plugin/self_description_workspace_boundary_test.go`に `TestSelfDescriptionRawDocumentRevisionIsNotSemanticRoleRevision` を追加。同じ`semantic/probe.tei`＋Workspace Manifestを固定し、未解釈 `docs/design.md` のRole風文字列だけA→Bへ改訂して**別々の実 `workspace.Load`→`BuildSourceIndexFromLoad`**を実行する。独立Expectedは、原文Artifact fingerprintは改訂で変化、Manifest digest・Parsed World・Semantic Source/Referenceは変化なし、Raw DocumentにはSemantic Definition Referenceが発生しないこと。これはWorld/Source Fingerprintの対象範囲を区別する局所回帰であり、Raw文書の開示許可、正式Role Parser、決定能力、非公開二世界Noninterferenceの証明ではない。
+
+**CI真偽とベース差異**：前§20のコミット `e0a60786ffe84bc68c4e27bfa59c37a1944cb241` の[Health #42396595545](https://github.com/hat47x/tei-platform/actions/runs/42396595545)はcompleted/**failure**。実ログで Go test/vet/tei validateはPASS、gofmt FAILが指すファイルは `tools/reference-plugin-capability-coverage/coverage_test.go` で、当PRのGo新Testではなく並行mainから仮統合に含まれたもの。依存の脆弱性検査はsuccess。新テスト追加の現在HEADについてGo/Healthの合格を未確認のままにし、他レーンのFormatting失敗を自分のRole Testの意味不一致と誤報しない。既存mainの整形修正は該当Ownerが対応し、本Draftでは無関係ファイルを巻き取らない。
+
+**実装上の次手**：まず既存CLI/Studio [Draft #3381](https://github.com/hat47x/tei-platform/pull/3381)/[#3371](https://github.com/hat47x/tei-platform/pull/3371)の型付きInspector注入点を同一Contractへ整合させ、#951のexact Selected Provider→実Call siteをTraceする。Role/Rate値の一般化は選択済Interpreterを介した実受入が成立した後の比較とし、現在のmain #3410を過大一般化しない。OwnerとTargetを変更しない第二Resolver/Host/Meaning Writer/BOM Engineは作らない。今回のOntological/REA/SEI横断はO0設計・有限Fixtureだけであり、将来のO2/O3/O4を現P0の直列Hard Gateにしない。
