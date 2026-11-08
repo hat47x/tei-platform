@@ -46,6 +46,11 @@ type Summary struct {
 	ModelInputBytes int            `json:"modelInputBytes"`
 	SessionLog      *SessionLog    `json:"sessionLog"`
 	ModelInputHits  map[string]int `json:"modelInputHits,omitempty"`
+	// ToolNames lists the tool names the harness advertised in this request.
+	// A name here is an offer, not evidence that any of them ran: a tool that
+	// appears in the list may never be called, and a called tool may be absent
+	// from a later request. Names are recorded as data, never as permission.
+	ToolNames []string `json:"toolNames,omitempty"`
 }
 
 // Summarize reads one request body. The marker list is searched separately in
@@ -78,6 +83,7 @@ func Summarize(body []byte, markers []string) (Summary, error) {
 	if raw, ok := top["tools"]; ok {
 		if err := json.Unmarshal(raw, &tools); err == nil {
 			sum.ToolCount = len(tools)
+			sum.ToolNames = toolNames(tools)
 		}
 	}
 
@@ -134,6 +140,32 @@ func summarizeSessionLog(raw json.RawMessage, markers []string) *SessionLog {
 		log.MarkerHits = nil
 	}
 	return log
+}
+
+// toolNames collects the advertised tool names. Entries that carry no readable
+// name are dropped rather than guessed, so an unusual schema shows up as a
+// lower count instead of an invented name. Order follows the request, and
+// duplicates are kept: the same name twice is itself an observation.
+func toolNames(tools []json.RawMessage) []string {
+	var names []string
+	for _, raw := range tools {
+		var tool struct {
+			Function struct {
+				Name string `json:"name"`
+			} `json:"function"`
+			Name string `json:"name"`
+		}
+		if err := json.Unmarshal(raw, &tool); err != nil {
+			continue
+		}
+		switch {
+		case tool.Function.Name != "":
+			names = append(names, tool.Function.Name)
+		case tool.Name != "":
+			names = append(names, tool.Name)
+		}
+	}
+	return names
 }
 
 func eventTypes(events []json.RawMessage) map[string]int {

@@ -18,11 +18,14 @@ import (
 )
 
 type document struct {
-	Note     string              `json:"note"`
-	Markers  []string            `json:"markers"`
-	Requests []requestFile       `json:"requests"`
-	Totals   map[string]int      `json:"totals"`
-	Limits   map[string][]string `json:"limits"`
+	Note    string   `json:"note"`
+	Markers []string `json:"markers"`
+	// ToolNames is every tool name advertised by at least one request. It is
+	// not a list of tools that ran.
+	ToolNames []string            `json:"toolNames"`
+	Requests  []requestFile       `json:"requests"`
+	Totals    map[string]int      `json:"totals"`
+	Limits    map[string][]string `json:"limits"`
 }
 
 type requestFile struct {
@@ -79,16 +82,19 @@ func run() error {
 		Markers: markers,
 		Totals: map[string]int{
 			"requests": 0, "withSessionLog": 0, "withMarkerInModelInput": 0, "withMarkerInSessionLog": 0,
+			"withAdvertisedTools": 0,
 		},
 		Limits: map[string][]string{
 			"notProven": {
 				"that the harness sent nothing else on other paths (telemetry, MCP, subagents)",
 				"that a captured field was permitted to leave the host",
 				"that the provider stored, retained or reused the body",
+				"that an advertised tool name was ever invoked",
 			},
 		},
 	}
 
+	seen := map[string]bool{}
 	names := make([]string, 0, len(entries))
 	for _, e := range entries {
 		if e.IsDir() || filepath.Ext(e.Name()) != ".json" {
@@ -120,8 +126,15 @@ func run() error {
 		if sum.SessionLog != nil && len(sum.SessionLog.MarkerHits) > 0 {
 			doc.Totals["withMarkerInSessionLog"]++
 		}
+		if len(sum.ToolNames) > 0 {
+			doc.Totals["withAdvertisedTools"]++
+			for _, name := range sum.ToolNames {
+				seen[name] = true
+			}
+		}
 	}
 
+	doc.ToolNames = sortedSeen(seen)
 	encoded, err := json.MarshalIndent(doc, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal summary: %w", err)
@@ -148,6 +161,15 @@ func splitMarkers(raw string) []string {
 			start = i + 1
 		}
 	}
+	return out
+}
+
+func sortedSeen(seen map[string]bool) []string {
+	out := make([]string, 0, len(seen))
+	for name := range seen {
+		out = append(out, name)
+	}
+	sort.Strings(out)
 	return out
 }
 
