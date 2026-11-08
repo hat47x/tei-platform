@@ -34,7 +34,6 @@ git grep -n "ADR-0035" -- . ':!plan/adr/0035-autonomy-levels-and-verification-pa
 ## 判断履歴
 
 - [ADR-0001: 設計判断と実行作業をADRとIssueに分ける](0001-adr-and-issue-workflow.md)
-- ADR-0002: M0.22.1を最初の公開設計チェックポイントとする
 - [ADR-0003: 参照作業領域の基準出力と観測用の試験データをリポジトリに保存する](0003-reference-fixtures.md)
 - [ADR-0004: 情報源から意味の正本への追跡関係を正本の全体モデルと分ける](0004-source-to-canonical-traceability.md)
 - [ADR-0005: 監督側の権限と実行基盤で古い担当を排除する権限を分ける](0005-supervisor-and-runtime-fencing-authority.md)
@@ -81,3 +80,7 @@ git grep -n "ADR-0035" -- . ':!plan/adr/0035-autonomy-levels-and-verification-pa
 - [ADR-0046: 業務状態遷移を、標準データ上のLifecycle役割とOwner Actionのガードとして扱う](0046-business-lifecycle-as-standard-data-role.md)（提案中。ADR-0024・0025の統合案）
 - [ADR-0047: ADR-0043・ADR-0044を既存ADRへ適用する範囲を定める](0047-applying-adr-0043-0044-to-existing-adrs.md)（提案中）
 - [ADR-0048: CLI・MCP・API・Web・Desktopの操作を共通アプリケーションAPIに集約する](0048-shared-application-api-and-transport-adapters.md)（採用。HTTPサーバー非必須、意味契約の共有と入口別Adapter、段階移行）
+
+## 判断履歴
+
+- ADR-0002: M0.22.1を最初の公開設計チェックポイントとする（公開前に削除。番号のみ残す）
