@@ -263,3 +263,179 @@ Trait集合の合成は原則として交換・結合・冪等であり、同じ
 受入順は**WB-26/27/29（D1に接合）→WB-30/31（実Read）→WB-34（DDL安全）→WB-32/35（実Build／BOM）**。WB-33/36/37/39/40/41はどの段階でも安全性や意味・履行保証を損なうなら停止する固定負例。性能測定は経路別に初回接続時間、ページ取得時間、メモリ/Bytes、Plugin導入に必要な編集ファイル数・Core改修数、静的Buildの含有差、CLI/Studio/Runtimeの実呼出差を計測する。未取得値は`not-run`と記載し、仮の性能目標や完全合格率を生成しない。
 
 **本節のClaim ceiling**：現行コードと既存PRの静的観測、Source Fixture・独立Expected・Fixture自身の回帰テストの作成まで（テスト実行・実Provider Conformanceは未確認）。実PostgreSQL、CLI/Studio同一Plugin呼出し、生成GoのLink/Invoke、JSONL Reader、DB Apply、P0〜P2の実試験は未実施。#1251のD1/D2契約、#2586のRead、#2892のHistory、#3267のBOM、#951のResolverを重複実装しない。
+
+## 19. 実Catalog観測から三視点への引渡し：物理制約と受理済み意味を混同しない（2026-11-08）
+
+他チャットの三視点図面/CRUD/SHO設計[#3263](https://github.com/hat47x/tei-platform/pull/3263)（Draft、未統合）、Data/Presentation/Binding topology[#3303](https://github.com/hat47x/tei-platform/pull/3303)（Draft、未統合）、設計情報完全性[#3262](https://github.com/hat47x/tei-platform/issues/3262)（CLI読取の限定的なCIは存在）に、**Workbenchから渡せる証拠と渡せない意味**を一本の受渡しで明示する。Workbenchが三視点の新しいモデル正本や図面エンジンを実装するわけではない。
+
+### RDB Catalog → Source Observation → Structural Candidate → Accepted Meaning
+
+- **観測として渡せるもの**：Provider/Database定義・対象Schema、Qualified Table Name、Column、PK、UNIQUE、FKの列集合／参照先、Source CapturedAt／Fingerprint。ただし、CatalogReaderの取得範囲・Principal・実Instance/Grant・完全性は**現行SchemaSnapshotだけでは一意に証明できない**ため別のObserved Scopeとして必要。
+- **候補としてしか渡せないもの**：物理PKを業務Keyとするか、FKで結ばれた表の業務Relation/多重度・期間関係、JOIN可能な列と業務同一性、ログ中の`order_id`とDB行の紐付き、機能がどのデータを作成・更新・参照・削除するか。
+- **必ず受理／宣言を要するもの**：Data/Function/Businessモデルの所属、機能の操作主体・CRUD、標準表現型を置くFunction Instance、更新対象の業務Identity、書込み・環境Grant、三視点差分の採用、SHOの確定した図面/本文。
+- **診断**：実CatalogにFKが観測されないことは、業務Relation不在の根拠ではない。逆にCatalog FKがあることだけでも業務Relationの受理ではない。依存・Schema Scopeの部分観測での「参照が0件」を、完全なERDやCRUDで`-`/非操作へ変換しない。
+
+これを受渡しの基準として、**Schema Observation (physical)** → **Candidate Model** → **Owner/Source Accepted Data** → **Function Operations** → **Data/Function/Business Views/CRUD/SHO** を分割する。物理Relation表示は初期のDBスキーマ閲覧に限って許し、「Accepted Data Diagram」と異なる表示状態を持つ。既存の多Canvas表示では、同じData/Relation Identityを複数のOccurrenceとして描画できるが、Occurrence/描画位置から意味やDB更新先を導かない。
+
+### 今回の最小Product縦切り
+
+現行`internal/workbench/database/model.go`の`SchemaView`は`Database`とTable/Column/PKしか出さず、`physical.SchemaSnapshot`が持つ**観測時点・Fingerprint・UNIQUE・FKの構造情報が落ちる**。この状態でWorkbenchのSchema Table/DiagramからFKを取り出すのは、元データに戻るか推測に依存する。
+
+本件では、read-only`SchemaView`に`CapturedAt/Fingerprint`、`TableView`に`UniqueConstraints/ForeignKeys/Indexes`を**追加投影**する。Indexの鍵（式・Collation/OpClassを含む）、部分索引述語、含有列、一意性のNULL規則、`Valid/Ready/Live`の**観測された状態**を含め、元の`physical.Index`と同じフィールド型を保持して深いコピーを作る。Indexの無効状態を、Desiredが望む状態やDB操作の現在の許可に置き換えない。変更は既存`PhysicalSchemas`を正としたコピーであり、型付きBusiness Relation、Function CRUD、Physical Schema Snapshotsの第二正本、モデル編集/APIを追加しない。JSON追加フィールドは既存Readerとの互換確認を別に残す。
+
+`internal/database/providers/postgres/workbench_projection_test.go`では、既存Fake Catalogから実プロダクトの`postgres.Provider.Introspect→index.Derived→databaseworkbench.Build`を通し、schema-qualified Table、物理PK、UNIQUE、FK参照先、観測時刻/Fingerprint、元Source sliceとの非aliasを判別する。**Fake Catalogであり実PostgreSQL/DB Grant/完全性・SHO・三視点受理は試験できない**。加えて既存`internal/workbench/database/model_test.go`に複合列の順序と、同じ参照先への**2本の異なる有向FKを一本へ潰さない**判別試験を加える。これも物理メタデータの投影試験であって意味的Graph編集の受入試験ではない。
+
+### WB-42〜49：三視点受渡しの独立期待結果
+
+| ID | 条件 | Expected／拒否する誤成功 |
+| --- | --- | --- |
+| WB-42 | Providerが`public.orders`と`reporting.orders`を返し、publicにFK/UNIQUEがある | 同名別Schemaを保持、物理FKの列・対象Schema/Table/列を正確に投影。業務Relationは新規受理しない |
+| WB-43 | Schema Snapshotの`CapturedAt/Fingerprint`を指定 | Workbench JSONへ値を正確に保存。ただしこれだけでCatalog取得完全性/現在Grantを保証しない |
+| WB-44 | Catalog SnapshotのField/FK配列をBuild後に書き換える | Workbench Projectionは元の取得時点の値を保持、Source変更は別のRevision/再取得として扱う |
+| WB-45 | 観測SchemaにFKが0件、Dataの業務Relationは別Sourceに存在 | 物理0件を業務Relation0件へ変換しない。Accepted Data側のSourceを照合する |
+| WB-46 | 2ログイベントの`order_id`が物理PK値と文字列一致 | Join候補と出典を提示するに留め、Data/Business Relation・更新権限の受理へ昇格させない |
+| WB-47 | 未宣言のFunctionに物理FKが観測された | CRUDは`unknown/not-covered`でありFKからRead/Update/Delete権限を自動生成しない |
+| WB-48 | 同じData/Relationのノードを2つのCanvasに描画 | 共通Identityと各Occurrenceを分離、描画差分だけで意味/実DBを書換えない |
+| WB-49 | Observed FKの情報は得たがRequired Rule/Function/Businessが未Loaded | Contextをpartialと表示。空CRUD/完全三視点をQualifiedとせず、#3262のSource/Tool replyと依存閉包を要求 |
+
+**実装資格の上限**：WB-42〜44は、合成Go経路で実際にPASSした場合のみ「DB Catalog→Workbench read-only物理投影の限定PASS」。WB-45〜49は図面/Source/Function/Providerを横断する**計画済み独立Expected**であり、#3263/#3303のDraft実装・実Studio/SHO/実DB/Product CRUDがPASSしたことにはならない。
+
+## 20. 設計Query・実Provider・画面/図面の3本を同じ機能へ接続する
+
+最短の次の受入系列を、**既存のW0/W1、Plugin D1、#2586および#3262のRequired Context Gateを置換せず**に接続する。
+
+| 経路 | 実入力 → 実Consumer | 最初の未成立一辺とOwner |
+| --- | --- | --- |
+| **Schema** | Actual Catalog Reader→Physical Schema→Workbench Projection | FK/UNIQUE/CapturedAtの限定Product投影を今回圧力試験。実DB/Scope/Completeness/Plugin selectionは#2622/#1251 |
+| **Data/Function** | 実Row/Field/Query/Instance→Data Context→Function Table/Tree | 実Reader/実取得/Disclosureを同一Attemptで照合する#2586がOwner。今回のSchema表示PASSで代用しない |
+| **三視点/SHO** | Accepted Data/Function/Business＋構造位置→Diagram/CRUD/文書投影 | #3263/#3303（Draft）・#1124/#1125/#1126のOwnerへ。未受理Relation/Functionはunknownで、描画により認可されない |
+
+### WB-50〜54：Index構造を持つテーブル変更計画への最小受入
+
+| ID | 独立した入力・反例 | Expected／資格の上限 |
+| --- | --- | --- |
+| WB-50 | 同じTableに通常索引1件、式/部分索引1件（無効状態） | Index 2件を観測値として投影。無効Indexを`usable`と宣言せず、Planが無音で存在・正常と扱わない |
+| WB-51 | Index KeyのExpression/Collation/OpClass、IncludedColumns、Predicate | Native provider-owned metadataを削らずsource由来も保持する。式を共通SQL意味へ無断正規化しない |
+| WB-52 | View生成後に元SnapshotのIndexKey/Predicate/Normalization/Stateを更新 | 深いCopyで以前のObservationを維持。元Source改版を更新の既成事実としない |
+| WB-53 | 無効索引を含む実DBのSchema DiffとDesired Index | `SchemaView`の描画可否ではなく、既存`schemadiff`／`Plan`がIndex状態をどう扱うか別評価。実DB Apply資格は未付与 |
+| WB-54 | 同一名称の索引／外部キーを複数Schemaで観測、Queryが未Loaded | Qualified Tableと別Scopeを保持。必要Data/Function/Ruleがなくても画面表示成功から完成したERD/CRUDへ昇格しない |
+
+WB-50〜52は合成CatalogのGo Product経路で狭く圧力試験し、WB-53〜54はDB実観測とModeler/Contextとの**未実行の受入条件**として維持する。元のPhysical Snapshotは引き続きDB構造の観測正本であり、Workbench JSONは閲覧用コピー。Indexの論理/物理Facetと意味受理は既存#1126/#2622、移行計画は既存Migration、実DDL Effect/Receiptは#1174/#2892へ帰属する。
+
+**Critical Pathの停止線**：実Provider取得・Current Authority・Independent Expectedを持たないまま、Workbenchの物理カタログ表示、合成ログ相関、三視点図面の外観、生成テストの件数だけで業務用データクライアントの実行／安全なSchema Apply／正式業務CRUDまで合格とはしない。結果の受領完全性とContext Readiness（#3354限定合成Consumer PASS）を、Product E2E/Gateへ誤昇格させない。
+
+**今後のコード判断**：今回のPhysical FK追加から、一般Modelerに外部FK専用の新Relation型を持ち込まない。既存のProvider ObservationからStructural Candidateへの変換が必要になった段階で、既存#1126/#2495のData/Relation/Facet表現へ帰属させる。インデックス/制約全項目をWorkbenchに複製して第二Schema正本にするのは避け、詳細は元のPhysical Snapshotへの参照で提供する。
+
+
+## 21. REA・SUI/SEI/KON・SHO・共通Operationの接続資格（2026-11-08、設計のみ）
+
+Workbenchは外部の探索・情報統合・文書作成を必須Runtimeにせず、既存の**Source Observation→Structural Candidate→Accepted Meaning→Function/Provider→Effect**の契約を守って受け渡す。RQ-035の開発者向けSchema CRUD／DBA非標準は不変。
+
+| 外部役割 | 受渡し可能な情報 | 認めない自動昇格 |
+| --- | --- | --- |
+| REA／旧コード・SQL・DDL・DB解析 | 原本位置・bytes・版・scope・取得不能を含む観測事実と構造候補 | 解析成功を業務Key・Relation・正式`*.tei.md`・旧新同値性の受理としない |
+| SUI | Log／API／NoSQLの探索候補とSource Ref | Canvasのラベルや時間相関をTEIのMeaning/Grantとしない |
+| TEI | Data/Function/Business/Rule、Source、標準構造、Function内の表現型、Provider/Operation | Workbench ProjectionやCacheに第二の正本を作らない |
+| SEI | 根拠付きDecision ProposalとUnknownを受け取り得る | 提案をOwner採用、Host実Action、Receipt・Business Completionとしない |
+| SHO | 出典・受理状態付き設計文、三視点図面、CRUD表の派生 | FK/Indexの物理事実を納品済み意味図面へ変換しない |
+| KON Dataspace | 必要時のProvider/Sourceとして鮮度・Scope・Disclosure付きで参照 | TEIの正本・必須配備先・中央Registry・認可正本にしない |
+
+REAのT0原本観測→T1-A外部Evidence→T1-B正式TEI Source・意味受理→T2実Read/Design移行は別資格。本PRの物理Schema/FK/Index表示はT0/T1-Aの一部に過ぎず、T1-BやSHO図面完成を実証しない。
+
+### 21.1 同一OperationとMigration適用直前の競合窓
+
+採用済み[ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)により、読取、Schema Plan、DDL Applyは共通OperationとCLI/MCP/Studio Adapterを分離する。型付きInspectorの[CLI・Go局所実呼出 main #3381](https://github.com/hat47x/tei-platform/pull/3381)／[Studio Host-selected Port main #3371](https://github.com/hat47x/tei-platform/pull/3371)はProduction通常CLI/Studio Bridgeの共通実Provider選択・実Binary/Grantをまだ証明しない。
+
+DDL Plan→Applyでは、実DB Instance／Provider、Scope、Actual Schema Revision、Migration History、Grant、適用直前の世代を同じ対象で照合する。再検査・必要な競合制御を提供できなければ**安全に停止して再計画**する。履歴のpartial/unknown、別DBなのに同名、同じbyteだがA→B→A、ACK喪失をApplied／無条件Retryへ変換しない。詳細Ownerは[#2887](https://github.com/hat47x/tei-platform/pull/2887)のMA-11、[#2892](https://github.com/hat47x/tei-platform/issues/2892)のHIST負例、[#1163](https://github.com/hat47x/tei-platform/issues/1163)の実Target証拠であり、第二Migration Engineは作らない。
+
+### 21.2 最小実証の受渡し
+
+一つの開発者向け機能で(1)実DB Catalog→物理Observation、(2)選択済み実Provider Row Read→Function Data Context、(3)同一Source/Required/RevisionのCLI/Studio Consumerとactual Provider Invoke、(4)Independent Expected/Disclosure/partial/unknown、(5)隔離DBのみのSchema Plan/Apply→独立Reader再観測を**独立の合格列**にする。SUI/SEI/KON/SHOへの通信やOntology DSL製品完成はP0の必要条件ではない。
+
+既存WB-02/04/05（Schema/History unknown）、WB-29/31/32（Binding/Consumer/Build）、WB-42〜54（物理Schemaと意味の区別）を使い、新Runnerやテスト正本を重複させない。Source/Revision、選択Provider、実Read、Function Binding、開示、Effect、Independent Expectedの**同一Attempt**を検収する。#3354のCLI＋合成Consumerの限定成功と本PRのFake Catalog Go試験は、実DB・Studio/SHO・Owner Meaning・DDL安全性の合格には転用しない。
+
+**撤回条件**：新しい共通Host/中央Registry/第二認可・Schema正本・暗黙の全件Read・Provider固有のSource意味喪失を要するなら、Provider局所Contractに縮小する。
+
+
+## 22. 単一FunctionのWorkbench実Read入場：最新Design Contextの限定実証を正しく受け取る（2026-11-08）
+
+### 22.1 既存の限定成功と対象差
+
+[main #3482](https://github.com/hat47x/tei-platform/pull/3482)は固定`semantic-capability:sales.order.submit`について、Application `order_entry`と必要Source/Ruleの**13件の実CLI応答・42件の合成Consumer判別**を専用・main pushのCIで検証した。これは宣言存在の限定証拠であって、Workbench側で初めに実Readを試みる**Query `order_entry.recent_orders`**のBinding／SQL／DB Instance／Rowset／Function Data Context／Current Grantを検証したものではない。Application名・Namespace・物理Schema名が一致しても、別FunctionのRequired閉包を移植しない。
+
+現状の`workbench-model`は`PhysicalSchemas`と解析済みQuery/Planの**派生Indexを表示するだけ**で、実Data ProviderからReadを行ったConsumerではない。#3486の物理FK/Index投影も同じ資格。Workbenchが一つのFunctionについて「データを実際に表示できた」と主張するのは、最低でも次の**同一Attemptの別観測**が揃ったときだけにする。
+
+| 観測位置 | 必須の内容・現状 | 禁止する短絡 |
+| --- | --- | --- |
+| **F: Function/Query** | `order_entry.recent_orders`の実Source、Semantic Data/Role、Required Query/Mapping、粒度、出力/非出力列・依存を、このFunctionを対象として独立指定。未Loaded/未解析を`unknown`。#3262/#2586へ | `sales.order.submit`の13 Replyを共有してFを`complete`と宣言 |
+| **S: Actual Source** | 対象Instance、実Provider/版本体、Source SQL候補と選択理由、Query原文byte/解析版、暗黙Alias競合、外部Imported Providerの原文・Manifest改訂を別々に記録。Source指紋が変わらなくても外部参照の再解決要件が残る（main統合 #3479、限定Source/Manifest反例） | SQL ID一致／Workspace Fingerprint一致を実SQL・外部Providerの不変証明とする |
+| **R: Actual Read** | 選択済みProviderと**実呼出Provider**、実投入SQL/Bind、Reader行・Field・Occurrence・NULL/欠損・Result Grain・Read Scope/Time/Completeness、部分失敗を記録。#1251/#951/#2586が実装Owner | `Provider selected`や`Capabilities true`、SchemaのCapturedAtだけでRowset実取得とする |
+| **D: Disclosure/Consumer** | Hostが対象に許可する開示範囲、同一RevisionのCLI／Studio／MCP Adapter実受領、必要な分割Part/end、Table/Tree/Timelineへの投影。ADR-0048は**共通APIの採用設計**で全入口の実装済み保証ではない | 画面にTableが描けた、JSON 1ページをParseできた、Tool exit0というだけで完全受領・更新可能とする |
+| **E: Expected/Evidence** | 実装から独立したExpected、Source/Rowset/Consumer Receipt/実Build Targetの版と同一Attempt、既存HJ/QXとWB負例、C0/C1/NFRの対象母集団を明記 | 異HEAD・異Source・別Function・合成データ・旧BOMの各PASSを足して製品QUALIFIEDにする |
+
+この表は新公開API Schemaではなく**既存Ownerへ渡す受入票**。観測なしの欄は`not-run/unknown`、Providerが対応しない欄は`unsupported`、開示不可は開示判断そのものを権限に応じて抑制する。失敗時にSQL全件取得・ローカル全置換・別Alias/別Providerへの無言切替を行わない。
+
+### 22.2 Schema CRUD・Legacy/Target三世界への接続
+
+同じ画面で物理観測の設計編集を許しても、外部DBへのSchema DDL Applyが許可されたわけではない。**Legacy Observed Actual**、**Ownerが受理したDesired**、**Target Observed Actual**を区別し、Physical FK/IndexからOwner Accepted Relationを自動生成しない。Draft [#2887](https://github.com/hat47x/tei-platform/pull/2887)のMA-11/12、Issue [#2892](https://github.com/hat47x/tei-platform/issues/2892)の`AppliedUnknown`/partial History、#1163の同一実Target・独立確認はApplyの別入場条件。実施直前にActual Schema/History/Grant/Targetを再照合できない場合は、Planが有効に見えても**停止**する。
+
+入力Source/Desired/Applied側の版・Ownerを混ぜない例：REAの旧SQL解析からFKを観測→TEIの候補Relationとして提示→Ownerが論理Roleを受理→SHOへ図面出力→別の権限でTarget Migration Plan/Apply。REA解析、SUIカード、SHO図面、SEIのDecision Message、KONからのデータ参照はいずれもこの受理やApplyの代行者にはならない。
+
+### 22.3 次の最短作業と終了条件
+
+**最初の実装順**は、既存[Inspector D1のCLI選択Go局所Port main #3381](https://github.com/hat47x/tei-platform/pull/3381)と[Studio Host-selected Port（main統合） #3371](https://github.com/hat47x/tei-platform/pull/3371)のContract/Selection/actual Invokeを#1251のOwnerで一件合わせることと、#2586で`order_entry.recent_orders`の独立Required/実Read→Function Data Contextを**小さな同一Attempt**で接続すること。両者は並列で進められ、どちらかの局所成功だけから二Consumer完結を推論しない。次に同じ型付きAPIで実JSONL Log Reader（既存Fixture 5行）を実装してSQL専用の前提・NULL/missing/重複/時刻順を圧力試験する。
+
+**受入・停止線**：①実Provider/実Sourceと現在Grantを証明できないならReadをQualifiedにしない、②Functionが未宣言ならCRUDを空=不操作と確定しない、③外部Sourceが変更されたのにConsumer World/Indexが同じでも再利用資格を推論しない、④現在の物理Schema投影から旧新業務状態の一致や安全なDDL Applyを推論しない。性能は初回Read/分割取得時間・Byte量・API費用・Memoryを各Providerで測るが、実測のない値は記入しない。
+
+この節は**既存WB-01〜54、#2586 HJ/QX、#3262独立Required、#2514 Expectedの再構成**であり、55番以降の追加Case・新Gate・新Runner・新Host・第二Schema SSOTを提案しない。#3486の現行コード試験は合成PostgreSQL Catalog→read-only Workbenchに限定され、Function実Read、MCP/Studio/SHO実Consumer、実DDL、正式業務意味は**NOT RUN**。
+
+
+### 22.4 現在mainの追加根拠と再入場の留保（2026-11-08）
+
+- [main #3479](https://github.com/hat47x/tei-platform/pull/3479)がImported Provider Raw・Manifestの局所的な失効反例をGoで固定した。Consumer側World/SourceIndex FPが同じでも外部入力変更を無視しない。ただしNested Source全閉包・実Provider invoke・実Build/Grantへの資格は未確認。
+- [main #3371](https://github.com/hat47x/tei-platform/pull/3371)はStudio Host-selected Inspectorの型付き入口と拒否を実装済み。対して[CLI側main統合 #3381](https://github.com/hat47x/tei-platform/pull/3381)の実Go二Consumer局所テストは、通常CLI dispatchとWails BridgeのProduction Provider実呼出の証拠ではない。
+- 三視点の[Draft #3492](https://github.com/hat47x/tei-platform/pull/3492)は実Workspaceの`query:order_entry.recent_orders`と`semantic-relation:sales.order.lines`を**各別々に**`InspectSubject`で読むM1a候補。ここからFunction→Query/Relationの明示依存を断言せず、#2586のM1b→実SQL Readで初めて繋ぐ。
+- Migration Historyの[Draft #3497](https://github.com/hat47x/tei-platform/pull/3497)はUnknown State→RepoAppliedを止める局所修正候補。空履歴と部分/取得不能Historyの区別は未解決なので、Workbench DDLの安全性資格は変えない。
+
+この追補はmain統合済みの限定結果と進行中Draftの**証拠範囲を整列するだけ**であり、新規の成功判定やCI実行を含まない。
+
+
+## 23. 実Read一Functionの最小受入票と異種Sourceへの展開（2026-11-08）
+
+### 23.1 一般論より先に固定する、実行で判別可能な最小対象
+
+最新mainの[Inspector Host-selected CLI/Studio局所Go検証 #3381](https://github.com/hat47x/tei-platform/pull/3381)と[Studio選択Port #3371](https://github.com/hat47x/tei-platform/pull/3371)、[RQ-035 PAS入口 #3498](https://github.com/hat47x/tei-platform/pull/3498)を前提にする。ただしこれらの局所合格は、実`order_entry.recent_orders`のProvider SQL/Rowsetに未接続である。
+
+Product最初の一往復を**`Function ID → explicit Query/Relation/Role Binding → Host-selected Provider → actual Read → Function Data Context → Table等のread-only表示`**に限定する。名前が近い、同一Applicationの`uses`である、同じ物理FKを指す、Graphの別ノードとして読めた、という状況だけではBindingを補わない。Functionの独立した新Registryを設けず、既存Data/Query/Rule/Operation/Business/Patternからの**根拠付きView**として追跡する。
+
+| 受入点 | 固定する入力と実際の比較 | 判定すべき結果 |
+| --- | --- | --- |
+| 入力閉包 | 一FunctionのRequired Subject/Role/Output Field/粒度/時点/Query/Schema Source | 実Loader未対応は`not-loaded`、依存未束縛は`unbound`、解析・参照なしは`unknown`。単なる名前一致を`bound`へ昇格させない |
+| Provider到達 | selected Provider ID・Manifest/Raw/lock Rev、実登録実体、呼出時Current Grant/Target/Source Basis | selected A→invoked Bや旧Bキャッシュは拒否。Target未確定はread-only検査の候補提示に留め、別DB Aliasへ自動切替しない |
+| SQL/Read | 実選択SQL byte/parameter、実DB Instance/Reader、Row/Field presence/NULL/欠損、partial/empty/error、表示Grain | **「結果0件」≠「完全な空集合」**、partial受領≠全件取得。実ReadなしのSchema ViewやExplainをデータとして偽装しない |
+| Consumer | 共通Operation ResultをCLI/Studioで対象・同じAttempt/Scope/版に束縛、実受領Part/end、Disclosure | payload不一致・許可外情報・片側受領欠落で二Consumer成功としない。MCP参照Adapter/SHO文書作成は別Consumer資格 |
+| 独立期待値 | [合成PG 3行＋JSONL 5行](../../examples/data-source-workbench/README.md)の原データ・指定出力、独立Expected、異常入力 | Fixtureの期待値は固定するが、実Providerで実取得したという結果は**実行ログでのみ**得る。WB-01〜54、#2586 HJ/QX、#2514を再利用 |
+
+まずRDBの現行Query一本で正常1件／正常0件（独立Full Scope）／部分Read／Provider Error／権限拒否／Source-only改訂を独立判別し、同じBinding構造の第二SourceとしてJSONLを扱う。JSONLは重複Event ID、取得順とEvent Time順の不一致、明示JSON null、キー不在を区別する。SQLのRLS/Grant/実RowsetとJSONLのReader Scope/ファイル時点は**同じSource意味ではない**。共通にするのは必要入力と結果・失敗の契約であり、無制限にどちらかの実装に寄せない。
+
+### 23.2 標準Model Mapとの関係：表示は資格の表現であって資格の生産者ではない
+
+main統合済み[RQ-036](../../requirements/TEI_PRODUCT_REQUIREMENTS.md)に従い、標準のData/Function/BusinessとOperation/Plugin/Runtimeのどこまでが**fixed**で、どこが**customizable**かを、既存Model Map/Graph/Standard Representationへ投影する。図面の`resolved`はCatalog内の型付き宣言が解決したという**限定意味**に留める。[Model Map M0 Draft #3518](https://github.com/hat47x/tei-platform/pull/3518)の`partial-projection`はFunction実Read／業務関連の完全性と異なる。Graphの観測0件、未受理Relation、未表示のState/Effect/Pluginを「存在しない」と書かない。
+
+一件のWorkBench Form/Tableから、同一Data/Query/Relation/Function identityとSource positionへナビゲートできても、そこから編集／DDLの対象を確定しない。Model Mapを新Canonical Layer、Runtime Host、SQL Executorにせず、同じ受理済みデータの導出Projectionとして保つ。
+
+### 23.3 AI利用・高度チューニングの再利用範囲
+
+[mainのAI性能観測の限定Reference #3520](https://github.com/hat47x/tei-platform/pull/3520)はSynthetic Joinの統計/Hintを比べるための足場であり、実DBのLatency/Throughput改善を立証したものではない。Workbenchの性能測定を開始する場合も、**Provider実Read・解析/Build・Consumer描画・Cache hit/miss**を分離し、単位、行数、取得Scope、Query/Plan/Provider/Toolchain/Cache Revisionを紐づける。欠落した測定を推定値で埋めない。チューニングHintが結果値・実Read対象・開示/権限を黙って変えることを拒否する。性能改善のみで意味・Source・独立ExpectedのGateを省略しない。
+
+### 23.4 周辺製品との境界：早期の独立化を要件にしない
+
+- **KON Dataspace** は正式名称および`kon-dataspace`というリポジトリ名を維持するが、Workbenchの最初の縦断実証のために独立サービス・中央Registry・新認可基盤を起動しない。まずSUI内のRaw保存/Reader再取得/複数Canvas/Source Revision/Scope/Disclosureが必要な範囲で実証されてから、Providerとして分離する合理性を評価する。
+- **REA／SHO** はLegacy Actual・Owner Accepted Desired・Target Actualの独立比較と、出典付き図面/Writer Working Copyの独立検証を後続Consumerとして受ける。観測や文書生成を外部Sourceの意味採用、正式納品、Targetへの移行完了に昇格させない。
+- **SEI／EKI** の判断要求・配送応答・実Effect/Receiptは別ライフサイクル。Workbench read-onlyの受入に外部Decision Agentや新しいセッション実装を必須化しない。
+
+### 23.5 終了条件と継続位置
+
+この節の目的は**既存M1b→R0→X0、D1のProduct S2、WB/HJ/QXを一枚の受入順序にすること**であり、設計を大量に増やすことではない。現行PR #3486のProduct Scopeは合成Catalogの物理情報read-only投影に限定する。実データReaderとFunction Contextは[#2586](https://github.com/hat47x/tei-platform/issues/2586)、CLI/Studio Provider Production Bindingは[#1251](https://github.com/hat47x/tei-platform/issues/1251)、History Fail-Closedは[#2892](https://github.com/hat47x/tei-platform/issues/2892)、正式Graph/CRUDは[#3492](https://github.com/hat47x/tei-platform/pull/3492)に分担する。各々が**実入力／実Call／独立Expected／Current Scope／Consumer Receipt**を提示した場合に限り、その対象の資格を上げる。
+
+**確認の限界**：本追補は計画Markdownの更新であり、新しい実PostgreSQL/JSONL Reader、Current Grant、通常CLI＋Wails Bridgeの同一Provider実Invocation、Migration適用、KON/SHO/SEI実E2E、Owner Meaning受理の実証ではない。

@@ -221,6 +221,26 @@ SQL/NoSQLのデータ、ログファイル、クラウド情報源は別々の�
 [#3277](https://github.com/hat47x/tei-platform/pull/3277)の[Plugin-first CLI/Studio/Runtime設計](design/PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md) D1/D2/D4/D5とWorkbench W0〜W5を**依存関係で接続**する。最初にCLI/Studio共通のInspector一操作を同一Contract/Providerで通し、次に**PostgreSQL実ReadとJSONLファイルRead→Function Data Context→Table/Tree/Timeline**を、同じContract選択と異質なProviderで比較する。成果物を読む`workbench-model`と実Provider Row Readは別資格。次に既存Schema Diff/Migrationの隔離DB適用、最後に同じRead/Validator契約を開発用Surfaceなしの生成Goバイナリへ組み込む。
 
 [設計書の§16〜18](design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)に実ソースの接続点、Selected/Linked/Invoked、異Alias競合、CLIの呼出別Effect表示、WB-26〜37の独立期待値と停止線を配置し、[合成SQL＋JSONLのFixture](../examples/data-source-workbench/README.md)を受入入力に固定する。Provider/Plugin/Contract Resolverの実装は#951/#1251、実Row→Data Contextは#2586、異DB Aliasは#2611、CLI Effect語彙は#3182、Migration Historyは#2892、検証済みBOMは#3267がOwner。新しいPlugin Registry、Host、Query/Cache/Authority正本を作らない。**この段階では静的コード確認＋Fixture作成のみで、実Plugin選択/Build/Provider接続/Studio/Goテストは未実施**。
+### 実Catalogの物理Relationから三視点候補への引渡し（2026-11-08、#3270）
+
+SQL/NoSQL/ログ等のリバース結果は、**Physical Observation→Structural Candidate→Accepted Data/Function/Business→Diagram/CRUD/SHO**の各段階で資格を分ける。物理FK/UNIQUEやログ中の同一文字列だけから業務Relation、FunctionのCRU(D)、実行権限を生成しない。Catalogの0件や未取得を業務上の「関係なし」にしない。
+
+[Workbench詳細設計§19〜20](design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)へWB-42〜54と三経路（Schema/実Data Read/三視点）を登録。現行`postgres.Provider.Introspect`→`databaseworkbench.Build`の**合成Catalog read-only経路**でCapturedAt/Fingerprint、UNIQUE/FK・複合参照・IndexのNative式/部分索引/Readinessを落とさずTable Viewへ投影する狭いProduct改良を優先する。実Provider/Studio/SHOの適格やOwnerによるMeaning受理は別。機能Readは#2586、Required Design Contextの完全性は#3262、三視点Diagram/CRUDのDraftは#3263/#3303、Plugin-first D1は#1251がOwner。実DBのSchema定義/変更操作は標準、DBA運用は非標準の境界を維持する。
+
+**2026-11-08 横断調整**：[Workbench設計§21](design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)にREAの外部原本→Evidence→正式TEI Source→実Read/SHO比較、SUI/SEI/KONの任意Consumer境界、共通Operation（ADR-0048）、Migration適用直前のInstance/History/Grant再照合を集約した。最短P0は実Provider Read→Function Data ContextとPlugin-first Inspector二Consumerであり、SUI・SEI・KON・SHOやOntology DSL製品完成を新たなHard dependencyにしない。**
+
+
+### Workbench一Function実Readの限定入場（2026-11-08、#3270×#2586）
+
+[詳細設計§22](design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)で、最初のProduct Query `order_entry.recent_orders`を**そのFunction固有のRequired→Source/Query/Provider選択→actual Read/Rowset→Function Data Context→Disclosure/Consumer→独立Expected**として一Attemptで束縛する。main統合[#3482](https://github.com/hat47x/tei-platform/pull/3482)の`sales.order.submit`に対する13実CLI Reply/42限定合成Consumer Controlsは別Functionの宣言確認であり、実Provider Read/同一Function ClosureのPASSには数えない。Imported Provider原文・Manifestだけが改訂されWorld/Source Indexの見かけが不変の負例（Draft #3479）をSource鮮度の再確認条件に置く。
+
+CLI/StudioのInspector/実選択は#1251/#3381/#3371、Query→Contextは#2586、外部参照・Required Closureは#3262/#3479、Function内Projectionは#2495/#3303、Schema DDLのApply前Target/History/Grant再照合は#2887/#2892がOwner。Workbenchは第二Reader/Query Runtime/権限機構を作らない。**既存WB-01〜54と各Issueの独立Expectedを再利用し、外部DBの実Applyや他製品接続をP0のHard dependencyへ増やさない。**
+
+[Workbench設計§23](design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)で、RQ-035の合成PostgreSQL 3行／JSONL 5行を実Provider Readで独立照合する際の`unbound`／`not-loaded`／partial／empty／error／Disclosureを一機能の受入票に統合する。固定Function→Query/RelationのM1bとactual Reader→ContextのR0/X0を最優先し、AI向けの性能Hint、標準Model Mapの部分図、KONの早期独立化、REA/SHOの文書生成をWorkBench P0の成功条件としない。 新Go Provider実Read、CLI/Studio/MCP二Consumer、外部Source再解決、実DDL Apply、正式Owner受理は現在の設計追補だけではNOT RUN。
+
+
+
+
 ## 作業領域E：設計の実行と検証
 
 ### 目的
