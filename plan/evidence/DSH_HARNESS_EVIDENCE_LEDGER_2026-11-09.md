@@ -2,7 +2,7 @@
 
 - 対象Issue: [#2509](https://github.com/hat47x/tei-platform/issues/2509)（DSH外部Harness実証）、[#2515](https://github.com/hat47x/tei-platform/issues/2515)（実効隔離・全送出経路Conformance）。機密境界の正本は[TAI #232](https://github.com/hat47x/tai-pleroma/issues/232)、比較計画は[TAI #168](https://github.com/hat47x/tai-pleroma/issues/168)。
 - 状態: **既存の実行記録を並べた索引**。新しい実測は行っていない。個々の合否・Owner受理は各記録とIssueの担当。
-- この文書の役割: 23件の実行記録が**それぞれ何を確定させ、何を確定させていないか**を1枚で見えるようにし、同じ測り方の重複を避ける。記録本文の複製はせず、各記録へ参照で結ぶ。
+- この文書の役割: 24件の実行記録が**それぞれ何を確定させ、何を確定させていないか**を1枚で見えるようにし、同じ測り方の重複を避ける。記録本文の複製はせず、各記録へ参照で結ぶ。
 
 ## 1. なぜ台帳が要るか
 
@@ -28,6 +28,7 @@
 | [停滞の可視性](./DSH_SESSION_LOG_STALL_VISIBILITY_2026-11-09/README.md) | 停滞の検知 | `maxBytes=306`でfieldが6要求すべて送られない状態を、**stdout・stderr・永続Logの3面を別々に**調べた。stdout 6,176 bytes・stderr **0 bytes**・永続Log展開51,196 bytesのいずれにも該当語0件・警告種別eventなし・終了コード0 | 他の面（Telemetry・UI・別flag）、非停滞との同条件比較、単一eventが上限超過時の挙動 |
 | [停滞の検知](./DSH_SESSION_LOG_STALL_DETECTION_2026-11-09/README.md) | 停滞の検知可能性 | 停滞（306）と非停滞（4096）を**stderrを混ぜずに同条件**で比較。stdout・stderrは**両方とも警告なし**、差は永続Logの`session-log-deepseek/delivery-accepted`のみで非停滞4件・停滞**0件** | Telemetry・UI・別flag、単一event超過時の挙動、他版で同じevent名・意味になるか |
 | [Subagent経路](./DSH_SUBAGENT_EGRESS_2026-11-09/README.md) | 送出経路 | `subagent`を1回強制し、親5要求と子1要求を採取。Session IDが2種類あり、子は`afterSeq -1`から`sessionFormatVersion 4`の拡張を送る。`prompt`のcanaryは親にも子にも載り、子は独立した永続Log（展開36,774 bytes・19行・`delivery-accepted` 1件）を持つ | Telemetry・MCP・`subagent_fork`・連鎖起動、実Providerの保存 |
+| [Subagent fork](./DSH_SUBAGENT_FORK_2026-11-09/README.md) | 文脈の継承 | Turn 1で`pwsh`から親canaryを出して完走させ、Turn 2で同じSessionを再開してforkした。子は`afterSeq -1`の別Sessionだが**メッセージ数5**で親の完了Turnを引き継ぎ、**親canaryが子の本文にも永続Logにも現れる**（`subagent`の子はメッセージ数1） | 実行中Turnの継承、forkの連鎖、Telemetry・MCP |
 | [H6-E0 Host棚卸し](./DSH_H6E0_HOST_INVENTORY_2026-11-07/README.md) | 実行環境 | read-onlyはConstrainedLanguage、親のenvは子へ継承されない、loopbackへ到達可 | 別Host、他Tool経路、実Egress |
 | [H6-E1 read境界](./DSH_H6E1_READ_BOUNDARY_2026-11-07/README.md) | 読取り | `read-only`でもraw配下・`.env`・cwd外を読める | AppContainer・別User・mount名前空間での拒否 |
 | [H6-E1 OSのACL](./DSH_H6E1_OS_ACL_2026-11-09/README.md) | 読取りの強制点 | `icacls`で拒否したファイルは`read-only`でも`danger-full-access`でも`PermissionDenied`。同Userへ権限を足すと同じProbeが成功する（正負対） | 別User・AppContainer・mount名前空間、Network egress、存在の推測 |
@@ -42,7 +43,7 @@
 ## 3. 横断して言えること（複数記録の一致）
 
 1. **DSHのSandbox modeは読取りの境界を与えない**。`read-only`（H6-E1）・`workspace-write`（非対称）・子Process（H6-E2b）の3経路すべてで、宣言root外の読取りが成立した。境界になるのは**OSのACL**であり、そこを拒否すればmodeに関係なく止まる（H6-E1 OSのACL・正負対）。
-2. **読んだ内容は複数の経路で外へ出る**。モデル入力・Session Log・stdout・永続ログ（H6-E6）。Session Logの複製はTool結果1件につき2箇所（`data.message`と`data.meta`）。**Subagentを起動すると子も別Sessionとして同じ拡張を送り、独立した永続Logを持つ**（Subagent経路）ため、送出量は親Sessionの分だけでは数えられない。
+2. **読んだ内容は複数の経路で外へ出る**。モデル入力・Session Log・stdout・永続ログ（H6-E6）。Session Logの複製はTool結果1件につき2箇所（`data.message`と`data.meta`）。**Subagentを起動すると子も別Sessionとして同じ拡張を送り、独立した永続Logを持つ**（Subagent経路）ため、送出量は親Sessionの分だけでは数えられない。さらに**`subagent_fork`は親の完了Turnを子へ運ぶ**（Subagent fork）ため、親が読んだ内容が子のモデル入力にも載る。**継承しない`subagent`と継承する`subagent_fork`は同列に数えられない**。
 3. **Process生成はmodeで止まらない**。子Process（H6-E2b）も候補の子起動（H6-E5）も成立した。止まるのは書込みと言語モード。
 4. **利用者が指定しない入力が入る**。AGENTS.md・CLAUDE.md・Skill `description`（H6-E3）。Skill本文は載らず、一覧提示と本文Loadは別。
 5. **設定の表示と実効制限が一致しない**。`DSH_PERMISSION_MODE`は空のまま（H6-E0・非対称）。モード名を権限判断の根拠にできない。
@@ -52,7 +53,7 @@
 
 - **別Identity（AppContainer・別User・別Session・mount名前空間）での読取り拒否**。同一Userに対するOSのACLによる拒否は[H6-E1 OSのACL](./DSH_H6E1_OS_ACL_2026-11-09/README.md)で確認したが、Harnessや子Processが**別の資格**で動く場合に同じ拒否が効くかは未確認。Network境界の実拒否も同様。
 - **実Providerの保存・保持・二次利用**。
-- **Telemetry・MCP経路の網羅**と、`subagent_fork`・子からの連鎖起動。Subagent経路は[Subagent経路](./DSH_SUBAGENT_EGRESS_2026-11-09/README.md)で一部を確認したが、forkは親の会話を子へ載せ得るため別に測る必要があり、Telemetry・MCPは未観測。
+- **Telemetry（OTel）・MCP経路の網羅**、**子からの連鎖起動**、**実行中Turnのfork継承**。`subagent`は[Subagent経路](./DSH_SUBAGENT_EGRESS_2026-11-09/README.md)、`subagent_fork`は[Subagent fork](./DSH_SUBAGENT_FORK_2026-11-09/README.md)で確認したが、headlessプロファイルには`dsh-session-telemetry-otel`が載っておらず、`OTEL_EXPORTER_OTLP_ENDPOINT`を設定した実行でもテレメトリの送出は観測されなかった（**未観測は「無い」ではない**）。
 - **停滞の検知手段を用意した場合の実効性**。3面に警告が出ないことと、非停滞との差が`delivery-accepted`の不在だけであることは[停滞の可視性](./DSH_SESSION_LOG_STALL_VISIBILITY_2026-11-09/README.md)・[停滞の検知](./DSH_SESSION_LOG_STALL_DETECTION_2026-11-09/README.md)で確認したが、Telemetry・UI・別flagを含む**他の面**、単一eventが上限を超えた場合の`delivery-accepted`の振る舞い、**他版で同じevent名・意味になるか**（この版の観測であって契約ではない）は未確認。
 - **Skillの増分価値**。四Sessionは未採点で、Task path不一致とSession再利用を含む。
 - **独立Expectedによる採点**（RunbookのReviewer-only）。
