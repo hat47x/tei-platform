@@ -343,7 +343,6 @@ CLI/Studio/SHOはModel全体、個別ノード、固定/Custom/実効フロー�
 
 比較票の論理列は Subject/Revision、actual selected+invoked Provider/Target/Artifact、Workload fingerprint、Source/Schema/Rule、Independent Expected、Measured distribution/overhead、Correctness、Guardrail、Grant、Verdict、Unknownとする。固定の公開JSON Schemaと誤認しない。
 
-
 ## 15. 既存T0〜T4へ接続する実装順・所有先
 
 上記の横断検討によって新しいT0〜T4や別の最適化工程を作らない。現行§10の「次の実製品縦断」をそのまま利用し、**到達証拠に追加する検証項目**だけを以下のように重ねる。
@@ -361,7 +360,6 @@ Go単一バイナリにおける実証後、Web/Desktop/完全Headless/Java/.NET
 **撤回条件**：標準Rule/Target-nativeで十分、または構成選択が実Callへ到達しない、意味・Source/Scope/Authorityが保存できない、独立Expectedがない、追加観測/Plugin負荷が利得を超える場合は、当該抽象・自動選択を縮小/撤回する。実装の証拠がないCandidateをOwner受理や本番適用へ昇格しない。
 
 **現況（2026-11-08）**：追加AT-15〜24と上記新規統合試験は設計候補。§10の限定Referenceがあっても実DB Read/実OTel/生成Target性能改善・AI実適用・Owner意味受理は **NOT RUN / NOT ACCEPTED**。既存のGate B/Cや限定Reference PASSを新性能保証に読み替えない。
-
 
 ## 16. 実ReadとConsumer受領の資格を分ける：性能計測の最小縦断（2026-11-08追加）
 
