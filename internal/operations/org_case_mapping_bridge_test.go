@@ -198,6 +198,44 @@ func TestOrgCaseExplicitPersistenceEnablesReadCandidateOnly(t *testing.T) {
 		t.Fatalf("Query must affect revision without promoting read candidates to execution: before=%+v query=%+v", after, surfaceWithQuery)
 	}
 
+	// E1f: make a Function-facing Browse Pattern explicit in the SAME copied
+	// TEI Workspace. A Query declaration alone is not callable by a Pattern,
+	// and the Pattern is not a Host Grant or a full Function Data Context.
+	patternDir := filepath.Join(copyRoot, "applications", "org-view", "patterns")
+	if err := os.MkdirAll(patternDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	patternFile := filepath.Join(patternDir, "case-browse.tei")
+	const patternSource = `pattern org_view.case_browse browse {
+    data organization.case_record
+    query org_view.case_read
+}
+`
+	if err := os.WriteFile(patternFile, []byte(patternSource), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	withPattern, err := workspace.Load(copyRoot)
+	if err != nil {
+		t.Fatalf("native Case browse Pattern could not be loaded: %v", err)
+	}
+	if loc, ok := withPattern.Sources["pattern:org_view.case_browse"]; !ok ||
+		filepath.ToSlash(loc.File) != "applications/org-view/patterns/case-browse.tei" {
+		t.Fatalf("browse Pattern is not bound to its exact source: %+v", withPattern.Sources)
+	}
+	verifyNativeCasePatternReadProbe(t, withPattern)
+	// The read Pattern adds a source/meaning revision but never derives new
+	// Case grants or write operations merely from its presence.
+	surfaceWithPattern, err := SurfaceWorkspace(copyRoot, "org_view")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if surfaceWithPattern.ModelRevision == surfaceWithQuery.ModelRevision ||
+		!reflect.DeepEqual(surfaceWithPattern.Operations, surfaceWithQuery.Operations) ||
+		!reflect.DeepEqual(surfaceWithPattern.AuthorityLimits, surfaceWithQuery.AuthorityLimits) {
+		t.Fatalf("browse Pattern must not become a new Host capability: before=%+v after=%+v",
+			surfaceWithQuery, surfaceWithPattern)
+	}
+
 	// A native SQL predicate change must invalidate the Source/Model revision
 	// even though the Semantic Query ID, datasource alias and mapping stay put.
 	if err := os.WriteFile(sqlFile, []byte(strings.Replace(sqlSource,
