@@ -655,3 +655,56 @@ G2-Pの入力は`actual sourceBytes/baseSha256/startByte/endByte/expectedBytes/r
 ### 17.4 既存PR健全性の赤を成果へ混入させない
 
 TEI Draft #3329のHEAD `dece223d233ac38e814dd3e789c58187f78fad2b` に対する [PR健全性CI #42462570959](https://github.com/hat47x/tei-platform/actions/runs/42462570959) は**completed/failure**。実Jobログの失敗は `tools/repository-plan-check/TestMarkdownHasNoEscapedBackticks` が本設計文書553行目で不正なバックスラッシュ付きバッククォートを検出したため。上流Reference Readerの独立CI #42462571037と依存の既知脆弱性CIは成功。**前回の「健全性実行中」を成功へ読み替えない**。今回の文書更新で当該エスケープを除去し、最新HEADの実Go/PR Healthが成功するまで全体PASSを保留する。これをOKF形式やSHO Readerの失敗と誤分類しない。
+
+
+---
+
+## 18. 2026-11-08 横断計画との収束：K2と実業務Providerを混同しない
+
+### 18.1 二つの縦切りと責務の接続
+
+他レーンで進むTEIのApplication API、Plugin-first Dogfooding、実Provider Read、SHO Writer、SEI Method、KON Dataspaceの設計をK2の受入順序へ接続する。ただし、**OKF Knowledge BundleのConsumer実証と、業務DBのRowset取得は別の試験**であり、一方の成功を他方の実装資格へ昇格させない。
+
+| レーン | 一件目の縦切り | K2への利用可能性と境界 |
+| --- | --- | --- |
+| OKF K2 | 固定合成Bundle→選択済Reader Provider→TEI CLIとSHOの二Consumer | 同一Provider実Invoke・両Consumer独立Receiptが揃って初めてK2。K1/K1Rの既存PASSを再利用しても自動合格しない |
+| TEI Function Read | `order_entry.recent_orders`：Function→Query→DB Binding→実Provider Read→Rowset→標準表現 | Providerの宣言と実Invokeの差を測る共通ドッグフード。ただしOKF ReaderとDB Providerは別Capability・別Source・別Effect |
+| Application API | `sales.order.submit`：Source→API→Representation→Provider→Effect→Delivery | 実Query/Providerが未接続なら設計参照の成功だけ。書込みにはOperation Identity/Effect/Receipt/Host Grantが追加で必要 |
+| SHO | G1b実Raw Reader→G2-W1 Working Copy→G2-W2 Save As／無変更Save／既存文書条件付更新 | Readerの原Byte受領は確認済み。Writerの正式保存・CAS・別Open・競合はDraft試験を経て別資格 |
+| SUI | 実Producerの同一File H1とCanvas/Occurrence投影 | 表示OccurrenceはSource Identityではない。投影Lossを暗黙の意味復元に使わない |
+| SEI | 実TEI観測→Recommendation保存・再開→Method追加調査の比較 | Observation/Questionの永続化を既存CLIで実装済みとみなさず、提案・判断と実行を分ける |
+| KON Dataspace | 将来の汎用・マルチテナントなSource受皿／Document Database | KONをK2の必須HostやOKF Registryにしない。IdP・権限・論理/物理DB分離はKON固有計画に留める |
+
+### 18.2 K2-Aの最小実装単位を実装責務に落とす
+
+最初の実装は**「既存Plugin Bindingが選んだ一Reader Providerを、TEI CLIから一回実Load・Invokeし、Raw/Parser範囲/Requiredを別々に返す」**に限定する。CLI/StudioとSHOで新しい専用Hostを作らない。
+
+1. **契約固定**：Capability名・Provider ID/Version・選択理由・Source Scope/realpath・Raw SHA・Spec pin・Requiredを一つの合成Attemptとして記録。Sourceの内容一致、Provider版一致、Meaning受理、Host Grantは独立。
+2. **既存実装の発見**：TEIの現在のPlugin Selector/CLI Tool/Inspectorが実Load/Invokeをどこまでサポートするか、現mainのコード・テストを確認。未実装なら一つの薄いAdapterだけを加え、Registry/Resolverの重複を作らない。
+3. **実Call Site**：CLIの実argv/Provider ID/Invocation ID、read-onlyのHost/OS作用境界、実Tool ResponseとReader Receiptを同じAttemptで保存。静的Offer/BOMの一致だけならFAIL。
+4. **独立Expected**：合成K1原文の固定SHA、Reference Readerの既知Gap、Consumerの未解析Referenceを分けて比較。独立ExpectedのOwner受理前はK2のSource/Transport限定Witnessとする。
+5. **二Consumer化**：SHOの既存G1b Reader入口を再利用し、同一Providerを実InvokeするAdapterを設ける。二つの別CIが別Providerを呼んだ場合はK2未達。TEI CLIとSHOが同じ原Byteを受け取っても、Current Requiredに不足があれば完備としない。
+
+**実装順序のゲート**：K2-A（実選択・Invoke）→K2-B（SHO実Invoke）→K2-C（Required閉包）→K2-D（失敗・失効）。2 Provider×2 Consumerの4 exact tupleはこの後のP2比較であり、初回K2-Aへ先行必須化しない。独自AI実行ループは、既存Harness＋Tool/Skill＋専門Pluginで足りないことが実測されるまで保留する。
+
+### 18.3 判定表の追加：Source／Binding／Transport／Generation／Authority
+
+| 軸 | この段階で要求するWitness | 明示的に未受理とするもの |
+| --- | --- | --- |
+| S / Source | Raw SHA、Scope、realpath、Source Index revision、実Loader読取状態 | SHAだけでWorld同一、全Source充足、A→B→Aなしとすること |
+| B / Binding | Offer→選択→Plugin Lock→実Load→実Invokeの別々のIdentity | 選択可能22/24などの局所値を実Invoke成功へ転用 |
+| T / Transport | CLI/SHOそれぞれの実Request/Reply、raw/stdout/stderr/part/end、欠落理由 | 正常空result、部分応答、CI別Attemptを完全配送とみなすこと |
+| G / Generation | 既知・未知Ruleの独立Expected、反例、未探索診断 | テストが存在する／コマンドが成功しただけで全必須テストPASS |
+| A / Authority | Owner Accepted Meaning、Current Principal/Host Grant、Disclosure、実Effect/Receipt | Verified human欄、認証成功、read-only宣言、前回Receiptを許可へ昇格 |
+
+TEI設計情報の既存実CLI 13応答／Consumer判別42件、Context Gate、Source Index revision失効、CLI/MCP参照Adapter一致は**それぞれの固定試験に限った先行証拠**。K2の実Plugin二Consumer、外部Harness H2/H3完全配送、業務DB Provider、Owner受理を証明しない。
+
+### 18.4 停止条件・横断計画への手渡し
+
+- **K2-A開始前**：現mainのProvider選択・実Load・Invokeを実コードで確認。宣言しか存在しなければ実装Gapとして明示し、独自Runtimeを追加しない。
+- **K2-B開始前**：SHO G1bの現物Readerを維持し、SourceをTEIの合成Bundleに限定。非公開SHOの権限を公開TEI CIへ移さない。
+- **K2-C開始前**：Requiredを独立指定。TEIの`result:[]`やSHOのMarkdownリンク0件を完全取得と解釈しない。
+- **K2-D開始前**：選択不一致・Plugin Lock不一致・Source ABA・権限変更・部分配送・Scope違いを一因子ずつ負例化。
+- **正式製品導入前**：KON、SHO、SUI、SEI、TAIに共通の新Host/Registry/Policyを設けず、TEI既存契約を明示Adapterで再利用。KONの権限管理・物理DB配置は独立した製品判断を尊重。
+
+**状態**：本節は既存実証を用いた計画更新であり、K2-A/B/C/D、業務DB実Provider Read、2 Provider×2 Consumer、外部H2/H3、正式Owner受理を実行した記録ではない。
