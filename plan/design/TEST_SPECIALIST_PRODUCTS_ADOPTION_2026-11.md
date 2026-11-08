@@ -1823,3 +1823,10 @@ KON Dataspaceは独立・任意のData Source候補であり、TEIのテスト�
 次に#2514の独立ExpectedでT（業務Rowset/NULL/粒度）を検収し、#3271の統計観測を**実Rに結び付けた場合だけ**Oを実測として受け入れる。外部H2/H3実配送、現在Grant、Owner Meaning、Source全閉包、Go C1、全NFRは並列Ownerの別Gate。**第二Runner/Resolver/Provider/Optimizer/認可・テスト正本を作らない**。
 
 **今回の実施区分**：main/既存DraftのSource/CIをGitHubで確認して受入票へ反映した計画更新。新しい`order_entry.recent_orders`実Provider/PG/Function Context/外部Delivery/生成AI TEST-T1B試行/実性能Benchmarkは**NOT RUN**。
+
+<!-- tei-ai-tuning-health-qualification-20261108 -->
+#### 35.6.5 Synthetic試験の合格とRepository Healthの不一致を具体的に修復する
+
+main統合[#3520](https://github.com/hat47x/tei-platform/pull/3520)の専用CI [#42476197836](https://github.com/hat47x/tei-platform/actions/runs/42476197836) は19合成対照がsuccess。一方、同HEADの[Repo Health #42476197803](https://github.com/hat47x/tei-platform/actions/runs/42476197803) は**completed/failure**。実ログで、(1)`plan/design/README.md`にAI性能観測文書が未掲載、(2)新WorkflowのCheckoutがcommit SHA固定でない、(3)Job timeout未設定、と切り分けた。Go Formatter/Vet/Workspace Validateの別PASSと、`go test ./...`/CI契約テストFAILを混同しない。また脆弱性確認[#42476197787](https://github.com/hat47x/tei-platform/actions/runs/42476197787)はvuln DB取得時の通信失敗でworkflow failureとなっており、安全性検証のPASSではない。
+
+修正は、新しいFeature/Collector/Proof Storeを作らず**[Draft #3527](https://github.com/hat47x/tei-platform/pull/3527)**の2ファイルに限定：設計索引を1行補充し、既存と同一のcheckout固定SHA・`persist-credentials:false`・`timeout-minutes:10`へ統一。この修正PRのexact HEAD Health・専用19対照・依存確認を別々に検収する。**作成直後のCIはqueuedで、新HEADのPASSは未認定**。Syntheticの入力整合が実Provider Read・実性能改善やOwner受理を保証しないという停止線は維持する。
