@@ -1,6 +1,6 @@
 # 三要素分析方法論とDiagram Projectionの接続契約（設計候補）
 
-- **状態**: 評価待ち・未採用。要求・ADR・Production schemaではない。コード変更・実行試験なし。
+- **状態**: §1〜18の図法・具体方式は評価待ち（未採用）。**§19の『全体モデルを図表で理解・探索でき、標準固定箇所とCustomを明示する』は2026-11-08に利用者が明示したTEI製品標準要件**。その要求を満たす個別Schema/Generator/GUIの実装・検証は未完であり、文書更新をProduction適合とみなさない。
 - **整理日**: 2026-10-31
 - **調査基線**: TEI main commit 4325ca79a52bf0d576db6fb4027bdc516b1023fd。XeadModeler M49公開ソース commit 68f1535b1c5dd80a327dfced37be401ecd3093c9（静的確認、M50/実GUI未実証）。
 - **目的**: Data / Function / Businessの三視点、X-TEA系の図法、具体例、定義ジャンプ、図上編集を、TEIの既存の意味正本と共通構造から再現する最小縦断設計。
@@ -513,3 +513,22 @@ VUIのような異質媒体は「音声用の別意味正本」を作らず、Ev
 **初期検証順**：M0＝同じSourceのNode/Relation/Event/State/Pattern/Hook catalogとUnknown CountをCLI/read-onlyで導出 → M1＝組織の代表Business EventとState/Patternをつないだ2階層Graph＋横断Matrix（未解決を明示） → M2＝Studio/SHOの表示一致・ナビゲーション／初学者向け説明・利用者の理解課題（非AIの人的評価ができない場合はAI盲検/客観課題で代替し、その限界を明記） → M3＝標準/Custom差分・実効フロー・Typed Change Intent → M4＝実Provider/Host/Target生成物に対する欠落/適用成績の独立確認。**M0が未成立ならM1の美しい図を製品の全容保証と呼ばない**。試験票・Owner・Source集合と検証結果は既存Issue/CIを使い、本節に第二台帳を作らない。
 
 **対応する実装Owner**：モデル全体のDiagram/Navigate #1124、Business Flow/Event/Handoff #1125、Data/Org Topology #1126、Function/Pattern #1127/#2507、Lifecycle/Guard #2620/#1174、Projection意味保存 #2497、完全性/Source #1706/#2516、独立Expected #2514/#1180、組織最小例は[Draft #3243](https://github.com/hat47x/tei-platform/pull/3243)。現行の限定Reference試験や[Draft #3500](https://github.com/hat47x/tei-platform/pull/3500)のNative Query→Pattern Go試験はこの10件の全体受入を証明していない。**MAP-01〜10は受入提案・新実行NOT RUN**。
+
+### 19.6 コード生成時のカスタムフロー可視化：Target間で異なるカスタム実装を同じモデルから説明する
+
+Code Generatorの入力は「TEIのAuthoringで宣言したPattern」だけではない。**選択された標準Plugin／個別Plugin、Traitの手動/生成Implementation、Provider、Target制約、適用済みHook順序**を解決した**実効Composition候補**が必要である。ただし宣言・選択・実Build／Load・実Host Invoke・Effectは別資格であり、宣言だけで「利用中」と表示しない。Model Mapには、実効Compositionの**有資格範囲**と未解決の部分を帰属させる。実バイナリに差し込まれた処理の証拠を、Source Diagramの見た目から創作しない。
+
+| Model Mapに表示する処理段 | TEI標準の固定境界 | 明示的なカスタム点（存在すれば） | 一致が必要な実行・生成資格 |
+| --- | --- | --- | --- |
+| **Receive / Normalize** | Source/Request/Messageの出所、入力型・Epoch・Correlationの確定、秘密／非開示の境界 | 媒体ごとのDecoder／VUI Recognition／入力Validator | 実Adapter選択、Contract/Version、Trusted Origin、未取得の拒否 |
+| **Resolve / Bind** | 意味ID／Relation/Pattern/Function Contextと実Providerの一致、Scope資格、曖昧拒否 | 許容範囲の選択規則、追加Binding、Target固有Adapter | 実Provider/Manifest/Source rev／選択Epoch、current Grantは独立 |
+| **Validate / Decide / Transition** | Declared State/Guard、現在Validation/AuthorityとCommit条件の分離、禁止遷移の拒否 | 業務Rule／承認段階／遷移前後の追加業務判定 | 採用されたRole／Validation、Contractのpre/post、Action結果 |
+| **Execute / Persist / Effect** | Operation ID、Concurrency/Period、Effect/Receipt、重複処理境界、失敗・部分副作用 | Provider実装／保存フック／承認済み追加Action | Transaction/Effectの実証、独立Read、Host Side-effect許可 |
+| **Publish / Observe / Handoff** | ConsumerのDisclosure、Observed vs Accepted/Committed、送出・受領の適用集合 | Web/Desktop/CLI/MCP/VUIの表示/通知/後続Workflow | Consumer実受信、ACK対象／版、Result Slice、再試行／失効 |
+| **Generate / Package / Deploy** | 受理WorldとTarget/Generator/Plugin versionの束縛、未対応Capability明示 | 置換可能なTemplate／生成Section／Manifest付き実装差込み | 生成Source/Artifact/Evidence、実Target接続・実行資格 |
+
+この表の「固定」は**標準が検証しなければならない不変条件**を指し、「特定のMiddleware/認証方式/一つの実装」を全Targetで強制することではない。Targetにその段の機能がない、または外部Hostが担当するときは**外部実装の束縛／未確認Gap**を表示する。ユーザーが差し替えたFlowが標準Contractのpre/postと整合しない場合、Generatorは出力を「標準適合済み」として扱わず、Diagnostics→Preview差分→既存Acceptanceへ返す。
+
+**完成Model Mapでの見せ方**：①標準参照Flow、②変更したHook/Stepと入力・出力・権限／版、③生成Targetごとの合成後Flow、④同じ対象のGraph/Matrix/Traceにおける影響集合、をリンクして提示する。CLIなど図形描画不可のConsumerには同型の階層表/ASCII graph/Typed JSONを用意する。これは特定の正規化JSON Schema採用ではなく、既存のRole付標準データとProjectionを使う標準受入要求である。
+
+**追加負例**（既存MAP-05/08/10へ集約）：Generator Templateのみ変更でSemantic World fingerprint不変の場合もTarget生成資格を再評価する。Plugin宣言だけ追加・実選択なしなら合成後Flowに「非稼働」と示す。標準Guardの無いTargetへ配置する場合は警告を消して固定部分を描くのではなく`unsupported/unqualified`を明示する。Hookで前後のEvent順を入れ替えてContext/Effectを破壊する場合は適合拒否。**コードジェネレータのHook実装やTarget実証は本PRではNOT RUN**。
