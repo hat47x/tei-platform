@@ -145,3 +145,4 @@
 
 
 
+- [`tei self-build`の§4外形](TEI_GO_SELF_BUILD_OUTER_SHAPE_2026-11-08.md)（workspace・intent・supply・state・outputの外形とSC0-01〜05の拒否条件を実装し、実Buildをchildへ委ねて記録する。`-intent`の解決・`-supply`の照合・L2は未実装。`qualified`は常にfalse。SB-C0 §4 / #2831）
