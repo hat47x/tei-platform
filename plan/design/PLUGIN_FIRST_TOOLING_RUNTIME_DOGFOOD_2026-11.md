@@ -624,7 +624,7 @@ Data Workbench #3270、REST Decision Graph #3274、三要素モデルとCRUD/SHO
 
 - **Consumer内Source-only変更**：main統合[#3477](https://github.com/hat47x/tei-platform/pull/3477)の限定実CLI負例では、Source末尾だけ変更してもCanonical Worldが同じまま、Source Index FingerprintとScenario利用資格が変わり得る。旧Context→旧Scenarioの再利用には現在のSource Index照合が必要。これは実H3完全受領や原子的Workspace snapshotを証明しない。
 - **Consumer外部のImported Provider Source変更**：[#3479](https://github.com/hat47x/tei-platform/pull/3479)は現在**Draft／未統合**で、Provider raw末尾の差分をConsumerのWorld、Semantic Digest、Source Indexが捉えられない反例を実Go Testで提案している。外部Reference/Providerの**実Source occurrence/raw fingerprint／Binding/取得時点**はConsumerのSource Indexと別の依存辺。#3479のTest/CIが確定するまで「実証済み」と呼ばず、現行#2812のNested Load snapshot受理も推測しない。
-- **Capability選択Rule変更**：main統合[#3337](https://github.com/hat47x/tei-platform/pull/3337)の初回raw JSONは`unselected=6/12`、その後のmain #3350/#3363でDB Providerの選択規則が変わり、過去の`ruleFingerprint`と現在のものが異なる。見かけの`schema=v0`／`ruleVersion=v0`が一致しても履歴選択結果を再利用できない。[Draft #3379](https://github.com/hat47x/tei-platform/pull/3379)の歴史vs現在Regressionは、新main由来の後継Draftへ移植する。旧rawは上書きせず出典を維持する。
+- **Capability選択Rule変更**：main統合[#3337](https://github.com/hat47x/tei-platform/pull/3337)の初回raw JSONは`unselected=6/12`、その後のmain #3350/#3363でDB Providerの選択規則が変わり、過去の`ruleFingerprint`と現在のものが異なる。見かけの`schema=v0`／`ruleVersion=v0`が一致しても履歴選択結果を再利用できない。[旧Draft #3379](https://github.com/hat47x/tei-platform/pull/3379)の歴史vs現在Regressionは、[後継Draft #3490](https://github.com/hat47x/tei-platform/pull/3490)として新main基線に移植した（実CIは別途確認）。旧rawは上書きせず出典を維持する。
 
 これらは**同じ「リビジョン変更」という一個の真偽値へ圧縮できない**。Source Index、外部Reference/実消費、Rule implementation、Build closure、Test run、現在Grantが別々のOwnerを持つためである。
 
