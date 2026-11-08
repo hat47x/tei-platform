@@ -430,3 +430,18 @@ main統合済み[ADR-0048](https://github.com/hat47x/tei-platform/blob/main/plan
 **E1e／物理Readの再現手順**：[Draft #3500](https://github.com/hat47x/tei-platform/pull/3500)に、上記E1dの同じNative Loader結果を使う**実PostgreSQL任意実行**を追加した。`TEI_ORG_CASE_PG_DSN`と確認変数`TEI_ORG_CASE_PG_CONFIRM_ISOLATED=tei_org_case_e2e`の両方を必須とし、`current_database()=tei_org_case_e2e`かつ`public.org_case_records`の**既存テーブル不存在**を確認した場合のみ新規作成して最後に削除する。既存テーブルへの変更・削除を拒否する。C1→D1、C2→D2、C3→物理0行を実`postgresquery.Executor`＋`queryresult.Map`で検査する。環境未設定時は`SKIP`であり、これを実DB PASSと数えない。実行コマンドはPR本文に保持し、秘密のDSNはIssue／CIログに出さない。仮に物理Readが成功しても、Scoped Provider/Function Context/Consumer／現在Grantは別資格のままで、Product E2は未成立。**実PG SKIPなしの結果は確認前なのでNOT RUN**。
 
 **資格記録**：#3500は現在**Draftのテスト変更**。E1dのGo局所試験・exact-head CIの成功／失敗は当該PRの現HEAD実績で判断し、CIのない状態ではNOT RUNとする。実DB PostgreSQL、実Function→Context→Provider→Consumer、Tenant/Host Grant、SHO/Studio、業務Owner受理は未実証。#2586がP0-R／E2製品接続、#2514が独立Expected、#2386が組織Meaning、#1174がCurrent Grant/Effectを担当し、P0-D／M／R→P0-Cの区分は維持する。
+
+### 11.5 共通Application PatternとQuery実行を同一Native Sourceから接合する（E1f）――ただしFunction Data Context・Host権限・Consumer受信は別
+
+他チャットの[ADR-0048（共通Application APIとTransport Adapter）](https://github.com/hat47x/tei-platform/blob/main/plan/adr/0048-shared-application-api-and-transport-adapters.md)と[#2586](https://github.com/hat47x/tei-platform/issues/2586)の単一Function縦断を接合するため、[Draft #3500](https://github.com/hat47x/tei-platform/pull/3500)をE1dから**実Native Pattern→Driver→ExecutorのE1f**へ拡張した。
+
+- **E1dまで**は既存Loaderが読む`CaseRecord`／`org_view.case_read`／SQL／Application Aliasから既存PostgreSQL Executorへ直接渡していた。必要な実行契約の一部分であって、Application FunctionやConsumerが解決した証拠ではない。
+- **E1f追加**は**同じ一時Workspace**へ、製品DSLの`pattern org_view.case_browse browse { data organization.case_record; query org_view.case_read }`相当を別ファイルとして**明示Authoring**し、再度`workspace.Load`したものを`driver.NewResolver(World).ExecuteBrowseQuery`へ入力する。Runtime Driverは既存Query/DB Aliasの対応をそのまま使い、Postgres Executor/Test Connectorが受け取った`C1`/SQL、逆順Raw列から明示Result Mappingした`C1→D1`を照合する。Pattern Source位置・ModelRevisionの帰属とOperationSurfaceのread-only/AuthorityLimits不変も検査する。
+- **E1f負例**は未宣言Patternと間違った`Database`を明示的に拒否し、SQL Test Connectorへの到達も禁止する。受理していないRelationの自動走査や、語の一致によるFunction Query推測ではない。
+- **E1e（物理Read）**は`verifyNativeCaseReadWithPostgres`の厳格な隔離PGオプトインを継続するが、E1fの合成Test Connectorと独立に採点する。PGの実0行もそのScopeの物理結果であり、全案件・全時点の不存在証明ではない。
+
+**重要な不成立**：Browse Patternは利用者機能への**入口候補**であり、#2506で扱うFunction Data Context Definition/Instance・Selection Epoch・Result Slice/Completeness・対象Principal・現在Scope・Consumer受信の証拠を自動生成しない。また、物理`postgresquery.Executor`は未スコープの実行器なので、Web/APIへ公開する場合は[#1656](https://github.com/hat47x/tei-platform/issues/1656)の適切なTrusted Read Plan/Scoped Provider・先行Authorizationが別途必須。Node Synthetic Temporal 16件（#3380）はこのGo Pattern実行が二時点Queryに対応している証拠にはならない。
+
+**最短の次工程（#2586 Owner）**：E1fの同一Native Query/Patternを起点に、既存Contextのtyped Binding／Case ID→Relation occurrence、Provider実ReadのSource・Physical Row/Field／時点・Cohort・Result Slice、実受信ConsumerのDisclosureを一つのAttemptとして観測する。技術上の`Function Data Context`を新たな第二意味正本／第二API/Host/Plugin Resolverとして構築せず、既存[#2506](https://github.com/hat47x/tei-platform/issues/2506)とADR-0048の責務に委ねる。採用済みの`org_view` DSLを勝手に永続書換せず、`t.TempDir()`へのSourceコピーでPressureする。
+
+**結果帰属**：#3500のE1f・E1d・E1eは同一Go Testから開始されるが、E1eは実PGと確認変数がない限りSKIP、CI全体・実DB／Scope・Owner受理はそれぞれ独立判定。第9節のP0-D/M/R→P0-Cは変更しない。新しい組織専用実行RuntimeやFile正本は作らない。
