@@ -416,7 +416,7 @@ T1-Bの本当の判別は、AIに既存T1-Aの境界入力や非公開Expected�
 - **Import対象の特定**は既存 `LocateImportedSource`／Source Index／Resolver経路に委譲し、新しいProvider Registry、第二解析器、横断Snapshot保証APIを作らない。
 - **閉包が未証明**なら、ConsumerのWorld/Index FPが一致していてもSource freshnessのClaimは `unknown/stale-needs-check`。Source「不存在」や正式Test生成可へ自動変換しない。
 - **同時性の限界**：ConsumerとProviderの別Open・別Tool Callで各digestが一致しても一つの原子的Snapshotを得たとは限らない。実読込時のSource/Manifest/Import Bindingと受領時点の版ずれを発見できる限度で記録する。A→B→Aの履歴、権限失効、外部Repository移動は別反例。
-- **MeaningとEvidence**：REAによる旧資産取込、SHOの文章/図面、KON DataspaceのProvider、Plugin BOM等は、このTask相対のProvenanceを消費する先であって、本章が新たな意味受理・Tool/Host認可を発行する先ではない。
+- **MeaningとEvidence**：外部逆解析の旧資産取込、SHOの文章/図面、Plugin BOM等は、このTask相対のProvenanceを消費する先であって、本章が新たな意味受理・Tool/Host認可を発行する先ではない。
 
 ### 10.4 外部参照を使う場合だけ追加する反証（HI-19〜24）
 
@@ -431,7 +431,7 @@ T1-Bの本当の判別は、AIに既存T1-Aの境界入力や非公開Expected�
 
 **最短実行順**：①#3479が現行Go FixtureのSource/Manifest変化の反例をexact HEADで検収、②#3262が同じRequired一FunctionでImport時の未報告Sourceを `unknown` と扱えることを実Consumerで確認、③そのSourceを必要とするH2/H3 TrialではTool Replyと外部Source occurrenceの両方を固定、④Product Function→actual Provider→Rowsetは#2586、正式BOM/Build/EffectはそれぞれのOwnerで検証する。**外部Importを用いない最初の公開合成H2を#3479の完了待ちで停止させない**。
 
-**状態**：#3477・#3481はmain統合済み。#3479はDraft、実Provider Import Closureの製品読取・実H2/H3受領・Source原子的Snapshot・SHO/REA/KON実連携、T1-B/Owner意味受理は未成立。HI-19〜24は既存テストの重複カウントを禁止した**受入設計**であり、この節の追加による新しい実行PASSではない。
+**状態**：#3477・#3481・#3479はmain統合済み。ただし#3479のGo反例は別々のLoad観測であり、実Provider Import Closureの製品読取・実H2/H3受領・Source原子的Snapshot・SHO/外部逆解析の実連携、T1-B/Owner意味受理は未成立。HI-19〜24は既存テストの重複カウントを禁止した**受入設計**であり、この節の追加による新しい実行PASSではない。
 
 
 ---
@@ -466,7 +466,7 @@ T1-Bの本当の判別は、AIに既存T1-Aの境界入力や非公開Expected�
 
 これは**可視性を理由にRequired不足を隠す設計ではない**。当該Audienceに必要な情報が開示できないなら、内部で不足理由を保持したまま、そのAudience向けClaimは`unqualified/unknown`とする。内部理由の詳細を公開するかは既存Host/Policyの責務。
 
-### 11.3 Product DB実Read・Plugin Trait・SHO/KONを接続する最小Witness
+### 11.3 Product DB実Read・Plugin Trait・SHOの実受領を接続する最小Witness
 
 [Draft #3500](https://github.com/hat47x/tei-platform/pull/3500)は、既存Loader Resultからnative Case Queryを組み立て、隔離PostgreSQLの実ExecutorとQuery Mapを使う**オプトイン**の実Read試験を提案する。隔離DB名確認と既存Table拒否を前提とし、環境変数がなければSKIP。したがって通常Go TestのPASS、Fake ProviderのPASS、または本DraftのCIだけから実PG Readが成立したとは言えない。
 
@@ -474,7 +474,7 @@ T1-Bの本当の判別は、AIに既存T1-Aの境界入力や非公開Expected�
 
 [Plugin Trait #3278](https://github.com/hat47x/tei-platform/issues/3278)の`Selected / Built-in-included / Loaded-or-Invoked / Exposed / Authorized / Effect-observed`も同様に別資格。選択A・実Invoke B、Trait Contract同版・実装のみ変更、`Retryable`なのに副作用不明、`Encrypted`なのにBrowser plaintext保存を合格にしない。2 Provider×2 Consumerの各tupleは実Build/Invoke/独立Expectedで個別判定し、別TargetのPASSを転記しない。
 
-SHOではCLIからのSource出力とSHO Readerの**実再読取**、Working Copyと保存後再開、Source引用の鮮度を区別する。KON DataspaceはSource/Documentの将来の受け皿候補として検討しても、TEIのDB/Query/意味正本を移さない。SUI側でRaw保存→Reader再取得→複数Canvas投影→Revision/権限/履歴を確認するまで、KON独立運用・SHOクラウド受領の成立を主張しない。
+SHOではCLIからのSource出力とSHO Readerの**実再読取**、Working Copyと保存後再開、Source引用の鮮度を区別する。TEIのDB/Query/意味正本を他の記述・表示Consumerへ暗黙移管しない。外部ConsumerでRaw保存→実Reader再取得→複数表示→Revision/権限/履歴を独立確認するまで、SHO等の実受領が成立したとは主張しない。
 
 ### 11.4 次の最小受入順と既存Issueへの引渡し（HO-25〜30）
 
@@ -485,11 +485,11 @@ SHOではCLIからのSource出力とSHO Readerの**実再読取**、Working Copy
 | **HO-27** | 途中切断・空Result・実Query未起動の三ケース | #3262/#2586/#2509：Tool受領とQuery実行の別証拠 |
 | **HO-28** | 実PG未設定でGo PASS、設定後に実Read成功または拒否 | #3500/#2586：SKIPを実PG成功にしない。実DBの隔離実行は未測定 |
 | **HO-29** | Plugin選択済みAだが実Invoke B／Trait Contract同版実装変更 | #3278/#3267/#951：Lock、Build、実Invoke、Effectを別資格 |
-| **HO-30** | SHO/Studio/KON候補へ旧Sourceを引用、Resume時にAudience Grant変更 | #2515/#3262/SHO・KON各Owner：実Reader・Current Disclosure・履歴を別確認 |
+| **HO-30** | SHO/Studio等の外部Consumerへ旧Sourceを引用、Resume時にAudience Grant変更 | #2515/#3262/SHO等の各Owner：実Reader・Current Disclosure・履歴を別確認 |
 
-**実行順**：①外部Importなし公開一FunctionのD不足を#3262で判別、②独立Expected付きの初回比較適格H2一Sessionを#2509/#2515で取得、③そのTaskが実Providerを必要とするときだけ#3479のImport occurrenceと#3500の実DB Witnessを接続、④SHO/Studio/KONの実Consumer受領とPlugin 2×2を別受入とする。**外部Import、実DB、KON独立化を初回H2の新しい前提条件にはしない**。
+**実行順**：①外部Importなし公開一FunctionのD不足を#3262で判別、②独立Expected付きの初回比較適格H2一Sessionを#2509/#2515で取得、③そのTaskが実Providerを必要とするときだけ#3479のImport occurrenceと#3500の実DB Witnessを接続、④SHO/Studio等の実Consumer受領とPlugin 2×2を別受入とする。**外部Importや実DBの実証を初回H2の新しい前提条件にはしない**。
 
-**証拠上限**：本節はOwner間の受入設計であり、HO-25〜30、実OS拒否、実PG接続、実H2/H3、未知T1-B、SHO/KON実Reader、Plugin 2×2の新しいPASSは**NOT RUN**。#3500/#3479/#3365等のDraftは現main製品能力として数えない。
+**証拠上限**：本節はOwner間の受入設計であり、HO-25〜30、実OS拒否、実PG接続、実H2/H3、未知T1-B、外部Consumerの実Reader、Plugin 2×2の新しいPASSは**NOT RUN**。#3500/#3479/#3365等のDraftは現main製品能力として数えない。
 
 
 ---
@@ -522,12 +522,12 @@ SHOではCLIからのSource出力とSHO Readerの**実再読取**、Working Copy
 
 ### 12.3 判断結果の保存・再開と実行を混同しない
 
-TEIのSource/Function/Query Read、SEIのRecommendation、SHOの記述、KONの保存候補は**同じ証拠を参照し得るが、同じAuthorityを持たない**。
+TEIのSource/Function/Query Read、SEIのRecommendation、SHOの記述は**同じ証拠を参照し得るが、同じAuthorityを持たない**。
 
 - TEIから受けた実Read Evidenceと、SEIが記録する`Recommendation`の**実際の推薦者**を分離する。モデル生成の提案をTEIのOwner受理済み意味へ帰属させない。
 - 決定的なD0/D1で十分なTaskでは、M1（モデル利用）を自動採用しない。M1の追加価値を独立Expected／保留／コストで検証する。
 - 保存後に`Decision`だけを再開できても、未解決の`Question/Unknown/Conflict`が保存・再読取できたことにはならない。H3のResume受入では、未解決項目の**存在・Source・状態・開示範囲**を独立に再照合する。
-- Legacy/REA観測、AIの構造候補、Owner Accepted Desired、Target Observed Actualは別票。SHOの文章化、SEIのRecommendation保存、KONのRaw保持、TEIのBuild/Effectのいずれも、他の意味受理・実実行を自動的に成立させない。
+- Legacy/REA観測、AIの構造候補、Owner Accepted Desired、Target Observed Actualは別票。SHOの文章化、SEIのRecommendation保存、TEIのBuild/Effectのいずれも、他の意味受理・実実行を自動的に成立させない。
 
 ### 12.4 既存Ownerで検証する追加の差分（HP-31〜35）
 
@@ -556,13 +556,13 @@ TEIのSource/Function/Query Read、SEIのRecommendation、SHOの記述、KONの�
 | **Adaptive Activity** | 不足を発見し、次の調査・Tool候補・保留・人への引継ぎを選ぶ | TAI/SEIのHarness・Method・Skill。TEIのOwner意味受理・Host実行権限は発行しない |
 | **Interaction Flow** | UI・会話・Tool・外部イベントの入力から、型付きOperationへ進む明示的な状態と遷移をモデル化 | TEIのFunction/Representation/共通Application API。AI専用状態機械に固定しない |
 | **Business Operation** | 実業務のValidate/Authorize/Execute/Observe/Resultと効果 | TEI契約＋実行Host/Provider。Harnessの成功/終了コードは業務Effectではない |
-| **Evidence & Persistence** | Source/Raw/Meaning/Decision/Unknown/Receiptの版・参照・再読取 | 各製品の既存正本とConsumer。KONは保存先候補であり、意味・権限の中央正本ではない |
+| **Evidence & Persistence** | Source/Raw/Meaning/Decision/Unknown/Receiptの版・参照・再読取 | 各製品の既存正本と実Consumer。保存先の存在から意味受理・Host認可を推定しない |
 
 これらを一つの「AI Workflow」定義へ畳み込まない。Interaction Flowは**AIを使わないUI/業務フローでも成立**し、Adaptive Activityは固定Flowの外側で次の観測や推薦を選べる。ただしAdaptive Activityが型付きOperationを呼ぶときは同じ契約・権限・監査点を通す。
 
 ### 13.2 共通Lifecycleの不変部とPluginによる可変部
 
-Operationの候補Lifecycleは `Intent → Prepare → Validate → Authorize → Execute → Observe → Result`。これは**横断設計上の候補**であり、現在の製品APIが全Stage/Hookを実装・検証済みという意味ではない。既存ADR-0048、#1158、#3278/#951、実Hostに接続し、Hook追加による実行順序変更や権限迂回を許さない。
+Operationの `Intent → Prepare → Validate → Authorize → Execute → Observe → Result` は**一つの説明用Path**であり、製品固定の全順序やCore列挙ではない。Lifecycleは既存モデルの型付き有向Graphとして、分岐・再試行・補償・異質媒体の入力を許容する。保護すべき不変境界と、追加・差替え可能なGraph要素を分離する。現在の製品APIが全Node/Hookを実装・検証済みという意味ではない。既存ADR-0048、#1158、#3278/#951、実Hostに接続し、Hook追加による実行順序変更や権限迂回を許さない。
 
 - 不変境界：実Source/Operation identity、入力/出力型、Current Authority、実Effect/Receipt、公開Disclosure。副作用あるExecute前のHost認可、再試行と冪等性の判断をAI/Pluginの自己申告だけで確定しない。
 - 可変部：表示・質問・Tool提案・データ変換・Operation前後の拡張・検証・再開。Pluginは能力発見、情報投影、操作前検査、実行/結果変換、結果検証、再開/引継ぎに接続できるが、`Selected → Loaded → Invoked → Consumer Received`を各段階で観測する。
@@ -577,7 +577,7 @@ H2は既存CLI/Tool-onlyの実配送・隔離・Current Grantの資格を先に�
 - **H3-A1（追加価値）**：決定的なD0/D1とMethod/LLM利用M1を同一Task・独立Expectedで比較し、未知Required・誤判断・保留・Costの差を測る。M1の説明品質だけで採用しない。
 - **H3-A2（未解決の継続）**：Decision/Recommendationの保存と、`Question / Unknown / Conflict`の保存・再読取を別資格にする。現SEI CLIで未実装/未確認の保存型を「既に再開可能」と扱わない。
 
-H3-A0が失敗した場合は既存SEI Reader/Writerの原因と、TEI Sourceの取得/Revision原因を分離する。SEIへ第二TEI Parser/Registryを作らず、SHO/KON/TAIの実保存・Consumer受領も独立に確認する。
+H3-A0が失敗した場合は既存SEI Reader/Writerの原因と、TEI Sourceの取得/Revision原因を分離する。SEIへ第二TEI Parser/Registryを作らず、SHO/TAI等の実保存・Consumer受領も独立に確認する。
 
 ### 13.4 最小の実行可能な検収（HF-36〜41）
 
@@ -641,7 +641,7 @@ DSH採用順は**既存Skillの直接利用→標準Skill機構→明確な不�
 4. **Blind evaluation**：H2とH3の各Runについて回答が実際にReviewerへ到達したこと、Modelが独立Expectedに接触していないことを検証。割付後の失敗・不正モデル応答もITT分母へ残す。事後に成功試行だけ選別しない。H3ではSkill root/referenceの実Readと**判断価値の増分**を別に採点する。
 5. **Outcome/再開**：現在Grantの変化や旧RawのResume入力再出現、Source revisionだけの変更を別反例にする。CLI Tool起動/exit0がBusiness Operation成功、SEI継続、実Provider Effectを意味しない。
 
-**P0とP1の順序**：初回比較適格H2の一件成立がP0。4件が成立して初めてH2/H3比較品質を述べる。CSW B0/B1/B2、SEI Question十分性の実Product Probe、EKI実Worker配送、SHO/KON実Handoffは**P1以降の並列試験**。これらを最初のH2の追加阻害条件としない。
+**P0とP1の順序**：初回比較適格H2の一件成立がP0。4件が成立して初めてH2/H3比較品質を述べる。CSW B0/B1/B2、SEI Question十分性の実Product Probe、EKI実Worker配送、SHO等の実Handoffは**P1以降の並列試験**。これらを最初のH2の追加阻害条件としない。
 
 ### 14.4 検収用の最小差分（HQ-42〜49）
 
