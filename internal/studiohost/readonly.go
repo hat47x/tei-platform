@@ -3,7 +3,6 @@
 package studiohost
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -259,13 +258,8 @@ func (h *ReadOnly) InspectSubject(id, kind, subjectID string) InspectionResponse
 		if err == nil {
 			value, err = services.Inspection.Inspect(subject)
 		}
-		if err == nil && (value.Subject != subject ||
-			value.SchemaVersion != "tei.operations.inspect/v0" ||
-			value.Effect != "read-only" ||
-			!json.Valid(value.Canonical) ||
-			value.WorldFingerprint == "" ||
-			value.SourceIndexFingerprint == "") {
-			err = errors.New("inspection service returned an inconsistent projection")
+		if err == nil {
+			err = operations.ValidateInspectionProjection(subject, value)
 		}
 	}
 	if err != nil {
