@@ -26,25 +26,43 @@ type cliBuildIdentity struct {
 	VCSModified bool `json:"vcsModified,omitempty"`
 	// BuildSettings lists the toolchain settings that change the binary.
 	BuildSettings []string `json:"buildSettings,omitempty"`
+	// DeclaredRevision is the revision a builder passed with
+	// `-ldflags "-X main.teiDeclaredRevision=..."`. It is the builder's
+	// self-declaration, not toolchain evidence: nothing in the executable
+	// proves the sources matched it. It is reported separately from
+	// VCSRevision so the two are never confused (#3558).
+	DeclaredRevision string `json:"declaredRevision,omitempty"`
 	// Source identifies where the identity came from: "build-info" when the
-	// toolchain stamped it, "unavailable" when it did not (for example
+	// toolchain stamped a revision, "ldflags" when only an injected
+	// declaration is present, "unavailable" otherwise (for example
 	// -buildvcs=false or a source build outside a checkout).
 	Source string `json:"source"`
 }
 
-const buildIdentityUnavailable = "unavailable"
+const (
+	buildIdentityUnavailable = "unavailable"
+	buildIdentityFromVCS     = "build-info"
+	buildIdentityFromLDFlags = "ldflags"
+)
+
+// teiDeclaredRevision is set at build time with
+// `-ldflags "-X main.teiDeclaredRevision=<commit>"`. It stays empty when the
+// builder injects nothing, so its absence is not a claim that the sources
+// were unmodified.
+var teiDeclaredRevision string
 
 // buildIdentity reads the identity the Go toolchain stamped into this binary.
 // It never runs git or reads the working tree, so the answer describes the
 // executable, not the checkout it happens to be sitting in.
 func buildIdentity(info *debug.BuildInfo, ok bool) cliBuildIdentity {
 	identity := cliBuildIdentity{
-		SchemaVersion: "tei.cli.version/v0",
-		Effect:        "read-only",
-		GoVersion:     runtime.Version(),
-		GOOS:          runtime.GOOS,
-		GOARCH:        runtime.GOARCH,
-		Source:        buildIdentityUnavailable,
+		SchemaVersion:    "tei.cli.version/v0",
+		Effect:           "read-only",
+		GoVersion:        runtime.Version(),
+		GOOS:             runtime.GOOS,
+		GOARCH:           runtime.GOARCH,
+		DeclaredRevision: strings.TrimSpace(teiDeclaredRevision),
+		Source:           buildIdentityUnavailable,
 	}
 	if !ok || info == nil {
 		return identity
@@ -62,8 +80,14 @@ func buildIdentity(info *debug.BuildInfo, ok bool) cliBuildIdentity {
 			identity.BuildSettings = append(identity.BuildSettings, setting.Key+"="+setting.Value)
 		}
 	}
-	if identity.VCSRevision != "" {
-		identity.Source = "build-info"
+	// The toolchain stamp wins when both are present: it is the stronger
+	// evidence. A declared revision alone is still reported, with its own
+	// source value, so a caller can tell which kind of evidence it has.
+	switch {
+	case identity.VCSRevision != "":
+		identity.Source = buildIdentityFromVCS
+	case identity.DeclaredRevision != "":
+		identity.Source = buildIdentityFromLDFlags
 	}
 	return identity
 }
@@ -100,6 +124,9 @@ func runVersionCommand(args []string, out io.Writer) (int, error) {
 	}
 	fmt.Fprintf(out, "tei %s %s/%s go=%s revision=%s\n",
 		identity.SchemaVersion, identity.GOOS, identity.GOARCH, identity.GoVersion, revision)
+	if identity.DeclaredRevision != "" {
+		fmt.Fprintf(out, "declared revision: %s (self-reported by the builder)\n", identity.DeclaredRevision)
+	}
 	if len(identity.BuildSettings) > 0 {
 		fmt.Fprintf(out, "build settings: %s\n", strings.Join(identity.BuildSettings, " "))
 	}
