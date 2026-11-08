@@ -1608,3 +1608,39 @@ KON Dataspaceは独立・任意のData Source候補であり、TEIのテスト�
 **P0-1** #3365の追加HEADで、実CLI `stepId/operation/verified` が目録へ転記され、wrong-Operation負例が必要な理由で拒否されることをCIの同一Attemptで検収。**P0-2** #3273/#2514の本来の未知Gapを一つBlind Pre-registrationし、#3262の既存13 CLI等のContextを必要Subsetだけで使ってT1-Bへ進む。実Provider Readは#2586、Import Provenanceは#3479と並行。**P1** #2509で外部Tool End/Disclosure/Session Resume、#951/#1251で実Plugin Invocation、#3274で実Host/Client/Effectを別資格化。**P2** Go Code C1、Target version 2×2 BOM、NFRはそれぞれの独立分母で測定。
 
 **今回実施した範囲**：PR #3365の既存test-only Code・専用CI Assertionの変更、および本計画への追記。既存初回HEADでの3 CI successは確認済み。追加HEADの結果、製品全体Coverage、T1-B盲検、外部H2/H3 Tool受領、Provider実Invoke、現在Grant、正式Owner Meaning、Go C1/NFRはこの文書だけでは認定しない。
+
+
+---
+
+<!-- tei-test-20261108-coverage-provenance-direct-binding -->
+## 31. 2026-11-08 実コード照合で発見したCoverage証拠の出所ギャップ（TT-147〜151）
+
+### 31.1 #3365の限定成功と、まだ未証明の直接結合
+
+[Draft #3365](https://github.com/hat47x/tei-platform/pull/3365) のHEAD `b81a7642b737f96a29e665807b55868907486d04` にある `tools/reference-issue-test-ability/probe.py` を直接確認した。`expect_real_evidence(result, step)` は実CLIの`executionMode=generated-pinned`、`selectedStepCount=1`、単一`evidence[0].stepId`、`verified is True`を検査する。一方、`scoped_step_selftest`はその後、`stepId/verified/operation`の3欄だけを**試験用Receiptへコピー**し、`scoped_step_coverage`へ渡す。
+
+`scoped_step_coverage`は`required`、`scenario_sha`、`actual_source_sha`、`end_received`、`expected_operations`を**呼出元が与える値**として受け取る。自身で実CLIプロセス・Scenario Source・Result Body・Actual Input・StepのOperationを再照合しない。ここで`verified:true`があっても、その行が**指定Stepの指定Operationを実行した同一Attemptの実結果**だとは、投影関数単独では証明できない。これはread-only/test-onlyの関数責務としては妥当だが、Product Coverage Engineの受入証拠に昇格させると危険である。
+
+特に、`expected_operations`と`row.operation`が**同じ誤値に変更**された場合、投影関数は両者の一致しか見ない。外部で固定したScenario定義と実CLI Resultの間の束縛は別途必要。逆に、独立に実証された他Stepの正証人を、別の未受領Stepのためにすべて消す必要はない。既存TT-105/106の「局所正の証人」と「不在証明の拒否」は維持する。
+
+### 31.2 新たな独立反例（既存Scenario/Oracle正本を変更しない）
+
+| ID | 変更する一軸 | 期待する診断・禁止する主張 | Owner |
+| --- | --- | --- | --- |
+| **TT-147 Receipt出所のすり替え** | `verified:true`とStep IDだけコピーした別AttemptのReceiptを混入 | `verified`だけでは`observed-in-current-attempt`に昇格不可。実CLI invocation/Source/Scenario/Resultへの参照と同一Attemptの一致が必要 | #3365/#1180/#2514 |
+| **TT-148 Operation共謀誤値** | `expected_operations`とReceiptの`operation`を同じ別Operationへ置換 | 自己一致はPASSし得るが、独立Scenario SSOTのStep→Operation固定値と実Resultの照合で拒否 | #3365/#1180 |
+| **TT-149 正常Stepの証拠と異常Receipt混在** | 正常Step Receiptは独立に検証済み、別Stepだけ重複/不正 | 不正行を含む**目録全体**はinvalid。ただし個別Attemptで独立検証済みの正常Step Witnessは、Source/Identity/Disclosureが比較可能なら別途保持。現`scoped_step_coverage`の全消去挙動を全体Coverage意味へ流用しない | #3365/#2514 |
+| **TT-150 終端自己申告** | Callerが`end_received=True`、実外部受信にはend/ACKなし | `complete-for-one-pinned-scenario`を外部Tool Delivery完全性に昇格不可。受信Stream/Session/Count/ACKの別Witnessが必要 | #2509/#3365/#2515 |
+| **TT-151 Function存在とRule到達の乖離** | main #3482のCapability/Application/Source Requiredは一致、実Scenarioが別Operation/Ruleを評価 | Function `bounded-present`を実Rule Coveredにしない。Scenario→実Target→Rule Evaluator→Independent Expectedの同一Attempt連鎖を確認 | #3262/#2586/#1180/#2514 |
+
+### 31.3 実装への接続順序
+
+**P0-1**：#3365に新しいCoverage/Receipt Authorityを作らず、既存実CLI結果と#1180 Scenario SSOTの**外部固定Operation**を照合する一つの直接負例を追加する。Fixture改変のみの局所テストと実CLI/実Runner改変を区別する。試験側が作った`verified:true`をProductの真正Receiptと呼ばない。
+
+**P0-2**：局所`observed`を`Step/Operation/ScenarioRevision/ActualSource/Attempt/Result/IndependentExpected`の組として説明できる場合だけ、限定肯定を出す。複数Consumer間の同一性を検査する際も、単なるJSON Shape一致と実行同一性を分ける。
+
+**P0-3**：#3273のBlind T1-Bは、独立未提示Gapの発見に加え、生成Caseが**実対象Operation/Ruleへ到達したこと**を判別力の分子条件にする。実到達不能なCaseは生成件数に含めても発見成功件数に入れない。
+
+**P1**：#2509の外部Harness終端・ACK、#2515のDisclosure/OS送出、#2586の実Provider、#3420のCLI/MCP Transportは各OwnerのEvidenceを参照する。新しいReceipt Store/Runner/Authority/第二Coverage Engineは作らない。
+
+**資格**：本節は実コードの静的照合と既存PRの試験結果に基づく**設計上の欠落指摘**。TT-147〜151の新しい実Go/CLI/外部H3テストは今回**NOT RUN**。#3365はDraft/未main統合であり、局所test-onlyのPASSを製品の実行証明に昇格させない。
