@@ -413,3 +413,18 @@ main統合済み[ADR-0048](https://github.com/hat47x/tei-platform/blob/main/plan
 | **ORG-EC-07** | 実C1 Readは成立したが、Case側Source/Scopeに対応する図面Edge・CRUDセルが欠落 | P0-Rを局所合格のまま保持し、P0-M/P0-Cは未確定。read-onlyモデル表示でSource/Relationを補完しない（#3263） |
 
 **工程順は変更しない**：P0-DのCase定義・取得資格調査、P0-MのData/Function/Business projection、P0-Rの**実C1一件Read**をそれぞれ並行実証し、P0-Cで同じMeaning/Source/Provider・Scope/時点の証拠だけを接合。Handoff全件・SHO/Studio二Consumer・Current Host Effectは後続。ORG-EC-01〜07は**独立Expected／担当Issueへの提案であって実Go/DB/Host/CLI/外部Consumerの新試験ではない**。#2514/#1180が独立Scenario、#2510が組織Corpus、#2586がRead、#3262がD、#1125/#1444がHを所有し、第二Runner/TempStore/Org専用Completion/新Plugin Hostは作らない。
+
+### 11.4 Native Case Queryの実Executor到達と、実DB Readの間の資格差（E1d→E2a）（2026-11-08、#2586の最短切片）
+
+新規[Draft #3500](https://github.com/hat47x/tei-platform/pull/3500)は、mainの`internal/operations/org_case_mapping_bridge_test.go`が`workspace.Load`で実際に解釈する**同一**`CaseRecord`／Persistence／`org_view.case_read`／`case_read.sql`を使い、既存`application.DatabaseByAliasExact`・`postgresquery.Executor`・`queryresult.Map`へC1を引き渡す局所実Go試験を追加した。第二のCase用Query正本やOrg専用Providerは設けていない。
+
+| 段階 | この試験が対象とする技術的Witness | Product E2へは持ち越せない点 |
+| --- | --- | --- |
+| **E1c** Native LoaderとSQL Source | `org_view.case_read`、`case_id` input、`org_read→org_store`、raw列→Semantic fieldの明示マッピング、独立SQL byte/Source位置 | Query存在・Case Relation・Operation候補だけではFunction Bind・Provider実行不可 |
+| **E1d** 実PostgreSQL Executorへの引渡し | named `:case_id`→`$1`、C1という物理parameter、instrumented `database/sql` Connectorが受信したSQL・args、raw列順入替でも`caseId=C1 / handlingUnitId=D1`を`queryresult.Map`で検証。別Database identityや余剰Parameterは実dispatch前に拒否 | Connectorは**試験用であり実PostgreSQLではない**。テストのD1結果はtest doubleが生成したので実DBのRow/Field/Completenessを証明しない |
+| **E2a** 実Provider取得 | 同じSource/SQL/Query/Database aliasで選択した物理Instance・Current Scope・real SQL/params・raw rows/fields・実DB版・完全性・Read attemptを**実際に観測**。0行は件数0の実Readであって全業務対象不存在の根拠とは限らない | 実Function Data ContextやConsumerが接続しなければ、Readを実行しただけではProduct E2成立なし |
+| **E2b** Function／Consumer | 対象FunctionのContext slot、Case C1というRelation occurrence、必要Field/Scope/Cohort、実Provider結果・正しい独立Expected、受信Consumerを同一Attemptへ束縛 | 受理意味・Host現在Grant・外部Effect／全件Handoff／SHO/Studioの実開示は別判定 |
+
+**受入負例と実装順**：今回のE1dでは別Database/余分なparameterを実行前拒否し、Case RelationのBusiness IDからTenant Grantや任意OrgUnit全件取得を推定しない。#2586で次に必要なのは、現Test Connectorを`実物理DB`と見せかけることではなく、(a)Case Function Data Contextの明示Binding、(b)既存Scoped Provider/Driverを**そのBindingから**選定し現在Scopeを失わずread、(c)C1→D1のRow/Field/Source/Query/Provider/Consumerを独立期待と同一試行で照合すること。普通の`BrowseQueryExecutor`単体はTenant Scope適格Providerの代用品にしない（#1656/#2622）。Queryの選択・物理Schema・Credential/Authorityは表示用Org図面から推測せず、環境で注入した実Targetと同一のProvider版を要求する（#2611/#2862）。既存Script Queryの結果だけでFunctionが暗黙実行可能にはならない。
+
+**資格記録**：#3500は現在**Draftのテスト変更**。E1dのGo局所試験・exact-head CIの成功／失敗は当該PRの現HEAD実績で判断し、CIのない状態ではNOT RUNとする。実DB PostgreSQL、実Function→Context→Provider→Consumer、Tenant/Host Grant、SHO/Studio、業務Owner受理は未実証。#2586がP0-R／E2製品接続、#2514が独立Expected、#2386が組織Meaning、#1174がCurrent Grant/Effectを担当し、P0-D／M／R→P0-Cの区分は維持する。
