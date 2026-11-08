@@ -509,3 +509,12 @@ D-9は残る。CLIは設計文書を索引に載せるが、意味の定義と�
 - `validate`の診断と`sourceRootFindings`は変わらず、D-9（設計文書が意味として読まれない）は残る。
 
 この記録はCLIのread-only観測である。HTTP・MCP・Desktopの各入口の同値性は #3419〜#3421 の担当で、未実行（NOT RUN）のままである。
+
+## 11. 第5ラウンド（2026-11-09）: CLIとMCP参照Adapterの一致と厳密入力
+
+`main` `4f97c86cf` の CLI と `tools/reference-mcp-readonly-adapter` を同じWorkspaceへ向けて実行し、値・失敗・入力検証を比較した。生出力は[第5ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND5_CLI_MCP_2026-11-09/README.md)にある。
+
+- 4操作（`validate`・`model catalog`・`inspect`・`trace`）の成功応答は、キー集合と型の差が0件だった。`SUBJECT_NOT_FOUND`・`UNSUPPORTED_SUBJECT_KIND` もCLIと同じ文字列符号で、MCPは `isError:true` と `ok:false` を併せて返した。
+- 一方、**宣言していない引数はMCPだけが無視して成功する**。CLIは `INVALID_ARGUMENT` で拒否する。入力契約の共通化は未達で、#3467（起票）として扱う。
+- 必須欠落の符号はCLIが `INVALID_SUBJECT`、MCPが `-32602` で、意味層とプロトコル層の対応は #3420 の未決である。
+- `commands` の19件に操作ID・入口の欄は無く、入口ごとの対応はIssueと文書でしか辿れない。#3419 の対応表で扱う。

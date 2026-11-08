@@ -215,6 +215,48 @@ func TestAdapterReportsReadFailures(t *testing.T) {
 	}
 }
 
+// An argument the tool does not declare must be rejected, not dropped. The CLI
+// refuses an undefined flag with INVALID_ARGUMENT, so accepting it here would
+// make the same call succeed through one entrance and fail through the other
+// (#3575).
+func TestAdapterRejectsUndeclaredArguments(t *testing.T) {
+	root := referenceWorkspace(t)
+	requests := strings.Join([]string{
+		`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"tei_inspect","arguments":{"subjectKind":"semantic-data","subjectId":"sales.order","extra":1}}}`,
+		`{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"tei_validate","arguments":{"workspace":"/tmp"}}}`,
+	}, "\n") + "\n"
+	var out bytes.Buffer
+	if err := serve(strings.NewReader(requests), &out, root); err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("expected two replies, got %d: %q", len(lines), out.String())
+	}
+	for _, line := range lines {
+		var response struct {
+			Error *struct {
+				Code    int    `json:"code"`
+				Message string `json:"message"`
+			} `json:"error"`
+			Result json.RawMessage `json:"result"`
+		}
+		if err := json.Unmarshal([]byte(line), &response); err != nil {
+			t.Fatal(err)
+		}
+		if response.Result != nil {
+			t.Fatalf("undeclared argument was accepted: %s", line)
+		}
+		if response.Error == nil || response.Error.Code != -32602 {
+			t.Fatalf("want -32602 for an undeclared argument: %s", line)
+		}
+		if !strings.Contains(response.Error.Message, "unknown argument") &&
+			!strings.Contains(response.Error.Message, "unknown tool") {
+			t.Fatalf("message does not name the unknown argument: %s", line)
+		}
+	}
+}
+
 // The initialize handshake must name the protocol revision this adapter
 // implements, and a notification must not produce a reply.
 func TestAdapterHandshakeAndNotifications(t *testing.T) {

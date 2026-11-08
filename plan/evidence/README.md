@@ -159,3 +159,4 @@
 - [`tei self-build`のIntent宣言と供給照合](TEI_GO_SELF_BUILD_INTENT_AND_SUPPLY_2026-11-08.md)（SC0-01の宣言検査とSC0-02の供給分類を実装し、子を起動する前に拒否する。分類器は複写せずexactな検証器へ委譲する。Intentは宣言のまま（`resolved: false`）。`qualified`は常にfalse。SB-C0 §4.6 / #2831）
 - [CLI応答のWorkspace同一性と空一覧の実測](TEI_DOGFOODING_ROUND3_IDENTITY_2026-11-08/README.md)（#3149・#3455・#3456。読み取りコマンド横断でWorkspace同一性と空一覧の直列化を確認し、2件の修正を実測。同名の第3ラウンド記録は別ディレクトリにある）
 - [修正後の再実測 第4ラウンド](TEI_DOGFOODING_ROUND4_2026-11-09/README.md)（#3455・#3456の修正後に、統合後の版`00ead5a98`で同じCLI操作を再測定。11応答すべてがWorkspace同一性を持ち、空の参照一覧は`[]`で返る。D-9は残る）
+- [CLIとMCP参照Adapterの一致と厳密入力](TEI_DOGFOODING_ROUND5_CLI_MCP_2026-11-09/README.md)（#3400・#3420。4操作の成功応答と2つの失敗はCLIと一致し、未知の引数だけMCPが無視する。`main` `4f97c86cf` のCLI・MCP実行物で実測）
