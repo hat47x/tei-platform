@@ -650,3 +650,54 @@ Data Workbench #3270、REST Decision Graph #3274、三要素モデルとCRUD/SHO
 **比較参考（TEI固有方式の採用ではない）**：Rust Traitは実装必須memberとDefault memberを区別する（https://doc.rust-lang.org/reference/items/traits.html）。Go interfaceはMethod Set/埋込みを合成し、同名別Signatureの合成は不正である（https://go.dev/ref/spec）。Java interfaceのDefault実装は多重継承時に衝突し得る（https://docs.oracle.com/javase/tutorial/java/IandI/multipleinheritance.html）。TEIはこれらの言語記法を日常DSLへ露出せず、原子性・実装必須・適合診断・明示Conflict解決という振る舞いだけを候補にする。
 
 **現在の資格**：本節はIssue・現行Code・他チャット方針を照合した設計計画であり、Trait公開Schema/DSL、実Plugin移行、TRF-01〜12、新しいGo/CLI/Studio/Provider試験、Owner正式採用は **NOT RUN／未採用**。本DocのD1試験を通したときだけ、実装方式の判断を更新する。
+
+
+## 18. Source時点と外部Providerの実入力を、D1選択・実呼出し・BOM資格へ束縛する（2026-11-08実証接続）
+
+**追補の理由**：§16は`Declared → Selected → Built → Invoked`を分けたが、選択した**Provider原文・Manifestの現在のbyte**がConsumerの`World/SourceIndex`で必ず把握できる、とは限らない。これはPlugin-firstを実行可能にする際の独立した欠落である。#3262のRequired Context、#951/#1016のSelection、#2600の再利用、#3267のBOM、#1180/#2514の独立Expectedを**新しい証拠正本や中央Registryなしに接続**する。既存§15のFunction局所失効は維持し、すべてのSource変更を全Artifact再Buildにはしない。
+
+### 18.1 観測済みの二つの異なるSource-only変更と、未完成の外部受入
+
+| 最小差分 | 現在までに実証できた範囲 | D1/BOMへ転用してはいけない推論 |
+| --- | --- | --- |
+| **同一Workspace内**：意味Worldは不変、Source Byte/Indexだけ変更 | [main #3477](https://github.com/hat47x/tei-platform/pull/3477)の実TEI CLI/Design Context→Scenarioは、WorldとSource Indexを別々に照合し、古いContextを限定拒否。中間A→B→Aの履歴はCurrent fingerprintのみでは復元不可 | World/Canonicalが同じなら旧Source Anchor/Scenario/Plugin Contextが現在も有効だとしない |
+| **外部からimportしたProvider原文**のみ改訂 | [Draft #3479](https://github.com/hat47x/tei-platform/pull/3479)は、Consumer World/Semantic Digest/Managed Source Indexが変わらなくてもProvider raw SHA/現在`LocateImportedSource`の指紋が変わる反例を実Go Testへ追加。先行HEADのHealth successと、Manifest負例追加後HEADのCIは別判定 | ConsumerのWorld+SourceIndex二指紋一致を外部Provider SourceのFresh証明にしない |
+| **外部Provider Manifest**のみ改訂（原文Source Anchor不変） | 同Draft #3479が別のManifest raw SHA改訂負例を追加。元Provider SourceとConsumer Indexでは改訂を見つけられない条件を区別する。**新HEADのCI成功・同一Nested Load Snapshotは未確認** | Plugin ID/Version・原文Source位置が同じなら実装Manifest/Selection規則も同じとしない |
+| **選択Classifier Rule**だけ改訂 | main #3337→#3368の12 Capability未選択6→4はRule Revision/判定方法の変化。古いraw Evidenceは保持する | Coverageが改善した、Providerが実Loadされた、Verified BOMが更新済みとしない |
+| **Functionの宣言・依存だけが部分照合** | [main #3482](https://github.com/hat47x/tei-platform/pull/3482)は`sales.order.submit`の独立Requiredを13実CLI Reply・42限定Controlsで照合しmain pushで限定PASS。Statusは`bounded-present`／全体`partial` | `application uses semantic sales`やCapability宣言だけでFunction→実Query/Provider→実Host Invocationが結線済みとしない |
+
+**鮮度は用途相対**：同じSource表現のbyte変更でも、(a) 原文引用・再解釈・Designer/SHOの出典、(b) 構造候補・受理済意味、(c) 具体Provider実行、(d) Build Artifact、(e) Result/Disclosureへ影響する範囲が異なる。ConsumerのProject Indexのみでは外部Providerの原文/Manifest/取得時点を網羅しない。Import Referenceが`partial/unavailable/not-bound`なら存在しない・無変更と見なさない。Source修正の現在値だけでA→B→Aの経緯を証明しない。
+
+### 18.2 一つのD1 Requestで必要な最小のInput Evidence chain
+
+**同一`Attempt`で別欄に記録する観測（新しい固定API Schemaとはしない）**：
+
+1. **Consumer Input**：Workspace/Function/Subject ID、Scope、直接消費したWorld/Source Index FingerprintとそのObservation時点、取得済みRequired Closureとpartial/unknown/拒否の有無。#3482の限定`bounded-present`はこの入口まで。
+2. **Provider Selection Input**：Contract/Trait ID・Version/Kind、実解決結果、Selection Rule実内容Fingerprint、Environment Binding、選択に実際に使ったProvider Manifest/Source Revision/Origin、候補数と曖昧性（#951/#1016）。
+3. **Provider Execution Input**：その同じ解決で選ばれた実Implementation/Build member、Host登録したProvider entry、実呼出し時のProvider Source/Manifest Revision、Process/Artifact/Target、実Call-site、入力Digest。値が同じ結果を返すA/Bでも**B選択→A実EntryはFAIL**。
+4. **Result and Delivery**：型付きApplication OperationのSubject/Source Anchor、World/Index、Null/Unknown/partial、Effect/Failure、CLI/Studioの独立Consumer実受領・Disclosure/Sink。Transport文書同値、Provider実Call同一性、現在Grantは別Claim。共通操作は採用済み[ADR-0048](https://github.com/hat47x/tei-platform/blob/main/plan/adr/0048-shared-application-api-and-transport-adapters.md)を使う。
+5. **Independent Qualification**：#1180/#2514の実独立Expected、Source/Provider/Attempt/Targetに束縛したScenarioとCoverage。#3267のBOMはこのうち実測済み組合せだけに資格を付与し、以前のContext/Result/Artifactを現在のHost Grantへ昇格させない。
+
+**TOCTOU停止線**：ConsumerがSourceを観測→Providerを選択→Build/Invoke→結果を受領する間のSource/Manifest/Rule改訂は、一回の`World/Index`再取得だけで取り消せない。**選択に使ったInputと実消費したInputが同じ版と証明できる**ときに限り当該Attemptをqualified候補とする。別Provider Loadの原文SHAとConsumer LoadのFPが各々読めても、同時点の結合を保証しない場合は`unverified`。Sourceのローカルコピーや指紋の一致は、Source Authority・Import Permission・Runtime Grant・Accepted Meaningの代替ではない。
+
+**再検証範囲**：Provider原文のみ変わったときは原文引用/取得/Provider Inputの資格を再評価し、意味非依存が実証された無関係Function/Artifactは維持候補。Manifest・Classifier Rule変更時はSelection/Required Closureと実影響を再照合する。Build Inputが変わっていなければArtifact byteまで無根拠に失効させない一方、実読み込むModule/Manifest/Plugin初期化が変われば同じ表示ResultでもBuild/Invocationの資格を再評価する。
+
+### 18.3 既存Scenarioへ追加する最小の負例（PDC-15〜20）
+
+| ID | 独立した改変と観測 | Expected・Owner |
+| --- | --- | --- |
+| **PDC-15** | 同一WorkspaceのSourceにLF改訂、World不変・SourceIndex変化 | 過去Context/Source位置はstale。意味が同じであることだけを根拠に引用やScenarioを再利用しない（#3477/#3262） |
+| **PDC-16** | 外部import Provider原文のみ改訂、Consumer World/Index不変 | Provider原文SHA/Source occurrenceの現在確認なしで`fresh`やPlugin evidence reuseを返さない。#3479は限定Test候補、Nested Load一貫性は別（#951/#2600） |
+| **PDC-17** | 外部Provider Manifestのみ改訂、同じCapability名・Consumer FP・Provider原文Anchor | Manifest Identity/Selection Ruleと実Resolveを再照合。単に`Source unchanged`ではqualifiedにしない（#3479/#951） |
+| **PDC-18** | 旧Selection Rule Fingerprint、同名Versionの新判定規則でCandidate集合が変わる | 判定由来と母数を維持し、既存`selected`を実Providerに昇格しない。BOM Historyは別証拠（#3368/#3267） |
+| **PDC-19** | 13 CLI Responseで`sales.order.submit`の宣言Requiredが一致しても、Query/Provider Entry未結線 | Declaration`bounded-present`、`invocationBinding=not-observed`。実Function実行やGrantをPASSしない（#3482/#1251） |
+| **PDC-20** | Bを選択→B登録した後、Invoke前にB ManifestまたはHost EntryをAに差替え。返却Canonical byte同一 | 選択時Inputと実Entry・実Artifactを比較し、不一致をFAIL/unknownで保持。単なる結果再検証では代替不可（#1251/#3381/#3371） |
+
+### 18.4 変更順と独立実証の境界
+
+- **P0／既存作業を合成する**：#3378の旧Direct二Consumer shadow、#3381の既存Compositionを使う`inspectoradapter`（Host登録Bの実関数Call・誤登録拒否）、#3371のStudio Host Factoryを、正式コードに入れる前に各Draftのexact-head CIと合流時回帰を別々に通す。先に同じGo関数を2回呼んだだけの`2 Consumer PASS`を禁止。既存`operations.ValidateInspectionProjection`へGuardを収束し、CLI通常入口とStudio Production Host双方へ**実Provider Binding**をつなぐ。
+- **P0並行／Source Fenceの欠落を実証**：#3477 mainのin-Workspace testを既存Fixtureとして再利用。外部Providerは#3479のSource-only/Manifest-only二負例を再利用し、ConsumerのWorld/Indexに**外部Provider同時点の資格が含まれない**という限界を明示。新Importer、Snapshot Store、Source Index別正本を作らない。
+- **P1／Qualified BOMへの限定投入**：#3297/#3267のMatrixは実Provider×Consumer×Targetの**同一Attempt**と独立Expectedが揃う場合のみ合格。#3479のSource raw観測と#3482のFunction宣言検査は、それ単独ではBOMの実Invocation・Conformance欄を埋めない。現在のSource Scope/Grantの不足はunknown。
+- **P1／異質なConsumerへの圧力**：REA/SHOの外部引用、KON Dataspace交換、Data WorkbenchのRead/DDL、CLI/MCP/StudioのRecipient SinkとSource Referenceを同じ既存契約で比較。ただしSHO文書生成・DB書込・外部Harness受領をInspector D1のHard Gateに積み上げない。外部Source/Import時の実Host Grantは既存Authorityが所有する。
+
+**状態**：#3477/#3482のmain局所実証、#3384の計画統合、#3371/#3378/#3381/#3479の別Draft/未統合の実装候補を分離。**本節は実Go/CLI/Studio/Providerの新試験ではなく、PDC-15〜20の受入設計**。新Importer/Resolver/BOM issuer/Runner/Host/Authority/正式API/Owner Meaning Acceptanceは追加・取得していない。全外部Reference Current Source Closure、CLI+Studio同じ選択Provider実Call、Production BOM、Current Grantは**NOT PROVEN**。
