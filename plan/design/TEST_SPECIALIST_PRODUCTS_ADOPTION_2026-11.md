@@ -1613,7 +1613,7 @@ KON Dataspaceは独立・任意のData Source候補であり、TEIのテスト�
 ---
 
 <!-- tei-test-20261108-coverage-provenance-direct-binding -->
-## 33. 2026-11-08 実コード照合で発見したCoverage証拠の出所ギャップ（TT-153〜151）
+## 33. 2026-11-08 実コード照合で発見したCoverage証拠の出所ギャップ（TT-153〜157）
 
 ### 33.1 #3365の限定成功と、まだ未証明の直接結合
 
@@ -1643,7 +1643,7 @@ KON Dataspaceは独立・任意のData Source候補であり、TEIのテスト�
 
 **P1**：#2509の外部Harness終端・ACK、#2515のDisclosure/OS送出、#2586の実Provider、#3420のCLI/MCP Transportは各OwnerのEvidenceを参照する。新しいReceipt Store/Runner/Authority/第二Coverage Engineは作らない。
 
-**資格**：本節は実コードの静的照合と既存PRの試験結果に基づく**設計上の欠落指摘**。TT-153〜151の新しい実Go/CLI/外部H3テストは今回**NOT RUN**。#3365はDraft/未main統合であり、局所test-onlyのPASSを製品の実行証明に昇格させない。
+**資格**：本節は実コードの静的照合と既存PRの試験結果に基づく**設計上の欠落指摘**。TT-153〜157の新しい実Go/CLI/外部H3テストは今回**NOT RUN**。#3365はDraft/未main統合であり、局所test-onlyのPASSを製品の実行証明に昇格させない。
 
 <!-- tei-test-lrh-evidence-provenance-20261108 -->
 ## 34. 2026-11-08：実行結果の出所とHandoff対象集合を分けるTest Evidence契約
