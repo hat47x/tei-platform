@@ -6,7 +6,10 @@
     "repository": "GoogleCloudPlatform/open-knowledge-format",
     "spec_commit": "ad30107c31c06aec8a7d5636e0d1058118604e6f",
     "spec_blob_git_sha": "c06e3eede0c910d0ecf12524c34204156f8795ac",
-    "spec_sha256_utf8": "26aa5da029278939f914e578107242d9607d4f2dc5fe153272b82f9ed1030101"
+    "spec_sha256_utf8": "26aa5da029278939f914e578107242d9607d4f2dc5fe153272b82f9ed1030101",
+    "reference_document_git_blob": "b770a92f33adf9942e2932529308d066430b02a6",
+    "reference_document_path": "src/reference_agent/bundle/document.py",
+    "reference_pyyaml_version": "6.0.3"
   },
   "required_files": [
     "index.md",
@@ -66,6 +69,12 @@
       "name": "append OKF bundle-root absolute link /data/order.md to temporary copy of functions/submit.md",
       "expected_format_conformant": true,
       "expected_document_quality": "link resolves from bundle root; repository-wide Markdown checker not applied to temporary copy"
+    },
+    {
+      "name": "change data/order.md type to a nonempty YAML list",
+      "expected_format_conformant": false,
+      "expected_upstream_reference_accepts": true,
+      "reason": "upstream sample validate() requires truthy type but not explicitly string; the SPEC requires a string"
     }
   ],
   "must_not_infer": [
@@ -93,7 +102,9 @@
     "yaml_parse_with_product_reader": "NOT RUN",
     "okf_formal_conformance": "NOT RUN",
     "owner_review": "NOT RUN",
-    "repository_plan_check": "PENDING: previous CI #42392171058 failed only on two committed Markdown links; baseline links patched. New exact HEAD CI not yet checked."
+    "repository_plan_check": "PENDING: previous CI #42392171058 failed only on two committed Markdown links; baseline links patched. New exact HEAD CI not yet checked.",
+    "reference_reader_k1_probe": "NOT RUN (test-only pinned upstream module; exact-CI pending)"
   },
-  "fixture_generation_note": "Baseline all Markdown links resolve under TEI repository health. Broken links and bundle-root absolute links remain independently testable by mutations in a temporary checkout copy, not persisted to managed repository .md."
+  "fixture_generation_note": "Baseline all Markdown links resolve under TEI repository health. Broken links and bundle-root absolute links remain independently testable by mutations in a temporary checkout copy, not persisted to managed repository .md.",
+  "reference_reader_limit": "upstream example is not normative OKF conformance; type list is an anticipated known permissiveness gap"
 }
