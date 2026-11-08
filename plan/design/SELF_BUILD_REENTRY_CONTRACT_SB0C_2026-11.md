@@ -130,7 +130,7 @@ tei self-build
 | --- | --- | --- |
 | Effect | `writes-artifact` | ファイルを書く。ただし**RepositoryとWorkspaceは変更しない** |
 | 必要な権限 | 出力先への書込み | 既存のAccess境界（`internal/access`）を再利用する |
-| 広告 | `cliCommandCatalog`へ追加 | discoveryの既存機構（`Modes`/`SuccessShape`）に合わせる |
+| 広告 | `acceptedCommands`へ追加し、`cliCommandCatalog`へは**載せない**（§4.5） | 現行catalogは`scope`と`effect`でread-onlyを機械固定している。書込み系は既存慣行どおりdispatch-onlyとする |
 
 ### 4.2 拒否条件（Buildを開始しない）
 
@@ -178,6 +178,31 @@ SB-C0の出力だけではL3を主張できない。L3には次が要る。
 
 **Stage1のdigestを自己申告で出力するだけではL3にならない**（SB-N13）。実行プロセスのimageと照合する第三者の観測が必要で、それはSB-C1の範囲である。
 
+### 4.5 発見面（discovery）の制約：`writes-artifact`は単純に追加できない
+
+§4.1は「`cliCommandCatalog`へ追加」と書いたが、実測すると**そのままでは追加できない**ことが分かった。
+
+現行の`tei commands`は、次の二点を機械的に固定している。
+
+| 固定されていること | 場所 |
+| --- | --- |
+| `scope`は`selected-read-only-commands` | `cmd/tei/cli_contract.go`、`cmd/tei/cli_contract_test.go:12`、`cmd/tei/cli_process_test.go:53` |
+| **全entryの`effect`が`read-only`** | `cmd/tei/cli_contract_test.go:17`（`cmd.Effect != "read-only"`で失敗） |
+
+したがって`effect: writes-artifact`のentryを同じcatalogへ足すと、この二つの試験が落ちる。`writeFlags`が既にあるのは「`read-only`は正本の意味を書き換えないという意味であり、プロセスが書かないことまでは意味しない」（#3182）という整理に基づくもので、**catalogが書込み系を広告してよいという意味ではない**。
+
+選択肢は三つある。
+
+| 案 | 内容 | 影響 |
+| --- | --- | --- |
+| D-1: catalogの`scope`を変える | `selected-commands`へ広げ、entryごとの`effect`で区別する | `scope`は公開契約の一部であり、`read-only`だけを信じて呼ぶ既存consumerの前提が変わる。**contract decision**である |
+| D-2: 別のdiscovery面を作る | `tei commands -include-effects`や第二のcatalogで`writes-artifact`を出す | 既存consumerの前提を壊さない。ただし「第二のregistry」を作らないというcatalogの設計方針と衝突しないか確認が要る |
+| D-3: catalogへ載せない | 既存の`deployment-*`や`issue-grant`と同じ扱い（dispatchするがadvertiseしない）にする | 既存慣行と一致する。ただし呼び手は`tei self-build`の存在を`-h`か文書でしか知れない |
+
+**現行の慣行はD-3である。** `acceptedCommands` 49件のうちcatalogへ載っているのは19件で、`deployment-start`・`issue-grant`・`artifacts`などはdispatchされるがadvertiseされない。本稿は**D-3を既定案**とし、D-1/D-2は別の契約判断として切り出す。
+
+D-3を採る場合、§4.1の「広告」欄は「`acceptedCommands`へ追加し、catalogへは載せない」に読み替える。`tei self-build -h`は既存の`-h`経路（終了コード0・標準出力）で自分のflagを説明する。
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
@@ -192,6 +217,8 @@ SB-C0の出力だけではL3を主張できない。L3には次が要る。
 | SC0-08 | `cmd/tei`から`tools/internal/`をimportする変更 | Goのinternal規則が拒否する（§3.1で実測）。規則を緩めるのではなく、`gobuilder`の移動かwrapperかを選ぶ |
 | SC0-09 | Bで`-builder`を省略しPATHから解決させる | 拒否。child executableのdigestを記録できない起動を許さない |
 | SC0-10 | Stage1が起動したchildのdigestと、記録したdigestが違う | L3不可。SB-N13と同じ扱い |
+| SC0-11 | `tei self-build`を`cliCommandCatalog`へ`effect: writes-artifact`で足す | `cli_contract_test.go:17`が`read-only`以外を拒否して落ちる（§4.5）。D-1の契約判断なしにcatalogへ載せない |
+| SC0-12 | 既存の`scope: selected-read-only-commands`を「書込み系も含む」と読み直す | 既存consumerの前提を変える。D-1の契約判断なしに行わない |
 
 ## 6. 未決事項
 
@@ -199,6 +226,7 @@ SB-C0の出力だけではL3を主張できない。L3には次が要る。
 - Build Intentの解決方式（`-intent`でID指定か、Workspace内の宣言から解決か）
 - ~~A-1とBのどちらを採るか~~ → **§3.4でBに確定**（A-1は採らない）
 - ~~`StdioProcessLauncher`をBuild用child起動へそのまま使えるか~~ → **§3.3で不要と判明**。`reference-go-build-stage-driver`が独自にchildを起動して記録する形で成立した
+- ~~catalogへ`effect: writes-artifact`を足せるか~~ → **§4.5でD-3（catalogへ載せない）を既定案に**。D-1/D-2は別の契約判断
 - **`cmd/tei`からchild driverを起動する薄い入口**の実装（Bを採った後の最初の作業）
 - `cmd/tei`を対象にしたL3の実験手順（`reference-self-build-two-stage`の形を当てる）
 - `-self-digest`の取得方法（実行ファイル自身のdigestをどう自己参照するか）
@@ -210,9 +238,10 @@ SB-C0の出力だけではL3を主張できない。L3には次が要る。
 - [x] §3の三案の比較と、Aの前提がGoのinternal規則に抵触することの実測（§3.1）
 - [x] Bの形が実測で成立することの確認（§3.3、[`reference-self-build-two-stage`](../../tools/reference-self-build-two-stage/README.md)）
 - [x] 第一候補をBに確定（§3.4、A-1は採らない）
+- [x] discovery面の制約の実測と既定案の決定（§4.5、D-3）
 - [ ] `cmd/tei`からchild driverを起動する薄い入口の実装
-- [ ] `tei self-build`の実装とSC0-01〜10の実試験
-- [ ] `cli_contract.go`の広告と実応答の一致（既存のdiscovery照合へ載せる）
+- [ ] `tei self-build`の実装とSC0-01〜12の実試験
+- [ ] D-1（catalogの`scope`拡張）を採るかどうかの契約判断（採る場合のみ、catalogの広告と実応答の一致を照合へ載せる）
 - [ ] `cmd/tei`を対象にしたL3の実測（`reference-self-build-two-stage`の形を当てる）
 
 **A-1（`gobuilder`移動）は採らないため、影響範囲の洗い出しは終了条件から外した。** 29ファイルの内訳は[記録](../evidence/TEI_GO_INTERNAL_RULE_AND_BUILDER_MOVE_2026-11-07.md)として残す。
