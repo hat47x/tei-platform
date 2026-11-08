@@ -366,6 +366,25 @@ H0/H1と異質領域の要件探索は並行可能。H2/H4の実Effect資格は�
 
 **次の一回の受渡し**：P0-Rは[#2586](https://github.com/hat47x/tei-platform/issues/2586)の単一Attemptで`Required Source/Query → Selected SQL + :from引数 → 実Provider Instance → Rowset/Field Presence/Scope → Function Data Context`を優先し、宣言には既存Blobを利用する。Product read-only成功後にだけ[#2506](https://github.com/hat47x/tei-platform/issues/2506)/[#2497](https://github.com/hat47x/tei-platform/issues/2497)の二表示と[#2516](https://github.com/hat47x/tei-platform/issues/2516)の開示、[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)の独立Expectedを接続。Schema/Historyは#2892/#2887の**別書込み前資格**で、最初のRead-onlyにDDL実行をHard Gate化しない。**CQ-17〜20の新Product一改訂・実PG/CLI+Studio/DDL/E2EはNOT RUN／NOT ACCEPTED**。新SQL/Provider Executor、Migration Engine、Result Schema正本、Runner、Hostを増設しない。
 
+#### 異なるFunctionの局所実証を一つのライフサイクル成功に合成しない（2026-11-08）
+
+**三つの実証は異なる対象・実行辺を持つ**。一機能P0-Rの対象は既存計画と[#2586](https://github.com/hat47x/tei-platform/issues/2586)で選んだ`order_entry.recent_orders`の実SQL・Provider・Data Contextであり、以下の別Reference成功を合算しない。
+
+| 確認した実装・独立した実験 | 言えること／次に欠けている辺 |
+| --- | --- |
+| **業務Read側の局所成功**：[Draft #3500](https://github.com/hat47x/tei-platform/pull/3500) HEAD `40c1acc5a2079d4e71aa9a2a9e9191779a3f48ba` の[CI #42469646869](https://github.com/hat47x/tei-platform/actions/runs/42469646869)で、`org_view.case_browse`→既存`driver.Resolver.ExecuteBrowseQuery`→既存Postgres Query Executor→`:case_id`/実SQL Dispatch→明示Column Mappingを試したGo Testは**PASS**。ただし`database/sql`の**instrumented Connector**が物理DBの代わりに結果を返す。`isolated-postgres-opt-in`は**SKIP**（実ログ確認）。実PostgreSQL Rowset、`order_entry.recent_orders`、Function Data Context、CLI/Studio二Consumer、現在Host Grantは未証明 |
+| **Command側の局所成功**：[merged #3506](https://github.com/hat47x/tei-platform/pull/3506)の実`reference/workspace`→`order_entry.submit_order`→`sales.order.submit`→既存`ResolveCommandBinding`→`order_entry/sales.order.submit`の明示Custom Go Binding、欠落/重複/別Capabilityの拒否を実Go Testで検証（[専用CI #42470312187](https://github.com/hat47x/tei-platform/actions/runs/42470312187) **success**）。**Binding解決はAdapter Load/Invoke・Host Route実接続・実Command Effect・Receiptではない**。BrowseのQuery実消費とも別 |
+| **Product一機能の接合対象**：実Sourceには`order_entry.recent_orders`のQuery/SQL/DB Aliasの宣言が存在 | **Product Function Context→実選択Queryと`:from`→`sales_core`のInstance/Provider→実`public.orders` Rowset→Context受渡しは未実証**。組織CaseのFake Connectorと受注Command Bindingの二つの成功を、受注BrowseのE2E成功とみなさない |
+
+**ライフサイクルは実行順を伴うGraphとして扱うが、宣言された各NodeのPASSはPathのPASSではない**：[merged #3504](https://github.com/hat47x/tei-platform/pull/3504)のTrait／Hook Slot分離と[merged #3510](https://github.com/hat47x/tei-platform/pull/3510)のLifecycle Graph→Source→生成→実行の設計を採り、(1) **Traitの必要保証**、(2) **Hookの差替え可能な位置**、(3) **Guard/Authorize/Action/Effect/Observeの順序付き実行経路**を分ける。Read-only `inspect`の選択Provider実CallがP0であり、Hook差替え実験とGraph Editor/Target生成、AI Web Chat/VUIのTool Call・Resume、B2C画面Experimentは**後続の異質Consumer**。Hookにより現在のHost Grant/Business Meaningを迂回させず、特定UIのイベント列を全Functionの固定Coreライフサイクルへ押し込まない。
+
+| 既存Scenario/独立Expectedへ渡す一因子対照 | 安全な判定 |
+| --- | --- |
+| **CQ-21 別FunctionのPASSを接ぎ木**：組織CaseのResolver＋計測DB Connectorが成功し、受注CommandのBindingも成功しているが、受注BrowseのSQLを実行していない | **局所二件はPASSのまま残し、`order_entry.recent_orders`のProduct Readはunverified**。Subject/Function/Query/Source Revision/Provider Instance/Attempt/Result Consumerが一つにつながるまでは新E2E PASSに昇格しない |
+| **CQ-22 Graph上の各Stepは許可、実行経路ではAuthorizeを迂回**：宣言済みSlot/Binding、単体Trait・Route検証は正常でも、Hook差替え後にGuardを迂回するPathが生じる | 必要なGuard/Current Grant/Effect Fenceの実際のPath履行がなければ**実Effect資格はunverifiedまたは拒否**。Graph編集後のSource再解釈→生成Artifact→実Host経路を独立Expectedで検査。現時点の実Graph Writer/Generator・Hook Runtimeは**NOT RUN** |
+
+**優先順とOwner**：P0は既存#2586 Product Browse実Reader、および#1251/#951 CLI・Studio `inspect`のselected→actual Provider Invokeを**並列**に測る。P0で真のProvider Readが成立してから、同じData Contextの二表現やTrait Conformanceに拡張する。P1の一Hook Slot・Graph改訂/Lowering/再生成は#3278/#3503/#1121/#2090の既存Ownerと[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)の独立基準を使い、新Host・Graph Runtime・中央Registry・第二Query Executor・第二Test SSOTを追加しない。**CQ-21/22のProduct横断E2E／実Provider/Hook/Owner意味受理はNOT RUN／NOT ACCEPTED**。
+
 **検収優先順位**：P0＝CQ-5の同じSource/別Resolver版とCQ-7の既知Rule+未列挙Ruleを、#3262の既存`context_gate.py`／#2514の独立Expectedと照合。P1＝CQ-6の空集合・相手方確認を#1125/#1163の現Host/Consumerへ接続。P2＝CQ-8の別Consumer受領（H3/SHO等）を#2509/#2516の実送出条件で検査。**新CLI/MCP Query、第二Consumer Gate、Proof Token、Plugin Resolver、Completion Engineを作らない**。本CQ-5〜8の同一Attempt横断Go/実DB/外部Consumer E2EはNOT RUN／NOT ACCEPTED。
 
 **着手順（既存Gate/Runnerを再利用）**：main #3482の限定CLI Context Gate（13 Reply・42有界対照、結果はpartial）＋#3477のSource Index改訂拒否→ #3304の既知T1-Aを基線とした#3273の**T1-B未知Rule生成**→#1180/#2514の独立Expected/Mutant→必要なClaimに限って#2586の実Provider Read／#2497/#3236の表示Consumer／#1174のEffectを検証する。AI用JSONと人向け表・SHO Markdown/MCPは、実装入口と実受領が確認できた場合のみ**同じ意味・不完全性を保つ別Projection**として採用する。現行CLIのCommand発見をMCP Serverの存在と誤認しない。Source/Target/Version/Grant/選択規則を連続するPage/Stepで再照合し、旧版Responseを無条件合成しない。
