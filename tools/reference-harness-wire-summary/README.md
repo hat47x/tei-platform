@@ -17,6 +17,7 @@
 | `bytes` / `sha256` | 受け取ったbodyの実バイト数とdigest |
 | `topLevelKeys` | 最上位のキー名（値は出さない） |
 | `model` / `stream` / `messageCount` / `toolCount` | モデル入力側の形 |
+| `toolNames` | その要求でHarnessが広告したtool名。**`function.name`と最上位`name`の両形を読む**。同じ名前の重複も残す。名無しのentryは数えず、`toolCount`との差がschemaの想定外を示す |
 | `modelInputBytes` | `messages`・`system`・`tools`だけを直列化したバイト数 |
 | `sessionLog.fieldBytes` / `keys` / `afterSeq` / `throughSeq` / `eventCount` / `eventTypes` | 拡張fieldの形と水位 |
 | `modelInputHits` / `sessionLog.markerHits` | 合成markerが**どちらに**現れたか（回数） |
@@ -50,6 +51,7 @@ go run ./tools/reference-harness-wire-summary \
 - **圧縮・連結された永続ログ**の展開。HarnessのSession Logは連結zstd frameで保存されることがあり、**単一frameとして展開すると内容の大半を取りこぼす**（[保存面の測定記録](../../plan/evidence/DSH_H6E6_SINK_INVENTORY_2026-11-07/README.md)）。本ツールは**HTTP要求bodyだけ**を扱う。
 - 実OS/ACL・Network境界での拒否、Providerの実保存。
 - 業務意味・権限・Owner受理。
+- **広告されたtool名が実際に呼ばれたこと**。`toolNames`は「使えると提示された」だけであり、呼出しの証拠ではない。呼出しはSession Logの`tool/result`event等と突き合わせて別に確認する。
 
 ## 実装の分割
 
@@ -78,3 +80,19 @@ go run ./tools/reference-harness-wire-summary \
 - Harness専用の共通Schema、第二のAuthorizer、Registry。
 - Provider・ホストの実効隔離の判定。
 - 実secretの取り扱いを前提にした機能。
+
+### tool名の読み方
+
+同じHarnessでも、tool一覧の形は経路によって変わる。本ツールは次の2つを読む。
+
+| 形 | 例 | 扱い |
+| --- | --- | --- |
+| OpenAI互換 | `{"type":"function","function":{"name":"read"}}` | `function.name`を採る |
+| 最上位name | `{"name":"flat_name"}` | `name`を採る |
+
+どちらでも名前が読めないentryは**落とす**。落とした分は`toolCount`と`toolNames`の長さの差に出るので、"
+"schemaの想定外"を黙って0件にしない。名前の重複はそのまま残す（同じ名前が2回広告されたことも観測値である）。
+
+**`toolNames`は「呼ばれたtool」ではない。** 提示されただけのtoolは実行されていないことがあり、逆に実行されたtoolが
+後続の要求で一覧から消えることもある。呼出しの有無は`dsh_session_log`の`tool/result`eventやHarness側の実行ログと
+突き合わせて確認する。この区別は`limits.notProven`にも明示している。
