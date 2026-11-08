@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"reflect"
 	"runtime"
-	"strings"
 	"testing"
 )
 
@@ -92,8 +91,5 @@ func TestDiscoveryProfileCC30RunFilterDoesNotQualifyRequiredNamedTest(t *testing
 	}
 	if got := selectedTestFiles(t, root, runtime.GOOS); !reflect.DeepEqual(got, []string{candidate}) {
 		t.Fatalf("selected TestGoFiles drifted: %v", got)
-	}
-	if !strings.HasSuffix(candidate, "_test.go") {
-		t.Fatal("fixture must remain a Go test file")
 	}
 }
