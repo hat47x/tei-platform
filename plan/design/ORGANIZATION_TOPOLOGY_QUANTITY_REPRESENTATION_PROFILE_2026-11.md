@@ -361,3 +361,13 @@ AI/CUI/Studioには、新しい「組織専用Widget一覧」の網羅を要求�
 **受入の区分**：合成で再構成可能な時点値を`TemporalData`の普遍的保存契約と呼ばず、Snapshot削除・再生成については「Source fact原文・当時の知識版・観測Receipt・Derived Cache」のどの保持資格が必要かを対象Consumerごとに選ぶ。Derived Cacheは再生成可能でも、独立Provider観測や当時の受理・送出が再現可能とは限らない。Historyを失うと当時認識を再現できないClaimでは、欠落を`unavailable/unqualified`として残し、現在値から偽の過去を補完しない（#2582/#2516/#2600/#1163）。
 
 **次の既存Owner**：#2510はTM/TS Corpus、#2514/#1180は固定Expected・不適切な常時unknownの検出・必要検証集合、#2586/#2622/#2611は実Function→Query→Provider Read/時点Cohort、#2386は業務期間規範と意味受理、#1174は現在Grant/実Effectを担う。P0-M/R→P0-Cの接合は同一Meaning・Source版・Row/Field/Scope・Provider/Observation・Consumerの一致後とし、Node合成PASSだけで組織Product E2を満たさない。**新Core/別Temporal Engine/追加Runtime/第二Ledgerなし**。12件のTS/TM合成・実DB/Host/SHO・正式Owner受理を混同しない。
+
+### 10.6 Sourceに記された認識時点とTEIが観測した時点：外部逆解析・Item・SHO経由の遡及データを誤って「当時知っていた」証拠にしない（2026-11-08、受入提案）
+
+§10.5は業務`validAt`／記録`knownAt`／Provider観測／判断・実行を分けた。しかし、外部システムのREA結果やSUI Item／SHO文書から取り込んだ`knownFrom`は、**そのSourceが主張する記録時点**であり、**TEI自身・特定の操作者・判断者がその時点で観測していた証拠ではない**。二時点を使う場合は、「誰／どのAuthorityにとっての`knownAt`か」をSource provenance・実観測Evidence・Consumer開示とともに限定する。
+
+例えば外部HR SourceがMembership A2に`knownFrom=2027-04-01`を記録していても、TEIによる実受信が`2027-07-05`のみなら、**2027-06-15時点にTEIや担当者がA2を知っていた**とは断言できない。逆に2027-05-01付のHR保存原本が確かに存在すれば、**HR側の当時の記録候補**の根拠にはなるが、それだけでTEIへの送達・当時のConsumerの閲覧・業務判断の根拠を証明しない。後日の取込時点で`knownFrom`を書き換える必要はなく、**Sourceが述べる時点とTEIが観測した時点を別々に残す**ことが重要である。
+
+既存の`org-synthetic-r7`を改変せず、[#3380](https://github.com/hat47x/tei-platform/pull/3380)へ試験用`ORG-KH-01〜04`を追加した。これらのExpectedは「後日取込を当時のTEI知識へ遡及させない」「上流アーカイブ≠TEIの閲覧」「当時のTEI観測があってもSubject/Scope/Source版に束縛された**存在Witness候補**にすぎない」「版・Scope・Occurrence不一致なら同じ表示でも不適格」の4対照である。合成`observer/observedAt`値は自己申告の例であり、実受信Receiptや実Providerトレースとして使わない。Source版や配布先Consumerの実観測がなければ、`knownAt`からの当時開示・業務承認を`unknown/unqualified`に保つ。
+
+**既存基盤への最小引渡し**：外部REA Evidence・SUI Item・SHO文書からTEI Source候補への橋では、原本版／所在・実取得時点・内容fingerprint、Sourceが述べる記録時点、TEIでの受理時点、Consumer Disclosureを混ぜない。Read-only Readerで得た候補はまだOwnerに採用された`*.tei.md`意味ではない。#2510がOrganization Corpus、#2514/#1180が独立Expected、#2586/#2622が実Provider Read、#2516がConsumer Disclosure、#2386が業務意味受理を担当。TEIは新しい汎用履歴Store／Source別Temporal Engine／専用Approval Runtimeを追加しない。実外部Reader、HR原本Archive、DB History、User/Host Grant、各Consumer実送出、Owner Acceptanceは**NOT RUN**。
