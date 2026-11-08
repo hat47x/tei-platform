@@ -24,6 +24,17 @@ STEPS = {
     "browse-pattern", "record-pattern", "browse-synthetic",
     "validate-positive", "validate-denied", "observe-synthetic",
 }
+# Independent test-only expectation for the public six-step Reference.
+# Never infer the expected Operation from the tested Scenario or CLI receipt.
+# This is not an Owner-accepted business meaning or a new Scenario SSOT.
+STEP_OPERATIONS = {
+    "browse-pattern": "resolve-pattern",
+    "record-pattern": "resolve-pattern",
+    "browse-synthetic": "execute-browse-query",
+    "validate-positive": "evaluate-validations",
+    "validate-denied": "evaluate-validations",
+    "observe-synthetic": "observe-synthetic-state",
+}
 QUANTITY = "sales.order_line.quantity_positive"
 LINE_POSITIVE = "sales.order_line.line_number_positive"
 LINE_UNIQUE = "sales.order.lines.line_number_unique"
@@ -246,6 +257,25 @@ def scoped_step_selftest(required: set[str], actual: dict[str, dict],
             or wrong_verdict["productCoverage"] != "unknown"):
         raise AssertionError("same step id with wrong Operation was qualified")
     controls["wrong-operation-for-step-id"] = "unqualified"
+
+    # TT-154: simultaneous corruption of the Scenario-derived expectation
+    # and the received Operation can fool a self-consistency projection.
+    # The *independent* fixed obligation detects it. This control does not
+    # alter the real Scenario or claim an actual Product code mutation.
+    coupled_receipts = [dict(entry) for entry in receipts]
+    coupled = next(x for x in coupled_receipts if x["stepId"] == "validate-positive")
+    coupled["operation"] = "resolve-pattern"
+    coupled_expected = dict(expected_operations)
+    coupled_expected["validate-positive"] = "resolve-pattern"
+    self_consistent = scoped_step_coverage(
+        required, coupled_receipts, scenario_sha, scenario_sha, True,
+        coupled_expected,
+    )
+    if self_consistent["inventory"] != "complete-for-one-pinned-scenario":
+        raise AssertionError("coupled-error control did not exercise self-consistency gap")
+    if coupled_expected == STEP_OPERATIONS:
+        raise AssertionError("independent expectation failed to reject coupled error")
+    controls["TT-154-coupled-operation-corruption"] = "independent-obligation-rejected"
     return baseline, controls
 
 
@@ -281,6 +311,11 @@ def main() -> None:
     scenario_steps = {s["id"]: s for s in scenario["steps"]}
     if set(scenario_steps) != STEPS or len(scenario["steps"]) != len(STEPS):
         raise AssertionError("required Scenario step obligation absent, ambiguous, or extra")
+    # The Step ID and requested Operation must independently match the public
+    # Reference obligation. Otherwise Scenario and CLI can agree on a wrong
+    # Operation and still appear to constitute a covered test.
+    if {key: item.get("operation") for key, item in scenario_steps.items()} != STEP_OPERATIONS:
+        raise AssertionError("Scenario Step->Operation differs from independent obligation")
 
     fixture_dir = original_scenario.parent / "fixtures"
     valid = json.loads((fixture_dir / "order_valid.json").read_text(encoding="utf-8"))
@@ -320,6 +355,8 @@ def main() -> None:
                 raise AssertionError(f"{step}: missing real generated CLI argv")
             payload = as_json(run(cli, root, *argv[1:]))
             ev = expect_real_evidence(payload, step)
+            if ev.get("operation") != STEP_OPERATIONS[step]:
+                raise AssertionError(f"{step}: actual CLI Operation differs from independent obligation")
             if step == "validate-positive" and ev.get("validationResults") != positive_expected:
                 raise AssertionError("positive property mismatch in actual CLI")
             if step == "validate-denied" and ev.get("validationResults") != denied_expected:
