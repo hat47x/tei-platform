@@ -1,5 +1,21 @@
 # TEI Developer Context P2: 評価・改善受入計画（2026-11-03）
 
+## 現在の受入順序（2026-11-08）
+
+> **現在の判断をここから読む。** 下の§1〜20は11月3日以降の段階的Characterizationを保持した歴史的基線であり、冒頭の13件PASSを現在の全製品／外部Harness合格へ広げない。現在の詳細Evidence・停止線は§21〜26.7、採用判断は既存Owner #2533/#2514/#2516／SEI #767/#824に従う。
+
+| 優先 | 現実に成立している入口と次に検証する一つの不足 | 完了判定 |
+| --- | --- | --- |
+| **P0 定義観測（main限定PASS）** | TEI main #3482の13実CLI Reply／42限定Consumer Controls、#2639 EG-09の同結果型・異Attribute Type反例を再利用。Function/Rule/Sourceの**宣言**と必要な型・Meaningを分ける | 実Source/Loader/Ruleの局所Source資格まで。実Function Binding/Provider/Rowset/Owner Meaningは未成立 |
+| **P1 H3-A0（次に一回実行）** | TEI source-indexのsubject/index両Modeの実Raw Replyを固定し、SEI既存CLIのRecommendationを実保存・別resumeで原記録を再読する（§26.7） | 物理的な二製品の**限定記録往復**だけがPASS条件。Method、Inquiry未決の永続化、現在Grantは別 |
+| **P2 H3-A1（A0後）** | 同じQ/Tool/Scope/Grant/Budget=1・blind ExpectedでD0/D1/M1を比較。決定的index-mode再取得D1を**陰性対照**にする（§25.4・§26.7） | M1がD1と同じProbeなら増分価値なし。実Invoke/完全Reply/必要R(Q)・費用を別欄で採点 |
+| **P2 並行・別Owner** | 実SUI Producer→実SHO Reader同一File H1、TEI実Function Invocation Binding→実Provider、外部TAI H2/H3隔離・完全受領 | 個別CI／Working Copy／TEI CLI↔MCP Adapter一致を横断PASSへ合算しない |
+| **P3 保留** | SEI Decision前Question/UnknownのNative継続、正式SHO Editor Save、Ontology/Decision Twin、REA・KONの拡張 | 初回A0/A1のBlocking条件にはしない。新Host/Registry/第二Source・Proof Storeを設けない |
+
+**現時点の変更**は試行を実行しやすくする受入順序の整理であり、H3-A0/A1、実SUI H1、Function Provider、実SEI Method、Owner意味受理は**NOT RUN**。Draft #3176も未merge。SourceやWorkflowの正本を当計画に移さない。
+
+
+
 > **位置づけ**：TEI #2533の実証用作業計画。採用済み製品仕様／一般的なSource・Claim・権限・Evidenceの新正本ではない。
 > **実行証拠**：PR [#2669](https://github.com/hat47x/tei-platform/pull/2669) の exact HEAD `875181ad724840002143b8bf737180132414765e`、[Focused Actions #41640569565](https://github.com/hat47x/tei-platform/actions/runs/41640569565) で現行Go実装を用いた**13件のCharacterizationがPASS**。mainの製品実装・Owner意味受理・実モデル効果を示さない。
 
