@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"path/filepath"
 	"testing"
 
@@ -13,7 +14,7 @@ func TestBuildSourceIndexInspectionReturnsWholeIndex(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	index, ok := got.(sourceIndexValue)
+	index, ok := got.(sourceIndexIndexView)
 	if !ok {
 		t.Fatalf("inspection type=%T", got)
 	}
@@ -22,6 +23,81 @@ func TestBuildSourceIndexInspectionReturnsWholeIndex(t *testing.T) {
 	}
 	if index.Workspace == nil || index.Workspace.Name == "" {
 		t.Fatalf("whole-index projection lost the Workspace identity: %+v", index)
+	}
+}
+
+// An index with no references must still answer an empty JSON array. A nil
+// slice serializes as null, and a caller that iterates result.references then
+// fails only on the Workspace that has no semantic declarations (#3456).
+func TestSourceIndexWritesEmptyListsAsArrays(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "docs-only")
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: design_docs\nformatVersion: 1\nsources:\n  - docs\n")
+	writeWorkspaceFile(t, root, "docs/architecture.md", "# Architecture\n")
+
+	raw, mode, err := buildSourceIndexInspection(root, "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if mode != resultModeIndex {
+		t.Fatalf("mode=%q", mode)
+	}
+	view, ok := raw.(sourceIndexIndexView)
+	if !ok {
+		t.Fatalf("inspection type=%T", raw)
+	}
+	if len(view.Artifacts) == 0 {
+		t.Fatalf("the docs source produced no artifacts: %#v", view)
+	}
+	encoded, err := json.Marshal(view)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var body struct {
+		Artifacts  []any `json:"artifacts"`
+		References []any `json:"references"`
+	}
+	if err := json.Unmarshal(encoded, &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Artifacts == nil || body.References == nil {
+		t.Fatalf("an empty list was written as null: %s", encoded)
+	}
+}
+
+// The subject mode must write [] too when the subject has no references.
+func TestSourceIndexSubjectViewWritesEmptyReferencesAsArray(t *testing.T) {
+	raw, mode, err := buildSourceIndexInspection(
+		filepath.Join(testRepositoryRoot(t), "reference", "workspace"),
+		"not-a-kind", "nothing")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if mode != resultModeSubject {
+		t.Fatalf("mode=%q", mode)
+	}
+	view, ok := raw.(sourceIndexSubjectValue)
+	if !ok {
+		t.Fatalf("inspection type=%T", raw)
+	}
+	if len(view.References) != 0 {
+		t.Fatalf("subject unexpectedly has references: %#v", view.References)
+	}
+	if view.Workspace == nil || view.Workspace.Name == "" {
+		t.Fatalf("subject projection lost the Workspace identity: %+v", view)
+	}
+	encoded, err := json.Marshal(view)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var body struct {
+		Artifacts  []any `json:"artifacts"`
+		References []any `json:"references"`
+	}
+	if err := json.Unmarshal(encoded, &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.References == nil || body.Artifacts == nil {
+		t.Fatalf("an empty list was written as null: %s", encoded)
 	}
 }
 
@@ -71,7 +147,7 @@ func TestSourceIndexIdentityMatchesTheLoadedManifest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wholeValue, ok := whole.(sourceIndexValue)
+	wholeValue, ok := whole.(sourceIndexIndexView)
 	if !ok {
 		t.Fatalf("whole type=%T", whole)
 	}

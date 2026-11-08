@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"path"
 	"sort"
@@ -54,21 +53,6 @@ type Reference struct {
 type Index struct {
 	Artifacts  []Artifact  `json:"artifacts"`
 	References []Reference `json:"references"`
-}
-
-// MarshalJSON makes the empty lists serialize as [] rather than null, so a
-// caller iterating over references does not have to treat an empty index as a
-// missing field (#3456). The document shape is unchanged.
-func (i Index) MarshalJSON() ([]byte, error) {
-	type plain Index
-	clone := plain(i)
-	if clone.Artifacts == nil {
-		clone.Artifacts = []Artifact{}
-	}
-	if clone.References == nil {
-		clone.References = []Reference{}
-	}
-	return json.Marshal(clone)
 }
 
 func NewArtifact(rawPath string, content []byte) (Artifact, error) {

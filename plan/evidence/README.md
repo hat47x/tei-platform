@@ -127,7 +127,9 @@
 - [DSH外部Harnessが読んだ内容の保存先棚卸し](DSH_H6E6_SINK_INVENTORY_2026-11-07/README.md)（#2515 H6-E6・#2509。1 Sessionで読んだ合成canaryが、headless stdoutと永続Session Logの2つに残り、`storages`・`cache`・`attachments`には残らなかった。永続Session Logは9連結zstd frameで、単一frame展開では見落とす。Issue/CI/外部ProviderのsinkはNOT RUN）
 - [DSH外部Harness上での生成候補の逸脱試行](DSH_H6E5_CANDIDATE_ESCAPE_2026-11-07/README.md)（#2515 H6-E5・#2509。合成候補から、非許可の隣接Sourceは読め、子Processは起動でき、自己書換えはConstrainedLanguageの初期化失敗で止まった。自己書換えが書込みPolicyで拒否された証拠ではない。workspace-writeでの再試行・D1→D2・Selector同一Source証明はNOT RUN）
 - [子Processは親Toolの到達範囲を引き継ぐ](DSH_CHILD_PROCESS_REACH_2026-11-08/README.md)（#2515 受入条件3・H6-E1・#2509。親`pwsh`が起動した子`cmd.exe`は、`read-only`でも宣言root外を読み、書込みは`read-only`で止まり`danger-full-access`で通った。子Processを境界にできず、実効保証は最弱の経路を基準に下げる必要がある。別OS資格・別Userでの子起動、Network到達性はNOT RUN）
+- [外部Harness四回答のFact出現チェック](DSH_ANSWER_FACT_PRESENCE_2026-11-08/README.md)（#2509・TAI #168。四Session実行の4回答が、同じ実行物のCLI応答に現れた13の事実（属性ID・型・記号、関係、Source path・digest、World指紋、診断コード）をすべて含むことを機械的に確認した。**正答の採点ではなく**、意味・未確認の扱い・Source版の区別は未評価。属性は`customerId`等の記号で書かれるため、IDと記号の両方を照合する必要があった）
 - [Session Log拡張の`maxBytes`上限とbacklog](DSH_SESSION_LOG_MAXBYTES_2026-11-08/README.md)（#2515 H6-E2・P0-b・#2509。`maxBytes`を2048と512へ下げて実測し、field全体が上限内なら水位`9`まで10 event、上限512では**518 bytes**（ヘッダ込みで上限超過）で水位`2`・3 eventに止まった。`maxBytes`は1要求の上限で総開示量の上限ではない。分割送出と単一eventの停滞は未確定）
+- [Session Logのbacklog分割送出と停滞、上限判定の単位](DSH_SESSION_LOG_SPLIT_AND_STALL_2026-11-08/README.md)（#2515 H6-E2・#2509。`maxBytes=1024`の4 Turnで水位`-1`→`6`→`9`と**後続要求へ分割送出**されることを確認し、`maxBytes=256`ではヘッダ込みで上限を超えるため**fieldが一度も作られず**作業だけが続いた。先行記録の「512で518 bytes＝上限超過」は再直列化した値による誤りで、生byteは474だったと訂正）
 
 - [外部Go Module入力の明示opt-in受入](TEI_GO_EXTERNAL_MODULE_ADMISSION_OPTIN_2026-11-07.md)（既定の拒否方針は不変のまま、供給を明示した呼び出しだけが外部Moduleメンバーを含む閉包を受ける参照実装。受入記録に方針・根拠・拒否理由を残す。SB-B / 案C / #2831）
 - [起動主体と被起動主体を分けたBuild駆動の記録](TEI_GO_BUILD_STAGE_DRIVER_2026-11-07.md)（`cmd/tei`を子プロセスとして駆動し、invoker/invokedの実行ファイルdigest・argv・exitと、子の主張とディスク実物のartifact digestが一致することを記録。L3・受入・権限は未確認。SB-C0/C1 / #2831）
@@ -146,6 +148,7 @@
 
 - [knowledge-contextの名前空間kind名](KNOWLEDGE_CONTEXT_NAMESPACE_KIND_2026-11-08.md)（catalogの`semantic`を渡すと`semanticElement`無しの成功になっていた。`semantic`と`semantic-namespace`の両方を受け付け、未知kindは解決しない。実Provider・他kindの全件突合は未確認）
 - [validateのCLI/MCP応答の一致](CLI_MCP_VALIDATE_SHAPE_2026-11-08.md)（`tei_validate`が`result`包み・数値error.code・意味エラーでisError:falseになっていたのを、CLIと同じ投影と文字列code、`!ok`のisErrorへ寄せた。実Host・認可・外部送出はNOT RUN）
+- [source-indexの空の参照一覧](CLI_SOURCE_INDEX_EMPTY_REFS_2026-11-08.md)（`mode=index`が`references: null`を返していたのを`[]`へ統一。指紋は索引から計算するため不変であることを`reference/workspace`で実測。`null`の意味の全コマンド統一は未決）
 - [二回の独立した駆動試行でも同じstage2成果物になること](TEI_GO_SELF_BUILD_TWO_STAGE_REPEAT_2026-11-08.md)（`-work`を分けた2回の実行で、両方L3に到達しstage1/stage2のartifact digestが一致することを記録。Seed Trust・受入・権限・OS間一致は未確認。SB-C1 / #2831）
 
 
