@@ -185,7 +185,6 @@ func TestInspectionDoesNotExposeHostFactoryErrors(t *testing.T) {
 	}
 }
 
-
 // TestHostSelectedInspectorTypedErrorsAreSanitized shows why typed errors
 // from a selected Provider are less trustworthy than the built-in Inspector:
 // the Provider controls both Message and Code. The Studio Host must expose
