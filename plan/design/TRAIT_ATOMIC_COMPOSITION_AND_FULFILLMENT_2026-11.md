@@ -504,7 +504,7 @@ Slotの最小照合キー候補（**正式Schema/APIではない**）：
 | Build／Target Code | 受理済みEffective Graphと選択ImplementationをLoweringした成果物 | Source/Graph/Patch/Provider/Generator revision、実組込、Target-native適合 |
 | Runtime／Evidence | 実際のCallback、State Transition、Typed Outcome、Effect/Receipt | 静的Graph成立を**実呼出しや現在Grantの証明へ昇格させない** |
 
-「図をGenerator入力にする」は画像のピクセルや座標をコンパイルすることではない。**Diagramが編集可能なTyped Graphを忠実に操作し、そのGraphを生成入力とする**。表示位置だけ変わるならBusiness Meaning/コードを再生成する必要はない。一方、Node/Edge/Guard/Hook/Target/Scopeが変われば、Semantic Diffと依存関係に沿った再生成・Conformanceを検討する。GraphからSourceへ戻せない表現はread-only Projectionとして表示する。SourceやMeaningをEditorが勝手に受理したことにしない。
+「図をGenerator入力にする」は画像のピクセルや座標をコンパイルすることではない。**Diagramが編集可能なTyped Graphを忠実に操作し、そのGraphを生成入力とする**。表示位置だけの変更ではBusiness Meaningと実行コードの再生成を要求しない。ただしDiagram画像・文書など**レイアウトに依存する表示成果物**は再描画が必要となり得る。一方、Node/Edge/Guard/Hook/Target/Scopeが変われば、Semantic Diffと依存関係に沿った再生成・Conformanceを検討する。GraphからSourceへ戻せない表現はread-only Projectionとして表示する。SourceやMeaningをEditorが勝手に受理したことにしない。
 
 ### 15.2 不変なのは「Nodeの固定順」ではなく、すべての実効経路に要求される保証
 
@@ -566,7 +566,7 @@ B2Cでは、**TEIのGraph/型付きActionを使うだけで、実フロントエ
 
 | ID | 操作・差分 | 必須観測（未実行） | 主Owner |
 | --- | --- | --- | --- |
-| **TLG-01 Layout vs meaning** | Graph Nodeの位置だけ変更、次にEdge/Guardを一か所変更 | 前者はSemantic/Build input同一、後者は型付きGraph/該当依存のみ変更・再検証。丸ごと無条件再Buildや完全無効化もしない | #1124/#2497/#2600 |
+| **TLG-01 Layout vs meaning** | Graph Nodeの位置だけ変更、次にEdge/Guardを一か所変更 | 前者はSemantic/Runtime Code入力が同一（Diagram表示成果物だけ更新し得る）、後者は型付きGraphと該当依存を変更・再検証。無関係Targetの無条件再Buildや全証拠失効は避ける | #1124/#2497/#2600 |
 | **TLG-02 Non-reversible diagram** | 表示図から多重Edge ID/Source Rangeを落とす | 一見同じ図でも書戻し不可を明示。Raw保全、正式Source Patch拒否 | #1124/#2620/#2090 |
 | **TLG-03 Bypass path** | Plugin PatchでAuthorize／Revision Guardを避けるEffectへ分岐 | パス保証の不履行を検出して生成/利用候補を拒否。Plugin Trait個別PASSでも合成FAIL | #3278/#1174/#3503 |
 | **TLG-04 Wrong provider** | selected B、実Invocation A、結果Bytes同一 | 最初の不足点`actual-provider-mismatch`を示す。GraphでBが描けても合格せず | #1251/#951 |
