@@ -87,6 +87,17 @@ go build -o tei ./cmd/tei
 
 `go run`や`-buildvcs=false`でbuildした場合はコミットが埋め込まれないため、`source`が`unavailable`になります。識別は再現の手掛かりであり、配布の承認や署名ではありません。
 
+checkoutの外でbuildするなど、toolchainがコミットを埋め込めない場合は、buildする側がrevisionを注入できます。
+
+```bash
+go build -buildvcs=false \
+  -ldflags="-X main.teiDeclaredRevision=$(git rev-parse HEAD)" \
+  -o tei ./cmd/tei
+./tei version -json
+```
+
+この場合、`source`は`ldflags`になり、値は`vcsRevision`ではなく`declaredRevision`へ入ります。`declaredRevision`は**buildした側の自己申告**で、実行物がそのcommitのsourceから作られたことを証明するものではありません。toolchainの`vcsRevision`がある場合は、より強い証拠として`source`は`build-info`のままです（両方を持つ場合も`declaredRevision`は残ります）。注入しないbuildは、従来どおり`source`が`unavailable`になります。
+
 モデルや定義の整合性を調べる場合、生成AIなどの呼出し元は次のようにJSON形式の診断結果を取得できます。
 
 ```bash
