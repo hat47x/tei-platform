@@ -102,7 +102,7 @@ L3の**形**は二つの対象で成立した。残るのは次の三点であ�
 | 子の主張とディスク実物の照合 | 済 | — |
 | 自称digestと実行imageの照合 | 済（SB-N13） | — |
 | Stage1の生成物をinvokerに据える | 済（driver自身と`cmd/tei`の両方） | — |
-| **SB-C0 §4の外形**（`-intent`・`-supply`・`-state`・`-output`・`qualified`） | **未** | 入口にBuild Intentの解決と供給照合を足す |
+| **SB-C0 §4の外形**（`-intent`・`-supply`・`-state`・`-output`・`qualified`） | 済（[#3463](https://github.com/hat47x/tei-platform/pull/3463)、[#3476](https://github.com/hat47x/tei-platform/pull/3476)）。Intentは宣言のまま（`resolved: false`）、供給はexactな検証器へ委譲 | 未決は§4の項目を参照 |
 | Seed Trustと受入 | 未 | 別のClaim |
 | 別OS・別toolchainでの再観測 | 未 | 独立した比較 |
 
@@ -116,12 +116,11 @@ L3の**形**は二つの対象で成立した。残るのは次の三点であ�
 
 ## 4. 未決事項
 
-- **SB-C0 §4の外形の実装**（`-intent`・`-supply`・`-state`・`-output`・`qualified`）。`tei self-build`はchild起動の記録までで、Build Intentの解釈もしない
-- **L2（Build Intentから実Buildへの結線）**。入口がBuild Intentを解決できるようになって初めて、L2のClaimを立てられる
+- ~~SB-C0 §4の外形の実装~~ → **済**（[`TEI_GO_SELF_BUILD_OUTER_SHAPE_2026-11-08.md`](TEI_GO_SELF_BUILD_OUTER_SHAPE_2026-11-08.md)、[`TEI_GO_SELF_BUILD_INTENT_AND_SUPPLY_2026-11-08.md`](TEI_GO_SELF_BUILD_INTENT_AND_SUPPLY_2026-11-08.md)）。`-intent-file`の宣言検査と`-supply-verifier`の分類は起動前条件であり、`qualified`は常に`false`
+- **L2（Build Intentから実Buildへの結線）は依然として未**。入口は宣言を読んでdigestを取るだけで、`resolved: false`のまま。供給の分類も複写せずexactな検証器へ委譲する。**宣言が読めたこと・供給が照合できたことは、L2の成立ではない**
 - Seed Trustの扱い（stage0のGoは外部seedであり、TEI自身によるGoコンパイラのself-hostingではない）
 - `go.sum`のTrust根拠
 - 別OS・別toolchainでの再観測、および二回の独立環境での比較
-- この台帳の更新責任（#2831の横断担当か、各段階のownerか）
 - この台帳の更新責任（#2831の横断担当か、各段階のownerか）
 
 ## 5. 実行した検証
