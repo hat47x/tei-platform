@@ -62,6 +62,7 @@ go build -o /tmp/tei-mcp ./tools/reference-mcp-readonly-adapter
 - 4つの tool の結果が、同じ Workspace に対する `operations` の戻り値と一致すること（`worldFingerprint`・`sourceIndexFingerprint`・`snapshotFingerprint`・`schemaVersion`）
 - `tei_validate` の文書が、実 CLI の `validate -workspace ... -json` と同じ欄と同じ値を持ち、`isError` と `ok` が対応すること（`validate_parity_test.go`）
 - 未対応の対象種類が `isError: true` と `UNSUPPORTED_SUBJECT_KIND` で返ること
+- 広告する4 tool が、実CLIの `commands` と一致すること（対応するコマンドの存在・`effect` が read-only・`writeFlags` が無い・`schemaVersion`・`jsonContract`）。tool の説明が対応する CLI 呼出しを名指しすること（`discovery_parity_test.go`）
 - `initialize` の応答と、通知に返答しないこと
 - tool の入力スキーマに `workspace`・`path`・`root`・`file` を含めないこと
 - 型不正・`null`・空文字列・宣言のない欄を `-32602` で拒否し、省略時だけ既定値を使うこと（`strict_arguments_test.go`）

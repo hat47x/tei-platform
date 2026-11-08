@@ -21,6 +21,7 @@
 - [候補ビューの実変更履歴での負担測定](CANDIDATE_VIEW_REAL_HISTORY_MEASUREMENT_2026-11.md)（`reference/workspace` の4変更。合成ではない変更で候補件数とSource修正量を測定。major変更の実履歴はなし）
 - [実データベースでの確認手順](REAL_DATABASE_VERIFICATION_PROCEDURE_2026-11.md)（PostgreSQL 16.14で実行。CAS試験の同期不足を修正し、DDL・NULL・Web E2Eまで確認。健康診断receiptで `TRUSTED_FULL_HEALTH_NOT_RECORDED` を解消し、残る2診断は暫定オーナー判断。実Provider・本番Authorityは未実行）
 - [model catalogのCLI/MCP一致](CLI_MCP_CATALOG_PARITY_2026-11-08.md)（名前空間不在がMCPだけ`ok:true`の空結果になっていたのを、投影の判定を両入口で共有して`NAMESPACE_NOT_FOUND`・`isError:true`に揃えた。実Host・認可・外部送出はNOT RUN）
+- [trace/inspectの段別費用](CLI_TRACE_STAGE_COST_2026-11-09.md)（`-limit 1`が`full`と同じ段を通り費用も同等であること、`reference/workspace`規模ではプロセス起動約1秒が支配的で段の差が出ないことを実測。二重解析の共有・並列化は未実施）
 - [`version`の自己申告revision](CLI_VERSION_DECLARED_REVISION_2026-11-09.md)（`-buildvcs=false`の実行物が`-ldflags`注入でrevisionを示せるようにし、`vcsRevision`と`declaredRevision`・`source`を区別した。自己申告はtoolchain証拠ではない。署名・来歴はNOT RUN）
 - [健康診断receipt（`005bbee7` / Actions 42152908986）](QUALIFICATION_FULL_HEALTH_005BBEE7_42152908986.json)と[暫定audit結果](REAL_PROVIDER_PROVISIONAL_AUDIT_005BBEE7.json)（`UNQUALIFIED`、残る診断は `E2_PROVIDER_GUARANTEE_NOT_ATOMIC` と `PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE`）
 - [D8〜D11暫定経路のaudit](PROVISIONAL_CHAIN_AUDIT_005BBEE7.json)と[Runner Evidence](PROVISIONAL_CHAIN_RUNNER_EVIDENCE_005BBEE7.json)（`atomic-with-commit` の暫定宣言。`PROVISIONAL_GRANT_NOT_G2_EVIDENCE` 等は暫定オーナー判断。chain testは単一経路と同じ健康診断receipt入力に対応）
@@ -172,4 +173,5 @@
 - [CLIとMCP参照Adapterの一致と入力検証](TEI_DOGFOODING_ROUND5_CLI_MCP_2026-11-09/README.md)（#3400・#3420・#3575。4操作の成功応答と2つの失敗はCLIと一致し、基準の版では未知の引数だけMCPが無視した。現行`main`の`b88759643`で `-32602` の拒否を確認。CLI・MCP実行物で実測）
 - [`tei self-build`の計画突合](TEI_GO_SELF_BUILD_PLAN_CROSS_CHECK_2026-11-09.md)（解決childとbuilder childの`planFingerprint`を比べる`planCrossCheck`を足し、不一致を発見として記録し、片方が報告しない場合は`unperformed`と理由を残す。`l2bClaimed`は常にfalse。SB-C0 §4.8 / #2831）
 - [discoveryと実行の突き合わせ](TEI_DOGFOODING_ROUND6_DISCOVERY_2026-11-09/README.md)（#3419・#3420・ADR-0048 §2.6。広告したsubject-kind 12/10種とフラグ条件は実行と一致。CLI discoveryとMCP tools/listを比べる試験は無く、実プロセス比較はvalidate 1操作のみ。`main` `22131acc8` のCLI・MCP実行物で実測）
+- [CLI discoveryとMCP tool宣言の突き合わせ試験](TEI_DOGFOODING_ROUND7_CROSS_SURFACE_2026-11-09/README.md)（#3419・#3420・ADR-0048 §2.6。実CLIの`commands`と4 toolの対応・effect・schemaVersion・jsonContractを回帰試験で固定。故意のずれ6種すべてを検出し、現行版では一致）
 - [`tei self-build`の L2-a を別の作業領域で取り直す](TEI_GO_SELF_BUILD_L2A_REOBSERVATION_2026-11-09.md)（builder childを実Go Buildから自作probeへ差し替えても、同じ宣言から同じ`planFingerprint`が出て`planMatchesExpected=true`になることを記録。`l2Claimed`・`qualified`は両方false。L2-bは未成立。SB-C0 §4.7/§4.8 / #2831）
