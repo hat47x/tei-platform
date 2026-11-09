@@ -4,6 +4,8 @@
 
 `plan/`は、製品要求、着手順、受入シナリオ、設計判断、検証根拠をつなぐ計画の入口です。全体計画とマイルストーンは直下に置き、個別の計画文書は役割ごとのディレクトリにまとめます。
 
+この文書は入口の案内であり、`plan/`配下の全ファイルを列挙したものではありません。ディレクトリごとの全件は、そのディレクトリの`README.md`を参照してください（[`design/`](design/README.md)・[`evidence/`](evidence/README.md)・[`research/`](research/README.md)・[`workstreams/`](workstreams/README.md)は全件を載せ、`tools/repository-plan-check`が一致を検査します）。
+
 - 守る価値：`product/`
 - 満たす要求：`requirements/`
 - 検証に用いるシナリオ：`UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`

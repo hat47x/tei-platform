@@ -1,0 +1,17 @@
+== application database binding (Environment.Bindings) ==
+  internal/dependency/derive.go:54:		for _, b := range env.Bindings {
+  internal/driver/reference_contract_query_environment.go:187:	for _, binding := range env.Bindings {
+  internal/index/index.go:448:		for _, b := range e.Bindings {
+  internal/syntax/parser.go:724:			e.Bindings = append(e.Bindings, environment.ApplicationDatabaseBinding{Application: appID, Alias: alias, Instance: instID})
+  internal/validation/deployment.go:64:			for _, b := range env.Bindings {
+  internal/validation/validation.go:1080:		for _, b := range e.Bindings {
+  internal/validation/validation.go:1135:			for _, b := range e.Bindings {
+  tools/internal/changeanalysis/diff.go:243:		for _, binding := range env.Bindings {
+  tools/internal/changeanalysis/impact.go:513:		for _, binding := range env.Bindings {
+  tools/reference-data-first-persistence/main.go:436:	for _, b := range env.Bindings {
+  tools/reference-first-web-target/order_submit_schema.go:62:	for _, b := range env.Bindings {
+  tools/reference-order-data-realization/register.go:120:		for _, b := range env.Bindings {
+  tools/reference-order-entry-persistence/plan.go:77:	for _, b := range env.Bindings {
+  tools/reference-purpose-preflight/environment_binding.go:48:	for _, b := range env.Bindings {
+  tools/reference-shared-acceptance/resolve.go:63:		for _, binding := range env.Bindings {
+  reference/runtime-packaging/workspace_probe.go:107:		for _, b := range env.Bindings {

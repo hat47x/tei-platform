@@ -1,5 +1,7 @@
 # CLIを主入口とするTEIインターフェース設計（初期案）
 
+> 2026-11-08 方針の具体化: [ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)を採用。CLI-firstは共通APIを先に実装して各入口から使う順序を指し、CLI自体に意味処理を所有させる方針ではない。HTTPサーバーは必須にせず、CLI/MCP/HTTP/Web/Desktopの共通意味とAdapter責務・移行手順は同ADRを参照する。過去の候補・検証記録はその時点のものとして残す。
+
 - **状態**: 評価・実装着手中（2026-10-10）。初期のCLI参照実装はPR内の候補であり、mainへ統合済みとは扱わない。
 - **担当課題**: [#1155](https://github.com/hat47x/tei-platform/issues/1155)。
 - **関連文書**: [全体構成](../../docs/architecture.md)、[案件ごとのPlugin構成](PROJECT_PLUGIN_COMPOSITION_DESIGN.md)、[Web構成](WEB_APPLICATION_COMPOSITION_DESIGN.md)、[開発手順](../../CONTRIBUTING.md)。
@@ -153,7 +155,7 @@ Issue #1165に対し、既存 `index.Build` → `modelref/derivedbridge.FromInde
 `tei trace` がSource Indexを含めずGraphだけで継続判定すると、同じCanonical Worldで元ファイルが移動した場合や、コメントだけが変わった場合に、古いページの位置・根拠と新しいページの元定義が混在する。この欠落を以下のように修正した。
 
 1. `workspaceProjectionFingerprints` は正規化 `ir.World` と、既存 `workspace.BuildSourceIndex` で生成・Normalizeした `sourceindex.Index` のJSONを、それぞれ独立してfingerprint化する。前者はSourceファイル移動では不変、後者はArtifact path/digest/Source Referenceの変化で変わる。
-2. `operations.TraceWorkspace` は既存 `modelref.TraceDirect` のgraph+rule+query fingerprintと、上記二種類のfingerprintを結合して `tei.operations.trace.snapshot/v1` の継続用トークンを算出する。出力 `result.snapshotFingerprint` がこのトークンであり、`result.trace.snapshotFingerprint` はGraph限定の内部読取識別子として残す。
+2. `operations.TraceWorkspace` は既存 `modelref.TraceDirect` のgraph+rule+query fingerprintと、上記二種類のfingerprintを結合して `tei.operations.trace.snapshot/v1` の継続用トークンを算出する。出力 `result.snapshotFingerprint` がこのトークンであり、`result.trace.graphFingerprint`（2026-11-09より前の名前は`result.trace.snapshotFingerprint`。旧名は1 cycleのaliasとして同値を残す）はGraph限定の内部読取識別子として残す。継続ページには `result.trace.nextOffset` の隣へ `result.trace.continuation.fingerprint`（外側のトークンと同値）と `field` を置き、どの値を継続に渡すかを応答の中だけで判別できるようにする（#3625）。
 3. CLIの `-expected-fingerprint` は**Workspaceレベルの`result.snapshotFingerprint`**のみを受け付ける。違う場合は `STALE_SNAPSHOT`、終了コード1。`summary→full`やoffset/limitだけの変更は同じWorkspace状態であれば許容し、同じWorldに対するSource移動や非意味的な原文変更は拒否する。
 4. `operations.InspectSubject` も `worldFingerprint` と `sourceIndexFingerprint` を共通ヘルパーから取得する。CLIから両操作を別々に呼んだ場合に、観測したCanonicalとSourceのスナップショットが一致したか検証できるようにする。
 

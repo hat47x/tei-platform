@@ -1,0 +1,93 @@
+{
+  "note": "Synthetic session-log size-limit probe: maxBytes bounds one request's dsh_session_log field; a backlog continues across later accepted requests, and an event that cannot fit stalls the watermark.",
+  "configKey": "session-log-deepseek.maxBytes",
+  "runs": [
+    {
+      "label": "tiny-2048",
+      "maxBytes": 2048,
+      "rawLogBytes": 564,
+      "rawLogSha256": "58cfcfc5360444ae0a0f007b625a5381f7f49c69943d19625e437128e4766f6e",
+      "requests": [
+        {
+          "file": "001-request.json",
+          "bytes": 34384,
+          "sha256": "2b05d038e69b89a66084c2148f29a021899df8e1ec145f4d2e305a5411c53a99",
+          "toolCount": 24,
+          "sessionLog": {
+            "fieldBytes": 1393,
+            "afterSeq": -1,
+            "throughSeq": 9,
+            "eventCount": 10
+          }
+        },
+        {
+          "file": "002-request.json",
+          "bytes": 7946,
+          "sha256": "b7b00907cec3ecd950ca5f8a2ae1ea2cbd2d83284d09033d20ab85c45d8726ca",
+          "toolCount": 0,
+          "sessionLog": {
+            "fieldBytes": 1393,
+            "afterSeq": -1,
+            "throughSeq": 9,
+            "eventCount": 10
+          }
+        }
+      ]
+    },
+    {
+      "label": "oversize-512",
+      "maxBytes": 512,
+      "rawLogBytes": 564,
+      "rawLogSha256": "87e214eddf90aee00315986ee6196e92d932557473cbbb8449ecfe1710930864",
+      "requests": [
+        {
+          "file": "001-request.json",
+          "bytes": 33595,
+          "sha256": "6bc78028e76f97cee207a5cc2ee732709fb3aaa5e2fe213239f1da734cf0572e",
+          "toolCount": 24,
+          "sessionLog": {
+            "fieldBytes": 518,
+            "afterSeq": -1,
+            "throughSeq": 2,
+            "eventCount": 3
+          }
+        },
+        {
+          "file": "002-request.json",
+          "bytes": 7157,
+          "sha256": "33fcdb19dc8011935bb28e2d856677fc7e89c7b75ed54fc8a58fa0f820300d85",
+          "toolCount": 0,
+          "sessionLog": {
+            "fieldBytes": 518,
+            "afterSeq": -1,
+            "throughSeq": 2,
+            "eventCount": 3
+          }
+        }
+      ]
+    },
+    {
+      "label": "tiny-2048-resume",
+      "maxBytes": 2048,
+      "rawLogBytes": 564,
+      "rawLogSha256": "89bdb84e91b659132c371f54b9896ec9c7556629beb752b24575fd54472eda8f",
+      "requests": [
+        {
+          "file": "001-request.json",
+          "bytes": 33230,
+          "sha256": "0f88de908b969388c96bbdfe9f6e371e80caa91d65c13f72b1a1428b89c82dc9",
+          "toolCount": 24,
+          "sessionLog": null
+        }
+      ]
+    }
+  ],
+  "correction": {
+    "date": "2026-11-08",
+    "claim": "maxBytes=512 で field が 518 bytes 載り上限を超えた",
+    "observedRawSpanBytes": 474,
+    "recomputedSpanBytes": 518,
+    "correctedReading": "生byteは474で上限512以下。518は復号後に再直列化した値であり、上限判定の単位ではない。",
+    "followUp": "plan/evidence/DSH_SESSION_LOG_SPLIT_AND_STALL_2026-11-08/README.md"
+  }
+}
