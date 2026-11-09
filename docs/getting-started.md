@@ -38,7 +38,7 @@ go version
 | ~~`bash -c` + `cp`の外部コマンド~~ | ~~`tools/reference-cognition-port`・`tools/reference-generator-selection`~~ | 2026-11-09に解消（[#3461](https://github.com/hat47x/tei-platform/issues/3461)）。両ツールはコマンドを一時ディレクトリで実行し、パス変数をコマンド文字列へ埋め込むため、WindowsのWSL `bash.exe`でも動く。`bash`が見つからない場合だけskipする |
 | 空白を含む実行パス | `tools/reference-composition-process-bridge` | 参照のstdio launcherが空白入りの実行パスを拒否する（契約として維持） |
 | OpenSSHの`-Y verify verify-time` | `tools/reference-authoring-witness-openssh` | 同梱のOpenSSHが`verify-time`非対応で、スクリプトが`exit 77`（「No result is claimed」）を返す |
-| シンボリックリンク・JVM等 | `internal/workspace`・`tools/internal/gobuilder`・`tools/reference-target-profile`など | 作成に追加権限が要る、または未資格 |
+| シンボリックリンク・JVM等 | `internal/workspace`・`tools/internal/gobuilder`・`tools/reference-target-profile`など | シンボリックリンクは、作成を試して失敗したときだけskipする（理由にOSのエラーを出す）。開発者モード等で作成できる環境では実行される。JVM・node・pythonは未導入の環境でskip |
 
 skipの総数は32件（`t.Skip`の理由にWindowsを含むもの）。Linuxで実行した結果を正とします。
 
