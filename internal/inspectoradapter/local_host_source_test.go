@@ -59,6 +59,8 @@ func TestLocalInspectorSelectedRouteKeepsWorkspaceAndSourceIdentity(t *testing.T
 	if firstA.Subject != subject || firstB.Subject != subject ||
 		firstA.WorldFingerprint == firstB.WorldFingerprint ||
 		bytes.Equal(firstA.Canonical, firstB.Canonical) ||
+		firstA.SourceStatus != "indexed" || firstB.SourceStatus != "indexed" ||
+		len(firstA.Sources.References) == 0 || len(firstB.Sources.References) == 0 ||
 		firstA.Workspace == nil || firstB.Workspace == nil ||
 		*firstA.Workspace == *firstB.Workspace {
 		t.Fatalf("selected Inspector crossed Workspace boundaries: A=%+v B=%+v", firstA, firstB)
@@ -83,6 +85,8 @@ func TestLocalInspectorSelectedRouteKeepsWorkspaceAndSourceIdentity(t *testing.T
 		!bytes.Equal(secondA.Canonical, firstA.Canonical) ||
 		secondA.SourceIndexFingerprint == firstA.SourceIndexFingerprint ||
 		secondA.SourceIndexFingerprint == "" ||
+		len(secondA.Sources.References) == 0 ||
+		secondA.Sources.References[0].ArtifactPath == firstA.Sources.References[0].ArtifactPath ||
 		secondA.Workspace == nil || *secondA.Workspace != *firstA.Workspace {
 		t.Fatalf("Source-only movement not observed by selected Provider: before=%+v after=%+v", firstA, secondA)
 	}
