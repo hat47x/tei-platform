@@ -535,3 +535,57 @@ Cacheへの再利用・更新可否は既存#3271のSource Observation/Derivatio
 - **T3/T4**：実Readの観測範囲だけを#3262のread-only Contextへ投影し、完全受領・目的限定の開示を検証。実測BenchmarkはCorrectnessとp95/p99・費用を二枚に分け、採用/撤回/rollback判断を記録。CLIだけの正例をStudioや外部AIの証拠へ流用しない。
 
 **今回の更新状態**：既存実装の資格の再基準化と計画文書の整合修復であり、この変更による実Function→実DB Read、Memory Cacheの性能比較、外部AI受領、Adaptive Tuning、正式Owner意味受理は **NOT RUN / NOT ACCEPTED**。#1119のG0〜G4や別の受理Gateは変更しない。
+
+
+## 20. 最小Performance Experiment Protocol：改善の採否を再現可能にする（2026-11-09追補）
+
+§19のM1b→R0を優先する方針は維持する。本節は実Readが成立した後の**最初の比較実験の具体的な受入票**を定める。Cacheや新しいOptimizerを実装する前に、既存#1180 Scenario/Independent Expected、#2586実Read、#3271 Cache、#2600再利用、#565 Quality Envelopeへ既存の記録を渡す。公開CLI/APIや独立Benchmark Runnerの新設は決定しない。
+
+### 20.1 一つのFunction・一つの変更・二つの比較
+
+初期Subjectは`order_entry.recent_orders`のread-only Query。比較候補は **A = No Cache** と **B = Request-local memo または Memory Cache の一方**。同じSource/DB Dataset/SQL物理実体/Query・Rule版/Provider Instance/Target/Host、Current Disclosure、入力パラメータと実Consumerを使用する。A/Bで異なる条件は意図したPolicy/実装とその不可避な費用だけに限定し、変更点を差分票に残す。
+
+**A/B実験の開始資格**：
+- #2586のB-Read+でSource→Function→Query/Relation→実Provider→Rowset/Context→Consumerが同一Attemptで実観測され、B-Disconnected/B-OtherSQL/B-ProviderMismatchの負例を判別済み。
+- Providerの実Readを計測する観測点がある。計測なしのResult一致、合成Trace、Mock Providerだけなら性能評価に進めない。
+- 独立ExpectedをBaseline/Candidateと別のSourceで固定し、NULL/未取得/部分集合、Query grain、結果順序、Scope、Current Disclosureを確認できる。
+- DB・Source・Plugin/Targetの正確な版と選択された実装を記録。測定中の更新/統計reset/Schema driftが不明ならそのRunを比較不適格とする。
+
+### 20.2 再現可能なWorkloadの最小行列
+
+| Workload | 狙い | 最小の反証 |
+| --- | --- | --- |
+| W1 Cold | 初回実Read、Cache構築費と初期遅延 | Warm Hitの速度をColdの速度として表示しない |
+| W2 Warm・同一Scope | 再利用によるDB Read回数・遅延の差 | HitだけでCurrent Grant・入力閉包を省略しない |
+| W3 同時Miss | Coalescing/Stampede、OriginとPool負荷 | Cache Hit率改善でもOriginピーク/Queueが悪化 |
+| W4 更新と競合 | 更新前Read、Invalidate、旧populateの世代競合 | 古い結果を再格納してFreshと表示 |
+| W5 0件・Partial・非単調Query | NOT EXISTS/LEFT JOIN/Top-Nと負依存の再取得 | 不完全な0件をNegative Cacheで不存在確定 |
+| W6 異Scope・認可変化 | Tenant/Principal/Context epoch/Grant変化 | 同値Keyを根拠に結果や件数を横断開示 |
+| W7 Origin/Cache障害 | Timeout、Backpressure、FallbackとDB負荷 | 無制限Fallback、未観測を0msとみなす |
+| W8 Policy/Plugin変化 | Provider版/Instance、Rule/Schema、未選択Plugin、A→B→A | 未選択変更で過剰失効、旧Evidenceの自動復活 |
+
+W1/W2は初期の性能対照、W3〜W8は正しさ・可用性の受入を中心とする。**すべてを一度に自動化することは前提にしない**。W1/W2が成立するまでW3〜W8はFixtureと独立Expectedを先に固定し、実測未了を明記する。
+
+### 20.3 計測票：性能の改善と保証の成立を分離
+
+一つのRunに最低限、Subject/Source/DB Dataset/Workload fingerprint、exact Plugin/Target/Provider Instance、A/B variant、Actual Call、Rowset scope、独立Expected/Actual、Current Grant、観測Window、サンプル数、sampling/drop、測定On/Off費、cold/warm、p50/p95/p99、DB read count、Pool wait、CPU/Memory、Origin request peak、Storage/egress費、Correctness verdict、Performance verdict、Unknownを関連付ける。
+
+p99の標本数が不十分ならp99を比較不能とし、数値を補完しない。計測単位・Histogram境界・実行順・DB統計・他負荷が異なるRunも比較不適格。低CardinalityなQuery summary/Operation別durationを基本とし、Raw SQL、Parameter、Tenant/Principal、PKをMetric labelへ出さない。OpenTelemetryは任意Adapterとし、外部Collectorが停止しても業務Readは維持する。計測のための無制限Trace保存・高Cardinality集約を標準にしない。
+
+**採用判定は二段階**：まず独立Expected、Source/Scope/Grant、Effect境界の正しさを満たす。次に事前指定したSLO/Guardrail（p95/p99、Originピーク、DB write latency、CPU/Memory、運用費、測定費）を満たす場合だけ採用候補とする。SLO数値・許容費用は利用者/案件の要件に基づき、AIが任意の閾値を正本化しない。速度の改善率だけで採用しない。
+
+### 20.4 Cache以外を対照に残す理由
+
+Cache Bが性能改善しても、N+1除去、Query pushdown、Batch、Index、Data Context局所再計算、Target-native実装の方が単純で速い可能性がある。最初のA/Bを成立させた後に、同じWorkload/Expectedで **C = Cacheを使わないQuery/Batch改善** を比較できる余地を残す。ただしCの実SQLやDDLをAIが本番へ無承認適用しない。Native SQLとTEI Queryの同等性はNULL/時点/精度/粒度/順序/部分取得で検証し、DB Index/DDLは#3270の既存権限とMigrationへ委譲する。
+
+### 20.5 実装順・停止条件・責務
+
+- **E0**：#2586のM1b→R0実Readを成立。未成立なら本節の実Benchmarkは開始しない。
+- **E1**：#1180/#2514にW1/W2と更新・Scopeの独立Expectedを固定。#3271の既存CS/ATと重複したテスト正本を作らない。
+- **E2**：同一ReadでA/Bの実Provider invocationとConsumer結果を照合。実測Windowと正しさのEvidenceを分離。
+- **E3**：W3/W4/W7の負荷・失効・障害対照を追加。意味保存や負荷制御が成立しない場合はCacheを不適格とし、再取得またはNo Cacheへ戻す。
+- **E4**：必要な場合だけC（Query/Batch）を追加し、採用/撤回を#565の既存品質基準へ引き渡す。
+
+本節は新しいP0やHard Gateを追加せず、§10/§19のT0〜T4の中で**一つの実験を完結させるためのチェックリスト**である。PluginのObserver/Strategy/Cache Providerは既存#951/#3278/#3271のBindingに置き、Targetに不要なRuntime Hopを作らない。AI Tuning Packetは独立Expectedと実測の説明を助けるが、採用/Owner意味受理の権限を持たない。
+
+**状態（2026-11-09）**：E0〜E4、W1〜W8の実Function/実DB比較、Cache/Origin障害負荷、実TargetのSLO達成、AI自動適用、正式Owner受理は **NOT RUN / NOT ACCEPTED**。§19の局所Hook/CI/Binding成果をこれらの実行証拠へ昇格しない。
