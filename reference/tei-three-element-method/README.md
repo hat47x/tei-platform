@@ -155,3 +155,27 @@ The focused synthetic suite is now **12 public-slice + 15 Trait tests**
 exact-head native-Node workflow is the actual qualification source;
 changes only validated by V8 test-compatible shims are *not* native CI
 PASS until the new head's workflow is completed.
+
+
+### Strict ordinary-array boundary (2026-11-09)
+
+The prequalified public presentation contract now rejects sparse arrays,
+element accessors, own `Symbol.iterator` overrides, unexpected metadata
+properties and modified array prototypes **before iterating** the input
+Subject/Relation/Claim/View arrays. The earlier record-only getter check
+covered object fields but not hostile arrays. A private element accessor
+must not run as a side effect of projection.
+
+The 4 new negative tests bring the synthetic cases to **14 public-slice
+and 17 Trait bind (31 total)**. Native-Node CI on the updated exact PR head
+is the source of repeatable qualification. The previous 12+15 native
+CI and its pass status are **historical**, not a pass for the new 31 cases.
+
+**Limit**: ordinary-array descriptor checks are not a hardened sandbox for
+arbitrary Proxy traps, globally monkeypatched Array prototypes, adversarial
+memory/time exhaustion or timing-channel noninterference. The trusted
+Source/Role/Policy Owner must still construct a safe, already-disclosed
+public input. This Reference never reads a private model, computes
+Disclosure, proves complete Source coverage, or supplies current
+authority. The correct production solution is a trusted ingestion and
+qualified Consumer boundary, not adding a second Policy Engine here.
