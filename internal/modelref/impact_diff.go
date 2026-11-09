@@ -11,6 +11,7 @@ func ReviewImpactDiff(before, after Graph, rules []Rule) ImpactReview {
 		RuleFingerprint: RuleFingerprint(rules),
 		AuthorityLimits: []string{
 			"typed-graphs-are-candidates-not-accepted-meaning",
+			"graph-completeness-and-dynamic-references-unverified",
 			"snapshot-revisions-and-sources-are-unverified",
 			"semantic-impact-does-not-prove-runtime-effects",
 		},

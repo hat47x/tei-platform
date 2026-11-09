@@ -122,13 +122,13 @@ E2以降の参照実装は、受理済みの意味契約を**外部から正確�
 
 `relation_expansion_candidate.go`では、既存の`ResolveOperator`による厳密なversion/fingerprint/効果の照合を維持したまま、Referenceで扱う`std.op.expand`に限って、`rows/$Source → rows/$Target`という**明示的な2変数の型形状**を認める。型変数の値は任意の名前解決ではなく、検証済みSemantic Relationの参照元・参照先からだけ得る。適用した結果の具体的な出力型は`RelationExpansionCandidate.OutputType`へ保持し、OperatorのSemantic pinは変えない。旧来の具体的な入出力型pinも引き続き受理する。
 
-`pinned_relation_path_test.go`はsales→customer→addressの2段階で、単一の`std.op.expand@1`契約を再利用する形へ変更した。途中のDataが変わってもOperator versionを変えず、各Relationのキー、識別子、Cardinality、型の連鎖は区別できることを検証対象とする。Fixture Oracleでも同じ汎用pinの具体化を受け付ける。
+`pinned_relation_path_test.go`はsales→customer→addressの2段階で、単一の`std.op.expand@1`契約を再利用する形へ変更した。途中のDataが変わってもOperator versionを変えず、各Relationのキー、識別子、Cardinality、型の連鎖は区別できることを検証対象とする。Fixtureの検証基準でも同じ汎用pinの具体化を受け付ける。
 
 これは**全Operator向けの型変数言語を実装したという意味ではない**。型制約の一般化、入力型のnullable性・型幅・値等価性、演算引数のCanonical表現、Semantic Lockへの接続は未解決である。標準Operator契約として採用する前に、既存Semantic Interfaceの受理済みProjectionでこの型形状をどう表現するか決める必要がある。追加テストのリポジトリ全体でのGo実行、およびPR exact-head検証は未実施。
 
-### RelationのNULL・欠損・多重度を区別するFixture Oracle（2026-10-10）
+### RelationのNULL・欠損・多重度を区別するFixtureの検証基準（2026-10-10）
 
-`relation_match_probe.go`は、一段の`RelationExpansionCandidate`に対して、実データへの接続を伴わない**純粋なキー照合の参照Oracle**を追加する。Canonical Worldと受理済みpinから生成したCandidateを投入する正常系をテストに含めるが、このOracle自身にはWorldの受理・Lockの照合・Providerの選択権限はない。
+`relation_match_probe.go`は、一段の`RelationExpansionCandidate`に対して、実データへの接続を伴わない**純粋なキー照合の参照検証基準**を追加する。Canonical Worldと受理済みpinから生成したCandidateを投入する正常系をテストに含めるが、この検証基準自身にはWorldの受理・Lockの照合・Providerの選択権限はない。
 
 - **Relation欠損時の判断:** `reject`（一致するTargetが存在しなければエラー）、`discard`（対象行なし）、`retain-absence`（「一致先なし」を明示した結果）。どれも既定値にしない。
 - **NULLキー:** `reject`と`no-match`を明示して選ぶ。NULL同士を通常の値として一致させない。入力が取得不能・未評価のときはNULLでも不一致でもなく、評価エラーとして拒否する。
@@ -140,7 +140,7 @@ E2以降の参照実装は、受理済みの意味契約を**外部から正確�
 
 **重要な停止線:** 現状の`RelationMatchPolicy`はFixture評価時に外部から与える値であり、Accepted Operator契約やAuthoritative DSL Sourceにまだ結合されていない。同じOperator pinでも方針の相違は**異なる意味**である。正式なLowering時には方針を型付きの演算引数としてCanonical meaningに含め、Source span・Semantic Set・Lockと対応付けなければならない。このReferenceをそのままSQL/Go/Wasmの実行判断に使ってはならない。照合は文字列表現による試験用の同値比較であり、実際の型比較規則、照合順序、Money精度、NULL伝播、外部結合、行順序、トランザクション時点の適合性は別途検証を要する。
 
-今回の追加・変更に関わるGoソース・テスト計11ファイルについて、GitHub Blob SHAと完全一致する局所Go 1.23.2環境でgo test、go test -race、go vetがPASSし、対象ファイルのgofmt差分はなかった（2026-10-10）。対象はOperator解決とPinned Composition、Relation検査・Expansion・多段Path、Fixture Oracle、引数Syntaxと型付き意味束縛である。ただしcore/ir/semantic/validationの型定義・Canonical Validatorは局所stubであり、正式なTEI World/Parser/CLIを含むPR exact-headに対する正規健全性検証の証拠ではない。
+今回の追加・変更に関わるGoソース・テスト計11ファイルについて、GitHub Blob SHAと完全一致する局所Go 1.23.2環境でgo test、go test -race、go vetがPASSし、対象ファイルのgofmt差分はなかった（2026-10-10）。対象はOperator解決とPinned Composition、Relation検査・Expansion・多段Path、Fixtureの検証基準、引数Syntaxと型付き意味束縛である。ただしcore/ir/semantic/validationの型定義・Canonical Validatorは局所stubであり、正式なTEI World/Parser/CLIを含むPR exact-headに対する正規健全性検証の証拠ではない。
 
 ### 明示した演算引数を型付き意味候補に固定（2026-10-10）
 
@@ -150,7 +150,7 @@ E2以降の参照実装は、受理済みの意味契約を**外部から正確�
 
 `ProbeBoundExpandMeaning`は、呼び出し側が処理時に別のPolicyを注入できないよう、結合済みの方針だけでFixtureを評価する。候補や方針を後から変更した場合はfingerprint不一致として拒否する。ダイジェストは改変検知であり、署名・信頼の証拠・Semantic Lockの代わりではない。意味の採用には既存Semantic Extension/Shared Acceptance Boundaryを経由する。
 
-**Syntax/意味束縛とFixture Oracleの局所テストはPASSしたが、統合試験は未実施。** 接続先の`OperatorContract`にも引数形式そのものはまだ受理済みInterfaceとして定義されていないため、これを実装済みDSL/Production機能としては扱わない。正式化に先立ち、演算引数のmeaning profileと受理済みSemantic Interfaceを一致させ、Source Indexの共通span ABIへ写す必要がある。
+**Syntax/意味束縛とFixtureの検証基準の局所テストはPASSしたが、統合試験は未実施。** 接続先の`OperatorContract`にも引数形式そのものはまだ受理済みInterfaceとして定義されていないため、これを実装済みDSL/Production機能としては扱わない。正式化に先立ち、演算引数のmeaning profileと受理済みSemantic Interfaceを一致させ、Source Indexの共通span ABIへ写す必要がある。
 
 ### まだ検証できないこと
 

@@ -1,0 +1,25 @@
+{
+  "schema": "tei.reference.generator-contract/v0",
+  "id": "sui.card.pfc_record",
+  "version": "1",
+  "status": "reference-local",
+  "note": "#2585 PFC-01..05 conformance fixture. Not an accepted product contract.",
+  "inputs": [
+    {"attribute": "sui.card.text", "primitive": "std.text"},
+    {"attribute": "sui.card.note", "primitive": "std.text"},
+    {"attribute": "sui.card.flag", "primitive": "std.boolean"},
+    {"attribute": "sui.card.count", "primitive": "std.integer"},
+    {"attribute": "sui.card.amount", "primitive": "std.decimal"}
+  ],
+  "output": {"primitive": "std.text"},
+  "projection": {
+    "kind": "record",
+    "fields": [
+      {"name": "text", "input": "text", "attribute": "sui.card.text", "primitive": "std.text"},
+      {"name": "note", "input": "note", "attribute": "sui.card.note", "primitive": "std.text", "optional": true},
+      {"name": "flag", "input": "flag", "attribute": "sui.card.flag", "primitive": "std.boolean", "optional": true},
+      {"name": "count", "input": "count", "attribute": "sui.card.count", "primitive": "std.integer"},
+      {"name": "amount", "input": "amount", "attribute": "sui.card.amount", "primitive": "std.decimal"}
+    ]
+  }
+}

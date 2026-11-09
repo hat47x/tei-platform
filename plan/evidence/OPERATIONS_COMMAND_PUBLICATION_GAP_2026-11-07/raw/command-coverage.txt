@@ -1,0 +1,40 @@
+accepted commands: 53
+advertised commands: 19
+
+accepted but not advertised (34):
+  application-release-compatibility
+  artifacts
+  commands
+  consumer-impact
+  database-compatibility
+  database-reconcile
+  dbcheck
+  deployment-abort
+  deployment-pause
+  deployment-provider-plan
+  deployment-ready-commands
+  deployment-reconcile
+  deployment-record-attempt
+  deployment-recovery
+  deployment-resume
+  deployment-retry
+  deployment-simulate
+  deployment-start
+  deployment-start-recovery
+  desired-schema
+  grants
+  index
+  issue-grant
+  migration-fingerprint
+  normalize-postgres-plan
+  observed-index
+  operations
+  periods
+  plan-migration
+  release-graph
+  scenario
+  schema-diff
+  solution-release-graph
+  workbench-model
+
+advertised but not accepted (0):

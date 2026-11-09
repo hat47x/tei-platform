@@ -1,0 +1,8 @@
+== vocabulary probe ==
+  unknown plugin CapabilityKind accepted: false
+    rejected with: capability billing.executor has invalid kind "billing-executor"
+  known plugin CapabilityKind accepted: true
+  derived operations for a World with no persistence: 0
+    gaps: 0
+    rule: tei.operation-surface/standard-crud/v1 sha256:92adf0fa3b20816fb6068780a6dd8b9b1fb77973e6c2cff823313346b0e59ae0
+  (stderr bytes: 0)

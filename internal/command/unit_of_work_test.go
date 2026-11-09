@@ -39,6 +39,7 @@ func (u fakeUnitOfWork) Begin(context.Context) (Transaction, error) {
 func TestInvokeCommitsOnSuccess(t *testing.T) {
 	transaction := &fakeTransaction{}
 	invoker := Invoker{
+		Authorizer: ReferenceAuthorizer{},
 		World:      commandWorld(),
 		Executor:   fakeExecutor{result: Result{Outcome: &semantic.Outcome{Name: "submitted", Payload: "sales.order"}}},
 		UnitOfWork: fakeUnitOfWork{transaction: transaction},
@@ -54,6 +55,7 @@ func TestInvokeCommitsOnSuccess(t *testing.T) {
 func TestInvokeRollsBackOnExecutionFailure(t *testing.T) {
 	transaction := &fakeTransaction{}
 	invoker := Invoker{
+		Authorizer: ReferenceAuthorizer{},
 		World:      commandWorld(),
 		Executor:   fakeExecutor{err: errors.New("connection lost")},
 		UnitOfWork: fakeUnitOfWork{transaction: transaction},
@@ -70,6 +72,7 @@ func TestInvokeRollsBackOnExecutionFailure(t *testing.T) {
 func TestInvokeRollsBackOnUndeclaredOutcome(t *testing.T) {
 	transaction := &fakeTransaction{}
 	invoker := Invoker{
+		Authorizer: ReferenceAuthorizer{},
 		World:      commandWorld(),
 		Executor:   fakeExecutor{result: Result{Outcome: &semantic.Outcome{Name: "unknown", Payload: "sales.order"}}},
 		UnitOfWork: fakeUnitOfWork{transaction: transaction},
@@ -85,6 +88,7 @@ func TestInvokeRollsBackOnUndeclaredOutcome(t *testing.T) {
 
 func TestInvokeRejectsTransactionBeginFailure(t *testing.T) {
 	invoker := Invoker{
+		Authorizer: ReferenceAuthorizer{},
 		World:      commandWorld(),
 		Executor:   fakeExecutor{},
 		UnitOfWork: fakeUnitOfWork{beginErr: errors.New("cannot begin")},
@@ -98,6 +102,7 @@ func TestInvokeRejectsTransactionBeginFailure(t *testing.T) {
 func TestInvokeRollsBackOnCommitFailure(t *testing.T) {
 	transaction := &fakeTransaction{commitErr: errors.New("commit failed")}
 	invoker := Invoker{
+		Authorizer: ReferenceAuthorizer{},
 		World:      commandWorld(),
 		Executor:   fakeExecutor{result: Result{Outcome: &semantic.Outcome{Name: "submitted", Payload: "sales.order"}}},
 		UnitOfWork: fakeUnitOfWork{transaction: transaction},
