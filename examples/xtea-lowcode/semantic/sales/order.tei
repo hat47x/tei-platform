@@ -37,6 +37,7 @@ period sales.month {
     business-date sales.order.order_date
     calendar sales.fiscal
     states open closing closed
+    closes on day 20
     closed-rejects update
 }
 capability create_order {
@@ -80,4 +81,5 @@ capability delete_payment {
     outcome deleted sales.payment
     effect delete sales.payment
 }
+
 

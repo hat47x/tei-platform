@@ -211,3 +211,24 @@ func TestObservationCountsAreReproducible(t *testing.T) {
 		t.Fatalf("observation=%+v want %+v", run.Observation, want)
 	}
 }
+
+// 同じ冪等キーと同じ対象・同じ新値でも、期待値が違う要求は再送ではない。
+// 先の結果(Before=old)を別の期待値の要求へ返さず、キーの再利用として拒否する(#2564)。
+func TestIdempotencyKeyReuseWithAnotherExpectationIsRejected(t *testing.T) {
+	other := request("A", "same-key")
+	other.Expected = "other"
+	run, err := Run(baseState(), []UpdateRequest{request("A", "same-key"), other})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if run.Results[0].Outcome != OutcomeApplied {
+		t.Fatalf("first=%+v", run.Results[0])
+	}
+	second := run.Results[1]
+	if second.Outcome != OutcomeRejected || second.Reason != ReasonIdempotencyKeyReused || second.ExecutionError {
+		t.Fatalf("second=%+v", second)
+	}
+	if run.Observation.IdempotentReplays != 0 || run.Observation.IdempotencyKeyRejections != 1 {
+		t.Fatalf("observation=%+v", run.Observation)
+	}
+}

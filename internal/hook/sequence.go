@@ -159,6 +159,14 @@ func wrapFailure(err error, declared *application.Hook) error {
 		return nil
 	}
 	if isNotSatisfied(err) {
+		// An unsatisfied hook may name a business outcome. The name is checked
+		// here, where every refusal passes, so an implementation cannot widen
+		// the vocabulary by reporting a name it invented.
+		if outcome, ok := OutcomeOf(err); ok {
+			if outcomeErr := ValidateOutcome(outcome); outcomeErr != nil {
+				return outcomeErr
+			}
+		}
 		return err
 	}
 	if declared != nil && declared.Failure == "warn" {

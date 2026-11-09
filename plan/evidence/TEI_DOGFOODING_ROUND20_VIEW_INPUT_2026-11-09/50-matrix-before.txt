@@ -1,0 +1,11 @@
+-application + -input (no -command)          rc=0 ok=True code=None
+-application + -input malformed (no -cmd)    rc=0 ok=True code=None
+-application + -pattern + -input (no -cmd)   rc=0 ok=True code=None
+-application + -package + -input (no -cmd)   rc=1 ok=False code=VIEW_FAILED
+-application only (control)                  rc=0 ok=True code=None
+
+-input with -command (legitimate pairing)    plan.inputs[0].value == "ORD-1"
+
+-execute-only flags WITHOUT -execute (all refused, exit 2 INVALID_ARGUMENT):
+  -operation-log, -period-state, -allow-capability, -lifecycle-state, -lifecycle-command
+  (-input was the only one accepted and dropped)
