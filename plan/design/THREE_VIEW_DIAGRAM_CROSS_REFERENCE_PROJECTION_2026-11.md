@@ -771,6 +771,23 @@ M0の`ModelMapLink`は`From(Kind,ID)`／`To(Kind,ID)`／`Relation`／`Resolution
 
 二つの局所Goテスト（`TestMapWorldDeclaredLinkIsNotSourceQualified`、`TestMapWorldDoesNotInventRelationFromForgedSourceReference`）は、§30.2の**実Native Source→M0 Link比較**と別の検収である。実Source・OS敵対的Path／漏洩、外部Provider、Source/Meaning Owner受理、Event/State/Function CRUD、実Consumer/Editor/SHO/Effectは未証明。最新HEADのCI終了前は「実装済み負例候補」として扱う。
 
+### 30.6 多重Relation Identityと同ID衝突の局所Graph負例（#3866）
+
+既存`model_map_test.go`へ次の2つの**合成IR負例**を追加した。旧#3518が未マージでCloseされたため、コード検収Ownerは**新Draft #3866**に集約する。`modelref.Edge`の型/Endpointだけに縮約した場合の逆編集損失を、M0の`Relation Subject Kind/ID`を保持したread-onlyリンクで回避できるか確認する。
+
+| Case | 要求する型付きM0結果 | 依然として未実証 |
+| --- | --- | --- |
+| M0-N03：同じFrom/To、同じラベル`lines`、異なる2つのRelation ID | `Parent Data --contains--> Relation --refers-to--> Target Data`を各IDについて保持し、**計4 Link**を失わない。IDをラベル・端点・配列位置で代用しない。 | Synthetic Source Indexは空で、`SourceStatus=not-indexed`。どちらのEdgeもSource逆Patch資格なし。 |
+| M0-N04：二つの親Dataが**同じRelation ID**を重複宣言 | 2つのParent→Relation Linkと1つのRelation→Target Linkを保持し、重複Identityの`Catalog.Ambiguous`／`Link.Resolution=ambiguous`を表明。First-winsしない。 | 重複IDを正当化・自動改名・Owner受理したわけではない。 |
+
+これは**宣言した関係のナビゲーション構造**の反証であり、Data/Function/Business図面の見た目・CRUD自動生成、実Source位置の最新性、現在Grantや実行を試していない。#2497のLoss/Reverse編集と#2514の独立Expectedへ分離して引き継ぐ。二つのGoテストの実行・CI成功は、**新HEADのログで確認するまで未資格**。
+
+### 30.7 Model locate・Studio選択・AI Harnessは既存Ownerへ接続
+
+[PR #3865](https://github.com/hat47x/tei-platform/pull/3865)の`model locate`候補はCatalogに基づく親経路・近傍（現在地G1/G3）をCLI/MCPへ返す**別のread-only Consumer**。新Draft #3866のM0型付きLinkと同じ`Subject Kind/ID`・Workspace/Source版で比較するが、LocateのGraphをM0へ複製せず、`model locate`の現在地表示成功を全Data/Function/Business Closureや編集資格に読み替えない。#3865は現時点ではPRであり、main統合と全E2Eは未資格。
+
+StudioでUI要素を選択しAI/DSH系Harnessへ細かく指示する設計は、**main統合済み[PR #3863](https://github.com/hat47x/tei-platform/pull/3863)** のAI性能計画§21がOwner。ここでは、M0型付きSubjectとView Occurrenceを分けた選択Contextから許容されたread-only Sourceへ辿り、AIのProposalと現在Grant付きApplyを分離する、という**既存検収条件への入力**のみを定義。第二Harness Loop/Gateway/Adapterを本PRに作らず、特定の定額AI契約を製品の基本動作の前提としない。
+
 ## 31. M0実装Ownerの現行PRと合格条件（2026-11-09）
 
 **現行のコード検収Ownerは[Draft PR #3866](https://github.com/hat47x/tei-platform/pull/3866)。** 本書§23〜30で歴史的に参照している旧[#3518](https://github.com/hat47x/tei-platform/pull/3518)は**close/unmerged**。理由は現在mainへ二親統合してもGitHub PR Files上では975ファイルの旧差分が表示され、レビュー可能な変更集合と一致しなかったため。#3866では現main単一親に4つのGit Blobのみを加え、GitHubのPRファイル一覧が**厳密に4件**（`model_map.go`、`model_map_test.go`、本Plan、`real_workspace_admission_test.go`）であることを確認した。旧M0正本は削除せず、コード/Scenario/Planの内容を引き継ぐ。**この置換はmainへmergeした意味ではない**。
