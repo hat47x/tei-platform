@@ -73,7 +73,7 @@ var selectedReadOnlyFlagAllowlist = map[string][]string{
 // (#3675).
 var repeatableFlags = map[string]map[string]bool{
 	"view":                                   {"input": true, "allow-capability": true},
-	"validate":                               {"analysis": true, "schema": true, "plan": true, "evidence": true},
+	"validate":                               {},
 	"knowledge-context":                      {},
 	"inspect":                                {},
 	"trace":                                  {},

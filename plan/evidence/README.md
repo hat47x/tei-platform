@@ -104,6 +104,7 @@
 - [フック範囲の実行時適用の確認](XTEA_LOWCODE_HOOK_SCOPE_RUN_2026-11.md)（参照実装の試験記録。適用できない範囲を拒否し、D-9の形の欠陥を作り直さない）
 - [行範囲（scope row）の適用の確認](XTEA_LOWCODE_HOOK_ROW_SCOPE_2026-11.md)（参照実装の試験記録。行ごとの繰り返し・行を名指す拒否。item/headerは未実装）
 - [行範囲を到達可能な実行へ配線した確認](XTEA_LOWCODE_HOOK_ROW_SCOPE_WIRING_2026-11.md)（参照実装の試験記録。`RunReachable`の行ごと適用。行集合を供給する呼出し側は未実装）
+- [行範囲の宣言を通す修正の確認](XTEA_LOWCODE_HOOK_ROW_SCOPE_DECLARABLE_2026-11.md)（参照実装の試験記録。`row`が宣言できず死んだコードだった矛盾の修正。実行経路の配線は未実装）
 - [採番の永続CounterStoreの確認](XTEA_LOWCODE_NUMBERING_SQLITE_STORE_2026-11.md)（参照実装の試験記録。PostgreSQLは未実装）
 - [採番の2プロセス同時実行の確認](XTEA_LOWCODE_NUMBERING_PROCESS_RACE_2026-11.md)（参照実装の試験記録。PostgreSQLと多プロセス構成は未実装）
 - [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
@@ -306,6 +307,7 @@
 - [MCPのsubjectKind列挙の欠落](CLI_MCP_SUBJECTKIND_ENUM_2026-11-10.md)（`inputSchema.subjectKind`だけが閉じた集合を宣言せず、CLIの12値/10値と食い違っていたため、操作の集合を直接参照するenumを追加。広告した22値すべての受理と、enum外の拒否を実バイナリで確認。実Host・認可・外部送出はNOT RUN）
 - [traceのoffset/limitの値域宣言](CLI_MCP_TRACE_PAGING_BOUNDS_2026-11-10.md)（`tei_trace`の`offset`・`limit`だけが値域を宣言せず、0が有効で負値が拒否されることをclientが読めなかったため`minimum:0`を追加。`model locate`の1..500とは意図的に異なるので各々が宣言する。宣言と実挙動の一致をdispatch経由で固定）
 - [CLIのhelpが受理しないflagを並べていた件](CLI_HELP_GRAMMAR_2026-11-10.md)（	ei validate -h等が共有FlagSetの70個を出し、実際に受け付けるのは3個だった件。ExitOnErrorのコマンドはs.Parse前に絞り込みhelpを返すよう修正。全コマンドで-hのflag数が受理範囲と一致。実行時の受理範囲は不変）
+- [validateの受理しないflagの広告](CLI_CATALOGUE_VALIDATE_FLAGS_2026-11-10.md)（	ei commandsがalidateに-analysis等4個を広告していたが実際は全て拒否。共有FlagSetの所属を取り違えた広告を削除し、catalogueが名指すflagは受理されるflagでなければならないことを単体で固定）
 - [viewの-inputが-command無しで黙って捨てられていた](TEI_DOGFOODING_ROUND20_VIEW_INPUT_2026-11-09/README.md)（#3778・#3420。`-input`は`-command`と組だが、無い場合に値が捨てられて成功していた。両方向の変異を検出する試験を追加。起票時の誤診と既存試験による発覚も記録）
 - [view -executeの失敗符号が潰れていた](TEI_DOGFOODING_ROUND21_VIEW_EXECUTE_2026-11-09/README.md)（#3797・#3419。入力不正と認可拒否がどちらも`COMMAND_FAILED`に潰れ、理由がmessageの先頭にしかなかった。既知7符号を`error.code`に出す。`-operation-log`の上書き挙動は未決）
 - [手書きの符号許可リストが21中15を潰していた](TEI_DOGFOODING_ROUND22_CODE_COVERAGE_2026-11-09/README.md)（#3807・#3797・#3420。CLIは7符号、Studioは1符号だけを特別扱いし、coreの21符号のうち15が`COMMAND_FAILED`に潰れていた。列挙を廃止し`command.ReportedFailure`へ。AST走査で再発防止）

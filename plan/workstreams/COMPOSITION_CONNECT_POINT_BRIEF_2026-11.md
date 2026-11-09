@@ -114,6 +114,7 @@
 - **両方とも、新しい解決器や選択の仕組みを作らずに動きました。** しかし、これは「繋げられる」ことの証明であって、「繋ぐべき」ことの証明ではありません。
 - C-1 と C-2 は対象が違います（配備の動作と Service の要求）。第 4 節の「両方を選ぶと 2 つの経路ができる」は、同じ対象を取り合う場合の話です（[記録](../evidence/CONNECT_POINT_C1_C2_2026-11-09/README.md)）。
 - **C-3 も、既存の3関数だけで成立することを確かめました**（[記録](../evidence/EXECUTOR_ID_RESOLUTION_REFERENCE_2026-11-09/README.md)）。`routing.RouteCommand` で Binding から executor の ID を解決し、`pruntime.BuildPlan` の plan がその ID を認めるかと `Capability.SupportsAction` を順に確かめます。実lockで `RESOLVED`、lock無しで `LOCK_REJECTED`、別のactionでは直書きの `migration.atlas` ではなく `runtime.reference` が解決され、**参照実装の直書きが Binding と食い違いうる**ことを示しました。第4節の順序（実行Owner→役割ごとのC-1/C-2→DeploymentのC-3）と、決定のOwnerは変わりません。
+- **C-3 には実行側の盲点があります。** `DeploymentExecutor` アダプタは `Plan` と直書きの `CapabilityID` しか持たず、`Environment` を持たないため **Binding を照合できません**。`routing.RouteCommand` も `ValidateResult` も一度も呼びません（[記録](../evidence/ADAPTER_BINDING_BLINDSPOT_2026-11-09/README.md)）。非試験の4つの構築箇所はどれも `Dispatch` を経由せず `adapter.Execute` を直接呼ぶので、`Dispatch` の検証を強化しても届きません。**C-3 の参照は「解決できる」ことを示しましたが、実行経路はその解決結果を使っていません。** アダプタを変えずに呼出し側で一致を確かめる形は参照として試してあります（[記録](../evidence/BINDING_GUARDED_EXECUTOR_REFERENCE_2026-11-09/README.md)）。**どれを採るかは未決です。**
 - **版の訂正**：C-1は[PR #3596](https://github.com/hat47x/tei-platform/pull/3596)のReference v1で`refusedCount`と`unverifiedCount`の分離を実Go CIで合格済み。C-2も実コードではCarrier入場後の不確定を分離していたが、`Schema`と`RuleFingerprint`がv0のまま、READMEはv1という不整合が残っていた。C-2も明示的なv1へ更新して版・テスト・CIを独立に確定する（下記§11）。
 
 ## 11. 参照の版と実行主体を一致させる最小受入（2026-11-09）

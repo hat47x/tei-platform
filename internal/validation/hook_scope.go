@@ -16,7 +16,12 @@ func scopeFitsPattern(kind application.PatternKind, scope string) bool {
 	case application.PatternBrowse:
 		return scope == "row" || scope == "record"
 	case application.PatternRecord:
-		return scope == "record"
+		// A record pattern works on one record, and it can also decide per row of
+		// a related set: the runner applies a row scope with RunRows. Refusing row
+		// here would make a row-scoped hook undeclarable, because the interaction
+		// contract is limited to record patterns, and the whole row scope would be
+		// dead code.
+		return scope == "record" || scope == "row"
 	case application.PatternHeaderDetail:
 		return scope == "header" || scope == "row"
 	case application.PatternCommand:
