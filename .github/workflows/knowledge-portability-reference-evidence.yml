@@ -12,6 +12,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: tei-knowledge-portability-reference-evidence-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   verify:
     # Deliberate monthly-usage pause: no hosted runner must be allocated.
@@ -39,3 +43,4 @@ jobs:
           name: knowledge-portability-reference-evidence
           path: knowledge-portability-reference-test.txt
           if-no-files-found: warn
+
