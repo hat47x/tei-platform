@@ -513,3 +513,32 @@ flowchart TD
 次の独立反証は、`TargetProfile`の同値関係と生成器実効Alphabet・Reserved値・既存占有を突き合わせること。実Targetの照合規則/Max length/予約語を**Providerが明示的に宣言・実測**し、宣言値が実DB/OSと食い違う場合は`unknown`または`reject`とする。現在のASCII局所ReferenceをUnicode/Windows/分散DBへの一般保証にはしない。案件ごとのPopulation/Collision RiskはOwnerが独立受理するまでCaller Claimである。
 
 このHash ID基盤が最適化対象とするのは、**人とAIがDiagram/Table/Scriptを介して「欠落・曖昧・実際の結線」を識別しやすくすること**である。短い物理名を生成できること自体を成功条件にしない。必要な変換・外部依存・作用境界は型付きPipelineの明示的なNode/Edgeとして表し、暗黙のSource採用・自動Rename・別Scopeへの移動を禁止する。
+
+
+### 9.13 HashIdの受入は単一ステータスではなく直交する証拠の接合（2026-11-09）
+
+他レーンの [Verified Composition BOM](https://github.com/hat47x/tei-platform/issues/3267)、
+[Workspace実CLI Trace #3321](https://github.com/hat47x/tei-platform/pull/3321)、
+[Studio Workspace ABA #3327](https://github.com/hat47x/tei-platform/pull/3327)、
+[Generator実Source消費 #2595](https://github.com/hat47x/tei-platform/issues/2595)、
+[一版Source→Consumer統合Qualification #1163](https://github.com/hat47x/tei-platform/issues/1163)を踏まえる。HashIdの静的導出・Source実消費・Target実保存・Owner意味判断は**直交する証拠**であり、状態を `valid`／`accepted` の単一順序へ潰さない。BOMの個別Plugin/Release受理やRegistry上の配布物照合も、組合せの現在資格・実Tool呼出しの証明とは別である。
+
+| 証拠軸 | 現Referenceの値 | 必須の追加資格 | 連結が失敗した場合 |
+| --- | --- | --- | --- |
+| **Derivation** | `SchemeWire`、input bytes、`HashIdText`、Go/Node Golden | Schemeを採用したConsumerの明示用途・現在Rule | 候補IDの局所再現は可能だが、正式運用への適合は`unknown` |
+| **Source identity / content** | Caller `ReadClaim`／`SourceIndex.ModelRevision`／対象Artifact Fingerprint | 正本Qualified Subject、Scope、Root witness、同一Attemptで実消費した全Source Closure | `sourceReaderVerified=false`、意味Source受理不可。内容Hashの一致から再適格化しない |
+| **Tool / composition** | 本PRに実Build/Registry/BOMの使用証拠なし | 選択されたPlugin/Generator/Toolchain/Selection Ruleの版・実呼出・実消費・実Artifact | 個別Pluginが検査済みでも、その合成で生成されたIDを正式Bindしない |
+| **Target intent / policy** | Caller `TargetProfile`・想定件数・衝突確率上界 | 実Targetの許可文字集合・長さ・照合規則・Reserved/既存割当・現在Policy | `caller-declared-unverified`の静的Preflightに留める |
+| **Target allocation / Effect** | read-only Snapshot衝突検査。`storageWrite=false` | Provider一意制約・単一Tx/競合時の再照合・独立readback・現在Grant | 割当成功を主張しない（不明・部分成功時は独立に観測） |
+| **Owner meaning / disclosure** | `authority=none`。ローカル申告の一致のみ | 既存Shared Acceptance、Policy主体、実Consumer向け現在Disclosure | `accepted`、`visible`、`permitted`を推定しない |
+
+**接合用の比較キー候補（設計のみ）**：少なくとも`(qualifiedSubject, sourceScope, sourceRevision, observedRootWitness, readAttempt, consumedClosureFingerprint, schemeWire, generator/selectionRuleFingerprint, targetNamespace, targetProfileVersion, observedTargetAllocationRevision)`と、検証者・開示主体・時点の出自を別列で保持する。各値が必要かどうかは用途のOwnerが決定する。現Referenceの`ReadClaim`にはRoot witness/実Tool/Target revisionが無いので、**この候補レコードは現行スキーマ/CLIの実装ではない**。不足欄は`unknown`に保ち、同じ文字列やFingerprintの再利用で補完しない。Source revとTarget allocation revは異なる所有者の版であり、同一のEpochを暗黙に共有させない。
+
+**最小の横断負例（今後のOwner受入）**：
+- 同じSource bytes／同じModelRevisionでWorkspaceを複製し、Observed Rootが違う場合：Root同一／Read Attempt同一というClaimを拒否する。
+- 同じPlugin/Artifact digestでSelection Rule/Scope/Targetが変わった場合：過去の合成資格をそのまま再利用しない。
+- Sourceが適格でもTargetがUnknown／競合している場合：Source側の緑色表示を全体Bind成功として見せない。
+- Target Preflightが合格してもSourceのABA・Consumer実消費未観測がある場合：既存物理名の正式発行やSource Acceptanceを行わない。
+- 現行Disclosureが`withheld`なら、図表上の未表示を「不存在」としない。
+
+この設計はHash IDを標準型付きPipeline上の**派生Node**として表示するためのもの。実線は既存Referenceが実行する比較、破線は別Ownerが保有するEvidence取得／Acceptanceとする。実Target登録・権限・Source Reader・第二BOM/RegistryをこのPRへ追加しない。P0は#2595/#1163の実消費Closure/同一Attemptへの再利用、P1はTarget Ownerの実一意・独立readback、P2は対象案件の実必要性を測定したPlugin/ETL/Self-build適用の順とする。
