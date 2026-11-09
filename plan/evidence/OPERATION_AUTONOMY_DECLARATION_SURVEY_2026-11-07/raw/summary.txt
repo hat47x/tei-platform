@@ -1,0 +1,23 @@
+== standard-crud ==
+  application: ledger
+  worldFingerprint: sha256:bd53dbaca0ac2c20bc911e0b69083467f2ad38273911269d525db666e681817f
+  ledger.list.sales.note | kind=list | autonomy=unattended
+  ledger.list.sales.order | kind=list | autonomy=unattended
+  ledger.read.sales.order | kind=read | autonomy=unattended
+  ledger.create.sales.order | kind=create | autonomy=attended
+  ledger.update.sales.order | kind=update | autonomy=attended
+  autonomy counts: {'unattended': 3, 'attended': 2}
+
+== reference ==
+  application: order_entry
+  worldFingerprint: sha256:c92de09f9595b1f46bfc18e6f99260d8391113b6d2639357d372abf634a1d65a
+  order_entry.list.sales.order | kind=list | autonomy=unattended
+  order_entry.read.sales.order | kind=read | autonomy=unattended
+  order_entry.create.sales.order | kind=create | autonomy=attended
+  order_entry.update.sales.order | kind=update | autonomy=attended
+  order_entry.list.sales.order_line | kind=list | autonomy=unattended
+  order_entry.read.sales.order_line | kind=read | autonomy=unattended
+  order_entry.create.sales.order_line | kind=create | autonomy=attended
+  order_entry.update.sales.order_line | kind=update | autonomy=attended
+  autonomy counts: {'unattended': 4, 'attended': 4}
+

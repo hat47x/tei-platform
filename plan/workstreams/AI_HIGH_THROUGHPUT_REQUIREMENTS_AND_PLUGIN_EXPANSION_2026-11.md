@@ -75,7 +75,7 @@ CPU/GPU、ネット接続、GitHub Actionsの利用上限、実DB/Windows/Browse
 
 **候補の探索・蓄積には予め固定した件数上限を置かない。** ただし同じ課題を重複実装する場合、事前にOwnerと版・変更対象を確認し、別branchで実験し、比較結果を集約する。既存の[#2017作業票](https://github.com/hat47x/tei-platform/issues/2017)とGitHub PR運用を使い、新Agent Manager・受理Engineは実装しない。
 
-比較的安価なAIには、同じSourceからの多視点読解、反例探し、異質なConsumerの制約分析、テスト候補の生成を多く担当させる。**同じAIの肯定だけを独立Oracleと呼ばず**、固定fixture・仕様出典・実Provider・別の観測経路へ接続する。異なるAgentの合意は根拠不足を隠すものでもない。
+比較的安価なAIには、同じSourceからの多視点読解、反例探し、異質なConsumerの制約分析、テスト候補の生成を多く担当させる。**同じAIの肯定だけを独立検証基準と呼ばず**、固定fixture・仕様出典・実Provider・別の観測経路へ接続する。異なるAgentの合意は根拠不足を隠すものでもない。
 
 ## 4. Core/Plugin設計を拡大に耐えるものとして試す
 
@@ -146,7 +146,7 @@ ProviderからConsumerへの変換`g`と、Consumerが要求する操作`f`を�
 ### 実証対象と判定境界
 
 1. **机上**：#2495の分類・既存#1705/#1706の入力条件を参照し、FCT-1〜5を`meaning / operation / required evidence / Consumer / Target`へ写像。正式なMeta Schema/単位プラグインを先行固定しない。
-2. **headless**：AI向けCUIは同一固定Source/Fixtureの型付きread-only診断として、選択された出来事ID、どの時刻を使ったか、単位と量の種類、取得完全性、不成立操作を説明。#2354のJSON版・失敗形式は既存担当で整備。生成AIの自然文のみを独立Oracleとしない。
+2. **headless**：AI向けCUIは同一固定Source/Fixtureの型付きread-only診断として、選択された出来事ID、どの時刻を使ったか、単位と量の種類、取得完全性、不成立操作を説明。#2354のJSON版・失敗形式は既存担当で整備。生成AIの自然文のみを独立検証基準としない。
 3. **Plugin境界**：#2390の外部Consumer比較票へ、単なる`shape/transport`に加えて`operation law / interpretation / scope / time / completeness`の必要条件を連結。外部ConsumerにTEI CUI/Runtimeを要求せず、必要なContract/Adapter/Artifactだけを利用させる。
 4. **Target別**：表/時系列図/文書表示と実行Library/Serviceは別のProjection。演算と表示の一致、外部Host権限、実DB効果などは適切なOwnerへ個別証拠を戻す。未知のFacetを“非対応”と即断するより、観測不能/未解決を区別。
 5. **拡張**：温度時系列に続いて、通貨/レート時点、組織の代理・時点付き権限、Geometry/CRS、GraphのPath occurrence、確率/Measure、Mutable Collectionを並行Pressureとして追加可能。追加Issueの上限は置かず、意味・試験責務が独立するケースは積極的に分離する。

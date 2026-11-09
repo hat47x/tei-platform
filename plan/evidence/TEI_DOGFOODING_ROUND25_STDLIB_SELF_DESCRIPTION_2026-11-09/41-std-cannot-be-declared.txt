@@ -1,0 +1,16 @@
+namespace std
+
+type text from std.text
+  -> SEMANTIC_TYPE_ALIAS_CYCLE reaches std.text -> std.text
+  -> DUPLICATE_SEMANTIC_ELEMENT std.text declared more than once
+  -> DUPLICATE_SEMANTIC_NAMESPACE duplicate semantic namespace std
+
+namespace mine
+
+type text_t from std.text
+  -> ok: true
+
+Special-cased in:
+  internal/validation/validation.go:1185   (std excluded from the not-empty check)
+  internal/operations/declaration_counts.go:38 (std excluded from counts)
+  internal/stdlib/semantic.go              (the 12 types, in Go)
