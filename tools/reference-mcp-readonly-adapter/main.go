@@ -319,20 +319,34 @@ func toolList() []tool {
 }
 
 func callTool(params json.RawMessage, workspace string) (toolResult, error) {
+	if len(bytes.TrimSpace(params)) == 0 {
+		// A tools/call without params is a client error. Reporting the decoder's
+		// "unexpected end of JSON input" names the wrong thing (#3420).
+		return toolResult{}, fmt.Errorf("tools/call requires params with a name")
+	}
+	if bytes.Equal(bytes.TrimSpace(params), []byte("null")) {
+		return toolResult{}, fmt.Errorf("tools/call requires params with a name, not null")
+	}
 	var call struct {
-		Name      string          `json:"name"`
+		Name      *string         `json:"name"`
 		Arguments json.RawMessage `json:"arguments"`
 	}
 	if err := json.Unmarshal(params, &call); err != nil {
-		return toolResult{}, fmt.Errorf("invalid tools/call params: %w", err)
+		return toolResult{}, fmt.Errorf("tools/call params must be an object with a string name")
+	}
+	if call.Name == nil {
+		return toolResult{}, fmt.Errorf("tools/call requires a name")
+	}
+	if strings.TrimSpace(*call.Name) == "" {
+		return toolResult{}, fmt.Errorf("tools/call name must not be an empty string")
 	}
 	var arguments map[string]json.RawMessage
-	if len(call.Arguments) > 0 {
+	if len(call.Arguments) > 0 && !bytes.Equal(bytes.TrimSpace(call.Arguments), []byte("null")) {
 		if err := json.Unmarshal(call.Arguments, &arguments); err != nil {
-			return toolResult{}, fmt.Errorf("invalid arguments: %w", err)
+			return toolResult{}, fmt.Errorf("tools/call arguments must be an object")
 		}
 	}
-	payload, isError, err := dispatch(call.Name, arguments, workspace)
+	payload, isError, err := dispatch(*call.Name, arguments, workspace)
 	if err != nil {
 		return toolResult{}, err
 	}

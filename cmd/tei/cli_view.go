@@ -722,6 +722,13 @@ func writeApplicationText(out io.Writer, view applicationview.ApplicationView) (
 				return 2, err
 			}
 		}
+		// A closing day splits the month into two segments; printing it shows the
+		// period is narrower than a month without the reader inferring a default.
+		if period.ClosingDay != 0 {
+			if _, err := fmt.Fprintf(out, "period %s closes on day %d\n", period.ID, period.ClosingDay); err != nil {
+				return 2, err
+			}
+		}
 	}
 	for _, use := range view.SemanticUses {
 		if _, err := fmt.Fprintf(out, "uses %s\n", use); err != nil {

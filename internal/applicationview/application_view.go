@@ -46,6 +46,10 @@ type ApplicationPeriodRef struct {
 	// Calendar names the business calendar the period follows. An empty value
 	// means the declaration names none, and a reader must not assume a default.
 	Calendar core.CanonicalID `json:"calendar,omitempty"`
+	// ClosingDay splits every month into two segments, 1..28. Zero means the
+	// period is the whole month, so a reader sees "no closing" as an absence
+	// rather than a default day.
+	ClosingDay int `json:"closingDay,omitempty"`
 }
 
 // BuildApplicationは、ApplicationのPattern・Packageと、使用する意味の版を解決する。
@@ -99,6 +103,7 @@ func BuildApplication(world ir.World, applicationID core.CanonicalID) (Applicati
 				BusinessDate: period.BusinessDate,
 				States:       period.States,
 				Calendar:     period.Calendar,
+				ClosingDay:   period.ClosingDay,
 			})
 		}
 	}
