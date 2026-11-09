@@ -14,7 +14,9 @@ reference-plugin-package-build-child
   -state <分離したstateディレクトリ> 任意
 ```
 
-`tei self-build`は`-artifact-out`と`-state`をchildへ渡すため、そのままchildとして起動できます。`-plan`と`-plugin`は`-child-arg`で渡します。
+`tei self-build`は`-artifact-out`と`-state`をchildへ渡すため、そのままchildとして起動できます。`-plan`・`-plugin`・`-intent`は`-child-arg`で渡します。
+
+`-intent`は省略できます。渡すと、このchildは**宣言も共有readerで読み**、自分が読んだ値を申告します。渡さない場合は宣言の欄を出しません（欄が無いことを合格と読ませないため）。
 
 ## 出力
 
@@ -26,6 +28,9 @@ stdoutへ1件のJSONを出します。`tei self-build`が読む欄は`artifactDi
 | `planFingerprint` | `internal/pluginのBuildPlanFingerprint`が**正規化したplanから導いた**照合値 |
 | `artifactDigest` | 書いた配布物のbyte digest |
 | `claimBoundary` | 何を主張しないかの文 |
+| `intentBytesDigest` / `intentFingerprint` | **このchildが読んだ宣言**のbyte digestと照合値（`-intent`指定時のみ） |
+| `intentBoundToPlan` | 宣言のsubjectがplanのPluginと一致することをchild自身が確かめたか |
+| `intentBindingNote` | 何を主張しないかの文（宣言側） |
 
 **`planBytesDigest`と`planFingerprint`は別物です。** 前者は「読んだバイト」、後者は「正規化した意味」であり、同じ値になるとは限りません。両方を出すのは、呼び手が「同じ計画を渡したか」と「同じ計画を名乗ったか」を別々に確かめられるようにするためです。
 
@@ -35,12 +40,14 @@ stdoutへ1件のJSONを出します。`tei self-build`が読む欄は`artifactDi
 
 - planが`Validate()`を通らなければ**artifactを書かない**（失敗が「buildできた」と読まれない）
 - Plugin定義の同一性がplanと一致しなければ停止する
+- `-intent`を渡した場合、宣言のsubjectがplanのPluginと一致しなければ**reportを出さずに停止する**（一致し得ない二つの値を「読んだ値」として返さないため）
 - `artifactDigest`はディスクへ書いたバイトと一致する（自己申告をディスクと独立に検算できる）
 
 保証しない。
 
 - **意味の受理・L3・Runtime Authority**。`claimBoundary`が明記する
-- **その計画が特定の宣言から導かれたこと**。childが読むのは`-plan`のファイルであり、宣言との結び付けは`tei self-build`側の`intentBinding`が担う
+- **その計画が特定の宣言から導かれたこと**。`-intent`を渡すと、このchildは**宣言を読んでidentityを照合する**が、planを宣言から導いてはいない。`-plan`は入力として受け取る
+- **宣言とplanの結び付け**。childは両方を読み、subject identityの一致を確かめるが、それは「同じsubjectを指す」ことであって「その宣言がそのplanを生んだ」ことではない
 - **artifactがその計画の出力であること**（SB-C0 §4.8の(c)）。`plugin.LockedBuild`のような束ね型での別観測が要る
 - 供給のTrust・署名、`go.sum`のTrust根拠、Seed Trust
 
@@ -49,11 +56,50 @@ stdoutへ1件のJSONを出します。`tei self-build`が読む欄は`artifactDi
 | 試験 | 確かめていること |
 | --- | --- |
 | 報告 | plan byte digestとplan fingerprintが別値で、`internal/plugin`の導出値と一致する |
+| **自分のlock** | `buildArtifactLock`が`validated: true`で、fingerprintが非空、plan/artifactがreportと一致する |
 | artifact照合 | 申告digestがディスクのバイトと一致する |
 | 不正plan | artifactを書かず、stdoutへJSONを出さず、exit 1 |
 | 定義不一致 | artifactを書かず、exit 1 |
 | 文法 | 必須flag欠落はexit 2と理由 |
+| **宣言の申告** | `-intent`指定時に`intentBytesDigest`・`intentFingerprint`が入り、digestがディスクのバイトと一致する |
+| 別subjectの宣言 | artifactを書かず、reportを出さず、exit 1 |
+| `-intent`無し | 宣言の欄を出さない（沈黙を合格と読ませない） |
+| **座標の不一致** | `outputKind`・`target`・`profile`のいずれかが違えばartifactを書かず、reportを出さず、exit 1。違った座標を名指しする |
+| `profile`の省略 | planの値と一致しないものとして拒否する |
+
+## child自身のlock
+
+reportは`buildArtifactLock`を持つ。**このchildが自分で組み立て、`internal/plugin`の`Validate`を通した束縛**である。
+
+| 欄 | 意味 |
+| --- | --- |
+| `validated` | `Validate`を通したか |
+| `lockFingerprint` | childが導いたlockの照合値 |
+| `planFingerprint` / `artifactDigest` | lockに載せた値（childが実際に保持したもの） |
+| `boundary` | 「lockが整っていることは、その計画がそのartifactを生んだ証明ではない」 |
+
+lockが`Validate`を通らなければ、**artifactを書いた後にreportを出さずexit 1**にする。reportを返すと、検証できなかった束縛が「返ってきた」と読まれるためである。
+
+`tei self-build`はこのlockを、自分が独立に導いたlockと比べる。**経路の違う二つの組み立てが同じfingerprintになる**ことが、ここで増える観測である。それでも、両方がchildの申告に依存している点は変わらない。
+
+## 宣言とplanの座標
+
+`-intent`を渡すと、このchildは**subject identity**に加えて**build座標**もplanと比べる。
+
+| 座標 | 何を確かめるか |
+| --- | --- |
+| `outputKind` | 宣言とplanが同じ出力種を指すか |
+| `target` | 同じ対象環境を指すか |
+| `profile` | 同じ構成を指すか |
+
+違えば**artifactを書いた後にreportを出さずexit 1**にし、**どの座標が違ったかを名指しする**。identityが一致しても別のbuildを指す場合があるためである。
+
+**`profile`の省略は一致と読まない。** 宣言が`profile`を書かないことは「planの`profile`と同じ」ではなく「profileを宣言していない」である。
+
+座標の一致が言えるのは「**宣言とplanが同じbuildを指す**」ことまでで、「その宣言がそのplanを生んだ」ことではない。
 
 ## 実行した確認
 
-`tei self-build`を解決child（`tools/reference-build-authoring-intent`）とこのchildで起動し、**実プロセスで`planCrossCheck.state=matched`を観測**しました。記録は[`TEI_GO_SELF_BUILD_PLAN_MATCHED_2026-11-09.md`](../../plan/evidence/TEI_GO_SELF_BUILD_PLAN_MATCHED_2026-11-09.md)にあります。**`l2bClaimed`は`false`のままです。**
+`tei self-build`を解決child（`tools/reference-build-authoring-intent`）とこのchildで起動し、**実プロセスで`planCrossCheck.state=matched`を観測**しました。記録は[`TEI_GO_SELF_BUILD_PLAN_MATCHED_2026-11-09.md`](../../plan/evidence/TEI_GO_SELF_BUILD_PLAN_MATCHED_2026-11-09.md)にあります。
+
+child自身のlockを足した後の実測では、**entryが導いたlockとchildのlockが同じfingerprint**になりました。記録は[`TEI_GO_SELF_BUILD_CHILD_LOCK_2026-11-09.md`](../../plan/evidence/TEI_GO_SELF_BUILD_CHILD_LOCK_2026-11-09.md)にあります。**`l2bClaimed`はどちらも`false`のままです。**

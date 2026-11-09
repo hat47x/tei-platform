@@ -11,7 +11,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"tei/internal/buildintent"
 	"tei/internal/plugin"
 	"tei/internal/syntax"
 )
@@ -48,6 +50,69 @@ type childReport struct {
 	ArtifactDigest  string `json:"artifactDigest,omitempty"`
 	StateDir        string `json:"stateDir,omitempty"`
 	Boundary        string `json:"claimBoundary"`
+	// Lock is the binding this process forms and validates itself, so a caller
+	// no longer has to trust two separate self-reports. It ties the plan this
+	// process loaded to the artifact it wrote.
+	Lock *selfLock `json:"buildArtifactLock,omitempty"`
+	// The declaration readings. Present only when the caller names -intent, so
+	// a caller that passes no declaration gets no values it might mistake for a
+	// check that ran.
+	IntentPath        string `json:"intentPath,omitempty"`
+	IntentBytesDigest string `json:"intentBytesDigest,omitempty"`
+	IntentFingerprint string `json:"intentFingerprint,omitempty"`
+	// IntentBoundToPlan says whether this process checked that the declaration
+	// it read names the same subject and target as the plan it consumed. It is
+	// the child's own check, not a proof that the plan came from that
+	// declaration.
+	IntentBoundToPlan bool   `json:"intentBoundToPlan"`
+	IntentBindingNote string `json:"intentBindingNote,omitempty"`
+}
+
+const intentBindingBoundary = "this process read the declaration bytes and checked that its subject identity agrees with the plan it consumed; agreement of identity is not proof that this declaration produced that plan, and not acceptance or runtime authority"
+
+// selfLock is the child's own validated plan-to-artifact binding. The child
+// checks it with internal/plugin before writing anything, so a malformed
+// digest or a missing identity field stops the run instead of being reported.
+type selfLock struct {
+	FormatVersion   int    `json:"formatVersion"`
+	PlanFingerprint string `json:"planFingerprint"`
+	ArtifactDigest  string `json:"artifactDigest"`
+	LockFingerprint string `json:"lockFingerprint"`
+	Validated       bool   `json:"validated"`
+	Boundary        string `json:"boundary"`
+}
+
+const lockBoundary = "this process validated one BuildArtifactLock over the plan it loaded and the artifact it wrote; validation shows the lock is well formed, not that the plan produced the artifact"
+
+// formSelfLock builds and validates the lock from the values this process
+// actually holds: the plan it loaded and the bytes it wrote.
+func formSelfLock(plan plugin.BuildPlan, planFingerprint, artifactDigest string) (selfLock, error) {
+	lock := plugin.BuildArtifactLock{
+		FormatVersion: plugin.BuildArtifactLockFormatVersion,
+		Builds: []plugin.LockedBuild{{
+			Plugin:          plan.Plugin,
+			OutputKind:      plan.OutputKind,
+			Target:          plan.Target,
+			Profile:         plan.Profile,
+			PlanFingerprint: planFingerprint,
+			ArtifactDigest:  artifactDigest,
+		}},
+	}
+	if err := lock.Validate(); err != nil {
+		return selfLock{}, fmt.Errorf("the plan-to-artifact lock does not validate: %w", err)
+	}
+	fingerprint, err := plugin.BuildArtifactLockFingerprint(lock)
+	if err != nil {
+		return selfLock{}, fmt.Errorf("the lock fingerprint could not be derived: %w", err)
+	}
+	return selfLock{
+		FormatVersion:   plugin.BuildArtifactLockFormatVersion,
+		PlanFingerprint: planFingerprint,
+		ArtifactDigest:  artifactDigest,
+		LockFingerprint: fingerprint,
+		Validated:       true,
+		Boundary:        lockBoundary,
+	}, nil
 }
 
 func main() {
@@ -61,6 +126,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	pluginPath := fs.String("plugin", "", "Plugin definition (.tei) the plan names (required)")
 	artifactOut := fs.String("artifact-out", "", "where to write the package artifact (required)")
 	stateDir := fs.String("state", "", "isolated state directory for this attempt")
+	intentPath := fs.String("intent", "", "Build Intent declaration this process also reads (optional)")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -69,7 +135,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
-	report, err := materialize(*planPath, *pluginPath, *artifactOut, *stateDir)
+	report, err := materialize(*planPath, *pluginPath, *artifactOut, *stateDir, *intentPath)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return 1
@@ -87,7 +153,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 // validates the plan, then materializes the package. The byte digest and the
 // fingerprint are recorded separately: the first is what this process held, the
 // second is what internal/plugin derives from the normalized plan.
-func materialize(planPath, pluginPath, artifactOut, stateDir string) (childReport, error) {
+func materialize(planPath, pluginPath, artifactOut, stateDir, intentPath string) (childReport, error) {
 	planBytes, err := os.ReadFile(planPath)
 	if err != nil {
 		return childReport{}, fmt.Errorf("read plan: %w", err)
@@ -140,6 +206,15 @@ func materialize(planPath, pluginPath, artifactOut, stateDir string) (childRepor
 		}
 	}
 
+	artifactDigest := digestOf(artifact)
+	// Form and validate the lock in this process, from the values it holds. A
+	// lock that does not validate stops the run before the report is written,
+	// so a caller never receives a binding this process could not check.
+	lock, err := formSelfLock(plan, fingerprint, artifactDigest)
+	if err != nil {
+		return childReport{}, err
+	}
+
 	report := childReport{
 		SchemaVersion:   childSchema,
 		Nature:          "one child process that consumes an exact BuildPlan and materializes its Plugin package",
@@ -150,9 +225,64 @@ func materialize(planPath, pluginPath, artifactOut, stateDir string) (childRepor
 		PluginVersion:   plan.Plugin.Version,
 		OutputKind:      string(plan.OutputKind),
 		ArtifactPath:    artifactOut,
-		ArtifactDigest:  digestOf(artifact),
+		ArtifactDigest:  artifactDigest,
 		StateDir:        stateDir,
 		Boundary:        childBoundary,
+		Lock:            &lock,
+	}
+
+	// §4.14: when the caller names the declaration, this process reads it with
+	// the shared strict reader and reports its own readings. The entry can then
+	// compare them with the values it derived itself, instead of relying on the
+	// builder's silence.
+	if strings.TrimSpace(intentPath) != "" {
+		intentBytes, err := os.ReadFile(intentPath)
+		if err != nil {
+			return childReport{}, fmt.Errorf("read declaration: %w", err)
+		}
+		intent, err := buildintent.ParseIntent(intentBytes)
+		if err != nil {
+			return childReport{}, fmt.Errorf("declaration: %w", err)
+		}
+		intentFingerprint, err := buildintent.IntentFingerprint(intent)
+		if err != nil {
+			return childReport{}, fmt.Errorf("declaration fingerprint: %w", err)
+		}
+		report.IntentPath = intentPath
+		report.IntentBytesDigest = digestOf(intentBytes)
+		report.IntentFingerprint = intentFingerprint
+		report.IntentBindingNote = intentBindingBoundary
+		// The identity check the child can make on its own: the declaration's
+		// subject must be the plan's plugin. Anything else means the two inputs
+		// describe different things.
+		if string(intent.Subject.ID) != string(plan.Plugin.ID) || intent.Subject.Version != plan.Plugin.Version {
+			return childReport{}, fmt.Errorf(
+				"the declaration names %s@%s but the plan builds %s@%s",
+				intent.Subject.ID, intent.Subject.Version, plan.Plugin.ID, plan.Plugin.Version,
+			)
+		}
+		// §4.14の次の一歩: the declaration's build coordinates must match the
+		// plan's. Identity alone says the two describe the same plugin; the
+		// coordinates say they describe the same build of it. Each mismatch is
+		// named separately so a caller can tell which coordinate disagreed.
+		coordinates := []struct {
+			name   string
+			intent string
+			plan   string
+		}{
+			{"outputKind", string(intent.OutputKind), string(plan.OutputKind)},
+			{"target", intent.Target, plan.Target},
+			{"profile", intent.Profile, plan.Profile},
+		}
+		for _, c := range coordinates {
+			if c.intent != c.plan {
+				return childReport{}, fmt.Errorf(
+					"the declaration's %s %q does not match the plan's %q",
+					c.name, c.intent, c.plan,
+				)
+			}
+		}
+		report.IntentBoundToPlan = true
 	}
 	return report, nil
 }

@@ -8,6 +8,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"tei/internal/buildintent"
 )
 
 // This file closes two of the refusal conditions that §4.6 recorded as still
@@ -31,12 +33,17 @@ const (
 
 // IntentDeclaration is what the entry read about the declared build intent.
 type IntentDeclaration struct {
-	Path           string `json:"path"`
-	Digest         string `json:"digest"`
-	FormatVersion  int    `json:"formatVersion,omitempty"`
-	SubjectID      string `json:"subjectId,omitempty"`
-	OutputKind     string `json:"outputKind,omitempty"`
-	RecipeEntry    string `json:"recipeEntrypoint,omitempty"`
+	Path          string `json:"path"`
+	Digest        string `json:"digest"`
+	FormatVersion int    `json:"formatVersion,omitempty"`
+	SubjectID     string `json:"subjectId,omitempty"`
+	OutputKind    string `json:"outputKind,omitempty"`
+	RecipeEntry   string `json:"recipeEntrypoint,omitempty"`
+	// Fingerprint is the declaration's own identity, derived by the entry with
+	// the shared reader (SB-C0 §4.13 I-1a). It is not copied from a child's
+	// report, so a comparison against a child's reading has a basis the entry
+	// holds itself.
+	Fingerprint    string `json:"intentFingerprint,omitempty"`
 	Resolved       bool   `json:"resolved"`
 	ResolutionNote string `json:"resolutionNote,omitempty"`
 }
@@ -67,56 +74,32 @@ func readIntentDeclaration(path string) (IntentDeclaration, error) {
 	if err != nil {
 		return IntentDeclaration{}, fmt.Errorf("build intent is not readable: %w", err)
 	}
-	var top map[string]json.RawMessage
-	if err := json.Unmarshal(raw, &top); err != nil {
-		return IntentDeclaration{}, fmt.Errorf("build intent is not a JSON object: %w", err)
-	}
-	if top == nil {
-		return IntentDeclaration{}, errors.New("build intent is not a JSON object")
-	}
 	declaration := IntentDeclaration{
 		Path:           absolute,
 		Digest:         digestOfBytes(raw),
 		Resolved:       false,
 		ResolutionNote: intentResolutionNote,
 	}
-	if rawVersion, ok := top["formatVersion"]; ok {
-		var version int
-		if err := json.Unmarshal(rawVersion, &version); err != nil {
-			return IntentDeclaration{}, fmt.Errorf("build intent formatVersion is not an integer: %w", err)
-		}
-		declaration.FormatVersion = version
-	} else {
-		return IntentDeclaration{}, errors.New("build intent has no formatVersion")
+	// The declaration is read with the same strict reader the reference
+	// resolver uses (SB-C0 §4.13 I-1a), so the entry and the resolver cannot
+	// accept different declarations. The entry still does not derive a BuildPlan
+	// from it: a declaration that parses is not a resolved plan.
+	intent, err := buildintent.ParseIntent(raw)
+	if err != nil {
+		return IntentDeclaration{}, err
 	}
-	var subject struct {
-		ID string `json:"id"`
+	declaration.FormatVersion = intent.FormatVersion
+	declaration.SubjectID = string(intent.Subject.ID)
+	declaration.OutputKind = string(intent.OutputKind)
+	declaration.RecipeEntry = intent.Recipe.Entrypoint
+	// The declaration's own identity, derived by the entry rather than copied
+	// from a child's report. This is the value a later byte-level comparison can
+	// use as a basis that does not depend on another process.
+	fingerprint, err := buildintent.IntentFingerprint(intent)
+	if err != nil {
+		return IntentDeclaration{}, fmt.Errorf("build intent fingerprint: %w", err)
 	}
-	if rawSubject, ok := top["subject"]; ok {
-		if err := json.Unmarshal(rawSubject, &subject); err != nil {
-			return IntentDeclaration{}, fmt.Errorf("build intent subject is malformed: %w", err)
-		}
-	}
-	if strings.TrimSpace(subject.ID) == "" {
-		return IntentDeclaration{}, errors.New("build intent subject has no id")
-	}
-	declaration.SubjectID = subject.ID
-	var outputKind string
-	if rawKind, ok := top["outputKind"]; ok {
-		if err := json.Unmarshal(rawKind, &outputKind); err != nil {
-			return IntentDeclaration{}, fmt.Errorf("build intent outputKind is malformed: %w", err)
-		}
-	}
-	declaration.OutputKind = outputKind
-	var recipe struct {
-		Entrypoint string `json:"entrypoint"`
-	}
-	if rawRecipe, ok := top["recipe"]; ok {
-		if err := json.Unmarshal(rawRecipe, &recipe); err != nil {
-			return IntentDeclaration{}, fmt.Errorf("build intent recipe is malformed: %w", err)
-		}
-	}
-	declaration.RecipeEntry = recipe.Entrypoint
+	declaration.Fingerprint = fingerprint
 	return declaration, nil
 }
 

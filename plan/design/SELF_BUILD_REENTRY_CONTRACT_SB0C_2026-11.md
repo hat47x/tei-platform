@@ -347,6 +347,210 @@ P-1のchildが実装できたとして、観測できるのは次である。
 
 したがってP-1を実装しても、`l2bClaimed`は`false`のままでなければならない。**次に詰めるのは(c)である。**
 
+### 4.11 (c)をどう実装したか（2026-11-09）
+
+(c)を「plan fingerprintとartifact digestを一つの検証済み束ね型にする」として実装した。`planCrossCheck`とは**別の欄**にしたのが要点である。計画の一致とartifactの結び付けを同じ欄に混ぜると、`matched`を(c)の代わりに読ませてしまう。
+
+| 材料 | 出所 | entryが独立に確かめたこと |
+| --- | --- | --- |
+| 計画のidentity（Plugin・outputKind・target・profile） | 解決childのreceiptの`plan`本体 | 要約欄ではなくplan本体から読む |
+| builderの`planFingerprint` | childのstdout | 解決childの値と一致するか（不一致は`mismatched`） |
+| builderの`artifactDigest` | childのstdout | **ディスクのバイト**と一致するか |
+
+これらから`internal/plugin`の`BuildArtifactLock`を組み立て、`Validate`と`BuildArtifactLockFingerprint`を通す。lockが検証を通らない、またはディスクが読めない場合は`unperformed`であり、`bound`として扱わない。
+
+| `state` | 意味 | `ok`への影響 |
+| --- | --- | --- |
+| `bound` | 検証済みlockが組め、artifact digestがディスクと一致した | 影響なし |
+| `mismatched` | 計画fingerprintが解決値と違う、またはartifact digestがディスクと違う | **`ok=false`・`failureCause`** |
+| `unperformed` | receiptが無い／childが申告しない／lockが検証を通らない／ディスクが読めない | 影響なし（理由を`unperformedReason`へ） |
+
+**`bound`でもL2-bではない。** lockに載る`planFingerprint`と`artifactDigest`は**どちらもbuilder childの自己申告**である。entryが独立に確かめたのは、artifact digestがディスクと合うことと、lockが`internal/plugin`の検証を通ることだけである。よって`l2bClaimed`は`false`のままであり、境界文がそう述べる。
+
+**(c)を`bound`で満たしたと読まないこと。** (c)が本来問うのは「**その計画がそのartifactを生んだか**」であり、`bound`が示すのは「**その計画fingerprintとそのartifact digestが一つのlockとして整合し、digestが実体と合う**」ことである。この差は、builderが自己申告を偽らないという前提に依存している。前提を観測で置き換えるには、builderの出力そのものをentryが検証する経路（例: builderが`plugin.LockedBuild`を自分で作って返す）が要る。
+
+### 4.12 child自身がlockを作る（2026-11-09）
+
+§4.11の末尾が挙げた経路を実装した。**builder childが自分の`BuildArtifactLock`を組み立て、`internal/plugin`の検証を通してから返す。entryはそれを、自分が独立に導いたlockと比べる。**
+
+| 段 | §4.11の実装 | §4.12の実装 |
+| --- | --- | --- |
+| lockを作る主体 | entryのみ | **childも作る** |
+| lockの検証 | entryが`Validate` | **childも`Validate`**。通らなければreportを出さずexit 1 |
+| 突合 | なし | **entryのlock fingerprintとchildのlock fingerprintを比較** |
+
+#### child側
+
+reportへ`buildArtifactLock`を足した。`validated`・`lockFingerprint`・`planFingerprint`・`artifactDigest`・`boundary`を持つ。lockが`Validate`を通らない場合は**artifactを書いた後にreportを出さずexit 1**にする。reportを返すと、検証できなかった束縛が「返ってきた」と読まれるためである。
+
+#### entry側
+
+`planArtifactBinding`へ次を足した。
+
+| 欄 | 意味 |
+| --- | --- |
+| `childLockChecked` | childのlockを比べたか |
+| `childLockValidated` | childが検証済みと申告したか |
+| `childLockMatched` | entryのlock fingerprintと一致したか |
+| `childLockFingerprint` | childのlock fingerprint |
+
+childのlockが無い場合は`childLockChecked=false`のままにする（**欄が無いことを合格と読ませない**）。あるのに一致しない場合は`mismatched`として`ok=false`・`failureCause`にする。
+
+#### この段で増えた観測と、増えなかったもの
+
+**増えた観測**：経路の違う二つの組み立てが**同じlock fingerprint**になったこと。childは自分が読んだplanと自分が書いたバイトから、entryはreceiptのplan identityとchildの申告からlockを作る。一致すれば、両方の読みが同じ束縛を指している。
+
+**増えなかったもの**：**L2-b**。`l2bClaimed`は`false`のままである。
+
+- builderが読んだのは`-plan`のファイルであり、entryが保持した宣言そのものではない
+- **(c)が問う「その計画がそのartifactを生んだか」は、lockが一致しても出ない。** lockが示すのは「計画identity・planFingerprint・artifactDigestの三つ組が、二つの独立した組み立てで同じになった」ことである
+- **childのlockもchildの申告に依存する。** entryが比べられるのは、entry自身が導いた値との一致までである
+
+#### 残る限界と次の一歩
+
+entryのlockもchildの`planFingerprint`と`artifactDigest`から作るため、依存は完全には消えていない。計画側もentryが独立に持つには、`-intent-resolver`のreceiptではなく**entry自身が宣言から計画を導く経路**が要る。それは§4.7でI-1（intent解析の`internal/`への切り出し）を採らなかった制約に戻る。
+
+### 4.13 entryが宣言から計画を独立に導くには（I-1の実測見積り）
+
+§4.12の残る限界を詰めるため、I-1の**実際の作業量**を測った。結論から書く。**I-1は「配置の移動」ではなく「パッケージ境界の新設」であり、`tools/`側の参照実装を分割する作業になる。**
+
+#### 対象の実測
+
+`tools/reference-build-authoring-intent`は8ファイル・2205行（うち試験1074行）である。
+
+| ファイル | 行数 | 関数 | 役割 |
+| --- | --- | --- | --- |
+| `intent.go` | 384 | 9 | `BuildIntent`の型・`ParseIntent`・`NormalizeIntent`・`IntentFingerprint` |
+| `resolve.go` | 267 | 4 | `Resolve`・`MarshalReceipt`・`VerifyDerivedReceipt` |
+| `fixture.go` | 406 | 21 | `DirSourceResolver`・`ParseFixtureCatalog`・`NewFixtureContext` |
+| `input_json.go` | 58 | 3 | `transform.ParseJSON`を使う厳密JSON読み |
+| `main.go` | 79 | 2 | CLI |
+| 試験4ファイル | 1082 | 34 | — |
+
+**32のexported関数がある。** `internal/`へ移すのはこのうち再導出に必要な部分だけでよく、CLI（`main.go`）と試験は`tools/`に残せる。
+
+#### 依存の実測
+
+`internal/`側から見ると、参照実装が使うのは次の4つだけである。
+
+| import | 用途 |
+| --- | --- |
+| `tei/internal/core` | `ParseCanonicalID`・`ValidNumericVersion` |
+| `tei/internal/plugin` | `BuildPlan`・`BuildPlanFingerprint`・`BuildDependency` |
+| `tei/internal/plugin/transform` | `ParseJSON`（厳密JSON） |
+| `tei/internal/syntax` | Plugin定義の構文解析 |
+
+**すべて`internal/`配下であり、`cmd/tei`からも届く。** つまり新しいパッケージを`internal/`に置けば、`cmd/tei`と`tools/`の両方からimportできる。§3.1で問題になった`tools/internal/gobuilder`とは違い、**internal規則が障害にならない**。
+
+#### 三つの案と採否
+
+| 案 | 内容 | 作業量 | 何が得られるか |
+| --- | --- | --- | --- |
+| **I-1a: 解析だけを移す** | `ParseIntent`・`IntentFingerprint`・`ParseFixtureCatalog`を`internal/`の新パッケージへ移し、`Resolve`は`tools/`に残す | 中（型と解析の移動、試験の分割） | entryが**宣言の解釈と照合値の導出**を自分でできる。計画の導出はchildのまま |
+| I-1b: 導出まで移す | `Resolve`も`internal/`へ移す | 大（`ResolutionContext`とfixture catalogも移す） | entryが**計画まで**自分で導ける。L2-bの依存が最も減る |
+| I-1c: 移さない | 現状維持（I-2） | なし | — |
+
+**I-1aを次の一歩とする。** 理由は次の三点である。
+
+1. **§4.12の依存は計画側にある。** entryがchildの`planFingerprint`を受け取らずに済むには、entryが計画を**導出**する必要がある。しかしその前段の「宣言を厳密に読み、意図の照合値を出す」は独立にでき、これだけで**宣言byteの突合をentryが行える**
+2. **I-1bは`ResolutionContext`の設計まで動かす。** `fixture`は名前のとおり参照実装の固定入力であり、`internal/`へ移すと「fixture catalogが製品の一部」に見える。この誤読は避けたい
+3. **I-1cは残る限界をそのまま残す。** §4.12が明示した依存が消えない
+
+#### I-1aで増える観測と、増えないもの
+
+**増える観測**：entryが`ParseIntent`と`IntentFingerprint`を**自分で**呼べるため、childの`intentFingerprint`申告に依存せずに「entryが読んだ宣言の照合値」を持てる。`intentBinding`が今は「childの申告との一致」しか言えないのに対し、**entry自身の導出値**を基準にできる。
+
+**増えないもの**：**L2-b**。計画の導出は依然childにあり、`planCrossCheck`の限界（二つの自己申告の一致）は変わらない。**(c)も変わらない。**
+
+**I-1aの後に残るもの**：計画の導出をentryが行う経路（I-1b）。これは`ResolutionContext`の設計判断を伴うため、別の設計判断として切り出す。
+
+#### I-1aの作業範囲（見積り）
+
+| 作業 | 対象 |
+| --- | --- |
+| 新パッケージの作成 | `intent.go`の型・`ParseIntent`・`NormalizeIntent`・`IntentFingerprint`、`input_json.go` |
+| `ParseFixtureCatalog`の扱い | これは`BuildPlan`の解決に使う。I-1aでは**移さない**（`tools/`に残す）。entryが宣言だけを読む用途では不要 |
+| `tools/`側の追随 | `intent.go`の残りが新パッケージをimportする形へ変更。`Resolve`はそのまま |
+| 試験 | `intent`関連の試験を新パッケージ側へ複製せず、**新パッケージの試験として書き直す**（`tools/`側は`Resolve`の試験を残す） |
+
+**この見積りは本節の範囲では実行しない。** 実装は次の周へ回す。
+
+### 4.14 I-1aを実装し、(a)(b)を埋めた（2026-11-09）
+
+§4.13の見積りどおりにI-1aを実装し、続けて**§4.8の(a)(b)**を埋めた。二つは独立の変更だが、狙いは同じである——**entryが宣言について自分で確かめられる範囲を広げる**こと。
+
+#### I-1a：宣言readerを`internal/buildintent`へ
+
+| 対象 | 扱い |
+| --- | --- |
+| `BuildIntent`とその型・`ParseIntent`・`ValidateSourceRef`・`NormalizeIntent`・`IntentFingerprint`・`FingerprintJSON`・`ValidateInputJSON` | **`internal/buildintent`へ移動** |
+| `Resolve`・`ResolutionContext`・`DirSourceResolver`・`ParseFixtureCatalog`・`NewFixtureContext` | **`tools/`に残す**（fixture catalogは製品の概念ではない） |
+
+`tools/reference-build-authoring-intent/intent.go`は**型aliasと薄い委譲**だけになった。型は複製ではなくaliasなので、宣言の定義はリポジトリに一つだけである。`Resolve`の試験は**無変更で通った**。
+
+**entryの宣言読みが変わった。** `cmd/tei`の`readIntentDeclaration`は`map[string]json.RawMessage`で一部の欄だけを見ており、**未知キー・大文字小文字の別名・導出値の手書きを見逃していた**。共有readerへ置き換えたことで、entryも同じ規則で拒否する。これは挙動の変更なので、厳密readerを通らない既存fixtureを実際の宣言へ差し替えた。
+
+entryは導出した宣言の照合値を`intentDeclaration.intentFingerprint`として記録する。**childの申告に依存しない基準**をentryが持つことになる。
+
+#### (a)(b)：builder childが宣言を読む
+
+`tools/reference-plugin-package-build-child`へ`-intent`（省略可）を足した。渡すとchildは共有readerで宣言を読み、`intentBytesDigest`（childが読んだbyte）・`intentFingerprint`（childが導いた照合値）・`intentBoundToPlan`を申告する。
+
+| 条件 | 挙動 |
+| --- | --- |
+| 宣言のsubjectがplanのPluginと一致しない | **artifactを書いた後にreportを出さずexit 1**。一致し得ない二つの値を「読んだ値」として返さないため |
+| `-intent`を渡さない | 宣言の欄を**出さない**。欄が無いことを合格と読ませないため |
+
+entry側（`cmd/tei`）は**変更不要**だった。childが申告するようになったことで`intentBinding`が自動的に埋まる。
+
+#### 観測結果（WSL2 Ubuntu 22.04 / go1.27.3）
+
+| 欄 | 値 |
+| --- | --- |
+| `intentDeclaration.digest`（entryが保持） | `sha256:d5131c505d7d013d713ae5196e76aaa5a0ff238b51a82378a7786a130082940b` |
+| `intentBinding.childIntentBytesDigest`（childが読んだ） | **同じ値** |
+| `intentBinding.intentByteCheckPerformed` | **`true`** |
+| `intentBinding.intentByteCheckMatched` | **`true`** |
+| `intentDeclaration.intentFingerprint`（entryが導出） | `c4cf576f5e6946484ad321e6f1b3dc7ec4d711052be1460dd1db9da210a65dff` |
+| `intentBinding.childIntentFingerprint`（builder childが導出） | **同じ値** |
+| `planReceipt.intentFingerprint`（解決childが導出） | **同じ値** |
+
+**三つの独立した導出が同じ値になり、entryとbuilder childのbyte digestも一致した。**
+
+#### この段で埋まったもの・埋まらないもの
+
+**埋まった**：§4.8の(a)と(b)。childが読んだ宣言byteのdigestをchild自身が申告し、それがentryの保持したbyteと一致した。
+
+**埋まらない**：**L2-b**。`l2bClaimed`は両欄とも`false`である。
+
+- (a)(b)が埋まったことは「**childが同じ宣言を読んだ**」ことを示す。(c)の「その計画がそのartifactを生んだか」は変わらない
+- しかし**「childがその宣言からその計画を導いた」ことの証明にはならない。** childは`-plan`を入力として受け取り、宣言は**identityの照合にだけ**使う。計画の導出はchildの別の入力（`-plan`）に依存している
+- childの申告が真である保証もない。entryが比べられるのは自分が導いた値との一致までである
+
+#### 次に詰めること
+
+残る段差は**childが宣言から計画を導くこと**、すなわち**I-1b**（`Resolve`を`internal/`へ移し、entryまたはchildが計画まで独立に導く）である。`ResolutionContext`の設計判断を伴うため、別の設計判断として切り出す。
+
+**より小さい一歩**として、childがsubject identityに加えて**`outputKind`・`target`・`profile`もplanと比べる**ことができる。§4.8の(c)を直接埋めはしないが、**宣言とplanが同じbuild座標を指す**ことを増やせる。
+
+### 4.15 宣言とplanのbuild座標を照合する（2026-11-09）
+
+§4.14末尾の「より小さい一歩」を実装した。§4.14ではsubject identity（PluginのIDとversion）だけを比べていたが、**identityが一致しても別のbuildを指す場合がある**（`outputKind`・`target`・`profile`）。
+
+| 座標 | 何が変わるか |
+| --- | --- |
+| `outputKind` | 配布物か実行物か。消費経路とauthorityが変わる |
+| `target` | どのOS・arch向けか |
+| `profile` | releaseかdebugか |
+
+**三つを一つずつ比べ、違えばartifactを書いた後にreportを出さずexit 1にする。** reportを返すと、照合できなかった組み合わせが「返ってきた」と読まれるためである。どの座標が違ったかはstderrで名指しする。
+
+**`profile`の省略は一致と読まない。** 宣言が`profile`を書かないことは「planのprofileと同じ」ではない。これは`unperformed`を`matched`と読ませない原則と同じ扱いである。
+
+**それでもL2-bではない。** 座標の一致が示すのは「宣言とplanが同じbuildを指す」ことであり、`l2bClaimed`は`false`のままである。(c)も`bound`では出ない。宣言の他の欄（`sources`・`builder`・`recipe`・`dependencies`・`parameters`・`secretRequirements`）は未照合である。
+
+**座標照合をさらに広げるより、I-1bとしてまとめて扱う方がよい。** 欄ごとに照合を足していくと「照合した」が「導出した」に見えやすくなる。§4.8が禁じた混同そのものである。
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
@@ -365,6 +569,11 @@ P-1のchildが実装できたとして、観測できるのは次である。
 | SC0-12 | 既存の`scope: selected-read-only-commands`を「書込み系も含む」と読み直す | 既存consumerの前提を変える。D-1の契約判断なしに行わない |
 | SC0-13 | childが**別の宣言**を読んで別のBuild Planを返す（渡した宣言のdigestとchildの読んだものが違う） | L2-b不可。`intentBinding.intentByteCheckMatched`がfalseになり、`planCrossCheck`が`mismatched`になる（実装済み） |
 | SC0-14 | childの`IntentFingerprint`だけを記録し、渡した宣言のbyte digestを記録しない | L2-b不可。entryは`intentBinding.intentBytesDigest`を必ず記録し、childの`IntentFingerprint`だけでは突合しない（実装済み） |
+| SC0-15 | childが自分のlockを作るが`Validate`を通らない | reportを出さずexit 1。検証できなかった束縛を「返ってきた」と読ませない（§4.12） |
+| SC0-16 | childのlock fingerprintとentryのlock fingerprintが違う | `planArtifactBinding.state=mismatched`・`childLockMatched=false`・`ok=false`（§4.12） |
+| SC0-17 | builder childがentryの保持した宣言と**別の宣言**を読む | `intentBinding.intentByteCheckMatched=false`・`ok=false`。childが読んだbyteをself-reportさせることで初めて検出できる（§4.14） |
+| SC0-18 | builder childへ`-intent`を渡さず、沈黙を合格と読む | `intentByteCheckPerformed=false`と理由が残る。欄が無いことを一致と読ませない（§4.14） |
+| SC0-19 | builder childが読む宣言がplanのPluginと別のsubjectを指す | childがreportを出さずexit 1。一致し得ない二つの値を「読んだ値」として返さない（§4.14） |
 
 ## 6. 未決事項
 
@@ -395,12 +604,19 @@ P-1のchildが実装できたとして、観測できるのは次である。
 - [x] `-intent`（I-2）の実装。SC0-01〜05は外形の拒否条件として、SC0-13・SC0-14は`intentBinding`と`planCrossCheck`として実装・実試験済み（§4.9）
 - [x] §4の外形（`-supply`・`-state`・`-output`・`qualified`欄）の実装（[#3463](https://github.com/hat47x/tei-platform/pull/3463)・[#3476](https://github.com/hat47x/tei-platform/pull/3476)）
 - [x] 計画突合の3状態を実プロセスで観測（[記録](../evidence/TEI_GO_SELF_BUILD_PLAN_CROSS_CHECK_ACTUAL_2026-11-09.md)、`3a4ddeba6`）
-- [x] 既存toolの走査と、`unperformed`の実質的な原因の特定（§4.10.1）
-- [ ] **P-1**（`internal/plugin`の`BuildPlan`を消費し、artifactを書き、`planFingerprint`を返すchild）の実装と、実プロセスでの`planCrossCheck=matched`観測
-- [ ] **(c) artifactがその計画の出力であること**の観測（`plugin.LockedBuild`のような束ね型を使う。§4.10.3）
+- [x] **P-1**（`internal/plugin`の`BuildPlan`を消費し、artifactを書き、`planFingerprint`を返すchild）の実装と、実プロセスでの`planCrossCheck=matched`観測（[記録](../evidence/TEI_GO_SELF_BUILD_PLAN_MATCHED_2026-11-09.md)、`e4b478581`）
+- [x] (c)の一歩目（`planArtifactBinding`。検証済みlockで計画fingerprintとartifact digestを束ね、digestをディスクと突き合わせる。§4.11）
+- [x] `planCrossCheck=matched`と`planArtifactBinding=bound`の**同時**実測（[記録](../evidence/TEI_GO_SELF_BUILD_MATCHED_AND_BOUND_2026-11-09.md)、`99b220ae0`）
+- [x] builderが自分で`BuildArtifactLock`を作って返す経路（§4.12。entryのlockとの一致を実測。[記録](../evidence/TEI_GO_SELF_BUILD_CHILD_LOCK_2026-11-09.md)、`669bc83f0`）
+- [x] I-1の実測見積りと案の選択（§4.13。**I-1a（解析だけを`internal/`へ移す）**を次の一歩に）
+- [x] **I-1a**（`ParseIntent`・`IntentFingerprint`を`internal/`の新パッケージへ移し、entryが宣言を自分で読む）の実装（§4.14、[記録](../evidence/TEI_GO_SELF_BUILD_ENTRY_INTENT_FINGERPRINT_2026-11-09.md)、`f522e8c65`）
+- [x] §4.8の(a)(b)（builder childが宣言byteを申告し、entryの保持byteと一致する）の実装（§4.14、[記録](../evidence/TEI_GO_SELF_BUILD_CHILD_DECLARATION_2026-11-09.md)、`ee7148138`）
+- [ ] entryまたはchildが宣言から**計画まで**独立に導く経路（I-1b。`ResolutionContext`の設計判断を伴う。§4.14末尾）
+- [x] 宣言とplanの**build座標**（`outputKind`・`target`・`profile`）の照合（[#3652](https://github.com/hat47x/tei-platform/pull/3652)。childが三座標を一つずつ比べ、違えばartifactを書いた後にreportを出さずexit 1。[記録](../evidence/TEI_GO_SELF_BUILD_BUILD_COORDINATES_2026-11-09.md)）
+- [ ] 宣言の他の欄（`sources`・`builder`・`recipe`・`dependencies`・`parameters`・`secretRequirements`）の照合。座標照合を広げるよりI-1bとしてまとめる方が「導出した」と「照合した」の混同を避けられる（§4.15末尾）
 - [ ] D-1（catalogの`scope`拡張）を採るかどうかの契約判断（採る場合のみ、catalogの広告と実応答の一致を照合へ載せる）
 
-**A-1（`gobuilder`移動）は採らないため、影響範囲の洗い出しは終了条件から外した。** 29ファイルの内訳は[記録](../evidence/TEI_GO_INTERNAL_RULE_AND_BUILDER_MOVE_2026-11-07.md)として残す。I-1（intent解析の`internal/`への切り出し）も、I-2を既定案にしたため本稿では行わない。
+**A-1（`gobuilder`移動）は採らないため、影響範囲の洗い出しは終了条件から外した。** 29ファイルの内訳は[記録](../evidence/TEI_GO_INTERNAL_RULE_AND_BUILDER_MOVE_2026-11-07.md)として残す。I-1は「採らない」から「I-1aとして着手」へ改めた（§4.13）。`ParseFixtureCatalog`（fixture catalog）は`tools/`に残す。
 
 **P-2（`reference-go-build-with-supply`への欄追加）は採らない。** 計画を解釈しないchildに欄を足すと`unperformed`が`matched`に変わるが、主張の強さは変わらない（§4.10.2）。
 
