@@ -48,8 +48,13 @@ func TestHookScopeFitsPattern(t *testing.T) {
 		{application.PatternBrowse, "row", true},
 		{application.PatternBrowse, "record", true},
 		{application.PatternBrowse, "header", false},
+		// browse and header-detail cannot declare an interaction at all, so their
+		// entries document the mapping, not a reachable declaration.
 		{application.PatternRecord, "record", true},
-		{application.PatternRecord, "row", false},
+		// A record pattern can also decide per row: RunRows applies a row scope, and
+		// the interaction contract exists only on record patterns, so refusing row
+		// here would make the whole row scope undeclarable.
+		{application.PatternRecord, "row", true},
 		{application.PatternHeaderDetail, "header", true},
 		{application.PatternHeaderDetail, "row", true},
 		{application.PatternHeaderDetail, "record", false},
@@ -68,7 +73,7 @@ func TestHookScopeFitsPattern(t *testing.T) {
 // TestHookScopeAcceptsAMatchingUnit checks that a scope the pattern looks at
 // produces no diagnostic.
 func TestHookScopeAcceptsAMatchingUnit(t *testing.T) {
-	for _, scope := range []string{"record"} {
+	for _, scope := range []string{"record", "row"} {
 		if codes := hookScopeCodes(recordPatternWithHook(scope)); len(codes) != 0 {
 			t.Fatalf("scope %s: codes=%v", scope, codes)
 		}
