@@ -71,41 +71,43 @@ func TestCompareIntentFieldsIgnoresTheResolvedBuilderIdentity(t *testing.T) {
 	}
 }
 
-// A provider selection is compared too. #3684 wrote this test expecting the
-// provider to be ignored as "a policy the resolver applies"; #3670, merged from
-// a parallel branch, compares it. The two landed together and left the tree red,
-// so this records the merged behaviour instead of the expectation that lost.
-//
-// Comparing it is safe in the normal path: ResolveBuilder filters candidates by
-// the wired provider, so a plan derived from this declaration always resolves the
-// wired plugin. The comparison therefore only fires when the plan did not come
-// from this declaration, which is exactly the case worth refusing.
-func TestCompareIntentFieldsChecksAProviderSelection(t *testing.T) {
-	plan := fixturePlan(t)
-
-	agreeing := declarationFor(t, func(i *buildintent.BuildIntent) {
-		i.Builder.Provider = &buildintent.ProviderWiring{Plugin: plan.Builder.ID}
-	})
-	if err := compareIntentFields(agreeing, plan); err != nil {
-		t.Fatalf("a provider naming the resolved builder was refused: %v", err)
-	}
-
-	other := declarationFor(t, func(i *buildintent.BuildIntent) {
+// A wired provider is a requirement the child does check (#3670): if the plan
+// resolved a different builder, the declaration's choice was not honoured.
+// This used to assert the opposite, which contradicted main_test.go's
+// end-to-end provider case and left the package failing (#3697 follow-up).
+func TestCompareIntentFieldsRefusesADifferentWiredProvider(t *testing.T) {
+	intent := declarationFor(t, func(i *buildintent.BuildIntent) {
 		i.Builder.Provider = &buildintent.ProviderWiring{Plugin: "tei.builder.other.seed"}
 	})
-	if err := compareIntentFields(other, plan); err == nil {
-		t.Fatal("a provider naming another builder was accepted")
+	err := compareIntentFields(intent, fixturePlan(t))
+	if err == nil {
+		t.Fatal("a provider the plan did not resolve was accepted")
 	}
+	if !strings.Contains(err.Error(), "tei.builder.other.seed") {
+		t.Fatalf("the refusal does not name the wired provider: %v", err)
+	}
+}
 
-	// provider.implementation has no counterpart in plugin.BuilderIdentity, so it
-	// is not compared: a differing implementation must not fail the comparison.
-	wired := declarationFor(t, func(i *buildintent.BuildIntent) {
-		i.Builder.Provider = &buildintent.ProviderWiring{
-			Plugin:         plan.Builder.ID,
-			Implementation: "an-implementation-the-plan-does-not-record",
-		}
+// An agreeing provider is not a mismatch: a comparison that always fails is not
+// a comparison.
+func TestCompareIntentFieldsAcceptsTheResolvedWiredProvider(t *testing.T) {
+	plan := fixturePlan(t)
+	intent := declarationFor(t, func(i *buildintent.BuildIntent) {
+		i.Builder.Provider = &buildintent.ProviderWiring{Plugin: plan.Builder.ID}
 	})
-	if err := compareIntentFields(wired, plan); err != nil {
-		t.Fatalf("an unrecorded implementation field broke the comparison: %v", err)
+	if err := compareIntentFields(intent, plan); err != nil {
+		t.Fatalf("the resolved provider was refused: %v", err)
+	}
+}
+
+// provider.implementation has no counterpart in plugin.BuilderIdentity, so it is
+// not compared. Naming the gap keeps a later reader from assuming it is checked.
+func TestCompareIntentFieldsIgnoresTheProviderImplementation(t *testing.T) {
+	plan := fixturePlan(t)
+	intent := declarationFor(t, func(i *buildintent.BuildIntent) {
+		i.Builder.Provider = &buildintent.ProviderWiring{Plugin: plan.Builder.ID, Implementation: "some.other.implementation"}
+	})
+	if err := compareIntentFields(intent, plan); err != nil {
+		t.Fatalf("an unmatched provider.implementation was treated as a mismatch: %v", err)
 	}
 }
