@@ -1,0 +1,7 @@
+=== RUN   TestAnEmptyExecutorIdentityIsFilled
+--- PASS: TestAnEmptyExecutorIdentityIsFilled (0.00s)
+=== RUN   TestAForeignExecutorIdentityIsNotOverwritten
+--- PASS: TestAForeignExecutorIdentityIsNotOverwritten (0.00s)
+=== RUN   TestAForeignExecutorIdentityIsRejectedByValidateResult
+--- PASS: TestAForeignExecutorIdentityIsRejectedByValidateResult (0.00s)
+ok  	tei/internal/plugin/runtime	0.012s

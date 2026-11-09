@@ -1,4 +1,4 @@
-# フック宣言の範囲（scope）の確認（2026-11）
+﻿# フック宣言の範囲（scope）の確認（2026-11）
 
 ## 対象
 
@@ -48,16 +48,21 @@ X-TEAのイベントスクリプトにも範囲の宣言が無く、行単位で
 
 ## 試験を書く過程で分かったこと
 
-最初は**browse Pattern**へフックを付けて検査しようとしましたが、診断が出ませんでした。フック宣言の検査は`validateRecordPatternInteraction`にあり、**record Patternの経路でしか走らない**ためです。フィクスチャをrecord Patternへ変えて確認しました。
+最初は**browse Pattern**へフックを付けて検査しようとしましたが、診断が出ませんでした。フィクスチャをrecord Patternへ変えて確認しました。
 
-これは「範囲の検査がrecord Patternにしか無い」という実装の現状でもあります（下記）。
+**その理由を最初は「record Patternの経路でしか検査が走らない」と書きましたが、誤りでした。** 実際には、browse などの record 以外の Pattern は `interaction` 自体を持てません（`APPLICATION_PATTERN_INTERACTION_NOT_ALLOWED`:「the first interaction contract is limited to record patterns」）。フックは `interaction` の中にあるので、record 以外では**宣言そのものが拒否**されます。
+
+つまり検査の非対称ではなく、**対話の契約が今は record Pattern に限られている**という明示的な設計です。フックが検査されない record 以外の Pattern は存在しません。
 
 ## 読み取れないこと
 
-- **browse・header-detail・command Patternのフック宣言は検査されません。** フックの宣言と検査は今のところrecord Patternの経路にだけあります。範囲を足したことで、この非対称が表に出ました。
+- **browse・header-detail・command Pattern は `interaction` を持てません**（`APPLICATION_PATTERN_INTERACTION_NOT_ALLOWED`）。フックは`interaction`の中にあるため、これらでは宣言そのものが拒否されます。つまりフックが検査をすり抜ける経路はありません。**範囲を他のPattern種別でも使えるようにするには、まず`interaction`の契約を広げる判断が要ります。**
 - 範囲が実行時に効くこと（行ごとに判定を繰り返す等）。今は宣言と検査だけです。
+- `interaction` の契約を record 以外へ広げること（範囲をそれらの種別で使う前提）。
 - 実Provider・実DB・旧Runtimeでの観測。
 
 ## 位置付け
 
-参照実装の試験記録であり、製品の受入や本番適格性を示しません。範囲の宣言・検査・投影は参照実装で確認済み、実行時の適用とrecord以外のPattern種別の検査は未実装です。
+参照実装の試験記録であり、製品の受入や本番適格性を示しません。範囲の宣言・検査・投影は参照実装で確認済み、実行時の適用は未実装です。
+
+
