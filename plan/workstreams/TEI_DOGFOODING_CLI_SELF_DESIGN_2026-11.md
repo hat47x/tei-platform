@@ -737,3 +737,19 @@ ADR-0048 §2.4 の「既定値の適用は共通契約で定める」を、CLI �
 試験は `cmd/tei/cli_view_execute_code_test.go` の2件。変異（集合を元の3符号に戻す）で両方の失敗が検出されることを確認した。
 
 **未解決の論点**: `-operation-log` は同じパスへ2回書くと後の実行だけが残る（`os.WriteFile` の truncate）。文書に明示が無く、追記か上書きかは設計判断が要るため、今回は変更していない点を記録した。起票は [#3797](https://github.com/hat47x/tei-platform/issues/3797)。
+
+## 27. 第22ラウンド（2026-11-09）: 手書きの符号許可リストが21中15を潰していた
+
+21ラウンドで「符号の対応表が手書きで、抜けが出る」型の欠陥が3回続いた（#3733・#3765・#3797）。個別に直すのではなく、**列挙そのものを無くせるか**を確かめた。生出力は[第22ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND22_CODE_COVERAGE_2026-11-09/README.md)にある。
+
+`internal/command` が `ExecutionError` として返す符号は **21**。`cmd/tei/cli_view.go` の `reportedExecutionCodes` は **7**（うち1つは CLI 合成）。**15個が既定の `COMMAND_FAILED` に潰れていた** — `COMMAND_DATASOURCE_READ_ONLY`（読み取り専用宣言への違反）・`COMMAND_COMMIT_FAILED`（適用有無が不明）・`COMMAND_PERIOD_CLOSED`（業務上の拒否）など、呼出し元の行動が変わるものが含まれる。
+
+さらに**入口ごとに食い違っていた**。`internal/studiohost` は1符号だけを特別扱いし、残り全部を `COMMAND_FAILED` にしていた。CLI は7、Studio は1。
+
+修正: 列挙を廃止し、`internal/command` に `ReportedFailure` を1つ置いて両入口がそれを呼ぶ。`ExecutionError` はすでに `Code` を持っているので、選別しない。ただし `EffectMayBeUnknown`（適用された可能性がある）を**先に**見る — 盲目的な再試行が二重適用になるため、具体的な符号より優先する必要がある（最初この順序を逆にして既存試験が落ちた）。
+
+再発防止: `reported_failure_test.go` が**パッケージのソースを AST で走査**し、`Code:` に現れる全リテラルが規則を通ることを確かめる。試験側に符号一覧を書けば本番の一覧と同じようにずれるため、ソースを真とした。変異2種で確認 — 新しい符号を追加すると規則が汎用なので**通る**（これが狙い）、許可リストを再導入すると**落ちる**。
+
+**意図的な挙動変更を含む。** 3つの既存試験の期待値を書き換えた。うち1つ（`studiohost` の認可拒否）は、符号が使えなかったための回避策（`strings.Contains(message, "COMMAND_UNAUTHORIZED")`）であり、今回それが必要なくなった。
+
+残る作業: 現れうる符号の集合を契約文書へ反映する（#3419）。起票は [#3807](https://github.com/hat47x/tei-platform/issues/3807)。

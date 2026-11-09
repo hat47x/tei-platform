@@ -2,7 +2,6 @@ package studiohost
 
 import (
 	"context"
-	"errors"
 
 	"tei/internal/applicationview"
 	"tei/internal/command"
@@ -207,9 +206,12 @@ func (h *ReadOnly) executeCommand(workspaceID, applicationID, patternID, capabil
 		result, err = invoker.Invoke(context.Background(), request)
 	}
 	if err != nil {
-		var execution *command.ExecutionError
-		if errors.As(err, &execution) && execution.Code == "COMMAND_LIFECYCLE_REFUSED" {
-			return CommandRunResponse{Failure: &Failure{Code: "COMMAND_LIFECYCLE_REFUSED", Stage: "command", Message: execution.Message}}
+		// The same rule the CLI uses: an ExecutionError already names the
+		// reason. This entrance used to special-case only the lifecycle refusal,
+		// so a missing input, a closed period or a failed commit all arrived as
+		// COMMAND_FAILED (#3807).
+		if code, message, ok := command.ReportedFailure(err); ok {
+			return CommandRunResponse{Failure: &Failure{Code: code, Stage: "command", Message: message}}
 		}
 		return CommandRunResponse{Failure: &Failure{Code: "COMMAND_FAILED", Stage: "command", Message: err.Error()}}
 	}
