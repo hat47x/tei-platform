@@ -166,10 +166,9 @@ func serve(in io.Reader, out io.Writer, workspace string) error {
 		if line == "" {
 			continue
 		}
-		var request rpcRequest
-		if err := json.Unmarshal([]byte(line), &request); err != nil {
-			if err := encoder.Encode(rpcResponse{JSONRPC: "2.0",
-				Error: &rpcError{Code: -32700, Message: "parse error"}}); err != nil {
+		request, rejection := decodeRequest(line)
+		if rejection != nil {
+			if err := encoder.Encode(rejection); err != nil {
 				return err
 			}
 			continue
@@ -182,6 +181,52 @@ func serve(in io.Reader, out io.Writer, workspace string) error {
 			return err
 		}
 	}
+}
+
+// decodeRequest checks the JSON-RPC envelope of one line. It returns either a
+// request or the single response that refuses the line. A request without an
+// id is a notification and is returned with a nil ID; a notification that is
+// malformed is dropped without a reply, because a notification never gets one.
+// The id must be a string or a number: MCP forbids null, and an id that cannot
+// be echoed is answered with a null id (#3420).
+func decodeRequest(line string) (rpcRequest, *rpcResponse) {
+	refuse := func(code int, message string) (rpcRequest, *rpcResponse) {
+		return rpcRequest{}, &rpcResponse{JSONRPC: "2.0", Error: &rpcError{Code: code, Message: message}}
+	}
+	if !json.Valid([]byte(line)) {
+		return refuse(-32700, "parse error")
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(line), &fields); err != nil || fields == nil {
+		return refuse(-32600, "invalid request: a request must be one JSON object (batches are not supported)")
+	}
+	var request rpcRequest
+	if raw, ok := fields["id"]; ok {
+		if first := strings.TrimSpace(string(raw)); first == "" || (first[0] != '"' && first[0] != '-' && (first[0] < '0' || first[0] > '9')) {
+			return refuse(-32600, "invalid request: id must be a string or a number")
+		}
+		request.ID = raw
+	}
+	invalid := func(message string) (rpcRequest, *rpcResponse) {
+		if request.ID == nil {
+			return rpcRequest{}, nil
+		}
+		return rpcRequest{}, &rpcResponse{JSONRPC: "2.0", ID: request.ID,
+			Error: &rpcError{Code: -32600, Message: "invalid request: " + message}}
+	}
+	if err := json.Unmarshal(fields["jsonrpc"], &request.JSONRPC); err != nil || request.JSONRPC != "2.0" {
+		return invalid(`jsonrpc must be the string "2.0"`)
+	}
+	if err := json.Unmarshal(fields["method"], &request.Method); err != nil || request.Method == "" {
+		return invalid("method must be a non-empty string")
+	}
+	if raw, ok := fields["params"]; ok {
+		if first := strings.TrimSpace(string(raw)); first == "" || (first != "null" && first[0] != '{' && first[0] != '[') {
+			return invalid("params must be an object or an array")
+		}
+		request.Params = raw
+	}
+	return request, nil
 }
 
 // readRequestLine reads one line without buffering more than maxRequestBytes
@@ -319,20 +364,34 @@ func toolList() []tool {
 }
 
 func callTool(params json.RawMessage, workspace string) (toolResult, error) {
+	if len(bytes.TrimSpace(params)) == 0 {
+		// A tools/call without params is a client error. Reporting the decoder's
+		// "unexpected end of JSON input" names the wrong thing (#3420).
+		return toolResult{}, fmt.Errorf("tools/call requires params with a name")
+	}
+	if bytes.Equal(bytes.TrimSpace(params), []byte("null")) {
+		return toolResult{}, fmt.Errorf("tools/call requires params with a name, not null")
+	}
 	var call struct {
-		Name      string          `json:"name"`
+		Name      *string         `json:"name"`
 		Arguments json.RawMessage `json:"arguments"`
 	}
 	if err := json.Unmarshal(params, &call); err != nil {
-		return toolResult{}, fmt.Errorf("invalid tools/call params: %w", err)
+		return toolResult{}, fmt.Errorf("tools/call params must be an object with a string name")
+	}
+	if call.Name == nil {
+		return toolResult{}, fmt.Errorf("tools/call requires a name")
+	}
+	if strings.TrimSpace(*call.Name) == "" {
+		return toolResult{}, fmt.Errorf("tools/call name must not be an empty string")
 	}
 	var arguments map[string]json.RawMessage
-	if len(call.Arguments) > 0 {
+	if len(call.Arguments) > 0 && !bytes.Equal(bytes.TrimSpace(call.Arguments), []byte("null")) {
 		if err := json.Unmarshal(call.Arguments, &arguments); err != nil {
-			return toolResult{}, fmt.Errorf("invalid arguments: %w", err)
+			return toolResult{}, fmt.Errorf("tools/call arguments must be an object")
 		}
 	}
-	payload, isError, err := dispatch(call.Name, arguments, workspace)
+	payload, isError, err := dispatch(*call.Name, arguments, workspace)
 	if err != nil {
 		return toolResult{}, err
 	}
@@ -343,9 +402,65 @@ func callTool(params json.RawMessage, workspace string) (toolResult, error) {
 	return toolResult{Content: []textContent{{Type: "text", Text: string(raw)}}, IsError: isError}, nil
 }
 
+// declaredArguments returns the argument names a tool declares in its
+// inputSchema.
+//
+// The schema is the contract a client reads, so it is also the only list the
+// adapter may accept. This used to be a second hand-written table; when it
+// drifted permissively (an argument the schema did not declare), no test
+// noticed and only a separate per-tool check happened to refuse the call
+// (#3823). Deriving the list removes the possibility instead of testing for it.
+func declaredArguments(tool tool) []string {
+	properties, ok := tool.InputSchema["properties"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	names := make([]string, 0, len(properties))
+	for name := range properties {
+		names = append(names, name)
+	}
+	// Stable order so an error message lists the same arguments every run.
+	sort.Strings(names)
+	return names
+}
+
+// toolByName finds an advertised tool.
+func toolByName(name string) (tool, bool) {
+	for _, candidate := range toolList() {
+		if candidate.Name == name {
+			return candidate, true
+		}
+	}
+	return tool{}, false
+}
+
+func checkArguments(name string, arguments map[string]json.RawMessage) error {
+	declared, ok := toolByName(name)
+	if !ok {
+		return fmt.Errorf("unknown tool %q", name)
+	}
+	allowed := declaredArguments(declared)
+	for key := range arguments {
+		found := false
+		for _, permit := range allowed {
+			if key == permit {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("unknown argument %q for tool %q", key, name)
+		}
+	}
+	return nil
+}
+
 // dispatch maps a tool name to one operations call. The envelope fields match
 // the CLI's schemaVersion/ok/result/error contract for that command.
 func dispatch(name string, arguments map[string]json.RawMessage, workspace string) (any, bool, error) {
+	if err := checkArguments(name, arguments); err != nil {
+		return nil, false, err
+	}
 	switch name {
 	case "tei_model_catalog":
 		if err := rejectUnknownArguments(arguments, "namespace"); err != nil {

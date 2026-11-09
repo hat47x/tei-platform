@@ -4,9 +4,9 @@ X-TEAのローコード知見から受容した表現を、小さな作業領域
 
 ## 構成
 
-- `semantic/sales/order.tei`: 受注・明細・支払、作成・削除・`submit_order`能力、`sales.month`期間、`sales.fiscal`暦（年度開始4月・週開始月曜・休日Data）、受注の候補キー、明細から受注への`on-delete cascade`、支払から受注への`on-delete restrict`とkey対応。
+- `semantic/sales/order.tei`: 受注・明細・支払、作成・削除・`submit_order`能力、`sales.month`期間、`sales.fiscal`暦（年度開始4月・週開始月曜・休日Data）、`sales.month`の20日締め、受注の候補キー、明細から受注への`on-delete cascade`、支払から受注への`on-delete restrict`とkey対応。
 - `semantic/customer/customer.tei`: 顧客。
-- `semantic/master/standard.tei`: 標準業務のData。休日、税率（適用期間の両端・端数処理）、為替（率の種類・会計年度・月順序）、採番（規則識別・桁・接頭辞・検査数字・桁あふれ）。属性は列名ではなく`role`で結合先を示す。
+- `semantic/master/standard.tei`: 標準業務のData。休日、税率（適用期間の両端・端数処理）、為替（率の種類・会計年度・月順序）、採番（規則識別・桁・接頭辞・検査数字・桁あふれ）、利用者設定（設定の鍵・値・利用者）。属性は列名ではなく`role`で結合先を示す。
 - `applications/order-entry/`: 一覧、単票、参照、見出し明細、command、hook、Package、作成・削除のcommand。
 - `applications/order-entry/queries/`: 一覧の問い合わせとSQL。
 - `databases/sales-core/`: 参照先データベース。
@@ -80,5 +80,6 @@ CGO_ENABLED=0 go build -mod=readonly -tags server -o tei-studio-server .
 
 Studioはloopback限定の読取り専用Hostであり、接続者認証・業務操作の認可・利用者間の分離を提供しません。詳細は[Studio README](../../cmd/tei-studio/README.md)を参照してください。
 server buildと`/health`の確認記録は[Studioサーバー起動確認](../../plan/evidence/XTEA_LOWCODE_EXAMPLE_STUDIO_SMOKE_2026-11.md)にあります。画面表示・Wails RPC・Desktop WebViewは未確認です。
+
 
 

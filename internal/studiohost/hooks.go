@@ -2,9 +2,8 @@ package studiohost
 
 import (
 	"context"
-	"errors"
 
-	"tei/internal/application"
+	"tei/internal/command"
 	"tei/internal/core"
 	"tei/internal/hook"
 	"tei/internal/ir"
@@ -13,93 +12,54 @@ import (
 // HookRunReport records the pattern hooks the Studio reference execution
 // consulted, and which of them it could not evaluate.
 //
-// It mirrors the CLI report (cmd/tei/cli_view_hooks.go): the Studio reference
-// host also has no data source, so a hook whose declared read the caller did
-// not supply is "not evaluated" with a reason, not a pass.
+// The phase policy lives in internal/hook (Runner.RunReachable), so Studio and
+// the CLI do not each carry their own copy. This type adds the boundary note
+// that a Studio reader needs.
 type HookRunReport struct {
-	Pattern      core.CanonicalID  `json:"pattern"`
-	Executed     []string          `json:"executed,omitempty"`
-	Warned       []string          `json:"warned,omitempty"`
-	Skipped      []string          `json:"skipped,omitempty"`
-	NotEvaluated []string          `json:"notEvaluated,omitempty"`
-	Reasons      map[string]string `json:"reasons,omitempty"`
-	Refused      string            `json:"refused,omitempty"`
-	Outcome      string            `json:"outcome,omitempty"`
-	Note         string            `json:"note"`
+	*hook.PhaseReport
+	Pattern core.CanonicalID `json:"pattern"`
+	Note    string           `json:"note"`
 }
 
 const hookRunNote = "the reference rule evaluates the declared reads only; running it does not accept the rule, observe the command effect, or grant authority"
 
-const (
-	hookSkipAfterChange = "the reference execution writes nothing, so there is no after-change point to run this phase at"
-	hookSkipNoSource    = "the reference execution has no data source for the declared read, so this phase was not evaluated"
-	hookSkipUnsupported = "the runner order does not name this phase, so it was not evaluated"
-)
-
 // runHooks runs the hooks a pattern declares that the reference execution can
 // reach, before the reference command runs.
 func (h *ReadOnly) runHooks(world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string) (*HookRunReport, error) {
-	declarations := studiohookDeclarations(world, applicationID, patternID)
-	if len(declarations) == 0 {
-		return nil, nil
-	}
-	report := &HookRunReport{
-		Pattern: patternID,
-		Note:    hookRunNote,
-		Reasons: map[string]string{},
-	}
 	runner := hook.Runner{World: world, Implementation: hook.ReferenceRule{}}
-	for _, phase := range hook.PhaseOrder {
-		declaration, declared := declarations[phase]
-		if !declared {
-			continue
-		}
-		if !studiohookBeforeChange(phase) {
-			report.Skipped = append(report.Skipped, phase)
-			report.Reasons[phase] = hookSkipAfterChange
-			continue
-		}
-		reads, missing := studiohookReads(declaration.Reads, inputs)
-		if missing != "" {
-			report.Skipped = append(report.Skipped, phase)
-			report.NotEvaluated = append(report.NotEvaluated, phase)
-			report.Reasons[phase] = hookSkipNoSource + ": " + missing
-			continue
-		}
-		err := runner.RunWithDeclaredReads(context.Background(), hook.Invocation{
-			Application: applicationID,
-			Pattern:     patternID,
-			Phase:       phase,
-			Reads:       reads,
-		})
-		if err == nil {
-			report.Executed = append(report.Executed, phase)
-			continue
-		}
-		var warning *hook.Warning
-		if errors.As(err, &warning) {
-			report.Warned = append(report.Warned, phase)
-			continue
-		}
-		report.Refused = phase
-		var notSatisfied *hook.NotSatisfied
-		if errors.As(err, &notSatisfied) {
-			report.Outcome = notSatisfied.Outcome
-		}
-		return report, err
+	// A hook that declares `uses` promises a call. Give the runner the boundary
+	// that can keep it, the same way the CLI does, so Studio does not report a
+	// phase as executed while its declared call never happened.
+	runner.Caller = hook.CommandCaller{
+		Invoker: command.Invoker{
+			World:      world,
+			Executor:   command.ReferenceExecutor{World: world},
+			UnitOfWork: &command.MemoryUnitOfWork{},
+			Authorizer: command.ReferenceAuthorizer{},
+		},
+		Application: applicationID,
+		Pattern: func(capability core.CanonicalID) (core.CanonicalID, bool) {
+			pattern, err := hook.CommandPatternFor(world, applicationID, capability)
+			if err != nil {
+				return "", false
+			}
+			return pattern, true
+		},
 	}
-	for phase := range declarations {
-		if studiohookKnownPhase(phase) {
-			continue
-		}
-		report.Skipped = append(report.Skipped, phase)
-		report.Reasons[phase] = hookSkipUnsupported
+	runner.CallInputs = studioHookCallInputs(world, applicationID, patternID, inputs)
+	report, err := runner.RunReachable(context.Background(), applicationID, patternID, studioAttributeValues(inputs), hook.ReferenceReach{})
+	if report == nil {
+		return nil, err
 	}
-	return report, nil
+	return &HookRunReport{PhaseReport: report, Pattern: patternID, Note: hookRunNote}, err
 }
 
-// studiohookDeclarations returns a pattern's hook declarations by phase.
-func studiohookDeclarations(world ir.World, applicationID, patternID core.CanonicalID) map[string]*application.Hook {
+// studioHookCallInputs binds, for each capability a pattern's hooks declare in
+// `uses`, the inputs the Command boundary receives. The hook's own inputs are
+// used as-is; this function does not invent a mapping from a hook's reads to a
+// capability's parameters. An unbound capability is reported as not called.
+func studioHookCallInputs(world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string) map[core.CanonicalID]map[string]string {
+	bound := map[core.CanonicalID]map[string]string{}
 	for i := range world.Applications {
 		if world.Applications[i].ID != applicationID {
 			continue
@@ -108,45 +68,29 @@ func studiohookDeclarations(world ir.World, applicationID, patternID core.Canoni
 			if pattern.ID != patternID || pattern.Interaction == nil {
 				continue
 			}
-			out := make(map[string]*application.Hook, len(pattern.Interaction.Hooks))
-			for j := range pattern.Interaction.Hooks {
-				phase := pattern.Interaction.Hooks[j].Phase
-				if _, exists := out[phase]; exists {
-					continue
+			for _, declaration := range pattern.Interaction.Hooks {
+				for _, capability := range declaration.Uses {
+					if _, done := bound[capability]; done {
+						continue
+					}
+					values := make(map[string]string, len(inputs))
+					for name, value := range inputs {
+						values[name] = value
+					}
+					bound[capability] = values
 				}
-				out[phase] = &pattern.Interaction.Hooks[j]
 			}
-			return out
 		}
 	}
-	return nil
+	return bound
 }
 
-func studiohookReads(declared []core.CanonicalID, inputs map[string]string) (map[core.CanonicalID]string, string) {
-	values := make(map[core.CanonicalID]string, len(declared))
-	for _, attribute := range declared {
-		value, ok := inputs[string(attribute)]
-		if !ok {
-			return nil, string(attribute)
-		}
-		values[attribute] = value
+// studioAttributeValues keys the caller's inputs by canonical attribute name so
+// the hook boundary can look up what each phase declares.
+func studioAttributeValues(inputs map[string]string) map[core.CanonicalID]string {
+	values := make(map[core.CanonicalID]string, len(inputs))
+	for name, value := range inputs {
+		values[core.CanonicalID(name)] = value
 	}
-	return values, ""
-}
-
-func studiohookBeforeChange(phase string) bool {
-	switch phase {
-	case "before-read", "before-create", "before-update", "before-delete":
-		return true
-	}
-	return false
-}
-
-func studiohookKnownPhase(phase string) bool {
-	for _, known := range hook.PhaseOrder {
-		if known == phase {
-			return true
-		}
-	}
-	return false
+	return values
 }

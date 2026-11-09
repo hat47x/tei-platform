@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"io"
 	"strings"
 
@@ -43,17 +44,17 @@ func runModelCommand(args []string, out io.Writer) (int, error) {
 		*namespace != strings.TrimSpace(*namespace) {
 		return fail("INVALID_ARGUMENT", "model catalog requires an exact -workspace and optional exact -namespace, without positional arguments", 2)
 	}
-	// An explicit -namespace "" is a different claim from an omitted flag (#3605):
-	// the shared-flag check cannot see this FlagSet, so the same rule is applied
-	// here. Omitting -namespace still means "no filter".
-	explicitNamespace := false
-	fs.Visit(func(f *flag.Flag) {
-		if f.Name == "namespace" {
-			explicitNamespace = true
-		}
-	})
-	if explicitNamespace && *namespace == "" {
-		return fail("INVALID_ARGUMENT", "model catalog: -namespace must not be an empty string; omit the flag to use no filter", 2)
+	// This command parses its own FlagSet, so the shared repeat check does not
+	// see it. Both flags hold one value; a second -namespace silently replaced
+	// the first (#3675).
+	if err := validateRepeatableArguments("model catalog", args[1:]); err != nil {
+		return fail("INVALID_ARGUMENT", err.Error(), 2)
+	}
+	if name := emptyStringFlag(fs, emptyStringFlagsNotAllowed["model catalog"]); name != "" {
+		// An explicit -namespace "" is not "no namespace": it used to reach
+		// the catalog as an empty filter and return every entry, which is a
+		// third outcome beside "omitted" and "a namespace ID" (#3605).
+		return fail("INVALID_ARGUMENT", fmt.Sprintf("model catalog: -%s must not be an empty string; omit the flag to list every namespace", name), 2)
 	}
 	result, err := operations.CatalogWorkspace(*root, *namespace)
 	if err != nil {

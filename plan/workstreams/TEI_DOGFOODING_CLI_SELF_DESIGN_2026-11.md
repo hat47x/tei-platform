@@ -512,6 +512,7 @@ D-9は残る。CLIは設計文書を索引に載せるが、意味の定義と�
 この記録はCLIのread-only観測である。HTTP・MCP・Desktopの各入口の同値性は #3419〜#3421 の担当で、未実行（NOT RUN）のままである。
 
 ## 11. 第5ラウンド（2026-11-09）: CLIとMCP参照Adapterの一致と入力検証
+## 11. 第5ラウンド（2026-11-09）: CLIとMCP参照Adapterの一致と厳密入力
 
 `main` `4f97c86cf` の CLI と `tools/reference-mcp-readonly-adapter` を同じWorkspaceへ向けて実行し、値・失敗・入力検証を比較した。生出力は[第5ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND5_CLI_MCP_2026-11-09/README.md)にある。
 
@@ -570,3 +571,239 @@ ADR-0048 §2.4 の「既定値の適用は共通契約で定める」を、CLI �
 - `inspect -workspace /no/such/dir` は MCP では tool 引数で表現できない（起動時に固定する設計）。起動時の `-workspace` が無い／manifest が壊れている場合、MCP は `WORKSPACE_LOAD_FAILED` を返し、CLI と同じ符号だった。差は「いつ分かるか」だけ。
 - **必須引数の欠落だけが層の違い**である。CLI は `INVALID_SUBJECT`（exit 2）、MCP は `-32602`。両方拒否するが文字列の符号が揃わない。ADR-0048 §2.3「失敗」の未決。
 - `inspect_trace_parity_test.go` を追加し、成功2件・失敗5件の値と符号、成功時の `result` の byte 一致を実プロセスで固定した。符号をわざと変える2種の変異はどちらも検出した。
+
+## 17. 第11・12ラウンド（2026-11-09）: traceの継続トークン
+
+第10ラウンドで「`trace` のページ継続は未検査」と記録した。T06 を実測し、**同じ名前で値の違う `snapshotFingerprint` が2つあり、継続に使えるのは外側だけ**であることを見つけた。生出力は[第11ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND11_TRACE_CONTINUATION_2026-11-09/README.md)と[第12ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND12_CONTINUATION_MAIN_2026-11-09/README.md)にある。
+
+- ページング自体は動く。`-mode full` は全4行、`-limit 2` は2行と `nextOffset: 2`、`-offset 2 -limit 2` は残り2行。`-offset 99` は0行で成功。MCP の `tei_trace` も `limit` を受け同じ結果。
+- 同じ入力なら `result.snapshotFingerprint` は安定し、ページを変えても変わらない。
+- 修正前は `result.snapshotFingerprint`（作業領域全体）と `result.trace.snapshotFingerprint`（グラフ・規則・対象・方向のみ）が同名で併存し、`nextOffset` は内側にあった。**`nextOffset` の隣の値をそのまま `-expected-fingerprint` に渡すと `STALE_SNAPSHOT` になった。**
+- `main` の `e75d599ba`（PR #3633）が同じ問題を解消した。内側を **`graphFingerprint`** に改名して旧名を別名として残し、`result.trace.continuation`（`fingerprint` と `field`）を `nextOffset` の隣に置く。
+- 統合後の実測（`main` `5d5d5de6b`）では、`continuation.fingerprint` で継続すると成功し、`graphFingerprint` を渡すと `STALE_SNAPSHOT`。応答の名前と `field` だけで、どちらを使うか分かる。
+- 私が書いた重複実装（平坦な `continuationFingerprint`）は採用しなかった。`main` の形が上位互換である。
+- `-scope`・`-direction` を変えた場合の拒否、MCP が `continuation` を返すかは未確認。
+
+## 18. 第13ラウンド（2026-11-09）: 設計変更の影響範囲をCLIだけで答えられるか
+
+ここまでは「CLIの応答が正しいか」を測った。このラウンドは**実際の設計作業の問い**を試した。題材は実際の改名（`snapshotFingerprint` → `graphFingerprint`、PR #3633）。生出力は[第13ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND13_DESIGN_IMPACT_2026-11-09/README.md)にある。
+
+| 問い | 結果 |
+| --- | --- |
+| モデル要素の定義箇所は分かるか | **分かる**。`inspect semantic-data:sales.order` が `semantic/sales/order.tei` を返す |
+| リポジトリ全体をWorkspaceにできるか | **できない**。ルートに `tei.workspace.yaml` が無く `-workspace .` は `WORKSPACE_LOAD_FAILED` |
+| 設計文書だけをWorkspaceにできるか | **索引には載る**。`source-index` は `artifacts: 3, references: 0` で成功 |
+| 設計文書の中の名前を問えるか | **問えない**。`inspect … -subject-id snapshotFingerprint` は `SUBJECT_NOT_FOUND` |
+| 改名の影響範囲を挙げられるか | **挙げられない**。どの文書のどの行がその名前を含むかは `grep` が要る |
+
+読み取れること:
+
+- 意味モデル（`.tei` の宣言）については、定義箇所も参照関係もCLIで答えられる。**モデルに対する設計作業はCLIで完結できる。**
+- 設計文書（Markdown）については、CLIはファイルとして管理するところまでで、**中の名前を対象にした問いには答えられない**。D-9 の具体的な帰結である。
+- リポジトリ全体を1つのWorkspaceにする経路が無いため、横断の問いは入力を作れない。
+
+新しいIssueは作らない。#2619・#2621 の設計範囲であり、D-9 として第1ラウンドから記録している。この実測を D-9 の具体的な証拠として残す。
+- 一方、**宣言していない引数はMCPだけが無視して成功する**。CLIは `INVALID_ARGUMENT` で拒否する。入力契約の共通化は未達で、#3467（起票）として扱う。
+- 必須欠落の符号はCLIが `INVALID_SUBJECT`、MCPが `-32602` で、意味層とプロトコル層の対応は #3420 の未決である。
+- `commands` の19件に操作ID・入口の欄は無く、入口ごとの対応はIssueと文書でしか辿れない。#3419 の対応表で扱う。
+
+## 19. 第14ラウンド（2026-11-09）: knowledge-* 連鎖の端から端まで
+
+第13ラウンドで「モデルに対する設計作業はCLIで完結できる」と分かった。その設計作業でAIが実際に使う `knowledge-*` の連鎖を、1回通した。生出力は[第14ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND14_KNOWLEDGE_CHAIN_2026-11-09/README.md)にある。
+
+| 手順 | 結果 |
+| --- | --- |
+| `knowledge-context` | `mode=context`・`dataDesign` あり・`authorityLimits` 4件 |
+| `knowledge-review-plan` | `mode=plan`・`reviewSequence`・`stopRules` |
+| `knowledge-review-handoff` | `mode=handoff`・`qualification` を含む |
+| `knowledge-context -disclose source` | `mode=disclosure` |
+| `knowledge-qualify` | `status=applicable`・`evidence` 1件 |
+| `knowledge-review-disclose` | `status=complete`・4セクション |
+
+- **戻れる**: 古い指紋は `fingerprint mismatch: expected=… current=…` で拒否（exit 1）。別subjectの handoff は `subject mismatch: handoff=… context=…` で拒否（exit 2）。存在しない handoff も exit 2。
+- **摩擦は1点**: 要件ファイルの形がCLIの応答から辿れない。`commands` は `-qualification-requirements` の存在だけを広告し、`-h` は "knowledge qualification requirements JSON" としか出さない。私は最初 `{"subject":…}` と書いて `json: unknown field` で止まった。最小形は `{"expectedKind":"semantic-data"}` で、文書（#3186 で追加済み）を読めば分かる。
+
+新しいIssueは作らない。形の例は #3186（Closed）、`commands` にファイル中身のスキーマを載せるかは #3419 の範囲である。
+
+## 20. 第15ラウンド（2026-11-09）: trace -mode full の rows が0件のとき消える
+
+第14ラウンドの連鎖の手前で、`trace` の応答が関係0件のWorkspaceでも機械的に読めるかを確かめた。生出力は[第15ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND15_TRACE_MODE_ROWS_2026-11-09/README.md)にある。
+
+- 関係0件のWorkspaceで `-mode full` を実行すると、`result.trace` に `rows` が**存在しなかった**。`Rows` の `json:"rows,omitempty"` タグの `omitempty` が、nil だけでなく長さ0のスライスも落とすためである。
+- `mode=summary` が `rows` を出さないのは契約どおり（全体を数えるだけで行を確保しない）。問題は **`mode=full` の「0件」と「欄が無い」が同じ表現**になることだった。
+- 起票は [#3693](https://github.com/hat47x/tei-platform/issues/3693)。#3456（`source-index` の `references`）と同じ種類の欠陥である。
+- `main` の `3799997a0` が解消した。`TraceResult` に `MarshalJSON` を足し、`mode=full` では常に `rows` を書き、フィールドを宣言順に明示して文書順序を変えない。
+- 私は「`mode=full` かつ0件のときだけ上書きする」実装を書いて動作を確認したが、`main` の形が上位互換なのでコードは持ち込まず、実測記録だけを残した。
+- このラウンドで踏んだ落とし穴: 最初に `mode=full` のすべてを上書きする実装にしたところ、埋め込み構造体が `rows` を最後に回し、既存の full 応答のバイト列が変わって `reference-cli-trace-benchmark` の golden が2件 FAIL した。**JSON表現を触る変更は、既存応答のバイト列を変えないことを golden で確かめる必要がある。**
+
+## 21. 第16ラウンド（2026-11-09）: 継続トークンの失効条件
+
+第11ラウンドで「どの値が継続トークンか」を扱い、「`-scope`・`-direction` を変えた場合の拒否」と「MCP が `continuation` を返すか」を未確認として残した。生出力は[第16ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND16_CONTINUATION_EXPIRY_2026-11-09/README.md)にある。
+
+- **Source の変更は種類を問わず失効させる**。コメント1行の追加でも属性の追加でも `STALE_SNAPSHOT`（exit 1）。Source の生バイトが `sourceIndexFingerprint` に入るためで、`plan/design/CLI_FIRST_INTERFACE_DESIGN.md` §159 の「非意味的な原文変更は拒否する」と一致した。
+- **選択子の変更も失効させる**。`-scope` を変えると `STALE_SNAPSHOT`、`-direction` を変えると同じく `STALE_SNAPSHOT`。`-mode full` → `summary` は `summary` が `-offset` を受け付けないため `INVALID_ARGUMENT`（exit 2、引数エラーとして正しい）。
+- **`summary` ⇄ `full` は相互に許容される**。`summary` のトークンで `mode=full -offset 0 -limit 2` が成功し、逆向きも成功。`mode`・`offset`・`limit` はトークンの対象外である。
+- **MCP も同じ**。`continuation.fingerprint` で継続でき、`graphFingerprint` や別 `scope` は `STALE_SNAPSHOT`。CLI と MCP で可否が一致した。
+
+新しい欠陥は検出しなかった。すべて文書に書かれた挙動と一致している。CAPI-2c のうち「参照実装の継続トークン」はここで一区切りとする（World/Source 改版の別故障モードは #3420 に残る）。
+
+## 22. 第17ラウンド（2026-11-09）: 必須引数の不足が3つの符号に分かれていた
+
+第10ラウンドで「必須引数の欠落だけが層の違い」と記録し、#3420 の未決として残していた。全コマンドを並べたところ、**1つの条件が3つの符号**で返っていた。生出力は[第17ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND17_FAILURE_CLASSIFICATION_2026-11-09/README.md)にある。
+
+| 呼出し | 修正前 | 修正後 |
+| --- | --- | --- |
+| `inspect`（`-workspace`／`-subject-kind`／`-subject-id` のいずれか欠け） | **`INVALID_SUBJECT`** | `INVALID_ARGUMENT` |
+| `trace`・`model catalog`・`source-index`・`requirements` | `INVALID_ARGUMENT` | 変わらず |
+| `knowledge-context`・`knowledge-qualify`・`knowledge-review-*` | **`KNOWLEDGE_BUILD_FAILED`** | `INVALID_ARGUMENT` |
+| `validate`（`-json` 無し） | **JSON を出さない** | 変わらず（text 出力の契約） |
+
+逆向きの不揃いもあった。同じ `inspect` で、`-subject-id` を**書かない**と `INVALID_SUBJECT`、**空文字列**を渡すと `INVALID_ARGUMENT`（#3605）だった。
+
+修正:
+
+- `cmd/tei/cli_argument_error.go` に `argumentError` 型を追加。「呼出し元が引数を間違えた」ことを表す。
+- `inspect` の引数ガードを `INVALID_ARGUMENT` へ。`INVALID_SUBJECT` は「subject の値が使えない」（空白のみ・前後空白）に残す。
+- `knowledge-*` の「`-flag` が足りない」を `newArgumentError` に変え、`knowledgeFailure` が `INVALID_ARGUMENT` へ写す。知識の構築失敗は `KNOWLEDGE_BUILD_FAILED` のまま。
+
+変えないと決めたもの（試験で固定）: 空白のみの subject は `INVALID_SUBJECT`、実在しない subject は exit 1 の `SUBJECT_NOT_FOUND`、要件ファイルが不正なら `KNOWLEDGE_BUILD_FAILED`、`validate` の text 出力は非JSONのまま。
+
+試験は `cmd/tei/cli_failure_classification_test.go` の3件。既存の `TestCLIProcessJSONContract`・`TestResultEnvelopeCommandsJSONContract` を新しい符号へ更新した。`go test ./cmd/tei -count=1` は ok（121.1s）。
+
+**CLI と MCP の符号の統一（`INVALID_ARGUMENT` ⇔ `-32602`）は未着手**で #3420 に残る。今回揃えたのは CLI 内部の一貫性である。起票は [#3733](https://github.com/hat47x/tei-platform/issues/3733)。
+
+## 23. 第18ラウンド（2026-11-09）: 実装を直したあと文書が古い符号を主張していた
+
+第17ラウンドで「必須引数の不足」を `INVALID_ARGUMENT` に統一した。その変更が同じ規則を説明する他の文書と一致しているかを確かめた。生出力は[第18ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND18_DOC_DRIFT_2026-11-09/README.md)にある。
+
+- `main` `022c85bd9` の挙動は第17ラウンドの意図どおりだった（11コマンドが `INVALID_ARGUMENT`、`INVALID_SUBJECT`・`SUBJECT_NOT_FOUND`・`KNOWLEDGE_BUILD_FAILED` は据え置き）。
+- `tools/reference-mcp-readonly-adapter/README.md` の検証一覧が「必須引数の欠落は CLI では `INVALID_SUBJECT`」と**古い符号を主張していた**。コードと試験は `INVALID_ARGUMENT` に変わっており、第17ラウンドで私は試験だけを更新して散文を見落とした。
+- 文書を実装に合わせ、`readme_claim_test.go` で**散文の主張を実行可能な試験として固定**した。README を旧記述へ戻す変異と、主張を消す変異のどちらも検出する。
+- 並行して出ていた [PR #3755](https://github.com/hat47x/tei-platform/pull/3755) は同じ #3733 の別実装だった。私の #3749 が先に統合されて `CONFLICTING` になり、すでに別の作業者が閉じていた。
+
+**学び**: 符号や契約を変えるときは、コード・試験・同じ規則を説明する散文を同じ変更で直す。散文は試験で固定しないと、次の変更で同じようにずれる。
+
+## 24. 第19ラウンド（2026-11-09）: 同じ壊れた plugin-lock が2コマンドで別の終了コードになっていた
+
+18ラウンドで一度も触っていなかったコマンドを叩いた。特に `-plugin-lock` はファイルを入力に取るため、ロックを作って別コマンドへ渡す往復があり、分類が揃っていない危険が高い。生出力は[第19ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND19_PLUGIN_LOCK_CLASSIFICATION_2026-11-09/README.md)にある。
+
+**正常系は問題なかった。** `plugin-lock` → `plugin-resolve`／`plugin-runtime-plan` の往復は成功し、`plugin-runtime-plan` は `pluginLockFingerprint` と `runtimePolicyFingerprint` を返す。`world` が包まない素の JSON を返すことも discovery の `jsonContract: raw` と一致していた。
+
+**壊れたロックの分類が食い違った。** 7種の壊し方のうち5種で、`plugin-resolve` は exit 2 `PLUGIN_RESOLVE_FAILED`、`plugin-runtime-plan` は exit 1 `PLUGIN_RUNTIME_PLAN_FAILED` になった。終了コード1は「意味の所見」、2は「入力の誤り」の区別だが、壊れたロックはどちらも入力の誤りである。
+
+原因は、`ResolveEnvironmentWithLock` が「指紋不一致」「version 不在」「プラグイン欠落」「別 environment」を素の `fmt.Errorf` で返し、`plugin-runtime-plan` の `plugin.IsInvalidLock` に該当しなかったこと。
+
+修正: `LockMismatchError` / `IsLockMismatch` を追加した。**`InvalidLockError` とは分けた** — 既存の `invalid_lock_test.go` が #3184 として「バイトが読めない」と「整形済みだが一致しない」を区別しており、その区別は正しい（前者は何が違うか言えない、後者は言える）。分けたうえで、両方とも呼出し元が直せるのはロックファイルだけなので、CLI では同じ `INVALID_PLUGIN_LOCK`（exit 2）に写した。7種すべてが両コマンドで揃った。
+
+試験は `cmd/tei/cli_plugin_lock_test.go`（6ケース）。変異2種（`IsLockMismatch` を見ない／素の `fmt.Errorf` に戻す）を検出する。
+
+**既存試験を1件、意図的に更新した。** `plugin_lock_scope_cli_test.go` は「別 environment を指すロックは resolve で `PLUGIN_RESOLVE_FAILED`・plan で exit 1」を固定していた。これは変更前の挙動そのものであり、統一後の `INVALID_PLUGIN_LOCK`・exit 2 へ直した。**破壊的な挙動変更である点を明記しておく。**
+
+契約文書 `plan/design/CLI_JSON_OUTPUT_CONTRACT_2026-10.md` の両行はもともと `INVALID_PLUGIN_LOCK` を挙げていた。今回の変更で**実装が契約に追いついた**。起票は [#3765](https://github.com/hat47x/tei-platform/issues/3765)。
+
+## 25. 第20ラウンド（2026-11-09）: view の -input が -command 無しで黙って捨てられていた
+
+19ラウンドで `plugin-*` を叩いて欠陥が出たため、まだ測っていない `view` を対象にした。`view` は `writeFlags` に `-operation-log`・`-lifecycle-state` を持ち、実行経路がある唯一の「読み取り」コマンドである。生出力は[第20ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND20_VIEW_INPUT_2026-11-09/README.md)にある。
+
+**正常系**は問題なかった。`view -application order_entry -format json` は `patterns`・`semanticFingerprint`・`worldFingerprint`・`sourceIndexFingerprint`・`workspace` を返し、引数無しは JSON で `INVALID_ARGUMENT`（exit 2）、実在しない application は exit 1 `VIEW_FAILED`。
+
+**見つけた欠陥**: `-input` を `-command` 無しで渡すと、値が捨てられて成功する。存在しないファイル名でも、書式不正（`no-equals-sign`）でも exit 0 `ok:true`。`-input` を付けた応答と付けない応答はバイト単位で同一だった。同じ group の `-period-state`・`-allow-capability`・`-operation-log`・`-lifecycle-*` は `-execute` 無しで正しく拒否されるのに、`-input` だけ条件が抜けていた。
+
+**起票時の診断を誤った。** 最初に「`-input` は `-execute` と組」と書いたが、実際は `-command` と組で、`-command` があれば `-execute` 無しでも plan に反映される（`product_slice_test.go:169` が固定）。私の誤った修正（`!*execute`）が既存試験 `TestProductSliceLoadsValidatesAndViews` を落として発覚した。**既存試験が正しく、私の診断が誤っていた。** issue #3778 に訂正を追記し、条件を `*commandID == ""` に直した。
+
+修正: `cmd/tei/cli_view.go` の引数ガードに `(len(inputPairs) > 0 && *commandID == "")` を追加。
+
+試験は `cmd/tei/cli_view_input_test.go` の2件。**両方向**の変異（条件を削る／過剰に厳しくする）を検出する。過剰に厳しくする方向を入れたのは、今回の誤診がまさにその方向だったため。
+
+**学び**: 依存関係を推測で書くと、既存の正しい用法を壊す。discovery の `"-input and -execute with -command"` は「両方とも `-command` に係る」と読むのが正しく、私は「`-input` と `-execute` が互いに係る」と読み違えた。`-execute` の実行経路そのものは未測定で、次に測るべき対象である。起票は [#3778](https://github.com/hat47x/tei-platform/issues/3778)。
+
+## 26. 第21ラウンド（2026-11-09）: view -execute の失敗符号が潰れていた
+
+20ラウンドまで `view` は引数までしか測っていなかった。`view -execute` は `writeFlags` を持つ唯一の実行経路で、最後の大きな未測定領域である。書込み先を `mktemp -d` の下に限定し、workspace は変えずに測った。生出力は[第21ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND21_VIEW_EXECUTE_2026-11-09/README.md)にある。
+
+**正常系と安全側は問題なかった。** 実行は `committed:true`・`persisted:false`・`durability:none`・`authorizationMode:"reference-allow-all"` を返し、`docs/status.md` の記載と一致。`-operation-log` が書けない場合は exit 1 `OPERATION_LOG_WRITE_FAILED`。失敗した実行は記録を書かず、lifecycle に拒否された実行は既存の記録を上書きしない。lifecycle は同じ command_id の再送を owner/generation が同じでも違っても拒否し、別 command_id は許可する（`internal/command/lifecycle.go` の設計どおり）。
+
+**見つけた欠陥**: 実行失敗の符号が潰れていた。
+
+| 呼出し | 修正前 | 修正後 |
+| --- | --- | --- |
+| 必須入力なし | `COMMAND_FAILED`（message に `INVALID_COMMAND_INPUT: ` が埋まる） | `INVALID_COMMAND_INPUT` |
+| 認可拒否 | `COMMAND_FAILED`（message に `COMMAND_UNAUTHORIZED: `） | `COMMAND_UNAUTHORIZED` |
+
+原因は `cmd/tei/cli_view.go` の `commandFailure` が `ExecutionError.Code` のうち3つだけを手書きで写し、`INVALID_COMMAND_INPUT` と `COMMAND_UNAUTHORIZED` が既定の `COMMAND_FAILED` に落ちていたこと。`ExecutionError.Error()` が `Code + ": " + Message` を返すため符号が message に混ざっていた。
+
+修正: `reportedExecutionCodes` の集合に既知の7符号を入れ、そこに在るものはそのまま `error.code` に出す。未知の符号は従来どおり `COMMAND_FAILED` に残す（契約の受け皿を消さない）。
+
+試験は `cmd/tei/cli_view_execute_code_test.go` の2件。変異（集合を元の3符号に戻す）で両方の失敗が検出されることを確認した。
+
+**未解決の論点**: `-operation-log` は同じパスへ2回書くと後の実行だけが残る（`os.WriteFile` の truncate）。文書に明示が無く、追記か上書きかは設計判断が要るため、今回は変更していない点を記録した。起票は [#3797](https://github.com/hat47x/tei-platform/issues/3797)。
+
+## 27. 第22ラウンド（2026-11-09）: 手書きの符号許可リストが21中15を潰していた
+
+21ラウンドで「符号の対応表が手書きで、抜けが出る」型の欠陥が3回続いた（#3733・#3765・#3797）。個別に直すのではなく、**列挙そのものを無くせるか**を確かめた。生出力は[第22ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND22_CODE_COVERAGE_2026-11-09/README.md)にある。
+
+`internal/command` が `ExecutionError` として返す符号は **21**。`cmd/tei/cli_view.go` の `reportedExecutionCodes` は **7**（うち1つは CLI 合成）。**15個が既定の `COMMAND_FAILED` に潰れていた** — `COMMAND_DATASOURCE_READ_ONLY`（読み取り専用宣言への違反）・`COMMAND_COMMIT_FAILED`（適用有無が不明）・`COMMAND_PERIOD_CLOSED`（業務上の拒否）など、呼出し元の行動が変わるものが含まれる。
+
+さらに**入口ごとに食い違っていた**。`internal/studiohost` は1符号だけを特別扱いし、残り全部を `COMMAND_FAILED` にしていた。CLI は7、Studio は1。
+
+修正: 列挙を廃止し、`internal/command` に `ReportedFailure` を1つ置いて両入口がそれを呼ぶ。`ExecutionError` はすでに `Code` を持っているので、選別しない。ただし `EffectMayBeUnknown`（適用された可能性がある）を**先に**見る — 盲目的な再試行が二重適用になるため、具体的な符号より優先する必要がある（最初この順序を逆にして既存試験が落ちた）。
+
+再発防止: `reported_failure_test.go` が**パッケージのソースを AST で走査**し、`Code:` に現れる全リテラルが規則を通ることを確かめる。試験側に符号一覧を書けば本番の一覧と同じようにずれるため、ソースを真とした。変異2種で確認 — 新しい符号を追加すると規則が汎用なので**通る**（これが狙い）、許可リストを再導入すると**落ちる**。
+
+**意図的な挙動変更を含む。** 3つの既存試験の期待値を書き換えた。うち1つ（`studiohost` の認可拒否）は、符号が使えなかったための回避策（`strings.Contains(message, "COMMAND_UNAUTHORIZED")`）であり、今回それが必要なくなった。
+
+残る作業: 現れうる符号の集合を契約文書へ反映する（#3419）。起票は [#3807](https://github.com/hat47x/tei-platform/issues/3807)。
+
+## 28. 第23ラウンド（2026-11-09）: 契約文書の符号一覧が実装より狭くなっていた
+
+第22ラウンドで `view -execute` が `internal/command` の21符号をそのまま返すようにした。その結果、契約文書 `plan/design/CLI_JSON_OUTPUT_CONTRACT_2026-10.md` の `view` 行が実装より狭くなっていないかを確かめた。生出力は[第23ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND23_CONTRACT_DOC_2026-11-09/README.md)にある。
+
+- 契約表が名指す符号27個は**すべて Go のソースに存在した**。存在しない符号を書いている箇所は0で、文書は「嘘」ではなく**不足**だった。
+- `view` 行は11符号（うち `COMMAND_*` は4つ）しか挙げていなかったが、実装は `-execute` の失敗で21符号を返しうる。`COMMAND_UNAUTHORIZED`・`COMMAND_DATASOURCE_READ_ONLY`・`COMMAND_COMMIT_FAILED` などが文書に無かった。
+- **discovery は符号を広告しない。** `tei commands` の entry は15欄を持つが失敗符号の欄が無い。呼出し元が「このコマンドはどんな符号を返しうるか」を知る方法は契約文書しかなく、文書が狭いことはそのまま発見可能性の欠落になる。
+
+修正: `view` 行に21符号を列挙し、`COMMAND_EFFECT_UNKNOWN` が優先することを明記した。`COMMAND_FAILED` は「符号を持たない失敗」の受け皿として残る。
+
+再発防止: `cmd/tei/cli_contract_codes_test.go` が `internal/command` のソースを AST で走査して符号を集め、契約表の `view` 行がそれを全部名指すことを確かめる。変異2種で確認 — 文書を前ラウンド前へ戻すと落ち、実装に新しい符号を足して文書を放置しても落ちる。**両方向**を固定した。
+
+第22ラウンドの `ReportedFailure`（入口が報告するか）と対になる形で、対象を「文書が名指すか」へ広げた。次に `internal/command` が符号を増やしたら、文書を直さないと CI が落ちる。
+
+**残り**: `view` 以外の行の機械検査、discovery への符号広告（`commands` の欄を増やす契約変更）。どちらも #3419 に残る。
+
+## 29. 第24ラウンド（2026-11-09）: tool の引数一覧が schema と独立に手書きされていた
+
+第22・23ラウンドで「手書きの一覧から漏れる」型を2つ閉じた。MCP Adapter も同じ構造を持つはずなので、tool を扱う表がいくつ独立しているかを測った。生出力は[第24ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND24_TOOL_TABLE_DRIFT_2026-11-09/README.md)にある。
+
+**表は4つあった**: `toolList()`（広告）、`toolArguments`（受理する引数）、`dispatch` の `switch`（呼出し先）、`cliCommandNameForTool`（CLI 名との対応、試験側）。このうち `toolArguments` は `InputSchema.properties` と**同じ事実を2回書いたもの**だった。
+
+変異で検出力を測ると、**危険な方向だけが無検査**だった。
+
+| 変異 | 試験 |
+| --- | --- |
+| `toolList()` に tool を追加 | FAIL（3試験） |
+| `toolArguments` に schema が宣言しない引数を追加 | **PASS（検出できず）** |
+| `toolArguments` から宣言済みの引数を削除 | FAIL（2試験） |
+
+緩む方向は、各 tool の `rejectUnknownArguments` が偶然止めていた。同じ宣言を2箇所に書いているため、`rejectUnknownArguments` を書き忘れた tool を足すと素通りする。`toolArguments` と `InputSchema.properties` を比べる試験は存在しなかった。
+
+修正: `toolArguments` を削除し、`InputSchema` から導出する（`declaredArguments`・`toolByName`）。**試験で一致を確かめるのではなく、事実を1箇所にした。** 前2ラウンドは「漏れたら落とす」だったが、今回は一覧そのものを消したので漏れようがない。
+
+試験は `tool_arguments_test.go` の4件。変異2種（導出が property を落とす／`required` に未宣言の名前を足す）を検出する。
+
+**残り**: `dispatch` の `switch` と `toolList()` の一致。広告に無い tool を dispatch に書くことは可能だが、`checkArguments` が `toolByName` で先に弾くため実害は無い。必要になれば同じ手法で閉じられる。起票は [#3823](https://github.com/hat47x/tei-platform/issues/3823)。
+
+## 30. 第25ラウンド（2026-11-09）: TEI の標準意味型は TEI で宣言されていない
+
+ここまでの24ラウンドは CLI の整合性を測ってきた。このラウンドは目的そのもの、**TEI 自身が TEI で書かれているか**を測った。生出力は[第25ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND25_STDLIB_SELF_DESCRIPTION_2026-11-09/README.md)にある。
+
+- `std.*` の12型は `model catalog` に現れるが、`prelude: true` と `sourceStatus: "not-indexed"` が同時に付く。**モデルの要素だが、どの Source にも由来しない。**
+- `inspect -subject-kind semantic-type -subject-id std.text` は解決できるが `artifacts: []`・`references: []`。対照の `sales.order` は `sourceStatus: "indexed"` で `semantic/sales/order.tei` とその指紋が入る。
+- `source-index` は参照106件・artifact 54件を返すが、`std.*` への参照は**0件**。
+- 定義は `internal/stdlib/semantic.go` の Go リテラル。コメント自身が「later package/registry implementation can replace this prelude」と過渡期を認めている。
+- `std` は**使えるが宣言できない**。`namespace std` を書くと `SEMANTIC_TYPE_ALIAS_CYCLE`・`DUPLICATE_SEMANTIC_ELEMENT`・`DUPLICATE_SEMANTIC_NAMESPACE` で拒否される。別名前空間からの `type text_t from std.text` は通る。`std` を特別扱いする箇所は `internal/validation/validation.go:1185` と `internal/operations/declaration_counts.go:38`。
+
+**合格条件が CLI だけで測れることを実演した。** 宣言可能な名前空間で `type text_t from std.text` を書くと、同じ catalog に `mine.text_t`（`indexed`）と `std.text`（`not-indexed`）が並び、`inspect`・`source-index` も `mine.text_t` は根拠付きで返す。`std` を `.tei` にすればこの差がそのまま埋まる。新しい API も検証機構も要らない。
+
+**これは欠陥の起票ではない。** 欠陥ではないが目的の達成を妨げている構造であり、判断は [#2620](https://github.com/hat47x/tei-platform/issues/2620) の Owner に属する。材料（測定値・合格条件・移行時の注意点）を提示するに留め、勝手に `std` を `.tei` 化していない。
+
+**注意**: 移行時は `std` の特別扱い2箇所と `internal/stdlib/semantic.go` の二重定義を同時に扱う必要がある。Go の定義を残したまま `.tei` を併置して一致を確かめる段階を挟むのが安全。

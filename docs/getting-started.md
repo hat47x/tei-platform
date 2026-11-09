@@ -9,7 +9,7 @@ TEIは現在、設計上の境界をGoのコードで検証している段階で
 主要な手順を試すには、Goの開発環境が必要です。必要なGoの版は、リポジトリ直下の`go.mod`にある`go`行が示す版以上です。この文書は版の数値を複製しません。`go.mod`の更新のたびに文書が古くなるためです。2026-11-07時点の`go.mod`は`go 1.26.10`を要求します。数値は必ず`go.mod`で確認してください。
 
 
-`tools/` の参照ツールのうち、外部コマンドを `bash -c` で起動する試験（`tools/reference-cognition-port`・`tools/reference-generator-selection`）は **POSIXシェルを前提**にしています。Windowsでは、WSL または Git Bash の `bash` でも `cp <Windowsパス>` を解決できない場合があるため、該当試験は明示的に skip し、Linux CI の結果を正とします（#3461）。skip は失敗ではなく「この環境では検査していない」という記録です。`go test ./...` の結果を読むときは、skip の理由も確認してください。
+`tools/` の参照ツールのうち、外部コマンドを `bash -c` で起動する試験（`tools/reference-cognition-port`・`tools/reference-generator-selection`）は **POSIXシェルを前提**にしています。2026-11-09以降は、Windowsでも同じ試験を実行します（#3461）。Windowsの`bash`はWSLの`bash.exe`が多く、`C:\...`のパスを開けず、`-c`文字列中の`$NAME`をWindowsの環境変数で先に展開します。そのため両ツールは、コマンドを一時ディレクトリをworking directoryにして実行し、入力をそこへ複製し、パス変数をコマンド文字列へ直接埋め込みます。`bash`が見つからない環境だけがskipします。skip は失敗ではなく「この環境では検査していない」という記録です。`go test ./...` の結果を読むときは、skip の理由も確認してください。
 ```bash
 grep '^go ' go.mod
 go version
@@ -27,11 +27,24 @@ go version
 
 ### Windowsでの`go test ./...`
 
-`tools/reference-cognition-port`と`tools/reference-generator-selection`の外部コマンド試験は、コマンドを`bash -c`で起動し、`cp <fixture> $TEI_...`のようにfixtureのパスを渡します。Windowsのfixtureのパスは`D:\GIT\...`の形で、WSLの`bash.exe`にもGit Bashにもそのままでは解決されません。このため、この2パッケージの外部コマンド試験はWindowsでは理由付きでskipします。`bash`が見つからない環境でもskipします。
+2026-11-09時点のmain（`c90bb502d`）で、Windows 11・go1.27.0の`go test ./...`は完走します（`-count=1 -timeout 90m`で90分規模）。ただし、次の2種類の注意があります。
 
-- skipは通過と同じ意味ではありません。Windowsでは、外部コマンドを経由する経路は未検証です。Linuxで実行した結果を正とします。
-- 実装の契約（`bash -c`で外部コマンドを実行する）は変えていません。
-- この扱いは暫定です。Windowsでも成立する形へ契約を変えるか、`tools/reference-change-packet`など`bash`を前提にする他のツールへ広げるかは、[#3461](https://github.com/hat47x/tei-platform/issues/3461)で決めます。
+**1. Windowsでは理由付きでskipする検査があります。**skipは通過と同じ意味ではありません。
+
+| 種類 | 対象 | skipの理由 |
+| --- | --- | --- |
+| POSIXのパーミッションビット | `internal/access`・`internal/effectlog`・`internal/jsonl`・`internal/runlog`・`internal/workspace`など | Windowsは`0600`で作ったファイルを`0666`と報告する。ACLの確認はHostの責務 |
+| POSIXのinode置換 | `tools/reference-build-artifact-store` | 読み取り専用の既存ファイルへのrenameが`Access is denied`になり、置換を同じ意味で表せない（[#3460](https://github.com/hat47x/tei-platform/issues/3460)） |
+| ~~`bash -c` + `cp`の外部コマンド~~ | ~~`tools/reference-cognition-port`・`tools/reference-generator-selection`~~ | 2026-11-09に解消（[#3461](https://github.com/hat47x/tei-platform/issues/3461)）。両ツールはコマンドを一時ディレクトリで実行し、パス変数をコマンド文字列へ埋め込むため、WindowsのWSL `bash.exe`でも動く。`bash`が見つからない場合だけskipする |
+| 空白を含む実行パス | `tools/reference-composition-process-bridge` | 2026-11-09に解消（#3460）。参照のstdio launcherが空白入りの実行パスを拒否するのは契約なので、試験は**ホストの一時ディレクトリに空白がある場合だけ**skipする。Windowsでも既定の`%TEMP%`なら実行される |
+| OpenSSHの`-Y verify verify-time` | `tools/reference-authoring-witness-openssh` | 同梱のOpenSSHが`verify-time`非対応で、スクリプトが`exit 77`（「No result is claimed」）を返す |
+| シンボリックリンク・JVM等 | `internal/workspace`・`tools/internal/gobuilder`・`tools/reference-target-profile`など | シンボリックリンクは、作成を試して失敗したときだけskipする（理由にOSのエラーを出す）。開発者モード等で作成できる環境では実行される。JVM・node・pythonは未導入の環境でskip |
+
+skipの総数は32件（`t.Skip`の理由にWindowsを含むもの）。Linuxで実行した結果を正とします。
+
+**2. 比較試験はチェックアウトがcleanであることを前提にします。**`tools/reference-plugin-self-build`と`tools/reference-transform-runtime-engine-build`のhistorical比較は、`git status --porcelain=v1 --untracked-files=all`が空であることを確かめてから実行します。`go test ./...`はパッケージを並列に実行するため、別パッケージがcheckout内へ書いた直後にこの前提を読むと落ちることがあります（[#3637](https://github.com/hat47x/tei-platform/issues/3637)）。失敗時は汚れていたpathがメッセージに出るので、原因のパッケージを特定できます。単体で`go test ./tools/reference-plugin-self-build -count=1`を実行した場合は落ちません。
+
+PRごとのWindows確認は`tei-windows-go-test-survey.yml`が`workflow_dispatch`と本workflow自身の変更時に行い、既定（`scope=survey`）では`./internal/plugin/runtime`・`./internal/desktophost`・`./internal/operations`・`./cmd/tei`・`./internal/workspace`・`./internal/modelref`・`./reference/application-composition`・`./tools/reference-developer-context`を対象にします。`scope=full`で`go test ./...`全体（90分規模）を手動実行できます。全パッケージは時間がかかるため必須検査にしていません。
 
 ## 最初の小さな作業領域から始める
 
@@ -151,6 +164,8 @@ Workspaceがモデル要素を1つも宣言していない場合、`validate`は
 作業領域のモデル要素を一覧で確認するには、`model catalog`を使います。返された`entries[].subject.kind`と`entries[].subject.id`をそのまま`inspect`へ渡せます。`ambiguous=true`の項目は重複宣言があるため、詳細取得を拒否します。
 
 `-namespace`には意味名前空間のIDだけを指定します。存在しないID、およびapplicationやqueryのIDを渡した場合は、空の成功ではなく`NAMESPACE_NOT_FOUND`（終了コード1）を返します。`namespaceMatched`と`namespaceMatchKind`は、要求がどの種類のSubjectに一致したかを示します。宣言はあるが要素を持たない名前空間は、`namespaceMatched=true`かつ`entries`が名前空間自身だけになります。
+
+`model catalog`の応答には`validation`（`ok`・`errorCount`・`warningCount`）が入ります（2026-11-09から）。これは`validate -workspace ... -json`と同じ規則の要約で、error重大度の診断もerror重大度のsource-root findingも無いときに`ok:true`になります。**`model catalog`自体は検証NGのWorkspaceでも`ok:true`・終了コード 0 を返します**。一覧は編集中でも読める投影であり、受理判断ではないためです。応答の`ok`とは別の値なので、catalogだけを読む呼出し元が「このモデルは健全か」を判定するときは`validation.ok`を読んでください。診断のコード・位置・提案は複製せず、`validate -json`で読みます（#3674）。
 
 `model catalog`の`modelRevision`は、管理対象Sourceのファイルpathと生バイトの組をsha256で並べた値です。**読み込んだWorldの内容の版ではありません。** 管理対象Sourceが1件も無いWorkspaceでは、空入力のSHA-256（`sha256:e3b0c442…b855`）になります。標準意味型（`std`）の`entries`は`modelRevision`の計算に入らないため、`entries`が0件でなくてもこの値になり得ます。空かどうかを判別するには、`modelRevision`ではなく`declarationCounts.total`を使ってください。`modelRevision`は「管理対象Sourceを1バイトも読まなかった」ことの証拠であり、モデルの同一性・受理・整合性の証拠ではありません。
 

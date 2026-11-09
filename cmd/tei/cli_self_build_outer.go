@@ -57,7 +57,16 @@ type selfBuildOuterEvidence struct {
 	// reported plan fingerprint to the artifact digest, with the digest
 	// independently read back from disk.
 	PlanArtifactBinding *planArtifactBinding `json:"planArtifactBinding,omitempty"`
-	Error               *cliFailure          `json:"error,omitempty"`
+	// ArtifactReproducibility is §4.21: a second, independent build of the same
+	// plan produced the same artifact bytes. Together with planArtifactBinding it
+	// is the observation §4.8(c) asks for; it is never present with state
+	// "reproduced" when the caller did not ask for it.
+	ArtifactReproducibility *selfBuildReproducibility `json:"artifactReproducibility,omitempty"`
+	// L2B is the combined claim (§4.23). The per-observation flags above each
+	// still say false, because no single observation is the claim; this record
+	// answers whether all of them hold together and names every one that did not.
+	L2B   *selfBuildL2BClaim `json:"l2b,omitempty"`
+	Error *cliFailure        `json:"error,omitempty"`
 }
 
 // selfBuildIntentBinding separates "which declaration this entry held" from
@@ -99,8 +108,9 @@ const selfBuildOuterBoundary = "one child build launched by this TEI binary from
 type selfBuildOuterArgs struct {
 	Workspace string
 	Intent    string
-	// IntentFile is the declaration this entry holds and hands to the child.
-	// -intent stays the logical ID; the file is the byte-level input (§4.8).
+	// IntentFile is the declaration this entry holds and hands to the child,
+	// and the declared build intent required by SC0-01. -intent stays the
+	// logical ID; the file is the byte-level input (§4.8).
 	IntentFile string
 	Supply     string
 	State      string
@@ -122,6 +132,13 @@ type selfBuildOuterArgs struct {
 	// ExpectedPlanFingerprint is a value the caller declared out of band. When
 	// given, the resolver's plan must equal it or the attempt stops.
 	ExpectedPlanFingerprint string
+	// RebuildCheck asks this entry to build the same plan a second time, in a
+	// fresh state directory, and compare the artifact bytes. Without it the
+	// reproducibility record says why it did not run (§4.21).
+	RebuildCheck bool
+	// InProcess selects deriving the plan in this process from a caller-named
+	// build catalog (§4.22 step 2). It is mutually exclusive with IntentResolver.
+	InProcess selfBuildInProcessArgs
 }
 
 // looksLikeOuterShape reports whether the caller used any §4 flag. A caller that
@@ -133,7 +150,8 @@ func looksLikeOuterShape(args []string) bool {
 			name = arg[:index]
 		}
 		switch name {
-		case "-workspace", "-intent", "-intent-file", "-supply", "-state", "-output":
+		case "-workspace", "-intent", "-intent-file", "-supply", "-state", "-output", "-rebuild-check",
+			"-build-catalog", "-build-catalog-digest", "-build-source-root":
 			return true
 		}
 	}
@@ -157,6 +175,10 @@ func parseSelfBuildOuterArgs(args []string) (selfBuildOuterArgs, error) {
 	fs.StringVar(&parsed.IntentResolver, "intent-resolver", "", "exact executable that resolves the declaration into a plan (I-2)")
 	fs.StringVar(&parsed.IntentResolverArg, "intent-resolver-arg", "", "extra arguments for the intent resolver as a JSON array")
 	fs.StringVar(&parsed.ExpectedPlanFingerprint, "expected-plan-fingerprint", "", "planFingerprint the resolved plan must equal")
+	fs.BoolVar(&parsed.RebuildCheck, "rebuild-check", false, "build the same plan a second time in fresh state and compare the artifact bytes (§4.21)")
+	fs.StringVar(&parsed.InProcess.CatalogPath, "build-catalog", "", "build catalog JSON the entry resolves against in process (§4.22)")
+	fs.StringVar(&parsed.InProcess.CatalogDigest, "build-catalog-digest", "", "sha256 digest of -build-catalog; required with it")
+	fs.StringVar(&parsed.InProcess.SourceRoot, "build-source-root", "", "root the declaration's source references resolve from; required with -build-catalog")
 	if err := fs.Parse(args); err != nil {
 		return selfBuildOuterArgs{}, err
 	}
@@ -172,6 +194,14 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 	parsed, err := parseSelfBuildOuterArgs(args)
 	if err != nil {
 		return 2, fmt.Errorf("INVALID_ARGUMENT: %w", err)
+	}
+	if err := parsed.InProcess.validate(); err != nil {
+		return 2, fmt.Errorf("INVALID_ARGUMENT: %w", err)
+	}
+	if parsed.InProcess.requested() && strings.TrimSpace(parsed.IntentResolver) != "" {
+		// §4.16 warned that two derivation routes writing the same record make its
+		// meaning depend on the route. One attempt gets one derivation.
+		return 2, errors.New("INVALID_ARGUMENT: -intent-resolver and -build-catalog cannot both be given; choose the route for this attempt")
 	}
 	report := selfBuildOuterEvidence{
 		SchemaVersion: selfBuildEntrySchema,
@@ -205,26 +235,72 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 			return selfBuildOuterPrecondition(out, report, "workspace has validation errors at "+diagnostic.Code+": "+diagnostic.Message)
 		}
 	}
-	// SC0-01: the build intent must be declared. A path is required, and the
-	// declaration must be a JSON object with a formatVersion and a subject id.
-	// The entry records the declaration; it does not derive a BuildPlan from it.
-	if strings.TrimSpace(parsed.IntentFile) == "" {
-		return selfBuildOuterPrecondition(out, report, "-intent-file is required: a build attempt needs a declared build intent")
+	// SC0-01: a build attempt must declare its intent. Either a declaration
+	// path or a logical intent ID satisfies that; only the declaration path
+	// carries bytes this entry can hash, so the absence of bytes is recorded
+	// rather than treated as a declaration (§4.8 L2-a, SC0-14).
+	if strings.TrimSpace(parsed.IntentFile) == "" && strings.TrimSpace(parsed.Intent) == "" {
+		return selfBuildOuterPrecondition(out, report, "one of -intent-file or -intent is required: a build attempt needs a declared build intent")
 	}
-	declaration, err := readIntentDeclaration(parsed.IntentFile)
-	if err != nil {
-		report.Error = &cliFailure{Code: selfBuildCodeIntentInvalid, Message: err.Error()}
-		if encodeErr := encodeIndented(out, report); encodeErr != nil {
-			return 2, encodeErr
+	if strings.TrimSpace(parsed.IntentFile) != "" {
+		declaration, err := readIntentDeclaration(parsed.IntentFile)
+		if err != nil {
+			report.Error = &cliFailure{Code: selfBuildCodeIntentInvalid, Message: err.Error()}
+			if encodeErr := encodeIndented(out, report); encodeErr != nil {
+				return 2, encodeErr
+			}
+			return 2, nil
 		}
-		return 2, nil
+		report.IntentRecord = &declaration
 	}
-	report.IntentRecord = &declaration
 
 	// §4.7 I-2: resolution is delegated to an exact resolver child. The entry
 	// starts it, reads its receipt, and records what was resolved. A resolver
 	// that fails, or a receipt whose plan differs from the declared expectation,
 	// stops the attempt before the builder starts.
+	if parsed.InProcess.requested() {
+		intentBytesDigest := ""
+		if report.IntentRecord != nil {
+			intentBytesDigest = report.IntentRecord.Digest
+		}
+		receipt := resolveIntentInProcess(
+			parsed.IntentFile,
+			intentBytesDigest,
+			parsed.InProcess,
+			parsed.ExpectedPlanFingerprint,
+		)
+		report.PlanReceipt = &receipt
+		// Recompute the plan fingerprint from the plan the receipt carries, for the
+		// same reason the child route does: it proves the recorded plan is the one
+		// the recorded fingerprint describes. In this route it also checks the
+		// round-trip through JSON, which the child route gets for free.
+		if receipt.State == intentResolutionResolved {
+			recompute := recomputeReceiptPlanFingerprint(receipt.ReceiptJSON)
+			report.PlanRecompute = &recompute
+			if recompute.State == planRecomputeMismatched {
+				report.Error = &cliFailure{Code: selfBuildCodeIntentResolutionFailed, Message: recompute.FailureCause}
+				if encodeErr := encodeIndented(out, report); encodeErr != nil {
+					return 2, encodeErr
+				}
+				return 2, nil
+			}
+		}
+		if receipt.State != intentResolutionResolved {
+			report.Error = &cliFailure{Code: selfBuildCodeIntentResolutionFailed, Message: receipt.FailureCause}
+			if encodeErr := encodeIndented(out, report); encodeErr != nil {
+				return 2, encodeErr
+			}
+			return 2, nil
+		}
+		if parsed.ExpectedPlanFingerprint != "" && !receipt.PlanMatchesExpected {
+			report.Error = &cliFailure{Code: selfBuildCodePlanMismatch, Message: receipt.FailureCause}
+			if encodeErr := encodeIndented(out, report); encodeErr != nil {
+				return 2, encodeErr
+			}
+			return 2, nil
+		}
+	}
+
 	if strings.TrimSpace(parsed.IntentResolver) != "" {
 		resolverArgs := []string{}
 		if strings.TrimSpace(parsed.IntentResolverArg) != "" {
@@ -422,8 +498,16 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 		// reported, and confirm that digest against the bytes on disk. This is a
 		// separate record from the cross-check: agreement of two plan fingerprints
 		// says nothing about which artifact came out.
+		// The entry's own derivation goes in as a basis that does not come from
+		// the child. It is used only when the child is silent; which one the lock
+		// carries is recorded beside it.
+		entryPlanFingerprint := ""
+		if report.PlanRecompute != nil {
+			entryPlanFingerprint = report.PlanRecompute.RecomputedFingerprint
+		}
 		binding := bindPlanToArtifact(
 			report.PlanReceipt,
+			entryPlanFingerprint,
 			evidence.ChildPlanFingerprint,
 			evidence.ChildArtifact,
 			evidence.CrossChecked,
@@ -434,10 +518,37 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 			appendSelfBuildFailure(&evidence, planArtifactMismatchCause(binding))
 		}
 	}
+
+	// §4.21: a second independent build answers §4.8(c) — whether the artifact on
+	// disk is the one this plan produces — which the lock alone cannot.
+	//
+	// The record is always emitted. When the caller did not ask, it says so with a
+	// reason, because a missing field would let a reader take silence for
+	// agreement (the same rule SC0-18 applies to the child's declaration report).
+	reproducibility := selfBuildReproducibility{
+		State:             reproducibilityUnperformed,
+		UnperformedReason: "the caller did not ask for a second build (-rebuild-check)",
+		Boundary:          reproducibilityBoundary,
+	}
+	if parsed.RebuildCheck {
+		reproducibility = checkArtifactReproducibility(parsed.Child, childArgs, evidence.ChildArtifact, parsed.Output)
+		switch reproducibility.State {
+		case reproducibilityMismatched:
+			appendSelfBuildFailure(&evidence, "a second build of the same plan produced different artifact bytes")
+		case reproducibilityUnperformed:
+			appendSelfBuildFailure(&evidence, "the reproducibility check did not run: "+reproducibility.UnperformedReason)
+		}
+	}
+	report.ArtifactReproducibility = &reproducibility
 	report.OK = evidence.CrossCheckOK && evidence.FailureCause == ""
 	if !report.OK {
 		report.Error = &cliFailure{Code: "SELF_BUILD_CHILD_FAILED", Message: evidence.FailureCause}
 	}
+	// §4.23: the L2-b predicate is evaluated last, over every observation this
+	// attempt recorded. It is reported even when the attempt failed, so a reader
+	// can see which conditions were missing rather than only that ok is false.
+	l2b := assessL2B(report)
+	report.L2B = &l2b
 	if err := encodeIndented(out, report); err != nil {
 		return 1, err
 	}

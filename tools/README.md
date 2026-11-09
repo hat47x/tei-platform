@@ -11,8 +11,8 @@
 - `tools/` の参照ツールは、Linux CI（`ubuntu-24.04`）の結果を正とします。Windowsで `go test ./...` を回すと、環境前提の差で失敗または skip になる検査があります（[#3460](https://github.com/hat47x/tei-platform/issues/3460) に原因別の一覧）。
 - 外部コマンドを `bash -c` で起動する試験（`reference-cognition-port`・`reference-generator-selection`）は POSIXシェル前提です。Windowsでは `cp <Windowsパス>` が解決できないため、該当試験は理由を付けて skip します（[#3461](https://github.com/hat47x/tei-platform/issues/3461)）。skip は「この環境では検査していない」の記録であり、成功と同じには扱いません。
 - POSIXのファイル権限（`0600` など）や rename の置換を前提にした検査は、Windowsでは skip または別経路に分けます。
-- checkoutのclean（`git status` が空）を前提にする比較試験（`reference-plugin-self-build`・`reference-transform-runtime-engine-build` の historical parity）は、`go test ./...` で並列に走る他のパッケージが checkout へ書き込むと、前提を満たさずに落ちます（[#3460](https://github.com/hat47x/tei-platform/issues/3460)）。2026-11-09から、この前提を満たさない場合は**理由付きで skip** し、比較そのものは実行しません。clean な checkout で単体実行すれば従来どおり比較します（`go test ./tools/reference-transform-runtime-engine-build -run TestHistoricalRuntimeEngineRunnerParity -count=1`）。
-- 同じ理由で、`go test ./...` の結果だけで「checkout を前提にした比較が成立した」とは読みません。skip の理由に `repository must be clean` が出ていれば、その比較は未実行です。
+- historical parity の比較試験（`reference-plugin-self-build`・`reference-transform-runtime-engine-build`）は、`go test ./...` の並列実行で他のパッケージが checkout へ書き込む影響を受けないよう、**比較する側も比較される側も自分専用の detached worktree** から実行します（[#3637](https://github.com/hat47x/tei-platform/issues/3637)）。worktree は HEAD から作るため clean であり、live の作業ツリーを前提にしません。そのため `go test ./...` でも単体実行でも同じ結果になります。
+- 比較が自分の worktree を書き換えていないことは、試験の最後に worktree の `git status` で確認します。live の checkout が汚れているかどうかは、比較の成否に影響しません。
 ## リポジトリ検査と共通部品
 
 | 場所 | 役割 |
@@ -21,6 +21,7 @@
 | [`repository-architecture-check/`](repository-architecture-check/) | パッケージ構成と依存境界の検査 |
 | [`repository-dependency-report/`](repository-dependency-report/) | Goの直接依存関係の一覧作成 |
 | [`repository-plan-check/`](repository-plan-check/) | ADR・Issueの番号や要求と検証表の対応確認、ADR索引とADRファイルの一致・状態の確認（#2343） |
+| [`reference-adr-index-check/`](reference-adr-index-check/) | `plan/adr/README.md`の索引と`plan/adr/0*.md`の対応を単体で検査する。各ファイルが一度だけ載り、リンク先が実在し、索引の状態がファイルの状態行と一致することを確かめる。索引は文書であり、この検査は記録との対応だけを守る（#2343） |
 | [`doc-reference-probe/`](doc-reference-probe/) | 文書中の明示パス参照と暗黙候補を調べる任意実行の限定試作（#2309） |
 | [`repository-node-tests/`](repository-node-tests/) | どのworkflowからも実行されなかったNode.js試験5ファイルをgo testから実行する（#2346） |
 | [`check-public-boundary/`](check-public-boundary/) | 追跡ファイルに、非公開資料の名前・所在のマーカーが入っていないかを検査する（#2342 / #2436） |
@@ -208,6 +209,9 @@
 | [`reference-ddl-entry/`](reference-ddl-entry/) | 物理対応から提供元が出力できるDDLを表ごとに取り出す入口（#1803） |
 | [`reference-expected-state-concurrency/`](reference-expected-state-concurrency/) | 期待状態の比較による更新が後勝ちを防ぐことを、実PostgreSQLの使い捨てDBで確かめる参照試験（#2483、仮説H1） |
 | [`reference-developer-context/`](reference-developer-context/) | TEIのGoソース1件に対し、実在する関連テストと明示参照する設計資料を根拠付きの調査候補として返す読み取り専用の参照PoC。ローカルのSystem One互換判断モデルは候補の順位付けにだけ使い、失敗時は決定的な基準順を保つ。受理・権限・実行を決めない（#2196 / #2021） |
+| [`reference-issue-test-ability/`](reference-issue-test-ability/) | 既存のTEI Driver Scenario CLIが試験可能かを、実バイナリと合成fixtureだけで確かめる境界付きのprobe。Scenario実行器やDomain Authorityの代替ではなく、正例・負例を同じ実binaryで照合する（#3304） |
+| [`reference-design-context-packet/`](reference-design-context-packet/) | 既存CLI証拠から設計コンテキストのパケットを組み立てる参照Consumer。`obligations.json`の必須項目が欠けた場合・証拠が食い違う場合・応答が完全でない場合は、空の成功ではなく明示の状態として返す。TEI Sourceの解析や開示の権限判断はしない（#3262） |
+| [`reference-verified-composition-bom/`](reference-verified-composition-bom/) | 既に選ばれたバージョン選択（QueryのProvider範囲・Consumer範囲など）を、外部から渡されたexact lock・外部で実行済みのTest Witnessと突き合わせ、束縛の一部が欠けたBOMを`qualified:false`・`reference-fixture-only`として返す参照。BOMは常にこの上限を持ち、公開やVerified BOMとしての推奨をしない（#3267） |
 | [`reference-design-output/`](reference-design-output/) | 受理済みの意味から表・機能・対応一覧・DDL・静的HTML索引を一つのrevisionへ束縛して導出する参照。書式（markdown/text）を差し替えても意味の行を保ち、編集できる正本の位置と、宣言された利用／観測された副作用を別々に示す（#1803） |
 | [`reference-access-matrix/`](reference-access-matrix/) | Application × Dataの宣言された利用の対応表を導出する参照（#1803） |
 | [`reference-operation-pattern-crosswalk/`](reference-operation-pattern-crosswalk/) | 受理済みの意味から、宣言されたPatternと導出された標準操作を、Data ID・能力ID・Relation targetの三つの宣言だけで突き合わせる参照。一致は読み取りであり実行権限ではありません。一致しない宣言は operation-surface の gap 語彙で返し、既定値で埋めません（W3の設計候補を試すためのもの） |
@@ -215,6 +219,10 @@
 | [`reference-plugin-capability-coverage/`](reference-plugin-capability-coverage/) | プラグインが宣言した能力のうち、どの環境のBindingからも選ばれていないものを一覧する参照。database-instanceは提供技術名を指すため、能力IDと文字列で比べず SupportsDatabaseProvider で解決します。選ばれていないことは欠陥の証明ではありません |
 | [`reference-plugin-selection-matrix/`](reference-plugin-selection-matrix/) | 環境のBinding（配備実行・状態観測・検証根拠・database instance・環境の機能・移行）ごとに、対応するプラグイン能力を既存の `Supports*` で一括して解決し、selected/missing/ambiguous を一覧する参照。ambiguous は解消せず両方を列挙します。診断の権限は internal/validation が持ちます |
 | [`reference-binding-to-execution/`](reference-binding-to-execution/) | 環境の deployment-executor Binding を既存の routing.RouteCommand で解決し、routing.Router.Dispatch で実行、routing.ValidateResult で照合する参照。Executor の registry は Host が渡し、参照は組み立てません。未登録の executor を指す Binding や結果の不一致は実行せず拒否します。実配備の成立は示しません |
+| [`reference-executor-id-resolution/`](reference-executor-id-resolution/) | 環境の deployment-executor Binding から executor の CapabilityID を routing.RouteCommand で解決し、pruntime.BuildPlan の plan がその ID を認めるか（EnvironmentPlan.Capability）と、能力が action を支えるか（SupportsAction）を順に確かめる参照。直書きの ID は比較用に並べるだけで解決に使わない。実行はしない |
+| [`reference-observation-router-connect/`](reference-observation-router-connect/) | ObservationProviders の宣言から observation.Binding で provider を解決し、既存の observation.Router で実際に入る参照。resolved（宣言から解決）・selected（Hostが登録）・invoked（providerのObserveに入った）を別々に数え、解決できたことを実行できたと読み替えない。Router も Provider も参照は組み立てず Host が渡す |
+| [`reference-evidence-router-connect/`](reference-evidence-router-connect/) | EvidenceProviders の宣言から evidence.Binding で provider を解決し、既存の evidence.Router で実際に入る参照。観測側と同じ4段を別々に数え、Collect が durable.ActionRecord を要求するため証拠ゲートでない記録は専用状態で拒否する。Router も Provider も参照は組み立てず Host が渡す |
+| [`reference-digest-change-reuse/`](reference-digest-change-reuse/) | Artifact digest が変わったとき旧いピン留めがどうなるかを、既存の generation.Router だけで確かめる参照（CON-12c）。変更後の新しい取得は新しい digest、変更前にピン留めした lease は古い digest のままであることを示す。Publish が同じ世代番号と contract 越えを拒否することも固定する。実配備の切替ではない |
 | [`reference-service-carrier-connect/`](reference-service-carrier-connect/) | 判断材料のC-2を試験の外で組み立てる参照。Hostが渡したCoordinator・Runtime registry・RouteSourceから BindHostApplicationEnvironmentRoute と NewSelectedServiceCarrierInvoker を順に呼び、ピン留めした世代でService要求を運びます。Routeが無い・別Binding用・入力不足は実行前に拒否します。実配備の成立は示しません |
 | [`reference-accounting-period/`](reference-accounting-period/) | 業務日付とシステム時刻を分け、期間の状態・締め済み期間の直接更新拒否・赤黒訂正・締め後の到着方針・順序鍵と版による再生・締め時点の照合値を判定する参照（#2144） |
 | [`reference-partial-import-plan/`](reference-partial-import-plan/) | 別Workspaceから選んだData定義の取込み結果を分類する読取り専用の参照（#1805） |

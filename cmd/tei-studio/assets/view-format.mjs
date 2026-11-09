@@ -162,11 +162,21 @@ function summarizeApplication(view) {
   if (Array.isArray(view.periods) && view.periods.length) {
     sections.push({
       title: "期間",
-      header: ["ID", "Data", "業務日付", "状態", "暦"],
-      rows: view.periods.map((period) => [valueOf(period.id), valueOf(period.data), valueOf(period.businessDate), joined(period.states), valueOf(period.calendar)]),
+      header: ["ID", "Data", "業務日付", "状態", "暦", "締め日"],
+      rows: view.periods.map((period) => [valueOf(period.id), valueOf(period.data), valueOf(period.businessDate), joined(period.states), valueOf(period.calendar), closingOf(period)]),
     });
   }
   return sections;
+}
+
+// closingOf renders the declared closing day, so a period narrower than a month
+// is visible without the reader inferring a default day.
+function closingOf(period) {
+  const day = period.closingDay;
+  if (typeof day !== "number" || day <= 0) {
+    return "";
+  }
+  return `${day}日`;
 }
 
 function summarizePackage(view) {
@@ -242,6 +252,21 @@ function hookSummary(hooks) {
   if (notEvaluated.length) parts.push(`not evaluated ${notEvaluated.join(",")}`);
   if (skipped.length) parts.push(`skipped ${skipped.join(",")}`);
   if (hooks.refused) parts.push(`refused ${hooks.refused}`);
+  // A proposal is a candidate value, not an applied one. Naming it here keeps
+  // "executed" from reading as "the hook changed nothing".
+  const uncalled = hooks.uncalled && typeof hooks.uncalled === "object" ? hooks.uncalled : {};
+  for (const phase of Object.keys(uncalled).sort()) {
+    const names = Array.isArray(uncalled[phase]) ? uncalled[phase] : [];
+    if (names.length) parts.push(`uncalled at ${phase} ${names.join(",")}`);
+  }
+  const proposed = hooks.produced && typeof hooks.produced === "object" ? hooks.produced : {};
+  for (const phase of Object.keys(proposed).sort()) {
+    const values = proposed[phase] && typeof proposed[phase] === "object" ? proposed[phase] : {};
+    const names = Object.keys(values).sort();
+    if (names.length) {
+      parts.push(`proposes at ${phase} ${names.map((name) => `${name}=${values[name]}`).join(",")}`);
+    }
+  }
   return parts.join("; ");
 }
 
@@ -326,6 +351,8 @@ export function summarizeView(value) {
     rows: Object.entries(value).map(([key, entry]) => [key, JSON.stringify(entry)]),
   }];
 }
+
+
 
 
 
