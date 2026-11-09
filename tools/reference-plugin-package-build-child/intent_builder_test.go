@@ -72,14 +72,57 @@ func TestCompareIntentFieldsIgnoresTheResolvedBuilderIdentity(t *testing.T) {
 	}
 }
 
-// A declaration with an explicit provider selection is still compared only on
-// the contract and major: the provider is a policy the resolver applies.
+// The contract and major agree, and so does everything else, so the comparison
+// accepts the pair. This is the control for the refusals below: a comparison
+// that always failed would not be a comparison.
 func TestCompareIntentFieldsComparesOnlyContractAndMajor(t *testing.T) {
+	if err := compareIntentFields(declarationFor(t, nil), fixturePlan(t)); err != nil {
+		t.Fatalf("an agreeing declaration was refused: %v", err)
+	}
+	_ = plugin.BuildPlan{}
+}
+
+// A declared provider that the plan did not resolve is refused. The provider is
+// a requirement the caller wired, so a plan built by a different builder did not
+// honour it. This is the unit-level counterpart of
+// TestBuildChildRejectsADeclarationWhoseBuilderChoiceWasNotResolved.
+func TestCompareIntentFieldsRefusesADifferentProvider(t *testing.T) {
 	intent := declarationFor(t, func(i *buildintent.BuildIntent) {
 		i.Builder.Provider = &buildintent.ProviderWiring{Plugin: "tei.builder.go"}
 	})
-	if err := compareIntentFields(intent, fixturePlan(t)); err != nil {
-		t.Fatalf("a provider selection broke an otherwise agreeing declaration: %v", err)
+	err := compareIntentFields(intent, fixturePlan(t))
+	if err == nil {
+		t.Fatal("a provider the plan did not resolve was accepted")
 	}
-	_ = plugin.BuildPlan{}
+	for _, want := range []string{"tei.builder.go", string(fixturePlan(t).Builder.ID)} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("the refusal did not name %q: %s", want, err)
+		}
+	}
+}
+
+// An agreeing provider is accepted.
+func TestCompareIntentFieldsAcceptsAnAgreeingProvider(t *testing.T) {
+	plan := fixturePlan(t)
+	intent := declarationFor(t, func(i *buildintent.BuildIntent) {
+		i.Builder.Provider = &buildintent.ProviderWiring{Plugin: plan.Builder.ID}
+	})
+	if err := compareIntentFields(intent, plan); err != nil {
+		t.Fatalf("an agreeing provider was refused: %v", err)
+	}
+}
+
+// A pin the plan did not resolve is refused: an exact artifact digest is a
+// requirement, not a preference.
+func TestCompareIntentFieldsRefusesADifferentPin(t *testing.T) {
+	intent := declarationFor(t, func(i *buildintent.BuildIntent) {
+		i.Builder.Pin = &buildintent.ArtifactPin{ArtifactDigest: "sha256:" + strings.Repeat("c", 64)}
+	})
+	err := compareIntentFields(intent, fixturePlan(t))
+	if err == nil {
+		t.Fatal("a pin the plan did not resolve was accepted")
+	}
+	if !strings.Contains(err.Error(), strings.Repeat("c", 64)) {
+		t.Fatalf("the refusal did not name the pinned digest: %s", err)
+	}
 }
