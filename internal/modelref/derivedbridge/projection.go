@@ -106,6 +106,21 @@ func FromIndex(d index.Derived, scope string) Projection {
 	for _, e := range d.DeclaredDependencies {
 		addEdge(e.FromKind, string(e.From), e.Relation, e.ToKind, string(e.To))
 	}
+	// `realize X with custom go`, declared under an application, states that
+	// the application implements the capability with a generated Go adapter.
+	// The index already carried the binding in CustomGoBindings, but the graph
+	// never made it an edge, so `trace` could not answer "what implements this
+	// capability" (#3983). The edge runs application -> capability named
+	// `realizes`: a reader asking about a capability reads -direction incoming.
+	// The adapter filename and hook name stay index metadata; they name a
+	// generated file, not a model subject, so they are not graph nodes.
+	for _, b := range d.CustomGoBindings {
+		if b.Application == "" || b.Capability == "" {
+			p.Unresolved = append(p.Unresolved, "incomplete-realization:"+string(b.Capability))
+			continue
+		}
+		addEdge("application", string(b.Application), "realizes", "semantic-capability", string(b.Capability))
+	}
 	for rule := range ruleSet {
 		p.Rules = append(p.Rules, rule)
 	}
