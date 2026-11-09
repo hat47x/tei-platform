@@ -42,6 +42,7 @@
 - [フック実行の配線と失敗の区別の確認](XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)（参照実装の試験記録。Runnerからの配線、NotSatisfiedと実行失敗の区別、参照規則。実PluginとCLI・Studioの配線は未実装）
 - [フック宣言の印刷面への反映の確認](XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md)（参照実装の試験記録。画面と同じフック宣言が印刷面にも出る。実印刷・用紙面の版照合は未確認）
 - [フックの位相順序と途中停止の確認](XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md)（参照実装の試験記録。位相の実行順、不成立での停止位置、`warn`の続行、未対応位相の拒否。CLI・Studioへの配線は未実装）
+- [複数の結末があるとき、どれかを選んだことにしない確認](XTEA_LOWCODE_MULTI_OUTCOME_2026-11.md)（参照実装の試験記録。2つ以上の結末を持つ能力は参照実行で結末を返さず、理由を`outcomeUndetermined`に残す。選択規則は未決定）
 - [位相ごとにフックの実装を供給できる経路の確認](XTEA_LOWCODE_HOOK_PHASE_IMPLEMENTATION_2026-11.md)（参照実装の試験記録。`Runner.ByPhase`で位相ごとに本体を選べる。規則Pluginの契約は未決定）
 - [能力入力の結び付けのData対応と、1属性の複数パラメータへの束ねの確認](XTEA_LOWCODE_HOOK_BINDING_DATA_MATCH_2026-11.md)（参照実装の試験記録。Data型パラメータへ別Dataの属性を結ぶ宣言を拒否し、1属性を複数パラメータへ束ねる形は既に動くことを固定）
 - [能力入力の結び付けの型検査の確認](XTEA_LOWCODE_HOOK_BINDING_TYPE_CHECK_2026-11.md)（参照実装の試験記録。原始型同士の食い違いを宣言段階で拒否し、Dataを名指す結び付けは比較しない）
@@ -300,4 +301,5 @@
 - [traceの行issueは11種すべてCLIから観測できない](TEI_DOGFOODING_ROUND32_ISSUE_REACHABILITY_2026-11-09/README.md)（#3906。`trace.go`の6種と`lookup.resolve`の5種がすべて到達不能。`reference/workspace`全subjectで`issue`は1件も観測されず、未解決は`projectionUnresolved`のみ）
 - [計画文書に本文を持たない重複見出しが残っていた](TEI_DOGFOODING_ROUND33_PLAN_HEADING_DUPLICATE_2026-11-09/README.md)（#3919。`## 11`が2つ・第5ラウンド記録も§6重複。`## `見出しの連続と番号重複を検査する試験を追加。私の試験が2回「静かに通る」状態になったことも記録）
 - [`darwin`・`arm64`で何が確かめられ、何が確かめられないか](TEI_GO_SELF_BUILD_CROSS_COMPILE_SCOPE_2026-11-10.md)（§7の残項目について、クロスコンパイルは4 target で成功するが**実行はできない**（qemu無し・macOS無し）。`internal/buildintent`にhost依存の分岐が0件という静的確認まで。**実行による一致は未観測**で、§7の項目は未チェックのまま。 #2831）
+- [桁数を綴るhelperが1桁しか扱えず検査が静かに止まっていた](TEI_DOGFOODING_ROUND34_ITOA_DIGITS_2026-11-09/README.md)（#3919。`itoa(10)`が`":"`になり正規表現が0一致。panicせず検査が無くなる。`strconv.Itoa`へ置換し試験2件を追加。第33ラウンドの記述誤りも訂正）
 

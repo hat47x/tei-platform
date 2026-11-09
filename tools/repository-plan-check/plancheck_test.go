@@ -38,7 +38,7 @@ func numberedFiles(t *testing.T, dir string, digits int) map[string][]string {
 }
 
 func itoa(n int) string {
-	return string(rune('0' + n))
+	return strconv.Itoa(n)
 }
 
 func assertUnique(t *testing.T, kind string, byNumber map[string][]string) {

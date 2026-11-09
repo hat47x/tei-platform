@@ -1,0 +1,4 @@
+Round 33 said: "the callers pass ADR numbers and Issue numbers (1-3 digits)".
+That was wrong. They pass a DIGIT COUNT (4 and 6), not a number.
+Because of that error I rated the risk as "breaks at 3 digits";
+the real boundary is 10+.
