@@ -24,6 +24,22 @@
 | F-09 | JSONLで最後のイベントを読まない範囲なら`O-003`に関する取得結果は部分集合 | 0件や不存在と断定せず、取得範囲・完全性を要する |
 | F-10 | 両Sourceを読めても各Sourceの取得時点が不一致なら共通Snapshot保証はない | データ横断のAtomicity/同時点Claimを捏造しない |
 
+## 実Product Query `order_entry.recent_orders` と汎用Fixtureを混同しない
+
+現行[TEI Query宣言](../../reference/workspace/applications/order-entry/queries/recent_orders.tei)が指す[Native SQL](../../reference/workspace/applications/order-entry/queries/recent_orders.sql)は、**`public.orders(order_id, customer_id, ordered_at, status, total_amount)`**を読む。一方、上記の`postgres_seed.sql`は独立した汎用Workbench Fixture **`sales_order(id, customer_id, amount, status)`**であり、前者に必要な`public.orders`・`ordered_at`列・`:from`入力は存在しない。この二つを同じ「3行の実DB Provider Read」として扱うと、最初のFunction縦断試験が実行不能なまま誤って合格となる。
+
+最初のProduct Read専用に**別ファイル**[`recent_orders_product_seed.sql`](recent_orders_product_seed.sql)を追加する。これは**新規／隔離／破棄可能なPostgreSQLのみ**へ適用可能な合成3行であり、元の汎用`sales_order`/F-01〜10と共通業務Meaning、同じDB Instance、同時Snapshotを宣言しない。テーブルを本番・既存参照Workspaceの実DBへ適用しない。
+
+| Query Source-static期待値 | 独立Expected（入力からの固定条件） | ここで合格にしないもの |
+| --- | --- | --- |
+| PQ-01 Schemaと列 | `public.orders`、選択5列、`ordered_at TIMESTAMPTZ`、`total_amount NUMERIC(12,2)` | Schemaの本番所有、PKの業務Key受理 |
+| PQ-02 `:from = 2026-11-07T09:00:00Z` | `ORDER BY ordered_at DESC`なら O-003, O-002, O-001 | 実SQL Executor/実Providerと結果順の資格 |
+| PQ-03 `:from = 2026-11-07T10:05:00Z` | 境界一致を含め O-003, O-002 | Providerに実パラメータがBindされた証拠 |
+| PQ-04 `:from = 2026-11-07T10:10:01Z` | 完全なFixture上の結果は0件 | 実Readerの返却0件、全Data Sourceでの不存在 |
+| PQ-05 Source/Mapping | Query `order_entry.recent_orders`→`datasource sales`→Application `sales_core`宣言、5列のSemantic属性への宣言 | Function Contextへの明示Binding、Runtime Instance/実Grant、Result Mapping成功 |
+
+`product_query_fixture_test.go`は**実Query原文／宣言／Applicationと新合成Seedの静的整合**および固定3入力からの期待行順だけを検査する。PostgreSQLに接続せず、Native SQLを実行せず、`sql postgres file`や`datasource sales`が実時点の正しいProviderを選んだことも検証しない。正常0件と部分0件、Grant拒否、`:from`の型・変換・実Bind、同時刻の安定ページング、実Rowset→Function Data Context、CLI/Studio完全受領は[#2586](https://github.com/hat47x/tei-platform/issues/2586)／[#3270](https://github.com/hat47x/tei-platform/issues/3270)の次の独立試験とする。
+
 ## 利用条件と次の作業
 
 1. `postgres_seed.sql`は明示的な隔離PostgreSQLのみで実行し、適用後に**別Reader**でSchemaと3行を観測する。SQLファイルをParseしただけなら`F-01`はSource-static資格に留める。
