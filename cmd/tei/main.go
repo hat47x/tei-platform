@@ -177,7 +177,7 @@ func main() {
 	reviewHandoffPath := fs.String("review-handoff", "", "Builder Review Handoff JSON")
 	knowledgeDisclosure := fs.String("disclose", "", "comma-separated Knowledge sections to disclose: source,definition,dependencies,data-design")
 	expectedDisclosureFingerprint := fs.String("expected-disclosure-fingerprint", "", "expected selective Knowledge Disclosure fingerprint; valid for disclosure-producing commands")
-	qualificationRequirementsPath := fs.String("qualification-requirements", "", "knowledge qualification requirements JSON")
+	qualificationRequirementsPath := fs.String("qualification-requirements", "", "path to a file holding the knowledge qualification requirements JSON")
 	var analysisPaths pathList
 	var schemaPaths pathList
 	var planPaths pathList

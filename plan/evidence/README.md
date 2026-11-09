@@ -310,3 +310,4 @@
 - [桁数を綴るhelperが1桁しか扱えず検査が静かに止まっていた](TEI_DOGFOODING_ROUND34_ITOA_DIGITS_2026-11-09/README.md)（#3919。`itoa(10)`が`":"`になり正規表現が0一致。panicせず検査が無くなる。`strconv.Itoa`へ置換し試験2件を追加。第33ラウンドの記述誤りも訂正）
 - [2つの試験が対象0件のまま常に成功していた](TEI_DOGFOODING_ROUND35_VACUOUS_CHECKS_2026-11-09/README.md)（#3931。`plan/issue`に番号付き文書が無く、一意性と6値の試験が0件を走査。空入力を拒否し、6値試験はSKIPで可視化。3ラウンド連続で同じ型）
 - [空回りする検査を1箇所に集約して可視化した](TEI_DOGFOODING_ROUND36_SCOPE_NONEMPTY_2026-11-09/README.md)（#3931。全スコープを計測し空は`plan/issue`のみと確認。`TestEveryCheckScopeIsNonEmpty`で0件を検出。私の初版ガードがディレクトリ件数を見て除外分岐が未実行だったことも記録）
+- [設計者ループは動くが補助コマンドのhelpが誤っていた](TEI_DOGFOODING_ROUND37_DESIGNER_LOOP_2026-11-09/README.md)（#3943。`security.logout`追加→validate/inspect/traceで連鎖確認。誤りは正しく検出。`-qualification-requirements`がパスなのにhelpは「JSON」、スキーマも未広告。文言を修正）
