@@ -387,3 +387,36 @@ func TestValidateJSONReportsDeclarationsForAReferenceWorkspace(t *testing.T) {
 		t.Fatalf("reference workspace counts=%+v", report.DeclarationCounts)
 	}
 }
+
+// TestValidateJSONDiagnosticsKeepNestedDiagnostic pins the v0 shape that the
+// contract document describes (#3347): diagnostics[] elements carry the
+// diagnostic under a "diagnostic" key, not flattened. A reader that assumes a
+// flat element would silently read no code; this test makes that visible before
+// any flattening (which would need v1).
+func TestValidateJSONDiagnosticsKeepNestedDiagnostic(t *testing.T) {
+	root := t.TempDir()
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: shape\nformatVersion: 1\nsources:\n  - semantic\n")
+	writeWorkspaceFile(t, root, "semantic/sales/order.tei",
+		"namespace sales\n\ndata Order {\n    attribute orderId type }\n}\n")
+	var out bytes.Buffer
+	code, err := validateWorkspaceJSON(&out, root)
+	if err != nil || code != 1 {
+		t.Fatalf("code=%d err=%v body=%s", code, err, out.String())
+	}
+	var document struct {
+		Diagnostics []map[string]json.RawMessage `json:"diagnostics"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &document); err != nil {
+		t.Fatal(err)
+	}
+	if len(document.Diagnostics) == 0 {
+		t.Fatal("diagnostics is empty")
+	}
+	first := document.Diagnostics[0]
+	if _, ok := first["code"]; ok {
+		t.Fatalf("diagnostics[0] has a top-level code; the v0 element is nested: %v", first)
+	}
+	if _, ok := first["diagnostic"]; !ok {
+		t.Fatalf("diagnostics[0] lost its diagnostic object: %v", first)
+	}
+}

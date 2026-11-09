@@ -79,6 +79,34 @@ type ExecutionError struct {
 }
 
 func (e *ExecutionError) Error() string { return e.Code + ": " + e.Message }
+
+// ReportedFailure returns the machine-readable failure an entrance should
+// report for err, and whether it has one.
+//
+// Every entrance answers the same way, because the answer is a property of the
+// error, not of the entrance: an ExecutionError already carries the reason the
+// caller branches on, and the remedy differs by code (supply an input, open the
+// period, obtain authority, retry after a commit failure). A per-entrance
+// allow-list is therefore wrong twice over — it hides reasons the core already
+// made machine-readable, and the lists drift apart (#3807: the CLI flattened 15
+// of 21 codes and knew seven, the Studio knew one).
+//
+// The second return value is the message without the "CODE: " prefix, so a
+// caller that reads code and message separately does not see the code twice.
+func ReportedFailure(err error) (string, string, bool) {
+	// "The effect may already be applied" dominates the specific code, because
+	// it changes what the caller must do: a blind retry can apply the change
+	// twice. Any ExecutionError can carry the flag, and so can a wrapped error
+	// whose cause does, so this is checked before the code is reported.
+	if EffectMayBeUnknown(err) {
+		return "COMMAND_EFFECT_UNKNOWN", err.Error(), true
+	}
+	var execution *ExecutionError
+	if errors.As(err, &execution) {
+		return execution.Code, execution.Message, true
+	}
+	return "", "", false
+}
 func (e *ExecutionError) Unwrap() error { return e.Cause }
 
 // NewUnknownExecutionErrorは、適用有無が確定しない実行失敗を作る。
@@ -224,9 +252,19 @@ func (i Invoker) checkPeriod(ctx context.Context, plan applicationview.CommandPl
 	if plan.Effect == nil {
 		return nil
 	}
-	closed, err := i.Periods.Closed(ctx, plan.Period.ID)
+	scope, scopeErr := applicationview.ScopeFor(*plan.Period, businessDateOf(plan, *plan.Period))
+	if scopeErr != nil {
+		return &ExecutionError{Code: "COMMAND_PERIOD_SCOPE_UNKNOWN", Message: scopeErr.Error(), Cause: scopeErr}
+	}
+	closed, answered, err := scopeClosed(ctx, i.Periods, scope)
 	if err != nil {
 		return &ExecutionError{Code: "COMMAND_PERIOD_STATE_FAILED", Message: err.Error(), Cause: err}
+	}
+	if !answered {
+		// A period split by a closing day cannot be answered by a state that only
+		// knows whole months: reading the month's closure as the half's closure
+		// would refuse or allow the wrong half.
+		return &ExecutionError{Code: "COMMAND_PERIOD_SCOPE_UNAVAILABLE", Message: fmt.Sprintf("period %s is split by a closing day but the period state cannot answer for a half month", plan.Period.ID)}
 	}
 	if !closed {
 		return nil
@@ -237,6 +275,18 @@ func (i Invoker) checkPeriod(ctx context.Context, plan applicationview.CommandPl
 		}
 	}
 	return nil
+}
+
+// businessDateOf finds the input that fills the period's business date, so the
+// scope follows the date the caller actually supplied rather than the plan's
+// declaration.
+func businessDateOf(plan applicationview.CommandPlan, period applicationview.CommandPeriodRef) string {
+	for _, input := range plan.Inputs {
+		if input.Attribute == period.BusinessDate {
+			return input.Value
+		}
+	}
+	return ""
 }
 
 func (i Invoker) execute(ctx context.Context, request Request, plan applicationview.CommandPlan) (Result, error) {

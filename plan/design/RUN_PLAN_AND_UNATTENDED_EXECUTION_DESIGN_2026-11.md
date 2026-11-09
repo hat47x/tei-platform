@@ -335,7 +335,8 @@ run-plan sales.monthly_close operations sales.close key sales.period.month concu
 
 `access.ChainFile` を追加し、判定の記録を**鎖**で繋ぎました。
 
-- 各行は直前の行のハッシュを持ちます。ハッシュの対象は `prevHash`・行番号・能力・`allowed`・`missing` の全部です。
+- 各行は直前の行のハッシュを持ちます。ハッシュの対象は**決定そのものの JSON 符号化**と、鎖の版・`prevHash`・行番号です。欄を手で並べないのは、`Record` に欄が増えたときに足し忘れると**その欄を書き換えても検証が通る**ためです（`TestRecordHashCoversEveryFieldOfTheRecord` が固定しています）。
+- 鎖の版（`tei.access.chain/v2`）を記録に書きます。計算方法を変えたときに、古い記録が黙って通ることも、改竄として誤報されることもありません（版が違えば「版の不一致」として報告します）。
 - 決定の欄は**埋め込み**なので、鎖を知らない読み手でもそのまま読めます。形式を二つに増やしていません。
 - 検出できるのは、判定の書き換え・途中の行の削除・`prevHash` の偽装です。
 - **末尾の行の削除は、鎖だけでは検出できません**（短くなった鎖も正しい鎖です）。この限界は試験で固定しています（`TestChainFileNeedsAPinnedHeadToDetectATruncatedSuffix`）。

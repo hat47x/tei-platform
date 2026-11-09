@@ -1985,6 +1985,7 @@ func (p *Parser) parseSemanticData(namespace core.CanonicalID) (semantic.Data, e
 			required := false
 			immutable := false
 			role := ""
+			roleDeclared := false
 			var declaredValue *string
 		attributeOptions:
 			for {
@@ -2022,12 +2023,16 @@ func (p *Parser) parseSemanticData(namespace core.CanonicalID) (semantic.Data, e
 					_, _ = p.next()
 					immutable = true
 				case "role":
+					if roleDeclared {
+						return d, p.errAt(nt, "duplicate role option for attribute "+aSym.Text)
+					}
 					_, _ = p.next()
 					roleTok, err := p.expect(TokenIdent)
 					if err != nil {
 						return d, err
 					}
 					role = roleTok.Text
+					roleDeclared = true
 				default:
 					break attributeOptions
 				}
@@ -2509,8 +2514,25 @@ func (p *Parser) parseSemanticPeriod(namespace core.CanonicalID) (semantic.Perio
 				return period, err
 			}
 			period.Correction = value
+		case "closes":
+			_, _ = p.next()
+			if _, err := p.expectText("on"); err != nil {
+				return period, err
+			}
+			if _, err := p.expectText("day"); err != nil {
+				return period, err
+			}
+			dayTok, err := p.expect(TokenIdent)
+			if err != nil {
+				return period, err
+			}
+			day, convErr := strconv.Atoi(dayTok.Text)
+			if convErr != nil {
+				return period, p.errAt(dayTok, "closing day is not a whole number")
+			}
+			period.ClosingDay = day
 		default:
-			return period, p.errAt(t, "expected data, business-date, calendar, states, close-requires, closed-rejects, or correction")
+			return period, p.errAt(t, "expected data, business-date, calendar, states, close-requires, closed-rejects, correction, or closes")
 		}
 	}
 	return period, nil
@@ -2535,6 +2557,9 @@ func (p *Parser) readPeriodNames() ([]string, error) {
 	stop := map[string]bool{
 		"data": true, "business-date": true, "states": true,
 		"close-requires": true, "closed-rejects": true, "correction": true,
+		// closes starts the closing-day declaration, so a states list must end
+		// before it; otherwise the day number is read as another state name.
+		"closes": true,
 	}
 	var values []string
 	for {
