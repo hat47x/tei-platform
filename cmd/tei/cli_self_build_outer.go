@@ -426,8 +426,16 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 		// reported, and confirm that digest against the bytes on disk. This is a
 		// separate record from the cross-check: agreement of two plan fingerprints
 		// says nothing about which artifact came out.
+		// The entry's own derivation goes in as a basis that does not come from
+		// the child. It is used only when the child is silent; which one the lock
+		// carries is recorded beside it.
+		entryPlanFingerprint := ""
+		if report.PlanRecompute != nil {
+			entryPlanFingerprint = report.PlanRecompute.RecomputedFingerprint
+		}
 		binding := bindPlanToArtifact(
 			report.PlanReceipt,
+			entryPlanFingerprint,
 			evidence.ChildPlanFingerprint,
 			evidence.ChildArtifact,
 			evidence.CrossChecked,
