@@ -9,15 +9,6 @@ import (
 )
 
 func TestWasmTemplateIsSelectable(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		// The wasm candidate answers every fixture case with an empty result on
-		// the Windows CI runner: the run exits 0 and prints something that
-		// decodes into an empty Result, so the comparison against the expected
-		// output fails for all cases. The same build passes on Linux and on a
-		// Windows workstation, so the difference is the runner's node/wasm
-		// combination, not the candidate (#3783). Linux CI covers this path.
-		t.Skip("the wasm candidate returns an empty result on the Windows CI runner; Linux CI runs it (#3783)")
-	}
 	if _, _, _, ok := resolveWasmRuntime(); !ok {
 		t.Skip("node or Go wasm_exec_node.js is not available")
 	}
@@ -56,15 +47,6 @@ func TestWasmTemplateIsSelectable(t *testing.T) {
 }
 
 func TestGoAndWasmCandidatesProduceSameFixtureOutputs(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		// The wasm candidate answers every fixture case with an empty result on
-		// the Windows CI runner: the run exits 0 and prints something that
-		// decodes into an empty Result, so the comparison against the expected
-		// output fails for all cases. The same build passes on Linux and on a
-		// Windows workstation, so the difference is the runner's node/wasm
-		// combination, not the candidate (#3783). Linux CI covers this path.
-		t.Skip("the wasm candidate returns an empty result on the Windows CI runner; Linux CI runs it (#3783)")
-	}
 	if _, _, _, ok := resolveWasmRuntime(); !ok {
 		t.Skip("node or Go wasm_exec_node.js is not available")
 	}
