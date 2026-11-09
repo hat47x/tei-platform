@@ -682,6 +682,7 @@ Source Indexを前段P0-Sで読めても、このDriver解決は`Source Index→
 **C-2で特に注意する点**：Carrierへの入場はProvider Processへの到達ではない。Host-owned RouteやArtifact Verifierが**Carrierの内部**で拒否する経路があるため、`carrierInvoked=true`だけで`providerInvoked=true`と推論しない。Carrier参照v0ではReportの版名と一部説明が食い違っていたため、`tei.reference.service-carrier-connect/v1`へ切り分け、実Resultの事前拒否と呼出し後不確定を別のError Codeで扱う。保存済みv0 RAW/SHAと新v1を混ぜず、新規CIの結果を受けて別途Qualifiedとする。
 
 **次のプロダクト受入**：選択したOperation Ownerがどちらかを先に確認し、`selected→actual carrier/process invocation→returned ACK→effect independent read→Client Reaction`を同一Attemptの**別証拠**として要求する。既存Result/Command Effect fence（#1174）、Plugin/Current GrantとBOM（#951/#3279/#3267）、Design Context（#3262）を利用し、第二Resolver/Authority/Receipt StoreをHTTP専用に作らない。CLI/Studioの静的Reference Providerについて**通常入口への接続がある**ことと、正式Provider BでのProduct S2／Artifact検証が未成立であることを区別する。
+**次のプロダクト受入**：選択したOperation Ownerがどちらかを先に確認し、`selected→actual carrier/process invocation→returned ACK→effect independent read→Client Reaction`を同一Attemptの**別証拠**として要求する。既存Result/Command Effect fence（#1174）、Plugin/Current GrantとBOM（#951/#3279/#3267）、Design Context（#3262）を利用し、第二Resolver/Authority/Receipt StoreをHTTP専用に作らない。実CLI/StudioのProvider B Consumer S2が合格するまでは、「共通Plugin実行基盤が製品に接続済み」とは扱わない。
 
 ## 23. 参考資料と採否
 

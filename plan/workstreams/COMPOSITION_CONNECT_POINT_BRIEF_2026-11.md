@@ -87,6 +87,7 @@
 | C-3 Capability ID導出 | 名称一致ではなく実Canonically selected Binding/実Invoke先を比較できるか |
 
 **本追補の判定**は依然「判断材料・未確定」。実行Owner（C-4を含む）→役割別C-1/C-2→必要なDeployment C-3の順序と正本のOwnerは変えない。追加のHTTP専用Routing/ResolverやProduct schemaは、実行接続の選択前に導入しない。[mainへ統合済みPR #3540](https://github.com/hat47x/tei-platform/pull/3540)により、通常`tei inspect`のdispatchと通常/生成Studio Hostから、**コンパイル済みの静的Reference Provider `tei.reference.inspector.local`**を既存Compositionで選んで呼ぶ**S2-reference**は実装済み（exact-head Health/Wails/CLI等success）。一方、**正式ProfileでProvider Bを選んだときに両Consumerが実Provider Bへ到達するS2-product**、別ProviderのLoad/Link/Grant/BOMは未達。Go Helperの成功を正式Pluginの実行資格へ昇格しない。
+**本追補の判定**は依然「判断材料・未確定」。実行Owner（C-4を含む）→役割別C-1/C-2→必要なDeployment C-3の順序と正本のOwnerは変えない。追加のHTTP専用Routing/ResolverやProduct schemaは、実行接続の選択前に導入しない。通常`tei inspect`と実Studio Bridgeの同一selected Inspector Provider B実呼出し（#3525/#3531の残るS2）は、局所Go test Helper二経路の成功から区別する。
 
 ## 9. C-1参照実行後の不確定性をHTTP/Command側の実証と結ぶ（2026-11-09）
 
@@ -128,3 +129,4 @@ C-1とC-2が**別種のOperationを運ぶ**ことが、[型・Carrierの独立�
 C-2の既存実装では、内部のArtifact Verifierが呼出しを拒否した場合、**Carrierへ入場していてもProcessは呼ばれていない**ことがある。この場合もC-2の`carrierInvoked=true`を「実Provider呼出し済み」としない。内部エラーとGeneration不一致を単なる事前拒否に平坦化しないため、v1で不確定応答の理由コードも事前拒否と区別する。C-2 v0の保存済み実測JSON／SHA-256は変更しない。
 
 **限定Exit達成**：[C-1/C-2専用Go CI #42555954660](https://github.com/hat47x/tei-platform/actions/runs/42555954660)は**completed/success**。C-1/C-2両ReferenceのGoテスト、Go vet、gofmtを同じcheckoutで実行し、C-2実コードBlob `f2952030906b80ba0bf052caeed92082f89c302c`と新V1テストBlob `67b4ed10eaaf0842e2719d5cfda724076fbc5008`を記録した。コード・テストは後続の文書改訂でも同一Blobを保持。これはReference限定であり全体Health、実Service Process資格、製品S2とは別。C-4外部Host委譲の判断、通常CLI/Studioの**S2-reference統合済み／S2-product正式Profile差替え未実証**、外部Source/BOM/Effectの資格はそれぞれ別のOwnerが保持する。Referenceのレポート種別・数値を、製品の業務成功KPIや自動再試行判断へ流用しない。
+**限定Exit達成**：[C-1/C-2専用Go CI #42555954660](https://github.com/hat47x/tei-platform/actions/runs/42555954660)は**completed/success**。C-1/C-2両ReferenceのGoテスト、Go vet、gofmtを同じcheckoutで実行し、C-2実コードBlob `f2952030906b80ba0bf052caeed92082f89c302c`と新V1テストBlob `67b4ed10eaaf0842e2719d5cfda724076fbc5008`を記録した。コード・テストは後続の文書改訂でも同一Blobを保持。これはReference限定であり全体Health、実Service Process資格、製品S2とは別。C-4外部Host委譲の判断、および通常CLI/Studioの実Consumer S2、外部Source/BOM/Effectの資格はそれぞれ別のOwnerが保持する。Referenceのレポート種別・数値を、製品の業務成功KPIや自動再試行判断へ流用しない。
