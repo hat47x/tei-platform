@@ -108,7 +108,7 @@ TEIが共通化するのは画面やDomain固有の工程列ではなく、**意
 ### 6.4 派生図面・REA・BOMへの受け渡し（主線を増やさない）
 
 - **三視点・組織・Lifecycle**：既存[#1124](https://github.com/hat47x/tei-platform/issues/1124)/#1125/#1126/#1127、[RQ-036](../../requirements/TEI_PRODUCT_REQUIREMENTS.md)、[#3503](https://github.com/hat47x/tei-platform/issues/3503)のSource-first Role Projectionで、Data/Function/Business/組織の主体・権限・有効期間・State・Actionを**同一stable identityへの別Role**としてたどる。Script/DSL/Markdownを正本とし、CRUD表/Model Map/Graphのレイアウトを第二Meaning正本にしない。先にread-only Model Map→Gap→Sourceへnavigateを検証し、Graph Patch ABI・同一Sourceへのtyped edit/Save・Generator Targetは後続の固有Ownerで扱う。
-- **REAのExternal Observation**：[#3394](https://github.com/hat47x/tei-platform/issues/3394)のSource/Evidence→Structural Candidate→**Owner受理**→同一TEI MeaningへのProjectionを区別する。外部逆解析の一致を業務Meaning受理に昇格せず、SHOへの引用・Reader・正式書込み／競合制御・再開はSHO側の別資格とする。REAやSHOのWriterをTEI Coreへ移さない。KON等は任意の外部Data Provider/Consumerであり、別製品の保存・配備方式を本書で規定しない。
+- **REAのExternal Observation**：[#3394](https://github.com/hat47x/tei-platform/issues/3394)のSource/Evidence→Structural Candidate→**Owner受理**→同一TEI MeaningへのProjectionを区別する。外部逆解析の一致を業務Meaning受理に昇格せず、SHOへの引用・Reader・正式書込み／競合制御・再開はSHO側の別資格とする。REAやSHOのWriterをTEI Coreへ移さない。外部Data Provider/Consumerは既存の型付き境界で接続し、それぞれの保存・配備方式をTEIの標準要件として固定しない。
 - **Verified BOM/Atomic Trait**：[#3267](https://github.com/hat47x/tei-platform/issues/3267)/[#3279](https://github.com/hat47x/tei-platform/issues/3279)で`required Trait→actual fulfillment→exact Lock→Build→Invocation→独立Expected→Consumer`の各exact tupleを記録。Provider B1/B2×Consumer CLI/Studioの**4組すべて**が同じ資格を得ない限り「2×2 Verified」と称さない。SBOM、候補探索、Pairwise実行計画、過去のArtifact成功を互換性PASSと混同しない。BOM要求へ独立した`RQ-036`を割り当て直さない（同番号は既存Model Map要求）。要求番号の再採番はOwner側で扱う。
 - **Everything is Data／DSL・Query**：[#2619](https://github.com/hat47x/tei-platform/issues/2619)/#2620/#988の標準データ・Meaning・Syntax Sugar/Source Fidelityを維持。Native SQLの利用も許容し、Queryの解析候補からNULL/集合完全性/金額精度・Domain意味を推測採用しない。日常DSLにGoの`struct/func/package/import`を露出する必要はない。Go単一バイナリを標準候補としつつ、外部Host TargetやPlugin単位の実装方式は実測で選ぶ。
 
@@ -139,7 +139,7 @@ TEIが共通化するのは画面やDomain固有の工程列ではなく、**意
 | [merged #3567](https://github.com/hat47x/tei-platform/pull/3567) | Go Generator候補の宣言SourceがBuild対象外なら拒否 | ScriptのCheck→実Interpreter ReadのABA、全Build member/実Tool/実byteの閉包、現在のSource Grant。#2595/#2514 |
 | [merged #3579](https://github.com/hat47x/tei-platform/pull/3579) | Function定義書へHook宣言を位相順で追加。生成規則Fingerprintも変化 | 同位相のPlugin合成順、実Hook RunnerとProvider/Effect、旧Artifact再資格化。#3503/#1127/#1803/#2600 |
 | [merged #3588](https://github.com/hat47x/tei-platform/pull/3588) | C-2 service carrierを**非試験の参照用入口**から組み立て可能と実証 | 製品通常Consumerから選択したC-2実Call、実Provider/権限/EffectとC-1対照。#1251/#951 |
-| [Draft #3584](https://github.com/hat47x/tei-platform/pull/3584)、[Draft #3587](https://github.com/hat47x/tei-platform/pull/3587) | child自己申告Planの突合候補、別builderでのL2-a受渡しReference | **Draftでありmain未統合**。Plan申告一致≠実入力一致。L2-b Build実消費・L3 Stage1 TEIによるStage2実駆動は未資格。#2831 |
+| [merged #3584](https://github.com/hat47x/tei-platform/pull/3584)、[#3654](https://github.com/hat47x/tei-platform/pull/3654)、[#3661](https://github.com/hat47x/tei-platform/pull/3661)、[#3664](https://github.com/hat47x/tei-platform/pull/3664) | child Plan申告の突合、型付きResolveの移管、recipe/source/dependency/parametersの宣言対Plan照合。別builderでのL2-aは[Draft #3587](https://github.com/hat47x/tei-platform/pull/3587) | Plan一致≠実入力/成果物の帰属。Builder要求→解決Identity、Secret/Authorityは未決。L2-bは未成立。**cmd/teiの限定3段L3は既存実測済み**だがG4製品資格ではない。#2831 |
 
 **Discoveryの別問題**：[Draft #3590](https://github.com/hat47x/tei-platform/pull/3590)はCLI広告とCLI実受付の整合を調べたが、CLIとMCP tools/listのEffect/Version/Annotation保証はまだ別試験。CLI read-only広告であっても、viewの名前付き出力等のファイル作用が存在し得る。参照MCPのTool registration、CLI実行、Tool reply受領、外部Harness完全配送は異なる合否とする。
 
@@ -165,12 +165,48 @@ D1とR0のAttemptは**別々の試行**でよい。完全性は無制限の全Wo
 - **P0-M／read-only Model Map**（#1124/#1125/#1126/#1127）：同じMeaningからData/Function/Business/組織のRole Projection、CRUD/Relation/Pattern、Functionが所有するRepresentation occurrenceとDataへのBindingを導出する。Presentation topologyとData topologyは別。多重辺・未受理関係・編集不能な逆写像を保持する。
 - **P0-R／Function実Read**（#2586/#2506/#2622）：Function→Query→実選択Provider→実Rowset→明示Mapping→Data Context→Consumerまで一Attemptで結ぶ。物理Relation/SQL/params/Read Cohort/NULL・partial・0件・非出力条件と、受領したConsumer結果を比較する。
 - **P0-P／Plugin production入口**（#1251/#951/#1158）：既存Selected Inspector Seamを通常CLIと実Studio入口に接続し、B selected→A invoked、欠落Service、Grant失効、Secretを含むtyped Error、異なる実Buildの負例を拒否する。
-- **P1-E／Effectと現在資格**（#1174/#1129/#2600/#2831）：Read成功とWrite/Commitは別。実read-back/Receipt/unknown commitを検証。セルフビルドはL1（外部Go Build）、L2（TEI Graph→実Builder）、L3（生成TEI自身→Stage2実行）を別Claimにし、L2-aのReceiptだけではL2/L3を合格にしない。
+- **P1-E／Effectと現在資格**（#1174/#1129/#2600/#2831）：Read成功とWrite/Commitは別。実read-back/Receipt/unknown commitを検証。セルフビルドはL1（外部Go Build）、L2-a（宣言・計画の受渡し）、L2-b（計画と実Builder入力・成果物の帰属）、L3（生成TEI自身→Stage2実行）を別Claimにする。**cmd/teiの限定L3は実測済み**。ただしL2-bおよびG4資格は未成立であり、L2-aのReceiptでL2-bを合格にしない。
 
-この順序は**全領域の逐次Gateではない**。P0-SとP0-M、D1とR0は並列可能。P0-Rを開始するために、全Studio/MCP、全BOM版Matrix、実VUI、Ontology DSL、SHO正式Writer、KONや他製品の配備をHard Dependencyにしない。外部逆解析のLegacy Observed Actual、Owner Accepted Desired、Target Observed Actualは、[#3394](https://github.com/hat47x/tei-platform/issues/3394)でそれぞれ独立Expectedを持つ比較とし、ひとつの「移行成功」に畳まない。
+この順序は**全領域の逐次Gateではない**。P0-SとP0-M、D1とR0は並列可能。P0-Rを開始するために、全Studio/MCP、全BOM版Matrix、実VUI、Ontology DSL、SHO正式Writer、外部Consumerの配備をHard Dependencyにしない。外部逆解析のLegacy Observed Actual、Owner Accepted Desired、Target Observed Actualは、[#3394](https://github.com/hat47x/tei-platform/issues/3394)でそれぞれ独立Expectedを持つ比較とし、ひとつの「移行成功」に畳まない。
 
 ### 7.4 今回の採用範囲と停止線
 
 **採用する計画差分**：存在・宣言の試験をむやみに追加せず、既存の型付きApplication API／Plugin-first／Script-first Modelerに対し、actual entry・Provider・Source・Consumerまでの**最初の未接続辺を塞ぐ**。限定的に成立したGo Inspector・MCP引数拒否・Go Source選択・Function定義書Hook投影は重複実装せず、先行実績として計画に束縛する。
 
-**今回新たに実行していないこと**：D1実production二Consumer、R0実Function→実DB→Consumer同一Attempt、実外部Harness全ページ完全配送、完全なSource/Toolchain Closure、Self-build L2-b/L3、REAからの正式意味受理とSHO正式保存、2×2 BOM全exact tuple、Ownerの業務意味受理。Draftの観測とmainの実績を混同せず、現行ソースとの再照合が必要になれば個別Ownerへ差し戻す。
+**今回新たに実行していないこと**：D1実production二Consumer、R0実Function→実DB→Consumer同一Attempt、実外部Harness全ページ完全配送、完全なSource/Toolchain Closure、Self-build L2-b／G4（限定L3とは別資格）、REAからの正式意味受理とSHO正式保存、2×2 BOM全exact tuple、Ownerの業務意味受理。Draftの観測とmainの実績を混同せず、現行ソースとの再照合が必要になれば個別Ownerへ差し戻す。
+
+## 8. 2026-11-09 追加照合：限定L3・Build Plan・契約実値の受入上限
+
+本節は既存の#2831／#3657／#3503への引渡しであり、第二の製品Gate、Owner、Schema正本、Provider、受入Engineは設けない。
+
+### 8.1 セルフビルドを実測に沿って4段階で区別
+
+[既存L3実測](../evidence/TEI_SELF_BUILD_CMD_TEI_L3_2026-11-08.md)では、外部Go seedがstage0を作り、stage0のTEIがstage1を生成し、**stage1のTEIバイナリ自身がstage2を駆動**した。stage1/2の実Artifact byteも一致する。よって限定L3を「未実施」に戻さない。ただし同じchild・供給・Toolchainの一環境の実験であり、Source Closure rejected、Seed Trust未資格、entry自身のL3認定なし、G4 UNQUALIFIEDを併記する。
+
+| 主張 | 確認した範囲 | 別に必要なこと |
+| --- | --- | --- |
+| **L1 実Go Build** | 実BuildとArtifact digest、stage0外部seedの存在 | 供給/Toolchainの現行資格と異環境比較 |
+| **L2-a 宣言→Planの受渡し** | [#3584](https://github.com/hat47x/tei-platform/pull/3584)等の自己申告Plan一致・不一致を区別。[#3654](https://github.com/hat47x/tei-platform/pull/3654)でResolve portを内部へ移管 | 解決child/Builder双方の実読込byte、申告でない独立帰属 |
+| **L2-b 計画→実Builder→Artifact** | [#3659](https://github.com/hat47x/tei-platform/pull/3659)で予約flagによる上書きを起動前拒否。[#3661](https://github.com/hat47x/tei-platform/pull/3661)でrecipe/source/dependency、[#3664](https://github.com/hat47x/tei-platform/pull/3664)でparametersを比較 | **未成立**。Builder要求と解決Identityの関係、Secret/Authority、実入力・結果を同一Attemptで独立検証 |
+| **限定L3 実TEI→次のBuild駆動** | stage1生成物＝stage2実Invoker、両段Artifact byteとRecipeの限定一致を記録 | 成立範囲を保存。L2-b・G4の不足と無関係な資格へ拡張しない |
+
+**方式採用を先行させない**：[main #3655](https://github.com/hat47x/tei-platform/pull/3655)/[#3656](https://github.com/hat47x/tei-platform/pull/3656)の調査では、Builder catalogの実製品データソースは未存在。in-process解決を既定へ切り替えるには、fixtureではないCatalogの出所とTrustが必要。現行のchild経由と、既存Resolverのport/fixture分離を維持する。[#3660](https://github.com/hat47x/tei-platform/pull/3660)が実測したCLI Catalog 19件は読取り向け部分集合であり、dispatch全50件と同一ではない。
+
+### 8.2 宣言型と、次段が現実に受け取る値を分ける
+
+[main #3658](https://github.com/hat47x/tei-platform/pull/3658)は参照能力連鎖の合成Binding出力と宣言型の過不足、値のキー受渡しを検出可能にした。これは**既知の不一致を記録した限定試験**であって、宣言と実Bindingが適合したことではない。実HTTPの202受付結果はTaskの受付を表すが、次段が要求するAttempt識別子を返さない。live実行や正式Mappingの採用は未実施であり、[#3657](https://github.com/hat47x/tei-platform/issues/3657)の閉鎖も実連鎖の製品資格とはしない。
+
+D1/R0の型付き縦断では、**Declared Output → actual Binding Output → Next Required Input → Receiver**を別の観測行で照合する。ID・型名・起動順・HTTP受付・JSON構文が一致しても、必須フィールドのPresenceと値の受渡しは独立に検証する。
+
+| 追加負例 | 判別条件 | 担当 |
+| --- | --- | --- |
+| **XV-09 宣言とBinding出力の不一致** | 必須属性の欠落・未宣言属性の混入を検出。既知許容リストは適合／受理ではない | #1016/#2410/#1180 |
+| **XV-10 次段の入力不足** | 合成Providerでは受け渡せても実HTTP受付が次段の識別子を返さない。受付成功と業務完了を分離 | #3658、各Host/Adapter Owner |
+| **XV-11 Hook未評価** | [main #3635](https://github.com/hat47x/tei-platform/pull/3635)のStudio参照Hookはbefore系の一部を呼び、入力不在はnotEvaluated、after系はskipped。実Rule Plugin／実DB／Wails製品画面の完了に昇格しない | #3503/#1127/#1824 |
+| **XV-12 論理分割の仮定** | CRUDの既知direct CUDと制約に基づくSubsystem候補を、実Effect／Transaction、物理配置、正式Owner受理に昇格しない | #3250、[Draft #3662](https://github.com/hat47x/tei-platform/pull/3662) |
+
+### 8.3 次の引渡し・状態
+
+**#1251/#2586**：既存Inspector二ConsumerとFunction read-firstの各Scenarioへ、実出力の必要属性と次Consumer受領を1行追加し、欠落時は不合格。**#2831**：限定L3の実測を保持しつつ、L2-bの実入力閉包・Builder Identityの意味規則・Authorityを前進させる。**#1124/#3503/#3250**：read-only Model Map、CRUD/Function/RoleとHookの未評価状態を同じSourceへ投影する。論理分割の自動採用は禁止。**#2514/#3262**：Required集合に次段必要属性、Tool Resultの完全受領と現在Disclosureを含める。
+
+**本節は計画反映のみ**。XV-09〜12の新しい製品E2E、L2-b/G4、外部live Provider、Studio/Wails実画面、2×2 BOM、Ownerの正式意味受理はNOT RUN／NOT ACCEPTED。各既存Reference/CIのPASSをその対象外へ一般化しない。
