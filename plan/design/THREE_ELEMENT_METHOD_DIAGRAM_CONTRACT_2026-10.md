@@ -515,7 +515,7 @@ Node.js 22.16.0で`node --test /tmp/tei-tea-ref/public-slice.test.mjs`を実行�
 
 これは**実WorkspaceのIdentityを保証する実装ではない**。Callerが完全コピーした別Rootへ同じ`workspaceObservation`を誤発行すれば見分けられない。Root/Source Reader/Attempt/現在Grant・Policyの実測と照合するのは#1124/#2516/#3181等のOwnerであり、ここでは新UUID、Hash方針、Context Registry、第二Policy Engineを採用しない。
 
-**限定試験の更新**: GitHub実ソース4件を同じV8互換test runnerで実行して`12 public-slice + 15 Trait = 27/27 PASS`（合成Referenceのみ）。正規Node 22 CIの更新後exact head PASSは別途確認する。以前の`10 + 12`や旧head CI成功を新headの合格とは扱わない。**実CLI #3321のSource照合と局所Referenceの成功を足し合わせても、同一Workspaceの実Consumer受入は未実証**。
+**限定試験の更新**: GitHub実ソース4件を同じV8互換test runnerで実行して`12 public-slice + 15 Trait = 27/27 PASS`（合成Referenceのみ）。[PR #2972 exact head `7627f5d59dc66cbb161067c0ca7bfb44a7587c12`の専用Node 22 CI](https://github.com/hat47x/tei-platform/actions/runs/42591779028)は**completed / success**。対象は公開Slice 12件とTrait Bind 15件（合成27件）であり、GitHubへのSource/Fixture保存と別に正式Node test runnerで再現できた。**Repository Health・実Policy/Studio/Root identity・Owner受理は別資格**。以前の`10 + 12`や旧head CI成功を新headの合格とは扱わない。**実CLI #3321のSource照合と局所Referenceの成功を足し合わせても、同一Workspaceの実Consumer受入は未実証**。
 
 ### 21.2 各三視点Claimを一つのVerifiedへ縮約しない
 
