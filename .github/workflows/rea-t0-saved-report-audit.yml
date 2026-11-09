@@ -17,6 +17,12 @@ on:
 permissions:
   contents: read
 
+# Cancel only stale PR runs; never cancel an independent main/branch run.
+concurrency:
+  group: rea-t0-saved-report-audit-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+
 jobs:
   saved-report-unit:
     runs-on: ubuntu-24.04
