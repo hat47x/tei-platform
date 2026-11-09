@@ -1,0 +1,61 @@
+{
+  "note": "Synthetic sink inventory: where a locally-read canary ended up. No real secret used.",
+  "canary": "E6_SINK_CANARY_801",
+  "sessionId": "session-68e678a4-3880-47c9-bac5-9aa0b9fb3910",
+  "files": [
+    {
+      "path": "D:\\GIT\\hat47x\\.tmp_h2\\h6e6\\raw\\secret.txt",
+      "bytes": 19,
+      "sha256": "26e90ca958d0561c40de31decfd7cadba603b4fc84a2cca722ebf9414150d0da"
+    },
+    {
+      "path": "D:\\GIT\\hat47x\\.tmp_h2\\h6e6\\allowed\\projection.txt",
+      "bytes": 18,
+      "sha256": "0c360fee9fac7bbc9c79a8d86b0683a07725eaf544626dd5844ac07fa44d9c12"
+    }
+  ],
+  "sinks": [
+    {
+      "sink": "stdoutStream",
+      "pathKind": "headless stdout capture",
+      "present": true,
+      "bytes": 2035,
+      "sha256": "a034a99954e41bf6ccda801a32b5d82230f44a1229a48dff75d6b068d80f5e3d",
+      "canaryOccurrences": 1
+    },
+    {
+      "sink": "persistedSessionLog",
+      "pathKind": "decompressed session persistence",
+      "present": true,
+      "bytes": 40136,
+      "sha256": "117e88b8372c042e0f30ca4239497ef496bf203fe6d00b7b6821c09afd1e8246",
+      "canaryOccurrences": 1
+    },
+    {
+      "sink": "sessionFileOnDiskZstd",
+      "pathKind": "compressed DSH session file (9 concatenated zstd frames)",
+      "present": true,
+      "bytes": 14373,
+      "sha256": "ab75e6c04c7df48e0cb8f201a867cd6c5e255c622f3a3137e1d6e53f825d16bd",
+      "canaryOccurrences": null,
+      "note": "frame-by-frame decompression found the canary once inside this file"
+    }
+  ],
+  "sweeps": [
+    {
+      "root": "C:/Users/yhata/.dsh/storages",
+      "filesScanned": 84,
+      "filesContainingCanary": 0
+    },
+    {
+      "root": "C:/Users/yhata/.dsh/cache",
+      "filesScanned": 5,
+      "filesContainingCanary": 0
+    },
+    {
+      "root": "C:/Users/yhata/.dsh/attachments",
+      "filesScanned": 73,
+      "filesContainingCanary": 0
+    }
+  ]
+}

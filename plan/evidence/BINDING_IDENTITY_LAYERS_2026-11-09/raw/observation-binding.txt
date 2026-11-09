@@ -1,0 +1,6 @@
+== environment.ObservationProviderBinding (used by the observation reference) ==
+   file: internal/environment/model.go
+   type ObservationProviderBinding struct {
+   	Kind     deployment.ObservationKind `json:"kind"`
+   	Provider core.CanonicalID           `json:"provider"`
+   }

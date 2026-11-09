@@ -1,0 +1,10 @@
+== database instance (Environment.Instances) ==
+  internal/environment/model.go:119:	for _, v := range e.Instances {
+  internal/index/index.go:442:		for _, inst := range e.Instances {
+  internal/syntax/parser.go:487:			e.Instances = append(e.Instances, inst)
+  internal/validation/validation.go:934:		for _, inst := range e.Instances {
+  tools/internal/changeanalysis/impact.go:526:			for _, instance := range env.Instances {
+  tools/reference-plugin-capability-coverage/coverage.go:193:		for _, instance := range env.Instances {
+  tools/reference-plugin-selection-matrix/matrix.go:135:		for _, instance := range env.Instances {
+  tools/reference-purpose-preflight/environment_binding.go:61:	for _, candidate := range env.Instances {
+  reference/runtime-packaging/workspace_probe.go:117:		for _, candidate := range env.Instances {

@@ -4,9 +4,18 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 )
+
+func TestMain(m *testing.M) {
+	// The service implementation uses Unix process signals (kill -0/-TERM).
+	if runtime.GOOS == "windows" {
+		return
+	}
+	os.Exit(m.Run())
+}
 
 func TestStartAndStopService(t *testing.T) {
 	statePath := activeState(t)

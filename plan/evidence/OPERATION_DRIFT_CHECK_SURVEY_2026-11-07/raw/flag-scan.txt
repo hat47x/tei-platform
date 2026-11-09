@@ -1,0 +1,16 @@
+== flags defined for the operations command ==
+560:	case "operations":
+1192:		return "", "", fmt.Errorf("-plugin-lock is required for durable deployment run operations")
+
+== expected-fingerprint flags anywhere in cmd/tei ==
+cmd/tei/cli_catalog_flags_test.go:118:		{"validate", "-workspace", root, "-expected-fingerprint", "x"},
+cmd/tei/cli_catalog_flags_test.go:119:		{"world", "-workspace", root, "-expected-fingerprint", "x"},
+cmd/tei/cli_contract.go:52:			{Name: "trace", Effect: "read-only", Required: []string{"-workspace", "-scope", "-subject-kind", "-subject-id"}, Optional: []string{"-direction", "-mode", "-offset and -limit (full only)", "-expected-fingerprint"}, Output: "json", SchemaVersion: "tei.cli.trace/v0", JSONContract: "enveloped"},
+cmd/tei/cli_flag_contract.go:39:		"direction", "mode", "offset", "limit", "expected-fingerprint",
+cmd/tei/cli_flag_contract_test.go:19:		{"trace", []string{"workspace", "scope", "subject-kind", "subject-id", "direction", "mode", "offset", "limit", "expected-fingerprint"}, "environment"},
+cmd/tei/cli_process_test.go:178:		"-expected-fingerprint", traceSummary.Result.SnapshotFingerprint), &traceFull); err != nil {
+cmd/tei/cli_process_test.go:191:		"-expected-fingerprint", "sha256:stale"), &traceStale); err != nil {
+cmd/tei/cli_trace.go:44:			ExpectedFingerprint: expectedFingerprint,
+cmd/tei/cli_trace_test.go:62:		Limit: 1, ExpectedFingerprint: summary.Result.SnapshotFingerprint,
+cmd/tei/main.go:156:	traceExpectedFingerprint := fs.String("expected-fingerprint", "", "expected typed trace snapshot fingerprint for continued pages")
+cmd/tei/main.go:332:			*traceExpectedFingerprint, *traceOffset, *traceLimit, fs.NArg(),

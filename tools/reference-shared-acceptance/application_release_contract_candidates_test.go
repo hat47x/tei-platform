@@ -7,11 +7,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 )
 
-// Application ReleaseのContract要求が、現在のContract定義の存在・互換majorと
-// どうずれるかを、読み取り専用比較が列挙するか実CLIで確認する。
+// Application ReleaseのContract要求の互換majorが現在定義とずれる場合を、
+// 読み取り専用比較が列挙するか実CLIで確認する。現在定義にない要求は既存の
+// APPLICATION_RELEASE_CONTRACT_NOT_CURRENT が扱うため候補にしない。
 // 受理条件は変更しない。
 func TestReferenceApplicationReleaseContractCandidates(t *testing.T) {
 	binDir := t.TempDir()
@@ -63,7 +65,6 @@ func TestReferenceApplicationReleaseContractCandidates(t *testing.T) {
 		Contract        string `json:"contract"`
 		CompatibleMajor int    `json:"compatibleMajor"`
 		CurrentVersion  string `json:"currentContractVersion"`
-		Reason          string `json:"reason"`
 	}
 	type report struct {
 		Candidates []mismatch `json:"applicationReleaseContractCandidates"`
@@ -84,22 +85,15 @@ func TestReferenceApplicationReleaseContractCandidates(t *testing.T) {
 		return out
 	}
 
-	t.Run("baseline-reports-only-missing-contract", func(t *testing.T) {
+	t.Run("baseline-defers-missing-contract-to-existing-warning", func(t *testing.T) {
 		dir := scratchWorkspace(t)
-		run(tei, true, "validate", "-workspace", dir)
+		output := string(run(tei, true, "validate", "-workspace", dir))
+		if !strings.Contains(output, "APPLICATION_RELEASE_CONTRACT_NOT_CURRENT") || !strings.Contains(output, "sales_core.order_legacy") {
+			t.Fatalf("既存の履歴Contract警告が出ていません: %s", output)
+		}
 		got := compareReport(dir, dir)
-		if len(got.Candidates) != 2 {
-			t.Fatalf("前後それぞれ1件の履歴Contractだけを期待: %+v", got.Candidates)
-		}
-		found := byKey(got)
-		for _, snapshot := range []string{"before", "after"} {
-			c, ok := found[snapshot+"/order_entry@3.7.0/sales_core.order_legacy"]
-			if !ok || c.Reason != "not-in-current-definition" || c.CurrentVersion != "" {
-				t.Fatalf("%sの履歴Contract欠落が正しくありません: %+v", snapshot, got.Candidates)
-			}
-		}
-		if _, ok := found["after/order_entry@3.8.0/sales_core.order"]; ok {
-			t.Fatalf("一致している3.8.0のContractが候補になっています: %+v", got.Candidates)
+		if len(got.Candidates) != 0 {
+			t.Fatalf("既存警告と重複する候補を出さないでください: %+v", got.Candidates)
 		}
 	})
 
@@ -111,14 +105,14 @@ func TestReferenceApplicationReleaseContractCandidates(t *testing.T) {
 		got := compareReport(before, after)
 		found := byKey(got)
 		c, ok := found["after/order_entry@3.8.0/sales_core.order"]
-		if !ok || c.Reason != "compatible-major-mismatch" || c.CompatibleMajor != 4 || c.CurrentVersion != "5.0" {
+		if !ok || c.CompatibleMajor != 4 || c.CurrentVersion != "5.0" {
 			t.Fatalf("major不一致が正しく出ていません: %+v", got.Candidates)
 		}
 		if _, ok := found["before/order_entry@3.8.0/sales_core.order"]; ok {
 			t.Fatalf("変更前の一致が候補になっています: %+v", got.Candidates)
 		}
-		if len(got.Candidates) != 3 {
-			t.Fatalf("前後1件ずつの履歴欠落とafterのmajor不一致を期待: %+v", got.Candidates)
+		if len(got.Candidates) != 1 {
+			t.Fatalf("afterのmajor不一致1件だけを期待: %+v", got.Candidates)
 		}
 		t.Log("current v5.0 vs Application Release ^4: validate ok; comparison reports the mismatch read-only")
 	})
@@ -128,7 +122,7 @@ func TestReferenceApplicationReleaseContractCandidates(t *testing.T) {
 		replaceOnce(after, "databases/sales-core/contracts/order.tei", "contract sales_core.order v4.2", "contract sales_core.order v4.3")
 		run(tei, true, "validate", "-workspace", after)
 		got := compareReport(before, after)
-		if len(got.Candidates) != 2 {
+		if len(got.Candidates) != 0 {
 			t.Fatalf("minor更新でmajor不一致が増えています: %+v", got.Candidates)
 		}
 		if _, ok := byKey(got)["after/order_entry@3.8.0/sales_core.order"]; ok {

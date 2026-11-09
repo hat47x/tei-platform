@@ -1,0 +1,13 @@
+== route-present ==
+  ran=1 refused=0 unverified=0
+    request=reference-request generation=1 pinned=True carrierInvoked=True
+
+== route-missing ==
+  ran=0 refused=1 unverified=0
+    request=reference-request generation=1 pinned=False carrierInvoked=False error=ROUTE_UNAVAILABLE: the Host has no current route for this ge
+
+== inputs-missing ==
+  ran=0 refused=1 unverified=0
+    request=reference-request generation=0 pinned=False carrierInvoked=False error=CONNECT_INPUT_INVALID: a current route source, a registry an
+
+ruleFingerprint: sha256:f8c7bc2b23c152a3068a8872309a5f99c0237e7e9759fe8a2b10b94ef7355236

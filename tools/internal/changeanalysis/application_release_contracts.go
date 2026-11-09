@@ -10,8 +10,8 @@ import (
 
 // ApplicationReleaseContractMismatch is a read-only observation about an
 // Application Release's declared Contract requirement. It does not prove that
-// the release is wrong: a historical release may intentionally require a
-// Contract that the current definition no longer provides.
+// the release is wrong: a historical release may intentionally require an
+// older major than the current definition.
 type ApplicationReleaseContractMismatch struct {
 	Snapshot        string           `json:"snapshot"`
 	Application     core.CanonicalID `json:"application"`
@@ -20,51 +20,65 @@ type ApplicationReleaseContractMismatch struct {
 	Database        core.CanonicalID `json:"database"`
 	Contract        core.CanonicalID `json:"contract"`
 	CompatibleMajor int              `json:"compatibleMajor"`
-	CurrentVersion  string           `json:"currentContractVersion,omitempty"`
-	Reason          string           `json:"reason"`
+	CurrentVersion  string           `json:"currentContractVersion"`
 }
 
-const (
-	ApplicationReleaseContractNotCurrent = "not-in-current-definition"
-	ApplicationReleaseContractMajor      = "compatible-major-mismatch"
-)
-
-// ApplicationReleaseContractCandidates lists Application Release Contract
-// requirements whose Contract has no current definition or whose compatible
-// major differs from the current definition's major. Application Release
-// requirements are otherwise checked only for existence and ownership by
-// validation, so this read-only view makes the major direction visible.
-// Dynamic consumers, runtime deployment state and provider behavior are not
-// evaluated.
+// ApplicationReleaseContractCandidates lists Contract requirements declared by
+// Application Releases: for each Application release major line, database alias
+// and Contract, it observes the latest Release that declares the requirement,
+// and reports it only when its compatible major differs from the current
+// definition's major. A release line normally repeats the same requirement
+// across patch and minor releases, so listing every historical Release reports
+// one state many times. A newer Release that declares the same requirement
+// replaces the older one, while a requirement dropped from newer Releases is
+// still reported from the latest Release that declares it. Requirements with no
+// current definition are already reported by
+// APPLICATION_RELEASE_CONTRACT_NOT_CURRENT, so they are not repeated here.
+// Releases whose version is not numeric major.minor.patch cannot be ordered and
+// are ignored. Dynamic consumers, runtime deployment state and provider
+// behavior are not evaluated.
 func ApplicationReleaseContractCandidates(w ir.World, snapshot string) []ApplicationReleaseContractMismatch {
-	contracts := map[core.CanonicalID]databaseContractVersion{}
-	for _, db := range w.Databases {
-		for _, c := range db.Contracts {
-			contracts[c.ID] = databaseContractVersion{major: c.Version.Major, minor: c.Version.Minor}
+	contracts := currentContractVersions(w)
+	type lineKey struct {
+		application core.CanonicalID
+		major       int
+		database    core.CanonicalID
+		alias       core.LocalName
+		contract    core.CanonicalID
+	}
+	type declaration struct {
+		version         string
+		compatibleMajor int
+	}
+	latest := make(map[lineKey]declaration)
+	for _, r := range w.ApplicationReleases {
+		v, ok := parseReleaseVersion(r.Version)
+		if !ok {
+			continue
+		}
+		for _, db := range r.Databases {
+			for _, req := range db.RequiredContracts {
+				key := lineKey{r.Application, v[0], db.TargetDatabase, db.Alias, req.ContractID}
+				current, seen := latest[key]
+				if seen && compareReleaseVersion(r.Version, current.version) <= 0 {
+					continue
+				}
+				latest[key] = declaration{version: r.Version, compatibleMajor: req.CompatibleMajor}
+			}
 		}
 	}
 	var out []ApplicationReleaseContractMismatch
-	for _, r := range w.ApplicationReleases {
-		for _, db := range r.Databases {
-			for _, req := range db.RequiredContracts {
-				item := ApplicationReleaseContractMismatch{
-					Snapshot: snapshot, Application: r.Application, Version: r.Version,
-					Alias: db.Alias, Database: db.TargetDatabase, Contract: req.ContractID,
-					CompatibleMajor: req.CompatibleMajor,
-				}
-				c, ok := contracts[req.ContractID]
-				switch {
-				case !ok:
-					item.Reason = ApplicationReleaseContractNotCurrent
-				case c.major != req.CompatibleMajor:
-					item.Reason = ApplicationReleaseContractMajor
-					item.CurrentVersion = fmt.Sprintf("%d.%d", c.major, c.minor)
-				default:
-					continue
-				}
-				out = append(out, item)
-			}
+	for key, d := range latest {
+		c, ok := contracts[key.contract]
+		if !ok || c.Major == d.compatibleMajor {
+			continue
 		}
+		out = append(out, ApplicationReleaseContractMismatch{
+			Snapshot: snapshot, Application: key.application, Version: d.version,
+			Alias: key.alias, Database: key.database, Contract: key.contract,
+			CompatibleMajor: d.compatibleMajor,
+			CurrentVersion:  fmt.Sprintf("%d.%d", c.Major, c.Minor),
+		})
 	}
 	sort.Slice(out, func(i, j int) bool {
 		a, b := out[i], out[j]
@@ -72,7 +86,9 @@ func ApplicationReleaseContractCandidates(w ir.World, snapshot string) []Applica
 			return a.Application < b.Application
 		}
 		if a.Version != b.Version {
-			return a.Version < b.Version
+			if c := compareReleaseVersion(a.Version, b.Version); c != 0 {
+				return c < 0
+			}
 		}
 		if a.Alias != b.Alias {
 			return a.Alias < b.Alias
@@ -81,5 +97,3 @@ func ApplicationReleaseContractCandidates(w ir.World, snapshot string) []Applica
 	})
 	return out
 }
-
-type databaseContractVersion struct{ major, minor int }

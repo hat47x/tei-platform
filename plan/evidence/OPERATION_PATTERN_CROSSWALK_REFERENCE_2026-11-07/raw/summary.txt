@@ -1,0 +1,37 @@
+== accepted ==
+rule=tei.reference.operation-pattern-crosswalk/v0 sha256:601dff18d70dc94af994fa9486b9cd4d2c2f1572e24b8f22d48e682089ffe36d
+application order_entry: operations=8 patterns=5
+  links (4):
+    order_entry.list.sales.order <- order_entry.recent_orders [browse] via=data subject=sales.order
+    order_entry.list.sales.order_line <- order_entry.order_lines [header-detail] via=relation subject=sales.order_line
+    order_entry.read.sales.order <- order_entry.order_record [record] via=data subject=sales.order
+    order_entry.read.sales.order_line <- order_entry.order_lines [header-detail] via=relation subject=sales.order_line
+  unlinked (2):
+    order_entry.customer_reference (reference) missing-input: no derived read operation on customer.customer
+    order_entry.submit_order (command) out-of-scope: capability sales.order.submit declares no effect, so no derived write operation exists to bind
+  conflicts=0 ambiguous=['order_entry.order_lines']
+application repair_intake: operations=0 patterns=1
+  links (0):
+  unlinked (1):
+    repair_intake.customer_reference (reference) missing-input: no derived read operation on customer.customer
+  conflicts=0 ambiguous=None
+
+== overlay ==
+rule=tei.reference.operation-pattern-crosswalk/v0 sha256:601dff18d70dc94af994fa9486b9cd4d2c2f1572e24b8f22d48e682089ffe36d
+application order_entry: operations=8 patterns=6
+  links (4):
+    order_entry.list.sales.order <- order_entry.recent_orders [browse] via=data subject=sales.order
+    order_entry.list.sales.order_line <- order_entry.order_lines [header-detail] via=relation subject=sales.order_line
+    order_entry.read.sales.order <- order_entry.order_record [record] via=data subject=sales.order
+    order_entry.read.sales.order_line <- order_entry.order_lines [header-detail] via=relation subject=sales.order_line
+  unlinked (3):
+    order_entry.customer_reference (reference) missing-input: no derived read operation on customer.customer
+    order_entry.preview_order_quote (command) out-of-scope: capability sales.order.quote_lines declares no effect, so no derived write operation exists to bind
+    order_entry.submit_order (command) out-of-scope: capability sales.order.submit declares no effect, so no derived write operation exists to bind
+  conflicts=0 ambiguous=['order_entry.order_lines']
+application repair_intake: operations=0 patterns=1
+  links (0):
+  unlinked (1):
+    repair_intake.customer_reference (reference) missing-input: no derived read operation on customer.customer
+  conflicts=0 ambiguous=None
+

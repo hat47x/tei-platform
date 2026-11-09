@@ -2,6 +2,7 @@ package execution
 
 import (
 	"context"
+	"fmt"
 
 	"tei/internal/core"
 	"tei/internal/operations"
@@ -28,8 +29,14 @@ type StepFunc func(ctx context.Context, operation core.CanonicalID) StepResult
 
 // RunPlan identifies the run, applies the start/resume/refuse rules, and runs the
 // operations in the declared order. The refusal is returned as a decision, not an
-// error. Resuming is not implemented yet: the progress of the steps is not
-// recorded, so resuming would silently repeat work.
+// error.
+//
+// Resuming continues after the steps the previous attempt recorded: the plan
+// writes the finished operations to the journal after each step, so a resumed
+// attempt does not repeat work that is already done. The comment here used to
+// say resuming was unimplemented; by the time the steps were journaled that was
+// false, and the tests below pin the actual behaviour (a finished step is
+// reported as resolved, not run again).
 func RunPlan(ctx context.Context, plan semantic.RunPlan, keyValues []string, journal Journal, step StepFunc, preconditions PreconditionFunc) (runlog.Decision, []StepResult, error) {
 	runKey := runlog.RunKey(string(plan.ID), keyValues)
 	last, found, err := journal.Last(runKey)
@@ -75,7 +82,7 @@ func RunPlan(ctx context.Context, plan semantic.RunPlan, keyValues []string, jou
 			if reason != "" {
 				results = append(results, StepResult{Operation: string(operation), Status: "blocked", Detail: reason})
 				record.Status = runlog.Blocked
-				if err := journal.Append(record); err != nil {
+				if err := appendIfOwned(journal, record, results); err != nil {
 					return decision, results, err
 				}
 				return decision, results, nil
@@ -85,22 +92,49 @@ func RunPlan(ctx context.Context, plan semantic.RunPlan, keyValues []string, jou
 		results = append(results, result)
 		if result.Status != "resolved" {
 			record.Status = runlog.Failed
-			if err := journal.Append(record); err != nil {
+			if err := appendIfOwned(journal, record, results); err != nil {
 				return decision, results, err
 			}
 			return decision, results, nil
 		}
 		record.Steps = append(record.Steps, string(operation))
 		record.Status = runlog.Running
-		if err := journal.Append(record); err != nil {
+		if err := appendIfOwned(journal, record, results); err != nil {
 			return decision, results, err
 		}
 	}
 	record.Status = runlog.Completed
-	if err := journal.Append(record); err != nil {
+	if err := appendIfOwned(journal, record, results); err != nil {
 		return decision, results, err
 	}
 	return decision, results, nil
+}
+
+// appendIfOwned writes the attempt's record only while the attempt still holds
+// the run.
+//
+// The fence epoch is the mechanism that lets a resumed attempt take over from a
+// stale one. Nothing enforced it before: `runlog.Owns` existed and only the
+// tests called it, so a superseded attempt could keep appending records after a
+// resume, and its late "completed" would overwrite the newer attempt's state.
+// The check is made against the journal itself rather than against a value
+// captured at the start, because the takeover happens by writing to that journal.
+//
+// A lost fence is an error, not a decision: the attempt did not finish, and the
+// caller must not read the run as finished.
+func appendIfOwned(journal Journal, record runlog.Record, results []StepResult) error {
+	last, found, err := journal.Last(record.RunKey)
+	if err != nil {
+		return err
+	}
+	if found && !runlog.Owns(last, record.Attempt, record.FenceEpoch) {
+		return fmt.Errorf("attempt %d (fence %d) no longer owns run %s: recorded attempt %d (fence %d) took it over",
+			record.Attempt, record.FenceEpoch, record.RunKey, last.Attempt, last.FenceEpoch)
+	}
+	if err := journal.Append(record); err != nil {
+		return err
+	}
+	return nil
 }
 
 // containsStep reports whether an operation already finished in this run.
