@@ -239,10 +239,6 @@ D1aの製品試験へ、既存Data/Validation/Relationの3 Subjectに加え、**
 ## 14. D1bの合流実装：同じSelected InspectorをCLIとStudioの二Consumerへ注入（2026-11-08）
 
 **この節の位置付け**：mainへ統合済み[#3371](https://github.com/hat47x/tei-platform/pull/3371)のStudio Host Inspector Serviceと、旧[CLI Draft #3381](https://github.com/hat47x/tei-platform/pull/3381)の型付き注入口／authoring-tool Selectionを、同じmain基線で組み合わせるための**実装候補**。上記§10〜13の「Draft／現main」はその節の記録時点の状況であり、現在の実装状態はこの節と対応PRのexact HEADを優先する。
-## 12. D1bの合流実装：同じSelected InspectorをCLIとStudioの二Consumerへ注入（2026-11-08）
-
-**この節の位置付け**：mainへ統合済み[#3371](https://github.com/hat47x/tei-platform/pull/3371)のStudio Host Inspector Serviceと、旧[CLI Draft #3381](https://github.com/hat47x/tei-platform/pull/3381)の型付き注入口／authoring-tool Selectionを、同じmain基線で組み合わせるための**実装候補**。上記§10〜11の「Draft／現main」はその節の記録時点の状況であり、現在の実装状態はこの節と対応PRのexact HEADを優先する。
-
 ### 一つのRuntime/Resolverを増やさない実装
 
 - `internal/inspectoradapter/selected.go` は既存`composition.Registry.Select`→`NewSelectedCoordinator`→`Acquire`を使用し、Contract/Scope/Provider ID/Binding Artifact digest/Registry epoch/Host Guardを、実Host登録済みGo関数の**呼出し前に**検証する。既存`application-runtime`専用CarrierのScopeを緩めず、`authoring-tool`専用の薄いAdapterとする。
@@ -263,7 +259,7 @@ D1aの製品試験へ、既存Data/Validation/Relationの3 Subjectに加え、**
 
 **次の最小作業**：PRのexact-head CIに合格した後、`cmd/tei/main.go`と`cmd/tei-studio/host_generated.go`で選択済みBindingを受け取る正式なComposition入口のFit/Gapを対象にする。新Runner、Registry、独立Contract Authorityを追加しない。実HTTP/VUI/DB/SHOの他ConsumerをこのD1のHard Gateにしない。
 
-## 15. 通常CLIとStudio Hostの静的Reference Provider実結線（2026-11-08、候補実装）
+## 15. 通常CLIとStudio Hostの静的Reference Provider実結線（2026-11-08実装／11-09 main統合）
 
 **解く不足**：main #3381のD1b-I2はCLIのテスト用`inspectWorkspaceJSONWithService`とStudio Host APIを呼ぶだけだった。今回の作業ブランチでは**通常`cmd/tei/main.go`の`inspect` dispatch、および`cmd/tei-studio/host_default.go`と`host_generated.go`の両起動形態**を、Hostが選択した`inspectoradapter.Selected`へ明示接続する。既存`studiohost.ReadOnly`のallowlist・root identity、CLIのJSON/Exit/Flags、標準Catalog/ValidationとWailsの公開メソッド数を維持する。これは**静的にコンパイル済みの参照Provider**のみであり、任意Pluginの発見/取込・正式Version Lock・配備を意味しない。
 
@@ -280,3 +276,8 @@ D1aの製品試験へ、既存Data/Validation/Relationの3 Subjectに加え、**
 **次の採否順序**：①変更範囲のGo Test/gofmt/CI・実CLI Binary/Studio Server確認、②Host登録A/Bを入れ替えた実Targetの否定試験、③#951/#1016の実Profile選択／#943のBuild closure／#3262のRequired Context／#2516のDisclosureと対応付けた実Attempt、④一般的なContribution PointやTarget別Plugin Realization。Typed Lifecycle Graph/Chat/B2C/AI Tuningの新しいHook試験は③の入口を利用する後続Pressureであり、本件S2の先行必須要件にはしない。
 
 **今回の実装資格**：作業ブランチへコードとテストを追加した段階。CI、実CLI Binary/Studio Wails UIの成否、実Provider差し替え、Owner受理、外部Tool/Effect/DBは**この追記時点で未検証**。必要なGo試験の結果をPR exact-headで別記する。
+
+
+**2026-11-09 mainでの実証境界**：[PR #3540](https://github.com/hat47x/tei-platform/pull/3540)をcommit `2eeec81c36db6dfe8c4b6f5c464e0280f8facd87`で統合。PR exact-head `a5cf28acfdb31f2e583416f1f3bc2eddcf97a388`のRepository Health [#42505204119](https://github.com/hat47x/tei-platform/actions/runs/42505204119)、Wails Host [#42505204133](https://github.com/hat47x/tei-platform/actions/runs/42505204133)、Windows Desktop WebView [#42505204245](https://github.com/hat47x/tei-platform/actions/runs/42505204245)、Studio参照編集 [#42505204222](https://github.com/hat47x/tei-platform/actions/runs/42505204222)、Action Surface CLI [#42505204158](https://github.com/hat47x/tei-platform/actions/runs/42505204158)はいずれもcompleted/success。今回の狭い採用は**S2-referenceの静的登録・通常起動経路**。ツールの実ファイルSHA-256はProvider単体のBuild Closure/OS実Load/現在Authorityを証明しない。S2-product（正式ProfileからのProvider差替え）・S3（実Plugin Artifact/Source/Grant/独立BOM）・Owner業務意味受理・外部Tool受領は依然未検証。PRのHEAD成績をmain merge commitの新CI成功と混同しない。
+
+**次の一辺だけ**：既存#951/#1016の実Profile/Provider Selectionから通常CLI・Studioが使うHost登録実Entryへ束縛して、二つの実ConsumerのB選択→B InvokeとB選択→A実誤配線を同一Source/Attemptで確認する。実Binary member・Source raw/Manifest・Rule・Required/Disclosure・Host現在Grantは未観測なら明示的にunknownにし、S2-referenceの成功で補完しない。Lifecycle/Hook/AI統計やC-1/C-2/C-4 Carrierはこの最初のProduct検収に新しいHard Dependencyを作らない。
