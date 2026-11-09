@@ -1,0 +1,6 @@
+ M plan/workstreams/COMPOSITION_CONNECT_POINT_BRIEF_2026-11.md
+?? aw/brief.py
+?? aw/fix.py
+?? aw/t.sh
+?? aw/t2.sh
+?? tools/reference-service-carrier-connect/connect_selection_test.go

@@ -214,3 +214,6 @@
 
 # Carrier guard refusal output is hashed as raw bytes by its README.
 /plan/evidence/CARRIER_GUARD_REFUSAL_2026-11-09/** -text
+
+# Selection digest boundary output is hashed as raw bytes by its README.
+/plan/evidence/SELECTION_DIGEST_BOUNDARY_2026-11-09/** -text
