@@ -16,7 +16,9 @@
 | [配備実行アダプタは、誰がどう組み立てているか](../../plan/evidence/DEPLOYMENT_EXECUTOR_BINDING_SURVEY_2026-11-08/README.md) | 非試験の組み立ては4件、すべて参照実装。CapabilityID は直書きかローカル変数 |
 | [環境の配備実行Bindingは、どこまで使われるか](../../plan/evidence/EXECUTOR_BINDING_CONSUMER_SURVEY_2026-11-08/README.md) | Binding は検証と計画（JSON）まで。`routing.Router` を組み立てる非試験の箇所は0 |
 
-## 2. 現在の形（記録から読める範囲）
+## 2. 2026-11-08時点の形（当時の調査記録）
+
+以下は**2026-11-08当時のSource調査**を保存したもので、現在のmainの非試験Caller件数ではない。C-1/C-2のReference実組立て後の状態と、製品接続の未成立は§10〜11で区別する。
 
 ```text
 宣言（Environment の Binding）
@@ -26,15 +28,15 @@
 ```
 
 - **計画と実行の間に、宣言を読む繋ぎ目がありません。**
-- `servicehost` は Host世代をピン留めする繋ぎ目として存在しますが、**組み立てる非試験の呼出し元がありません**。
-- `routing.Router` は Binding を実行へ繋ぐ繋ぎ目として存在しますが、**非試験で組み立てられていません**。
+- 【当時】`servicehost`はHost世代をピン留めする繋ぎ目を持つが、非試験の呼出し元が0件でした。**後続のC-2参照ツールは構築を実行可能**にしましたが、通常CLI/Studioの本番Hostには未接続です。
+- 【当時】`routing.Router`はBindingを実行へ繋ぐ繋ぎ目を持つが、非試験の呼出し元が0件でした。**後続のC-1参照ツールは実組立て・実呼出し済み**ですが、製品Dispatcherへの標準組込みは未決です。
 
 ## 3. 選べる繋ぎ目（材料から読める範囲）
 
 | # | 繋ぎ目 | 何をするか | 既にある部品 |
 | --- | --- | --- | --- |
-| C-1 | `routing.Router` を CLI で組み立てる | Binding を解決し、`Executor` を登録して実行する | `Router.Dispatch`（試験で動作確認済み） |
-| C-2 | `servicehost` を CLI へ入れる | Host世代をピン留めして Runtime を呼ぶ | `NewSelectedServiceCarrierInvoker`（試験で動作確認済み） |
+| C-1 | `routing.Router` をDeployment入口で組み立てる | Deployment CommandのBindingを解決し、Host登録Executorを呼び出す | `Router.Dispatch`（参照で実組立て・有限実行済み。製品入口未接続） |
+| C-2 | `servicehost` をService要求入口へ接続する | Host世代をピン留めし、Service RequestをCarrierへ運ぶ | `NewSelectedServiceCarrierInvoker`（参照で実組立て・有限実行済み。製品入口未接続） |
 | C-3 | `DeploymentExecutor` の `CapabilityID` を Binding から解決する | 参照実装の直叩きを、宣言由来の能力へ変える | `routing.RouteCommand` の結果 |
 | C-4 | 繋がない（現状維持） | 検証・計画だけを製品が担い、実行は外部の主体に委ねる | なし（現状） |
 
