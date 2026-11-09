@@ -7,6 +7,8 @@
 
 TEIでは、プラグインを業務上の意味を表す最小単位とはせず、**機能の実装を配布する単位**として扱います。
 
+プラグインの実現方式と最適化を検討するときは、[Target別の実現・最適化要件（2026-11、設計候補）](../plan/design/PLUGIN_REALIZATION_AND_OPTIMIZATION_REQUIREMENTS_2026-11.md)を参照します。Contract/Provider選択、物理Artifact、実行時のAuthority、性能測定を別々に確認し、未実装・未実行の提案を現行Runtimeの保証とみなしません。
+
 > **名前空間の設計候補（2026-10-26）**：予約ルートを`tei.*`とし、`tei.std.*`・`tei.experimental.*`・`tei.contrib.*`を区別する案を[設計候補](../plan/design/PLUGIN_NAMESPACE_AND_OPTIONAL_COMPOSITION_2026-10.md)に整理しています。これは現行の`std.*`や`tei.migration.*`の実装IDを変更した報告ではありません。既存ID、Lock、Consumerの移行は未実施で、契約・公開権限の正本は引き続き#951・ADR-0032の境界に従います。
 
 ## 識別子を分ける
@@ -38,6 +40,8 @@ TEIでは、プラグインを業務上の意味を表す最小単位とはせ�
 現在の構成検証では、データベースの接続、移行、配備の実行、状態の観測、検証根拠の取得、SQLの解析などに用いる機能の提供実装を、明示的に選びます。
 
 候補が見つからない場合や、同じ優先度の候補が複数ある場合は、推測で選ばずエラーとします。
+
+検査する範囲は、環境が宣言する結び付け（配備実行・状態観測・検証根拠・データベースインスタンス・移行・機能）ごとに決まります。このうち**環境の機能は、いま `editor.sql_analysis` だけを能力と突き合わせています**。`editor.database_workbench` は既知の機能として受理されますが、対応する能力が無くても診断は出ません。この差は[実行記録](../plan/evidence/FEATURE_SELECTION_CHECK_ASYMMETRY_2026-11-08/README.md)にあります。検査を広げるかどうかは未決です。
 
 ## 配布一式
 

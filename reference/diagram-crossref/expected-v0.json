@@ -1,0 +1,323 @@
+{
+  "artifactKind": "separately-specified-oracle-candidate",
+  "format": "tei.diagram-crossref.expected/v0 (proposal, not a runtime schema)",
+  "status": "AI-drafted expected outcomes specified separately from any TEI implementation. Not independently validated by an Owner, not accepted Canonical meaning, and not executed.",
+  "against": "reference/diagram-crossref/pressure-input-v0.json",
+  "sourceRevision": "diagram-pressure-r1",
+  "acceptanceScope": "synthetic test domain only",
+  "expectedGraph": {
+    "entityCount": 9,
+    "relationCount": 7,
+    "duplicateDisplayLabels": [
+      {
+        "label": "状況",
+        "distinctIds": [
+          "data.order.status",
+          "data.flow.status"
+        ]
+      }
+    ],
+    "parallelEdgePair": [
+      "rel.line.sku.primary",
+      "rel.line.sku.alt"
+    ],
+    "parallelEdgeSameEndpoints": true,
+    "manualWithoutFunction": [
+      "action.phone.confirm"
+    ],
+    "relationDirectionsPreserved": true,
+    "hiddenEdgeNotAbsent": true,
+    "relationKindDistinctions": [
+      {
+        "relation": "rel.order.lines",
+        "expectedKind": "contained-child",
+        "childKey": [
+          "orderNo",
+          "lineNo"
+        ]
+      },
+      {
+        "relation": "rel.order.customer",
+        "expectedKind": "reference",
+        "targetKey": [
+          "customerNo"
+        ]
+      },
+      {
+        "relation": "rel.stock.warehouse",
+        "expectedKind": "reference",
+        "businessKeyOfStock": [
+          "sku",
+          "warehouseCode"
+        ]
+      }
+    ]
+  },
+  "expectedFunctionDeclaredCrudMatrix": {
+    "rowMeaning": "declared Function-level operation only",
+    "columnMeaning": "synthetic Data Subject (not Accepted canonical meaning)",
+    "coverageRule": "none only for complete declared CRUD scope, unknown if coverage incomplete",
+    "cells": {
+      "fn.order.register": {
+        "data.order": "C",
+        "data.line": "C",
+        "data.customer": "R",
+        "data.sku": "none",
+        "data.stock": "R",
+        "data.warehouse": "none",
+        "data.payment": "none",
+        "data.order.status": "none",
+        "data.flow.status": "none"
+      },
+      "fn.order.edit": {
+        "data.order": "RU",
+        "data.line": "RU",
+        "data.customer": "R",
+        "data.sku": "none",
+        "data.stock": "none",
+        "data.warehouse": "none",
+        "data.payment": "none",
+        "data.order.status": "none",
+        "data.flow.status": "none"
+      },
+      "fn.ship.finalize": {
+        "data.order": "U",
+        "data.line": "R",
+        "data.customer": "none",
+        "data.sku": "none",
+        "data.stock": "U",
+        "data.warehouse": "none",
+        "data.payment": "none",
+        "data.order.status": "none",
+        "data.flow.status": "none"
+      },
+      "fn.external.dispatch": {
+        "data.order": "unknown-not-enumerated",
+        "data.line": "unknown-not-enumerated",
+        "data.customer": "unknown-not-enumerated",
+        "data.sku": "unknown-not-enumerated",
+        "data.stock": "unknown-not-enumerated",
+        "data.warehouse": "unknown-not-enumerated",
+        "data.payment": "unknown-not-enumerated",
+        "data.order.status": "unknown-not-enumerated",
+        "data.flow.status": "unknown-not-enumerated"
+      }
+    },
+    "actualProviderEffectStatus": "not-observed"
+  },
+  "expectedBusinessPath": [
+    {
+      "action": "action.order.entry",
+      "function": "fn.order.register",
+      "potentialOperations": {
+        "data.order": "C",
+        "data.line": "C",
+        "data.customer": "R",
+        "data.stock": "R"
+      },
+      "actualEffect": "not-observed"
+    },
+    {
+      "action": "action.ship.approval",
+      "function": "fn.ship.finalize",
+      "potentialOperations": {
+        "data.order": "U",
+        "data.line": "R",
+        "data.stock": "U"
+      },
+      "actualEffect": "not-observed"
+    },
+    {
+      "action": "action.phone.confirm",
+      "function": null,
+      "potentialOperations": {},
+      "actualEffect": "not-observed",
+      "missingFunctionIsError": false
+    }
+  ],
+  "expectedSubsystemDiagnostic": {
+    "directCrossBoundaryWrites": [
+      {
+        "function": "fn.ship.finalize",
+        "data": "data.stock",
+        "operation": "U",
+        "functionOwner": "sales",
+        "dataOwner": "inventory",
+        "status": "review-required-not-auto-denied"
+      }
+    ],
+    "crossBoundaryReadsAllowedAsCandidates": [
+      {
+        "function": "fn.order.register",
+        "data": "data.customer",
+        "operation": "R"
+      },
+      {
+        "function": "fn.order.register",
+        "data": "data.stock",
+        "operation": "R"
+      }
+    ],
+    "ownerSideDelegationDoesNotProveNoEffect": true
+  },
+  "expectedResultGrain": {
+    "orderCount": 1,
+    "lineOccurrences": 2,
+    "paymentOccurrences": 3,
+    "joinedRowsPossible": 6,
+    "joinedRowsAreNotDistinctLineOrPaymentCount": true,
+    "viewSelectionRequiresOccurrenceMapping": true
+  },
+  "expectedEditQualification": {
+    "reversibleExample": {
+      "target": "rel.line.sku.alt",
+      "field": "optional",
+      "from": true,
+      "to": false,
+      "requires": [
+        "unique subject",
+        "exact source span",
+        "matching source revision",
+        "typed change",
+        "preview/impact",
+        "existing shared acceptance",
+        "source patch",
+        "reparse/reproject"
+      ],
+      "notAutoAccepted": true
+    },
+    "layoutOnlyChange": {
+      "semanticDigestChanged": false,
+      "presentationArtifactMayChange": true
+    },
+    "nonInjectiveTreeBackPatch": "reject-and-source-navigate",
+    "ambiguousSelectionBackPatch": "reject",
+    "staleRevisionOrEpochBackPatch": "reject",
+    "authorityDecisionNotDerivedFromDiagram": true
+  },
+  "expectedSHO": {
+    "plainDiagramCanBeAuthoredWithoutTEI": true,
+    "TEILinkedDiagramMustPin": [
+      "source identity",
+      "source revision",
+      "view/profile",
+      "document occurrence",
+      "actual resolved input",
+      "disclosure scope"
+    ],
+    "changingDocumentCaptionChangesTEIMeaning": false,
+    "screenshotOrSVGDoesNotProveSourceModelIdentity": true,
+    "htmlDocxPdfLossMustBeQualifiedSeparately": true
+  },
+  "knownMutantRejections": [
+    {
+      "id": "N01",
+      "failure": "missing-directed-parallel-edge-and-identity",
+      "expected": "FAIL"
+    },
+    {
+      "id": "N02",
+      "failure": "same-label-different-semantic-id",
+      "expected": "FAIL"
+    },
+    {
+      "id": "N03",
+      "failure": "joined-result-grain-confused-with-entity-occurrence",
+      "expected": "FAIL"
+    },
+    {
+      "id": "N04",
+      "failure": "incomplete-function-coverage-falsely-presented-as-none",
+      "expected": "FAIL"
+    },
+    {
+      "id": "N05",
+      "failure": "presentation-change-falsely-promoted-to-meaning-change",
+      "expected": "FAIL"
+    },
+    {
+      "id": "N06",
+      "failure": "ABA-revived-write-eligibility",
+      "expected": "FAIL"
+    },
+    {
+      "id": "N07",
+      "failure": "ambiguous-display-cell-write-target",
+      "expected": "FAIL"
+    },
+    {
+      "id": "N08",
+      "failure": "delegated-write-falsely-proves-no-effective-effect",
+      "expected": "FAIL"
+    },
+    {
+      "id": "N09",
+      "failure": "derived-action-path-falsely-promoted-to-actual-effect",
+      "expected": "FAIL"
+    },
+    {
+      "id": "N10",
+      "failure": "renderer-version-changed-with-stale-visual-evidence",
+      "expected": "FAIL"
+    },
+    {
+      "id": "N11",
+      "failure": "hidden-edge-deleted-by-non-injective-graph-tree-writeback",
+      "expected": "FAIL"
+    },
+    {
+      "id": "N12",
+      "failure": "static-guard-presence-promoted-to-runtime-guard-evidence",
+      "expected": "FAIL"
+    },
+    {
+      "id": "N13",
+      "failure": "presentation-occurrence-identity-conflated-across-canvas-views",
+      "expected": "FAIL"
+    },
+    {
+      "id": "N14",
+      "failure": "semantic-source-altered-by-presentation-canvas-split-merge",
+      "expected": "FAIL"
+    }
+  ],
+  "evidenceRequirements": {
+    "initial": "AI-authored fixture and separately specified oracle saved; independent Owner/Reviewer oracle validation is still pending",
+    "headless": "actual CLI/Plugin projection outputs compared to oracle; typed edge and coverage",
+    "studio": "real Web/Desktop consumer state, selection epoch and explicit edit operation",
+    "sho": "real Markdown parse/preview, render bytes, document occurrence and target asset",
+    "production": "no claim without independent external Provider/Host/Owner evidence"
+  },
+  "expectedCanvasViews": {
+    "viewIds": [
+      "canvas.sales-overview",
+      "canvas.fulfillment"
+    ],
+    "occurrenceCount": 9,
+    "uniqueOccurrenceIdAcrossCanvases": true,
+    "semanticSubjectCanHaveMultipleViewOccurrences": true,
+    "sharedSubjects": {
+      "data.order": [
+        "view.sales.order",
+        "view.fulfillment.order"
+      ],
+      "data.line": [
+        "view.sales.line",
+        "view.fulfillment.line"
+      ]
+    },
+    "relationOccurrences": {
+      "rel.order.lines": [
+        "view.sales.edge.order-lines",
+        "view.fulfillment.edge.order-lines"
+      ]
+    },
+    "canvasSplitChangesSemanticEntities": false,
+    "canvasSplitChangesSemanticRelations": false,
+    "layoutChangeRequiresMeaningAcceptance": false,
+    "selectionRequiresViewOccurrenceAndSemanticSubject": true,
+    "missingRelationInVisibleCanvasMeansAbsentInModel": false,
+    "crossCanvasNavigationNotImplicitWrite": true,
+    "visibleCanvasScopeIsNotEntireWorld": true
+  }
+}

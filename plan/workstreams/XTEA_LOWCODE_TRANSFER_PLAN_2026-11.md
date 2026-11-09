@@ -355,6 +355,12 @@ WP10 統合と引継ぎ
 | 読み取り専用datasourceの事前検査 | 実装 | 付録C.5 |
 | 画面・帳票の版 | 実装 | 付録C.5 |
 | フックの宣言外呼出し | 実装 | 付録C.5 |
+| フックの呼出しのCommand境界への委譲 | 実装 | 付録C.5、`internal/hook`（[#3108](https://github.com/hat47x/tei-platform/pull/3108)） |
+| フック実行からの宣言制限呼出し元の配線 | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md) |
+| フックの不成立と実行失敗の区別 | 実装 | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md) |
+| 判定と能力呼出しの連結（`Guarded`） | 実装（参照） | 付録C.5、`internal/hook` |
+| 能力から`command` Patternの解決（`CommandPatternFor`） | 実装 | 付録C.5、`internal/hook` |
+| フック宣言の画面・印刷面への反映 | 実装 | 付録C.5、`internal/applicationview`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md) |
 | 参照Storeの拒否符号 | 実装 | 付録C.5 |
 | 作者環境の面ごとの検査（AC-12） | 設計のみ | 作者環境の受容設計§3.1〜3.4 |
 | 派生出力の版・未解決（AC-7） | 設計のみ | 派生出力の受容設計§3.1〜3.5 |
@@ -377,6 +383,22 @@ WP10 統合と引継ぎ
 | 期間の閉塞によるCommand拒否 | 実装 | 付録C.5 |
 | CLI参照実行の期間状態 | 実装 | 付録C.5 |
 | フックの宣言（位相・読み書き・失敗時） | 実装 | 付録C.5 |
+| フックの位相の重複宣言の拒否 | 実装 | 付録C.5、`internal/validation` |
+| フックの位相順序と途中停止の記録（`RunSequence`） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md) |
+| フックの宣言した読み取りだけの授受（`ReadsFor`） | 実装 | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_DECLARED_READS_2026-11.md) |
+| 位相ごとの読み取り範囲（`RunSequence`） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_PER_PHASE_READS_2026-11.md) |
+| 提案された値の宣言照合（`ProducesFor`） | 実装 | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_DECLARED_PRODUCES_2026-11.md) |
+| フック宣言の機能定義書への反映 | 実装 | 付録C.5、`internal/artifact`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_FUNCTION_DEFINITION_2026-11.md) |
+| CLI参照実行からのフック呼出し | 実装（参照） | 付録C.5、`cmd/tei`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_CLI_WIRING_2026-11.md) |
+| Studio参照実行からのフック呼出し | 実装（参照） | 付録C.5、`internal/studiohost`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_STUDIO_WIRING_2026-11.md) |
+| フック位相の到達範囲（`RunReachable`） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_REACHABLE_PHASES_2026-11.md) |
+| フックの結末名とCommand拒否名の対応 | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_OUTCOME_VOCABULARY_2026-11.md) |
+| フックが名乗る結末名の語彙照合 | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_OUTCOME_CHECK_2026-11.md) |
+| 到達できる位相の経路での提案の照合（`RunReachable`） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_REACHABLE_PROPOSES_2026-11.md) |
+| フックの提案のCLI・Studio表示 | 実装（参照） | 付録C.5、`cmd/tei`、`cmd/tei-studio`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_SHOW_PROPOSALS_2026-11.md) |
+| 宣言した能力を呼ばないまま実行済みと報告しない（`RunReachable`） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_DECLARED_CALL_HONESTY_2026-11.md) |
+| 宣言した能力を実際に呼ぶ配線（`RunDeclaredCalls`） | 実装（参照） | 付録C.5、`internal/hook`、`cmd/tei`、`internal/studiohost`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_DECLARED_CALL_WIRING_2026-11.md) |
+| フックが使う能力の`command` Pattern不在の拒否 | 実装 | 付録C.5、`internal/validation` |
 | フックの実行境界（reject/warn） | 実装 | 付録C.5 |
 | 未使用属性の表示 | 実装 | 付録C.5 |
 | 属性の役割（role） | 実装 | 付録C.5 |
@@ -399,7 +421,7 @@ WP10 統合と引継ぎ
 | Package（宣言・検証・版束縛・衝突・ビュー表示） | 実装 | 付録C.5、`internal/application`・`internal/validation` |
 | Semantic fingerprint（投影の意味の版） | 実装 | 付録C.5、`internal/semantic` |
 | 統合試験（Semantic→Application→Package→view/print） | 実装 | `cmd/tei/product_slice_test.go` |
-| 残る未実装 | 実Provider接続、集計の実データ計算、削除の効果、帳票テンプレートの版管理 | 付録C.5、D5・D7 |
+| 残る未実装 | 実Provider接続、集計の実データ計算、削除の効果、帳票テンプレートの版管理、フックの実PluginとCLI・Studioへの配線 | 付録C.5、D5・D7 |
 
 **文書の読み方.**
 
@@ -434,33 +456,6 @@ WP10 統合と引継ぎ
 **PRの関係.** 文書は[#2519](https://github.com/hat47x/tei-platform/pull/2519)、対話契約のPoCは[#2521](https://github.com/hat47x/tei-platform/pull/2521)です。PoCは文書のD1・D3.1の最小部分を実装し、`main`には未統合です。
 
 **統合の条件.** 要求・設計の採否は開発作業の停止条件にしません。PRは、変更範囲の検証結果を本文へ記録し、Draftなら解除してから統合します。CIとレビューは、実行できた範囲を記録します。Draftのまま放置せず、統合できる状態になった時点で解除します。
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

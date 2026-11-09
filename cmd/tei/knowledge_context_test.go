@@ -1562,3 +1562,29 @@ func TestBuildKnowledgeQualificationPreservesUnknownSubject(t *testing.T) {
 		t.Fatalf("status=%s reasons=%+v", got.Status, got.Reasons)
 	}
 }
+
+// The reading guide points at this file as the shape of
+// -qualification-requirements (#3186). If the struct or the normalization
+// rules change, the documented example must fail here instead of drifting.
+func TestDocumentedQualificationRequirementsExampleIsAccepted(t *testing.T) {
+	root := testRepositoryRoot(t)
+	got, err := buildKnowledgeQualificationFromFile(
+		filepath.Join(root, "reference", "workspace"),
+		"application-pattern",
+		"order_entry.customer_reference",
+		filepath.Join(root, "reference", "business-system-design",
+			"order-entry-customer-reference-review-qualification.json"),
+	)
+	if err != nil {
+		t.Fatalf("documented example was rejected: %v", err)
+	}
+	if got.Status != knowledgecontext.QualificationApplicable ||
+		got.Requirements.ExpectedKind != "application-pattern" ||
+		got.Requirements.Application != "order_entry" ||
+		len(got.Requirements.RequiredDependencies) != 1 {
+		t.Fatalf("documented example did not produce the expected qualification: %+v", got)
+	}
+	if len(got.Evidence) == 0 || len(got.DependencyEvidence) == 0 {
+		t.Fatalf("documented example lost its Evidence: %+v", got)
+	}
+}

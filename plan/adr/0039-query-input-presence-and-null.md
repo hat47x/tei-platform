@@ -1,9 +1,9 @@
-# ADR-0039: Query入力の不在と明示NULLを契約で分け、SQL実行前に拒否する
+# ADR-0039: Data Operation入力の不在と明示NULLを契約で分け、Provider呼出し前に拒否する
 
 - 状態: 提案中
 - 日付: 2026-10-20
-- 関連ADR: ADR-0007 / ADR-0022 / ADR-0035
-- 関連Issue: #2056 / #179 / #1769 / #214
+- 関連ADR: ADR-0007 / ADR-0022 / ADR-0035 / ADR-0047
+- 関連Issue: #2056 / #179 / #1769 / #2622 / #2585
 - 関連実装: [`tools/reference-query-input-nullability/`](../../tools/reference-query-input-nullability/README.md)、[設計案](../design/DATABASE_QUERY_INPUT_NULLABILITY_2026-10.md)
 
 ## 背景
@@ -17,6 +17,14 @@ Database Contract Queryの入力はSemantic型identityを持つが、入力key�
 missingとnullを同じ「値なし」に潰すと、業務上の必須性、SQLの`IS NULL`条件、Provider差が暗黙になる。
 
 ## 判断
+
+### 対象をData Operation入力一般とする（2026-11-04改訂）
+
+当初はDatabase Contract Query（SQL）の入力だけを対象にしていた。#2619・#2622では、通常の取得・更新はData Operations＋Provider bindingで表し、SQLは特殊経路となる。そこで、presenceとnullの4状態、未知入力の拒否、事前拒否は、Providerに依存しないData Operation入力の契約として扱う。
+
+- 拒否は、SQLに限らずProvider requestを生成する前に行う。
+- SQLのNULL bind、OData・RESTでのnullと省略の表現は、Provider bindingごとの実現として扱い、それぞれ別の証拠にする。
+- 以下の節にあるSQL固有の記述（SQL parameter、`IS NULL`と`= ?`の選択、実PostgreSQLの確認）は、SQL realizationでの具体化として読む。
 
 ### 入力ごとにpresenceとnullを明示する
 

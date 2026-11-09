@@ -93,8 +93,8 @@ go run ./tools/reference-access-survey -summary
 ### 2026-11-07 時点の実測
 
 ```text
-scanned 1061 / withAccess 275 / guarded 1 / calls 862
-environment 83 / filesystem 764 / network 15
+scanned 1076 / withAccess 278 / guarded 1 / calls 869
+environment 84 / filesystem 770 / network 15
 ```
 
 第1章の「ファイル626・ネットワーク15・環境変数31」とは一致しません。**数え方が違う**ためです。

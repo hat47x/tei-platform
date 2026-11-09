@@ -61,7 +61,29 @@ X-TEA（XEAD）の Driver が持つ**標準業務ライブラリ**（日付・�
 
 `getSystemVariant*`・`setVariant`・`getUserValueOf`で、システム変数と利用者別の値を読み書きします（`D:Session.java L2112`、`D:XFScriptable.java L56–60`）。
 
-## 3. 受け止める形
+## 3. 属性の役割語彙
+
+標準業務のDataは、列名ではなく**属性の役割**で結合します（§5の三段の「結合」）。役割は`role <name>`として属性に宣言し、検証は既知の役割だけを受理します。標準業務で使う役割は次の17個です。
+
+| 対象 | 役割 | 必須 |
+| --- | --- | --- |
+| 税 | `tax-applies-from`・`tax-applies-until`・`tax-value`・`tax-rounding` | 必須 |
+| 税 | `tax-category` | 任意 |
+| 通貨 | `currency-rate-currency`・`currency-rate-fiscal-year`・`currency-rate-month-sequence`・`currency-rate-middle` | 必須 |
+| 通貨 | `currency-rate-buying`・`currency-rate-selling` | 任意 |
+| 通貨 | `currency-rate-fallback` | 任意（値は`none`か`annual`。行ごとに一致させる） |
+| 採番 | `numbering-counter`・`numbering-digits` | 必須 |
+| 採番 | `numbering-prefix`・`numbering-check`・`numbering-overflow` | 任意 |
+| 採番 | `numbering-rule` | 任意（複数規則を1つのDataに置く場合） |
+| 休日 | `holiday-date` | 必須（休日Dataを宣言する場合） |
+| 休日 | `holiday-calendar` | 任意（複数の暦が1つのDataを共有する場合。型が値域を宣言していれば、宣言外の識別は報告される） |
+
+- 必須の役割が欠けたDataは結合で拒否され、欠けた役割名が報告されます。
+- 任意の役割は、列が空なら契約の既定（接頭辞なし・検査数字なし・停止など）のままです。空欄から別の規則を推測しません。
+- 語彙の追加は`internal/validation/validation.go`の`attributeRoles`に置き、綴りの誤りは引き続き`SEMANTIC_ATTRIBUTE_ROLE_UNSUPPORTED`で報告します。
+- 役割が要求するプリミティブ型（`date`・`decimal`・`integer`）は`internal/validation/attribute_role_type.go`の`rolePrimitives`に置きます。宣言の型が要求と違う場合は`SEMANTIC_ATTRIBUTE_ROLE_TYPE_MISMATCH`で報告し、別名（`type X from Y`）は下地まで辿って判定します。型名と役割名のどちらも「何でも受理する」ことはしません。
+
+## 3.1 受け止める形
 
 ### 3.1 年度・締め月は「暦の宣言」に置く
 
@@ -129,7 +151,7 @@ X-TEAの率の種類（中値・買値・売値）は引数の文字列でした
 
 - `TTB`（買値）・`TTS`（売値）・中値は、`rate kind`の列挙にします。
 - 換算の方向（外貨→自国通貨、自国通貨→外貨）を、能力の入力として明示します。X-TEAは呼出し側の使い方に依存していました。
-- 年度単位と日次・月次の区別は、率Dataの粒度（`period`）として宣言します。
+- 年度単位と日次・月次の区別は、率Dataの粒度（`period`）として宣言します。年次へのフォールバックは`Fallback`（既定`none`、`annual`で年次行）として宣言し、月次行の欠落を0で埋めません。
 
 ### 3.5 採番は「契約」として持ち、形式は提供元に置く
 
@@ -144,7 +166,7 @@ X-TEAの採番は、表の行・桁・接頭辞・チェックディジット・
 | 検査数字 | 付すか、方式は何か | モジュラス10 |
 
 - **桁あふれの巻き戻しは危険**です。TEIの既定は「停止」にし、巻き戻しは宣言で選ぶ形にします。X-TEAの既定（巻き戻し）は、一意性を壊します。
-- 採番の発行は、取引の中で行い、失敗時に取り消せるようにします。X-TEAは`commit`の外側で更新する経路がありました。
+- 採番の発行は、取引の中で行い、失敗時に取り消せるようにします。X-TEAは`commit`の外側で更新する経路がありました。`internal/numbering`は`Reserve`で予約し、`Commit`で確定、`Release`でカウンタを戻します。予約の間に別の呼出しが発行した場合は`ErrNumberingConflict`で報告し、後続の発行を上書きしません。`ReserveInTransaction`は番号の発行と呼出し側の変更を同じ取引に入れ、取引Commitが失敗したらカウンタを戻します。
 
 ### 3.6 日付の数え方は列挙にする
 
@@ -174,35 +196,30 @@ X-TEAの`setVariant`・`setUserValueOf`は、スクリプトから任意の値�
 | 採番 | L4（契約）＋L1（宣言） | 一意性・連続性・欠番・桁あふれの契約、形式の設定 | 番号の実体（表） |
 | 利用者設定 | L1 | 宣言された設定項目 | 任意のキー |
 
-## 5. 実装の順序
+## 5. 実装の順序と現在地
 
-1〜5は参照実装まで進みました。6は設計のみです。
+1〜6は参照実装まで進みました（6は読み取りと更新、監査と権限は未実装）。どの段階も「宣言 → 実行時の値の結合 → 照会」の三段で作り、各段階の試験記録を`plan/evidence/`へ残しています。
 
-## 5.0 実装済みの範囲（2026-11-07）
+| 段階 | 実装 | 結合（Data宣言の属性役割） | 確認記録 |
+| --- | --- | --- | --- |
+| 1. 暦の宣言と休日Data | `internal/syntax/semantic_calendar.go`、`internal/validation/calendar.go`、`internal/businesscalendar/holiday_binding.go` | `business-day excludes <data>`（暦が休日Dataを名指す）、`holiday-date`（Dataが日付属性を名指す） | [暦の宣言と期間への結合](../evidence/XTEA_LOWCODE_CALENDAR_DECLARATION_2026-11.md) |
+| 2. 期間との結び付き | `period`の`calendar`、`internal/businesscalendar` | 期間が従う暦を名指す（未知・別名前空間は拒否） | [暦からの日付導出](../evidence/XTEA_LOWCODE_CALENDAR_CALCULATION_2026-11.md)、[期間キーの導出](../evidence/XTEA_LOWCODE_PERIOD_KEY_2026-11.md) |
+| 3. 税 | `internal/taxrate` | `tax-applies-from`・`tax-applies-until`・`tax-category`・`tax-value`・`tax-rounding` | [税率の適用期間と端数処理](../evidence/XTEA_LOWCODE_TAX_RATE_2026-11.md)、[Data結合](../evidence/XTEA_LOWCODE_TAX_RATE_BINDING_2026-11.md) |
+| 4. 通貨 | `internal/currencyrate`（年次フォールバックは`currency-rate-fallback`の宣言で選ぶ） | `currency-rate-currency`・`-fiscal-year`・`-month-sequence`・`-middle`・`-buying`・`-selling`・`-fallback` | [通貨換算の率の種類と方向](../evidence/XTEA_LOWCODE_CURRENCY_RATE_2026-11.md)、[Data結合](../evidence/XTEA_LOWCODE_CURRENCY_BINDING_2026-11.md) |
+| 5. 採番 | `internal/numbering`（`ReserveInTransaction`で取引に参加） | `numbering-counter`・`numbering-digits`・`numbering-prefix`・`numbering-check`・`numbering-overflow` | [採番の契約](../evidence/XTEA_LOWCODE_NUMBERING_2026-11.md)、[Data結合](../evidence/XTEA_LOWCODE_NUMBERING_BINDING_2026-11.md) |
+| 6. 利用者設定 | `internal/usersetting`（`Resolve`・`Bind`・`Settings.Value`・`Table.Change`・`Table.Apply`） | `setting-key`・`setting-value`・`setting-user` | [読み取りの確認](../evidence/XTEA_LOWCODE_USER_SETTINGS_2026-11.md)、[書込みの確認](../evidence/XTEA_LOWCODE_USER_SETTINGS_WRITE_2026-11.md) |
 
-1. **暦の宣言と休日Data**: `calendar`の宣言と、休日をDataで持つ形。営業日数・日付差の列挙を参照実装で照会する。
-2. **期間との結び付き**: `period`に`calendar`を結び、年度開始月から期間キーを導く。
-3. **税の宣言**: 適用期間の両端と端数処理を宣言し、境界（改正日）を試験する。
-4. **通貨の宣言**: 率の種類と適用日を宣言する。
-5. **採番の契約**: 一意性・連続性・欠番・桁あふれの契約を定め、参照実装で発行と取り消しを試験する。
-6. **利用者設定**: 宣言された項目だけを読み書きする（未実装）。
+三段の分け方には理由があります。
 
-| 段階 | 実装 | 確認記録 |
-| --- | --- | --- |
-| 暦の宣言 | `internal/syntax/semantic_calendar.go`、`internal/validation/calendar.go` | [暦の宣言と期間への結合](../evidence/XTEA_LOWCODE_CALENDAR_DECLARATION_2026-11.md) |
-| 日付導出 | `internal/businesscalendar` | [暦からの日付導出](../evidence/XTEA_LOWCODE_CALENDAR_CALCULATION_2026-11.md) |
-| 期間キー | `internal/businesscalendar/period_key.go` | [期間キーの導出](../evidence/XTEA_LOWCODE_PERIOD_KEY_2026-11.md) |
-| 税 | `internal/taxrate` | [税率の適用期間と端数処理](../evidence/XTEA_LOWCODE_TAX_RATE_2026-11.md) |
-| 通貨 | `internal/currencyrate` | [通貨換算の率の種類と方向](../evidence/XTEA_LOWCODE_CURRENCY_RATE_2026-11.md) |
-| 採番 | `internal/numbering` | [採番の契約](../evidence/XTEA_LOWCODE_NUMBERING_2026-11.md) |
-
-各段階で、参照実装の試験と証拠を`plan/evidence/`へ残します。
+- **宣言**はWorldに置き、受理の対象にします。X-TEAは表名・システム変数・列名を実行時に解決したため、宣言と実行の対応を読む人が確かめられませんでした。
+- **結合**は、宣言された役割から保存行を実行時の値へ写します。行の解釈失敗（非数値・解釈できない日付・非正の率）は、その行と属性を名指して報告し、飛ばしません。飛ばせば、欠落が後段の別の場所で「率が無い」として現れ、原因を追えなくなります。
+- **照会**は、結合済みの値だけを入力にします。ここへ既定値を混ぜないので、宣言の欠落が既定値で隠れません。
 
 ## 5.1 期間キーの導出（実装済み）
 
 `internal/businesscalendar`は、業務日付から**期間キー**（会計年度のラベルと、開始月を1とする月順序）を導きます。`period key`が年月なら、この組が閉めの単位になります。
 
-X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設定（`LAST_DAY`）より後の日付を**翌月の順序**へずらし、`getFYearOfDate`（同 L2440–2507）も同じ理由で年度を変えていました。TEIの導出はその規則を引き継ぎません。日付は、その日付が名指す月に属します。月内の締め（20日締めなど）を期間にしたい場合は、月ではなく**独立した期間**として宣言します。
+X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設定（`LAST_DAY`）より後の日付を**翌月の順序**へずらし、`getFYearOfDate`（同 L2440–2507）も同じ理由で年度を変えていました。TEIの導出はその規則を引き継ぎません。日付は、その日付が名指す月に属します。月内の締め（20日締めなど）を期間にしたい場合は、期間が`closes on day N`を宣言します。日付は月から動かず、月の前半と後半が`PeriodKey.ClosingSegment`で分かれます（`internal/businesscalendar/closing.go`）。
 
 ## 6. 未確認の事項
 
@@ -213,6 +230,22 @@ X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設�
 - 配布JAR（Driver M36）と固定ソースの同一性は未確認です。
 - 実DBでの税額・換算・採番の結果は、[#940](https://github.com/hat47x/tei-platform/issues/940)が担当します。
 
+### 6.1 参照実装で未実装のまま残したこと
+
+| 残り | 理由 | 何が分かれば決まるか |
+| --- | --- | --- |
+| 月内締めの閉めの実行内容 | 状態遷移（`open`→`closing`→`closed`）と記録（`periods -advance`）は実装したが、対象データの集計・繰越・帳票は未実装 | 閉めを Command にするか、運用操作として分けるか |
+| 採番の例での規則行データ | 例のDataに`numbering-rule`の役割を足したが、行は試験で与えている | 例へ行データを置くかどうかの判断 |
+| 為替の粒度を宣言語彙にする | `ResolveTable`が行から粒度を判定し、`Pair`が2表を結合するが、`.tei`の宣言から粒度を導く語彙は無い | 粒度を宣言するか、行から読むままにするか |
+| 番号のPostgreSQL実装 | SQLiteの永続格納と2プロセス同時実行の不変条件（同一番号を出さない・カウンタが発行数に一致する）は確認したが、PostgreSQLは未実装 | PostgreSQLを先にするか、多プロセス構成を広げるか |
+| 利用者設定の監査と権限 | 更新の検査と記録（`Table.Change`・`Table.Apply`）は実装したが、変更履歴と「誰が変えられるか」は未実装 | 設定更新をCommandにするか、運用操作として分けるか |
+
+実装が進んだことで、以前ここに挙げていた項目のうち次の3つは解消しました。
+
+- **Workspace例への税・通貨・採番Dataの追加**: `examples/xtea-lowcode`へ役割付きで追加済み（[確認記録](../evidence/XTEA_LOWCODE_EXAMPLE_STANDARD_DATA_2026-11.md)）。
+- **為替の年次・月次の優先順位**: `currency-rate-fallback`役割で宣言する形にした（[確認記録](../evidence/XTEA_LOWCODE_CURRENCY_FALLBACK_ROLE_2026-11.md)）。
+- **採番の発行と取消の取引結合**: `ReserveInTransaction`で呼出し側の取引と同じ境界に入れた（[確認記録](../evidence/XTEA_LOWCODE_NUMBERING_RESERVATION_TRANSACTION_2026-11.md)）。
+
 ## 7. 関連
 
 - [X-TEA知見の受容アーキテクチャ](XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md)（D6、D6.1）
@@ -221,5 +254,10 @@ X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設�
 - [評価時点の決定性](EVALUATION_CONTEXT_DETERMINISM_2026-10.md)
 - [移行計画](../workstreams/XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)（WP8）
 - [受容要件](../../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md)（RQ-C3）
+
+
+
+
+
 
 

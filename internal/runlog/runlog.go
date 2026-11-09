@@ -4,12 +4,9 @@
 package runlog
 
 import (
-	"bufio"
-	"encoding/json"
-	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
+
+	"tei/internal/jsonl"
 )
 
 // Status is how a run ended, or that it is still running.
@@ -91,22 +88,7 @@ type File struct {
 
 // Append implements the journal write.
 func (f File) Append(record Record) error {
-	if err := os.MkdirAll(filepath.Dir(f.Path), 0o755); err != nil {
-		return fmt.Errorf("prepare run log %s: %w", f.Path, err)
-	}
-	file, err := os.OpenFile(f.Path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
-	if err != nil {
-		return fmt.Errorf("open run log %s: %w", f.Path, err)
-	}
-	defer file.Close()
-	line, err := json.Marshal(record)
-	if err != nil {
-		return fmt.Errorf("encode run record: %w", err)
-	}
-	if _, err := file.Write(append(line, '\n')); err != nil {
-		return fmt.Errorf("write run log %s: %w", f.Path, err)
-	}
-	return nil
+	return jsonl.Append(f.Path, "run log", record)
 }
 
 // Last returns the latest record for a run key.
@@ -126,30 +108,5 @@ func (f File) Last(runKey string) (Record, bool, error) {
 // Records reads every record. A missing file is empty; a damaged line is an
 // error and the records before it are returned.
 func (f File) Records() ([]Record, error) {
-	file, err := os.Open(f.Path)
-	if os.IsNotExist(err) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, fmt.Errorf("open run log %s: %w", f.Path, err)
-	}
-	defer file.Close()
-	var records []Record
-	scanner := bufio.NewScanner(file)
-	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
-	for line := 1; scanner.Scan(); line++ {
-		text := scanner.Bytes()
-		if len(text) == 0 {
-			continue
-		}
-		var record Record
-		if err := json.Unmarshal(text, &record); err != nil {
-			return records, fmt.Errorf("run log %s line %d: %w", f.Path, line, err)
-		}
-		records = append(records, record)
-	}
-	if err := scanner.Err(); err != nil {
-		return records, fmt.Errorf("read run log %s: %w", f.Path, err)
-	}
-	return records, nil
+	return jsonl.Read(f.Path, "run log", jsonl.DecodeJSON[Record])
 }

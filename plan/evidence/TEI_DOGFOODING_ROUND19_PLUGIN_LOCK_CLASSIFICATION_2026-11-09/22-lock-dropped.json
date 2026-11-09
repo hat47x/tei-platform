@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "tei.cli.plugin-lock/v0",
+  "ok": true,
+  "mode": "environment",
+  "result": {
+    "formatVersion": 2,
+    "environments": [
+      {
+        "environment": "development",
+        "plugins": [
+          {
+            "id": "tei.database.oracle",
+            "version": "1.0.0",
+            "fingerprint": "3313b8c1959a63ba8983718f18c75ed2d057507ebb3cd22401da012405966cfc"
+          },
+          {
+            "id": "tei.database.postgres",
+            "version": "1.0.0",
+            "fingerprint": "c65392bbeaeb2a69db6ecc18f6f41ee58fefddaf2060124071b1a640a7985c7a"
+          },
+          {
+            "id": "tei.editor.intelligence.sql",
+            "version": "1.0.0",
+            "fingerprint": "6ab1be12ae28b25220fa54f851d0f748df1fef2159ea55b0b6e380c830f07ca0",
+            "artifactDigest": "sha256:5af655bd19fffee7c3564b060f92056e1a6bd521c0b15bd1155dd244cd77de43"
+          },
+          {
+            "id": "tei.health.reference",
+            "version": "1.0.0",
+            "fingerprint": "11a5e27d23e07606d10850e44c43663bb34db997555227fdb087f431a3a08eed"
+          },
+          {
+            "id": "tei.migration.atlas",
+            "version": "1.0.0",
+            "fingerprint": "a39b77d70f4b8c0838dcb96bf4d3bca8c41d8d081449fbe865d3ed8ec0fa2f76",
+            "artifactDigest": "sha256:553a998532767887a13c39f58b43936bbae4a5f0ccd6764f1c2500f575acded2"
+          },
+          {
+            "id": "tei.runtime.reference",
+            "version": "1.0.0",
+            "fingerprint": "f093059463561b9ba0463666424fc7db1f99bc2faace2321873efbada52eee0b"
+          },
+          {
+            "id": "tei.traffic.reference",
+            "version": "1.0.0",
+            "fingerprint": "d35cac7faf335f33b2482539ce244498a696fc09cf39621ac7b5a5c47f983878"
+          }
+        ]
+      }
+    ]
+  },
+  "workspace": {
+    "name": "tei_reference",
+    "formatVersion": 1,
+    "manifest": {
+      "path": "tei.workspace.yaml",
+      "sha256": "sha256:8e367b05de26a715ced16e384d273c983ac612dd2ff980d4310886d4f471af74"
+    }
+  }
+}
