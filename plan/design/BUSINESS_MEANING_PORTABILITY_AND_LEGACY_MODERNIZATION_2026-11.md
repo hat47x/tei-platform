@@ -440,3 +440,14 @@ GitHubの二つのBlob実内容を直接照合した（いずれも `examples/xt
 判別結果は `local-static-observed`、`product-load-unobserved`、`receiver-unobserved`、`meaning-unaccepted`、`effect-unqualified` のように**説明用の別欄**で記録し、製品の新状態enumや第二のAuthorityを作らない。#2514の独立Expectedと、#3255の論理Subsystem Owner/越境CUDの意味上の受理、#2831のStage Driver資格はそれぞれ独立に保持する。
 
 **この節の資格上限**：17→18と一件追加は固定2 Blobの限定的静的抽出結果。TEI Loader、Go/CLI/MCP実試験、2 Workspaceの同一条件読取、実H3 Tool Reply、実Target/DB/Legacy Writer、Owner Meaningは本PRでは**NOT RUN**。本書は最初の実テストを既存Ownerの試験に割り付ける計画であり、全Source Closureや業務税額再現の受入宣言ではない。
+
+### 17.4 初回実装候補を独立Draft PRへ分離（2026-11-09、現HEAD CI確認待ち）
+
+[Draft #3742](https://github.com/hat47x/tei-platform/pull/3742)（初回HEAD `a305de20da7dde57d90cec7f07d5c078ee0d80fb`）を、**本書のLP-01のうちProduct Loader/Source Indexだけ**を検証する最小実装候補として追加した。本文・計画PR #3252とはファイル編集を分け、他担当の#3320 Role型負例／#3477 Context Scenario／#3479 Imported Provider／#3420 CLI/MCP試験を変更しない。
+
+- **対象の固定**：`examples/xtea-lowcode/semantic/master/standard.tei` の現行Source Git Blob Bを直接読んで固定Blob IDと比較。確認済みBOM／採番Rule一行／末尾CRLFの差を取り消し、AのGit Blob IDも照合。Git SHA-1形式のBlob IDは**履歴byte同一性の参照**であり、Trust/Authorityの証明ではない。
+- **実Loaderによる判定候補**：AとBを個別の `semantic` だけを宣言する一時Workspaceへ書き、既存 `workspace.Load` と `workspace.BuildSourceIndexFromLoad` に通す。独立に固定したExpectedはA 17件／B 18件、`master.numbering_rule.rule` のみ追加、`master.tax_rate.rate` のRole/型が不変、IndexのSource byte fingerprintとRevisionが異なること。
+- **対象外を保全**：この一Fileの最小Workspaceは完全な `examples/xtea-lowcode` や旧Java/実DB/外部Writerを収集していない。Source Indexの一致/変化からBusiness Meaning/Consumer/Targetの現在資格、全Required/Principal・Grantを推測しない。
+- **検収**：`go test ./cmd/tei -run TestXTEAStandardSourceRevisionBoundedLoad -count=1 -v` とPR exact HEADのGo/Health、main取り込み後の実試験は**別々に確認する**。本追補時点では新実行結果を未確認とし、**PASS/merge/Owner正式受理を主張しない**。この最小実証が成立した後のLP-03 CLI/MCP実Process比較、外部H3完全受領とLP-04実Provider Rowは別Ownerの後段へ渡す。
+
+試験用FixtureはRepository内の実Source blobから構築し、別のLegacy CanonicalやRole Resolver、業務Scenario SSOT、Build/Runtime Engineを増やさない。現在のBが将来変更された場合は**暗黙に新しい履歴版へ書き換えず**、固定Blobとの不一致を報告して受入記録を更新する。
