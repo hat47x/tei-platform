@@ -14,6 +14,11 @@ on:
 permissions:
   contents: read
 
+# 同じPRの古い実行だけを取り消し、mainへのpushは取り消さない（#3682）。
+concurrency:
+  group: tei-tei-studio-host-asset-negative-ci-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   pinned-server-asset-negative:
     runs-on: ubuntu-24.04
@@ -28,10 +33,10 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - name: Set up Go 1.26.9
+      - name: Set up Go from go.mod
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
-          go-version: '1.26.9'
+          go-version-file: go.mod
           cache: false
       - name: Set up Node 22
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -46,6 +51,12 @@ jobs:
           echo "base=$(git rev-parse HEAD)"
           git fetch --no-tags --depth=90 origin refs/pull/1832/head
           git cat-file -e "${HOST_SHA}^{commit}"
+          # The fixed snapshot replaces these two directories completely.
+          # Extracting over the current tree would leave newer files (for
+          # example command.go and observe_xead.go) that the fixed
+          # readonly.go does not define, and the Host would not compile
+          # (#2985). This checkout is disposable.
+          rm -rf cmd/tei-studio internal/studiohost
           git archive "${HOST_SHA}" cmd/tei-studio internal/studiohost | tar -xf -
           echo "fixed Host source: ${HOST_SHA}"
           git fetch --no-tags --depth=90 origin refs/pull/1833/head
@@ -56,13 +67,21 @@ jobs:
           node --version
           test -s tools/reference-studio-host-boundary/server_asset_boundary_probe.mjs
 
-      - name: Build fixed ordinary Server and fixed generated Server
+      - name: Adapt disposable module metadata, then build fixed servers
         shell: bash
         run: |
           set -euo pipefail
+          # The Host source is fixed at HOST_SHA. Only the module metadata is
+          # adapted: the fixed Host's go.mod predates the current root module's
+          # go directive and golang.org/x/text requirement, so -mod=readonly
+          # cannot resolve it (#2985). This snapshot is disposable and is not
+          # the tracked cmd/tei-studio source.
           cd cmd/tei-studio
           test -s go.sum
-          CGO_ENABLED=0 go build -mod=readonly -tags server -o "$RUNNER_TEMP/studio-ordinary-server" .
+          GOFLAGS=-mod=mod CGO_ENABLED=0 go build -tags server -o "$RUNNER_TEMP/studio-ordinary-server" .
+          git diff -- go.mod go.sum > "$RUNNER_TEMP/module-metadata.diff" || true
+          echo "module metadata adapted for the fixed Host snapshot:"
+          cat "$RUNNER_TEMP/module-metadata.diff"
           cd ../..
           go run ./tools/reference-studio-static-composition \
             -fixture tools/reference-studio-static-composition/fixture.json \

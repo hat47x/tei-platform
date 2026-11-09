@@ -108,6 +108,21 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 			}
 		}
 	}
+	// commandCapabilities maps each application to the capabilities its command
+	// patterns declare. A hook reaches a capability only through such a command,
+	// so the lookup is what makes "declared but unreachable" visible.
+	commandCapabilities := map[core.CanonicalID]map[core.CanonicalID]struct{}{}
+	for _, app := range w.Applications {
+		for _, pattern := range app.Patterns {
+			if pattern.Kind != application.PatternCommand || pattern.Capability == "" {
+				continue
+			}
+			if commandCapabilities[app.ID] == nil {
+				commandCapabilities[app.ID] = map[core.CanonicalID]struct{}{}
+			}
+			commandCapabilities[app.ID][pattern.Capability] = struct{}{}
+		}
+	}
 	for _, app := range w.Applications {
 		for _, pattern := range app.Patterns {
 			patternSubject := subject.Subject{Kind: "application-pattern", ID: string(pattern.ID)}
@@ -273,7 +288,7 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 			case application.PatternBrowse:
 				out = append(out, validateBrowsePattern(app, pattern, patternSubject, semanticData, queries)...)
 			case application.PatternRecord:
-				out = append(out, validateRecordPattern(app, pattern, patternSubject, semanticData, semanticDataAttributes, patterns, semanticRelations, semanticCapabilities, semanticCapabilityInputs)...)
+				out = append(out, validateRecordPattern(app, pattern, patternSubject, semanticData, semanticDataAttributes, patterns, semanticRelations, semanticCapabilities, semanticCapabilityInputs, commandCapabilities)...)
 			case application.PatternReference:
 				out = append(out, validateReferencePattern(app, pattern, patternSubject, semanticRelations)...)
 			case application.PatternCommand:
@@ -399,6 +414,7 @@ func validateRecordPattern(
 	semanticRelations map[core.CanonicalID]applicationPatternRelationRef,
 	semanticCapabilities map[core.CanonicalID]core.CanonicalID,
 	semanticCapabilityInputs map[core.CanonicalID]map[string]core.CanonicalID,
+	commandCapabilities map[core.CanonicalID]map[core.CanonicalID]struct{},
 ) []Diagnostic {
 	var out []Diagnostic
 
@@ -418,7 +434,7 @@ func validateRecordPattern(
 			pattern.Data,
 		))
 	} else {
-		out = append(out, validateRecordPatternInteraction(app, pattern, patternSubject, semanticDataAttributes, patterns, semanticRelations, semanticCapabilities, semanticCapabilityInputs)...)
+		out = append(out, validateRecordPatternInteraction(app, pattern, patternSubject, semanticDataAttributes, patterns, semanticRelations, semanticCapabilities, semanticCapabilityInputs, commandCapabilities)...)
 	}
 
 	if pattern.Relation != "" {
@@ -466,6 +482,7 @@ func validateRecordPatternInteraction(
 	semanticRelations map[core.CanonicalID]applicationPatternRelationRef,
 	semanticCapabilities map[core.CanonicalID]core.CanonicalID,
 	semanticCapabilityInputs map[core.CanonicalID]map[string]core.CanonicalID,
+	commandCapabilities map[core.CanonicalID]map[core.CanonicalID]struct{},
 ) []Diagnostic {
 	var out []Diagnostic
 	if pattern.Interaction == nil {
@@ -651,12 +668,20 @@ func validateRecordPatternInteraction(
 		}
 	}
 
+	seenHookPhases := map[string]bool{}
 	for _, hook := range pattern.Interaction.Hooks {
 		switch hook.Phase {
 		case "before-read", "before-create", "after-create", "before-update", "after-update", "before-delete", "after-delete":
 		default:
 			out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_INTERACTION_HOOK_PHASE_UNSUPPORTED", "record pattern %s hook uses unsupported phase %s", pattern.ID, hook.Phase))
 		}
+		// One phase names one hook. Two hooks with the same phase would leave the
+		// second silently unexecuted, because the runner resolves a phase to one
+		// declaration.
+		if seenHookPhases[hook.Phase] {
+			out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_INTERACTION_HOOK_PHASE_DUPLICATE", "record pattern %s declares more than one %s hook", pattern.ID, hook.Phase))
+		}
+		seenHookPhases[hook.Phase] = true
 		switch hook.Failure {
 		case "", "reject", "warn":
 		default:
@@ -680,6 +705,14 @@ func validateRecordPatternInteraction(
 			}
 			if !usedSemantics[namespace] {
 				out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_INTERACTION_HOOK_SEMANTIC_NOT_USED", "record pattern %s hook %s uses %s from namespace %s that application %s does not use", pattern.ID, hook.Phase, capability, namespace, app.ID))
+			}
+			// A hook reaches a capability through the Command boundary, so the
+			// application must declare a command pattern for it. Without one the
+			// hook could be declared and validated but never run, which is what
+			// fail-closed means here: refuse the declaration instead of leaving a
+			// hook that silently cannot execute.
+			if _, declared := commandCapabilities[app.ID][capability]; !declared {
+				out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_INTERACTION_HOOK_USE_WITHOUT_COMMAND", "record pattern %s hook %s uses %s but application %s declares no command pattern for it", pattern.ID, hook.Phase, capability, app.ID))
 			}
 		}
 	}

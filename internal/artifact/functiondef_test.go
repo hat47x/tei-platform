@@ -6,6 +6,7 @@ import (
 
 	"tei/internal/application"
 	"tei/internal/core"
+	"tei/internal/permission"
 	"tei/internal/semantic"
 )
 
@@ -139,5 +140,48 @@ func TestRenderFunctionDefinitionShowsEffectRules(t *testing.T) {
 	want := "effect-rule sales.order.stock on sales.order.register stage after-commit effect update sales.order via sales.order.register on-failure compensate\n"
 	if !strings.Contains(rendered.Content, want) {
 		t.Fatalf("content lost the effect rule:\n%s", rendered.Content)
+	}
+}
+func TestRenderFunctionDefinitionShowsRunPlans(t *testing.T) {
+	input := functionDefinitionInput()
+	input.RunPlans = []semantic.RunPlan{{
+		ID:          "sales.monthly_close",
+		Operations:  []core.CanonicalID{"sales.close"},
+		Key:         []core.CanonicalID{"sales.period.month"},
+		Concurrency: "singleton",
+		Resume:      "checkpoint",
+		Outputs:     []core.CanonicalID{"sales.period"},
+		Autonomy:    "unattended",
+	}}
+
+	rendered, err := RenderFunctionDefinition(input)
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	want := "run-plan sales.monthly_close operations sales.close key sales.period.month concurrency singleton resume checkpoint output sales.period autonomy unattended\n"
+	if !strings.Contains(rendered.Content, want) {
+		t.Fatalf("content lost the run plan:\n%s", rendered.Content)
+	}
+}
+func TestRenderFunctionDefinitionShowsPermissions(t *testing.T) {
+	input := functionDefinitionInput()
+	input.Permissions = map[core.CanonicalID][]permission.Spec{
+		"sales.order.register": {
+			{Kind: permission.KindNetwork, Access: permission.AccessConnect, Scope: "db:5432"},
+			{Kind: permission.KindFilesystem, Access: permission.AccessWrite, Scope: "/var/reports"},
+		},
+	}
+
+	rendered, err := RenderFunctionDefinition(input)
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	for _, want := range []string{
+		"permission sales.order.register filesystem write /var/reports\n",
+		"permission sales.order.register network connect db:5432\n",
+	} {
+		if !strings.Contains(rendered.Content, want) {
+			t.Fatalf("content lost %q:\n%s", want, rendered.Content)
+		}
 	}
 }

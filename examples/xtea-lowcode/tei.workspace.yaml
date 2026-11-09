@@ -1,0 +1,7 @@
+workspace: xtea_lowcode
+formatVersion: 1
+sources:
+  - semantic
+  - applications
+  - databases
+

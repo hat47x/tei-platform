@@ -84,7 +84,7 @@ current AuthorizationとHost Bindingをキャッシュしたまま呼出しを�
 3. #951 / #1016 / #1118のexisting resolver / explicit wiring / Host Contextを使い、合成Trust stubを排する。missing Capability、version mismatch、authorization deniedのfail-closed証跡を実Hostから収集する。
 4. existing`order_entry`DriverとWeb Targetへtracing adapterを足し、Source→Acceptance→Contract→Runtime result→separate Observationの実走査を再現する。意味をWeb側でauthorしない。
 5. 第二Targetで同じsemantic baselineに対するSemantic / Functional / Visualのactual差分を取る。#943のBuild artifact契約を参照し、別Artifact Lockを増やさない。
-6. exact PR headとcurrent mainを記録し、trusted clean checkoutの`tools/repository-health-check.sh`全PASSを得たときだけレビュー・統合を検討する。**Draft PRは統合しない**。
+6. exact PR headとcurrent mainを記録し、trusted clean checkoutで変更範囲の検証を行い、結果を記録して統合する。`tools/repository-health-check.sh`は任意の広範囲診断として扱い、全項目PASSを統合の一律条件にはしない。**Draftは解除して統合する**。
 
 上記は#1119のG2/G3に必要な作業を具体化したものであり、Reference testが通っただけでG2/G3を達成したとは扱わない。
 

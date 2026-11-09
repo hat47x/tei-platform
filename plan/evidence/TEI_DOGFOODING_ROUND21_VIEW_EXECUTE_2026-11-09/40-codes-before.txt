@@ -1,0 +1,10 @@
+main ac5c07414  (sha256:98048d73)
+missing input      rc=1 code=COMMAND_FAILED  msg="INVALID_COMMAND_INPUT: missing inputs: [order]"
+unauthorized       rc=1 code=COMMAND_FAILED  msg="COMMAND_UNAUTHORIZED: capability ... is not allowed"
+lifecycle resend   rc=1 code=COMMAND_LIFECYCLE_REFUSED
+ok control         rc=0
+
+operation-log write failures (all exit 1 OPERATION_LOG_WRITE_FAILED):
+  missing parent dir / path is a directory / unwritable parent
+failed executions write NO log (verified: file absent)
+lifecycle-refused run does NOT overwrite the existing log

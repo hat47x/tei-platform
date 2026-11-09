@@ -1,0 +1,42 @@
+=== internal/plugin/runtime/adapters.go ===
+  package: package runtime
+  -- call site --
+35:	inv, err := a.Registry.InvokeWithProvenance(ctx, a.Plan, plugin.CapabilityDeploymentExecutor, a.CapabilityID, "execute", c.ActionID, c)
+  -- nearest preceding comment block (up to 8 lines) --
+		return false
+	}
+	return cr.Capability.SupportsAction(deployment.ActionKind(c.Kind))
+}
+func (a DeploymentExecutor) Execute(ctx context.Context, c executor.Command) (executor.Result, error) {
+	if !a.Supports(c) {
+		return executor.Result{}, fmt.Errorf("capability %s does not support action %s", a.CapabilityID, c.Kind)
+	}
+
+=== tools/reference-order-rollout-host-continuity/host.go ===
+  package: package orderrollouthost
+  -- call site --
+337:	inv, callErr := reg.InvokeWithProvenance(ctx, start.Plan, plugin.CapabilityDeploymentExecutor, core.CanonicalID(CapabilityID), "execute", start.RequestID, start.Command)
+  -- nearest preceding comment block (up to 8 lines) --
+	defer sales.Close()
+	adapters := &hostAdapters{secrets: sec}
+	runner := &atlasRunner{cfg: cfg, start: start, adapters: adapters, handles: &PgHandleStore{Pool: control}, control: control, sales: sales, accepted: &accepted}
+	reg := pruntime.Registry{
+		Sandboxes: pruntime.HostSandboxLauncher{Network: adapters, Filesystem: adapters, Secrets: adapters, Runner: runner, Now: cfg.hostNow},
+		Verifier:  referenceVerifier{}, Resources: broker, SupervisorOwnerships: own, SupervisorOwnerID: cfg.Owner, SupervisorOwnershipTTL: cfg.OwnershipTTL,
+	}
+	callEvent(ctx, control, start.InvocationID, cfg.Owner, "invoke-start", map[string]any{"actionId": start.Command.ActionID, "requestId": start.RequestID})
+
+=== tools/reference-plugin-capability-contract/runtime_authority_bridge.go ===
+  package: package main
+  -- call site --
+171:	invocation, err := e.registry.InvokeWithProvenance(
+  -- nearest preceding comment block (up to 8 lines) --
+			"runtime-authorized Contract Query contract has no query name",
+		)
+	}
+
+	requestID := fmt.Sprintf(
+		"generic-contract-query-%d",
+		e.seq.Add(1),
+	)
+

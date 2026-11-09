@@ -1,0 +1,21 @@
+package cmd/tei
+  tei/internal/composition = false
+  tei/internal/servicehost = false
+  tei/internal/operations = true
+  tei/internal/plugin/runtime = true
+  tei/internal/driver = true
+  tei/internal/command = true
+package reference/web-composition/go-host
+  tei/internal/composition = true
+  tei/internal/servicehost = false
+  tei/internal/operations = false
+  tei/internal/plugin/runtime = false
+  tei/internal/driver = true
+  tei/internal/command = false
+package tools/reference-first-web-target
+  tei/internal/composition = true
+  tei/internal/servicehost = false
+  tei/internal/operations = false
+  tei/internal/plugin/runtime = false
+  tei/internal/driver = true
+  tei/internal/command = false

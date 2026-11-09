@@ -92,3 +92,22 @@ func TestExternalSemanticImportRejectsMalformedOrDuplicateDigest(t *testing.T) {
 		}
 	})
 }
+
+func TestExternalSemanticPinIgnoresFormattingAndAttributeOrder(t *testing.T) {
+	consumer, provider := externalPair(t)
+	source := filepath.Join(provider, "semantic/os/process.tei")
+	writeExternalFixture(t, source, "namespace os\n\ntype ProcessId from std.identifier\ndata Process {\n    attribute id type os.process_id\n    attribute label type std.text\n}\n")
+	initial, err := workspace.Load(consumer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeExternalFixture(t, filepath.Join(consumer, "tei.workspace.yaml"), pinnedImportManifest(initial.Imports[0].SemanticDigest))
+	writeExternalFixture(t, source, "namespace os\n\n# presentation only\ntype ProcessId from std.identifier\n\ndata Process {\n    attribute label type std.text\n    attribute id type os.process_id\n}\n")
+	if _, err := workspace.Load(consumer); err != nil {
+		t.Fatalf("formatting and normalized attribute order must not require a new pin: %v", err)
+	}
+	writeExternalFixture(t, source, "namespace os\n\ntype ProcessId from std.text\ndata Process {\n    attribute label type std.text\n    attribute id type os.process_id\n}\n")
+	if _, err := workspace.Load(consumer); err == nil || !strings.Contains(err.Error(), "semantic digest mismatch") || !strings.Contains(err.Error(), "review the provider changes and their impact before updating the pin") {
+		t.Fatalf("semantic change must fail with review guidance: %v", err)
+	}
+}

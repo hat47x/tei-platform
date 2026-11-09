@@ -114,7 +114,7 @@ node --experimental-strip-types --test reference/tei-studio-graph/graph.test.mjs
 
 **Aの対照条件**：別の正常なG2で同じview ID `K`を再利用した場合、旧DOMクリックは通知0、新DOMクリックだけがKey Bを選択する。**scopeなしInspect呼出し**は別途Catalog全体でBのCanonical Subject一意性を確認できた場合だけ許容（許容時はBの`kind/id`のみ1回でview IDなし）。同kind/IDが異scopeに重複するfixtureでは、新Mapの選択が成功してもInspect spyは**0回**とする。Renderer単体の既存`graph.test.mjs`だけではこのConsumer側のA/B判定を証明しない。
 
-実装配置・受入は[#1124](https://github.com/hat47x/tei-platform/issues/1124)。型付きRef解決は既存[#1120](https://github.com/hat47x/tei-platform/issues/1120)を再利用し、TEI独自Hostを必須化しない（[Draft PR #2226](https://github.com/hat47x/tei-platform/pull/2226)、提案中・main未統合）。
+実装配置・受入は[#1124](https://github.com/hat47x/tei-platform/issues/1124)。型付きRef解決は既存[#1120](https://github.com/hat47x/tei-platform/issues/1120)を再利用し、TEI独自Hostを必須化しない（[PR #2226](https://github.com/hat47x/tei-platform/pull/2226)、2026-11-02にmainへ統合。方針は[ADR-0043](../../plan/adr/0043-target-native-artifacts-without-tei-host.md)で採用）。
 
 
 ## #1124: Qualified Selection Binding Reference（2026-11-01、独立試作）
