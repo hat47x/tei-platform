@@ -53,17 +53,24 @@ type InspectionResponse struct {
 
 // ReadOnly has no per-browser or selected-workspace state. The host supplies
 // and fixes the workspace allowlist on startup; browser calls supply IDs only.
-// CatalogService and ValidationService expose the generated services' concrete,
-// typed operations. They do not accept renderer-controlled filesystem paths.
+// The services expose the generated operations through concrete, typed
+// methods. They do not accept renderer-controlled filesystem paths.
 type CatalogService interface {
 	Catalog(namespace string) (operations.ModelCatalog, error)
 }
 type ValidationService interface {
 	Validate() (operations.WorkspaceValidation, error)
 }
+
+// InspectionService is a host-selected, typed read-only service. Its presence
+// does not prove Plugin resolution, invocation provenance, or current authority.
+type InspectionService interface {
+	Inspect(subject sourceindex.Subject) (operations.SubjectInspection, error)
+}
 type RootServices struct {
 	Catalog    CatalogService
 	Validation ValidationService
+	Inspection InspectionService
 }
 
 // ServiceFactory is called only after the host has resolved an allowlisted ID.
@@ -233,11 +240,57 @@ func (h *ReadOnly) InspectSubject(id, kind, subjectID string) InspectionResponse
 	if denied != nil {
 		return InspectionResponse{Failure: denied}
 	}
-	value, err := operations.InspectSubject(root, sourceindex.Subject{Kind: kind, ID: subjectID})
+	subject := sourceindex.Subject{Kind: kind, ID: subjectID}
+	var value operations.SubjectInspection
+	var err error
+	if h.services == nil {
+		// Preserve the existing PoC path when no Host factory is configured.
+		// This path is not evidence of a selected Plugin Provider.
+		value, err = operations.InspectSubject(root, subject)
+	} else {
+		var services RootServices
+		services, err = h.services(root)
+		if err == nil && services.Inspection == nil {
+			// Do not silently fall back to the built-in Inspector when a
+			// Host-selected provider is absent or its binding is incomplete.
+			err = errors.New("inspection service is missing")
+		}
+		if err == nil {
+			value, err = services.Inspection.Inspect(subject)
+		}
+		if err == nil {
+			err = operations.ValidateInspectionProjection(subject, value)
+		}
+	}
 	if err != nil {
+		if h.services != nil {
+			// Provider-supplied typed errors may embed private roots, tokens,
+			// or a forged code. Treat both fields as untrusted at this boundary.
+			return InspectionResponse{Failure: selectedInspectionFailure(err)}
+		}
 		return InspectionResponse{Failure: operationFailure(err)}
 	}
 	return InspectionResponse{OK: true, Value: &value}
+}
+
+// selectedInspectionFailure preserves only the closed set of public Inspector
+// error codes. A Host-selected Provider must not set arbitrary client-visible
+// codes or include its private diagnostics in a typed InspectionError message.
+// Direct built-in Inspector behavior is intentionally kept separate.
+func selectedInspectionFailure(err error) *Failure {
+	var inspection *operations.InspectionError
+	if errors.As(err, &inspection) {
+		switch inspection.Code {
+		case operations.InspectionInvalidSubject,
+			operations.InspectionUnsupportedKind,
+			operations.InspectionNotFound,
+			operations.InspectionAmbiguous:
+			return &Failure{Code: inspection.Code, Message: "inspector could not resolve the requested subject"}
+		default:
+			return &Failure{Code: "OPERATION_FAILED", Message: "inspection service failed"}
+		}
+	}
+	return operationFailure(err)
 }
 
 func operationFailure(err error) *Failure {

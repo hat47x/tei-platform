@@ -1,0 +1,15 @@
+== file level ==
+go files scanned: 2976
+files importing operations: 57
+files importing both operations and composition: 0
+non-test files importing servicehost: 0
+
+== package level ==
+main packages: 177
+packages whose closure includes composition: 12
+packages whose closure includes operations: 20
+packages whose closure includes servicehost: 1
+packages whose closure includes BOTH composition and operations: 1
+main packages among those: 0
+main packages whose closure includes composition: 4
+main packages whose closure includes operations: 6

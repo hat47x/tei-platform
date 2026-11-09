@@ -71,13 +71,17 @@ X-TEA（XEAD）の Driver が持つ**標準業務ライブラリ**（日付・�
 | 税 | `tax-category` | 任意 |
 | 通貨 | `currency-rate-currency`・`currency-rate-fiscal-year`・`currency-rate-month-sequence`・`currency-rate-middle` | 必須 |
 | 通貨 | `currency-rate-buying`・`currency-rate-selling` | 任意 |
+| 通貨 | `currency-rate-fallback` | 任意（値は`none`か`annual`。行ごとに一致させる） |
 | 採番 | `numbering-counter`・`numbering-digits` | 必須 |
 | 採番 | `numbering-prefix`・`numbering-check`・`numbering-overflow` | 任意 |
+| 採番 | `numbering-rule` | 任意（複数規則を1つのDataに置く場合） |
 | 休日 | `holiday-date` | 必須（休日Dataを宣言する場合） |
+| 休日 | `holiday-calendar` | 任意（複数の暦が1つのDataを共有する場合。型が値域を宣言していれば、宣言外の識別は報告される） |
 
 - 必須の役割が欠けたDataは結合で拒否され、欠けた役割名が報告されます。
 - 任意の役割は、列が空なら契約の既定（接頭辞なし・検査数字なし・停止など）のままです。空欄から別の規則を推測しません。
 - 語彙の追加は`internal/validation/validation.go`の`attributeRoles`に置き、綴りの誤りは引き続き`SEMANTIC_ATTRIBUTE_ROLE_UNSUPPORTED`で報告します。
+- 役割が要求するプリミティブ型（`date`・`decimal`・`integer`）は`internal/validation/attribute_role_type.go`の`rolePrimitives`に置きます。宣言の型が要求と違う場合は`SEMANTIC_ATTRIBUTE_ROLE_TYPE_MISMATCH`で報告し、別名（`type X from Y`）は下地まで辿って判定します。型名と役割名のどちらも「何でも受理する」ことはしません。
 
 ## 3.1 受け止める形
 
@@ -147,7 +151,7 @@ X-TEAの率の種類（中値・買値・売値）は引数の文字列でした
 
 - `TTB`（買値）・`TTS`（売値）・中値は、`rate kind`の列挙にします。
 - 換算の方向（外貨→自国通貨、自国通貨→外貨）を、能力の入力として明示します。X-TEAは呼出し側の使い方に依存していました。
-- 年度単位と日次・月次の区別は、率Dataの粒度（`period`）として宣言します。
+- 年度単位と日次・月次の区別は、率Dataの粒度（`period`）として宣言します。年次へのフォールバックは`Fallback`（既定`none`、`annual`で年次行）として宣言し、月次行の欠落を0で埋めません。
 
 ### 3.5 採番は「契約」として持ち、形式は提供元に置く
 
@@ -162,7 +166,7 @@ X-TEAの採番は、表の行・桁・接頭辞・チェックディジット・
 | 検査数字 | 付すか、方式は何か | モジュラス10 |
 
 - **桁あふれの巻き戻しは危険**です。TEIの既定は「停止」にし、巻き戻しは宣言で選ぶ形にします。X-TEAの既定（巻き戻し）は、一意性を壊します。
-- 採番の発行は、取引の中で行い、失敗時に取り消せるようにします。X-TEAは`commit`の外側で更新する経路がありました。
+- 採番の発行は、取引の中で行い、失敗時に取り消せるようにします。X-TEAは`commit`の外側で更新する経路がありました。`internal/numbering`は`Reserve`で予約し、`Commit`で確定、`Release`でカウンタを戻します。予約の間に別の呼出しが発行した場合は`ErrNumberingConflict`で報告し、後続の発行を上書きしません。`ReserveInTransaction`は番号の発行と呼出し側の変更を同じ取引に入れ、取引Commitが失敗したらカウンタを戻します。
 
 ### 3.6 日付の数え方は列挙にする
 
@@ -194,16 +198,16 @@ X-TEAの`setVariant`・`setUserValueOf`は、スクリプトから任意の値�
 
 ## 5. 実装の順序と現在地
 
-1〜5は参照実装まで進み、6は設計のみです。どの段階も「宣言 → 実行時の値の結合 → 照会」の三段で作り、各段階の試験記録を`plan/evidence/`へ残しています。
+1〜6は参照実装まで進みました（6は読み取りと更新、監査と権限は未実装）。どの段階も「宣言 → 実行時の値の結合 → 照会」の三段で作り、各段階の試験記録を`plan/evidence/`へ残しています。
 
 | 段階 | 実装 | 結合（Data宣言の属性役割） | 確認記録 |
 | --- | --- | --- | --- |
 | 1. 暦の宣言と休日Data | `internal/syntax/semantic_calendar.go`、`internal/validation/calendar.go`、`internal/businesscalendar/holiday_binding.go` | `business-day excludes <data>`（暦が休日Dataを名指す）、`holiday-date`（Dataが日付属性を名指す） | [暦の宣言と期間への結合](../evidence/XTEA_LOWCODE_CALENDAR_DECLARATION_2026-11.md) |
 | 2. 期間との結び付き | `period`の`calendar`、`internal/businesscalendar` | 期間が従う暦を名指す（未知・別名前空間は拒否） | [暦からの日付導出](../evidence/XTEA_LOWCODE_CALENDAR_CALCULATION_2026-11.md)、[期間キーの導出](../evidence/XTEA_LOWCODE_PERIOD_KEY_2026-11.md) |
 | 3. 税 | `internal/taxrate` | `tax-applies-from`・`tax-applies-until`・`tax-category`・`tax-value`・`tax-rounding` | [税率の適用期間と端数処理](../evidence/XTEA_LOWCODE_TAX_RATE_2026-11.md)、[Data結合](../evidence/XTEA_LOWCODE_TAX_RATE_BINDING_2026-11.md) |
-| 4. 通貨 | `internal/currencyrate` | `currency-rate-currency`・`-fiscal-year`・`-month-sequence`・`-middle`・`-buying`・`-selling` | [通貨換算の率の種類と方向](../evidence/XTEA_LOWCODE_CURRENCY_RATE_2026-11.md)、[Data結合](../evidence/XTEA_LOWCODE_CURRENCY_BINDING_2026-11.md) |
-| 5. 採番 | `internal/numbering` | `numbering-counter`・`numbering-digits`・`numbering-prefix`・`numbering-check`・`numbering-overflow` | [採番の契約](../evidence/XTEA_LOWCODE_NUMBERING_2026-11.md)、[Data結合](../evidence/XTEA_LOWCODE_NUMBERING_BINDING_2026-11.md) |
-| 6. 利用者設定 | 未実装 | — | — |
+| 4. 通貨 | `internal/currencyrate`（年次フォールバックは`currency-rate-fallback`の宣言で選ぶ） | `currency-rate-currency`・`-fiscal-year`・`-month-sequence`・`-middle`・`-buying`・`-selling`・`-fallback` | [通貨換算の率の種類と方向](../evidence/XTEA_LOWCODE_CURRENCY_RATE_2026-11.md)、[Data結合](../evidence/XTEA_LOWCODE_CURRENCY_BINDING_2026-11.md) |
+| 5. 採番 | `internal/numbering`（`ReserveInTransaction`で取引に参加） | `numbering-counter`・`numbering-digits`・`numbering-prefix`・`numbering-check`・`numbering-overflow` | [採番の契約](../evidence/XTEA_LOWCODE_NUMBERING_2026-11.md)、[Data結合](../evidence/XTEA_LOWCODE_NUMBERING_BINDING_2026-11.md) |
+| 6. 利用者設定 | `internal/usersetting`（`Resolve`・`Bind`・`Settings.Value`・`Table.Change`・`Table.Apply`） | `setting-key`・`setting-value`・`setting-user` | [読み取りの確認](../evidence/XTEA_LOWCODE_USER_SETTINGS_2026-11.md)、[書込みの確認](../evidence/XTEA_LOWCODE_USER_SETTINGS_WRITE_2026-11.md) |
 
 三段の分け方には理由があります。
 
@@ -215,7 +219,7 @@ X-TEAの`setVariant`・`setUserValueOf`は、スクリプトから任意の値�
 
 `internal/businesscalendar`は、業務日付から**期間キー**（会計年度のラベルと、開始月を1とする月順序）を導きます。`period key`が年月なら、この組が閉めの単位になります。
 
-X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設定（`LAST_DAY`）より後の日付を**翌月の順序**へずらし、`getFYearOfDate`（同 L2440–2507）も同じ理由で年度を変えていました。TEIの導出はその規則を引き継ぎません。日付は、その日付が名指す月に属します。月内の締め（20日締めなど）を期間にしたい場合は、月ではなく**独立した期間**として宣言します。
+X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設定（`LAST_DAY`）より後の日付を**翌月の順序**へずらし、`getFYearOfDate`（同 L2440–2507）も同じ理由で年度を変えていました。TEIの導出はその規則を引き継ぎません。日付は、その日付が名指す月に属します。月内の締め（20日締めなど）を期間にしたい場合は、期間が`closes on day N`を宣言します。日付は月から動かず、月の前半と後半が`PeriodKey.ClosingSegment`で分かれます（`internal/businesscalendar/closing.go`）。
 
 ## 6. 未確認の事項
 
@@ -230,12 +234,17 @@ X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設�
 
 | 残り | 理由 | 何が分かれば決まるか |
 | --- | --- | --- |
-| Workspace例への税・通貨・採番Dataの追加 | 役割名は新しい語彙で、例へ入れると受理済み意味の変更になる | 例を受理経路へ載せるか、別の例を足すかの判断 |
-| 月内の締め（20日締めなど）の期間化 | X-TEAの「締め日を過ぎた日付を翌月へずらす」規則（`getMSeqOfDate` L2476–2484）を引き継がない方針にしたため、月内締めは独立した期間として宣言する必要がある | 期間キーに日を含めるか、期間を分けるかの宣言 |
-| 為替の年次・月次の優先順位 | X-TEAの「月次率0なら年次表へ」は0を制御値にしていたため引き継がない | フォールバックを宣言にするか、行の欠落を報告に留めるか |
-| 採番の発行と取消の取引結合 | `State`を返す形にしたが、取引への参加は呼出し側の責務として残した | 取引境界（`UnitOfWork`）との接続方法 |
-| 採番表の行の識別 | `IDNUMBER`に相当する役割を定義していない | 複数規則を1表に置くか、Dataを分けるか |
-| 利用者設定 | 設計のみ | 宣言された設定項目の形と、受理の対象範囲 |
+| 月内締めの閉めの実行内容 | 状態遷移（`open`→`closing`→`closed`）と記録（`periods -advance`）は実装したが、対象データの集計・繰越・帳票は未実装 | 閉めを Command にするか、運用操作として分けるか |
+| 採番の例での規則行データ | 例のDataに`numbering-rule`の役割を足したが、行は試験で与えている | 例へ行データを置くかどうかの判断 |
+| 為替の粒度を宣言語彙にする | `ResolveTable`が行から粒度を判定し、`Pair`が2表を結合するが、`.tei`の宣言から粒度を導く語彙は無い | 粒度を宣言するか、行から読むままにするか |
+| 番号のPostgreSQL実装 | SQLiteの永続格納と2プロセス同時実行の不変条件（同一番号を出さない・カウンタが発行数に一致する）は確認したが、PostgreSQLは未実装 | PostgreSQLを先にするか、多プロセス構成を広げるか |
+| 利用者設定の監査と権限 | 更新の検査と記録（`Table.Change`・`Table.Apply`）は実装したが、変更履歴と「誰が変えられるか」は未実装 | 設定更新をCommandにするか、運用操作として分けるか |
+
+実装が進んだことで、以前ここに挙げていた項目のうち次の3つは解消しました。
+
+- **Workspace例への税・通貨・採番Dataの追加**: `examples/xtea-lowcode`へ役割付きで追加済み（[確認記録](../evidence/XTEA_LOWCODE_EXAMPLE_STANDARD_DATA_2026-11.md)）。
+- **為替の年次・月次の優先順位**: `currency-rate-fallback`役割で宣言する形にした（[確認記録](../evidence/XTEA_LOWCODE_CURRENCY_FALLBACK_ROLE_2026-11.md)）。
+- **採番の発行と取消の取引結合**: `ReserveInTransaction`で呼出し側の取引と同じ境界に入れた（[確認記録](../evidence/XTEA_LOWCODE_NUMBERING_RESERVATION_TRANSACTION_2026-11.md)）。
 
 ## 7. 関連
 

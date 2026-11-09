@@ -316,14 +316,9 @@ func TestCombinedWebTargetSourceGateLiveProcesses(t *testing.T) {
 
 func TestCombinedWebCLIRefusesUntrustedReaderEnvironment(t *testing.T) {
 	root := filepath.Dir(filepath.Dir(referenceWorkspacePath(t)))
-	binary := filepath.Join(t.TempDir(), "first-web-target")
+	binary := buildShipped(t, root, "./tools/reference-first-web-target", "first-web-target")
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	build := exec.CommandContext(ctx, "go", "build", "-o", binary, "./tools/reference-first-web-target")
-	build.Dir = root
-	if output, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("build shipped combined executable: %v\n%s", err, output)
-	}
 	command := exec.CommandContext(ctx, binary, "-workspace", "does-not-exist",
 		"-baseline-id", "B", "-baseline-revision", testBaselineRevision, "-target-revision", testTargetRevision)
 	command.Dir = root

@@ -149,7 +149,13 @@ def check_repository(root: Path) -> list[str]:
                         i += 1
 
     reference = contents.get(DOCUMENTS[1], "")
-    for label in ("result.snapshotFingerprint", "result.trace.snapshotFingerprint", "-expected-fingerprint"):
+    for label in (
+        "result.snapshotFingerprint",
+        "result.trace.snapshotFingerprint",
+        "result.trace.graphFingerprint",
+        "result.trace.continuation.fingerprint",
+        "-expected-fingerprint",
+    ):
         if label not in reference:
             errors.append(f"reference missing trace pagination binding: {label}")
     if "NOT RUN" not in skill:

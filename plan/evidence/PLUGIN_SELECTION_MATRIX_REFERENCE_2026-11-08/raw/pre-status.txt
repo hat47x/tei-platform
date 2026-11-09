@@ -1,0 +1,7 @@
+?? aw/ev.sh
+?? aw/r.sh
+?? aw/t.sh
+?? aw/v.sh
+?? tools/reference-plugin-selection-matrix/cmd/tei-plugin-selection-matrix/main.go
+?? tools/reference-plugin-selection-matrix/matrix.go
+?? tools/reference-plugin-selection-matrix/matrix_test.go

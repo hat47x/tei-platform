@@ -1,0 +1,21 @@
+== non-test call sites of executor Execute ==
+internal/applicationview/browse_html.go:86:	if err := browseTemplate.Execute(&buf, view); err != nil {
+internal/applicationview/browse_html.go:95:	if err := browsePrintTemplate.Execute(&buf, view); err != nil {
+internal/applicationview/header_detail_html.go:51:	if err := headerDetailTemplate.Execute(&buf, view); err != nil {
+internal/applicationview/html.go:57:	if err := htmlTemplate.Execute(&buf, view); err != nil {
+internal/applicationview/print.go:77:	if err := printTemplate.Execute(&buf, view); err != nil {
+internal/applicationview/print.go:86:	if err := headerDetailPrintTemplate.Execute(&buf, view); err != nil {
+internal/command/invoke.go:243:	result, err := i.Executor.Execute(ctx, request)
+internal/deployment/routing/executor.go:105:	result, err := exec.Execute(ctx, cmd)
+internal/security/effectcommit/commandadapter/executor.go:64:	result, err := e.Runner.Execute(ctx, effectcommit.Request{
+internal/security/effectcommit/submit/submit.go:242:	out := Classify(c.Runner.Execute(ctx, req, grant))
+tools/reference-deployment-attempt/main.go:132:	result, err := adapter.Execute(context.Background(), cmd)
+tools/reference-design-output/index.go:70:	if err := template.Must(template.New("index").Parse(indexTemplate)).Execute(&buffer, view); err != nil {
+tools/reference-first-web-target/custom_ui.go:101:	if err := s.customSubmit.Execute(w, data); err != nil {
+tools/reference-first-web-target/repair_scenario_http.go:107:	if err := s.customerLookupPage.Execute(w, data); err != nil {
+tools/reference-first-web-target/runner_order_submit_store.go:227:	result, err := s.runner.Execute(ctx, req, grant)
+tools/reference-first-web-target/server.go:115:	if err := s.index.Execute(w, s.projection); err != nil {
+tools/reference-first-web-target-visual-replay/main.go:432:		if err := reviewIndexTemplate.Execute(w, reviewIndexData{
+tools/reference-generator-selection/generator.go:182:	if err := parsed.Execute(&rendered, data); err != nil {
+tools/reference-plugin-build-supply/stage4.go:131:	result, err := adapter.Execute(ctx, command)
+tools/reference-plugin-self-build/main.go:769:	nativeInvocation, err := nativeAdapter.Execute(context.Background(), executor.Command{

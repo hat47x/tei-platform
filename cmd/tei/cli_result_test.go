@@ -181,8 +181,10 @@ func TestResultEnvelopeCommandsJSONContract(t *testing.T) {
 		t.Fatalf("unexpected disclosure envelope: %+v", disclosureEnvelope)
 	}
 
+	// A missing flag is an argument problem, not a knowledge build failure
+	// (#3733).
 	missingSubject := run(2, "knowledge-context", "-workspace", reference)
-	if missingSubject.OK || missingSubject.Error == nil || missingSubject.Error.Code != resultCodeKnowledgeFailed {
+	if missingSubject.OK || missingSubject.Error == nil || missingSubject.Error.Code != resultCodeInvalidArgument {
 		t.Fatalf("wrong missing-subject envelope: %+v", missingSubject)
 	}
 

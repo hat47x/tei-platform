@@ -1,0 +1,8 @@
+main 022c85bd9 build:
+inspect no -workspace            rc=2 INVALID_ARGUMENT
+knowledge-context no subject     rc=2 INVALID_ARGUMENT
+knowledge-qualify no subject     rc=2 INVALID_ARGUMENT
+knowledge-review-plan no subject rc=2 INVALID_ARGUMENT
+inspect whitespace subject       rc=2 INVALID_SUBJECT
+inspect absent subject           rc=1 SUBJECT_NOT_FOUND
+knowledge-qualify bad requirements rc=2 KNOWLEDGE_BUILD_FAILED
