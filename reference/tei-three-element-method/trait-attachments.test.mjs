@@ -3,16 +3,19 @@ import assert from "node:assert/strict";
 import {bindPublicTraitClaims} from "./trait-attachments.mjs";
 import {projectPublicTeaSlice} from "./public-slice.mjs";
 const snapshot = "source:R1|role:P1|policy:G1";
+const workspaceObservation = "load:sales-A";
 const subject = {scope: "sales", kind: "semantic-data", id: "order-status"};
 const viewId = role => JSON.stringify([role, subject.scope, subject.kind, subject.id]);
-const projection = (projectionSnapshot = snapshot) => projectPublicTeaSlice({scope: "sales", subjects: [
+const projection = (projectionSnapshot = snapshot, workspace = workspaceObservation) =>
+  projectPublicTeaSlice({scope: "sales", workspaceObservation: workspace, subjects: [
   {scope: subject.scope, kind: subject.kind, id: subject.id,
     roleStates: {data: "accepted", function: "accepted", business: "accepted"}},
 ], relations: []}, projectionSnapshot);
-const c = (claimId, role, lane, state) => ({claimId, scope: subject.scope, kind: subject.kind, subjectId: subject.id,
+const c = (claimId, role, lane, state) => ({claimId, scope: subject.scope,
+  workspaceObservation, kind: subject.kind, subjectId: subject.id,
   role, traitId: "closed-domain", lane, state, evidenceId: `E-${claimId}`, snapshot});
 // Attachments refer to one Subject. They are not computed conformance results.
-const envelope = () => ({scope: "sales", snapshot, claims: [
+const envelope = () => ({scope: "sales", workspaceObservation, snapshot, claims: [
   c("business-intent", "business", "intent", "proposal"),
   c("java-enum", "data", "observation", "source-observed"),
   c("db-no-check", "data", "observation", "source-observed"),
@@ -67,6 +70,28 @@ test("T12: scope mismatch cannot bind same display name", () => {
   const e = envelope();
   e.claims[0].scope = "billing";
   assert.throws(() => bindPublicTraitClaims(projection(), e), /unqualified_trait_attachment/);
+});
+
+test("T12: equal snapshot and identical display IDs cannot cross distinct Workspaces", () => {
+  const otherWorkspace = projection(snapshot, "load:sales-B");
+  assert.deepStrictEqual(otherWorkspace.views, projection(snapshot).views);
+  assert.equal(otherWorkspace.snapshot, projection(snapshot).snapshot);
+  assert.throws(() => bindPublicTraitClaims(otherWorkspace, envelope()),
+    /unqualified_trait_attachment/);
+});
+
+test("T12: claim from a different Workspace cannot be attached through a matching envelope", () => {
+  const e = envelope();
+  e.claims[1].workspaceObservation = "load:sales-B";
+  assert.throws(() => bindPublicTraitClaims(projection(), e),
+    /unqualified_trait_attachment/);
+});
+
+test("T12: envelope Workspace context cannot promote an unstamped Workspace claim", () => {
+  const e = envelope();
+  delete e.claims[1].workspaceObservation;
+  assert.throws(() => bindPublicTraitClaims(projection(), e),
+    /unqualified_trait_attachment/);
 });
 
 test("T13: a private trait not represented in public projection cannot be attached", () => {
