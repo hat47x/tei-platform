@@ -155,5 +155,4 @@ class TestExternalProjection(unittest.TestCase):
         self.assertEqual(projector.project(self.root)['admission'],'refused')
 
 
-
 if __name__=='__main__':unittest.main()
