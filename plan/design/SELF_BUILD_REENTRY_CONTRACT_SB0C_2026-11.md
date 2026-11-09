@@ -1443,7 +1443,7 @@ Claimの`boundary`文言を、**このホスト**から**観測した二つの�
 - [x] **実build**での`-rebuild-check`のコスト測定（§4.28。`reference-go-build-with-supply`をchildにして`./internal/core`を実際に`go build`。中央値5852.7 ms→11272.4 ms、**+5419.7 ms・1.926倍**で、§4.27の推論が当たった。二回のbuildのdigestは一致し`artifactReproducibility=reproduced`。[記録](../evidence/TEI_GO_SELF_BUILD_GO_BUILD_REBUILD_COST_2026-11-09.md)）
 - [x] `-rebuild-check`の実コストの測定（§4.27。[記録](../evidence/TEI_GO_SELF_BUILD_REBUILD_CHECK_COST_2026-11-09.md)。参照childでは中央値136.4 ms→246.5 ms（+110.1 ms・1.807倍）で、**増分の大半はchildの仕事ではなくentryの固定費**（child単体3.4 ms）。実buildは未測定）
 - [x] `-rebuild-check`の既定を**catalogを名指しした試行に限って**強くする決定と実装（§4.30。`-build-catalog`を渡せば二回目のbuildが既定になり、`-rebuild-check=false`で断れる。child経路と何も渡さない試行は変わらない）
-- [ ] `-rebuild-check`を**すべての試行で既定**にするかどうかの判断。**§4.25で三つの未決を一つの判断として扱う案（P-1〜P-4）を示した**。実buildの所要時間は未測（§4.25末尾）
+- [ ] `-rebuild-check`を**すべての試行で既定**にするかどうかの判断。**§4.25がP-1〜P-4を示し、§4.27が参照child、§4.28が実buildのコストを実測した**（それぞれ1.807倍・1.93倍）。**§4.30がcatalog経路だけ既定にした**ので、残る問いはそれ以外の経路でも既定にするかである
 - [x] catalogの出所の決定（§4.22。**K-3: 呼び手が名指しするcatalogデータ＋必須のdigest**。新しいAuthorityを作らず、既存の`-supply`・`-intent-resolver`と同じ形）
 - [ ] **entryの既定経路をin-processの`Resolve`へ切り替えるか**の判断（§4.16のR-1/R-2/R-3）。前提だったcatalogの出所は§4.22で決めた（K-3）。切り替え自体は段2の完了後に別途決める
 - [x] **段1**：`fixture`を外した名前で`BuildCatalog`・`ParseBuildCatalog`・`ResolveBuilder`・`ResolveDependency`・`CheckTarget`・`DirSourceResolver`を`internal/buildintent`へ移した（`tools/`側は型aliasと薄い委譲。参照実装の試験は**無変更で通る**。§4.22の移行表、[記録](../evidence/TEI_GO_SELF_BUILD_CATALOG_MOVE_2026-11-09.md)）
