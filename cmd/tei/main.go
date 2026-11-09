@@ -275,6 +275,9 @@ func main() {
 		if parseErr == nil {
 			parseErr = validateSelectedReadOnlyFlags(fs, command)
 		}
+		if parseErr == nil {
+			parseErr = validateRepeatableArguments(command, os.Args[2:])
+		}
 		if parseErr != nil {
 			code, writeErr := selectedReadOnlyFlagError(os.Stdout, command, parseErr)
 			if writeErr != nil {
@@ -295,6 +298,7 @@ func main() {
 	if command != "inspect" && command != "trace" && !(command == "validate" && jsonValidationRequested) {
 		// #2332: text/JSON commands advertised by `tei commands` reject flags
 		// they do not read, instead of silently ignoring them.
+		repeatErr := validateRepeatableArguments(command, os.Args[2:])
 		if err := validateSelectedReadOnlyFlags(fs, command); err != nil {
 			if isResultEnvelopeCommand(command) {
 				code, writeErr := emitResult(os.Stdout, resultFailure(command, resultCodeInvalidArgument, err), 2)
@@ -304,6 +308,17 @@ func main() {
 				os.Exit(code)
 			}
 			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+		if repeatErr != nil {
+			if isResultEnvelopeCommand(command) {
+				code, writeErr := emitResult(os.Stdout, resultFailure(command, resultCodeInvalidArgument, repeatErr), 2)
+				if writeErr != nil {
+					fmt.Fprintln(os.Stderr, writeErr)
+				}
+				os.Exit(code)
+			}
+			fmt.Fprintln(os.Stderr, repeatErr)
 			os.Exit(2)
 		}
 	}

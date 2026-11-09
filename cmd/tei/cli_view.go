@@ -84,21 +84,35 @@ type cliViewReport struct {
 // order to decide what to do next. A failure whose data effect may already be
 // applied must not read like a clean rejection, and a lifecycle refusal is a
 // replay decision rather than an execution error.
+// reportedExecutionCodes are the ExecutionError codes this command reports as
+// error.code. A code in this set is the machine-readable reason a caller
+// branches on, so it must not be flattened into COMMAND_FAILED with the reason
+// left in the message text (#3797).
+//
+// Keep this list in step with the codes internal/command returns. The previous
+// hand-written switch held three of them and silently dropped
+// INVALID_COMMAND_INPUT and COMMAND_UNAUTHORIZED, which made "your input is
+// wrong" and "you are not allowed" look like the same generic failure.
+var reportedExecutionCodes = map[string]bool{
+	"INVALID_COMMAND_INPUT":            true,
+	"COMMAND_UNAUTHORIZED":             true,
+	"COMMAND_AUTHORIZER_UNAVAILABLE":   true,
+	"COMMAND_LIFECYCLE_REFUSED":        true,
+	"COMMAND_PERIOD_SCOPE_UNAVAILABLE": true,
+	"COMMAND_PERIOD_SCOPE_UNKNOWN":     true,
+	"COMMAND_EFFECT_UNKNOWN":           true,
+}
+
 func commandFailure(err error) (string, string, bool) {
 	var execution *command.ExecutionError
 	if errors.As(err, &execution) {
-		switch execution.Code {
-		case "COMMAND_LIFECYCLE_REFUSED":
-			return "COMMAND_LIFECYCLE_REFUSED", execution.Message, true
-		case "COMMAND_PERIOD_SCOPE_UNAVAILABLE":
-			// A period split by a closing day cannot be judged by a state that
-			// only knows whole months. Naming the code keeps it distinct from a
-			// generic execution failure, so a caller can supply a half-aware state.
-			return "COMMAND_PERIOD_SCOPE_UNAVAILABLE", execution.Message, true
-		case "COMMAND_PERIOD_SCOPE_UNKNOWN":
-			// The period's business date is missing or unreadable, so the half is
-			// unknown. A caller fixes the input rather than the state.
-			return "COMMAND_PERIOD_SCOPE_UNKNOWN", execution.Message, true
+		// A period split by a closing day cannot be judged by a state that only
+		// knows whole months; naming the code keeps it distinct from a generic
+		// execution failure, so a caller can supply a half-aware state. The
+		// same holds for every other reported code: the caller's remedy differs
+		// by code, so the code is part of the answer.
+		if reportedExecutionCodes[execution.Code] {
+			return execution.Code, execution.Message, true
 		}
 	}
 	if command.EffectMayBeUnknown(err) {
@@ -150,6 +164,11 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		(*lifecycleGeneration < 1) ||
 		(len(allowedCapabilities) > 0 && !*execute) ||
 		(*operationLogFile != "" && !*execute) ||
+		// -input only feeds the command plan, which exists only with -command.
+		// Without this, `view -application X -input order=ORD-1` succeeded and
+		// dropped the value (and never parsed it), so a caller could believe it
+		// had supplied input to a command that was never planned (#3778).
+		(len(inputPairs) > 0 && *commandID == "") ||
 		*root != strings.TrimSpace(*root) || *applicationID != strings.TrimSpace(*applicationID) ||
 		*patternID != strings.TrimSpace(*patternID) || *packageID != strings.TrimSpace(*packageID) ||
 		*commandID != strings.TrimSpace(*commandID) {

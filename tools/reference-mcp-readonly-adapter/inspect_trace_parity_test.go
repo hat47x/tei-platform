@@ -222,14 +222,13 @@ func TestInspectAndTraceMatchAcrossRealProcesses(t *testing.T) {
 	}
 }
 
-// One difference in failure classification is deliberate and must be visible
-// rather than silently tolerated: a missing required argument is a semantic
-// input error on the CLI (INVALID_SUBJECT, exit 2) and a protocol-level
-// invalid-params error on the adapter (-32602). Both refuse the call and
-// neither runs it, so a caller that only asks "was it refused" sees the same
-// answer; a caller that branches on the string code does not. This test pins
-// both answers so the gap cannot widen unnoticed, and #3420 owns the decision
-// to unify them (ADR-0048 §2.3 "失敗").
+// A missing required argument must be refused by both entrances, and the CLI
+// must say so with one code regardless of which command was called (#3733).
+// The remaining difference is only the layer: the CLI answers the stable string
+// INVALID_ARGUMENT, the adapter answers JSON-RPC -32602. Both refuse the call
+// and neither runs it, so a caller that asks "was it refused" sees the same
+// answer. This test pins both answers so the gap cannot widen unnoticed, and
+// #3420 still owns the decision to unify the two layers (ADR-0048 §2.3 "失敗").
 func TestMissingRequiredArgumentIsRefusedByBothEntrances(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", "reference", "workspace"))
 	if err != nil {
@@ -239,7 +238,9 @@ func TestMissingRequiredArgumentIsRefusedByBothEntrances(t *testing.T) {
 
 	code, ok, failure, _ := runCLIProcess(t, cli,
 		"inspect", "-workspace", root, "-subject-kind", "semantic-data")
-	if code != 2 || ok || failure != "INVALID_SUBJECT" {
+	// A missing flag is an argument problem. Before #3733 the CLI answered
+	// INVALID_SUBJECT here, which named the wrong thing.
+	if code != 2 || ok || failure != "INVALID_ARGUMENT" {
 		t.Fatalf("CLI missing id: exit=%d ok=%v code=%q", code, ok, failure)
 	}
 

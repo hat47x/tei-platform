@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"strings"
 )
 
 // selectedReadOnlyFlagError returns a machine-readable argument error for the
@@ -63,6 +64,65 @@ var selectedReadOnlyFlagAllowlist = map[string][]string{
 	"plugin-lock":         {"workspace", "world", "environment"},
 	"plugin-resolve":      {"workspace", "world", "environment", "plugin-lock", "diagnostic-candidates"},
 	"plugin-runtime-plan": {"workspace", "world", "environment", "plugin-lock"},
+}
+
+// repeatableFlags lists the flags that collect several values by design. They
+// are registered with flag.Var rather than flag.String/Int, so repeating them
+// appends instead of overwriting. Every other advertised flag holds one value:
+// a second occurrence would silently replace the first, so it is refused
+// (#3675).
+var repeatableFlags = map[string]map[string]bool{
+	"view":                                   {"input": true, "allow-capability": true},
+	"validate":                               {"analysis": true, "schema": true, "plan": true, "evidence": true},
+	"knowledge-context":                      {},
+	"inspect":                                {},
+	"trace":                                  {},
+	"source-index":                           {},
+	"workspace-files":                        {},
+	"requirements":                           {},
+	"plugin-lock":                            {},
+	"plugin-resolve":                         {},
+	"plugin-runtime-plan":                    {},
+	"knowledge-qualify":                      {},
+	"knowledge-review-plan":                  {},
+	"knowledge-review-handoff":               {},
+	"knowledge-review-disclose":              {},
+	"knowledge-data-design-candidate-review": {},
+	"model catalog":                          {},
+}
+
+// validateRepeatableArguments refuses a flag that was supplied more than once
+// when the flag holds one value. Go's flag package keeps the last value and
+// reports nothing, so a caller that concatenates arguments (an environment
+// default plus an explicit override, for example) loses the earlier one without
+// a trace. Repeats of a documented repeatable flag are fine.
+func validateRepeatableArguments(command string, args []string) error {
+	repeatable := repeatableFlags[command]
+	seen := map[string]bool{}
+	afterValue := false
+	for _, arg := range args {
+		if afterValue {
+			// The previous argument was a flag that takes its value as the next
+			// argument, so this one is that value, not a flag.
+			afterValue = false
+			continue
+		}
+		if !strings.HasPrefix(arg, "-") || arg == "-" || arg == "--" {
+			break // flag parsing stops at the first positional argument
+		}
+		name := strings.TrimPrefix(arg, "-")
+		name = strings.TrimPrefix(name, "-")
+		if index := strings.IndexByte(name, '='); index >= 0 {
+			name = name[:index]
+		} else {
+			afterValue = true
+		}
+		if seen[name] && !repeatable[name] {
+			return fmt.Errorf("%s: -%s was given more than once; it holds one value (omit the earlier one)", command, name)
+		}
+		seen[name] = true
+	}
+	return nil
 }
 
 // Each selected read-only CLI command owns its advertised flags, even though
