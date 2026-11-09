@@ -34,7 +34,14 @@ func TestActualReadCC15PathCheckIsNotFileOpenIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rel, err := filepath.Rel(root, resolved)
+	// Compare a resolved child against a resolved root. Comparing it against the
+	// unresolved root reports every child as outside whenever the root is
+	// reached through a link or a Windows short name (#3783).
+	resolvedRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rel, err := filepath.Rel(resolvedRoot, resolved)
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		t.Fatalf("the initial regular file was not inside root: rel=%q err=%v", rel, err)
 	}
