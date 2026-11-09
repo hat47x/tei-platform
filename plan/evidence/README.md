@@ -25,6 +25,7 @@
 - [空文字列の引数の拒否](CLI_EMPTY_ARGUMENT_REJECTION_2026-11-09.md)（`-mode ""`が広告既定の`summary`ではなく`full`へ落ちていたのを、明示の空文字列として`INVALID_ARGUMENT`で拒否。省略時は既定維持。内部`modelref`の既定は未集約）
 - [MCP Adapterの4MiB超過要求](MCP_OVERSIZED_REQUEST_2026-11-09.md)（行長超過でプロセスが終了し以降の要求を失っていたのを、`-32600`で拒否してループを続けるよう修正。上限の値の妥当性・同時接続・実HostはNOT RUN）
 - [MCP `tools/call` のparams検査](MCP_CALL_PARAMS_MESSAGES_2026-11-09.md)（params/name欠落が`unknown tool ""`やデコーダ文言で拒否され、実際の誤りを指していなかったのを、入力ごとの文言へ直した。実Host・認可・外部送出はNOT RUN）
+- [CLIとMCPの結果・失敗・成否の一致](TEI_CAPI2_CLI_MCP_PARITY_2026-11-09/README.md)（`catalog`/`inspect`/`trace`の成功文書が完全一致し、validateの6分類で`ok`・`isError`・exit・`error.code`が一致することを実実行物で比較。封じ込め5通りも外部バイト漏れなし。実Host・認可・外部送出はNOT RUN。CAPI-2 / #3420）
 - [traceの既定値の一元化](CLI_TRACE_DEFAULT_SINGLE_SOURCE_2026-11-09.md)（CLI flag・`commands`の`argumentDefaults`・MCP Adapterが別々に持っていた`mode`/`direction`の既定を`modelref`の定数1か所へ寄せた。内部の空Mode→fullは残存）
 - [`version`の自己申告revision](CLI_VERSION_DECLARED_REVISION_2026-11-09.md)（`-buildvcs=false`の実行物が`-ldflags`注入でrevisionを示せるようにし、`vcsRevision`と`declaredRevision`・`source`を区別した。自己申告はtoolchain証拠ではない。署名・来歴はNOT RUN）
 - [健康診断receipt（`005bbee7` / Actions 42152908986）](QUALIFICATION_FULL_HEALTH_005BBEE7_42152908986.json)と[暫定audit結果](REAL_PROVIDER_PROVISIONAL_AUDIT_005BBEE7.json)（`UNQUALIFIED`、残る診断は `E2_PROVIDER_GUARANTEE_NOT_ATOMIC` と `PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE`）
