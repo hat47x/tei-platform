@@ -466,6 +466,23 @@ Apache Kafkaは、Kafka Topic間ではtransactional producerとconsumer offset�
 
 **P1へ残す最小未証明**: (1)R1をpinしたConsumerがWriterと本当に並走する中で全部のMemberをR1として取得できるか、(2)固定Generationの実バイトを保持する期間とGC後の失効、(3)物理Root/Manifest ABA/同一Directory上書き・Crash/OS別FSの整合、(4)#2542の宛先別配信・ImportUnitと#1130 Period/Owner Effectの別資格。2回の`manifest.json` byte照合をCAS・Directory snapshot・実業務成功に昇格しない。専用CIによる最新HEAD検証前は全追加ケースの実行成立を主張しない。
 
+### 12.7.1 2026-11-09 exact-HEAD実測：5 Body同一・Manifest世代相違
+
+**実行済み**: [Draft #3256](https://github.com/hat47x/tei-platform/pull/3256)のHEAD `06293192394ed908ce13a06474fc5f3d94495cff`で[one-revision actual Go CLI + independent Python reader #42621235600](https://github.com/hat47x/tei-platform/actions/runs/42621235600)は**completed/success**。Log Job `real-cli-one-revision`で**Python 15/15 PASS（0.017s）／実Writerの正規Manifest R1/R2 Go 3件 PASS／実Go Build PASS／実CLI R1/R2上書き公開後の独立Python Reader PASS**を個別に観測。ここでの「独立」はProducerとは別Process・別言語のReadを指し、Publisherと並走するReaderではない。
+
+| 実行ログの比較項目 | R1 | R2 |
+| --- | --- | --- |
+| Source tree SHA256 | `af320664fbd4a84a903172373f39b78723c43188cc68d7aea1f5177e0abc7279` | `e6eeb6b75aa18cea69ea7a051c910547765985e583779e9b398b2b61855b5716` |
+| InputRevision | `sha256:c60ed68c7c85ab218883b18970df85db1ebcae7d9090336452766d7a95d2b04d` | `sha256:b596f00201f39ac542b305dd284a9cc4d3daf59d31f41340c91c390a94f89240` |
+| Manifest Digest | `sha256:e8ff4b37acbbaa9cbf343de7ef5614eec120e12f799ff1ad9f8b852f9c947a13` | `sha256:3632c2c8e81ef0423588e408b9acdc25b39e5a108c56e2e3fdd07400bd3d0e3e` |
+| WorldFingerprint | **共通** `sha256:bd53dbaca0ac2c20bc911e0b69083467f2ad38273911269d525db666e681817f` | **同左** |
+| 公開Body bytes | **5/5同一**：`function-ledger.md`、`operation-surface.json`、`table-public-notes.md`、`table-public-order_archive.md`、`table-public-orders.md` | **5/5同一**（同じ相対Pathのbody SHA256一致） |
+| 実Read資格 | R1公開直後のPin Read=PASS | R2再公開後の**旧R1 Pin=REJECTED、新R2 Pin Read=PASS（5 Member）** |
+
+**この反例が示す新しい設計上の分離**: `Body byte identity` と `Artifact Envelope identity` と `Manifest generation membership` が互いに異なる。**同一Bodyの再利用は可能な設計候補**だが、仮に物理Blobをcontent-addressedで共有する場合でも、`(Generation, Consumer Required Member Role, Actual Path/Object, Byte Digest, Source Revision, Disclosure)`の対応と現在性を別に確保しなければR1をR2へ誤昇格する。これは**既存#2604のAP-08〜16と#2630の用途相対Member閉包への受入条件**であり、新共通Manifest型／第二Artifact Registryの採用を意味しない。実Body byteを共有できるかはStorage Provider・GC/Retention・開示範囲が成立する場合に限る。
+
+**残る反証**: ここではSource relocate後に別々の`tei artifacts -out`が**順次**実行された。2点Manifest一致検査はABA/R1→R2→R1・途中のMember上書き・複数FS/OS・R1 pinの継続読取保証を証明しない。実Sourceの物理Root/同一Read Attempt、Recipient ACK、ImportUnit、Business Period`closed`、Effect/Ownerの資格も別。正式なPublication方式の選定は**#2604 Owner**に委ねる。
+
 ### 追加一次資料（製品・仕様の版に依存する事実）
 
 - Apache Iceberg spec, snapshots / optimistic concurrency: https://iceberg.apache.org/spec/
