@@ -205,21 +205,24 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 			return selfBuildOuterPrecondition(out, report, "workspace has validation errors at "+diagnostic.Code+": "+diagnostic.Message)
 		}
 	}
-	// SC0-01: the build intent must be declared. A path is required, and the
-	// declaration must be a JSON object with a formatVersion and a subject id.
-	// The entry records the declaration; it does not derive a BuildPlan from it.
-	if strings.TrimSpace(parsed.IntentFile) == "" {
-		return selfBuildOuterPrecondition(out, report, "-intent-file is required: a build attempt needs a declared build intent")
+	// SC0-01: a build attempt must declare its intent. Either a declaration
+	// path or a logical intent ID satisfies that; only the declaration path
+	// carries bytes this entry can hash, so the absence of bytes is recorded
+	// rather than treated as a declaration (§4.8 L2-a, SC0-14).
+	if strings.TrimSpace(parsed.IntentFile) == "" && strings.TrimSpace(parsed.Intent) == "" {
+		return selfBuildOuterPrecondition(out, report, "one of -intent-file or -intent is required: a build attempt needs a declared build intent")
 	}
-	declaration, err := readIntentDeclaration(parsed.IntentFile)
-	if err != nil {
-		report.Error = &cliFailure{Code: selfBuildCodeIntentInvalid, Message: err.Error()}
-		if encodeErr := encodeIndented(out, report); encodeErr != nil {
-			return 2, encodeErr
+	if strings.TrimSpace(parsed.IntentFile) != "" {
+		declaration, err := readIntentDeclaration(parsed.IntentFile)
+		if err != nil {
+			report.Error = &cliFailure{Code: selfBuildCodeIntentInvalid, Message: err.Error()}
+			if encodeErr := encodeIndented(out, report); encodeErr != nil {
+				return 2, encodeErr
+			}
+			return 2, nil
 		}
-		return 2, nil
+		report.IntentRecord = &declaration
 	}
-	report.IntentRecord = &declaration
 
 	// §4.7 I-2: resolution is delegated to an exact resolver child. The entry
 	// starts it, reads its receipt, and records what was resolved. A resolver
