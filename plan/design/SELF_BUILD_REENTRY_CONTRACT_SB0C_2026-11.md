@@ -862,6 +862,8 @@ ContractVersion: fmt.Sprintf("%s/v%d", p.Contract, p.ContractMajor),
 
 段2が終わると、entryは自分で宣言を読み、自分でcatalogを引き、自分で計画を導く。**「このentryが宣言を解釈してその計画を導いた」と言えるようになる。** それが§4.8のL2-bが要求していた内容である。
 
+**段2は実装済みである**（[記録](../evidence/TEI_GO_SELF_BUILD_INPROCESS_RESOLUTION_2026-11-09.md)）。entryが導いた計画のfingerprintは参照実装のchildが出した値と一致した。ただし**Claimを立てるかは別の判断**であり、`l2bClaimed`は`false`のまま据え置いている（欄の意味を変える判断をしていない）。
+
 言えないものは変わらない。
 
 - **意味の受理・Runtime Authority**（`qualified`は`false`のまま）
@@ -948,7 +950,8 @@ ContractVersion: fmt.Sprintf("%s/v%d", p.Contract, p.ContractMajor),
 - [x] catalogの出所の決定（§4.22。**K-3: 呼び手が名指しするcatalogデータ＋必須のdigest**。新しいAuthorityを作らず、既存の`-supply`・`-intent-resolver`と同じ形）
 - [ ] **entryの既定経路をin-processの`Resolve`へ切り替えるか**の判断（§4.16のR-1/R-2/R-3）。前提だったcatalogの出所は§4.22で決めた（K-3）。切り替え自体は段2の完了後に別途決める
 - [x] **段1**：`fixture`を外した名前で`BuildCatalog`・`ParseBuildCatalog`・`ResolveBuilder`・`ResolveDependency`・`CheckTarget`・`DirSourceResolver`を`internal/buildintent`へ移した（`tools/`側は型aliasと薄い委譲。参照実装の試験は**無変更で通る**。§4.22の移行表、[記録](../evidence/TEI_GO_SELF_BUILD_CATALOG_MOVE_2026-11-09.md)）
-- [ ] **段2**：`cmd/tei`に`-build-catalog`・`-build-catalog-digest`を足し、in-processで計画を導く経路を作る（SC0-25）。完了するとL2-bの解釈層がclaimできる（§4.22）
+- [x] **段2**：`cmd/tei`に`-build-catalog`・`-build-catalog-digest`・`-build-source-root`を足し、in-processで計画を導く経路を作った（`-intent-resolver`とは排他。§4.22、[記録](../evidence/TEI_GO_SELF_BUILD_INPROCESS_RESOLUTION_2026-11-09.md)）。**entryが導いた計画のfingerprintは参照実装のchildが出した値と一致した。** `planRecompute`・`planCrossCheck`・`planArtifactBinding`はin-process経路でも成立する
+- [ ] L2-bのClaimを立てるかどうかの判断。段2で**構造**は揃った（entryが自分で解釈し自分で導いた）が、`l2bClaimed`の意味を変える判断はしていない（§4.22末尾）
 - [x] 宣言とplanの**build座標**（`outputKind`・`target`・`profile`）の照合（[#3652](https://github.com/hat47x/tei-platform/pull/3652)。childが三座標を一つずつ比べ、違えばartifactを書いた後にreportを出さずexit 1。[記録](../evidence/TEI_GO_SELF_BUILD_BUILD_COORDINATES_2026-11-09.md)）
 - [x] 宣言の他の欄のうち、planが同じ形で持つもの（`recipe`・`sources`・`dependencies`）の照合（[#3661](https://github.com/hat47x/tei-platform/pull/3661)。§4.17）
 - [x] `parameters`の照合（[#3664](https://github.com/hat47x/tei-platform/pull/3664)。測るとどちらの側も名前順ソートのみで値を変えないと分かったので、名前で突き合わせる。§4.18）

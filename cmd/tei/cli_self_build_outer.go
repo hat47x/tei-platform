@@ -132,6 +132,9 @@ type selfBuildOuterArgs struct {
 	// fresh state directory, and compare the artifact bytes. Without it the
 	// reproducibility record says why it did not run (§4.21).
 	RebuildCheck bool
+	// InProcess selects deriving the plan in this process from a caller-named
+	// build catalog (§4.22 step 2). It is mutually exclusive with IntentResolver.
+	InProcess selfBuildInProcessArgs
 }
 
 // looksLikeOuterShape reports whether the caller used any §4 flag. A caller that
@@ -143,7 +146,8 @@ func looksLikeOuterShape(args []string) bool {
 			name = arg[:index]
 		}
 		switch name {
-		case "-workspace", "-intent", "-intent-file", "-supply", "-state", "-output", "-rebuild-check":
+		case "-workspace", "-intent", "-intent-file", "-supply", "-state", "-output", "-rebuild-check",
+			"-build-catalog", "-build-catalog-digest", "-build-source-root":
 			return true
 		}
 	}
@@ -168,6 +172,9 @@ func parseSelfBuildOuterArgs(args []string) (selfBuildOuterArgs, error) {
 	fs.StringVar(&parsed.IntentResolverArg, "intent-resolver-arg", "", "extra arguments for the intent resolver as a JSON array")
 	fs.StringVar(&parsed.ExpectedPlanFingerprint, "expected-plan-fingerprint", "", "planFingerprint the resolved plan must equal")
 	fs.BoolVar(&parsed.RebuildCheck, "rebuild-check", false, "build the same plan a second time in fresh state and compare the artifact bytes (§4.21)")
+	fs.StringVar(&parsed.InProcess.CatalogPath, "build-catalog", "", "build catalog JSON the entry resolves against in process (§4.22)")
+	fs.StringVar(&parsed.InProcess.CatalogDigest, "build-catalog-digest", "", "sha256 digest of -build-catalog; required with it")
+	fs.StringVar(&parsed.InProcess.SourceRoot, "build-source-root", "", "root the declaration's source references resolve from; required with -build-catalog")
 	if err := fs.Parse(args); err != nil {
 		return selfBuildOuterArgs{}, err
 	}
@@ -183,6 +190,14 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 	parsed, err := parseSelfBuildOuterArgs(args)
 	if err != nil {
 		return 2, fmt.Errorf("INVALID_ARGUMENT: %w", err)
+	}
+	if err := parsed.InProcess.validate(); err != nil {
+		return 2, fmt.Errorf("INVALID_ARGUMENT: %w", err)
+	}
+	if parsed.InProcess.requested() && strings.TrimSpace(parsed.IntentResolver) != "" {
+		// §4.16 warned that two derivation routes writing the same record make its
+		// meaning depend on the route. One attempt gets one derivation.
+		return 2, errors.New("INVALID_ARGUMENT: -intent-resolver and -build-catalog cannot both be given; choose the route for this attempt")
 	}
 	report := selfBuildOuterEvidence{
 		SchemaVersion: selfBuildEntrySchema,
@@ -239,6 +254,49 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 	// starts it, reads its receipt, and records what was resolved. A resolver
 	// that fails, or a receipt whose plan differs from the declared expectation,
 	// stops the attempt before the builder starts.
+	if parsed.InProcess.requested() {
+		intentBytesDigest := ""
+		if report.IntentRecord != nil {
+			intentBytesDigest = report.IntentRecord.Digest
+		}
+		receipt := resolveIntentInProcess(
+			parsed.IntentFile,
+			intentBytesDigest,
+			parsed.InProcess,
+			parsed.ExpectedPlanFingerprint,
+		)
+		report.PlanReceipt = &receipt
+		// Recompute the plan fingerprint from the plan the receipt carries, for the
+		// same reason the child route does: it proves the recorded plan is the one
+		// the recorded fingerprint describes. In this route it also checks the
+		// round-trip through JSON, which the child route gets for free.
+		if receipt.State == intentResolutionResolved {
+			recompute := recomputeReceiptPlanFingerprint(receipt.ReceiptJSON)
+			report.PlanRecompute = &recompute
+			if recompute.State == planRecomputeMismatched {
+				report.Error = &cliFailure{Code: selfBuildCodeIntentResolutionFailed, Message: recompute.FailureCause}
+				if encodeErr := encodeIndented(out, report); encodeErr != nil {
+					return 2, encodeErr
+				}
+				return 2, nil
+			}
+		}
+		if receipt.State != intentResolutionResolved {
+			report.Error = &cliFailure{Code: selfBuildCodeIntentResolutionFailed, Message: receipt.FailureCause}
+			if encodeErr := encodeIndented(out, report); encodeErr != nil {
+				return 2, encodeErr
+			}
+			return 2, nil
+		}
+		if parsed.ExpectedPlanFingerprint != "" && !receipt.PlanMatchesExpected {
+			report.Error = &cliFailure{Code: selfBuildCodePlanMismatch, Message: receipt.FailureCause}
+			if encodeErr := encodeIndented(out, report); encodeErr != nil {
+				return 2, encodeErr
+			}
+			return 2, nil
+		}
+	}
+
 	if strings.TrimSpace(parsed.IntentResolver) != "" {
 		resolverArgs := []string{}
 		if strings.TrimSpace(parsed.IntentResolverArg) != "" {
