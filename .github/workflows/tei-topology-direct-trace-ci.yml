@@ -112,10 +112,23 @@ jobs:
             -subject-kind semantic-relation \
             -subject-id sales.order.customer \
             -direction both -mode full > "$RUNNER_TEMP/tei_trace_other_workspace.json"
+          # A second independent directory with *identical* Manifest and
+          # Source bytes. The CLI cannot identify its physical root or attempt.
+          mkdir -p "$RUNNER_TEMP/tei_trace_identical_workspace"
+          cp -a reference/workspace/. "$RUNNER_TEMP/tei_trace_identical_workspace/"
+          cmp reference/workspace/tei.workspace.yaml \
+            "$RUNNER_TEMP/tei_trace_identical_workspace/tei.workspace.yaml"
+          go run ./cmd/tei trace \
+            -workspace "$RUNNER_TEMP/tei_trace_identical_workspace" \
+            -scope reference-observation \
+            -subject-kind semantic-relation \
+            -subject-id sales.order.customer \
+            -direction both -mode full > "$RUNNER_TEMP/tei_trace_identical_workspace.json"
           node reference/tei-topology-coverage/verify-cli-trace.mjs \
             "$RUNNER_TEMP/tei_trace_a.json" \
             "$RUNNER_TEMP/tei_trace_b.json" \
-            "$RUNNER_TEMP/tei_trace_other_workspace.json"
+            "$RUNNER_TEMP/tei_trace_other_workspace.json" \
+            "$RUNNER_TEMP/tei_trace_identical_workspace.json"
       - name: Verify repository checkout unchanged
         if: always()
         shell: bash
