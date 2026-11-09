@@ -1,6 +1,6 @@
 # ADR-0041: 生成物の来歴・選抜・artifact・auditを分離し、実行権限へ接続しない
 
-- 状態: 提案中
+- 状態: 提案中（[ADR-0045](0045-generator-artifact-lifecycle-and-evidence.md)へ統合を提案。ADR-0045の採用時に置き換え済みとする）
 - 日付: 2026-10-24
 - 関連ADR: ADR-0022 / ADR-0034 / ADR-0035 / ADR-0037 / ADR-0040
 - 関連Issue: #2016 / #943 / #1104 / #1370
@@ -57,7 +57,7 @@ pruneは明示したkeep setだけを残し、空keep・未知digest・検証失
 
 - 生成物の来歴は複数のreceipt・fileへ分かれる。単一の判定にまとめたい利用者は、必要な証拠を自分で選択する必要がある。
 - 署名・artifact・auditの検証toolは、それぞれの範囲だけを報告する。
-- Authority、削除承認、本番配備の受理は、ADR-0022 / ADR-0035のA4として人へ戻す。
+- Authority、削除承認、本番配備の受理は、ADR-0022の受理境界で扱う。開発作業としてはADR-0035のA3で進め、外部へ取り消せない効果を出す場合だけA4として人に確認する。
 - 将来、Build attestationやartifact bindingの正本を追加する場合も、この分離を維持する。
 
 ## 未決

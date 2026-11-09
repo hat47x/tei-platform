@@ -66,6 +66,10 @@ func TestHostSandboxLauncherAppliesNetworkMountAndSecretInjection(t *testing.T) 
 		NetworkAllowlist: []string{"db.internal:5432"},
 		Mounts:           []pruntime.SandboxMount{{Scope: "migration-workdir", ResourceID: core.MustCanonicalID("prod.workdir"), SourceHandle: "mount://source", Target: "/tei/migration", Access: permission.AccessReadWrite}},
 		SecretInjections: []pruntime.SecretInjection{{Scope: "database-credential", ResourceID: core.MustCanonicalID("prod.secret"), Handle: "vault://opaque", Delivery: resource.SecretDeliveryEnvironment, Target: "TEI_DATABASE_CREDENTIAL"}},
+	}, Permissions: []permission.Spec{
+		{Kind: permission.KindNetwork, Access: permission.AccessConnect, Scope: "db.internal:5432"},
+		{Kind: permission.KindFilesystem, Access: permission.AccessReadWrite, Scope: "migration-workdir"},
+		{Kind: permission.KindSecret, Access: permission.AccessRead, Scope: "database-credential"},
 	}}
 	if _, err := launcher.Invoke(context.Background(), spec, pruntime.Request{}); err != nil {
 		t.Fatal(err)

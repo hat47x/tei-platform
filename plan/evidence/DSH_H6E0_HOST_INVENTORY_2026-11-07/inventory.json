@@ -1,0 +1,289 @@
+{
+  "note": "H6-E0 host inventory observed from inside the harness shell tool. All sentinel values are synthetic.",
+  "sentinelName": "H6E0_SECRET_SENTINEL",
+  "sentinelValues": [
+    "SENTINEL_PARENT_2",
+    "SENTINEL_PARENT_3"
+  ],
+  "credentialShapedNames": [
+    "DEEPSEEK_API_KEY",
+    "OPENROUTER_API_KEY",
+    "OPEN_DESIGN_API_KEY",
+    "OPENCODE_GO_API_KEY",
+    "MOCK_API_KEY"
+  ],
+  "inventory": [
+    {
+      "sandboxMode": "read-only",
+      "rawLogBytes": 12720,
+      "rawLogSha256": "43817c1e6c4b4f2d95a281b69c9ee53928f26dc8e1363222ef6cacb4c6f65313",
+      "toolResults": [
+        {
+          "callId": "toolu_cmd_0",
+          "status": "completed",
+          "stdout": "5.1.26100.8875\r\n\r\nAMD64",
+          "stderrBytes": 2045
+        },
+        {
+          "callId": "toolu_cmd_1",
+          "status": "completed",
+          "stdout": "cwd=D:\\GIT\\hat47x\r\nDSH_SESSION=session-fbad03b3-625d-4b93-aaab-c27dbddfc1a9\r\nDSH_PROFILE=headless\r\nDSH_PERMISSION_MODE=",
+          "stderrBytes": 976
+        },
+        {
+          "callId": "toolu_cmd_2",
+          "status": "completed",
+          "stdout": "envCount=53\r\nsentinelPresent=False\r\nsentinelValueLength=0\r\ndeepseekKeyPresent=False",
+          "stderrBytes": 976
+        },
+        {
+          "callId": "toolu_cmd_3",
+          "status": "completed",
+          "stdout": "",
+          "stderrBytes": 1481
+        },
+        {
+          "callId": "toolu_cmd_4",
+          "status": "completed",
+          "stdout": "mockPortOpen=True\r\nclosedPortOpen=False",
+          "stderrBytes": 976
+        },
+        {
+          "callId": "toolu_cmd_5",
+          "status": "completed",
+          "stdout": "",
+          "stderrBytes": 1544
+        }
+      ],
+      "parsedFacts": {
+        "cwd": "D:\\GIT\\hat47x",
+        "DSH_SESSION": "session-fbad03b3-625d-4b93-aaab-c27dbddfc1a9",
+        "DSH_PROFILE": "headless",
+        "DSH_PERMISSION_MODE": "",
+        "envCount": "53",
+        "sentinelPresent": "False",
+        "sentinelValueLength": "0",
+        "deepseekKeyPresent": "False",
+        "mockPortOpen": "True",
+        "closedPortOpen": "False"
+      },
+      "wire": [
+        {
+          "request": "001-request.json",
+          "requestBytes": 70234,
+          "requestSha256": "3ecae252430976c3f1a36ced6f98b15acb6a749f22d46ead0d2ad3ca8f881cbe"
+        },
+        {
+          "request": "002-request.json",
+          "requestBytes": 42319,
+          "requestSha256": "c9beaaf28ce9df9a706054f9e1c496bd5171554e5bd8e2313713445d02d568bb"
+        },
+        {
+          "request": "003-request.json",
+          "requestBytes": 44613,
+          "requestSha256": "a5b1ff62f0ebd5b1cf61656170b8ff3a094c4194585453d9eb6aa128fa37bac1"
+        },
+        {
+          "request": "004-request.json",
+          "requestBytes": 44220,
+          "requestSha256": "8b0adf3428e0d4c30a018a3c3ef806f1ec4dfcd1eeb366e73e9d8b751cbb98fe"
+        },
+        {
+          "request": "005-request.json",
+          "requestBytes": 47178,
+          "requestSha256": "86272e5704956d5f7b965bef6aaa34759c830c2c979fd976a92055689d56b1c4"
+        },
+        {
+          "request": "006-request.json",
+          "requestBytes": 48038,
+          "requestSha256": "73b008674cc59e44e2c6e82353fb6c3d096fff00a8d198bdf384abacce357601"
+        },
+        {
+          "request": "007-request.json",
+          "requestBytes": 50235,
+          "requestSha256": "c646ab366a948e9a761c612f21fabfd4b2529cde940a32cc3afdcf50a571351f"
+        },
+        {
+          "request": "008-request.json",
+          "requestBytes": 52111,
+          "requestSha256": "fae142189709822d7babcb7d9915613b4c531ab9c477c06ecb44a98efefba070"
+        },
+        {
+          "request": "009-request.json",
+          "requestBytes": 69733,
+          "requestSha256": "e1cd8e1052a9f195c273ebe492b7fcc00b1b2308ffbd3a39fad2484b6be8e0e5"
+        },
+        {
+          "request": "010-request.json",
+          "requestBytes": 41976,
+          "requestSha256": "8f87784b9c22aa180d0b582548eae21881fb6da28837209370dfa6b80b789dfa"
+        }
+      ]
+    },
+    {
+      "sandboxMode": "danger-full-access",
+      "rawLogBytes": 4777,
+      "rawLogSha256": "69629262c916c30f4d65bc6adca0cfb55ba5b72c2271f6ca42275cfba2d928c8",
+      "toolResults": [
+        {
+          "callId": "toolu_cmd_0",
+          "status": "completed",
+          "stdout": "5.1.26100.8875\r\nHAT47X\\hat47x\r\nCaption        : Microsoft Windows 11 Pro\r\nVersion        : 10.0.26100\r\nOSArchitecture : 64-bit\r\nAMD64",
+          "stderrBytes": 0
+        },
+        {
+          "callId": "toolu_cmd_1",
+          "status": "completed",
+          "stdout": "cwd=D:\\GIT\\hat47x\r\nDSH_SESSION=session-0f7ad056-75bb-4047-b8a7-0e5d6d1c225d\r\nDSH_PROFILE=headless\r\nDSH_PERMISSION_MODE=",
+          "stderrBytes": 0
+        },
+        {
+          "callId": "toolu_cmd_2",
+          "status": "completed",
+          "stdout": "envCount=53\r\nsentinelPresent=False\r\nsentinelValueLength=0\r\ndeepseekKeyPresent=False",
+          "stderrBytes": 0
+        },
+        {
+          "callId": "toolu_cmd_3",
+          "status": "completed",
+          "stdout": "DeviceID DriveType         Size\r\n-------- ---------         ----\r\nC:               3 997001785344\r\nD:               3 498849542144\r\nE:               3 499971518464",
+          "stderrBytes": 0
+        },
+        {
+          "callId": "toolu_cmd_4",
+          "status": "completed",
+          "stdout": "mockPortOpen=True\r\nclosedPortOpen=False",
+          "stderrBytes": 0
+        },
+        {
+          "callId": "toolu_cmd_5",
+          "status": "completed",
+          "stdout": "dnsError=example.invalid : DNS name does not exist",
+          "stderrBytes": 0
+        }
+      ],
+      "parsedFacts": {
+        "cwd": "D:\\GIT\\hat47x",
+        "DSH_SESSION": "session-0f7ad056-75bb-4047-b8a7-0e5d6d1c225d",
+        "DSH_PROFILE": "headless",
+        "DSH_PERMISSION_MODE": "",
+        "envCount": "53",
+        "sentinelPresent": "False",
+        "sentinelValueLength": "0",
+        "deepseekKeyPresent": "False",
+        "mockPortOpen": "True",
+        "closedPortOpen": "False",
+        "dnsError": "example.invalid : DNS name does not exist"
+      },
+      "wire": [
+        {
+          "request": "001-request.json",
+          "requestBytes": 69778,
+          "requestSha256": "5d9ccf573e6ad5347e8eeedcfad0ce2975c08eb1232547655946afe0f37a4b51"
+        },
+        {
+          "request": "002-request.json",
+          "requestBytes": 42021,
+          "requestSha256": "d00777f25d218d7cf6de4437f0e9ce98e8beb08a3fdce19e596ef1e1485b47dc"
+        },
+        {
+          "request": "003-request.json",
+          "requestBytes": 40459,
+          "requestSha256": "57d92db55da4fb9184a500670aa9fcdaa5d082f5f0ce924add6522e3dd2738f7"
+        },
+        {
+          "request": "004-request.json",
+          "requestBytes": 40038,
+          "requestSha256": "4f5fb5880cd17ec44c9f806d011a6af03e5ac70ec78df5b249df5bcd52c0d7ef"
+        },
+        {
+          "request": "005-request.json",
+          "requestBytes": 41983,
+          "requestSha256": "695c568b60cf67057e1b4cd83ac7a0847ecefe3991d3c3104f0c65c5be03d3bc"
+        },
+        {
+          "request": "006-request.json",
+          "requestBytes": 41132,
+          "requestSha256": "bba1d53f772e9c046deb8ccd4571a9f61be09fa31f9af9d4e3475e84329786dc"
+        },
+        {
+          "request": "007-request.json",
+          "requestBytes": 42665,
+          "requestSha256": "3491e1c31617fed68fbbb9f2f52085066429d1a4723bf7bda11f3d20f3754bdb"
+        },
+        {
+          "request": "008-request.json",
+          "requestBytes": 42466,
+          "requestSha256": "4b798ebaa1c142614fe9ccacc3bc81842f74fd295de705080b0ae1a352fd89a3"
+        }
+      ]
+    }
+  ],
+  "environmentProbe": {
+    "sandboxMode": "danger-full-access",
+    "rawLogBytes": 2723,
+    "rawLogSha256": "3c782c4657dec4b2830226ed2ee5539f463c3364b3485356c4e2574f43315a50",
+    "toolResults": [
+      {
+        "callId": "toolu_cmd_0",
+        "status": "completed",
+        "stdout": "total=53\r\nDEEPSEEK_API_KEY=False\r\nOPENROUTER_API_KEY=False\r\nOPEN_DESIGN_API_KEY=False\r\nOPENCODE_GO_API_KEY=False\r\nH6E0_SECRET_SENTINEL=False\r\nMOCK_API_KEY=False\r\nPATH=True\r\nHOME=False\r\nAPPDATA=True",
+        "stderrBytes": 0
+      },
+      {
+        "callId": "toolu_cmd_1",
+        "status": "completed",
+        "stdout": "parentDshVars=DSH_HOME,DSH_PROFILE,DSH_PROFILE_DIR,DSH_SESSION_ID,DSH_SHELL",
+        "stderrBytes": 0
+      },
+      {
+        "callId": "toolu_cmd_2",
+        "status": "completed",
+        "stdout": "secretShapedCount=0\r\nsecretShapedNames=",
+        "stderrBytes": 0
+      }
+    ],
+    "parsedFacts": {
+      "total": "53",
+      "DEEPSEEK_API_KEY": "False",
+      "OPENROUTER_API_KEY": "False",
+      "OPEN_DESIGN_API_KEY": "False",
+      "OPENCODE_GO_API_KEY": "False",
+      "H6E0_SECRET_SENTINEL": "False",
+      "MOCK_API_KEY": "False",
+      "PATH": "True",
+      "HOME": "False",
+      "APPDATA": "True",
+      "parentDshVars": "DSH_HOME,DSH_PROFILE,DSH_PROFILE_DIR,DSH_SESSION_ID,DSH_SHELL",
+      "secretShapedCount": "0",
+      "secretShapedNames": ""
+    },
+    "wire": [
+      {
+        "request": "001-request.json",
+        "requestBytes": 69733,
+        "requestSha256": "f11e4286c4d36b70a604adce6459ec43c4f9c7354154bbf68c0485c798f8b5d5"
+      },
+      {
+        "request": "002-request.json",
+        "requestBytes": 41976,
+        "requestSha256": "7c8fb4d0ae656da7820ca71dba68fe54c4bbf6e609a20d22ed06302d27d5e48a"
+      },
+      {
+        "request": "003-request.json",
+        "requestBytes": 40974,
+        "requestSha256": "df20d3a4d2aedc21bb4ff648509f6bf2e7daa984846fc5ad0cb4bd507813ee1c"
+      },
+      {
+        "request": "004-request.json",
+        "requestBytes": 39739,
+        "requestSha256": "aa2bd80c504002a89060c3626dd5083fe790afc7ec446c3d274c849bd855f3f0"
+      },
+      {
+        "request": "005-request.json",
+        "requestBytes": 41409,
+        "requestSha256": "482837bfb0fcfb1b22b620e1c09d3fea7aa19d98d75136ff838b37beae549c29"
+      }
+    ]
+  }
+}

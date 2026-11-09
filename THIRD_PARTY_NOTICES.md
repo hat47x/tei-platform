@@ -40,7 +40,7 @@ TEIのProject codeには、この文書および各コンポーネントの個�
 | `github.com/godbus/dbus/v5` | v5.2.2 | Studio Desktop専用 | BSD 2-Clause | Wailsの実行時依存。 |
 | `github.com/mattn/go-colorable` | v0.1.14 | Studio Desktop専用 | MIT | Wailsの実行時依存。 |
 
-各License欄と引用したlicense本文は、該当版を `go mod download` で取得した実文件（LICENSE、SQLITE-LICENSE等）から確認した事実の記録である。配布物への最終的な法的な扱いはAGENTS.mdのA4に従い人間の判断を待つ。
+各License欄と引用したlicense本文は、該当版を `go mod download` で取得した実文件（LICENSE、SQLITE-LICENSE等）から確認した事実の記録である。配布物への最終的な法的な扱いは、AGENTS.mdのA4に従い、対外公開や配布の判断として人に確認する。PoCの開発作業では、この確認を待たずに実装と検証を進めてよい。
 
 ## Go module
 

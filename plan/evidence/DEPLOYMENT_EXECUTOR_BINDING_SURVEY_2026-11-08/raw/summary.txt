@@ -1,0 +1,5 @@
+== counts ==
+sites naming DeploymentExecutor: 19
+  non-test: 4
+  test: 15
+non-test sites also using Coordinator: 0

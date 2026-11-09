@@ -1,0 +1,19 @@
+environments: ['development', 'production']
+declared capabilities: 12
+unselected: 6
+  selected  tei.database.observer.reference observation-provider   database.observer      development,production
+  unselected tei.database.oracle            contract-query-executor database.query.oracle  -
+  unselected tei.database.oracle            database-provider      database.oracle        -
+  unselected tei.database.postgres          contract-query-executor database.query.postgres -
+  unselected tei.database.postgres          database-provider      database.postgres      -
+  unselected tei.editor.intelligence.sql    editor-intelligence    editor.sqlglot         -
+  selected  tei.health.reference           evidence-provider      health.reference       development,production
+  selected  tei.migration.atlas            deployment-executor    migration.atlas        development,production
+  unselected tei.migration.atlas            migration-provider     migration.atlas        -
+  selected  tei.runtime.reference          deployment-executor    runtime.reference      development,production
+  selected  tei.runtime.reference          observation-provider   runtime.observer       development,production
+  selected  tei.traffic.reference          deployment-executor    traffic.reference      development,production
+
+plugin-lock environments: ['development', 'production']
+  development plugins=8
+  production plugins=7

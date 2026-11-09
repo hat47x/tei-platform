@@ -1,0 +1,4 @@
+== reference/web-composition/go-host ==
+includes internal/operations: 0
+includes internal/composition: 1
+includes internal/servicehost: 0

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 )
@@ -184,6 +185,9 @@ func TestAcceptedSourcePublicationIsCreateOnlyAcrossGoroutines(t *testing.T) {
 }
 
 func TestDesktopNamedWorkspaceRootSwapRefusesBeforeSourceWrite(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows keeps an open directory handle and refuses the simulated swap")
+	}
 	root := scratchWorkspace(t)
 	candidate := mustJSON(t, unitPriceCandidate(revisionOfDir(t, root)))
 	ev, err := evaluate(root, candidate)

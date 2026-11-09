@@ -16,7 +16,19 @@ type Namespace struct {
 	Capabilities  []Capability `json:"capabilities,omitempty"`
 	Validations   []Validation `json:"validations,omitempty"`
 	Periods       []Period     `json:"periods,omitempty"`
+	Calendars     []Calendar   `json:"calendars,omitempty"`
 	EffectRules   []EffectRule `json:"effectRules,omitempty"`
+	RunPlans      []RunPlan    `json:"runPlans,omitempty"`
+}
+
+// Calendar declares the business calendar a period follows: when the fiscal
+// year starts, which weekday begins the week, and which data holds the
+// exceptions (holidays). It declares meaning; it does not compute a date.
+type Calendar struct {
+	ID                   core.CanonicalID `json:"id"`
+	FiscalYearStartMonth int              `json:"fiscalYearStartMonth,omitempty"`
+	WeekStarts           string           `json:"weekStarts,omitempty"`
+	BusinessDayExcludes  core.CanonicalID `json:"businessDayExcludes,omitempty"`
 }
 
 // Period binds one data to a business date and to the states a closing period
@@ -29,6 +41,15 @@ type Period struct {
 	CloseRequires core.CanonicalID `json:"closeRequires,omitempty"`
 	ClosedRejects []string         `json:"closedRejects,omitempty"`
 	Correction    core.CanonicalID `json:"correction,omitempty"`
+	// Calendar names the business calendar that decides the period boundary.
+	// An empty value means the period does not declare one, and a checker
+	// must not assume a default.
+	Calendar core.CanonicalID `json:"calendar,omitempty"`
+	// ClosingDay splits every month into two segments, 1..28. Zero means the
+	// period is the whole month. X-TEA moved a date after a last-day setting into
+	// the next month (getMSeqOfDate, D:Session.java L2471–2484); here the month
+	// does not move and the segment says which side of the closing the date is on.
+	ClosingDay int `json:"closingDay,omitempty"`
 }
 
 type TypeKind string
@@ -190,6 +211,10 @@ type Capability struct {
 	Output   core.CanonicalID `json:"output,omitempty"`
 	Outcomes []Outcome        `json:"outcomes,omitempty"`
 	Effect   *DataEffect      `json:"effect,omitempty"`
+	// EmptyPolicy is the Owner-declared handling of an empty target set for
+	// this business action. Empty means "not declared; use the business-type
+	// default" (see EffectiveEmptyPolicy).
+	EmptyPolicy EmptyPolicy `json:"emptyPolicy,omitempty"`
 }
 
 // EffectRule declares a side effect that runs around a capability, and where it
@@ -202,4 +227,17 @@ type EffectRule struct {
 	EffectData    core.CanonicalID `json:"effectData"`
 	ViaCapability core.CanonicalID `json:"viaCapability,omitempty"`
 	OnFailure     string           `json:"onFailure,omitempty"`
+}
+
+// RunPlan declares an ordered execution inside one application: which
+// capabilities run, what identifies a run, and whether it may run unattended.
+// The calendar, the scheduler, and credentials are deliberately absent.
+type RunPlan struct {
+	ID          core.CanonicalID   `json:"id"`
+	Operations  []core.CanonicalID `json:"operations"`
+	Key         []core.CanonicalID `json:"key,omitempty"`
+	Concurrency string             `json:"concurrency,omitempty"`
+	Resume      string             `json:"resume,omitempty"`
+	Outputs     []core.CanonicalID `json:"outputs,omitempty"`
+	Autonomy    string             `json:"autonomy,omitempty"`
 }

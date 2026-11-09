@@ -1,0 +1,396 @@
+{
+  "schemaVersion": "tei.cli.source-index/v0",
+  "ok": true,
+  "mode": "index",
+  "result": {
+    "artifacts": [
+      {
+        "path": "applications/ledger/application.tei",
+        "format": "tei",
+        "fingerprint": "sha256:569b77bfd72850e84a8766985861ab8e1ad420a0a2d8358e34b41d66f468f0cd"
+      },
+      {
+        "path": "applications/ledger/realizations/cancel-order.tei",
+        "format": "tei",
+        "fingerprint": "sha256:36e000f3f5bd521455e461f0d7c857f39d051701f506df46f7a2754b8e3f3c40"
+      },
+      {
+        "path": "applications/ledger/realizations/register-order.tei",
+        "format": "tei",
+        "fingerprint": "sha256:f65cb785888e56deb81ff0a2ed1675cec201b6b2ec91b720421a716fa5700711"
+      },
+      {
+        "path": "databases/sales-archive/database.tei",
+        "format": "tei",
+        "fingerprint": "sha256:102c47e085eb36ad782695dd39d7233a14996173ec0d08504dffaf1be511dff1"
+      },
+      {
+        "path": "databases/sales-archive/persistence/order-archive.tei",
+        "format": "tei",
+        "fingerprint": "sha256:5e11a11d6420a23fabecd4b3f9589820158b0c982f5250877f0c68958de6d8df"
+      },
+      {
+        "path": "databases/sales-core/database.tei",
+        "format": "tei",
+        "fingerprint": "sha256:0bbb12bdf227b759ebf182399febf9bb9e89352aea840388c38d6a980c931f0e"
+      },
+      {
+        "path": "databases/sales-core/persistence/note.tei",
+        "format": "tei",
+        "fingerprint": "sha256:ccdf3f95be36dfc4e100ca637ef3a684bfad392e8501bd3b9ed0448aa4ad0449"
+      },
+      {
+        "path": "databases/sales-core/persistence/order.tei",
+        "format": "tei",
+        "fingerprint": "sha256:4d2c976baa0c1ec79cc63fd0d5487cf7137d770810f68488ba82d26ce93ffefc"
+      },
+      {
+        "path": "semantic/sales/order.tei",
+        "format": "tei",
+        "fingerprint": "sha256:f6a7b246e42118a0cf6fdc2392fa1defb9f7546f8cc766806da31dc82972a358"
+      }
+    ],
+    "references": [
+      {
+        "subject": {
+          "kind": "application",
+          "id": "ledger"
+        },
+        "artifactPath": "applications/ledger/application.tei",
+        "range": {
+          "start": {
+            "offset": 12,
+            "line": 1,
+            "column": 13
+          },
+          "end": {
+            "offset": 18,
+            "line": 1,
+            "column": 19
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "binding",
+          "id": "ledger/sales.order.cancel"
+        },
+        "artifactPath": "applications/ledger/realizations/cancel-order.tei",
+        "range": {
+          "start": {
+            "offset": 8,
+            "line": 1,
+            "column": 9
+          },
+          "end": {
+            "offset": 26,
+            "line": 1,
+            "column": 27
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "binding",
+          "id": "ledger/sales.order.register"
+        },
+        "artifactPath": "applications/ledger/realizations/register-order.tei",
+        "range": {
+          "start": {
+            "offset": 8,
+            "line": 1,
+            "column": 9
+          },
+          "end": {
+            "offset": 28,
+            "line": 1,
+            "column": 29
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "database",
+          "id": "sales_archive"
+        },
+        "artifactPath": "databases/sales-archive/database.tei",
+        "range": {
+          "start": {
+            "offset": 9,
+            "line": 1,
+            "column": 10
+          },
+          "end": {
+            "offset": 22,
+            "line": 1,
+            "column": 23
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "database",
+          "id": "sales_core"
+        },
+        "artifactPath": "databases/sales-core/database.tei",
+        "range": {
+          "start": {
+            "offset": 9,
+            "line": 1,
+            "column": 10
+          },
+          "end": {
+            "offset": 19,
+            "line": 1,
+            "column": 20
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "persistence",
+          "id": "sales_archive.order"
+        },
+        "artifactPath": "databases/sales-archive/persistence/order-archive.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "persistence",
+          "id": "sales_core.note"
+        },
+        "artifactPath": "databases/sales-core/persistence/note.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "persistence",
+          "id": "sales_core.order"
+        },
+        "artifactPath": "databases/sales-core/persistence/order.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic",
+          "id": "sales"
+        },
+        "artifactPath": "semantic/sales/order.tei",
+        "range": {
+          "start": {
+            "offset": 10,
+            "line": 1,
+            "column": 11
+          },
+          "end": {
+            "offset": 15,
+            "line": 1,
+            "column": 16
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-attribute",
+          "id": "sales.note.body"
+        },
+        "artifactPath": "semantic/sales/order.tei",
+        "range": {
+          "start": {
+            "offset": 170,
+            "line": 11,
+            "column": 15
+          },
+          "end": {
+            "offset": 174,
+            "line": 11,
+            "column": 19
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-attribute",
+          "id": "sales.order.order_id"
+        },
+        "artifactPath": "semantic/sales/order.tei",
+        "range": {
+          "start": {
+            "offset": 78,
+            "line": 6,
+            "column": 15
+          },
+          "end": {
+            "offset": 85,
+            "line": 6,
+            "column": 22
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-attribute",
+          "id": "sales.order.status"
+        },
+        "artifactPath": "semantic/sales/order.tei",
+        "range": {
+          "start": {
+            "offset": 120,
+            "line": 7,
+            "column": 15
+          },
+          "end": {
+            "offset": 126,
+            "line": 7,
+            "column": 21
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-capability",
+          "id": "sales.order.cancel"
+        },
+        "artifactPath": "semantic/sales/order.tei",
+        "range": {
+          "start": {
+            "offset": 203,
+            "line": 14,
+            "column": 12
+          },
+          "end": {
+            "offset": 221,
+            "line": 14,
+            "column": 30
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-capability",
+          "id": "sales.order.register"
+        },
+        "artifactPath": "semantic/sales/order.tei",
+        "range": {
+          "start": {
+            "offset": 362,
+            "line": 20,
+            "column": 12
+          },
+          "end": {
+            "offset": 382,
+            "line": 20,
+            "column": 32
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-data",
+          "id": "sales.note"
+        },
+        "artifactPath": "semantic/sales/order.tei",
+        "range": {
+          "start": {
+            "offset": 149,
+            "line": 10,
+            "column": 6
+          },
+          "end": {
+            "offset": 153,
+            "line": 10,
+            "column": 10
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-data",
+          "id": "sales.order"
+        },
+        "artifactPath": "semantic/sales/order.tei",
+        "range": {
+          "start": {
+            "offset": 56,
+            "line": 5,
+            "column": 6
+          },
+          "end": {
+            "offset": 61,
+            "line": 5,
+            "column": 11
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-type",
+          "id": "sales.order_id"
+        },
+        "artifactPath": "semantic/sales/order.tei",
+        "range": {
+          "start": {
+            "offset": 22,
+            "line": 3,
+            "column": 6
+          },
+          "end": {
+            "offset": 29,
+            "line": 3,
+            "column": 13
+          }
+        },
+        "role": "definition"
+      }
+    ]
+  }
+}

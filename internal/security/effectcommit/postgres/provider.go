@@ -55,6 +55,34 @@ func NewWithTrustedOwnerRoutine(pool *pgxpool.Pool, schema string) (Provider, er
 	return p, nil
 }
 
+// ReasonProvisionalD10 is the Guarantee.Reason of a Provider built by
+// NewWithTrustedOwnerRoutine. It is fixed text (no secrets) so that an Evidence
+// reader can tell the declaration is provisional.
+const ReasonProvisionalD10 = "provisional D10: trusted-owner routine path; re-verify against real deployment"
+
+// Guarantee implements effectcommit.GuaranteeDeclarer.
+//
+// Provisional delegated decision D10: ONLY a Provider built by
+// NewWithTrustedOwnerRoutine claims atomic-with-commit, and only for that
+// trusted-owner routine path. Every other Provider (New, the direct objects
+// UPDATE path, the zero value) declares nothing and is refused by
+// RequireGuarantee. The claim is a self-declaration, not proof: authority
+// check, effect and receipt are claimed to share one commit, which the real
+// PostgreSQL tests listed in README.md exercise but cannot establish for a
+// real deployment (routine body, ownership, EXECUTE grants and every authority
+// mutation path need independent verification).
+//
+// The level is derived from the unexported trustedOwnerRoutine field, which no
+// code outside this package can set. A wrapper that EMBEDS Provider would have
+// this method promoted and so inherit the claim; wrappers must declare their
+// own level or hold the Provider in a named field (see effectcommit.GuaranteeDeclarer).
+func (p Provider) Guarantee() effectcommit.Guarantee {
+	if !p.trustedOwnerRoutine {
+		return effectcommit.Guarantee{Level: effectcommit.GuaranteeUndeclared}
+	}
+	return effectcommit.Guarantee{Level: effectcommit.GuaranteeAtomicWithCommit, Reason: ReasonProvisionalD10}
+}
+
 func (p Provider) Begin(ctx context.Context) (effectcommit.Transaction, error) {
 	if p.Pool == nil || !schemaName.MatchString(p.Schema) {
 		return nil, effectcommit.ErrMissingProvider
@@ -172,5 +200,36 @@ func (t *transaction) SaveReceipt(ctx context.Context, r effectcommit.Receipt) e
 func (t *transaction) Commit(ctx context.Context) error { return t.tx.Commit(ctx) }
 func (t *transaction) Rollback() error                  { return t.tx.Rollback(context.Background()) }
 
+// ReadResource reads the resource's current state through a separate pool
+// connection, after the write transaction has completed. It is an independent
+// read of the stored value; it does not re-check authority and its payload must
+// not be exposed to the caller.
+func (p Provider) ReadResource(ctx context.Context, s effectcommit.Scope) (effectcommit.ResourceState, error) {
+	if p.Pool == nil || !schemaName.MatchString(p.Schema) {
+		return effectcommit.ResourceState{}, effectcommit.ErrMissingProvider
+	}
+	if s.Application == "" || s.Resource == "" || s.Capability == "" ||
+		s.Subject == "" || s.Action == "" {
+		return effectcommit.ResourceState{}, effectcommit.ErrInvalidRequest
+	}
+	q := "SELECT version,value FROM " + `"` + p.Schema + `"."objects"` +
+		" WHERE application=$1 AND resource=$2"
+	var version int64
+	var payload []byte
+	err := p.Pool.QueryRow(ctx, q, s.Application, s.Resource).Scan(&version, &payload)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return effectcommit.ResourceState{Found: false}, nil
+	}
+	if err != nil {
+		return effectcommit.ResourceState{}, err
+	}
+	if version <= 0 || version > math.MaxInt64 {
+		return effectcommit.ResourceState{}, fmt.Errorf("PostgreSQL resource version is invalid")
+	}
+	return effectcommit.ResourceState{Version: uint64(version), Payload: payload, Found: true}, nil
+}
+
 var _ effectcommit.Provider = Provider{}
+var _ effectcommit.GuaranteeDeclarer = Provider{}
+var _ effectcommit.ResourceReader = Provider{}
 var _ effectcommit.Transaction = (*transaction)(nil)
