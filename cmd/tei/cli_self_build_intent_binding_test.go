@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"testing"
 )
 
@@ -121,10 +120,6 @@ func buildIntentReportingChild(t *testing.T, dir string) string {
 	return child
 }
 
-// The binding check only needs bytes, but SC0-01 also requires the
-// declaration shape (formatVersion and subject.id), so the fixture carries both.
-const declarationBytes = `{"formatVersion":1,"subject":{"kind":"plugin","id":"tei.plugin.self_build","version":"1.0.0","definitionSource":"definition"},"intent":"sample"}`
-
 // §4.8: the entry hashes the declaration it held before starting anything, and
 // records the child's digest beside its own.
 func TestSelfBuildOuterBindsTheDeclarationBytesItHeld(t *testing.T) {
@@ -151,19 +146,6 @@ func TestSelfBuildOuterBindsTheDeclarationBytesItHeld(t *testing.T) {
 	if wantFingerprint == "" {
 		t.Fatal("the entry derived no intent fingerprint for the fixture")
 	}
-	intentFile := filepath.Join(dir, "intent.json")
-	if err := os.WriteFile(intentFile, []byte(declarationBytes), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	wantDigest := digestOfBytes([]byte(declarationBytes))
-	intentFile := filepath.Join(dir, "intent.json")
-	// The declaration must satisfy what the entry accepts (formatVersion and a
-	// subject id), and its bytes are what the byte check compares.
-	pins := []byte(`{"formatVersion":1,"subject":{"id":"intent.sample"}}`)
-	if err := os.WriteFile(intentFile, pins, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	wantDigest := digestOfBytes(pins)
 	output := filepath.Join(dir, "artifact")
 	// Compute the digest the child will produce so the artifact check matches.
 	if err := os.WriteFile(output, []byte("artifact-bytes"), 0o600); err != nil {
@@ -233,13 +215,6 @@ func TestSelfBuildOuterDetectsAChildThatReadADifferentDeclaration(t *testing.T) 
 	child := buildIntentReportingChild(t, dir)
 	workspace := outerWorkspace(t, dir)
 	intentFile := outerIntentFile(t, dir)
-	intentFile := filepath.Join(dir, "intent.json")
-	if err := os.WriteFile(intentFile, []byte(declarationBytes), 0o600); err != nil {
-	// The same accepted declaration as the byte-binding case: the child claims a
-	// different digest, so the mismatch is what the test checks.
-	if err := os.WriteFile(intentFile, []byte(`{"formatVersion":1,"subject":{"id":"intent.sample"}}`), 0o600); err != nil {
-		t.Fatal(err)
-	}
 	output := filepath.Join(dir, "artifact")
 	if err := os.WriteFile(output, []byte("artifact-bytes"), 0o600); err != nil {
 		t.Fatal(err)
@@ -293,20 +268,12 @@ func TestSelfBuildOuterDetectsAChildThatReadADifferentDeclaration(t *testing.T) 
 // contract (§4.8); until it is decided, naming the file is the way to reach
 // this case.
 func TestSelfBuildOuterRecordsWhyTheByteCheckWasNotPerformed(t *testing.T) {
-// SC0-01 and SC0-14 conflict: SC0-01 requires the declaration (-intent-file) before
-// any build, while SC0-14 describes recording why a byte check was not performed
-// when only a logical ID is given. The entry keeps SC0-01 (fail closed): a logical
-// ID alone is refused, and the refusal says the declaration is what is missing. The
-// byte check's absence is therefore never reached, so no unperformed record is
-// emitted for this case.
-func TestSelfBuildOuterRefusesALogicalIDWithoutTheDeclaration(t *testing.T) {
 	dir := t.TempDir()
 	child := buildSelfBuildChild(t, dir)
 	workspace := outerWorkspace(t, dir)
 	output := filepath.Join(dir, "artifact")
 	intentFile := outerIntentFile(t, dir)
 	report, _ := runOuterShapeWithIntent(t,
-	report, code := runOuterShapeWithIntent(t,
 		"-child", child,
 		"-workspace", workspace,
 		"-intent", "intent.sample",
@@ -324,13 +291,5 @@ func TestSelfBuildOuterRefusesALogicalIDWithoutTheDeclaration(t *testing.T) {
 	}
 	if binding.L2BClaimed {
 		t.Fatal("L2-b was claimed")
-	if code != 2 {
-		t.Fatalf("a logical ID alone was not refused: code=%d %+v", code, report.Error)
-	}
-	if report.Error == nil || !strings.Contains(report.Error.Message, "-intent-file is required") {
-		t.Fatalf("the refusal does not name the missing declaration: %+v", report.Error)
-	}
-	if report.IntentBinding != nil {
-		t.Fatalf("an intent binding was recorded for a refused attempt: %+v", report.IntentBinding)
 	}
 }
