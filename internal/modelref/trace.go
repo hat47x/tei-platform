@@ -61,7 +61,13 @@ type TraceResult struct {
 	Authority           string `json:"authority"`
 	Total               int    `json:"total"`
 	Unresolved          int    `json:"unresolved"`
-	Offset              int    `json:"offset,omitempty"`
+	// Offset is the offset this page actually started at. It equals the
+	// requested offset unless that offset was past the last row, in which case
+	// it is clamped to the row count. RequestedOffset keeps the caller's value
+	// so a clamped page is observable instead of looking like a normal one
+	// (#1177).
+	Offset          int `json:"offset,omitempty"`
+	RequestedOffset int `json:"requestedOffset,omitempty"`
 	// Rows is present in full mode even when there are no rows, so a reader
 	// can tell "this subject declares no references" from "this response has
 	// no rows field". In summary mode the field stays absent: summary returns
@@ -112,13 +118,14 @@ func (r TraceResult) MarshalJSON() ([]byte, error) {
 		Total               int                `json:"total"`
 		Unresolved          int                `json:"unresolved"`
 		Offset              int                `json:"offset,omitempty"`
+		RequestedOffset     int                `json:"requestedOffset,omitempty"`
 		Rows                []TraceRow         `json:"rows"`
 		NextOffset          *int               `json:"nextOffset,omitempty"`
 		Continuation        *TraceContinuation `json:"continuation,omitempty"`
 	}{
 		r.SchemaVersion, r.GraphFingerprint, r.SnapshotFingerprint, r.RuleFingerprint,
 		r.Subject, r.Direction, r.Mode, r.Authority, r.Total, r.Unresolved, r.Offset,
-		rows, r.NextOffset, r.Continuation,
+		r.RequestedOffset, rows, r.NextOffset, r.Continuation,
 	})
 }
 
@@ -267,6 +274,9 @@ func TraceDirect(graph Graph, rules []Rule, subject Key, options TraceOptions) (
 	}
 	start := options.Offset
 	if start > len(rows) {
+		// Past the end: report what the caller asked for as well as the clamp,
+		// so a silently short page is distinguishable from an empty tail (#1177).
+		result.RequestedOffset = options.Offset
 		start = len(rows)
 	}
 	end := len(rows)

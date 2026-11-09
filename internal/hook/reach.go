@@ -88,6 +88,9 @@ type PhaseReport struct {
 	// were not called. A phase with an uncalled declaration is reported as not
 	// evaluated, so `executed` never claims a call that did not happen.
 	Uncalled map[string][]core.CanonicalID `json:"uncalled,omitempty"`
+	// Calls records, by phase, the calls the declaration made and how each
+	// ended. A phase listed here did reach the boundary.
+	Calls map[string][]CallOutcome `json:"calls,omitempty"`
 }
 
 // Ran は、実行した位相があるかを返す。すべての位相を飛ばした実行と、位相を
@@ -149,21 +152,39 @@ func (r Runner) RunReachable(ctx context.Context, applicationID, patternID core.
 			report.Reasons[phase] = fmt.Sprintf("%s: %s", ReasonReadNotSupplied, missing)
 			continue
 		}
-		// A hook that declares `uses` promises to call those capabilities. The
-		// reference execution has no caller, and the reference rule does not call
-		// one, so the promise cannot be kept here. Recording the phase as
-		// executed would claim a call that never happened; mark it not evaluated
-		// and name the capabilities instead.
+		// A hook that declares `uses` promises to call those capabilities. Call
+		// them here, through the restricted caller the Runner holds, so the
+		// promise is kept or reported as a refusal rather than assumed.
 		if len(declaration.Uses) > 0 {
-			report.Skipped = append(report.Skipped, phase)
-			report.NotEvaluated = append(report.NotEvaluated, phase)
-			report.Uncalled = appendUncalled(report.Uncalled, phase, declaration.Uses)
-			if r.Caller == nil {
-				report.Reasons[phase] = ReasonCallerUnavailable
-			} else {
-				report.Reasons[phase] = ReasonDeclaredCallNotMade
+			calls, callErr := r.RunDeclaredCalls(ctx, applicationID, patternID, phase, r.CallInputs, r.Caller)
+			if len(calls) > 0 {
+				if report.Calls == nil {
+					report.Calls = map[string][]CallOutcome{}
+				}
+				report.Calls[phase] = calls
 			}
-			continue
+			var uncalled []core.CanonicalID
+			for _, call := range calls {
+				if !call.Called {
+					uncalled = append(uncalled, call.Capability)
+				}
+			}
+			if len(uncalled) > 0 {
+				report.Skipped = append(report.Skipped, phase)
+				report.NotEvaluated = append(report.NotEvaluated, phase)
+				report.Uncalled = appendUncalled(report.Uncalled, phase, uncalled)
+				if r.Caller == nil {
+					report.Reasons[phase] = ReasonCallerUnavailable
+				} else {
+					report.Reasons[phase] = ReasonDeclaredCallNotMade
+				}
+				continue
+			}
+			if callErr != nil {
+				report.Refused = phase
+				return report, callErr
+			}
+			// Every declared call was made; the phase still runs its rule below.
 		}
 		invocation := Invocation{
 			Application: applicationID,
