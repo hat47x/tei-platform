@@ -115,7 +115,7 @@ go vet ./internal/composition
 
 Go 1.23.2を用いた独立モジュール`/mnt/data/tei-composition-test`に、対象Goソースとテストを配置し、`go test -race -count=100 ./internal/composition`、`go vet ./...`、`gofmt -l internal/composition/*.go`を実行。テスト・VetはPASS、gofmt対象はすべて整形済み。GitHubにコミットした変更ファイルのBlob SHAと、同一ソースの`git hash-object`が一致することを照合した。
 
-これは**合成されたHost内の処理動作のEvidence**である。`tools/repository-health-check.sh`の全項目や、main/PR exact-headのtrusted full checkout、Production権限・Credential・署名・Artifact bytes検証、実際のService uptimeを確認したものではない。したがってPRはDraftのまま、mainに統合しない。
+これは**合成されたHost内の処理動作のEvidence**である。`tools/repository-health-check.sh`の全項目や、main/PR exact-headのtrusted full checkout、Production権限・Credential・署名・Artifact bytes検証、実際のService uptimeを確認したものではない。したがって、未確認の範囲を制約として記録したうえで統合する。Draftは解除して統合する。
 
 ### 残る重要な問題
 

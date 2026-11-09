@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "tei.cli.source-index/v0",
+  "ok": true,
+  "mode": "subject",
+  "result": {
+    "subject": {
+      "kind": "semantic-data",
+      "id": "sales.order"
+    },
+    "artifacts": [
+      {
+        "path": "semantic/sales/order.tei",
+        "format": "tei",
+        "fingerprint": "sha256:f2063418b893a60a9f948edbb2b23ec821f7a15ed8e5863c36e1b72abade1e33"
+      }
+    ],
+    "references": [
+      {
+        "subject": {
+          "kind": "semantic-data",
+          "id": "sales.order"
+        },
+        "artifactPath": "semantic/sales/order.tei",
+        "range": {
+          "start": {
+            "offset": 124,
+            "line": 7,
+            "column": 6
+          },
+          "end": {
+            "offset": 129,
+            "line": 7,
+            "column": 11
+          }
+        },
+        "role": "definition"
+      }
+    ]
+  }
+}

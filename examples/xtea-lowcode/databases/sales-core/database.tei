@@ -1,0 +1,5 @@
+database sales_core {
+    kind relational
+    ownership managed-here
+    uses semantic sales
+}

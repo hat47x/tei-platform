@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"tei/internal/core"
+	"tei/internal/permission"
 	pruntime "tei/internal/plugin/runtime"
 	"tei/internal/resource"
 )
@@ -134,5 +135,6 @@ func cleanupTestSpec() pruntime.SandboxSpec {
 				Target:     "DB_CREDENTIAL",
 			}},
 		},
+		Permissions: []permission.Spec{{Kind: permission.KindSecret, Access: permission.AccessRead, Scope: "credential"}},
 	}
 }

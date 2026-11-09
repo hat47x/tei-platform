@@ -1,0 +1,6 @@
+== environment.EvidenceProviderBinding (used by the evidence reference) ==
+   file: internal/environment/model.go
+   type EvidenceProviderBinding struct {
+   	Kind     deployment.EvidenceKind `json:"kind"`
+   	Provider core.CanonicalID        `json:"provider"`
+   }

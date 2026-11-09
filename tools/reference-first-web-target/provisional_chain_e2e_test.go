@@ -596,6 +596,7 @@ func TestProvisionalChainOneRevisionE2EPacket(t *testing.T) {
 	}
 
 	cleanAfter := gitOutput(t, repoRoot, "status", "--porcelain") == ""
+	fullHealth, healthRaw := e2eFullHealth(t, head, mainSHA)
 
 	// 12. Receipts and the packet. Labels come from what the run produced.
 	locator := map[string]string{
@@ -633,6 +634,9 @@ func TestProvisionalChainOneRevisionE2EPacket(t *testing.T) {
 			"startedAt": started.Format(time.RFC3339), "finishedAt": time.Now().UTC().Format(time.RFC3339)}),
 	}
 	_ = negLog
+	if healthRaw != nil {
+		locator["fullHealth"] = writer.write("qualification-full-health-ci-run.json", healthRaw)
+	}
 	packet := map[string]any{
 		"schema": "tei.critical-path-evidence/v0",
 		"claim":  "E2",
@@ -641,8 +645,8 @@ func TestProvisionalChainOneRevisionE2EPacket(t *testing.T) {
 			"positiveTest": "TestProvisionalChainOneRevisionE2EPacket", "negativeTest": "TestProvisionalChainOneRevisionE2EPacket (R0/unit-price-zero/S05/N11/S02 controls)",
 			"evidenceClass": "actual-observed",
 		},
-		"qualification": map[string]any{"head": head, "main": mainSHA, "fullHealth": "NOT_RUN",
-			"cleanBefore": cleanBefore, "cleanAfter": cleanAfter, "receipt": ""},
+		"qualification": map[string]any{"head": head, "main": mainSHA, "fullHealth": fullHealth,
+			"cleanBefore": cleanBefore, "cleanAfter": cleanAfter, "receipt": locator["fullHealth"]},
 		"acceptance": map[string]any{
 			"r0": receipts.R0, "r1": receipts.R1, "candidateFingerprint": receipts.CandidateFingerprint,
 			"reviewFingerprint": receipts.ReviewFingerprint, "reviewCandidateFingerprint": receipts.ReviewCandidateFingerprint,
@@ -714,6 +718,9 @@ func TestProvisionalChainOneRevisionE2EPacket(t *testing.T) {
 	}
 	// The Provider's provisional D10 declaration is diagnosed too; its level is
 	// atomic-with-commit, so it is not reported as non-atomic.
+	if has["E2_ACCEPTANCE_KIND_REQUIRED"] {
+		t.Errorf("the packet names the Acceptance kind read from the Store: %v", report.Diagnostics)
+	}
 	if has["E2_PROVIDER_GUARANTEE_NOT_ATOMIC"] {
 		t.Errorf("the Runner Evidence declared atomic-with-commit: %v", report.Diagnostics)
 	}

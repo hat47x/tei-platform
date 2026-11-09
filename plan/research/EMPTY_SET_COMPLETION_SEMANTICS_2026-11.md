@@ -75,17 +75,23 @@ structure CompletionClaim where
   - 未宣言は業務類型の既定候補（`internal/semantic.DefaultEmptyPolicy`）を使う
   - 意味の正本は`.tei`側に置き、実行時記録は宣言を参照する
 
-## 7. 実装状況（2026-11-04）
+## 7. 実装状況（2026-11-06）
 
 - `internal/semantic`: `EmptyPolicy`（`allow` / `requires-evidence` / `deny`）、`DefaultEmptyPolicy(condition)`、`Capability.EffectiveEmptyPolicy(condition)`。
 - `internal/syntax`: capability宣言の`emptyPolicy`属性。未知の値と二重宣言を拒否する。
-- 試験: 既定候補、Action宣言による上書き、未知値・重複の拒否、未宣言の扱い。
+- **`CompletionClaim` 評価（#267 仮承認・2026-11-06）**: `EvaluateCompletion(capability, kind, evidence)` が `(TargetSet L, EmptyPolicy, Predicate P)` を評価する。
+  - 入力は観測済みの `TargetResult` と `Coverage`（完全/部分/未測定）、`EmptyJustified`、`HandoffConfirmed`、`Conflicting`。
+  - 判定は `holds` / `fails` / `unverified` / `contradiction`。
+  - 反例が1件でもあれば `fails`（coverage不明でも）。空集合は `deny` → `fails`、`allow` → coverage完全のみ `holds`、`requires-evidence` → 独立した空証明が必須。
+  - coverage不明・空証明なし・handoff未確認・既定の無いconditionは `unverified`（fail-closed）。
+  - この評価器はLを述語形や件数から推定しない。Lの被覆と空の証明は呼出側の証拠として渡す。
+- 試験: 既定候補、Action宣言による上書き、未知値・重複の拒否、未宣言の扱い、上記の完了判定（allow / requires-evidence / deny / handoff / contradiction）。
 
 ## 8. 未決
 
 - 不在確認の「探索の完全性」を、既存のProvider契約・観測（#2598・#2582・#2387・#2622）のどこまでで保証できるか。
 - 形式系の検証をどこまで実装するか（Leanの特定版での機械検証は未実施）。
-- `CompletionClaim` 評価（`TargetSet L`・`P`・`EmptyPolicy`の照合）への接続は #267 の設計採否後。
+- `CompletionClaim` 評価の実Consumer接続（実RuntimeのTargetSet・Coverage・独立空証明の供給）。#267の正式採否は仮承認のまま実物で見直す。
 
 ## 9. 主張しないこと
 
