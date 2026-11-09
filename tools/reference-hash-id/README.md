@@ -99,6 +99,14 @@ CLIへのTarget Snapshotは厳密な単一行正準JSON `tei.hashid.target-probe
 
 `subject`は呼出元宣言の識別子であり、このCLIはTEI正本のqualified-refへの存在・Scope・Revision・権限を**検証できない**。CLI出力を受理・発行・割当と呼ばず、登録・署名・Source Acceptance・Atomic Insert/Commitのコードパスを持たせない。実保存は将来のTarget Owner Gate W3、同一ConsumerへScope/Source freshnessを接続する判断はW4として別に扱う。
 
+## P0から実Source Reader／実Consumerへ進める条件（2026-11-09）
+
+[設計§9.11のHR-P0-01〜08](../../plan/design/HASH_DERIVED_ID_SCHEME_DESIGN_2026-11.md) は「同じHash/ModelRevision/Workspace Manifest ≠ 同一物理Root・同一Read Attempt・実Consumer全Source Closure」を明示する。既存の[Direct Trace Draft #3321](https://github.com/hat47x/tei-platform/pull/3321)はWorkspace Manifest/World/Source IndexのLoad-time一致、[UI ABA Draft #3327](https://github.com/hat47x/tei-platform/pull/3327)は表示の旧応答拒否、[実Source消費 #2595](https://github.com/hat47x/tei-platform/issues/2595)は実Generator/Interpreterの入力の同一Attemptをそれぞれ別に扱う。**本Referenceはこれらを実行・複製していない**。
+
+`CompareDeclaredSourceIndexRead`は現在もCallerが作成・提示した`sourceindex.Index`と単一ファイルbyteの一致を照合するのみ。実Pinned Reader/実Tool/Ownerが発行した閉じたread-set/consumption witnessの受領APIは**未接続**であり、`AllSourceBytesVerified=false`などの証拠不足フラグを維持する。Source集合の`ModelRevision`は**内容由来で可逆（A→B→A）**であり、単調epochではない。別Workspaceの完全コピーでもManifest/Sourceの指紋が一致し得る。過去の実行資格が失効したかはReader/Consumerの現在Attemptを別に観測する。
+
+先行段階で合格に必要なのは、(1) 既存`internal/workspace`のピン留めSource Snapshot、(2) Source Index/Revisionを同じ取得から構成したEvidence、(3) 実Consumerが読んだ**全Source Closure**と具体的Attempt、(4) 独立した失効・開示/Owner判断を、別正本を生成せずに結線すること。ユーザー入力やGo Hashの一致から`SourceAccepted`、`TargetAllocated`、`EffectCommitted`を自動推論しない。
+
 ## 試験
 
 ```bash
