@@ -311,7 +311,7 @@ func TestSelfBuildOuterRefusesWithoutDeclaredIntent(t *testing.T) {
 	if code != 2 {
 		t.Fatalf("missing -intent-file was not refused: code=%d", code)
 	}
-	if report.Error == nil || !strings.Contains(report.Error.Message, "-intent-file is required") {
+	if report.Error == nil || !strings.Contains(report.Error.Message, "declared build intent") {
 		t.Fatalf("missing intent had no stated reason: %+v", report.Error)
 	}
 	if report.ChildRun != nil {
