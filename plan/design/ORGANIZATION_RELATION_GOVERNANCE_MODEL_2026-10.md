@@ -3743,3 +3743,55 @@ where case_id = :case_id
 **再利用する独立負例**：旧Draft #3243のORG-MAP-A〜J／ORG-CF-01〜08、および本書第81〜84節のORG-APP/TB/Completionを新しい製品Case正本として複製しない。#1131 Dataset候補→#1180 Scenario→#2514 独立Expected/Mutant→#1163 exact Attemptへ実行証拠を帰属する。必要なRoot/Imported Source/Current Provider/Consumer Replyが見つからないときはUnknown、出力可視範囲が狭いときはPartialと判定する。データが0行でも全世界の不存在/全件完了としない。
 
 **現時点の資格**：本節のSource/Issue/PR照合と受入順は**設計のみ**。mainでRQ-036要件と既存の限定Local CLI/Go Evidenceは確認可能だが、Draft #3518/#3492/#3500/#3243の製品統合、全Org実Read/Graph/CRUD/SHO/Owner Meaning、実Host Grant・全件Handoffは**未証明**。RQ-036（全容Map）とBOM側RQ-037の採番修復は[Draft #3592](https://github.com/hat47x/tei-platform/pull/3592)が所有し、この節でRequirement番号やTrace正本を重複編集しない。
+
+
+<!-- org-transfer-obligation-cutover-20261109 -->
+## 2026-11-09 追加：組織改編時の実効責務の切替・未完了作業・外部観測（採用前）
+
+### A. 所属・案件担当・業務候補・実行能力・相手方受領は異なる関係
+
+旧§81〜84および現main基線PR #3669を踏まえる。あるPersonのMembershipがD1→D2へ変わることは、Case C1のhandlingUnit、旧担当の実Grant、新担当の受領、未完了Attemptが自動的に切り替わることではない。
+
+- Assignment：Membership、Occupancy、Case handlingUnitを独立Relation occurrence・時点・版で扱う。
+- Responsibility Candidate：Owner受理済みRule/Procedureから導出する、CaseとOperationに相対的な担当役割・組織・候補者。通知/Inbox表示でも現在Grantは証明しない。
+- Effect Eligibility：Case現行版・Rule/SoD・実Principal・委任・Grant・対象Resource・条件付き更新の現在性を実行境界で検査。静的Roleや表示候補だけでは実行可能としない。
+- Handoff：必要対象集合L、Provider実Read集合R、対象/版に束縛した相手方受領集合Hを区別。Request送出・HTTP 2xx・ACKの個数だけで全件移管完了にしない。
+
+**全組織で単独責任を強制しない**。単独担当／共同担当／合議／保留の許容条件は業務OwnerのCase/Action相対Ruleで判断し、新固定TransferStatus enum・第二Workflow/Handoff Ledgerは作らない。
+
+### B. 旧側と新側の実効能力の4象限
+
+| 旧側の実行能力 | 新側の実行能力 | 単独責任を受理したProfileでの検査 |
+| --- | --- | --- |
+| yes | no | 切替前として成立する可能性。Case/Rule/Grantが同じ現在性条件を満たす必要 |
+| no | yes | 切替後として成立する可能性。相手方受領はなお独立 |
+| yes | yes | 二重有効。単独責任なら衝突、共同責任を明示受理した場合は正常候補 |
+| no | no | 無担当。一時的保留が許容されても業務完了とは扱わない |
+
+yes/noは実行先で対象CaseとOperationに関し判定できたときだけ使う。旧・新のいずれかが未取得／部分取得／現在Grant未照合ならunknown/unverifiedとし、明示denyとも区別する。異なるDB/APIの時刻・revision番号の大小を因果順序にしない。A→B→Aの担当先ラベル復帰でも、古いRelation occurrence/ACK/実行許可を復活させない。Running AttemptのGraph/担当版を黙って移行しない。
+
+### C. 他チャットの新しい実装証拠との境界
+
+1. **Typed Lifecycle/Hook**：Traitの全Path保証はmain統合 #3510。Studio参照実行のHook状態記録はmainの #3635（executed/notEvaluated/skipped/refused）。欠落入力でnotEvaluatedでも参照Commandが動き得るが、それを業務上重要なGuardの成立・現在Grant・実Effectの許可としない。旧担当を迂回するPlugin Patchや、未選択Pluginの実行済み表示を拒否する。
+2. **Plugin-first Inspector**：mainに通常CLI/Studioへ静的参照Providerを選択する #3540 の実装が存在する。これは正式Org DB Provider/Plugin Binary Link/実Rowset/Principal Grantとは別。RQ-036型付きMap Draft #3518でresolvedされたことも実行可能性でない。
+3. **REA外部Evidence**：Draft #3496の実REA 6.7.0 T0四ケース/保存Artifact/独立監査は、Source解析の限定Witness。REA Agent/Event/ResourceをTEIの正式Person/Case/Effectとして自動受理しない。raw Source・tool版・partial/limitations/error・TEI観測・Owner Meaningを分離。JSONLのtype:errorは業務データ行や不存在証明でない。T1-A Intakeは既存Application Operation/Source/Acceptance Ownerへ。
+4. **Subsystem分割**：#3250/Draft #3662の固定Owner・宣言Direct Writeの数理Referenceは、組織の実業務責任／越境Update/実Principal Grantの最適化ではない。部門変更を物理DB/Service移動に直結させない。未知のWriter/Effectを越境0と計上しない。
+
+### D. ORG-TR-01〜08：旧合成Case C1/C2を使う独立Expected案（全件未実行）
+
+| ID | 変更・対照 | 必要な判別 |
+| --- | --- | --- |
+| TR-01 所属のみ異動 | P1 Membership D1→D2、C1担当はD1のまま | C1への担当変更Event/Effect/ACKを捏造しない |
+| TR-02 Case先行移管 | C1担当 D1→D2、旧D1のGrantは未照合 | 旧画面・旧候補から実Commitを許さず現在Case/SoD/Grantを実行時照合 |
+| TR-03 片側ACK | L={C1,C2}、Rは2件、H={C1} | 全件Handoffのholdsを認めない。C2は未受領 |
+| TR-04 重複と遅延 | C1のACK二通・C2なし、旧D1遅延Command | 件数ではなくID/Scope/Relation版で判別。旧Commandは別Attempt |
+| TR-05 合議 | D1/D2両方が有効、共同責任Ruleは受理済み | 無条件の二重担当Errorを出さずActionごとの権限・成立条件を検証 |
+| TR-06 A→B→A | C1担当 D1→D2→D1、表示名は元通り | 初期D1の旧ACK/Grant/Receiptを新D1期間へ流用しない |
+| TR-07 Hook未評価 | 重要なChange Guardの入力欠落、Hook notEvaluated | 参照表示の成功をHost Effect/Authorized/Committedに昇格しない |
+| TR-08 External partial | REA解析partial、またはSubsystem数理候補のみ | 未受理のAgent/Relation/OwnerからCase更新や完了を生成しない |
+
+新しいテスト正本や別受入Gateは作らない。#1131 Dataset候補→#1180 Driver Scenario→#2514 Independent Expected/Mutant→#1163 exact Attemptを継続使用。旧#3243のORG-CF/MAP、#2510のCorpus、現書§81〜84のAPP/TBとの重複は共通fixture・差分表で解消する。
+
+**最短の実装順**：全TEI初回R0/HJ-09 order_entry.recent_ordersの実Function→選択Provider→SQL/Rows→Mapping→Context→Consumerを先行（#2586）。次に組織C1→D1を同じRead契約で接続し、Source付きModel Map/三視点へ説明を投影。その後2件Handoffと二重有効・無担当・旧Grant/ACKを#1125/#1444/#1174/#2499へ渡す。実DB/Effect/Owner意味受理を初回ReadのHard Dependencyにしない。
+
+**証拠上限**：現mainでinspectoradapter/local_host.goとstudiohost/hooks.goを確認した。Org実Provider/Typed Model Map全容/実Host Grant/Effect、REA T1-A取込、Subsystem Product最適化、ORG-TR-01〜08の新Go/DB/Consumer/Owner受理はNOT RUN/NOT PROVEN。全体CI・本番適合を局所参照結果から推論しない。
