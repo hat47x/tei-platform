@@ -405,3 +405,45 @@ T1-Aの最小Product受入は、**共通Application API（ADR-0048・#1158）の
 External Observation/Evidenceの製品側経路は、[現行Binding利用実態 #3757](https://github.com/hat47x/tei-platform/issues/3757)の`Router`未接続、[Inspector S2-reference #3540](https://github.com/hat47x/tei-platform/pull/3540)の静的Provider実到達、[Graph/Relation #3492](https://github.com/hat47x/tei-platform/pull/3492)の限定main統合を**別資格**とする。
 
 REA Candidate Projectorの外部IDを`InspectSubject`のCanonical IDとして偽装しない。現状の`InspectSubject`がCanonical Worldを先に検索するという仕様を変えず、External Observation 1件＋Relation 1件の実Product read-only受領に必要な最小型・Provider Binding・受領位置の不足だけを#1158/#3419/#1251へ引き渡す。F0 raw Source／F3 actual Invoked／F5 current Receiverと、Owner Accepted Meaning、Runtime Effectの独立資格を維持する。**ここでは新たなSchema/独立Registry/第二Runner/新Host/新Readerは設けない**。
+
+
+---
+
+<!-- rea-t1a-router-contract-dissimilarity-20261109 -->
+## 20. 本番T1-AのFit/Gapを確定：既存Routerの再利用境界と静的Evidenceの意味差（2026-11-09）
+
+### 新たにmainへ統合された二つの局所実証
+
+- [main #3777](https://github.com/hat47x/tei-platform/pull/3777)：既存`observation.Binding → Host registry → observation.Router.Observe`を、参照Toolから**実Call**できた。registeredでは`resolved=true/selected=true/invoked=true`、未登録では`resolved=true/selected=false/invoked=false`の別判定。固定のReference Fragmentであり外部Runtime/DBを読んでいない。**製品通常CLIへの入場ではない**。
+- [main #3793](https://github.com/hat47x/tei-platform/pull/3793)：既存`evidence.Binding → Host registry → evidence.Router.Collect`を、`durable.ModeEvidence`のActionRecordについて参照Toolから実Call。未登録・非証拠ゲートを別状態で拒否し、Provider自身の`pass`は真偽の証明に格上げしない。**正式製品呼出し・外部Evidenceの真正性ではない**。
+- [main #3540](https://github.com/hat47x/tei-platform/pull/3540)の通常CLI/Studio Inspector S2-referenceおよび[main #3492](https://github.com/hat47x/tei-platform/pull/3492)の限定Source/Relation試験とも独立。これらを足してREA T1-A Product受入にはしない。
+
+**最も重要な新しい非互換性**：`internal/deployment/observation/provider.go`で既存`observation.Fragment`が表現するのは、`Environment`に結び付いた`ApplicationRuntime[]`または`Databases[]`の**実状態Snapshot**。`Merge`は観測Kindの正本Facetを置換する。REAは静的JavaScript解析のSource-backed graph/unknownsであり、これを`ObservationApplicationRuntime`や`ObservationDatabaseState`に偽装して通すと、**未観測のRuntime/DB状態が「確定Snapshot」に置換される危険**があるため**禁止**する。
+
+同様に`internal/deployment/evidence/provider.go`の`Evidence.Router.Collect`は`durable.ActionRecord`の`ModeEvidence`、`ActionID`、`EvidenceKind`を前提とし、部署／システム配備上のEvidence Gateで使われる。REAの静的解析結果を`ModeEvidence`の`pass`や`SourceRef=provider://...`で包むだけでは、逆解析の現在性・網羅性・業務意味は得られない。**データ契約は共用せず、「宣言→解決→選択→実InvokeのWitness」「未登録／不適合／Invoke後失敗の診断」だけを実装パターンとして再利用する**。
+
+さらに`internal/sourceacceptance.VerifyCurrent`は、Hostの**現在の受理済みSource**を信頼されたReaderから取得し、Workspaceの管理Source集合との一致を検査する。任意のREA Evidence JSONやProvider自身の署名風フィールドから正式なAccepted Sourceを製造しない。暫定・未特定の受理Kindはformal meaning acceptanceではない。
+
+### 既存の型とT1-A 1 Observation＋1 Relationの間に残る不足
+
+| 既存の受け口（main Sourceで確認） | 受入対象の意味 | REAの外部候補を直結できるか | T1-Aで採る行動 |
+|---|---|---|---|
+| `operations.InspectSubject` | 先に存在検査された**Canonical World**のexact Subject。Source Indexは意味生成をしない | **不可**：外部Occurrenceを`semantic-data`/ `semantic-relation`で捏造すると誤受理 | 現行の拒否を保ち、外部候補をCanonical Subjectへ昇格させない |
+| `deployment/observation.Router` | 配備EnvironmentのApplication Runtime/Database State Snapshot | **不可**：静的Source Graphを実状態と混同する | 外部Source候補として受理できる経路のfit-gapへ戻す |
+| `deployment/evidence.Router` | durable Evidence Gate ActionRecordに対するCollector | **不可**：逆解析Source Evidenceは配備ActionのOutcomeではない | resolved/selected/invoked/receivedのWitness形だけ借りる |
+| `sourceacceptance.VerifyCurrent` | 現在のHost Accepted Sourceを独立Witnessで照合 | **不可**：未受理のREA rawからOwnerのDecisionを発行できない | REAは`external-candidates-only`、`acceptedMeaning=false`のまま |
+| `rea.external-observation.candidate-test/v0`（PR #3496） | raw Digest／Source pre-post／Node/Edge ID／Unknown／Coverageを**試験専用**投影 | **既に試験用としてのみ成立** | Candidate投影の契約を保持し、外部Product API設計判断は#1158/#3419/#1251へ返す |
+
+### 最小Consumer受入票（T1-A Product未実行）
+
+既存Ownerが外部観測型の不足を決めるまで、**新しい汎用Operation／External Registryを先行実装しない**。実際の固定REA valid Artifactから`1 graph-node-observation`と`1 graph-relation-observation`を抽出した同一Attempt/同一Scopeを、Productに渡せる既存の**read-only Application API契約の受領側**が存在するか確かめる。なければ`UNSUPPORTED_EXTERNAL_OBSERVATION`を**要求する診断案**として記録するだけで、現時点の実装済み`failure.code`とは称さない。
+
+- **R1 External ID**：元REA Evidence ID・raw report SHA／Source path＋pre/post byte SHA・Node occurrence IDとEdge occurrence ID、Edge端点と向きを変更せず受領。複数EdgeはEdge IDで区別。Workspace/Attempt違いの同IDを混ぜない。
+- **R2 Uncertainty**：semantic coverage=`unknown`、root相当unbound／Source範囲不明、validにも残るlimitationsを消さない。Locationの`line,column`をRaw UTF-8 byte offsetへ無検証に変換しない。受信側がLosslessで投影できなければ部分・不適格を返す。
+- **R3 Call path**：宣言のresolved、Host selected、実Provider invoked、Product Operation Result、実Receiver readbackを別観測。呼出し成功でもAuthority・Execution Grant・旧Runtime Effectは与えない。
+- **R4 Negative**：Provider未登録・別Provider ID・外部ID重複・無効Endpoint・Unknown欠落・Source A→B→Aを独立Expectedへ。A→B→Aはpre/post照合だけでは検出不可、現実験では`unknown`のまま。
+- **R5 Refusal**：`InspectSubject`へ候補をCanonicalとして流す／Runtime ObservationのFacetを置換する／Evidence Gate `pass`で意味受理する、三つの短絡は**仕様上不適格**。拒否経路の既存テストをOwnerが確認し、未実施はPASSにしない。
+
+**実装順と責務**：A. T0-05実JSONLの現在HEAD CI・Artifact確認（本REA #3496）→ B. Product受入型／入口のfit-gap（#1158/#3419・#1251）→ C. 同一Attemptの実Consumer 1 Observation＋1 Relation（#3394/#1163）→ D. Sourceと意味の明示受理（#2621/#1124、Owner）→ E. SHO Source occurrence＋正式Writer/別Process Read（SHO #6）。この順はT0-05を全TEI P0の阻止条件にはせず、独立した並走作業を許す。
+
+**現時点の証拠**：#3777/#3793/#3540/#3492のmain統合と、それぞれの**限定的な参照実証**は確認済み。本節はSource/APIの静的照合に基づくFit/Gapであり、REA Product Providerや実TEI Operation、実Source受理、旧新DB、SHO Writer、Owner Meaningの**新しいE2E実行はNOT RUN**。
