@@ -25,7 +25,7 @@ Run with Node 22+:
 node --test reference/tei-three-element-method/public-slice.test.mjs
 ```
 
-The 10 public-slice checks demonstrate: T06 output equality for W0/W1 with identical *separately supplied*
+The initial 10 public-slice checks demonstrate: T06 output equality for W0/W1 with identical *separately supplied*
 prequalified public inputs, an intentionally leaky whole-graph-layout negative control, rejection
 of a relation whose endpoint was not public-qualified, and T07 isolation of
 an unknown/ambiguous Business or Data Role without turning unrelated accepted
@@ -91,7 +91,7 @@ node --test reference/tei-three-element-method/public-slice.test.mjs \
             reference/tei-three-element-method/trait-attachments.test.mjs
 ```
 
-The 12 focused Trait tests (T10–T13) call the **actual existing public-slice
+The initial 12 focused Trait tests (T10–T13) call the **actual existing public-slice
 projector**, then bind the prequalified Claim references. They prove
 synthetic three-view reference correspondence; that a Java Enum/DDL
 observation does not synthesize an Assessment; that no "strong attribute"
@@ -124,3 +124,34 @@ cases and asserts a clean checkout afterwards. The workflow is not a new
 Product/Gate B/C or policy qualification; it is a repeatable focused test.
 V8 test-shim results and workflow creation do not establish GitHub Actions
 PASS until that workflow's **exact head** reports its completed result.
+
+
+### Explicit Workspace-observation witness (T12 negative control, 2026-11-09)
+
+[Actual CLI direct Trace observations in #3321](https://github.com/hat47x/tei-platform/pull/3321)
+found distinct Workspaces with **equal** World, Source Index and Snapshot
+fingerprints. Snapshot equality cannot be taken as Workspace equality.
+
+This synthetic fixture now requires a **caller-qualified, disclosure-safe opaque**
+`workspaceObservation` in the public slice, returns it on the projection,
+and checks equality across `publicProjection`, the Trait envelope and
+every Claim. Two otherwise equal public projections with the same
+`snapshot` and View IDs but *different* Workspace-observation strings
+cannot share Trait claims. Missing Workspace-observation witnesses fail
+closed. A private Manifest path or a sensitive Root identifier is **not**
+appropriate for this public field; an upstream approved Producer must
+choose a disclosure-safe value. No policy-derived value is generated here.
+
+`workspaceObservation` is **only a caller-supplied local equality witness**.
+A caller that mistakenly reuses the same string for two physical Workspace
+Roots defeats this check; byte-identical Workspace copies can still be
+indistinguishable without an independent Reader/Root/Attempt identity.
+This is the precise remaining limitation demonstrated by #3321, not a
+claim that a new TEI Workspace ID, registry, authorization token or
+cryptographic proof has been implemented.
+
+The focused synthetic suite is now **12 public-slice + 15 Trait tests**
+(27 cases total). The prior 10+12 counts above are historical. The
+exact-head native-Node workflow is the actual qualification source;
+changes only validated by V8 test-compatible shims are *not* native CI
+PASS until the new head's workflow is completed.
