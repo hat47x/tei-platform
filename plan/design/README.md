@@ -29,6 +29,7 @@
 | [`AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md`](AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md) | AIによる性能改善の候補を実行統計・Source/Provider版・検証可能なBenchmarkへ結び、read-only Hintと実最適化を区別する設計（#3514／限定Reference #3520） |
 | [`DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md`](DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md) | 異種Data Sourceの開発者向け閲覧・データ管理・Schema DDLとDBA境界（#3270、設計・未適格） |
 | [`HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md`](HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md) | REST例外とClient ReactionのGraph/Table/Trace同一性、再試行とCommit unknown（#3274、設計候補） |
+| [`THREE_VIEW_DIAGRAM_CROSS_REFERENCE_PROJECTION_2026-11.md`](THREE_VIEW_DIAGRAM_CROSS_REFERENCE_PROJECTION_2026-11.md) | 三視点Data/Function/BusinessのGraph・CRUD Cross-referenceとSource逆参照、複数Canvas・安全編集・SHO図解の設計と限定Go検証（[#1124](https://github.com/hat47x/tei-platform/issues/1124)、Draft #3492） |
 | [`AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md`](AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md) | AIによる性能改善の設計ヒント・観測統計・Provider実行・独立Benchmarkを、合成対照と実測の資格を分離して扱う設計（#3271／#2586、限定Reference） |
 | [`TRAIT_ATOMIC_COMPOSITION_AND_FULFILLMENT_2026-11.md`](TRAIT_ATOMIC_COMPOSITION_AND_FULFILLMENT_2026-11.md) | 原子的Traitの実装義務（手動/自動/Provider）、Profile合成、不適合診断、DerivedData/Pluginでの受入負例（[#3278](https://github.com/hat47x/tei-platform/issues/3278)、設計・実証候補） |
 | [`AI_FIRST_QUALIFIED_INTERFACE_CURRENT_MAIN_2026-11.md`](AI_FIRST_QUALIFIED_INTERFACE_CURRENT_MAIN_2026-11.md) | AI-firstのSource・Tool公開・意味受理・現在Grant/Effect・Disclosureを実消費証拠で区別し、外部Harnessの限定実績と次の適格H2を現在mainに接続（旧#2492 AI-first成熟差分のみ） |
