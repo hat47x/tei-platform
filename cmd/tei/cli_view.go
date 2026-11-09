@@ -906,7 +906,14 @@ func writeHookReportText(out io.Writer, report cliHookReport) (int, error) {
 		if _, err := fmt.Fprintf(out, "  hook %s: refused", report.Refused); err != nil {
 			return 2, err
 		}
-		if report.Outcome != "" {
+		if report.CommandOutcome != "" {
+			// Name both: the hook's own outcome and the Command name it
+			// corresponds to, so the correspondence is visible rather than
+			// silently applied.
+			if _, err := fmt.Fprintf(out, " (%s, command outcome %s)", report.Outcome, report.CommandOutcome); err != nil {
+				return 2, err
+			}
+		} else if report.Outcome != "" {
 			if _, err := fmt.Fprintf(out, " (%s)", report.Outcome); err != nil {
 				return 2, err
 			}

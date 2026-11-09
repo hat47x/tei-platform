@@ -1649,7 +1649,7 @@ in-processを既定にするには、**entryがcatalogを自分で選ぶ**必要
 - [x] 鎖の**Windows**での観測と、catalogのホスト間一致（§4.33。`TestSelfBuildEstablishesL2BEndToEnd`がWindowsのGoでPASSし、同じ宣言とbuilderから作ったcatalogの`catalogDigest`が`linux/amd64`と`windows/amd64`で一致した。観測は二ホストで、`darwin`・`arm64`は未観測。[記録](../evidence/TEI_GO_SELF_BUILD_CHAIN_WINDOWS_2026-11-10.md)）
 - [x] 宣言からClaimまでの鎖の**回帰試験**（§4.33。`cmd/tei`のエンドツーエンド試験がツールでcatalogを作り、**`artifactDigest`が実際に走るbuilderのバイトと一致すること**を確かめてから`l2b.claimed`を要求する。builderの解決はdigestで照合しないので、下流では気づけない）
 - [x] catalogを作る**ツール**の能力宣言の形式と実装（§4.33。`tools/reference-build-catalog-authoring`が能力宣言からcatalogを作り、**artifactのdigestは実ファイルから計算**する。宣言にdigestを書くことと`-root`の外を拒否する。宣言から`l2b.claimed=true`まで一本で通った。[記録](../evidence/TEI_GO_SELF_BUILD_CATALOG_AUTHORING_2026-11-09.md)）
-- [ ] 能力宣言の**版付け**（今は互換の約束をしない。必要になった時点で決める）
+- [ ] 能力宣言の**版付け**。**実測すると「必要になった時点」に決められない**——`formatVersion`を足した宣言は`json: unknown field`で拒否され、版を名乗る手段が導入時点で使えない。宣言を配るなら今足すのが最も安い（D-2）。**判断には「宣言を誰に配るか」が要り、これは§4.32が範囲外とした問い**（[記録](../evidence/TEI_GO_SELF_BUILD_DECLARATION_VERSIONING_2026-11-10.md)）
 - [x] D-1（catalogの`scope`拡張）を採るかどうかの契約判断（**§4.34で閉じた：採らない。** 外在consumerの前提を測れないまま変えない。発見性は`-h`とREADMEで確保した） （採る場合のみ、catalogの広告と実応答の一致を照合へ載せる）
 
 **A-1（`gobuilder`移動）は採らないため、影響範囲の洗い出しは終了条件から外した。** 29ファイルの内訳は[記録](../evidence/TEI_GO_INTERNAL_RULE_AND_BUILDER_MOVE_2026-11-07.md)として残す。I-1は「採らない」から「I-1aとして着手」へ改めた（§4.13）。`ParseFixtureCatalog`（fixture catalog）は`tools/`に残す。

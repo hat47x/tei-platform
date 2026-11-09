@@ -322,13 +322,16 @@ func toolList() []tool {
 		"subjectId":   map[string]any{"type": "string"},
 	}
 	traceProps := map[string]any{
-		"scope":               map[string]any{"type": "string"},
-		"subjectKind":         map[string]any{"type": "string", "enum": operations.TraceSubjectKinds},
-		"subjectId":           map[string]any{"type": "string"},
-		"direction":           map[string]any{"type": "string", "enum": []string{"outgoing", "incoming", "both"}},
-		"mode":                map[string]any{"type": "string", "enum": []string{"summary", "full"}},
-		"offset":              map[string]any{"type": "integer"},
-		"limit":               map[string]any{"type": "integer"},
+		"scope":       map[string]any{"type": "string"},
+		"subjectKind": map[string]any{"type": "string", "enum": operations.TraceSubjectKinds},
+		"subjectId":   map[string]any{"type": "string"},
+		"direction":   map[string]any{"type": "string", "enum": []string{"outgoing", "incoming", "both"}},
+		"mode":        map[string]any{"type": "string", "enum": []string{"summary", "full"}},
+		// 0 means "not set" here: a negative value is refused, and a positive
+		// limit pages the result. `model locate` is different (its limit starts
+		// at 1), so each schema states its own range (#3420).
+		"offset":              map[string]any{"type": "integer", "minimum": 0},
+		"limit":               map[string]any{"type": "integer", "minimum": 0},
 		"expectedFingerprint": map[string]any{"type": "string"},
 	}
 	return []tool{

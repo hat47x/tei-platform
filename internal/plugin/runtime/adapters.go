@@ -40,7 +40,12 @@ func (a DeploymentExecutor) Execute(ctx context.Context, c executor.Command) (ex
 	if err := json.Unmarshal(inv.Response.Payload, &out); err != nil {
 		return out, err
 	}
-	out.ExecutorID = string(a.CapabilityID)
+	// Only fill an identity the executor left empty. Overwriting ExecutorID here
+	// would hide an executor that names a different one, and routing.ValidateResult
+	// compares exactly this field.
+	if out.ExecutorID == "" {
+		out.ExecutorID = string(a.CapabilityID)
+	}
 	if out.ActionID == "" {
 		out.ActionID = c.ActionID
 	}
