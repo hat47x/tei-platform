@@ -7,7 +7,7 @@
 - 限界：本書の製品機能は2026-11-07確認時点の公式文書に基づく比較。性能、費用、TEIとの相互運用性、製品別ライセンス適合は未実測。OwnerのMeaning受理・実Host Grant・Production資格は含まれない。
 
 <!-- tei-test-20261109-1120z-evidence-status -->
-> **追加検収（2026-11-09 11:20Z）**：前の11/9カードを取り消すのではなく、[merged #3749](https://github.com/hat47x/tei-platform/pull/3749)でCLI必須引数未指定の`INVALID_ARGUMENT`分類を統一し、[merged #3763](https://github.com/hat47x/tei-platform/pull/3763)でMCP説明文の旧Failure主張をGo試験で固定。[merged #3731](https://github.com/hat47x/tei-platform/pull/3731)は同Plan二回Buildの再現性、[merged #3760](https://github.com/hat47x/tei-platform/pull/3760)は明示Catalogからのin-process Plan導出を限定実証。いずれも実Source完全閉包/G4、外部MCP全文配送、未知TEST-T1B、`recent_orders`実DB Read、Product Plugin S2、業務意味受理は示さない。**次の実行票は§35.10のT-Discover/R-Read**。本更新の新実CI・Go試験はNOT RUN。
+> **追加検収（2026-11-09 11:31Z。各PRの固定HEAD資格）**：main [#3749](https://github.com/hat47x/tei-platform/pull/3749)でCLI必須引数未指定の`INVALID_ARGUMENT`分類を統一し、main [#3763](https://github.com/hat47x/tei-platform/pull/3763)でMCP README説明文の旧Failure主張をGo試験で固定。main [#3731](https://github.com/hat47x/tei-platform/pull/3731)で同Plan二回Build結果を区別、main [#3760](https://github.com/hat47x/tei-platform/pull/3760)で明示Catalogからのin-process計画導出を限定実証。さらにmain [#3757](https://github.com/hat47x/tei-platform/pull/3757)で6 Environment宣言の解決と実Invocationの断絶をread-only調査、main [#3761](https://github.com/hat47x/tei-platform/pull/3761)で内部Hook未知結末名を拒否、main [#3750](https://github.com/hat47x/tei-platform/pull/3750)で`states`→`closes`の許容順序の解析不具合を修正。[#3772](https://github.com/hat47x/tei-platform/pull/3772)の一値flag重複拒否は**未統合・照会時CI進行中**。**採用先は§35.10〜35.11、次の実証はT-Discover/R-Read**。Source完全閉包/G4、外部MCP完全配送、未知TEST-T1B、実`recent_orders` DB Read、S2-product/Owner意味受理は未実証。今回の新Go/CLI/PG/Agent実行はNOT RUN。
 
 
 <!-- tei-test-status-nov09-cli-knowledge-and-mcp -->
