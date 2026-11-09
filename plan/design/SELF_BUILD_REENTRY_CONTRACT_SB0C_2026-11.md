@@ -1094,6 +1094,69 @@ Claimの`boundary`文言を、**このホスト**から**観測した二つの�
 - catalogが正しいこと（§4.22 K-3、SC0-26）、受理・Runtime Authority・Trustは変わらない
 - 既定の試行でClaimが立つことは変わらない（§4.23末尾）
 
+### 4.27 `-rebuild-check`の実コストを測る（2026-11-09）
+
+§4.25は「既定経路をどこまで強くするか」の三つの未決を一つにまとめ、**決めるために足りないもの**を三つ挙げた。本節はその一つ目、**実buildの所要時間**を測る。
+
+#### 実測
+
+同じ試行を`-rebuild-check`あり・なしで7回ずつ繰り返し、中央値で比べた（ウォームアップ1回の後）。
+
+| 条件 | 中央値 | 最小 | 最大 |
+| --- | --- | --- | --- |
+| なし | **136.4 ms** | 118.3 ms | 177.7 ms |
+| あり | **246.5 ms** | 230.8 ms | 327.9 ms |
+| child単体 | **3.4 ms** | 3.1 ms | 3.9 ms |
+
+| 値 | 結果 |
+| --- | --- |
+| 中央値の差 | **+110.1 ms** |
+| 中央値の比 | **1.807倍** |
+
+同時に、`artifactReproducibility.state`が`unperformed`から`reproduced`へ、`l2b.claimed`が`false`から`true`へ変わることも確認した。
+
+#### 分かったこと：増分はbuildではない
+
+**child単体は3.4 msしかないのに、増分は110.1 msである。** 二回目のコストの大半は**childの仕事ではなくentry側の固定費**である——一時ディレクトリの作成と削除、child argvの差し替えと起動、二回目のreport解析、artifactの再読とdigest計算。
+
+**したがって§4.25の「build時間をほぼ倍にする」は、参照childについては正確ではない。** 参照childのbuildは3.4 msで、倍にしても6.8 msにしかならない。倍になるのは**entryの一回分の固定費**である。
+
+#### 実buildではどうなるか（推論であり実測ではない）
+
+増分は「entryの固定費 ＋ childの仕事」である。したがってbuildが重いほど比は2倍に近づく。
+
+| childの仕事 | 増分 | 比 |
+| --- | --- | --- |
+| 3.4 ms（参照child、**実測**） | +110 ms | 1.8倍 |
+| 数十秒（大きなGo build） | 約 +build時間 | **約2倍に近づく** |
+
+**これは推論であり、実buildでの測定は行っていない。**
+
+#### 判断への材料
+
+| 問い | 本節が与える材料 |
+| --- | --- |
+| 参照childで既定にできるか | **+110 ms**。試行が136 msから246 msになる |
+| 実buildで既定にできるか | **未測定。** 増分はbuild時間に比例して増える |
+| 既定化の是非 | **決めない。** 費用は「誰の試行か」に依存する |
+
+**「絶対値が小さいから既定にしてよい」とは言わない。** 110 msはこのPoCの最小のbuildでの値であり、Go buildを伴う試行では比が2倍に近づくため、**同じ判断を同じ根拠で下せない**。
+
+#### 残る不足分
+
+§4.25の三つのうち、本節が埋めたのは**一つ目だけ**である。
+
+| 足りないもの | 状態 |
+| --- | --- |
+| 実buildの所要時間 | **参照childは測定済み**。実buildは未測定 |
+| catalog 3点セットを既定で用意できるか | **未着手**（§4.22末尾の「catalogの中身を誰が作るか」と同じ問い） |
+| `-strong`の名前と粒度 | **未着手** |
+
+#### この節が言っていないこと
+
+- 実buildの所要時間（測っていない）、別ホストの時間
+- `-rebuild-check`を既定にすべきか。**費用の材料であり、判断ではない**
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
@@ -1169,6 +1232,7 @@ Claimの`boundary`文言を、**このホスト**から**観測した二つの�
 - [x] §4.8の(a)(b)（builder childが宣言byteを申告し、entryの保持byteと一致する）の実装（§4.14、[記録](../evidence/TEI_GO_SELF_BUILD_CHILD_DECLARATION_2026-11-09.md)、`ee7148138`）
 - [x] entryまたはchildが宣言から**計画まで**独立に導く経路（I-1b。[#3654](https://github.com/hat47x/tei-platform/pull/3654)で`Resolve`を`internal/buildintent`へ移し、fixture catalogは`tools/`に残した。§4.13の反対理由はcatalogについてであり、portについては当たらなかった）
 - [x] (c)の観測：**同じplanを二回、別stateでbuildして同じバイトが出た**（§4.21、[記録](../evidence/TEI_GO_SELF_BUILD_ARTIFACT_REPRODUCIBILITY_2026-11-09.md)。`-rebuild-check`で`artifactReproducibility=reproduced`。lockの`bound`が示せなかった「そのplanがそのartifactを生んだ」を再現で観測した。**L2-bではない**）
+- [x] `-rebuild-check`の実コストの測定（§4.27。[記録](../evidence/TEI_GO_SELF_BUILD_REBUILD_CHECK_COST_2026-11-09.md)。参照childでは中央値136.4 ms→246.5 ms（+110.1 ms・1.807倍）で、**増分の大半はchildの仕事ではなくentryの固定費**（child単体3.4 ms）。実buildは未測定）
 - [ ] `-rebuild-check`を**既定**にするかどうかの判断。**§4.25で三つの未決を一つの判断として扱う案（P-1〜P-4）を示した**。実buildの所要時間は未測（§4.25末尾）
 - [x] catalogの出所の決定（§4.22。**K-3: 呼び手が名指しするcatalogデータ＋必須のdigest**。新しいAuthorityを作らず、既存の`-supply`・`-intent-resolver`と同じ形）
 - [ ] **entryの既定経路をin-processの`Resolve`へ切り替えるか**の判断（§4.16のR-1/R-2/R-3）。前提だったcatalogの出所は§4.22で決めた（K-3）。切り替え自体は段2の完了後に別途決める
