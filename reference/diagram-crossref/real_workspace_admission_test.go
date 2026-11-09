@@ -197,6 +197,42 @@ func TestRealWorkspaceRelationParentAndTargetMatchCatalog(t *testing.T) {
 		parent.SourceIndexFingerprint != inspected.SourceIndexFingerprint {
 		t.Fatalf("Relation parent/child Source identity mismatch: parent=%q relation=%q count=%d", data.ID, relation.ID, matches)
 	}
-	// We have not established that Target is currently loaded or accepted,
-	// that the full graph is closed, or that the edge is safe to edit.
+	// A declared target name is not a resolved Data node. Require one exact
+	// TEI-native target declaration, as opposed to accepting a diagram label,
+	// a string in Catalog Detail, or an unindexed Source-only occurrence.
+	targetSubject := sourceindex.Subject{Kind: "semantic-data", ID: relation.Target}
+	targetMatches := 0
+	for _, candidate := range catalog.Entries {
+		if candidate.Subject != targetSubject {
+			continue
+		}
+		targetMatches++
+		if candidate.Ambiguous || candidate.Prelude || candidate.SourceStatus != "indexed" {
+			t.Fatalf("relation target is not a uniquely indexed native Data: %+v", candidate)
+		}
+	}
+	if targetMatches != 1 {
+		t.Fatalf("relation target Data should be unique and indexed: target=%+v occurrences=%d", targetSubject, targetMatches)
+	}
+	target, err := operations.InspectSubject(root, targetSubject)
+	if err != nil {
+		t.Fatalf("declared Relation target is not inspectable in actual Workspace: %v", err)
+	}
+	var targetCanonical struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(target.Canonical, &targetCanonical); err != nil || targetCanonical.ID != targetSubject.ID {
+		t.Fatalf("Relation target Canonical ID mismatch: expected=%q actual=%q err=%v", targetSubject.ID, targetCanonical.ID, err)
+	}
+	if target.Subject != targetSubject || target.SourceStatus != "indexed" ||
+		len(target.Sources.References) == 0 || target.Workspace == nil ||
+		!reflect.DeepEqual(*target.Workspace, *inspected.Workspace) ||
+		target.WorldFingerprint != inspected.WorldFingerprint ||
+		target.SourceIndexFingerprint != inspected.SourceIndexFingerprint {
+		t.Fatalf("Relation target does not share expected Workspace or source-indexed World: %+v", target)
+	}
+	// This establishes only the three source-indexed declarations
+	// parent Data -> Relation -> target Data in separate read attempts.
+	// It is NOT a full Required closure, multi-read atomic snapshot,
+	// accepted relation meaning, stable graphical edge ID, or edit grant.
 }
