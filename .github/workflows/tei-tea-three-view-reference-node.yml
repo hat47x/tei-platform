@@ -54,18 +54,21 @@ jobs:
             reference/tei-three-element-method/public-slice.mjs \
             reference/tei-three-element-method/public-slice.test.mjs \
             reference/tei-three-element-method/trait-attachments.mjs \
-            reference/tei-three-element-method/trait-attachments.test.mjs; do
+            reference/tei-three-element-method/trait-attachments.test.mjs \
+            reference/tei-three-element-method/catalog-validation.mjs \
+            reference/tei-three-element-method/catalog-validation.test.mjs; do
             test -f "$file"
             printf 'blob=%s file=%s\n' "$(git hash-object "$file")" "$file"
           done
 
-      - name: Run native Node tests for T06/T07 and T10-T13
+      - name: Run native Node tests for T06/T07, T10-T13 and T18
         shell: bash
         run: |
           set -euo pipefail
           node --test \
             reference/tei-three-element-method/public-slice.test.mjs \
-            reference/tei-three-element-method/trait-attachments.test.mjs
+            reference/tei-three-element-method/trait-attachments.test.mjs \
+            reference/tei-three-element-method/catalog-validation.test.mjs
 
       - name: Verify tests did not mutate checkout
         if: always()
