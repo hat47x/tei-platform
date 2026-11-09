@@ -19,13 +19,17 @@ const key = (role, scope, kind, id) => JSON.stringify([role, scope, kind, id]);
 const sortKey = x => JSON.stringify([x.viewId, x.lane, x.claimId]);
 
 // "snapshot" must agree across projector, envelope, claims: local bind only.
-// Every witness is caller-supplied, NOT independent current-Source evidence.
+// Both snapshot and workspaceObservation are caller-supplied equality witnesses,
+// NOT independently verified physical Root, read attempt, Source or Policy evidence.
 // "claims" is an already disclosed, already selected list: never raw private data.
 export function bindPublicTraitClaims(publicProjection, envelope) {
-  if (!record(envelope, ["scope", "snapshot", "claims"]) ||
-      !text(envelope.scope) || !text(envelope.snapshot) ||
+  if (!record(envelope, ["scope", "workspaceObservation", "snapshot", "claims"]) ||
+      !text(envelope.scope) || !text(envelope.workspaceObservation) ||
+      !text(envelope.snapshot) ||
       !Array.isArray(envelope.claims) ||
-      !record(publicProjection, ["snapshot", "views", "relationTable", "publicDiagnostics", "coverage"]) ||
+      !record(publicProjection, ["snapshot", "workspaceObservation", "views", "relationTable", "publicDiagnostics", "coverage"]) ||
+      !text(publicProjection.workspaceObservation) ||
+      publicProjection.workspaceObservation !== envelope.workspaceObservation ||
       !text(publicProjection.snapshot) ||
       publicProjection.snapshot !== envelope.snapshot ||
       !record(publicProjection.views, ["data", "function", "business"]) ||
@@ -49,10 +53,13 @@ export function bindPublicTraitClaims(publicProjection, envelope) {
   const ids = new Set();
   const bindings = [];
   for (const claim of envelope.claims) {
-    if (!record(claim, ["claimId", "scope", "kind", "subjectId", "role", "traitId", "lane", "state", "evidenceId", "snapshot"]) ||
-        ![claim.claimId, claim.scope, claim.kind, claim.subjectId, claim.traitId,
+    if (!record(claim, ["claimId", "scope", "workspaceObservation", "kind", "subjectId", "role", "traitId", "lane", "state", "evidenceId", "snapshot"]) ||
+        ![claim.claimId, claim.scope, claim.workspaceObservation,
+          claim.kind, claim.subjectId, claim.traitId,
           claim.evidenceId, claim.snapshot].every(text) ||
-        claim.scope !== envelope.scope || claim.snapshot !== envelope.snapshot ||
+        claim.scope !== envelope.scope ||
+        claim.workspaceObservation !== envelope.workspaceObservation ||
+        claim.snapshot !== envelope.snapshot ||
         !ROLES.has(claim.role) || !LANES.has(claim.lane) || !STATES.has(claim.state) ||
         ids.has(claim.claimId)) fail();
     const viewId = key(claim.role, claim.scope, claim.kind, claim.subjectId);
@@ -62,7 +69,8 @@ export function bindPublicTraitClaims(publicProjection, envelope) {
       lane: claim.lane, state: claim.state, evidenceId: claim.evidenceId});
   }
   bindings.sort((a, b) => sortKey(a).localeCompare(sortKey(b), "en"));
-  return {snapshot: envelope.snapshot, bindings,
+  return {snapshot: envelope.snapshot,
+    workspaceObservation: envelope.workspaceObservation, bindings,
     // A presentation join does not determine whether the world is complete.
     allSourceCompleteness: "not-proven"};
 }
