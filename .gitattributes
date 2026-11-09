@@ -228,3 +228,6 @@
 
 # Unpinned adapter survey output is hashed as raw bytes by its README.
 /plan/evidence/UNPINNED_ADAPTER_SURVEY_2026-11-09/** -text
+
+# Adapter identity masking output is hashed as raw bytes by its README.
+/plan/evidence/ADAPTER_IDENTITY_MASKING_2026-11-09/** -text
