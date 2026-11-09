@@ -96,3 +96,48 @@ func TestLocalInspectorSelectedRouteKeepsWorkspaceAndSourceIdentity(t *testing.T
 		t.Fatalf("unmodified Workspace B changed with Workspace A: before=%+v after=%+v", firstB, secondB)
 	}
 }
+
+func TestLocalInspectorSameCanonicalDifferentWorkspaceIdentity(t *testing.T) {
+	// A pair of workspaces can have byte-identical semantic declarations and
+	// return the same Canonical/World fingerprint while differing in manifest
+	// identity. An identical Provider, Subject and result body do not establish
+	// an identical workspace, current Source admission or authorization.
+	makeWorkspace := func(name string) string {
+		t.Helper()
+		root := t.TempDir()
+		if err := os.Mkdir(filepath.Join(root, "semantic"), 0755); err != nil {
+			t.Fatal(err)
+		}
+		manifest := "workspace: " + name + "\nformatVersion: 1\nsources:\n  - semantic\n"
+		source := "namespace sales\n\ndata Order {\n    attribute orderId type std.identifier\n}\n"
+		if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte(manifest), 0644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(root, "semantic", "order.tei"), []byte(source), 0644); err != nil {
+			t.Fatal(err)
+		}
+		return root
+	}
+	host, err := newLocalInspectorHostFromObservedDigest(inspectorArtifact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var results []string
+	var manifests []string
+	for _, name := range []string{"alpha", "beta"} {
+		selected, err := host.Bind(makeWorkspace(name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, err := selected.Inspect(sourceindex.Subject{Kind: "semantic-data", ID: "sales.order"})
+		if err != nil || got.Workspace == nil || got.Workspace.Name != name {
+			t.Fatalf("workspace %q not observed: %+v %v", name, got, err)
+		}
+		results = append(results, string(got.Canonical)+"/"+got.WorldFingerprint)
+		manifests = append(manifests, got.Workspace.Manifest.SHA256)
+	}
+	if results[0] != results[1] || manifests[0] == "" || manifests[1] == "" ||
+		manifests[0] == manifests[1] {
+		t.Fatalf("same Canonical World failed to distinguish Workspace manifests: results=%v manifests=%v", results, manifests)
+	}
+}
