@@ -11,13 +11,17 @@ import (
 
 // ApplicationViewは、ApplicationのPattern・Package・意味の版を一覧する投影である。
 type ApplicationView struct {
-	SchemaVersion       string                  `json:"schemaVersion"`
-	Application         core.CanonicalID        `json:"application"`
-	SemanticUses        []core.CanonicalID      `json:"semanticUses,omitempty"`
-	Patterns            []ApplicationPatternRef `json:"patterns,omitempty"`
-	Packages            []ApplicationPackageRef `json:"packages,omitempty"`
-	Periods             []ApplicationPeriodRef  `json:"periods,omitempty"`
-	SemanticFingerprint string                  `json:"semanticFingerprint,omitempty"`
+	SchemaVersion string                  `json:"schemaVersion"`
+	Application   core.CanonicalID        `json:"application"`
+	SemanticUses  []core.CanonicalID      `json:"semanticUses,omitempty"`
+	Patterns      []ApplicationPatternRef `json:"patterns,omitempty"`
+	Packages      []ApplicationPackageRef `json:"packages,omitempty"`
+	Periods       []ApplicationPeriodRef  `json:"periods,omitempty"`
+	// StandardBusiness lists the standard business Data (tax, exchange rate,
+	// numbering, holiday) the used semantics declare, with the attributes each
+	// binder reads. It is a reading aid; the roles are checked by validation.
+	StandardBusiness    []StandardBusinessRef `json:"standardBusiness,omitempty"`
+	SemanticFingerprint string                `json:"semanticFingerprint,omitempty"`
 }
 
 // ApplicationPatternRefは、Applicationが持つPatternの種別とIDである。
@@ -42,6 +46,10 @@ type ApplicationPeriodRef struct {
 	// Calendar names the business calendar the period follows. An empty value
 	// means the declaration names none, and a reader must not assume a default.
 	Calendar core.CanonicalID `json:"calendar,omitempty"`
+	// ClosingDay splits every month into two segments, 1..28. Zero means the
+	// period is the whole month, so a reader sees "no closing" as an absence
+	// rather than a default day.
+	ClosingDay int `json:"closingDay,omitempty"`
 }
 
 // BuildApplicationは、ApplicationのPattern・Packageと、使用する意味の版を解決する。
@@ -95,9 +103,11 @@ func BuildApplication(world ir.World, applicationID core.CanonicalID) (Applicati
 				BusinessDate: period.BusinessDate,
 				States:       period.States,
 				Calendar:     period.Calendar,
+				ClosingDay:   period.ClosingDay,
 			})
 		}
 	}
+	view.StandardBusiness = standardBusiness(namespaces)
 	view.SemanticFingerprint = fingerprint
 	return view, nil
 }

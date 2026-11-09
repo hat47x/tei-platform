@@ -1,0 +1,5 @@
+Option A: ship std.def as data (meaning only), have inspect report its path in artifacts.
+          Satisfies "the origin can be traced" without changing worldFingerprint.
+Option B: add a primitive declaration form to the DSL, move the prelude into .tei.
+          Changes every Workspace fingerprint and stored continuation tokens.
+The choice belongs to the owner of #2620.

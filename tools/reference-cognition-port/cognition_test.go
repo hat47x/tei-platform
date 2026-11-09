@@ -3,7 +3,6 @@ package cognitionport
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -140,8 +139,12 @@ func TestUnknownProposalIsPreserved(t *testing.T) {
 }
 
 func TestExternalCommandProposalAndFailure(t *testing.T) {
-	fixture := testdata(t, "proposals", "validation.json")
-	command := fmt.Sprintf("cp %q \"$TEI_COGNITION_OUTPUT\"", fixture)
+	requireExternalCommandHost(t)
+	content, err := os.ReadFile(testdata(t, "proposals", "validation.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := externalOutputCommand(t, "TEI_COGNITION_OUTPUT", content)
 	receipt, err := Propose(context.Background(), testdata(t, "request.json"), testdata(t, "providers", "external-local.json"), command)
 	if err != nil {
 		t.Fatal(err)
@@ -176,7 +179,7 @@ func TestProposalCannotAcceptItself(t *testing.T) {
 	if err := os.WriteFile(path, changed, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	receipt, err := Propose(context.Background(), testdata(t, "request.json"), testdata(t, "providers", "external-local.json"), fmt.Sprintf("cp %q \"$TEI_COGNITION_OUTPUT\"", path))
+	receipt, err := Propose(context.Background(), testdata(t, "request.json"), testdata(t, "providers", "external-local.json"), externalOutputCommand(t, "TEI_COGNITION_OUTPUT", changed))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -186,6 +189,7 @@ func TestProposalCannotAcceptItself(t *testing.T) {
 }
 
 func TestAbsentBasisIsRejected(t *testing.T) {
+	requireExternalCommandHost(t)
 	raw, err := os.ReadFile(testdata(t, "proposals", "validation.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -195,8 +199,11 @@ func TestAbsentBasisIsRejected(t *testing.T) {
 		t.Fatal(err)
 	}
 	proposal.Candidates[0].Basis = []string{"observation:obs-9"}
-	path := writeTempJSON(t, proposal)
-	receipt, err := Propose(context.Background(), testdata(t, "request.json"), testdata(t, "providers", "external-local.json"), fmt.Sprintf("cp %q \"$TEI_COGNITION_OUTPUT\"", path))
+	changed, err := json.Marshal(proposal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	receipt, err := Propose(context.Background(), testdata(t, "request.json"), testdata(t, "providers", "external-local.json"), externalOutputCommand(t, "TEI_COGNITION_OUTPUT", changed))
 	if err != nil {
 		t.Fatal(err)
 	}

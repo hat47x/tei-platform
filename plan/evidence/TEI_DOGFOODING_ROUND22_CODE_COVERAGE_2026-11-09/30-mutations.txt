@@ -1,0 +1,5 @@
+M1 add a NEW code COMMAND_FUTURE_PROBE (rule untouched)
+   -> PASS: the generic rule needs no entrance change (this is the point)
+M2 reintroduce an allow-list that refuses COMMAND_PERIOD_CLOSED
+   -> FAIL: 1 emitted code(s) do not reach the entrance
+restored -> ok (command 0.08s / studiohost 0.25s / cmd/tei 104.5s)
