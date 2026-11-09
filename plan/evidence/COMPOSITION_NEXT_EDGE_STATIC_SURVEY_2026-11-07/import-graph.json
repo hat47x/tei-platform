@@ -1,0 +1,3830 @@
+{
+ "root": "D:\\GIT\\hat47x\\tei-wt-comp-next-20261107",
+ "fileCount": 2876,
+ "targets": [
+  "tei/internal/composition",
+  "tei/internal/operations",
+  "tei/internal/servicehost",
+  "tei/internal/plugin/runtime",
+  "tei/internal/driver",
+  "tei/internal/command"
+ ],
+ "files": [
+  {
+   "path": "cmd/tei-studio/host_generated_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "cmd/tei/cli_inprocess_parity_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "cmd/tei/cli_inspect.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "cmd/tei/cli_model.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "cmd/tei/cli_operations_artifacts.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "cmd/tei/cli_result.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "cmd/tei/cli_trace.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "cmd/tei/cli_trace_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "cmd/tei/cli_validation.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "cmd/tei/cli_validation_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "cmd/tei/cli_view.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": true
+   }
+  },
+  {
+   "path": "cmd/tei/cli_view_difference_text_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": true
+   }
+  },
+  {
+   "path": "cmd/tei/cli_view_failure_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": true
+   }
+  },
+  {
+   "path": "cmd/tei/main.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "cmd/tei/plugin_lock_scope_cli_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "cmd/tei/plugin_lock_scope_runtime_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "cmd/tei/scenario.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "cmd/tei/scenario_browse.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "cmd/tei/scenario_observation.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "cmd/tei/scenario_validation.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "cmd/tei/source_index.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "cmd/tei/source_index_snapshot_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "cmd/tei/validation_output.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "cmd/tei/xtea_example_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": true
+   }
+  },
+  {
+   "path": "examples/process-plugin/main.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "examples/runtime-reattach/main.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/artifact/consistency.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/artifact/surface.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/artifact/workspace_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/command/lifecyclepg/pg.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": true
+   }
+  },
+  {
+   "path": "internal/command/lifecyclepg/pg_process_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": true
+   }
+  },
+  {
+   "path": "internal/command/lifecyclepg/pg_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": true
+   }
+  },
+  {
+   "path": "internal/command/lifecyclesqlite/sqlite.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": true
+   }
+  },
+  {
+   "path": "internal/command/lifecyclesqlite/sqlite_process_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": true
+   }
+  },
+  {
+   "path": "internal/command/lifecyclesqlite/sqlite_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": true
+   }
+  },
+  {
+   "path": "internal/command/period.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/command/period_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/action_surface_handoff_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/application_validations_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/binding_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/bound_write_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/contract_query_execution_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/contract_query_executor_registry_key_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/datasource_alias_ambiguity_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/derived_fresh_query_execution_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/derived_query_execution_authority_fence_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/derived_query_execution_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/final_gate_b_scenario_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/gate_b_ui_less_scenario_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/gate_b_unified_scenario_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/header_detail_contract_query_environment_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/header_detail_contract_query_execution_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/header_detail_contract_query_parameters_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/header_detail_workspace_missing_realization_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/invocation_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/observation_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/query_execution_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/queryruntime/postgres/executor.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/queryruntime/sql/executor.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/reference_contract_query_ambiguity_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/reference_contract_query_environment_provider_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/reference_contract_query_environment_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/reference_contract_query_parameters_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/reference_contract_query_sql_conformance_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/reference_contract_query_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/reference_current_host_service_route_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": true,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/reference_two_application_service_carrier_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/reference_workspace_missing_realization_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/resolver_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/second_application_scenario_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/security_scenario_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/shared_customer_executor_isolation_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/standard_crud_pg_roundtrip_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/standard_crud_sqlite_roundtrip_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/submit_order_gate_scenario_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/submit_order_observation_evidence_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/submit_order_observation_scenario_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/driver/surface_concurrency_connection_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/execution/effects.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/execution/effects_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/execution/period_guard.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/execution/period_guard_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/execution/period_guard_workspace_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/execution/runplan.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/execution/runplan_all_preconditions_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/execution/runplan_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/execution/runplan_workspace_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/hook/command_caller.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": true
+   }
+  },
+  {
+   "path": "internal/hook/command_caller_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": true
+   }
+  },
+  {
+   "path": "internal/operations/dependency_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/periodstate/file.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/periodstate/file_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/plugin/implementation/builtin/adapter.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/plugin/implementation/model_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/plugin/runtime/builtin_registration_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/plugin/runtime/cancellation_preflight_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/plugin/runtime/engine_actual_binary_lock_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/plugin/runtime/engine_lock_receipt_replay_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/plugin/runtime/engine_lock_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/plugin/runtime/engine_replay_boundary_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/plugin/runtime/host_sandbox_cleanup_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/plugin/runtime/host_sandbox_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/plugin/runtime/invocation_authority_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/plugin/runtime/invocation_recovery_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/plugin/runtime/model_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/plugin/runtime/permission_provenance_isolation_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/plugin/runtime/process_args_policy_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/plugin/runtime/process_env_entries_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/plugin/runtime/process_env_host_integration_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/plugin/runtime/process_env_pinned_linux_integration_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/plugin/runtime/process_environment_profile_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/plugin/runtime/process_executable_lookup_unix_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/plugin/runtime/process_execution_duration_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/plugin/runtime/process_host_start_admission_registry_linux_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/plugin/runtime/process_pinned_sandbox_registry_linux_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/plugin/runtime/process_required_identity_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/plugin/runtime/process_response_secrecy_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/plugin/runtime/process_stdio_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/plugin/runtime/profile_consistency_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/plugin/runtime/profile_from_permissions_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/plugin/runtime/sandbox_access_journal_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/plugin/runtime/service_carrier_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/plugin/runtime/service_carrier_two_host_plans_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/security/effectcommit/commandadapter/executor.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": true
+   }
+  },
+  {
+   "path": "internal/security/effectcommit/commandadapter/executor_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": true
+   }
+  },
+  {
+   "path": "internal/security/effectcommit/driver_binding_reference_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/security/effectcommit/postgres/command_lifecycle_integration_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": true
+   }
+  },
+  {
+   "path": "internal/security/effectcommit/postgres/command_operation_identity_integration_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": true
+   }
+  },
+  {
+   "path": "internal/security/effectcommit/postgres/commandadapter_integration_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": true
+   }
+  },
+  {
+   "path": "internal/security/legacyauthorization/commandbinding/closure_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": true
+   }
+  },
+  {
+   "path": "internal/security/legacyauthorization/commandbinding/commandauthorizer.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": true
+   }
+  },
+  {
+   "path": "internal/security/legacyauthorization/commandbinding/commandauthorizer_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": true
+   }
+  },
+  {
+   "path": "internal/servicehost/application_route_source.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/servicehost/application_route_source_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/servicehost/service_carrier.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/servicehost/service_carrier_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/studiohost/command.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": true
+   }
+  },
+  {
+   "path": "internal/studiohost/command_lifecycle_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": true
+   }
+  },
+  {
+   "path": "internal/studiohost/readonly.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": true
+   }
+  },
+  {
+   "path": "internal/studiohost/readonly_services_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "internal/workspace/plugin_native_implementation_reference_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/application-composition/e20_dual_consumer_action_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/application-composition/e22_native_application_candidate_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/application-composition/e23_selected_upstream_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/application-composition/e24_native_input_contract_boundary_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/application-composition/e26_composition_cost_baseline_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/application-composition/e33_project_plugin_wiring_boundary_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/application-composition/e37_real_project_scope_choice_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/composition-evidence-handoff/current.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/composition-evidence-handoff/current_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/composition-evidence-handoff/handoff.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/composition-evidence-handoff/handoff_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/composition-io-mapping/mapping.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/composition-io-mapping/mapping_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/composition-io-mapping/samples.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/composition-io-mapping/selected_semantic_view.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/composition-io-mapping/selected_semantic_view_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/composition-io-mapping/semantic_ref_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/driver-scenarios/web_projection.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/driver-scenarios/web_projection_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/driver-scenarios/web_regeneration.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/interface-adapter/adapter.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": true
+   }
+  },
+  {
+   "path": "reference/interface-adapter/adapter_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": true
+   }
+  },
+  {
+   "path": "reference/local-cpu-reuse/go_reference_runtime_registry_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/product-contracts/flow_order_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/semantic-composition-preflight/preflight.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/semantic-composition-preflight/preflight_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/semantic-composition-preflight/publication.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/web-api-contract/canonical.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/web-api-contract/canonical_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/web-api-contract/command_canonical.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/web-api-contract/postgres_scoped_reference.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/web-api-contract/postgres_scoped_reference_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/web-api-contract/scoped_driver_bridge.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/web-api-contract/scoped_driver_bridge_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/web-api-contract/scoped_postgres_reference.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/web-api-contract/scoped_provider_selection_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/web-composition/go-host/canonical_authorization.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/web-composition/go-host/canonical_authorization_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/web-composition/go-host/canonical_generation_service_handoff_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": true,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/web-composition/go-host/canonical_quote_authorization_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/web-composition/go-host/selected_action.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/web-composition/go-host/selected_action_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/web-composition/go-host/service_carrier_handoff_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "reference/web-composition/go-host/two_application_host_service_carrier_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": true,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-build-artifact-store/semantic_distribution_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-build-execution-binding/main.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-build-execution-binding/main_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-business-procedure-check/candidate_local_proof_packet_r2_pressure_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-business-procedure-check/observation_cross_view_pressure_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-business-procedure-check/physical_world_observation_boundary_pressure_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-business-procedure-check/second_corpus_handoff_inference_pressure_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-business-procedure-check/second_realistic_reference_pressure_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-capability-transport/authorized_quote_preflight_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-capability-transport/dispatch_plan_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-capability-transport/main.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-capability-transport/main_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-capability-transport/order_quote_process_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-capability-transport/quote_go_js_vectors_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-capability-transport/quote_semantic_vectors_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-capability-transport/quote_wasip1_vectors_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-capability-transport/runtime_authorized_quote_process_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-cli-trace-benchmark/golden_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-cli-trace-benchmark/main.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-composition-process-bridge/artifact_rotation_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-composition-process-bridge/bridge_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-composition-process-bridge/canonical_process_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-composition-process-bridge/contract_shape_gate_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-composition-process-bridge/host_trust_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-composition-process-bridge/multi_plugin_artifact_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-composition-process-bridge/neutral_multiruntime_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-composition-process-bridge/pinned_generation_linux_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-composition-process-bridge/pinned_launch_linux_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-composition-process-bridge/pinned_runtime_linux_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-composition-process-bridge/pinned_signature_linux_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-composition-process-bridge/real_artifact_switch_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-composition-process-bridge/web_bridge_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-critical-lowering/workspace_trace_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-data-first-persistence/main.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-data-first-persistence/main_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-data-first-persistence/period_guard_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-deployment-attempt/main.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-durable-run-golden/main.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-external-adoption-authority/stage3.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-first-web-target/command_scenario.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-first-web-target/customer_lookup_scenario.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-first-web-target/main.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-first-web-target/order_browse_postgres.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-first-web-target/practical_b_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-first-web-target/projection.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-first-web-target/read_scenario.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-first-web-target/reference_contract_query_fixture.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-first-web-target/reference_contract_query_fixture_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-first-web-target/reference_order_contract_query_fixture.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-first-web-target/repair_only_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-first-web-target/session_command_route.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-first-web-target/session_composition_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-first-web-target/shared_semantic_projection.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-first-web-target/shared_semantic_projection_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-first-web-target/sharedprojection/projection.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-first-web-target/sharedprojection/projection_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-frozen-manifest-target/real_target_closure_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-order-assist-provider-offline/realization.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-order-data-realization/register.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-order-data-realization/steps_rw.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-order-entry-persistence/main.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-order-entry-persistence/main_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-order-entry-persistence/plan.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-order-rollout-host-continuity/host.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-order-rollout-host-continuity/plugin.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-order-rollout-host-continuity/postgres_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-order-rollout-host-continuity/runtime.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-order-rollout-host-continuity/stage1.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-order-rollout-host-continuity/stage5.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-order-rollout-host-continuity/unit_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-plugin-build-supply/stage3.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-plugin-build-supply/stage4.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-plugin-capability-contract/composition_handoff.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-plugin-capability-contract/composition_handoff_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-plugin-capability-contract/contract_query_invocation.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-plugin-capability-contract/host_current_acceptance_reader.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-plugin-capability-contract/host_current_acceptance_reader_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-plugin-capability-contract/invocation_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-plugin-capability-contract/order_quote_changed_authorization_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-plugin-capability-contract/order_quote_runtime_chain_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-plugin-capability-contract/quote_process_contract_bridge_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-plugin-capability-contract/quote_service_host_e2e_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-plugin-capability-contract/runtime_authority_bridge.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-plugin-capability-contract/runtime_authority_bridge_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-plugin-self-build/exact_transform_engine.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-plugin-self-build/exact_transform_engine_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-plugin-self-build/main.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-plugin-self-build/runtime_engine_identity.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-plugin-self-build/runtime_engine_identity_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-plugin-self-build/stage2_engine_acceptance.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-plugin-self-build/stage2_engine_acceptance_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-plugin-self-build/transform_bootstrap.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-plugin-self-build/transform_bootstrap_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-plugin-self-build/transform_package_plan.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-plugin-self-build/transform_package_plan_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-plugin-self-build/wasm_host_acceptance_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-postgres-header-detail-runtime/main.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-process-plugin/main.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-project-advice-lit/contract_bridge.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-project-advice-lit/contract_bridge_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-project-advice-lit/main_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-runtime-capability-identity/current_host_environment.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-runtime-capability-identity/main.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-runtime-capability-identity/main_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-runtime-capability-identity/project_advice_authority_start_gap_linux_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-runtime-capability-identity/project_advice_built_pinned_linux_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-runtime-capability-identity/project_advice_current_host_environment_linux_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-runtime-capability-identity/project_advice_guarded_host_admission_linux_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-runtime-capability-identity/project_advice_independent_binary_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-runtime-capability-identity/project_advice_real_process_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-runtime-capability-identity/project_advice_signed_current_host_linux_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-runtime-capability-identity/project_advice_signed_host_start_linux_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-runtime-capability-identity/project_advice_start_only_host_linux_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-runtime-decisions/decisions_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-shared-acceptance/application_validation_use_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-shared-acceptance/practical_validation_loop_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-shared-acceptance/rmt_synthetic_read_only_scenario_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-shared-acceptance/same_candidate_validation_use_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-standard-function-candidates/explicit.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-studio-composition-evidence-7/host_boundary_integration_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-studio-composition-evidence-7/wails_multi_service_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-studio-host-qualification/cli_operation_parity_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-studio-host-qualification/readonly_baseline_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-studio-host-qualification/source_index_stage_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-studio-host-qualification/studiohost_adversarial_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-studio-host-qualification/studiohost_parity_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-studio-host-qualification/studiohost_source_index_failure_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": true,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-studio-static-composition/main.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-sui-action-boundary/actionboundary/canonical_gate.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-sui-action-boundary/actionboundary/canonical_gate_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-sui-action-boundary/actionboundary/integration_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": true,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/reference-transform-runtime-engine-build/main.go",
+   "isTest": false,
+   "has": {
+    "tei/internal/composition": false,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": true,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  },
+  {
+   "path": "tools/repository-architecture-check/dependency_test.go",
+   "isTest": true,
+   "has": {
+    "tei/internal/composition": true,
+    "tei/internal/operations": false,
+    "tei/internal/servicehost": false,
+    "tei/internal/plugin/runtime": false,
+    "tei/internal/driver": false,
+    "tei/internal/command": false
+   }
+  }
+ ]
+}

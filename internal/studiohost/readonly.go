@@ -8,8 +8,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"tei/internal/command"
 	"tei/internal/operations"
 	"tei/internal/sourceindex"
+	"tei/internal/validation"
 )
 
 type WorkspaceRef struct {
@@ -30,9 +32,13 @@ type ListResponse struct {
 	Value []WorkspaceRef `json:"value"`
 }
 type ValidationResponse struct {
-	OK      bool                            `json:"ok"`
-	Value   *operations.WorkspaceValidation `json:"value,omitempty"`
-	Failure *Failure                        `json:"failure,omitempty"`
+	OK    bool                            `json:"ok"`
+	Value *operations.WorkspaceValidation `json:"value,omitempty"`
+	// Proposals are candidate corrections, one per diagnostic. They carry the
+	// world fingerprint the diagnostic was read from and are never accepted
+	// automatically: accepting one is a separate decision.
+	Proposals []validation.Proposal `json:"proposals,omitempty"`
+	Failure   *Failure              `json:"failure,omitempty"`
 }
 type CatalogResponse struct {
 	OK      bool                     `json:"ok"`
@@ -47,17 +53,24 @@ type InspectionResponse struct {
 
 // ReadOnly has no per-browser or selected-workspace state. The host supplies
 // and fixes the workspace allowlist on startup; browser calls supply IDs only.
-// CatalogService and ValidationService expose the generated services' concrete,
-// typed operations. They do not accept renderer-controlled filesystem paths.
+// The services expose the generated operations through concrete, typed
+// methods. They do not accept renderer-controlled filesystem paths.
 type CatalogService interface {
 	Catalog(namespace string) (operations.ModelCatalog, error)
 }
 type ValidationService interface {
 	Validate() (operations.WorkspaceValidation, error)
 }
+
+// InspectionService is a host-selected, typed read-only service. Its presence
+// does not prove Plugin resolution, invocation provenance, or current authority.
+type InspectionService interface {
+	Inspect(subject sourceindex.Subject) (operations.SubjectInspection, error)
+}
 type RootServices struct {
 	Catalog    CatalogService
 	Validation ValidationService
+	Inspection InspectionService
 }
 
 // ServiceFactory is called only after the host has resolved an allowlisted ID.
@@ -70,6 +83,12 @@ type ReadOnly struct {
 	refs         []WorkspaceRef
 	services     ServiceFactory
 	xeadObserver XeadObservationObserver
+
+	// CommandLifecycle is composed by the host. When set, the
+	// ExecuteCommandWithLifecycle path records dispatch/observe/unknown stages
+	// in this store; the other ExecuteCommand methods keep their in-memory
+	// behaviour.
+	CommandLifecycle command.StageLifecycle
 }
 
 func NewReadOnly(paths []string) (*ReadOnly, error) {
@@ -173,7 +192,22 @@ func (h *ReadOnly) ValidateWorkspace(id string) ValidationResponse {
 	if err != nil {
 		return ValidationResponse{Failure: operationFailure(err)}
 	}
-	return ValidationResponse{OK: true, Value: &value}
+	// Pair the diagnostics with version-bound proposals so the author surface
+	// shows the same unanswered corrections the CLI reports.
+	var proposals []validation.Proposal
+	if value.WorldFingerprint != "" {
+		diagnostics := make([]validation.Diagnostic, 0, len(value.Diagnostics))
+		for _, projected := range value.Diagnostics {
+			diagnostics = append(diagnostics, projected.Diagnostic)
+		}
+		if value.Direct != nil {
+			diagnostics = append(diagnostics, validation.Diagnostic{
+				Code: value.Direct.Code, Severity: value.Direct.Severity, Message: value.Direct.Message,
+			})
+		}
+		proposals = validation.Propose(diagnostics, value.WorldFingerprint)
+	}
+	return ValidationResponse{OK: true, Value: &value, Proposals: proposals}
 }
 
 func (h *ReadOnly) CatalogWorkspace(id, namespace string) CatalogResponse {
@@ -206,11 +240,57 @@ func (h *ReadOnly) InspectSubject(id, kind, subjectID string) InspectionResponse
 	if denied != nil {
 		return InspectionResponse{Failure: denied}
 	}
-	value, err := operations.InspectSubject(root, sourceindex.Subject{Kind: kind, ID: subjectID})
+	subject := sourceindex.Subject{Kind: kind, ID: subjectID}
+	var value operations.SubjectInspection
+	var err error
+	if h.services == nil {
+		// Preserve the existing PoC path when no Host factory is configured.
+		// This path is not evidence of a selected Plugin Provider.
+		value, err = operations.InspectSubject(root, subject)
+	} else {
+		var services RootServices
+		services, err = h.services(root)
+		if err == nil && services.Inspection == nil {
+			// Do not silently fall back to the built-in Inspector when a
+			// Host-selected provider is absent or its binding is incomplete.
+			err = errors.New("inspection service is missing")
+		}
+		if err == nil {
+			value, err = services.Inspection.Inspect(subject)
+		}
+		if err == nil {
+			err = operations.ValidateInspectionProjection(subject, value)
+		}
+	}
 	if err != nil {
+		if h.services != nil {
+			// Provider-supplied typed errors may embed private roots, tokens,
+			// or a forged code. Treat both fields as untrusted at this boundary.
+			return InspectionResponse{Failure: selectedInspectionFailure(err)}
+		}
 		return InspectionResponse{Failure: operationFailure(err)}
 	}
 	return InspectionResponse{OK: true, Value: &value}
+}
+
+// selectedInspectionFailure preserves only the closed set of public Inspector
+// error codes. A Host-selected Provider must not set arbitrary client-visible
+// codes or include its private diagnostics in a typed InspectionError message.
+// Direct built-in Inspector behavior is intentionally kept separate.
+func selectedInspectionFailure(err error) *Failure {
+	var inspection *operations.InspectionError
+	if errors.As(err, &inspection) {
+		switch inspection.Code {
+		case operations.InspectionInvalidSubject,
+			operations.InspectionUnsupportedKind,
+			operations.InspectionNotFound,
+			operations.InspectionAmbiguous:
+			return &Failure{Code: inspection.Code, Message: "inspector could not resolve the requested subject"}
+		default:
+			return &Failure{Code: "OPERATION_FAILED", Message: "inspection service failed"}
+		}
+	}
+	return operationFailure(err)
 }
 
 func operationFailure(err error) *Failure {

@@ -1,0 +1,40 @@
+name: TEI Studio async response lanes
+
+on:
+  push:
+    paths:
+      - 'cmd/tei-studio/assets/main.js'
+      - 'cmd/tei-studio/assets/preview-scope.mjs'
+      - 'cmd/tei-studio/test/main-async-scope.test.mjs'
+      - '.github/workflows/tei-studio-async-lanes-ci.yml'
+  pull_request:
+    paths:
+      - 'cmd/tei-studio/assets/main.js'
+      - 'cmd/tei-studio/assets/preview-scope.mjs'
+      - 'cmd/tei-studio/test/main-async-scope.test.mjs'
+      - '.github/workflows/tei-studio-async-lanes-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# 同じPRの古い実行だけを取り消し、mainへのpushは取り消さない（#3682）。
+concurrency:
+  group: tei-tei-studio-async-lanes-ci-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  async-lanes:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22.16.0'
+      - name: Test real Studio bootstrap with deferred Host responses
+        run: |
+          node --test cmd/tei-studio/test/preview-scope.test.mjs cmd/tei-studio/test/main-async-scope.test.mjs

@@ -1,0 +1,16 @@
+catalog scope: selected-read-only-commands
+catalog entries: 19
+  operations   in catalog: False
+  artifacts    in catalog: False
+  periods      in catalog: False
+  view         in catalog: True
+
+operations success: top-level keys = ['application', 'authorityLimits', 'conflicts', 'effect', 'gaps', 'modelRevision', 'operations', 'rule', 'schemaVersion', 'summary', 'worldFingerprint']
+  has ok: False
+  has result: False
+  schemaVersion: tei.operations.operation-surface/v0
+
+operations failure: stdout bytes = 0
+operations failure: stdout parses as JSON = no
+operations failure: first stderr line = resolve Workspace root: lstat /mnt/d/GIT/hat47x/tei-wt-pub-20261107/plan/evidence/OPERATIONS_COMMAND_PUBLICATION_GAP_2026-11-07/raw/does-not-exist: no such file or directory
+operations failure: stderr lines = 3

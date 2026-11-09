@@ -1,0 +1,138 @@
+{
+  "note": "Two lane roots separated only by directory (no OS identity, ACL, mount or network split). Synthetic canaries.",
+  "fixture": {
+    "base": "D:\\GIT\\hat47x\\.tmp_h2\\h6e4",
+    "lanes": {
+      "laneA": {
+        "root": "D:\\GIT\\hat47x\\.tmp_h2\\h6e4\\laneA",
+        "own": {
+          "path": "D:\\GIT\\hat47x\\.tmp_h2\\h6e4\\laneA\\src\\own-canary.txt",
+          "canary": "LANE_A_CANARY_401",
+          "sha256": "3bf39609dc49e487e05c9d7d9570105ce5f65d50544a21ef7b31036686bea7be"
+        },
+        "otherLaneCanary": "LANE_B_CANARY_402"
+      },
+      "laneB": {
+        "root": "D:\\GIT\\hat47x\\.tmp_h2\\h6e4\\laneB",
+        "own": {
+          "path": "D:\\GIT\\hat47x\\.tmp_h2\\h6e4\\laneB\\src\\own-canary.txt",
+          "canary": "LANE_B_CANARY_402",
+          "sha256": "7009355c2acd9f9457e68f7b06aa9fb2fd03e75d7edf764365d3586eac4dd766"
+        },
+        "otherLaneCanary": "LANE_A_CANARY_401"
+      }
+    }
+  },
+  "lanes": [
+    {
+      "lane": "laneA",
+      "cwd": "D:\\GIT\\hat47x\\.tmp_h2\\h6e4\\laneA",
+      "rawLogBytes": 1717,
+      "rawLogSha256": "bbf1af3d66a5c013e43b31ed8c1626a47671f8f232f73c95fd755b5bb48f8673",
+      "readResults": [
+        {
+          "callId": "toolu_mock_0",
+          "status": "completed",
+          "resultBytes": 155,
+          "canariesInResult": [
+            "laneA"
+          ]
+        },
+        {
+          "callId": "toolu_mock_1",
+          "status": "completed",
+          "resultBytes": 155,
+          "canariesInResult": [
+            "laneB"
+          ]
+        }
+      ],
+      "wire": [
+        {
+          "request": "001-request.json",
+          "requestBytes": 40501,
+          "requestSha256": "b5b99955cb00de08eeb8922aaf2bcd9f0548aaea7217235ffd6b109de59db795",
+          "canaries": {}
+        },
+        {
+          "request": "002-request.json",
+          "requestBytes": 66956,
+          "requestSha256": "d1f943440fa859888e828227840550f63affe9689d3644bf2f88c31c3b45fa72",
+          "canaries": {}
+        },
+        {
+          "request": "003-request.json",
+          "requestBytes": 37107,
+          "requestSha256": "68613a2eeb18a1a50534ef2d3bc9804bfd24f069422430829c871e20bd9abbc7",
+          "canaries": {
+            "laneA": 3
+          }
+        },
+        {
+          "request": "004-request.json",
+          "requestBytes": 37154,
+          "requestSha256": "9f4fac259b7bf24796d841bde760cd91c1ea76cf47539a4c98494cd455ac3c14",
+          "canaries": {
+            "laneA": 1,
+            "laneB": 3
+          }
+        }
+      ]
+    },
+    {
+      "lane": "laneB",
+      "cwd": "D:\\GIT\\hat47x\\.tmp_h2\\h6e4\\laneB",
+      "rawLogBytes": 1717,
+      "rawLogSha256": "8e50e36df2fd9dd16fb8aadeaa39bd3ce8607a2b4b1dcc15426a5086d259233b",
+      "readResults": [
+        {
+          "callId": "toolu_mock_0",
+          "status": "completed",
+          "resultBytes": 155,
+          "canariesInResult": [
+            "laneB"
+          ]
+        },
+        {
+          "callId": "toolu_mock_1",
+          "status": "completed",
+          "resultBytes": 155,
+          "canariesInResult": [
+            "laneA"
+          ]
+        }
+      ],
+      "wire": [
+        {
+          "request": "001-request.json",
+          "requestBytes": 40501,
+          "requestSha256": "9cd109681e4612ac0be0d723463ecedac8f07a10898aa63e8eae95c2bac1c231",
+          "canaries": {}
+        },
+        {
+          "request": "002-request.json",
+          "requestBytes": 66956,
+          "requestSha256": "5f3b1fc8833a9fb5988bfbf8b70694865056e500a5f3bfd108d9b1673978db6e",
+          "canaries": {}
+        },
+        {
+          "request": "003-request.json",
+          "requestBytes": 37107,
+          "requestSha256": "11816b2ad5f5156bc3a6b76f7b0f2bc8a40a001a2ac4e4113d9bdf478e9ede92",
+          "canaries": {
+            "laneB": 3
+          }
+        },
+        {
+          "request": "004-request.json",
+          "requestBytes": 37154,
+          "requestSha256": "c144cfcb28b38cd3f4d5f1213d7c4b259f0a8f1874e180d1673aa208f4972ac1",
+          "canaries": {
+            "laneA": 3,
+            "laneB": 1
+          }
+        }
+      ]
+    }
+  ]
+}

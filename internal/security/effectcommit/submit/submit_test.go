@@ -328,3 +328,106 @@ func TestImportGuard(t *testing.T) {
 		t.Fatal("no non-test file checked")
 	}
 }
+
+func TestValidateIntentUnsetKeepsBehaviour(t *testing.T) {
+	r := &fakeRunner{execResult: effectcommit.Result{Status: effectcommit.StatusCommitted}}
+	out, err := Caller{Runner: r, Spec: spec}.Execute(context.Background(), grant(), Intent{OperationID: "op/1", Payload: []byte("x")})
+	if err != nil || out.Disposition != Committed || r.executes != 1 {
+		t.Fatalf("out=%+v err=%v executes=%d", out, err, r.executes)
+	}
+}
+
+func TestValidateIntentRejectionNeverReachesRunnerAndLeaksNothing(t *testing.T) {
+	const secret = "secret-payload-body"
+	var seen Intent
+	sp := spec
+	sp.ValidateIntent = func(in Intent) error {
+		seen = in
+		in.Payload[0] = 'X' // a hook must not be able to alter the real payload
+		return errors.New("bad " + string(in.Payload))
+	}
+	r := &fakeRunner{}
+	in := Intent{OperationID: "op/1", Payload: []byte(secret)}
+	c := Caller{Runner: r, Spec: sp}
+
+	out, err := c.Execute(context.Background(), grant(), in)
+	if !errors.Is(err, ErrIntentRejected) || out.Disposition != NotCommitted || out.OperationID != "op/1" {
+		t.Fatalf("execute out=%+v err=%v", out, err)
+	}
+	out, err = c.Lookup(context.Background(), grant(), in)
+	if !errors.Is(err, ErrIntentRejected) || out.Disposition != NotCommitted {
+		t.Fatalf("lookup out=%+v err=%v", out, err)
+	}
+	if r.executes != 0 || r.lookups != 0 {
+		t.Fatalf("Runner reached: %d/%d", r.executes, r.lookups)
+	}
+	if string(in.Payload) != secret || string(seen.Payload) == "" {
+		t.Fatal("caller payload was altered")
+	}
+	for _, s := range []string{err.Error(), fmt.Sprintf("%+v", out)} {
+		if strings.Contains(s, "secret") || strings.Contains(s, "bad") {
+			t.Fatalf("leak: %s", s)
+		}
+	}
+	if _, err := RequestFromGrant(sp, grant(), in); !errors.Is(err, ErrIntentRejected) {
+		t.Fatalf("RequestFromGrant err=%v", err)
+	}
+}
+
+func TestValidateIntentAcceptingHookRunsRunner(t *testing.T) {
+	sp := spec
+	sp.ValidateIntent = func(Intent) error { return nil }
+	r := &fakeRunner{execResult: effectcommit.Result{Status: effectcommit.StatusDenied}}
+	out, err := Caller{Runner: r, Spec: sp}.Execute(context.Background(), grant(), Intent{OperationID: "op/1"})
+	if err != nil || out.Disposition != NotCommitted || out.Status != effectcommit.StatusDenied || r.executes != 1 {
+		t.Fatalf("out=%+v err=%v executes=%d", out, err, r.executes)
+	}
+}
+
+func TestEmptyIDsStillWinOverHook(t *testing.T) {
+	sp := spec
+	sp.ValidateIntent = func(Intent) error { return nil }
+	if _, err := RequestFromGrant(sp, grant(), Intent{}); !errors.Is(err, ErrInvalidIntent) {
+		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestValidatedBytesAreTheExecutedBytes(t *testing.T) {
+	sp := spec
+	sp.ValidateIntent = func(in Intent) error {
+		in.Payload[0] = 'V' // the hook's view is what must execute
+		return nil
+	}
+	r := &fakeRunner{execResult: effectcommit.Result{Status: effectcommit.StatusCommitted}}
+	orig := []byte("abc")
+	if _, err := (Caller{Runner: r, Spec: sp}).Execute(context.Background(), grant(), Intent{OperationID: "op/1", Payload: orig}); err != nil {
+		t.Fatal(err)
+	}
+	if string(r.lastReq.Payload) != "Vbc" {
+		t.Fatalf("executed %q, checked bytes were %q", r.lastReq.Payload, "Vbc")
+	}
+	if string(orig) != "abc" {
+		t.Fatalf("caller slice altered: %q", orig)
+	}
+}
+
+func TestValidateIntentPanicIsRejection(t *testing.T) {
+	sp := spec
+	sp.ValidateIntent = func(in Intent) error { panic("boom " + string(in.Payload)) }
+	r := &fakeRunner{}
+	c := Caller{Runner: r, Spec: sp}
+	in := Intent{OperationID: "op/1", Payload: []byte("secret-payload")}
+	out, err := c.Execute(context.Background(), grant(), in)
+	if !errors.Is(err, ErrIntentRejected) || out.Disposition != NotCommitted {
+		t.Fatalf("out=%+v err=%v", out, err)
+	}
+	if _, err := c.Lookup(context.Background(), grant(), in); !errors.Is(err, ErrIntentRejected) {
+		t.Fatalf("lookup err=%v", err)
+	}
+	if r.executes != 0 || r.lookups != 0 {
+		t.Fatalf("Runner reached")
+	}
+	if s := fmt.Sprintf("%v %+v", err, out); strings.Contains(s, "boom") || strings.Contains(s, "secret") {
+		t.Fatalf("leak: %s", s)
+	}
+}

@@ -1,0 +1,7 @@
+== non-test callers of routing.RouteCommand(s) ==
+internal/deployment/routing/executor.go:20:func RouteCommand(env environment.Environment, cmd executor.Command) (RoutedCommand, error) {
+internal/deployment/routing/executor.go:70:func RouteCommands(env environment.Environment, cmds []executor.Command) ([]RoutedCommand, error) {
+internal/deployment/routing/executor.go:73:		r, err := RouteCommand(env, cmd)
+internal/deployment/routing/executor.go:91:	routed, err := RouteCommand(env, cmd)
+internal/deployment/routing/executor.go:126:	routed, err := RouteCommand(env, cmd)
+cmd/tei/main.go:984:		routed, err := deploymentrouting.RouteCommands(env, deploymentdurable.ReadyCommands(run))
