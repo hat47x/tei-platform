@@ -402,6 +402,7 @@ WP10 統合と引継ぎ
 | 能力入力の結び付けの型検査 | 実装 | 付録C.5、`internal/validation`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_BINDING_TYPE_CHECK_2026-11.md) |
 | 能力入力の結び付けのData対応 | 実装 | 付録C.5、`internal/validation`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_BINDING_DATA_MATCH_2026-11.md) |
 | 位相ごとのフック実装の供給（`Runner.ByPhase`） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_PHASE_IMPLEMENTATION_2026-11.md) |
+| 複数の結末を持つ能力の未確定の報告 | 実装（参照） | 付録C.5、`internal/command`、[確認記録](../evidence/XTEA_LOWCODE_MULTI_OUTCOME_2026-11.md) |
 | フックが使う能力の`command` Pattern不在の拒否 | 実装 | 付録C.5、`internal/validation` |
 | フックの実行境界（reject/warn） | 実装 | 付録C.5 |
 | 未使用属性の表示 | 実装 | 付録C.5 |

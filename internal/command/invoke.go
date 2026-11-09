@@ -24,6 +24,13 @@ type Request struct {
 type Result struct {
 	Outcome *semantic.Outcome    `json:"outcome,omitempty"`
 	Effect  *semantic.DataEffect `json:"effect,omitempty"`
+	// OutcomeUndetermined states why the executor did not return an outcome
+	// although the capability declares some. A capability may declare several
+	// outcomes, and no declared rule selects one of them; an executor that
+	// picked one anyway would report a decision nobody made. Nil Outcome with
+	// this set means "not determined", which is different from "the capability
+	// declares no outcome".
+	OutcomeUndetermined string `json:"outcomeUndetermined,omitempty"`
 	// AuthorizationMode names the authorization decision that let this
 	// execution run. It is set by the Invoker, never by an Executor.
 	AuthorizationMode AuthorizationMode `json:"authorizationMode,omitempty"`
@@ -341,6 +348,7 @@ func (i Invoker) execute(ctx context.Context, request Request, plan applicationv
 			Request:               request,
 			Reported:              result.Effect,
 			Outcome:               result.Outcome,
+			OutcomeUndetermined:   result.OutcomeUndetermined,
 			Applied:               result.Applied,
 			Differences:           differences,
 			ReportedEffectMissing: plan.Effect != nil && result.Effect == nil,
