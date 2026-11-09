@@ -795,3 +795,36 @@ StudioでUI要素を選択しAI/DSH系Harnessへ細かく指示する設計は�
 初期M0の採用判定は、新PRの**exact-head**に対して`gofmt`、`go test`、実`reference/workspace`のReader→型付きM0 Linkの2本一致、M0-N01/N02の拒否対照、Repository Healthの結果を照合し、Ownerの意味受理と製品全体受入を別にする。旧Branchのテスト成功やSHA一致は再検証の代替ではない。#3492のRead-only Source入場はmain統合済みだが、標準M0/三視点Graph・CRUDの**本番表示・編集・実Provider read・Studio/SHO実受領**の受入はまだ行っていない。
 
 実装順：M0 Producerを最小read-onlyに維持 → 同じSourceと型付きLinkを使うData三点のHeadless Diagram Consumer → Function×Data CRUD Source Cell → 実Provider Result Slice → Studio/SHOの別Consumer。**見えている集合、取得済み集合、公開許可された集合、Ownerが受理した集合、実行した集合は互いに同一視しない**。SUIのCanvas/島やKON DataspaceのOntology表示も、この情報区分を踏まえて設計し、第二Source/Graph/Authorityを作らない。
+
+## 32. Source-only RevisionとH0/H1/H2の次段検収（2026-11-09横断更新）
+
+### 32.1 M0のTopologyは変更されなくてもSourceの現在資格は変わる
+
+新Go局所テスト `TestMapWorldSourceOnlyRevisionMustNotBeConfusedWithSemanticTopology` は、**同じ宣言World**に対しSource Indexの参照元Pathの移動、Artifact Byteの変更、A→B→Aの復帰を与える。既存`sourceindex.NewArtifact`／`workspaceProjectionFingerprints`／`CatalogWorld`／`MapWorld`を使用し、新Cache/Revision Engineを追加しない。
+
+| Case | M0の観測 | 引き継ぐべき判定 |
+| --- | --- | --- |
+| M0-N05a Path Move | Link topology、World Fingerprintは同じ。Source Index Fingerprint／Model Revisionは変化 | Display Nodeに変化がなくてもSource Locator・Source-origin Evidence/編集資格の再検証が必要 |
+| M0-N05b Raw Byte Change | 同じPath・同じWorldでもArtifact fingerprintが変わり、Source Index Fingerprint／Model Revisionが変化 | World同一性や描画Cacheの一致を現在のSource Span・Host Grantの証明に転用しない |
+| M0-N05c A→B→A | Aと同じ現在Byte/Pathへ戻れば、現在のGraph/Index/Model RevisionはAに一致し得る | **中間Bがなかったことは証明できない**。履歴・実Effect・Owner受理は別Evidenceが必要 |
+
+これらは`Source Index`の**合成Artifactと宣言World**を使う限定試験であり、OS実Fileの移動・中間BのAudit保存、同一Load原子性、Source Write/CAS、実Provider Importの`same-load`証拠を試験しない。以前の§28・§29の**実Workspace Byte/偽Subject負例**と併せても、全部のRequired Source closure/Meaning Acceptanceへ自動昇格させない。
+
+### 32.2 横断計画の優先順位を製品の利用価値へ戻す
+
+[横断受入Draft #3535](https://github.com/hat47x/tei-platform/pull/3535)と、[Studio AI性能計画main #3863](https://github.com/hat47x/tei-platform/pull/3863)の成熟した順序を、このGraph/Modelerレーンで参照する。全体受入をM0/Diagramの完成待ちにしない。
+
+| 既存OwnerのP0 | M0/三視点側の役割 | 未実証のまま残すもの |
+| --- | --- | --- |
+| **D1/S2-product** #1251: 正式Profileで選択されたProviderが通常CLI/Studio経路で実際に呼ばれる | Map上は`declared/selected/resolved`をナビできるようにする。実Plugin CallはExecution/Host側から観測 | 同一Go関数・バイナリの一致だけでProvider実差替え／現在Principal/Grant／BOMを認定しない |
+| **R0実Read** #2586: Function→Query→実DB Provider→SQL/Rowset→明示Mapping→Data Context→Consumer Receiptを同一Attemptで取得 | Function→Data/RelationとQueryのSource定位、`CRUD R`宣言とObserved Readの別列 | [隔離SQL Fixture Draft #3862](https://github.com/hat47x/tei-platform/pull/3862)の3/2/0 Expectedはまだ実DBクエリ実行ではない |
+| **G1/G3現在地** [Draft #3865](https://github.com/hat47x/tei-platform/pull/3865) | M0 `Subject Kind/ID` とCatalog Parent/Link・World/Index Revisionを共有。Graphが不完全でも親経路と近傍の欠落理由を提示 | CLI/MCP locateが存在してもG2/G4〜G7全体図・往復ナビ・Studio/E2Eは未資格 |
+| **AI選択** main #3863 | 選択UI Occurrence→Qualified Subject/Source/Current Disclosureの**必要なフィールド**を提示。H0決定論的検証／H1外部Harness／H2モデルProvider切替を同一Task/Expectedで比較する | 外部DSHへの送出・実OS隔離・費用/利用規約・Owner受理・実変更はNOT RUN |
+
+**停止線**：read-only Map/Locateは日常利用者に役立つ最初の全体案内であって、正式Provider・実Readを妨げるP0新Gateではない。ユーザーがUIで細かく選んだ要素にAIが応答する際、選択文字列だけからSource/Grantを推測しない。既存Operationが返す範囲だけを明示的に渡し、AI Proposal→Source Revision再検査→共有Acceptance→Authorized Apply→Receipt/Consumer受領を**別観測**する。定額生成AI契約による自動API利用許可・企業内の情報持出し可能性を推定しない。
+
+### 32.3 今回の変更の到達点
+
+**実コード変更**はM0のSource-only Revisionに対する局所Go試験1件と本設計追補。新CLI/MCPコマンド・正式Studio Renderer・SHO Writer・Graph Patch Adapter・Cache Engine・専用Harness/Hostは追加しない。最小のread-only全体案内から、実Function→Provider→Data Contextの証拠と照合できる状態へ段階化する。旧#3518はclosed/unmerged、採用検討対象は現在の[Draft #3866](https://github.com/hat47x/tei-platform/pull/3866)のみである。
+
+**CI判断**はこの新HEADの実Runで行う。`ModelRevision`・`World Fingerprint`・`Source Index Fingerprint`の用途を記述したことは、Productの全キャッシュ失効やHistory Auditの実装達成を意味しない。
