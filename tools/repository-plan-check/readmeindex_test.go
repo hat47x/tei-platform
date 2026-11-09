@@ -7,8 +7,11 @@ import (
 	"testing"
 )
 
+// The indexes that state they list every document in their directory. A new
+// document in one of them fails here until the index names it, which is what
+// keeps a stated "all" from drifting (#3683).
 func TestPlanReadmesMentionEveryEntry(t *testing.T) {
-	for _, dir := range []string{"design", "evidence"} {
+	for _, dir := range []string{"design", "evidence", "research", "workstreams"} {
 		problems, err := CheckReadmeMentionsEntries(filepath.Join("..", "..", "plan", dir))
 		if err != nil {
 			t.Fatal(err)
