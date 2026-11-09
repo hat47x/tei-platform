@@ -693,3 +693,36 @@ SHO Composerの並行Draftは、TEIのSource-safe逆編集に直接役立つ負�
 `P0-M`の最初のHeadless Diagramは、同じSourceで解決された`semantic-data(Parent)`→`semantic-relation(ID)`→`semantic-data(Target)`を、**Qualified Identity、Role、Source artifact fingerprint、Reference Range、World/Index Revision、Required Scope/Partial性**とともに追跡できることを優先する。別Canvasへ複数配置してもSubject/Relation IDの正本は一つ、描画Occurrenceは複数とする。`modelref.Edge`で固有Relation IDの復元ができない場合はread-only Navigationを許容し、図上Selectionからの逆Patchを不許可とする。`CRUD`はFunction宣言の既知セルを出典へ結び、未取得セルをUnknownのまま維持する。
 
 新しいAccepted Ledger／Graph Schema／Source Index／Host／MCPだけのDiagram Interpreter／Runtime Engineを追加しない。既存#1124/#2497/#3262/#2514のOwnerへ最小Source-correct Consumerの検収を引き渡す。
+
+## 29. Source IndexのByte妥当性とSemantic Bindingの認証を区別（2026-11-09）
+
+### 29.1 Sourceを指せることは、そのSourceが意味要素を定義する証明ではない
+
+§28は管理対象の実Byte/Range/Fingerprintを検査した。次の独立した負例で、**正しいByte範囲を指すReferenceの`Subject`欄だけを別の未宣言Relation IDへ書き換えても、`sourceindex.Index.Validate`はSourceが存在して範囲・Fingerprintが正しければ成功し得る**ことを固定する。現在のIndex APIはSource Index構造のValidationであり、Canonical Worldへの意味上の束縛の受入APIではない。
+
+新設した`TestSourceIndexStructuralValidityDoesNotAuthenticateSemanticBinding`では、実`reference/workspace`の`semantic-relation:sales.order.lines`の`Artifacts`と`References`を取得し、**テスト内のIndexだけ**の1 Reference Subjectを存在しない`sales.order.nonexistent_target_for_negative_control`へ差し替える。実Source File Byteには書き込まない。
+
+| 検査 | 期待結果 | 誤った上位推論 |
+| --- | --- | --- |
+| 実`Index.Validate(read)` | **PASS**：Byte/Fingerprint/Positionは整合するため | Reference Subjectの意味まで保証済み |
+| `TraceSubjectSourcesFromIndex(forgedIndex, forgedID)` | **Traceは生成できる**：入力IndexのSubject情報に従う | Traced IDがCanonical宣言として存在する |
+| 実`operations.InspectSubject(root, forgedID)` | **`SUBJECT_NOT_FOUND`**：真のWorkspace Canonical Worldには存在しない | Source Indexの偽装Referenceから自動的にEntity/Relationを採用 |
+| 三視点/CRUD/Editor | **Relation→Canonical/Source Locatorの突合とMeaning/Grant確認前はWrite不可** | 図面上のNodeやCRUD Cellが元Sourceを安全にPatch可能 |
+
+ここでの**Validation PASSは意図された負例の一部**であり、TEIが偽造Subjectを正式受理する設計判断ではない。検査はSyntheticなIndexの改変、実Workspaceでの`InspectSubject`拒否という対照であり、外部Sourceの攻撃耐性、実UI編集拒否、Owner承認、独立Oracleを実証しない。既存Index全体を「無効」扱いする必要もなく、正しい用途（Byteの根拠・参照の構造）に限定する。
+
+### 29.2 三視点Graph/CRUDの受入に必要な連鎖を小さく固定
+
+- **Source観測**：同一WorkspaceでSource IndexのArtifact Byte/Range/Roleを取得、どのSourceを実Loaderが読んだかとIndexのRoleを区別。
+- **Canonical突合**：`(Kind, ID)`の完全一致で`Catalog`と`InspectSubject`を解決。Relationについては親Data・Relation ID・Target Dataの3点をSource参照付きで検査する。同型2 Edgeの場合、関係Typeだけで個別Relation IDを代用しない。
+- **受理済み意味・閉包**：上記2つが成立しても`Required`集合、Source観測Revision、業務Role・粒度・NULL、OwnerのMeaning Acceptanceは独立。未入場は`partial/unresolved/unknown`として残す。
+- **機能と実体**：Functionの宣言CRUD、Query/Providerの選択・実Read・Result Slice/Consumer、Pluginの選択と実Invoke、Host現在Grant/Effect/Receiptはそれぞれ独立の証拠。CLI/MCP/Studio/SHOの反映・受領も別。
+- **編集**：図面Occurrenceの選択・Sourceの有効なbyte span・Canonical ID/Relation Instance ID・現在のRevision/GrantとSource編集中の変更を照合し、1件に確定できないPatchを拒否する。Source Indexの`Validate`単独をEditor書戻し資格に使用しない。
+
+この区別は、SHOでいう「Document Byte Spanが正しい」と「元段落を適切に編集できる」の分離、KON/SUIでいう「Graph/Cardが表示されている」と「対象Entityが業務上受理されている」の分離と対応する。ただしTEI/SHO/KONの正式データ構造やOwnerを統合しない。
+
+**実装優先順**は変えない。#3518 M0がmainへ統合され型付きGraphの同一Source・同一ID照合が可能になった後、三視点の**read-only Edge→Canonical Subject→現在のSource Reference**の小経路をProduct Operationの候補として比較する。今回の差分は[実Workspace限定Goテスト](../../reference/diagram-crossref/real_workspace_admission_test.go)と本Planのみ。新Core Graph/Validator、第二Resolver/Registry/Host/Runner/Owner Ledgerは作らない。
+
+### 29.3 CI・前提への限定
+
+前HEAD `536a8364a873610997ad8749f74aa463ddcdfdc1` の[Health #42609326764](https://github.com/hat47x/tei-platform/actions/runs/42609326764)はこの更新時点**in_progress**、[脆弱性確認 #42609326691](https://github.com/hat47x/tei-platform/actions/runs/42609326691)は**success**である。新しいSubject偽装負例と本節を含むHEADのGo試験・Healthを、旧HEADの状態から推定しない。現在main進行中の[RQ-036 Model Map Draft #3518](https://github.com/hat47x/tei-platform/pull/3518)、[組織責任切替 Draft #3741](https://github.com/hat47x/tei-platform/pull/3741)、[Org 実DB検証 Draft #3500](https://github.com/hat47x/tei-platform/pull/3500)の局所試験・Meaningと合算しない。
