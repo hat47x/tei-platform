@@ -226,6 +226,28 @@ class SymbolMatcherTests(unittest.TestCase):
                 frozen = module.analyze_symbols(self.BASE + [pkg + ".Load"], "frozen-world")
                 self.assertFalse(frozen["passed"])
 
+    def test_eq_and_hash_prefixed_names_match(self):
+        for ident, symbol in (
+                ("html/template", "type:.eq.html/template.state"),
+                ("tei/internal/studiohost", "type:.eq.tei/internal/studiohost.X"),
+                ("text/template", "type:.hash.text/template.Template"),
+                ("main.presentation-symbols", "type:.eq.main.handleIndex")):
+            with self.subTest(symbol=symbol):
+                self.assertIn(ident, self.analyze([symbol])["forbiddenHits"])
+
+    def test_empty_symbol_list_fails_as_no_symbols(self):
+        result = module.analyze_symbols([])
+        self.assertFalse(result["passed"])
+        self.assertTrue(any("no symbols" in f for f in result["failures"]))
+
+    def test_required_runtime_symbols_are_checked_individually(self):
+        no_driver = module.analyze_symbols(["main.main", "runtime.x"])
+        self.assertIn("required runtime symbol missing: tei/internal/driver",
+                      no_driver["failures"])
+        no_main = module.analyze_symbols(["tei/internal/driver.Run"])
+        self.assertIn("required runtime symbol missing: main.main", no_main["failures"])
+        self.assertEqual(module.analyze_symbols(self.BASE)["failures"], [])
+
     def test_nm_line_parsing(self):
         text = ("  4a0000 T main.main\n"
                 "         U runtime.x\n"
@@ -310,6 +332,50 @@ class BrowserScanTests(unittest.TestCase):
             self.clean()
             self.write("module.bin", magic + b"rest")
             self.assertIn("native-executable", module.scan_browser(str(self.root))["hits"])
+
+    def test_hidden_file_is_scanned(self):
+        self.leak(".x.js", b"editor-secret", "synthetic-credential")
+
+    def test_secret_after_a_large_prefix_is_found(self):
+        self.clean()
+        self.write("big.js", b"a" * (3 << 20) + b"viewer-secret")
+        result = module.scan_browser(str(self.root))
+        self.assertIn("synthetic-credential", result["hits"])
+        self.assertGreater(result["bytesScanned"], 3 << 20)
+
+    def can_symlink(self, directory):
+        probe = self.root.parent / ("probe-link-%d" % os.getpid())
+        try:
+            os.symlink(str(self.root), str(probe), target_is_directory=directory)
+        except (OSError, NotImplementedError):
+            return False
+        os.unlink(str(probe))
+        return True
+
+    def test_directory_symlink_is_reported_not_silently_skipped(self):
+        if not self.can_symlink(True):
+            self.skipTest("cannot create symlinks here (Windows needs privilege)")
+        self.clean()
+        outside = tempfile.TemporaryDirectory()
+        self.addCleanup(outside.cleanup)
+        Path(outside.name, "a.js").write_text("editor-secret", encoding="utf-8")
+        os.symlink(outside.name, str(self.root / "ext"), target_is_directory=True)
+        result = module.scan_browser(str(self.root))
+        self.assertFalse(result["passed"])
+        self.assertEqual(result["hits"].get("symlink"), ["ext/"])
+
+    def test_file_symlink_is_reported(self):
+        if not self.can_symlink(False):
+            self.skipTest("cannot create symlinks here (Windows needs privilege)")
+        self.clean()
+        outside = tempfile.TemporaryDirectory()
+        self.addCleanup(outside.cleanup)
+        target = Path(outside.name, "a.js")
+        target.write_text("editor-secret", encoding="utf-8")
+        os.symlink(str(target), str(self.root / "linked.js"))
+        result = module.scan_browser(str(self.root))
+        self.assertFalse(result["passed"])
+        self.assertEqual(result["hits"].get("symlink"), ["linked.js"])
 
     def test_missing_index_fails(self):
         self.write("browser-command.js", "x")

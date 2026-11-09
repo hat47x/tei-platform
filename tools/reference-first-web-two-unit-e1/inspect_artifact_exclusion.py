@@ -33,8 +33,9 @@ import sys
 sys.dont_write_bytecode = True
 
 # A package path token must not be preceded by another path character, so that
-# `html/template` does not match inside `example.com/html/template`.
-_LB = r"(?<![\w.~/-])"
+# `html/template` does not match inside `example.com/html/template`. Go's
+# `type:.eq.html/template.state` style prefixes (`.eq.`, `.hash.`) are allowed.
+_LB = r"(?:(?<![\w.~/-])|(?<=\.eq\.)|(?<=\.hash\.))"
 _END = r"(?=[./)\]*,\s]|$)"
 
 
@@ -80,7 +81,7 @@ FORBIDDEN = (
     ("go/build", _pkg("go/build"),
      "Go build tool library (build-time only)."),
     ("main.presentation-symbols",
-     re.compile(r"(?<![\w.~/-])main\.(?:\(\*\w+\)\.)?"
+     re.compile(_LB + r"main\.(?:\(\*\w+\)\.)?"
                 r"(?:handleCustomSubmit|handleIndex|renderCustomSubmit|"
                 r"referenceScenarioTemplates)\b"),
      "Presentation entry points present in the tei_order_only (HTML) build and "
@@ -268,11 +269,17 @@ def scan_browser(root):
     if not os.path.isdir(root):
         raise SystemExit("browser path is not a directory: " + root)
     files = []
+    hits = {}
     for base, dirs, names in os.walk(root):
         dirs.sort()
+        # os.walk lists a directory symlink in `dirs` but never descends into
+        # it, so its target would be neither scanned nor reported.
+        for name in dirs:
+            if os.path.islink(os.path.join(base, name)):
+                link = os.path.relpath(os.path.join(base, name), root).replace(os.sep, "/")
+                hits.setdefault("symlink", []).append(link + "/")
         for name in sorted(names):
             files.append(os.path.join(base, name))
-    hits = {}
     scanned_bytes = 0
     for path in files:
         rel = os.path.relpath(path, root).replace(os.sep, "/")

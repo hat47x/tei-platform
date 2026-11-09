@@ -101,7 +101,7 @@ python3 -I tools/reference-first-web-two-unit-e1/inspect_artifact_exclusion.py \
 - **既知の混入**：上記の「API実行ファイルにはWorkspace/Driver機構が含まれる」混入は、許可リスト（`workspace`・`syntax`・`sourceindex`・`releaseplan`・`application/release`・`plugin/implementation`）として分けて件数だけ報告する。許可リストにも実行時機構（Driver等）の期待集合にもない`tei/`配下のパッケージが現れると、新規の逸脱として失敗する。`--profile frozen-world`では許可リストが空になり、固定World APIにこれらが残れば失敗する。
 - **Browser**：ディレクトリ内の全ファイルのbyte全体を、合成Credential（`*-secret`・Fixture path）、秘密鍵・クラウド鍵の形、DSN（`postgres://`等とkeyword形式）、サーバ限定のimport名、`sourceMappingURL`・`.map`ファイル、実行形式/WebAssemblyの先頭で走査する。
 - 出力JSONは、検査済みシンボル数、禁止ヒット数、許可リスト件数、Browserの走査ファイル数を含む。
-- **限界**：`nm`はリンクされたシンボルであり、到達可能性・実行は示さない。Browser走査はパターン照合で、任意のsecretの不存在は証明しない。許可リストの混入は除去されていない。Builder/Lock、Acceptance、本番Provider・TLS・CSRFの証明ではない。
+- **限界**：`nm`はリンクされたシンボルであり、到達可能性・実行は示さない。禁止リストは標準ライブラリと`tei/`配下に偏っており、第三者依存（外部module）の混入は範囲外である。Browser走査は固定パターンのbyte照合で、任意のsecretの不存在は証明しない。**エンコード回避（UTF-16、分割した文字列、base64、URLエンコード、大文字小文字の変更）は検出できない**。このため「実成果物で示す」より弱い主張（実成果物に対する既知パターンの静的観測）にとどまる。Browser内のsymlink（ファイル・ディレクトリ）は走査できないため、検出した時点で失敗にする。許可リストの混入は除去されていない。Builder/Lock、Acceptance、本番Provider・TLS・CSRFの証明ではない。
 - `test_inspect_artifact_exclusion.py`は、実際に小さなGoバイナリをビルドする負例と、Browser側の各パターンの負例・正例を持つ。CIでは`tei-browser-json-api-e1-ci.yml`が生成した実成果物に対して実行する。
 
 ## 実Chromeでのフォーム操作・画面証拠（E1追加検証）
