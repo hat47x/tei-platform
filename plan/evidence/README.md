@@ -87,7 +87,8 @@
 - [利用者設定の宣言と結合の確認](XTEA_LOWCODE_USER_SETTINGS_2026-11.md)（参照実装の試験記録。例への追加は未実装）
 - [利用者設定の書込みの確認](XTEA_LOWCODE_USER_SETTINGS_WRITE_2026-11.md)（参照実装の試験記録。監査・権限・画面は未実装）
 - [例の締め日・設定Dataと構文の修正の確認](XTEA_LOWCODE_EXAMPLE_CLOSING_SETTINGS_2026-11.md)（参照実装の試験記録。閉めの実行内容と設定の監査は未実装）
-- [為替の月次・年次を別Dataに分ける構成の確認](XTEA_LOWCODE_CURRENCY_TWO_TABLES_2026-11.md)（参照実装の試験記録。宣言語彙と例への追加は未実装）
+- [為替の月次・年次を別Dataに分ける構成の確認](XTEA_LOWCODE_CURRENCY_TWO_TABLES_2026-11.md)（参照実装の試験記録。例への追加は未実装）
+- [為替の粒度の宣言語彙の確認](XTEA_LOWCODE_CURRENCY_GRANULARITY_2026-11.md)（参照実装の試験記録。`ResolveTable`への自動組込みと例への追加は未実装）
 - [採番の永続CounterStoreの確認](XTEA_LOWCODE_NUMBERING_SQLITE_STORE_2026-11.md)（参照実装の試験記録。PostgreSQLは未実装）
 - [採番の2プロセス同時実行の確認](XTEA_LOWCODE_NUMBERING_PROCESS_RACE_2026-11.md)（参照実装の試験記録。PostgreSQLと多プロセス構成は未実装）
 - [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
@@ -272,3 +273,4 @@
 - [TEIの標準意味型はTEIで宣言されていない](TEI_DOGFOODING_ROUND25_STDLIB_SELF_DESCRIPTION_2026-11-09/README.md)（#2620・#2619。`std.*`の12型は`prelude:true`かつ`sourceStatus:not-indexed`で、`inspect`も`source-index`も根拠を返さない。定義はGoにあり、`namespace std`は宣言を拒否される。合格条件をCLIだけで測れることを実演）
 - [stdへの宣言がpreludeと誤判定され件数からも消えていた](TEI_DOGFOODING_ROUND26_PRELUDE_IDENTITY_2026-11-09/README.md)（#3851・#3347。`namespace std`に型を足すと重複error・`prelude:true`誤付与・`declarationCounts`0が同時に出た。名前の前方一致3箇所とloaderの二重追加を同一性判定へ）
 - [stdを.teiにできない理由（primitive構文と指紋）](TEI_DOGFOODING_ROUND27_STD_PRIMITIVE_GAP_2026-11-09/README.md)（#2620。`worldFingerprint`がpreludeを含むため移すと全指紋が変わり、DSLは`type X from Y`のみでprimitiveを書けない。代替案A/Bと判断点を提示）
+
