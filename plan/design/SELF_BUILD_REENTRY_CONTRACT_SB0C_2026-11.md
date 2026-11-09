@@ -1407,7 +1407,7 @@ Claimの`boundary`文言を、**このホスト**から**観測した二つの�
 - [x] `builder`（要求と解決結果の対応規則）の照合（[#3670](https://github.com/hat47x/tei-platform/pull/3670)。対応規則はresolverに既にあり、`BuilderContractVersion`として一箇所に定義した。§4.19、[記録](../evidence/TEI_GO_SELF_BUILD_BUILDER_REQUIREMENT_2026-11-09.md)）
 - [x] `secretRequirements`の扱いの決定（§4.20。**S-1: childで照合しない**。byte一致が成り立てば欄ごとの照合は必ず通るため、保証が増えない。childの入力契約も`plugin.BuildPlan`も広げない）
 - [x] **欄ごとの照合をここで打ち切る**決定（§4.20。原因究明の道具として既存は残すが、これ以上足さない。残る段差は欄照合では埋まらない）
-- [ ] 依存の更なる削減：**entryが計画側も独立に持つ**経路。今はentryのlockもchildの申告から作るため、両方が同じ入力に依存する（§4.11末尾。entryの既定経路の判断（§4.16）と同じ前提に依存する）
+- [x] 依存の更なる削減：**entryが計画側も独立に持つ**経路（[#3729](https://github.com/hat47x/tei-platform/pull/3729)）。lockの計画側はbuilderの申告を優先し、申告が無ければentryの再計算値を使う。どちらを使ったかを`planSideSource`で記録するので、弱い根拠を強い根拠と読ませない（[記録](../evidence/TEI_GO_SELF_BUILD_ENTRY_PLAN_SIDE_2026-11-09.md)）
 - [x] catalogの欄がどこで宣言されているかの実測（§4.29。7欄のうち**5欄にcatalog以外の宣言面が無く**、既存の宣言からは導出できないと分かった。[記録](../evidence/TEI_GO_SELF_BUILD_CATALOG_FIELD_PROVENANCE_2026-11-09.md)）
 - [ ] catalogを**書く場所**を製品に作るか（§4.29。K-1のWorkspace欄・K-2のplugin構文拡張・外部配布物の三択。既定の試行でClaimを立てるには、この決定が要る）
 - [ ] D-1（catalogの`scope`拡張）を採るかどうかの契約判断（採る場合のみ、catalogの広告と実応答の一致を照合へ載せる）

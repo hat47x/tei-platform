@@ -1,0 +1,7 @@
+Mutation                                                        Test     Runtime
+toolList(): add a tool, no toolArguments/dispatch entry         FAIL     -
+toolArguments: add an arg the schema does not declare           PASS     refused by
+                                                                          rejectUnknownArguments
+toolArguments: remove an arg the schema declares                FAIL     -
+=> the permissive direction was untested. No test compared
+   toolArguments with InputSchema.properties at all.
