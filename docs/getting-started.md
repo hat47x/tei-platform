@@ -1,4 +1,4 @@
-# TEIを動かす
+﻿# TEIを動かす
 
 この文書では、TEIを取得して動作を確認するまでの手順を説明します。設計の考え方から知りたい場合は、[はじめてTEIを知る方へ](for-readers.md)を参照してください。
 
@@ -9,7 +9,7 @@ TEIは現在、設計上の境界をGoのコードで検証している段階で
 主要な手順を試すには、Goの開発環境が必要です。必要なGoの版は、リポジトリ直下の`go.mod`にある`go`行が示す版以上です。この文書は版の数値を複製しません。`go.mod`の更新のたびに文書が古くなるためです。2026-11-07時点の`go.mod`は`go 1.26.10`を要求します。数値は必ず`go.mod`で確認してください。
 
 
-`tools/` の参照ツールのうち、外部コマンドを `bash -c` で起動する試験（`tools/reference-cognition-port`・`tools/reference-generator-selection`）は **POSIXシェルを前提**にしています。Windowsでは、WSL または Git Bash の `bash` でも `cp <Windowsパス>` を解決できない場合があるため、該当試験は明示的に skip し、Linux CI の結果を正とします（#3461）。skip は失敗ではなく「この環境では検査していない」という記録です。`go test ./...` の結果を読むときは、skip の理由も確認してください。
+`tools/` の参照ツールのうち、外部コマンドを `bash -c` で起動する試験（`tools/reference-cognition-port`・`tools/reference-generator-selection`）は **POSIXシェルを前提**にしています。2026-11-09以降は、Windowsでも同じ試験を実行します（#3461）。Windowsの`bash`はWSLの`bash.exe`が多く、`C:\...`のパスを開けず、`-c`文字列中の`$NAME`をWindowsの環境変数で先に展開します。そのため両ツールは、コマンドを一時ディレクトリをworking directoryにして実行し、入力をそこへ複製し、パス変数をコマンド文字列へ直接埋め込みます。`bash`が見つからない環境だけがskipします。skip は失敗ではなく「この環境では検査していない」という記録です。`go test ./...` の結果を読むときは、skip の理由も確認してください。
 ```bash
 grep '^go ' go.mod
 go version
@@ -35,7 +35,7 @@ go version
 | --- | --- | --- |
 | POSIXのパーミッションビット | `internal/access`・`internal/effectlog`・`internal/jsonl`・`internal/runlog`・`internal/workspace`など | Windowsは`0600`で作ったファイルを`0666`と報告する。ACLの確認はHostの責務 |
 | POSIXのinode置換 | `tools/reference-build-artifact-store` | 読み取り専用の既存ファイルへのrenameが`Access is denied`になり、置換を同じ意味で表せない（[#3460](https://github.com/hat47x/tei-platform/issues/3460)） |
-| `bash -c` + `cp`の外部コマンド | `tools/reference-cognition-port`・`tools/reference-generator-selection` | Windowsのfixtureパス（`D:\...`）をWSLの`bash.exe`もGit Bashも解決しない（[#3461](https://github.com/hat47x/tei-platform/issues/3461)） |
+| ~~`bash -c` + `cp`の外部コマンド~~ | ~~`tools/reference-cognition-port`・`tools/reference-generator-selection`~~ | 2026-11-09に解消（[#3461](https://github.com/hat47x/tei-platform/issues/3461)）。両ツールはコマンドを一時ディレクトリで実行し、パス変数をコマンド文字列へ埋め込むため、WindowsのWSL `bash.exe`でも動く。`bash`が見つからない場合だけskipする |
 | 空白を含む実行パス | `tools/reference-composition-process-bridge` | 参照のstdio launcherが空白入りの実行パスを拒否する（契約として維持） |
 | OpenSSHの`-Y verify verify-time` | `tools/reference-authoring-witness-openssh` | 同梱のOpenSSHが`verify-time`非対応で、スクリプトが`exit 77`（「No result is claimed」）を返す |
 | シンボリックリンク・JVM等 | `internal/workspace`・`tools/internal/gobuilder`・`tools/reference-target-profile`など | 作成に追加権限が要る、または未資格 |

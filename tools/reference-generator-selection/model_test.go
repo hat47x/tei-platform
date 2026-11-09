@@ -2,7 +2,6 @@ package generatorselection
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,7 +26,11 @@ func TestExternalCommandIsRecordedAndSelectable(t *testing.T) {
 	workspaceDir, contract, fixtures, candidates := paths(t)
 	root := t.TempDir()
 	source := filepath.Join(candidates, "template", "main.go")
-	command := fmt.Sprintf("cp %q \"$TEI_SOURCE\"", source)
+	content, err := os.ReadFile(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := externalSourceCommand(t, "TEI_SOURCE", content)
 	manifest, err := GenerateWithCommand(context.Background(), modelOptions(t, filepath.Join(root, "recorded"), command))
 	if err != nil {
 		t.Fatal(err)
@@ -76,7 +79,11 @@ func TestExternalCommandRefusesExistingOutput(t *testing.T) {
 	}
 	_, _, _, candidates := paths(t)
 	source := filepath.Join(candidates, "template", "main.go")
-	_, err := GenerateWithCommand(context.Background(), modelOptions(t, out, fmt.Sprintf("cp %q \"$TEI_SOURCE\"", source)))
+	content, err := os.ReadFile(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = GenerateWithCommand(context.Background(), modelOptions(t, out, externalSourceCommand(t, "TEI_SOURCE", content)))
 	if err == nil {
 		t.Fatal("existing output directory was accepted")
 	}
