@@ -2,7 +2,7 @@
 
 - 対象Issue: [#2509](https://github.com/hat47x/tei-platform/issues/2509)（DSH外部Harness実証）、[#2515](https://github.com/hat47x/tei-platform/issues/2515)（実効隔離・全送出経路Conformance）。機密境界の正本は[TAI #232](https://github.com/hat47x/tai-pleroma/issues/232)、比較計画は[TAI #168](https://github.com/hat47x/tai-pleroma/issues/168)。
 - 状態: **既存の実行記録を並べた索引**。新しい実測は行っていない。個々の合否・Owner受理は各記録とIssueの担当。
-- この文書の役割: 33件の実行記録が**それぞれ何を確定させ、何を確定させていないか**を1枚で見えるようにし、同じ測り方の重複を避ける。記録本文の複製はせず、各記録へ参照で結ぶ。
+- この文書の役割: 34件の実行記録が**それぞれ何を確定させ、何を確定させていないか**を1枚で見えるようにし、同じ測り方の重複を避ける。記録本文の複製はせず、各記録へ参照で結ぶ。
 
 ## 1. なぜ台帳が要るか
 
@@ -38,6 +38,7 @@
 | [MCP経路](./DSH_MCP_PATH_2026-11-09/README.md) | 既定の面 | 既定のheadlessの面は**Tool 24個で名前に`mcp`を含むものは0**。`mcp-resources`は`dsh-base`が**登録済みだがサーバー未設定**で、`--dump-config-schema`の`configRef`は`unknownConfig`。`mcp-client`を`servers.synthetic {transport: http, url}`で挿すと`--dump-config`は受理するが、実行後も**Tool 24個・MCP Tool 0・MCP要求0件**（モデル要求は2件・143,308 bytes） | 正しい設定形を与えた場合の送出、MCPサーバー側の保存、stdio transport、認証、`mcp-resources`の実挙動 |
 | [上限を超える単一event](./DSH_SESSION_LOG_OVERSIZE_EVENT_2026-11-09/README.md) | 送れない単位 | `maxBytes 4096`で約8,000 bytesの`pwsh`結果を出した後も呼び出しを続けると、**要求001〜004は拡張あり（水位`-1`→`9`→`11`→`12`）、005以降は`dsh_session_log` field自体が無い**。水位は`12`で凍り作業は96 event・maxSeq 94まで進む。**`delivery-accepted`は4件で止まり増えない**。**同じ上限で小さい結果のみなら拡張は付いたまま**（3/3） | Telemetry・UI・別flagでの検知、上限を戻した回復、`maxRequestBytes`との関係、他版での再現 |
 | [上限を戻した回復](./DSH_SESSION_LOG_OVERSIZE_RECOVERY_2026-11-10/README.md) | 回復 | `maxBytes 4096`のRun 1は**10要求中3要求だけ拡張あり・水位`11`で凍結**（22 event・606,472 bytes）。**同じSessionを既定の上限で再開**すると、**最初の1要求で86 eventが届き水位`11`→`97`**、以後は通常配送（5要求・121 event）。**凍っていた分は失われずburstで戻る** | Telemetry・UI・別flagでの検知、burstの上限、`maxRequestBytes`との関係、他版での再現 |
+| [backlogのburst](./DSH_SESSION_LOG_BURST_2026-11-10/README.md) | 分割の有無 | `maxBytes 256`で30回の呼び出しを強制したRun 1は**32要求すべてで拡張なし・送出0**（Logは2,809,857 bytes分 溜まる）。**同じSessionを既定の上限で再開**すると、**最初の1要求で243 event・375,623 bytesが届き水位`-1`→`242`**、**分割されない**。その中に**21,297 bytesのevent**（上限256を超える）も含まれた。Run 2合計483 eventで**取りこぼしなし** | 243 event・375KBを超える場合、`maxRequestBytes`との関係、Telemetry・UIでの検知、他版での再現 |
 | [H6-E0 Host棚卸し](./DSH_H6E0_HOST_INVENTORY_2026-11-07/README.md) | 実行環境 | read-onlyはConstrainedLanguage、親のenvは子へ継承されない、loopbackへ到達可 | 別Host、他Tool経路、実Egress |
 | [H6-E1 read境界](./DSH_H6E1_READ_BOUNDARY_2026-11-07/README.md) | 読取り | `read-only`でもraw配下・`.env`・cwd外を読める | AppContainer・別User・mount名前空間での拒否 |
 | [H6-E1 OSのACL](./DSH_H6E1_OS_ACL_2026-11-09/README.md) | 読取りの強制点 | `icacls`で拒否したファイルは`read-only`でも`danger-full-access`でも`PermissionDenied`。同Userへ権限を足すと同じProbeが成功する（正負対） | 別User・AppContainer・mount名前空間、Network egress、存在の推測 |
@@ -56,14 +57,14 @@
 3. **Process生成はmodeで止まらない**。子Process（H6-E2b）も候補の子起動（H6-E5）も成立した。止まるのは書込みと言語モード。
 4. **利用者が指定しない入力が入る**。AGENTS.md・CLAUDE.md・Skill `description`（H6-E3）。Skill本文は載らず、一覧提示と本文Loadは別。
 5. **設定の表示と実効制限が一致しない**。`DSH_PERMISSION_MODE`は空のまま（H6-E0・非対称）。モード名を権限判断の根拠にできない。
-6. **送出の停止は「安全」と同義ではない**。`maxBytes`を小さくするとLogの送出が止まるが、作業は続く（分割と停滞）。止まる境界は**1byte単位で特定でき**（307で送られ306で送られない）、止めた分は上限を戻した再実行で**1要求のburstとして戻る**（停滞後の再開・上限を戻した回復）。**単一eventが上限を超えて拡張が丸ごと消えた場合も同じで**、上限を戻すと**86 eventが1要求で戻った**。恒久的な抑止として扱えない。**単一eventが上限を超えると拡張が丸ごと消え、`delivery-accepted`も増えない**（上限を超える単一event）ため、上限は**合計だけでなく1件の大きさ**としても効く。さらに、**止まったことはstdout・stderr・永続Logのどこにも現れない**（停滞の可視性）ため、「送出していない」と「設定が効いている」を出力だけから区別できない。非停滞と同条件で比べると、差は永続Logの`delivery-accepted`の有無だけで、**警告ではなく成功記録の不在としてしか分からない**（停滞の検知）。
+6. **送出の停止は「安全」と同義ではない**。`maxBytes`を小さくするとLogの送出が止まるが、作業は続く（分割と停滞）。止まる境界は**1byte単位で特定でき**（307で送られ306で送られない）、止めた分は上限を戻した再実行で**1要求のburstとして戻る**（停滞後の再開・上限を戻した回復）。**単一eventが上限を超えて拡張が丸ごと消えた場合も同じで**、上限を戻すと**86 eventが1要求で戻った**。**backlogが243 event・375,623 bytesでも1要求に収まり、分割されなかった**（backlogのburst）。恒久的な抑止として扱えない。**単一eventが上限を超えると拡張が丸ごと消え、`delivery-accepted`も増えない**（上限を超える単一event）ため、上限は**合計だけでなく1件の大きさ**としても効く。さらに、**止まったことはstdout・stderr・永続Logのどこにも現れない**（停滞の可視性）ため、「送出していない」と「設定が効いている」を出力だけから区別できない。非停滞と同条件で比べると、差は永続Logの`delivery-accepted`の有無だけで、**警告ではなく成功記録の不在としてしか分からない**（停滞の検知）。
 
 ## 4. まだ根拠が無いこと
 
 - **別Identity（AppContainer・別User・別Session・mount名前空間）での読取り拒否**。同一Userに対するOSのACLによる拒否は[H6-E1 OSのACL](./DSH_H6E1_OS_ACL_2026-11-09/README.md)で確認したが、Harnessや子Processが**別の資格**で動く場合に同じ拒否が効くかは未確認。Network境界の実拒否も同様。
 - **実Providerの保存・保持・二次利用**。
 - **MCPで正しい設定形を与えた場合の送出**（`mcp-client`の設定形はprofile schemaに無く、推測した形では**Tool 24個・MCP要求0件**のままだった）、**Telemetryでfeedbackを与えた場合の送出内容**、**web・tui面のfeedback経路**、**`maxDepth`を`4`以上にした場合**、**`maxActiveSubagents`を変えた場合と時間を分けた起動**、**`maxDepth`と`maxActiveSubagents`の同時作用**、**Turn 1が複数ある場合のfork連鎖の増加量**、**実行中Turnのfork継承**。既定の同時数が8体であることは[同時起動の上限](./DSH_SUBAGENT_CONCURRENT_LIMIT_2026-11-09/README.md)で確認したが、上限値を変えた場合と、順に起動した場合は未確認。Turn境界をまたぐfork連鎖が親の完了Turnを深さ3まで運ぶことは[Turn境界をまたぐfork連鎖](./DSH_SUBAGENT_FORK_TURN_CHAIN_2026-11-09/README.md)で確認したが、履歴が長い場合に各段がどこまで増えるかは未確認。継承しない`subagent`の連鎖が既定で深さ1に止まることは[Subagentの連鎖](./DSH_SUBAGENT_CHAIN_2026-11-09/README.md)で、`maxDepth 3`で深さ3まで伸びることは[深さ上限を上げた連鎖](./DSH_SUBAGENT_DEPTH_RAISED_2026-11-09/README.md)で確認したが、**既定との正確なbyte比較は発火方針が違い未実施**。`subagent`は[Subagent経路](./DSH_SUBAGENT_EGRESS_2026-11-09/README.md)、`subagent_fork`は[Subagent fork](./DSH_SUBAGENT_FORK_2026-11-09/README.md)で確認した。**Telemetryについては以前の記述を訂正した**：`session-telemetry-otel`は`dsh-base`が既定で登録しており、この版が読むのは`DSH_TELEMETRY_OTLP_URL`（標準の`OTEL_EXPORTER_OTLP_ENDPOINT`ではない）。宛先をローカルへ向けても**`FEEDBACK_ONLY`のgateにより送出は0件**で、headlessにはfeedbackの面が無い（[Telemetry経路](./DSH_OTEL_PATH_2026-11-09/README.md)）。
-- **停滞の検知手段を用意した場合の実効性**。3面に警告が出ないことと、非停滞との差が`delivery-accepted`の不在だけであることは[停滞の可視性](./DSH_SESSION_LOG_STALL_VISIBILITY_2026-11-09/README.md)・[停滞の検知](./DSH_SESSION_LOG_STALL_DETECTION_2026-11-09/README.md)で確認したが、Telemetry・UI・別flagを含む**他の面**、**burstの上限**（86 eventが1要求に収まったが、それ以上で分割されるか）、**他版で同じevent名・意味になるか**（この版の観測であって契約ではない）は未確認。単一eventが上限を超えると拡張が消え`delivery-accepted`が増えないことは[上限を超える単一event](./DSH_SESSION_LOG_OVERSIZE_EVENT_2026-11-09/README.md)で確認した。
+- **停滞の検知手段を用意した場合の実効性**。3面に警告が出ないことと、非停滞との差が`delivery-accepted`の不在だけであることは[停滞の可視性](./DSH_SESSION_LOG_STALL_VISIBILITY_2026-11-09/README.md)・[停滞の検知](./DSH_SESSION_LOG_STALL_DETECTION_2026-11-09/README.md)で確認したが、Telemetry・UI・別flagを含む**他の面**、**243 event・375KBを超えるbacklog**（この範囲では分割されなかったが上限の有無は未確認）、**他版で同じevent名・意味になるか**（この版の観測であって契約ではない）は未確認。単一eventが上限を超えると拡張が消え`delivery-accepted`が増えないことは[上限を超える単一event](./DSH_SESSION_LOG_OVERSIZE_EVENT_2026-11-09/README.md)で確認した。
 - **Skillの増分価値**。四Sessionは未採点で、Task path不一致とSession再利用を含む。
 - **独立Expectedによる採点**（RunbookのReviewer-only）。
 

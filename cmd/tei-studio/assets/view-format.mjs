@@ -53,9 +53,10 @@ function summarizeRecord(view) {
   if (Array.isArray(view.hooks) && view.hooks.length) {
     sections.push({
       title: "フック",
-      header: ["位相", "読み取り", "使用", "生成", "失敗時"],
+      header: ["位相", "範囲", "読み取り", "使用", "生成", "失敗時"],
       rows: view.hooks.map((hook) => [
         valueOf(hook.phase),
+        valueOf(hook.scope),
         joined(hook.reads),
         joined(hook.uses),
         joined(hook.produces),
@@ -351,6 +352,7 @@ export function summarizeView(value) {
     rows: Object.entries(value).map(([key, entry]) => [key, JSON.stringify(entry)]),
   }];
 }
+
 
 
 

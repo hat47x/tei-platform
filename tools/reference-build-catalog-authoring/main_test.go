@@ -5,6 +5,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -126,8 +128,15 @@ func TestAuthorRefusesAMissingArtifact(t *testing.T) {
 	if err == nil {
 		t.Fatal("a missing artifact was accepted")
 	}
-	if !strings.Contains(err.Error(), "no such file") {
+	// The wrapped os.Stat error is the portable spelling of "no such file":
+	// the text differs by platform ("no such file or directory" on Unix, "the
+	// system cannot find the file specified" on Windows), so test the error
+	// value rather than the message (#3783).
+	if !errors.Is(err, fs.ErrNotExist) {
 		t.Fatalf("the error does not name the reason: %v", err)
+	}
+	if !strings.Contains(err.Error(), "not-there") {
+		t.Fatalf("the error does not name the artifact: %v", err)
 	}
 }
 
