@@ -591,6 +591,39 @@ entry側（`cmd/tei`）は**変更不要**だった。childが申告するよう
 - R-1を採らない、とは言っていない。**前提が未決**だと言っている。
 - in-processで導いても**L2-bではない**。(c)も変わらない。導出の主体が変わるだけで、「その計画がそのartifactを生んだ」ことは別の観測である。
 
+### 4.17 宣言の他の欄をどこまで照合するか（2026-11-09）
+
+§4.15末尾の残作業を、**照合できる欄**と**照合の意味が未決の欄**に分けた。
+
+#### 照合した欄（[#3661](https://github.com/hat47x/tei-platform/pull/3661)）
+
+builder childが`compareIntentFields`で比べる。
+
+| 欄 | 比べる内容 | 何を検出するか |
+| --- | --- | --- |
+| `recipe.kind`・`recipe.entrypoint` | 完全一致 | 別の作り方を要求する宣言 |
+| `sources` | kind と id（集合・件数） | 宣言が別のSource集合を指している |
+| `dependencies` | kind と id（集合・件数） | 宣言が別の依存集合を指している |
+
+不一致は**欄を名指し**して拒否し、**reportを出さない**。拒否した宣言について`bound`と報告しないためである。
+
+#### 照合しなかった欄と、その理由
+
+| 欄 | 理由 |
+| --- | --- |
+| sourceの`locator`・`digest` | **plan側は導出値**。宣言は`ref`を書き、planは解決済みのlocatorとbyte digestを持つ。比べると**正しいbuildをすべて不一致と呼ぶ** |
+| dependencyの`version`・`artifactDigest` | 同じくplan側の導出値 |
+| `builder.contract`・`compatibleMajor` | planが持つのは**解決済みの`BuilderIdentity`**（`ContractVersion`・`ArtifactDigest`）であり、宣言の要求（contract名とmajor）と形が違う。比べるには「要求」と「解決結果」の対応規則を決める必要がある |
+| `secretRequirements` | planは**名前だけ**を`SecretRequirementNames`として持つ（`ResolvedBuildReceipt`）。`plugin.BuildPlan`自体には無い。宣言の`Authority`はplanに対応する欄が無い |
+| `parameters` | resolverが正規化・順序替えをする可能性がある。不一致が「誤った宣言」と「異なる正規化」を区別しない |
+
+**「比べられる欄」と「比べるべき欄」は違う。** 導出値を比べると常に不一致になり、形の違うものを比べると定義が要る。比べないことを明示するのが、黙って比べないより安全である。
+
+#### この節が言っていないこと
+
+- 残る欄を**永久に照合しない**とは言っていない。`parameters`は正規化の意味を、`builder`は要求と解決結果の対応規則を決めれば照合できる。
+- 照合の拡大は**L2-bを進めない**。宣言とplanが同じ意味を指すことの確認であり、「その宣言がその計画を導く」ことではない。
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
@@ -654,7 +687,8 @@ entry側（`cmd/tei`）は**変更不要**だった。childが申告するよう
 - [x] entryまたはchildが宣言から**計画まで**独立に導く経路（I-1b。[#3654](https://github.com/hat47x/tei-platform/pull/3654)で`Resolve`を`internal/buildintent`へ移し、fixture catalogは`tools/`に残した。§4.13の反対理由はcatalogについてであり、portについては当たらなかった）
 - [ ] **entryの既定経路をin-processの`Resolve`へ切り替えるか**の判断。四つのportの実装は今fixtureにしかなく、切り替えには`internal/`側のcatalog新設が要る（§4.16。R-2据え置きが現時点の既定）
 - [x] 宣言とplanの**build座標**（`outputKind`・`target`・`profile`）の照合（[#3652](https://github.com/hat47x/tei-platform/pull/3652)。childが三座標を一つずつ比べ、違えばartifactを書いた後にreportを出さずexit 1。[記録](../evidence/TEI_GO_SELF_BUILD_BUILD_COORDINATES_2026-11-09.md)）
-- [ ] 宣言の他の欄（`sources`・`builder`・`recipe`・`dependencies`・`parameters`・`secretRequirements`）の照合。座標照合を広げるよりI-1bとしてまとめる方が「導出した」と「照合した」の混同を避けられる（§4.15末尾）
+- [x] 宣言の他の欄のうち、planが同じ形で持つもの（`recipe`・`sources`・`dependencies`）の照合（[#3661](https://github.com/hat47x/tei-platform/pull/3661)。§4.17）
+- [ ] 宣言の残る欄のうち、**照合の意味を決める必要があるもの**（`parameters`）。resolverが正規化・順序替えをする可能性があり、不一致が「誤った宣言」と「異なる正規化」を区別しない（§4.17）
 - [ ] D-1（catalogの`scope`拡張）を採るかどうかの契約判断（採る場合のみ、catalogの広告と実応答の一致を照合へ載せる）
 
 **A-1（`gobuilder`移動）は採らないため、影響範囲の洗い出しは終了条件から外した。** 29ファイルの内訳は[記録](../evidence/TEI_GO_INTERNAL_RULE_AND_BUILDER_MOVE_2026-11-07.md)として残す。I-1は「採らない」から「I-1aとして着手」へ改めた（§4.13）。`ParseFixtureCatalog`（fixture catalog）は`tools/`に残す。
