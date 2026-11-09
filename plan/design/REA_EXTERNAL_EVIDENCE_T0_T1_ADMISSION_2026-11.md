@@ -314,3 +314,30 @@ validの14候補はobserved 9／inferred 5。partialの12候補はobserved 7／i
 **確認できた実績**：作業環境PythonでCandidate Projectionの**24/24 unit PASS**、実際のGitHub保存byteと完全一致。修正後Projector SHA `1c4d00463d32a994e564dfa5e3b45409da32a845`、テストSHA `a15da75bb862928df8a31b59653a8f3ba39a328a`。従来audit 18件と合計42件の局所試験対象となる。ただし**修正後exact-headのGitHub Actions 4ケースのPASS／保存Sourceの独立Readbackは別確認**であり、失敗Runの成功として書き換えない。
 
 **計画の更新**：T1-Aの入場判定では、Unit Fixtureと実CLI entrypointが同じResult/Failureを返すことを実行証拠で照合。Source Snapshotの二時点確認、Manifest一致、実Source CohortやABA不可検出、TEI Canonical Subject未入場、Current Grant未資格は引き続き独立。#1158共通Operation/CLI Adapter、#1163実Consumer receipt、#2514独立Expectedを再利用し、REA専用の二重APIやRunnerは追加しない。
+
+
+---
+
+<!-- rea-t1a-snapshot-real-ci-20261109 -->
+## 17. Sourceの解析前後バイト列が実Artifactへ保存された限定証拠（2026-11-09）
+
+### 実実行結果とテスト版
+
+- [REA T0＋候補投影 Actions #42578642277](https://github.com/hat47x/tei-platform/actions/runs/42578642277)：tested commit d6f3f1cc3f29411314fd590c81abf9f613597ac9、valid/partial/missing/unsupported **4/4 matrix Job completed/success**。異常系Jobの成功はREAプロセスexit非0を独立Expectedと照合したもの。
+- [独立audit CI #42578642247](https://github.com/hat47x/tei-platform/actions/runs/42578642247)：同tested commitでcompleted/success。実Jobログは Ran 42 tests ... OK（audit 18＋Projection 24）。今回はCLIの文字列パスを受け取る別Consumer経路の回帰が含まれる。
+- [途中の失敗 #42578272437](https://github.com/hat47x/tei-platform/actions/runs/42578272437)：valid/partialでPythonのstrとPathの不一致によりCandidate ProjectorがFAIL、missing/unsupportedはPASS。REA解析実行とSource保存に成功しても、後段Consumerは失敗した事実を保持する。入口でPathへ正規化してテストを追加し、別Runで再実証した。
+
+### 実Artifact ZIPの独立再読取
+
+GitHubの実Artifact ZIPを再ダウンロードし、ZIPにあるanalysis.json／consumer-audit.json／fixture-source-sha256.txt／source-pre／source-post／external-candidates.jsonを別Readerで再確認。raw analysis.jsonの再計算SHA256が保存監査値と一致し、固定の公開合成2ファイルのpre/post byteが一致し、双方のSHA256がSource Manifestと一致することを確認した。
+
+| Case | Artifact ID | 保存pre/postの実byte一致 | Manifest＋REA Evidenceと照合した候補 | 未Binding |
+|---|---:|---|---:|---:|
+| valid | 13656381225 | index.js 88byte／package.json 75byte、双方pre=post | **13/14** | 1 |
+| partial | 13656645331 | index.js 112byte／package.json 75byte、双方pre=post | **11/12** | 1 |
+
+両ArtifactのProjectionは external-candidates-only、sourceManifestStatus=report-pre-post-byte-match、TEICanonicalSubject=null、acceptedMeaning=false、sourceClosure=not-qualified。Root相当の1候補は物理Sourceを推定せず未Bindingのまま維持。これは前節15の「旧ZIPに後から追加したローカルSourceコピー」と異なり、**実REAプロセスが動作した同一Jobが実際に収集したpre/postのraw bytes**である。
+
+**資格上限**：pre(A)とpost(A)の二時点バイト一致は、解析プロセス中のA→B→Aを検出できず、実Providerが読んだ全byteの原子的証拠でもない。Hostの現在Grantや正式TEI意味は付与しない。[Inspector S2-reference main #3540](https://github.com/hat47x/tei-platform/pull/3540)の実装はREA Providerの実選択資格ではなく、[Workspace差分Draft #3735](https://github.com/hat47x/tei-platform/pull/3735)で区別しているWorld FP／Workspace Identity／Source raw revisionの要件を再利用する。
+
+**次の唯一の不足辺**：REA Evidenceの外部Observation 1件とEdge 1件を、現在のTEI共通read-only Application Operationへ情報損失なく接続するfit-gap。InspectSubjectは既受理Canonical Worldを読むので、外部候補をCanonical Subjectと偽装しない。T1-A正式取込み、T1-B DSL／Owner Meaning、三視点CRUD、SHO Writer、実DB／旧新Runtimeの適合は未実施。今回の文書追記後のHEADの全体CIを、上記tested SHAの成功から推論しない。
