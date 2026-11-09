@@ -1020,6 +1020,13 @@ X-TEA Modeler由来の**Data/Function/Businessの3図とCRUD cross-reference**�
 
 **既存工程**：HJ-09の最初のProduct Function/Provider read-first (#2586)は維持し、組織C1の次段P0-Rで#2506/#1656のRow Filter実施行点、SQL/実Rowset・Scope、List/Count/Page/Report/Export、Consumer/Cache現在性を独立照合。Current Grant/Effectは#1174/#2499、Model Map・UI/SHOからの開示は#1124/#2516、独立ScenarioとExpectedは#1180/#2514へ。Providerに行Scopeを強制できない保護Routeは拒否候補とし、UIで隠すだけで合格にしない。合成VP/VEのfixed-head PASS、mainのInspector/Hooks局所実装、実PostgreSQLの別Operationの成功は、Org Caseの実Policy Enforcement/Consumer/Owner受理を意味しない。第二Policy Engine/Host/Test Runnerを追加しない。**新VTRの実行・製品適合はNOT RUN**。
 
+### 組織CaseのSource→実Read→Decision候補→Effect→Handoff：証拠を接合するが、権限と正本を増やさない（2026-11-09）
+
+<!-- org-evidence-join-plan-20261109 -->
+[組織意味設計の新追補](design/ORGANIZATION_RELATION_GOVERNANCE_MODEL_2026-10.md)で、S（Source/Meaning）・Q（選択/実呼出Provider＋実Rowset/Cohort）・D（受理済Rule相対の判断候補）・E（現Principal/Grant・OperationID・Commit/Receipt）・H（必要L/実Read R/対象ACK H・実Consumer）を**別の同一性と資格**として整理。Case ID/World FP/同名・別Run成功の寄せ集めで、同一Snapshot/Authority/Attemptを捏造しない。遡及訂正は「訂正後の履歴解釈」を変え得るが、過去の実Effect/送信履歴を消さず、旧Receiptを現在有効化しない。SUI/外部REAのCandidate→SEI/人間のProposal→TEI Owner-accepted Rule→Host Effectの昇格はそれぞれ別決定で、長期Ontology DSL/Decision TwinはP0 Readの前提にしない。
+
+**最初の製品優先**は引き続き#2586のorder_entry.recent_orders 1 Function/1 Provider/実Consumer。次段組織Case C1では、同WorkspaceのRelation occurrence、Function/Queryとselected/invoked Provider、SQL/args/Scope、Rowsetのpartial/0件、§58のRecord Policy（実Provider施行は別資格）、一Consumerの受信・Disclosureまでを**同じAttempt**で確認。判断・実Effect・L/R/H Handoffは後続P1で#1174/#1125/#1444/#2514/#1180/#1163の既存Ownerへ段階接続する。#3717のPostgreSQL4系統非SKIP成功、#2781の合成Org Policy成功、mainのInspector/Hook実装は各々の限定Witnessであり、Org全体の現在Grant/Provider Enforcement/Client E2Eではない。本追補はdocs-only、新規実Go/DB/Host/SEI/SHOテストはNOT RUN。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
