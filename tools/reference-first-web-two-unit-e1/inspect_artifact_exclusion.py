@@ -102,6 +102,10 @@ KNOWN_INTRUSION = (
     "tei/internal/releaseplan",
     "tei/internal/application/release",
     "tei/internal/plugin/implementation",
+    # Found by CI (Go 1.26 build): in the tei_api_only import closure but not in
+    # the tei_frozen_world closure (checked with `go list -deps`).
+    "tei/core/subject",
+    "tei/internal/deployment/executor",
 )
 
 # Runtime mechanism that #1182 item 3 requires the API to keep (Driver,
@@ -112,6 +116,20 @@ RUNTIME_EXPECTED = (
     "tei/core/generation",
     "tei/core/identity",
     "tei/internal/composition",
+    # Data-model packages in BOTH the tei_api_only and tei_frozen_world import
+    # closures (`go list -deps`). They can show up only as `type:.eq.<pkg>.T`
+    # symbols, so whether they are linked depends on the Go version (seen in CI
+    # on Go 1.26, absent in a local Go 1.27 build).
+    "tei/internal/application",
+    "tei/internal/database",
+    "tei/internal/database/migration",
+    "tei/internal/database/persistence",
+    "tei/internal/database/physical",
+    "tei/internal/database/release",
+    "tei/internal/environment",
+    "tei/internal/query",
+    "tei/internal/resource",
+    "tei/internal/semantic",
     "tei/internal/driver",
     "tei/internal/driver/queryresult",
     "tei/internal/permission",

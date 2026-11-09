@@ -218,7 +218,8 @@ class SymbolMatcherTests(unittest.TestCase):
         for pkg in ("tei/internal/workspace", "tei/internal/syntax",
                     "tei/internal/sourceindex", "tei/internal/releaseplan",
                     "tei/internal/application/release",
-                    "tei/internal/plugin/implementation"):
+                    "tei/internal/plugin/implementation",
+                    "tei/core/subject", "tei/internal/deployment/executor"):
             with self.subTest(pkg=pkg):
                 result = self.analyze([pkg + ".Load"])
                 self.assertTrue(result["passed"], result["failures"])
@@ -234,6 +235,16 @@ class SymbolMatcherTests(unittest.TestCase):
                 ("main.presentation-symbols", "type:.eq.main.handleIndex")):
             with self.subTest(symbol=symbol):
                 self.assertIn(ident, self.analyze([symbol])["forbiddenHits"])
+
+    def test_type_only_runtime_packages_are_expected_but_new_ones_are_not(self):
+        for pkg in ("tei/internal/query", "tei/internal/semantic", "tei/internal/resource",
+                    "tei/internal/environment", "tei/internal/application",
+                    "tei/internal/database/physical"):
+            with self.subTest(pkg=pkg):
+                result = self.analyze(["type:.eq." + pkg + ".T"])
+                self.assertTrue(result["passed"], result["failures"])
+        result = self.analyze(["type:.eq.tei/internal/brandnew.T"])
+        self.assertIn("tei/internal/brandnew", result["unexpectedTeiPackages"])
 
     def test_empty_symbol_list_fails_as_no_symbols(self):
         result = module.analyze_symbols([])
