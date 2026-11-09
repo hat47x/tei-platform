@@ -143,5 +143,17 @@ class TestExternalProjection(unittest.TestCase):
         ids=[z['externalOccurrenceID'] for z in x['records'] if z['kind']=='graph-relation-observation']
         self.assertEqual(ids,['E1','E2'])
 
+    def test_wrong_provider_refused(self):
+        obj=doc();obj['data']['provider']['id']='not-rea'
+        self.setdoc(obj)
+        self.assertEqual(projector.project(self.root)['admission'],'refused')
+
+    def test_duplicated_semantic_unknown_refused(self):
+        obj=doc();unknown=obj['data']['normalized_result']['semantic_graph']['unknowns']
+        unknown.append(dict(unknown[0]))
+        self.setdoc(obj)
+        self.assertEqual(projector.project(self.root)['admission'],'refused')
+
+
 
 if __name__=='__main__':unittest.main()
