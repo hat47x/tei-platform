@@ -145,6 +145,10 @@ func main() {
 		return
 	}
 	jsonValidationRequested := command == "validate" && wantsJSONValidation(os.Args[2:])
+	// A requested usage listing must reach printHelp, which shows only the flags
+	// this command reads. Under ExitOnError the flag package prints its own
+	// listing and exits, and that listing enumerates the shared FlagSet: validate
+	// showed 70 flags while accepting 3 (#3956).
 	parseMode := flag.ExitOnError
 	if command == "inspect" || command == "trace" || jsonValidationRequested || isResultEnvelopeCommand(command) {
 		parseMode = flag.ContinueOnError
