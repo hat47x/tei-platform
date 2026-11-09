@@ -1027,6 +1027,15 @@ X-TEA Modeler由来の**Data/Function/Businessの3図とCRUD cross-reference**�
 
 **最初の製品優先**は引き続き#2586のorder_entry.recent_orders 1 Function/1 Provider/実Consumer。次段組織Case C1では、同WorkspaceのRelation occurrence、Function/Queryとselected/invoked Provider、SQL/args/Scope、Rowsetのpartial/0件、§58のRecord Policy（実Provider施行は別資格）、一Consumerの受信・Disclosureまでを**同じAttempt**で確認。判断・実Effect・L/R/H Handoffは後続P1で#1174/#1125/#1444/#2514/#1180/#1163の既存Ownerへ段階接続する。#3717のPostgreSQL4系統非SKIP成功、#2781の合成Org Policy成功、mainのInspector/Hook実装は各々の限定Witnessであり、Org全体の現在Grant/Provider Enforcement/Client E2Eではない。本追補はdocs-only、新規実Go/DB/Host/SEI/SHOテストはNOT RUN。
 
+### 外部Observationから組織Relationへの候補写像を段階受入する（2026-11-09）
+
+<!-- org-external-observation-t1a-plan-20261109 -->
+[組織設計の外部Admission追補](design/ORGANIZATION_RELATION_GOVERNANCE_MODEL_2026-10.md)で、[REA T1-A前段 #3496](https://github.com/hat47x/tei-platform/pull/3496)の**実REA 6.7.0・固定HEAD 4/4 Job・独立監査＋候補試験42/42 PASS**、valid **13/14**・partial **11/12**の二時点Source byte付きCandidateと各1 unbound Rootを、組織意味の**正式採用前の観測**として接続した。元データは公開JS合成Sourceであり、組織HR/実Caseの外部Producerが動いた証拠ではない。Source前後一致はA→B→AやProvider Actual Inputの原子的Snapshotを証明しない。TEICanonicalSubject=null／acceptedMeaning=false／sourceClosure=not-qualifiedを維持。
+
+**次の欠落辺は1 Observation＋1 Edgeのみ**：既存共通Application API（ADR-0048/#1158）へProvider版・Evidence ID・Node/Edge個別ID・方向/多重性・Source path+raw digest+span・coverage/unknown・Scope/Workspaceを損失なく渡す限定read-only実Consumer。#3394が外部Producer/Consumer照合を所有し、#2386がPerson/Membership/Occupancy/CaseへのOwner意味写像、#3492/#3518/#1124がAccepted/候補を混同しない三視点Model Map、#2516が公開Slice/診断も含む開示、#2514/#1180が独立負例を所有する。ORG-EXT-01〜06で同名別ID、多重Edge、unbound端点、partial 0件、同byte別Workspace、A→B→Aを対照。既存InspectSubjectへ外部JSONを偽Canonicalとして流さず、独立Graph Store/Resolver/Parser/Hostを作らない。
+
+全TEI最初の実Product Read #2586 HJ-09は**並行して最優先のまま**。External候補が得られても、実組織のCase C1 read、現在Principal Grant、Rule受理、Effect/Handoff L/R/H、SHO/SEIの正式受信まで昇格しない。上記外部Candidate→TEI Operation／組織Owner採用／Org Map実表示の新試験はNOT RUN。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
