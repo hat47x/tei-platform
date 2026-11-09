@@ -66,6 +66,8 @@ stdoutへ1件のJSONを出します。`tei self-build`が読む欄は`artifactDi
 | `-intent`無し | 宣言の欄を出さない（沈黙を合格と読ませない） |
 | **座標の不一致** | `outputKind`・`target`・`profile`のいずれかが違えばartifactを書かず、reportを出さず、exit 1。違った座標を名指しする |
 | `profile`の省略 | planの値と一致しないものとして拒否する |
+| **builder要求の不一致** | `contract`・`compatibleMajor`・`provider`・`pin`のいずれかが解決結果と違えばreportを出さずexit 1。欄を名指しする |
+| builder要求の一致 | `provider`と`pin`が一致すれば`intentBoundToPlan=true`で通る（常に失敗する比較ではないことの確認） |
 
 ## child自身のlock
 
@@ -97,6 +99,22 @@ lockが`Validate`を通らなければ、**artifactを書いた後にreportを�
 **`profile`の省略は一致と読まない。** 宣言が`profile`を書かないことは「planの`profile`と同じ」ではなく「profileを宣言していない」である。
 
 座標の一致が言えるのは「**宣言とplanが同じbuildを指す**」ことまでで、「その宣言がそのplanを生んだ」ことではない。
+
+## 宣言の`builder`要求とplanの解決結果
+
+宣言は`builder`を**要求**として書き（`contract`と`compatibleMajor`、任意で`provider`・`pin`）、planは**解決結果**として`BuilderIdentity`を持つ。このchildは両者を照合する。
+
+| 宣言 | plan | 規則 |
+| --- | --- | --- |
+| `contract` + `compatibleMajor` | `builder.contractVersion` | `internal/buildintent`の`BuilderContractVersion`で組み立てて完全一致 |
+| `provider.plugin`（指定時） | `builder.id` | 完全一致 |
+| `pin.artifactDigest`（指定時） | `builder.artifactDigest` | 完全一致 |
+
+**対応規則はこのchildが決めたものではない。** resolverの`ResolveBuilder`が候補を`Contract`と`ContractMajor`で絞り、`BuilderContractVersion`と同じ書式で`ContractVersion`を組み立てている。両側が同じ関数を通るので、照合は**書式ではなく要求**を試す。
+
+`provider.implementation`は**照合しない**。`plugin.BuilderIdentity`に対応する欄が無いためである。比べないことをコードにも書いてある。
+
+**この照合は、同じ宣言からresolverが導いたplanに対しては決して失敗しない。** 要求を満たさない宣言からはresolverがplanを作らないためである。したがってこの照合が効くのは、**planがその宣言から導かれたものではない**場合だけである（宣言が解決後に変わった、別の宣言から導かれた、resolver以外で作られた）。
 
 ## 実行した確認
 
