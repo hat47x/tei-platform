@@ -86,6 +86,53 @@ func TestValidateBindingLeavesADataAttributeAlone(t *testing.T) {
 	}
 }
 
+// dataBindingWorld declares a record pattern whose interaction command binds a
+// Data-typed parameter to another Data's attribute.
+func dataBindingWorld(attribute string) ir.World {
+	w := applicationPatternInteractionWorld()
+	w.Semantics[0].Data = append(w.Semantics[0].Data, semantic.Data{
+		ID:         "sales.customer",
+		Attributes: []semantic.Attribute{{ID: "sales.customer.customer_id", TypeRef: "std.identifier"}},
+	})
+	w.Semantics[0].Capabilities = append(w.Semantics[0].Capabilities, semantic.Capability{
+		ID:     "sales.submit",
+		Symbol: "submit",
+		Inputs: []semantic.Parameter{{Name: "order", Type: "sales.order"}},
+	})
+	pattern := interactionRecordPattern(&w)
+	pattern.Interaction.Commands = []application.InteractionCommand{{
+		Capability: "sales.submit",
+		Inputs:     []application.CommandInputBinding{{Name: "order", Attribute: core.CanonicalID(attribute)}},
+	}}
+	w.Applications[0].SemanticUses = []core.CanonicalID{"sales", "customer"}
+	return w
+}
+
+// TestValidateBindingAcceptsAnAttributeOfTheParameterData checks that a
+// Data-typed parameter bound to one of that Data's own attributes is accepted.
+func TestValidateBindingAcceptsAnAttributeOfTheParameterData(t *testing.T) {
+	w := dataBindingWorld("sales.order.order_id")
+	if diagnostic := diagnosticByCode(validateApplicationPatterns(w), "APPLICATION_PATTERN_INTERACTION_COMMAND_INPUT_DATA_MISMATCH"); diagnostic != nil {
+		t.Fatalf("an attribute of the parameter's own data was refused: %s", diagnostic.Message)
+	}
+}
+
+// TestValidateBindingRefusesAnotherDatasAttribute checks the defect: a
+// `sales.order` parameter fed by a `sales.customer` attribute supplies a value
+// of the wrong record, and nothing downstream inspects the record identity.
+func TestValidateBindingRefusesAnotherDatasAttribute(t *testing.T) {
+	w := dataBindingWorld("sales.customer.customer_id")
+	diagnostic := diagnosticByCode(validateApplicationPatterns(w), "APPLICATION_PATTERN_INTERACTION_COMMAND_INPUT_DATA_MISMATCH")
+	if diagnostic == nil {
+		t.Fatal("an attribute of another data was accepted for a data-typed parameter")
+	}
+	for _, want := range []string{"sales.order", "sales.customer.customer_id"} {
+		if !containsString(diagnostic.Message, want) {
+			t.Fatalf("the diagnostic does not name %q: %s", want, diagnostic.Message)
+		}
+	}
+}
+
 // containsString reports whether a string holds a substring.
 func containsString(haystack, needle string) bool {
 	for i := 0; i+len(needle) <= len(haystack); i++ {
