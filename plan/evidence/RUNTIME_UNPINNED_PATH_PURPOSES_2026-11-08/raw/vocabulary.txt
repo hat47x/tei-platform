@@ -1,0 +1,4 @@
+== does each site mention Host pinning vocabulary? ==
+internal/plugin/runtime/adapters.go                                     Host=- generation=- lease=Y Coordinator=- pin=- 
+tools/reference-order-rollout-host-continuity/host.go                   Host=Y generation=- lease=Y Coordinator=- pin=Y 
+tools/reference-plugin-capability-contract/runtime_authority_bridge.go  Host=- generation=- lease=- Coordinator=- pin=- 

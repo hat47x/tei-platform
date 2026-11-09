@@ -306,3 +306,26 @@ func TestResolveModuleClosurePreflightReportsSupportedCandidate(t *testing.T) {
 		t.Fatal("supported target did not identify its own module root")
 	}
 }
+
+func TestClassifyModuleClosureDoesNotQualifyEmptyOrStandardOnlyResolverOutput(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		output string
+	}{
+		{name: "empty-stream"},
+		{name: "standard-library-only", output: "{\"ImportPath\":\"fmt\",\"Standard\":true}"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			preflight, err := classifyModuleClosure("ROOT", "./cmd", "/go/bin/go", "sha256:aaaa", []byte(tc.output))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if preflight.Classification != ModuleClosureUnknown {
+				t.Fatalf("no target module package was selected: classification=%s, want unknown", preflight.Classification)
+			}
+			if preflight.ResolvedPackages != 0 || len(preflight.ModuleRoots) != 0 || preflight.SourceClosureReachable {
+				t.Fatalf("empty target module selection was promoted to a reachable source closure: %+v", preflight)
+			}
+		})
+	}
+}

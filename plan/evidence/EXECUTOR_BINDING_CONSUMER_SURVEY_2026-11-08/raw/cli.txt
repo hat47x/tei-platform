@@ -1,0 +1,6 @@
+== CLI deployment subcommands that mention routing or executor ==
+31:	deploymentrouting "tei/internal/deployment/routing"
+52:	Executors     []deploymentrouting.RoutedCommand `json:"executors,omitempty"`
+883:		var result executor.Result
+903:		if err := deploymentrouting.ValidateResult(env, cmd, result); err != nil {
+984:		routed, err := deploymentrouting.RouteCommands(env, deploymentdurable.ReadyCommands(run))

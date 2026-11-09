@@ -1,4 +1,4 @@
-# 例の標準業務Dataの宣言と結合の確認（2026-11）
+﻿# 例の標準業務Dataの宣言と結合の確認（2026-11）
 
 ## 対象
 
@@ -19,7 +19,7 @@ go run ./cmd/tei validate -workspace examples/xtea-lowcode
 - `TestXTEAExampleDeclaresStandardBusinessRoles` 成功。
   - 税: `master.tax_rate`の`applies_from`・`applies_until`・`category`・`rate`・`rounding`を役割から解決。
   - 為替: `master.exchange_rate`の`currency`・`fiscal_year`・`month_sequence`・`middle`・`buying`・`selling`を解決。
-  - 採番: `master.numbering_rule`の`counter`・`digits`・`prefix`・`check`・`overflow`を解決し、`ORD-00042`相当の番号と次の状態42を得る。
+  - 採番: `master.numbering_rule`の`rule`（規則識別）・`counter`・`digits`・`prefix`・`check`・`overflow`を解決。1つのDataに`order`と`invoice`の2規則を置き、`order`を束縛して`ORD-00042`と次の状態42を得る（`ResolveRules`）。
   - 暦: `sales.fiscal`が`master.holiday`を名指し、`holiday_on`を役割から解決。年度2026の判定が通る。
 - 例の`validate`は`ok`（既存の`UNBOUND_DATASOURCE`警告のみ）。
 - `go test ./cmd/tei ./internal/businesscalendar ./internal/taxrate ./internal/currencyrate ./internal/numbering ./internal/validation` 成功。
@@ -31,10 +31,11 @@ go run ./cmd/tei validate -workspace examples/xtea-lowcode
 
 ## 読み取れないこと
 
-- 税率・為替・採番の**行データ**（例には含まない）。参照実装の試験で行を直接与えて確認している。
-- Studio画面での標準業務Dataの表示。今の`view`はApplication投影に期間の暦を出すが、税・為替・採番のDataは投影しない。
+- 税率・為替・採番の**行データ**（例には含まない）。参照実装の試験で行を直接与えて確認している。採番は2規則の行を試験で与え、`ResolveRules`の経路を確認している。
+- Studio画面での標準業務Dataの表示。`view`はApplication投影に`standardBusiness`と期間の暦を出すが、行データと計算結果は出さない。
 - 実DB・旧Runtimeでの実測。
 
 ## 位置付け
 
 参照実装の試験記録であり、製品の受入や本番適格性を示しません。例での宣言と結合は確認済み、行データ・画面投影・実DBは未確認です。
+

@@ -106,8 +106,11 @@ func (d Declaration) Bind(rows []map[core.CanonicalID]string) ([]Rate, error) {
 		if err != nil {
 			return nil, fmt.Errorf("exchange rate row %d: %s: %w", index+1, d.MonthSequence, err)
 		}
-		if monthSequence < 1 || monthSequence > 12 {
-			return nil, fmt.Errorf("exchange rate row %d: month sequence %d is outside 1..12", index+1, monthSequence)
+		// AnnualMonthSequence is the annual marker, so it is accepted beside the
+		// twelve months. Refusing it would make every annual row unbindable, and
+		// the declared fallback could never read one.
+		if monthSequence != AnnualMonthSequence && (monthSequence < 1 || monthSequence > 12) {
+			return nil, fmt.Errorf("exchange rate row %d: month sequence %d is outside 1..12 and is not the annual marker %d", index+1, monthSequence, AnnualMonthSequence)
 		}
 		middle, err := parseRate(row[d.Middle], "middle rate")
 		if err != nil {
