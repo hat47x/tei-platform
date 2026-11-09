@@ -131,3 +131,20 @@ C-2の既存実装では、内部のArtifact Verifierが呼出しを拒否した
 
 **限定Exit達成**：[C-1/C-2専用Go CI #42555954660](https://github.com/hat47x/tei-platform/actions/runs/42555954660)は**completed/success**。C-1/C-2両ReferenceのGoテスト、Go vet、gofmtを同じcheckoutで実行し、C-2実コードBlob `f2952030906b80ba0bf052caeed92082f89c302c`と新V1テストBlob `67b4ed10eaaf0842e2719d5cfda724076fbc5008`を記録した。コード・テストは後続の文書改訂でも同一Blobを保持。これはReference限定であり全体Health、実Service Process資格、製品S2とは別。C-4外部Host委譲の判断、通常CLI/Studioの**S2-reference統合済み／S2-product正式Profile差替え未実証**、外部Source/BOM/Effectの資格はそれぞれ別のOwnerが保持する。Referenceのレポート種別・数値を、製品の業務成功KPIや自動再試行判断へ流用しない。
 | C-3 `reference-executor-id-resolution` | Binding が選ぶ executor の `CapabilityID` の解決と、plan への受入 | `v0`：`RESOLVED`／`BINDING_MISSING`／`NOT_IN_PLAN`／`ACTION_UNSUPPORTED`／`LOCK_REJECTED` を区別 | 実配備、Artifact信頼、実行時Effect |
+
+## 12. 断絶は配備実行だけではない（2026-11-09追補）
+
+この文書は「配備実行の能力IDを直書きしている」という1つの断絶から始まりました。しかし `Environment` が実装を指す宣言は**6種類**あり、同じ断絶がそこにも現れます（[記録](../evidence/BINDING_FORMS_CONSUMER_SURVEY_2026-11-09/README.md)）。
+
+| 宣言 | 解決する既存の関数 | 非試験で解決しているか | 実行に届くか |
+| --- | --- | --- | --- |
+| `DeploymentExecutors` | `routing.RouteCommand` | する | **参照実装経由のみ**（C-1） |
+| `ObservationProviders` | `observation.Binding` | **する**（`cmd/tei/main.go`） | **届かない**（`Router` は試験でのみ構築） |
+| `EvidenceProviders` | `evidence.Binding` | **する**（`cmd/tei/main.go`） | **届かない**（同上） |
+| `ResourceBindings` | `resource.MatchBindings` | する | 資源の貸与まで（実行の入口ではない） |
+| `Instances` | （無し） | 参照・検証のみ | 届かない |
+| `Bindings` | （無し） | 参照・検証のみ | 届かない |
+
+**C-3 が試した「宣言から解決する」形は、`observation` と `evidence` では既に製品コードにあります。** それでも実行に届かないのは、`Binding` が解決しても `Router` を製品が組み立てないためです。**したがって C-3 は新しい機構の発明ではなく、既にある形を配備実行にも適用できるかの確認でした。**
+
+この一般化は、第4節の順序も決定の Owner も変えません。**「どの宣言を実行へ繋ぐか」は、この文書が決めることではありません。**
