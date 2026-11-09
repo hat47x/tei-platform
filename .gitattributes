@@ -244,3 +244,6 @@
 
 # Adapter binding blindspot output is hashed as raw bytes by its README.
 /plan/evidence/ADAPTER_BINDING_BLINDSPOT_2026-11-09/** -text
+
+# MCP argument-size observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_ARG_SIZE_2026-11-10/** -text
