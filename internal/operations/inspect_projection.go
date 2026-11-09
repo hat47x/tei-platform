@@ -24,5 +24,15 @@ func ValidateInspectionProjection(requested sourceindex.Subject, value SubjectIn
 		value.SourceIndexFingerprint == "" {
 		return errors.New("inspection service returned an inconsistent projection")
 	}
+	// Every currently supported Canonical Subject kind is an object with
+	// an exact top-level ID. The response wrapper's Subject alone cannot
+	// attest that the returned Canonical bytes belong to that Subject:
+	// a selected Provider could return another Subject's valid JSON.
+	var identity struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(value.Canonical, &identity); err != nil || identity.ID != requested.ID {
+		return errors.New("inspection service returned a Canonical object for another subject")
+	}
 	return nil
 }
