@@ -807,3 +807,25 @@ ADR-0048 §2.4 の「既定値の適用は共通契約で定める」を、CLI �
 **これは欠陥の起票ではない。** 欠陥ではないが目的の達成を妨げている構造であり、判断は [#2620](https://github.com/hat47x/tei-platform/issues/2620) の Owner に属する。材料（測定値・合格条件・移行時の注意点）を提示するに留め、勝手に `std` を `.tei` 化していない。
 
 **注意**: 移行時は `std` の特別扱い2箇所と `internal/stdlib/semantic.go` の二重定義を同時に扱う必要がある。Go の定義を残したまま `.tei` を併置して一致を確かめる段階を挟むのが安全。
+
+## 31. 第26ラウンド（2026-11-09）: std への宣言が「prelude」と誤判定され、件数からも消えていた
+
+25ラウンドで「`std` を `.tei` にできるか」の移行コストを見積もる過程で、`std` の特別扱いが**名前の前方一致**に依存していることに気づいた。利用者が `std` に型を足した場合を測った。生出力は[第26ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND26_PRELUDE_IDENTITY_2026-11-09/README.md)にある。
+
+`namespace std { type email from std.text }` と書くと、**3つの矛盾**が同時に出た。
+
+| 症状 | 内容 |
+| --- | --- |
+| 名前空間の重複 | `DUPLICATE_SEMANTIC_NAMESPACE`（error）。catalog も `std` を2件、両方 `ambiguous:true`・`sourceStatus:indexed` で返す |
+| prelude の誤判定 | `std.email`（利用者の宣言）に `prelude:true` が付く。契約文書 §59 の「Workspaceが宣言したものではない」に反する |
+| 件数の欠落 | `declarationCounts.total` が 0、`WORKSPACE_DECLARES_NO_MODEL_ELEMENTS` 警告。一方 `inspect` は `std.email` を `indexed` で解決する |
+
+原因は4箇所のうち3箇所が名前の前方一致で `std` を特別扱いしていたこと（`preludeSubject`・`declaration_counts.go:38`・`validation.go:1185`）。1箇所（`standardSemanticSubject`）だけが正しく同一性で照合していた。加えて loader が prelude の `std` と利用者の `std` を**別の名前空間として追加**していた。
+
+修正: 「prelude である」ことを名前ではなく同一性で判定する。`isPreludeType(id)`・`hasNonPreludeDeclaration(ns)` を追加し、loader の `byNamespace` を既存の `World.Semantics` から初期化して利用者の宣言を prelude の名前空間へ合流させた。
+
+修正後: `validate` は `ok:true`、`std` は1件で `not-indexed`、`std.email` は `prelude` 無しで `indexed`、`declarationCounts` は `types:1`・`total:2`。prelude のみの Workspace は `total:0` のまま、`reference/workspace` は `total:71` で不変。
+
+試験は `prelude_identity_test.go` の3件。変異2種（前方一致に戻す／名前空間ごと飛ばす）を検出する。
+
+**残り**: `std` 自体を `.tei` にする判断（#2620）は未着手。ただし今回の修正で「prelude と利用者の宣言を同一性で区別する」規則が3箇所に入ったので、`std` を `.tei` にしても同じ規則で扱える。起票は [#3851](https://github.com/hat47x/tei-platform/issues/3851)。
