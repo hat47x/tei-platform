@@ -58,9 +58,9 @@ func bruteForce(p Problem) (int64, bool) {
 
 func TestExactExamples(t *testing.T) {
 	cases := []struct {
-		name    string
-		input   Problem
-		optimal int64
+		name     string
+		input    Problem
+		optimal  int64
 		feasible bool
 	}{
 		{"independent", Problem{
