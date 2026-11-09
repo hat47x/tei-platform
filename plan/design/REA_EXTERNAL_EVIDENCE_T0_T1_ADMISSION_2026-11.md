@@ -300,3 +300,17 @@ validの14候補はobserved 9／inferred 5。partialの12候補はobserved 7／i
 - 現mainのInspectSubjectは既受理Canonical WorldのSubjectから投影するので、REA候補を正式Subjectに見せかけない。次の実T1-Aは1外部Observation＋1 Relationのtyped read-only Consumer実受領。Source/Workspace Identity・scope/unknown/現在Grantは別判定、第二Host/Runner/Source Registry/Parserは作らない。
 
 **未成立**：REA実ProviderをTEIのHostから正式選択・実呼出し、原子的Source snapshot、T1-A正式TEI製品取込み、T1-B DSL/Owner Meaning、三視点CRUD、SHO Writer、実DB/旧新比較はNOT RUN。
+
+
+---
+
+<!-- rea-t1a-cli-vs-unit-path-20261109 -->
+## 16. 同じProducer結果でもCLI実引数が異なると失敗する：CIで見つかった受入負例
+
+新Source pre/post保存を追加した[実REA T0 Actions #42578272437](https://github.com/hat47x/tei-platform/actions/runs/42578272437)の**validとpartialのJobはFAIL**、missingとunsupportedは独立Expectedに対してPASS。実ログの失敗ステップは「Project external observations without accepting TEI meaning」であり、tracebackに `TypeError: unsupported operand type(s) for /: 'str' and 'str'` が記録された。REAの解析自体、Raw Evidence保存、Source pre/postコピーは成功したが、**別Consumerの入力経路が失敗した**。したがってRun全体はsuccess扱いしない。
+
+原因：従来のUnit Testは `project(Path)` で実行するが、実CLIは `project(str)` で呼ぶ。内部の `_file` が `root / name` というPath操作を行うため、StringをPathへ正規化していなかった。今回 `project()` 入口で `Path(report_dir)` に明示正規化し、`test_cli_string_report_path_is_supported` を独立の24番目のNegative/Positive Consumer境界対照として追加。**同じ入力ファイル・同じ関数でも、呼出し経路の入力型が違えば結果が異なる**ことを検出するための追加試験であり、REA構造自体の欠陥ではない。
+
+**確認できた実績**：作業環境PythonでCandidate Projectionの**24/24 unit PASS**、実際のGitHub保存byteと完全一致。修正後Projector SHA `1c4d00463d32a994e564dfa5e3b45409da32a845`、テストSHA `a15da75bb862928df8a31b59653a8f3ba39a328a`。従来audit 18件と合計42件の局所試験対象となる。ただし**修正後exact-headのGitHub Actions 4ケースのPASS／保存Sourceの独立Readbackは別確認**であり、失敗Runの成功として書き換えない。
+
+**計画の更新**：T1-Aの入場判定では、Unit Fixtureと実CLI entrypointが同じResult/Failureを返すことを実行証拠で照合。Source Snapshotの二時点確認、Manifest一致、実Source CohortやABA不可検出、TEI Canonical Subject未入場、Current Grant未資格は引き続き独立。#1158共通Operation/CLI Adapter、#1163実Consumer receipt、#2514独立Expectedを再利用し、REA専用の二重APIやRunnerは追加しない。
