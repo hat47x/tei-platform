@@ -1,6 +1,6 @@
 # ADR-0040: 生成器の失効承認をregistryの編集と分離し、承認recordの対象一致だけを検証する
 
-- 状態: 提案中
+- 状態: 提案中（[ADR-0045](0045-generator-artifact-lifecycle-and-evidence.md)へ統合を提案。ADR-0045の採用時に置き換え済みとする）
 - 日付: 2026-10-21
 - 関連ADR: ADR-0022 / ADR-0034 / ADR-0037 / ADR-0035
 - 関連Issue: #2076 / #2016 / #951 / #1104 / #1370
@@ -54,7 +54,7 @@ registryは`revoked`と対象digestを宣言し、承認recordを参照する。
 
 ### Authorityを複製しない
 
-承認recordは既存のAuthority Evidence / Build Evidenceへ接続できるかを評価する参照であり、新しいAuthority・常駐サービス・承認UIを作らない。意味の受理・権限付与はADR-0022 / ADR-0035のA4として人へ戻す。
+承認recordは既存のAuthority Evidence / Build Evidenceへ接続できるかを評価する参照であり、新しいAuthority・常駐サービス・承認UIを作らない。意味の受理・権限付与はADR-0022の受理境界で扱い、開発作業としてはADR-0035のA3で進める。外部へ取り消せない効果を出す場合だけ、ADR-0035のA4として人に確認する。
 
 ## 代替案
 

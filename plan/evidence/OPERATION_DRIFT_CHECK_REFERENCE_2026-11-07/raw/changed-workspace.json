@@ -1,0 +1,30 @@
+{
+  "schema": "tei.reference.operation-drift-check/v0",
+  "authority": "derived-read-only",
+  "ruleFingerprint": "sha256:c3d6e5ed402bf472f0dc3ddf8813b29584cbef4809778d581e4c9649af7b9fa3",
+  "application": "ledger",
+  "status": "stale",
+  "findings": [
+    {
+      "value": "worldFingerprint",
+      "expected": "sha256:bd53dbaca0ac2c20bc911e0b69083467f2ad38273911269d525db666e681817f",
+      "actual": "sha256:bf289866320d316d4cfb37d8cbbe8f80c2f403847e086b193ed5a73741a6a161",
+      "match": false,
+      "reason": "the surface was derived from a different World"
+    },
+    {
+      "value": "modelRevision",
+      "expected": "sha256:c60ed68c7c85ab218883b18970df85db1ebcae7d9090336452766d7a95d2b04d",
+      "actual": "sha256:92102c0e5d6b9ab6297a65d181ea8367a2dfecf64fb3e1bfff54ce5a0c407642",
+      "match": false,
+      "reason": "the management Source set changed since the surface was derived"
+    }
+  ],
+  "diagnostic": "STALE_OPERATION_SURFACE",
+  "notes": [
+    "a match means the two fingerprints agree, not that the current meaning was re-read",
+    "Basis is not compared: an attribute-only change leaves it equal",
+    "no Workspace is read and nothing is written",
+    "whether this check runs by default is undecided (design 15章 未決4)"
+  ]
+}

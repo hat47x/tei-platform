@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -204,9 +203,7 @@ func TestNativeSQLRejectsUnsafeOrInvalidPaths(t *testing.T) {
 }
 
 func TestNativeSQLRejectsSymlinkThatEscapesWorkspace(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("symlink permissions vary on Windows")
-	}
+
 	root := newQueryWorkspace(t, `query order_entry.recent_orders {
     datasource sales
     sql postgres file "outside.sql"

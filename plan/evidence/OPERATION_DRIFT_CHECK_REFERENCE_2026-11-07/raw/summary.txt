@@ -1,0 +1,14 @@
+== same-workspace ==
+  status=current diagnostic=
+    worldFingerprint match=True
+    modelRevision match=True
+
+== changed-workspace ==
+  status=stale diagnostic=STALE_OPERATION_SURFACE
+    worldFingerprint match=False
+    modelRevision match=False
+
+== no-expectation ==
+  status=unchecked diagnostic=
+
+changed-workspace exit code: exit=1

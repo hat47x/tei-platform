@@ -3,11 +3,13 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"tei/internal/applicationview"
+	"tei/internal/command"
 	"tei/internal/validation"
 	"tei/internal/workspace"
 )
@@ -222,7 +224,10 @@ func TestProductSliceLoadsValidatesAndViews(t *testing.T) {
 	if err := json.Unmarshal(referenceRun.Bytes(), &referenceReport); err != nil {
 		t.Fatal(err)
 	}
-	if !referenceReport.OK || referenceReport.Result.Mode != "reference" || !referenceReport.Result.Committed || referenceReport.Result.Outcome == nil {
+	if !referenceReport.OK || referenceReport.Result.Mode != "reference" ||
+		!referenceReport.Result.Committed || referenceReport.Result.Persisted ||
+		referenceReport.Result.Persistence != string(command.PersistenceNotApplicable) ||
+		referenceReport.Result.Durability != "none" || referenceReport.Result.Outcome == nil {
 		t.Fatalf("reference run=%+v", referenceReport.Result)
 	}
 
@@ -238,6 +243,42 @@ func TestProductSliceLoadsValidatesAndViews(t *testing.T) {
 	}, &periodStateFailure)
 	if code == 0 || !strings.Contains(periodStateFailure.String(), "PERIOD_STATE_LOAD_FAILED") {
 		t.Fatalf("period state failure exit=%d body=%s", code, periodStateFailure.String())
+	}
+
+	var unauthorized bytes.Buffer
+	code, err = runViewCommand([]string{
+		"-workspace", root,
+		"-application", "order_entry",
+		"-pattern", "order_entry.order_record",
+		"-command", "sales.submit_order",
+		"-input", "order=ORD-1",
+		"-execute",
+		"-allow-capability", "sales.other",
+	}, &unauthorized)
+	if code == 0 || !strings.Contains(unauthorized.String(), "COMMAND_UNAUTHORIZED") {
+		t.Fatalf("unauthorized run exit=%d body=%s", code, unauthorized.String())
+	}
+
+	operationLog := filepath.Join(t.TempDir(), "operations.json")
+	var loggedRun bytes.Buffer
+	code, err = runViewCommand([]string{
+		"-workspace", root,
+		"-application", "order_entry",
+		"-pattern", "order_entry.order_record",
+		"-command", "sales.submit_order",
+		"-input", "order=ORD-1",
+		"-execute",
+		"-operation-log", operationLog,
+	}, &loggedRun)
+	if err != nil || code != 0 {
+		t.Fatalf("operation log run exit=%d err=%v body=%s", code, err, loggedRun.String())
+	}
+	recorded, err := os.ReadFile(operationLog)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(recorded), "\"declared\"") || !strings.Contains(string(recorded), "\"reported\"") {
+		t.Fatalf("operation log=%s", recorded)
 	}
 
 	var applicationView bytes.Buffer

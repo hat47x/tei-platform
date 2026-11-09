@@ -48,6 +48,10 @@ var (
 	// ErrInvalidIntent is returned before any Runner call when a spec or intent
 	// field that this package checks is empty, or the Runner is nil.
 	ErrInvalidIntent = errors.New("submit: invalid spec or intent")
+	// ErrIntentRejected is returned before any Runner call when Spec.ValidateIntent
+	// is set and refuses the Intent. It carries no text from the validator and
+	// never the payload.
+	ErrIntentRejected = errors.New("submit: intent rejected before execution")
 )
 
 // AcquireGrant calls src and fails closed: a nil source or any source error
@@ -64,9 +68,20 @@ func AcquireGrant(ctx context.Context, src GrantSource) (legacyauthorization.Aut
 }
 
 // Spec names the target application and capability of the effect.
+//
+// ValidateIntent is an optional, target-neutral hook. The Target (the caller
+// that composes the Intent) uses it to guarantee that the payload agrees with
+// the OperationID and the grant's Resource before anything is executed (Owner
+// provisional decision D11). When nil, behaviour is exactly as before. When set
+// and it returns an error, RequestFromGrant, Caller.Execute and Caller.Lookup
+// refuse with ErrIntentRejected and the Runner is never called. The hook
+// receives a private copy of the Intent (the same bytes then go into the
+// Request) and must not retain it; a panic counts as a rejection and its error
+// text or panic value is discarded so that no payload content can leak.
 type Spec struct {
-	Application string
-	Capability  string
+	Application    string
+	Capability     string
+	ValidateIntent func(Intent) error
 }
 
 // Intent is one requested effect. Payload is passed through byte for byte and is
@@ -79,10 +94,20 @@ type Intent struct {
 
 // RequestFromGrant builds the Request. Subject, Action and Resource are copied
 // only from the grant. It refuses an empty application, capability or operation
-// id. It does not validate the grant; effectcommit.Runner does.
+// id, and an Intent that Spec.ValidateIntent (when set) rejects. It does not
+// validate the grant; effectcommit.Runner does.
 func RequestFromGrant(spec Spec, grant legacyauthorization.AuthorizationGrant, in Intent) (effectcommit.Request, error) {
 	if spec.Application == "" || spec.Capability == "" || in.OperationID == "" {
 		return effectcommit.Request{}, ErrInvalidIntent
+	}
+	// One private copy of the payload is made. The hook checks exactly this copy
+	// and the Request carries exactly this copy, so the bytes that were checked
+	// are the bytes that execute (no check/use gap) and the caller's slice is
+	// never shared with the hook.
+	checked := in
+	checked.Payload = append([]byte(nil), in.Payload...)
+	if spec.ValidateIntent != nil && !intentAccepted(spec.ValidateIntent, checked) {
+		return effectcommit.Request{}, ErrIntentRejected
 	}
 	return effectcommit.Request{
 		Scope: effectcommit.Scope{
@@ -94,8 +119,19 @@ func RequestFromGrant(spec Spec, grant legacyauthorization.AuthorizationGrant, i
 		},
 		OperationID:     in.OperationID,
 		ExpectedVersion: in.ExpectedVersion,
-		Payload:         append([]byte(nil), in.Payload...),
+		Payload:         checked.Payload,
 	}, nil
+}
+
+// intentAccepted runs the hook and reports whether it accepted. An error or a
+// panic is a rejection; neither the error text nor the panic value is kept.
+func intentAccepted(validate func(Intent) error, in Intent) (ok bool) {
+	defer func() {
+		if recover() != nil {
+			ok = false
+		}
+	}()
+	return validate(in) == nil
 }
 
 // Disposition is the neutral reading of a Runner answer.
@@ -177,20 +213,31 @@ type Caller struct {
 	Spec   Spec
 }
 
+// refusalOutcome reads a refusal before any Runner call: a rejected Intent is
+// NotCommitted (nothing ran), anything else is Failed. The error is still
+// returned to the caller alongside.
+func refusalOutcome(err error, in Intent) Outcome {
+	if errors.Is(err, ErrIntentRejected) {
+		return Outcome{Disposition: NotCommitted, OperationID: in.OperationID}
+	}
+	return Outcome{Disposition: Failed}
+}
+
 // Grant acquires the grant, failing closed.
 func (c Caller) Grant(ctx context.Context) (legacyauthorization.AuthorizationGrant, error) {
 	return AcquireGrant(ctx, c.Grants)
 }
 
 // Execute builds the request and runs it. The error is non-nil only for refusals
-// before any Runner call (ErrInvalidIntent).
+// before any Runner call (ErrInvalidIntent, or ErrIntentRejected with a
+// NotCommitted Outcome).
 func (c Caller) Execute(ctx context.Context, grant legacyauthorization.AuthorizationGrant, in Intent) (Outcome, error) {
 	if c.Runner == nil {
 		return Outcome{Disposition: Failed}, ErrInvalidIntent
 	}
 	req, err := RequestFromGrant(c.Spec, grant, in)
 	if err != nil {
-		return Outcome{Disposition: Failed}, err
+		return refusalOutcome(err, in), err
 	}
 	out := Classify(c.Runner.Execute(ctx, req, grant))
 	if out.OperationID == "" {
@@ -206,7 +253,7 @@ func (c Caller) Lookup(ctx context.Context, grant legacyauthorization.Authorizat
 	}
 	req, err := RequestFromGrant(c.Spec, grant, in)
 	if err != nil {
-		return Outcome{Disposition: Failed}, err
+		return refusalOutcome(err, in), err
 	}
 	out := ClassifyLookup(c.Runner.Lookup(ctx, req, grant))
 	if out.OperationID == "" {

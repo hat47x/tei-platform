@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"tei/internal/core"
+	"tei/internal/permission"
 	pruntime "tei/internal/plugin/runtime"
 	"tei/internal/resource"
 )
@@ -193,6 +194,7 @@ func TestHostProcessEnvironmentProfileThroughSandboxRunner(t *testing.T) {
 				Target: "TEI_DATABASE_CREDENTIAL",
 			}},
 		},
+		Permissions: []permission.Spec{{Kind: permission.KindSecret, Access: permission.AccessRead, Scope: "credential"}},
 	}, processRequest())
 	if err != nil {
 		t.Fatal(err)
