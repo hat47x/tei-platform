@@ -18,7 +18,7 @@ import "fmt"
 // declaration was interpreted into the plan that produced the artifact). This is
 // the L2-b predicate.
 
-const l2bClaimBoundary = "this attempt read the declaration, interpreted it into a plan itself, matched the builder's declaration bytes to the ones it held, saw the builder report the same plan, and reproduced the artifact from that plan; that is L2-b for this attempt on this host with these binaries. It is not acceptance, not Runtime Authority, not a statement about the catalog's correctness, not a trust judgement about the supply, and not L2-c or L3"
+const l2bClaimBoundary = "this attempt read the declaration, interpreted it into a plan itself, matched the builder's declaration bytes to the ones it held, saw the builder report the same plan, and reproduced the artifact from that plan; that is L2-b for this attempt on the host that ran it, with these binaries. Observed on linux/amd64 and windows/amd64 (§4.25); not proven for any other host. It is not acceptance, not Runtime Authority, not a statement about the catalog's correctness, not a trust judgement about the supply, and not L2-c or L3"
 
 // selfBuildL2BClaim is the combined claim, with the conditions it failed.
 type selfBuildL2BClaim struct {
