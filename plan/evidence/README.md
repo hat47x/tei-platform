@@ -200,3 +200,4 @@
 - [`matched`＋`bound`の二回独立試行での比較](TEI_GO_SELF_BUILD_MATCHED_BOUND_REPEAT_2026-11-09.md)（別state・別プロセスで二回走らせ、計画fingerprint・lock fingerprint・artifact digestが完全一致することを観測。PIDだけが異なる。再現性の観測でありL2-bではない。§4.12 / #2831）
 - [entryの導出したintent fingerprintが参照resolverと一致することの検証](TEI_GO_SELF_BUILD_INTENT_READER_2026-11-09.md)（§4.13 I-1aの実装（#3647）はreader自体を固定しているが、entryの導出値と参照resolverの導出値の一致は未固定だった。参照resolverのバイナリを起動して突き合わせる3件を追加。L2-bは未。 #2831）
 - [intentBindingをentryの導出値基準へ移す](TEI_GO_SELF_BUILD_BINDING_FINGERPRINT_2026-11-09.md)（I-1aと#3649により、byte検査・fingerprint検査・`planCrossCheck`・`planArtifactBinding`が**同じ1回の試行で同時に成立**することを実プロセスで観測。バイト一致でも捕れない食い違いを検出し、実施しない場合は理由を残す。`l2bClaimed`はfalse。 #2831）
+- [Resolveを`internal/`へ移す](TEI_GO_SELF_BUILD_RESOLVE_INTERNAL_2026-11-09.md)（§4.13が反対した「fixture catalogが製品に見える」問題を、portと`Resolve`だけを移しfixtureは`tools/`に残す形で解いた。決定性・receiptの改竄検出・不完全Contextの拒否を実測。entryの既定経路はchild起動のままで、L2-bは未。 #2831）
