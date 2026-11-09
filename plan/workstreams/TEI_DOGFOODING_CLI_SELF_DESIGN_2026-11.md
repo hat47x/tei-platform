@@ -582,3 +582,23 @@ ADR-0048 §2.4 の「既定値の適用は共通契約で定める」を、CLI �
 - 統合後の実測（`main` `5d5d5de6b`）では、`continuation.fingerprint` で継続すると成功し、`graphFingerprint` を渡すと `STALE_SNAPSHOT`。応答の名前と `field` だけで、どちらを使うか分かる。
 - 私が書いた重複実装（平坦な `continuationFingerprint`）は採用しなかった。`main` の形が上位互換である。
 - `-scope`・`-direction` を変えた場合の拒否、MCP が `continuation` を返すかは未確認。
+
+## 18. 第13ラウンド（2026-11-09）: 設計変更の影響範囲をCLIだけで答えられるか
+
+ここまでは「CLIの応答が正しいか」を測った。このラウンドは**実際の設計作業の問い**を試した。題材は実際の改名（`snapshotFingerprint` → `graphFingerprint`、PR #3633）。生出力は[第13ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND13_DESIGN_IMPACT_2026-11-09/README.md)にある。
+
+| 問い | 結果 |
+| --- | --- |
+| モデル要素の定義箇所は分かるか | **分かる**。`inspect semantic-data:sales.order` が `semantic/sales/order.tei` を返す |
+| リポジトリ全体をWorkspaceにできるか | **できない**。ルートに `tei.workspace.yaml` が無く `-workspace .` は `WORKSPACE_LOAD_FAILED` |
+| 設計文書だけをWorkspaceにできるか | **索引には載る**。`source-index` は `artifacts: 3, references: 0` で成功 |
+| 設計文書の中の名前を問えるか | **問えない**。`inspect … -subject-id snapshotFingerprint` は `SUBJECT_NOT_FOUND` |
+| 改名の影響範囲を挙げられるか | **挙げられない**。どの文書のどの行がその名前を含むかは `grep` が要る |
+
+読み取れること:
+
+- 意味モデル（`.tei` の宣言）については、定義箇所も参照関係もCLIで答えられる。**モデルに対する設計作業はCLIで完結できる。**
+- 設計文書（Markdown）については、CLIはファイルとして管理するところまでで、**中の名前を対象にした問いには答えられない**。D-9 の具体的な帰結である。
+- リポジトリ全体を1つのWorkspaceにする経路が無いため、横断の問いは入力を作れない。
+
+新しいIssueは作らない。#2619・#2621 の設計範囲であり、D-9 として第1ラウンドから記録している。この実測を D-9 の具体的な証拠として残す。
