@@ -384,6 +384,7 @@ WP10 統合と引継ぎ
 | CLI参照実行の期間状態 | 実装 | 付録C.5 |
 | フックの宣言（位相・読み書き・失敗時） | 実装 | 付録C.5 |
 | フックの範囲（行・レコード・項目）の宣言と拒否 | 実装（参照） | 付録C.5、`internal/application`・`internal/validation`・`internal/hook`（行単位は`RunRows`、ホストからの呼出しは未実装）、[確認記録](../evidence/XTEA_LOWCODE_HOOK_SCOPE_2026-11.md) |
+| 行単位のフックの実行（`RunRows`・`applyReachableRows`） | 実装（参照） | 付録C.5、`internal/hook`（二つの行経路が併存し`uses`の扱いが違う。`Runner.Rows`を設定するホストは未実装）、[確認記録](../evidence/XTEA_LOWCODE_HOOK_ROW_REACHABILITY_2026-11.md) |
 | フックの位相の重複宣言の拒否 | 実装 | 付録C.5、`internal/validation` |
 | フックの位相順序と途中停止の記録（`RunSequence`） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md) |
 | フックの宣言した読み取りだけの授受（`ReadsFor`） | 実装 | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_DECLARED_READS_2026-11.md) |
