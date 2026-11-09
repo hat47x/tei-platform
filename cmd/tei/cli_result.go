@@ -104,6 +104,18 @@ func resultEnvelopeWithWorkspace(command, mode string, result any, identity *wor
 	return envelope
 }
 
+// knowledgeFailure maps a knowledge-* build error to its envelope. A missing
+// or malformed argument is the caller's input problem and answers
+// INVALID_ARGUMENT; anything else stays KNOWLEDGE_BUILD_FAILED (#3733).
+func knowledgeFailure(command string, cause error) cliResultEnvelope {
+	code := resultCodeKnowledgeFailed
+	var argument *argumentError
+	if errors.As(cause, &argument) {
+		code = resultCodeInvalidArgument
+	}
+	return resultFailure(command, code, cause)
+}
+
 func resultFailure(command, code string, cause error) cliResultEnvelope {
 	return cliResultEnvelope{
 		SchemaVersion: resultSchemaVersion(command),
@@ -362,7 +374,7 @@ func knowledgeContextJSON(out io.Writer, workspacePath, subjectKind, subjectID, 
 	}
 	context, identity, err := buildKnowledgeContextWithIdentity(workspacePath, subjectKind, subjectID)
 	if err != nil {
-		return emitResult(out, resultFailure("knowledge-context", resultCodeKnowledgeFailed, err), 2)
+		return emitResult(out, knowledgeFailure("knowledge-context", err), 2)
 	}
 	if err := checkDataDesignFingerprint(context, expectedDataDesignFingerprint); err != nil {
 		return emitResult(out, resultFailure("knowledge-context", resultCodeKnowledgeFailed, err), 1)
@@ -391,7 +403,7 @@ func knowledgeQualifyJSON(out io.Writer, workspacePath, subjectKind, subjectID, 
 	}
 	qualification, err := buildKnowledgeQualificationFromFile(workspacePath, subjectKind, subjectID, requirementsPath)
 	if err != nil {
-		return emitResult(out, resultFailure("knowledge-qualify", resultCodeKnowledgeFailed, err), 2)
+		return emitResult(out, knowledgeFailure("knowledge-qualify", err), 2)
 	}
 	return emitResult(out, resultEnvelope("knowledge-qualify", resultModeQualification, qualification), 0)
 }
@@ -409,7 +421,7 @@ func knowledgeReviewPlanJSON(out io.Writer, workspacePath, subjectKind, subjectI
 	}
 	plan, err := buildBuilderReviewPlan(workspacePath, subjectKind, subjectID)
 	if err != nil {
-		return emitResult(out, resultFailure("knowledge-review-plan", resultCodeKnowledgeFailed, err), 2)
+		return emitResult(out, knowledgeFailure("knowledge-review-plan", err), 2)
 	}
 	if err := checkBuilderReviewPlanFingerprint(plan, expectedReviewPlanFingerprint); err != nil {
 		return emitResult(out, resultFailure("knowledge-review-plan", resultCodeKnowledgeFailed, err), 1)
@@ -429,7 +441,7 @@ func knowledgeReviewHandoffJSON(out io.Writer, workspacePath, subjectKind, subje
 	}
 	handoff, err := buildBuilderReviewHandoffFromFile(workspacePath, subjectKind, subjectID, requirementsPath)
 	if err != nil {
-		return emitResult(out, resultFailure("knowledge-review-handoff", resultCodeKnowledgeFailed, err), 2)
+		return emitResult(out, knowledgeFailure("knowledge-review-handoff", err), 2)
 	}
 	if err := checkBuilderReviewHandoffFingerprint(handoff, expectedReviewHandoffFingerprint); err != nil {
 		return emitResult(out, resultFailure("knowledge-review-handoff", resultCodeKnowledgeFailed, err), 1)
@@ -449,7 +461,7 @@ func knowledgeReviewDiscloseJSON(out io.Writer, workspacePath, subjectKind, subj
 	}
 	disclosure, handoff, err := buildBuilderReviewDisclosureFromFile(workspacePath, subjectKind, subjectID, reviewHandoffPath)
 	if err != nil {
-		return emitResult(out, resultFailure("knowledge-review-disclose", resultCodeKnowledgeFailed, err), 2)
+		return emitResult(out, knowledgeFailure("knowledge-review-disclose", err), 2)
 	}
 	if err := checkBuilderReviewHandoffFingerprint(handoff, expectedReviewHandoffFingerprint); err != nil {
 		return emitResult(out, resultFailure("knowledge-review-disclose", resultCodeKnowledgeFailed, err), 1)
