@@ -1,0 +1,7 @@
+go version: go1.27.0
+tei        sha256:4905587fea99286e139c0f3d8d35b933ab4e379d193262f1499a05324656293e
+tei-mcp    sha256:b9fed721e343862b1eb8bcc21849cf91a1844d17d09be5062fcd40f4f0aec5e5
+
+tei version -json:
+{"schemaVersion":"tei.cli.version/v0","effect":"read-only","goVersion":"go1.27.0","goos":"windows","goarch":"amd64","vcsRevision":"c79934de61d85ee7afc15990101010d82d54b94f","buildSettings":["-buildmode=exe","-compiler=gc"],"source":"build-info"}
+

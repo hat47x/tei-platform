@@ -1,0 +1,62 @@
+{
+  "schemaVersion": "tei.cli.knowledge-review-handoff/v0",
+  "ok": true,
+  "mode": "handoff",
+  "result": {
+    "projectionRevision": "tei.knowledge.builder-review-handoff/v1",
+    "fingerprint": "sha256:4ec93c8e685c0ec40b16a1dcc20f3ee563e3cfaa76d3e337d8497b5795756fc8",
+    "purpose": "design-change",
+    "subject": {
+      "kind": "semantic-data",
+      "id": "sales.order"
+    },
+    "reviewPlanProjectionRevision": "tei.knowledge.builder-review-plan/v1",
+    "reviewPlanFingerprint": "sha256:36d7178b0bf180e84140f7f52d5ef0475f1a2824eaeab3a5250b619a2f46b440",
+    "routingScope": "current-knowledge-context",
+    "selectedSections": [
+      "source",
+      "definition",
+      "data-design",
+      "dependencies"
+    ],
+    "status": "qualified-for-disclosure",
+    "qualification": {
+      "candidate": {
+        "kind": "semantic-data",
+        "id": "sales.order"
+      },
+      "status": "applicable",
+      "requirements": {
+        "expectedKind": "semantic-data"
+      },
+      "evidence": [
+        {
+          "subjectKind": "semantic-data",
+          "subject": "sales.order",
+          "source": "semantic/sales/order.tei",
+          "sourceFingerprint": "sha256:f2063418b893a60a9f948edbb2b23ec821f7a15ed8e5863c36e1b72abade1e33"
+        }
+      ],
+      "authorityLimits": [
+        "only-explicit-requirements-were-evaluated",
+        "qualification-is-not-acceptance",
+        "qualification-is-not-write-or-runtime-authority"
+      ]
+    },
+    "authorityLimits": [
+      "builder-review-handoff-is-derived-not-semantic-authority",
+      "builder-review-handoff-is-not-access-control-or-redaction",
+      "selected-section-is-not-disclosed-knowledge",
+      "qualification-applicable-is-not-acceptance",
+      "qualification-applicable-is-not-write-or-runtime-authority",
+      "qualified-for-disclosure-does-not-prove-selected-knowledge-complete",
+      "qualified-for-disclosure-does-not-prove-section-local-evidence-complete",
+      "subject-qualification-does-not-qualify-cross-view-change-or-resolution",
+      "handoff-does-not-materialize-knowledge",
+      "handoff-qualification-may-ground-shared-acceptance-evidence-not-proposal-meaning",
+      "disclosed-knowledge-snapshot-is-not-proposal-delta",
+      "current-disclosure-must-be-built-after-handoff",
+      "disclosure-fingerprint-not-handoff-fingerprint-governs-disclosed-content-reuse"
+    ]
+  }
+}

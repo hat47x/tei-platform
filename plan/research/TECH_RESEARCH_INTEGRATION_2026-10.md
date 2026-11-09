@@ -564,3 +564,132 @@ For Consumer C authorized to see the same public slice in W0 and W1:
 **撤回条件**：Source-owned Identityの証明なしに表示スコープを正本化する、非単射の逆写像を勝手に書込へつなぐ、別々のGraph SSOTを増殖させる、非公開の内部Unknownを表示して漏洩させる、メタ生成の隠れ依存で調査・変更コストが増える場合は、共通API導入を撤回してread-only/Domain Pluginへ限定する。
 
 **実証資格**：#2881の実CLI+Node限定CIとSUI #3396の実Product projectionの独立限定CIは確認した。**両者の同一仕様下での統合試験、TEIの正式Relation Sourceアンカー/全Role closure、実Workbench・Policy、Source編集・Owner受理、実Build/ETL、認知負荷の比較は NOT RUN / NOT PROVEN**。ドキュメントの成熟と実製品の資格を混同しない。
+
+## 14. 2026-11-08：複合図表を跨ぐ関係の被覆と、サブシステム分割の反証可能な境界（研究計画）
+
+- **状態**：研究・受入候補。基線main `c2b8062b7737816e33f85f80ac5f3956f5494f65`。既存`10〜13のQuery相対完全性・Intent/Realization/Assessment・非単射性・Complectの変化局所性を、**図表の境界にまたがる関係**に適用する。新しいSubsystem/Hypergraph Core型、専用Partitioner、第二Graph/Owner/Policy、Studio書込みUIの採用ではない。
+- **責務の境界**：[サブシステム分割 #3250](https://github.com/hat47x/tei-platform/issues/3250)／[その設計Draft #3255](https://github.com/hat47x/tei-platform/pull/3255)はCRUD結合度・責務・分割候補を所有。[複合図表の合成Reference #2881](https://github.com/hat47x/tei-platform/pull/2881)はread-only Projection内被覆と実CLI直接Edgeの資格を所有。[標準構造の写像 #2497](https://github.com/hat47x/tei-platform/issues/2497)、[Studio #1124](https://github.com/hat47x/tei-platform/issues/1124)、[Source受理 #267](https://github.com/hat47x/tei-platform/issues/267)はそれぞれ既存Owner。本節は**図表間の関係欠落を検出する評価手順だけ**を提案し、これらのコードや既存Fixture IDを変更しない。
+
+### 14.1 「図表への所属」「論理的な分割」「Effectの責任主体」は別の関係
+
+- **View occurrence**：同じqualified subjectは複数の図・表・関連表に現れてよい。Viewへの所属は多対多であり、同一図形や表示IDを意味正本として固定しない。
+- **Subsystem allocation candidate**：業務上の所属や責務を割り振る分割提案。未割当・Shared Read・外部System・例外を強制的に唯一の所属へ潰さない。候補の変更は、Source上のCRUD/Relationや業務Effectを黙って書き換えない。
+- **Relation declaration**：Relation自身の宣言scopeと、参加する各roleのsubject scopeは異なり得る。境界越え関係を端点scopeから別Relation IDとして再生成しない。
+- **Write／Execution Authority**：論理的なSubsystemの所属と、現時点のCommand/Provider/Transaction/Effect Ownerは独立する。越境Edgeを見つけても書込みを許可した証拠ではない。
+
+結果として、複合図表を定義する規則と、分割の評価規則と、実行/受理資格は**互いに異なるProjection/Claim**であり、一つの`owner`フィールドへ束ねない。
+
+### 14.2 Boundary relation tableは「切断辺の一覧」ではなく役割付きの照合表
+
+評価用に固定したSource snapshot・scope・query `Q` と、受理済みでない場合は**候補であることを明示した**分割 `P` を考える。Sourceにある型付きRelation `r` の参加roleと端点が異なるSubsystem候補に属するなら、そのRelationをboundary candidateとして扱う。これは数学上のグラフ分割の正式なCore算法ではなく、**多項関係を二項Edgeへ潰さない**監査の考え方である。
+
+~~~text
+Boundary audit candidate for bounded Q and partition proposal P
+  Relation: declaring scope + relation identity + type + source revision
+  Participants: ordered (role, qualified subject, proposed allocation)
+  View occurrences: (view id, local id, projection revision)
+  Origin: Source-declared / derived candidate / caller-supplied / unknown
+  Coverage: relevant Source and roles covered?  omitted?  opaque?
+  Semantics: read / direct CUD / effective CUD / execution dependence / unknown
+  Qualification: accepted meaning? source reader evidence? current disclosure?
+~~~
+
+この項目は**研究用の記入欄であり製品API案ではない**。同じRelationが複数図に出るときはRelationを複製せず、各表示Occurrenceを同じ根拠付きRelationへ参照させる。cross-view Navigation-only、業務上のRelation、Buildのdata dependency、Effectの実観測は必ず別の意味を持つ。
+
+**例（仮想モデル）**：受注Function `F` とOrder Data `O` はSales候補、Customer Data `C` はCRM候補。Integration scopeで宣言された三項Relation `R` が`(caller:F, input:O, reference:C)`を持つ。Sales図とCRM図と関係表を組み合わせるとき、`R` の宣言scopeはIntegrationのまま、各参加roleとView occurrenceを結ぶ。`R` を「Sales→CRMの読み取り1件」に縮約してRoleやSourceを消さない。さらに`F`を別Subsystemへ表示上だけ移しても、既存の業務RelationをSourceから削除しない。
+
+### 14.3 相互に独立した二方向の照合と、不在Claimの停止線
+
+| 検査方向 | 確かめること | 偽の合格例 |
+| --- | --- | --- |
+| **Source→Boundary tableの被覆** | QのSource/Relation/Roleを独立列挙し、異所属関係が対応表・関連グラフに欠落なく表現されたか | 表から生成した同じ表を「全Sourceの期待値」と再利用 |
+| **Boundary table→Sourceの帰属** | 各行が正しいRelation ID・宣言scope・role/端点・Source版へ追跡できるか | 表示Keyやcallerの`trace -scope`をSourceの宣言scopeへ昇格 |
+| **View→Bounded relationの対応** | 各図に表示された端点・非表示要素・関連表行が同一の有効snapshotに属するか | 図AはR10、表BはR11なのに同一時点の依存と表示 |
+| **Change→Impactの検査** | Pのみの変更なら内外分類と表示だけを再評価し、業務Relation自体は不変か | 越境CUDを減らすために元のCUD意味を隠して削除 |
+| **Current public Consumer** | 許可済みSliceと現在の開示資格で、境界本数/未解決理由/外部参照が表示可能か | Private関係の存在を公開図の件数や診断から漏洩 |
+
+Source側のRelation全件列挙や`P`の所属が不明な場合、**境界の既知件数=0** と **越境Relationが存在しない** を同一視しない。動的SQL/Trigger/外部Provider/未選択Pluginなど、今回のQueryが閉じていない箇所には`unknown`を残す。図表と表が互いに一致することは、独立Source Reader、Current Policy、実行時のEffect閉包を証明しない。
+
+### 14.4 Complect削減の比較実験：内部の見通しと境界の説明責任を両立する
+
+比較対象は (A)巨大な一枚の図、(B)図を分割しただけで関係表なし、(C)同じSourceの複数図＋根拠付き関連表・関連グラフ。**同じ対象Snapshotと独立Expected、同じ公開資格**で比較し、図の見栄えだけで優劣を付けない。
+
+| 反例・対照 | 守るべき性質 | 新しく測る失敗 |
+| --- | --- | --- |
+| 表示を二つのSubsystem図へ分割し、三項Relationは図間を横断 | 役割/Relation所有scope/参加端点を保持し、どの図からも追跡できる | 欠落したBoundary role、間違った所属・Relation ID |
+| Subsystem候補Pだけを変更し、Source/Function/CRUDは同一 | 必要なcut分類だけ変化し、Source意味・Effectを勝手に変えない | 不要な変更波及、誤った`CUD=0`断定 |
+| Sourceに未知のTriggerがあり、既知の越境Writeは0 | `known 0 + unresolved`として表現し、実Effectの不存在を宣言しない | 偽の不存在、実装・監視されない依存 |
+| 異なる内部Worldを同じ公開Diagramへ投影 | 公開資格内の情報だけで判断し、元構造や自動逆編集を捏造しない | 非単射なProjectionの誤逆写像、非公開情報漏洩 |
+| Build／ETLの論理工程を物理的に集約 | 論理間Relation/データ依存と物理Attempt/Receiptを別に保持 | 「表示から消えた工程＝実行なし」の誤断定 |
+
+人間／AIの評価では、**境界をまたぐ変更影響を発見するまでの時間、必要参照数、欠落したRole、偽の不存在・越境ゼロ断定、誤Source選択、不要なSource変更／再確認回数**を測る。元Sourceの情報取得・関係表生成・レビュー・CIの費用も合算する。単一図より判断が遅くなり誤りが増える場合は、共通複合図表の抽象化を撤回またはread-only限定へ縮小する。実験の採点と生産性評価は[#2018](https://github.com/hat47x/tei-platform/issues/2018)へ受け渡す。
+
+**実証順**：P0=既存#2881 CLIで取得できる`direct-edge-candidates`と、Sourceから未取得の独立Relation/Effectを区別して評価票を作成。P1=#3255のSubsystem候補に同一Source・Role対応表を適用し、known 0とunknownの負例を独立Expectedで確認。P2=必要に応じ#1124のGraph/Table ConsumerでSnapshot/Disclosureの整合を評価。P3=二Consumer以上で同種の構造的不足が反復した場合のみ#2495/#2497/#2620のOwnerが標準契約の最小追加を検討。**#3255の分割最適化、#2881のReference実装、#1132のCUD checker、#267の受理を代替・ブロックしない**。
+
+**証拠と停止線**：本節は既存Owner/PR/CIとSourceを使った**設計・評価手順の追補のみ**。Boundary table生成の製品実装、独立Source全文closure、実Studio UI、実CRUD/Transaction/ETL/Self-build、Owner受理、人/AIの比較試験は **NOT RUN / NOT PROVEN**。新共通Host、Policy Engine、Schemaや受理Gatewayを設けない。
+
+## 15. 2026-11-08：複合図表のEvidenceを別Claimへ昇格させないための横断評価手順
+
+- **状態**：本節は`10〜14の独立Reader・Bounded Query・境界Relation監査に、2026-11-08時点の現行mainと別担当Referenceの進展を接続した**研究・受入候補**。固定参照main `768d8ef3b3396a2ce5ccc196f63673683ab177ce`。新しい製品`Proof Registry`、Core Claim Enum、汎用Query DSL、第二のSource/Graph/Authority/Runnerを追加・採用しない。
+- **担当と証拠の位置**：[現行main由来の実CLI Trace Draft #3321](https://github.com/hat47x/tei-platform/pull/3321)は実`tei trace`→別言語read-only Consumerの出典・SourceNavigation整合をOwnerとして実装。[複合Graph/Table Draft #2881](https://github.com/hat47x/tei-platform/pull/2881)はsynthetic多項Relation／限定不在候補のOwner。[Role/Type接合Draft #3320](https://github.com/hat47x/tei-platform/pull/3320)は既存Validatorの型照合。[分割Draft #3255](https://github.com/hat47x/tei-platform/pull/3255)は固定Owner下の越境更新下界。[移行／再実現Draft #3252](https://github.com/hat47x/tei-platform/pull/3252)は別Target/Consumerの再資格化。この研究節はそれらを再実装せず、**そのEvidenceから別の結論を導いてよい条件**だけを扱う。
+
+### 15.1 Claimは一列の成熟度ではなく、問いに相対的な必要条件の組合せ
+
+実`tei trace`が二本のdirect edgeを返し、SourceNavigation内の`Trace.subject`、`Navigation.Key`、`SourceIndex.Reference subject`が一致した場合、**そのCLI Packetで特定された直接参照候補が観測できる**という限定Claimを支える。しかし、それだけで独立Relationの宣言ID／declaring scope／多項role／全Source closure／関係が存在しない証拠にはならない。
+
+同様にRole語彙の認識（V0）、既存TypeRefとの局所適合（V1）、実WorkspaceでのBinderの使用（V2）、異なるTarget/実Writerが意味・制約を保持すること（V3）は、それぞれ**別の証拠**。V1を得たからV3が成立するという線形な資格階段を仮定しない。実Targetの資格、Source Closure、Current Disclosure、Owner Acceptanceは互いに独立した軸である。
+
+| 問い／利用したいClaim | 先行する限定証拠と実際の上限 | 昇格に追加で必要な独立証拠 |
+| --- | --- | --- |
+| **Q1 このSubjectに直接参照候補があるか** | #3321の実CLI Packet、Subject/SourceNavigation/WorkspaceIdentityの整合。観測されたdirect edgeの資格 | 実Readerの対象・scope起源・同一Attempt/版。現在のGrantとPublic Sliceが必要なら別検証 |
+| **Q2 複数図の間に特定Roleを持つRelationがあるか** | Q1の`Edge.Relation`はdirect-reference labelであり、独立した意味Relationと同一ではない | 受理済みRelation ID／宣言scope／多項role／端点のSource anchor、同一版での図・表・関連表の対応 |
+| **Q3 越境Direct CUDが0か／分割変更で消せるか** | #3255の条件付き下界は固定Owner groupと既知direct CUD、独立列挙等の前提でのみ評価可能 | 対象Function/Data/Owner/Relationの閉包と正本Source、P候補の所属、unknownの計数、業務責務と制約。分割のみと業務修復を分離 |
+| **Q4 表示されない処理や効果は本当に無いか** | `tei trace`の0 edge、合成`subjectsComplete`、Buildの宣言Graphの図だけでは不足 | 対象相対のRequired/Selected/Consumed/Observed、実Process/Artifact/Provider/Importerの独立Traceと不透明領域の扱い。実Effect・無副作用は別Owner |
+| **Q5 この表示を現在編集・配布してよいか** | 意味／図形／出力digestが一致しても、非単射ProjectionではSource逆写像不可の場合がある | 一意なSource anchor、編集逆変換の資格、現在のSource/Grant/Disclosure、typed Candidate→Preview→#267のAcceptance。配布・実Effectは独立Gate |
+
+上記Q1〜Q5は**研究用の問いの番号**であって、実行するProduct Test IDでも、完全性の全順序でもない。あるClaimは別のClaimより強いとは限らず、必要条件が違う。たとえばSourceの宣言scopeを確証してもCurrent Grantを得たことにならず、GrantがあってもSource/Roleの全件列挙は得られない。
+
+### 15.2 複合図表に表示するEvidence Joinの成立条件
+
+異なる図表や試験を合成するときの説明用チェック欄（**新製品Schemaではない**）：
+
+~~~text
+Requested claim:
+  exact subject/relation and role query; bounded scope; target consumer
+Source bindings:
+  source-owned vs caller/view-derived identity; revision; source-index version
+Independent evidence:
+  owning reader/validator/runner; attempt; actual inputs and omissions
+Mapping:
+  query predicates preserved; lost roles/occurrences/ordering explicitly unknown
+Applicability:
+  current accepted meaning, policy/disclosure, target/provider/lock as required
+Conclusion:
+  supported only for the bounded claim / contradicted / unknown / withheld
+~~~
+
+**証拠の単純な加算は禁止**。実CLIのdirect edgeと合成Graph/Tableのrole付きRelationは、片方に存在しないSource-owned Relation IDが他方へ伝播するわけではない。二つの成功したCIが異なるSource/Attempt/Policyを検証しているなら、同じ現在の結論へJoinできない。公開`withheld`は内部Unknownの理由を明かすための表示欄ではない。
+
+**版の戻り（ABA）**：Sourceの内容やProjection digestがA→B→Aで元に戻っても、以前のReview/Grant/実行Attempt/現在のSource Index・Source Locator資格を自動復活させない。過去に正しかったClaimは履歴として保存し、現在の利用資格は対象Ownerの契約で再確認する。新しいglobal epoch／Proof Storeを本節で導入しない。
+
+### 15.3 現行の限定CIと、未成立の統合証拠
+
+- #3321 exact head `4dfdaf75145059859593d5f320ce43025e9736b0`の[専用Actions #42385227799](https://github.com/hat47x/tei-platform/actions/runs/42385227799)は**completed/success**。別担当PRの記録ではNode 24.21.0合成14/14と実Go CLI二scope→Node Consumer比較PASS。ただし`WorkspaceIdentity`はManifestのロード時観測であり、Source/Plugin Closure・Owner受理・実Studio UIには昇格しない。
+- #3320 exact head `ec575dc9e7e8cc3e0663ed4c563b986a3a0a4d9b`の[Repository Health #42393505853](https://github.com/hat47x/tei-platform/actions/runs/42393505853)は照合時**completed/failure**、[依存検査 #42393505949](https://github.com/hat47x/tei-platform/actions/runs/42393505949)は**completed/success**。異なるチェックの結果を一つのPASSに丸めず、失敗原因・新head追随・Targetでの意味保存は別Ownerが再確認する。
+- #3255の条件付き越境更新下界や[#3252の移行Readiness](https://github.com/hat47x/tei-platform/pull/3252)は**設計／評価票**であり、実Source閉包や実Target/Effectの資格ではない。[#3319](https://github.com/hat47x/tei-platform/pull/3319)が統合した境界関係監査は研究手順であり、実Runner/Relation Readerの実装ではない。
+
+### 15.4 次の最小「誤ったClaim昇格」の反証
+
+| 組合せる出力と変更 | 独立Expectedと正しい結論 | 誤った昇格 |
+| --- | --- | --- |
+| #3321で直接edgeが2件観測され、独立多項RelationのReaderがない | `direct reference candidates present`。Relation ID/role/declaring scopeは未証明 | 二本のedgeを業務上の完全な二項Relationと呼ぶ |
+| #3320の`std.decimal`適合が確認できるが外部Writerが不明 | Role/TypeRef局所適合は履歴証拠。Targetの精度・NULL・送出値域はunknown | 全Targetの意味保存とMECE・閉域性を合格 |
+| 固定Owner下の既知越境Direct CUD下界が正、Trigger/動的SQLが未取得 | 分割だけで既知境界を0にできない条件を示す。実Effect総数はunknown | CUD下界から全Write数/最適Partition/業務Ownerを自動決定 |
+| 同じ公開図へ異なるPrivate WorldやSource構造が写る | Public viewは同等。逆WriteのSource資格は別照合 | 表示digest一致でSource同一、Private要素不存在を確定 |
+| 同Source内容A→B→A、PolicyまたはSource Index改版 | historicalの比較は可、現在のlocator/Grant/Owner受理は再資格化 | 同じHashで過去の利用/編集・実行資格を再生 |
+
+**測定対象**：false-qualified（証拠より強い断定）、false-absence、適切なunknown/withheld、異scope・旧版の誤Join、不要な再検証、必要な再資格化の見逃し、独立Expectedに到達する時間・操作数を記録する。見た目を短くするためにClaimの条件を省略した場合はComplect改善とは認めない。正式な比較研究は[#2018](https://github.com/hat47x/tei-platform/issues/2018)へ渡す。
+
+**次の実証順**：既存#3321の実CLIのQ1だけを固定 → #2881の合成Q2は実Relation Readerが得られるまで別表示 → #3255の固定Owner小例Q3へ同一Source/独立Expectedを適用 → #2831の実Build Traceと#2542のMFT実ReceiptのQ4は各Ownerへ残す → #1124/#2497/#267でSource/ビュー/AcceptanceのQ5へ進む。これらを一つの巨大E2E試験のHard Dependencyにしない。
+
+**成果資格**：今回追加したのは**既存Source・Issue/PR・CIの静的照合と研究計画のみ**。新Go/Node/GUI、真正なRelation Reader、Subsystem分割の実試験、Build/ETL/実Provider、Policy/Ownerの現在受理、人/AIの比較は **NOT RUN / NOT PROVEN**。既存Ownerの成果を上書きせず、複数試験の成功を製品E2EのPASSへ合算しない。
