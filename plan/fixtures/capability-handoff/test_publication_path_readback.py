@@ -3,8 +3,10 @@ import collections
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
 
-from publication_path_readback import verify_ledger_publication_paths
+from publication_path_readback import (verify_ledger_publication_paths,
+                                       verify_pinned_ledger_publication_paths)
 
 
 MEMBERS = [
@@ -94,6 +96,44 @@ class PublicationPathReadbackTests(unittest.TestCase):
         self.assertEqual((self.root / "manifest.json").read_bytes(), old_manifest)
         with self.assertRaisesRegex(AssertionError, "path-to-byte mismatch"):
             verify_ledger_publication_paths(MEMBERS, self.root)
+
+    def test_pinned_manifest_same_bytes_qualifies_only_body_binding(self):
+        pinned = (self.root / "manifest.json").read_bytes()
+        evidence = verify_pinned_ledger_publication_paths(MEMBERS, self.root, pinned)
+        self.assertEqual(evidence["file_count"], len(PATHS))
+        self.assertNotIn("atomic_publication", evidence)
+
+    def test_pinned_r1_rejected_on_r2_manifest_even_if_bodies_unchanged(self):
+        pinned = (self.root / "manifest.json").read_bytes()
+        self.assertEqual(verify_ledger_publication_paths(MEMBERS, self.root)["file_count"], 5)
+        (self.root / "manifest.json").write_bytes(b'{"generation":"R2"}\n')
+        with self.assertRaisesRegex(AssertionError, "changed before member read"):
+            verify_pinned_ledger_publication_paths(MEMBERS, self.root, pinned)
+        # The same physical bodies are insufficient to qualify the R1 pin.
+        self.assertEqual(verify_ledger_publication_paths(MEMBERS, self.root)["file_count"], 5)
+
+    def test_pinned_manifest_changed_during_member_read(self):
+        pinned = (self.root / "manifest.json").read_bytes()
+        original_read = Path.read_bytes
+        path_first = self.root / "function-ledger.md"
+        changed = [False]
+
+        def intercept_read(path):
+            data = original_read(path)
+            if path == path_first and not changed[0]:
+                changed[0] = True
+                (self.root / "manifest.json").write_bytes(b'{"generation":"R2"}\n')
+            return data
+
+        with mock.patch.object(Path, "read_bytes", autospec=True,
+                               side_effect=intercept_read):
+            with self.assertRaisesRegex(AssertionError, "changed during member read"):
+                verify_pinned_ledger_publication_paths(MEMBERS, self.root, pinned)
+        self.assertTrue(changed[0])
+
+    def test_pinned_manifest_requires_explicit_bytes(self):
+        with self.assertRaisesRegex(AssertionError, "bytes are required"):
+            verify_pinned_ledger_publication_paths(MEMBERS, self.root, None)
 
     def test_modified_member_byte_rejected(self):
         (self.root / PATHS[0]).write_bytes(b"tampered")
