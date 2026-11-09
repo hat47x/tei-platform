@@ -374,3 +374,20 @@ read-only Referenceは`compareObservedLoadContext`をテスト専用の候補比
 **実観測の結果（2026-11-08）**：[GitHub Actions #42434859063](https://github.com/hat47x/tei-platform/actions/runs/42434859063)で、Go1.26.10の実`tei trace`を同じWorkspace/別Caller scopeの2回と、Manifest名だけ異なる一時Workspaceの1回、計3回実行した。元Workspaceと別Manifestのコピーは**World FP・Source Index FPだけでなく、Operation-level Snapshot tokenも等しかった**（CI `snapshot-token-equal=true`）。にもかかわらずManifest Name/SHAは異なり、read-only比較は`workspace_manifest_mismatch`として拒否した。Node24.21.0の17件の合成試験も**17/17 PASS**。これは「意味内容のFingerprintだけでWorkspaceをJoinしてはいけない」の実証であり、**受理済み意味や実Source全依存が同じ／異なるという証明ではない**。
 
 **証拠の区分**：Node合成反例は局所比較関数の検証、実CLIの3つの観測は現行ReaderとManifestの分離を再現した限定証拠。これらはいずれもOwner Meaning Acceptance、現在Policy/Grant、ActualConsumed、Source/Plugin Closure、Studio本番の選択資格を意味しない。正確なGitHub head・試験結果をPR #3321に固定し、後続mainへの追随は別途再資格化する。
+
+### 11.7 完全コピーは物理WorkspaceやRead Attemptを識別できない（2026-11-09）
+
+**発見した残余Gap**：前節の「Manifestが異なるWorkspaceはJoin拒否」を満たしても、**Manifestを含むSource全バイトが等しい別Root**は識別できない。特に実CLIの`WorkspaceIdentity{Name,FormatVersion,Manifest{Path,SHA256}}`と`World/SourceIndex/Snapshot` fingerprintは物理Root ID／Open handle／Read Attempt IDを提供しない。文字列が同じだからといって同じOS Rootや同じ時点のSource Readとは限らない。逆に、Rootが違うことだけでは業務Meaningが異なるとも限らない。
+
+| Case（read-only） | 実観測の比較 | 許されるClaim／拒否するClaim |
+| --- | --- | --- |
+| A: 元Workspace・Caller scope X | `tei trace`のread-only候補とManifest | Direct Edge候補。Source Closure/Owner/Policyは`unknown` |
+| B: Aと同じWorkspace・Caller scope Y | Workspace/World/SourceIndex一致、selectorとscope付きKeyは異なる | **観測文脈の値**だけ比較可能。YがSource宣言scopeであるとは言わない |
+| C: 別Root、Manifest `workspace:`名だけ変更、業務Sourceは同一 | World・SourceIndex・Snapshot token一致、Manifest Name/SHAは異なる | `workspace_manifest_mismatch`でJoin拒否（実CLIで2026-11-08観測済み） |
+| D: **別RootにManifestも含めて完全コピー** | Manifest/World・SourceIndex・Snapshot tokenがすべて一致し得る | `same-observed-load-context-only`でも**物理RootとRead Attemptは共に`not-provided`**。同一実行、同一権限、同じWorkspaceの現在性は認めない |
+
+**Referenceでの最小処置**：`compareObservedLoadContext`の一致結果に`physicalRootIdentity:not-provided`／`readAttemptIdentity:not-provided`を明示し、実CLIによる4観測でDを再現する。別Rootであることは**試験ハーネス側の実行引数と一時ディレクトリ作成**で分かるが、CLI応答だけを見たConsumerには分からない点が重要。識別できないものを安全な一意IDとしてハッシュ化しない。可変ハッシュID候補[Draft #2815](https://github.com/hat47x/tei-platform/pull/2815)も、Inputに存在しない物理Root/Attemptの識別・Provider真正性を創出しない。
+
+**他Laneとの契約**：Studio [#1124](https://github.com/hat47x/tei-platform/issues/1124)のScope/Source/描画Epoch、セルフビルド[#2831](https://github.com/hat47x/tei-platform/issues/2831)の実消費入力と実Process/Artifact、移行設計[Draft #3252](https://github.com/hat47x/tei-platform/pull/3252)の再資格化（Source/Provider/Grant/Target変化）では、同じdigestでも実行主体・時点・RootのCurrent資格を自動継承しない。P0に新しいGlobal Workspace UUID、Host、独自Source Registryを要求するのではなく、各Ownerが必要な独立根拠（pinned Root/Reader/Attemptと現在Policy/Owner）をClaimごとに取得し、欠けたものを`unknown`として保持する。
+
+**受入の限界**：ここでのNode比較と実CLI 4観測は、実Goの`TraceWorkspace`応答の**識別不能性**を反証可能にするための限定試験。実Provider、2つの同時Reader、異なるPrincipal、OS hardlink/symlink/rename race、Source全Required Root、ActualConsumed/Target Effect、AI/Studioへの現在公開は **NOT RUN / NOT PROVEN**。更新後PRのexact-head CIと最新mainの再base/healthは別Gate。
