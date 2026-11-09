@@ -19,3 +19,25 @@ The Release bytes are an intentionally fixed six-line ASCII frame, **not** a pro
 Negative cases independently reject tampered or missing members, duplicate roles, malformed base64, changed Release bytes, borrowed/wrong target or Profile attestation, invalid publisher/verifier signatures, a changed owner epoch, and mocked stale/revoked Trust. These are bounded tests; they do not establish a Registry-wide atomic `(Plugin ID, Version)` uniqueness transaction, repo ownership, Package Conformance, simultaneous consumer readback, or TOCTOU-safe execution (#1370).
 
 **Scope ceiling:** This is P0-A **partial binding evidence** only. A second independent implementation is *not* a second Publisher Authority or Resolver. The signature check is real Ed25519 against synthetic keys, but current trusted status and Conformance result are **fixture assertions**. Next: connect to #1104 actual Trust evidence, #1105/#2604 GitHub Release real readback, #951 Contract/Provider and #2390 independent Host. Keep the E0/E1/E2/E3 gates of #2589 open until each exact target is observed.
+
+
+## Shared raw-wire interoperability reference (stacked candidate)
+
+The test-only fixture envelope is deliberately **not** a production Registry
+serialization format. Both readers now parse the same raw UTF-8 JSON bytes
+before validating signed Release/Artifact content. The small wire guard rejects
+duplicate object keys (including escape-equivalent keys), unknown or case-alias
+fields, non-string fields, malformed nesting, and noncanonical Base64 containing
+LF/CRLF. The signed Release framing and hardcoded test public keys do not change.
+
+`wire-cases.json` contains **14 shared raw-wire cases**: three positive
+(including a whitespace variant and an escaped-property-name variant) and
+eleven rejected variants. Each case has a SHA-256 of the mutated serialized
+JSON, which the independent Go/Node tests check **before** fixture parsing
+and signature verification. This is stronger than running language-specific
+mutations that happen to share a case name.
+
+The limit is **E0-W reference interoperability only**. It does not establish
+canonical JCS/DSSE/COSE, a secure issuer directory, current Publisher Trust,
+GitHub Release readback, the release-version CAS, provider semantic Conformance,
+or a Runtime/Host grant. No bundled test key may be used for real publication.
