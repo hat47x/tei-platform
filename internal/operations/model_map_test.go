@@ -197,3 +197,102 @@ func TestMapWorldDoesNotInventRelationFromForgedSourceReference(t *testing.T) {
 	// This is a purely in-memory representation test: it neither tests a
 	// malicious filesystem nor proves that Source references are trustworthy.
 }
+
+// Two business relations can share a visible label, from Data and target Data.
+// Their domain IDs must survive a typed Model Map; collapsing both into one
+// from->to "reference" edge would make diagram selection irreversibly lossy.
+func TestMapWorldRetainsParallelDomainRelationIDsWithoutGrantingSourceEdits(t *testing.T) {
+	world := ir.World{Semantics: []semantic.Namespace{{
+		ID: "sales",
+		Data: []semantic.Data{
+			{ID: "sales.order", Relations: []semantic.Relation{
+				{ID: "sales.order.line.primary", Symbol: "lines", Target: "sales.line"},
+				{ID: "sales.order.line.secondary", Symbol: "lines", Target: "sales.line"},
+			}},
+			{ID: "sales.line"},
+		},
+	}}}
+	mapped := MapWorld(world, CatalogWorld(world, sourceindex.Index{}, "", "world", "source"))
+	parent := sourceindex.Subject{Kind: "semantic-data", ID: "sales.order"}
+	target := sourceindex.Subject{Kind: "semantic-data", ID: "sales.line"}
+	for _, id := range []string{"sales.order.line.primary", "sales.order.line.secondary"} {
+		relation := sourceindex.Subject{Kind: "semantic-relation", ID: id}
+		for _, expected := range []ModelMapLink{
+			{From: parent, To: relation, Relation: "contains", Resolution: "resolved"},
+			{From: relation, To: target, Relation: "refers-to", Resolution: "resolved"},
+		} {
+			count := 0
+			for _, actual := range mapped.Links {
+				if actual == expected {
+					count++
+				}
+			}
+			if count != 1 {
+				t.Fatalf("separate relation identity collapsed or duplicated: %+v count=%d", expected, count)
+			}
+		}
+		indexed := false
+		for _, entry := range mapped.Catalog.Entries {
+			if entry.Subject == relation && entry.SourceStatus == "indexed" {
+				indexed = true
+			}
+		}
+		if indexed {
+			t.Fatalf("synthetic declaration %q has no actual indexed Source and cannot authorize patch", id)
+		}
+	}
+	if mapped.Coverage != "partial-projection" {
+		t.Fatalf("two parallel links do not imply complete world closure")
+	}
+}
+
+// Reusing one canonical relation ID in distinct parent Data is ambiguous,
+// even when the relation label, type and target happen to be identical.
+func TestMapWorldDuplicateRelationIDDoesNotFirstWin(t *testing.T) {
+	const duplicateID = "sales.shared.line"
+	world := ir.World{Semantics: []semantic.Namespace{{
+		ID: "sales",
+		Data: []semantic.Data{
+			{ID: "sales.order", Relations: []semantic.Relation{{
+				ID: duplicateID, Symbol: "line", Target: "sales.line",
+			}}},
+			{ID: "sales.quote", Relations: []semantic.Relation{{
+				ID: duplicateID, Symbol: "line", Target: "sales.line",
+			}}},
+			{ID: "sales.line"},
+		},
+	}}}
+	mapped := MapWorld(world, CatalogWorld(world, sourceindex.Index{}, "", "world", "source"))
+	duplicate := sourceindex.Subject{Kind: "semantic-relation", ID: duplicateID}
+	seenEntries := 0
+	for _, entry := range mapped.Catalog.Entries {
+		if entry.Subject == duplicate {
+			seenEntries++
+			if !entry.Ambiguous {
+				t.Fatalf("duplicate canonical Relation was treated as unique: %+v", entry)
+			}
+		}
+	}
+	if seenEntries != 2 {
+		t.Fatalf("duplicate Relation declarations were not retained for review: %d", seenEntries)
+	}
+	contains := 0
+	refers := 0
+	for _, link := range mapped.Links {
+		if link.To == duplicate && link.Relation == "contains" {
+			contains++
+			if link.Resolution != "ambiguous" {
+				t.Fatalf("duplicate Relation parent incorrectly resolved: %+v", link)
+			}
+		}
+		if link.From == duplicate && link.Relation == "refers-to" {
+			refers++
+			if link.Resolution != "ambiguous" {
+				t.Fatalf("duplicate Relation target incorrectly resolved: %+v", link)
+			}
+		}
+	}
+	if contains != 2 || refers != 1 {
+		t.Fatalf("expected two ambiguous parent links and one deduplicated ambiguous target link: contains=%d refers=%d", contains, refers)
+	}
+}
