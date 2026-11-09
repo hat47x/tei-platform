@@ -26,6 +26,7 @@
 | [`repository-node-tests/`](repository-node-tests/) | どのworkflowからも実行されなかったNode.js試験5ファイルをgo testから実行する（#2346） |
 | [`check-public-boundary/`](check-public-boundary/) | 追跡ファイルに、非公開資料の名前・所在のマーカーが入っていないかを検査する（#2342 / #2436） |
 | [`repositoryqualification/`](repositoryqualification/) | リポジトリ検証条件の共通処理 |
+| [`rea-t0-saved-report/`](rea-t0-saved-report/) | REAの公開合成JavaScript実解析で保存したraw JSON／stderr／exitと出典の前後バイト列を読取り専用で監査し、外部Observation候補だけを投影する検証ツール。TEI正式Source／意味受理／Product Provider実呼出しではない（#3394、Draft #3496）。 |
 | [`reference-ai-tuning-observation/`](reference-ai-tuning-observation/) | AI性能チューニング用の設計/観測/統計/Provider/開示/受領の**合成入力のみ**を照合する試験用Consumer。実Provider/業務意味/実性能は未証明（#3271/#3262、設計文書 §9〜10）。 |
 | [`reference-cli-trace-benchmark/`](reference-cli-trace-benchmark/) | 合成Workspaceによるtraceの処理段別の時間・メモリ計測と出力不変の確認 |
 | [`reference-mcp-readonly-adapter/`](reference-mcp-readonly-adapter/) | 既存の読み取り操作（model catalog・inspect・trace・validate）をMCPのtoolとして公開する参照Adapter。Workspaceは起動時に固定し、CLIと同じ `internal/operations` を呼ぶ（#3400） |
