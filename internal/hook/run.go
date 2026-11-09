@@ -49,10 +49,6 @@ type Runner struct {
 	// Callerは、フックから能力を呼ぶ下位の境界である（`CommandCaller`など）。
 	// 宣言に制限されていない境界をそのまま実装へ渡さず、必ずDeclaredで包む。
 	Caller Caller
-	// CallInputsは、能力ごとに渡す入力である。宣言が能力への結び付けを持たない
-	// 場合、呼出し側がここで与える。与えられていない能力は、推測して呼ぶのでは
-	// なく「呼ばなかった」として理由つきで記録する。
-	CallInputs map[core.CanonicalID]map[string]string
 }
 
 // Runは、Patternの対話に宣言されたフックを実行する。
