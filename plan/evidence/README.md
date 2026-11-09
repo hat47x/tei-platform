@@ -90,7 +90,8 @@
 - [利用者設定の書込みの確認](XTEA_LOWCODE_USER_SETTINGS_WRITE_2026-11.md)（参照実装の試験記録。監査・権限・画面は未実装）
 - [例の締め日・設定Dataと構文の修正の確認](XTEA_LOWCODE_EXAMPLE_CLOSING_SETTINGS_2026-11.md)（参照実装の試験記録。閉めの実行内容と設定の監査は未実装）
 - [為替の月次・年次を別Dataに分ける構成の確認](XTEA_LOWCODE_CURRENCY_TWO_TABLES_2026-11.md)（参照実装の試験記録。例への追加は未実装）
-- [為替の粒度の宣言語彙の確認](XTEA_LOWCODE_CURRENCY_GRANULARITY_2026-11.md)（参照実装の試験記録。`ResolveTable`への自動組込みと例への追加は未実装）
+- [為替の粒度の宣言語彙の確認](XTEA_LOWCODE_CURRENCY_GRANULARITY_2026-11.md)（参照実装の試験記録。例への追加は未実装）
+- [RQ-C3の確認方法の観測](XTEA_LOWCODE_RQC3_VERIFICATION_2026-11.md)（参照実装の試験記録。要求の確認方法を試験名へ写して観測）
 - [採番の永続CounterStoreの確認](XTEA_LOWCODE_NUMBERING_SQLITE_STORE_2026-11.md)（参照実装の試験記録。PostgreSQLは未実装）
 - [採番の2プロセス同時実行の確認](XTEA_LOWCODE_NUMBERING_PROCESS_RACE_2026-11.md)（参照実装の試験記録。PostgreSQLと多プロセス構成は未実装）
 - [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
@@ -283,3 +284,4 @@
 - [stdを.teiにできない理由（primitive構文と指紋）](TEI_DOGFOODING_ROUND27_STD_PRIMITIVE_GAP_2026-11-09/README.md)（#2620。`worldFingerprint`がpreludeを含むため移すと全指紋が変わり、DSLは`type X from Y`のみでprimitiveを書けない。代替案A/Bと判断点を提示）
 - [Capabilityのoutcomeが参照グラフに現れていなかった](TEI_DOGFOODING_ROUND28_CAPABILITY_OUTCOME_2026-11-09/README.md)（#3884・#3419。`inspect`はoutcomeを返すが`trace`は`input`/`output`だけを辺にし、authenticate→authorizeの連鎖が生産者不在に見えた。派生にoutcome辺を追加）
 - [`l2b.claimed`は`-build-catalog`だけで立つ](TEI_GO_SELF_BUILD_L2B_DEFAULT_PREMISE_2026-11-09.md)（§7は「in-processと`-rebuild-check`を明示する必要がある」と書いていたが、§4.30が後者を既定にした。実測：`-build-catalog`のみで`claimed=true`、`-rebuild-check=false`で`false`（理由が「断った」を名指し）。残る問いは「何も渡さない試行」で立てるか。§4.31で§7を訂正。 #2831）
+
