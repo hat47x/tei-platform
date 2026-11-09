@@ -90,7 +90,7 @@ func TestIndependentQuoteProcessAgainstCandidateSemanticVectors(t *testing.T) {
 		[]byte("module example.invalid/quote-semantic-vectors\n\ngo 1.23\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	binary := filepath.Join(t.TempDir(), "quote-provider")
+	binary := hostExecutable(t.TempDir(), "quote-provider")
 	build := exec.CommandContext(buildCtx, "go", "build", "-o", binary, ".")
 	build.Dir = work
 	build.Env = append(os.Environ(), "GOENV=off", "GOWORK=off", "GOFLAGS=",

@@ -1,0 +1,5 @@
+ M tools/reference-plugin-capability-coverage/coverage.go
+ M tools/reference-plugin-capability-coverage/coverage_test.go
+?? aw/ev.sh
+?? aw/s.sh
+?? aw/t.sh

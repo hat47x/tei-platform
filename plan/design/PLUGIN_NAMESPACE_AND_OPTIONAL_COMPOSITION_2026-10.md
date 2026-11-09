@@ -698,10 +698,10 @@ GraphTraceConformant(G, Evidence)
 
 ### 16.1 他領域との照合と今回だけの不足
 
-- 複合図表・メタ生成は[Draft #2352](https://github.com/hat47x/tei-platform/pull/2352)の[Topology / Composite Views設計](https://github.com/hat47x/tei-platform/blob/2f280d610e24d5680864f36842215b4e5b299ef0/plan/design/TOPOLOGY_COMPOSITE_VIEWS_AND_PIPELINE_2026-10.md)が**構造・Projection・限定的不在証拠**を担当。本書の第14〜15節を第二のGraph/Projection正本にせず、参照だけを接続する。
-- 三要素分析MethodとDiagram Navigationは[Draft #2397](https://github.com/hat47x/tei-platform/pull/2397)がMethod Profile、意味規則、Notation/Occurrence、Qualified Ref/描画鮮度を分離。RegistryでMethodやNotationが公開済みでも、採用済みSemantic Set、Studioの正しい選択/受理/実行権限にはならない。
+- 複合図表・メタ生成は[main統合済み PR #2352](https://github.com/hat47x/tei-platform/pull/2352)の[Topology / Composite Views設計](https://github.com/hat47x/tei-platform/blob/2f280d610e24d5680864f36842215b4e5b299ef0/plan/design/TOPOLOGY_COMPOSITE_VIEWS_AND_PIPELINE_2026-10.md)が**構造・Projection・限定的不在証拠**を担当。本書の第14〜15節を第二のGraph/Projection正本にせず、参照だけを接続する。
+- 三要素分析MethodとDiagram Navigationは[main統合済み PR #2397](https://github.com/hat47x/tei-platform/pull/2397)がMethod Profile、意味規則、Notation/Occurrence、Qualified Ref/描画鮮度を分離。RegistryでMethodやNotationが公開済みでも、採用済みSemantic Set、Studioの正しい選択/受理/実行権限にはならない。
 - Studioは[#1124](https://github.com/hat47x/tei-platform/issues/1124)のQualified Consumer P0を先に検証。外部UI制御[#2391](https://github.com/hat47x/tei-platform/issues/2391)はHeadless-firstと後続Opt-in Gateを混同しない。
-- **Host非必須は2026-10-24のOwner設計判断として既決**。[ADR-0043候補 Draft #2426](https://github.com/hat47x/tei-platform/pull/2426)の文書改番・統合は未完了。本書は「Hostを廃止するか」を未決へ戻さず、Target固有の現在Authority/Effect境界だけを保持する。
+- **Host非必須は2026-10-24のOwner設計判断として既決**。[ADR-0043のmain統合 PR #2426](https://github.com/hat47x/tei-platform/pull/2426)により文書改番・統合済み。ただしTarget別の実装・Authority/Effect受入は別途未実証。本書は「Hostを廃止するか」を未決へ戻さず、Target固有の現在Authority/Effect境界だけを保持する。
 
 残る横断的な欠落は、**分散Registryが検証済みと呼ぶReleaseと、Consumerが現在利用してよいImplementation/Contractの間を、どの独立証拠で接続するか**である。既存[#951](https://github.com/hat47x/tei-platform/issues/951)のContract / Provider Conformance / Publisher Authority、[#943](https://github.com/hat47x/tei-platform/issues/943)のBuild/Artifact/Lock、[#267](https://github.com/hat47x/tei-platform/issues/267)のSemantic Acceptanceを第二実装しない。
 
@@ -771,3 +771,63 @@ runtime:
 **検証順**：最初はRG-01/02/03/04/05/08の静的ReferenceでNamespace/Release/Contract/Use Bindingを分離し、#951/#943の既存機構で表現できない差分だけを記録する。次に#1124のQualified Consumer、#2352のProjection非存在証拠、#2397のMethod/Notationで同じ独立証拠を読めるかを比較する。最後に対象Targetに応じた現在Authority/Effectを検証する。いずれも既存Issueの実行Gateを越えない。
 
 **撤回/縮小**：既存のRegistry/Lock/Conformanceと各ConsumerのSource/Acceptance境界だけで必要な接続を説明・検証できるなら、新Namespace Authority Service、新`EvidenceLevel` Core enum、独立Registry runtimeは作らない。Registryが単一の安全ランクでConsumer利用を判定する方式は採らない。公開Registryの運用者・命名文法・Trust root・最初のVerified Releaseの具体的審査方法は未決であり、文書が実運用の確立を意味しない。
+
+
+---
+
+## 17. 役割の異なるIDと成果物引渡しの横断検証（2026-11-06、契約接続）
+
+### 17.1 反映済み事実と、この節に残す差分
+
+2026-11-06の現行main `36bda76271db4db72ddd41a8566d281f02764b8a` を固定基準とする。本設計の[PR #2298](https://github.com/hat47x/tei-platform/pull/2298)、複合図表[PR #2352](https://github.com/hat47x/tei-platform/pull/2352)、三要素Method[PR #2397](https://github.com/hat47x/tei-platform/pull/2397)、ADR-0043[PR #2426](https://github.com/hat47x/tei-platform/pull/2426)は**main統合済み**。この文書の「設計候補」は新規Plugin API/受入を意味しない。
+
+独立した進行中Ownerは、内容導出IDの[Issue #2814](https://github.com/hat47x/tei-platform/issues/2814) / [Draft #2815](https://github.com/hat47x/tei-platform/pull/2815)、全体セルフビルドの[Issue #2831](https://github.com/hat47x/tei-platform/issues/2831) / [Draft #2877](https://github.com/hat47x/tei-platform/pull/2877)、ETL/ELT・ファイル転送の[Draft #2827](https://github.com/hat47x/tei-platform/pull/2827)、一式の公開/Consumer受領の[Issue #2604](https://github.com/hat47x/tei-platform/issues/2604)である。それぞれの検証計画・Schema・Build実装・受入を本書へ複写しない。
+
+横断的に維持すべき最小不変条件は、**正本対象を表すID、用途別に派生するID、exact Byteを確認するDigest、公開世代、配送・処理の試行、Consumerによる実Read、現在の使用許可を、一つの文字列または「Verified」へ潰さないこと**である。
+
+### 17.2 識別の種類と同値を認める範囲
+
+| 軸 | この値で追えるもの | 同値・受理とみなしてはならないもの | Owner |
+| --- | --- | --- | --- |
+| Qualified logical / semantic ref | 改訂を跨いだ対象の意味・Scope・所有元 | 元の内容Byte、公開済み物理ID、別業務対象 | #1120 / Shared Acceptance |
+| `HashId` + Scheme / Scope | 用途・アルファベット・長さ・入力正規化に拘束された派生ID | 完全なDigest、衝突なし、正本同一性、署名の完全性 | #2814 / Draft #2815 |
+| Full content / Artifact digest | 指定アルゴリズム・byte列の内容一致 | 同じ意味・信頼できる発行者・Consumer利用資格 | #943 / #951 / #2604 |
+| Build Subject / ArtifactSet / exact Target | どのBuilder・入力・Targetから何を生成したか | 正しい配布、受領、業務効果、完全な自力構築 | #2831 / #943 / #1097 |
+| Publication generation + manifest members | Consumerへ公開する一式の構成・内容 | 実ファイル全Byteが揃って読まれたこと、将来の保存期間 | #2604 / Draft #2827 |
+| Transfer attempt / import unit / receipt | どのByteをいつどこへ送信・受領・取込み照合したか | 送信一回＝業務Event一回、ACK＝Ownerの業務受理 | #2542 / Draft #2827 |
+| Consumer selection / current Authority | 今のScope/Targetで選択され実行許可された操作 | 署名/Digestの存在だけでの権限、将来の継続許可 | #951 / #1174 / #1124 |
+
+`encodedDigest`はDigest表記の可逆変換だが、`exactCharacters`は文字数・Alphabet制約による不可逆の内容導出IDであり、内容Digestの代替ではない（#2814）。例えば、同じ短い文字列が別Scheme/Scopeで生じても、等しいLogical Ref・Artifactとは扱わない。逆に、**全く同じByte**を持つファイルでも、業務上の異なるImport Unit、異なるContract適合状態やConsumer用途を持ち得る。
+
+### 17.3 共通の引渡し追跡は「既存の証拠へのリンク」で足りるか
+
+```text
+typed Subject / Source + selected Role/Contract
+  -> exact Build/Transform Inputs and Provider/Toolchain
+  -> exact output bytes / digest + ArtifactSet members
+  -> versioned publication generation / target locator
+  -> transfer attempt and receiver-pinned actual read (if used)
+  -> consumer-specific qualification and independent observation
+  -> current Authority at the required operation/effect boundary
+```
+
+これは各領域の接続関係であり、**新しい全用途`ArtifactHandoff`正本、ID Scheme、Content Store、Scheduler、常駐Host、Acceptance Authority、二重Manifestの導入案ではない**。BatchがローカルByteを直接読む場合は外部配送段階を必要とせず、read-only ProjectではPrincipalを必須にしない。プラグインのRegistry登録は配送/検索の入口で、選ばれたProviderのArtifact/ConformanceとTargetのAuthorityは別に現在性を検証する。
+
+最小セルフビルドでは#2831のSB-P0.1〜P0.3（宣言工程↔実工程、非Plugin CLI実Binary、stage0/1/2の収束）を優先し、HashId新方式、MFT、Studio GUI、複数DBをHard Dependencyへ追加しない。**それらはP1の独立Consumer検証で、同一性の境界が実際に破られるかを試す**。#2604のAP-06、Draft #2827のDM-04/08/09、#1130の実RunPlan成果物を同一Attempt/Generationで接続できた場合だけ、重複のない横断Receiptとして評価する。
+
+### 17.4 新規実装ではなく、他レーンをまたぐ反証候補（全てNOT RUN）
+
+| Case | 共通で発生し得る誤り | 期待される独立判定 |
+| --- | --- | --- |
+| IH-01 | `exactCharacters`で生成した短縮IDをPlugin Releaseの完全Digestとして扱う | 完全性確認を拒否。Scheme/Scopeとfull digestを区別 |
+| IH-02 | 別Scheme/Scopeの同じ文字列を同一Contract/Artifact IDに昇格 | 表示一致だけでAlias/正本を自動結合しない |
+| IH-03 | 同一Byteの二つのデータ配送を一つの業務Eventへ圧縮 | Byte一致、Import Unit、事象の意味を別に追う |
+| IH-04 | R1 Manifestを読んだ後R2を公開し、R2 Memberだけ取得 | R1の完全なactual Byteを保持して読むか、版不一致で保留（#2604 AP-06） |
+| IH-05 | stage1/2で成果物Digestが一致し、seed・toolchainの正当性もPASSと表示 | 収束/再現性とseed trust/Source closureを別に記録（#2831） |
+| IH-06 | RegistryのVerified ReleaseをStudioの意味受理/実行許可に流用 | Conformance・Qualified Consumer・Current Authorityを独立検査 |
+| IH-07 | 保存済みArtifact/Contractが一致するが実行Grantが失効 | 既存Lock成功を現在Effectの許可とみなさない |
+| IH-08 | ローカルCSVバッチへTransfer Receipt/Business Principal/HashIdを必須化 | 必要な型とFile capabilityだけで成立し、過剰依存を拒否 |
+
+**観測する差分**：既存の#2814/#2604/#2831/#2827単独試験では検出できない「実Consumerで誤った同一性や利用資格を昇格した件数」、資料/定義の重複数、各レーンの受入証拠不足を比較する。既存Ownerの否定試験をそのまま再実行するだけなら、本横断Fixtureや追加Schemaを設けずリンクのみ保守する。
+
+**停止線**：本書の記載は設計の接続と優先度であり、実TEI self-build、実SFTP/HULFT/S3、実Registry公開、実Studio/DBのOwner受理を実行・検証した証拠ではない。HashId Schemeの本番適用、既存Digest/署名対象の変更、Canonical Plugin ID構文やNamespace移行は**未採用**として#2814/#951へ留める。

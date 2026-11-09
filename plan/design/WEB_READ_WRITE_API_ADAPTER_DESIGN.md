@@ -3,6 +3,7 @@
 - **状態**：採用前の設計候補と合成Reference（2026-10-13）。OData準拠、実DBへの書込、実Web認証、本番適合を確認したものではない。
 - **担当**：[Issue #1656](https://github.com/hat47x/tei-platform/issues/1656)。
 - **実証用コード**：[Web API契約Reference](../../reference/web-api-contract/README.md)。採用済みの製品API SchemaやCore Typeの正本ではない。
+- **例外/応答・Client Reactionの横断案**：[HTTP Response Decision Graph](HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md)／[#3274](https://github.com/hat47x/tei-platform/issues/3274)。本書はHTTP Read/Command Adapterの写像Ownerを維持し、RFC 9457やODataの採否、実HTTP・実Targetの適合を採用済みとは扱わない。
 
 ## 1. 方針と保留事項
 

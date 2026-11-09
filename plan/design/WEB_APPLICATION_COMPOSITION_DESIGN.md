@@ -4,6 +4,7 @@
 - **担当課題**: [#1043](https://github.com/hat47x/tei-platform/issues/1043)。
 - **関連する正本**: [案件全体のプラグイン構成](PROJECT_PLUGIN_COMPOSITION_DESIGN.md)、[実装アーキテクチャ](../../docs/architecture.md)、[セキュリティ境界](../../docs/security.md)。
 - **責務**: Webの要求・応答経路と認証方式を安全に接続する構成上の規則を検証する。業務仕様、UI部品、プラグインの共通解決機構をここで再定義しない。
+- **横断する例外経路とClient Reaction**: [HTTP Response Decision Graph（設計候補）](HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md)／[#3274](https://github.com/hat47x/tei-platform/issues/3274)。本書のOwnerはServer要求経路と必須Guardに限り、HTTP Outcome写像・Client側Recovery・標準Graph/Trace検証を第二実装しない。
 
 ## 1. 解消したい問題
 
