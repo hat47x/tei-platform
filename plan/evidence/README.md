@@ -272,3 +272,4 @@
 - [TEIの標準意味型はTEIで宣言されていない](TEI_DOGFOODING_ROUND25_STDLIB_SELF_DESCRIPTION_2026-11-09/README.md)（#2620・#2619。`std.*`の12型は`prelude:true`かつ`sourceStatus:not-indexed`で、`inspect`も`source-index`も根拠を返さない。定義はGoにあり、`namespace std`は宣言を拒否される。合格条件をCLIだけで測れることを実演）
 - [stdへの宣言がpreludeと誤判定され件数からも消えていた](TEI_DOGFOODING_ROUND26_PRELUDE_IDENTITY_2026-11-09/README.md)（#3851・#3347。`namespace std`に型を足すと重複error・`prelude:true`誤付与・`declarationCounts`0が同時に出た。名前の前方一致3箇所とloaderの二重追加を同一性判定へ）
 - [stdを.teiにできない理由（primitive構文と指紋）](TEI_DOGFOODING_ROUND27_STD_PRIMITIVE_GAP_2026-11-09/README.md)（#2620。`worldFingerprint`がpreludeを含むため移すと全指紋が変わり、DSLは`type X from Y`のみでprimitiveを書けない。代替案A/Bと判断点を提示）
+- [Capabilityのoutcomeが参照グラフに現れていなかった](TEI_DOGFOODING_ROUND28_CAPABILITY_OUTCOME_2026-11-09/README.md)（#3884・#3419。`inspect`はoutcomeを返すが`trace`は`input`/`output`だけを辺にし、authenticate→authorizeの連鎖が生産者不在に見えた。派生にoutcome辺を追加）
