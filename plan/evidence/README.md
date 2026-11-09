@@ -212,4 +212,4 @@
 - [`parameters`も照合する](TEI_GO_SELF_BUILD_PARAMETER_COMPARE_2026-11-09.md)（§4.17は「正規化の意味が未決」として残したが、実測するとどちらの側も名前順ソートのみで値を変えていなかった。前提を確かめてから名前で突き合わせる照合を実装し、順序非依存と正規化の性質自体を試験で固定。L2-bは未。 #2831）
 - [traceの継続トークンが2つの同名欄に分かれている](TEI_DOGFOODING_ROUND11_TRACE_CONTINUATION_2026-11-09/README.md)（#3625・#3420 T06。同名の`snapshotFingerprint`が2つあり、継続に使えるのは外側だけ。`nextOffset`の隣の値を渡すと`STALE_SNAPSHOT`になることを修正前に実測した）
 - [mainのtrace継続トークンを実測](TEI_DOGFOODING_ROUND12_CONTINUATION_MAIN_2026-11-09/README.md)（#3625。`e75d599ba`で`graphFingerprint`への改名と`continuation`が入り、`continuation.fingerprint`で継続でき、`graphFingerprint`は拒否されることを確認）
-
+- [設計変更の影響範囲をCLIだけで答えられるか](TEI_DOGFOODING_ROUND13_DESIGN_IMPACT_2026-11-09/README.md)（#3149 D-9・#2619・#2621。モデル要素の定義箇所は`inspect`で分かるが、設計文書の中の名前はsubjectにならず`SUBJECT_NOT_FOUND`。改名の影響範囲は`grep`が要る。リポジトリ全体はWorkspaceにできない）
