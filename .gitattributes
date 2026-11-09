@@ -160,3 +160,6 @@
 
 # Subagent chain observations are hashed as raw bytes.
 /plan/evidence/DSH_SUBAGENT_CHAIN_2026-11-09/** -text
+
+# Subagent depth-raised observations are hashed as raw bytes.
+/plan/evidence/DSH_SUBAGENT_DEPTH_RAISED_2026-11-09/** -text

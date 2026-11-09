@@ -645,28 +645,57 @@ builder childが`compareIntentFields`で比べる。
 | `secretRequirements` | planは名前を`SecretRequirementNames`として持つが`plugin.BuildPlan`には無い。宣言の`Authority`に対応する欄が無い |
 
 **`parameters`は測れば決まった。この2つは規則そのものを決める必要がある。** 同じ「未決」でも種類が違う。
-### 4.19 `builder`の照合と、そこで分かった照合の性質（2026-11-09）
+### 4.19 `builder`の契約を照合し、`secretRequirements`の不可能性を示す（2026-11-09）
 
-§4.18は`builder`を「要求と解決結果の対応規則を決める必要がある」として残した。**測ると規則は既にresolverの中にあった。**
+§4.18は`builder`と`secretRequirements`を同じ「規則を決める必要がある」欄として残した。**踏み込むと種類が違った。**
 
-| 段 | 実装 |
+#### `builder`は規則が既にあった
+
+`fixture.go`は宣言の`contract`と`compatibleMajor`を次のように解決する。
+
+```go
+ContractVersion: fmt.Sprintf("%s/v%d", p.Contract, p.ContractMajor),
+```
+
+**決めるべき規則は既にコードにあり、測れば読めた。** childはこの規則を自分でも適用して、組み立てた綴りとplanの`ContractVersion`を比べる。**child側にも規則を書いたのは意図的である**：resolverが綴りを変えたらこの照合が壊れる場所になり、その場所を試験で固定できる。
+
+| 比べる | 比べない |
 | --- | --- |
-| 候補の絞り込み | `p.Contract == req.Contract && p.ContractMajor == req.CompatibleMajor` |
-| 解決結果の生成 | `ContractVersion`を「契約名 + `/v` + major」で組み立てる |
+| `builder.contract` + `compatibleMajor` から組み立てた `<contract>/v<major>` | planの`builder.ID`・`Version`・`ArtifactDigest`（**解決済みの実体**。宣言は方針を書く） |
+| `builder.provider.plugin`（指定時）・`builder.pin.artifactDigest`（指定時） | — |
 
-したがって対応は**推測ではなく、resolverが既に適用している規則**である。新設した`internal/buildintent`の`BuilderContractVersion`に一箇所で定義し、resolverとbuilder childの両方がこの関数を通す形にした。**両側が同じ関数を通るので、照合は書式ではなく要求を試す。**
+**方針と実体を区別する。** 方針から実体は決まらないので、`builder.ID`・`Version`・`ArtifactDigest`そのものを宣言の不一致と読まない。ただし**方針を指定した場合**は、その方針が解決結果に反映されたかを比べる（`provider.plugin`と`pin.artifactDigest`）。`ResolveBuilder`が候補をこの二つで絞るため、**同じ宣言から導いたplanでは必ず一致する**。したがってこの比較が発火するのは、planがその宣言由来でない場合だけである。
 
-childは三点を比べる（§4.19の実装、[記録](../evidence/TEI_GO_SELF_BUILD_BUILDER_REQUIREMENT_2026-11-09.md)）。
+**この節の初版は「`provider`と`pin`は照合の対象外」と書いていた。** `#3670`が両方を照合する実装を入れ、`#3700`が試験を実装に合わせたため、記述を実装へ合わせて直した。
 
-| 宣言 | plan | 規則 |
-| --- | --- | --- |
-| `contract` + `compatibleMajor` | `builder.contractVersion` | `BuilderContractVersion`で組み立てて完全一致 |
-| `provider.plugin`（指定時） | `builder.id` | 完全一致 |
-| `pin.artifactDigest`（指定時） | `builder.artifactDigest` | 完全一致 |
+#### `secretRequirements`は比べる相手が無い
 
-`provider.implementation`は`plugin.BuilderIdentity`に対応する欄が無いため照合しない。**比べないことをコードにも書く。**
+| 事実 | 帰結 |
+| --- | --- |
+| `plugin.BuildPlan`に`SecretRequirements`欄が無い | plan側に比べる相手が無い |
+| 名前は`ResolvedBuildReceipt.SecretRequirementNames`に載る | **receiptはchildへ渡っていない**（childが受け取るのは`-plan`と`-intent`） |
+| 宣言の`Authority`（取得元）に対応する欄がplanにもreceiptにも無い | 比べる対象が存在しない |
 
-#### 実測で分かった、照合そのものの性質
+**これは「測れば決まる」問題ではない。** 測って分かったのは「比べる相手が無い」ことである。照合するには、receiptをchildへ渡すか、planへ欄を足すか、いずれかの**設計変更**が要る。§4.18が「規則を決めれば照合できる」と書いたのは`secretRequirements`については誤りだった。
+
+#### 宣言の欄の到達点
+
+| 欄 | 状態 |
+| --- | --- |
+| `subject` identity・`outputKind`・`target`・`profile` | 照合済み（§4.14・§4.15） |
+| `recipe`・`sources`・`dependencies` | 照合済み（§4.17） |
+| `parameters` | 照合済み（§4.18） |
+| `builder.contract`・`compatibleMajor` | 照合済み（[#3684](https://github.com/hat47x/tei-platform/pull/3684)） |
+| `builder.provider`・`builder.pin` | 方針であり、解決結果と対応しない（照合の対象外） |
+| `secretRequirements` | **比べる相手が無い**（設計変更が要る） |
+
+**照合の拡大はL2-bを進めない。** 宣言とplanが同じ意味を指すことの確認であり、「その宣言がその計画を導く」ことではない。
+
+### 4.20 欄ごとの照合は何を保証するのか（`secretRequirements`の扱いを決める、2026-11-09）
+
+§4.19で分かった性質は、**`secretRequirements`だけの話ではなく、§4.17以降に足してきた欄ごとの照合すべてに当てはまる。** ここで一度、何を保証しているのかを言い直す。
+
+#### 補足：同じ宣言から導いたplanでは、欄照合は決して失敗しない
 
 **同じ宣言からresolverが導いたplanに対して、この照合は決して失敗しない。** 要求を満たさない宣言からはresolverがplanを作らないためである（実測：`compatibleMajor`を2にすると`no compatible builder provider for contract tei.plugin-build/v2`で停止する）。
 
@@ -677,10 +706,6 @@ childは三点を比べる（§4.19の実装、[記録](../evidence/TEI_GO_SELF_
 - planがresolver以外（手書き・別ツール）で作られた
 
 **これは弱い検査ではなく、狙いどおりの検査である。** childは「渡されたplanが渡された宣言と対応しているか」を確かめており、対応していなければ止まる。
-
-### 4.20 欄ごとの照合は何を保証するのか（`secretRequirements`の扱いを決める、2026-11-09）
-
-§4.19で分かった性質は、**`secretRequirements`だけの話ではなく、§4.17以降に足してきた欄ごとの照合すべてに当てはまる。** ここで一度、何を保証しているのかを言い直す。
 
 #### 言い直し
 
