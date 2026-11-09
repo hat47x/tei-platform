@@ -68,11 +68,12 @@ func (r Runner) RunWithDeclaredValues(ctx context.Context, invocation Invocation
 		return nil, err
 	}
 	invocation.Reads = reads
-	if r.Implementation == nil {
+	implementation := r.implementationFor(invocation.Phase)
+	if implementation == nil {
 		return nil, &Error{Code: "HOOK_IMPLEMENTATION_UNAVAILABLE", Message: "no implementation is configured for this hook boundary"}
 	}
 	var proposed Produced
-	if producing, ok := r.Implementation.(ProducingImplementation); ok {
+	if producing, ok := implementation.(ProducingImplementation); ok {
 		proposed, err = producing.RunProducing(ctx, invocation)
 		// A producing hook is still a hook: its failure takes the same kind as a
 		// plain one, so on-failure warn stays a warning and a refusal stays a
