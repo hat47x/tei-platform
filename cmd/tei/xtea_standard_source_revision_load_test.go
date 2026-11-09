@@ -28,6 +28,19 @@ func TestXTEAStandardSourceRevisionBoundedLoad(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// On a checkout configured to rewrite LF to CRLF, reconstruct the pinned
+	// Git object bytes before the isolated Load. The final exact Git blob
+	// check below rejects any difference beyond checkout line ending policy.
+	if gitBlobIDForRevisionTest(newBytes) != newBlob {
+		normalized := bytes.ReplaceAll(newBytes, []byte("\r\n"), []byte("\n"))
+		if bytes.HasSuffix(normalized, []byte("}\n\n")) {
+			candidate := append([]byte(nil), normalized[:len(normalized)-1]...)
+			candidate = append(candidate, '\r', '\n')
+			if gitBlobIDForRevisionTest(candidate) == newBlob {
+				newBytes = candidate
+			}
+		}
+	}
 	// Git blob IDs pin the historical fixture bytes; they are not authority
 	// credentials or a replacement for the SHA-256 Source Index fingerprint.
 	if got := gitBlobIDForRevisionTest(newBytes); got != newBlob {
