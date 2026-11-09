@@ -581,7 +581,16 @@ func loadSemantics(root string, r *Result) error {
 		return err
 	}
 
+	// Seed the index with namespaces already in the World, which includes the
+	// in-process prelude. A Workspace may add a type to `std` (for example
+	// `type email from std.text`); that declaration joins the prelude
+	// namespace instead of creating a second `std`, which validate reported as
+	// DUPLICATE_SEMANTIC_NAMESPACE and left the declaration invisible to
+	// declarationCounts (#3851).
 	byNamespace := map[core.CanonicalID]int{}
+	for i, existing := range r.World.Semantics {
+		byNamespace[existing.ID] = i
+	}
 	for _, path := range files {
 		src, err := readSourceForLoad(root, r, path)
 		if err != nil {
