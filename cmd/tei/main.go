@@ -230,6 +230,19 @@ func main() {
 	expectedRevision := fs.Int("expected-revision", -1, "expected durable deployment run revision for optimistic concurrency")
 	var statePaths pathList
 	fs.Var(&statePaths, "state", "database compatibility state JSON; repeatable")
+	// -h/-help is a request to read the grammar, not an argument
+	// failure. Under ExitOnError the flag package prints its own usage
+	// listing (the shared FlagSet, which holds every command flags) and
+	// exits before the ErrHelp handler below can answer. Returning the same
+	// sentinel keeps one code path for every command (#3943).
+	// ExitOnError calls os.Exit from inside Parse on -h, so the requested
+	// listing must be answered before parsing. The flag package would print the
+	// shared FlagSet (every command flags); printHelp prints only this
+	// command ones (#3943).
+	if parseMode == flag.ExitOnError && requestedHelp(os.Args[2:]) {
+		printHelp(os.Stdout, fs, command)
+		return
+	}
 	parseErr := fs.Parse(os.Args[2:])
 	if errors.Is(parseErr, flag.ErrHelp) {
 		printHelp(os.Stdout, fs, command)
