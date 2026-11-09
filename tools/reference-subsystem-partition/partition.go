@@ -46,13 +46,13 @@ type Placement struct {
 
 // Component is a traceable optimality witness for one must-link component.
 type Component struct {
-	Functions       []string
-	Allowed         []string
-	Selected        string
-	TotalWeight     int64
-	InternalWeight  int64
-	CrossWeight     int64
-	CrossWriteIDs   []string
+	Functions      []string
+	Allowed        []string
+	Selected       string
+	TotalWeight    int64
+	InternalWeight int64
+	CrossWeight    int64
+	CrossWriteIDs  []string
 }
 
 type Report struct {
