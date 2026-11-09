@@ -245,3 +245,4 @@
 
 - [同じ値指定flagの重複](CLI_REPEATED_FLAG_2026-11-09.md)（`model catalog -namespace`等の重複が最後の値だけを残して黙って捨てていたのを、1値flagの重複として`INVALID_ARGUMENT`で拒否。繰り返し可能なflagは`repeatableFlags`で広告。既存呼出し元の全件洗い出しは未実施）
 - [viewの-inputが-command無しで黙って捨てられていた](TEI_DOGFOODING_ROUND20_VIEW_INPUT_2026-11-09/README.md)（#3778・#3420。`-input`は`-command`と組だが、無い場合に値が捨てられて成功していた。両方向の変異を検出する試験を追加。起票時の誤診と既存試験による発覚も記録）
+- [`-rebuild-check`の実測コスト](TEI_GO_SELF_BUILD_REBUILD_COST_2026-11-09.md)（§4.25が「測っていない」と明記した実build時間を補完。plain 192ms / rebuild 346ms = **1.80倍**（WSL2・参照fixture）。P-2の非対称性（child経路では主張が増えないのに全試行で1.8倍払う）が数字で裏づけられた。内訳は未計測・一般化不可と明記。 #2831）
