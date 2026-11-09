@@ -30,13 +30,24 @@ sed -i 's/^workspace: tei_reference$/workspace: tei_reference_copy/' \
 go run ./cmd/tei trace -workspace /tmp/tei-topology-other-workspace \
   -scope reference-observation -subject-kind semantic-relation \
   -subject-id sales.order.customer -direction both -mode full > /tmp/tei-trace-c.json
+# 別の物理ディレクトリへManifestを含めて完全コピー（同一バイト）
+mkdir -p /tmp/tei-topology-identical-workspace
+cp -a reference/workspace/. /tmp/tei-topology-identical-workspace/
+cmp reference/workspace/tei.workspace.yaml \
+  /tmp/tei-topology-identical-workspace/tei.workspace.yaml
+go run ./cmd/tei trace -workspace /tmp/tei-topology-identical-workspace \
+  -scope reference-observation -subject-kind semantic-relation \
+  -subject-id sales.order.customer -direction both -mode full > /tmp/tei-trace-d.json
 node reference/tei-topology-coverage/verify-cli-trace.mjs \
-  /tmp/tei-trace-a.json /tmp/tei-trace-b.json /tmp/tei-trace-c.json
+  /tmp/tei-trace-a.json /tmp/tei-trace-b.json \
+  /tmp/tei-trace-c.json /tmp/tei-trace-d.json
 ```
 
 **注意：** 実CLIの生JSONにはSource pathやEvidenceを含む可能性がある。公開資格を持たない外部Consumerへ渡さず、CI内の一時ファイルだけで検査する。Node Referenceは実Disclosure Policyや現在Grantを評価しない。CLIのSource Navigationを**同じ応答内で検査**し、二つのCLI応答のLoad-time Manifest／World／Source Indexの対応を比較するだけで、独立Reader／同一Attemptの別観測による真正性を証明しない。`workspaceLoad`は内部Reference用の比較メタデータであり、そのままPublic Consumerへ公開しない。
 
 **今回の実測（2026-11-08）**：[専用CI #42434859063](https://github.com/hat47x/tei-platform/actions/runs/42434859063) はGo1.26.10実CLI 3回（同Workspace・別Caller scope 2件と、同Source・異Manifest Workspace 1件）＋Node24.21.0 **17/17 PASS**。**別WorkspaceでもWorld／Source Index fingerprintとSnapshot tokenが一致した**（`snapshot-token-equal=true`）が、ManifestのName/SHAは異なり、`compareObservedLoadContext`は`workspace_manifest_mismatch`で拒否。実装Git blob `bdff1a072eff1242e89329b1390b362b935eff50`、test Git blob `1b7b988c8a4535ffa7473aef61fe8438c5dc7e2c`、実CLI検証script Git blob `36de67555d9403133cd746891a61a67d3fb53a7e`。この結果はコード版`cfa1fe1ccad79d60e7c854020f5624e6300d174d`時点の実行であり、文書更新後headとmainの全CI資格は別に確認する。
+
+**完全コピーの残余Gap（2026-11-09）**：別ディレクトリにManifestと全Sourceをバイト単位でコピーしても、CLI応答の`WorkspaceIdentity`・World・Source Index・Snapshotの値が一致し得ます。この実験は、入力引数でRootが異なると知っているハーネスに対し、Consumerが**同じ観測値のみから物理Root同一性を判断できない**ことを示します。`compareObservedLoadContext`の結果には`physicalRootIdentity:not-provided`と`readAttemptIdentity:not-provided`を明示し、比較は`same-observed-load-context-only`のread-only候補までとします。実System Root/Reader identity、Current Grantや業務受理を認定しません。追跡と証拠は[設計§11.7](../../plan/design/TOPOLOGY_COMPOSITE_VIEWS_AND_PIPELINE_2026-10.md)を参照してください。
 
 **検証していないこと：** #1124の実Workbench 4入口・旧DOM、#2516の実Policy/二世界、#267のOwner意味受理、#2620のRole全解析/必要Root、#2831のセルフビルド実工程、#2542の配送Receipt、[統合済み研究#2966](https://github.com/hat47x/tei-platform/pull/2966)の人間/AI認知負荷比較。旧#2881の合成Graph/Table結果と本PRの実CLI結果は別資格として保持。
 
