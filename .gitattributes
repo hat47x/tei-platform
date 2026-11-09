@@ -191,3 +191,6 @@
 
 # Binding identity layers survey output is hashed as raw bytes by its README.
 /plan/evidence/BINDING_IDENTITY_LAYERS_2026-11-09/** -text
+
+# Digest change reuse output is hashed as raw bytes by its README.
+/plan/evidence/DIGEST_CHANGE_REUSE_REFERENCE_2026-11-09/** -text
