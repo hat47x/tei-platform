@@ -17,12 +17,12 @@ import (
 // only need the Context.
 func buildKnowledgeContextWithIdentity(root, subjectKind, subjectID string) (knowledgecontext.Context, *workspace.WorkspaceIdentity, error) {
 	if strings.TrimSpace(root) == "" {
-		return knowledgecontext.Context{}, nil, fmt.Errorf("knowledge-context requires -workspace")
+		return knowledgecontext.Context{}, nil, newArgumentError("knowledge-context requires -workspace")
 	}
 	kind := strings.TrimSpace(subjectKind)
 	id := strings.TrimSpace(subjectID)
 	if kind == "" || id == "" {
-		return knowledgecontext.Context{}, nil, fmt.Errorf("knowledge-context requires -subject-kind and -subject-id")
+		return knowledgecontext.Context{}, nil, newArgumentError("knowledge-context requires -subject-kind and -subject-id")
 	}
 
 	loaded, err := workspace.Load(root)
@@ -73,14 +73,12 @@ func buildBuilderReviewPlan(
 	root, subjectKind, subjectID string,
 ) (knowledgecontext.BuilderReviewPlan, error) {
 	if strings.TrimSpace(root) == "" {
-		return knowledgecontext.BuilderReviewPlan{}, fmt.Errorf("knowledge-review-plan requires -workspace")
+		return knowledgecontext.BuilderReviewPlan{}, newArgumentError("knowledge-review-plan requires -workspace")
 	}
 	kind := strings.TrimSpace(subjectKind)
 	id := strings.TrimSpace(subjectID)
 	if kind == "" || id == "" {
-		return knowledgecontext.BuilderReviewPlan{}, fmt.Errorf(
-			"knowledge-review-plan requires -subject-kind and -subject-id",
-		)
+		return knowledgecontext.BuilderReviewPlan{}, newArgumentError("knowledge-review-plan requires -subject-kind and -subject-id")
 	}
 	ctx, err := buildKnowledgeContext(root, kind, id)
 	if err != nil {
@@ -94,16 +92,12 @@ func buildBuilderReviewHandoff(
 	requirements knowledgecontext.QualificationRequirements,
 ) (knowledgecontext.BuilderReviewHandoff, error) {
 	if strings.TrimSpace(root) == "" {
-		return knowledgecontext.BuilderReviewHandoff{}, fmt.Errorf(
-			"knowledge-review-handoff requires -workspace",
-		)
+		return knowledgecontext.BuilderReviewHandoff{}, newArgumentError("knowledge-review-handoff requires -workspace")
 	}
 	kind := strings.TrimSpace(subjectKind)
 	id := strings.TrimSpace(subjectID)
 	if kind == "" || id == "" {
-		return knowledgecontext.BuilderReviewHandoff{}, fmt.Errorf(
-			"knowledge-review-handoff requires -subject-kind and -subject-id",
-		)
+		return knowledgecontext.BuilderReviewHandoff{}, newArgumentError("knowledge-review-handoff requires -subject-kind and -subject-id")
 	}
 
 	loaded, err := workspace.Load(root)
@@ -126,9 +120,7 @@ func buildBuilderReviewHandoffFromFile(
 	root, subjectKind, subjectID, requirementsPath string,
 ) (knowledgecontext.BuilderReviewHandoff, error) {
 	if strings.TrimSpace(requirementsPath) == "" {
-		return knowledgecontext.BuilderReviewHandoff{}, fmt.Errorf(
-			"knowledge-review-handoff requires -qualification-requirements",
-		)
+		return knowledgecontext.BuilderReviewHandoff{}, newArgumentError("knowledge-review-handoff requires -qualification-requirements")
 	}
 	var requirements knowledgecontext.QualificationRequirements
 	if err := decodeStrictKnowledgeJSONFile(requirementsPath, &requirements); err != nil {
@@ -147,21 +139,19 @@ func buildBuilderReviewDisclosureFromFile(
 	if strings.TrimSpace(root) == "" {
 		return knowledgecontext.DisclosureProjection{},
 			knowledgecontext.BuilderReviewHandoff{},
-			fmt.Errorf("knowledge-review-disclose requires -workspace")
+			newArgumentError("knowledge-review-disclose requires -workspace")
 	}
 	kind := strings.TrimSpace(subjectKind)
 	id := strings.TrimSpace(subjectID)
 	if kind == "" || id == "" {
 		return knowledgecontext.DisclosureProjection{},
 			knowledgecontext.BuilderReviewHandoff{},
-			fmt.Errorf(
-				"knowledge-review-disclose requires -subject-kind and -subject-id",
-			)
+			newArgumentError("knowledge-review-disclose requires -subject-kind and -subject-id")
 	}
 	if strings.TrimSpace(handoffPath) == "" {
 		return knowledgecontext.DisclosureProjection{},
 			knowledgecontext.BuilderReviewHandoff{},
-			fmt.Errorf("knowledge-review-disclose requires -review-handoff")
+			newArgumentError("knowledge-review-disclose requires -review-handoff")
 	}
 
 	var handoff knowledgecontext.BuilderReviewHandoff
@@ -309,12 +299,12 @@ func checkDataDesignFingerprint(ctx knowledgecontext.Context, expected string) e
 
 func buildKnowledgeQualification(root, subjectKind, subjectID string, requirements knowledgecontext.QualificationRequirements) (knowledgecontext.QualificationResult, error) {
 	if strings.TrimSpace(root) == "" {
-		return knowledgecontext.QualificationResult{}, fmt.Errorf("knowledge-qualify requires -workspace")
+		return knowledgecontext.QualificationResult{}, newArgumentError("knowledge-qualify requires -workspace")
 	}
 	kind := strings.TrimSpace(subjectKind)
 	id := strings.TrimSpace(subjectID)
 	if kind == "" || id == "" {
-		return knowledgecontext.QualificationResult{}, fmt.Errorf("knowledge-qualify requires -subject-kind and -subject-id")
+		return knowledgecontext.QualificationResult{}, newArgumentError("knowledge-qualify requires -subject-kind and -subject-id")
 	}
 	loaded, err := workspace.Load(root)
 	if err != nil {
@@ -334,7 +324,7 @@ func buildKnowledgeQualification(root, subjectKind, subjectID string, requiremen
 
 func buildKnowledgeQualificationFromFile(root, subjectKind, subjectID, requirementsPath string) (knowledgecontext.QualificationResult, error) {
 	if strings.TrimSpace(requirementsPath) == "" {
-		return knowledgecontext.QualificationResult{}, fmt.Errorf("knowledge-qualify requires -qualification-requirements")
+		return knowledgecontext.QualificationResult{}, newArgumentError("knowledge-qualify requires -qualification-requirements")
 	}
 	var requirements knowledgecontext.QualificationRequirements
 	if err := decodeStrictKnowledgeJSONFile(requirementsPath, &requirements); err != nil {

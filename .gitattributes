@@ -169,3 +169,22 @@
 
 # Subagent fork-chain observations are hashed as raw bytes.
 /plan/evidence/DSH_SUBAGENT_FORK_CHAIN_2026-11-09/** -text
+
+# Turn-boundary fork-chain observations are hashed as raw bytes.
+/plan/evidence/DSH_SUBAGENT_FORK_TURN_CHAIN_2026-11-09/** -text
+
+# Binding forms survey output is hashed as raw bytes by its README.
+/plan/evidence/BINDING_FORMS_CONSUMER_SURVEY_2026-11-09/** -text
+# Concurrent-subagent observations are hashed as raw bytes.
+/plan/evidence/DSH_SUBAGENT_CONCURRENT_LIMIT_2026-11-09/** -text
+
+# OTel path observations are hashed as raw bytes.
+/plan/evidence/DSH_OTEL_PATH_2026-11-09/** -text
+# Observation router connect output is hashed as raw bytes by its README.
+/plan/evidence/OBSERVATION_ROUTER_CONNECT_REFERENCE_2026-11-09/** -text
+
+# Evidence router connect output is hashed as raw bytes by its README.
+/plan/evidence/EVIDENCE_ROUTER_CONNECT_REFERENCE_2026-11-09/** -text
+
+# Historical B Git blob is a byte-exact test witness, not live authoring Source.
+/cmd/tei/testdata/xtea_standard_20261108_b.tei -text

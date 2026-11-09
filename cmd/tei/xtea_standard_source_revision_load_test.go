@@ -15,7 +15,8 @@ import (
 
 // TestXTEAStandardSourceRevisionBoundedLoad compares two historically pinned
 // byte versions of one real example Source through the production Workspace
-// loader. It intentionally does not qualify an entire Function, an external
+// loader. The fixture is a pinned past revision, intentionally separate from
+// the actively evolving examples/xtea-lowcode file. It intentionally does not qualify an entire Function, an external
 // Provider, a consumer reply, or an Owner-accepted business meaning (#3252).
 func TestXTEAStandardSourceRevisionBoundedLoad(t *testing.T) {
 	const (
@@ -23,28 +24,17 @@ func TestXTEAStandardSourceRevisionBoundedLoad(t *testing.T) {
 		oldBlob    = "292188047e7be360e31fec2abbda53cf3d9f0e2f"
 		newBlob    = "22588b6e3b68e0a7dc96a6140acb70116aa6bfbf"
 	)
-	currentSource := filepath.Join("..", "..", "examples", "xtea-lowcode", filepath.FromSlash(sourcePath))
-	newBytes, err := os.ReadFile(currentSource)
+	// The checked-in fixture is the *historical B Git blob*, not the mutable
+	// examples/xtea-lowcode Source. The latter has continued to gain roles.
+	// A dedicated -text attribute prevents checkout EOL conversion.
+	newBytes, err := os.ReadFile(filepath.Join("testdata", "xtea_standard_20261108_b.tei"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	// On a checkout configured to rewrite LF to CRLF, reconstruct the pinned
-	// Git object bytes before the isolated Load. The final exact Git blob
-	// check below rejects any difference beyond checkout line ending policy.
-	if gitBlobIDForRevisionTest(newBytes) != newBlob {
-		normalized := bytes.ReplaceAll(newBytes, []byte("\r\n"), []byte("\n"))
-		if bytes.HasSuffix(normalized, []byte("}\n\n")) {
-			candidate := append([]byte(nil), normalized[:len(normalized)-1]...)
-			candidate = append(candidate, '\r', '\n')
-			if gitBlobIDForRevisionTest(candidate) == newBlob {
-				newBytes = candidate
-			}
-		}
-	}
-	// Git blob IDs pin the historical fixture bytes; they are not authority
-	// credentials or a replacement for the SHA-256 Source Index fingerprint.
+	// Git blob IDs pin historical fixture bytes. They do not confer trust,
+	// acceptance, or authority over a live Workspace.
 	if got := gitBlobIDForRevisionTest(newBytes); got != newBlob {
-		t.Fatalf("example Source changed: Git blob %s, expected %s; review the fixture versions before updating this test", got, newBlob)
+		t.Fatalf("historical Source B fixture drifted: Git blob %s, expected %s", got, newBlob)
 	}
 	bom := []byte{0xef, 0xbb, 0xbf}
 	added := []byte("    attribute rule type std.identifier display \"規則\" role numbering-rule\n")

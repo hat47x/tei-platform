@@ -40,6 +40,9 @@ var standardBusinessRoles = map[core.CanonicalID][]string{
 		"numbering-check", "numbering-overflow",
 	},
 	"holiday": {"holiday-date"},
+	// Settings are listed after the business binders, so a reader sees a Data
+	// that holds settings as settings and not as a rate table.
+	"setting": {"setting-key", "setting-value", "setting-user"},
 }
 
 // standardBusiness returns the standard business Data the namespaces declare.
@@ -49,7 +52,7 @@ func standardBusiness(namespaces []semantic.Namespace) []StandardBusinessRef {
 	var out []StandardBusinessRef
 	for _, namespace := range namespaces {
 		for _, data := range namespace.Data {
-			for _, kind := range []core.CanonicalID{"tax", "exchange", "numbering", "holiday"} {
+			for _, kind := range []core.CanonicalID{"tax", "exchange", "numbering", "holiday", "setting"} {
 				roles := standardBusinessRoles[kind]
 				attributes := attributesForRoles(data, roles)
 				if len(attributes) == 0 {

@@ -104,6 +104,18 @@ func resultEnvelopeWithWorkspace(command, mode string, result any, identity *wor
 	return envelope
 }
 
+// knowledgeFailure maps a knowledge-* build error to its envelope. A missing
+// or malformed argument is the caller's input problem and answers
+// INVALID_ARGUMENT; anything else stays KNOWLEDGE_BUILD_FAILED (#3733).
+func knowledgeFailure(command string, cause error) cliResultEnvelope {
+	code := resultCodeKnowledgeFailed
+	var argument *argumentError
+	if errors.As(cause, &argument) {
+		code = resultCodeInvalidArgument
+	}
+	return resultFailure(command, code, cause)
+}
+
 func resultFailure(command, code string, cause error) cliResultEnvelope {
 	return cliResultEnvelope{
 		SchemaVersion: resultSchemaVersion(command),
@@ -321,6 +333,9 @@ func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environ
 				if plugin.IsInvalidLock(err) {
 					return emitResult(out, resultFailure(command, resultCodeInvalidPluginLock, err), 2)
 				}
+				if plugin.IsLockMismatch(err) {
+					return emitResult(out, resultFailure(command, resultCodeInvalidPluginLock, err), 2)
+				}
 				return emitResult(out, resultFailure(command, resultCodePluginResolveFailed, err), 2)
 			}
 			return emitResult(out, resultEnvelopeWithWorkspace(command, "", r, identity), 0)
@@ -333,9 +348,12 @@ func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environ
 		if err != nil {
 			// A lock whose bytes are unusable is an input failure (exit 2), the
 			// same as the decode and resolve paths of plugin-resolve. A
-			// well-formed lock that does not match the environment or the
-			// catalog stays a planning failure (exit 1) (#3184).
-			if plugin.IsInvalidLock(err) {
+			// well-formed lock that does not match this environment or catalog
+			// is also the caller's input problem: the only fix is another lock.
+			// Both answer INVALID_PLUGIN_LOCK with exit 2, so the same bad lock
+			// is classified the same way whichever command reads it (#3765,
+			// #3184).
+			if plugin.IsInvalidLock(err) || plugin.IsLockMismatch(err) {
 				return emitResult(out, resultFailure(command, resultCodeInvalidPluginLock, err), 2)
 			}
 			return emitResult(out, resultFailure(command, resultCodePluginPlanFailed, err), 1)
@@ -362,7 +380,7 @@ func knowledgeContextJSON(out io.Writer, workspacePath, subjectKind, subjectID, 
 	}
 	context, identity, err := buildKnowledgeContextWithIdentity(workspacePath, subjectKind, subjectID)
 	if err != nil {
-		return emitResult(out, resultFailure("knowledge-context", resultCodeKnowledgeFailed, err), 2)
+		return emitResult(out, knowledgeFailure("knowledge-context", err), 2)
 	}
 	if err := checkDataDesignFingerprint(context, expectedDataDesignFingerprint); err != nil {
 		return emitResult(out, resultFailure("knowledge-context", resultCodeKnowledgeFailed, err), 1)
@@ -391,7 +409,7 @@ func knowledgeQualifyJSON(out io.Writer, workspacePath, subjectKind, subjectID, 
 	}
 	qualification, err := buildKnowledgeQualificationFromFile(workspacePath, subjectKind, subjectID, requirementsPath)
 	if err != nil {
-		return emitResult(out, resultFailure("knowledge-qualify", resultCodeKnowledgeFailed, err), 2)
+		return emitResult(out, knowledgeFailure("knowledge-qualify", err), 2)
 	}
 	return emitResult(out, resultEnvelope("knowledge-qualify", resultModeQualification, qualification), 0)
 }
@@ -409,7 +427,7 @@ func knowledgeReviewPlanJSON(out io.Writer, workspacePath, subjectKind, subjectI
 	}
 	plan, err := buildBuilderReviewPlan(workspacePath, subjectKind, subjectID)
 	if err != nil {
-		return emitResult(out, resultFailure("knowledge-review-plan", resultCodeKnowledgeFailed, err), 2)
+		return emitResult(out, knowledgeFailure("knowledge-review-plan", err), 2)
 	}
 	if err := checkBuilderReviewPlanFingerprint(plan, expectedReviewPlanFingerprint); err != nil {
 		return emitResult(out, resultFailure("knowledge-review-plan", resultCodeKnowledgeFailed, err), 1)
@@ -429,7 +447,7 @@ func knowledgeReviewHandoffJSON(out io.Writer, workspacePath, subjectKind, subje
 	}
 	handoff, err := buildBuilderReviewHandoffFromFile(workspacePath, subjectKind, subjectID, requirementsPath)
 	if err != nil {
-		return emitResult(out, resultFailure("knowledge-review-handoff", resultCodeKnowledgeFailed, err), 2)
+		return emitResult(out, knowledgeFailure("knowledge-review-handoff", err), 2)
 	}
 	if err := checkBuilderReviewHandoffFingerprint(handoff, expectedReviewHandoffFingerprint); err != nil {
 		return emitResult(out, resultFailure("knowledge-review-handoff", resultCodeKnowledgeFailed, err), 1)
@@ -449,7 +467,7 @@ func knowledgeReviewDiscloseJSON(out io.Writer, workspacePath, subjectKind, subj
 	}
 	disclosure, handoff, err := buildBuilderReviewDisclosureFromFile(workspacePath, subjectKind, subjectID, reviewHandoffPath)
 	if err != nil {
-		return emitResult(out, resultFailure("knowledge-review-disclose", resultCodeKnowledgeFailed, err), 2)
+		return emitResult(out, knowledgeFailure("knowledge-review-disclose", err), 2)
 	}
 	if err := checkBuilderReviewHandoffFingerprint(handoff, expectedReviewHandoffFingerprint); err != nil {
 		return emitResult(out, resultFailure("knowledge-review-disclose", resultCodeKnowledgeFailed, err), 1)

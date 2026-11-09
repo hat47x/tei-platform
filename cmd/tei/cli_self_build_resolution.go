@@ -54,11 +54,23 @@ type PlanReceipt struct {
 	L2Claimed                bool   `json:"l2Claimed"`
 	BindingNote              string `json:"bindingNote,omitempty"`
 	FailureCause             string `json:"failureCause,omitempty"`
+	// DerivedBy names the route that produced this plan. "entry-in-process" means
+	// this binary resolved the declaration itself; empty means a resolver child
+	// did. Keeping the route explicit stops a reader from crediting the entry
+	// with a derivation a child performed (§4.22 step 2).
+	DerivedBy string `json:"derivedBy,omitempty"`
+	// The inputs the in-process route used. They are empty for a child receipt,
+	// which records the resolver executable instead.
+	CatalogPath   string `json:"catalogPath,omitempty"`
+	CatalogDigest string `json:"catalogDigest,omitempty"`
+	SourceRoot    string `json:"sourceRoot,omitempty"`
 	// ReceiptJSON is the resolver's raw stdout. The entry keeps it so the plan
 	// fingerprint can be recomputed from the plan the receipt carries, instead
 	// of trusting the reported value.
 	ReceiptJSON string `json:"-"`
 }
+
+const derivedByEntryInProcess = "entry-in-process"
 
 const planReceiptBindingNote = "the entry passed the same declaration file to a resolver child, recomputed the plan fingerprint from the plan inside the receipt, and compared it with a caller-declared value; it cannot prove that the builder child used the same reading"
 

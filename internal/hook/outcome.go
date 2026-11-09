@@ -2,11 +2,12 @@ package hook
 
 import (
 	"errors"
+	"fmt"
 
 	"tei/internal/command"
 )
 
-// OutcomeDone は、フックが業務上の条件を満たしたことを表す結末名である。
+// 結末名は、フックが「業務上の条件を満たさない」と答えたときに名乗る名前である。
 const (
 	// OutcomeUnmet は、フックが条件を満たさないとだけ答えた場合の結末名である。
 	// Command 側に対応する拒否符号が無いため、Command の結末として報告しない。
@@ -33,6 +34,27 @@ var NotSatisfiedOutcomes = []string{
 	"value-rejected",
 	"rule-rejected",
 	"undeclared",
+}
+
+// ValidateOutcome は、実装が名乗った結末名が語彙に載っているかを確かめる。
+//
+// `hook.ReadsFor`が宣言外の読み取りを拒否し、`hook.ProducesFor`が宣言外の提案を
+// 拒否するのと同じ立場です。語彙は`NotSatisfiedOutcomes`が一つだけ持ち、ここでは
+// それを照合するだけで、新しい名前を足しません。名乗らなかった（空の）結末名は
+// 拒否しません。理由だけを返す不成立は正当だからです。
+func ValidateOutcome(outcome string) error {
+	if outcome == "" {
+		return nil
+	}
+	for _, declared := range NotSatisfiedOutcomes {
+		if declared == outcome {
+			return nil
+		}
+	}
+	return &Error{
+		Code:    "HOOK_OUTCOME_UNDECLARED",
+		Message: fmt.Sprintf("hook reported outcome %q that is not in the declared vocabulary", outcome),
+	}
 }
 
 // CommandOutcomeFor は、フックの結末名を、Command の結末名へ対応づける。

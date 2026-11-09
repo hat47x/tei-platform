@@ -1,0 +1,38 @@
+﻿namespace master
+
+// Standard business data the example binds by declared role rather than by
+// column name. The roles are the vocabulary in
+// internal/validation/validation.go; the binders in internal/taxrate,
+// internal/currencyrate, internal/numbering, and internal/businesscalendar read
+// them to turn stored rows into values.
+
+data Holiday {
+    attribute holidayOn type std.date display "休日" role holiday-date
+}
+
+data TaxRate {
+    attribute appliesFrom type std.date display "適用開始" role tax-applies-from
+    attribute appliesUntil type std.date display "適用終了" role tax-applies-until
+    attribute category type std.code display "税区分" role tax-category
+    attribute rate type std.decimal display "税率" role tax-value
+    attribute rounding type std.text display "端数処理" role tax-rounding
+}
+
+data ExchangeRate {
+    attribute currency type std.identifier display "通貨" role currency-rate-currency
+    attribute fiscalYear type std.integer display "会計年度" role currency-rate-fiscal-year
+    attribute monthSequence type std.integer display "月順序" role currency-rate-month-sequence
+    attribute middle type std.decimal display "中値" role currency-rate-middle
+    attribute buying type std.decimal display "買値" role currency-rate-buying
+    attribute selling type std.decimal display "売値" role currency-rate-selling
+}
+
+data NumberingRule {
+    attribute rule type std.identifier display "規則" role numbering-rule
+    attribute counter type std.integer display "現在値" role numbering-counter
+    attribute digits type std.integer display "桁数" role numbering-digits
+    attribute prefix type std.text display "接頭辞" role numbering-prefix
+    attribute check type std.code display "検査数字" role numbering-check
+    attribute overflow type std.code display "桁あふれ" role numbering-overflow
+}
+

@@ -30,7 +30,16 @@ const (
 
 // planArtifactBinding is §4.8(c): one validated plan-to-artifact binding.
 type planArtifactBinding struct {
-	State                string `json:"state"`
+	State string `json:"state"`
+	// EntryPlanFingerprint is the fingerprint this entry derived itself from the
+	// plan inside the receipt. It is the basis the binding uses when the builder
+	// reports no fingerprint of its own, so one side of the binding no longer
+	// depends only on what a child said.
+	EntryPlanFingerprint string `json:"entryPlanFingerprint,omitempty"`
+	// PlanSideSource says whose fingerprint the lock's plan side carries:
+	// "builder-report" when the child reported its own, "entry-derivation" when
+	// the entry fell back to its own reading because the child was silent.
+	PlanSideSource       string `json:"planSideSource,omitempty"`
 	PlanFingerprint      string `json:"planFingerprint,omitempty"`
 	ArtifactDigest       string `json:"artifactDigest,omitempty"`
 	ArtifactDigestOnDisk string `json:"artifactDigestOnDisk,omitempty"`
@@ -54,7 +63,7 @@ const planArtifactBoundary = "the entry formed one validated BuildArtifactLock f
 // bindPlanToArtifact forms and validates the lock. It runs only after both
 // children finished, so a failure here is a recorded finding, never a
 // precondition that could have stopped the build.
-func bindPlanToArtifact(receipt *PlanReceipt, builderPlanFingerprint, builderArtifactDigest, artifactOnDiskDigest string, childLock *childSelfLock) planArtifactBinding {
+func bindPlanToArtifact(receipt *PlanReceipt, entryPlanFingerprint, builderPlanFingerprint, builderArtifactDigest, artifactOnDiskDigest string, childLock *childSelfLock) planArtifactBinding {
 	record := planArtifactBinding{
 		L2BClaimed: false,
 		Boundary:   planArtifactBoundary,
@@ -64,9 +73,22 @@ func bindPlanToArtifact(receipt *PlanReceipt, builderPlanFingerprint, builderArt
 		record.UnperformedReason = "no resolver receipt was produced, so there is no plan identity to bind"
 		return record
 	}
-	if strings.TrimSpace(builderPlanFingerprint) == "" {
+	record.EntryPlanFingerprint = entryPlanFingerprint
+	// The plan side of the lock prefers the builder's own report, because that is
+	// what the artifact was built from. When the builder is silent, the entry's
+	// own derivation is used instead: it is a reading this process made from the
+	// receipt, not a value it was told. Which one was used is recorded, so the
+	// weaker basis is never mistaken for the stronger one.
+	planSide := strings.TrimSpace(builderPlanFingerprint)
+	planSideSource := "builder-report"
+	if planSide == "" {
+		planSide = strings.TrimSpace(entryPlanFingerprint)
+		planSideSource = "entry-derivation"
+	}
+	record.PlanSideSource = planSideSource
+	if planSide == "" {
 		record.State = planArtifactUnperformed
-		record.UnperformedReason = "the builder child did not report the plan fingerprint it built, so the artifact cannot be bound to a plan"
+		record.UnperformedReason = "neither the builder child nor the entry produced a plan fingerprint, so the artifact cannot be bound to a plan"
 		return record
 	}
 	if strings.TrimSpace(builderArtifactDigest) == "" {
@@ -74,9 +96,9 @@ func bindPlanToArtifact(receipt *PlanReceipt, builderPlanFingerprint, builderArt
 		record.UnperformedReason = "the builder child did not report the artifact digest it produced, so there is nothing to bind"
 		return record
 	}
-	if receipt.PlanFingerprint != "" && builderPlanFingerprint != receipt.PlanFingerprint {
+	if receipt.PlanFingerprint != "" && planSideSource == "builder-report" && planSide != receipt.PlanFingerprint {
 		record.State = planArtifactMismatched
-		record.PlanFingerprint = builderPlanFingerprint
+		record.PlanFingerprint = planSide
 		record.ArtifactDigest = builderArtifactDigest
 		record.ArtifactDigestOnDisk = artifactOnDiskDigest
 		record.FailureCause = "the builder child reports a different plan fingerprint than the resolver, so the artifact would be bound to the wrong plan"
@@ -96,7 +118,7 @@ func bindPlanToArtifact(receipt *PlanReceipt, builderPlanFingerprint, builderArt
 			OutputKind:      identity.OutputKind,
 			Target:          identity.Target,
 			Profile:         identity.Profile,
-			PlanFingerprint: builderPlanFingerprint,
+			PlanFingerprint: planSide,
 			ArtifactDigest:  builderArtifactDigest,
 		}},
 	}
@@ -104,7 +126,7 @@ func bindPlanToArtifact(receipt *PlanReceipt, builderPlanFingerprint, builderArt
 	// or a missing identity field, is a refusal rather than a silent pass.
 	if err := lock.Validate(); err != nil {
 		record.State = planArtifactUnperformed
-		record.PlanFingerprint = builderPlanFingerprint
+		record.PlanFingerprint = planSide
 		record.ArtifactDigest = builderArtifactDigest
 		record.UnperformedReason = "the plan-to-artifact lock does not validate: " + err.Error()
 		return record
@@ -112,12 +134,12 @@ func bindPlanToArtifact(receipt *PlanReceipt, builderPlanFingerprint, builderArt
 	fingerprint, err := plugin.BuildArtifactLockFingerprint(lock)
 	if err != nil {
 		record.State = planArtifactUnperformed
-		record.PlanFingerprint = builderPlanFingerprint
+		record.PlanFingerprint = planSide
 		record.ArtifactDigest = builderArtifactDigest
 		record.UnperformedReason = "the lock fingerprint could not be derived: " + err.Error()
 		return record
 	}
-	record.PlanFingerprint = builderPlanFingerprint
+	record.PlanFingerprint = planSide
 	record.ArtifactDigest = builderArtifactDigest
 	record.ArtifactDigestOnDisk = artifactOnDiskDigest
 	record.LockFingerprint = fingerprint
