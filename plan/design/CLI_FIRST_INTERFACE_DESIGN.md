@@ -155,7 +155,7 @@ Issue #1165に対し、既存 `index.Build` → `modelref/derivedbridge.FromInde
 `tei trace` がSource Indexを含めずGraphだけで継続判定すると、同じCanonical Worldで元ファイルが移動した場合や、コメントだけが変わった場合に、古いページの位置・根拠と新しいページの元定義が混在する。この欠落を以下のように修正した。
 
 1. `workspaceProjectionFingerprints` は正規化 `ir.World` と、既存 `workspace.BuildSourceIndex` で生成・Normalizeした `sourceindex.Index` のJSONを、それぞれ独立してfingerprint化する。前者はSourceファイル移動では不変、後者はArtifact path/digest/Source Referenceの変化で変わる。
-2. `operations.TraceWorkspace` は既存 `modelref.TraceDirect` のgraph+rule+query fingerprintと、上記二種類のfingerprintを結合して `tei.operations.trace.snapshot/v1` の継続用トークンを算出する。出力 `result.snapshotFingerprint` がこのトークンであり、`result.trace.snapshotFingerprint` はGraph限定の内部読取識別子として残す。
+2. `operations.TraceWorkspace` は既存 `modelref.TraceDirect` のgraph+rule+query fingerprintと、上記二種類のfingerprintを結合して `tei.operations.trace.snapshot/v1` の継続用トークンを算出する。出力 `result.snapshotFingerprint` がこのトークンであり、`result.trace.graphFingerprint`（2026-11-09より前の名前は`result.trace.snapshotFingerprint`。旧名は1 cycleのaliasとして同値を残す）はGraph限定の内部読取識別子として残す。継続ページには `result.trace.nextOffset` の隣へ `result.trace.continuation.fingerprint`（外側のトークンと同値）と `field` を置き、どの値を継続に渡すかを応答の中だけで判別できるようにする（#3625）。
 3. CLIの `-expected-fingerprint` は**Workspaceレベルの`result.snapshotFingerprint`**のみを受け付ける。違う場合は `STALE_SNAPSHOT`、終了コード1。`summary→full`やoffset/limitだけの変更は同じWorkspace状態であれば許容し、同じWorldに対するSource移動や非意味的な原文変更は拒否する。
 4. `operations.InspectSubject` も `worldFingerprint` と `sourceIndexFingerprint` を共通ヘルパーから取得する。CLIから両操作を別々に呼んだ場合に、観測したCanonicalとSourceのスナップショットが一致したか検証できるようにする。
 

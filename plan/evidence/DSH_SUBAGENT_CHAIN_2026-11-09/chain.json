@@ -1,0 +1,300 @@
+{
+  "note": "A subagent call was forced once per session so a chain could propagate. Three sessions appeared (one parent, two children) and no grandchild: children were refused with a depth error.",
+  "probe": "mock forces one subagent call per session; MAX_DEPTH=2 fires per session",
+  "sessions": [
+    {
+      "file": "parent",
+      "bytes": 59914,
+      "sha256": "cb931fe99feb74a2ba5d95532e24138b6aad975a856d742d93bf001ba478875d",
+      "lines": 58,
+      "eventTypeCounts": {
+        "session": 1,
+        "permission/preset": 2,
+        "sandbox/mode": 2,
+        "approval/policy": 2,
+        "agent/inbox/spliced": 6,
+        "turn/start": 3,
+        "step/start": 5,
+        "system/message": 1,
+        "user/message": 6,
+        "request/header": 1,
+        "request/context": 1,
+        "session/title": 2,
+        "session/title-llm-request": 1,
+        "session-log-deepseek/delivery-accepted": 6,
+        "assistant/message": 5,
+        "tool/call": 2,
+        "subagent/catalog": 2,
+        "tool/result": 2,
+        "step/end": 5,
+        "turn/end": 3
+      },
+      "descriptorEvents": 0,
+      "catalogEvents": 2,
+      "toolResults": [
+        {
+          "seq": 25,
+          "isError": false,
+          "toolCallId": "toolu_ch_1",
+          "text": "started subagent 28aebbf1-5f07-468a-a3ad-f150eb2a52a6",
+          "depthError": false
+        },
+        {
+          "seq": 32,
+          "isError": false,
+          "toolCallId": "toolu_ch_3",
+          "text": "started subagent 1fa166d7-c3f6-4fdd-afc2-c2295c7fd11b",
+          "depthError": false
+        }
+      ],
+      "depthErrorCount": 0,
+      "promptCanaryCount": 8,
+      "sessionId": "session-f49725aa-7d0b-4494-9764-edf2995b3c96"
+    },
+    {
+      "file": "child1",
+      "bytes": 54448,
+      "sha256": "cb1b1e3e02bb5fe00df5f5357b9b186adac383d450849deb4971e268a42b24c1",
+      "lines": 32,
+      "eventTypeCounts": {
+        "session": 1,
+        "subagent/descriptor": 1,
+        "sandbox/mode": 1,
+        "approval/policy": 1,
+        "agent/inbox/spliced": 2,
+        "turn/start": 1,
+        "step/start": 3,
+        "system/message": 1,
+        "user/message": 4,
+        "request/header": 1,
+        "request/context": 1,
+        "session/title": 1,
+        "session-log-deepseek/delivery-accepted": 3,
+        "assistant/message": 3,
+        "tool/call": 2,
+        "tool/result": 2,
+        "step/end": 3,
+        "turn/end": 1
+      },
+      "descriptorEvents": 1,
+      "catalogEvents": 0,
+      "toolResults": [
+        {
+          "seq": 18,
+          "isError": true,
+          "toolCallId": "toolu_ch_4",
+          "text": "Error: subagent depth 2 exceeds maxDepth 1",
+          "depthError": true
+        },
+        {
+          "seq": 24,
+          "isError": true,
+          "toolCallId": "toolu_ch_5",
+          "text": "Error: subagent depth 2 exceeds maxDepth 1",
+          "depthError": true
+        }
+      ],
+      "depthErrorCount": 2,
+      "promptCanaryCount": 11,
+      "sessionId": "28aebbf1-5f07-468a-a3ad-f150eb2a52a6"
+    },
+    {
+      "file": "child2",
+      "bytes": 54459,
+      "sha256": "a0dfbc0ad33099a1dca8dc569a156ed6ffecb8e969ae96f92fe1f0ae33bdf558",
+      "lines": 32,
+      "eventTypeCounts": {
+        "session": 1,
+        "subagent/descriptor": 1,
+        "sandbox/mode": 1,
+        "approval/policy": 1,
+        "agent/inbox/spliced": 2,
+        "turn/start": 1,
+        "step/start": 3,
+        "system/message": 1,
+        "user/message": 4,
+        "request/header": 1,
+        "request/context": 1,
+        "session/title": 1,
+        "session-log-deepseek/delivery-accepted": 3,
+        "assistant/message": 3,
+        "tool/call": 2,
+        "tool/result": 2,
+        "step/end": 3,
+        "turn/end": 1
+      },
+      "descriptorEvents": 1,
+      "catalogEvents": 0,
+      "toolResults": [
+        {
+          "seq": 18,
+          "isError": true,
+          "toolCallId": "toolu_ch_8",
+          "text": "Error: subagent depth 2 exceeds maxDepth 1",
+          "depthError": true
+        },
+        {
+          "seq": 24,
+          "isError": true,
+          "toolCallId": "toolu_ch_10",
+          "text": "Error: subagent depth 2 exceeds maxDepth 1",
+          "depthError": true
+        }
+      ],
+      "depthErrorCount": 2,
+      "promptCanaryCount": 11,
+      "sessionId": "1fa166d7-c3f6-4fdd-afc2-c2295c7fd11b"
+    }
+  ],
+  "chainDepthObserved": 1,
+  "grandchildSessions": 0,
+  "depthErrorText": "subagent depth 2 exceeds maxDepth 1",
+  "configKey": "subagentMaxDepth (bundle label: 'Maximum recursion depth'); not varied in this run",
+  "requests": [
+    {
+      "file": "001-request.json",
+      "bytes": 90732,
+      "sha256": "1d1f20dea76f7be1cc97d9556c66ab8714a5dcf8ba8d8d982d794b7bdc22342a",
+      "toolCount": 24,
+      "messageCount": 1,
+      "sessionId": "session-f49725aa-7d0b-4494-9764-edf2995b3c96",
+      "afterSeq": -1,
+      "throughSeq": 18,
+      "eventCount": 19,
+      "depthErrorInBody": false
+    },
+    {
+      "file": "002-request.json",
+      "bytes": 52786,
+      "sha256": "cef31b432faeaa0a88c6fba2a79663523a26831b713ed4339dd0e11576a27544",
+      "toolCount": 0,
+      "messageCount": 1,
+      "sessionId": "session-f49725aa-7d0b-4494-9764-edf2995b3c96",
+      "afterSeq": -1,
+      "throughSeq": 18,
+      "eventCount": 19,
+      "depthErrorInBody": false
+    },
+    {
+      "file": "003-request.json",
+      "bytes": 48615,
+      "sha256": "f75f0e630872a8df2d825afb2e78da5c332c0a44de14e1f92d141837be9e9d96",
+      "toolCount": 24,
+      "messageCount": 3,
+      "sessionId": "session-f49725aa-7d0b-4494-9764-edf2995b3c96",
+      "afterSeq": 18,
+      "throughSeq": 27,
+      "eventCount": 9,
+      "depthErrorInBody": false
+    },
+    {
+      "file": "004-request.json",
+      "bytes": 93446,
+      "sha256": "ad4763713f2a2eee0e7d5bc2ffbe38c5b83edcb24728662a371dfc9797fe066e",
+      "toolCount": 24,
+      "messageCount": 1,
+      "sessionId": "28aebbf1-5f07-468a-a3ad-f150eb2a52a6",
+      "afterSeq": -1,
+      "throughSeq": 14,
+      "eventCount": 15,
+      "depthErrorInBody": false
+    },
+    {
+      "file": "005-request.json",
+      "bytes": 49240,
+      "sha256": "8e735e77fc8a461825594244acb64dbce5eba80e012895ba2deb7fd1beb6ba39",
+      "toolCount": 24,
+      "messageCount": 3,
+      "sessionId": "28aebbf1-5f07-468a-a3ad-f150eb2a52a6",
+      "afterSeq": 14,
+      "throughSeq": 20,
+      "eventCount": 6,
+      "depthErrorInBody": true
+    },
+    {
+      "file": "006-request.json",
+      "bytes": 48589,
+      "sha256": "8a4f4a9eb413d1215ea66ad53fff6506d3f570e8b4e1eaf3f2bb679ef15bdbfa",
+      "toolCount": 24,
+      "messageCount": 5,
+      "sessionId": "session-f49725aa-7d0b-4494-9764-edf2995b3c96",
+      "afterSeq": 27,
+      "throughSeq": 34,
+      "eventCount": 7,
+      "depthErrorInBody": false
+    },
+    {
+      "file": "007-request.json",
+      "bytes": 49628,
+      "sha256": "0d302cc753f56879fe190b828a312b647fe91c2282563fdc20c6ad97de4a5c12",
+      "toolCount": 24,
+      "messageCount": 5,
+      "sessionId": "28aebbf1-5f07-468a-a3ad-f150eb2a52a6",
+      "afterSeq": 20,
+      "throughSeq": 26,
+      "eventCount": 6,
+      "depthErrorInBody": true
+    },
+    {
+      "file": "008-request.json",
+      "bytes": 93446,
+      "sha256": "5bd0670145d7ab3fba1537a4ddd5493b883d6d08ec5c794a4467f3739d62edec",
+      "toolCount": 24,
+      "messageCount": 1,
+      "sessionId": "1fa166d7-c3f6-4fdd-afc2-c2295c7fd11b",
+      "afterSeq": -1,
+      "throughSeq": 14,
+      "eventCount": 15,
+      "depthErrorInBody": false
+    },
+    {
+      "file": "009-request.json",
+      "bytes": 48994,
+      "sha256": "4c60836c54a369fe5f34a1dc6de12956d4218c6b5e87e238d6692edd9becfa54",
+      "toolCount": 24,
+      "messageCount": 7,
+      "sessionId": "session-f49725aa-7d0b-4494-9764-edf2995b3c96",
+      "afterSeq": 34,
+      "throughSeq": 43,
+      "eventCount": 9,
+      "depthErrorInBody": false
+    },
+    {
+      "file": "010-request.json",
+      "bytes": 49240,
+      "sha256": "126cc5320e74b28b99ace93d7f1b6c9f9cd211834feb19bec6b384d8be85fe93",
+      "toolCount": 24,
+      "messageCount": 3,
+      "sessionId": "1fa166d7-c3f6-4fdd-afc2-c2295c7fd11b",
+      "afterSeq": 14,
+      "throughSeq": 20,
+      "eventCount": 6,
+      "depthErrorInBody": true
+    },
+    {
+      "file": "011-request.json",
+      "bytes": 49642,
+      "sha256": "237307a2d6ff495f986587d0af1d5ad740d356b668834c61ad7d066c244e3df9",
+      "toolCount": 24,
+      "messageCount": 5,
+      "sessionId": "1fa166d7-c3f6-4fdd-afc2-c2295c7fd11b",
+      "afterSeq": 20,
+      "throughSeq": 26,
+      "eventCount": 6,
+      "depthErrorInBody": true
+    },
+    {
+      "file": "012-request.json",
+      "bytes": 49305,
+      "sha256": "406639be66eaf2058394e69f26d1f7b8da319417a5a3318ff9bfb4251f712d81",
+      "toolCount": 24,
+      "messageCount": 9,
+      "sessionId": "session-f49725aa-7d0b-4494-9764-edf2995b3c96",
+      "afterSeq": 43,
+      "throughSeq": 52,
+      "eventCount": 9,
+      "depthErrorInBody": false
+    }
+  ],
+  "distinctSessions": 3
+}

@@ -2,7 +2,10 @@
 
 技術や設計の候補を比べ、採用判断に必要な根拠を集める文書を置きます。ここにある評価結果だけで設計方針が採用されたことにはなりません。採用した判断は[`adr/`](../adr/README.md)に記録します。
 
+この下の一覧は、このディレクトリの**全文書**を載せています（`README.md` を除く）。`tools/repository-plan-check` の `TestPlanReadmesMentionEveryEntry` が一致を検査します。
+
 - [記述判断の根拠評価](AUTHORING_DECISION_AUTHORITY_EVIDENCE_GATE_2026-10.md)
+- [高度組織を扱う商用製品の要求比較とTEI適合性監査（2026年11月）](COMMERCIAL_ORGANIZATION_PLATFORM_REQUIREMENTS_2026-11.md)：調査記録・採用前Requirements Probe。各社の公開資料と現行設計を照合した暫定的判断で、要求の採用や受入条件の決定ではありません。
 - [データ決定子と参照受入条件の評価](DATA_DETERMINANT_ASSOCIATION_REFERENCE_ACCEPTANCE_CONTRACT_2026-10.md)
 - [データ決定子の中核契約案](DATA_DETERMINANT_CORE_CONTRACT_CANDIDATE_2026-10.md)
 - [データ決定子の昇格条件](DATA_DETERMINANT_PROMOTION_GATE_2026-10.md)

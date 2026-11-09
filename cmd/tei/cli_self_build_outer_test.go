@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -25,6 +27,20 @@ type selfBuildOuterResult struct {
 		Code    string `json:"code"`
 		Message string `json:"message"`
 	} `json:"error"`
+	IntentRecord *struct {
+		Path          string `json:"path"`
+		Digest        string `json:"digest"`
+		FormatVersion int    `json:"formatVersion"`
+		SubjectID     string `json:"subjectId"`
+		Resolved      bool   `json:"resolved"`
+	} `json:"intentDeclaration"`
+	SupplyRecord *struct {
+		State          string `json:"state"`
+		VerifierDigest string `json:"verifierDigest"`
+		Verified       bool   `json:"verified"`
+		Classification string `json:"classification"`
+		FailureCause   string `json:"failureCause"`
+	} `json:"supplyCheck"`
 	ChildRun *struct {
 		CrossCheckOK bool   `json:"artifactCrossCheckMatched"`
 		FailureCause string `json:"failureCause"`
@@ -94,6 +110,7 @@ func TestSelfBuildOuterRefusesSharedStateAndExistingOutput(t *testing.T) {
 	report, code := runOuterShape(t,
 		"-child", child,
 		"-workspace", workspace,
+		"-intent-file", outerIntentFile(t, dir),
 		"-state", filepath.Join(dir, "state"),
 		"-output", output)
 	if code != 2 {
@@ -109,6 +126,7 @@ func TestSelfBuildOuterRefusesSharedStateAndExistingOutput(t *testing.T) {
 	report, code = runOuterShape(t,
 		"-child", child,
 		"-workspace", workspace,
+		"-intent-file", outerIntentFile(t, dir),
 		"-output", filepath.Join(dir, "fresh"))
 	if code != 2 {
 		t.Fatalf("missing -state was not refused: code=%d", code)
@@ -167,6 +185,7 @@ func TestSelfBuildOuterRecordsTheChildRunAndTheArtifact(t *testing.T) {
 		"-state", filepath.Join(dir, "state"),
 		"-output", output,
 		"-intent", "intent.sample",
+		"-intent-file", outerIntentFile(t, dir),
 		"-child-arg", childArgs(t, "-artifact", output, "-digest", "sha256:deadbeef"))
 	if code != 1 {
 		// The fake child reports a wrong digest on purpose, so the cross-check
@@ -214,6 +233,7 @@ func TestSelfBuildOuterSucceedsOnAMatchingReport(t *testing.T) {
 		"-workspace", workspace,
 		"-state", filepath.Join(dir, "state"),
 		"-output", output,
+		"-intent-file", outerIntentFile(t, dir),
 		"-child-arg", childArgs(t, "-artifact", output, "-digest", digest))
 	if code != 0 {
 		t.Fatalf("a matching child report was not accepted: code=%d %+v", code, report.Error)
@@ -254,4 +274,262 @@ func TestSelfBuildKeepsThePrimitiveForm(t *testing.T) {
 	if report := evidence; report.CrossCheckOK {
 		t.Fatal("primitive form trusted the child's digest")
 	}
+}
+
+// outerIntentFile writes a minimal declared build intent. It is a declaration,
+// not a resolved plan: the entry reads and digests it without deriving a
+// BuildPlan.
+func outerIntentFile(t *testing.T, root string) string {
+	t.Helper()
+	path := filepath.Join(root, "intent.json")
+	body := `{
+  "formatVersion": 1,
+  "subject": {"kind": "plugin", "id": "tei.plugin.self_build_entry", "version": "1.0.0", "definitionSource": "definition"},
+  "sources": [{"kind": "plugin-definition", "id": "definition", "ref": "plugin.tei"}],
+  "builder": {"contract": "tei.plugin-build", "compatibleMajor": 1},
+  "recipe": {"kind": "go-package", "entrypoint": "./impl"},
+  "outputKind": "runtime-artifact",
+  "target": "host/linux/amd64"
+}
+`
+	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+// TG-SB-01: without a declared intent the entry refuses before anything starts.
+func TestSelfBuildOuterRefusesWithoutDeclaredIntent(t *testing.T) {
+	dir := t.TempDir()
+	child := buildSelfBuildChild(t, dir)
+	workspace := outerWorkspace(t, dir)
+	report, code := runOuterShape(t,
+		"-child", child,
+		"-workspace", workspace,
+		"-state", filepath.Join(dir, "state"),
+		"-output", filepath.Join(dir, "out"))
+	if code != 2 {
+		t.Fatalf("missing -intent-file was not refused: code=%d", code)
+	}
+	if report.Error == nil || !strings.Contains(report.Error.Message, "declared build intent") {
+		t.Fatalf("missing intent had no stated reason: %+v", report.Error)
+	}
+	if report.ChildRun != nil {
+		t.Fatal("a missing intent started the child")
+	}
+}
+
+// TG-SB-02: an intent that is not a declared object is refused, not guessed.
+func TestSelfBuildOuterRefusesAnUnreadableIntent(t *testing.T) {
+	dir := t.TempDir()
+	child := buildSelfBuildChild(t, dir)
+	workspace := outerWorkspace(t, dir)
+	intentPath := filepath.Join(dir, "intent.json")
+	if err := os.WriteFile(intentPath, []byte("this is not json"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	report, code := runOuterShape(t,
+		"-child", child,
+		"-workspace", workspace,
+		"-intent-file", intentPath,
+		"-state", filepath.Join(dir, "state"),
+		"-output", filepath.Join(dir, "out"))
+	if code != 2 {
+		t.Fatalf("unparseable intent was not refused: code=%d", code)
+	}
+	if report.Error == nil || report.Error.Code != selfBuildCodeIntentInvalid {
+		t.Fatalf("unparseable intent had no stated code: %+v", report.Error)
+	}
+	if report.ChildRun != nil {
+		t.Fatal("an invalid intent started the child")
+	}
+}
+
+// The declaration is recorded with its digest, but the entry never reports it
+// as resolved.
+func TestSelfBuildOuterRecordsTheIntentWithoutResolvingIt(t *testing.T) {
+	dir := t.TempDir()
+	child := buildSelfBuildChild(t, dir)
+	workspace := outerWorkspace(t, dir)
+	output := filepath.Join(dir, "artifact")
+	intentPath := outerIntentFile(t, dir)
+	if err := os.WriteFile(output, []byte("artifact-bytes"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	digest, err := digestOfFile(output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(output); err != nil {
+		t.Fatal(err)
+	}
+
+	report, code := runOuterShape(t,
+		"-child", child,
+		"-workspace", workspace,
+		"-intent-file", intentPath,
+		"-state", filepath.Join(dir, "state"),
+		"-output", output,
+		"-child-arg", childArgs(t, "-artifact", output, "-digest", digest))
+	if code != 0 {
+		t.Fatalf("declared intent with a working child was refused: code=%d %+v", code, report.Error)
+	}
+	if report.IntentRecord == nil {
+		t.Fatal("the intent declaration was not recorded")
+	}
+	if !strings.HasPrefix(report.IntentRecord.Digest, "sha256:") {
+		t.Fatalf("intent digest is not a sha256 digest: %s", report.IntentRecord.Digest)
+	}
+	if report.IntentRecord.Resolved {
+		t.Fatal("a declared intent was reported as resolved")
+	}
+	if report.IntentRecord.FormatVersion != 1 || report.IntentRecord.SubjectID == "" {
+		t.Fatalf("intent fields were not read: %+v", report.IntentRecord)
+	}
+	if report.Qualified {
+		t.Fatal("a declared intent made the artifact qualified")
+	}
+}
+
+// TG-SB-03: a supply verifier that reports verified=false stops the attempt
+// before the builder starts.
+func TestSelfBuildOuterRefusesAFailedSupplyCheck(t *testing.T) {
+	dir := t.TempDir()
+	child := buildSelfBuildChild(t, dir)
+	workspace := outerWorkspace(t, dir)
+	verifier := buildSupplyVerifier(t, dir, false)
+	report, code := runOuterShape(t,
+		"-child", child,
+		"-workspace", workspace,
+		"-intent-file", outerIntentFile(t, dir),
+		"-supply", filepath.Join(dir, "supply"),
+		"-supply-verifier", verifier,
+		"-state", filepath.Join(dir, "state"),
+		"-output", filepath.Join(dir, "out"))
+	if code != 2 {
+		t.Fatalf("a failed supply check was not refused: code=%d", code)
+	}
+	if report.Error == nil || report.Error.Code != selfBuildCodeSupplyRefused {
+		t.Fatalf("failed supply check had no stated code: %+v", report.Error)
+	}
+	if report.ChildRun != nil {
+		t.Fatal("a failed supply check started the child")
+	}
+	if report.SupplyRecord == nil || report.SupplyRecord.Verified {
+		t.Fatalf("failed supply check was recorded as verified: %+v", report.SupplyRecord)
+	}
+}
+
+// A supply verifier that reports verified=true lets the attempt proceed, and
+// the record still says qualified=false.
+func TestSelfBuildOuterAcceptsAVerifiedSupply(t *testing.T) {
+	dir := t.TempDir()
+	child := buildSelfBuildChild(t, dir)
+	workspace := outerWorkspace(t, dir)
+	verifier := buildSupplyVerifier(t, dir, true)
+	output := filepath.Join(dir, "artifact")
+	if err := os.WriteFile(output, []byte("artifact-bytes"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	digest, err := digestOfFile(output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(output); err != nil {
+		t.Fatal(err)
+	}
+
+	report, code := runOuterShape(t,
+		"-child", child,
+		"-workspace", workspace,
+		"-intent-file", outerIntentFile(t, dir),
+		"-supply", filepath.Join(dir, "supply"),
+		"-supply-verifier", verifier,
+		"-state", filepath.Join(dir, "state"),
+		"-output", output,
+		"-child-arg", childArgs(t, "-artifact", output, "-digest", digest))
+	if code != 0 {
+		t.Fatalf("a verified supply and a matching child were refused: code=%d %+v", code, report.Error)
+	}
+	if report.SupplyRecord == nil || !report.SupplyRecord.Verified ||
+		report.SupplyRecord.State != supplyCheckVerified {
+		t.Fatalf("verified supply was not recorded: %+v", report.SupplyRecord)
+	}
+	if report.SupplyRecord.VerifierDigest == "" {
+		t.Fatal("the verifier's digest was not recorded")
+	}
+	if report.Qualified {
+		t.Fatal("a verified supply made the artifact qualified")
+	}
+}
+
+// Without a verifier the record says the check was delegated, and it does not
+// read that as verified.
+func TestSelfBuildOuterRecordsADelegatedSupplyCheck(t *testing.T) {
+	dir := t.TempDir()
+	child := buildSelfBuildChild(t, dir)
+	workspace := outerWorkspace(t, dir)
+	output := filepath.Join(dir, "artifact")
+	if err := os.WriteFile(output, []byte("artifact-bytes"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	digest, err := digestOfFile(output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(output); err != nil {
+		t.Fatal(err)
+	}
+
+	report, code := runOuterShape(t,
+		"-child", child,
+		"-workspace", workspace,
+		"-intent-file", outerIntentFile(t, dir),
+		"-supply", filepath.Join(dir, "supply"),
+		"-state", filepath.Join(dir, "state"),
+		"-output", output,
+		"-child-arg", childArgs(t, "-artifact", output, "-digest", digest))
+	if code != 0 {
+		t.Fatalf("undeclared supply check broke a working attempt: code=%d %+v", code, report.Error)
+	}
+	if report.SupplyRecord == nil || report.SupplyRecord.State != supplyCheckDelegated {
+		t.Fatalf("delegated supply check was not recorded: %+v", report.SupplyRecord)
+	}
+	if report.SupplyRecord.Verified {
+		t.Fatal("a delegated supply check was recorded as verified")
+	}
+}
+
+func buildSupplyVerifier(t *testing.T, dir string, verified bool) string {
+	t.Helper()
+	goExe, err := exec.LookPath("go")
+	if err != nil {
+		t.Skipf("Go toolchain unavailable: %v", err)
+	}
+	// The fixture is written as an interpreted string so the JSON braces and the
+	// boolean do not need another escaping layer.
+	source := filepath.Join(dir, "supplyverifier.go")
+	body := "package main\n\nimport (\n\t\"fmt\"\n\t\"os\"\n)\n\nfunc main() {\n" +
+		"\tfmt.Printf(\"{\\\"schemaVersion\\\":\\\"tei.reference.go-module-supply-verification/v0\\\",\\\"verified\\\":%s,\\\"classification\\\":\\\"supported\\\"}\\n\", \"" + boolLiteral(verified) + "\")\n" +
+		"\tos.Exit(0)\n}\n"
+	if err := os.WriteFile(source, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	binaryPath := filepath.Join(dir, "supplyverifier")
+	if runtime.GOOS == "windows" {
+		binaryPath += ".exe"
+	}
+	build := exec.Command(goExe, "build", "-trimpath", "-o", binaryPath, source)
+	build.Dir = dir
+	if out, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build supply verifier fixture: %v: %s", err, out)
+	}
+	return binaryPath
+}
+
+func boolLiteral(value bool) string {
+	if value {
+		return "true"
+	}
+	return "false"
 }

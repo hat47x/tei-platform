@@ -2509,8 +2509,25 @@ func (p *Parser) parseSemanticPeriod(namespace core.CanonicalID) (semantic.Perio
 				return period, err
 			}
 			period.Correction = value
+		case "closes":
+			_, _ = p.next()
+			if _, err := p.expectText("on"); err != nil {
+				return period, err
+			}
+			if _, err := p.expectText("day"); err != nil {
+				return period, err
+			}
+			dayTok, err := p.expect(TokenIdent)
+			if err != nil {
+				return period, err
+			}
+			day, convErr := strconv.Atoi(dayTok.Text)
+			if convErr != nil {
+				return period, p.errAt(dayTok, "closing day is not a whole number")
+			}
+			period.ClosingDay = day
 		default:
-			return period, p.errAt(t, "expected data, business-date, calendar, states, close-requires, closed-rejects, or correction")
+			return period, p.errAt(t, "expected data, business-date, calendar, states, close-requires, closed-rejects, correction, or closes")
 		}
 	}
 	return period, nil
