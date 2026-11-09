@@ -995,6 +995,24 @@ X-TEA Modeler由来の**Data/Function/Businessの3図とCRUD cross-reference**�
 
 最初は(1)合成FixtureのTEI Source/Loaderへの**表現可能部分**を特定、(2)型付きGraphの同端点多重辺・同名異IDの保持とSource復帰、(3)Function×Data CRUDで`declaredCrudComplete=false`を未知と表示、(4)Human/AI/Studio/SHOのConsumer別受領／編集の資格を検証。JOIN 2×3の6表示行≠実体6件。独立ExpectedとMutant評価は#2514/#1180を利用し、[#3236設計§13](design/COMPOSED_REPRESENTATION_MAPPING_QUALIFICATION_2026-11.md)のDGX-01〜04を順次検収する。**新製品Diagram/CRUD/GUI/Provider実行、Go/CLI/Owner受理は今回NOT RUN**。
 
+## 組織意味と全容Model Mapの現行main接続（2026-11-09、設計・実行未受理）
+
+<!-- org-crossview-currentmain-20261109 -->
+[組織意味モデルの2026-11-09横断追補](design/ORGANIZATION_RELATION_GOVERNANCE_MODEL_2026-10.md)で、組織所属／職位／案件担当／業務承認／Host認可／実引継ぎの**異なるRelation Identity**と時間・Owner・証拠を分離する。RQ-036が定めた全容Model Mapの要件は[main統合#3505](https://github.com/hat47x/tei-platform/pull/3505)、read-only型付きProjection候補は[Draft #3518](https://github.com/hat47x/tei-platform/pull/3518)、三視点/CRUDの実Relation照合は[Draft #3492](https://github.com/hat47x/tei-platform/pull/3492)に分担。現時点で組織Event/State/Hook、Graph GUI、SHO図の全経路実Productは未証明。Case C1のD1→D2担当変更は、Personの所属変更から暗黙に生成しない。古い承認候補／Grant、Replica Read、遅延・重複ACKを現行Effect/全件Handoffへ流用しない。
+
+**実証優先の補正**：TEI全体の最初のP0-Rは、既存#2586 HJ-09の **order_entry.recent_orders**（Pattern→選択/実呼出Provider→SQL/Rows→Mapping→Function Context→Consumer）。組織Native C1→D1/D2（[Draft #3500](https://github.com/hat47x/tei-platform/pull/3500)のinstrumented Connector/E1f）は、その縦断契約の**次の分野別Pressure**にする。#3500の隔離PostgreSQLは既存確認でSKIP、Orgの実Provider/Trusted Scope/Consumer受領は未成立。P0-Mは同じSource/Scopeの型付きGraph・Function/Business・CRUDにread-only Source navigateと欠落/非開示を保持する比較を並行。P0-Cで二者の実受領と独立Expectedを同一Attemptへ統合。P1以降に#1174/#2499の現在Grant/Effect、#1125/#1444のHandoff、#1124のTyped編集・Acceptance/再Projectionを行う。
+
+**所有先・重複回避**：組織Meaning=#2386、Pressure Corpus=#2510、Read=#2586/#2506、Model Map/三視点=#1124/#1125/#3492、Lifecycle/Trait=#3278/#3507、SubSystem分割は#3250、独立Expected/Scenario/Attempt=#2514/#1180/#1163。旧[Draft #3243](https://github.com/hat47x/tei-platform/pull/3243)は現mainより大幅に乖離しているため、旧MASTER_PLAN/README/組織Profileを丸ごと再投入しない。**本追補はdocs-only設計・作業順序**であり、新CI・実Provider/GUI/Host/Owner意味受理はNOT RUN。RQ-036全容MapとRQ-037 Verified Composition BOMの番号整合は別[Draft #3592](https://github.com/hat47x/tei-platform/pull/3592)へ委譲する。
+
+### 組織責務切替の次段受入（2026-11-09、設計・独立Expected案）
+
+<!-- org-cutover-tr-plan-20261109 -->
+[組織意味設計のCutover追補](design/ORGANIZATION_RELATION_GOVERNANCE_MODEL_2026-10.md)に、**所属更新≠Case handlingUnitの担当変更≠実行Grant切替≠相手方Handoff**を実効責務の四象限（旧側/新側がyes/no）として定義。単独責任を全組織へ強制せず、Ownerが共同責任・合議・移行中保留を選択可能にする。二重有効（単独責任時）／両者無効／現在性未照合／A→B→A旧Receipt復活を分離し、ORG-TR-01〜08を追加した。旧Draft #3243のORG-CF/MAPを第二Scenario化せず、#1180/#2514の既存独立Expectedへ差分接続する。
+
+**他レーンの現在基線**：mainの #3540 は通常CLI/Studioの静的Inspector参照選択、#3635 はStudio参照Hookの executed/notEvaluated/skipped/refused を区別。どちらも組織実DB/現在Grantの資格ではない。#3496のREA T0実解析・Artifact独立監査はSource候補の限定証拠で、Owner意味受理/TEI Intakeは未成立。#3662のSubsystem固定Owner数理候補は現業務責任や物理Service分割でない。
+
+**優先は据え置き**：全TEIのHJ-09一Function実Read（#2586）を先行し、組織C1→D1 read-onlyとRQ-036 Model Map／三視点の同一Source照合は次段、実Case切替・旧Grant/SoD・二件Handoffは#1174/#2499/#1125/#1444のP1。実行主体と認可Sourceの比較可能なrevisionが証明されない場合は保留し、HookのnotEvaluated/partialを許可やEffectに昇格しない。新Org Status Enum/Authority Engine/Workflow Host/Proof Store/Hard Gateを設けない。本追補はdocs-onlyでORG-TRの実Go/PG/Studio/外部Host/Owner受理は未実行。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
