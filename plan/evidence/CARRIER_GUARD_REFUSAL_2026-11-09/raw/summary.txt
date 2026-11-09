@@ -1,0 +1,14 @@
+== counterfactual tests ==
+  --- PASS: TestAnUnavailableRouteIsTheOnlyPreInvocationRefusal (0.00s)
+  --- PASS: TestAGuardRefusalIsCountedAsRefusedNotRan (0.00s)
+  --- PASS: TestAGuardThatStartsRefusingMidRunCountsEachRequest (0.00s)
+  --- PASS: TestAMissingRouteIsStillRefusedNotRan (0.00s)
+  --- PASS: TestAnUnavailableRouteIsRefusedBeforeAnyInvocation (0.00s)
+  --- PASS: TestARouteForAnotherBindingIsRefused (0.00s)
+  ok  	tei/tools/reference-service-carrier-connect	0.007s
+
+== CLI runs ==
+  route-present  ran=1 refused=0 unverified=0
+    carrierInvoked=True
+  route-missing  ran=0 refused=1 unverified=0
+    carrierInvoked=False
