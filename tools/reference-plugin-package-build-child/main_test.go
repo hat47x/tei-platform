@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -40,7 +41,7 @@ func writeFixture(t *testing.T) (string, string) {
 		PluginDefinitionFingerprint: plugin.BuildDefinitionFingerprint(definition),
 		Sources: []plugin.BuildSource{{
 			Kind:    "plugin-definition",
-			ID:      "build-child-test-definition",
+			ID:      "definition", // the declaration names this source; compareIntentFields compares kind and id
 			Locator: "plugin.tei",
 			Digest:  "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		}},
@@ -80,6 +81,13 @@ type declarationCoordinates struct {
 	OutputKind     string
 	Target         string
 	Profile        string
+	// Builder requirement. Contract and ContractMajor default to the fixture
+	// plan's resolved contract so a caller can vary one field at a time.
+	Contract      string
+	ContractMajor int
+	// ProviderPlugin and PinDigest are empty unless the declaration names them.
+	ProviderPlugin string
+	PinDigest      string
 }
 
 func fixtureCoordinates(t *testing.T) declarationCoordinates {
@@ -96,6 +104,8 @@ func fixtureCoordinates(t *testing.T) declarationCoordinates {
 		OutputKind:     string(plugin.BuildOutputPluginPackage),
 		Target:         "plugin-package",
 		Profile:        "reference",
+		Contract:       "tei.plugin-build",
+		ContractMajor:  1,
 	}
 }
 
@@ -106,11 +116,19 @@ func writeDeclaration(t *testing.T, coordinates declarationCoordinates) string {
 	t.Helper()
 	root := t.TempDir()
 	path := filepath.Join(root, "intent.json")
+	builderJSON := `{"contract": "` + coordinates.Contract + `", "compatibleMajor": ` + strconv.Itoa(coordinates.ContractMajor)
+	if coordinates.ProviderPlugin != "" {
+		builderJSON += `, "provider": {"plugin": "` + coordinates.ProviderPlugin + `"}`
+	}
+	if coordinates.PinDigest != "" {
+		builderJSON += `, "pin": {"artifactDigest": "` + coordinates.PinDigest + `"}`
+	}
+	builderJSON += `}`
 	body := `{
   "formatVersion": 1,
   "subject": {"kind": "plugin", "id": "` + coordinates.SubjectID + `", "version": "` + coordinates.SubjectVersion + `", "definitionSource": "definition"},
   "sources": [{"kind": "plugin-definition", "id": "definition", "ref": "plugin.tei"}],
-  "builder": {"contract": "tei.plugin-build", "compatibleMajor": 1},
+  "builder": ` + builderJSON + `,
   "recipe": {"kind": "tei-plugin-package", "entrypoint": "plugin.tei"},
   "outputKind": "` + coordinates.OutputKind + `",
   "target": "` + coordinates.Target + `"`
@@ -458,5 +476,134 @@ func TestBuildChildRejectsADeclarationThatOmitsTheProfile(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "profile") {
 		t.Fatalf("the rejection does not name the profile: %q", stderr.String())
+	}
+}
+
+// The declaration states a requirement (contract plus major); the plan holds the
+// resolved identity. The correspondence is the one the resolver already applies,
+// so a different major must be refused rather than read as "compatible enough".
+func TestBuildChildRejectsADeclarationRequiringADifferentBuilderContract(t *testing.T) {
+	cases := []struct {
+		name   string
+		want   string
+		mutate func(*declarationCoordinates)
+	}{
+		{
+			name: "different major",
+			want: "tei.plugin-build/v2",
+			mutate: func(c *declarationCoordinates) {
+				c.ContractMajor = 2
+			},
+		},
+		{
+			name: "different contract name",
+			want: "tei.other-build/v1",
+			mutate: func(c *declarationCoordinates) {
+				c.Contract = "tei.other-build"
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			pluginPath, planPath := writeFixture(t)
+			root := t.TempDir()
+			artifactPath := filepath.Join(root, "package.json")
+			coordinates := fixtureCoordinates(t)
+			tc.mutate(&coordinates)
+			intentPath := writeDeclaration(t, coordinates)
+
+			var stdout, stderr bytes.Buffer
+			if code := run([]string{
+				"-plan", planPath,
+				"-plugin", pluginPath,
+				"-artifact-out", artifactPath,
+				"-intent", intentPath,
+			}, &stdout, &stderr); code != 1 {
+				t.Fatalf("a different builder contract was accepted: code=%d", code)
+			}
+			if !strings.Contains(stderr.String(), tc.want) {
+				t.Fatalf("the rejection does not name %q: %q", tc.want, stderr.String())
+			}
+			if stdout.Len() != 0 {
+				t.Fatalf("a rejected run still wrote a report: %s", stdout.String())
+			}
+		})
+	}
+}
+
+// A wired provider and an exact pin are requirements too: if the plan resolved a
+// different builder, the declaration's choice was not honoured.
+func TestBuildChildRejectsADeclarationWhoseBuilderChoiceWasNotResolved(t *testing.T) {
+	t.Run("provider", func(t *testing.T) {
+		pluginPath, planPath := writeFixture(t)
+		root := t.TempDir()
+		artifactPath := filepath.Join(root, "package.json")
+		coordinates := fixtureCoordinates(t)
+		coordinates.ProviderPlugin = "tei.builder.other.seed"
+		intentPath := writeDeclaration(t, coordinates)
+
+		var stdout, stderr bytes.Buffer
+		if code := run([]string{
+			"-plan", planPath,
+			"-plugin", pluginPath,
+			"-artifact-out", artifactPath,
+			"-intent", intentPath,
+		}, &stdout, &stderr); code != 1 {
+			t.Fatalf("a different provider was accepted: code=%d", code)
+		}
+		if !strings.Contains(stderr.String(), "tei.builder.other.seed") {
+			t.Fatalf("the rejection does not name the provider: %q", stderr.String())
+		}
+	})
+
+	t.Run("pin", func(t *testing.T) {
+		pluginPath, planPath := writeFixture(t)
+		root := t.TempDir()
+		artifactPath := filepath.Join(root, "package.json")
+		coordinates := fixtureCoordinates(t)
+		coordinates.PinDigest = "sha256:" + strings.Repeat("c", 64)
+		intentPath := writeDeclaration(t, coordinates)
+
+		var stdout, stderr bytes.Buffer
+		if code := run([]string{
+			"-plan", planPath,
+			"-plugin", pluginPath,
+			"-artifact-out", artifactPath,
+			"-intent", intentPath,
+		}, &stdout, &stderr); code != 1 {
+			t.Fatalf("a different pin was accepted: code=%d", code)
+		}
+		if !strings.Contains(stderr.String(), strings.Repeat("c", 64)) {
+			t.Fatalf("the rejection does not name the pinned digest: %q", stderr.String())
+		}
+	})
+}
+
+// The pin and provider must also pass when they agree: a comparison that always
+// fails is not a comparison.
+func TestBuildChildAcceptsADeclarationWhoseBuilderChoiceWasResolved(t *testing.T) {
+	pluginPath, planPath := writeFixture(t)
+	root := t.TempDir()
+	artifactPath := filepath.Join(root, "package.json")
+	coordinates := fixtureCoordinates(t)
+	coordinates.ProviderPlugin = "tei.builder.package.reference.seed"
+	coordinates.PinDigest = "sha256:" + strings.Repeat("b", 64)
+	intentPath := writeDeclaration(t, coordinates)
+
+	var stdout, stderr bytes.Buffer
+	if code := run([]string{
+		"-plan", planPath,
+		"-plugin", pluginPath,
+		"-artifact-out", artifactPath,
+		"-intent", intentPath,
+	}, &stdout, &stderr); code != 0 {
+		t.Fatalf("an agreeing provider and pin were refused: code=%d stderr=%s", code, stderr.String())
+	}
+	var report childReport
+	if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
+		t.Fatal(err)
+	}
+	if !report.IntentBoundToPlan {
+		t.Fatal("the binding was not reported")
 	}
 }

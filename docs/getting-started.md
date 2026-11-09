@@ -1,4 +1,4 @@
-﻿# TEIを動かす
+# TEIを動かす
 
 この文書では、TEIを取得して動作を確認するまでの手順を説明します。設計の考え方から知りたい場合は、[はじめてTEIを知る方へ](for-readers.md)を参照してください。
 
@@ -27,11 +27,24 @@ go version
 
 ### Windowsでの`go test ./...`
 
-`tools/reference-cognition-port`と`tools/reference-generator-selection`の外部コマンド試験は、コマンドを`bash -c`で起動し、`cp <fixture> $TEI_...`のようにfixtureのパスを渡します。Windowsのfixtureのパスは`D:\GIT\...`の形で、WSLの`bash.exe`にもGit Bashにもそのままでは解決されません。このため、この2パッケージの外部コマンド試験はWindowsでは理由付きでskipします。`bash`が見つからない環境でもskipします。
+2026-11-09時点のmain（`c90bb502d`）で、Windows 11・go1.27.0の`go test ./...`は完走します（`-count=1 -timeout 90m`で90分規模）。ただし、次の2種類の注意があります。
 
-- skipは通過と同じ意味ではありません。Windowsでは、外部コマンドを経由する経路は未検証です。Linuxで実行した結果を正とします。
-- 実装の契約（`bash -c`で外部コマンドを実行する）は変えていません。
-- この扱いは暫定です。Windowsでも成立する形へ契約を変えるか、`tools/reference-change-packet`など`bash`を前提にする他のツールへ広げるかは、[#3461](https://github.com/hat47x/tei-platform/issues/3461)で決めます。
+**1. Windowsでは理由付きでskipする検査があります。**skipは通過と同じ意味ではありません。
+
+| 種類 | 対象 | skipの理由 |
+| --- | --- | --- |
+| POSIXのパーミッションビット | `internal/access`・`internal/effectlog`・`internal/jsonl`・`internal/runlog`・`internal/workspace`など | Windowsは`0600`で作ったファイルを`0666`と報告する。ACLの確認はHostの責務 |
+| POSIXのinode置換 | `tools/reference-build-artifact-store` | 読み取り専用の既存ファイルへのrenameが`Access is denied`になり、置換を同じ意味で表せない（[#3460](https://github.com/hat47x/tei-platform/issues/3460)） |
+| `bash -c` + `cp`の外部コマンド | `tools/reference-cognition-port`・`tools/reference-generator-selection` | Windowsのfixtureパス（`D:\...`）をWSLの`bash.exe`もGit Bashも解決しない（[#3461](https://github.com/hat47x/tei-platform/issues/3461)） |
+| 空白を含む実行パス | `tools/reference-composition-process-bridge` | 参照のstdio launcherが空白入りの実行パスを拒否する（契約として維持） |
+| OpenSSHの`-Y verify verify-time` | `tools/reference-authoring-witness-openssh` | 同梱のOpenSSHが`verify-time`非対応で、スクリプトが`exit 77`（「No result is claimed」）を返す |
+| シンボリックリンク・JVM等 | `internal/workspace`・`tools/internal/gobuilder`・`tools/reference-target-profile`など | 作成に追加権限が要る、または未資格 |
+
+skipの総数は32件（`t.Skip`の理由にWindowsを含むもの）。Linuxで実行した結果を正とします。
+
+**2. 比較試験はチェックアウトがcleanであることを前提にします。**`tools/reference-plugin-self-build`と`tools/reference-transform-runtime-engine-build`のhistorical比較は、`git status --porcelain=v1 --untracked-files=all`が空であることを確かめてから実行します。`go test ./...`はパッケージを並列に実行するため、別パッケージがcheckout内へ書いた直後にこの前提を読むと落ちることがあります（[#3637](https://github.com/hat47x/tei-platform/issues/3637)）。失敗時は汚れていたpathがメッセージに出るので、原因のパッケージを特定できます。単体で`go test ./tools/reference-plugin-self-build -count=1`を実行した場合は落ちません。
+
+PRごとのWindows確認は`tei-windows-go-test-survey.yml`が`workflow_dispatch`と本workflow自身の変更時に行い、`./internal/plugin/runtime`・`./internal/desktophost`・`./internal/operations`・`./cmd/tei`・`./internal/workspace`・`./internal/modelref`・`./reference/application-composition`を対象にします。全パッケージは90分規模なので必須検査にしていません。
 
 ## 最初の小さな作業領域から始める
 

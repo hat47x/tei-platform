@@ -601,7 +601,7 @@ Source Indexを前段P0-Sで読めても、このDriver解決は`Source Index→
 
 他領域で成熟しているLifecycle Graphの考え方を、この実験の**型付き責務境界**として扱う。実行可能Graphを固定の逐次手順に閉じず、Guard、拒否、取消、Retry、補償、非同期応答を扱えるようにする一方、全実行可能経路で`Authorize→Effect`、必要なHost guard、実Effect後の結果不確定性を迂回しないことを不変条件とする。**構成時GraphとPlugin適用後Graph、生成物の制御フロー、実走行Traceは別証拠**であり、`onTerminal`という宣言名やAudit callback 1回だけから完全Graphを推論しない。
 
-製品横断の**先行P0/S2**は、[Plugin-first方針 #3525](https://github.com/hat47x/tei-platform/pull/3525)／[Inspector状態整理 #3531](https://github.com/hat47x/tei-platform/pull/3531)のとおり、**通常`tei inspect`と実Studio Bridgeから、同じ選択済みInspector ContractのProvider Bをそれぞれ実呼出しすること**である。HTTP側に専用Plugin Registryを新設してそのS2を横取りしない。HTTPの次段は、既存Service Carrier／Plugin Runtimeの**選択・Artifact/Policy・実Invoke・現在Authority・同一Attemptの結果**が揃ってから同じClient Reaction/Evidence分類を利用する。CLI/StudioのProvider Bとこの合成Submit Adapterを同一資格として扱わない。
+製品横断の**現行S2-reference**は、[main #3540](https://github.com/hat47x/tei-platform/pull/3540)で通常`tei inspect`と通常・生成Studio Hostから**同じ静的Reference Inspector Provider**を選択・実呼出しするところまで統合済み（exact-head Health/Wails/CLI CIはsuccess）。次のP0である**S2-product**は、正式Profileが選んだProvider Bと両Consumerの実呼出し先Bの同一性、Artifact/Entryの独立検証であり、**まだ未資格**。HTTP側に専用Plugin Registryを新設してそのS2を横取りしない。HTTPの次段は、既存Service Carrier／Plugin Runtimeの**選択・Artifact/Policy・実Invoke・現在Authority・同一Attemptの結果**が揃ってから同じClient Reaction/Evidence分類を利用する。CLI/StudioのProvider Bとこの合成Submit Adapterを同一資格として扱わない。
 
 - **Graph／SHO**：E01とE04は`503/error`表面が同じだが内部Effectが違う。Graph/Table/Traceでは`HTTP branch/status`、`Adapter invoked`、`Effect disposition (unknown)`、`observation nature/result`を別列で表し、出典Occurrence・Node/Edge identityを保持する。全Required Node/Guard/Relationの取得は#3262/#1124/#2497で別途検証。
 - **TEI性能観測／最適化**：`HTTP 503`の件数から「失敗した更新件数」や「再試行可能件数」を推定しない。技術的タイミング・Adapter呼出し・実業務確定・read後の状態を別指標として扱い、実統計・独立Before/After比較がない最適化は候補にとどめる。
@@ -638,7 +638,7 @@ Source Indexを前段P0-Sで読めても、このDriver解決は`Source Index→
 | C-2: `servicehost`をCLI/Hostへ接続する | ProviderのHost世代ピン留めとGateway配線の候補 | 既存Referenceの成功を製品実行の受理へ昇格しない |
 | C-3: `DeploymentExecutor`のCapability IDをBinding由来にする | Reference固定ID呼出しの宣言との一致を強化し得る | C-1/C-2決定と固定Referenceの目的を検討するまで保留 |
 
-優先判断は**C-4 → C-1対C-2 → C-3**。Ownerは[Composition Kernel移行Gate](../gate/COMPOSITION_KERNEL_MIGRATION_GATE_2026-10.md)と製品成立状況（`docs/status.md`）であり、このHTTP設計で選択・採用を決定しない。C-1とC-2を両方標準経路として追加することは避ける。#3525/#3531で残る**通常CLI dispatchと実Studio Bridgeから同じSelected Inspector Provider Bへ到達するS2**も、Go Helper二経路での成功と区別し、HTTP本番結合をそれより先に採用しない。
+優先判断は**対象Operation/Targetの実行Owner（C-4外部委譲を含む）→役割別C-1 Deployment/C-2 Service→必要ならC-3**。Ownerは[Composition Kernel移行Gate](../gate/COMPOSITION_KERNEL_MIGRATION_GATE_2026-10.md)と製品成立状況（`docs/status.md`）であり、HTTP設計では選択・採用を決定しない。C-1/C-2は別種Operationなら共存できるが、**同一Attemptの二重Owner**は許さない。Pluginの[静的S2-reference #3540](https://github.com/hat47x/tei-platform/pull/3540)成功を正式Provider Bの**S2-product**へ昇格せず、HTTP本番結合より先に選択B→実Invoke Bを独立確認する。
 
 ### 20.3 次の最小Exitを「追加参考テスト」ではなく実Consumerに置く
 
@@ -670,7 +670,56 @@ Source Indexを前段P0-Sで読めても、このDriver解決は`Source Index→
 
 **次のExit**はHTTP専用の第二Result EngineやDeployment Executorへ自動Retryを組み込むことではない。#1174/#2999の既存Operation identity・Effect fence、#951/#3279/#3267のProvider/Host資格と、#3262のDesign Context出典を**製品で選択された一つのOwner/Consumer**へ接続する。C-4外部Host委譲も有効な選択肢。SUI/SHO/StudioとCLIが同じ種別のResultを表示するときも、`pre-execute refused`と`post-execute unverified`を同じ業務拒否や無条件再試行可能エラーに平坦化しない。実外部Effect/Client受領/Owner受理は引き続き未実証。
 
-## 22. 参考資料と採否
+## 22. 2026-11-09：C-1 Deployment／C-2 Serviceの別経路をHTTP Client Reactionへ接続
+
+最新の[Composition判断資料§10〜11](../workstreams/COMPOSITION_CONNECT_POINT_BRIEF_2026-11.md)と[独立したCarrierの実測](../evidence/CONNECT_POINT_C1_C2_2026-11-09/README.md)から、以前の「C-1 RouterとC-2 Service Carrierは必ず二者択一」という前提を訂正する。C-1は**配備Command**、C-2は**Service Request**であり、同じ業務Operationの二重実行Ownerにしない限り共存できる。C-4外部Host委譲はOperation／Targetごとに判断し、C-3はDeployment側のCapability解決であってHTTP Serviceへ無条件に適用しない。
+
+| 実入口 | 呼出しを実際に観測した時点 | Refused／Unverifiedの境界 | HTTP/Graph表示で追加すべき列 |
+| --- | --- | --- | --- |
+| C-1`routing.Router.Dispatch` | `Executor.Execute`へ入場 | `Execute`前停止／入場後障害または不正ACK | Deployment Action／Executor ID／Attempt／ACKの有効性／外部Effect Unknown |
+| C-2`SelectedServiceCarrierInvoker.Invoke` | Host-pinned Service Carrierへ入場 | Carrier入場前停止／入場後障害または不正世代結果 | Service Contract／Provider Selection／Host Generation／Carrier入場／Process実Invokeの有無／外部Effect Unknown |
+
+**C-2で特に注意する点**：Carrierへの入場はProvider Processへの到達ではない。Host-owned RouteやArtifact Verifierが**Carrierの内部**で拒否する経路があるため、`carrierInvoked=true`だけで`providerInvoked=true`と推論しない。Carrier参照v0ではReportの版名と一部説明が食い違っていたため、`tei.reference.service-carrier-connect/v1`へ切り分け、実Resultの事前拒否と呼出し後不確定を別のError Codeで扱う。保存済みv0 RAW/SHAと新v1を混ぜず、新規CIの結果を受けて別途Qualifiedとする。
+
+**次のプロダクト受入**：選択したOperation Ownerがどちらかを先に確認し、`selected→actual carrier/process invocation→returned ACK→effect independent read→Client Reaction`を同一Attemptの**別証拠**として要求する。既存Result/Command Effect fence（#1174）、Plugin/Current GrantとBOM（#951/#3279/#3267）、Design Context（#3262）を利用し、第二Resolver/Authority/Receipt StoreをHTTP専用に作らない。CLI/Studioの静的Reference Providerについて**通常入口への接続がある**ことと、正式Provider BでのProduct S2／Artifact検証が未成立であることを区別する。
+
+## 23. 2026-11-09 横断取込み：C-3解決・Hook結末・実PostgreSQLをHTTP受入へ束縛
+
+### 23.1 直近の実行済み証拠を、同一HTTP Requestの実証と取り違えない
+
+前段§19〜22では、実Go Host→Canonical Authorization→Driver→合成Adapterを一つのHTTP Requestで実行し、HTTP 202/503と合成状態の独立Readが一致しない反例を確認した。またC-1 Deployment Executor、C-2 Service Carrierの有限Referenceが個別に成立し、どちらの入場・応答も外部Effect Receiptとは異なることを固定した。その後、**異なるレーンの実装とCI**が進んだため、現在のOwnerと入場条件を整理する。
+
+| 新たに確認した成果（main統合） | 実証している最小事実 | HTTP／Productについて未実証 |
+| --- | --- | --- |
+| [C-3 PR #3692](https://github.com/hat47x/tei-platform/pull/3692)、[判断資料更新 #3720](https://github.com/hat47x/tei-platform/pull/3720) | `routing.RouteCommand`→`pruntime.BuildPlan`→`Capability.SupportsAction`で宣言Binding由来のExecutor IDを**読取解決**。異なるActionで直書き`migration.atlas`と実選択`runtime.reference`が食い違う反例。Lockなしは`LOCK_REJECTED` | `Executor.Execute`もCarrierも**呼ばない**。C-3 `v0`は「未実装／C-1・C-2 v1より遅れ」ではなく、**実行前限定の別目的**。採用するDeployment製品経路も未決 |
+| [Hook結末名 PR #3721](https://github.com/hat47x/tei-platform/pull/3721) | `internal/hook.NotSatisfiedOutcomes`、`CommandOutcomeFor`、`OutcomeOf`を導入し、**参照Hookの** `not-found`／`value-rejected`等を既存Command拒否名へ対応付ける8件のGo試験。 `not-satisfied`はCommand拒否名へ写さず`false`、技術的Hook Errorから業務結末を生成しない | **実Pluginから来る結末名の宣言語彙検査は未接続**。`OutcomeOf`は`NotSatisfied.Outcome`を返すが、この関数だけでは外部文字列の語彙適格性を証明しない。CLI JSON→Command→HTTPの一貫したResult変換・Client受領も未確認 |
+| [実PostgreSQL CI PR #3717](https://github.com/hat47x/tei-platform/pull/3717)、[専用CI #42570360880](https://github.com/hat47x/tei-platform/actions/runs/42570360880) | **completed/success**。`postgres:16`でDSNを明示し、`internal/command/lifecyclepg`、`internal/driver`、`tools/reference-expected-state-update`、`reference/web-api-contract`の必要試験を実行。行ロック、Commit後ACK喪失、冪等再適用拒否、CAS、tenant範囲等の個別テストがPASS。SKIPで緑にならないチェックあり | 4テスト系列は**別DB・別Action・別Request／Operation**。`order_entry.submit_order`の実Go Host→実Command→DB Commit→別Connection Receipt→実Client Reactionの**同一Attempt**を実証しない。実Provider選択／Grant／Owner意味受理も別 |
+| [CLI/MCP継続トークン実測 PR #3723](https://github.com/hat47x/tei-platform/pull/3723) | 参照Design Contextの継続トークンはSource byte・scope・direction変更で`STALE_SNAPSHOT`、同じ選択子ではCLI/MCPとも継続できる。非意味的なコメント変更でも旧Tokenは失効 | CLI/MCPのSnapshot一致を、HTTP Responseを生成した実Runtime Source revisionや現在Grantと同じものとして自動受理しない |
+
+これらの成果は**別々の資格票として有効**であり、同一リクエストの縦断実証として足し合わせない。C-3の`RESOLVED`は実行権限でも外部Effectでもなく、Hookの`not-satisfied`はCommand拒否でもHTTP 4xxでもない。Hook業務拒否、Command検証、HTTP決定、外部DBへの副作用、Clientへの完全送達は別Ownerの段階である。
+
+### 23.2 Resultを勝手に昇格しないための受入行列（提案・NOT RUN）
+
+| ID | 対照する実経路／反例 | 必須の独立Expectedと停止線 | Owner |
+| --- | --- | --- | --- |
+| HDG-X01 | C-3実Bindingで`runtime.reference`選択、比較用固定IDは`migration.atlas` | 選択IDをResolver/Plan/Supportsで照合し、違うExecutorへ`Execute`しない。Read-onlyの`RESOLVED`から`invoked`を創作しない | #1016／#951 |
+| HDG-X02 | Hook `NotSatisfied{Outcome:"not-satisfied"}` | Hook判定は記録するが、`CommandOutcomeFor`は`false`。業務失敗種別・HTTP Status・Effectの有無を推測しない | X-TEA Hook Owner／#1158 |
+| HDG-X03 | Hook `NotSatisfied{Outcome:"value-rejected"}`と技術Errorの対照 | 前者はCommand拒否名への候補対応があるが、**実HTTP応答と連動するか**は実Consumerで別検査。後者を`value-rejected`に変換しない。実Pluginの未知語彙は無検証のまま公開しない | Hook／#1043／#1158 |
+| HDG-X04 | 実DBでCommitしたがHTTP Ack/Client受領を喪失 | 同一Operation ID・Idempotency Key・Source revision・Grant epoch・実DB状態・Receipt/別Connection Observation・実Client Reactionを別記録。HTTP 503単独でno-effectや安全Retryにしない | #1174／#2999／#1158 |
+| HDG-X05 | 旧Design Context継続TokenでSource/Scopeが変化 | Read-only Contextで`STALE_SNAPSHOT`を返し、旧SnapshotのGraph・Provider/Operation判断を現在のAuthorityに流用しない。新Snapshotの選択・実呼出しは独立資格 | #3262／#3420／#951 |
+| HDG-X06 | C-1／C-2／C-4で同一業務Operationを二重実行 | 異なるDeployment/Service仕事の併存は許容、**同一Operation／Attemptの実Ownerは一つ**に限定。委譲先は外部Receiptの取得までは`delegated/unknown`。無条件再実行しない | #1016／#1174 |
+
+受入開始時は、**一つの現実のOperation／Target**を先に固定し、必要Sourceの`required/discovered/loaded/bound/returned/disclosable`とHost世代・本番Provider/現在Grant・外部Readを揃える。その上で、既存Command/Hook/HTTPと別DB Observationの各実Callbackが**同じAttempt**を参照するかを検証する。実DBスイートの成功や、C-3／Hook単体Go試験の成功を材料にしても、欠けた段階は`unknown`のまま残す。
+
+### 23.3 製品横断の優先順位と撤回条件
+
+1. **既存S2-referenceを再実装しない**。[#3540](https://github.com/hat47x/tei-platform/pull/3540)の通常CLI/Studioの静的Inspectorは成立済み。先行するS2-productは正式Profileで`selected Provider B`と`actual Provider B`の同一性、B選択→A実行の負例、実Build Artifact/現在Grantを別々に確認する（#1251/#951）。
+2. **HTTPの新Engineより実Consumerを優先**。C-1 Deployment／C-2 Serviceは別Operationなら両立でき、C-3は実行前解決、C-4外部Host委譲は有効な未決選択肢。Product Ownerの選択を下流HTTP設計が先取りせず、同じHook/Command/Effectの資格を第二Host／Registryへ複製しない。
+3. **PGの資格を正しい場所で利用**。[#3717のCI](https://github.com/hat47x/tei-platform/actions/runs/42570360880)は実DBテストがskipでないことを証明したため、次の縦断テストではそのテスト基盤とOperation Effect Fenceを再利用する。ただし実HTTP Client/Provider受領まで含まない場合、E3の完了扱いにはしない。
+
+本節の行列は**実装前の独立Expected／受入計画**であり、HDG-X01〜06をGo/DB/HTTP E2Eで実行したことを示さない。現在のHook結果の語彙対応をそのままHTTPコード表やPluginの権限検査へ昇格させることはしない。
+
+## 24. 参考資料と採否
 
 - [Liberator repository](https://github.com/clojure-liberator/liberator) ― ClojureのREST decision modelの先行例。ライブラリ移植ではない。
 - [Webmachine mechanics](https://webmachine.github.io/mechanics.html)、[Decision flow](https://webmachine.github.io/diagram.html)、[Resource functions](https://webmachine.github.io/resources.html) ― decision flow・契約・処理に分離する参考資料（古いHTTP版があるため仕様の正本にはしない）。

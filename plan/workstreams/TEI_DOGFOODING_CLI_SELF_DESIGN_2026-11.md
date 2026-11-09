@@ -512,6 +512,7 @@ D-9は残る。CLIは設計文書を索引に載せるが、意味の定義と�
 この記録はCLIのread-only観測である。HTTP・MCP・Desktopの各入口の同値性は #3419〜#3421 の担当で、未実行（NOT RUN）のままである。
 
 ## 11. 第5ラウンド（2026-11-09）: CLIとMCP参照Adapterの一致と入力検証
+## 11. 第5ラウンド（2026-11-09）: CLIとMCP参照Adapterの一致と厳密入力
 
 `main` `4f97c86cf` の CLI と `tools/reference-mcp-readonly-adapter` を同じWorkspaceへ向けて実行し、値・失敗・入力検証を比較した。生出力は[第5ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND5_CLI_MCP_2026-11-09/README.md)にある。
 
@@ -570,3 +571,78 @@ ADR-0048 §2.4 の「既定値の適用は共通契約で定める」を、CLI �
 - `inspect -workspace /no/such/dir` は MCP では tool 引数で表現できない（起動時に固定する設計）。起動時の `-workspace` が無い／manifest が壊れている場合、MCP は `WORKSPACE_LOAD_FAILED` を返し、CLI と同じ符号だった。差は「いつ分かるか」だけ。
 - **必須引数の欠落だけが層の違い**である。CLI は `INVALID_SUBJECT`（exit 2）、MCP は `-32602`。両方拒否するが文字列の符号が揃わない。ADR-0048 §2.3「失敗」の未決。
 - `inspect_trace_parity_test.go` を追加し、成功2件・失敗5件の値と符号、成功時の `result` の byte 一致を実プロセスで固定した。符号をわざと変える2種の変異はどちらも検出した。
+
+## 17. 第11・12ラウンド（2026-11-09）: traceの継続トークン
+
+第10ラウンドで「`trace` のページ継続は未検査」と記録した。T06 を実測し、**同じ名前で値の違う `snapshotFingerprint` が2つあり、継続に使えるのは外側だけ**であることを見つけた。生出力は[第11ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND11_TRACE_CONTINUATION_2026-11-09/README.md)と[第12ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND12_CONTINUATION_MAIN_2026-11-09/README.md)にある。
+
+- ページング自体は動く。`-mode full` は全4行、`-limit 2` は2行と `nextOffset: 2`、`-offset 2 -limit 2` は残り2行。`-offset 99` は0行で成功。MCP の `tei_trace` も `limit` を受け同じ結果。
+- 同じ入力なら `result.snapshotFingerprint` は安定し、ページを変えても変わらない。
+- 修正前は `result.snapshotFingerprint`（作業領域全体）と `result.trace.snapshotFingerprint`（グラフ・規則・対象・方向のみ）が同名で併存し、`nextOffset` は内側にあった。**`nextOffset` の隣の値をそのまま `-expected-fingerprint` に渡すと `STALE_SNAPSHOT` になった。**
+- `main` の `e75d599ba`（PR #3633）が同じ問題を解消した。内側を **`graphFingerprint`** に改名して旧名を別名として残し、`result.trace.continuation`（`fingerprint` と `field`）を `nextOffset` の隣に置く。
+- 統合後の実測（`main` `5d5d5de6b`）では、`continuation.fingerprint` で継続すると成功し、`graphFingerprint` を渡すと `STALE_SNAPSHOT`。応答の名前と `field` だけで、どちらを使うか分かる。
+- 私が書いた重複実装（平坦な `continuationFingerprint`）は採用しなかった。`main` の形が上位互換である。
+- `-scope`・`-direction` を変えた場合の拒否、MCP が `continuation` を返すかは未確認。
+
+## 18. 第13ラウンド（2026-11-09）: 設計変更の影響範囲をCLIだけで答えられるか
+
+ここまでは「CLIの応答が正しいか」を測った。このラウンドは**実際の設計作業の問い**を試した。題材は実際の改名（`snapshotFingerprint` → `graphFingerprint`、PR #3633）。生出力は[第13ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND13_DESIGN_IMPACT_2026-11-09/README.md)にある。
+
+| 問い | 結果 |
+| --- | --- |
+| モデル要素の定義箇所は分かるか | **分かる**。`inspect semantic-data:sales.order` が `semantic/sales/order.tei` を返す |
+| リポジトリ全体をWorkspaceにできるか | **できない**。ルートに `tei.workspace.yaml` が無く `-workspace .` は `WORKSPACE_LOAD_FAILED` |
+| 設計文書だけをWorkspaceにできるか | **索引には載る**。`source-index` は `artifacts: 3, references: 0` で成功 |
+| 設計文書の中の名前を問えるか | **問えない**。`inspect … -subject-id snapshotFingerprint` は `SUBJECT_NOT_FOUND` |
+| 改名の影響範囲を挙げられるか | **挙げられない**。どの文書のどの行がその名前を含むかは `grep` が要る |
+
+読み取れること:
+
+- 意味モデル（`.tei` の宣言）については、定義箇所も参照関係もCLIで答えられる。**モデルに対する設計作業はCLIで完結できる。**
+- 設計文書（Markdown）については、CLIはファイルとして管理するところまでで、**中の名前を対象にした問いには答えられない**。D-9 の具体的な帰結である。
+- リポジトリ全体を1つのWorkspaceにする経路が無いため、横断の問いは入力を作れない。
+
+新しいIssueは作らない。#2619・#2621 の設計範囲であり、D-9 として第1ラウンドから記録している。この実測を D-9 の具体的な証拠として残す。
+- 一方、**宣言していない引数はMCPだけが無視して成功する**。CLIは `INVALID_ARGUMENT` で拒否する。入力契約の共通化は未達で、#3467（起票）として扱う。
+- 必須欠落の符号はCLIが `INVALID_SUBJECT`、MCPが `-32602` で、意味層とプロトコル層の対応は #3420 の未決である。
+- `commands` の19件に操作ID・入口の欄は無く、入口ごとの対応はIssueと文書でしか辿れない。#3419 の対応表で扱う。
+
+## 19. 第14ラウンド（2026-11-09）: knowledge-* 連鎖の端から端まで
+
+第13ラウンドで「モデルに対する設計作業はCLIで完結できる」と分かった。その設計作業でAIが実際に使う `knowledge-*` の連鎖を、1回通した。生出力は[第14ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND14_KNOWLEDGE_CHAIN_2026-11-09/README.md)にある。
+
+| 手順 | 結果 |
+| --- | --- |
+| `knowledge-context` | `mode=context`・`dataDesign` あり・`authorityLimits` 4件 |
+| `knowledge-review-plan` | `mode=plan`・`reviewSequence`・`stopRules` |
+| `knowledge-review-handoff` | `mode=handoff`・`qualification` を含む |
+| `knowledge-context -disclose source` | `mode=disclosure` |
+| `knowledge-qualify` | `status=applicable`・`evidence` 1件 |
+| `knowledge-review-disclose` | `status=complete`・4セクション |
+
+- **戻れる**: 古い指紋は `fingerprint mismatch: expected=… current=…` で拒否（exit 1）。別subjectの handoff は `subject mismatch: handoff=… context=…` で拒否（exit 2）。存在しない handoff も exit 2。
+- **摩擦は1点**: 要件ファイルの形がCLIの応答から辿れない。`commands` は `-qualification-requirements` の存在だけを広告し、`-h` は "knowledge qualification requirements JSON" としか出さない。私は最初 `{"subject":…}` と書いて `json: unknown field` で止まった。最小形は `{"expectedKind":"semantic-data"}` で、文書（#3186 で追加済み）を読めば分かる。
+
+新しいIssueは作らない。形の例は #3186（Closed）、`commands` にファイル中身のスキーマを載せるかは #3419 の範囲である。
+
+## 20. 第15ラウンド（2026-11-09）: trace -mode full の rows が0件のとき消える
+
+第14ラウンドの連鎖の手前で、`trace` の応答が関係0件のWorkspaceでも機械的に読めるかを確かめた。生出力は[第15ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND15_TRACE_MODE_ROWS_2026-11-09/README.md)にある。
+
+- 関係0件のWorkspaceで `-mode full` を実行すると、`result.trace` に `rows` が**存在しなかった**。`Rows` の `json:"rows,omitempty"` タグの `omitempty` が、nil だけでなく長さ0のスライスも落とすためである。
+- `mode=summary` が `rows` を出さないのは契約どおり（全体を数えるだけで行を確保しない）。問題は **`mode=full` の「0件」と「欄が無い」が同じ表現**になることだった。
+- 起票は [#3693](https://github.com/hat47x/tei-platform/issues/3693)。#3456（`source-index` の `references`）と同じ種類の欠陥である。
+- `main` の `3799997a0` が解消した。`TraceResult` に `MarshalJSON` を足し、`mode=full` では常に `rows` を書き、フィールドを宣言順に明示して文書順序を変えない。
+- 私は「`mode=full` かつ0件のときだけ上書きする」実装を書いて動作を確認したが、`main` の形が上位互換なのでコードは持ち込まず、実測記録だけを残した。
+- このラウンドで踏んだ落とし穴: 最初に `mode=full` のすべてを上書きする実装にしたところ、埋め込み構造体が `rows` を最後に回し、既存の full 応答のバイト列が変わって `reference-cli-trace-benchmark` の golden が2件 FAIL した。**JSON表現を触る変更は、既存応答のバイト列を変えないことを golden で確かめる必要がある。**
+
+## 21. 第16ラウンド（2026-11-09）: 継続トークンの失効条件
+
+第11ラウンドで「どの値が継続トークンか」を扱い、「`-scope`・`-direction` を変えた場合の拒否」と「MCP が `continuation` を返すか」を未確認として残した。生出力は[第16ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND16_CONTINUATION_EXPIRY_2026-11-09/README.md)にある。
+
+- **Source の変更は種類を問わず失効させる**。コメント1行の追加でも属性の追加でも `STALE_SNAPSHOT`（exit 1）。Source の生バイトが `sourceIndexFingerprint` に入るためで、`plan/design/CLI_FIRST_INTERFACE_DESIGN.md` §159 の「非意味的な原文変更は拒否する」と一致した。
+- **選択子の変更も失効させる**。`-scope` を変えると `STALE_SNAPSHOT`、`-direction` を変えると同じく `STALE_SNAPSHOT`。`-mode full` → `summary` は `summary` が `-offset` を受け付けないため `INVALID_ARGUMENT`（exit 2、引数エラーとして正しい）。
+- **`summary` ⇄ `full` は相互に許容される**。`summary` のトークンで `mode=full -offset 0 -limit 2` が成功し、逆向きも成功。`mode`・`offset`・`limit` はトークンの対象外である。
+- **MCP も同じ**。`continuation.fingerprint` で継続でき、`graphFingerprint` や別 `scope` は `STALE_SNAPSHOT`。CLI と MCP で可否が一致した。
+
+新しい欠陥は検出しなかった。すべて文書に書かれた挙動と一致している。CAPI-2c のうち「参照実装の継続トークン」はここで一区切りとする（World/Source 改版の別故障モードは #3420 に残る）。

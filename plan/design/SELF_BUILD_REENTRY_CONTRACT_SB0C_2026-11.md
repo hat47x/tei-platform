@@ -568,13 +568,13 @@ entry側（`cmd/tei`）は**変更不要**だった。childが申告するよう
 
 #### 実測：`internal/plugin`はBuilder catalogの代わりになるか
 
-ならない。`internal/plugin.Requirement`は`Plugin`と`CompatibleMajor`だけを持ち、**`recipeKinds`・`targets`・`profiles`・`authorityScope`を持たない**。`BuilderResolver`が解く問い（contract・recipe kind・target・profileに適合するProviderはどれか）に答えられない。
+ならない。`internal/plugin`の`Requirement`は`Plugin`と`CompatibleMajor`だけを持ち、**`recipeKinds`・`targets`・`profiles`・`authorityScope`を持たない**。`BuilderResolver`が解く問い（contract・recipe kind・target・profileに適合するProviderはどれか）に答えられない。
 
 #### 三つの案
 
 | 案 | 内容 | 何が要るか | 何が増えるか |
 | --- | --- | --- | --- |
-| **R-1: 既定をin-processへ** | `cmd/tei`が`internal/buildintent.Resolve`を直接呼ぶ | **`internal/`に四つのportの実装を新設**（Source解決・Builder catalog・Dependency catalog・Target catalog）。fixture catalogは参照実装専用なので移せない | subprocess起動が消え、entryが**自分で計画を導いた**と言える |
+| **R-1: 既定をin-processへ** | `cmd/tei`が`internal/buildintent`の`Resolve`を直接呼ぶ | **`internal/`に四つのportの実装を新設**（Source解決・Builder catalog・Dependency catalog・Target catalog）。fixture catalogは参照実装専用なので移せない | subprocess起動が消え、entryが**自分で計画を導いた**と言える |
 | R-2: 既定はchild起動のまま | 現状維持 | なし | 何も変わらない |
 | R-3: 併存 | `-intent-resolver`があればchild、無ければin-process | R-1と同じ実装 | 経路が二つになり、**どちらで導いたかが出力の別欄になる** |
 
@@ -590,6 +590,216 @@ entry側（`cmd/tei`）は**変更不要**だった。childが申告するよう
 
 - R-1を採らない、とは言っていない。**前提が未決**だと言っている。
 - in-processで導いても**L2-bではない**。(c)も変わらない。導出の主体が変わるだけで、「その計画がそのartifactを生んだ」ことは別の観測である。
+
+### 4.17 宣言の他の欄をどこまで照合するか（2026-11-09）
+
+§4.15末尾の残作業を、**照合できる欄**と**照合の意味が未決の欄**に分けた。
+
+#### 照合した欄（[#3661](https://github.com/hat47x/tei-platform/pull/3661)）
+
+builder childが`compareIntentFields`で比べる。
+
+| 欄 | 比べる内容 | 何を検出するか |
+| --- | --- | --- |
+| `recipe.kind`・`recipe.entrypoint` | 完全一致 | 別の作り方を要求する宣言 |
+| `sources` | kind と id（集合・件数） | 宣言が別のSource集合を指している |
+| `dependencies` | kind と id（集合・件数） | 宣言が別の依存集合を指している |
+
+不一致は**欄を名指し**して拒否し、**reportを出さない**。拒否した宣言について`bound`と報告しないためである。
+
+#### 照合しなかった欄と、その理由
+
+| 欄 | 理由 |
+| --- | --- |
+| sourceの`locator`・`digest` | **plan側は導出値**。宣言は`ref`を書き、planは解決済みのlocatorとbyte digestを持つ。比べると**正しいbuildをすべて不一致と呼ぶ** |
+| dependencyの`version`・`artifactDigest` | 同じくplan側の導出値 |
+| `builder.contract`・`compatibleMajor` | planが持つのは**解決済みの`BuilderIdentity`**（`ContractVersion`・`ArtifactDigest`）であり、宣言の要求（contract名とmajor）と形が違う。比べるには「要求」と「解決結果」の対応規則を決める必要がある |
+| `secretRequirements` | planは**名前だけ**を`SecretRequirementNames`として持つ（`ResolvedBuildReceipt`）。`plugin.BuildPlan`自体には無い。宣言の`Authority`はplanに対応する欄が無い |
+| ~~`parameters`~~ | **実測して訂正した。** どちらの側も名前順ソートのみで値を変えない（`buildintent.NormalizeIntent`・`plugin.NormalizeBuildPlan`）。名前で突き合わせれば順序に依存しないので、**照合する**（[#3664](https://github.com/hat47x/tei-platform/pull/3664)、§4.18） |
+
+**「比べられる欄」と「比べるべき欄」は違う。** 導出値を比べると常に不一致になり、形の違うものを比べると定義が要る。比べないことを明示するのが、黙って比べないより安全である。
+
+- ~~残る欄を永久に照合しないとは言っていない。`parameters`は正規化の意味を決めれば照合できる~~ → **`parameters`は測ると正規化がソートだけだったので実装した**（§4.18）。`builder`は要求と解決結果の対応規則を決めれば照合できるが、それは**測れば決まる**種類ではない（§4.18末尾）。
+- 照合の拡大は**L2-bを進めない**。宣言とplanが同じ意味を指すことの確認であり、「その宣言がその計画を導く」ことではない。
+
+### 4.18 `parameters`を照合する（2026-11-09）
+
+§4.17は`parameters`を「正規化の意味が未決」として残した。**測ると前提が誤っていた。**
+
+| 側 | 正規化 | 何をするか |
+| --- | --- | --- |
+| 宣言 | `buildintent.NormalizeIntent` | `Parameters`を**名前でソートするだけ** |
+| plan | `plugin.NormalizeBuildPlan` | `Parameters`を**名前でソートするだけ** |
+
+`resolve.go`は`Parameters: n.Parameters`と代入するだけで、値を変換しない。**したがって値の違いは本物の違いである。** 順序だけが正規化の対象なので、**名前で突き合わせれば順序に依存しない**。
+
+照合は名前の存在・値・件数を見る。不一致は**名前と両方の値**を名指しする。
+
+**正規化の性質そのものを試験で固定した。** 照合が「名前順ソートのみ」という性質に依存しているため、将来`NormalizeIntent`が値を正規化するようになったら、その試験が落ちて気づける。依存を暗黙にしない。
+
+#### 残る2欄は「測れば決まる」種類ではない
+
+| 欄 | 何が要るか |
+| --- | --- |
+| `builder.contract`・`compatibleMajor` | planが持つのは**解決済みの`BuilderIdentity`**（`ContractVersion`・`ArtifactDigest`）であり、宣言の要求と**形が違う**。「要求」と「解決結果」の対応規則を決める必要がある |
+| `secretRequirements` | planは名前を`SecretRequirementNames`として持つが`plugin.BuildPlan`には無い。宣言の`Authority`に対応する欄が無い |
+
+**`parameters`は測れば決まった。この2つは規則そのものを決める必要がある。** 同じ「未決」でも種類が違う。
+### 4.19 `builder`の契約を照合し、`secretRequirements`の不可能性を示す（2026-11-09）
+
+§4.18は`builder`と`secretRequirements`を同じ「規則を決める必要がある」欄として残した。**踏み込むと種類が違った。**
+
+#### `builder`は規則が既にあった
+
+`fixture.go`は宣言の`contract`と`compatibleMajor`を次のように解決する。
+
+```go
+ContractVersion: fmt.Sprintf("%s/v%d", p.Contract, p.ContractMajor),
+```
+
+**決めるべき規則は既にコードにあり、測れば読めた。** childはこの規則を自分でも適用して、組み立てた綴りとplanの`ContractVersion`を比べる。**child側にも規則を書いたのは意図的である**：resolverが綴りを変えたらこの照合が壊れる場所になり、その場所を試験で固定できる。
+
+| 比べる | 比べない |
+| --- | --- |
+| `builder.contract` + `compatibleMajor` から組み立てた `<contract>/v<major>` | planの`builder.ID`・`Version`・`ArtifactDigest`（**解決済みの実体**。宣言は方針を書く） |
+| `builder.provider.plugin`（指定時）・`builder.pin.artifactDigest`（指定時） | — |
+
+**方針と実体を区別する。** 方針から実体は決まらないので、`builder.ID`・`Version`・`ArtifactDigest`そのものを宣言の不一致と読まない。ただし**方針を指定した場合**は、その方針が解決結果に反映されたかを比べる（`provider.plugin`と`pin.artifactDigest`）。`ResolveBuilder`が候補をこの二つで絞るため、**同じ宣言から導いたplanでは必ず一致する**。したがってこの比較が発火するのは、planがその宣言由来でない場合だけである。
+
+**この節の初版は「`provider`と`pin`は照合の対象外」と書いていた。** `#3670`が両方を照合する実装を入れ、`#3700`が試験を実装に合わせたため、記述を実装へ合わせて直した。
+
+#### `secretRequirements`は比べる相手が無い
+
+| 事実 | 帰結 |
+| --- | --- |
+| `plugin.BuildPlan`に`SecretRequirements`欄が無い | plan側に比べる相手が無い |
+| 名前は`ResolvedBuildReceipt.SecretRequirementNames`に載る | **receiptはchildへ渡っていない**（childが受け取るのは`-plan`と`-intent`） |
+| 宣言の`Authority`（取得元）に対応する欄がplanにもreceiptにも無い | 比べる対象が存在しない |
+
+**これは「測れば決まる」問題ではない。** 測って分かったのは「比べる相手が無い」ことである。照合するには、receiptをchildへ渡すか、planへ欄を足すか、いずれかの**設計変更**が要る。§4.18が「規則を決めれば照合できる」と書いたのは`secretRequirements`については誤りだった。
+
+#### 宣言の欄の到達点
+
+| 欄 | 状態 |
+| --- | --- |
+| `subject` identity・`outputKind`・`target`・`profile` | 照合済み（§4.14・§4.15） |
+| `recipe`・`sources`・`dependencies` | 照合済み（§4.17） |
+| `parameters` | 照合済み（§4.18） |
+| `builder.contract`・`compatibleMajor` | 照合済み（[#3684](https://github.com/hat47x/tei-platform/pull/3684)） |
+| `builder.provider`・`builder.pin` | 方針であり、解決結果と対応しない（照合の対象外） |
+| `secretRequirements` | **比べる相手が無い**（設計変更が要る） |
+
+**照合の拡大はL2-bを進めない。** 宣言とplanが同じ意味を指すことの確認であり、「その宣言がその計画を導く」ことではない。
+
+### 4.20 欄ごとの照合は何を保証するのか（`secretRequirements`の扱いを決める、2026-11-09）
+
+§4.19で分かった性質は、**`secretRequirements`だけの話ではなく、§4.17以降に足してきた欄ごとの照合すべてに当てはまる。** ここで一度、何を保証しているのかを言い直す。
+
+#### 補足：同じ宣言から導いたplanでは、欄照合は決して失敗しない
+
+**同じ宣言からresolverが導いたplanに対して、この照合は決して失敗しない。** 要求を満たさない宣言からはresolverがplanを作らないためである（実測：`compatibleMajor`を2にすると`no compatible builder provider for contract tei.plugin-build/v2`で停止する）。
+
+したがってこの照合が効くのは、**planがその宣言から導かれたものではない**場合だけである。具体的には次の三つ。
+
+- 宣言がplanの解決後に変わった
+- planが別の宣言から導かれた（§4.8のSC0-13が問う状況）
+- planがresolver以外（手書き・別ツール）で作られた
+
+**これは弱い検査ではなく、狙いどおりの検査である。** childは「渡されたplanが渡された宣言と対応しているか」を確かめており、対応していなければ止まる。
+
+#### 言い直し
+
+宣言のbyteが一致していれば（`intentByteCheckMatched=true`）、そのbyteから導かれる値は**すべて**一致する。**planがそのbyteから導かれたものである限り**、§4.14以降に足してきた`recipe`・`sources`・`dependencies`・`parameters`・`builder`・build座標の照合は**必ず通る。**
+
+つまり欄ごとの照合は、**独立の証拠を増やしていない。** 増やしているのは次の一点だけである。
+
+> **そのplan（またはreceipt）が、保持したbyteから導かれたものではない場合に、どこが食い違うかを名指しで示す。**
+
+これは価値がある。食い違いを「byteが違う」とだけ言われるより、「宣言の`target`が違う」と言われる方が原因を追える。だが**保証の強さは変わらない。**
+
+#### したがって`secretRequirements`は照合しない
+
+§4.18は`secretRequirements`を「規則を決める必要がある」として残したが、**照合しても保証が増えない以上、規則を決める理由がない。**
+
+三つの選択肢を比べた結果は次のとおり。
+
+| 案 | 内容 | 判定 |
+| --- | --- | --- |
+| **S-1: childで照合しない** | planに対応欄が無いことを理由付きで記録する | **採る** |
+| S-2: childがreceiptも受け取る | childの入力契約が変わり、「planを消費するchild」ではなくなる | 採らない。**保証が増えないのに契約だけ広がる** |
+| S-3: `plugin.BuildPlan`に秘密名を持たせる | 製品の型の意味変更 | 採らない。**比較のためだけに製品型へ欄を足す**ことになり、その欄に消費者が無い |
+
+**S-2とS-3は「照合を増やすために契約を広げる」取引である。** 保証が増えないなら、取引は割に合わない。§4.19が示したのは「この種の照合は原因究明を助けるが、保証は増やさない」ということであり、その結論は**照合を広げる方向に進まない**ことを支持する。
+
+#### これ以上の欄照合は足さない
+
+§4.17以降、照合できる欄を順に足してきた。**ここで打ち切る。** 理由は三つ。
+
+1. **保証が増えない。** byte一致が成り立てば必ず通る
+2. **「照合した」が「導出した」に見える危険がある。** 欄が増えるほど、planの全項目を確かめたように読める。実際に確かめているのは「保持したbyteとの対応」だけである
+3. **欄を増やすより、通らない場合に原因を名指しする方が効く。** 食い違いの原因を示す仕組みは既にあり、欄を足す必要はない
+
+**残る段差は欄照合では埋まらない。** 埋めるのはI-1bの先、すなわち「そのplanがそのartifactを生んだか」（(c)）と、entryの既定経路（§4.16のR-2）である。**欄を足すことは、このどちらにも近づかない。**
+
+#### この節が言っていないこと
+
+- 既に足した照合を外す、とは言っていない。**原因究明の道具として残す**価値はある
+- `secretRequirements`の意味が不要だとは言っていない。**照合の相手がplanに無い**と言っている
+
+### 4.21 (c)を再現で観測する（2026-11-09）
+
+§4.20は「残る段差は欄照合では埋まらない」と書き、埋める対象として(c)とentryの既定経路を挙げた。**本節は(c)を埋める。**
+
+#### lockでは足りない理由を、あらためて
+
+`planArtifactBinding=bound`（§4.11・§4.12）が示すのは「plan fingerprintとartifact digestが一つの検証済みlockとして整合し、digestがディスクと合う」ことである。**そのplanを実行するとそのバイトが出る、という観測ではない。** 二つの値を結び付けただけであり、builderが申告を偽らないという前提に依存する。
+
+#### 再現で置き換える
+
+**plan Pでbuilderを二回、別のstateで走らせて同じバイトDが出て、ディスク上のartifactがDであれば、そのartifactはPの出力である。** 決定性が観測されたことと、digest衝突がないことを条件に。
+
+| 段 | 動き |
+| --- | --- |
+| 一回目 | 従来どおり`-output`へ書く（no-clobberは保たれる） |
+| 二回目 | **同じchild実行物**を、**新しい一時state**と**一時出力先**で起動する |
+| 比較 | 二回目の申告digest == 一回目の申告digest、かつ ディスク上の`-output` == 一回目の申告digest |
+
+`-artifact-out`と`-state`はentryがchild argvへ足している値なので、**二回目だけを差し替える**。呼び手が渡した他の引数はそのまま使うので、条件の違うbuildを比べているのではない。
+
+**二回目は呼び手の`-output`へ書かない。** 成功した一回目のartifactを検査が上書きしないためである。ただしchildが`-artifact-out`を無視する場合は一回目の出力先へ書くため、**二回目の後にディスクを読み直して**一回目の申告と比べる。
+
+#### 出力
+
+`artifactReproducibility`を**常に**出す。
+
+| `state` | 意味 | 効果 |
+| --- | --- | --- |
+| `reproduced` | 二回のbuildが同じバイトを出し、ディスク上も一致した | なし（成功） |
+| `mismatched` | 一致しない | **`ok=false`・`failureCause`** |
+| `unperformed` | 実行していない／実行できなかった | 理由を`unperformedReason`へ |
+
+`-rebuild-check`を渡さない場合も`unperformed`と理由を出す。**欄が無いことを一致と読ませない**ためである（SC0-18と同じ規則）。
+
+#### 実測
+
+[記録](../evidence/TEI_GO_SELF_BUILD_ARTIFACT_REPRODUCIBILITY_2026-11-09.md)。同じplan、同じchild実行物、別々のstateでの二回のbuildが同じdigest `sha256:7d2f6ff73176e1c817242a225d1499230579fd54ae2c69ff0f845535482f3ae4` を出し、ディスク上のartifactも同じdigestだった。`secondChildDigest`は`tei`実行物と同一で、二回目も同じchildを使ったことが読める。
+
+#### これで(c)が埋まる。だがL2-bではない
+
+**(c)が問うのは「そのplanがそのartifactを生んだか」であり、本節はそれに答えた。** 範囲は`boundary`が明記する——同じホスト・同じbinary・二回の試行で観測した決定性であり、別ホスト・別Go版・別builder版での再現は確かめていない。
+
+**L2-bは埋まらない。** (c)はplanとartifactの関係であり、**「entryが宣言を解釈してそのplanを導いた」ことではない。** 後者は依然として解決childの申告に依存する。`l2bClaimed`は`false`のままである。**(c)が埋まったことをL2-bの成立と読ませない。**
+
+#### 既定を`-rebuild-check`にするかは別の判断
+
+**本節は既定を変えない。** 二回目のbuildは時間とI/Oを倍にするため、呼び手の明示が要る。
+
+ただし**既定にすべき理由はある。** (c)を観測しない限り、`bound`が(c)の代わりに読まれる危険が残る。既定を切り替えるかは、費用と証拠の重みの取引であり、**別の契約判断**として残す。
+
+#### この節が言っていないこと
+
+- 決定性を証明したとは言っていない。**二回の観測**である
+- 再現性がL2-bや受理を意味するとは言っていない
 
 ## 5. 追加の負例（試験仕様）
 
@@ -614,6 +824,11 @@ entry側（`cmd/tei`）は**変更不要**だった。childが申告するよう
 | SC0-17 | builder childがentryの保持した宣言と**別の宣言**を読む | `intentBinding.intentByteCheckMatched=false`・`ok=false`。childが読んだbyteをself-reportさせることで初めて検出できる（§4.14） |
 | SC0-18 | builder childへ`-intent`を渡さず、沈黙を合格と読む | `intentByteCheckPerformed=false`と理由が残る。欄が無いことを一致と読ませない（§4.14） |
 | SC0-19 | builder childが読む宣言がplanのPluginと別のsubjectを指す | childがreportを出さずexit 1。一致し得ない二つの値を「読んだ値」として返さない（§4.14） |
+| SC0-20 | 宣言の`compatibleMajor`を、planを作ったときと変える | childがreportを出さずexit 1。**同じ宣言から解いたplanでは起こらず**、planがその宣言由来でない場合にだけ検出できる（§4.19） |
+| SC0-21 | `secretRequirements`の照合を足そうとする | 足さない。byte一致が成り立てば必ず通るため保証が増えず、childの入力契約か`plugin.BuildPlan`を広げることになる（§4.20） |
+| SC0-22 | `-rebuild-check`を渡し、二回目のbuildが違うバイトを出す | `artifactReproducibility.state=mismatched`・`ok=false`。再現しないartifactはそのplanの出力と言えない（§4.21） |
+| SC0-23 | `-rebuild-check`を渡さず、沈黙を再現の成功と読む | `state=unperformed`と理由が残る。**欄が無いことを一致と読ませない**（§4.21） |
+| SC0-24 | `artifactReproducibility=reproduced`をL2-bの成立と読む | 読まない。再現が示すのは「そのplanがそのartifactを生んだ」こと（(c)）であり、entryが宣言を解釈したことではない。`l2bClaimed`は`false`のまま（§4.21） |
 
 ## 6. 未決事項
 
@@ -626,7 +841,9 @@ entry側（`cmd/tei`）は**変更不要**だった。childが申告するよう
 - ~~`cmd/tei`を対象にしたL3~~ → **実測済み**（[記録](../evidence/TEI_SELF_BUILD_CMD_TEI_L3_2026-11-08.md)、`bb7fc01bb`）
 - ~~`-intent`を入口へ足せるか~~ → **§4.7でI-2（childとして起動）を既定案に**。L2のClaimは§4.8の二層に分ける
 - ~~`-intent`の実装（I-2）と、宣言byte digest・childの照合値・突合結果の三つを一つの出力に載せること~~ → **§4.9で実装済み**（`-intent-resolver`のreceiptと`planCrossCheck`。`l2bClaimed`は常にfalse）
-- **builder childが自分の読んだ宣言と導いた計画を報告する経路**。これが無いと`planCrossCheck`は実プロセスで`unperformed`のままである（§4.9）
+- ~~builder childが自分の読んだ宣言と導いた計画を報告する経路~~ → **§4.14で実装済み**（`-intent`でchildが宣言byte digestと照合値を申告する）
+- ~~`builder.contract`・`compatibleMajor`の照合~~ → **§4.19で実装済み**（対応規則はresolverに既にあり、`BuilderContractVersion`として一箇所に定義した）
+- ~~`secretRequirements`の照合~~ → **§4.20でS-1（childで照合しない）に決定**。保証が増えないため、childの入力契約も`plugin.BuildPlan`も広げない
 - `-self-digest`の取得方法（実行ファイル自身のdigestをどう自己参照するか）
 - 出力のschemaVersionと、既存`tei.cli.*`との命名一貫性
 - Seed Trustの扱い（stage0のGoは外部seed。TEI自身によるGoコンパイラのself-hostingではない）
@@ -652,9 +869,16 @@ entry側（`cmd/tei`）は**変更不要**だった。childが申告するよう
 - [x] **I-1a**（`ParseIntent`・`IntentFingerprint`を`internal/`の新パッケージへ移し、entryが宣言を自分で読む）の実装（§4.14、[記録](../evidence/TEI_GO_SELF_BUILD_ENTRY_INTENT_FINGERPRINT_2026-11-09.md)、`f522e8c65`）
 - [x] §4.8の(a)(b)（builder childが宣言byteを申告し、entryの保持byteと一致する）の実装（§4.14、[記録](../evidence/TEI_GO_SELF_BUILD_CHILD_DECLARATION_2026-11-09.md)、`ee7148138`）
 - [x] entryまたはchildが宣言から**計画まで**独立に導く経路（I-1b。[#3654](https://github.com/hat47x/tei-platform/pull/3654)で`Resolve`を`internal/buildintent`へ移し、fixture catalogは`tools/`に残した。§4.13の反対理由はcatalogについてであり、portについては当たらなかった）
+- [x] (c)の観測：**同じplanを二回、別stateでbuildして同じバイトが出た**（§4.21、[記録](../evidence/TEI_GO_SELF_BUILD_ARTIFACT_REPRODUCIBILITY_2026-11-09.md)。`-rebuild-check`で`artifactReproducibility=reproduced`。lockの`bound`が示せなかった「そのplanがそのartifactを生んだ」を再現で観測した。**L2-bではない**）
+- [ ] `-rebuild-check`を**既定**にするかどうかの判断（再現を毎回測ると(c)の取り違えが減るが、build時間が倍になる。§4.21末尾）
 - [ ] **entryの既定経路をin-processの`Resolve`へ切り替えるか**の判断。四つのportの実装は今fixtureにしかなく、切り替えには`internal/`側のcatalog新設が要る（§4.16。R-2据え置きが現時点の既定）
 - [x] 宣言とplanの**build座標**（`outputKind`・`target`・`profile`）の照合（[#3652](https://github.com/hat47x/tei-platform/pull/3652)。childが三座標を一つずつ比べ、違えばartifactを書いた後にreportを出さずexit 1。[記録](../evidence/TEI_GO_SELF_BUILD_BUILD_COORDINATES_2026-11-09.md)）
-- [ ] 宣言の他の欄（`sources`・`builder`・`recipe`・`dependencies`・`parameters`・`secretRequirements`）の照合。座標照合を広げるよりI-1bとしてまとめる方が「導出した」と「照合した」の混同を避けられる（§4.15末尾）
+- [x] 宣言の他の欄のうち、planが同じ形で持つもの（`recipe`・`sources`・`dependencies`）の照合（[#3661](https://github.com/hat47x/tei-platform/pull/3661)。§4.17）
+- [x] `parameters`の照合（[#3664](https://github.com/hat47x/tei-platform/pull/3664)。測るとどちらの側も名前順ソートのみで値を変えないと分かったので、名前で突き合わせる。§4.18）
+- [x] `builder`（要求と解決結果の対応規則）の照合（[#3670](https://github.com/hat47x/tei-platform/pull/3670)。対応規則はresolverに既にあり、`BuilderContractVersion`として一箇所に定義した。§4.19、[記録](../evidence/TEI_GO_SELF_BUILD_BUILDER_REQUIREMENT_2026-11-09.md)）
+- [x] `secretRequirements`の扱いの決定（§4.20。**S-1: childで照合しない**。byte一致が成り立てば欄ごとの照合は必ず通るため、保証が増えない。childの入力契約も`plugin.BuildPlan`も広げない）
+- [x] **欄ごとの照合をここで打ち切る**決定（§4.20。原因究明の道具として既存は残すが、これ以上足さない。残る段差は欄照合では埋まらない）
+- [ ] 依存の更なる削減：**entryが計画側も独立に持つ**経路。今はentryのlockもchildの申告から作るため、両方が同じ入力に依存する（§4.11末尾。entryの既定経路の判断（§4.16）と同じ前提に依存する）
 - [ ] D-1（catalogの`scope`拡張）を採るかどうかの契約判断（採る場合のみ、catalogの広告と実応答の一致を照合へ載せる）
 
 **A-1（`gobuilder`移動）は採らないため、影響範囲の洗い出しは終了条件から外した。** 29ファイルの内訳は[記録](../evidence/TEI_GO_INTERNAL_RULE_AND_BUILDER_MOVE_2026-11-07.md)として残す。I-1は「採らない」から「I-1aとして着手」へ改めた（§4.13）。`ParseFixtureCatalog`（fixture catalog）は`tools/`に残す。
