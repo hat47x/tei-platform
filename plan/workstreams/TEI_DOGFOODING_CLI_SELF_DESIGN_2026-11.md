@@ -873,3 +873,25 @@ A は「根拠を辿れる」という #2620 の合格条件を満たしつつ�
 **互換性**: `sourceIndexFingerprint` が変わる（Index の JSON に辺が増える）。`worldFingerprint` は不変。`trace` の `snapshotFingerprint` が変わるため保存済み継続トークンは失効する。これは正しい方向（以前は辺が欠けていた）。
 
 **残り**: outcome の名前（`authenticated` / `denied`）を辺に載せていない。現状は「どの capability がどの型を結果として生むか」だけを持ち、結末名は `inspect` の `canonical.outcomes` で見る。どちらが良いかは #3419 の判断。起票は [#3884](https://github.com/hat47x/tei-platform/issues/3884)。
+
+## 34. 第30ラウンド（2026-11-09）: 設計の問いに CLI で答えられるかを確かめた（欠陥なし）
+
+前ラウンドで `trace` が capability の `outcome` を辺として扱うようになった。その効果を、**実際の設計の問い**で確かめた。生出力は[第30ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND30_DESIGN_QUESTIONS_2026-11-09/README.md)にある。
+
+| 問い | 答え |
+| --- | --- |
+| 認証→認可の連鎖は繋がっているか | **繋がっている**（`authenticate -outcome-> authenticated_subject` と `authorize -input-> authenticated_subject` が一致） |
+| 宙に浮いた参照はあるか | **無い**（宣言70件、未宣言を指す辺0件、全 subject で `unresolved=0`） |
+| 各入力に生産者が必要か | **必要ない**（入力はモデル外から来てよい。私の仮説は棄却） |
+| 未解決の outcome payload を検出するか | **検出する**（`validate` が `UNKNOWN_SEMANTIC_CAPABILITY_OUTCOME_PAYLOAD`、`trace` が `projectionUnresolved`） |
+
+**新しい欠陥は検出しなかった。** Q3 の仮説は私の誤り、Q4 は既存の仕組みが正しく報告していた。起票しない。
+
+ただし**語の衝突**を1つ記録した。`trace` は2種類の「未解決」を持つ。
+
+- `result.trace.unresolved` — 選択した subject に直接繋がる**行**のうち解決できなかった数
+- `result.projectionUnresolved` — グラフ全体を作る過程で**捨てた辺**の一覧
+
+`reference/workspace` は `unresolved=0` かつ `projectionUnresolved` が17件で、内側の数だけ見ると「未解決は無い」と結論してしまう。私は実際にそう読み違えた。欠陥ではない（情報は出ており `docs/getting-started.md:212` に説明もある）が、契約文書の `trace` 行に両者の違いを書く価値はある。**#3419 の範疇**として所感を残す。
+
+**このラウンドは「測って問題が無かった」ことの記録である。** ドッグフーディングは欠陥を出すためだけではなく、道具が設計の問いに答えられることを確かめるために行っている。
