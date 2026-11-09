@@ -111,6 +111,7 @@
 | [`PLUGIN_SELF_BUILD_PRODUCTION_CONTRACT_2026-10.md`](PLUGIN_SELF_BUILD_PRODUCTION_CONTRACT_2026-10.md) | プラグインのセルフビルドの最小契約と移行Gateの検討案。production仕様の採用ではない |
 | 文書 | 対象 |
 | --- | --- |
+| [`AI_FIRST_QUALIFIED_INTERFACE_CURRENT_MAIN_2026-11.md`](AI_FIRST_QUALIFIED_INTERFACE_CURRENT_MAIN_2026-11.md) | AI-firstのSource/Tool/Independent Expected/Meaning/Grant・Effect受入を、mainのTT-56実CLIと盲検T1-B・Plugin実呼出しへ接続（§10現行状態、採用判断は既存Owner） |
 | [`VERIFIED_COMPOSITION_BOM_AND_MATRIX_DESIGN_2026-11.md`](VERIFIED_COMPOSITION_BOM_AND_MATRIX_DESIGN_2026-11.md) | 検証済みPlugin構成BOM、多版Matrix、Pairwise、独立Expected、実Artifactと同一Attempt、Trait/HTTP例外Coverageの資格分離（[#3267](https://github.com/hat47x/tei-platform/issues/3267)、評価待ち） |
 | [`DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md`](DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md) | SQL/NoSQL・ログ・API等の汎用Data Source Workbenchと開発者向けSchema CRUD、DBA業務を標準外とする機能境界（[#3270](https://github.com/hat47x/tei-platform/issues/3270)） |
 | [`ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md`](ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md) | Issue→Design Context→Scenario/独立Expected→実CLIを通してMVPのCLI/CUI・Skill・Coverageを検収する計画（[#3273](https://github.com/hat47x/tei-platform/issues/3273)） |

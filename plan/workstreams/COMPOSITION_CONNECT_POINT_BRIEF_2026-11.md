@@ -168,7 +168,7 @@ C-1/C-2の`ran/refused/unverified`は**別Operationの参照計数**である。
 | --- | --- | --- |
 | CON-12a `resolved` と `invoked` を分ける | **済み** | 両参照で、未登録でも `resolved=true` のまま `invoked=false` になることを実行で確認（[観測](../evidence/OBSERVATION_ROUTER_CONNECT_REFERENCE_2026-11-09/README.md)、[証拠](../evidence/EVIDENCE_ROUTER_CONNECT_REFERENCE_2026-11-09/README.md)） |
 | CON-12b 選ばれていないProviderを実行しない | **済み（合成Provider）** | 両参照のテストで、宣言が選んだAだけが入場し、登録済みのBは0回、IDが食い違うProviderも入場前に拒否されることを確認 |
-| CON-12c Artifact digest・Grant epoch・Source Scopeが変わったら旧Bindingを再利用しない | **この2層では問えない** | 観測と証拠の宣言は `Kind` と `Provider` しか持たず、比較する項が無い（[記録](../evidence/BINDING_IDENTITY_LAYERS_2026-11-09/README.md)）。識別子を持つのは `generation.Binding` と `ServiceProviderSelection` の2層だけ |
+| CON-12c Artifact digest・Grant epoch・Source Scopeが変わったら旧Bindingを再利用しない | **`generation.Binding` の層では済み** | 観測と証拠の宣言は `Kind` と `Provider` しか持たず、比較する項が無い（[記録](../evidence/BINDING_IDENTITY_LAYERS_2026-11-09/README.md)）。識別子を持つ `generation.Binding` では、変更後の新規取得が新しい digest、変更前の lease が古い digest のままになることを実行で確認（[記録](../evidence/DIGEST_CHANGE_REUSE_REFERENCE_2026-11-09/README.md)）。`ServiceProviderSelection` の層は未試行 |
 | CON-12d 一部だけ成功した場合に partial/unknown を保つ | **一部** | 入場後の失敗は `invoked` を立てたまま `COLLECT_FAILED`/`OBSERVE_FAILED` にし、成功として数えないことは確認。**複数Providerにまたがる部分的成功**は試していません |
 
-**CON-12a と CON-12b が済んだことは、「製品CLIへ繋ぐべき」の証明ではありません。** Provider はすべて合成で、外部状態を読んでいません。CON-12c は観測・証拠の宣言に比較項が無いため**この2層では問えず**、識別子を持つ層（C-1/C-2 の `generation.Binding`、Service の `ServiceProviderSelection`）で試す必要があります。CON-12d は未完了です。
+**CON-12a と CON-12b が済んだことは、「製品CLIへ繋ぐべき」の証明ではありません。** Provider はすべて合成で、外部状態を読んでいません。CON-12c は観測・証拠の宣言に比較項が無いため**その2層では問えませんが**、識別子を持つ `generation.Binding` の層では満たされることを確認しました。`ServiceProviderSelection` の層は未試行です。CON-12d は未完了です。
