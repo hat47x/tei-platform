@@ -23,7 +23,10 @@ type CommandRunValue struct {
 	Plan    applicationview.CommandPlan `json:"plan"`
 	Mode    string                      `json:"mode"`
 	Outcome *semantic.Outcome           `json:"outcome,omitempty"`
-	Effect  *semantic.DataEffect        `json:"effect,omitempty"`
+	// OutcomeUndetermined states why no outcome was returned although the
+	// capability declares some.
+	OutcomeUndetermined string               `json:"outcomeUndetermined,omitempty"`
+	Effect              *semantic.DataEffect `json:"effect,omitempty"`
 	// Committed reports that the configured UnitOfWork returned from Commit.
 	// The reference host uses MemoryUnitOfWork, which does not write data (#2998).
 	Committed bool `json:"committed"`
@@ -219,6 +222,7 @@ func (h *ReadOnly) executeCommand(workspaceID, applicationID, patternID, capabil
 		Plan:                  plan,
 		Mode:                  "reference",
 		Outcome:               result.Outcome,
+		OutcomeUndetermined:   result.OutcomeUndetermined,
 		Effect:                result.Effect,
 		Committed:             true,
 		Persisted:             result.Persistence == command.PersistenceResourceObserved,

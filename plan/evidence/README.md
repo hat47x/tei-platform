@@ -42,6 +42,7 @@
 - [フック実行の配線と失敗の区別の確認](XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)（参照実装の試験記録。Runnerからの配線、NotSatisfiedと実行失敗の区別、参照規則。実PluginとCLI・Studioの配線は未実装）
 - [フック宣言の印刷面への反映の確認](XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md)（参照実装の試験記録。画面と同じフック宣言が印刷面にも出る。実印刷・用紙面の版照合は未確認）
 - [フックの位相順序と途中停止の確認](XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md)（参照実装の試験記録。位相の実行順、不成立での停止位置、`warn`の続行、未対応位相の拒否。CLI・Studioへの配線は未実装）
+- [複数の結末があるとき、どれかを選んだことにしない確認](XTEA_LOWCODE_MULTI_OUTCOME_2026-11.md)（参照実装の試験記録。2つ以上の結末を持つ能力は参照実行で結末を返さず、理由を`outcomeUndetermined`に残す。選択規則は未決定）
 - [位相ごとにフックの実装を供給できる経路の確認](XTEA_LOWCODE_HOOK_PHASE_IMPLEMENTATION_2026-11.md)（参照実装の試験記録。`Runner.ByPhase`で位相ごとに本体を選べる。規則Pluginの契約は未決定）
 - [能力入力の結び付けのData対応と、1属性の複数パラメータへの束ねの確認](XTEA_LOWCODE_HOOK_BINDING_DATA_MATCH_2026-11.md)（参照実装の試験記録。Data型パラメータへ別Dataの属性を結ぶ宣言を拒否し、1属性を複数パラメータへ束ねる形は既に動くことを固定）
 - [能力入力の結び付けの型検査の確認](XTEA_LOWCODE_HOOK_BINDING_TYPE_CHECK_2026-11.md)（参照実装の試験記録。原始型同士の食い違いを宣言段階で拒否し、Dataを名指す結び付けは比較しない）
@@ -95,6 +96,7 @@
 - [為替の粒度の宣言語彙の確認](XTEA_LOWCODE_CURRENCY_GRANULARITY_2026-11.md)（参照実装の試験記録。例への追加は未実装）
 - [RQ-C3の確認方法の観測](XTEA_LOWCODE_RQC3_VERIFICATION_2026-11.md)（参照実装の試験記録。要求の確認方法を試験名へ写して観測）
 - [RQ-C2の確認方法の観測](XTEA_LOWCODE_RQC2_VERIFICATION_2026-11.md)（参照実装の試験記録。拡張点の宣言・実行時の拒否・失敗の観測）
+- [RQ-C1の確認方法の観測](XTEA_LOWCODE_RQC1_VERIFICATION_2026-11.md)（参照実装の試験記録。2パッケージの併存・取り外し・Core種別の不増加）
 - [採番の永続CounterStoreの確認](XTEA_LOWCODE_NUMBERING_SQLITE_STORE_2026-11.md)（参照実装の試験記録。PostgreSQLは未実装）
 - [採番の2プロセス同時実行の確認](XTEA_LOWCODE_NUMBERING_PROCESS_RACE_2026-11.md)（参照実装の試験記録。PostgreSQLと多プロセス構成は未実装）
 - [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
@@ -258,6 +260,7 @@
 - [catalogを書く場所は製品の外に置く](TEI_GO_SELF_BUILD_CATALOG_LOCATION_DECISION_2026-11-09.md)（§4.29が示した「catalogの5欄に宣言面が無い」を受け、「どこに書くか」を**既存readerへの影響**で測って決めた。Workspaceに欄を足す案（K-1）はmanifest parserが未知entryで**fail closed**し`formatVersion`も1と2だけを受理するため古いbinaryがWorkspaceを読めなくなる。plugin構文拡張（K-2）も未知名でエラーになるため同じ。**外部成果物としてcatalogを渡しdigestで名指しする**案だけが既存ファイルに何も足さず、§4.22のK-3が既にこの形である。よって**製品の契約を一つも変えずに**catalogを用意できる。能力宣言の形式とツール実装は未決として残した。SB-C0 §4.32 / #2831）
 - [能力宣言からcatalogを作り、Claimまで一本で通した](TEI_GO_SELF_BUILD_CATALOG_AUTHORING_2026-11-09.md)（§4.32が「catalogは製品の外のデータ」と決めた残りの「誰が書くか」を埋めた。`tools/reference-build-catalog-authoring`が能力宣言からcatalogを組み立て、**artifactのdigestは実ファイルから計算**する。宣言に`artifactDigest`を書くこと、`-root`の外を指すこと、既存出力の上書き、`ParseBuildCatalog`で読めないcatalogを拒否する。実測では宣言→catalog→`tei self-build`（`-rebuild-check`なし）で`l2b.claimed=true`まで通り、ツールの計算したdigestが`sha256sum`と一致した。**製品の契約を一つも変えていない**。能力宣言の版付けは未決。SB-C0 §4.33 / #2831）
 - [宣言からClaimまでの鎖を回帰試験に載せた](TEI_GO_SELF_BUILD_CHAIN_GATE_2026-11-10.md)（`cmd/tei`のエンドツーエンド試験が、参照catalogのコピーをやめて**ツールでcatalogを作る**ようにした。能力宣言→authoring→catalog→`self-build`→`l2b.claimed`の鎖が毎回通る。**`artifactDigest`が実際に走るbuilderのバイトのdigestと一致することを試験で確かめる**のが要点で、builderの解決はdigestで照合しないためcatalogが別のバイトを名指ししていても下流では気づけない。試験はbuilderを`-root`の中へ置いてから宣言する（ツールが`-root`外を拒否するため）。SB-C0 §4.33 / #2831）
+- [鎖はWindowsでも通り、catalogは両ホストで同じバイトになった](TEI_GO_SELF_BUILD_CHAIN_WINDOWS_2026-11-10.md)（§4.33の鎖（能力宣言→catalog→計画→成果物→`l2b.claimed`）を**WindowsのGoで直接**実行し、`TestSelfBuildEstablishesL2BEndToEnd`が25.13秒でPASS、負例もPASSした。加えて、同じ宣言と**同じバイトのbuilder**から作ったcatalogが`linux/amd64`と`windows/amd64`で**バイト一致**（`catalogDigest=sha256:f7e1c879…`・667バイト・`artifactDigest=sha256:cabf793a…`）。`artifact`が相対パスで、ツールが絶対パスをcatalogへ書かないため。観測は二ホストで`darwin`・`arm64`は未観測。SB-C0 §4.33 / #2831）
 - [catalogを名指しすれば`-rebuild-check`を書かなくてもClaimが立つ](TEI_GO_SELF_BUILD_INPROCESS_DEFAULT_EVIDENCE_2026-11-09.md)（§4.25が保留した既定経路の強化を、**一つの場合に限って**決めた。`-build-catalog`を渡した試行は`-rebuild-check`を明示しなくても二回目のbuildを行う（`-rebuild-check=false`で断れる）。catalogを渡すことが既に「強い経路を選ぶ」表明であり、費用と便益が同じ側にあるため。child経路と何も渡さない試行は変えない（Claimが立たない経路に費用を足さない）。実測では`-rebuild-check`を書かずに`l2b.claimed=true`・`unmet`空、`=false`では`unperformed`で理由が「the caller turned off the second build」。**既定の導出経路はchildのまま**で、`qualified`も`false`。SB-C0 §4.30 / #2831）
 - [`tei self-build -h`が実際の文法を示すようになった](TEI_GO_SELF_BUILD_HELP_DISCOVERY_2026-11-10.md)（§4で足したflagが`-h`に出ておらず、catalog経路は設計文書を読まないと見つからなかった。原因は`helpText`が`self-build`のflagを**手書き**していて、後から足した分に追随していなかったこと。手書きをやめ、§4形式のFlagSetから`self-build`用の一覧を作って共通の描画関数で出すようにしたので、flagを足せば自動で追随する。出力は11個から**20個**になり、`-rebuild-check`の§4.30の既定も見える。利用者向けの手引きも`reference/plugin-self-build/README.md`へ追加。SB-C0 §4.6 / #2831）
 - [traceの継続トークンが2つの同名欄に分かれている](TEI_DOGFOODING_ROUND11_TRACE_CONTINUATION_2026-11-09/README.md)（#3625・#3420 T06。同名の`snapshotFingerprint`が2つあり、継続に使えるのは外側だけ。`nextOffset`の隣の値を渡すと`STALE_SNAPSHOT`になることを修正前に実測した）
@@ -284,6 +287,7 @@
 - [traceのoffset切詰めの観測](CLI_TRACE_OFFSET_CLAMP_2026-11-10.md)（`-offset`が最終行を超えると黙って行数へ切り詰められ、正当な空ページと区別できなかったため、切り詰め時だけ`requestedOffset`に要求値を残す。切詰め自体は不変。段の削減は未実施）
 - [inspectの権限限界の表明](CLI_INSPECT_AUTHORITY_LIMITS_2026-11-10.md)（`model catalog`と`trace`は`authorityLimits`を持つのに、Sourceのパスと件数を返す`inspect`だけが無表明だったため固定4項を追加。開示の可否は判定せず、既存Authorization Capabilityへ委ねる。実Host・認可・外部送出はNOT RUN）
 - [traceの未解決2欄の意味](CLI_TRACE_UNRESOLVED_MEANING_2026-11-10.md)（`trace.unresolved`が常に0、`projectionUnresolved`は全subjectで同一の17件＝グラフ全体、と実測し、`unresolved:0`を「未解決なし」と誤読できないよう契約へ明記。issue6値のうち到達不能な3値も明記。欄の改名・統合は未実施）
+- [MCPのsubjectKind列挙の欠落](CLI_MCP_SUBJECTKIND_ENUM_2026-11-10.md)（`inputSchema.subjectKind`だけが閉じた集合を宣言せず、CLIの12値/10値と食い違っていたため、操作の集合を直接参照するenumを追加。広告した22値すべての受理と、enum外の拒否を実バイナリで確認。実Host・認可・外部送出はNOT RUN）
 - [viewの-inputが-command無しで黙って捨てられていた](TEI_DOGFOODING_ROUND20_VIEW_INPUT_2026-11-09/README.md)（#3778・#3420。`-input`は`-command`と組だが、無い場合に値が捨てられて成功していた。両方向の変異を検出する試験を追加。起票時の誤診と既存試験による発覚も記録）
 - [view -executeの失敗符号が潰れていた](TEI_DOGFOODING_ROUND21_VIEW_EXECUTE_2026-11-09/README.md)（#3797・#3419。入力不正と認可拒否がどちらも`COMMAND_FAILED`に潰れ、理由がmessageの先頭にしかなかった。既知7符号を`error.code`に出す。`-operation-log`の上書き挙動は未決）
 - [手書きの符号許可リストが21中15を潰していた](TEI_DOGFOODING_ROUND22_CODE_COVERAGE_2026-11-09/README.md)（#3807・#3797・#3420。CLIは7符号、Studioは1符号だけを特別扱いし、coreの21符号のうち15が`COMMAND_FAILED`に潰れていた。列挙を廃止し`command.ReportedFailure`へ。AST走査で再発防止）

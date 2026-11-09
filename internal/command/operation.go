@@ -15,6 +15,10 @@ type OperationRecord struct {
 	Declared *semantic.DataEffect `json:"declared,omitempty"`
 	Reported *semantic.DataEffect `json:"reported,omitempty"`
 	Outcome  *semantic.Outcome    `json:"outcome,omitempty"`
+	// OutcomeUndetermined states why no outcome was returned although the
+	// capability declares some. No declared rule selects among several
+	// outcomes, so an executor must not present one as the decision.
+	OutcomeUndetermined string `json:"outcomeUndetermined,omitempty"`
 	// Applied lists the record-level operations the executor applied, so a
 	// reader can compare the declaration with what actually happened. It is
 	// empty for executors that cannot enumerate their operations.
