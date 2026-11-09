@@ -53,17 +53,22 @@ type TraceResult struct {
 	// emitted with the same value for one v0 cycle so existing readers keep
 	// working; new readers use graphFingerprint. It must never be passed as the
 	// continuation fingerprint.
-	SnapshotFingerprint string     `json:"snapshotFingerprint,omitempty"`
-	RuleFingerprint     string     `json:"ruleFingerprint"`
-	Subject             Key        `json:"subject"`
-	Direction           string     `json:"direction"`
-	Mode                string     `json:"mode"`
-	Authority           string     `json:"authority"`
-	Total               int        `json:"total"`
-	Unresolved          int        `json:"unresolved"`
-	Offset              int        `json:"offset,omitempty"`
-	Rows                []TraceRow `json:"rows,omitempty"`
-	NextOffset          *int       `json:"nextOffset,omitempty"`
+	SnapshotFingerprint string `json:"snapshotFingerprint,omitempty"`
+	RuleFingerprint     string `json:"ruleFingerprint"`
+	Subject             Key    `json:"subject"`
+	Direction           string `json:"direction"`
+	Mode                string `json:"mode"`
+	Authority           string `json:"authority"`
+	Total               int    `json:"total"`
+	Unresolved          int    `json:"unresolved"`
+	Offset              int    `json:"offset,omitempty"`
+	// Rows is present in full mode even when there are no rows, so a reader
+	// can tell "this subject declares no references" from "this response has
+	// no rows field". In summary mode the field stays absent: summary returns
+	// counts only. MarshalJSON writes it because omitempty would drop an empty
+	// slice too (#3693).
+	Rows       []TraceRow `json:"rows,omitempty"`
+	NextOffset *int       `json:"nextOffset,omitempty"`
 	// Continuation, when present, names the fingerprint to pass as the
 	// continuation token for NextOffset. The Workspace-level caller fills it
 	// because only it can bind the World and the Source Index; modelref alone
@@ -79,6 +84,42 @@ type TraceResult struct {
 type TraceContinuation struct {
 	Fingerprint string `json:"fingerprint"`
 	Field       string `json:"field"`
+}
+
+// MarshalJSON always writes rows in full mode. encoding/json drops a slice
+// behind omitempty when it is empty, which made "zero references" and "no
+// rows field" indistinguishable (#3693). Summary keeps the field absent.
+func (r TraceResult) MarshalJSON() ([]byte, error) {
+	type alias TraceResult
+	if r.Mode != "full" {
+		return json.Marshal(alias(r))
+	}
+	rows := r.Rows
+	if rows == nil {
+		rows = []TraceRow{}
+	}
+	// Spell the fields out in declaration order so forcing rows does not
+	// reorder the document and change otherwise identical bytes.
+	return json.Marshal(struct {
+		SchemaVersion       string             `json:"schemaVersion"`
+		GraphFingerprint    string             `json:"graphFingerprint"`
+		SnapshotFingerprint string             `json:"snapshotFingerprint,omitempty"`
+		RuleFingerprint     string             `json:"ruleFingerprint"`
+		Subject             Key                `json:"subject"`
+		Direction           string             `json:"direction"`
+		Mode                string             `json:"mode"`
+		Authority           string             `json:"authority"`
+		Total               int                `json:"total"`
+		Unresolved          int                `json:"unresolved"`
+		Offset              int                `json:"offset,omitempty"`
+		Rows                []TraceRow         `json:"rows"`
+		NextOffset          *int               `json:"nextOffset,omitempty"`
+		Continuation        *TraceContinuation `json:"continuation,omitempty"`
+	}{
+		r.SchemaVersion, r.GraphFingerprint, r.SnapshotFingerprint, r.RuleFingerprint,
+		r.Subject, r.Direction, r.Mode, r.Authority, r.Total, r.Unresolved, r.Offset,
+		rows, r.NextOffset, r.Continuation,
+	})
 }
 
 // TraceDirect selects and validates one-hop edges from the existing typed
@@ -234,6 +275,9 @@ func TraceDirect(graph Graph, rules []Rule, subject Key, options TraceOptions) (
 	}
 	result.Offset = start
 	result.Rows = rows[start:end]
+	if result.Rows == nil {
+		result.Rows = []TraceRow{}
+	}
 	if end < len(rows) {
 		next := end
 		result.NextOffset = &next
