@@ -1,0 +1,5 @@
+M1 stale heading restored in the plan
+   -> FAIL: 1 back-to-back section heading
+M2 ## 7 duplicated in the round-5 record
+   -> FAIL: §7 twice: ## 7. 位置付け | ## 7. 修正後の確認
+restored -> ok (repository-plan-check)
