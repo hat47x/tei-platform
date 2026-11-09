@@ -228,3 +228,43 @@ python3 tools/rea-t0-saved-report/audit.py /absolute/path/to/saved-rea-report \
 この実績はT1-AのTEI External Observation AdmissionやT1-B正式`*.tei.md`、実Source→Graph/CRUD/SHO Writer、Owner Meaning、実DB、旧Runtime Effect、実Provider selected→invoked全経路を**合格させない**。制約：npmのtransitive依存は未lock、実Nodeモジュールの完全なbinary digest／Host grant、外部Provider raw/Manifest同時性、全量coverageは未証明。現在のPR HEADはこの記録追記によりtested SHAより後の版であり、**前回のCI結果を新HEADの全体Healthへ転用しない**。
 
 **次の最短着地点**：この実Evidenceの`data.subject`/`data.provider`/`normalized_result`/`limitations`を**Source-backed typed external observation候補**として、現在のTEI共通read-only Application Operationに載せられるかfit-gapを一Functionに限定して検査する。T0の正常/部分/異常を独立Expectedで維持し、Schemaに新しい第二Source RegistryやREA独自Semantic DSLを導入しない。製品側`order_entry.recent_orders`の実DB Readとは別の独立実験であり、合算して同一E2Eとしない。
+
+
+---
+
+<!-- rea-t1a-external-candidate-projection-20261109 -->
+## 14. T1-A前段：実REA GraphをSource-backed外部観測候補へ投影（2026-11-09）
+
+**実験実装**：本Draftの tools/rea-t0-saved-report/project_observations.py と test_project_observations.py は、保存済みREA JSON、T0 audit、同一JobのSource manifest・選択対象を読み、外部GraphのNode Observation／Edgeを候補として投影する read-only Test Consumer。**TEIの正式Source Parser／Canonical World／Application Operationへの受入は一切行わず、第二のTEI Semantic SSOTを作らない**。これはT1-Aを製品実装する前の識別・Loss／Scope受入圧力を検査するもの。
+
+### 既存APIとのfit-gap
+
+- **入力の同一性**：REA外部Evidence ID、raw analysis.json SHA256、REAが主張するroot artifact digest、同じRunのSource manifest、申告Provider（id/version）、選択pathを別属性とする。raw SHAとroot digest、申告Provider versionと実CLI package・binaryは互換でない。
+- **写像の単位**：外部node observation IDとedge IDを別に保持。GraphのNode identity・relationの向き・多重性、source-range（行/列）またはartifact-path、推論状態 observed/inferred/unavailable とauthority、evidence coverageを保持。外部IDからTEI Canonical ID・意味Roleを発行しない。
+- **欠落を保存**：Graph coverage、Semantic Graph coverage、Semantic unknowns、REA limitations件数と元raw出典を区別。unknownの配列が空でもSemantic coverageがunknownなら不完備を保持。parse_failures=0、exit0、Graph局所completeから全アプリの実動作・業務意味を推論しない。
+- **拒否の境界**：REA非0終了・JSON矛盾はCandidate 0件。root SHA衝突、異Provider・匿名Evidence ID、Source digest矛盾、Node／Relation不整合、Observation/Unknown ID重複、過剰件数、Manifestが選択root外はfail-closed。相対Source pathが解決できなければ独立Bindingを作らない。
+- **Source資格の上限**：saved-manifest-match-only は同一Run内の保存済みManifestとREA申告Digestの一致にすぎず、元Source bytesの別Process直接読取、Provider Source cohort原子性、現在のHost権限を証明しない。SourceClosureはnot-qualified、TEI CanonicalSubjectはnull、Accepted Meaningはfalseで固定。
+
+### 実T0 ZIPに対する局所Read-only投影の結果
+
+2026-11-09に前節13の4つの実REA Actions artifactを別々に展開してTest Consumerへ入力した。これは製品CLI/Studioではなく、実Evidenceに対する試験用Projectionの局所観測。
+
+| 事例 | Node Observation | Relation | Semantic unknown | Graph coverage | Semantic coverage | 結果 |
+|---|---:|---:|---:|---|---|---|
+| valid | 7 | 7 | 1（dynamic-call） | complete | unknown | external-candidates-only（計14候補） |
+| partial | 6 | 6 | 0 | partial | unknown | external-candidates-only（計12候補、うち1件unavailable） |
+| missing | 0 | 0 | 非適用 | 非適用 | 非適用 | refused |
+| unsupported | 0 | 0 | 非適用 | 非適用 | 非適用 | refused |
+
+validの14候補はobserved 9／inferred 5。partialの12候補はobserved 7／inferred 4／unavailable 1。両Caseでartifact-rootに相当する1候補はファイル単位の独立Manifest Bindingがない。部分解析の unknowns=0 は「未取得なし」ではなく、semantic coverage=unknown を維持する。
+
+**合成の独立Expected**：上記試験用コードはProvider誤認、Source digest衝突、root不一致、Source path、関係端点欠落、外部Observation/Unknown ID重複、unavailable、平行Relation保持などの16ケースをPython作業環境で16/16 PASS。GitHub Blob SHAもローカル実行byteと一致（projection 23666bd4c5b2c6508fc5150debf9de4fd1b485f9／test c3d7260052f9a294df08f4588f7d8027bad60337）。前段のT0 audit 18件と合計34の合成試験。新GitHub Actionsは変更した正確なHEADで別判定し、以前の別HEAD成功を移さない。
+
+### 他チャットの成熟設計に接続するが、所有権を増やさない
+
+- mainへ統合済みInspector S2-reference [PR #3540](https://github.com/hat47x/tei-platform/pull/3540)は通常CLIとStudioから静的参照Providerを呼ぶ限定実績。外部REA実ProviderをHostが実選択／実InvocationしたS2-product、Artifact/BOM/Source current・Grantは未資格。既存共通Application API（ADR-0048）、Plugin Owner #1251/#951を再利用し、もう一つのOperation DispatcherやRunnerを作らない。
+- 既存InspectSubject（internal/operations/inspect.go）は正式Canonical WorldのSubjectからSource Indexを投影する。External JSONを直接送ってそれを正式なinspect成功と呼ばない。T1-A製品側は既存のObservation/Source受入経路とのfit-gapをまず示し、欠ける型だけ既存Ownerへ返す。
+- TEI三視点Model Map（#1124／#3492）、Function実DB Read（#2586）、SHO Editor Source span・Save As（SHO #28/#29）、独立Expected（#2514）は別適格。旧Runtime観測とOwner Accepted Desiredも混同しない。
+- 最短の次段は**一つの実Evidence Observationと一つの関係Edge**について、REA外部ID／Source path+digest+span／Coverageとunknownを失わず、同一AttemptのTEI read-only Consumerが実際に受け取れるかを示すこと。CLI・Studio・MCPをすべて先に開通させる必要はない。
+
+**現時点の限界**：保存済み実REA出力の試験用候補投影まで。T1-AのTEI正式取込み、T1-Bの正式Markdown DSL入場、三視点CRUD、SHO Writer/Review、実DB、旧新実行同値、Owner受理はNOT RUN。
