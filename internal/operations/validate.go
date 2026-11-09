@@ -19,6 +19,17 @@ type WorkspaceValidation struct {
 	Diagnostics            []workspace.ProjectedDiagnostic
 	WorldFingerprint       string
 	SourceIndexFingerprint string
+	// Declarations counts the Workspace-authored declarations. An empty
+	// Workspace has Total 0 even though the standard semantic prelude is
+	// loaded into World.Semantics (#2822).
+	Declarations DeclarationCounts
+	// SourceRootFindings are manifest source-root warnings or errors. They are
+	// separate from semantic Diagnostics because an unknown or missing root has
+	// no Canonical Subject (#2823).
+	SourceRootFindings []workspace.WorkspaceSourceRootFinding
+	// Workspace names the Workspace this validation read (#3181). It is absent
+	// for a Direct syntax finding, which has no loaded Workspace identity.
+	Workspace *workspace.WorkspaceIdentity
 }
 
 func (r WorkspaceValidation) HasErrors() bool {
@@ -81,9 +92,13 @@ func ValidateWorkspace(root string) (WorkspaceValidation, error) {
 	if err != nil {
 		return WorkspaceValidation{}, err
 	}
+	identity := loaded.Identity()
 	return WorkspaceValidation{
-		Diagnostics:            workspace.ProjectDiagnostics(validation.Validate(loaded.World), index),
+		Diagnostics:            workspace.ProjectDiagnosticsWithLoadedDuplicates(validation.Validate(loaded.World), index, loaded),
 		WorldFingerprint:       worldFP,
 		SourceIndexFingerprint: sourceFP,
+		Declarations:           CountDeclarations(loaded.World),
+		SourceRootFindings:     loaded.SourceRootFindings,
+		Workspace:              &identity,
 	}, nil
 }

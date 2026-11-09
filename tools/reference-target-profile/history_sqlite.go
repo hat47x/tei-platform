@@ -1,6 +1,8 @@
 package targetprofile
 
 import (
+	"database/sql"
+	"fmt"
 	"path/filepath"
 	"sort"
 	"time"
@@ -119,6 +121,10 @@ func pruneSQLiteHistory(root string, keepLast int, dryRun bool) (HistoryPruneRec
 			return receipt, nil
 		}
 	}
+	if err := verifySQLitePrune(tx, receipt.Kept, current, previous); err != nil {
+		receipt.Reason = "sqlite prune verification failed: " + err.Error()
+		return receipt, nil
+	}
 	if err := tx.Commit(); err != nil {
 		receipt.Reason = err.Error()
 		return receipt, nil
@@ -132,4 +138,49 @@ func pruneSQLiteHistory(root string, keepLast int, dryRun bool) (HistoryPruneRec
 	receipt.AuditPath = auditPath
 	receipt.Passed = true
 	return receipt, nil
+}
+
+// verifySQLitePrune reads the actual transaction result, including trigger effects.
+func verifySQLitePrune(tx *sql.Tx, kept []HistoryEntry, current, previous string) error {
+	expected := make(map[string]HistoryEntry, len(kept))
+	for _, entry := range kept {
+		expected[entry.Digest] = entry
+	}
+	rows, err := tx.Query(`SELECT digest, content, created_at FROM artifacts`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var digest, createdAt string
+		var content []byte
+		if err := rows.Scan(&digest, &content, &createdAt); err != nil {
+			return err
+		}
+		entry, ok := expected[digest]
+		if !ok {
+			return fmt.Errorf("artifact set does not match the prune plan")
+		}
+		modified, err := time.Parse(time.RFC3339Nano, createdAt)
+		if err != nil || !modified.Equal(entry.Modified) || digestBytes(content) != entry.Digest {
+			return fmt.Errorf("retained artifact bytes or timestamp changed")
+		}
+		delete(expected, digest)
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if len(expected) != 0 {
+		return fmt.Errorf("retained artifact is missing")
+	}
+	for _, state := range []struct{ key, want string }{{"current", current}, {"previous", previous}} {
+		got, err := stateValue(tx, state.key)
+		if err != nil {
+			return err
+		}
+		if got != state.want {
+			return fmt.Errorf("sqlite %s changed during prune", state.key)
+		}
+	}
+	return nil
 }

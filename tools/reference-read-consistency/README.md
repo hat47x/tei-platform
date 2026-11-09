@@ -32,6 +32,9 @@
 | Providerが要求保証を持たない | 不成立 | `UNSUPPORTED_CONSISTENCY` |
 | snapshot token失効／入力未取得 | NULLや0としない | `INPUT_UNAVAILABLE` |
 | 入力不在／NULL | 個別診断 | `INPUT_MISSING`／`NULL_INPUT` |
+| 参照先に一致する行が無い | 入力不在と区別する | `ABSENT_RELATION` |
+| Providerが途中でsnapshotを失効 | NULLや0にしない | `INPUT_UNAVAILABLE` |
+| 同じ入力集合で要求レベルだけが違う | 強い要求は確定値を返さず、受容されたbest-effortだけが非原子Resultを返す | `MIXED_SNAPSHOT`／`NON_ATOMIC_READ` |
 | 再試行で認可版が変化 | 再認可要求 | `RETRY_REQUIRES_REAUTHORIZATION` |
 | 権限拒否 | #1693 へ委譲 | `AUTHORIZATION_DELEGATED` |
 

@@ -1,0 +1,25 @@
+namespace sales
+
+type OrderId from std.identifier
+
+data Order {
+    attribute orderId type sales.order_id
+    attribute status type std.code
+}
+
+data Note {
+    attribute body type std.text
+}
+
+capability sales.order.cancel {
+    input order sales.order
+    outcome cancelled sales.order
+    outcome conflict sales.order
+    effect update sales.order
+}
+capability sales.order.register {
+    input order sales.order
+    outcome created sales.order
+    outcome duplicate sales.order
+    effect create sales.order
+}

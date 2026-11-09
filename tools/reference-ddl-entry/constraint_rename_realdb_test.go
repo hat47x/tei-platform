@@ -278,3 +278,56 @@ func TestRealPostgresStaleConstraintRenamePlanIsRefused(t *testing.T) {
 		t.Fatal("the stale statement must fail on the database")
 	}
 }
+
+// PostgreSQL's identifier limit is 63 bytes. A declared name at the limit is
+// renamed and converges; a longer one is refused before execution rather than
+// silently truncated (which would make the observed name differ again).
+func TestRealPostgresDeclaredConstraintNameAt63BytesIsRenamedAndConverges(t *testing.T) {
+	name := strings.Repeat("u", 63)
+	f := newRenameFixture(t, name, "child_parent_declared_fk", "legacy_label_key", "legacy_parent_fkey")
+	diff, observation := f.observeAndDiff(t, f.provider, true)
+	statements, err := postgres.RenderMigrationSQLWithObservation(diff, observation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(statements, "\n")
+	if !strings.Contains(joined, `RENAME CONSTRAINT "legacy_label_key" TO "`+name+`"`) {
+		t.Fatalf("statements=%v", statements)
+	}
+	for _, statement := range statements {
+		if _, err := f.db.Exec(statement); err != nil {
+			t.Fatalf("execute %q: %v", statement, err)
+		}
+	}
+	after, _ := f.observeAndDiff(t, f.provider, false)
+	if len(after.Changes) != 0 || len(after.Unresolved) != 0 {
+		raw, _ := json.MarshalIndent(after, "", "  ")
+		t.Fatalf("observed schema did not converge:\n%s", raw)
+	}
+	if !f.relationExists(t, name) {
+		t.Fatalf("the unique index was not renamed to the 63-byte name")
+	}
+}
+
+func TestRenderDeclaredConstraintNameOver63BytesIsRefusedBeforeExecution(t *testing.T) {
+	world, databaseID := renameWorld(strings.Repeat("u", 64), "child_parent_declared_fk")
+	res, err := Render(world, databaseID, environment.ProviderPostgres)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Unresolved) == 0 {
+		t.Fatalf("a 64-byte declared name was rendered: %+v", res)
+	}
+	found := false
+	for _, unresolved := range res.Unresolved {
+		if strings.Contains(unresolved.Reason, "64 bytes") && strings.Contains(unresolved.Reason, "63 bytes") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("the reason does not report the byte limit: %+v", res.Unresolved)
+	}
+	if len(res.Script) != 0 {
+		t.Fatalf("a refused name produced a script: %v", res.Script)
+	}
+}

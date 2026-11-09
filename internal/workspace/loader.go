@@ -30,6 +30,10 @@ type ManagedFile struct {
 	Path       string `json:"path"`
 	SourceRoot string `json:"sourceRoot"`
 	Extension  string `json:"extension,omitempty"`
+	// ReadByLoader reports whether a domain loader consumed the file's bytes
+	// during Load. false means the file is managed but not interpreted: it is
+	// inventoried, not parsed. It does not mean the parser accepted the content.
+	ReadByLoader bool `json:"readByLoader"`
 }
 
 type SourceContribution struct {
@@ -45,12 +49,32 @@ type Result struct {
 	PluginImplementationSources map[string]SourceLocation
 	Sources                     map[string]SourceLocation
 	ManagedFiles                []ManagedFile
-	SourceContributions         []SourceContribution
+	// SourceRootFindings are manifest source-root problems found before any
+	// domain loader read the root. They are source-direct findings: an unknown
+	// or missing root has no Canonical Subject.
+	SourceRootFindings  []WorkspaceSourceRootFinding
+	SourceContributions []SourceContribution
 
 	// Private, transient read provenance. Not part of Canonical World or a
 	// serialized Source Index; only Load may populate this snapshot.
-	sourceSnapshotRoot string
-	sourceSnapshot     map[string][]byte
+	sourceSnapshotRoot  string
+	sourceSnapshot      map[string][]byte
+	semanticSourceFiles []string
+	// Load-time bytes of managed files that no domain loader parsed (for
+	// example a forward-compatible source root asset). Kept separate from
+	// sourceSnapshot so the parser-bound meaning of that map, and of
+	// IndexedLoadedSnapshot, does not change. BuildSourceIndex may use these
+	// bytes instead of re-reading the filesystem after Load.
+	sourceManagedExtra map[string][]byte
+	// Load-time identity of the workspace manifest and whether it declared
+	// imports. The manifest is NOT a Source Index Artifact (adding it would
+	// change every accepted revision); it is recorded here instead.
+	sourceManifest        ManifestIdentity
+	sourceManifestName    string
+	sourceImportsDeclared bool
+	// Format version declared by the Workspace manifest. Semantic files may
+	// declare their own header; when they do, it must agree with this value.
+	manifestFormatVersion int
 
 	// Only populated during Load. One pinned directory handle protects all
 	// domain Source reads from a Workspace root pathname being replaced.
@@ -58,11 +82,74 @@ type Result struct {
 	sourceReadRoot *os.Root
 }
 
+// ErrImportsNotBound is returned by BuildSourceIndexFromLoad for a Workspace
+// that declares imports. The imported provider's semantic Namespace enters
+// World.Semantics, but the provider's bytes are in no Load-time map and a
+// pinned semanticDigest is optional, so the Source Index could not identify
+// them. The strict path fails closed instead of reporting a World as bound.
+var ErrImportsNotBound = errors.New("WORKSPACE_IMPORTS_NOT_BOUND: imported Workspace content is not part of the Source Index")
+
+// ManifestIdentity is the path and sha256 of the manifest bytes Load read.
+// The manifest decides source roots and imports, yet it is NOT part of the
+// Source Index, so an accepted record does not bind it. Compare this value
+// yourself if the manifest matters.
+type ManifestIdentity struct {
+	Path   string `json:"path"`
+	SHA256 string `json:"sha256"`
+}
+
+// ManifestIdentity reports the manifest bytes read by Load (zero for a Result
+// not produced by Load).
+func (r Result) ManifestIdentity() ManifestIdentity { return r.sourceManifest }
+
+// WorkspaceIdentity names which Workspace a read result came from. Several
+// Workspaces may declare the same Canonical IDs with different meanings, and
+// worldFingerprint describes content, not the Workspace, so a caller that
+// mixes results needs this. Name is the author-written `workspace:` value and
+// may be empty (a manifest without it still loads). Manifest is the bytes
+// identity and FormatVersion the declared version. None of these is an
+// acceptance record, a path, or a lock.
+type WorkspaceIdentity struct {
+	Name          string           `json:"name,omitempty"`
+	FormatVersion int              `json:"formatVersion,omitempty"`
+	Manifest      ManifestIdentity `json:"manifest"`
+}
+
+// Identity reports the Workspace identity Load recorded (#3181).
+func (r Result) Identity() WorkspaceIdentity {
+	return WorkspaceIdentity{
+		Name:          r.sourceManifestName,
+		FormatVersion: r.manifestFormatVersion,
+		Manifest:      r.sourceManifest,
+	}
+}
+
 func Load(root string) (Result, error) {
 	return loadWithStack(root, map[string]bool{})
 }
 
 func loadWithStack(root string, visiting map[string]bool) (Result, error) {
+	return loadWithStackHook(root, visiting, nil)
+}
+
+// loadWithStackHook is the private test seam of Load. afterParse, when
+// non-nil, runs after every domain loader and import has finished and before
+// the unparsed managed files are captured. Production callers pass nil. It is
+// a parameter, not a package-level variable, so tests cannot leak it.
+func loadWithStackHook(root string, visiting map[string]bool, afterParse func()) (Result, error) {
+	return loadWithStackHooks(root, visiting, loadHooks{afterParse: afterParse})
+}
+
+// loadHooks are private test seams of Load, passed as a parameter so tests
+// cannot leak them. afterPin runs once the Workspace root is pinned and the
+// manifest and managed files are read, before the first domain listing.
+type loadHooks struct {
+	afterPin   func()
+	afterParse func()
+}
+
+func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) (Result, error) {
+	afterParse := hooks.afterParse
 	// Canonicalize once, then pin the directory before reading the manifest.
 	// Otherwise a rename between manifest and domain-source reads could
 	// silently redirect the second read to an unrelated Workspace.
@@ -85,15 +172,37 @@ func loadWithStack(root string, visiting map[string]bool) (Result, error) {
 	manifestTEI := filepath.Join(root, "tei.workspace.tei")
 	var roots []string
 	var imports []WorkspaceImport
+	var manifestID ManifestIdentity
+	manifestName := ""
+	manifestFormatVersion := 0
 	if src, err := readPinnedWorkspaceFile(sourceRoot, "tei.workspace.yaml"); err == nil {
 		manifest, parseErr := parseWorkspaceManifestYAML(string(src))
 		if parseErr != nil {
 			return Result{}, fmt.Errorf("%s: %w", manifestYAML, parseErr)
 		}
+		// The format version is recorded in the manifest. Supported versions are
+		// 1 and 2 (Owner decision 2026-11-02); an unknown future version fails
+		// closed, and a missing version is rejected instead of defaulted. Frozen
+		// artifacts that cannot be rewritten must opt in explicitly; the
+		// historical runner parity test does so for its pre-formatVersion
+		// comparison tree (#1920).
+		switch {
+		case manifest.FormatVersion == 1 || manifest.FormatVersion == 2:
+		case manifest.FormatVersion == 0 && os.Getenv("TEI_WORKSPACE_ALLOW_UNSPECIFIED_FORMAT") == "1":
+			// Explicit frozen-artifact opt-in.
+		case manifest.FormatVersion == 0:
+			return Result{}, fmt.Errorf("%s: missing formatVersion (supported: 1, 2)", manifestYAML)
+		default:
+			return Result{}, fmt.Errorf("%s: unsupported workspace formatVersion %d (supported: 1, 2)", manifestYAML, manifest.FormatVersion)
+		}
+		manifestFormatVersion = manifest.FormatVersion
+		manifestName = manifest.Name
 		roots, imports = manifest.Sources, manifest.Imports
+		manifestID = ManifestIdentity{Path: "tei.workspace.yaml", SHA256: sourceindex.Fingerprint(src)}
 	} else if src, legacyErr := readPinnedWorkspaceFile(sourceRoot, "tei.workspace.tei"); legacyErr == nil {
+		manifestID = ManifestIdentity{Path: "tei.workspace.tei", SHA256: sourceindex.Fingerprint(src)}
 		var parseErr error
-		roots, parseErr = syntax.NewParser(string(src)).ParseWorkspace()
+		manifestName, roots, parseErr = syntax.NewParser(string(src)).ParseWorkspace()
 		if parseErr != nil {
 			return Result{}, fmt.Errorf("%s: %w", manifestTEI, parseErr)
 		}
@@ -104,21 +213,41 @@ func loadWithStack(root string, visiting map[string]bool) (Result, error) {
 		return Result{}, err
 	}
 	// Inventory and verify the physical boundary before any domain loader can
-	// read a Source file or parse a symlink to an outside target.
+	// read a Source file or parse a symlink to an outside target. Containment
+	// failures keep their existing fail-closed error and are never reclassified
+	// as a finding.
 	managedFiles, err := scanManagedFiles(sourceRoot, roots)
 	if err != nil {
 		return Result{}, err
 	}
+	// Classify declared roots after the physical boundary is verified, so a
+	// misspelling is reported as itself rather than as a downstream cascade and
+	// an escaping symlink keeps the original containment error. Managed but
+	// not interpreted files are named separately from root findings. Neither
+	// becomes a semantic Diagnostic: there is no Subject.
+	sourceRootFindings, err := checkWorkspaceSourceRoots(sourceRoot, roots)
+	if err != nil {
+		return Result{}, err
+	}
+	sourceRootFindings = append(sourceRootFindings, CheckWorkspaceManagedFileNames(managedFiles)...)
 	r := Result{
 		Sources:                     map[string]SourceLocation{},
 		PluginImplementationSources: map[string]SourceLocation{},
 		ManagedFiles:                managedFiles,
+		SourceRootFindings:          sourceRootFindings,
 		sourceSnapshotRoot:          rootReal,
 		sourceSnapshot:              make(map[string][]byte),
 		sourceReadRoot:              sourceRoot,
+		sourceManifest:              manifestID,
+		sourceManifestName:          manifestName,
+		sourceImportsDeclared:       len(imports) > 0,
+		manifestFormatVersion:       manifestFormatVersion,
 	}
 	// TEI standard semantic types are a library prelude, not Micro Kernel kinds.
 	r.World.Semantics = append(r.World.Semantics, stdlib.SemanticNamespace())
+	if hooks.afterPin != nil {
+		hooks.afterPin()
+	}
 	for _, sourceRoot := range roots {
 		switch sourceRoot {
 		case "plugins":
@@ -174,11 +303,38 @@ func loadWithStack(root string, visiting map[string]bool) (Result, error) {
 	if err := loadWorkspaceImports(root, imports, &r, visiting); err != nil {
 		return Result{}, err
 	}
+	// Test seam (a parameter, not a global): runs after every loader parsed its
+	// files and before the managed-only bytes are captured, so a test can change
+	// a file in that window.
+	if afterParse != nil {
+		afterParse()
+	}
+	// Capture the bytes of managed files that no loader parsed (see
+	// source_snapshot.go). Imported Workspaces are loaded by their own call and
+	// are not covered.
+	if err := captureManagedExtra(&r); err != nil {
+		return Result{}, err
+	}
+	markManagedFilesReadByLoader(&r)
 	Normalize(&r.World)
 	// The loader snapshot stays available, but an OS handle must not escape
 	// the Load lifetime. Imports close their own pinned roots independently.
 	r.sourceReadRoot = nil
 	return r, nil
+}
+
+// markManagedFilesReadByLoader records which managed files a domain loader
+// consumed. The sourceSnapshot holds exactly the bytes read through
+// readSourceForLoad; sourceManagedExtra holds the rest. ManagedFile.Path and
+// snapshot keys share the normalized slash form.
+func markManagedFilesReadByLoader(result *Result) {
+	for i := range result.ManagedFiles {
+		path, err := sourceindex.NormalizeWorkspacePath(result.ManagedFiles[i].Path)
+		if err != nil {
+			continue
+		}
+		_, result.ManagedFiles[i].ReadByLoader = result.sourceSnapshot[path]
+	}
 }
 
 // parseWorkspaceYAML is retained for existing callers of the source-root-only API.
@@ -415,6 +571,19 @@ func loadSemantics(root string, r *Result) error {
 		if err != nil {
 			return sourceErr(path, err)
 		}
+		if ns.FormatVersion > 2 {
+			return sourceErr(path, fmt.Errorf("unsupported semantic formatVersion %d (supported: 1, 2)", ns.FormatVersion))
+		}
+		if ns.FormatVersion != 0 && r.manifestFormatVersion != 0 && ns.FormatVersion != r.manifestFormatVersion {
+			return sourceErr(path, fmt.Errorf("semantic formatVersion %d does not match the Workspace formatVersion %d", ns.FormatVersion, r.manifestFormatVersion))
+		}
+		// Version 2 makes the header mandatory: the inherited default is
+		// materialized, so a version 2 Workspace cannot silently read headerless
+		// files as version 1.
+		if ns.FormatVersion == 0 && r.manifestFormatVersion == 2 {
+			return sourceErr(path, fmt.Errorf("workspace formatVersion 2 requires an explicit semantic formatVersion header"))
+		}
+		r.semanticSourceFiles = append(r.semanticSourceFiles, relPath(root, path))
 		idx, ok := byNamespace[ns.ID]
 		if !ok {
 			idx = len(r.World.Semantics)
@@ -426,6 +595,10 @@ func loadSemantics(root string, r *Result) error {
 		r.World.Semantics[idx].Data = append(r.World.Semantics[idx].Data, ns.Data...)
 		r.World.Semantics[idx].Capabilities = append(r.World.Semantics[idx].Capabilities, ns.Capabilities...)
 		r.World.Semantics[idx].Validations = append(r.World.Semantics[idx].Validations, ns.Validations...)
+		r.World.Semantics[idx].Calendars = append(r.World.Semantics[idx].Calendars, ns.Calendars...)
+		r.World.Semantics[idx].Periods = append(r.World.Semantics[idx].Periods, ns.Periods...)
+		r.World.Semantics[idx].EffectRules = append(r.World.Semantics[idx].EffectRules, ns.EffectRules...)
+		r.World.Semantics[idx].RunPlans = append(r.World.Semantics[idx].RunPlans, ns.RunPlans...)
 		for _, typ := range ns.Types {
 			r.Sources["semantic-type:"+string(typ.ID)] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}
 		}
@@ -455,7 +628,7 @@ func loadSemantics(root string, r *Result) error {
 }
 
 func loadApplications(root string, r *Result) error {
-	manifests, err := globSorted(filepath.Join(root, "applications", "*", "application.tei"))
+	manifests, err := listPinnedUnitFiles(root, r, filepath.Join(root, "applications"), nil, "application.tei")
 	if err != nil {
 		return err
 	}
@@ -470,7 +643,7 @@ func loadApplications(root string, r *Result) error {
 		}
 		r.Sources["application:"+string(a.ID)] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}
 		unitDir := filepath.Dir(path)
-		patternFiles, _ := globSorted(filepath.Join(unitDir, "patterns", "*.tei"))
+		patternFiles, _ := listPinnedFiles(root, r, filepath.Join(unitDir, "patterns"), "*.tei")
 		for _, patternPath := range patternFiles {
 			patternSource, err := readSourceForLoad(root, r, patternPath)
 			if err != nil {
@@ -483,8 +656,21 @@ func loadApplications(root string, r *Result) error {
 			a.Patterns = append(a.Patterns, pattern)
 			r.Sources["application-pattern:"+string(pattern.ID)] = SourceLocation{File: relPath(root, patternPath), Line: 1, Column: 1}
 		}
+		packageFiles, _ := listPinnedFiles(root, r, filepath.Join(unitDir, "packages"), "*.tei")
+		for _, packagePath := range packageFiles {
+			packageSource, err := readSourceForLoad(root, r, packagePath)
+			if err != nil {
+				return err
+			}
+			pkg, err := syntax.NewParser(string(packageSource)).ParseApplicationPackage()
+			if err != nil {
+				return sourceErr(packagePath, err)
+			}
+			a.Packages = append(a.Packages, pkg)
+			r.Sources["application-package:"+string(pkg.ID)] = SourceLocation{File: relPath(root, packagePath), Line: 1, Column: 1}
+		}
 		r.World.Applications = append(r.World.Applications, a)
-		qfiles, _ := globSorted(filepath.Join(unitDir, "queries", "*.tei"))
+		qfiles, _ := listPinnedFiles(root, r, filepath.Join(unitDir, "queries"), "*.tei")
 		for _, qpath := range qfiles {
 			qsrc, err := readSourceForLoad(root, r, qpath)
 			if err != nil {
@@ -514,7 +700,7 @@ func loadApplications(root string, r *Result) error {
 			r.World.Queries = append(r.World.Queries, q)
 			r.Sources["query:"+string(q.ID)] = SourceLocation{File: relPath(root, qpath), Line: 1, Column: 1}
 		}
-		bfiles, _ := globSorted(filepath.Join(unitDir, "realizations", "*.tei"))
+		bfiles, _ := listPinnedFiles(root, r, filepath.Join(unitDir, "realizations"), "*.tei")
 		for _, bpath := range bfiles {
 			bsrc, err := readSourceForLoad(root, r, bpath)
 			if err != nil {
@@ -533,7 +719,7 @@ func loadApplications(root string, r *Result) error {
 }
 
 func loadDatabases(root string, r *Result) error {
-	manifests, err := globSorted(filepath.Join(root, "databases", "*", "database.tei"))
+	manifests, err := listPinnedUnitFiles(root, r, filepath.Join(root, "databases"), nil, "database.tei")
 	if err != nil {
 		return err
 	}
@@ -546,7 +732,7 @@ func loadDatabases(root string, r *Result) error {
 		if err != nil {
 			return sourceErr(path, err)
 		}
-		contractFiles, _ := globSorted(filepath.Join(filepath.Dir(path), "contracts", "*.tei"))
+		contractFiles, _ := listPinnedFiles(root, r, filepath.Join(filepath.Dir(path), "contracts"), "*.tei")
 		for _, cpath := range contractFiles {
 			csrc, err := readSourceForLoad(root, r, cpath)
 			if err != nil {
@@ -563,7 +749,7 @@ func loadDatabases(root string, r *Result) error {
 				r.Sources["database-contract-query:"+string(c.ID)+"/"+string(query.Name)] = contractSource
 			}
 		}
-		persistenceFiles, _ := globSorted(filepath.Join(filepath.Dir(path), "persistence", "*.tei"))
+		persistenceFiles, _ := listPinnedFiles(root, r, filepath.Join(filepath.Dir(path), "persistence"), "*.tei")
 		for _, ppath := range persistenceFiles {
 			psrc, err := readSourceForLoad(root, r, ppath)
 			if err != nil {
@@ -587,7 +773,7 @@ func loadDatabases(root string, r *Result) error {
 		} else if !errors.Is(err, os.ErrNotExist) {
 			return err
 		}
-		migrationFiles, _ := globSorted(filepath.Join(filepath.Dir(path), "migrations", "*", "migration.tei"))
+		migrationFiles, _ := listPinnedUnitFiles(root, r, filepath.Join(filepath.Dir(path), "migrations"), nil, "migration.tei")
 		for _, mpath := range migrationFiles {
 			msrc, err := readSourceForLoad(root, r, mpath)
 			if err != nil {
@@ -607,7 +793,7 @@ func loadDatabases(root string, r *Result) error {
 }
 
 func loadReleases(root string, r *Result) error {
-	appFiles, err := globSorted(filepath.Join(root, "releases", "applications", "*", "*.tei"))
+	appFiles, err := listPinnedUnitFiles(root, r, filepath.Join(root, "releases", "applications"), nil, "*.tei")
 	if err != nil {
 		return err
 	}
@@ -624,7 +810,7 @@ func loadReleases(root string, r *Result) error {
 		r.Sources["application-release:"+string(rel.Application)+"/"+rel.Version] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}
 	}
 
-	dbFiles, err := globSorted(filepath.Join(root, "releases", "databases", "*", "*.tei"))
+	dbFiles, err := listPinnedUnitFiles(root, r, filepath.Join(root, "releases", "databases"), nil, "*.tei")
 	if err != nil {
 		return err
 	}
@@ -641,7 +827,7 @@ func loadReleases(root string, r *Result) error {
 		r.Sources["database-release:"+string(rel.Database)+"/"+rel.Version] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}
 	}
 
-	solutionFiles, err := globSorted(filepath.Join(root, "releases", "solutions", "*", "*.tei"))
+	solutionFiles, err := listPinnedUnitFiles(root, r, filepath.Join(root, "releases", "solutions"), nil, "*.tei")
 	if err != nil {
 		return err
 	}
@@ -661,7 +847,7 @@ func loadReleases(root string, r *Result) error {
 }
 
 func loadEnvironments(root string, r *Result) error {
-	manifests, err := globSorted(filepath.Join(root, "environments", "*", "environment.tei"))
+	manifests, err := listPinnedUnitFiles(root, r, filepath.Join(root, "environments"), nil, "environment.tei")
 	if err != nil {
 		return err
 	}
@@ -723,14 +909,114 @@ func resolveNativeSQLFile(root, declarationPath, rawRef string) (string, error) 
 	return candidate, nil
 }
 
-func globSorted(pattern string) ([]string, error) {
-	xs, err := filepath.Glob(pattern)
+// pinnedDirMatches lists the entries of the directory dir (slash separated,
+// relative to the pinned Root) whose NAME matches pattern, in name order. The
+// pattern is always a fixed file-name pattern chosen by a loader (or "*"); it is
+// never built from a directory name found in the Workspace, so a name that
+// contains glob metacharacters is matched like any other. A directory that does
+// not exist or cannot be listed yields no entries, as filepath.Glob did.
+// Entries of any type are returned (a later pinned read rejects non-regular
+// ones), including a directory named like a file.
+func pinnedDirMatches(fsys fs.FS, dir, pattern string) ([]string, error) {
+	entries, err := fs.ReadDir(fsys, dir)
+	if err != nil {
+		return nil, nil
+	}
+	var names []string
+	for _, entry := range entries {
+		matched, err := path.Match(pattern, entry.Name())
+		if err != nil {
+			return nil, fmt.Errorf("Workspace listing pattern %q: %w", pattern, err)
+		}
+		if matched {
+			names = append(names, entry.Name())
+		}
+	}
+	return names, nil
+}
+
+// pinnedListingRoot returns the Root pinned by Load, or a temporary rooted
+// handle for direct per-domain loader tests, and the function that releases it.
+func pinnedListingRoot(root string, r *Result, what string) (*os.Root, func(), error) {
+	if r.sourceReadRoot != nil {
+		return r.sourceReadRoot, func() {}, nil
+	}
+	handle, err := openWorkspaceRoot(root)
+	if err != nil {
+		return nil, nil, fmt.Errorf("open Workspace root for %s listing: %w", what, err)
+	}
+	return handle, func() { handle.Close() }, nil
+}
+
+func logicalListingPath(root, directory string) (string, error) {
+	logical, err := filepath.Rel(root, directory)
+	if err != nil {
+		return "", fmt.Errorf("Workspace listing directory %q relative to Workspace: %w", directory, err)
+	}
+	return filepath.ToSlash(logical), nil
+}
+
+// listPinnedFiles lists the entries of directory whose name matches the fixed
+// file-name pattern, through the Root pinned by Load. It returns absolute paths
+// below root in sorted order and no error for a missing directory.
+func listPinnedFiles(root string, r *Result, directory, pattern string) ([]string, error) {
+	logical, err := logicalListingPath(root, directory)
 	if err != nil {
 		return nil, err
 	}
-	sort.Strings(xs)
-	return xs, nil
+	handle, release, err := pinnedListingRoot(root, r, logical)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
+	names, err := pinnedDirMatches(handle.FS(), logical, pattern)
+	if err != nil {
+		return nil, err
+	}
+	files := make([]string, 0, len(names))
+	for _, name := range names {
+		files = append(files, filepath.Join(directory, name))
+	}
+	sort.Strings(files)
+	return files, nil
 }
+
+// listPinnedUnitFiles lists <parent>/<unit>/<below...>/<pattern> for every
+// entry <unit> of parent. The unit directories are enumerated from the pinned
+// directory listing and joined by name; no pattern is built from them, so unit
+// names that contain glob metacharacters are listed. Only the final file-name
+// pattern is matched. Results are absolute paths in sorted order; missing
+// directories contribute nothing.
+func listPinnedUnitFiles(root string, r *Result, parent string, below []string, pattern string) ([]string, error) {
+	logicalParent, err := logicalListingPath(root, parent)
+	if err != nil {
+		return nil, err
+	}
+	handle, release, err := pinnedListingRoot(root, r, logicalParent)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
+	units, err := pinnedDirMatches(handle.FS(), logicalParent, "*")
+	if err != nil {
+		return nil, err
+	}
+	var files []string
+	for _, unit := range units {
+		elements := append([]string{logicalParent, unit}, below...)
+		logicalDir := path.Join(elements...)
+		names, err := pinnedDirMatches(handle.FS(), logicalDir, pattern)
+		if err != nil {
+			return nil, err
+		}
+		for _, name := range names {
+			files = append(files, filepath.Join(root, filepath.FromSlash(logicalDir), name))
+		}
+	}
+	sort.Strings(files)
+	return files, nil
+}
+
 func relPath(root, path string) string {
 	x, err := filepath.Rel(root, path)
 	if err != nil {

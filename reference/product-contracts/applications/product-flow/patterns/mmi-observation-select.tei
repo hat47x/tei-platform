@@ -1,0 +1,3 @@
+pattern product_contracts_flow.mmi_observation_select command {
+    capability product_contracts.mmi_observation_select
+}

@@ -1,6 +1,7 @@
 package operations
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -29,6 +30,25 @@ type WorkspaceTrace struct {
 	RelatedSources         []sourcebridge.Navigation `json:"relatedSources,omitempty"`
 	ProjectionUnresolved   []string                  `json:"projectionUnresolved,omitempty"`
 	AuthorityLimits        []string                  `json:"authorityLimits"`
+	// Workspace names the Workspace this trace was read from (#3181). The
+	// same Canonical ID may exist in several Workspaces with different meaning,
+	// and worldFingerprint identifies content, not the Workspace.
+	Workspace *workspace.WorkspaceIdentity `json:"workspace,omitempty"`
+}
+
+// TraceSubjectKinds is the closed set of subject kinds the typed graph can
+// carry: the projection's own list, not a second copy of it. The CLI advertises
+// this same set for -subject-kind on trace (#3242, #3180).
+var TraceSubjectKinds = derivedbridge.SupportedSubjectKinds
+
+// supportedTraceKind reports whether derivedbridge can place this kind in the
+// typed graph at all. It is narrower than supportedInspectionKind: inspect can
+// read a candidate key or a functional dependency straight from the World, but
+// the reference projection carries neither, so trace has nothing to walk. The
+// set lives with the projection itself, so a kind added there is not silently
+// accepted here (or refused here while the graph would carry it).
+func supportedTraceKind(kind string) bool {
+	return derivedbridge.SupportsSubjectKind(kind)
 }
 
 // TraceWorkspace joins the established Derived Index modelref projection and
@@ -42,9 +62,28 @@ func TraceWorkspace(root string, key modelref.Key, options modelref.TraceOptions
 			Code: "INVALID_SUBJECT", Message: "exact nonempty scope, subject kind and subject id are required",
 		}
 	}
+	// A kind the typed graph cannot carry is not "a subject with no references".
+	// Report it before loading anything, so a caller never reads SUBJECT_NOT_FOUND
+	// as "this subject is unrelated to everything" (#3180). inspect supports a
+	// wider kind set than the projection does; both fall outside the graph here.
+	if !supportedTraceKind(key.Subject.Kind) {
+		return WorkspaceTrace{}, &modelref.TraceError{
+			Code: "UNSUPPORTED_SUBJECT_KIND",
+			Message: fmt.Sprintf("trace does not project subject kind %q; the typed graph carries namespace, type, data, attribute, relation, validation, capability, application, application-pattern and query",
+				key.Subject.Kind),
+		}
+	}
+
 	loaded, err := workspace.Load(root)
 	if err != nil {
 		return WorkspaceTrace{}, &ValidationFailure{Stage: StageLoad, Err: err}
+	}
+	// Pin the Workspace root once for this trace, before the Source Index is
+	// built, and read every Source through this handle until the trace ends.
+	// Its error is reported below, where the reader used to be created.
+	reader, readerErr := readWorkspaceSource(root)
+	if readerErr == nil {
+		defer reader.Close()
 	}
 	// The derived bridge intentionally coalesces repeated uses of a Subject.
 	// For kinds that can be selected from Canonical World, first require one
@@ -113,11 +152,10 @@ func TraceWorkspace(root string, key modelref.Key, options modelref.TraceOptions
 		return WorkspaceTrace{}, &ValidationFailure{Stage: StageSourceIndex, Err: side.buildErr}
 	}
 	sources := side.sources
-	reader, err := readWorkspaceSource(root)
-	if err != nil {
-		return WorkspaceTrace{}, &ValidationFailure{Stage: StageSourceIndex, Err: err}
+	if readerErr != nil {
+		return WorkspaceTrace{}, &ValidationFailure{Stage: StageSourceIndex, Err: readerErr}
 	}
-	resolver, err := sourcebridge.NewResolver(projection.Graph, sources, reader)
+	resolver, err := sourcebridge.NewResolver(projection.Graph, sources, reader.Read)
 	if err != nil {
 		return WorkspaceTrace{}, &ValidationFailure{Stage: StageSourceIndex, Err: err}
 	}
@@ -135,6 +173,7 @@ func TraceWorkspace(root string, key modelref.Key, options modelref.TraceOptions
 			Message: "trace graph, selector, World, or Source Index differs from the prior page",
 		}
 	}
+	identity := loaded.Identity()
 	out := WorkspaceTrace{
 		SchemaVersion:          "tei.operations.trace/v0",
 		SnapshotFingerprint:    snapshotFP,
@@ -144,6 +183,16 @@ func TraceWorkspace(root string, key modelref.Key, options modelref.TraceOptions
 		Source:                 resolver.Locate(key),
 		ProjectionUnresolved:   append([]string(nil), projection.Unresolved...),
 		AuthorityLimits:        append([]string(nil), projection.AuthorityLimits...),
+		Workspace:              &identity,
+	}
+	// A page that can be continued must say, next to nextOffset, which value
+	// continues it. The value is this Workspace-level token; modelref's own
+	// graphFingerprint is not a continuation token (#3625).
+	if out.Trace.NextOffset != nil {
+		out.Trace.Continuation = &modelref.TraceContinuation{
+			Fingerprint: snapshotFP,
+			Field:       "result.snapshotFingerprint",
+		}
 	}
 	if result.Mode == "summary" {
 		return out, nil
@@ -200,40 +249,69 @@ func buildSourceIndexSide(root string, loaded workspace.Result) sourceIndexSide 
 	return side
 }
 
-// Keep path normalization, symlink containment and regular-file checks at
-// this read boundary. The index validator detects drift using fingerprints,
-// but it does not provide a filesystem transaction or close the documented
-// symlink-swap race (#1017).
-func readWorkspaceSource(root string) (func(string) ([]byte, error), error) {
-	rootReal, err := filepath.EvalSymlinks(root)
+// maxWorkspaceSourceBytes bounds the bytes one Source read may retain. A Source
+// file above it is refused, never truncated. It is a variable only so a test
+// can lower it; production code never assigns it.
+var maxWorkspaceSourceBytes int64 = 64 << 20
+
+// workspaceSourceReader is the byte reader behind the Source Index Resolver.
+// It holds ONE os.Root, opened once per trace, and every read goes through that
+// same handle: a regular-file check and a bounded read on the opened file. A
+// Workspace root alias (symlink or junction) retargeted after the handle was
+// opened therefore cannot redirect a later read, and a path component replaced
+// below the root cannot escape it (#1017).
+//
+// What this does not do: it is not a multi-file snapshot (each read sees the
+// file as it is then; the Source Index fingerprint detects in-place content
+// changes), the root is pinned when the reader is created and not before
+// (Load and the Source Index build resolve the root path on their own), and
+// mount-level changes are outside os.Root's protection.
+type workspaceSourceReader struct {
+	root *os.Root
+}
+
+func readWorkspaceSource(root string) (*workspaceSourceReader, error) {
+	handle, err := openWorkspaceSourceRoot(root)
 	if err != nil {
-		return nil, fmt.Errorf("resolve Workspace root: %w", err)
+		return nil, fmt.Errorf("open Workspace root: %w", err)
 	}
-	return func(raw string) ([]byte, error) {
-		relative, err := sourceindex.NormalizeWorkspacePath(raw)
-		if err != nil {
-			return nil, err
-		}
-		physical, err := filepath.EvalSymlinks(filepath.Join(rootReal, filepath.FromSlash(relative)))
-		if err != nil {
-			return nil, err
-		}
-		within, err := filepath.Rel(rootReal, physical)
-		if err != nil || within == ".." || strings.HasPrefix(within, ".."+string(os.PathSeparator)) {
-			return nil, fmt.Errorf("source %q resolves outside Workspace", raw)
-		}
-		file, err := os.Open(physical)
-		if err != nil {
-			return nil, err
-		}
-		defer file.Close()
-		info, err := file.Stat()
-		if err != nil {
-			return nil, err
-		}
-		if !info.Mode().IsRegular() {
-			return nil, fmt.Errorf("source %q is not a regular file", raw)
-		}
-		return io.ReadAll(file)
-	}, nil
+	return &workspaceSourceReader{root: handle}, nil
+}
+
+// Close releases the pinned root. Reads after Close fail.
+func (r *workspaceSourceReader) Close() error { return r.root.Close() }
+
+// Read returns the bytes of one Workspace-relative regular file.
+func (r *workspaceSourceReader) Read(raw string) ([]byte, error) {
+	relative, err := sourceindex.NormalizeWorkspacePath(raw)
+	if err != nil {
+		return nil, err
+	}
+	limit := maxWorkspaceSourceBytes
+	if limit <= 0 {
+		return nil, workspace.ErrInvalidSourceReadLimit
+	}
+	file, err := r.root.OpenFile(filepath.FromSlash(relative), workspaceSourceOpenFlags, 0)
+	if err != nil {
+		return nil, fmt.Errorf("open Workspace source: %w", err)
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil {
+		return nil, fmt.Errorf("stat Workspace source: %w", err)
+	}
+	if !info.Mode().IsRegular() {
+		return nil, errors.New("Workspace source is not a regular file")
+	}
+	if info.Size() > limit {
+		return nil, workspace.ErrSourceTooLarge
+	}
+	content, err := io.ReadAll(io.LimitReader(file, limit+1))
+	if err != nil {
+		return nil, fmt.Errorf("read Workspace source: %w", err)
+	}
+	if int64(len(content)) > limit {
+		return nil, workspace.ErrSourceTooLarge
+	}
+	return content, nil
 }

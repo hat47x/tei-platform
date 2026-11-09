@@ -106,6 +106,7 @@ func TestPostgresPINT01FixedLengthImportAndRejections(t *testing.T) {
 	}
 	reject("same file again", f1, recv, RejectDuplicateFile)
 	reject("trailer count off by one", buildFile(t, rows[:10], fileOpts{seq: 2, countDelta: 1}), recv, RejectTrailerCount)
+	reject("trailer sum off by one", buildFile(t, rows[:10], fileOpts{seq: 2, sumDelta: 1}), recv, RejectTrailerSum)
 	reject("truncated", buildFile(t, rows[:10], fileOpts{seq: 2, truncateTail: 50}), recv, RejectTruncated)
 	reject("sequence reused with other content", buildFile(t, rows[:10], fileOpts{seq: 1}), recv, RejectSeqReused)
 	reject("after cut-off", buildFile(t, rows[:10], fileOpts{seq: 2}), mustTime(t, "2026-09-30T17:00:01+09:00"), RejectAfterCutoff)
@@ -116,7 +117,7 @@ func TestPostgresPINT01FixedLengthImportAndRejections(t *testing.T) {
 	if n := h.int(`SELECT count(*) FROM mecc.shipment_event`); n != before {
 		t.Fatalf("rejected files changed shipments: %d -> %d", before, n)
 	}
-	if n := h.int(`SELECT count(*) FROM mecc.import_rejection`); n != 6 {
+	if n := h.int(`SELECT count(*) FROM mecc.import_rejection`); n != 7 {
 		t.Fatalf("%d rejection records", n)
 	}
 	// A second file of new shipments, killed before commit, then imported.

@@ -33,7 +33,7 @@ func SplitImpact(world ir.World, s Split) (Impact, error) {
 	out := Impact{
 		Schema: Schema, StructureRevision: fmt.Sprintf("sha256:%x", sha256.Sum256(raw)), Merge: Merge{From: []string{s.From}, Into: s.Into[0]},
 		Attributes: []Use{}, Validations: []ValidationUse{}, Capabilities: []CapabilityUse{},
-		AliasTypes: []string{}, Keys: []KeyUse{}, Diagnostics: []Diagnostic{},
+		AliasTypes: []string{}, Keys: []KeyUse{}, Reprojection: []Reprojection{}, Diagnostics: []Diagnostic{},
 		ReviewRequired: true,
 	}
 
@@ -164,6 +164,46 @@ func SplitImpact(world ir.World, s Split) (Impact, error) {
 		}
 	}
 	sort.Strings(out.AliasTypes)
+
+	// Reprojection lists the target type each affected view must point to
+	// after acceptance. A capability input or output of one split type has no
+	// per-attribute reassignment, so its target stays unresolved.
+	for _, use := range out.Attributes {
+		out.Reprojection = append(out.Reprojection, Reprojection{View: "attribute", Element: use.Attribute, TypeBefore: use.Type, TypeAfter: s.Reassignment[use.Attribute]})
+	}
+	for _, use := range out.Validations {
+		out.Reprojection = append(out.Reprojection, Reprojection{View: "validation", Element: use.Validation, TypeBefore: use.Type, TypeAfter: s.Reassignment[use.Attribute]})
+	}
+	for _, use := range out.Capabilities {
+		out.Reprojection = append(out.Reprojection, Reprojection{View: "capability", Element: use.Capability + "/" + use.Direction, TypeBefore: use.Type, TypeAfter: ""})
+	}
+	for _, key := range out.Keys {
+		before, after := "", ""
+		for _, field := range key.Fields {
+			if !from[attrType[field]] {
+				continue
+			}
+			if before == "" {
+				before = attrType[field]
+			}
+			if target := s.Reassignment[field]; target != "" && after == "" {
+				after = target
+			}
+		}
+		out.Reprojection = append(out.Reprojection, Reprojection{View: "key", Element: key.Kind + "/" + key.ID, TypeBefore: before, TypeAfter: after})
+	}
+	sort.Slice(out.Reprojection, func(i, j int) bool {
+		if out.Reprojection[i].View != out.Reprojection[j].View {
+			return out.Reprojection[i].View < out.Reprojection[j].View
+		}
+		return out.Reprojection[i].Element < out.Reprojection[j].Element
+	})
+	out.ConsistentAfter = true
+	for _, entry := range out.Reprojection {
+		if entry.TypeAfter == "" || !into[entry.TypeAfter] {
+			out.ConsistentAfter = false
+		}
+	}
 
 	sort.Slice(out.Attributes, func(i, j int) bool { return out.Attributes[i].Attribute < out.Attributes[j].Attribute })
 	sort.Slice(out.Keys, func(i, j int) bool {

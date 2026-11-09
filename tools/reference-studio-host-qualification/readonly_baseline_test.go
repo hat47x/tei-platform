@@ -15,7 +15,7 @@ func fixtureWorkspace(t *testing.T, namespace, source string) string {
 	t.Helper()
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"),
-		[]byte("workspace: studio_"+namespace+"\nsources:\n  - semantic\n"), 0o644); err != nil {
+		[]byte("workspace: studio_"+namespace+"\nformatVersion: 1\nsources:\n  - semantic\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	file := filepath.Join(root, "semantic", namespace, "model.tei")

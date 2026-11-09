@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -234,7 +235,10 @@ func TestCLIExportsModelHypothesesWithERReferences(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if info.Mode().Perm() != 0600 {
+	if runtime.GOOS == "windows" {
+		// Windows reports 0666 for a file created with 0600; the mode passed to
+		// WriteFile is honoured by the Linux CI run.
+	} else if info.Mode().Perm() != 0600 {
 		t.Fatalf("hypothesis review must remain private: %v", info.Mode().Perm())
 	}
 	// New review output does not modify the pre-existing answer fingerprint.
@@ -287,7 +291,7 @@ func modelSourceCLIInputs(t *testing.T) (string, string, string) {
 	if err := os.MkdirAll(filepath.Join(root, "semantic"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace:\n  sources:\n    - semantic\n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace:\nformatVersion: 1\n  sources:\n    - semantic\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	source := []byte("namespace sales\n\ndata Child {\n    attribute businessCode type std.identifier\n}\n")
@@ -372,8 +376,14 @@ func TestCLIAuditsHypothesisAgainstLoadedWorkspaceSource(t *testing.T) {
 		}
 	}
 	info, err := os.Stat(filepath.Join(out, "model-hypothesis-source-audit.json"))
-	if err != nil || info.Mode().Perm() != 0600 {
-		t.Fatalf("source audit was not private: info=%v err=%v", info, err)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if runtime.GOOS == "windows" {
+		// Windows reports 0666 for a file created with 0600; the Linux CI run
+		// checks the mode.
+	} else if info.Mode().Perm() != 0600 {
+		t.Fatalf("source audit was not private: %v", info.Mode().Perm())
 	}
 }
 
@@ -476,7 +486,10 @@ func TestCLIExportsRuleDeclarationDraftWithoutAcceptingBusinessRule(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if info.Mode().Perm() != 0600 {
+	if runtime.GOOS == "windows" {
+		// Windows reports 0666 for a file created with 0600; the Linux CI run
+		// checks the mode.
+	} else if info.Mode().Perm() != 0600 {
 		t.Fatalf("draft file permissions = %v, want 0600", info.Mode().Perm())
 	}
 	for _, filename := range []string{"model-hypothesis-review.json", "model-hypothesis-source-audit.json", "review.json"} {
@@ -577,8 +590,14 @@ func TestCLIScopesExternalRuleSourceAsUnacceptedAuthoring(t *testing.T) {
 		t.Fatalf("source was mistaken for accepted semantic declaration: %+v", sourceReview)
 	}
 	info, err := os.Stat(filepath.Join(out, "model-rule-source-review.json"))
-	if err != nil || info.Mode().Perm() != 0600 {
-		t.Fatalf("rule source review file not private: %v %v", info, err)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if runtime.GOOS == "windows" {
+		// Windows reports 0666 for a file created with 0600; the Linux CI run
+		// checks the mode.
+	} else if info.Mode().Perm() != 0600 {
+		t.Fatalf("rule source review file not private: %v", info.Mode().Perm())
 	}
 }
 

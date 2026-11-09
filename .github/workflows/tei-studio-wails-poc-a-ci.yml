@@ -101,7 +101,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Go 1.26.9を固定
+      - name: Go 1.26.10を固定
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version-file: go.mod
@@ -250,6 +250,15 @@ jobs:
             --server "$RUNNER_TEMP/tei-studio-server" \
             --port 43124
 
+      - name: Bootstrapの実Chromiumにおける遅着Catalog応答・DOM/ARIAを検証
+        working-directory: cmd/tei-studio
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/tei-studio-playwright/bin/python" test/bootstrap_async_smoke.py \
+            --server "$RUNNER_TEMP/tei-studio-server" \
+            --port 43130
+
       - name: 依存checksum証拠を保持（ソースには自動反映しない）
         if: success()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -275,7 +284,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
-      - name: Go 1.26.9を固定
+      - name: Go 1.26.10を固定
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version-file: go.mod
@@ -333,7 +342,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - name: Go 1.26.9を固定
+      - name: Go 1.26.10を固定
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version-file: go.mod
@@ -386,7 +395,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
           fetch-depth: 2
-      - name: Go 1.26.9を固定
+      - name: Go 1.26.10を固定
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version-file: go.mod
@@ -473,7 +482,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
           fetch-depth: 2
-      - name: Go 1.26.9を固定
+      - name: Go 1.26.10を固定
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version-file: go.mod

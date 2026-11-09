@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	ercrossview "tei/tools/reference-er-table-crossview"
@@ -11,7 +12,7 @@ import (
 
 func TestCLIExportsSourceWorkspaceOnlyToExplicitNewPrivateFile(t *testing.T) {
 	root := t.TempDir()
-	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace: er_crossview_test\nsources:\n  - semantic\n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace: er_crossview_test\nformatVersion: 1\nsources:\n  - semantic\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	dir := filepath.Join(root, "semantic", "sales")
@@ -58,8 +59,14 @@ data OrderLine {
 		t.Fatalf("source Data missing: %+v", view.Data)
 	}
 	info, err := os.Stat(target)
-	if err != nil || info.Mode().Perm() != 0600 {
-		t.Fatalf("projection output is not private: %v %v", info, err)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if runtime.GOOS == "windows" {
+		// Windows reports 0666 for a file created with 0600; the Linux CI run
+		// checks the mode.
+	} else if info.Mode().Perm() != 0600 {
+		t.Fatalf("projection output is not private: %v", info.Mode().Perm())
 	}
 	if err := run(root, target); err == nil {
 		t.Fatal("CLI silently overwrote existing evidence output")

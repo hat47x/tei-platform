@@ -81,15 +81,23 @@ func deploySQLite(ctx context.Context, root string, artifact []byte, receipt *De
 	if err != nil {
 		return err
 	}
+	previous, err := stateValue(tx, "previous")
+	if err != nil {
+		return err
+	}
 	if current != "" {
 		if err := verifySQLiteArtifact(tx, current); err != nil {
 			return err
 		}
-		if err := putState(tx, "previous", current); err != nil {
+		previous = current
+		if err := putState(tx, "previous", previous); err != nil {
 			return err
 		}
 	}
 	if err := putState(tx, "current", digest); err != nil {
+		return err
+	}
+	if err := verifySQLitePointers(tx, digest, previous); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
@@ -103,7 +111,7 @@ func deploySQLite(ctx context.Context, root string, artifact []byte, receipt *De
 		return fmt.Errorf("stored sqlite artifact digest does not match")
 	}
 	receipt.ArtifactDigest = digest
-	receipt.PreviousDigest = current
+	receipt.PreviousDigest = previous
 	receipt.Installed = true
 	receipt.DatabasePath = filepath.Join(root, "artifacts.db")
 	return nil
@@ -117,6 +125,25 @@ func verifySQLiteArtifact(tx *sql.Tx, digest string) error {
 	}
 	if digestBytes(content) != digest {
 		return fmt.Errorf("stored sqlite artifact digest does not match")
+	}
+	return nil
+}
+
+// verifySQLitePointers checks both final pointers and their bytes before commit.
+func verifySQLitePointers(tx *sql.Tx, current, previous string) error {
+	for _, state := range []struct{ key, want string }{{"current", current}, {"previous", previous}} {
+		got, err := stateValue(tx, state.key)
+		if err != nil {
+			return err
+		}
+		if got != state.want {
+			return fmt.Errorf("sqlite %s pointer does not match planned digest", state.key)
+		}
+		if got != "" {
+			if err := verifySQLiteArtifact(tx, got); err != nil {
+				return fmt.Errorf("sqlite %s artifact verification failed: %w", state.key, err)
+			}
+		}
 	}
 	return nil
 }
@@ -151,6 +178,10 @@ func rollbackSQLite(ctx context.Context, root string) (RollbackReceipt, error) {
 		receipt.Reason = "current and previous sqlite artifacts are required"
 		return receipt, nil
 	}
+	if err := verifySQLiteArtifact(tx, current); err != nil {
+		receipt.Reason = "current sqlite artifact is invalid: " + err.Error()
+		return receipt, nil
+	}
 	var content []byte
 	if err := tx.QueryRow(`SELECT content FROM artifacts WHERE digest = ?`, previous).Scan(&content); err != nil {
 		receipt.Reason = "previous sqlite artifact is unavailable: " + err.Error()
@@ -168,11 +199,16 @@ func rollbackSQLite(ctx context.Context, root string) (RollbackReceipt, error) {
 		receipt.Reason = err.Error()
 		return receipt, nil
 	}
+	if err := verifySQLitePointers(tx, previous, current); err != nil {
+		receipt.Reason = err.Error()
+		return receipt, nil
+	}
 	if err := tx.Commit(); err != nil {
 		receipt.Reason = err.Error()
 		return receipt, nil
 	}
 	receipt.ArtifactDigest = previous
+	receipt.PreviousDigest = current
 	receipt.CurrentSlot = ""
 	receipt.PreviousSlot = ""
 	receipt.Passed = true
@@ -214,8 +250,18 @@ func rollbackToSQLite(ctx context.Context, root, sourceDigest string) (RollbackR
 		receipt.Reason = err.Error()
 		return receipt, nil
 	}
+	previous, err := stateValue(tx, "previous")
+	if err != nil {
+		receipt.Reason = err.Error()
+		return receipt, nil
+	}
 	if current != "" {
-		if err := putState(tx, "previous", current); err != nil {
+		if err := verifySQLiteArtifact(tx, current); err != nil {
+			receipt.Reason = "current sqlite artifact is invalid: " + err.Error()
+			return receipt, nil
+		}
+		previous = current
+		if err := putState(tx, "previous", previous); err != nil {
 			receipt.Reason = err.Error()
 			return receipt, nil
 		}
@@ -224,11 +270,16 @@ func rollbackToSQLite(ctx context.Context, root, sourceDigest string) (RollbackR
 		receipt.Reason = err.Error()
 		return receipt, nil
 	}
+	if err := verifySQLitePointers(tx, sourceDigest, previous); err != nil {
+		receipt.Reason = err.Error()
+		return receipt, nil
+	}
 	if err := tx.Commit(); err != nil {
 		receipt.Reason = err.Error()
 		return receipt, nil
 	}
 	receipt.ArtifactDigest = sourceDigest
+	receipt.PreviousDigest = previous
 	receipt.Passed = true
 	return receipt, nil
 }

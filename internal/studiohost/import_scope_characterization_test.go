@@ -16,15 +16,15 @@ func studioImportScopeFixture(t *testing.T) (consumer, provider, leaf string) {
 	provider = filepath.Join(root, "provider")
 	leaf = filepath.Join(root, "leaf")
 	studioImportScopeWrite(t, filepath.Join(consumer, "tei.workspace.yaml"),
-		"workspace: consumer\nsources:\n  - semantic\nimports:\n  - alias: provider\n    path: ../provider\n    namespace: provider\n")
+		"workspace: consumer\nformatVersion: 1\nsources:\n  - semantic\nimports:\n  - alias: provider\n    path: ../provider\n    namespace: provider\n")
 	studioImportScopeWrite(t, filepath.Join(consumer, "semantic", "consumer.tei"),
 		"namespace consumer\n\ntype LocalId from std.identifier\n")
 	studioImportScopeWrite(t, filepath.Join(provider, "tei.workspace.yaml"),
-		"workspace: provider\nsources:\n  - semantic\nimports:\n  - alias: leaf\n    path: ../leaf\n    namespace: leaf\n")
+		"workspace: provider\nformatVersion: 1\nsources:\n  - semantic\nimports:\n  - alias: leaf\n    path: ../leaf\n    namespace: leaf\n")
 	studioImportScopeWrite(t, filepath.Join(provider, "semantic", "provider.tei"),
 		"namespace provider\n\ntype ProviderId from std.identifier\n")
 	studioImportScopeWrite(t, filepath.Join(leaf, "tei.workspace.yaml"),
-		"workspace: leaf\nsources:\n  - semantic\n")
+		"workspace: leaf\nformatVersion: 1\nsources:\n  - semantic\n")
 	studioImportScopeWrite(t, filepath.Join(leaf, "semantic", "leaf.tei"),
 		"namespace leaf\n\ntype LeafId from std.identifier\n")
 	return consumer, provider, leaf
@@ -141,7 +141,7 @@ func TestStudioHostSymlinkImportScopeCharacterization(t *testing.T) {
 		t.Skipf("cannot create Workspace import symlink: %v", err)
 	}
 	studioImportScopeWrite(t, filepath.Join(consumer, "tei.workspace.yaml"),
-		"workspace: consumer\nsources:\n  - semantic\nimports:\n  - alias: provider\n    path: ../provider-alias\n    namespace: provider\n")
+		"workspace: consumer\nformatVersion: 1\nsources:\n  - semantic\nimports:\n  - alias: provider\n    path: ../provider-alias\n    namespace: provider\n")
 	host, err := NewReadOnly([]string{consumer})
 	if err != nil {
 		t.Fatal(err)

@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -475,6 +476,83 @@ func TestCustomSubmitUIRejectsMissingOrInvalidRowBeforeCommand(t *testing.T) {
 				t.Fatalf("invalid input invoked command runner: %d calls", len(recording.calls))
 			}
 		})
+	}
+}
+
+func TestCustomSubmitAndJSONSeparateCommitUncertaintyFromObservationFailure(t *testing.T) {
+	loaded, err := workspace.Load(referenceWorkspacePath(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	projection, err := buildWebTargetProjection(loaded.World, projectionConfig{
+		HandoverBaselineID: testBaselineID, BaselineRepositoryRevision: testBaselineRevision,
+		TargetBuildRevision: testTargetRevision, ApplicationID: core.MustCanonicalID("order_entry"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		name        string
+		stage       string
+		status      int
+		wantCommand bool
+		store       func() orderSubmitStore
+	}{
+		{"commit-uncertain", "command-commit-unconfirmed", http.StatusInternalServerError, false,
+			func() orderSubmitStore { return &uncertainCommitOrderStore{} }},
+		{"observation-failed", "observation", http.StatusUnprocessableEntity, true,
+			func() orderSubmitStore { return &observationReadFailureStore{} }},
+	} {
+		for _, endpoint := range []string{"json", "custom"} {
+			t.Run(test.name+"/"+endpoint, func(t *testing.T) {
+				store := test.store()
+				server, err := newWebTargetServer(projection, newReferenceReadScenarioRunner(loaded.World), newOrderSubmitRunner(t, store))
+				if err != nil {
+					t.Fatal(err)
+				}
+				var response *httptest.ResponseRecorder
+				if endpoint == "custom" {
+					response = postCustomSubmit(t, server.Handler(), url.Values{
+						"loginId": {"legacy-order-editor"}, "credential": {"editor-secret"},
+						"from": {"2026-09-18T08:30:00Z"}, "row": {"0"},
+					})
+					body := response.Body.String()
+					if !strings.Contains(body, test.stage) ||
+						strings.Contains(body, `id="command-result"`) != test.wantCommand || strings.Contains(body, "Separate Observation") {
+						t.Fatal("Custom UI lost the execution stage or misrepresented Command/Observation")
+					}
+				} else {
+					response = httptest.NewRecorder()
+					server.Handler().ServeHTTP(response, httptest.NewRequest(http.MethodPost, "/scenario/submit",
+						strings.NewReader(`{"loginId":"legacy-order-editor","credential":"editor-secret","from":"2026-09-18T08:30:00Z","row":0}`)))
+					var got webCommandScenarioErrorResponse
+					if err := json.Unmarshal(response.Body.Bytes(), &got); err != nil {
+						t.Fatal(err)
+					}
+					if got.Result.Stage != test.stage || (got.Result.Command != nil) != test.wantCommand || got.Result.Observation != nil {
+						t.Fatal("JSON lost the execution stage or misrepresented Command/Observation")
+					}
+				}
+				if response.Code != test.status {
+					t.Fatalf("HTTP status=%d want=%d", response.Code, test.status)
+				}
+				for _, private := range []string{"fixture-secret", "internal-db", "postgres://", "editor-secret"} {
+					if strings.Contains(response.Body.String(), private) {
+						t.Fatalf("response disclosed private detail %q", private)
+					}
+				}
+				switch store := store.(type) {
+				case *uncertainCommitOrderStore:
+					if store.submissions != 1 || store.reads != 0 {
+						t.Fatal("uncertain Commit retried or read state implicitly")
+					}
+				case *observationReadFailureStore:
+					if store.submissions != 1 {
+						t.Fatal("Observation failure retried the Command")
+					}
+				}
+			})
+		}
 	}
 }
 

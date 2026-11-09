@@ -18,11 +18,11 @@ import (
 )
 
 func TestProductPinnedLinuxEd25519SignatureBindsExecutedBytes(t *testing.T) {
+	dir := t.TempDir()
+	approved, digest := buildPinnedFixture(t, dir, "approved")
+	replacement, replacementDigest := buildPinnedFixture(t, dir, "replaced")
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
-	dir := t.TempDir()
-	approved, digest := buildPinnedFixture(t, ctx, dir, "approved")
-	replacement, replacementDigest := buildPinnedFixture(t, ctx, dir, "replaced")
 	identity := plugin.Identity{ID: core.MustCanonicalID("tei.process.reference"), Version: "1.0.0"}
 	const ref = "host-trusted-signer/2026-10"
 	public, private, err := ed25519.GenerateKey(rand.Reader)
@@ -80,9 +80,9 @@ func TestProductPinnedLinuxEd25519SignatureBindsExecutedBytes(t *testing.T) {
 }
 
 func TestProductPinnedLinuxEd25519SignatureRejectsForgedProofs(t *testing.T) {
+	binary, digest := buildPinnedFixture(t, t.TempDir(), "approved")
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
-	binary, digest := buildPinnedFixture(t, ctx, t.TempDir(), "approved")
 	identity := plugin.Identity{ID: core.MustCanonicalID("tei.process.reference"), Version: "1.0.0"}
 	public, private, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -158,9 +158,9 @@ func TestProductPinnedLinuxEd25519SignatureRejectsForgedProofs(t *testing.T) {
 }
 
 func TestProductPinnedLinuxSignerTrustRevocationAndRotation(t *testing.T) {
+	binary, digest := buildPinnedFixture(t, t.TempDir(), "approved")
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
-	binary, digest := buildPinnedFixture(t, ctx, t.TempDir(), "approved")
 	identity := plugin.Identity{ID: core.MustCanonicalID("tei.process.reference"), Version: "1.0.0"}
 	const ref = "host-trusted-signer/2026-10"
 	public, private, err := ed25519.GenerateKey(rand.Reader)

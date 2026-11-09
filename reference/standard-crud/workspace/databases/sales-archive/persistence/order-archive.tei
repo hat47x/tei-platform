@@ -1,0 +1,10 @@
+persist sales_archive.order {
+    database sales_archive
+    semantic sales.order
+    table public.order_archive
+
+    column sales.order.order_id -> order_id storage int64 required
+    column sales.order.status -> status storage varchar required
+
+    primary-key sales.order.order_id
+}

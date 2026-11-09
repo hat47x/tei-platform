@@ -18,7 +18,17 @@ func validateWorkspace(out io.Writer, root string) (int, error) {
 		printSourceDiagnostic(out, *result.Direct)
 		return 1, nil
 	}
+	hasSourceRootError := false
+	for _, finding := range result.SourceRootFindings {
+		fmt.Fprintf(out, "%s\tWORKSPACE_SOURCE_ROOT\t%s\n", finding.Severity, finding.Message)
+		if finding.Severity == "error" {
+			hasSourceRootError = true
+		}
+	}
 	if printProjectedDiagnostics(out, result.Diagnostics) {
+		return 1, nil
+	}
+	if hasSourceRootError {
 		return 1, nil
 	}
 	fmt.Fprintln(out, "ok")
@@ -29,7 +39,9 @@ func printProjectedDiagnostics(out io.Writer, diagnostics []workspace.ProjectedD
 	hasError := false
 	for _, projected := range diagnostics {
 		diagnostic := projected.Diagnostic
-		if len(projected.Sources) > 0 {
+		// Duplicate candidates are a set, not an indication that the first
+		// source is the declaration to reject. Text output has only one prefix.
+		if len(projected.Sources) > 0 && diagnostic.Code != "DUPLICATE_SEMANTIC_ELEMENT" {
 			source := projected.Sources[0]
 			fmt.Fprintf(
 				out,

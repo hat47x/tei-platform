@@ -22,7 +22,7 @@ TEIの参照モデル再現確認で必要になるX-TEAの入力・観測を、
 | モデルCLI | システム、テーブル、フィールド、キー、機能種別、入出力CRUD、呼び出し関係、2モデルの差分、参照検査、JSON Schemaの出力 | `xtea_cli.py`、`tests/test_model_cli.py` |
 | XeadServer | **対象外**。`xtea_server.py`と`server-harness/`は過去の参考資産 | `tests/test_live_*.py`、`tests/test_tomcat_war.py` |
 
-`verify-all.ps1`の既定実行ではSwing E2E 12件とモデルCLI 8件を確認します。XeadServerの参考試験は`-IncludeXeadServer`を付けた場合だけ実行し、TEIの比較・受入には使いません。
+`verify-all.ps1`の既定実行ではSwing E2E 12件、モデルCLI 8件、シナリオ構造1件を確認します。XeadServerの参考試験は`-IncludeXeadServer`を付けた場合だけ実行し、TEIの比較・受入には使いません。
 
 ## Driverの合成モデルによる検証
 

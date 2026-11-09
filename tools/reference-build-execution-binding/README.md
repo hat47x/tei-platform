@@ -104,6 +104,28 @@ but artifact-affecting input identity unchanged
 
 current `BuildPlan`からこのReferenceへ射影する処理は候補モデルのpressureであり、production化する際には「artifact-affecting definition closureが完全である」というEvidenceまたはcontractが必要です。
 
+## 既存LockedBuildから複数member ArtifactSetへ
+
+current `plugin.LockedBuild`は一つの`ArtifactDigest`だけを持ちます。このReferenceはproduction型を変えず、**その既存Lockが固定したartifactが、複数memberのArtifactSetのどのroleか**をexactに結びます。
+
+```text
+LockedBuild (single artifact digest)
+  + BuildExecutionResult (exact plan / set fingerprint)
+  + ArtifactSet (N members)
+  -> LockedBuildArtifactSetBinding
+```
+
+`bindLockedBuildToArtifactSet`は次を要求します。
+
+- `BuildExecutionResult`が渡されたArtifactSetのfingerprintを指す
+- 指定roleのmemberが集合内にちょうど一つある
+- そのmemberのdigestが`LockedBuild.ArtifactDigest`と一致する
+- digestを集合や実bytesから再計算してLockへ書き戻さない
+
+これは`LockedBuild`を複数artifactへ拡張したことでも、CoreへTarget固有のRole enumを追加したことでもありません。bindingはAcceptance / Trust / Runtime Authorityを付与しません。
+
+実コンパイラで二つの実行ファイルを一度の`go build`で生成し、片方のdigestを持つ`LockedBuild`を対応するroleへ結ぶ試験を持つ。誤ったrole、digest不一致、resultと集合の不一致は拒否します。
+
 ## BuildExecutionResultは実行回数を識別しない
 
 `BuildExecutionResult` は、exact `BuildExecutionPlan` と `ArtifactSet` の**内容上の対応**を識別する。個別のBuild Attempt（実際に実行した一回の観測）を識別するものではない。
@@ -247,6 +269,26 @@ seed issuer、attestation、現在のTrust受理・失効は#1104の責務です
 Build graphのedgeは順序だけを表すものではありません。`verifyBuildGraphBindings`はproducerのArtifact Setから指定Roleを選び、そのdigestがconsumerのexact `Builder.ArtifactDigest`またはexact `BuildDependency(kind/id/version).ArtifactDigest`と一致することを確認します。
 
 これにより「graph上は依存しているが、実際のconsumerが別artifactを使った」という偽のprovenanceを拒否します。stage0 seedも同じinput bindingを通し、stage1が実際にそのexact seed builderを使うことをcross-checkします。
+
+### node failure / blocked / partial output
+
+Build graphのsemantic identityと、ある実行のnode状態を分けます。
+
+```text
+BuildGraph
+  semantic DAG identity
+
+BuildGraphExecution
+  graph fingerprint
+  node observation: succeeded / failed / blocked
+```
+
+- 実行観測はgraphの全nodeにちょうど1件必要です。未知node・重複・欠落は拒否します。
+- producerがfailedまたはblockedなら、consumerは`blocked`でなければなりません。producer失敗後の`success`は拒否します。
+- 全producerがsucceededなのに`blocked`と報告することも拒否します。
+- `failed`は理由を必須とし、`succeeded`/`blocked`へ失敗理由を付けません。
+- `pinBuildGraphExecution`は全nodeがsucceededのときだけpin可能なnode idを返します。1件でもfailed/blockedなら、部分出力をcanonicalとしてpinせずエラーにします。
+- execution statusは`BuildGraph`のfingerprintを変えません。scheduler順・並列実行・成否はsemantic graph identityの外です。
 
 ## Subject bindingはBuildExecutionResultへ束縛する
 

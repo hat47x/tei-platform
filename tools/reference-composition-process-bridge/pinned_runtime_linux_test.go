@@ -64,12 +64,12 @@ func invokePinnedWithRegistry(t *testing.T, ctx context.Context, registry prunti
 }
 
 func TestProductPinnedLinuxProcessKeepsVerifiedImageOnReplacement(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
-	defer cancel()
 
 	dir := t.TempDir()
-	path, digest := buildPinnedFixture(t, ctx, dir, "approved")
-	replacement, replacementDigest := buildPinnedFixture(t, ctx, dir, "replaced")
+	path, digest := buildPinnedFixture(t, dir, "approved")
+	replacement, replacementDigest := buildPinnedFixture(t, dir, "replaced")
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
 	if digest == replacementDigest {
 		t.Fatal("fixtures unexpectedly contain identical bytes")
 	}
@@ -137,11 +137,11 @@ func TestProductPinnedLinuxProcessKeepsVerifiedImageOnReplacement(t *testing.T) 
 }
 
 func TestProductPinnedLinuxProcessSymlinkAndPreparationRejection(t *testing.T) {
+	dir := t.TempDir()
+	original, digest := buildPinnedFixture(t, dir, "approved")
+	replacement, _ := buildPinnedFixture(t, dir, "replaced")
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
-	dir := t.TempDir()
-	original, digest := buildPinnedFixture(t, ctx, dir, "approved")
-	replacement, _ := buildPinnedFixture(t, ctx, dir, "replaced")
 	symlink := filepath.Join(dir, "selected")
 	if err := os.Symlink(original, symlink); err != nil {
 		t.Fatal(err)
@@ -181,11 +181,11 @@ func TestProductPinnedLinuxProcessSymlinkAndPreparationRejection(t *testing.T) {
 }
 
 func TestProductPinnedLinuxProcessRejectsMismatchedRegistryWiring(t *testing.T) {
+	dir := t.TempDir()
+	path, originalDigest := buildPinnedFixture(t, dir, "approved")
+	replacement, replacementDigest := buildPinnedFixture(t, dir, "replaced")
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
-	dir := t.TempDir()
-	path, originalDigest := buildPinnedFixture(t, ctx, dir, "approved")
-	replacement, replacementDigest := buildPinnedFixture(t, ctx, dir, "replaced")
 	identity := plugin.Identity{ID: core.MustCanonicalID("tei.process.reference"), Version: "1.0.0"}
 	pinned, err := pruntime.PinLinuxProcess(ctx, identity, path, originalDigest, pruntime.StdioProcessLauncher{})
 	if err != nil {
@@ -255,10 +255,10 @@ func (s *pinnedSandboxProbe) Invoke(_ context.Context, _ pruntime.SandboxSpec, _
 }
 
 func TestProductPinnedLinuxProcessRejectsUnboundSandboxRoute(t *testing.T) {
+	dir := t.TempDir()
+	path, digest := buildPinnedFixture(t, dir, "approved")
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
-	dir := t.TempDir()
-	path, digest := buildPinnedFixture(t, ctx, dir, "approved")
 	identity := plugin.Identity{ID: core.MustCanonicalID("tei.process.reference"), Version: "1.0.0"}
 	pinned, err := pruntime.PinLinuxProcess(ctx, identity, path, digest, pruntime.StdioProcessLauncher{})
 	if err != nil {

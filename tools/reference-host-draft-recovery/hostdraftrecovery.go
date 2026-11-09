@@ -30,6 +30,8 @@ const (
 	CodeDraftNotPromoted    = "DRAFT_NOT_PROMOTED"
 	CodeSideEffectNoResend  = "SIDE_EFFECT_UNKNOWN_NO_RESEND"
 	CodeVerifyObservation   = "VERIFY_FROM_OBSERVATION"
+	CodeWrongWorkspace      = "WRONG_WORKSPACE"
+	CodeAuthorityRevoked    = "AUTHORITY_REVOKED"
 	CodeInvalidRequest      = "INVALID_REQUEST"
 )
 
@@ -46,6 +48,9 @@ type Workspace struct {
 // Draft is one undelegated Desktop candidate or draft kept separate from the
 // accepted Source.
 type Draft struct {
+	// WorkspaceID is the workspace the draft was created in. When set, it must
+	// match the current workspace; a draft from another workspace is rejected.
+	WorkspaceID string `json:"workspaceId,omitempty"`
 	// BaseRevision is the modelRevision the draft was based on.
 	BaseRevision string `json:"baseRevision"`
 	// BaseSourceFingerprint is the byte fingerprint recorded when the draft was
@@ -82,6 +87,9 @@ type Input struct {
 	// ObservationFound is true when an existing Run or Observation records the
 	// outcome of the pending side effect.
 	ObservationFound bool `json:"observationFound"`
+	// AuthorityRevoked is true when the current Authority for this workspace was
+	// withdrawn. A withdrawn authority cannot promote a draft.
+	AuthorityRevoked bool `json:"authorityRevoked"`
 }
 
 // Report is the read-only result.
@@ -120,6 +128,15 @@ func Decide(in Input) Report {
 	}
 	ws := strings.TrimSpace(in.Workspace.Revision)
 	fp := fingerprintOf(in.Workspace.SourceBytes)
+
+	if in.AuthorityRevoked {
+		return reject(CodeAuthorityRevoked,
+			"現在のAuthorityが失効している。Draftの表示・昇格を行わない。", fp)
+	}
+	if draftWorkspace := strings.TrimSpace(in.Draft.WorkspaceID); draftWorkspace != "" && draftWorkspace != strings.TrimSpace(in.Workspace.WorkspaceID) {
+		return reject(CodeWrongWorkspace,
+			fmt.Sprintf("DraftのWorkspace %q が現在の %q と異なる。別WorkspaceのDraftを混ぜない。", draftWorkspace, in.Workspace.WorkspaceID), fp)
+	}
 
 	if in.SideEffectPending {
 		if !in.ObservationFound {

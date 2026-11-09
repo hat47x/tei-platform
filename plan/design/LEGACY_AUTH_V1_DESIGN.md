@@ -297,6 +297,7 @@ Authenticationでは、`authenticated` / `denied`の業務OutcomeとExecution Er
 
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
 - `plan/adr/0019-authentication-capability-boundary.md`
+- `plan/adr/0044-authentication-not-a-core-concern.md`
 - `plan/adr/0020-capability-business-outcome-boundary.md`
 - `plan/design/CAPABILITY_OUTCOME_V1_DESIGN.md`
 - ISSUE-000003-legacy-authentication-compatibility-reference.md

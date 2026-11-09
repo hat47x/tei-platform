@@ -1,6 +1,6 @@
 module tei/cmd/tei-studio
 
-go 1.26.9
+go 1.26.10
 
 require (
 	github.com/wailsapp/wails/v3 v3.0.0-beta.29
@@ -15,6 +15,7 @@ require (
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	golang.org/x/sys v0.46.0 // indirect
+	golang.org/x/text v0.41.0 // indirect
 )
 
 replace tei => ../..

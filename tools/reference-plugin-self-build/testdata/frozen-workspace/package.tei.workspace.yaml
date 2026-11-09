@@ -1,0 +1,9 @@
+workspace: tei_reference
+sources:
+  - plugins
+  - bundles
+  - semantic
+  - applications
+  - databases
+  - environments
+  - releases

@@ -29,6 +29,7 @@ const (
 	CodeRealizationNotRegistered   = "REALIZATION_NOT_REGISTERED"
 	CodeRealizationLockMissing     = "REALIZATION_LOCK_MISSING"
 	CodeRealizationVersionMismatch = "REALIZATION_VERSION_MISMATCH"
+	CodeRealizationNotPermitted    = "REALIZATION_NOT_PERMITTED"
 	CodeInvalidRequest             = "INVALID_REQUEST"
 )
 
@@ -64,6 +65,9 @@ type Realization struct {
 	Registered    bool   `json:"registered"`
 	Locked        bool   `json:"locked"`
 	LockedVersion string `json:"lockedVersion,omitempty"`
+	// PermissionDenied is true when the Host refuses this realization for the
+	// current principal or capability set. The checker never falls back.
+	PermissionDenied bool `json:"permissionDenied,omitempty"`
 	// Cases are the shared fixture oracle results this realization reports.
 	Cases []Case `json:"cases"`
 }
@@ -142,6 +146,9 @@ func checkOne(r Realization, in Input) string {
 	if r.LockedVersion != "" && r.Version != r.LockedVersion {
 		return CodeRealizationVersionMismatch
 	}
+	if r.PermissionDenied {
+		return CodeRealizationNotPermitted
+	}
 	if in.RulePure && !r.Pure {
 		return CodeImpureRealization
 	}
@@ -213,6 +220,8 @@ func contractMessage(code string, r Realization) string {
 		return fmt.Sprintf("Plugin %q の固定版が欠落。", r.Plugin)
 	case CodeRealizationVersionMismatch:
 		return fmt.Sprintf("Plugin %q の版 %q が固定版と不一致。黙って落とさない。", r.Plugin, r.Version)
+	case CodeRealizationNotPermitted:
+		return fmt.Sprintf("Plugin %q は現在の権限・能力で実行を許可されていない。別実装へ黙って落とさない。", r.Plugin)
 	case CodeImpureRealization:
 		return "pure な規則に外部書込みを要求する実現は選ばない。"
 	case CodeTypeMismatch:

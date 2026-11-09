@@ -1,6 +1,8 @@
 package validation
 
 import (
+	"strings"
+
 	"tei/internal/application"
 	"tei/internal/core"
 	"tei/internal/database"
@@ -20,6 +22,11 @@ type applicationPatternRelationRef struct {
 	Cardinality semantic.Cardinality
 }
 
+type applicationPatternRef struct {
+	Application core.CanonicalID
+	Pattern     application.Pattern
+}
+
 // ValidateApplicationPatternsは、Application Patternが参照する既存資産との整合性を検査する。
 // Pattern単体の構文検査とは分け、Workspace全体を読み込んだ後に他のValidationと合成できる形で提供する。
 func ValidateApplicationPatterns(w ir.World) []Diagnostic {
@@ -33,11 +40,18 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 	var out []Diagnostic
 
 	semanticData := map[core.CanonicalID]struct{}{}
+	semanticDataAttributes := map[core.CanonicalID]map[core.CanonicalID]core.CanonicalID{}
 	semanticRelations := map[core.CanonicalID]applicationPatternRelationRef{}
-	semanticCapabilities := map[core.CanonicalID]struct{}{}
+	semanticCapabilities := map[core.CanonicalID]core.CanonicalID{}
+	semanticCapabilityInputs := map[core.CanonicalID]map[string]core.CanonicalID{}
 	for _, ns := range w.Semantics {
 		for _, data := range ns.Data {
 			semanticData[data.ID] = struct{}{}
+			attributes := map[core.CanonicalID]core.CanonicalID{}
+			for _, attribute := range data.Attributes {
+				attributes[attribute.ID] = attribute.TypeRef
+			}
+			semanticDataAttributes[data.ID] = attributes
 			for _, relation := range data.Relations {
 				if _, exists := semanticRelations[relation.ID]; exists {
 					// Relation自身の重複は既存Semantic Validationが報告する。
@@ -57,11 +71,17 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 				// Pattern側では存在確認だけを行い、同じ原因のDiagnosticを増やさない。
 				continue
 			}
-			semanticCapabilities[capability.ID] = struct{}{}
+			inputs := map[string]core.CanonicalID{}
+			for _, input := range capability.Inputs {
+				inputs[string(input.Name)] = input.Type
+			}
+			semanticCapabilityInputs[capability.ID] = inputs
+			semanticCapabilities[capability.ID] = ns.ID
 		}
 	}
 
 	queries := map[core.CanonicalID]applicationPatternQueryRef{}
+	queryInputs := map[core.CanonicalID]map[string]core.CanonicalID{}
 	for _, query := range w.Queries {
 		if _, exists := queries[query.ID]; exists {
 			// Query自身の重複は既存Validationが報告する。
@@ -72,9 +92,37 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 			Application: query.Application,
 			Datasource:  query.Datasource,
 		}
+		inputs := map[string]core.CanonicalID{}
+		for _, input := range query.Inputs {
+			inputs[string(input.Name)] = input.Type
+		}
+		queryInputs[query.ID] = inputs
 	}
 
 	seenPatternIDs := map[core.CanonicalID]core.CanonicalID{}
+	patterns := map[core.CanonicalID]applicationPatternRef{}
+	for _, app := range w.Applications {
+		for _, pattern := range app.Patterns {
+			if _, exists := patterns[pattern.ID]; !exists {
+				patterns[pattern.ID] = applicationPatternRef{Application: app.ID, Pattern: pattern}
+			}
+		}
+	}
+	// commandCapabilities maps each application to the capabilities its command
+	// patterns declare. A hook reaches a capability only through such a command,
+	// so the lookup is what makes "declared but unreachable" visible.
+	commandCapabilities := map[core.CanonicalID]map[core.CanonicalID]struct{}{}
+	for _, app := range w.Applications {
+		for _, pattern := range app.Patterns {
+			if pattern.Kind != application.PatternCommand || pattern.Capability == "" {
+				continue
+			}
+			if commandCapabilities[app.ID] == nil {
+				commandCapabilities[app.ID] = map[core.CanonicalID]struct{}{}
+			}
+			commandCapabilities[app.ID][pattern.Capability] = struct{}{}
+		}
+	}
 	for _, app := range w.Applications {
 		for _, pattern := range app.Patterns {
 			patternSubject := subject.Subject{Kind: "application-pattern", ID: string(pattern.ID)}
@@ -103,17 +151,150 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 				continue
 			}
 
+			if pattern.Interaction != nil && pattern.Kind != application.PatternRecord {
+				out = append(out, errFor(
+					patternSubject,
+					"APPLICATION_PATTERN_INTERACTION_NOT_ALLOWED",
+					"%s pattern %s does not accept an interaction; the first interaction contract is limited to record patterns",
+					pattern.Kind,
+					pattern.ID,
+				))
+			}
+
+			if pattern.Kind != application.PatternHeaderDetail && len(pattern.Aggregates) > 0 {
+				out = append(out, errFor(
+					patternSubject,
+					"APPLICATION_PATTERN_AGGREGATES_NOT_ALLOWED",
+					"%s pattern %s does not accept aggregates; aggregates belong to header-detail",
+					pattern.Kind,
+					pattern.ID,
+				))
+			}
+
+			if pattern.Kind == application.PatternBrowse {
+				out = append(out, validateBrowseFilters(pattern, patternSubject, semanticDataAttributes, queryInputs)...)
+				out = append(out, validateBrowseSorts(pattern, patternSubject, semanticDataAttributes)...)
+			} else {
+				if len(pattern.Filters) > 0 {
+					out = append(out, errFor(
+						patternSubject,
+						"APPLICATION_PATTERN_FILTERS_NOT_ALLOWED",
+						"%s pattern %s does not accept filters; filters belong to browse",
+						pattern.Kind,
+						pattern.ID,
+					))
+				}
+				if len(pattern.Sorts) > 0 {
+					out = append(out, errFor(
+						patternSubject,
+						"APPLICATION_PATTERN_SORTS_NOT_ALLOWED",
+						"%s pattern %s does not accept sorts; sorts belong to browse",
+						pattern.Kind,
+						pattern.ID,
+					))
+				}
+			}
+
+			if pattern.PageSize != 0 {
+				switch {
+				case pattern.Kind != application.PatternBrowse:
+					out = append(out, errFor(
+						patternSubject,
+						"APPLICATION_PATTERN_PAGE_SIZE_NOT_ALLOWED",
+						"%s pattern %s does not accept page-size; page-size belongs to browse",
+						pattern.Kind,
+						pattern.ID,
+					))
+				case pattern.PageSize < 1 || pattern.PageSize > 1000:
+					out = append(out, errFor(
+						patternSubject,
+						"APPLICATION_PATTERN_PAGE_SIZE_INVALID",
+						"browse pattern %s page-size %d is outside 1..1000",
+						pattern.ID,
+						pattern.PageSize,
+					))
+				}
+			}
+
+			if pattern.PageBreak != nil {
+				switch {
+				case pattern.Kind != application.PatternHeaderDetail:
+					out = append(out, errFor(
+						patternSubject,
+						"APPLICATION_PATTERN_PAGE_BREAK_NOT_ALLOWED",
+						"%s pattern %s does not accept page-break; page-break belongs to header-detail",
+						pattern.Kind,
+						pattern.ID,
+					))
+				case pattern.PageBreak.Rows < 1 || pattern.PageBreak.Rows > 1000:
+					out = append(out, errFor(
+						patternSubject,
+						"APPLICATION_PATTERN_PAGE_BREAK_INVALID",
+						"header-detail pattern %s page-break rows %d is outside 1..1000",
+						pattern.ID,
+						pattern.PageBreak.Rows,
+					))
+				}
+			}
+
+			if pattern.PrintTemplate != "" && pattern.Kind == application.PatternCommand {
+				out = append(out, errFor(
+					patternSubject,
+					"APPLICATION_PATTERN_PRINT_TEMPLATE_NOT_ALLOWED",
+					"command pattern %s does not accept print-template",
+					pattern.ID,
+				))
+			}
+
+			if pattern.Layout != nil {
+				switch {
+				case pattern.Kind != application.PatternRecord:
+					out = append(out, errFor(
+						patternSubject,
+						"APPLICATION_PATTERN_LAYOUT_NOT_ALLOWED",
+						"%s pattern %s does not accept layout; layout belongs to record",
+						pattern.Kind,
+						pattern.ID,
+					))
+				default:
+					attributes := semanticDataAttributes[pattern.Data]
+					seen := map[core.CanonicalID]bool{}
+					for _, attribute := range pattern.Layout.Order {
+						if _, ok := attributes[attribute]; !ok {
+							out = append(out, errFor(
+								patternSubject,
+								"UNKNOWN_APPLICATION_PATTERN_LAYOUT_ORDER",
+								"record pattern %s layout refers to %s that is not an attribute of %s",
+								pattern.ID,
+								attribute,
+								pattern.Data,
+							))
+						}
+						if seen[attribute] {
+							out = append(out, errFor(
+								patternSubject,
+								"APPLICATION_PATTERN_LAYOUT_ORDER_DUPLICATE",
+								"record pattern %s layout orders %s more than once",
+								pattern.ID,
+								attribute,
+							))
+						}
+						seen[attribute] = true
+					}
+				}
+			}
+
 			switch pattern.Kind {
 			case application.PatternBrowse:
 				out = append(out, validateBrowsePattern(app, pattern, patternSubject, semanticData, queries)...)
 			case application.PatternRecord:
-				out = append(out, validateRecordPattern(pattern, patternSubject, semanticData)...)
+				out = append(out, validateRecordPattern(app, pattern, patternSubject, semanticData, semanticDataAttributes, patterns, semanticRelations, semanticCapabilities, semanticCapabilityInputs, commandCapabilities)...)
 			case application.PatternReference:
 				out = append(out, validateReferencePattern(app, pattern, patternSubject, semanticRelations)...)
 			case application.PatternCommand:
 				out = append(out, validateCommandPattern(pattern, patternSubject, semanticCapabilities)...)
 			case application.PatternHeaderDetail:
-				out = append(out, validateHeaderDetailPattern(pattern, patternSubject, semanticRelations)...)
+				out = append(out, validateHeaderDetailPattern(pattern, patternSubject, semanticRelations, semanticDataAttributes)...)
 			}
 		}
 	}
@@ -224,9 +405,16 @@ func validateBrowsePattern(
 }
 
 func validateRecordPattern(
+	app application.Application,
 	pattern application.Pattern,
 	patternSubject subject.Subject,
 	semanticData map[core.CanonicalID]struct{},
+	semanticDataAttributes map[core.CanonicalID]map[core.CanonicalID]core.CanonicalID,
+	patterns map[core.CanonicalID]applicationPatternRef,
+	semanticRelations map[core.CanonicalID]applicationPatternRelationRef,
+	semanticCapabilities map[core.CanonicalID]core.CanonicalID,
+	semanticCapabilityInputs map[core.CanonicalID]map[string]core.CanonicalID,
+	commandCapabilities map[core.CanonicalID]map[core.CanonicalID]struct{},
 ) []Diagnostic {
 	var out []Diagnostic
 
@@ -245,6 +433,8 @@ func validateRecordPattern(
 			pattern.ID,
 			pattern.Data,
 		))
+	} else {
+		out = append(out, validateRecordPatternInteraction(app, pattern, patternSubject, semanticDataAttributes, patterns, semanticRelations, semanticCapabilities, semanticCapabilityInputs, commandCapabilities)...)
 	}
 
 	if pattern.Relation != "" {
@@ -281,6 +471,313 @@ func validateRecordPattern(
 	}
 
 	return out
+}
+
+func validateRecordPatternInteraction(
+	app application.Application,
+	pattern application.Pattern,
+	patternSubject subject.Subject,
+	semanticDataAttributes map[core.CanonicalID]map[core.CanonicalID]core.CanonicalID,
+	patterns map[core.CanonicalID]applicationPatternRef,
+	semanticRelations map[core.CanonicalID]applicationPatternRelationRef,
+	semanticCapabilities map[core.CanonicalID]core.CanonicalID,
+	semanticCapabilityInputs map[core.CanonicalID]map[string]core.CanonicalID,
+	commandCapabilities map[core.CanonicalID]map[core.CanonicalID]struct{},
+) []Diagnostic {
+	var out []Diagnostic
+	if pattern.Interaction == nil {
+		return nil
+	}
+
+	dataAttributes := semanticDataAttributes[pattern.Data]
+	seen := map[core.CanonicalID]struct{}{}
+	for _, item := range pattern.Interaction.Items {
+		if _, exists := seen[item.Attribute]; exists {
+			out = append(out, errFor(
+				patternSubject,
+				"APPLICATION_PATTERN_INTERACTION_ITEM_DUPLICATE",
+				"record pattern %s declares interaction item %s more than once",
+				pattern.ID,
+				item.Attribute,
+			))
+			continue
+		}
+		seen[item.Attribute] = struct{}{}
+
+		itemType, ok := dataAttributes[item.Attribute]
+		if !ok {
+			out = append(out, errFor(
+				patternSubject,
+				"UNKNOWN_APPLICATION_PATTERN_INTERACTION_ITEM",
+				"record pattern %s declares interaction item %s that is not an attribute of %s",
+				pattern.ID,
+				item.Attribute,
+				pattern.Data,
+			))
+			continue
+		}
+		if item.Lookup == nil {
+			continue
+		}
+
+		ref, ok := patterns[item.Lookup.Pattern]
+		if !ok {
+			out = append(out, errFor(
+				patternSubject,
+				"UNKNOWN_APPLICATION_PATTERN_INTERACTION_LOOKUP_PATTERN",
+				"record pattern %s interaction item %s refers to unknown lookup pattern %s",
+				pattern.ID,
+				item.Attribute,
+				item.Lookup.Pattern,
+			))
+			continue
+		}
+		if ref.Application != app.ID {
+			out = append(out, errFor(
+				patternSubject,
+				"APPLICATION_PATTERN_INTERACTION_LOOKUP_APPLICATION_MISMATCH",
+				"record pattern %s belongs to application %s but its lookup refers to pattern %s owned by application %s",
+				pattern.ID,
+				app.ID,
+				item.Lookup.Pattern,
+				ref.Application,
+			))
+			continue
+		}
+		if ref.Pattern.Kind != application.PatternReference {
+			out = append(out, errFor(
+				patternSubject,
+				"APPLICATION_PATTERN_INTERACTION_LOOKUP_NOT_REFERENCE",
+				"record pattern %s interaction item %s lookup target %s is a %s pattern, not a reference pattern",
+				pattern.ID,
+				item.Attribute,
+				item.Lookup.Pattern,
+				ref.Pattern.Kind,
+			))
+			continue
+		}
+
+		relation, ok := semanticRelations[ref.Pattern.Relation]
+		if !ok {
+			// 参照Pattern自身のRelation不整合はreference PatternのValidationが報告する。
+			continue
+		}
+		if !applicationUsesNamespace(app, relation.Target) {
+			out = append(out, errFor(
+				patternSubject,
+				"APPLICATION_PATTERN_INTERACTION_LOOKUP_SEMANTIC_NOT_USED",
+				"record pattern %s interaction item %s lookup target %s belongs to a semantic namespace that application %s does not use",
+				pattern.ID,
+				item.Attribute,
+				relation.Target,
+				app.ID,
+			))
+			continue
+		}
+		targetAttributes := semanticDataAttributes[relation.Target]
+		targetType, ok := targetAttributes[item.Lookup.TargetAttribute]
+		if !ok {
+			out = append(out, errFor(
+				patternSubject,
+				"UNKNOWN_APPLICATION_PATTERN_INTERACTION_LOOKUP_ATTRIBUTE",
+				"record pattern %s interaction item %s lookup target %s does not have attribute %s",
+				pattern.ID,
+				item.Attribute,
+				relation.Target,
+				item.Lookup.TargetAttribute,
+			))
+			continue
+		}
+		if itemType != targetType {
+			out = append(out, errFor(
+				patternSubject,
+				"APPLICATION_PATTERN_INTERACTION_LOOKUP_TYPE_MISMATCH",
+				"record pattern %s interaction item %s has type %s but lookup target %s has type %s",
+				pattern.ID,
+				item.Attribute,
+				itemType,
+				item.Lookup.TargetAttribute,
+				targetType,
+			))
+		}
+	}
+
+	usedSemantics := map[core.CanonicalID]bool{}
+	for _, namespace := range app.SemanticUses {
+		usedSemantics[namespace] = true
+	}
+	for _, command := range pattern.Interaction.Commands {
+		namespace, ok := semanticCapabilities[command.Capability]
+		if !ok {
+			out = append(out, errFor(
+				patternSubject,
+				"UNKNOWN_APPLICATION_PATTERN_INTERACTION_COMMAND",
+				"record pattern %s declares interaction command %s that is not a capability",
+				pattern.ID,
+				command.Capability,
+			))
+			continue
+		}
+		if !usedSemantics[namespace] {
+			out = append(out, errFor(
+				patternSubject,
+				"APPLICATION_PATTERN_INTERACTION_COMMAND_SEMANTIC_NOT_USED",
+				"record pattern %s declares interaction command %s from namespace %s that application %s does not use",
+				pattern.ID,
+				command.Capability,
+				namespace,
+				app.ID,
+			))
+		}
+		capabilityInputs := semanticCapabilityInputs[command.Capability]
+		seenInputs := map[string]bool{}
+		for _, binding := range command.Inputs {
+			if _, ok := capabilityInputs[binding.Name]; !ok {
+				out = append(out, errFor(
+					patternSubject,
+					"UNKNOWN_APPLICATION_PATTERN_INTERACTION_COMMAND_INPUT",
+					"record pattern %s binds command %s input %s that the capability does not declare",
+					pattern.ID,
+					command.Capability,
+					binding.Name,
+				))
+			}
+			if seenInputs[binding.Name] {
+				out = append(out, errFor(
+					patternSubject,
+					"APPLICATION_PATTERN_INTERACTION_COMMAND_INPUT_DUPLICATE",
+					"record pattern %s binds command %s input %s more than once",
+					pattern.ID,
+					command.Capability,
+					binding.Name,
+				))
+			}
+			seenInputs[binding.Name] = true
+			if _, ok := dataAttributes[binding.Attribute]; !ok {
+				out = append(out, errFor(
+					patternSubject,
+					"UNKNOWN_APPLICATION_PATTERN_INTERACTION_COMMAND_BINDING_ATTRIBUTE",
+					"record pattern %s binds command %s input %s to %s that is not an attribute of %s",
+					pattern.ID,
+					command.Capability,
+					binding.Name,
+					binding.Attribute,
+					pattern.Data,
+				))
+			}
+		}
+	}
+
+	seenHookPhases := map[string]bool{}
+	for _, hook := range pattern.Interaction.Hooks {
+		switch hook.Phase {
+		case "before-read", "before-create", "after-create", "before-update", "after-update", "before-delete", "after-delete":
+		default:
+			out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_INTERACTION_HOOK_PHASE_UNSUPPORTED", "record pattern %s hook uses unsupported phase %s", pattern.ID, hook.Phase))
+		}
+		// One phase names one hook. Two hooks with the same phase would leave the
+		// second silently unexecuted, because the runner resolves a phase to one
+		// declaration.
+		if seenHookPhases[hook.Phase] {
+			out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_INTERACTION_HOOK_PHASE_DUPLICATE", "record pattern %s declares more than one %s hook", pattern.ID, hook.Phase))
+		}
+		seenHookPhases[hook.Phase] = true
+		switch hook.Failure {
+		case "", "reject", "warn":
+		default:
+			out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_INTERACTION_HOOK_FAILURE_UNSUPPORTED", "record pattern %s hook %s uses unsupported failure %s", pattern.ID, hook.Phase, hook.Failure))
+		}
+		for _, attribute := range hook.Reads {
+			if _, ok := dataAttributes[attribute]; !ok {
+				out = append(out, errFor(patternSubject, "UNKNOWN_APPLICATION_PATTERN_INTERACTION_HOOK_READ", "record pattern %s hook %s reads %s that is not an attribute of %s", pattern.ID, hook.Phase, attribute, pattern.Data))
+			}
+		}
+		for _, attribute := range hook.Produces {
+			if _, ok := dataAttributes[attribute]; !ok {
+				out = append(out, errFor(patternSubject, "UNKNOWN_APPLICATION_PATTERN_INTERACTION_HOOK_PRODUCE", "record pattern %s hook %s produces %s that is not an attribute of %s", pattern.ID, hook.Phase, attribute, pattern.Data))
+			}
+		}
+		for _, capability := range hook.Uses {
+			namespace, ok := semanticCapabilities[capability]
+			if !ok {
+				out = append(out, errFor(patternSubject, "UNKNOWN_APPLICATION_PATTERN_INTERACTION_HOOK_USE", "record pattern %s hook %s uses %s that is not a capability", pattern.ID, hook.Phase, capability))
+				continue
+			}
+			if !usedSemantics[namespace] {
+				out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_INTERACTION_HOOK_SEMANTIC_NOT_USED", "record pattern %s hook %s uses %s from namespace %s that application %s does not use", pattern.ID, hook.Phase, capability, namespace, app.ID))
+			}
+			// A hook reaches a capability through the Command boundary, so the
+			// application must declare a command pattern for it. Without one the
+			// hook could be declared and validated but never run, which is what
+			// fail-closed means here: refuse the declaration instead of leaving a
+			// hook that silently cannot execute.
+			if _, declared := commandCapabilities[app.ID][capability]; !declared {
+				out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_INTERACTION_HOOK_USE_WITHOUT_COMMAND", "record pattern %s hook %s uses %s but application %s declares no command pattern for it", pattern.ID, hook.Phase, capability, app.ID))
+			}
+		}
+	}
+
+	for _, navigation := range pattern.Interaction.Navigations {
+		ref, ok := patterns[navigation.From]
+		if !ok {
+			out = append(out, errFor(
+				patternSubject,
+				"UNKNOWN_APPLICATION_PATTERN_INTERACTION_NAVIGATION",
+				"record pattern %s declares navigation from unknown pattern %s",
+				pattern.ID,
+				navigation.From,
+			))
+			continue
+		}
+		if ref.Application != app.ID {
+			out = append(out, errFor(
+				patternSubject,
+				"APPLICATION_PATTERN_INTERACTION_NAVIGATION_APPLICATION_MISMATCH",
+				"record pattern %s belongs to application %s but its navigation source %s belongs to application %s",
+				pattern.ID,
+				app.ID,
+				navigation.From,
+				ref.Application,
+			))
+			continue
+		}
+		if ref.Pattern.Kind != application.PatternBrowse {
+			out = append(out, errFor(
+				patternSubject,
+				"APPLICATION_PATTERN_INTERACTION_NAVIGATION_NOT_BROWSE",
+				"record pattern %s navigation source %s is a %s pattern, not a browse pattern",
+				pattern.ID,
+				navigation.From,
+				ref.Pattern.Kind,
+			))
+			continue
+		}
+		if ref.Pattern.Data != pattern.Data {
+			out = append(out, errFor(
+				patternSubject,
+				"APPLICATION_PATTERN_INTERACTION_NAVIGATION_DATA_MISMATCH",
+				"record pattern %s uses data %s but navigation source %s uses data %s",
+				pattern.ID,
+				pattern.Data,
+				navigation.From,
+				ref.Pattern.Data,
+			))
+		}
+	}
+	return out
+}
+
+func applicationUsesNamespace(app application.Application, id core.CanonicalID) bool {
+	namespace, _, ok := strings.Cut(string(id), ".")
+	if !ok {
+		return false
+	}
+	for _, used := range app.SemanticUses {
+		if string(used) == namespace {
+			return true
+		}
+	}
+	return false
 }
 
 func validateReferencePattern(
@@ -366,7 +863,7 @@ func validateReferencePattern(
 func validateCommandPattern(
 	pattern application.Pattern,
 	patternSubject subject.Subject,
-	semanticCapabilities map[core.CanonicalID]struct{},
+	semanticCapabilities map[core.CanonicalID]core.CanonicalID,
 ) []Diagnostic {
 	var out []Diagnostic
 
@@ -427,6 +924,7 @@ func validateHeaderDetailPattern(
 	pattern application.Pattern,
 	patternSubject subject.Subject,
 	semanticRelations map[core.CanonicalID]applicationPatternRelationRef,
+	semanticDataAttributes map[core.CanonicalID]map[core.CanonicalID]core.CanonicalID,
 ) []Diagnostic {
 	var out []Diagnostic
 
@@ -489,5 +987,95 @@ func validateHeaderDetailPattern(
 		))
 	}
 
+	relation, relationOK := semanticRelations[pattern.Relation]
+	detailAttributes := semanticDataAttributes[relation.Target]
+	seenAggregates := map[string]bool{}
+	for _, aggregate := range pattern.Aggregates {
+		if aggregate.Name == "" {
+			out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_AGGREGATE_NAME_REQUIRED", "header-detail pattern %s has an aggregate without a name", pattern.ID))
+			continue
+		}
+		if seenAggregates[aggregate.Name] {
+			out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_AGGREGATE_DUPLICATE", "header-detail pattern %s declares aggregate %s more than once", pattern.ID, aggregate.Name))
+		}
+		seenAggregates[aggregate.Name] = true
+		switch aggregate.Function {
+		case "sum", "count", "min", "max", "avg":
+		default:
+			out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_AGGREGATE_FUNCTION_UNSUPPORTED", "header-detail pattern %s aggregate %s uses unsupported function %s", pattern.ID, aggregate.Name, aggregate.Function))
+		}
+		if !relationOK {
+			continue
+		}
+		if _, ok := detailAttributes[aggregate.Attribute]; !ok {
+			out = append(out, errFor(patternSubject, "UNKNOWN_APPLICATION_PATTERN_AGGREGATE_ATTRIBUTE", "header-detail pattern %s aggregate %s refers to %s that is not an attribute of %s", pattern.ID, aggregate.Name, aggregate.Attribute, relation.Target))
+		}
+	}
+
+	return out
+}
+
+func validateBrowseFilters(
+	pattern application.Pattern,
+	patternSubject subject.Subject,
+	semanticDataAttributes map[core.CanonicalID]map[core.CanonicalID]core.CanonicalID,
+	queryInputs map[core.CanonicalID]map[string]core.CanonicalID,
+) []Diagnostic {
+	var out []Diagnostic
+	attributes := semanticDataAttributes[pattern.Data]
+	seen := map[core.CanonicalID]bool{}
+	for _, filter := range pattern.Filters {
+		if _, ok := attributes[filter.Attribute]; !ok {
+			out = append(out, errFor(patternSubject, "UNKNOWN_APPLICATION_PATTERN_FILTER_ATTRIBUTE", "browse pattern %s filter refers to %s that is not an attribute of %s", pattern.ID, filter.Attribute, pattern.Data))
+		}
+		if len(filter.Operators) == 0 {
+			out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_FILTER_OPERATORS_REQUIRED", "browse pattern %s filter %s requires at least one operator", pattern.ID, filter.Attribute))
+		}
+		for _, operator := range filter.Operators {
+			switch operator {
+			case "eq", "ne", "ge", "gt", "le", "lt", "scan", "generic":
+			default:
+				out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_FILTER_OPERATOR_UNSUPPORTED", "browse pattern %s filter %s uses unsupported operator %s", pattern.ID, filter.Attribute, operator))
+			}
+		}
+		if filter.Parameter != "" {
+			inputs := queryInputs[pattern.Query]
+			parameterType, ok := inputs[filter.Parameter]
+			if !ok {
+				out = append(out, errFor(patternSubject, "UNKNOWN_APPLICATION_PATTERN_FILTER_PARAMETER", "browse pattern %s filter %s binds unknown query input %s", pattern.ID, filter.Attribute, filter.Parameter))
+			} else if attributeType, exists := attributes[filter.Attribute]; exists && attributeType != parameterType {
+				out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_FILTER_PARAMETER_TYPE_MISMATCH", "browse pattern %s filter %s has type %s but query input %s has type %s", pattern.ID, filter.Attribute, attributeType, filter.Parameter, parameterType))
+			}
+		}
+		if seen[filter.Attribute] {
+			out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_FILTER_DUPLICATE", "browse pattern %s declares filter %s more than once", pattern.ID, filter.Attribute))
+		}
+		seen[filter.Attribute] = true
+	}
+	return out
+}
+
+func validateBrowseSorts(
+	pattern application.Pattern,
+	patternSubject subject.Subject,
+	semanticDataAttributes map[core.CanonicalID]map[core.CanonicalID]core.CanonicalID,
+) []Diagnostic {
+	var out []Diagnostic
+	attributes := semanticDataAttributes[pattern.Data]
+	seen := map[core.CanonicalID]bool{}
+	for _, sort := range pattern.Sorts {
+		if _, ok := attributes[sort.Attribute]; !ok {
+			out = append(out, errFor(patternSubject, "UNKNOWN_APPLICATION_PATTERN_SORT_ATTRIBUTE", "browse pattern %s sort refers to %s that is not an attribute of %s", pattern.ID, sort.Attribute, pattern.Data))
+		}
+		switch sort.Direction {
+		case "asc", "desc":
+		default:
+			out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_SORT_DIRECTION_UNSUPPORTED", "browse pattern %s sort %s uses unsupported direction %s", pattern.ID, sort.Attribute, sort.Direction))
+		}
+		if seen[sort.Attribute] {
+			out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_SORT_DUPLICATE", "browse pattern %s declares sort %s more than once", pattern.ID, sort.Attribute))
+		}
+		seen[sort.Attribute] = true
+	}
 	return out
 }

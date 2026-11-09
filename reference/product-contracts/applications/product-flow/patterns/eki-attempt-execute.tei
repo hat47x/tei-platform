@@ -1,0 +1,3 @@
+pattern product_contracts_flow.eki_attempt_execute command {
+    capability product_contracts.eki_attempt_execute
+}

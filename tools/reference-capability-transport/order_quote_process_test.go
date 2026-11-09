@@ -1,9 +1,11 @@
 package capabilitytransport
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -23,6 +25,19 @@ type businessProcessLauncher struct {
 	calls int
 }
 
+type metadataMutatingLauncher struct {
+	delegate *businessProcessLauncher
+	mutate   func([]byte) []byte
+}
+
+func (l metadataMutatingLauncher) Invoke(ctx context.Context, command pruntime.ProcessCommand, request pruntime.Request) (pruntime.Response, error) {
+	response, err := l.delegate.Invoke(ctx, command, request)
+	if err == nil {
+		response.Payload = l.mutate(response.Payload)
+	}
+	return response, err
+}
+
 func (l *businessProcessLauncher) Invoke(ctx context.Context, command pruntime.ProcessCommand, request pruntime.Request) (pruntime.Response, error) {
 	l.calls++
 	return (pruntime.StdioProcessLauncher{}).Invoke(ctx, command, request)
@@ -32,13 +47,14 @@ func (l *businessProcessLauncher) Invoke(ctx context.Context, command pruntime.P
 // It is NOT an order submission, database write, transaction, or replacement
 // for Host-side business authorization and effect-time Permission checks.
 func TestIndependentBusinessQuoteOverExistingGenericProcessTransport(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
-	defer cancel()
+	// #2057: buildは実プロセスの期限と切り離し、独立した長い期限で待つ。
+	buildCtx, cancelBuild := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancelBuild()
 
 	// Build the complete source of the standalone business plugin in an
 	// unrelated offline Go module. Copying only main.go could silently omit a
 	// newly added source file from the verification.
-	binary := filepath.Join(t.TempDir(), "order-quote")
+	binary := hostExecutable(t.TempDir(), "order-quote")
 	work := t.TempDir()
 	sourceDir := "../../plugins/reference-order-quote"
 	entries, err := os.ReadDir(sourceDir)
@@ -79,13 +95,15 @@ func TestIndependentBusinessQuoteOverExistingGenericProcessTransport(t *testing.
 		{"vet", "./..."},
 		{"build", "-o", binary, "."},
 	} {
-		cmd := exec.CommandContext(ctx, "go", args...)
+		cmd := exec.CommandContext(buildCtx, "go", args...)
 		cmd.Dir = work
 		cmd.Env = env
 		if output, err := cmd.CombinedOutput(); err != nil {
 			t.Fatalf("standalone quote plugin %v failed: %v\n%s", args, err, output)
 		}
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
 	image, err := os.ReadFile(binary)
 	if err != nil {
 		t.Fatal(err)
@@ -206,6 +224,44 @@ func TestIndependentBusinessQuoteOverExistingGenericProcessTransport(t *testing.
 	if launcher.calls != 1 || guardChecks != beforeGuard+1 {
 		t.Fatalf("missing real process or invocation-time Host check: calls=%d additionalGuards=%d", launcher.calls, guardChecks-beforeGuard)
 	}
+	for _, tc := range []struct{ name, anchor, replacement string }{
+		{"duplicate contract", `"contractId":`, `"contractId":"forged","contractId":`},
+		{"case-folded contract", `"contractId":`, `"ContractId":"forged","contractId":`},
+		{"duplicate provider identity", `"pluginId":`, `"pluginId":"forged","pluginId":`},
+		{"case-folded provider identity", `"pluginId":`, `"PluginId":"forged","pluginId":`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			injected := false
+			wrapper := metadataMutatingLauncher{delegate: launcher, mutate: func(payload []byte) []byte {
+				injected = bytes.Contains(payload, []byte(tc.anchor))
+				return bytes.Replace(payload, []byte(tc.anchor), []byte(tc.replacement), 1)
+			}}
+			before := launcher.calls
+			got, err := invokePlannedOverProcessTransport(ctx, wrapper, pruntime.ProcessCommand{Executable: binary}, plan, carrier, "metadata-test", dispatch)
+			if !injected || launcher.calls != before+1 || err == nil || len(got.ResultPayload) != 0 {
+				t.Fatalf("ambiguous metadata returned after real process: injected=%v calls=%d result=%+v err=%v", injected, launcher.calls-before, got, err)
+			}
+		})
+	}
+	t.Run("business payload remains opaque to generic metadata", func(t *testing.T) {
+		business := []byte(`{"quantity":1,"quantity":2}`)
+		wrapper := metadataMutatingLauncher{delegate: launcher, mutate: func(payload []byte) []byte {
+			var metadata GenericTransportResult
+			if err := json.Unmarshal(payload, &metadata); err != nil {
+				t.Fatal(err)
+			}
+			metadata.Payload = business
+			encoded, err := json.Marshal(metadata)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return encoded
+		}}
+		got, err := invokePlannedOverProcessTransport(ctx, wrapper, pruntime.ProcessCommand{Executable: binary}, plan, carrier, "opaque-test", dispatch)
+		if err != nil || !bytes.Equal(got.ResultPayload, business) {
+			t.Fatalf("carrier interpreted business payload: %+v, %v", got, err)
+		}
+	})
 	t.Run("different business request, same accepted semantic plan", func(t *testing.T) {
 		next := dispatch
 		next.Payload = []byte(`{"currency":"JPY","lines":[{"sku":"BOOK-02","quantity":2,"unitPriceMinor":900}]}`)

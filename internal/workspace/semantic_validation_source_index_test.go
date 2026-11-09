@@ -12,6 +12,7 @@ import (
 func TestSemanticValidationLoadsAcrossNamespaceFilesAndHasExactSourceRange(t *testing.T) {
 	root := t.TempDir()
 	writeSemanticValidationWorkspaceFile(t, root, "tei.workspace.yaml", `workspace: semantic_validation_test
+formatVersion: 1
 sources:
   - semantic
 `)

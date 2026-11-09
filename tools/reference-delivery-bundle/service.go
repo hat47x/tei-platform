@@ -52,7 +52,7 @@ func Start(statePath, command, logPath string) (ServiceReceipt, error) {
 	if err != nil {
 		return ServiceReceipt{}, err
 	}
-	cmd := exec.Command("bash", "-lc", command)
+	cmd := exec.Command("bash", "-c", command)
 	cmd.Env = append(os.Environ(),
 		"TEI_CATALOG="+state.Active.Catalog,
 		"TEI_ACTIVE_DIGEST="+state.Active.Digest,

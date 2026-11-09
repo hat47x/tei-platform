@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -188,7 +189,7 @@ func buildReviewPacketWithKnowledge(
 		packet.Coverage.KnowledgeContext = true
 		for _, knowledgePath := range knowledgePaths {
 			var input knowledgeContextInput
-			if err := readJSONFile(knowledgePath, &input); err != nil {
+			if err := readKnowledgeEnvelopeFile(knowledgePath, &input); err != nil {
 				return reviewPacket{}, fmt.Errorf("knowledge context %sを読めません: %w", knowledgePath, err)
 			}
 			if strings.TrimSpace(input.Subject.Kind) == "" ||
@@ -438,4 +439,49 @@ func readJSONFile(path string, out any) error {
 		return err
 	}
 	return errors.New("JSON documentの後ろに追加valueがあります")
+}
+
+// readKnowledgeEnvelopeFile reads a tei knowledge-context output. Since the
+// #2354 result envelope it is one CLI result JSON; before that (and for files
+// produced by older checkouts) it was the bare Context. Both shapes decode
+// into the same fields this tool reads.
+func readKnowledgeEnvelopeFile(path string, out *knowledgeContextInput) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	data, err := io.ReadAll(f)
+	if err != nil {
+		return err
+	}
+	var envelope struct {
+		SchemaVersion string          `json:"schemaVersion"`
+		OK            bool            `json:"ok"`
+		Mode          string          `json:"mode,omitempty"`
+		Result        json.RawMessage `json:"result,omitempty"`
+		Error         *struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+		} `json:"error,omitempty"`
+	}
+	probe := bytes.NewReader(data)
+	if err := json.NewDecoder(probe).Decode(&envelope); err != nil {
+		// Not an envelope: fall back to the bare Context shape.
+		return json.Unmarshal(data, out)
+	}
+	if envelope.SchemaVersion != "tei.cli.knowledge-context/v0" {
+		// A different JSON document; keep the pre-envelope behaviour.
+		return json.Unmarshal(data, out)
+	}
+	if envelope.Error != nil {
+		return fmt.Errorf("tei knowledge-context failed: %s: %s", envelope.Error.Code, envelope.Error.Message)
+	}
+	if envelope.Mode != "" && envelope.Mode != "context" {
+		return fmt.Errorf("tei knowledge-context returned mode %s; this tool needs the whole context", envelope.Mode)
+	}
+	if len(envelope.Result) == 0 {
+		return errors.New("tei knowledge-context envelope has no result")
+	}
+	return json.Unmarshal(envelope.Result, out)
 }

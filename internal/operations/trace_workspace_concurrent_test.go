@@ -190,6 +190,8 @@ func workspaceWithFailingSourceIndex(t *testing.T) string {
 		t.Fatal(err)
 	}
 	const declaration = "    index orders_customer_idx on sales.order.customer_id\n"
+	// Windows checkouts may convert LF to CRLF; the declaration is matched on LF text.
+	content = []byte(strings.ReplaceAll(string(content), "\r\n", "\n"))
 	if !strings.Contains(string(content), declaration) {
 		t.Fatalf("fixture changed: the index declaration is gone from %s", persistence)
 	}
@@ -227,8 +229,8 @@ func TestTraceWorkspaceReportsTraceErrorBeforeSourceIndexFailure(t *testing.T) {
 	}
 
 	// グラフを見て初めて分かる失敗（存在しない主体）は、Source Index側の失敗より優先する。
-	// 検査対象外の種別なので、inspectCanonicalでは弾かれず、TraceDirectが返す。
-	missing := modelref.Key{Scope: "reference-observation", Subject: subject.Subject{Kind: "no-such-kind", ID: "x"}}
+	// 投影する種別なので、inspectCanonicalを通過し、TraceDirectが返す。
+	missing := modelref.Key{Scope: "reference-observation", Subject: subject.Subject{Kind: "semantic-data", ID: "no-such-subject"}}
 	_, err = TraceWorkspace(root, missing, modelref.TraceOptions{Mode: "summary"})
 	var failure *ValidationFailure
 	if errors.As(err, &failure) {
@@ -237,11 +239,19 @@ func TestTraceWorkspaceReportsTraceErrorBeforeSourceIndexFailure(t *testing.T) {
 	if !errors.As(err, &traceErr) || traceErr.Code != "SUBJECT_NOT_FOUND" {
 		t.Fatalf("expected SUBJECT_NOT_FOUND from the trace, got %v", err)
 	}
+
+	// 投影しない種別は、世界を読む前のUNSUPPORTED_SUBJECT_KINDとして返る（#3180）。
+	// 存在しない識別子と同じSUBJECT_NOT_FOUNDにしない。
+	unprojected := modelref.Key{Scope: "reference-observation", Subject: subject.Subject{Kind: "semantic-candidate-key", ID: "sales.order.order_identity"}}
+	_, err = TraceWorkspace(root, unprojected, modelref.TraceOptions{Mode: "summary"})
+	if !errors.As(err, &traceErr) || traceErr.Code != "UNSUPPORTED_SUBJECT_KIND" {
+		t.Fatalf("expected UNSUPPORTED_SUBJECT_KIND for an unprojected kind, got %v", err)
+	}
 }
 
 // Traceが失敗して戻るときも、並行に走らせた処理は合流済みで、goroutineが残らない。
 func TestTraceWorkspaceLeavesNoGoroutinesWhenTheTraceFails(t *testing.T) {
-	missing := modelref.Key{Scope: "reference-observation", Subject: subject.Subject{Kind: "no-such-kind", ID: "x"}}
+	missing := modelref.Key{Scope: "reference-observation", Subject: subject.Subject{Kind: "semantic-data", ID: "no-such-subject"}}
 	for i := 0; i < 5; i++ {
 		before := runtime.NumGoroutine()
 		_, err := TraceWorkspace(referenceWorkspaceRoot(), missing, modelref.TraceOptions{Mode: "summary"})

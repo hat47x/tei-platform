@@ -36,14 +36,16 @@ func TestNotExecutedE2FixtureListsEveryMissingHandoff(t *testing.T) {
 		"E1_NEGATIVE_SELECTED_RULE_RUNNING_WEB_EVIDENCE_REQUIRED",
 		"E1_RUNNING_WEB_TARGET_RECEIPT_REQUIRED",
 		"E1_WEB_WORKSPACE_R1_AND_TARGET_LAUNCH_PROVENANCE_MISSING",
+		"E2_ACCEPTANCE_KIND_REQUIRED",
 		"E2_COMMAND_AND_INDEPENDENT_READ_NOT_CORRELATED",
+		"E2_HOST_AUTHORITY_PROVENANCE_REQUIRED",
+		"E2_PROVIDER_GUARANTEE_NOT_ATOMIC",
 		"N11_UNOBSERVED_CONTROL_MISSING",
 		"REVISION_QUALIFICATION_STALE_OR_MISSING",
 		"S02_NEGATIVE_CONTROL_MISSING",
 		"S02_REAL_DATASOURCE_SCHEMA_READINESS_MISSING",
 		"S05_CURRENT_HOST_AUTHORITY_MISSING",
 		"S05_NEGATIVE_CONTROL_MISSING",
-		"SYNTHETIC_WEB_PROVIDER_CANNOT_CLAIM_E2",
 		"TRUSTED_FULL_HEALTH_NOT_RECORDED",
 		"WEB_PROVIDER_KIND_UNRESOLVED",
 	}
@@ -96,6 +98,9 @@ func TestNotExecutedE2FixtureCarriesNoEvidenceValues(t *testing.T) {
 		if strings.TrimSpace(value) != "" {
 			t.Errorf("%s holds %q: a not-executed packet must leave unexecuted fields empty", name, value)
 		}
+	}
+	if p.Physical.Guarantee != nil {
+		t.Errorf("physical.guarantee holds %+v: a not-executed packet declares nothing", *p.Physical.Guarantee)
 	}
 	if p.Qualification.FullHealth != "NOT_RUN" || p.Qualification.CleanBefore || p.Qualification.CleanAfter ||
 		p.Physical.SchemaCompatibility != "unresolved" || p.Contract.EvidenceClass != "source-only" {

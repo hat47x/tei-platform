@@ -11,6 +11,7 @@
 package batchcompleteness
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -42,6 +43,8 @@ const (
 	RowPresent          = "present"
 	RowNull             = "null"
 	RowInputUnavailable = "input-unavailable"
+	RowTypeError        = "type-error"
+	RowExecutionFailed  = "execution-unavailable"
 )
 
 // Operand is one factor of the derived amount.
@@ -99,13 +102,29 @@ func Evaluate(in Input) Report {
 	report := Report{Op: strings.TrimSpace(in.Query.Op), Rows: make([]RowResult, 0, len(in.Rows))}
 	for _, row := range in.Rows {
 		result := RowResult{ID: row.ID}
+		if strings.TrimSpace(row.Quantity.State) == "unavailable" || strings.TrimSpace(row.Price.State) == "unavailable" {
+			// The rule cannot run at all, which is neither a missing input nor a
+			// type failure.
+			result.State = RowExecutionFailed
+			report.Unresolved = append(report.Unresolved, row.ID)
+			report.Rows = append(report.Rows, result)
+			continue
+		}
 		product, err := derivationref.Multiply(
 			derivationref.Input{State: derivationref.InputState(strings.TrimSpace(row.Quantity.State)), Decimal: row.Quantity.Decimal},
 			derivationref.Input{State: derivationref.InputState(strings.TrimSpace(row.Price.State)), Decimal: row.Price.Decimal},
 		)
 		if err != nil {
-			// An unevaluable row is not a value and not a normal NULL.
-			result.State = RowInputUnavailable
+			// An unevaluable row is not a value and not a normal NULL. A type or
+			// operator failure is kept apart from an input that could not be read.
+			switch {
+			case errors.Is(err, derivationref.ErrOperator), errors.Is(err, derivationref.ErrType):
+				result.State = RowTypeError
+			case errors.Is(err, derivationref.ErrInput):
+				result.State = RowInputUnavailable
+			default:
+				result.State = RowExecutionFailed
+			}
 			report.Unresolved = append(report.Unresolved, row.ID)
 		} else {
 			result.State = string(product.State)

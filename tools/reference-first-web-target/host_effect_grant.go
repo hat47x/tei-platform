@@ -15,9 +15,12 @@ import (
 // subject, exact Action, and the Host Accepted Source used to build this World.
 // No B/R/T label or Shared Acceptance Decision file is an effect permission.
 type HostEffectGrantQuery struct {
-	ApplicationID           string
-	SubjectID               string
-	ActionID                string
+	ApplicationID string
+	SubjectID     string
+	ActionID      string
+	// ResourceID is the exact resource of this effect (for example "order/42").
+	// A Reader whose Grants are not resource-bound may ignore it.
+	ResourceID              string
 	SourceDecisionRef       string
 	SourceAuthorityRevision string
 	ModelRevision           string
@@ -58,6 +61,20 @@ func requireCurrentHostEffectGrant(
 	index sourceindex.Index,
 	accepted sourceacceptance.Record,
 ) error {
+	return requireCurrentHostEffectGrantFor(ctx, sourceReader, grantReader,
+		applicationID, subjectID, actionID, "", index, accepted)
+}
+
+// requireCurrentHostEffectGrantFor is requireCurrentHostEffectGrant for a
+// Reader whose Grants are bound to an exact resource.
+func requireCurrentHostEffectGrantFor(
+	ctx context.Context,
+	sourceReader sourceacceptance.Reader,
+	grantReader HostEffectGrantReader,
+	applicationID, subjectID, actionID, resourceID string,
+	index sourceindex.Index,
+	accepted sourceacceptance.Record,
+) error {
 	if ctx == nil || grantReader == nil || sourceReader == nil ||
 		strings.TrimSpace(subjectID) == "" || strings.TrimSpace(actionID) == "" {
 		return errHostEffectGrantUnavailable
@@ -68,13 +85,15 @@ func requireCurrentHostEffectGrant(
 	current, err := sourceacceptance.VerifyCurrent(ctx, sourceReader, applicationID, index)
 	if err != nil || current.DecisionRef != accepted.DecisionRef ||
 		current.AuthorityRevision != accepted.AuthorityRevision ||
-		current.ModelRevision != accepted.ModelRevision {
+		current.ModelRevision != accepted.ModelRevision ||
+		normalizedAcceptanceKind(current.AcceptanceKind) != normalizedAcceptanceKind(accepted.AcceptanceKind) {
 		return errHostEffectGrantUnavailable
 	}
 	query := HostEffectGrantQuery{
 		ApplicationID:           applicationID,
 		SubjectID:               subjectID,
 		ActionID:                actionID,
+		ResourceID:              resourceID,
 		SourceDecisionRef:       current.DecisionRef,
 		SourceAuthorityRevision: current.AuthorityRevision,
 		ModelRevision:           current.ModelRevision,
@@ -88,4 +107,13 @@ func requireCurrentHostEffectGrant(
 		return errHostEffectGrantUnavailable
 	}
 	return nil
+}
+
+// normalizedAcceptanceKind maps the empty kind to unspecified, the value
+// VerifyCurrent reports, so a hand-built startup Record compares equal.
+func normalizedAcceptanceKind(kind string) string {
+	if kind == "" {
+		return sourceacceptance.AcceptanceKindUnspecified
+	}
+	return kind
 }

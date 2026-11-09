@@ -6,6 +6,20 @@
 
 ## 目的
 
+**HTTP Decision Graphとの境界（2026-11-07限定監査）**：[設計 #3274](../../plan/design/HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md)を参照。`composeRequestPlan`はGuardの契約依存DAGとTerminalイベント**宣言集合**を検査するが、実HTTP分岐の全Terminal PathでのAudit強制を証明するわけではない。[HDG-21 characterisation](plan-check.terminal-gap.test.mjs)では、Action因果祖先にならないTerminal宣言Stepがあっても構成上は受理される点を記録した。限定V8で2/2 PASS。追加の[限定Node CI Workflow](../../.github/workflows/tei-http-decision-characterization.yml)はexact checkoutのPlanner/Test Blobを記録して`node --test reference/web-composition/plan-check.terminal-gap.test.mjs`を実行する。**当該Workflowの実Run成功が確認されるまではNode本実行は未検証**。実Hostの分岐・監査については未検証であり、**このGapを実Hostの監査バイパス脆弱性と断定しない**。E1の検査をRuntime Audit Conformanceに昇格させない。
+**HTTP Decision Graphとの境界（2026-11-07限定監査）**：[設計 #3274](../../plan/design/HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md)を参照。`composeRequestPlan`はGuardの契約依存DAGとTerminalイベント**宣言集合**を検査するが、実HTTP分岐の全Terminal PathでのAudit強制を証明するわけではない。[HDG-21 characterisation](plan-check.terminal-gap.test.mjs)では、Action因果祖先にならないTerminal宣言Stepがあっても構成上は受理される点を記録した。限定V8で2/2 PASS、Node本実行・実Host検査は未実行。**このGapを実Hostの監査バイパス脆弱性と断定しない**。E1の検査をRuntime Audit Conformanceに昇格させない。
+**HTTP Decision Graphとの境界（2026-11-08実証更新）**：[設計 #3274](../../plan/design/HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md)を参照。`composeRequestPlan`はGuardの契約依存DAGとTerminalイベント**宣言集合**を検査し、実HTTP分岐の全Terminal PathでのAudit強制とは区別する。[HDG-21 Node Characterization](plan-check.terminal-gap.test.mjs)は、[実Node専用CI #42396614454](https://github.com/hat47x/tei-platform/actions/runs/42396614454)で**completed/success**（当該PR exact HEAD、Go Hostとの縦断適合ではない）。同PRの全体Healthは別SourceのGo整形差によりFAIL、Go vet/test/Workspace validateはPASS。
+
+Go Reference Host側は`NewHost`の`defer Audit`と既存の拒否・loopback・panic試験を持つ。[新しい経路Witness試験](go-host/decision_path_test.go)は拒否7・Action到達3の計10経路についてCallback順序・HTTP status・Audit Stageを比較する。専用CIはNodeとGoの同一checkout限定試験を行い、**このGo追加分のCI結果が確定するまで実Go新テストPASSとは記載しない**。HTTP 202と`Audit.Stage=completed`はHandler処理結果に過ぎず、Business Commit/Effect Observationではない。202送出後のpanicではHost Stageがerrorになり得る。
+
+E1 Plannerの`onTerminal`をRuntime Hostのdefer Auditへ**実Bindingした証拠は依然としてない**。限定PathのCallback観測からすべての未観測経路やProduction IdP・Provider・Client Receiptの安全性を主張しない。
+
+**2026-11-08限定前進（#3274）**：[専用Node+Go CI #42461546535](https://github.com/hat47x/tei-platform/actions/runs/42461546535)はcompleted/success（Node HDG-21 2件＋Go Host 10経路）。さらに[E1/Go二視点Fixture](e1-go-route-pair.fixture.json)を[Node](e1-go-route-pair.test.mjs)と[Go](go-host/e1_go_route_pair_test.go)の双方で読む**独立宣言Routeの一致・不一致テスト**を追加した。Host/E1が各々構成可能でもPathまたはActionが異なると明示比較では不一致になる。Provider issuerを変えてもRoute一致のままであり、Route一致をAuthorityやTerminal Coverageの証拠には使えない。二視点Fixtureの追加テストは[実CI #42462531490](https://github.com/hat47x/tei-platform/actions/runs/42462531490)でNode 7/7とGo Host packageがPASS済み。さらに[実Workspace Source admission Goテスト](go-host/e1_workspace_source_admission_test.go)で、既存`operations.InspectSubject`からCanonical Pattern `order_entry.submit_order` とCapability `sales.order.submit` を読み、Source Index・Source参照・固定IDの一貫性を検査する。この実Source admission試験は[前段専用CI #42464774706](https://github.com/hat47x/tei-platform/actions/runs/42464774706)でPASS（同HEAD全体Health #42464774715もPASS）。さらに[実Command Binding解決試験](go-host/e1_real_workspace_command_binding_test.go)で既存`workspace.Load`＋`driver.ResolveCommandBinding`から`order_entry.submit_order→sales.order.submit→order_entry/sales.order.submit`を照合し、欠落・重複・異なる有効なCapabilityの負例を追加する。この実Binding解決試験は[前段専用CI #42470312187](https://github.com/hat47x/tei-platform/actions/runs/42470312187)でGo Host全テストPASS（同HEAD全体Health #42470312240もPASS）。さらに[実Go Host→Driver→合成Adapter Invocation試験](go-host/e1_real_workspace_driver_invocation_test.go)を追加し、既存`NewCanonicalActionAuthorizer`と`driver.InvokeCapability`を同じHTTPリクエスト内で通す。合成Command Adapterの本体が実際に呼ばれた場合と、Session/CSRF/業務認可拒否・Adapter解決/呼出し障害・Result契約違反の停止点を独立期待値で照合する。この新しい実Go試験の[限定CI #42474818698](https://github.com/hat47x/tei-platform/actions/runs/42474818698)はNode7/7＋Go Host全PASSであり、合成Adapterへの実Invokeが確認できた。ただし同HEAD全体Health #42474818899は設計READMEの新文書登録漏れによりFAIL（現mainでは当該登録が存在）。次の[HTTP結果とEffectの独立Observationテスト](go-host/effect_unknown_observation_test.go)は同じ実Host・実Driver・合成Adapterを通し、**更新後503**・**未更新202**・**更新済202**・**未更新503**・**503後read失敗**を明示的な`driver.ExecuteObservationRead`で区別する。HTTP段階での自動read/再実行は行わず、状態の確定は別の合成readの資格として扱う。**本新テストのPASSは当該PR CI確認まで未資格**。Product Provider/DB Commit/Receipt/Client完全受領、E1 Declarative Terminal全PathとHostの正式Bindingは依然未実証。
+**2026-11-08限定前進（#3274）**：[専用Node+Go CI #42461546535](https://github.com/hat47x/tei-platform/actions/runs/42461546535)はcompleted/success（Node HDG-21 2件＋Go Host 10経路）。さらに[E1/Go二視点Fixture](e1-go-route-pair.fixture.json)を[Node](e1-go-route-pair.test.mjs)と[Go](go-host/e1_go_route_pair_test.go)の双方で読む**独立宣言Routeの一致・不一致テスト**を追加した。Host/E1が各々構成可能でもPathまたはActionが異なると明示比較では不一致になる。Provider issuerを変えてもRoute一致のままであり、Route一致をAuthorityやTerminal Coverageの証拠には使えない。**追加した二視点テストの実CI成功は本PRのRun結果で判定**する。正式Binding・実TEI Graph Loader・実Providerは未実証。
+**2026-11-08限定前進（#3274）**：[専用Node+Go CI #42461546535](https://github.com/hat47x/tei-platform/actions/runs/42461546535)はcompleted/success（Node HDG-21 2件＋Go Host 10経路）。さらに[E1/Go二視点Fixture](e1-go-route-pair.fixture.json)を[Node](e1-go-route-pair.test.mjs)と[Go](go-host/e1_go_route_pair_test.go)の双方で読む**独立宣言Routeの一致・不一致テスト**を追加した。Host/E1が各々構成可能でもPathまたはActionが異なると明示比較では不一致になる。Provider issuerを変えてもRoute一致のままであり、Route一致をAuthorityやTerminal Coverageの証拠には使えない。二視点Fixtureの追加テストは[実CI #42462531490](https://github.com/hat47x/tei-platform/actions/runs/42462531490)でNode 7/7とGo Host packageがPASS済み。さらに[実Workspace Source admission Goテスト](go-host/e1_workspace_source_admission_test.go)で、既存`operations.InspectSubject`からCanonical Pattern `order_entry.submit_order` とCapability `sales.order.submit` を読み、Source Index・Source参照・固定IDの一貫性を検査する。**このGo Source admission追加分の成否は当該PRの専用CI完了で確認する**。局所Canonical Subject取得はE1/Host正式Binding・Graph Required全閉包・実Providerを証明しない。
+**2026-11-08限定前進（#3274）**：[専用Node+Go CI #42461546535](https://github.com/hat47x/tei-platform/actions/runs/42461546535)はcompleted/success（Node HDG-21 2件＋Go Host 10経路）。さらに[E1/Go二視点Fixture](e1-go-route-pair.fixture.json)を[Node](e1-go-route-pair.test.mjs)と[Go](go-host/e1_go_route_pair_test.go)の双方で読む**独立宣言Routeの一致・不一致テスト**を追加した。Host/E1が各々構成可能でもPathまたはActionが異なると明示比較では不一致になる。Provider issuerを変えてもRoute一致のままであり、Route一致をAuthorityやTerminal Coverageの証拠には使えない。二視点Fixtureの追加テストは[実CI #42462531490](https://github.com/hat47x/tei-platform/actions/runs/42462531490)でNode 7/7とGo Host packageがPASS済み。さらに[実Workspace Source admission Goテスト](go-host/e1_workspace_source_admission_test.go)で、既存`operations.InspectSubject`からCanonical Pattern `order_entry.submit_order` とCapability `sales.order.submit` を読み、Source Index・Source参照・固定IDの一貫性を検査する。この実Source admission試験は[前段専用CI #42464774706](https://github.com/hat47x/tei-platform/actions/runs/42464774706)でPASS（同HEAD全体Health #42464774715もPASS）。さらに[実Command Binding解決試験](go-host/e1_real_workspace_command_binding_test.go)で既存`workspace.Load`＋`driver.ResolveCommandBinding`から`order_entry.submit_order→sales.order.submit→order_entry/sales.order.submit`を照合し、欠落・重複・異なる有効なCapabilityの負例を追加する。**今回の追加試験は当該PRの専用CI成功確認までは未検証**。局所Canonical読取・Binding解決をE1/Host正式配線、Adapter実Invoke、Graph全閉包、実Provider/Effectへ昇格しない。
+**2026-11-08限定前進（#3274）**：[専用Node+Go CI #42461546535](https://github.com/hat47x/tei-platform/actions/runs/42461546535)はcompleted/success（Node HDG-21 2件＋Go Host 10経路）。さらに[E1/Go二視点Fixture](e1-go-route-pair.fixture.json)を[Node](e1-go-route-pair.test.mjs)と[Go](go-host/e1_go_route_pair_test.go)の双方で読む**独立宣言Routeの一致・不一致テスト**を追加した。Host/E1が各々構成可能でもPathまたはActionが異なると明示比較では不一致になる。Provider issuerを変えてもRoute一致のままであり、Route一致をAuthorityやTerminal Coverageの証拠には使えない。二視点Fixtureの追加テストは[実CI #42462531490](https://github.com/hat47x/tei-platform/actions/runs/42462531490)でNode 7/7とGo Host packageがPASS済み。さらに[実Workspace Source admission Goテスト](go-host/e1_workspace_source_admission_test.go)で、既存`operations.InspectSubject`からCanonical Pattern `order_entry.submit_order` とCapability `sales.order.submit` を読み、Source Index・Source参照・固定IDの一貫性を検査する。この実Source admission試験は[前段専用CI #42464774706](https://github.com/hat47x/tei-platform/actions/runs/42464774706)でPASS（同HEAD全体Health #42464774715もPASS）。さらに[実Command Binding解決試験](go-host/e1_real_workspace_command_binding_test.go)で既存`workspace.Load`＋`driver.ResolveCommandBinding`から`order_entry.submit_order→sales.order.submit→order_entry/sales.order.submit`を照合し、欠落・重複・異なる有効なCapabilityの負例を追加する。この実Binding解決試験は[前段専用CI #42470312187](https://github.com/hat47x/tei-platform/actions/runs/42470312187)でGo Host全テストPASS（同HEAD全体Health #42470312240もPASS）。さらに[実Go Host→Driver→合成Adapter Invocation試験](go-host/e1_real_workspace_driver_invocation_test.go)を追加し、既存`NewCanonicalActionAuthorizer`と`driver.InvokeCapability`を同じHTTPリクエスト内で通す。合成Command Adapterの本体が実際に呼ばれた場合と、Session/CSRF/業務認可拒否・Adapter解決/呼出し障害・Result契約違反の停止点を独立期待値で照合する。**この新しい実Go試験のCI結果が確認できるまではPASSと書かない**。合成Adapterの実Invokeは本番Plugin Provider選択やDB永続Effect/Client完全受領ではなく、E1 Declarative Terminal全PathとHostの正式Bindingも未証明。
+
 プラグインを組み合わせるとき、HTTP要求の実行前に次の問題を発見できるかを確かめます。
 
 - 必須保護（本人確認・要求元保護・業務操作の認可）の不足。
@@ -60,7 +74,7 @@ node --test reference/web-composition/plan-check.test.mjs
 - `node --test plan-check.test.mjs`: **28 PASS / 0 FAIL**（元の18件と、新規の認証・Guard検証10件）
 - `node --check plan-check.mjs`: PASS
 
-これは静的な構成検査であり、Guardに対応したProviderが実際に暗号学的検証・CSRF・業務認可を正しく実行する証拠にはなりません。特にプラグイン定義の`guardEvidence`は**合成された宣言上の制約**であり、実体の適格性は将来のHost / Plugin Conformanceで確認する必要があります。実Repository全体の`tools/repository-health-check.sh`は未実行のため、本PRのDraft維持・統合保留は変わりません。
+これは静的な構成検査であり、Guardに対応したProviderが実際に暗号学的検証・CSRF・業務認可を正しく実行する証拠にはなりません。特にプラグイン定義の`guardEvidence`は**合成された宣言上の制約**であり、実体の適格性は将来のHost / Plugin Conformanceで確認する必要があります。実Repository全体の`tools/repository-health-check.sh`は未実行ですが、これは任意の広範囲診断であり統合の一律条件ではありません。未実行の範囲は制約と残る危険性として記録し、Draftは解除して統合します。
 
 ### E1.3：Actionに必須の保護とProvider主体のスコープ（2026-10-10）
 
@@ -287,13 +301,13 @@ Web Server側は`AccountNow`という明示的なClock依存を必須にし、**
 
 追加のHTTP回帰テストは、業務Role上は受注実行権限を持つもののAccountがロック中の`subject-order-locked`と、無効な`subject-order-disabled`の拒否を確認します。さらにHostの早期認可後にAccount有効期限を越える場合と、主体対応付けStoreが実行直前に障害になる場合を試験します。この後段の失効はHTTP 403、Store障害はHTTP 503とし、CommandとObservationへ進みません。後段のStore例外はExecution Errorと区別しますが、バックエンド由来のエラーメッセージはHTTP応答へ露出させず固定文言に変換します。
 
-### 局所検証と統合保留
+### 局所検証と、統合時に記録する未検証範囲
 
 - `subject_lifecycle.go`: GitHub Blob `5a99d308658718ebb27864ae3444cf0d6a5c34da`。
 - `subject_lifecycle_test.go`: GitHub Blob `52d9501a58a47e6989a127851fcd7cd33c36778f`。
 - **上記2ファイルとローカルコピーの`git hash-object`一致を確認**しました。Go 1.23.2の隔離`module tei`で、既存`legacyauth.User`／`legacyauthorization.SubjectStore`の公開型に合わせた最小スタブを使い、`gofmt -l`出力なし、`go vet`、`go test -count=1`、`go test -race -count=1`はすべてPASSしました。テスト内12個の正常・異常ケースと依存不足テストが通過しました。
 - ただしこの隔離テストのStore・Userは互換スタブです。**実`reference/workspace`、`legacyauth.FixtureStore`、`driver.Resolver`、Web Server全体を利用した新しい結合テストのPASSは未取得**です。
-- 主体リンクの二重検査、HTTP 403/503への変換、エラー文言の秘匿、ロック／失効のHTTP負例はコードとテストを追加しましたが、それらの**actual full repository実行は未実施**です。現行mainとPR headの差分を再確認し、`tools/repository-health-check.sh`全項目PASS、実行前後cleanをexact headへ結び付けるまでDraft維持・統合禁止です。
+- 主体リンクの二重検査、HTTP 403/503への変換、エラー文言の秘匿、ロック／失効のHTTP負例はコードとテストを追加しましたが、それらの**actual full repository実行は未実施**です。現行mainとPR headの差分を再確認し、実行した検証の結果と実行前後のcleanをexact headへ結び付けます。`tools/repository-health-check.sh`は任意の広範囲診断であり、全項目PASSを統合の一律条件にはしません。未実行の検証は制約と残る危険性として記録し、Draftは解除して統合します。
 
 このReferenceは実IdP、Session Cookie、CSRF Provider、企業Directoryの現在性、分散Host間の失効伝播を提供しません。とくにAccount Storeが古いSnapshotである場合、Clockだけが最新でも本番の適格性は保証できません。
 
@@ -307,7 +321,7 @@ E2.5ではHostの早期認可後にRunnerの入口でアカウント状態を再
 
 HTTP負例には、(1) Validationと業務認可完了後、Command直前のClockでAccountが期限外になる場合、(2) 同じタイミングでSource Linkが別の業務`SubjectID`に変わる場合を追加しました。前者はHTTP 403かつ`identity-link-denied`、後者は503かつ`identity-link` Execution Errorで停止する設計です。後者の内部対応関係はHTTPへ露出させず、固定文言に置き換えます。いずれもCommand／Observationが空で、監査記録が拒否／エラーとなることを要求します。
 
-**検証状態：** コードと回帰テストをPRへコミットしましたが、これら追加分を含む実Workspace結合テストはまだ実行していません。以前の隔離GoテストはE2.5以前の状態を対象とするため、この変更に合格した証拠にはなりません。正確なPR headのクリーンなフルチェックアウトで`go test`、`go test -race`、`go vet`、`tools/repository-health-check.sh`を実行し、前後cleanを記録するまで統合禁止です。
+**検証状態：** コードと回帰テストをPRへコミットしましたが、これら追加分を含む実Workspace結合テストはまだ実行していません。以前の隔離GoテストはE2.5以前の状態を対象とするため、この変更に合格した証拠にはなりません。正確なPR headのクリーンなフルチェックアウトで`go test`、`go test -race`、`go vet`を実行し、前後cleanと結果を記録します。実行できない検証は制約と残る危険性として記録して統合します。
 
 
 ### E2.6の局所契約試験（exact Blob）
@@ -340,7 +354,7 @@ Go 1.23.2の隔離`module tei`に、実際の`session_command_scenario.go`を**G
 
 Go 1.23.2の隔離モジュールに**実際の新コード・テスト・既存Fixtureをbyte一致で配置**し、依存する`legacyauth.User`型だけを最小の互換スタブに置換しました。`gofmt -l`は空、`go vet` PASS、`go test -count=1` 3件PASS、`go test -race -count=1` PASSでした。異なるRoleを持つ同一SubjectIDの重複拒否、一意な検索、既存Editor／Viewer／Locked／DisabledのFixtureをそのまま読み込み検索できることを確認しました。
 
-**制限:** 実Repository全体の`legacyauth`／`legacyauthorization`結合テストおよびexact-headのRepository Healthは未実行です。企業Directoryや外部ユーザーStoreがSubject ID一意性を保証するかはこの参照Fixture検査だけでは証明できません。現PRはDraftを維持します。
+**制限:** 実Repository全体の`legacyauth`／`legacyauthorization`結合テストおよびexact-headのRepository Healthは未実行です。企業Directoryや外部ユーザーStoreがSubject ID一意性を保証するかはこの参照Fixture検査だけでは証明できません。実行できなかった検証は、その制約と残る危険性としてここに記録します。Draftは作業中の表示であり、内容が揃ったら解除して統合します。
 
 
 ## E2.8：業務認可失効のHTTP結果と監査の整合性
@@ -362,7 +376,7 @@ GitHub Blob SHA=`cf4de5774d534805b156832f3f40276020813b6d`と完全一致する*
 
 HTTP 200正常完了、403の業務認可拒否／主体リンク失効、503の主体Store障害と内部詳細秘匿、422の通常Command Execution Error、400のJSON `null`／Credential注入を個別に確認しました。
 
-**残る検証境界:** これはHostとRunnerのモックを使うHTTP結果処理の局所試験であり、実`reference/workspace`、実`security.authorize`、Go HostのAuditイベント配信を含む結合試験は未実行です。追加した実Workspace回帰ケースのPASSも未取得です。PR #1114はDraftを維持し、candidate exact-headの全体Repository Healthを統合条件とします。
+**残る検証境界:** これはHostとRunnerのモックを使うHTTP結果処理の局所試験であり、実`reference/workspace`、実`security.authorize`、Go HostのAuditイベント配信を含む結合試験は未実行です。追加した実Workspace回帰ケースのPASSも未取得です。`tools/repository-health-check.sh`は任意の広範囲診断であり、統合の一律条件にはしません。実行できなかった検証の制約と残る危険性を記録して統合します。
 
 ## E2.9：exact-headでのローカル統合資格判定
 
@@ -377,7 +391,7 @@ bash reference/web-composition/qualify.sh <candidate-head-sha> <current-main-sha
 
 **スクリプトの局所検証:** `qualify.sh`はGitHub Blob `aeebb93e091a3e8ac835f1daade84b947628fc20`とbyte一致するローカルコピーで`bash -n` PASS。隔離した一時Gitリポジトリで、正しいSHA＋cleanの正常経路、間違ったmain SHA、dirtyなチェックアウト、mainを含まないcandidate、検証中に生成された未追跡ファイルの5ケースを検査しました。正常経路ではテスト実行体をstubにしたため、**これは検証スクリプトのGate条件を確認したもので、TEI全体のテストPASSを意味しません。**
 
-2026-10-10現在、PR #1114はまだmainの更新を含んでおらず、このGateの統合資格は**未取得**です。正確なhead・main上でのクリーンなフルチェックアウトおよびすべてのテストの実行記録が得られるまでDraftを維持します。
+2026-10-10時点では、PR #1114はまだmainの更新を含んでおらず、このGateの統合資格は**未取得**でした。現在は、正確なhead・main上でのクリーンなフルチェックアウトと変更範囲の検証を記録して統合します。Draftは作業中の表示であり、解除して統合します。
 
 ## E2.10：Session Action JSONの一意な解釈
 
@@ -415,7 +429,7 @@ E2.6ではSessionの主体対応付けとAccount適格性をCommand直前に再�
 
 また、最終認可と副作用の実行が**同一のトランザクション／原子的な操作として結合されているわけではありません**。最終認可の直後から実際のCommitまでのごく短い期間に起こる失効を完全には排除できません。本番相当の実行では、効果を持つAdapter側での承認フェンス、権限バージョン条件、トランザクション内再検証、冪等性・取消可能性を別途設計・検証する必要があります。合成Fixtureでの時刻操作は実IdPやDirectoryの失効伝播証明ではありません。
 
-統合資格は従来どおり現行mainを含むexact-headのclean full checkoutでの`reference/web-composition/qualify.sh`全PASS、実Workspace Go回帰、未変更のrefs確認を前提とします。CIは使用せず、Draft・未マージを維持します。
+統合の前に、現行mainを含むexact-headのclean full checkoutで`reference/web-composition/qualify.sh`、実Workspace Go回帰、未変更のrefs確認を実行し、結果をPR本文へ記録します。実行できない検証は、その制約と残る危険性を記録します。CIは使用しません。
 
 ## E2.12：Command Adapterの内部まで最終認可を移動（2026-10-10）
 
@@ -437,7 +451,7 @@ E2.11の最終認可はCommandの`resolver.InvokeCapability`を呼ぶ**前**に�
 - `session_effect_grant_contract_test.go`: 今回追加したCapability Grantと構文木の契約試験
 - **実WorkspaceのGoテスト、Race、Repository Healthは未実行です。** GitHubへ変更したファイルはリポジトリ上で確認しましたが、actual full checkoutでの`go test`成功は取得していません。
 - これはConcrete Adapter内までチェックを近づけた変更であり、**認可の版条件と副作用Commitが同じトランザクションになったことを意味しません**。外部DB・SaaS API・Queue等の本番相当で原子的に失効を扱うには、プラグインに対応可能なEffect Fence／版条件／再試行保証が必要です。共通要件と競合試験は独立した[Issue #1174](https://github.com/hat47x/tei-platform/issues/1174)へ起票済みです。
-- PR #1114はDraftを維持します。最新mainを含むexact headクリーンcheckoutでWeb＋Repository Health全PASSと前後cleanを確認するまで統合しません。
+- PR #1114はDraftでしたが、Draftは作業中の表示であり、内容が揃ったら解除して統合します。最新mainを含むexact headクリーンcheckoutで`reference/web-composition/qualify.sh`とWeb回帰を実行し、前後cleanと結果をPR本文へ記録します。Repository Healthは任意の広範囲診断として扱います。
 
 
 ## E2.13：Sessionの業務Validation拒否とHTTP／監査の整合
@@ -450,7 +464,7 @@ Sessionでは、HTTP要求が認証・CSRF・Hostの早期業務認可を通過�
 
 - `session_command_route.go`: GitHub Blob `2ce16a6a47b0060a158eaa7ad78c035b8730ebc6`
 - `session_command_route_test.go`: GitHub Blob `7dbbf446239be6459cc908c41ab919f3cd424eb9`
-- 新規HTTP統合テストの実行結果は**未取得**。Actual full checkoutのGoテスト・Race・Repo Healthを省略して完了とは扱いません。PR #1114はDraftを維持します。
+- 新規HTTP統合テストの実行結果は**未取得**。Actual full checkoutのGoテスト・Raceの結果は記録し、未実行の範囲は制約と残る危険性として残します。Draftは解除して統合します。
 
 
 ## E2.14：Session実行状態とHTTP結果のfail-closed化
@@ -480,7 +494,7 @@ E2.11でブラウザへ返す権限基盤障害の文言を固定化しました
 - `session_command_route_test.go`: GitHub Blob `b9328536413862918d412cb053c9e5470547f925`
 - 追加した回帰ケースは、`order 1003`の既存合成Command Adapter障害（旧経路422、新Session 500と固定文言、Audit error）、Validation不成立の422、異常日時の400などです。
 - GitHub Blobで実装とテストのエラー文字列一致・結果分岐を静的に確認しました。ただし**実Workspace Go結合試験、Go vet/race、exact-head full Repository Healthの成功結果は未取得**です。以前の隔離Go試験を現在headの成功証拠とみなしません。
-- PR #1114はDraft・未マージを維持します。合成Fixtureを用いたテストの成功（未取得）と、実ProviderによるDurable Effectの観測（未取得）も区別します。
+- 合成Fixtureを用いたテストの結果（未取得）と、実ProviderによるDurable Effectの観測（未取得）を区別して記録します。どちらも未取得であることを、統合の停止理由にはしません。
 
 
 ## E2.15：Session結果分類の契約テストと入力形式の確定
@@ -497,7 +511,7 @@ Session要求入力`from`は既存のRead Runnerと同じRFC3339形式をHTTP入
 - `session_command_route_test.go`: GitHub Blob `01675b77607b1731e6968f01098fddda8297931e`
 - `session_result_contract_test.go`: GitHub Blob `e2fe909ff198b4c551e9167db4af157f2e713e82`
 
-**検証可能な根拠：** GitHub上の実ファイル定義、型、期待エラー文言、HTTP分岐と各ケースを静的照合しました。**未取得の根拠：** このPR exact-headのclean full checkout上での`gofmt`、`go vet`、`go test`、race、実WorkspaceのGo結合、`tools/repository-health-check.sh`全PASS、実IdPと実永続化Providerの実行証拠。過去の隔離ハーネスのPASSを新しいソースへ転用しません。現行main包含も未達のためDraftを維持します。
+**検証可能な根拠：** GitHub上の実ファイル定義、型、期待エラー文言、HTTP分岐と各ケースを静的照合しました。**未取得の根拠：** このPR exact-headのclean full checkout上での`gofmt`、`go vet`、`go test`、race、実WorkspaceのGo結合、`tools/repository-health-check.sh`全PASS、実IdPと実永続化Providerの実行証拠。過去の隔離ハーネスのPASSを新しいソースへ転用しません。現行mainの包含を確かめ、実行できなかった検証の制約と残る危険性を記録して統合します。
 
 
 ## E2.16：main包含とSession結果分類の限定Go再検証
@@ -517,6 +531,6 @@ GitHub上の`tools/reference-first-web-target/session_result_contract_test.go`�
 
 これら15ケースは、完了、Validation不成立、主体／業務認可拒否、認可基盤障害、Command／Observation障害、予期しない非終端・矛盾した完了状態、Adapter内部Errorの秘匿を検査する。HTTP結果分類関数`writeProtectedSessionCommandHTTPResult`はGitHub上の実装を同じ制御条件で隔離ハーネスへ写し、**周辺のResult型と既存`writeCommandScenarioHTTPResult`はスタブ**にしている。これは新たなビジネス・認証Providerを呼ばないテストであり、当該関数の制御分岐を検証する範囲に限定される。
 
-**統合資格ではない：** この局所テストは実Web Host、`workspace.Load`、`driver.Resolver`、`security.authorize`、実HTTP監査を呼んでいない。実リポジトリの`go test ./...`、Race、`go vet ./...`、`reference/web-composition/qualify.sh`と`tools/repository-health-check.sh`の全PASS・前後cleanは未取得。現在の実行Containerからは`github.com`のDNS名前解決ができないため、実チェックアウトを取得できない。資格確認まではPR #1114をDraft・未マージとする。
+**統合資格ではない：** この局所テストは実Web Host、`workspace.Load`、`driver.Resolver`、`security.authorize`、実HTTP監査を呼んでいない。実リポジトリの`go test ./...`、Race、`go vet ./...`、`reference/web-composition/qualify.sh`と`tools/repository-health-check.sh`の全PASS・前後cleanは未取得。現在の実行Containerからは`github.com`のDNS名前解決ができないため、実チェックアウトを取得できない。この制約を記録し、実行できる範囲の検証結果とあわせて統合する。
 
 資格取得時はPrivate Repoの完全なクリーンチェックアウトで最新head／main SHAを確認し、`bash reference/web-composition/qualify.sh <candidate-head-sha> <current-main-sha>`を実行する。その結果とGitHub上の現在head/mainを再照合してからDraft解消・統合を判断する。

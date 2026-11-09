@@ -10,7 +10,7 @@ go run ./tools/reference-authoring-auxiliary/cmd/tei-authoring-auxiliary -input 
 
 ## 入力
 
-- `candidates`: 補助情報の候補。`affectsExecution`、`recomputableFromCanonical`、`perViewer`、`presentationOnly`を持つ
+- `candidates`: 補助情報の候補。`content`、`affectsExecution`、`recomputableFromCanonical`、`perViewer`、`presentationOnly`を持つ
 - `annotations`: 注記。`subject`（意味の参照）、`kind`（`issue` / `question` / `note`）、`state`（`open` / `done`）、`author`、`text`
 - `revisionEvents`: 版管理が記録した改訂
 - `revisionReasons`: 人が書いた改訂の理由
@@ -43,7 +43,8 @@ go run ./tools/reference-authoring-auxiliary/cmd/tei-authoring-auxiliary -input 
 - 注記は、記述欄の中の印（`@NOTE@`）を走査して一覧しません。文字列に残った印は`embedded-marker-not-structured`として報告し、構造化した宣言への移行を促します。意味の参照を持たない注記は`annotation-without-subject`です。
 - 改訂の事実は版管理から導出し、保存しません。人が同じ内容を書き直した場合は`duplicated-derived-fact`、版管理に無い版へ理由を付けた場合は`reason-without-revision`として報告します。
 - 用語の名称の索引は導出です。意味の定義は、受理済みで根拠を持つときだけ意味の候補になります。未受理は`definition-not-accepted`、受理済みでも根拠が無い場合は`definition-without-basis`として`unresolved`のままにし、推測で補完しません。
-- 意味の版（`meaningVersion`）は、`meaning-canonical`の候補と受理済みの定義だけから作ります。表示情報・運用の記録・利用者ごとの局所の状態を変えても動きません。
+- 意味の版（`meaningVersion`）は、`meaning-canonical`の候補の`content`と、受理済みの用語の定義だけから作ります。表示情報・運用の記録・利用者ごとの局所の状態・未受理の定義・根拠の文言を変えても動きません。
+- 実行を変える候補が`presentationOnly`・`perViewer`・`recomputableFromCanonical`を主張した場合は、`claim-contradicts-execution`として報告します。主張より実行を優先し、`meaning-canonical`に置きます。
 - 出力は常に読取り専用です。定義の受理（#267）や、変更案の適用は行いません。
 
 ## 未実装

@@ -161,8 +161,20 @@ func (s schemaCheckedOrderSubmitStore) ReadStatus(ctx context.Context, orderID i
 
 // requireOrderSubmitSchema is the startup form: a Web process whose real store
 // does not match the accepted declaration does not publish HTTP. Stores other
-// than the PostgreSQL one are returned unchanged.
+// than the PostgreSQL ones are returned unchanged. The Runner form
+// (runnerOrderSubmitStore) is gated with the same check it already runs before
+// each write: its schemaCheck is the shared checkOrderSubmitSchema, so startup
+// and runtime cannot drift apart. A Runner store without a schemaCheck (a fake
+// wired by a test) has nothing to observe and is returned unchanged.
 func requireOrderSubmitSchema(ctx context.Context, world ir.World, store orderSubmitStore) (orderSubmitStore, error) {
+	if runner, ok := store.(*runnerOrderSubmitStore); ok {
+		if runner != nil && runner.schemaCheck != nil {
+			if err := runner.schemaCheck(ctx); err != nil {
+				return nil, errPhysicalSchemaNotReady
+			}
+		}
+		return store, nil
+	}
 	pg, ok := store.(*postgresOrderSubmitStore)
 	if !ok {
 		return store, nil

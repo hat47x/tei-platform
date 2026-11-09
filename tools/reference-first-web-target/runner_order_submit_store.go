@@ -13,6 +13,7 @@ import (
 	"tei/internal/ir"
 	"tei/internal/security/effectcommit"
 	effectpostgres "tei/internal/security/effectcommit/postgres"
+	"tei/internal/security/effectcommit/submit"
 	"tei/internal/security/legacyauthorization"
 )
 
@@ -66,6 +67,19 @@ const (
 	runnerSubmitExpectedVersion = 0
 )
 
+// runnerStoreOption configures optional behaviour of the Postgres-backed store.
+type runnerStoreOption func(*runnerStoreConfig)
+
+type runnerStoreConfig struct{ audit effectcommit.AuditConfig }
+
+// withRunnerAudit wires an opt-in Evidence sink into the Runner this store
+// builds. The Provenance label is supplied by the COMPOSITION (real-pg only
+// where the code really runs against PostgreSQL); the store never infers it.
+// Without this option no Evidence is built. The shipped CLI does not use it.
+func withRunnerAudit(a effectcommit.AuditConfig) runnerStoreOption {
+	return func(c *runnerStoreConfig) { c.audit = a }
+}
+
 var errRunnerSubmitFailed = errors.New("order submit effect failed")
 
 func newRunnerOrderSubmitStore(
@@ -84,12 +98,22 @@ func newRunnerOrderSubmitStore(
 // effectcommit Provider (trusted Owner routine "apply_owner_effect" in the
 // fixed schema, which the deployment must install) and keeps the existing
 // separate read pool for the Observation. Errors never carry the DSN.
+//
+// Optional runnerStoreOption values (for example withRunnerAudit) are additive;
+// with none the store behaves exactly as before.
 func newPostgresRunnerOrderSubmitStore(
 	ctx context.Context,
 	writeDSN, readDSN, effectSchema string,
 	world ir.World,
 	grantSource submitGrantSource,
+	opts ...runnerStoreOption,
 ) (*runnerOrderSubmitStore, error) {
+	var cfg runnerStoreConfig
+	for _, o := range opts {
+		if o != nil {
+			o(&cfg)
+		}
+	}
 	direct, err := newPostgresOrderSubmitStore(writeDSN, readDSN)
 	if err != nil {
 		return nil, errors.New("open order submit store failed")
@@ -109,7 +133,7 @@ func newPostgresRunnerOrderSubmitStore(
 		_, err := direct.checkOrderSubmitSchema(c, world)
 		return err
 	}
-	store, err := newRunnerOrderSubmitStore(effectcommit.Runner{Provider: provider}, grantSource, check, direct)
+	store, err := newRunnerOrderSubmitStore(effectcommit.Runner{Provider: provider, Audit: cfg.audit}, grantSource, check, direct)
 	if err != nil {
 		pool.Close()
 		_ = direct.Close()
@@ -129,22 +153,24 @@ func (s *runnerOrderSubmitStore) Close() error {
 	return s.closer()
 }
 
-func runnerSubmitRequest(grant legacyauthorization.AuthorizationGrant, orderID int64) (effectcommit.Request, error) {
+// runnerSubmitSpec carries the shared intent check (D11): the Target guarantees
+// the payload agrees with the OperationID before the Runner is reached.
+var runnerSubmitSpec = submit.Spec{
+	Application:    runnerSubmitApplication,
+	Capability:     runnerSubmitCapability,
+	ValidateIntent: checkOrderSubmitIntent,
+}
+
+// runnerSubmitIntent composes the Intent for one order.
+func runnerSubmitIntent(orderID int64) (submit.Intent, error) {
 	payload, err := json.Marshal(struct {
 		OrderID int64  `json:"orderId"`
 		To      string `json:"to"`
 	}{orderID, "submitted"})
 	if err != nil {
-		return effectcommit.Request{}, err
+		return submit.Intent{}, err
 	}
-	return effectcommit.Request{
-		Scope: effectcommit.Scope{
-			Application: runnerSubmitApplication,
-			Capability:  runnerSubmitCapability,
-			Subject:     grant.SubjectID,
-			Action:      grant.Action,
-			Resource:    grant.Resource,
-		},
+	return submit.Intent{
 		// Deterministic, so an unknown commit can be recovered by Lookup with the
 		// same OperationID instead of a new one.
 		OperationID:     fmt.Sprintf("order-submit/%d", orderID),
@@ -153,11 +179,28 @@ func runnerSubmitRequest(grant legacyauthorization.AuthorizationGrant, orderID i
 	}, nil
 }
 
-func (s *runnerOrderSubmitStore) grantFor(ctx context.Context, orderID int64) (legacyauthorization.AuthorizationGrant, error) {
-	if s.grantSource == nil {
-		return legacyauthorization.AuthorizationGrant{}, errRunnerSubmitFailed
+func runnerSubmitRequest(grant legacyauthorization.AuthorizationGrant, orderID int64) (effectcommit.Request, error) {
+	in, err := runnerSubmitIntent(orderID)
+	if err != nil {
+		return effectcommit.Request{}, err
 	}
-	grant, err := s.grantSource(ctx, orderID)
+	return runnerSubmitRequestFromIntent(grant, in)
+}
+
+// runnerSubmitRequestFromIntent builds the Request and runs the shared intent
+// check first; a mismatching Intent yields submit.ErrIntentRejected.
+func runnerSubmitRequestFromIntent(grant legacyauthorization.AuthorizationGrant, in submit.Intent) (effectcommit.Request, error) {
+	return submit.RequestFromGrant(runnerSubmitSpec, grant, in)
+}
+
+func (s *runnerOrderSubmitStore) grantFor(ctx context.Context, orderID int64) (legacyauthorization.AuthorizationGrant, error) {
+	var src submit.GrantSource
+	if s.grantSource != nil {
+		src = func(c context.Context) (legacyauthorization.AuthorizationGrant, error) {
+			return s.grantSource(c, orderID)
+		}
+	}
+	grant, err := submit.AcquireGrant(ctx, src)
 	if err != nil {
 		return legacyauthorization.AuthorizationGrant{}, errRunnerSubmitFailed
 	}
@@ -175,6 +218,9 @@ func (s *runnerOrderSubmitStore) Submit(ctx context.Context, orderID int64) erro
 		}
 	}
 	req, err := runnerSubmitRequest(grant, orderID)
+	if errors.Is(err, submit.ErrIntentRejected) {
+		return errOrderNotSubmittable // refused before execution; the Runner is not called
+	}
 	if err != nil {
 		return errRunnerSubmitFailed
 	}
@@ -207,26 +253,22 @@ func (s *runnerOrderSubmitStore) ReadStatus(ctx context.Context, orderID int64) 
 }
 
 // mapSubmitOutcome is the only place Runner outcomes become the existing
-// sentinels. No driver text, DSN or Runner detail is carried through.
+// sentinels. It is a thin wrapper over submit.Classify; the neutral layer keeps
+// Replayed apart from NotCommitted and only this Web wrapper collapses them.
+// No driver text, DSN or Runner detail is carried through.
 func mapSubmitOutcome(result effectcommit.Result, err error) error {
-	if err != nil {
-		var uncertain *effectcommit.CommitUncertainError
-		if errors.As(err, &uncertain) {
-			return errOrderSubmitCommitUnconfirmed
-		}
-		return errRunnerSubmitFailed
-	}
-	switch result.Status {
-	case effectcommit.StatusCommitted:
+	switch submit.Classify(result, err).Disposition {
+	case submit.Committed:
 		return nil
-	case effectcommit.StatusDenied, effectcommit.StatusConflict:
+	case submit.NotCommitted:
 		return errOrderNotSubmittable
-	case effectcommit.StatusReplayed:
+	case submit.Replayed:
 		// This request did not perform the write; keep the pinned "second submit
 		// of an already-submitted order is refused" behaviour.
 		return errOrderNotSubmittable
+	case submit.Uncertain:
+		return errOrderSubmitCommitUnconfirmed
 	default:
-		// NotRecorded or an unknown status is not a committed write.
 		return errRunnerSubmitFailed
 	}
 }

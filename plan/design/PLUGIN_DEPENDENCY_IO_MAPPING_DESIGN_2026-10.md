@@ -1,6 +1,6 @@
 # プラグイン間の依存と入出力の対応付け（方式設計候補）
 
-- **状態**：評価待ち（2026-10-12）。方式設計の候補であり、記述構文、本番の解決器、製品要求を採用したものではない。参照実装と試験はまだない。
+- **状態**：評価待ち（2026-10-12）。方式設計の候補であり、記述構文、本番の解決器、製品要求を採用したものではない。E2の局所参照実装と試験は既に存在するが、正式なContract項目定義への接続と、Accepted意味・実Provider・実Targetを通す縦断検証は未完了。
 - **管理課題**：[#1223](https://github.com/hat47x/tei-platform/issues/1223)。[ADR-0032](../adr/0032-composition-kernel-replacement.md)の移行段階M2「契約中心の依存解決」に入出力の観点を補う。
 - **関連課題**：[#951](https://github.com/hat47x/tei-platform/issues/951)（契約の識別と適合）、[#1016](https://github.com/hat47x/tei-platform/issues/1016)（案件構成）、[#1118](https://github.com/hat47x/tei-platform/issues/1118)（呼出しの実行文脈）、[#988](https://github.com/hat47x/tei-platform/issues/988)（演算子の意味契約）、[#1103](https://github.com/hat47x/tei-platform/issues/1103)（構築専用の依存）、[#1121](https://github.com/hat47x/tei-platform/issues/1121)（段階的な具体化）、[#997](https://github.com/hat47x/tei-platform/issues/997)（UI構成キット）、[#1145](https://github.com/hat47x/tei-platform/issues/1145)（意味契約と通信規約の分離）、[PR #1233](https://github.com/hat47x/tei-platform/pull/1233)（AI向けの最小プラグイン規約）。
 - **役割**：プラグイン間の依存を、起動や実行の前後関係だけでなく、受け渡すデータ項目、パラメータ、値の出どころ、対応付けと変換、多重度、版の変化まで含めて整理する。あわせて、対応付けの情報を検査・追跡・試験・最適化にどう活用するかを示す。
@@ -577,3 +577,202 @@ environment.production:
 - 宣言を増やした結果、単純な提供元を一つ追加するだけで多量の手書きの記述が必要になる。
 - 意味の対応付けと技術的な調整の境界が、二つの利用側で一貫して引けない。
 - 静的な結合で、対応付けの具体化が成果物の大きさや起動時間を目立って悪化させる。
+
+
+---
+
+## 17. 標準意味型とPlugin I/Oの再利用境界（2026-11-02、横断設計候補）
+
+**状態：未採用の設計追補。** #1223の既存I/O対応設計を正本の配置先として使い、標準型の別Registry/Resolver、確定DSL、新しいKernel TypeKindを作らない。基準mainは `3784a4432a28502ca04057325689e409d14d9140`。本節の追加は人間によるSemantic Acceptance、製品Contractの採用、Runtimeの受入を意味しない。
+
+### 17.1 実装事実と他レーンの制約
+
+- 現行 `internal/stdlib/semantic.go` は `std` の12 primitive（`binary`、`boolean`、`code`、`date`、`datetime`、`decimal`、`identifier`、`integer`、`json`、`money`、`text`、`time`）を `internal/semantic` の外から供給する。既存 `semantic.Type` のKindはprimitive/alias、`Attribute.TypeRef` は既存CanonicalID。新たなshape/union/collectionをSemantic Kindに追加する実装根拠にはしない。
+- 統合済み[#1916](https://github.com/hat47x/tei-platform/pull/1916)は、異なる意味Aliasの暗黙同一視を拒否する局所Reference。統合済み[#2584](https://github.com/hat47x/tei-platform/pull/2584)（main統合commit `4f4652a1e4e9a58d55294d42eca28d3c4bc215de`）は、選択されたSemantic定義の**構造**だけを確認するReference。正本の発行者、Accepted Semantic Set、Contract項目の真正性を確定しない。
+- [#1570](https://github.com/hat47x/tei-platform/issues/1570)の既存Semantic配布/Composition Preflightは、明示選択、内容Digest、検証済み構造と発行者Trustの一部を別々に調べる。これを新規の型解決器に置き換えない。[#951](https://github.com/hat47x/tei-platform/issues/951)のContract発行Authority/Provider Conformanceと[#267](https://github.com/hat47x/tei-platform/issues/267)の意味受理も独立。
+- [#2298](https://github.com/hat47x/tei-platform/pull/2298)の `tei.*` 予約ルート、型の複数Instance、Graphの保証境界は**提案**（#2298は2026-11-03 UTCにmerge済み。統合された設計文書の状態は提案中）。既存 `std.*` TypeRefや `std.message` を暗黙に `tei.std.*` へ変更しない。この文書を理由に他者Draftを編集・統合しない。
+- [#1705](https://github.com/hat47x/tei-platform/issues/1705)の型付き算術Referenceは、数量・単位・通貨・精度・丸め・未取得を既存TypeRefと明示注釈で検証する。単位やCurrencyを全域の新Registryにせず、`std.money`だけから通貨が決まると推定しない。
+- TEI独自Host、Wails、Theia等の共通実行基盤は前提としない。契約の検査と、Target固有の実行強制・Ownerの業務受理・Sourceの鮮度を分離する。
+
+### 17.2 「型」に詰め込まず、直交する契約を接続する
+
+| 面 | 判定対象 | 再利用する既存の責務 | 型IDから推測してはいけないこと |
+| --- | --- | --- | --- |
+| Semantic identity | TypeRef、Alias連鎖、受理されたSemantic Set | `semantic.Type`、Shared Acceptance、#1570 | 同じprimitiveが同じ業務型を意味すること |
+| Value shape | field、nullable、one/optional/list/set、schema | #1223のItem Mapping、#951のContract Shape | 同じ型IDなら配列/NULL/列順まで同じであること |
+| Representation | CSV/JSON/SQL Row/PDF/HTML等の実表現と変換 | #988演算/明示Adapter、#943 Build Artifact | JSON互換ならCSVへの情報保存も保証されること |
+| Instance/Scope | 同一Component Typeから生成された複数InstanceとBinding | #1016、#1121、#2298（2026-11-03 UTCにmerge済み、提案中） | Typeの一致が同じProvider・Credential・Dataを選ぶこと |
+| Origin/Acceptance | Publisher/Contract Authority、Source Revision、Accepted意味 | #951、#1570、#267 | Digest一致や署名が業務上の受理を意味すること |
+| Effect/Invocation | read/write/network、Principalが必要か、現在権限とGeneration | #1118、#1174、ADR-0032、Targetの実行境界 | 読み取り値の適合がwrite権限を与えること |
+
+上表は**新しい六層の固定APIではない**。既存Ownerが持つ判定を、同じ図やInspectorへ根拠付きで関連付けるための整理である。Generic `record/list/map`をすぐprimitiveへ追加する代わりに、まず既存の項目型・多重度とSchema参照で二Consumerの不足を観察する。
+
+### 17.3 標準化候補を「値型」と「契約」に区別する
+
+| 候補 | 位置付け・優先 | 少なくとも保持・検証すべき意味 | 先に使う実Consumer |
+| --- | --- | --- | --- |
+| 現行12 primitiveとDomain Alias | 現行Referenceを優先して検証 | Aliasのnominal identity、null/欠損、数値精度、通貨/単位注釈を混同しない | 業務入力、算術、I/O Mapping |
+| Record/RowとCollection | **shape候補**。TypeKind新設は保留 | field identity、cardinality、nullable、重複/順序の意味 | SQLの行とCSVの列対応 |
+| Table/Dataset | **標準契約候補**。即時 `std.table` 採用は保留 | column/row identity、列型、NULL、key、row orderの有無、Schema revision | SQLite/SQL取得→CSV出力 |
+| Document | **標準契約候補**。型と生成工程を分ける | 論理DocumentとPDF/HTMLの表現差、link/media、欠落/非可逆変換 | HTML/PDF生成・検証 |
+| Artifact/Build output | **成果物参照契約候補**。Domain値型とは分ける | content digest、produced-by、Target、Build provenance、取得・採用状態 | Java/.NET/Wasmビルド→配布 |
+| Typed Graph/Model | **構造/関係契約候補**。意味GraphとUI Graphを分ける | qualified Node/Edge identity、scope、source revision、projection loss | Studio Graphとモデル解析 |
+| ResourceState/ChangeSet | **能力・Effect契約候補**。状態型だけで操作を許さない | read/observe vs mutate、owner、snapshot/read-set、commit/uncertain、rollback境界 | DB/Cloud操作と監査 |
+| Event/Outcome | **結果/制御契約候補**。Message payloadと混ぜない | completed vs rejected vs failed vs unknown、ordering/retry/idempotence | Workflowの結果連携 |
+
+名称は**評価用分類**であり、型名・Package名・Namespaceの予約ではない。専門型は `tei.std.*` の名前を借りて一般型を装わず、最低二つの独立Consumerで同じ入出力・欠損・失敗・意味を実測できた部分だけを標準候補に昇格する。標準型が増えてもCoreの分野固有分岐は増やさない。
+
+### 17.4 型付きパイプラインの可視性と限界
+
+Source/Authoring Graph → Resolved/Lowered Graph → Targetの実行・観測という関連を同じ図に示しても、**それぞれ異なる証拠**として保持する。#2298（2026-11-03 UTCにmerge済み）§15の限定保証（`PlanClosed`、`EffectConfined`、`GraphTraceConformant`）を再定義せず、I/O Mapping側では次の対応に限定する。
+
+- すべてのMapping Edgeはproducer slot/field、consumer slot/field、Contract identity/shape、TypeRef、Source/Accepted revisionの参照を**表示可能**にする。Name一致でEdgeを生成しない。
+- Generator/変換は入力と出力に加え、宣言されたOperator/Provider、Stage、Loss（保持/明示変換/非可逆/未証明）、Error/Unknownを可視化する。隠れた変換、暗黙の欠損値補完、欠落Edgeの黙認をしない。
+- Opaque Providerの内部を全展開できない場合はOpaque Nodeと許可Effectの境界を表示する。「図に存在しないから内部副作用も絶対ない」とは主張しない。強制できないEffectと未観測経路はUnresolvedである。
+- Build-only dependencyとRuntime dependency、BusinessのRelation graphとService coeffect graphは別種類のEdgeとする。型の同一性から依存/実行順を推測しない。
+
+### 17.5 次の最小実証・反証条件（すべて計画、NOT RUN）
+
+| Case | 最小シナリオ | 成功/拒否として観測する内容 |
+| --- | --- | --- |
+| ST-01 | 同一 `OrderId` の接続と別Alias `CustomerId` の接続 | 同一候補、異Alias拒否、既存#1916と#2584の範囲だけを主張 |
+| ST-02 | 同じTypeRefだが選択Semantic定義が改訂 | 同じRef文字列をAccepted互換性の証拠にしない。#267の受理境界へ返す |
+| ST-03 | SQL結果→CSV、NULL・decimal精度・複合key・row order | 明示Mappingなしにlosslessと呼ばない。失う意味を列挙 |
+| ST-04 | 同型の二Instanceを異なるStorageにBinding | 型適合をもってInstance/権限/Sourceが同一とはしない |
+| ST-05 | Document→PDF/HTMLの二表現 | Sourceの意味とTarget固有loss/Artifactを別に追跡 |
+| ST-06 | Pluginが未宣言Network Effectを使う | Graph closureと実行時のEffect封じ込めを別判定。非強制Targetは未証明 |
+| ST-07 | 通貨JPY/個とUSD/個の演算、NULLと取得不能 | #1705/#1637へ委譲し、暗黙換算/ゼロ補完を拒否 |
+| ST-08 | 既存 `std.*` とRQ-008で管理領域が採用された `tei.std.*` の同名契約 | 管理Namespace方針の採用と、個別型の実定義・移行受理を区別し、文字列置換せずLock/Consumer/Publisher Authorityを再検証 |
+| ST-09 | 意味を変えずにArtifact/Targetだけ変更 | Build/Conformance再検証と業務意味の再受理を混同しない |
+
+**採用判断・撤回条件**：二Consumerで専門用語を剥がした共通I/O契約が実際に再利用でき、変換の損失・Unknownを人とAIが同じ根拠で確認できた場合だけ標準候補を採用する。既存のSemantic Type/Shape/Contractで十分なら新しいTypeKind/Registryは撤回する。既存#1103/#1121/Graph traceで可視性が足りるなら専用Pipeline Runtime/新Lockを設けない。正式な標準型への昇格、Namespace移行、MeaningのAcceptanceは別途Owner判断を要する。
+
+### 17.6 二つの独立Consumerでの実証を一つの受入票に接続する（2026-11-06、設計候補）
+
+**焦点**：既存の標準データ構造を使った非画面PipelineとTEIセルフビルドを、同じ*型付き辺の検査原理*で扱えるかを測る。これは新しい共通Pipeline Runtimeや固定 `std.dataset` / `tei.std.artifact` の採用ではない。既存Ownerは [#2620](https://github.com/hat47x/tei-platform/issues/2620)（標準構造・Role）、[#2827](https://github.com/hat47x/tei-platform/pull/2827)（ETL/ELT・MFT、Draft）、[#2831](https://github.com/hat47x/tei-platform/issues/2831)（Self-build P0）、[#1223](https://github.com/hat47x/tei-platform/issues/1223)（Composition I/O）を維持する。
+
+| 二つのConsumer | 共通に表示・照合する辺 | それぞれ独立に必要な証拠 | 混同すると生じる誤認 |
+| --- | --- | --- | --- |
+| File/ETL：Source→Transform→Sink | 入出力Field/Shape、Semantic TypeRef、Multiplicity、NULL/Unknown、Producer、Operator/明示Adapter、Source Revision | 原バイト列・encoding/record boundary、Snapshot/Checkpoint、受取側の実byte確認、重複/partialと業務更正の扱い（#2542） | `std.binary`の一致を配送完了・Exactly-once・lossless変換へ昇格 |
+| Self-build：Seed/Source→Builder→Artifact | 同じ型付きPort/Source依存、Build-only/Runtime Edge、Producer、Target、Artifact Role、変換の入力/出力 | 実消費Source closure、toolchain/engine、実command、exact output bytes/digest、stage1/2比較、未宣言工程の検出（#2831） | Artifact digestの一致をBuild Graph完全性・Seed Trust・実行権限へ昇格 |
+
+**受入票に保持する最小列（新たなCanonical Schemaではない）**：Consumer/Target、型付きSource・SinkのContract/Field、TypeRef＋その定義を選んだSemantic Set、Cardinality/Null/Unknown、Value/Build/Effect Edge種別、選択Provider/Operator・版、Input/Outputの内容同一性、Source Closureの確認範囲、Independent Expected/Observed、現在のAuthority Owner、未確認事項。TypeRefと構造の検査を担う統合済み[#2584](https://github.com/hat47x/tei-platform/pull/2584)の**返す判定は合成された設計時候補のみ**。実際のE2EやProject Acceptanceを報告しない。
+
+**横断する不成立条件**：Reference Workspaceの `validate=ok` だけでは未知Source root・未読込ファイルの不存在を証明しない（[#2823](https://github.com/hat47x/tei-platform/issues/2823)）。同じIDの文字列でも異なるAccepted意味版やScopeは同一視しない。Hash由来IDの文字種・長さの試作（[#2814](https://github.com/hat47x/tei-platform/issues/2814)）は、Semantic ID・Artifact digest・Checkpoint/Operation IDを自動的に兼用させる根拠ではない。`tei.std.*` の管理名前空間はRQ-008で採用済みだが、実装に残る `std.*` 型IDの暗黙移行は禁止する。
+
+**反証順序**：まず既存E2aで `std.binary` / `std.text` / `std.json` と異種TypeRefを合成比較する（File relayとBuild metadataを模したfixtureであり実Consumerではない）。次に #2831 の **P0-SB-A**（宣言Graph対実消費）を先行し、並行して #2827/#2542 の既存File/Message試験結果を一つの受入票へ対応付ける。差分が「型の不足」なのか「Role/Scope/Effect/Source Closureの不足」なのかを独立診断できた場合だけ標準構造の追加を #2620へ返す。二つの用途で同じMeaningと保証を再利用できなければ新標準TypeKind化を撤回する。
+
+**証拠状態**：2026-11-06時点のGitHub静的照合に基づく設計提案。共通テストハーネス／実ETL配送／TEI全体セルフビルド／本番のAcceptance・Authorityは、この追補だけでは**NOT RUN / NOT PROVEN**。既存CIや部分ReferenceのPASSを縦断PASSへ加算しない。
+
+
+### 17.7 型付き辺と「閉包・不在・実効果」のClaim相対判定（2026-11-06、設計候補）
+
+**新規の型体系ではなく受入票の判定規則。** [#2620](https://github.com/hat47x/tei-platform/issues/2620)のRole Required Shape/Source閉包、[#2831](https://github.com/hat47x/tei-platform/issues/2831)のセルフビルドP0-A0/A1、[Draft #2881](https://github.com/hat47x/tei-platform/pull/2881)のbounded absence、[Draft #2933](https://github.com/hat47x/tei-platform/pull/2933)の最適化時の契約保存を横断照合する。各担当のRole・Topology・Build・最適化用の第二検証器を本節で新設しない。
+
+一つのConsumer/Target/Phase/Scope/Source revision/選択Generationを固定したうえで、必要に応じ次の**五つの異なる主張**を追跡する。
+
+| Claim | 意味と必要な根拠 | 成功と取り違えないもの |
+| --- | --- | --- |
+| **Required** | ConsumerのContract/Role/Graphから独立して要求される型付きPort、依存、入力、Effect、Source集合。要求側の発行・適用範囲が必要 | PluginやFixtureが自己申告した `required=[]` |
+| **Declared** | Source、計画、Manifestに明示されたNode/Edge/Input/Providerとその固定版 | 全宣言が実際に選択・実行されたという意味 |
+| **Selected** | 解決されたContract/Provider/Instance/Builder/Operator/Artifact Roleとその正確な世代・対象 | 選択済み実装が実byteを読んだ／実Effectを行ったこと |
+| **Consumed** | 既存Reader/実Build/実Provider等が実際に利用した入力・Artifact/Step・時点。観測能力と欠落範囲を注記 | 同じ出力Digestなら全消費Sourceも一致すること |
+| **Observed / Disclosed** | 独立Read/Receipt/Trace/Studio Projectionで観測・開示できた内容、Reader coverage、Policy/Scopeと版 | 観測しなかった経路や隠れた副作用が「存在しない」こと |
+
+**局所型検査の成立**は、選択済みSemantic定義の構造に対するTypeRef/Shape/Multiplicityの一致候補まで（E2a [#2584](https://github.com/hat47x/tei-platform/pull/2584)）。**閉包の成立**は、上表のRequired→Declared→Selected→Consumedを当該Claimの範囲で独立に照合し、未列挙・部分観測・動的ロード・opaque境界を明示する段階。**外部Effect/Authorityの成立**は、さらに実Targetの強制境界・結果/Receipt・必要な再認可で判定する段階である。これらを一つのboolean `valid` に畳まない。
+
+- 宣言Graphの見た目・Tableの行数が一致しても、実Readerが未読込Sourceを見逃せば閉包未証明（[#2823](https://github.com/hat47x/tei-platform/issues/2823)）。逆にGraphにNodeが無くても、対象Scope/Reader/Phaseで閉包が確認されない限り「不存在」と表示しない。
+- `std.binary`から`std.binary`へのTypeRef一致は、外部配送の4分割中3件ACK、Commit後の取消、Spool容量超過を成功へ変えない（Draft [#2827](https://github.com/hat47x/tei-platform/pull/2827)の既存DM/EF条件に委譲）。単なるTransport Batch、処理Chunk、業務的Atomic Batch、Execution Groupingの保証を継承させない。
+- Build Graphに必要な型付きEdgeが揃っていても、一時的な`main.go`の二回Buildの成功から実`cmd/tei`・nested moduleの実入力閉包を推定しない（#2831）。Build stepの未宣言入力と可観測範囲外の動的工程はそれぞれfail/unknownとして区別する。
+- Pushdown/Fusion/Cache/Batch/Provider交換の最適化は、TypeRefだけでなくNULL/順序/部分失敗/Unknown/Effect/Scope/対象時点を保ったことを別に検証する（Draft #2933）。宣言された論理契約が同じという事実を、物理結果・性能効果や現在のInvocation Authorityと混同しない。
+
+**既存STケースへの追加判定（新Fixture IDは増やさない）**：ST-02はSemantic定義・Sourceの版変更による型候補と利用資格の失効、ST-03はETLのSelected/Consumed/ACK/Partialの別観測、ST-04は同型二InstanceのScope/Config/Grant分離、ST-09はArtifact digest一致でもBuilder/Attempt/Targetが異なる場合の再資格化をそれぞれ確認する。Graph/Tableの表示差は#2881、Role/Source closureは#2620、実Buildは#2831、実MFTは#2827/#2542に割り当てる。
+
+**標準化判断の停止条件**：二つのConsumerで型付き辺の共通検査が成立しても、未充足がSource閉包・Role/Effect・Transfer receipt・Build provenanceで説明できるなら新しい標準TypeKind/専用DSL/第二Resolverを追加しない。独立して同じ**意味**の表現・変換・診断に欠損が再現されたときのみ#2620と#951へ最小契約差分を返す。Stage/Host/Studio/実DB/External ProviderのE2E、実際の閉包、Owner Acceptance、性能測定は本設計では**NOT RUN / NOT PROVEN**。
+
+
+### 17.8 「型適合」「要求保証」「実行証拠」を別の判定にする（2026-11-06、実証引継ぎ）
+
+**差分となる着想**：同じTypeRefの接続に成功した後でも、ProducerがConsumerの必要とする順序・配送・原子性・再現性などを提供するとは限らない。Pluginの継承/特殊化（例：Filesystem相当のByte保存とS3系Object保存）を、メソッド名・primitive・Capability名だけで置換可能とみなさない。既存[#951](https://github.com/hat47x/tei-platform/issues/951)の正式Contract、[#2933](https://github.com/hat47x/tei-platform/pull/2933)の最適化要件、[#2827](https://github.com/hat47x/tei-platform/pull/2827)の配送保証が各意味のOwnerであり、ここで独立した保証Registryを新設しない。
+
+**診断の順序（新規プロダクトAPIではない）**：
+1. **構造候補**：TypeRef/Name/Multiplicity/NULL/Shapeのうち試作が検査できる範囲を確認。存在しない型・選択されていないSourceは衝突と断定せずUnknownにする（[#2584](https://github.com/hat47x/tei-platform/pull/2584)）。
+2. **必要な保証の充足**：Consumer側のRequired guaranteesと、選択されたProvider/Transform/Targetが**その対象と時点に対して**保証すると検証された条件を照合。未定義・不確実な意味（順序、欠損、外部ACK、Atomicity、idempotency、rollback等）は**未判定**であり、自動的なFallbackや暗黙Adapterを追加しない。
+3. **実際の成立証拠**：Declared/Selectedだけでなく実Consumed/Observed、Source closure、正規のArtifact・ReceiptとIndependent Oracleを確認。TypeRef一致とProviderの仕様適合は、実行結果や現在の権限を代替しない。
+
+要求保証を単純な真偽値へ畳まない。対象/Scope/Target/Phase/Source revision/Generation/OperationId/Attemptと、保証の根拠・確認できなかった範囲を記録し、要求が部分充足または不明ならCandidateをProduction-qualifiedに昇格しない。**Value-levelの互換、Stage/Build-levelの資格、Effect-levelの現在許可は異なる結論**として返す。
+
+| 既存Case | 型付き辺の局所結果 | 次に必要な独立検証／負例 | Owner |
+| --- | --- | --- | --- |
+| ST-03 SQL→CSV・File relay | 共通primitive/項目Shapeが一致しても構造候補のみ | 4 chunkのうち3件のみACK、部分Commit/Cancel、encoding/NULL/row orderの損失。Delivery Receipt/Sourceの実byteを照合し、成功に丸めない | #2542 / #2827 |
+| ST-04 同型の二Plugin Instance | 同TypeRefでもInstanceは別 | 異なるScope/DataSource/Grantで選択の同一性を区別。NAS系とObject StoreのAtomic Rename/一式Publishを無条件継承させない | #951 / #1016 / Draft #2933 |
+| ST-09 TEI CLI Self-build | Build Port/Artifact Roleの型が合っても構造候補のみ | **SB-0a** 実`cmd/tei`のSelected module roots/Sourceを調べ、external-unresolved/missing-module/unknownを独立表示。**SB-0b** 選択された外部Go moduleの`go.sum`・正確なbyte・offline prefetchを固定してからP0-A0/A1の宣言Graphと実消費照合へ進む。二回の`go build`・同digestを再帰Self-build証明に流用しない | #2831 / #1090 / #1096 |
+| ST-02 Semantic source改版 | 同じ文字列のTypeRefでも別定義の可能性 | Source/Meaning revisionと選択定義を再照合。Read-only Role AnchorやGraph表示の一致をOwner意味受理に昇格しない | #2620 / #267 / #2823 |
+
+**Self-buildの新たな実測Gapとの接続**：[#2831の2026-11-06追補](https://github.com/hat47x/tei-platform/issues/2831)では、既存`ResolveSourceClosure`がrepository root外のmoduleをfail-closedで拒否する一方、rootの`go.mod`は外部module依存を宣言している。`cmd/tei`でその依存が実選択されるかは独立観測前であり、**現時点でbuildが失敗すると断定しない**。外部moduleの選択/配布byteの未証明は、TypeRef不一致でも実Builderのバグでもなく、Source ClosureのUndischarged obligationに分類する。Target別工程の実消費を確認する前に「図中にない工程は存在しない」と言わない。
+
+**評価・撤回条件**：既存Contract/Role/Source閉包の診断を関連付けるだけでST-02/03/04/09を分類できれば、専用TypeKind/Guarantee Solver/Closure Engineは不要。二Consumerで同じ欠落保証を**独立証拠**によって再現し、既存OwnerのContractでは表現不能であると確かめた場合にだけ、#951/#2620への最小型付き契約追加を提案する。この節はDocs-only、実Go/ETL/S3/CLI self-build・Target Conformance・現在Authority・Owner Meaning Acceptanceは**NOT RUN/NOT PROVEN**。
+
+
+### 17.9 閉じた値域と設計特性の「意図・証拠・適合」を分離する（2026-11-06、設計候補）
+
+他チャットで挙がったEnumのような閉じた値域・MECE区分・「強属性」を、単一の新しいSemantic TypeKindに詰め込まず、既存の[#2495](https://github.com/hat47x/tei-platform/issues/2495)（直交Facet）、[#2544](https://github.com/hat47x/tei-platform/issues/2544)（公理・演算の資格）、[#1126](https://github.com/hat47x/tei-platform/issues/1126)（候補キー・関数従属性）、[#958](https://github.com/hat47x/tei-platform/issues/958)（根拠と人間確認）、[#267](https://github.com/hat47x/tei-platform/issues/267)（受理）を利用して評価する。**「強属性」の原典における厳密な定義は未照合**なので、候補キー・決定属性と同義であると**断定せず**、資料・文脈に紐付く外部の意味分類候補に留める。
+
+#### 値域に関する独立した問い
+
+| 問い | 宣言として確認したいこと | 検証できる証拠と限界 |
+| --- | --- | --- |
+| 値域Closed | 値集合を特定版の列挙に限定するか、未知値・将来拡張を許すか | enum/oneof/CHECKの構文とTargetでの実制約。ただしアプリケーション全体のSource閉包を保証しない |
+| Mutually Exclusive | 同時に所属可能な区分か、一個のtagを選ぶ構造か | tagged union・排他CHECK・独立Oracle。複数flagや期間重複は別契約 |
+| Collectively Exhaustive | **何を全体集合とするか**（対象・Scope・時点）を明示し、どの実例もいずれかへ入るか | 分類規則と独立した対象集合。有限データで未出現値がないことは一般的な全件証明ではない |
+| Identity / Determinance | 業務キー、一意制約、関数従属性、区分による条件付き制約を分ける | SchemaのUNIQUE/FK/FD、実データの反例、Ownerの意味判断。物理PK一致を業務IDの確定としない |
+| Lifecycle / Effective time | 状態遷移・変更可能性・適用時点・無効化を区分から独立に扱う | 明示Ruleと実Targetの観測。Enumの定数集合だけで遷移可能性を推測しない |
+
+「MECE」は閉じたEnum型の同義語ではない。**mutually exclusive** と **collectively exhaustive** は、分類対象の母集合・業務時点・Null/Unknown・複合分類の条件を明記した後、それぞれ検証する。Java等でEnumが有限でも、業務上の区分が完全かどうかや将来値の取扱いは自動決定できない。
+
+#### 設定者・基盤の分担（候補）
+
+| 判断する対象 | 設計者／Owner | 基盤の自動化・限界 |
+| --- | --- | --- |
+| 業務上の値域・分類の母集合／例外値 | 対象Scope・有効時点・未分類時の扱いを意図として宣言し、必要なら受理 | Java Enum、tagged union、SQL CHECK等の**構文上の有限値域**は抽出可能。ただし実装上のEnumを業務全体のClosed/MECEへ自動昇格しない |
+| 区分の排他・網羅、状態遷移 | ビジネス上の条件や許される遷移を確認 | 静的Constraintと独立Oracleで反例を検査。データの現行サンプルに漏れがないだけでは全称命題の証明にならない |
+| 識別性・強属性と呼ぶ特性 | Business Key/FD等に解釈できる場合は根拠と共に宣言。「強属性」の用語定義が未固定なら unresolved | UNIQUE/PK/FK/FD・実データ重複は**該当Targetの証拠**。DB PKを業務上の強さや正本Identityと同一視しない |
+| 意図と実現の差分 | 誤検知・仕様変更・受理候補をレビュー | **violated**（具体的な反例）／**conformant-in-scope**（範囲・保証を限定して一致）／**unverified**（必要な閉包・Oracleがない）を別表示し、意図を勝手に書き換えない |
+
+具体例として、業務モデルが「区分A/Bが常に排他的かつ網羅的」と要求するのにTargetの列が任意の文字列を受理する場合は、実Target上の制約が不足する**設計対実現の警告候補**とする。一方、制約が明示されていないという理由だけでは、実データに違反が存在すると断定しない。業務的なStatusの集合が未受理なら、Java Enumがあっても「業務的MECEを証明した」と報告しない。
+
+#### 宣言意図と実態の差分提示（新しいTruth/Authority判定器ではない）
+
+1. **Intended**：設計者が意味の正本に明示したClosed/Exclusive/Exhaustive/Identity等の条件、対象Scope/Source revision、受理状態。未採用の提案は受理済みと呼ばない。
+2. **Observed / Inferred**：既存Parser・Constraint・Schema・Target Adapter・実データから判別できた事実、分析可能な範囲、反例・未読込Source・部分観測。列挙やSQL CHECKは**その実装面で確認できた制約**であって、業務意味を確定しない。
+3. **Conformance**：同じSubject・Scope・Target・時点について、根拠付きで一致する場合だけ「範囲内適合」、明示反例がある場合は「不一致」、必要証拠が不足する場合は「未検証」。推定だけで人間のIntentやAccepted Meaningを書換えない。
+
+次の既存ケースへの圧力とする（ここで第二の試験SSOTは作らない）。
+
+- **ST-02 / ST-08**：同じ`std.code`・Ref／同じEnum名でも、値集合が変更・拡張され、Clientが旧全件性を仮定している場合は再資格化する。`std.*`→`tei.std.*`の改名を値域互換の証拠にしない。
+- **ST-03**：CSV/JSON転送に未認識status/unknown/nullが含まれる場合、値を勝手に「その他」へ丸めず、Consumerが要求するclosednessとProvider側の実保証を別列に提示する。
+- **ST-04**：二つのInstanceが同じTypeRefでも、Scope・effective-time・参照Master・業務キーの受理範囲が違えば同じ強さの区分/FDを使えると推測しない。
+- **ST-09**：生成コード中のEnum構文があるだけで、元のBusiness classificationやSource全件性が保証されたとはしない。生成元の宣言・Target制約・実行観測を別に照合する。
+
+**検証・撤回条件**：#2495の既存Facetと#1126のFD/Key／#2544の制約・証拠の関連付けで上記が表示・診断できれば追加TypeKindは不要。二つの異質Consumerで未表現の意味が同じ形で反復し、既存契約では欠落を明示できない場合だけ追加契約をOwnerへ提案。現時点では具体的なJava/SQL/DB/Studio実接合、正規の原典定義、Target完全性、A4意味受理は**NOT RUN / NOT PROVEN**。
+
+
+### 17.10 既存コードからの意味抽出と異Targetへの再実現（2026-11-06、実証候補）
+
+他チャットの移行構想である「既存Java/.NET等のソース・DB・インターフェイスから業務定義を吸収し、意味を保ちながら異なるTarget向けに再生成する」を、ここまでの型付きI/OとFacet検査に接続する。**採用済みの一般的な自動移行能力ではなく、Source→意味候補→Owner受理→生成物→独立実行比較の実証条件**とする。既存[#1121](https://github.com/hat47x/tei-platform/issues/1121)（Lowering）、[#1126](https://github.com/hat47x/tei-platform/issues/1126)（業務Key/FD）、[#1656](https://github.com/hat47x/tei-platform/issues/1656)（ODataとCommand）、[#2831](https://github.com/hat47x/tei-platform/issues/2831)（Build）、[#2585](https://github.com/hat47x/tei-platform/issues/2585)（Projectionの値忠実度）を使用し、新Migration Engine/Contract Registryを作らない。
+
+| 証拠段階 | 収集・検査するもの | 言えないこと |
+| --- | --- | --- |
+| **Legacy observed** | 固定ソース・DDL・Enum・CHECK・API/OData metadata・ファイル仕様・実入力/結果、実際に動いたTarget/Version | DBスキーマやコード構文から業務意図が一意に決まること |
+| **TEI interpreted candidate** | 型付きPort/Role/Enum区分/業務ID候補、処理・例外・未解決のSource locator、推論根拠と対象時点 | 候補がすでにAccepted Meaningであること |
+| **Owner accepted meaning** | どの業務条件・値域・Key・結果・例外を受理したか、受理元Revisionと必要な変更影響 | AcceptしただけでTargetの実装・権限が成立すること |
+| **Target realized** | Go/Wails Desktop、Java/.NET、Web等の選択Target/Adapter/Artifact、Source/Toolchain closure、生成入出力 | あるTargetでの構築成功を、別Target/Adapterの適合へ昇格すること |
+| **Independent observed conformance** | Legacy実行と生成物を**独立Expected**で同じMeaning/入力/Scope/有効時点に照合。値・NULL・Presence・例外・順序・Effect receiptの差を保持 | 同じ表示／Artifact digestだけで業務的同等性を証明すること |
+
+**直交する二つの選択軸**：データ/連携方式はREST/OpenAPI・OData・ファイル・DB・外部Process等から明示選択し、TargetはGo/Wails（Desktopの部品流用と性能を期待する有力候補）・Java・.NET・Web等から別に選択する。Wails/Goの選択は既存システムにJava/.NETの再利用環境がある場合のTarget互換性・受入を狭めない。すべてをREST化することもTEI独自Hostや認証Coreへ強制的に依存させることもしない。
+
+**既存STケースを利用した最小の反例**：ST-02/08の閉域Enum改版と未認識値、ST-03のCSV/ODataのNULL/Presence/順序/精度/符号化、ST-04の二Target二InstanceでのScope/Grant/Key差、ST-09の生成Target/Artifactは同じMeaningでもToolchainと実バイトを別固定。抽出元の「強属性」と呼ぶ性質が原典未確定・実装だけの推定である場合は**unresolved**と表示し、Business Keyや決定属性へ自動変換しない。
+
+**最初の受入に必要な差分**：一つの固定Legacy機能に対し、①元Sourceから取り出した事実と未解決、②人間が採用した意味、③選択Targetで再生成した成果物、④別実装の独立Expectedを一枚の照合票に結ぶ。ST-02の値域改版、ST-03の情報損失、ST-04のScope不一致を最低一件ずつ負例に含める。二つ目のTarget/連携方式へ切替えたとき既存の意味上の型・保証が再利用できるかを確認した後にのみ標準型拡充を判断する。
+
+**現状の資格**：ここでのLegacy実ソース解析、独立動作比較、Java/.NET/Wails/OData/ファイルの実E2E、完全なSource closure、Owner意味受理はいずれも**NOT RUN / NOT PROVEN**。既存参照実装・外部OwnerのCI成功を移行Conformanceへ加算しない。

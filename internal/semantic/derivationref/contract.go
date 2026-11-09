@@ -28,18 +28,28 @@ type Definition struct {
 	Inputs   []string
 	Operator string
 	Pure     bool
+	// InputTypes and OutputType are an optional typed contract. When set, they
+	// let a caller check that the rule and its bindings agree on types without
+	// adding a second type system to Core.
+	InputTypes []string
+	OutputType string
 }
 
 type Binding struct {
 	RuleID   string
 	TargetID string
 	Scope    string
+	// TargetType is optional. When both sides declare a type, a mismatch is
+	// rejected instead of being resolved by name or position.
+	TargetType string
 }
 
 var ErrInput = errors.New("derivation input unavailable")
 var ErrCycle = errors.New("derivation dependency cycle")
 var ErrImpure = errors.New("impure derivation")
 var ErrOperator = errors.New("unsupported derivation operator")
+var ErrType = errors.New("derivation type mismatch")
+var ErrBinding = errors.New("derivation binding invalid")
 
 // ValidateGraph checks references and cycles without executing any rule.
 func ValidateGraph(defs []Definition, dependencies map[string][]string) error {

@@ -26,7 +26,7 @@
 
 | archive `SHA256SUMS` の位置 | 対象 | 掲載されているSHA-256 | 証拠の限界 |
 | --- | --- | --- | --- |
-| 3行 | `packages/XTeaModelerInstaller1_4_50.zip` | `d5875dac35c0fdfc19c761a78957707d218ef1baa75b854e002b70ad419196e8` | 保存台帳との整合。今回ZIP bytesの独立再計算はしていない |
+| 3行 | `packages/XTeaModelerInstaller1_4_50.zip` | `d5875dac35c0fdfc19c761a78957707d218ef1baa75b854e002b70ad419196e8` | 2026-10-29に保存ZIP bytesのSHA-256を独立再計算し、台帳と一致確認。ZIP内全entryや配布マニュアル全体の再検査を意味しない |
 | 6行 | `source-history/XeadModeler.bundle` | `ddee2f44ae6d195c7e15d91ab7ead95caeaac1cd0cf322a6cbf80618dbb57c31` | 履歴の保存物であり、M50 JARのビルド来歴ではない |
 | 298行 | `source/XeadModeler/jar/MANIFEST.MF` | `c6b4ee820d5b425687e374616b468bb6b8380a8aabf6250d1d6e3e2e9970bba0` | M49 source側。M50 JAR内Manifestとは同一視しない |
 | 299行 | `source/XeadModeler/src/xeadModeler/Application.java` | `d89dbc9efa76a285e516e1ce1bad83ae27d532f5b159a8138da7fa6aaafe1e20` | M49起動入口 |
@@ -34,7 +34,7 @@
 
 保存sourceのManifestは上記M49コミットとGit blob `3c4183c3b0cead82069cf4b00ac631685f99d1bf` が一致する。内容1–8行には `Main-Class: xeadModeler.Application` と相対 `Class-Path` を記述する一方、**`Implementation-Version` 行は存在しない**（`Manifest-Version: 1.0` はJAR Manifest形式の版であり製品版ではない）。一方、**M50 ZIP内 `Files/xteamdl.jar` の `META-INF/MANIFEST.MF` は今回直接検査できない**ため、M50の `Main-Class` や `Implementation-Version` 欠落は未確認。M50 `V1.R4.M50` は[既存のclass定数静的検査記録](https://github.com/hat47x/tei-platform/issues/943#issuecomment-6234874050)であり、Manifestがその版を宣言したという意味ではない。
 
-[`README.md`の保存方法についての既存公表記録](https://github.com/hat47x/tei-platform/issues/943#issuecomment-6234874050)によると、配布マニュアルは元installer ZIP内に保持され、Source working tree・Git bundle・配布ZIPは別個の保存対象である。したがってReadme/INSTALL.DATの過去静的調査結果を再利用することと、今回そのZIP内容を独立に展開・再検査したことを区別する。
+[`README.md`の保存方法についての既存公表記録](https://github.com/hat47x/tei-platform/issues/943#issuecomment-6234874050)によると、配布マニュアルは元installer ZIP内に保持され、Source working tree・Git bundle・配布ZIPは別個の保存対象である。2026-10-29にはZIP全体のraw SHA-256と`Files/xteamdl.bat` entryを確認したが、配布マニュアル全体や全entryを独立再検査したわけではない。過去のREADME/INSTALL.DAT静的調査結果の再利用と、今回の確認範囲を区別する。
 
 **製品版とデータ形式版の追加照合（既存証拠の再索引）:** M49 source `src/xeadModeler/DialogAbout.java:47,50` は `FORMAT_VERSION="1.2"` / `FULL_VERSION="V1.R4.M49"`。M50 installer内 `Files/xteamdl.jar` の `xeadModeler.DialogAbout` class定数は、[既存#940記録](https://github.com/hat47x/tei-platform/issues/940#issuecomment-6205292851)および[独立照合記録](https://github.com/hat47x/tei-platform/issues/940#issuecomment-6205334330)で `FORMAT_VERSION="1.2"` / `FULL_VERSION="V1.R4.M50"` と報告されている。**表示製品版は異なるが、形式版の文字列は一致**。これはデータ形式の読み書き互換、M50のSource provenance、M50 Jar内Manifestの `Implementation-Version` 欄の有無を証明しない。今回M50 class bytesを再解析していないため、M50値は「以前の固定artifact静的検査記録」として区分する。
 
@@ -58,6 +58,10 @@ M49 source-only launch path:
 
 Manifest `Class-Path` は依存JAR名の列挙であり、アプリケーション製品版やどの起動JARを選ぶかを意味しない。Eclipse `.classpath` の開発機パスも配布Runtime classpathの証拠ではない。M49 Sourceが`java.class.path`から組み立てる探索パスも、実際のJAR配置先を保証しない。複数pathや起動方式によってパスの意味が変わり得る。M50 installer ZIP内のBATは`xteamdl.jar`という固定basenameを指定するが、OSがこのBATを起動すること、インストール後のBAT/JARがZIP entryと同じであること、実行時にそのJARが選ばれることは未確認とする。
 
+### 設定値の逐次適用と不正数値（M49 Source-only）
+
+固定M49の`Modeler.java:1671–1706`では、設定キーを順に適用し、`MainFontSize`と`IOImageFontSize`を整数変換します。読込全体は一つの`try`に含まれ、例外を空の`catch`で無視します。不正な数値で変換が失敗すると、それ以前に代入された値を戻す処理はなく、後続キーの代入へ進みません。たとえば`MainFontSize`の変換失敗は後続の`IOImageFont`等に、`IOImageFontSize`の変換失敗は後続の`IOImageFolder`等に影響し得ます。これは固定Sourceの制御フローから分かる範囲であり、不正値の許容仕様、実GUIの表示、M50配布JARでの同等動作は未確認です（[Issue #940のsource-only追補](https://github.com/hat47x/tei-platform/issues/940#issuecomment-6499417616)）。
+
 ## 3. backup / staging / rollback の非主張
 
 `INSTALL.DAT`で分かるのはインストール先・関連付け・shortcut等の**宣言**であり、OS上の実副作用ではない。Readmeのuninstall時ユーザーfile保持の記述は、**更新前backupや失敗時rollback**の保証ではない。既存#940にあるModelerの通常モデル保存処理のbackupと、startup JAR更新のbackupは別の操作である。
@@ -75,4 +79,5 @@ M50同梱文書のbackup/staging/rollbackの規範的な章・行は今回直接
 
 - 2026-10-26: 既存#943、#1223、#2019、#2020及びADR-0032/0036と重複照合。公開M49 GitHub source/manifestを再読。旧archive記録はGitHub上の既存hash付きコメントで確認したが、保存ZIP/同梱文書のbyte列をこの環境で再検証したわけではない。旧チャットの`systemError`結果は採用しない。
 - 2026-10-28: M49最終`Modeler.java`の保存archive snapshotと公開commitのGit blob一致を直接確認し、上表の設定読込位置と固定instance内reload未確認を補った。これはM49の静的Source確認であり、M50 JARの動作・GUIでの設定反映・インストーラー更新時の復旧を確認したものではない。詳細は[#940の固定Source記録](https://github.com/hat47x/tei-platform/issues/940#issuecomment-6467903431)。
+- 2026-10-29: 保存M50 ZIP raw SHA-256を再計算して台帳値と照合し、ZIP内`Files/xteamdl.bat` entryのSHAと固定basename `xteamdl.jar` 指定を静的確認。ZIP全entry・配布マニュアル全体・実行環境での挙動を検証したものではない。
 - X-TEA/TEIの実行・試験、main編集、mergeなし。実実行環境、M50 Manifest/versionの独立再読、更新手順書の規範的段落・行、source→binary build record、Windowsのbackup/staging/rollback観測は保留。

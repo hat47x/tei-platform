@@ -1,11 +1,21 @@
 package deliverybundle
 
 import (
+	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 )
+
+func TestMain(m *testing.M) {
+	// The service implementation uses Unix process signals (kill -0/-TERM).
+	if runtime.GOOS == "windows" {
+		return
+	}
+	os.Exit(m.Run())
+}
 
 func TestStartAndStopService(t *testing.T) {
 	statePath := activeState(t)
@@ -112,7 +122,7 @@ func TestReconcileNoopWhenHealthy(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _, _ = Stop(statePath) })
-	receipt, err := Reconcile(statePath, "exec sleep 5", "exit 0", "", time.Second)
+	receipt, err := Reconcile(statePath, "exec sleep 5", "exit 0", "", healthTestBudget)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,7 +138,7 @@ func TestReconcileRestartsUnhealthy(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _, _ = Stop(statePath) })
-	receipt, err := Reconcile(statePath, "exec sleep 5", "exit 1", "", time.Second)
+	receipt, err := Reconcile(statePath, "exec sleep 5", "exit 1", "", healthTestBudget)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,5 +147,36 @@ func TestReconcileRestartsUnhealthy(t *testing.T) {
 	}
 	if receipt.Service.PID == first.PID {
 		t.Fatalf("restart kept the same pid: %d", receipt.Service.PID)
+	}
+}
+
+func TestSuperviseRunsBoundedIterations(t *testing.T) {
+	statePath := activeState(t)
+	var receipts []ReconcileReceipt
+	if err := Supervise(context.Background(), statePath, "exec sleep 5", "exit 0", "", time.Second, 10*time.Millisecond, 2, func(receipt ReconcileReceipt) {
+		receipts = append(receipts, receipt)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = Stop(statePath) })
+	if len(receipts) != 2 || receipts[0].Action != "started" || receipts[1].Action != "noop" {
+		t.Fatalf("unexpected receipts: %+v", receipts)
+	}
+}
+
+func TestSuperviseStopsOnCancellation(t *testing.T) {
+	statePath := activeState(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	count := 0
+	err := Supervise(ctx, statePath, "exec sleep 5", "exit 0", "", time.Second, time.Hour, 0, func(ReconcileReceipt) {
+		count++
+		cancel()
+	})
+	t.Cleanup(func() { _, _ = Stop(statePath) })
+	if err != context.Canceled {
+		t.Fatalf("err=%v", err)
+	}
+	if count != 1 {
+		t.Fatalf("count=%d", count)
 	}
 }

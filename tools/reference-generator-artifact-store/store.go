@@ -9,9 +9,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	generatorselection "tei/tools/reference-generator-selection"
@@ -39,7 +42,26 @@ type Object struct {
 	BinaryDigest        string `json:"binaryDigest"`
 	BuildEvidenceDigest string `json:"buildEvidenceDigest,omitempty"`
 	ReceiptDigest       string `json:"receiptDigest"`
+	// ClassSetDigest and Classes describe a stored Java class set. They are
+	// empty for languages whose artifact is a single binary or source only.
+	ClassSetDigest string        `json:"classSetDigest,omitempty"`
+	Classes        []ClassMember `json:"classes,omitempty"`
 }
+
+// ClassMember is one stored Java class file. Path is relative to the class root
+// and always uses forward slashes. Role is main for the entry class and inner
+// for nested classes produced from the same source.
+type ClassMember struct {
+	Path   string `json:"path"`
+	Role   string `json:"role"`
+	Digest string `json:"digest"`
+	Size   int64  `json:"size"`
+}
+
+const (
+	classRoleMain  = "main"
+	classRoleInner = "inner"
+)
 
 type Receipt struct {
 	Schema              string   `json:"schema"`
@@ -54,7 +76,90 @@ type Receipt struct {
 	Reason              string   `json:"reason,omitempty"`
 	GrantsAuthority     bool     `json:"grantsAuthority"`
 	ProvesRealTarget    bool     `json:"provesRealTarget"`
+	ClassSetDigest      string   `json:"classSetDigest,omitempty"`
+	ClassCount          int      `json:"classCount,omitempty"`
 	Notes               []string `json:"notes"`
+}
+
+// classSetFingerprint digests the canonical, path-sorted member list. It is the
+// value recorded in Object.ClassSetDigest and re-derived on restore.
+func classSetFingerprint(members []ClassMember) (string, error) {
+	sorted := append([]ClassMember(nil), members...)
+	sort.Slice(sorted, func(i, j int) bool { return sorted[i].Path < sorted[j].Path })
+	encoded, err := json.Marshal(sorted)
+	if err != nil {
+		return "", err
+	}
+	return digest(encoded), nil
+}
+
+// safeClassPath rejects member paths that would escape the restore directory.
+func safeClassPath(value string) (string, error) {
+	if value == "" || strings.Contains(value, "\\") || strings.HasPrefix(value, "/") || filepath.IsAbs(value) {
+		return "", fmt.Errorf("invalid class member path %q", value)
+	}
+	clean := path.Clean(value)
+	if clean == "." || clean == ".." || strings.HasPrefix(clean, "../") {
+		return "", fmt.Errorf("class member path %q escapes the class root", value)
+	}
+	return clean, nil
+}
+
+// buildJavaClassSet compiles Main.java and returns the entry class bytes, every
+// produced class member, and the bytes keyed by member path.
+func buildJavaClassSet(ctx context.Context, dir string) ([]byte, []ClassMember, map[string][]byte, error) {
+	javac, err := exec.LookPath("javac")
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("javac is unavailable: %w", err)
+	}
+	classesDir, err := os.MkdirTemp("", "tei-artifact-java-classes-*")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	defer os.RemoveAll(classesDir)
+	compile := exec.CommandContext(ctx, javac, "-d", classesDir, "Main.java")
+	compile.Dir = dir
+	if out, err := compile.CombinedOutput(); err != nil {
+		return nil, nil, nil, fmt.Errorf("%v: %s", err, out)
+	}
+	var members []ClassMember
+	blobs := map[string][]byte{}
+	err = filepath.WalkDir(classesDir, func(current string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		relative, err := filepath.Rel(classesDir, current)
+		if err != nil {
+			return err
+		}
+		slash := filepath.ToSlash(relative)
+		if !strings.HasSuffix(slash, ".class") {
+			return fmt.Errorf("unexpected non-class build output %q", slash)
+		}
+		raw, err := os.ReadFile(current)
+		if err != nil {
+			return err
+		}
+		role := classRoleInner
+		if slash == "Main.class" {
+			role = classRoleMain
+		}
+		members = append(members, ClassMember{Path: slash, Role: role, Digest: digest(raw), Size: int64(len(raw))})
+		blobs[slash] = raw
+		return nil
+	})
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	sort.Slice(members, func(i, j int) bool { return members[i].Path < members[j].Path })
+	mainBytes, ok := blobs["Main.class"]
+	if !ok {
+		return nil, nil, nil, fmt.Errorf("Main.class was not produced by the build")
+	}
+	return mainBytes, members, blobs, nil
 }
 
 func digest(content []byte) string {
@@ -155,16 +260,33 @@ func Put(ctx context.Context, opts StoreOptions) (Receipt, error) {
 	}
 	defer os.RemoveAll(tempDir)
 	var binary []byte
+	var javaClasses []ClassMember
+	var javaClassBytes map[string][]byte
 	if !sourceOnly {
 		binaryPath := filepath.Join(tempDir, "artifact")
-		if err := buildArtifact(ctx, candidate.Language, candidateDir, binaryPath); err != nil {
-			receipt.Reason = "candidate build failed: " + err.Error()
-			return receipt, nil
-		}
-		binary, err = os.ReadFile(binaryPath)
-		if err != nil {
-			receipt.Reason = err.Error()
-			return receipt, nil
+		if candidate.Language == generatorselection.LanguageJava {
+			// Store the whole class set, not only the entry class. The entry
+			// class still has to match the selection receipt, so the receipt
+			// keeps its meaning; the class set is additional stored evidence.
+			mainBytes, members, blobs, err := buildJavaClassSet(ctx, candidateDir)
+			if err != nil {
+				receipt.Reason = "candidate build failed: " + err.Error()
+				return receipt, nil
+			}
+			binary, javaClasses, javaClassBytes = mainBytes, members, blobs
+			if err := os.WriteFile(binaryPath, mainBytes, 0o755); err != nil {
+				return receipt, err
+			}
+		} else {
+			if err := buildArtifact(ctx, candidate.Language, candidateDir, binaryPath); err != nil {
+				receipt.Reason = "candidate build failed: " + err.Error()
+				return receipt, nil
+			}
+			binary, err = os.ReadFile(binaryPath)
+			if err != nil {
+				receipt.Reason = err.Error()
+				return receipt, nil
+			}
 		}
 		if digest(binary) != candidate.BinaryDigest {
 			receipt.Reason = "rebuilt binary digest does not match the receipt"
@@ -173,6 +295,13 @@ func Put(ctx context.Context, opts StoreOptions) (Receipt, error) {
 	} else if candidate.BinaryDigest != "" {
 		receipt.Reason = "source-only candidate unexpectedly declares a binary digest"
 		return receipt, nil
+	}
+	classSetDigest := ""
+	if len(javaClasses) > 0 {
+		classSetDigest, err = classSetFingerprint(javaClasses)
+		if err != nil {
+			return receipt, err
+		}
 	}
 	objectPath := filepath.Join(opts.StoreDir, "objects", sourceHex)
 	if existing, err := os.ReadFile(filepath.Join(objectPath, "artifact")); err == nil {
@@ -199,24 +328,42 @@ func Put(ctx context.Context, opts StoreOptions) (Receipt, error) {
 				receipt.Reason = "existing object provenance differs from the current selection receipt"
 				return receipt, nil
 			}
-			storedReceiptPath := filepath.Join(objectPath, "receipt.json")
-			storedReceipt, err := os.ReadFile(storedReceiptPath)
-			if os.IsNotExist(err) {
-				if err := os.WriteFile(storedReceiptPath, rawReceipt, 0o644); err != nil {
-					receipt.Reason = err.Error()
+			// A stored class set must match the current build. An object that
+			// predates class-set storage is upgraded below instead of reused.
+			upgradeClassSet := existingObject.ClassSetDigest == "" && classSetDigest != ""
+			if existingObject.ClassSetDigest != "" || classSetDigest != "" {
+				if existingObject.ClassSetDigest != classSetDigest {
+					if !upgradeClassSet {
+						receipt.Reason = "existing object class set differs from the current build"
+						return receipt, nil
+					}
+				} else if reason := verifyStoredClassSet(objectPath, existingObject); reason != "" {
+					receipt.Reason = reason
 					return receipt, nil
 				}
-			} else if err != nil {
-				receipt.Reason = "existing selection receipt is unreadable: " + err.Error()
-				return receipt, nil
-			} else if digest(storedReceipt) != existingObject.ReceiptDigest {
-				receipt.Reason = "existing selection receipt digest does not match"
+			}
+			if !upgradeClassSet {
+				storedReceiptPath := filepath.Join(objectPath, "receipt.json")
+				storedReceipt, err := os.ReadFile(storedReceiptPath)
+				if os.IsNotExist(err) {
+					if err := os.WriteFile(storedReceiptPath, rawReceipt, 0o644); err != nil {
+						receipt.Reason = err.Error()
+						return receipt, nil
+					}
+				} else if err != nil {
+					receipt.Reason = "existing selection receipt is unreadable: " + err.Error()
+					return receipt, nil
+				} else if digest(storedReceipt) != existingObject.ReceiptDigest {
+					receipt.Reason = "existing selection receipt digest does not match"
+					return receipt, nil
+				}
+				receipt.ObjectPath = objectPath
+				receipt.Reused = true
+				receipt.Passed = true
+				receipt.ClassSetDigest = existingObject.ClassSetDigest
+				receipt.ClassCount = len(existingObject.Classes)
 				return receipt, nil
 			}
-			receipt.ObjectPath = objectPath
-			receipt.Reused = true
-			receipt.Passed = true
-			return receipt, nil
 		}
 	}
 	object := Object{
@@ -225,6 +372,8 @@ func Put(ctx context.Context, opts StoreOptions) (Receipt, error) {
 		SourceDigest: candidate.SourceDigest, BinaryDigest: candidate.BinaryDigest,
 		BuildEvidenceDigest: receipt.BuildEvidenceDigest,
 		ReceiptDigest:       digest(rawReceipt),
+		ClassSetDigest:      classSetDigest,
+		Classes:             javaClasses,
 	}
 	encodedObject, err := json.MarshalIndent(object, "", "  ")
 	if err != nil {
@@ -246,11 +395,112 @@ func Put(ctx context.Context, opts StoreOptions) (Receipt, error) {
 		receipt.Reason = err.Error()
 		return receipt, nil
 	}
+	for _, member := range javaClasses {
+		relative, err := safeClassPath(member.Path)
+		if err != nil {
+			receipt.Reason = err.Error()
+			return receipt, nil
+		}
+		target := filepath.Join(objectPath, "classes", filepath.FromSlash(relative))
+		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			receipt.Reason = err.Error()
+			return receipt, nil
+		}
+		if err := os.WriteFile(target, javaClassBytes[member.Path], 0o644); err != nil {
+			receipt.Reason = err.Error()
+			return receipt, nil
+		}
+	}
 	if err := os.WriteFile(filepath.Join(objectPath, "object.json"), append(encodedObject, '\n'), 0o644); err != nil {
 		receipt.Reason = err.Error()
 		return receipt, nil
 	}
 	receipt.ObjectPath = objectPath
+	receipt.Passed = true
+	receipt.ClassSetDigest = classSetDigest
+	receipt.ClassCount = len(javaClasses)
+	return receipt, nil
+}
+
+// verifyStoredClassSet re-reads every stored class member and returns a
+// non-empty reason when the stored bytes or member list do not match.
+func verifyStoredClassSet(objectPath string, object Object) string {
+	fingerprint, err := classSetFingerprint(object.Classes)
+	if err != nil {
+		return err.Error()
+	}
+	if fingerprint != object.ClassSetDigest {
+		return "stored class set digest does not match the member list"
+	}
+	for _, member := range object.Classes {
+		relative, err := safeClassPath(member.Path)
+		if err != nil {
+			return err.Error()
+		}
+		raw, err := os.ReadFile(filepath.Join(objectPath, "classes", filepath.FromSlash(relative)))
+		if err != nil {
+			return fmt.Sprintf("stored class member %q is unreadable: %v", member.Path, err)
+		}
+		if digest(raw) != member.Digest || int64(len(raw)) != member.Size {
+			return fmt.Sprintf("stored class member %q digest does not match", member.Path)
+		}
+	}
+	return ""
+}
+
+// RestoreClassSet writes every stored class member under destDir after the
+// same receipt and artifact checks as Get. It returns Passed=false when the
+// object has no stored class set or a member digest does not match, so a
+// partial class set is never reported as a runnable closure.
+func RestoreClassSet(storeDir, sourceDigest, destDir string) (Receipt, error) {
+	receipt, err := Get(storeDir, sourceDigest)
+	if err != nil {
+		return receipt, err
+	}
+	if !receipt.Passed {
+		return receipt, nil
+	}
+	rawObject, err := os.ReadFile(filepath.Join(receipt.ObjectPath, "object.json"))
+	if err != nil {
+		return receipt, err
+	}
+	var object Object
+	if err := json.Unmarshal(rawObject, &object); err != nil {
+		return receipt, err
+	}
+	if object.ClassSetDigest == "" || len(object.Classes) == 0 {
+		receipt.Passed = false
+		receipt.Reason = "object has no stored class set"
+		return receipt, nil
+	}
+	if reason := verifyStoredClassSet(receipt.ObjectPath, object); reason != "" {
+		receipt.Passed = false
+		receipt.Reason = reason
+		return receipt, nil
+	}
+	for _, member := range object.Classes {
+		relative, err := safeClassPath(member.Path)
+		if err != nil {
+			receipt.Passed = false
+			receipt.Reason = err.Error()
+			return receipt, nil
+		}
+		raw, err := os.ReadFile(filepath.Join(receipt.ObjectPath, "classes", filepath.FromSlash(relative)))
+		if err != nil {
+			receipt.Passed = false
+			receipt.Reason = fmt.Sprintf("stored class member %q is unreadable: %v", member.Path, err)
+			return receipt, nil
+		}
+		target := filepath.Join(destDir, filepath.FromSlash(relative))
+		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			return receipt, err
+		}
+		if err := os.WriteFile(target, raw, 0o644); err != nil {
+			return receipt, err
+		}
+	}
+	receipt.ClassSetDigest = object.ClassSetDigest
+	receipt.ClassCount = len(object.Classes)
 	receipt.Passed = true
 	return receipt, nil
 }
@@ -367,8 +617,23 @@ func buildArtifact(ctx context.Context, language, dir, binaryPath string) error 
 		}
 		return os.WriteFile(binaryPath, classBytes, 0o755)
 	}
+	// 選抜時(tools/reference-generator-selection)と同じく、go.modを持たない一時ディレクトリでbuildする。
+	// 候補のディレクトリは本リポジトリのmoduleに属し、go.modのgoディレクティブがDefaultGODEBUGとして
+	// binaryに埋め込まれるため、go.modより新しいtoolchainではdigestが変わる(#2370)。
+	buildDir, err := os.MkdirTemp("", "tei-artifact-gosrc-*")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(buildDir)
+	source, err := os.ReadFile(filepath.Join(dir, "main.go"))
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(buildDir, "main.go"), source, 0o644); err != nil {
+		return err
+	}
 	build := exec.CommandContext(ctx, "go", "build", "-trimpath", "-buildvcs=false", "-o", binaryPath, "main.go")
-	build.Dir = dir
+	build.Dir = buildDir
 	switch language {
 	case generatorselection.LanguageGo:
 	case generatorselection.LanguageWasm:
