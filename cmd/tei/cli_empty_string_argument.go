@@ -19,6 +19,7 @@ import (
 var emptyStringFlagsNotAllowed = map[string][]string{
 	"trace":         {"mode", "direction", "expected-fingerprint"},
 	"model catalog": {"namespace"},
+	"model locate":  {"workspace", "subject-kind", "subject-id"},
 	"inspect":       {"subject-kind"},
 }
 

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"strings"
+
+	"tei/internal/operations"
 )
 
 // acceptedCommands is the single list of command names the CLI dispatches.
@@ -120,6 +122,15 @@ func helpText(fs *flag.FlagSet, command string) string {
 			// allowlist. Its two flags are the whole grammar it accepts.
 			fmt.Fprintf(&out, "  -workspace string\n    \tTEI workspace directory\n")
 			fmt.Fprintf(&out, "  -namespace string\n    \toptional exact semantic namespace ID\n")
+			return out.String()
+		}
+		if command == "model locate" {
+			// model locate parses its own FlagSet too; these four flags are its
+			// whole grammar.
+			fmt.Fprintf(&out, "  -workspace string\n    \tTEI workspace directory\n")
+			fmt.Fprintf(&out, "  -subject-kind string\n    \texact subject kind from model catalog entries[].subject.kind\n")
+			fmt.Fprintf(&out, "  -subject-id string\n    \texact subject ID\n")
+			fmt.Fprintf(&out, "  -limit int\n    \tmaximum entries per list (children, siblings); default %d, at most %d\n", operations.LocationDefaultLimit, operations.LocationMaxLimit)
 			return out.String()
 		}
 		if command == "self-build" {

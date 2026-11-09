@@ -338,6 +338,19 @@ func toolList() []tool {
 			},
 		},
 		{
+			Name:        "tei_model_locate",
+			Description: "Locate one exact subject in the whole model: path from the top, children, siblings and declared references, with bounded lists (same result as `tei model locate`).",
+			InputSchema: map[string]any{
+				"type":     "object",
+				"required": []string{"subjectKind", "subjectId"},
+				"properties": map[string]any{
+					"subjectKind": map[string]any{"type": "string"},
+					"subjectId":   map[string]any{"type": "string"},
+					"limit":       map[string]any{"type": "integer", "minimum": 1, "maximum": operations.LocationMaxLimit},
+				},
+			},
+		},
+		{
 			Name:        "tei_inspect",
 			Description: "Read one exact canonical subject (same result as `tei inspect`).",
 			InputSchema: map[string]any{
@@ -481,6 +494,30 @@ func dispatch(name string, arguments map[string]json.RawMessage, workspace strin
 			return operationFailureEnvelope("tei.cli.model/v0", failure.Code, failure.Message), true, nil
 		}
 		return okEnvelope("tei.cli.model/v0", result), false, nil
+	case "tei_model_locate":
+		if err := rejectUnknownArguments(arguments, "subjectKind", "subjectId", "limit"); err != nil {
+			return nil, false, err
+		}
+		kind, id, err := requireSubject(arguments)
+		if err != nil {
+			return nil, false, err
+		}
+		limit := operations.LocationDefaultLimit
+		if _, present := arguments["limit"]; present {
+			// An explicit limit is checked as given. Reading 0 as "default"
+			// would accept a value the CLI refuses.
+			if limit, err = optionalInt(arguments, "limit"); err != nil {
+				return nil, false, err
+			}
+			if limit < 1 || limit > operations.LocationMaxLimit {
+				return nil, false, fmt.Errorf("limit must be between 1 and %d", operations.LocationMaxLimit)
+			}
+		}
+		result, err := operations.LocateWorkspace(workspace, sourceindex.Subject{Kind: kind, ID: id}, limit)
+		if err != nil {
+			return errorEnvelope("tei.cli.model-locate/v0", err), true, nil
+		}
+		return okEnvelope("tei.cli.model-locate/v0", result), false, nil
 	case "tei_inspect":
 		if err := rejectUnknownArguments(arguments, "subjectKind", "subjectId"); err != nil {
 			return nil, false, err

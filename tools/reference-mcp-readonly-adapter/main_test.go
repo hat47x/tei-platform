@@ -26,11 +26,11 @@ func referenceWorkspace(t *testing.T) string {
 	return root
 }
 
-// The adapter must expose exactly the four read-only operations and no other
+// The adapter must expose exactly the five read-only operations and no other
 // tool, so a client cannot reach a write, acceptance, deployment, or grant path
 // through it (#3400).
 func TestAdapterAdvertisesOnlyReadOnlyOperations(t *testing.T) {
-	want := []string{"tei_model_catalog", "tei_inspect", "tei_trace", "tei_validate"}
+	want := []string{"tei_model_catalog", "tei_model_locate", "tei_inspect", "tei_trace", "tei_validate"}
 	tools := toolList()
 	if len(tools) != len(want) {
 		t.Fatalf("tool count = %d, want %d", len(tools), len(want))
@@ -78,6 +78,10 @@ func TestAdapterMatchesTheSameOperationResults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	location, err := operations.LocateWorkspace(root, sourceindex.Subject{Kind: "semantic-data", ID: "sales.order"}, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
 	trace, err := operations.TraceWorkspace(root,
 		modelref.Key{Scope: "mcp-test", Subject: subject.Subject{Kind: "semantic-relation", ID: "sales.order.customer"}},
 		modelref.TraceOptions{Direction: "both", Mode: "summary"})
@@ -103,6 +107,26 @@ func TestAdapterMatchesTheSameOperationResults(t *testing.T) {
 				}
 				if body["schemaVersion"] != "tei.cli.model/v0" {
 					t.Fatalf("catalog schemaVersion = %v", body["schemaVersion"])
+				}
+			},
+		},
+		{
+			name:    "locate",
+			request: []byte(`{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"tei_model_locate","arguments":{"subjectKind":"semantic-data","subjectId":"sales.order"}}}`),
+			check: func(t *testing.T, body map[string]any) {
+				result := body["result"].(map[string]any)
+				if result["worldFingerprint"] != location.WorldFingerprint || result["worldFingerprint"] != catalog.WorldFingerprint {
+					t.Fatalf("locate worldFingerprint = %v", result["worldFingerprint"])
+				}
+				if result["sourceIndexFingerprint"] != location.SourceIndexFingerprint {
+					t.Fatalf("locate sourceIndexFingerprint = %v", result["sourceIndexFingerprint"])
+				}
+				path := result["path"].([]any)
+				if len(path) != len(location.Path) {
+					t.Fatalf("locate path = %v, want %d entries", path, len(location.Path))
+				}
+				if body["schemaVersion"] != "tei.cli.model-locate/v0" {
+					t.Fatalf("locate schemaVersion = %v", body["schemaVersion"])
 				}
 			},
 		},
