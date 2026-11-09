@@ -117,7 +117,19 @@ func TestReferenceGoExecutableUsesExactPathNotAmbientPATH(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got != goFile {
+	// The selector resolves the path it is given, so compare the files rather
+	// than their spellings: the Windows CI runner's temporary directory is a
+	// short name (C:\Users\RUNNER~1\...) whose resolved spelling differs
+	// (#3783). What this test rules out is a PATH lookup, not a resolved path.
+	gotInfo, err := os.Stat(got)
+	if err != nil {
+		t.Fatalf("selected executable is not a file: %v", err)
+	}
+	wantInfo, err := os.Stat(goFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !os.SameFile(gotInfo, wantInfo) {
 		t.Fatalf("explicit executable changed: got %q want %q", got, goFile)
 	}
 	if _, err := selectReferenceGoExecutable(t.TempDir()); err == nil {
