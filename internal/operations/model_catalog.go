@@ -7,6 +7,7 @@ import (
 
 	"tei/internal/ir"
 	"tei/internal/sourceindex"
+	"tei/internal/stdlib"
 	"tei/internal/validation"
 	"tei/internal/workspace"
 )
@@ -65,13 +66,39 @@ type CatalogValidation struct {
 	WarningCount int  `json:"warningCount"`
 }
 
+// stdlibNamespaceID is the in-process standard semantic namespace.
+const stdlibNamespaceID = "std"
+
+// isPreludeType reports whether id is one of the types the prelude itself
+// declares. A std.* name the prelude does not declare belongs to whoever wrote
+// it.
+func isPreludeType(id string) bool {
+	for _, typ := range stdlib.SemanticNamespace().Types {
+		if string(typ.ID) == id {
+			return true
+		}
+	}
+	return false
+}
+
 // preludeSubject reports whether a catalog subject belongs to the in-process
 // standard semantic prelude. The prelude is the std namespace and every
 // subject whose ID is std or starts with std.; the Loader always adds it, so
 // no source can own it. The check is by ID because that is the identity the
 // prelude uses, not by Source Status (the prelude is never indexed).
 func preludeSubject(s sourceindex.Subject) bool {
-	return s.ID == "std" || strings.HasPrefix(s.ID, "std.")
+	// Judge by identity, not by the name. A Workspace may declare its own type
+	// inside the std namespace (for example `type email from std.text`); that
+	// declaration is the caller's, so it must not carry the prelude mark. The
+	// contract defines prelude:true as "the in-process standard meaning, not
+	// something the Workspace declared" (#3347, #3851).
+	//
+	// standardSemanticSubject is the rule that already answers this correctly
+	// for duplicate detection; this reuses it so the two cannot disagree.
+	if s.Kind == "semantic" {
+		return s.ID == stdlibNamespaceID
+	}
+	return isPreludeType(s.ID)
 }
 
 type ModelCatalogEntry struct {
