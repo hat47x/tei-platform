@@ -203,3 +203,4 @@
 - [intentBindingをentryの導出値基準へ移す](TEI_GO_SELF_BUILD_BINDING_FINGERPRINT_2026-11-09.md)（I-1aと#3649により、byte検査・fingerprint検査・`planCrossCheck`・`planArtifactBinding`が**同じ1回の試行で同時に成立**することを実プロセスで観測。バイト一致でも捕れない食い違いを検出し、実施しない場合は理由を残す。`l2bClaimed`はfalse。 #2831）
 - [Resolveを`internal/`へ移す](TEI_GO_SELF_BUILD_RESOLVE_INTERNAL_2026-11-09.md)（§4.13が反対した「fixture catalogが製品に見える」問題を、portと`Resolve`だけを移しfixtureは`tools/`に残す形で解いた。決定性・receiptの改竄検出・不完全Contextの拒否を実測。entryの既定経路はchild起動のままで、L2-bは未。 #2831）
 - [builder catalogの出所を探す](TEI_GO_SELF_BUILD_CATALOG_PROVENANCE_2026-11-09.md)（§4.16のR-1の前提を実測。`internal/`・plugin lock・Plugin定義・JSON/YAML・ADRのいずれにも`recipeKinds`を持つcatalogは無く、R-1は「配線」ではなく「catalogの新設」だと分かった。C-1/C-2/C-3の選択肢を挙げ、判断はまだ下さない。 #2831）
+- [`-child-arg`による予約flagの上書きを拒否する](TEI_GO_SELF_BUILD_RESERVED_CHILD_FLAGS_2026-11-09.md)（`-artifact-out`・`-state`・`-supply`を`-child-arg`で重複させると、entryの記録とchildの実際の値が食い違う。修正前は通ってしまうことを試験で確認し、child起動前に名指しで拒否するよう直した。 #2831）
