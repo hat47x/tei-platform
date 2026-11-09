@@ -80,25 +80,71 @@ type cliViewReport struct {
 
 // runViewCommandは、Application Patternの対話契約を解決し、textまたはjsonで返す。
 // 意味の解決は applicationview に置き、ここでは引数・出力・終了コードだけを扱う。
+// commandExecutionCodes are the ExecutionError codes the CLI reports as their
+// own error.code. The list is exhaustive on purpose: when it named only a few
+// codes, a new one silently collapsed into COMMAND_FAILED and its identifier
+// survived only as the prose prefix of error.message, so a caller could not
+// branch on the cause (#3797). A caller's next move differs by code — an input
+// error means "fix the input", COMMAND_UNAUTHORIZED means "fix the authority",
+// a lifecycle refusal means "this is a replay decision" — and none of that can
+// be recovered from a generic failure.
+//
+// internal/command/invoke.go is the source of these values. Adding a code there
+// without adding it here is the defect this list exists to prevent;
+// TestEveryExecutionCodeHasAName fails when the two drift apart.
+var commandExecutionCodes = []string{
+	"COMMAND_LIFECYCLE_REFUSED",
+	"COMMAND_PERIOD_SCOPE_UNAVAILABLE",
+	"COMMAND_PERIOD_SCOPE_UNKNOWN",
+	"COMMAND_PERIOD_STATE_UNAVAILABLE",
+	"COMMAND_PERIOD_STATE_FAILED",
+	"COMMAND_PERIOD_CLOSED",
+	"INVALID_COMMAND_INPUT",
+	"COMMAND_NOT_DECLARED",
+	"COMMAND_UNAUTHORIZED",
+	"COMMAND_AUTHORIZER_UNAVAILABLE",
+	"COMMAND_EXECUTOR_UNAVAILABLE",
+	"COMMAND_TRANSACTION_BEGIN_FAILED",
+	"COMMAND_RECORD_FAILED",
+	// A write capability that the application declares read-only is a
+	// declaration conflict the caller can fix, not a runtime fault.
+	"COMMAND_DATASOURCE_READ_ONLY",
+	// Lifecycle wiring problems: no lifecycle configured, or the record of the
+	// attempt could not be written. The second matters because an unrecorded
+	// attempt cannot be safely replayed.
+	"COMMAND_LIFECYCLE_UNAVAILABLE",
+	"COMMAND_LIFECYCLE_RECORD_FAILED",
+}
+
+// commandGenericCodes are ExecutionError codes that deliberately stay reported
+// as COMMAND_FAILED. They describe the executor, the transaction or the write
+// itself failing, which tells a caller nothing it can act on differently from
+// any other failed run. They are listed rather than omitted so that the drift
+// test can require an explicit decision for every code internal/command
+// produces: a new code must be named here or in commandExecutionCodes, and the
+// default is never "silently collapse" (#3797).
+var commandGenericCodes = []string{
+	"COMMAND_EXECUTION_FAILED",
+	"COMMAND_COMMIT_FAILED",
+	"COMMAND_ROLLBACK_FAILED",
+}
+
 // commandFailure maps an execution failure to the CLI code a caller needs in
 // order to decide what to do next. A failure whose data effect may already be
-// applied must not read like a clean rejection, and a lifecycle refusal is a
-// replay decision rather than an execution error.
+// applied must not read like a clean rejection, so that check runs first: an
+// effect that may be applied outranks any particular code.
 func commandFailure(err error) (string, string, bool) {
 	var execution *command.ExecutionError
 	if errors.As(err, &execution) {
-		switch execution.Code {
-		case "COMMAND_LIFECYCLE_REFUSED":
-			return "COMMAND_LIFECYCLE_REFUSED", execution.Message, true
-		case "COMMAND_PERIOD_SCOPE_UNAVAILABLE":
-			// A period split by a closing day cannot be judged by a state that
-			// only knows whole months. Naming the code keeps it distinct from a
-			// generic execution failure, so a caller can supply a half-aware state.
-			return "COMMAND_PERIOD_SCOPE_UNAVAILABLE", execution.Message, true
-		case "COMMAND_PERIOD_SCOPE_UNKNOWN":
-			// The period's business date is missing or unreadable, so the half is
-			// unknown. A caller fixes the input rather than the state.
-			return "COMMAND_PERIOD_SCOPE_UNKNOWN", execution.Message, true
+		// An effect that may already be applied is never a clean rejection,
+		// whatever the code says.
+		if command.EffectMayBeUnknown(err) {
+			return "COMMAND_EFFECT_UNKNOWN", err.Error(), true
+		}
+		for _, code := range commandExecutionCodes {
+			if execution.Code == code {
+				return code, execution.Message, true
+			}
 		}
 	}
 	if command.EffectMayBeUnknown(err) {
