@@ -12,8 +12,10 @@ import (
 )
 
 // This is an actual TEI workspace/Parser/Loader/OperationSurface characterization,
-// using a copied native .tei source. It does NOT call a Function, SQL Provider,
-// runtime Host grant or Consumer and is not a Product E2 pass.
+// using a copied native .tei source. It calls the real Driver/Executor with
+// a fake SQL Connector and offers opt-in isolated PostgreSQL execution. It
+// does NOT establish Function Data Context, Host authorization, Consumer
+// delivery, or Product E2 acceptance.
 func TestOrgCaseExplicitPersistenceEnablesReadCandidateOnly(t *testing.T) {
 	root := filepath.Join("..", "..", "reference", "org-headless-workspace")
 	before, err := SurfaceWorkspace(root, "org_view")
@@ -175,6 +177,11 @@ func TestOrgCaseExplicitPersistenceEnablesReadCandidateOnly(t *testing.T) {
 		t.Fatal("native SQL file is not traced as a separate Query source contribution")
 	}
 
+	// E1d: real native Query bytes -> selected datasource -> existing PostgreSQL
+	// Executor -> raw physical columns -> explicit Semantic result mapping.
+	// The injected connection is an instrumented test double (no real DB).
+	verifyNativeCaseQuerySQLProbe(t, withQuery)
+
 	// The Query may be described, but it does not automatically create an
 	// executable Function or grant Provider/Host authority.
 	surfaceWithQuery, err := SurfaceWorkspace(copyRoot, "org_view")
@@ -187,6 +194,51 @@ func TestOrgCaseExplicitPersistenceEnablesReadCandidateOnly(t *testing.T) {
 		t.Fatalf("Query must affect revision without promoting read candidates to execution: before=%+v query=%+v", after, surfaceWithQuery)
 	}
 
+	// E1f: make a Function-facing Browse Pattern explicit in the SAME copied
+	// TEI Workspace. A Query declaration alone is not callable by a Pattern,
+	// and the Pattern is not a Host Grant or a full Function Data Context.
+	patternDir := filepath.Join(copyRoot, "applications", "org-view", "patterns")
+	if err := os.MkdirAll(patternDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	patternFile := filepath.Join(patternDir, "case-browse.tei")
+	const patternSource = `pattern org_view.case_browse browse {
+    data organization.case_record
+    query org_view.case_read
+}
+`
+	if err := os.WriteFile(patternFile, []byte(patternSource), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	withPattern, err := workspace.Load(copyRoot)
+	if err != nil {
+		t.Fatalf("native Case browse Pattern could not be loaded: %v", err)
+	}
+	if loc, ok := withPattern.Sources["application-pattern:org_view.case_browse"]; !ok ||
+		filepath.ToSlash(loc.File) != "applications/org-view/patterns/case-browse.tei" {
+		t.Fatalf("browse Pattern is not bound to its exact source: %+v", withPattern.Sources)
+	}
+	verifyNativeCasePatternReadProbe(t, withPattern)
+
+	// The same native Browse Pattern can cross the real PostgreSQL boundary
+	// only with an explicitly isolated, opt-in database. Default is SKIP;
+	// this is not current Host authorization, nor a Function Data Context.
+	t.Run("isolated-postgres-opt-in", func(t *testing.T) {
+		verifyNativeCaseReadWithPostgres(t, withPattern)
+	})
+	// The read Pattern adds a source/meaning revision but never derives new
+	// Case grants or write operations merely from its presence.
+	surfaceWithPattern, err := SurfaceWorkspace(copyRoot, "org_view")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if surfaceWithPattern.ModelRevision == surfaceWithQuery.ModelRevision ||
+		!reflect.DeepEqual(surfaceWithPattern.Operations, surfaceWithQuery.Operations) ||
+		!reflect.DeepEqual(surfaceWithPattern.AuthorityLimits, surfaceWithQuery.AuthorityLimits) {
+		t.Fatalf("browse Pattern must not become a new Host capability: before=%+v after=%+v",
+			surfaceWithQuery, surfaceWithPattern)
+	}
+
 	// A native SQL predicate change must invalidate the Source/Model revision
 	// even though the Semantic Query ID, datasource alias and mapping stay put.
 	if err := os.WriteFile(sqlFile, []byte(strings.Replace(sqlSource,
@@ -197,9 +249,9 @@ func TestOrgCaseExplicitPersistenceEnablesReadCandidateOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if sqlChanged.ModelRevision == surfaceWithQuery.ModelRevision ||
-		sqlChanged.WorldFingerprint == surfaceWithQuery.WorldFingerprint {
+	if sqlChanged.ModelRevision == surfaceWithPattern.ModelRevision ||
+		sqlChanged.WorldFingerprint == surfaceWithPattern.WorldFingerprint {
 		t.Fatalf("native SQL source change must invalidate the read-only world's revision: before=%s after=%s",
-			surfaceWithQuery.ModelRevision, sqlChanged.ModelRevision)
+			surfaceWithPattern.ModelRevision, sqlChanged.ModelRevision)
 	}
 }
