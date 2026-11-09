@@ -77,10 +77,15 @@ jobs:
           node --version > "$REPORT_DIR/node-version.txt"
           rea --version > "$REPORT_DIR/rea-version.txt"
           sha256sum build/rea-ci-demo/package.json build/rea-ci-demo/index.js > "$REPORT_DIR/fixture-source-sha256.txt"
+          # Only the two publicly generated fixture files may be archived.
+          mkdir -p "$REPORT_DIR/source-pre" "$REPORT_DIR/source-post"
+          cp -- build/rea-ci-demo/package.json build/rea-ci-demo/index.js "$REPORT_DIR/source-pre/"
           set +e
           rea analyze-javascript-application "${GITHUB_WORKSPACE}/$target" --json --full-output > "$REPORT_DIR/analysis.json" 2> "$REPORT_DIR/analysis.stderr"
           status=$?
           set -e
+          cp -- build/rea-ci-demo/package.json build/rea-ci-demo/index.js "$REPORT_DIR/source-post/"
+          sha256sum "$REPORT_DIR/source-pre/"* "$REPORT_DIR/source-post/"* > "$REPORT_DIR/source-snapshot-digests.txt"
           printf '%s\n' "$status" > "$REPORT_DIR/exit-code.txt"
           sha256sum "$REPORT_DIR/analysis.json" "$REPORT_DIR/analysis.stderr" > "$REPORT_DIR/raw-report-sha256.txt"
           printf 'Original REA exit for case %s: %s\n' "$T0_CASE" "$status"
@@ -134,6 +139,9 @@ jobs:
           assert candidate['rawReportSHA256'] == json.loads((root / 'consumer-audit.json').read_text())['stdoutSHA256']
           if case in ('valid', 'partial'):
               assert candidate['admission'] == 'external-candidates-only'
+              assert candidate['sourceManifestStatus'] == 'report-pre-post-byte-match', candidate
+              assert sum(r['sourceBinding'] == 'report-pre-post-byte-match' for r in candidate['records']) > 0, candidate
+              assert all(r['sourceBinding'] != 'saved-manifest-match-only' for r in candidate['records']), candidate
               expected = {'valid': (14, 1, 'complete'), 'partial': (12, 0, 'partial')}
               records, unknowns, coverage = expected[case]
               assert len(candidate['records']) == records, candidate
