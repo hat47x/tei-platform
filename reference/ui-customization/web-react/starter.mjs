@@ -18,7 +18,7 @@ function assertFields(fields) {
 }
 export function createActionFormStarter(React, {fields, invoke, slots = {}, title = 'Action'} = {}) {
   if (!React || typeof React.createElement !== 'function' || typeof React.useState !== 'function' ||
-      typeof invoke !== 'function' || typeof title!=='string') throw Error('invalid_ui_host');
+      typeof React.useRef !== 'function' || typeof invoke !== 'function' || typeof title!=='string') throw Error('invalid_ui_host');
   assertFields(fields);
   for (const key of Object.keys(slots)) {
     if (!starterMetadata.slots.includes(key) || typeof slots[key]!=='function') throw Error('unsupported_slot');
@@ -27,11 +27,14 @@ export function createActionFormStarter(React, {fields, invoke, slots = {}, titl
   // Uncontrolled HTML fields keep credentials out of persistent React state.
   // The UI validates only transport shape, not domain authorization/validation.
   function ActionForm() {
+    // Synchronize re-entry independently from React's rendered loading state.
+    const inFlight=React.useRef(false);
     const [busy,setBusy]=React.useState(false);
     const [receipt,setReceipt]=React.useState(null);
     async function submit(event) {
       event.preventDefault();
-      if (busy) return;
+      if (inFlight.current) return;
+      inFlight.current=true;
       setBusy(true);setReceipt(null);
       const form=event.currentTarget;
       try {
@@ -39,7 +42,9 @@ export function createActionFormStarter(React, {fields, invoke, slots = {}, titl
         const values=Object.fromEntries(fields.map(f=>[f.name,fd.get(f.name)]));
         if (Object.hasOwn(values,'row')) {
           if (!/^(0|[1-9]\d*)$/.test(String(values.row))) throw Error('invalid_row');
-          values.row=Number(values.row);
+          const parsed=Number(values.row);
+          if (!Number.isSafeInteger(parsed)) throw Error('invalid_row');
+          values.row=parsed;
         }
         const result=await invoke(values);
         setReceipt({kind:result.kind,stage:result.stage,
@@ -51,6 +56,7 @@ export function createActionFormStarter(React, {fields, invoke, slots = {}, titl
         // Avoid retaining a password in the DOM after request completion.
         const password=form.elements?.namedItem?.('credential');
         if (password && 'value' in password) password.value='';
+        inFlight.current=false;
         setBusy(false);
       }
     }

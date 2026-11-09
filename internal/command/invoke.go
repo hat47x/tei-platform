@@ -353,7 +353,10 @@ func (i Invoker) execute(ctx context.Context, request Request, plan applicationv
 			record.Declared = &semantic.DataEffect{Kind: semantic.DataEffectKind(plan.Effect.Kind), Data: plan.Effect.Data}
 		}
 		if err := i.Recorder.Record(ctx, record); err != nil {
-			return Result{}, &ExecutionError{Code: "COMMAND_RECORD_FAILED", Message: err.Error(), Cause: err}
+			// The executor has already returned. Its effects need not share our
+			// UnitOfWork transaction; a failed operation record cannot prove
+			// the provider did nothing, even when rollback returns nil.
+			return Result{}, NewUnknownExecutionError("COMMAND_RECORD_FAILED", err.Error(), err)
 		}
 	}
 	return result, nil

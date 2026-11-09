@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"tei/internal/core"
 	"tei/internal/hook"
 )
 
@@ -86,5 +87,33 @@ func TestWriteHookReportTextOmitsProposalsForAReadOnlyPhase(t *testing.T) {
 	}
 	if strings.Contains(out.String(), "proposes") {
 		t.Fatalf("a read-only phase claimed a proposal:\n%s", out.String())
+	}
+}
+
+// TestWriteHookReportTextNamesAnUncalledDeclaration checks that a hook's
+// declared `uses` which never ran is printed, so "not evaluated" is not read as
+// "the hook ran but did nothing".
+func TestWriteHookReportTextNamesAnUncalledDeclaration(t *testing.T) {
+	var out bytes.Buffer
+	report := cliHookReport{
+		PhaseReport: &hook.PhaseReport{
+			NotEvaluated: []string{"before-update"},
+			Reasons:      map[string]string{"before-update": hook.ReasonCallerUnavailable},
+			Uncalled: map[string][]core.CanonicalID{
+				"before-update": {"sales.submit_order"},
+			},
+		},
+		Pattern: "order_entry.order_record",
+		Note:    cliHookNote,
+	}
+	if _, err := writeHookReportText(&out, report); err != nil {
+		t.Fatalf("err=%v", err)
+	}
+	got := out.String()
+	if !strings.Contains(got, "hook before-update: not evaluated") {
+		t.Fatalf("the phase was not printed as not evaluated:\n%s", got)
+	}
+	if !strings.Contains(got, "uncalled sales.submit_order") {
+		t.Fatalf("the declared call was not named:\n%s", got)
 	}
 }

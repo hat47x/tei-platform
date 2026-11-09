@@ -17,11 +17,13 @@ func TestRepositoryLocalQualificationControlFlow(t *testing.T) {
 		}
 	}
 	if runtime.GOOS == "windows" {
-		// Windows "bash" may be WSL, whose PATH does not contain the Windows
-		// Go toolchain even when Go is available to this test process.
-		if err := exec.Command("bash", "-c", "command -v go").Run(); err != nil {
-			t.Skip("bash cannot see the Go toolchain; skip the shell qualification flow")
-		}
+		// The qualification flow runs tools/run-repository-local-qualification.sh,
+		// a POSIX shell script that inspects the checkout it is started in. The
+		// bash a Windows host provides is WSL, whose view of a Windows working
+		// directory does not match the path this test hands it, so the script
+		// stops at "Run from the TEI repository root." (#3783). Linux CI runs
+		// this flow; Windows does not qualify the shell path.
+		t.Skip("the shell qualification flow is a POSIX script; Linux CI runs it (#3783)")
 	}
 
 	root := repositoryRoot(t)

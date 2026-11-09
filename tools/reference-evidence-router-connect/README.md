@@ -38,6 +38,26 @@ go run ./tools/reference-evidence-router-connect/cmd/tei-evidence-router-connect
 | `COLLECT_FAILED` | **入場後**の失敗。証拠の対象不一致もここに入る（既存 Router が拒否する） |
 | `EVIDENCE_INVALID` | Router が provider に入らずに応答した |
 
+## 部分成功をどう表すか（CON-12d）
+
+`attemptedCount` は試した件数、`complete` は**すべての試行が成立したか**です。
+件数だけでは 1/1 と 1/2 を区別できないため、`attemptedCount` を併記します。
+**一部だけ成功した場合は `complete=false`** で、拒否はそのまま残ります。
+何も試さなかった場合も `complete=false` です。
+
+**`complete` は「世界がそうなっている」証明ではありません。** 試した全部に答えが返ったという意味だけです。
+
+## unknown を refusal と分ける（CON-12d 追補）
+
+| 数 | 意味 |
+| --- | --- |
+| `refusedCount` | **入る前**に止めた回数。何も呼ばれていない |
+| `unknownCount` | **入った後**に失敗した回数。`invokedCount` の内数 |
+
+**入った後の失敗を `refusedCount` に数えると「実行していない」と読めます。** 実際には呼出しは起きており、世界を読んだかどうかは分かりません。そのため `unknownCount` として別に数えます。
+
+**`unknownCount` は `invokedCount` の内数**です。3つの数を足し合わせないでください。
+
 ## この参照が示さないこと
 
 - **証拠が外部状態を反映していること**。付属 CLI の Provider は `Outcome: pass`, `SourceRef: "reference-only"` を返し、何も読みません。
