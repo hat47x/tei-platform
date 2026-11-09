@@ -280,3 +280,4 @@
 - [stdへの宣言がpreludeと誤判定され件数からも消えていた](TEI_DOGFOODING_ROUND26_PRELUDE_IDENTITY_2026-11-09/README.md)（#3851・#3347。`namespace std`に型を足すと重複error・`prelude:true`誤付与・`declarationCounts`0が同時に出た。名前の前方一致3箇所とloaderの二重追加を同一性判定へ）
 - [stdを.teiにできない理由（primitive構文と指紋）](TEI_DOGFOODING_ROUND27_STD_PRIMITIVE_GAP_2026-11-09/README.md)（#2620。`worldFingerprint`がpreludeを含むため移すと全指紋が変わり、DSLは`type X from Y`のみでprimitiveを書けない。代替案A/Bと判断点を提示）
 - [Capabilityのoutcomeが参照グラフに現れていなかった](TEI_DOGFOODING_ROUND28_CAPABILITY_OUTCOME_2026-11-09/README.md)（#3884・#3419。`inspect`はoutcomeを返すが`trace`は`input`/`output`だけを辺にし、authenticate→authorizeの連鎖が生産者不在に見えた。派生にoutcome辺を追加）
+- [`l2b.claimed`は`-build-catalog`だけで立つ](TEI_GO_SELF_BUILD_L2B_DEFAULT_PREMISE_2026-11-09.md)（§7は「in-processと`-rebuild-check`を明示する必要がある」と書いていたが、§4.30が後者を既定にした。実測：`-build-catalog`のみで`claimed=true`、`-rebuild-check=false`で`false`（理由が「断った」を名指し）。残る問いは「何も渡さない試行」で立てるか。§4.31で§7を訂正。 #2831）
