@@ -315,3 +315,4 @@
 - [2つの試験が対象0件のまま常に成功していた](TEI_DOGFOODING_ROUND35_VACUOUS_CHECKS_2026-11-09/README.md)（#3931。`plan/issue`に番号付き文書が無く、一意性と6値の試験が0件を走査。空入力を拒否し、6値試験はSKIPで可視化。3ラウンド連続で同じ型）
 - [空回りする検査を1箇所に集約して可視化した](TEI_DOGFOODING_ROUND36_SCOPE_NONEMPTY_2026-11-09/README.md)（#3931。全スコープを計測し空は`plan/issue`のみと確認。`TestEveryCheckScopeIsNonEmpty`で0件を検出。私の初版ガードがディレクトリ件数を見て除外分岐が未実行だったことも記録）
 
+- [能力宣言に版付けの余地が無いことの実測](TEI_GO_SELF_BUILD_DECLARATION_VERSIONING_2026-11-10.md)（§7の「必要になった時点で決める」を検証。\ormatVersion\を足した宣言は\json: unknown field\で**拒否される**——版を名乗る手段が導入時点で使えない。D-1/D-2/D-3を比較し、D-2が最も安い理由を示すが**判断はしない**。 #2831）
