@@ -503,3 +503,36 @@ Node.js 22.16.0で`node --test /tmp/tei-tea-ref/public-slice.test.mjs`を実行�
 | **T16 Proposalの表示と開示** | 最適化候補やOwner/ScoreをAcceptedと表示する／非公開Dataの追加でPublic図の位置・候補数・評価を変える | #3250の候補証拠、#2516/T06の二世界、#1124 Studio |
 
 **優先順・停止線**: #1124の実CLI→同一Workbench Consumer結合を最優先のまま維持する。T14は既存#3250/#1132の*同じAccepted Sourceと解析範囲*を持つread-only結果が得られた後、T15/T16は委譲/Current PolicyのOwner証拠が揃った場合のみ検証を起動する。新たなSubsystem ID正本、最適化エンジン、Graph schema、権限主体、実行Provider/DB移行、トランザクション制御をTEAに導入しない。**T14〜T16は設計Caseであり、Go/Node・実Source/Policy/Studioの試験もOwner採用もNOT RUN。**
+
+
+## 21. WorkspaceとSnapshot同一性、およびRead／Validation／Coverageの独立資格（2026-11-09）
+
+### 21.1 Workspaceを区別しないSnapshot一致は三視点根拠のJoin条件として不足
+
+[Draft #3321](https://github.com/hat47x/tei-platform/pull/3321)は、**異なる実WorkspaceでもWorld／SourceIndex／Snapshot Fingerprintが等しい**事例を実Go CLIで再現している。ManifestのNameだけ異なるCopyはManifest差を検出できるが、Manifestもbyte-identicalの別Rootは既存Load-time値だけでは区別できない。**表示ID・同名Subject・Source fingerprint・Snapshot文字列の一致だけで「同じWorkspace」「同じ実Read Attempt」を証明しない。**
+
+[TEA Reference Draft #2972](https://github.com/hat47x/tei-platform/pull/2972)では合成限定の追加受入として、事前公開された`publicSlice.workspaceObservation`を`publicProjection`へ渡し、`Projection / Envelope / 各Trait Claim`の`workspaceObservation`が**同じCaller公開用Witness**であることを必要条件に加えた。従来の`snapshot`三者一致とは独立。**T12-W1** 同じSnapshot・ViewIDでも異なるWorkspace観測なら拒否、**T12-W2** Claim側の異WorkspaceまたはWorkspace観測欠落を拒否、**T12-W3** Public SliceのWorkspace観測なし／空は拒否。秘密のManifest path/物理Root識別子を公開Payloadへ持ち込まず、開示資格済みopaque値をCallerが用意する前提を明記する。
+
+これは**実WorkspaceのIdentityを保証する実装ではない**。Callerが完全コピーした別Rootへ同じ`workspaceObservation`を誤発行すれば見分けられない。Root/Source Reader/Attempt/現在Grant・Policyの実測と照合するのは#1124/#2516/#3181等のOwnerであり、ここでは新UUID、Hash方針、Context Registry、第二Policy Engineを採用しない。
+
+**限定試験の更新**: GitHub実ソース4件を同じV8互換test runnerで実行して`12 public-slice + 15 Trait = 27/27 PASS`（合成Referenceのみ）。正規Node 22 CIの更新後exact head PASSは別途確認する。以前の`10 + 12`や旧head CI成功を新headの合格とは扱わない。**実CLI #3321のSource照合と局所Referenceの成功を足し合わせても、同一Workspaceの実Consumer受入は未実証**。
+
+### 21.2 各三視点Claimを一つのVerifiedへ縮約しない
+
+最新の実装境界と反例から、TEA複合図は少なくとも下表の**独立した確認事項**を混同しない。各欄を合成RoleのState Enumへ固定するのではなく、既存Ownerの型付き結果・版・根拠リンクを対応付ける表示設計とする。
+
+| 確認する問い | 実際の境界／現況 | 図でしてはいけない断定 |
+| --- | --- | --- |
+| **Read**：実Catalog/Inspect/Traceを取得したか | [Draft #3543](https://github.com/hat47x/tei-platform/pull/3543)は実CLI A/Jと同一WorkbenchのInitial/List操作を限定実証。曖昧AのInspect増分0/0、一意Jは1。Graph/Command、現在開示は別 | 実CLI値一致だけで全四入口と旧DOM操作まで合格 |
+| **Validation**：ソース／意味制約を検証したか | [PR #3728](https://github.com/hat47x/tei-platform/pull/3728)は検証NGでもCatalog読取に成功するのを保ち、`validation.ok`を別提示する候補。World Fingerprintは同じでもRead OKとValidate NGが同時成立し得る | `catalog.ok=true`やSnapshot一致を`validation.ok=true`に昇格 |
+| **Identity**：Workspace/Source/Role/Subject/Attemptが同一か | #3321では実Workspace同士でSnapshot同値。#3543の実CLIとStudio Catalog比較は原子的同一Read Attemptではない | 同名＋同FPだけでRoot/Read Attempt同一を断定 |
+| **Coverage**：必要Source/Relation/Role/Writerをすべて取得したか | [Draft #3518](https://github.com/hat47x/tei-platform/pull/3518)は不完全なModel Mapを限定的に表示。旧#2881はGraph/Table合成Reference。未読込・非公開は0件と別 | 図に線がないことから全SourceでRelation不在、越境CUD 0を断定 |
+| **Eligibility**：現在の用途で表示・Inspect・提案を許せるか | #2516の現在Disclosure、#1124のSelection/Consumer freshness、#267のShared Acceptanceを再利用 | Render可能・Validation成功・Meaning一致から認可／Effect／Owner受理を得たとする |
+
+### 21.3 次の反証可能なTEA Consumer引継ぎ（全て新規実行前）
+
+- **T18 正常Read・検証NG**：同じWorkspaceでCatalog内容は取得しつつValidationがNGのData/Function/Businessビューを表示できる場合、`Read成功`と`Source健全`を別の表示根拠とし、編集提案への資格を勝手に付与しない。#3728の実行証拠をそのままTEA GUI実証に転用しない。
+- **T19 別Workspace同Token**：#3321の実Workspace W0/W1と同じSnapshot・同じSubjectを、別の観測Load Contextとして実Consumerへ提示する。CallerのWorkspace文脈が違えば旧Claim添付を拒否。完全コピーで同じLoad Witnessを誤発行する場合は未検出と明示し、実Reader/Root側の独立証拠を別Ownerへ返す。
+- **T20 部分被覆と曖昧選択**：#3543のA/J実Workbench証拠に#3518の部分Model Map・#3728のValidationを**同じWorkspace/Subject/Attemptで**接続できる範囲のみ再利用。Ambiguous AはInspect 0、許可済み一意Jは1、未知Relation/未検証Ruleを非存在へ昇格させず、公開Policyは別に検査する。
+
+**計画への反映**: #1124 M0→M1の直接P0は、実CLI A/J→同一Workbench Initial/Listの**限定成功**を再利用し、残るGraph/Command・旧DOM・Source/Role/Grant/current Disclosureとの実合流へ絞る。TEAは独立のTarget/UI/Policy/Validatorを設けない。T18〜20は**設計受入候補であり、実Studio GUI・実Policyを結合した試験はNOT RUN**。Builder/Self-build、ETL/MFT、#3250のSubsystem計算・実DB Effect、Plugin意味受理は既存Ownerの別証拠を待つ。
