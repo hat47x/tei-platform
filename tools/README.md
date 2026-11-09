@@ -2,11 +2,11 @@
 
 `tools/`には、構成検査、受入根拠の取得、参照実装、再現可能な実験に使う道具を置きます。製品の再利用可能な実装は`internal/`、入力と期待結果は`reference/`、利用例は`examples/`にあります。
 
+新しい検証候補 [`reference-hash-id/`](reference-hash-id/) は、可変長・可変文字集合のHash由来IDをread-onlyで検査します（#2814、未採用）。正本ID・Owner権限・実Target確保の実装ではありません。
+
 表には、この階層の全ディレクトリと直下の実行用ファイルを載せています。各ツールの固有の使い方や判定条件は、そのディレクトリ内のREADME・実装・Issueを正とします。
 
 独立した参照プラグインの検査入口は [`check-reference-plugin-isolation.sh`](check-reference-plugin-isolation.sh) です。`plugins/`配下の参照実装を一時Goモジュールへ複製してオフラインで検証します。
-
-新しい検証候補 [`reference-hash-id/`](reference-hash-id/) は、可変長・可変文字集合のHash由来IDをread-onlyで検査します（#2814、未採用）。正本ID・Owner権限・実Target確保の実装ではありません。
 
 ## 実行環境の前提
 
