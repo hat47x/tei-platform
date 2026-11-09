@@ -4,6 +4,10 @@
 
 この下の一覧は、このディレクトリの**全文書**を載せています（`README.md` を除く）。`tools/repository-plan-check` の `TestPlanReadmesMentionEveryEntry` が一致を検査します。
 
+- [DeepSeek Harnessの構成・Headless・MCP/ToolとTEIの責務比較](DEEPSEEK_HARNESS_TEI_CROSS_PRODUCT_ADOPTION_2026-11-01.md)
+- [DSH Experimental Agent TeamsのTeam Scope・共有Checkout・CAS/Task・SEI専門照会・用途別Context](DSH_AGENT_TEAMS_CONTEXT_EXPERT_HANDOFF_2026-11-02.md)
+- [DSHのGoal・Schedule・外部送信・大規模並列に関する調査](DSH_SCALE_GOAL_SCHEDULE_EGRESS_RESEARCH_2026-11-01.md)
+- [Harness証拠の連続性と選択的な再資格化](HARNESS_EVIDENCE_CONTINUITY_AND_SELECTIVE_REQUALIFICATION_2026-11-02.md)
 - [記述判断の根拠評価](AUTHORING_DECISION_AUTHORITY_EVIDENCE_GATE_2026-10.md)
 - [高度組織を扱う商用製品の要求比較とTEI適合性監査（2026年11月）](COMMERCIAL_ORGANIZATION_PLATFORM_REQUIREMENTS_2026-11.md)：調査記録・採用前Requirements Probe。各社の公開資料と現行設計を照合した暫定的判断で、要求の採用や受入条件の決定ではありません。
 - [データ決定子と参照受入条件の評価](DATA_DETERMINANT_ASSOCIATION_REFERENCE_ACCEPTANCE_CONTRACT_2026-10.md)
