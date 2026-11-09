@@ -309,6 +309,8 @@ SQL/NoSQL/ログ等のリバース結果は、**Physical Observation→Structura
 
 **2026-11-08 横断調整**：[Workbench設計§21](design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)にREAの外部原本→Evidence→正式TEI Source→実Read/SHO比較、SUI/SEI/KONの任意Consumer境界、共通Operation（ADR-0048）、Migration適用直前のInstance/History/Grant再照合を集約した。最短P0は実Provider Read→Function Data ContextとPlugin-first Inspector二Consumerであり、SUI・SEI・KON・SHOやOntology DSL製品完成を新たなHard dependencyにしない。**
 
+**2026-11-09／Product Queryの物理入力乖離を解消（独立Source Fixture段階）**：[Workbench設計§22](design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)と[隔離PG Product Fixture](../examples/data-source-workbench/README.md)に、既存`postgres_seed.sql`の`sales_order`4列と、実`order_entry.recent_orders` SQLが要求する`public.orders`5列＋`:from`の**物理Schema不一致**を反映した。従来F-01〜10を壊さず、専用`recent_orders_product_seed.sql`を別Sourceとして追加し、3行／境界一致2行／後方0行の独立Source-static ExpectedをGoで判別する。**これは実PostgreSQL接続・Provider Invoke成功ではない**。最初の未成立実行辺は、固定Function/Queryの実Consumed SQL+args→Alias/物理Instance/Provider→実Rowset/Function Data Context。Ownerは#2586、実ProductのCLI/Studioは#1251、Schema適用は#2892。main #3540の静的Inspector S2-referenceは実CLI/Wails経路まで前進したが、外部Plugin Build/Grant/2×2実BOMを証明せず、異質JSONLは後続比較とする。新Gate/Host/Query正本なし。
+
 ## 作業領域E：設計の実行と検証
 
 ### 目的
