@@ -992,9 +992,9 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		case LanguageJava:
 			got, execution, err = runProgram(ctx, javaPath, []string{"-cp", javaClassesDir, "Main"}, tc.Input, executionOptions)
 		case LanguageWasm:
-			got, execution, err = runProgram(ctx, nodePath, []string{wasmExecPath, wasmPath}, tc.Input, executionOptions)
+			got, execution, err = runWasmProgram(ctx, nodePath, []string{wasmExecPath, wasmPath}, tc.Input, executionOptions)
 		case LanguageWasi:
-			got, execution, err = runProgram(ctx, nodePath, []string{"--no-warnings", wasiRunnerPath, wasmPath}, tc.Input, executionOptions)
+			got, execution, err = runWasmProgram(ctx, nodePath, []string{"--no-warnings", wasiRunnerPath, wasmPath}, tc.Input, executionOptions)
 		default:
 			got, execution, err = runCandidate(ctx, binaryPath, tc.Input, executionOptions)
 		}
@@ -1561,11 +1561,39 @@ func runCandidate(ctx context.Context, binary string, input json.RawMessage, opt
 	return runProgram(ctx, binary, nil, input, options)
 }
 
+// minimalWasmEnvironment returns the variables a wasm runtime needs on this
+// host and nothing else. Everything else is dropped on purpose: the Go wasm
+// runtime copies the environment into the instance, and a CI runner's block
+// overflows that buffer (#3971).
+func minimalWasmEnvironment() []string {
+	names := []string{"SystemRoot", "TEMP", "TMP", "HOME", "PATH"}
+	env := make([]string, 0, len(names))
+	for _, name := range names {
+		if value, ok := os.LookupEnv(name); ok {
+			env = append(env, name+"="+value)
+		}
+	}
+	return env
+}
+
+// runWasmProgram runs a wasm candidate with a minimal environment. The Go wasm
+// runtime copies the whole environment into the instance, and on a Windows
+// runner the inherited block overflows that buffer ("total length of command
+// line and environment variables exceeds limit"), which makes every case look
+// like an empty result (#3971). A candidate is hermetic, so it gets the few
+// variables the platform needs rather than the host's settings.
+func runWasmProgram(ctx context.Context, name string, args []string, input json.RawMessage, options ExecutionOptions) (Result, *ExecutionEvidence, error) {
+	result, evidence, err := runProgram(ctx, name, args, input, options.withMinimalEnvironment())
+	return result, evidence, err
+}
 func runProgram(ctx context.Context, name string, args []string, input json.RawMessage, options ExecutionOptions) (Result, *ExecutionEvidence, error) {
 	runCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	cmd := options.Command(runCtx, name, args...)
 	cmd.Stdin = bytes.NewReader(input)
+	if options.MinimalEnvironment {
+		cmd.Env = minimalWasmEnvironment()
+	}
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr

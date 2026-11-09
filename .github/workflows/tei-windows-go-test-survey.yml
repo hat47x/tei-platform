@@ -31,7 +31,6 @@ jobs:
     timeout-minutes: 120
     env:
       GOENV: off
-      TEI_DEBUG_CANDIDATE_OUTPUT: '1'
       GOWORK: off
       GOFLAGS: ''
       GOTOOLCHAIN: local
