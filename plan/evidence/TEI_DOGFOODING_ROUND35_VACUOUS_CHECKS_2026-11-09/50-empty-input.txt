@@ -1,0 +1,13 @@
+plan/issue contains only README.md:
+  "今後の作業は GitHub Issues で管理します。過去のローカルIssue文書は、
+   一般公開の対象とせずPrivateリポジトリへ退避しました。"
+
+numberedFiles(t, plan/issue, 6)  -> 0 files
+numberedFiles(t, plan/adr,   4)  -> 47 files
+
+Measured against the old code:
+  assertUnique on an empty set      -> returned normally (no assertion)
+  six-state test over 0 files       -> iterated 0 times, PASSED
+
+Both tests therefore never examined anything. The ADR side, sharing the same
+assertUnique, was still doing real work.

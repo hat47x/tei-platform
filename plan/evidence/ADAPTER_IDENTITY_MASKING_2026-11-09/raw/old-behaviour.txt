@@ -1,0 +1,7 @@
+reverted adapters.go to the old unconditional overwrite
+--- FAIL: TestAForeignObservedIdentityIsNotOverwritten (0.00s)
+    adapters_identity_test.go:47: a foreign provider id was overwritten with "db.observer"
+FAIL
+FAIL	tei/internal/plugin/runtime	0.008s
+FAIL
+restored adapters.go

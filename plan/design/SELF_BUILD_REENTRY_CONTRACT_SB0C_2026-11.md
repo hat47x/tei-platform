@@ -1469,6 +1469,20 @@ catalogは**データ**であり、entryはそれを**名指しされたもの�
 
 **digestの一致を試験で確かめるのは、下流が気づけないからである。** builderの解決はdigestで照合しないため、catalogが別のバイトを名指ししていても試行は通ってしまう。鎖の意味は「名指ししたバイトが実際に走る」ことにあるので、そこを固定した。
 
+#### 二つのホストで同じcatalogになる
+
+同じ宣言と**同じバイトのbuilder**から、`linux/amd64`と`windows/amd64`でcatalogを作った。
+
+| 値 | 結果 |
+| --- | --- |
+| `catalogDigest` | **両ホストで同じ**（`sha256:f7e1c879…`） |
+| catalogのバイト数 | 667（同じ） |
+| `artifactDigest` | **両ホストで同じ**（`sha256:cabf793a…`） |
+
+**catalogのバイトが一致するのは、`artifact`が相対パスで、ツールが絶対パスをcatalogへ書き込まないからである。** 同じ宣言と同じbuilderがあれば、どのホストでも同じ`catalogDigest`を呼び手に渡せる。
+
+鎖そのものも**WindowsのGoで直接**通した（`TestSelfBuildEstablishesL2BEndToEnd`が25.13秒でPASS）。観測したのは`linux/amd64`と`windows/amd64`だけで、`darwin`・`arm64`は未観測である。
+
 #### この節が言っていないこと
 
 - **catalogが正しいこと**（§4.22 K-3、SC0-26のまま）。名指しされたデータを使った記録しかない
@@ -1476,6 +1490,7 @@ catalogは**データ**であり、entryはそれを**名指しされたもの�
 - **builderの実装が正しいこと**。digestを計算するだけで中身は見ない
 - 既定の試行でのClaim（§4.30のまま。catalogを渡す一手が要る）
 - 能力宣言の**版付け**。必要になった時点で決める
+- **すべてのOSでの成立**。二つのホストを観測しただけである
 
 ## 5. 追加の負例（試験仕様）
 
@@ -1574,6 +1589,7 @@ catalogは**データ**であり、entryはそれを**名指しされたもの�
 - [x] 依存の更なる削減：**entryが計画側も独立に持つ**経路（[#3729](https://github.com/hat47x/tei-platform/pull/3729)）。lockの計画側はbuilderの申告を優先し、申告が無ければentryの再計算値を使う。どちらを使ったかを`planSideSource`で記録するので、弱い根拠を強い根拠と読ませない（[記録](../evidence/TEI_GO_SELF_BUILD_ENTRY_PLAN_SIDE_2026-11-09.md)）
 - [x] catalogの欄がどこで宣言されているかの実測（§4.29。7欄のうち**5欄にcatalog以外の宣言面が無く**、既存の宣言からは導出できないと分かった。[記録](../evidence/TEI_GO_SELF_BUILD_CATALOG_FIELD_PROVENANCE_2026-11-09.md)）
 - [x] catalogを**書く場所**の決定（§4.32。**製品の外**に置く。Workspaceもplugin構文も変えない。既存readerは未知のentryと未知の`formatVersion`を拒否するため、K-1・K-2は古いbinaryとの互換を壊す。K-3の読み方はそのままで、製品の契約を一つも変えない）
+- [x] 鎖の**Windows**での観測と、catalogのホスト間一致（§4.33。`TestSelfBuildEstablishesL2BEndToEnd`がWindowsのGoでPASSし、同じ宣言とbuilderから作ったcatalogの`catalogDigest`が`linux/amd64`と`windows/amd64`で一致した。観測は二ホストで、`darwin`・`arm64`は未観測。[記録](../evidence/TEI_GO_SELF_BUILD_CHAIN_WINDOWS_2026-11-10.md)）
 - [x] 宣言からClaimまでの鎖の**回帰試験**（§4.33。`cmd/tei`のエンドツーエンド試験がツールでcatalogを作り、**`artifactDigest`が実際に走るbuilderのバイトと一致すること**を確かめてから`l2b.claimed`を要求する。builderの解決はdigestで照合しないので、下流では気づけない）
 - [x] catalogを作る**ツール**の能力宣言の形式と実装（§4.33。`tools/reference-build-catalog-authoring`が能力宣言からcatalogを作り、**artifactのdigestは実ファイルから計算**する。宣言にdigestを書くことと`-root`の外を拒否する。宣言から`l2b.claimed=true`まで一本で通った。[記録](../evidence/TEI_GO_SELF_BUILD_CATALOG_AUTHORING_2026-11-09.md)）
 - [ ] 能力宣言の**版付け**。**実測すると「必要になった時点」に決められない**——`formatVersion`を足した宣言は`json: unknown field`で拒否され、版を名乗る手段が導入時点で使えない。宣言を配るなら今足すのが最も安い（D-2）。**判断には「宣言を誰に配るか」が要り、これは§4.32が範囲外とした問い**（[記録](../evidence/TEI_GO_SELF_BUILD_DECLARATION_VERSIONING_2026-11-10.md)）
