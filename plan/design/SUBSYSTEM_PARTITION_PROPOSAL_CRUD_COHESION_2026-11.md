@@ -521,3 +521,49 @@ must-linkによる無向グラフの連結成分 C に含まれるFunctionは、
 | SP-53 | Public Slice同値でPrivate Write/MustLinkのみ異なる | 低権限候補・Score・図表・診断が秘密に依存しない |
 
 **優先順**：Reference #3662の**exact HEAD gofmt/Go Test/Health**を確定し、次に(28)のProducer資格を1 Data×1 Functionで確認。数理Referenceの合成成功をP0のProduct資格へ読み替えない。#3492/#3543の別Consumer結果と#3321のRoot反例、#1163同一Attempt Packetは、既存#2514 Independent Expectedと#267 Acceptanceへ引き渡す。
+
+
+## 31. 2026-11-09 Sourceから最適化までの権限付き接続：既存mainと検証の停止線
+
+2026-11-09の現mainでは、[PR #3492](https://github.com/hat47x/tei-platform/pull/3492) と [PR #3728](https://github.com/hat47x/tei-platform/pull/3728) は **merged**。それぞれの実装済み範囲は、限定的な実Workspace Subject／Relation Target Inspectorと、Catalogへ既存Validationの要約を追加するものである。#3492の「偽装されたIndex SubjectでもByte/Range妥当性検査がPASSし得る」負例は、Source Indexの構造的妥当性を、実Canonical Subjectの存在や意味受理へ昇格できないことを具体化する。
+
+この観測を元に、**既存read-only APIは使うが独自Reader/Owner Authorityは追加しない**最小縦断契約を確定する。
+
+| 検査段階 | 現mainで確認できる具体的入口 | 合格で証明できる範囲 | 次の必要条件 |
+| --- | --- | --- | --- |
+| L0 Workspace load | internal/workspace.Load（operations.InspectSubjectから使用） | 当該呼出しが一つのWorkspaceを読み取って正規Worldを得た | 全Required Source/Role closure、同一Attemptの証明 |
+| L1 Canonical Subject | operations.InspectSubjectのinspectCanonical（Source Index取得**前**） | kind+IDが当該Worldで存在・一意として解決される | Data→Primary OwnerとFunction Direct CRUDの意味モデル |
+| L2 Source locator | BuildSourceIndex/TraceSubjectSourcesFromIndexとIndex.Validate | indexed ArtifactのByte fingerprintとRangeの整合 | Source refのCanonical意味・現在性・Role/Accepted Source |
+| L3 Validation | CatalogWorkspaceのvalidation.ok/errorCount/warningCount（#3728 merged） | 既存Validate相当の構造検査の結果を要約する | Validation成功と業務Owner受理・全操作Effectを別判定 |
+| L4 Business Meaning | 既存Shared Acceptance #267、型付きSource/Identity #1120 のOwnerによる受理 | **当該DataのPrimary Ownerと当該Function Direct C/U/Dの採用された意味がある場合に限る** | 具体的な根拠版・Scope・Source closure・受理主体 |
+| L5 Candidate diagnostic | #1132のsubsystem-cud-candidate-v1とWorld/Facts bytes | Caller供給候補の整合と既知越境Writerの候補診断 | 候補→Acceptedへの自動昇格禁止 |
+| L6 Fixed-owner exact | #3662 partition.Evaluate（candidate-only） | 固定Owner、正の重み、allowed/must-linkだけに相対した厳密最適値 | Full Source closure・非開示条件・実業務Writer・Target配備を推論しない |
+| L7 Current disclosure / UI | #2516/Studio #1124（各Owner） | 現在有効なAudience向け資格が別に確認できた結果だけ表示 | Private全世界のScore/理由を公開へ転写しない |
+
+**決定**：P0は**最小1 Data×1 FunctionのL0→L4**が同一Scope・Revision・Required Source閉包で完了できるかを判定する。L0〜L3が実装済みでも、Owner/Direct CRUDの明示宣言が受理済みSourceに存在しなければ、L4は「Productでは未結線」で止める。旧#1132 candidate factsや旧X-TEAから推測して架空のAccepted Sourceを作らない。
+
+[Source A/B read-only Draft #3742](https://github.com/hat47x/tei-platform/pull/3742)は、Loader/Index上でSourceを改版したときの有限差分の独立レーンであり、Source IndexとWorld fingerprintがあることをSource/Manifest全閉包の真正性へ昇格しない。最新Source rootの選択・Provider raw・Owner Meaningの受理は#3262/#3477/#3479/#267の各Ownerへ返す。#3321で既に反証した物理Root/Read Attempt未識別も存置する。
+
+## 32. 越境CUDの目標関数：本数と重み付き重要度の非混同
+
+今回の純粋Go Referenceは**正の整数重みをCallerが明示した候補更新関係**に対してだけ、厳密な最小越境重みを計算する。これを「最小の越境CUD本数」「実業務負荷・遅延・障害確率の改善」と呼ばない。
+
+- 本数を優先する比較では、各Direct Write occurrenceの重みを**すべて1**とする。これで計算値は既知更新関係の越境**本数**に一致する。各Function→Dataの複数distinct C/U/D occurrenceの計上単位を固定し、同一関係の重複Evidenceを二重加算しない。
+- 重み付き比較では、重みの**意味（更新回数、変更リスク、障害影響、合成の意思決定重みなど）、単位、Scope、版、出典、Owner/評価者による採用**を別に開示する。例として付けた1/2/3は実測データではない。恣意的な重みの調整で候補順位が変わるため、別重みPolicyは別Problemとして扱う。
+- 本数最小と重み最小は**一般には別解**。例えば候補S1では2本(各重み1)、候補S2では1本(重み5)なら、本数の目的はS2、重み付き目的はS1を選ぶ。目標関数が決まっていない状態で「最適分割」と単一表示しない。
+- 巨大Subsystemへ全Functionを一括配置すると一見越境更新が減る場合があるが、境界サイズ/責務/組織能力/セキュリティ/変更容易性などのhard制約に違反し得る。未モデル化の制約は満たされたものと見なさない。将来のmulti-objectiveやParetoは追加意思決定であり、#3662の厳密性の範囲には無い。
+- Public Slice相対の重み/ScoreはFull Worldの最適値と独立。秘密側の重み・存在を表示や診断で漏らさず、元のScope限定の説明責任を維持する。
+
+## 33. 追加受入候補SP-54〜60（提案、NOT RUN）
+
+| ID | 入力／操作 | 期待される結果 |
+| --- | --- | --- |
+| SP-54 | Source IndexでByte/Range妥当だがCanonical Subject IDを偽装 | Index.Validateが通り得ても、実InspectSubjectはSUBJECT_NOT_FOUNDで拒否。Owner/Direct CRUD未採用を維持 |
+| SP-55 | Catalog.validation.ok=trueだがOwner宣言なし | 構造検査成功からPrimary Owner・完全Direct CRUDを推測しない |
+| SP-56 | 同一Data・FunctionのSource A→B改版、Owner/CRUDの出典片方のみ旧版 | 同一Required閉包/Revisionの受理根拠が揃うまでL4へ進めない |
+| SP-57 | 同一ReadのWorldFP一致だが異Workspace/Root/Read Attempt | 要求された対象・Attemptの同一性をfingerprintから補わない |
+| SP-58 | Write3本を全重み1で評価し、別の重みPolicyで再評価 | 本数目的と重要度目的を区別。評価値・Candidate順位に使った重み版を示す |
+| SP-59 | 同一Source関係が複数証拠で重複提示される | 同一relation occurrenceを一度だけ計上し、別distinct C/U/Dがあればその粒度を保持 |
+| SP-60 | 承認済みSourceをFull Worldとして解析した後でPublic Nodeだけ隠して表示 | 公開Sliceの資格を再確認し、Private依存のScoreや順位を無権限Consumerへ流さない |
+
+**Implementation/Plan**：先に#3662の tools/README.md 索引不足によるRepository Health失敗を修正したexact-head CIを確認する。続く実Source P0は #3492/#3728のmerged既存APIで一Data×一Functionを読み、L4受理契約の存在/欠落を記録する最小試験。公開Cursor/Studio/Source Write/Provider/DBの接続は各Ownerに引渡す。新Reader/Policy Engine/Graph/Source Resolver/Host/Acceptance SSOTを作らない。論理Subsystem境界はPhysical TargetやHash ID Namespaceと混同しない。
