@@ -602,3 +602,21 @@ ADR-0048 §2.4 の「既定値の適用は共通契約で定める」を、CLI �
 - リポジトリ全体を1つのWorkspaceにする経路が無いため、横断の問いは入力を作れない。
 
 新しいIssueは作らない。#2619・#2621 の設計範囲であり、D-9 として第1ラウンドから記録している。この実測を D-9 の具体的な証拠として残す。
+
+## 19. 第14ラウンド（2026-11-09）: knowledge-* 連鎖の端から端まで
+
+第13ラウンドで「モデルに対する設計作業はCLIで完結できる」と分かった。その設計作業でAIが実際に使う `knowledge-*` の連鎖を、1回通した。生出力は[第14ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND14_KNOWLEDGE_CHAIN_2026-11-09/README.md)にある。
+
+| 手順 | 結果 |
+| --- | --- |
+| `knowledge-context` | `mode=context`・`dataDesign` あり・`authorityLimits` 4件 |
+| `knowledge-review-plan` | `mode=plan`・`reviewSequence`・`stopRules` |
+| `knowledge-review-handoff` | `mode=handoff`・`qualification` を含む |
+| `knowledge-context -disclose source` | `mode=disclosure` |
+| `knowledge-qualify` | `status=applicable`・`evidence` 1件 |
+| `knowledge-review-disclose` | `status=complete`・4セクション |
+
+- **戻れる**: 古い指紋は `fingerprint mismatch: expected=… current=…` で拒否（exit 1）。別subjectの handoff は `subject mismatch: handoff=… context=…` で拒否（exit 2）。存在しない handoff も exit 2。
+- **摩擦は1点**: 要件ファイルの形がCLIの応答から辿れない。`commands` は `-qualification-requirements` の存在だけを広告し、`-h` は "knowledge qualification requirements JSON" としか出さない。私は最初 `{"subject":…}` と書いて `json: unknown field` で止まった。最小形は `{"expectedKind":"semantic-data"}` で、文書（#3186 で追加済み）を読めば分かる。
+
+新しいIssueは作らない。形の例は #3186（Closed）、`commands` にファイル中身のスキーマを載せるかは #3419 の範囲である。
