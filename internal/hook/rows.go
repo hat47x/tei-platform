@@ -126,8 +126,11 @@ func (r Runner) declaredHook(invocation Invocation) (*application.Pattern, *appl
 	if pattern == nil {
 		return nil, nil, &Error{Code: "HOOK_PATTERN_NOT_FOUND", Message: fmt.Sprintf("pattern %s is not defined in application %s", invocation.Pattern, invocation.Application)}
 	}
-	if pattern.Kind != application.PatternRecord || pattern.Interaction == nil {
-		return nil, nil, &Error{Code: "HOOK_PATTERN_NOT_RECORD", Message: fmt.Sprintf("pattern %s is not a record pattern with interaction", invocation.Pattern)}
+	// A row-scoped hook is declared on a pattern that looks at a row set, which
+	// is a browse (or a header-detail) pattern rather than a record pattern. The
+	// record form is accepted too: Run needs it, and declaredHook serves both.
+	if pattern.Interaction == nil {
+		return nil, nil, &Error{Code: "HOOK_PATTERN_NOT_INTERACTIVE", Message: fmt.Sprintf("pattern %s has no interaction to declare hooks", invocation.Pattern)}
 	}
 	for i := range pattern.Interaction.Hooks {
 		if pattern.Interaction.Hooks[i].Phase == invocation.Phase {

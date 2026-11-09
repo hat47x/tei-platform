@@ -42,6 +42,7 @@
 - [フック実行の配線と失敗の区別の確認](XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)（参照実装の試験記録。Runnerからの配線、NotSatisfiedと実行失敗の区別、参照規則。実PluginとCLI・Studioの配線は未実装）
 - [フック宣言の印刷面への反映の確認](XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md)（参照実装の試験記録。画面と同じフック宣言が印刷面にも出る。実印刷・用紙面の版照合は未確認）
 - [フックの位相順序と途中停止の確認](XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md)（参照実装の試験記録。位相の実行順、不成立での停止位置、`warn`の続行、未対応位相の拒否。CLI・Studioへの配線は未実装）
+- [行単位フックの宣言と実行の食い違いを直した確認](XTEA_LOWCODE_HOOK_ROW_REACHABILITY_2026-11.md)（参照実装の試験記録。検証が受理する`browse` + `scope row`を`RunRows`が実行できるようにした。ホスト配線は未実装）
 - [フックの範囲（Scope）宣言の成立確認](XTEA_LOWCODE_HOOK_SCOPE_2026-11.md)（参照実装の確認記録。範囲は宣言・検証・実行時拒否・表示の四面に在り、`row`の行ごと適用は未実装）
 - [フックの結末名とCommand拒否名の対応を実際の経路で使う確認](XTEA_LOWCODE_OUTCOME_CORRESPONDENCE_USE_2026-11.md)（参照実装の試験記録。対応がJSONとテキストに出る。対応の無い名前はCommand拒否名として出さない）
 - [AC-5の「多重一致」が参照実装に無いことの確認](XTEA_LOWCODE_MULTI_MATCH_GAP_2026-11.md)（読取り記録。参照Storeはキーで一意化するため多重一致を表現できず、符号を発明しなかった判断を残す）
