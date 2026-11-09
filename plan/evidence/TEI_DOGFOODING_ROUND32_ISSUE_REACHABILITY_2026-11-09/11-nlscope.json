@@ -1,0 +1,1 @@
+{"schemaVersion":"tei.cli.trace/v0","ok":false,"error":{"code":"INVALID_SUBJECT","message":"scope, kind, and id are required"}}
