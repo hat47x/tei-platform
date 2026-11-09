@@ -38,9 +38,18 @@ func requireRealGo(t *testing.T) string {
 	t.Helper()
 	goTool, err := execLookPathGo()
 	if err != nil {
-		t.Skipf("Go executable is unavailable (SKIP is not a success): %v", err)
+		realBuildSkipOrFail(t, "Go executable is unavailable: %v", err)
 	}
 	return goTool
+}
+
+// TEI_REQUIRE_REAL_BUILD=1 のとき、Skipを失敗に倒す(Skipの見逃し防止)。
+func realBuildSkipOrFail(t *testing.T, format string, args ...any) {
+	t.Helper()
+	if os.Getenv("TEI_REQUIRE_REAL_BUILD") == "1" {
+		t.Fatalf("TEI_REQUIRE_REAL_BUILD=1 but the real build cannot run: "+format, args...)
+	}
+	t.Skipf("(SKIP is not a success) "+format, args...)
 }
 
 func execLookPathGo() (string, error) { return exec.LookPath("go") }
@@ -98,26 +107,73 @@ type goListPackage struct {
 	EmbedFiles   []string
 }
 
-// 環境は固定する(GOFLAGS空、GOWORK=off、GOTOOLCHAIN=local、CGO_ENABLED=0)。
-func realBuildEnv() []string {
-	pinned := map[string]string{
-		"GOFLAGS": "", "GOWORK": "off", "GOTOOLCHAIN": "local",
-		"CGO_ENABLED": "0", "GOOS": runtime.GOOS, "GOARCH": runtime.GOARCH,
-		"GO111MODULE": "on",
+// buildへ渡す環境は許可リストで作る。os.Environ()をそのまま通さない。
+// 出力に影響しうるGo設定(GOEXPERIMENT、GOAMD64等のGOARCH別設定、GOENV、GODEBUG、
+// GOFIPS140、GOCACHEPROG等)は呼び出し側の値を通さず、空または固定値にする。
+var realBuildPassThroughEnv = map[string]bool{
+	"PATH": true, "PATHEXT": true, "SYSTEMROOT": true, "SYSTEMDRIVE": true, "WINDIR": true,
+	"COMSPEC": true, "TEMP": true, "TMP": true, "TMPDIR": true, "HOME": true,
+	"USERPROFILE": true, "LOCALAPPDATA": true, "APPDATA": true, "XDG_CACHE_HOME": true,
+	"GOROOT": true, "GOPATH": true, "GOCACHE": true, "GOMODCACHE": true, "GOTMPDIR": true,
+	"GOPROXY": true, "GOSUMDB": true, "GONOSUMDB": true, "GOPRIVATE": true, "GONOPROXY": true,
+	"GOINSECURE": true, "GOVCS": true,
+}
+
+func realBuildPinnedEnv() map[string]string {
+	return map[string]string{
+		"GOFLAGS": "", "GOWORK": "off", "GOTOOLCHAIN": "local", "CGO_ENABLED": "0",
+		"GOOS": runtime.GOOS, "GOARCH": runtime.GOARCH, "GO111MODULE": "on", "GOENV": "off",
+		"GOEXPERIMENT": "", "GODEBUG": "", "GOFIPS140": "",
+		"GOAMD64": "", "GOARM": "", "GOARM64": "", "GO386": "", "GOMIPS": "", "GOMIPS64": "",
+		"GOPPC64": "", "GORISCV64": "", "GOWASM": "", "GOCACHEPROG": "",
 	}
+}
+
+func realBuildEnv() []string {
 	var env []string
 	for _, kv := range os.Environ() {
 		key := strings.ToUpper(strings.SplitN(kv, "=", 2)[0])
-		if _, drop := pinned[key]; drop {
-			continue
+		if realBuildPassThroughEnv[key] {
+			env = append(env, kv)
 		}
-		env = append(env, kv)
 	}
-	for k, v := range pinned {
+	for k, v := range realBuildPinnedEnv() {
 		env = append(env, k+"="+v)
 	}
 	sort.Strings(env)
 	return env
+}
+
+// build引数は1箇所で定義し、Planのflags parameterもここから作る。
+var realBuildFlags = []string{"-trimpath", "-buildvcs=false", "-ldflags=-buildid="}
+
+// 出力に影響しうるgo envのキー。観測値をPlanのParametersへ入れる(buildと同じ環境で取得)。
+var realBuildGoEnvKeys = []string{
+	"CGO_ENABLED", "GO111MODULE", "GO386", "GOAMD64", "GOARCH", "GOARM", "GOARM64", "GODEBUG",
+	"GOENV", "GOEXPERIMENT", "GOFIPS140", "GOFLAGS", "GOMIPS", "GOMIPS64", "GOOS", "GOPPC64",
+	"GORISCV64", "GOTOOLCHAIN", "GOWASM", "GOWORK",
+}
+
+func realBuildObserveGoEnv(goTool string, env []string) ([]plugin.BuildParameter, error) {
+	cmd := exec.Command(goTool, append([]string{"env", "-json"}, realBuildGoEnvKeys...)...)
+	cmd.Env = env
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+	var observed map[string]string
+	if err := json.Unmarshal(out, &observed); err != nil {
+		return nil, err
+	}
+	params := make([]plugin.BuildParameter, 0, len(realBuildGoEnvKeys))
+	for _, k := range realBuildGoEnvKeys {
+		v, ok := observed[k]
+		if !ok {
+			v = "<not-reported>"
+		}
+		params = append(params, plugin.BuildParameter{Name: "goenv." + k, Value: v})
+	}
+	return params, nil
 }
 
 func realBuildDigestBytes(data []byte) string {
@@ -303,20 +359,17 @@ func realBuildToolchainVersion(goTool string, env []string) (string, error) {
 }
 
 // 既存のBuildExecutionPlanへ閉包を並べる。DSLは作らない。
-func newRealBuildPlan(entrypoint, goVersion, toolchainDigest string, closure sourceClosure) BuildExecutionPlan {
+func newRealBuildPlan(entrypoint, goVersion, toolchainDigest string, goEnv []plugin.BuildParameter, closure sourceClosure) BuildExecutionPlan {
 	sources := make([]plugin.BuildSource, 0, len(closure.Files))
 	for _, f := range closure.Files {
 		sources = append(sources, plugin.BuildSource{Kind: f.Kind, ID: f.Rel, Locator: f.Abs, Digest: f.Digest})
 	}
-	params := []plugin.BuildParameter{
-		{Name: "env.CGO_ENABLED", Value: "0"},
-		{Name: "env.GOFLAGS", Value: ""},
-		{Name: "env.GOTOOLCHAIN", Value: "local"},
-		{Name: "env.GOWORK", Value: "off"},
-		{Name: "flags", Value: "-trimpath -buildvcs=false -ldflags=-buildid="},
-		{Name: "go-version", Value: goVersion},
-		{Name: "go-executable-digest", Value: toolchainDigest},
-	}
+	params := append([]plugin.BuildParameter(nil), goEnv...)
+	params = append(params,
+		plugin.BuildParameter{Name: "flags", Value: strings.Join(realBuildFlags, " ")},
+		plugin.BuildParameter{Name: "go-version", Value: goVersion},
+		plugin.BuildParameter{Name: "go-executable-digest", Value: toolchainDigest},
+	)
 	return BuildExecutionPlan{
 		FormatVersion: buildExecutionPlanFormatVersion,
 		Sources:       sources,
@@ -387,6 +440,8 @@ type realBuildSpec struct {
 	Package    string // go package pattern relative to ModuleDir
 	Entrypoint string // repository relative recipe entrypoint
 	OutDir     string
+	// Exec runs one build command. nil means exec; tests wrap it to observe invocations.
+	Exec func(cmd *exec.Cmd) ([]byte, error)
 }
 
 type realBuildOutcome struct {
@@ -433,7 +488,11 @@ func bindRealGoBuild(spec realBuildSpec) realBuildOutcome {
 	out.Closure = closure
 	out.Report.SourceClosureCount = len(closure.Files)
 	out.Report.ExternalModuleCount = len(closure.ExternalModules)
-	out.Plan = newRealBuildPlan(spec.Entrypoint, goVersion, toolchainDigest, closure)
+	goEnv, err := realBuildObserveGoEnv(spec.GoTool, env)
+	if err != nil {
+		return fail(realBuildStatusUnconfirmed, "go env unavailable: %v", err)
+	}
+	out.Plan = newRealBuildPlan(spec.Entrypoint, goVersion, toolchainDigest, goEnv, closure)
 	planFP, err := buildExecutionPlanFingerprint(out.Plan)
 	if err != nil {
 		return fail(realBuildStatusUnconfirmed, "plan is invalid: %v", err)
@@ -450,10 +509,15 @@ func bindRealGoBuild(spec realBuildSpec) realBuildOutcome {
 		if err := os.MkdirAll(filepath.Dir(output), 0o700); err != nil {
 			return fail(realBuildStatusUnconfirmed, "%v", err)
 		}
-		cmd := exec.Command(spec.GoTool, "build", "-trimpath", "-buildvcs=false",
-			"-ldflags=-buildid=", "-o", output, spec.Package)
+		args := append([]string{"build"}, realBuildFlags...)
+		args = append(args, "-o", output, spec.Package)
+		cmd := exec.Command(spec.GoTool, args...)
 		cmd.Dir, cmd.Env = spec.ModuleDir, env
-		if combined, err := cmd.CombinedOutput(); err != nil {
+		run := spec.Exec
+		if run == nil {
+			run = func(c *exec.Cmd) ([]byte, error) { return c.CombinedOutput() }
+		}
+		if combined, err := run(cmd); err != nil {
 			return fail(realBuildStatusBlocked, "%s go build failed: %v: %s", id, err, strings.TrimSpace(string(combined)))
 		}
 		digest, err := actualGoDigestFile(output)

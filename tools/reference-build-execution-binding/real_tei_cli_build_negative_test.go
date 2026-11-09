@@ -29,7 +29,11 @@ func TestRealTEICLIBuildRejectsPlanSourceDriftFromClosure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	base := newRealBuildPlan("cmd/tei", version, digest, closure)
+	goEnv, err := realBuildObserveGoEnv(goTool, env)
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := newRealBuildPlan("cmd/tei", version, digest, goEnv, closure)
 	baseFP, err := buildExecutionPlanFingerprint(base)
 	if err != nil {
 		t.Fatal(err)
@@ -152,7 +156,7 @@ func TestRealTEICLIBuildNestedModuleWithoutGoSumIsBlocked(t *testing.T) {
 	studioDir := filepath.Join(repoRoot, "cmd", "tei-studio")
 	closure, err := enumerateGoSourceClosure(goTool, repoRoot, studioDir, ".", env)
 	if err != nil {
-		t.Skipf("nested module closure is not enumerable here (SKIP is not a success): %v", err)
+		realBuildSkipOrFail(t, "nested module closure is not enumerable here: %v", err)
 	}
 	for _, must := range []string{"cmd/tei-studio/go.mod", "cmd/tei-studio/go.sum", "go.mod"} {
 		if _, ok := closure.byRel()[must]; !ok {
