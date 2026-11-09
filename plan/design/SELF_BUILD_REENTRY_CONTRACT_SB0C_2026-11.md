@@ -619,8 +619,6 @@ builder childが`compareIntentFields`で比べる。
 
 **「比べられる欄」と「比べるべき欄」は違う。** 導出値を比べると常に不一致になり、形の違うものを比べると定義が要る。比べないことを明示するのが、黙って比べないより安全である。
 
-#### この節が言っていないこと
-
 - ~~残る欄を永久に照合しないとは言っていない。`parameters`は正規化の意味を決めれば照合できる~~ → **`parameters`は測ると正規化がソートだけだったので実装した**（§4.18）。`builder`は要求と解決結果の対応規則を決めれば照合できるが、それは**測れば決まる**種類ではない（§4.18末尾）。
 - 照合の拡大は**L2-bを進めない**。宣言とplanが同じ意味を指すことの確認であり、「その宣言がその計画を導く」ことではない。
 
@@ -647,7 +645,31 @@ builder childが`compareIntentFields`で比べる。
 | `secretRequirements` | planは名前を`SecretRequirementNames`として持つが`plugin.BuildPlan`には無い。宣言の`Authority`に対応する欄が無い |
 
 **`parameters`は測れば決まった。この2つは規則そのものを決める必要がある。** 同じ「未決」でも種類が違う。
+### 4.12 childが自分でlockを作る経路（2026-11-09）
 
+§4.11末尾が挙げた経路を実装した。**childが自分で`internal/plugin`の`BuildArtifactLock`を組み立て、`Validate`と`BuildArtifactLockFingerprint`を通してから返し、entryはそれを自分が独立に導いたlockと比べる。**
+
+| 段 | §4.11まで | §4.12 |
+| --- | --- | --- |
+| lockを作る主体 | entryのみ | **childも作る**（childのreportへ`buildArtifactLock`） |
+| lockの検証 | entryが`Validate` | **childも`Validate`し、通らなければreportを出さずexit 1** |
+| 突合 | なし | **entryのlock fingerprintとchildのlock fingerprintを比較** |
+
+| `planArtifactBinding`の欄 | 意味 |
+| --- | --- |
+| `childLockChecked` | childのlockを比べたか。**欄が無い場合は`false`のまま**（無いことを合格と読ませない） |
+| `childLockValidated` | childが検証済みと申告したか |
+| `childLockMatched` | entryのlock fingerprintと一致したか。不一致は`mismatched`で`ok=false` |
+| `childLockFingerprint` | childが導いたlockの照合値 |
+
+**`childLockMatched=true`が増やす観測**：経路の違う二つの組み立て（childは自分の読んだplanと自分が書いたバイトから、entryはreceiptのplan identityとchildの申告から）が**同じfingerprintになった**こと。
+
+**それでもL2-bではない。** `l2bClaimed`は`false`のままである。理由は次の二点。
+
+1. builder childが読んだのは`-plan`のファイルであり、**entryが保持した宣言そのものではない**（`intentByteCheckPerformed=false`のまま）
+2. **entryのlockもchildの申告から作る。** 両方の組み立てが同じ入力に依存するため、childが申告を偽れば両方が同じように偽る。`childLockMatched`は「二つの独立した組み立ての一致」であって「入力が真であること」ではない
+
+**依存をさらに減らすには、entryが計画側も独立に持つ必要がある。** 解決childのreceiptに頼らずentry自身が宣言から計画を導く経路であり、§4.7でI-1（`internal/`への切り出し）を採らなかった制約に戻る。§7の残作業に名指しした。
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
@@ -714,6 +736,9 @@ builder childが`compareIntentFields`で比べる。
 - [x] 宣言の他の欄のうち、planが同じ形で持つもの（`recipe`・`sources`・`dependencies`）の照合（[#3661](https://github.com/hat47x/tei-platform/pull/3661)。§4.17）
 - [x] `parameters`の照合（[#3664](https://github.com/hat47x/tei-platform/pull/3664)。測るとどちらの側も名前順ソートのみで値を変えないと分かったので、名前で突き合わせる。§4.18）
 - [ ] `builder`（要求と解決結果の対応規則）と`secretRequirements`（planに対応する欄が無い）の照合。**規則そのものを決める必要があり、測れば決まる種類ではない**（§4.18末尾）
+- [x] `planCrossCheck=matched`と`planArtifactBinding=bound`の**同時**実測（[記録](../evidence/TEI_GO_SELF_BUILD_MATCHED_AND_BOUND_2026-11-09.md)、再現手順も同記録）
+- [x] builderが自分で`BuildArtifactLock`を作って返す経路（[記録](../evidence/TEI_GO_SELF_BUILD_CHILD_LOCK_2026-11-09.md)、`childLockMatched=true`。entryが独立に導いたlockと同一fingerprint）
+- [ ] 依存の更なる削減：**entryが計画側も独立に持つ**経路。今はentryのlockもchildの申告から作るため、両方が同じ入力に依存する（§4.11末尾。I-1を採らない制約に戻る）
 - [ ] D-1（catalogの`scope`拡張）を採るかどうかの契約判断（採る場合のみ、catalogの広告と実応答の一致を照合へ載せる）
 
 **A-1（`gobuilder`移動）は採らないため、影響範囲の洗い出しは終了条件から外した。** 29ファイルの内訳は[記録](../evidence/TEI_GO_INTERNAL_RULE_AND_BUILDER_MOVE_2026-11-07.md)として残す。I-1は「採らない」から「I-1aとして着手」へ改めた（§4.13）。`ParseFixtureCatalog`（fixture catalog）は`tools/`に残す。
