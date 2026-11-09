@@ -191,3 +191,6 @@
 
 # Binding identity layers survey output is hashed as raw bytes by its README.
 /plan/evidence/BINDING_IDENTITY_LAYERS_2026-11-09/** -text
+
+# Oversize-event observations are hashed as raw bytes.
+/plan/evidence/DSH_SESSION_LOG_OVERSIZE_EVENT_2026-11-09/** -text
