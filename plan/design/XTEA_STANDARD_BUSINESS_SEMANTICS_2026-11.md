@@ -219,7 +219,7 @@ X-TEAの`setVariant`・`setUserValueOf`は、スクリプトから任意の値�
 
 `internal/businesscalendar`は、業務日付から**期間キー**（会計年度のラベルと、開始月を1とする月順序）を導きます。`period key`が年月なら、この組が閉めの単位になります。
 
-X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設定（`LAST_DAY`）より後の日付を**翌月の順序**へずらし、`getFYearOfDate`（同 L2440–2507）も同じ理由で年度を変えていました。TEIの導出はその規則を引き継ぎません。日付は、その日付が名指す月に属します。月内の締め（20日締めなど）を期間にしたい場合は、月ではなく**独立した期間**として宣言します。
+X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設定（`LAST_DAY`）より後の日付を**翌月の順序**へずらし、`getFYearOfDate`（同 L2440–2507）も同じ理由で年度を変えていました。TEIの導出はその規則を引き継ぎません。日付は、その日付が名指す月に属します。月内の締め（20日締めなど）を期間にしたい場合は、期間が`closes on day N`を宣言します。日付は月から動かず、月の前半と後半が`PeriodKey.ClosingSegment`で分かれます（`internal/businesscalendar/closing.go`）。
 
 ## 6. 未確認の事項
 
@@ -234,7 +234,7 @@ X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設�
 
 | 残り | 理由 | 何が分かれば決まるか |
 | --- | --- | --- |
-| 月内の締め（20日締めなど）の期間化 | X-TEAの「締め日を過ぎた日付を翌月へずらす」規則（`getMSeqOfDate` L2476–2484）を引き継がない方針にしたため、月内締めは独立した期間として宣言する必要がある | 期間キーに日を含めるか、期間を分けるかの宣言 |
+| 月内締めの閉め操作 | `closes on day N`で区分を導出するところまで実装したが、区分ごとの状態遷移と`closed-rejects`の組合せは未実装 | 区分を期間と同じ状態機械に載せるか |
 | 採番の例での規則行データ | 例のDataに`numbering-rule`の役割を足したが、行は試験で与えている | 例へ行データを置くかどうかの判断 |
 | 為替の月次・年次を別Dataに分ける構成 | 参照実装は1つのDataに月順序0の年次行を置く形だけを試した | 別Dataにする場合の結合規則 |
 | 番号の永続CounterStore | 参照用の記憶域しかない | 実DBの表・版・競合の実装 |
@@ -254,6 +254,8 @@ X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設�
 - [評価時点の決定性](EVALUATION_CONTEXT_DETERMINISM_2026-10.md)
 - [移行計画](../workstreams/XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)（WP8）
 - [受容要件](../../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md)（RQ-C3）
+
+
 
 
 
