@@ -98,6 +98,7 @@
 - [RQ-C3の確認方法の観測](XTEA_LOWCODE_RQC3_VERIFICATION_2026-11.md)（参照実装の試験記録。要求の確認方法を試験名へ写して観測）
 - [RQ-C2の確認方法の観測](XTEA_LOWCODE_RQC2_VERIFICATION_2026-11.md)（参照実装の試験記録。拡張点の宣言・実行時の拒否・失敗の観測）
 - [RQ-C1の確認方法の観測](XTEA_LOWCODE_RQC1_VERIFICATION_2026-11.md)（参照実装の試験記録。2パッケージの併存・取り外し・Core種別の不増加）
+- [フック宣言の範囲（scope）の確認](XTEA_LOWCODE_HOOK_SCOPE_2026-11.md)（参照実装の試験記録。範囲の宣言・検査・投影。record以外の種別の検査は未実装）
 - [採番の永続CounterStoreの確認](XTEA_LOWCODE_NUMBERING_SQLITE_STORE_2026-11.md)（参照実装の試験記録。PostgreSQLは未実装）
 - [採番の2プロセス同時実行の確認](XTEA_LOWCODE_NUMBERING_PROCESS_RACE_2026-11.md)（参照実装の試験記録。PostgreSQLと多プロセス構成は未実装）
 - [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
@@ -310,3 +311,4 @@
 - [桁数を綴るhelperが1桁しか扱えず検査が静かに止まっていた](TEI_DOGFOODING_ROUND34_ITOA_DIGITS_2026-11-09/README.md)（#3919。`itoa(10)`が`":"`になり正規表現が0一致。panicせず検査が無くなる。`strconv.Itoa`へ置換し試験2件を追加。第33ラウンドの記述誤りも訂正）
 - [2つの試験が対象0件のまま常に成功していた](TEI_DOGFOODING_ROUND35_VACUOUS_CHECKS_2026-11-09/README.md)（#3931。`plan/issue`に番号付き文書が無く、一意性と6値の試験が0件を走査。空入力を拒否し、6値試験はSKIPで可視化。3ラウンド連続で同じ型）
 - [空回りする検査を1箇所に集約して可視化した](TEI_DOGFOODING_ROUND36_SCOPE_NONEMPTY_2026-11-09/README.md)（#3931。全スコープを計測し空は`plan/issue`のみと確認。`TestEveryCheckScopeIsNonEmpty`で0件を検出。私の初版ガードがディレクトリ件数を見て除外分岐が未実行だったことも記録）
+
