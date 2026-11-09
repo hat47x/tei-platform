@@ -1,0 +1,11 @@
+query order_entry.recent_orders {
+    input status std.code
+    datasource sales
+    sql postgres file "recent_orders.sql"
+    result {
+        column order_id -> sales.order.order_id
+        column customer_id -> sales.order.customer_id
+    }
+}
+
+

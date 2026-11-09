@@ -1,0 +1,208 @@
+{
+  "note": "Second measurement set: shipped default profile, synthetic 503 retry, synthetic stream cut. Raw bodies not committed.",
+  "runs": [
+    {
+      "run": "shipped-default-profile-1",
+      "responseStatus": null,
+      "requestBytes": 87479,
+      "requestSha256": "d2266e1e5de0915f823a5d04d6a5be5d648bfe0370f6dbc9d39937c1545423e6",
+      "model": "deepseek-flash",
+      "toolCount": 24,
+      "messageCount": 1,
+      "sessionLog": {
+        "fieldBytes": 45491,
+        "fieldSha256": "7b915eb78dae57bbde997e3e36e0d2580774845c993568f6932aaca1f6e39b99",
+        "afterSeq": -1,
+        "throughSeq": 18,
+        "eventCount": 19,
+        "eventTypes": {
+          "user/message": 4,
+          "agent/inbox/spliced": 2,
+          "approval/policy": 2,
+          "permission/preset": 2,
+          "sandbox/mode": 2,
+          "request/context": 1,
+          "request/header": 1,
+          "session/title": 1,
+          "session/title-llm-request": 1,
+          "step/start": 1,
+          "system/message": 1,
+          "turn/start": 1
+        }
+      }
+    },
+    {
+      "run": "shipped-default-profile-2",
+      "responseStatus": null,
+      "requestBytes": 51157,
+      "requestSha256": "ff0a6a02646b2d1c8e995fa0a9906995dd5c9c3ec1e1dc6187012dc74e46aa08",
+      "model": "deepseek-flash",
+      "toolCount": 0,
+      "messageCount": 1,
+      "sessionLog": {
+        "fieldBytes": 45491,
+        "fieldSha256": "7b915eb78dae57bbde997e3e36e0d2580774845c993568f6932aaca1f6e39b99",
+        "afterSeq": -1,
+        "throughSeq": 18,
+        "eventCount": 19,
+        "eventTypes": {
+          "user/message": 4,
+          "agent/inbox/spliced": 2,
+          "approval/policy": 2,
+          "permission/preset": 2,
+          "sandbox/mode": 2,
+          "request/context": 1,
+          "request/header": 1,
+          "session/title": 1,
+          "session/title-llm-request": 1,
+          "step/start": 1,
+          "system/message": 1,
+          "turn/start": 1
+        }
+      }
+    },
+    {
+      "run": "synthetic-503-then-retry-1",
+      "responseStatus": 503,
+      "requestBytes": 87469,
+      "requestSha256": "95563fefb17e2fc15d978736b64ca0306f283178d5836c0068fef1a3781d30f6",
+      "model": "deepseek-flash",
+      "toolCount": 24,
+      "messageCount": 1,
+      "sessionLog": {
+        "fieldBytes": 45483,
+        "fieldSha256": "692fab3698da575b705df91935191b33c1dc7e025e8fe66f48d15e2a3b90a6ba",
+        "afterSeq": -1,
+        "throughSeq": 18,
+        "eventCount": 19,
+        "eventTypes": {
+          "user/message": 4,
+          "agent/inbox/spliced": 2,
+          "approval/policy": 2,
+          "permission/preset": 2,
+          "sandbox/mode": 2,
+          "request/context": 1,
+          "request/header": 1,
+          "session/title": 1,
+          "session/title-llm-request": 1,
+          "step/start": 1,
+          "system/message": 1,
+          "turn/start": 1
+        }
+      }
+    },
+    {
+      "run": "synthetic-503-then-retry-title",
+      "responseStatus": 200,
+      "requestBytes": 51147,
+      "requestSha256": "ea670bbe62308ce74aec4ac696181c7af6fe69f137dcbc951b2c3688772f8174",
+      "model": "deepseek-flash",
+      "toolCount": 0,
+      "messageCount": 1,
+      "sessionLog": {
+        "fieldBytes": 45483,
+        "fieldSha256": "692fab3698da575b705df91935191b33c1dc7e025e8fe66f48d15e2a3b90a6ba",
+        "afterSeq": -1,
+        "throughSeq": 18,
+        "eventCount": 19,
+        "eventTypes": {
+          "user/message": 4,
+          "agent/inbox/spliced": 2,
+          "approval/policy": 2,
+          "permission/preset": 2,
+          "sandbox/mode": 2,
+          "request/context": 1,
+          "request/header": 1,
+          "session/title": 1,
+          "session/title-llm-request": 1,
+          "step/start": 1,
+          "system/message": 1,
+          "turn/start": 1
+        }
+      }
+    },
+    {
+      "run": "synthetic-503-then-retry-after",
+      "responseStatus": 200,
+      "requestBytes": 44484,
+      "requestSha256": "868d9b9278d896d66a15ca1051878b34d70252ee55870094b6e75fa0d4af598e",
+      "model": "deepseek-flash",
+      "toolCount": 24,
+      "messageCount": 1,
+      "sessionLog": {
+        "fieldBytes": 1609,
+        "fieldSha256": "18473c398d4ab1b6f06aa38eb61948738e79ae540f27030e84cc1b28c8fcb8ca",
+        "afterSeq": 18,
+        "throughSeq": 23,
+        "eventCount": 5,
+        "eventTypes": {
+          "assistant/attempt": 1,
+          "llm/retry": 1,
+          "llm/retry-started": 1,
+          "session-log-deepseek/delivery-accepted": 1,
+          "session/title": 1
+        }
+      }
+    },
+    {
+      "run": "stream-cut-1",
+      "responseStatus": "200-empty-body",
+      "requestBytes": 87459,
+      "requestSha256": "e2f511304a6ef7f4dd507db372868e8736a5c4bc830ee5c3a48dc3550e0019c5",
+      "model": "deepseek-flash",
+      "toolCount": 24,
+      "messageCount": 1,
+      "sessionLog": {
+        "fieldBytes": 45475,
+        "fieldSha256": "1abba5c006b964506bd08a7f98b344be64f2d775bc4f7c80e965d0bb1e9974f8",
+        "afterSeq": -1,
+        "throughSeq": 18,
+        "eventCount": 19,
+        "eventTypes": {
+          "user/message": 4,
+          "agent/inbox/spliced": 2,
+          "approval/policy": 2,
+          "permission/preset": 2,
+          "sandbox/mode": 2,
+          "request/context": 1,
+          "request/header": 1,
+          "session/title": 1,
+          "session/title-llm-request": 1,
+          "step/start": 1,
+          "system/message": 1,
+          "turn/start": 1
+        }
+      }
+    },
+    {
+      "run": "stream-cut-2",
+      "responseStatus": "200-empty-body",
+      "requestBytes": 51137,
+      "requestSha256": "b157d998a645c66d7c74e4cc64608b11b07b323fd8297909f2bf8b54b163b05f",
+      "model": "deepseek-flash",
+      "toolCount": 0,
+      "messageCount": 1,
+      "sessionLog": {
+        "fieldBytes": 45475,
+        "fieldSha256": "1abba5c006b964506bd08a7f98b344be64f2d775bc4f7c80e965d0bb1e9974f8",
+        "afterSeq": -1,
+        "throughSeq": 18,
+        "eventCount": 19,
+        "eventTypes": {
+          "user/message": 4,
+          "agent/inbox/spliced": 2,
+          "approval/policy": 2,
+          "permission/preset": 2,
+          "sandbox/mode": 2,
+          "request/context": 1,
+          "request/header": 1,
+          "session/title": 1,
+          "session/title-llm-request": 1,
+          "step/start": 1,
+          "system/message": 1,
+          "turn/start": 1
+        }
+      }
+    }
+  ]
+}

@@ -37,7 +37,11 @@ type SubjectInspection struct {
 	WorldFingerprint       string              `json:"worldFingerprint"`
 	SourceIndexFingerprint string              `json:"sourceIndexFingerprint"`
 	SourceStatus           string              `json:"sourceStatus"`
-	Sources                SubjectSources      `json:"sources"`
+	// Workspace names the Workspace this inspection was read from (#3181). The
+	// same Canonical ID may exist in several Workspaces with different meaning,
+	// and worldFingerprint identifies content, not the Workspace.
+	Workspace *workspace.WorkspaceIdentity `json:"workspace,omitempty"`
+	Sources   SubjectSources               `json:"sources"`
 }
 
 // InspectSubject reads one Workspace, then projects its already-normalized World
@@ -82,6 +86,7 @@ func InspectSubject(root string, subject sourceindex.Subject) (SubjectInspection
 	if len(sources.References) > 0 {
 		status = "indexed"
 	}
+	identity := loaded.Identity()
 	return SubjectInspection{
 		SchemaVersion:          "tei.operations.inspect/v0",
 		Effect:                 "read-only",
@@ -90,19 +95,27 @@ func InspectSubject(root string, subject sourceindex.Subject) (SubjectInspection
 		WorldFingerprint:       worldFP,
 		SourceIndexFingerprint: sourceFP,
 		SourceStatus:           status,
+		Workspace:              &identity,
 		Sources:                sources,
 	}, nil
 }
 
+// InspectionSubjectKinds is the closed set of subject kinds this read-only
+// surface resolves. It is exported so the CLI can advertise the same values it
+// accepts, instead of leaving callers to guess or read prose (#3242).
+var InspectionSubjectKinds = []string{
+	"semantic", "semantic-type", "semantic-data", "semantic-attribute", "semantic-relation",
+	"semantic-candidate-key", "semantic-functional-dependency", "semantic-capability", "semantic-validation",
+	"application", "application-pattern", "query",
+}
+
 func supportedInspectionKind(kind string) bool {
-	switch kind {
-	case "semantic", "semantic-type", "semantic-data", "semantic-attribute", "semantic-relation",
-		"semantic-candidate-key", "semantic-functional-dependency", "semantic-capability", "semantic-validation",
-		"application", "application-pattern", "query":
-		return true
-	default:
-		return false
+	for _, supported := range InspectionSubjectKinds {
+		if kind == supported {
+			return true
+		}
 	}
+	return false
 }
 
 // inspectCanonical works only with normalized IR objects; every candidate is

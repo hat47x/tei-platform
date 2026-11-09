@@ -1,0 +1,16 @@
+pattern order_entry.order_record record {
+    data sales.order
+    interaction {
+        item sales.order.order_id
+        item sales.order.customer_id lookup order_entry.customer_reference customer.customer.customer_id
+        command sales.submit_order {
+            input order sales.order.order_id
+        }
+        hook before-update {
+            reads sales.order.status
+            uses sales.submit_order
+            produces sales.order.customer_id
+            on-failure reject
+        }
+    }
+}

@@ -196,7 +196,7 @@ func TestCLIRechecksSavedProjectionAgainstSourceFiles(t *testing.T) {
 	}
 	// Compile and invoke the real CLI instead of only exercising its Go
 	// helper, so that the saved-output flag and public redaction are tested.
-	binary := filepath.Join(dir, "reference-xead-cross-view")
+	binary := filepath.Join(dir, cliBinaryName("reference-xead-cross-view"))
 	build := exec.Command("go", "build", "-o", binary, ".")
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build reference CLI: %v\n%s", err, output)

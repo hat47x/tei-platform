@@ -1,0 +1,5 @@
+direction=sideways	CLI rc=2 code=INVALID_ARGUMENT	MCP isError=True rpc=None code=INVALID_ARGUMENT
+direction=outgoing	CLI rc=0 code=None	MCP isError=None rpc=None code=None
+mode=verbose	CLI rc=2 code=INVALID_ARGUMENT	MCP isError=True rpc=None code=INVALID_ARGUMENT
+mode=full	CLI rc=0 code=None	MCP isError=None rpc=None code=None
+mode empty string	CLI rc=0 code=None	MCP isError=None rpc=-32602 code=mode must not be an empty string
