@@ -2,7 +2,7 @@
 
 - **状態**：研究・受入候補（未採用）。製品Schema、API、標準State Enum、共通Host、第二Source/Reader/Policy/Proof Registryを導入しない。
 - **固定基準main**：`3c8bebefef30a9407fef71c0e6a5a76680f46719`。本文はmain実装と別Draftの限定実証を区別する。実装現況の正本は[docs/status.md](../../docs/status.md)。
-- **既存の正本**：[複合図表・トポロジー設計](../design/TOPOLOGY_COMPOSITE_VIEWS_AND_PIPELINE_2026-10.md)、[統合研究（§10〜15）](TECH_RESEARCH_INTEGRATION_2026-10.md)、[三視点のSource・Reader対応](../design/THREE_VIEW_DIAGRAM_CROSS_REFERENCE_PROJECTION_2026-11.md)、[#1124 Studio](https://github.com/hat47x/tei-platform/issues/1124)、[#2497 写像の保存・編集逆写像](https://github.com/hat47x/tei-platform/issues/2497)、[#2516 現在の開示](https://github.com/hat47x/tei-platform/issues/2516)。他Ownerのテスト・図面/Source実装や未統合PRを本書に複製しない。
+- **既存の正本**：[複合図表・トポロジー設計](../design/TOPOLOGY_COMPOSITE_VIEWS_AND_PIPELINE_2026-10.md)、[統合研究（第10〜15節）](TECH_RESEARCH_INTEGRATION_2026-10.md)、[三視点のSource・Reader対応](../design/THREE_VIEW_DIAGRAM_CROSS_REFERENCE_PROJECTION_2026-11.md)、[#1124 Studio](https://github.com/hat47x/tei-platform/issues/1124)、[#2497 写像の保存・編集逆写像](https://github.com/hat47x/tei-platform/issues/2497)、[#2516 現在の開示](https://github.com/hat47x/tei-platform/issues/2516)。他Ownerのテスト・図面/Source実装や未統合PRを本書に複製しない。
 
 ## 1. 新たに判明した実証上の問題
 
