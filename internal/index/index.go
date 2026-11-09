@@ -314,6 +314,19 @@ func Build(w ir.World) Derived {
 			if c.Output != "" {
 				d.SemanticDependencies = append(d.SemanticDependencies, SemanticDependency{FromKind: "semantic-capability", From: c.ID, Relation: "output", ToKind: "semantic-element", To: c.Output})
 			}
+			// A capability's outcomes are business results it produces, and a
+			// later capability may take one as an input (security.authorize
+			// takes security.authenticated_subject, which
+			// security.authenticate declares as an outcome). Leaving them out of
+			// the derived graph made such a chain look like a consumer with no
+			// producer, and left an unresolvable outcome payload undetected
+			// (#3884). One relation per outcome keeps the DSL term.
+			for _, o := range c.Outcomes {
+				if o.Payload == "" {
+					continue
+				}
+				d.SemanticDependencies = append(d.SemanticDependencies, SemanticDependency{FromKind: "semantic-capability", From: c.ID, Relation: "outcome", ToKind: "semantic-element", To: o.Payload})
+			}
 		}
 	}
 	for _, a := range w.Applications {

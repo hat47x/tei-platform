@@ -849,3 +849,27 @@ ADR-0048 §2.4 の「既定値の適用は共通契約で定める」を、CLI �
 A は「根拠を辿れる」という #2620 の合格条件を満たしつつ指紋を変えない。B は本質的だが primitive 構文の設計・全指紋の移行・契約文書の更新を伴う。**どちらを選ぶかは #2620 の Owner の判断**であり、私は材料を提示するに留めた。
 
 **学び**: 「正しい方向の提案」でも、文法と指紋という2つの実装制約を確かめずに出すと実装できない。25ラウンドの提案は方向として正しかったが、前提を測っていなかった。
+
+## 33. 第28ラウンド（2026-11-09）: Capability の outcome が参照グラフに現れていなかった
+
+「CLI だけで設計の問いに答えられるか」を、実際の設計（認証→認可）で試した。生出力は[第28ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND28_CAPABILITY_OUTCOME_2026-11-09/README.md)にある。
+
+`reference/workspace/semantic/security/` は `security.authenticate` の outcome `authenticated security.authenticated_subject` を、`security.authorize` が input に取る設計である。ところが:
+
+| コマンド | 結果 |
+| --- | --- |
+| `inspect -subject-id security.authenticate` | `outcomes` に `authenticated` を返す |
+| `trace -subject-id security.authenticate` | `input` の2本だけ。outcome は出ない |
+| `trace -subject-id security.authenticated_subject -direction incoming` | `authorize` が input する1本だけ。**生産者が見えない** |
+
+読み手には「誰も作らないデータを authorize が要求している」ように見える。私も最初そう読んだ。
+
+原因は `internal/index/index.go` の派生処理が Capability の `input` と `output` の辺は作るのに **`outcome` の辺を作っていなかった**こと。`Capability.Outcomes` は IR にあり `inspect` も返しているのに、派生グラフに入っていなかった。
+
+修正後は `trace` が4本（outcome 2・input 2）を返し、`authenticated_subject` の incoming が2本（`authorize - input`・`authenticate - outcome`）になって**連鎖が両側から見える**。
+
+試験は `internal/index/capability_outcome_test.go` の2件。変異（派生を削る）で落ちることを確認した。
+
+**互換性**: `sourceIndexFingerprint` が変わる（Index の JSON に辺が増える）。`worldFingerprint` は不変。`trace` の `snapshotFingerprint` が変わるため保存済み継続トークンは失効する。これは正しい方向（以前は辺が欠けていた）。
+
+**残り**: outcome の名前（`authenticated` / `denied`）を辺に載せていない。現状は「どの capability がどの型を結果として生むか」だけを持ち、結末名は `inspect` の `canonical.outcomes` で見る。どちらが良いかは #3419 の判断。起票は [#3884](https://github.com/hat47x/tei-platform/issues/3884)。
