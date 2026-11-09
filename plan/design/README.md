@@ -35,6 +35,8 @@ Architecture文書の第二正本にもしません。`docs/architecture.md`が�
 
 ## 関連Reference / Evaluation
 
+- [DeepSeek Harnessのプラグイン構成とTEIへの適用研究](PLUGIN_COMPOSITION_HARNESS_RESEARCH_2026-10.md) — 契約・依存・登録の寿命・構成説明を既存のCapability / Semantic Extension / 案件構成の作業へ接続する比較研究
+- [プラグイン構成研究の追試と責務の整理](PLUGIN_COMPOSITION_CONVERGENCE_2026-10.md) — Capability Contractの既存試験、構成観測器、UI変更とDB接続変更を検証し、Productionへ引き継ぐ範囲と不足を整理した評価待ちの記録
 - [`../DESIGN_SYNTHESIS_ORDER_ENTRY_PROOF_REFERENCE_2026-09.md`](../DESIGN_SYNTHESIS_ORDER_ENTRY_PROOF_REFERENCE_2026-09.md) — Cross-view proof設計のP1〜P4を既存`order_entry`へ適用し、`supported / contradiction / unresolved`の実用性とauthority境界を確認するR1評価
 - [`../DESIGN_SYNTHESIS_MANUFACTURING_ACTUALITY_HANDOFF_PROOF_REFERENCE_2026-09.md`](../DESIGN_SYNTHESIS_MANUFACTURING_ACTUALITY_HANDOFF_PROOF_REFERENCE_2026-09.md) — Manufacturing / inventory pressureへP5 / P6を適用し、Command / Observation / actuality / Business acceptance / Handoffの非短絡を確認するR2 negative評価
 - [`../DESIGN_SYNTHESIS_CONTEXT_PACKET_PROOF_BOUNDARY_2026-09.md`](../DESIGN_SYNTHESIS_CONTEXT_PACKET_PROOF_BOUNDARY_2026-09.md) — R1 / R2のproof結果をbounded `DesignContextPacket`へ渡すときのauthority、candidate contraction、unresolved、LLM残余判断の境界を整理するR3評価
