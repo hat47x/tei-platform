@@ -321,6 +321,10 @@ func materialize(planPath, pluginPath, artifactOut, stateDir, intentPath string)
 // artifact digest (derived). Comparing those would call every correct build a
 // mismatch. The builder's identity and artifact digest are also not compared:
 // the declaration names a selection policy, not the exact builder.
+// Not compared: a source's locator and digest (the plan derives them from
+// bytes, the declaration names a reference) and a dependency's version and
+// artifact digest (derived). Comparing those would call every correct build a
+// mismatch.
 func compareIntentFields(intent buildintent.BuildIntent, plan plugin.BuildPlan) error {
 	// The declaration states a contract and a major; the plan states the
 	// resolved ContractVersion. Compare them through the rule the resolver uses.
