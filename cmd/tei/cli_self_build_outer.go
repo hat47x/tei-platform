@@ -318,6 +318,16 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 			return 2, fmt.Errorf("INVALID_ARGUMENT: -child-arg is not a JSON array of strings: %w", err)
 		}
 	}
+	// Three of the child's flags are this entry's own contract with it: the
+	// artifact path, the isolated state and the supply. A caller that repeats
+	// one of them in -child-arg would give the child two values for one thing,
+	// and which wins depends on the child's flag parser (Go takes the last,
+	// some take the first). Either way the record would describe one value
+	// while the child used another. Refusing is the same rule the read-only
+	// command allowlist applies to its own flags: no silent loss of intent.
+	if reserved := reservedChildFlagIn(childArgs); reserved != "" {
+		return 2, fmt.Errorf("INVALID_ARGUMENT: -child-arg must not set %s; this entry supplies it (pass child-specific arguments only)", reserved)
+	}
 	// §4.8 L2-a: this entry records the declaration bytes it holds. The bytes
 	// are hashed before anything starts, so a later change to the file cannot
 	// be mistaken for the declaration that was handed over.
@@ -435,6 +445,27 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 		return 1, nil
 	}
 	return 0, nil
+}
+
+// reservedChildFlags are the child flags this entry writes itself. A caller may
+// not override them through -child-arg.
+var reservedChildFlags = []string{"-artifact-out", "-state", "-supply"}
+
+// reservedChildFlagIn reports the first reserved flag present in the caller's
+// child arguments, including the -flag=value spelling, or "" when none is.
+func reservedChildFlagIn(childArgs []string) string {
+	for _, arg := range childArgs {
+		name := arg
+		if index := strings.IndexByte(name, '='); index >= 0 {
+			name = name[:index]
+		}
+		for _, reserved := range reservedChildFlags {
+			if name == reserved {
+				return reserved
+			}
+		}
+	}
+	return ""
 }
 
 func selfBuildOuterPrecondition(out io.Writer, report selfBuildOuterEvidence, message string) (int, error) {
