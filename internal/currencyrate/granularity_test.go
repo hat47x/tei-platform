@@ -122,6 +122,24 @@ func TestCheckDeclaredComparesTheDeclarationWithTheRows(t *testing.T) {
 	}
 }
 
+// TestResolveTableReconcilesTheDeclaration checks that ResolveTable compares the
+// declared granularity with the one the rows imply, and refuses a table that
+// contradicts itself.
+func TestResolveTableReconcilesTheDeclaration(t *testing.T) {
+	world := granularityWorld(true)
+	if _, err := currencyrate.ResolveTable(world, "fx.rate", granularityRows("monthly")); err != nil {
+		t.Fatalf("a matching declaration was refused: %v", err)
+	}
+	if _, err := currencyrate.ResolveTable(world, "fx.rate", granularityRows("annual")); err == nil {
+		t.Fatal("a declaration the rows contradict was accepted")
+	}
+	// The granularity value lives in the rows, so an empty table has none: the role
+	// names the column, not the value. An empty table is refused either way.
+	if _, err := currencyrate.ResolveTable(world, "fx.rate", nil); err == nil {
+		t.Fatal("an empty table was accepted")
+	}
+}
+
 // TestDeclaredGranularityMakesAnEmptyTableReadable checks the gap the role closes: a
 // table with no rows has no implied granularity, so only the declaration can say
 // what it holds.

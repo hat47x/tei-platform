@@ -42,6 +42,26 @@ type SubjectInspection struct {
 	// and worldFingerprint identifies content, not the Workspace.
 	Workspace *workspace.WorkspaceIdentity `json:"workspace,omitempty"`
 	Sources   SubjectSources               `json:"sources"`
+	// AuthorityLimits states what this answer does not grant. The inspection
+	// carries Source paths and reference counts, so a reader must not read the
+	// presence of a location as editability, acceptance, or an exposure
+	// permission (#1178). trace and catalog carry the same kind of statement.
+	AuthorityLimits []string `json:"authorityLimits"`
+}
+
+// InspectionAuthorityLimits is the fixed set of statements this read-only answer
+// makes about its own authority. It is a constant list, not a per-caller
+// decision: naming a Source location never grants write or acceptance authority,
+// and a local read is not permission to disclose the answer to another party
+// (#1178). An Authorization decision that narrows disclosure is a separate
+// question and is not claimed here.
+func InspectionAuthorityLimits() []string {
+	return []string{
+		"inspection-is-a-derived-read-only-projection",
+		"source-location-is-not-semantic-acceptance",
+		"source-location-is-not-write-authority",
+		"local-read-is-not-disclosure-permission",
+	}
 }
 
 // InspectSubject reads one Workspace, then projects its already-normalized World
@@ -97,6 +117,7 @@ func InspectSubject(root string, subject sourceindex.Subject) (SubjectInspection
 		SourceStatus:           status,
 		Workspace:              &identity,
 		Sources:                sources,
+		AuthorityLimits:        InspectionAuthorityLimits(),
 	}, nil
 }
 

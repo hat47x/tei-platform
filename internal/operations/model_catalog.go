@@ -124,23 +124,38 @@ func CatalogWorkspace(root, namespace string) (ModelCatalog, error) {
 	if namespace != strings.TrimSpace(namespace) {
 		return ModelCatalog{}, fmt.Errorf("namespace filter must be an exact ID")
 	}
+	catalog, _, err := catalogWorkspaceFiltered(root, namespace)
+	return catalog, err
+}
+
+// catalogWorkspaceWithWorld returns the unfiltered catalog together with the
+// World it was derived from, from one Workspace load. A caller that needs both
+// (model locate) must not load twice and risk two Source snapshots.
+func catalogWorkspaceWithWorld(root string) (ModelCatalog, ir.World, error) {
+	if strings.TrimSpace(root) == "" || root != strings.TrimSpace(root) {
+		return ModelCatalog{}, ir.World{}, fmt.Errorf("workspace path must be nonempty and exact")
+	}
+	return catalogWorkspaceFiltered(root, "")
+}
+
+func catalogWorkspaceFiltered(root, namespace string) (ModelCatalog, ir.World, error) {
 	loaded, err := workspace.Load(root)
 	if err != nil {
-		return ModelCatalog{}, &ValidationFailure{Stage: StageLoad, Err: err}
+		return ModelCatalog{}, ir.World{}, &ValidationFailure{Stage: StageLoad, Err: err}
 	}
 	idx, err := workspace.BuildSourceIndex(root, loaded)
 	if err != nil {
-		return ModelCatalog{}, &ValidationFailure{Stage: StageSourceIndex, Err: err}
+		return ModelCatalog{}, ir.World{}, &ValidationFailure{Stage: StageSourceIndex, Err: err}
 	}
 	worldFP, sourceFP, err := workspaceProjectionFingerprints(loaded.World, idx)
 	if err != nil {
-		return ModelCatalog{}, err
+		return ModelCatalog{}, ir.World{}, err
 	}
 	catalog := CatalogWorld(loaded.World, idx, namespace, worldFP, sourceFP)
 	identity := loaded.Identity()
 	catalog.Workspace = &identity
 	catalog.Validation = catalogValidation(loaded)
-	return catalog, nil
+	return catalog, loaded.World, nil
 }
 
 // catalogValidation applies validate's rule to the same loaded Workspace, so a

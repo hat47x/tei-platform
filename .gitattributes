@@ -212,5 +212,10 @@
 # Unknown vs refused output is hashed as raw bytes by its README.
 /plan/evidence/UNKNOWN_VS_REFUSED_2026-11-09/** -text
 
+# Oversize-event recovery observations are hashed as raw bytes.
+/plan/evidence/DSH_SESSION_LOG_OVERSIZE_RECOVERY_2026-11-10/** -text
 # Carrier guard refusal output is hashed as raw bytes by its README.
 /plan/evidence/CARRIER_GUARD_REFUSAL_2026-11-09/** -text
+
+# Selection digest boundary output is hashed as raw bytes by its README.
+/plan/evidence/SELECTION_DIGEST_BOUNDARY_2026-11-09/** -text

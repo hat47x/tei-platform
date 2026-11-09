@@ -1,4 +1,4 @@
-# catalogを書く場所は製品の外に置く（§4.31）
+# catalogを書く場所は製品の外に置く（§4.32）
 
 [#2831](https://github.com/hat47x/tei-platform/issues/2831) のSB-C0 §4.29は、catalogの7欄のうち**5欄に宣言面が無い**ことを示しました。本記録は「ではどこに書くか」を、**既存readerへの影響**という軸で測り、決めたことを記録します。
 
@@ -62,6 +62,6 @@ catalogは**データ**であり、entryはそれを**名指しされたもの�
 
 ## 参照
 
-- 設計：[`SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md`](../design/SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md) §4.31
+- 設計：[`SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md`](../design/SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md) §4.32
 - 欄の宣言面が無いこと：[`TEI_GO_SELF_BUILD_CATALOG_FIELD_PROVENANCE_2026-11-09.md`](TEI_GO_SELF_BUILD_CATALOG_FIELD_PROVENANCE_2026-11-09.md)
 - 出所の決定（K-3）：[同 §4.22](../design/SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md)

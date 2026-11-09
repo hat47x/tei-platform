@@ -15,6 +15,7 @@ import (
 // (`model catalog` vs `tei_model_catalog`).
 var cliCommandNameForTool = map[string]string{
 	"tei_model_catalog": "model catalog",
+	"tei_model_locate":  "model locate",
 	"tei_inspect":       "inspect",
 	"tei_trace":         "trace",
 	"tei_validate":      "validate",
@@ -26,6 +27,7 @@ var cliCommandNameForTool = map[string]string{
 // (ADR-0048 §2.6).
 var cliResponseSchemaForTool = map[string]string{
 	"tei_model_catalog": "tei.cli.model/v0",
+	"tei_model_locate":  "tei.cli.model-locate/v0",
 	"tei_inspect":       "tei.cli.inspect/v0",
 	"tei_trace":         "tei.cli.trace/v0",
 	"tei_validate":      "tei.cli.validate/v0",

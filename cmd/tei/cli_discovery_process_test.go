@@ -85,6 +85,8 @@ func discoveryProbeArgs(name string) []string {
 	switch name {
 	case "model catalog":
 		return []string{"model", "catalog"}
+	case "model locate":
+		return []string{"model", "locate"}
 	case "version":
 		return []string{"version", "-json"}
 	case "validate":

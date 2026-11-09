@@ -1313,7 +1313,59 @@ Claimの`boundary`文言を、**このホスト**から**観測した二つの�
 
 [記録](../evidence/TEI_GO_SELF_BUILD_INPROCESS_DEFAULT_EVIDENCE_2026-11-09.md)。`-rebuild-check`を**渡さずに**`l2b.claimed=true`になること、`-rebuild-check=false`で`unperformed`の理由が「呼び手が断った」に変わることを確かめた。
 
-### 4.31 catalogを書く場所は製品の外に置く（2026-11-09）
+### 4.31 `l2b.claimed`に必要なflagを実測で確かめる（2026-11-09）
+
+§7は`l2b.claimed`について「今は呼び手がin-processと`-rebuild-check`を明示する必要がある」と書いていた。**§4.30の後、後半が成り立たない。**
+
+#### 何が変わったか
+
+§4.30は「`-build-catalog`を渡した試行は、`-rebuild-check`を明示しなくても二回目のbuildを行う」と決めた。五条件の五つ目（再現）が**`-build-catalog`だけで満たされる**ことになる。
+
+#### 実測
+
+**`-build-catalog`のみ（`-rebuild-check`を渡さない）**
+
+| 項目 | 結果 |
+| --- | --- |
+| `artifactReproducibility.state` | **`reproduced`** |
+| `l2b.claimed` | **`true`** |
+| `l2b.unmet` | 空 |
+
+**`-rebuild-check=false`を明示**
+
+| 項目 | 結果 |
+| --- | --- |
+| `state` | `unperformed` |
+| 理由 | **`-rebuild-check=false`を名指し**（「渡されなかった」ではなく「呼び手が断った」） |
+| `l2b.claimed` | `false` |
+
+**断り方が区別されている。** 同じ`unperformed`でも、flagが無い場合と明示的に断った場合で理由文が違う。
+
+#### 記述の訂正
+
+| 旧 | 新 |
+| --- | --- |
+| in-process と`-rebuild-check`を明示する必要がある | **in-process経路を明示すれば足りる**（再現は§4.30が既定にした） |
+
+#### 残る問い
+
+**「何も渡さない試行」でclaimを立てるかは未決である。** 現在の状態は次のとおり。
+
+| 試行 | claim |
+| --- | --- |
+| 何も渡さない | 立たない（計画を導出しない） |
+| `-build-catalog`一式 | 立つ（五条件が揃えば） |
+| `-intent-resolver` | 立たない（entryが解釈しない） |
+| `-build-catalog` + `-rebuild-check=false` | 立たない（呼び手が断った） |
+
+**既定化には§4.29の「catalogを書く場所」の決定が前提になる。** 何も渡さない試行にcatalogを供給できなければ、その試行は計画を導出できず、claimも立てられない。
+
+#### この節がしていないこと
+
+- **§7の判断をしていない。** 記述の訂正と実測だけである。
+- 「既定でclaimを立てるべき」とは言っていない。§4.29の決定を待つ。
+
+### 4.32 catalogを書く場所は製品の外に置く（2026-11-09）
 
 §4.29は、catalogの7欄のうち5欄に**宣言面が無い**ことを示した。本節は「ではどこに書くか」を、**既存readerへの影響**という軸で決める。
 
@@ -1448,7 +1500,7 @@ catalogは**データ**であり、entryはそれを**名指しされたもの�
 - [x] L2-bのClaimを**回帰試験**にする（§4.24。参照catalogと参照builder childで五条件が揃うことを`cmd/tei`の試験で固定し、`go test ./...`経由で健康性確認に載る。[記録](../evidence/TEI_GO_SELF_BUILD_L2B_GATE_2026-11-09.md)）
 - [x] 二つのホスト（`linux/amd64`・`windows/amd64`）で同じ計画とartifactが出ることの実測（§4.26。[記録](../evidence/TEI_GO_SELF_BUILD_CROSS_OS_DIGESTS_2026-11-09.md)。`intentFingerprint`・`sourceClosure`・`planFingerprint`・`artifactDigest`の四つが一致し、L2-bのエンドツーエンド試験もWindowsでPASSした。**Go版も違う**）
 - [ ] `darwin`・`arm64`・別のGo版の組合せでの観測（§4.26の範囲外）
-- [ ] `l2b.claimed`を**既定の試行**で立てられるようにするか（今は呼び手がin-processと`-rebuild-check`を明示する必要がある。§4.23末尾）
+- [ ] `l2b.claimed`を**既定の試行**で立てられるようにするか。**呼び手が要るのはin-process経路（`-build-catalog`一式）だけで、`-rebuild-check`は§4.30が既定にした**（実測：`-build-catalog`のみで`claimed=true`・`-rebuild-check=false`で`false`。[記録](../evidence/TEI_GO_SELF_BUILD_L2B_DEFAULT_PREMISE_2026-11-09.md)）。残る問いは「何も渡さない試行」で立てるかであり、§4.29のcatalog決定が前提（§4.31）
 - [x] 宣言とplanの**build座標**（`outputKind`・`target`・`profile`）の照合（[#3652](https://github.com/hat47x/tei-platform/pull/3652)。childが三座標を一つずつ比べ、違えばartifactを書いた後にreportを出さずexit 1。[記録](../evidence/TEI_GO_SELF_BUILD_BUILD_COORDINATES_2026-11-09.md)）
 - [x] 宣言の他の欄のうち、planが同じ形で持つもの（`recipe`・`sources`・`dependencies`）の照合（[#3661](https://github.com/hat47x/tei-platform/pull/3661)。§4.17）
 - [x] `parameters`の照合（[#3664](https://github.com/hat47x/tei-platform/pull/3664)。測るとどちらの側も名前順ソートのみで値を変えないと分かったので、名前で突き合わせる。§4.18）
@@ -1457,8 +1509,8 @@ catalogは**データ**であり、entryはそれを**名指しされたもの�
 - [x] **欄ごとの照合をここで打ち切る**決定（§4.20。原因究明の道具として既存は残すが、これ以上足さない。残る段差は欄照合では埋まらない）
 - [x] 依存の更なる削減：**entryが計画側も独立に持つ**経路（[#3729](https://github.com/hat47x/tei-platform/pull/3729)）。lockの計画側はbuilderの申告を優先し、申告が無ければentryの再計算値を使う。どちらを使ったかを`planSideSource`で記録するので、弱い根拠を強い根拠と読ませない（[記録](../evidence/TEI_GO_SELF_BUILD_ENTRY_PLAN_SIDE_2026-11-09.md)）
 - [x] catalogの欄がどこで宣言されているかの実測（§4.29。7欄のうち**5欄にcatalog以外の宣言面が無く**、既存の宣言からは導出できないと分かった。[記録](../evidence/TEI_GO_SELF_BUILD_CATALOG_FIELD_PROVENANCE_2026-11-09.md)）
-- [x] catalogを**書く場所**の決定（§4.31。**製品の外**に置く。Workspaceもplugin構文も変えない。既存readerは未知のentryと未知の`formatVersion`を拒否するため、K-1・K-2は古いbinaryとの互換を壊す。K-3の読み方はそのままで、製品の契約を一つも変えない）
-- [ ] catalogを作る**ツール**の能力宣言の形式と、その実装（§4.31が残した未決）
+- [x] catalogを**書く場所**の決定（§4.32。**製品の外**に置く。Workspaceもplugin構文も変えない。既存readerは未知のentryと未知の`formatVersion`を拒否するため、K-1・K-2は古いbinaryとの互換を壊す。K-3の読み方はそのままで、製品の契約を一つも変えない）
+- [ ] catalogを作る**ツール**の能力宣言の形式と、その実装（§4.32が残した未決）
 - [ ] D-1（catalogの`scope`拡張）を採るかどうかの契約判断（採る場合のみ、catalogの広告と実応答の一致を照合へ載せる）
 
 **A-1（`gobuilder`移動）は採らないため、影響範囲の洗い出しは終了条件から外した。** 29ファイルの内訳は[記録](../evidence/TEI_GO_INTERNAL_RULE_AND_BUILDER_MOVE_2026-11-07.md)として残す。I-1は「採らない」から「I-1aとして着手」へ改めた（§4.13）。`ParseFixtureCatalog`（fixture catalog）は`tools/`に残す。

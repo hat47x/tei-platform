@@ -184,11 +184,25 @@ func TestJavaClassSetRestoreResolvesInnerClassFromRestoredDirectory(t *testing.T
 		t.Fatalf("verbose run failed: %v", err)
 	}
 	normalized := strings.ReplaceAll(stdout+stderr, "\\", "/")
-	normalizedIsolated := strings.ReplaceAll(isolated, "\\", "/")
 	if !strings.Contains(normalized, "Main$Input") {
 		t.Fatalf("class loading log does not mention the inner class: %s", stderr)
 	}
-	if !strings.Contains(normalized, normalizedIsolated) {
+	// The JVM prints the path it opened, which is not always the spelling this
+	// test handed it: on the Windows CI runner the temporary directory is a
+	// short name (C:\Users\RUNNER~1\...) that resolves to another spelling
+	// (#3783). Accept either spelling of the same directory.
+	spellings := []string{isolated}
+	if resolved, err := filepath.EvalSymlinks(isolated); err == nil && resolved != isolated {
+		spellings = append(spellings, resolved)
+	}
+	loadedFromRestored := false
+	for _, spelling := range spellings {
+		if strings.Contains(normalized, strings.ReplaceAll(spelling, "\\", "/")) {
+			loadedFromRestored = true
+			break
+		}
+	}
+	if !loadedFromRestored {
 		t.Fatalf("inner class was not loaded from the restored directory %q: %s", isolated, stderr)
 	}
 }
