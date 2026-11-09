@@ -716,3 +716,24 @@ ADR-0048 §2.4 の「既定値の適用は共通契約で定める」を、CLI �
 試験は `cmd/tei/cli_view_input_test.go` の2件。**両方向**の変異（条件を削る／過剰に厳しくする）を検出する。過剰に厳しくする方向を入れたのは、今回の誤診がまさにその方向だったため。
 
 **学び**: 依存関係を推測で書くと、既存の正しい用法を壊す。discovery の `"-input and -execute with -command"` は「両方とも `-command` に係る」と読むのが正しく、私は「`-input` と `-execute` が互いに係る」と読み違えた。`-execute` の実行経路そのものは未測定で、次に測るべき対象である。起票は [#3778](https://github.com/hat47x/tei-platform/issues/3778)。
+
+## 26. 第21ラウンド（2026-11-09）: view -execute の失敗符号が潰れていた
+
+20ラウンドまで `view` は引数までしか測っていなかった。`view -execute` は `writeFlags` を持つ唯一の実行経路で、最後の大きな未測定領域である。書込み先を `mktemp -d` の下に限定し、workspace は変えずに測った。生出力は[第21ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND21_VIEW_EXECUTE_2026-11-09/README.md)にある。
+
+**正常系と安全側は問題なかった。** 実行は `committed:true`・`persisted:false`・`durability:none`・`authorizationMode:"reference-allow-all"` を返し、`docs/status.md` の記載と一致。`-operation-log` が書けない場合は exit 1 `OPERATION_LOG_WRITE_FAILED`。失敗した実行は記録を書かず、lifecycle に拒否された実行は既存の記録を上書きしない。lifecycle は同じ command_id の再送を owner/generation が同じでも違っても拒否し、別 command_id は許可する（`internal/command/lifecycle.go` の設計どおり）。
+
+**見つけた欠陥**: 実行失敗の符号が潰れていた。
+
+| 呼出し | 修正前 | 修正後 |
+| --- | --- | --- |
+| 必須入力なし | `COMMAND_FAILED`（message に `INVALID_COMMAND_INPUT: ` が埋まる） | `INVALID_COMMAND_INPUT` |
+| 認可拒否 | `COMMAND_FAILED`（message に `COMMAND_UNAUTHORIZED: `） | `COMMAND_UNAUTHORIZED` |
+
+原因は `cmd/tei/cli_view.go` の `commandFailure` が `ExecutionError.Code` のうち3つだけを手書きで写し、`INVALID_COMMAND_INPUT` と `COMMAND_UNAUTHORIZED` が既定の `COMMAND_FAILED` に落ちていたこと。`ExecutionError.Error()` が `Code + ": " + Message` を返すため符号が message に混ざっていた。
+
+修正: `reportedExecutionCodes` の集合に既知の7符号を入れ、そこに在るものはそのまま `error.code` に出す。未知の符号は従来どおり `COMMAND_FAILED` に残す（契約の受け皿を消さない）。
+
+試験は `cmd/tei/cli_view_execute_code_test.go` の2件。変異（集合を元の3符号に戻す）で両方の失敗が検出されることを確認した。
+
+**未解決の論点**: `-operation-log` は同じパスへ2回書くと後の実行だけが残る（`os.WriteFile` の truncate）。文書に明示が無く、追記か上書きかは設計判断が要るため、今回は変更していない点を記録した。起票は [#3797](https://github.com/hat47x/tei-platform/issues/3797)。
