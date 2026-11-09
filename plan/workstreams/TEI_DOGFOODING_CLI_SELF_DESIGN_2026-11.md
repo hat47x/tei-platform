@@ -873,3 +873,39 @@ A は「根拠を辿れる」という #2620 の合格条件を満たしつつ�
 **互換性**: `sourceIndexFingerprint` が変わる（Index の JSON に辺が増える）。`worldFingerprint` は不変。`trace` の `snapshotFingerprint` が変わるため保存済み継続トークンは失効する。これは正しい方向（以前は辺が欠けていた）。
 
 **残り**: outcome の名前（`authenticated` / `denied`）を辺に載せていない。現状は「どの capability がどの型を結果として生むか」だけを持ち、結末名は `inspect` の `canonical.outcomes` で見る。どちらが良いかは #3419 の判断。起票は [#3884](https://github.com/hat47x/tei-platform/issues/3884)。
+
+## 34. 第30ラウンド（2026-11-09）: 設計の問いに CLI で答えられるかを確かめた（欠陥なし）
+
+前ラウンドで `trace` が capability の `outcome` を辺として扱うようになった。その効果を、**実際の設計の問い**で確かめた。生出力は[第30ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND30_DESIGN_QUESTIONS_2026-11-09/README.md)にある。
+
+| 問い | 答え |
+| --- | --- |
+| 認証→認可の連鎖は繋がっているか | **繋がっている**（`authenticate -outcome-> authenticated_subject` と `authorize -input-> authenticated_subject` が一致） |
+| 宙に浮いた参照はあるか | **無い**（宣言70件、未宣言を指す辺0件、全 subject で `unresolved=0`） |
+| 各入力に生産者が必要か | **必要ない**（入力はモデル外から来てよい。私の仮説は棄却） |
+| 未解決の outcome payload を検出するか | **検出する**（`validate` が `UNKNOWN_SEMANTIC_CAPABILITY_OUTCOME_PAYLOAD`、`trace` が `projectionUnresolved`） |
+
+**新しい欠陥は検出しなかった。** Q3 の仮説は私の誤り、Q4 は既存の仕組みが正しく報告していた。起票しない。
+
+ただし**語の衝突**を1つ記録した。`trace` は2種類の「未解決」を持つ。
+
+- `result.trace.unresolved` — 選択した subject に直接繋がる**行**のうち解決できなかった数
+- `result.projectionUnresolved` — グラフ全体を作る過程で**捨てた辺**の一覧
+
+`reference/workspace` は `unresolved=0` かつ `projectionUnresolved` が17件で、内側の数だけ見ると「未解決は無い」と結論してしまう。私は実際にそう読み違えた。欠陥ではない（情報は出ており `docs/getting-started.md:212` に説明もある）が、契約文書の `trace` 行に両者の違いを書く価値はある。**#3419 の範疇**として所感を残す。
+
+**このラウンドは「測って問題が無かった」ことの記録である。** ドッグフーディングは欠陥を出すためだけではなく、道具が設計の問いに答えられることを確かめるために行っている。
+
+## 35. 第31ラウンド（2026-11-09）: trace の行 issue のうち4つが CLI から到達不能だった
+
+第30ラウンドで私は `trace.unresolved` を `projectionUnresolved` と2回読み違えた。それが私の不注意か道具の構造かを切り分けた。生出力は[第31ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND31_TRACE_ISSUE_REACHABILITY_2026-11-09/README.md)にある。
+
+- `reference/workspace` の**全72 subject** で `trace -mode full` を実行し、`result.trace.unresolved` を集計すると **0件が72件**。同じ応答の `result.projectionUnresolved` は**全件で17**。
+- `summary` と `full` で `total`・`unresolved`・`projectionUnresolved` は一致（`4 / 0 / 17`）。差は mode ではなく**欄の意味**。
+- 行の `issue` は6種あるが、**4種は CLI 経路で起こらない**。`derivedbridge.FromIndex` が**投影した辺そのものから規則を作る**（`rule := modelref.Rule{...}; ruleSet[rule] = true`）ため、規則の欠落・空欄・重複が生じない。`invalid-target` は投影時に `projectionUnresolved` の `unmaterialized-to` へ落ちて行にならず、`ambiguous-source` は `validate` が `DUPLICATE_SEMANTIC_ELEMENT` で先に拒否する。
+
+起票は [#3906](https://github.com/hat47x/tei-platform/issues/3906)。3案（A: 欄の改名、B: 統合、C: 契約に明記）を示し **C を推奨**とした。
+
+実施: 契約文書 `plan/design/CLI_JSON_OUTPUT_CONTRACT_2026-10.md` に注記を追加。（1）2つの「未解決」の意味、（2）`reference/workspace` が 0 と 17 であること、（3）規則系 issue が起きない理由、（4）**未解決の判断は `projectionUnresolved` で行う**。再発防止として `cmd/tei/contract_unresolved_doc_test.go` がこれら4点を検査し、変異2種（案内文の削除・規則合成説明の削除）で落ちることを確認した。
+
+**残り**: `invalid-source` は到達させる方法を見つけられておらず、到達不能なら5種が死んだ診断になる。応答形の変更（案 A・B）は設計判断として #3906 に残す。

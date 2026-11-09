@@ -1,0 +1,9 @@
+trace.unresolved          counts ROWS of the selected subject that failed to resolve
+trace.projectionUnresolved lists EDGES dropped while building the whole graph
+
+They are different things with similar names. reference/workspace shows
+unresolved=0 while projectionUnresolved has 17 entries, so a reader who checks
+only the inner counter concludes "nothing unresolved".
+
+Not a defect (the information is present and documented), but a naming collision
+worth stating in the contract table for `trace` (#3419).

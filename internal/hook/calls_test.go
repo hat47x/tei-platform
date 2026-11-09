@@ -240,6 +240,53 @@ func TestBindInputsFromReadsOmitsAnUnreadParameter(t *testing.T) {
 	}
 }
 
+// TestBindInputsFromReadsFansOneAttributeToTwoParameters checks that one read
+// can feed more than one parameter: the declaration binds both "original" and
+// "copy" to sales.order.order_id, and one read supplies both.
+//
+// The binding is keyed by parameter name, not by attribute, so a second
+// parameter naming the same attribute is a second binding rather than a
+// duplicate to drop.
+func TestBindInputsFromReadsFansOneAttributeToTwoParameters(t *testing.T) {
+	world := callWorld("sales.submit_order")
+	pattern := recordPatternOf(world, "order_entry", "order_entry.order_record")
+	pattern.Interaction.Commands[0].Inputs = []application.CommandInputBinding{
+		{Name: "original", Attribute: "sales.order.order_id"},
+		{Name: "copy", Attribute: "sales.order.order_id"},
+	}
+	bound := hook.BindInputsFromReads(pattern, "sales.submit_order",
+		map[core.CanonicalID]string{"sales.order.order_id": "ORD-9"})
+	if bound["original"] != "ORD-9" {
+		t.Fatalf("original=%q bound=%+v", bound["original"], bound)
+	}
+	if bound["copy"] != "ORD-9" {
+		t.Fatalf("copy=%q bound=%+v", bound["copy"], bound)
+	}
+	if len(bound) != 2 {
+		t.Fatalf("bound=%+v", bound)
+	}
+}
+
+// TestBindInputsFromReadsKeepsTheFirstBindingForOneParameter checks the other
+// direction: the same parameter bound twice keeps the first declaration, so a
+// later binding does not silently replace an earlier one.
+func TestBindInputsFromReadsKeepsTheFirstBindingForOneParameter(t *testing.T) {
+	world := callWorld("sales.submit_order")
+	pattern := recordPatternOf(world, "order_entry", "order_entry.order_record")
+	pattern.Interaction.Commands[0].Inputs = []application.CommandInputBinding{
+		{Name: "order", Attribute: "sales.order.order_id"},
+		{Name: "order", Attribute: "sales.order.other"},
+	}
+	bound := hook.BindInputsFromReads(pattern, "sales.submit_order",
+		map[core.CanonicalID]string{
+			"sales.order.order_id": "ORD-1",
+			"sales.order.other":    "SHOULD-NOT-WIN",
+		})
+	if bound["order"] != "ORD-1" {
+		t.Fatalf("order=%q bound=%+v", bound["order"], bound)
+	}
+}
+
 // TestBindInputsFromReadsIgnoresAnotherCapability checks that bindings are read
 // only from the interaction command that names the capability being called.
 func TestBindInputsFromReadsIgnoresAnotherCapability(t *testing.T) {

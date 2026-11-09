@@ -1,0 +1,19 @@
+== where digest is compared ==
+internal/servicehost/service_carrier.go:106:		route.Selection.ArtifactDigest != lease.Binding.ArtifactDigest {
+internal/servicehost/service_carrier_test.go:207:		current.Service.Selection.ArtifactDigest != second.ArtifactDigest ||
+internal/servicehost/service_carrier_test.go:217:		old.Service.Selection.ArtifactDigest != first.ArtifactDigest ||
+internal/composition/cross_application_reuse_test.go:77:			if !artifactTrusted || b.ArtifactDigest != sharedArtifactDigest {
+internal/composition/cross_application_reuse_test.go:107:	if inFlightOrder.Binding.ArtifactDigest != inFlightRepair.Binding.ArtifactDigest ||
+
+== where scope is compared ==
+internal/composition/proposal.go:186:		if exists && p.Scope != req.Scope {
+internal/composition/selection.go:44:	if !ok || scope == "" || p.Scope != scope {
+internal/composition/selection.go:121:	if !ok || p.Scope != s.Scope || p.Offers != s.Contract ||
+
+== where registry epoch is compared ==
+internal/composition/coordinator.go:109:		if !selected.Contract.valid() || selected.Scope == "" || selected.Revision == 0 || selected.Epoch == 0 ||
+internal/composition/proposal_test.go:370:		if v.ProviderID != want[i] || v.Scope != "tenant-a" || v.Epoch == 0 {
+internal/composition/selection.go:117:	if s.Revision > r.snapshot.Revision || s.Epoch == 0 || r.epochs[s.ProviderID] != s.Epoch {
+
+== a Grant epoch anywhere in Go source ==
+  (none)

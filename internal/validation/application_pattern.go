@@ -707,6 +707,32 @@ func validateRecordPatternInteraction(
 				))
 			}
 			seenInputs[binding.Name] = true
+			parameterType, parameterOK := capabilityInputs[binding.Name]
+			// A binding joins an attribute to a capability parameter. Two
+			// failures are possible, and the more specific one is reported.
+			//
+			// A parameter whose type names a Data is fed by one of that Data's
+			// attributes. Binding another Data's attribute supplies a value of
+			// the wrong record, and nothing downstream inspects the record
+			// identity: the Command boundary checks the value's shape, not which
+			// Data it came from.
+			if parameterOK {
+				if _, namesData := semanticDataAttributes[parameterType]; namesData {
+					if _, attributeOfThatData := semanticDataAttributes[parameterType][binding.Attribute]; !attributeOfThatData {
+						out = append(out, errFor(
+							patternSubject,
+							"APPLICATION_PATTERN_INTERACTION_COMMAND_INPUT_DATA_MISMATCH",
+							"record pattern %s binds command %s input %s of data %s to attribute %s that is not an attribute of %s",
+							pattern.ID,
+							command.Capability,
+							binding.Name,
+							parameterType,
+							binding.Attribute,
+							parameterType,
+						))
+					}
+				}
+			}
 			attributeType, ok := dataAttributes[binding.Attribute]
 			if !ok {
 				out = append(out, errFor(
@@ -721,14 +747,12 @@ func validateRecordPatternInteraction(
 				))
 				continue
 			}
-			// A binding joins an attribute to a capability parameter. When both
-			// sides are primitives, a difference is a real defect: the bound
-			// value would reach the capability as a value of a type it does not
-			// declare. When either side names a Data rather than a primitive,
-			// the correspondence is not a type equality — a capability that
-			// takes `sales.order` is commonly bound to that data's identifier —
-			// so it is not compared here. That case is recorded as unresolved.
-			parameterType, parameterOK := capabilityInputs[binding.Name]
+			// When both sides are primitives, a difference is a real defect: the
+			// bound value would reach the capability as a value of a type it
+			// does not declare. When either side names a Data rather than a
+			// primitive, the correspondence is not a type equality — the
+			// Data-typed parameter case is handled above — so it is not
+			// compared here.
 			if parameterOK && bothPrimitive(semanticTypes, attributeType, parameterType) && !sameType(semanticTypes, attributeType, parameterType) {
 				out = append(out, errFor(
 					patternSubject,

@@ -537,6 +537,56 @@ Cacheへの再利用・更新可否は既存#3271のSource Observation/Derivatio
 **今回の更新状態**：既存実装の資格の再基準化と計画文書の整合修復であり、この変更による実Function→実DB Read、Memory Cacheの性能比較、外部AI受領、Adaptive Tuning、正式Owner意味受理は **NOT RUN / NOT ACCEPTED**。#1119のG0〜G4や別の受理Gateは変更しない。
 
 
+## 20. キャッシュ採用の経済性と更新境界：実Read後に判定する最小Policy（2026-11-09追補）
+
+§19のM1b→R0を最優先とし、実Read未成立のまま新たな最適化Runtime・固定Schema・計測サービスを設計しない。§17のCache正しさと§18のBenchmarkを、**「使えるCache」から「使う価値のあるCache」への判断**に接続する。下記の指標・計算は候補比較の分析票であり、TEIの正式DSL・SLO・公開APIではない。
+
+### 20.1 速度・正しさ・費用を同時に評価する
+
+単純な平均読取時間の近似は、Hit率を h、Hit時の全費用を H、Miss時の全費用を M として E[T] ≈ hH+(1-h)M と置ける。ただし H はlookup/serialization/authorization/revalidation、M はlookup失敗＋origin read＋materialization/putを含む。**同時実行、queue、tail latency、無効化・再取得、write amplification、外部egress、観測費用を含まない近似**であり、これだけでp95/p99やSLO達成を宣言しない。
+
+採用判断には少なくとも次の比較を残す。
+
+| 比較軸 | 最小の測定/見積り | 拒否・撤回条件 |
+| --- | --- | --- |
+| 正しさ・利用資格 | 同一Function/Query/Result Scope、独立Expected、Source/Rule/Provider revision、現在Grant | 不一致、未知依存をFreshと誤認、部分集合から不存在を断定 |
+| 利用者体感 | p50/p95/p99、first-result、cold/warm、concurrency、timeout率 | 平均改善でも事前Guardrailのtail退行 |
+| Origin負荷 | Query回数/行数/CPU、Pool wait、DB write latency、miss時のburst | Origin障害やCache停止で許容負荷を超過 |
+| Cacheの運用負担 | memory/size、eviction、write/refresh、storage/egress、Provider運用、観測overhead | Cacheなし・Request-localより費用対効果が悪い |
+| 変更と復旧 | invalidation遅延、競合、Provider再起動、rollback可能性 | 条件付Put/世代判定がないのに強い鮮度を要求 |
+
+**Cacheなしを正式な対照群として残す**。最初の実証はNo CacheとRequest-local/Memoryの一方式だけで、同じRead Cohortを比較する。複数Cache Backend、Adaptive TTL、Redis/S3/CDNは最初の実Readと正しさの成立条件ではない。Cache以外のBatch/Query Pushdown/Index改善が優れていればそちらを採る。
+
+### 20.2 更新の「通知」と「確定」を区別する
+
+Business ActionやDB更新を契機にCacheを失効させる場合、**Hook到達、Command ACK、DB commit、Cache invalidation、他Consumerの観測**は別の事実である。#1129/#1174のOperation/Effect、#3271のReuse Eligibility、#2582のClaim依存に接続し、以下の境界を確認する。
+
+1. 更新前・未確定・rollback・Effect unknownでは「DBの新しい確定値が存在する」と推測しない。先行失効による余分なMissは許容可能でも、確定していない値を新しいSnapshotとして公開しない。
+2. Commit成功が独立に観測できても、非同期失効通知の配送・全Cacheへの適用・Edge purge完了を自動的に証明しない。必要な鮮度を満たすReadでは、Source revision/世代の再検証や安全な直接Readを使う。
+3. Outbox/CDC/Event連携は**選択可能なProvider手段**とし、同期の業務不変条件を非同期通知だけへ移さない。CDC gap、遅延、重複、逆順、再起動時は受信済みイベントの有無をSource全体の完全性とみなさない。
+4. Eventからの再計算・再公開はResult Claimの正/負依存、Context epoch、Source Scope、Ownerの現在Grantを再評価する。NOT EXISTS/Top-N/LEFT JOIN/集計はinsert-only更新で済ませない。
+5. Cache invalidationは業務Actionの冪等化・Effect unknown回復の代替ではない。再試行の判断は既存Operation ID/Receiptの所有領域へ戻す。
+
+**例外を明示**：強い一貫性を保証するProviderの条件付Read/Writeやトランザクション内更新が独立に証明された用途では、上記の保守的Fallbackを縮小できる。ただし全Backendにその能力を仮定しない。
+
+### 20.3 観測の粒度と安全なコスト
+
+TEIのTyped Query/Function IDと外部ObservabilityのQuery Summaryは役割が違う。低Cardinalityの集計キーを優先し、実SQL原文、パラメータ、個人・Tenant・Principal IDをMetric labelに使わない。OpenTelemetryのDB Semantic Conventionsでは低Cardinalityの `db.query.summary` が推奨され、`db.query.text` と `db.query.parameter.<key>` には収集・秘匿・容量上の注意がある（外部参照： https://opentelemetry.io/docs/specs/semconv/db/database-spans/ ）。必要な詳細Traceは権限・期間・Samplingを限定し、観測OFFの通常Targetを正式な比較対象に残す。
+
+計測点は既存Provider/Host/TargetのObserver Bindingで足りるかを先に確認する。外部APMやOTel SDKは任意Adapterであり、収集器の停止・Exporter失敗・Span欠落を業務Read失敗や0msとしない。AIへ渡すPacketには集計Window、標本数、欠測、実Target/Provider、現在の開示資格を添える。実Traceの完全受領が未確認なら「提案候補」に留める。
+
+### 20.4 次に実行する独立反例（既存#1180 Scenarioへ追記候補／NOT RUN）
+
+| ID | 故障注入 | 独立Expected |
+| --- | --- | --- |
+| AT-33 | Hit率は高いがserialization・再検証・GC・egressが増え、p99と総費用が悪化 | 正しさが成立してもCache採用を拒否可能。No Cacheを残す |
+| AT-34 | 更新Hookがexecuted、DBはrollbackまたはEffect unknown、Cacheだけ失効/再生成 | Hook成功≠Commit、未確定値をFresh Snapshotにしない |
+| AT-35 | DB Commit後、Outbox/CDC失効通知が遅延・重複・欠落、Cache Hitが継続 | 通知受領≠全Cache失効。必要鮮度に応じ再検証/Read fallback |
+| AT-36 | 同じQuery Summaryに異なるTyped Query/Provider/Scopeが混在し、Metric labelにParameterを混入 | Summary統計は性能候補の探索に限定。業務同一性や現在Disclosureを推論せず、秘密・高Cardinalityを出さない |
+
+**Owner/順序**：AT-33は#3271/#1180/#565、AT-34/35は#1129/#1174/#3271/#2582、AT-36は#3262/#2516と既存Observer/Provider Contractに接続する。§19のT1/R0成立後にT2でAT-33〜35を評価し、T3/T4でAT-36と費用/実測比較を扱う。新Owner、中央Cache Manager、Telemetry Host、Hard Gateを作らない。
+
+**状態**：本節は現行mainの既存計画への設計追補のみ。AT-33〜36、R0実DB Read、Commit→Cache失効の実End-to-End、Cache性能・費用の実測、外部AI配送・自動最適化、Owner受理は **NOT RUN / NOT ACCEPTED**。
 ## 20. 最小Performance Experiment Protocol：改善の採否を再現可能にする（2026-11-09追補）
 
 §19のM1b→R0を優先する方針は維持する。本節は実Readが成立した後の**最初の比較実験の具体的な受入票**を定める。Cacheや新しいOptimizerを実装する前に、既存#1180 Scenario/Independent Expected、#2586実Read、#3271 Cache、#2600再利用、#565 Quality Envelopeへ既存の記録を渡す。公開CLI/APIや独立Benchmark Runnerの新設は決定しない。
@@ -589,7 +639,6 @@ Cache Bが性能改善しても、N+1除去、Query pushdown、Batch、Index、D
 本節は新しいP0やHard Gateを追加せず、§10/§19のT0〜T4の中で**一つの実験を完結させるためのチェックリスト**である。PluginのObserver/Strategy/Cache Providerは既存#951/#3278/#3271のBindingに置き、Targetに不要なRuntime Hopを作らない。AI Tuning Packetは独立Expectedと実測の説明を助けるが、採用/Owner意味受理の権限を持たない。
 
 **状態（2026-11-09）**：E0〜E4、W1〜W8の実Function/実DB比較、Cache/Origin障害負荷、実TargetのSLO達成、AI自動適用、正式Owner受理は **NOT RUN / NOT ACCEPTED**。§19の局所Hook/CI/Binding成果をこれらの実行証拠へ昇格しない。
-
 
 ## 21. DSH等の外部HarnessとAI性能チューニングを接続する最小契約（2026-11-09追補）
 
