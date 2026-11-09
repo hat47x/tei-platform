@@ -237,3 +237,4 @@
 - [必須引数の不足が3つの符号に分かれていた](TEI_DOGFOODING_ROUND17_FAILURE_CLASSIFICATION_2026-11-09/README.md)（#3733・#3420 CAPI-2b。`inspect`は`INVALID_SUBJECT`、`knowledge-*`は`KNOWLEDGE_BUILD_FAILED`、他は`INVALID_ARGUMENT`と分かれていた。11コマンドを`INVALID_ARGUMENT`に揃え、subject値の不正・不在・構築失敗は別の意味として残した）
 - [実装を直したあと文書が古い符号を主張していた](TEI_DOGFOODING_ROUND18_DOC_DRIFT_2026-11-09/README.md)（#3420・#3733。MCP AdapterのREADMEが「CLIはINVALID_SUBJECT」と書いたままだった。文書を実装に合わせ、散文の主張を`readme_claim_test.go`で固定。変異2種を検出）
 - [同じ壊れたplugin-lockが2コマンドで別の終了コードになっていた](TEI_DOGFOODING_ROUND19_PLUGIN_LOCK_CLASSIFICATION_2026-11-09/README.md)（#3765・#3420 CAPI-2b・#3184。`plugin-resolve`はexit 2、`plugin-runtime-plan`はexit 1と5種で食い違った。`LockMismatchError`を追加し両方`INVALID_PLUGIN_LOCK`へ。変異2種を検出）
+- [viewの-inputが-command無しで黙って捨てられていた](TEI_DOGFOODING_ROUND20_VIEW_INPUT_2026-11-09/README.md)（#3778・#3420。`-input`は`-command`と組だが、無い場合に値が捨てられて成功していた。両方向の変異を検出する試験を追加。起票時の誤診と既存試験による発覚も記録）
