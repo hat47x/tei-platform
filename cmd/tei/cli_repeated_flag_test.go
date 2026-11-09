@@ -53,7 +53,10 @@ func TestRepeatableFlagsAreStillAccepted(t *testing.T) {
 	}{
 		{"view", []string{"-workspace", "w", "-application", "a", "-input", "a=1", "-input", "b=2"}},
 		{"view", []string{"-workspace", "w", "-application", "a", "-allow-capability", "x", "-allow-capability", "y"}},
-		{"validate", []string{"-workspace", "w", "-analysis", "a", "-analysis", "b"}},
+		// validate does not read -analysis/-schema/-plan/-evidence; those belong to
+		// observed-index and deployment-*. A repeat of one of them is refused
+		// because validate does not accept the flag at all (#3956).
+		{"view", []string{"-workspace", "w", "-application", "a", "-input", "x=1", "-input", "y=2"}},
 	} {
 		if err := validateRepeatableArguments(tc.command, tc.args); err != nil {
 			t.Fatalf("%s: a repeatable flag was refused: %v", tc.command, err)
@@ -90,9 +93,10 @@ func TestCatalogueAdvertisesRepeatableFlags(t *testing.T) {
 	if !ok || !containsAll(view, "-input", "-allow-capability") {
 		t.Fatalf("view repeatable flags = %v", view)
 	}
-	validation, ok := found["validate"]
-	if !ok || !containsAll(validation, "-analysis", "-schema", "-plan", "-evidence") {
-		t.Fatalf("validate repeatable flags = %v", validation)
+	// validate advertises none: every flag it reads holds one value, and the
+	// repeatable list it used to carry named flags it refuses (#3956).
+	if validation, ok := found["validate"]; ok {
+		t.Fatalf("validate advertises repeatable flags %v but refuses them", validation)
 	}
 	// A command whose flags all hold one value advertises nothing.
 	for _, name := range []string{"inspect", "trace", "model catalog", "source-index"} {
