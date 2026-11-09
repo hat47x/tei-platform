@@ -296,3 +296,68 @@ func TestMapWorldDuplicateRelationIDDoesNotFirstWin(t *testing.T) {
 		t.Fatalf("expected two ambiguous parent links and one deduplicated ambiguous target link: contains=%d refers=%d", contains, refers)
 	}
 }
+
+
+// Typed navigation topology is derived from World declarations, whereas
+// Source provenance has its own revision. A source move or byte change
+// must not masquerade as a semantic graph edit (or preserve edit authority).
+func TestMapWorldSourceOnlyRevisionMustNotBeConfusedWithSemanticTopology(t *testing.T) {
+	world := ir.World{Semantics: []semantic.Namespace{{
+		ID: "sales",
+		Data: []semantic.Data{
+			{ID: "sales.order", Relations: []semantic.Relation{{
+				ID: "sales.order.lines", Target: "sales.line",
+			}}},
+			{ID: "sales.line"},
+		},
+	}}}
+	relation := sourceindex.Subject{Kind: "semantic-relation", ID: "sales.order.lines"}
+	mapFor := func(path string, bytes []byte) ModelMap {
+		t.Helper()
+		artifact, err := sourceindex.NewArtifact(path, bytes)
+		if err != nil {
+			t.Fatal(err)
+		}
+		idx := sourceindex.Index{
+			Artifacts: []sourceindex.Artifact{artifact},
+			References: []sourceindex.Reference{{
+				Subject: relation, ArtifactPath: artifact.Path, Role: sourceindex.RoleDefinition,
+			}},
+		}
+		worldFP, sourceFP, err := workspaceProjectionFingerprints(world, idx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return MapWorld(world, CatalogWorld(world, idx, "", worldFP, sourceFP))
+	}
+	a := mapFor("semantic/sales.tei", []byte("revision-a"))
+	moved := mapFor("semantic/moved-sales.tei", []byte("revision-a"))
+	changed := mapFor("semantic/sales.tei", []byte("revision-b"))
+	backToA := mapFor("semantic/sales.tei", []byte("revision-a"))
+	for name, other := range map[string]ModelMap{
+		"source-move": moved,
+		"source-byte-change": changed,
+	} {
+		if !reflect.DeepEqual(a.Links, other.Links) {
+			t.Fatalf("%s changed semantic topology without changing World: %+v", name, other.Links)
+		}
+		if a.Catalog.WorldFingerprint != other.Catalog.WorldFingerprint {
+			t.Fatalf("%s unexpectedly changed World fingerprint", name)
+		}
+		if a.Catalog.SourceIndexFingerprint == other.Catalog.SourceIndexFingerprint ||
+			a.Catalog.ModelRevision == other.Catalog.ModelRevision {
+			t.Fatalf("%s was hidden by the semantic graph fingerprint", name)
+		}
+	}
+	for _, entry := range moved.Catalog.Entries {
+		if entry.Subject == relation && entry.SourceStatus != "indexed" {
+			t.Fatalf("source move was incorrectly treated as no Source: %+v", entry)
+		}
+	}
+	if !reflect.DeepEqual(a, backToA) {
+		t.Fatal("same current Source/World after A-to-B-to-A should produce the same descriptive map")
+	}
+	// Identical current fingerprints after A->B->A are NOT evidence that
+	// B never existed. This projection is read-only and does not implement
+	// source-history retention, acceptance or edit authorization.
+}
