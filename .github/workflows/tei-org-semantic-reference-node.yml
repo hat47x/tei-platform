@@ -63,7 +63,8 @@ jobs:
             reference/org-semantic-views/verify-query-dependencies.mjs \
             reference/org-semantic-views/verify-succession.mjs \
             reference/org-semantic-views/verify-consumer-freshness.mjs \
-            reference/org-semantic-views/verify-field-observation.mjs; do
+            reference/org-semantic-views/verify-field-observation.mjs \
+            reference/org-semantic-views/verify-transition-simulation.mjs; do
             test -f "$file"
             printf 'blob=%s file=%s\n' "$(git hash-object "$file")" "$file"
           done
@@ -83,7 +84,8 @@ jobs:
             reference/org-semantic-views/verify-query-dependencies.mjs \
             reference/org-semantic-views/verify-succession.mjs \
             reference/org-semantic-views/verify-consumer-freshness.mjs \
-            reference/org-semantic-views/verify-field-observation.mjs
+            reference/org-semantic-views/verify-field-observation.mjs \
+            reference/org-semantic-views/verify-transition-simulation.mjs
 
       - name: Assert test workspace remains clean
         if: always()
