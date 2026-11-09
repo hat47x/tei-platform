@@ -165,8 +165,9 @@ func looksLikeOuterShape(args []string) bool {
 	return false
 }
 
-func parseSelfBuildOuterArgs(args []string) (selfBuildOuterArgs, error) {
-	var parsed selfBuildOuterArgs
+// newSelfBuildOuterFlagSet registers every flag this shape accepts. It is separate
+// from parsing so the help text and the parser cannot drift apart.
+func newSelfBuildOuterFlagSet(parsed *selfBuildOuterArgs) *flag.FlagSet {
 	fs := flag.NewFlagSet("self-build", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	fs.StringVar(&parsed.Workspace, "workspace", "", "TEI workspace that declares the build intent")
@@ -186,6 +187,12 @@ func parseSelfBuildOuterArgs(args []string) (selfBuildOuterArgs, error) {
 	fs.StringVar(&parsed.InProcess.CatalogPath, "build-catalog", "", "build catalog JSON the entry resolves against in process (§4.22)")
 	fs.StringVar(&parsed.InProcess.CatalogDigest, "build-catalog-digest", "", "sha256 digest of -build-catalog; required with it")
 	fs.StringVar(&parsed.InProcess.SourceRoot, "build-source-root", "", "root the declaration's source references resolve from; required with -build-catalog")
+	return fs
+}
+
+func parseSelfBuildOuterArgs(args []string) (selfBuildOuterArgs, error) {
+	var parsed selfBuildOuterArgs
+	fs := newSelfBuildOuterFlagSet(&parsed)
 	if err := fs.Parse(args); err != nil {
 		return selfBuildOuterArgs{}, err
 	}
