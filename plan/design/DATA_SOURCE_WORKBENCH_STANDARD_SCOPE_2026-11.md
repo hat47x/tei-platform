@@ -344,7 +344,7 @@ REAのT0原本観測→T1-A外部Evidence→T1-B正式TEI Source・意味受理�
 
 ### 21.1 同一OperationとMigration適用直前の競合窓
 
-採用済み[ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)により、読取、Schema Plan、DDL Applyは共通OperationとCLI/MCP/Studio Adapterを分離する。型付きInspector入口のDraft [#3381](https://github.com/hat47x/tei-platform/pull/3381)／[#3371](https://github.com/hat47x/tei-platform/pull/3371)は実Provider選択・Link/Invoke・現在Grantをまだ証明しない。
+採用済み[ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)により、読取、Schema Plan、DDL Applyは共通OperationとCLI/MCP/Studio Adapterを分離する。型付きInspectorは[main #3381](https://github.com/hat47x/tei-platform/pull/3381)と[main #3371](https://github.com/hat47x/tei-platform/pull/3371)へ統合され、[main #3540](https://github.com/hat47x/tei-platform/pull/3540)で通常CLI／Studio Hostから静的参照Providerを実呼出しするS2-referenceに達した。ただし外部Plugin/実Provider ArtifactのLink/Invoke、Current Grant、Function Data Contextを証明しない。
 
 DDL Plan→Applyでは、実DB Instance／Provider、Scope、Actual Schema Revision、Migration History、Grant、適用直前の世代を同じ対象で照合する。再検査・必要な競合制御を提供できなければ**安全に停止して再計画**する。履歴のpartial/unknown、別DBなのに同名、同じbyteだがA→B→A、ACK喪失をApplied／無条件Retryへ変換しない。詳細Ownerは[#2887](https://github.com/hat47x/tei-platform/pull/2887)のMA-11、[#2892](https://github.com/hat47x/tei-platform/issues/2892)のHIST負例、[#1163](https://github.com/hat47x/tei-platform/issues/1163)の実Target証拠であり、第二Migration Engineは作らない。
 
