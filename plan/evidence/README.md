@@ -284,3 +284,4 @@
 - [Capabilityのoutcomeが参照グラフに現れていなかった](TEI_DOGFOODING_ROUND28_CAPABILITY_OUTCOME_2026-11-09/README.md)（#3884・#3419。`inspect`はoutcomeを返すが`trace`は`input`/`output`だけを辺にし、authenticate→authorizeの連鎖が生産者不在に見えた。派生にoutcome辺を追加）
 - [`l2b.claimed`は`-build-catalog`だけで立つ](TEI_GO_SELF_BUILD_L2B_DEFAULT_PREMISE_2026-11-09.md)（§7は「in-processと`-rebuild-check`を明示する必要がある」と書いていたが、§4.30が後者を既定にした。実測：`-build-catalog`のみで`claimed=true`、`-rebuild-check=false`で`false`（理由が「断った」を名指し）。残る問いは「何も渡さない試行」で立てるか。§4.31で§7を訂正。 #2831）
 - [設計の問いにCLIで答えられるかを確かめた（欠陥なし）](TEI_DOGFOODING_ROUND30_DESIGN_QUESTIONS_2026-11-09/README.md)（#3419・#3884。outcome辺により認証→認可の連鎖が両側から見える。宙に浮いた参照0件。`trace.unresolved`（行）と`projectionUnresolved`（捨てた辺）の語の衝突を記録）
+- [traceの行issueのうち4つがCLIから到達不能だった](TEI_DOGFOODING_ROUND31_TRACE_ISSUE_REACHABILITY_2026-11-09/README.md)（#3906・#3419。72subjectすべてで`trace.unresolved`は0、実体は`projectionUnresolved`に17件。規則は投影した辺から作るため規則系issueは起きない。契約に明記し試験で固定）
