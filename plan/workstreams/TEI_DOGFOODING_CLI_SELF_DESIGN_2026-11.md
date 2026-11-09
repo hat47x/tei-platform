@@ -671,3 +671,14 @@ ADR-0048 §2.4 の「既定値の適用は共通契約で定める」を、CLI �
 試験は `cmd/tei/cli_failure_classification_test.go` の3件。既存の `TestCLIProcessJSONContract`・`TestResultEnvelopeCommandsJSONContract` を新しい符号へ更新した。`go test ./cmd/tei -count=1` は ok（121.1s）。
 
 **CLI と MCP の符号の統一（`INVALID_ARGUMENT` ⇔ `-32602`）は未着手**で #3420 に残る。今回揃えたのは CLI 内部の一貫性である。起票は [#3733](https://github.com/hat47x/tei-platform/issues/3733)。
+
+## 23. 第18ラウンド（2026-11-09）: 実装を直したあと文書が古い符号を主張していた
+
+第17ラウンドで「必須引数の不足」を `INVALID_ARGUMENT` に統一した。その変更が同じ規則を説明する他の文書と一致しているかを確かめた。生出力は[第18ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND18_DOC_DRIFT_2026-11-09/README.md)にある。
+
+- `main` `022c85bd9` の挙動は第17ラウンドの意図どおりだった（11コマンドが `INVALID_ARGUMENT`、`INVALID_SUBJECT`・`SUBJECT_NOT_FOUND`・`KNOWLEDGE_BUILD_FAILED` は据え置き）。
+- `tools/reference-mcp-readonly-adapter/README.md` の検証一覧が「必須引数の欠落は CLI では `INVALID_SUBJECT`」と**古い符号を主張していた**。コードと試験は `INVALID_ARGUMENT` に変わっており、第17ラウンドで私は試験だけを更新して散文を見落とした。
+- 文書を実装に合わせ、`readme_claim_test.go` で**散文の主張を実行可能な試験として固定**した。README を旧記述へ戻す変異と、主張を消す変異のどちらも検出する。
+- 並行して出ていた [PR #3755](https://github.com/hat47x/tei-platform/pull/3755) は同じ #3733 の別実装だった。私の #3749 が先に統合されて `CONFLICTING` になり、すでに別の作業者が閉じていた。
+
+**学び**: 符号や契約を変えるときは、コード・試験・同じ規則を説明する散文を同じ変更で直す。散文は試験で固定しないと、次の変更で同じようにずれる。

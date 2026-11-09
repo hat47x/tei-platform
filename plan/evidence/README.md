@@ -231,3 +231,4 @@
 
 - [entryが計画側の基準も自分で持つ](TEI_GO_SELF_BUILD_ENTRY_PLAN_SIDE_2026-11-09.md)（束縛の計画側がbuilder childの申告だけに依存していたのを、entryの再計算値へfallbackできるようにした。どちらを使ったかを`planSideSource`で記録し、弱い根拠を強い根拠と読ませない。builder優先の理由も明示。L2-bは未。 #2831）
 - [必須引数の不足が3つの符号に分かれていた](TEI_DOGFOODING_ROUND17_FAILURE_CLASSIFICATION_2026-11-09/README.md)（#3733・#3420 CAPI-2b。`inspect`は`INVALID_SUBJECT`、`knowledge-*`は`KNOWLEDGE_BUILD_FAILED`、他は`INVALID_ARGUMENT`と分かれていた。11コマンドを`INVALID_ARGUMENT`に揃え、subject値の不正・不在・構築失敗は別の意味として残した）
+- [実装を直したあと文書が古い符号を主張していた](TEI_DOGFOODING_ROUND18_DOC_DRIFT_2026-11-09/README.md)（#3420・#3733。MCP AdapterのREADMEが「CLIはINVALID_SUBJECT」と書いたままだった。文書を実装に合わせ、散文の主張を`readme_claim_test.go`で固定。変異2種を検出）
