@@ -1,0 +1,15 @@
+Building with only 0b85c031a and without my change:
+
+  validate -h -> 3 flags
+  world    -h -> 2 flags
+
+Building with both:
+
+  validate -h -> 3 flags
+  world    -h -> 2 flags
+
+Identical. My wantsHelp contributed nothing.
+
+requestedHelp is also stricter: it returns false once it meets "--", so a value
+that looks like -h after a positional argument is not treated as a help
+request. My slices.Contains version did not honour that.

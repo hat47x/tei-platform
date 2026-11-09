@@ -1,0 +1,10 @@
+Removed by 365789bd8:
+  cmd/tei/main.go            wantsHelp and the parseMode condition
+  cmd/tei/helpfilter_test.go the test I added
+
+Already present and kept:
+  cmd/tei/cli_commands.go    requestedHelp (0b85c031a)
+  cmd/tei/help_grammar_test.go  101 lines covering requestedHelp
+
+Verified on main after the revert: wantsHelp -> 0 occurrences,
+requestedHelp -> 1, helpfilter_test.go -> absent, help 3/2 unchanged.

@@ -1,0 +1,10 @@
+Two false claims I made and then corrected:
+
+1. Issue #3956 said "see plan/evidence/TEI_DOGFOODING_ROUND39_.../ and plan
+   section 43". Neither existed when I wrote it.
+2. The round-38 evidence documented wantsHelp as the fix. After the revert that
+   function no longer existed, so the record described code that is not there.
+
+Both corrected in round 40: this file supplies the missing record, and the
+round-38 file now states that my implementation was withdrawn and names
+0b85c031a as the real fix.

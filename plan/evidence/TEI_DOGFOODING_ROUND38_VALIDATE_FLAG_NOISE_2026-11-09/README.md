@@ -65,39 +65,28 @@ if command == "inspect" || command == "trace" || jsonValidationRequested || isRe
 | `trace` | 9 | `usage: tei trace [options]` |
 | `view` | 15 | `usage: tei view [options]` |
 
-## 4. 修正
+## 4. 修正（訂正: 私の実装は撤回された）
 
-「`-h` が要求されたら `ContinueOnError` にする」を1条件足した。
+**この節は当初、私が書いた `wantsHelp` による修正を記録していた。その実装は撤回された。実際にこの問題を直したのは別の作業者の `0b85c031a`（`requestedHelp` + `printHelp` 呼出し）である。** 経緯は[第39ラウンド](../TEI_DOGFOODING_ROUND39_DUPLICATE_HELP_FIX_2026-11-09/README.md)にある。
+
+現在の `main` で効いているのは次の1箇所だけ。
 
 ```go
-helpRequested := wantsHelp(os.Args[2:])
-parseMode := flag.ExitOnError
-if helpRequested || command == "inspect" || ... {
-	parseMode = flag.ContinueOnError
+// cmd/tei/main.go:246
+if parseMode == flag.ExitOnError && requestedHelp(os.Args[2:]) {
+	printHelp(os.Stdout, fs, command)
+	return
 }
 ```
 
-```go
-func wantsHelp(args []string) bool {
-	for _, arg := range args {
-		switch arg {
-		case "-h", "--h", "-help", "--help":
-			return true
-		}
-	}
-	return false
-}
-```
+`requestedHelp` は `--` を尊重する（`--` 以降は help と見なさない）ため、私が書いた `wantsHelp` より正しい。私の実装は動作に寄与しておらず、PR #3972 で削除した。
 
-`helpText` はそのまま。**新しい表示経路を作らず、既存の allow-list を使う経路に繋いだ。**
+### 4.1 結果（実装者によらず同じ）
 
-### 4.1 修正後
-
-| コマンド | 修正前 | 修正後 |
+| コマンド | 修正前 | 現在 |
 | --- | --- | --- |
 | `validate` | 70 | **3** |
 | `world` | 70 | **2** |
-| `inspect` | 3 | 3（不変） |
 
 ```text
 $ tei validate -h
@@ -110,11 +99,11 @@ usage: tei validate [options]
     	normalized M0 IR JSON
 ```
 
-## 5. 追加した試験
+## 5. 試験（訂正）
 
-`cmd/tei/helpfilter_test.go` の `TestHelpListsOnlyTheFlagsTheCommandReads`。`validate` と `world` について、`-h` の出力が `usage: tei <command>` で始まり、列挙されたフラグ数が allow-list と一致し、allow-list 外が1つも無いことを実バイナリで検査する。
+私が追加した `cmd/tei/helpfilter_test.go` も撤回した。`cmd/tei/help_grammar_test.go` が同じ `requestedHelp` を101行で検査しており、重複だったため。
 
-変異（`wantsHelp` を常に `false` にする）で両方のサブテストが落ちることを確認した。
+現在の検査は `help_grammar_test.go` の `TestRequestedHelp*`（`requestedHelp` の真偽表）と `cli_commands_test.go` の `TestAcceptedCommandsMatchDispatch`（dispatch と広告の一致）である。
 
 ## 6. 途中で捨てた実装（記録）
 
