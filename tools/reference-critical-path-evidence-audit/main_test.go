@@ -21,7 +21,7 @@ func fixture() Packet {
 		Qualification: Qualification{Head: h, Main: m, FullHealth: "PASS", CleanBefore: true, CleanAfter: true, Receipt: "local/health.log"},
 		Acceptance:    Acceptance{R0: "sha256:" + strings.Repeat("0", 64), R1: "sha256:" + strings.Repeat("1", 64), CandidateFingerprint: "sha256:" + strings.Repeat("2", 64), ReviewFingerprint: "sha256:" + strings.Repeat("3", 64), ReviewCandidateFingerprint: "sha256:" + strings.Repeat("2", 64), DecisionReceipt: "local/accept.json", ReloadReceipt: "local/reload.json", Delta: []string{"add-application-validation-use", "add-validation"}},
 		Web:           Web{AcceptedRevision: "sha256:" + strings.Repeat("1", 64), Application: "order_entry", Target: "web", SelectedValidation: "sales.order_line.unit_price_positive", NegativeValidation: "sales.order_line.unit_price_positive", NegativeEvidenceMode: "running-server", ProviderKind: "actual-db", RunMode: "running-server", WorkspaceRevisionReceipt: "local/r1-web-workspace.json", TargetLaunchReceipt: "local/target-launch.json", PositiveReceipt: "local/positive.json", NegativeReceipt: "local/negative.json", UnobservedControlReceipt: "local/n11.json"},
-		Physical:      Physical{AcceptedRevision: "sha256:" + strings.Repeat("1", 64), Datasource: "db-orders", SchemaCompatibility: "compatible", SchemaEvidence: "local/schema.json", HostAuthorityEvidence: "local/host.json", CommandReceipt: "local/write.json", IndependentReadReceipt: "local/read.json", RecordID: "o-1", SchemaFailureControl: "local/s02.json", HostFailureControl: "local/s05.json"},
+		Physical:      Physical{AcceptedRevision: "sha256:" + strings.Repeat("1", 64), Datasource: "db-orders", SchemaCompatibility: "compatible", SchemaEvidence: "local/schema.json", HostAuthorityEvidence: "local/host.json", HostAuthorityProvenance: "real-pg", Guarantee: &Guarantee{Level: "atomic-with-commit", Reason: "declared by the Provider"}, CommandReceipt: "local/write.json", IndependentReadReceipt: "local/read.json", RecordID: "o-1", SchemaFailureControl: "local/s02.json", HostFailureControl: "local/s05.json"},
 	}
 }
 func has(r Report, s string) bool {
@@ -32,13 +32,127 @@ func has(r Report, s string) bool {
 	}
 	return false
 }
+
+// reviewableExceptKind reports whether an E2 packet is complete in every
+// respect except that it names no acceptanceKind. No path issues a formal
+// Acceptance yet, so an E2 packet can no longer reach REVIEW_REQUIRED: it is
+// either missing the kind (E2_ACCEPTANCE_KIND_REQUIRED) or declares a kind that
+// is provisional/unspecified/unrecognized. Tests about other diagnostics use this
+// to assert that nothing else is wrong.
+func reviewableExceptKind(r Report) bool {
+	return r.Status == "INCOMPLETE" && r.ProductGate == "UNQUALIFIED" &&
+		len(r.Diagnostics) == 1 && r.Diagnostics[0] == "E2_ACCEPTANCE_KIND_REQUIRED"
+}
 func TestCompletePacketNeverGrantsProductGate(t *testing.T) {
+	// E1 keeps the legacy shape and still reaches review.
 	p := fixture()
-	result := Audit(p, h, m)
-	if result.Status != "REVIEW_REQUIRED" || result.ProductGate != "UNQUALIFIED" || len(result.Diagnostics) > 0 {
+	p.Claim = "E1"
+	if result := Audit(p, h, m); result.Status != "REVIEW_REQUIRED" || result.ProductGate != "UNQUALIFIED" || len(result.Diagnostics) > 0 {
+		t.Fatalf("%+v", result)
+	}
+	// E2 without acceptanceKind is incomplete (D9 follow-up).
+	if result := Audit(fixture(), h, m); !reviewableExceptKind(result) {
 		t.Fatalf("%+v", result)
 	}
 }
+func TestProvisionalGrantProvenanceIsNeverG2Evidence(t *testing.T) {
+	for _, label := range []string{"provisional-grant", " Provisional-Grant\t"} {
+		for _, claim := range []string{"E0", "E1", "E2"} {
+			p := fixture()
+			p.Claim = claim
+			p.Physical.HostAuthorityProvenance = label
+			r := Audit(p, h, m)
+			if !has(r, "PROVISIONAL_GRANT_NOT_G2_EVIDENCE") || r.Status != "INCOMPLETE" || r.ProductGate != "UNQUALIFIED" {
+				t.Fatalf("%s %q: %+v", claim, label, r)
+			}
+		}
+	}
+	// Other or absent labels are unchanged: the complete fixture still reaches review.
+	p := fixture()
+	p.Physical.HostAuthorityProvenance = "real-pg"
+	if r := Audit(p, h, m); !reviewableExceptKind(r) || has(r, "PROVISIONAL_GRANT_NOT_G2_EVIDENCE") {
+		t.Fatalf("%+v", r)
+	}
+	// The label is accepted by the strict packet decoder.
+	raw, _ := json.Marshal(func() Packet { p := fixture(); p.Physical.HostAuthorityProvenance = "provisional-grant"; return p }())
+	path := filepath.Join(t.TempDir(), "p.json")
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := run([]string{"-packet", path, "-head", h, "-main", m}, &out); err == nil || !strings.Contains(out.String(), "PROVISIONAL_GRANT_NOT_G2_EVIDENCE") {
+		t.Fatalf("err=%v out=%s", err, out.String())
+	}
+}
+
+func TestE2MustDeclareAKnownHostAuthorityProvenance(t *testing.T) {
+	const wantProvisional, wantRequired = "PROVISIONAL_GRANT_NOT_G2_EVIDENCE", "E2_HOST_AUTHORITY_PROVENANCE_REQUIRED"
+	zeroWidth, bidi, bom, nl := string(rune(0x200b)), string(rune(0x202e)), string(rune(0xfeff)), string(rune(10))
+	for label, want := range map[string]string{
+		"":                                   wantRequired, // omitted
+		"provisional_grant":                  wantProvisional,
+		"Provisional-Grant":                  wantProvisional,
+		"PROVISIONAL GRANT":                  wantProvisional,
+		"provisional-grant" + zeroWidth:      wantProvisional,
+		"prov" + zeroWidth + "isional-grant": wantProvisional,
+		"provisional" + bidi + "-grant":      wantProvisional,
+		bom + "provisional-grant":            wantProvisional,
+		"provisional-grant" + nl:             wantProvisional,
+		"Real-PG":                            wantRequired, // case matters for an allowed label
+		"real_pg":                            wantRequired,
+		"real-pg ":                           wantRequired,
+		"real" + zeroWidth + "-pg":           wantRequired,
+		"unspecified":                        wantRequired,
+		"host-authority":                     wantRequired,
+		"some-new-provisionalish-ok":         wantRequired,
+	} {
+		p := fixture()
+		p.Physical.HostAuthorityProvenance = label
+		r := Audit(p, h, m)
+		if !has(r, want) || r.Status != "INCOMPLETE" || r.ProductGate != "UNQUALIFIED" {
+			t.Fatalf("%q: want %s, got %+v", label, want, r)
+		}
+		if want == wantProvisional && has(r, wantRequired) {
+			t.Fatalf("%q: provisional must not also be reported as merely unknown: %+v", label, r)
+		}
+	}
+	for _, label := range []string{"real-pg", "synthetic"} {
+		p := fixture()
+		p.Physical.HostAuthorityProvenance = label
+		if r := Audit(p, h, m); !reviewableExceptKind(r) {
+			t.Fatalf("%q: %+v", label, r)
+		}
+	}
+	// The requirement is for E2 only; E1 packets do not carry Physical evidence.
+	p := fixture()
+	p.Claim = "E1"
+	p.Web.ProviderKind = "synthetic"
+	p.Physical = Physical{}
+	if r := Audit(p, h, m); r.Status != "REVIEW_REQUIRED" || has(r, "E2_HOST_AUTHORITY_PROVENANCE_REQUIRED") {
+		t.Fatalf("%+v", r)
+	}
+}
+
+// Documents a known limit: a look-alike label that uses a different script
+// (here Cyrillic o) is NOT folded to provisional-grant. E2 refuses it as an
+// unknown label; E0/E1 do not read Physical evidence, so nothing is reported.
+// The audit is not a defence against a packet author who disguises the label.
+func TestHomoglyphProvisionalLabelIsOnlyCaughtByTheE2AllowList(t *testing.T) {
+	label := "pr" + string(rune(0x043e)) + "visional-grant"
+	for claim, wantRequired := range map[string]bool{"E2": true, "E1": false, "E0": false} {
+		p := fixture()
+		p.Claim = claim
+		p.Physical.HostAuthorityProvenance = label
+		r := Audit(p, h, m)
+		if has(r, "PROVISIONAL_GRANT_NOT_G2_EVIDENCE") {
+			t.Fatalf("%s: a different-script look-alike must not be folded: %+v", claim, r)
+		}
+		if has(r, "E2_HOST_AUTHORITY_PROVENANCE_REQUIRED") != wantRequired {
+			t.Fatalf("%s: E2_HOST_AUTHORITY_PROVENANCE_REQUIRED=%v expected, got %+v", claim, wantRequired, r)
+		}
+	}
+}
+
 func TestReviewCandidateBindingMustMatchAcceptedCandidate(t *testing.T) {
 	p := fixture()
 	p.Claim = "E1"
@@ -89,8 +203,25 @@ func TestSyntheticWebCannotClaimE2(t *testing.T) {
 	p := fixture()
 	p.Web.ProviderKind = "synthetic"
 	result := Audit(p, h, m)
-	if !has(result, "SYNTHETIC_WEB_PROVIDER_CANNOT_CLAIM_E2") || result.Status != "INCOMPLETE" {
+	want := []string{"E2_ACCEPTANCE_KIND_REQUIRED", "SYNTHETIC_WEB_PROVIDER_CANNOT_CLAIM_E2"}
+	if !reflect.DeepEqual(result.Diagnostics, want) || result.Status != "INCOMPLETE" {
 		t.Fatalf("%+v", result)
+	}
+}
+
+// An empty or unknown providerKind names no Provider at all. It is reported
+// as unresolved, and must not also be labeled "synthetic": that diagnosis is
+// false when the packet never declared a synthetic Provider. Either way the
+// packet stays INCOMPLETE.
+func TestUnresolvedWebProviderKindIsNotLabeledSynthetic(t *testing.T) {
+	for _, kind := range []string{"", "synthetic-db", "odbc", " actual-db "} {
+		p := fixture()
+		p.Web.ProviderKind = kind
+		result := Audit(p, h, m)
+		if has(result, "SYNTHETIC_WEB_PROVIDER_CANNOT_CLAIM_E2") ||
+			!has(result, "WEB_PROVIDER_KIND_UNRESOLVED") || result.Status != "INCOMPLETE" {
+			t.Fatalf("%q: %+v", kind, result)
+		}
 	}
 }
 func TestE1WithSyntheticWebIsOnlyReviewable(t *testing.T) {
@@ -376,6 +507,38 @@ func TestClaimedE1E2RejectsSourceOnlyEvidenceClass(t *testing.T) {
 	}
 }
 
+// E1/E2 require actual-observed. An empty or unknown class is the same class
+// defect as source-only for those claims: one diagnosis, not also the E0
+// "contract or test missing" report. E0 keeps the class-validity diagnosis,
+// and E1/E2 still report genuinely missing contract fields.
+func TestClaimedE1E2EmptyEvidenceClassHasOneDiagnosis(t *testing.T) {
+	for _, tier := range []string{"E1", "E2"} {
+		for _, class := range []string{"", "bogus"} {
+			p := fixture()
+			p.Claim = tier
+			p.Contract.EvidenceClass = class
+			r := Audit(p, h, m)
+			if !has(r, "E1_E2_ACTUAL_EXECUTION_CLASS_REQUIRED") ||
+				has(r, "E0_CONTRACT_OR_POSITIVE_NEGATIVE_TEST_MISSING") ||
+				r.Status != "INCOMPLETE" {
+				t.Fatalf("%s %q: %+v", tier, class, r)
+			}
+		}
+	}
+	p := fixture()
+	p.Claim = "E0"
+	p.Contract.EvidenceClass = ""
+	if r := Audit(p, h, m); !has(r, "E0_CONTRACT_OR_POSITIVE_NEGATIVE_TEST_MISSING") {
+		t.Fatalf("E0 lost the invalid-class diagnosis: %+v", r)
+	}
+	p = fixture()
+	p.Claim = "E1"
+	p.Contract.ProducerPath = ""
+	if r := Audit(p, h, m); !has(r, "E0_CONTRACT_OR_POSITIVE_NEGATIVE_TEST_MISSING") {
+		t.Fatalf("E1 lost the missing-contract-field diagnosis: %+v", r)
+	}
+}
+
 func TestStrictInputRejectsDuplicateKeysAndInvalidUTF8(t *testing.T) {
 	p := fixture()
 	b, err := json.Marshal(p)
@@ -403,7 +566,9 @@ func TestStrictInputRejectsDuplicateKeysAndInvalidUTF8(t *testing.T) {
 }
 
 func TestStrictInputCannotHideTrailingBytesAfterOneMiBLimit(t *testing.T) {
-	b, err := json.Marshal(fixture())
+	e1 := fixture()
+	e1.Claim = "E1" // no E2 packet can reach REVIEW_REQUIRED without a formal Acceptance kind
+	b, err := json.Marshal(e1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -429,7 +594,9 @@ func TestJSONDepthBoundRejectsPathologicalInput(t *testing.T) {
 }
 
 func TestCLIReviewRequiredRemainsUnqualified(t *testing.T) {
-	b, err := json.Marshal(fixture())
+	e1 := fixture()
+	e1.Claim = "E1" // no E2 packet can reach REVIEW_REQUIRED without a formal Acceptance kind
+	b, err := json.Marshal(e1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -534,5 +701,202 @@ func TestStrictJSONUnicodeFoldedAliasRejected(t *testing.T) {
 	}
 	if err := rejectDuplicateJSONKeys([]byte(`{"Key":1,"key":2}`)); err == nil {
 		t.Fatal("Unicode folded key shadowing was accepted")
+	}
+}
+
+func TestProvisionalAcceptanceIsNeverFormalEvidence(t *testing.T) {
+	zeroWidth, bidi, nl := string(rune(0x200b)), string(rune(0x202e)), string(rune(10))
+	for _, label := range []string{"provisional", "Provisional", " PROVISIONAL" + "	", "prov" + zeroWidth + "isional", "provisional" + bidi, "unspecified", "Unspecified" + nl, "UNSPECIFIED"} {
+		for _, claim := range []string{"E0", "E1", "E2"} {
+			p := fixture()
+			p.Claim = claim
+			p.Acceptance.AcceptanceKind = label
+			r := Audit(p, h, m)
+			if !has(r, "PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE") || r.Status != "INCOMPLETE" || r.ProductGate != "UNQUALIFIED" {
+				t.Fatalf("%s %q: %+v", claim, label, r)
+			}
+		}
+	}
+	for _, label := range []string{"formal", "Formal", "formal ", "provisional2", "x"} {
+		p := fixture()
+		p.Acceptance.AcceptanceKind = label
+		if r := Audit(p, h, m); !has(r, "ACCEPTANCE_KIND_UNRECOGNIZED") || r.Status != "INCOMPLETE" {
+			t.Fatalf("%q: %+v", label, r)
+		}
+	}
+	// Omitted (legacy packet): E0/E1 stay reviewable; E2 is incomplete.
+	for _, claim := range []string{"E0", "E1"} {
+		p := fixture()
+		p.Claim = claim
+		if r := Audit(p, h, m); r.Status != "REVIEW_REQUIRED" || r.ProductGate != "UNQUALIFIED" || has(r, "E2_ACCEPTANCE_KIND_REQUIRED") {
+			t.Fatalf("%s: %+v", claim, r)
+		}
+	}
+	// The strict packet decoder accepts the field and the CLI still fails.
+	raw, _ := json.Marshal(func() Packet { p := fixture(); p.Acceptance.AcceptanceKind = "provisional"; return p }())
+	path := filepath.Join(t.TempDir(), "p.json")
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := run([]string{"-packet", path, "-head", h, "-main", m}, &out); err == nil || !strings.Contains(out.String(), "PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE") {
+		t.Fatalf("err=%v out=%s", err, out.String())
+	}
+}
+
+func TestE2ProviderGuaranteeMustBeAtomicWithCommit(t *testing.T) {
+	const want = "E2_PROVIDER_GUARANTEE_NOT_ATOMIC"
+	zeroWidth := string(rune(0x200b))
+	for name, g := range map[string]*Guarantee{
+		"omitted":         nil,
+		"undeclared":      {Level: "undeclared"},
+		"not-atomic":      {Level: "not-atomic", Reason: "x"},
+		"empty":           {},
+		"unknown":         {Level: "exactly-once"},
+		"case":            {Level: "Atomic-With-Commit"},
+		"underscore":      {Level: "atomic_with_commit"},
+		"trailing space":  {Level: "atomic-with-commit "},
+		"zero width":      {Level: "atomic-with-" + zeroWidth + "commit"},
+		"provisional lvl": {Level: "provisional-atomic"},
+	} {
+		p := fixture()
+		p.Physical.Guarantee = g
+		r := Audit(p, h, m)
+		if !has(r, want) || r.Status != "INCOMPLETE" || r.ProductGate != "UNQUALIFIED" {
+			t.Fatalf("%s: %+v", name, r)
+		}
+	}
+	// E0/E1 packets without the field are unchanged.
+	for _, claim := range []string{"E0", "E1"} {
+		p := fixture()
+		p.Claim = claim
+		p.Web.ProviderKind = "synthetic"
+		p.Physical = Physical{}
+		if r := Audit(p, h, m); has(r, want) || has(r, "PROVISIONAL_GUARANTEE_NOT_G2_EVIDENCE") {
+			t.Fatalf("%s: %+v", claim, r)
+		}
+	}
+}
+
+func TestProvisionalGuaranteeIsNeverG2Evidence(t *testing.T) {
+	const want = "PROVISIONAL_GUARANTEE_NOT_G2_EVIDENCE"
+	zeroWidth, bidi, nl := string(rune(0x200b)), string(rune(0x202e)), string(rune(10))
+	reasons := []string{"provisional D10: unverified", "Provisional", " PROVISIONAL	", "provisional_d10", "PROVISIONAL-D10",
+		"prov" + zeroWidth + "isional D10", "provisional" + bidi, "x " + nl + "Provisional" + nl, "declared (provisional)"}
+	for _, claim := range []string{"E0", "E1", "E2"} {
+		for _, reason := range reasons {
+			p := fixture()
+			p.Claim = claim
+			p.Physical.Guarantee = &Guarantee{Level: "atomic-with-commit", Reason: reason}
+			r := Audit(p, h, m)
+			if !has(r, want) || r.Status != "INCOMPLETE" || r.ProductGate != "UNQUALIFIED" {
+				t.Fatalf("%s reason %q: %+v", claim, reason, r)
+			}
+			// A well-formed atomic level is not reported as merely non-atomic.
+			if has(r, "E2_PROVIDER_GUARANTEE_NOT_ATOMIC") {
+				t.Fatalf("%s reason %q: level is atomic: %+v", claim, reason, r)
+			}
+		}
+	}
+	// A provisional level fails two independent requirements at once: the
+	// exact atomic level, and G2 evidence. Neither diagnosis implies the
+	// other, so both are reported for the same declaration.
+	for _, level := range []string{"provisional", "Provisional_Atomic"} {
+		p := fixture()
+		p.Physical.Guarantee = &Guarantee{Level: level}
+		r := Audit(p, h, m)
+		if !has(r, want) || !has(r, "E2_PROVIDER_GUARANTEE_NOT_ATOMIC") {
+			t.Fatalf("%q: %+v", level, r)
+		}
+	}
+	// Negative controls: each diagnosis occurs without the other.
+	p := fixture()
+	p.Physical.Guarantee = &Guarantee{Level: "atomic-with-commit", Reason: "provisional D10: unverified"}
+	if r := Audit(p, h, m); !has(r, want) || has(r, "E2_PROVIDER_GUARANTEE_NOT_ATOMIC") {
+		t.Fatalf("provisional reason with an atomic level: %+v", r)
+	}
+	p = fixture()
+	p.Physical.Guarantee = &Guarantee{Level: "not-atomic", Reason: "declared by the Provider"}
+	if r := Audit(p, h, m); has(r, want) || !has(r, "E2_PROVIDER_GUARANTEE_NOT_ATOMIC") {
+		t.Fatalf("non-atomic level with an ordinary reason: %+v", r)
+	}
+	// An ordinary reason passes; the strict CLI accepts the field.
+	p = fixture()
+	raw, _ := json.Marshal(func() Packet {
+		p.Physical.Guarantee = &Guarantee{Level: "atomic-with-commit", Reason: "provisional D10"}
+		return p
+	}())
+	path := filepath.Join(t.TempDir(), "p.json")
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := run([]string{"-packet", path, "-head", h, "-main", m}, &out); err == nil || !strings.Contains(out.String(), want) {
+		t.Fatalf("err=%v out=%s", err, out.String())
+	}
+	if r := Audit(fixture(), h, m); !reviewableExceptKind(r) {
+		t.Fatalf("%+v", r)
+	}
+	// Duplicate keys and unknown members are still refused.
+	for _, doc := range []string{`{"physical":{"guarantee":{"level":"a","level":"b"}}}`, `{"physical":{"guarantee":{"levl":"a"}}}`} {
+		path := filepath.Join(t.TempDir(), "q.json")
+		if err := os.WriteFile(path, []byte(doc), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := run([]string{"-packet", path, "-head", h, "-main", m}, &bytes.Buffer{}); err == nil {
+			t.Fatalf("accepted %s", doc)
+		}
+	}
+}
+
+func TestE2MustNameTheAcceptanceKind(t *testing.T) {
+	const want = "E2_ACCEPTANCE_KIND_REQUIRED"
+	zeroWidth, bidi, bom, nl := string(rune(0x200b)), string(rune(0x202e)), string(rune(0xfeff)), string(rune(10))
+	// Omitted, blank-only and invisible-only values name no kind.
+	for name, kind := range map[string]string{
+		"omitted": "", "space": " ", "tab/newline": "	" + nl, "zero width": zeroWidth, "bidi": bidi,
+		"bom": bom, "mixed invisible": " " + zeroWidth + bidi + nl,
+	} {
+		p := fixture()
+		p.Acceptance.AcceptanceKind = kind
+		r := Audit(p, h, m)
+		if !has(r, want) || r.Status != "INCOMPLETE" || r.ProductGate != "UNQUALIFIED" {
+			t.Fatalf("%s: %+v", name, r)
+		}
+		// Treated exactly like an omitted field: one diagnosis, not also
+		// "unrecognized".
+		if has(r, "ACCEPTANCE_KIND_UNRECOGNIZED") {
+			t.Fatalf("%s: blank-only kind is reported as unrecognized as well: %v", name, r.Diagnostics)
+		}
+		// E0/E1 are unchanged (legacy shape).
+		for _, claim := range []string{"E0", "E1"} {
+			p.Claim = claim
+			if r := Audit(p, h, m); has(r, want) {
+				t.Fatalf("%s %s: %+v", name, claim, r)
+			}
+		}
+	}
+	// A named kind is never reported as missing; each kind keeps its own diagnosis.
+	for kind, other := range map[string]string{
+		"provisional": "PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE", "unspecified": "PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE",
+		"Prov" + zeroWidth + "isional": "PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE",
+		"formal":                       "ACCEPTANCE_KIND_UNRECOGNIZED", "x": "ACCEPTANCE_KIND_UNRECOGNIZED",
+	} {
+		p := fixture()
+		p.Acceptance.AcceptanceKind = kind
+		r := Audit(p, h, m)
+		if has(r, want) || !has(r, other) || r.Status != "INCOMPLETE" || r.ProductGate != "UNQUALIFIED" {
+			t.Fatalf("%q: %+v", kind, r)
+		}
+	}
+	// The strict CLI reports it and fails.
+	raw, _ := json.Marshal(fixture())
+	path := filepath.Join(t.TempDir(), "p.json")
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := run([]string{"-packet", path, "-head", h, "-main", m}, &out); err == nil || !strings.Contains(out.String(), want) {
+		t.Fatalf("err=%v out=%s", err, out.String())
 	}
 }

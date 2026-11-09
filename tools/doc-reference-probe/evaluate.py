@@ -10,7 +10,9 @@ from probe import check
 # This is an occurrence-level oracle, not an assertion about the entire corpus.
 KNOWN_EXISTING = Counter({"tools/README.md": 1, "docs/architecture.md": 1,
                           "docs/business-system-design.md": 1, "docs/status.md": 1,
-                          "docs/conformance/README.md": 1, "requirements/README.md": 2})
+                          "docs/conformance/README.md": 1, "requirements/README.md": 2,
+                          "docs/": 1, "plan/": 4, "product/": 1, "requirements/": 1,
+                          "reference/": 1, "tools/": 1})
 
 
 def main():

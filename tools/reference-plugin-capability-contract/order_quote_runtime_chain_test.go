@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -19,6 +20,7 @@ import (
 	"tei/internal/permission"
 	"tei/internal/plugin"
 	pruntime "tei/internal/plugin/runtime"
+	web "tei/reference/web-composition/go-host"
 )
 
 // This wire DTO is confined to a test of the existing legacy stdio carrier.
@@ -246,6 +248,207 @@ func TestCandidateQuoteShapeConformanceAndRealRuntimeProcessOneInvocation(t *tes
 		attempt(t, "wrong evidence", "no conformant provider", func() { input.Evidence = []ConformanceEvidence{e} })
 	})
 	input.Evidence = []ConformanceEvidence{evidenceFor(provider, contract, "synthetic-test-only")}
+	t.Run("changed provider and shape through real runtime", func(t *testing.T) {
+		// Only a copied provider is changed: zero is a test marker, not a tax rule.
+		anchor := "\tSubtotalMinor int64  `json:\"subtotalMinor\"`\n"
+		if strings.Count(string(source), anchor) != 1 {
+			t.Fatal("provider result anchor is not unique")
+		}
+		changedSource := strings.Replace(string(source), anchor, anchor+"\tTaxMinor int64 `json:\"taxMinor\"`\n", 1)
+		providerDir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(providerDir, "main.go"), []byte(changedSource), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(providerDir, "go.mod"), []byte("module example.invalid/changed-quote\n\ngo 1.23\n"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		changedBinary := filepath.Join(providerDir, "quote")
+		build := exec.CommandContext(buildCtx, "go", "build", "-o", changedBinary, ".")
+		build.Dir = providerDir
+		build.Env = append(os.Environ(), "GOWORK=off", "GOTOOLCHAIN=local", "GOPROXY=off")
+		if out, err := build.CombinedOutput(); err != nil {
+			t.Fatalf("build changed provider: %v: %s", err, out)
+		}
+		changedBytes, err := os.ReadFile(changedBinary)
+		if err != nil {
+			t.Fatal(err)
+		}
+		changedDigest := quoteChainDigest(changedBytes)
+		if changedDigest == digest {
+			t.Fatal("changed provider retained original digest")
+		}
+		originalContract, originalProvider, originalPlan, originalHost := contract, provider, plan, host
+		defer func() {
+			contract, provider, plan, host = originalContract, originalProvider, originalPlan, originalHost
+		}()
+		shape := readQuoteCandidateShape(t, "result-v0.json")
+		shape.Root.Properties["taxMinor"] = InvocationShapeNode{Kind: "number"}
+		shape.Root.Required = append(shape.Root.Required, "taxMinor")
+		loaded := loadQuoteOverlayWorldWithEdit(t, func(raw []byte) []byte {
+			anchor := "    attribute subtotalMinor type std.integer\n"
+			if strings.Count(string(raw), anchor) != 1 {
+				t.Fatal("semantic anchor not unique")
+			}
+			return []byte(strings.Replace(string(raw), anchor, anchor+"    attribute taxMinor type std.integer\n", 1))
+		})
+		mappingBytes, err := os.ReadFile("../../reference/candidates/order-quote/shape-mapping.json")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var mapping quoteCandidateShapeMapping
+		if err := json.Unmarshal(mappingBytes, &mapping); err != nil {
+			t.Fatal(err)
+		}
+		semanticFound := false
+		for _, ns := range loaded.World.Semantics {
+			for _, data := range ns.Data {
+				for _, attr := range data.Attributes {
+					semanticFound = semanticFound || (attr.ID == "sales.quote_result.tax_minor" && attr.TypeRef == "std.integer")
+				}
+			}
+		}
+		if !semanticFound {
+			t.Fatal("changed semantic attribute absent")
+		}
+		authorize, editor, viewer := changedQuoteAuthorizer(t, loaded.World)
+		contract.ResultShapeFingerprint = invocationShapeFingerprint(shape)
+		provider.ContractFingerprint = fingerprint(contract)
+		provider.ArtifactDigest = changedDigest
+		plan.Plugins = append([]pruntime.PluginRuntime(nil), plan.Plugins...)
+		plan.Plugins[0].Command = changedBinary
+		plan.Plugins[0].Artifact.Digest = changedDigest
+		plan.RuntimePolicyFingerprint = pruntime.PolicyFingerprint(plan)
+		host.Verifier = &quoteChainHashVerifier{path: changedBinary}
+		changedImpl := impl
+		changedImpl.Provider = provider
+		changedImpl.ResultShapeArtifact = shape
+		changedImpl.ResultShapeFingerprint = contract.ResultShapeFingerprint
+		authorities := invocationShapeAuthoritiesForTest([]InvocationImplementation{changedImpl})
+		registry, err := NewInvocationRegistry([]InvocationImplementation{changedImpl}, authorities, invocationShapePublisherTrustForTest(t, authorities))
+		if err != nil {
+			t.Fatal(err)
+		}
+		changedInput := input
+		changedInput.Contracts = []Contract{contract}
+		changedInput.Providers = []Provider{provider}
+		// Explicit test-only gate: the Reference authorizer does not perform
+		// semantic-to-wire mapping or prove business acceptance by itself.
+		invoke := func(principal web.Principal) (InvocationExecution, error) {
+			if mapping.FieldMappings["sales.quote_result.tax_minor"] != "taxMinor" || shape.Root.Properties["taxMinor"].Kind != "number" {
+				return InvocationExecution{}, errors.New("unresolved test-only semantic mapping")
+			}
+			allowed, err := authorize(ctx, principal, "order_entry.preview_order_quote")
+			if err != nil {
+				return InvocationExecution{}, err
+			}
+			if !allowed {
+				return InvocationExecution{}, errors.New("candidate action denied")
+			}
+			return registry.ResolveAndInvoke(ctx, changedInput, payload)
+		}
+		before := launcher.calls
+		if _, err := invoke(editor); err == nil || !strings.Contains(err.Error(), "mapping") || launcher.calls != before {
+			t.Fatalf("unmapped semantic change reached process: %v", err)
+		}
+		mapping.FieldMappings["sales.quote_result.tax_minor"] = "taxMinor"
+		if _, err := invoke(viewer); err == nil || !strings.Contains(err.Error(), "denied") || launcher.calls != before {
+			t.Fatalf("unapproved viewer reached process: %v", err)
+		}
+		if _, err := invoke(editor); err == nil || launcher.calls != before {
+			t.Fatalf("old evidence permitted changed provider/contract: %v", err)
+		}
+		changedInput.Evidence = []ConformanceEvidence{evidenceFor(provider, contract, "synthetic-changed-only")}
+		got, err := invoke(editor)
+		if err != nil || launcher.calls != before+1 || !strings.Contains(string(got.ResultPayload), `"taxMinor":0`) {
+			t.Fatalf("changed provider and shape: %+v, %v", got, err)
+		}
+		if err := validateInvocationPayload(shape, got.ResultPayload); err != nil {
+			t.Fatal(err)
+		}
+		// A presentation-only reorder of required fields is normalized by the
+		// existing v0 rule; retain the exact same Shape and provider evidence.
+		reordered := shape
+		reordered.Root.Required = append([]string(nil), shape.Root.Required...)
+		for left, right := 0, len(reordered.Root.Required)-1; left < right; left, right = left+1, right-1 {
+			reordered.Root.Required[left], reordered.Root.Required[right] = reordered.Root.Required[right], reordered.Root.Required[left]
+		}
+		if reflect.DeepEqual(reordered.Root.Required, shape.Root.Required) || invocationShapeFingerprint(reordered) != contract.ResultShapeFingerprint {
+			t.Fatal("required-order-only edit should preserve the v0 Shape fingerprint")
+		}
+		reorderedImpl := changedImpl
+		reorderedImpl.ResultShapeArtifact = reordered
+		registry, err = NewInvocationRegistry([]InvocationImplementation{reorderedImpl}, authorities, invocationShapePublisherTrustForTest(t, authorities))
+		if err != nil {
+			t.Fatalf("unchanged evidence rejected on required reorder: %v", err)
+		}
+		before = launcher.calls
+		if result, err := invoke(editor); err != nil || launcher.calls != before+1 || !strings.Contains(string(result.ResultPayload), `"taxMinor":0`) {
+			t.Fatalf("same evidence and changed provider after reorder: %+v, %v", result, err)
+		}
+		weakened := reordered
+		weakened.Root.Required = append([]string(nil), reordered.Root.Required[1:]...)
+		if invocationShapeFingerprint(weakened) == contract.ResultShapeFingerprint {
+			t.Fatal("removed requirement reused old fingerprint")
+		}
+		weakenedImpl := reorderedImpl
+		weakenedImpl.ResultShapeArtifact = weakened
+		if _, err := NewInvocationRegistry([]InvocationImplementation{weakenedImpl}, authorities, invocationShapePublisherTrustForTest(t, authorities)); err == nil || launcher.calls != before+1 {
+			t.Fatalf("changed requirement reused old pin or launched process: %v", err)
+		}
+		t.Log("required field reorder needs no Shape or Provider evidence change; removing a required field cannot reuse the old pin")
+		t.Log("isolated changed semantic, test-only mapping gate, candidate authorizer, synthetic evidence and changed real provider executed in order; missing mapping, denied viewer and old evidence stopped before process; tax=0 is a test marker")
+	})
+	t.Run("isolated result shape change does not inherit old evidence", func(t *testing.T) {
+		// Modify a separate copy, never the unaccepted candidate on disk.
+		original, err := os.ReadFile("../../reference/candidates/order-quote/shapes/result-v0.json")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var changed InvocationShapeArtifact
+		if err := json.Unmarshal(original, &changed); err != nil {
+			t.Fatal(err)
+		}
+		changed.Root.Properties["taxMinor"] = InvocationShapeNode{Kind: "number"}
+		changed.Root.Required = append(changed.Root.Required, "taxMinor")
+		if err := validateInvocationShapeArtifact(changed); err != nil {
+			t.Fatal(err)
+		}
+		copyPath := filepath.Join(t.TempDir(), "result-v0.json")
+		copyBytes, err := json.Marshal(changed)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(copyPath, copyBytes, 0600); err != nil {
+			t.Fatal(err)
+		}
+		if invocationShapeFingerprint(changed) == impl.ResultShapeFingerprint {
+			t.Fatal("changed shape retained old fingerprint")
+		}
+		changedImpl := impl
+		changedImpl.ResultShapeArtifact = changed
+		before := launcher.calls
+		if _, err := NewInvocationRegistry([]InvocationImplementation{changedImpl}, shapeEvidence, invocationShapePublisherTrustForTest(t, shapeEvidence)); err == nil || !strings.Contains(err.Error(), "does not match declaration") {
+			t.Fatalf("old shape pin accepted: %v", err)
+		}
+		changedImpl.ResultShapeFingerprint = invocationShapeFingerprint(changed)
+		if _, err := NewInvocationRegistry([]InvocationImplementation{changedImpl}, shapeEvidence, invocationShapePublisherTrustForTest(t, shapeEvidence)); err == nil || !strings.Contains(err.Error(), "no accepted Shape Authority Evidence") {
+			t.Fatalf("old authority evidence accepted: %v", err)
+		}
+		if launcher.calls != before {
+			t.Fatal("stale shape caused process execution")
+		}
+		got, err := generic.ResolveAndInvoke(ctx, input, payload)
+		if err != nil || launcher.calls != before+1 {
+			t.Fatalf("original shape should still invoke actual provider: %+v, %v", got, err)
+		}
+		if err := validateInvocationPayload(changed, got.ResultPayload); err == nil {
+			t.Fatalf("old provider output unexpectedly satisfies new required taxMinor: %s", got.ResultPayload)
+		}
+		if err := validateInvocationPayload(changed, []byte(`{"currency":"JPY","lineCount":2,"subtotalMinor":1550,"taxMinor":0}`)); err != nil {
+			t.Fatalf("new candidate-shaped example rejected: %v", err)
+		}
+		t.Log("one isolated result Shape changed: old pin and old synthetic Shape evidence rejected before process; original provider still works under original Shape, but output lacks new required field")
+	})
 	t.Run("outer request shape violation prevents Runtime", func(t *testing.T) {
 		bad := payload
 		payload = []byte(`{"currency":"JPY","lines":[{"sku":"PEN","quantity":"3","unitPriceMinor":250}]}`)

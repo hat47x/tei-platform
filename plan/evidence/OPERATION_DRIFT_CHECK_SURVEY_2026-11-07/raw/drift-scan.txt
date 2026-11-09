@@ -1,0 +1,31 @@
+== callers of the operation surface outside tests ==
+internal/artifact/surface.go:41:	surface := operations.DeriveOperationSurface(world, applicationID)
+internal/operations/surface.go:112:// SurfaceWorkspace reads a workspace root and derives its operation surface.
+internal/operations/surface.go:116:func SurfaceWorkspace(root, applicationFilter string) (OperationSurface, error) {
+internal/operations/surface.go:129:	out := DeriveOperationSurface(loaded.World, applicationFilter)
+internal/operations/surface.go:135:// DeriveOperationSurface derives the standard operations of every application
+internal/operations/surface.go:138:func DeriveOperationSurface(world ir.World, applicationFilter string) OperationSurface {
+cmd/tei/cli_operations_artifacts.go:23:	surface, err := operations.SurfaceWorkspace(workspacePath, applicationID)
+cmd/tei/cli_operations_artifacts.go:145:	surface, err := operations.SurfaceWorkspace(workspacePath, applicationID)
+tools/reference-operation-pattern-crosswalk/crosswalk.go:215:	surface := operations.DeriveOperationSurface(world, string(app.ID))
+
+== fingerprint comparisons in internal/operations and internal/execution ==
+internal/operations/inspect.go:37:	WorldFingerprint       string              `json:"worldFingerprint"`
+internal/operations/inspect.go:90:		WorldFingerprint:       worldFP,
+internal/operations/model_catalog.go:30:	WorldFingerprint       string `json:"worldFingerprint"`
+internal/operations/model_catalog.go:32:	// ModelRevision is the revision of the managed Source set, not of the
+internal/operations/model_catalog.go:36:	ModelRevision string `json:"modelRevision"`
+internal/operations/model_catalog.go:115:		WorldFingerprint:       worldFP,
+internal/operations/model_catalog.go:117:		ModelRevision:          sourceindex.ModelRevision(idx),
+internal/operations/surface.go:43:	WorldFingerprint string            `json:"worldFingerprint"`
+internal/operations/surface.go:44:	ModelRevision    string            `json:"modelRevision"`
+internal/operations/surface.go:130:	out.WorldFingerprint = worldFP
+internal/operations/surface.go:131:	out.ModelRevision = sourceindex.ModelRevision(idx)
+internal/operations/trace_workspace.go:26:	WorldFingerprint       string                    `json:"worldFingerprint"`
+internal/operations/trace_workspace.go:175:		WorldFingerprint:       worldFP,
+internal/operations/validate.go:12:// WorldFingerprint and SourceIndexFingerprint identify the version that this
+internal/operations/validate.go:20:	WorldFingerprint       string
+internal/operations/validate.go:94:		WorldFingerprint:       worldFP,
+
+== OPERATION_SURFACE_STALE anywhere ==
+(no occurrences)

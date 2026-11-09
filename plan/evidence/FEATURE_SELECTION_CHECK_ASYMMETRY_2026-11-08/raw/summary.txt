@@ -1,0 +1,13 @@
+== sql-only ==
+  sql-only exit=1
+  ENVIRONMENT_FEATURE_PLUGIN diagnostics: 1
+    error	ENVIRONMENT_FEATURE_PLUGIN_MISSING	environment development feature editor.sql_analysis has no resolved editor-intelligence plugin capability
+
+== workbench-only ==
+  workbench-only exit=0
+  ENVIRONMENT_FEATURE_PLUGIN diagnostics: 0
+
+== accepted ==
+  accepted exit=0
+  ENVIRONMENT_FEATURE_PLUGIN diagnostics: 0
+

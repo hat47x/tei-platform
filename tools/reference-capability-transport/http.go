@@ -69,7 +69,7 @@ func NewHTTPTransportHandler(
 			return
 		}
 		var dispatch GenericDispatch
-		if err := decodeJSONExact(body, &dispatch); err != nil {
+		if err := decodeGenericTransportMetadata(body, &dispatch); err != nil {
 			http.Error(w, "invalid transport dispatch", http.StatusBadRequest)
 			return
 		}
@@ -203,7 +203,7 @@ func invokeOverHTTPTransport(
 	}
 
 	var result GenericTransportResult
-	if err := decodeJSONExact(responsePayload, &result); err != nil {
+	if err := decodeGenericTransportMetadata(responsePayload, &result); err != nil {
 		return TransportExecution{}, fmt.Errorf("decode HTTP transport result: %w", err)
 	}
 	if err := validateGenericTransportResult(dispatch, result); err != nil {

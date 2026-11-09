@@ -1,0 +1,11 @@
+== C-1 inputs ==
+  command: executor.Command (action id, kind, database/application)
+  registry: map[core.CanonicalID]executor.Executor, supplied by the Host
+  environment: read from the Workspace by routing.RouteCommand
+
+== C-2 inputs ==
+  coordinator: *composition.Coordinator (Host generation pinning)
+  runtime: pruntime.Registry (processes, verifier, service acceptance)
+  routes: ServiceCarrierRouteSource (Host-owned, per pinned Binding)
+  plan: pruntime.EnvironmentPlan (from the plugin lock + environment)
+  selection: pruntime.ServiceProviderSelection (contract/scope/artifact)

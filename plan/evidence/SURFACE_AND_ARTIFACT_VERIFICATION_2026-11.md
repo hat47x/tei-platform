@@ -15,7 +15,7 @@
 | 参照用作業領域 | `go run ./cmd/tei validate -workspace reference/workspace` | `ok`（既存の警告のみ） |
 | 負例の作業領域 | `go run ./cmd/tei validate -workspace reference/standard-crud/workspace` | `ok` |
 | 文書の検査 | `go test ./tools/repository-plan-check -count=1` | `ok` |
-| 実DBの競合（枠組み） | `go test ./tools/reference-expected-state-concurrency -count=1` | **スキップ**（`TEI_TEST_POSTGRES_DSN` 未設定） |
+| 実DBの競合 | `TEI_TEST_POSTGRES_DSN=... go test ./tools/reference-expected-state-concurrency -count=1 -v` | `ok`（PostgreSQL 16.14、2件。初回の試験同期不足を修正） |
 
 ## 2. この記録が示すこと
 
@@ -89,3 +89,55 @@ go run ./cmd/tei validate -workspace reference/standard-crud/workspace
 - 実データベースでの効果の実行と観測（`TEI_TEST_POSTGRES_DSN` 未設定）
 - 効果の対象を特定する引数の組み立て（`Args` の実装）
 - 再試行の上限、補償の完了を待つ境界
+## 8. 実行計画の確認（2026-11-04 追記）
+
+`run-plan`（#1130）の P1〜P2 を実装し、ライブラリの範囲で確かめました。
+
+| 確認 | コマンド | 結果 |
+| --- | --- | --- |
+| 宣言の解析 | `go test ./internal/syntax -run RunPlan` | 通る |
+| 検証（8診断） | `go test ./internal/validation -run RunPlan` | 通る（正例は診断なし、負例は該当の診断） |
+| 実行の同定・判定 | `go test ./internal/runlog` | 通る（開始・再開・拒否・fence・壊れた行） |
+| 実行ループ | `go test ./internal/execution -run RunPlan` | 通る（順次実行・途中停止・完了の記録・再開） |
+| 無人の停止 | `go test ./internal/execution -run 'Unattended|Attended'` | 通る（確かめる手段が無ければ `blocked`） |
+| 期間との接続 | `go test ./internal/execution -run PeriodPreconditions` | 通る（閉 → blocked、開 → 実行、期間なし → 素通り） |
+| 効果の前提との接続 | `go test ./internal/execution -run EffectPreconditions` | 通る（観測不能 → blocked、観測可能 → 実行） |
+| 停止条件の合成 | `go test ./internal/execution -run CombinePreconditions` | 通る（期間が開でも効果が観測不能なら止まる） |
+| 出力の投影 | `go test ./internal/execution -run ProjectOutputs` | 通る（件数・部分失敗・手段なし・出力なし） |
+| 成果物への反映 | `go test ./internal/artifact -run RunPlans` | 通る（`run-plan` 行、省略項目は出さない） |
+
+**確かめていないこと**
+- 実データベースでの計画の実行
+- 出力（`output`）の生成
+- 効果の前提を停止条件へ接続すること
+- 無人実行の承認（誰が無人を許したか）の記録
+## 9. 三つの宣言を通した実行計画の確認（2026-11-06 追記）
+
+作業領域のテキストから、期間・効果の前提を持つ実行計画が**無人で止まる／進む**ことを通しで確かめました（`internal/execution/runplan_workspace_test.go`）。
+
+| 確認 | 結果 |
+| --- | --- |
+| 期間が閉じた作業領域で `unattended` の計画 | `blocked`（step は一度も呼ばれない）。実行記録も `blocked` |
+| 期間が開いた作業領域 | 実行して `completed` |
+| 確定後効果を観測できない作業領域（期間は開） | `blocked`。理由に規則の識別子 `s.order.stock` を含む |
+
+この三つは、期間の宣言（#2144）・効果の規則（#1129）・実行計画（#1130）が**同じ操作面の上で噛み合う**ことを示します。合成は `CombinePreconditions` で行い、どれか一つでも満たされなければ実行しません。
+## 10. 実データベースの確認手順（2026-11-06 追記）
+
+実データベースでの確認は、2026-11-06 に別の作業で実行されました（期待状態の比較2件・DDL・入力のNULL区別・Web経由の書込みと独立Read）。**ただし本記録が扱う期間・効果・実行計画・権限の実行時判断は、実データベースで確認していません。** 手順と、確かめること・確かめないことを固定しました（[実データベースでの確認手順](REAL_DATABASE_VERIFICATION_PROCEDURE_2026-11.md)）。
+
+- 入口は `tei dbcheck`（DSN 未設定なら終了コード 2 で、何も実行しない）。
+- 試験は `tools/reference-expected-state-concurrency`。
+- 確かめるのは一つの行と `READ COMMITTED` の範囲。分離水準の変更・実際の実行経路・性能は**確かめない**と明記。
+## 11. 四つの前提を持つ実行計画の確認（2026-11-06 追記）
+
+期間・効果・権限の停止条件を**すべて備えた**実行計画が、どれか一つでも欠ければ止まることを一つの試験で固定しました（`internal/execution/runplan_all_preconditions_test.go`）。
+
+| 欠けているもの | 結果 |
+| --- | --- |
+| 期間が閉じている（他は揃っている） | `blocked`（理由に "closed"）。step は呼ばれない |
+| 確定後効果を観測できない（期間は開） | `blocked`（理由に `s.order.stock`） |
+| 権限の付与が無い（期間は開、観測は可能） | `blocked`（理由に `db:5432`） |
+| すべて満たす | 実行して `completed` |
+
+四つを `CombinePreconditions` で合成し、どれか一つでも満たされなければ**実行しない**ことを示しています。**無人実行の前提は、期間の状態・確定後効果の観測性・権限の付与のすべて**です。

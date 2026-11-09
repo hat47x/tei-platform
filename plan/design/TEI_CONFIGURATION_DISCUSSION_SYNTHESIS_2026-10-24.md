@@ -92,6 +92,8 @@
 
 ## ADRの参照衝突
 
+以下は検討時の記録です。その後、[#2426](https://github.com/hat47x/tei-platform/pull/2426)で来歴のADR-0041とADR-0042を維持し、Host方針を[ADR-0043](../adr/0043-target-native-artifacts-without-tei-host.md)として統合しました。番号整理の確認は[#2341](https://github.com/hat47x/tei-platform/issues/2341)を参照してください。
+
 確認したmainには、提案中の`0041-generated-artifact-provenance-boundaries.md`がある。一方、#2226は`0041-target-native-artifacts-without-tei-host.md`を追加する。異なる内容が同じADR番号を使っているため、#2226の統合前に番号、見出し、索引、参照元を整合させる必要がある。
 
 来歴の判断とHost非必須の判断は別の論点として保存する。番号衝突を理由に既存の履歴を上書きせず、追加側の番号調整を検討する。新しい番号は、反映時のmainと並行PRを確認して決める。

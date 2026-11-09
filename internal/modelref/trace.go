@@ -41,18 +41,85 @@ type TraceRow struct {
 // returns counts. "full" has no implicit truncation; a supplied positive Limit
 // enables explicit paging through NextOffset.
 type TraceResult struct {
-	SchemaVersion       string     `json:"schemaVersion"`
-	SnapshotFingerprint string     `json:"snapshotFingerprint"`
-	RuleFingerprint     string     `json:"ruleFingerprint"`
-	Subject             Key        `json:"subject"`
-	Direction           string     `json:"direction"`
-	Mode                string     `json:"mode"`
-	Authority           string     `json:"authority"`
-	Total               int        `json:"total"`
-	Unresolved          int        `json:"unresolved"`
-	Offset              int        `json:"offset,omitempty"`
-	Rows                []TraceRow `json:"rows,omitempty"`
-	NextOffset          *int       `json:"nextOffset,omitempty"`
+	SchemaVersion string `json:"schemaVersion"`
+	// GraphFingerprint identifies this candidate graph, its rules and the
+	// selected subject and direction. It is NOT the continuation token: the
+	// CLI continuation value is result.snapshotFingerprint (outer), which also
+	// binds the World and the Source Index. It used to be called
+	// snapshotFingerprint, the same name as the outer value, so a reader that
+	// took the field next to nextOffset out of habit got STALE_SNAPSHOT (#3625).
+	GraphFingerprint string `json:"graphFingerprint"`
+	// SnapshotFingerprint is the deprecated alias of GraphFingerprint. It is
+	// emitted with the same value for one v0 cycle so existing readers keep
+	// working; new readers use graphFingerprint. It must never be passed as the
+	// continuation fingerprint.
+	SnapshotFingerprint string `json:"snapshotFingerprint,omitempty"`
+	RuleFingerprint     string `json:"ruleFingerprint"`
+	Subject             Key    `json:"subject"`
+	Direction           string `json:"direction"`
+	Mode                string `json:"mode"`
+	Authority           string `json:"authority"`
+	Total               int    `json:"total"`
+	Unresolved          int    `json:"unresolved"`
+	Offset              int    `json:"offset,omitempty"`
+	// Rows is present in full mode even when there are no rows, so a reader
+	// can tell "this subject declares no references" from "this response has
+	// no rows field". In summary mode the field stays absent: summary returns
+	// counts only. MarshalJSON writes it because omitempty would drop an empty
+	// slice too (#3693).
+	Rows       []TraceRow `json:"rows,omitempty"`
+	NextOffset *int       `json:"nextOffset,omitempty"`
+	// Continuation, when present, names the fingerprint to pass as the
+	// continuation token for NextOffset. The Workspace-level caller fills it
+	// because only it can bind the World and the Source Index; modelref alone
+	// cannot (#3625). It sits next to NextOffset so the value a reader needs
+	// is not mistaken for this graph's own fingerprint.
+	Continuation *TraceContinuation `json:"continuation,omitempty"`
+}
+
+// TraceContinuation names the token that continues this page. Fingerprint is
+// the Workspace-level continuation value (the CLI's result.snapshotFingerprint
+// placed beside nextOffset); it is descriptive and is not an acceptance
+// revision or a write token.
+type TraceContinuation struct {
+	Fingerprint string `json:"fingerprint"`
+	Field       string `json:"field"`
+}
+
+// MarshalJSON always writes rows in full mode. encoding/json drops a slice
+// behind omitempty when it is empty, which made "zero references" and "no
+// rows field" indistinguishable (#3693). Summary keeps the field absent.
+func (r TraceResult) MarshalJSON() ([]byte, error) {
+	type alias TraceResult
+	if r.Mode != "full" {
+		return json.Marshal(alias(r))
+	}
+	rows := r.Rows
+	if rows == nil {
+		rows = []TraceRow{}
+	}
+	// Spell the fields out in declaration order so forcing rows does not
+	// reorder the document and change otherwise identical bytes.
+	return json.Marshal(struct {
+		SchemaVersion       string             `json:"schemaVersion"`
+		GraphFingerprint    string             `json:"graphFingerprint"`
+		SnapshotFingerprint string             `json:"snapshotFingerprint,omitempty"`
+		RuleFingerprint     string             `json:"ruleFingerprint"`
+		Subject             Key                `json:"subject"`
+		Direction           string             `json:"direction"`
+		Mode                string             `json:"mode"`
+		Authority           string             `json:"authority"`
+		Total               int                `json:"total"`
+		Unresolved          int                `json:"unresolved"`
+		Offset              int                `json:"offset,omitempty"`
+		Rows                []TraceRow         `json:"rows"`
+		NextOffset          *int               `json:"nextOffset,omitempty"`
+		Continuation        *TraceContinuation `json:"continuation,omitempty"`
+	}{
+		r.SchemaVersion, r.GraphFingerprint, r.SnapshotFingerprint, r.RuleFingerprint,
+		r.Subject, r.Direction, r.Mode, r.Authority, r.Total, r.Unresolved, r.Offset,
+		rows, r.NextOffset, r.Continuation,
+	})
 }
 
 // TraceDirect selects and validates one-hop edges from the existing typed
@@ -190,8 +257,9 @@ func TraceDirect(graph Graph, rules []Rule, subject Key, options TraceOptions) (
 	}
 	result := TraceResult{
 		SchemaVersion: "tei.modelref.trace/v0", Subject: subject,
-		SnapshotFingerprint: snapshotFingerprint, RuleFingerprint: policyFingerprint,
-		Direction: options.Direction, Mode: options.Mode, Authority: "candidate-read-only",
+		GraphFingerprint: snapshotFingerprint, SnapshotFingerprint: snapshotFingerprint,
+		RuleFingerprint: policyFingerprint,
+		Direction:       options.Direction, Mode: options.Mode, Authority: "candidate-read-only",
 		Total: total, Unresolved: unresolved,
 	}
 	if options.Mode == "summary" {
@@ -207,11 +275,45 @@ func TraceDirect(graph Graph, rules []Rule, subject Key, options TraceOptions) (
 	}
 	result.Offset = start
 	result.Rows = rows[start:end]
+	if result.Rows == nil {
+		result.Rows = []TraceRow{}
+	}
 	if end < len(rows) {
 		next := end
 		result.NextOffset = &next
 	}
 	return result, nil
+}
+
+// TraceDirections and TraceModes are the closed value sets TraceDirect accepts.
+// They are exported so the CLI advertises exactly what it validates (#3242).
+var (
+	TraceDirections = []string{"outgoing", "incoming", "both"}
+	TraceModes      = []string{"summary", "full"}
+)
+
+// TraceDefaultDirection and TraceDefaultMode are the values an adapter applies
+// when the caller omits the flag. They are exported so the CLI flag defaults,
+// `tei commands` argumentDefaults, the MCP adapter and the checks in this
+// package read one value instead of three copies (#3605).
+//
+// An adapter must not treat an explicit empty string as "use the default":
+// omitted flags carry these values, and an explicit "" is rejected before the
+// call (see cmd/tei/cli_flag_contract.go and the MCP adapter). normalizeTraceRequest
+// still maps an empty Mode to "full" for direct in-process callers; that is not
+// an adapter default and TraceDefaultMode is not it.
+const (
+	TraceDefaultDirection = "both"
+	TraceDefaultMode      = "summary"
+)
+
+func containsValue(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
 }
 
 // ValidateTraceRequest returns the *TraceError that TraceDirect reports for the
@@ -231,17 +333,18 @@ func normalizeTraceRequest(subject Key, options TraceOptions) (TraceOptions, err
 		return options, &TraceError{Code: "INVALID_SUBJECT", Message: "scope, kind, and id are required"}
 	}
 	if options.Direction == "" {
-		options.Direction = "both"
+		options.Direction = TraceDefaultDirection
 	}
 	if options.Mode == "" {
+		// Not an adapter default: the adapters reject an explicit empty string
+		// and pass TraceDefaultMode when the flag is omitted. This branch only
+		// serves direct in-process callers and keeps its historical value.
 		options.Mode = "full"
 	}
-	switch options.Direction {
-	case "outgoing", "incoming", "both":
-	default:
+	if !containsValue(TraceDirections, options.Direction) {
 		return options, &TraceError{Code: "INVALID_ARGUMENT", Message: "direction must be outgoing, incoming, or both"}
 	}
-	if options.Mode != "summary" && options.Mode != "full" {
+	if !containsValue(TraceModes, options.Mode) {
 		return options, &TraceError{Code: "INVALID_ARGUMENT", Message: "mode must be summary or full"}
 	}
 	if options.Offset < 0 || options.Limit < 0 || options.Mode == "summary" && (options.Offset != 0 || options.Limit != 0) {

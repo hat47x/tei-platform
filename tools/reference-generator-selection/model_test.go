@@ -2,7 +2,6 @@ package generatorselection
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,10 +22,15 @@ func modelOptions(t *testing.T, out, command string) ModelOptions {
 }
 
 func TestExternalCommandIsRecordedAndSelectable(t *testing.T) {
+	requirePOSIXShellForExternalCommands(t)
 	workspaceDir, contract, fixtures, candidates := paths(t)
 	root := t.TempDir()
 	source := filepath.Join(candidates, "template", "main.go")
-	command := fmt.Sprintf("cp %q \"$TEI_SOURCE\"", source)
+	content, err := os.ReadFile(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := externalSourceCommand(t, "TEI_SOURCE", content)
 	manifest, err := GenerateWithCommand(context.Background(), modelOptions(t, filepath.Join(root, "recorded"), command))
 	if err != nil {
 		t.Fatal(err)
@@ -44,6 +48,7 @@ func TestExternalCommandIsRecordedAndSelectable(t *testing.T) {
 }
 
 func TestExternalCommandFailureIsRejected(t *testing.T) {
+	requirePOSIXShellForExternalCommands(t)
 	root := t.TempDir()
 	out := filepath.Join(root, "recorded")
 	_, err := GenerateWithCommand(context.Background(), modelOptions(t, out, "exit 7"))
@@ -56,6 +61,7 @@ func TestExternalCommandFailureIsRejected(t *testing.T) {
 }
 
 func TestExternalCommandWithoutSourceIsRejected(t *testing.T) {
+	requirePOSIXShellForExternalCommands(t)
 	root := t.TempDir()
 	out := filepath.Join(root, "recorded")
 	_, err := GenerateWithCommand(context.Background(), modelOptions(t, out, "true"))
@@ -65,6 +71,7 @@ func TestExternalCommandWithoutSourceIsRejected(t *testing.T) {
 }
 
 func TestExternalCommandRefusesExistingOutput(t *testing.T) {
+	requirePOSIXShellForExternalCommands(t)
 	root := t.TempDir()
 	out := filepath.Join(root, "existing")
 	if err := os.Mkdir(out, 0o755); err != nil {
@@ -72,7 +79,11 @@ func TestExternalCommandRefusesExistingOutput(t *testing.T) {
 	}
 	_, _, _, candidates := paths(t)
 	source := filepath.Join(candidates, "template", "main.go")
-	_, err := GenerateWithCommand(context.Background(), modelOptions(t, out, fmt.Sprintf("cp %q \"$TEI_SOURCE\"", source)))
+	content, err := os.ReadFile(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = GenerateWithCommand(context.Background(), modelOptions(t, out, externalSourceCommand(t, "TEI_SOURCE", content)))
 	if err == nil {
 		t.Fatal("existing output directory was accepted")
 	}
