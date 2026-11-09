@@ -169,3 +169,9 @@
 
 # Subagent fork-chain observations are hashed as raw bytes.
 /plan/evidence/DSH_SUBAGENT_FORK_CHAIN_2026-11-09/** -text
+
+# Turn-boundary fork-chain observations are hashed as raw bytes.
+/plan/evidence/DSH_SUBAGENT_FORK_TURN_CHAIN_2026-11-09/** -text
+
+# Binding forms survey output is hashed as raw bytes by its README.
+/plan/evidence/BINDING_FORMS_CONSUMER_SURVEY_2026-11-09/** -text

@@ -36,3 +36,9 @@ data NumberingRule {
     attribute overflow type std.code display "桁あふれ" role numbering-overflow
 }
 
+
+data Setting {
+    attribute key type std.identifier display "設定" role setting-key
+    attribute value type std.text display "値" role setting-value
+    attribute user type std.identifier display "利用者" role setting-user
+}
