@@ -102,7 +102,8 @@
 - [RQ-C1の確認方法の観測](XTEA_LOWCODE_RQC1_VERIFICATION_2026-11.md)（参照実装の試験記録。2パッケージの併存・取り外し・Core種別の不増加）
 - [フック宣言の範囲（scope）の確認](XTEA_LOWCODE_HOOK_SCOPE_2026-11.md)（参照実装の試験記録。範囲の宣言・検査・投影）
 - [フック範囲の実行時適用の確認](XTEA_LOWCODE_HOOK_SCOPE_RUN_2026-11.md)（参照実装の試験記録。適用できない範囲を拒否し、D-9の形の欠陥を作り直さない）
-- [行範囲（scope row）の適用の確認](XTEA_LOWCODE_HOOK_ROW_SCOPE_2026-11.md)（参照実装の試験記録。行ごとの繰り返し・行を名指す拒否。呼出し側の配線とitem/headerは未実装）
+- [行範囲（scope row）の適用の確認](XTEA_LOWCODE_HOOK_ROW_SCOPE_2026-11.md)（参照実装の試験記録。行ごとの繰り返し・行を名指す拒否。item/headerは未実装）
+- [行範囲を到達可能な実行へ配線した確認](XTEA_LOWCODE_HOOK_ROW_SCOPE_WIRING_2026-11.md)（参照実装の試験記録。`RunReachable`の行ごと適用。行集合を供給する呼出し側は未実装）
 - [採番の永続CounterStoreの確認](XTEA_LOWCODE_NUMBERING_SQLITE_STORE_2026-11.md)（参照実装の試験記録。PostgreSQLは未実装）
 - [採番の2プロセス同時実行の確認](XTEA_LOWCODE_NUMBERING_PROCESS_RACE_2026-11.md)（参照実装の試験記録。PostgreSQLと多プロセス構成は未実装）
 - [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
@@ -326,3 +327,4 @@
 - [能力宣言に版付けの余地が無いことの実測](TEI_GO_SELF_BUILD_DECLARATION_VERSIONING_2026-11-10.md)（§7の「必要になった時点で決める」を検証。\ormatVersion\を足した宣言は\json: unknown field\で**拒否される**——版を名乗る手段が導入時点で使えない。D-1/D-2/D-3を比較し、D-2が最も安い理由を示すが**判断はしない**。 #2831）
 - [設計者ループは動くが補助コマンドのhelpが誤っていた](TEI_DOGFOODING_ROUND37_DESIGNER_LOOP_2026-11-09/README.md)（#3943。`security.logout`追加→validate/inspect/traceで連鎖確認。誤りは正しく検出。`-qualification-requirements`がパスなのにhelpは「JSON」、スキーマも未広告。文言を修正）
 - [validate -hが70フラグを表示していた](TEI_DOGFOODING_ROUND38_VALIDATE_FLAG_NOISE_2026-11-09/README.md)（#3956。共有FlagSetのため標準-hが全フラグを列挙。allow-listは既にありhelpTextも絞っていたが、validate/worldはExitOnErrorで到達せず。-hを既存経路へ流し70→3）
+
