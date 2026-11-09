@@ -290,3 +290,4 @@
 - [設計の問いにCLIで答えられるかを確かめた（欠陥なし）](TEI_DOGFOODING_ROUND30_DESIGN_QUESTIONS_2026-11-09/README.md)（#3419・#3884。outcome辺により認証→認可の連鎖が両側から見える。宙に浮いた参照0件。`trace.unresolved`（行）と`projectionUnresolved`（捨てた辺）の語の衝突を記録）
 - [traceの行issueのうち4つがCLIから到達不能だった](TEI_DOGFOODING_ROUND31_TRACE_ISSUE_REACHABILITY_2026-11-09/README.md)（#3906・#3419。72subjectすべてで`trace.unresolved`は0、実体は`projectionUnresolved`に17件。規則は投影した辺から作るため規則系issueは起きない。契約に明記し試験で固定）
 
+- [`darwin`・`arm64`で何が確かめられ、何が確かめられないか](TEI_GO_SELF_BUILD_CROSS_COMPILE_SCOPE_2026-11-10.md)（§7の残項目について、クロスコンパイルは4 target で成功するが**実行はできない**（qemu無し・macOS無し）。`internal/buildintent`にhost依存の分岐が0件という静的確認まで。**実行による一致は未観測**で、§7の項目は未チェックのまま。 #2831）
