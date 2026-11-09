@@ -1,4 +1,4 @@
-name: Macro Command effectcommit boundary characterization
+﻿name: Macro Command effectcommit boundary characterization
 
 on:
   pull_request:
@@ -10,6 +10,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: tei-macro-command-boundary-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   characterize-command-effectcommit:
@@ -47,3 +51,4 @@ jobs:
           echo "command-effectcommit-characterization-head=$EXPECTED_HEAD"
           echo "test-blob=$(git rev-parse HEAD:internal/security/effectcommit/commandadapter/executor_characterization_test.go)"
           echo "result-test-blob=$(git rev-parse HEAD:internal/security/effectcommit/commandadapter/executor_result_characterization_test.go)"
+
