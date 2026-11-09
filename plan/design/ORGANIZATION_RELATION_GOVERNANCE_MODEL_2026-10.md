@@ -3872,3 +3872,50 @@ yes/noは実行先で対象CaseとOperationに関し判定できたときだけ�
 **既存負例を再利用した最小の反証**：（i）選択されたProviderと実際のInvoked Providerが異なるが返却値が同じ、（ii）D2のRowsetが0件/partialなのに担当不在・全件Handoff成立と表示、（iii）validAt訂正またはA→B→Aの後で旧Grant/Receiptを再有効化。ORG-VTR/ORG-TR/VP/VEを再利用し、期待値は#2514、Scenarioは#1180、Actual Attemptは#1163を唯一の所有先とする。
 
 **受入の停止線**：P0-RでS/Q/Read Consumerを一試行で実測できないうちは、D/E/Hを先行実装して合格扱いしない。P0-MのRQ-036 Mapは同SourceへのNavigationとGapを示し、P0-Cで同一Attempt/Consumerを接合し、その後で現在Grant/Effect/Handoffへ拡張。将来のOntology DSLやDecision Twinを初回ReadのHard Dependencyにしない。新規Org Go/DB/Host/SEI/SHO E2Eは本節ではNOT RUN。
+
+
+<!-- org-external-observation-admission-20261109 -->
+## 2026-11-09 追加：外部Observation/Relation候補を組織意味へ勝手に同一化しない最小Admission（T1-A実証との接続）
+
+### 1. REA実解析の成熟した証拠と組織Meaningは別の事実
+
+[外部Evidence Owner #3394](https://github.com/hat47x/tei-platform/issues/3394)／[REA Draft #3496](https://github.com/hat47x/tei-platform/pull/3496)では、REA 6.7.0の**公開JavaScript合成Sourceの静的解析**（valid/partial/missing/unsupported）について、固定HEADの実Actions 4/4 Job成功と、独立監査＋候補投影42/42 test成功が得られた。実Job保存Artifactでは、Source pre/postの二時点byte一致とManifest照合を確認し、valid候補13/14、partial候補11/12だけをSource-boundとし、各1件のRoot相当候補はunboundを保持した。この実績は**外部観測候補の保存・検証**であり、組織のPerson/OrgUnit/Membership/Caseの実取得や、TEI正式Meaning受理ではない。
+
+したがって、汎用の外部Graph Nodeが同名のPersonや組織単位らしく見えても、Source pathや表示Labelの一致だけでCanonical Subject/Relationと同一化しない。REAでのObserved/Inferenced/Unavailableは当該解析Providerが持つ**Observation品質の状態**であって、組織RelationのvalidAt/knownAt、Authority、Approved Rule、Host Grantを指すものではない。
+
+この境界はREA固有に固定せず、将来の基幹システム、HR、Directory、グラフDB、API、SHOへの入力、SUI情報断片、SEIの判断候補にも、Source/Scope/受理の分離として適用する。ただし外部候補の**公開／参照**はそれぞれのSource権限とConsumerの開示許可を別に確認し、通常Org Dataを一律非公開にする意味ではない。
+
+### 2. 組織へ写像する前に必要な狭い照合表（プロダクト固定Schemaではない）
+
+| 軸 | 外部候補として記録・確認すること | TEI組織Meaning側の条件 |
+| --- | --- | --- |
+| 外部Evidence IDと取得試行 | Provider id/version、実解析input/root、raw report digest、Evidence ID、Run/Attempt、partial/limitation | TEI Canonical IDと別namespace。Source証拠だけで意味受理にしない |
+| Node Observation | 外部Node ID、source path+byte fingerprint+位置、observed/inferred/unavailable | Person/OrgUnit/Position/Case Record等は**mapping candidate**。同名でもScope/ID/意味が違えば別のもの |
+| Edge Observation | 外部Edge ID、from/to ID、向き・多重性・source、取得時点 | Membership/Occupancy/Case handlingUnitのどれに相当するかはOwner Ruleと明示Bindingが必要。同端点の別edgeを潰さない |
+| 時間・Revision | Source取得/解析時刻、Provider revision、pre/post byte同一性、欠落と不明の区別 | Org valid/known・Correction・Owner accepted revision・Host Grant Epochへ自動変換しない |
+| Missing／Coverage | 実GraphとSemantic coverage、unbound Root、partial、不完全端点、unknown | 未取得は不在/解任/案件無担当/全件移管完了ではない。空集合のOpen WorldをClosedと表示しない |
+| Accepted Mapping | Provenance付き候補→既存TEI Subject/Role/Relationへの紐付け案、Owner採否 | 新しいSource正本・外部ID→内部IDの自動発行、Accepted Meaning/Runtime Effectへの黙示的昇格は不可 |
+
+**現有の正しい停止状態**は external-candidates-only、TEICanonicalSubject=null、acceptedMeaning=false、sourceClosure=not-qualified。実報告のSource bindingにある report-pre-post-byte-match は元Source二時点の一致であり、プロセス実行中のA→B→A・実Provider atomic input・現在Principal Grantを証明しない。Unbound RootをSource付きに偽補完しない。受理を見送ってもCandidate自体をSUIなどから再閲覧できるようにする案と、正式TEI Model Mapへ採用済みRelationとして載せることを区別する。
+
+### 3. 既存Application Operation・Model Mapへ接続する具体的な一歩
+
+1. **実Producer→試験Consumerの上限**：#3496の固定版実REA Artifactから、**1 Observationと1 Edge**を外部ID/Source位置/Raw Digest/Coverage/Unknownを保持して読み、既存共通Application read-only入口への適合差分を照合する。既存InspectSubjectはCanonical Worldの宣言済Subjectを読むOperationであり、この外部候補をそこへ渡してCanonicalとして成功させない。必要な追加操作は#3394/#1158（ADR-0048）が判断し、第二Parser/Dispatcher/Graph Storeは作らない。
+2. **組織Meaningの受理を別プロセスで試す**：OwnerはRelationをMembership/Occupancy/Case assignmentなどへ写す場合、型付きEndpoint、Source/Scope、valid/known、粒度/NULL・relation occurrence、業務Rule、競合Source/false-positiveを審査。Mapped CandidateとAccepted Sourceを混ぜず、Sourceの後続訂正時は既存依存追跡/Acceptanceで再確認。
+3. **Viewの投影資格**：RQ-036 Model Map/三視点の採用済みGraphは既存Source Index/World/typed Relationを正とする。未受理外部Evidenceをナビゲーションする場合はSource-backed Candidate/Gapとして**別状態**で扱い、CRUDの既知事実、組織Chartの正式Edge、業務Decision、Actionを増殖させない。Authorized Public Sliceに含められないprivate観測は、図の線・件数・診断にも出さない。
+4. **実Read/Effectはさらに別**：外部Graphを正式組織Relationへ写せても、Case C1の実DB Rowset、現時点のRead/Update Grant、Handoff L/R/Hは#2586/#1174/#1444の実Runで別立証。外部観測のみでは未受理Actionや現在の人事権限を発生させない。
+
+### 4. ORG-EXT-01〜06：既存External T1-A／ORG-TRの交差で検証する負例（未実行）
+
+| ID | 対照 | 禁止する断定 |
+| --- | --- | --- |
+| EXT-01 同Label二Node | 外部Person相当Nodeの表示名が同じ、IDとSource Scopeが異なる | 同一Personと自動統合・重複消去 |
+| EXT-02 並行Relation | 同端点に異なるEdge IDが二つあり、外部Evidenceの意味Roleは未受理 | 一つのMembershipを自動作成、二つの関係を潰す |
+| EXT-03 Endpoint unbound | Graph Root/TargetのSource bindingが無い。表示上の端点は存在 | TEI Canonical relationを勝手に完成、complete coverageへ昇格 |
+| EXT-04 Partialと0件 | partial report／semantic coverage unknownで担当候補が見つからない | その部署に担当者なし、すべて引継ぎ済み、と断定 |
+| EXT-05 同Byte別Workspace | Source中身が同一で別Workspace/外部Provider版・Scopeが異なる | Source/World Fingerprint一致でAccepted Meaningを流用 |
+| EXT-06 A→B→A改版 | 解析前後だけA、途中の変更B／Caseのvalid/known訂正／旧ACK | Sourceの原子的現在性、旧Grant/Receipt、Org Cutover完了を推定 |
+
+**実装Ownerと優先順**：#3394外部Observationの一Node＋一Edge実Readを先に。#2386はOrg Meaning/Owner受理条件だけを所有し、#3492/#3518のSource-backed Model Mapへ適合済み候補だけ引渡し、#2516でConsumer開示の非干渉を検査する。#2586 Product HJ-09および次段Org C1実Readを止めない。#1180/#2514の独立Expectedに追加し、同一Fixtureの別名複製は作らない。
+
+**証拠上限**：前述のREA 4/4実Job・42/42監査試験は#3496の限定固定HEADのみ。ORG-EXT-01〜06、実TEI Application Operation受領、組織Mapping Owner採否、Model Map正式投影、Host/実DB/SHO/SEI試験は**NOT RUN**。
