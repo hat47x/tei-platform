@@ -87,6 +87,7 @@
 - [利用者設定の書込みの確認](XTEA_LOWCODE_USER_SETTINGS_WRITE_2026-11.md)（参照実装の試験記録。監査・権限・画面は未実装）
 - [例の締め日・設定Dataと構文の修正の確認](XTEA_LOWCODE_EXAMPLE_CLOSING_SETTINGS_2026-11.md)（参照実装の試験記録。閉めの実行内容と設定の監査は未実装）
 - [為替の月次・年次を別Dataに分ける構成の確認](XTEA_LOWCODE_CURRENCY_TWO_TABLES_2026-11.md)（参照実装の試験記録。宣言語彙と例への追加は未実装）
+- [採番の永続CounterStoreの確認](XTEA_LOWCODE_NUMBERING_SQLITE_STORE_2026-11.md)（参照実装の試験記録。2プロセス同時実行とPostgreSQLは未実装）
 - [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
 - [X-TEA受容要件の実装対応](XTEA_LOWCODE_ACCEPTANCE_TRACE_2026-11.md)（`AC-1`〜`AC-11`・`RQ-C1`〜`RQ-C3`の参照実装と未確認事項。受容判断は仮承認）
 - [実DBで実行時の判断を確かめる計画](REAL_DATABASE_RUNTIME_DECISION_PLAN_2026-11.md)（期間・権限・効果の判断を実DBで見る案。**NOT RUN**）
@@ -111,6 +112,7 @@
 - [観測の宣言から、既存の Router で実際に入れるか](OBSERVATION_ROUTER_CONNECT_REFERENCE_2026-11-09/README.md)（`tools/reference-observation-router-connect` として、ObservationProviders の断絶を新しい機構なしで閉じられるか試す。宣言→observation.Binding→Host registry→observation.Router.Observe の4段が既存の関数だけで通り、未登録でも resolved=True のまま invoked=False になることを示す。実Providerの観測は示さない）
 - [証拠の宣言から、既存の Router で実際に入れるか](EVIDENCE_ROUTER_CONNECT_REFERENCE_2026-11-09/README.md)（`tools/reference-evidence-router-connect` として、観測側と同じ4段の形が EvidenceProviders でも成り立つかを試す。Collect は durable.ActionRecord を要求するため証拠ゲートでない記録は専用状態で拒否し、未登録でも resolved=True のまま invoked=False になることを示す。pass は provider の主張で外部状態の証明ではない）
 - [CON-12cは、いまの観測・証拠の宣言では問えない](BINDING_IDENTITY_LAYERS_2026-11-09/README.md)（観測と証拠の宣言はKindとProviderしか持たず、Artifact digest・Grant epoch・Source Scopeが無いため、CON-12cの比較項が存在しないことを実測する。識別子を持つのはgeneration.BindingとServiceProviderSelectionの2層だけ。何も変更しない）
+- [digestが変わったとき、旧いピン留めはどうなるか（CON-12c）](DIGEST_CHANGE_REUSE_REFERENCE_2026-11-09/README.md)（CON-12cを識別子を持つ generation.Binding の層で実際に問う。変更後の新しい取得は新しい digest、変更前にピン留めした lease は古い digest のままであることを示し、Publish が同じ世代番号と contract 越えを拒否することも固定する。実配備の切替ではなく、digestも実ビルドの産物ではない）
 - [C-2を試験の外で組み立て、C-1と同じ土台で比べる](SERVICE_CARRIER_CONNECT_REFERENCE_2026-11-09/README.md)（`tools/reference-service-carrier-connect` として判断材料のC-2を実装。Hostが渡したCoordinator・Runtime registry・RouteSourceからInvokerを組み立て、ピン留めした世代で要求を運ぶ。Routeが無い場合はInvokerを呼ぶ前に拒否し、別Binding用のRouteも拒否し、入力不足も拒否する。実配備の成立は示さない）
 - [C-2の数も、実行前拒否と実行後不確定を分ける](SERVICE_CARRIER_CONNECT_OUTCOME_V1_2026-11-09/README.md)（C-2の参照Reportをv1にし、ranCountをcarrier入場、refusedCountを入場前停止だけ、unverifiedCountを入場後の失敗や別世代の応答として分ける。artifact検証の拒否はcarrier内部で起きるためunverifiedに入る。反例3件でv0ならrefusedに入っていたケースを固定し、CLIの3場合はcarrierInvoked=falseを示す。製品へ繋ぐべきかは示さない）
 - [C-1とC-2は、同じ問いの2案か](CONNECT_POINT_C1_C2_2026-11-09/README.md)（判断材料が並べたC-1 routing.Router と C-2 servicehost の入口を比べ、入力の型・世代の有無・到達可能性が違うことを示す。C-1は配備の動作を実行しC-2はServiceの要求を運ぶため、両方を選ぶことは経路の重複ではない。C-2は非試験の呼出し元がまだ0件であることを記録。どちらを先に入れるべきかは示さない）
@@ -261,4 +263,4 @@
 - [view -executeの失敗符号が潰れていた](TEI_DOGFOODING_ROUND21_VIEW_EXECUTE_2026-11-09/README.md)（#3797・#3419。入力不正と認可拒否がどちらも`COMMAND_FAILED`に潰れ、理由がmessageの先頭にしかなかった。既知7符号を`error.code`に出す。`-operation-log`の上書き挙動は未決）
 - [手書きの符号許可リストが21中15を潰していた](TEI_DOGFOODING_ROUND22_CODE_COVERAGE_2026-11-09/README.md)（#3807・#3797・#3420。CLIは7符号、Studioは1符号だけを特別扱いし、coreの21符号のうち15が`COMMAND_FAILED`に潰れていた。列挙を廃止し`command.ReportedFailure`へ。AST走査で再発防止）
 - [契約文書の符号一覧が実装より狭くなっていた](TEI_DOGFOODING_ROUND23_CONTRACT_DOC_2026-11-09/README.md)（#3419・#3807。`view`行は11符号しか挙げず実装は21符号を返しうる。discoveryは符号を広告しないため文書が唯一の発見経路。AST走査で文書と実装の一致を両方向に固定）
-
+- [toolの引数一覧がschemaと独立に手書きされていた](TEI_DOGFOODING_ROUND24_TOOL_TABLE_DRIFT_2026-11-09/README.md)（#3823・#3419。`toolArguments`が`InputSchema.properties`と同じ事実を2回書いており、緩む方向の不一致を誰も検出できなかった。表を削除しschemaから導出する形に）

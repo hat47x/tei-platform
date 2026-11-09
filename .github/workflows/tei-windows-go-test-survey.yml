@@ -49,6 +49,27 @@ jobs:
           check-latest: false
           cache: false
 
+      - name: checkoutの行末とダイジェストを記録
+        shell: pwsh
+        run: |
+          # The Windows runner may check text files out with CRLF, which changes
+          # the bytes a digest comparison sees. Record what this checkout
+          # actually contains so a Windows-only failure can be told apart from a
+          # real regression (#3783).
+          "core.autocrlf=$(git config --get core.autocrlf)"
+          "core.eol=$(git config --get core.eol)"
+          $crlf = (git ls-files --eol | Select-String -Pattern 'i/crlf' | Measure-Object).Count
+          $lf = (git ls-files --eol | Select-String -Pattern 'i/lf' | Measure-Object).Count
+          "index: crlf=$crlf lf=$lf"
+          foreach ($path in @('tools/reference-generator-selection/testdata/line-amount/contract.json', 'plan/adr/README.md', 'tools/reference-target-profile/testdata/server.json')) {
+            if (Test-Path $path) {
+              $hash = (Get-FileHash -Algorithm SHA256 -Path $path).Hash.ToLower()
+              $bytes = [System.IO.File]::ReadAllBytes($path)
+              $crlfInFile = ([regex]::Matches([System.Text.Encoding]::UTF8.GetString($bytes), "`r`n")).Count
+              "$path sha256=$hash bytes=$($bytes.Length) crlf_pairs=$crlfInFile"
+            }
+          }
+
       - name: 対象パッケージのgo testを実行
         shell: pwsh
         run: |

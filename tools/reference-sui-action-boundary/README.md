@@ -45,7 +45,9 @@ SUI側では [PR #3222](https://github.com/hat47x/sui-sensemaking/pull/3222) が
 
 現段階の変更量はSUIの既存3ファイル（App、CanvasShell、CardView）への編集と、新規ドメイン実装1ファイル・テスト2ファイルです。SUI側のVitest・typecheck・build・実ブラウザー確認は未実行のため、UIの動作互換が実証された状態ではありません。ブラウザーではTEI側のES Moduleを取り込めますが、`structuredClone`を利用できる実行環境が必要です。
 
-## SUI利用側アダプターへの接続（Draft）
+## SUI利用側アダプターへの接続（当時はDraft、現在は統合済み）
+
+2026-11-09時点の状態: SUIの[PR #3226](https://github.com/hat47x/sui-sensemaking/pull/3226)は2026-10-11に、続く[PR #3227](https://github.com/hat47x/sui-sensemaking/pull/3227)（CIでの契約検証）は2026-10-12にmainへ統合済みです。以降の節にある「Draft」「未実行」「Draftは維持」は、各節を書いた時点（2026-10-10前後）の観測であり、現在の状態ではありません。統合後の版で当該試験を実行した結果は、この文書には記録していません。再実行して記録するまで、これらの節の試験は「未実行のまま」として扱い、合成の確認を実際の統合成功とは読みません。
 
 SUIの[PR #3226](https://github.com/hat47x/sui-sensemaking/pull/3226)では、`src/api/tei_card_move_action.ts`を追加しています。SUIの`DocumentV1`とETagを操作開始時点の条件とし、Card移動の確定座標だけを`sui.move`のPayloadとして渡します。成功後は、**SUI自身の既存Document取得経路**からDocumentとETagを再読込し、TEI Actionが返したRevision、Card座標、島への所属が一致した場合にだけSUIへ状態反映を委ねます。利用側が`dispatch`、`readDocument`、`isCurrent`、`applyConfirmed`の4つのポートを与える構造で、TEI CoreにSUI専用型を取り込みません。
 
@@ -69,13 +71,13 @@ SUI #3226の条件付きSQL claimは、実行中に同じDocumentへの別Writer
 
 ### CAS Revisionの強度とSUI固有の成功監査（2026-10-11追補）
 
-SUI [Draft PR #3226](https://github.com/hat47x/sui-sensemaking/pull/3226)のAction readbackを、SUI既存GETの互換的な弱ETag解釈から切り離しました。**SUI固有のApplicationプロファイル**として、Action要求・応答と再読込のRevisionは厳密な小文字64桁SHA-256であり、再読込のHTTP ETagには強い引用符付きの`"<hash>"`だけを認めます。弱い`W/"..."`や欠落・不正ETagを拒否し、取得はsame-origin、no-store、redirect=errorとしました。JavaScript／Python双方で、末尾改行と正規表現の挙動に依存せず、63桁+改行も無効にします。この制約を**汎用TEI Hostの`expectedRevision`型や第二Applicationに押し付けません**。Inventory等の異なる保存リビジョン形式はそのApplicationの契約が定義します。
+SUI [PR #3226（当時Draft）](https://github.com/hat47x/sui-sensemaking/pull/3226)のAction readbackを、SUI既存GETの互換的な弱ETag解釈から切り離しました。**SUI固有のApplicationプロファイル**として、Action要求・応答と再読込のRevisionは厳密な小文字64桁SHA-256であり、再読込のHTTP ETagには強い引用符付きの`"<hash>"`だけを認めます。弱い`W/"..."`や欠落・不正ETagを拒否し、取得はsame-origin、no-store、redirect=errorとしました。JavaScript／Python双方で、末尾改行と正規表現の挙動に依存せず、63桁+改行も無効にします。この制約を**汎用TEI Hostの`expectedRevision`型や第二Applicationに押し付けません**。Inventory等の異なる保存リビジョン形式はそのApplicationの契約が定義します。
 
 SUI固有のAction保存がDB commitに成功した後、SUI既存`AuditDispatcher`へ`apply`イベントを送信する処理を追加しました。検証済ActorとTenant/Document、`sui.move`、`committed`を記録し、Card本文・Source・生の権限主張はコピーしません。競合・拒否・失敗時には成功イベントを送らず、監査Sink障害でも**既に完了したコミットをHTTP 500の失敗と誤報しない**ようにします。ただし既存監査配送はfail-openであり、**永続監査outbox・復旧可能な配送保証は未実装**です。本番監査要件を満たすことを意味しません。READMEの確認はコード・テスト追加の事実であり、正式Python/SQLite/Vitest/Go/React検証は未完了です。
 
 ### SUI Action境界のHTTP保護とUndo状態計画（2026-10-11）
 
-[SUI Draft PR #3226](https://github.com/hat47x/sui-sensemaking/pull/3226)では、Go参照HTTPプロファイルとSUI専用の受信口の差分を詰めました。明示されたHTTP OriginのScheme/Host同一性はBFF Cookieなしでも確認し、異なるOriginや`X-TEI-Action`欠落は`403 request_origin_denied`、非JSONは`415 unsupported_content_type`とします。Cookie認証では引き続きSUIのBFF CSRFミドルウェアを利用します。ETagに終端改行を付けた非正規入力は64文字の長さ制限によって拒否し、保存済みDocumentの形式不整合（`500 execution_failed`）と利用者のMove入力違反（`400 invalid_payload`）は分離しました。これらはSUI専用HTTPアダプターの処理であり、TEIのGo HostへSUI固有型を導入しません。
+[SUI PR #3226（当時Draft）](https://github.com/hat47x/sui-sensemaking/pull/3226)では、Go参照HTTPプロファイルとSUI専用の受信口の差分を詰めました。明示されたHTTP OriginのScheme/Host同一性はBFF Cookieなしでも確認し、異なるOriginや`X-TEI-Action`欠落は`403 request_origin_denied`、非JSONは`415 unsupported_content_type`とします。Cookie認証では引き続きSUIのBFF CSRFミドルウェアを利用します。ETagに終端改行を付けた非正規入力は64文字の長さ制限によって拒否し、保存済みDocumentの形式不整合（`500 execution_failed`）と利用者のMove入力違反（`400 invalid_payload`）は分離しました。これらはSUI専用HTTPアダプターの処理であり、TEIのGo HostへSUI固有型を導入しません。
 
 ブラウザー側では、成功応答を受け取った後の壊れたDocument再読込についても、確認済みの`committedRevision`を保持した`invalid_readback`を返します。サーバー側は既に処理した可能性があるため、旧Revisionでの自動再送は禁止します。
 
@@ -85,7 +87,7 @@ SUIへ`frontend/src/domain/confirmed_card_move_state.ts`と対応テストを追
 
 ### Action送信前のDocument差分制約と検証入口（2026-10-10）
 
-[SUI Draft PR #3226](https://github.com/hat47x/sui-sensemaking/pull/3226)に`isPureCardMove`を追加しました。元Documentと移動候補を比較し、**対象Cardのx/yと島への所属変更のみ**を許して、それ以外の情報変更が混入したリクエストは**Action dispatch前**に拒否します。これにより成功済みのSUI保存と画面の再取得結果が食い違う事例を抑制し、SUIのSource／Hold／Edge／レビュー／Affiliationの非改変を守ります。TEI HostがSUIのCardやIslandの意味論を解釈する必要はありません。
+[SUI PR #3226（当時Draft）](https://github.com/hat47x/sui-sensemaking/pull/3226)に`isPureCardMove`を追加しました。元Documentと移動候補を比較し、**対象Cardのx/yと島への所属変更のみ**を許して、それ以外の情報変更が混入したリクエストは**Action dispatch前**に拒否します。これにより成功済みのSUI保存と画面の再取得結果が食い違う事例を抑制し、SUIのSource／Hold／Edge／レビュー／Affiliationの非改変を守ります。TEI HostがSUIのCardやIslandの意味論を解釈する必要はありません。
 
 SUIの`Island.summaryText`がある場合にPydanticが`summaryReviewed=false`を補完する正規化にも対応しました。`true`など異なるレビュー状態は比較エラーとして保持します。
 
@@ -101,7 +103,7 @@ SUI `src/api/tei_card_move_action.integration.test.ts`に、Actionポート・�
 
 ### 利用側安全性の追補（2026-10-10）
 
-[SUI Draft PR #3226](https://github.com/hat47x/sui-sensemaking/pull/3226)では、Action成功後のDocument全体照合を追加し、座標・島所属だけが正しくてもSource／Hold／レビュー／未知Edge／Affiliationなどに損失があればローカル反映を拒否するようにしました。サーバー所有の`updatedAt`と任意の`null`／未指定の等価性は許容します。単一テナントの追加認可アダプターがない場合でも、明示的な読取り専用モードのAction更新は拒否します。
+[SUI PR #3226（当時Draft）](https://github.com/hat47x/sui-sensemaking/pull/3226)では、Action成功後のDocument全体照合を追加し、座標・島所属だけが正しくてもSource／Hold／レビュー／未知Edge／Affiliationなどに損失があればローカル反映を拒否するようにしました。サーバー所有の`updatedAt`と任意の`null`／未指定の等価性は許容します。単一テナントの追加認可アダプターがない場合でも、明示的な読取り専用モードのAction更新は拒否します。
 
 また**SUI固有の`POST /docs/{doc_id}/action-commit`はデフォルト無効**としました。`request.app.state.sui_native_action_v1_enabled is True`が明示されない限り404で拒否します。テストだけが局所的に有効化し、未検証の通常配備で新たな書込み経路を開きません。これらの追加修正後のPython／Vitest／Node／全体healthは未実行です。実TEI Hostの認可・呼出委譲・SUI React状態反映が完成するまで、本番有効化を認めません。
 
