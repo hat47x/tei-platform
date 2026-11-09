@@ -94,6 +94,7 @@
 - [為替の月次・年次を別Dataに分ける構成の確認](XTEA_LOWCODE_CURRENCY_TWO_TABLES_2026-11.md)（参照実装の試験記録。例への追加は未実装）
 - [為替の粒度の宣言語彙の確認](XTEA_LOWCODE_CURRENCY_GRANULARITY_2026-11.md)（参照実装の試験記録。例への追加は未実装）
 - [RQ-C3の確認方法の観測](XTEA_LOWCODE_RQC3_VERIFICATION_2026-11.md)（参照実装の試験記録。要求の確認方法を試験名へ写して観測）
+- [RQ-C2の確認方法の観測](XTEA_LOWCODE_RQC2_VERIFICATION_2026-11.md)（参照実装の試験記録。拡張点の宣言・実行時の拒否・失敗の観測）
 - [採番の永続CounterStoreの確認](XTEA_LOWCODE_NUMBERING_SQLITE_STORE_2026-11.md)（参照実装の試験記録。PostgreSQLは未実装）
 - [採番の2プロセス同時実行の確認](XTEA_LOWCODE_NUMBERING_PROCESS_RACE_2026-11.md)（参照実装の試験記録。PostgreSQLと多プロセス構成は未実装）
 - [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
@@ -294,4 +295,5 @@
 - [設計の問いにCLIで答えられるかを確かめた（欠陥なし）](TEI_DOGFOODING_ROUND30_DESIGN_QUESTIONS_2026-11-09/README.md)（#3419・#3884。outcome辺により認証→認可の連鎖が両側から見える。宙に浮いた参照0件。`trace.unresolved`（行）と`projectionUnresolved`（捨てた辺）の語の衝突を記録）
 - [traceの行issueのうち4つがCLIから到達不能だった](TEI_DOGFOODING_ROUND31_TRACE_ISSUE_REACHABILITY_2026-11-09/README.md)（#3906・#3419。72subjectすべてで`trace.unresolved`は0、実体は`projectionUnresolved`に17件。規則は投影した辺から作るため規則系issueは起きない。契約に明記し試験で固定）
 - [traceの行issueは11種すべてCLIから観測できない](TEI_DOGFOODING_ROUND32_ISSUE_REACHABILITY_2026-11-09/README.md)（#3906。`trace.go`の6種と`lookup.resolve`の5種がすべて到達不能。`reference/workspace`全subjectで`issue`は1件も観測されず、未解決は`projectionUnresolved`のみ）
+- [計画文書に本文を持たない重複見出しが残っていた](TEI_DOGFOODING_ROUND33_PLAN_HEADING_DUPLICATE_2026-11-09/README.md)（#3919。`## 11`が2つ・第5ラウンド記録も§6重複。`## `見出しの連続と番号重複を検査する試験を追加。私の試験が2回「静かに通る」状態になったことも記録）
 - [`darwin`・`arm64`で何が確かめられ、何が確かめられないか](TEI_GO_SELF_BUILD_CROSS_COMPILE_SCOPE_2026-11-10.md)（§7の残項目について、クロスコンパイルは4 target で成功するが**実行はできない**（qemu無し・macOS無し）。`internal/buildintent`にhost依存の分岐が0件という静的確認まで。**実行による一致は未観測**で、§7の項目は未チェックのまま。 #2831）
