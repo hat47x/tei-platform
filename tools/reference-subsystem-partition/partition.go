@@ -225,7 +225,7 @@ func Evaluate(p Problem) (Report, error) {
 	return Report{
 		Status: "exact-for-supplied-graph", AuthorityLimit: AuthorityLimit,
 		MinimumKnownCrossWeight: &optimum,
-		Components: components, Placements: placements,
+		Components:              components, Placements: placements,
 	}, nil
 }
 
