@@ -185,3 +185,6 @@
 
 # Evidence router connect output is hashed as raw bytes by its README.
 /plan/evidence/EVIDENCE_ROUTER_CONNECT_REFERENCE_2026-11-09/** -text
+
+# MCP path observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_PATH_2026-11-09/** -text
