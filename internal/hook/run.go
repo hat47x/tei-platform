@@ -46,9 +46,28 @@ func (w *Warning) Unwrap() error { return w.Err }
 type Runner struct {
 	World          ir.World
 	Implementation Implementation
+	// ByPhaseは、位相ごとに別の実装を供給する。規則Pluginは位相ごとに本体を
+	// 持ちうるため、一つの実装ですべての位相を賄う前提を置かない。
+	//
+	// 位相が載っていればその実装を、載っていなければImplementationを使う。
+	// どちらも無ければHOOK_IMPLEMENTATION_UNAVAILABLEで止まる（黙って成功に
+	// しない）。
+	ByPhase map[string]Implementation
 	// Callerは、フックから能力を呼ぶ下位の境界である（`CommandCaller`など）。
 	// 宣言に制限されていない境界をそのまま実装へ渡さず、必ずDeclaredで包む。
 	Caller Caller
+}
+
+// implementationForは、位相に与えられた実装を返す。
+//
+// 位相ごとの指定が先で、全体のImplementationが後である。位相の名前は
+// PhaseOrderが持つものだけを鍵にする（呼出し側が任意の文字列で別の実装を
+// 差し込めないよう、宣言された位相だけを見る）。
+func (r Runner) implementationFor(phase string) Implementation {
+	if impl, ok := r.ByPhase[phase]; ok && impl != nil {
+		return impl
+	}
+	return r.Implementation
 }
 
 // Runは、Patternの対話に宣言されたフックを実行する。
@@ -82,17 +101,18 @@ func (r Runner) Run(ctx context.Context, invocation Invocation) error {
 	if declared == nil {
 		return &Error{Code: "HOOK_NOT_DECLARED", Message: fmt.Sprintf("pattern %s does not declare a %s hook", invocation.Pattern, invocation.Phase)}
 	}
-	if r.Implementation == nil {
+	implementation := r.implementationFor(invocation.Phase)
+	if implementation == nil {
 		return &Error{Code: "HOOK_IMPLEMENTATION_UNAVAILABLE", Message: "no implementation is configured for this hook boundary"}
 	}
 	var err error
-	if calling, ok := r.Implementation.(CallingImplementation); ok {
+	if calling, ok := implementation.(CallingImplementation); ok {
 		// A hook that calls capabilities is only given the caller its own
 		// declaration permits. An unset caller is not a licence: Declared refuses
 		// every call without an inner boundary.
 		err = calling.RunWithCaller(ctx, invocation, declaredCaller(r.Caller, declared))
 	} else {
-		err = r.Implementation.Run(ctx, invocation)
+		err = implementation.Run(ctx, invocation)
 	}
 	return wrapFailure(err, declared)
 }

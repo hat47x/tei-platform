@@ -110,14 +110,15 @@ func (r Runner) RunSequence(ctx context.Context, invocation Invocation) (Sequenc
 
 // runDeclaredは、一つの宣言を実行する。`Run`と同じ境界と失敗の種類を使う。
 func (r Runner) runDeclared(ctx context.Context, invocation Invocation, declared *application.Hook) error {
-	if r.Implementation == nil {
+	implementation := r.implementationFor(invocation.Phase)
+	if implementation == nil {
 		return &Error{Code: "HOOK_IMPLEMENTATION_UNAVAILABLE", Message: "no implementation is configured for this hook boundary"}
 	}
 	var err error
-	if calling, ok := r.Implementation.(CallingImplementation); ok {
+	if calling, ok := implementation.(CallingImplementation); ok {
 		err = calling.RunWithCaller(ctx, invocation, declaredCaller(r.Caller, declared))
 	} else {
-		err = r.Implementation.Run(ctx, invocation)
+		err = implementation.Run(ctx, invocation)
 	}
 	return wrapFailure(err, declared)
 }
