@@ -83,7 +83,7 @@ func TestProductRecentOrdersFixtureSourceContract(t *testing.T) {
 	}
 	type row struct {
 		id, customer, status, amount string
-		orderedAt time.Time
+		orderedAt                    time.Time
 	}
 	rows := make([]row, 0, len(matches))
 	for _, m := range matches {
@@ -103,7 +103,7 @@ func TestProductRecentOrdersFixtureSourceContract(t *testing.T) {
 	}
 	for _, tc := range []struct {
 		from string
-		ids []string
+		ids  []string
 	}{
 		{"2026-11-07T09:00:00Z", []string{"O-003", "O-002", "O-001"}},
 		{"2026-11-07T10:05:00Z", []string{"O-003", "O-002"}},
