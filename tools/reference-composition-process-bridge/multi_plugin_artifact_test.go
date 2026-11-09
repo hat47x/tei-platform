@@ -7,7 +7,6 @@ import (
 	"errors"
 	"os"
 	"os/exec"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -26,13 +25,11 @@ import (
 // identity is necessary, but it is not a substitute for selected plugin or
 // contract identity. This is a test-only host adapter, not a new resolver.
 func TestTwoLogicalPluginsShareOnePhysicalExecutable(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("reference stdio process launcher forbids spaces in executable paths on Windows")
-	}
+
 	// #2057: buildは実プロセスの期限と切り離し、独立した長い期限で待つ。
 	buildCtx, cancelBuild := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancelBuild()
-	path := hostExecutable(t.TempDir(), "tei-bundled-plugins")
+	path := hostExecutable(temporaryBuildDir(t), "tei-bundled-plugins")
 	cmd := exec.CommandContext(buildCtx, "go", "build", "-o", path, "../reference-plugin-bundle")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("build bundled executable: %v\n%s", err, out)
