@@ -670,7 +670,20 @@ Source Indexを前段P0-Sで読めても、このDriver解決は`Source Index→
 
 **次のExit**はHTTP専用の第二Result EngineやDeployment Executorへ自動Retryを組み込むことではない。#1174/#2999の既存Operation identity・Effect fence、#951/#3279/#3267のProvider/Host資格と、#3262のDesign Context出典を**製品で選択された一つのOwner/Consumer**へ接続する。C-4外部Host委譲も有効な選択肢。SUI/SHO/StudioとCLIが同じ種別のResultを表示するときも、`pre-execute refused`と`post-execute unverified`を同じ業務拒否や無条件再試行可能エラーに平坦化しない。実外部Effect/Client受領/Owner受理は引き続き未実証。
 
-## 22. 参考資料と採否
+## 22. 2026-11-09：C-1 Deployment／C-2 Serviceの別経路をHTTP Client Reactionへ接続
+
+最新の[Composition判断資料§10〜11](../workstreams/COMPOSITION_CONNECT_POINT_BRIEF_2026-11.md)と[独立したCarrierの実測](../evidence/CONNECT_POINT_C1_C2_2026-11-09/README.md)から、以前の「C-1 RouterとC-2 Service Carrierは必ず二者択一」という前提を訂正する。C-1は**配備Command**、C-2は**Service Request**であり、同じ業務Operationの二重実行Ownerにしない限り共存できる。C-4外部Host委譲はOperation／Targetごとに判断し、C-3はDeployment側のCapability解決であってHTTP Serviceへ無条件に適用しない。
+
+| 実入口 | 呼出しを実際に観測した時点 | Refused／Unverifiedの境界 | HTTP/Graph表示で追加すべき列 |
+| --- | --- | --- | --- |
+| C-1`routing.Router.Dispatch` | `Executor.Execute`へ入場 | `Execute`前停止／入場後障害または不正ACK | Deployment Action／Executor ID／Attempt／ACKの有効性／外部Effect Unknown |
+| C-2`SelectedServiceCarrierInvoker.Invoke` | Host-pinned Service Carrierへ入場 | Carrier入場前停止／入場後障害または不正世代結果 | Service Contract／Provider Selection／Host Generation／Carrier入場／Process実Invokeの有無／外部Effect Unknown |
+
+**C-2で特に注意する点**：Carrierへの入場はProvider Processへの到達ではない。Host-owned RouteやArtifact Verifierが**Carrierの内部**で拒否する経路があるため、`carrierInvoked=true`だけで`providerInvoked=true`と推論しない。Carrier参照v0ではReportの版名と一部説明が食い違っていたため、`tei.reference.service-carrier-connect/v1`へ切り分け、実Resultの事前拒否と呼出し後不確定を別のError Codeで扱う。保存済みv0 RAW/SHAと新v1を混ぜず、新規CIの結果を受けて別途Qualifiedとする。
+
+**次のプロダクト受入**：選択したOperation Ownerがどちらかを先に確認し、`selected→actual carrier/process invocation→returned ACK→effect independent read→Client Reaction`を同一Attemptの**別証拠**として要求する。既存Result/Command Effect fence（#1174）、Plugin/Current GrantとBOM（#951/#3279/#3267）、Design Context（#3262）を利用し、第二Resolver/Authority/Receipt StoreをHTTP専用に作らない。実CLI/StudioのProvider B Consumer S2が合格するまでは、「共通Plugin実行基盤が製品に接続済み」とは扱わない。
+
+## 23. 参考資料と採否
 
 - [Liberator repository](https://github.com/clojure-liberator/liberator) ― ClojureのREST decision modelの先行例。ライブラリ移植ではない。
 - [Webmachine mechanics](https://webmachine.github.io/mechanics.html)、[Decision flow](https://webmachine.github.io/diagram.html)、[Resource functions](https://webmachine.github.io/resources.html) ― decision flow・契約・処理に分離する参考資料（古いHTTP版があるため仕様の正本にはしない）。
