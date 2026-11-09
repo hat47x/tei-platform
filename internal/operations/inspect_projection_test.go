@@ -36,6 +36,7 @@ func TestValidateInspectionProjection(t *testing.T) {
 		{"null-canonical", func(v *SubjectInspection) { v.Canonical = json.RawMessage(`null`) }},
 		{"array-canonical", func(v *SubjectInspection) { v.Canonical = json.RawMessage(`[{"id":"sales.order"}]`) }},
 		{"uppercase-id-field", func(v *SubjectInspection) { v.Canonical = json.RawMessage(`{"ID":"sales.order"}`) }},
+		{"case-alias-after-id", func(v *SubjectInspection) { v.Canonical = json.RawMessage(`{"id":"sales.order","ID":"sales.other"}`) }},
 		{"duplicate-id", func(v *SubjectInspection) { v.Canonical = json.RawMessage(`{"id":"sales.order","id":"sales.order"}`) }},
 		{"duplicate-id-mismatch", func(v *SubjectInspection) { v.Canonical = json.RawMessage(`{"id":"sales.order","id":"sales.other"}`) }},
 		{"nested-id-only", func(v *SubjectInspection) { v.Canonical = json.RawMessage(`{"nested":{"id":"sales.order"}}`) }},
