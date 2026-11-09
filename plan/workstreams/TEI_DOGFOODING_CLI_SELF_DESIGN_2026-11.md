@@ -753,3 +753,19 @@ ADR-0048 §2.4 の「既定値の適用は共通契約で定める」を、CLI �
 **意図的な挙動変更を含む。** 3つの既存試験の期待値を書き換えた。うち1つ（`studiohost` の認可拒否）は、符号が使えなかったための回避策（`strings.Contains(message, "COMMAND_UNAUTHORIZED")`）であり、今回それが必要なくなった。
 
 残る作業: 現れうる符号の集合を契約文書へ反映する（#3419）。起票は [#3807](https://github.com/hat47x/tei-platform/issues/3807)。
+
+## 28. 第23ラウンド（2026-11-09）: 契約文書の符号一覧が実装より狭くなっていた
+
+第22ラウンドで `view -execute` が `internal/command` の21符号をそのまま返すようにした。その結果、契約文書 `plan/design/CLI_JSON_OUTPUT_CONTRACT_2026-10.md` の `view` 行が実装より狭くなっていないかを確かめた。生出力は[第23ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND23_CONTRACT_DOC_2026-11-09/README.md)にある。
+
+- 契約表が名指す符号27個は**すべて Go のソースに存在した**。存在しない符号を書いている箇所は0で、文書は「嘘」ではなく**不足**だった。
+- `view` 行は11符号（うち `COMMAND_*` は4つ）しか挙げていなかったが、実装は `-execute` の失敗で21符号を返しうる。`COMMAND_UNAUTHORIZED`・`COMMAND_DATASOURCE_READ_ONLY`・`COMMAND_COMMIT_FAILED` などが文書に無かった。
+- **discovery は符号を広告しない。** `tei commands` の entry は15欄を持つが失敗符号の欄が無い。呼出し元が「このコマンドはどんな符号を返しうるか」を知る方法は契約文書しかなく、文書が狭いことはそのまま発見可能性の欠落になる。
+
+修正: `view` 行に21符号を列挙し、`COMMAND_EFFECT_UNKNOWN` が優先することを明記した。`COMMAND_FAILED` は「符号を持たない失敗」の受け皿として残る。
+
+再発防止: `cmd/tei/cli_contract_codes_test.go` が `internal/command` のソースを AST で走査して符号を集め、契約表の `view` 行がそれを全部名指すことを確かめる。変異2種で確認 — 文書を前ラウンド前へ戻すと落ち、実装に新しい符号を足して文書を放置しても落ちる。**両方向**を固定した。
+
+第22ラウンドの `ReportedFailure`（入口が報告するか）と対になる形で、対象を「文書が名指すか」へ広げた。次に `internal/command` が符号を増やしたら、文書を直さないと CI が落ちる。
+
+**残り**: `view` 以外の行の機械検査、discovery への符号広告（`commands` の欄を増やす契約変更）。どちらも #3419 に残る。
