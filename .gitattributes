@@ -203,3 +203,6 @@
 
 # Digest change reuse output is hashed as raw bytes by its README.
 /plan/evidence/DIGEST_CHANGE_REUSE_REFERENCE_2026-11-09/** -text
+
+# Partial run verdict output is hashed as raw bytes by its README.
+/plan/evidence/PARTIAL_RUN_VERDICT_2026-11-09/** -text
