@@ -1,0 +1,16 @@
+order_entry.compose_order_summary is declared NOWHERE except the realize line
+itself:
+
+  $ grep -rn compose_order_summary --include=*.tei reference/workspace/
+  applications/order-entry/realizations/default.tei:1:
+    realize order_entry.compose_order_summary with custom go
+
+The projection therefore reports it, correctly:
+
+  projectionUnresolved:
+    ["unmaterialized-to:semantic-capability:order_entry.compose_order_summary"]
+
+This is a pre-existing workspace inconsistency, not something the change
+introduced: before the change no binding reached the graph, so it was
+invisible. Not fixed here -- whether the capability is missing, misspelled or
+retired belongs to the workspace owner.

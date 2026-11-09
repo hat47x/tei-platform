@@ -335,4 +335,4 @@
 - [validate -hが70フラグを表示していた](TEI_DOGFOODING_ROUND38_VALIDATE_FLAG_NOISE_2026-11-09/README.md)（#3956。共有FlagSetのため標準-hが全フラグを列挙。allow-listは既にありhelpTextも絞っていたが、validate/worldはExitOnErrorで到達せず。-hを既存経路へ流し70→3）
 - [13分前に他者が同じ問題を直していた（重複実装の撤回）](TEI_DOGFOODING_ROUND39_DUPLICATE_HELP_FIX_2026-11-09/README.md)（#3956・#3943。`0b85c031a`が06:25に修正、私は06:38に重複提出。寄与ゼロを分離ビルドで確認し撤回。記録の虚偽2件も訂正）
 - [realizeによる実装束縛が参照グラフに現れない](TEI_DOGFOODING_ROUND41_REALIZE_NOT_IN_GRAPH_2026-11-10/README.md)（#3983・#3419。索引はCustomGoBindingsを保持するが投影が辺にしない。束縛を削除してもgraphFingerprintとrowsは不変。ページングと指紋のaliasは設計どおりで問題なし）
-
+- [realizeの実装束縛を参照グラフの辺にした](TEI_DOGFOODING_ROUND42_REALIZE_EDGE_2026-11-10/README.md)（#3983。`application -realizes-> semantic-capability`を追加し3束縛が可視化。4つ目は対象未宣言のため`unmaterialized-to`で報告され、既存不整合が可視化された。変異2種で確認）

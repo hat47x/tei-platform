@@ -477,6 +477,16 @@ func Build(w ir.World) Derived {
 	}
 	for _, b := range w.Bindings {
 		d.CustomGoBindings = append(d.CustomGoBindings, BindingIndexEntry{Application: b.Application, Capability: b.Capability, Adapter: b.ExpectedAdapterFilename(), Hook: b.ExpectedHookName()})
+		// A `realize X with custom go` is a declared edge between the
+		// application and the capability it implements. Recording it only in
+		// CustomGoBindings left it out of the reference graph, so trace could
+		// not answer "what implements this capability?" and a missing binding
+		// changed no graph fingerprint (#3983). The loader always sets
+		// Application, so both ends name a node; skip an empty one rather than
+		// emit an edge the projection would report as unmaterialized.
+		if b.Application != "" && b.Capability != "" {
+			d.DeclaredDependencies = append(d.DeclaredDependencies, DeclaredDependency{FromKind: "application", From: b.Application, Relation: "realizes", ToKind: "semantic-capability", To: b.Capability})
+		}
 	}
 
 	d.EnvironmentRequirements = dependency.Derive(w)
