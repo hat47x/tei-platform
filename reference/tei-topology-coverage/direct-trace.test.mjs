@@ -183,6 +183,7 @@ test('two caller-scope views of the same Workspace may only share bounded load c
   other.result.trace.rows[1].resolvedTo=another;
   assert.deepEqual(compareObservedLoadContext(first,other),
     {status:'same-observed-load-context-only',authority:'read-only-candidate',
+      physicalRootIdentity:'not-provided',readAttemptIdentity:'not-provided',
       sourceAndPluginClosure:'unproven',absentClaim:'unknown'});
   other.result.sourceIndexFingerprint='sha256:different-source';
   assert.deepEqual(compareObservedLoadContext(first,other),
@@ -196,4 +197,15 @@ test('manifest identity alone cannot rescue malformed or undisclosed trace quali
   const a=observeDirectTrace(first);
   assert.equal(a.workspaceIdentity,'load-manifest-observed-only');
   assert.equal(a.authority,'read-only-candidate');
+});
+
+test('byte-identical copy is observationally equivalent but physical root/attempt remain unknown',()=>{
+  // This is a synthetic example of two different physical roots returning
+  // indistinguishable CLI packets: root location is NOT in the trace envelope.
+  const original=fixture(),identicalCopy=structuredClone(original);
+  assert.deepEqual(compareObservedLoadContext(original,identicalCopy),
+    {status:'same-observed-load-context-only',authority:'read-only-candidate',
+      physicalRootIdentity:'not-provided',readAttemptIdentity:'not-provided',
+      sourceAndPluginClosure:'unproven',absentClaim:'unknown'});
+  assert.equal(observeDirectTrace(original).workspaceIdentity,'load-manifest-observed-only');
 });
