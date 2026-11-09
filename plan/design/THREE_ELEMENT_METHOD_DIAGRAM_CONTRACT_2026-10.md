@@ -536,3 +536,35 @@ Node.js 22.16.0で`node --test /tmp/tei-tea-ref/public-slice.test.mjs`を実行�
 - **T20 部分被覆と曖昧選択**：#3543のA/J実Workbench証拠に#3518の部分Model Map・#3728のValidationを**同じWorkspace/Subject/Attemptで**接続できる範囲のみ再利用。Ambiguous AはInspect 0、許可済み一意Jは1、未知Relation/未検証Ruleを非存在へ昇格させず、公開Policyは別に検査する。
 
 **計画への反映**: #1124 M0→M1の直接P0は、実CLI A/J→同一Workbench Initial/Listの**限定成功**を再利用し、残るGraph/Command・旧DOM・Source/Role/Grant/current Disclosureとの実合流へ絞る。TEAは独立のTarget/UI/Policy/Validatorを設けない。T18〜20は**設計受入候補であり、実Studio GUI・実Policyを結合した試験はNOT RUN**。Builder/Self-build、ETL/MFT、#3250のSubsystem計算・実DB Effect、Plugin意味受理は既存Ownerの別証拠を待つ。
+
+
+## 22. 型付きRead/ValidationとPublic Projectionの入力境界を分離する（2026-11-09）
+
+**追加で実際に照合したOwner証拠**: [merged #3728](https://github.com/hat47x/tei-platform/pull/3728) は`operations.ModelCatalog.validation.{ok,errorCount,warningCount}`を`validate`と同じ規則で出す一方、検証NGのWorkspaceでも**Catalog readが成功する**契約を実装。[merged #3492](https://github.com/hat47x/tei-platform/pull/3492) は実Source IndexのPath/Range/Fingerprintが構造的に正しくても、そのReferenceのSubject IDを偽装すると`Index.Validate`とTraceが通り得て、実`InspectSubject`が`SUBJECT_NOT_FOUND`となる負例を追加。これらの実Goテスト・Source Reader・Validatorを本TEA Referenceに複製しない。
+
+### 22.1 Read / Validation / Semantic Binding / Disclosureはそれぞれ非同値
+
+| TEAが受け取る情報 | 適用資格と禁止する推論 |
+| --- | --- |
+| **Catalog read**: CLI envelopeの`ok`、表示可能なEntries | Read可能な場合でも`validation.ok=false`を維持できる。読めたことから正常／Accepted／Edit可能を導出しない |
+| **Validation summary**: `ok`、errorCount、warningCount | これは**観測Workspace全体**に対する結果であり、各Data/Function/Business Subjectの個別違反件数やRelation不存在証明ではない。詳細の正本は`validate -json`でありTEAが複製しない |
+| **Source/Subject binding**: Source Index Artifact/Range/Byteと実Canonical Inspect | Byte/Rangeの構造妥当性は意味Subject実在性ではない。Pathだけ合致する旧Indexや偽装SubjectをGraph Source jump/可逆編集根拠へ昇格しない |
+| **Disclosure**: 現在Consumer用途に公開可能なSlice/診断 | 生のCatalog全体ErrorCountや非公開Subjectに起因する診断を、そのまま公開図・検索件数・ARIA/Tool JSONへ投影しない。全体Validation公開可否そのものは#2516の現在Policyへ委譲 |
+
+Readに失敗した場合はValidationが`false`なのではなく**未観測**。Validationに失敗しても、現在許可される**read-onlyでのData/Function/Business閲覧**を機械的に全停止しない。ただし出典Span・Use-site・Role/Operatorの必要依存・現在開示が不明なら、その局所Source Jump/Inspect/Proposalは保留する。公開図で`errorCount=0`の意味を「見えないエラーなし」から「全Sourceにエラーなし」へ強めない。
+
+### 22.2 公開済みSliceの入力配列は非実行のデータに限定
+
+[TEA Reference Draft #2972](https://github.com/hat47x/tei-platform/pull/2972) の従来`onlyFields`はObject fieldのgetterを拒否していたが、`subjects`・`relations`・`claims`・`views[role]`の**配列要素getter／独自`Symbol.iterator`／疎配列／余剰Metadata／改変Prototype**を拒否できなかった。新しい`plainArray`は各配列について普通のArray prototype、Own key総数`length+1`、全要素のOwn Data Descriptorを確認してから反復する。匿名公開端点やPrivate Stateへの意図しないgetter実行を防ぐ**局所Referenceの制限**であり、入力の意味的資格や開示判断は引き続き外部Ownerが供給する。
+
+新T06/T13負例を**4件**追加。GitHub上の更新済み4モジュール/試験のbyteを直接取得してV8 test互換ハーネスで**31/31 PASS**を確認したが、**Node test runnerの正規CI・Repository Healthは更新headの完了結果を別途照合する**。従来27件のCI成功を新31件の合格として流用しない。任意Proxy/Array prototype全域のmonkeypatch、入力規模による資源攻撃、タイミング/副作用の一般非干渉はこのReferenceでは保証しない。正式な実入力隔離と認可は既存#2516/#1124に接続する。
+
+### 22.3 追加の反例候補と実行順
+
+| ID | 反証 | 状態／責務 |
+| --- | --- | --- |
+| **T21 Read-success / Validation-fail** | Catalog Readに成功した実Workspaceで`validation.ok=false`、かつ許可済みread-only三視点は表示可能。全Source正常／Owner受理は出さない | #3728のGo局所実証はmerged。TEA実Consumerへの結合は**NOT RUN**（#1124） |
+| **T22 Structurally-valid / Semantic-invalid Locator** | Source Byte/Range照合が通ってもSubjectを偽装すると実Inspectが拒否。Source Jump、Graph/CUD Cell、Proposalを有効化しない | #3492の実Workspace Go反例はmerged。TEA実GUI Source Jumpは**NOT RUN** |
+| **T23 Private diagnostic-count noninterference** | 非公開制約の追加で生Catalogの総Warning/Error数が変わる場合、Policyで開示不可な低権限Graph/Table/ARIA/Tool JSONの件数を変えない | #2516の実Disclosure二世界検査に接続。TEAでの実Policy実行は**NOT RUN** |
+
+**ロードマップ**: #1124の同一Workbenchで実CLI A/JのInitial/Listに続きGraph/Command/旧DOM/Current Policyの負例を先行。並行してT21〜T23を既存#3728/#3492/#2516のOwner証拠へ照合し、Sourceの現在位置／意味Subject・読取／Validation／開示の資格を独立表示する。新Source Validator・Trait Evaluation・Policy/Authority判定・Second SSOT・専用HostやModel Mapを作らず、Self-build/ETL/SubsystemのOwnerと既存Gateを変更しない。
