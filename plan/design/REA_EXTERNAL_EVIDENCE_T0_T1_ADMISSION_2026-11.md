@@ -171,3 +171,28 @@ python3 tools/rea-t0-saved-report/audit.py /absolute/path/to/saved-rea-report \
 5. **全体計画／索引の衝突に注意**：[Draft #3542](https://github.com/hat47x/tei-platform/pull/3542)は `plan/design/README.md`の重複を整理する別Owner。#3496の既存索引追加1行と重複させず、PR取込前に**最新mainと差分を再基準化**する。本節では索引を再編集せず、文書追加の唯一の場所としてこのPRを維持。
 
 **検収線**：read-only Local T0 Auditorの18件PASSは、REAのEvidenceを受領したと主張できる証拠ではない。次の意味のある一歩は、**実REA T0が生成した現物の`analysis.json`/`analysis.stderr`/`exit-code.txt`を同じAttempt・独立Source SHA/実解析Versionに結び、このAuditorで検査し、独立Expectedに照合すること**。完了するまでExternal Observation qualificationを部分/unknownで保持し、T1-A/T1-B/SHO/Target成功へ昇格しない。
+
+
+---
+
+<!-- rea-t0-actual-workflow-20261109 -->
+## 12. T0実解析を実行するGitHub Actionsの限定導入（2026-11-09）
+
+**実行物**：本Draftで `.github/workflows/rea-t0-static-evidence.yml` を追加。REAの[上流公式CI手順](https://github.com/morluto/rea/blob/main/examples/github-actions/rea-analysis.yml)に合わせ、`ubuntu-24.04`＋`actions/checkout@11d5960...`＋`setup-node@49933...`／Node **24.22.1**＋`rea-agents@6.7.0`を指定し、synthetic/public JavaScriptディレクトリを作成する。**対象コードは解析されるが起動されない**（throw文入り）。ローカルの接続不能環境で無理にREAを偽実行するのではなく、外部ネットワークを利用できるActionsへ実解析を切り出す。
+
+4つのケースはGitHub Actions matrixの**独立Job**であり、同一Attemptに混ぜない。各Jobが自分の `RUNNER_TEMP` にraw `analysis.json`／`analysis.stderr`／`exit-code.txt`とそのSHA256、Source入力2ファイルのSHA256、実Node/REA version、指定target/argv、保存結果を残し、既存の`audit.py`へ渡す。
+
+| Case | 固定した一つの変化 | Jobの独立Expected | 誤った資格化を禁止する点 |
+|---|---|---|---|
+| **valid** | 有効な合成JSディレクトリ | 実exit=0、REA JSON `ok=true`、Readerで読める | それだけでSource全量・Function意味・Provider全能力は保証しない |
+| **missing** | 存在しないSource pathを選択 | 実exit≠0、失敗値/診断をraw保存 | 正常解析に変換しない。Jobが期待どおり失敗を検出した場合のJob成功≠REA成功 |
+| **unsupported** | ディレクトリではなく単一JSファイルを指定 | 実exit≠0、出力JSONがあれば`unsupported_target`を照合 | Providerを静かに自動変更しない |
+| **partial** | 元のJSへ不正なexport行を一つ追加 | 実exit=0、`parse_failures>0`、`analysisQualification=partial` | `exit0`から`complete`へ昇格させない |
+
+**実行経路**：branch push／main向けPR／任意の手動起動。ただし`workflow_dispatch`が実際に利用できるかはGitHub側の公開・登録状態による。Jobの正常/負例expected比較は**解析実行の終了コードを改変せず**、`exit-code.txt`に保存した値から別ステップで行う。四ケースのうちどれかが期待と異なればそのJobをFAILとし、raw reportは`always()`で可能な範囲を7日保持する。Runner損失、npm install/Build前失敗、Artifact upload不能は無条件unknown。失敗Jobのraw出力が無い場合に偽の正常Evidenceを作らない。
+
+**信頼と再現性の制約**：本ジョブは限定Synthetic Sourceのみ、`contents: read`、`persist-credentials:false`、無Secrets、固定checkout/setup-node/アップロードAction revision、`npm --ignore-scripts`。ただし`rea-agents@6.7.0`を`--save-exact`でインストールするだけでは依存パッケージ推移版がlockで固定されないため、依存まで厳密に複製する条件は未達。T0の実Runner/REA/npm treeやSource/raw digestを同じRunに記録し、独立再現まで「全依存pin済み」としない。REAはHost上の実コードなので、機密Sourceや高権限/privileged workflowでの実行へ転用しない。
+
+**統合時のチェック**：本PRは[main統合済み #3542](https://github.com/hat47x/tei-platform/pull/3542)の設計索引変更と衝突していたが、最新mainのREADME内容に**本REA設計1行だけを再適用**してPRのmergeableを回復させた。Branch全体のMerge Commitによる完全追随ではなく、GitHubのbaseとheadがdivergedしたままなので、レビュー直前には最新main・PR diffを再照合する。過去の重複全文や索引二重貼付を戻さない。
+
+**資格上限**：WorkflowをGitHubへ**登録した事実**と、ActionsでREA実解析4ケースが成功した事実は別。T0は各Jobのexact head/実workflow logs/保存raw/report SHA／独立Reader判定が確認されるまで**NOT RUN / UNQUALIFIED**。T0が成立してもT1-A実TEI Adapter、T1-B Loader/Owner Meaning、T2三視点/SHO Writer/Target実比較は全て別資格。
