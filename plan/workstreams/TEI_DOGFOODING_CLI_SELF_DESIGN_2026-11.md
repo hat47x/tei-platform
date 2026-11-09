@@ -909,3 +909,26 @@ A は「根拠を辿れる」という #2620 の合格条件を満たしつつ�
 実施: 契約文書 `plan/design/CLI_JSON_OUTPUT_CONTRACT_2026-10.md` に注記を追加。（1）2つの「未解決」の意味、（2）`reference/workspace` が 0 と 17 であること、（3）規則系 issue が起きない理由、（4）**未解決の判断は `projectionUnresolved` で行う**。再発防止として `cmd/tei/contract_unresolved_doc_test.go` がこれら4点を検査し、変異2種（案内文の削除・規則合成説明の削除）で落ちることを確認した。
 
 **残り**: `invalid-source` は到達させる方法を見つけられておらず、到達不能なら5種が死んだ診断になる。応答形の変更（案 A・B）は設計判断として #3906 に残す。
+
+## 36. 第32ラウンド（2026-11-09）: trace の行 issue は 11 種すべて CLI から観測できない
+
+第31ラウンドで `invalid-source` を「到達させる方法が見つかっていない」として残した。これを閉じた。生出力は[第32ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND32_ISSUE_REACHABILITY_2026-11-09/README.md)にある。
+
+`row.Issue` に入りうる値は**11種**あった。`trace.go` の switch が6種、`lookup.resolve` が5種を返し（`dest, issue := lookup.resolve(edge.To)` でそのまま `row.Issue` になる）、加えて `evidenceDiagnostics` が任意のコードを返す。
+
+すべて CLI 経路で到達不能である理由:
+
+| 値 | 理由 |
+| --- | --- |
+| `invalid-source`・`ambiguous-source` | `counts` は `graph.Nodes` から作られ、投影が `Key` を重複排除するため常に1。`addEdge` は `From` が未 materialize なら `projectionUnresolved` へ落とす |
+| `invalid-edge-type`・`invalid-rule`・`conflicting-rule` | 規則を**投影した辺から合成**するため、欠落・空欄・重複が生じない |
+| `invalid-target`・`missing-reference`・`wrong-kind`・`ambiguous-reference` | 投影が `To` を `unmaterialized-to` として `projectionUnresolved` へ落とし、行にならない |
+| `invalid-reference` | `-scope` が引数検証で拒否される（`" bad "` → `INVALID_ARGUMENT`、`"a\nb"` → `INVALID_SUBJECT`） |
+| `version-mismatch` | 投影が `Ref.Version` を設定しない |
+| `evidenceDiagnostics` | 投影が `Edge.Evidence` を設定しない |
+
+実測: `reference/workspace` の全 subject を走査して `issue` は**1件も観測されなかった**。
+
+**結論: `Status` は常に `resolved`、`issue` は常に空。未解決の実体は `result.projectionUnresolved` にのみ現れる。** 第31ラウンドで契約文書に書いた「未解決の判断は `projectionUnresolved` で行う」は、11種すべての到達性という独立した経路で裏付けられた。
+
+`modelref` 自体は汎用の型であり、`derivedbridge` を通さない呼出し元では `issue` が意味を持ちうる。今回の主張は**CLI 経由で観測できない**ことに限定している（コードが死んでいるという主張ではない）。起票は #3906 に追記した。
