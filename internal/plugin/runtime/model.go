@@ -808,7 +808,9 @@ func (r Registry) InvokeWithProvenance(ctx context.Context, plan EnvironmentPlan
 	if leaseControl != nil {
 		leaseControllerView = leaseControl
 	}
-	req := Request{ProtocolVersion: ProtocolVersion, RequestID: requestID, Plugin: cr.Plugin, CapabilityKind: kind, CapabilityID: id, DescriptorFingerprint: pr.DescriptorFingerprint, PluginLockFingerprint: plan.PluginLockFingerprint, Permissions: prov.Permissions, ResourceLease: lease, LeaseController: leaseControllerView, Operation: operation, Payload: b}
+	// A builtin or host adapter can mutate a request slice in-process. Do not
+	// let it rewrite the Host's recorded permission provenance.
+	req := Request{ProtocolVersion: ProtocolVersion, RequestID: requestID, Plugin: cr.Plugin, CapabilityKind: kind, CapabilityID: id, DescriptorFingerprint: pr.DescriptorFingerprint, PluginLockFingerprint: plan.PluginLockFingerprint, Permissions: permission.Normalize(prov.Permissions), ResourceLease: lease, LeaseController: leaseControllerView, Operation: operation, Payload: b}
 	// Acquisition and ownership/fencing may have finished after cancellation.
 	// The registered defers revoke the acquired lease even on this early return.
 	// Cancellation after this check is still subject to the selected provider's

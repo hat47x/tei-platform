@@ -1,0 +1,7 @@
+namespace customer
+
+data Customer {
+    attribute customerId type std.identifier display "顧客ID"
+    attribute name type std.text display "顧客名"
+}
+

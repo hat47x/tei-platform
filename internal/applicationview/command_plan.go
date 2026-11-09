@@ -46,6 +46,9 @@ type CommandPeriodRef struct {
 	BusinessDate  core.CanonicalID `json:"businessDate"`
 	States        []string         `json:"states,omitempty"`
 	ClosedRejects []string         `json:"closedRejects,omitempty"`
+	// ClosingDay splits the month into two halves. Zero means the period is the
+	// whole month, so a reader sees "no closing" as an absence, not a default.
+	ClosingDay int `json:"closingDay,omitempty"`
 }
 
 // CommandPlanIssueは、入力の不足以外の不備を表す。
@@ -121,6 +124,7 @@ func BuildCommandPlan(world ir.World, applicationID, patternID, capabilityID cor
 						BusinessDate:  period.BusinessDate,
 						States:        period.States,
 						ClosedRejects: period.ClosedRejects,
+						ClosingDay:    period.ClosingDay,
 					}
 					break
 				}
@@ -198,6 +202,7 @@ func periodForEffect(world ir.World, data core.CanonicalID) *CommandPeriodRef {
 					BusinessDate:  period.BusinessDate,
 					States:        period.States,
 					ClosedRejects: period.ClosedRejects,
+					ClosingDay:    period.ClosingDay,
 				}
 			}
 		}

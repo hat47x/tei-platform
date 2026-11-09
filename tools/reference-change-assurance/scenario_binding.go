@@ -46,7 +46,8 @@ func sha256Hex(content []byte) string {
 // readScenarioLocal only reads regular files under a pinned Scenario
 // directory, preventing fixture symlinks from escaping that directory.
 func readScenarioLocal(root *os.Root, filename string) ([]byte, error) {
-	if !filepath.IsLocal(filename) || filepath.Clean(filename) != filename {
+	normalized := filepath.FromSlash(filename)
+	if !filepath.IsLocal(filename) || filepath.Clean(normalized) != normalized {
 		return nil, fmt.Errorf("Scenario-local path is not normalized or escapes root: %q", filename)
 	}
 	file, err := root.Open(filename)

@@ -47,7 +47,7 @@ func importingWorkspace(t *testing.T) string {
 }
 
 func signArgs(ws, key, out string) []string {
-	return []string{"sign", "-workspace", ws, "-application", "order_entry", "-decision-ref", "d1",
+	return []string{"sign", "-provisional", "-workspace", ws, "-application", "order_entry", "-decision-ref", "d1",
 		"-authority-revision", "r1", "-issuer", "iss", "-key-id", "k1", "-private-key", key, "-out", out}
 }
 
@@ -116,5 +116,61 @@ func TestSignSignsLoadTimeBytesEvenIfTheDiskChangesAfterLoad(t *testing.T) {
 	a, b := readDecision(t, pristine), readDecision(t, mutated)
 	if !reflect.DeepEqual(a.Record.Artifacts, b.Record.Artifacts) {
 		t.Fatalf("signed members differ from Load-time bytes:\n%v\n%v", a.Record.Artifacts, b.Record.Artifacts)
+	}
+}
+
+func TestSignRequiresProvisionalAndShowReportsTheKind(t *testing.T) {
+	key := newKey(t)
+	ws := plainWorkspace(t)
+	out := filepath.Join(t.TempDir(), "d.json")
+	args := signArgs(ws, key, out)
+	noFlag := append([]string{args[0]}, args[2:]...) // drop -provisional
+	if err := run(noFlag, &bytes.Buffer{}); err == nil || !strings.Contains(err.Error(), "-provisional") {
+		t.Fatalf("sign without -provisional: %v", err)
+	}
+	if _, statErr := os.Stat(out); statErr == nil {
+		t.Fatal("output written without -provisional")
+	}
+	if err := run([]string{"sign", "-provisional=false"}, &bytes.Buffer{}); err == nil {
+		t.Fatal("-provisional=false accepted")
+	}
+	if err := run(args, &bytes.Buffer{}); err != nil {
+		t.Fatal(err)
+	}
+	if d := readDecision(t, out); d.AcceptanceKind != "provisional" {
+		t.Fatalf("kind=%q", d.AcceptanceKind)
+	}
+
+	// ingest + show with a trust file for the same key.
+	dir := t.TempDir()
+	var trustOut bytes.Buffer
+	key2 := filepath.Join(dir, "k")
+	if err := run([]string{"keygen", "-private-key", key2, "-issuer", "iss", "-key-id", "k1", "-application", "order_entry"}, &trustOut); err != nil {
+		t.Fatal(err)
+	}
+	trust := filepath.Join(dir, "trust.json")
+	if err := os.WriteFile(trust, trustOut.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out2 := filepath.Join(dir, "d.json")
+	if err := run(signArgs(ws, key2, out2), &bytes.Buffer{}); err != nil {
+		t.Fatal(err)
+	}
+	store := filepath.Join(dir, "store")
+	var ing, show bytes.Buffer
+	if err := run([]string{"ingest", "-store", store, "-trust", trust, "-decision", out2}, &ing); err != nil || !strings.Contains(ing.String(), "ACCEPTANCE_KIND=provisional") {
+		t.Fatalf("ingest: %v %s", err, ing.String())
+	}
+	if err := run([]string{"show", "-store", store, "-trust", trust, "-application", "order_entry"}, &show); err != nil || !strings.Contains(show.String(), "ACCEPTANCE_KIND=provisional") {
+		t.Fatalf("show: %v %s", err, show.String())
+	}
+	// A hand-forged "formal" Decision file is refused at ingest.
+	raw, _ := os.ReadFile(out2)
+	forged := filepath.Join(dir, "forged.json")
+	if err := os.WriteFile(forged, []byte(strings.Replace(string(raw), `"provisional"`, `"formal"`, 1)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := run([]string{"ingest", "-store", filepath.Join(dir, "s2"), "-trust", trust, "-decision", forged}, &bytes.Buffer{}); err == nil {
+		t.Fatal("forged formal Decision ingested")
 	}
 }

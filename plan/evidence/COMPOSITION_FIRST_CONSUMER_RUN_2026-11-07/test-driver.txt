@@ -1,0 +1,8 @@
+=== RUN   TestD2DriverRechecksAuthorityAfterCompleteSourceRead
+=== RUN   TestD2DriverRechecksAuthorityAfterCompleteSourceRead/inventory.product.stock
+=== RUN   TestD2DriverRechecksAuthorityAfterCompleteSourceRead/inventory.product.available
+--- PASS: TestD2DriverRechecksAuthorityAfterCompleteSourceRead (0.00s)
+    --- PASS: TestD2DriverRechecksAuthorityAfterCompleteSourceRead/inventory.product.stock (0.00s)
+    --- PASS: TestD2DriverRechecksAuthorityAfterCompleteSourceRead/inventory.product.available (0.00s)
+PASS
+ok  	tei/internal/driver	1.514s

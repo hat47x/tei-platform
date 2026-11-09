@@ -18,19 +18,24 @@ env:
 permissions:
   contents: read
 
+# 同じPRの古い実行だけを取り消し、mainへのpushは取り消さない（#3682）。
+concurrency:
+  group: tei-tei-product-skill-qualification-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   product-skill-read-only:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
       - name: Test the Product Skill static checker against negative fixtures
         run: python3 -m unittest discover -s skills/yi-tei-modeling/tests -p 'test_*.py' -v
       - name: Verify actual checkout docs against CLI declarations
         run: python3 skills/yi-tei-modeling/verify_skill.py
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version-file: go.mod
           cache: false

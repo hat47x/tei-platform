@@ -1,0 +1,42 @@
+{
+  "contracts": {
+    "select": {
+      "id": "std.select",
+      "version": "1",
+      "fingerprint": "select-v1",
+      "effect": "pure",
+      "inputType": "rows/line",
+      "outputType": "rows/selected"
+    }
+  },
+  "cases": [
+    {
+      "id": "candidate-additional-file-pure",
+      "source": "rows/line |> std.select",
+      "pins": [
+        "select"
+      ],
+      "catalog": [
+        "select"
+      ],
+      "expected": {
+        "stage": "ok",
+        "output_type": "rows/selected"
+      }
+    },
+    {
+      "id": "candidate-additional-file-missing-contract",
+      "source": "rows/line |> std.select",
+      "pins": [
+        "select"
+      ],
+      "catalog": [],
+      "expected": {
+        "stage": "lower_error",
+        "error_code": "missing",
+        "step": 0,
+        "span_token": "std.select"
+      }
+    }
+  ]
+}

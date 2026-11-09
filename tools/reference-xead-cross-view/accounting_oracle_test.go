@@ -5,11 +5,19 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
 	"tei/internal/xeadsource"
 )
+
+func cliBinaryName(name string) string {
+	if runtime.GOOS == "windows" {
+		return name + ".exe"
+	}
+	return name
+}
 
 func accountingOracleFixture(t *testing.T) ([]byte, []byte, commandOutput) {
 	t.Helper()
@@ -126,7 +134,7 @@ func TestCLIExpectedAccountingChecksLocalReprojectionAndRedaction(t *testing.T) 
 			t.Fatal(err)
 		}
 	}
-	bin := filepath.Join(dir, "reference-xead-cross-view")
+	bin := filepath.Join(dir, cliBinaryName("reference-xead-cross-view"))
 	if output, err := exec.Command("go", "build", "-o", bin, ".").CombinedOutput(); err != nil {
 		t.Fatalf("building CLI failed: %v\n%s", err, output)
 	}

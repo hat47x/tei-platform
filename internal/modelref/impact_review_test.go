@@ -1,6 +1,7 @@
 package modelref_test
 
 import (
+	"slices"
 	"testing"
 
 	"tei/internal/modelref"
@@ -25,6 +26,32 @@ func TestImpactReviewRequiresUnambiguousRules(t *testing.T) {
 	review = modelref.ReviewImpact(before, []modelref.Change{change}, rules())
 	if !review.GraphValid || len(review.Diagnostics) != 0 || len(review.Affected) != 0 {
 		t.Fatalf("clean graph should yield a reliable empty candidate list: %+v", review)
+	}
+}
+
+func TestImpactReviewValidGraphDoesNotProveConsumerCompleteness(t *testing.T) {
+	before := fixture()
+	change := modelref.Change{Key: key("data", "order-line"), Kind: "display-renamed"}
+	const limit = "graph-completeness-and-dynamic-references-unverified"
+	one := modelref.ReviewImpact(before, []modelref.Change{change}, rules())
+	if !one.GraphValid || len(one.Affected) != 0 || !slices.Contains(one.AuthorityLimits, limit) {
+		t.Fatalf("empty candidate list must retain unknown coverage: %+v", one)
+	}
+	after := fixture()
+	for i := range after.Nodes {
+		if after.Nodes[i].Key == change.Key {
+			after.Nodes[i].DisplayName += " updated"
+		}
+	}
+	two := modelref.ReviewImpactDiff(before, after, rules())
+	if !two.GraphValid || len(two.Changes) == 0 || len(two.Affected) != 0 || !slices.Contains(two.AuthorityLimits, limit) {
+		t.Fatalf("two valid graphs must not prove complete coverage: %+v", two)
+	}
+	broken := fixture()
+	broken.Edges[0].To.Subject.ID = "missing"
+	invalid := modelref.ReviewImpactDiff(before, broken, rules())
+	if invalid.GraphValid || len(invalid.Diagnostics) == 0 || !slices.Contains(invalid.AuthorityLimits, limit) {
+		t.Fatalf("invalid graph must retain both diagnostics and coverage limit: %+v", invalid)
 	}
 }
 

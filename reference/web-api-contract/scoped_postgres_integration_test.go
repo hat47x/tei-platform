@@ -225,6 +225,54 @@ func TestScopedTenantPostgresAgainstIsolatedDatabase(t *testing.T) {
 			}
 		})
 	}
+	// Two tenant-scoped records may legitimately reuse the same business key.
+	// The physical primary key is (tenant_id, order_id); observing different
+	// customer IDs proves that an unscoped lookup did not silently choose the
+	// other tenant's row. Keep the baseline dataset unchanged for earlier tests.
+	if _, err := db.ExecContext(ctx, `INSERT INTO public.tei_web_scoped_orders_reference
+		(tenant_id, order_id, customer_id, ordered_at, status, total_amount)
+		VALUES ('tenant-b', 9, 29, '2026-10-03T08:00:00Z', 'READY', 2900.00)`); err != nil {
+		t.Fatal("cannot insert same-business-key cross-tenant fixture")
+	}
+	for _, tc := range []struct {
+		name       string
+		scope      SQLTenantScopeRequest
+		customerID int64
+	}{
+		{name: "tenant A sees its own order nine", scope: tenantA, customerID: 12},
+		{name: "tenant B sees its own order nine", scope: tenantB, customerID: 29},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			pub := scopedPublication(t)
+			plan, err := AuthorizeBrowseRead(ctx, fixtureAuthorization(t), pub,
+				url.Values{
+					"$select": {"orderId,customerId"},
+					"$filter": {"orderId eq 9"},
+					"$top":    {"1"},
+				}, TrustedReadContext{
+					PrincipalID:    tc.scope.PrincipalID,
+					RowScopeID:     tc.scope.RowScopeID,
+					PolicyRevision: tc.scope.PolicyRevision,
+				})
+			if err != nil {
+				t.Fatal(err)
+			}
+			provider := ScopedPostgresOrdersReference{
+				DB: db, Database: core.MustCanonicalID("sales_core"), Authority: authority,
+			}
+			got, err := ExecuteScopedCanonicalRead(ctx, bridgeWorld(t), pub, plan,
+				scopedSupport(pub, plan), provider, map[string]any{"from": from})
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := [][]any{{int64(9), tc.customerID}}
+			if !reflect.DeepEqual(got.Columns, []string{"orderId", "customerId"}) ||
+				!reflect.DeepEqual(got.Rows, want) {
+				t.Fatalf("same key resolved to wrong tenant row: got=%+v want=%v", got, want)
+			}
+		})
+	}
+
 	// A valid Browse grant cannot be replayed with a different policy,
 	// even if the attacker guesses an authorized Tenant ID.
 	pub := scopedPublication(t)

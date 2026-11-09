@@ -91,6 +91,12 @@ func Fingerprint(content []byte) string {
 // ModelRevision derives the exact managed Source (path, byte fingerprint)
 // revision used by Shared Acceptance. It grants neither acceptance nor
 // authorization and does not imply an atomic multi-file filesystem read.
+//
+// It is the revision of the managed Source set, not of the loaded World: an
+// index with no artifact yields the SHA-256 of the empty input, while the
+// standard semantic prelude still contributes World subjects. A caller that
+// needs to know whether the Workspace declared anything must read
+// operations.DeclarationCounts, not infer it from this value (#2822).
 func ModelRevision(index Index) string {
 	artifacts := append([]Artifact(nil), index.Artifacts...)
 	sort.Slice(artifacts, func(i, j int) bool { return artifacts[i].Path < artifacts[j].Path })

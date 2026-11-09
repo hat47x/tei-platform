@@ -1,0 +1,1 @@
+{"schemaVersion":"tei.cli.inspect/v0","ok":false,"error":{"code":"INVALID_ARGUMENT","message":"flag provided but not defined: -extra"}}
