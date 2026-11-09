@@ -1,4 +1,4 @@
-package main
+package buildintent
 
 import (
 	"fmt"
@@ -8,10 +8,10 @@ import (
 	"tei/internal/plugin/transform"
 )
 
-// validateInputJSON shares the existing strict value parser with plugin
-// transforms before decoding the reference authoring schema. It also rejects
-// field aliases that encoding/json would fold into the same struct member.
-func validateInputJSON(raw []byte) error {
+// ValidateInputJSON runs the same strict value parser the plugin transforms
+// use before decoding a declaration. It also rejects field aliases that
+// encoding/json would fold into the same struct member.
+func ValidateInputJSON(raw []byte) error {
 	value, err := transform.ParseJSON(raw)
 	if err != nil {
 		return err

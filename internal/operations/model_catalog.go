@@ -120,6 +120,43 @@ func namespaceMatch(world ir.World, namespace string) (bool, string) {
 	return false, "unknown"
 }
 
+// CatalogError is a typed read failure that is not a Workspace load or Source
+// Index failure. Each adapter maps it to the same string code, so a client can
+// compare the CLI and MCP answers instead of reading two different failures
+// (#3420).
+type CatalogError struct {
+	Code    string
+	Message string
+}
+
+func (e *CatalogError) Error() string {
+	if e == nil {
+		return "catalog failure"
+	}
+	return e.Message
+}
+
+// CatalogCodeNamespaceNotFound is the code for a -namespace that names no
+// semantic namespace in this Workspace.
+const CatalogCodeNamespaceNotFound = "NAMESPACE_NOT_FOUND"
+
+// NamespaceFilterError reports the filtered read as a failure. An empty entry
+// list is then never read as "the namespace declares nothing": a misspelled
+// namespace and a declared namespace with no entries stay different answers.
+func (c ModelCatalog) NamespaceFilterError() *CatalogError {
+	if c.NamespaceMatched {
+		return nil
+	}
+	message := "namespace " + c.NamespaceFilter + " is not a semantic namespace in this workspace"
+	switch c.NamespaceMatchKind {
+	case "application":
+		message = "application " + c.NamespaceFilter + " is not a semantic namespace; omit -namespace or use a namespace ID"
+	case "query":
+		message = "query " + c.NamespaceFilter + " is not a semantic namespace; omit -namespace or use a namespace ID"
+	}
+	return &CatalogError{Code: CatalogCodeNamespaceNotFound, Message: message}
+}
+
 // CatalogWorld is a transport-independent projection for CLI today and other
 // targets later. It does not synthesize source anchors or writable locations.
 func CatalogWorld(world ir.World, idx sourceindex.Index, namespace, worldFP, sourceFP string) ModelCatalog {
