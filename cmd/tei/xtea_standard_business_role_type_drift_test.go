@@ -40,6 +40,7 @@ func TestXTEAExampleRoleTypeDriftKeepsUnknownSeparateFromMismatch(t *testing.T) 
 		{"wrong-primitive", "std.date", mismatchCode, false},
 		{"unresolved-type", "master.unknown_rate_type", unknownCode, false},
 		{"same-suffix-foreign-primitive", "foreign.decimal", mismatchCode, true},
+		{"alias-to-foreign-primitive", "master.foreign_rate", mismatchCode, true},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -59,6 +60,12 @@ func TestXTEAExampleRoleTypeDriftKeepsUnknownSeparateFromMismatch(t *testing.T) 
 			for i, ns := range world.Semantics {
 				if ns.ID != "master" {
 					continue
+				}
+				if tc.typeRef == "master.foreign_rate" {
+					ns.Types = append(append([]semantic.Type(nil), ns.Types...), semantic.Type{
+						ID: "master.foreign_rate", Symbol: "foreign_rate",
+						Kind: semantic.TypeAlias, Underlying: "foreign.decimal",
+					})
 				}
 				ns.Data = append([]semantic.Data(nil), ns.Data...)
 				for j, data := range ns.Data {
