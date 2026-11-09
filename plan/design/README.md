@@ -13,6 +13,8 @@
 
 `docs/`とは役割を分けます。`docs/`では実装済みの構成と利用方法を説明し、ここでは採用前の案や変更に必要な機能設計を扱います。実装状況が変わった場合は、この設計文書を現行構成の説明に流用せず、`docs/architecture.md`を更新します。
 
+個別の設計候補として、[可変長・可変文字集合のHash由来ID](HASH_DERIVED_ID_SCHEME_DESIGN_2026-11.md)（#2814、未採用）も収録しています。
+
 ## 体裁
 
 新しい文書は[`docs/README.md`](../../docs/README.md)の「設計文書の基本体裁」に沿って作ります。冒頭で文書の役割、正本との関係、対象範囲、現在の結論、根拠、何を主張しないかを明らかにします。形式上の項目を埋めること自体を目的にはしません。
@@ -25,7 +27,6 @@
 
 | 文書 | 対象 |
 | --- | --- |
-| [`HASH_DERIVED_ID_SCHEME_DESIGN_2026-11.md`](HASH_DERIVED_ID_SCHEME_DESIGN_2026-11.md) | 可変長・可変文字集合の派生IDについて、Source/Revision・衝突予算・Target/Owner受入を独立検証する設計案（[#2814](https://github.com/hat47x/tei-platform/issues/2814)、未採用） |
 | [`AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md`](AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md) | 生成AIによる性能チューニングの設計ヒント・統計の実測と、Source／Function／Query／Provider／受領の資格を分けた独立Benchmark・改善検証（#3271・#3262・#2586、設計・実証候補） |
 | [`AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md`](AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md) | AIによる性能改善の候補を実行統計・Source/Provider版・検証可能なBenchmarkへ結び、read-only Hintと実最適化を区別する設計（#3514／限定Reference #3520） |
 | [`DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md`](DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md) | 異種Data Sourceの開発者向け閲覧・データ管理・Schema DDLとDBA境界（#3270、設計・未適格） |
