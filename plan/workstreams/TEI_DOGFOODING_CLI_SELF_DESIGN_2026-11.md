@@ -769,3 +769,25 @@ ADR-0048 §2.4 の「既定値の適用は共通契約で定める」を、CLI �
 第22ラウンドの `ReportedFailure`（入口が報告するか）と対になる形で、対象を「文書が名指すか」へ広げた。次に `internal/command` が符号を増やしたら、文書を直さないと CI が落ちる。
 
 **残り**: `view` 以外の行の機械検査、discovery への符号広告（`commands` の欄を増やす契約変更）。どちらも #3419 に残る。
+
+## 29. 第24ラウンド（2026-11-09）: tool の引数一覧が schema と独立に手書きされていた
+
+第22・23ラウンドで「手書きの一覧から漏れる」型を2つ閉じた。MCP Adapter も同じ構造を持つはずなので、tool を扱う表がいくつ独立しているかを測った。生出力は[第24ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND24_TOOL_TABLE_DRIFT_2026-11-09/README.md)にある。
+
+**表は4つあった**: `toolList()`（広告）、`toolArguments`（受理する引数）、`dispatch` の `switch`（呼出し先）、`cliCommandNameForTool`（CLI 名との対応、試験側）。このうち `toolArguments` は `InputSchema.properties` と**同じ事実を2回書いたもの**だった。
+
+変異で検出力を測ると、**危険な方向だけが無検査**だった。
+
+| 変異 | 試験 |
+| --- | --- |
+| `toolList()` に tool を追加 | FAIL（3試験） |
+| `toolArguments` に schema が宣言しない引数を追加 | **PASS（検出できず）** |
+| `toolArguments` から宣言済みの引数を削除 | FAIL（2試験） |
+
+緩む方向は、各 tool の `rejectUnknownArguments` が偶然止めていた。同じ宣言を2箇所に書いているため、`rejectUnknownArguments` を書き忘れた tool を足すと素通りする。`toolArguments` と `InputSchema.properties` を比べる試験は存在しなかった。
+
+修正: `toolArguments` を削除し、`InputSchema` から導出する（`declaredArguments`・`toolByName`）。**試験で一致を確かめるのではなく、事実を1箇所にした。** 前2ラウンドは「漏れたら落とす」だったが、今回は一覧そのものを消したので漏れようがない。
+
+試験は `tool_arguments_test.go` の4件。変異2種（導出が property を落とす／`required` に未宣言の名前を足す）を検出する。
+
+**残り**: `dispatch` の `switch` と `toolList()` の一致。広告に無い tool を dispatch に書くことは可能だが、`checkArguments` が `toolByName` で先に弾くため実害は無い。必要になれば同じ手法で閉じられる。起票は [#3823](https://github.com/hat47x/tei-platform/issues/3823)。
