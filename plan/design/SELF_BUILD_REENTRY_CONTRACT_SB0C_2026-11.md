@@ -1313,6 +1313,58 @@ Claimの`boundary`文言を、**このホスト**から**観測した二つの�
 
 [記録](../evidence/TEI_GO_SELF_BUILD_INPROCESS_DEFAULT_EVIDENCE_2026-11-09.md)。`-rebuild-check`を**渡さずに**`l2b.claimed=true`になること、`-rebuild-check=false`で`unperformed`の理由が「呼び手が断った」に変わることを確かめた。
 
+### 4.31 `l2b.claimed`に必要なflagを実測で確かめる（2026-11-09）
+
+§7は`l2b.claimed`について「今は呼び手がin-processと`-rebuild-check`を明示する必要がある」と書いていた。**§4.30の後、後半が成り立たない。**
+
+#### 何が変わったか
+
+§4.30は「`-build-catalog`を渡した試行は、`-rebuild-check`を明示しなくても二回目のbuildを行う」と決めた。五条件の五つ目（再現）が**`-build-catalog`だけで満たされる**ことになる。
+
+#### 実測
+
+**`-build-catalog`のみ（`-rebuild-check`を渡さない）**
+
+| 項目 | 結果 |
+| --- | --- |
+| `artifactReproducibility.state` | **`reproduced`** |
+| `l2b.claimed` | **`true`** |
+| `l2b.unmet` | 空 |
+
+**`-rebuild-check=false`を明示**
+
+| 項目 | 結果 |
+| --- | --- |
+| `state` | `unperformed` |
+| 理由 | **`-rebuild-check=false`を名指し**（「渡されなかった」ではなく「呼び手が断った」） |
+| `l2b.claimed` | `false` |
+
+**断り方が区別されている。** 同じ`unperformed`でも、flagが無い場合と明示的に断った場合で理由文が違う。
+
+#### 記述の訂正
+
+| 旧 | 新 |
+| --- | --- |
+| in-process と`-rebuild-check`を明示する必要がある | **in-process経路を明示すれば足りる**（再現は§4.30が既定にした） |
+
+#### 残る問い
+
+**「何も渡さない試行」でclaimを立てるかは未決である。** 現在の状態は次のとおり。
+
+| 試行 | claim |
+| --- | --- |
+| 何も渡さない | 立たない（計画を導出しない） |
+| `-build-catalog`一式 | 立つ（五条件が揃えば） |
+| `-intent-resolver` | 立たない（entryが解釈しない） |
+| `-build-catalog` + `-rebuild-check=false` | 立たない（呼び手が断った） |
+
+**既定化には§4.29の「catalogを書く場所」の決定が前提になる。** 何も渡さない試行にcatalogを供給できなければ、その試行は計画を導出できず、claimも立てられない。
+
+#### この節がしていないこと
+
+- **§7の判断をしていない。** 記述の訂正と実測だけである。
+- 「既定でclaimを立てるべき」とは言っていない。§4.29の決定を待つ。
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
@@ -1400,7 +1452,7 @@ Claimの`boundary`文言を、**このホスト**から**観測した二つの�
 - [x] L2-bのClaimを**回帰試験**にする（§4.24。参照catalogと参照builder childで五条件が揃うことを`cmd/tei`の試験で固定し、`go test ./...`経由で健康性確認に載る。[記録](../evidence/TEI_GO_SELF_BUILD_L2B_GATE_2026-11-09.md)）
 - [x] 二つのホスト（`linux/amd64`・`windows/amd64`）で同じ計画とartifactが出ることの実測（§4.26。[記録](../evidence/TEI_GO_SELF_BUILD_CROSS_OS_DIGESTS_2026-11-09.md)。`intentFingerprint`・`sourceClosure`・`planFingerprint`・`artifactDigest`の四つが一致し、L2-bのエンドツーエンド試験もWindowsでPASSした。**Go版も違う**）
 - [ ] `darwin`・`arm64`・別のGo版の組合せでの観測（§4.26の範囲外）
-- [ ] `l2b.claimed`を**既定の試行**で立てられるようにするか（今は呼び手がin-processと`-rebuild-check`を明示する必要がある。§4.23末尾）
+- [ ] `l2b.claimed`を**既定の試行**で立てられるようにするか。**呼び手が要るのはin-process経路（`-build-catalog`一式）だけで、`-rebuild-check`は§4.30が既定にした**（実測：`-build-catalog`のみで`claimed=true`・`-rebuild-check=false`で`false`。[記録](../evidence/TEI_GO_SELF_BUILD_L2B_DEFAULT_PREMISE_2026-11-09.md)）。残る問いは「何も渡さない試行」で立てるかであり、§4.29のcatalog決定が前提（§4.31）
 - [x] 宣言とplanの**build座標**（`outputKind`・`target`・`profile`）の照合（[#3652](https://github.com/hat47x/tei-platform/pull/3652)。childが三座標を一つずつ比べ、違えばartifactを書いた後にreportを出さずexit 1。[記録](../evidence/TEI_GO_SELF_BUILD_BUILD_COORDINATES_2026-11-09.md)）
 - [x] 宣言の他の欄のうち、planが同じ形で持つもの（`recipe`・`sources`・`dependencies`）の照合（[#3661](https://github.com/hat47x/tei-platform/pull/3661)。§4.17）
 - [x] `parameters`の照合（[#3664](https://github.com/hat47x/tei-platform/pull/3664)。測るとどちらの側も名前順ソートのみで値を変えないと分かったので、名前で突き合わせる。§4.18）

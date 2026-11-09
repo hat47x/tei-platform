@@ -178,6 +178,18 @@ go run ./cmd/tei model catalog -workspace reference/workspace -namespace sales
 
 一覧と詳細は読取り専用です。元ファイルを変更する権限や、変更を受理した証拠は与えません。一覧の取得と詳細の取得は別の処理なので、同じ版かどうかは返された`worldFingerprint`と`sourceIndexFingerprint`を比較します。
 
+一つの要素がモデル全体のどこにあるかを確かめるには、`model locate`を使います（2026-11-10から）。`model catalog`の`entries[].subject`をそのまま渡すと、次を返します。
+
+- `path`：最上位から親までの経路
+- `children`・`siblings`：子と兄弟。`-limit`件（既定50、上限500）で切り、`total`・`omitted`・種類ごとの件数`kindCounts`を添える
+- `outgoing`・`incoming`：宣言された参照。Relationの参照先、属性の型、Patternが使うData・Relation・Query・Capabilityを、`role`で区別して返す。参照先のIDが存在しなければ`resolved:false`として残す
+
+`coverage.notDerived`に挙がる関係（業務イベントの流れ、状態遷移、Queryのデータ依存、実装・試験との対応）は、まだ導出していません。`incoming`が空でも「その種類の関係が無い」とは読まないでください。存在しない要素は`SUBJECT_NOT_FOUND`、重複宣言された要素は`SUBJECT_AMBIGUOUS`（どちらも終了コード1）で返し、どちらかの宣言を選んで位置を答えることはしません。`worldFingerprint`・`sourceIndexFingerprint`・`modelRevision`は`model catalog`と同じ読込みから出るため、図表とこの結果が同じ版かを照合できます。MCPの参照adapterでは`tei_model_locate`が同じ結果を返します。設計上の位置づけは[三要素Method §19.8](../plan/design/THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)を参照してください。
+
+```bash
+go run ./cmd/tei model locate -workspace reference/workspace -subject-kind semantic-data -subject-id sales.order
+```
+
 正規化された業務モデルから特定の要素だけを確認するには、`inspect`を使います。現在対応するのは`semantic`、`semantic-type`、`semantic-data`、`semantic-attribute`、`semantic-relation`、`semantic-candidate-key`、`semantic-functional-dependency`、`semantic-capability`、`semantic-validation`、`application`、`application-pattern`、`query`の12種類です。対象の種類と正本の識別子を、完全一致で指定します。
 
 ```bash
