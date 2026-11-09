@@ -341,3 +341,46 @@ GitHubの実Artifact ZIPを再ダウンロードし、ZIPにあるanalysis.json�
 **資格上限**：pre(A)とpost(A)の二時点バイト一致は、解析プロセス中のA→B→Aを検出できず、実Providerが読んだ全byteの原子的証拠でもない。Hostの現在Grantや正式TEI意味は付与しない。[Inspector S2-reference main #3540](https://github.com/hat47x/tei-platform/pull/3540)の実装はREA Providerの実選択資格ではなく、[Workspace差分Draft #3735](https://github.com/hat47x/tei-platform/pull/3735)で区別しているWorld FP／Workspace Identity／Source raw revisionの要件を再利用する。
 
 **次の唯一の不足辺**：REA Evidenceの外部Observation 1件とEdge 1件を、現在のTEI共通read-only Application Operationへ情報損失なく接続するfit-gap。InspectSubjectは既受理Canonical Worldを読むので、外部候補をCanonical Subjectと偽装しない。T1-A正式取込み、T1-B DSL／Owner Meaning、三視点CRUD、SHO Writer、実DB／旧新Runtimeの適合は未実施。今回の文書追記後のHEADの全体CIを、上記tested SHAの成功から推論しない。
+
+
+---
+
+<!-- rea-t0-real-jsonl-product-seam-20261109 -->
+## 18. 実JSONLの配送完全性を実測し、TEI既存Observation／Evidenceへ渡す境界を明確化（2026-11-09）
+
+### 18.1 T0-05：REA実JSONLと途中切断は別の資格
+
+`.github/workflows/rea-t0-static-evidence.yml`の**valid独立Jobだけ**へ、REA 6.7.0の実`inspect-analysis-view`＋`--format jsonl`を追加した。保存された実`analysis.json`を`source.kind=evidence-file`に指定し、`view.kind=javascript-facts`、`offset=0`、`limit=32`、`property_keys=[]`を明示して、行集合を抽出する。REA実プロセスの終了コードとJSONL/std err raw・SHAを保存し、既存`audit.jsonl_audit`を再利用して**object collection最終metadataの存在・emitted count**を確認する。
+
+次に、作成済みJSONLの**末尾control record一行だけを除いたコピー**を作り、Readerが`missing-metadata`として拒否することを同一Job内で検査する。元の保存JSONLや`analysis.json`を加工しない。これは**意図的な停止・切断を模したConsumer入力の反例**であり、実ネットワーク断／MCP Tool配送損失やREA streaming中の強制killを実施したことにはならない。要求したcollectionが全件`exhausted`とは保証せず、`records.emitted`と`records.source`から元アプリ全Sourceの完全性を推論しない。
+
+**受入の期待**：
+- 正常投影：REA viewプロセス実exit=0、JSONL object集合の最後が`$rea=jsonl/v1, type=metadata`、行数に整合。選択条件（offset/limit/keys）とSource Evidence/Provider版が残る。**Source全量・semantic completenessはunknown**。
+- 最終行欠落：同じJSONLの残存行に妥当なJSONだけがあっても、終端metadataの欠落を検知して**Consumer completeを拒否**。既に出たdata rowは部分的な観測として扱えるが、`acceptedMeaning`を与えない。
+- 実REAがエラーJSONL controlを返した場合：通常の行として数えず、元stderr/exitを残して**失敗として検収する**。局所成功のために別Providerへ自動fallbackしない。
+- bare top-level arrayはmetadataがない仕様なので、object collectionと同じ終端規則を適用しない（既存18/42合成反例を維持）。
+
+**実行の現況**：この節作成時点は**GitHub workflow変更・レビュー票の登録**。変更後HEADでのREA JSONL実行、生成されたArtifact readback、test jobのpassは**未確認**。先行T0 4/4や合成42/42 PASSをT0-05実検収へ転用しない。GitHub Actionsの`always()` artifactは資格がなくても現物診断を保全するためのもので、アップロード自体を完備証明としない。
+
+### 18.2 T1-A Product入場：既存APIと未接続のObservation/Evidence Routerを直結しない
+
+現在の`internal/operations/InspectSubject`は**Canonical Worldに存在するSubjectを先に厳密検索**し、対象`Kind`のサポート外や未存在は拒否する。Source Index参照だけではCanonical Meaningを生成しない。従って、試験用`rea.external-observation.candidate-test/v0`を`InspectSubject`にそのまま渡すこと、仮の`semantic-data` IDを発行して通過させることは、どちらも**T1-Aの実入場ではない**。
+
+[Binding実消費調査 #3757](https://github.com/hat47x/tei-platform/issues/3757)では、Observation/EvidenceのBinding宣言が存在しても、実`observation.Router`・`evidence.Router`構築は試験用だけで、**非テスト製品Call siteから`Observe`／`Collect`に届かない**。逆に[main統合済み Inspector #3540](https://github.com/hat47x/tei-platform/pull/3540)は**静的Reference Providerの通常CLI/Studio S2-reference**に限定され、外部REA ProviderのS2-productではない。両者を足して「既存Observation ProviderでREA取込済み」と判断しない。
+
+T1-Aの最小Product受入は、**共通Application API（ADR-0048・#1158）の既存型／Operation境界に沿う、外部1 Observation＋1 Relationのread-only実受領**である。初回のfit-gapでは、既存の`operations`、Binding/Providerの責務に割り振れるものを優先し、必要な型不足だけを#3419/#1251へ返す。Observation/Evidence Routerへ新しい共通Resolver、Reader、Host、Registryを追加しない。新たな外部Observation公開Schemaが必要かは**現在のOwnerが実Consumer試験から判断**する。ここでSchemaを承認した扱いにしない。
+
+| 観点 | 外部候補とTEI／Consumerに必要な対応 | 成功を名乗ってはいけない場合 |
+|---|---|---|
+| **External identity** | `REA Evidence ID + raw report digest + external occurrence/edge ID + source scope + attempt`の関係を保持。TEI Canonical IDと別 | 同じ`observation_id`を別Attempt／別Workspaceで誤結合 |
+| **Source** | 選択Target、Source pre/post bytesとSHA、実Loc/`line,column`、Provider自己申告、未binding候補を別列 | pre(A)=post(A)を原子的Source/Provider入力完全保証とみなす |
+| **Position** | file-level digestとline/columnの**位置単位／Byte範囲の資格**を分離。SHO E0-MAPはMarkdown Editor側の別Consumer | PythonのstrやREA JS位置をそのままSHO UTF-8 raw byte-offsetとしてPatch |
+| **Relation** | Edge ID、向き、端点、同Sourceでの複数Edge、Function/Business/CRUDの`candidate`区分 | 同Labelの別IDを併合、平行Edge一本化、SQL参照を実Commitとして採用 |
+| **Coverage / loss** | Graph coverage／semantic coverage／unknowns／limitations／partial／root unboundを保持 | 解析対象外・0件・未取得・非開示を全て`empty`へ潰す |
+| **Invoker / delivery** | Host selectedと実Provider invokedの別観測、同じRequest/Scope/RevisionのCLI・Studio結果、実Receiver byteと現在Disclosure | `Router`登録だけ／JSON出力だけ／CLI `ok`だけでProduct実Call／受領済みと判断 |
+
+[組織意味対応の別Owner #3741](https://github.com/hat47x/tei-platform/pull/3741)のORG-EXT-01〜06（同Label別ID、平行Relation、unbound、partial、同Raw別Workspace、A→B→A）は**Mappingの入力側の負例**として再利用する。テストの正本は既存#1180/#2514とし、REA用に第二Expected Registryは作らない。マッピングを明示受理するまで、Organization/Function/Business/CRUDはCandidateからAcceptedへ昇格させない。
+
+**次のProduct 1回の独立Expected**：同一固定REA Artifactに対して、(a) CLIが読み取ったExternal Observation 1件とRelation 1件のID/Source/unknown、(b) Product側の実Provider選択・実呼出し、(c) 実Receiverへのbyte到達、(d) TEI Canonicalがnullのままであることをそれぞれ実観測。Studio/WailsとSHOへの投影は後続の別資格。**T1-A試験用Python Projectorの成功を、このProduct Exitとして数えない**。
+
+本節はOwnerに実装開始を引き渡すための**設計差分**であり、T1-A Product Operation、外部REA実Provider Link/Grant、Source atomic closure、正式`*.tei.md`、三視点Product Graph/CRUD、SHO Writer、Legacy/Target比較、Owner Meaning Acceptanceを実行・達成したものではない。
