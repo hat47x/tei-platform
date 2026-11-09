@@ -18,7 +18,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: tei-plugin-registry-p0-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  group: tei-plugin-registry-p0-binding-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
