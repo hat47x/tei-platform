@@ -1,0 +1,9 @@
+Same catalog, reference/workspace-like fixture plus a declared alias:
+subject            prelude   sourceStatus
+mine               (none)    indexed
+std                true      not-indexed
+mine.text_t        (none)    indexed
+mine.money_t       (none)    indexed
+std.text           true      not-indexed
+
+=> the criterion for #2620 is observable from the CLI alone.

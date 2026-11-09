@@ -30,7 +30,16 @@ type WorkspaceTrace struct {
 	RelatedSources         []sourcebridge.Navigation `json:"relatedSources,omitempty"`
 	ProjectionUnresolved   []string                  `json:"projectionUnresolved,omitempty"`
 	AuthorityLimits        []string                  `json:"authorityLimits"`
+	// Workspace names the Workspace this trace was read from (#3181). The
+	// same Canonical ID may exist in several Workspaces with different meaning,
+	// and worldFingerprint identifies content, not the Workspace.
+	Workspace *workspace.WorkspaceIdentity `json:"workspace,omitempty"`
 }
+
+// TraceSubjectKinds is the closed set of subject kinds the typed graph can
+// carry: the projection's own list, not a second copy of it. The CLI advertises
+// this same set for -subject-kind on trace (#3242, #3180).
+var TraceSubjectKinds = derivedbridge.SupportedSubjectKinds
 
 // supportedTraceKind reports whether derivedbridge can place this kind in the
 // typed graph at all. It is narrower than supportedInspectionKind: inspect can
@@ -164,6 +173,7 @@ func TraceWorkspace(root string, key modelref.Key, options modelref.TraceOptions
 			Message: "trace graph, selector, World, or Source Index differs from the prior page",
 		}
 	}
+	identity := loaded.Identity()
 	out := WorkspaceTrace{
 		SchemaVersion:          "tei.operations.trace/v0",
 		SnapshotFingerprint:    snapshotFP,
@@ -173,6 +183,16 @@ func TraceWorkspace(root string, key modelref.Key, options modelref.TraceOptions
 		Source:                 resolver.Locate(key),
 		ProjectionUnresolved:   append([]string(nil), projection.Unresolved...),
 		AuthorityLimits:        append([]string(nil), projection.AuthorityLimits...),
+		Workspace:              &identity,
+	}
+	// A page that can be continued must say, next to nextOffset, which value
+	// continues it. The value is this Workspace-level token; modelref's own
+	// graphFingerprint is not a continuation token (#3625).
+	if out.Trace.NextOffset != nil {
+		out.Trace.Continuation = &modelref.TraceContinuation{
+			Fingerprint: snapshotFP,
+			Field:       "result.snapshotFingerprint",
+		}
 	}
 	if result.Mode == "summary" {
 		return out, nil

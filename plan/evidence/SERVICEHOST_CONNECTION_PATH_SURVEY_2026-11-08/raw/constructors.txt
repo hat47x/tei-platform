@@ -1,0 +1,83 @@
+== NewSelectedServiceCarrierInvoker ==
+  TEST      internal/driver/reference_current_host_service_route_test.go
+  TEST      internal/servicehost/application_route_source_test.go
+  NON-TEST  internal/servicehost/service_carrier.go
+  TEST      internal/servicehost/service_carrier_test.go
+  TEST      reference/web-composition/go-host/canonical_generation_service_handoff_test.go
+  TEST      reference/web-composition/go-host/two_application_host_service_carrier_test.go
+== BindHostApplicationEnvironmentRoute ==
+  TEST      internal/driver/reference_current_host_service_route_test.go
+  NON-TEST  internal/servicehost/application_route_source.go
+  TEST      internal/servicehost/application_route_source_test.go
+  TEST      reference/web-composition/go-host/canonical_generation_service_handoff_test.go
+== composition.NewSelectedCoordinator ==
+  NON-TEST  internal/composition/bootstrap.go
+  TEST      internal/composition/bootstrap_test.go
+  TEST      internal/composition/cross_application_reuse_test.go
+  TEST      internal/driver/reference_current_host_service_route_test.go
+  TEST      tools/reference-capability-transport/authorized_quote_preflight_test.go
+  TEST      tools/reference-capability-transport/order_quote_process_test.go
+  TEST      tools/reference-composition-process-bridge/artifact_rotation_test.go
+  TEST      tools/reference-composition-process-bridge/bridge_test.go
+  TEST      tools/reference-composition-process-bridge/canonical_process_test.go
+  TEST      tools/reference-composition-process-bridge/contract_shape_gate_test.go
+  TEST      tools/reference-composition-process-bridge/multi_plugin_artifact_test.go
+  TEST      tools/reference-composition-process-bridge/neutral_multiruntime_test.go
+  TEST      tools/reference-composition-process-bridge/pinned_generation_linux_test.go
+  TEST      tools/reference-composition-process-bridge/real_artifact_switch_test.go
+  TEST      tools/reference-composition-process-bridge/web_bridge_test.go
+  TEST      tools/reference-first-web-target/session_composition_test.go
+  NON-TEST  tools/reference-project-advice-lit/contract_bridge.go
+  TEST      reference/application-composition/e23_selected_upstream_test.go
+  TEST      reference/composition-kernel/testdata/external-consumer/consumer_test.go
+  TEST      reference/web-composition/go-host/canonical_generation_service_handoff_test.go
+  TEST      reference/web-composition/go-host/selected_action_test.go
+  TEST      reference/web-composition/go-host/service_carrier_handoff_test.go
+  TEST      reference/web-composition/go-host/two_application_host_service_carrier_test.go
+== composition.NewRegistry ==
+  TEST      internal/driver/reference_current_host_service_route_test.go
+  TEST      tools/reference-build-artifact-store/semantic_distribution_test.go
+  TEST      tools/reference-capability-transport/authorized_quote_preflight_test.go
+  TEST      tools/reference-capability-transport/order_quote_process_test.go
+  TEST      tools/reference-composition-process-bridge/artifact_rotation_test.go
+  TEST      tools/reference-composition-process-bridge/bridge_test.go
+  TEST      tools/reference-composition-process-bridge/canonical_process_test.go
+  TEST      tools/reference-composition-process-bridge/contract_shape_gate_test.go
+  TEST      tools/reference-composition-process-bridge/multi_plugin_artifact_test.go
+  TEST      tools/reference-composition-process-bridge/neutral_multiruntime_test.go
+  TEST      tools/reference-composition-process-bridge/pinned_generation_linux_test.go
+  TEST      tools/reference-composition-process-bridge/real_artifact_switch_test.go
+  TEST      tools/reference-composition-process-bridge/web_bridge_test.go
+  NON-TEST  tools/reference-external-adoption-authority/stage3.go
+  TEST      tools/reference-first-web-target/session_composition_test.go
+  TEST      tools/reference-plugin-capability-contract/composition_handoff_test.go
+  NON-TEST  tools/reference-project-advice-lit/contract_bridge.go
+  NON-TEST  tools/reference-studio-static-composition/main.go
+  TEST      reference/application-composition/e23_selected_upstream_test.go
+  TEST      reference/application-composition/e33_project_plugin_wiring_boundary_test.go
+  TEST      reference/application-composition/e37_real_project_scope_choice_test.go
+  TEST      reference/composition-evidence-handoff/handoff_test.go
+  TEST      reference/composition-io-mapping/mapping_test.go
+  TEST      reference/composition-kernel/testdata/external-consumer/consumer_test.go
+  TEST      reference/product-contracts/flow_order_test.go
+  TEST      reference/semantic-composition-preflight/preflight_test.go
+  TEST      reference/web-composition/go-host/canonical_generation_service_handoff_test.go
+  TEST      reference/web-composition/go-host/selected_action_test.go
+  TEST      reference/web-composition/go-host/service_carrier_handoff_test.go
+  TEST      reference/web-composition/go-host/two_application_host_service_carrier_test.go
+== servicehost package usage (any reference) ==
+  TEST      internal/driver/reference_current_host_service_route_test.go
+  TEST      internal/servicehost/application_route_source_test.go
+  NON-TEST  internal/servicehost/service_carrier.go
+  TEST      internal/servicehost/service_carrier_test.go
+  TEST      reference/web-composition/go-host/canonical_generation_service_handoff_test.go
+  TEST      reference/web-composition/go-host/two_application_host_service_carrier_test.go
+
+== what the invoker needs (doc comments) ==
+50:func NewSelectedServiceCarrierInvoker(
+51-	coordinator *composition.Coordinator,
+52-	runtime pruntime.Registry,
+53-	routes ServiceCarrierRouteSource,
+54-) (*SelectedServiceCarrierInvoker, error) {
+55-	if coordinator == nil || routes == nil {
+56-		return nil, ErrServiceCarrierGenerationInvalid

@@ -114,10 +114,14 @@ func TestPluginLockExplicitEnvironmentReferenceCLI(t *testing.T) {
 	if !reflect.DeepEqual(selectedPlan, wholePlan) {
 		t.Fatalf("selected and full-lock runtime plans differ: %+v / %+v", selectedPlan, wholePlan)
 	}
-	if got := run(2, "plugin-resolve", "-workspace", workspace, "-environment", "production", "-plugin-lock", path); got.Error == nil || got.Error.Code != "PLUGIN_RESOLVE_FAILED" || !strings.Contains(got.Error.Message, "no environment") {
+	// A lock that does not describe the requested environment is the caller's
+	// input problem, not a resolve or planning outcome. Both commands answer
+	// INVALID_PLUGIN_LOCK with exit 2, so the same bytes cannot read as a
+	// finding in one entrance and an input error in the other (#3765).
+	if got := run(2, "plugin-resolve", "-workspace", workspace, "-environment", "production", "-plugin-lock", path); got.Error == nil || got.Error.Code != "INVALID_PLUGIN_LOCK" || !strings.Contains(got.Error.Message, "no environment") {
 		t.Fatalf("unselected resolve: %+v", got)
 	}
-	if got := run(1, "plugin-runtime-plan", "-workspace", workspace, "-environment", "production", "-plugin-lock", path); got.Error == nil || got.Error.Code != "PLUGIN_RUNTIME_PLAN_FAILED" {
+	if got := run(2, "plugin-runtime-plan", "-workspace", workspace, "-environment", "production", "-plugin-lock", path); got.Error == nil || got.Error.Code != "INVALID_PLUGIN_LOCK" {
 		t.Fatalf("unselected runtime plan: %+v", got)
 	}
 	for _, tc := range []struct{ value, code string }{{"", "INVALID_ARGUMENT"}, {"bad id", "INVALID_ARGUMENT"}, {"absent", "UNKNOWN_ENVIRONMENT"}} {

@@ -65,7 +65,7 @@ func TestIndependentGoAndJavaScriptQuoteSemanticParity(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(work, "go.mod"), []byte("module example.invalid/quote-go-js-comparison\n\ngo 1.23\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	goBinary := filepath.Join(t.TempDir(), "order-quote-go")
+	goBinary := hostExecutable(t.TempDir(), "order-quote-go")
 	build := exec.CommandContext(buildCtx, "go", "build", "-o", goBinary, ".")
 	build.Dir = work
 	build.Env = append(os.Environ(), "GOOS="+runtime.GOOS, "GOARCH="+runtime.GOARCH,

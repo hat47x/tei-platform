@@ -85,6 +85,18 @@ jobs:
           grep -Fq '"browserTransport": "same-origin-json"' "$dest/measurement.json"
           grep -Fq '"jsonApiBusinessStagesMatchedDirect": true' "$dest/json-api-smoke.json"
           grep -Fq '"unavailableApiNotPresentedAsSuccess": true' "$dest/json-api-smoke.json"
+      - name: 実成果物の依存除外・漏えいを静的検査(go tool nm とBrowser byte走査)
+        shell: bash
+        run: |
+          set -euo pipefail
+          dest="$RUNNER_TEMP/tei-browser-json-api-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          # 検査器自身の正例・負例(実Goバイナリを作って検査する)
+          python3 -I -B -m unittest discover -s tools/reference-first-web-two-unit-e1 \
+            -p test_inspect_artifact_exclusion.py -v
+          # 上のステップで生成した実際のBrowser資産とLinux/amd64 API実行ファイル
+          python3 -I -B tools/reference-first-web-two-unit-e1/inspect_artifact_exclusion.py \
+            --api "$dest/api/order-entry" --browser "$dest/browser" \
+            --profile json-api --out "$RUNNER_TEMP/artifact-exclusion-receipt.json"
       - name: 実行後の対象版と作業領域を検査
         if: always()
         shell: bash
