@@ -11,8 +11,8 @@
 - `tools/` の参照ツールは、Linux CI（`ubuntu-24.04`）の結果を正とします。Windowsで `go test ./...` を回すと、環境前提の差で失敗または skip になる検査があります（[#3460](https://github.com/hat47x/tei-platform/issues/3460) に原因別の一覧）。
 - 外部コマンドを `bash -c` で起動する試験（`reference-cognition-port`・`reference-generator-selection`）は POSIXシェル前提です。Windowsでは `cp <Windowsパス>` が解決できないため、該当試験は理由を付けて skip します（[#3461](https://github.com/hat47x/tei-platform/issues/3461)）。skip は「この環境では検査していない」の記録であり、成功と同じには扱いません。
 - POSIXのファイル権限（`0600` など）や rename の置換を前提にした検査は、Windowsでは skip または別経路に分けます。
-- checkoutのclean（`git status` が空）を前提にする比較試験（`reference-plugin-self-build`・`reference-transform-runtime-engine-build` の historical parity）は、`go test ./...` で並列に走る他のパッケージが checkout へ書き込むと、前提を満たさずに落ちます（[#3460](https://github.com/hat47x/tei-platform/issues/3460)）。2026-11-09から、この前提を満たさない場合は**理由付きで skip** し、比較そのものは実行しません。clean な checkout で単体実行すれば従来どおり比較します（`go test ./tools/reference-transform-runtime-engine-build -run TestHistoricalRuntimeEngineRunnerParity -count=1`）。
-- 同じ理由で、`go test ./...` の結果だけで「checkout を前提にした比較が成立した」とは読みません。skip の理由に `repository must be clean` が出ていれば、その比較は未実行です。
+- historical parity の比較試験（`reference-plugin-self-build`・`reference-transform-runtime-engine-build`）は、`go test ./...` の並列実行で他のパッケージが checkout へ書き込む影響を受けないよう、**比較する側も比較される側も自分専用の detached worktree** から実行します（[#3637](https://github.com/hat47x/tei-platform/issues/3637)）。worktree は HEAD から作るため clean であり、live の作業ツリーを前提にしません。そのため `go test ./...` でも単体実行でも同じ結果になります。
+- 比較が自分の worktree を書き換えていないことは、試験の最後に worktree の `git status` で確認します。live の checkout が汚れているかどうかは、比較の成否に影響しません。
 ## リポジトリ検査と共通部品
 
 | 場所 | 役割 |
