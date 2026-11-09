@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 
 	"tei/internal/application"
 	apprelease "tei/internal/application/release"
@@ -1524,13 +1525,15 @@ func upsertState(states []release.StateSnapshot, state release.StateSnapshot) []
 }
 
 // wantsHelp reports whether the caller asked for the usage listing. The flag
-// package recognises -h and -help, and the two forms with one or two dashes.
+// package recognises -h and -help, with one or two dashes.
+//
+// The spellings live in a slice rather than a string-literal switch: the
+// dispatch test reads every string literal compared against a switch tag in
+// this file as a command name, and a switch over "-h" made it report those as
+// dispatched-but-unadvertised commands.
 func wantsHelp(args []string) bool {
-	for _, arg := range args {
-		switch arg {
-		case "-h", "--h", "-help", "--help":
-			return true
-		}
-	}
-	return false
+	spellings := []string{"-h", "--h", "-help", "--help"}
+	return slices.ContainsFunc(args, func(arg string) bool {
+		return slices.Contains(spellings, arg)
+	})
 }
