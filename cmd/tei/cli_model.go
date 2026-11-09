@@ -44,6 +44,12 @@ func runModelCommand(args []string, out io.Writer) (int, error) {
 		*namespace != strings.TrimSpace(*namespace) {
 		return fail("INVALID_ARGUMENT", "model catalog requires an exact -workspace and optional exact -namespace, without positional arguments", 2)
 	}
+	// This command parses its own FlagSet, so the shared repeat check does not
+	// see it. Both flags hold one value; a second -namespace silently replaced
+	// the first (#3675).
+	if err := validateRepeatableArguments("model catalog", args[1:]); err != nil {
+		return fail("INVALID_ARGUMENT", err.Error(), 2)
+	}
 	if name := emptyStringFlag(fs, emptyStringFlagsNotAllowed["model catalog"]); name != "" {
 		// An explicit -namespace "" is not "no namespace": it used to reach
 		// the catalog as an empty filter and return every entry, which is a

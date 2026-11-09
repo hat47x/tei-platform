@@ -180,3 +180,5 @@
 
 # OTel path observations are hashed as raw bytes.
 /plan/evidence/DSH_OTEL_PATH_2026-11-09/** -text
+# Observation router connect output is hashed as raw bytes by its README.
+/plan/evidence/OBSERVATION_ROUTER_CONNECT_REFERENCE_2026-11-09/** -text
