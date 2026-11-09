@@ -601,7 +601,7 @@ Source Indexを前段P0-Sで読めても、このDriver解決は`Source Index→
 
 他領域で成熟しているLifecycle Graphの考え方を、この実験の**型付き責務境界**として扱う。実行可能Graphを固定の逐次手順に閉じず、Guard、拒否、取消、Retry、補償、非同期応答を扱えるようにする一方、全実行可能経路で`Authorize→Effect`、必要なHost guard、実Effect後の結果不確定性を迂回しないことを不変条件とする。**構成時GraphとPlugin適用後Graph、生成物の制御フロー、実走行Traceは別証拠**であり、`onTerminal`という宣言名やAudit callback 1回だけから完全Graphを推論しない。
 
-製品横断の**先行P0/S2**は、[Plugin-first方針 #3525](https://github.com/hat47x/tei-platform/pull/3525)／[Inspector状態整理 #3531](https://github.com/hat47x/tei-platform/pull/3531)のとおり、**通常`tei inspect`と実Studio Bridgeから、同じ選択済みInspector ContractのProvider Bをそれぞれ実呼出しすること**である。HTTP側に専用Plugin Registryを新設してそのS2を横取りしない。HTTPの次段は、既存Service Carrier／Plugin Runtimeの**選択・Artifact/Policy・実Invoke・現在Authority・同一Attemptの結果**が揃ってから同じClient Reaction/Evidence分類を利用する。CLI/StudioのProvider Bとこの合成Submit Adapterを同一資格として扱わない。
+製品横断の**現行S2-reference**は、[main #3540](https://github.com/hat47x/tei-platform/pull/3540)で通常`tei inspect`と通常・生成Studio Hostから**同じ静的Reference Inspector Provider**を選択・実呼出しするところまで統合済み（exact-head Health/Wails/CLI CIはsuccess）。次のP0である**S2-product**は、正式Profileが選んだProvider Bと両Consumerの実呼出し先Bの同一性、Artifact/Entryの独立検証であり、**まだ未資格**。HTTP側に専用Plugin Registryを新設してそのS2を横取りしない。HTTPの次段は、既存Service Carrier／Plugin Runtimeの**選択・Artifact/Policy・実Invoke・現在Authority・同一Attemptの結果**が揃ってから同じClient Reaction/Evidence分類を利用する。CLI/StudioのProvider Bとこの合成Submit Adapterを同一資格として扱わない。
 
 - **Graph／SHO**：E01とE04は`503/error`表面が同じだが内部Effectが違う。Graph/Table/Traceでは`HTTP branch/status`、`Adapter invoked`、`Effect disposition (unknown)`、`observation nature/result`を別列で表し、出典Occurrence・Node/Edge identityを保持する。全Required Node/Guard/Relationの取得は#3262/#1124/#2497で別途検証。
 - **TEI性能観測／最適化**：`HTTP 503`の件数から「失敗した更新件数」や「再試行可能件数」を推定しない。技術的タイミング・Adapter呼出し・実業務確定・read後の状態を別指標として扱い、実統計・独立Before/After比較がない最適化は候補にとどめる。
@@ -638,7 +638,7 @@ Source Indexを前段P0-Sで読めても、このDriver解決は`Source Index→
 | C-2: `servicehost`をCLI/Hostへ接続する | ProviderのHost世代ピン留めとGateway配線の候補 | 既存Referenceの成功を製品実行の受理へ昇格しない |
 | C-3: `DeploymentExecutor`のCapability IDをBinding由来にする | Reference固定ID呼出しの宣言との一致を強化し得る | C-1/C-2決定と固定Referenceの目的を検討するまで保留 |
 
-優先判断は**C-4 → C-1対C-2 → C-3**。Ownerは[Composition Kernel移行Gate](../gate/COMPOSITION_KERNEL_MIGRATION_GATE_2026-10.md)と製品成立状況（`docs/status.md`）であり、このHTTP設計で選択・採用を決定しない。C-1とC-2を両方標準経路として追加することは避ける。#3525/#3531で残る**通常CLI dispatchと実Studio Bridgeから同じSelected Inspector Provider Bへ到達するS2**も、Go Helper二経路での成功と区別し、HTTP本番結合をそれより先に採用しない。
+優先判断は**対象Operation/Targetの実行Owner（C-4外部委譲を含む）→役割別C-1 Deployment/C-2 Service→必要ならC-3**。Ownerは[Composition Kernel移行Gate](../gate/COMPOSITION_KERNEL_MIGRATION_GATE_2026-10.md)と製品成立状況（`docs/status.md`）であり、HTTP設計では選択・採用を決定しない。C-1/C-2は別種Operationなら共存できるが、**同一Attemptの二重Owner**は許さない。Pluginの[静的S2-reference #3540](https://github.com/hat47x/tei-platform/pull/3540)成功を正式Provider Bの**S2-product**へ昇格せず、HTTP本番結合より先に選択B→実Invoke Bを独立確認する。
 
 ### 20.3 次の最小Exitを「追加参考テスト」ではなく実Consumerに置く
 
@@ -681,7 +681,7 @@ Source Indexを前段P0-Sで読めても、このDriver解決は`Source Index→
 
 **C-2で特に注意する点**：Carrierへの入場はProvider Processへの到達ではない。Host-owned RouteやArtifact Verifierが**Carrierの内部**で拒否する経路があるため、`carrierInvoked=true`だけで`providerInvoked=true`と推論しない。Carrier参照v0ではReportの版名と一部説明が食い違っていたため、`tei.reference.service-carrier-connect/v1`へ切り分け、実Resultの事前拒否と呼出し後不確定を別のError Codeで扱う。保存済みv0 RAW/SHAと新v1を混ぜず、新規CIの結果を受けて別途Qualifiedとする。
 
-**次のプロダクト受入**：選択したOperation Ownerがどちらかを先に確認し、`selected→actual carrier/process invocation→returned ACK→effect independent read→Client Reaction`を同一Attemptの**別証拠**として要求する。既存Result/Command Effect fence（#1174）、Plugin/Current GrantとBOM（#951/#3279/#3267）、Design Context（#3262）を利用し、第二Resolver/Authority/Receipt StoreをHTTP専用に作らない。実CLI/StudioのProvider B Consumer S2が合格するまでは、「共通Plugin実行基盤が製品に接続済み」とは扱わない。
+**次のプロダクト受入**：選択したOperation Ownerがどちらかを先に確認し、`selected→actual carrier/process invocation→returned ACK→effect independent read→Client Reaction`を同一Attemptの**別証拠**として要求する。既存Result/Command Effect fence（#1174）、Plugin/Current GrantとBOM（#951/#3279/#3267）、Design Context（#3262）を利用し、第二Resolver/Authority/Receipt StoreをHTTP専用に作らない。CLI/Studioの静的Reference Providerについて**通常入口への接続がある**ことと、正式Provider BでのProduct S2／Artifact検証が未成立であることを区別する。
 
 ## 23. 参考資料と採否
 

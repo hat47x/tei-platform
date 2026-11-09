@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"tei/internal/buildintent"
@@ -307,11 +308,28 @@ func materialize(planPath, pluginPath, artifactOut, stateDir, intentPath string)
 // sorts the plan's, and neither changes a value. So a difference in values is a
 // real difference, and comparison by name avoids depending on declaration order.
 //
+// The builder contract is compared through the correspondence the resolver
+// already applies: a requirement of contract C at major N resolves to a
+// BuilderIdentity whose ContractVersion is "C/vN" (fixture.go builds it with
+// fmt.Sprintf("%s/v%d", p.Contract, p.ContractMajor)). That correspondence is a
+// rule, not a measurement, so it is written here explicitly: if the resolver
+// ever changes the spelling, this comparison is the place that breaks, and the
+// test that pins it says so.
+//
 // Not compared: a source's locator and digest (the plan derives them from
 // bytes, the declaration names a reference) and a dependency's version and
 // artifact digest (derived). Comparing those would call every correct build a
-// mismatch.
+// mismatch. The builder's identity and artifact digest are also not compared:
+// the declaration names a selection policy, not the exact builder.
 func compareIntentFields(intent buildintent.BuildIntent, plan plugin.BuildPlan) error {
+	// The declaration states a contract and a major; the plan states the
+	// resolved ContractVersion. Compare them through the rule the resolver uses.
+	if want := intent.Builder.Contract + "/v" + strconv.Itoa(intent.Builder.CompatibleMajor); want != plan.Builder.ContractVersion {
+		return fmt.Errorf(
+			"the declaration's builder contract %s at major %d resolves to %q but the plan's builder declares %q",
+			intent.Builder.Contract, intent.Builder.CompatibleMajor, want, plan.Builder.ContractVersion,
+		)
+	}
 	if intent.Recipe.Kind != plan.Recipe.Kind {
 		return fmt.Errorf("the declaration's recipe kind %q does not match the plan's %q", intent.Recipe.Kind, plan.Recipe.Kind)
 	}
@@ -370,6 +388,39 @@ func compareIntentFields(intent buildintent.BuildIntent, plan plugin.BuildPlan) 
 	}
 	if len(intent.Parameters) != len(plan.Parameters) {
 		return fmt.Errorf("the declaration names %d parameters but the plan has %d", len(intent.Parameters), len(plan.Parameters))
+	}
+
+	// Builder: the declaration states a requirement (contract + major, and
+	// optionally a provider or an exact pin); the plan holds the resolved
+	// identity. The correspondence is not invented here — the resolver filters
+	// by contract and major and renders the identity with
+	// buildintent.BuilderContractVersion, so comparing that same form tests the
+	// requirement rather than a format.
+	wantContract := buildintent.BuilderContractVersion(intent.Builder.Contract, intent.Builder.CompatibleMajor)
+	if plan.Builder.ContractVersion != wantContract {
+		return fmt.Errorf(
+			"the declaration requires builder contract %q but the plan resolved %q",
+			wantContract, plan.Builder.ContractVersion,
+		)
+	}
+	if provider := intent.Builder.Provider; provider != nil {
+		if string(plan.Builder.ID) != string(provider.Plugin) {
+			return fmt.Errorf(
+				"the declaration's builder provider is %s but the plan resolved %s",
+				provider.Plugin, plan.Builder.ID,
+			)
+		}
+		// provider.implementation has no counterpart in plugin.BuilderIdentity,
+		// so it is not compared. Naming the gap here keeps a later reader from
+		// assuming it was checked.
+	}
+	if pin := intent.Builder.Pin; pin != nil {
+		if plan.Builder.ArtifactDigest != pin.ArtifactDigest {
+			return fmt.Errorf(
+				"the declaration pins builder artifact %s but the plan resolved %s",
+				pin.ArtifactDigest, plan.Builder.ArtifactDigest,
+			)
+		}
 	}
 	return nil
 }

@@ -512,6 +512,7 @@ D-9は残る。CLIは設計文書を索引に載せるが、意味の定義と�
 この記録はCLIのread-only観測である。HTTP・MCP・Desktopの各入口の同値性は #3419〜#3421 の担当で、未実行（NOT RUN）のままである。
 
 ## 11. 第5ラウンド（2026-11-09）: CLIとMCP参照Adapterの一致と入力検証
+## 11. 第5ラウンド（2026-11-09）: CLIとMCP参照Adapterの一致と厳密入力
 
 `main` `4f97c86cf` の CLI と `tools/reference-mcp-readonly-adapter` を同じWorkspaceへ向けて実行し、値・失敗・入力検証を比較した。生出力は[第5ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND5_CLI_MCP_2026-11-09/README.md)にある。
 
@@ -582,3 +583,44 @@ ADR-0048 §2.4 の「既定値の適用は共通契約で定める」を、CLI �
 - 統合後の実測（`main` `5d5d5de6b`）では、`continuation.fingerprint` で継続すると成功し、`graphFingerprint` を渡すと `STALE_SNAPSHOT`。応答の名前と `field` だけで、どちらを使うか分かる。
 - 私が書いた重複実装（平坦な `continuationFingerprint`）は採用しなかった。`main` の形が上位互換である。
 - `-scope`・`-direction` を変えた場合の拒否、MCP が `continuation` を返すかは未確認。
+
+## 18. 第13ラウンド（2026-11-09）: 設計変更の影響範囲をCLIだけで答えられるか
+
+ここまでは「CLIの応答が正しいか」を測った。このラウンドは**実際の設計作業の問い**を試した。題材は実際の改名（`snapshotFingerprint` → `graphFingerprint`、PR #3633）。生出力は[第13ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND13_DESIGN_IMPACT_2026-11-09/README.md)にある。
+
+| 問い | 結果 |
+| --- | --- |
+| モデル要素の定義箇所は分かるか | **分かる**。`inspect semantic-data:sales.order` が `semantic/sales/order.tei` を返す |
+| リポジトリ全体をWorkspaceにできるか | **できない**。ルートに `tei.workspace.yaml` が無く `-workspace .` は `WORKSPACE_LOAD_FAILED` |
+| 設計文書だけをWorkspaceにできるか | **索引には載る**。`source-index` は `artifacts: 3, references: 0` で成功 |
+| 設計文書の中の名前を問えるか | **問えない**。`inspect … -subject-id snapshotFingerprint` は `SUBJECT_NOT_FOUND` |
+| 改名の影響範囲を挙げられるか | **挙げられない**。どの文書のどの行がその名前を含むかは `grep` が要る |
+
+読み取れること:
+
+- 意味モデル（`.tei` の宣言）については、定義箇所も参照関係もCLIで答えられる。**モデルに対する設計作業はCLIで完結できる。**
+- 設計文書（Markdown）については、CLIはファイルとして管理するところまでで、**中の名前を対象にした問いには答えられない**。D-9 の具体的な帰結である。
+- リポジトリ全体を1つのWorkspaceにする経路が無いため、横断の問いは入力を作れない。
+
+新しいIssueは作らない。#2619・#2621 の設計範囲であり、D-9 として第1ラウンドから記録している。この実測を D-9 の具体的な証拠として残す。
+- 一方、**宣言していない引数はMCPだけが無視して成功する**。CLIは `INVALID_ARGUMENT` で拒否する。入力契約の共通化は未達で、#3467（起票）として扱う。
+- 必須欠落の符号はCLIが `INVALID_SUBJECT`、MCPが `-32602` で、意味層とプロトコル層の対応は #3420 の未決である。
+- `commands` の19件に操作ID・入口の欄は無く、入口ごとの対応はIssueと文書でしか辿れない。#3419 の対応表で扱う。
+
+## 19. 第14ラウンド（2026-11-09）: knowledge-* 連鎖の端から端まで
+
+第13ラウンドで「モデルに対する設計作業はCLIで完結できる」と分かった。その設計作業でAIが実際に使う `knowledge-*` の連鎖を、1回通した。生出力は[第14ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND14_KNOWLEDGE_CHAIN_2026-11-09/README.md)にある。
+
+| 手順 | 結果 |
+| --- | --- |
+| `knowledge-context` | `mode=context`・`dataDesign` あり・`authorityLimits` 4件 |
+| `knowledge-review-plan` | `mode=plan`・`reviewSequence`・`stopRules` |
+| `knowledge-review-handoff` | `mode=handoff`・`qualification` を含む |
+| `knowledge-context -disclose source` | `mode=disclosure` |
+| `knowledge-qualify` | `status=applicable`・`evidence` 1件 |
+| `knowledge-review-disclose` | `status=complete`・4セクション |
+
+- **戻れる**: 古い指紋は `fingerprint mismatch: expected=… current=…` で拒否（exit 1）。別subjectの handoff は `subject mismatch: handoff=… context=…` で拒否（exit 2）。存在しない handoff も exit 2。
+- **摩擦は1点**: 要件ファイルの形がCLIの応答から辿れない。`commands` は `-qualification-requirements` の存在だけを広告し、`-h` は "knowledge qualification requirements JSON" としか出さない。私は最初 `{"subject":…}` と書いて `json: unknown field` で止まった。最小形は `{"expectedKind":"semantic-data"}` で、文書（#3186 で追加済み）を読めば分かる。
+
+新しいIssueは作らない。形の例は #3186（Closed）、`commands` にファイル中身のスキーマを載せるかは #3419 の範囲である。

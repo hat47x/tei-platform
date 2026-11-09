@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strings"
 
+	"tei/internal/buildintent"
 	"tei/internal/core"
 	"tei/internal/plugin"
 )
@@ -273,7 +274,7 @@ func (c FixtureCatalog) ResolveBuilder(req BuilderRequest) (BuilderResolution, e
 			Identity: plugin.BuilderIdentity{
 				ID:              p.Plugin,
 				Version:         p.Version,
-				ContractVersion: fmt.Sprintf("%s/v%d", p.Contract, p.ContractMajor),
+				ContractVersion: buildintent.BuilderContractVersion(p.Contract, p.ContractMajor),
 				ArtifactDigest:  p.ArtifactDigest,
 			},
 			Implementation: p.Implementation,

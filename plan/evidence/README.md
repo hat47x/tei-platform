@@ -25,6 +25,7 @@
 - [空文字列の引数の拒否](CLI_EMPTY_ARGUMENT_REJECTION_2026-11-09.md)（`-mode ""`が広告既定の`summary`ではなく`full`へ落ちていたのを、明示の空文字列として`INVALID_ARGUMENT`で拒否。省略時は既定維持。内部`modelref`の既定は未集約）
 - [MCP Adapterの4MiB超過要求](MCP_OVERSIZED_REQUEST_2026-11-09.md)（行長超過でプロセスが終了し以降の要求を失っていたのを、`-32600`で拒否してループを続けるよう修正。上限の値の妥当性・同時接続・実HostはNOT RUN）
 - [MCP `tools/call` のparams検査](MCP_CALL_PARAMS_MESSAGES_2026-11-09.md)（params/name欠落が`unknown tool ""`やデコーダ文言で拒否され、実際の誤りを指していなかったのを、入力ごとの文言へ直した。実Host・認可・外部送出はNOT RUN）
+- [CLIとMCPの結果・失敗・成否の一致](TEI_CAPI2_CLI_MCP_PARITY_2026-11-09/README.md)（`catalog`/`inspect`/`trace`の成功文書が完全一致し、validateの6分類で`ok`・`isError`・exit・`error.code`が一致することを実実行物で比較。封じ込め5通りも外部バイト漏れなし。実Host・認可・外部送出はNOT RUN。CAPI-2 / #3420）
 - [traceの既定値の一元化](CLI_TRACE_DEFAULT_SINGLE_SOURCE_2026-11-09.md)（CLI flag・`commands`の`argumentDefaults`・MCP Adapterが別々に持っていた`mode`/`direction`の既定を`modelref`の定数1か所へ寄せた。内部の空Mode→fullは残存）
 - [`version`の自己申告revision](CLI_VERSION_DECLARED_REVISION_2026-11-09.md)（`-buildvcs=false`の実行物が`-ldflags`注入でrevisionを示せるようにし、`vcsRevision`と`declaredRevision`・`source`を区別した。自己申告はtoolchain証拠ではない。署名・来歴はNOT RUN）
 - [健康診断receipt（`005bbee7` / Actions 42152908986）](QUALIFICATION_FULL_HEALTH_005BBEE7_42152908986.json)と[暫定audit結果](REAL_PROVIDER_PROVISIONAL_AUDIT_005BBEE7.json)（`UNQUALIFIED`、残る診断は `E2_PROVIDER_GUARANTEE_NOT_ATOMIC` と `PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE`）
@@ -73,6 +74,8 @@
 - [採番規則の行識別の確認](XTEA_LOWCODE_NUMBERING_RULE_IDENTITY_2026-11.md)（参照実装の試験記録。例への追加は未実装）
 - [採番規則から発行までの一続きの経路の確認](XTEA_LOWCODE_NUMBERING_RULE_RESERVE_2026-11.md)（参照実装の試験記録。例への追加は未実装）
 - [月内締めの期間化の確認](XTEA_LOWCODE_MONTHLY_CLOSING_PERIOD_2026-11.md)（参照実装の試験記録。閉め操作の実装と例への追加は未実施）
+- [月内締めの区分ごとの閉めの確認](XTEA_LOWCODE_CLOSING_SEGMENT_SCOPE_2026-11.md)（参照実装の試験記録。閉め操作の実行は未実装）
+- [月内締めのCLI観察と状態源の確認](XTEA_LOWCODE_CLOSING_SCOPE_CLI_2026-11.md)（参照実装の試験記録。閉め操作の実行は未実装）
 - [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
 - [X-TEA受容要件の実装対応](XTEA_LOWCODE_ACCEPTANCE_TRACE_2026-11.md)（`AC-1`〜`AC-11`・`RQ-C1`〜`RQ-C3`の参照実装と未確認事項。受容判断は仮承認）
 - [実DBで実行時の判断を確かめる計画](REAL_DATABASE_RUNTIME_DECISION_PLAN_2026-11.md)（期間・権限・効果の判断を実DBで見る案。**NOT RUN**）
@@ -151,6 +154,7 @@
 - [停滞は「受理eventの不在」としてのみ観測できる](DSH_SESSION_LOG_STALL_DETECTION_2026-11-09/README.md)（#2515 H6-E2。停滞（`maxBytes=306`）と非停滞（4096）を**stderrを混ぜずに同条件**で比べた。stdout・stderrは**両方とも警告を出さない**（stderrは両方0 bytes）。差は永続Logの`session-log-deepseek/delivery-accepted`だけで、非停滞4件（`throughSeq`=`9`,`9`,`11`,`12`）・停滞**0件**。警告ではなく**成功記録の不在**としてしか分からない）
 - [Subagent起動は別Sessionを作り、そのSessionもSession Log拡張を送る](DSH_SUBAGENT_EGRESS_2026-11-09/README.md)（#2515 H6-E2・#2509。`subagent`を1回強制し、親5要求と子1要求を採取。Session IDが2種類あり、子の要求は`afterSeq -1`から`sessionFormatVersion 4`の拡張を送る。`prompt`のcanaryは**親にも子にも**載り、子は独立した永続Log（展開36,774 bytes・19行・`delivery-accepted` 1件）を持つ。Taskあたりの送出量は**子の分も加算**する必要がある。Telemetry・MCP・`subagent_fork`は未観測）
 - [`subagent_fork`は親の完了Turnを子へ運ぶ](DSH_SUBAGENT_FORK_2026-11-09/README.md)（#2515 H6-E2・#2509。Turn1で`pwsh`から親canaryを出して完走させ、Turn2で同じSessionを再開してforkした。子は`afterSeq -1`の別Sessionだが**メッセージ数5**で親の完了Turnを引き継ぎ、**親canaryが子の本文にもLogにも現れる**（`subagent`の子はメッセージ数1だった）。forkでは親が読んだ内容が子のモデル入力にも載るため、`subagent`と同列に扱うと送出を過小評価する。実行中Turnの継承・forkの連鎖・Telemetry・MCPは未観測）
+- [Subagentの連鎖は`maxDepth 1`で止まる](DSH_SUBAGENT_CHAIN_2026-11-09/README.md)（#2515 H6-E2・#2509。Sessionごとに1回`subagent`を強制して連鎖させたところ、Sessionは**3つ（親1・子2）で止まり孫は0**。子は`subagent depth 2 exceeds maxDepth 1`を`isError: true`のTool結果として受け取り、**その文言が子の次のモデル入力にも載る**。拒否後も子は要求を消費する（各3要求）。`subagentMaxDepth`を上げた場合の連鎖、forkの連鎖、Telemetry・MCPはNOT RUN）
 - [Session Log拡張の`maxBytes`上限とbacklog](DSH_SESSION_LOG_MAXBYTES_2026-11-08/README.md)（#2515 H6-E2・P0-b・#2509。`maxBytes`を2048と512へ下げて実測し、field全体が上限内なら水位`9`まで10 event、上限512では**518 bytes**（ヘッダ込みで上限超過）で水位`2`・3 eventに止まった。`maxBytes`は1要求の上限で総開示量の上限ではない。分割送出と単一eventの停滞は未確定）
 - [Session Logのbacklog分割送出と停滞、上限判定の単位](DSH_SESSION_LOG_SPLIT_AND_STALL_2026-11-08/README.md)（#2515 H6-E2・#2509。`maxBytes=1024`の4 Turnで水位`-1`→`6`→`9`と**後続要求へ分割送出**されることを確認し、`maxBytes=256`ではヘッダ込みで上限を超えるため**fieldが一度も作られず**作業だけが続いた。先行記録の「512で518 bytes＝上限超過」は再直列化した値による誤りで、生byteは474だったと訂正）
 
@@ -209,5 +213,10 @@
 - [D-1（catalogの`scope`拡張）の判断材料](CLI_CATALOG_SCOPE_D1_IMPACT_2026-11-09.md)（acceptedCommands 50件・catalog record 19件・広告しない36件・effectは全てread-onlyを実測。D-1は不変条件テスト2件と実consumer（MCP adapterのread-only前提）に触れ、`scope`の意味も変える。外在consumerは測れないため推奨しない。判断は未。 #2831）
 - [宣言の他の欄もplanと照合する](TEI_GO_SELF_BUILD_INTENT_FIELD_COMPARE_2026-11-09.md)（builder childがrecipe・source集合・dependency集合も比べるようにした。導出値（locator・digest・version）は比べない——比べると正しいbuildをすべて不一致と呼ぶため。不一致は名指しで拒否し、reportを出さない。既存fixtureが実フローと違っていたのも検査が検出した。`l2bClaimed`はfalse。 #2831）
 - [`parameters`も照合する](TEI_GO_SELF_BUILD_PARAMETER_COMPARE_2026-11-09.md)（§4.17は「正規化の意味が未決」として残したが、実測するとどちらの側も名前順ソートのみで値を変えていなかった。前提を確かめてから名前で突き合わせる照合を実装し、順序非依存と正規化の性質自体を試験で固定。L2-bは未。 #2831）
+- [`tei self-build`のbuilder childが宣言の`builder`要求をplanの解決結果と照合する](TEI_GO_SELF_BUILD_BUILDER_REQUIREMENT_2026-11-09.md)（対応規則は推測ではなくresolverの`ResolveBuilder`に既にあり、`internal/buildintent`の`BuilderContractVersion`として一箇所に定義した。contract+major・provider・pinを照合し、不一致は欄を名指ししてreportを出さずexit 1。同じ宣言から導いたplanでは決して失敗しないため、この照合が効くのはplanがその宣言由来でない場合だけ。`provider.implementation`はplanに対応欄が無く未照合。`l2bClaimed`はfalse。SB-C0 §4.19 / #2831）
 - [traceの継続トークンが2つの同名欄に分かれている](TEI_DOGFOODING_ROUND11_TRACE_CONTINUATION_2026-11-09/README.md)（#3625・#3420 T06。同名の`snapshotFingerprint`が2つあり、継続に使えるのは外側だけ。`nextOffset`の隣の値を渡すと`STALE_SNAPSHOT`になることを修正前に実測した）
 - [mainのtrace継続トークンを実測](TEI_DOGFOODING_ROUND12_CONTINUATION_MAIN_2026-11-09/README.md)（#3625。`e75d599ba`で`graphFingerprint`への改名と`continuation`が入り、`continuation.fingerprint`で継続でき、`graphFingerprint`は拒否されることを確認）
+- [設計変更の影響範囲をCLIだけで答えられるか](TEI_DOGFOODING_ROUND13_DESIGN_IMPACT_2026-11-09/README.md)（#3149 D-9・#2619・#2621。モデル要素の定義箇所は`inspect`で分かるが、設計文書の中の名前はsubjectにならず`SUBJECT_NOT_FOUND`。改名の影響範囲は`grep`が要る。リポジトリ全体はWorkspaceにできない）
+- [CLIとMCP参照Adapterの一致と厳密入力](TEI_DOGFOODING_ROUND5_CLI_MCP_2026-11-09/README.md)（#3400・#3420。4操作の成功応答と2つの失敗はCLIと一致し、未知の引数だけMCPが無視する。`main` `4f97c86cf` のCLI・MCP実行物で実測）
+- [AIが使うknowledge-*連鎖の端から端までの実測](TEI_DOGFOODING_ROUND14_KNOWLEDGE_CHAIN_2026-11-09/README.md)（#3149・#3186・#3419。context→plan→handoff→disclose→qualify→review-discloseが通り、古い指紋と別subjectのhandoffは拒否される。要件ファイルの形だけCLIの応答から辿れない）
+- [`builder`の契約も照合する](TEI_GO_SELF_BUILD_BUILDER_CONTRACT_COMPARE_2026-11-09.md)（§4.18は「対応規則を決める必要がある」としたが、`contract/vN`の規則は既に`fixture.go`にあった。child側にも規則を明示して照合し、綴り自体を試験で固定。`secretRequirements`はplanにもchildの入力にも比べる相手が無く未照合。L2-bは未。 #2831）

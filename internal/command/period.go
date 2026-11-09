@@ -36,6 +36,17 @@ func (m MapPeriodState) Closed(_ context.Context, periodID core.CanonicalID) (bo
 	return state == operations.PeriodClosed, nil
 }
 
+// ClosedScopeは、期間の半分が閉じているかを返す。範囲の鍵は`sales.month#1`の形で、
+// 対応表の鍵と同じ書き方である。未指定の範囲は閉じていない扱いにする（期間全体の
+// 未指定と同じ扱い）。期間全体の鍵`sales.month`を半分の答えとして読まない。
+func (m MapPeriodState) ClosedScope(_ context.Context, scope string) (bool, error) {
+	state, ok := m[core.CanonicalID(scope)]
+	if !ok {
+		return false, nil
+	}
+	return state == operations.PeriodClosed, nil
+}
+
 // MemoryPeriodStateは、期間の閉塞状態だけを保持する参照実装である。
 type MemoryPeriodState struct {
 	mu     sync.Mutex
@@ -63,4 +74,19 @@ func (s *MemoryPeriodState) Closed(_ context.Context, periodID core.CanonicalID)
 		return false, fmt.Errorf("period %s has no state", periodID)
 	}
 	return closed, nil
+}
+
+// SetScopeClosedは、期間の半分の閉塞状態を設定する。
+func (s *MemoryPeriodState) SetScopeClosed(scope string, closed bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.closed[core.CanonicalID(scope)] = closed
+}
+
+// ClosedScopeは、期間の半分が閉じているかを返す。未設定の範囲は閉じていない扱いに
+// する。期間全体の鍵で代用せず、設定された範囲だけを答える。
+func (s *MemoryPeriodState) ClosedScope(_ context.Context, scope string) (bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.closed[core.CanonicalID(scope)], nil
 }
