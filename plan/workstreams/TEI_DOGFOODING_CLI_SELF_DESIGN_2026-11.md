@@ -829,3 +829,23 @@ ADR-0048 §2.4 の「既定値の適用は共通契約で定める」を、CLI �
 試験は `prelude_identity_test.go` の3件。変異2種（前方一致に戻す／名前空間ごと飛ばす）を検出する。
 
 **残り**: `std` 自体を `.tei` にする判断（#2620）は未着手。ただし今回の修正で「prelude と利用者の宣言を同一性で区別する」規則が3箇所に入ったので、`std` を `.tei` にしても同じ規則で扱える。起票は [#3851](https://github.com/hat47x/tei-platform/issues/3851)。
+
+## 32. 第27ラウンド（2026-11-09）: std を .tei にできない理由（primitive 構文と指紋）
+
+25ラウンドの提案「`std` を同梱の `.tei` として宣言する」が、いまの実装で可能かを確かめた。生出力は[第27ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND27_STD_PRIMITIVE_GAP_2026-11-09/README.md)にある。
+
+**結論: そのままでは実装できない。** 独立した2つの理由がある。
+
+1. **`worldFingerprint` が prelude を含む。** loader の prelude 注入行を外して測ると `worldFingerprint` が `sha256:c92de09f…` から `sha256:8d7e160b…` へ変わり、`sourceIndexFingerprint` は同一だった。`worldFingerprint` は正規化 World の JSON 全体のダイジェストなので、prelude を変えると**全 Workspace の指紋と保存済み継続トークンが変わる**。
+2. **`.tei` に primitive を書く構文が無い。** `type` 宣言は必ず `from` を要求する（`internal/syntax/parser.go:1902`）。`type text` 単独は `PARSE_ERROR | expected "from"`。したがって `.tei` の型はすべて別名で、根は Go でしか定義できない。`std.text` を `.tei` で書こうとすると `type text from std.text` になり、`SEMANTIC_TYPE_ALIAS_CYCLE` になる。
+
+**代替案を2つ示した。**
+
+| 案 | 内容 | 指紋への影響 |
+| --- | --- | --- |
+| A | `std.def` を同梱し、prelude の**由来**として `inspect` の `artifacts` に返す | 小（World の構造を変えない） |
+| B | primitive 宣言の構文を追加し、prelude を `.tei` へ移す | 大（全指紋が変わる） |
+
+A は「根拠を辿れる」という #2620 の合格条件を満たしつつ指紋を変えない。B は本質的だが primitive 構文の設計・全指紋の移行・契約文書の更新を伴う。**どちらを選ぶかは #2620 の Owner の判断**であり、私は材料を提示するに留めた。
+
+**学び**: 「正しい方向の提案」でも、文法と指紋という2つの実装制約を確かめずに出すと実装できない。25ラウンドの提案は方向として正しかったが、前提を測っていなかった。
