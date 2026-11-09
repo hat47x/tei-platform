@@ -648,6 +648,50 @@ builder childが`compareIntentFields`で比べる。
 
 **`parameters`は測れば決まった。この2つは規則そのものを決める必要がある。** 同じ「未決」でも種類が違う。
 
+### 4.19 `builder`の契約を照合し、`secretRequirements`の不可能性を示す（2026-11-09）
+
+§4.18は`builder`と`secretRequirements`を同じ「規則を決める必要がある」欄として残した。**踏み込むと種類が違った。**
+
+#### `builder`は規則が既にあった
+
+`fixture.go`は宣言の`contract`と`compatibleMajor`を次のように解決する。
+
+```go
+ContractVersion: fmt.Sprintf("%s/v%d", p.Contract, p.ContractMajor),
+```
+
+**決めるべき規則は既にコードにあり、測れば読めた。** childはこの規則を自分でも適用して、組み立てた綴りとplanの`ContractVersion`を比べる。**child側にも規則を書いたのは意図的である**：resolverが綴りを変えたらこの照合が壊れる場所になり、その場所を試験で固定できる。
+
+| 比べる | 比べない |
+| --- | --- |
+| `builder.contract` + `compatibleMajor` から組み立てた `<contract>/v<major>` | planの`builder.ID`・`Version`・`ArtifactDigest`（**解決済みの実体**。宣言は方針を書く） |
+| — | `builder.Provider`・`builder.Pin`（方針であり解決結果ではない） |
+
+**方針と実体を区別する。** 方針から実体は決まらないので、実体側の違いを宣言の不一致と読まない。
+
+#### `secretRequirements`は比べる相手が無い
+
+| 事実 | 帰結 |
+| --- | --- |
+| `plugin.BuildPlan`に`SecretRequirements`欄が無い | plan側に比べる相手が無い |
+| 名前は`ResolvedBuildReceipt.SecretRequirementNames`に載る | **receiptはchildへ渡っていない**（childが受け取るのは`-plan`と`-intent`） |
+| 宣言の`Authority`（取得元）に対応する欄がplanにもreceiptにも無い | 比べる対象が存在しない |
+
+**これは「測れば決まる」問題ではない。** 測って分かったのは「比べる相手が無い」ことである。照合するには、receiptをchildへ渡すか、planへ欄を足すか、いずれかの**設計変更**が要る。§4.18が「規則を決めれば照合できる」と書いたのは`secretRequirements`については誤りだった。
+
+#### 宣言の欄の到達点
+
+| 欄 | 状態 |
+| --- | --- |
+| `subject` identity・`outputKind`・`target`・`profile` | 照合済み（§4.14・§4.15） |
+| `recipe`・`sources`・`dependencies` | 照合済み（§4.17） |
+| `parameters` | 照合済み（§4.18） |
+| `builder.contract`・`compatibleMajor` | 照合済み（[#3684](https://github.com/hat47x/tei-platform/pull/3684)） |
+| `builder.provider`・`builder.pin` | 方針であり、解決結果と対応しない（照合の対象外） |
+| `secretRequirements` | **比べる相手が無い**（設計変更が要る） |
+
+**照合の拡大はL2-bを進めない。** 宣言とplanが同じ意味を指すことの確認であり、「その宣言がその計画を導く」ことではない。
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
@@ -713,7 +757,8 @@ builder childが`compareIntentFields`で比べる。
 - [x] 宣言とplanの**build座標**（`outputKind`・`target`・`profile`）の照合（[#3652](https://github.com/hat47x/tei-platform/pull/3652)。childが三座標を一つずつ比べ、違えばartifactを書いた後にreportを出さずexit 1。[記録](../evidence/TEI_GO_SELF_BUILD_BUILD_COORDINATES_2026-11-09.md)）
 - [x] 宣言の他の欄のうち、planが同じ形で持つもの（`recipe`・`sources`・`dependencies`）の照合（[#3661](https://github.com/hat47x/tei-platform/pull/3661)。§4.17）
 - [x] `parameters`の照合（[#3664](https://github.com/hat47x/tei-platform/pull/3664)。測るとどちらの側も名前順ソートのみで値を変えないと分かったので、名前で突き合わせる。§4.18）
-- [ ] `builder`（要求と解決結果の対応規則）と`secretRequirements`（planに対応する欄が無い）の照合。**規則そのものを決める必要があり、測れば決まる種類ではない**（§4.18末尾）
+- [x] `builder`の契約要求（`contract`・`compatibleMajor`）とplanの解決済み`ContractVersion`の照合（[#3684](https://github.com/hat47x/tei-platform/pull/3684)。対応規則は`<contract>/v<major>`としてresolverに既にあり、child側にも明示して綴りごと固定した。§4.19）
+- [ ] `secretRequirements`の照合。**比べる相手が存在しない**（`plugin.BuildPlan`に欄が無く、名前はresolverのreceiptに載るがreceiptはchildへ渡らない）。照合には設計変更が要る（§4.19末尾）
 - [ ] D-1（catalogの`scope`拡張）を採るかどうかの契約判断（採る場合のみ、catalogの広告と実応答の一致を照合へ載せる）
 
 **A-1（`gobuilder`移動）は採らないため、影響範囲の洗い出しは終了条件から外した。** 29ファイルの内訳は[記録](../evidence/TEI_GO_INTERNAL_RULE_AND_BUILDER_MOVE_2026-11-07.md)として残す。I-1は「採らない」から「I-1aとして着手」へ改めた（§4.13）。`ParseFixtureCatalog`（fixture catalog）は`tools/`に残す。
