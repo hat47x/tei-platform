@@ -700,3 +700,19 @@ ADR-0048 §2.4 の「既定値の適用は共通契約で定める」を、CLI �
 **既存試験を1件、意図的に更新した。** `plugin_lock_scope_cli_test.go` は「別 environment を指すロックは resolve で `PLUGIN_RESOLVE_FAILED`・plan で exit 1」を固定していた。これは変更前の挙動そのものであり、統一後の `INVALID_PLUGIN_LOCK`・exit 2 へ直した。**破壊的な挙動変更である点を明記しておく。**
 
 契約文書 `plan/design/CLI_JSON_OUTPUT_CONTRACT_2026-10.md` の両行はもともと `INVALID_PLUGIN_LOCK` を挙げていた。今回の変更で**実装が契約に追いついた**。起票は [#3765](https://github.com/hat47x/tei-platform/issues/3765)。
+
+## 25. 第20ラウンド（2026-11-09）: view の -input が -command 無しで黙って捨てられていた
+
+19ラウンドで `plugin-*` を叩いて欠陥が出たため、まだ測っていない `view` を対象にした。`view` は `writeFlags` に `-operation-log`・`-lifecycle-state` を持ち、実行経路がある唯一の「読み取り」コマンドである。生出力は[第20ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND20_VIEW_INPUT_2026-11-09/README.md)にある。
+
+**正常系**は問題なかった。`view -application order_entry -format json` は `patterns`・`semanticFingerprint`・`worldFingerprint`・`sourceIndexFingerprint`・`workspace` を返し、引数無しは JSON で `INVALID_ARGUMENT`（exit 2）、実在しない application は exit 1 `VIEW_FAILED`。
+
+**見つけた欠陥**: `-input` を `-command` 無しで渡すと、値が捨てられて成功する。存在しないファイル名でも、書式不正（`no-equals-sign`）でも exit 0 `ok:true`。`-input` を付けた応答と付けない応答はバイト単位で同一だった。同じ group の `-period-state`・`-allow-capability`・`-operation-log`・`-lifecycle-*` は `-execute` 無しで正しく拒否されるのに、`-input` だけ条件が抜けていた。
+
+**起票時の診断を誤った。** 最初に「`-input` は `-execute` と組」と書いたが、実際は `-command` と組で、`-command` があれば `-execute` 無しでも plan に反映される（`product_slice_test.go:169` が固定）。私の誤った修正（`!*execute`）が既存試験 `TestProductSliceLoadsValidatesAndViews` を落として発覚した。**既存試験が正しく、私の診断が誤っていた。** issue #3778 に訂正を追記し、条件を `*commandID == ""` に直した。
+
+修正: `cmd/tei/cli_view.go` の引数ガードに `(len(inputPairs) > 0 && *commandID == "")` を追加。
+
+試験は `cmd/tei/cli_view_input_test.go` の2件。**両方向**の変異（条件を削る／過剰に厳しくする）を検出する。過剰に厳しくする方向を入れたのは、今回の誤診がまさにその方向だったため。
+
+**学び**: 依存関係を推測で書くと、既存の正しい用法を壊す。discovery の `"-input and -execute with -command"` は「両方とも `-command` に係る」と読むのが正しく、私は「`-input` と `-execute` が互いに係る」と読み違えた。`-execute` の実行経路そのものは未測定で、次に測るべき対象である。起票は [#3778](https://github.com/hat47x/tei-platform/issues/3778)。

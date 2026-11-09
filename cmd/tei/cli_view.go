@@ -150,6 +150,11 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		(*lifecycleGeneration < 1) ||
 		(len(allowedCapabilities) > 0 && !*execute) ||
 		(*operationLogFile != "" && !*execute) ||
+		// -input only feeds the command plan, which exists only with -command.
+		// Without this, `view -application X -input order=ORD-1` succeeded and
+		// dropped the value (and never parsed it), so a caller could believe it
+		// had supplied input to a command that was never planned (#3778).
+		(len(inputPairs) > 0 && *commandID == "") ||
 		*root != strings.TrimSpace(*root) || *applicationID != strings.TrimSpace(*applicationID) ||
 		*patternID != strings.TrimSpace(*patternID) || *packageID != strings.TrimSpace(*packageID) ||
 		*commandID != strings.TrimSpace(*commandID) {

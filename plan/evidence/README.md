@@ -242,3 +242,4 @@
 - [同じ壊れたplugin-lockが2コマンドで別の終了コードになっていた](TEI_DOGFOODING_ROUND19_PLUGIN_LOCK_CLASSIFICATION_2026-11-09/README.md)（#3765・#3420 CAPI-2b・#3184。`plugin-resolve`はexit 2、`plugin-runtime-plan`はexit 1と5種で食い違った。`LockMismatchError`を追加し両方`INVALID_PLUGIN_LOCK`へ。変異2種を検出）
 
 - [同じ値指定flagの重複](CLI_REPEATED_FLAG_2026-11-09.md)（`model catalog -namespace`等の重複が最後の値だけを残して黙って捨てていたのを、1値flagの重複として`INVALID_ARGUMENT`で拒否。繰り返し可能なflagは`repeatableFlags`で広告。既存呼出し元の全件洗い出しは未実施）
+- [viewの-inputが-command無しで黙って捨てられていた](TEI_DOGFOODING_ROUND20_VIEW_INPUT_2026-11-09/README.md)（#3778・#3420。`-input`は`-command`と組だが、無い場合に値が捨てられて成功していた。両方向の変異を検出する試験を追加。起票時の誤診と既存試験による発覚も記録）
