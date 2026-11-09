@@ -42,6 +42,7 @@
 - [フック実行の配線と失敗の区別の確認](XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)（参照実装の試験記録。Runnerからの配線、NotSatisfiedと実行失敗の区別、参照規則。実PluginとCLI・Studioの配線は未実装）
 - [フック宣言の印刷面への反映の確認](XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md)（参照実装の試験記録。画面と同じフック宣言が印刷面にも出る。実印刷・用紙面の版照合は未確認）
 - [フックの位相順序と途中停止の確認](XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md)（参照実装の試験記録。位相の実行順、不成立での停止位置、`warn`の続行、未対応位相の拒否。CLI・Studioへの配線は未実装）
+- [能力入力の結び付けのData対応と、1属性の複数パラメータへの束ねの確認](XTEA_LOWCODE_HOOK_BINDING_DATA_MATCH_2026-11.md)（参照実装の試験記録。Data型パラメータへ別Dataの属性を結ぶ宣言を拒否し、1属性を複数パラメータへ束ねる形は既に動くことを固定）
 - [能力入力の結び付けの型検査の確認](XTEA_LOWCODE_HOOK_BINDING_TYPE_CHECK_2026-11.md)（参照実装の試験記録。原始型同士の食い違いを宣言段階で拒否し、Dataを名指す結び付けは比較しない）
 - [フックの`reads`から能力のパラメータへの対応規則の確認](XTEA_LOWCODE_HOOK_READS_TO_PARAMS_2026-11.md)（参照実装の試験記録。interactionの`command`の`input`が対応を述べており、読んでいない属性のパラメータは埋めない）
 - [フックが宣言した能力を実際に呼ぶ配線の確認](XTEA_LOWCODE_HOOK_DECLARED_CALL_WIRING_2026-11.md)（参照実装の試験記録。CLIとStudioの参照実行が`CommandCaller`を通して`uses`を実際に呼ぶ。`reads`からパラメータへの対応は未設計）
@@ -90,7 +91,8 @@
 - [利用者設定の書込みの確認](XTEA_LOWCODE_USER_SETTINGS_WRITE_2026-11.md)（参照実装の試験記録。監査・権限・画面は未実装）
 - [例の締め日・設定Dataと構文の修正の確認](XTEA_LOWCODE_EXAMPLE_CLOSING_SETTINGS_2026-11.md)（参照実装の試験記録。閉めの実行内容と設定の監査は未実装）
 - [為替の月次・年次を別Dataに分ける構成の確認](XTEA_LOWCODE_CURRENCY_TWO_TABLES_2026-11.md)（参照実装の試験記録。例への追加は未実装）
-- [為替の粒度の宣言語彙の確認](XTEA_LOWCODE_CURRENCY_GRANULARITY_2026-11.md)（参照実装の試験記録。`ResolveTable`への自動組込みと例への追加は未実装）
+- [為替の粒度の宣言語彙の確認](XTEA_LOWCODE_CURRENCY_GRANULARITY_2026-11.md)（参照実装の試験記録。例への追加は未実装）
+- [RQ-C3の確認方法の観測](XTEA_LOWCODE_RQC3_VERIFICATION_2026-11.md)（参照実装の試験記録。要求の確認方法を試験名へ写して観測）
 - [採番の永続CounterStoreの確認](XTEA_LOWCODE_NUMBERING_SQLITE_STORE_2026-11.md)（参照実装の試験記録。PostgreSQLは未実装）
 - [採番の2プロセス同時実行の確認](XTEA_LOWCODE_NUMBERING_PROCESS_RACE_2026-11.md)（参照実装の試験記録。PostgreSQLと多プロセス構成は未実装）
 - [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
@@ -249,6 +251,7 @@
 - [`-rebuild-check`の実コストを測る](TEI_GO_SELF_BUILD_REBUILD_CHECK_COST_2026-11-09.md)（§4.25が「決めるために足りないもの」として挙げた実buildの所要時間を測った。参照childで7回ずつ計測し、中央値136.4 ms→246.5 ms（**+110.1 ms・1.807倍**）。ただし**増分の大半はchildの仕事ではなくentryの固定費**で、child単体は3.4 msしかない。§4.25の「build時間をほぼ倍にする」は参照childについては正確でないと分かった。実build（Go buildを伴うchild）は未測定で、比は2倍に近づくと推論する。既定化の判断はしない。SB-C0 §4.27 / #2831）
 - [実buildで`-rebuild-check`の比は1.93倍になった](TEI_GO_SELF_BUILD_GO_BUILD_REBUILD_COST_2026-11-09.md)（§4.27が参照child（buildは3.4 ms）で測って「実buildでは比が2倍に近づく」と推論したことを、`reference-go-build-with-supply`をchildにして`./internal/core`を実際に`go build`させて確かめた。中央値5852.7 ms→11272.4 msで**+5419.7 ms・1.926倍**。増分はchild単体5568.2 msとほぼ一致し、**同じflagがchildの重さで意味の違う費用になる**ことが分かった。副産物として二回のGo buildのdigestが一致し`artifactReproducibility=reproduced`（§4.21の再現は参照childに限らない）。既定化の判断はしない。SB-C0 §4.28 / #2831）
 - [catalogの欄はリポジトリのどこにも宣言されていない](TEI_GO_SELF_BUILD_CATALOG_FIELD_PROVENANCE_2026-11-09.md)（§4.25が「既定で用意できるか」を挙げたのに対し、`BuildProvider`の7欄がどこで宣言されているかを測った。`contractMajor`・`authorityScope`・`recipeKinds`・`profiles`・`targets`の**5欄にcatalog以外の宣言面が無く**、既存の宣言からcatalogは導出できないと分かった。`artifactDigest`だけはlock・宣言の`builder.pin`・service carrierにある。したがって不足分は「誰が書くか」ではなく**catalogを書く場所を製品に作るか**という契約判断であり、決めるまで既定の試行でClaimは立てられない。K-1・K-2・外部配布物のどれを採るかは判断しない。SB-C0 §4.29 / #2831）
+- [catalogを書く場所は製品の外に置く](TEI_GO_SELF_BUILD_CATALOG_LOCATION_DECISION_2026-11-09.md)（§4.29が示した「catalogの5欄に宣言面が無い」を受け、「どこに書くか」を**既存readerへの影響**で測って決めた。Workspaceに欄を足す案（K-1）はmanifest parserが未知entryで**fail closed**し`formatVersion`も1と2だけを受理するため古いbinaryがWorkspaceを読めなくなる。plugin構文拡張（K-2）も未知名でエラーになるため同じ。**外部成果物としてcatalogを渡しdigestで名指しする**案だけが既存ファイルに何も足さず、§4.22のK-3が既にこの形である。よって**製品の契約を一つも変えずに**catalogを用意できる。能力宣言の形式とツール実装は未決として残した。SB-C0 §4.32 / #2831）
 - [catalogを名指しすれば`-rebuild-check`を書かなくてもClaimが立つ](TEI_GO_SELF_BUILD_INPROCESS_DEFAULT_EVIDENCE_2026-11-09.md)（§4.25が保留した既定経路の強化を、**一つの場合に限って**決めた。`-build-catalog`を渡した試行は`-rebuild-check`を明示しなくても二回目のbuildを行う（`-rebuild-check=false`で断れる）。catalogを渡すことが既に「強い経路を選ぶ」表明であり、費用と便益が同じ側にあるため。child経路と何も渡さない試行は変えない（Claimが立たない経路に費用を足さない）。実測では`-rebuild-check`を書かずに`l2b.claimed=true`・`unmet`空、`=false`では`unperformed`で理由が「the caller turned off the second build」。**既定の導出経路はchildのまま**で、`qualified`も`false`。SB-C0 §4.30 / #2831）
 - [`tei self-build -h`が実際の文法を示すようになった](TEI_GO_SELF_BUILD_HELP_DISCOVERY_2026-11-10.md)（§4で足したflagが`-h`に出ておらず、catalog経路は設計文書を読まないと見つからなかった。原因は`helpText`が`self-build`のflagを**手書き**していて、後から足した分に追随していなかったこと。手書きをやめ、§4形式のFlagSetから`self-build`用の一覧を作って共通の描画関数で出すようにしたので、flagを足せば自動で追随する。出力は11個から**20個**になり、`-rebuild-check`の§4.30の既定も見える。利用者向けの手引きも`reference/plugin-self-build/README.md`へ追加。SB-C0 §4.6 / #2831）
 - [traceの継続トークンが2つの同名欄に分かれている](TEI_DOGFOODING_ROUND11_TRACE_CONTINUATION_2026-11-09/README.md)（#3625・#3420 T06。同名の`snapshotFingerprint`が2つあり、継続に使えるのは外側だけ。`nextOffset`の隣の値を渡すと`STALE_SNAPSHOT`になることを修正前に実測した）

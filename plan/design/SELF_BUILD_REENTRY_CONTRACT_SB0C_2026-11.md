@@ -1365,6 +1365,54 @@ Claimの`boundary`文言を、**このホスト**から**観測した二つの�
 - **§7の判断をしていない。** 記述の訂正と実測だけである。
 - 「既定でclaimを立てるべき」とは言っていない。§4.29の決定を待つ。
 
+### 4.32 catalogを書く場所は製品の外に置く（2026-11-09）
+
+§4.29は、catalogの7欄のうち5欄に**宣言面が無い**ことを示した。本節は「ではどこに書くか」を、**既存readerへの影響**という軸で決める。
+
+#### 測ったこと：三つの案は、どれも既存readerを壊しうる
+
+| 案 | 何を変えるか | 既存readerへの影響（実測） |
+| --- | --- | --- |
+| **K-1** Workspaceに`builders:`を足す | `tei.workspace.yaml` | **壊れる。** manifest parserは未知のentryで**fail closed**する（`internal/workspace/imports.go`の`unsupported workspace manifest entry`）。さらに`formatVersion`は1と2だけを受理し、未知の版もfail closed（`internal/workspace/loader.go`）。**古いbinaryがWorkspaceを読めなくなる** |
+| **K-2** plugin定義に構文を足す | `.tei`の構文 | **壊れる。** parserは構文ごとのfield集合を明示し、未知のfieldでエラーにする（`internal/syntax/parser.go`の`unknown lease-policy field`と同じ形）。**古いbinaryがplugin定義を検証できなくなる** |
+| **外部成果物** catalogを独立したファイルとして渡し、digestで名指しする | **何も足さない** | **壊れない。** 既存のどのファイルにも新しいentryが増えない |
+
+**Workspaceもplugin定義も、未知の入力を拒否する設計である。** これは「分からないことを成功として扱わない」という本リポジトリの原則そのもので、正しい。だからこそ、**既存のファイルへ欄を足す案は、古いbinaryとの互換を壊す**。
+
+#### 決めたこと
+
+**catalogは製品の外で作り、呼び手がdigestで名指しする。** §4.22のK-3が既にこの形を実装しているので、**製品側の変更は要らない**。
+
+| 項目 | 決定 |
+| --- | --- |
+| catalogの置き場所 | **製品のファイル形式の外**（独立したJSON） |
+| 誰が作るか | **ツール**。能力宣言を入力に取り、catalogを組み立ててdigestを付ける |
+| entryの読み方 | 変わらない（`-build-catalog`＋`-build-catalog-digest`＋`-build-source-root`、K-3） |
+| Workspaceの`formatVersion` | 変えない（1と2のまま） |
+| plugin構文 | 変えない |
+
+**製品の契約を一つも変えずに、catalogを用意できるようにする。** これが「最短経路」である。
+
+#### なぜこれで足りるのか
+
+catalogは**データ**であり、entryはそれを**名指しされたものとして読む**（§4.22が「entryはbuilderを自分で探さない」と決めた）。**誰がそのデータを作ったかは、entryの観測の対象ではない。** 作る手段が製品の外にあっても、entryの振る舞いは変わらない。
+
+能力宣言（どのcontractを、どのrecipe kindで、どのtarget/profileに向けて提供するか）は、**catalogを作る者の入力**であって、Workspaceの意味でもpluginの意味でもない。だから製品の構文に入れない。
+
+#### この決定が言っていないこと
+
+- **能力宣言の形式**（ツールの入力の形）。本節は決めない
+- **catalogが正しいこと**。§4.22 K-3、SC0-26のまま。呼び手が名指ししたデータを使った、という記録しかない
+- **誰が能力を宣言してよいか**（権限）。catalogは「buildできると名乗るデータ」であり、**その名乗りの妥当性は本節の範囲外**
+- 既定の試行でのClaim（§4.30のまま。catalogを渡す一手が要る）
+
+#### 覆す条件
+
+- 能力宣言を**Workspaceの意味として扱う必要が出た場合**（例：Workspaceの妥当性検査がbuilderの有無に依存するようになる）。そのときは`formatVersion`の改版と一緒にK-1を採る
+- 能力宣言を**pluginの意味として扱う必要が出た場合**（例：pluginの起動時に自分のbuild能力を検証する）。同じくK-2を版付けで採る
+
+いずれも**後から足せる**。逆（製品に足してから外す）は互換を壊すので、順序はこちらが正しい。
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
@@ -1443,7 +1491,7 @@ Claimの`boundary`文言を、**このホスト**から**観測した二つの�
 - [x] **実build**での`-rebuild-check`のコスト測定（§4.28。`reference-go-build-with-supply`をchildにして`./internal/core`を実際に`go build`。中央値5852.7 ms→11272.4 ms、**+5419.7 ms・1.926倍**で、§4.27の推論が当たった。二回のbuildのdigestは一致し`artifactReproducibility=reproduced`。[記録](../evidence/TEI_GO_SELF_BUILD_GO_BUILD_REBUILD_COST_2026-11-09.md)）
 - [x] `-rebuild-check`の実コストの測定（§4.27。[記録](../evidence/TEI_GO_SELF_BUILD_REBUILD_CHECK_COST_2026-11-09.md)。参照childでは中央値136.4 ms→246.5 ms（+110.1 ms・1.807倍）で、**増分の大半はchildの仕事ではなくentryの固定費**（child単体3.4 ms）。実buildは未測定）
 - [x] `-rebuild-check`の既定を**catalogを名指しした試行に限って**強くする決定と実装（§4.30。`-build-catalog`を渡せば二回目のbuildが既定になり、`-rebuild-check=false`で断れる。child経路と何も渡さない試行は変わらない）
-- [ ] `-rebuild-check`を**すべての試行で既定**にするかどうかの判断。**§4.25で三つの未決を一つの判断として扱う案（P-1〜P-4）を示した**。実buildの所要時間は未測（§4.25末尾）
+- [ ] `-rebuild-check`を**すべての試行で既定**にするかどうかの判断。**§4.25がP-1〜P-4を示し、§4.27が参照child、§4.28が実buildのコストを実測した**（それぞれ1.807倍・1.93倍）。**§4.30がcatalog経路だけ既定にした**ので、残る問いはそれ以外の経路でも既定にするかである
 - [x] catalogの出所の決定（§4.22。**K-3: 呼び手が名指しするcatalogデータ＋必須のdigest**。新しいAuthorityを作らず、既存の`-supply`・`-intent-resolver`と同じ形）
 - [ ] **entryの既定経路をin-processの`Resolve`へ切り替えるか**の判断（§4.16のR-1/R-2/R-3）。前提だったcatalogの出所は§4.22で決めた（K-3）。切り替え自体は段2の完了後に別途決める
 - [x] **段1**：`fixture`を外した名前で`BuildCatalog`・`ParseBuildCatalog`・`ResolveBuilder`・`ResolveDependency`・`CheckTarget`・`DirSourceResolver`を`internal/buildintent`へ移した（`tools/`側は型aliasと薄い委譲。参照実装の試験は**無変更で通る**。§4.22の移行表、[記録](../evidence/TEI_GO_SELF_BUILD_CATALOG_MOVE_2026-11-09.md)）
@@ -1461,7 +1509,8 @@ Claimの`boundary`文言を、**このホスト**から**観測した二つの�
 - [x] **欄ごとの照合をここで打ち切る**決定（§4.20。原因究明の道具として既存は残すが、これ以上足さない。残る段差は欄照合では埋まらない）
 - [x] 依存の更なる削減：**entryが計画側も独立に持つ**経路（[#3729](https://github.com/hat47x/tei-platform/pull/3729)）。lockの計画側はbuilderの申告を優先し、申告が無ければentryの再計算値を使う。どちらを使ったかを`planSideSource`で記録するので、弱い根拠を強い根拠と読ませない（[記録](../evidence/TEI_GO_SELF_BUILD_ENTRY_PLAN_SIDE_2026-11-09.md)）
 - [x] catalogの欄がどこで宣言されているかの実測（§4.29。7欄のうち**5欄にcatalog以外の宣言面が無く**、既存の宣言からは導出できないと分かった。[記録](../evidence/TEI_GO_SELF_BUILD_CATALOG_FIELD_PROVENANCE_2026-11-09.md)）
-- [ ] catalogを**書く場所**を製品に作るか（§4.29。K-1のWorkspace欄・K-2のplugin構文拡張・外部配布物の三択。既定の試行でClaimを立てるには、この決定が要る）
+- [x] catalogを**書く場所**の決定（§4.32。**製品の外**に置く。Workspaceもplugin構文も変えない。既存readerは未知のentryと未知の`formatVersion`を拒否するため、K-1・K-2は古いbinaryとの互換を壊す。K-3の読み方はそのままで、製品の契約を一つも変えない）
+- [ ] catalogを作る**ツール**の能力宣言の形式と、その実装（§4.32が残した未決）
 - [ ] D-1（catalogの`scope`拡張）を採るかどうかの契約判断（採る場合のみ、catalogの広告と実応答の一致を照合へ載せる）
 
 **A-1（`gobuilder`移動）は採らないため、影響範囲の洗い出しは終了条件から外した。** 29ファイルの内訳は[記録](../evidence/TEI_GO_INTERNAL_RULE_AND_BUILDER_MOVE_2026-11-07.md)として残す。I-1は「採らない」から「I-1aとして着手」へ改めた（§4.13）。`ParseFixtureCatalog`（fixture catalog）は`tools/`に残す。
