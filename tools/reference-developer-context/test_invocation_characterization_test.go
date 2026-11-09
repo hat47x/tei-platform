@@ -19,7 +19,7 @@ func TestDiscoveryProfileCC30RunFilterDoesNotQualifyRequiredNamedTest(t *testing
 	const target = "qualification.go"
 	const candidate = "qualification_test.go"
 	root := profileFixture(t, map[string]string{
-		target: "package fixture\nfunc Evaluate() int { return 0 }\n",
+		target:    "package fixture\nfunc Evaluate() int { return 0 }\n",
 		candidate: "package fixture\nimport \"testing\"\nfunc TestRequired(t *testing.T) { if Evaluate()!=0 { t.Fatal(\"invalid\") } }\nfunc TestUnrelated(t *testing.T) {}\n",
 	})
 
