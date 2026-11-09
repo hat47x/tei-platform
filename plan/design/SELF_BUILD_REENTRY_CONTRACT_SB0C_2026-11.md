@@ -645,31 +645,50 @@ builder childが`compareIntentFields`で比べる。
 | `secretRequirements` | planは名前を`SecretRequirementNames`として持つが`plugin.BuildPlan`には無い。宣言の`Authority`に対応する欄が無い |
 
 **`parameters`は測れば決まった。この2つは規則そのものを決める必要がある。** 同じ「未決」でも種類が違う。
-### 4.12 childが自分でlockを作る経路（2026-11-09）
+### 4.19 `builder`の契約を照合し、`secretRequirements`の不可能性を示す（2026-11-09）
 
-§4.11末尾が挙げた経路を実装した。**childが自分で`internal/plugin`の`BuildArtifactLock`を組み立て、`Validate`と`BuildArtifactLockFingerprint`を通してから返し、entryはそれを自分が独立に導いたlockと比べる。**
+§4.18は`builder`と`secretRequirements`を同じ「規則を決める必要がある」欄として残した。**踏み込むと種類が違った。**
 
-| 段 | §4.11まで | §4.12 |
-| --- | --- | --- |
-| lockを作る主体 | entryのみ | **childも作る**（childのreportへ`buildArtifactLock`） |
-| lockの検証 | entryが`Validate` | **childも`Validate`し、通らなければreportを出さずexit 1** |
-| 突合 | なし | **entryのlock fingerprintとchildのlock fingerprintを比較** |
+#### `builder`は規則が既にあった
 
-| `planArtifactBinding`の欄 | 意味 |
+`fixture.go`は宣言の`contract`と`compatibleMajor`を次のように解決する。
+
+```go
+ContractVersion: fmt.Sprintf("%s/v%d", p.Contract, p.ContractMajor),
+```
+
+**決めるべき規則は既にコードにあり、測れば読めた。** childはこの規則を自分でも適用して、組み立てた綴りとplanの`ContractVersion`を比べる。**child側にも規則を書いたのは意図的である**：resolverが綴りを変えたらこの照合が壊れる場所になり、その場所を試験で固定できる。
+
+| 比べる | 比べない |
 | --- | --- |
-| `childLockChecked` | childのlockを比べたか。**欄が無い場合は`false`のまま**（無いことを合格と読ませない） |
-| `childLockValidated` | childが検証済みと申告したか |
-| `childLockMatched` | entryのlock fingerprintと一致したか。不一致は`mismatched`で`ok=false` |
-| `childLockFingerprint` | childが導いたlockの照合値 |
+| `builder.contract` + `compatibleMajor` から組み立てた `<contract>/v<major>` | planの`builder.ID`・`Version`・`ArtifactDigest`（**解決済みの実体**。宣言は方針を書く） |
+| — | `builder.Provider`・`builder.Pin`（方針であり解決結果ではない） |
 
-**`childLockMatched=true`が増やす観測**：経路の違う二つの組み立て（childは自分の読んだplanと自分が書いたバイトから、entryはreceiptのplan identityとchildの申告から）が**同じfingerprintになった**こと。
+**方針と実体を区別する。** 方針から実体は決まらないので、実体側の違いを宣言の不一致と読まない。
 
-**それでもL2-bではない。** `l2bClaimed`は`false`のままである。理由は次の二点。
+#### `secretRequirements`は比べる相手が無い
 
-1. builder childが読んだのは`-plan`のファイルであり、**entryが保持した宣言そのものではない**（`intentByteCheckPerformed=false`のまま）
-2. **entryのlockもchildの申告から作る。** 両方の組み立てが同じ入力に依存するため、childが申告を偽れば両方が同じように偽る。`childLockMatched`は「二つの独立した組み立ての一致」であって「入力が真であること」ではない
+| 事実 | 帰結 |
+| --- | --- |
+| `plugin.BuildPlan`に`SecretRequirements`欄が無い | plan側に比べる相手が無い |
+| 名前は`ResolvedBuildReceipt.SecretRequirementNames`に載る | **receiptはchildへ渡っていない**（childが受け取るのは`-plan`と`-intent`） |
+| 宣言の`Authority`（取得元）に対応する欄がplanにもreceiptにも無い | 比べる対象が存在しない |
 
-**依存をさらに減らすには、entryが計画側も独立に持つ必要がある。** 解決childのreceiptに頼らずentry自身が宣言から計画を導く経路であり、§4.7でI-1（`internal/`への切り出し）を採らなかった制約に戻る。§7の残作業に名指しした。
+**これは「測れば決まる」問題ではない。** 測って分かったのは「比べる相手が無い」ことである。照合するには、receiptをchildへ渡すか、planへ欄を足すか、いずれかの**設計変更**が要る。§4.18が「規則を決めれば照合できる」と書いたのは`secretRequirements`については誤りだった。
+
+#### 宣言の欄の到達点
+
+| 欄 | 状態 |
+| --- | --- |
+| `subject` identity・`outputKind`・`target`・`profile` | 照合済み（§4.14・§4.15） |
+| `recipe`・`sources`・`dependencies` | 照合済み（§4.17） |
+| `parameters` | 照合済み（§4.18） |
+| `builder.contract`・`compatibleMajor` | 照合済み（[#3684](https://github.com/hat47x/tei-platform/pull/3684)） |
+| `builder.provider`・`builder.pin` | 方針であり、解決結果と対応しない（照合の対象外） |
+| `secretRequirements` | **比べる相手が無い**（設計変更が要る） |
+
+**照合の拡大はL2-bを進めない。** 宣言とplanが同じ意味を指すことの確認であり、「その宣言がその計画を導く」ことではない。
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
@@ -735,7 +754,8 @@ builder childが`compareIntentFields`で比べる。
 - [x] 宣言とplanの**build座標**（`outputKind`・`target`・`profile`）の照合（[#3652](https://github.com/hat47x/tei-platform/pull/3652)。childが三座標を一つずつ比べ、違えばartifactを書いた後にreportを出さずexit 1。[記録](../evidence/TEI_GO_SELF_BUILD_BUILD_COORDINATES_2026-11-09.md)）
 - [x] 宣言の他の欄のうち、planが同じ形で持つもの（`recipe`・`sources`・`dependencies`）の照合（[#3661](https://github.com/hat47x/tei-platform/pull/3661)。§4.17）
 - [x] `parameters`の照合（[#3664](https://github.com/hat47x/tei-platform/pull/3664)。測るとどちらの側も名前順ソートのみで値を変えないと分かったので、名前で突き合わせる。§4.18）
-- [ ] `builder`（要求と解決結果の対応規則）と`secretRequirements`（planに対応する欄が無い）の照合。**規則そのものを決める必要があり、測れば決まる種類ではない**（§4.18末尾）
+- [x] `builder`の契約要求（`contract`・`compatibleMajor`）とplanの解決済み`ContractVersion`の照合（[#3684](https://github.com/hat47x/tei-platform/pull/3684)。対応規則は`<contract>/v<major>`としてresolverに既にあり、child側にも明示して綴りごと固定した。§4.19）
+- [ ] `secretRequirements`の照合。**比べる相手が存在しない**（`plugin.BuildPlan`に欄が無く、名前はresolverのreceiptに載るがreceiptはchildへ渡らない）。照合には設計変更が要る（§4.19末尾）
 - [x] `planCrossCheck=matched`と`planArtifactBinding=bound`の**同時**実測（[記録](../evidence/TEI_GO_SELF_BUILD_MATCHED_AND_BOUND_2026-11-09.md)、再現手順も同記録）
 - [x] builderが自分で`BuildArtifactLock`を作って返す経路（[記録](../evidence/TEI_GO_SELF_BUILD_CHILD_LOCK_2026-11-09.md)、`childLockMatched=true`。entryが独立に導いたlockと同一fingerprint）
 - [ ] 依存の更なる削減：**entryが計画側も独立に持つ**経路。今はentryのlockもchildの申告から作るため、両方が同じ入力に依存する（§4.11末尾。I-1を採らない制約に戻る）

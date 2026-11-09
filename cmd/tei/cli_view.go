@@ -86,8 +86,20 @@ type cliViewReport struct {
 // replay decision rather than an execution error.
 func commandFailure(err error) (string, string, bool) {
 	var execution *command.ExecutionError
-	if errors.As(err, &execution) && execution.Code == "COMMAND_LIFECYCLE_REFUSED" {
-		return "COMMAND_LIFECYCLE_REFUSED", execution.Message, true
+	if errors.As(err, &execution) {
+		switch execution.Code {
+		case "COMMAND_LIFECYCLE_REFUSED":
+			return "COMMAND_LIFECYCLE_REFUSED", execution.Message, true
+		case "COMMAND_PERIOD_SCOPE_UNAVAILABLE":
+			// A period split by a closing day cannot be judged by a state that
+			// only knows whole months. Naming the code keeps it distinct from a
+			// generic execution failure, so a caller can supply a half-aware state.
+			return "COMMAND_PERIOD_SCOPE_UNAVAILABLE", execution.Message, true
+		case "COMMAND_PERIOD_SCOPE_UNKNOWN":
+			// The period's business date is missing or unreadable, so the half is
+			// unknown. A caller fixes the input rather than the state.
+			return "COMMAND_PERIOD_SCOPE_UNKNOWN", execution.Message, true
+		}
 	}
 	if command.EffectMayBeUnknown(err) {
 		return "COMMAND_EFFECT_UNKNOWN", err.Error(), true
