@@ -391,3 +391,19 @@ read-only Referenceは`compareObservedLoadContext`をテスト専用の候補比
 **他Laneとの契約**：Studio [#1124](https://github.com/hat47x/tei-platform/issues/1124)のScope/Source/描画Epoch、セルフビルド[#2831](https://github.com/hat47x/tei-platform/issues/2831)の実消費入力と実Process/Artifact、移行設計[Draft #3252](https://github.com/hat47x/tei-platform/pull/3252)の再資格化（Source/Provider/Grant/Target変化）では、同じdigestでも実行主体・時点・RootのCurrent資格を自動継承しない。P0に新しいGlobal Workspace UUID、Host、独自Source Registryを要求するのではなく、各Ownerが必要な独立根拠（pinned Root/Reader/Attemptと現在Policy/Owner）をClaimごとに取得し、欠けたものを`unknown`として保持する。
 
 **受入の限界**：ここでのNode比較と実CLI 4観測は、実Goの`TraceWorkspace`応答の**識別不能性**を反証可能にするための限定試験。実Provider、2つの同時Reader、異なるPrincipal、OS hardlink/symlink/rename race、Source全Required Root、ActualConsumed/Target Effect、AI/Studioへの現在公開は **NOT RUN / NOT PROVEN**。更新後PRのexact-head CIと最新mainの再base/healthは別Gate。
+
+### 11.8 Graph Token・Workspace継続Token・直接Edge解決先の別資格（2026-11-09）
+
+**現行mainに追随した契約**：2026-11-09固定main `e348bd987626de2c14bddb45f852fae7457b51a7`の[ModelRef `TraceResult`](https://github.com/hat47x/tei-platform/blob/e348bd987626de2c14bddb45f852fae7457b51a7/internal/modelref/trace.go#L40-L86)では、`trace.graphFingerprint`がGraph／Rule／選択Subject／方向の候補トークン、`trace.snapshotFingerprint`は同値の**deprecated alias**であり、CLIの再読込・ページ継続には別の外側`result.snapshotFingerprint`（World＋Source Index＋Graph）を使用する。仮に両方同じ文字列でも役割を取り違えない。新`continuation.fingerprint`は`nextOffset`があるときのみCLIが外側値を明示する。別途[#3693](https://github.com/hat47x/tei-platform/issues/3693)のfull 0件では`rows:[]`を必須出力する現在のGo実装に合わせ、`rows`欠落を「不在」と解釈しない。
+
+| 受信フィールド | 何を証明するか | してはならない昇格 |
+| --- | --- | --- |
+| `trace.graphFingerprint` | 提示されたGraph候補の内容・Rule・Selector（型付きModelRef） | Workspace同一性、CLIページ継続・Ownerの確定意味 |
+| `trace.snapshotFingerprint` | v0互換期間中のGraph別名で、Graph tokenと一致すべき | CLIの外側継続Tokenの代用（#3625） |
+| `result.snapshotFingerprint` | 外側World・SourceIndex・Graphに拘束されたCLI snapshot観測 | 物理Root、Read Attempt、現在Authority、同一Owner |
+| `row.edge.to`／`row.resolvedTo` | 宣言Ref（scope省略可能）と候補解決Keyの対 | 宣言Kind/IDを勝手に別Subjectへ再結線した成功Claim |
+| `workspace.manifest` | Load時の名前・形式版・Manifest byte hash | 現在の全Required Source閉包・実消費入力・Full Source Acceptance |
+
+**新たな局所Fit/Gap修正**：本Referenceが旧`trace.snapshotFingerprint`のみを正本として読んでいた点を、`trace.graphFingerprint`へ変更。互換Aliasが存在する間は一致必須、将来Aliasが欠落しても正本Graph tokenがあれば許容する。fullの1ページ観測へ`continuation`が紛れ込む場合や`RuleFingerprint`欠落は`unknown`、独立に検査した`row.edge.to.subject.kind/id`と`row.resolvedTo`が矛盾する場合も`unknown`で停止する。Scopeが省略された`Ref`は合法だが、任意のKind/IDへすり替えてはいけない。**この処置は新Graph/Query Resolverでも、Source/Permission再読込でもない。**
+
+**実証の境界と他Lane**：[Catalog検証結果のmain統合PR #3728](https://github.com/hat47x/tei-platform/pull/3728)により、`catalog.entries`が読めたことと`validation.ok`は別になった。同様に、本Traceの`direct-edge-candidates`と`Current Disclosure／Source読込閉包／Target Effect`は独立。[Model Map Draft #3518](https://github.com/hat47x/tei-platform/pull/3518)、[実Workbench Draft #3543](https://github.com/hat47x/tei-platform/pull/3543)、[Self Build #2831](https://github.com/hat47x/tei-platform/issues/2831)に受入上の新Hard Dependencyを導入しない。CIで「Graph tokenを外側Tokenへ偽装」「不一致ResolvedToへ別のEdge targetを代入」の両負例が拒否されても、実Sourceの完全・権限現在性・独立Provider/Owner受理は**NOT PROVEN**。
