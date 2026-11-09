@@ -64,3 +64,25 @@ def verify_ledger_publication_paths(members, directory):
     return {"file_count": len(body_digests),
             "member_binding": "ledger-fixture-path-to-bytes-only",
             "member_body_sha256_by_path": body_digests}
+
+
+def verify_pinned_ledger_publication_paths(members, directory, pinned_manifest_bytes):
+    """Read the *pinned* ledger generation, refusing a changed manifest.
+
+    This detects a manifest change before/during member read in a bounded
+    sequential reference. Two reads do NOT establish filesystem atomicity,
+    prevent manifest ABA, retain older body files, or establish publisher
+    authority. Byte identities still come from the fixed ledger layout.
+    """
+    if not isinstance(pinned_manifest_bytes, bytes) or not pinned_manifest_bytes:
+        raise AssertionError("pinned manifest bytes are required")
+    directory = Path(directory)
+    manifest_path = directory / "manifest.json"
+    if manifest_path.is_symlink() or not manifest_path.is_file():
+        raise AssertionError("pinned manifest is not a regular file")
+    if manifest_path.read_bytes() != pinned_manifest_bytes:
+        raise AssertionError("pinned manifest changed before member read")
+    evidence = verify_ledger_publication_paths(members, directory)
+    if manifest_path.read_bytes() != pinned_manifest_bytes:
+        raise AssertionError("pinned manifest changed during member read")
+    return evidence
