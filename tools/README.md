@@ -11,8 +11,8 @@
 - `tools/` の参照ツールは、Linux CI（`ubuntu-24.04`）の結果を正とします。Windowsで `go test ./...` を回すと、環境前提の差で失敗または skip になる検査があります（[#3460](https://github.com/hat47x/tei-platform/issues/3460) に原因別の一覧）。
 - 外部コマンドを `bash -c` で起動する試験（`reference-cognition-port`・`reference-generator-selection`）は POSIXシェル前提です。Windowsでは `cp <Windowsパス>` が解決できないため、該当試験は理由を付けて skip します（[#3461](https://github.com/hat47x/tei-platform/issues/3461)）。skip は「この環境では検査していない」の記録であり、成功と同じには扱いません。
 - POSIXのファイル権限（`0600` など）や rename の置換を前提にした検査は、Windowsでは skip または別経路に分けます。
-- checkoutのclean（`git status` が空）を前提にする比較試験（`reference-plugin-self-build`・`reference-transform-runtime-engine-build` の historical parity）は、`go test ./...` で並列に走る他のパッケージが checkout へ書き込むと、前提を満たさずに落ちます（[#3460](https://github.com/hat47x/tei-platform/issues/3460)）。2026-11-09から、この前提を満たさない場合は**理由付きで skip** し、比較そのものは実行しません。clean な checkout で単体実行すれば従来どおり比較します（`go test ./tools/reference-transform-runtime-engine-build -run TestHistoricalRuntimeEngineRunnerParity -count=1`）。
-- 同じ理由で、`go test ./...` の結果だけで「checkout を前提にした比較が成立した」とは読みません。skip の理由に `repository must be clean` が出ていれば、その比較は未実行です。
+- historical parity の比較試験（`reference-plugin-self-build`・`reference-transform-runtime-engine-build`）は、`go test ./...` の並列実行で他のパッケージが checkout へ書き込む影響を受けないよう、**比較する側も比較される側も自分専用の detached worktree** から実行します（[#3637](https://github.com/hat47x/tei-platform/issues/3637)）。worktree は HEAD から作るため clean であり、live の作業ツリーを前提にしません。そのため `go test ./...` でも単体実行でも同じ結果になります。
+- 比較が自分の worktree を書き換えていないことは、試験の最後に worktree の `git status` で確認します。live の checkout が汚れているかどうかは、比較の成否に影響しません。
 ## リポジトリ検査と共通部品
 
 | 場所 | 役割 |
@@ -219,6 +219,7 @@
 | [`reference-plugin-capability-coverage/`](reference-plugin-capability-coverage/) | プラグインが宣言した能力のうち、どの環境のBindingからも選ばれていないものを一覧する参照。database-instanceは提供技術名を指すため、能力IDと文字列で比べず SupportsDatabaseProvider で解決します。選ばれていないことは欠陥の証明ではありません |
 | [`reference-plugin-selection-matrix/`](reference-plugin-selection-matrix/) | 環境のBinding（配備実行・状態観測・検証根拠・database instance・環境の機能・移行）ごとに、対応するプラグイン能力を既存の `Supports*` で一括して解決し、selected/missing/ambiguous を一覧する参照。ambiguous は解消せず両方を列挙します。診断の権限は internal/validation が持ちます |
 | [`reference-binding-to-execution/`](reference-binding-to-execution/) | 環境の deployment-executor Binding を既存の routing.RouteCommand で解決し、routing.Router.Dispatch で実行、routing.ValidateResult で照合する参照。Executor の registry は Host が渡し、参照は組み立てません。未登録の executor を指す Binding や結果の不一致は実行せず拒否します。実配備の成立は示しません |
+| [`reference-executor-id-resolution/`](reference-executor-id-resolution/) | 環境の deployment-executor Binding から executor の CapabilityID を routing.RouteCommand で解決し、pruntime.BuildPlan の plan がその ID を認めるか（EnvironmentPlan.Capability）と、能力が action を支えるか（SupportsAction）を順に確かめる参照。直書きの ID は比較用に並べるだけで解決に使わない。実行はしない |
 | [`reference-service-carrier-connect/`](reference-service-carrier-connect/) | 判断材料のC-2を試験の外で組み立てる参照。Hostが渡したCoordinator・Runtime registry・RouteSourceから BindHostApplicationEnvironmentRoute と NewSelectedServiceCarrierInvoker を順に呼び、ピン留めした世代でService要求を運びます。Routeが無い・別Binding用・入力不足は実行前に拒否します。実配備の成立は示しません |
 | [`reference-accounting-period/`](reference-accounting-period/) | 業務日付とシステム時刻を分け、期間の状態・締め済み期間の直接更新拒否・赤黒訂正・締め後の到着方針・順序鍵と版による再生・締め時点の照合値を判定する参照（#2144） |
 | [`reference-partial-import-plan/`](reference-partial-import-plan/) | 別Workspaceから選んだData定義の取込み結果を分類する読取り専用の参照（#1805） |
