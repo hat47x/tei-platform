@@ -770,3 +770,11 @@ M0の`ModelMapLink`は`From(Kind,ID)`／`To(Kind,ID)`／`Relation`／`Resolution
 2. **M0-N02：偽Source Index ≠ Canonical Relation** — 実IRに存在しないRelation IDをSource IndexのReferenceだけに足しても、`Catalog`へ新Subjectは生まれず、`MapWorld`にそのSubjectを端点とするLinkも生まれない。旧§29のByte-valid Reference偽装をM0側でも第二正本へ昇格させない。
 
 二つの局所Goテスト（`TestMapWorldDeclaredLinkIsNotSourceQualified`、`TestMapWorldDoesNotInventRelationFromForgedSourceReference`）は、§30.2の**実Native Source→M0 Link比較**と別の検収である。実Source・OS敵対的Path／漏洩、外部Provider、Source/Meaning Owner受理、Event/State/Function CRUD、実Consumer/Editor/SHO/Effectは未証明。最新HEADのCI終了前は「実装済み負例候補」として扱う。
+
+## 31. M0実装Ownerの現行PRと合格条件（2026-11-09）
+
+**現行のコード検収Ownerは[Draft PR #3866](https://github.com/hat47x/tei-platform/pull/3866)。** 本書§23〜30で歴史的に参照している旧[#3518](https://github.com/hat47x/tei-platform/pull/3518)は**close/unmerged**。理由は現在mainへ二親統合してもGitHub PR Files上では975ファイルの旧差分が表示され、レビュー可能な変更集合と一致しなかったため。#3866では現main単一親に4つのGit Blobのみを加え、GitHubのPRファイル一覧が**厳密に4件**（`model_map.go`、`model_map_test.go`、本Plan、`real_workspace_admission_test.go`）であることを確認した。旧M0正本は削除せず、コード/Scenario/Planの内容を引き継ぐ。**この置換はmainへmergeした意味ではない**。
+
+初期M0の採用判定は、新PRの**exact-head**に対して`gofmt`、`go test`、実`reference/workspace`のReader→型付きM0 Linkの2本一致、M0-N01/N02の拒否対照、Repository Healthの結果を照合し、Ownerの意味受理と製品全体受入を別にする。旧Branchのテスト成功やSHA一致は再検証の代替ではない。#3492のRead-only Source入場はmain統合済みだが、標準M0/三視点Graph・CRUDの**本番表示・編集・実Provider read・Studio/SHO実受領**の受入はまだ行っていない。
+
+実装順：M0 Producerを最小read-onlyに維持 → 同じSourceと型付きLinkを使うData三点のHeadless Diagram Consumer → Function×Data CRUD Source Cell → 実Provider Result Slice → Studio/SHOの別Consumer。**見えている集合、取得済み集合、公開許可された集合、Ownerが受理した集合、実行した集合は互いに同一視しない**。SUIのCanvas/島やKON DataspaceのOntology表示も、この情報区分を踏まえて設計し、第二Source/Graph/Authorityを作らない。
