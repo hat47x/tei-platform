@@ -413,3 +413,25 @@ stage1 BuildExecutionResult
 ArtifactDigestは現行contractどおりhex caseを正規化して比較します。
 
 このbindingもAcceptance / Trust / Runtime Authorityを付与しません。stage0 seedのTrustは引き続き別責務です。
+
+## 実TEI CLIの限定束縛
+
+`real_tei_cli_build_test.go`は、`cmd/tei`の実binaryを、新しいPlan型・DSL・Plugin IDを作らずに既存の`BuildExecutionPlan` / `ArtifactSet` / `BuildExecutionResult` / `compareArtifactSets`へ束縛します。`internal/plugin`のBuildPlanは変更しません。
+
+手順:
+
+1. リポジトリルートで`go list -deps -json ./cmd/tei`を取り、モジュール内のファイル(Go/native source、`go:embed`対象)を1件ずつsha256で`plugin.BuildSource`に並べます。`go.mod`と`go.sum`も含めます。テストファイルと`docs/`は入りません。
+2. モジュール外の依存は`go.sum`に`path version`と`path version/go.mod`の両方があることを確認し、件数だけを記録します(個別のbyteは束縛しません)。ローカルreplaceがリポジトリ外を指す場合は未確定にします。
+3. 環境は`GOFLAGS=`、`GOWORK=off`、`GOTOOLCHAIN=local`、`CGO_ENABLED=0`、flagsは`-trimpath -buildvcs=false -ldflags=-buildid=`。Toolchainは`go`実行ファイルのdigestと`go version`をPlanのParametersとBuilderに入れます。
+4. 別ディレクトリへ2回buildし、`compareArtifactSets`で再現性を判定します。
+
+結果は`bound-reproducible-observed`、`blocked`(go build失敗)、`unconfirmed`(閉包を列挙できない等)、`not-reproducible`のいずれかです。`blocked`と`unconfirmed`は成功として扱わず、digestやResult fingerprintも出しません。出力JSONはsource閉包の件数、toolchain digest、artifact digestを持ち、「Stage収束とseed信頼は未主張」を明記します。`go`が無い環境ではSkipし、Skipは成功の根拠にしません。
+
+負例(`real_tei_cli_build_negative_test.go`):
+
+- 閉包外のSourceの追加、閉包内Sourceの欠落、digest改変は、Plan指紋が変わり、観測した閉包との照合で拒否される。
+- `docs/`だけの変更では、Source集合・Plan指紋・Artifact digestは変わらない。
+- 同じ手順を入れ子module`cmd/tei-studio`へ適用し、`go.sum`を欠いた一時コピーでは`go build`の失敗を観測してBlockedにする。rootの成功をnested moduleの根拠にしない。
+- `go list`が失敗する、またはgo実行ファイルが使えない場合は`unconfirmed`にする。
+
+限界: toolchain同一性は`go`実行ファイルのdigestと`go version`までで、GOROOTの標準ライブラリ全体は束縛しません。Go build cacheを使うため、toolchain信頼からの独立性はありません。モジュール外の依存はgo.sumによる固定で、byteを個別に閉包へ入れていません。Stage1/Stage2の比較、seed信頼、Host署名、Owner受理は対象外で、#1119 G4は引き続きUNQUALIFIEDです。
