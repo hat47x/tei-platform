@@ -296,9 +296,11 @@ func semanticDataAnchors(lx *Lexer, dataID core.CanonicalID) ([]SubjectAnchor, e
 			// The type reference token is anchored under its own kind so a typed edit
 			// can replace exactly this token. Kind "semantic-attribute" stays the symbol.
 			anchors = append(anchors, SubjectAnchor{Kind: "semantic-attribute-type", ID: string(id), Anchor: tokenAnchor(typeTok)})
-			if err := skipSemanticAttributeOptions(lx); err != nil {
+			optionAnchors, err := semanticAttributeOptionAnchors(lx, id)
+			if err != nil {
 				return nil, err
 			}
+			anchors = append(anchors, optionAnchors...)
 		case "relation":
 			sym, err := expectLexerIdent(lx, "semantic relation symbol")
 			if err != nil {
@@ -507,32 +509,36 @@ func expectLexerText(lx *Lexer, text string) (Token, error) {
 	return t, nil
 }
 
-// skipSemanticAttributeOptions consumes the optional attribute modifiers after
-// the type reference so the anchor scan resumes at the next data member.
-func skipSemanticAttributeOptions(lx *Lexer) error {
+// semanticAttributeOptionAnchors consumes attribute modifiers while retaining
+// exact Source positions for declared Role values. These source-side anchors
+// do not grant edit/meaning/Host authority; Writer safety remains separate.
+func semanticAttributeOptionAnchors(lx *Lexer, id core.CanonicalID) ([]SubjectAnchor, error) {
+	var anchors []SubjectAnchor
 	for {
 		next, err := peekLexer(lx)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if next.Kind != TokenIdent {
-			return nil
+			return anchors, nil
 		}
 		switch next.Text {
 		case "description", "display", "value":
 			_, _ = lx.Next()
 			if err := expectLexerKind(lx, TokenString, "semantic attribute "+next.Text); err != nil {
-				return err
+				return nil, err
 			}
 		case "required", "immutable":
 			_, _ = lx.Next()
 		case "role":
 			_, _ = lx.Next()
-			if _, err := expectLexerIdent(lx, "semantic attribute role"); err != nil {
-				return err
+			roleTok, err := expectLexerIdent(lx, "semantic attribute role")
+			if err != nil {
+				return nil, err
 			}
+			anchors = append(anchors, SubjectAnchor{Kind: "semantic-attribute-role", ID: string(id), Anchor: tokenAnchor(roleTok)})
 		default:
-			return nil
+			return anchors, nil
 		}
 	}
 }
