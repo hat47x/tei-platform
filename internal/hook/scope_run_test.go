@@ -40,7 +40,25 @@ func (i *scopeImplementation) Run(_ context.Context, invocation hook.Invocation)
 // refused instead of the hook running as if the scope did not matter. X-TEA's D-9
 // was exactly this: a definition present in the source and inert at run time.
 func TestRunRefusesAnUnappliedScope(t *testing.T) {
-	for _, scope := range []string{"row", "item", "header"} {
+	// A row-scoped hook needs the row set, which Run does not carry: it is pointed
+	// at RunRows instead of being run as a single record.
+	for _, scope := range []string{"row"} {
+		implementation := &scopeImplementation{}
+		runner := hook.Runner{World: scopeWorld(scope), Implementation: implementation}
+		err := runner.Run(context.Background(), hook.Invocation{
+			Application: "order_entry",
+			Pattern:     "order_entry.order_record",
+			Phase:       "before-update",
+		})
+		if err == nil || !strings.Contains(err.Error(), "HOOK_SCOPE_NEEDS_ROWS") {
+			t.Fatalf("scope %s: err=%v", scope, err)
+		}
+		if len(implementation.ran) != 0 {
+			t.Fatalf("scope %s: the hook ran anyway: %v", scope, implementation.ran)
+		}
+	}
+	// The scopes nothing applies are refused as before.
+	for _, scope := range []string{"item", "header"} {
 		implementation := &scopeImplementation{}
 		runner := hook.Runner{World: scopeWorld(scope), Implementation: implementation}
 		err := runner.Run(context.Background(), hook.Invocation{
@@ -88,7 +106,8 @@ func TestRunSequenceRefusesAnUnappliedScope(t *testing.T) {
 		Application: "order_entry",
 		Pattern:     "order_entry.order_record",
 	})
-	if err == nil || !strings.Contains(err.Error(), "HOOK_SCOPE_UNAPPLIED") {
+	// A row-scoped hook is pointed at RunRows rather than run once for the record.
+	if err == nil || !strings.Contains(err.Error(), "HOOK_SCOPE_NEEDS_ROWS") {
 		t.Fatalf("err=%v", err)
 	}
 	if len(implementation.ran) != 0 {
