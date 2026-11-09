@@ -13,6 +13,18 @@ const fields = Object.freeze({
   relation: ["id", "kind", "from", "to"],
   endpoint: ["scope", "kind", "id", "role"],
 });
+
+const plainArray = value => {
+  if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) return false;
+  const length = value.length;
+  // Reject holes, non-index metadata, symbol keys, accessors and own iterators.
+  if (Reflect.ownKeys(value).length !== length + 1) return false;
+  for (let i = 0; i < length; i++) {
+    const desc = Object.getOwnPropertyDescriptor(value, String(i));
+    if (!desc || !Object.hasOwn(desc, "value")) return false;
+  }
+  return true;
+};
 const onlyFields = (value, allowed) => {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const proto = Object.getPrototypeOf(value);
@@ -30,7 +42,7 @@ export function projectPublicTeaSlice(slice, snapshot = null) {
   if (snapshot !== null && !text(snapshot)) invalid();
   if (!onlyFields(slice, fields.slice) || !text(slice.scope) ||
       !text(slice.workspaceObservation) ||
-      !Array.isArray(slice.subjects) || !Array.isArray(slice.relations)) invalid();
+      !plainArray(slice.subjects) || !plainArray(slice.relations)) invalid();
   const identities = new Set();
   const projected = {data: [], function: [], business: []};
   const publicDiagnostics = [];
