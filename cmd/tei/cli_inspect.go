@@ -47,8 +47,12 @@ func inspectWorkspaceJSON(out io.Writer, root, world, kind, id string, positiona
 func inspectWorkspaceJSONWithService(out io.Writer, root, world, kind, id string, positional int, service cliInspectionService) (int, error) {
 	report := cliInspectionReport{SchemaVersion: "tei.cli.inspect/v0"}
 	if root == "" || world != "" || kind == "" || id == "" || positional != 0 {
+		// A flag that was never supplied is an input error, not a bad subject.
+		// INVALID_SUBJECT stays for a subject value that is present but
+		// malformed, so a forgotten -workspace is never reported as a subject
+		// problem (#3733).
 		report.Error = &cliInspectionFailure{
-			Code:    operations.InspectionInvalidSubject,
+			Code:    "INVALID_ARGUMENT",
 			Message: "inspect requires -workspace, -subject-kind and -subject-id; -world and positional arguments are not supported",
 		}
 		return writeInspectionReport(out, report, 2)

@@ -111,7 +111,9 @@ func TestCLIProcessJSONContract(t *testing.T) {
 	if err := json.Unmarshal(run(2, "inspect", "-workspace", reference, "-subject-kind", "semantic-data"), &invalidInspect); err != nil {
 		t.Fatalf("inspect invalid argument not JSON: %v", err)
 	}
-	if invalidInspect.OK || invalidInspect.Error == nil || invalidInspect.Error.Code != "INVALID_SUBJECT" {
+	if invalidInspect.OK || invalidInspect.Error == nil || invalidInspect.Error.Code != "INVALID_ARGUMENT" {
+		// A flag that was never supplied is an input error, not a bad
+		// subject (#3733).
 		t.Fatalf("wrong inspect invalid argument result: %+v", invalidInspect)
 	}
 
