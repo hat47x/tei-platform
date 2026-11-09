@@ -589,3 +589,42 @@ Cache Bが性能改善しても、N+1除去、Query pushdown、Batch、Index、D
 本節は新しいP0やHard Gateを追加せず、§10/§19のT0〜T4の中で**一つの実験を完結させるためのチェックリスト**である。PluginのObserver/Strategy/Cache Providerは既存#951/#3278/#3271のBindingに置き、Targetに不要なRuntime Hopを作らない。AI Tuning Packetは独立Expectedと実測の説明を助けるが、採用/Owner意味受理の権限を持たない。
 
 **状態（2026-11-09）**：E0〜E4、W1〜W8の実Function/実DB比較、Cache/Origin障害負荷、実TargetのSLO達成、AI自動適用、正式Owner受理は **NOT RUN / NOT ACCEPTED**。§19の局所Hook/CI/Binding成果をこれらの実行証拠へ昇格しない。
+
+
+## 21. DSH等の外部HarnessとAI性能チューニングを接続する最小契約（2026-11-09追補）
+
+§20のW1〜W8は**実行系の正しさと性能を検証する実験**であり、DSH/AI Harness自体の評価ではない。外部Harnessを接続しても、性能改善の正本はTEIのSource/Meaning/Function/Query/Provider/Independent Expectedと実Targetに置く。HarnessはTaskを実行・提案する交換可能なConsumer/Coordinatorであり、TEI Studioや生成Runtimeの必須依存にしない。
+
+### 21.1 連携の入口：選択したUI要素から目的限定のTaskを作る
+
+Studio上でFunction、Query、Relation、Result列、Rule、Lifecycle Hook、Provider Binding、性能Traceのいずれかを選択したとき、**選択対象の安定ID・Source位置・Revision・現在の閲覧資格・周辺Dependencyの取得範囲**を、既存のDesign Context/read-only CLI/APIからTask Contextとして組み立てる。未選択の機密データを便利さのために自動収集しない。
+
+例：`order_entry.recent_orders`のQueryを選択し「遅い理由を調べる」と指示した場合、Harnessへ送る最小情報は、利用者が許可したFunction/Query構造、対象Target、観測済みの低機密な集計値、目的・要求SLO、既存Task/Attempt参照である。Raw SQL/Parameter/Rowset/テナントID/個人情報/秘密Source pathは既定で外部送出しない。実測Traceの取得が許可されない場合は不足として示し、AIに推測した実行計画を事実として埋めさせない。
+
+**Studioの選択・説明・提案**と、**TEI側の変更プレビュー・適用・再観測**を別操作とする。選択したUI要素は操作対象の指定であって、書込み権限・本番DB操作権限・外部送出許可を与えない。変更は既存Source編集/Plugin Binding/Target Generator/Host Grantを通し、採用前に独立ExpectedとW1〜W8の該当条件を再検証する。
+
+### 21.2 Harness/モデルを交換しても評価可能な三つの経路
+
+| 経路 | 実行者 | 成立する資格・停止条件 |
+| --- | --- | --- |
+| **H0 決定論的** | TEI CLI/既存Query・Trace・Rule検査 | AIなしでも実Read・Baseline/Correctness・診断を実行。AI提案がないことを欠落としない |
+| **H1 外部Harness** | DSH等の既存Harness＋許可済みTool Adapter | Task Contextの実受領、Tool request/reply全件、モデル入力への配送、外部送出範囲を別記。Tool欠落/切断は比較不適格 |
+| **H2 交換Harness/Provider** | 別Harnessまたは別モデルProvider | 同じTask/Source/Workload/Expectedと許可Scopeで比較。モデル・Harness・Skill・専門Pluginを一度に変更せず差分を特定 |
+
+定額契約や外部モデルの提供形態は**接続できること・規約上許されること・技術的に再現できること**を別々に確認する。ChatGPT Plus等の消費者向けUI契約を、TEIから利用可能なAPI資格・自動操作権限・商用再配布権限と同一視しない。DSH固有の認証・通信・Tool/Session互換は実版のAdapterで検証し、DeepSeek由来の名称やOSSライセンスから接続先の利用規約まで推論しない。
+
+### 21.3 外部Harness評価で必須の非推論
+
+- **Transport**：CLI stdout完了、Tool Reply受領、モデルへ送信されたPart/終端、最終回答は別観測。過去H2/H3の不完全Sessionを再利用して「比較適格」としない。
+- **Authority**：read-onlyと表示されたSkillでも、実argv/OS権限/外部送出/Session Logの各Sinkを独立確認。OS隔離・Egress制限・機密非流出を未実測のまま宣言しない。
+- **Quality**：AIがもっともらしいSQL/Cache変更を提案しても、Product実Read、独立Expected、Baseline/Candidate性能、実適用・Rollback、Owner意味受理は別資格。
+- **Cost**：モデル呼出し料金、利用枠、Tool/Retry回数、Context再送、キャッシュ効果、所要時間、失敗率、実装/保守費を同じTaskで記録。定額プランの利用枠・自動化可否は実サービスの現行契約で再確認し、価格や利用可能性を設計前提として固定しない。
+- **Availability**：外部Harness・AI Provider・Observerが停止しても、AIを必要としないTEI Function/Query/Targetと手動開発は動作可能にする。自動最適化は任意Plugin。
+
+### 21.4 実装優先順位と撤回条件
+
+**H0**：まず§19/§20のM1b→R0、No Cache Baseline、W1/W2と独立Expectedを成立。**H1**：既存#3262のDesign ContextをUI選択に対応付け、read-onlyの小さなTuning Packetを実CLI/Consumerへ配送。**H2**：DSH一種類で実Tool受領・開示・結果を検証し、H0と同じTaskで候補品質・所要時間・費用を比較。**H3**：必要時だけ別Harness/Providerを追加し、再現可能な差分を測る。
+
+既存#2509/#2515（外部Harness隔離・配送）、#3262（Design Context）、#951/#3278（Plugin実装資格）、#2586（実Read）、#3271（Cache）、#1180/#2514（独立Expected）のOwnerを維持する。新しいAgent Loop/TEI独自Harness/共通AI Gateway/独立Proof Storeは、複数の既存Harnessで再現する重大な未解決欠陥と費用対効果が確認されるまで採用しない。
+
+**状態（2026-11-09）**：本節はUI選択→外部Harness→検証可能な改善提案の設計接続である。Studioの実UI要素選択からDSHへの配送、外部Harness完全受領、利用規約上の各モデル接続、実DBの性能改善、Owner受理は **NOT RUN / NOT ACCEPTED**。
