@@ -92,7 +92,7 @@ func TestExistingSourceIndexRejectsMalformedOrAmbiguousProjections(t *testing.T)
 		{"invalid digest spelling", func(i *sourceindex.Index, c *ReadClaim, a *[]byte) { i.Artifacts[0].Fingerprint = strings.ToUpper(i.Artifacts[0].Fingerprint) }},
 		{"changed consumed bytes", func(i *sourceindex.Index, c *ReadClaim, a *[]byte) { *a = []byte("DIFFERENT") }},
 		{"changed caller digest", func(i *sourceindex.Index, c *ReadClaim, a *[]byte) { c.SourceSHA256 = strings.Repeat("0", 64) }},
-		{"changed caller revision", func(i *sourceindex.Index, c *ReadClaim, a *[]byte) { c.SourceRevision = "sha256:"+strings.Repeat("f", 64) }},
+		{"changed caller revision", func(i *sourceindex.Index, c *ReadClaim, a *[]byte) { c.SourceRevision = "sha256:" + strings.Repeat("f", 64) }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			index, claim, actual := indexedReadFixture(t)
