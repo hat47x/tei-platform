@@ -29,7 +29,26 @@
 
 項目の`Type.SemanticRef`に、既存の`core.CanonicalID`で表すSemantic TypeRefを明示できる。両項目にRefが存在する場合はまず完全一致を要求し、同じ`std.identifier`を基礎とする`sales.order_id`と`customer.customer_id`を同一視しない。一方だけがRefを持つ場合、または同じRefに矛盾する名目的な表現が付いている場合は`unknown`として保留する。Refを持たない従来の合成Fixtureの比較結果は維持する。
 
-**この検査は既存の`Compare`/`Inspect`に型IDの保守的な照合を足したもので、Semantic Typeの解決器ではない。** Refの宣言元・発行権限・版・fingerprint・意味の受理は検査しない。呼出元が既存のHostから正規の受理済み意味を取得したことも証明しない。したがって同じRefで`candidate`になっても、本番接続や実行の許可を意味しない。実WorkspaceのAliasを照合する試験は、参照定義の実在のみを確認する。
+**この検査は既存の`Compare`/`Inspect`に型IDの保守的な照合を足したもので、Semantic Typeの解決器ではない。** Refの宣言元・発行権限・版・fingerprint・意味の受理は検査しない。呼出元が実際に選択・受理されたSemantic Setから型参照を得たことも証明しない。したがって同じRefで`candidate`になっても、本番接続や実行の許可を意味しない。実WorkspaceのAliasを照合する試験は、参照定義の実在のみを確認する。
+
+
+
+### 選択済みSemanticビューでの限定照合（E2a候補）
+
+`InspectWithSelectedSemanticView` は、呼出元から明示された `[]semantic.Namespace`（標準の `std` は除く）へ **既存の `stdlib.SemanticNamespace()` を独立に追加**し、`validation.Validate` により意味構造を検査した後、既存の `Inspect` の候補判定に型の存在・Aliasから辿る標準primitiveと名目的な項目型の整合を加える。呼出元が `std` 名前空間を注入・上書きする提案は未判定として拒否する。`nil` は選択ビューの欠落として拒否し、明示的な空スライス `[]semantic.Namespace{}` は標準 `std` だけを選択する非業務Pipelineとして構造検査できる。この区別は、選択済みSourceの閉包や業務意味の受理を証明しない。これは既存の外部Semantic Preflightと同じ境界であり、標準NamespaceのPublisher/Accepted Authorityが成立したという主張ではない。別のProvider Resolver、型Registry、標準primitive、契約構文は追加しない。
+
+- **候補**：正負の検証対象となる接続項目の両側にTypeRefがあり、その型が選択ビュー内に存在し、既存の型ID・多重度・単位検査と矛盾しない場合。関係しない未接続出力のTypeRefは必須にしない。
+- **保留**：選択ビューの欠落・検証エラー、未知の型、TypeRef欠落、既存標準primitiveと申告された表現名との矛盾がある場合。`Order`と`ContributionOrder`を返さず、使用可能な接続計画と誤認させない。
+- **競合**：選択ビューで検証可能でも、接続元と接続先の異なる意味Aliasなど既存`Inspect`が拒否する場合。型比較の正本や既存`Inspect`の動作は変更しない。
+
+これは**呼出元が選択した意味ビューの構造的な適合性**を調べる実験であり、ビューの発行者真正性、Namespace Authority、版・Fingerprint・Accepted Semantic Setへの固定、正式Contract項目定義の真正性、対象環境の現在の実行権限を検証しない。受理済みというフラグをPluginから受け取らず、将来の正式接続では既存#1570・#951の選択・Trust・Contract機構から認証済みの情報を渡す必要がある。
+
+
+型の候補判定は、ADR-0043/0044の対象環境における受理・許可とは独立する。TEI独自の共通Hostや認証Coreを要求しない。
+
+なお、選択ビューに含まれないSourceが存在し得る場合、既存`validation.Validate`の成功を全Sourceの読込み完了へ拡大してはいけない（[Workspace Sourceの未診断問題 #2823](https://github.com/hat47x/tei-platform/issues/2823)）。呼出元はSource closureを別途確定・検証する必要がある。合成試験の`std.binary`/`std.text`/`std.json`は項目の型参照だけを試し、実ファイル転送、JSON Schema、Build Graphの完全性、実行中の副作用、意味の受理は扱わない。
+
+同じTypeRefと名目型がそろっていても、別の意味集合で型定義自体が同時に変わった場合、ここではFingerprint差を判定できない。この場合の直接互換や実行許可は**未証明**である。合成・ローカルReferenceの成功を、本番の意味受理や実Provider呼出しの証拠へ転用しない。
 
 
 任意の提供元が不在でも、他の提供元で代用しない。明示した提供元が見つからない場合や、候補が曖昧な場合も不在の正常系へ置き換えない。不在の提供元の出力を別の入力が参照すれば未判定になる。不在時の方針は宣言の存在だけを調べ、実行しない。

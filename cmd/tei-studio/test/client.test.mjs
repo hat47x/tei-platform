@@ -19,6 +19,7 @@ test("each call carries explicit workspace ID without per-tab global selection",
   await client.planCommand("workspace-1", "order_entry", "order_entry.submit_order", "sales.order.submit", {"order": "ORD-1"});
   await client.executeCommand("workspace-1", "order_entry", "order_entry.submit_order", "sales.order.submit", {"order": "ORD-1"});
   await client.executeCommandWithPeriods("workspace-1", "order_entry", "order_entry.submit_order", "sales.order.submit", {"order": "ORD-1"}, {"sales.period": "closed"});
+  await client.executeCommandWithPolicy("workspace-1", "order_entry", "order_entry.submit_order", "sales.order.submit", {"order": "ORD-1"}, {}, ["sales.order.submit"]);
   assert.deepEqual(seen, [
     ["main.StudioBridge.ListWorkspaces"],
     ["main.StudioBridge.CatalogWorkspace", "workspace-2", "ns"],
@@ -31,6 +32,7 @@ test("each call carries explicit workspace ID without per-tab global selection",
     ["main.StudioBridge.PlanCommand", "workspace-1", "order_entry", "order_entry.submit_order", "sales.order.submit", {"order": "ORD-1"}],
     ["main.StudioBridge.ExecuteCommand", "workspace-1", "order_entry", "order_entry.submit_order", "sales.order.submit", {"order": "ORD-1"}],
     ["main.StudioBridge.ExecuteCommandWithPeriods", "workspace-1", "order_entry", "order_entry.submit_order", "sales.order.submit", {"order": "ORD-1"}, {"sales.period": "closed"}],
+    ["main.StudioBridge.ExecuteCommandWithPolicy", "workspace-1", "order_entry", "order_entry.submit_order", "sales.order.submit", {"order": "ORD-1"}, {}, ["sales.order.submit"]],
   ]);
 });
 test("operation denial is not converted into transport success", async () => {
@@ -46,6 +48,7 @@ test("transport errors and malformed envelopes are distinct", async () => {
   assert.equal((await invalid.listWorkspaces()).failure.code, "INVALID_HOST_RESPONSE");
   assert.equal(JSON.stringify(await rejected.listWorkspaces()).includes("private absolute path"), false);
 });
+
 
 
 

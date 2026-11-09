@@ -50,6 +50,18 @@ func NewLifecycle() *Lifecycle {
 	return &Lifecycle{attempts: map[string]Attempt{}}
 }
 
+// LifecycleFromAttemptsは、永続化されたAttemptからin-memoryの段階を組み立てる。
+// durable storeが同じ規則を使うための入口であり、規則を複製しない。
+func LifecycleFromAttempts(attempts []Attempt) *Lifecycle {
+	lifecycle := NewLifecycle()
+	for _, attempt := range attempts {
+		if attempt.CommandID != "" {
+			lifecycle.attempts[attempt.CommandID] = attempt
+		}
+	}
+	return lifecycle
+}
+
 // Attemptは、Commandの最新Attemptを返す。
 func (l *Lifecycle) Attempt(commandID string) (Attempt, bool) {
 	attempt, ok := l.attempts[commandID]
@@ -174,10 +186,21 @@ func (l *Lifecycle) MayReplay(commandID string) bool {
 	return existing.Stage != StageUnknown && existing.Stage != StageObserved
 }
 
+// StageLifecycleは、Command試行の段階を保持する境界である。in-memoryの
+// Lifecycleと、再起動をまたぐdurable storeの両方が実装する。
+type StageLifecycle interface {
+	Attempt(commandID string) (Attempt, bool)
+	Dispatch(commandID, owner string, generation int) (Attempt, error)
+	Takeover(commandID, owner string, generation int) (Attempt, error)
+	Observe(commandID, owner string, generation int, outcome string) error
+	MarkUnknown(commandID, owner string, generation int, reason string) error
+	MayReplay(commandID string) bool
+}
+
 // LifecycleInvokerは、Invokerの実行をLifecycleの段階へ接続する（#1129）。
 type LifecycleInvoker struct {
 	Invoker   Invoker
-	Lifecycle *Lifecycle
+	Lifecycle StageLifecycle
 }
 
 // DispatchOptionsは、1回の試行を識別する。
