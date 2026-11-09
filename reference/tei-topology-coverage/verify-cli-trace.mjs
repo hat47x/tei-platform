@@ -8,6 +8,24 @@ if(process.argv.length !== 6) throw Error('usage: node verify-cli-trace.mjs <exa
 const raw=JSON.parse(readFileSync(process.argv[2],'utf8'));
 const observed=observeDirectTrace(raw);
 assert.equal(observed.status,'direct-edge-candidates',JSON.stringify(observed));
+assert.equal(observed.graphFingerprint,raw.result.trace.graphFingerprint,
+  'read-only graph identity must come from graphFingerprint, not the deprecated alias');
+assert.equal(raw.result.trace.graphFingerprint,raw.result.trace.snapshotFingerprint,
+  'v0 deprecated graph alias must match the current graph fingerprint');
+assert.notEqual(raw.result.snapshotFingerprint,raw.result.trace.graphFingerprint,
+  'Workspace-level continuation value must not be the Graph-only token');
+const graphAliasAttack=structuredClone(raw);
+graphAliasAttack.result.trace.snapshotFingerprint=raw.result.snapshotFingerprint;
+assert.deepEqual(observeDirectTrace(graphAliasAttack),
+  {status:'unknown',reason:'graph_fingerprint_alias_mismatch'},
+  'a Workspace-level token substituted into the Graph alias must be rejected');
+const edgeTargetAttack=structuredClone(raw);
+const resolvedRow=edgeTargetAttack.result.trace.rows.find(x=>x.status==='resolved');
+assert.ok(resolvedRow,'expected a resolved direct edge for negative control');
+resolvedRow.edge.to.subject.id='forged.target';
+assert.deepEqual(observeDirectTrace(edgeTargetAttack),
+  {status:'unknown',reason:'resolved_edge_target_mismatch'},
+  'a mutated declaration target must not be attached to the unchanged resolvedTo key');
 assert.deepEqual(observed.selected,['reference-observation','semantic-relation','sales.order.customer']);
 const has=(fromKind,fromId,toKind,toId)=>observed.edges.some(e=>
   e.resolution==='resolved' &&
