@@ -59,9 +59,17 @@ func (r Runner) RunSequence(ctx context.Context, invocation Invocation) (Sequenc
 		}
 		// A scope this runner cannot apply is refused, not ignored: the sequence
 		// runs one hook per record, so only the record scope and the pattern's own
-		// unit (empty) are applied here. Running the hook anyway would leave a
-		// declaration that is present and does nothing (D-9).
-		if scope := pattern.Interaction.Hooks[i].Scope; scope != "" && scope != string(application.PatternRecord) {
+		// unit (empty) are applied here. A row-scoped hook needs the row set, which
+		// the sequence does not carry, and is pointed at RunRows. Running the hook
+		// anyway would leave a declaration that is present and does nothing (D-9).
+		switch scope := pattern.Interaction.Hooks[i].Scope; scope {
+		case "", string(application.PatternRecord):
+		case "row":
+			return SequenceResult{}, &Error{
+				Code:    "HOOK_SCOPE_NEEDS_ROWS",
+				Message: fmt.Sprintf("pattern %s hook %s declares scope row, so it needs the row set; use RunRows", invocation.Pattern, phase),
+			}
+		default:
 			return SequenceResult{}, &Error{
 				Code:    "HOOK_SCOPE_UNAPPLIED",
 				Message: fmt.Sprintf("pattern %s hook %s declares scope %s but the sequence runs one hook per record", invocation.Pattern, phase, scope),
