@@ -1177,3 +1177,35 @@ inline:  KNOWLEDGE_BUILD_FAILED: open {"qualifications": [...]}: no such file or
 | 3 | 提出前に `git log origin/main -- cmd/tei/` を見なかった | 撤回作業で `git blame` して判明 |
 
 **1と2は同一ラウンド内、3は次のラウンドで、すべて同じ原因。** 多重作業者環境では、着手時と提出前の両方で対象パスの履歴を見る必要がある。
+
+## 44. 第41ラウンド（2026-11-10）: realize による実装束縛が参照グラフに現れない
+
+「この capability は何で実装されているか」を CLI だけで答えられるかを試した。Binding/Realization 層は ADR-0048 の4層のうち3層目で、設計者が最も参照する情報の1つである。生出力は[第41ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND41_REALIZE_NOT_IN_GRAPH_2026-11-10/README.md)にある。
+
+### 観測
+
+`reference/workspace` には `realize` 宣言が4つある（`security.authenticate`・`security.authorize`・`sales.order.submit`・`order_entry.compose_order_summary`）。しかし**どの trace にも実装束縛の関係が出ない**。全 subject（両 scope、`-direction both`）で観測された関係は15種で、束縛に相当するものは0種。`security.authenticate` の incoming は `total: 0`。
+
+私はこれで「この2つは未結合」と誤読し、`grep` して初めて `realize` 宣言を見つけた。
+
+### 原因
+
+| 層 | 状態 |
+| --- | --- |
+| `ir.World` | `Bindings` を持つ（`world.go:35`） |
+| 派生索引 | `d.CustomGoBindings` に写している（`index.go:478`）。`Application`・`Capability`・`Adapter`・`Hook` を保持 |
+| **参照グラフ** | **`CustomGoBindings` を1度も参照しない**（`grep -c` で 0） |
+
+`FromIndex` は `SemanticDependencies` と `DeclaredDependencies` だけを辺にする。束縛は `d` にあるのに、どちらにも写されていない。
+
+### 影響の実測
+
+`authenticate.tei` を削除して前後を比べた。`worldFingerprint` と `sourceIndexFingerprint` は変わるが、**`graphFingerprint`・`trace.rows`・`trace.total` は一切変わらない**。意味層の変更が参照グラフに現れないため、`trace` による設計検証では束縛の欠落も誤りも検出できない。`validate` も何も言わない。
+
+### 起票
+
+[#3983](https://github.com/hat47x/tei-platform/issues/3983)。案 A（`DeclaredDependencies` に束縛の辺を追加）を推奨とした。索引が既に束縛を保持しているので写像1箇所の追加で済むが、`graphFingerprint` が変わるため保存済み継続トークンは失効する。
+
+### 補助として確かめた正常な挙動
+
+先に `trace` のページング・指紋・alias を確認したが、**すべて設計どおり**だった。`-limit 2` で 2+2+1=5 と `nextOffset` が正しく終端し、継続トークンは `result.snapshotFingerprint` を指し、無関係な名前空間の追加でも `STALE_SNAPSHOT` になる。`graphFingerprint` と `snapshotFingerprint` が常に同値なのは deprecated alias として明記されている。この領域は丁寧に作られている。
