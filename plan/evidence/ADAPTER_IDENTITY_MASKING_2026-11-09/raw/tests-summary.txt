@@ -1,0 +1,42 @@
+=== RUN   TestAnEmptyObservedIdentityIsFilled
+--- PASS: TestAnEmptyObservedIdentityIsFilled (0.00s)
+=== RUN   TestAForeignObservedIdentityIsNotOverwritten
+--- PASS: TestAForeignObservedIdentityIsNotOverwritten (0.00s)
+=== RUN   TestAForeignEvidenceActionIsNotOverwritten
+--- PASS: TestAForeignEvidenceActionIsNotOverwritten (0.00s)
+=== RUN   TestAnEmptyEvidenceActionIsFilled
+--- PASS: TestAnEmptyEvidenceActionIsFilled (0.00s)
+=== RUN   TestRuntimeEngineIdentityRejectsMalformedDigest
+--- PASS: TestRuntimeEngineIdentityRejectsMalformedDigest (0.00s)
+=== RUN   TestRuntimeEngineIdentityChangesLockAndPolicyFingerprint
+--- PASS: TestRuntimeEngineIdentityChangesLockAndPolicyFingerprint (0.00s)
+=== RUN   TestInvocationRecoveryRejectsChangedExecutionIdentityBeforeObservation
+=== RUN   TestInvocationRecoveryRejectsChangedExecutionIdentityBeforeObservation/environment
+=== RUN   TestInvocationRecoveryRejectsChangedExecutionIdentityBeforeObservation/plugin-lock
+=== RUN   TestInvocationRecoveryRejectsChangedExecutionIdentityBeforeObservation/plugin
+=== RUN   TestInvocationRecoveryRejectsChangedExecutionIdentityBeforeObservation/descriptor
+=== RUN   TestInvocationRecoveryRejectsChangedExecutionIdentityBeforeObservation/artifact
+--- PASS: TestInvocationRecoveryRejectsChangedExecutionIdentityBeforeObservation (0.00s)
+=== RUN   TestProcessEnvironmentKeysFollowOSIdentityRules
+--- PASS: TestProcessEnvironmentKeysFollowOSIdentityRules (0.00s)
+=== RUN   TestProcessResponseRequiresCompleteCarrierIdentity
+=== RUN   TestProcessResponseRequiresCompleteCarrierIdentity/missing-protocol
+=== RUN   TestProcessResponseRequiresCompleteCarrierIdentity/empty-protocol
+=== RUN   TestProcessResponseRequiresCompleteCarrierIdentity/missing-request
+=== RUN   TestProcessResponseRequiresCompleteCarrierIdentity/empty-request
+=== RUN   TestProcessResponseRequiresCompleteCarrierIdentity/missing-plugin
+=== RUN   TestProcessResponseRequiresCompleteCarrierIdentity/empty-plugin
+=== RUN   TestProcessResponseRequiresCompleteCarrierIdentity/missing-plugin-id
+=== RUN   TestProcessResponseRequiresCompleteCarrierIdentity/empty-plugin-id
+=== RUN   TestProcessResponseRequiresCompleteCarrierIdentity/missing-plugin-version
+=== RUN   TestProcessResponseRequiresCompleteCarrierIdentity/empty-plugin-version
+=== RUN   TestProcessResponseRequiresCompleteCarrierIdentity/missing-capability
+=== RUN   TestProcessResponseRequiresCompleteCarrierIdentity/empty-capability
+=== RUN   TestProcessResponseRequiresCompleteCarrierIdentity/missing-fingerprint
+=== RUN   TestProcessResponseRequiresCompleteCarrierIdentity/empty-fingerprint
+=== RUN   TestProcessResponseRequiresCompleteCarrierIdentity/missing-status
+=== RUN   TestProcessResponseRequiresCompleteCarrierIdentity/empty-status
+--- PASS: TestProcessResponseRequiresCompleteCarrierIdentity (0.06s)
+=== RUN   TestRegistryRejectsForgedIdentityFromRealProcess
+--- PASS: TestRegistryRejectsForgedIdentityFromRealProcess (0.00s)
+ok  	tei/internal/plugin/runtime	0.077s
