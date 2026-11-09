@@ -682,3 +682,21 @@ ADR-0048 §2.4 の「既定値の適用は共通契約で定める」を、CLI �
 - 並行して出ていた [PR #3755](https://github.com/hat47x/tei-platform/pull/3755) は同じ #3733 の別実装だった。私の #3749 が先に統合されて `CONFLICTING` になり、すでに別の作業者が閉じていた。
 
 **学び**: 符号や契約を変えるときは、コード・試験・同じ規則を説明する散文を同じ変更で直す。散文は試験で固定しないと、次の変更で同じようにずれる。
+
+## 24. 第19ラウンド（2026-11-09）: 同じ壊れた plugin-lock が2コマンドで別の終了コードになっていた
+
+18ラウンドで一度も触っていなかったコマンドを叩いた。特に `-plugin-lock` はファイルを入力に取るため、ロックを作って別コマンドへ渡す往復があり、分類が揃っていない危険が高い。生出力は[第19ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND19_PLUGIN_LOCK_CLASSIFICATION_2026-11-09/README.md)にある。
+
+**正常系は問題なかった。** `plugin-lock` → `plugin-resolve`／`plugin-runtime-plan` の往復は成功し、`plugin-runtime-plan` は `pluginLockFingerprint` と `runtimePolicyFingerprint` を返す。`world` が包まない素の JSON を返すことも discovery の `jsonContract: raw` と一致していた。
+
+**壊れたロックの分類が食い違った。** 7種の壊し方のうち5種で、`plugin-resolve` は exit 2 `PLUGIN_RESOLVE_FAILED`、`plugin-runtime-plan` は exit 1 `PLUGIN_RUNTIME_PLAN_FAILED` になった。終了コード1は「意味の所見」、2は「入力の誤り」の区別だが、壊れたロックはどちらも入力の誤りである。
+
+原因は、`ResolveEnvironmentWithLock` が「指紋不一致」「version 不在」「プラグイン欠落」「別 environment」を素の `fmt.Errorf` で返し、`plugin-runtime-plan` の `plugin.IsInvalidLock` に該当しなかったこと。
+
+修正: `LockMismatchError` / `IsLockMismatch` を追加した。**`InvalidLockError` とは分けた** — 既存の `invalid_lock_test.go` が #3184 として「バイトが読めない」と「整形済みだが一致しない」を区別しており、その区別は正しい（前者は何が違うか言えない、後者は言える）。分けたうえで、両方とも呼出し元が直せるのはロックファイルだけなので、CLI では同じ `INVALID_PLUGIN_LOCK`（exit 2）に写した。7種すべてが両コマンドで揃った。
+
+試験は `cmd/tei/cli_plugin_lock_test.go`（6ケース）。変異2種（`IsLockMismatch` を見ない／素の `fmt.Errorf` に戻す）を検出する。
+
+**既存試験を1件、意図的に更新した。** `plugin_lock_scope_cli_test.go` は「別 environment を指すロックは resolve で `PLUGIN_RESOLVE_FAILED`・plan で exit 1」を固定していた。これは変更前の挙動そのものであり、統一後の `INVALID_PLUGIN_LOCK`・exit 2 へ直した。**破壊的な挙動変更である点を明記しておく。**
+
+契約文書 `plan/design/CLI_JSON_OUTPUT_CONTRACT_2026-10.md` の両行はもともと `INVALID_PLUGIN_LOCK` を挙げていた。今回の変更で**実装が契約に追いついた**。起票は [#3765](https://github.com/hat47x/tei-platform/issues/3765)。

@@ -333,6 +333,9 @@ func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environ
 				if plugin.IsInvalidLock(err) {
 					return emitResult(out, resultFailure(command, resultCodeInvalidPluginLock, err), 2)
 				}
+				if plugin.IsLockMismatch(err) {
+					return emitResult(out, resultFailure(command, resultCodeInvalidPluginLock, err), 2)
+				}
 				return emitResult(out, resultFailure(command, resultCodePluginResolveFailed, err), 2)
 			}
 			return emitResult(out, resultEnvelopeWithWorkspace(command, "", r, identity), 0)
@@ -345,9 +348,12 @@ func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environ
 		if err != nil {
 			// A lock whose bytes are unusable is an input failure (exit 2), the
 			// same as the decode and resolve paths of plugin-resolve. A
-			// well-formed lock that does not match the environment or the
-			// catalog stays a planning failure (exit 1) (#3184).
-			if plugin.IsInvalidLock(err) {
+			// well-formed lock that does not match this environment or catalog
+			// is also the caller's input problem: the only fix is another lock.
+			// Both answer INVALID_PLUGIN_LOCK with exit 2, so the same bad lock
+			// is classified the same way whichever command reads it (#3765,
+			// #3184).
+			if plugin.IsInvalidLock(err) || plugin.IsLockMismatch(err) {
 				return emitResult(out, resultFailure(command, resultCodeInvalidPluginLock, err), 2)
 			}
 			return emitResult(out, resultFailure(command, resultCodePluginPlanFailed, err), 1)
