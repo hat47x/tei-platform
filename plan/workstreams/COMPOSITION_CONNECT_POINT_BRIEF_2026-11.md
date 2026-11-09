@@ -125,6 +125,8 @@ C-1とC-2が**別種のOperationを運ぶ**ことが、[型・Carrierの独立�
 | C-1 `reference-binding-to-execution` | 実`Executor.Execute`への到達 | `v1`：入場前`refusedCount`、入場後`unverifiedCount`（`ranCount`内数）。[PR #3596](https://github.com/hat47x/tei-platform/pull/3596)のCI completed/success | 外部DB/クラウド実配備、完全なReceipt、現在Authority |
 | C-2 `reference-service-carrier-connect` | Host-pinned Service Carrierの`Invoke`への到達 | `v1`：Carrier入場前`refusedCount`、Carrier入場後`unverifiedCount`（`ranCount`内数）。Provider Processの実呼出しは**別証拠** | 実ProviderのProc到達、Artifact/Host Scope現在資格、外部Effect、Client受領 |
 
+**C-3 の `v0` は、C-1/C-2 の `v1` に遅れているのではなく、対象が違います。** C-3 の参照は `routing.RouteCommand`・`pruntime.BuildPlan`・`Capability.SupportsAction` だけを呼び、**Executor も Carrier も一度も実行しません**（`executor.Execute` も `Invoker.Invoke` も呼びません）。したがって「入場前の拒否」と「入場後の不確定」という区別は、C-3 には**適用できません**。C-3 の5つの状態（`RESOLVED`／`BINDING_MISSING`／`NOT_IN_PLAN`／`ACTION_UNSUPPORTED`／`LOCK_REJECTED`）は、すべて**実行前**の判定です。C-3 に `unverifiedCount` を足すべきなのは、将来この参照が実行を伴うようになったときです。
+
 C-2の既存実装では、内部のArtifact Verifierが呼出しを拒否した場合、**Carrierへ入場していてもProcessは呼ばれていない**ことがある。この場合もC-2の`carrierInvoked=true`を「実Provider呼出し済み」としない。内部エラーとGeneration不一致を単なる事前拒否に平坦化しないため、v1で不確定応答の理由コードも事前拒否と区別する。C-2 v0の保存済み実測JSON／SHA-256は変更しない。
 
 **限定Exit達成**：[C-1/C-2専用Go CI #42555954660](https://github.com/hat47x/tei-platform/actions/runs/42555954660)は**completed/success**。C-1/C-2両ReferenceのGoテスト、Go vet、gofmtを同じcheckoutで実行し、C-2実コードBlob `f2952030906b80ba0bf052caeed92082f89c302c`と新V1テストBlob `67b4ed10eaaf0842e2719d5cfda724076fbc5008`を記録した。コード・テストは後続の文書改訂でも同一Blobを保持。これはReference限定であり全体Health、実Service Process資格、製品S2とは別。C-4外部Host委譲の判断、通常CLI/Studioの**S2-reference統合済み／S2-product正式Profile差替え未実証**、外部Source/BOM/Effectの資格はそれぞれ別のOwnerが保持する。Referenceのレポート種別・数値を、製品の業務成功KPIや自動再試行判断へ流用しない。
