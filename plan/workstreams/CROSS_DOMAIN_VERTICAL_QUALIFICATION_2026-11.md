@@ -139,9 +139,9 @@ TEIが共通化するのは画面やDomain固有の工程列ではなく、**意
 | [merged #3567](https://github.com/hat47x/tei-platform/pull/3567) | Go Generator候補の宣言SourceがBuild対象外なら拒否 | ScriptのCheck→実Interpreter ReadのABA、全Build member/実Tool/実byteの閉包、現在のSource Grant。#2595/#2514 |
 | [merged #3579](https://github.com/hat47x/tei-platform/pull/3579) | Function定義書へHook宣言を位相順で追加。生成規則Fingerprintも変化 | 同位相のPlugin合成順、実Hook RunnerとProvider/Effect、旧Artifact再資格化。#3503/#1127/#1803/#2600 |
 | [merged #3588](https://github.com/hat47x/tei-platform/pull/3588) | C-2 service carrierを**非試験の参照用入口**から組み立て可能と実証 | 製品通常Consumerから選択したC-2実Call、実Provider/権限/EffectとC-1対照。#1251/#951 |
-| [merged #3584](https://github.com/hat47x/tei-platform/pull/3584)、[#3654](https://github.com/hat47x/tei-platform/pull/3654)、[#3661](https://github.com/hat47x/tei-platform/pull/3661)、[#3664](https://github.com/hat47x/tei-platform/pull/3664) | child Plan申告の突合、型付きResolveの移管、recipe/source/dependency/parametersの宣言対Plan照合。別builderでのL2-aは[Draft #3587](https://github.com/hat47x/tei-platform/pull/3587) | Plan一致≠実入力/成果物の帰属。Builder要求→解決Identity、Secret/Authorityは未決。L2-bは未成立。**cmd/teiの限定3段L3は既存実測済み**だがG4製品資格ではない。#2831 |
+| [merged #3584](https://github.com/hat47x/tei-platform/pull/3584)、[#3654](https://github.com/hat47x/tei-platform/pull/3654)、[#3661](https://github.com/hat47x/tei-platform/pull/3661)、[#3664](https://github.com/hat47x/tei-platform/pull/3664) | child Plan申告の突合、型付きResolveの移管、recipe/source/dependency/parametersの宣言対Plan照合。別builderでのL2-aは[merged #3587](https://github.com/hat47x/tei-platform/pull/3587) | Plan一致≠実入力/成果物の帰属。Builder要求→解決Identity、Secret/Authorityは未決。L2-bは未成立。**cmd/teiの限定3段L3は既存実測済み**だがG4製品資格ではない。#2831 |
 
-**Discoveryの別問題**：[Draft #3590](https://github.com/hat47x/tei-platform/pull/3590)はCLI広告とCLI実受付の整合を調べたが、CLIとMCP tools/listのEffect/Version/Annotation保証はまだ別試験。CLI read-only広告であっても、viewの名前付き出力等のファイル作用が存在し得る。参照MCPのTool registration、CLI実行、Tool reply受領、外部Harness完全配送は異なる合否とする。
+**Discoveryの別問題**：[merged #3590](https://github.com/hat47x/tei-platform/pull/3590)はCLI広告とCLI実受付の整合を調べたが、CLIとMCP tools/listのEffect/Version/Annotation保証はまだ別試験。CLI read-only広告であっても、viewの名前付き出力等のファイル作用が存在し得る。参照MCPのTool registration、CLI実行、Tool reply受領、外部Harness完全配送は異なる合否とする。
 
 ### 7.2 同じ対象を束縛しつつ、独立に判定する五つの証拠
 
