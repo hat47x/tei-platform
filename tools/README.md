@@ -2,8 +2,6 @@
 
 `tools/`には、構成検査、受入根拠の取得、参照実装、再現可能な実験に使う道具を置きます。製品の再利用可能な実装は`internal/`、入力と期待結果は`reference/`、利用例は`examples/`にあります。
 
-新しい検証候補 [`reference-hash-id/`](reference-hash-id/) は、可変長・可変文字集合のHash由来IDをread-onlyで検査します（#2814、未採用）。正本ID・Owner権限・実Target確保の実装ではありません。
-
 表には、この階層の全ディレクトリと直下の実行用ファイルを載せています。各ツールの固有の使い方や判定条件は、そのディレクトリ内のREADME・実装・Issueを正とします。
 
 独立した参照プラグインの検査入口は [`check-reference-plugin-isolation.sh`](check-reference-plugin-isolation.sh) です。`plugins/`配下の参照実装を一時Goモジュールへ複製してオフラインで検証します。
@@ -77,6 +75,7 @@
 | [`reference-business-procedure-check/`](reference-business-procedure-check/) | 業務手順と担当・機能・データの整合確認 |
 | [`reference-capability-invocation-context/`](reference-capability-invocation-context/) | Capability実行時の文脈境界の確認 |
 | [`reference-capability-mutation-protocol/`](reference-capability-mutation-protocol/) | 変更を伴うCapabilityの手順確認 |
+| [`reference-hash-id/`](reference-hash-id/) | 可変長・可変文字集合のHash由来ID、Source/Target申告・衝突予算のread-only Reference（#2814、未採用）。正本ID・実Providerの一意登録・Owner資格は対象外 |
 | [`reference-capability-transport/`](reference-capability-transport/) | Capabilityの伝送形式と境界の確認 |
 | [`reference-capability-degradation/`](reference-capability-degradation/) | 既存DB・Providerが観測された能力と業務操作が要求する保証を照合し、不足時に操作を生成しないか明示の弱い保証を宣言するかを記録する参照。縮退を同等と認証しない（#2096） |
 | [`reference-chat-cli-host/`](reference-chat-cli-host/) | 信頼された開発用Hostの事前診断 |
