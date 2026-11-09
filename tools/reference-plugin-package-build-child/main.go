@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"tei/internal/buildintent"
@@ -307,11 +308,28 @@ func materialize(planPath, pluginPath, artifactOut, stateDir, intentPath string)
 // sorts the plan's, and neither changes a value. So a difference in values is a
 // real difference, and comparison by name avoids depending on declaration order.
 //
+// The builder contract is compared through the correspondence the resolver
+// already applies: a requirement of contract C at major N resolves to a
+// BuilderIdentity whose ContractVersion is "C/vN" (fixture.go builds it with
+// fmt.Sprintf("%s/v%d", p.Contract, p.ContractMajor)). That correspondence is a
+// rule, not a measurement, so it is written here explicitly: if the resolver
+// ever changes the spelling, this comparison is the place that breaks, and the
+// test that pins it says so.
+//
 // Not compared: a source's locator and digest (the plan derives them from
 // bytes, the declaration names a reference) and a dependency's version and
 // artifact digest (derived). Comparing those would call every correct build a
-// mismatch.
+// mismatch. The builder's identity and artifact digest are also not compared:
+// the declaration names a selection policy, not the exact builder.
 func compareIntentFields(intent buildintent.BuildIntent, plan plugin.BuildPlan) error {
+	// The declaration states a contract and a major; the plan states the
+	// resolved ContractVersion. Compare them through the rule the resolver uses.
+	if want := intent.Builder.Contract + "/v" + strconv.Itoa(intent.Builder.CompatibleMajor); want != plan.Builder.ContractVersion {
+		return fmt.Errorf(
+			"the declaration's builder contract %s at major %d resolves to %q but the plan's builder declares %q",
+			intent.Builder.Contract, intent.Builder.CompatibleMajor, want, plan.Builder.ContractVersion,
+		)
+	}
 	if intent.Recipe.Kind != plan.Recipe.Kind {
 		return fmt.Errorf("the declaration's recipe kind %q does not match the plan's %q", intent.Recipe.Kind, plan.Recipe.Kind)
 	}
