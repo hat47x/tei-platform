@@ -1,23 +1,18 @@
 package generatorselection
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"os"
+	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestWasmTemplateIsSelectable(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		// The wasm candidate answers every fixture case with an empty result on
-		// the Windows CI runner: the run exits 0 and prints something that
-		// decodes into an empty Result, so the comparison against the expected
-		// output fails for all cases. The same build passes on Linux and on a
-		// Windows workstation, so the difference is the runner's node/wasm
-		// combination, not the candidate (#3783). Linux CI covers this path.
-		t.Skip("the wasm candidate returns an empty result on the Windows CI runner; Linux CI runs it (#3783)")
-	}
 	if _, _, _, ok := resolveWasmRuntime(); !ok {
 		t.Skip("node or Go wasm_exec_node.js is not available")
 	}
@@ -35,6 +30,7 @@ func TestWasmTemplateIsSelectable(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !receipt.Passed || len(receipt.Qualified) != 1 || receipt.Qualified[0] != "wasm-template" {
+		logWasmRawOutput(t, candidates, fixtures)
 		t.Fatalf("wasm candidate was not selected: %+v", receipt)
 	}
 	candidate := receipt.Candidates[0]
@@ -56,15 +52,6 @@ func TestWasmTemplateIsSelectable(t *testing.T) {
 }
 
 func TestGoAndWasmCandidatesProduceSameFixtureOutputs(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		// The wasm candidate answers every fixture case with an empty result on
-		// the Windows CI runner: the run exits 0 and prints something that
-		// decodes into an empty Result, so the comparison against the expected
-		// output fails for all cases. The same build passes on Linux and on a
-		// Windows workstation, so the difference is the runner's node/wasm
-		// combination, not the candidate (#3783). Linux CI covers this path.
-		t.Skip("the wasm candidate returns an empty result on the Windows CI runner; Linux CI runs it (#3783)")
-	}
 	if _, _, _, ok := resolveWasmRuntime(); !ok {
 		t.Skip("node or Go wasm_exec_node.js is not available")
 	}
@@ -118,4 +105,45 @@ func TestUnavailableWasmRuntimeIsNotSuccess(t *testing.T) {
 	if !strings.Contains(receipt.Candidates[0].RejectReason, "runtime unavailable") {
 		t.Fatalf("unexpected rejection reason: %q", receipt.Candidates[0].RejectReason)
 	}
+}
+
+// logWasmRawOutput runs the built wasm candidate once for the first fixture
+// case and writes what it printed. A failing case on the Windows CI runner
+// reports an empty result, and the raw bytes are the only way to tell "the
+// program printed nothing", "it printed null" and "it printed an empty state"
+// apart (#3971).
+func logWasmRawOutput(t *testing.T, candidates, fixtures string) {
+	t.Helper()
+	nodePath, wasmExecPath, version, ok := resolveWasmRuntime()
+	if !ok {
+		t.Log("wasm runtime is unavailable")
+		return
+	}
+	raw, err := os.ReadFile(fixtures)
+	if err != nil {
+		t.Logf("read fixtures: %v", err)
+		return
+	}
+	var fixture struct {
+		Cases []struct {
+			ID    string          `json:"id"`
+			Input json.RawMessage `json:"input"`
+		} `json:"cases"`
+	}
+	if err := json.Unmarshal(raw, &fixture); err != nil || len(fixture.Cases) == 0 {
+		t.Logf("parse fixtures: %v", err)
+		return
+	}
+	wasmPath := filepath.Join(candidates, "wasm-template", "main.wasm")
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, nodePath, wasmExecPath, wasmPath)
+	cmd.Stdin = strings.NewReader(string(fixture.Cases[0].Input))
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	runErr := cmd.Run()
+	t.Logf("node=%s goWasmExec=%s case=%s err=%v", version, filepath.Base(wasmExecPath), fixture.Cases[0].ID, runErr)
+	t.Logf("raw stdout=%q", stdout.String())
+	t.Logf("raw stderr=%q", stderr.String())
 }
