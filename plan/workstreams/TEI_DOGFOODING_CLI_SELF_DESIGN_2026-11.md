@@ -1027,3 +1027,42 @@ README は「今後の作業は GitHub Issues で管理します。過去のロ�
 | 35 | `plan/issue` に文書が無く、2試験が0件を走査 |
 
 第22〜24ラウンドの「手書きの一覧が漏れる」型は漏れが可視だが、こちらは**検査の不在に気づけない**。
+
+## 40. 第36ラウンド（2026-11-09）: 空回りする検査を1箇所に集約して可視化した
+
+第35ラウンドで「`numberedFiles` の利用者2件を見たに留まる。他の検査が同じ穴を持つかは未調査」と書いた。これを閉じた。生出力は[第36ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND36_SCOPE_NONEMPTY_2026-11-09/README.md)にある。
+
+### 全数調査の結果、空だったのは `plan/issue` だけ
+
+計測用の試験を一時的に置いて各検査の入力を数えた。
+
+```text
+markdown files visited: 951    issue numbered: 0    adr numbered: 47    requirementIDs: 36
+plan 15 / plan/adr 48 / plan/issue 1（README のみ） / plan/evidence 290 / plan/workstreams 30 / tools 249
+go.mod 826B / cmd/tei-studio/go.mod 498B / THIRD_PARTY_NOTICES.md 18984B
+```
+
+`forEachMarkdown` 系（951件）・ADR（47件）・要件（36件）・go.mod 系はすべて実体があった。**第35ラウンドの懸念は「他に無い」で閉じる。**
+
+### ただし私の第35ラウンドの修正に穴があった
+
+統合ガードの初版は `os.ReadDir` の**件数**を見ており、`plan/issue` は `README.md` を1件持つため「空でない」と判定していた。**除外（exempt）の分岐が一度も実行されない**状態だった。`-v` に除外の行が出ないことで気づいた。
+
+修正後は**検査が読む文書の件数**を測る。`plan/issue` が0件であることが理由つきでログに出る。
+
+### 追加した試験
+
+`tools/repository-plan-check/scope_nonempty_test.go` の `TestEveryCheckScopeIsNonEmpty`。番号付きスコープは文書数、その他はディレクトリ数、Markdown 全体と要件は訪問数で測る。0件かつ除外指定がある場合だけ理由を出して通し、除外指定が無ければ落とす。件数（951・36）は常にログに出るので、walk が縮んだことにも気づける。
+
+変異3種（`plan/adr` を退避／`plan/workstreams` を空に／`plan/issue` に文書を1件置く）がすべて落ちることを確認した。
+
+### 4ラウンド続けて同じ型
+
+| ラウンド | 形 | 位置付け |
+| --- | --- | --- |
+| 33 | walk の起点が誤り、0ファイル | 個別に修正 |
+| 34 | 正規表現が0一致 | 個別に修正 |
+| 35 | `plan/issue` が0件 | 個別に修正 |
+| 36 | — | **同型をまとめて検出する試験を追加** |
+
+個別修正だけでは、次に別の検査が空回りしたとき同じ手順を繰り返す。今回は検出を1箇所に置いた。**ただし「入力が0件でない」ことしか見ておらず、入力が十分かは保証しない。**
