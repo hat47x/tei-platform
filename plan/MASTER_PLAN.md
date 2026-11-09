@@ -999,6 +999,15 @@ X-TEA Modeler由来の**Data/Function/Businessの3図とCRUD cross-reference**�
 
 **所有先・重複回避**：組織Meaning=#2386、Pressure Corpus=#2510、Read=#2586/#2506、Model Map/三視点=#1124/#1125/#3492、Lifecycle/Trait=#3278/#3507、SubSystem分割は#3250、独立Expected/Scenario/Attempt=#2514/#1180/#1163。旧[Draft #3243](https://github.com/hat47x/tei-platform/pull/3243)は現mainより大幅に乖離しているため、旧MASTER_PLAN/README/組織Profileを丸ごと再投入しない。**本追補はdocs-only設計・作業順序**であり、新CI・実Provider/GUI/Host/Owner意味受理はNOT RUN。RQ-036全容MapとRQ-037 Verified Composition BOMの番号整合は別[Draft #3592](https://github.com/hat47x/tei-platform/pull/3592)へ委譲する。
 
+### 組織責務切替の次段受入（2026-11-09、設計・独立Expected案）
+
+<!-- org-cutover-tr-plan-20261109 -->
+[組織意味設計のCutover追補](design/ORGANIZATION_RELATION_GOVERNANCE_MODEL_2026-10.md)に、**所属更新≠Case handlingUnitの担当変更≠実行Grant切替≠相手方Handoff**を実効責務の四象限（旧側/新側がyes/no）として定義。単独責任を全組織へ強制せず、Ownerが共同責任・合議・移行中保留を選択可能にする。二重有効（単独責任時）／両者無効／現在性未照合／A→B→A旧Receipt復活を分離し、ORG-TR-01〜08を追加した。旧Draft #3243のORG-CF/MAPを第二Scenario化せず、#1180/#2514の既存独立Expectedへ差分接続する。
+
+**他レーンの現在基線**：mainの #3540 は通常CLI/Studioの静的Inspector参照選択、#3635 はStudio参照Hookの executed/notEvaluated/skipped/refused を区別。どちらも組織実DB/現在Grantの資格ではない。#3496のREA T0実解析・Artifact独立監査はSource候補の限定証拠で、Owner意味受理/TEI Intakeは未成立。#3662のSubsystem固定Owner数理候補は現業務責任や物理Service分割でない。
+
+**優先は据え置き**：全TEIのHJ-09一Function実Read（#2586）を先行し、組織C1→D1 read-onlyとRQ-036 Model Map／三視点の同一Source照合は次段、実Case切替・旧Grant/SoD・二件Handoffは#1174/#2499/#1125/#1444のP1。実行主体と認可Sourceの比較可能なrevisionが証明されない場合は保留し、HookのnotEvaluated/partialを許可やEffectに昇格しない。新Org Status Enum/Authority Engine/Workflow Host/Proof Store/Hard Gateを設けない。本追補はdocs-onlyでORG-TRの実Go/PG/Studio/外部Host/Owner受理は未実行。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
