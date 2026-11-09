@@ -263,3 +263,4 @@
 - [手書きの符号許可リストが21中15を潰していた](TEI_DOGFOODING_ROUND22_CODE_COVERAGE_2026-11-09/README.md)（#3807・#3797・#3420。CLIは7符号、Studioは1符号だけを特別扱いし、coreの21符号のうち15が`COMMAND_FAILED`に潰れていた。列挙を廃止し`command.ReportedFailure`へ。AST走査で再発防止）
 - [契約文書の符号一覧が実装より狭くなっていた](TEI_DOGFOODING_ROUND23_CONTRACT_DOC_2026-11-09/README.md)（#3419・#3807。`view`行は11符号しか挙げず実装は21符号を返しうる。discoveryは符号を広告しないため文書が唯一の発見経路。AST走査で文書と実装の一致を両方向に固定）
 - [toolの引数一覧がschemaと独立に手書きされていた](TEI_DOGFOODING_ROUND24_TOOL_TABLE_DRIFT_2026-11-09/README.md)（#3823・#3419。`toolArguments`が`InputSchema.properties`と同じ事実を2回書いており、緩む方向の不一致を誰も検出できなかった。表を削除しschemaから導出する形に）
+- [`-strong`（P-4）の名前と粒度を決めて実装した](TEI_GO_SELF_BUILD_STRONG_FLAG_2026-11-09.md)（§4.25・§4.27・§4.29が三度「未着手」と書いた項目。名前は何が買えるかで付け、粒度は一つ。既定は変えず、in-process経路を要求し、暗黙に有効化した内容を`implied`に記録する。弱い試行に強い名前を付けないため、経路が無ければ拒否する。 #2831）

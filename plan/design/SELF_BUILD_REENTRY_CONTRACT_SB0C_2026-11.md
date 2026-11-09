@@ -1260,6 +1260,47 @@ Claimの`boundary`文言を、**このホスト**から**観測した二つの�
 - catalogの中身が正しいこと（§4.22 K-3、SC0-26）
 - `-strong`の名前と粒度（§4.25の三つ目の不足分。未着手）
 
+### 4.30 `-strong`の名前と粒度を決める（2026-11-09）
+
+§4.25はP-4として「既定は軽く、一つのflagで強く」を提案し、**名前と粒度を未決**として残した。§4.27・§4.29も同じ未決を繰り返し挙げている。本節がそれを決める。
+
+#### 名前：`-strong`
+
+**仕組みではなく何が買えるかで名付ける。** このflagが買うのは「L2-bのclaimを支えられる試行」であり、`-strong`はその略記である。
+
+| 候補 | 採らない理由 |
+| --- | --- |
+| `-rebuild-check` | 既に別の意味を持つ（再現を測る。claimには届かない） |
+| `-claim` | **主張を強制する**と読める。claimが立つかは五条件の成立次第であり、flagで強制できない |
+| `-full` / `-all` | 何が「全部」か自明でない |
+| `-strong`（採用） | 強さを求める、という意図だけを言う。具体的に何が起きるかは記録が答える |
+
+#### 粒度：一つのflag
+
+§4.25が示したとおり、三つの既定化を個別のflagにしない。**`-strong`は`-rebuild-check`を暗黙に有効化し、in-process経路を要求する。**
+
+#### 薄さが設計である
+
+| する | しない |
+| --- | --- |
+| 再現チェックを暗黙に有効化 | **既定を変えない**（何も渡さなければ従来どおり） |
+| in-process経路を要求 | 入力を発明しない（catalogは呼び手が渡す） |
+| 暗黙に有効化した内容を`strong.implied`に記録 | **claimを立てない** |
+
+**`-strong`が黙って弱い試行を返したら、このflagは嘘をつく。** 名前が「強い」と言っているのに中身が弱ければ、`l2b.unmet`が存在する理由そのもの——弱い根拠を強い根拠と読ませない——を壊す。
+
+**したがってin-process経路が無ければ拒否する。** resolver child経路で`-strong`を受けて成功を返すのは、entryが解釈していないため五条件の一つ目が原理的に満たせず、§4.23の設計に反する。
+
+#### `implied`を記録する理由
+
+呼び手が`-rebuild-check`を明示していた場合、`-strong`はそれを有効化していない。**その場合`implied`は空にする。** 自分が有効化していないものを「有効化した」と記録しないためである。記録の正確さは、強い主張をしないことの一部である。
+
+#### 決めていないこと
+
+- **既定値**。`false`のまま。既定で強くするかは§4.25のP-1〜P-4の判断であり、本節はP-4を**選べるようにした**だけである。
+- 実プロセスで五条件が揃う観測（§4.24が別途固定している）。
+- §4.29が指摘した「catalogを書く場所」の決定。既定の試行でclaimを立てるには依然として要る。
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
@@ -1337,7 +1378,7 @@ Claimの`boundary`文言を、**このホスト**から**観測した二つの�
 - [x] (c)の観測：**同じplanを二回、別stateでbuildして同じバイトが出た**（§4.21、[記録](../evidence/TEI_GO_SELF_BUILD_ARTIFACT_REPRODUCIBILITY_2026-11-09.md)。`-rebuild-check`で`artifactReproducibility=reproduced`。lockの`bound`が示せなかった「そのplanがそのartifactを生んだ」を再現で観測した。**L2-bではない**）
 - [x] **実build**での`-rebuild-check`のコスト測定（§4.28。`reference-go-build-with-supply`をchildにして`./internal/core`を実際に`go build`。中央値5852.7 ms→11272.4 ms、**+5419.7 ms・1.926倍**で、§4.27の推論が当たった。二回のbuildのdigestは一致し`artifactReproducibility=reproduced`。[記録](../evidence/TEI_GO_SELF_BUILD_GO_BUILD_REBUILD_COST_2026-11-09.md)）
 - [x] `-rebuild-check`の実コストの測定（§4.27。[記録](../evidence/TEI_GO_SELF_BUILD_REBUILD_CHECK_COST_2026-11-09.md)。参照childでは中央値136.4 ms→246.5 ms（+110.1 ms・1.807倍）で、**増分の大半はchildの仕事ではなくentryの固定費**（child単体3.4 ms）。実buildは未測定）
-- [ ] `-rebuild-check`を**既定**にするかどうかの判断。**§4.25で三つの未決を一つの判断として扱う案（P-1〜P-4）を示し、§4.27が参照childのコスト、§4.28が実buildのコストを実測した**（参照child 1.807倍・実build 1.93倍）。**残る材料はcatalog 3点セットの用意と`-strong`の粒度**（§4.25末尾）
+- [ ] `-rebuild-check`を**既定**にするかどうかの判断。**§4.25がP-1〜P-4を示し、§4.27・§4.28がコストを実測し、§4.30がP-4のflag（`-strong`）を実装した**。残るのは既定値の判断だけである（参照child 1.807倍・実build 1.93倍）。**残る材料はcatalog 3点セットの用意と`-strong`の粒度**（§4.25末尾）
 - [x] catalogの出所の決定（§4.22。**K-3: 呼び手が名指しするcatalogデータ＋必須のdigest**。新しいAuthorityを作らず、既存の`-supply`・`-intent-resolver`と同じ形）
 - [ ] **entryの既定経路をin-processの`Resolve`へ切り替えるか**の判断（§4.16のR-1/R-2/R-3）。前提だったcatalogの出所は§4.22で決めた（K-3）。切り替え自体は段2の完了後に別途決める
 - [x] **段1**：`fixture`を外した名前で`BuildCatalog`・`ParseBuildCatalog`・`ResolveBuilder`・`ResolveDependency`・`CheckTarget`・`DirSourceResolver`を`internal/buildintent`へ移した（`tools/`側は型aliasと薄い委譲。参照実装の試験は**無変更で通る**。§4.22の移行表、[記録](../evidence/TEI_GO_SELF_BUILD_CATALOG_MOVE_2026-11-09.md)）
