@@ -21,7 +21,7 @@ import (
 // digest collisions. That scope is stated in the boundary instead of being left
 // for a reader to assume.
 
-const reproducibilityBoundary = "two runs of the same child executable from the same plan, in separate state directories, produced the same artifact bytes; this shows the builder was deterministic for that plan, with that binary, on this host, in these two attempts, and together with the on-disk digest match it supports the claim that the artifact is that plan's output. It is not a proof for another host, another builder version or another plan, and it is not L2-b, acceptance, or runtime authority"
+const reproducibilityBoundary = "two runs of the same child executable from the same plan, in separate state directories, produced the same artifact bytes; this shows the builder was deterministic for that plan, with that binary, on the host that ran it, in these two attempts, and together with the on-disk digest match it supports the claim that the artifact is that plan's output. The same plan was also observed to yield the same artifact bytes on linux/amd64 and windows/amd64 (SB-C0 §4.25). It is not a proof for any other host, another builder version or another plan, and it is not L2-b, acceptance, or runtime authority"
 
 const (
 	reproducibilityReproduced  = "reproduced"
