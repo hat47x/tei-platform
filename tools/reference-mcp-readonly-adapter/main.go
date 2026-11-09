@@ -166,10 +166,9 @@ func serve(in io.Reader, out io.Writer, workspace string) error {
 		if line == "" {
 			continue
 		}
-		var request rpcRequest
-		if err := json.Unmarshal([]byte(line), &request); err != nil {
-			if err := encoder.Encode(rpcResponse{JSONRPC: "2.0",
-				Error: &rpcError{Code: -32700, Message: "parse error"}}); err != nil {
+		request, rejection := decodeRequest(line)
+		if rejection != nil {
+			if err := encoder.Encode(rejection); err != nil {
 				return err
 			}
 			continue
@@ -182,6 +181,52 @@ func serve(in io.Reader, out io.Writer, workspace string) error {
 			return err
 		}
 	}
+}
+
+// decodeRequest checks the JSON-RPC envelope of one line. It returns either a
+// request or the single response that refuses the line. A request without an
+// id is a notification and is returned with a nil ID; a notification that is
+// malformed is dropped without a reply, because a notification never gets one.
+// The id must be a string or a number: MCP forbids null, and an id that cannot
+// be echoed is answered with a null id (#3420).
+func decodeRequest(line string) (rpcRequest, *rpcResponse) {
+	refuse := func(code int, message string) (rpcRequest, *rpcResponse) {
+		return rpcRequest{}, &rpcResponse{JSONRPC: "2.0", Error: &rpcError{Code: code, Message: message}}
+	}
+	if !json.Valid([]byte(line)) {
+		return refuse(-32700, "parse error")
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(line), &fields); err != nil || fields == nil {
+		return refuse(-32600, "invalid request: a request must be one JSON object (batches are not supported)")
+	}
+	var request rpcRequest
+	if raw, ok := fields["id"]; ok {
+		if first := strings.TrimSpace(string(raw)); first == "" || (first[0] != '"' && first[0] != '-' && (first[0] < '0' || first[0] > '9')) {
+			return refuse(-32600, "invalid request: id must be a string or a number")
+		}
+		request.ID = raw
+	}
+	invalid := func(message string) (rpcRequest, *rpcResponse) {
+		if request.ID == nil {
+			return rpcRequest{}, nil
+		}
+		return rpcRequest{}, &rpcResponse{JSONRPC: "2.0", ID: request.ID,
+			Error: &rpcError{Code: -32600, Message: "invalid request: " + message}}
+	}
+	if err := json.Unmarshal(fields["jsonrpc"], &request.JSONRPC); err != nil || request.JSONRPC != "2.0" {
+		return invalid(`jsonrpc must be the string "2.0"`)
+	}
+	if err := json.Unmarshal(fields["method"], &request.Method); err != nil || request.Method == "" {
+		return invalid("method must be a non-empty string")
+	}
+	if raw, ok := fields["params"]; ok {
+		if first := strings.TrimSpace(string(raw)); first == "" || (first[0] != '{' && first[0] != '[') {
+			return invalid("params must be an object or an array")
+		}
+		request.Params = raw
+	}
+	return request, nil
 }
 
 // readRequestLine reads one line without buffering more than maxRequestBytes

@@ -53,6 +53,7 @@ go build -o /tmp/tei-mcp ./tools/reference-mcp-readonly-adapter
 - 認可・開示範囲・秘匿は、この Adapter では判定しません。呼び出し元の Host とTEIの既存の境界に委ねます。
 - 期限・同時実行・再接続は扱いません。1プロセス・逐次の参照経路です。
 - 1回の要求は1行で、上限は4 MiB です。超えた行は `-32600`（invalid request）で拒否し、その行だけを読み捨てて次の要求の処理を続けます（`bufio.Scanner` の行長超過がプロセス全体を止めていたのを直しました）。
+- 要求の封筒（JSON-RPC 2.0）は読込み時に検査します。JSONとして読めない行は `-32700`、JSONでも要求として成り立たない行は `-32600` で1回だけ応答し、次の行の処理を続けます。`-32600` にするのは、オブジェクトでない行（バッチを含む）、`jsonrpc` が文字列 `"2.0"` でない、`method` が空または文字列でない、`params` がオブジェクトでも配列でもない、`id` が文字列でも数値でもない（MCP は `null` を禁じる）場合です。`id` を返せない応答の `id` は `null` です。`id` のない通知は、不正でも応答しません。
 - MCP のプロトコル版は `2024-11-05` を名乗ります。後の版で同じ挙動になるとの主張ではありません。
 
 ## 検証
@@ -67,6 +68,7 @@ go build -o /tmp/tei-mcp ./tools/reference-mcp-readonly-adapter
 - 必須引数の欠落が、CLI では `INVALID_SUBJECT`、MCP では `-32602` で**両方拒否**されること（符号の差は #3420 の判断事項として、広げないよう固定）
 - 広告する4 tool が、実CLIの `commands` と一致すること（対応するコマンドの存在・`effect` が read-only・`writeFlags` が無い・`schemaVersion`・`jsonContract`）。tool の説明が対応する CLI 呼出しを名指しすること（`discovery_parity_test.go`）
 - `initialize` の応答と、通知に返答しないこと
+- 要求の封筒の不正（不正JSON、非オブジェクト、`jsonrpc`・`method`・`params`・`id` の型不正、`id: null`）を `-32700`／`-32600` で1回だけ拒否して処理を続けること。`id` を返せない応答は `id: null`。不正な通知に応答しないこと。`tools/call` の `params`・`name`・`arguments` 欠落や型不正が `-32602` になること（`envelope_test.go`）
 - tool の入力スキーマに `workspace`・`path`・`root`・`file` を含めないこと
 - 型不正・`null`・空文字列・宣言のない欄を `-32602` で拒否し、省略時だけ既定値を使うこと（`strict_arguments_test.go`）
 
