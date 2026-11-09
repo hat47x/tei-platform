@@ -140,6 +140,15 @@ func (r Runner) RunReachable(ctx context.Context, applicationID, patternID core.
 		if !declaredHere {
 			continue
 		}
+		// A scope this runner cannot apply is reported as skipped rather than run
+		// as if the scope did not matter: this runner runs one hook per record, so
+		// only the record scope and the pattern's own unit are applied. Reporting a
+		// reason keeps the phase visible instead of silently passing it.
+		if scope := declaration.Scope; scope != "" && scope != string(application.PatternRecord) {
+			report.Skipped = append(report.Skipped, phase)
+			report.Reasons[phase] = fmt.Sprintf("the hook declares scope %s but this runner applies one hook per record", scope)
+			continue
+		}
 		if reason := reach.UnreachableReason(phase); reason != "" {
 			report.Skipped = append(report.Skipped, phase)
 			report.Reasons[phase] = reason

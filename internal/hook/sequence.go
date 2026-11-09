@@ -57,6 +57,16 @@ func (r Runner) RunSequence(ctx context.Context, invocation Invocation) (Sequenc
 				Message: fmt.Sprintf("pattern %s declares unsupported hook phase %s", invocation.Pattern, phase),
 			}
 		}
+		// A scope this runner cannot apply is refused, not ignored: the sequence
+		// runs one hook per record, so only the record scope and the pattern's own
+		// unit (empty) are applied here. Running the hook anyway would leave a
+		// declaration that is present and does nothing (D-9).
+		if scope := pattern.Interaction.Hooks[i].Scope; scope != "" && scope != string(application.PatternRecord) {
+			return SequenceResult{}, &Error{
+				Code:    "HOOK_SCOPE_UNAPPLIED",
+				Message: fmt.Sprintf("pattern %s hook %s declares scope %s but the sequence runs one hook per record", invocation.Pattern, phase, scope),
+			}
+		}
 		// Two hooks with the same phase are refused by validation. The first
 		// declaration wins here so the runner does not invent an order between
 		// them, and it never silently drops a phase it did not run.
