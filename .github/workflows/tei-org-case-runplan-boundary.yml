@@ -9,17 +9,34 @@ on:
 permissions:
   contents: read
 
+# One result per commit, and a newer pull-request run replaces an older one.
+# CONTRIBUTING.md requires concurrency from every workflow a pull request can
+# start, and tools/ci-workflows-test.py enforces it. This file was added
+# without it, alongside an unpinned action and a checkout that kept its
+# credentials, which turned repository-health red for every pull request that
+# touched internal/execution (#3682).
+concurrency:
+  group: tei-org-case-runplan-boundary-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   org-runplan-boundary:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
     steps:
       - name: Checkout exact candidate
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          persist-credentials: false
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version-file: go.mod
       - name: Assert fixed head and clean input
