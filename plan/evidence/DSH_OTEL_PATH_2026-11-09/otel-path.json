@@ -1,0 +1,58 @@
+{
+  "note": "The OTel session-telemetry plugin is mounted by the base bundle. Redirecting its exporter at a local mock with DSH_TELEMETRY_OTLP_URL produced no OTLP request, because FEEDBACK_ONLY exports only after explicit feedback and the headless app has no feedback surface.",
+  "correction": {
+    "earlierClaim": "The headless profile does not mount dsh-session-telemetry-otel, and OTEL_EXPORTER_OTLP_ENDPOINT had no effect.",
+    "whatIsTrue": "The plugin is mounted by @deepseek-ai/dsh-base with mode = process.env.DSH_TELEMETRY_MODE || 'FEEDBACK_ONLY' and exporter.url = process.env.DSH_TELEMETRY_OTLP_URL ?? 'https://dsh-otel-collector.deepseeksvc.com/v1/logs'. OTEL_EXPORTER_OTLP_ENDPOINT is not the knob this build reads.",
+    "howVerified": "--dump-config shows the mounted entry and both !!js defaults."
+  },
+  "defaultsFromComposedConfig": {
+    "mode": "process.env.DSH_TELEMETRY_MODE || 'FEEDBACK_ONLY'",
+    "exporterUrl": "process.env.DSH_TELEMETRY_OTLP_URL ?? 'https://dsh-otel-collector.deepseeksvc.com/v1/logs'",
+    "compression": "gzip",
+    "timeoutMillis": 1000,
+    "shutdownTimeoutMillis": 3000,
+    "maxRequestBytes": 4000000
+  },
+  "run": {
+    "env": {
+      "DSH_TELEMETRY_OTLP_URL": "http://127.0.0.1:8799/v1/logs"
+    },
+    "profile": "headless",
+    "permissionMode": "read-only",
+    "task": "Say ok.",
+    "modelRequests": [
+      {
+        "file": "model-001-request.json",
+        "bytes": 90627,
+        "sha256": "d54207c4ced1a91b4a5045b4cba816203226fa825a86cd939623f123502bce2b",
+        "toolCount": 24,
+        "messageCount": 1,
+        "sessionId": "session-3a2ef76b-01f1-4be0-8ef6-edfd21d549d0",
+        "afterSeq": -1,
+        "throughSeq": 18
+      },
+      {
+        "file": "model-002-request.json",
+        "bytes": 52681,
+        "sha256": "ea241091c7ba8cb6150b9d3503425969dad875b5169884de6e50dec7b3d744f8",
+        "toolCount": 0,
+        "messageCount": 1,
+        "sessionId": "session-3a2ef76b-01f1-4be0-8ef6-edfd21d549d0",
+        "afterSeq": -1,
+        "throughSeq": 18
+      }
+    ],
+    "otelRequests": 0,
+    "totalModelRequestBytes": 143308
+  },
+  "feedbackSurface": {
+    "headlessFlags": [
+      "--json",
+      "--session-id",
+      "--permission-mode",
+      "--approval-policy",
+      "--add-dir"
+    ],
+    "hasFeedbackCommand": false
+  }
+}
