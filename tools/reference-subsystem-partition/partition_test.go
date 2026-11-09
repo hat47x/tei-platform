@@ -65,11 +65,11 @@ func TestExactExamples(t *testing.T) {
 	}{
 		{"independent", Problem{
 			Functions: []Function{fn("fA", "S1", "S2"), fn("fB", "S1", "S2")},
-			Writes: []Write{wr("wA", "fA", "A", "S1", 1), wr("wB", "fB", "B", "S2", 1)},
+			Writes:    []Write{wr("wA", "fA", "A", "S1", 1), wr("wB", "fB", "B", "S2", 1)},
 		}, 0, true},
 		{"must-link", Problem{
 			Functions: []Function{fn("fA", "S1", "S2"), fn("fB", "S1", "S2")},
-			Writes: []Write{wr("wA", "fA", "A", "S1", 1), wr("wB", "fB", "B", "S2", 1)},
+			Writes:    []Write{wr("wA", "fA", "A", "S1", 1), wr("wB", "fB", "B", "S2", 1)},
 			MustLinks: []MustLink{{"fA", "fB"}},
 		}, 1, true},
 		{"transitive-must-link", Problem{
@@ -86,7 +86,7 @@ func TestExactExamples(t *testing.T) {
 		}, 6, true},
 		{"no-common-allowed", Problem{
 			Functions: []Function{fn("fA", "S1"), fn("fB", "S2")},
-			Writes: []Write{wr("wA", "fA", "A", "S1", 1), wr("wB", "fB", "B", "S2", 1)},
+			Writes:    []Write{wr("wA", "fA", "A", "S1", 1), wr("wB", "fB", "B", "S2", 1)},
 			MustLinks: []MustLink{{"fA", "fB"}},
 		}, 0, false},
 		{"no-writes", Problem{
@@ -125,7 +125,7 @@ func TestExactExamples(t *testing.T) {
 func TestMustLinkCounterexampleIndependentLowerBoundZero(t *testing.T) {
 	p := Problem{
 		Functions: []Function{fn("a", "S1", "S2"), fn("b", "S1", "S2")},
-		Writes: []Write{wr("wa", "a", "A", "S1", 1), wr("wb", "b", "B", "S2", 1)},
+		Writes:    []Write{wr("wa", "a", "A", "S1", 1), wr("wb", "b", "B", "S2", 1)},
 	}
 	without, _ := Evaluate(p)
 	if *without.MinimumKnownCrossWeight != 0 {
@@ -196,12 +196,12 @@ func TestComponentContractionAgainstBruteForce(t *testing.T) {
 func TestOrderDoesNotChangeResult(t *testing.T) {
 	a := Problem{
 		Functions: []Function{fn("z", "S2", "S1"), fn("a", "S2", "S1")},
-		Writes: []Write{wr("wz", "z", "Z", "S2", 1), wr("wa", "a", "A", "S1", 1)},
+		Writes:    []Write{wr("wz", "z", "Z", "S2", 1), wr("wa", "a", "A", "S1", 1)},
 		MustLinks: []MustLink{{"z", "a"}},
 	}
 	before := Problem{
 		Functions: append([]Function(nil), a.Functions...),
-		Writes: append([]Write(nil), a.Writes...),
+		Writes:    append([]Write(nil), a.Writes...),
 		MustLinks: append([]MustLink(nil), a.MustLinks...),
 	}
 	r1, e1 := Evaluate(a)
@@ -219,7 +219,7 @@ func TestOrderDoesNotChangeResult(t *testing.T) {
 func TestRejectUnqualifiedAndInvalidInput(t *testing.T) {
 	valid := Problem{
 		Functions: []Function{fn("f", "S1")},
-		Writes: []Write{wr("w", "f", "A", "S1", 1)},
+		Writes:    []Write{wr("w", "f", "A", "S1", 1)},
 	}
 	cases := []struct {
 		name string
@@ -231,9 +231,24 @@ func TestRejectUnqualifiedAndInvalidInput(t *testing.T) {
 		{"duplicate-allowed", Problem{Functions: []Function{fn("f", "S1", "S1")}}},
 		{"unknown-must-link", Problem{Functions: []Function{fn("f", "S1")}, MustLinks: []MustLink{{"f", "missing"}}}},
 		{"unknown-writer", Problem{Functions: valid.Functions, Writes: []Write{wr("w", "missing", "A", "S1", 1)}}},
-		{"read-not-write", func() Problem { p := valid; p.Writes = append([]Write(nil), p.Writes...); p.Writes[0].Operation = "R"; return p }()},
-		{"zero-weight", func() Problem { p := valid; p.Writes = append([]Write(nil), p.Writes...); p.Writes[0].Weight = 0; return p }()},
-		{"missing-provenance", func() Problem { p := valid; p.Writes = append([]Write(nil), p.Writes...); p.Writes[0].Source = ""; return p }()},
+		{"read-not-write", func() Problem {
+			p := valid
+			p.Writes = append([]Write(nil), p.Writes...)
+			p.Writes[0].Operation = "R"
+			return p
+		}()},
+		{"zero-weight", func() Problem {
+			p := valid
+			p.Writes = append([]Write(nil), p.Writes...)
+			p.Writes[0].Weight = 0
+			return p
+		}()},
+		{"missing-provenance", func() Problem {
+			p := valid
+			p.Writes = append([]Write(nil), p.Writes...)
+			p.Writes[0].Source = ""
+			return p
+		}()},
 		{"duplicate-write", Problem{Functions: valid.Functions, Writes: []Write{wr("w", "f", "A", "S1", 1), wr("w", "f", "A", "S1", 1)}}},
 		{"conflicting-owners", Problem{Functions: valid.Functions, Writes: []Write{wr("w", "f", "A", "S1", 1), wr("w2", "f", "A", "S2", 1)}}},
 		{"overflow", Problem{Functions: valid.Functions, Writes: []Write{wr("w", "f", "A", "S1", math.MaxInt64), wr("w2", "f", "B", "S2", 1)}}},
