@@ -127,4 +127,4 @@ C-1とC-2が**別種のOperationを運ぶ**ことが、[型・Carrierの独立�
 
 C-2の既存実装では、内部のArtifact Verifierが呼出しを拒否した場合、**Carrierへ入場していてもProcessは呼ばれていない**ことがある。この場合もC-2の`carrierInvoked=true`を「実Provider呼出し済み」としない。内部エラーとGeneration不一致を単なる事前拒否に平坦化しないため、v1で不確定応答の理由コードも事前拒否と区別する。C-2 v0の保存済み実測JSON／SHA-256は変更しない。
 
-**Exit**：専用Go CIにC-1とC-2の正負テスト、Source/RuleのGit Blobとformat検査を束ね、同一Revisionの限定合格を確認する。C-4外部Host委譲の判断、および通常CLI/Studioの実Consumer S2、外部Source/BOM/Effectの資格はそれぞれ別のOwnerが保持する。Referenceのレポート種別・数値を、製品の業務成功KPIや自動再試行判断へ流用しない。
+**限定Exit達成**：[C-1/C-2専用Go CI #42555954660](https://github.com/hat47x/tei-platform/actions/runs/42555954660)は**completed/success**。C-1/C-2両ReferenceのGoテスト、Go vet、gofmtを同じcheckoutで実行し、C-2実コードBlob `f2952030906b80ba0bf052caeed92082f89c302c`と新V1テストBlob `67b4ed10eaaf0842e2719d5cfda724076fbc5008`を記録した。コード・テストは後続の文書改訂でも同一Blobを保持。これはReference限定であり全体Health、実Service Process資格、製品S2とは別。C-4外部Host委譲の判断、および通常CLI/Studioの実Consumer S2、外部Source/BOM/Effectの資格はそれぞれ別のOwnerが保持する。Referenceのレポート種別・数値を、製品の業務成功KPIや自動再試行判断へ流用しない。
