@@ -198,7 +198,7 @@ X-TEAの`setVariant`・`setUserValueOf`は、スクリプトから任意の値�
 
 ## 5. 実装の順序と現在地
 
-1〜6は参照実装まで進みました（6は読み取りのみ）。どの段階も「宣言 → 実行時の値の結合 → 照会」の三段で作り、各段階の試験記録を`plan/evidence/`へ残しています。
+1〜6は参照実装まで進みました（6は読み取りと更新、監査と権限は未実装）。どの段階も「宣言 → 実行時の値の結合 → 照会」の三段で作り、各段階の試験記録を`plan/evidence/`へ残しています。
 
 | 段階 | 実装 | 結合（Data宣言の属性役割） | 確認記録 |
 | --- | --- | --- | --- |
@@ -207,7 +207,7 @@ X-TEAの`setVariant`・`setUserValueOf`は、スクリプトから任意の値�
 | 3. 税 | `internal/taxrate` | `tax-applies-from`・`tax-applies-until`・`tax-category`・`tax-value`・`tax-rounding` | [税率の適用期間と端数処理](../evidence/XTEA_LOWCODE_TAX_RATE_2026-11.md)、[Data結合](../evidence/XTEA_LOWCODE_TAX_RATE_BINDING_2026-11.md) |
 | 4. 通貨 | `internal/currencyrate`（年次フォールバックは`currency-rate-fallback`の宣言で選ぶ） | `currency-rate-currency`・`-fiscal-year`・`-month-sequence`・`-middle`・`-buying`・`-selling`・`-fallback` | [通貨換算の率の種類と方向](../evidence/XTEA_LOWCODE_CURRENCY_RATE_2026-11.md)、[Data結合](../evidence/XTEA_LOWCODE_CURRENCY_BINDING_2026-11.md) |
 | 5. 採番 | `internal/numbering`（`ReserveInTransaction`で取引に参加） | `numbering-counter`・`numbering-digits`・`numbering-prefix`・`numbering-check`・`numbering-overflow` | [採番の契約](../evidence/XTEA_LOWCODE_NUMBERING_2026-11.md)、[Data結合](../evidence/XTEA_LOWCODE_NUMBERING_BINDING_2026-11.md) |
-| 6. 利用者設定 | `internal/usersetting`（`Resolve`・`Bind`・`Settings.Value`） | `setting-key`・`setting-value`・`setting-user` | [確認記録](../evidence/XTEA_LOWCODE_USER_SETTINGS_2026-11.md) |
+| 6. 利用者設定 | `internal/usersetting`（`Resolve`・`Bind`・`Settings.Value`・`Table.Change`・`Table.Apply`） | `setting-key`・`setting-value`・`setting-user` | [読み取りの確認](../evidence/XTEA_LOWCODE_USER_SETTINGS_2026-11.md)、[書込みの確認](../evidence/XTEA_LOWCODE_USER_SETTINGS_WRITE_2026-11.md) |
 
 三段の分け方には理由があります。
 
@@ -238,7 +238,7 @@ X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設�
 | 採番の例での規則行データ | 例のDataに`numbering-rule`の役割を足したが、行は試験で与えている | 例へ行データを置くかどうかの判断 |
 | 為替の月次・年次を別Dataに分ける構成 | 参照実装は1つのDataに月順序0の年次行を置く形だけを試した | 別Dataにする場合の結合規則 |
 | 番号の永続CounterStore | 参照用の記憶域しかない | 実DBの表・版・競合の実装 |
-| 利用者設定の書込み | 読み取りは実装したが、受理された変更として設定を更新する経路が未実装 | 設定更新をCommandにするか、運用操作として分けるか |
+| 利用者設定の監査と権限 | 更新の検査と記録（`Table.Change`・`Table.Apply`）は実装したが、変更履歴と「誰が変えられるか」は未実装 | 設定更新をCommandにするか、運用操作として分けるか |
 
 実装が進んだことで、以前ここに挙げていた項目のうち次の3つは解消しました。
 
@@ -254,5 +254,6 @@ X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設�
 - [評価時点の決定性](EVALUATION_CONTEXT_DETERMINISM_2026-10.md)
 - [移行計画](../workstreams/XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)（WP8）
 - [受容要件](../../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md)（RQ-C3）
+
 
 

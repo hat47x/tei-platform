@@ -59,3 +59,4 @@ persisted: false (durability: none)
 
 これは参照用AllowListによる能力単位の拒否です。利用者・資源・メニュー表示・権限の付与は確認していません。
 
+
