@@ -268,3 +268,35 @@ validの14候補はobserved 9／inferred 5。partialの12候補はobserved 7／i
 - 最短の次段は**一つの実Evidence Observationと一つの関係Edge**について、REA外部ID／Source path+digest+span／Coverageとunknownを失わず、同一AttemptのTEI read-only Consumerが実際に受け取れるかを示すこと。CLI・Studio・MCPをすべて先に開通させる必要はない。
 
 **現時点の限界**：保存済み実REA出力の試験用候補投影まで。T1-AのTEI正式取込み、T1-Bの正式Markdown DSL入場、三視点CRUD、SHO Writer/Review、実DB、旧新実行同値、Owner受理はNOT RUN。
+
+
+---
+
+<!-- rea-t1a-byte-snapshot-boundary-20261109 -->
+## 15. T1-A Source実byteの二時点照合（2026-11-09）
+
+他チャットのWorkspace Identity #3181、Source-only Drift（main #3479）、Inspector S2-reference（main #3540）、異Workspace分離（Draft #3735）と、Actual Input/A→B→Aの反例を踏まえた成熟差分。**Manifestに記載されたSHA256を読むだけで、元のSource bytesを独立に読んだとは言わない。**
+
+### 固定公開Sourceのみの新しい独立観測
+
+同Draftの .github/workflows/rea-t0-static-evidence.yml は、REAが静的解析する公開合成JavaScriptの2ファイル（index.js、package.json）を、REAプロセス呼出し直前の source-pre と終了後の source-post として各matrix Jobの RUNNER_TEMP レポートに複製する。両ファイルのraw byte・Manifest SHA256・REAが申告するObservation artifact SHAを区別する。**顧客Source・機密データにはこの実験手順をそのまま適用しない。**
+
+| Source binding | この試験で示すこと | 保留すること |
+|---|---|---|
+| saved-manifest-match-only | 旧ArtifactのREA申告Digestと保存Manifestの一致 | Sourceの実byte独立Read |
+| report-pre-post-byte-match | pre/post保存byteのSHA256・Manifest・Observation Digestの一致 | プロセス中の原子的Snapshot、A→B→A、現在Grant |
+| not-independently-bound | Graph Rootなど個別Sourceと確実に結び付かないもの | Sourceパスの推定補完 |
+
+不一致のpre/post、片側欠落、個別ファイル欠落、symlink、3つ目の宣言外ファイルはfail-closed。固定2ファイル・1MiB/ファイルに限定する検証であり、汎用Source Resolver/Repository全体Closureではない。
+
+**A→B→A注意**：pre(A)→解析中(B)→post(A)のような変更は二時点照合だけでは検出できない。Report内の保存copyが一致した証拠を実Providerが読んだ全byteの証拠へ昇格しない。immutable staging／同一Attempt実Input Witnessは既存#1163/#3181/#1016へ戻す。
+
+### 実装・試験・範囲
+
+- project_observations.py に pre/post Source bytes再読取・SHA256再計算を追加し、SourceBinding表示を二時点照合として区別。TEI Canonical Subject=null、Accepted Meaning=false、SourceClosure=not-qualifiedは変えない。
+- test_project_observations.py は16→**23独立テスト**。追加7件：正常なpre/post一致、pre改変、post改変、snapshot片側欠落、個別Source欠落、symlink、予期しない3つ目のSource。作業環境で23/23 PASS、GitHub Blobがローカル実行byteと一致（projection b8f744a85084bc9c1c846151d5a98f002a274ee7、test acfb3f48386876e7fa7ba6c7527c8ee9862bce8e）。
+- 前回の実REA artifactから取得したSource SHAに一致する**合成Sourceを再構成し、後付けしたpre/post copy**で試験：valid 14候補中13件、partial 12候補中11件が report-pre-post-byte-match。両方1件のRoot相当は未Binding。これは**前回のRunで実際にpre/postを保存した証拠ではない**。
+- 合成ローカル試験はT0 audit 18＋Projection 23＝**41件**。最新Workflowは各REA Jobで実Source copyを前後保存するよう更新済み。ただし当該exact-headのGitHub Actions完了・再ダウンロードは別資格。
+- 現mainのInspectSubjectは既受理Canonical WorldのSubjectから投影するので、REA候補を正式Subjectに見せかけない。次の実T1-Aは1外部Observation＋1 Relationのtyped read-only Consumer実受領。Source/Workspace Identity・scope/unknown/現在Grantは別判定、第二Host/Runner/Source Registry/Parserは作らない。
+
+**未成立**：REA実ProviderをTEIのHostから正式選択・実呼出し、原子的Source snapshot、T1-A正式TEI製品取込み、T1-B DSL/Owner Meaning、三視点CRUD、SHO Writer、実DB/旧新比較はNOT RUN。
