@@ -403,3 +403,40 @@ GitHubの二つのBlob実内容を直接照合した（いずれも `examples/xt
 **最小実行順**：P0は固定版A/Bの `TaxRate.rate` と `NumberingRule.rule` の**独立Required Source/Role集合**を明示し、実Reader/Catalog/SourceIndexの観測との差を#3262へ返す。次に、#3403/#3458の既存二入口を同じ固定Workspaceとversionで比較し、**Transport一致を有界Witness**として記録する。P1で#3318の合成RowにNULL/精度/時点の独立Expectedを加え、必要なら#2542の二Consumerへ渡す。P2のGenerated Target、現行Grant、実DB/Writer Cutoverは別Ownerの既存契約に従い、前段のCLI/MCP成功をCompletionとして扱わない。
 
 **証拠上限（2026-11-09静的点検）**：A/B Blob内容と現行mainのGoコード、統合済みPRの限定実証を照合した設計追加である。LP-01〜05をこのPRで実際にGo/CLI/MCP/外部Harness/実DB/Java/.NET/Wails/File/Target上で実行していない。#3320の完全修飾TypeRef修正はDraft未統合、#3255の論理Subsystem実Ownerの受理も未成立。TEI全体の自己ビルド、業務Owner Meaning、Authority切替・現在のExecutionは本節で資格化しない。
+
+## 17. 一つの実Sourceに対する限定差分Witnessと次の実試験の境界（2026-11-09）
+
+§16のLP-01を、再現可能な**有限Source事実**と未観測のProduct Claimに分ける。追加のソース変換EngineやReader、独自Scenario SSOTは導入しない。
+
+### 17.1 確認した結果（TEI Loaderではなく、固定Source byteの限定静的抽出）
+
+対象は同じ公開パス `examples/xtea-lowcode/semantic/master/standard.tei` の二つのGit Blobである。実内容を取得し、BOM/改行を正規化したテキストから `namespace`・`data`・`attribute ... type ... role ...` の**この形式だけ**を抽出し、`namespace.Data.attribute` のキーで差分比較した。これはTEI製品Parserの実実行でも、他Source/Workspaceの収集でもない。
+
+| 限定観測 | 版A `292188047e7be360e31fec2abbda53cf3d9f0e2f` | 版B `22588b6e3b68e0a7dc96a6140acb70116aa6bfbf` |
+| --- | --- | --- |
+| このFile内で抽出したRole付きAttribute宣言 | **17件** | **18件** |
+| 差分に現れるAttributeキー | `master.NumberingRule.rule` が存在しない | その一件が追加（`std.identifier`・`numbering-rule`） |
+| `master.TaxRate.rate` | `std.decimal`・`tax-value` | 同じ宣言文字列・TypeRef・Role |
+| Raw Source差 | BOMなし、CRなし | BOMあり、CRが1個。Git blobは不一致 |
+
+**限定結論**：このファイルの対象形式の宣言比較で**既知の追加属性は一件**。`TaxRate.rate` の局所宣言は変化していない。ただし旧版の `master.NumberingRule.rule` は当該Fileの抽出対象に存在しないだけで、他Source/Provider/Business全域での不在を証明しない。差分抽出対象外のRule、Relation、実Row、生成物、Consumer、Authorityが同じであるという証拠はない。
+
+### 17.2 Productの読取・実消費・受領までの判別票
+
+| 対象Claim | 既にある証拠 | 本件で新たに必要な対照とExit |
+| --- | --- | --- |
+| **Source-static局所差分** | 上記二つの固定Blobの直接内容比較 | この範囲は**observed**。既知17/18と不明な全Required分母を混同しない |
+| **TEI Parser/Role/Validation** | mainのRole/型Validatorと `standard.tei` 定義、[Draft #3320](https://github.com/hat47x/tei-platform/pull/3320)の別Namespace型の安全側修正候補 | 両版を隔離Workspaceで実Loader/Validatorへ通し、追加Role・同名異型・BOMを独立Expectedと照合。新Product実測は**NOT RUN** |
+| **CLI/MCP二入口** | mainの [#3458](https://github.com/hat47x/tei-platform/pull/3458) により同一 `WorkspaceValidationReport`。既存 `validate_parity_test.go` は `reference/workspace` 正常/重複宣言/Load失敗を実CLIとMCP参照Adapterで比較する | **本A/Bの二つのWorkspace**を現行CLI/MCP別実行で読み、成功/拒否の対照を記録。既存#3420のテストを複製しない。共通Operation由来なので業務独立Oracleと数えない |
+| **Required・Consumerの完全性** | #3262の独立Required/実Source Indexの限定資格と#3321のWorkspace/Source Read同一性検討 | `TaxRate` と `NumberingRule` の必要Data/Rule/Scope、Root/Attempt、実受信byte/Reply endの証拠が揃わなければ `unknown/partial`。同一Manifest/FPの別Rootコピーを同じReader Attemptとしない |
+| **Target・外部Effect** | #3540の選択Provider接続、#2831の限定Self-build、#2542のFile/Delivery設計は各担当の別証拠 | 実Provider Input、実Target/Artifact/Grant、Receipt・独立Read、旧Writer切替を同じAttemptに接合するまで**未資格**。Source一致/CLI-MCP一致だけで移行完了としない |
+
+### 17.3 最小の次試験と重複回避
+
+**第一試行の対象は型・Role・Sourceのread-only照合まで**。A/Bを**別々の隔離Workspace**として固定し、それぞれの `standard.tei` 実byteとReader rootを記録する。TEIの実Loader/Validatorを一度ずつ呼び、`master.TaxRate.rate` と `master.NumberingRule.rule` の存在・Role・TypeRef・Source位置を既存Inspect/Source Indexと対照。前者の宣言一致と、後者の追加が観測できても、**全Requiredの充足は独立集合が揃うまでpartial**と表示する。
+
+次に必要なら、**同じ2版で既存CLIと参照MCPのValidationを比較**する。ただし#3420が既にCLI/MCPの正常・意味NG・Load failure・型不正・入力拒否を検査するため、同じ機能テストを独自実装しない。違いは**対象が本A/Bの実Workspaceであることと、Source変更に対する局所Claimの再資格化**だけ。さらに外部AI/H3 ConsumerがResultの全byteを受け取ったかは、#2509の別Ownerの受領証拠がなければ未確認とする。未承認のSource/内部件数を未許可Consumerへ表示するのではなく、用途ごとに必要な開示資格を先に確認する。
+
+判別結果は `local-static-observed`、`product-load-unobserved`、`receiver-unobserved`、`meaning-unaccepted`、`effect-unqualified` のように**説明用の別欄**で記録し、製品の新状態enumや第二のAuthorityを作らない。#2514の独立Expectedと、#3255の論理Subsystem Owner/越境CUDの意味上の受理、#2831のStage Driver資格はそれぞれ独立に保持する。
+
+**この節の資格上限**：17→18と一件追加は固定2 Blobの限定的静的抽出結果。TEI Loader、Go/CLI/MCP実試験、2 Workspaceの同一条件読取、実H3 Tool Reply、実Target/DB/Legacy Writer、Owner Meaningは本PRでは**NOT RUN**。本書は最初の実テストを既存Ownerの試験に割り付ける計画であり、全Source Closureや業務税額再現の受入宣言ではない。
