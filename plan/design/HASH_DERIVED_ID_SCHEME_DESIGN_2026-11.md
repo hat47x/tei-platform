@@ -467,3 +467,49 @@ flowchart TD
 [用途相対Construction Context #2516](https://github.com/hat47x/tei-platform/issues/2516)および[認識的文脈 #958](https://github.com/hat47x/tei-platform/issues/958)も併用する。Studio／AI設計支援／CLI／ETL Consumerごとに、`HashIdText`だけでなく検証に必要な`SchemeWire`／Source Index・Revision／TargetProfile／上界／未決事項を**受理済み開示Policyに従って**投影する。公開できないSource/主体/割当を空文字や「存在しない」に置換せず、`withheld`または`unknown`と区別する。発行者が供給したClaimの一致はDisclosure済み・有効Grant・Verified Readerを示さない。
 
 **後続の最小反証候補（未実行）**：同じSource BytesでSubsystemだけ変更／Scheme Scopeだけ変更／Target Namespaceだけ変更／表示レイアウトだけ変更の4件を直交させる。意図的にHash出力の変化を許す場合でも、Source Identity、既存Target Binding、実Effect、開示資格がその変更だけで確定しないことを確認する。適格性の最終判断は既存#3250/#1120/#2516/Target Ownerに委譲し、新Core Scope enumや第二Acceptanceを導入しない。
+
+
+### 9.11 P0実Consumer接合のEvidence境界と反証Gate（2026-11-09）
+
+2026-11-08〜09時点で確認した[Direct CLI Trace Draft #3321](https://github.com/hat47x/tei-platform/pull/3321)、
+[Studio Workspace ABA Draft #3327](https://github.com/hat47x/tei-platform/pull/3327)、
+[三視点実Relation Source Draft #3492](https://github.com/hat47x/tei-platform/pull/3492)、
+[実Generator消費Source #2595](https://github.com/hat47x/tei-platform/issues/2595)、
+[統合qualification #1163](https://github.com/hat47x/tei-platform/issues/1163)を踏まえる。これらは**別Ownerの実装・資格**であり、本Hash ID Referenceが代替実装・採用するものではない。
+
+**目的**：ハッシュ由来の物理名Candidateが「どのSource/Scope/Revision/Attempt/Consumer/Targetに対して導出されたか」を**段階別に検証可能**にし、宣言や局所値の一致を、実Reader/実Generator/Owner Authorityに誤昇格させない。
+
+| 観点 | 存在する証拠と実装場所 | 今回のReferenceで照合済み | 未充足の実受入 |
+| --- | --- | --- | --- |
+| 物理Source byte | `sourceindex.Fingerprint` とCaller提供の`consumerBytes` | 選択PathのHash一致 | 実ReaderからConsumeまで同じOpen/Read attemptか、別Toolの独立観測 |
+| 管理Source集合の内容版 | 既存`sourceindex.ModelRevision` | 宣言IndexのPath＋Fingerprint全体とCaller Revisionの一致 | Indexの真正性、閉じたSource集合、**単調な変更epoch** |
+| Workspace Loadの識別 | #3321のManifest Name/Path/Hash/FormatVersion＋World/SourceIndex FPの限定観測 | **未接続**。同じManifestの別物理Workspaceを区別する証拠ではない | Pinned Root/Read handleの同一性、実Readerの対象Root・Workspace identity |
+| 消費したSource Closure | #2595 Generator宣言Source／Go `goSourceFiles`／Python/JS実Interpreterの独立残余 | **未接続**。単一ファイルのHash一致だけ | 実Toolの選択結果・Consumed Set全件・実行物identity・同一Attempt |
+| UI Consumer freshness | #3327の`responses.ts` Workspace A→B→Aの旧応答拒否 | **未接続**。旧応答の失効とSource改版は別 | `/workbench/`実CLI→同一Consumerのevent・epoch連結(#1124) |
+| Sourceの意味受理 | #1124/#267/#1163のShared Acceptance / Source・Ledger別readback | **未接続**。局所`ModelRevision`一致は受理状態ではない | Authority・受理済Revision・partial success・現在Grantを別ゲートで受理 |
+| 物理Target確保 | `CheckTargetBinding` はCaller宣言のProfile/Snapshot衝突診断 | 局所静的検査まで | Providerの実Collation、一意Tx、現在割当、独立readback（W3） |
+
+**Read Cohortの最小受渡し候補（新標準型・公開APIは未採用）**：既存Reader/Consumerが同一Attempt内で発行した`(workspace/root witness, qualified subject + source scope, managed Source Index revision, consumed source closure [canonical path, raw byte digest], consumer attempt id, tool/executable identity, observed reader/consumer boundary)`を読み取り専用に比較する。後続Snapshot/Revision/Scope/Discovery/Disclosureを**単一のBooleanに圧縮しない**。来歴が`caller-declared`のときは`sourceReaderVerified=false`を維持し、値の一致は`local-consistency`のまま。実Readerが発行していないAttempt IDをこのReferenceで生成しない。
+
+**合格に必要な独立反証（計画・NOT RUN）**：
+
+| ID | 変数を一つだけ変える負例 | 必ず拒否する強いClaim |
+| --- | --- | --- |
+| HR-P0-01 | 管理Source Aは不変、別管理Source Bのbyteまたはpathのみ変更 | 旧`ModelRevision`の現在性（局所Source Index検査は実装） |
+| HR-P0-02 | 同じSource集合A→B→A、古いRevision/Attemptラベルを再利用 | 「同じbyteとModelRevisionなので同じ実行Attempt/現在Source」 |
+| HR-P0-03 | 別WorkspaceにManifestとSourceを丸ごとコピー（Manifest/World/Source FPすべて同じ） | 「同じ物理Root／同じOpen handle」；#3321の局所観測に勝手に昇格しない |
+| HR-P0-04 | `manifest.Source=audit.go` と実Build `main.go` のsource byteが異なる | 「宣言Sourceを実Toolも消費した」；#2595の既存Go反例を再利用 |
+| HR-P0-05 | 実ConsumerがSource集合の一部だけを使い、未観測ファイルが存在 | 「全Source Closureを確認済み」；未被覆は`unknown` |
+| HR-P0-06 | Studio A→B→A中、古い成功/失敗応答が新応答後に到着 | 「古いCandidate/Inspectも現在有効」；#3327はUI失効のみで実Effectを取消さない |
+| HR-P0-07 | 同じHashIdTextで別Scheme/SourceScope/TargetNamespace/現在Grant | 「物理文字列が同じなら同じ正本・権限・保存」 |
+| HR-P0-08 | Disclosureが一部`withheld`で表示に存在しないSource参照を含む | 「図・JSONに見えないからSource/Effectは存在しない」 |
+
+**実施順と重複防止**：まず#2815の参照Go比較関数のGoFmt/Goテストとexact-head CIを確定（現在の実装範囲）。次に#2595の実Consumer/実Tool消費証拠と#1017のPinned Reader/Source snapshotを**既存Ownerが**同一Attemptに結線し、#1163で一版のSource→Model→CLI/Studio→Observationを独立再読。#3321/3327/3492のView/Workspace/Trace実装をHash ID PRにコピーしない。Target Authority・atomic save・dual-read移行はその後、W3/W5の別Gateに保持する。今回のReferenceは**Host必須化、新Source Reader、第二Acceptance、全域Registry、生成Pipelineの隠れたHook**を追加しない。
+
+### 9.12 命名・衝突判定の安全性に関する次の研究課題（製品Policy未決）
+
+可変長`HashIdText`の衝突上界は「独立・一様なScheme出力空間」という仮定に依存する。実Targetでの`TargetProfile`制約（casefold/予約名/長さ/OS/DB collation）が分布や同値類を変えた場合、その上界はTargetの実衝突率を保証しない。`HashIdScheme`の試験成功を、実Targetでの一意性やOwner Policyの採用へ昇格させない。
+
+次の独立反証は、`TargetProfile`の同値関係と生成器実効Alphabet・Reserved値・既存占有を突き合わせること。実Targetの照合規則/Max length/予約語を**Providerが明示的に宣言・実測**し、宣言値が実DB/OSと食い違う場合は`unknown`または`reject`とする。現在のASCII局所ReferenceをUnicode/Windows/分散DBへの一般保証にはしない。案件ごとのPopulation/Collision RiskはOwnerが独立受理するまでCaller Claimである。
+
+このHash ID基盤が最適化対象とするのは、**人とAIがDiagram/Table/Scriptを介して「欠落・曖昧・実際の結線」を識別しやすくすること**である。短い物理名を生成できること自体を成功条件にしない。必要な変換・外部依存・作用境界は型付きPipelineの明示的なNode/Edgeとして表し、暗黙のSource採用・自動Rename・別Scopeへの移動を禁止する。
