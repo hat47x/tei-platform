@@ -624,3 +624,14 @@ ADR-0048 §2.4 の「既定値の適用は共通契約で定める」を、CLI �
 - **摩擦は1点**: 要件ファイルの形がCLIの応答から辿れない。`commands` は `-qualification-requirements` の存在だけを広告し、`-h` は "knowledge qualification requirements JSON" としか出さない。私は最初 `{"subject":…}` と書いて `json: unknown field` で止まった。最小形は `{"expectedKind":"semantic-data"}` で、文書（#3186 で追加済み）を読めば分かる。
 
 新しいIssueは作らない。形の例は #3186（Closed）、`commands` にファイル中身のスキーマを載せるかは #3419 の範囲である。
+
+## 20. 第15ラウンド（2026-11-09）: trace -mode full の rows が0件のとき消える
+
+第14ラウンドの連鎖の手前で、`trace` の応答が関係0件のWorkspaceでも機械的に読めるかを確かめた。生出力は[第15ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND15_TRACE_MODE_ROWS_2026-11-09/README.md)にある。
+
+- 関係0件のWorkspaceで `-mode full` を実行すると、`result.trace` に `rows` が**存在しなかった**。`Rows` の `json:"rows,omitempty"` タグの `omitempty` が、nil だけでなく長さ0のスライスも落とすためである。
+- `mode=summary` が `rows` を出さないのは契約どおり（全体を数えるだけで行を確保しない）。問題は **`mode=full` の「0件」と「欄が無い」が同じ表現**になることだった。
+- 起票は [#3693](https://github.com/hat47x/tei-platform/issues/3693)。#3456（`source-index` の `references`）と同じ種類の欠陥である。
+- `main` の `3799997a0` が解消した。`TraceResult` に `MarshalJSON` を足し、`mode=full` では常に `rows` を書き、フィールドを宣言順に明示して文書順序を変えない。
+- 私は「`mode=full` かつ0件のときだけ上書きする」実装を書いて動作を確認したが、`main` の形が上位互換なのでコードは持ち込まず、実測記録だけを残した。
+- このラウンドで踏んだ落とし穴: 最初に `mode=full` のすべてを上書きする実装にしたところ、埋め込み構造体が `rows` を最後に回し、既存の full 応答のバイト列が変わって `reference-cli-trace-benchmark` の golden が2件 FAIL した。**JSON表現を触る変更は、既存応答のバイト列を変えないことを golden で確かめる必要がある。**
