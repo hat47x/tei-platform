@@ -1,0 +1,16 @@
+Row issue values in internal/modelref/trace.go and whether the CLI path reaches them:
+
+  invalid-source        not confirmed reachable
+  ambiguous-source      unreachable: validate rejects DUPLICATE_SEMANTIC_ELEMENT first
+  invalid-target        unreachable: becomes projectionUnresolved "unmaterialized-to"
+  invalid-edge-type     unreachable: rules are synthesized from the projected edges
+  invalid-rule          unreachable: same
+  conflicting-rule      unreachable: same
+
+Because derivedbridge.FromIndex builds p.Rules from the edges it just added:
+    rule := modelref.Rule{Relation: relation, FromKind: fromKind, ToKind: toKind}
+    ruleSet[rule] = true
+a missing / empty / duplicated rule cannot arise.
+
+Measured: 72 subjects in reference/workspace, trace.unresolved>0 for 0 of them,
+while projectionUnresolved is 17 for every one of them.
