@@ -1,0 +1,17 @@
+{
+  "schema": "tei.reference.generator-contract/v0",
+  "id": "sui.card.pfc_many",
+  "version": "1",
+  "status": "reference-local",
+  "note": "#2585 PFC-06/07 conformance fixture. Not an accepted product contract.",
+  "inputs": [
+    {"attribute": "sui.card.tag", "primitive": "std.text"}
+  ],
+  "output": {"primitive": "std.text"},
+  "projection": {
+    "kind": "record",
+    "fields": [
+      {"name": "tags", "input": "tags", "attribute": "sui.card.tag", "primitive": "std.text", "many": true}
+    ]
+  }
+}

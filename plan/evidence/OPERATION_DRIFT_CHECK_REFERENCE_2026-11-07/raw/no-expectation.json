@@ -1,0 +1,14 @@
+{
+  "schema": "tei.reference.operation-drift-check/v0",
+  "authority": "derived-read-only",
+  "ruleFingerprint": "sha256:c3d6e5ed402bf472f0dc3ddf8813b29584cbef4809778d581e4c9649af7b9fa3",
+  "application": "ledger",
+  "status": "unchecked",
+  "findings": [],
+  "notes": [
+    "a match means the two fingerprints agree, not that the current meaning was re-read",
+    "Basis is not compared: an attribute-only change leaves it equal",
+    "no Workspace is read and nothing is written",
+    "whether this check runs by default is undecided (design 15章 未決4)"
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "tei_trace.direction": [
+    "outgoing",
+    "incoming",
+    "both"
+  ],
+  "tei_trace.mode": [
+    "summary",
+    "full"
+  ]
+}

@@ -40,7 +40,7 @@
 | 判定 | 意味 | 適用範囲 |
 | --- | --- | --- |
 | `fixture_consistent` | 独立Fixtureが**同一読取Cohortで比較可能**と明示し、同一Subject/Scope/Grain/Query契約・完全なbagが一致 | 有限Fixture内の整合のみ。実Provider同値やBusiness Acceptanceではない |
-| `contradicted` | 上記の比較前提のもとで、完全なbagの値・NULL・出現数・識別子が異なる | 合成Oracleの反証。実DBの誤動作と同義ではない |
+| `contradicted` | 上記の比較前提のもとで、完全なbagの値・NULL・出現数・識別子が異なる | 合成検証基準の反証。実DBの誤動作と同義ではない |
 | `not_established` | 同じSnapshot tokenでも独立Cohort証拠がない、部分取得、Scope/Grain/Query/Subject不一致、必要な行Identityが未解決 | 比較資格の未確立。値が不一致／一致という断定を保留 |
 
 **重要な二世界反例**：PrimaryとReplicaが同じ`SnapshotToken=s7`を持ち、同じ1行を返すとしても、**異Provider間のトランザクションスナップショットが同じことを、その文字列一致から証明できない**（#1708のread-set/freshness課題）。このReferenceは`AssertedCommonCohort`を**独立Fixtureが仮定する場合だけ** bag比較へ進む。`EstablishedByFixture`と`EvidenceLabel`はテスト前提の明示であり、真正性の検証・Provider契約・Host許可を実装するものではない。実製品がこのboolを実行資格として使うことはできない。

@@ -43,7 +43,7 @@ E5は未解決時も診断JSONを出したうえで終了コード2を返す。E
 - [E5のGoテスト](e5-world-index_test.go)に、Report/Indexの組がJSON往復で維持されること、未解決Reportがペア化により昇格しないことを確認する2件を追加した。
 - [E7のNode.jsテスト](e7-paired-evidence.test.mjs)に、既知依存不変、Validation変更、無関係なSource変更、依存追加、形式偽装、Qualifier偽装、未解決Report、Index不一致、Index欠落、Application変更の10件を追加した。
 - **この追加部分については、正確な候補headのGoテスト／Node.jsテスト／`gofmt`／`go vet`／実WorkspaceのCLI→E7実行を行えていない**。これらのテストは記述済みだが成功未確認である。
-- Trusted full checkout、exact-headの`tools/repository-health-check.sh`、実行前後clean、最新mainとの差分・競合確認が揃うまでDraft継続・main統合保留。
+- Trusted full checkoutで変更範囲の検証（Goテスト、Node.jsテスト、`gofmt`、`go vet`、実WorkspaceのCLI→E7実行）を行い、結果と実行前後clean、最新mainとの差分・競合確認を記録して統合します。`tools/repository-health-check.sh`は任意の広範囲診断であり、統合の一律条件にはしません。実行できない検証は、その制約と残る危険性を記録します。Draftは解除して統合します。
 
 ## 残る根本的な不足
 

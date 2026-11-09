@@ -1,0 +1,8 @@
+{
+  "schemaVersion": "tei.cli.source-index/v0",
+  "ok": false,
+  "error": {
+    "code": "WORKSPACE_LOAD_FAILED",
+    "message": "TEI workspace manifest not found: expected tei.workspace.yaml"
+  }
+}

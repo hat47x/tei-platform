@@ -1,0 +1,1 @@
+{"schemaVersion":"tei.cli.model/v0","ok":false,"error":{"code":"NAMESPACE_NOT_FOUND","message":"namespace nosuch is not a semantic namespace in this workspace"}}

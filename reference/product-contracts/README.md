@@ -49,10 +49,26 @@ EKI_CONTROL_URL=http://127.0.0.1:18082 EKI_CONTROL_TOKEN=<token> \
 
 EKIのControl PlaneはWSL上で起動すると、Windows Firewallの許可を都度求めずにloopbackで接続できます。
 
+## bindingの出力と宣言型の差（#3657）
+
+`bindings/output_shape_test.go`が、各bindingの出力キーと`semantic/contracts.tei`の出力型の属性を比較します。次の差は**記録した許容**であり、受理ではありません。差が増減すると試験が落ちます。
+
+| binding | 宣言型 | 出力に無い宣言属性 | 宣言に無い出力キー |
+| --- | --- | --- | --- |
+| `EKITaskSubmit`（合成） | `Attempt` | `leaseId` `fenceEpoch` `workerIdentity` | `executor` |
+| `EKIAttemptExecute`（合成） | `ResultClaim` | `exitCode` `outputDigest` `outputBytes` `claimedAt` | なし |
+| `EKIResultAccept`（合成） | `AcceptedResult` | `level` `policyDigest` `acceptedAt` | `outcome` |
+
+- 合成bindingの連鎖（submit → execute → accept）は、`attemptId`と`claimId`をキー名のまま次段へ渡せることを試験で確認します。値の中身は固定の合成値です。
+- `EKITaskSubmitHTTP`は**`Attempt`へ接続していません（未接続）**。EKIの外部契約（eki-fabricの`spec/external/openapi.json`、`TaskAccepted`、f8047c1で確認）の202応答は`task_id`・`status`（`queued`）などでTaskの受付を示し、Attemptを含みません。bindingは応答をそのまま返すため、宣言した`Attempt`の属性と一致するキーは無く、次段`eki_attempt_execute`が必須とする`attemptId`も出力されません。
+- 同じcapability IDの入力も、合成bindingは`{taskId, executorId}`、HTTP bindingは`{idempotencyKey, request}`（EKIのTaskIR）で異なり、`TaskRequest`の全属性とは一致しません（合成側は宣言属性の一部だけ、HTTP側は共通キーなし）。
+- 宣言型をEKIの応答へ合わせるか、bindingに写像層を置くか、写像をEKI側契約へ委ねるか、欠落を許容リストに残すかは未決で、Ownerの判断を待ちます。この文書と試験は、その判断を先取りしません。
+
 ## 確認
 
 ```text
 go run ./cmd/tei validate -workspace reference/product-contracts
+go test ./reference/product-contracts/... -count=1
 ```
 
 ## 境界

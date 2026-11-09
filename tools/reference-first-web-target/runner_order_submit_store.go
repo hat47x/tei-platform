@@ -153,24 +153,44 @@ func (s *runnerOrderSubmitStore) Close() error {
 	return s.closer()
 }
 
-func runnerSubmitRequest(grant legacyauthorization.AuthorizationGrant, orderID int64) (effectcommit.Request, error) {
+// runnerSubmitSpec carries the shared intent check (D11): the Target guarantees
+// the payload agrees with the OperationID before the Runner is reached.
+var runnerSubmitSpec = submit.Spec{
+	Application:    runnerSubmitApplication,
+	Capability:     runnerSubmitCapability,
+	ValidateIntent: checkOrderSubmitIntent,
+}
+
+// runnerSubmitIntent composes the Intent for one order.
+func runnerSubmitIntent(orderID int64) (submit.Intent, error) {
 	payload, err := json.Marshal(struct {
 		OrderID int64  `json:"orderId"`
 		To      string `json:"to"`
 	}{orderID, "submitted"})
 	if err != nil {
+		return submit.Intent{}, err
+	}
+	return submit.Intent{
+		// Deterministic, so an unknown commit can be recovered by Lookup with the
+		// same OperationID instead of a new one.
+		OperationID:     fmt.Sprintf("order-submit/%d", orderID),
+		ExpectedVersion: runnerSubmitExpectedVersion,
+		Payload:         payload,
+	}, nil
+}
+
+func runnerSubmitRequest(grant legacyauthorization.AuthorizationGrant, orderID int64) (effectcommit.Request, error) {
+	in, err := runnerSubmitIntent(orderID)
+	if err != nil {
 		return effectcommit.Request{}, err
 	}
-	return submit.RequestFromGrant(
-		submit.Spec{Application: runnerSubmitApplication, Capability: runnerSubmitCapability},
-		grant,
-		submit.Intent{
-			// Deterministic, so an unknown commit can be recovered by Lookup with the
-			// same OperationID instead of a new one.
-			OperationID:     fmt.Sprintf("order-submit/%d", orderID),
-			ExpectedVersion: runnerSubmitExpectedVersion,
-			Payload:         payload,
-		})
+	return runnerSubmitRequestFromIntent(grant, in)
+}
+
+// runnerSubmitRequestFromIntent builds the Request and runs the shared intent
+// check first; a mismatching Intent yields submit.ErrIntentRejected.
+func runnerSubmitRequestFromIntent(grant legacyauthorization.AuthorizationGrant, in submit.Intent) (effectcommit.Request, error) {
+	return submit.RequestFromGrant(runnerSubmitSpec, grant, in)
 }
 
 func (s *runnerOrderSubmitStore) grantFor(ctx context.Context, orderID int64) (legacyauthorization.AuthorizationGrant, error) {
@@ -198,6 +218,9 @@ func (s *runnerOrderSubmitStore) Submit(ctx context.Context, orderID int64) erro
 		}
 	}
 	req, err := runnerSubmitRequest(grant, orderID)
+	if errors.Is(err, submit.ErrIntentRejected) {
+		return errOrderNotSubmittable // refused before execution; the Runner is not called
+	}
 	if err != nil {
 		return errRunnerSubmitFailed
 	}

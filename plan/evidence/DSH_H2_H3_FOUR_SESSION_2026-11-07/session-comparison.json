@@ -1,0 +1,1871 @@
+{
+  "note": "Four independent DSH sessions for the H2/H3 comparison; thinking and answer bodies excluded except final answers.",
+  "sessions": [
+    {
+      "arm": "H2-tool-only",
+      "label": "h2-a",
+      "rawLogFile": "h2-08.jsonl",
+      "rawLogBytes": 274712,
+      "rawLogSha256": "5a94caa3ced76ec96c52b422141aeb86fff27b079d33b7a7b83b3ffde4ed3281",
+      "sessionId": "session-050904a2-78c8-4294-842a-91d63394f1e2",
+      "cwd": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107",
+      "toolCallCount": 56,
+      "toolsUsed": [
+        "grep",
+        "pwsh",
+        "read"
+      ],
+      "skillToolCalls": 0,
+      "skillLoadResultBytes": 0,
+      "skillLoadResultSha256": null,
+      "finalReason": {
+        "kind": "completed"
+      },
+      "finalAnswerBytes": 6656,
+      "finalAnswerSha256": "ecf7e56a30dfc8e2a1b14a4c9a1b7d6e9d5b8b196b3da0ca1f68d2db5835cc0b",
+      "usageSum": {
+        "inputTokens": 184593,
+        "outputTokens": 26069,
+        "totalTokens": 984806,
+        "cacheReadTokens": 774144
+      },
+      "teiInvocationCount": 32,
+      "calls": [
+        {
+          "seq": 1,
+          "callId": "call_1e2b9590e3b24e11bd36ab87",
+          "tool": "pwsh",
+          "input": {
+            "command": "Get-ChildItem -Force | Select-Object Mode,Length,Name | Format-Table -AutoSize",
+            "description": "List files in current workspace"
+          },
+          "status": "completed",
+          "resultBytes": 1115,
+          "resultSha256": "cec189b8ce28d93bd114abc558737b8ce2e4997b5b7e4445e49abfa2a49ac8d8"
+        },
+        {
+          "seq": 2,
+          "callId": "call_9fdff54a838a4ef292d62ae5",
+          "tool": "pwsh",
+          "input": {
+            "command": "Get-ChildItem -Force -Recurse -Depth 2 -Directory | Select-Object FullName | Format-Table -AutoSize",
+            "description": "List directories up to depth 2"
+          },
+          "status": "completed",
+          "resultBytes": 4805,
+          "resultSha256": "43d5078c7efa3367263b91de0f12916e241511ce30235f2a490fbb1af01b2eae"
+        },
+        {
+          "seq": 3,
+          "callId": "call_aabdf9f833f24076894313df",
+          "tool": "read",
+          "input": {
+            "file_path": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107\\task.txt"
+          },
+          "status": "completed",
+          "resultBytes": 1067,
+          "resultSha256": "cffc9fbe3d8c2e183fe2956f23107f2beb08349977e773bd37baad9fd6b7baf4"
+        },
+        {
+          "seq": 4,
+          "callId": "call_fb410a68b238479c914fab80",
+          "tool": "pwsh",
+          "input": {
+            "command": "Get-ChildItem -Force .\\bin | Select-Object Mode,Length,Name | Format-Table -AutoSize",
+            "description": "List bin directory contents"
+          },
+          "status": "completed",
+          "resultBytes": 1065,
+          "resultSha256": "979289d6d6408e23a1ba161623041990f1e75f17faa6bf22cdcb695213259f6d"
+        },
+        {
+          "seq": 5,
+          "callId": "call_2c90555ab9264b9687f3ddb3",
+          "tool": "pwsh",
+          "input": {
+            "command": "Get-ChildItem -Force 'C:\\Users\\yhata\\AppData\\Local\\Temp' -Directory | Where-Object { $_.Name -like '*reference*' -or $_.Name -like 'h2-*' } | Select-Object FullName | Format-Table -AutoSize",
+            "description": "Find reference workspace directories in temp"
+          },
+          "status": "completed",
+          "resultBytes": 8010,
+          "resultSha256": "4caec445c2d54fede0c0eab42ed5cca9b4c6f52e122b20e074f0acdf84065a54"
+        },
+        {
+          "seq": 6,
+          "callId": "call_40dc8b71f1914613a2ba199a",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe --help 2>&1 | Out-String -Width 240",
+            "description": "Show TEI CLI help"
+          },
+          "status": "completed",
+          "resultBytes": 1420,
+          "resultSha256": "8f1e7768dd29d39d11a135511d9d9d502addf7bdfe713d74ee33af8fa2d6ea66"
+        },
+        {
+          "seq": 7,
+          "callId": "call_233cc1b5a1ae45b3a055132e",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe --version 2>&1 | Out-String -Width 240",
+            "description": "Show TEI CLI version"
+          },
+          "status": "completed",
+          "resultBytes": 1420,
+          "resultSha256": "88362ab97f5daac5745fa6db995e80b549732ab570d310a60a1eaf9b197a2839"
+        },
+        {
+          "seq": 8,
+          "callId": "call_84cd344815044ca5b876540b",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe -workspace .\\workspace --help 2>&1 | Out-String -Width 240",
+            "description": "Show TEI CLI help with workspace"
+          },
+          "status": "completed",
+          "resultBytes": 1420,
+          "resultSha256": "d4f2b756178f034a66d486957d5bef947e20fda8131b7a6c1a57f3a4467c513c"
+        },
+        {
+          "seq": 9,
+          "callId": "call_7b7a2b19830245c086501875",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe -workspace .\\workspace version 2>&1 | Out-String -Width 240",
+            "description": "Show TEI CLI version with workspace"
+          },
+          "status": "completed",
+          "resultBytes": 1420,
+          "resultSha256": "dc460e5554950725ea667c49da1bfcd83e02ca0206233c8568d03e4f330f5a8a"
+        },
+        {
+          "seq": 10,
+          "callId": "call_5449208357eb41839f15a934",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe -workspace=\"C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107\\workspace\" --help 2>&1 | Out-String -Width 240",
+            "description": "Try equals-form workspace flag"
+          },
+          "status": "completed",
+          "resultBytes": 5575,
+          "resultSha256": "9c54b7546affc7a1b039ce3c13bad9a4da6f6420a19861008bbfca2fb4ef31ab"
+        },
+        {
+          "seq": 11,
+          "callId": "call_ab733032ecac4614bd1e4021",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe --workspace=\"C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107\\workspace\" --help 2>&1 | Out-String -Width 240",
+            "description": "Try double-dash workspace flag"
+          },
+          "status": "completed",
+          "resultBytes": 5576,
+          "resultSha256": "a12aa695cd1487b3cc407fd45a3299040561c8131e79625bc7cc0384cdec5ff3"
+        },
+        {
+          "seq": 12,
+          "callId": "call_fd908c8c08654300bf19cb66",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe -workspace=\"C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107\\workspace\" 2>&1 | Out-String -Width 240",
+            "description": "Run TEI with workspace and no command"
+          },
+          "status": "completed",
+          "resultBytes": 1428,
+          "resultSha256": "f031f06d7affc4a6f535e984362575187a0742405f742f34957ecc5a35ec545a"
+        },
+        {
+          "seq": 13,
+          "callId": "call_7db01deccf024ed4a9a9765d",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe -workspace=\"C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107\\workspace\" help 2>&1 | Out-String -Width 240",
+            "description": "Ask TEI for help command"
+          },
+          "status": "completed",
+          "resultBytes": 1428,
+          "resultSha256": "f031f06d7affc4a6f535e984362575187a0742405f742f34957ecc5a35ec545a"
+        },
+        {
+          "seq": 14,
+          "callId": "call_c5830961241c4fbca078379b",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe -workspace=\"C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107\\workspace\" commands 2>&1 | Out-String -Width 240",
+            "description": "List TEI commands"
+          },
+          "status": "completed",
+          "resultBytes": 1428,
+          "resultSha256": "f031f06d7affc4a6f535e984362575187a0742405f742f34957ecc5a35ec545a"
+        },
+        {
+          "seq": 15,
+          "callId": "call_3d159502621d48fd8ac42374",
+          "tool": "pwsh",
+          "input": {
+            "command": "Get-ChildItem -Force -Recurse .\\workspace\\.tei | Select-Object Mode,Length,FullName | Format-Table -AutoSize",
+            "description": "Inspect .tei metadata directory"
+          },
+          "status": "completed",
+          "resultBytes": 1958,
+          "resultSha256": "5e4f2f9c2d70c30ecec7bebbf1303bea7e2c4032cf1bf7d841175106a0c40432"
+        },
+        {
+          "seq": 16,
+          "callId": "call_26406b229af449759a013c07",
+          "tool": "pwsh",
+          "input": {
+            "command": "Get-ChildItem -Force .\\workspace | Select-Object Mode,Length,Name | Format-Table -AutoSize; Get-ChildItem -Force .\\workspace\\semantic | Select-Object Mode,Length,Name | Format-Table -AutoSize",
+            "description": "Inspect workspace root and semantic dirs"
+          },
+          "status": "completed",
+          "resultBytes": 1544,
+          "resultSha256": "c034971b7b861dc34dbcc993f9f44237d20e803e28b88245d1d4f072e9b178e4"
+        },
+        {
+          "seq": 17,
+          "callId": "call_4fd1e9dff9c143e59344faec",
+          "tool": "pwsh",
+          "input": {
+            "command": "Get-ChildItem -Path 'C:\\Users\\yhata' -Directory -Filter 'reference' -Recurse -ErrorAction SilentlyContinue -Depth 4 | Select-Object -First 20 FullName | Format-Table -AutoSize",
+            "description": "Search user profile for reference directory"
+          },
+          "status": "completed",
+          "resultBytes": 998,
+          "resultSha256": "56fd4b6d59fc75cb229cb398eb4011d32f94ef4ce82ece69fd0366a37683a89c"
+        },
+        {
+          "seq": 18,
+          "callId": "call_c38390a164c04d2e92bb9df2",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe -workspace C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107\\workspace 2>&1 | Out-String -Width 240",
+            "description": "Run TEI workspace flag separated no quotes"
+          },
+          "status": "completed",
+          "resultBytes": 1428,
+          "resultSha256": "bffec0629b43c7cd15915982126cd65628876ad6cc9b973e837ced3cce426a50"
+        },
+        {
+          "seq": 19,
+          "callId": "call_aedf82cb06434106b2b2f2c9",
+          "tool": "pwsh",
+          "input": {
+            "command": "Get-Content .\\workspace\\tei.workspace.yaml",
+            "description": "Read workspace manifest"
+          },
+          "status": "completed",
+          "resultBytes": 1143,
+          "resultSha256": "82d6d0a33aac5c3148cc7130a8bac28458f4a4e5dfca93f8fa3dea160e1d1476"
+        },
+        {
+          "seq": 20,
+          "callId": "call_02f2f2adfdd5455abc55085e",
+          "tool": "pwsh",
+          "input": {
+            "command": "Get-PSDrive -PSProvider FileSystem | Select-Object Name,Root,Used,Free | Format-Table -AutoSize",
+            "description": "List filesystem drives"
+          },
+          "status": "completed",
+          "resultBytes": 1095,
+          "resultSha256": "dfe1c7b71b980ed4076a9e1a4d173bd7695c188d49c7acb76d77c85603022333"
+        },
+        {
+          "seq": 21,
+          "callId": "call_729137fe6f4e4249acb9a8b2",
+          "tool": "pwsh",
+          "input": {
+            "command": "Get-ChildItem -Force 'C:\\Users\\yhata' | Select-Object Mode,Name | Format-Table -AutoSize",
+            "description": "List user profile top level"
+          },
+          "status": "completed",
+          "resultBytes": 8189,
+          "resultSha256": "184bf34dd7235ea9d16513421ebe59eff9318cabac8eec7bc10701e289f9dde7"
+        },
+        {
+          "seq": 22,
+          "callId": "call_3e41d1fa1d4f4d54a0e1db47",
+          "tool": "pwsh",
+          "input": {
+            "command": "foreach ($d in 'C:\\','D:\\','E:\\') { \"== $d\"; Get-ChildItem -Force $d -ErrorAction SilentlyContinue | Select-Object -First 40 Mode,Name | Format-Table -AutoSize }",
+            "description": "List root directories on drives"
+          },
+          "status": "completed",
+          "resultBytes": 3873,
+          "resultSha256": "4fd06db6bf53fb277d2cb1a7b877b7df2274cac1780080565aa6adb053e54660"
+        },
+        {
+          "seq": 23,
+          "callId": "call_d7a75724e6cc4604be85beb3",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe -bogus x 2>&1 | Out-String -Width 240",
+            "description": "Test unknown flag behavior"
+          },
+          "status": "completed",
+          "resultBytes": 1420,
+          "resultSha256": "a92f2e1d83dd5ee5788bfbcec3afa19567b33dea8d355729586a4a0d1d5d9677"
+        },
+        {
+          "seq": 24,
+          "callId": "call_0e57188f5cc04f3d941c5d76",
+          "tool": "pwsh",
+          "input": {
+            "command": "Get-ChildItem -Force 'C:\\Users\\yhata\\work' | Select-Object Mode,Name | Format-Table -AutoSize; Get-ChildItem -Force 'C:\\development' -ErrorAction SilentlyContinue | Select-Object Mode,Name | Format-Table -AutoSize",
+            "description": "List work and development directories"
+          },
+          "status": "completed",
+          "resultBytes": 1083,
+          "resultSha256": "884431d5ec9eeb2385b4f54aa962c6aeb355d6cd6d086b154f42368e511b072e"
+        },
+        {
+          "seq": 25,
+          "callId": "call_8b42f4a9a31b42209963684b",
+          "tool": "pwsh",
+          "input": {
+            "command": "Get-ChildItem -Path 'C:\\Users\\yhata\\work','C:\\development','C:\\Users\\yhata\\mmi-521-cu' -Directory -Filter 'workspace' -Recurse -ErrorAction SilentlyContinue -Depth 5 | Select-Object -First 30 FullName | Format-Table -AutoSize",
+            "description": "Find workspace directories in dev areas"
+          },
+          "status": "completed",
+          "resultBytes": 984,
+          "resultSha256": "2416cc7a8a8bd96c9c45b54f51be44e714b6ab8a9005c8a115412c8ed7bd7ccd"
+        },
+        {
+          "seq": 26,
+          "callId": "call_75296c1a7dc94703be1c9872",
+          "tool": "pwsh",
+          "input": {
+            "command": "(Get-Item .\\bin\\tei.exe).VersionInfo | Format-List *",
+            "description": "Show TEI executable version info"
+          },
+          "status": "completed",
+          "resultBytes": 1777,
+          "resultSha256": "afc1b725ba5cf74aa9c349d43aa2cb92bdc654b77348cc5a611af8720d080026"
+        },
+        {
+          "seq": 27,
+          "callId": "call_d7a8a7274eaa43babadc5b92",
+          "tool": "pwsh",
+          "input": {
+            "command": "Get-Command go,python,python3,strings,git -ErrorAction SilentlyContinue | Select-Object Name,Source | Format-Table -AutoSize",
+            "description": "Check available developer tools"
+          },
+          "status": "completed",
+          "resultBytes": 1478,
+          "resultSha256": "69087c0a72b997a701fa39c185d6d46302adba2fdc0c2c987249ee2457f87784"
+        },
+        {
+          "seq": 28,
+          "callId": "call_afee53bd751d4abb8cf20d93",
+          "tool": "pwsh",
+          "input": {
+            "command": "cmd /c \"findstr /i /c:workspace bin\\tei.exe\" 2>&1 | Select-Object -First 20",
+            "description": "Search binary for workspace strings"
+          },
+          "status": null,
+          "resultBytes": 0,
+          "resultSha256": null
+        },
+        {
+          "seq": 29,
+          "callId": "call_f8b134f6c2d24c85bbf6634c",
+          "tool": "pwsh",
+          "input": {
+            "command": "go version 2>&1; go tool nm .\\bin\\tei.exe 2>&1 | Select-Object -First 20",
+            "description": "Inspect Go binary symbols"
+          },
+          "status": "completed",
+          "resultBytes": 1728,
+          "resultSha256": "085d415532519a110bd3eeca8aea9f1a12528fcb46c288a2232efedcf524b9be"
+        },
+        {
+          "seq": 30,
+          "callId": "call_923f4552b90d49b4bf93c40c",
+          "tool": "pwsh",
+          "input": {
+            "command": "python -c \"import re;d=open(r'bin\\tei.exe','rb').read();ss=re.findall(rb'[ -~]{6,}',d);[print(s.decode('ascii','replace')) for s in ss if b'exactly one' in s or b'Usage' in s or b'usage' in s]\" 2>&1 | Select-Object -First 50",
+            "description": "Extract usage-related strings from binary"
+          },
+          "status": "completed",
+          "resultBytes": 8192,
+          "resultSha256": "7fb860816e47c78d053c395f067f21eb4327228b0852b75c798c2f1925378465"
+        },
+        {
+          "seq": 31,
+          "callId": "call_a4b53904011943acb1f52944",
+          "tool": "pwsh",
+          "input": {
+            "command": "python -c \"import re;d=open(r'bin\\tei.exe','rb').read();ss=re.findall(rb'[ -~]{4,}',d);[print(s.decode('ascii','replace')) for s in ss if b'read-only' in s or b'read only' in s or b'command' in s.lower() and len(s)<120]\" 2>&1 | Select-Object -First 100",
+            "description": "Extract command-related strings from binary"
+          },
+          "status": "completed",
+          "resultBytes": 8192,
+          "resultSha256": "66ee9d6f9a5ae5f9006fffadb57de1f0f7daa07c0c2d4a70d4757a25864dd418"
+        },
+        {
+          "seq": 32,
+          "callId": "call_69db96a4cf3f4e5b8727ed89",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe commands -workspace=\"C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107\\workspace\" 2>&1 | Out-String -Width 240",
+            "description": "List commands with command-first syntax"
+          },
+          "status": "completed",
+          "resultBytes": 1416,
+          "resultSha256": "4d1fbeef3e2dbbf6d8ba5f16be6ba2670090ede124e18fd35c0e88511897161e"
+        },
+        {
+          "seq": 33,
+          "callId": "call_dcf206c28bfb47e2be60da39",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe version -workspace=\"C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107\\workspace\" 2>&1 | Out-String -Width 240",
+            "description": "Show version with command-first syntax"
+          },
+          "status": "completed",
+          "resultBytes": 1121,
+          "resultSha256": "5ce57da2a66ae90ed5d4cf1185aa973ecf04605b663a907193d5fd74f3031bb9"
+        },
+        {
+          "seq": 34,
+          "callId": "call_cffcd54dd47845198285a643",
+          "tool": "pwsh",
+          "input": {
+            "command": "Get-ChildItem -Force 'D:\\GIT\\hat47x\\tei-wt-dsh-h2-20261107' -ErrorAction SilentlyContinue | Select-Object Mode,Name | Format-Table -AutoSize; Test-Path 'D:\\GIT\\hat47x\\tei-wt-dsh-h2-20261107\\reference\\workspace\\tei.workspace.yaml'",
+            "description": "Inspect source repo and reference workspace"
+          },
+          "status": "completed",
+          "resultBytes": 2301,
+          "resultSha256": "08be5fac1594f5da10bedf4bab2510c9bddb2bd94d3d2fe93f71641d4d041f06"
+        },
+        {
+          "seq": 35,
+          "callId": "call_665902b7dfc8492f87ab6ae6",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe commands 2>&1 | Out-String -Width 240",
+            "description": "List supported TEI commands"
+          },
+          "status": "completed",
+          "resultBytes": 6350,
+          "resultSha256": "d87029abc05faf42e56c246b260a4c9b775fcafd6fae1740cc138d65c7c365bd"
+        },
+        {
+          "seq": 36,
+          "callId": "call_5bb8c4764a824ae4999f3f44",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe version 2>&1 | Out-String -Width 240; .\\bin\\tei.exe version -json 2>&1 | Out-String -Width 240",
+            "description": "Show TEI version text and JSON"
+          },
+          "status": "completed",
+          "resultBytes": 1380,
+          "resultSha256": "8178a2eba146f9d43855b589449a4aae98572fa040d6f8f4286e18517c51a702"
+        },
+        {
+          "seq": 37,
+          "callId": "call_c7efd460b1ac48edbc5515d0",
+          "tool": "pwsh",
+          "input": {
+            "command": "$a='C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107\\workspace'; $b='D:\\GIT\\hat47x\\tei-wt-dsh-h2-20261107\\reference\\workspace'; \"TEMP manifest:\"; Get-Content \"$a\\tei.workspace.yaml\"; \"REF manifest:\"; Get-Content \"$b\\tei.workspace.yaml\"; \"TEMP semantic sales:\"; Get-ChildItem \"$a\\semantic\\sales\" | Select-Object Name,Length | Format-Table -AutoSize; \"REF semantic sales:\"; Get-ChildItem \"$b\\semantic\\sales\" | Select-Object Name,Length | Format-Table -AutoSize",
+            "description": "Compare temp and reference workspaces"
+          },
+          "status": "completed",
+          "resultBytes": 1572,
+          "resultSha256": "741622d04d981f695c595a4280cde89b5194d6193ab811c655e3aff3c7b5b17a"
+        },
+        {
+          "seq": 38,
+          "callId": "call_b598d3babe9141b3a2084a88",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe model catalog -workspace=\"C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107\\workspace\" 2>&1 | Out-String -Width 240",
+            "description": "Run model catalog for temp workspace"
+          },
+          "status": "completed",
+          "resultBytes": 8192,
+          "resultSha256": "18f71bd6026c83d3c697c07c7982bbcc015bea6344f6c2c0c1c5d5f3b1945670"
+        },
+        {
+          "seq": 39,
+          "callId": "call_221d315ee53d4d5c8884d7b2",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe validate -workspace=\"C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107\\workspace\" -json 2>&1 | Out-String -Width 240",
+            "description": "Validate temp workspace as JSON"
+          },
+          "status": "completed",
+          "resultBytes": 1900,
+          "resultSha256": "b32342b1e8b9a9bb7bd48d21e2f0318e02498379b72e584d8710a43a1b6b009e"
+        },
+        {
+          "seq": 40,
+          "callId": "call_486a9e903b3c4b50b59ed3ec",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe workspace-files -workspace=\"C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107\\workspace\" 2>&1 | Out-String -Width 240",
+            "description": "List workspace source files"
+          },
+          "status": "completed",
+          "resultBytes": 8192,
+          "resultSha256": "9da69cdf84b47327942eea942904b527094690a69b53a45e2e264aa63d25dcb2"
+        },
+        {
+          "seq": 41,
+          "callId": "call_e5740eb052b746329ae5f6f0",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe inspect -workspace=\"C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107\\workspace\" -subject-kind semantic-data -subject-id sales.order 2>&1 | Out-String -Width 240",
+            "description": "Inspect semantic-data sales.order"
+          },
+          "status": "completed",
+          "resultBytes": 2649,
+          "resultSha256": "3304790b38fabf6ad38cdea3cb5f60539d1efa4d2c9a9f3f333fb19acdf76daf"
+        },
+        {
+          "seq": 42,
+          "callId": "call_19848200e38a4e569adb3ee5",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe source-index -workspace=\"C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107\\workspace\" -subject-kind semantic-data -subject-id sales.order 2>&1 | Out-String -Width 240",
+            "description": "Get source index for sales.order"
+          },
+          "status": "completed",
+          "resultBytes": 1882,
+          "resultSha256": "72e402483584b0122ff09fb1e2d5e1a9e754cd9090185eb691ddd7eac2d79eba"
+        },
+        {
+          "seq": 43,
+          "callId": "call_c2b6e7da446b491696094f56",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe knowledge-context -workspace=\"C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107\\workspace\" -subject-kind semantic-data -subject-id sales.order 2>&1 | Out-String -Width 240",
+            "description": "Get knowledge context for sales.order"
+          },
+          "status": "completed",
+          "resultBytes": 8192,
+          "resultSha256": "d422f749fa04b55415f8b54d134cf6d0e28a6a27f763d738d2089e24583f2f2c"
+        },
+        {
+          "seq": 44,
+          "callId": "call_e11af4a6981d4b35ba259e0c",
+          "tool": "read",
+          "input": {
+            "file_path": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107\\workspace\\semantic\\sales\\order.tei"
+          },
+          "status": "completed",
+          "resultBytes": 1150,
+          "resultSha256": "57a2572a3e30c309676a31f7e5dbc61dddc8096ebb2113804323841175d75985"
+        },
+        {
+          "seq": 45,
+          "callId": "call_62c24a2131ba4710ad3cb346",
+          "tool": "read",
+          "input": {
+            "file_path": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107\\workspace\\semantic\\sales\\validation.tei"
+          },
+          "status": "completed",
+          "resultBytes": 593,
+          "resultSha256": "84c730d79d02d700b04c5afe3cb0b2943e0c683239be628b95f0ae9e6675e044"
+        },
+        {
+          "seq": 46,
+          "callId": "call_2a1d72c9ad8142469bbace2c",
+          "tool": "pwsh",
+          "input": {
+            "command": "$a='C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107\\workspace'; $b='D:\\GIT\\hat47x\\tei-wt-dsh-h2-20261107\\reference\\workspace'; Get-FileHash \"$a\\semantic\\sales\\order.tei\",\"$b\\semantic\\sales\\order.tei\",\"$a\\semantic\\sales\\validation.tei\",\"$b\\semantic\\sales\\validation.tei\" -Algorithm SHA256 | Select-Object Hash,Path | Format-Table -AutoSize",
+            "description": "Compare order source file hashes"
+          },
+          "status": "completed",
+          "resultBytes": 1716,
+          "resultSha256": "dffad7a3d97f5f524f02fc51b24d9af35e70d9436d47448203246726afd4603a"
+        },
+        {
+          "seq": 47,
+          "callId": "call_057f0c271c314a9fbebc1cc2",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe inspect -workspace=\"C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107\\workspace\" -subject-kind semantic-attribute -subject-id sales.order.total 2>&1 | Out-String -Width 240",
+            "description": "Inspect total attribute definition"
+          },
+          "status": "completed",
+          "resultBytes": 1941,
+          "resultSha256": "dd2953694783e82ef2a3052a1258b06f0a932b10ee3224cd3b13974f0f81bb06"
+        },
+        {
+          "seq": 48,
+          "callId": "call_6c44bead0e7e46a79b1047b5",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe validate -workspace=\"C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107\\workspace\" 2>&1 | Out-String -Width 240; \"EXIT=$LASTEXITCODE\"",
+            "description": "Validate workspace in text mode"
+          },
+          "status": "completed",
+          "resultBytes": 1503,
+          "resultSha256": "768de54cb47da0723e31f3f382651fc8ba8db1a7aa14f6903e026d4f6cc1e2d8"
+        },
+        {
+          "seq": 49,
+          "callId": "call_6d3b8b5fc0bb42b0a5fcf204",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe model catalog -workspace=\"D:\\GIT\\hat47x\\tei-wt-dsh-h2-20261107\\reference\\workspace\" 2>&1 | Out-String -Width 240",
+            "description": "Run model catalog on reference workspace"
+          },
+          "status": "completed",
+          "resultBytes": 8192,
+          "resultSha256": "18f71bd6026c83d3c697c07c7982bbcc015bea6344f6c2c0c1c5d5f3b1945670"
+        },
+        {
+          "seq": 50,
+          "callId": "call_2a3e2146d6744d95add6aa97",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe validate -workspace=\"D:\\GIT\\hat47x\\tei-wt-dsh-h2-20261107\\reference\\workspace\" -json 2>&1 | Out-String -Width 240; \"EXIT=$LASTEXITCODE\"",
+            "description": "Validate reference workspace as JSON"
+          },
+          "status": "completed",
+          "resultBytes": 1908,
+          "resultSha256": "78867ab6dc64327bf1b17a048834d65913b5ba300e3dc64978b25fe6a675a4b8"
+        },
+        {
+          "seq": 51,
+          "callId": "call_973a0088aaa146d482c0a72b",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe inspect -workspace=\"D:\\GIT\\hat47x\\tei-wt-dsh-h2-20261107\\reference\\workspace\" -subject-kind semantic-data -subject-id sales.order 2>&1 | Out-String -Width 240",
+            "description": "Inspect sales.order in reference workspace"
+          },
+          "status": "completed",
+          "resultBytes": 2649,
+          "resultSha256": "3304790b38fabf6ad38cdea3cb5f60539d1efa4d2c9a9f3f333fb19acdf76daf"
+        },
+        {
+          "seq": 52,
+          "callId": "call_f86130ce96fe44c181532c80",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe source-index -workspace=\"D:\\GIT\\hat47x\\tei-wt-dsh-h2-20261107\\reference\\workspace\" -subject-kind semantic-attribute -subject-id sales.order.total 2>&1 | Out-String -Width 240",
+            "description": "Source-index total attribute in reference"
+          },
+          "status": "completed",
+          "resultBytes": 1907,
+          "resultSha256": "48aaa6de2aaf89845804e7791dce1d507b33d1af33548e6f61e30921cd3479ca"
+        },
+        {
+          "seq": 53,
+          "callId": "call_3a2d436082fc4c21bcf98d58",
+          "tool": "pwsh",
+          "input": {
+            "command": "Get-ChildItem -Force 'D:\\GIT\\hat47x\\tei-wt-dsh-h2-20261107\\reference' | Select-Object Mode,Length,Name | Format-Table -AutoSize",
+            "description": "List reference directory contents"
+          },
+          "status": "completed",
+          "resultBytes": 5735,
+          "resultSha256": "9093d282a84e0f2b5abf9de11b296cc2f92a2a99ffbe24bddffa335602adec94"
+        },
+        {
+          "seq": 54,
+          "callId": "call_82d236a9365a4aac86d707b1",
+          "tool": "pwsh",
+          "input": {
+            "command": "Get-ChildItem -Force 'D:\\GIT\\hat47x\\tei-wt-dsh-h2-20261107\\reference\\workspace\\semantic\\sales' | Select-Object Name,Length,LastWriteTime | Format-Table -AutoSize",
+            "description": "List sales semantic source files"
+          },
+          "status": "completed",
+          "resultBytes": 1158,
+          "resultSha256": "692a915e1f36d6a55cdd7363fd754fcbe7af04035377cb76eb9ee0c8cf9b05d3"
+        },
+        {
+          "seq": 55,
+          "callId": "call_372f35fd3f844bfd9eb271fd",
+          "tool": "read",
+          "input": {
+            "file_path": "D:\\GIT\\hat47x\\tei-wt-dsh-h2-20261107\\reference\\README.md",
+            "limit": 160
+          },
+          "status": "completed",
+          "resultBytes": 8192,
+          "resultSha256": "9204c2bb2303cce013490e6544ca67db90a1752b731d0931d1b81918b4c6ee1b"
+        },
+        {
+          "seq": 56,
+          "callId": "call_e7c0a67b9b6e457ab6de91db",
+          "tool": "grep",
+          "input": {
+            "pattern": "sales\\.order|order\\.tei|reference/workspace",
+            "path": "D:\\GIT\\hat47x\\tei-wt-dsh-h2-20261107\\reference\\README.md"
+          },
+          "status": "completed",
+          "resultBytes": 2162,
+          "resultSha256": "730030ed88f47ce292ba45412957557304a8dfa123002f41b0e4a8183208ea71"
+        }
+      ]
+    },
+    {
+      "arm": "H3-skill",
+      "label": "h3-a",
+      "rawLogFile": "h3-01.jsonl",
+      "rawLogBytes": 105854,
+      "rawLogSha256": "5a71df8a5cdb7379598f60074c3c97b1bd9b5ec285a54475175e348de6d4e4b2",
+      "sessionId": "session-318ab3dd-d63f-4397-884a-42a0b1e72c81",
+      "cwd": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107",
+      "toolCallCount": 23,
+      "toolsUsed": [
+        "glob",
+        "pwsh",
+        "read",
+        "skill",
+        "working_directory"
+      ],
+      "skillToolCalls": 1,
+      "skillLoadResultBytes": 5482,
+      "skillLoadResultSha256": "cbf3d21f4dc387f26624e47c583a8cd708c7936d230008977f54d1daebd8c33b",
+      "finalReason": {
+        "kind": "completed"
+      },
+      "finalAnswerBytes": 4546,
+      "finalAnswerSha256": "195c8ac511413353d9433a972c981e6bbec5ebb125d09e14ad623e6196f42075",
+      "usageSum": {
+        "inputTokens": 77704,
+        "outputTokens": 14306,
+        "totalTokens": 194666,
+        "cacheReadTokens": 102656
+      },
+      "teiInvocationCount": 11,
+      "calls": [
+        {
+          "seq": 1,
+          "callId": "call_930d3500ba4c4b8697289ea4",
+          "tool": "skill",
+          "input": {
+            "name": "yi-tei-modeling"
+          },
+          "status": "completed",
+          "resultBytes": 5482,
+          "resultSha256": "cbf3d21f4dc387f26624e47c583a8cd708c7936d230008977f54d1daebd8c33b"
+        },
+        {
+          "seq": 2,
+          "callId": "call-10e22df3-beef-42ee-9ab7-202ce569c756",
+          "tool": "working_directory",
+          "input": {},
+          "status": "completed",
+          "resultBytes": 57,
+          "resultSha256": "55c7430b3a808d4fbcaccbb70e5f9552d8061978e6574d195908eb79850d23ab"
+        },
+        {
+          "seq": 3,
+          "callId": "call-7dfe31fb-103b-4d19-b88b-04c09730ebd3",
+          "tool": "glob",
+          "input": {
+            "pattern": "**/*",
+            "path": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107"
+          },
+          "status": "completed",
+          "resultBytes": 3793,
+          "resultSha256": "9e90f883390f4027d116d914ba19d1835b388d6550f29c1db4365f18db3aed6d"
+        },
+        {
+          "seq": 4,
+          "callId": "call-75107b2b-e0ae-4f96-a9fc-ddda0083bd66",
+          "tool": "read",
+          "input": {
+            "file_path": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107\\.agents\\skills\\yi-tei-modeling\\references\\read-only-model-investigation.md"
+          },
+          "status": "completed",
+          "resultBytes": 7710,
+          "resultSha256": "0077db04c8bb6f443be34c75b6c46e6f00f59343d47f6be16ee9d635538f4551"
+        },
+        {
+          "seq": 5,
+          "callId": "call-36083a63-c8d5-4f7b-a943-51beba36dc12",
+          "tool": "read",
+          "input": {
+            "file_path": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107\\workspace\\tei.workspace.yaml"
+          },
+          "status": "completed",
+          "resultBytes": 350,
+          "resultSha256": "468c0e3b27c4b3938a1828cf619f16b4a70e77c235028cb51d0758aae2c7eae2"
+        },
+        {
+          "seq": 6,
+          "callId": "call-77e4bcf0-bab8-495c-baca-24dacbabe54f",
+          "tool": "read",
+          "input": {
+            "file_path": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107\\task.txt"
+          },
+          "status": "completed",
+          "resultBytes": 1067,
+          "resultSha256": "cffc9fbe3d8c2e183fe2956f23107f2beb08349977e773bd37baad9fd6b7baf4"
+        },
+        {
+          "seq": 7,
+          "callId": "call-6ba8cdc9-e31f-4ea4-a2f5-df8303769e20",
+          "tool": "pwsh",
+          "input": {
+            "command": "& .\\bin\\tei.exe version -json; Write-Output \"EXIT=$LASTEXITCODE\"",
+            "description": "Show TEI CLI version as JSON",
+            "workdir": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107"
+          },
+          "status": "completed",
+          "resultBytes": 1238,
+          "resultSha256": "3636cd0a367ae7cf0aa545bd1efcb086b1f25477e4a87939155790ef0f68a74c"
+        },
+        {
+          "seq": 8,
+          "callId": "call-2d8cdfbd-bd5e-4ce7-8719-f28235de4d31",
+          "tool": "pwsh",
+          "input": {
+            "command": "Get-Item .\\bin\\tei.exe | Select-Object FullName,Length,LastWriteTime,VersionInfo | Format-List; Get-FileHash .\\bin\\tei.exe -Algorithm SHA256 | Format-List; Write-Output \"EXIT=$LASTEXITCODE\"",
+            "description": "Identify TEI executable artifact",
+            "workdir": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107"
+          },
+          "status": "completed",
+          "resultBytes": 1921,
+          "resultSha256": "5aead518f342b40c8220a965432ae0260917fa0fbefcc6da4c9a9ede692f210b"
+        },
+        {
+          "seq": 9,
+          "callId": "call-24b9a365-7a6a-4e31-ac06-a930c4df7480",
+          "tool": "pwsh",
+          "input": {
+            "command": "& .\\bin\\tei.exe commands; Write-Output \"EXIT=$LASTEXITCODE\"",
+            "description": "List available read-only TEI commands",
+            "workdir": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107"
+          },
+          "status": "completed",
+          "resultBytes": 6121,
+          "resultSha256": "5dd1f6d3419a56cfad67b3eb4f8e17905ef56c958569d75c2b3f5ed1cc556dae"
+        },
+        {
+          "seq": 10,
+          "callId": "call-3f4bd788-66b6-49f8-ad94-531e956b4a8e",
+          "tool": "pwsh",
+          "input": {
+            "command": "if (Get-Command go -ErrorAction SilentlyContinue) { go version } else { Write-Output \"go: not found\" }; if (Test-Path .git) { git rev-parse HEAD; git status --short } else { Write-Output \"git checkout: not present in cwd\" }",
+            "description": "Check Go and Git environment",
+            "workdir": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107"
+          },
+          "status": "completed",
+          "resultBytes": 1052,
+          "resultSha256": "17cf6c7758ecbe9e496f7fb99f8b860b4d521e704ae9105acb3a9fcb2b256665"
+        },
+        {
+          "seq": 11,
+          "callId": "call-5c94cedd-a1dd-4818-bc09-2e28ca7ab790",
+          "tool": "pwsh",
+          "input": {
+            "command": "& .\\bin\\tei.exe model catalog -workspace .\\workspace -namespace semantic-data; Write-Output \"EXIT=$LASTEXITCODE\"",
+            "description": "Catalog semantic-data model subjects",
+            "workdir": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107"
+          },
+          "status": "completed",
+          "resultBytes": 1690,
+          "resultSha256": "f779fc6f5435956645e155fce6d855f1ad95f4844c55d4fa89802de8c6db9c28"
+        },
+        {
+          "seq": 12,
+          "callId": "call-e9495922-9dc2-4ea8-8172-b4659449fad1",
+          "tool": "pwsh",
+          "input": {
+            "command": "& .\\bin\\tei.exe source-index -workspace .\\workspace -subject-kind semantic-data -subject-id sales.order; Write-Output \"EXIT=$LASTEXITCODE\"",
+            "description": "Find source index for sales.order",
+            "workdir": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107"
+          },
+          "status": "completed",
+          "resultBytes": 1848,
+          "resultSha256": "c3438c2860f4ddfd95febc3f77a40380164d94c8ee993fc57a0696e4d4018781"
+        },
+        {
+          "seq": 13,
+          "callId": "call-71007466-c365-40d3-9878-47f6a56becd0",
+          "tool": "pwsh",
+          "input": {
+            "command": "& .\\bin\\tei.exe inspect -workspace .\\workspace -subject-kind semantic-data -subject-id sales.order; Write-Output \"EXIT=$LASTEXITCODE\"",
+            "description": "Inspect sales.order model element",
+            "workdir": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107"
+          },
+          "status": "completed",
+          "resultBytes": 2654,
+          "resultSha256": "62313dd713ed16ec34495f7623625c58c5268a6652410dd1a57248e17fe8414e"
+        },
+        {
+          "seq": 14,
+          "callId": "call-0d34ed29-caa1-4edc-a263-50eef22d241c",
+          "tool": "pwsh",
+          "input": {
+            "command": "& .\\bin\\tei.exe model catalog -workspace .\\workspace; Write-Output \"EXIT=$LASTEXITCODE\"",
+            "description": "Catalog all model subjects",
+            "workdir": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107"
+          },
+          "status": "completed",
+          "resultBytes": 8192,
+          "resultSha256": "18f71bd6026c83d3c697c07c7982bbcc015bea6344f6c2c0c1c5d5f3b1945670"
+        },
+        {
+          "seq": 15,
+          "callId": "call-a0971d7b-dec6-4693-bcf0-909f6dd0ceee",
+          "tool": "read",
+          "input": {
+            "file_path": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107\\workspace\\semantic\\sales\\order.tei"
+          },
+          "status": "completed",
+          "resultBytes": 1150,
+          "resultSha256": "57a2572a3e30c309676a31f7e5dbc61dddc8096ebb2113804323841175d75985"
+        },
+        {
+          "seq": 16,
+          "callId": "call-17941312-032d-4849-877e-109914c6d28b",
+          "tool": "pwsh",
+          "input": {
+            "command": "& .\\bin\\tei.exe validate -workspace .\\workspace -json; Write-Output \"EXIT=$LASTEXITCODE\"",
+            "description": "Validate the TEI workspace as JSON",
+            "workdir": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107"
+          },
+          "status": "completed",
+          "resultBytes": 1905,
+          "resultSha256": "230475708968d58ca38ac4d2834dd3851be1237ef660e7a53fa1d897087c0fcc"
+        },
+        {
+          "seq": 17,
+          "callId": "call-9519daa4-a488-44a9-9dfc-638516698e52",
+          "tool": "pwsh",
+          "input": {
+            "command": "& .\\bin\\tei.exe trace -workspace .\\workspace -scope reference-observation -subject-kind semantic-data -subject-id sales.order -direction both -mode summary; Write-Output \"EXIT=$LASTEXITCODE\"",
+            "description": "Trace direct references for sales.order",
+            "workdir": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107"
+          },
+          "status": "completed",
+          "resultBytes": 3527,
+          "resultSha256": "a024430b73801558aa56e255039b8513ba61f46ecf7685779e6d1cfdd0736c38"
+        },
+        {
+          "seq": 18,
+          "callId": "call-e3a569fe-d58d-4ba9-9147-f1912540ca97",
+          "tool": "pwsh",
+          "input": {
+            "command": "Get-FileHash .\\workspace\\semantic\\sales\\order.tei -Algorithm SHA256 | Format-List; (Get-Item .\\workspace\\semantic\\sales\\order.tei).Length; Write-Output \"EXIT=$LASTEXITCODE\"",
+            "description": "Hash the sales.order source file",
+            "workdir": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107"
+          },
+          "status": "completed",
+          "resultBytes": 1210,
+          "resultSha256": "68987a06d2e6f32532d9ed9e81d9d82b8fac432ca8a44c966ebc61f7d71271de"
+        },
+        {
+          "seq": 19,
+          "callId": "call-c405480a-8706-4f9c-9dbd-5961735afc3c",
+          "tool": "pwsh",
+          "input": {
+            "command": "& .\\bin\\tei.exe trace -workspace .\\workspace -scope reference-observation -subject-kind semantic-data -subject-id sales.order -direction both -mode full -limit 50; Write-Output \"EXIT=$LASTEXITCODE\"",
+            "description": "Read full direct trace for sales.order",
+            "workdir": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107"
+          },
+          "status": "completed",
+          "resultBytes": 6985,
+          "resultSha256": "4acaa21e78a8b23fea630a310b04dac436190e849f05bc7acfdf0f35bef26733"
+        },
+        {
+          "seq": 20,
+          "callId": "call-79db4da5-eaa9-4823-ad37-15094bf13cc5",
+          "tool": "pwsh",
+          "input": {
+            "command": "& .\\bin\\tei.exe inspect -workspace .\\workspace -subject-kind semantic-attribute -subject-id sales.order.total; Write-Output \"EXIT=$LASTEXITCODE\"",
+            "description": "Inspect the total attribute",
+            "workdir": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107"
+          },
+          "status": "completed",
+          "resultBytes": 1946,
+          "resultSha256": "ef169638a33e6bee349f3518a5d6afd7d3128f917c84e0ea5db0fbc428e6f3b8"
+        },
+        {
+          "seq": 21,
+          "callId": "call-3973632f-ba41-428b-bfbe-835ca91855e9",
+          "tool": "pwsh",
+          "input": {
+            "command": "Write-Output \"reference/workspace exists: $(Test-Path .\\reference\\workspace)\"; Write-Output \"workspace exists: $(Test-Path .\\workspace)\"; (Resolve-Path .\\workspace).Path",
+            "description": "Confirm actual workspace path",
+            "workdir": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107"
+          },
+          "status": "completed",
+          "resultBytes": 1112,
+          "resultSha256": "a4c1014326dc1f04617f1e25261fe1a5e2644de282276676d43c506731c21093"
+        },
+        {
+          "seq": 22,
+          "callId": "call-054f5f54-d710-450b-8f1e-9bed600140c1",
+          "tool": "read",
+          "input": {
+            "file_path": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107\\workspace\\databases\\sales-core\\contracts\\order.tei"
+          },
+          "status": "completed",
+          "resultBytes": 312,
+          "resultSha256": "9d6b77a049b764de0374542209224024926565fd8ee12429b7bf2db56a15f45e"
+        },
+        {
+          "seq": 23,
+          "callId": "call-2b9b68cd-5137-4d1c-860e-3a487f58afd7",
+          "tool": "read",
+          "input": {
+            "file_path": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107\\workspace\\databases\\sales-core\\README.md"
+          },
+          "status": "completed",
+          "resultBytes": 440,
+          "resultSha256": "4e23130fb84710281b41720a8e3614188ff599fe9e1cac0315a57686286821ab"
+        }
+      ]
+    },
+    {
+      "arm": "H3-skill",
+      "label": "h3-b",
+      "rawLogFile": "h3-02.jsonl",
+      "rawLogBytes": 127220,
+      "rawLogSha256": "223e7280415575ea82fe50cfcc82e9f4006a72bff996814cd6c41550c1ca8aea",
+      "sessionId": "session-21186932-ac06-4e26-90b3-2faa2895e7ce",
+      "cwd": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107",
+      "toolCallCount": 22,
+      "toolsUsed": [
+        "pwsh",
+        "read",
+        "skill"
+      ],
+      "skillToolCalls": 1,
+      "skillLoadResultBytes": 5482,
+      "skillLoadResultSha256": "cbf3d21f4dc387f26624e47c583a8cd708c7936d230008977f54d1daebd8c33b",
+      "finalReason": {
+        "kind": "completed"
+      },
+      "finalAnswerBytes": 7147,
+      "finalAnswerSha256": "09484d49e3850ac620597b1a90990d8e27cd92116cfb0ae107825b402691318c",
+      "usageSum": {
+        "inputTokens": 56903,
+        "outputTokens": 7494,
+        "totalTokens": 362381,
+        "cacheReadTokens": 297984
+      },
+      "teiInvocationCount": 12,
+      "calls": [
+        {
+          "seq": 1,
+          "callId": "call_f844504e7dcf4be9ad3e2b69",
+          "tool": "skill",
+          "input": {
+            "name": "yi-tei-modeling"
+          },
+          "status": "completed",
+          "resultBytes": 5482,
+          "resultSha256": "cbf3d21f4dc387f26624e47c583a8cd708c7936d230008977f54d1daebd8c33b"
+        },
+        {
+          "seq": 2,
+          "callId": "call_b18adc6740ba460686346e88",
+          "tool": "pwsh",
+          "input": {
+            "command": "Get-ChildItem -Force | Select-Object Mode,Length,Name | Format-Table -AutoSize",
+            "description": "List working directory contents"
+          },
+          "status": "completed",
+          "resultBytes": 1140,
+          "resultSha256": "01a78c38c48aa2d5fd8e1b8d44f033314390351da4b1d630b77c8d858b0f7e8c"
+        },
+        {
+          "seq": 3,
+          "callId": "call_dcc5c0f871e24e058d7436bb",
+          "tool": "read",
+          "input": {
+            "file_path": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107\\.agents\\skills\\yi-tei-modeling\\references\\read-only-model-investigation.md"
+          },
+          "status": "completed",
+          "resultBytes": 7710,
+          "resultSha256": "0077db04c8bb6f443be34c75b6c46e6f00f59343d47f6be16ee9d635538f4551"
+        },
+        {
+          "seq": 4,
+          "callId": "call-9367b06c-4a2b-42e5-83e1-9ec2c10da62d",
+          "tool": "read",
+          "input": {
+            "file_path": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107\\task.txt"
+          },
+          "status": "completed",
+          "resultBytes": 1067,
+          "resultSha256": "cffc9fbe3d8c2e183fe2956f23107f2beb08349977e773bd37baad9fd6b7baf4"
+        },
+        {
+          "seq": 5,
+          "callId": "call-7cd42d54-fb1f-4ef6-b784-abe650e2cf22",
+          "tool": "pwsh",
+          "input": {
+            "command": "Get-ChildItem -Force -Recurse -Depth 2 bin, workspace | Select-Object FullName,Length | Format-Table -AutoSize",
+            "description": "List bin and workspace contents"
+          },
+          "status": "completed",
+          "resultBytes": 8192,
+          "resultSha256": "e00a777286f02d4e7300c83acfb9e48781a825017fad7097a50508e8eed9f8ee"
+        },
+        {
+          "seq": 6,
+          "callId": "call-7c2cd941-6b11-4d6a-9482-f4128c4f0ab9",
+          "tool": "pwsh",
+          "input": {
+            "command": "$ErrorActionPreference='Continue'; .\\bin\\tei.exe version -json; \"EXIT=$LASTEXITCODE\"",
+            "description": "Check TEI CLI version"
+          },
+          "status": "completed",
+          "resultBytes": 1238,
+          "resultSha256": "3636cd0a367ae7cf0aa545bd1efcb086b1f25477e4a87939155790ef0f68a74c"
+        },
+        {
+          "seq": 7,
+          "callId": "call-c17ec121-21f0-4f35-a7ff-7eb918619618",
+          "tool": "pwsh",
+          "input": {
+            "command": "$ErrorActionPreference='Continue'; .\\bin\\tei.exe commands; \"EXIT=$LASTEXITCODE\"",
+            "description": "List available TEI CLI commands"
+          },
+          "status": "completed",
+          "resultBytes": 6121,
+          "resultSha256": "5dd1f6d3419a56cfad67b3eb4f8e17905ef56c958569d75c2b3f5ed1cc556dae"
+        },
+        {
+          "seq": 8,
+          "callId": "call-d4d3ee75-14f2-4865-8333-9510c1894d56",
+          "tool": "pwsh",
+          "input": {
+            "command": "$ErrorActionPreference='Continue'; .\\bin\\tei.exe model catalog -workspace .\\workspace; \"EXIT=$LASTEXITCODE\"",
+            "description": "List model catalog for workspace"
+          },
+          "status": "completed",
+          "resultBytes": 8192,
+          "resultSha256": "18f71bd6026c83d3c697c07c7982bbcc015bea6344f6c2c0c1c5d5f3b1945670"
+        },
+        {
+          "seq": 9,
+          "callId": "call-bd7a470c-fb1a-47f7-a8ae-c58a00b916ba",
+          "tool": "pwsh",
+          "input": {
+            "command": "$ErrorActionPreference='Continue'; .\\bin\\tei.exe inspect -workspace .\\workspace -subject-kind semantic-data -subject-id sales.order; \"EXIT=$LASTEXITCODE\"",
+            "description": "Inspect sales.order model element"
+          },
+          "status": "completed",
+          "resultBytes": 2654,
+          "resultSha256": "62313dd713ed16ec34495f7623625c58c5268a6652410dd1a57248e17fe8414e"
+        },
+        {
+          "seq": 10,
+          "callId": "call-44c1034e-974b-4e3f-846e-21d9f40ea68a",
+          "tool": "pwsh",
+          "input": {
+            "command": "$ErrorActionPreference='Continue'; .\\bin\\tei.exe source-index -workspace .\\workspace -subject-kind semantic-data -subject-id sales.order; \"EXIT=$LASTEXITCODE\"",
+            "description": "Get source index for sales.order"
+          },
+          "status": "completed",
+          "resultBytes": 1848,
+          "resultSha256": "c3438c2860f4ddfd95febc3f77a40380164d94c8ee993fc57a0696e4d4018781"
+        },
+        {
+          "seq": 11,
+          "callId": "call-96c4a3d7-8997-4372-ba05-9cca073c4f10",
+          "tool": "read",
+          "input": {
+            "file_path": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107\\workspace\\semantic\\sales\\order.tei"
+          },
+          "status": "completed",
+          "resultBytes": 1150,
+          "resultSha256": "57a2572a3e30c309676a31f7e5dbc61dddc8096ebb2113804323841175d75985"
+        },
+        {
+          "seq": 12,
+          "callId": "call-edea27c0-ed6d-41a8-8238-1a508e0e888d",
+          "tool": "pwsh",
+          "input": {
+            "command": "$ErrorActionPreference='Continue'; .\\bin\\tei.exe inspect -workspace .\\workspace -subject-kind semantic-attribute -subject-id sales.order.total; \"EXIT=$LASTEXITCODE\"",
+            "description": "Inspect sales.order.total attribute"
+          },
+          "status": "completed",
+          "resultBytes": 1946,
+          "resultSha256": "ef169638a33e6bee349f3518a5d6afd7d3128f917c84e0ea5db0fbc428e6f3b8"
+        },
+        {
+          "seq": 13,
+          "callId": "call-1d13c683-95c0-424a-8b16-bc3f3b6b0aa7",
+          "tool": "pwsh",
+          "input": {
+            "command": "$ErrorActionPreference='Continue'; .\\bin\\tei.exe trace -workspace .\\workspace -scope reference-observation -subject-kind semantic-data -subject-id sales.order -direction both -mode summary; \"EXIT=$LASTEXITCODE\"",
+            "description": "Trace sales.order references"
+          },
+          "status": "completed",
+          "resultBytes": 3527,
+          "resultSha256": "a024430b73801558aa56e255039b8513ba61f46ecf7685779e6d1cfdd0736c38"
+        },
+        {
+          "seq": 14,
+          "callId": "call-d532034e-eb0c-4550-9f0e-d4564a0092ee",
+          "tool": "pwsh",
+          "input": {
+            "command": "$ErrorActionPreference='Continue'; .\\bin\\tei.exe validate -workspace .\\workspace -json; \"EXIT=$LASTEXITCODE\"",
+            "description": "Validate workspace"
+          },
+          "status": "completed",
+          "resultBytes": 1905,
+          "resultSha256": "230475708968d58ca38ac4d2834dd3851be1237ef660e7a53fa1d897087c0fcc"
+        },
+        {
+          "seq": 15,
+          "callId": "call-459ef115-0b8d-49e1-bc1e-e55c263bf6b3",
+          "tool": "pwsh",
+          "input": {
+            "command": "$ErrorActionPreference='Continue'; .\\bin\\tei.exe workspace-files -workspace .\\workspace; \"EXIT=$LASTEXITCODE\"",
+            "description": "List workspace files"
+          },
+          "status": "completed",
+          "resultBytes": 8192,
+          "resultSha256": "7edf5d4499479b26f2ce88ca3d891a42a1726587b278ae4b1251cba34206c1c4"
+        },
+        {
+          "seq": 16,
+          "callId": "call-e4458d15-b8fe-4993-b457-94f5f17b30bd",
+          "tool": "read",
+          "input": {
+            "file_path": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107\\workspace\\tei.workspace.yaml"
+          },
+          "status": "completed",
+          "resultBytes": 350,
+          "resultSha256": "468c0e3b27c4b3938a1828cf619f16b4a70e77c235028cb51d0758aae2c7eae2"
+        },
+        {
+          "seq": 17,
+          "callId": "call-8dc73662-02e6-4525-ae7f-d887e26dd072",
+          "tool": "read",
+          "input": {
+            "file_path": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107\\workspace\\databases\\sales-core\\contracts\\order.tei"
+          },
+          "status": "completed",
+          "resultBytes": 312,
+          "resultSha256": "9d6b77a049b764de0374542209224024926565fd8ee12429b7bf2db56a15f45e"
+        },
+        {
+          "seq": 18,
+          "callId": "call-f90f83f3-edf3-4d4d-9836-79ae895869b5",
+          "tool": "read",
+          "input": {
+            "file_path": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107\\workspace\\databases\\sales-core\\persistence\\order.tei"
+          },
+          "status": "completed",
+          "resultBytes": 870,
+          "resultSha256": "92d66ef18293b9a6e77d64029691996de284a580bbe70e786418fd4e1826b7ee"
+        },
+        {
+          "seq": 19,
+          "callId": "call-4657fd2c-dd35-4a14-a27a-a56a7a74a653",
+          "tool": "read",
+          "input": {
+            "file_path": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-20261107\\workspace\\databases\\sales-core\\README.md"
+          },
+          "status": "completed",
+          "resultBytes": 440,
+          "resultSha256": "4e23130fb84710281b41720a8e3614188ff599fe9e1cac0315a57686286821ab"
+        },
+        {
+          "seq": 20,
+          "callId": "call-c7f91c67-0eda-4bfc-afa9-3284b1bb49a4",
+          "tool": "pwsh",
+          "input": {
+            "command": "$ErrorActionPreference='Continue'; .\\bin\\tei.exe source-index -workspace .\\workspace; \"EXIT=$LASTEXITCODE\"",
+            "description": "Get full workspace source index"
+          },
+          "status": "completed",
+          "resultBytes": 8192,
+          "resultSha256": "a16c0e6e835ef78905cfbb1da081be1aa48270b83c3c93a902ee3f1d73c23cf7"
+        },
+        {
+          "seq": 21,
+          "callId": "call-fe6115ad-2370-4a83-b14f-2ab26b8c4ad9",
+          "tool": "pwsh",
+          "input": {
+            "command": "$ErrorActionPreference='Continue'; .\\bin\\tei.exe knowledge-context -workspace .\\workspace -subject-kind semantic-data -subject-id sales.order; \"EXIT=$LASTEXITCODE\"",
+            "description": "Get knowledge context for sales.order"
+          },
+          "status": "completed",
+          "resultBytes": 8192,
+          "resultSha256": "0952fe3ec786dd76f3353385f65aff8cc98d2c3d9737d44c66973ca769dd5df2"
+        },
+        {
+          "seq": 22,
+          "callId": "call-d7d6e926-a858-4c67-859a-dbbef73e0146",
+          "tool": "pwsh",
+          "input": {
+            "command": "$ErrorActionPreference='Continue'; $f=Get-Item .\\bin\\tei.exe; \"PATH=$($f.FullName)\"; \"BYTES=$($f.Length)\"; (Get-FileHash -Algorithm SHA256 $f.FullName).Hash; \"CWD=$((Get-Location).Path)\"",
+            "description": "Get TEI executable hash and size"
+          },
+          "status": "completed",
+          "resultBytes": 1205,
+          "resultSha256": "2adbf19e99c03ec8698453e38892b44393d1e02814f480eba8042afc6728d7be"
+        }
+      ]
+    },
+    {
+      "arm": "H2-tool-only",
+      "label": "h2-b",
+      "rawLogFile": "h2-09.jsonl",
+      "rawLogBytes": 195988,
+      "rawLogSha256": "73dc2b7b6ffabf5e9c998b3d8f7a16e566eda9752dc974e76196a42aa42bba16",
+      "sessionId": "session-95f34eef-66c1-4a48-8c67-14f782a5dc99",
+      "cwd": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-h2only-20261107",
+      "toolCallCount": 45,
+      "toolsUsed": [
+        "grep",
+        "pwsh",
+        "read"
+      ],
+      "skillToolCalls": 0,
+      "skillLoadResultBytes": 0,
+      "skillLoadResultSha256": null,
+      "finalReason": {
+        "kind": "completed"
+      },
+      "finalAnswerBytes": 6695,
+      "finalAnswerSha256": "2c6dc74b2e59e77154bee0a98b737a9f16ee56f11c35a48f04365be37b07881c",
+      "usageSum": {
+        "inputTokens": 55225,
+        "outputTokens": 15770,
+        "totalTokens": 776019,
+        "cacheReadTokens": 705024
+      },
+      "teiInvocationCount": 26,
+      "calls": [
+        {
+          "seq": 1,
+          "callId": "call-a04f8ed4-05ac-4ed8-87cb-5ec1b7379da6",
+          "tool": "pwsh",
+          "input": {
+            "command": "Get-ChildItem -Force | Select-Object Mode,Length,Name; Write-Output \"---\"; Get-ChildItem -Force reference -ErrorAction SilentlyContinue | Select-Object Mode,Length,Name",
+            "description": "List workspace contents"
+          },
+          "status": "completed",
+          "resultBytes": 1134,
+          "resultSha256": "59e03ddca5d234c62d490828fa6b3a4958deca890fee22d51046a106d33ffd22"
+        },
+        {
+          "seq": 2,
+          "callId": "call-a14438e0-8774-4013-b096-294636a2de9f",
+          "tool": "read",
+          "input": {
+            "file_path": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-h2only-20261107\\task.txt"
+          },
+          "status": "completed",
+          "resultBytes": 1074,
+          "resultSha256": "a64aa80302b12c1eb20a62c9afa6d00a711aeb997ce3e31ec282ec0625aed3b9"
+        },
+        {
+          "seq": 3,
+          "callId": "call-091631de-67cc-4a81-8588-fb9a5638f83d",
+          "tool": "pwsh",
+          "input": {
+            "command": "Get-ChildItem -Force -Recurse -Depth 2 | Select-Object FullName,Length | Format-Table -AutoSize",
+            "description": "Recursively list workspace files"
+          },
+          "status": "completed",
+          "resultBytes": 5830,
+          "resultSha256": "a215d269f0fe4f49ca288b64bb23e9b7b53e97361eabe62ce74a8aa83a515361"
+        },
+        {
+          "seq": 4,
+          "callId": "call-fdc77f52-f56c-44ee-a798-c046689ed350",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe --help",
+            "description": "Show TEI CLI help"
+          },
+          "status": "completed",
+          "resultBytes": 1046,
+          "resultSha256": "6bfb01e08373f122a66f56e8026b1efbc4b5caf94dd7a7457b2556f3c247ccef"
+        },
+        {
+          "seq": 5,
+          "callId": "call-e5bfeb6a-799f-4429-868b-fb29abea3b56",
+          "tool": "read",
+          "input": {
+            "file_path": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-h2only-20261107\\workspace\\tei.workspace.yaml"
+          },
+          "status": "completed",
+          "resultBytes": 357,
+          "resultSha256": "ef1190ceebfe7e450add7d69d7f4059a439b96a95670776f20388ae37a9b7976"
+        },
+        {
+          "seq": 6,
+          "callId": "call-2412b7b5-3b07-45d5-8f75-2d15fd7f4cea",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe -workspace .\\workspace --help 2>&1 | Out-String",
+            "description": "Show TEI CLI help with workspace"
+          },
+          "status": "completed",
+          "resultBytes": 1420,
+          "resultSha256": "d4f2b756178f034a66d486957d5bef947e20fda8131b7a6c1a57f3a4467c513c"
+        },
+        {
+          "seq": 7,
+          "callId": "call-ff486006-6c39-4eab-b184-fdb9995ba64d",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe --workspace .\\workspace --help 2>&1 | Out-String",
+            "description": "Try double-dash workspace flag"
+          },
+          "status": "completed",
+          "resultBytes": 1420,
+          "resultSha256": "b8c4fe97cfe74cca31c605c163a015444bc0e552663322ecec93d828dd583409"
+        },
+        {
+          "seq": 8,
+          "callId": "call-4eabed4b-8cae-4193-9584-e9b5ef6ac644",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe -workspace=.\\workspace --help 2>&1 | Out-String",
+            "description": "Try equals workspace flag"
+          },
+          "status": "completed",
+          "resultBytes": 1420,
+          "resultSha256": "5ed26133e776a920f5e679f5555e2f459b15b5aab72904a719830164716e97f0"
+        },
+        {
+          "seq": 9,
+          "callId": "call-8fc36fc8-019b-4db1-8b47-092784101220",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe 2>&1 | Out-String",
+            "description": "Run TEI CLI with no arguments"
+          },
+          "status": "completed",
+          "resultBytes": 2216,
+          "resultSha256": "b7a1ffb4f5e0e8be78442d42db6cf71b9cddba84191b291701f83b2c95a85ecb"
+        },
+        {
+          "seq": 10,
+          "callId": "call-ab2b9e9e-4384-4745-9982-3fd2ed82c296",
+          "tool": "pwsh",
+          "input": {
+            "command": "Get-ChildItem .\\bin | Format-List Name,Length,VersionInfo",
+            "description": "Inspect tei.exe metadata"
+          },
+          "status": "completed",
+          "resultBytes": 1600,
+          "resultSha256": "3b12620a9673c25cc79bb92e5d2cf2127b615b17bce9ef012658cca35d655b20"
+        },
+        {
+          "seq": 11,
+          "callId": "call-c7f6d4f2-c9f5-4e2c-9dfa-e11f89c2cb37",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe version -workspace .\\workspace 2>&1 | Out-String",
+            "description": "Run TEI version subcommand"
+          },
+          "status": "completed",
+          "resultBytes": 1046,
+          "resultSha256": "cfd7cd4992d2c0c4c5f2ec4fcce11eb6f611467523ff3c45a4a51b42543fd624"
+        },
+        {
+          "seq": 12,
+          "callId": "call-4301eedf-84e3-4da1-b26f-6cd499f0b1f1",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe commands -workspace .\\workspace 2>&1 | Out-String",
+            "description": "List TEI commands"
+          },
+          "status": "completed",
+          "resultBytes": 1409,
+          "resultSha256": "109fd23d33ce8a7e6990bf7c7df2b52cfbf6f8b3d0c3bcf086d7dfe62c55c4f3"
+        },
+        {
+          "seq": 13,
+          "callId": "call-19db756b-d39b-4cc9-8fa2-685ae3d84c14",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe commands 2>&1 | Out-String",
+            "description": "List TEI commands without options"
+          },
+          "status": "completed",
+          "resultBytes": 6350,
+          "resultSha256": "d87029abc05faf42e56c246b260a4c9b775fcafd6fae1740cc138d65c7c365bd"
+        },
+        {
+          "seq": 14,
+          "callId": "call-48bc5120-53b3-40e8-a1a4-ba35cea3ced4",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe model -workspace .\\workspace 2>&1 | Out-String",
+            "description": "Try model subcommand with workspace"
+          },
+          "status": "completed",
+          "resultBytes": 1135,
+          "resultSha256": "122eb76473723a597c34b2ebe96c2b5e292868c66ceca8fbb6f642634dfd1209"
+        },
+        {
+          "seq": 15,
+          "callId": "call-cd744e54-5e4f-4101-b2d1-11534341400a",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe model catalog -workspace .\\workspace 2>&1 | Out-String",
+            "description": "List model catalog"
+          },
+          "status": "completed",
+          "resultBytes": 8192,
+          "resultSha256": "18f71bd6026c83d3c697c07c7982bbcc015bea6344f6c2c0c1c5d5f3b1945670"
+        },
+        {
+          "seq": 16,
+          "callId": "call-909da1a9-5d47-4431-b009-10a25e6b0b91",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe version -json 2>&1 | Out-String",
+            "description": "Show TEI version JSON"
+          },
+          "status": "completed",
+          "resultBytes": 1233,
+          "resultSha256": "e29a077773ca18d06110f2edbe6c87e48f4faa185538edec8d1a1dbd704c26b8"
+        },
+        {
+          "seq": 17,
+          "callId": "call-b8137fef-a53e-43f9-b292-96f592bd5eec",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe inspect -workspace .\\workspace -subject-kind semantic-data -subject-id sales.order 2>&1 | Out-String",
+            "description": "Inspect sales.order semantic data"
+          },
+          "status": "completed",
+          "resultBytes": 2649,
+          "resultSha256": "3304790b38fabf6ad38cdea3cb5f60539d1efa4d2c9a9f3f333fb19acdf76daf"
+        },
+        {
+          "seq": 18,
+          "callId": "call-aa0806ef-cea7-45e1-ab6e-a7ecfa415201",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe source-index -workspace .\\workspace -subject-kind semantic-data -subject-id sales.order 2>&1 | Out-String",
+            "description": "Source index for sales.order"
+          },
+          "status": "completed",
+          "resultBytes": 1882,
+          "resultSha256": "72e402483584b0122ff09fb1e2d5e1a9e754cd9090185eb691ddd7eac2d79eba"
+        },
+        {
+          "seq": 19,
+          "callId": "call-48e7ee4c-15a7-4a35-85ed-e45402d5b991",
+          "tool": "read",
+          "input": {
+            "file_path": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-h2only-20261107\\workspace\\semantic\\sales\\order.tei"
+          },
+          "status": "completed",
+          "resultBytes": 1157,
+          "resultSha256": "73c52801cbcf93786a030b67e0d56374bdac082f96e90bce551e7c0e7a8efe93"
+        },
+        {
+          "seq": 20,
+          "callId": "call-cf91f365-a28f-4cde-bb20-afde499894f8",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe validate -workspace .\\workspace -json 2>&1 | Out-String",
+            "description": "Validate workspace as JSON"
+          },
+          "status": "completed",
+          "resultBytes": 1900,
+          "resultSha256": "b32342b1e8b9a9bb7bd48d21e2f0318e02498379b72e584d8710a43a1b6b009e"
+        },
+        {
+          "seq": 21,
+          "callId": "call-52f66d20-c8b5-4729-b5ea-81ec206748f5",
+          "tool": "pwsh",
+          "input": {
+            "command": "Get-ChildItem -Recurse .\\workspace\\semantic | Select-Object FullName,Length | Format-Table -AutoSize",
+            "description": "List semantic source files"
+          },
+          "status": "completed",
+          "resultBytes": 2430,
+          "resultSha256": "031a793eb1661cb7c135043764fb8c2093e0a3f91fa18a2e46f47721366733e5"
+        },
+        {
+          "seq": 22,
+          "callId": "call-efd81292-462b-4f7c-8574-7bb5ba1fd3f6",
+          "tool": "pwsh",
+          "input": {
+            "command": "Get-ChildItem -Recurse .\\workspace\\.tei | Select-Object FullName,Length | Format-Table -AutoSize",
+            "description": "List .tei metadata files"
+          },
+          "status": "completed",
+          "resultBytes": 1958,
+          "resultSha256": "5a654e227e0151961dc1bb05d4ae66aa4debf7b07af41999b6a4a6efd0d28159"
+        },
+        {
+          "seq": 23,
+          "callId": "call-f831a9ae-0cc0-4aee-94cb-5e0a7839115d",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe inspect -workspace .\\workspace -subject-kind semantic -subject-id sales 2>&1 | Out-String",
+            "description": "Inspect semantic sales namespace"
+          },
+          "status": "completed",
+          "resultBytes": 3983,
+          "resultSha256": "7f49afcad7208e628ae890bf53eb3203dbe25dd31158e3a9ae077dea7ff9af5d"
+        },
+        {
+          "seq": 24,
+          "callId": "call-3bb20009-cdbf-4d58-9615-b0156f48b3b8",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe trace -workspace .\\workspace -scope full -subject-kind semantic-data -subject-id sales.order 2>&1 | Out-String",
+            "description": "Trace sales.order references"
+          },
+          "status": "completed",
+          "resultBytes": 3488,
+          "resultSha256": "abc91958c4fa56a2a0d52e0778f1bd8770bb30b1acc93edc9340f8a0fc79212f"
+        },
+        {
+          "seq": 25,
+          "callId": "call-8a14ca80-3d6c-4b47-9731-2c54f38c4001",
+          "tool": "pwsh",
+          "input": {
+            "command": "Get-ChildItem -Recurse .\\workspace\\bundles,.\\workspace\\releases,.\\workspace\\applications,.\\workspace\\databases,.\\workspace\\environments | Select-Object FullName,Length | Format-Table -AutoSize",
+            "description": "List bundles releases apps databases env files"
+          },
+          "status": "completed",
+          "resultBytes": 8192,
+          "resultSha256": "068ad55432f34e7106b6cbdc031f1965b6021bf417bfb1d04bdbeee3f92a5501"
+        },
+        {
+          "seq": 26,
+          "callId": "call-e54e61d3-aaae-405a-bf2a-357ba6092560",
+          "tool": "read",
+          "input": {
+            "file_path": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-h2only-20261107\\workspace\\databases\\sales-core\\contracts\\order.tei"
+          },
+          "status": "completed",
+          "resultBytes": 319,
+          "resultSha256": "c57d2ac7a5d965fdd398179b6253c27f1310f589f5f3bccd270490cb6ff25aed"
+        },
+        {
+          "seq": 27,
+          "callId": "call-8bb9b72f-6f8f-43fe-afc3-eea59aeeefe0",
+          "tool": "read",
+          "input": {
+            "file_path": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-h2only-20261107\\workspace\\databases\\sales-core\\README.md"
+          },
+          "status": "completed",
+          "resultBytes": 447,
+          "resultSha256": "d78aaa19ece0c6ae7edf0bf85715f60919fb8ec38d99534658d098d4f1976efc"
+        },
+        {
+          "seq": 28,
+          "callId": "call-cf8b941d-6a31-4225-9c71-c85cc0a1a6ea",
+          "tool": "read",
+          "input": {
+            "file_path": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-h2only-20261107\\workspace\\bundles\\tei-reference-providers\\1.0.0\\bundle.tei"
+          },
+          "status": "completed",
+          "resultBytes": 532,
+          "resultSha256": "6c3d76b15ff01d886450e2052558d31684797a39f05694896b0dde425c33e07c"
+        },
+        {
+          "seq": 29,
+          "callId": "call-711c3a7f-ccd4-4d8b-a860-0f9628039873",
+          "tool": "pwsh",
+          "input": {
+            "command": "Get-ChildItem .\\workspace\\.tei\\decisions | Select-Object Name,Length | Format-Table -AutoSize",
+            "description": "List decision file names"
+          },
+          "status": "completed",
+          "resultBytes": 1458,
+          "resultSha256": "c2f9be04be67e17e623e024daf5ff5f65eded3d2b8a2e3e0d933c3cfa5152e50"
+        },
+        {
+          "seq": 30,
+          "callId": "call-81f22806-9ac0-4e50-bb07-c29f15c64582",
+          "tool": "grep",
+          "input": {
+            "pattern": "sales\\.order",
+            "path": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-h2only-20261107\\workspace"
+          },
+          "status": "completed",
+          "resultBytes": 4388,
+          "resultSha256": "9ca39bf7cda1eee606b55669aa91515d466c430b1e379b83ac79a2abbbd5788e"
+        },
+        {
+          "seq": 31,
+          "callId": "call-adf18360-653f-426d-8fbe-97ebba2011b1",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe workspace-files -workspace .\\workspace 2>&1 | Out-String",
+            "description": "List workspace files via CLI"
+          },
+          "status": "completed",
+          "resultBytes": 8192,
+          "resultSha256": "9da69cdf84b47327942eea942904b527094690a69b53a45e2e264aa63d25dcb2"
+        },
+        {
+          "seq": 32,
+          "callId": "call-830c6d83-8b4d-4f2e-90f0-1ffab8f5c4b8",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe inspect -workspace .\\workspace -subject-kind database-contract -subject-id sales_core.order 2>&1 | Out-String",
+            "description": "Inspect sales_core.order contract"
+          },
+          "status": "completed",
+          "resultBytes": 1167,
+          "resultSha256": "2e0ef672df1f55740993139a017ee21de536e8d66f00c8f6999b534a79c937ba"
+        },
+        {
+          "seq": 33,
+          "callId": "call-af1d1703-b5af-43e7-8709-23140071612e",
+          "tool": "read",
+          "input": {
+            "file_path": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-h2only-20261107\\workspace\\releases\\databases\\sales-core\\4.2.0.tei"
+          },
+          "status": "completed",
+          "resultBytes": 364,
+          "resultSha256": "c20a99afbe65bec1144ad2867d4fd53175a131db29d44b717bb9d4b0a9936655"
+        },
+        {
+          "seq": 34,
+          "callId": "call-4d9053d1-30bf-490e-8403-806974058241",
+          "tool": "read",
+          "input": {
+            "file_path": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-h2only-20261107\\workspace\\releases\\applications\\order-entry\\3.8.0.tei"
+          },
+          "status": "completed",
+          "resultBytes": 653,
+          "resultSha256": "cb3a3b698724aefc1da1b2c202ed54c0ec5a60dfa0891c019cbc6e643a3640af"
+        },
+        {
+          "seq": 35,
+          "callId": "call-e17dc615-fb19-4c33-9850-5cd039317c96",
+          "tool": "read",
+          "input": {
+            "file_path": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-h2only-20261107\\workspace\\databases\\sales-core\\persistence\\order.tei"
+          },
+          "status": "completed",
+          "resultBytes": 877,
+          "resultSha256": "5c12defd91c334ee3d312c8feab8f76996cf9d870402da2868106e6f02d1c5ad"
+        },
+        {
+          "seq": 36,
+          "callId": "call-f7c7a328-2a3f-45cd-a56f-3e30d0488041",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe inspect -workspace .\\workspace -subject-kind semantic-attribute -subject-id sales.order.total 2>&1 | Out-String",
+            "description": "Inspect total attribute"
+          },
+          "status": "completed",
+          "resultBytes": 1941,
+          "resultSha256": "dd2953694783e82ef2a3052a1258b06f0a932b10ee3224cd3b13974f0f81bb06"
+        },
+        {
+          "seq": 37,
+          "callId": "call-ffcc2b1e-e725-475d-9962-06984c62a599",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe inspect -workspace .\\workspace -subject-kind semantic-type -subject-id std.money 2>&1 | Out-String",
+            "description": "Inspect std.money type"
+          },
+          "status": "completed",
+          "resultBytes": 1547,
+          "resultSha256": "7db854905360eebe37b112a03c68de860fa6ef6343b82f63355dd7d7619ef503"
+        },
+        {
+          "seq": 38,
+          "callId": "call-4acc202c-7119-46ea-af7a-bfceac1b3d47",
+          "tool": "grep",
+          "input": {
+            "pattern": "sales\\.order|order\\.tei|source-revision|provenance|origin",
+            "path": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-h2only-20261107\\workspace\\.tei"
+          },
+          "status": "completed",
+          "resultBytes": 5572,
+          "resultSha256": "7000bdcd775146e044c1f249c5aef2a69fb15f9392a7f5ed7ec9484044620154"
+        },
+        {
+          "seq": 39,
+          "callId": "call-50ffc6e2-88c1-4300-8deb-788af362c889",
+          "tool": "read",
+          "input": {
+            "file_path": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-h2only-20261107\\workspace\\.tei\\decisions\\7a6931fba0dbe2f9dd0db840ba4f1ed4fcc2d4bc8e65d6595d556a828f4f5e66.json",
+            "limit": 40
+          },
+          "status": "completed",
+          "resultBytes": 2702,
+          "resultSha256": "2ff5a34b7db35d2331a8ffe84070e6ebd822b014de01f24dc902fe2d3f6a9776"
+        },
+        {
+          "seq": 40,
+          "callId": "call-2f9aae37-75eb-45e8-a0ad-b29d4b46f7cd",
+          "tool": "read",
+          "input": {
+            "file_path": "C:\\Users\\yhata\\AppData\\Local\\Temp\\h2-participant-h2only-20261107\\workspace\\.tei\\decisions\\d89b54349c62aff76d3f5b4f090fc4d7345496c8f95612c0fcd7b8b98bf78f0b.json",
+            "limit": 40
+          },
+          "status": "completed",
+          "resultBytes": 2150,
+          "resultSha256": "820bf9f004fc360ebc6155d94a6f7a16052cd24ce2eece169846fd03bc3e2963"
+        },
+        {
+          "seq": 41,
+          "callId": "call-8423bb8d-5e88-4a8e-8900-b82f59109e94",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe validate -workspace .\\workspace 2>&1 | Out-String",
+            "description": "Validate workspace text output"
+          },
+          "status": "completed",
+          "resultBytes": 1495,
+          "resultSha256": "544d4ed96270936cd2bccf325217b3aa62c684ed0c7a246f698d681587ff3d13"
+        },
+        {
+          "seq": 42,
+          "callId": "call-4cfcb6a3-06e2-47f8-8e4d-1f5062b4d8b9",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe trace -workspace .\\workspace -scope full -subject-kind semantic-data -subject-id sales.order -mode full 2>&1 | Out-String",
+            "description": "Full trace for sales.order"
+          },
+          "status": "completed",
+          "resultBytes": 6691,
+          "resultSha256": "3389713bc10da11de66d9608ae034ed2a3e26bad3c9c3f3807137a2bd19b4315"
+        },
+        {
+          "seq": 43,
+          "callId": "call-2a322b5d-7f5a-48eb-ab9c-675cf7f17f02",
+          "tool": "pwsh",
+          "input": {
+            "command": ".\\bin\\tei.exe model catalog -workspace .\\workspace -namespace sales 2>&1 | Out-String",
+            "description": "Model catalog filtered to sales namespace"
+          },
+          "status": "completed",
+          "resultBytes": 5884,
+          "resultSha256": "9cbd1750456af022ddf1d377e59e18501160187e7df9bee56c86f1a628eb4f7f"
+        },
+        {
+          "seq": 44,
+          "callId": "call-ad792cd5-2808-44ed-b4e3-73bdd6440f7f",
+          "tool": "pwsh",
+          "input": {
+            "command": "$j = .\\bin\\tei.exe source-index -workspace .\\workspace 2>$null | ConvertFrom-Json; $j.PSObject.Properties.Name; $j.result.PSObject.Properties.Name",
+            "description": "Inspect source-index top-level structure"
+          },
+          "status": "completed",
+          "resultBytes": 1040,
+          "resultSha256": "229c025038e37c0cdf8064a7d1a39c693443e5c3e717f1cd4b5980b8ea6b600a"
+        },
+        {
+          "seq": 45,
+          "callId": "call-054e9f43-4c7f-474a-b809-0225f485a8f2",
+          "tool": "pwsh",
+          "input": {
+            "command": "$j = .\\bin\\tei.exe world -workspace .\\workspace 2>$null | ConvertFrom-Json; $j.PSObject.Properties.Name; $j.result.PSObject.Properties.Name",
+            "description": "Inspect world output structure"
+          },
+          "status": "completed",
+          "resultBytes": 1285,
+          "resultSha256": "2b9d96a6b0fd457a9fa30482f92682f1936d99943af2e32d83431f91f6306572"
+        }
+      ]
+    }
+  ]
+}

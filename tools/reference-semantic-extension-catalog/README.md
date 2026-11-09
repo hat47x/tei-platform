@@ -229,6 +229,8 @@ Evaluation Evidenceには少なくとも次を残します。
 
 `unknown`は`pass`へ畳まず、Evaluator error / cancel / unsupported状態も成功扱いにしません。
 
+Referenceの同期Evaluatorには入力のコピーを渡し、呼出し前の入力をfingerprintします。Evaluatorが戻る時点で入力コピーが変わっていればEvidenceを生成せず、呼出し元の入力も変更しません。これは不注意な入力変更を検出するための境界であり、Evaluatorが一度書き換えて戻す行為、非同期処理、実際に評価した内部状態、外部processの分離や信頼性を証明するものではありません。
+
 SUI hierarchy pressureでは`tools/reference-sui-adoption`の既存shadow validatorを共有packageへ切り出し、Stage 0とSemantic Extensionの両方が同じ評価ロジックを使います。M1 / M2 / M3 / M4のSource contract semanticsを二重実装しません。SUI側のnative contractがAuthorityであることも変えません。
 
 このReferenceはValidation scopeの選択境界を実証する候補であり、Runtime PluginのPermission / Sandbox / Artifact verificationを代替しません。将来EvaluatorをRuntime Pluginとして実行する場合も、Environmentの通常Capability negotiationとValidation-scope bindingは別に扱います。
