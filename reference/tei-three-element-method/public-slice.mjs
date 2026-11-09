@@ -8,7 +8,7 @@ const cmp = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 const subjectKey = s => JSON.stringify([s.scope, s.kind, s.id]);
 const viewKey = (role, s) => JSON.stringify([role, s.scope, s.kind, s.id]);
 const fields = Object.freeze({
-  slice: ["scope", "subjects", "relations"],
+  slice: ["scope", "workspaceObservation", "subjects", "relations"],
   subject: ["scope", "kind", "id", "roleStates"],
   relation: ["id", "kind", "from", "to"],
   endpoint: ["scope", "kind", "id", "role"],
@@ -29,6 +29,7 @@ export function projectPublicTeaSlice(slice, snapshot = null) {
   // Optional caller-supplied equality witness; NOT a current Source/Policy proof.
   if (snapshot !== null && !text(snapshot)) invalid();
   if (!onlyFields(slice, fields.slice) || !text(slice.scope) ||
+      !text(slice.workspaceObservation) ||
       !Array.isArray(slice.subjects) || !Array.isArray(slice.relations)) invalid();
   const identities = new Set();
   const projected = {data: [], function: [], business: []};
@@ -78,7 +79,8 @@ export function projectPublicTeaSlice(slice, snapshot = null) {
   edges.sort((a, b) => cmp(a.id, b.id));
   publicDiagnostics.sort((a, b) => cmp(JSON.stringify(a), JSON.stringify(b)));
   // This says nothing about elements or relations outside the authorized slice.
-  return {...(snapshot === null ? {} : {snapshot}), views, relationTable: edges,
+  return {...(snapshot === null ? {} : {snapshot}),
+    workspaceObservation: slice.workspaceObservation, views, relationTable: edges,
     publicDiagnostics,
     coverage: {scope: slice.scope, allSourceCompleteness: "not-proven"}};
 }
