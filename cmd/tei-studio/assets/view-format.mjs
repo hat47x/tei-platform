@@ -152,14 +152,31 @@ function summarizeApplication(view) {
       rows: view.packages.map((pkg) => [valueOf(pkg.id), valueOf(pkg.version), pkg.bound ? "束縛済み" : ""]),
     });
   }
+  if (Array.isArray(view.standardBusiness) && view.standardBusiness.length) {
+    sections.push({
+      title: "標準業務",
+      header: ["種別", "Data", "属性"],
+      rows: view.standardBusiness.map((ref) => [valueOf(ref.kind), valueOf(ref.data), joined(ref.attributes)]),
+    });
+  }
   if (Array.isArray(view.periods) && view.periods.length) {
     sections.push({
       title: "期間",
-      header: ["ID", "Data", "業務日付", "状態", "暦"],
-      rows: view.periods.map((period) => [valueOf(period.id), valueOf(period.data), valueOf(period.businessDate), joined(period.states), valueOf(period.calendar)]),
+      header: ["ID", "Data", "業務日付", "状態", "暦", "締め日"],
+      rows: view.periods.map((period) => [valueOf(period.id), valueOf(period.data), valueOf(period.businessDate), joined(period.states), valueOf(period.calendar), closingOf(period)]),
     });
   }
   return sections;
+}
+
+// closingOf renders the declared closing day, so a period narrower than a month
+// is visible without the reader inferring a default day.
+function closingOf(period) {
+  const day = period.closingDay;
+  if (typeof day !== "number" || day <= 0) {
+    return "";
+  }
+  return `${day}日`;
 }
 
 function summarizePackage(view) {
@@ -222,6 +239,22 @@ function summarizeCommand(view) {
 
 // differenceSections lists the operations the declaration did not describe, so
 // a reader can see which data the execution reached beyond the declared effect.
+// hookSummary renders the hook report a reference execution returned. It
+// counts executed, warned, and not-evaluated phases, and names the phases that
+// did not run so the summary does not imply a pass.
+function hookSummary(hooks) {
+  if (!hooks || typeof hooks !== "object") return "not declared";
+  const executed = Array.isArray(hooks.executed) ? hooks.executed : [];
+  const warned = Array.isArray(hooks.warned) ? hooks.warned : [];
+  const notEvaluated = Array.isArray(hooks.notEvaluated) ? hooks.notEvaluated : [];
+  const skipped = Array.isArray(hooks.skipped) ? hooks.skipped : [];
+  const parts = [`executed ${executed.length}`, `warned ${warned.length}`];
+  if (notEvaluated.length) parts.push(`not evaluated ${notEvaluated.join(",")}`);
+  if (skipped.length) parts.push(`skipped ${skipped.join(",")}`);
+  if (hooks.refused) parts.push(`refused ${hooks.refused}`);
+  return parts.join("; ");
+}
+
 function differenceSections(differences) {
   if (!Array.isArray(differences) || !differences.length) return [];
   return [{
@@ -284,6 +317,10 @@ export function summarizeView(value) {
         ["differences", Array.isArray(value.differences) ? String(value.differences.length) : "0"],
         ["difference-check", value.appliedUnobserved ? "not observed" : "checked"],
         ["reported-effect", value.reportedEffectMissing ? "missing" : "reported"],
+        // The hook row names what the reference execution did with the pattern's
+        // declared hooks. A phase that did not run is listed as not evaluated,
+        // so an empty row never reads as "the hooks passed".
+        ["hooks", hookSummary(value.hooks)],
       ],
     }]).concat(differenceSections(value.differences));
   }
@@ -299,6 +336,9 @@ export function summarizeView(value) {
     rows: Object.entries(value).map(([key, entry]) => [key, JSON.stringify(entry)]),
   }];
 }
+
+
+
 
 
 

@@ -1,0 +1,36 @@
+== non-test importers of plugin/runtime ==
+  NON-TEST  internal/plugin/implementation/builtin/adapter.go
+  NON-TEST  internal/servicehost/service_carrier.go
+  NON-TEST  cmd/tei/cli_result.go
+  NON-TEST  cmd/tei/main.go
+  NON-TEST  tools/reference-build-execution-binding/main.go
+  NON-TEST  tools/reference-capability-transport/main.go
+  NON-TEST  tools/reference-deployment-attempt/main.go
+  NON-TEST  tools/reference-durable-run-golden/main.go
+  NON-TEST  tools/reference-order-assist-provider-offline/realization.go
+  NON-TEST  tools/reference-order-rollout-host-continuity/host.go
+  NON-TEST  tools/reference-order-rollout-host-continuity/plugin.go
+  NON-TEST  tools/reference-order-rollout-host-continuity/runtime.go
+  NON-TEST  tools/reference-order-rollout-host-continuity/stage1.go
+  NON-TEST  tools/reference-order-rollout-host-continuity/stage5.go
+  NON-TEST  tools/reference-plugin-build-supply/stage3.go
+  NON-TEST  tools/reference-plugin-build-supply/stage4.go
+  NON-TEST  tools/reference-plugin-capability-contract/host_current_acceptance_reader.go
+  NON-TEST  tools/reference-plugin-capability-contract/runtime_authority_bridge.go
+  NON-TEST  tools/reference-plugin-self-build/exact_transform_engine.go
+  NON-TEST  tools/reference-plugin-self-build/main.go
+  NON-TEST  tools/reference-plugin-self-build/runtime_engine_identity.go
+  NON-TEST  tools/reference-plugin-self-build/stage2_engine_acceptance.go
+  NON-TEST  tools/reference-plugin-self-build/transform_bootstrap.go
+  NON-TEST  tools/reference-plugin-self-build/transform_package_plan.go
+  NON-TEST  tools/reference-process-plugin/main.go
+  NON-TEST  tools/reference-runtime-capability-identity/current_host_environment.go
+  NON-TEST  tools/reference-runtime-capability-identity/main.go
+  NON-TEST  tools/reference-transform-runtime-engine-build/main.go
+  NON-TEST  examples/process-plugin/main.go
+  NON-TEST  examples/runtime-reattach/main.go
+  count: 30
+
+== non-test importers of servicehost ==
+  count: 0
+

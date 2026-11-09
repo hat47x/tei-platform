@@ -88,6 +88,13 @@ func semanticSubjectAnchors(src string, namespace core.CanonicalID) ([]SubjectAn
 			if _, err := expectLexerIdent(lx, "semantic type underlying type"); err != nil {
 				return nil, err
 			}
+			// A value-restricted alias ends with `values { "a" "b" }`.
+			// The anchor scan only needs the subject identity, so skip the
+			// restriction instead of failing the whole Source Index build
+			// (the parser reads it; the anchor scanner must not stop here).
+			if err := skipSemanticTypeValues(lx); err != nil {
+				return nil, err
+			}
 		case "data":
 			sym, err := expectLexerIdent(lx, "semantic data symbol")
 			if err != nil {
@@ -207,6 +214,39 @@ func semanticSubjectAnchors(src string, namespace core.CanonicalID) ([]SubjectAn
 			}
 		default:
 			return nil, fmt.Errorf("unexpected semantic declaration %q at %d:%d", t.Text, t.Start.Line, t.Start.Column)
+		}
+	}
+}
+
+// skipSemanticTypeValues consumes an optional `values { ... }` restriction
+// after a type's underlying type. It reads nothing else: the next token
+// belongs to the enclosing namespace or body.
+func skipSemanticTypeValues(lx *Lexer) error {
+	t, err := peekLexer(lx)
+	if err != nil {
+		return err
+	}
+	if t.Kind != TokenIdent || t.Text != "values" {
+		return nil
+	}
+	if _, err := lx.Next(); err != nil {
+		return err
+	}
+	if err := expectLexerKind(lx, TokenLBrace, "semantic type values body"); err != nil {
+		return err
+	}
+	for {
+		t, err := lx.Next()
+		if err != nil {
+			return err
+		}
+		switch t.Kind {
+		case TokenRBrace:
+			return nil
+		case TokenString:
+			// one declared value
+		default:
+			return fmt.Errorf("unexpected token %q at %d:%d in semantic type values", t.Text, t.Start.Line, t.Start.Column)
 		}
 	}
 }

@@ -28,6 +28,11 @@ type cliResultEnvelope struct {
 	Mode          string      `json:"mode,omitempty"`
 	Result        any         `json:"result,omitempty"`
 	Error         *cliFailure `json:"error,omitempty"`
+	// Workspace identifies the Workspace the result was read from (#3455).
+	// It sits at the top level, next to schemaVersion, so every read command
+	// answers "which Workspace" in the same place. Older result-level
+	// `workspace` fields remain for readers that already unwrap them.
+	Workspace *workspace.WorkspaceIdentity `json:"workspace,omitempty"`
 }
 
 type cliFailure struct {
@@ -91,6 +96,14 @@ func resultEnvelope(command, mode string, result any) cliResultEnvelope {
 	}
 }
 
+// resultEnvelopeWithWorkspace is resultEnvelope plus the Workspace identity
+// that the read observed (#3455).
+func resultEnvelopeWithWorkspace(command, mode string, result any, identity *workspace.WorkspaceIdentity) cliResultEnvelope {
+	envelope := resultEnvelope(command, mode, result)
+	envelope.Workspace = identity
+	return envelope
+}
+
 func resultFailure(command, code string, cause error) cliResultEnvelope {
 	return cliResultEnvelope{
 		SchemaVersion: resultSchemaVersion(command),
@@ -148,7 +161,15 @@ func workspaceFilesJSON(out io.Writer, workspacePath, worldPath string, extraArg
 	return emitResult(out, resultEnvelope("workspace-files", "", workspaceFilesValue{
 		ManagedFiles:       r.ManagedFiles,
 		SourceRootFindings: r.SourceRootFindings,
+		Workspace:          workspaceIdentityPointer(r),
 	}), 0)
+}
+
+// workspaceIdentityPointer returns the Workspace identity as a pointer so the
+// JSON field is omitted only when the manifest was not read at all (#3181).
+func workspaceIdentityPointer(r workspace.Result) *workspace.WorkspaceIdentity {
+	identity := r.Identity()
+	return &identity
 }
 
 // workspaceFilesValue is the workspace-files projection. ReadByLoader on each
@@ -157,6 +178,8 @@ func workspaceFilesJSON(out io.Writer, workspacePath, worldPath string, extraArg
 type workspaceFilesValue struct {
 	ManagedFiles       []workspace.ManagedFile                `json:"managedFiles"`
 	SourceRootFindings []workspace.WorkspaceSourceRootFinding `json:"sourceRootFindings,omitempty"`
+	// Workspace identifies which Workspace the listed files came from (#3181).
+	Workspace *workspace.WorkspaceIdentity `json:"workspace,omitempty"`
 }
 
 // sourceIndexJSON wraps the Source Index inspection. The whole-index form and
@@ -196,7 +219,7 @@ func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environ
 	if extraArgs != 0 {
 		return resultInvalidArgument(out, command, command+" does not accept positional arguments")
 	}
-	w, err := loadWorld(worldPath, workspacePath)
+	w, identity, err := loadWorldWithIdentity(worldPath, workspacePath)
 	if err != nil {
 		return resultLoadFailure(out, command, err)
 	}
@@ -253,7 +276,7 @@ func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environ
 	}
 	switch command {
 	case "requirements":
-		return emitResult(out, resultEnvelope(command, "", dependency.Derive(w)), 0)
+		return emitResult(out, resultEnvelopeWithWorkspace(command, "", dependency.Derive(w), identity), 0)
 	case "plugin-lock":
 		environments := w.Environments
 		mode := ""
@@ -273,7 +296,7 @@ func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environ
 		if err != nil {
 			return emitResult(out, resultFailure(command, resultCodePluginLockFailed, err), 2)
 		}
-		return emitResult(out, resultEnvelope(command, mode, lock), 0)
+		return emitResult(out, resultEnvelopeWithWorkspace(command, mode, lock, identity), 0)
 	case "plugin-resolve", "plugin-runtime-plan":
 		if environmentID == "" || (command == "plugin-runtime-plan" && pluginLockPath == "") {
 			return resultInvalidArgument(out, command, command+" requires -environment"+flagPart(command))
@@ -300,7 +323,7 @@ func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environ
 				}
 				return emitResult(out, resultFailure(command, resultCodePluginResolveFailed, err), 2)
 			}
-			return emitResult(out, resultEnvelope(command, "", r), 0)
+			return emitResult(out, resultEnvelopeWithWorkspace(command, "", r, identity), 0)
 		}
 		lock, lockErr := decodePluginLockFile(pluginLockPath)
 		if lockErr != nil {
@@ -317,7 +340,7 @@ func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environ
 			}
 			return emitResult(out, resultFailure(command, resultCodePluginPlanFailed, err), 1)
 		}
-		return emitResult(out, resultEnvelope(command, "", plan), 0)
+		return emitResult(out, resultEnvelopeWithWorkspace(command, "", plan, identity), 0)
 	}
 	return resultInvalidArgument(out, command, "unsupported command "+command)
 }
@@ -337,7 +360,7 @@ func knowledgeContextJSON(out io.Writer, workspacePath, subjectKind, subjectID, 
 	if disclosure == "" && expectedDisclosureFingerprint != "" {
 		return resultInvalidArgument(out, "knowledge-context", "-expected-disclosure-fingerprint requires -disclose")
 	}
-	context, err := buildKnowledgeContext(workspacePath, subjectKind, subjectID)
+	context, identity, err := buildKnowledgeContextWithIdentity(workspacePath, subjectKind, subjectID)
 	if err != nil {
 		return emitResult(out, resultFailure("knowledge-context", resultCodeKnowledgeFailed, err), 2)
 	}
@@ -352,9 +375,9 @@ func knowledgeContextJSON(out io.Writer, workspacePath, subjectKind, subjectID, 
 		if err := checkKnowledgeDisclosureFingerprint(projection, expectedDisclosureFingerprint); err != nil {
 			return emitResult(out, resultFailure("knowledge-context", resultCodeKnowledgeFailed, err), 1)
 		}
-		return emitResult(out, resultEnvelope("knowledge-context", resultModeDisclosure, projection), 0)
+		return emitResult(out, resultEnvelopeWithWorkspace("knowledge-context", resultModeDisclosure, projection, identity), 0)
 	}
-	return emitResult(out, resultEnvelope("knowledge-context", resultModeContext, context), 0)
+	return emitResult(out, resultEnvelopeWithWorkspace("knowledge-context", resultModeContext, context, identity), 0)
 }
 
 // knowledgeQualifyJSON wraps knowledge-qualify in the command envelope. The
@@ -451,7 +474,7 @@ func knowledgeDataDesignCandidateReviewJSON(out io.Writer, workspacePath, subjec
 		return resultInvalidArgument(out, "knowledge-data-design-candidate-review",
 			"knowledge-data-design-candidate-review requires -data-design-candidate-kind and -data-design-candidate-fingerprint")
 	}
-	context, err := buildKnowledgeContext(workspacePath, subjectKind, subjectID)
+	context, identity, err := buildKnowledgeContextWithIdentity(workspacePath, subjectKind, subjectID)
 	if err != nil {
 		return emitResult(out, resultFailure("knowledge-data-design-candidate-review", resultCodeKnowledgeFailed, err), 2)
 	}
@@ -465,7 +488,7 @@ func knowledgeDataDesignCandidateReviewJSON(out io.Writer, workspacePath, subjec
 	if err := checkDataDesignCandidateReviewFingerprint(packet, expectedReviewFingerprint); err != nil {
 		return emitResult(out, resultFailure("knowledge-data-design-candidate-review", resultCodeKnowledgeFailed, err), 1)
 	}
-	return emitResult(out, resultEnvelope("knowledge-data-design-candidate-review", resultModeReview, packet), 0)
+	return emitResult(out, resultEnvelopeWithWorkspace("knowledge-data-design-candidate-review", resultModeReview, packet, identity), 0)
 }
 
 func flagPart(command string) string {

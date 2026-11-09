@@ -1,0 +1,5 @@
+{"event_id":"evt-A","order_id":"O-001","event_time":"2026-11-07T10:00:05Z","ingest_time":"2026-11-07T10:00:06Z","severity":"INFO","message":"accepted"}
+{"event_id":"evt-B","order_id":"O-001","event_time":"2026-11-07T09:59:59Z","ingest_time":"2026-11-07T10:00:09Z","severity":"WARN","message":"delayed"}
+{"event_id":"evt-B","order_id":"O-001","event_time":"2026-11-07T09:59:59Z","ingest_time":"2026-11-07T10:00:11Z","severity":"WARN","message":"delayed"}
+{"event_id":"evt-C","order_id":"O-002","event_time":"2026-11-07T10:01:00Z","ingest_time":null,"severity":"ERROR","message":"retry"}
+{"event_id":"evt-D","order_id":"O-003","event_time":"2026-11-07T10:02:00Z","severity":"INFO"}

@@ -83,5 +83,97 @@ func validateSelectedReadOnlyFlags(fs *flag.FlagSet, command string) error {
 			err = fmt.Errorf("%s does not accept -%s", command, f.Name)
 		}
 	})
+	if err != nil {
+		return err
+	}
+	// A string flag given as "" is not the same claim as an omitted flag (#3605).
+	// The flag default is what an omitted flag means; an explicit empty string
+	// used to fall through to a different value inside the operation (for
+	// example trace -mode "" became "full" while the advertised default is
+	// "summary"). Reject it here so the advertised default and the applied
+	// value stay the same value.
+	return validateNoEmptyStringArguments(fs, command)
+}
+
+// validateNoEmptyStringArguments rejects an explicitly supplied empty string for
+// the read-only commands whose flags feed a closed vocabulary or a fingerprint.
+// Only flags that were actually set are inspected, so omitting a flag keeps its
+// advertised default.
+func validateNoEmptyStringArguments(fs *flag.FlagSet, command string) error {
+	guarded := emptyStringGuardedFlags[command]
+	if len(guarded) == 0 {
+		return nil
+	}
+	var err error
+	fs.Visit(func(f *flag.Flag) {
+		if err != nil {
+			return
+		}
+		if guarded[f.Name] && f.Value.String() == "" {
+			err = fmt.Errorf("%s: -%s must not be an empty string; omit the flag to use its default", command, f.Name)
+		}
+	})
 	return err
+}
+
+// emptyStringGuardedFlags lists, per command, the flags for which an explicit
+// empty string is a different claim than an omitted flag: a closed value set
+// (-mode, -direction, -format), an exact selector (-scope, -subject-kind,
+// -subject-id, -namespace, -application), or a fingerprint that switches on a
+// comparison (-expected-fingerprint and friends). A path or an output target
+// stays out of this list, because "" there already means "not given" and the
+// command reports its own required-argument error.
+var emptyStringGuardedFlags = map[string]map[string]bool{
+	"inspect": {
+		"subject-kind": true, "subject-id": true, "workspace": true,
+	},
+	"trace": {
+		"workspace": true, "scope": true, "subject-kind": true, "subject-id": true,
+		"direction": true, "mode": true, "expected-fingerprint": true,
+	},
+	"source-index": {
+		"workspace": true, "subject-kind": true, "subject-id": true,
+	},
+	"workspace-files": {"workspace": true},
+	"knowledge-context": {
+		"workspace": true, "subject-kind": true, "subject-id": true,
+		"disclose":                         true,
+		"expected-data-design-fingerprint": true,
+		"expected-disclosure-fingerprint":  true,
+	},
+	"knowledge-qualify": {
+		"workspace": true, "subject-kind": true, "subject-id": true,
+		"qualification-requirements": true,
+	},
+	"knowledge-review-plan": {
+		"workspace": true, "subject-kind": true, "subject-id": true,
+		"expected-review-plan-fingerprint": true,
+	},
+	"knowledge-review-handoff": {
+		"workspace": true, "subject-kind": true, "subject-id": true,
+		"qualification-requirements":          true,
+		"expected-review-handoff-fingerprint": true,
+	},
+	"knowledge-review-disclose": {
+		"workspace": true, "subject-kind": true, "subject-id": true,
+		"review-handoff":                      true,
+		"expected-review-handoff-fingerprint": true,
+		"expected-disclosure-fingerprint":     true,
+	},
+	"knowledge-data-design-candidate-review": {
+		"workspace": true, "subject-kind": true, "subject-id": true,
+		"data-design-candidate-kind":                                      true,
+		"data-design-candidate-fingerprint":                               true,
+		"expected-data-design-fingerprint":                                true,
+		"expected-data-design-candidate-evidence-requirement-fingerprint": true,
+		"expected-data-design-candidate-review-fingerprint":               true,
+	},
+	"requirements": {"workspace": true},
+	"plugin-lock":  {"workspace": true, "environment": true},
+	"plugin-resolve": {
+		"workspace": true, "environment": true, "plugin-lock": true,
+	},
+	"plugin-runtime-plan": {
+		"workspace": true, "environment": true, "plugin-lock": true,
+	},
 }

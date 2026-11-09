@@ -9,7 +9,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -37,7 +36,7 @@ func TestProtectedWebRouteToSelectedProcessPlugin(t *testing.T) {
 	buildCtx, cancelBuild := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancelBuild()
 
-	binaryPath := filepath.Join(t.TempDir(), "tei-protected-process-reference")
+	binaryPath := hostExecutable(t.TempDir(), "tei-protected-process-reference")
 	build := exec.CommandContext(buildCtx, "go", "build", "-o", binaryPath, "../reference-process-plugin")
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build existing process plugin: %v\n%s", err, output)

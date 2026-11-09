@@ -47,9 +47,11 @@ var attributeRoles = map[string]bool{
 	"currency-rate-currency": true, "currency-rate-fiscal-year": true,
 	"currency-rate-month-sequence": true, "currency-rate-middle": true,
 	"currency-rate-buying": true, "currency-rate-selling": true,
-	"numbering-counter": true, "numbering-digits": true, "numbering-prefix": true,
-	"numbering-check": true, "numbering-overflow": true,
-	"holiday-date": true,
+	"currency-rate-fallback": true,
+	"numbering-counter":      true, "numbering-digits": true, "numbering-prefix": true,
+	"numbering-check": true, "numbering-overflow": true, "numbering-rule": true,
+	"holiday-date": true, "holiday-calendar": true,
+	"setting-key": true, "setting-value": true, "setting-user": true,
 }
 
 func Validate(w ir.World) []Diagnostic {
@@ -317,6 +319,7 @@ func Validate(w ir.World) []Diagnostic {
 			out = append(out, errFor(subject.Subject{Kind: "semantic-attribute", ID: string(a.ID)}, "SEMANTIC_ATTRIBUTE_ROLE_UNSUPPORTED", "attribute %s uses unsupported role %s", a.ID, a.Role))
 		}
 	}
+	out = append(out, validateAttributeRoleTypes(semanticAttributes, semanticTypes)...)
 	for _, r := range semanticRelations {
 		if _, ok := semanticData[r.Target]; !ok {
 			out = append(out, errFor(subject.Subject{Kind: "semantic-relation", ID: string(r.ID)}, "UNKNOWN_SEMANTIC_RELATION_TARGET", "relation %s targets unknown semantic data %s", r.ID, r.Target))

@@ -1,0 +1,12 @@
+ M .gitattributes
+ M plan/evidence/README.md
+ M tools/README.md
+?? aw/idx.py
+?? aw/t.sh
+?? aw/v.sh
+?? aw/v2.sh
+?? aw/v3.sh
+?? tools/reference-service-carrier-connect/README.md
+?? tools/reference-service-carrier-connect/cmd/tei-service-carrier-connect/main.go
+?? tools/reference-service-carrier-connect/connect.go
+?? tools/reference-service-carrier-connect/connect_test.go
