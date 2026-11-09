@@ -71,6 +71,7 @@
 - [採番の予約と取引の結合の確認](XTEA_LOWCODE_NUMBERING_RESERVATION_TRANSACTION_2026-11.md)（参照実装の試験記録。InvokerのUoW共通化と実DBは未実装）
 - [採番規則の行識別の確認](XTEA_LOWCODE_NUMBERING_RULE_IDENTITY_2026-11.md)（参照実装の試験記録。例への追加は未実装）
 - [採番規則から発行までの一続きの経路の確認](XTEA_LOWCODE_NUMBERING_RULE_RESERVE_2026-11.md)（参照実装の試験記録。例への追加は未実装）
+- [月内締めの期間化の確認](XTEA_LOWCODE_MONTHLY_CLOSING_PERIOD_2026-11.md)（参照実装の試験記録。閉め操作の実装と例への追加は未実施）
 - [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
 - [X-TEA受容要件の実装対応](XTEA_LOWCODE_ACCEPTANCE_TRACE_2026-11.md)（`AC-1`〜`AC-11`・`RQ-C1`〜`RQ-C3`の参照実装と未確認事項。受容判断は仮承認）
 - [実DBで実行時の判断を確かめる計画](REAL_DATABASE_RUNTIME_DECISION_PLAN_2026-11.md)（期間・権限・効果の判断を実DBで見る案。**NOT RUN**）
@@ -207,3 +208,4 @@
 - [D-1（catalogの`scope`拡張）の判断材料](CLI_CATALOG_SCOPE_D1_IMPACT_2026-11-09.md)（acceptedCommands 50件・catalog record 19件・広告しない36件・effectは全てread-onlyを実測。D-1は不変条件テスト2件と実consumer（MCP adapterのread-only前提）に触れ、`scope`の意味も変える。外在consumerは測れないため推奨しない。判断は未。 #2831）
 - [宣言の他の欄もplanと照合する](TEI_GO_SELF_BUILD_INTENT_FIELD_COMPARE_2026-11-09.md)（builder childがrecipe・source集合・dependency集合も比べるようにした。導出値（locator・digest・version）は比べない——比べると正しいbuildをすべて不一致と呼ぶため。不一致は名指しで拒否し、reportを出さない。既存fixtureが実フローと違っていたのも検査が検出した。`l2bClaimed`はfalse。 #2831）
 - [`parameters`も照合する](TEI_GO_SELF_BUILD_PARAMETER_COMPARE_2026-11-09.md)（§4.17は「正規化の意味が未決」として残したが、実測するとどちらの側も名前順ソートのみで値を変えていなかった。前提を確かめてから名前で突き合わせる照合を実装し、順序非依存と正規化の性質自体を試験で固定。L2-bは未。 #2831）
+
