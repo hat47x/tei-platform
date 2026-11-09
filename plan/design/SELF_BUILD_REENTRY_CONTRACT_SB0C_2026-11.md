@@ -1413,6 +1413,57 @@ catalogは**データ**であり、entryはそれを**名指しされたもの�
 
 いずれも**後から足せる**。逆（製品に足してから外す）は互換を壊すので、順序はこちらが正しい。
 
+### 4.33 capability declarationからcatalogを作る（2026-11-09）
+
+§4.32はcatalogを**製品の外のデータ**と決めた。その決定が残した「誰が書くか」を、`tools/reference-build-catalog-authoring`が埋める。
+
+#### 何をするか
+
+**能力宣言**（build toolが何をできるか）を読み、**artifactのdigestを実ファイルから計算して**、catalog JSONを書く。
+
+| 欄 | 扱い |
+| --- | --- |
+| `plugin`・`version`・`implementation`・`contract`・`contractMajor`・`recipeKinds`・`targets`・`profiles` | 宣言から写す |
+| `authorityScope` | **書かせない。** 常に`build-tool`（build toolとして名乗れる値は一つだけ） |
+| `artifact` | `-root`からの**相対パス**。このファイルのdigestが`artifactDigest`になる |
+| `artifactDigest` | **書かせない。** 書くと拒否する |
+
+**digestを宣言させないことが要点である。** 手で書いたdigestを許すと、リポジトリに無いbuilderを名乗るcatalogが作れてしまう。ツールは実ファイルを読み、そのバイトのdigestを入れる。
+
+#### 拒否するもの
+
+| 入力 | 理由 |
+| --- | --- |
+| 宣言の`artifactDigest` | 読んでいないバイトを名乗れなくする |
+| `-root`の外を指す`artifact` | ルートが持たないファイルをcatalogに載せない |
+| 存在しない・通常ファイルでない`artifact` | 同上 |
+| 既存の`-output` | 上書きしない |
+| 組み立てたcatalogが`ParseBuildCatalog`で読めない | entryが読めないcatalogを「catalogがある」と誤解させない |
+
+#### 実測：宣言からClaimまで一本で通った
+
+| 段 | 結果 |
+| --- | --- |
+| 能力宣言を書く | 1 provider |
+| ツールでcatalogを作る | `catalogDigest=sha256:6d1e5929…`、`artifactDigest=sha256:84db7752…` |
+| **宣言のartifactと実ファイルのdigest** | `sha256:84db7752…` で**一致**（`sha256sum`で確認） |
+| 参照実装がそのcatalogを解決 | `planFingerprint=a6b756b8…` |
+| **`tei self-build`（`-rebuild-check`を書かない）** | `derivedBy=entry-in-process`・`artifactReproducibility=reproduced`・**`l2b.claimed=true`**・`qualified=false` |
+
+**§4.29で「catalogを書く場所が無い」と分かってから、製品の契約を一つも変えずに、宣言からL2-bのClaimまでが一本で通った。**
+
+#### この形式は製品の形式ではない
+
+能力宣言には**互換性の約束も`formatVersion`も無い**。製品が読むのは、このツールが出力するcatalogだけである。宣言の形を変えても、catalogの形（`BuildCatalog`）を変えなければ製品には影響しない。
+
+#### この節が言っていないこと
+
+- **catalogが正しいこと**（§4.22 K-3、SC0-26のまま）。名指しされたデータを使った記録しかない
+- **誰が能力を宣言してよいか**（権限）。catalogは「buildできると名乗るデータ」であり、名乗りの妥当性は範囲外
+- **builderの実装が正しいこと**。digestを計算するだけで中身は見ない
+- 既定の試行でのClaim（§4.30のまま。catalogを渡す一手が要る）
+- 能力宣言の**版付け**。必要になった時点で決める
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
@@ -1510,7 +1561,8 @@ catalogは**データ**であり、entryはそれを**名指しされたもの�
 - [x] 依存の更なる削減：**entryが計画側も独立に持つ**経路（[#3729](https://github.com/hat47x/tei-platform/pull/3729)）。lockの計画側はbuilderの申告を優先し、申告が無ければentryの再計算値を使う。どちらを使ったかを`planSideSource`で記録するので、弱い根拠を強い根拠と読ませない（[記録](../evidence/TEI_GO_SELF_BUILD_ENTRY_PLAN_SIDE_2026-11-09.md)）
 - [x] catalogの欄がどこで宣言されているかの実測（§4.29。7欄のうち**5欄にcatalog以外の宣言面が無く**、既存の宣言からは導出できないと分かった。[記録](../evidence/TEI_GO_SELF_BUILD_CATALOG_FIELD_PROVENANCE_2026-11-09.md)）
 - [x] catalogを**書く場所**の決定（§4.32。**製品の外**に置く。Workspaceもplugin構文も変えない。既存readerは未知のentryと未知の`formatVersion`を拒否するため、K-1・K-2は古いbinaryとの互換を壊す。K-3の読み方はそのままで、製品の契約を一つも変えない）
-- [ ] catalogを作る**ツール**の能力宣言の形式と、その実装（§4.32が残した未決）
+- [x] catalogを作る**ツール**の能力宣言の形式と実装（§4.33。`tools/reference-build-catalog-authoring`が能力宣言からcatalogを作り、**artifactのdigestは実ファイルから計算**する。宣言にdigestを書くことと`-root`の外を拒否する。宣言から`l2b.claimed=true`まで一本で通った。[記録](../evidence/TEI_GO_SELF_BUILD_CATALOG_AUTHORING_2026-11-09.md)）
+- [ ] 能力宣言の**版付け**（今は互換の約束をしない。必要になった時点で決める）
 - [ ] D-1（catalogの`scope`拡張）を採るかどうかの契約判断（採る場合のみ、catalogの広告と実応答の一致を照合へ載せる）
 
 **A-1（`gobuilder`移動）は採らないため、影響範囲の洗い出しは終了条件から外した。** 29ファイルの内訳は[記録](../evidence/TEI_GO_INTERNAL_RULE_AND_BUILDER_MOVE_2026-11-07.md)として残す。I-1は「採らない」から「I-1aとして着手」へ改めた（§4.13）。`ParseFixtureCatalog`（fixture catalog）は`tools/`に残す。
