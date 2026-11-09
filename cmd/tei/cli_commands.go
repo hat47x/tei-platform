@@ -176,6 +176,14 @@ func helpText(fs *flag.FlagSet, command string) string {
 			fmt.Fprintf(&out, "  -limit int\n    \tmaximum entries per list (children, siblings); default %d, at most %d\n", operations.LocationDefaultLimit, operations.LocationMaxLimit)
 			return out.String()
 		}
+		if command == "dbcheck" {
+			// dbcheck is dispatched but deliberately absent from the read-only
+			// discovery catalog, so it cannot carry an allowlist entry; the one
+			// flag it reads is stated here instead of dumping the shared set
+			// (#3943).
+			fmt.Fprintf(&out, "  -dsn string\n    \tdbcheck: PostgreSQL DSN (defaults to TEI_TEST_POSTGRES_DSN)\n")
+			return out.String()
+		}
 		if command == "self-build" {
 			// self-build is dispatched but deliberately absent from the
 			// read-only discovery catalog, so "run `tei commands`" would point
@@ -198,6 +206,21 @@ func helpText(fs *flag.FlagSet, command string) string {
 	}
 	writeFlagHelp(&out, fs, command, wanted)
 	return out.String()
+}
+
+// requestedHelp reports whether the arguments ask for the usage listing.
+// Only the flag form counts, so a value that happens to be "-h" after a
+// positional argument is not taken for a help request.
+func requestedHelp(args []string) bool {
+	for _, arg := range args {
+		if arg == "--" {
+			return false
+		}
+		if arg == "-h" || arg == "-help" || arg == "--help" {
+			return true
+		}
+	}
+	return false
 }
 
 // printHelp answers a requested usage listing on standard output. It is not an

@@ -301,6 +301,7 @@
 - [traceの未解決2欄の意味](CLI_TRACE_UNRESOLVED_MEANING_2026-11-10.md)（`trace.unresolved`が常に0、`projectionUnresolved`は全subjectで同一の17件＝グラフ全体、と実測し、`unresolved:0`を「未解決なし」と誤読できないよう契約へ明記。issue6値のうち到達不能な3値も明記。欄の改名・統合は未実施）
 - [MCPのsubjectKind列挙の欠落](CLI_MCP_SUBJECTKIND_ENUM_2026-11-10.md)（`inputSchema.subjectKind`だけが閉じた集合を宣言せず、CLIの12値/10値と食い違っていたため、操作の集合を直接参照するenumを追加。広告した22値すべての受理と、enum外の拒否を実バイナリで確認。実Host・認可・外部送出はNOT RUN）
 - [traceのoffset/limitの値域宣言](CLI_MCP_TRACE_PAGING_BOUNDS_2026-11-10.md)（`tei_trace`の`offset`・`limit`だけが値域を宣言せず、0が有効で負値が拒否されることをclientが読めなかったため`minimum:0`を追加。`model locate`の1..500とは意図的に異なるので各々が宣言する。宣言と実挙動の一致をdispatch経由で固定）
+- [CLIのhelpが受理しないflagを並べていた件](CLI_HELP_GRAMMAR_2026-11-10.md)（	ei validate -h等が共有FlagSetの70個を出し、実際に受け付けるのは3個だった件。ExitOnErrorのコマンドはs.Parse前に絞り込みhelpを返すよう修正。全コマンドで-hのflag数が受理範囲と一致。実行時の受理範囲は不変）
 - [viewの-inputが-command無しで黙って捨てられていた](TEI_DOGFOODING_ROUND20_VIEW_INPUT_2026-11-09/README.md)（#3778・#3420。`-input`は`-command`と組だが、無い場合に値が捨てられて成功していた。両方向の変異を検出する試験を追加。起票時の誤診と既存試験による発覚も記録）
 - [view -executeの失敗符号が潰れていた](TEI_DOGFOODING_ROUND21_VIEW_EXECUTE_2026-11-09/README.md)（#3797・#3419。入力不正と認可拒否がどちらも`COMMAND_FAILED`に潰れ、理由がmessageの先頭にしかなかった。既知7符号を`error.code`に出す。`-operation-log`の上書き挙動は未決）
 - [手書きの符号許可リストが21中15を潰していた](TEI_DOGFOODING_ROUND22_CODE_COVERAGE_2026-11-09/README.md)（#3807・#3797・#3420。CLIは7符号、Studioは1符号だけを特別扱いし、coreの21符号のうち15が`COMMAND_FAILED`に潰れていた。列挙を廃止し`command.ReportedFailure`へ。AST走査で再発防止）
