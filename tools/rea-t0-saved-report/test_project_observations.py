@@ -1,3 +1,4 @@
+import hashlib
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -6,7 +7,8 @@ import unittest
 import project_observations as projector
 
 ROOT_SHA = 'a' * 64
-FILE_SHA = 'b' * 64
+FILE_BYTES = b'fixture public source\n'
+FILE_SHA = hashlib.sha256(FILE_BYTES).hexdigest()
 ROOT = 'build/rea-ci-demo'
 
 
@@ -83,6 +85,57 @@ class TestExternalProjection(unittest.TestCase):
         x=projector.project(self.root)
         self.assertEqual(x['admission'],'refused')
         self.assertEqual(x['records'],[])
+
+    def snapshots(self):
+        for dirname in ('source-pre', 'source-post'):
+            dest = self.root / dirname
+            dest.mkdir()
+            for name in ('index.js', 'package.json'):
+                (dest / name).write_bytes(FILE_BYTES)
+
+    def test_pre_and_post_saved_bytes_match_without_meaning_acceptance(self):
+        self.snapshots()
+        x = projector.project(self.root)
+        self.assertEqual(x['sourceManifestStatus'], 'report-pre-post-byte-match')
+        self.assertTrue(all(z['sourceBinding'] == 'report-pre-post-byte-match' for z in x['records']))
+        self.assertFalse(x['acceptedMeaning'])
+        self.assertEqual(x['sourceClosure'], 'not-qualified')
+
+    def test_pre_source_manifest_conflict_rejected(self):
+        self.snapshots()
+        (self.root / 'source-pre/index.js').write_bytes(b'changed before analysis')
+        with self.assertRaisesRegex(ValueError, 'pre-source byte differs'):
+            projector.project(self.root)
+
+    def test_post_source_manifest_conflict_rejected(self):
+        self.snapshots()
+        (self.root / 'source-post/index.js').write_bytes(b'changed after analysis')
+        with self.assertRaisesRegex(ValueError, 'post-source byte differs'):
+            projector.project(self.root)
+
+    def test_incomplete_snapshot_pair_rejected(self):
+        (self.root / 'source-pre').mkdir()
+        with self.assertRaisesRegex(ValueError, 'inconsistent'):
+            projector.project(self.root)
+
+    def test_missing_one_source_copy_rejected(self):
+        self.snapshots()
+        (self.root / 'source-post/package.json').unlink()
+        with self.assertRaisesRegex(ValueError, 'missing saved report member'):
+            projector.project(self.root)
+
+    def test_symlink_source_copy_rejected(self):
+        self.snapshots()
+        (self.root / 'source-post/index.js').unlink()
+        (self.root / 'source-post/index.js').symlink_to(self.root / 'source-pre/index.js')
+        with self.assertRaisesRegex(ValueError, 'symlink'):
+            projector.project(self.root)
+
+    def test_bogus_third_manifest_source_refused(self):
+        with (self.root / 'fixture-source-sha256.txt').open('a') as f:
+            f.write(FILE_SHA + '  ' + ROOT + '/undisclosed.js\n')
+        with self.assertRaisesRegex(ValueError, 'exactly the two'):
+            projector.project(self.root)
 
     def test_wrong_root_digest_refused(self):
         obj=doc();obj['data']['normalized_result']['root_artifact_sha256']='f'*64
