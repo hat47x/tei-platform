@@ -1,0 +1,43 @@
+{
+  "schema": "tei.reference.observation-router-connect/v0",
+  "authority": "derived-reference",
+  "ruleId": "tei.reference.observation-router-connect",
+  "ruleVersion": "v0",
+  "ruleFingerprint": "sha256:c0665a54fcd8b1785cb538d13fc2e4adabffeb4dcd2fbd664ca8db20f189b05b",
+  "environment": "development",
+  "outcomes": [
+    {
+      "kind": "application-runtime",
+      "providerId": "runtime.observer",
+      "status": "NOT_REGISTERED",
+      "resolved": true,
+      "selected": false,
+      "invoked": false,
+      "detail": "the declaration names a provider the Host did not register"
+    },
+    {
+      "kind": "database-state",
+      "providerId": "database.observer",
+      "status": "NOT_REGISTERED",
+      "resolved": true,
+      "selected": false,
+      "invoked": false,
+      "detail": "the declaration names a provider the Host did not register"
+    }
+  ],
+  "observedCount": 0,
+  "refusedCount": 2,
+  "unknownCount": 0,
+  "invokedCount": 0,
+  "attemptedCount": 2,
+  "complete": false,
+  "notes": [
+    "resolution uses observation.Binding, the same function cmd/tei already calls",
+    "the router is the existing observation.Router; no second registry is added",
+    "invoked means the provider's Observe was entered, not that external state was read",
+    "a non-empty fragment is not proof that the observation succeeded in the world",
+    "unknownCount counts entries that failed after the provider was called; it is a subset of invokedCount",
+    "complete means every attempted kind was observed; it is not proof that the world matches",
+    "no authentication, authority, permission or durable receipt is issued here"
+  ]
+}

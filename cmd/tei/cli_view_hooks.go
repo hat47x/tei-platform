@@ -76,7 +76,6 @@ func runDeclaredHooksWithRule(ctx context.Context, world ir.World, applicationID
 			return pattern, true
 		},
 	}
-	runner.CallInputs = hookCallInputs(world, applicationID, patternID, inputs)
 	report, err := runner.RunReachable(ctx, applicationID, patternID, attributeValues(inputs), hook.ReferenceReach{})
 	if report == nil {
 		return nil, err

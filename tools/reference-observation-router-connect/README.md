@@ -47,6 +47,17 @@ go run ./tools/reference-observation-router-connect/cmd/tei-observation-router-c
 
 **`complete` は「世界がそうなっている」証明ではありません。** 試した全部に答えが返ったという意味だけです。
 
+## unknown を refusal と分ける（CON-12d 追補）
+
+| 数 | 意味 |
+| --- | --- |
+| `refusedCount` | **入る前**に止めた回数。何も呼ばれていない |
+| `unknownCount` | **入った後**に失敗した回数。`invokedCount` の内数 |
+
+**入った後の失敗を `refusedCount` に数えると「実行していない」と読めます。** 実際には呼出しは起きており、世界を読んだかどうかは分かりません。そのため `unknownCount` として別に数えます。
+
+**`unknownCount` は `invokedCount` の内数**です。3つの数を足し合わせないでください。
+
 ## この参照が示さないこと
 
 - **観測が外部状態を反映していること**。付属 CLI の Provider は固定の断片を返し、何も読みません。
