@@ -78,3 +78,32 @@ capability sales.submit {
 	}
 	return root
 }
+
+// hookWorkspaceWithoutCall writes the same workspace, but the hook declares only
+// reads. The reference execution can run a hook it has no caller for only when
+// the hook does not promise a call.
+func hookWorkspaceWithoutCall(t *testing.T) string {
+	t.Helper()
+	root := hookWorkspace(t)
+	pattern := `pattern order_entry.order_record record {
+    data sales.order
+
+    interaction {
+        item sales.order.status
+
+        command sales.submit {
+            input order sales.order.status
+        }
+
+        hook before-update {
+            reads sales.order.status
+            on-failure reject
+        }
+    }
+}
+`
+	if err := os.WriteFile(filepath.Join(root, "applications", "order_entry", "patterns", "order-record.tei"), []byte(pattern), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}

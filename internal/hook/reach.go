@@ -43,6 +43,18 @@ const ReasonReadNotSupplied = "no value was supplied for the declared read, so t
 // ReasonPhaseUnsupported は、位相順序が位相を名指さないために評価しなかった理由である。
 const ReasonPhaseUnsupported = "the runner order does not name this phase, so it was not evaluated"
 
+// ReasonCallerUnavailable は、フックが能力を宣言したのに呼出し元が無いため、
+// その位相を評価しなかった理由である。
+//
+// 宣言に`uses`があり呼出し元が無い場合、その能力は一度も呼ばれません。それでも
+// `executed`と報告すると、「宣言した能力を呼んだ」と読めてしまいます。呼んで
+// いないものを呼んだと書かないために、この理由で未評価にします。
+const ReasonCallerUnavailable = "the hook declares a capability to call but no caller is configured, so this phase was not evaluated"
+
+// ReasonDeclaredCallNotMade は、実装が呼出し元を使わない経路で実行されたため、
+// 宣言した能力が呼ばれなかったことを示す理由である。
+const ReasonDeclaredCallNotMade = "the hook declares a capability to call but the implementation does not call it, so this phase was not evaluated"
+
 // PhaseReport は、位相をどこまで実行したかと、実行しなかった位相の理由である。
 //
 // Skip と NotEvaluated は別である。Skip はその実行境界が原理的に到達しない位相
@@ -72,6 +84,10 @@ type PhaseReport struct {
 	// `hook.ProducesFor`の宣言照合も走らなかった。宣言と実行が食い違う状態を
 	// 黙って通さないために欄を足す。
 	Produced map[string]Produced `json:"produced,omitempty"`
+	// Uncalled names, by phase, the capabilities a hook declared in `uses` that
+	// were not called. A phase with an uncalled declaration is reported as not
+	// evaluated, so `executed` never claims a call that did not happen.
+	Uncalled map[string][]core.CanonicalID `json:"uncalled,omitempty"`
 }
 
 // Ran は、実行した位相があるかを返す。すべての位相を飛ばした実行と、位相を
@@ -131,6 +147,22 @@ func (r Runner) RunReachable(ctx context.Context, applicationID, patternID core.
 			report.Skipped = append(report.Skipped, phase)
 			report.NotEvaluated = append(report.NotEvaluated, phase)
 			report.Reasons[phase] = fmt.Sprintf("%s: %s", ReasonReadNotSupplied, missing)
+			continue
+		}
+		// A hook that declares `uses` promises to call those capabilities. The
+		// reference execution has no caller, and the reference rule does not call
+		// one, so the promise cannot be kept here. Recording the phase as
+		// executed would claim a call that never happened; mark it not evaluated
+		// and name the capabilities instead.
+		if len(declaration.Uses) > 0 {
+			report.Skipped = append(report.Skipped, phase)
+			report.NotEvaluated = append(report.NotEvaluated, phase)
+			report.Uncalled = appendUncalled(report.Uncalled, phase, declaration.Uses)
+			if r.Caller == nil {
+				report.Reasons[phase] = ReasonCallerUnavailable
+			} else {
+				report.Reasons[phase] = ReasonDeclaredCallNotMade
+			}
 			continue
 		}
 		invocation := Invocation{
@@ -196,6 +228,21 @@ func (r Runner) findPattern(applicationID, patternID core.CanonicalID) *applicat
 		}
 	}
 	return nil
+}
+
+// appendUncalled は、位相ごとの未実行の呼出しを記録する。同じ位相の項目を
+// 二度足さない。
+func appendUncalled(uncalled map[string][]core.CanonicalID, phase string, capabilities []core.CanonicalID) map[string][]core.CanonicalID {
+	if uncalled == nil {
+		uncalled = map[string][]core.CanonicalID{}
+	}
+	if _, exists := uncalled[phase]; exists {
+		return uncalled
+	}
+	declared := make([]core.CanonicalID, len(capabilities))
+	copy(declared, capabilities)
+	uncalled[phase] = declared
+	return uncalled
 }
 
 // readsFromInputs は、宣言した属性の値を inputs から引く。値の無い最初の属性を
