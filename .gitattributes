@@ -177,3 +177,6 @@
 /plan/evidence/BINDING_FORMS_CONSUMER_SURVEY_2026-11-09/** -text
 # Concurrent-subagent observations are hashed as raw bytes.
 /plan/evidence/DSH_SUBAGENT_CONCURRENT_LIMIT_2026-11-09/** -text
+
+# OTel path observations are hashed as raw bytes.
+/plan/evidence/DSH_OTEL_PATH_2026-11-09/** -text
