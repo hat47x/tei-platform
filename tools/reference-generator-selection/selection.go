@@ -771,6 +771,23 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 	if actualDigest != manifest.SourceDigest {
 		return reject("source digest mismatch: declared " + manifest.SourceDigest + ", actual " + actualDigest)
 	}
+	if expectedExtension == ".go" {
+		built, err := goSourceFiles(dir)
+		if err != nil {
+			return reject("go source selection failed: " + err.Error())
+		}
+		declaredName := filepath.Clean(filepath.FromSlash(manifest.Source))
+		bound := false
+		for _, name := range built {
+			if name == declaredName {
+				bound = true
+				break
+			}
+		}
+		if !bound {
+			return reject("declared source " + manifest.Source + " is not among the files passed to go build: " + strings.Join(built, ", "))
+		}
+	}
 	if manifest.Generation != nil && manifest.Generation.OutputDigest != actualDigest {
 		return reject("generation output digest does not match the candidate source")
 	}

@@ -72,6 +72,23 @@ func (r Runner) RunSequence(ctx context.Context, invocation Invocation) (Sequenc
 			continue
 		}
 		invocation.Phase = phase
+		// Each phase sees only the reads its own declaration names. The caller
+		// supplies one value set for the pattern, so the sequence narrows it per
+		// phase: a narrower phase must not inherit the wider view of another, and
+		// a value no phase declares is simply not passed on. A declared read that
+		// has no value is still refused by ReadsFor.
+		phaseReads := map[core.CanonicalID]string{}
+		for _, attribute := range declaration.Reads {
+			if value, observed := invocation.Reads[attribute]; observed {
+				phaseReads[attribute] = value
+			}
+		}
+		reads, readErr := ReadsFor(declaration, phaseReads)
+		if readErr != nil {
+			result.Refused = phase
+			return result, readErr
+		}
+		invocation.Reads = reads
 		err := r.runDeclared(ctx, invocation, declaration)
 		if err == nil {
 			result.Executed = append(result.Executed, phase)
@@ -142,6 +159,14 @@ func wrapFailure(err error, declared *application.Hook) error {
 		return nil
 	}
 	if isNotSatisfied(err) {
+		// An unsatisfied hook may name a business outcome. The name is checked
+		// here, where every refusal passes, so an implementation cannot widen
+		// the vocabulary by reporting a name it invented.
+		if outcome, ok := OutcomeOf(err); ok {
+			if outcomeErr := ValidateOutcome(outcome); outcomeErr != nil {
+				return outcomeErr
+			}
+		}
 		return err
 	}
 	if declared != nil && declared.Failure == "warn" {

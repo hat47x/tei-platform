@@ -1,0 +1,3 @@
+== non-test sites naming each connect point ==
+C-1 routing.Router: 1
+C-2 NewSelectedServiceCarrierInvoker: 1

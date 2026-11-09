@@ -385,6 +385,16 @@ WP10 統合と引継ぎ
 | フックの宣言（位相・読み書き・失敗時） | 実装 | 付録C.5 |
 | フックの位相の重複宣言の拒否 | 実装 | 付録C.5、`internal/validation` |
 | フックの位相順序と途中停止の記録（`RunSequence`） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md) |
+| フックの宣言した読み取りだけの授受（`ReadsFor`） | 実装 | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_DECLARED_READS_2026-11.md) |
+| 位相ごとの読み取り範囲（`RunSequence`） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_PER_PHASE_READS_2026-11.md) |
+| 提案された値の宣言照合（`ProducesFor`） | 実装 | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_DECLARED_PRODUCES_2026-11.md) |
+| フック宣言の機能定義書への反映 | 実装 | 付録C.5、`internal/artifact`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_FUNCTION_DEFINITION_2026-11.md) |
+| CLI参照実行からのフック呼出し | 実装（参照） | 付録C.5、`cmd/tei`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_CLI_WIRING_2026-11.md) |
+| Studio参照実行からのフック呼出し | 実装（参照） | 付録C.5、`internal/studiohost`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_STUDIO_WIRING_2026-11.md) |
+| フック位相の到達範囲（`RunReachable`） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_REACHABLE_PHASES_2026-11.md) |
+| フックの結末名とCommand拒否名の対応 | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_OUTCOME_VOCABULARY_2026-11.md) |
+| フックが名乗る結末名の語彙照合 | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_OUTCOME_CHECK_2026-11.md) |
+| 到達できる位相の経路での提案の照合（`RunReachable`） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_REACHABLE_PROPOSES_2026-11.md) |
 | フックが使う能力の`command` Pattern不在の拒否 | 実装 | 付録C.5、`internal/validation` |
 | フックの実行境界（reject/warn） | 実装 | 付録C.5 |
 | 未使用属性の表示 | 実装 | 付録C.5 |

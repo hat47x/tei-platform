@@ -37,3 +37,17 @@ func TestCommandFailureDistinguishesUnknownEffect(t *testing.T) {
 		t.Fatalf("a plain error was reported as %q", code)
 	}
 }
+
+// TestCommandFailureNamesTheScopeCodes checks that a period split by a closing day
+// keeps its own refusal code, so a caller can tell "supply a half-aware state"
+// from "fix the business date" and from a generic execution failure.
+func TestCommandFailureNamesTheScopeCodes(t *testing.T) {
+	unavailable := &command.ExecutionError{Code: "COMMAND_PERIOD_SCOPE_UNAVAILABLE", Message: "the state cannot answer for a half month"}
+	if code, message, ok := commandFailure(unavailable); !ok || code != "COMMAND_PERIOD_SCOPE_UNAVAILABLE" || message == "" {
+		t.Fatalf("code=%q message=%q ok=%v", code, message, ok)
+	}
+	unknown := &command.ExecutionError{Code: "COMMAND_PERIOD_SCOPE_UNKNOWN", Message: "the business date is not named"}
+	if code, _, ok := commandFailure(unknown); !ok || code != "COMMAND_PERIOD_SCOPE_UNKNOWN" {
+		t.Fatalf("code=%q ok=%v", code, ok)
+	}
+}

@@ -20,6 +20,14 @@
 - [操作面・成果物・束縛実行の検証記録](SURFACE_AND_ARTIFACT_VERIFICATION_2026-11.md)
 - [候補ビューの実変更履歴での負担測定](CANDIDATE_VIEW_REAL_HISTORY_MEASUREMENT_2026-11.md)（`reference/workspace` の4変更。合成ではない変更で候補件数とSource修正量を測定。major変更の実履歴はなし）
 - [実データベースでの確認手順](REAL_DATABASE_VERIFICATION_PROCEDURE_2026-11.md)（PostgreSQL 16.14で実行。CAS試験の同期不足を修正し、DDL・NULL・Web E2Eまで確認。健康診断receiptで `TRUSTED_FULL_HEALTH_NOT_RECORDED` を解消し、残る2診断は暫定オーナー判断。実Provider・本番Authorityは未実行）
+- [model catalogのCLI/MCP一致](CLI_MCP_CATALOG_PARITY_2026-11-08.md)（名前空間不在がMCPだけ`ok:true`の空結果になっていたのを、投影の判定を両入口で共有して`NAMESPACE_NOT_FOUND`・`isError:true`に揃えた。実Host・認可・外部送出はNOT RUN）
+- [trace/inspectの段別費用](CLI_TRACE_STAGE_COST_2026-11-09.md)（`-limit 1`が`full`と同じ段を通り費用も同等であること、`reference/workspace`規模ではプロセス起動約1秒が支配的で段の差が出ないことを実測。二重解析の共有・並列化は未実施）
+- [空文字列の引数の拒否](CLI_EMPTY_ARGUMENT_REJECTION_2026-11-09.md)（`-mode ""`が広告既定の`summary`ではなく`full`へ落ちていたのを、明示の空文字列として`INVALID_ARGUMENT`で拒否。省略時は既定維持。内部`modelref`の既定は未集約）
+- [MCP Adapterの4MiB超過要求](MCP_OVERSIZED_REQUEST_2026-11-09.md)（行長超過でプロセスが終了し以降の要求を失っていたのを、`-32600`で拒否してループを続けるよう修正。上限の値の妥当性・同時接続・実HostはNOT RUN）
+- [MCP `tools/call` のparams検査](MCP_CALL_PARAMS_MESSAGES_2026-11-09.md)（params/name欠落が`unknown tool ""`やデコーダ文言で拒否され、実際の誤りを指していなかったのを、入力ごとの文言へ直した。実Host・認可・外部送出はNOT RUN）
+- [CLIとMCPの結果・失敗・成否の一致](TEI_CAPI2_CLI_MCP_PARITY_2026-11-09/README.md)（`catalog`/`inspect`/`trace`の成功文書が完全一致し、validateの6分類で`ok`・`isError`・exit・`error.code`が一致することを実実行物で比較。封じ込め5通りも外部バイト漏れなし。実Host・認可・外部送出はNOT RUN。CAPI-2 / #3420）
+- [traceの既定値の一元化](CLI_TRACE_DEFAULT_SINGLE_SOURCE_2026-11-09.md)（CLI flag・`commands`の`argumentDefaults`・MCP Adapterが別々に持っていた`mode`/`direction`の既定を`modelref`の定数1か所へ寄せた。内部の空Mode→fullは残存）
+- [`version`の自己申告revision](CLI_VERSION_DECLARED_REVISION_2026-11-09.md)（`-buildvcs=false`の実行物が`-ldflags`注入でrevisionを示せるようにし、`vcsRevision`と`declaredRevision`・`source`を区別した。自己申告はtoolchain証拠ではない。署名・来歴はNOT RUN）
 - [健康診断receipt（`005bbee7` / Actions 42152908986）](QUALIFICATION_FULL_HEALTH_005BBEE7_42152908986.json)と[暫定audit結果](REAL_PROVIDER_PROVISIONAL_AUDIT_005BBEE7.json)（`UNQUALIFIED`、残る診断は `E2_PROVIDER_GUARANTEE_NOT_ATOMIC` と `PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE`）
 - [D8〜D11暫定経路のaudit](PROVISIONAL_CHAIN_AUDIT_005BBEE7.json)と[Runner Evidence](PROVISIONAL_CHAIN_RUNNER_EVIDENCE_005BBEE7.json)（`atomic-with-commit` の暫定宣言。`PROVISIONAL_GRANT_NOT_G2_EVIDENCE` 等は暫定オーナー判断。chain testは単一経路と同じ健康診断receipt入力に対応）
 - [chain経路の健康診断receipt（`f887ab97` / Actions 42195019838）](QUALIFICATION_FULL_HEALTH_F887AB97_42195019838.json)と[receipt適用後のaudit](PROVISIONAL_CHAIN_AUDIT_F887AB97.json)（`TRUSTED_FULL_HEALTH_NOT_RECORDED` が解消し、残る診断は暫定3件）
@@ -34,6 +42,16 @@
 - [フック実行の配線と失敗の区別の確認](XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)（参照実装の試験記録。Runnerからの配線、NotSatisfiedと実行失敗の区別、参照規則。実PluginとCLI・Studioの配線は未実装）
 - [フック宣言の印刷面への反映の確認](XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md)（参照実装の試験記録。画面と同じフック宣言が印刷面にも出る。実印刷・用紙面の版照合は未確認）
 - [フックの位相順序と途中停止の確認](XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md)（参照実装の試験記録。位相の実行順、不成立での停止位置、`warn`の続行、未対応位相の拒否。CLI・Studioへの配線は未実装）
+- [到達できる位相の経路で提案を捨てない確認](XTEA_LOWCODE_HOOK_REACHABLE_PROPOSES_2026-11.md)（参照実装の試験記録。`RunReachable`が`RunWithDeclaredValues`を通り、宣言した`produces`が残り、宣言外の提案が拒否される）
+- [フックが名乗る結末名の検査の確認](XTEA_LOWCODE_HOOK_OUTCOME_CHECK_2026-11.md)（参照実装の試験記録。語彙の外の結末名を`HOOK_OUTCOME_UNDECLARED`で拒否する）
+- [フックの結末名とCommand拒否名の対応の確認](XTEA_LOWCODE_HOOK_OUTCOME_VOCABULARY_2026-11.md)（参照実装の試験記録。フックが名乗れる結末名を列挙し、Command側の綴りへ写す。対応の無い名前はCommandの拒否理由にしない）
+- [フック位相の到達範囲を一箇所に置く確認](XTEA_LOWCODE_HOOK_REACHABLE_PHASES_2026-11.md)（参照実装の試験記録。CLIとStudioが同じ位相の選び方を使い、到達しない位相と前提が欠けた位相を区別する）
+- [Studio参照実行からのフック呼出しの確認](XTEA_LOWCODE_HOOK_STUDIO_WIRING_2026-11.md)（参照実装の試験記録。Studioの参照実行がCLIと同じフック境界を使い、未評価・不成立を区別する。実Plugin・実DBは未接続）
+- [CLI参照実行からのフック呼出しの確認](XTEA_LOWCODE_HOOK_CLI_WIRING_2026-11.md)（参照実装の試験記録。`view -command -execute`が宣言フックを呼び、未評価・不成立を区別して報告する。実PluginとStudioは未接続）
+- [フック宣言の機能定義書への反映の確認](XTEA_LOWCODE_HOOK_FUNCTION_DEFINITION_2026-11.md)（参照実装の試験記録。生成規則`function-definition/v1`に`hook`行を追加し、位相順で出す。実行結果の反映は未実装）
+- [フックが提案する値の宣言照合の確認](XTEA_LOWCODE_HOOK_DECLARED_PRODUCES_2026-11.md)（参照実装の試験記録。宣言外の提案の拒否、提案と読み取りの分離。保存・採用は未実装）
+- [フックの位相ごとの読み取り範囲の確認](XTEA_LOWCODE_HOOK_PER_PHASE_READS_2026-11.md)（参照実装の試験記録。狭い宣言の位相が広い宣言の値を受け継がないこと、未観測での停止。実データ取得は未実装）
+- [フックが読むのは宣言した属性だけであることの確認](XTEA_LOWCODE_HOOK_DECLARED_READS_2026-11.md)（参照実装の試験記録。未観測・宣言外の読み取りを実装へ渡す前に拒否。実データの取得と`produces`は未実装）
 - [フックが使う能力のcommand Pattern不在の拒否](XTEA_LOWCODE_HOOK_COMMAND_REACHABILITY_2026-11.md)（参照実装の試験記録。実行経路の無いフック宣言を検証で拒否。複数commandの曖昧さは未診断）
 - [Studio検証結果の修正案表示の確認](XTEA_LOWCODE_STUDIO_PROPOSALS_2026-11.md)（参照実装の試験記録。案を受理する操作は未実装）
 - [暦の宣言と期間への結合の確認](XTEA_LOWCODE_CALENDAR_DECLARATION_2026-11.md)（参照実装の試験記録。日付計算と税・通貨・採番は未実装）
@@ -53,12 +71,22 @@
 - [複数暦の休日Dataの確認](XTEA_LOWCODE_MULTI_CALENDAR_HOLIDAY_2026-11.md)（参照実装の試験記録。例への追加は未実装）
 - [休日Dataの暦識別値の検査の確認](XTEA_LOWCODE_CALENDAR_DOMAIN_2026-11.md)（参照実装の試験記録。例への追加は未実装）
 - [休日の結合と暦識別検査を一続きにする確認](XTEA_LOWCODE_HOLIDAY_RESOLVE_2026-11.md)（参照実装の試験記録。例での複数暦利用と実DBは未確認）
+- [為替の年次フォールバックの宣言の確認](XTEA_LOWCODE_CURRENCY_FALLBACK_2026-11.md)（参照実装の試験記録。例への追加は未実装）
+- [為替フォールバックの宣言語彙の確認](XTEA_LOWCODE_CURRENCY_FALLBACK_ROLE_2026-11.md)（参照実装の試験記録。例への追加と別Data構成は未実装）
+- [採番の発行・取消の取引結合の確認](XTEA_LOWCODE_NUMBERING_TRANSACTION_2026-11.md)（参照実装の試験記録。取引実装との結合と実DBは未確認）
+- [採番の予約と取引の結合の確認](XTEA_LOWCODE_NUMBERING_RESERVATION_TRANSACTION_2026-11.md)（参照実装の試験記録。InvokerのUoW共通化と実DBは未実装）
+- [採番規則の行識別の確認](XTEA_LOWCODE_NUMBERING_RULE_IDENTITY_2026-11.md)（参照実装の試験記録。例への追加は未実装）
+- [採番規則から発行までの一続きの経路の確認](XTEA_LOWCODE_NUMBERING_RULE_RESERVE_2026-11.md)（参照実装の試験記録。例への追加は未実装）
+- [月内締めの期間化の確認](XTEA_LOWCODE_MONTHLY_CLOSING_PERIOD_2026-11.md)（参照実装の試験記録。閉め操作の実装と例への追加は未実施）
+- [月内締めの区分ごとの閉めの確認](XTEA_LOWCODE_CLOSING_SEGMENT_SCOPE_2026-11.md)（参照実装の試験記録。閉め操作の実行は未実装）
+- [月内締めのCLI観察と状態源の確認](XTEA_LOWCODE_CLOSING_SCOPE_CLI_2026-11.md)（参照実装の試験記録。閉め操作の実行内容は未実装）
+- [期間の閉め操作の確認](XTEA_LOWCODE_PERIOD_CLOSE_OPERATION_2026-11.md)（参照実装の試験記録。閉めの実行内容と権限は未実装）
+- [利用者設定の宣言と結合の確認](XTEA_LOWCODE_USER_SETTINGS_2026-11.md)（参照実装の試験記録。例への追加は未実装）
+- [利用者設定の書込みの確認](XTEA_LOWCODE_USER_SETTINGS_WRITE_2026-11.md)（参照実装の試験記録。監査・権限・画面は未実装）
+- [例の締め日・設定Dataと構文の修正の確認](XTEA_LOWCODE_EXAMPLE_CLOSING_SETTINGS_2026-11.md)（参照実装の試験記録。閉めの実行内容と設定の監査は未実装）
+- [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
 - [X-TEA受容要件の実装対応](XTEA_LOWCODE_ACCEPTANCE_TRACE_2026-11.md)（`AC-1`〜`AC-11`・`RQ-C1`〜`RQ-C3`の参照実装と未確認事項。受容判断は仮承認）
 - [実DBで実行時の判断を確かめる計画](REAL_DATABASE_RUNTIME_DECISION_PLAN_2026-11.md)（期間・権限・効果の判断を実DBで見る案。**NOT RUN**）
-
-
-
-
 
 - [Studio固定Host負例のCI実行記録](STUDIO_FIXED_HOST_CI_2026-11-07.md)（#2948のGo版修正後に試験本体へ到達し、固定Hostのroot置換負例が失敗した記録。#3061で追跡）
 - [宣言と実行の差の保持](XTEA_LOWCODE_OPERATION_DIFFERENCE_2026-11.md)（#3055の記録）
@@ -67,6 +95,21 @@
 - [Go Module供給の実観測](TEI_GO_MODULE_SUPPLY_OBSERVATION_2026-11-07.md)（#2831 SB-0bの前提。供給の有無・破損・改変が分類と成果物へどう現れるかの実測。TEIのBuild経路は未実行）
 - [構成Kernel移行Gateの最初の実証パケット実行記録](COMPOSITION_FIRST_CONSUMER_RUN_2026-11-07/README.md)（固定HEADでA・B・C三経路を別々に実行し、`operations`と`artifacts`が同じ`modelRevision`を共有したことだけを記録。三経路の同一業務Request接続・Owner受理・実DB効果は未確認）
 - [構成Gateの次の一辺を依存グラフで測る](COMPOSITION_NEXT_EDGE_STATIC_SURVEY_2026-11-07/README.md)（Goファイル2876件と実行単位167件のimport閉包を走査し、`internal/operations`と`internal/composition`を同居させるファイル・実行単位が0件、`internal/servicehost`の非試験呼出し元も0件であることを記録。実行時の不接続や権限は示さない）
+- [構成の二つの層は、いまも同じ場所に居ないか（再調査）](COMPOSITION_COLOCATION_RESURVEY_2026-11-08/README.md)（先行調査の2つの数を現在のmainで取り直し、両方をimportするファイル0件・servicehostの非試験importer 0件が維持されることを確認。あわせてパッケージの依存閉包でも数え、両方の閉包に入るパッケージが1件（reference/interface-adapter、間接import）だけあること、mainパッケージでは0件のままであることを記録。先行記録は訂正しない）
+- [構成Kernel移行Gateの依存の形を、いまのmainで確かめる](COMPOSITION_GATE_DEPENDENCY_RECHECK_2026-11-08/README.md)（Gate 4.1 の3つの主張を依存閉包で再測。A(cmd/tei)は composition を含まず operations を含み、B(go-host)は operations を含まず composition を含み、servicehost は非試験 importer 0件（ファイル3件はすべて _test.go、閉包でも自分以外0件）。3つとも成立し、A/Bの非対称が個別PASSを混ぜない根拠であることを示す。Gateの合否は判定しない）
+- [servicehost に非試験の呼出し元が無いのはなぜか](SERVICEHOST_CONNECTION_PATH_SURVEY_2026-11-08/README.md)（Invoker・Route・Coordinator・Registry の呼出し箇所を試験／非試験に分けて走査。Coordinator の非試験呼出し元は1件(contract_bridge.go)、Registry は3件あるが、NewSelectedServiceCarrierInvoker の非試験呼出し元は0件で、試験5件のみ。部品は揃っているが servicehost を組み立てる段が参照実装の試験に留まることを示す。接続の是非は示さない）
+- [Runtimeへの経路は servicehost だけではない](RUNTIME_CARRIER_ALTERNATE_PATHS_2026-11-08/README.md)（plugin/runtime をimportする非試験ファイル30件のうち servicehost もimportするものは0件。Runtimeへの入口は2つあり、InvokeSelectedServiceCarrier（Host世代のピン留め）の非試験の呼出し元は servicehost の1件だけ、InvokeWithProvenance（ピン留めなし）を直接呼ぶ非試験の経路は3件。ピン留めされた経路だけが未接続であることを示し、どちらを使うべきかは示さない）
+- [ピン留めしない3経路は、何のためにRuntimeを直接呼ぶのか](RUNTIME_UNPINNED_PATH_PURPOSES_2026-11-08/README.md)（InvokeWithProvenance を直接呼ぶ非試験の3経路の呼出し箇所と語彙を読む。3経路とも composition.Coordinator を使わず、generation の語も持たない。用途は製品パッケージ内の配備実行アダプタ・参照実装の配備実行・参照実装のContract Queryで互いに異なる。ピン留めを必要としないことの証明ではないと明記）
+- [配備実行アダプタは、誰がどう組み立てているか](DEPLOYMENT_EXECUTOR_BINDING_SURVEY_2026-11-08/README.md)（DeploymentExecutor を名指す19箇所のうち非試験は4件。いずれも参照実装（tools/・examples/）で、4件とも composition.Coordinator を使わず、CapabilityID は直書きかローカル変数で Environment の deployment-executor Binding を通らない。製品パッケージ内の型を組み立てるのは参照実装だけであることを記録する。世代を固定すべきかは示さない）
+- [環境の配備実行Bindingは、どこまで使われるか](EXECUTOR_BINDING_CONSUMER_SURVEY_2026-11-08/README.md)（DeploymentExecutors を読む非試験の箇所は7つ、実行の経路として読むのは routing.RouteCommand だけ。Binding を実行へ繋ぐ routing.Router は非試験で組み立てられず、CLIは RouteCommands の結果を計画JSONとして書き出すだけで executor.Execute を呼ばない。実行する3件は参照実装で固定の能力を直叩きする。servicehost と同じ形の断絶を配備実行側にも記録。断絶が問題かは示さない）
+- [宣言のBindingから実行までを、参照実装で繋いでみる](BINDING_TO_EXECUTION_REFERENCE_2026-11-09/README.md)（`tools/reference-binding-to-execution` として判断材料のC-1を実装。既存の RouteCommand・Router.Dispatch・ValidateResult だけでBinding から実行まで繋がることを示す。未登録の executor を指す Binding は実行せず拒否し、存在しない環境は0件で終わる。Executor の registry は Host が渡すため実配備の成立は示さない）
+- [配備実行の能力IDを、宣言から解決する（C-3）](EXECUTOR_ID_RESOLUTION_REFERENCE_2026-11-09/README.md)（`tools/reference-executor-id-resolution` として判断材料のC-3を実装。routing.RouteCommand で Binding から ID を解決し、BuildPlan の plan が認めるかと SupportsAction を順に確かめる。実lockで RESOLVED、lock無しで LOCK_REJECTED、別のactionでは直書きの migration.atlas ではなく runtime.reference が解決され、直書きがBindingと食い違いうることを示す。実行はしない）
+- [6つの宣言のうち、実行まで届いているのはどれか](BINDING_FORMS_CONSUMER_SURVEY_2026-11-09/README.md)（Environment が持つ6つの宣言ごとに非試験の読み手を列挙。6つとも索引・解析・検証で読まれているが、observation と evidence は Binding で解決しつつ Router が試験でしか組み立てられておらず、解決は宣言から実行は別の扉という断絶が配備実行だけの話ではないことを示す。何も変更しない）
+- [観測の宣言から、既存の Router で実際に入れるか](OBSERVATION_ROUTER_CONNECT_REFERENCE_2026-11-09/README.md)（`tools/reference-observation-router-connect` として、ObservationProviders の断絶を新しい機構なしで閉じられるか試す。宣言→observation.Binding→Host registry→observation.Router.Observe の4段が既存の関数だけで通り、未登録でも resolved=True のまま invoked=False になることを示す。実Providerの観測は示さない）
+- [証拠の宣言から、既存の Router で実際に入れるか](EVIDENCE_ROUTER_CONNECT_REFERENCE_2026-11-09/README.md)（`tools/reference-evidence-router-connect` として、観測側と同じ4段の形が EvidenceProviders でも成り立つかを試す。Collect は durable.ActionRecord を要求するため証拠ゲートでない記録は専用状態で拒否し、未登録でも resolved=True のまま invoked=False になることを示す。pass は provider の主張で外部状態の証明ではない）
+- [C-2を試験の外で組み立て、C-1と同じ土台で比べる](SERVICE_CARRIER_CONNECT_REFERENCE_2026-11-09/README.md)（`tools/reference-service-carrier-connect` として判断材料のC-2を実装。Hostが渡したCoordinator・Runtime registry・RouteSourceからInvokerを組み立て、ピン留めした世代で要求を運ぶ。Routeが無い場合はInvokerを呼ぶ前に拒否し、別Binding用のRouteも拒否し、入力不足も拒否する。実配備の成立は示さない）
+- [C-2の数も、実行前拒否と実行後不確定を分ける](SERVICE_CARRIER_CONNECT_OUTCOME_V1_2026-11-09/README.md)（C-2の参照Reportをv1にし、ranCountをcarrier入場、refusedCountを入場前停止だけ、unverifiedCountを入場後の失敗や別世代の応答として分ける。artifact検証の拒否はcarrier内部で起きるためunverifiedに入る。反例3件でv0ならrefusedに入っていたケースを固定し、CLIの3場合はcarrierInvoked=falseを示す。製品へ繋ぐべきかは示さない）
+- [C-1とC-2は、同じ問いの2案か](CONNECT_POINT_C1_C2_2026-11-09/README.md)（判断材料が並べたC-1 routing.Router と C-2 servicehost の入口を比べ、入力の型・世代の有無・到達可能性が違うことを示す。C-1は配備の動作を実行しC-2はServiceの要求を運ぶため、両方を選ぶことは経路の重複ではない。C-2は非試験の呼出し元がまだ0件であることを記録。どちらを先に入れるべきかは示さない）
 - [宣言されたPatternと導出された操作はどこで結べるか](PATTERN_KIND_OPERATION_MAPPING_2026-11-07/README.md)（同じWorldから `tei operations` の導出操作8件と `tei artifacts` の `pattern` 5件を取り、Data ID・能力ID・Relation target の三つの手掛かりごとに一致と限界を記録。受理済み基準では書込み操作の `binding` が全件nullで、読み取り専用の `command` は構造上どの導出操作とも結ばれない。結合規則の採否は示さない）
 - [操作とPatternの突き合わせを参照実装で試す](OPERATION_PATTERN_CROSSWALK_REFERENCE_2026-11-07/README.md)（W3の対応表を `tools/reference-operation-pattern-crosswalk` として実装し、受理済みと見積もり候補のWorkspaceに当てた記録。`browse`/`record`/`header-detail` は一致4件、`command` は効果を宣言しない能力で一律 `out-of-scope`、`reference` は参照先Dataに `read` が無いため `missing-input`。既定値で埋めないことと、W3未着手のままであることを示す）
 - [突き合わせ規則の反例](OPERATION_PATTERN_CROSSWALK_COUNTEREXAMPLES_2026-11-07/README.md)（同じWorkspaceに宣言を一つだけ足す5つの場合で、一致・不一致・衝突が1件ずつ変わることを記録。効果を宣言する能力は `command` を一致させ、参照先DataのPersistenceは `reference` を一致させ、同じDataを指す2つ目の `browse` は衝突として両方の名前を出して選ばない。効果の宣言だけでは標準操作が導出されないことも `missing-input` として残る）
@@ -80,11 +123,10 @@
 - [database-providerの選択を技術名ではなく能力で解決する](PLUGIN_CAPABILITY_COVERAGE_TECHNOLOGY_RESOLUTION_2026-11-08/README.md)（先行記録では instance の提供技術名を能力IDと文字列比較していたため database-provider 2件を数えなかった。既存の validation と同じ Capability.SupportsDatabaseProvider で解決すると両方が selected になり、未選択は6件から4件に減る。先行記録は履歴として残し、訂正しない）- [操作面は宣言されたPatternを読んでいるか](OPERATION_SURFACE_DECLARED_PATTERN_GAP_2026-11-07/README.md)（受注Workspaceと見積もり候補の重ねで`tei operations`を比較し、World指紋は変わるのに操作面8件と`summary.declared=0`が不変であることを記録。W3未着手の設計記述と一致し、AのOperationとBの業務ActionをA側で結ぶ手掛かりが現状無いことを示す。権限・意味の受理は示さない）
 - [環境のBindingを、能力の対応表で一括して解決する](PLUGIN_SELECTION_MATRIX_REFERENCE_2026-11-08/README.md)（`tools/reference-plugin-selection-matrix` で6種類のBindingを既存の `Supports*` だけで解決し、参照Workspaceの24件のうち22件が selected・2件が missing・ambiguous 0件を記録。missing は `editor.database_workbench` の2件で、現行の検証が機能のうち `editor.sql_analysis` だけを能力と突き合わせるための差であり、製品の診断ではないと明記）
 
+- [構成検証の選択規則はBindingの形ごとに揃っているか](PLUGIN_SELECTION_RULE_SURVEY_2026-11-08/README.md)（internal/validation を走査し、6つのBinding形式すべてに対応なし・複数・能力非対応の診断があることを確認。ただし環境の機能だけは eature == environment.FeatureSQLAnalysis の分岐で対象が1つに限られ、editor.database_workbench は Known() の検査だけを受けて能力との突き合わせを受けない。docs/plugins.md の記述は6形式に当てはまり誤っていない）
+- [環境の機能は、すべて選択を検査されるか](FEATURE_SELECTION_CHECK_ASYMMETRY_2026-11-08/README.md)（受理済みWorkspaceを3つ複製し、有効な機能だけを変えて実行。プラグインも能力も無い条件で、editor.sql_analysis は ENVIRONMENT_FEATURE_PLUGIN_MISSING で終了コード1、editor.database_workbench は診断0件で終了コード0。受理済みの複製も0件で終わり、この差が受理済みでは見えないことを示す。検査を足すべきかは示さない）
 - [DSH外部HarnessからのTEI read-only CLI実起動](DSH_H2_TOOL_ONLY_READ_ONLY_2026-11-07/README.md)（#2509。外部AIハーネスの1実Sessionで固定実行物の実起動・実引数・実出力を同一ログで突合。H3・四Session比較・正答採点・Egressは未実施）
 - [DSH実HarnessでのH2/H3四Session実行](DSH_H2_H3_FOUR_SESSION_2026-11-07/README.md)（#2509・TAI #168。H2→H3→H3→H2を同一Taskで実行し、H3のSkill実Load byteを確認。回答採点・Skill効果の因果・Egressは未確認）
-
-
-
 
 - [DSHセッションログ拡張の実送出計測](DSH_SESSION_LOG_EGRESS_MOCK_2026-11-07/README.md)（#2509・TAI #232。ローカルMock宛で拡張fieldの水位・再有効化・Tool結果の複製送出を計測。実Providerへの送出とEgress制御はNOT RUN）
 - [オフラインGo Module供給の検証](TEI_GO_MODULE_SUPPLY_VERIFICATION_2026-11-07.md)（`cmd/tei`の実選択12件を`go.sum`の`h1`へ束縛してオフライン再解決。供給元・署名・Buildは未検証。SB-0b / #2831）
@@ -105,10 +147,103 @@
 - [外部Moduleを含む選択Sourceの観測](TEI_GO_SOURCE_CLOSURE_OBSERVATION_2026-11-07.md)（`cmd/tei`の選択入力をリポジトリ内318件と外部Module 12件・325メンバーに分けて列挙し、資格は常に`false`として閉包方針を変えない記録。SB-A1 / #2831）
 
 - [DSH外部Harnessの再開と既送出Session Log](DSH_H6E7_RESUME_AFTER_DISCLOSURE_2026-11-07/README.md)（#2515 H6-E7・#2509。Raw canaryを読んだSessionを再開すると、Session Logは水位`27`から進み再送されない一方、モデル入力には過去の会話が再構成されcanaryが再び載る。Grant失効・ACK不明replayはNOT RUN）
+- [DSH外部Harnessが読んだ内容の保存先棚卸し](DSH_H6E6_SINK_INVENTORY_2026-11-07/README.md)（#2515 H6-E6・#2509。1 Sessionで読んだ合成canaryが、headless stdoutと永続Session Logの2つに残り、`storages`・`cache`・`attachments`には残らなかった。永続Session Logは9連結zstd frameで、単一frame展開では見落とす。Issue/CI/外部ProviderのsinkはNOT RUN）
+- [DSH外部Harness上での生成候補の逸脱試行](DSH_H6E5_CANDIDATE_ESCAPE_2026-11-07/README.md)（#2515 H6-E5・#2509。合成候補から、非許可の隣接Sourceは読め、子Processは起動でき、自己書換えはConstrainedLanguageの初期化失敗で止まった。自己書換えが書込みPolicyで拒否された証拠ではない。workspace-writeでの再試行・D1→D2・Selector同一Source証明はNOT RUN）
+- [子Processは親Toolの到達範囲を引き継ぐ](DSH_CHILD_PROCESS_REACH_2026-11-08/README.md)（#2515 受入条件3・H6-E1・#2509。親`pwsh`が起動した子`cmd.exe`は、`read-only`でも宣言root外を読み、書込みは`read-only`で止まり`danger-full-access`で通った。子Processを境界にできず、実効保証は最弱の経路を基準に下げる必要がある。別OS資格・別Userでの子起動、Network到達性はNOT RUN）
+- [外部Harness四回答のFact出現チェック](DSH_ANSWER_FACT_PRESENCE_2026-11-08/README.md)（#2509・TAI #168。四Session実行の4回答が、同じ実行物のCLI応答に現れた13の事実（属性ID・型・記号、関係、Source path・digest、World指紋、診断コード）をすべて含むことを機械的に確認した。**正答の採点ではなく**、意味・未確認の扱い・Source版の区別は未評価。属性は`customerId`等の記号で書かれるため、IDと記号の両方を照合する必要があった）
+- [DSH外部Harness実測の台帳](DSH_HARNESS_EVIDENCE_LEDGER_2026-11-09.md)（#2509・#2515。16件の実行記録が**何を確定させ、何を確定させていないか**を1枚で対応づけた索引。Sandbox modeは読取りの境界を与えない・読んだ内容は複数経路で出る・Process生成は止まらない など、2件以上の記録が一致した横断所見だけを載せ、1件の観測を横断の結論に昇格させない。新しい実測・合否判定は無し）
+- [OSのACLが読取りを拒否する（正負対）](DSH_H6E1_OS_ACL_2026-11-09/README.md)（#2515 P0-a・H6-E1。`icacls`で継承を切りSYSTEM/Administratorsのみ与えたファイルは、`read-only`でも`danger-full-access`でも`PermissionDenied`で読めず、canaryは一度も現れなかった。同じユーザーへ読取り権限を足すと同じProbeが成功するため、境界はHarnessのmodeではなく**OSのACL**である。`read-only`のConstrainedLanguageは`GetType()`を拒否し、Probeの書き方で結論が変わる）
+- [`maxBytes`の停止しきい値](DSH_SESSION_LOG_MAXBYTES_THRESHOLD_2026-11-09/README.md)（#2515 H6-E2。同じ4 Tool呼出しSessionで上限だけを320→307→306→300→288と下げ、**307ではfieldが載り（水位`4`まで1eventずつ）、306では6要求すべてで載らなかった**。しきい値は最初のeventを包むfieldの直列化サイズで、その値なら送られ1byte下回ると送られない。止まったことは実行ログに現れず、Sessionは`completed`で終わる）
+- [送出できなかったbacklogは上限を上げた再実行でまとめて流れる](DSH_SESSION_LOG_STALL_THEN_GROW_2026-11-09/README.md)（#2515 H6-E2。`maxBytes=306`で6要求すべてfield無しのSessionを、同じSession IDで`maxBytes=4096`にして再実行すると最初の要求が`afterSeq -1`から`9`まで**10 event・1,273 bytes**を一度に運び、合計13 eventが流れた。上限を小さくして止めた状態は恒久的な抑止ではなく、再開時に**溜まった分が1要求のburst**として出る）
+- [停止したSession Log送出は利用者から見えない](DSH_SESSION_LOG_STALL_VISIBILITY_2026-11-09/README.md)（#2515 H6-E2。`maxBytes=306`でfieldが6要求すべて送られない状態を、**stdout・stderr・永続Session Logの3面を別々に**採取して調べた。stdout 6,176 bytes・stderr **0 bytes**・永続Log展開51,196 bytes/51行のいずれにも`maxBytes`関連の語や警告種別のeventは無く、終了コードは0。「送出していない」と「設定が効いている」を出力から区別できない）
+- [停滞は「受理eventの不在」としてのみ観測できる](DSH_SESSION_LOG_STALL_DETECTION_2026-11-09/README.md)（#2515 H6-E2。停滞（`maxBytes=306`）と非停滞（4096）を**stderrを混ぜずに同条件**で比べた。stdout・stderrは**両方とも警告を出さない**（stderrは両方0 bytes）。差は永続Logの`session-log-deepseek/delivery-accepted`だけで、非停滞4件（`throughSeq`=`9`,`9`,`11`,`12`）・停滞**0件**。警告ではなく**成功記録の不在**としてしか分からない）
+- [Subagent起動は別Sessionを作り、そのSessionもSession Log拡張を送る](DSH_SUBAGENT_EGRESS_2026-11-09/README.md)（#2515 H6-E2・#2509。`subagent`を1回強制し、親5要求と子1要求を採取。Session IDが2種類あり、子の要求は`afterSeq -1`から`sessionFormatVersion 4`の拡張を送る。`prompt`のcanaryは**親にも子にも**載り、子は独立した永続Log（展開36,774 bytes・19行・`delivery-accepted` 1件）を持つ。Taskあたりの送出量は**子の分も加算**する必要がある。Telemetry・MCP・`subagent_fork`は未観測）
+- [`subagent_fork`は親の完了Turnを子へ運ぶ](DSH_SUBAGENT_FORK_2026-11-09/README.md)（#2515 H6-E2・#2509。Turn1で`pwsh`から親canaryを出して完走させ、Turn2で同じSessionを再開してforkした。子は`afterSeq -1`の別Sessionだが**メッセージ数5**で親の完了Turnを引き継ぎ、**親canaryが子の本文にもLogにも現れる**（`subagent`の子はメッセージ数1だった）。forkでは親が読んだ内容が子のモデル入力にも載るため、`subagent`と同列に扱うと送出を過小評価する。実行中Turnの継承・forkの連鎖・Telemetry・MCPは未観測）
+- [Subagentの連鎖は`maxDepth 1`で止まる](DSH_SUBAGENT_CHAIN_2026-11-09/README.md)（#2515 H6-E2・#2509。Sessionごとに1回`subagent`を強制して連鎖させたところ、Sessionは**3つ（親1・子2）で止まり孫は0**。子は`subagent depth 2 exceeds maxDepth 1`を`isError: true`のTool結果として受け取り、**その文言が子の次のモデル入力にも載る**。拒否後も子は要求を消費する（各3要求）。`subagentMaxDepth`を上げた場合の連鎖、forkの連鎖、Telemetry・MCPはNOT RUN）
+- [`subagent.maxDepth`を上げると連鎖が深くなり送出が段ごとに増える](DSH_SUBAGENT_DEPTH_RAISED_2026-11-09/README.md)（#2515 H6-E2・#2509。`--dump-config-schema`で上限の在処を特定（`subagent`の`maxDepth`、既定`1`、`volatile`）し、`--patch`で`3`にして連鎖させた。**Sessionは4つ（深さ0〜3）になり、深さ4で`subagent depth 4 exceeds maxDepth 3`**（`isError: true`）。12要求・合計765,677 bytes。**深さ上限は既定値であって固定仕様ではなく**、上げれば段ごとにSessionと送出が増える。既定との正確なbyte比較は発火方針が違いNOT RUN）
+- [`subagent_fork`の連鎖も深さ上限で止まり、同一Turn内では文脈が積み上がらない](DSH_SUBAGENT_FORK_CHAIN_2026-11-09/README.md)（#2515 H6-E2・#2509。`maxDepth 3`でforkを連鎖させると**4 Session（深さ0〜3）で止まり、深さ4は`isError: true`で拒否**。forkした子の初回要求は**どれもメッセージ数1**で、**同一Turnの途中では完了Turnを継承しない**（完了Turnを挟んだ先行記録では5）。送出量はspawn連鎖とほぼ同じ（765,350 vs 765,677 bytes、差0.04%）。**forkの危険性は「いつ運ぶか」で決まる**。完了Turnを挟んだforkの連鎖・`4`以上・`maxActiveSubagents`との相互作用・Telemetry・MCPはNOT RUN）
+- [Turn境界をまたぐfork連鎖では親の完了Turnが深さ3まで運ばれる](DSH_SUBAGENT_FORK_TURN_CHAIN_2026-11-09/README.md)（#2515 H6-E2・#2509。Turn1で`pwsh`からcanaryを出して完走させ、Turn2で同じSessionを再開してforkを連鎖させた。**forkした子の初回要求はどれもメッセージ数5で親canaryを含み、深さ3まで届いた**。同一Turn内の連鎖（メッセージ数1・届かない）との対比で、**forkが文脈を運ぶかはTurn境界に依存する**。14要求・786,786 bytes（同一Turn内は12要求・765,350）。深さ4は`isError: true`で拒否。Turn1が複数ある場合の増加量・`4`以上・`maxActiveSubagents`・Telemetry・MCPはNOT RUN）
+- [同時に起動できるSubagentは8体まで](DSH_SUBAGENT_CONCURRENT_LIMIT_2026-11-09/README.md)（#2515 H6-E2・#2509。1メッセージで12体の`subagent`を並列要求すると**8体が起動し4体が拒否**された。拒否は`isError: true`のTool結果で本文は`active child limit: 8`。**子が即応答する対照でも8/4で変わらない**ため、上限は**起動時に見る同時数**で、子の完了を待って順に通す形ではない。親1＋子8で13要求・1,074,677 bytes。時間を分けた起動、`maxActiveSubagents`の変更、`maxDepth`との同時作用、Telemetry・MCPはNOT RUN）
+- [Telemetry（OTel）経路は既定で載っており、明示的なfeedbackなしには送らない](DSH_OTEL_PATH_2026-11-09/README.md)（#2515 H6-E2・#2509。**台帳§4の記述を訂正**。`session-telemetry-otel`は`@deepseek-ai/dsh-base`が**既定で登録**しており、`--dump-config`に`mode: process.env.DSH_TELEMETRY_MODE || 'FEEDBACK_ONLY'`と`exporter.url: process.env.DSH_TELEMETRY_OTLP_URL ?? 'https://dsh-otel-collector.deepseeksvc.com/v1/logs'`が出る。`DSH_TELEMETRY_OTLP_URL`をローカルMockへ向けた1往復では**OTLP要求は0件**（モデル要求は2件・143,308 bytes）。**止めているのはプラグインの不在ではなく`FEEDBACK_ONLY`のgate**で、**headlessにはfeedbackの面が無い**。feedbackを与えた場合の送出内容、`DISABLED`の実測、`maxRequestBytes`超過、MCPはNOT RUN）
+- [Session Log拡張の`maxBytes`上限とbacklog](DSH_SESSION_LOG_MAXBYTES_2026-11-08/README.md)（#2515 H6-E2・P0-b・#2509。`maxBytes`を2048と512へ下げて実測し、field全体が上限内なら水位`9`まで10 event、上限512では**518 bytes**（ヘッダ込みで上限超過）で水位`2`・3 eventに止まった。`maxBytes`は1要求の上限で総開示量の上限ではない。分割送出と単一eventの停滞は未確定）
+- [Session Logのbacklog分割送出と停滞、上限判定の単位](DSH_SESSION_LOG_SPLIT_AND_STALL_2026-11-08/README.md)（#2515 H6-E2・#2509。`maxBytes=1024`の4 Turnで水位`-1`→`6`→`9`と**後続要求へ分割送出**されることを確認し、`maxBytes=256`ではヘッダ込みで上限を超えるため**fieldが一度も作られず**作業だけが続いた。先行記録の「512で518 bytes＝上限超過」は再直列化した値による誤りで、生byteは474だったと訂正）
 
 - [外部Go Module入力の明示opt-in受入](TEI_GO_EXTERNAL_MODULE_ADMISSION_OPTIN_2026-11-07.md)（既定の拒否方針は不変のまま、供給を明示した呼び出しだけが外部Moduleメンバーを含む閉包を受ける参照実装。受入記録に方針・根拠・拒否理由を残す。SB-B / 案C / #2831）
 - [起動主体と被起動主体を分けたBuild駆動の記録](TEI_GO_BUILD_STAGE_DRIVER_2026-11-07.md)（`cmd/tei`を子プロセスとして駆動し、invoker/invokedの実行ファイルdigest・argv・exitと、子の主張とディスク実物のartifact digestが一致することを記録。L3・受入・権限は未確認。SB-C0/C1 / #2831）
 - [セルフビルドP0の証拠台帳](TEI_SELF_BUILD_P0_EVIDENCE_LEDGER_2026-11-08.md)（SB-0a〜SB-C1の統合済みEvidenceをClaim別に並べ、L1で成立したもの・未成立のもの・L3までの残差を一か所にした索引。本稿は新規の主張ではなく、各項目の再実行もしていない。SB-P0 / #2831）
+- [cmd/tei自身のstage0→stage1→stage2（L3）](TEI_SELF_BUILD_CMD_TEI_L3_2026-11-08.md)（`tei self-build`でstage1のartifact自身をstage2のinvokerとして実起動。invoker一致・同一child・artifact一致が揃った実測。Seed Trust・受入・別OS一般化は未確認。SB-C1 / #2831）
 - [SB-N13の自称invoker照合](TEI_GO_STAGE_DRIVER_INVOKER_CLAIM_2026-11-08.md)（駆動主体が自称するdigestを実行中process imageと照合する欄をstage driverへ追加。一致しても`l3Claimed`はfalseのまま。独立した失敗は連結して保持する。SB-C0/C1 / #2831）
 
 - [stage1の生成物がstage2を駆動する（L3）](TEI_GO_SELF_BUILD_TWO_STAGE_L3_2026-11-07.md)（stage1のartifactをstage2のinvokerとして実起動し、invoker一致・同一レシピ・artifact一致が揃うことを記録。Seed Trust・受入・権限・別OS一般化は未確認。SB-C1 / #2831）
+
+- [TEI自身の設計をCLIで扱う実測 第2ラウンド](TEI_DOGFOODING_ROUND2_2026-11-08/README.md)（#3149。現行main `4fd88c2b1` の単一実行物（SHA-256 `16c9090d…`）で再実測し、第1ラウンドの10課題のうち7件が解消、D-3・D-9・D-10 が残ることを記録。MCP入口は未実装のため CLI 経路のみ）
+- [TEI自身の設計をCLIで扱う実測 第3ラウンド（Windows）](TEI_DOGFOODING_ROUND3_2026-11-08/README.md)（#3149。main `9a8b9e214` の単一実行物（SHA-256 `7abce6ff…`、Windows・go1.27.0）で、D-1〜D-8の解消とD-3の`view`版欄の解消を再確認。D-9とD-10の形の統一判断は残る。実DB・実Host・MCPはNOT RUN）
+- [値域付き型宣言のanchor走査](SYNTAX_TYPE_VALUES_ANCHOR_2026-11-08.md)（`type ... values { ... }` が Source Index と validate を失敗させていた記録。anchor 走査の読み飛ばしのみで、値集合の意味検証は未確認）
+
+- [TEIのread-only MCP AdapterによるCLI/MCP一致の実測](TEI_DOGFOODING_MCP_ROUND_2026-11-08/README.md)（#3400・#3149。参照実装のAdapterで `model catalog`・`inspect`・`trace`・`validate` をMCPから呼び、CLIと同じ値（`worldFingerprint`・`snapshotFingerprint`・`schemaVersion`）になることを確認。製品のMCP契約・実Host・認可・外部送出はNOT RUN）
+
+- [knowledge-contextの名前空間kind名](KNOWLEDGE_CONTEXT_NAMESPACE_KIND_2026-11-08.md)（catalogの`semantic`を渡すと`semanticElement`無しの成功になっていた。`semantic`と`semantic-namespace`の両方を受け付け、未知kindは解決しない。実Provider・他kindの全件突合は未確認）
+- [validateのCLI/MCP応答の一致](CLI_MCP_VALIDATE_SHAPE_2026-11-08.md)（`tei_validate`が`result`包み・数値error.code・意味エラーでisError:falseになっていたのを、CLIと同じ投影と文字列code、`!ok`のisErrorへ寄せた。実Host・認可・外部送出はNOT RUN）
+- [source-indexの空の参照一覧](CLI_SOURCE_INDEX_EMPTY_REFS_2026-11-08.md)（`mode=index`が`references: null`を返していたのを`[]`へ統一。指紋は索引から計算するため不変であることを`reference/workspace`で実測。`null`の意味の全コマンド統一は未決）
+- [二回の独立した駆動試行でも同じstage2成果物になること](TEI_GO_SELF_BUILD_TWO_STAGE_REPEAT_2026-11-08.md)（`-work`を分けた2回の実行で、両方L3に到達しstage1/stage2のartifact digestが一致することを記録。Seed Trust・受入・権限・OS間一致は未確認。SB-C1 / #2831）
+
+- [`tei self-build`の§4外形](TEI_GO_SELF_BUILD_OUTER_SHAPE_2026-11-08.md)（workspace・intent・supply・state・outputの外形とSC0-01〜05の拒否条件を実装し、実Buildをchildへ委ねて記録する。`-intent`の解決・`-supply`の照合・L2は未実装。`qualified`は常にfalse。SB-C0 §4 / #2831）
+
+- [`tei self-build`のIntent宣言と供給照合](TEI_GO_SELF_BUILD_INTENT_AND_SUPPLY_2026-11-08.md)（SC0-01の宣言検査とSC0-02の供給分類を実装し、子を起動する前に拒否する。分類器は複写せずexactな検証器へ委譲する。Intentは宣言のまま（`resolved: false`）。`qualified`は常にfalse。SB-C0 §4.6 / #2831）
+- [CLI応答のWorkspace同一性と空一覧の実測](TEI_DOGFOODING_ROUND3_IDENTITY_2026-11-08/README.md)（#3149・#3455・#3456。読み取りコマンド横断でWorkspace同一性と空一覧の直列化を確認し、2件の修正を実測。同名の第3ラウンド記録は別ディレクトリにある）
+- [修正後の再実測 第4ラウンド](TEI_DOGFOODING_ROUND4_2026-11-09/README.md)（#3455・#3456の修正後に、統合後の版`00ead5a98`で同じCLI操作を再測定。11応答すべてがWorkspace同一性を持ち、空の参照一覧は`[]`で返る。D-9は残る）
+- [`tei self-build`のIntent解決（I-2）とL2の切り分け](TEI_GO_SELF_BUILD_INTENT_RESOLUTION_2026-11-09.md)（§4.7の既定案I-2を実装し、宣言を解決childへ渡してreceiptを受け取る。未知のauthorityは拒否し、宣言済みplan fingerprintと一致しなければbuilderを起動しない。`l2Claimed`は常にfalse。SB-C0 §4.7/§4.8 / #2831）
+- [CLIとMCP参照Adapterの一致と入力検証](TEI_DOGFOODING_ROUND5_CLI_MCP_2026-11-09/README.md)（#3400・#3420・#3575。4操作の成功応答と2つの失敗はCLIと一致し、基準の版では未知の引数だけMCPが無視した。現行`main`の`b88759643`で `-32602` の拒否を確認。CLI・MCP実行物で実測）
+- [`tei self-build`の計画突合](TEI_GO_SELF_BUILD_PLAN_CROSS_CHECK_2026-11-09.md)（解決childとbuilder childの`planFingerprint`を比べる`planCrossCheck`を足し、不一致を発見として記録し、片方が報告しない場合は`unperformed`と理由を残す。`l2bClaimed`は常にfalse。SB-C0 §4.8 / #2831）
+- [`tei self-build`の計画突合を実プロセスで3状態そろえて観測する](TEI_GO_SELF_BUILD_PLAN_CROSS_CHECK_ACTUAL_2026-11-09.md)（計画を報告するbuilder probeを用意し、`matched`・`mismatched`・`unperformed`を実プロセスで区別して観測。`mismatched`だけが`ok=false`・exit 1。`l2bClaimed`は常にfalse。L2-bは未成立。SB-C0 §4.8 / #2831）
+- [`tei self-build`の計画突合を実測で`matched`にする](TEI_GO_SELF_BUILD_PLAN_MATCHED_2026-11-09.md)（計画を消費して配布物を作るchildを新設し、解決childとbuilder childが同じplan fingerprintを名乗ることを実プロセスで観測。artifact照合と計画突合が同じ1回の試行で両方成立。`l2bClaimed`は`false`のまま。§4.8の(c)は未。SB-C0 §4.10 P-1 / #2831）
+- [`tei self-build`の計画とartifactの結合](TEI_GO_SELF_BUILD_PLAN_ARTIFACT_BINDING_2026-11-09.md)（§4.8(c)へ向けて、計画fingerprintとartifact digestを一つの検証済み`BuildArtifactLock`として束ね、artifact digestをディスクのバイトと独立に突き合わせる`planArtifactBinding`を追加。`bound`／`mismatched`／`unperformed`の三状態。`l2bClaimed`は常にfalse。SB-C0 §4.8・§4.10.3 / #2831）
+- [`tei self-build`の`matched`と`bound`の同時観測](TEI_GO_SELF_BUILD_MATCHED_AND_BOUND_2026-11-09.md)（1回の試行で、計画の一致・receiptの内部整合・計画とartifactの検証済み結合が同時に成立することを実測。childの申告・lockの記載・ディスクの実体が三者一致。`l2bClaimed`は三欄ともfalse。§4.8・§4.11 / #2831）
+- [`tei self-build`のchildロック](TEI_GO_SELF_BUILD_CHILD_LOCK_2026-11-09.md)（builder child自身が自分の`BuildArtifactLock`を作って`Validate`し、entryが独立に導いたlockと比べる経路を実装・実測。二つの独立した組み立てが同じlock fingerprintになることを確認。`l2bClaimed`はfalseのまま。§4.11 / #2831）
+- [`tei self-build`のentryが宣言の照合値を自分で導く](TEI_GO_SELF_BUILD_ENTRY_INTENT_FINGERPRINT_2026-11-09.md)（§4.13 I-1aとして宣言readerを`internal/buildintent`へ移し、entryと参照実装が同じ厳密readerを使う。entryが導いた`intentFingerprint`が解決childの申告と一致。entryの宣言読みが未知キー・別名・導出値の手書きを拒否するようになった。`l2bClaimed`はfalseのまま。SB-C0 §4.13 / #2831）
+- [`tei self-build`のbuilder childが宣言を読み、byte突合が実施される](TEI_GO_SELF_BUILD_CHILD_DECLARATION_2026-11-09.md)（childへ`-intent`を渡し、childが読んだ宣言byteのdigestと照合値を申告。`intentByteCheckPerformed=true`・`intentByteCheckMatched=true`で§4.8の(a)(b)が埋まる。entry・解決child・builder childの三つの独立した導出が同じ値になる。`l2bClaimed`はfalseのまま。SB-C0 §4.8 / #2831）
+- [`tei self-build`のbuilder childが宣言とplanのbuild座標を照合する](TEI_GO_SELF_BUILD_BUILD_COORDINATES_2026-11-09.md)（subject identityに加えて`outputKind`・`target`・`profile`を一つずつ比べ、違えばartifactを書いた後にreportを出さずexit 1。`profile`の省略は一致と読まない。座標一致時は(a)(b)と`bound`がそのまま成立。`l2bClaimed`はfalseのまま。SB-C0 §4.15 / #2831）
+- [discoveryと実行の突き合わせ](TEI_DOGFOODING_ROUND6_DISCOVERY_2026-11-09/README.md)（#3419・#3420・ADR-0048 §2.6。広告したsubject-kind 12/10種とフラグ条件は実行と一致。CLI discoveryとMCP tools/listを比べる試験は無く、実プロセス比較はvalidate 1操作のみ。`main` `22131acc8` のCLI・MCP実行物で実測）
+- [CLI discoveryとMCP tool宣言の突き合わせ試験](TEI_DOGFOODING_ROUND7_CROSS_SURFACE_2026-11-09/README.md)（#3419・#3420・ADR-0048 §2.6。実CLIの`commands`と4 toolの対応・effect・schemaVersion・jsonContractを回帰試験で固定。故意のずれ6種すべてを検出し、現行版では一致）
+- [`tei self-build`の L2-a を別の作業領域で取り直す](TEI_GO_SELF_BUILD_L2A_REOBSERVATION_2026-11-09.md)（builder childを実Go Buildから自作probeへ差し替えても、同じ宣言から同じ`planFingerprint`が出て`planMatchesExpected=true`になることを記録。`l2Claimed`・`qualified`は両方false。L2-bは未成立。SB-C0 §4.7/§4.8 / #2831）
+- [空文字列の引数と既定値の食い違い](TEI_DOGFOODING_ROUND8_EMPTY_ARGUMENT_2026-11-09/README.md)（#3605・#3420・ADR-0048 §2.4。値集合と省略時の既定はCLIとMCPで一致したが、空文字列を渡すとCLIだけが別の既定（`mode=full`）へ落ちた。traceの3引数を拒否へ揃え、回帰試験で固定）
+- [空文字列の引数の修正を統合後に再実測](TEI_DOGFOODING_ROUND9_EMPTY_ARGUMENT_REMEASURE_2026-11-09/README.md)（#3605・#3420。`0067d6a1e`で、空文字列はCLIが`INVALID_ARGUMENT`・MCPが`-32602`で拒否し、省略時だけ既定`mode=summary`を使う。残る差は符号のみで、分類統一は#3420）
+- [inspect・traceの実プロセス同値と失敗分類](TEI_DOGFOODING_ROUND10_CAPI2A_PARITY_2026-11-09/README.md)（#3420 CAPI-2a。8ケース中7ケースで成否と`error.code`が一致。必須引数の欠落だけが`INVALID_SUBJECT`と`-32602`の層の違い。実CLI・実MCPの別プロセスで固定し、符号を変える変異2種を検出）
+- [`tei self-build`の計画指紋の再計算](TEI_GO_SELF_BUILD_PLAN_RECOMPUTE_2026-11-09.md)（receiptが運ぶ`plan`から`plugin.BuildPlanFingerprint`をentryが再計算し、名乗りと比べる。不一致はbuilder起動前に停止、計画を運ばないreceiptは`unperformed`と理由を残す。`l2bClaimed`は常にfalse。SB-C0 §4.8 / #2831）
+- [`tei self-build`の計画値をWindowsとLinuxで再観測](TEI_GO_SELF_BUILD_CROSS_OS_2026-11-09.md)（同じ宣言と同じ解決childから、`intentBytesDigest`・`receiptDigest`・`planFingerprint`・再計算値がOSを跨いで一致し、実行体とartifactのdigestは一致しないことを記録。`planCrossCheck`は両OSで`unperformed`。台帳§2.4の「別OS再観測」のOS軸。 #2831）
+- [`matched`＋`bound`の二回独立試行での比較](TEI_GO_SELF_BUILD_MATCHED_BOUND_REPEAT_2026-11-09.md)（別state・別プロセスで二回走らせ、計画fingerprint・lock fingerprint・artifact digestが完全一致することを観測。PIDだけが異なる。再現性の観測でありL2-bではない。§4.12 / #2831）
+- [entryの導出したintent fingerprintが参照resolverと一致することの検証](TEI_GO_SELF_BUILD_INTENT_READER_2026-11-09.md)（§4.13 I-1aの実装（#3647）はreader自体を固定しているが、entryの導出値と参照resolverの導出値の一致は未固定だった。参照resolverのバイナリを起動して突き合わせる3件を追加。L2-bは未。 #2831）
+- [intentBindingをentryの導出値基準へ移す](TEI_GO_SELF_BUILD_BINDING_FINGERPRINT_2026-11-09.md)（I-1aと#3649により、byte検査・fingerprint検査・`planCrossCheck`・`planArtifactBinding`が**同じ1回の試行で同時に成立**することを実プロセスで観測。バイト一致でも捕れない食い違いを検出し、実施しない場合は理由を残す。`l2bClaimed`はfalse。 #2831）
+- [Resolveを`internal/`へ移す](TEI_GO_SELF_BUILD_RESOLVE_INTERNAL_2026-11-09.md)（§4.13が反対した「fixture catalogが製品に見える」問題を、portと`Resolve`だけを移しfixtureは`tools/`に残す形で解いた。決定性・receiptの改竄検出・不完全Contextの拒否を実測。entryの既定経路はchild起動のままで、L2-bは未。 #2831）
+- [builder catalogの出所を探す](TEI_GO_SELF_BUILD_CATALOG_PROVENANCE_2026-11-09.md)（§4.16のR-1の前提を実測。`internal/`・plugin lock・Plugin定義・JSON/YAML・ADRのいずれにも`recipeKinds`を持つcatalogは無く、R-1は「配線」ではなく「catalogの新設」だと分かった。C-1/C-2/C-3の選択肢を挙げ、判断はまだ下さない。 #2831）
+- [`-child-arg`による予約flagの上書きを拒否する](TEI_GO_SELF_BUILD_RESERVED_CHILD_FLAGS_2026-11-09.md)（`-artifact-out`・`-state`・`-supply`を`-child-arg`で重複させると、entryの記録とchildの実際の値が食い違う。修正前は通ってしまうことを試験で確認し、child起動前に名指しで拒否するよう直した。 #2831）
+- [D-1（catalogの`scope`拡張）の判断材料](CLI_CATALOG_SCOPE_D1_IMPACT_2026-11-09.md)（acceptedCommands 50件・catalog record 19件・広告しない36件・effectは全てread-onlyを実測。D-1は不変条件テスト2件と実consumer（MCP adapterのread-only前提）に触れ、`scope`の意味も変える。外在consumerは測れないため推奨しない。判断は未。 #2831）
+- [宣言の他の欄もplanと照合する](TEI_GO_SELF_BUILD_INTENT_FIELD_COMPARE_2026-11-09.md)（builder childがrecipe・source集合・dependency集合も比べるようにした。導出値（locator・digest・version）は比べない——比べると正しいbuildをすべて不一致と呼ぶため。不一致は名指しで拒否し、reportを出さない。既存fixtureが実フローと違っていたのも検査が検出した。`l2bClaimed`はfalse。 #2831）
+- [`parameters`も照合する](TEI_GO_SELF_BUILD_PARAMETER_COMPARE_2026-11-09.md)（§4.17は「正規化の意味が未決」として残したが、実測するとどちらの側も名前順ソートのみで値を変えていなかった。前提を確かめてから名前で突き合わせる照合を実装し、順序非依存と正規化の性質自体を試験で固定。L2-bは未。 #2831）
+- [`tei self-build`のbuilder childが宣言の`builder`要求をplanの解決結果と照合する](TEI_GO_SELF_BUILD_BUILDER_REQUIREMENT_2026-11-09.md)（対応規則は推測ではなくresolverの`ResolveBuilder`に既にあり、`internal/buildintent`の`BuilderContractVersion`として一箇所に定義した。contract+major・provider・pinを照合し、不一致は欄を名指ししてreportを出さずexit 1。同じ宣言から導いたplanでは決して失敗しないため、この照合が効くのはplanがその宣言由来でない場合だけ。`provider.implementation`はplanに対応欄が無く未照合。`l2bClaimed`はfalse。SB-C0 §4.19 / #2831）
+- [同じplanを二回buildしてartifactの再現を観測する](TEI_GO_SELF_BUILD_ARTIFACT_REPRODUCIBILITY_2026-11-09.md)（`-rebuild-check`で、同じchild実行物を新しい一時stateと一時出力先で二回起動し、artifactのバイトを比べる。`artifactReproducibility=reproduced`で、§4.8(c)「そのplanがそのartifactを生んだか」を再現で観測した。`bound`が示せなかったことを置き換える。**L2-bではない**（`l2bClaimed`はfalse）。同じ宣言から導いたplanかどうかとは別の軸である。SB-C0 §4.21 / #2831）
+- [catalogの機構を`internal/buildintent`へ移す](TEI_GO_SELF_BUILD_CATALOG_MOVE_2026-11-09.md)（§4.22の段1。`FixtureCatalog`・`ParseFixtureCatalog`・`ResolveBuilder`・`ResolveDependency`・`CheckTarget`・`DirSourceResolver`を製品名で`internal/buildintent`へ移し、`tools/`側は型aliasと薄い委譲にした。参照実装の試験は無変更で通る。新設6件はcatalogの厳密読み・三つのportの配線・builder scopeの限定・曖昧さの拒否・fingerprintの順序非依存を固定。**段2（cmd/teiのin-process解決）は未実装**でありL2-bは未成立のまま。SB-C0 §4.22 / #2831）
+- [entryがcatalogを名指しされて計画をin-processで導く](TEI_GO_SELF_BUILD_INPROCESS_RESOLUTION_2026-11-09.md)（§4.22の段2。`-build-catalog`・`-build-catalog-digest`・`-build-source-root`の三つを同時要求し、`-intent-resolver`とは排他にした。entryが導いた`planFingerprint`は参照実装のchildが出した値と一致し、二つの独立した経路が同じ計画に至った。receiptを参照実装と同じ形で直列化したことで`planRecompute`・`planCrossCheck`・`planArtifactBinding`がin-process経路でも成立する。**L2-bのClaimは立てていない**（`l2Claimed`・`l2bClaimed`はfalseのまま）。SB-C0 §4.22 / #2831）
+- [L2-bのClaimを五条件の述語として立てる](TEI_GO_SELF_BUILD_L2B_CLAIM_2026-11-09.md)（§4.8のL2-bを、単一観測ではなく**五条件の同時成立**を述語として計算する。`l2b.claimed`と`l2b.unmet`を出し、欠けた条件をすべて名指しする。単一観測の`l2bClaimed`欄は`false`のまま据え置き、述語はそれらを読まない（意味の循環を避ける）。実測では in-process＋`-intent`＋`-rebuild-check` のときだけ`claimed=true`、`-rebuild-check`無しとresolver経由では`unmet`が該当条件を1件名指しした。既定は変えておらず、Claimには呼び手の明示が必要。SB-C0 §4.23 / #2831）
+- [L2-bのClaimを回帰試験にする](TEI_GO_SELF_BUILD_L2B_GATE_2026-11-09.md)（§4.23の五条件が**リポジトリ内の材料だけ**で同時に成立することを`cmd/tei`の試験で固定した。`cmd/tei`と参照builder childと参照実装を`go build`し、参照catalogと手書きの宣言で`self-build`を一度走らせ、`l2b.claimed=true`・`unmet`空・`qualified=false`を確かめる。`-rebuild-check`を外すと`unmet`が再現の欠如を名指しすることも固定。`go test ./...`に含まれるので健康性確認の経路で自動的に回る。**既定の試行では依然としてClaimは立たない**。SB-C0 §4.24 / #2831）
+- [traceの継続トークンが2つの同名欄に分かれている](TEI_DOGFOODING_ROUND11_TRACE_CONTINUATION_2026-11-09/README.md)（#3625・#3420 T06。同名の`snapshotFingerprint`が2つあり、継続に使えるのは外側だけ。`nextOffset`の隣の値を渡すと`STALE_SNAPSHOT`になることを修正前に実測した）
+- [mainのtrace継続トークンを実測](TEI_DOGFOODING_ROUND12_CONTINUATION_MAIN_2026-11-09/README.md)（#3625。`e75d599ba`で`graphFingerprint`への改名と`continuation`が入り、`continuation.fingerprint`で継続でき、`graphFingerprint`は拒否されることを確認）
+- [設計変更の影響範囲をCLIだけで答えられるか](TEI_DOGFOODING_ROUND13_DESIGN_IMPACT_2026-11-09/README.md)（#3149 D-9・#2619・#2621。モデル要素の定義箇所は`inspect`で分かるが、設計文書の中の名前はsubjectにならず`SUBJECT_NOT_FOUND`。改名の影響範囲は`grep`が要る。リポジトリ全体はWorkspaceにできない）
+- [CLIとMCP参照Adapterの一致と厳密入力](TEI_DOGFOODING_ROUND5_CLI_MCP_2026-11-09/README.md)（#3400・#3420。4操作の成功応答と2つの失敗はCLIと一致し、未知の引数だけMCPが無視する。`main` `4f97c86cf` のCLI・MCP実行物で実測）
+- [AIが使うknowledge-*連鎖の端から端までの実測](TEI_DOGFOODING_ROUND14_KNOWLEDGE_CHAIN_2026-11-09/README.md)（#3149・#3186・#3419。context→plan→handoff→disclose→qualify→review-discloseが通り、古い指紋と別subjectのhandoffは拒否される。要件ファイルの形だけCLIの応答から辿れない）
+- [`builder`の契約も照合する](TEI_GO_SELF_BUILD_BUILDER_CONTRACT_COMPARE_2026-11-09.md)（§4.18は「対応規則を決める必要がある」としたが、`contract/vN`の規則は既に`fixture.go`にあった。child側にも規則を明示して照合し、綴り自体を試験で固定。`secretRequirements`はplanにもchildの入力にも比べる相手が無く未照合。L2-bは未。 #2831）
+- [trace fullの0件rows](CLI_TRACE_EMPTY_ROWS_2026-11-09.md)（`mode=full`で参照0件のとき`rows`が省略され「0件」と「欄が無い」を区別できなかったのを、宣言順を保った`MarshalJSON`で`rows: []`として出すよう修正。summaryは欄なしのまま）
+- [model catalogの検証成否](CLI_CATALOG_VALIDATION_STATUS_2026-11-09.md)（検証NGのWorkspaceでも`ok:true`を返し健全性を判別できなかったため、`validate`と同じ規則の`validation`（ok・errorCount・warningCount）を結果へ追加。catalogは案内用の投影として成功のまま）
+
+- [trace -mode fullのrowsが0件のとき消える](TEI_DOGFOODING_ROUND15_TRACE_MODE_ROWS_2026-11-09/README.md)（#3693・#3456。`omitempty`が長さ0のスライスも落とすため、`mode=full`の「0件」と「欄が無い」が同じ表現になることを修正前に実測した。mainの`3799997a0`で解消）
+- [継続トークンの失効条件を実測](TEI_DOGFOODING_ROUND16_CONTINUATION_EXPIRY_2026-11-09/README.md)（#3420 CAPI-2c・#3625。Sourceの変更（コメント1行でも）・`-scope`・`-direction`の変更は`STALE_SNAPSHOT`、`summary`⇄`full`は相互に許容。MCPも同じ可否で、新しい欠陥は無し）
+
+
+- [entryが計画側の基準も自分で持つ](TEI_GO_SELF_BUILD_ENTRY_PLAN_SIDE_2026-11-09.md)（束縛の計画側がbuilder childの申告だけに依存していたのを、entryの再計算値へfallbackできるようにした。どちらを使ったかを`planSideSource`で記録し、弱い根拠を強い根拠と読ませない。builder優先の理由も明示。L2-bは未。 #2831）
+- [必須引数の不足が3つの符号に分かれていた](TEI_DOGFOODING_ROUND17_FAILURE_CLASSIFICATION_2026-11-09/README.md)（#3733・#3420 CAPI-2b。`inspect`は`INVALID_SUBJECT`、`knowledge-*`は`KNOWLEDGE_BUILD_FAILED`、他は`INVALID_ARGUMENT`と分かれていた。11コマンドを`INVALID_ARGUMENT`に揃え、subject値の不正・不在・構築失敗は別の意味として残した）
+- [実装を直したあと文書が古い符号を主張していた](TEI_DOGFOODING_ROUND18_DOC_DRIFT_2026-11-09/README.md)（#3420・#3733。MCP AdapterのREADMEが「CLIはINVALID_SUBJECT」と書いたままだった。文書を実装に合わせ、散文の主張を`readme_claim_test.go`で固定。変異2種を検出）
+- [同じ壊れたplugin-lockが2コマンドで別の終了コードになっていた](TEI_DOGFOODING_ROUND19_PLUGIN_LOCK_CLASSIFICATION_2026-11-09/README.md)（#3765・#3420 CAPI-2b・#3184。`plugin-resolve`はexit 2、`plugin-runtime-plan`はexit 1と5種で食い違った。`LockMismatchError`を追加し両方`INVALID_PLUGIN_LOCK`へ。変異2種を検出）
+
+- [同じ値指定flagの重複](CLI_REPEATED_FLAG_2026-11-09.md)（`model catalog -namespace`等の重複が最後の値だけを残して黙って捨てていたのを、1値flagの重複として`INVALID_ARGUMENT`で拒否。繰り返し可能なflagは`repeatableFlags`で広告。既存呼出し元の全件洗い出しは未実施）
+- [viewの-inputが-command無しで黙って捨てられていた](TEI_DOGFOODING_ROUND20_VIEW_INPUT_2026-11-09/README.md)（#3778・#3420。`-input`は`-command`と組だが、無い場合に値が捨てられて成功していた。両方向の変異を検出する試験を追加。起票時の誤診と既存試験による発覚も記録）
+- [view -executeの失敗符号が潰れていた](TEI_DOGFOODING_ROUND21_VIEW_EXECUTE_2026-11-09/README.md)（#3797・#3419。入力不正と認可拒否がどちらも`COMMAND_FAILED`に潰れ、理由がmessageの先頭にしかなかった。既知7符号を`error.code`に出す。`-operation-log`の上書き挙動は未決）

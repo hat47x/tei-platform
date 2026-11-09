@@ -1,0 +1,8 @@
+{
+  "schemaVersion": "tei.cli.knowledge-data-design-candidate-review/v0",
+  "ok": false,
+  "error": {
+    "code": "KNOWLEDGE_BUILD_FAILED",
+    "message": "data-design candidate business-identity sha256:0000 is not present in current Context"
+  }
+}
