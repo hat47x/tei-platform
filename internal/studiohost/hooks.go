@@ -19,6 +19,10 @@ type HookRunReport struct {
 	*hook.PhaseReport
 	Pattern core.CanonicalID `json:"pattern"`
 	Note    string           `json:"note"`
+	// CommandOutcome is the Command-side name this refusal corresponds to, when
+	// the hook named one that Command also uses. It is empty when the hook's
+	// outcome has no Command counterpart.
+	CommandOutcome string `json:"commandOutcome,omitempty"`
 }
 
 const hookRunNote = "the reference rule evaluates the declared reads only; running it does not accept the rule, observe the command effect, or grant authority"
@@ -50,7 +54,14 @@ func (h *ReadOnly) runHooks(world ir.World, applicationID, patternID core.Canoni
 	if report == nil {
 		return nil, err
 	}
-	return &HookRunReport{PhaseReport: report, Pattern: patternID, Note: hookRunNote}, err
+	out := &HookRunReport{PhaseReport: report, Pattern: patternID, Note: hookRunNote}
+	// Only a refusal names an outcome. The name is mapped through the declared
+	// correspondence; a name with no Command counterpart stays empty rather than
+	// being reported as a Command refusal reason.
+	if name, ok := hook.CommandOutcomeFor(report.Outcome); ok {
+		out.CommandOutcome = name
+	}
+	return out, err
 }
 
 // studioHookCallInputs binds, for each capability a pattern's hooks declare in
