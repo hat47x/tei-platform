@@ -281,3 +281,18 @@ D1aの製品試験へ、既存Data/Validation/Relationの3 Subjectに加え、**
 **2026-11-09 mainでの実証境界**：[PR #3540](https://github.com/hat47x/tei-platform/pull/3540)をcommit `2eeec81c36db6dfe8c4b6f5c464e0280f8facd87`で統合。PR exact-head `a5cf28acfdb31f2e583416f1f3bc2eddcf97a388`のRepository Health [#42505204119](https://github.com/hat47x/tei-platform/actions/runs/42505204119)、Wails Host [#42505204133](https://github.com/hat47x/tei-platform/actions/runs/42505204133)、Windows Desktop WebView [#42505204245](https://github.com/hat47x/tei-platform/actions/runs/42505204245)、Studio参照編集 [#42505204222](https://github.com/hat47x/tei-platform/actions/runs/42505204222)、Action Surface CLI [#42505204158](https://github.com/hat47x/tei-platform/actions/runs/42505204158)はいずれもcompleted/success。今回の狭い採用は**S2-referenceの静的登録・通常起動経路**。ツールの実ファイルSHA-256はProvider単体のBuild Closure/OS実Load/現在Authorityを証明しない。S2-product（正式ProfileからのProvider差替え）・S3（実Plugin Artifact/Source/Grant/独立BOM）・Owner業務意味受理・外部Tool受領は依然未検証。PRのHEAD成績をmain merge commitの新CI成功と混同しない。
 
 **次の一辺だけ**：既存#951/#1016の実Profile/Provider Selectionから通常CLI・Studioが使うHost登録実Entryへ束縛して、二つの実ConsumerのB選択→B InvokeとB選択→A実誤配線を同一Source/Attemptで確認する。実Binary member・Source raw/Manifest・Rule・Required/Disclosure・Host現在Grantは未観測なら明示的にunknownにし、S2-referenceの成功で補完しない。Lifecycle/Hook/AI統計やC-1/C-2/C-4 Carrierはこの最初のProduct検収に新しいHard Dependencyを作らない。
+
+## 16. 静的参照InspectorのWorkspace間分離とSource移動の実呼出し試験（2026-11-09）
+
+S2-referenceの通常CLI/Studio経路が成立した後、既存#3181のWorkspace Identityと#3479のProvider Source-only Drift／#3524の同一Load byte提案を照合した。**同じCanonical Subject IDと同じSelected Providerを使っていることは、読んだWorkspace・Source版まで一致する証拠ではない**。また`WorldFingerprint`の不変は`SourceIndexFingerprint`の不変を意味しない。第15節の「本番Pluginではない」資格上限は維持する。
+
+**今回の2つの追加試験（新たなSource/Registry/Hostを定義しない）**：
+
+| Case | 実入口／対照 | 独立Expected／失敗条件 |
+| --- | --- | --- |
+| IS-01 | `internal/inspectoradapter.LocalInspectorHost`1個を二つのWorkspace A/BへBind。同じ`semantic-data:sales.order`に対し異なるData属性と異なるManifest Identityを配置 | A/BのCanonical・World FP・Workspace Identityは区別され、A/BのProviderが根を混同しない。AのSource fileをrename後、AのWorld/Canonicalは不変でSourceIndex FPだけ変わり、Bはどちらも不変。A→BのView混入はFAIL |
+| IS-02 | `cmd/tei-studio`の**実Wails Bridge Go method**に二つのStartup allowlisted Workspaceを指定（`server`／`studio_generated && server`の両Targetを検証対象とする） | 同名Subjectであっても`workspace-1`がA、`workspace-2`がBのCanonical/Workspace Identityを返す。Aのfile rename後BのSource Index FPを変えない。別Rootを選んだのに同一値を返す／Aの変更をBの改訂に混ぜるのはFAIL |
+
+**境界**：A/B Workspaceの比較はSource/Meaningの実参照の局所的実証であり、`WorldFingerprint`や`SourceIndexFingerprint`を実Artifact/Provider Link/実Authority・Disclosureや外部Providerの同一Load Originへ昇格しない。Source renameはInput Observationと再照合を確認するもので、OwnerのAccepted Meaningの再受理を自動要求しない。独立ExpectedとScenarioの一般化は既存#2514/#1180、raw Provider/Manifestの解析瞬間固定は#3524/#3479、製品S2-provider差替えは#951/#1016/#1251。
+
+**適用段階**：新Goテストとこの節をPRへ保存。CI exact-head／go test／実Studio Server・Windowsの結果を確認するまで**PASS・製品適格・外部Provider実証は申告しない**。既存S2-referenceの本体実装は変更しない。
