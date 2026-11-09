@@ -360,6 +360,7 @@ WP10 統合と引継ぎ
 | フックの不成立と実行失敗の区別 | 実装 | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md) |
 | 判定と能力呼出しの連結（`Guarded`） | 実装（参照） | 付録C.5、`internal/hook` |
 | 能力から`command` Patternの解決（`CommandPatternFor`） | 実装 | 付録C.5、`internal/hook` |
+| フック宣言の画面・印刷面への反映 | 実装 | 付録C.5、`internal/applicationview`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md) |
 | 参照Storeの拒否符号 | 実装 | 付録C.5 |
 | 作者環境の面ごとの検査（AC-12） | 設計のみ | 作者環境の受容設計§3.1〜3.4 |
 | 派生出力の版・未解決（AC-7） | 設計のみ | 派生出力の受容設計§3.1〜3.5 |
@@ -383,6 +384,21 @@ WP10 統合と引継ぎ
 | CLI参照実行の期間状態 | 実装 | 付録C.5 |
 | フックの宣言（位相・読み書き・失敗時） | 実装 | 付録C.5 |
 | フックの位相の重複宣言の拒否 | 実装 | 付録C.5、`internal/validation` |
+| フックの位相順序と途中停止の記録（`RunSequence`） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md) |
+| フックの宣言した読み取りだけの授受（`ReadsFor`） | 実装 | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_DECLARED_READS_2026-11.md) |
+| 位相ごとの読み取り範囲（`RunSequence`） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_PER_PHASE_READS_2026-11.md) |
+| 提案された値の宣言照合（`ProducesFor`） | 実装 | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_DECLARED_PRODUCES_2026-11.md) |
+| フック宣言の機能定義書への反映 | 実装 | 付録C.5、`internal/artifact`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_FUNCTION_DEFINITION_2026-11.md) |
+| CLI参照実行からのフック呼出し | 実装（参照） | 付録C.5、`cmd/tei`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_CLI_WIRING_2026-11.md) |
+| Studio参照実行からのフック呼出し | 実装（参照） | 付録C.5、`internal/studiohost`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_STUDIO_WIRING_2026-11.md) |
+| フック位相の到達範囲（`RunReachable`） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_REACHABLE_PHASES_2026-11.md) |
+| フックの結末名とCommand拒否名の対応 | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_OUTCOME_VOCABULARY_2026-11.md) |
+| フックが名乗る結末名の語彙照合 | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_OUTCOME_CHECK_2026-11.md) |
+| 到達できる位相の経路での提案の照合（`RunReachable`） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_REACHABLE_PROPOSES_2026-11.md) |
+| フックの提案のCLI・Studio表示 | 実装（参照） | 付録C.5、`cmd/tei`、`cmd/tei-studio`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_SHOW_PROPOSALS_2026-11.md) |
+| 宣言した能力を呼ばないまま実行済みと報告しない（`RunReachable`） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_DECLARED_CALL_HONESTY_2026-11.md) |
+| 宣言した能力を実際に呼ぶ配線（`RunDeclaredCalls`） | 実装（参照） | 付録C.5、`internal/hook`、`cmd/tei`、`internal/studiohost`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_DECLARED_CALL_WIRING_2026-11.md) |
+| フックが使う能力の`command` Pattern不在の拒否 | 実装 | 付録C.5、`internal/validation` |
 | フックの実行境界（reject/warn） | 実装 | 付録C.5 |
 | 未使用属性の表示 | 実装 | 付録C.5 |
 | 属性の役割（role） | 実装 | 付録C.5 |

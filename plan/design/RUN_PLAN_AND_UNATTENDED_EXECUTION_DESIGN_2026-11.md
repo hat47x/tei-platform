@@ -335,7 +335,8 @@ run-plan sales.monthly_close operations sales.close key sales.period.month concu
 
 `access.ChainFile` を追加し、判定の記録を**鎖**で繋ぎました。
 
-- 各行は直前の行のハッシュを持ちます。ハッシュの対象は `prevHash`・行番号・能力・`allowed`・`missing` の全部です。
+- 各行は直前の行のハッシュを持ちます。ハッシュの対象は**決定そのものの JSON 符号化**と、鎖の版・`prevHash`・行番号です。欄を手で並べないのは、`Record` に欄が増えたときに足し忘れると**その欄を書き換えても検証が通る**ためです（`TestRecordHashCoversEveryFieldOfTheRecord` が固定しています）。
+- 鎖の版（`tei.access.chain/v2`）を記録に書きます。計算方法を変えたときに、古い記録が黙って通ることも、改竄として誤報されることもありません（版が違えば「版の不一致」として報告します）。
 - 決定の欄は**埋め込み**なので、鎖を知らない読み手でもそのまま読めます。形式を二つに増やしていません。
 - 検出できるのは、判定の書き換え・途中の行の削除・`prevHash` の偽装です。
 - **末尾の行の削除は、鎖だけでは検出できません**（短くなった鎖も正しい鎖です）。この限界は試験で固定しています（`TestChainFileNeedsAPinnedHeadToDetectATruncatedSuffix`）。
@@ -352,6 +353,14 @@ run-plan sales.monthly_close operations sales.close key sales.period.month concu
 - `Verify()` は鎖と pin の**両方**を確かめます。鎖は「書き換えが無い」ことを、pin は「末尾が削られていない」ことを示します。
 - pin が無いのはエラーではなく「まだ pin していない」です。2つ以上の head が書かれた pin は**エラー**です（どちらも pin していません）。
 
-**示さないこと**: pin は**署名ではありません**。記録と pin の両方を書き換えられる者は両者を一致させられます。pin が防ぐのは**片方だけを変えた場合**です。pin を記録の外（タグ・リリースノート・別の保管場所）に置けば記録だけを書き換えられる者にも効きますが、その置き場はまだ決めていません。**まだどのツールも `PinnedJournal` を使っていません**（`-access-log` は `ChainFile` のまま）。
+**示さないこと**: pin は**署名ではありません**。記録と pin の両方を書き換えられる者は両者を一致させられます。pin が防ぐのは**片方だけを変えた場合**です。pin を記録の外（タグ・リリースノート・別の保管場所）に置けば記録だけを書き換えられる者にも効きますが、その置き場はまだ決めていません。
+
+**接続済み（2026-11-07 追記）**: `reference-first-web-frozen-world-generate` に `-access-head` を足し、`-access-log` と併せて渡すと `PinnedJournal` を使います。固定Worldビルド（`build_frozen_json_api.sh`）は両方を渡し、**pin が記録の `hash` と一致する**ことをビルドの合否条件にしています。`-access-log` だけを渡した場合は、**末尾の削除を検出できない**ことを標準エラーに書きます。
+
+実機で確かめたこと（この環境、Windows）:
+
+- 両方渡す → 記録の `hash` と pin が一致し、終了コード 0。
+- 記録を空にして pin を残す → `head mismatch` で終了コード 1。観測は書かれない。
+- `-access-head` だけ渡す → 拒否（pin する記録が無い）。
 
 **示さないこと**: 全ハッシュを計算し直せる者による書き換えの検出。記録は改竄されないのではなく、**改竄が検出できる**だけです。

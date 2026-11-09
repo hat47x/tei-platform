@@ -13,12 +13,16 @@ import (
 
 const knowledgeDisclosureProjectionRevision = "tei.knowledge.disclosure/v1"
 
-var selectableDisclosureSections = []string{
+// SelectableDisclosureSections is the closed set of sections -disclose accepts.
+// It is exported so the CLI advertises the same set it validates (#3242).
+var SelectableDisclosureSections = []string{
 	"data-design",
 	"definition",
 	"dependencies",
 	"source",
 }
+
+var selectableDisclosureSections = SelectableDisclosureSections
 
 type DisclosureProjection struct {
 	ProjectionRevision       string                              `json:"projectionRevision"`
