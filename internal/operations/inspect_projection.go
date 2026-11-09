@@ -1,6 +1,7 @@
 package operations
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 
@@ -28,11 +29,48 @@ func ValidateInspectionProjection(requested sourceindex.Subject, value SubjectIn
 	// an exact top-level ID. The response wrapper's Subject alone cannot
 	// attest that the returned Canonical bytes belong to that Subject:
 	// a selected Provider could return another Subject's valid JSON.
-	var identity struct {
-		ID string `json:"id"`
-	}
-	if err := json.Unmarshal(value.Canonical, &identity); err != nil || identity.ID != requested.ID {
+	if !canonicalIDMatchesExactField(value.Canonical, requested.ID) {
 		return errors.New("inspection service returned a Canonical object for another subject")
 	}
 	return nil
+}
+
+// canonicalIDMatchesExactField requires exactly one top-level, lowercase
+// "id" field. Encoding/json's struct matching is case-insensitive, and
+// unmarshalling into a map silently overwrites duplicated keys. Neither is
+// sufficient to qualify an untrusted Provider's Canonical identity.
+func canonicalIDMatchesExactField(raw json.RawMessage, requestedID string) bool {
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	opening, err := decoder.Token()
+	if err != nil || opening != json.Delim('{') {
+		return false
+	}
+	found := false
+	for decoder.More() {
+		token, err := decoder.Token()
+		if err != nil {
+			return false
+		}
+		name, ok := token.(string)
+		if !ok {
+			return false
+		}
+		var field json.RawMessage
+		if err := decoder.Decode(&field); err != nil {
+			return false
+		}
+		if name != "id" {
+			continue
+		}
+		if found {
+			return false
+		}
+		var actualID string
+		if err := json.Unmarshal(field, &actualID); err != nil || actualID != requestedID {
+			return false
+		}
+		found = true
+	}
+	closing, err := decoder.Token()
+	return found && err == nil && closing == json.Delim('}')
 }
