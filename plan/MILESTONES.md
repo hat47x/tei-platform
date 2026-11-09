@@ -269,13 +269,13 @@ AIの機能を追加するだけでなく、既存知識の探索・変更候補
 
 ## RQ-036：モデル全容ナビゲーションと、標準／拡張Flowの横断的成熟段階（2026-11-08、既存マイルストーンの補助受入）
 
-この節は既存マイルストーン・Gate B/Cを追加・遡及変更するものではない。要求の正本は[RQ-036](../requirements/TEI_PRODUCT_REQUIREMENTS.md)、具体化した図表・Lifecycle/Plugin/AI Interaction受入は[三要素Method §19（MAP-01〜16）](design/THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)に置く。
+この節は既存マイルストーン・Gate B/Cを追加・遡及変更するものではない。要求の正本は[RQ-036](../requirements/TEI_PRODUCT_REQUIREMENTS.md)、具体化した図表・Lifecycle/Plugin/AI Interaction受入は[三要素Method §19（MAP-01〜23）](design/THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)に置く。全体像を案内として保つ現在地・往復・階層化、生成AI向け表現、設計書から実装への導線（2026-11-09追加）は§19.8（MAP-17〜23）が扱う。
 
 | 成熟段階（#1124の既存Modelerを利用） | 必要な利用者可視の事実 | 判定してはならないこと |
 | --- | --- | --- |
-| **M0 Catalog** | 既存Source/意味Revisionに束縛したData／Event／State／Function／Pattern／Providerの型付き全体一覧、Required/Loaded/Unresolved/Hiddenの相対集合をCLI/Headlessで出す | 取り込めた対象だけで「全部ある」とみなさない |
-| **M1 Read-only Graph＋Matrix** | 代表的な一つのOrg/OrderのElement/Relation/Event/Transition/Pattern、Data×Function、Event×State×Actionを相互参照し、未受理要素をGapと表示 | 合成Fixtureや手描き図を実World全容と扱わない |
-| **M2 初学者の導線／複数Consumer** | 「何・なぜ・どこを変えられるか」をGraph/表/CLI（可能ならStudio/SHO）で同じQualified ID/Scopeから案内できる。人が理解した証拠とAIの自動採点は区別 | GUI上のクリックだけでSource/Meaning受理やDisclosureを証明しない |
+| **M0 Catalog** | 既存Source/意味Revisionに束縛したData／Event／State／Function／Pattern／Providerの型付き全体一覧、Required/Loaded/Unresolved/Hiddenの相対集合をCLI/Headlessで出す。区画の階層と、要素ごとの設計の段階・実装の段階（未実装・`unbound`を含む）も同じ一覧から出す | 取り込めた対象だけで「全部ある」とみなさない。図表があることを実装済みとみなさない |
+| **M1 Read-only Graph＋Matrix** | 代表的な一つのOrg/OrderのElement/Relation/Event/Transition/Pattern、Data×Function、Event×State×Actionを相互参照し、未受理要素をGapと表示。指定要素の現在地と近傍、区画単位の概観と内訳を、CLI/MCPで生成AIが読める構造化テキストとしても返す | 合成Fixtureや手描き図を実World全容と扱わない。AI向けの別要約を正本にしない |
+| **M2 初学者の導線／複数Consumer** | 「何・なぜ・どこを変えられるか」をGraph/表/CLI（可能ならStudio/SHO）で同じQualified ID/Scopeから案内できる。詳細を開いても全体像の中の現在地が見え、概観へ同じ位置で戻れる。人が理解した証拠とAIの自動採点は区別 | GUI上のクリックだけでSource/Meaning受理やDisclosureを証明しない。概観図を作っただけで案内が成立したとしない |
 | **M3 標準とカスタムの合成** | Typed Graphの不変保証と変更できるHook/Slotを識別し、標準Flow／Patch差分／合成後の実効Flowを版・Plugin/TargetごとにPreviewできる | 一律の固定Step順を要求しない。Graph差分／Conflictを無検証で有効化しない |
 | **M4 生成・実行の別資格** | 実Targetに生成したArtifact、選択Pluginの実Invoke、Source/Model/Generator Revisionと実受信／Effectの成立範囲を比較する | 構造が描けた・コードが生成されたことを現在Grantや実Commitとしない |
 

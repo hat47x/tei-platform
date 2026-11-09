@@ -87,7 +87,8 @@
 - [利用者設定の書込みの確認](XTEA_LOWCODE_USER_SETTINGS_WRITE_2026-11.md)（参照実装の試験記録。監査・権限・画面は未実装）
 - [例の締め日・設定Dataと構文の修正の確認](XTEA_LOWCODE_EXAMPLE_CLOSING_SETTINGS_2026-11.md)（参照実装の試験記録。閉めの実行内容と設定の監査は未実装）
 - [為替の月次・年次を別Dataに分ける構成の確認](XTEA_LOWCODE_CURRENCY_TWO_TABLES_2026-11.md)（参照実装の試験記録。宣言語彙と例への追加は未実装）
-- [採番の永続CounterStoreの確認](XTEA_LOWCODE_NUMBERING_SQLITE_STORE_2026-11.md)（参照実装の試験記録。2プロセス同時実行とPostgreSQLは未実装）
+- [採番の永続CounterStoreの確認](XTEA_LOWCODE_NUMBERING_SQLITE_STORE_2026-11.md)（参照実装の試験記録。PostgreSQLは未実装）
+- [採番の2プロセス同時実行の確認](XTEA_LOWCODE_NUMBERING_PROCESS_RACE_2026-11.md)（参照実装の試験記録。PostgreSQLと多プロセス構成は未実装）
 - [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
 - [X-TEA受容要件の実装対応](XTEA_LOWCODE_ACCEPTANCE_TRACE_2026-11.md)（`AC-1`〜`AC-11`・`RQ-C1`〜`RQ-C3`の参照実装と未確認事項。受容判断は仮承認）
 - [実DBで実行時の判断を確かめる計画](REAL_DATABASE_RUNTIME_DECISION_PLAN_2026-11.md)（期間・権限・効果の判断を実DBで見る案。**NOT RUN**）
@@ -113,6 +114,7 @@
 - [証拠の宣言から、既存の Router で実際に入れるか](EVIDENCE_ROUTER_CONNECT_REFERENCE_2026-11-09/README.md)（`tools/reference-evidence-router-connect` として、観測側と同じ4段の形が EvidenceProviders でも成り立つかを試す。Collect は durable.ActionRecord を要求するため証拠ゲートでない記録は専用状態で拒否し、未登録でも resolved=True のまま invoked=False になることを示す。pass は provider の主張で外部状態の証明ではない）
 - [CON-12cは、いまの観測・証拠の宣言では問えない](BINDING_IDENTITY_LAYERS_2026-11-09/README.md)（観測と証拠の宣言はKindとProviderしか持たず、Artifact digest・Grant epoch・Source Scopeが無いため、CON-12cの比較項が存在しないことを実測する。識別子を持つのはgeneration.BindingとServiceProviderSelectionの2層だけ。何も変更しない）
 - [digestが変わったとき、旧いピン留めはどうなるか（CON-12c）](DIGEST_CHANGE_REUSE_REFERENCE_2026-11-09/README.md)（CON-12cを識別子を持つ generation.Binding の層で実際に問う。変更後の新しい取得は新しい digest、変更前にピン留めした lease は古い digest のままであることを示し、Publish が同じ世代番号と contract 越えを拒否することも固定する。実配備の切替ではなく、digestも実ビルドの産物ではない）
+- [部分成功を、件数ではなく判定で表す（CON-12d）](PARTIAL_RUN_VERDICT_2026-11-09/README.md)（観測・証拠の両参照に attemptedCount と complete を足し、1/1 と 1/2 を件数から区別できない問題を直す。一部だけ成功した場合も何も試さなかった場合も complete=false。complete=true は全部に答えが返った意味だけで、世界がそうなっている証明ではない。unknownの表現は未）
 - [C-2を試験の外で組み立て、C-1と同じ土台で比べる](SERVICE_CARRIER_CONNECT_REFERENCE_2026-11-09/README.md)（`tools/reference-service-carrier-connect` として判断材料のC-2を実装。Hostが渡したCoordinator・Runtime registry・RouteSourceからInvokerを組み立て、ピン留めした世代で要求を運ぶ。Routeが無い場合はInvokerを呼ぶ前に拒否し、別Binding用のRouteも拒否し、入力不足も拒否する。実配備の成立は示さない）
 - [C-2の数も、実行前拒否と実行後不確定を分ける](SERVICE_CARRIER_CONNECT_OUTCOME_V1_2026-11-09/README.md)（C-2の参照Reportをv1にし、ranCountをcarrier入場、refusedCountを入場前停止だけ、unverifiedCountを入場後の失敗や別世代の応答として分ける。artifact検証の拒否はcarrier内部で起きるためunverifiedに入る。反例3件でv0ならrefusedに入っていたケースを固定し、CLIの3場合はcarrierInvoked=falseを示す。製品へ繋ぐべきかは示さない）
 - [C-1とC-2は、同じ問いの2案か](CONNECT_POINT_C1_C2_2026-11-09/README.md)（判断材料が並べたC-1 routing.Router と C-2 servicehost の入口を比べ、入力の型・世代の有無・到達可能性が違うことを示す。C-1は配備の動作を実行しC-2はServiceの要求を運ぶため、両方を選ぶことは経路の重複ではない。C-2は非試験の呼出し元がまだ0件であることを記録。どちらを先に入れるべきかは示さない）
@@ -172,6 +174,7 @@
 - [同時に起動できるSubagentは8体まで](DSH_SUBAGENT_CONCURRENT_LIMIT_2026-11-09/README.md)（#2515 H6-E2・#2509。1メッセージで12体の`subagent`を並列要求すると**8体が起動し4体が拒否**された。拒否は`isError: true`のTool結果で本文は`active child limit: 8`。**子が即応答する対照でも8/4で変わらない**ため、上限は**起動時に見る同時数**で、子の完了を待って順に通す形ではない。親1＋子8で13要求・1,074,677 bytes。時間を分けた起動、`maxActiveSubagents`の変更、`maxDepth`との同時作用、Telemetry・MCPはNOT RUN）
 - [Telemetry（OTel）経路は既定で載っており、明示的なfeedbackなしには送らない](DSH_OTEL_PATH_2026-11-09/README.md)（#2515 H6-E2・#2509。**台帳§4の記述を訂正**。`session-telemetry-otel`は`@deepseek-ai/dsh-base`が**既定で登録**しており、`--dump-config`に`mode: process.env.DSH_TELEMETRY_MODE || 'FEEDBACK_ONLY'`と`exporter.url: process.env.DSH_TELEMETRY_OTLP_URL ?? 'https://dsh-otel-collector.deepseeksvc.com/v1/logs'`が出る。`DSH_TELEMETRY_OTLP_URL`をローカルMockへ向けた1往復では**OTLP要求は0件**（モデル要求は2件・143,308 bytes）。**止めているのはプラグインの不在ではなく`FEEDBACK_ONLY`のgate**で、**headlessにはfeedbackの面が無い**。feedbackを与えた場合の送出内容、`DISABLED`の実測、`maxRequestBytes`超過、MCPはNOT RUN）
 - [MCP経路は既定の面に出ておらず、`mcp-client`を挿しても推測した設定では届かない](DSH_MCP_PATH_2026-11-09/README.md)（#2515 H6-E2・#2509。既定のheadlessの面は**Tool 24個で名前に`mcp`を含むものは0**。`mcp-resources`は`dsh-base`が**登録済みだがサーバー未設定**で、`--dump-config-schema`の`configRef`は**`unknownConfig`**。`mcp-client`を`servers.synthetic {transport: http, url}`で挿すと`--dump-config`は受理するが、実行後も**Tool 24個・MCP Tool 0・MCP要求0件**（モデル要求は2件・143,308 bytes）。**`--dump-config`の受理は経路が開くことを意味しない**。正しい設定形はschemaに無いため、0件は「この推測が届かなかった」であってMCPが運べない証拠ではない）
+- [単一eventが`maxBytes`を超えると拡張が丸ごと消え`delivery-accepted`も増えない](DSH_SESSION_LOG_OVERSIZE_EVENT_2026-11-09/README.md)（#2515 H6-E2・#2509。`maxBytes 4096`で約8,000 bytesの`pwsh`結果を出し、その後も呼び出しを続けた。**要求001〜004は拡張あり（水位`-1`→`9`→`11`→`12`）、005以降は`dsh_session_log` field自体が無い**。水位は`12`で凍り作業は96 event・maxSeq 94まで進む。**`delivery-accepted`は4件で止まり増えない**。**同じ上限で小さい結果のみなら拡張は付いたまま**（3/3）。**送れない最小単位が1つあると以降まとめて送れなくなる**（切り詰めでも部分送信でもない）。Telemetry・UI・別flagでの検知、上限を戻した回復、`maxRequestBytes`との関係、他版での再現はNOT RUN）
 - [Session Log拡張の`maxBytes`上限とbacklog](DSH_SESSION_LOG_MAXBYTES_2026-11-08/README.md)（#2515 H6-E2・P0-b・#2509。`maxBytes`を2048と512へ下げて実測し、field全体が上限内なら水位`9`まで10 event、上限512では**518 bytes**（ヘッダ込みで上限超過）で水位`2`・3 eventに止まった。`maxBytes`は1要求の上限で総開示量の上限ではない。分割送出と単一eventの停滞は未確定）
 - [Session Logのbacklog分割送出と停滞、上限判定の単位](DSH_SESSION_LOG_SPLIT_AND_STALL_2026-11-08/README.md)（#2515 H6-E2・#2509。`maxBytes=1024`の4 Turnで水位`-1`→`6`→`9`と**後続要求へ分割送出**されることを確認し、`maxBytes=256`ではヘッダ込みで上限を超えるため**fieldが一度も作られず**作業だけが続いた。先行記録の「512で518 bytes＝上限超過」は再直列化した値による誤りで、生byteは474だったと訂正）
 
@@ -263,4 +266,6 @@
 - [手書きの符号許可リストが21中15を潰していた](TEI_DOGFOODING_ROUND22_CODE_COVERAGE_2026-11-09/README.md)（#3807・#3797・#3420。CLIは7符号、Studioは1符号だけを特別扱いし、coreの21符号のうち15が`COMMAND_FAILED`に潰れていた。列挙を廃止し`command.ReportedFailure`へ。AST走査で再発防止）
 - [契約文書の符号一覧が実装より狭くなっていた](TEI_DOGFOODING_ROUND23_CONTRACT_DOC_2026-11-09/README.md)（#3419・#3807。`view`行は11符号しか挙げず実装は21符号を返しうる。discoveryは符号を広告しないため文書が唯一の発見経路。AST走査で文書と実装の一致を両方向に固定）
 - [toolの引数一覧がschemaと独立に手書きされていた](TEI_DOGFOODING_ROUND24_TOOL_TABLE_DRIFT_2026-11-09/README.md)（#3823・#3419。`toolArguments`が`InputSchema.properties`と同じ事実を2回書いており、緩む方向の不一致を誰も検出できなかった。表を削除しschemaから導出する形に）
+- [TEIの標準意味型はTEIで宣言されていない](TEI_DOGFOODING_ROUND25_STDLIB_SELF_DESCRIPTION_2026-11-09/README.md)（#2620・#2619。`std.*`の12型は`prelude:true`かつ`sourceStatus:not-indexed`で、`inspect`も`source-index`も根拠を返さない。定義はGoにあり、`namespace std`は宣言を拒否される。合格条件をCLIだけで測れることを実演）
+
 - [`-strong`（P-4）の名前と粒度を決めて実装した](TEI_GO_SELF_BUILD_STRONG_FLAG_2026-11-09.md)（§4.25・§4.27・§4.29が三度「未着手」と書いた項目。名前は何が買えるかで付け、粒度は一つ。既定は変えず、in-process経路を要求し、暗黙に有効化した内容を`implied`に記録する。弱い試行に強い名前を付けないため、経路が無ければ拒否する。 #2831）

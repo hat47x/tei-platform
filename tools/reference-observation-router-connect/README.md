@@ -38,6 +38,15 @@ go run ./tools/reference-observation-router-connect/cmd/tei-observation-router-c
 | `OBSERVE_FAILED` | **入場後**の失敗。断片の同一性不一致もここに入る（既存 Router が拒否する） |
 | `FRAGMENT_INVALID` | Router が provider に入らずに応答した（参照は観測として扱わない） |
 
+## 部分成功をどう表すか（CON-12d）
+
+`attemptedCount` は試した件数、`complete` は**すべての試行が成立したか**です。
+件数だけでは 1/1 と 1/2 を区別できないため、`attemptedCount` を併記します。
+**一部だけ成功した場合は `complete=false`** で、拒否はそのまま残ります。
+何も試さなかった場合も `complete=false` です。
+
+**`complete` は「世界がそうなっている」証明ではありません。** 試した全部に答えが返ったという意味だけです。
+
 ## この参照が示さないこと
 
 - **観測が外部状態を反映していること**。付属 CLI の Provider は固定の断片を返し、何も読みません。
