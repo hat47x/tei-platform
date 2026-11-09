@@ -1,0 +1,27 @@
+feat(cli): derive the plan in process from a caller-named build catalog
+
+§4.22 chose K-3 for the catalog's provenance: the caller names the data and its
+digest, the same shape -supply and -intent-resolver already use, so no new
+Authority is created. This implements stage 2 of that plan, which §4.22 called the
+step that makes the entry's own interpretation observable.
+
+-build-catalog and -build-catalog-digest must be given together. Naming only one
+is refused through the same JSON envelope as every other refusal: a catalog is
+accepted only with its digest, so "which catalog derived this plan" stays
+answerable, which is the role resolverDigest plays for a resolver child. A
+declared digest that disagrees with the measured one stops the attempt, and the
+measured digest is recorded either way.
+
+-build-source-root is separate from the catalog's directory. While testing it
+became clear that a catalog and the sources it names need not share a directory:
+the fixture's catalog sits next to testdata/src rather than inside it, and
+deriving the root from the catalog failed with an exact-spelling error. The
+catalog's own directory remains the default.
+
+The route converts its receipt into the shape the child route already produces,
+so planCrossCheck, planArtifactBinding and planRecompute do not need to know
+which route produced the plan.
+
+What this does not do: the resolver child remains the default route (stage 3 is
+undecided), l2bClaimed and runtimeAuthorityClaimed stay false, qualified stays
+false, and the entry still does not claim the catalog it was handed is correct.

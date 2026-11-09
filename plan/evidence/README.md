@@ -231,3 +231,4 @@
 
 - [entryが計画側の基準も自分で持つ](TEI_GO_SELF_BUILD_ENTRY_PLAN_SIDE_2026-11-09.md)（束縛の計画側がbuilder childの申告だけに依存していたのを、entryの再計算値へfallbackできるようにした。どちらを使ったかを`planSideSource`で記録し、弱い根拠を強い根拠と読ませない。builder優先の理由も明示。L2-bは未。 #2831）
 - [必須引数の不足が3つの符号に分かれていた](TEI_DOGFOODING_ROUND17_FAILURE_CLASSIFICATION_2026-11-09/README.md)（#3733・#3420 CAPI-2b。`inspect`は`INVALID_SUBJECT`、`knowledge-*`は`KNOWLEDGE_BUILD_FAILED`、他は`INVALID_ARGUMENT`と分かれていた。11コマンドを`INVALID_ARGUMENT`に揃え、subject値の不正・不在・構築失敗は別の意味として残した）
+- [entryがin-processで計画を導く経路](TEI_GO_SELF_BUILD_INPROCESS_CATALOG_2026-11-09.md)（§4.22段2。`-build-catalog`と`-build-catalog-digest`を**対**で要求し、entryが宣言を読みcatalogを引いて自分で計画を導く。source rootはcatalogのディレクトリとは限らないので`-build-source-root`で分離。対の拒否がJSONで返らない不具合も修正。既定経路は未変更・`qualified`はfalse。 #2831）

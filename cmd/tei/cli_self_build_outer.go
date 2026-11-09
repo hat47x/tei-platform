@@ -25,19 +25,23 @@ import (
 // field is an observation; `qualified` is written explicitly as false so a
 // reader cannot infer qualification from an artifact's existence.
 type selfBuildOuterEvidence struct {
-	SchemaVersion string                  `json:"schemaVersion"`
-	OK            bool                    `json:"ok"`
-	Nature        string                  `json:"nature"`
-	Workspace     string                  `json:"workspace"`
-	Intent        string                  `json:"intent,omitempty"`
-	SupplyRoot    string                  `json:"supplyRoot,omitempty"`
-	StateDir      string                  `json:"buildState"`
-	Output        string                  `json:"output"`
-	Qualified     bool                    `json:"qualified"`
-	IntentRecord  *IntentDeclaration      `json:"intentDeclaration,omitempty"`
-	SupplyRecord  *SupplyCheck            `json:"supplyCheck,omitempty"`
-	Boundary      string                  `json:"claimBoundary"`
-	ChildRun      *selfBuildEntryEvidence `json:"childRun,omitempty"`
+	SchemaVersion string             `json:"schemaVersion"`
+	OK            bool               `json:"ok"`
+	Nature        string             `json:"nature"`
+	Workspace     string             `json:"workspace"`
+	Intent        string             `json:"intent,omitempty"`
+	SupplyRoot    string             `json:"supplyRoot,omitempty"`
+	StateDir      string             `json:"buildState"`
+	Output        string             `json:"output"`
+	Qualified     bool               `json:"qualified"`
+	IntentRecord  *IntentDeclaration `json:"intentDeclaration,omitempty"`
+	SupplyRecord  *SupplyCheck       `json:"supplyCheck,omitempty"`
+	// BuildCatalogResolution records the in-process route when the caller named
+	// a catalog. On the resolver-child route it is absent, so a reader can tell
+	// which route derived the plan.
+	BuildCatalogResolution *buildCatalogResolution `json:"buildCatalogResolution,omitempty"`
+	Boundary               string                  `json:"claimBoundary"`
+	ChildRun               *selfBuildEntryEvidence `json:"childRun,omitempty"`
 	// IntentBinding is §4.8: the bytes this entry held, the fingerprints the
 	// child reported, and whether the two readings agree. It is present only
 	// when -intent-file is given.
@@ -132,6 +136,17 @@ type selfBuildOuterArgs struct {
 	// fresh state directory, and compare the artifact bytes. Without it the
 	// reproducibility record says why it did not run (§4.21).
 	RebuildCheck bool
+	// BuildCatalog is a catalog the caller names, from which this entry derives
+	// the plan itself (SB-C0 §4.22 K-3, stage 2). It is the in-process route.
+	BuildCatalog string
+	// BuildCatalogDigest is the digest the caller declares for that catalog. It
+	// is required with BuildCatalog: a catalog is accepted only together with
+	// its digest, so "which catalog derived this plan" stays answerable.
+	BuildCatalogDigest string
+	// BuildSourceRoot is where the declaration's source references resolve from
+	// on the in-process route. It defaults to the catalog's own directory, but is
+	// separate because a catalog and its sources need not share one.
+	BuildSourceRoot string
 }
 
 // looksLikeOuterShape reports whether the caller used any §4 flag. A caller that
@@ -168,6 +183,9 @@ func parseSelfBuildOuterArgs(args []string) (selfBuildOuterArgs, error) {
 	fs.StringVar(&parsed.IntentResolverArg, "intent-resolver-arg", "", "extra arguments for the intent resolver as a JSON array")
 	fs.StringVar(&parsed.ExpectedPlanFingerprint, "expected-plan-fingerprint", "", "planFingerprint the resolved plan must equal")
 	fs.BoolVar(&parsed.RebuildCheck, "rebuild-check", false, "build the same plan a second time in fresh state and compare the artifact bytes (§4.21)")
+	fs.StringVar(&parsed.BuildCatalog, "build-catalog", "", "catalog this entry derives the plan from, in process (§4.22 K-3)")
+	fs.StringVar(&parsed.BuildCatalogDigest, "build-catalog-digest", "", "digest the caller declares for -build-catalog (required with it)")
+	fs.StringVar(&parsed.BuildSourceRoot, "build-source-root", "", "directory the declaration's source references resolve from (defaults to the catalog's directory)")
 	if err := fs.Parse(args); err != nil {
 		return selfBuildOuterArgs{}, err
 	}
@@ -235,11 +253,53 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 		report.IntentRecord = &declaration
 	}
 
+	// §4.22 stage 2: the caller names a catalog and its digest, and this entry
+	// derives the plan itself. The pair is required together: naming only one
+	// would leave "which catalog" unanswerable, which is the ambiguity
+	// resolverDigest already avoids for a resolver child.
+	if strings.TrimSpace(parsed.BuildCatalog) != "" || strings.TrimSpace(parsed.BuildCatalogDigest) != "" {
+		if strings.TrimSpace(parsed.BuildCatalog) == "" || strings.TrimSpace(parsed.BuildCatalogDigest) == "" {
+			// Reported through the same envelope as every other refusal, so a
+			// caller reads the reason from one place.
+			report.Error = &cliFailure{
+				Code:    selfBuildCodeBuildCatalogRefused,
+				Message: "-build-catalog and -build-catalog-digest must be given together: a catalog is accepted only with its digest",
+			}
+			if encodeErr := encodeIndented(out, report); encodeErr != nil {
+				return 2, encodeErr
+			}
+			return 2, nil
+		}
+		resolved := resolveInProcess(parsed.IntentFile, parsed.BuildCatalog, parsed.BuildCatalogDigest, parsed.BuildSourceRoot, parsed.ExpectedPlanFingerprint)
+		report.BuildCatalogResolution = &resolved
+		receipt := planReceiptFromInProcess(resolved, parsed.ExpectedPlanFingerprint)
+		report.PlanReceipt = &receipt
+		if receipt.State != intentResolutionResolved || receipt.FailureCause != "" {
+			message := receipt.FailureCause
+			if message == "" {
+				message = "the catalog did not resolve the declaration"
+			}
+			report.Error = &cliFailure{Code: selfBuildCodeBuildCatalogRefused, Message: message}
+			if encodeErr := encodeIndented(out, report); encodeErr != nil {
+				return 2, encodeErr
+			}
+			return 1, nil
+		}
+		recompute := recomputeReceiptPlanFingerprint(receipt.ReceiptJSON)
+		report.PlanRecompute = &recompute
+		if recompute.State == planRecomputeMismatched {
+			report.Error = &cliFailure{Code: selfBuildCodeIntentResolutionFailed, Message: recompute.FailureCause}
+			if encodeErr := encodeIndented(out, report); encodeErr != nil {
+				return 2, encodeErr
+			}
+			return 1, nil
+		}
+	}
 	// §4.7 I-2: resolution is delegated to an exact resolver child. The entry
 	// starts it, reads its receipt, and records what was resolved. A resolver
 	// that fails, or a receipt whose plan differs from the declared expectation,
 	// stops the attempt before the builder starts.
-	if strings.TrimSpace(parsed.IntentResolver) != "" {
+	if strings.TrimSpace(parsed.IntentResolver) != "" && strings.TrimSpace(parsed.BuildCatalog) == "" {
 		resolverArgs := []string{}
 		if strings.TrimSpace(parsed.IntentResolverArg) != "" {
 			if err := json.Unmarshal([]byte(parsed.IntentResolverArg), &resolverArgs); err != nil {
