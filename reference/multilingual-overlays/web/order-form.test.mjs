@@ -15,6 +15,7 @@ function manifest(locale) {
 const fakeReact = {
   createElement(type, props, ...children) { return {type, props:props ?? {}, children}; },
   useState(initial) { return [initial, ()=>{}]; },
+  useRef(initial) { return {current: initial}; },
 };
 function findElements(node, type) {
   if (node === null || node === undefined) return [];
