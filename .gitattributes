@@ -241,3 +241,6 @@
 
 # MCP tool-call observations are hashed as raw bytes.
 /plan/evidence/DSH_MCP_TOOL_CALL_2026-11-10/** -text
+
+# Adapter binding blindspot output is hashed as raw bytes by its README.
+/plan/evidence/ADAPTER_BINDING_BLINDSPOT_2026-11-09/** -text
