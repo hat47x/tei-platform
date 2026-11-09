@@ -1,0 +1,20 @@
+Workspace: namespace std { type email from std.text }
+
+BEFORE (sha256:68507f65)
+  validate:  rc=1 ok=false
+    DUPLICATE_SEMANTIC_NAMESPACE (error)
+    WORKSPACE_DECLARES_NO_MODEL_ELEMENTS (warning)
+  catalog:   std appears TWICE, both ambiguous=true, both sourceStatus=indexed
+             std.email  prelude=True   sourceStatus=indexed
+  counts:    total 0
+
+AFTER (sha256:9431e841)
+  validate:  rc=0 ok=true, no diagnostics
+  catalog:   std appears once, sourceStatus=not-indexed
+             std.text   prelude=True   sourceStatus=not-indexed
+             std.email  prelude=(none) sourceStatus=indexed
+  counts:    namespaces 1, types 1, total 2
+
+Controls (unchanged):
+  prelude-only workspace            counts total 0
+  reference/workspace               total 71, types 9, namespaces 4
