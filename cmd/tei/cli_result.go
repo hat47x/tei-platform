@@ -28,6 +28,11 @@ type cliResultEnvelope struct {
 	Mode          string      `json:"mode,omitempty"`
 	Result        any         `json:"result,omitempty"`
 	Error         *cliFailure `json:"error,omitempty"`
+	// Workspace identifies the Workspace the result was read from (#3455).
+	// It sits at the top level, next to schemaVersion, so every read command
+	// answers "which Workspace" in the same place. Older result-level
+	// `workspace` fields remain for readers that already unwrap them.
+	Workspace *workspace.WorkspaceIdentity `json:"workspace,omitempty"`
 }
 
 type cliFailure struct {
@@ -91,6 +96,26 @@ func resultEnvelope(command, mode string, result any) cliResultEnvelope {
 	}
 }
 
+// resultEnvelopeWithWorkspace is resultEnvelope plus the Workspace identity
+// that the read observed (#3455).
+func resultEnvelopeWithWorkspace(command, mode string, result any, identity *workspace.WorkspaceIdentity) cliResultEnvelope {
+	envelope := resultEnvelope(command, mode, result)
+	envelope.Workspace = identity
+	return envelope
+}
+
+// knowledgeFailure maps a knowledge-* build error to its envelope. A missing
+// or malformed argument is the caller's input problem and answers
+// INVALID_ARGUMENT; anything else stays KNOWLEDGE_BUILD_FAILED (#3733).
+func knowledgeFailure(command string, cause error) cliResultEnvelope {
+	code := resultCodeKnowledgeFailed
+	var argument *argumentError
+	if errors.As(cause, &argument) {
+		code = resultCodeInvalidArgument
+	}
+	return resultFailure(command, code, cause)
+}
+
 func resultFailure(command, code string, cause error) cliResultEnvelope {
 	return cliResultEnvelope{
 		SchemaVersion: resultSchemaVersion(command),
@@ -145,7 +170,28 @@ func workspaceFilesJSON(out io.Writer, workspacePath, worldPath string, extraArg
 	if err != nil {
 		return resultLoadFailure(out, "workspace-files", err)
 	}
-	return emitResult(out, resultEnvelope("workspace-files", "", r.ManagedFiles), 0)
+	return emitResult(out, resultEnvelope("workspace-files", "", workspaceFilesValue{
+		ManagedFiles:       r.ManagedFiles,
+		SourceRootFindings: r.SourceRootFindings,
+		Workspace:          workspaceIdentityPointer(r),
+	}), 0)
+}
+
+// workspaceIdentityPointer returns the Workspace identity as a pointer so the
+// JSON field is omitted only when the manifest was not read at all (#3181).
+func workspaceIdentityPointer(r workspace.Result) *workspace.WorkspaceIdentity {
+	identity := r.Identity()
+	return &identity
+}
+
+// workspaceFilesValue is the workspace-files projection. ReadByLoader on each
+// ManagedFile separates managed-but-not-interpreted files from files a domain
+// loader read (#2823). SourceRootFindings names unknown or missing roots.
+type workspaceFilesValue struct {
+	ManagedFiles       []workspace.ManagedFile                `json:"managedFiles"`
+	SourceRootFindings []workspace.WorkspaceSourceRootFinding `json:"sourceRootFindings,omitempty"`
+	// Workspace identifies which Workspace the listed files came from (#3181).
+	Workspace *workspace.WorkspaceIdentity `json:"workspace,omitempty"`
 }
 
 // sourceIndexJSON wraps the Source Index inspection. The whole-index form and
@@ -178,30 +224,91 @@ func sourceIndexJSON(out io.Writer, workspacePath, worldPath, subjectKind, subje
 // with stderr text; every failure here is one envelope instead, with the same
 // exit codes (2 for argument/load/resolve failures, 1 for semantic validation
 // and plugin runtime plan build failures).
-func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environmentID, pluginLockPath string, extraArgs int) (int, error) {
+func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environmentID, pluginLockPath string, diagnostic, environmentSpecified bool, extraArgs int) (int, error) {
 	if (workspacePath == "") == (worldPath == "") {
 		return resultInvalidArgument(out, command, command+" requires exactly one of -workspace or -world")
 	}
 	if extraArgs != 0 {
 		return resultInvalidArgument(out, command, command+" does not accept positional arguments")
 	}
-	w, err := loadWorld(worldPath, workspacePath)
+	w, identity, err := loadWorldWithIdentity(worldPath, workspacePath)
 	if err != nil {
 		return resultLoadFailure(out, command, err)
 	}
 	ds := validation.Validate(w)
+	if diagnostic && command == "plugin-resolve" {
+		report := cliResultEnvelope{SchemaVersion: resultSchemaVersion(command), Mode: "unvalidated-candidates", Error: &cliFailure{Code: "UNVALIDATED_CANDIDATES", Message: "diagnostic only; not validated or authorized for execution"}}
+		detail := struct {
+			WorkspaceValidated bool                    `json:"workspaceValidated"`
+			Diagnostics        []validation.Diagnostic `json:"diagnostics"`
+			Candidates         *plugin.ResolvedSet     `json:"candidates,omitempty"`
+			SelectionError     *cliFailure             `json:"selectionError,omitempty"`
+		}{Diagnostics: ds}
+		fail := func(code, message string) {
+			detail.SelectionError = &cliFailure{Code: code, Message: message}
+		}
+		id, idErr := core.ParseCanonicalID(environmentID)
+		if environmentID == "" {
+			fail(resultCodeInvalidArgument, "plugin-resolve requires -environment")
+		} else if idErr != nil {
+			fail(resultCodeInvalidArgument, idErr.Error())
+		} else if env, ok := findEnvironment(w, id); !ok {
+			fail(resultCodeUnknownEnvironment, "unknown environment "+environmentID)
+		} else {
+			catalog := plugin.Catalog{Plugins: w.Plugins, Bundles: w.Bundles}
+			var resolved plugin.ResolvedSet
+			var resolveErr error
+			if pluginLockPath != "" {
+				lock, decodeErr := decodePluginLockFile(pluginLockPath)
+				if decodeErr != nil {
+					fail(resultCodeInvalidPluginLock, decodeErr.Error())
+				} else {
+					resolved, resolveErr = catalog.ResolveEnvironmentWithLock(env, lock)
+				}
+			} else {
+				resolved, resolveErr = catalog.ResolveEnvironment(env)
+			}
+			if resolveErr != nil {
+				// Same rule as plugin-runtime-plan: an unusable lock is an input
+				// failure with INVALID_PLUGIN_LOCK, not a resolve outcome (#3184).
+				if plugin.IsInvalidLock(resolveErr) {
+					fail(resultCodeInvalidPluginLock, resolveErr.Error())
+				} else {
+					fail(resultCodePluginResolveFailed, resolveErr.Error())
+				}
+			} else if detail.SelectionError == nil {
+				detail.Candidates = &resolved
+			}
+		}
+		report.Result = detail
+		return emitResult(out, report, 1)
+	}
 	if validation.HasErrors(ds) {
 		return resultValidationFailure(out, command, ds)
 	}
 	switch command {
 	case "requirements":
-		return emitResult(out, resultEnvelope(command, "", dependency.Derive(w)), 0)
+		return emitResult(out, resultEnvelopeWithWorkspace(command, "", dependency.Derive(w), identity), 0)
 	case "plugin-lock":
-		lock, err := plugin.BuildLock(plugin.Catalog{Plugins: w.Plugins, Bundles: w.Bundles}, w.Environments)
+		environments := w.Environments
+		mode := ""
+		if environmentSpecified {
+			id, err := core.ParseCanonicalID(environmentID)
+			if err != nil {
+				return resultInvalidArgument(out, command, "invalid -environment: "+err.Error())
+			}
+			env, ok := findEnvironment(w, id)
+			if !ok {
+				return emitResult(out, resultFailure(command, resultCodeUnknownEnvironment, fmt.Errorf("unknown environment %s", environmentID)), 2)
+			}
+			environments = append(environments[:0:0], env)
+			mode = "environment"
+		}
+		lock, err := plugin.BuildLock(plugin.Catalog{Plugins: w.Plugins, Bundles: w.Bundles}, environments)
 		if err != nil {
 			return emitResult(out, resultFailure(command, resultCodePluginLockFailed, err), 2)
 		}
-		return emitResult(out, resultEnvelope(command, "", lock), 0)
+		return emitResult(out, resultEnvelopeWithWorkspace(command, mode, lock, identity), 0)
 	case "plugin-resolve", "plugin-runtime-plan":
 		if environmentID == "" || (command == "plugin-runtime-plan" && pluginLockPath == "") {
 			return resultInvalidArgument(out, command, command+" requires -environment"+flagPart(command))
@@ -214,28 +321,44 @@ func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environ
 		if command == "plugin-resolve" {
 			var r plugin.ResolvedSet
 			if pluginLockPath != "" {
-				var lock plugin.Lock
-				if err := decodeJSONFile(pluginLockPath, &lock); err != nil {
-					return emitResult(out, resultFailure(command, resultCodeInvalidPluginLock, err), 2)
+				lock, lockErr := decodePluginLockFile(pluginLockPath)
+				if lockErr != nil {
+					return emitResult(out, resultFailure(command, resultCodeInvalidPluginLock, lockErr), 2)
 				}
 				r, err = catalog.ResolveEnvironmentWithLock(env, lock)
 			} else {
 				r, err = catalog.ResolveEnvironment(env)
 			}
 			if err != nil {
+				if plugin.IsInvalidLock(err) {
+					return emitResult(out, resultFailure(command, resultCodeInvalidPluginLock, err), 2)
+				}
+				if plugin.IsLockMismatch(err) {
+					return emitResult(out, resultFailure(command, resultCodeInvalidPluginLock, err), 2)
+				}
 				return emitResult(out, resultFailure(command, resultCodePluginResolveFailed, err), 2)
 			}
-			return emitResult(out, resultEnvelope(command, "", r), 0)
+			return emitResult(out, resultEnvelopeWithWorkspace(command, "", r, identity), 0)
 		}
-		var lock plugin.Lock
-		if err := decodeJSONFile(pluginLockPath, &lock); err != nil {
-			return emitResult(out, resultFailure(command, resultCodeInvalidPluginLock, err), 2)
+		lock, lockErr := decodePluginLockFile(pluginLockPath)
+		if lockErr != nil {
+			return emitResult(out, resultFailure(command, resultCodeInvalidPluginLock, lockErr), 2)
 		}
 		plan, err := pluginruntime.BuildPlan(catalog, env, lock)
 		if err != nil {
+			// A lock whose bytes are unusable is an input failure (exit 2), the
+			// same as the decode and resolve paths of plugin-resolve. A
+			// well-formed lock that does not match this environment or catalog
+			// is also the caller's input problem: the only fix is another lock.
+			// Both answer INVALID_PLUGIN_LOCK with exit 2, so the same bad lock
+			// is classified the same way whichever command reads it (#3765,
+			// #3184).
+			if plugin.IsInvalidLock(err) || plugin.IsLockMismatch(err) {
+				return emitResult(out, resultFailure(command, resultCodeInvalidPluginLock, err), 2)
+			}
 			return emitResult(out, resultFailure(command, resultCodePluginPlanFailed, err), 1)
 		}
-		return emitResult(out, resultEnvelope(command, "", plan), 0)
+		return emitResult(out, resultEnvelopeWithWorkspace(command, "", plan, identity), 0)
 	}
 	return resultInvalidArgument(out, command, "unsupported command "+command)
 }
@@ -255,9 +378,9 @@ func knowledgeContextJSON(out io.Writer, workspacePath, subjectKind, subjectID, 
 	if disclosure == "" && expectedDisclosureFingerprint != "" {
 		return resultInvalidArgument(out, "knowledge-context", "-expected-disclosure-fingerprint requires -disclose")
 	}
-	context, err := buildKnowledgeContext(workspacePath, subjectKind, subjectID)
+	context, identity, err := buildKnowledgeContextWithIdentity(workspacePath, subjectKind, subjectID)
 	if err != nil {
-		return emitResult(out, resultFailure("knowledge-context", resultCodeKnowledgeFailed, err), 2)
+		return emitResult(out, knowledgeFailure("knowledge-context", err), 2)
 	}
 	if err := checkDataDesignFingerprint(context, expectedDataDesignFingerprint); err != nil {
 		return emitResult(out, resultFailure("knowledge-context", resultCodeKnowledgeFailed, err), 1)
@@ -270,9 +393,9 @@ func knowledgeContextJSON(out io.Writer, workspacePath, subjectKind, subjectID, 
 		if err := checkKnowledgeDisclosureFingerprint(projection, expectedDisclosureFingerprint); err != nil {
 			return emitResult(out, resultFailure("knowledge-context", resultCodeKnowledgeFailed, err), 1)
 		}
-		return emitResult(out, resultEnvelope("knowledge-context", resultModeDisclosure, projection), 0)
+		return emitResult(out, resultEnvelopeWithWorkspace("knowledge-context", resultModeDisclosure, projection, identity), 0)
 	}
-	return emitResult(out, resultEnvelope("knowledge-context", resultModeContext, context), 0)
+	return emitResult(out, resultEnvelopeWithWorkspace("knowledge-context", resultModeContext, context, identity), 0)
 }
 
 // knowledgeQualifyJSON wraps knowledge-qualify in the command envelope. The
@@ -286,7 +409,7 @@ func knowledgeQualifyJSON(out io.Writer, workspacePath, subjectKind, subjectID, 
 	}
 	qualification, err := buildKnowledgeQualificationFromFile(workspacePath, subjectKind, subjectID, requirementsPath)
 	if err != nil {
-		return emitResult(out, resultFailure("knowledge-qualify", resultCodeKnowledgeFailed, err), 2)
+		return emitResult(out, knowledgeFailure("knowledge-qualify", err), 2)
 	}
 	return emitResult(out, resultEnvelope("knowledge-qualify", resultModeQualification, qualification), 0)
 }
@@ -304,7 +427,7 @@ func knowledgeReviewPlanJSON(out io.Writer, workspacePath, subjectKind, subjectI
 	}
 	plan, err := buildBuilderReviewPlan(workspacePath, subjectKind, subjectID)
 	if err != nil {
-		return emitResult(out, resultFailure("knowledge-review-plan", resultCodeKnowledgeFailed, err), 2)
+		return emitResult(out, knowledgeFailure("knowledge-review-plan", err), 2)
 	}
 	if err := checkBuilderReviewPlanFingerprint(plan, expectedReviewPlanFingerprint); err != nil {
 		return emitResult(out, resultFailure("knowledge-review-plan", resultCodeKnowledgeFailed, err), 1)
@@ -324,7 +447,7 @@ func knowledgeReviewHandoffJSON(out io.Writer, workspacePath, subjectKind, subje
 	}
 	handoff, err := buildBuilderReviewHandoffFromFile(workspacePath, subjectKind, subjectID, requirementsPath)
 	if err != nil {
-		return emitResult(out, resultFailure("knowledge-review-handoff", resultCodeKnowledgeFailed, err), 2)
+		return emitResult(out, knowledgeFailure("knowledge-review-handoff", err), 2)
 	}
 	if err := checkBuilderReviewHandoffFingerprint(handoff, expectedReviewHandoffFingerprint); err != nil {
 		return emitResult(out, resultFailure("knowledge-review-handoff", resultCodeKnowledgeFailed, err), 1)
@@ -344,7 +467,7 @@ func knowledgeReviewDiscloseJSON(out io.Writer, workspacePath, subjectKind, subj
 	}
 	disclosure, handoff, err := buildBuilderReviewDisclosureFromFile(workspacePath, subjectKind, subjectID, reviewHandoffPath)
 	if err != nil {
-		return emitResult(out, resultFailure("knowledge-review-disclose", resultCodeKnowledgeFailed, err), 2)
+		return emitResult(out, knowledgeFailure("knowledge-review-disclose", err), 2)
 	}
 	if err := checkBuilderReviewHandoffFingerprint(handoff, expectedReviewHandoffFingerprint); err != nil {
 		return emitResult(out, resultFailure("knowledge-review-disclose", resultCodeKnowledgeFailed, err), 1)
@@ -369,7 +492,7 @@ func knowledgeDataDesignCandidateReviewJSON(out io.Writer, workspacePath, subjec
 		return resultInvalidArgument(out, "knowledge-data-design-candidate-review",
 			"knowledge-data-design-candidate-review requires -data-design-candidate-kind and -data-design-candidate-fingerprint")
 	}
-	context, err := buildKnowledgeContext(workspacePath, subjectKind, subjectID)
+	context, identity, err := buildKnowledgeContextWithIdentity(workspacePath, subjectKind, subjectID)
 	if err != nil {
 		return emitResult(out, resultFailure("knowledge-data-design-candidate-review", resultCodeKnowledgeFailed, err), 2)
 	}
@@ -383,7 +506,7 @@ func knowledgeDataDesignCandidateReviewJSON(out io.Writer, workspacePath, subjec
 	if err := checkDataDesignCandidateReviewFingerprint(packet, expectedReviewFingerprint); err != nil {
 		return emitResult(out, resultFailure("knowledge-data-design-candidate-review", resultCodeKnowledgeFailed, err), 1)
 	}
-	return emitResult(out, resultEnvelope("knowledge-data-design-candidate-review", resultModeReview, packet), 0)
+	return emitResult(out, resultEnvelopeWithWorkspace("knowledge-data-design-candidate-review", resultModeReview, packet, identity), 0)
 }
 
 func flagPart(command string) string {

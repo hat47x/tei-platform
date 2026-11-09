@@ -253,7 +253,7 @@ func invokeOverProcessTransport(
 	}
 
 	var result GenericTransportResult
-	if err := decodeJSONExact(resp.Payload, &result); err != nil {
+	if err := decodeGenericTransportMetadata(resp.Payload, &result); err != nil {
 		return TransportExecution{}, fmt.Errorf("decode generic transport result: %w", err)
 	}
 	if err := validateGenericTransportResult(dispatch, result); err != nil {
@@ -443,6 +443,67 @@ func decodeJSONExact(payload []byte, out any) error {
 			return fmt.Errorf("trailing JSON value is not allowed")
 		}
 		return fmt.Errorf("decode trailing JSON value: %w", err)
+	}
+	return nil
+}
+
+// The generic carrier validates its own metadata, not the opaque business
+// payload. Decode the nested Provider identity strictly as well: Go's normal
+// struct decoder accepts duplicate names and case-insensitive aliases.
+func decodeGenericTransportMetadata(payload []byte, out any) error {
+	decoder := json.NewDecoder(strings.NewReader(string(payload)))
+	if err := validateTransportMetadataObject(decoder, false); err != nil {
+		return err
+	}
+	if _, err := decoder.Token(); err != io.EOF {
+		return fmt.Errorf("invalid trailing transport metadata")
+	}
+	return decodeJSONExact(payload, out)
+}
+
+func validateTransportMetadataObject(decoder *json.Decoder, provider bool) error {
+	start, err := decoder.Token()
+	if err != nil || start != json.Delim('{') {
+		return fmt.Errorf("transport metadata object required")
+	}
+	seen := map[string]bool{}
+	for decoder.More() {
+		token, err := decoder.Token()
+		if err != nil {
+			return fmt.Errorf("invalid transport metadata field")
+		}
+		name, ok := token.(string)
+		if !ok || seen[name] {
+			return fmt.Errorf("duplicate or invalid transport metadata field")
+		}
+		seen[name] = true
+		if provider {
+			switch name {
+			case "pluginId", "pluginVersion", "implementationId", "artifactDigest":
+			default:
+				return fmt.Errorf("undeclared provider metadata field")
+			}
+		} else {
+			switch name {
+			case "schema", "contractId", "contractFingerprint", "target", "provider", "requestShapeFingerprint", "resultShapeFingerprint", "payloadCodec", "payload":
+			default:
+				return fmt.Errorf("undeclared transport metadata field")
+			}
+		}
+		if name == "provider" && !provider {
+			if err := validateTransportMetadataObject(decoder, true); err != nil {
+				return err
+			}
+		} else {
+			var value json.RawMessage
+			if err := decoder.Decode(&value); err != nil {
+				return fmt.Errorf("invalid transport metadata value")
+			}
+		}
+	}
+	end, err := decoder.Token()
+	if err != nil || end != json.Delim('}') {
+		return fmt.Errorf("invalid transport metadata object")
 	}
 	return nil
 }

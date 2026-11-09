@@ -13,6 +13,7 @@
 
 ```text
 keygen -private-key FILE -issuer ID -key-id ID -application APP [-not-before T] [-not-after T] [-revoked]
+       [-allow-capability CAP]... [-allow-resource PATTERN]...
 sign   -private-key FILE -issuer ID -key-id ID -application APP -capability CAP -subject ID -resource RES
        -epoch-source S -subject-link-epoch N -membership-epoch N -policy-epoch N
        -not-before T -not-after T -out FILE
@@ -37,7 +38,35 @@ show   -grant FILE -trust FILE
 
 ## 限界と運用上の注意
 
-- 信頼ファイルは**issuer・keyId・Application単位**で鍵を信頼します。Capability・Resource・Subjectは制限しません。鍵の保持者は、その鍵が信頼されたApplication内の任意のCapability・Subject・Resourceについて、24時間以内のGrantを作れます。範囲を絞れるのは、鍵を分けて発行する運用だけです。
+- 信頼ファイルは既定で**issuer・keyId・Application単位**で鍵を信頼します。範囲指定（下の「信頼範囲」）が無い鍵は、信頼されたApplication内の任意のCapability・Resourceについて24時間以内のGrantを作れます。**鍵ごとに範囲指定を付けることを推奨します。** 範囲指定が無い既存の信頼ファイルは従来どおり動きます（後方互換）。Subjectは範囲指定の対象外で、制限できません。
+
+## 信頼範囲（任意）
+
+信頼ファイルの各鍵エントリに、次の2つの任意メンバーを置けます。指定した鍵は、Grantの Capability / Resource が範囲外なら`PROVISIONAL_GRANT_OUT_OF_TRUST_SCOPE`で拒否されます。署名と鍵の状態（失効・期間）を先に判定するため、偽造は従来どおり署名エラーになります。
+
+```json
+{
+  "schema": "tei.host-effect-grant-provisional-trust/v0",
+  "issuers": [{
+    "issuer": "dev", "keyId": "k1", "publicKey": "<base64 Ed25519 public key>",
+    "applications": ["order_entry"],
+    "capabilities": ["order_entry.submit_order"],
+    "resourcePatterns": ["order/*", "invoice/7"]
+  }]
+}
+```
+
+- `capabilities`: 許可するCapability名の配列。完全一致で、大文字小文字を区別します。`*`は使えません。
+- `resourcePatterns`: 許可するResourceの配列。**完全一致**か、末尾が`/*`の**前方一致**だけです。正規表現は使えません。
+  - `order/*`は`order/`に1文字以上が続くResourceに一致します。`order/1`、`order/1/lines`は許可し、`order/`、`order`、`orders/1`、`x/order/1`は許可しません。
+  - 単独の`*`（全許可）は拒否します。全許可は、メンバーを書かないことで表します。`order*`（`/`の前に付かない`*`）、`a*b`、`**`、`*/x`のように`*`が末尾の`/*`以外にあるものも拒否します。
+  - パターンに`.`や`..`のパス区間を含めることは拒否します。Grant側のResourceが`.`・`..`区間を含む場合、ワイルドカードには一致しません（完全一致のパターンだけが一致します）。
+- 照合はResource文字列そのままで行い、正規化・デコード・大文字小文字の畳み込みはしません。Resourceを外部入力（URL等）から直接組み立てるHostは、Grantを求める前に正規化する責務をHost側で負います。
+- 一方だけを指定した場合、もう一方は制限されません。両方を指定した場合は両方を満たす必要があります。
+- 厳格な読み込み: 未知のメンバー・綴り（大文字小文字）違い・重複メンバー、空配列、`null`、空文字、制御文字・書式文字、256バイト超、配列内の重複、64件超は、信頼ファイルごと拒否します（`PROVISIONAL_GRANT_TRUST_SCOPE_INVALID`など）。これらのメンバーはSource Acceptance用の信頼ファイルでは未知のメンバーとして従来どおり拒否されます。
+- 範囲指定を持つ信頼ファイルは、このメンバーを知らない古いバイナリでは読み込みに失敗します（安全側に倒れます）。
+
+`keygen`は`-allow-capability CAP`と`-allow-resource PATTERN`（どちらも繰り返し可）で範囲指定つきのエントリを出力します。`show`は信頼範囲（無指定なら`UNRESTRICTED`）も表示します。複数鍵の信頼ファイルは、`keygen`の出力を手でまとめます。
 - 効果許可と、Source Acceptance（`reference-host-acceptance`）で**同じ鍵を使い回さない**でください。信頼ファイルのスキーマと署名のドメインは分けてあり、取り違えは検証で拒否されますが、鍵の共用は運用で避けます。
 - `reference-critical-path-evidence-audit`の`provisional-grant`検査は、パケットの作成者が`physical.hostAuthorityProvenance`に書く**自己申告のラベル**に依ります。ラベルを書かないパケットは検出できません。ツールの結果は従来どおり承認ではなく、レビューで実際のEvidenceを確認してください。
 - 期間の下限は1分、上限は24時間です。`notBefore`の未来側の上限は設けていません。上限24時間の期間が全体を制限し、未来開始のGrantはその時刻まで使えず、署名者が開始時刻を選べることで新たに得る能力がないためです（署名者は元々24時間以内の任意のGrantを作れます）。必要になったら、検証側の時計を基準に上限を足します。

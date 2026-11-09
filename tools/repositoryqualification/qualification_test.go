@@ -16,6 +16,13 @@ func TestRepositoryLocalQualificationControlFlow(t *testing.T) {
 			t.Skipf("%s is unavailable: %v", command, err)
 		}
 	}
+	if runtime.GOOS == "windows" {
+		// Windows "bash" may be WSL, whose PATH does not contain the Windows
+		// Go toolchain even when Go is available to this test process.
+		if err := exec.Command("bash", "-c", "command -v go").Run(); err != nil {
+			t.Skip("bash cannot see the Go toolchain; skip the shell qualification flow")
+		}
+	}
 
 	root := repositoryRoot(t)
 	runner, err := os.ReadFile(filepath.Join(root, "tools", "run-repository-local-qualification.sh"))
