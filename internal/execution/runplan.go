@@ -2,8 +2,10 @@ package execution
 
 import (
 	"context"
+	"fmt"
 
 	"tei/internal/core"
+	"tei/internal/operations"
 	"tei/internal/runlog"
 	"tei/internal/semantic"
 )
@@ -27,9 +29,15 @@ type StepFunc func(ctx context.Context, operation core.CanonicalID) StepResult
 
 // RunPlan identifies the run, applies the start/resume/refuse rules, and runs the
 // operations in the declared order. The refusal is returned as a decision, not an
-// error. Resuming is not implemented yet: the progress of the steps is not
-// recorded, so resuming would silently repeat work.
-func RunPlan(ctx context.Context, plan semantic.RunPlan, keyValues []string, journal Journal, step StepFunc) (runlog.Decision, []StepResult, error) {
+// error.
+//
+// Resuming continues after the steps the previous attempt recorded: the plan
+// writes the finished operations to the journal after each step, so a resumed
+// attempt does not repeat work that is already done. The comment here used to
+// say resuming was unimplemented; by the time the steps were journaled that was
+// false, and the tests below pin the actual behaviour (a finished step is
+// reported as resolved, not run again).
+func RunPlan(ctx context.Context, plan semantic.RunPlan, keyValues []string, journal Journal, step StepFunc, preconditions PreconditionFunc) (runlog.Decision, []StepResult, error) {
 	runKey := runlog.RunKey(string(plan.ID), keyValues)
 	last, found, err := journal.Last(runKey)
 	if err != nil {
@@ -63,26 +71,70 @@ func RunPlan(ctx context.Context, plan semantic.RunPlan, keyValues []string, jou
 			results = append(results, StepResult{Operation: string(operation), Status: "resolved", Detail: "already finished in an earlier attempt"})
 			continue
 		}
+		// An unattended run cannot ask anyone, so it stops when a precondition is
+		// not met. An attended run keeps the previous behaviour: a person is
+		// present to handle the operation's refusal.
+		if plan.Autonomy == "unattended" {
+			reason := "no precondition check is configured"
+			if preconditions != nil {
+				reason = preconditions(operation)
+			}
+			if reason != "" {
+				results = append(results, StepResult{Operation: string(operation), Status: "blocked", Detail: reason})
+				record.Status = runlog.Blocked
+				if err := appendIfOwned(journal, record, results); err != nil {
+					return decision, results, err
+				}
+				return decision, results, nil
+			}
+		}
 		result := step(ctx, operation)
 		results = append(results, result)
 		if result.Status != "resolved" {
 			record.Status = runlog.Failed
-			if err := journal.Append(record); err != nil {
+			if err := appendIfOwned(journal, record, results); err != nil {
 				return decision, results, err
 			}
 			return decision, results, nil
 		}
 		record.Steps = append(record.Steps, string(operation))
 		record.Status = runlog.Running
-		if err := journal.Append(record); err != nil {
+		if err := appendIfOwned(journal, record, results); err != nil {
 			return decision, results, err
 		}
 	}
 	record.Status = runlog.Completed
-	if err := journal.Append(record); err != nil {
+	if err := appendIfOwned(journal, record, results); err != nil {
 		return decision, results, err
 	}
 	return decision, results, nil
+}
+
+// appendIfOwned writes the attempt's record only while the attempt still holds
+// the run.
+//
+// The fence epoch is the mechanism that lets a resumed attempt take over from a
+// stale one. Nothing enforced it before: `runlog.Owns` existed and only the
+// tests called it, so a superseded attempt could keep appending records after a
+// resume, and its late "completed" would overwrite the newer attempt's state.
+// The check is made against the journal itself rather than against a value
+// captured at the start, because the takeover happens by writing to that journal.
+//
+// A lost fence is an error, not a decision: the attempt did not finish, and the
+// caller must not read the run as finished.
+func appendIfOwned(journal Journal, record runlog.Record, results []StepResult) error {
+	last, found, err := journal.Last(record.RunKey)
+	if err != nil {
+		return err
+	}
+	if found && !runlog.Owns(last, record.Attempt, record.FenceEpoch) {
+		return fmt.Errorf("attempt %d (fence %d) no longer owns run %s: recorded attempt %d (fence %d) took it over",
+			record.Attempt, record.FenceEpoch, record.RunKey, last.Attempt, last.FenceEpoch)
+	}
+	if err := journal.Append(record); err != nil {
+		return err
+	}
+	return nil
 }
 
 // containsStep reports whether an operation already finished in this run.
@@ -93,4 +145,72 @@ func containsStep(steps []string, operation string) bool {
 		}
 	}
 	return false
+}
+
+// PreconditionFunc reports whether an operation may run. It returns a reason
+// when the precondition is not met; an empty reason means it is met. A nil
+// function means nothing is known, which for an unattended run is not enough.
+type PreconditionFunc func(operation core.CanonicalID) string
+
+// PeriodPreconditions adapts the period guard to the run plan: a capability
+// whose period refuses it returns the refusal as the reason, so an unattended
+// run stops before it reaches the capability.
+func PeriodPreconditions(surface operations.OperationSurface, states map[string]operations.PeriodState) PreconditionFunc {
+	return func(capabilityID core.CanonicalID) string {
+		rejection, refused := operations.GuardCapability(surface, states, capabilityID)
+		if !refused {
+			return ""
+		}
+		return rejection.Detail
+	}
+}
+
+// EffectPreconditions adapts the effect rules to the run plan: a capability with
+// an effect that runs outside the transaction needs an observer, because the
+// invocation result cannot witness that effect. An unattended run stops when the
+// effect cannot be observed.
+func EffectPreconditions(rules []semantic.EffectRule, observer EffectObserver) PreconditionFunc {
+	return func(capabilityID core.CanonicalID) string {
+		for _, rule := range rules {
+			if rule.OnCapability != capabilityID {
+				continue
+			}
+			if rule.Stage != "after-commit" && rule.Stage != "compensation" {
+				continue
+			}
+			if observer == nil {
+				return "the effect " + string(rule.ID) + " runs outside the transaction and cannot be observed"
+			}
+			return ""
+		}
+		return ""
+	}
+}
+
+// CombinePreconditions runs each check and reports the first reason. Checks are
+// independent, so an unmet period and an unobservable effect both stop the run.
+// When every check is nil there is nothing to verify, so the result is nil and an
+// unattended run stops for lack of a check.
+func CombinePreconditions(checks ...PreconditionFunc) PreconditionFunc {
+	present := false
+	for _, check := range checks {
+		if check != nil {
+			present = true
+			break
+		}
+	}
+	if !present {
+		return nil
+	}
+	return func(capabilityID core.CanonicalID) string {
+		for _, check := range checks {
+			if check == nil {
+				continue
+			}
+			if reason := check(capabilityID); reason != "" {
+				return reason
+			}
+		}
+		return ""
+	}
 }

@@ -1,0 +1,113 @@
+{
+  "schemaVersion": "tei.operations.operation-surface/v0",
+  "effect": "read-only",
+  "application": "ledger",
+  "worldFingerprint": "sha256:bf289866320d316d4cfb37d8cbbe8f80c2f403847e086b193ed5a73741a6a161",
+  "modelRevision": "sha256:92102c0e5d6b9ab6297a65d181ea8367a2dfecf64fb3e1bfff54ce5a0c407642",
+  "rule": {
+    "id": "tei.operation-surface/standard-crud",
+    "version": "v1",
+    "fingerprint": "sha256:92adf0fa3b20816fb6068780a6dd8b9b1fb77973e6c2cff823313346b0e59ae0"
+  },
+  "operations": [
+    {
+      "id": "ledger.list.sales.note",
+      "kind": "list",
+      "target": "sales.note",
+      "origin": "derived",
+      "autonomy": "unattended",
+      "basis": "sha256:6ae807d0cea789bed8d9cc13e551fc3eaf7c91bd5402159047da85dcf8b21fce"
+    },
+    {
+      "id": "ledger.list.sales.order",
+      "kind": "list",
+      "target": "sales.order",
+      "origin": "derived",
+      "autonomy": "unattended",
+      "basis": "sha256:3fffc2ae72ebfc6baf68ef167ee58ebdab9e9475d69fb18e8a2e4f20cc1321a9"
+    },
+    {
+      "id": "ledger.read.sales.order",
+      "kind": "read",
+      "target": "sales.order",
+      "origin": "derived",
+      "inputs": [
+        "sales.order.order_id"
+      ],
+      "autonomy": "unattended",
+      "basis": "sha256:3fffc2ae72ebfc6baf68ef167ee58ebdab9e9475d69fb18e8a2e4f20cc1321a9"
+    },
+    {
+      "id": "ledger.create.sales.order",
+      "kind": "create",
+      "target": "sales.order",
+      "origin": "derived",
+      "inputs": [
+        "sales.order.order_id",
+        "sales.order.status"
+      ],
+      "effects": [
+        "create:sales.order"
+      ],
+      "binding": "sales.order.register",
+      "autonomy": "attended",
+      "basis": "sha256:2fafdb426691b7de9c8b33c1356e2d2539212256f073eed3dc6096bf2f2efe68"
+    },
+    {
+      "id": "ledger.update.sales.order",
+      "kind": "update",
+      "target": "sales.order",
+      "origin": "derived",
+      "inputs": [
+        "sales.order.order_id"
+      ],
+      "effects": [
+        "update:sales.order"
+      ],
+      "concurrency": "expected-state",
+      "binding": "sales.order.cancel",
+      "autonomy": "attended",
+      "basis": "sha256:2fafdb426691b7de9c8b33c1356e2d2539212256f073eed3dc6096bf2f2efe68"
+    }
+  ],
+  "gaps": [
+    {
+      "target": "sales.note",
+      "kind": "create",
+      "reason": "missing-semantics",
+      "detail": "create requires an identifying key"
+    },
+    {
+      "target": "sales.note",
+      "kind": "read",
+      "reason": "missing-semantics",
+      "detail": "no candidate key or persistence primary key is declared"
+    },
+    {
+      "target": "sales.order",
+      "kind": "list",
+      "reason": "conflict",
+      "detail": "datasource alias archive is write-only"
+    },
+    {
+      "target": "sales.order",
+      "kind": "retire",
+      "reason": "missing-input",
+      "detail": "no lifecycle or state declaration exists for this data"
+    }
+  ],
+  "conflicts": [],
+  "summary": {
+    "operations": 5,
+    "derived": 5,
+    "declared": 0,
+    "unattended": 3,
+    "gaps": 4
+  },
+  "authorityLimits": [
+    "operation-surface-is-a-derived-read-only-projection",
+    "operation-surface-is-not-execution-authority",
+    "derived-operations-do-not-create-canonical-elements",
+    "autonomy-class-does-not-grant-runtime-authority"
+  ]
+}

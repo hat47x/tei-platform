@@ -7,8 +7,10 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"tei/internal/core"
@@ -233,8 +235,20 @@ func runCombinedWebTargetWithHost(ctx context.Context, reader sourceacceptance.R
 		Addr:    *listen,
 		Handler: handler,
 	}
-	// Source verification and every startup gate have passed. Only now say that
-	// the development-only Grant is active (a failed start must not claim it).
+	if !*diagnostic && acceptedWorkspace.Acceptance.AcceptanceKind != "" {
+		// D9: a provisional (or unmarked) Acceptance is not a formal human
+		// Acceptance. Say so on stderr (the log package's default).
+		log.Printf("SOURCE_ACCEPTANCE_%s: Source accepted under the D9 provisional approval (acceptanceKind=%s), not a formal human Acceptance; not G evidence and not a production deployment basis",
+			strings.ToUpper(acceptedWorkspace.Acceptance.AcceptanceKind), acceptedWorkspace.Acceptance.AcceptanceKind)
+	}
+	// Bind first: a port that is already in use must fail the start BEFORE the
+	// development-only Grant is announced as active.
+	listener, err := net.Listen("tcp", *listen)
+	if err != nil {
+		return fmt.Errorf("WEB_TARGET_LISTEN_FAILED: %w", err)
+	}
+	// Source verification, every startup gate and the bind have passed. Only now
+	// say that the development-only Grant is active (a failed start must not claim it).
 	if announcer, ok := provisionalReader.(interface{ announce() }); ok {
 		announcer.announce()
 	}
@@ -258,7 +272,7 @@ func runCombinedWebTargetWithHost(ctx context.Context, reader sourceacceptance.R
 		case <-stopped:
 		}
 	}()
-	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
 		return err
 	}
 	if err := ctx.Err(); err != nil {

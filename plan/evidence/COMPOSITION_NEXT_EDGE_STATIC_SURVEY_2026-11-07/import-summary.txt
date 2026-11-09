@@ -1,0 +1,33 @@
+files scanned: 2876
+files importing tei/internal/composition: 49
+files importing tei/internal/operations: 47
+files importing tei/internal/servicehost: 3
+files importing tei/internal/plugin/runtime: 114
+
+files importing BOTH internal/operations and internal/composition: 0
+
+files importing internal/servicehost: 3
+  internal/driver/reference_current_host_service_route_test.go  (test)
+  reference/web-composition/go-host/canonical_generation_service_handoff_test.go  (test)
+  reference/web-composition/go-host/two_application_host_service_carrier_test.go  (test)
+non-test files importing internal/servicehost: 0
+
+files importing BOTH internal/composition and internal/plugin/runtime: 17
+  internal/driver/reference_current_host_service_route_test.go  (test)
+  internal/servicehost/application_route_source_test.go  (test)
+  internal/servicehost/service_carrier.go  (NON-TEST)
+  internal/servicehost/service_carrier_test.go  (test)
+  reference/web-composition/go-host/canonical_generation_service_handoff_test.go  (test)
+  reference/web-composition/go-host/service_carrier_handoff_test.go  (test)
+  reference/web-composition/go-host/two_application_host_service_carrier_test.go  (test)
+  tools/reference-capability-transport/authorized_quote_preflight_test.go  (test)
+  tools/reference-capability-transport/order_quote_process_test.go  (test)
+  tools/reference-composition-process-bridge/artifact_rotation_test.go  (test)
+  tools/reference-composition-process-bridge/bridge_test.go  (test)
+  tools/reference-composition-process-bridge/canonical_process_test.go  (test)
+  tools/reference-composition-process-bridge/contract_shape_gate_test.go  (test)
+  tools/reference-composition-process-bridge/multi_plugin_artifact_test.go  (test)
+  tools/reference-composition-process-bridge/pinned_generation_linux_test.go  (test)
+  tools/reference-composition-process-bridge/real_artifact_switch_test.go  (test)
+  tools/reference-composition-process-bridge/web_bridge_test.go  (test)
+non-test files importing both: 1

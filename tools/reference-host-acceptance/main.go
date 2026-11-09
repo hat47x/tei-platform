@@ -3,7 +3,7 @@
 //
 //	keygen  -private-key FILE -issuer ID -key-id ID -application APP [-not-before T] [-not-after T] [-revoked]
 //	        writes a private key and prints a trust entry; T is RFC3339 UTC ending in Z (provisional, see D7)
-//	sign    -workspace DIR -application APP -decision-ref REF -authority-revision REV -issuer ID -key-id ID -private-key FILE -out FILE
+//	sign    -provisional -workspace DIR -application APP -decision-ref REF -authority-revision REV -issuer ID -key-id ID -private-key FILE -out FILE
 //	ingest  -store DIR -trust FILE -decision FILE
 //	revoke  -store DIR -trust FILE -application APP -decision-ref REF
 //	show    -store DIR -trust FILE -application APP
@@ -30,6 +30,7 @@ import (
 	"os"
 	"strings"
 
+	"tei/internal/sourceacceptance"
 	"tei/internal/sourceacceptance/hoststore"
 	"tei/internal/workspace"
 )
@@ -64,6 +65,7 @@ func run(args []string, stdout io.Writer) error {
 		notBefore   = flags.String("not-before", "", "keygen: key usable from this RFC3339 UTC time (inclusive)")
 		notAfter    = flags.String("not-after", "", "keygen: key usable until this RFC3339 UTC time (exclusive)")
 		revoked     = flags.Bool("revoked", false, "keygen: mark the trust entry revoked")
+		provisional = flags.Bool("provisional", false, "sign: REQUIRED (D9). Records a provisional Acceptance; a formal Acceptance cannot be issued")
 	)
 	if err := flags.Parse(args[1:]); err != nil {
 		return err
@@ -81,7 +83,7 @@ func run(args []string, stdout io.Writer) error {
 		}
 		return keygen(*privateKey, *issuer, *keyID, *application, nb, na, *revoked, stdout)
 	case "sign":
-		return sign(*ws, *application, *decisionRef, *authority, *issuer, *keyID, *privateKey, *out)
+		return sign(*provisional, *ws, *application, *decisionRef, *authority, *issuer, *keyID, *privateKey, *out)
 	case "ingest":
 		store, err := openStore(*storeDir, *trust, true)
 		if err != nil {
@@ -98,7 +100,7 @@ func run(args []string, stdout io.Writer) error {
 		if err := store.Ingest(context.Background(), d); err != nil {
 			return err
 		}
-		fmt.Fprintf(stdout, "current %s %s\n", d.Record.ApplicationID, d.Record.DecisionRef)
+		fmt.Fprintf(stdout, "current %s %s ACCEPTANCE_KIND=%s\n", d.Record.ApplicationID, d.Record.DecisionRef, kindLabel(d.AcceptanceKind))
 		return nil
 	case "revoke":
 		store, err := openStore(*storeDir, *trust, false)
@@ -119,11 +121,20 @@ func run(args []string, stdout io.Writer) error {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(stdout, "current %s %s %s members=%d\n", record.ApplicationID, record.DecisionRef, record.ModelRevision, len(record.Artifacts))
+		fmt.Fprintf(stdout, "current %s %s %s members=%d ACCEPTANCE_KIND=%s\n", record.ApplicationID, record.DecisionRef, record.ModelRevision, len(record.Artifacts), kindLabel(record.AcceptanceKind))
 		return nil
 	default:
 		return fmt.Errorf("unknown command %q", args[0])
 	}
+}
+
+// kindLabel names the kind the way readers see it: a Decision without the
+// marker is "unspecified", never formal.
+func kindLabel(kind string) string {
+	if kind == "" {
+		return sourceacceptance.AcceptanceKindUnspecified
+	}
+	return kind
 }
 
 func keygen(path, issuer, keyID, application string, notBefore, notAfter *string, revoked bool, stdout io.Writer) error {
@@ -161,7 +172,10 @@ func keygen(path, issuer, keyID, application string, notBefore, notAfter *string
 	return encoder.Encode(entry)
 }
 
-func sign(root, application, decisionRef, authority, issuer, keyID, keyPath, out string) error {
+func sign(provisional bool, root, application, decisionRef, authority, issuer, keyID, keyPath, out string) error {
+	if !provisional {
+		return errors.New("sign requires -provisional: only a provisional Acceptance (D9) can be issued; there is no formal Acceptance path yet")
+	}
 	if root == "" || application == "" || decisionRef == "" || authority == "" || issuer == "" || keyID == "" || keyPath == "" || out == "" {
 		return errors.New("sign requires -workspace, -application, -decision-ref, -authority-revision, -issuer, -key-id, -private-key and -out")
 	}
@@ -181,7 +195,7 @@ func sign(root, application, decisionRef, authority, issuer, keyID, keyPath, out
 	if err != nil {
 		return fmt.Errorf("SOURCE_INDEX_BUILD_FAILED: %w", err)
 	}
-	d := hoststore.Decision{Issuer: issuer, Record: hoststore.RecordForIndex(application, decisionRef, authority, index)}
+	d := hoststore.Decision{Issuer: issuer, AcceptanceKind: sourceacceptance.AcceptanceKindProvisional, Record: hoststore.RecordForIndex(application, decisionRef, authority, index)}
 	d, err = hoststore.Sign(d, keyID, ed25519.NewKeyFromSeed(seed))
 	if err != nil {
 		return err

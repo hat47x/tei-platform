@@ -3,6 +3,7 @@
 - **状態**：採用前の設計候補と合成Reference（2026-10-13）。OData準拠、実DBへの書込、実Web認証、本番適合を確認したものではない。
 - **担当**：[Issue #1656](https://github.com/hat47x/tei-platform/issues/1656)。
 - **実証用コード**：[Web API契約Reference](../../reference/web-api-contract/README.md)。採用済みの製品API SchemaやCore Typeの正本ではない。
+- **例外/応答・Client Reactionの横断案**：[HTTP Response Decision Graph](HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md)／[#3274](https://github.com/hat47x/tei-platform/issues/3274)。本書はHTTP Read/Command Adapterの写像Ownerを維持し、RFC 9457やODataの採否、実HTTP・実Targetの適合を採用済みとは扱わない。
 
 ## 1. 方針と保留事項
 
@@ -135,7 +136,7 @@ Web/CLI/Desktopに同一の型付きQuery/Actionを使う。GraphQL・REST・ODa
 ## 6. 2026-11-02 横断照合：Host非必須・AI-first・Data/Function/Businessを維持するWeb Adapter（検討・未採用）
 
 - **読み取り基準**：main `9c9ef4d160640908e06ad13afb6c2b45c664c748`。この節は#1656の**既存計画への追補候補**であり、新Public API、Core Type、権限正本、契約採用、Issue受入完了、Gate合格を意味しない。2026-10-13付の上記「未検証」記述は**初期Referenceの歴史的状態**として読む。
-- **横断参照**：独自共通Hostを必須にしないOwner方針は[Draft #2226](https://github.com/hat47x/tei-platform/pull/2226)に文書化中。AI-first・Headless-firstの開発順序は[Draft #2492](https://github.com/hat47x/tei-platform/pull/2492)。いずれもDraft・main未統合の実装保証として扱わない。
+- **横断参照**：独自共通Hostを必須にしないOwner方針は[#2226](https://github.com/hat47x/tei-platform/pull/2226)で文書化し、2026-11-02 UTCにmerge済み（[ADR-0043](../adr/0043-target-native-artifacts-without-tei-host.md)）。AI-first・Headless-firstの開発順序は[Draft #2492](https://github.com/hat47x/tei-platform/pull/2492)（main未統合）。いずれも実装保証として扱わない。
 - #1769は2026-11-02確認時点で**Closed**。Customer/Tenant双方の使い捨てPostgreSQL局所試験の既存実測報告（#1769/PR #1801）があるが、実IdP/Policy Authority、現在GrantとSQLの原子性、OData適合、実Web Hostへの接続、全Queryへの一般化を証明しない。E11/E12の**既知の情報推測**も解消済みではない。
 
 ### 6.1 Webは対象環境へのAdapterであり、TEI共通Hostではない

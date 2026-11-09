@@ -90,6 +90,10 @@ func TestTraceWorkspaceJSONArgumentErrors(t *testing.T) {
 		{root: root, world: "world.json", scope: "test", kind: "semantic-data", id: "sales.order", expectedExit: 2, code: "INVALID_ARGUMENT"},
 		{root: root, scope: "test", kind: "semantic-data", id: "sales.order", direction: "sideways", expectedExit: 2, code: "INVALID_ARGUMENT"},
 		{root: root, scope: "test", kind: "semantic-data", id: "missing", expectedExit: 1, code: "SUBJECT_NOT_FOUND"},
+		// A kind the typed graph cannot carry is an unsupported request, not a
+		// subject with no references (#3180).
+		{root: root, scope: "test", kind: "not-a-kind", id: "sales.order", expectedExit: 2, code: "UNSUPPORTED_SUBJECT_KIND"},
+		{root: root, scope: "test", kind: "semantic-candidate-key", id: "sales.order", expectedExit: 2, code: "UNSUPPORTED_SUBJECT_KIND"},
 		{root: root, scope: "test", kind: "semantic-data", id: "sales.order", mode: "summary", limit: 1, expectedExit: 2, code: "INVALID_ARGUMENT"},
 	}
 	for _, tc := range cases {

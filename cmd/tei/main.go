@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -30,6 +32,7 @@ import (
 	"tei/internal/environment"
 	"tei/internal/index"
 	"tei/internal/ir"
+	"tei/internal/modelref"
 	"tei/internal/plugin"
 	pluginruntime "tei/internal/plugin/runtime"
 	"tei/internal/query/analyzer"
@@ -68,13 +71,20 @@ func (p *pathList) Set(v string) error {
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintln(os.Stderr, "usage: tei <scenario|version|commands|model|inspect|view|trace|workspace-files|source-index|knowledge-review-plan|knowledge-review-handoff|knowledge-review-disclose|knowledge-data-design-candidate-review|knowledge-context|knowledge-qualify|validate|index|plugin-lock|plugin-resolve|plugin-runtime-plan|observed-index|workbench-model|world|requirements|normalize-postgres-plan|desired-schema|schema-diff|plan-migration|migration-fingerprint|database-reconcile|database-compatibility|application-release-compatibility|release-graph|solution-release-graph|consumer-impact|deployment-simulate|deployment-start|deployment-ready-commands|deployment-record-attempt|deployment-retry|deployment-pause|deployment-resume|deployment-abort|deployment-recovery|deployment-start-recovery|deployment-provider-plan|deployment-reconcile> [options]")
+		fmt.Fprintln(os.Stderr, usageText())
 	}
 	if len(os.Args) < 2 {
 		flag.Usage()
 		os.Exit(2)
 	}
 	command := os.Args[1]
+	// Reject an unknown name before any flag requirement. A caller that typed
+	// the wrong command must not be told that -workspace is missing, and the
+	// answer must not depend on which flags were attached.
+	if !isAcceptedCommand(command) {
+		rejectUnknownCommand(command, os.Stderr)
+		os.Exit(2)
+	}
 	if command == "scenario" {
 		if err := runScenarioCommand(os.Args[2:], os.Stdout); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -112,7 +122,21 @@ func main() {
 		}
 		return
 	}
+	if command == "self-build" {
+		code, err := runSelfBuildCommand(os.Args[2:], os.Stdout)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		if code != 0 {
+			os.Exit(code)
+		}
+		return
+	}
 	if command == "commands" {
+		if len(os.Args) == 3 && (os.Args[2] == "-h" || os.Args[2] == "-help") {
+			io.WriteString(os.Stdout, "usage: tei commands\n\tdiscovery of the selected read-only commands; no arguments\n")
+			return
+		}
 		if len(os.Args) != 2 {
 			fmt.Fprintln(os.Stderr, "commands does not accept arguments")
 			os.Exit(2)
@@ -132,14 +156,17 @@ func main() {
 	worldPath := fs.String("world", "", "normalized M0 IR JSON")
 	workspacePath := fs.String("workspace", "", "TEI workspace directory")
 	jsonValidation := fs.Bool("json", false, "machine-readable JSON for validate -workspace")
+	pluginDiagnostic := fs.Bool("diagnostic-candidates", false, "show unvalidated plugin candidates; never authorizes execution")
 	subjectKind := fs.String("subject-kind", "", "Source Index subject kind")
 	subjectID := fs.String("subject-id", "", "Source Index subject ID")
 	traceScope := fs.String("scope", "", "scope for typed modelref trace projection")
-	traceDirection := fs.String("direction", "both", "trace incoming, outgoing, or both")
-	traceMode := fs.String("mode", "summary", "trace summary or full")
+	// The CLI flag default, `tei commands` and the MCP adapter read these two
+	// values from modelref instead of each keeping a copy (#3605).
+	traceDirection := newSetStringFlag(fs, "direction", modelref.TraceDefaultDirection, "trace incoming, outgoing, or both")
+	traceMode := newSetStringFlag(fs, "mode", modelref.TraceDefaultMode, "trace summary or full")
 	traceOffset := fs.Int("offset", 0, "explicit full trace result offset")
 	traceLimit := fs.Int("limit", 0, "explicit full trace page size; 0 returns all rows")
-	traceExpectedFingerprint := fs.String("expected-fingerprint", "", "expected typed trace snapshot fingerprint for continued pages")
+	traceExpectedFingerprint := newSetStringFlag(fs, "expected-fingerprint", "", "expected typed trace snapshot fingerprint for continued pages")
 	expectedDataDesignFingerprint := fs.String("expected-data-design-fingerprint", "", "expected Data Design Context fingerprint; knowledge-context fails on mismatch")
 	dataDesignCandidateKind := fs.String("data-design-candidate-kind", "", "Data Design candidate kind: business-identity|functional-dependency")
 	dataDesignCandidateFingerprint := fs.String("data-design-candidate-fingerprint", "", "current Data Design candidate fingerprint")
@@ -171,6 +198,21 @@ func main() {
 	artifactCheck := fs.Bool("check", false, "artifacts: fail when the set is inconsistent")
 	periodStates := fs.String("period-states", "", "periods: period=state pairs, comma separated")
 	periodStatePath := fs.String("period-state-file", "", "periods: JSON object of period to state")
+	periodAdvance := fs.String("advance", "", "periods: move this period one step toward closed and record it")
+	dbCheckDSNFlag := fs.String("dsn", "", "dbcheck: PostgreSQL DSN (defaults to TEI_TEST_POSTGRES_DSN)")
+	grantsOut := fs.String("grants-out", "", "grants: write the grants document here instead of stdout")
+	grantCapability := fs.String("grant-capability", "", "issue-grant: the capability the grant is issued to")
+	grantKind := fs.String("grant-kind", "filesystem", "issue-grant: permission kind")
+	grantAccess := fs.String("grant-access", "write", "issue-grant: permission access")
+	grantScope := fs.String("grant-scope", "", "issue-grant: the scope the grant covers")
+	grantIssuer := fs.String("grant-issuer", "", "issue-grant: the party that decides the grant")
+	grantReason := fs.String("grant-reason", "", "issue-grant: why the grant is issued")
+	grantRunKey := fs.String("grant-run-key", "", "issue-grant: the run the grant belongs to")
+	grantDeclaration := fs.String("grant-declaration", "", "issue-grant: the declaration file (tei grants) the issuance must stay inside")
+	grantDeclaredScope := fs.String("grant-declared-scope", "", "issue-grant: the declared scope name this run's place maps from")
+	grantResolvedRoot := fs.String("grant-resolved-root", "", "issue-grant: the concrete place the declared scope maps to for this run")
+	grantOut := fs.String("grant-out", "", "issue-grant: write the grants file here")
+	issueLog := fs.String("issue-log", "", "issue-grant: append the issuance record here")
 	environmentID := fs.String("environment", "", "environment canonical ID")
 	solutionID := fs.String("solution", "", "solution release canonical ID")
 	historyPath := fs.String("history", "", "normalized migration history JSON")
@@ -189,9 +231,52 @@ func main() {
 	var statePaths pathList
 	fs.Var(&statePaths, "state", "database compatibility state JSON; repeatable")
 	parseErr := fs.Parse(os.Args[2:])
+	if errors.Is(parseErr, flag.ErrHelp) {
+		printHelp(os.Stdout, fs, command)
+		return
+	}
+
+	// dbcheck needs neither a workspace nor a world: it reports whether a
+	// database can be used, so it runs before those requirements apply.
+	if command == "dbcheck" {
+		if err := runDBCheck(context.Background(), dbCheckDSN(*dbCheckDSNFlag), os.Stdout); err != nil {
+			if errors.Is(err, errDSNMissing) {
+				fmt.Fprintln(os.Stderr, "DSNが未設定です。TEI_TEST_POSTGRES_DSN か -dsn で指定してください（実DBの確認は何も実行していません）。")
+				os.Exit(2)
+			}
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
+	if command == "issue-grant" {
+		options := issueGrantOptions{
+			Capability: *grantCapability,
+			Kind:       *grantKind,
+			Access:     *grantAccess,
+			Scope:      *grantScope,
+			Issuer:     *grantIssuer,
+			Reason:     *grantReason,
+			RunKey:     *grantRunKey,
+			OutPath:    *grantOut,
+			LogPath:    *issueLog,
+
+			DeclarationPath: *grantDeclaration,
+			DeclaredScope:   *grantDeclaredScope,
+			ResolutionRoot:  *grantResolvedRoot,
+		}
+		if err := runIssueGrantCommand(options); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if command == "inspect" || command == "trace" {
 		if parseErr == nil {
 			parseErr = validateSelectedReadOnlyFlags(fs, command)
+		}
+		if parseErr == nil {
+			parseErr = validateRepeatableArguments(command, os.Args[2:])
 		}
 		if parseErr != nil {
 			code, writeErr := selectedReadOnlyFlagError(os.Stdout, command, parseErr)
@@ -213,6 +298,7 @@ func main() {
 	if command != "inspect" && command != "trace" && !(command == "validate" && jsonValidationRequested) {
 		// #2332: text/JSON commands advertised by `tei commands` reject flags
 		// they do not read, instead of silently ignoring them.
+		repeatErr := validateRepeatableArguments(command, os.Args[2:])
 		if err := validateSelectedReadOnlyFlags(fs, command); err != nil {
 			if isResultEnvelopeCommand(command) {
 				code, writeErr := emitResult(os.Stdout, resultFailure(command, resultCodeInvalidArgument, err), 2)
@@ -222,6 +308,17 @@ func main() {
 				os.Exit(code)
 			}
 			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+		if repeatErr != nil {
+			if isResultEnvelopeCommand(command) {
+				code, writeErr := emitResult(os.Stdout, resultFailure(command, resultCodeInvalidArgument, repeatErr), 2)
+				if writeErr != nil {
+					fmt.Fprintln(os.Stderr, writeErr)
+				}
+				os.Exit(code)
+			}
+			fmt.Fprintln(os.Stderr, repeatErr)
 			os.Exit(2)
 		}
 	}
@@ -258,10 +355,26 @@ func main() {
 		}
 	}
 	if command == "trace" {
+		// An explicitly empty -direction/-mode is not "the flag was omitted":
+		// the CLI advertises direction=both and mode=summary, and the typed
+		// normalizer would otherwise turn "" into mode=full, which returns rows
+		// the caller did not ask for (#3605).
+		if traceDirection.set && traceDirection.value == "" ||
+			traceMode.set && traceMode.value == "" ||
+			traceExpectedFingerprint.set && traceExpectedFingerprint.value == "" {
+			report := cliTraceReport{SchemaVersion: "tei.cli.trace/v0",
+				Error: &cliInspectionFailure{Code: "INVALID_ARGUMENT",
+					Message: "trace -direction, -mode and -expected-fingerprint must not be empty when supplied"}}
+			code, writeErr := writeTraceReport(os.Stdout, report, 2)
+			if writeErr != nil {
+				fmt.Fprintln(os.Stderr, writeErr)
+			}
+			os.Exit(code)
+		}
 		code, err := traceWorkspaceJSON(
 			os.Stdout, *workspacePath, *worldPath, *traceScope,
-			*subjectKind, *subjectID, *traceDirection, *traceMode,
-			*traceExpectedFingerprint, *traceOffset, *traceLimit, fs.NArg(),
+			*subjectKind, *subjectID, traceDirection.value, traceMode.value,
+			traceExpectedFingerprint.value, *traceOffset, *traceLimit, fs.NArg(),
 		)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -272,7 +385,7 @@ func main() {
 		return
 	}
 	if command == "inspect" {
-		code, err := inspectWorkspaceJSON(os.Stdout, *workspacePath, *worldPath, *subjectKind, *subjectID, fs.NArg())
+		code, err := inspectWorkspaceJSONSelected(os.Stdout, *workspacePath, *worldPath, *subjectKind, *subjectID, fs.NArg())
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}
@@ -395,7 +508,13 @@ func main() {
 	}
 	if isResultEnvelopeCommand(command) {
 		// requirements, plugin-lock, plugin-resolve, plugin-runtime-plan
-		code, err := resultCommandJSON(os.Stdout, command, *workspacePath, *worldPath, *environmentID, *pluginLockPath, fs.NArg())
+		environmentSpecified := false
+		fs.Visit(func(f *flag.Flag) {
+			if f.Name == "environment" {
+				environmentSpecified = true
+			}
+		})
+		code, err := resultCommandJSON(os.Stdout, command, *workspacePath, *worldPath, *environmentID, *pluginLockPath, *pluginDiagnostic, environmentSpecified, fs.NArg())
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}
@@ -454,7 +573,7 @@ func main() {
 		writeJSON(d)
 		return
 	}
-	if (*worldPath == "") == (*workspacePath == "") {
+	if command != "dbcheck" && (*worldPath == "") == (*workspacePath == "") {
 		fmt.Fprintln(os.Stderr, "exactly one of -workspace or -world is required")
 		os.Exit(2)
 	}
@@ -489,8 +608,24 @@ func main() {
 			os.Exit(1)
 		}
 		return
+	case "grants":
+		if err := runGrantsCommand(*workspacePath, *applicationID, *grantsOut); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	case "dbcheck":
+		if err := runDBCheck(context.Background(), dbCheckDSN(*dbCheckDSNFlag), os.Stdout); err != nil {
+			if errors.Is(err, errDSNMissing) {
+				fmt.Fprintln(os.Stderr, "DSNが未設定です。TEI_TEST_POSTGRES_DSN か -dsn で指定してください（実DBの確認は何も実行していません）。")
+				os.Exit(2)
+			}
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
 	case "periods":
-		if err := runPeriodsCommand(*workspacePath, *applicationID, *periodStates, *periodStatePath); err != nil {
+		if err := runPeriodsCommand(*workspacePath, *applicationID, *periodStates, *periodStatePath, *periodAdvance); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
@@ -805,9 +940,9 @@ func main() {
 			os.Exit(1)
 		}
 		if result.PluginInvocation != nil {
-			var lock plugin.Lock
-			if err := decodeJSONFile(*pluginLockPath, &lock); err != nil {
-				fmt.Fprintln(os.Stderr, err)
+			lock, lockErr := decodePluginLockFile(*pluginLockPath)
+			if lockErr != nil {
+				fmt.Fprintln(os.Stderr, lockErr)
 				os.Exit(1)
 			}
 			runtimePlan, err := pluginruntime.BuildPlan(plugin.Catalog{Plugins: w.Plugins, Bundles: w.Bundles}, env, lock)
@@ -888,9 +1023,9 @@ func main() {
 		}
 		plan := deploymentProviderPlan{Executors: routed}
 		if *pluginLockPath != "" {
-			var lock plugin.Lock
-			if err := decodeJSONFile(*pluginLockPath, &lock); err != nil {
-				fmt.Fprintln(os.Stderr, err)
+			lock, lockErr := decodePluginLockFile(*pluginLockPath)
+			if lockErr != nil {
+				fmt.Fprintln(os.Stderr, lockErr)
 				os.Exit(1)
 			}
 			runtimePlan, err := pluginruntime.BuildPlan(plugin.Catalog{Plugins: w.Plugins, Bundles: w.Bundles}, env, lock)
@@ -1101,9 +1236,9 @@ func runtimeFingerprintsForEnvironment(w ir.World, path string, environmentID co
 	if path == "" {
 		return "", "", fmt.Errorf("-plugin-lock is required for durable deployment run operations")
 	}
-	var lock plugin.Lock
-	if err := decodeJSONFile(path, &lock); err != nil {
-		return "", "", err
+	lock, lockErr := decodePluginLockFile(path)
+	if lockErr != nil {
+		return "", "", lockErr
 	}
 	env, ok := findEnvironment(w, environmentID)
 	if !ok {
@@ -1210,6 +1345,24 @@ func decodeJSONFile(path string, dst any) error {
 	return json.NewDecoder(f).Decode(dst)
 }
 
+// loadWorldWithIdentity is loadWorld plus the Workspace identity, when the
+// World came from a Workspace. A -world file has no manifest to identify, so
+// the identity stays nil and no value is invented (#3455).
+func loadWorldWithIdentity(worldPath, workspacePath string) (ir.World, *workspace.WorkspaceIdentity, error) {
+	if workspacePath != "" {
+		r, err := workspace.Load(workspacePath)
+		if err != nil {
+			return ir.World{}, nil, err
+		}
+		return r.World, workspaceIdentityPointer(r), nil
+	}
+	w, err := loadWorld(worldPath, workspacePath)
+	if err != nil {
+		return ir.World{}, nil, err
+	}
+	return w, nil, nil
+}
+
 func loadWorld(worldPath, workspacePath string) (ir.World, error) {
 	if workspacePath != "" {
 		r, err := workspace.Load(workspacePath)
@@ -1228,6 +1381,29 @@ func loadWorld(worldPath, workspacePath string) (ir.World, error) {
 		return ir.World{}, err
 	}
 	return w, nil
+}
+
+// setStringFlag records the value and whether the caller supplied the flag.
+// An omitted flag and an explicitly empty value are different requests; only
+// the first may take the advertised default (#3605).
+type setStringFlag struct {
+	value string
+	set   bool
+}
+
+func (f *setStringFlag) String() string { return f.value }
+
+func (f *setStringFlag) Set(raw string) error {
+	f.value = raw
+	f.set = true
+	return nil
+}
+
+// newSetStringFlag registers a set-aware flag with its advertised default.
+func newSetStringFlag(fs *flag.FlagSet, name, defaultValue, usage string) *setStringFlag {
+	f := &setStringFlag{value: defaultValue}
+	fs.Var(f, name, usage)
+	return f
 }
 
 func findEnvironment(w ir.World, id core.CanonicalID) (environment.Environment, bool) {

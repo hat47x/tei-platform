@@ -26,8 +26,19 @@ type SourceMember struct {
 // GoListPackage is the subset of "go list -deps -json" metadata that
 // identifies files actually selected by the Go compiler for a target.
 type GoListModule struct {
-	Path string
-	Dir  string
+	Path    string
+	Version string
+	Dir     string
+}
+
+// GoListError is the failure record `go list -e` emits for a package it could
+// not resolve. The existing resolver runs without -e and treats any exit
+// failure as a whole-closure error; the module preflight keeps per-package
+// failures so that supply gaps stay distinguishable.
+type GoListError struct {
+	ImportStack []string
+	Pos         string
+	Err         string
 }
 
 type GoListPackage struct {
@@ -35,6 +46,7 @@ type GoListPackage struct {
 	ImportPath   string
 	Standard     bool
 	Module       *GoListModule
+	Error        *GoListError
 	GoFiles      []string
 	CgoFiles     []string
 	CFiles       []string

@@ -1,0 +1,9 @@
+pattern order_entry.order_delete record {
+    data sales.order
+    interaction {
+        item sales.order.order_id
+        command sales.delete_order {
+            input order_id sales.order.order_id
+        }
+    }
+}

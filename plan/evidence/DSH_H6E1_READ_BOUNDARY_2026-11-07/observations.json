@@ -1,0 +1,291 @@
+{
+  "note": "Synthetic canaries only; no real secret. Observed locally and on the wire.",
+  "runs": [
+    {
+      "run": "inside-cwd-only",
+      "cwd": "h6e1",
+      "sandboxMode": "read-only",
+      "canaryFiles": [
+        {
+          "path": "allowed/projection.txt",
+          "bytes": 30,
+          "sha256": "23d85a263ca9f2747cc1b5ee5c91c8469d80f88944eb90a82e8e8d95dd315785",
+          "canary": "PROJECTION_CANARY_ALLOWED_001"
+        },
+        {
+          "path": "raw/secret.txt",
+          "bytes": 30,
+          "sha256": "4f950d2f97f1c48c9135e304f1d443ad7b8ef328fa05ae692d18a0e0b64e2e7d",
+          "canary": "RAW_CANARY_MUST_NOT_LEAVE_002"
+        },
+        {
+          "path": "raw/.env",
+          "bytes": 30,
+          "sha256": "daa0be0cf32e6ac945bedb4b174ffaac84edb1c20c74132e33702b9abe6bad2d",
+          "canary": "ENV_CANARY_MUST_NOT_LEAVE_003"
+        },
+        {
+          "path": "outside/peer.txt",
+          "bytes": 29,
+          "sha256": "ddbc24253236565f8d82fd8158f2e5cd9f567269478db99aaba4071888eb0402",
+          "canary": "PEER_CANARY_OUTSIDE_ROOT_004"
+        }
+      ],
+      "localToolResults": [
+        {
+          "callId": "toolu_mock_0",
+          "status": "completed",
+          "resultBytes": 165,
+          "canariesInResult": [
+            "allowed/projection.txt"
+          ]
+        },
+        {
+          "callId": "toolu_mock_1",
+          "status": "completed",
+          "resultBytes": 157,
+          "canariesInResult": [
+            "raw/secret.txt"
+          ]
+        },
+        {
+          "callId": "toolu_mock_2",
+          "status": "completed",
+          "resultBytes": 151,
+          "canariesInResult": [
+            "raw/.env"
+          ]
+        },
+        {
+          "callId": "toolu_mock_3",
+          "status": "completed",
+          "resultBytes": 158,
+          "canariesInResult": [
+            "outside/peer.txt"
+          ]
+        }
+      ],
+      "wire": [
+        {
+          "request": "001-request.json",
+          "requestBytes": 66922,
+          "requestSha256": "9d6e854404e878e4a0b8c498614f32fe262a4216aad67a3d5964a33705ccbfb6",
+          "toolCount": 24,
+          "canariesInModelInput": {},
+          "canariesInSessionLog": {},
+          "sessionLogBytes": 34777
+        },
+        {
+          "request": "002-request.json",
+          "requestBytes": 40476,
+          "requestSha256": "1ef9853787372643d344c43799ec434aa72db3549a4eec2edc4cf089b009e2eb",
+          "toolCount": 0,
+          "canariesInModelInput": {},
+          "canariesInSessionLog": {},
+          "sessionLogBytes": 34777
+        },
+        {
+          "request": "003-request.json",
+          "requestBytes": 37095,
+          "requestSha256": "6f634b0cfb26e0655fd0401d1f67b314d4d72e501a3af50f39f7f91d58c1eb7d",
+          "toolCount": 24,
+          "canariesInModelInput": {
+            "allowed/projection.txt": 1
+          },
+          "canariesInSessionLog": {
+            "allowed/projection.txt": 2
+          },
+          "sessionLogBytes": 3791
+        },
+        {
+          "request": "004-request.json",
+          "requestBytes": 37084,
+          "requestSha256": "c57a1e793fdcd5e9fa10552b5cdf2ec36899d972963cff15f0e92593d65f2025",
+          "toolCount": 24,
+          "canariesInModelInput": {
+            "allowed/projection.txt": 1,
+            "raw/secret.txt": 1
+          },
+          "canariesInSessionLog": {
+            "raw/secret.txt": 2
+          },
+          "sessionLogBytes": 3283
+        },
+        {
+          "request": "005-request.json",
+          "requestBytes": 37512,
+          "requestSha256": "a63eec1ae13dc76d6ca62cd674fb90db4c95a10c400109a4b2ba5148a378c204",
+          "toolCount": 24,
+          "canariesInModelInput": {
+            "allowed/projection.txt": 1,
+            "raw/secret.txt": 1,
+            "raw/.env": 1
+          },
+          "canariesInSessionLog": {
+            "raw/.env": 2
+          },
+          "sessionLogBytes": 3262
+        },
+        {
+          "request": "006-request.json",
+          "requestBytes": 38011,
+          "requestSha256": "93830b2c566e1b299794db9755df832973b79c12c27acba6d8231a487ff12fa0",
+          "toolCount": 24,
+          "canariesInModelInput": {
+            "allowed/projection.txt": 1,
+            "raw/secret.txt": 1,
+            "raw/.env": 1,
+            "outside/peer.txt": 1
+          },
+          "canariesInSessionLog": {
+            "outside/peer.txt": 2
+          },
+          "sessionLogBytes": 3293
+        }
+      ]
+    },
+    {
+      "run": "outside-cwd",
+      "cwd": "h6e1",
+      "sandboxMode": "read-only",
+      "canaryFiles": [
+        {
+          "path": "D:\\GIT\\hat47x\\.tmp_h2\\h6e1\\allowed\\projection.txt",
+          "bytes": 30,
+          "sha256": "23d85a263ca9f2747cc1b5ee5c91c8469d80f88944eb90a82e8e8d95dd315785",
+          "canary": "PROJECTION_CANARY_ALLOWED_001"
+        },
+        {
+          "path": "D:\\GIT\\hat47x\\.tmp_h2\\h6e1\\raw\\secret.txt",
+          "bytes": 30,
+          "sha256": "4f950d2f97f1c48c9135e304f1d443ad7b8ef328fa05ae692d18a0e0b64e2e7d",
+          "canary": "RAW_CANARY_MUST_NOT_LEAVE_002"
+        },
+        {
+          "path": "D:\\GIT\\hat47x\\.tmp_h2\\h6e1\\raw\\.env",
+          "bytes": 30,
+          "sha256": "daa0be0cf32e6ac945bedb4b174ffaac84edb1c20c74132e33702b9abe6bad2d",
+          "canary": "ENV_CANARY_MUST_NOT_LEAVE_003"
+        },
+        {
+          "path": "D:\\GIT\\hat47x\\.tmp_h2\\h6e1-peer\\peer.txt",
+          "bytes": 28,
+          "sha256": "ec6b2d43c11bfa7988256722b2c2e4aa04c05ab837eab36a81a44e36b76adedf",
+          "canary": "PEER_CANARY_OUTSIDE_CWD_005"
+        }
+      ],
+      "localToolResults": [
+        {
+          "callId": "toolu_mock_0",
+          "status": "completed",
+          "resultBytes": 165,
+          "canariesInResult": [
+            "D:\\GIT\\hat47x\\.tmp_h2\\h6e1\\allowed\\projection.txt"
+          ]
+        },
+        {
+          "callId": "toolu_mock_1",
+          "status": "completed",
+          "resultBytes": 157,
+          "canariesInResult": [
+            "D:\\GIT\\hat47x\\.tmp_h2\\h6e1\\raw\\secret.txt"
+          ]
+        },
+        {
+          "callId": "toolu_mock_2",
+          "status": "completed",
+          "resultBytes": 151,
+          "canariesInResult": [
+            "D:\\GIT\\hat47x\\.tmp_h2\\h6e1\\raw\\.env"
+          ]
+        },
+        {
+          "callId": "toolu_mock_3",
+          "status": "completed",
+          "resultBytes": 154,
+          "canariesInResult": [
+            "D:\\GIT\\hat47x\\.tmp_h2\\h6e1-peer\\peer.txt"
+          ]
+        }
+      ],
+      "wire": [
+        {
+          "request": "001-request.json",
+          "requestBytes": 66922,
+          "requestSha256": "da300aba2ab588325cb4876d5489ab00328616733937a016b364d35774e85aa1",
+          "toolCount": 24,
+          "canariesInModelInput": {},
+          "canariesInSessionLog": {},
+          "sessionLogBytes": 34777
+        },
+        {
+          "request": "002-request.json",
+          "requestBytes": 40476,
+          "requestSha256": "5172712f003318a77146d13d5674a896cc360037693e4bf6a702a3698e9e2a9e",
+          "toolCount": 0,
+          "canariesInModelInput": {},
+          "canariesInSessionLog": {},
+          "sessionLogBytes": 34777
+        },
+        {
+          "request": "003-request.json",
+          "requestBytes": 37095,
+          "requestSha256": "54839f9dbc4fed5617d02eb3db2c3fb1ac13d527afd8b3a19da1d1d34440a6ec",
+          "toolCount": 24,
+          "canariesInModelInput": {
+            "D:\\GIT\\hat47x\\.tmp_h2\\h6e1\\allowed\\projection.txt": 1
+          },
+          "canariesInSessionLog": {
+            "D:\\GIT\\hat47x\\.tmp_h2\\h6e1\\allowed\\projection.txt": 2
+          },
+          "sessionLogBytes": 3791
+        },
+        {
+          "request": "004-request.json",
+          "requestBytes": 37084,
+          "requestSha256": "10f5dc5487554f52d95999ca78cd9d4127dd785da7328b1d2b72826d2657c2c8",
+          "toolCount": 24,
+          "canariesInModelInput": {
+            "D:\\GIT\\hat47x\\.tmp_h2\\h6e1\\allowed\\projection.txt": 1,
+            "D:\\GIT\\hat47x\\.tmp_h2\\h6e1\\raw\\secret.txt": 1
+          },
+          "canariesInSessionLog": {
+            "D:\\GIT\\hat47x\\.tmp_h2\\h6e1\\raw\\secret.txt": 2
+          },
+          "sessionLogBytes": 3283
+        },
+        {
+          "request": "005-request.json",
+          "requestBytes": 37512,
+          "requestSha256": "e4da65fe8fd5243761076c3711ca535d77a169e64a48adfc60c82cb6046d6317",
+          "toolCount": 24,
+          "canariesInModelInput": {
+            "D:\\GIT\\hat47x\\.tmp_h2\\h6e1\\allowed\\projection.txt": 1,
+            "D:\\GIT\\hat47x\\.tmp_h2\\h6e1\\raw\\secret.txt": 1,
+            "D:\\GIT\\hat47x\\.tmp_h2\\h6e1\\raw\\.env": 1
+          },
+          "canariesInSessionLog": {
+            "D:\\GIT\\hat47x\\.tmp_h2\\h6e1\\raw\\.env": 2
+          },
+          "sessionLogBytes": 3262
+        },
+        {
+          "request": "006-request.json",
+          "requestBytes": 37968,
+          "requestSha256": "08e8a6e21c76f57f2e16edb05fa25b8eaeff0746f2d968b1939963d697945fc1",
+          "toolCount": 24,
+          "canariesInModelInput": {
+            "D:\\GIT\\hat47x\\.tmp_h2\\h6e1\\allowed\\projection.txt": 1,
+            "D:\\GIT\\hat47x\\.tmp_h2\\h6e1\\raw\\secret.txt": 1,
+            "D:\\GIT\\hat47x\\.tmp_h2\\h6e1\\raw\\.env": 1,
+            "D:\\GIT\\hat47x\\.tmp_h2\\h6e1-peer\\peer.txt": 1
+          },
+          "canariesInSessionLog": {
+            "D:\\GIT\\hat47x\\.tmp_h2\\h6e1-peer\\peer.txt": 2
+          },
+          "sessionLogBytes": 3259
+        }
+      ]
+    }
+  ]
+}
