@@ -395,6 +395,7 @@ WP10 統合と引継ぎ
 | フックの結末名とCommand拒否名の対応 | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_OUTCOME_VOCABULARY_2026-11.md) |
 | フックが名乗る結末名の語彙照合 | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_OUTCOME_CHECK_2026-11.md) |
 | 到達できる位相の経路での提案の照合（`RunReachable`） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_REACHABLE_PROPOSES_2026-11.md) |
+| フックの提案のCLI・Studio表示 | 実装（参照） | 付録C.5、`cmd/tei`、`cmd/tei-studio`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_SHOW_PROPOSALS_2026-11.md) |
 | フックが使う能力の`command` Pattern不在の拒否 | 実装 | 付録C.5、`internal/validation` |
 | フックの実行境界（reject/warn） | 実装 | 付録C.5 |
 | 未使用属性の表示 | 実装 | 付録C.5 |
