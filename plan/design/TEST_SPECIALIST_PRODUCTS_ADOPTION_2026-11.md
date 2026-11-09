@@ -1865,3 +1865,23 @@ P0R-01〜07で得られたRead証拠を、#3273 **TEST-T1B**、#3271 **PERF-T0�
 **実行優先順位は維持**：今すぐ別のテスト設計文書を作るのではなく、#2586へP0R-01〜05の一件ずつの**実Read境界**を返し、#3273へBlind TEST-T1B一件のHoldoutを別ルートで提示し、既存#1180/#2514で判別する。P0R-06〜07、PERF、外部H3、SHO等の追加Consumerは並列Pressureとし、最初の実Readを待たせない。**他製品の責務や詳細を、このTEI文書へ新規移植しない。**
 
 **今回のEvidence資格**：既存GitHub実PR・main・CI、Source/計画の照合に基づく実装受入票。ここでの新P0R-01〜07、TEST-T1B新Trial、対象Queryの実PG/Consumer/物理Grant・Go C1・実性能改善・現在Owner Meaningは**NOT RUN／未受理**。新Core、第二Reader、Resolver、Host、Oracle、Runner、Provider Registryは追加しない。
+
+<!-- tei-test-nov09-actual-knowledge-trace-tool-intake -->
+### 35.9 2026-11-09 実CLIドッグフーディングをTEST-T1Bの「自律的な情報取得」入場試験へ接続
+
+**新しいReader/Parser/Test Runnerを追加せず、既存のCLI/MCPと共通Application APIを受入対象とする。** 前節のP0-R `order_entry.recent_orders`（実Provider Read）はそのまま最優先の一件、TEST-T1B（生成AIが非公開の未知Gapを発見）は独立する。今回は既存実行の結果から、**生成AIが資料・Goソースや人手補完なしで必要Contextを得られるか**という追加の入場条件を採録した。実AI Trial自体は未実施。
+
+| 実装・実ドッグフード（Owner） | 現在確認できた到達点 | 次の受入条件とClaim ceiling |
+| --- | --- | --- |
+| [Round 14 #3685](https://github.com/hat47x/tei-platform/pull/3685) / #3149 | mainの実CLIで `knowledge-context → review-plan → review-handoff → context -disclose source → qualify → review-disclose` を一巡。古いfingerprint、別Subject・不存在handoffを拒否 | `status:complete`は当該review-disclosureの完了であり、全Required/Meaning Acceptance/TEST-T1Bの準備完了ではない。実AIが独立Expectedを秘匿して設計した試行はNOT RUN |
+| **発見不能な入力契約** [#3186](https://github.com/hat47x/tei-platform/issues/3186) / [#3419](https://github.com/hat47x/tei-platform/issues/3419) | `-qualification-requirements`はCLI discovery/helpから必須JSON形を辿れず、手動の正解は `{"expectedKind":"semantic-data"}`。未知欄をrejectするのは適切 | **Toolの説明だけで**既存v0のRequest型・必須項目・最小例/参照先を発見できることを、短い指示→Tool観測→合法Input→実Request成功で試す。既存ドキュメントを第二Schemaにしない |
+| [Round 15/#3693](https://github.com/hat47x/tei-platform/issues/3693) / #3419 | mainが `trace -mode full` の0件を `rows:[]`として返す問題を解消。summaryでrowsが無いのは意図された契約 | 空配列／省略／null／unknownを用途とmodeに従って判別する。既存JSON golden byte順/旧v0 Reader互換を保ち、0件を「全業務Relationが存在しない」へ拡大しない |
+| [Round 11/16 #3625](https://github.com/hat47x/tei-platform/issues/3625) / [merged #3633](https://github.com/hat47x/tei-platform/pull/3633) / #3420 | `trace.nextOffset`に並ぶ`trace.continuation.fingerprint`を次のページ取得に使用。内側 `graphFingerprint` は別目的で、旧 `trace.snapshotFingerprint` aliasは互換維持 | **正しい続きの値をTool結果だけから選べること**を検証。Scope/Direction/Source Raw変更は`STALE_SNAPSHOT`、summaryにoffsetを渡すと`INVALID_ARGUMENT`。別ページのsource/selector/versionが違えば集合を連結しない。Mode/offset/limit変更の現行トークン意味はRound16の限定実測に従う |
+| [Round 13 #3149](https://github.com/hat47x/tei-platform/issues/3149) / [#2619](https://github.com/hat47x/tei-platform/issues/2619) / [#2621](https://github.com/hat47x/tei-platform/issues/2621) | 実 `.tei`宣言の定義位置はinspectで追えるが、管理MarkdownはSource Indexにあるだけで本文の語をinspect/traceできず、Repository全体にRoot Manifestも無い | 設計書本文を自動的にTEI Loaded/Parsed/Acceptedへ昇格しない。文書の影響範囲が不明なら`document-symbol-unresolved`相当の診断で止める（診断名は案）。必要なSource/Role取得は正式Authoring/Parserの受入へ委譲 |
+| [merged #3540](https://github.com/hat47x/tei-platform/pull/3540) / #1251 | 通常CLI・Studio Hostが静的参照Inspectorを既存Compositionで選ぶ**S2-reference**がmainへ統合。PR exact HEADのHealth/Studio等5系統CI success | S2-reference≠外部PluginのS2-product。実Artifact Load/Link、別Provider B差替え、Current Grant、Conformance、Verified BOMは独立。Inspector成功を`recent_orders`実Readへ合算しない |
+
+**既存TEST-T1Bへの最小追加試験（番号／Scenarioは増設しない）**：独立Reviewerが許可済み一RuleのRequiredと非公開Holdoutを固定し、生成Agentには「対象Functionの未カバー検証を1件提案して」とだけ伝える。Skill/CLI Consumerが(1) `commands`や型付き説明から要件ファイルの形を見つける、(2) knowledgeのContext→Review/Handoff→Qualificationのうち必要な処理を実行する、(3) traceを正しく完走するか、`partial/stale`と残りを報告する、(4) Markdown/Provider未取得を「存在しない」と言わない、(5) 適格なRuleだけをCandidateにして独立Expectedへ渡す、という**一往復**を観測する。必要契約が未公開ならそこで`blocked:input-contract-undiscoverable`、Source依存未取得なら`insufficient-context`とし、既知のT1-Aを再生成してPASSにしない。
+
+**受入の所有と順序**：入力Schemaの発見可能性＝#3419、CLI/MCPの不正Input/Result/継続パリティ＝#3420、Source/独立Required＝#3262、Authoring本文意味化＝#2619/#2621、未知テスト生成＝#3273、Expected/Scenario/Evidence＝#2514/#1180/#1163。まず既存mainのread-only CLIで**一つの合法な自己完結Request**を作れるか実証し、その後MCPで同一Operationの意味結果を対照。#2586の実Readと並行可、外部H2/H3・正式Product S2/BOMまで一律に待機しない。
+
+**停止線**：`knowledge-review-disclose:complete`≠Source/Meaning全閉包、`trace rows:[]`≠業務上不存在、Fingerprint一致≠Current Grant、Tool Replyを返したこと≠外部Agentが完全受領、S2-reference≠実Plugin/Read、設計試験の増設≠Test能力進捗。新しい本章の一往復・外部MCP/Harness/T1-B/実ProviderやC1をこの更新では実行していない。
