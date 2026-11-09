@@ -76,7 +76,8 @@
 - [採番規則から発行までの一続きの経路の確認](XTEA_LOWCODE_NUMBERING_RULE_RESERVE_2026-11.md)（参照実装の試験記録。例への追加は未実装）
 - [月内締めの期間化の確認](XTEA_LOWCODE_MONTHLY_CLOSING_PERIOD_2026-11.md)（参照実装の試験記録。閉め操作の実装と例への追加は未実施）
 - [月内締めの区分ごとの閉めの確認](XTEA_LOWCODE_CLOSING_SEGMENT_SCOPE_2026-11.md)（参照実装の試験記録。閉め操作の実行は未実装）
-- [月内締めのCLI観察と状態源の確認](XTEA_LOWCODE_CLOSING_SCOPE_CLI_2026-11.md)（参照実装の試験記録。閉め操作の実行は未実装）
+- [月内締めのCLI観察と状態源の確認](XTEA_LOWCODE_CLOSING_SCOPE_CLI_2026-11.md)（参照実装の試験記録。閉め操作の実行内容は未実装）
+- [期間の閉め操作の確認](XTEA_LOWCODE_PERIOD_CLOSE_OPERATION_2026-11.md)（参照実装の試験記録。閉めの実行内容と権限は未実装）
 - [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
 - [X-TEA受容要件の実装対応](XTEA_LOWCODE_ACCEPTANCE_TRACE_2026-11.md)（`AC-1`〜`AC-11`・`RQ-C1`〜`RQ-C3`の参照実装と未確認事項。受容判断は仮承認）
 - [実DBで実行時の判断を確かめる計画](REAL_DATABASE_RUNTIME_DECISION_PLAN_2026-11.md)（期間・権限・効果の判断を実DBで見る案。**NOT RUN**）
@@ -100,6 +101,7 @@
 - [配備実行アダプタは、誰がどう組み立てているか](DEPLOYMENT_EXECUTOR_BINDING_SURVEY_2026-11-08/README.md)（DeploymentExecutor を名指す19箇所のうち非試験は4件。いずれも参照実装（tools/・examples/）で、4件とも composition.Coordinator を使わず、CapabilityID は直書きかローカル変数で Environment の deployment-executor Binding を通らない。製品パッケージ内の型を組み立てるのは参照実装だけであることを記録する。世代を固定すべきかは示さない）
 - [環境の配備実行Bindingは、どこまで使われるか](EXECUTOR_BINDING_CONSUMER_SURVEY_2026-11-08/README.md)（DeploymentExecutors を読む非試験の箇所は7つ、実行の経路として読むのは routing.RouteCommand だけ。Binding を実行へ繋ぐ routing.Router は非試験で組み立てられず、CLIは RouteCommands の結果を計画JSONとして書き出すだけで executor.Execute を呼ばない。実行する3件は参照実装で固定の能力を直叩きする。servicehost と同じ形の断絶を配備実行側にも記録。断絶が問題かは示さない）
 - [宣言のBindingから実行までを、参照実装で繋いでみる](BINDING_TO_EXECUTION_REFERENCE_2026-11-09/README.md)（`tools/reference-binding-to-execution` として判断材料のC-1を実装。既存の RouteCommand・Router.Dispatch・ValidateResult だけでBinding から実行まで繋がることを示す。未登録の executor を指す Binding は実行せず拒否し、存在しない環境は0件で終わる。Executor の registry は Host が渡すため実配備の成立は示さない）
+- [配備実行の能力IDを、宣言から解決する（C-3）](EXECUTOR_ID_RESOLUTION_REFERENCE_2026-11-09/README.md)（`tools/reference-executor-id-resolution` として判断材料のC-3を実装。routing.RouteCommand で Binding から ID を解決し、BuildPlan の plan が認めるかと SupportsAction を順に確かめる。実lockで RESOLVED、lock無しで LOCK_REJECTED、別のactionでは直書きの migration.atlas ではなく runtime.reference が解決され、直書きがBindingと食い違いうることを示す。実行はしない）
 - [C-2を試験の外で組み立て、C-1と同じ土台で比べる](SERVICE_CARRIER_CONNECT_REFERENCE_2026-11-09/README.md)（`tools/reference-service-carrier-connect` として判断材料のC-2を実装。Hostが渡したCoordinator・Runtime registry・RouteSourceからInvokerを組み立て、ピン留めした世代で要求を運ぶ。Routeが無い場合はInvokerを呼ぶ前に拒否し、別Binding用のRouteも拒否し、入力不足も拒否する。実配備の成立は示さない）
 - [C-2の数も、実行前拒否と実行後不確定を分ける](SERVICE_CARRIER_CONNECT_OUTCOME_V1_2026-11-09/README.md)（C-2の参照Reportをv1にし、ranCountをcarrier入場、refusedCountを入場前停止だけ、unverifiedCountを入場後の失敗や別世代の応答として分ける。artifact検証の拒否はcarrier内部で起きるためunverifiedに入る。反例3件でv0ならrefusedに入っていたケースを固定し、CLIの3場合はcarrierInvoked=falseを示す。製品へ繋ぐべきかは示さない）
 - [C-1とC-2は、同じ問いの2案か](CONNECT_POINT_C1_C2_2026-11-09/README.md)（判断材料が並べたC-1 routing.Router と C-2 servicehost の入口を比べ、入力の型・世代の有無・到達可能性が違うことを示す。C-1は配備の動作を実行しC-2はServiceの要求を運ぶため、両方を選ぶことは経路の重複ではない。C-2は非試験の呼出し元がまだ0件であることを記録。どちらを先に入れるべきかは示さない）
