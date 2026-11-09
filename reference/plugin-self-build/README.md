@@ -90,7 +90,18 @@ tei self-build \
 
 `qualified`は常に`false`です。`l2b.claimed`が`true`でも受理を意味しません。判断の中身は[自己構築の再入場契約](../../plan/design/SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md)を参照してください。
 
-catalogは呼び手が用意するデータです。catalogの各欄はWorkspaceやplugin定義には現れないため、**既存の宣言からは生成できません**。現時点では手で用意します。
+catalogは呼び手が用意するデータです。catalogの各欄はWorkspaceやplugin定義には現れないため、**既存の宣言からは生成できません**（§4.29の実測）。
+
+代わりに、**能力宣言から catalog を作るツール**があります。`tools/reference-build-catalog-authoring` が宣言を読み、artifact の digest は**実ファイルから計算して**catalog を書き、`-build-catalog-digest` に渡す値を出力します。宣言に digest を書くことはできません（手書きの digest を許すと、リポジトリに無い builder を名乗る catalog が作れてしまうため）。
+
+```bash
+go run ./tools/reference-build-catalog-authoring \
+  -declaration <能力宣言.json> \
+  -root <artifactの相対pathを解決する根> \
+  -output <catalog.json>
+```
+
+catalog を製品の外に置く決定と、このツールの位置づけは[自己構築の再入場契約](../../plan/design/SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md)の §4.32・§4.33 を参照してください。
 
 ## Runtime Plugin Lockのbuild trace
 
