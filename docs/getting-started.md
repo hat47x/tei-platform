@@ -163,6 +163,8 @@ Workspaceがモデル要素を1つも宣言していない場合、`validate`は
 
 作業領域のモデル要素を一覧で確認するには、`model catalog`を使います。返された`entries[].subject.kind`と`entries[].subject.id`をそのまま`inspect`へ渡せます。`ambiguous=true`の項目は重複宣言があるため、詳細取得を拒否します。
 
+`model catalog`の応答には`validation`（`ok`・`errorCount`・`warningCount`）が入ります（2026-11-09から）。これは`validate`が返すのと同じ意味検証の要約で、`validation.ok:false`なら、そのWorkspaceは検証を通っていません（`errorCount`が1以上）。**`model catalog`自体は検証NGのWorkspaceでも`ok:true`・終了コード0を返します。** 一覧は編集中でも読める投影であり、受理判断ではないためです。したがって、catalogだけを読む呼出し元は、`validation.ok`を見ずに「正常な宣言一覧」と解釈しないでください。診断のコード・位置・提案は`validate -json`で読めます（#3674）。
+
 `-namespace`には意味名前空間のIDだけを指定します。存在しないID、およびapplicationやqueryのIDを渡した場合は、空の成功ではなく`NAMESPACE_NOT_FOUND`（終了コード1）を返します。`namespaceMatched`と`namespaceMatchKind`は、要求がどの種類のSubjectに一致したかを示します。宣言はあるが要素を持たない名前空間は、`namespaceMatched=true`かつ`entries`が名前空間自身だけになります。
 
 `model catalog`の`modelRevision`は、管理対象Sourceのファイルpathと生バイトの組をsha256で並べた値です。**読み込んだWorldの内容の版ではありません。** 管理対象Sourceが1件も無いWorkspaceでは、空入力のSHA-256（`sha256:e3b0c442…b855`）になります。標準意味型（`std`）の`entries`は`modelRevision`の計算に入らないため、`entries`が0件でなくてもこの値になり得ます。空かどうかを判別するには、`modelRevision`ではなく`declarationCounts.total`を使ってください。`modelRevision`は「管理対象Sourceを1バイトも読まなかった」ことの証拠であり、モデルの同一性・受理・整合性の証拠ではありません。

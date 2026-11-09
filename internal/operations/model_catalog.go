@@ -7,6 +7,7 @@ import (
 
 	"tei/internal/ir"
 	"tei/internal/sourceindex"
+	"tei/internal/validation"
 	"tei/internal/workspace"
 )
 
@@ -41,9 +42,26 @@ type ModelCatalog struct {
 	ModelRevision string `json:"modelRevision"`
 	// DeclarationCounts separates Workspace-authored declarations from the
 	// standard semantic prelude, which is always present (#2822).
-	DeclarationCounts DeclarationCounts   `json:"declarationCounts"`
-	Entries           []ModelCatalogEntry `json:"entries"`
-	AuthorityLimits   []string            `json:"authorityLimits"`
+	DeclarationCounts DeclarationCounts `json:"declarationCounts"`
+	// Validation summarizes the same semantic validation `validate` reports, so
+	// a caller that reads only the catalog cannot mistake a Workspace with
+	// errors for a healthy declaration list (#3674). It is a summary, not the
+	// diagnostics themselves: `validate -json` remains the place to read codes,
+	// sources and proposals. The catalog still succeeds for an invalid
+	// Workspace, because it is a projection being read (for example while
+	// editing), not an acceptance decision.
+	Validation      ModelCatalogValidation `json:"validation"`
+	Entries         []ModelCatalogEntry    `json:"entries"`
+	AuthorityLimits []string               `json:"authorityLimits"`
+}
+
+// ModelCatalogValidation is the readability-preserving summary of validation
+// for a catalog read. OK is false when the Workspace has at least one error
+// severity diagnostic; warnings keep OK true, matching `validate`'s exit code.
+type ModelCatalogValidation struct {
+	OK           bool `json:"ok"`
+	ErrorCount   int  `json:"errorCount"`
+	WarningCount int  `json:"warningCount"`
 }
 
 // preludeSubject reports whether a catalog subject belongs to the in-process
@@ -94,6 +112,24 @@ func CatalogWorkspace(root, namespace string) (ModelCatalog, error) {
 	identity := loaded.Identity()
 	catalog.Workspace = &identity
 	return catalog, nil
+}
+
+// modelCatalogValidation counts the semantic validation results a catalog
+// reader needs to know whether the list is trustworthy as a declaration set.
+// It deliberately does not carry the diagnostics: validate -json owns those,
+// and duplicating them here would create a second place to keep in sync.
+func modelCatalogValidation(diagnostics []validation.Diagnostic) ModelCatalogValidation {
+	summary := ModelCatalogValidation{OK: true}
+	for _, diagnostic := range diagnostics {
+		switch diagnostic.Severity {
+		case validation.Error:
+			summary.ErrorCount++
+		case validation.Warning:
+			summary.WarningCount++
+		}
+	}
+	summary.OK = summary.ErrorCount == 0
+	return summary
 }
 
 // namespaceMatch reports whether a namespace filter names something in the
@@ -175,6 +211,7 @@ func CatalogWorld(world ir.World, idx sourceindex.Index, namespace, worldFP, sou
 		SourceIndexFingerprint: sourceFP,
 		ModelRevision:          sourceindex.ModelRevision(idx),
 		DeclarationCounts:      CountDeclarations(world),
+		Validation:             modelCatalogValidation(validation.Validate(world)),
 		Entries:                []ModelCatalogEntry{},
 		AuthorityLimits: []string{
 			"catalog-is-a-derived-read-only-projection",

@@ -55,6 +55,13 @@ type cliCommandRecord struct {
 	// ArgumentDefaults carries the value used when the flag is omitted. Absent
 	// names have no default: the value is required or has to be given.
 	ArgumentDefaults map[string]string `json:"argumentDefaults,omitempty"`
+	// ValidationSummary marks a command whose success result carries a
+	// `validation` summary (`ok`, `errorCount`, `warningCount`) of the same
+	// semantic validation `validate` reports. These commands still answer
+	// ok:true for a Workspace that does not validate, because they project a
+	// readable Workspace rather than accept it; the summary is how a caller
+	// tells the two apart without a second call (#3674).
+	ValidationSummary bool `json:"validationSummary,omitempty"`
 	// WriteFlags names the flags that make the process create or modify a file,
 	// and where. `effect: "read-only"` means the command does not change the
 	// canonical meaning; it does not mean the process writes nothing (#3182).
@@ -69,7 +76,7 @@ func commandCatalog() cliCommandCatalog {
 		Scope:         "selected-read-only-commands",
 		Commands: []cliCommandRecord{
 			{Name: "version", Effect: "read-only", Required: []string{"none"}, Optional: []string{"-json"}, Output: "text; json when -json", SchemaVersion: "tei.cli.version/v0", JSONContract: "enveloped", SuccessShape: "identity"},
-			{Name: "model catalog", Effect: "read-only", Required: []string{"-workspace"}, Optional: []string{"-namespace"}, Output: "json", SchemaVersion: "tei.cli.model/v0", JSONContract: "enveloped"},
+			{Name: "model catalog", Effect: "read-only", Required: []string{"-workspace"}, Optional: []string{"-namespace"}, Output: "json", SchemaVersion: "tei.cli.model/v0", JSONContract: "enveloped", ValidationSummary: true},
 			{Name: "workspace-files", Effect: "read-only", Required: []string{"-workspace"}, Output: "json", SchemaVersion: "tei.cli.workspace-files/v0", JSONContract: "enveloped"},
 			{Name: "inspect", Effect: "read-only", Required: []string{"-workspace", "-subject-kind", "-subject-id"}, Output: "json", SchemaVersion: "tei.cli.inspect/v0", JSONContract: "enveloped", ArgumentValues: valueSets("inspect"), ArgumentType: valueTypes("inspect")},
 			{Name: "view", Effect: "read-only", Required: []string{"-workspace", "-application"}, Optional: []string{"-format", "at most one of -pattern, -package, -command", "-input and -execute with -command", "-period-state with -execute", "-allow-capability with -execute", "-operation-log with -execute", "-lifecycle-state and -lifecycle-command with -execute", "-lifecycle-owner and -lifecycle-generation with -lifecycle-state"}, Output: "text; json when -format json", SchemaVersion: "tei.cli.view/v0", JSONContract: "enveloped", ArgumentValues: valueSets("view"), ArgumentType: valueTypes("view"), ArgumentDefaults: valueDefaults("view"), WriteFlags: []string{"-operation-log", "-lifecycle-state"}},
