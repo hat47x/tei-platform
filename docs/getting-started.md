@@ -38,13 +38,13 @@ go version
 | ~~`bash -c` + `cp`の外部コマンド~~ | ~~`tools/reference-cognition-port`・`tools/reference-generator-selection`~~ | 2026-11-09に解消（[#3461](https://github.com/hat47x/tei-platform/issues/3461)）。両ツールはコマンドを一時ディレクトリで実行し、パス変数をコマンド文字列へ埋め込むため、WindowsのWSL `bash.exe`でも動く。`bash`が見つからない場合だけskipする |
 | 空白を含む実行パス | `tools/reference-composition-process-bridge` | 2026-11-09に解消（#3460）。参照のstdio launcherが空白入りの実行パスを拒否するのは契約なので、試験は**ホストの一時ディレクトリに空白がある場合だけ**skipする。Windowsでも既定の`%TEMP%`なら実行される |
 | OpenSSHの`-Y verify verify-time` | `tools/reference-authoring-witness-openssh` | 同梱のOpenSSHが`verify-time`非対応で、スクリプトが`exit 77`（「No result is claimed」）を返す |
-| シンボリックリンク・JVM等 | `internal/workspace`・`tools/internal/gobuilder`・`tools/reference-target-profile`など | 作成に追加権限が要る、または未資格 |
+| シンボリックリンク・JVM等 | `internal/workspace`・`tools/internal/gobuilder`・`tools/reference-target-profile`など | シンボリックリンクは、作成を試して失敗したときだけskipする（理由にOSのエラーを出す）。開発者モード等で作成できる環境では実行される。JVM・node・pythonは未導入の環境でskip |
 
 skipの総数は32件（`t.Skip`の理由にWindowsを含むもの）。Linuxで実行した結果を正とします。
 
 **2. 比較試験はチェックアウトがcleanであることを前提にします。**`tools/reference-plugin-self-build`と`tools/reference-transform-runtime-engine-build`のhistorical比較は、`git status --porcelain=v1 --untracked-files=all`が空であることを確かめてから実行します。`go test ./...`はパッケージを並列に実行するため、別パッケージがcheckout内へ書いた直後にこの前提を読むと落ちることがあります（[#3637](https://github.com/hat47x/tei-platform/issues/3637)）。失敗時は汚れていたpathがメッセージに出るので、原因のパッケージを特定できます。単体で`go test ./tools/reference-plugin-self-build -count=1`を実行した場合は落ちません。
 
-PRごとのWindows確認は`tei-windows-go-test-survey.yml`が`workflow_dispatch`と本workflow自身の変更時に行い、`./internal/plugin/runtime`・`./internal/desktophost`・`./internal/operations`・`./cmd/tei`・`./internal/workspace`・`./internal/modelref`・`./reference/application-composition`を対象にします。全パッケージは90分規模なので必須検査にしていません。
+PRごとのWindows確認は`tei-windows-go-test-survey.yml`が`workflow_dispatch`と本workflow自身の変更時に行い、既定（`scope=survey`）では`./internal/plugin/runtime`・`./internal/desktophost`・`./internal/operations`・`./cmd/tei`・`./internal/workspace`・`./internal/modelref`・`./reference/application-composition`を対象にします。`scope=full`で`go test ./...`全体（90分規模）を手動実行できます。全パッケージは時間がかかるため必須検査にしていません。
 
 ## 最初の小さな作業領域から始める
 
