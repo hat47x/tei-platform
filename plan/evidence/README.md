@@ -42,6 +42,7 @@
 - [フック実行の配線と失敗の区別の確認](XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)（参照実装の試験記録。Runnerからの配線、NotSatisfiedと実行失敗の区別、参照規則。実PluginとCLI・Studioの配線は未実装）
 - [フック宣言の印刷面への反映の確認](XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md)（参照実装の試験記録。画面と同じフック宣言が印刷面にも出る。実印刷・用紙面の版照合は未確認）
 - [フックの位相順序と途中停止の確認](XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md)（参照実装の試験記録。位相の実行順、不成立での停止位置、`warn`の続行、未対応位相の拒否。CLI・Studioへの配線は未実装）
+- [フックの結末名とCommand拒否名の対応の確認](XTEA_LOWCODE_HOOK_OUTCOME_VOCABULARY_2026-11.md)（参照実装の試験記録。フックが名乗れる結末名を列挙し、Command側の綴りへ写す。対応の無い名前はCommandの拒否理由にしない）
 - [フック位相の到達範囲を一箇所に置く確認](XTEA_LOWCODE_HOOK_REACHABLE_PHASES_2026-11.md)（参照実装の試験記録。CLIとStudioが同じ位相の選び方を使い、到達しない位相と前提が欠けた位相を区別する）
 - [Studio参照実行からのフック呼出しの確認](XTEA_LOWCODE_HOOK_STUDIO_WIRING_2026-11.md)（参照実装の試験記録。Studioの参照実行がCLIと同じフック境界を使い、未評価・不成立を区別する。実Plugin・実DBは未接続）
 - [CLI参照実行からのフック呼出しの確認](XTEA_LOWCODE_HOOK_CLI_WIRING_2026-11.md)（参照実装の試験記録。`view -command -execute`が宣言フックを呼び、未評価・不成立を区別して報告する。実PluginとStudioは未接続）
