@@ -234,7 +234,7 @@ X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設�
 
 | 残り | 理由 | 何が分かれば決まるか |
 | --- | --- | --- |
-| 月内締めの閉め操作 | `closes on day N`で区分を導出するところまで実装したが、区分ごとの状態遷移と`closed-rejects`の組合せは未実装 | 区分を期間と同じ状態機械に載せるか |
+| 月内締めの閉め操作そのもの | 区分ごとの閉塞の判定（`PeriodScope`）は実装したが、状態を進める Command と利用者操作は未実装 | 閉めを Command にするか、運用操作として分けるか |
 | 採番の例での規則行データ | 例のDataに`numbering-rule`の役割を足したが、行は試験で与えている | 例へ行データを置くかどうかの判断 |
 | 為替の月次・年次を別Dataに分ける構成 | 参照実装は1つのDataに月順序0の年次行を置く形だけを試した | 別Dataにする場合の結合規則 |
 | 番号の永続CounterStore | 参照用の記憶域しかない | 実DBの表・版・競合の実装 |
@@ -254,6 +254,7 @@ X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設�
 - [評価時点の決定性](EVALUATION_CONTEXT_DETERMINISM_2026-10.md)
 - [移行計画](../workstreams/XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)（WP8）
 - [受容要件](../../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md)（RQ-C3）
+
 
 
 
