@@ -59,7 +59,7 @@ jobs:
           # full run takes 90 minutes, so it is the `full` dispatch scope; the
           # survey covers the packages whose Windows-only branches the code
           # actually uses.
-          $packages = @('./internal/plugin/runtime', './internal/desktophost', './internal/operations', './cmd/tei', './internal/workspace', './internal/modelref', './reference/application-composition')
+          $packages = @('./internal/plugin/runtime', './internal/desktophost', './internal/operations', './cmd/tei', './internal/workspace', './internal/modelref', './reference/application-composition', './tools/reference-developer-context')
           $scope = "$env:SCOPE_INPUT".Trim()
           if ($scope -eq 'full') {
             # `./...` includes every package, so it replaces the survey list

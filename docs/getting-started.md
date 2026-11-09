@@ -44,7 +44,7 @@ skipの総数は32件（`t.Skip`の理由にWindowsを含むもの）。Linuxで
 
 **2. 比較試験はチェックアウトがcleanであることを前提にします。**`tools/reference-plugin-self-build`と`tools/reference-transform-runtime-engine-build`のhistorical比較は、`git status --porcelain=v1 --untracked-files=all`が空であることを確かめてから実行します。`go test ./...`はパッケージを並列に実行するため、別パッケージがcheckout内へ書いた直後にこの前提を読むと落ちることがあります（[#3637](https://github.com/hat47x/tei-platform/issues/3637)）。失敗時は汚れていたpathがメッセージに出るので、原因のパッケージを特定できます。単体で`go test ./tools/reference-plugin-self-build -count=1`を実行した場合は落ちません。
 
-PRごとのWindows確認は`tei-windows-go-test-survey.yml`が`workflow_dispatch`と本workflow自身の変更時に行い、既定（`scope=survey`）では`./internal/plugin/runtime`・`./internal/desktophost`・`./internal/operations`・`./cmd/tei`・`./internal/workspace`・`./internal/modelref`・`./reference/application-composition`を対象にします。`scope=full`で`go test ./...`全体（90分規模）を手動実行できます。全パッケージは時間がかかるため必須検査にしていません。
+PRごとのWindows確認は`tei-windows-go-test-survey.yml`が`workflow_dispatch`と本workflow自身の変更時に行い、既定（`scope=survey`）では`./internal/plugin/runtime`・`./internal/desktophost`・`./internal/operations`・`./cmd/tei`・`./internal/workspace`・`./internal/modelref`・`./reference/application-composition`・`./tools/reference-developer-context`を対象にします。`scope=full`で`go test ./...`全体（90分規模）を手動実行できます。全パッケージは時間がかかるため必須検査にしていません。
 
 ## 最初の小さな作業領域から始める
 
