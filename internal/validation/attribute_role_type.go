@@ -26,13 +26,17 @@ var rolePrimitives = map[string]string{
 	"currency-rate-middle":         "decimal",
 	"currency-rate-buying":         "decimal",
 	"currency-rate-selling":        "decimal",
+	"currency-rate-fallback":       "", // any type: a rule name
 	"numbering-counter":            "integer",
 	"numbering-digits":             "integer",
 	"numbering-prefix":             "",
 	"numbering-check":              "",
 	"numbering-overflow":           "",
 	"holiday-date":                 "date",
-	"holiday-calendar":             "", // any type: a calendar identity is a code or text
+	"holiday-calendar":             "",           // any type: a calendar identity is a code or text
+	"setting-key":                  "identifier", // a setting is named by an identifier
+	"setting-value":                "",           // any type: a setting value is what the key holds
+	"setting-user":                 "identifier", // a user is named by an identifier
 }
 
 // validateAttributeRoleTypes reports an attribute whose role requires a
@@ -55,9 +59,8 @@ func validateAttributeRoleTypes(attributes []semantic.Attribute, types map[core.
 		if !ok {
 			continue
 		}
-		// Role primitives currently mean canonical TEI standard types.
-		// Matching only the suffix (e.g. foreign.decimal) would silently
-		// grant an unrelated primitive the std.decimal contract.
+		// A role requiring std.decimal is not satisfied by another
+		// publisher's primitive merely named foreign.decimal.
 		if got == "std."+want {
 			continue
 		}
@@ -72,8 +75,7 @@ func validateAttributeRoleTypes(attributes []semantic.Attribute, types map[core.
 }
 
 // primitiveOf follows the alias chain to the canonical primitive TypeRef.
-// Keep the namespace: an unrelated primitive named "foreign.decimal" must not
-// satisfy a standard role that requires "std.decimal".
+// Preserve the namespace so foreign.decimal is distinct from std.decimal.
 func primitiveOf(typeRef core.CanonicalID, types map[core.CanonicalID]semantic.Type) (string, bool) {
 	current := typeRef
 	for depth := 0; depth < 16; depth++ {
@@ -95,3 +97,4 @@ func primitiveOf(typeRef core.CanonicalID, types map[core.CanonicalID]semantic.T
 	}
 	return "", false
 }
+
