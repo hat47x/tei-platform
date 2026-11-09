@@ -250,6 +250,8 @@ ISSUE-000083 / GitHub #972で、少なくとも次をExecutable Referenceとし�
 - Git上はmerge可能でもSemantic上不正な変更をValidationが拒否できる
 - Agent Adapter、TEI独自Change Set、native developer MCPなしでも一往復が成立する
 
+注記（2026-11-04追記）：[#972](https://github.com/hat47x/tei-platform/issues/972)は2026-10-12に、独立したツール中立の資格確認工程を必須の共通作業として維持しないというユーザー判断により、not plannedで取り下げられました。上の項目をまとめて確認する実証は行っていません。同Issueのクローズは、既存実装が正しいことの証明ではありません。必要な試験は、GitHub Actionsの結果と各変更のIssueごとに判断します。本ADRの決定と状態（採用）は変えていません。
+
 ## 未解決 / 非主張範囲
 
 このADRは、次を保証しません。

@@ -36,10 +36,18 @@ func TestLongRunningEvidenceRequiresCompleteResponseStream(t *testing.T) {
 	}
 	cases := []struct {
 		name, output, reason string
+		stderr               string
 		exit                 int
 		responses            int
 	}{
 		{name: "complete", output: valid.String() + " \n\t", responses: len(fixture.Cases)},
+		// A crash in the candidate program leaves an empty result; its own
+		// stderr is the only clue, so it must reach the reason (#3801).
+		{name: "mismatch-with-stderr",
+			output:    strings.Replace(valid.String(), `"state":"present"`, `"state":""`, 1),
+			stderr:    "Traceback (most recent call last):\nInvalidOperation: overflow\n",
+			reason:    "fixture mismatch",
+			responses: len(fixture.Cases)},
 		{name: "extra", output: valid.String() + `{}`, reason: "extra responses", responses: len(fixture.Cases) + 1},
 		{name: "malformed-tail", output: valid.String() + strings.Repeat("!", 256*1024), reason: "reading response failed", responses: len(fixture.Cases)},
 		{name: "truncated", output: valid.String()[:strings.LastIndex(strings.TrimSpace(valid.String()), "\n")+1], reason: "responses", responses: len(fixture.Cases) - 1},
@@ -60,8 +68,8 @@ func TestLongRunningEvidenceRequiresCompleteResponseStream(t *testing.T) {
 			// Consume all requests before writing, exercising concurrent stdin/stdout.
 			source := fmt.Sprintf(`package main
 import ("io"; "os"; "fmt")
-func main() { io.Copy(io.Discard, os.Stdin); fmt.Print(%s); os.Exit(%d) }
-`, strconv.Quote(tc.output), tc.exit)
+func main() { io.Copy(io.Discard, os.Stdin); fmt.Print(%s); fmt.Fprint(os.Stderr, %s); os.Exit(%d) }
+`, strconv.Quote(tc.output), strconv.Quote(tc.stderr), tc.exit)
 			if err := os.WriteFile(filepath.Join(candidate, "main.go"), []byte(source), 0600); err != nil {
 				t.Fatal(err)
 			}
@@ -91,6 +99,9 @@ func main() { io.Copy(io.Discard, os.Stdin); fmt.Print(%s); os.Exit(%d) }
 			}
 			if evidence.Processes != 1 || evidence.Requests != len(fixture.Cases) || evidence.Responses != tc.responses || evidence.ExitCode != tc.exit || evidence.StderrDigest == "" {
 				t.Fatalf("incomplete execution evidence: %+v", evidence)
+			}
+			if tc.stderr != "" && !strings.Contains(evidence.Reason, strings.TrimSpace(tc.stderr)) {
+				t.Fatalf("the reason does not carry the candidate stderr: %+v", evidence.Reason)
 			}
 		})
 	}

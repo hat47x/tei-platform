@@ -259,7 +259,13 @@ TEIが提供すべき基本機能は、特定のエージェントのセッシ�
 
 チャット側でMCPを使う場合も、ホストが提供するシェル・ファイル操作・Git操作用のMCPから`tei`を呼び出せれば、正規の開発経路として扱えます。TEI独自の開発用MCPサーバーは必須にしません。
 
-将来、開発用MCPをTEI自身に追加する場合も、コマンドラインとは別の正本解釈・知識の保存先・検証・権限モデルは作りません。既存の`workspace.Load`や入力元索引、知識の文脈、検証などと同じアプリケーション操作を、別の通信方式から利用します。
+開発用MCPでも、コマンドラインとは別の正本解釈・知識の保存先・検証・権限モデルは作りません。`tools/reference-mcp-readonly-adapter`には既存操作を呼ぶ参照Adapterがありますが、全入口の同値性・protocol準拠・権限の実装を証明したものではありません。
+
+### 共通アプリケーションAPIと各入口
+
+CLI・MCP・HTTP API・Web・Desktopで共通の操作契約を使う方針を[ADR-0048](../plan/adr/0048-shared-application-api-and-transport-adapters.md)として採用しました。共通APIはHTTPに限定せず、ローカルCLIや組込みはプロセス内、WebはHTTP、Desktopは直接またはIPCから同じ操作を呼びます。HTTPサーバーや新しい認証機構を必須にする方針ではありません。
+
+操作の入力・結果・診断・版・作用・必要権限は共通側、argv・HTTP status・MCPの通信形式・画面表示は各Adapterの責務です。現行の`internal/operations`を出発点として段階的に移行します。全入口が移行済みという説明ではありません。作業順・対象ファイル・同値性試験はADRと[親Issue #1158](https://github.com/hat47x/tei-platform/issues/1158)、実装状況は[status](status.md)を参照してください。
 
 次の状態をTEI製品共通の状態として扱いません。
 

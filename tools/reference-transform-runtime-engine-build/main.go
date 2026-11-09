@@ -412,9 +412,34 @@ func requireCleanRepository(repo string) error {
 		return err
 	}
 	if status != "" {
-		return fmt.Errorf("repository must be clean before transform Runtime Engine build; git status is not empty")
+		// The paths are part of the error. When `go test ./...` runs packages
+		// in parallel, one package's temporary file can make this check fail
+		// in another package (#3637); the message has to name what was dirty,
+		// otherwise the failure reads like a mistake in this test's own input.
+		return fmt.Errorf("repository must be clean before transform Runtime Engine build; git status is not empty:%s", dirtyStatusLines(status))
 	}
 	return nil
+}
+
+// dirtyStatusLines renders the porcelain entries for an error message. The
+// list is capped so a wildly dirty tree still produces a readable message.
+func dirtyStatusLines(status string) string {
+	const maxLines = 20
+	var builder strings.Builder
+	written := 0
+	for _, line := range strings.Split(status, "\n") {
+		line = strings.TrimRight(line, "\r")
+		if line == "" {
+			continue
+		}
+		if written == maxLines {
+			builder.WriteString("\n  …")
+			break
+		}
+		builder.WriteString("\n  " + line)
+		written++
+	}
+	return builder.String()
 }
 
 func gitOutput(repo string, args ...string) (string, error) {

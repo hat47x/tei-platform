@@ -1,0 +1,29 @@
+repository packages scanned: 410
+main packages: 167
+main packages whose closure includes internal/composition: 4
+  tei/tools/reference-first-web-target
+  tei/tools/reference-plugin-capability-contract
+  tei/tools/reference-project-advice-lit
+  tei/tools/reference-studio-static-composition
+main packages whose closure includes internal/operations: 3
+  tei/cmd/tei
+  tei/tools/reference-cli-trace-benchmark
+  tei/tools/reference-data-first-persistence
+main packages whose closure includes internal/plugin/runtime: 13
+  tei/cmd/tei
+  tei/examples/process-plugin
+  tei/examples/runtime-reattach
+  tei/tools/reference-build-execution-binding
+  tei/tools/reference-deployment-attempt
+  tei/tools/reference-durable-run-golden
+  tei/tools/reference-order-assist-provider-offline/cmd/tei-order-assist-offline
+  tei/tools/reference-order-rollout-host-continuity/cmd/tei-order-rollout-host
+  tei/tools/reference-plugin-capability-contract
+  tei/tools/reference-plugin-self-build
+  tei/tools/reference-process-plugin
+  tei/tools/reference-runtime-capability-identity
+  tei/tools/reference-transform-runtime-engine-build
+main packages whose closure includes BOTH composition and operations: 0
+main packages whose closure includes BOTH composition and plugin/runtime: 1
+  tei/tools/reference-plugin-capability-contract
+packages whose closure includes internal/servicehost: 0

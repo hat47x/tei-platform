@@ -1,0 +1,103 @@
+name: TEI organization native authoring / operations reference
+
+# Parser/Loader → Semantic World → Operation Surface / artifacts only.
+# Not SQL execution, actual Provider reads, Studio/SHO, Host grant or Owner acceptance.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - 'reference/org-headless-workspace/**'
+      - 'internal/operations/org_headless_characterization_test.go'
+      - '.github/workflows/tei-org-headless-native-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'reference/org-headless-workspace/**'
+      - 'internal/operations/org_headless_characterization_test.go'
+      - '.github/workflows/tei-org-headless-native-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-org-headless-native-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  native-org-workspace:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      TARGET_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Pin Go version
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+      - name: Verify exact source head and no edits
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          go version
+          for f in reference/org-headless-workspace/tei.workspace.yaml \
+            reference/org-headless-workspace/semantic/organization/model.tei \
+            reference/org-headless-workspace/applications/org-view/application.tei \
+            reference/org-headless-workspace/databases/org-store/database.tei \
+            reference/org-headless-workspace/databases/org-store/persistence/membership.tei \
+            internal/operations/org_headless_characterization_test.go; do
+            printf 'source=%s path=%s\n' "$(git hash-object "$f")" "$f"
+          done
+      - name: Validate actual TEI language and derived operations
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test ./internal/operations -run '^TestOrgHeadless' -count=1
+          go run ./cmd/tei validate -workspace reference/org-headless-workspace
+          go run ./cmd/tei operations -workspace reference/org-headless-workspace -application org_view > "$RUNNER_TEMP/org-operations.json"
+          python3 - "$RUNNER_TEMP/org-operations.json" <<'PY'
+          import json,sys
+          s=json.load(open(sys.argv[1]))
+          assert s["effect"]=="read-only", s
+          ops={x["id"]:x for x in s["operations"]}
+          assert set(ops)=={"org_view.list.organization.membership","org_view.read.organization.membership"},ops
+          assert ops["org_view.read.organization.membership"]["inputs"]==["organization.membership.membership_id"],ops
+          assert not any(x.get("binding") for x in ops.values()),ops
+          assert not any(x.get("effects") for x in ops.values()),ops
+          assert s["worldFingerprint"] and s["modelRevision"],s
+          print("native TEI parsed organization and read-only surface: PASS")
+          PY
+          go run ./cmd/tei artifacts -workspace reference/org-headless-workspace -application org_view > "$RUNNER_TEMP/org-artifacts.json"
+          python3 - "$RUNNER_TEMP/org-artifacts.json" <<'PY'
+          import json,sys
+          a=json.load(open(sys.argv[1]))
+          items=a["artifacts"]
+          rev=a["inputRevision"]
+          manifest=a["manifest"]
+          assert rev and items and rev==manifest["inputRevision"]
+          assert all(x["inputRevision"]==rev and x["digest"] and x["rule"]["fingerprint"] for x in items)
+          assert sorted((x["kind"],x["digest"]) for x in items)==sorted((x["kind"],x["digest"]) for x in manifest["entries"])
+          surface=next(x for x in items if x["kind"]=="operation-surface")
+          content=json.loads(surface["content"])
+          assert set(x["id"] for x in content["operations"])=={"org_view.list.organization.membership","org_view.read.organization.membership"}
+          assert isinstance(a["findings"],list)
+          print("native artifacts / manifest / surface cross-read: PASS", "findings=",len(a["findings"]), "complete=",manifest["complete"])
+          # Findings/complete are reported rather than silently converted into meaning acceptance.
+          PY
+      - name: Verify workspace remains unmodified
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"

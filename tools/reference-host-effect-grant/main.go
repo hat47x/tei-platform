@@ -4,12 +4,14 @@
 // and nothing it signs is counted for G2.
 //
 //	keygen -private-key FILE -issuer ID -key-id ID -application APP [-not-before T] [-not-after T] [-revoked]
+//	       [-allow-capability CAP]... [-allow-resource PATTERN]...
 //	       writes a private key and prints a trust entry (schema tei.host-effect-grant-provisional-trust/v0)
 //	sign   -private-key FILE -issuer ID -key-id ID -application APP -capability CAP -subject ID -resource RES
 //	       -epoch-source S -subject-link-epoch N -membership-epoch N -policy-epoch N
 //	       -not-before T -not-after T -out FILE
 //	show   -grant FILE -trust FILE
 //	       verifies the Grant against the trust file now and prints a summary (never the signature)
+//	       and the key's trust scope
 //
 // T is RFC3339 UTC ending in Z. A Grant lasts at most 24 hours and carries
 // "provisional": true. The private key never belongs in the repository (keygen
@@ -69,7 +71,11 @@ func run(args []string, stdout io.Writer, now func() time.Time) error {
 		notBefore   = flags.String("not-before", "", "RFC3339 UTC, ending in Z (inclusive)")
 		notAfter    = flags.String("not-after", "", "RFC3339 UTC, ending in Z (exclusive)")
 		revoked     = flags.Bool("revoked", false, "keygen: mark the trust entry revoked")
+		allowCaps   listFlag
+		allowRes    listFlag
 	)
+	flags.Var(&allowCaps, "allow-capability", "keygen: limit the key to this Capability (repeatable)")
+	flags.Var(&allowRes, "allow-resource", "keygen: limit the key to this Resource or prefix pattern such as order/* (repeatable)")
 	if err := flags.Parse(args[1:]); err != nil {
 		return err
 	}
@@ -87,7 +93,7 @@ func run(args []string, stdout io.Writer, now func() time.Time) error {
 		if set["not-after"] {
 			na = notAfter
 		}
-		return keygen(*privateKey, *issuer, *keyID, *application, nb, na, *revoked, stdout)
+		return keygen(*privateKey, *issuer, *keyID, *application, nb, na, *revoked, allowCaps, allowRes, stdout)
 	case "sign":
 		return sign(provisionaleffectgrant.Grant{
 			Issuer: *issuer, KeyID: *keyID, ApplicationID: *application, Capability: *capability,
@@ -102,7 +108,13 @@ func run(args []string, stdout io.Writer, now func() time.Time) error {
 	}
 }
 
-func keygen(path, issuer, keyID, application string, notBefore, notAfter *string, revoked bool, stdout io.Writer) error {
+// listFlag is a repeatable string flag.
+type listFlag []string
+
+func (l *listFlag) String() string     { return strings.Join(*l, ",") }
+func (l *listFlag) Set(v string) error { *l = append(*l, v); return nil }
+
+func keygen(path, issuer, keyID, application string, notBefore, notAfter *string, revoked bool, allowCaps, allowRes []string, stdout io.Writer) error {
 	if path == "" || strings.TrimSpace(issuer) == "" || strings.TrimSpace(keyID) == "" || strings.TrimSpace(application) == "" {
 		return errors.New("keygen requires -private-key, -issuer, -key-id and -application")
 	}
@@ -110,9 +122,12 @@ func keygen(path, issuer, keyID, application string, notBefore, notAfter *string
 	if err != nil {
 		return err
 	}
-	entry := hoststore.TrustPolicy{Schema: provisionaleffectgrant.TrustSchema, Issuers: []hoststore.TrustedIssuer{{
-		Issuer: issuer, KeyID: keyID, PublicKey: base64.StdEncoding.EncodeToString(public), Applications: []string{application},
-		NotBefore: notBefore, NotAfter: notAfter, Revoked: revoked,
+	entry := provisionaleffectgrant.TrustFile{Schema: provisionaleffectgrant.TrustSchema, Issuers: []provisionaleffectgrant.ScopedIssuer{{
+		TrustedIssuer: hoststore.TrustedIssuer{
+			Issuer: issuer, KeyID: keyID, PublicKey: base64.StdEncoding.EncodeToString(public), Applications: []string{application},
+			NotBefore: notBefore, NotAfter: notAfter, Revoked: revoked,
+		},
+		Capabilities: allowCaps, ResourcePatterns: allowRes,
 	}}}
 	// Validate with the Host's own parser BEFORE creating the private key, so
 	// bad flags leave no key file behind and the CLI cannot disagree with it.
@@ -120,8 +135,8 @@ func keygen(path, issuer, keyID, application string, notBefore, notAfter *string
 	if err != nil {
 		return err
 	}
-	if _, err := hoststore.ParseTrustPolicyWithSchema(encoded, provisionaleffectgrant.TrustSchema); err != nil {
-		return errors.New("keygen: invalid -issuer/-key-id/-application/-not-before/-not-after (RFC3339 UTC ending in Z, not-after after not-before)")
+	if _, err := provisionaleffectgrant.ParseTrust(encoded); err != nil {
+		return errors.New("keygen: invalid -issuer/-key-id/-application/-not-before/-not-after/-allow-capability/-allow-resource (RFC3339 UTC ending in Z, not-after after not-before; a resource pattern is exact or ends in \"/*\"; a lone \"*\" is refused, omit the flag to allow everything)")
 	}
 	if insideRepository(path) {
 		return errors.New("PRIVATE_KEY_IN_REPOSITORY: choose a path outside every Git working tree")
@@ -224,7 +239,27 @@ func show(grantPath, trustPath string, stdout io.Writer, now func() time.Time) e
 	}
 	fmt.Fprintf(stdout, "PROVISIONAL (D8, development only; not G2 evidence) application=%s capability=%s subject=%s resource=%s notAfter=%s ref=%s\n",
 		g.ApplicationID, g.Capability, g.SubjectID, g.Resource, v.NotAfter.Format(time.RFC3339), v.GrantRef)
+	// Verification above already loaded this trust file successfully.
+	trustFile, err := provisionaleffectgrant.LoadTrust(trustPath)
+	if err != nil {
+		return err
+	}
+	scope, _ := trustFile.ScopeFor(g.Issuer, g.KeyID)
+	fmt.Fprintf(stdout, "trust scope: %s\n", describeScope(scope))
 	return nil
+}
+
+func describeScope(s provisionaleffectgrant.Scope) string {
+	if !s.Restricted() {
+		return "UNRESTRICTED (any Capability and Resource of the trusted Applications; set -allow-capability / -allow-resource)"
+	}
+	part := func(name string, values []string) string {
+		if values == nil {
+			return name + "=any"
+		}
+		return name + "=" + strings.Join(values, "|")
+	}
+	return part("capabilities", s.Capabilities) + " " + part("resourcePatterns", s.ResourcePatterns)
 }
 
 // insideRepository reports whether path (resolved as far as it exists) lies in

@@ -1,0 +1,8 @@
+{
+  "schemaVersion": "tei.cli.knowledge-qualify/v0",
+  "ok": false,
+  "error": {
+    "code": "KNOWLEDGE_BUILD_FAILED",
+    "message": "json: unknown field \"requirements\""
+  }
+}

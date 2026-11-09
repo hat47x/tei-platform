@@ -5,6 +5,7 @@ import copy
 import importlib.util
 import json
 from pathlib import Path
+import subprocess
 import unittest
 from unittest.mock import patch
 
@@ -132,6 +133,24 @@ class TestReadOnlyRulesetDiscovery(unittest.TestCase):
         with patch.object(VERIFY, "gh_json", side_effect=RuntimeError("denied")):
             with self.assertRaises(RuntimeError):
                 VERIFY.verify_live()
+
+    def test_non_utf8_default_locale_still_reads_japanese_rule_name(self):
+        """Windows の既定ロケール（cp932）でも UTF-8 応答を読めることを確認する。"""
+        payload = json.dumps(POLICY, ensure_ascii=False)
+        completed = subprocess.CompletedProcess(
+            args=["gh", "api", "x"], returncode=0, stdout=payload)
+        with patch.object(VERIFY.subprocess, "run", return_value=completed) as run:
+            read = VERIFY.gh_json("x")
+        self.assertEqual(read.get("name"), POLICY["name"])
+        encoding = run.call_args.kwargs.get("encoding")
+        self.assertEqual(encoding, "utf-8")
+
+    def test_missing_stdout_is_not_treated_as_json(self):
+        completed = subprocess.CompletedProcess(
+            args=["gh", "api", "x"], returncode=0, stdout=None)
+        with patch.object(VERIFY.subprocess, "run", return_value=completed):
+            with self.assertRaises(RuntimeError):
+                VERIFY.gh_json("x")
 
 
 if __name__ == "__main__":

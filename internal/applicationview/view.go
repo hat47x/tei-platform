@@ -157,9 +157,6 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 	if !ok {
 		return View{}, fmt.Errorf("application pattern %sが見つかりません", patternID)
 	}
-	if pattern.Interaction == nil {
-		return View{}, fmt.Errorf("application pattern %sはinteractionを持ちません", patternID)
-	}
 	if pattern.Data == "" {
 		return View{}, fmt.Errorf("application pattern %sはdataを持ちません", patternID)
 	}
@@ -181,6 +178,10 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 	}
 	view.SemanticFingerprint = fingerprint
 	view.PrintTemplate = pattern.PrintTemplate
+	interaction := application.Interaction{}
+	if pattern.Interaction != nil {
+		interaction = *pattern.Interaction
+	}
 	for _, pkg := range app.Packages {
 		for _, member := range pkg.Members {
 			if member.Pattern != pattern.ID {
@@ -190,7 +191,7 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 			break
 		}
 	}
-	for _, item := range pattern.Interaction.Items {
+	for _, item := range interaction.Items {
 		attribute, ok := attributes[item.Attribute]
 		if !ok {
 			return View{}, fmt.Errorf("interaction item %sは%sのattributeではありません", item.Attribute, pattern.Data)
@@ -234,7 +235,7 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 		}
 		view.Items = append(view.Items, resolved)
 	}
-	for _, navigation := range pattern.Interaction.Navigations {
+	for _, navigation := range interaction.Navigations {
 		source, ok := patterns[navigation.From]
 		if !ok {
 			return View{}, fmt.Errorf("navigation source %sが見つかりません", navigation.From)
@@ -269,7 +270,7 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 		view.Items = ordered
 	}
 	usedAttributes := map[core.CanonicalID]bool{}
-	for _, item := range pattern.Interaction.Items {
+	for _, item := range interaction.Items {
 		usedAttributes[item.Attribute] = true
 	}
 	for _, attribute := range dataAttributeOrder[pattern.Data] {
@@ -277,7 +278,7 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 			view.Unused = append(view.Unused, itemFor(attribute, typeValues))
 		}
 	}
-	for _, hook := range pattern.Interaction.Hooks {
+	for _, hook := range interaction.Hooks {
 		view.Hooks = append(view.Hooks, HookRef{
 			Phase:    hook.Phase,
 			Reads:    hook.Reads,
@@ -286,7 +287,7 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 			Failure:  hook.Failure,
 		})
 	}
-	for _, command := range pattern.Interaction.Commands {
+	for _, command := range interaction.Commands {
 		capability, ok := capabilities[command.Capability]
 		if !ok {
 			return View{}, fmt.Errorf("interaction command %sはcapabilityではありません", command.Capability)

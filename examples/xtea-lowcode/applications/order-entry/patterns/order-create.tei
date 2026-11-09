@@ -1,0 +1,13 @@
+pattern order_entry.order_create record {
+    data sales.order
+    interaction {
+        item sales.order.order_id
+        item sales.order.status
+        item sales.order.order_date
+        command sales.create_order {
+            input order_id sales.order.order_id
+            input status sales.order.status
+            input order_date sales.order.order_date
+        }
+    }
+}

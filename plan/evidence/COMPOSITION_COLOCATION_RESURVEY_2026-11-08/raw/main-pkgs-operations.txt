@@ -1,0 +1,6 @@
+tei/cmd/tei
+tei/tools/reference-cli-trace-benchmark
+tei/tools/reference-data-first-persistence
+tei/tools/reference-mcp-readonly-adapter
+tei/tools/reference-operation-drift-check/cmd/tei-operation-drift-check
+tei/tools/reference-operation-pattern-crosswalk/cmd/tei-operation-pattern-crosswalk

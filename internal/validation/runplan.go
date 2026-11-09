@@ -17,11 +17,13 @@ var runPlanAutonomy = map[string]bool{"attended": true, "unattended": true}
 func validateSemanticRunPlans(w ir.World) []Diagnostic {
 	capabilities := map[core.CanonicalID]bool{}
 	attributes := map[core.CanonicalID]bool{}
+	data := map[core.CanonicalID]bool{}
 	for _, namespace := range w.Semantics {
 		for _, capability := range namespace.Capabilities {
 			capabilities[capability.ID] = true
 		}
 		for _, element := range namespace.Data {
+			data[element.ID] = true
 			for _, attribute := range element.Attributes {
 				attributes[attribute.ID] = true
 			}
@@ -39,6 +41,11 @@ func validateSemanticRunPlans(w ir.World) []Diagnostic {
 			for _, operation := range plan.Operations {
 				if !capabilities[operation] {
 					out = append(out, errFor(subj, "RUN_PLAN_UNKNOWN_OPERATION", "run plan %s names unknown capability %s", plan.ID, operation))
+				}
+			}
+			for _, output := range plan.Outputs {
+				if !data[output] {
+					out = append(out, errFor(subj, "RUN_PLAN_UNKNOWN_OUTPUT", "run plan %s declares unknown output %s", plan.ID, output))
 				}
 			}
 			if len(plan.Key) == 0 {

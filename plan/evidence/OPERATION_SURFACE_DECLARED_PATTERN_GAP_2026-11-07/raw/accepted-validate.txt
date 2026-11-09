@@ -1,0 +1,4 @@
+warning	APPLICATION_RELEASE_CONTRACT_NOT_CURRENT	application release order_entry@3.7.0 requires historical contract sales_core.order_legacy which has no current definition
+warning	DATABASE_RELEASE_CONTRACT_NOT_CURRENT	database sales_core release 4.0.0 provides historical contract sales_core.order_legacy which has no current definition
+warning	DATABASE_RELEASE_CONTRACT_NOT_CURRENT	database sales_core release 4.1.0 provides historical contract sales_core.order_legacy which has no current definition
+ok

@@ -9,6 +9,7 @@ func TestReferenceExecutorSatisfiesInvokerContract(t *testing.T) {
 	world := commandWorld()
 	unitOfWork := &MemoryUnitOfWork{}
 	invoker := Invoker{
+		Authorizer: ReferenceAuthorizer{},
 		World:      world,
 		Executor:   ReferenceExecutor{World: world},
 		UnitOfWork: unitOfWork,
@@ -33,6 +34,7 @@ func TestReferenceExecutorContractRollsBackOnExecutionFailure(t *testing.T) {
 	world := commandWorld()
 	unitOfWork := &MemoryUnitOfWork{}
 	invoker := Invoker{
+		Authorizer: ReferenceAuthorizer{},
 		World:      world,
 		Executor:   fakeExecutor{err: context.Canceled},
 		UnitOfWork: unitOfWork,
@@ -49,6 +51,7 @@ func TestReferenceExecutorContractRollsBackOnExecutionFailure(t *testing.T) {
 func TestReferenceUnitOfWorkReportsBeginFailure(t *testing.T) {
 	unitOfWork := &MemoryUnitOfWork{FailBegin: true}
 	invoker := Invoker{
+		Authorizer: ReferenceAuthorizer{},
 		World:      commandWorld(),
 		Executor:   ReferenceExecutor{World: commandWorld()},
 		UnitOfWork: unitOfWork,
