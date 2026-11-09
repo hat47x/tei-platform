@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -88,14 +89,17 @@ func TestProbeBudgetExhaustionIsReportedAsATimeout(t *testing.T) {
 	if !strings.Contains(evidence.Reason, "exceeded its") || !strings.Contains(evidence.Reason, "budget") {
 		t.Fatalf("the budget was not named as the cause: %q", evidence.Reason)
 	}
-	if !strings.Contains(evidence.Reason, "2 of 5 responses") {
+	// The progress count is what separates "cut short" from "answered wrongly";
+	// the exact figure depends on how much the stub managed to flush before the
+	// deadline, so assert the shape rather than a number.
+	if !regexp.MustCompile(`after \d+ of 5 responses`).MatchString(evidence.Reason) {
 		t.Fatalf("the reason does not say how far the stream got: %q", evidence.Reason)
 	}
 	if !strings.Contains(evidence.Reason, "Traceback") {
 		t.Fatalf("the child's stderr is missing from the reason: %q", evidence.Reason)
 	}
-	if evidence.Responses != 2 {
-		t.Fatalf("responses=%d, want 2", evidence.Responses)
+	if evidence.Responses >= len(probeFixture(t, 5).Cases) {
+		t.Fatalf("the stream was not cut short: responses=%d", evidence.Responses)
 	}
 	// The cases that were never answered must not look like wrong answers.
 	for _, processCase := range evidence.Cases {

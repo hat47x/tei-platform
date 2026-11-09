@@ -402,27 +402,44 @@ func callTool(params json.RawMessage, workspace string) (toolResult, error) {
 	return toolResult{Content: []textContent{{Type: "text", Text: string(raw)}}, IsError: isError}, nil
 }
 
-// toolArguments lists the arguments each tool accepts. A name that is not in
-// this list is rejected instead of ignored: the CLI refuses a flag it does not
-// define with INVALID_ARGUMENT, so the adapter must not accept a call the CLI
-// would reject (#3575). Keeping the list next to dispatch lets the schema and
-// the check drift only if both are edited apart.
-var toolArguments = map[string][]string{
-	"tei_model_catalog": {"namespace"},
-	"tei_inspect":       {"subjectKind", "subjectId"},
-	"tei_trace": {"scope", "subjectKind", "subjectId", "direction", "mode",
-		"offset", "limit", "expectedFingerprint"},
-	"tei_validate": {},
+// declaredArguments returns the argument names a tool declares in its
+// inputSchema.
+//
+// The schema is the contract a client reads, so it is also the only list the
+// adapter may accept. This used to be a second hand-written table; when it
+// drifted permissively (an argument the schema did not declare), no test
+// noticed and only a separate per-tool check happened to refuse the call
+// (#3823). Deriving the list removes the possibility instead of testing for it.
+func declaredArguments(tool tool) []string {
+	properties, ok := tool.InputSchema["properties"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	names := make([]string, 0, len(properties))
+	for name := range properties {
+		names = append(names, name)
+	}
+	// Stable order so an error message lists the same arguments every run.
+	sort.Strings(names)
+	return names
 }
 
-// checkArguments rejects an argument the tool does not declare. It runs before
-// any operation call, so an unknown name cannot be silently dropped on the way
-// to the shared operations.
+// toolByName finds an advertised tool.
+func toolByName(name string) (tool, bool) {
+	for _, candidate := range toolList() {
+		if candidate.Name == name {
+			return candidate, true
+		}
+	}
+	return tool{}, false
+}
+
 func checkArguments(name string, arguments map[string]json.RawMessage) error {
-	allowed, ok := toolArguments[name]
+	declared, ok := toolByName(name)
 	if !ok {
 		return fmt.Errorf("unknown tool %q", name)
 	}
+	allowed := declaredArguments(declared)
 	for key := range arguments {
 		found := false
 		for _, permit := range allowed {

@@ -364,13 +364,13 @@ func runLongRunningProbe(ctx context.Context, opts RunOptions, fixture generator
 		// The stream was cut short: this is the failure #3801 reported. Naming
 		// the budget stops the missing cases from reading as wrong answers.
 		evidence.Reason = fmt.Sprintf("probe exceeded its %s budget after %d of %d responses; %s",
-			longRunningProbeBudget, evidence.Responses, evidence.Requests, stderrTail(stderr.Bytes()))
+			longRunningProbeBudget, evidence.Responses, evidence.Requests, stderrTail(stderr.String(), 512))
 	} else if deadlineErr := runCtx.Err(); errors.Is(deadlineErr, context.DeadlineExceeded) {
 		// Every response arrived, but the process outlived the budget instead of
 		// exiting. That is a different finding: the protocol completed and the
 		// candidate did not shut down, so the fix is in the candidate's exit.
 		evidence.Reason = fmt.Sprintf("probe read all %d responses but the candidate did not exit within the %s budget; %s",
-			evidence.Responses, longRunningProbeBudget, stderrTail(stderr.Bytes()))
+			evidence.Responses, longRunningProbeBudget, stderrTail(stderr.String(), 512))
 	} else if waitErr != nil && evidence.Reason == "" {
 		evidence.Reason = "candidate wait failed: " + waitErr.Error()
 	}
@@ -386,23 +386,22 @@ func runLongRunningProbe(ctx context.Context, opts RunOptions, fixture generator
 	if evidence.Responses != evidence.Requests && evidence.Reason == "" {
 		evidence.Reason = fmt.Sprintf("candidate returned %d of %d responses", evidence.Responses, evidence.Requests)
 	}
+	// A case that answers with an empty result is usually a crash in the
+	// candidate program, and its own message is the only clue: keep the last
+	// part of stderr next to the reason (#3801).
+	if !evidence.Passed && evidence.Reason != "" && stderr.Len() > 0 {
+		evidence.Reason += "; stderr: " + stderrTail(stderr.String(), 2000)
+	}
 	return evidence
 }
 
-// stderrTail returns the last part of the child's stderr for a diagnostic
-// message, on one line and bounded so a flood cannot bury the reason. A run
-// that produced no stderr says so rather than showing nothing.
-func stderrTail(raw []byte) string {
-	const limit = 512
-	text := strings.TrimSpace(string(raw))
-	if text == "" {
-		return "the candidate wrote no stderr"
+// stderrTail returns the end of s, which is where an interpreter puts the
+// traceback that explains a crash.
+func stderrTail(s string, limit int) string {
+	if len(s) <= limit {
+		return strings.TrimSpace(s)
 	}
-	text = strings.Join(strings.Fields(text), " ")
-	if len(text) > limit {
-		text = "..." + text[len(text)-limit:]
-	}
-	return "stderr: " + text
+	return strings.TrimSpace(s[len(s)-limit:])
 }
 
 func findJavaForProbe() (javacPath, javaPath, version string, available bool) {

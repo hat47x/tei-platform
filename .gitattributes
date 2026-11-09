@@ -1,3 +1,12 @@
+# Checkout line endings are part of what this repository measures: source trees,
+# contract fixtures and evidence files are hashed as raw bytes. The Windows CI
+# runner sets core.autocrlf=true, so text files arrived with CRLF there and a digest
+# comparison saw different bytes than on Linux (#3832 recorded crlf_pairs=25 for
+# contract.json against 0 locally). Every text file is therefore checked out with LF
+# everywhere; the paths below that are hashed as captured bytes keep -text so they
+# stay exactly as committed.
+* text=auto eol=lf
+
 # Archived witnesses are hashed as raw bytes; checkout must not rewrite them.
 /plan/evidence/TEI_E1_SYNTHETIC_MANIFEST_20261012_38267656696.json -text
 /plan/evidence/tei-e1-synthetic-38267656696/*.json -text
@@ -188,3 +197,9 @@
 
 # MCP path observations are hashed as raw bytes.
 /plan/evidence/DSH_MCP_PATH_2026-11-09/** -text
+
+# Binding identity layers survey output is hashed as raw bytes by its README.
+/plan/evidence/BINDING_IDENTITY_LAYERS_2026-11-09/** -text
+
+# Digest change reuse output is hashed as raw bytes by its README.
+/plan/evidence/DIGEST_CHANGE_REUSE_REFERENCE_2026-11-09/** -text
