@@ -61,6 +61,12 @@ class TestExternalProjection(unittest.TestCase):
         (self.root/'analysis.json').write_text(json.dumps(obj))
         (self.root/'exit-code.txt').write_text(str(code)+'\n')
 
+    def test_cli_string_report_path_is_supported(self):
+        self.snapshots()
+        result = projector.project(str(self.root))
+        self.assertEqual(result['admission'], 'external-candidates-only')
+        self.assertEqual(result['sourceManifestStatus'], 'report-pre-post-byte-match')
+
     def test_projection_is_not_canonical(self):
         x = projector.project(self.root)
         self.assertEqual(x['admission'],'external-candidates-only')
