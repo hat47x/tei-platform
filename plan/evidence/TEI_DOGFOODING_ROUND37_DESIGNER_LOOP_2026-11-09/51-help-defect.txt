@@ -1,0 +1,17 @@
+-h said: knowledge qualification requirements JSON
+so an inline JSON document looked correct:
+
+  {"code":"KNOWLEDGE_BUILD_FAILED",
+   "message":"open {\"qualifications\": [...]}: no such file or directory"}
+
+The flag takes a FILE PATH. The schema (expectedKind / application /
+requiredDependencies) is in internal/knowledgecontext/qualification.go and is
+advertised by neither -h nor `commands` (argumentValues/argumentType/
+argumentDefaults are all empty for this command).
+
+The error code is KNOWLEDGE_BUILD_FAILED, not INVALID_ARGUMENT, so a wrong
+argument type reads as "the model is broken".
+
+Fixed line: "path to a file holding the knowledge qualification requirements JSON"
+One definition (cmd/tei/main.go:180) serves both knowledge-qualify and
+knowledge-review-handoff; reverting it fails both subtests.

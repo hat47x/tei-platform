@@ -1,0 +1,1 @@
+{"schemaVersion":"tei.cli.trace/v0","ok":false,"error":{"code":"SUBJECT_AMBIGUOUS","message":"canonical subject semantic-capability:security.authenticate is ambiguous (2 declarations)"}}

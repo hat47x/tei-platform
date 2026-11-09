@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "tei.cli.knowledge-qualify/v0",
+  "ok": true,
+  "mode": "qualification",
+  "result": {
+    "candidate": {
+      "kind": "semantic-data",
+      "id": "security.authenticated_subject"
+    },
+    "status": "applicable",
+    "requirements": {
+      "expectedKind": "semantic-data"
+    },
+    "evidence": [
+      {
+        "subjectKind": "semantic-data",
+        "subject": "security.authenticated_subject",
+        "source": "semantic/security/authentication.tei",
+        "sourceFingerprint": "sha256:07abff31c8f4a8d621c105b1b4e2787f2fecd134b594f231f2032dd44f3bcc09"
+      }
+    ],
+    "authorityLimits": [
+      "only-explicit-requirements-were-evaluated",
+      "qualification-is-not-acceptance",
+      "qualification-is-not-write-or-runtime-authority"
+    ]
+  }
+}

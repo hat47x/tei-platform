@@ -1066,3 +1066,44 @@ go.mod 826B / cmd/tei-studio/go.mod 498B / THIRD_PARTY_NOTICES.md 18984B
 | 36 | — | **同型をまとめて検出する試験を追加** |
 
 個別修正だけでは、次に別の検査が空回りしたとき同じ手順を繰り返す。今回は検出を1箇所に置いた。**ただし「入力が0件でない」ことしか見ておらず、入力が十分かは保証しない。**
+
+## 41. 第37ラウンド（2026-11-09）: 設計者ループは動くが、補助コマンドの help が誤っていた
+
+目的の中心「生成AIがTEIでTEIを設計できるか」を、**実際に設計を1つ追加する**作業で測った。生出力は[第37ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND37_DESIGNER_LOOP_2026-11-09/README.md)にある。
+
+### 設計者ループは完結した
+
+`reference/workspace` の写しに `security.logout`（`authenticate` の outcome `authenticated_subject` を入力に取る）を追加した。
+
+| 段階 | 応答 |
+| --- | --- |
+| `validate` | `ok:true`（新規診断なし） |
+| `inspect` | `inputs`/`outcomes` を返す |
+| `trace` | `input -> security.authenticated_subject`（resolved）、`outcome -> std.boolean`（resolved） |
+
+**誤りも正しく検出された。** 存在しない型を outcome に書くと `validate` が `UNKNOWN_SEMANTIC_CAPABILITY_OUTCOME_PAYLOAD` を出し、`trace` は行を作らず `projectionUnresolved` に落とす。同じ capability を2ファイルで宣言すると `DUPLICATE_SEMANTIC_ELEMENT` / `trace` は `SUBJECT_AMBIGUOUS`。「壊れたモデルに対して正しく失敗する」。
+
+影響範囲も `trace -direction both` で引ける（`authenticated_subject` の参照元2件）。
+
+### 見つけた欠陥: `-qualification-requirements` の help が「JSON」としか言わない
+
+`knowledge-qualify` を設計検証に使おうとして**3回続けて失敗した**。
+
+```text
+-h:      knowledge qualification requirements JSON
+inline:  KNOWLEDGE_BUILD_FAILED: open {"qualifications": [...]}: no such file or directory
+```
+
+**ファイルパスを取る**のに、そう書いていない。スキーマ（`expectedKind`・`application`・`requiredDependencies`）も `-h` にも `commands` にも出ていない（このコマンドは `argumentValues`/`argumentType`/`argumentDefaults` がすべて空）。さらに引数の型違いに `INVALID_ARGUMENT` ではなく `KNOWLEDGE_BUILD_FAILED` を返すので「モデルが壊れている」と読める。
+
+### 修正
+
+`-h` の文言を `path to a file holding the knowledge qualification requirements JSON` に変えた。**これだけで3回の失敗は0回になる。** `knowledge-qualify` と `knowledge-review-handoff` は同じ定義（`cmd/tei/main.go:180`）を共有するので両方に効く。変異試験で片方を戻すと**両方のサブテストが落ちる**ことを確認した。
+
+試験は `cmd/tei/qualhelp_test.go`。既存の `buildCLIForLifecycle` を再利用した。
+
+スキーマの広告と符号の分離は判断を伴うため、実装せず [#3943](https://github.com/hat47x/tei-platform/issues/3943) に材料として残した。
+
+### 所感
+
+**設計判断そのものより、道具の入口の説明不足が作業を止める。** 1行の help が無いために CLI だけで完結しなかった。
