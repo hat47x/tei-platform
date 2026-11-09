@@ -1,0 +1,139 @@
+{
+  "schemaVersion": "tei.operations.operation-surface/v0",
+  "effect": "read-only",
+  "application": "order_entry",
+  "worldFingerprint": "sha256:c92de09f9595b1f46bfc18e6f99260d8391113b6d2639357d372abf634a1d65a",
+  "modelRevision": "sha256:f414e2b09d2f6ea5d0f5f282aea55612985c0e8155877ad8d310250633cf3fd2",
+  "rule": {
+    "id": "tei.operation-surface/standard-crud",
+    "version": "v1",
+    "fingerprint": "sha256:92adf0fa3b20816fb6068780a6dd8b9b1fb77973e6c2cff823313346b0e59ae0"
+  },
+  "operations": [
+    {
+      "id": "order_entry.list.sales.order",
+      "kind": "list",
+      "target": "sales.order",
+      "origin": "derived",
+      "autonomy": "unattended",
+      "basis": "sha256:3fffc2ae72ebfc6baf68ef167ee58ebdab9e9475d69fb18e8a2e4f20cc1321a9"
+    },
+    {
+      "id": "order_entry.read.sales.order",
+      "kind": "read",
+      "target": "sales.order",
+      "origin": "derived",
+      "inputs": [
+        "sales.order.order_id"
+      ],
+      "autonomy": "unattended",
+      "basis": "sha256:3fffc2ae72ebfc6baf68ef167ee58ebdab9e9475d69fb18e8a2e4f20cc1321a9"
+    },
+    {
+      "id": "order_entry.create.sales.order",
+      "kind": "create",
+      "target": "sales.order",
+      "origin": "derived",
+      "inputs": [
+        "sales.order.order_id",
+        "sales.order.customer_id",
+        "sales.order.ordered_at",
+        "sales.order.status",
+        "sales.order.total",
+        "sales.order.external_id"
+      ],
+      "effects": [
+        "create:sales.order"
+      ],
+      "autonomy": "attended",
+      "basis": "sha256:3fffc2ae72ebfc6baf68ef167ee58ebdab9e9475d69fb18e8a2e4f20cc1321a9"
+    },
+    {
+      "id": "order_entry.update.sales.order",
+      "kind": "update",
+      "target": "sales.order",
+      "origin": "derived",
+      "inputs": [
+        "sales.order.order_id"
+      ],
+      "effects": [
+        "update:sales.order"
+      ],
+      "concurrency": "expected-state",
+      "autonomy": "attended",
+      "basis": "sha256:3fffc2ae72ebfc6baf68ef167ee58ebdab9e9475d69fb18e8a2e4f20cc1321a9"
+    },
+    {
+      "id": "order_entry.list.sales.order_line",
+      "kind": "list",
+      "target": "sales.order_line",
+      "origin": "derived",
+      "autonomy": "unattended",
+      "basis": "sha256:7409d5d372f542a5eaa951fabb9b9dec69fc6c2c45651980f64aba7e81b4f471"
+    },
+    {
+      "id": "order_entry.read.sales.order_line",
+      "kind": "read",
+      "target": "sales.order_line",
+      "origin": "derived",
+      "inputs": [
+        "sales.order_line.order_line_id"
+      ],
+      "autonomy": "unattended",
+      "basis": "sha256:7409d5d372f542a5eaa951fabb9b9dec69fc6c2c45651980f64aba7e81b4f471"
+    },
+    {
+      "id": "order_entry.create.sales.order_line",
+      "kind": "create",
+      "target": "sales.order_line",
+      "origin": "derived",
+      "inputs": [
+        "sales.order_line.order_line_id",
+        "sales.order_line.line_number",
+        "sales.order_line.item_code",
+        "sales.order_line.quantity",
+        "sales.order_line.unit_price"
+      ],
+      "preconditions": [
+        "sales.order.lines.line_number_unique",
+        "sales.order_line.line_number_positive",
+        "sales.order_line.quantity_positive"
+      ],
+      "effects": [
+        "create:sales.order_line"
+      ],
+      "autonomy": "attended",
+      "basis": "sha256:7409d5d372f542a5eaa951fabb9b9dec69fc6c2c45651980f64aba7e81b4f471"
+    },
+    {
+      "id": "order_entry.update.sales.order_line",
+      "kind": "update",
+      "target": "sales.order_line",
+      "origin": "derived",
+      "inputs": [
+        "sales.order_line.order_line_id"
+      ],
+      "effects": [
+        "update:sales.order_line"
+      ],
+      "concurrency": "expected-state",
+      "autonomy": "attended",
+      "basis": "sha256:7409d5d372f542a5eaa951fabb9b9dec69fc6c2c45651980f64aba7e81b4f471"
+    }
+  ],
+  "gaps": [],
+  "conflicts": [],
+  "summary": {
+    "operations": 8,
+    "derived": 8,
+    "declared": 0,
+    "unattended": 4,
+    "gaps": 0
+  },
+  "authorityLimits": [
+    "operation-surface-is-a-derived-read-only-projection",
+    "operation-surface-is-not-execution-authority",
+    "derived-operations-do-not-create-canonical-elements",
+    "autonomy-class-does-not-grant-runtime-authority"
+  ]
+}

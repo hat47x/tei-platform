@@ -58,14 +58,12 @@ func TestReferenceCandidateViewBurdenComparison(t *testing.T) {
 		Snapshot string `json:"snapshot"`
 		Version  string `json:"version"`
 		Contract string `json:"contract"`
-		Reason   string `json:"reason"`
 	}
 	type appCandidate struct {
 		Snapshot    string `json:"snapshot"`
 		Application string `json:"application"`
 		Version     string `json:"version"`
 		Contract    string `json:"contract"`
-		Reason      string `json:"reason"`
 	}
 	type gateCandidate struct {
 		Snapshot string `json:"snapshot"`
@@ -137,11 +135,23 @@ func TestReferenceCandidateViewBurdenComparison(t *testing.T) {
 		t.Fatalf("baseline 比較の終了コード=%d", exit)
 	}
 	t.Logf("baseline: contract=%d gate=%d appRelease=%d dbRelease=%d", baseline.contract, baseline.gate, baseline.appRelease, baseline.dbRelease)
-	if baseline.dbRelease != 0 || baseline.gate != 0 {
+	if baseline.contract != 0 || baseline.dbRelease != 0 || baseline.gate != 0 || baseline.appRelease != 0 {
 		t.Fatalf("現行Referenceの新しい候補は0件を期待: %+v", baseline)
 	}
 	if !contains(baselineReport.AuthorityLimit, "database-release-contract-candidates-only-major-behind-not-complete") {
 		t.Fatalf("databaseRelease候補のauthorityLimitsがありません: %v", baselineReport.AuthorityLimit)
+	}
+	if !contains(baselineReport.AuthorityLimit, "application-release-candidates-latest-declaration-per-major-line-no-explicit-line-identity") {
+		t.Fatalf("Application Release候補の系統識別子がない境界がauthorityLimitsにありません: %v", baselineReport.AuthorityLimit)
+	}
+	if !contains(baselineReport.AuthorityLimit, "contract-candidates-application-release-latest-declaration-per-major-line-no-explicit-line-identity") {
+		t.Fatalf("contractCandidatesのApplication Release系統境界がauthorityLimitsにありません: %v", baselineReport.AuthorityLimit)
+	}
+	if !contains(baselineReport.AuthorityLimit, "contract-candidates-database-release-latest-provider-per-major-line-no-explicit-line-identity") {
+		t.Fatalf("contractCandidatesのDatabase Release提供系統境界がauthorityLimitsにありません: %v", baselineReport.AuthorityLimit)
+	}
+	if !contains(baselineReport.AuthorityLimit, "database-release-candidates-latest-per-major-line-no-explicit-line-identity") {
+		t.Fatalf("同一major内の系統識別子がない境界がauthorityLimitsにありません: %v", baselineReport.AuthorityLimit)
 	}
 
 	t.Run("unrelated-contract-minor-changes-no-new-candidate", func(t *testing.T) {
@@ -182,7 +192,7 @@ func TestReferenceCandidateViewBurdenComparison(t *testing.T) {
 		t.Logf("contract-minor: contract=%d gate=%d appRelease=%d dbRelease=%d", got.contract, got.gate, got.appRelease, got.dbRelease)
 	})
 
-	t.Run("coordinated-major-update-reports-exactly-two-database-releases", func(t *testing.T) {
+	t.Run("coordinated-major-update-reports-only-latest-release-per-major-line", func(t *testing.T) {
 		before, after := scratchWorkspace(t), scratchWorkspace(t)
 		replaceOnce(after, "databases/sales-core/contracts/order.tei", "contract sales_core.order v4.2", "contract sales_core.order v5.0")
 		replaceOnce(after, "applications/order-entry/application.tei", "contract sales_core.order ^4", "contract sales_core.order ^5")
@@ -193,15 +203,15 @@ func TestReferenceCandidateViewBurdenComparison(t *testing.T) {
 		if exit != 0 {
 			t.Fatalf("比較の終了コード=%d", exit)
 		}
-		if got.dbRelease != baseline.dbRelease+2 || got.appRelease != baseline.appRelease+1 || got.gate != baseline.gate {
+		if got.dbRelease != baseline.dbRelease+1 || got.appRelease != baseline.appRelease+1 || got.gate != baseline.gate {
 			t.Fatalf("期待した増分と違います: got=%+v baseline=%+v", got, baseline)
 		}
-		if want := []string{"4.1.0", "4.2.0"}; !equal(versions(r, "after"), want) || len(versions(r, "before")) != 0 {
+		if want := []string{"4.2.0"}; !equal(versions(r, "after"), want) || len(versions(r, "before")) != 0 {
 			t.Fatalf("behindの版が正しくありません: %+v", r.DBReleases)
 		}
 		found := false
 		for _, c := range r.AppReleases {
-			if c.Snapshot == "after" && c.Application == "order_entry" && c.Version == "3.8.0" && c.Reason == "compatible-major-mismatch" {
+			if c.Snapshot == "after" && c.Application == "order_entry" && c.Version == "3.8.0" && c.Contract == "sales_core.order" {
 				found = true
 			}
 		}
@@ -260,10 +270,10 @@ func TestReferenceCandidateViewBurdenComparison(t *testing.T) {
 		if exit != 1 || errorCount(r) == 0 {
 			t.Fatalf("明示モードでも終了1とエラー診断を維持する必要があります: exit=%d\n%s", exit, out)
 		}
-		if got.dbRelease != baseline.dbRelease+2 || got.appRelease != baseline.appRelease+1 {
+		if got.dbRelease != baseline.dbRelease+1 || got.appRelease != baseline.appRelease+1 {
 			t.Fatalf("明示モードの候補増分が違います: got=%+v baseline=%+v", got, baseline)
 		}
-		if want := []string{"4.1.0", "4.2.0"}; !equal(versions(r, "after"), want) {
+		if want := []string{"4.2.0"}; !equal(versions(r, "after"), want) {
 			t.Fatalf("明示モードのbehind版が正しくありません: %+v", r.DBReleases)
 		}
 		t.Logf("invalid-major(explicit): contract=%d gate=%d appRelease=%d dbRelease=%d", got.contract, got.gate, got.appRelease, got.dbRelease)

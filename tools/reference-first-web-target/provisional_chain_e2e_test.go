@@ -596,6 +596,7 @@ func TestProvisionalChainOneRevisionE2EPacket(t *testing.T) {
 	}
 
 	cleanAfter := gitOutput(t, repoRoot, "status", "--porcelain") == ""
+	fullHealth, healthRaw := e2eFullHealth(t, head, mainSHA)
 
 	// 12. Receipts and the packet. Labels come from what the run produced.
 	locator := map[string]string{
@@ -633,6 +634,9 @@ func TestProvisionalChainOneRevisionE2EPacket(t *testing.T) {
 			"startedAt": started.Format(time.RFC3339), "finishedAt": time.Now().UTC().Format(time.RFC3339)}),
 	}
 	_ = negLog
+	if healthRaw != nil {
+		locator["fullHealth"] = writer.write("qualification-full-health-ci-run.json", healthRaw)
+	}
 	packet := map[string]any{
 		"schema": "tei.critical-path-evidence/v0",
 		"claim":  "E2",
@@ -641,8 +645,8 @@ func TestProvisionalChainOneRevisionE2EPacket(t *testing.T) {
 			"positiveTest": "TestProvisionalChainOneRevisionE2EPacket", "negativeTest": "TestProvisionalChainOneRevisionE2EPacket (R0/unit-price-zero/S05/N11/S02 controls)",
 			"evidenceClass": "actual-observed",
 		},
-		"qualification": map[string]any{"head": head, "main": mainSHA, "fullHealth": "NOT_RUN",
-			"cleanBefore": cleanBefore, "cleanAfter": cleanAfter, "receipt": ""},
+		"qualification": map[string]any{"head": head, "main": mainSHA, "fullHealth": fullHealth,
+			"cleanBefore": cleanBefore, "cleanAfter": cleanAfter, "receipt": locator["fullHealth"]},
 		"acceptance": map[string]any{
 			"r0": receipts.R0, "r1": receipts.R1, "candidateFingerprint": receipts.CandidateFingerprint,
 			"reviewFingerprint": receipts.ReviewFingerprint, "reviewCandidateFingerprint": receipts.ReviewCandidateFingerprint,
@@ -662,7 +666,9 @@ func TestProvisionalChainOneRevisionE2EPacket(t *testing.T) {
 			"schemaCompatibility": "compatible", "schemaEvidence": locator["schema"],
 			"hostAuthorityEvidence":   grantRefFromEvidence(locator["evidence"]),
 			"hostAuthorityProvenance": string(ev.Provenance),
-			"commandReceipt":          locator["command"], "independentReadReceipt": locator["read"], "recordId": "public.orders:order_id=1001",
+			// Read from the Evidence the Web process's Runner produced, not a constant.
+			"guarantee":      map[string]any{"level": string(ev.Guarantee), "reason": ev.GuaranteeReason},
+			"commandReceipt": locator["command"], "independentReadReceipt": locator["read"], "recordId": "public.orders:order_id=1001",
 			"schemaFailureControl": locator["s02"], "hostFailureControl": locator["s05"],
 		},
 	}
@@ -710,7 +716,15 @@ func TestProvisionalChainOneRevisionE2EPacket(t *testing.T) {
 	for _, d := range report.Diagnostics {
 		has[d] = true
 	}
-	for _, want := range []string{"PROVISIONAL_GRANT_NOT_G2_EVIDENCE", "PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE"} {
+	// The Provider's provisional D10 declaration is diagnosed too; its level is
+	// atomic-with-commit, so it is not reported as non-atomic.
+	if has["E2_ACCEPTANCE_KIND_REQUIRED"] {
+		t.Errorf("the packet names the Acceptance kind read from the Store: %v", report.Diagnostics)
+	}
+	if has["E2_PROVIDER_GUARANTEE_NOT_ATOMIC"] {
+		t.Errorf("the Runner Evidence declared atomic-with-commit: %v", report.Diagnostics)
+	}
+	for _, want := range []string{"PROVISIONAL_GRANT_NOT_G2_EVIDENCE", "PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE", "PROVISIONAL_GUARANTEE_NOT_G2_EVIDENCE"} {
 		if !has[want] {
 			t.Errorf("expected diagnostic %s is missing: %v", want, report.Diagnostics)
 		}

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -779,6 +780,9 @@ func TestUnreadableDecisionRecordFailsClosed(t *testing.T) {
 // 原子的ではなかった。`reference/world.json`のようなgoldenを指された状態で書き込みが失敗すると、
 // 既にあるfileを壊したままsourceだけ巻き戻る可能性があった。
 func TestAcceptDoesNotDamageAnExistingDerivedArtifactWhenItCannotBeWritten(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the read-only simulation does not deny writes on Windows")
+	}
 	dir := scratchWorkspaceBeforeSecondApplication(t)
 	before := revisionOfDir(t, dir)
 

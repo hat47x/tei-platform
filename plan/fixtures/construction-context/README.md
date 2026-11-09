@@ -17,13 +17,13 @@
 | W10 J-02/J-06 | Skillが見つけたバイナリと実行したバイナリの違い、Manifestとファイル版混合 | #2605/#2604 |
 | W2 DP-M4 | 公開行が同じ二世界で、非公開行だけ変えた場合に可視範囲の応答が同じ | #1178/#2515 |
 
-コードは小さな**判別反例**を再現するだけです。必要なReadの観測資格は既定でfalseとし、未確認Read・重複key・欠けた比較条件を成功扱いしません。`Observation.snapshot_guaranteed`、`verified_read`、`subset_verified`、`disclose_total`は**Fixtureの仮定**であり、Provider/Hostの実保証・公開Policy・Oracle結果を取得した事実ではありません。`comparable`が示す`agree/disagreement/not_comparable/unverified`も合成入力の観測列であり、現行製品の状態名やBusiness Decisionではありません。
+コードは小さな**判別反例**を再現するだけです。必要なReadの観測資格は既定でfalseとし、未確認Read・重複key・欠けた比較条件を成功扱いしません。`Observation.snapshot_guaranteed`、`verified_read`、`subset_verified`、`disclose_total`は**Fixtureの仮定**であり、Provider/Hostの実保証・公開Policy・検証基準結果を取得した事実ではありません。`comparable`が示す`agree/disagreement/not_comparable/unverified`も合成入力の観測列であり、現行製品の状態名やBusiness Decisionではありません。
 
 ## 検証の境界
 
 - 各テストの入力と期待結果は合成Fixtureに固定。実在しないCLIコマンドや独自の共通Host、Claim Registry、Authority、Snapshot APIを導入しません。
 - テスト成功は**列挙した公開合成対でのみ**成立します。全入力の意味保存、十分性、情報非干渉、アクセス拒否、更新/Commitの実Effect、同世代Artifact公開、全Agentのモデル可視入力を証明しません。
-- 実際の受入には、既存 `tei commands → model catalog → inspect → trace` の実行物・Workspace・Source指紋、実Provider/Query/Result Scope、実Consumerの受取byte、独立Oracle、Ownerの意味判断と現在権限をそれぞれ証拠として取得する必要があります。
+- 実際の受入には、既存 `tei commands → model catalog → inspect → trace` の実行物・Workspace・Source指紋、実Provider/Query/Result Scope、実Consumerの受取byte、独立検証基準、Ownerの意味判断と現在権限をそれぞれ証拠として取得する必要があります。
 - **次の最小試験**：W0a/W0bの同一Subjectについて、実CLIの観測と人間用・AI用の二つの表示素材を作成し、本FixtureのW8〜W10反例に接続する。SHO保存と実外部AIへの送出は各担当の実験で確認します。
 
 ## 実行記録
@@ -63,7 +63,7 @@ python3 -B plan/fixtures/construction-context/verify_real_cli.py \
   --output-dir /tmp/tei-context-views
 ```
 
-`test_consumer_views.py`は、期待通りに2表示を生成するほか、Subject差、Source版の欠損、外部秘密Fieldの混入、相対path逸脱、Source重複・順序、`accepted`や`egress authorized`への誤昇格、Markdown側での値改変・余分な行・列構造混入、型変換、件数矛盾などの**有限な負例**を扱う。比較ロジックはSourceの真偽を独立再計算するBusiness Oracleではない。
+`test_consumer_views.py`は、期待通りに2表示を生成するほか、Subject差、Source版の欠損、外部秘密Fieldの混入、相対path逸脱、Source重複・順序、`accepted`や`egress authorized`への誤昇格、Markdown側での値改変・余分な行・列構造混入、型変換、件数矛盾などの**有限な負例**を扱う。比較ロジックはSourceの真偽を独立再計算する業務判定基準ではない。
 
 **重要な区別**：上記Markdownは**SHO用の説明素材候補**、JSONは**AI用の構造化素材候補**であり、SHO Composerや外部ハーネスへ実際に渡った証拠ではない。指定した公開用Reference Workspaceだけを検査し、Raw Source本文・非公開列・診断message・Agent内部状態を素材へ入れない。`disclosureStatus=reference-fixture-only-no-policy-grant`を固定し、Host・OS・Policyの外部開示許可を代用しない。
 

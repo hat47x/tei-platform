@@ -96,8 +96,12 @@ func TestGoBuildStaticEntrySelectionMatchesE0Closure(t *testing.T) {
 	// Keep artifacts outside the clean Git source checkout. No size ratio is
 	// asserted: code size depends on Go toolchain, linker, OS, and target.
 	outputRoot := t.TempDir()
-	unifiedBin := filepath.Join(outputRoot, "unified")
-	orderBin := filepath.Join(outputRoot, "order")
+	suffix := ""
+	if runtime.GOOS == "windows" {
+		suffix = ".exe"
+	}
+	unifiedBin := filepath.Join(outputRoot, "unified"+suffix)
+	orderBin := filepath.Join(outputRoot, "order"+suffix)
 	run("go", "build", "-trimpath", "-ldflags=-buildid=", "-o", unifiedBin, "./cmd/unified")
 	run("go", "build", "-trimpath", "-ldflags=-buildid=", "-o", orderBin, "./cmd/order")
 

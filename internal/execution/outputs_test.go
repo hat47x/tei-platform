@@ -3,6 +3,7 @@ package execution_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"tei/internal/core"
@@ -61,5 +62,33 @@ func TestProjectOutputsWithoutAReaderSaysSo(t *testing.T) {
 func TestProjectOutputsWithoutOutputsIsEmpty(t *testing.T) {
 	if results := execution.ProjectOutputs(context.Background(), semantic.RunPlan{}, nil); len(results) != 0 {
 		t.Fatalf("a plan without outputs has nothing to project: %+v", results)
+	}
+}
+func TestRenderOutputsListsEveryOutput(t *testing.T) {
+	plan := outputPlan()
+	report := execution.RenderOutputs(plan, execution.ProjectOutputs(context.Background(), plan, fakeReader{rows: map[string]int{"sales.close_statement": 12, "sales.check_list": 0}}))
+	wants := []string{
+		"## 出力: sales.monthly_close",
+		"| sales.close_statement | 12 | |",
+		"| sales.check_list | 0 | |",
+	}
+	for _, want := range wants {
+		if !strings.Contains(report, want) {
+			t.Fatalf("report lost %q:\n%s", want, report)
+		}
+	}
+}
+
+func TestRenderOutputsShowsAFailedRead(t *testing.T) {
+	report := execution.RenderOutputs(outputPlan(), []execution.OutputResult{{Data: "sales.close_statement", Err: "read failed"}})
+	if !strings.Contains(report, "| sales.close_statement | - | read failed |") {
+		t.Fatalf("a failed read must be visible in the report:\n%s", report)
+	}
+}
+
+func TestRenderOutputsSaysWhenNothingIsDeclared(t *testing.T) {
+	report := execution.RenderOutputs(semantic.RunPlan{ID: "sales.empty"}, nil)
+	if !strings.Contains(report, "出力の宣言はありません") {
+		t.Fatalf("an empty projection must say so:\n%s", report)
 	}
 }

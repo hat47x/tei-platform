@@ -1,0 +1,5 @@
+== counts ==
+non-test call sites of NewSelectedServiceCarrierInvoker: 0
+test call sites of NewSelectedServiceCarrierInvoker: 5
+non-test call sites of NewSelectedCoordinator: 1
+non-test call sites of composition.NewRegistry: 3
