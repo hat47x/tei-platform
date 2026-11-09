@@ -124,8 +124,39 @@ C-1とC-2が**別種のOperationを運ぶ**ことが、[型・Carrierの独立�
 | --- | --- | --- | --- |
 | C-1 `reference-binding-to-execution` | 実`Executor.Execute`への到達 | `v1`：入場前`refusedCount`、入場後`unverifiedCount`（`ranCount`内数）。[PR #3596](https://github.com/hat47x/tei-platform/pull/3596)のCI completed/success | 外部DB/クラウド実配備、完全なReceipt、現在Authority |
 | C-2 `reference-service-carrier-connect` | Host-pinned Service Carrierの`Invoke`への到達 | `v1`：Carrier入場前`refusedCount`、Carrier入場後`unverifiedCount`（`ranCount`内数）。Provider Processの実呼出しは**別証拠** | 実ProviderのProc到達、Artifact/Host Scope現在資格、外部Effect、Client受領 |
+| C-3 `reference-executor-id-resolution` | Binding が選ぶ executor の `CapabilityID` の解決と、plan への受入 | `v0`：`RESOLVED`／`BINDING_MISSING`／`NOT_IN_PLAN`／`ACTION_UNSUPPORTED`／`LOCK_REJECTED` を区別 | 実配備、Artifact信頼、実行時Effect |
+
+**C-3 の `v0` は、C-1/C-2 の `v1` に遅れているのではなく、対象が違います。** C-3 の参照は `routing.RouteCommand`・`pruntime.BuildPlan`・`Capability.SupportsAction` だけを呼び、**Executor も Carrier も一度も実行しません**（`executor.Execute` も `Invoker.Invoke` も呼びません）。したがって「入場前の拒否」と「入場後の不確定」という区別は、C-3 には**適用できません**。C-3 の5つの状態（`RESOLVED`／`BINDING_MISSING`／`NOT_IN_PLAN`／`ACTION_UNSUPPORTED`／`LOCK_REJECTED`）は、すべて**実行前**の判定です。C-3 に `unverifiedCount` を足すべきなのは、将来この参照が実行を伴うようになったときです。
 
 C-2の既存実装では、内部のArtifact Verifierが呼出しを拒否した場合、**Carrierへ入場していてもProcessは呼ばれていない**ことがある。この場合もC-2の`carrierInvoked=true`を「実Provider呼出し済み」としない。内部エラーとGeneration不一致を単なる事前拒否に平坦化しないため、v1で不確定応答の理由コードも事前拒否と区別する。C-2 v0の保存済み実測JSON／SHA-256は変更しない。
 
 **限定Exit達成**：[C-1/C-2専用Go CI #42555954660](https://github.com/hat47x/tei-platform/actions/runs/42555954660)は**completed/success**。C-1/C-2両ReferenceのGoテスト、Go vet、gofmtを同じcheckoutで実行し、C-2実コードBlob `f2952030906b80ba0bf052caeed92082f89c302c`と新V1テストBlob `67b4ed10eaaf0842e2719d5cfda724076fbc5008`を記録した。コード・テストは後続の文書改訂でも同一Blobを保持。これはReference限定であり全体Health、実Service Process資格、製品S2とは別。C-4外部Host委譲の判断、通常CLI/Studioの**S2-reference統合済み／S2-product正式Profile差替え未実証**、外部Source/BOM/Effectの資格はそれぞれ別のOwnerが保持する。Referenceのレポート種別・数値を、製品の業務成功KPIや自動再試行判断へ流用しない。
-| C-3 `reference-executor-id-resolution` | Binding が選ぶ executor の `CapabilityID` の解決と、plan への受入 | `v0`：`RESOLVED`／`BINDING_MISSING`／`NOT_IN_PLAN`／`ACTION_UNSUPPORTED`／`LOCK_REJECTED` を区別 | 実配備、Artifact信頼、実行時Effect |
+
+## 12. 宣言の6様式を「読取・解決・実行」と区別する（2026-11-09）
+
+[実測PR #3757](https://github.com/hat47x/tei-platform/pull/3757)は、Environment内の6種類の宣言について、[raw Source・実Caller調査](../evidence/BINDING_FORMS_CONSUMER_SURVEY_2026-11-09/README.md)を`main 0837a6f4`に固定している。[同HEADの全体健全性CI #42606374129](https://github.com/hat47x/tei-platform/actions/runs/42606374129)は**completed/success**。この調査は実行したプログラムのTraceではなく、Caller・Sourceを列挙した**read-onlyの時点付き観測**である。
+
+| 宣言の様式 | 非試験Sourceで確認できた段階 | 実行・受領として足りない一辺 |
+| --- | --- | --- |
+| `DeploymentExecutors` | `routing.RouteCommand`の宣言解決、C-1の限定Reference `Router.Dispatch`で合成Executor入場 | **製品**Deployment Owner、実Executor/Artifact/Current Grant、外部Commit/Receipt |
+| `ObservationProviders` | `observation.Binding`を通常`cmd/tei -plan`から呼ぶ | 非試験の`observation.Router`生成・`Observe`の実Provider実呼出し・取得時点/Scope |
+| `EvidenceProviders` | `evidence.Binding`を通常`cmd/tei -plan`から呼ぶ | 非試験の`evidence.Router`生成・`Collect`の実Provider実呼出し・開示Scope |
+| `ResourceBindings` | `resource.MatchBindings`による独立解決が存在 | 選択Resourceが実Consumerへ渡された同AttemptのTraceと外部変更/失効 |
+| `Instances` | 解析・索引・検証の実読者がいる | 専用Resolver／実実行を**要するとまだ判断しない** |
+| `Bindings` | 解析・索引・検証の実読者がいる | 同上。Applicationの実体対応を現在の実行採用へ昇格させない |
+
+**重要な訂正**：`ObservationProviders`と`EvidenceProviders`にはすでに`Binding`解決器があり、通常`cmd/tei`の`-plan`から**実呼出し**している。したがって「C-3と同種の解決器を新設する」は重複。反面、調査版では`observation.Router{}`／`evidence.Router{}`の**非試験組立ては0件**で、`Observe`／`Collect`が製品入口から実行できるとの受入証拠はない。`ResourceBindings`は同じ6種類に数えるが、Observation/Evidenceと同一な意味のProvider選択とは限らないので、集計件数だけで判断しない。
+
+### P0の接続判断とテスト入力（この節ではNOT RUN）
+
+**最初に「実行が必要なOperation/Targetか、外部Hostに委ねるか」を決める**。C-4外部委譲も候補に残し、`Observe`／`Collect`を無条件に製品CLIへ追加しない。製品内で動かす必要がある場合のみ、既存`Binding`から既存`Router`へ到達する**一つの実Consumer**で、次の独立Expectedを検証する。
+
+| Gate | 反例と独立Expected | 不足した場合 |
+| --- | --- | --- |
+| CON-12a | `Provider A`がBinding解決済でも、実Observe/Collectに到達していない | `resolved`まで、`invoked=not-observed` |
+| CON-12b | `Provider B`を選択したのに、誤ってAが実Invokeされる | 出力が同一でも**不一致として拒否**。静的S2-referenceの成功では代用しない |
+| CON-12c | 同じProvider IDでもArtifact digest・Host/Grant epoch・Source Scopeが変わる | 旧Bindingの`loaded`・`received`・`disclosable`を再利用しない |
+| CON-12d | `Collect`や`Observe`の一部だけ成功し、呼出し後に失敗／失効 | `partial/unknown`を保持し、HTTP 202やAgent Tool結果から完全取得・業務Effectを推測しない |
+
+C-1/C-2の`ran/refused/unverified`は**別Operationの参照計数**である。ObserverやEvidence Providerへその名称を機械的にコピーするのではなく、実際に選んだOperationの既存Result・Evidence境界を使用する。UI（SUI／Studio）・SHOのGraph/Table/Traceへは`Source/Binding resolved`、`selected`、`actual invoked`、`received`、`current authorization`を別列で渡す。新Registry/第二Owner/追加Trust正本は設けない。
+

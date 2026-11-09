@@ -2552,6 +2552,9 @@ func (p *Parser) readPeriodNames() ([]string, error) {
 	stop := map[string]bool{
 		"data": true, "business-date": true, "states": true,
 		"close-requires": true, "closed-rejects": true, "correction": true,
+		// closes starts the closing-day declaration, so a states list must end
+		// before it; otherwise the day number is read as another state name.
+		"closes": true,
 	}
 	var values []string
 	for {

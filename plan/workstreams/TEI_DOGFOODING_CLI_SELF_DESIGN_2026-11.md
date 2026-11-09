@@ -646,3 +646,94 @@ ADR-0048 §2.4 の「既定値の適用は共通契約で定める」を、CLI �
 - **MCP も同じ**。`continuation.fingerprint` で継続でき、`graphFingerprint` や別 `scope` は `STALE_SNAPSHOT`。CLI と MCP で可否が一致した。
 
 新しい欠陥は検出しなかった。すべて文書に書かれた挙動と一致している。CAPI-2c のうち「参照実装の継続トークン」はここで一区切りとする（World/Source 改版の別故障モードは #3420 に残る）。
+
+## 22. 第17ラウンド（2026-11-09）: 必須引数の不足が3つの符号に分かれていた
+
+第10ラウンドで「必須引数の欠落だけが層の違い」と記録し、#3420 の未決として残していた。全コマンドを並べたところ、**1つの条件が3つの符号**で返っていた。生出力は[第17ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND17_FAILURE_CLASSIFICATION_2026-11-09/README.md)にある。
+
+| 呼出し | 修正前 | 修正後 |
+| --- | --- | --- |
+| `inspect`（`-workspace`／`-subject-kind`／`-subject-id` のいずれか欠け） | **`INVALID_SUBJECT`** | `INVALID_ARGUMENT` |
+| `trace`・`model catalog`・`source-index`・`requirements` | `INVALID_ARGUMENT` | 変わらず |
+| `knowledge-context`・`knowledge-qualify`・`knowledge-review-*` | **`KNOWLEDGE_BUILD_FAILED`** | `INVALID_ARGUMENT` |
+| `validate`（`-json` 無し） | **JSON を出さない** | 変わらず（text 出力の契約） |
+
+逆向きの不揃いもあった。同じ `inspect` で、`-subject-id` を**書かない**と `INVALID_SUBJECT`、**空文字列**を渡すと `INVALID_ARGUMENT`（#3605）だった。
+
+修正:
+
+- `cmd/tei/cli_argument_error.go` に `argumentError` 型を追加。「呼出し元が引数を間違えた」ことを表す。
+- `inspect` の引数ガードを `INVALID_ARGUMENT` へ。`INVALID_SUBJECT` は「subject の値が使えない」（空白のみ・前後空白）に残す。
+- `knowledge-*` の「`-flag` が足りない」を `newArgumentError` に変え、`knowledgeFailure` が `INVALID_ARGUMENT` へ写す。知識の構築失敗は `KNOWLEDGE_BUILD_FAILED` のまま。
+
+変えないと決めたもの（試験で固定）: 空白のみの subject は `INVALID_SUBJECT`、実在しない subject は exit 1 の `SUBJECT_NOT_FOUND`、要件ファイルが不正なら `KNOWLEDGE_BUILD_FAILED`、`validate` の text 出力は非JSONのまま。
+
+試験は `cmd/tei/cli_failure_classification_test.go` の3件。既存の `TestCLIProcessJSONContract`・`TestResultEnvelopeCommandsJSONContract` を新しい符号へ更新した。`go test ./cmd/tei -count=1` は ok（121.1s）。
+
+**CLI と MCP の符号の統一（`INVALID_ARGUMENT` ⇔ `-32602`）は未着手**で #3420 に残る。今回揃えたのは CLI 内部の一貫性である。起票は [#3733](https://github.com/hat47x/tei-platform/issues/3733)。
+
+## 23. 第18ラウンド（2026-11-09）: 実装を直したあと文書が古い符号を主張していた
+
+第17ラウンドで「必須引数の不足」を `INVALID_ARGUMENT` に統一した。その変更が同じ規則を説明する他の文書と一致しているかを確かめた。生出力は[第18ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND18_DOC_DRIFT_2026-11-09/README.md)にある。
+
+- `main` `022c85bd9` の挙動は第17ラウンドの意図どおりだった（11コマンドが `INVALID_ARGUMENT`、`INVALID_SUBJECT`・`SUBJECT_NOT_FOUND`・`KNOWLEDGE_BUILD_FAILED` は据え置き）。
+- `tools/reference-mcp-readonly-adapter/README.md` の検証一覧が「必須引数の欠落は CLI では `INVALID_SUBJECT`」と**古い符号を主張していた**。コードと試験は `INVALID_ARGUMENT` に変わっており、第17ラウンドで私は試験だけを更新して散文を見落とした。
+- 文書を実装に合わせ、`readme_claim_test.go` で**散文の主張を実行可能な試験として固定**した。README を旧記述へ戻す変異と、主張を消す変異のどちらも検出する。
+- 並行して出ていた [PR #3755](https://github.com/hat47x/tei-platform/pull/3755) は同じ #3733 の別実装だった。私の #3749 が先に統合されて `CONFLICTING` になり、すでに別の作業者が閉じていた。
+
+**学び**: 符号や契約を変えるときは、コード・試験・同じ規則を説明する散文を同じ変更で直す。散文は試験で固定しないと、次の変更で同じようにずれる。
+
+## 24. 第19ラウンド（2026-11-09）: 同じ壊れた plugin-lock が2コマンドで別の終了コードになっていた
+
+18ラウンドで一度も触っていなかったコマンドを叩いた。特に `-plugin-lock` はファイルを入力に取るため、ロックを作って別コマンドへ渡す往復があり、分類が揃っていない危険が高い。生出力は[第19ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND19_PLUGIN_LOCK_CLASSIFICATION_2026-11-09/README.md)にある。
+
+**正常系は問題なかった。** `plugin-lock` → `plugin-resolve`／`plugin-runtime-plan` の往復は成功し、`plugin-runtime-plan` は `pluginLockFingerprint` と `runtimePolicyFingerprint` を返す。`world` が包まない素の JSON を返すことも discovery の `jsonContract: raw` と一致していた。
+
+**壊れたロックの分類が食い違った。** 7種の壊し方のうち5種で、`plugin-resolve` は exit 2 `PLUGIN_RESOLVE_FAILED`、`plugin-runtime-plan` は exit 1 `PLUGIN_RUNTIME_PLAN_FAILED` になった。終了コード1は「意味の所見」、2は「入力の誤り」の区別だが、壊れたロックはどちらも入力の誤りである。
+
+原因は、`ResolveEnvironmentWithLock` が「指紋不一致」「version 不在」「プラグイン欠落」「別 environment」を素の `fmt.Errorf` で返し、`plugin-runtime-plan` の `plugin.IsInvalidLock` に該当しなかったこと。
+
+修正: `LockMismatchError` / `IsLockMismatch` を追加した。**`InvalidLockError` とは分けた** — 既存の `invalid_lock_test.go` が #3184 として「バイトが読めない」と「整形済みだが一致しない」を区別しており、その区別は正しい（前者は何が違うか言えない、後者は言える）。分けたうえで、両方とも呼出し元が直せるのはロックファイルだけなので、CLI では同じ `INVALID_PLUGIN_LOCK`（exit 2）に写した。7種すべてが両コマンドで揃った。
+
+試験は `cmd/tei/cli_plugin_lock_test.go`（6ケース）。変異2種（`IsLockMismatch` を見ない／素の `fmt.Errorf` に戻す）を検出する。
+
+**既存試験を1件、意図的に更新した。** `plugin_lock_scope_cli_test.go` は「別 environment を指すロックは resolve で `PLUGIN_RESOLVE_FAILED`・plan で exit 1」を固定していた。これは変更前の挙動そのものであり、統一後の `INVALID_PLUGIN_LOCK`・exit 2 へ直した。**破壊的な挙動変更である点を明記しておく。**
+
+契約文書 `plan/design/CLI_JSON_OUTPUT_CONTRACT_2026-10.md` の両行はもともと `INVALID_PLUGIN_LOCK` を挙げていた。今回の変更で**実装が契約に追いついた**。起票は [#3765](https://github.com/hat47x/tei-platform/issues/3765)。
+
+## 25. 第20ラウンド（2026-11-09）: view の -input が -command 無しで黙って捨てられていた
+
+19ラウンドで `plugin-*` を叩いて欠陥が出たため、まだ測っていない `view` を対象にした。`view` は `writeFlags` に `-operation-log`・`-lifecycle-state` を持ち、実行経路がある唯一の「読み取り」コマンドである。生出力は[第20ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND20_VIEW_INPUT_2026-11-09/README.md)にある。
+
+**正常系**は問題なかった。`view -application order_entry -format json` は `patterns`・`semanticFingerprint`・`worldFingerprint`・`sourceIndexFingerprint`・`workspace` を返し、引数無しは JSON で `INVALID_ARGUMENT`（exit 2）、実在しない application は exit 1 `VIEW_FAILED`。
+
+**見つけた欠陥**: `-input` を `-command` 無しで渡すと、値が捨てられて成功する。存在しないファイル名でも、書式不正（`no-equals-sign`）でも exit 0 `ok:true`。`-input` を付けた応答と付けない応答はバイト単位で同一だった。同じ group の `-period-state`・`-allow-capability`・`-operation-log`・`-lifecycle-*` は `-execute` 無しで正しく拒否されるのに、`-input` だけ条件が抜けていた。
+
+**起票時の診断を誤った。** 最初に「`-input` は `-execute` と組」と書いたが、実際は `-command` と組で、`-command` があれば `-execute` 無しでも plan に反映される（`product_slice_test.go:169` が固定）。私の誤った修正（`!*execute`）が既存試験 `TestProductSliceLoadsValidatesAndViews` を落として発覚した。**既存試験が正しく、私の診断が誤っていた。** issue #3778 に訂正を追記し、条件を `*commandID == ""` に直した。
+
+修正: `cmd/tei/cli_view.go` の引数ガードに `(len(inputPairs) > 0 && *commandID == "")` を追加。
+
+試験は `cmd/tei/cli_view_input_test.go` の2件。**両方向**の変異（条件を削る／過剰に厳しくする）を検出する。過剰に厳しくする方向を入れたのは、今回の誤診がまさにその方向だったため。
+
+**学び**: 依存関係を推測で書くと、既存の正しい用法を壊す。discovery の `"-input and -execute with -command"` は「両方とも `-command` に係る」と読むのが正しく、私は「`-input` と `-execute` が互いに係る」と読み違えた。`-execute` の実行経路そのものは未測定で、次に測るべき対象である。起票は [#3778](https://github.com/hat47x/tei-platform/issues/3778)。
+
+## 26. 第21ラウンド（2026-11-09）: view -execute の失敗符号が潰れていた
+
+20ラウンドまで `view` は引数までしか測っていなかった。`view -execute` は `writeFlags` を持つ唯一の実行経路で、最後の大きな未測定領域である。書込み先を `mktemp -d` の下に限定し、workspace は変えずに測った。生出力は[第21ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND21_VIEW_EXECUTE_2026-11-09/README.md)にある。
+
+**正常系と安全側は問題なかった。** 実行は `committed:true`・`persisted:false`・`durability:none`・`authorizationMode:"reference-allow-all"` を返し、`docs/status.md` の記載と一致。`-operation-log` が書けない場合は exit 1 `OPERATION_LOG_WRITE_FAILED`。失敗した実行は記録を書かず、lifecycle に拒否された実行は既存の記録を上書きしない。lifecycle は同じ command_id の再送を owner/generation が同じでも違っても拒否し、別 command_id は許可する（`internal/command/lifecycle.go` の設計どおり）。
+
+**見つけた欠陥**: 実行失敗の符号が潰れていた。
+
+| 呼出し | 修正前 | 修正後 |
+| --- | --- | --- |
+| 必須入力なし | `COMMAND_FAILED`（message に `INVALID_COMMAND_INPUT: ` が埋まる） | `INVALID_COMMAND_INPUT` |
+| 認可拒否 | `COMMAND_FAILED`（message に `COMMAND_UNAUTHORIZED: `） | `COMMAND_UNAUTHORIZED` |
+
+原因は `cmd/tei/cli_view.go` の `commandFailure` が `ExecutionError.Code` のうち3つだけを手書きで写し、`INVALID_COMMAND_INPUT` と `COMMAND_UNAUTHORIZED` が既定の `COMMAND_FAILED` に落ちていたこと。`ExecutionError.Error()` が `Code + ": " + Message` を返すため符号が message に混ざっていた。
+
+修正: `reportedExecutionCodes` の集合に既知の7符号を入れ、そこに在るものはそのまま `error.code` に出す。未知の符号は従来どおり `COMMAND_FAILED` に残す（契約の受け皿を消さない）。
+
+試験は `cmd/tei/cli_view_execute_code_test.go` の2件。変異（集合を元の3符号に戻す）で両方の失敗が検出されることを確認した。
+
+**未解決の論点**: `-operation-log` は同じパスへ2回書くと後の実行だけが残る（`os.WriteFile` の truncate）。文書に明示が無く、追記か上書きかは設計判断が要るため、今回は変更していない点を記録した。起票は [#3797](https://github.com/hat47x/tei-platform/issues/3797)。
