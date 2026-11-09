@@ -360,6 +360,19 @@ func ValidateSourceRef(ref string) error {
 	return nil
 }
 
+// BuilderContractVersion is the form a resolved plan records for the builder
+// contract a declaration asks for with Builder.Contract and
+// Builder.CompatibleMajor. It exists so the requirement ("tei.plugin-build" plus
+// major 1) and the resolved identity ("tei.plugin-build/v1") have one stated
+// correspondence instead of each caller spelling the format out.
+//
+// The resolver filters candidates by contract and major separately and then
+// renders the identity with this form; a caller that compares must use the same
+// function, or the comparison would test a format rather than a requirement.
+func BuilderContractVersion(contract string, compatibleMajor int) string {
+	return fmt.Sprintf("%s/v%d", contract, compatibleMajor)
+}
+
 // NormalizeIntent は宣言順を結果から外す。
 func NormalizeIntent(i BuildIntent) BuildIntent {
 	out := i
