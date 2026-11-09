@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"tei/internal/applicationview"
+	"tei/internal/command"
 	"tei/internal/validation"
 	"tei/internal/workspace"
 )
@@ -223,7 +224,10 @@ func TestProductSliceLoadsValidatesAndViews(t *testing.T) {
 	if err := json.Unmarshal(referenceRun.Bytes(), &referenceReport); err != nil {
 		t.Fatal(err)
 	}
-	if !referenceReport.OK || referenceReport.Result.Mode != "reference" || !referenceReport.Result.Committed || referenceReport.Result.Outcome == nil {
+	if !referenceReport.OK || referenceReport.Result.Mode != "reference" ||
+		!referenceReport.Result.Committed || referenceReport.Result.Persisted ||
+		referenceReport.Result.Persistence != string(command.PersistenceNotApplicable) ||
+		referenceReport.Result.Durability != "none" || referenceReport.Result.Outcome == nil {
 		t.Fatalf("reference run=%+v", referenceReport.Result)
 	}
 

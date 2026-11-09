@@ -38,13 +38,15 @@ func TestCommandAdapterCommitsThroughPostgres(t *testing.T) {
 	fixture := openFixture(t)
 	grant := fixture.grant(t)
 	invoker := command.Invoker{
-		World: adapterWorld(),
+		Authorizer: command.ReferenceAuthorizer{},
+		World:      adapterWorld(),
 		Executor: commandadapter.Executor{
 			Runner:          effectcommit.Runner{Provider: fixture.provider},
 			Grant:           grant,
 			OperationID:     fixture.req.OperationID,
 			ExpectedVersion: fixture.req.ExpectedVersion,
 			Payload:         fixture.req.Payload,
+			Effect:          &semantic.DataEffect{Kind: semantic.DataEffectUpdate, Data: "orders.order"},
 		},
 	}
 	if _, err := invoker.Invoke(context.Background(), command.Request{

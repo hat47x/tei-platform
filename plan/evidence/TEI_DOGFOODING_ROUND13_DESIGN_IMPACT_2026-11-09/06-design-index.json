@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "tei.cli.source-index/v0",
+  "ok": true,
+  "mode": "index",
+  "result": {
+    "artifacts": [
+      {
+        "path": "docs/getting-started.md",
+        "format": "md",
+        "fingerprint": "sha256:9b12f07814abb0daca96f97b7447d8dfadc68c31dbf0f834c94be038652de611"
+      },
+      {
+        "path": "plan/design/CLI_FIRST_INTERFACE_DESIGN.md",
+        "format": "md",
+        "fingerprint": "sha256:91f59f00e672b0627042e46983220be784021bea504d35edf0cb47c259de5b59"
+      },
+      {
+        "path": "plan/design/CLI_JSON_OUTPUT_CONTRACT_2026-10.md",
+        "format": "md",
+        "fingerprint": "sha256:9f73739896d03131dff87a0c660a900e39ed9fa47feb16980d9388a23bd10901"
+      }
+    ],
+    "references": [],
+    "workspace": {
+      "name": "design_docs",
+      "formatVersion": 1,
+      "manifest": {
+        "path": "tei.workspace.yaml",
+        "sha256": "sha256:3e3bc0c72dd9dc3aeaced3deb1cdf19357b55dc7afeda0c0befdba036ddf1b12"
+      }
+    }
+  }
+}

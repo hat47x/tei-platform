@@ -1,0 +1,30 @@
+{
+  "schema": "tei.reference.evidence-router-connect/v0",
+  "authority": "derived-reference",
+  "ruleId": "tei.reference.evidence-router-connect",
+  "ruleVersion": "v0",
+  "ruleFingerprint": "sha256:3fa298f421e731ee3d612eabe474134e579d265995a49d8605da6f54378308bb",
+  "environment": "development",
+  "outcomes": [
+    {
+      "actionId": "reference-gate",
+      "kind": "rollout-health",
+      "providerId": "health.reference",
+      "status": "COLLECTED",
+      "resolved": true,
+      "selected": true,
+      "invoked": true,
+      "evidenceOutcome": "pass"
+    }
+  ],
+  "collectedCount": 1,
+  "refusedCount": 0,
+  "invokedCount": 1,
+  "notes": [
+    "resolution uses evidence.Binding, the same function cmd/tei already calls",
+    "the router is the existing evidence.Router; no second registry is added",
+    "invoked means the provider's Collect was entered, not that the evidence is true",
+    "a pass outcome is the provider's claim, not proof that external state matches it",
+    "no authentication, authority, permission or durable receipt is issued here"
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "note": "A synthetic marker written into a local file, read once by the harness, then observed on the wire.",
+  "marker": "WIRE_MARKER_20261107105334_DO_NOT_EGRESS",
+  "markerFileBytes": 45,
+  "request": "003-request.json",
+  "requestBytes": 37136,
+  "modelInputMarkerOccurrences": 1,
+  "sessionLogMarkerOccurrences": 2,
+  "sessionLogEventsCarryingMarker": [
+    {
+      "seq": 23,
+      "type": "tool/result",
+      "fields": {
+        "turn": {
+          "bytes": 1,
+          "markerOccurrences": 0
+        },
+        "step": {
+          "bytes": 1,
+          "markerOccurrences": 0
+        },
+        "message": {
+          "bytes": 392,
+          "markerOccurrences": 1
+        },
+        "meta": {
+          "bytes": 176,
+          "markerOccurrences": 1
+        }
+      }
+    }
+  ],
+  "totalMarkerOccurrencesInRequest": 3
+}

@@ -8,6 +8,7 @@ import (
 	"tei/internal/command"
 	"tei/internal/security/effectcommit"
 	"tei/internal/security/effectcommit/commandadapter"
+	"tei/internal/semantic"
 )
 
 // RCAS-04 (#2564) on the product path: the same operation identity with a
@@ -35,13 +36,15 @@ func TestPostgresCommandOperationIdentityRejectsDifferentPayload(t *testing.T) {
 		return command.LifecycleInvoker{
 			Lifecycle: lifecycle,
 			Invoker: command.Invoker{
-				World: commandWorldE2E(),
+				Authorizer: command.ReferenceAuthorizer{},
+				World:      commandWorldE2E(),
 				Executor: commandadapter.Executor{
 					Runner:          effectcommit.Runner{Provider: f.provider},
 					Grant:           grant,
 					OperationID:     "same-operation",
 					ExpectedVersion: expected,
 					Payload:         []byte(payload),
+					Effect:          &semantic.DataEffect{Kind: semantic.DataEffectUpdate, Data: "sales.order"},
 				},
 			},
 		}

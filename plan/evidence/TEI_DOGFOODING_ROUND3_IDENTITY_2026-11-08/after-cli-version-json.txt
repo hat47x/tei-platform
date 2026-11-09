@@ -1,0 +1,1 @@
+{"schemaVersion":"tei.cli.version/v0","effect":"read-only","goVersion":"go1.27.3","goos":"linux","goarch":"amd64","vcsRevision":"3b4f5519dd99a98cf6d7980cbd698083001d5458","vcsModified":true,"buildSettings":["-buildmode=exe","-compiler=gc"],"source":"build-info"}

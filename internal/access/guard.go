@@ -4,22 +4,20 @@
 package access
 
 import (
-	"bufio"
-	"encoding/json"
-	"fmt"
-	"os"
-	"path/filepath"
-
 	"tei/internal/core"
+	"tei/internal/jsonl"
 	"tei/internal/permission"
 )
 
 // Decision is the outcome of checking one capability.
-type Decision struct {
-	Capability string   `json:"capability"`
-	Allowed    bool     `json:"allowed"`
-	Missing    []string `json:"missing,omitempty"`
-}
+//
+// It is the same type as the record a journal keeps, on purpose. They were two
+// separately declared structs with identical fields, converted by
+// `Record(decision)`: adding a field to one and not the other would have
+// silently dropped it at the conversion, with nothing to report the loss. One
+// type cannot drift from itself, and the JSON written to the journal is the JSON
+// the caller reads.
+type Decision = Record
 
 // Record is one check in the journal.
 type Record struct {
@@ -50,7 +48,7 @@ func (g Guard) Check(capabilityID core.CanonicalID, required []permission.Spec) 
 		decision.Missing = append(decision.Missing, string(requirement.Kind)+":"+string(requirement.Access)+" "+requirement.Scope)
 	}
 	if g.Journal != nil {
-		if err := g.Journal.Append(Record(decision)); err != nil {
+		if err := g.Journal.Append(decision); err != nil {
 			return decision, err
 		}
 	}
@@ -64,51 +62,11 @@ type File struct {
 
 // Append implements Journal.
 func (f File) Append(record Record) error {
-	if err := os.MkdirAll(filepath.Dir(f.Path), 0o755); err != nil {
-		return fmt.Errorf("prepare access journal %s: %w", f.Path, err)
-	}
-	file, err := os.OpenFile(f.Path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
-	if err != nil {
-		return fmt.Errorf("open access journal %s: %w", f.Path, err)
-	}
-	defer file.Close()
-	line, err := json.Marshal(record)
-	if err != nil {
-		return fmt.Errorf("encode access record: %w", err)
-	}
-	if _, err := file.Write(append(line, '\n')); err != nil {
-		return fmt.Errorf("write access journal %s: %w", f.Path, err)
-	}
-	return nil
+	return jsonl.Append(f.Path, "access journal", record)
 }
 
 // Records reads the journal. A missing file is empty; a damaged line is an error
 // and the records before it are returned.
 func (f File) Records() ([]Record, error) {
-	file, err := os.Open(f.Path)
-	if os.IsNotExist(err) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, fmt.Errorf("open access journal %s: %w", f.Path, err)
-	}
-	defer file.Close()
-	var records []Record
-	scanner := bufio.NewScanner(file)
-	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
-	for line := 1; scanner.Scan(); line++ {
-		text := scanner.Bytes()
-		if len(text) == 0 {
-			continue
-		}
-		var record Record
-		if err := json.Unmarshal(text, &record); err != nil {
-			return records, fmt.Errorf("access journal %s line %d: %w", f.Path, line, err)
-		}
-		records = append(records, record)
-	}
-	if err := scanner.Err(); err != nil {
-		return records, fmt.Errorf("read access journal %s: %w", f.Path, err)
-	}
-	return records, nil
+	return jsonl.Read(f.Path, "access journal", jsonl.DecodeJSON[Record])
 }

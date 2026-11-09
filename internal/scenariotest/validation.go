@@ -23,6 +23,9 @@ type ValidationRelation struct {
 }
 
 func ParseValidationFixture(source []byte) (ValidationFixture, error) {
+	if err := RejectDuplicateJSONMembers(source); err != nil {
+		return ValidationFixture{}, fmt.Errorf("decode Validation Fixture: %w", err)
+	}
 	var f ValidationFixture
 	dec := json.NewDecoder(bytes.NewReader(source))
 	dec.DisallowUnknownFields()

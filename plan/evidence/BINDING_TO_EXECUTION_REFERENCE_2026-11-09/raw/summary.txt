@@ -1,0 +1,15 @@
+== bound ==
+  environment: development
+  ran: 1  refused: 0
+    action=db/apply executor=migration.atlas bindingResolved=True
+
+== unregistered ==
+  environment: development
+  ran: 0  refused: 1
+    action=app/start executor=runtime.reference bindingResolved=False error=EXECUTOR_NOT_REGISTERED: the binding names an executor this 
+
+== unknown-env ==
+  environment: staging
+  ran: 0  refused: 0
+
+ruleFingerprint: sha256:329b1d5311a748ffece0c60c1cd723dc6323884fceae35b4ad6c3591a3613c35
