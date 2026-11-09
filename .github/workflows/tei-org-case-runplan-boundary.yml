@@ -9,6 +9,13 @@ on:
 permissions:
   contents: read
 
+# CONTRIBUTING.md asks every automatic workflow to declare `concurrency`, so a new
+# push to the same pull request replaces the run in flight instead of queueing
+# another one (#3682). This workflow runs on pull requests only.
+concurrency:
+  group: tei-org-case-runplan-boundary-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   org-runplan-boundary:
     runs-on: ubuntu-latest

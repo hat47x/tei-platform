@@ -11,6 +11,14 @@ on:
 permissions:
   contents: read
 
+# CONTRIBUTING.md asks every automatic workflow to declare `concurrency`, so a new
+# push to the same pull request replaces the run in flight instead of queueing
+# another one (#3682). This workflow runs on pull requests and on demand, so it
+# cancels pull-request runs only and leaves a manual dispatch its own run.
+concurrency:
+  group: macro-command-boundary-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   characterize-command-effectcommit:
     runs-on: ubuntu-24.04
