@@ -119,6 +119,53 @@ test("a reference run with a declared hook names the phases that did not run", (
   assert.match(hooksRow[1], /skipped before-update,after-update/);
 });
 
+test("a proposal a hook made is named as a candidate, not as an applied value", () => {
+  const sections = summarizeView({
+    mode: "reference",
+    committed: true,
+    persistence: "not-applicable",
+    durability: "none",
+    plan: {
+      capability: "sales.order.submit",
+      inputs: [{name: "order", type: "sales.order", value: "ORD-1", provided: true}],
+      outcomes: [{name: "submitted", payload: "sales.order"}],
+    },
+    hooks: {
+      pattern: "order_entry.order_record",
+      executed: ["before-update"],
+      produced: {"before-update": {"sales.order.amount": "2000"}},
+    },
+  });
+  const rows = sections[sections.length - 1].rows;
+  const hooksRow = rows.find((row) => row[0] === "hooks");
+  assert.ok(hooksRow, "the summary has no hooks row");
+  assert.match(hooksRow[1], /proposes at before-update sales\.order\.amount=2000/);
+});
+
+test("a declared call that never ran is named in the summary", () => {
+  const sections = summarizeView({
+    mode: "reference",
+    committed: true,
+    persistence: "not-applicable",
+    durability: "none",
+    plan: {
+      capability: "sales.order.submit",
+      inputs: [{name: "order", type: "sales.order", value: "ORD-1", provided: true}],
+      outcomes: [{name: "submitted", payload: "sales.order"}],
+    },
+    hooks: {
+      pattern: "order_entry.order_record",
+      notEvaluated: ["before-update"],
+      uncalled: {"before-update": ["sales.submit_order"]},
+      reasons: {"before-update": "no caller is configured"},
+    },
+  });
+  const rows = sections[sections.length - 1].rows;
+  const hooksRow = rows.find((row) => row[0] === "hooks");
+  assert.ok(hooksRow, "the summary has no hooks row");
+  assert.match(hooksRow[1], /uncalled at before-update sales\.submit_order/);
+});
+
 test("package view is summarized into members and requirements", () => {
   const sections = summarizeView({
     package: "order_entry.list_to_record",

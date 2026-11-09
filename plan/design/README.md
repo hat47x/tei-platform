@@ -35,7 +35,7 @@
 | [`COMMAND_BOUNDARY_SAFETY_2026-11.md`](COMMAND_BOUNDARY_SAFETY_2026-11.md) | Command境界の未設定認可・期間状態の拒否、宣言外効果をunknownとして記録する判断と、参照実行の明示的認可（[#2996](https://github.com/hat47x/tei-platform/issues/2996)、[#2997](https://github.com/hat47x/tei-platform/issues/2997)、参照実装） |
 | [`EVERYTHING_DATA_MARKDOWN_SOURCE_FIDELITY_2026-11.md`](EVERYTHING_DATA_MARKDOWN_SOURCE_FIDELITY_2026-11.md) | Markdownの元シンタックスシュガーと書式・Source occurrenceを保存で保持する契約、局所Patch・競合・往復受入 |
 | [`PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md`](PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md) | CLI／Studioの限定read-only OperationからApplication Runtimeまで同一Plugin契約を再利用する実装検証計画（#1251・#951） |
-| [`REA_EXTERNAL_EVIDENCE_T0_T1_ADMISSION_2026-11.md`](REA_EXTERNAL_EVIDENCE_T0_T1_ADMISSION_2026-11.md) | REA実静的解析T0から外部Evidence候補のread-only Projection、Source/Provider/意味受理の段階資格（#3394） |
+| [`REA_EXTERNAL_EVIDENCE_T0_T1_ADMISSION_2026-11.md`](REA_EXTERNAL_EVIDENCE_T0_T1_ADMISSION_2026-11.md) | REA実静的解析の保存Evidence監査・外部Observation候補をT1-Aへ受け渡す受入条件（#3394） |
 | [`ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md`](ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md) | Issue #3262をTEI CLI実読取と設計票へ接続する限定ドッグフーディング。Design Contextの完全性、独立ExpectedとT0テスト判別力、T1/セルフビルドの未達を区別（#3264/#3266/#3268） |
 | [`TEI_PRODUCT_SKILL_HARNESS_BINDING_2026-11.md`](TEI_PRODUCT_SKILL_HARNESS_BINDING_2026-11.md) | TEI read-only Product Skillを既存CLIへ正確に結び、外部Harness/Consumerの受理・許可・開示・実実行と分ける設計候補（[#2605](https://github.com/hat47x/tei-platform/issues/2605)、未採用） |
 | [`TEI_MEANING_TO_CAPABILITY_SKILL_WITNESS_2026-11.md`](TEI_MEANING_TO_CAPABILITY_SKILL_WITNESS_2026-11.md) | Everything is Dataの意味Role→標準Operation→限定CLI発見→Product Skill/Harness→実Host/SHO受渡しの資格差とSource-static・合成検証（#2619/#2605/#2614、未採用） |
@@ -112,6 +112,7 @@
 | [`PLUGIN_SELF_BUILD_PRODUCTION_CONTRACT_2026-10.md`](PLUGIN_SELF_BUILD_PRODUCTION_CONTRACT_2026-10.md) | プラグインのセルフビルドの最小契約と移行Gateの検討案。production仕様の採用ではない |
 | 文書 | 対象 |
 | --- | --- |
+| [`AI_FIRST_QUALIFIED_INTERFACE_CURRENT_MAIN_2026-11.md`](AI_FIRST_QUALIFIED_INTERFACE_CURRENT_MAIN_2026-11.md) | AI-firstのSource/Tool/Independent Expected/Meaning/Grant・Effect受入を、mainのTT-56実CLIと盲検T1-B・Plugin実呼出しへ接続（§10現行状態、採用判断は既存Owner） |
 | [`VERIFIED_COMPOSITION_BOM_AND_MATRIX_DESIGN_2026-11.md`](VERIFIED_COMPOSITION_BOM_AND_MATRIX_DESIGN_2026-11.md) | 検証済みPlugin構成BOM、多版Matrix、Pairwise、独立Expected、実Artifactと同一Attempt、Trait/HTTP例外Coverageの資格分離（[#3267](https://github.com/hat47x/tei-platform/issues/3267)、評価待ち） |
 | [`DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md`](DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md) | SQL/NoSQL・ログ・API等の汎用Data Source Workbenchと開発者向けSchema CRUD、DBA業務を標準外とする機能境界（[#3270](https://github.com/hat47x/tei-platform/issues/3270)） |
 | [`ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md`](ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md) | Issue→Design Context→Scenario/独立Expected→実CLIを通してMVPのCLI/CUI・Skill・Coverageを検収する計画（[#3273](https://github.com/hat47x/tei-platform/issues/3273)） |
@@ -216,6 +217,8 @@
 | [`XTEA_DERIVED_OUTPUT_RECEPTION_2026-11.md`](XTEA_DERIVED_OUTPUT_RECEPTION_2026-11.md) | X-TEAの設計書・DDL・行列・差分・一覧の往復を、TEIの導出成果物の契約（版・規則・未解決・非昇格）へ受け止める設計案（未採用） |
 | [`XTEA_AUTHORING_SURFACE_RECEPTION_2026-11.md`](XTEA_AUTHORING_SURFACE_RECEPTION_2026-11.md) | X-TEAのModeler・Editor・Driverを読み、TEI Studioの作者環境と標準業務の基本機能へ受け止める形を整理した設計案（未採用）。配置検査の面分割、検索・置換の版境界、編集履歴のまとまり、雛形生成の未受理扱い、標準業務の宣言化を含む |
 | [`XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md`](XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md) | X-TEAから回収したローコードの知見を、Core・Pattern・生成器・Plugin・Studio・要件のどこで受け止めるかの設計案（未採用）。パッケージ・対話フック・項目の役割・結果型・標準業務意味の判断候補を含む |
+| [`AI_FIRST_REQUIREMENT_PRESSURE_AND_HEADLESS_VERIFICATION_2026-11.md`](AI_FIRST_REQUIREMENT_PRESSURE_AND_HEADLESS_VERIFICATION_2026-11.md) | 外部要件による基盤評価とAI-firstヘッドレス一気通貫の設計（2026-11） |
+| [`FOUNDATIONAL_DATA_CONCEPT_SPACE_2026-11.md`](FOUNDATIONAL_DATA_CONCEPT_SPACE_2026-11.md) | TEI基本データ概念空間：構造トポロジー・多重分類・数学・単位の横断設計（2026-11） |
 | [`DATA_OPERATIONS_KEY_SPACE_AND_MULTIPLICITY_LOSS_2026-11.md`](DATA_OPERATIONS_KEY_SPACE_AND_MULTIPLICITY_LOSS_2026-11.md) | MS-09：多様なData Structure間のKey空間・多重度・逆更新の喪失を明示する |
 | [`GO_MODULE_SUPPLY_FOR_SELF_BUILD_SB0B_2026-11.md`](GO_MODULE_SUPPLY_FOR_SELF_BUILD_SB0B_2026-11.md) | セルフビルドで外部Go Moduleを入力として認める条件（供給manifest・`h1:`照合・`go mod verify`・`corrupt-supply`分類・成果物digestを供給同一性の根拠にしない負例）の設計候補（[#2831](https://github.com/hat47x/tei-platform/issues/2831) SB-0b、未採用） |
 | [`SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md`](SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md) | セルフビルドの再入（SB-C0）の入口契約案。`cmd/tei`に汎用Build入口が無いことの静的観測、薄いCLI接続・既存toolのsubprocess・Plugin偽装の三案と依存境界、拒否条件、`qualified`を常にfalseにする出力形、L3に必要な追加情報を整理（[#2831](https://github.com/hat47x/tei-platform/issues/2831)、未採用） |
@@ -252,6 +255,7 @@
 | [`COMPOSED_REPRESENTATION_MAPPING_QUALIFICATION_2026-11.md`](COMPOSED_REPRESENTATION_MAPPING_QUALIFICATION_2026-11.md) | 標準表現型：合成写像の適格性・非単射・否定依存・開示（2026-11-07） |
 | [`REPRESENTATION_CROSSVIEW_COORDINATION_2026-11.md`](REPRESENTATION_CROSSVIEW_COORDINATION_2026-11.md) | TEI 表現型間の選択・状態連携・更新境界（2026-11-07） |
 | [`STANDARD_REPRESENTATION_TOPOLOGY_AND_MEDIA_AXES_2026-11.md`](STANDARD_REPRESENTATION_TOPOLOGY_AND_MEDIA_AXES_2026-11.md) | 標準データ構造と標準表現型：構造間Binding・媒体時間軸の設計案（2026-11-07） |
+| [`SCRIPT_MACRO_AUTHORITY_AND_EFFECT_TARGET_BINDING_2026-11.md`](SCRIPT_MACRO_AUTHORITY_AND_EFFECT_TARGET_BINDING_2026-11.md) | Script/MacroのSemantic Action・対象と実Read/Effect・委任・外部Consumerの契約とT-1〜61の未採用検証候補（[#2502](https://github.com/hat47x/tei-platform/issues/2502)、[#2499](https://github.com/hat47x/tei-platform/issues/2499)） |
 
 ## 関連する参照事例と評価
 

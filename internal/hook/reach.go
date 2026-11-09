@@ -43,6 +43,18 @@ const ReasonReadNotSupplied = "no value was supplied for the declared read, so t
 // ReasonPhaseUnsupported は、位相順序が位相を名指さないために評価しなかった理由である。
 const ReasonPhaseUnsupported = "the runner order does not name this phase, so it was not evaluated"
 
+// ReasonCallerUnavailable は、フックが能力を宣言したのに呼出し元が無いため、
+// その位相を評価しなかった理由である。
+//
+// 宣言に`uses`があり呼出し元が無い場合、その能力は一度も呼ばれません。それでも
+// `executed`と報告すると、「宣言した能力を呼んだ」と読めてしまいます。呼んで
+// いないものを呼んだと書かないために、この理由で未評価にします。
+const ReasonCallerUnavailable = "the hook declares a capability to call but no caller is configured, so this phase was not evaluated"
+
+// ReasonDeclaredCallNotMade は、実装が呼出し元を使わない経路で実行されたため、
+// 宣言した能力が呼ばれなかったことを示す理由である。
+const ReasonDeclaredCallNotMade = "the hook declares a capability to call but the implementation does not call it, so this phase was not evaluated"
+
 // PhaseReport は、位相をどこまで実行したかと、実行しなかった位相の理由である。
 //
 // Skip と NotEvaluated は別である。Skip はその実行境界が原理的に到達しない位相
@@ -63,12 +75,33 @@ type PhaseReport struct {
 	Refused string `json:"refused,omitempty"`
 	// Outcome は、不成立に対応する業務上の結末である。実行の失敗では空になる。
 	Outcome string `json:"outcome,omitempty"`
+	// Produced は、実行した位相が提案した値である。位相ごとに、宣言した
+	// `produces`に載る属性だけが入る。提案は値を確定しない。呼出し側が採用を
+	// 決めるまでの候補として、ここに残す。
+	//
+	// この欄が無かったころは、`produces`を宣言したフックが値を返しても、
+	// `RunReachable`は`RunWithDeclaredReads`を呼ぶため提案が捨てられ、
+	// `hook.ProducesFor`の宣言照合も走らなかった。宣言と実行が食い違う状態を
+	// 黙って通さないために欄を足す。
+	Produced map[string]Produced `json:"produced,omitempty"`
+	// Uncalled names, by phase, the capabilities a hook declared in `uses` that
+	// were not called. A phase with an uncalled declaration is reported as not
+	// evaluated, so `executed` never claims a call that did not happen.
+	Uncalled map[string][]core.CanonicalID `json:"uncalled,omitempty"`
+	// Calls records, by phase, the calls the declaration made and how each
+	// ended. A phase listed here did reach the boundary.
+	Calls map[string][]CallOutcome `json:"calls,omitempty"`
 }
 
 // Ran は、実行した位相があるかを返す。すべての位相を飛ばした実行と、位相を
 // 一つも宣言していない Pattern を区別するために使う。
 func (r PhaseReport) Ran() bool {
 	return len(r.Executed) > 0 || len(r.Warned) > 0 || r.Refused != ""
+}
+
+// Proposed は、位相が提案した値を返す。提案が無ければ空を返す。
+func (r PhaseReport) Proposed(phase string) Produced {
+	return r.Produced[phase]
 }
 
 // RunReachable は、宣言された位相のうち、この実行境界が到達でき、かつ宣言した
@@ -119,15 +152,58 @@ func (r Runner) RunReachable(ctx context.Context, applicationID, patternID core.
 			report.Reasons[phase] = fmt.Sprintf("%s: %s", ReasonReadNotSupplied, missing)
 			continue
 		}
+		// A hook that declares `uses` promises to call those capabilities. Call
+		// them here, through the restricted caller the Runner holds, so the
+		// promise is kept or reported as a refusal rather than assumed.
+		if len(declaration.Uses) > 0 {
+			calls, callErr := r.RunDeclaredCalls(ctx, applicationID, patternID, phase, r.CallInputs, r.Caller)
+			if len(calls) > 0 {
+				if report.Calls == nil {
+					report.Calls = map[string][]CallOutcome{}
+				}
+				report.Calls[phase] = calls
+			}
+			var uncalled []core.CanonicalID
+			for _, call := range calls {
+				if !call.Called {
+					uncalled = append(uncalled, call.Capability)
+				}
+			}
+			if len(uncalled) > 0 {
+				report.Skipped = append(report.Skipped, phase)
+				report.NotEvaluated = append(report.NotEvaluated, phase)
+				report.Uncalled = appendUncalled(report.Uncalled, phase, uncalled)
+				if r.Caller == nil {
+					report.Reasons[phase] = ReasonCallerUnavailable
+				} else {
+					report.Reasons[phase] = ReasonDeclaredCallNotMade
+				}
+				continue
+			}
+			if callErr != nil {
+				report.Refused = phase
+				return report, callErr
+			}
+			// Every declared call was made; the phase still runs its rule below.
+		}
 		invocation := Invocation{
 			Application: applicationID,
 			Pattern:     patternID,
 			Phase:       phase,
 			Reads:       reads,
 		}
-		err := r.RunWithDeclaredReads(ctx, invocation)
+		// RunWithDeclaredValues applies ReadsFor and, when the implementation
+		// proposes values, ProducesFor. Calling the read-only path here would
+		// drop a declared proposal and skip the declaration check with it.
+		produced, err := r.RunWithDeclaredValues(ctx, invocation)
 		if err == nil {
 			report.Executed = append(report.Executed, phase)
+			if len(produced) > 0 {
+				if report.Produced == nil {
+					report.Produced = map[string]Produced{}
+				}
+				report.Produced[phase] = produced
+			}
 			continue
 		}
 		var warning *Warning
@@ -173,6 +249,21 @@ func (r Runner) findPattern(applicationID, patternID core.CanonicalID) *applicat
 		}
 	}
 	return nil
+}
+
+// appendUncalled は、位相ごとの未実行の呼出しを記録する。同じ位相の項目を
+// 二度足さない。
+func appendUncalled(uncalled map[string][]core.CanonicalID, phase string, capabilities []core.CanonicalID) map[string][]core.CanonicalID {
+	if uncalled == nil {
+		uncalled = map[string][]core.CanonicalID{}
+	}
+	if _, exists := uncalled[phase]; exists {
+		return uncalled
+	}
+	declared := make([]core.CanonicalID, len(capabilities))
+	copy(declared, capabilities)
+	uncalled[phase] = declared
+	return uncalled
 }
 
 // readsFromInputs は、宣言した属性の値を inputs から引く。値の無い最初の属性を

@@ -26,7 +26,7 @@
 | [`repository-node-tests/`](repository-node-tests/) | どのworkflowからも実行されなかったNode.js試験5ファイルをgo testから実行する（#2346） |
 | [`check-public-boundary/`](check-public-boundary/) | 追跡ファイルに、非公開資料の名前・所在のマーカーが入っていないかを検査する（#2342 / #2436） |
 | [`repositoryqualification/`](repositoryqualification/) | リポジトリ検証条件の共通処理 |
-| [`rea-t0-saved-report/`](rea-t0-saved-report/) | REAの公開合成JavaScript実解析で保存したraw JSON／stderr／exitと出典の前後バイト列を読取り専用で監査し、外部Observation候補だけを投影する検証ツール。TEI正式Source／意味受理／Product Provider実呼出しではない（#3394、Draft #3496）。 |
+| [`rea-t0-saved-report/`](rea-t0-saved-report/) | 公開合成JSのREA保存JSON／stderr／exitとSource pre/post byteを読取り専用で監査し、外部Graph/Relation候補のみを投影する試験用Consumer（#3394、未正式TEI Source）。 |
 | [`reference-ai-tuning-observation/`](reference-ai-tuning-observation/) | AI性能チューニング用の設計/観測/統計/Provider/開示/受領の**合成入力のみ**を照合する試験用Consumer。実Provider/業務意味/実性能は未証明（#3271/#3262、設計文書 §9〜10）。 |
 | [`reference-cli-trace-benchmark/`](reference-cli-trace-benchmark/) | 合成Workspaceによるtraceの処理段別の時間・メモリ計測と出力不変の確認 |
 | [`reference-mcp-readonly-adapter/`](reference-mcp-readonly-adapter/) | 既存の読み取り操作（model catalog・inspect・trace・validate）をMCPのtoolとして公開する参照Adapter。Workspaceは起動時に固定し、CLIと同じ `internal/operations` を呼ぶ（#3400） |
@@ -221,6 +221,9 @@
 | [`reference-plugin-selection-matrix/`](reference-plugin-selection-matrix/) | 環境のBinding（配備実行・状態観測・検証根拠・database instance・環境の機能・移行）ごとに、対応するプラグイン能力を既存の `Supports*` で一括して解決し、selected/missing/ambiguous を一覧する参照。ambiguous は解消せず両方を列挙します。診断の権限は internal/validation が持ちます |
 | [`reference-binding-to-execution/`](reference-binding-to-execution/) | 環境の deployment-executor Binding を既存の routing.RouteCommand で解決し、routing.Router.Dispatch で実行、routing.ValidateResult で照合する参照。Executor の registry は Host が渡し、参照は組み立てません。未登録の executor を指す Binding や結果の不一致は実行せず拒否します。実配備の成立は示しません |
 | [`reference-executor-id-resolution/`](reference-executor-id-resolution/) | 環境の deployment-executor Binding から executor の CapabilityID を routing.RouteCommand で解決し、pruntime.BuildPlan の plan がその ID を認めるか（EnvironmentPlan.Capability）と、能力が action を支えるか（SupportsAction）を順に確かめる参照。直書きの ID は比較用に並べるだけで解決に使わない。実行はしない |
+| [`reference-observation-router-connect/`](reference-observation-router-connect/) | ObservationProviders の宣言から observation.Binding で provider を解決し、既存の observation.Router で実際に入る参照。resolved（宣言から解決）・selected（Hostが登録）・invoked（providerのObserveに入った）を別々に数え、解決できたことを実行できたと読み替えない。Router も Provider も参照は組み立てず Host が渡す |
+| [`reference-evidence-router-connect/`](reference-evidence-router-connect/) | EvidenceProviders の宣言から evidence.Binding で provider を解決し、既存の evidence.Router で実際に入る参照。観測側と同じ4段を別々に数え、Collect が durable.ActionRecord を要求するため証拠ゲートでない記録は専用状態で拒否する。Router も Provider も参照は組み立てず Host が渡す |
+| [`reference-digest-change-reuse/`](reference-digest-change-reuse/) | Artifact digest が変わったとき旧いピン留めがどうなるかを、既存の generation.Router だけで確かめる参照（CON-12c）。変更後の新しい取得は新しい digest、変更前にピン留めした lease は古い digest のままであることを示す。Publish が同じ世代番号と contract 越えを拒否することも固定する。実配備の切替ではない |
 | [`reference-service-carrier-connect/`](reference-service-carrier-connect/) | 判断材料のC-2を試験の外で組み立てる参照。Hostが渡したCoordinator・Runtime registry・RouteSourceから BindHostApplicationEnvironmentRoute と NewSelectedServiceCarrierInvoker を順に呼び、ピン留めした世代でService要求を運びます。Routeが無い・別Binding用・入力不足は実行前に拒否します。実配備の成立は示しません |
 | [`reference-accounting-period/`](reference-accounting-period/) | 業務日付とシステム時刻を分け、期間の状態・締め済み期間の直接更新拒否・赤黒訂正・締め後の到着方針・順序鍵と版による再生・締め時点の照合値を判定する参照（#2144） |
 | [`reference-partial-import-plan/`](reference-partial-import-plan/) | 別Workspaceから選んだData定義の取込み結果を分類する読取り専用の参照（#1805） |

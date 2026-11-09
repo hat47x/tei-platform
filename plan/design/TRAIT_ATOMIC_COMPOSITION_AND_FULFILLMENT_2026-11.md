@@ -821,7 +821,7 @@ Required Trait Fulfillment（この範囲のみ）
 
 [構成の繋ぎ目に関する判断材料](../workstreams/COMPOSITION_CONNECT_POINT_BRIEF_2026-11.md)は、Bindingの宣言・検証・計画と**実行の接続がまだ別**であることを実Sourceと調査で示し、C-1 `routing.Router`、C-2 `servicehost`、C-3 能力ID解決、**C-4：実行を接続せず外部主体に委ねる**選択を併記している。**現時点で採否は未決**であり、Traitの実装義務を理由にC-1/C-2を自動採用しない。C-4も正当な製品構成である。
 
-同時に[Inspector S2接続Draft #3540](https://github.com/hat47x/tei-platform/pull/3540)は通常CLI／通常・生成Studio Hostへ静的な選択済Inspectorを接続する実装候補となった。ただし**未統合Draft**であり、Product S2・配布Plugin・実Binary由来・外部Grantをmainの既成事実にしない。[RQ-037のBOM要求Draft #3538](https://github.com/hat47x/tei-platform/pull/3538)と[Version Matrix Reference Draft #3541](https://github.com/hat47x/tei-platform/pull/3541)も未統合の候補で、[RQ-036全体Map](../../requirements/TEI_PRODUCT_REQUIREMENTS.md)とは別の要求である。
+同時に[Inspector S2接続Draft #3540](https://github.com/hat47x/tei-platform/pull/3540)は通常CLI／通常・生成Studio Hostへ静的な選択済Inspectorを接続する実装候補となった。この節の記述時点では**未統合Draft**だったが、**現在はmain統合PR #3540により通常CLI／通常・生成Studio Hostの静的参照Provider接続が実証済み（S2-reference）**である。配布Plugin、正式Profile選択、Provider固有Link/ロード済Byte、現在Grant、S2-product/S3はなお未証明（現行評価は§21参照）。[RQ-037のBOM要求Draft #3538](https://github.com/hat47x/tei-platform/pull/3538)と[Version Matrix Reference Draft #3541](https://github.com/hat47x/tei-platform/pull/3541)も未統合の候補で、[RQ-036全体Map](../../requirements/TEI_PRODUCT_REQUIREMENTS.md)とは別の要求である。
 
 **今回の設計結論**：Traitの履行と実行主体の所在を独立軸で管理する。既存のContract/Provider Resolver・Operation Contract・Runtime/Host・BOMは一つの巨大な「合格」状態には還元しない。
 
@@ -891,115 +891,6 @@ TEBは[#3278](https://github.com/hat47x/tei-platform/issues/3278)のTrait保証�
 
 **参照（主張の範囲限定）**：Bao/Rompf, *Type, Ability, and Effect Systems* (OOPSLA 2026, DOI:10.1145/3839518)はType/Ability/Effectを単一機構に還元できないと論じ、Moy/Dimoulas/Felleisen, *Effectful Software Contracts*（POPL 2024）はEffectの契約による制約を扱う。これらは「Trait/能力/Effectを独立に検証する」設計を考える参考であり、TEIでの仕様・実装適合を証明するものではない。
 
-## 18. 最新mainのGo局所実証をProduct Trait履行へ引き上げる（2026-11-08 S1→S2接続）
-
-### 18.1 現行実装で確認できたこと／できないこと
-
-main [#3381](https://github.com/hat47x/tei-platform/pull/3381)（merge `f8896886c4528920a0d0cb3a2f67181971402987`）と[status更新 #3531](https://github.com/hat47x/tei-platform/pull/3531)（merge `1e48411748daaf88dba061d46d9bebe652c57933`）を現物コードで照合した。前節までの「#3381はDraft」等は**記録当時の状態**であり、現在の実装基線はここを優先する。
-
-| 観測対象・既存箇所 | 現行mainで存在する機能 | まだ満たしていない資格 |
-| --- | --- | --- |
-| `internal/inspectoradapter/selected.go` | 既存Compositionの`authoring-tool`契約／選択B／Host登録Bを照合し、Callback前にRegistry世代・Host guardを再検査。誤登録A、実装欠落、撤回、staleを拒否 | 合成`ArtifactDigest`文字列から実Goバイナリ内のコードの出所・現在Grantを証明できない |
-| `cmd/tei/cli_inspect.go` | `inspectWorkspaceJSONWithService`という型付きService注入口。Provider欠落時にfail closed、Result Contractの検査、非信頼エラーのCode/Message開示制限 | **通常の`cmd/tei/main.go`が呼ぶ`inspectWorkspaceJSON`は現状Builtin**で、製品CLIの選択済Plugin実利用ではない |
-| `internal/studiohost/readonly.go` | Studio Hostへ選択されたInspectionServiceを渡す入口。従来Builtinの直呼びとは分離 | 実Wails `StudioBridge`の通常起動・画面操作から同じ選択済Providerへ実到達したか未確認 |
-| `cmd/tei/cli_inspect_studio_selected_parity_test.go` 等 | 6 Subjectを二つの**局所Go Consumer**から同じBへ呼ぶテストコードと、B選択→A登録拒否・不整合Resultの負例 | 二つのProductプロセス/Surface／実Plugin package/選択Build閉包／Tool完全受領／2×2 BOM |
-| `docs/status.md`／`plan/MASTER_PLAN.md` | #3531が上記の限定実装と次のS2 Product Wiringを状態・全体計画へ反映済み | Status/Plan記載は実動作の新Evidenceではない |
-
-**CIの条件**：main #3531のexact commit `1e484117...` では根moduleの`govulncheck`等はsuccessだが、`repository-health`は**completed/failure**。旧#3381のheadでもRepository Healthはfailureであり、個々のGoテスト・専用Job・統合済み状態を無条件の全体CI PASSに合算しない。Jobの具体的な失敗原因の断定はログ確証を取得してから行う。今回の文書変更はCIを修復したと主張しない。
-
-### 18.2 Traitの「原子性」を実コードで測る最小境界
-
-**これから一つだけ扱うTrait候補**は、Inspector Operationが必要とする`read-onlyな型付きProjectionを返す`という原子的保証である。現行`tei.operations.inspect/v0`のResult Validationを、**既存Contractに投影可能なRequired Obligation**として扱えるかを実証する。正式な`Inspectable`等のCore Trait ID、別Validator/Resolverを先に新設しない。
-
-```text
-Source + complete Required + (Subject, Operation=inspect, Scope=authoring-tool)
-             ↓
-exact selected Provider B + accepted Contract/Host registration
-             ↓
-actual Product Entry (ordinary CLI dispatch / actual Studio Bridge)
-             ↓
-B callback invoked + typed Inspector Result validated
-             ↓
-independent Expected + current Runtime/Disclosure check
-             ↓
-S2「Product Consumerが選択済Providerへ到達」の範囲限定結論
-```
-
-必要なContractが**Known RequiredだがManual実装未提供**なら、不足を実装義務として返す。Provider Bの`Inspect`メソッド署名があるだけで、Result正当性／Read-onlyという**現実の無副作用**／利用時の開示保証を証明しない。Result上の`effect: read-only`は投影契約の検査であり、Providerが密かにI/Oをしない実行証拠とは別。必要集合自体がpartialなら全Trait履行率は未確定とする。
-
-**移行Policy**：既存Builtin互換モードと、明示的に選択したProviderを必要とするモードを区別する。後者でPluginがmissing/stale/unsupportedなら**Builtinへの暗黙fallbackは禁止**。ただし移行中の既定Builtinを廃止すること、任意外部Pluginのロードや新CLI Flagを今すぐ追加することは要求しない。Host側の現在Grant／宣言されたEffectと実Runtime Effect／未取得Sourceについて、名前の一致や合成digestから資格を発行しない。
-
-### 18.3 実装の最小1往復と再利用する検証
-
-1. **S2-C（CLI）**：`cmd/tei/main.go`の通常`inspect`入口が、信頼されたComposition Hostから**選択済Bを取得**して`inspectWorkspaceJSONWithService`に渡す一辺を設ける。未選択Builtinは既存互換経路にとどめる。Product CLIの実binary起動と、B callback回数/Subject/Result/Exitを固定する。
-2. **S2-S（Studio）**：実`StudioBridge`から既存`studiohost.ReadOnly`のHost-selected Serviceへ到達する一辺を設ける。CLI HelperとStudio Host APIの局所Go一致だけでS2-Sを合格にしない。
-3. **S2-O（Trait fulfillment）**：**同じRequired Contract**を一つのDefault/Provided実装と一つのManual欠落に当て、`satisfied-under-scope`／`required-missing`の差を表示。合成Provider A/Bを値同一にして「B selected、A invoked」を拒否し、Stale Providerを復活させない。独立Expectedは既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)、選択は[#951](https://github.com/hat47x/tei-platform/issues/951)/[#1016](https://github.com/hat47x/tei-platform/issues/1016)、Product D1は[#1251](https://github.com/hat47x/tei-platform/issues/1251)/[#1824](https://github.com/hat47x/tei-platform/issues/1824)、Trait履行は[#3279](https://github.com/hat47x/tei-platform/issues/3279)がOwner。
-4. **S3（後続）**：実Buildに含まれるProvider Source/Manifest/ArtifactのByteと、Consumer／Target／現在Disclosureを別途照合し、Verified BOMの**exact 2 Provider × 2 Consumer**へ進む。S2の局所成功を他Provider/Targetへ自動転記しない。
-
-**既存負例と相互参照**：[Plugin-first設計§19 WIT-01〜09](PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md)のWIT-01/02/03/04/05/09、[Trait設計§9 TC-11〜15](#9-テストへの接続traitのカバレッジと実target資格は別)、[§14 TC-34〜40](#14-traitと共通hook-slot生成カスタマイズ状態フローの横断接続2026-11-08)、[§17 TAT-01〜08](#17-ai性能チューニングの観測を原子的traitの履行へ接続する2026-11-08横断受入案)が必要な正負例のOwnerである。**重複IDの新設や第二Test Runnerは避ける**。Observable/Cache/Graph/AI Hint/SHO/KON/HeadlessのConsumerへの展開はS2のHard Dependencyにしない。
-
-**製品側の完成条件**：通常CLI・実Studio Bridgeという**別々のProduct入口**を使い、実選択Provider Bに到達し、値一致だけでは見逃す誤配線、失効、欠落、秘匿、型付きResult不適合を拒否できること。これと原子的TraitのRequired不足診断が同一Use-site/Source Scopeで説明できれば、次に正式Trait DSL/Schemaを設ける必要があるかを判断する。**到達していないのに新しいSchema/Core enum/Hostを先に固定しない**。
-
-**到達範囲**：上記のS2-C/S/Oは計画・受入対象であり、今回の文書追補では**NOT RUN／NOT QUALIFIED**。#3381の局所Go Caller試験コード、#3531のstatus、その他の限定Go/HTTP/AI合成Referenceがmainにある事実は保持するが、通常CLIディスパッチ／実Studio Bridge／実Provider Artifact資格・現在の権限・Owner意味受理・Cache性能は未証明である。
-
-## 18. 実装したInspector seamとモデル全容マップをTrait履行へ接続する（2026-11-08、S1達成後の実装引継ぎ）
-
-### 18.1 本当に前進した範囲を先に確定する
-
-[CLI選択Inspector PR #3381](https://github.com/hat47x/tei-platform/pull/3381)はmain統合済みで、[現行の実装状況 PR #3531](https://github.com/hat47x/tei-platform/pull/3531)もその範囲を記録している。以前の「型付き入口がDraft」の説明を今の実装状態へ持ち越さない。
-
-| 境界 | 現行mainで確認できるもの | 依然として欠けるもの |
-| --- | --- | --- |
-| **D1a：直接Operation** | 既存InspectorのCLI/Studio六SubjectのDirect Shadow Parity（main #3378） | Plugin経由の選択・実Invokeではない |
-| **S0：型付きPort** | `cmd/tei/cli_inspect.go` の `inspectWorkspaceJSONWithService` とStudio Hostの `InspectionService`。選択Service不在／不適切なResultを拒否 | 製品通常起動で選択済Providerを注入するComposition |
-| **S1：局所実選択・実Go Call** | `internal/inspectoradapter.Selected` が既存CompositionのContract/Scope/Provider/EpochとHost登録Go関数を照合。CLI HelperとStudio Host APIの**二つのin-process Call-site**から同じBを6 Subjectずつ呼ぶGo試験をmainに収録。A誤登録/Host Guard失効等を負例にする | Mock Artifact Digestの実Binary byte、Provider外部Source完全性、通常CLI／実Wailsを介した製品配線 |
-| **S2：製品入口** | `cmd/tei/main.go` の通常`inspect`分岐は今も `inspectWorkspaceJSON` を呼び、その内部でBuiltin Serviceを選ぶ | 通常CLIのHost-selected B、実Studio Wails BridgeのHost-selected B、二製品入口でのActual Invokeと独立Expected |
-| **S3：Target/Meaning/Evidence** | Source-only/Policy Rule失効の限定Referenceはmain (#3479/#3490) | exact Artifact構築/Load、Provider×Consumer Version Matrix、Current Grant、Owner Meaning Acceptance、実DB Effect |
-
-`#3381`のGo Testに選択Bの実関数呼出があることは、局所S1の**実装と試験コードの存在**として積極的に評価する。ただし本追補ではGo試験を新たに実行しておらず、**最新main全体のHealthがPASSしたとは主張しない**。#3531のexact HEAD Healthにはfailure表示があり、詳細修正と新HEAD検収はCI Ownerに委譲する。Synthetic/test double Providerが応答しても、製品のProvider真性・実BOMを証明したことにしない。
-
-### 18.2 原子的Traitの可視化はRQ-036のMapの「資格の投影」である
-
-[main採用RQ-036／PR #3505](https://github.com/hat47x/tei-platform/pull/3505)は、Data/Function/Business・Event/State・Pattern/Plugin/Extensionの全体像を、**標準と案件カスタムを区別しながらナビゲート**する製品要件である。[Typed Model Map Draft #3518](https://github.com/hat47x/tei-platform/pull/3518)は、その一部のread-only Source/World投影であり、現時点では**main未統合・partial coverageのCandidate**。モデル図にNodeやRelationが描かれているだけでは、そのモデル対象が実装済み・読み込まれた・受理された・権限内であるとは判断しない。
-
-このMapにTraitを出す場合は、新しいTrait Registryや独立したFulfillment正本を作らず、既存のTyped Subject／Source Index／Design Context／Contract-Provider解決結果／Conformance Assessmentへの**read-only navigation edge**とする。初期段階のMapで必要なのは以下の**区別の保持**であり、全Traitをリスト表示することではない。
-
-| Mapで辿る関係 | 表示・説明に必要な範囲 | 誤って確定しないこと |
-| --- | --- | --- |
-| `Subject → Declared Intent` | Role/Facet/Source occurrence、候補/受理状態 | Raw文字列やAI解釈をAccepted Meaningへ昇格 |
-| `Subject → Required Trait` | 使用するOperation/Variant・Scope・Target・Contract Revと**Required Closureの完全性** | 未Loaded/permission deniedのTraitを「要求なし」に分類 |
-| `Required → Fulfillment` | default/generated/manual/Providerの選択、Missing/Conflicts/Unsupported/Unknown | Provider Offer、メソッド名、Manifestのみで実装済み判定 |
-| `Fulfillment → Actual Evidence` | 選択実装・実Invoke・独立Expected・対象Build/Source/Scope/時点の識別 | Goの局所Test PASSで全製品/外部Target合格 |
-| `Standard → Custom → Effective Flow` | 標準/設定可/明示Hook/置換不可の保証、実効Graph Patchで影響を受けるTrait | 図のレイアウトやLLMが認可・Guard・Receiptを発行 |
-
-表示件数の分母は**取得対象に必要なContract/Source Closure**であり、表示されたNode集合ではない。Sourceが部分的・未受領・未許可ならMapに`partial`を表示し、未開示の存在・件数・Refを漏らさない。Trait可視化を現在のProvider選択やCurrent Grantの代用品にしない。Graphの変更→Source Patch→生成の権限と実装は既存#1124/#3503へ委譲する。
-
-### 18.3 次のS2一辺：選択済みProviderが公開入口から呼ばれたことを証明する
-
-**実装対象を一つの`inspect` Operationに限定**し、既存`inspectoradapter.Selected`と`cmd/tei/main.go`を活用する。新しい`TraitRuntime`、動的ローダー、Hostの一般的なPlugin解決基盤、Trait固定EnumをP0で追加しない。
-
-1. **Host-owned composition**：`authoring-tool`のexact Contract／Selection／Provider登録と現在のHost GuardをHost側が確定。必要なSource/Manifest/Implementationの情報が未取得ならQualifierを`unknown`とし、選択Bを実際のCompiled Member/外部Packageと同一だと自己証明しない。
-2. **公開CLI**：通常`cmd/tei inspect`がHost側から選択されたServiceを消費するよう接続。選択失敗/未提供/世代失効でBuiltinへ暗黙Fallbackしない。互換Builtinを残す場合も、**意図して選んだBuiltin**と、Plugin欠落を隠すFallbackを区別する。
-3. **公開Studio**：既存Wails BridgeをHost-owned Selected Serviceへ接続。CLI HelperやStudio Hostのin-processテストを再利用しても、Bridge／Session／Root Scope／型付きResultの実Consumer証拠は別。
-4. **独立Expected**：旧D1aの六Subjectを使用し、値が同一でも`B selected/A invoked`、旧epoch、A→B→A、Source-only drift、部分Required、Provider秘密エラー、Disclosure失効を適切なScopeで拒否する。結果値・Source位置・実Provider ID／Invocation・Qualified Buildを別票で比較する。
-5. **Trait追加**：S2で実Providerが確定した後に、単一のRequiredの`manual-required`不足を既存#3279 Contract/Conformanceへ投影。未実装診断が実Consumerから観測できることを確認してから、Generated/Providedの相互差を評価する。**S2完了をManual CAS実DBの完了待ちにしない**。
-
-### 18.4 追加の最小反証と経路別認定
-
-| Case | 入力差分 | 合否の境界（全て**新規NOT RUN**） |
-| --- | --- | --- |
-| **TMP-01：Helper vs Product** | 同じBを局所Helperで呼び、通常CLI `main.go`はBuiltinを呼ぶ | 局所S1のみ成立。製品S2は失敗 |
-| **TMP-02：Bridge差** | Studio Host APIは選択Bだが、Wails BridgeはBuiltin／別Rootへ送る | Host APIの正例を保ち、Studio実SurfaceのS2だけ拒否 |
-| **TMP-03：Manual欠落** | 適格なSource/Contract/Required Closureが完全、`manual-required`だけ未実装 | Trait不足をSource位置とOperation範囲付きで診断。Result一致/Hint/別ProviderのOfferで充足しない |
-| **TMP-04：Mapの部分性** | Model Mapが既知のPattern/Queryを表示、必要Plugin/Role/External Sourceの一部が未Loaded | 全体`complete`／全Trait実装済みと表示しない。非開示要素の存在/件数も漏らさない |
-| **TMP-05：Graph Patch資格** | Hook/Edgeの差分後も図のNode名と値が同一、Authorize回避経路が存在 | 個々のProvider TraitがPASSでも合成Pathは拒否。Layout-only変更は実行コード再生成の対象外 |
-| **TMP-06：古い実装資格** | Provider raw/Manifestだけ変更、Consumer Source FPとResult Byteが一致 | 影響するTarget/Contract/ObservationのEvidenceを再資格化。無関係Buildは維持可能 |
-| **TMP-07：観測との差** | 合成AI性能Referenceは整合、実Provider Observerは未呼出し | 調査候補のまま。Trait履行/実Measurement/SLO改善には昇格しない |
-
-**採否・停止**：S2を一件通すために、既存#951/#1016のResolverを再実装しない。RQ-036のMapでTrait不足を表示するためだけに第二Registry/Evaluatorを設けない。Unqualified Sourceを「要求なし」としない。Static Go単一バイナリ既定に動的Plugin導入を強制しない。S2に入る前に機械的に正当化できる最初の`manual-required`がないなら、抽象Traitの量産を停止し既存Contract Requiredの不足診断を優先する。
-
-**既存Ownerへの引渡し**：#1251/#1824は通常CLI＋実Bridge、#3279はManual Fulfillment、#3262はRead/Required Closure、#3505/RQ-036と#1124は型付きGraphの観測投影、#2600/#3267はTarget/BOM、#1180/#2514は独立Expected。今回確認した実装/採用済要求との差分を**計画へ追加しただけ**であり、TMP-01〜07の新実行、実Plugin Binary/Go実CLI/Wails、正式Trait Map Schema、全体Health PASS、Owner業務意味受理は**NOT RUN/NOT ACCEPTED**。
-
 ## 20. 実行Carrier・Hook位相・CLI/MCP公開契約をTraitから分離する（2026-11-09、現main実測の横断照合）
 
 ### 20.1 §19の実行主体選択を精密化：C-1とC-2は同じ物の二者択一ではない
@@ -1042,8 +933,125 @@ S2「Product Consumerが選択済Providerへ到達」の範囲限定結論
 | **TCR-05 CLI/MCP空集合誤判定** | 存在しないnamespaceをMCPで`entries:[]`成功と返す旧実装 | `NAMESPACE_NOT_FOUND`で失敗。同一Sourceの欠落はRequiredゼロではない（#3420／#3262） |
 | **TCR-06 Discovery≠Invoke** | Tool宣言にある操作が実Validatorで拒否、またはToolはあるが実Provider未選択 | 広告された操作と実行されたOperationを分け、不足を適切なOwnerへ記録（#3419／#3420／#3279） |
 
-**直近の実装順**：既存#1251のInspector通常CLI・Studio選択済Provider実Call（[#3540](https://github.com/hat47x/tei-platform/pull/3540)はこの時点で未統合Draft）をP0のまま維持。Hook定義書の表示を次のP0必須Gateにせず、**既存Hook Runnerの限定一位相**についてDeclared→Selected→Actual Invoke→Outcomeを独立に一往復する実験を、#2110/#1129の実装Ownerに引き渡す。CLI/MCPのTool説明と実Validatorの差は#3419/#3420へ委譲し、Trait名を増やして補修しない。C-1/C-2の製品利用・C-4の最終採用もここでは判断しない。
+**直近の実装順**：既存#1251のInspector通常CLI・Studio選択済Provider実Call（当該節の記録時点ではDraftだったが、**main統合済み#3540のS2-referenceは成立**。正式Providerを使ったS2-productには未到達）をP0のまま維持。Hook定義書の表示を次のP0必須Gateにせず、**既存Hook Runnerの限定一位相**についてDeclared→Selected→Actual Invoke→Outcomeを独立に一往復する実験を、#2110/#1129の実装Ownerに引き渡す。CLI/MCPのTool説明と実Validatorの差は#3419/#3420へ委譲し、Trait名を増やして補修しない。C-1/C-2の製品利用・C-4の最終採用もここでは判断しない。
 
 **停止・縮小条件**：`Trait = Hook`、`Trait = Carrier`、`Tool Discovery = Required Closure`と固定したくなる、別Resolver/Host/Reader/Runnerが必要になる、参照/定義書/広告の成功をProduct Conformanceへ昇格する場合は、原子的Traitの利用範囲を既存Operation ContractのRequiredへ縮小する。
 
-**状態**：#3579/#3588/#3583/#3563/#3582のmain反映と参照試験記録の静的照合。TCR-01〜06、実Plugin/実Hook Runner＋DB、通常CLI/実Wails Product S2、C-1/C-2/C-4の正式採否、正式Trait Schema、現在Grant／Owner Meaning Acceptanceは**この追補ではNOT RUN／NOT ACCEPTED／未決**。
+**状態**：#3579/#3588/#3583/#3563/#3582のmain反映と参照試験記録の静的照合。TCR-01〜06、実Plugin/実Hook Runner＋DB、正式PluginでのProduct S2／S3（静的参照ProviderによるS2-referenceはmain #3540で実証済み）、C-1/C-2/C-4の正式採否、正式Trait Schema、現在Grant／Owner Meaning Acceptanceは**この追補ではNOT RUN／NOT ACCEPTED／未決**。
+
+## 21. 11月9日の実装証拠をTrait履行へ引き上げる最小受入（履行候補と実証済みの差）
+
+### 21.1 現mainで進んだ実装と、まだ主張できないこと
+
+本節は[実装状況](../../docs/status.md)を現行の基線として読む。§18〜20に含まれる「#3540は未統合」「通常CLI/Studioは未接続」という記述は、その節を書いた時点の履歴であり**現在の未達項目ではない**。主な差分：
+
+| Evidence／採用された部分 | 現mainで確認できたこと | 原子Traitの証明にはなお不足すること |
+| --- | --- | --- |
+| [Inspector #3540](https://github.com/hat47x/tei-platform/pull/3540)／[#3671](https://github.com/hat47x/tei-platform/pull/3671) | 通常CLI dispatch、通常・生成Studio Host、Wails BridgeのGo境界から、共通Contractの**静的ローカル参照Inspector**を実選択・呼出（**S2-reference**）。PR exact-headのHealth・Wails Host等の限定CI記録が存在 | **正式Environment ProfileでのProvider選択→その固有Artifact Entry→二Product Consumer**、Load/Link真性、Current Grant、完全なRole/Source Closure、Owner意味受理（**S2-product/S3**） |
+| [Inspector同一性計画 #3739/#3740](https://github.com/hat47x/tei-platform/pull/3740) | Canonical ID・Workspace Manifest・Sourceのrevisionが別観測であり、World/SourceIndex FPだけでは同一対象を証明しないと明確化 | [Draft #3735](https://github.com/hat47x/tei-platform/pull/3735)の実Contract負例IS-01〜04の現main実証、外部ProviderのRoot/Origin真性 |
+| [Model Catalog #3728/#3754](https://github.com/hat47x/tei-platform/pull/3728) | `model catalog`は編集中の検証NG Workspaceでも**外側の`ok:true`で読取可能**。内側の`validation.ok/errorCount/warningCount`で検証成否を独立表示 | Catalog読取・検証要約のみで必要Traitの**全Required Closure**や、対象Operationの有効化・Provider実呼出・現在Grantを証明しない |
+| [Hook outcome #3761](https://github.com/hat47x/tei-platform/pull/3761)／[Evidence](../evidence/XTEA_LOWCODE_HOOK_OUTCOME_CHECK_2026-11.md) | `internal/hook`の`ValidateOutcome`が**語彙外の不成立名**を`HOOK_OUTCOME_UNDECLARED`で拒否。無名の不成立は許容し、既存Runnerの拒否位置を保持。限定Go試験が記録される | 外部Plugin／プロセス境界、実業務Result/DB Commit・Receipt、対象Hostでの合成適合。**宣言内の結末名であること**だけで業務効果は生まれない |
+| [6 Binding調査 #3757](https://github.com/hat47x/tei-platform/pull/3757)／[Evidence](../evidence/BINDING_FORMS_CONSUMER_SURVEY_2026-11-09/README.md) | Environmentの6種（DeploymentExecutors／ObservationProviders／EvidenceProviders／Instances／Bindings／ResourceBindings）にReaderがあり、実行到達は異なる。Deployment実行は**参照経路のみ**、Observation/EvidenceはBinding解決が製品にあるがRouter実組立なし | 6種を`declared`から`executed`へ一括昇格、参照Executionを製品実行と混同、ReaderがあるだけでMissing/Unknownを消すこと |
+| [Self-build #3760](https://github.com/hat47x/tei-platform/pull/3760)／[Evidence](../evidence/TEI_GO_SELF_BUILD_INPROCESS_RESOLUTION_2026-11-09.md) | 呼び手指定のcatalogと必須digestから、entry自身がin-processで計画を導き、childと`planFingerprint`を一致させた。`planReceipt.derivedBy`が経路を明示 | `l2bClaimed`／`qualified`はfalse。計画導出一致をProviderの実Link、Artifactの権限・Meaning受理、Build/Runtime全保証に昇格させない |
+
+この表は`required`／`missing`／`unknown`の判定に使う根拠の所在を示す**設計評価表**であり、正式な単一`TraitState` enumや新しい証拠Storeを追加する提案ではない。既存の#951/#1016/#3279/#3262/#1251/#2831/#1180/#2514の責務を変えない。
+
+### 21.2 原子的Traitの履行条件を「読めた・選んだ・呼んだ」の行で明確にする
+
+最小の照合列は次のように理解する。
+
+```text
+Subject/Operation + Root/Manifest/Source occurrence/Revision
+     → Required contract closure (complete / partial / opaque)
+     → Validation status (catalog read != validation pass)
+     → Provider binding + exact selection/target + implementation availability
+     → Actual consumer call (CLI/Studio/External Host) + generation/attempt
+     → Hook path / typed result / failure / effect (if required)
+     → Independent Expected + Artifact/Receipt evidence
+     → Current disclosure/Grant/Meaning (separate present-time decision)
+```
+
+**成功は交差条件**であり、互いの観測結果を埋め合わせない。例えば、`model catalog.ok:true`でも`validation.ok:false`のWorkspaceに対してRequired Traitを「健全に有効」としない。ただし編集中のSource/候補Traitは読めてよい。存在しない名前空間と、合法な空のRequired集合を区別し、非開示Requiredの存在・個数を非許可Consumerへ漏らさない。
+
+`manual-required`にDefaultがない場合は、対象のSourceとRequiredの取得が十分な範囲で`missing-implementation`を診断し、Targetが未受領・未Loaded・外部実行中なら`unknown/not-observed`を保持する。結末名が正当でも実Functionが呼ばれたか、`produces`が提案か保存か、Effectが確定したかは別。どの実装経路でもTrait定義の原子的保証とHookのGuard/Revision/Authorityを交換しない。
+
+**SourceとBuildの同一性**：`Canonical.id`の一致だけで`Kind`や`Workspace Manifest`が同一とはしない。Source位置移動、同Byte別Origin、Provider raw/Manifest更新、Selection Rule変更、Catalogの版変更を別々に観測する。同じ`planFingerprint`／World FP／出力JSONで過去のProvider ConformanceやBOM Qualifiedを復活させない。
+
+### 21.3 旧§18の並行草案を整理した結果と、引き継ぐ試験観点
+
+並行PRの統合によって本書には§18が3件存在し、そのうち2件は**S1→S2未接続という旧時点の計画を繰り返していた**。今回、先頭の正本§18（MTP-01〜05、RQ-036 Map投影）を残し、後置の2件を内容差分と照合して重複整理した。検証観点は既存#1180/#2514へ委譲し、他レーンの検証履歴を消さずGit履歴で辿れる。
+
+後置草案の**TMP-01〜07**は次の最小反証へ継承する（ケースIDは履歴参照、正式Runner/Expectedの第二定義ではない）。
+
+| 継承する負例 | 最新の判定上限とOwner |
+| --- | --- |
+| **TMP-01/02**：局所Helperでは選択B、通常CLI／Wailsでは別経路 | main #3540の**静的参照S2**で解消した範囲と、正式Profile選択PluginのS2-product不足を分離（#1251） |
+| **TMP-03/04**：Manual不足、部分Model Map／非開示Required | 既知のMissingのみ表示し、Required完全性/Origin/Disclosureを推論しない（#3279/#3262/#1124） |
+| **TMP-05/06**：Graph PatchでGuard迂回、Provider改版／Source-only漂流 | 個別Provider PASSとEffective Path適合／Current Evidence失効を分ける（#3503/#951/#2600） |
+| **TMP-07**：合成計測が整合、実Observerは未呼出 | Synthetic Observationは調査候補。実Measurement/SLO／Trait Conformanceは未資格（#3279/#3271） |
+
+### 21.4 次の実装を一つの不足へ縮める
+
+**P0-A：正式ProviderとのS2-product接続**。既存#951/#1016 Profileが選択した**Bの実Artifact/Entry**を、main #3540の通常CLIとWails Hostに供給し、B selected/B invokedを同一Target/Source/Attemptで独立検証する。B selected/A invoked、別Workspace Manifestで同ID、同Byte別Source、Provider withdraw/epoch変更、失敗Resultと現在Grantを別票で観測。参照Providerを残すなら明示選択であり、失敗時の暗黙Builtin fallback禁止。**新しいResolverや独自Hostは設けない**。
+
+**P0-F：単一Trait義務の実装差**。既存`inspect` Contractの必要な一能力について、標準/Provider実装がある場合と`manual-required`が欠ける場合を、同じRequired/Targetで比較し、完全性が確認できない場合は`unknown`、明示Missingの場合だけ未充足診断とする。実際のOperation/Contractが未対応なら新Trait型を足す前に既存Required形で試し、機能価値を測る。Hook境界は[main #3761](https://github.com/hat47x/tei-platform/pull/3761)の結末語彙拒否を再利用する。
+
+**P1-B：構成と外部実行への展開**。一つの現実に成立したProvider×Consumerのexact Lockから#3267の限定Version Matrixへ進み、C-1/C-2/C-3/C-4の宣言解決・Carrier入場・実Effectを別結果とする。実DB／Function Queryは#2586、三視点Graph／Trait Mapは#1124、Build catalog出所は#2831が所有する。Traitがどの領域にも一律に追加Host／Runnerを要求するならCore化は撤回する。
+
+**新しい独立Expected候補（本変更ではNOT RUN）**：
+
+| ID | 一要因変更 | 必要な判定 |
+| --- | --- | --- |
+| **TQ-01** | Catalogは`ok:true`で`validation.ok:false` | 読取成功とValidation不合格を両立表示。必要Trait全充足・実行可へ進まない |
+| **TQ-02** | Canonical本文IDは同じ、Kind／Workspace Manifestを変更 | 同一Origin/Subject/Requiredへの誤Bindingを拒否。Draft #3735を実検証するまでは未資格 |
+| **TQ-03** | CLIとWailsに静的参照B、正式Profileは別Provider Cを選択 | **静的S2-referenceだけ**。正式PluginのS2-product／BOM資格は拒否 |
+| **TQ-04** | Hookが未宣言Outcome、または正しい名を返すが実保存なし | `HOOK_OUTCOME_UNDECLARED`か正当な不成立へ分類。Outcome名の許可を業務Commitへ昇格しない |
+| **TQ-05** | Observation/EvidenceのBinding解決あり、Router実Invokeなし | `resolved/not-observed`を保持。環境の6宣言に同じ`executed`を配布しない |
+| **TQ-06** | self-build entryとchildが同Fingerprintだがcatalog別digest／Claim未承認 | 実行元の申告とinput digest／`l2bClaimed:false`を保持。BOM/権限を自動認定しない |
+| **TQ-07** | 原子的Traitの手動実装未提供、Required closureは一部未Loaded | 確認済Missingと全体`unknown`を区別、秘匿項目を開示しない |
+| **TQ-08** | Provider/Role改版後もResult Bytesは同じ | 対象Scopeに影響したConformance/Evidenceだけ再資格化、無関係Artifactは保持可能 |
+
+**本節の到達状態**：main #3540/#3728/#3754/#3757/#3761/#3760などの現物と限定証拠を照合し、§18の重複を編集上整理して受入計画を更新した。**正式PluginのS2-product／S3、実External Provider・実DB/Browser、TQ-01〜08、正式Trait Schema、Owner意味受理は、この変更ではNOT RUN/NOT ACCEPTED**。主張の上限は元Evidenceの実行対象・Source/Target/時点に限定する。
+
+
+### 21.5 実行に届いたHookのusesと、まだ届かないTrait保証（2026-11-09横断追補：同一Attemptの必要な観測だけを統合）
+
+§21までの`Declared Hook→Selected Implementation→Actual Invoke→Outcome→Effect/Receipt`は**設計候補の直列化**だった。[main #3828](https://github.com/hat47x/tei-platform/pull/3828)と[main #3843](https://github.com/hat47x/tei-platform/pull/3843)で、少なくとも**参照CLI／StudioのHook `uses`からCommand境界へ到達する配線**が生まれた。これは前節までの「Hookの宣言は見えるが呼ぶ配線自体は無い」という旧状態を解消した。実装と[限定実行記録](../evidence/XTEA_LOWCODE_HOOK_DECLARED_CALL_WIRING_2026-11.md)の一致を認める一方、**外部Plugin、実業務DB、現在Grant、成果物実Link、Owner意味受理**はこの経路では実証されていない。
+
+| 既存の実装済み差分 | Traitの履行判定へ具体的に使えること | まだ保証されないこと |
+| --- | --- | --- |
+| [#3828](https://github.com/hat47x/tei-platform/pull/3828) `uses`未実行を`Uncalled/NotEvaluated`として返す | 宣言だけある能力を`executed`として偽装しない。Manual/Provided不足の**検出候補**として利用する | 「未呼出しなら必ず実装未提供」とは限らない。入力未束縛・未到達・現在権限拒否を区別する |
+| [#3843](https://github.com/hat47x/tei-platform/pull/3843) `RunDeclaredCalls`／`CommandCaller`／`PhaseReport.Calls` | 実際に**参照Command境界へ行った能力名・呼出し結果/失敗**と、未束縛のため呼ばなかった能力を別に記録。CLI/Studioの参照実行・Go試験の範囲で成立 | `CallOutcome.Called`は**宣言制限付きCaller境界への試行**であり、正式Providerの実Entry到達・成功・Commitの証明ではない。`calls.go`では`Declared.Call`前に`Called=true`を立てるため、内側が利用不能でも`Called=true + Error`が成立しうる |
+| [#3802](https://github.com/hat47x/tei-platform/pull/3802) `produces`値をCLI/Studioで候補表示 | 提案値・未採用をUIから区別し、作業者が検証・採用へ進む位置を見つけられる | Proposal表示を保存・承認・Effectへ昇格できない |
+| [#2784](https://github.com/hat47x/tei-platform/pull/2784) 期間の現在状態をdispatch直前に読み直す | 過去のAction Offer時点のGuard判定を現在時点へ無断再利用しない**時間条件の反例**が限定Go試験として存在 | 実DBでのAtomic CAS／Commit直前の競合検査、現在のAuthorizationを省略してよいこと |
+| [#2812](https://github.com/hat47x/tei-platform/pull/2812) 同じProvider Loadから選択Namespaceのparsed原文・Manifestを内部保全 | 「今ファイルを開き直して得たbyte」を「そのConsumerが解析したbyte」と取り違えず、選択SourceのOccurrence/RevisionにTraitを束縛する材料ができた | `FullInputClosure=false`。Provider全体の負依存・multi-file atomicity・開示許可は未保証。内部保全RawをCatalog/Map/生成AIに無許可で投影しない |
+| [#3839](https://github.com/hat47x/tei-platform/pull/3839) `cmd/tei`の実Goビルドと依存Source閉包の限定束縛 | 選択TargetのSource/Module/Toolchain/Build入力と実Artifactの独立参照試験を進められる。Nested Studio module欠落や未確定BuildをPASSにしない | 実Pluginのリンク元・実Providerが当該Artifactに入ったか・LoadしたByte/Trust/Host Grantは別。1Target成功から全BOMをQualifiedとしない |
+| [#3848](https://github.com/hat47x/tei-platform/pull/3848) Observation/Evidence参照の`attemptedCount + complete` | 1件/1件成功と1件/2件成功の差、ゼロ試行を`complete=false`として扱える。**呼出し結果の部分性**を機械可読にした | `complete=true`は「試した分は参照契約上、全件成功した」の意味。**必要集合そのものの取得完全性**、実世界との一致、unknown/stale、Provider正式資格を証明しない |
+| [#3829](https://github.com/hat47x/tei-platform/pull/3829)、[#3847](https://github.com/hat47x/tei-platform/pull/3847) | MCPの引数一覧を宣言`inputSchema`から導出し、RQ-036全体Mapを初学者と生成AIの「現在地・近傍・実装未充足」へつなぐ設計を更新。**同じRequiredの別Projection**を再利用する方向と整合 | Tool Schemaの一貫性・Mapの表示から、Required全部解決、実Callback、現Grant、Owner受理を導出しない。MAP-17〜23は未実施 |
+
+### 21.5.1 RequiredなTraitは「試行・応答・結果・実効果」を別に要求する
+
+**契約の原子性は、単一のboolが各層を代表することではない**。例えば`Invokes(capability=sales.submit_order)`のような原子的義務を採用するなら、実装選択時の`uses`と、実Attemptの`Called`だけで自動履行としない。そのTraitの定義が「Command境界に到達すること」までを要求するなら、ScopeとCaller実装を照合した上で局所履行を主張できる。一方「Providerが処理を実行する」「保存まで完了する」を要求するなら、**別の原子義務／Effect Contract**と独立Expectedを必要とする。Command拒否・未知Effectを呼出成功へ繰り入れない。
+
+- **必要集合の被覆**：`requiredCount`は十分にLoaded/AuthorizedされたRequired closureからのみ導出し、`attemptedCount`や描画済みNode数を分母にしない。`complete=true`だけで`Required Fulfillment=complete`にしない。
+- **失敗の位置**：未到達・入力未束縛・Caller不在・Callerからの拒否・Result不適合・外部Effect不明は区別する。内側に到達できなかったCallOutcomeを、`Called`欄だけで「正式Provider実行済み」としない。
+- **時間と出典**：静的なTrait Bindingが存在することと、Dispatch/Commit時の期間State・Current Grantの適格性は別。別Workspaceでも同Fingerprint/Canonicalが得られる場合、同一Reader/Originや現在のPermissionまで認定しない。Same-Loadの内部Raw証拠も秘匿対象である。
+- **表示と自動化**：RQ-036 Map／CLI／MCP／Studio／AI向け説明は同じSource/Required/Conformanceへの参照として、`declared`・`selected`・`attempted`・`refused`・`not-observed`・`effect-confirmed`の**独立の事実**を表現する。これらの語彙は説明用であり、今回新しいCore状態Enumを提案しない。自動で「実装候補」の採用・権限付与・業務確定を進めない。
+
+### 21.5.2 最初の反証：既存Operation/Scenarioで一往復（全件新規NOT RUN）
+
+| ID | 一要因変更 | 独立Expectedとして確認する区別／所有先 |
+| --- | --- | --- |
+| **TFX-01** | `uses`を宣言、CallInputsを渡さない。一方で別例はCaller境界を呼ぶ | 未呼出`Uncalled/NotEvaluated`と`Calls[phase].Called`を分ける。`Called:true + Error`は`Provider Effect PASS`にならない（#2110/#3279） |
+| **TFX-02** | Callは参照Commandで成功し、`produces`は候補表示されるが保存しない | Declared Call／Proposed Value／Applied Effect／Receiptを4票で分ける（#1129/#1174/#3279） |
+| **TFX-03** | `Action Offer`後に期間Stateを`open→closing`へ変更 | 直前Guard再読込で拒否。旧Offer時の可否や古いTrait資格を現在の許可として使わない（#1174/#2586） |
+| **TFX-04** | Providerがparsed原文を読み込んだ後、物理Sourceを変更。同Byteの別Originも用意 | Same-Load Snapshotを保持しつつ、新Load時に影響Evidenceを失効。RawとManifestは権限なしでは非公開（#3262/#2516） |
+| **TFX-05** | 必須2 Providerのうち1件だけ成功、あるいは0件試行 | `attemptedCount/complete`とRequired closureを独立集計。Partial/Unknownを`not-required`へ縮退させない（#951/#3267） |
+| **TFX-06** | 同じTraitとResultで実Build依存・ManifestまたはToolchain Byteを変更 | 該当Target ArtifactとConformance/BOMだけ再資格化。未選択Targetの全Build無効化、同Resultによる旧資格復活を禁止（#2600/#2831/#3267） |
+| **TFX-07** | Map/Tool SchemaにはTrait/Hookが表示されるが実Caller/Providerは未選択 | 表示の成功・契約書の見通し・履行の欠落を区別してSource/Operationへ戻れる。権限外のTraitや未読込の件数を漏らさない（#1124/#3420/#3279） |
+
+**実装順を変更しない**：P0-Aは正式Profile/Artifactが選択した`Provider B`を通常CLI/Wailsの実Consumerへ注入して、**selected B＝actual B**を独立検査すること（#1251/#951/#1016）。P0-Fは既存Contractを用いた原子Traitの`manual-required`不足を、十分に受領したSource/Requiredの範囲で診断すること（#3278/#3279）。Hookの参照Callは到達済みなので、次は**宣言`reads`→能力パラメータの明示Binding**（推測による埋め合わせは禁止）と実Effectの確認が薄い未接続辺であるが、実Plugin/外部DBをP0の新Hard Gateにしない。受入Ownerは既存#2110/#1129、独立Expectedは#1180/#2514、BOMは#3267、RQ-036の図表からのナビゲーションは#1124が所有する。
+
+**停止条件**：`Called`だけでEffect成立、`complete`だけでRequired closure完全、Source Rawの保持だけでDisclosure許可、Map上の緑線だけで実Provider受理を主張するなら、当該投影を暫定`unknown`へ戻す。原子Traitと既存Command/HookのContractが同じ義務を二重定義してしまうなら、Trait型を追加せず既存Contractの`requires`へ収束する。
+
+**到達範囲**：上記はmain #3828/#3843/#3802/#2784/#2812/#3839/#3848/#3829/#3847の実Source・限定試験記録と、§21の旧計画を照合した**設計・受入差分**である。TFX-01〜07、正式Provider Plugin/実DB Effect、全体BOM、改訂後mainの全対象CI、正式Trait DSL/Schema、Owner意味受理は**今回NOT RUN／NOT ACCEPTED**。

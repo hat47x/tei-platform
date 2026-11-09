@@ -19,6 +19,12 @@ type Registration struct {
 	ProviderID     string
 	ArtifactDigest string
 	Inspect        func(sourceindex.Subject) (operations.SubjectInspection, error)
+	// CanonicalMessages declares that Inspect forwards the canonical Operation's
+	// own errors without adding or rewriting text. A transport may then show the
+	// message verbatim, the way it does for the in-process builtin. It is false
+	// for an implementation the Host did not verify to do that, so its text stays
+	// hidden.
+	CanonicalMessages bool
 }
 
 // Selected is the typed authoring-side Inspector invoked after existing
@@ -66,6 +72,16 @@ func Bind(
 // Registry/Host denial rejects invocation instead of silently using a builtin.
 // The runtime invocation of this function is observable, but this read-only
 // adapter does not provide independently verified executable provenance.
+// CanonicalInspectionMessages reports whether this selection forwards the canonical
+// Operation's error text unchanged. The CLI uses it to decide whether a failure
+// message may be shown verbatim or must be replaced (#3420).
+func (s *Selected) CanonicalInspectionMessages() bool {
+	if s == nil {
+		return false
+	}
+	return s.registration.CanonicalMessages
+}
+
 func (s *Selected) Inspect(subject sourceindex.Subject) (operations.SubjectInspection, error) {
 	if s == nil || s.coordinator == nil {
 		return operations.SubjectInspection{}, errors.New("inspector selected service unavailable")

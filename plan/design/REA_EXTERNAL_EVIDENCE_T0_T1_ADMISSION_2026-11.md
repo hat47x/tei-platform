@@ -447,3 +447,25 @@ REA Candidate Projectorの外部IDを`InspectSubject`のCanonical IDとして偽
 **実装順と責務**：A. T0-05実JSONLの現在HEAD CI・Artifact確認（本REA #3496）→ B. Product受入型／入口のfit-gap（#1158/#3419・#1251）→ C. 同一Attemptの実Consumer 1 Observation＋1 Relation（#3394/#1163）→ D. Sourceと意味の明示受理（#2621/#1124、Owner）→ E. SHO Source occurrence＋正式Writer/別Process Read（SHO #6）。この順はT0-05を全TEI P0の阻止条件にはせず、独立した並走作業を許す。
 
 **現時点の証拠**：#3777/#3793/#3540/#3492のmain統合と、それぞれの**限定的な参照実証**は確認済み。本節はSource/APIの静的照合に基づくFit/Gapであり、REA Product Providerや実TEI Operation、実Source受理、旧新DB、SHO Writer、Owner Meaningの**新しいE2E実行はNOT RUN**。
+
+---
+
+<!-- rea-candidate-model-map-shared-harness-boundary-20261109 -->
+## 21. 他のOwnerから成熟した引渡し判断：Model Mapと共有Harnessの双方にSource-backed資格を残す（2026-11-09）
+
+[Model Map Draft #3866](https://github.com/hat47x/tei-platform/pull/3866)では、同じWorldから作る型付き`From(kind,id) → To(kind,id)`、Relation IDの保持、二重Edge／重複IDの曖昧さ、Source-only Revision変更とWorld Fingerprint不変、A→B→Aを別試験にする方式を検討中。**Draftの合成テストはmain統合・Product Graph完成ではない**。その`ModelMap`が解決するのはCanonical Worldに実在する宣言であり、REAが外部解析したNode/Edgeを「resolved」に載せ替えて受理済み意味にすることはできない。
+
+[main #3843](https://github.com/hat47x/tei-platform/pull/3843)のCLI/Studio Hook `uses`→制限付きCommand Caller実呼出しは、**宣言と実Invokedを別に記録する先行パターン**として利用する。だがREA Providerのactual Invocation、任意の外部Tool権限やSource鮮度をこのHookの実績から認めない。[main #3863](https://github.com/hat47x/tei-platform/pull/3863)のStudio選択→限定Design Context→DSH等の外部Harnessへの受渡しは**計画上の境界**。生のREA SourceやEvidence、組織図、モデルの未受理情報を、共有Harness Sessionが存在することだけで外部送信してはならない。外部送信／Human Review／Provider Grant／現在Disclosure／実Deliveryは別資格。Harnessのセッションは製品UI間で共有してよいが、TEI・SHO・SUI・CSWが各々のSource/Meaning正本とOwnerを保持する。
+
+### T1-A → 三視点 Model Map → SHO/Harnessへの最短AC
+
+| AC | 入力側（現段階の実証） | 将来の実受領で保持すべきもの | 明示する停止条件 |
+|---|---|---|---|
+| **REA-O1** | Source-backed `graph-node-observation` 1件、外部Evidence ID/Attempt/Scope | Origin Workspace、raw digest、pre/post Source bytes、location（その位置単位）、Root unbound/unknown | CandidateをTEI `CanonicalSubject`やCurrent Accepted Sourceとして通さない |
+| **REA-R1** | Nodeに結ぶ`graph-relation-observation` 1件 | Edge固有ID、端点の向き、同Label別ID・並行Edge、プロジェクタの部分Projection | Relation ID消失／ambiguous解消不能ならread-onlyを継続 |
+| **REA-M1** | C0外部観測→C1構造候補→C2 Owner Accepted Meaning→C3実Consumerを区別 | `ModelMap`の`resolved`・`sourceStatus`・`ModelRevision`を別列、同Raw別Workspace、Source-only/A→B→A | `WorldFP`不変でも旧Review・Current Grantを復活させない |
+| **REA-D1** | SHOのSource occurrence・Editor byte span（Draft #28/#29）、外部Harness Session（main #3863は計画のみ） | Document URI/Revisionと選択Sourceの一致、明示Disclosure、受信byte量／途中切断・再開時Scope | 生Evidenceの無許可AI送信や、UI表示成功から正式Writer/Owner受理を推論しない |
+
+**責務分離**：外部からの`1 Observation + 1 Relation`のProduct read-only受領に必要な型のFit/Gapは既存#1158/#3419・Plugin #1251、正式な三視点／Model Mapは#1124/#2497およびDraft #3866、SHO編集は別Repo #6。ERAではなく**REA**の本実験（#3394/#3496）が所有するのは生の外部EvidenceとCandidateへの損失なしの受渡し、実AttemptでのSource/Provider/Delivery Witnessまで。新しいCore Host／意味Registry／解析Runner／Framework Routerは作らない。
+
+**検証の現況**：今回の追補は既存実Source／実PRの設計・コードの静的照合。上表のREA-O1/R1/M1/D1を製品TEI/SHO/Harnessで実行したものではない。JSONL T0-05はワークフロー登録済み・対象HEADの完了実Artifact未確認。既存Go/CIの別HEAD成功を現在Branch全体へ昇格しない。

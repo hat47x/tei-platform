@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 
+	"tei/internal/command"
 	"tei/internal/core"
 	"tei/internal/hook"
 	"tei/internal/ir"
@@ -54,11 +55,72 @@ func runDeclaredHooks(ctx context.Context, world ir.World, applicationID, patter
 // so a caller (or a test) can decide what the hook considers unsatisfied.
 func runDeclaredHooksWithRule(ctx context.Context, world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string, rule hook.ReferenceRule) (*cliHookReport, error) {
 	runner := hook.Runner{World: world, Implementation: rule}
+	// A hook that declares `uses` promises a call. Give the runner the boundary
+	// that can keep it: the Command invoker, with the pattern resolution
+	// CommandPatternFor performs. The capability's inputs are the hook's own
+	// inputs, bound through the resolved command pattern.
+	invoker := command.Invoker{
+		World:      world,
+		Executor:   command.ReferenceExecutor{World: world},
+		UnitOfWork: &command.MemoryUnitOfWork{},
+		Authorizer: command.ReferenceAuthorizer{},
+	}
+	runner.Caller = hook.CommandCaller{
+		Invoker:     invoker,
+		Application: applicationID,
+		Pattern: func(capability core.CanonicalID) (core.CanonicalID, bool) {
+			pattern, err := hook.CommandPatternFor(world, applicationID, capability)
+			if err != nil {
+				return "", false
+			}
+			return pattern, true
+		},
+	}
+	runner.CallInputs = hookCallInputs(world, applicationID, patternID, inputs)
 	report, err := runner.RunReachable(ctx, applicationID, patternID, attributeValues(inputs), hook.ReferenceReach{})
 	if report == nil {
 		return nil, err
 	}
 	return &cliHookReport{PhaseReport: report, Pattern: patternID, Note: cliHookNote}, err
+}
+
+// hookCallInputs binds, for each capability a pattern's hooks declare in
+// `uses`, the inputs the Command boundary receives. The hook's own inputs are
+// used as-is: this function does not invent a mapping from a hook's reads to a
+// capability's parameters, because that correspondence is a declaration the
+// hook does not currently carry. An unbound capability is reported as not
+// called rather than called with made-up values.
+func hookCallInputs(world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string) map[core.CanonicalID]map[string]string {
+	bound := map[core.CanonicalID]map[string]string{}
+	for i := range world.Applications {
+		if world.Applications[i].ID != applicationID {
+			continue
+		}
+		for _, pattern := range world.Applications[i].Patterns {
+			if pattern.ID != patternID || pattern.Interaction == nil {
+				continue
+			}
+			for _, declaration := range pattern.Interaction.Hooks {
+				for _, capability := range declaration.Uses {
+					if _, done := bound[capability]; done {
+						continue
+					}
+					bound[capability] = copyInputs(inputs)
+				}
+			}
+		}
+	}
+	return bound
+}
+
+// copyInputs returns a copy so a capability cannot widen the caller's map after
+// the binding is recorded.
+func copyInputs(inputs map[string]string) map[string]string {
+	out := make(map[string]string, len(inputs))
+	for name, value := range inputs {
+		out[name] = value
+	}
+	return out
 }
 
 // attributeValues keys the command inputs by canonical attribute name so the

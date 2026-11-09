@@ -93,6 +93,9 @@ func (h *LocalInspectorHost) Bind(trustedRoot string) (*Selected, error) {
 		Inspect: func(subject sourceindex.Subject) (operations.SubjectInspection, error) {
 			return operations.InspectSubject(trustedRoot, subject)
 		},
+		// This registration is the canonical Operation itself, so its failure
+		// messages are the ones every other transport also reports.
+		CanonicalMessages: true,
 	}
 	// This guard enforces the Host's immutable registration binding.
 	// It deliberately claims no user/tenant privilege or OS resource grant.

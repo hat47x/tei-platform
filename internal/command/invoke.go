@@ -79,6 +79,34 @@ type ExecutionError struct {
 }
 
 func (e *ExecutionError) Error() string { return e.Code + ": " + e.Message }
+
+// ReportedFailure returns the machine-readable failure an entrance should
+// report for err, and whether it has one.
+//
+// Every entrance answers the same way, because the answer is a property of the
+// error, not of the entrance: an ExecutionError already carries the reason the
+// caller branches on, and the remedy differs by code (supply an input, open the
+// period, obtain authority, retry after a commit failure). A per-entrance
+// allow-list is therefore wrong twice over — it hides reasons the core already
+// made machine-readable, and the lists drift apart (#3807: the CLI flattened 15
+// of 21 codes and knew seven, the Studio knew one).
+//
+// The second return value is the message without the "CODE: " prefix, so a
+// caller that reads code and message separately does not see the code twice.
+func ReportedFailure(err error) (string, string, bool) {
+	// "The effect may already be applied" dominates the specific code, because
+	// it changes what the caller must do: a blind retry can apply the change
+	// twice. Any ExecutionError can carry the flag, and so can a wrapped error
+	// whose cause does, so this is checked before the code is reported.
+	if EffectMayBeUnknown(err) {
+		return "COMMAND_EFFECT_UNKNOWN", err.Error(), true
+	}
+	var execution *ExecutionError
+	if errors.As(err, &execution) {
+		return execution.Code, execution.Message, true
+	}
+	return "", "", false
+}
 func (e *ExecutionError) Unwrap() error { return e.Cause }
 
 // NewUnknownExecutionErrorは、適用有無が確定しない実行失敗を作る。

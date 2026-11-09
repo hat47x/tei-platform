@@ -40,6 +40,19 @@ func inspectWorkspaceJSON(out io.Writer, root, world, kind, id string, positiona
 	return inspectWorkspaceJSONWithService(out, root, world, kind, id, positional, builtinCLIInspectionService{root: root})
 }
 
+// canonicalInspectionMessages reports whether this service's failures are the
+// canonical Operation's own errors, unchanged. The in-process builtin always is;
+// a Host-selected implementation says so through its registration.
+func canonicalInspectionMessages(service cliInspectionService) bool {
+	if _, builtin := service.(builtinCLIInspectionService); builtin {
+		return true
+	}
+	if declared, ok := service.(interface{ CanonicalInspectionMessages() bool }); ok {
+		return declared.CanonicalInspectionMessages()
+	}
+	return false
+}
+
 // inspectWorkspaceJSONWithService keeps CLI transport separate from the
 // implementation selected by a trusted host. A missing selected service must
 // fail closed rather than fall back to the built-in Inspector.
@@ -47,8 +60,11 @@ func inspectWorkspaceJSON(out io.Writer, root, world, kind, id string, positiona
 func inspectWorkspaceJSONWithService(out io.Writer, root, world, kind, id string, positional int, service cliInspectionService) (int, error) {
 	report := cliInspectionReport{SchemaVersion: "tei.cli.inspect/v0"}
 	if root == "" || world != "" || kind == "" || id == "" || positional != 0 {
+		// A missing flag is an argument problem, not an unusable subject
+		// value (#3733). INVALID_SUBJECT stays for a supplied-but-invalid
+		// subject, which the operation decides.
 		report.Error = &cliInspectionFailure{
-			Code:    operations.InspectionInvalidSubject,
+			Code:    resultCodeInvalidArgument,
 			Message: "inspect requires -workspace, -subject-kind and -subject-id; -world and positional arguments are not supported",
 		}
 		return writeInspectionReport(out, report, 2)
@@ -66,7 +82,10 @@ func inspectWorkspaceJSONWithService(out io.Writer, root, world, kind, id string
 		var inspection *operations.InspectionError
 		var stage *operations.ValidationFailure
 		code := 2
-		// Unknown Provider errors can contain host-private paths or credentials.
+		// Unknown Provider errors can contain host-private paths or credentials, so
+		// the default message stays generic. The Load and Source Index stages below
+		// replace it with this process's own error text, which keeps the CLI answer
+		// identical to the MCP adapter for the same input (#3420).
 		failure := &cliInspectionFailure{Code: "INSPECTION_FAILED", Message: "workspace inspection failed"}
 		switch {
 		case errors.As(err, &inspection):
@@ -80,7 +99,12 @@ func inspectWorkspaceJSONWithService(out io.Writer, root, world, kind, id string
 				operations.InspectionNotFound,
 				operations.InspectionAmbiguous:
 				failure.Code = inspection.Code
-				if _, builtin := service.(builtinCLIInspectionService); builtin {
+				// The message is shown verbatim only when the service states that it
+				// forwards the canonical Operation's own errors. An unverified
+				// implementation could put host-private paths or credentials into its
+				// text, so its message stays masked. When the text is canonical it must
+				// match the MCP adapter for the same input (#3420).
+				if canonicalInspectionMessages(service) {
 					failure.Message = inspection.Message
 				} else {
 					failure.Message = "inspection service reported " + inspection.Code
@@ -90,6 +114,10 @@ func inspectWorkspaceJSONWithService(out io.Writer, root, world, kind, id string
 				}
 			}
 		case errors.As(err, &stage):
+			// These two stages fail while reading this process's own Workspace. The
+			// text describes the read, not a Provider, so it is safe to report and
+			// must match the MCP adapter's answer for the same input (#3420).
+			failure.Message = err.Error()
 			switch stage.Stage {
 			case operations.StageLoad:
 				failure.Code = "WORKSPACE_LOAD_FAILED"

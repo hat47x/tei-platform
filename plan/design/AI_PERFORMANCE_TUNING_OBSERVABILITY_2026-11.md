@@ -256,9 +256,7 @@ Targetはまず既存Go・SQLite/PostgreSQL等の**実在する接続経路**か
 
 ### 11.1 最適化の判定単位
 
-## 9. 横断統合：性能要求から実装とEvidenceまでの最小契約（2026-11-08追補）
 
-### 9.1 最適化の判定単位
 
 最適化の単位は Subject × Workload × Requirement/Guardrail × Realization × Evidence とする。
 
@@ -273,7 +271,6 @@ Targetはまず既存Go・SQLite/PostgreSQL等の**実在する接続経路**か
 判定は**意味・現在の使用資格・正しさを保ち、対象Workloadの事前に定めた制約を満たす**こととする。速度の改善とp99/書込み負荷/費用の退行は別列で示す。品質に新しい正本を作らず、#565のQuality Envelopeと既存Scenario/Evidenceに用途別投影する。
 
 ### 11.2 最適化の候補探索と撤回可能性
-### 9.2 最適化の候補探索と撤回可能性
 
 発見の起点は (1)不要な実行・N+1・過大取得を減らす、(2)SQL/Index/Batch/Stream/並列/Renderingを改善する、(3)Derived/Cache/Snapshotで再利用する、の三種類。ただし適用順と採否は実測と制約で決める。**Cacheなし、TEI共通Runtime非介在、標準UIなしの完全Headlessも正式な比較候補**とする。
 
@@ -287,7 +284,6 @@ Targetはまず既存Go・SQLite/PostgreSQL等の**実在する接続経路**か
 分散Cache、独立常駐Agent、自動Adaptive制御はP0の前提にしない。最適化のためだけに新たなCache Host、第二Query Planner、第二Resolver、第二認可基盤を設けない。
 
 ## 12. Typed Lifecycle Graphを最適化の入力にする
-## 10. Typed Lifecycle Graphを最適化の入力にする
 
 #3503のOperation/Interaction/Generation Lifecycleを区別したうえで、Read/Derivedの標準フロー、案件差分、合成後の実効Flowを同じTyped Graph/Roleから導出する。**説明図だけで終えず、Generator/検証入力としてSource/Lock/Target/実呼出しを照合する**。#1124/#2497の図表・投影意味と統合し、独自の二重Flow正本は作らない。
 
@@ -315,9 +311,7 @@ CLI/Studio/SHOはModel全体、個別ノード、固定/Custom/実効フロー�
 ## 13. Pluginの実装方式と安全なAdaptive Strategy
 
 ### 13.1 三段階の選定
-## 11. Pluginの実装方式と安全なAdaptive Strategy
 
-### 11.1 三段階の選定
 
 1. 標準Function/Rule/Target-nativeで要件を満たせるかを先に検討する。
 2. 不足する場合だけ既存#951 Contract/Provider/CompositionへObserver、Analyzer、Proposer、Strategy、Provider、Verifier等の**役割Binding**を追加する。これらをCore固定enumや独立Resolverへ昇格させない。
@@ -326,7 +320,6 @@ CLI/Studio/SHOはModel全体、個別ノード、固定/Custom/実効フロー�
 #3278原子的Traitは、Requiredなら実装義務とConformanceを要求し、Advisoryはヒントとしてのみ扱う。Cacheable等の名称だけでは保証にならない。Capability自己宣言、実現、実Target Evidence、現在の実行権限を区別する。Plugin Bundle配布と選択した構成、実Build依存の閉包を分離し、未選択Pluginが結果・ビルド・Cache Keyへ混入しないことを確認する。
 
 ### 13.2 安全な最適化の競合とFallback
-### 11.2 安全な最適化の競合とFallback
 
 - **同時Missの合流**：Request Coalescingは純粋なReadでQuery/parameter、Source revision、Context epoch、鮮度条件、Tenant/Disclosure scopeが両立する単位に限定。異なる現在権限や不確定な結果を一つのFutureへ束ねない。書込みの重複防止はCacheでなく既存Operation ID/Effect契約が所有する。
 - **旧値復活**：Aが旧版を読みBが更新・失効後、Aが旧版を書き戻す競合では、Sourceの世代・条件付き書込み等が有効な場合にだけ防止保証を主張。Provider能力が未知なら強い鮮度を表明せず、条件に応じ再取得・利用不可・unknownへ戻す。
@@ -335,7 +328,6 @@ CLI/Studio/SHOはModel全体、個別ノード、固定/Custom/実効フロー�
 - **Adaptive**：P0/P1は自由な本番自動書換えを行わず、事前に適合性を検証したStrategyだけを切替候補とする。後続の適応制御ではヒステリシス、最小保持時間、切替数上限、欠測/Exporter障害時の安全なFallback、変更履歴とRollbackを検査する。採用前の提案はSource・業務意味・権限を変更しない。
 
 ## 14. 検証に追加する反例（AT-15〜24、すべてNOT RUN）
-## 12. 検証に追加する反例（AT-15〜24、すべてNOT RUN）
 
 既存AT-01〜14、#3271 CS-01〜10、#2582 RC-01〜09および#1180/#2514の独立Expectedを再利用する。新しいScenario正本を作らない。
 
@@ -385,7 +377,7 @@ Go単一バイナリにおける実証後、Web/Desktop/完全Headless/Java/.NET
 | merged PR #3525：Plugin実呼出しとLifecycle/観測の接続 | 選択と実呼出し、型付きHook、Current Grantの区別 | 対象FunctionのCache/Query最適化が実際に適用済み |
 | merged PR #3513：一Function実Readの計画 | order_entry.recent_ordersを入口にQuery→Provider→Rowset→Contextを一Attemptで照合する受入手順 | 実PostgreSQL Read、正しい結果やSource帰属が完結 |
 | Draft PR #3524：同一Loadの外部Source/Manifest証拠 | 選択NamespaceのSource原文・Manifestを同一Loadから保持する候補 | 現mainへ導入済み／全Input Closure／Provider全体Snapshotが成立 |
-| Draft PR #3527：AI観測Reference CI整備 | CI実行条件・索引の修正候補 | 現mainの全体CI合格や実性能測定 |
+| merged PR #3527：AI観測Reference CI整備 | 索引とWorkflowの固定SHA・Timeoutを修正しmainへ反映 | この変更だけで全main CIや実DB／実性能の合格にはならない |
 | Draft PR #3515：Harness/Adaptive Flow横断検討 | Tool配送・Source完全性・実権限を分離する検討材料 | 外部Harnessから本番AI最適化が可能 |
 
 ※本表のPR状態は2026-11-08の確認時点。並行作業の後続状態は作業前に再取得する。特定版の限定合成試験PASSを他Targetや現在のmain全体PASSへ転記しない。
@@ -495,16 +487,144 @@ Profileは初期値や原子Trait要求集合を展開する便利な束であ�
 **実装順の強制ではないが、主張の依存順は厳守する**。T0のSource/Contractが未知でも限定Traceの調査は可能。しかし実Call・Consumer・Independent Expectedを欠く状態で「AIが正しく自動最適化した」「本番SLOを満たした」と結論しない。Cache/Observerが不要な案件は当該PluginなしのTargetを選択可能とし、同じ保証を達成できる標準実装・Native SQL・案件固有コードを正規の選択肢に残す。
 
 **現在の資格（2026-11-08）**：本節は設計統合と独立反例の追加であり、AT-25〜32、実order_entry DB Provider Read、外部AI Consumer完全受領、Cacheの実同時負荷、実性能Benchmark、運用Adaptive適用、正式Owner意味受理は **NOT RUN / NOT ACCEPTED**。PR #3520の19合成対照・限定Referenceと異なるClaimである。
-## 13. 段階的な統合先・停止条件
 
-| 段階 | 具体的な縦断 | 既存の正本と完了条件 |
+
+## 19. 2026-11-09更新：実結合への最小受渡しと性能観測の証拠上限
+
+本節は既存T0〜T4、#2586のM1b→R0、#3271のCache/Snapshot、#1180/#2514の独立Expectedを**置換しない**。2026-11-09の実装状況と比較し、最小の一Function実読取へつながる追補だけを示す。性能機能の追加宣言より、宣言が実行へ届いたことの実証を優先する。
+
+### 19.1 新しい実装事実と、まだ証明されていないこと
+
+| 2026-11-09に確認した既存成果 | 本設計で再利用する点 | なお未確認の境界 |
 | --- | --- | --- |
-| T0：Fit/Gap | 実CLI/Query/Design Context/Provider/Telemetry/Scenarioの現行能力を照合 | #951/#3262/#2387、存在しないCLIを標準化せずunknownを保持 |
-| T1：Read-only | 既存order_entryの実ReadでFunction→Query/SQL→DB Provider→Context ResultとSpan/Metricを同一Attemptへ結合 | #2586/#3270/#3262。実Providerと結果Scope/欠測・権限を照合 |
-| T2：異質な2方式 | N+1除去またはSQL Pushdown、Cacheなし→Memory/Localの比較 | #2582/#3271/#1180。独立Expected、cold/warm、同時負荷、p99/費用・更新競合 |
-| T3：AI Candidate | Design Context read-only投影→説明可能な改善候補→Plan/独立Benchmark→採否・事後観測 | #3262/#2516/#1180。AI推定は未受理、DDL/Effectは既存Grant/Receipt |
-| T4：複数実Consumer | Go、Web/Desktop/完全Headless、後続Java/.NETのうち実際に実行したものだけ比較 | #1121/#3503/#3509/#3267。別TargetのPASSを流用しない |
+| #2586の最新M1b→R0受渡し | FunctionのQuery/Relation binding→実SQL/parameter→Selected/Invoked Provider→Rowset/Context→Consumerを一Attemptで対照し、B-Disconnected/B-OtherSQL/B-ProviderMismatchを区別 | order_entry.recent_ordersの製品Functionで全辺が実結合した証拠 |
+| merged PR #3689（internal/hook.RunReachable）および #3761（ValidateOutcome） | Reachable/Executed/Warned/Skipped/NotEvaluated/Refusedと宣言外Outcome拒否を、実装済みのHook境界から観測できる | after-* phase、DB commit、全reachable path、Cache失効の実完了 |
+| merged PR #3757（宣言されたBindingの実行到達調査） | 宣言の有無と実解決・非試験呼出しの有無を区別する既存実装箇所を再利用 | 汎用Optimization StrategyがすべてのFunction/Targetから実Invoke可能という保証 |
+| merged PR #3717（PostgreSQLの4系統にDSNとserviceを渡すCIを追加） | DBを使う一部の試験が設定欠落でskipされる問題への対処 | order_entry.recent_ordersのR0、各CI runの成功、最適化Benchmark |
+| merged PR #3760（self-build entryのin-process catalog導出） | Plan fingerprintを実処理入力と結び付ける方向、Toolchain/Artifactの測定可能性 | L2-b/G4 qualified self-build、業務Read Cacheの正しさ |
+| main #3479（外部Provider原文/Manifest変更）、Draft #3524（same-Load witness） | Consumer World fingerprint不変でも外部Sourceのrevision/manifestを別に検査する必要 | Draftの現main採用・全Input Closure、複数Sourceの原子的同時点 |
 
-#2600は実消費入力・Artifact再利用・Build省略・Evidence再資格化の所有先、#3271はCache/SnapshotとBackend、#2582はContext依存、#3278はTraitの実装義務、#3503/#1124は型付きFlow・図表とGeneratorの所有先とし、本書は**横断の最適化判定と受渡し**だけを所有する。#1119の既存G0〜G4へ追加Hard Gateを設けない。プロセスやPluginを増やしたのに実際の価値・正しさ・待ち時間改善を示せない場合は、その抽象を縮小/撤回する。
+上記は同じ一つの実Targetに対する一括PASSではない。PRがmergedでも、そのPRの試験対象と現在のConsumer、Host、Provider、Sourceの資格範囲を保持する。ソース一致・宣言の存在・計測可能性から、実測性能改善やOwner意味受理を導かない。
 
-**現況**：これは設計と計画の成熟化。AT-15〜24、T1〜T4、実OTel/実DB、AI実適用、実Target性能改善と正式Owner受理は**NOT RUN / NOT ACCEPTED**。既存の限定Reference PASSや過去のGate B/Cを新性能の合格証拠と読み替えない。
+### 19.2 T1で要求する最小のread-only性能Witness（既存契約のJoin）
+
+例示列は固定の新Schemaではなく、既存Source/Function/Query/Provider/Observation/Receiptを同一Attemptで結ぶ照合票。
+
+| 結合する位置 | 取得するWitness | 明示する非推論 |
+| --- | --- | --- |
+| Source→Function | exact Workspace/Function ID、Source occurrenceとLoader消費byte、World/Context revision、必要なQuery/Relation | Source Indexやcatalogに載っただけでは実消費・Meaning受理ではない |
+| Function→Query/Relation | Query semantic ID、relation path、実Context epoch、bindingが選んだSQL Source/physical relation | FunctionとQueryを別々にinspectできてもM1b成立ではない |
+| Query→Provider | 選択DB alias/Instance/Lockと、実呼出しExecutor、実Statement/Parameter/SQL digest、実Read開始・終了 | 実Query plan/名前や合成Connectorの戻り値がProduct実DB Readを証明しない |
+| Provider→Result/Context | 実Rowsetのcolumn presence/NULL、grain、row scope、時点、partial/complete/unknown、独立Expectedの観測対象 | 0件、NULL仮列、RLS部分集合を不存在・全件・業務成功にしない |
+| Result→Consumer/Observer | Consumerの実受領とpart/end、Observerの実Call、Sample数/Drop/Window、計測On/Off費用、現在のDisclosure | Collector/JSON入力一致≠Consumer全量受領、未観測≠0ms、Cache hit≠Grant |
+| Candidate→Measure | same Dataset/Workload/TargetのBaselineと独立Expected、p50/p95/p99、DB/CPU/Network/計測費、更新競合 | Native SQL/Cacheによる短縮を結果・権限の同等性抜きで採用しない |
+
+**一Attemptの対応が確立しなければ、AI Tuning Packetへ観測候補として投影しても実測性能の資格へ昇格させない**。Referenceと本番のSQL物理表が違う場合はQuery ID/画面結果が同じでも別の母集団として扱う（#2586 B-OtherSQL）。Current Disclosureは送信・実Consumerに相対的な既存Host権限で判定する。
+
+### 19.3 キャッシュとLifecycle Hookを混同しない
+
+HookでReached/Executedが報告されても、それは該当段階のHook処理の局所観測であり、Sourceの更新、CacheのInvalidation、外部ProviderのRead、確定後Effectの完了を示さない。#3689のReferenceReachはafter-*へ届かず、NotEvaluatedとSkippedも異なる。#3761のOutcome語彙検査は宣言外の返却を拒否するが、Cache鮮度や全Pathの動作を保証しない。
+
+Cacheへの再利用・更新可否は既存#3271のSource Observation/Derivation/Materialization/Reuse Eligibility/Current Disclosure/Business Acceptanceと、#2582の結果Claim・正負依存で判定する。機械的なTTL、Hook成功、DB ACKだけで完全Snapshotや現在値を宣言しない。実測できない外部Source/Manifest変更、NOT EXISTS・0件/partial、Tenant/Context epoch、Miss競合時は必要なClaimをunknownに戻し、要求された鮮度を満たせなければRead fallbackまたは最適化不適格を選ぶ。無制限FallbackによるOrigin過負荷はAT-28を使って別測定する。
+
+### 19.4 次に実行する一連の比較を最小化する
+
+- **T0/M1b**：#2586のB-DisconnectedとB-OtherSQLを、現在の実Sourceと既存Reader/Bindingの表だけで先に固定する。物理 SQL source、DB alias、Query/Relation、Contextのどの辺が未結合かを列挙。未確定の結合を補うために新Resolver/Query DSL/Providerを作らない。
+- **T1/R0**：既存の実Function readで正例B-Read+を一Attemptだけ成立させ、B-ProviderMismatch、Column Presence/NULL、部分取得を独立負例として加える。実PostgreSQLが未到達なら、instrumented Connectorの限定実証で止まり、Product実DB Readと書かない。
+- **T2**：T1で成立した同じQuery/Context/Read Cohortについて、まずNo Cache対Request-localまたはMemoryの一方式を比較。必要な場合だけLocalへ進み、AT-16/28/29を同じIndependent Expectedに接続。Cache以外のN+1/Pushdown改善も比較候補に残す。
+- **T3/T4**：実Readの観測範囲だけを#3262のread-only Contextへ投影し、完全受領・目的限定の開示を検証。実測BenchmarkはCorrectnessとp95/p99・費用を二枚に分け、採用/撤回/rollback判断を記録。CLIだけの正例をStudioや外部AIの証拠へ流用しない。
+
+**今回の更新状態**：既存実装の資格の再基準化と計画文書の整合修復であり、この変更による実Function→実DB Read、Memory Cacheの性能比較、外部AI受領、Adaptive Tuning、正式Owner意味受理は **NOT RUN / NOT ACCEPTED**。#1119のG0〜G4や別の受理Gateは変更しない。
+
+
+## 20. 最小Performance Experiment Protocol：改善の採否を再現可能にする（2026-11-09追補）
+
+§19のM1b→R0を優先する方針は維持する。本節は実Readが成立した後の**最初の比較実験の具体的な受入票**を定める。Cacheや新しいOptimizerを実装する前に、既存#1180 Scenario/Independent Expected、#2586実Read、#3271 Cache、#2600再利用、#565 Quality Envelopeへ既存の記録を渡す。公開CLI/APIや独立Benchmark Runnerの新設は決定しない。
+
+### 20.1 一つのFunction・一つの変更・二つの比較
+
+初期Subjectは`order_entry.recent_orders`のread-only Query。比較候補は **A = No Cache** と **B = Request-local memo または Memory Cache の一方**。同じSource/DB Dataset/SQL物理実体/Query・Rule版/Provider Instance/Target/Host、Current Disclosure、入力パラメータと実Consumerを使用する。A/Bで異なる条件は意図したPolicy/実装とその不可避な費用だけに限定し、変更点を差分票に残す。
+
+**A/B実験の開始資格**：
+- #2586のB-Read+でSource→Function→Query/Relation→実Provider→Rowset/Context→Consumerが同一Attemptで実観測され、B-Disconnected/B-OtherSQL/B-ProviderMismatchの負例を判別済み。
+- Providerの実Readを計測する観測点がある。計測なしのResult一致、合成Trace、Mock Providerだけなら性能評価に進めない。
+- 独立ExpectedをBaseline/Candidateと別のSourceで固定し、NULL/未取得/部分集合、Query grain、結果順序、Scope、Current Disclosureを確認できる。
+- DB・Source・Plugin/Targetの正確な版と選択された実装を記録。測定中の更新/統計reset/Schema driftが不明ならそのRunを比較不適格とする。
+
+### 20.2 再現可能なWorkloadの最小行列
+
+| Workload | 狙い | 最小の反証 |
+| --- | --- | --- |
+| W1 Cold | 初回実Read、Cache構築費と初期遅延 | Warm Hitの速度をColdの速度として表示しない |
+| W2 Warm・同一Scope | 再利用によるDB Read回数・遅延の差 | HitだけでCurrent Grant・入力閉包を省略しない |
+| W3 同時Miss | Coalescing/Stampede、OriginとPool負荷 | Cache Hit率改善でもOriginピーク/Queueが悪化 |
+| W4 更新と競合 | 更新前Read、Invalidate、旧populateの世代競合 | 古い結果を再格納してFreshと表示 |
+| W5 0件・Partial・非単調Query | NOT EXISTS/LEFT JOIN/Top-Nと負依存の再取得 | 不完全な0件をNegative Cacheで不存在確定 |
+| W6 異Scope・認可変化 | Tenant/Principal/Context epoch/Grant変化 | 同値Keyを根拠に結果や件数を横断開示 |
+| W7 Origin/Cache障害 | Timeout、Backpressure、FallbackとDB負荷 | 無制限Fallback、未観測を0msとみなす |
+| W8 Policy/Plugin変化 | Provider版/Instance、Rule/Schema、未選択Plugin、A→B→A | 未選択変更で過剰失効、旧Evidenceの自動復活 |
+
+W1/W2は初期の性能対照、W3〜W8は正しさ・可用性の受入を中心とする。**すべてを一度に自動化することは前提にしない**。W1/W2が成立するまでW3〜W8はFixtureと独立Expectedを先に固定し、実測未了を明記する。
+
+### 20.3 計測票：性能の改善と保証の成立を分離
+
+一つのRunに最低限、Subject/Source/DB Dataset/Workload fingerprint、exact Plugin/Target/Provider Instance、A/B variant、Actual Call、Rowset scope、独立Expected/Actual、Current Grant、観測Window、サンプル数、sampling/drop、測定On/Off費、cold/warm、p50/p95/p99、DB read count、Pool wait、CPU/Memory、Origin request peak、Storage/egress費、Correctness verdict、Performance verdict、Unknownを関連付ける。
+
+p99の標本数が不十分ならp99を比較不能とし、数値を補完しない。計測単位・Histogram境界・実行順・DB統計・他負荷が異なるRunも比較不適格。低CardinalityなQuery summary/Operation別durationを基本とし、Raw SQL、Parameter、Tenant/Principal、PKをMetric labelへ出さない。OpenTelemetryは任意Adapterとし、外部Collectorが停止しても業務Readは維持する。計測のための無制限Trace保存・高Cardinality集約を標準にしない。
+
+**採用判定は二段階**：まず独立Expected、Source/Scope/Grant、Effect境界の正しさを満たす。次に事前指定したSLO/Guardrail（p95/p99、Originピーク、DB write latency、CPU/Memory、運用費、測定費）を満たす場合だけ採用候補とする。SLO数値・許容費用は利用者/案件の要件に基づき、AIが任意の閾値を正本化しない。速度の改善率だけで採用しない。
+
+### 20.4 Cache以外を対照に残す理由
+
+Cache Bが性能改善しても、N+1除去、Query pushdown、Batch、Index、Data Context局所再計算、Target-native実装の方が単純で速い可能性がある。最初のA/Bを成立させた後に、同じWorkload/Expectedで **C = Cacheを使わないQuery/Batch改善** を比較できる余地を残す。ただしCの実SQLやDDLをAIが本番へ無承認適用しない。Native SQLとTEI Queryの同等性はNULL/時点/精度/粒度/順序/部分取得で検証し、DB Index/DDLは#3270の既存権限とMigrationへ委譲する。
+
+### 20.5 実装順・停止条件・責務
+
+- **E0**：#2586のM1b→R0実Readを成立。未成立なら本節の実Benchmarkは開始しない。
+- **E1**：#1180/#2514にW1/W2と更新・Scopeの独立Expectedを固定。#3271の既存CS/ATと重複したテスト正本を作らない。
+- **E2**：同一ReadでA/Bの実Provider invocationとConsumer結果を照合。実測Windowと正しさのEvidenceを分離。
+- **E3**：W3/W4/W7の負荷・失効・障害対照を追加。意味保存や負荷制御が成立しない場合はCacheを不適格とし、再取得またはNo Cacheへ戻す。
+- **E4**：必要な場合だけC（Query/Batch）を追加し、採用/撤回を#565の既存品質基準へ引き渡す。
+
+本節は新しいP0やHard Gateを追加せず、§10/§19のT0〜T4の中で**一つの実験を完結させるためのチェックリスト**である。PluginのObserver/Strategy/Cache Providerは既存#951/#3278/#3271のBindingに置き、Targetに不要なRuntime Hopを作らない。AI Tuning Packetは独立Expectedと実測の説明を助けるが、採用/Owner意味受理の権限を持たない。
+
+**状態（2026-11-09）**：E0〜E4、W1〜W8の実Function/実DB比較、Cache/Origin障害負荷、実TargetのSLO達成、AI自動適用、正式Owner受理は **NOT RUN / NOT ACCEPTED**。§19の局所Hook/CI/Binding成果をこれらの実行証拠へ昇格しない。
+
+
+## 21. DSH等の外部HarnessとAI性能チューニングを接続する最小契約（2026-11-09追補）
+
+§20のW1〜W8は**実行系の正しさと性能を検証する実験**であり、DSH/AI Harness自体の評価ではない。外部Harnessを接続しても、性能改善の正本はTEIのSource/Meaning/Function/Query/Provider/Independent Expectedと実Targetに置く。HarnessはTaskを実行・提案する交換可能なConsumer/Coordinatorであり、TEI Studioや生成Runtimeの必須依存にしない。
+
+### 21.1 連携の入口：選択したUI要素から目的限定のTaskを作る
+
+Studio上でFunction、Query、Relation、Result列、Rule、Lifecycle Hook、Provider Binding、性能Traceのいずれかを選択したとき、**選択対象の安定ID・Source位置・Revision・現在の閲覧資格・周辺Dependencyの取得範囲**を、既存のDesign Context/read-only CLI/APIからTask Contextとして組み立てる。未選択の機密データを便利さのために自動収集しない。
+
+例：`order_entry.recent_orders`のQueryを選択し「遅い理由を調べる」と指示した場合、Harnessへ送る最小情報は、利用者が許可したFunction/Query構造、対象Target、観測済みの低機密な集計値、目的・要求SLO、既存Task/Attempt参照である。Raw SQL/Parameter/Rowset/テナントID/個人情報/秘密Source pathは既定で外部送出しない。実測Traceの取得が許可されない場合は不足として示し、AIに推測した実行計画を事実として埋めさせない。
+
+**Studioの選択・説明・提案**と、**TEI側の変更プレビュー・適用・再観測**を別操作とする。選択したUI要素は操作対象の指定であって、書込み権限・本番DB操作権限・外部送出許可を与えない。変更は既存Source編集/Plugin Binding/Target Generator/Host Grantを通し、採用前に独立ExpectedとW1〜W8の該当条件を再検証する。
+
+### 21.2 Harness/モデルを交換しても評価可能な三つの経路
+
+| 経路 | 実行者 | 成立する資格・停止条件 |
+| --- | --- | --- |
+| **H0 決定論的** | TEI CLI/既存Query・Trace・Rule検査 | AIなしでも実Read・Baseline/Correctness・診断を実行。AI提案がないことを欠落としない |
+| **H1 外部Harness** | DSH等の既存Harness＋許可済みTool Adapter | Task Contextの実受領、Tool request/reply全件、モデル入力への配送、外部送出範囲を別記。Tool欠落/切断は比較不適格 |
+| **H2 交換Harness/Provider** | 別Harnessまたは別モデルProvider | 同じTask/Source/Workload/Expectedと許可Scopeで比較。モデル・Harness・Skill・専門Pluginを一度に変更せず差分を特定 |
+
+定額契約や外部モデルの提供形態は**接続できること・規約上許されること・技術的に再現できること**を別々に確認する。ChatGPT Plus等の消費者向けUI契約を、TEIから利用可能なAPI資格・自動操作権限・商用再配布権限と同一視しない。DSH固有の認証・通信・Tool/Session互換は実版のAdapterで検証し、DeepSeek由来の名称やOSSライセンスから接続先の利用規約まで推論しない。
+
+### 21.3 外部Harness評価で必須の非推論
+
+- **Transport**：CLI stdout完了、Tool Reply受領、モデルへ送信されたPart/終端、最終回答は別観測。過去H2/H3の不完全Sessionを再利用して「比較適格」としない。
+- **Authority**：read-onlyと表示されたSkillでも、実argv/OS権限/外部送出/Session Logの各Sinkを独立確認。OS隔離・Egress制限・機密非流出を未実測のまま宣言しない。
+- **Quality**：AIがもっともらしいSQL/Cache変更を提案しても、Product実Read、独立Expected、Baseline/Candidate性能、実適用・Rollback、Owner意味受理は別資格。
+- **Cost**：モデル呼出し料金、利用枠、Tool/Retry回数、Context再送、キャッシュ効果、所要時間、失敗率、実装/保守費を同じTaskで記録。定額プランの利用枠・自動化可否は実サービスの現行契約で再確認し、価格や利用可能性を設計前提として固定しない。
+- **Availability**：外部Harness・AI Provider・Observerが停止しても、AIを必要としないTEI Function/Query/Targetと手動開発は動作可能にする。自動最適化は任意Plugin。
+
+### 21.4 実装優先順位と撤回条件
+
+**H0**：まず§19/§20のM1b→R0、No Cache Baseline、W1/W2と独立Expectedを成立。**H1**：既存#3262のDesign ContextをUI選択に対応付け、read-onlyの小さなTuning Packetを実CLI/Consumerへ配送。**H2**：DSH一種類で実Tool受領・開示・結果を検証し、H0と同じTaskで候補品質・所要時間・費用を比較。**H3**：必要時だけ別Harness/Providerを追加し、再現可能な差分を測る。
+
+既存#2509/#2515（外部Harness隔離・配送）、#3262（Design Context）、#951/#3278（Plugin実装資格）、#2586（実Read）、#3271（Cache）、#1180/#2514（独立Expected）のOwnerを維持する。新しいAgent Loop/TEI独自Harness/共通AI Gateway/独立Proof Storeは、複数の既存Harnessで再現する重大な未解決欠陥と費用対効果が確認されるまで採用しない。
+
+**状態（2026-11-09）**：本節はUI選択→外部Harness→検証可能な改善提案の設計接続である。Studioの実UI要素選択からDSHへの配送、外部Harness完全受領、利用規約上の各モデル接続、実DBの性能改善、Owner受理は **NOT RUN / NOT ACCEPTED**。

@@ -1,3 +1,12 @@
+# Checkout line endings are part of what this repository measures: source trees,
+# contract fixtures and evidence files are hashed as raw bytes. The Windows CI
+# runner sets core.autocrlf=true, so text files arrived with CRLF there and a digest
+# comparison saw different bytes than on Linux (#3832 recorded crlf_pairs=25 for
+# contract.json against 0 locally). Every text file is therefore checked out with LF
+# everywhere; the paths below that are hashed as captured bytes keep -text so they
+# stay exactly as committed.
+* text=auto eol=lf
+
 # Archived witnesses are hashed as raw bytes; checkout must not rewrite them.
 /plan/evidence/TEI_E1_SYNTHETIC_MANIFEST_20261012_38267656696.json -text
 /plan/evidence/tei-e1-synthetic-38267656696/*.json -text
@@ -169,3 +178,33 @@
 
 # Subagent fork-chain observations are hashed as raw bytes.
 /plan/evidence/DSH_SUBAGENT_FORK_CHAIN_2026-11-09/** -text
+
+# Turn-boundary fork-chain observations are hashed as raw bytes.
+/plan/evidence/DSH_SUBAGENT_FORK_TURN_CHAIN_2026-11-09/** -text
+
+# Binding forms survey output is hashed as raw bytes by its README.
+/plan/evidence/BINDING_FORMS_CONSUMER_SURVEY_2026-11-09/** -text
+# Concurrent-subagent observations are hashed as raw bytes.
+/plan/evidence/DSH_SUBAGENT_CONCURRENT_LIMIT_2026-11-09/** -text
+
+# OTel path observations are hashed as raw bytes.
+/plan/evidence/DSH_OTEL_PATH_2026-11-09/** -text
+# Observation router connect output is hashed as raw bytes by its README.
+/plan/evidence/OBSERVATION_ROUTER_CONNECT_REFERENCE_2026-11-09/** -text
+
+# Evidence router connect output is hashed as raw bytes by its README.
+/plan/evidence/EVIDENCE_ROUTER_CONNECT_REFERENCE_2026-11-09/** -text
+
+# MCP path observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_PATH_2026-11-09/** -text
+
+# Binding identity layers survey output is hashed as raw bytes by its README.
+/plan/evidence/BINDING_IDENTITY_LAYERS_2026-11-09/** -text
+
+# Oversize-event observations are hashed as raw bytes.
+/plan/evidence/DSH_SESSION_LOG_OVERSIZE_EVENT_2026-11-09/** -text
+# Digest change reuse output is hashed as raw bytes by its README.
+/plan/evidence/DIGEST_CHANGE_REUSE_REFERENCE_2026-11-09/** -text
+
+# Partial run verdict output is hashed as raw bytes by its README.
+/plan/evidence/PARTIAL_RUN_VERDICT_2026-11-09/** -text

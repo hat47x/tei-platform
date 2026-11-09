@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
 
 	"tei/internal/application"
@@ -15,6 +16,7 @@ import (
 	"tei/internal/command"
 	"tei/internal/command/lifecyclesqlite"
 	"tei/internal/core"
+	"tei/internal/hook"
 	"tei/internal/operations"
 	"tei/internal/periodstate"
 	"tei/internal/semantic"
@@ -85,24 +87,16 @@ type cliViewReport struct {
 // applied must not read like a clean rejection, and a lifecycle refusal is a
 // replay decision rather than an execution error.
 func commandFailure(err error) (string, string, bool) {
-	var execution *command.ExecutionError
-	if errors.As(err, &execution) {
-		switch execution.Code {
-		case "COMMAND_LIFECYCLE_REFUSED":
-			return "COMMAND_LIFECYCLE_REFUSED", execution.Message, true
-		case "COMMAND_PERIOD_SCOPE_UNAVAILABLE":
-			// A period split by a closing day cannot be judged by a state that
-			// only knows whole months. Naming the code keeps it distinct from a
-			// generic execution failure, so a caller can supply a half-aware state.
-			return "COMMAND_PERIOD_SCOPE_UNAVAILABLE", execution.Message, true
-		case "COMMAND_PERIOD_SCOPE_UNKNOWN":
-			// The period's business date is missing or unreadable, so the half is
-			// unknown. A caller fixes the input rather than the state.
-			return "COMMAND_PERIOD_SCOPE_UNKNOWN", execution.Message, true
-		}
-	}
-	if command.EffectMayBeUnknown(err) {
-		return "COMMAND_EFFECT_UNKNOWN", err.Error(), true
+	// An ExecutionError already carries the machine-readable reason the caller
+	// branches on, and the remedy differs by code: a missing input, a closed
+	// period, a refused authorization and a failed commit all need different
+	// handling. Report the code as it is.
+	//
+	// This used to be a hand-written allow-list, which silently flattened 15 of
+	// the 21 codes internal/command returns into COMMAND_FAILED (#3807). A list
+	// kept per entrance also drifted: the CLI knew seven, the Studio one.
+	if code, err2, ok := command.ReportedFailure(err); ok {
+		return code, err2, true
 	}
 	return "", "", false
 }
@@ -150,6 +144,11 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		(*lifecycleGeneration < 1) ||
 		(len(allowedCapabilities) > 0 && !*execute) ||
 		(*operationLogFile != "" && !*execute) ||
+		// -input only feeds the command plan, which exists only with -command.
+		// Without this, `view -application X -input order=ORD-1` succeeded and
+		// dropped the value (and never parsed it), so a caller could believe it
+		// had supplied input to a command that was never planned (#3778).
+		(len(inputPairs) > 0 && *commandID == "") ||
 		*root != strings.TrimSpace(*root) || *applicationID != strings.TrimSpace(*applicationID) ||
 		*patternID != strings.TrimSpace(*patternID) || *packageID != strings.TrimSpace(*packageID) ||
 		*commandID != strings.TrimSpace(*commandID) {
@@ -833,6 +832,25 @@ func writeCommandPatternText(out io.Writer, view applicationview.CommandPatternV
 // writeHookReportText prints which declared hooks ran, which were skipped, and
 // why. A skipped phase is printed with its reason so the absence of a phase is
 // not read as a pass.
+// writeProposalText prints the values a phase proposed, in attribute order so
+// the same proposal always prints the same way.
+func writeProposalText(out io.Writer, proposed hook.Produced) (int, error) {
+	if len(proposed) == 0 {
+		return 0, nil
+	}
+	attributes := make([]string, 0, len(proposed))
+	for attribute := range proposed {
+		attributes = append(attributes, string(attribute))
+	}
+	sort.Strings(attributes)
+	for _, attribute := range attributes {
+		if _, err := fmt.Fprintf(out, "    proposes %s = %s (candidate, not adopted)\n", attribute, proposed[core.CanonicalID(attribute)]); err != nil {
+			return 2, err
+		}
+	}
+	return 0, nil
+}
+
 func writeHookReportText(out io.Writer, report cliHookReport) (int, error) {
 	if _, err := fmt.Fprintf(out, "hooks: %s (%d executed, %d warned, %d skipped)\n", report.Pattern, len(report.Executed), len(report.Warned), len(report.Skipped)); err != nil {
 		return 2, err
@@ -840,6 +858,12 @@ func writeHookReportText(out io.Writer, report cliHookReport) (int, error) {
 	for _, phase := range report.Executed {
 		if _, err := fmt.Fprintf(out, "  hook %s: executed\n", phase); err != nil {
 			return 2, err
+		}
+		// A proposal is a candidate value, not a settled one. Printing it beside
+		// the phase keeps a reader from treating `executed` as "the hook changed
+		// nothing" when it in fact proposed a value the command did not adopt.
+		if code, err := writeProposalText(out, report.Proposed(phase)); err != nil {
+			return code, err
 		}
 	}
 	for _, phase := range report.Warned {
@@ -850,6 +874,15 @@ func writeHookReportText(out io.Writer, report cliHookReport) (int, error) {
 	for _, phase := range report.NotEvaluated {
 		if _, err := fmt.Fprintf(out, "  hook %s: not evaluated (%s)\n", phase, report.Reasons[phase]); err != nil {
 			return 2, err
+		}
+		// A declared `uses` that was never called is the difference between
+		// "the hook passed" and "the hook's call did not happen". Print it.
+		if uncalled := report.Uncalled[phase]; len(uncalled) > 0 {
+			for _, capability := range uncalled {
+				if _, err := fmt.Fprintf(out, "    uncalled %s\n", capability); err != nil {
+					return 2, err
+				}
+			}
 		}
 	}
 	for _, phase := range report.Skipped {

@@ -1,0 +1,6 @@
+?? aw/r.sh
+?? aw/t.sh
+?? aw/v.sh
+?? tools/reference-evidence-router-connect/cmd/tei-evidence-router-connect/main.go
+?? tools/reference-evidence-router-connect/connect.go
+?? tools/reference-evidence-router-connect/connect_test.go
