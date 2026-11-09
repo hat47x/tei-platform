@@ -627,3 +627,37 @@ SHO Composerの並行Draftは、TEIのSource-safe逆編集に直接役立つ負�
 同じ時期に[Draft #3540](https://github.com/hat47x/tei-platform/pull/3540)は通常CLI/Studioの`S2-reference`配線を前進させ、HEAD `a5cf28acfdb31f2e583416f1f3bc2eddcf97a388`の[Health #42505204119](https://github.com/hat47x/tei-platform/actions/runs/42505204119)がcompleted/success。一方#3524のSource/Manifest same-Load WitnessはDraftで、Health successとWails Host smoke failureの別判定が存在する。**局所Provider選択・read-only Inspector・raw Witnessの成功を、一つのProduct Plugin Read/Business Effect/SHO正式受領の成功へ合算しない。**
 
 本Planは既存Issue・RQ-036 Model MapとRQ-037 BOM提案・ADR-0048・各Ownerへの実証要件の接続を担当し、第二Canonical/Graph Schema/Host/Source Ledger/Runnerを導入しない。
+
+## 27. Source-indexed Relationの三点閉包をM1bに昇格させる条件（2026-11-09）
+
+### 27.1 直前の実CIを正しく受理する
+
+直前のPR HEAD `862009d129a89795fe563e95f5fc9538b3721a90` の[Repository Health #42555519613](https://github.com/hat47x/tei-platform/actions/runs/42555519613)と[脆弱性確認 #42555519690](https://github.com/hat47x/tei-platform/actions/runs/42555519690)は、GitHub Actions上で**completed/success**と確認した。対象は**Plan＋実Workspace Readerテストの2変更ファイル**であり、合成Graph／Fixture／`modelref`の既存ファイルはmainへ統合済みで、このPRへの重複追加を避けている。
+
+ただし前HEADの成功は、今回の新しいRelation Target検査を含まない。新HEADの実`go test`／Healthは別に確認し、PR main追随も別判定とする。mainは移行後も進んでおり、**旧ベースのCI合格・mergeableと現mainとの統合証拠は異なる**。分岐履歴を無理に書き換えてCI履歴を消さず、現在のmainで同一Blobの既存Graph/Source Index/Coreを優先する。
+
+### 27.2 親Data→Relation→参照先Dataの閉包は文字列一致だけでは不足
+
+以前の`TestRealWorkspaceRelationParentAndTargetMatchCatalog`は、実`operations.CatalogWorkspace`で`semantic-relation:sales.order.lines`が一意な`semantic-data`のParentを持つこと、Relationの`Canonical.target`が`Catalog.Detail`と一致し、親Dataの`relations[]`に同IDが一度だけ含まれることまで検査した。しかし**参照先のData自身が実World/Source Indexへ入場したかは検証していなかった**。
+
+今回は同じTestに、Parent→Relation→Targetの**三点**だけを対象とする実Source照合を追加した。正式な新スキーマ・Read-only Graph Generatorを設けず、既存`operations.CatalogWorkspace`／`InspectSubject`のみで次を要求する。
+
+| 照合対象 | 新しい最小検査 | 未証明のもの |
+| --- | --- | --- |
+| RelationのTarget | `Canonical.target`が非空、`Catalog.Detail`と一致 | Target文字列が全Worldで解決済みとはまだいえない |
+| Targetの宣言 | `{kind: semantic-data, id: Target}`がCatalogに**ちょうど1件**、`Ambiguous=false`、`Prelude=false`、`SourceStatus=indexed` | Sourceにない外部DB Table、同名別Scopeの暗黙の同一視 |
+| TargetのCanonical | 実`InspectSubject`で指定Kind/IDを厳密に再解決、`Canonical.id`一致、Source refが非空 | Readerが同じOS snapshot／OwnerがMeaning受理済み |
+| Version/Workspace | Parent/Relation/Targetの`Workspace identity`、`WorldFingerprint`、`SourceIndexFingerprint`が一致 | 外部Provider rawの鮮度、実Provider Rowset、実Binary/Grant |
+| Graphへの引継ぎ | 実在した一つのData→Relation→Dataトポロジーの入力として使える | 同端点の別Relation Instance ID、Function CRUD/Business/全Graph閉包 |
+
+**M1b-local**の対象はこの三点に限定し、`Required`の未列挙Relation・Function・State・Pluginまで適格になったとは主張しない。仮に参照先が未宣言・未Index・重複なら、UIは既知Relation IDと`unresolved/ambiguous`を維持し、Targetの存在やSource逆編集を補完しない。将来的に対象Workspaceが外部参照を正式サポートする場合でも、現在のFixtureに合わせた黙示的インポートや別Source正本を設けない。
+
+### 27.3 最新横断成果の取込み順と過剰拡張の抑止
+
+- **M0 Model Map [Draft #3518](https://github.com/hat47x/tei-platform/pull/3518)**：`contains(Data→Relation)`／`refers-to(Relation→Target)`を型付きMapへ投影する別Owner。今回の三点テストはその**実TEI Source側の比較元**であって、M0を重複実装しない。`partial-projection`を全Mapの完全性へ昇格させない。
+- **Query/Provider [#2586](https://github.com/hat47x/tei-platform/issues/2586)、[Draft #3500](https://github.com/hat47x/tei-platform/pull/3500)**：最初の実Readは`order_entry.recent_orders`。同一Function/SQL byte+args/Selected Provider/Result Slice/Row→Semantic Mapping/Consumer/Attemptの観測が必要。今回のRelation Target検査はProvider Readを一切呼ばない。三視点の`CRUD R`は実Read成功に読み替えない。
+- **Plugin D1 [main #3381](https://github.com/hat47x/tei-platform/pull/3381)、[#3540](https://github.com/hat47x/tei-platform/pull/3540)**：型付きInspection Port・選択Provider Go実Callの限定経路は重要だが、Source三点をBuiltin Inspectorで読めることと、製品CLI・Studioが選択Pluginを実Invokeすることを別票にする。
+- **SHO/Document**：図面の関係Sourceを3点解決できても、SHO Document OccurrenceのByte Span/UTF-16 Editor Selection/Save As参照、受信Asset、文書再Openは別Consumerの資格。三視点Modelerの選択をSHO Writerの現在編集資格として使わない。
+- **Self-build/Runtime**：生成用Plan・Build Receipt・実Artifact・選択Plugin・実Target Invocationと、現在のRead-only Model Projectionを独立に管理。新たなGraph Engine/Host/Registry/Acceptance Ledgerを追加しない。
+
+**次の最短作業**：上記三点の実Go試験をexact HEADで通す → #3518の型付きMap `contains/refers-to`と同じ3 Subjectで一致試験（main採用後）→ **1本のRelation ID＋Source Refを欠落せずM2 Headless Graphへ出す**。その際、Sourceで同型Relationが2本あることと、`modelref.Edge`のID不足による逆編集不可は独立の制約。Function×Data CRUD MatrixのActual Source/Unknownセルは同Graphの完成と同時に保証されたことにしない。
