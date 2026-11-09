@@ -77,3 +77,12 @@ MV-01の次の一手として、既存`internal/operations/model_catalog_validat
 **次の判別優先順位**：P0は上記実Go局所回帰のexact-head結果確認。P1は既存#3492の実Relation Parent/Targetと#3518のtyped Map M0を**同一World/Catalog/Index生成経路**で照合するが、M0の`partial-projection`を変更せず、Source Index由来のLocatorを意味上のRelation IDに代用しない。P2は#3543の実Workbench A/Jに検証NGの選択時表示・現在Source変更・Graph/Command入口を追加する検討を#1124 Ownerへ返す。#3728の判定欄がStudioへ自動表示済みとは主張しない。
 
 **検証資格**：本節はmainに存在するコードの静的照合と**新しい単一Go回帰試験候補の追加**。新規試験の実行/CI/Review結果は当該PR exact headを参照し、結果未確認の時点では **NOT RUN / NOT PROVEN** と記す。M0 GUI、実Provider/DB、Production Grant/Policy、複数Consumerの同一Attempt、Owner意味受理、認知負荷測定は引き続き未検証。
+
+### 4.1 Source-rootとin-process Catalogの追加反証候補（静的所見）
+
+今回のGo回帰は**未定義TypeRefのSemantic診断**だけを対象とする。mainのコードを別途静的に確認すると、関連する別の論点がある。
+
+- `CatalogWorkspace`は`CatalogWorld`を作成した**後で**`catalogValidation(loaded)`を設定する。したがって`CatalogWorld(world, idx, ...)`を直接利用するin-process Consumerでは、`CatalogValidation.OK`がGoの初期値`false`のままでも、**Validationを実行して失敗したという証拠にはならない**。現実の不適切なConsumer到達経路は未確認。`false`だけからfailedとする誤表示は止め、個別Caller/用途を調べる。
+- `catalogValidation`は`SourceRootFindings`のerrorを数える一方、`WorkspaceValidation.HasErrors()`は確認したmainコードでは`Direct`／`Diagnostics`のerrorを確認し、`SourceRootFindings`を走査しない。**Source-root-onlyのerrorがあるWorkspace**について、これらをそのまま合否として比べれば不一致の可能性がある。実CLIの`validate -json`がどの規則を使うか、発火可能なRoot負例とともに[#2823](https://github.com/hat47x/tei-platform/issues/2823)／[#3674](https://github.com/hat47x/tei-platform/issues/3674) Ownerへ返して調べる。現在のProduct CLIが誤判定したという実証結果ではない。
+
+これらは本PRの既存4 operationテストの成否とは**独立の未検証問題**。正式なValidation状態Schemaや新検証器を先に増やさず、同一Rootの`CatalogWorkspace`／`ValidateWorkspace`／CLI JSONを実Source-root-only負例で照合した上で最小対応を判断する。**NOT RUN / NOT PROVEN**。
