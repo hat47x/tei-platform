@@ -17,6 +17,17 @@ const record = (value, fields) => {
 };
 const key = (role, scope, kind, id) => JSON.stringify([role, scope, kind, id]);
 const sortKey = x => JSON.stringify([x.viewId, x.lane, x.claimId]);
+const plainArray = value => {
+  if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) return false;
+  const length = value.length;
+  // No holes, own metadata, symbol keys, getters or own iterators.
+  if (Reflect.ownKeys(value).length !== length + 1) return false;
+  for (let i = 0; i < length; i++) {
+    const desc = Object.getOwnPropertyDescriptor(value, String(i));
+    if (!desc || !Object.hasOwn(desc, "value")) return false;
+  }
+  return true;
+};
 
 // "snapshot" must agree across projector, envelope, claims: local bind only.
 // Both snapshot and workspaceObservation are caller-supplied equality witnesses,
@@ -26,7 +37,7 @@ export function bindPublicTraitClaims(publicProjection, envelope) {
   if (!record(envelope, ["scope", "workspaceObservation", "snapshot", "claims"]) ||
       !text(envelope.scope) || !text(envelope.workspaceObservation) ||
       !text(envelope.snapshot) ||
-      !Array.isArray(envelope.claims) ||
+      !plainArray(envelope.claims) ||
       !record(publicProjection, ["snapshot", "workspaceObservation", "views", "relationTable", "publicDiagnostics", "coverage"]) ||
       !text(publicProjection.workspaceObservation) ||
       publicProjection.workspaceObservation !== envelope.workspaceObservation ||
@@ -38,7 +49,7 @@ export function bindPublicTraitClaims(publicProjection, envelope) {
   const published = new Map();
   for (const role of ROLES) {
     const views = publicProjection.views[role];
-    if (!Array.isArray(views)) fail();
+    if (!plainArray(views)) fail();
     for (const v of views) {
       if (!record(v, ["viewId", "ref", "x", "y"]) ||
           !record(v.ref, ["scope", "subject"]) ||
