@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {observeDirectTrace,compareObservedLoadContext} from './direct-trace.mjs';
-if(process.argv.length !== 5) throw Error('usage: node verify-cli-trace.mjs <exact-cli-json> <alternate-scope-cli-json> <other-workspace-cli-json>');
+if(process.argv.length !== 6) throw Error('usage: node verify-cli-trace.mjs <exact-cli-json> <alternate-scope-cli-json> <other-workspace-cli-json> <same-manifest-copy-cli-json>');
 const raw=JSON.parse(readFileSync(process.argv[2],'utf8'));
 const observed=observeDirectTrace(raw);
 assert.equal(observed.status,'direct-edge-candidates',JSON.stringify(observed));
@@ -66,6 +66,23 @@ assert.notDeepEqual(raw.result.workspace,otherWorkspaceRaw.result.workspace,
 assert.deepEqual(compareObservedLoadContext(raw,otherWorkspaceRaw),
   {status:'unknown',reason:'workspace_manifest_mismatch'},
   'equal World/Source fingerprints must not join different Workspace manifests');
+// Another real directory, byte-for-byte identical Manifest and Sources.
+// The CLI does not carry a physical Root or Attempt identifier. Correctly
+// report an *observed value match*, not a physically same Workspace.
+const copiedRaw=JSON.parse(readFileSync(process.argv[5],'utf8'));
+const copied=observeDirectTrace(copiedRaw);
+assert.equal(copied.status,'direct-edge-candidates',JSON.stringify(copied));
+assert.deepEqual(copied.selected,observed.selected);
+assert.deepEqual(copiedRaw.result.workspace,raw.result.workspace);
+assert.equal(copiedRaw.result.worldFingerprint,raw.result.worldFingerprint);
+assert.equal(copiedRaw.result.sourceIndexFingerprint,raw.result.sourceIndexFingerprint);
+assert.equal(copiedRaw.result.snapshotFingerprint,raw.result.snapshotFingerprint);
+assert.deepEqual(compareObservedLoadContext(raw,copiedRaw),
+  {status:'same-observed-load-context-only',authority:'read-only-candidate',
+   physicalRootIdentity:'not-provided',readAttemptIdentity:'not-provided',
+   sourceAndPluginClosure:'unproven',absentClaim:'unknown'},
+  'same bytes should not be called the same physical root or read attempt');
+
 
 assert.equal(alternate.absentClaim,'unknown');
 const withoutProjectionScope = x => x.edges.map(e=>({
@@ -78,4 +95,4 @@ assert.equal(raw.result.worldFingerprint,alternateRaw.result.worldFingerprint);
 assert.equal(raw.result.sourceIndexFingerprint,alternateRaw.result.sourceIndexFingerprint);
 assert.notEqual(observed.snapshotFingerprint,alternate.snapshotFingerprint,
   'selector-bound snapshot should change when the caller scope changes');
-console.log('actual-cli-direct-reference-observation=PASS; caller-scope-only=OBSERVED; different-manifest-same-world=REJECTED; snapshot-token-equal='+ (raw.result.snapshotFingerprint===otherWorkspaceRaw.result.snapshotFingerprint) +'; source-closure=NOT-PROVEN; relation-identity=NOT-PROVEN');
+console.log('actual-cli-direct-reference-observation=PASS; caller-scope-only=OBSERVED; different-manifest-same-world=REJECTED; snapshot-token-equal='+ (raw.result.snapshotFingerprint===otherWorkspaceRaw.result.snapshotFingerprint) +'; byte-identical-copy-root=NOT-IDENTIFIED; source-closure=NOT-PROVEN; relation-identity=NOT-PROVEN');
