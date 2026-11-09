@@ -1260,6 +1260,59 @@ Claimの`boundary`文言を、**このホスト**から**観測した二つの�
 - catalogの中身が正しいこと（§4.22 K-3、SC0-26）
 - `-strong`の名前と粒度（§4.25の三つ目の不足分。未着手）
 
+### 4.30 catalogを名指ししたら、二回目のbuildも既定で行う（2026-11-09）
+
+§4.25は既定経路の強化を四案に整理し、P-4（`-strong`で強さを選ぶ）を推したが決定しなかった。§4.27・§4.28が費用を測り、**参照childで+110 ms、実buildで1.93倍**と分かった。
+
+本節は**一つの場合に限って既定を強くする**。
+
+#### 決めたこと
+
+**`-build-catalog`を渡した試行は、`-rebuild-check`を明示しなくても二回目のbuildを行う。** `-rebuild-check=false`を明示すれば従来どおり一回で終わる。
+
+| 呼び手がしたこと | 二回目のbuild | 理由 |
+| --- | --- | --- |
+| `-build-catalog`を渡した（`-rebuild-check`に触れない） | **行う** | その経路だけがL2-bを立てられる |
+| `-build-catalog`と`-rebuild-check=false` | 行わない | 呼び手が明示的に断った |
+| `-build-catalog`と`-rebuild-check` | 行う | 明示 |
+| `-intent-resolver`（catalogなし） | **行わない** | その経路ではClaimが立たない |
+| どちらも無し | 行わない | 計画を導出しない |
+
+#### なぜこの一つだけか
+
+**catalogを名指しすることは、既に「強い経路を選ぶ」という表明である。** §4.22のK-3により、catalogは呼び手が用意するデータであり、渡すには手間がかかる。その手間を払った呼び手に対して、**同じ経路で取れる最後の観測を既定で取る**のは、費用と便益が同じ側にある。
+
+**child経路は違う。** そちらは`l2b.claimed`が立てられないので、二回目のbuildを足しても費用だけが増える。§4.25が「P-2は非対称」と呼んだのはこの点であり、本節はその非対称を**既定に持ち込まない**形にした。
+
+#### 何が良くなるか
+
+これまでは、catalogを渡した呼び手が`-rebuild-check`を書き忘れると、**何も言われずにClaimが立たなかった**。`l2b.unmet`には理由が出るが、呼び手は「渡したのに立たない」ことに後から気づく。本節の変更で、**catalogを渡せばClaimが立つ**のが既定になる。
+
+費用は実buildで約2倍（§4.28）。**catalogを渡す呼び手だけが払う。**
+
+#### 何が変わらないか
+
+| 項目 | 状態 |
+| --- | --- |
+| 既定の導出経路 | **child のまま**（R-2据え置き。in-processは呼び手が名指しする） |
+| `-intent-resolver`の試行 | 二回目のbuildは既定で行わない |
+| 何も渡さない試行 | 計画も導出せず、二回目のbuildも行わない |
+| `qualified` | `false` のまま |
+| catalogの出所 | §4.22 K-3のまま。**中身を誰が作るかは未決**（§4.29） |
+
+**「既定の試行でClaimが立つ」ようになったわけではない。** catalogを渡すという一手が要る。§4.29が示したとおり、そのcatalogを用意する場所はまだ製品に無い。
+
+#### 覆す条件
+
+- catalogを渡す呼び手が、二回目のbuildを**常に**不要とする場合（費用が受容できない）
+- 二回目のbuildが**失敗しやすい**場合（部分的な成果を返すchildなど）——このときは`-rebuild-check=false`を既定にする
+
+いずれも`-rebuild-check=false`で回避できるため、**既定を戻すのは一行の変更**である。
+
+#### 実測
+
+[記録](../evidence/TEI_GO_SELF_BUILD_INPROCESS_DEFAULT_EVIDENCE_2026-11-09.md)。`-rebuild-check`を**渡さずに**`l2b.claimed=true`になること、`-rebuild-check=false`で`unperformed`の理由が「呼び手が断った」に変わることを確かめた。
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
@@ -1337,7 +1390,8 @@ Claimの`boundary`文言を、**このホスト**から**観測した二つの�
 - [x] (c)の観測：**同じplanを二回、別stateでbuildして同じバイトが出た**（§4.21、[記録](../evidence/TEI_GO_SELF_BUILD_ARTIFACT_REPRODUCIBILITY_2026-11-09.md)。`-rebuild-check`で`artifactReproducibility=reproduced`。lockの`bound`が示せなかった「そのplanがそのartifactを生んだ」を再現で観測した。**L2-bではない**）
 - [x] **実build**での`-rebuild-check`のコスト測定（§4.28。`reference-go-build-with-supply`をchildにして`./internal/core`を実際に`go build`。中央値5852.7 ms→11272.4 ms、**+5419.7 ms・1.926倍**で、§4.27の推論が当たった。二回のbuildのdigestは一致し`artifactReproducibility=reproduced`。[記録](../evidence/TEI_GO_SELF_BUILD_GO_BUILD_REBUILD_COST_2026-11-09.md)）
 - [x] `-rebuild-check`の実コストの測定（§4.27。[記録](../evidence/TEI_GO_SELF_BUILD_REBUILD_CHECK_COST_2026-11-09.md)。参照childでは中央値136.4 ms→246.5 ms（+110.1 ms・1.807倍）で、**増分の大半はchildの仕事ではなくentryの固定費**（child単体3.4 ms）。実buildは未測定）
-- [ ] `-rebuild-check`を**既定**にするかどうかの判断。**§4.25で三つの未決を一つの判断として扱う案（P-1〜P-4）を示した**。実buildの所要時間は未測（§4.25末尾）
+- [x] `-rebuild-check`の既定を**catalogを名指しした試行に限って**強くする決定と実装（§4.30。`-build-catalog`を渡せば二回目のbuildが既定になり、`-rebuild-check=false`で断れる。child経路と何も渡さない試行は変わらない）
+- [ ] `-rebuild-check`を**すべての試行で既定**にするかどうかの判断。**§4.25で三つの未決を一つの判断として扱う案（P-1〜P-4）を示した**。実buildの所要時間は未測（§4.25末尾）
 - [x] catalogの出所の決定（§4.22。**K-3: 呼び手が名指しするcatalogデータ＋必須のdigest**。新しいAuthorityを作らず、既存の`-supply`・`-intent-resolver`と同じ形）
 - [ ] **entryの既定経路をin-processの`Resolve`へ切り替えるか**の判断（§4.16のR-1/R-2/R-3）。前提だったcatalogの出所は§4.22で決めた（K-3）。切り替え自体は段2の完了後に別途決める
 - [x] **段1**：`fixture`を外した名前で`BuildCatalog`・`ParseBuildCatalog`・`ResolveBuilder`・`ResolveDependency`・`CheckTarget`・`DirSourceResolver`を`internal/buildintent`へ移した（`tools/`側は型aliasと薄い委譲。参照実装の試験は**無変更で通る**。§4.22の移行表、[記録](../evidence/TEI_GO_SELF_BUILD_CATALOG_MOVE_2026-11-09.md)）
