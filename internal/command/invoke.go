@@ -224,9 +224,19 @@ func (i Invoker) checkPeriod(ctx context.Context, plan applicationview.CommandPl
 	if plan.Effect == nil {
 		return nil
 	}
-	closed, err := i.Periods.Closed(ctx, plan.Period.ID)
+	scope, scopeErr := applicationview.ScopeFor(*plan.Period, businessDateOf(plan, *plan.Period))
+	if scopeErr != nil {
+		return &ExecutionError{Code: "COMMAND_PERIOD_SCOPE_UNKNOWN", Message: scopeErr.Error(), Cause: scopeErr}
+	}
+	closed, answered, err := scopeClosed(ctx, i.Periods, scope)
 	if err != nil {
 		return &ExecutionError{Code: "COMMAND_PERIOD_STATE_FAILED", Message: err.Error(), Cause: err}
+	}
+	if !answered {
+		// A period split by a closing day cannot be answered by a state that only
+		// knows whole months: reading the month's closure as the half's closure
+		// would refuse or allow the wrong half.
+		return &ExecutionError{Code: "COMMAND_PERIOD_SCOPE_UNAVAILABLE", Message: fmt.Sprintf("period %s is split by a closing day but the period state cannot answer for a half month", plan.Period.ID)}
 	}
 	if !closed {
 		return nil
@@ -237,6 +247,18 @@ func (i Invoker) checkPeriod(ctx context.Context, plan applicationview.CommandPl
 		}
 	}
 	return nil
+}
+
+// businessDateOf finds the input that fills the period's business date, so the
+// scope follows the date the caller actually supplied rather than the plan's
+// declaration.
+func businessDateOf(plan applicationview.CommandPlan, period applicationview.CommandPeriodRef) string {
+	for _, input := range plan.Inputs {
+		if input.Attribute == period.BusinessDate {
+			return input.Value
+		}
+	}
+	return ""
 }
 
 func (i Invoker) execute(ctx context.Context, request Request, plan applicationview.CommandPlan) (Result, error) {
