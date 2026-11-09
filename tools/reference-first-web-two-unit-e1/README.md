@@ -88,6 +88,22 @@ JavaScriptはフォームの一時入力をJSONへ変換し、業務APIから返
 
 `test_publish_no_clobber.py` では新規公開、既存ファイル・ディレクトリ・シンボリックリンク、二プロセス競合、欠損ステージングを確認します。これは**成果物の衝突回避**の局所検証であり、署名・BuildArtifactLock・発行権限の認証や、別Hostへの安全な配布を実装したことは意味しません。
 
+## 実成果物の依存除外・漏えいの静的検査（#1182）
+
+`inspect_artifact_exclusion.py`（標準ライブラリのみ、`python -I`で実行）は、生成済みの二成果物そのものを検査する。`go list`のSource閉包ではなく、実バイナリと実ファイルのbyteが対象である。
+
+```sh
+python3 -I tools/reference-first-web-two-unit-e1/inspect_artifact_exclusion.py \
+  --api "$dest/api/order-entry" --browser "$dest/browser" --profile json-api
+```
+
+- **APIバイナリ**：`go tool nm`の全シンボルを、禁止リスト（`html/template`・`text/template`、Studio/Desktop host、authoring系`workbench`・`xeadsource`・`scenariotest`・`sourceacceptance`、`tei/cmd`、`testing`・`httptest`、Goのcompiler front end、HTML画面のentry symbol）と照合する。各項目の根拠はスクリプト内のコメントにある。禁止ヒットは1件でも失敗である。
+- **既知の混入**：上記の「API実行ファイルにはWorkspace/Driver機構が含まれる」混入は、許可リスト（`workspace`・`syntax`・`sourceindex`・`releaseplan`・`application/release`・`plugin/implementation`）として分けて件数だけ報告する。許可リストにも実行時機構（Driver等）の期待集合にもない`tei/`配下のパッケージが現れると、新規の逸脱として失敗する。`--profile frozen-world`では許可リストが空になり、固定World APIにこれらが残れば失敗する。
+- **Browser**：ディレクトリ内の全ファイルのbyte全体を、合成Credential（`*-secret`・Fixture path）、秘密鍵・クラウド鍵の形、DSN（`postgres://`等とkeyword形式）、サーバ限定のimport名、`sourceMappingURL`・`.map`ファイル、実行形式/WebAssemblyの先頭で走査する。
+- 出力JSONは、検査済みシンボル数、禁止ヒット数、許可リスト件数、Browserの走査ファイル数を含む。
+- **限界**：`nm`はリンクされたシンボルであり、到達可能性・実行は示さない。Browser走査はパターン照合で、任意のsecretの不存在は証明しない。許可リストの混入は除去されていない。Builder/Lock、Acceptance、本番Provider・TLS・CSRFの証明ではない。
+- `test_inspect_artifact_exclusion.py`は、実際に小さなGoバイナリをビルドする負例と、Browser側の各パターンの負例・正例を持つ。CIでは`tei-browser-json-api-e1-ci.yml`が生成した実成果物に対して実行する。
+
 ## 実Chromeでのフォーム操作・画面証拠（E1追加検証）
 
 専用CI [`tei-browser-real-e1-ci.yml`](../../.github/workflows/tei-browser-real-e1-ci.yml) では、画面生成済みHTML・外部JavaScriptと`tei_order_only,tei_api_only`の実Go APIを**独立した物理成果物・プロセス**として起動し、Ubuntu GitHub runnerに搭載されたGoogle Chromeで操作します。ライブラリは`playwright-core@1.56.1`へ固定し、ブラウザ本体はRunnerの実Chromeを使います。
