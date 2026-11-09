@@ -1,0 +1,23 @@
+test(cli): measure which flags l2b.claimed actually needs after §4.30
+
+§7 said l2b.claimed requires the caller to name both the in-process route and
+-rebuild-check. §4.30 made the reproduction check default whenever -build-catalog
+is given, so the second half of that sentence no longer holds, but nothing had
+checked.
+
+Two tests measure it instead of repeating the premise. With only -build-catalog,
+the reproducibility record reaches "reproduced" and the claim holds with an empty
+unmet list: no -rebuild-check was passed. With an explicit -rebuild-check=false,
+the second build does not run, the reason names the caller's choice rather than a
+missing flag, and the claim does not hold. Those two cases are distinguished by
+the reason text, which is what makes the refusal attributable.
+
+The record also states what did not change: whether a default attempt - one that
+names neither route - should be able to claim is still open, and it depends on
+§4.29's decision about where a catalog is written. §4.31 corrects the §7 wording
+and says plainly that it decides nothing.
+
+Note on verification: tools/repository-plan-check fails on current main because
+tools/README.md does not list tools/reference-tei-eki-contract. That gap predates
+this branch, this change does not touch that file, and every Markdown link in the
+edited documents resolves.
