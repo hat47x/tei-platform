@@ -56,7 +56,7 @@ const (
 	RefusedRouteUnavailable = "ROUTE_UNAVAILABLE"
 	RefusedBindingMismatch  = "ROUTE_BINDING_MISMATCH"
 	UnverifiedInvocation    = "SERVICE_INVOCATION_UNVERIFIED"
-	UnverifiedGeneration   = "SERVICE_RESULT_GENERATION_MISMATCH"
+	UnverifiedGeneration    = "SERVICE_RESULT_GENERATION_MISMATCH"
 )
 
 // Outcome is one invocation's result.
