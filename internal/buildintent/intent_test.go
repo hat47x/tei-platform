@@ -172,3 +172,24 @@ func TestValidateSourceRefRejectsUnsafeReferences(t *testing.T) {
 		}
 	}
 }
+
+// The declaration states a requirement as a contract name and a major; the plan
+// records the resolved identity as one string. This function is the one stated
+// correspondence between the two, so its form is pinned here: a caller that
+// compares must use it rather than spell the format out again.
+func TestBuilderContractVersionCorrespondsToTheResolvedIdentityForm(t *testing.T) {
+	cases := []struct {
+		contract string
+		major    int
+		want     string
+	}{
+		{"tei.plugin-build", 1, "tei.plugin-build/v1"},
+		{"tei.plugin-build", 2, "tei.plugin-build/v2"},
+		{"tei.other-build", 10, "tei.other-build/v10"},
+	}
+	for _, tc := range cases {
+		if got := BuilderContractVersion(tc.contract, tc.major); got != tc.want {
+			t.Fatalf("BuilderContractVersion(%q, %d) = %q, want %q", tc.contract, tc.major, got, tc.want)
+		}
+	}
+}

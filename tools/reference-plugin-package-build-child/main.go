@@ -371,6 +371,39 @@ func compareIntentFields(intent buildintent.BuildIntent, plan plugin.BuildPlan) 
 	if len(intent.Parameters) != len(plan.Parameters) {
 		return fmt.Errorf("the declaration names %d parameters but the plan has %d", len(intent.Parameters), len(plan.Parameters))
 	}
+
+	// Builder: the declaration states a requirement (contract + major, and
+	// optionally a provider or an exact pin); the plan holds the resolved
+	// identity. The correspondence is not invented here — the resolver filters
+	// by contract and major and renders the identity with
+	// buildintent.BuilderContractVersion, so comparing that same form tests the
+	// requirement rather than a format.
+	wantContract := buildintent.BuilderContractVersion(intent.Builder.Contract, intent.Builder.CompatibleMajor)
+	if plan.Builder.ContractVersion != wantContract {
+		return fmt.Errorf(
+			"the declaration requires builder contract %q but the plan resolved %q",
+			wantContract, plan.Builder.ContractVersion,
+		)
+	}
+	if provider := intent.Builder.Provider; provider != nil {
+		if string(plan.Builder.ID) != string(provider.Plugin) {
+			return fmt.Errorf(
+				"the declaration's builder provider is %s but the plan resolved %s",
+				provider.Plugin, plan.Builder.ID,
+			)
+		}
+		// provider.implementation has no counterpart in plugin.BuilderIdentity,
+		// so it is not compared. Naming the gap here keeps a later reader from
+		// assuming it was checked.
+	}
+	if pin := intent.Builder.Pin; pin != nil {
+		if plan.Builder.ArtifactDigest != pin.ArtifactDigest {
+			return fmt.Errorf(
+				"the declaration pins builder artifact %s but the plan resolved %s",
+				pin.ArtifactDigest, plan.Builder.ArtifactDigest,
+			)
+		}
+	}
 	return nil
 }
 
