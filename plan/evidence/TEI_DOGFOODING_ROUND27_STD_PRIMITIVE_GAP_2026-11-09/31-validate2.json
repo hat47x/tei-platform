@@ -1,0 +1,1 @@
+{"schemaVersion":"tei.cli.validate/v0","ok":false,"diagnostics":[{"diagnostic":{"code":"PARSE_ERROR","severity":"error","message":"expected \"from\""},"sources":[{"artifactPath":"semantic/std.tei","range":{"start":{"offset":26,"line":4,"column":1},"end":{"offset":26,"line":4,"column":1}}}]}]}

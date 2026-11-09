@@ -17,11 +17,6 @@ on:
 permissions:
   contents: read
 
-# One result per commit, and a newer pull-request run replaces an older one.
-# CONTRIBUTING.md requires concurrency from every workflow a push or a pull
-# request can start, and tools/ci-workflows-test.py enforces it; this file was
-# added without it, which turned repository-health red for unrelated pull
-# requests (#3682).
 concurrency:
   group: tei-plugin-registry-p0-binding-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
