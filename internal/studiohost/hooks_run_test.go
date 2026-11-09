@@ -33,11 +33,10 @@ func TestExecuteCommandReportsTheDeclaredHook(t *testing.T) {
 	}
 }
 
-// TestExecuteCommandDoesNotClaimADeclaredCallItDidNotMake checks that a hook
-// which declares `uses` is not reported as executed. The Studio reference
-// execution has no caller, so the declared capability is never called; saying
-// "executed" would claim a call that did not happen.
-func TestExecuteCommandDoesNotClaimADeclaredCallItDidNotMake(t *testing.T) {
+// TestExecuteCommandCallsTheDeclaredCapability checks that a hook which declares
+// `uses` actually reaches the Command boundary. Before the caller was wired,
+// this phase was reported as executed while the capability was never called.
+func TestExecuteCommandCallsTheDeclaredCapability(t *testing.T) {
 	host, err := NewReadOnly([]string{hookWorkspace(t)})
 	if err != nil {
 		t.Fatal(err)
@@ -55,18 +54,18 @@ func TestExecuteCommandDoesNotClaimADeclaredCallItDidNotMake(t *testing.T) {
 	if run.Value.Hooks == nil {
 		t.Fatal("no hook report")
 	}
-	if len(run.Value.Hooks.Executed) != 0 {
-		t.Fatalf("a phase whose declared call never ran was reported as executed: %v", run.Value.Hooks.Executed)
+	if len(run.Value.Hooks.Executed) != 1 || run.Value.Hooks.Executed[0] != "before-update" {
+		t.Fatalf("executed=%v", run.Value.Hooks.Executed)
 	}
-	if len(run.Value.Hooks.NotEvaluated) != 1 || run.Value.Hooks.NotEvaluated[0] != "before-update" {
-		t.Fatalf("notEvaluated=%v", run.Value.Hooks.NotEvaluated)
+	if len(run.Value.Hooks.Uncalled) != 0 {
+		t.Fatalf("a declared call was not made: %v", run.Value.Hooks.Uncalled)
 	}
-	uncalled := run.Value.Hooks.Uncalled["before-update"]
-	if len(uncalled) != 1 || uncalled[0] != "sales.submit" {
-		t.Fatalf("uncalled=%v", run.Value.Hooks.Uncalled)
+	calls := run.Value.Hooks.Calls["before-update"]
+	if len(calls) != 1 || !calls[0].Called || calls[0].Capability != "sales.submit" {
+		t.Fatalf("calls=%+v", calls)
 	}
-	if run.Value.Hooks.Reasons["before-update"] == "" {
-		t.Fatal("the not-evaluated phase has no stated reason")
+	if calls[0].Error != "" {
+		t.Fatalf("the call recorded an error: %+v", calls[0])
 	}
 }
 
