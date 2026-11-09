@@ -331,7 +331,7 @@ re-review   Artifact    Consumer Read  Effect/Grant/Owner
 
 ## 15. Role→型の実装進展を移行Witnessに接続する（2026-11-08、main実装照合／新試験NOT RUN）
 
-前節の一般論を、**実際にmainにある一つのSource宣言**へ狭める。固定した公開例 `examples/xtea-lowcode/semantic/master/standard.tei` には、`master.tax_rate.rate` に相当する `TaxRate.rate type std.decimal role tax-value` が存在する（mainで読んだFile blob `292188047e7be360e31fec2abbda53cf3d9f0e2f`）。これは**Source宣言の実在**であって、旧Javaの税計算Source、税率行の実DB取得、当時の業務意味受理の証拠ではない。
+前節の一般論を、**実際にmainにある一つのSource宣言**へ狭める。固定した公開例 `examples/xtea-lowcode/semantic/master/standard.tei` には、`master.tax_rate.rate` に相当する `TaxRate.rate type std.decimal role tax-value` が存在する（**以前の固定main**で読んだFile blob `292188047e7be360e31fec2abbda53cf3d9f0e2f`。最新版では§16のとおり改版）。これは**Source宣言の実在**であって、旧Javaの税計算Source、税率行の実DB取得、当時の業務意味受理の証拠ではない。
 
 ### 15.1 同一の宣言に対する反証を区別する
 
@@ -358,3 +358,48 @@ re-review   Artifact    Consumer Read  Effect/Grant/Owner
 **進捗に応じたExit**：V0＋V1＋V2の範囲は静的・試験内Referenceの段階まで進んだ。#3320のR3を独立負例で判別し、R5の**本物のSource/Provider行・二種類のConsumer**を扱うまでは「旧→新で業務税額を完全再実現」と言わない。#3320の現HEAD CI／最終統合資格は本書では再判定しない。Source/Operationが同一でもDisclosure/Grant/Toolchain/Targetが変わった時は§14のClaim別再資格化を利用する。
 
 **責務と試験の上限**：R0はmain静的Sourceと既存PRのReported Evidence、R1/R2/R4は統合済みValidatorの試験意図、R3はmainコードの静的判定と他Owner Draftの修正候補、R5は未実証の追加ケース。本PRの実Go試験・旧Java/DB/OData/MFT・Target Generator・Owner正式受理は**NOT RUN**。新しいTrait Engine、Role Resolver、Migration Authority、全Target共通Host、第二Scenario/Oracleを設けない。
+
+## 16. 改版した実SourceとRead-only二入口を使う最初の移行Preflight（2026-11-09、静的照合／新E2E NOT RUN）
+
+§13〜15の移行Witnessを、**架空の旧Java業務ではなく、mainの同じ公開TEI Sourceの二つの版**から始める。目的は本番業務移行の合格ではなく、**変更したSourceのどこから再評価を開始し、何を既存CLI/MCPで説明でき、どこで意図的に止めるか**を、変更単位とConsumer単位で反証可能にすること。#3262のDesign Context、#2505の版対応、#2582/#2600の影響/再利用、#2497のRaw/意味非可逆性、#2516の開示、#1180/#2514の独立Expectedを再利用し、新たな読取・変換・資格正本を置かない。
+
+### 16.1 現物のSource差分：同一の業務Attributeに対する別Scopeの変更
+
+GitHubの二つのBlob実内容を直接照合した（いずれも `examples/xtea-lowcode/semantic/master/standard.tei`）。
+
+| 実際の比較 | 固定版A | 固定版B | 判別可能なこと／まだ判別できないこと |
+| --- | --- | --- | --- |
+| Git blob | `292188047e7be360e31fec2abbda53cf3d9f0e2f` | `22588b6e3b68e0a7dc96a6140acb70116aa6bfbf` | **Source byteが異なる**ことは確実。旧Source packetのRoot/Parser/Ownerまで同一とは言えない |
+| BOM/改行 | UTF-8 BOMなし・CRなし | 先頭にBOMあり・CRが1個 | Raw byte同一性と、同じ抽象Declarationへ解釈できるかは別 |
+| 追加Data Attribute | 旧版に存在しない | `NumberingRule.rule type std.identifier role numbering-rule` を追加 | 採番側の依存・Bindingは再照合候補。Role/Vocabularyの版差は別確認 |
+| 税率Attribute宣言 | `attribute rate type std.decimal display "税率" role tax-value` | **同じ行** | 当該行のSource-static表現一致。税率行・税計算Rule・外部Writer・Accepted Meaning・実Consumerの不変性は不明 |
+
+これを、**二重の否定的検収**に使う。① Source Digest差だけで税額のBusiness Meaningが変更されたとは判定しない。② TaxRateの行一致だけで、税額OperationのRequired closure、外部Provider・時間条件・Binding/受理資格が不変だとも判定しない。Known Local UnchangedとUnknown Dependencyを同じ「unchanged」に畳まない。
+
+### 16.2 現行mainの読取入口で得られるものと得られないもの
+
+[merged #3403](https://github.com/hat47x/tei-platform/pull/3403)は `tools/reference-mcp-readonly-adapter` に、既存 `internal/operations` を呼ぶ4つのread-only参照Tool（Catalog/Inspect/Trace/Validate）を導入した。[merged #3458](https://github.com/hat47x/tei-platform/pull/3458)は `internal/operations/validation_report.go` の同一 `WorkspaceValidationReport` をCLI `validate -workspace ... -json` と参照MCP `tei_validate` に使い、`ok=false` に対するMCP `isError` を整合させた。CLI/MCPは別々のBusiness Interpreterや独立Expectedではなく、**同じOperationからの二つの投影**である。
+
+| 問い | この実装で照合できる候補 | 必要な別証拠・拒否条件 |
+| --- | --- | --- |
+| **一致するValidation診断を表示できるか** | 正常、意味的Finding、Load/Index失敗の `schemaVersion/ok/diagnostics/error.code` とSource位置の比較 | 実際のProcess/Request/Reply/受領byte/EOFの一致は本PR未実測。MCP外部Host/H3の完全受領・開示資格は#2509/#3420へ |
+| **Required Functionを完全に把握したか** | Catalog/Inspect/Trace/SourceIndexで取得できた範囲のSource/Rule/Relation候補 | #3262の独立Requiredと実Loaded/Parsed/Consumer-deliveredの照合が必要。正常JSONや同Fingerprintは全閉包を含意しない |
+| **同じTaxRate値/意味を使ったか** | Source上のRole/Typeと、V0/V1静的照合、#3318の試験内row Binder基線 | 実Provider row、null/precision/period、選択Providerの実Invocation、OwnerのMeaning受理は未観測 |
+| **生成Target／セルフビルドまで再利用できるか** | Build Intent/Plan/Artifactに別の実Build証拠を結び付ける候補 | [merged #3360](https://github.com/hat47x/tei-platform/pull/3360)のReference Driver Stage1→2は限定実証。後続の [SB-C0設計](SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md)には `cmd/tei` の再入・Plan突合・Lock実測も記録された。ただし**TEI本体の全Source/Plugin/Target closure、異Consumer Meaning、G4全体は別資格** |
+| **実Operation・正本切替をしてよいか** | 読取Preflightでは**不可** | #1180/#1174/#2555のScenario→実Effect/独立Read/現在Grant/旧Writer失効とOwner受理が必要。MCP参照Adapterはwrite/accept/deploy/grantを持たない |
+
+二つの読取入口が同じ受理Sourceに依存する場合、**その一致はTransport形状の適合であり、業務的な独立検証ではない**。旧Targetと新Targetの両方に同じ欠落Ruleや丸め誤りが伝播すれば、「一致」はむしろ共通誤りであり得る。別に固定した独立Expectedで差を判別する。
+
+### 16.3 小さな負例とOwnerへの実装引渡し
+
+| ID | 一因子を変える有限ケース | 独立Expected／実装担当 |
+| --- | --- | --- |
+| **LP-01** | Source A→BでBOM・採番Roleが変わるが `TaxRate.rate` 宣言行は同一 | TaxRateの**当該行一致**だけをCandidateとして保持。Scope/Accepted Rule/Source閉包不明なら全Function qualifiedを拒否。#2505/#3262 |
+| **LP-02** | `tax-value` に `std.date`／未知TypeRef／同末尾 `foreign.decimal` を指定 | 型不一致・未知・不正な同名別Publisherを混同しない。#3308/#3320が実Validator負例を所有し、#3252は修正重複なし |
+| **LP-03** | 同じ検査SourceをCLI `validate -json` とMCP `tei_validate` で読み、Validation FindingとLoad失敗をそれぞれ発生 | 診断・失敗分類の一致と、stdout／Tool結果の**実完全受領**を別判定。正常応答でもSource全件性/Policyを推論しない。#3403/#3458/#3420/#2509 |
+| **LP-04** | 同じSource/Role型から**試験内Row Binder**は成功、外部File/DB/Legacy WriterがNULL・Rate有効時点を変える | 行・計算・取込・Business Effectを独立Expectedで比較。現時点は外部Source/Provider未観測。#3318/#2542/#2555/#2514 |
+| **LP-05** | Build Artifact/Lockが一致するが、異なるConsumer/実行時点のGrantが変わる | Buildの再利用と現在の実行適格性を分離。#2831/#2600/#259/#3278。過去のGrant/Receiptを再発行しない |
+
+**最小実行順**：P0は固定版A/Bの `TaxRate.rate` と `NumberingRule.rule` の**独立Required Source/Role集合**を明示し、実Reader/Catalog/SourceIndexの観測との差を#3262へ返す。次に、#3403/#3458の既存二入口を同じ固定Workspaceとversionで比較し、**Transport一致を有界Witness**として記録する。P1で#3318の合成RowにNULL/精度/時点の独立Expectedを加え、必要なら#2542の二Consumerへ渡す。P2のGenerated Target、現行Grant、実DB/Writer Cutoverは別Ownerの既存契約に従い、前段のCLI/MCP成功をCompletionとして扱わない。
+
+**証拠上限（2026-11-09静的点検）**：A/B Blob内容と現行mainのGoコード、統合済みPRの限定実証を照合した設計追加である。LP-01〜05をこのPRで実際にGo/CLI/MCP/外部Harness/実DB/Java/.NET/Wails/File/Target上で実行していない。#3320の完全修飾TypeRef修正はDraft未統合、#3255の論理Subsystem実Ownerの受理も未成立。TEI全体の自己ビルド、業務Owner Meaning、Authority切替・現在のExecutionは本節で資格化しない。
