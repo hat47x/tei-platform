@@ -12,6 +12,7 @@ const names = Object.freeze({
   planCommand: "main.StudioBridge.PlanCommand",
   executeCommand: "main.StudioBridge.ExecuteCommand",
   executeCommandWithPeriods: "main.StudioBridge.ExecuteCommandWithPeriods",
+  executeCommandWithPolicy: "main.StudioBridge.ExecuteCommandWithPolicy",
 });
 
 export function createReadOnlyClient(callByName) {
@@ -43,8 +44,10 @@ export function createReadOnlyClient(callByName) {
     planCommand: (workspaceID, applicationID, patternID, capabilityID, inputs) => call("planCommand", workspaceID, applicationID, patternID, capabilityID, inputs),
     executeCommand: (workspaceID, applicationID, patternID, capabilityID, inputs) => call("executeCommand", workspaceID, applicationID, patternID, capabilityID, inputs),
     executeCommandWithPeriods: (workspaceID, applicationID, patternID, capabilityID, inputs, periods) => call("executeCommandWithPeriods", workspaceID, applicationID, patternID, capabilityID, inputs, periods),
+    executeCommandWithPolicy: (workspaceID, applicationID, patternID, capabilityID, inputs, periods, allowed) => call("executeCommandWithPolicy", workspaceID, applicationID, patternID, capabilityID, inputs, periods, allowed),
   });
 }
+
 
 
 

@@ -9,6 +9,7 @@ var printTemplate = template.Must(template.New("print-view").Parse(`<!doctype ht
 <html lang="ja">
 <head>
 <meta charset="utf-8">
+{{if .SemanticFingerprint}}<meta name="tei-semantic-fingerprint" content="{{.SemanticFingerprint}}">{{end}}
 <title>{{.Pattern}}</title>
 <style>
 @page{size:A4;margin:15mm}
@@ -25,6 +26,7 @@ footer{margin-top:6mm;font-size:.75rem;color:#444;border-top:1px solid #999;padd
 <table>
 {{range .Items}}<tr><th>{{.Label}}</th><td></td></tr>
 {{end}}</table>
+{{if .Hooks}}<section><h2>フック</h2><ul>{{range .Hooks}}<li>{{.Phase}}:{{range .Reads}} reads {{.}}{{end}}{{range .Uses}} uses {{.}}{{end}}{{range .Produces}} produces {{.}}{{end}}{{if .Failure}} on-failure {{.Failure}}{{end}}</li>{{end}}</ul></section>{{end}}
 <footer>pattern: {{.Pattern}} / semantics: {{.SemanticFingerprint}} / format: tei.print/v0{{if .PrintTemplate}} template: {{.PrintTemplate}}{{end}}</footer>
 </body>
 </html>
@@ -34,6 +36,7 @@ var headerDetailPrintTemplate = template.Must(template.New("header-detail-print"
 <html lang="ja">
 <head>
 <meta charset="utf-8">
+{{if .SemanticFingerprint}}<meta name="tei-semantic-fingerprint" content="{{.SemanticFingerprint}}">{{end}}
 <title>{{.Pattern}}</title>
 <style>
 @page{size:A4;margin:15mm}

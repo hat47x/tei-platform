@@ -172,13 +172,26 @@ func TestEveryRequirementIsMappedToAnAcceptanceScenario(t *testing.T) {
 
 func forEachMarkdown(t *testing.T, visit func(rel, text string)) {
 	t.Helper()
-	root := repositoryRoot(t)
+	if err := walkMarkdown(repositoryRoot(t), visit); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// walkMarkdown visits every Markdown file under root except the directories
+// this check cannot judge.
+func walkMarkdown(root string, visit func(rel, text string)) error {
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
 		if entry.IsDir() {
-			if entry.Name() == ".git" || entry.Name() == "node_modules" {
+			// .local/ is git-ignored local state (see .gitignore): archived
+			// checkouts under it carry their own links, whose targets are not
+			// in this repository. Walking it makes the result depend on which
+			// archives a given machine happens to hold, so it is not content
+			// this check can judge.
+			rel, _ := filepath.Rel(root, path)
+			if entry.Name() == ".git" || entry.Name() == "node_modules" || filepath.ToSlash(rel) == ".local" {
 				return filepath.SkipDir
 			}
 			return nil
@@ -194,9 +207,7 @@ func forEachMarkdown(t *testing.T, visit func(rel, text string)) {
 		visit(filepath.ToSlash(rel), string(content))
 		return nil
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	return err
 }
 
 func outsideCodeFences(text string, visit func(lineNumber int, line string)) {

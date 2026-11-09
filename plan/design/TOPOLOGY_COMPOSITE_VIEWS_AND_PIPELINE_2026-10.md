@@ -202,8 +202,8 @@ P1の一例: Source/Operation AがArtifact Xを生成し、検証Operation BがX
 - [#943](https://github.com/hat47x/tei-platform/issues/943): self-build/Artifact/Lock。Issue Closedと実SB-3・Production接続未検証を区別。
 - [#951](https://github.com/hat47x/tei-platform/issues/951) / [#1016](https://github.com/hat47x/tei-platform/issues/1016) / [#1223](https://github.com/hat47x/tei-platform/issues/1223): Contract/Provider/Composition/入出力の既存Ownerを尊重。
 - [#2091](https://github.com/hat47x/tei-platform/issues/2091): 標準定義更新と案件差分の保全。
-- [PR #2226](https://github.com/hat47x/tei-platform/pull/2226): TEI独自Host非必須の未統合Draft。旧Host必須案を復活しない。
-- [PR #2298](https://github.com/hat47x/tei-platform/pull/2298): `tei.*`名前空間、任意Composition、Read Projection編集非対称性の未採用Draft。正式な標準名前空間・Binding構文とみなさない。
+- [PR #2226](https://github.com/hat47x/tei-platform/pull/2226): TEI独自Host非必須。2026-11-02 UTCにmerge済み（[ADR-0043](../adr/0043-target-native-artifacts-without-tei-host.md)）。旧Host必須案を復活しない。
+- [PR #2298](https://github.com/hat47x/tei-platform/pull/2298): `tei.*`名前空間、任意Composition、Read Projection編集非対称性の未採用の提案（2026-11-03 UTCにmerge済み。統合された設計文書の状態は提案中）。正式な標準名前空間・Binding構文とみなさない。
 
 **未決（ここでCoreへ固定しない）**: トポロジー標準の最小primitive集合、Projection/Correspondenceの具体API、可逆編集の証明条件、全種類の動的Graphのclosure表現、複合図表レイアウト仕様、標準の唯一の図表UI、メタ生成の深さ・専用DSL。
 
@@ -264,7 +264,7 @@ otherwise:
 
 別チャットの分散Registry構想では、**配布物の識別・形式・署名・Conformance**、**案件Compositionの解決・依存閉包・Target適合**、**実行時のAuthority/Resource/Effect Fence**を区別する。公開Registryで一つのPluginが検証済みでも、案件がそのPluginを含めた実効Pipelineを完全に解決したことにはならず、実行許可も付与されない。
 
-本設計で必要なのは既存#951（Contract/Provider）、#1016（案件Composition）、#943（Build/Artifact）、#1174（Effect/Outcome）への**根拠付き参照**であり、Registry ID/Genesis形式、Portable Verification Package、透明性サービスをStudioや基本トポロジーの固定APIへ導入することではない。Plugin Type、複数Instance、各Bindingのscope/契約/版も、図上の単一ノード名で同一視しない（Draft #2298は未採用）。
+本設計で必要なのは既存#951（Contract/Provider）、#1016（案件Composition）、#943（Build/Artifact）、#1174（Effect/Outcome）への**根拠付き参照**であり、Registry ID/Genesis形式、Portable Verification Package、透明性サービスをStudioや基本トポロジーの固定APIへ導入することではない。Plugin Type、複数Instance、各Bindingのscope/契約/版も、図上の単一ノード名で同一視しない（#2298は2026-11-03 UTCにmerge済みだが、内容は提案中で未採用）。
 
 ## 10. 次の最小Referenceの具体的な受入判定（P0→P1に限定）
 
@@ -281,7 +281,7 @@ otherwise:
 ## 11. 2026-11-02 横断レビュー：Projectionの被覆根拠と独立Consumerの実証入口
 
 - **状態**: 本節は他レーンの成熟した設計・限定試験と現行GitHubを照合した**未採用の評価補足**。確認main `9c9ef4d160640908e06ad13afb6c2b45c664c748`。本Draft自身はmainへ未統合であり、下記の他Draftを正式仕様・実装済みとは扱わない。
-- **Ownerとの接続**: [三要素Methodと図法のDraft #2397](https://github.com/hat47x/tei-platform/pull/2397)、[型付き標準SemanticとPlugin I/OのDraft #2592](https://github.com/hat47x/tei-platform/pull/2592)、[任意Compositionと型／Instance分離のDraft #2298](https://github.com/hat47x/tei-platform/pull/2298)、[Studio Catalog曖昧性guard候補 #2583](https://github.com/hat47x/tei-platform/pull/2583)、[選択binding独立候補 #2457](https://github.com/hat47x/tei-platform/pull/2457)。各Draftで定義したMethodの意味規則、標準型候補、実装差分をこの文書へ複製しない。
+- **Ownerとの接続**: [三要素Methodと図法のDraft #2397](https://github.com/hat47x/tei-platform/pull/2397)、[型付き標準SemanticとPlugin I/OのDraft #2592](https://github.com/hat47x/tei-platform/pull/2592)、[任意Compositionと型／Instance分離の#2298（2026-11-03 UTCにmerge済み）](https://github.com/hat47x/tei-platform/pull/2298)、[Studio Catalog曖昧性guard候補 #2583](https://github.com/hat47x/tei-platform/pull/2583)、[選択binding独立候補 #2457](https://github.com/hat47x/tei-platform/pull/2457)。各Draftで定義したMethodの意味規則、標準型候補、実装差分をこの文書へ複製しない。
 
 ### 11.1 「表せる」と「欠落なく表せる」と「操作可能」を別々に証明する
 

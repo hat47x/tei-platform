@@ -84,4 +84,4 @@ node reference/application-composition/e1-observe.mjs .
 
 合成fixtureでは、通常の観測、Sourceの欠落・変更、パスの逸脱・Workspace外へのシンボリックリンクという**4件のテストが成功**した（Node.js 22.16.0）。この結果は、TEIの全Sourceを使った実行、TEI DSLの意味解析、Providerの適合、認可、Application Compositionの完成を保証しない。出力されるSHA-256は観測対象ファイルの内容識別子であり、Git blob SHA、Plugin LockのFingerprintや実行権限の証明ではない。
 
-コード変更を含むため、実Repositoryのtrusted checkoutでの全体健全性検査が完了するまでは、PR #1020をDraftに保ち、mainへ統合しない。
+コード変更を含むため、実Repositoryのtrusted checkoutで変更範囲の検証を行い、結果と未実施の範囲を記録して統合する。全体健全性検査は任意の広範囲診断であり、統合の一律条件にはしない。Draftは解除して統合する。
