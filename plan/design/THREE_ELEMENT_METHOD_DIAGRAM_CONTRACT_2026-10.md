@@ -568,3 +568,12 @@ Readに失敗した場合はValidationが`false`なのではなく**未観測**�
 | **T23 Private diagnostic-count noninterference** | 非公開制約の追加で生Catalogの総Warning/Error数が変わる場合、Policyで開示不可な低権限Graph/Table/ARIA/Tool JSONの件数を変えない | #2516の実Disclosure二世界検査に接続。TEAでの実Policy実行は**NOT RUN** |
 
 **ロードマップ**: #1124の同一Workbenchで実CLI A/JのInitial/Listに続きGraph/Command/旧DOM/Current Policyの負例を先行。並行してT21〜T23を既存#3728/#3492/#2516のOwner証拠へ照合し、Sourceの現在位置／意味Subject・読取／Validation／開示の資格を独立表示する。新Source Validator・Trait Evaluation・Policy/Authority判定・Second SSOT・専用HostやModel Mapを作らず、Self-build/ETL/SubsystemのOwnerと既存Gateを変更しない。
+
+
+### 22.4 T18の限定Read/Validation表示Reference（2026-11-09夜）
+
+[Reference Draft #2972](https://github.com/hat47x/tei-platform/pull/2972)へ`catalog-validation.mjs`と`catalog-validation.test.mjs`を追加。これは[main統合済み#3728](https://github.com/hat47x/tei-platform/pull/3728)の`ModelCatalog.validation`を**計算し直す実装ではない**。Callerが既に開示資格を確認した`catalogReadSucceeded:true`と`validation.{ok,errorCount,warningCount}`を、同じ`scope/snapshot/workspaceObservation`の三視点Public Projectionへ添えて、Read成功とValidation NGを独立表示するread-only Fixture。CLIの`ok`や実Read Attemptを本Referenceが検査したわけではなく、`catalogReadSucceeded`の真偽も呼出側の申告である。
+
+**新たな6件の合成T18負例**: (a) Read成功＋Validation NGでも三視点read-only Occurrenceを保持、(b)warning>0でも`validation.ok=true`をそのまま表示、(c)Read失敗/未観測・Validation欠落から`false`を発明しない、(d)同じ表示IDでも別Workspace/Snapshot/Scopeは拒否、(e)件数・booleanの型不正や負数を拒否、(f)秘密Source metadataやGetterを評価せず拒否。現行の合成Reference計**37件（Public Slice14 / Trait17 / Catalog6）**をGitHubから取得した正確な3ソース・3テストでV8互換ハーネスにより**37/37 PASS**。これは**正規Node test runnerの完了結果ではなく、実Go Workspace・実Catalog JSON・現在Policyを受領したテストでもない**。更新後exact-headの専用Node CIとRepository Healthは別途確認する。
+
+特に**グローバルなValidationのError/Warning総数**は非公開Sourceに由来し得るため、公開可能かの判定は#2516が先に行う。未開示の生Countsを「TEAが実際に秘密を除去する」目的で流し込まない。合成RuntimeはAssessment・個別Subjectの健全性・Editable・Owner Meaningを創作しない。今後T21〜T23へ接続するには、**実Catalog Producerの読取版・Workspace・Scope・現在Disclosure→同一Workbench Consumer**の別資格を必要とする。
