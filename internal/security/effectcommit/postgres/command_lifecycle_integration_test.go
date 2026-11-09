@@ -44,13 +44,15 @@ func TestPostgresCommandLifecycleEndToEnd(t *testing.T) {
 		return command.LifecycleInvoker{
 			Lifecycle: lifecycle,
 			Invoker: command.Invoker{
-				World: commandWorldE2E(),
+				Authorizer: command.ReferenceAuthorizer{},
+				World:      commandWorldE2E(),
 				Executor: commandadapter.Executor{
 					Runner:          runner,
 					Grant:           grant,
 					OperationID:     operation,
 					ExpectedVersion: expected,
 					Payload:         []byte("updated"),
+					Effect:          &semantic.DataEffect{Kind: semantic.DataEffectUpdate, Data: "sales.order"},
 				},
 			},
 		}

@@ -149,8 +149,9 @@ func TestLifecycleInvokerRecordsObservedSuccess(t *testing.T) {
 	invoker := LifecycleInvoker{
 		Lifecycle: lifecycle,
 		Invoker: Invoker{
-			World:    commandWorld(),
-			Executor: fakeExecutor{result: submittedResult()},
+			Authorizer: ReferenceAuthorizer{},
+			World:      commandWorld(),
+			Executor:   fakeExecutor{result: submittedResult()},
 		},
 	}
 	result, err := invoker.Invoke(context.Background(), request(), DispatchOptions{
@@ -174,6 +175,7 @@ func TestLifecycleInvokerRecordsRejectedExecution(t *testing.T) {
 	invoker := LifecycleInvoker{
 		Lifecycle: lifecycle,
 		Invoker: Invoker{
+			Authorizer: ReferenceAuthorizer{},
 			World:      commandWorld(),
 			Executor:   fakeExecutor{err: errors.New("validation stopped the command")},
 			UnitOfWork: fakeUnitOfWork{transaction: transaction},
@@ -201,6 +203,7 @@ func TestLifecycleInvokerMarksCommitFailureUnknown(t *testing.T) {
 	invoker := LifecycleInvoker{
 		Lifecycle: lifecycle,
 		Invoker: Invoker{
+			Authorizer: ReferenceAuthorizer{},
 			World:      commandWorld(),
 			Executor:   executor,
 			UnitOfWork: fakeUnitOfWork{transaction: transaction},
@@ -250,8 +253,9 @@ func TestLifecycleInvokerMarksProviderUnknown(t *testing.T) {
 	invoker := LifecycleInvoker{
 		Lifecycle: lifecycle,
 		Invoker: Invoker{
-			World:    commandWorld(),
-			Executor: fakeExecutor{err: NewUnknownExecutionError("PROVIDER_PARTIAL", "write may have been applied", nil)},
+			Authorizer: ReferenceAuthorizer{},
+			World:      commandWorld(),
+			Executor:   fakeExecutor{err: NewUnknownExecutionError("PROVIDER_PARTIAL", "write may have been applied", nil)},
 		},
 	}
 	_, err := invoker.Invoke(context.Background(), request(), DispatchOptions{
@@ -270,7 +274,7 @@ func TestLifecycleInvokerMarksProviderUnknown(t *testing.T) {
 }
 
 func TestLifecycleInvokerRequiresLifecycle(t *testing.T) {
-	invoker := LifecycleInvoker{Invoker: Invoker{World: commandWorld(), Executor: fakeExecutor{}}}
+	invoker := LifecycleInvoker{Invoker: Invoker{World: commandWorld(), Executor: fakeExecutor{}, Authorizer: ReferenceAuthorizer{}}}
 	_, err := invoker.Invoke(context.Background(), request(), DispatchOptions{CommandID: "cmd-1", Owner: "owner-a", Generation: 1})
 	if code := executionCode(t, err); code != "COMMAND_LIFECYCLE_UNAVAILABLE" {
 		t.Fatalf("code=%s", code)
@@ -287,6 +291,7 @@ func (t rollbackFailureTransaction) Rollback(context.Context) error { return t.r
 
 func TestInvokeMarksRollbackFailureUnknown(t *testing.T) {
 	invoker := Invoker{
+		Authorizer: ReferenceAuthorizer{},
 		World:      commandWorld(),
 		Executor:   fakeExecutor{err: errors.New("write failed")},
 		UnitOfWork: fakeUnitOfWork{transaction: &fakeTransaction{}}, // rollback succeeds
@@ -297,6 +302,7 @@ func TestInvokeMarksRollbackFailureUnknown(t *testing.T) {
 	}
 
 	failing := Invoker{
+		Authorizer: ReferenceAuthorizer{},
 		World:      commandWorld(),
 		Executor:   fakeExecutor{err: errors.New("write failed")},
 		UnitOfWork: rollbackFailureUnitOfWork{transaction: rollbackFailureTransaction{rollbackErr: errors.New("connection lost")}},

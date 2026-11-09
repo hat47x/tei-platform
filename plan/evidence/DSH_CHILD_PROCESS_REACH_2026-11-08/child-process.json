@@ -1,0 +1,139 @@
+{
+  "note": "Child-process probes from the harness shell tool: does a cmd.exe child inherit the parent's read/write reach? Synthetic canaries only.",
+  "canaries": {
+    "childRead": "CHILD_READ_CANARY_911",
+    "inside": "PARENT_INSIDE_912",
+    "childWrite": "CHILD_WRITE_913"
+  },
+  "declaredRoot": "D:\\GIT\\hat47x\\.tmp_h2\\h6e2b\\workroot",
+  "outsidePath": "D:\\GIT\\hat47x\\.tmp_h2\\h6e2b\\outside",
+  "probes": {
+    "readOutside": "cmd /c \"type <outside>\\restricted.txt\"  (child reads a file outside the declared root)",
+    "writeOutside": "cmd /c \"echo CHILD_WRITE_913 > <outside>\\child-write.txt\"  (child creates a file outside it)",
+    "verifyWrite": "Test-Path '<outside>/child-write.txt'"
+  },
+  "runs": [
+    {
+      "sandboxMode": "read-only",
+      "sessionCwd": "D:\\GIT\\hat47x\\.tmp_h2\\h6e2b\\workroot",
+      "rawLogBytes": 5070,
+      "rawLogSha256": "eef72f8185c36fdfaf1cc377103d126eacacb0a35c9f353d0532d84dbb6fd152",
+      "toolResults": [
+        {
+          "callId": "toolu_cmd_0",
+          "status": "completed",
+          "stdout": "CHILD_READ_CANARY_911",
+          "resultBytes": 1006,
+          "resultSha256": "331c131c9a66d6f671784657a9ad0ff4ae513a988fbecf14cb151c19fdb1bbd3",
+          "stderrBytes": 976
+        },
+        {
+          "callId": "toolu_cmd_1",
+          "status": "completed",
+          "stdout": "",
+          "resultBytes": 1057,
+          "resultSha256": "6b022faf2f5c6541c2b0d3714f8f4fdad09742c2d06ef3fde3997e59da25cada",
+          "stderrBytes": 1049
+        },
+        {
+          "callId": "toolu_cmd_2",
+          "status": "completed",
+          "stdout": "False",
+          "resultBytes": 991,
+          "resultSha256": "20377321bc7289717660eabfdc8510defbb1ce6e7d8dfb201d2722f354f3d43f",
+          "stderrBytes": 976
+        }
+      ],
+      "childReadOutsideRoot": true,
+      "childWroteOutsideRoot": false,
+      "wire": [
+        {
+          "request": "001-request.json",
+          "bytes": 67017,
+          "sha256": "b1a18eca006f48e2f0ed8cc33cf71605cc94987c53ed57462615e3685d43130e"
+        },
+        {
+          "request": "002-request.json",
+          "bytes": 40558,
+          "sha256": "7f0ee90ef59043814a1d5abccf42a6a7388c64c0ba36936c34a106eed8f4d865"
+        },
+        {
+          "request": "003-request.json",
+          "bytes": 39802,
+          "sha256": "74a945386049d110205aab5d754b4c4d5541a8177b5ebeff1a7269453b1f9309"
+        },
+        {
+          "request": "004-request.json",
+          "bytes": 40997,
+          "sha256": "4a32d3bc6962c9b2a600db122b9d31d9e1300a31f11502b404b77d23aa18f22a"
+        },
+        {
+          "request": "005-request.json",
+          "bytes": 42060,
+          "sha256": "7bff5fcfebbe5ba2573f8ba7ed88a23da5784b3c4ce71c14fe8c05f6c5a7b7a7"
+        }
+      ]
+    },
+    {
+      "sandboxMode": "danger-full-access",
+      "sessionCwd": "D:\\GIT\\hat47x\\.tmp_h2\\h6e2b\\workroot",
+      "rawLogBytes": 1966,
+      "rawLogSha256": "449748b05b2e179787f4a32f9359e43d820cbc2844c9e4e59946565e9ca1adee",
+      "toolResults": [
+        {
+          "callId": "toolu_cmd_0",
+          "status": "completed",
+          "stdout": "CHILD_READ_CANARY_911",
+          "resultBytes": 22,
+          "resultSha256": "0b5d7aa8dfbcf1651524f68cadf00dbbb532dbb66bd9a39ed00fea901347aca9",
+          "stderrBytes": 0
+        },
+        {
+          "callId": "toolu_cmd_1",
+          "status": "completed",
+          "stdout": "(no output)",
+          "resultBytes": 11,
+          "resultSha256": "efefc15c24ee8645a3f5f6958389db729c1577eb6b32aeac4caab2a86d90daa3",
+          "stderrBytes": 0
+        },
+        {
+          "callId": "toolu_cmd_2",
+          "status": "completed",
+          "stdout": "True",
+          "resultBytes": 6,
+          "resultSha256": "ca4a016eae14ab0c7ebb935a6e24ae8b512958f25c788f11eb99566d066b7957",
+          "stderrBytes": 0
+        }
+      ],
+      "childReadOutsideRoot": true,
+      "childWroteOutsideRoot": true,
+      "wire": [
+        {
+          "request": "001-request.json",
+          "bytes": 66561,
+          "sha256": "a921977a2b42106f37e3975b3d226ae12bda57c3e18319a7540cf25d82aa7afe"
+        },
+        {
+          "request": "002-request.json",
+          "bytes": 40260,
+          "sha256": "b48d387cc4c0e89b7d02e0943c1c7c4ff42a502709fe595dd67de6e7235d2a50"
+        },
+        {
+          "request": "003-request.json",
+          "bytes": 37618,
+          "sha256": "d3a0d83491daa0be297df67d7d3818d98246aba4bc150fd12612a4450434956a"
+        },
+        {
+          "request": "004-request.json",
+          "bytes": 37672,
+          "sha256": "c0a71ac7a9ce70dd9bb5e2a6ffbf5a6f5ae1521353e5e3ab46598d5ca6d5c9fd"
+        },
+        {
+          "request": "005-request.json",
+          "bytes": 37784,
+          "sha256": "dd0aa547e786aca788a18a2282c910850ccec518376693d77432a87cbc3869fd"
+        }
+      ]
+    }
+  ]
+}

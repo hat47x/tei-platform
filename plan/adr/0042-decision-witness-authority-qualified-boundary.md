@@ -57,7 +57,7 @@ E6のexact bindingにはreview Projection identityが必須であるため、rev
 
 ## 未決
 
-- production identity providerの選択（Studio authenticated user context、SCM authority等。Evidence Gate §9）。
+- production identity providerの選択（SCM authority、署名witness等。Studioの認証済み利用者は、共有環境で認証Pluginが提供する場合に限る。ローカルStudioは認証無しが原則のため根拠にしない〔ADR-0044・ADR-0047〕。Evidence Gate §9）。
 - 鍵・policyの配布・失効運用を行う主体と手順。
 - `authority-conflicted`を人手で解除する手続きと、その操作自体のEvidence化。
 - witness ledgerの保持期間・監査方針。

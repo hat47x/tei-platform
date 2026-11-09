@@ -1,0 +1,1 @@
+{"schemaVersion":"tei.cli.trace/v0","ok":false,"error":{"code":"INVALID_ARGUMENT","message":"trace requires -workspace, -scope, -subject-kind, -subject-id and no -world/positional arguments"}}
