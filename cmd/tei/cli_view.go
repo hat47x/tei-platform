@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
 
 	"tei/internal/application"
@@ -15,6 +16,7 @@ import (
 	"tei/internal/command"
 	"tei/internal/command/lifecyclesqlite"
 	"tei/internal/core"
+	"tei/internal/hook"
 	"tei/internal/operations"
 	"tei/internal/periodstate"
 	"tei/internal/semantic"
@@ -852,6 +854,25 @@ func writeCommandPatternText(out io.Writer, view applicationview.CommandPatternV
 // writeHookReportText prints which declared hooks ran, which were skipped, and
 // why. A skipped phase is printed with its reason so the absence of a phase is
 // not read as a pass.
+// writeProposalText prints the values a phase proposed, in attribute order so
+// the same proposal always prints the same way.
+func writeProposalText(out io.Writer, proposed hook.Produced) (int, error) {
+	if len(proposed) == 0 {
+		return 0, nil
+	}
+	attributes := make([]string, 0, len(proposed))
+	for attribute := range proposed {
+		attributes = append(attributes, string(attribute))
+	}
+	sort.Strings(attributes)
+	for _, attribute := range attributes {
+		if _, err := fmt.Fprintf(out, "    proposes %s = %s (candidate, not adopted)\n", attribute, proposed[core.CanonicalID(attribute)]); err != nil {
+			return 2, err
+		}
+	}
+	return 0, nil
+}
+
 func writeHookReportText(out io.Writer, report cliHookReport) (int, error) {
 	if _, err := fmt.Fprintf(out, "hooks: %s (%d executed, %d warned, %d skipped)\n", report.Pattern, len(report.Executed), len(report.Warned), len(report.Skipped)); err != nil {
 		return 2, err
@@ -859,6 +880,12 @@ func writeHookReportText(out io.Writer, report cliHookReport) (int, error) {
 	for _, phase := range report.Executed {
 		if _, err := fmt.Fprintf(out, "  hook %s: executed\n", phase); err != nil {
 			return 2, err
+		}
+		// A proposal is a candidate value, not a settled one. Printing it beside
+		// the phase keeps a reader from treating `executed` as "the hook changed
+		// nothing" when it in fact proposed a value the command did not adopt.
+		if code, err := writeProposalText(out, report.Proposed(phase)); err != nil {
+			return code, err
 		}
 	}
 	for _, phase := range report.Warned {
