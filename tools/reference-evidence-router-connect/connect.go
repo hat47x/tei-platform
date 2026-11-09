@@ -89,10 +89,16 @@ type Report struct {
 	// Collected counts outcomes with StatusCollected. Refused counts every other
 	// status. Invoked counts entries into a provider's Collect regardless of
 	// whether the answer was usable.
-	Collected int      `json:"collectedCount"`
-	Refused   int      `json:"refusedCount"`
-	Invoked   int      `json:"invokedCount"`
-	Notes     []string `json:"notes"`
+	Collected int `json:"collectedCount"`
+	Refused   int `json:"refusedCount"`
+	Invoked   int `json:"invokedCount"`
+	// Attempted is how many records were tried. It makes Collected readable: 1
+	// of 1 and 1 of 2 both give Collected=1, and only Attempted tells them apart.
+	Attempted int `json:"attemptedCount"`
+	// Complete reports that every attempted record was collected. A partial run
+	// keeps its refusals and is never presented as complete.
+	Complete bool     `json:"complete"`
+	Notes    []string `json:"notes"`
 }
 
 // Input is what the Host supplies. The reference builds no registry of its own.
@@ -194,6 +200,10 @@ func Run(ctx context.Context, in Input) Report {
 		report.Collected++
 		report.Outcomes = append(report.Outcomes, outcome)
 	}
+	// A run is complete only when at least one record was attempted and every
+	// attempt produced evidence. Partial runs stay partial.
+	report.Attempted = len(report.Outcomes)
+	report.Complete = report.Attempted > 0 && report.Collected == report.Attempted
 	return report
 }
 
@@ -215,6 +225,7 @@ func notes() []string {
 		"the router is the existing evidence.Router; no second registry is added",
 		"invoked means the provider's Collect was entered, not that the evidence is true",
 		"a pass outcome is the provider's claim, not proof that external state matches it",
+		"complete means every attempted record was collected; it is not proof that the evidence is true",
 		"no authentication, authority, permission or durable receipt is issued here",
 	}
 }
