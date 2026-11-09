@@ -320,3 +320,4 @@
 
 - [能力宣言に版付けの余地が無いことの実測](TEI_GO_SELF_BUILD_DECLARATION_VERSIONING_2026-11-10.md)（§7の「必要になった時点で決める」を検証。\ormatVersion\を足した宣言は\json: unknown field\で**拒否される**——版を名乗る手段が導入時点で使えない。D-1/D-2/D-3を比較し、D-2が最も安い理由を示すが**判断はしない**。 #2831）
 - [設計者ループは動くが補助コマンドのhelpが誤っていた](TEI_DOGFOODING_ROUND37_DESIGNER_LOOP_2026-11-09/README.md)（#3943。`security.logout`追加→validate/inspect/traceで連鎖確認。誤りは正しく検出。`-qualification-requirements`がパスなのにhelpは「JSON」、スキーマも未広告。文言を修正）
+- [validate -hが70フラグを表示していた](TEI_DOGFOODING_ROUND38_VALIDATE_FLAG_NOISE_2026-11-09/README.md)（#3956。共有FlagSetのため標準-hが全フラグを列挙。allow-listは既にありhelpTextも絞っていたが、validate/worldはExitOnErrorで到達せず。-hを既存経路へ流し70→3）

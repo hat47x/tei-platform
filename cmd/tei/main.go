@@ -145,8 +145,13 @@ func main() {
 		return
 	}
 	jsonValidationRequested := command == "validate" && wantsJSONValidation(os.Args[2:])
+	// A requested usage listing must reach printHelp, which shows only the flags
+	// this command reads. Under ExitOnError the flag package prints its own
+	// listing and exits, and that listing enumerates the shared FlagSet: validate
+	// showed 70 flags while accepting 3 (#3956).
+	helpRequested := wantsHelp(os.Args[2:])
 	parseMode := flag.ExitOnError
-	if command == "inspect" || command == "trace" || jsonValidationRequested || isResultEnvelopeCommand(command) {
+	if helpRequested || command == "inspect" || command == "trace" || jsonValidationRequested || isResultEnvelopeCommand(command) {
 		parseMode = flag.ContinueOnError
 	}
 	fs := flag.NewFlagSet(command, parseMode)
@@ -1516,4 +1521,16 @@ func upsertState(states []release.StateSnapshot, state release.StateSnapshot) []
 		}
 	}
 	return append(states, state)
+}
+
+// wantsHelp reports whether the caller asked for the usage listing. The flag
+// package recognises -h and -help, and the two forms with one or two dashes.
+func wantsHelp(args []string) bool {
+	for _, arg := range args {
+		switch arg {
+		case "-h", "--h", "-help", "--help":
+			return true
+		}
+	}
+	return false
 }

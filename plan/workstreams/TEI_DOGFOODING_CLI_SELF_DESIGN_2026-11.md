@@ -1107,3 +1107,35 @@ inline:  KNOWLEDGE_BUILD_FAILED: open {"qualifications": [...]}: no such file or
 ### 所感
 
 **設計判断そのものより、道具の入口の説明不足が作業を止める。** 1行の help が無いために CLI だけで完結しなかった。
+
+## 42. 第38ラウンド（2026-11-09）: `validate -h` が70フラグを表示していた
+
+設計検証で診断の内訳を知ろうとして `-h` を読み、`validate` に70個のフラグが並ぶのに受理は3個だと気づいた。生出力は[第38ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND38_VALIDATE_FLAG_NOISE_2026-11-09/README.md)にある。
+
+### 原因は「正本はあるが入口が2つ」
+
+`cmd/tei/main.go:152` で**1つの `flag.FlagSet` を全コマンドが共有**しているため、`flag` パッケージ標準の `-h` は全フラグを並べる。一方 `helpText` は**既に allow-list（`selectedReadOnlyFlagAllowlist`）で絞っていた**。
+
+欠けていたのは到達経路。`ContinueOnError` のコマンドだけが `flag.ErrHelp` を捕まえて `printHelp` に届く。`validate` と `world` は `ExitOnError` だったので、標準の一覧を出して即終了していた。
+
+| コマンド | 修正前 | 修正後 |
+| --- | --- | --- |
+| `validate` | **70** | **3** |
+| `world` | **70** | **2** |
+| `inspect` | 3 | 3（不変） |
+
+### 実際に踏んだ誤解
+
+`-h` に出ていた `-explain` と `-diagnostic-candidates` を `validate` の機能だと思って試し、2回 `INVALID_ARGUMENT` を食った。`-explain` は **PostgreSQL の EXPLAIN FORMAT JSON** を取るフラグ、`-diagnostic-candidates` は `plugin-resolve` 専用である。
+
+### 修正
+
+`-h` が要求されたら `ContinueOnError` にする1条件を足し、既存の `printHelp` 経路へ流した。新しい表示経路は作っていない。試験は `cmd/tei/helpfilter_test.go` で、変異（`wantsHelp` を常に false）で両方のサブテストが落ちることを確認した。
+
+### 途中で捨てた実装
+
+最初は `fs.Usage` を上書きして自前で絞ったが、`usage:` が2回出力された。`helpText` が同じことをしており二重になっていた。**既存の仕組みを読まずに書いたのが原因**で、実装を捨てて分岐を直す形に変えた。
+
+### 位置付け
+
+第22〜24ラウンドの「手書きの一覧が漏れる」型の変種。**正本は既にあり、それを使う関数もあった。** 欠けていたのは「`-h` をそこへ流す」1条件だけだった。第37ラウンド（正本が無く help が実態と違う）とは逆で、**正本はあるが到達経路が分かれていた**。
