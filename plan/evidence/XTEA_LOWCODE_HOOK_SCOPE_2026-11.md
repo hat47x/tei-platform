@@ -63,7 +63,7 @@ X-TEAのイベントスクリプトにも範囲の宣言が無く、行単位で
 
 ## 位置付け
 
-参照実装の試験記録であり、製品の受入や本番適格性を示しません。範囲の宣言・検査・投影は参照実装で確認済み、実行時の適用は未実装です。
+参照実装の試験記録であり、製品の受入や本番適格性を示しません。範囲の宣言・検査・投影は参照実装で確認済み、実行時の適用は`Run`（レコード単位）と`RunRows`（行単位）に在りますが、`RunRows`をホストから呼ぶ経路は未実装です（2026-11-10の訂正を参照）。
 
 ## 追記（2026-11-10）: 実行時の適用範囲と移行計画への反映
 
@@ -87,7 +87,8 @@ X-TEAの欠陥（知識ノートD-9「定義は在るが実行時に何もしな
 | --- | --- |
 | 空（Pattern自身の単位） | 適用される |
 | `record` | 適用される |
-| `row`・`item`・`header` | `HOOK_SCOPE_UNAPPLIED`で拒否される（**行ごとの適用は未実装**） |
+| `row` | 適用される。ただし `Run` ではなく `RunRows` を使う（`Run` は `HOOK_SCOPE_NEEDS_ROWS` で `RunRows` を指す） |
+| `item`・`header` | `HOOK_SCOPE_UNAPPLIED` で拒否される（この実行境界は適用しない） |
 
 設計のX-TEA対応表は「一覧では行ごと、単票では1件」と述べており、`row`の適用は設計上求められています。参照実装はそこまで届いていません。
 
@@ -97,6 +98,17 @@ X-TEAの欠陥（知識ノートD-9「定義は在るが実行時に何もしな
 
 ### 読み取れないこと
 
-- `row`（一覧の行ごと）と`item`（項目）の適用。実行境界が1レコード単位のため未実装です。
-- 見出し明細（`header`）の明細行への適用。
+- `item`（項目単位）と`header`（見出し明細の明細行）の適用。`HOOK_SCOPE_UNAPPLIED`で拒否されます。
+- **`RunRows` をホストから呼ぶ経路**。`internal/hook/rows.go` に実装と試験（5件）はありますが、`cmd`・`internal`のどちらからも呼ばれていません。CLI・Studioの参照実行は `RunReachable` を使い、`row` は理由つきで skip されます。
 - 実Pluginが範囲をどう解釈するか。
+
+### 訂正（2026-11-10）
+
+この追記の初版は「行ごとの適用は未実装」と書きましたが、**誤りでした**。`internal/hook/rows.go`の`RunRows`が行ごとの適用を実装しており、5件の試験で固定されています。
+
+- 各行の値を、宣言した`reads`だけに絞る（`TestRunRowsNarrowsToDeclaredReads`）
+- 拒否した行を名指し、それ以降を訪問しない（`TestRunRowsStopsAtTheRefusedRow`）
+- `row`以外の範囲を拒否する（`TestRunRowsRefusesANonRowScope`）
+- 空の結果を失敗にしない（`TestRunRowsAcceptsAnEmptyResult`）
+
+正しい未実装は「**`RunRows`をホストから呼ぶ経路**」です。実装は在りますが、CLI・Studioの参照実行は`RunReachable`を使うため、`row`のフックは`HOOK_SCOPE_NEEDS_ROWS`で`RunRows`を指され、`RunReachable`では理由つきでskipされます。
