@@ -1456,6 +1456,19 @@ catalogは**データ**であり、entryはそれを**名指しされたもの�
 
 能力宣言には**互換性の約束も`formatVersion`も無い**。製品が読むのは、このツールが出力するcatalogだけである。宣言の形を変えても、catalogの形（`BuildCatalog`）を変えなければ製品には影響しない。
 
+#### 回帰試験に載せた
+
+**宣言からClaimまでの鎖は、`cmd/tei`のエンドツーエンド試験が毎回通す。** 試験は参照catalogをコピーせず、**ツールでcatalogを作る**。
+
+| 段 | 試験が確かめること |
+| --- | --- |
+| 能力宣言 | builder childの実体を宣言が名指しする |
+| authoring | ツールがcatalogを書き、`catalogDigest`を返す |
+| **catalogの中身** | **`artifactDigest`が、実際に走るbuilderのバイトのdigestと一致する** |
+| `self-build` | `l2b.claimed=true`・`unmet`空・`qualified=false` |
+
+**digestの一致を試験で確かめるのは、下流が気づけないからである。** builderの解決はdigestで照合しないため、catalogが別のバイトを名指ししていても試行は通ってしまう。鎖の意味は「名指ししたバイトが実際に走る」ことにあるので、そこを固定した。
+
 #### この節が言っていないこと
 
 - **catalogが正しいこと**（§4.22 K-3、SC0-26のまま）。名指しされたデータを使った記録しかない
@@ -1561,6 +1574,7 @@ catalogは**データ**であり、entryはそれを**名指しされたもの�
 - [x] 依存の更なる削減：**entryが計画側も独立に持つ**経路（[#3729](https://github.com/hat47x/tei-platform/pull/3729)）。lockの計画側はbuilderの申告を優先し、申告が無ければentryの再計算値を使う。どちらを使ったかを`planSideSource`で記録するので、弱い根拠を強い根拠と読ませない（[記録](../evidence/TEI_GO_SELF_BUILD_ENTRY_PLAN_SIDE_2026-11-09.md)）
 - [x] catalogの欄がどこで宣言されているかの実測（§4.29。7欄のうち**5欄にcatalog以外の宣言面が無く**、既存の宣言からは導出できないと分かった。[記録](../evidence/TEI_GO_SELF_BUILD_CATALOG_FIELD_PROVENANCE_2026-11-09.md)）
 - [x] catalogを**書く場所**の決定（§4.32。**製品の外**に置く。Workspaceもplugin構文も変えない。既存readerは未知のentryと未知の`formatVersion`を拒否するため、K-1・K-2は古いbinaryとの互換を壊す。K-3の読み方はそのままで、製品の契約を一つも変えない）
+- [x] 宣言からClaimまでの鎖の**回帰試験**（§4.33。`cmd/tei`のエンドツーエンド試験がツールでcatalogを作り、**`artifactDigest`が実際に走るbuilderのバイトと一致すること**を確かめてから`l2b.claimed`を要求する。builderの解決はdigestで照合しないので、下流では気づけない）
 - [x] catalogを作る**ツール**の能力宣言の形式と実装（§4.33。`tools/reference-build-catalog-authoring`が能力宣言からcatalogを作り、**artifactのdigestは実ファイルから計算**する。宣言にdigestを書くことと`-root`の外を拒否する。宣言から`l2b.claimed=true`まで一本で通った。[記録](../evidence/TEI_GO_SELF_BUILD_CATALOG_AUTHORING_2026-11-09.md)）
 - [ ] 能力宣言の**版付け**（今は互換の約束をしない。必要になった時点で決める）
 - [ ] D-1（catalogの`scope`拡張）を採るかどうかの契約判断（採る場合のみ、catalogの広告と実応答の一致を照合へ載せる）
