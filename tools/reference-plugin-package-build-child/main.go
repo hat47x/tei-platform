@@ -282,9 +282,74 @@ func materialize(planPath, pluginPath, artifactOut, stateDir, intentPath string)
 				)
 			}
 		}
+		// §4.15の次の一歩: the remaining declaration fields that the plan also
+		// carries. Sources and dependencies are compared by identity only: the
+		// declaration names a reference, the plan carries the derived locator and
+		// digest, so comparing those would compare two different things and call
+		// every correct build a mismatch.
+		if err := compareIntentFields(intent, plan); err != nil {
+			return childReport{}, err
+		}
 		report.IntentBoundToPlan = true
 	}
 	return report, nil
+}
+
+// compareIntentFields checks the declaration fields that the plan also carries,
+// beyond identity and build coordinates.
+//
+// Compared: recipe kind and entrypoint, source identity (kind and id), and
+// dependency identity (kind and id). Not compared: a source's locator and
+// digest (the plan derives them from bytes, the declaration names a reference),
+// a dependency's version and artifact digest (derived), and parameters.
+//
+// Parameters are excluded on purpose. The plan's parameters are what the
+// resolver produced, and the declaration's are what a person wrote; the resolver
+// may order or normalise them, so a mismatch there would not distinguish a wrong
+// declaration from a different normalisation. Comparing them needs its own
+// decision about what equality means.
+func compareIntentFields(intent buildintent.BuildIntent, plan plugin.BuildPlan) error {
+	if intent.Recipe.Kind != plan.Recipe.Kind {
+		return fmt.Errorf("the declaration's recipe kind %q does not match the plan's %q", intent.Recipe.Kind, plan.Recipe.Kind)
+	}
+	if intent.Recipe.Entrypoint != plan.Recipe.Entrypoint {
+		return fmt.Errorf("the declaration's recipe entrypoint %q does not match the plan's %q", intent.Recipe.Entrypoint, plan.Recipe.Entrypoint)
+	}
+
+	planSources := make(map[string]string, len(plan.Sources))
+	for _, s := range plan.Sources {
+		planSources[s.ID] = s.Kind
+	}
+	for _, s := range intent.Sources {
+		kind, ok := planSources[s.ID]
+		if !ok {
+			return fmt.Errorf("the declaration's source %q is not in the plan's sources", s.ID)
+		}
+		if kind != s.Kind {
+			return fmt.Errorf("the declaration's source %q has kind %q but the plan's has %q", s.ID, s.Kind, kind)
+		}
+	}
+	if len(intent.Sources) != len(plan.Sources) {
+		return fmt.Errorf("the declaration names %d sources but the plan has %d", len(intent.Sources), len(plan.Sources))
+	}
+
+	planDependencies := make(map[string]string, len(plan.Dependencies))
+	for _, d := range plan.Dependencies {
+		planDependencies[d.ID] = d.Kind
+	}
+	for _, d := range intent.Dependencies {
+		kind, ok := planDependencies[d.ID]
+		if !ok {
+			return fmt.Errorf("the declaration's dependency %q is not in the plan's dependencies", d.ID)
+		}
+		if kind != d.Kind {
+			return fmt.Errorf("the declaration's dependency %q has kind %q but the plan's has %q", d.ID, d.Kind, kind)
+		}
+	}
+	if len(intent.Dependencies) != len(plan.Dependencies) {
+		return fmt.Errorf("the declaration names %d dependencies but the plan has %d", len(intent.Dependencies), len(plan.Dependencies))
+	}
+	return nil
 }
 
 func digestOf(raw []byte) string {

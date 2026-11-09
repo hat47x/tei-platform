@@ -40,7 +40,7 @@ func writeFixture(t *testing.T) (string, string) {
 		PluginDefinitionFingerprint: plugin.BuildDefinitionFingerprint(definition),
 		Sources: []plugin.BuildSource{{
 			Kind:    "plugin-definition",
-			ID:      "build-child-test-definition",
+			ID:      "definition", // the declaration names this source; compareIntentFields compares kind and id
 			Locator: "plugin.tei",
 			Digest:  "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		}},
