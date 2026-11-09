@@ -979,7 +979,74 @@ ContractVersion: fmt.Sprintf("%s/v%d", p.Contract, p.ContractMajor),
 
 `l2b.unmet`の文字列がそのまま失敗メッセージに入る。どの条件が欠けたかが、試験の出力だけで分かる。
 
-### 4.25 二つのホストで同じ計画とartifactが出る（2026-11-09）
+### 4.25 既定経路をどこまで強くするか（三つの未決を一つの判断として、2026-11-09）
+
+§7に三つの未決が並んでいる。**同じ根に三つ実がある。**
+
+| 未決 | 問い |
+| --- | --- |
+| `-rebuild-check`を既定にするか | 再現を毎回測るか |
+| entryの既定経路をin-processへ切り替えるか | 導出を誰がするか |
+| `l2b.claimed`を既定の試行で立てられるようにするか | 主張を既定で立てるか |
+
+**どれも「既定の試行をどこまで強くするか」を問うている。** 個別に決めると、片方を強くしたせいでもう片方の前提が変わる。本節は材料を測り、**一つの判断として扱う**ことを提案する。ただし決定はしない。
+
+#### 実測：既定の試行が今なにをするか
+
+`tei self-build`は、`-intent-resolver`も`-build-catalog`も無ければ**計画を導出しない**。両方あるときは拒否する（一行の明示が要る）。つまり:
+
+| 試行 | 計画の導出 | 再現 | `l2b.claimed` |
+| --- | --- | --- | --- |
+| 既定（どちらも無し） | **しない** | しない | 立てられない |
+| `-intent-resolver` | child | 呼び手次第 | 立てられない（entryが解釈していない） |
+| `-build-catalog`一式 | **entry** | 呼び手次第 | 五条件が揃えば立つ |
+
+#### 実測：強くすると何が増えるか
+
+| 強くすること | 増えるもの | 増えないもの |
+| --- | --- | --- |
+| `-rebuild-check`を既定に | **childの実行が二回**になる（同じ条件で別state） | 供給のTrust、catalogの正しさ |
+| in-processを既定に | 呼び手はcatalog 3点セットを渡す義務を負う | 同じく別の層 |
+| `l2b.claimed`を既定で | 上の二つが既定で要る | 意味の受理・Runtime Authority |
+
+**`-rebuild-check`の既定化は、build時間をほぼ倍にする。** 二回目は同じchild実行物を新しいstateで起動するので、ビルドが高価なほど素直に二倍近くになる。決定論的なchildでは同じバイトが出るが、**その保証は時間と引き換え**である。
+
+#### 三つの組み合わせ
+
+| 案 | `-rebuild-check` | 導出 | 既定でclaim | 何を優先するか |
+| --- | --- | --- | --- | --- |
+| **P-1: 現状維持** | 明示 | 明示 | 立たない | **速さ**。呼び手が強さを選ぶ |
+| P-2: 再現だけ既定 | **既定** | 明示 | 立つ（in-process時） | (c)の取り違えを減らす |
+| P-3: 両方既定 | **既定** | **既定** | **立つ** | 主張の強さ。時間を払う |
+| P-4: 既定は軽く、`-strong`で全部 | 明示 | 明示 | 明示時のみ | 一つのflagで強さを選ぶ |
+
+#### 測ったうえでの所見
+
+**P-3は今の製品の性質を変える。** 既定でchildを二回起動し、catalog 3点セットを要求する。これは「既定は軽く、強さは呼び手が選ぶ」という既存の形（`-supply`・`-intent-resolver`・`-state`）と**逆向き**である。
+
+**P-2は非対称。** 再現だけ既定にすると、child経路でも毎回二回ビルドするのに`l2b.claimed`は立たない（entryが解釈していないため）。**コストを払って主張が増えない**組み合わせである。
+
+**P-4が既存の形と整合する。** 既定は軽いまま、呼び手が`-strong`（仮称）で「再現も測り、可能ならclaimも立てる」を選ぶ。ただし新しいflagを一つ増やすので、その名前と意味を決める必要がある。
+
+**したがって本記録はP-4を推すが、決定はしない。** 理由は、P-1〜P-3のどれも「既定の試行の意味」を変える契約判断であり、§4.16がR-1/R-2/R-3を据え置いたのと同じ種類だからである。
+
+#### 決めるために足りないもの
+
+| 足りないもの | なぜ要るか |
+| --- | --- |
+| 実buildの所要時間 | `-rebuild-check`の倍化が許容できるかの判断材料 |
+| catalog 3点セットを既定で用意できるか | in-process既定化の前提。誰がcatalogを作るかは§4.22末尾で未決 |
+| `-strong`の名前と粒度 | P-4を採る場合の契約 |
+
+**実buildの所要時間は測っていない。** 本節は構造と組み合わせを示しただけで、時間の実測を含まない。
+
+#### この節が決めていないこと
+
+- 三つのどれも決めていない。**一つの判断として扱うことを提案しただけである。**
+- `-strong`の名前・粒度・既定値。
+- 既定経路を変えることの後方互換への影響（既存の呼び手は何も渡さずに走っている）。
+
+### 4.26 二つのホストで同じ計画とartifactが出る（2026-11-09）
 
 §4.21・§4.23・§4.24は、いずれも「**このホスト**での観測」と範囲を限定していた。本節はその限定を**二つのホスト**に広げる。
 
@@ -1060,7 +1127,7 @@ Claimの`boundary`文言を、**このホスト**から**観測した二つの�
 | SC0-27 | `l2b.claimed=true`を受理・Runtime Authorityと読む | 読まない。`qualified`は`false`のままで、`l2b.boundary`が範囲を明記する（§4.23） |
 | SC0-28 | 単一の観測（`bound`だけ、`reproduced`だけ）でL2-bを主張する | 主張しない。述語は五条件の同時成立を要求し、欠けた条件をすべて列挙する（§4.23） |
 | SC0-29 | `l2bClaimed`を`false`に固定したまま「L2-bは未成立」と述べ続ける | 述べ続けない。ただし**Claimを立てるには呼び手がin-processと`-rebuild-check`を明示する必要がある**（既定は変わっていない。§4.23） |
-| SC0-30 | 二つのホストで一致したことを「すべてのOSで一致する」と読む | 読まない。観測したのは`linux/amd64`と`windows/amd64`で、他のホストは未観測である（§4.25） |
+| SC0-30 | 二つのホストで一致したことを「すべてのOSで一致する」と読む | 読まない。観測したのは`linux/amd64`と`windows/amd64`で、他のホストは未観測である（§4.26） |
 
 ## 6. 未決事項
 
@@ -1102,15 +1169,15 @@ Claimの`boundary`文言を、**このホスト**から**観測した二つの�
 - [x] §4.8の(a)(b)（builder childが宣言byteを申告し、entryの保持byteと一致する）の実装（§4.14、[記録](../evidence/TEI_GO_SELF_BUILD_CHILD_DECLARATION_2026-11-09.md)、`ee7148138`）
 - [x] entryまたはchildが宣言から**計画まで**独立に導く経路（I-1b。[#3654](https://github.com/hat47x/tei-platform/pull/3654)で`Resolve`を`internal/buildintent`へ移し、fixture catalogは`tools/`に残した。§4.13の反対理由はcatalogについてであり、portについては当たらなかった）
 - [x] (c)の観測：**同じplanを二回、別stateでbuildして同じバイトが出た**（§4.21、[記録](../evidence/TEI_GO_SELF_BUILD_ARTIFACT_REPRODUCIBILITY_2026-11-09.md)。`-rebuild-check`で`artifactReproducibility=reproduced`。lockの`bound`が示せなかった「そのplanがそのartifactを生んだ」を再現で観測した。**L2-bではない**）
-- [ ] `-rebuild-check`を**既定**にするかどうかの判断（再現を毎回測ると(c)の取り違えが減るが、build時間が倍になる。§4.21末尾）
+- [ ] `-rebuild-check`を**既定**にするかどうかの判断。**§4.25で三つの未決を一つの判断として扱う案（P-1〜P-4）を示した**。実buildの所要時間は未測（§4.25末尾）
 - [x] catalogの出所の決定（§4.22。**K-3: 呼び手が名指しするcatalogデータ＋必須のdigest**。新しいAuthorityを作らず、既存の`-supply`・`-intent-resolver`と同じ形）
 - [ ] **entryの既定経路をin-processの`Resolve`へ切り替えるか**の判断（§4.16のR-1/R-2/R-3）。前提だったcatalogの出所は§4.22で決めた（K-3）。切り替え自体は段2の完了後に別途決める
 - [x] **段1**：`fixture`を外した名前で`BuildCatalog`・`ParseBuildCatalog`・`ResolveBuilder`・`ResolveDependency`・`CheckTarget`・`DirSourceResolver`を`internal/buildintent`へ移した（`tools/`側は型aliasと薄い委譲。参照実装の試験は**無変更で通る**。§4.22の移行表、[記録](../evidence/TEI_GO_SELF_BUILD_CATALOG_MOVE_2026-11-09.md)）
 - [x] **段2**：`cmd/tei`に`-build-catalog`・`-build-catalog-digest`・`-build-source-root`を足し、in-processで計画を導く経路を作った（`-intent-resolver`とは排他。§4.22、[記録](../evidence/TEI_GO_SELF_BUILD_INPROCESS_RESOLUTION_2026-11-09.md)）。**entryが導いた計画のfingerprintは参照実装のchildが出した値と一致した。** `planRecompute`・`planCrossCheck`・`planArtifactBinding`はin-process経路でも成立する
 - [x] L2-bのClaimを立てるかの判断と実装（§4.23。**五条件の同時成立**を述語にし、`l2b.claimed`と`l2b.unmet`として出す。[記録](../evidence/TEI_GO_SELF_BUILD_L2B_CLAIM_2026-11-09.md)。単一観測の`l2bClaimed`欄は`false`のまま据え置き、述語はそれらを読まない）
 - [x] L2-bのClaimを**回帰試験**にする（§4.24。参照catalogと参照builder childで五条件が揃うことを`cmd/tei`の試験で固定し、`go test ./...`経由で健康性確認に載る。[記録](../evidence/TEI_GO_SELF_BUILD_L2B_GATE_2026-11-09.md)）
-- [x] 二つのホスト（`linux/amd64`・`windows/amd64`）で同じ計画とartifactが出ることの実測（§4.25。[記録](../evidence/TEI_GO_SELF_BUILD_CROSS_OS_DIGESTS_2026-11-09.md)。`intentFingerprint`・`sourceClosure`・`planFingerprint`・`artifactDigest`の四つが一致し、L2-bのエンドツーエンド試験もWindowsでPASSした。**Go版も違う**）
-- [ ] `darwin`・`arm64`・別のGo版の組合せでの観測（§4.25の範囲外）
+- [x] 二つのホスト（`linux/amd64`・`windows/amd64`）で同じ計画とartifactが出ることの実測（§4.26。[記録](../evidence/TEI_GO_SELF_BUILD_CROSS_OS_DIGESTS_2026-11-09.md)。`intentFingerprint`・`sourceClosure`・`planFingerprint`・`artifactDigest`の四つが一致し、L2-bのエンドツーエンド試験もWindowsでPASSした。**Go版も違う**）
+- [ ] `darwin`・`arm64`・別のGo版の組合せでの観測（§4.26の範囲外）
 - [ ] `l2b.claimed`を**既定の試行**で立てられるようにするか（今は呼び手がin-processと`-rebuild-check`を明示する必要がある。§4.23末尾）
 - [x] 宣言とplanの**build座標**（`outputKind`・`target`・`profile`）の照合（[#3652](https://github.com/hat47x/tei-platform/pull/3652)。childが三座標を一つずつ比べ、違えばartifactを書いた後にreportを出さずexit 1。[記録](../evidence/TEI_GO_SELF_BUILD_BUILD_COORDINATES_2026-11-09.md)）
 - [x] 宣言の他の欄のうち、planが同じ形で持つもの（`recipe`・`sources`・`dependencies`）の照合（[#3661](https://github.com/hat47x/tei-platform/pull/3661)。§4.17）

@@ -1,4 +1,4 @@
-# 同じ宣言からWindowsとLinuxで同じ計画とartifactが出る（§4.25）
+# 同じ宣言からWindowsとLinuxで同じ計画とartifactが出る（§4.26）
 
 [#2831](https://github.com/hat47x/tei-platform/issues/2831) のSB-C0 §4.21・§4.23・§4.24は、いずれも「**このホスト**での観測」と範囲を限定していました。本記録はその限定を**二つのホスト**に広げます。
 
@@ -74,7 +74,7 @@
 
 ## 参照
 
-- 設計：[`SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md`](../design/SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md) §4.25
+- 設計：[`SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md`](../design/SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md) §4.26
 - 再現の設計：[同 §4.21](../design/SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md)
 - 再現の実測：[`TEI_GO_SELF_BUILD_ARTIFACT_REPRODUCIBILITY_2026-11-09.md`](TEI_GO_SELF_BUILD_ARTIFACT_REPRODUCIBILITY_2026-11-09.md)
 - Claimの述語：[`TEI_GO_SELF_BUILD_L2B_CLAIM_2026-11-09.md`](TEI_GO_SELF_BUILD_L2B_CLAIM_2026-11-09.md)

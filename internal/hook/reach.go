@@ -63,12 +63,26 @@ type PhaseReport struct {
 	Refused string `json:"refused,omitempty"`
 	// Outcome は、不成立に対応する業務上の結末である。実行の失敗では空になる。
 	Outcome string `json:"outcome,omitempty"`
+	// Produced は、実行した位相が提案した値である。位相ごとに、宣言した
+	// `produces`に載る属性だけが入る。提案は値を確定しない。呼出し側が採用を
+	// 決めるまでの候補として、ここに残す。
+	//
+	// この欄が無かったころは、`produces`を宣言したフックが値を返しても、
+	// `RunReachable`は`RunWithDeclaredReads`を呼ぶため提案が捨てられ、
+	// `hook.ProducesFor`の宣言照合も走らなかった。宣言と実行が食い違う状態を
+	// 黙って通さないために欄を足す。
+	Produced map[string]Produced `json:"produced,omitempty"`
 }
 
 // Ran は、実行した位相があるかを返す。すべての位相を飛ばした実行と、位相を
 // 一つも宣言していない Pattern を区別するために使う。
 func (r PhaseReport) Ran() bool {
 	return len(r.Executed) > 0 || len(r.Warned) > 0 || r.Refused != ""
+}
+
+// Proposed は、位相が提案した値を返す。提案が無ければ空を返す。
+func (r PhaseReport) Proposed(phase string) Produced {
+	return r.Produced[phase]
 }
 
 // RunReachable は、宣言された位相のうち、この実行境界が到達でき、かつ宣言した
@@ -125,9 +139,18 @@ func (r Runner) RunReachable(ctx context.Context, applicationID, patternID core.
 			Phase:       phase,
 			Reads:       reads,
 		}
-		err := r.RunWithDeclaredReads(ctx, invocation)
+		// RunWithDeclaredValues applies ReadsFor and, when the implementation
+		// proposes values, ProducesFor. Calling the read-only path here would
+		// drop a declared proposal and skip the declaration check with it.
+		produced, err := r.RunWithDeclaredValues(ctx, invocation)
 		if err == nil {
 			report.Executed = append(report.Executed, phase)
+			if len(produced) > 0 {
+				if report.Produced == nil {
+					report.Produced = map[string]Produced{}
+				}
+				report.Produced[phase] = produced
+			}
 			continue
 		}
 		var warning *Warning

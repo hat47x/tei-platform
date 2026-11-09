@@ -177,3 +177,9 @@
 /plan/evidence/BINDING_FORMS_CONSUMER_SURVEY_2026-11-09/** -text
 # Concurrent-subagent observations are hashed as raw bytes.
 /plan/evidence/DSH_SUBAGENT_CONCURRENT_LIMIT_2026-11-09/** -text
+
+# Observation router connect output is hashed as raw bytes by its README.
+/plan/evidence/OBSERVATION_ROUTER_CONNECT_REFERENCE_2026-11-09/** -text
+
+# Evidence router connect output is hashed as raw bytes by its README.
+/plan/evidence/EVIDENCE_ROUTER_CONNECT_REFERENCE_2026-11-09/** -text

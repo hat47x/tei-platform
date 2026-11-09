@@ -42,6 +42,7 @@
 - [フック実行の配線と失敗の区別の確認](XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)（参照実装の試験記録。Runnerからの配線、NotSatisfiedと実行失敗の区別、参照規則。実PluginとCLI・Studioの配線は未実装）
 - [フック宣言の印刷面への反映の確認](XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md)（参照実装の試験記録。画面と同じフック宣言が印刷面にも出る。実印刷・用紙面の版照合は未確認）
 - [フックの位相順序と途中停止の確認](XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md)（参照実装の試験記録。位相の実行順、不成立での停止位置、`warn`の続行、未対応位相の拒否。CLI・Studioへの配線は未実装）
+- [到達できる位相の経路で提案を捨てない確認](XTEA_LOWCODE_HOOK_REACHABLE_PROPOSES_2026-11.md)（参照実装の試験記録。`RunReachable`が`RunWithDeclaredValues`を通り、宣言した`produces`が残り、宣言外の提案が拒否される）
 - [フックが名乗る結末名の検査の確認](XTEA_LOWCODE_HOOK_OUTCOME_CHECK_2026-11.md)（参照実装の試験記録。語彙の外の結末名を`HOOK_OUTCOME_UNDECLARED`で拒否する）
 - [フックの結末名とCommand拒否名の対応の確認](XTEA_LOWCODE_HOOK_OUTCOME_VOCABULARY_2026-11.md)（参照実装の試験記録。フックが名乗れる結末名を列挙し、Command側の綴りへ写す。対応の無い名前はCommandの拒否理由にしない）
 - [フック位相の到達範囲を一箇所に置く確認](XTEA_LOWCODE_HOOK_REACHABLE_PHASES_2026-11.md)（参照実装の試験記録。CLIとStudioが同じ位相の選び方を使い、到達しない位相と前提が欠けた位相を区別する）
@@ -104,6 +105,8 @@
 - [宣言のBindingから実行までを、参照実装で繋いでみる](BINDING_TO_EXECUTION_REFERENCE_2026-11-09/README.md)（`tools/reference-binding-to-execution` として判断材料のC-1を実装。既存の RouteCommand・Router.Dispatch・ValidateResult だけでBinding から実行まで繋がることを示す。未登録の executor を指す Binding は実行せず拒否し、存在しない環境は0件で終わる。Executor の registry は Host が渡すため実配備の成立は示さない）
 - [配備実行の能力IDを、宣言から解決する（C-3）](EXECUTOR_ID_RESOLUTION_REFERENCE_2026-11-09/README.md)（`tools/reference-executor-id-resolution` として判断材料のC-3を実装。routing.RouteCommand で Binding から ID を解決し、BuildPlan の plan が認めるかと SupportsAction を順に確かめる。実lockで RESOLVED、lock無しで LOCK_REJECTED、別のactionでは直書きの migration.atlas ではなく runtime.reference が解決され、直書きがBindingと食い違いうることを示す。実行はしない）
 - [6つの宣言のうち、実行まで届いているのはどれか](BINDING_FORMS_CONSUMER_SURVEY_2026-11-09/README.md)（Environment が持つ6つの宣言ごとに非試験の読み手を列挙。6つとも索引・解析・検証で読まれているが、observation と evidence は Binding で解決しつつ Router が試験でしか組み立てられておらず、解決は宣言から実行は別の扉という断絶が配備実行だけの話ではないことを示す。何も変更しない）
+- [観測の宣言から、既存の Router で実際に入れるか](OBSERVATION_ROUTER_CONNECT_REFERENCE_2026-11-09/README.md)（`tools/reference-observation-router-connect` として、ObservationProviders の断絶を新しい機構なしで閉じられるか試す。宣言→observation.Binding→Host registry→observation.Router.Observe の4段が既存の関数だけで通り、未登録でも resolved=True のまま invoked=False になることを示す。実Providerの観測は示さない）
+- [証拠の宣言から、既存の Router で実際に入れるか](EVIDENCE_ROUTER_CONNECT_REFERENCE_2026-11-09/README.md)（`tools/reference-evidence-router-connect` として、観測側と同じ4段の形が EvidenceProviders でも成り立つかを試す。Collect は durable.ActionRecord を要求するため証拠ゲートでない記録は専用状態で拒否し、未登録でも resolved=True のまま invoked=False になることを示す。pass は provider の主張で外部状態の証明ではない）
 - [C-2を試験の外で組み立て、C-1と同じ土台で比べる](SERVICE_CARRIER_CONNECT_REFERENCE_2026-11-09/README.md)（`tools/reference-service-carrier-connect` として判断材料のC-2を実装。Hostが渡したCoordinator・Runtime registry・RouteSourceからInvokerを組み立て、ピン留めした世代で要求を運ぶ。Routeが無い場合はInvokerを呼ぶ前に拒否し、別Binding用のRouteも拒否し、入力不足も拒否する。実配備の成立は示さない）
 - [C-2の数も、実行前拒否と実行後不確定を分ける](SERVICE_CARRIER_CONNECT_OUTCOME_V1_2026-11-09/README.md)（C-2の参照Reportをv1にし、ranCountをcarrier入場、refusedCountを入場前停止だけ、unverifiedCountを入場後の失敗や別世代の応答として分ける。artifact検証の拒否はcarrier内部で起きるためunverifiedに入る。反例3件でv0ならrefusedに入っていたケースを固定し、CLIの3場合はcarrierInvoked=falseを示す。製品へ繋ぐべきかは示さない）
 - [C-1とC-2は、同じ問いの2案か](CONNECT_POINT_C1_C2_2026-11-09/README.md)（判断材料が並べたC-1 routing.Router と C-2 servicehost の入口を比べ、入力の型・世代の有無・到達可能性が違うことを示す。C-1は配備の動作を実行しC-2はServiceの要求を運ぶため、両方を選ぶことは経路の重複ではない。C-2は非試験の呼出し元がまだ0件であることを記録。どちらを先に入れるべきかは示さない）
@@ -242,3 +245,4 @@
 - [同じ壊れたplugin-lockが2コマンドで別の終了コードになっていた](TEI_DOGFOODING_ROUND19_PLUGIN_LOCK_CLASSIFICATION_2026-11-09/README.md)（#3765・#3420 CAPI-2b・#3184。`plugin-resolve`はexit 2、`plugin-runtime-plan`はexit 1と5種で食い違った。`LockMismatchError`を追加し両方`INVALID_PLUGIN_LOCK`へ。変異2種を検出）
 
 - [同じ値指定flagの重複](CLI_REPEATED_FLAG_2026-11-09.md)（`model catalog -namespace`等の重複が最後の値だけを残して黙って捨てていたのを、1値flagの重複として`INVALID_ARGUMENT`で拒否。繰り返し可能なflagは`repeatableFlags`で広告。既存呼出し元の全件洗い出しは未実施）
+- [viewの-inputが-command無しで黙って捨てられていた](TEI_DOGFOODING_ROUND20_VIEW_INPUT_2026-11-09/README.md)（#3778・#3420。`-input`は`-command`と組だが、無い場合に値が捨てられて成功していた。両方向の変異を検出する試験を追加。起票時の誤診と既存試験による発覚も記録）
