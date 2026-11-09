@@ -215,3 +215,4 @@
 - [mainのtrace継続トークンを実測](TEI_DOGFOODING_ROUND12_CONTINUATION_MAIN_2026-11-09/README.md)（#3625。`e75d599ba`で`graphFingerprint`への改名と`continuation`が入り、`continuation.fingerprint`で継続でき、`graphFingerprint`は拒否されることを確認）
 - [設計変更の影響範囲をCLIだけで答えられるか](TEI_DOGFOODING_ROUND13_DESIGN_IMPACT_2026-11-09/README.md)（#3149 D-9・#2619・#2621。モデル要素の定義箇所は`inspect`で分かるが、設計文書の中の名前はsubjectにならず`SUBJECT_NOT_FOUND`。改名の影響範囲は`grep`が要る。リポジトリ全体はWorkspaceにできない）
 - [AIが使うknowledge-*連鎖の端から端までの実測](TEI_DOGFOODING_ROUND14_KNOWLEDGE_CHAIN_2026-11-09/README.md)（#3149・#3186・#3419。context→plan→handoff→disclose→qualify→review-discloseが通り、古い指紋と別subjectのhandoffは拒否される。要件ファイルの形だけCLIの応答から辿れない）
+- [trace -mode fullのrowsが0件のとき消える](TEI_DOGFOODING_ROUND15_TRACE_MODE_ROWS_2026-11-09/README.md)（#3693・#3456。`omitempty`が長さ0のスライスも落とすため、`mode=full`の「0件」と「欄が無い」が同じ表現だった。0件のときだけ`rows: []`を書き、既存のfull応答のバイト列は変えていない。変異3種を検出）

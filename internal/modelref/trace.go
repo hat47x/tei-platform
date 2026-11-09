@@ -72,6 +72,36 @@ type TraceResult struct {
 	Continuation *TraceContinuation `json:"continuation,omitempty"`
 }
 
+// MarshalJSON keeps `rows` present for `mode=full`.
+//
+// A full trace answers "all rows, with no implicit truncation". When the
+// subject declares no references the answer is an empty list, not an absent
+// field. The field carries omitempty because summary mode must not emit rows at
+// all (it counts the whole graph without allocating them), and omitempty drops
+// a zero-length slice as well as a nil one, so the two cases cannot be told
+// apart by the tag alone. Without this, a reader that iterates result.rows
+// cannot distinguish "no references" from "this version has no such field"
+// (#3693).
+//
+// Only the zero-row case goes through the override. A non-empty rows slice is
+// already emitted by the default marshaling, in the struct's own field order;
+// routing it through the override would move the key to the end and change the
+// bytes of every existing full trace for no reason (the trace benchmark pins
+// those bytes).
+func (r TraceResult) MarshalJSON() ([]byte, error) {
+	type alias TraceResult
+	plain := alias(r)
+	if r.Mode != "full" || len(r.Rows) > 0 {
+		return json.Marshal(plain)
+	}
+	type withRows struct {
+		alias
+		Rows *[]TraceRow `json:"rows"`
+	}
+	empty := []TraceRow{}
+	return json.Marshal(withRows{alias: plain, Rows: &empty})
+}
+
 // TraceContinuation names the token that continues this page. Fingerprint is
 // the Workspace-level continuation value (the CLI's result.snapshotFingerprint
 // placed beside nextOffset); it is descriptive and is not an acceptance
