@@ -297,7 +297,6 @@ func TestMapWorldDuplicateRelationIDDoesNotFirstWin(t *testing.T) {
 	}
 }
 
-
 // Typed navigation topology is derived from World declarations, whereas
 // Source provenance has its own revision. A source move or byte change
 // must not masquerade as a semantic graph edit (or preserve edit authority).
