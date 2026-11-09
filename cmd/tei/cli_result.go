@@ -343,10 +343,13 @@ func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environ
 		}
 		plan, err := pluginruntime.BuildPlan(catalog, env, lock)
 		if err != nil {
-			// A lock whose bytes are unusable is an input failure (exit 2), the
-			// same as the decode and resolve paths of plugin-resolve. A
-			// well-formed lock that does not match the environment or the
-			// catalog stays a planning failure (exit 1) (#3184).
+			// The supplied lock is an input the caller can repair, so an
+			// unusable or disagreeing lock answers INVALID_PLUGIN_LOCK with exit
+			// 2 here, exactly as plugin-resolve does. Before this, the same file
+			// answered exit 2 from plugin-resolve and exit 1 from this command,
+			// so a caller testing `exit == 2` for "the input is wrong" missed it
+			// (#3765, following #3184). A failure that is not about the lock
+			// stays a planning failure (exit 1).
 			if plugin.IsInvalidLock(err) {
 				return emitResult(out, resultFailure(command, resultCodeInvalidPluginLock, err), 2)
 			}

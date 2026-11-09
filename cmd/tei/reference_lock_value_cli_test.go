@@ -176,12 +176,16 @@ func TestLogicalReferencesAndEnvironmentLockCLI(t *testing.T) {
 		t.Fatalf("invalid lock or lost diagnostic: %s", out)
 	}
 	write("environments/test/environment.tei", "environment test {\n    plugin tei.missing ^1\n}\n")
-	if out := diagnostic("test", oldPath); !strings.Contains(out, "PLUGIN_RESOLVE_FAILED") || strings.Contains(out, `"candidates"`) {
+	// The supplied lock can no longer be satisfied by the declaration: the
+	// catalog does not offer the pinned plugin. That is a supplied input the
+	// caller can repair, so it is INVALID_PLUGIN_LOCK rather than an ordinary
+	// resolve failure (#3765).
+	if out := diagnostic("test", oldPath); !strings.Contains(out, "INVALID_PLUGIN_LOCK") || strings.Contains(out, `"candidates"`) {
 		t.Fatalf("missing plugin: %s", out)
 	}
 	write("environments/test/environment.tei", "environment test {\n    plugin tei.value.example ^1\n}\n")
 	write("plugins/example/plugin.tei", strings.Replace(provider, "action application-start", "action application-start\n        action application-retire", 1))
-	if out := diagnostic("test", oldPath); !strings.Contains(out, "PLUGIN_RESOLVE_FAILED") || strings.Contains(out, `"candidates"`) {
+	if out := diagnostic("test", oldPath); !strings.Contains(out, "INVALID_PLUGIN_LOCK") || strings.Contains(out, `"candidates"`) {
 		t.Fatalf("stale lock: %s", out)
 	}
 	write("plugins/example/plugin.tei", provider)

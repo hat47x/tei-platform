@@ -82,10 +82,19 @@ func supportedLockFormatVersion(version int) bool {
 	return version == LockFormatVersion || version == BuildTraceLockFormatVersion
 }
 
-// InvalidLockError marks a Plugin Lock that cannot be used at all, as distinct
-// from a lock that is well-formed but does not match this environment or catalog.
-// The distinction is what lets a CLI return one exit code for the same bad input
-// regardless of which command read it (#3184).
+// InvalidLockError marks a Plugin Lock that cannot be used as given. That
+// covers both an unusable byte form (wrong format version, invalid build trace)
+// and a lock whose contents disagree with the declaration it was resolved
+// against (a version the catalog does not offer, a diverged fingerprint, a
+// different plugin set, an environment the lock does not pin).
+//
+// #3184 drew the line at the byte form and kept the disagreeing cases as an
+// ordinary resolve/plan failure. #3765 showed why that line does not hold: the
+// same supplied lock then answered exit 2 from plugin-resolve and exit 1 from
+// plugin-runtime-plan, so a caller testing `exit == 2` for "the input is wrong"
+// silently missed the second command. The caller can only repair the lock file;
+// it cannot repair the environment or the catalog. Both kinds are therefore one
+// input failure now, reported with one code and one exit code by every reader.
 type InvalidLockError struct {
 	Message string
 }
@@ -152,7 +161,7 @@ func EnvironmentLockFingerprint(l Lock, environmentID core.CanonicalID) (string,
 	}
 	el, ok := l.environment(environmentID)
 	if !ok {
-		return "", fmt.Errorf("plugin lock has no environment %s", environmentID)
+		return "", invalidLock("plugin lock has no environment %s", environmentID)
 	}
 	n := EnvironmentLock{Environment: el.Environment, Plugins: append([]LockedPlugin(nil), el.Plugins...)}
 	sort.Slice(n.Plugins, func(i, j int) bool {
@@ -175,32 +184,36 @@ func (c Catalog) ResolveEnvironmentWithLock(env environment.Environment, lock Lo
 	}
 	el, ok := lock.environment(env.ID)
 	if !ok {
-		return ResolvedSet{}, fmt.Errorf("plugin lock has no environment %s", env.ID)
+		return ResolvedSet{}, invalidLock("plugin lock has no environment %s", env.ID)
 	}
 	var subset []Definition
 	for _, lp := range el.Plugins {
 		def, ok := exactDefinition(c.Plugins, Identity{ID: lp.ID, Version: lp.Version})
 		if !ok {
-			return ResolvedSet{}, fmt.Errorf("locked plugin %s@%s is not available", lp.ID, lp.Version)
+			return ResolvedSet{}, invalidLock("locked plugin %s@%s is not available", lp.ID, lp.Version)
 		}
 		if got := DefinitionFingerprint(def); got != lp.Fingerprint {
-			return ResolvedSet{}, fmt.Errorf("locked plugin %s@%s fingerprint diverged", lp.ID, lp.Version)
+			return ResolvedSet{}, invalidLock("locked plugin %s@%s fingerprint diverged", lp.ID, lp.Version)
 		}
 		if lp.ArtifactDigest != def.Artifact.Digest {
-			return ResolvedSet{}, fmt.Errorf("locked plugin %s@%s artifact digest diverged", lp.ID, lp.Version)
+			return ResolvedSet{}, invalidLock("locked plugin %s@%s artifact digest diverged", lp.ID, lp.Version)
 		}
 		subset = append(subset, def)
 	}
+	// Resolving the locked subset against the same environment fails only when
+	// the pin cannot satisfy the declaration. That is still a supplied input the
+	// caller repairs by re-locking, not a catalogue or environment defect, so it
+	// shares the invalid-lock classification (#3765).
 	r, err := (Catalog{Plugins: subset, Bundles: c.Bundles}).ResolveEnvironment(env)
 	if err != nil {
-		return ResolvedSet{}, fmt.Errorf("locked resolution for %s: %w", env.ID, err)
+		return ResolvedSet{}, invalidLock("locked resolution for %s: %s", env.ID, err.Error())
 	}
 	if len(r.Plugins) != len(el.Plugins) {
-		return ResolvedSet{}, fmt.Errorf("plugin lock for %s contains a different plugin set than current requirements", env.ID)
+		return ResolvedSet{}, invalidLock("plugin lock for %s contains a different plugin set than current requirements", env.ID)
 	}
 	for i := range r.Plugins {
 		if r.Plugins[i].ID != el.Plugins[i].ID || r.Plugins[i].Version != el.Plugins[i].Version {
-			return ResolvedSet{}, fmt.Errorf("plugin lock for %s does not match current requirements", env.ID)
+			return ResolvedSet{}, invalidLock("plugin lock for %s does not match current requirements", env.ID)
 		}
 	}
 	return r, nil

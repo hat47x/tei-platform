@@ -114,11 +114,15 @@ func TestPluginLockExplicitEnvironmentReferenceCLI(t *testing.T) {
 	if !reflect.DeepEqual(selectedPlan, wholePlan) {
 		t.Fatalf("selected and full-lock runtime plans differ: %+v / %+v", selectedPlan, wholePlan)
 	}
-	if got := run(2, "plugin-resolve", "-workspace", workspace, "-environment", "production", "-plugin-lock", path); got.Error == nil || got.Error.Code != "PLUGIN_RESOLVE_FAILED" || !strings.Contains(got.Error.Message, "no environment") {
-		t.Fatalf("unselected resolve: %+v", got)
-	}
-	if got := run(1, "plugin-runtime-plan", "-workspace", workspace, "-environment", "production", "-plugin-lock", path); got.Error == nil || got.Error.Code != "PLUGIN_RUNTIME_PLAN_FAILED" {
-		t.Fatalf("unselected runtime plan: %+v", got)
+	// The lock does not pin production. Both commands must read that as the same
+	// input failure: one code, one exit code, the caller can only fix the file
+	// (#3765). They used to answer exit 2 / PLUGIN_RESOLVE_FAILED and exit 1 /
+	// PLUGIN_RUNTIME_PLAN_FAILED for the same file.
+	for _, command := range []string{"plugin-resolve", "plugin-runtime-plan"} {
+		got := run(2, command, "-workspace", workspace, "-environment", "production", "-plugin-lock", path)
+		if got.OK || got.Error == nil || got.Error.Code != "INVALID_PLUGIN_LOCK" || !strings.Contains(got.Error.Message, "no environment") {
+			t.Fatalf("unselected %s: %+v", command, got)
+		}
 	}
 	for _, tc := range []struct{ value, code string }{{"", "INVALID_ARGUMENT"}, {"bad id", "INVALID_ARGUMENT"}, {"absent", "UNKNOWN_ENVIRONMENT"}} {
 		got := run(2, "plugin-lock", "-workspace", workspace, "-environment", tc.value)
