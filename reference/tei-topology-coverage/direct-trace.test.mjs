@@ -244,7 +244,12 @@ test('resolved edge target must match declared Ref target and optional scope',()
     f=>f.result.trace.rows[0].edge.to.subject.id='someone.else',
     f=>f.result.trace.rows[0].edge.to.scope='different-scope',
   ]){
-    const f=fixture();alter(f);
+    const f=fixture();
+    // The fixture reuses the same Subject object in Edge.To and ResolvedTo.
+    // Clone the declaration before mutating it, or the forged input would
+    // change *both* sides and accidentally remain consistent.
+    f.result.trace.rows[0].edge.to=structuredClone(f.result.trace.rows[0].edge.to);
+    alter(f);
     assert.deepEqual(observeDirectTrace(f),
       {status:'unknown',reason:'resolved_edge_target_mismatch'});
   }
