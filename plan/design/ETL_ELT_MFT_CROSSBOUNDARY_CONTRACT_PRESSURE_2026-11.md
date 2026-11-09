@@ -427,6 +427,28 @@ Apache Kafkaは、Kafka Topic間ではtransactional producerとconsumer offset�
 
 **状態**: 設計は今回の試験候補を記録する。追加Go 3件のCI、最新mainとのmerge時資格はHEADごとに確認する。新Core型、第二Publisher、汎用Manifest Mapping、Scheduler、Hostは未導入。外部Consumer/実MFT/Business Effect/Owner採用はNOT RUN。
 
+### 12.6 2026-11-09 期間状態の原子的保存と一式公開を分離する
+
+**今回の追加根拠**: 2026-11-09確認main `3c8bebefef30a9407fef71c0e6a5a76680f46719` では、[merged PR #3718](https://github.com/hat47x/tei-platform/pull/3718)により `tei periods -advance`（`open→closing→closed`）と `internal/periodstate/writer.go` のtemporary file+renameが実装済み。これを[#1130 RunPlan](https://github.com/hat47x/tei-platform/issues/1130)／[#2542 EF-01/04](https://github.com/hat47x/tei-platform/issues/2542)の業務期へ接続する。ただし**期間状態ファイルの一回の置換原子性と、Artifact Setの一式公開原子性、同時実行の排他・CAS、実業務の確定は別**。
+
+| 境界 | 現mainで確認できる実装 | 現時点で成立しない資格・反証対象 |
+| --- | --- | --- |
+| **期間状態の単一保存** | `periodstate.Writer.Write`が既存JSONを読み、渡された期間を上書きして同一directoryの一時ファイルを`os.Rename`する。既存テストは単一Writerで他期間保持・新規作成・未知state拒否を検証 | renameにより個別JSONファイルの途中書込み露出を抑えるが、複数Writerの**read/modify/write全体がCAS/直列化された**証拠にはならない。ファイル/ディレクトリfsyncやWindows/Network FSの耐久性・原子性も未証明 |
+| **期間遷移** | `operations.NextState`は宣言済み状態からの一段遷移だけを許し、`closed→open`は更正のため明示。CLIは現在の状態を読んで次状態を計算し、別呼出しのWriterで保存する | 二CLIが同じ`open`を読んで両方`closing`へ書く場合、**古い状態を前提にした二つの遷移の成功**を排除する現在Grant/Expected state revision/CASがない。複数期間の並列更新なら一方の状態を他方が消すlost-updateも条件付きで成立し得る。実並走負例はNOT RUN |
+| **Artifact Publication** | #3256により現`writeArtifactFiles`のR1正常2Member→R2部分失敗／R2正常上書きを正規Manifestで観測した（旧HEAD実CLI focused CI成功） | **期間stateファイルのrenameをArtifact Setの公開完了・旧版pin・Retention/GC・外部Recipient実読取の保証に転用しない**。公開Memberは別々の`os.WriteFile`であり、Manifestは最後の別書込み |
+| **Business Period D** | R1/R2のArtifact Generation、Data Window/Watermark、RunPlan Guard、Period Stateを個別に表現できる | `closed`への状態遷移だけでSource必要File/明細/合計の網羅、全Recipient受領、実Import/Commit/独立Read、Owner受理までが同時に成立したとは言えない。更正時は新しい業務Operation/Generation/ReceiptとOwner判断が必要 |
+
+**優先度P1の有限反証（既存Owner配分）**：
+
+1. **#3718→#1130**: 二Writer A/Bが同じPeriod State revisionを読んで各々別の期間を進める競合を、同期点を持つ参照Fixtureで注入。結果が`Aのみ`または`Bのみ`となる経路なら、単一Writeの原子性と状態更新全体の直列化を分離して**unqualified**へ。RPL-02/04やExisting Period Transitionの受入を再利用し、ETL固有の新Authorityを設けない。
+2. **#2604**: 正規Manifest付きR1/R2を別Process Consumerに実際に読ませ、Pin中のR2切替・部分失敗・Retention/GCを対象OS/FSごとに測る。現#3256のGo内Disk ReadとPython Fresh-dir Readを別Attemptと明記し、両者のPASSを原子的一式公開へ合成しない。
+3. **#2542 EF-01/04＋#1130 RPL-05**: 業務期Dの`closing`/ `closed`と必要F/Tの欠落・後着、Watermarkと実Recipient ACK/ImportUnitを別列にする。`closed`の観測後にF2が遅延到着しても自動再Accept/自動再Effectをしない。Source/Business ScopeのOwner承認を保留し、Reader/Producer/Providerごとに未実証を表示する。
+4. **#2831 / PR #3731（別Owner）**: 同一Planによる二回のBuild byte再現候補は**Build Determinism**の資格。完成したArtifactを実Consumerが読んだか、期間Stateと同一Attemptか、配送されたかとは別。PR #3731はこの観測を`reproduced`とし得るが、L2-b／G4を未資格としている。PRの正式merge/製品実行資格とは混同しない。
+
+**CIの正確な履歴**: [#3256 HEAD `32782a42011ed0d3642c6344caddd845fa3c3a1c` の focused CLI #42434906001](https://github.com/hat47x/tei-platform/actions/runs/42434906001)は成功、[同HEAD Repository Health #42434905882](https://github.com/hat47x/tei-platform/actions/runs/42434905882)は失敗。GitHub Job logの唯一の失敗Stepは`gofmt -l . is empty`、指摘は`reference/dsl-language-plugin/everything_data_cross_surface_test.go`（本PR変更対象外）。失敗ファイルBlob `97483b653a1f04ffe919e70dbc075dfcc24d4346`はPRの分岐元と候補HEADで同一。mainは[後続#3398等の整形](https://github.com/hat47x/tei-platform/commit/7cd70eaee39e608fd0401649bb4c68a7b1d7b1e4)を取り込み、[2026-11-09 main Health #42573811654](https://github.com/hat47x/tei-platform/actions/runs/42573811654)は成功。ただし**PRにmainを統合した新HEADを検証するまではRepository Healthの成功へ昇格しない**。
+
+**設計判断**: 原子性を広範囲に一括要求する共通Gateを作らず、(a)単一ファイル置換、(b)read/modify/write競合、(c)ArtifactSet一式公開、(d)配送/取込み、(e)業務Effect/Owner受理を別の観測・受入として扱う。MFT専門DSL/統一Host/万能Scheduler/第二Manifest・Authorityの増設は現段階で正当化されない。
+
 ### 追加一次資料（製品・仕様の版に依存する事実）
 
 - Apache Iceberg spec, snapshots / optimistic concurrency: https://iceberg.apache.org/spec/
