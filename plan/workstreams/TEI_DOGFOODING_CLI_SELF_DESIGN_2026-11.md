@@ -984,3 +984,46 @@ digits = 10 のとき  pattern = ^([0-9]{:})-.+\.md$
 `strconv.Itoa` に置き換え、`itoa_test.go` の2件を追加（複数桁の綴り、桁数ごとの正規表現が一致すること）。旧実装へ戻す変異で両方が落ちることを確認した。
 
 **「静かに通る試験」に2ラウンド連続で遭遇したことになる。** 第33ラウンドは walk が0ファイル、本ラウンドは正規表現が0一致。どちらも `go test` は緑のままだった。
+
+## 39. 第35ラウンド（2026-11-09）: 2つの試験が対象0件のまま常に成功していた
+
+第33・34ラウンドで「検査の入力が空になると成功を返す」型を2回踏んだので、`tools/repository-plan-check` 全体に残っていないかを確かめた。生出力は[第35ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND35_VACUOUS_CHECKS_2026-11-09/README.md)にある。
+
+### `plan/issue` に番号付き文書が1件も無い
+
+```text
+$ ls plan/issue
+README.md
+```
+
+README は「今後の作業は GitHub Issues で管理します。過去のローカルIssue文書は…Privateリポジトリへ退避しました」と書いている。したがって `numberedFiles(t, plan/issue, 6)` は**0件**（`plan/adr` は47件）。この結果、2つの試験が何も検査していなかった。
+
+| 試験 | 0件のときの挙動 |
+| --- | --- |
+| `TestIssueNumbersAreUnique` | `assertUnique` が空集合を走査して**成功** |
+| `TestIssueStatesUseTheSixAllowedValues` | ループが0回で**成功** |
+
+**6値規則（Proposed / Ready / In Progress / Blocked / Done / Superseded）を検査しているはずの試験が、Issue 0件なので何も見ていなかった。** 同じ `assertUnique` を使う ADR 側は実際に動いているため、片方だけ無効という気づきにくい形だった。
+
+空集合は「重複が無い」ので論理的に正しく成功する。**入力が空になったことは成功と区別がつかない。**
+
+### 修正
+
+1. `assertUnique` が `len(byNumber) == 0` で `t.Fatalf`。
+2. `TestIssueNumbersAreUnique` を削除（読む対象が無い）。
+3. `TestIssueNumbersAreLocalDocumentsAbsent` を追加（0件であることを明示。1件でも現れたら落ちて一意性検査の復活を促す）。
+4. `TestIssueStatesUseTheSixAllowedValues` は0件なら `t.Skip`（成功ではなく **SKIP** として可視化）。
+
+### 残る穴
+
+**GitHub Issues の状態が6値に従っているかは、どこでも検査されていない。** ローカル文書が GitHub へ移った時点で、規則を検査する対象が消えた。SKIP はそれを可視化しただけで、解決はしていない。`gh issue list` を呼ぶ検査は CI にネットワーク依存とトークンを要求するため、運用判断として #3931 に残す。
+
+### 3ラウンド連続で同じ型
+
+| ラウンド | 空回りの形 |
+| --- | --- |
+| 33 | `filepath.Walk("..")` が0ファイル |
+| 34 | `itoa(10)` で正規表現が0一致 |
+| 35 | `plan/issue` に文書が無く、2試験が0件を走査 |
+
+第22〜24ラウンドの「手書きの一覧が漏れる」型は漏れが可視だが、こちらは**検査の不在に気づけない**。

@@ -1,0 +1,8 @@
+1. assertUnique fails when len(byNumber) == 0
+     "Issue: 対象が0件です。一意性を検査できません"
+2. TestIssueNumbersAreUnique removed (nothing to read)
+3. TestIssueNumbersAreLocalDocumentsAbsent added: asserts plan/issue holds 0
+   numbered documents, so the day one appears the test fails and asks for the
+   uniqueness check back
+4. TestIssueStatesUseTheSixAllowedValues now t.Skip with a reason, so `-v`
+   prints why instead of reporting a silent pass
