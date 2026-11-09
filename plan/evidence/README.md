@@ -106,6 +106,7 @@
 - [行範囲（scope row）の適用の確認](XTEA_LOWCODE_HOOK_ROW_SCOPE_2026-11.md)（参照実装の試験記録。行ごとの繰り返し・行を名指す拒否。item/headerは未実装）
 - [行範囲を到達可能な実行へ配線した確認](XTEA_LOWCODE_HOOK_ROW_SCOPE_WIRING_2026-11.md)（参照実装の試験記録。`RunReachable`の行ごと適用。行集合を供給する呼出し側は未実装）
 - [行範囲の宣言を通す修正の確認](XTEA_LOWCODE_HOOK_ROW_SCOPE_DECLARABLE_2026-11.md)（参照実装の試験記録。`row`が宣言できず死んだコードだった矛盾の修正。実行経路の配線は未実装）
+- [フック範囲の貫通試験の確認](XTEA_LOWCODE_HOOK_SCOPE_THROUGH_2026-11.md)（参照実装の試験記録。宣言→検証→実行を1本で通し、修正を戻すと落ちることを確認）
 - [採番の永続CounterStoreの確認](XTEA_LOWCODE_NUMBERING_SQLITE_STORE_2026-11.md)（参照実装の試験記録。PostgreSQLは未実装）
 - [採番の2プロセス同時実行の確認](XTEA_LOWCODE_NUMBERING_PROCESS_RACE_2026-11.md)（参照実装の試験記録。PostgreSQLと多プロセス構成は未実装）
 - [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
@@ -333,3 +334,4 @@
 - [validate -hが70フラグを表示していた](TEI_DOGFOODING_ROUND38_VALIDATE_FLAG_NOISE_2026-11-09/README.md)（#3956。共有FlagSetのため標準-hが全フラグを列挙。allow-listは既にありhelpTextも絞っていたが、validate/worldはExitOnErrorで到達せず。-hを既存経路へ流し70→3）
 - [13分前に他者が同じ問題を直していた（重複実装の撤回）](TEI_DOGFOODING_ROUND39_DUPLICATE_HELP_FIX_2026-11-09/README.md)（#3956・#3943。`0b85c031a`が06:25に修正、私は06:38に重複提出。寄与ゼロを分離ビルドで確認し撤回。記録の虚偽2件も訂正）
 - [realizeによる実装束縛が参照グラフに現れない](TEI_DOGFOODING_ROUND41_REALIZE_NOT_IN_GRAPH_2026-11-10/README.md)（#3983・#3419。索引はCustomGoBindingsを保持するが投影が辺にしない。束縛を削除してもgraphFingerprintとrowsは不変。ページングと指紋のaliasは設計どおりで問題なし）
+
