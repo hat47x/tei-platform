@@ -1,0 +1,1 @@
+{"schemaVersion":"tei.cli.validate/v0","ok":false,"diagnostics":[],"error":{"code":"INVALID_ARGUMENT","message":"validate -json does not accept -diagnostic-candidates"}}

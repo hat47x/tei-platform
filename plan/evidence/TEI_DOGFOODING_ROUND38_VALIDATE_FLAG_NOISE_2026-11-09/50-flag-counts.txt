@@ -1,0 +1,22 @@
+Before the fix, measured command by command:
+
+  validate       70 flags   "Usage of validate:"     <- flag package default
+  world          70 flags   "Usage of world:"        <- flag package default
+  inspect         3 flags   "usage: tei inspect [options]"
+  trace           9 flags   "usage: tei trace [options]"
+  view           15 flags
+  source-index    3 flags
+  knowledge-context 6 flags
+  plugin-resolve  5 flags
+
+Cause: one shared FlagSet (main.go:152) so the default listing enumerates every
+flag. helpText already filtered by selectedReadOnlyFlagAllowlist, but only
+ContinueOnError commands reached it:
+
+  parseMode := flag.ExitOnError
+  if command == "inspect" || command == "trace" || jsonValidationRequested ||
+     isResultEnvelopeCommand(command) {
+      parseMode = flag.ContinueOnError
+  }
+
+validate and world were ExitOnError, so -h never reached printHelp.

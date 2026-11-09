@@ -1,0 +1,14 @@
+After routing -h through the filtered listing:
+
+  validate  -> 3  (workspace, world, json)
+  world     -> 2  (workspace, world)
+  inspect   -> 3  (unchanged)
+
+$ tei validate -h
+usage: tei validate [options]
+  -json
+    	machine-readable JSON for validate -workspace
+  -workspace string
+    	TEI workspace directory
+  -world string
+    	normalized M0 IR JSON

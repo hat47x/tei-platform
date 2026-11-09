@@ -1,0 +1,9 @@
+Flags I tried because validate -h listed them:
+
+  -explain              -> INVALID_ARGUMENT: flag needs an argument: -explain
+                           (it takes a PostgreSQL EXPLAIN FORMAT JSON payload)
+  -diagnostic-candidates-> INVALID_ARGUMENT: validate -json does not accept
+                           -diagnostic-candidates
+                           (it belongs to plugin-resolve)
+
+Both read as validate features because -h showed them under validate.
