@@ -271,3 +271,4 @@
 - [toolの引数一覧がschemaと独立に手書きされていた](TEI_DOGFOODING_ROUND24_TOOL_TABLE_DRIFT_2026-11-09/README.md)（#3823・#3419。`toolArguments`が`InputSchema.properties`と同じ事実を2回書いており、緩む方向の不一致を誰も検出できなかった。表を削除しschemaから導出する形に）
 - [TEIの標準意味型はTEIで宣言されていない](TEI_DOGFOODING_ROUND25_STDLIB_SELF_DESCRIPTION_2026-11-09/README.md)（#2620・#2619。`std.*`の12型は`prelude:true`かつ`sourceStatus:not-indexed`で、`inspect`も`source-index`も根拠を返さない。定義はGoにあり、`namespace std`は宣言を拒否される。合格条件をCLIだけで測れることを実演）
 - [stdへの宣言がpreludeと誤判定され件数からも消えていた](TEI_DOGFOODING_ROUND26_PRELUDE_IDENTITY_2026-11-09/README.md)（#3851・#3347。`namespace std`に型を足すと重複error・`prelude:true`誤付与・`declarationCounts`0が同時に出た。名前の前方一致3箇所とloaderの二重追加を同一性判定へ）
+- [`l2b.claimed`は`-build-catalog`だけで立つ](TEI_GO_SELF_BUILD_L2B_DEFAULT_PREMISE_2026-11-09.md)（§7は「in-processと`-rebuild-check`を明示する必要がある」と書いていたが、§4.30が後者を既定にした。実測：`-build-catalog`のみで`claimed=true`、`-rebuild-check=false`で`false`（理由が「断った」を名指し）。残る問いは「何も渡さない試行」で立てるか。§4.31で§7を訂正。 #2831）
