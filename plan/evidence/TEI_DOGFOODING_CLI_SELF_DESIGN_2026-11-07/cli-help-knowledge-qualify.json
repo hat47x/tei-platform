@@ -1,0 +1,8 @@
+{
+  "schemaVersion": "tei.cli.knowledge-qualify/v0",
+  "ok": false,
+  "error": {
+    "code": "INVALID_ARGUMENT",
+    "message": "flag: help requested"
+  }
+}

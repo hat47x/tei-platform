@@ -6,6 +6,7 @@ import (
 
 	"tei/internal/application"
 	"tei/internal/ir"
+	"tei/internal/query"
 	"tei/internal/semantic"
 	"tei/internal/sourceindex"
 )
@@ -141,4 +142,60 @@ func TestCatalogNamespaceFilterPreservesGlobalIdentityAmbiguity(t *testing.T) {
 		return
 	}
 	t.Fatal("filtered Data missing")
+}
+
+func TestCatalogWorldReportsNamespaceMatch(t *testing.T) {
+	world := ir.World{
+		Semantics:    []semantic.Namespace{{ID: "sales"}},
+		Applications: []application.Application{{ID: "order_entry"}},
+		Queries:      []query.EmbeddedSQL{{ID: "sales.orders"}},
+	}
+	idx := sourceindex.Index{}
+	for name, want := range map[string]struct {
+		matched bool
+		kind    string
+	}{
+		"":             {true, "all"},
+		"sales":        {true, "namespace"},
+		"order_entry":  {false, "application"},
+		"sales.orders": {false, "query"},
+		"no.such.ns":   {false, "unknown"},
+	} {
+		got := CatalogWorld(world, idx, name, "world", "source")
+		if got.NamespaceMatched != want.matched || got.NamespaceMatchKind != want.kind {
+			t.Errorf("namespace %q: matched=%t kind=%q, want %t/%q", name, got.NamespaceMatched, got.NamespaceMatchKind, want.matched, want.kind)
+		}
+	}
+}
+
+// TestCatalogEmptyWorkspaceSeparatesRevisionFromDeclarations pins the two
+// answers an empty Workspace gives (#2822). The standard prelude is loaded, so
+// entries are non-empty and the World fingerprint is not the empty digest; the
+// managed Source set is empty, so ModelRevision is. Reading ModelRevision as
+// "the model declares nothing" would be wrong, and reading the entries as
+// "declarations were loaded" would be wrong in the other direction.
+func TestCatalogEmptyWorkspaceSeparatesRevisionFromDeclarations(t *testing.T) {
+	world := ir.World{Semantics: []semantic.Namespace{{
+		ID:    "std",
+		Types: []semantic.Type{{ID: "std.text", Symbol: "text"}},
+	}}}
+	got := CatalogWorld(world, sourceindex.Index{}, "", "world", "source")
+	const emptyInput = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+	if got.ModelRevision != emptyInput {
+		t.Fatalf("empty managed Source revision=%q", got.ModelRevision)
+	}
+	if got.DeclarationCounts.Total != 0 {
+		t.Fatalf("the standard prelude leaked into declaration counts: %+v", got.DeclarationCounts)
+	}
+	if len(got.Entries) == 0 {
+		t.Fatal("prelude subjects must still be listed")
+	}
+	for _, entry := range got.Entries {
+		if entry.Subject.ID != "std" && entry.Subject.ID != "std.text" {
+			t.Fatalf("unexpected subject in a prelude-only catalog: %+v", entry.Subject)
+		}
+		if entry.SourceStatus != "not-indexed" {
+			t.Fatalf("prelude subjects must not claim a Source anchor: %+v", entry)
+		}
+	}
 }

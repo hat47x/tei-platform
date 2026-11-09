@@ -1,0 +1,8 @@
+usage: tei inspect [options]
+  -subject-id string
+    	Source Index subject ID
+  -subject-kind string
+    	Source Index subject kind
+    	values: semantic, semantic-type, semantic-data, semantic-attribute, semantic-relation, semantic-candidate-key, semantic-functional-dependency, semantic-capability, semantic-validation, application, application-pattern, query
+  -workspace string
+    	TEI workspace directory

@@ -1,0 +1,1 @@
+﻿{"source":"hat47x/tei-platform","commit":"9a8b9e214f5eeb6b9e91a9adec2fcc17d3fac211","binary":"C:\Users\yhata\AppData\Local\Temp\tei-r3-windows.exe","sha256":"7abce6ff8d7e4d74ed9c1384de95a0e388058a35507f659a95eab578fa0d408c","bytes":28307456,"os":"windows","goVersion":"go1.27.0","note":"single go build of cmd/tei from this commit; run in the repository root"}

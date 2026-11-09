@@ -1,0 +1,38 @@
+=== examples/process-plugin/main.go ===
+53:	adapter := pruntime.DeploymentExecutor{
+54-		Plan:         plan,
+55-		Registry:     pruntime.Registry{Processes: pruntime.StdioProcessLauncher{}},
+56-		CapabilityID: capabilityID,
+57-	}
+  -- CapabilityID occurrences --
+56:		CapabilityID: capabilityID,
+
+=== tools/reference-deployment-attempt/main.go ===
+131:	adapter := pruntime.DeploymentExecutor{Plan: plan, Registry: pruntime.Registry{Sandboxes: sandbox, Verifier: verifier{}, Resources: broker, SupervisorOwnerships: ownerships, SupervisorOwnerID: "reference-host-a", SupervisorOwnershipTTL: 30 * time.Millisecond}, CapabilityID: core.MustCanonicalID("migration.atlas")}
+132-	result, err := adapter.Execute(context.Background(), cmd)
+133-	if err != nil {
+134-		panic(err)
+135-	}
+  -- CapabilityID occurrences --
+131:	adapter := pruntime.DeploymentExecutor{Plan: plan, Registry: pruntime.Registry{Sandboxes: sandbox, Verifier: verifier{}, Resources: broker, SupervisorOwnerships: ownerships, SupervisorOwnerID: "reference-host-a", SupervisorOwnershipTTL: 30 * time.Millisecond}, CapabilityID: core.MustCanonicalID("migration.atlas")}
+
+=== tools/reference-plugin-build-supply/stage4.go ===
+117:	adapter := pruntime.DeploymentExecutor{
+118-		Plan: plan,
+119-		Registry: pruntime.Registry{
+120-			Processes: pruntime.StdioProcessLauncher{Env: []string{"PATH=" + binDir}, MaxExecutionDuration: 2 * time.Minute},
+121-			Verifier:  fileVerifier{path: executable},
+  -- CapabilityID occurrences --
+22:	processCapabilityID = "process.reference"
+116:	capability := core.MustCanonicalID(processCapabilityID)
+123:		CapabilityID: capability,
+
+=== tools/reference-plugin-self-build/main.go ===
+764:	nativeAdapter := pruntime.DeploymentExecutor{
+765-		Plan:         runtimePlan,
+766-		Registry:     nativeRegistry,
+767-		CapabilityID: core.MustCanonicalID("runtime.native_reference"),
+768-	}
+  -- CapabilityID occurrences --
+767:		CapabilityID: core.MustCanonicalID("runtime.native_reference"),
+

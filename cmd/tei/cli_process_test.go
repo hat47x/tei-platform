@@ -111,8 +111,10 @@ func TestCLIProcessJSONContract(t *testing.T) {
 	if err := json.Unmarshal(run(2, "inspect", "-workspace", reference, "-subject-kind", "semantic-data"), &invalidInspect); err != nil {
 		t.Fatalf("inspect invalid argument not JSON: %v", err)
 	}
-	if invalidInspect.OK || invalidInspect.Error == nil || invalidInspect.Error.Code != "INVALID_SUBJECT" {
-		t.Fatalf("wrong inspect invalid argument result: %+v", invalidInspect)
+	// A missing flag is an argument problem, not an unusable subject value;
+	// every command answers it with INVALID_ARGUMENT (#3733).
+	if invalidInspect.OK || invalidInspect.Error == nil || invalidInspect.Error.Code != "INVALID_ARGUMENT" {
+		t.Fatalf("wrong inspect missing-flag result: %+v", invalidInspect)
 	}
 
 	// Malformed and unrelated flags must use one JSON envelope, without the

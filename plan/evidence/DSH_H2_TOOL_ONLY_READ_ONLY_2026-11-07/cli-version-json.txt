@@ -1,0 +1,20 @@
+tei tei.cli.version/v0 windows/amd64 go=go1.27.0 revision=50ebf8014340fd1906f6b35cfa30173e0ee2fc6c
+build settings: -buildmode=exe -compiler=gc
+
+{"schemaVersion":"tei.cli.version/v0","effect":"read-only","goVersion":"go1.27.0","goos":"windows","goarch":"amd64","vcsRevision":"50ebf8014340fd1906f6b35cfa30173e0ee2fc6c","buildSettings":["-buildmode=exe","-compiler=gc"],"source":"build-info"}
+
+[stderr]
+�^���쐬�ł��܂���B���̌��ꃂ�[�h�ł́A�R�A�̌^�݂̂��T�|�[�g����Ă��܂��B
+�����ꏊ �s:1 ����:1
++ [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false);  ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []�ARuntimeException
+    + FullyQualifiedErrorId : CannotCreateTypeConstrainedLanguage
+ 
+�^���쐬�ł��܂���B���̌��ꃂ�[�h�ł́A�R�A�̌^�݂̂��T�|�[�g����Ă��܂��B
+�����ꏊ �s:1 ����:70
++ ... ew($false); $OutputEncoding = [System.Text.UTF8Encoding]::new($false) ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []�ARuntimeException
+    + FullyQualifiedErrorId : CannotCreateTypeConstrainedLanguage
+ 

@@ -1,0 +1,15 @@
+== C-1 hands to the executor SPI ==
+84:type Executor interface {
+85-	ID() string
+86-	Supports(Command) bool
+87-	Execute(context.Context, Command) (Result, error)
+88-}
+
+== C-2 hands to the Runtime carrier ==
+107:func (r Registry) InvokeSelectedServiceCarrier(
+108-	ctx context.Context, plan EnvironmentPlan,
+109-	selection ServiceProviderSelection, requestID string, payload json.RawMessage,
+110-) (ServiceCarrierInvocation, error) {
+111-	if ctx == nil {
+112-		return ServiceCarrierInvocation{}, fmt.Errorf("service carrier requires context")
+113-	}

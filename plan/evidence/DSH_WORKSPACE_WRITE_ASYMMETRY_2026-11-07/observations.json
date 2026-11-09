@@ -1,0 +1,130 @@
+{
+  "note": "workspace-write mode on Windows: write outside the declared root is refused, read outside is allowed. Synthetic canary only.",
+  "sandboxMode": "workspace-write",
+  "cwd": "D:/GIT/hat47x/tei-platform",
+  "declaredRoot": "D:/GIT/hat47x/tei-platform",
+  "outsidePath": "D:/GIT/hat47x/.tmp_h2/ww-outside",
+  "canaries": {
+    "escape": "WW_ESCAPE_MUST_NOT_HAPPEN_602",
+    "read": "WW_OUTSIDE_READ_CANARY_604"
+  },
+  "runs": [
+    {
+      "run": "write-probe",
+      "rawLogBytes": 2884,
+      "rawLogSha256": "e37901b47b026c29ff5b39233fdb5afc71384da39f6192ce6bcf7c1c90af9772",
+      "toolResults": [
+        {
+          "callId": "toolu_cmd_0",
+          "status": "completed",
+          "stdout": "cwd=D:\\GIT\\hat47x\\tei-platform\r\ninsideWrite=ok",
+          "stderrBytes": 0
+        },
+        {
+          "callId": "toolu_cmd_1",
+          "status": "completed",
+          "stdout": "escapeWrite=err:UnauthorizedAccessException:パス 'D:\\GIT\\hat47x\\.tmp_h2\\ww-outside\\escape.txt' へのアクセスが拒否されました。\r\nescapeExists=False",
+          "stderrBytes": 0
+        },
+        {
+          "callId": "toolu_cmd_2",
+          "status": "completed",
+          "stdout": "DSH_PERMISSION_MODE=\r\nlanguageMode=FullLanguage\r\nenvCount=53",
+          "stderrBytes": 0
+        }
+      ],
+      "wire": [
+        {
+          "request": "001-request.json",
+          "requestBytes": 90404,
+          "requestSha256": "12de3171c978160e4e1761e65a5150b0b64130d2d52f4fa3c29537c691bab52e"
+        },
+        {
+          "request": "002-request.json",
+          "requestBytes": 52505,
+          "requestSha256": "ce2267b92a5eb8a83a9574550167ad00fa59b562043d4c1ee941e92cc5006107"
+        },
+        {
+          "request": "003-request.json",
+          "requestBytes": 51088,
+          "requestSha256": "a67ba4e7b2ee7961ed3822f4b867aee90aa24f7010c9530229378ecfbd810c19"
+        },
+        {
+          "request": "004-request.json",
+          "requestBytes": 52071,
+          "requestSha256": "4e73f3c4cb4655e96568d1c8ab57af2d7d6b9db514bdc6be4a41b75e78c9de9e"
+        },
+        {
+          "request": "005-request.json",
+          "requestBytes": 51066,
+          "requestSha256": "36a4490e73599d46bd6accc6a66df1fe7ae92bfff69958a2435375fb68658c5e"
+        }
+      ]
+    },
+    {
+      "run": "read-probe",
+      "rawLogBytes": 1820,
+      "rawLogSha256": "6b779ce5fb57910e2fb96e052069e47a6cf895f7e4aac1111f836b51c7f7474b",
+      "toolResults": [
+        {
+          "callId": "toolu_cmd_0",
+          "status": "completed",
+          "stdout": "outsideRead=ok:WW_OUTSIDE_READ_CANARY_604",
+          "stderrBytes": 0
+        },
+        {
+          "callId": "toolu_cmd_1",
+          "status": "completed",
+          "stdout": "relativeOutsideRead=ok:WW_OUTSIDE_READ_CANARY_604",
+          "stderrBytes": 0
+        }
+      ],
+      "wire": [
+        {
+          "request": "001-request.json",
+          "requestBytes": 52465,
+          "requestSha256": "af1a7b4fa96b0894c686782cf30b8f168941a70dc6cef5614e4c9ae2194a62a6"
+        },
+        {
+          "request": "002-request.json",
+          "requestBytes": 90364,
+          "requestSha256": "e365d9448a269e7ec230fa60799c6cdf03462ca88c06ef7970d0e4a4a89feeab"
+        },
+        {
+          "request": "003-request.json",
+          "requestBytes": 50070,
+          "requestSha256": "6b1d4ce72671dd850720d76118484925452ce3b3b69be1922ef0961fee36dce5"
+        },
+        {
+          "request": "004-request.json",
+          "requestBytes": 50218,
+          "requestSha256": "2f48b6dcbc162b4be6b975f28d21d177c6160ce873c54f98d32fb44136583535"
+        }
+      ]
+    }
+  ],
+  "beforeRepair": {
+    "rawLog": "ww-run2.jsonl",
+    "rawLogSha256": "bac1cc4916d07017de28bf7bfc6ac1e038af494565105435a1e720a483fba716",
+    "toolResults": [
+      {
+        "callId": "toolu_cmd_0",
+        "status": "error",
+        "stdout": "Error: SetNamedSecurityInfoW failed (Win32 5): grantWrite(D:\\GIT\\hat47x\\tei-platform)",
+        "stderrBytes": 0
+      },
+      {
+        "callId": "toolu_cmd_1",
+        "status": "error",
+        "stdout": "Error: SetNamedSecurityInfoW failed (Win32 5): grantWrite(D:\\GIT\\hat47x\\tei-platform)",
+        "stderrBytes": 0
+      },
+      {
+        "callId": "toolu_cmd_2",
+        "status": "error",
+        "stdout": "Error: SetNamedSecurityInfoW failed (Win32 5): grantWrite(D:\\GIT\\hat47x\\tei-platform)",
+        "stderrBytes": 0
+      }
+    ]
+  }
+}

@@ -1,0 +1,6 @@
+ok  	tei/internal/modelref	1.466s
+ok  	tei/internal/operations	5.119s
+ok  	tei/cmd/tei	238.913s
+ok  	tei/tools/reference-mcp-readonly-adapter	46.212s
+ok  	tei/tools/reference-cli-trace-benchmark	2.284s
+ok  	tei/tools/repository-plan-check	1.208s
