@@ -99,8 +99,9 @@ const selfBuildOuterBoundary = "one child build launched by this TEI binary from
 type selfBuildOuterArgs struct {
 	Workspace string
 	Intent    string
-	// IntentFile is the declaration this entry holds and hands to the child.
-	// -intent stays the logical ID; the file is the byte-level input (§4.8).
+	// IntentFile is the declaration this entry holds and hands to the child,
+	// and the declared build intent required by SC0-01. -intent stays the
+	// logical ID; the file is the byte-level input (§4.8).
 	IntentFile string
 	Supply     string
 	State      string
