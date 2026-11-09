@@ -402,9 +402,48 @@ func callTool(params json.RawMessage, workspace string) (toolResult, error) {
 	return toolResult{Content: []textContent{{Type: "text", Text: string(raw)}}, IsError: isError}, nil
 }
 
+// toolArguments lists the arguments each tool accepts. A name that is not in
+// this list is rejected instead of ignored: the CLI refuses a flag it does not
+// define with INVALID_ARGUMENT, so the adapter must not accept a call the CLI
+// would reject (#3575). Keeping the list next to dispatch lets the schema and
+// the check drift only if both are edited apart.
+var toolArguments = map[string][]string{
+	"tei_model_catalog": {"namespace"},
+	"tei_inspect":       {"subjectKind", "subjectId"},
+	"tei_trace": {"scope", "subjectKind", "subjectId", "direction", "mode",
+		"offset", "limit", "expectedFingerprint"},
+	"tei_validate": {},
+}
+
+// checkArguments rejects an argument the tool does not declare. It runs before
+// any operation call, so an unknown name cannot be silently dropped on the way
+// to the shared operations.
+func checkArguments(name string, arguments map[string]json.RawMessage) error {
+	allowed, ok := toolArguments[name]
+	if !ok {
+		return fmt.Errorf("unknown tool %q", name)
+	}
+	for key := range arguments {
+		found := false
+		for _, permit := range allowed {
+			if key == permit {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("unknown argument %q for tool %q", key, name)
+		}
+	}
+	return nil
+}
+
 // dispatch maps a tool name to one operations call. The envelope fields match
 // the CLI's schemaVersion/ok/result/error contract for that command.
 func dispatch(name string, arguments map[string]json.RawMessage, workspace string) (any, bool, error) {
+	if err := checkArguments(name, arguments); err != nil {
+		return nil, false, err
+	}
 	switch name {
 	case "tei_model_catalog":
 		if err := rejectUnknownArguments(arguments, "namespace"); err != nil {
