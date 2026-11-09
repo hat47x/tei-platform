@@ -52,6 +52,7 @@ var acceptedCommands = []string{
 	"release-graph",
 	"scenario",
 	"schema-diff",
+	"self-build",
 	"solution-release-graph",
 	"source-index",
 	"trace",
@@ -119,6 +120,27 @@ func helpText(fs *flag.FlagSet, command string) string {
 			// allowlist. Its two flags are the whole grammar it accepts.
 			fmt.Fprintf(&out, "  -workspace string\n    \tTEI workspace directory\n")
 			fmt.Fprintf(&out, "  -namespace string\n    \toptional exact semantic namespace ID\n")
+			return out.String()
+		}
+		if command == "self-build" {
+			// self-build is dispatched but deliberately absent from the
+			// read-only discovery catalog, so "run `tei commands`" would
+			// point at a list that does not contain it (#3414 §4.5).
+			//
+			// Two forms share this name: the §4 workspace form (workspace,
+			// intent, supply, state, output) and the primitive -child/-artifact
+			// form (§4.6). Both are listed so -h describes the actual grammar.
+			fmt.Fprintf(&out, "  -workspace string\n    \tTEI workspace that declares the build intent\n")
+			fmt.Fprintf(&out, "  -intent string\n    \tbuild intent ID; recorded, not resolved by this entry\n")
+			fmt.Fprintf(&out, "  -intent-file string\n    \tbuild intent JSON this entry holds and hands to the child\n")
+			fmt.Fprintf(&out, "  -supply string\n    \toffline module supply passed to the child\n")
+			fmt.Fprintf(&out, "  -state string\n    \tisolated state directory for this attempt (required)\n")
+			fmt.Fprintf(&out, "  -output string\n    \tartifact path written by the child (no-clobber)\n")
+			fmt.Fprintf(&out, "  -child string\n    \texact child executable to start (never resolved from PATH)\n")
+			fmt.Fprintf(&out, "  -child-arg string\n    \tchild arguments as a JSON array of strings\n")
+			fmt.Fprintf(&out, "  -child-arg-file string\n    \tJSON array of child arguments in a file\n")
+			fmt.Fprintf(&out, "  -artifact string\n    \tpath the child writes its artifact to (no-clobber)\n")
+			fmt.Fprintf(&out, "  -claimed-self string\n    \tdigest this binary claims about itself; compared with the running image\n")
 			return out.String()
 		}
 		fmt.Fprintf(&out, "run `tei commands` for the advertised commands\n")

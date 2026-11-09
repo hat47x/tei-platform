@@ -1,6 +1,6 @@
-﻿# TEIドッグフーディング：生成AIがCLIだけでTEI自身の設計を扱えるかの実測と課題
+# TEIドッグフーディング：生成AIがCLIだけでTEI自身の設計を扱えるかの実測と課題
 
-- **状態**: 2026-11-07 実測と課題の起票を完了。本書と実測記録は `main` に統合済み（PR #3162、merge commit `6fa253312`）。D-1・D-2・D-4〜D-8 は #3180〜#3186 として起票し、**すべて main へ統合済み**（2026-11-07〜08）。D-3・D-9・D-10 は #3345〜#3347 として起票済み。
+- **状態**: 2026-11-07 実測と課題の起票を完了。本書と実測記録は `main` に統合済み（PR #3162、merge commit `6fa253312`）。D-1・D-2・D-4〜D-8 は #3180〜#3186 として起票し、**すべて main へ統合済み**（2026-11-07〜08）。D-3・D-9・D-10 は #3345〜#3347 として起票済み。各課題の対応PRは §3.12 にまとめた。
 - **D-1〜D-8 の修正**（main で確認済み）: D-1 `trace` の未対応kind→`UNSUPPORTED_SUBJECT_KIND`（#3180、`48163352a`）、D-2 応答の`workspace`欄（#3181、`dae251693`）、D-4 `writeFlags`（#3182、`2c8f083f2`系）、D-5 `-plugin-lock`のenvelope受理（#3183、`76f5da576`）、D-6 入力不正の終了コード統一（#3184、`c55498903`）、D-7 `-h`成功化（#3185、`575518c0f`）、D-8 要件JSONの例（#3186、`50b9eaa27`・`90d1fe518`）。D-3「版の名前と置き場所」は #3345、D-9 は #3346、D-10 は #3347。**いずれも未着手**。
 - **担当課題**: [#3149](https://github.com/hat47x/tei-platform/issues/3149)（対応方針の正本）。
 - **検証記録**: [TEI自身の設計をCLIで扱う実測](../evidence/TEI_DOGFOODING_CLI_SELF_DESIGN_2026-11-07/README.md)（生出力50ファイルを含む）。
@@ -133,7 +133,8 @@ tei inspect -workspace examples/xtea-lowcode -subject-kind semantic-data -subjec
 
 - `view`の`semanticFingerprint`は`sha256:f6c4cf29…`、同じWorkspaceの`worldFingerprint`は`sha256:c92de09f…`で**異なる**（`cli-view-application.json`と`cli-model-catalog-reference.json`）。
 - `trace`は`result.snapshotFingerprint`と`result.trace.snapshotFingerprint`の2つを持ち、片方は継続トークン、片方は関係図の識別子である（`getting-started.md`はこの区別を説明している）。
-- 意味の版を`semanticFingerprint`、世界全体を`worldFingerprint`と呼び分けているが、名前だけでは「どちらが正規化モデルか」は分からない。
+
+- 2026-11-09（#3625）: 内側の`result.trace.snapshotFingerprint`を`result.trace.graphFingerprint`へ改名し、旧名は1 cycleのaliasとして同値を残す。継続ページには`nextOffset`の隣へ`result.trace.continuation.fingerprint`（外側と同値）と`field`を足し、どの値を`-expected-fingerprint`へ渡すかを応答の中だけで判別できるようにした。- 意味の版を`semanticFingerprint`、世界全体を`worldFingerprint`と呼び分けているが、名前だけでは「どちらが正規化モデルか」は分からない。
 
 **期待との差**
 
@@ -357,6 +358,13 @@ TEI自身の設計は、`docs/`と`plan/`のMarkdownで書かれている。こ�
 - `diagnostics`の二重構造は`v0`の既存形であり、変えるなら`v1`が要る（`CLI_JSON_OUTPUT_CONTRACT_2026-10.md`§5）。`#2354`の決定を待つ。
 - `model catalog`の`entries`に`origin: declared｜prelude`のような欄を足し、標準定義を機械的に除外できるようにする。`#2822`と重なるため、同Issueへ追記するのが適切。
 
+**対応（2026-11-08）**
+
+- `model catalog`の`entries`は`prelude: true`で標準意味型（`std`）を印付けする形にした（PR #3404、merge `6a51aeedd`）。`declarationCounts.total`と併用し、`entries`の側からも宣言と標準定義を区別できる。
+- `requirements`の`result`が配列であることは、`tei commands`のentryに`resultShape: "array"`を足して発見可能にした（PR #3370、merge `a46e421e3`）。省略した他のコマンドは「object保証」ではなく未宣言と契約文書に明記した。
+- `validate`の`diagnostics[]`は、要素が`diagnostic`を持つ入れ子の形を`v0`の契約として維持する。`proposals[]`が平坦なのは、位置情報を持つ`diagnostics[]`と役割が違うためで、平坦化は既存の読み手の解釈を変える`v1`の判断に残した（`CLI_JSON_OUTPUT_CONTRACT_2026-10.md`§4・`cmd/tei/cli_validation_test.go`）。
+- 追跡は[#3347](https://github.com/hat47x/tei-platform/issues/3347)（Closed）。形の統一をv0のまま進めるかv1を新設するかは、未決の設計判断として残る。
+
 ### 3.11 マージ後main相当での再確認（2026-11-07 追記）
 
 `origin/main`（`70089048e`）を取り込んだ作業ツリーから別の実行物（SHA-256 `fe52894ab9a092c896125b834aa101b81cc0c2097c1e97f0037b805626a99c70`、`vcsRevision: 6d215d328…`、`vcsModified: true`）を作り、D-1〜D-5・D-7〜D-9を再確認した。詳細は[実測記録](../evidence/TEI_DOGFOODING_CLI_SELF_DESIGN_2026-11-07/README.md)の§2.10にある。
@@ -376,6 +384,23 @@ TEI自身の設計は、`docs/`と`plan/`のMarkdownで書かれている。こ�
 `commands`は19件のままで、`world`だけが`schemaVersion`を持たない。9件が`modes`を広告するようになっている（`#2824`の追加）。**D-3・D-10の一部（`commands`の広告）は`main`で進んでいる**が、`view`の版の欄と`entries`の標準定義混在は変わっていない。
 
 この再確認は`vcsModified: true`の作業ツリーから作った実行物であり、§1の固定実行物の実測と数値を直接比較しない。CI・実DB・実Providerは引き続きNOT RUN。
+
+### 3.12 課題の対応状況（2026-11-08 追記）
+
+D-1・D-2・D-4〜D-8 の対応が `main` に入り、対応する Issue はすべて Closed になった。D-3・D-9・D-10 は 2026-11-08 に #3345〜#3347 として起票され、**いずれも未着手**である。
+
+| 課題 | Issue | 対応（`main` のPR・merge） | 何が変わったか |
+| --- | --- | --- | --- |
+| D-1 | #3180 Closed | #3208（`55cb15e93`）、#3215（`0d4d41d82`） | `trace` は投影しない種類を `UNSUPPORTED_SUBJECT_KIND`（終了コード2）で返し、`SUBJECT_NOT_FOUND`（1）と区別する。投影範囲は `derivedbridge.SupportsSubjectKind` に一本化し、投影結果との一致を試験で固定した。 |
+| D-2 | #3181 Closed | #3247（`1a66959cd`） | `validate -json`・`model catalog`・`inspect`・`trace`・`workspace-files` の成功応答が `workspace`（`name`・`formatVersion`・`manifest.sha256`）を持つ。`tei.workspace.tei` の旧形式も同じ。 |
+| D-4 | #3182 Closed | #3333（`b83c8309c`） | `view` の entry に `writeFlags`（`-operation-log`・`-lifecycle-state`）を載せ、実ファイル書込みと照合する。`effect` の語彙は変えていない。 |
+| D-5 | #3183 Closed | #3214（`3774f9945`） | `-plugin-lock` が `plugin-lock` の envelope をそのまま受理する。 |
+| D-6 | #3184 Closed | #3233（`163b02be9`） | 使えない plugin lock を両コマンドで終了コード2の `INVALID_PLUGIN_LOCK` に揃えた。 |
+| D-7 期待1 | #3185 Closed | #3227（`575518c0f`） | `-h` は成功（終了コード0、標準出力へusage）。 |
+| D-7 期待2 / D-10の一部 | #3242 Closed | #3307（`6a956e92d`） | `tei commands` の entry が `argumentValues`・`argumentType`・`argumentDefaults` を持ち、実装の受理値と同じ変数を参照する。 |
+| D-8 | #3186 Closed | #3323（`03fb618bb`） | `docs/business-system-design-reading-guide.md` に要件JSONの形と既存例を記載し、その例を実際に読む回帰試験を追加した。 |
+
+この表のPR・mergeは、いずれもCI（Repository Healthを含む）の成功と、変更範囲の `go test` を確認して統合した。**意味の受理・実DB・実Provider・本番配備の証拠ではない**。§1の固定実行物による再実測（同じバイナリ digest での比較）はまだ行っていない。次の再実測では、この表の後の `main` から1つの実行物を作り、D-1〜D-8の解消とD-3・D-9・D-10の残存を同じ手順で確かめる。
 
 ---
 
@@ -410,3 +435,138 @@ TEI自身の設計は、`docs/`と`plan/`のMarkdownで書かれている。こ�
 2. ~~課題の分割~~（完了。D-1・D-2・D-4〜D-8 を #3180〜#3186 として起票。D-3・D-9・D-10 は #3345〜#3347 として起票）。
 3. 修正の採否はOwner判断。本記録は候補と根拠を提示するに留める。#3180〜#3186 のいずれかを着手する場合は、本書 §3 の再現手順と生データから始める。
 4. 再実測は、`0b9c14a8…`ではなく修正後の`main`で行い、同じ実行物の識別（SHA-256）を記録する。改行の異なるcheckoutでの照合（`#2399`）と、大規模Workspaceでの完全性（`#1177`）は別途。
+
+## 7. 第2ラウンド（2026-11-08）: 修正後の再実測と MCP の位置づけ
+
+第1ラウンドの起票から修正が進んだため、現行 `main`（`4fd88c2b1`）の単一実行物（SHA-256 `16c9090d…`）で同じ手順を再実行した。生出力は[第2ラウンドの実測記録](../evidence/TEI_DOGFOODING_ROUND2_2026-11-08/README.md)にある。
+
+| 課題 | 現行main | 次に必要なこと |
+| --- | --- | --- |
+| D-1 `trace` の未対応kind | 解消（`UNSUPPORTED_SUBJECT_KIND`・終了コード2） | なし |
+| D-2 Workspace同一性 | 解消（`workspace` 欄） | なし |
+| D-3 版の欄の不統一 | 実測時点（`4fd88c2b1`）は残る（`view` は `semanticFingerprint` のみ）。**実測後に #3366（`9bc015876`）で解消**し、現在の main は応答の最上位に `worldFingerprint`・`sourceIndexFingerprint` を返す（#3345 は Closed） | なし（残るのは `semanticFingerprint` の範囲を名前で示すかの設計判断のみ） |
+| D-3 版の欄の不統一 | **残る**（`view` は `semanticFingerprint` のみ、`worldFingerprint` を持たない） | `view` の版の欄をどう揃えるかは未決。`#2824`・`#2822` の範囲で扱う |
+| D-4 `view` の作用の広告 | 解消（`writeFlags` に `-operation-log`・`-lifecycle-state`） | `effect` の語彙（`read-only-with-named-output` など）の統一は未着手 |
+| D-5 `plugin-lock` のround-trip | 解消 | なし |
+| D-6 不正lockの終了コード | 解消（間接確認。個別再実行は未実施） | 必要なら個別に再実行する |
+| D-7 `-h` | 解消（終了コード0・usage） | なし |
+| D-8 要件JSONの例 | 解消（読み案内の表と実例ファイル） | 実例ファイルがパーサを通る回帰試験は未整備（下記） |
+| D-9 設計文書が意味として読まれない | **残る**（`readByLoader` 0件、`WORKSPACE_DECLARES_NO_MODEL_ELEMENTS`） | `#2619`・`#2621` の設計判断 |
+| D-10 出力の形の不統一 | **残る**（`diagnostics[]` の二重構造） | `v1` を要するか、`#2354` の決定に沿うか |
+
+第2ラウンドで新たに分かったこと:
+
+- **MCP 入口は存在しない。** `commands` 19件にMCP関連の名前は無く、GoソースにもMCPサーバー実装は無い。`docs/architecture.md` は「TEI独自の開発用MCPサーバーは必須にしない」「将来追加しても別の正本を作らない」と位置づけている。依頼の範囲が CLI/MCP に広がったが、**実測できたのは CLI 経路だけ**であり、MCP経路は未実装として `NOT RUN` に置く。
+- **discovery が引数の許容値と出力flagを広告するようになった。** `commands` の出力は 6,957 バイトから 9,513 バイトへ増え、`argumentValues`・`argumentType`・`argumentDefaults`・`writeFlags` を持つ。生成AIが「何を渡せるか」を文書なしで知る経路ができた。
+- **D-3 は実測後に解消した。** #3366 が `view -format json` の応答の最上位へ `worldFingerprint`・`sourceIndexFingerprint` を足し、`result.semanticFingerprint` と並べて3つの値が別物として読めるようになった（#3345 は Closed、`9bc015876`）。実測時点の観測は変えず、追補を[実測記録](../evidence/TEI_DOGFOODING_ROUND2_2026-11-08/README.md) §9に置いた。
+- **残るのは D-9 と D-10 の2件。** D-9 はMarkdownを意味として扱うかの設計判断（#3346）、D-10 は `v0` の互換性判断（#3347）を含み、いずれも単一の欄の追加では閉じない。
+- **残る3件はいずれも単一の欄の追加では閉じない。** D-3 は版の語彙と置き場所の設計、D-9 はMarkdownを意味として扱うかの設計判断、D-10 は `v0` の互換性判断を含む。
+
+次に必要な作業:
+
+1. D-3・D-9・D-10 は、それぞれの設計判断のIssueで扱う。本記録は現況の観測を渡すだけに留める。
+2. `docs/business-system-design-reading-guide.md` が参照する実例ファイルが `QualificationRequirements` として復号できることを、回帰試験で固定する余地がある（第2ラウンドでは未実施）。
+3. MCP入口が実装された時点で、同じ手順をMCP経由でも実行し、CLIとの結果一致を確認する。入口が無い現時点では `NOT RUN`。
+
+## 8. MCP経路（2026-11-08）: 参照AdapterでのCLI/MCP一致
+
+依頼の範囲が `CLI/MCP` に広がったが、#3400 のとおり **TEIにMCP入口は無い**。そこで「入口を作る場合に、CLIと同じ結果を返せるか」だけを、参照実装で確かめた。生出力は[MCP経路の実測記録](../evidence/TEI_DOGFOODING_MCP_ROUND_2026-11-08/README.md)にある。
+
+- **参照実装**: [tools/reference-mcp-readonly-adapter](../../tools/reference-mcp-readonly-adapter/README.md)。`internal/operations` の `CatalogWorkspace`・`InspectSubject`・`TraceWorkspace`・`ValidateWorkspace` を呼ぶだけで、第二の正本解釈・知識の保存先・検証規則・権限モデルを持たない。
+- **結果**: 同じ Workspace に対して、`model catalog`・`validate`・`inspect`・`trace` の `worldFingerprint`・`sourceIndexFingerprint`・`snapshotFingerprint`・`sourceStatus`・`declarationCounts`・`schemaVersion` が **CLIと一致**した（不一致0件）。未対応の対象種類は `isError: true` と `UNSUPPORTED_SUBJECT_KIND` で返り、成功の空結果にしなかった。
+- **境界**: Workspace は起動時に固定し、tool の入力に path を取らない。書込み・受理・配備・付与・実行の tool は無い。認可・開示範囲は Adapter では判定しない。
+- **未確認**: 製品のMCP契約、MCPの版ごとの差、実Host・実Harnessからの接続、認可、外部送出、期限・再接続・同時実行。
+
+### 8.1 次の判断
+
+1. **MCP入口を作るか**（#3400）。作る場合の範囲は、この参照実装が扱った4操作（`model catalog`・`inspect`・`trace`・`validate`）に限る案を推す。`commands` の discovery と同じ範囲で、第二の正本を作らない制約をそのまま維持できる。
+2. 作らない場合は、外部AIハーネスからはホスト提供のMCP経由で `tei` CLIを起動する経路に限られる（#2509 の実測と同じ形）。その場合は本節の参照実装を製品へは残さない。
+3. どちらを選んでも、`docs/architecture.md` の「別の正本を作らない」制約を維持する。
+
+## 9. 第3ラウンド（2026-11-08）: 設計文書の扱いと応答の同一性
+
+第2ラウンドの後に main が進み、読み取りコマンドの応答を横断して調べた。生出力は[応答同一性の実測記録](../evidence/TEI_DOGFOODING_ROUND3_IDENTITY_2026-11-08/README.md)にある。
+
+| 観点 | 実測前（`3b4f5519d`） | 対応 |
+| --- | --- | --- |
+| D-9 設計文書が意味として読まれない | `docs`／`plan`を`sources`に置くと`readByLoader:false`、`validate`の`diagnostics`は0件、`source-index`の`references`は`null` | **残る**（#3346は設計判断を#2621へ送ってクローズ済み） |
+| Workspace同一性の有無 | `view`・`source-index`・`knowledge-context`・`requirements`に`workspace`欄が無い | **#3455として起票し、修正した** |
+| 空の一覧の直列化 | `source-index`の`references`が`null` | **#3456として起票し、修正した** |
+
+#3455 と #3456 の修正:
+
+- 読み取りコマンドの応答すべてに`workspace`（`name`・`formatVersion`・`manifest`）を付けた。`-world`ファイルだけを入力した場合は、manifestを読んでいないため値を推測せず省く。
+- `internal/sourceindex.Index`の`MarshalJSON`が、空の`artifacts`・`references`を`[]`にする。
+- 公開契約の互換性: 既存欄は変えず、欄の追加と「0件を`null`から`[]`へ」の変更だけ。`null`を「欄が無い」と解釈していた読み手には告知が必要（[CLI JSON出力契約](../design/CLI_JSON_OUTPUT_CONTRACT_2026-10.md)）。
+
+D-9は残る。CLIは設計文書を索引に載せるが、意味の定義として読まない。変更するなら、Markdownを意味として扱う設計判断（#2621）が前提になる。
+
+## 10. 第4ラウンド（2026-11-09）: 修正後の版での再実測
+
+#3455・#3456 の修正が `main`（`00ead5a98`、PR #3467）に統合された後、同じCLI操作で再測定した。生出力は[第4ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND4_2026-11-09/README.md)にある。
+
+- 読み取りを行う11コマンドの応答すべてが`workspace`（`name`・`formatVersion`・`manifest`）を返した。同一性の無い応答は0件。
+- 設計文書Workspaceの`source-index`は、参照0件を`[]`で返した（`artifacts`は2件）。
+- `validate`の診断と`sourceRootFindings`は変わらず、D-9（設計文書が意味として読まれない）は残る。
+
+この記録はCLIのread-only観測である。HTTP・MCP・Desktopの各入口の同値性は #3419〜#3421 の担当で、未実行（NOT RUN）のままである。
+
+## 11. 第5ラウンド（2026-11-09）: CLIとMCP参照Adapterの一致と入力検証
+
+`main` `4f97c86cf` の CLI と `tools/reference-mcp-readonly-adapter` を同じWorkspaceへ向けて実行し、値・失敗・入力検証を比較した。生出力は[第5ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND5_CLI_MCP_2026-11-09/README.md)にある。
+
+- 4操作（`validate`・`model catalog`・`inspect`・`trace`）の成功応答は、キー集合と型の差が0件だった。`SUBJECT_NOT_FOUND`・`UNSUPPORTED_SUBJECT_KIND` もCLIと同じ文字列符号で、MCPは `isError:true` と `ok:false` を併せて返した。
+- 基準の版では、**宣言していない引数はMCPだけが無視して成功した**。CLIは `INVALID_ARGUMENT` で拒否する。これを #3575 として起票した。
+- 起票のあと、`main` の `b88759643`（#3420 CAPI-2b）が同じ問題を直し、`rejectUnknownArguments` で不正値を `-32602` にすることを確認した。現行 `main` の実行物では未知欄・`workspace`欄・`null`・型不正がすべて拒否され、既存4操作の成功は変わらない。#3575 は重複として閉じる。
+- 必須欠落の符号はCLIが `INVALID_SUBJECT`、MCPが `-32602` で、意味層とプロトコル層の対応は #3420 の未決である。値と代表的な失敗は揃ったが、失敗分類の統一は未達。
+- `commands` の19件に操作ID・入口の欄は無く、入口ごとの対応はIssueと文書でしか辿れない。#3419 の対応表で扱う。
+
+## 12. 第6ラウンド（2026-11-09）: discoveryの広告と実行の突き合わせ
+
+ADR-0048 §2.6 の「各入口の広告が独立した正本にならないこと」を確かめるため、`tei commands` の19件と MCP `tools/list` の4件を、実際の受理と突き合わせた。生出力は[第6ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND6_DISCOVERY_2026-11-09/README.md)にある。
+
+- 広告した subject-kind 12種（`inspect`）・10種（`trace`）のすべてで、実在しないIDに対する結果が `SUBJECT_NOT_FOUND`（exit 1）、実在するIDでは成功だった。広告と実行の食い違いは検出されなかった。
+- フラグの条件（`-offset and -limit (full only)`・`-json (workspace only)`・`-input and -execute with -command`・`at most one of -pattern, -package, -command` など）も、実行時の受理と一致した。`effect` は19件すべて `read-only`、`writeFlags` は `view` のみ。
+- 一方で、**CLI の discovery と MCP の `tools/list` を突き合わせる試験は無い**。MCP の tool 宣言は `inputSchema` と `description` だけで、`effect`・`schemaVersion`・`annotations` を持たない。応答版は `dispatch` の文字列リテラルが持つ。
+- 実プロセス比較が固定されているのは `validate` の1操作だけ（`validate_parity_test.go`）。`catalog`・`inspect`・`trace` は `operations` の戻り値との比較にとどまる。
+
+新しい欠陥は検出しなかったため起票はしない。広告の突き合わせと4操作の実プロセス比較は、それぞれ #3419（対応表）と #3420 CAPI-2a が既に持つ範囲である。
+
+## 13. 第7ラウンド（2026-11-09）: discoveryの突き合わせ試験を置く
+
+第6ラウンドで「CLI discovery と MCP `tools/list` を比べる試験が無い」と記録した。ADR-0048 §2.6 の「生成または一致試験でずれを検出する」に沿って、最小の回帰試験を追加した。生出力は[第7ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND7_CROSS_SURFACE_2026-11-09/README.md)にある。
+
+- `discovery_parity_test.go` が、実CLIをビルドして `commands` を実行し、4 tool の対応コマンドの存在・`effect` が `read-only`・`writeFlags` が無い・`schemaVersion`・`jsonContract` の5点を突き合わせる。対応付けは文字列変換ではなく表で宣言する。
+- 現行 `main` では PASS した。加えて、故意のずれ6種（adapter 側3・CLI 側3）を入れると6件すべて FAIL し、戻すと PASS に戻ることを確認した。両面のどちらを変えても検出できる。
+- 突き合わせるのは discovery の一致だけである。`catalog` の namespace 失敗と `validate` の byte 一致は既存の試験が持ち、`inspect`・`trace` の実プロセス比較は #3420 CAPI-2a が持つ。
+
+## 14. 第8ラウンド（2026-11-09）: 空文字列の引数と既定値
+
+ADR-0048 §2.4 の「既定値の適用は共通契約で定める」を、CLI と MCP で確かめた。生出力は[第8ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND8_EMPTY_ARGUMENT_2026-11-09/README.md)にある。
+
+- `direction` と `mode` の値集合は、CLI の `argumentValues` と MCP の `inputSchema.enum` が同じ値を持つ。省略時の既定も両方 `direction=both`・`mode=summary` で一致した。
+- 一方、**空文字列を渡すと CLI だけが「未指定」として扱い、既定とは別の値へ落ちた**。`-mode ""` は結果が `mode=full`（rows=4）になり、省略時の `summary`（rows=0）と異なる。MCP は `-32602` で拒否する。
+- `-expected-fingerprint ""` は照合を省略するため、呼出し元が「空なら照合しない」つもりでいると、CLI では別Workspaceの結果を継続として使う経路が開く。
+- `trace` の3引数（`-direction`・`-mode`・`-expected-fingerprint`）を、フラグを書いたうえで値が空なら `INVALID_ARGUMENT`（exit 2）で拒否するよう修正した。省略時は従来どおり既定を使う。回帰試験は `cmd/tei/cli_trace_empty_argument_test.go`。
+- `model catalog -namespace ""` と `inspect -subject-kind ""` は変更していない。前者は「絞り込み無し」の意味があり、後者は「拒否する」点で MCP と同じで符号だけが違う（#3420）。
+
+起票は [#3605](https://github.com/hat47x/tei-platform/issues/3605)。
+
+## 15. 第9ラウンド（2026-11-09）: 空文字列の修正を統合後に再実測
+
+第8ラウンドの修正が `main`（`0067d6a1e`、PR #3607）に統合された後、CLI と MCP の両方から再測定した。生出力は[第9ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND9_EMPTY_ARGUMENT_REMEASURE_2026-11-09/README.md)にある。
+
+- `-mode ""`・`-direction ""`・`-expected-fingerprint ""` は、CLI が `INVALID_ARGUMENT`（exit 2）、MCP が `-32602` で、両方とも拒否する。
+- 3引数を省略すると `ok:true`・`mode=summary`。`-mode full` は `mode=full`。省略時の既定は保たれている。
+- 残る差は符号だけ（`INVALID_ARGUMENT` と `-32602`）。失敗分類の統一は #3420 の未決で、本ラウンドでは変更していない。
+
+#3605 は解消として扱える。Issue を閉じ、残る分類統一は #3420 に残す。
+
+## 16. 第10ラウンド（2026-11-09）: inspect・trace の実プロセス同値と失敗分類
+
+#3420 CAPI-2a の範囲を実測した。生出力は[第10ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND10_CAPI2A_PARITY_2026-11-09/README.md)にある。
+
+- 8ケースのうち7ケースで、CLI と MCP の成否と `error.code` が一致した（`SUBJECT_NOT_FOUND`・`UNSUPPORTED_SUBJECT_KIND`・`STALE_SNAPSHOT`・`INVALID_ARGUMENT`・`NAMESPACE_NOT_FOUND`）。
+- `inspect -workspace /no/such/dir` は MCP では tool 引数で表現できない（起動時に固定する設計）。起動時の `-workspace` が無い／manifest が壊れている場合、MCP は `WORKSPACE_LOAD_FAILED` を返し、CLI と同じ符号だった。差は「いつ分かるか」だけ。
+- **必須引数の欠落だけが層の違い**である。CLI は `INVALID_SUBJECT`（exit 2）、MCP は `-32602`。両方拒否するが文字列の符号が揃わない。ADR-0048 §2.3「失敗」の未決。
+- `inspect_trace_parity_test.go` を追加し、成功2件・失敗5件の値と符号、成功時の `result` の byte 一致を実プロセスで固定した。符号をわざと変える2種の変異はどちらも検出した。

@@ -56,8 +56,17 @@ func TestHistoricalProcessPluginRunnerEvidenceParity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// The comparison needs a clean committed checkout. Under `go test ./...` the
+	// test binary is built from that checkout while another package in the same
+	// run may be writing into it (worktrees, realizations, captured output), so
+	// a dirty tree here is often not this test's own doing (#3460). The
+	// comparison itself does not modify the checkout: it reads HEAD and creates
+	// its own worktrees. Report the precondition as a skip with the reason instead
+	// of failing, so a parallel run neither reports a false failure nor hides
+	// which check it did not perform. A caller that needs the comparison must
+	// run this package on a clean checkout (see tools/README.md).
 	if err := requireCleanRepository(repo); err != nil {
-		t.Fatalf("comparison requires the same clean committed source revision: %v", err)
+		t.Skipf("comparison requires the same clean committed source revision: %v", err)
 	}
 	// A shallow clone lacks the pinned revision, and the later `git show` would
 	// fail with a misleading "path ... not in <rev>" message. Fail with the
@@ -197,6 +206,16 @@ func TestHistoricalProcessPluginRunnerEvidenceParity(t *testing.T) {
 		// historical runner ignores the variable.
 		cmd.Env = append(os.Environ(), "GOENV=off", "GOWORK=off", "GOFLAGS=", "GOTOOLCHAIN=local", "GOPROXY=off",
 			"TEI_WORKSPACE_ALLOW_UNSPECIFIED_FORMAT=1")
+		if runtime.GOOS == "windows" {
+			// The runners create isolated build state with os.MkdirTemp("", ...).
+			// A Windows host that runs the executable from a non-system drive
+			// cannot create directories under the system temp directory
+			// (observed as `mkdir ...: Access is denied`), while the same
+			// executable can when TMP/TEMP point at a directory on its own
+			// volume. Point the inherited temp variables at the comparison
+			// directory, which is already allocated on that volume.
+			cmd.Env = append(cmd.Env, "TMP="+temp, "TEMP="+temp, "TMPDIR="+temp)
+		}
 		var stdout, stderr bytes.Buffer
 		cmd.Stdout, cmd.Stderr = &stdout, &stderr
 		if err := cmd.Run(); err != nil {

@@ -1,0 +1,5 @@
+== construction sites that also use composition.Coordinator ==
+  no   examples/process-plugin/main.go
+  no   tools/reference-deployment-attempt/main.go
+  no   tools/reference-plugin-build-supply/stage4.go
+  no   tools/reference-plugin-self-build/main.go

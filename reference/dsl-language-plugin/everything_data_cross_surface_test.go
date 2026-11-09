@@ -102,26 +102,36 @@ func projectFixturePlainCandidate(syntax PipelineSyntax, pins, catalog []Operato
 	return result, nil
 }
 
+// fixtureLanguagePins names the two values instead of returning both composite
+// literals from one `return`. gofmt for go1.26.10 (the CI toolchain) and gofmt
+// for go1.27.0 indent such a literal differently, so a one-expression form cannot
+// satisfy both. The named form keeps the same behaviour and both agree.
 func fixtureLanguagePins() (Selection, Selection) {
-	return Selection{
+	pipe := Selection{
 		LanguageID: "fixture.pipe", ContractVersion: "1",
 		ContractFingerprint: "pipe-1", ImplementationID: "fixture.pipe.impl",
 		ImplementationFingerprint: "pipe-source-1",
-	}, Selection{
+	}
+	json := Selection{
 		LanguageID: "fixture.json", ContractVersion: "1",
 		ContractFingerprint: "json-1", ImplementationID: "fixture.json.impl",
 		ImplementationFingerprint: "json-source-1",
 	}
+	return pipe, json
 }
 
+// fixtureOperators uses the same named form as fixtureLanguagePins for the
+// same cross-toolchain reason.
 func fixtureOperators() (OperatorContract, OperatorContract) {
-	return OperatorContract{
+	where := OperatorContract{
 		ID: "std.where", Version: "1", Fingerprint: "where-fixture-1",
 		Effect: "pure", InputType: "rows/order", OutputType: "rows/order",
-	}, OperatorContract{
+	}
+	sum := OperatorContract{
 		ID: "std.sum", Version: "1", Fingerprint: "sum-fixture-1",
 		Effect: "pure", InputType: "rows/order", OutputType: "decimal",
 	}
+	return where, sum
 }
 
 func TestEverythingDataRealPinnedPipelineCrossSurface(t *testing.T) {

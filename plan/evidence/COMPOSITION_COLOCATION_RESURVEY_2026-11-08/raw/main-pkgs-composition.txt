@@ -1,0 +1,4 @@
+tei/tools/reference-first-web-target
+tei/tools/reference-plugin-capability-contract
+tei/tools/reference-project-advice-lit
+tei/tools/reference-studio-static-composition
