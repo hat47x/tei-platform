@@ -138,6 +138,13 @@ func EvaluateCompletion(capability Capability, kind EmptyPolicyCondition, eviden
 			decision.State = CompletionHolds
 			decision.Reason = "the target set is empty and its emptiness is independently justified"
 		}
+		// Emptiness evidence concerns the target set, not the external/manual
+		// acceptance of a handoff. Keep a definite empty-set denial intact,
+		// but never report a handoff as completed without its confirmation.
+		if kind == EmptyPolicyHandoff && decision.State == CompletionHolds && !evidence.HandoffConfirmed {
+			decision.State = CompletionUnverified
+			decision.Reason = "the handoff condition is not confirmed"
+		}
 		return decision
 	}
 

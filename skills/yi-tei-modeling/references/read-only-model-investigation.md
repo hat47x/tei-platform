@@ -31,7 +31,7 @@ go run ./cmd/tei validate -workspace reference/workspace -json
 
 **発見したCLIと実際に呼んだCLIを分ける**。最初の`commands`が取得した情報を、後で呼び出した別ビルドや別Working Treeへ無条件に適用しない。再現性を高める場合は、一度ビルドして実行ファイルを固定し、実際に使った絶対パス、artifact bytesのdigest、ビルド元Git revision・Working Tree、呼び出したargv・cwd、Workspace rootと各Readのexit/statusを紐付ける。`go run ./cmd/tei`を繰り返す場合は、各呼出しでGoがソースを読み直し得るため、**すべて同じ実行物を使ったと主張できるわけではない**。観測していないdigestやパスを埋めない。固定しても実Source/Workspaceを同時ロックしたことにはならず、各Readの内容照合は別に必要。
 
-**Traceの二つのfingerprintを取り違えない**。 `trace -mode full -limit <N>`の複数ページを読む場合、次ページの`-offset`には前ページの`result.trace.nextOffset`、`-expected-fingerprint`には**外側**`result.snapshotFingerprint`を使う。内側の`result.trace.snapshotFingerprint`はTrace Graph自体を識別する別の値であり、継続トークンの代用にしない。誤トークンやSource変更により`STALE_SNAPSHOT`となった場合はページを結合しない。次ページの成功と、最初の対象/Scope/版が整合したことをそれぞれ検査する。
+**Traceの二つのfingerprintを取り違えない**。 `trace -mode full -limit <N>`の複数ページを読む場合、次ページの`-offset`には前ページの`result.trace.nextOffset`、`-expected-fingerprint`には**外側**`result.snapshotFingerprint`を使う。内側の`result.trace.graphFingerprint`（旧名`result.trace.snapshotFingerprint`。同じ値で残る）はTrace Graph自体を識別する別の値であり、継続トークンの代用にしない。`result.trace.continuation.fingerprint`は継続に使える値（外側`result.snapshotFingerprint`と同値）で、`nextOffset`の隣にある。誤トークンやSource変更により`STALE_SNAPSHOT`となった場合はページを結合しない。次ページの成功と、最初の対象/Scope/版が整合したことをそれぞれ検査する。
 
 **同一ClaimへのRead接合**：`catalog → inspect → trace → validate`の各結果について、実root/Subject/Scope、観測時点、`worldFingerprint`/`sourceIndexFingerprint`の名前空間と値を比較し、差異を保持する。別checkoutでCRLF/LFが異なる場合、同じ論理モデルに見えてもbyte識別値が違うことがある。正規化や一致推定はしない（既存#2399のOwner判断を参照）。異版でも用途によって局所比較できる場合は、何を比較できて何を断定できないかを明示する。
 
@@ -48,6 +48,7 @@ go run ./cmd/tei validate -workspace reference/workspace -json
 | `inspect`と`trace`のFingerprintが異なる | 異版/異入力の可能性を報告し、同一版として結合しない |
 | Warning付き`validate ok=true` | ValidationはWarning付きで成立。Warningを結果から消さない |
 | `trace`に直接辺がない | 宣言済みの対応参照がない/未解決など結果の範囲を調べ、全依存不存在の証明にしない |
+| `trace`が`UNSUPPORTED_SUBJECT_KIND`（終了コード2）を返す | その種類は関係図に投影されない（`semantic-candidate-key`・`semantic-functional-dependency`）。`SUBJECT_NOT_FOUND`（同1）の「宣言が無い」と読み替えず、`inspect`で要素自体を読めるか別に確かめる |
 | 適用したいFunction Patternが説明されているが実Targetにない | 文書上の提案・参照例と、実Provider・Renderer・Hostの適用資格を別に確認 |
 | 公開不可の原資料がある | Source保持側で許可されたProjectionを構成し、外部HarnessへRaw/非公開Metadataをそのまま渡さない |
 | 外部Java/.NETアプリケーションでTEI Providerを使いたい | TEI Skillでは開発手順の案内まで。#2390/#2513等で実HostへのContract/Artifact/Loadを別に検証 |

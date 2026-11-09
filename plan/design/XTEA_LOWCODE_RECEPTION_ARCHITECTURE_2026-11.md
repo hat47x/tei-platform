@@ -113,7 +113,6 @@ X-TEAのスクリプトAPIは、SQL・確定・機能呼出しを同じ面に置
 受容先が現行のTEIにどこまで存在するかを、実装で確認しました。存在するものは再利用し、足りないものだけを追加します。
 
 | 受容面 | 現行のTEI | 根拠 | 差・対応 |
-| --- | --- | --- | --- |
 | Patternの種類 | 5種固定。未知のKindは構文エラー | `internal/application/model.go` L19–33、`internal/syntax/application_pattern.go` L29–31 | D1のパッケージは、5種の組合せで表すか、Kindの拡張点を別に設計する |
 | Patternの宣言 | `data`、`relation`、`query`、`capability`、`datasource`、`contract-query`のみ | 同 L54–63、`application_pattern.go` L36–129 | 対話項目・操作・フック・表示意図がない。D1・D2・D3で追加する |
 | 遷移 | Pattern間の遷移宣言がない | `internal/application/model.go` | 一覧から単票、明細の起動などをD1で追加する |
@@ -143,7 +142,6 @@ X-TEAのスクリプトAPIは、SQL・確定・機能呼出しを同じ面に置
 **選択肢.**
 
 | 案 | 内容 | 利点 | 欠点 |
-| --- | --- | --- | --- |
 | A | 8機能型をCoreのPattern Kindとして追加する | 対応が素直で、実装も早い | Coreが特定のモデル体系を特権化する。型の追加がCore変更になる（RQ-031に反する） |
 | B | 5 Kindの組合せだけで表す | Coreを増やさない。既存の受理境界を再利用できる | 一括更新・帳票・起動処理のまとまりが失われ、案件ごとに組合せを再発明する |
 | C | **Patternパッケージ**を導入し、Coreの外で型を宣言する | Coreを増やさず、定型のまとまりを再利用できる。パッケージごとに契約と適合試験を持てる | パッケージの契約設計と、組合せの合成規則が新たに要る |
@@ -169,7 +167,6 @@ PatternPackage
 **X-TEAの型との対応（案）.** 次の表は、8型をそのまま再現するためではなく、**同じ仕事を、Coreの意味とPatternの組合せで表せるか**を確かめるための仮説です。軸の組合せが同じでも、別の表し方があり得ます。
 
 | X-TEA | TEIでの表し方（案） | 補足 |
-| --- | --- | --- |
 | XF100 明細一括表示 | `browse`＋任意の`record`遷移 | 列・絞り込み・並びは対話契約 |
 | XF110 明細一括更新 | `browse`＋`command`（一括） | 一括の範囲と対象行、部分成功の扱いを宣言 |
 | XF200 単票保守 | `record`＋`command`（追加・更新・削除） | 操作ごとの能力と効果を分ける |
@@ -199,7 +196,6 @@ PatternPackage
 **パッケージ契約の項目（案）.** 上の骨子を、検査できる項目に分けます。
 
 | 項目 | 内容 | 検査 |
-| --- | --- | --- |
 | ID・版 | Canonical IDとmajor/minor | 重複、版の単調性、Application側の束縛 |
 | 適用条件 | 対象のApplication、Target Profile、必要なSemantic Data・Relation・Capability | 未解決参照、型の一致、Profileの非対応 |
 | 構成 | Kindごとのメンバーと、パッケージ内での位置づけ（起点・遷移先・操作） | 必須メンバーの欠落、同じKindの重複 |
@@ -268,8 +264,6 @@ package order_entry.list_to_record ^1 {
 
 **選択肢.**
 
-| 案 | 内容 | 利点 | 欠点 |
-| --- | --- | --- | --- |
 | A | フックを持たず、生成器のカスタマイズだけで対応する | 意味と効果の境界が最も強い | 定型の小さな差分のたびに生成器を分岐させ、生成器が増える |
 | B | 正本に任意スクリプトを埋め込む（X-TEA方式） | 表現力が最大。実装が早い | 意味の正本に任意コードが入る。効果・権限・失敗の境界が失われる |
 | C | **宣言されたフック**と、契約で束縛した規則Plugin | 効果を宣言でき、正本は宣言だけを持つ。静的検査と再現ができる | フックの種類とDSLの設計が要る。表現力はBより狭い |
@@ -292,7 +286,6 @@ hook <id> on <pattern>
 **X-TEAの契機との対応（案）.**
 
 | X-TEA | TEIの位相（案） | 範囲 | 注意 |
-| --- | --- | --- | --- |
 | `BR` | before-read | row / record | 一覧では行ごと、単票では1件。同じ名前で範囲が違う |
 | `AR` | after-read | row / record | 参照表の読取り前後を含む段階がある（`BR()`、`AR(別名)`） |
 | `BC` | before-change（追加） | record | 追加前の検証・初期値 |
@@ -351,7 +344,6 @@ lookup customer_lookup on order_entry.order_record.customerId
 **フック契約の置き場所（案）.** 宣言と実装をどこに置くかを比べます。
 
 | 案 | 宣言 | 実装 | 利点 | 欠点 |
-| --- | --- | --- | --- | --- |
 | A Applicationの対話契約 | L2 | Plugin（実装だけ） | アプリの版と一緒に動き、全Targetで同じ宣言を使える | 対話契約の文法がフックで膨らみ、種別ごとにParserと検証の追加が要る |
 | B Pluginの契約 | L4 | 同 | Coreを変えずに拡張できる | アプリの挙動がPluginの可用性に依存し、Targetごとに解釈が分かれ得る |
 | C 宣言はL2、実装契約はL4 | L2 | L4の別契約 | 宣言の一貫性と拡張性を分けられる | 契約が二層になり、版の束縛を管理する必要がある |
@@ -371,7 +363,6 @@ lookup customer_lookup on order_entry.order_record.customerId
 **分離の案.**
 
 | 軸 | 例 | 置き場所 | 既存の受け皿 |
-| --- | --- | --- | --- |
 | 意味の役割 | 識別子、必須、一意、参照（Relation）、導出、更新禁止、値域、形式 | CORE（Data / Relation / Validation / Data Derivation） | [#1126](https://github.com/hat47x/tei-platform/issues/1126)、[#1637](https://github.com/hat47x/tei-platform/issues/1637)、[#1707](https://github.com/hat47x/tei-platform/issues/1707) |
 | 対話の役割 | 編集可否、参照入力の束縛、既定値の出所、表示条件、入力補助（暦・コード・長文・画像） | PAT（対話契約） | [#1127](https://github.com/hat47x/tei-platform/issues/1127)、[#997](https://github.com/hat47x/tei-platform/issues/997) |
 | 表示の指定 | 幅、行数、整列、フォント、まとまり、順序 | PLG（表示プロファイル） | [#997](https://github.com/hat47x/tei-platform/issues/997) |
@@ -379,7 +370,6 @@ lookup customer_lookup on order_entry.order_record.customerId
 **現行契約との対応.** X-TEAの役割が、現行のTEIでどこまで表せるかを確認しました。
 
 | X-TEAの役割 | 現行のTEIの受け皿 | 足りないもの |
-| --- | --- | --- |
 | 必須・任意 | `database.QueryInput.Nullable`はQuery入力のみ | DataのAttributeに必須がない。意味の必須を追加するか、Validationの種別にするかを決める |
 | 参照 | `reference` Patternと`contract-query`の入力対応（[customer-reference.tei](../../reference/workspace/applications/order-entry/patterns/customer-reference.tei)） | 項目と参照先を結ぶ対話の束縛 |
 | 導出・自動採番 | Data Derivationの設計・参照実装（[#1637](https://github.com/hat47x/tei-platform/issues/1637)、[#1707](https://github.com/hat47x/tei-platform/issues/1707)） | Attributeから導出規則への参照 |
@@ -481,7 +471,6 @@ lookup customer_lookup on order_entry.order_record.customerId
 X-TEAの戻り値とTEIの分類の対応（案）は、次のとおりです。
 
 | X-TEAの戻り値 | TEIの分類（案） | 注意 |
-| --- | --- | --- |
 | `10`登録、`20`更新、`30`削除 | 業務上の結末（`Outcome`）または実行の成功 | 業務結果として宣言するかを決める |
 | `00`表示、`11`追加、`21`編集 | 対話の状態 | `Outcome`にしない |
 | `01`取消 | 未実行 | 実行の失敗とも分ける |
@@ -518,7 +507,6 @@ X-TEAの戻り値とTEIの分類の対応（案）は、次のとおりです。
 **設計案.** 四つに分けます。
 
 | 対象 | 意味として宣言するもの | 提供元・実装 |
-| --- | --- | --- |
 | 暦・会計期間 | 営業日、休日、年度・月度の開始、締め、期間の状態 | カレンダー提供元、規則Plugin |
 | 税 | 適用日、税区分、率、端数処理、免税・軽減 | 税率のData、計算Capability |
 | 通貨 | 通貨、適用日、率の種類、換算の方向、端数 | 為替のData、換算Capability |
@@ -546,7 +534,6 @@ X-TEAの実装では、税額は税率表の開始日と税区分で選び、正
 **D6.1 最初に対象にする範囲（案）.** 四つを一度に意味として扱うと範囲が広がるため、次の観点で順序を決めます。
 
 | 対象 | 意味の強さ | 変更の頻度・依存 | 既存の受け皿 | 最初の扱い |
-| --- | --- | --- | --- | --- |
 | 暦・会計期間 | 高（締め・年度は業務固有） | 中（組織ごと） | なし | 意味として扱う（第一候補） |
 | 税 | 高（法制度） | 高（改正） | なし | PluginのCapabilityとDataから始め、反復したら意味へ |
 | 通貨 | 高（市場データ） | 高（日次） | なし | Pluginの提供元とData |
@@ -665,7 +652,6 @@ X-TEAの実装では、税額は税率表の開始日と税区分で選び、正
 知識目録の読解や、設計文書の整合だけでは足りません。次の証拠を、対象の版に結び付けて取得します。
 
 | 判断 | 証拠 | 何を言えるか | 何を言えないか |
-| --- | --- | --- | --- |
 | D1 パッケージ | 二つのパッケージの適合試験、取り外し試験、Core差分の記録 | 組合せで定型を表せた | すべての業務に十分とは言えない |
 | D2 フック | 行検証・導出・参照入力のfixture、未宣言能力の拒否、決定性の再実行 | 宣言の範囲で拡張できた | 任意の案件ロジックを表せるとは言えない |
 | D3 項目役割 | 同じ役割の画面・帳票・Webでの一致、幅変更で意味差分なし | 意味と表示を分けられた | すべての入力支援を表せるとは言えない |
@@ -705,7 +691,6 @@ X-TEAの実装では、税額は税率表の開始日と税区分で選び、正
 知識目録の主な項目が、どの設計判断、要件候補、作業パッケージへ渡るかの対応です。すべての項目を載せず、判断を動かす項目に限ります。
 
 | 知識項目 | 設計判断 | 要件候補 | 作業 |
-| --- | --- | --- | --- |
 | M-2 設計と実行仕様の分離 | D1、D8 | AC-1、AC-9 | WP3、WP9 |
 | M-3 機能型がデータにある | D1 | RQ-C1、AC-1 | WP3、WP7 |
 | M-4 形式の版 | D8 | AC-9 | WP9 |
@@ -770,7 +755,6 @@ D1〜D8の「受け止めた」を確かめる最小の試験案です。実装�
 ### B.1 D1 パッケージ（WP3、WP7）
 
 | 試験 | 手順 | 期待 | 負例 |
-| --- | --- | --- | --- |
 | P-1 適用 | 既存Applicationに一覧のパッケージを適用し、一覧→選択→単票の往復を行う | 受理済み意味のfingerprintが変わらない。生成物が入力版を指す | 適用で意味の差分が出る |
 | P-2 取り外し | パッケージを外し、再検証・再生成する | 意味と他の投影が壊れない。外した投影は未生成として示す | 古い生成物が有効なまま残る |
 | P-3 追加 | Coreの要素種別を増やさずに新しいパッケージを定義する | 検証が通り、適合試験の枠組みで比較できる | Coreの要素種別の追加を要求する |
@@ -780,8 +764,6 @@ D1〜D8の「受け止めた」を確かめる最小の試験案です。実装�
 
 ### B.2 D2 フック（WP4）
 
-| 試験 | 手順 | 期待 | 負例 |
-| --- | --- | --- | --- |
 | H-1 検証 | 数量>0のフックを宣言し、0以下の行を確定する | 拒否の結果が返り、行は確定しない | 画面だけで拒否し、CLIでは通る |
 | H-2 未宣言能力 | フックから宣言していない能力を呼ぶ | 検証時と実行時の両方で拒否する | 実行時だけ失敗する |
 | H-3 決定性 | 同じ入力と評価時点で再実行し、別の投影でも実行する | 同じ結果を返す | 実行順や画面の種類で結果が変わる |
@@ -791,8 +773,6 @@ D1〜D8の「受け止めた」を確かめる最小の試験案です。実装�
 
 ### B.3 D3 項目の役割（WP3）
 
-| 試験 | 手順 | 期待 | 負例 |
-| --- | --- | --- | --- |
 | R-1 参照 | 顧客の参照入力を、参照先Patternと項目の型付き束縛で宣言する | 参照先の型・必須を起動前に検査できる | 参照先の変更で実行時に壊れる |
 | R-2 役割の一致 | 必須・導出・更新禁止を、画面・帳票・CLIで同じ入力に対して確かめる | 検証結果が一致する | 帳票だけ検証が緩い |
 | R-3 表示のみ変更 | 幅・整列・行数だけを変える | 意味の差分が出ない | 表示の変更で検証が変わる |
@@ -801,8 +781,6 @@ D1〜D8の「受け止めた」を確かめる最小の試験案です。実装�
 
 ### B.4 D5 結果型（WP5）
 
-| 試験 | 手順 | 期待 | 負例 |
-| --- | --- | --- | --- |
 | O-1 0件 | 存在しないキーで更新する | `not-found`を返す | 成功として扱う |
 | O-2 多重一致 | 複数行が一致する条件で更新する | `multiple-match`を返す | 先頭行だけ更新する |
 | O-3 競合 | 古い版で更新する | `conflict`を返す | 後勝ちで上書きする |
@@ -812,24 +790,18 @@ D1〜D8の「受け止めた」を確かめる最小の試験案です。実装�
 
 ### B.5 D6 標準意味（WP8）
 
-| 試験 | 手順 | 期待 | 負例 |
-| --- | --- | --- | --- |
 | C-1 適用期間 | 税率・年度の開始日の前後で計算する | 期間に応じた結果を返す | 常に最新の率を使う |
 | C-2 評価時点 | 同じ入力で評価時点だけを変える | 結果が評価時点に従う | 実行時の今日に依存する |
 | C-3 差し替え | 案件固有の暦・率を提供元として差し替える | Coreの変更なしに結果が変わる | Coreの変更が必要になる |
 
 ### B.6 D7 帳票（WP6）
 
-| 試験 | 手順 | 期待 | 負例 |
-| --- | --- | --- | --- |
 | T-1 一致 | 同じ契約から画面とPDFを出し、値と検証を比較する | 一致する | 帳票だけ値が違う |
 | T-2 テンプレート | レイアウトだけを変える | 意味の差分が出ない | レイアウト変更で項目の意味が変わる |
 | T-3 版 | 出力から入力版を辿る | 意味・契約・テンプレート・生成器の版が分かる | どの版から出したか分からない |
 
 ### B.7 D8 診断（WP9）
 
-| 試験 | 手順 | 期待 | 負例 |
-| --- | --- | --- | --- |
 | G-1 未定義参照 | 存在しない機能・表・項目を参照する | 版に結び付いた診断が出る | 参照が黙って落ちる |
 | G-2 未被呼出し | どこからも呼ばれない機能を残す | 診断が出る。自動削除しない | 自動で削除する |
 | G-3 三視点の抜け | 機能を持たない作業、表を使わない機能を残す | 診断が出る | 欠落を正常とする |
@@ -855,7 +827,6 @@ D1〜D8の「受け止めた」を確かめる最小の試験案です。実装�
 ### C.2 機能型ごとの対応
 
 | X-TEA | 現行文法で書ける部分 | 足りない宣言 |
-| --- | --- | --- |
 | XF100 一覧 | `browse`（`recent_orders`）、`record`（`order_record`）、`reference`（`customer_reference`） | 一覧から単票への遷移、列・絞り込み・並び順 |
 | XF110 一括更新 | `browse`、`command`（`submit_order`） | 一括の対象選択、部分成功、値パネル |
 | XF200 単票保守 | `record`、`command` | 項目の役割、追加・更新・削除の操作宣言、同時実行 |
@@ -909,7 +880,6 @@ interaction order_entry.order_maintenance on order_entry.order_record {
 PoC #2521が実装した範囲と、まだ実装していない範囲を分けます。
 
 | 項目 | 状態 |
-| --- | --- |
 | `interaction`ブロックの構文（`item`、`lookup`、`navigate from`、`command`） | 実装済み |
 | 項目がDataのattributeか、参照先がreference Patternか、Relation targetのattributeか、型が一致するか | 実装済み |
 | 参照先のSemantic名前空間がApplicationの`uses semantic`に含まれるか | 実装済み（`APPLICATION_PATTERN_INTERACTION_LOOKUP_SEMANTIC_NOT_USED`） |
@@ -957,9 +927,13 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | 参照Storeの拒否符号 | 実装済み（`ReferenceFailure`が`record-missing`・`record-exists`・`value-rejected`・`rule-rejected`を持ち、`FailureOutcome`が結末名へ写す。CLIは`COMMAND_REFUSED`で返す） |
 | フックの宣言外呼出し | 実装済み（`hook.Declared`が`uses`外の能力呼出しを`HOOK_UNDECLARED_CALL`で拒否。無宣言は拒否。`hook.CommandCaller`が宣言済みの呼出しをCommand境界へ委譲し、認可・取引・効果照合・記録を継承する） |
 | 暦の宣言 | 実装済み（`calendar`の`fiscal-year starts month`・`week starts`・`business-day excludes`と、`period`の`calendar`。`CALENDAR_*`・`PERIOD_*CALENDAR*`の検証） |
-| 期間と暦の投影 | 実装済み（`view`のApplication投影に`periods[].calendar`、テキスト出力に行、Studioの「期間」表に列を追加） |
-| 採番の契約 | 実装済み（`internal/numbering`。桁・接頭辞・検査数字・桁あふれの宣言。桁あふれの既定は停止、`wrap`は宣言時のみ。検査数字は1文字。`numbering-*`の属性役割からDataの行を結び付ける） |
-| 通貨の率と方向 | 実装済み（`internal/currencyrate`。中値・買値・売値の宣言、換算方向の宣言、システム通貨の率1、行の欠落と重複の検出、`currency-rate-*`の属性役割からのData結合） |
+| 期間と暦の投影 | 実装済み（`view`のApplication投影に`periods[].calendar`と`periods[].closingDay`、テキスト出力に行、Studioの「期間」表に列を追加） |
+| 標準業務Dataの投影 | 実装済み（`view`のApplication投影に`standardBusiness`（種別・Data・結合器が読む属性）、テキスト出力の`standard-business`行、Studioの「標準業務」表） |
+| 利用者設定の宣言と読み取り | 実装済み（`internal/usersetting`。鍵・値・利用者の役割で宣言し、宣言されていない鍵は空ではなく報告。`Table.Change`・`Table.Apply`が宣言済みの鍵だけを更新し、拒否された変更は格納へ届かない） |
+| 標準業務の属性役割 | 実装済み（`attributeRoles`に税5・通貨6・採番5・休日1の17役割を追加。綴り誤りは`SEMANTIC_ATTRIBUTE_ROLE_UNSUPPORTED`で継続して報告。役割が要求するプリミティブ型との一致は`SEMANTIC_ATTRIBUTE_ROLE_TYPE_MISMATCH`、別名は下地まで辿る） |
+| 休日のData結合 | 実装済み（暦が休日Dataを名指し、Dataが`holiday-date`の役割で日付属性を名指す。解釈できない日付は行番号つきで報告。`holiday-calendar`役割がある場合は暦名で行を分け、名前なしの読み取りは拒否。暦識別の型が値域を宣言していれば、宣言外の識別は`CalendarDomain.Validate`で報告。`HolidayResolve`・`CalendarForPeriod`が期間→暦→休日→行を一続きに解決し、識別検査を行全体へ適用） |
+| 採番の契約 | 実装済み（`internal/numbering`。桁・接頭辞・検査数字・桁あふれの宣言。桁あふれの既定は停止、`wrap`は宣言時のみ。検査数字は1文字。`numbering-*`の属性役割からDataの行を結び付け、`Reserve`の予約を`Commit`/`Release`で取引に参加させ、`ReserveInTransaction`が呼出し側の取引と同じ境界で確定・取消する。`numbering-rule`役割で1つのDataに複数規則を置け、`ResolveRules`が規則名から束縛・発行までを一続きにし、`internal/numberingcommand`がCommand側`UnitOfWork`とのアダプタになり、`internal/numberingsqlite`が版付きの永続格納になり、2プロセス同時実行で同一番号を出さないことを子プロセス2つで確認） |
+| 通貨の率と方向 | 実装済み（`internal/currencyrate`。中値・買値・売値の宣言、換算方向の宣言、システム通貨の率1、行の欠落と重複の検出、`currency-rate-*`の属性役割からのData結合。年次へのフォールバックは`currency-rate-fallback`役割の行の値で宣言し、既定`none`は行の欠落を報告。月次表と年次表は別Dataとして宣言でき、`ResolveTable`が行から粒度を読み`Pair`が結合する） |
 | 税の適用期間と端数 | 実装済み（`internal/taxrate`。適用期間の両端、`floor`・`ceiling`・`half-up`・`half-even`の宣言、行の欠落と重なりの検出。`tax-applies-from`等の属性役割からDataの行を結び付ける） |
 | 暦からの日付導出 | 実装済み（`internal/businesscalendar`。日付差の規則（`elapsed`・`calendar`・`business`）、営業日加算、会計年度と年度開始、期間キー（年度＋月順序）と期間開始日の逆算。宣言から暦を解決し、休日Dataは呼出し側が与える） |
 | 画面・帳票の版 | 実装済み（全HTML・印刷テンプレートが`tei-semantic-fingerprint`を出力） |
@@ -1001,6 +975,12 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
+
+
+
+
+
 
 
 

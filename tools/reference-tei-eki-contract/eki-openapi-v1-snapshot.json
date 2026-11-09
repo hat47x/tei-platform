@@ -1,0 +1,590 @@
+{
+  "source": {
+    "repository": "hat47x/eki-fabric",
+    "path": "spec/external/openapi.json",
+    "source_git_blob_sha": "388f2e3ad32ba663b4777fcfb4304b0cf6f48f3f",
+    "version": "0.1.0",
+    "openapi": "3.2.1",
+    "read_status": "fetched-from-repository; snapshot is NOT current runtime evidence",
+    "purpose": "frozen external API shape fixture; do not treat as TEI/EKI product integration"
+  },
+  "components": {
+    "schemas": {
+      "TaskRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema",
+          "executor",
+          "inputs",
+          "parameters",
+          "resources",
+          "reliability"
+        ],
+        "properties": {
+          "schema": {
+            "type": "string",
+            "const": "eki.task-request/v1"
+          },
+          "executor": {
+            "$ref": "#/components/schemas/ExecutorRequirement"
+          },
+          "inputs": {
+            "type": "array",
+            "maxItems": 64,
+            "items": {
+              "$ref": "#/components/schemas/ArtifactReference"
+            }
+          },
+          "parameters": {
+            "type": "object",
+            "maxProperties": 256,
+            "additionalProperties": true,
+            "description": "Executor-specific parameters. This version's admission checks structure only (property count, JSON depth and duplicate names); it does not evaluate them against an executor schema, and parameters are not passed to workers (the WorkOrder payload has no parameters field). Schema validation is a future tightening of admission, not a widening."
+          },
+          "resources": {
+            "$ref": "#/components/schemas/ResourceRequest"
+          },
+          "reliability": {
+            "$ref": "#/components/schemas/ReliabilityRequest"
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "background",
+              "normal",
+              "high"
+            ],
+            "default": "normal",
+            "description": "Requested priority only; policy determines effective priority."
+          },
+          "result_profile": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[a-z0-9](?:[a-z0-9._-]{0,126}[a-z0-9])?$"
+          },
+          "extensions": {
+            "type": "array",
+            "maxItems": 32,
+            "items": {
+              "$ref": "#/components/schemas/ExtensionEnvelope"
+            }
+          },
+          "client_request_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]{1,64}$",
+            "description": "The requester's own identifier for this request. EKI never interprets it; the acceptance answers with the same value (#315)."
+          }
+        },
+        "example": {
+          "schema": "eki.task-request/v1",
+          "executor": {
+            "id": "dev.example.transform",
+            "version_constraint": "^1"
+          },
+          "inputs": [
+            {
+              "name": "source",
+              "artifact_id": "art_01"
+            }
+          ],
+          "parameters": {
+            "mode": "normalize"
+          },
+          "resources": {
+            "cpu_millis": 1000,
+            "memory_bytes": 268435456,
+            "wall_time_seconds": 300,
+            "output_bytes_max": 16777216,
+            "network_bytes_max": 134217728
+          },
+          "reliability": {
+            "retryable": true,
+            "preemptible": true,
+            "checkpointable": false,
+            "deterministic": true,
+            "max_attempts": 3,
+            "effect_mode": "none"
+          },
+          "priority": "normal"
+        }
+      },
+      "ResourceRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "cpu_millis",
+          "memory_bytes",
+          "wall_time_seconds",
+          "output_bytes_max",
+          "network_bytes_max"
+        ],
+        "properties": {
+          "cpu_millis": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 256000
+          },
+          "memory_bytes": {
+            "type": "integer",
+            "minimum": 1048576,
+            "maximum": 17592186044416
+          },
+          "temporary_disk_bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 17592186044416,
+            "default": 0
+          },
+          "wall_time_seconds": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 604800
+          },
+          "output_bytes_max": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1099511627776
+          },
+          "network_bytes_max": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 17592186044416
+          },
+          "gpu": {
+            "$ref": "#/components/schemas/GpuRequirement"
+          }
+        }
+      },
+      "GpuRequirement": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "count"
+        ],
+        "properties": {
+          "count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 16
+          },
+          "memory_bytes_min": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1099511627776
+          },
+          "vendor_hint": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          }
+        }
+      },
+      "ReliabilityRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "retryable",
+          "preemptible",
+          "max_attempts",
+          "effect_mode"
+        ],
+        "properties": {
+          "retryable": {
+            "type": "boolean"
+          },
+          "preemptible": {
+            "type": "boolean"
+          },
+          "checkpointable": {
+            "type": "boolean",
+            "default": false
+          },
+          "deterministic": {
+            "type": "boolean",
+            "default": false
+          },
+          "max_attempts": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 32
+          },
+          "effect_mode": {
+            "type": "string",
+            "enum": [
+              "none"
+            ],
+            "description": "P0/MVP accepts pure-compute tasks only. Later versions may add explicit external-effect profiles without changing v1 semantics."
+          }
+        }
+      },
+      "ExecutorRequirement": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[a-z0-9](?:[a-z0-9._-]{0,126}[a-z0-9])?$"
+          },
+          "version_constraint": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "Constraint on the executor version. This version records it into the request fingerprint but does not evaluate it: a constraint the executor fleet cannot satisfy is admitted here and fails later, at execution."
+          }
+        }
+      },
+      "ArtifactReference": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "artifact_id"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+          },
+          "artifact_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+          }
+        }
+      },
+      "TaskAccepted": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema",
+          "task_id",
+          "status",
+          "submitted_at",
+          "replayed",
+          "request_fingerprint"
+        ],
+        "properties": {
+          "schema": {
+            "type": "string",
+            "const": "eki.task-accepted/v1"
+          },
+          "task_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+          },
+          "status": {
+            "type": "string",
+            "const": "queued"
+          },
+          "request_fingerprint": {
+            "type": "string",
+            "description": "Digest of the normalized request, so the requester can match this answer with the request it sent (#315)."
+          },
+          "client_request_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]{1,64}$",
+            "description": "The identifier the requester put in the request, unchanged. Absent when the request carried none (#315)."
+          },
+          "replayed": {
+            "type": "boolean",
+            "description": "The Idempotency-Key had already been accepted, so this body answers a replay rather than a new request (#315)."
+          },
+          "submitted_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "TaskPublicStatus": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema",
+          "task_id",
+          "status",
+          "submitted_at",
+          "updated_at"
+        ],
+        "properties": {
+          "schema": {
+            "type": "string",
+            "const": "eki.task-public-status/v1"
+          },
+          "task_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "verifying",
+              "reconciling",
+              "attention-required",
+              "completed",
+              "cancelled",
+              "failed"
+            ]
+          },
+          "request_fingerprint": {
+            "type": "string",
+            "description": "Digest of the normalized request, so the requester can match this answer with the request it sent (#315)."
+          },
+          "replayed": {
+            "type": "boolean",
+            "description": "The Idempotency-Key had already been accepted, so this body answers a replay rather than a new request (#315)."
+          },
+          "submitted_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "assurance": {
+            "$ref": "#/components/schemas/PublicAssuranceSummary"
+          },
+          "terminal_code": {
+            "type": "string",
+            "enum": [
+              "COMPLETED",
+              "CANCELLED",
+              "FAILED",
+              "EXHAUSTED",
+              "ABANDONED"
+            ],
+            "description": "Stable, machine-readable reason a Task reached a terminal state. These are contract values, not the internal state enum: a value is added on purpose, never derived from an internal name. COMPLETED: a verified result was accepted. Do not resubmit the work. CANCELLED: the Task was cancelled on request; cancellation stops work rather than finishing it, so resubmitting is safe. FAILED: execution failed without a recoverable outcome; resubmit only after checking whether the failed execution left a side effect, because this code does not claim that it did not. EXHAUSTED: the retry or recovery budget was spent; resubmitting starts a new Task with a new budget, which is a decision for the caller. ABANDONED: the Task cannot be completed on its current path (a permanent refusal, or a policy change with no migration); do not resubmit the same request unchanged. A code is present on every terminal Task, including completed and cancelled. Deadline specialisation (DEADLINE_EXPIRED_NOT_STARTED and DEADLINE_EXPIRED_AFTER_DISPATCH, which distinguish known-not-run from unknown) is planned and will be added as a compatible extension of this enum; see architecture/TASK_STATE_MODEL.md section 7.3."
+          },
+          "public_message": {
+            "type": "string",
+            "maxLength": 1024
+          }
+        },
+        "description": "Public projection only. It intentionally excludes worker identity, lease, attempt topology, policy revision and raw verification evidence."
+      },
+      "TaskResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema",
+          "task_id",
+          "artifacts"
+        ],
+        "properties": {
+          "schema": {
+            "type": "string",
+            "const": "eki.task-result/v1"
+          },
+          "task_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+          },
+          "artifacts": {
+            "type": "array",
+            "maxItems": 64,
+            "items": {
+              "$ref": "#/components/schemas/ResultArtifact"
+            }
+          },
+          "assurance": {
+            "$ref": "#/components/schemas/PublicAssuranceSummary"
+          },
+          "output_digest": {
+            "$ref": "#/components/schemas/Digest"
+          }
+        },
+        "description": "Public projection of an accepted result. output_digest is optional and additive within eki.task-result/v1: it is the digest of the output as recorded in the durable AcceptedResult, never recomputed. It lets a Client pin the accepted result and detect substitution or loss. It is not an artifact reference of its own; whether the body can still be fetched is answered by artifacts[].available and the retrieval route. The claim digest, verification digests, verifier identities, policy digest, Worker and Lease data are not exposed."
+      },
+      "ResultArtifact": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One entry of TaskResult.artifacts. It answers two questions the requester needs before it tries to fetch: what the Task produced, and whether the body can still be fetched (#493).",
+        "required": [
+          "sha256",
+          "size_bytes",
+          "available"
+        ],
+        "properties": {
+          "sha256": {
+            "$ref": "#/components/schemas/Digest"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "available": {
+            "type": "boolean",
+            "description": "True when GET /v1/artifacts/{artifact_id} can serve the body now. A false entry keeps its digest and size: the record of what was produced survives the body's removal."
+          },
+          "artifact_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "description": "Present only when available is true. Handing out an identifier that answers 410 or 404 would read as \"try and see\"."
+          },
+          "media_type": {
+            "type": "string",
+            "description": "What the Worker declared. It is not a promise about the bytes: EKI never inspects them."
+          },
+          "data_class": {
+            "type": "string",
+            "enum": [
+              "public",
+              "internal",
+              "restricted"
+            ],
+            "description": "What the Worker declared about the data in the body (ADR-0034 §9). It is a declaration, not a check: EKI does not read the bytes, so it cannot confirm it. It never decides who may fetch the body: that stays owner-only."
+          }
+        }
+      },
+      "Problem": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "title",
+          "status",
+          "code"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "format": "uri-reference"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "status": {
+            "type": "integer",
+            "minimum": 400,
+            "maximum": 599
+          },
+          "detail": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "instance": {
+            "type": "string",
+            "format": "uri-reference"
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]{0,127}$"
+          },
+          "retryable": {
+            "type": "boolean"
+          },
+          "task_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+          },
+          "policy_reason_category": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]{0,127}$"
+          }
+        },
+        "description": "RFC 9457 Problem Details with stable EKI extensions. Clients must branch on code/status, not detail text."
+      }
+    }
+  },
+  "paths": {
+    "/v1/tasks": {
+      "verbs": [
+        "post"
+      ],
+      "responses": {
+        "post": [
+          "202",
+          "400",
+          "401",
+          "403",
+          "405",
+          "409",
+          "413",
+          "422",
+          "429"
+        ]
+      }
+    },
+    "/v1/tasks/{task_id}": {
+      "verbs": [
+        "get"
+      ],
+      "responses": {
+        "get": [
+          "200",
+          "401",
+          "403",
+          "404",
+          "405"
+        ]
+      }
+    },
+    "/v1/tasks/{task_id}/result": {
+      "verbs": [
+        "get"
+      ],
+      "responses": {
+        "get": [
+          "200",
+          "401",
+          "403",
+          "404",
+          "405",
+          "409"
+        ]
+      }
+    },
+    "/v1/artifacts/ingest-intents": {
+      "verbs": [
+        "post"
+      ],
+      "responses": {
+        "post": [
+          "201",
+          "400",
+          "401",
+          "403",
+          "405",
+          "409",
+          "413",
+          "429",
+          "501"
+        ]
+      }
+    },
+    "/v1/artifacts/{artifact_id}": {
+      "verbs": [
+        "get"
+      ],
+      "responses": {
+        "get": [
+          "200",
+          "401",
+          "404",
+          "405",
+          "410",
+          "501"
+        ]
+      }
+    }
+  }
+}

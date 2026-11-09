@@ -93,7 +93,7 @@ func TestIndependentQuoteWASIP1AgainstCandidateSemanticVectors(t *testing.T) {
 	artifactDigest := digestBytes(rawWasm)
 	// Both builds consume precisely the same copied Go source. Each result is
 	// an independent physical artifact with a different exact digest.
-	native := filepath.Join(t.TempDir(), "order-quote-native")
+	native := hostExecutable(t.TempDir(), "order-quote-native")
 	nativeBuild := exec.CommandContext(buildCtx, "go", "build", "-o", native, ".")
 	nativeBuild.Dir = work
 	nativeBuild.Env = append(os.Environ(), "GOOS="+runtime.GOOS, "GOARCH="+runtime.GOARCH, "GOENV=off", "GOWORK=off", "GOFLAGS=", "GOTOOLCHAIN=local", "GOPROXY=off", "GOSUMDB=off")

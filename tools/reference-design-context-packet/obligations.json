@@ -1,0 +1,17 @@
+{
+  "schema": "tei.reference.design-context-obligations/v0",
+  "issue": "hat47x/tei-platform#3262",
+  "target": {"kind": "semantic-data", "id": "sales.order"},
+  "requiredSources": ["semantic/sales/order.tei"],
+  "requiredFacets": [
+    "data",
+    "function",
+    "business",
+    "rule",
+    "dependency",
+    "parser-and-role",
+    "accepted-meaning",
+    "disclosure",
+    "external-delivery"
+  ]
+}
