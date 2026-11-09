@@ -568,13 +568,13 @@ entry側（`cmd/tei`）は**変更不要**だった。childが申告するよう
 
 #### 実測：`internal/plugin`はBuilder catalogの代わりになるか
 
-ならない。`internal/plugin.Requirement`は`Plugin`と`CompatibleMajor`だけを持ち、**`recipeKinds`・`targets`・`profiles`・`authorityScope`を持たない**。`BuilderResolver`が解く問い（contract・recipe kind・target・profileに適合するProviderはどれか）に答えられない。
+ならない。`internal/plugin`の`Requirement`は`Plugin`と`CompatibleMajor`だけを持ち、**`recipeKinds`・`targets`・`profiles`・`authorityScope`を持たない**。`BuilderResolver`が解く問い（contract・recipe kind・target・profileに適合するProviderはどれか）に答えられない。
 
 #### 三つの案
 
 | 案 | 内容 | 何が要るか | 何が増えるか |
 | --- | --- | --- | --- |
-| **R-1: 既定をin-processへ** | `cmd/tei`が`internal/buildintent.Resolve`を直接呼ぶ | **`internal/`に四つのportの実装を新設**（Source解決・Builder catalog・Dependency catalog・Target catalog）。fixture catalogは参照実装専用なので移せない | subprocess起動が消え、entryが**自分で計画を導いた**と言える |
+| **R-1: 既定をin-processへ** | `cmd/tei`が`internal/buildintent`の`Resolve`を直接呼ぶ | **`internal/`に四つのportの実装を新設**（Source解決・Builder catalog・Dependency catalog・Target catalog）。fixture catalogは参照実装専用なので移せない | subprocess起動が消え、entryが**自分で計画を導いた**と言える |
 | R-2: 既定はchild起動のまま | 現状維持 | なし | 何も変わらない |
 | R-3: 併存 | `-intent-resolver`があればchild、無ければin-process | R-1と同じ実装 | 経路が二つになり、**どちらで導いたかが出力の別欄になる** |
 
@@ -648,6 +648,82 @@ builder childが`compareIntentFields`で比べる。
 
 **`parameters`は測れば決まった。この2つは規則そのものを決める必要がある。** 同じ「未決」でも種類が違う。
 
+### 4.19 `builder`の照合と、そこで分かった照合の性質（2026-11-09）
+
+§4.18は`builder`を「要求と解決結果の対応規則を決める必要がある」として残した。**測ると規則は既にresolverの中にあった。**
+
+| 段 | 実装 |
+| --- | --- |
+| 候補の絞り込み | `p.Contract == req.Contract && p.ContractMajor == req.CompatibleMajor` |
+| 解決結果の生成 | `ContractVersion`を「契約名 + `/v` + major」で組み立てる |
+
+したがって対応は**推測ではなく、resolverが既に適用している規則**である。新設した`internal/buildintent`の`BuilderContractVersion`に一箇所で定義し、resolverとbuilder childの両方がこの関数を通す形にした。**両側が同じ関数を通るので、照合は書式ではなく要求を試す。**
+
+childは三点を比べる（§4.19の実装、[記録](../evidence/TEI_GO_SELF_BUILD_BUILDER_REQUIREMENT_2026-11-09.md)）。
+
+| 宣言 | plan | 規則 |
+| --- | --- | --- |
+| `contract` + `compatibleMajor` | `builder.contractVersion` | `BuilderContractVersion`で組み立てて完全一致 |
+| `provider.plugin`（指定時） | `builder.id` | 完全一致 |
+| `pin.artifactDigest`（指定時） | `builder.artifactDigest` | 完全一致 |
+
+`provider.implementation`は`plugin.BuilderIdentity`に対応する欄が無いため照合しない。**比べないことをコードにも書く。**
+
+#### 実測で分かった、照合そのものの性質
+
+**同じ宣言からresolverが導いたplanに対して、この照合は決して失敗しない。** 要求を満たさない宣言からはresolverがplanを作らないためである（実測：`compatibleMajor`を2にすると`no compatible builder provider for contract tei.plugin-build/v2`で停止する）。
+
+したがってこの照合が効くのは、**planがその宣言から導かれたものではない**場合だけである。具体的には次の三つ。
+
+- 宣言がplanの解決後に変わった
+- planが別の宣言から導かれた（§4.8のSC0-13が問う状況）
+- planがresolver以外（手書き・別ツール）で作られた
+
+**これは弱い検査ではなく、狙いどおりの検査である。** childは「渡されたplanが渡された宣言と対応しているか」を確かめており、対応していなければ止まる。
+
+### 4.20 欄ごとの照合は何を保証するのか（`secretRequirements`の扱いを決める、2026-11-09）
+
+§4.19で分かった性質は、**`secretRequirements`だけの話ではなく、§4.17以降に足してきた欄ごとの照合すべてに当てはまる。** ここで一度、何を保証しているのかを言い直す。
+
+#### 言い直し
+
+宣言のbyteが一致していれば（`intentByteCheckMatched=true`）、そのbyteから導かれる値は**すべて**一致する。**planがそのbyteから導かれたものである限り**、§4.14以降に足してきた`recipe`・`sources`・`dependencies`・`parameters`・`builder`・build座標の照合は**必ず通る。**
+
+つまり欄ごとの照合は、**独立の証拠を増やしていない。** 増やしているのは次の一点だけである。
+
+> **そのplan（またはreceipt）が、保持したbyteから導かれたものではない場合に、どこが食い違うかを名指しで示す。**
+
+これは価値がある。食い違いを「byteが違う」とだけ言われるより、「宣言の`target`が違う」と言われる方が原因を追える。だが**保証の強さは変わらない。**
+
+#### したがって`secretRequirements`は照合しない
+
+§4.18は`secretRequirements`を「規則を決める必要がある」として残したが、**照合しても保証が増えない以上、規則を決める理由がない。**
+
+三つの選択肢を比べた結果は次のとおり。
+
+| 案 | 内容 | 判定 |
+| --- | --- | --- |
+| **S-1: childで照合しない** | planに対応欄が無いことを理由付きで記録する | **採る** |
+| S-2: childがreceiptも受け取る | childの入力契約が変わり、「planを消費するchild」ではなくなる | 採らない。**保証が増えないのに契約だけ広がる** |
+| S-3: `plugin.BuildPlan`に秘密名を持たせる | 製品の型の意味変更 | 採らない。**比較のためだけに製品型へ欄を足す**ことになり、その欄に消費者が無い |
+
+**S-2とS-3は「照合を増やすために契約を広げる」取引である。** 保証が増えないなら、取引は割に合わない。§4.19が示したのは「この種の照合は原因究明を助けるが、保証は増やさない」ということであり、その結論は**照合を広げる方向に進まない**ことを支持する。
+
+#### これ以上の欄照合は足さない
+
+§4.17以降、照合できる欄を順に足してきた。**ここで打ち切る。** 理由は三つ。
+
+1. **保証が増えない。** byte一致が成り立てば必ず通る
+2. **「照合した」が「導出した」に見える危険がある。** 欄が増えるほど、planの全項目を確かめたように読める。実際に確かめているのは「保持したbyteとの対応」だけである
+3. **欄を増やすより、通らない場合に原因を名指しする方が効く。** 食い違いの原因を示す仕組みは既にあり、欄を足す必要はない
+
+**残る段差は欄照合では埋まらない。** 埋めるのはI-1bの先、すなわち「そのplanがそのartifactを生んだか」（(c)）と、entryの既定経路（§4.16のR-2）である。**欄を足すことは、このどちらにも近づかない。**
+
+#### この節が言っていないこと
+
+- 既に足した照合を外す、とは言っていない。**原因究明の道具として残す**価値はある
+- `secretRequirements`の意味が不要だとは言っていない。**照合の相手がplanに無い**と言っている
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
@@ -671,6 +747,8 @@ builder childが`compareIntentFields`で比べる。
 | SC0-17 | builder childがentryの保持した宣言と**別の宣言**を読む | `intentBinding.intentByteCheckMatched=false`・`ok=false`。childが読んだbyteをself-reportさせることで初めて検出できる（§4.14） |
 | SC0-18 | builder childへ`-intent`を渡さず、沈黙を合格と読む | `intentByteCheckPerformed=false`と理由が残る。欄が無いことを一致と読ませない（§4.14） |
 | SC0-19 | builder childが読む宣言がplanのPluginと別のsubjectを指す | childがreportを出さずexit 1。一致し得ない二つの値を「読んだ値」として返さない（§4.14） |
+| SC0-20 | 宣言の`compatibleMajor`を、planを作ったときと変える | childがreportを出さずexit 1。**同じ宣言から解いたplanでは起こらず**、planがその宣言由来でない場合にだけ検出できる（§4.19） |
+| SC0-21 | `secretRequirements`の照合を足そうとする | 足さない。byte一致が成り立てば必ず通るため保証が増えず、childの入力契約か`plugin.BuildPlan`を広げることになる（§4.20） |
 
 ## 6. 未決事項
 
@@ -683,7 +761,9 @@ builder childが`compareIntentFields`で比べる。
 - ~~`cmd/tei`を対象にしたL3~~ → **実測済み**（[記録](../evidence/TEI_SELF_BUILD_CMD_TEI_L3_2026-11-08.md)、`bb7fc01bb`）
 - ~~`-intent`を入口へ足せるか~~ → **§4.7でI-2（childとして起動）を既定案に**。L2のClaimは§4.8の二層に分ける
 - ~~`-intent`の実装（I-2）と、宣言byte digest・childの照合値・突合結果の三つを一つの出力に載せること~~ → **§4.9で実装済み**（`-intent-resolver`のreceiptと`planCrossCheck`。`l2bClaimed`は常にfalse）
-- **builder childが自分の読んだ宣言と導いた計画を報告する経路**。これが無いと`planCrossCheck`は実プロセスで`unperformed`のままである（§4.9）
+- ~~builder childが自分の読んだ宣言と導いた計画を報告する経路~~ → **§4.14で実装済み**（`-intent`でchildが宣言byte digestと照合値を申告する）
+- ~~`builder.contract`・`compatibleMajor`の照合~~ → **§4.19で実装済み**（対応規則はresolverに既にあり、`BuilderContractVersion`として一箇所に定義した）
+- ~~`secretRequirements`の照合~~ → **§4.20でS-1（childで照合しない）に決定**。保証が増えないため、childの入力契約も`plugin.BuildPlan`も広げない
 - `-self-digest`の取得方法（実行ファイル自身のdigestをどう自己参照するか）
 - 出力のschemaVersionと、既存`tei.cli.*`との命名一貫性
 - Seed Trustの扱い（stage0のGoは外部seed。TEI自身によるGoコンパイラのself-hostingではない）
@@ -713,7 +793,9 @@ builder childが`compareIntentFields`で比べる。
 - [x] 宣言とplanの**build座標**（`outputKind`・`target`・`profile`）の照合（[#3652](https://github.com/hat47x/tei-platform/pull/3652)。childが三座標を一つずつ比べ、違えばartifactを書いた後にreportを出さずexit 1。[記録](../evidence/TEI_GO_SELF_BUILD_BUILD_COORDINATES_2026-11-09.md)）
 - [x] 宣言の他の欄のうち、planが同じ形で持つもの（`recipe`・`sources`・`dependencies`）の照合（[#3661](https://github.com/hat47x/tei-platform/pull/3661)。§4.17）
 - [x] `parameters`の照合（[#3664](https://github.com/hat47x/tei-platform/pull/3664)。測るとどちらの側も名前順ソートのみで値を変えないと分かったので、名前で突き合わせる。§4.18）
-- [ ] `builder`（要求と解決結果の対応規則）と`secretRequirements`（planに対応する欄が無い）の照合。**規則そのものを決める必要があり、測れば決まる種類ではない**（§4.18末尾）
+- [x] `builder`（要求と解決結果の対応規則）の照合（[#3670](https://github.com/hat47x/tei-platform/pull/3670)。対応規則はresolverに既にあり、`BuilderContractVersion`として一箇所に定義した。§4.19、[記録](../evidence/TEI_GO_SELF_BUILD_BUILDER_REQUIREMENT_2026-11-09.md)）
+- [x] `secretRequirements`の扱いの決定（§4.20。**S-1: childで照合しない**。byte一致が成り立てば欄ごとの照合は必ず通るため、保証が増えない。childの入力契約も`plugin.BuildPlan`も広げない）
+- [x] **欄ごとの照合をここで打ち切る**決定（§4.20。原因究明の道具として既存は残すが、これ以上足さない。残る段差は欄照合では埋まらない）
 - [ ] D-1（catalogの`scope`拡張）を採るかどうかの契約判断（採る場合のみ、catalogの広告と実応答の一致を照合へ載せる）
 
 **A-1（`gobuilder`移動）は採らないため、影響範囲の洗い出しは終了条件から外した。** 29ファイルの内訳は[記録](../evidence/TEI_GO_INTERNAL_RULE_AND_BUILDER_MOVE_2026-11-07.md)として残す。I-1は「採らない」から「I-1aとして着手」へ改めた（§4.13）。`ParseFixtureCatalog`（fixture catalog）は`tools/`に残す。
