@@ -114,6 +114,40 @@ jobs:
           print(f"T0 expected control {case}: verified. Actual REA exit={code}; no full-coverage claim.")
           PY
 
+      - name: Project external observations without accepting TEI meaning
+        shell: bash
+        env:
+          REPORT_DIR: ${{ steps.reports.outputs.directory }}
+        run: |
+          python3 tools/rea-t0-saved-report/project_observations.py "$REPORT_DIR" > "$REPORT_DIR/external-candidates.json"
+          python3 - "$REPORT_DIR" "$T0_CASE" <<'PY'
+          import json
+          import pathlib
+          import sys
+          root, case = pathlib.Path(sys.argv[1]), sys.argv[2]
+          candidate = json.loads((root / 'external-candidates.json').read_text())
+          assert candidate['effect'] == 'read-only'
+          assert candidate['TEICanonicalSubject'] is None
+          assert candidate['qualifiedTEISource'] is False
+          assert candidate['acceptedMeaning'] is False
+          assert candidate['sourceClosure'] == 'not-qualified'
+          assert candidate['rawReportSHA256'] == json.loads((root / 'consumer-audit.json').read_text())['stdoutSHA256']
+          if case in ('valid', 'partial'):
+              assert candidate['admission'] == 'external-candidates-only'
+              expected = {'valid': (14, 1, 'complete'), 'partial': (12, 0, 'partial')}
+              records, unknowns, coverage = expected[case]
+              assert len(candidate['records']) == records, candidate
+              assert len(candidate['unknowns']) == unknowns, candidate
+              assert candidate['graphCoverage']['status'] == coverage, candidate
+              assert candidate['semanticCoverage']['status'] == 'unknown', candidate
+              if case == 'partial':
+                  assert any(r['observedState'] == 'unavailable' for r in candidate['records'])
+          else:
+              assert candidate['admission'] == 'refused'
+              assert candidate['records'] == []
+          print(f'T1-A candidate-only projection {case}: checked; TEI admission not performed.')
+          PY
+
       - name: Upload original reports and diagnostics even after failure
         if: ${{ always() && steps.reports.outputs.directory != '' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
