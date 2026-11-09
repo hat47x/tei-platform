@@ -225,3 +225,6 @@
 
 # Instances/bindings resolver survey output is hashed as raw bytes by its README.
 /plan/evidence/INSTANCES_BINDINGS_RESOLVER_2026-11-09/** -text
+
+# Burst-size observations are hashed as raw bytes.
+/plan/evidence/DSH_SESSION_LOG_BURST_2026-11-10/** -text
