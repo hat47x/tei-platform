@@ -1046,6 +1046,54 @@ ContractVersion: fmt.Sprintf("%s/v%d", p.Contract, p.ContractMajor),
 - `-strong`の名前・粒度・既定値。
 - 既定経路を変えることの後方互換への影響（既存の呼び手は何も渡さずに走っている）。
 
+### 4.26 二つのホストで同じ計画とartifactが出る（2026-11-09）
+
+§4.21・§4.23・§4.24は、いずれも「**このホスト**での観測」と範囲を限定していた。本節はその限定を**二つのホスト**に広げる。
+
+#### 測ったこと
+
+同じ宣言・同じsource・同じcatalogから、`windows/amd64`と`linux/amd64`で四つの照合値を導き、比べた。
+
+| 値 | 何が決めるか | Windows | Linux |
+| --- | --- | --- | --- |
+| `intentFingerprint` | 宣言の正規化 | `22e346d1…` | **同じ** |
+| `sourceClosure` | sourceの相対member pathと内容 | `582ec417…` | **同じ** |
+| `planFingerprint` | 上記＋catalogのfingerprint | `e61096a4…` | **同じ** |
+| `artifactDigest` | 計画から作るバイト | `sha256:675dc815…` | **同じ** |
+
+**Go版も違う**（`go1.27.0`と`go1.27.3`）。版をまたいで一致したことになる。
+
+`cmd/tei`のエンドツーエンド試験（§4.24）も**WindowsのGoで直接**実行し、`TestSelfBuildEstablishesL2BEndToEnd`が**PASS**した。つまり`l2b.claimed=true`になる試行が両方のホストで成立する。
+
+#### なぜ一致するのか
+
+偶然ではない。三つの性質から説明できる。
+
+| 値 | ホスト非依存である理由 |
+| --- | --- |
+| `sourceClosure` | 相対member pathと内容だけから決まり、rootの場所を含まない（§4.14で`DirSourceResolver`を移した際の性質） |
+| `planFingerprint` | `NormalizeBuildPlan`が列挙順を除いた構造から決まる |
+| `artifactDigest` | `MaterializePluginPackage`が正規化した定義を直列化した結果で、改行やパスの混入が無い |
+
+**実測はこの説明を確かめたことになる。** 「一致した」だけでなく「一致するはずだと言える」状態になった。
+
+#### 範囲の更新
+
+Claimの`boundary`文言を、**このホスト**から**観測した二つのホスト**へ改める。
+
+| 欄 | 変更 |
+| --- | --- |
+| `artifactReproducibility.boundary` | 「the host that ran it」＋「linux/amd64 と windows/amd64 で同じバイトを観測した」 |
+| `l2b.boundary` | 「the host that ran it」＋「観測したのは linux/amd64 と windows/amd64。他のホストは未証明」 |
+
+**観測していないホストを含めない**という原則は変えない。`darwin`・`arm64`・別のGo版の組合せは未観測である。
+
+#### この節が言っていないこと
+
+- すべてのOSで一致するとは言っていない。**二つのホスト**である
+- catalogが正しいこと（§4.22 K-3、SC0-26）、受理・Runtime Authority・Trustは変わらない
+- 既定の試行でClaimが立つことは変わらない（§4.23末尾）
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
@@ -1079,6 +1127,7 @@ ContractVersion: fmt.Sprintf("%s/v%d", p.Contract, p.ContractMajor),
 | SC0-27 | `l2b.claimed=true`を受理・Runtime Authorityと読む | 読まない。`qualified`は`false`のままで、`l2b.boundary`が範囲を明記する（§4.23） |
 | SC0-28 | 単一の観測（`bound`だけ、`reproduced`だけ）でL2-bを主張する | 主張しない。述語は五条件の同時成立を要求し、欠けた条件をすべて列挙する（§4.23） |
 | SC0-29 | `l2bClaimed`を`false`に固定したまま「L2-bは未成立」と述べ続ける | 述べ続けない。ただし**Claimを立てるには呼び手がin-processと`-rebuild-check`を明示する必要がある**（既定は変わっていない。§4.23） |
+| SC0-30 | 二つのホストで一致したことを「すべてのOSで一致する」と読む | 読まない。観測したのは`linux/amd64`と`windows/amd64`で、他のホストは未観測である（§4.26） |
 
 ## 6. 未決事項
 
@@ -1127,6 +1176,8 @@ ContractVersion: fmt.Sprintf("%s/v%d", p.Contract, p.ContractMajor),
 - [x] **段2**：`cmd/tei`に`-build-catalog`・`-build-catalog-digest`・`-build-source-root`を足し、in-processで計画を導く経路を作った（`-intent-resolver`とは排他。§4.22、[記録](../evidence/TEI_GO_SELF_BUILD_INPROCESS_RESOLUTION_2026-11-09.md)）。**entryが導いた計画のfingerprintは参照実装のchildが出した値と一致した。** `planRecompute`・`planCrossCheck`・`planArtifactBinding`はin-process経路でも成立する
 - [x] L2-bのClaimを立てるかの判断と実装（§4.23。**五条件の同時成立**を述語にし、`l2b.claimed`と`l2b.unmet`として出す。[記録](../evidence/TEI_GO_SELF_BUILD_L2B_CLAIM_2026-11-09.md)。単一観測の`l2bClaimed`欄は`false`のまま据え置き、述語はそれらを読まない）
 - [x] L2-bのClaimを**回帰試験**にする（§4.24。参照catalogと参照builder childで五条件が揃うことを`cmd/tei`の試験で固定し、`go test ./...`経由で健康性確認に載る。[記録](../evidence/TEI_GO_SELF_BUILD_L2B_GATE_2026-11-09.md)）
+- [x] 二つのホスト（`linux/amd64`・`windows/amd64`）で同じ計画とartifactが出ることの実測（§4.26。[記録](../evidence/TEI_GO_SELF_BUILD_CROSS_OS_DIGESTS_2026-11-09.md)。`intentFingerprint`・`sourceClosure`・`planFingerprint`・`artifactDigest`の四つが一致し、L2-bのエンドツーエンド試験もWindowsでPASSした。**Go版も違う**）
+- [ ] `darwin`・`arm64`・別のGo版の組合せでの観測（§4.26の範囲外）
 - [ ] `l2b.claimed`を**既定の試行**で立てられるようにするか（今は呼び手がin-processと`-rebuild-check`を明示する必要がある。§4.23末尾）
 - [x] 宣言とplanの**build座標**（`outputKind`・`target`・`profile`）の照合（[#3652](https://github.com/hat47x/tei-platform/pull/3652)。childが三座標を一つずつ比べ、違えばartifactを書いた後にreportを出さずexit 1。[記録](../evidence/TEI_GO_SELF_BUILD_BUILD_COORDINATES_2026-11-09.md)）
 - [x] 宣言の他の欄のうち、planが同じ形で持つもの（`recipe`・`sources`・`dependencies`）の照合（[#3661](https://github.com/hat47x/tei-platform/pull/3661)。§4.17）
