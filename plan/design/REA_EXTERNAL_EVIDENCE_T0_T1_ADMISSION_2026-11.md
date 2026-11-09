@@ -196,3 +196,35 @@ python3 tools/rea-t0-saved-report/audit.py /absolute/path/to/saved-rea-report \
 **統合時のチェック**：本PRは[main統合済み #3542](https://github.com/hat47x/tei-platform/pull/3542)の設計索引変更と衝突していたが、最新mainのREADME内容に**本REA設計1行だけを再適用**してPRのmergeableを回復させた。Branch全体のMerge Commitによる完全追随ではなく、GitHubのbaseとheadがdivergedしたままなので、レビュー直前には最新main・PR diffを再照合する。過去の重複全文や索引二重貼付を戻さない。
 
 **資格上限**：WorkflowをGitHubへ**登録した事実**と、ActionsでREA実解析4ケースが成功した事実は別。T0は各Jobのexact head/実workflow logs/保存raw/report SHA／独立Reader判定が確認されるまで**NOT RUN / UNQUALIFIED**。T0が成立してもT1-A実TEI Adapter、T1-B Loader/Owner Meaning、T2三視点/SHO Writer/Target実比較は全て別資格。
+
+
+---
+
+<!-- rea-t0-live-four-case-evidence-20261109 -->
+## 13. T0-01〜04：REA実プロセス4対照の取得・別Reader再読取（2026-11-09）
+
+**実際のGitHub Actions証拠**：[T0 4-case Run #42555450826](https://github.com/hat47x/tei-platform/actions/runs/42555450826) = `completed/success`、tested HEAD **`3134fe04cc6dbe15c1171ffebe2d83c6c832e1bd`**、4 Matrix Jobすべて `completed/success`（Ubuntu 24.04、Node **v24.22.1**、実`rea --version`出力 **6.7.0**）。別[T0 saved-report Unit Run #42555450866](https://github.com/hat47x/tei-platform/actions/runs/42555450866)も同HEADで`completed/success`。旧[unit Run #42555291193](https://github.com/hat47x/tei-platform/actions/runs/42555291193)の実Jobログからも18 tests/18 passが確認された。Runの成功判定は**各テストの独立Expected**に対するものであり、missing/unsupportedのREAプロセス自体は非0終了した。
+
+4個のGitHub Action artifact ZIPを別途実ダウンロードし、ファイルを再読取して、`analysis.json`/`analysis.stderr` raw SHA-256の独立再計算値と同じZIP内の`consumer-audit.json`・`raw-report-sha256.txt`が一致することを照合した。下表は実Artifactから採集した値であり、合成fixtureの期待文字列ではない。
+
+| 対照 | GitHub Artifact ID（7日保持設定） | REA exit | JSON SHA-256 | 解析失敗／REAの明示limitations | 保存結果 |
+|---|---:|---:|---|---|---|
+| **T0-01 valid** | `13646699709` | **0** | `c9a3197e6966b7ba1946d8c6cc1a0d7d2cc6f2f26190f3d5fde61e7582e8e1b3` | `parse_failures=0`／**5件** | `ok=true`、構文解析成功。**情報完全性はunknown** |
+| **T0-02 missing** | `13647033339` | **1** | `47548154f2996c4afbf59e624530f29b4cfbab08c8d5ef71fa4d114425654f84` | 該当なし | `ok=false`、`error.code=invalid_request`／`error.category=invalid_input` |
+| **T0-03 unsupported** | `13646967220` | **1** | `d1177c957b94b0acb10d4ed8177eea1dad9bc119bc74ffa190dc082d0232c2fc` | 該当なし | `ok=false`、`error.code=unsupported_target` |
+| **T0-04 partial** | `13646404103` | **0** | `6e098abef03a1374c0cbf6ee02e24d32a4dde4bee02f87284f82c77eeffa4b32` | `parse_failures=1`／**6件** | `ok=true`でも`analysisQualification=partial`、`Graph coverage is incomplete`明示 |
+
+### Source Identity／Provider Identity／Evidence Identityの読み違いを防ぐ実値
+
+- **Input byte**：valid/missing/unsupportedの合成`index.js` SHA-256 = `938a5a8795a132572c972312c8630522da0ab0c8d114b9ed4f7d0a2cd55d3cf9`、partialの`index.js` SHA-256 = `7d0a96b38265f42f72c05331cfd25eac98d0f5f013acdb3d552fb446e147b9c2`。各Jobの`fixture-source-sha256.txt`を保存済み。`package.json`は4Job共通SHA-256 `5b9dec1e248aba72767e7ecc9077d3490b0e038db1fab9f865ce99b736514c3e`。missing/unsupportedは**選択対象が違う**ので、生成済みディレクトリが同じでもObservation受入成功ではない。
+- **REAが報告したroot artifact digest**：valid = `c167ed5e550845a1cb583e4f4150a049459d4044943baee552d692ee39a936ef`、partial = `815fe5b0a1387fe27ab836a721029ec38b57c33a551979a7a130b6f7abd7bb4f`。上記`analysis.json` raw SHAとは別Identity。これらは**REAが発行したDigest主張**であり、独立アルゴリズムからroot SHAを再実装して検証した値ではない。
+- **REA Evidence ID（外部名前空間）**：valid = `ev_c70a4ea0e6b9bcf63d250213ca6d985dbaaeadb4b8062486c0619275941a7d03`、partial = `ev_cc598c4428a3736166ff55eb4cc878b4db4675cf02e664e7768af44beaac9ab5`。両方の`data.provider`は `id=rea-javascript-application, version=1`（**Evidence内でREAが自己申告したProvider descriptor**）。実CLI package version `6.7.0`とProviderの宣言version `1`を同一視しない。別プロセス実呼出しの完全なLink/Manifest照合は未観測。
+- **解析制約**：validでもinert静的解析、実行時のイベント/SQL/Flow実発火は確認されず、元ソースから発見できない経路は引き続きunknown。partialは制約文`Graph coverage is incomplete; unavailable facts remain explicit and must not be read as absence.`が追加。REAの`limitations` 5/6件を数としてだけでなく原本Evidenceへの参照付きでT1-Aに渡すこと。存在しない`unknowns`配列を空集合と決めつけない。
+
+### ここで初めて合格とできる範囲
+
+**T0-01〜04の固定Synthetic JavaScript／REA実CLI／保存済みraw／独立T0 Consumerの限定対照はPASS**（4個の別Job・別Attempt）。T0-05（JSONL実export途中断）とT0-06（Provider/profile版変更の再資格化）は今回**NOT RUN**。この4件を一つの同時刻全Source Snapshotとして結合せず、同じ版・同じRun IDの下にある**4つの独立した実行**として記録する。
+
+この実績はT1-AのTEI External Observation AdmissionやT1-B正式`*.tei.md`、実Source→Graph/CRUD/SHO Writer、Owner Meaning、実DB、旧Runtime Effect、実Provider selected→invoked全経路を**合格させない**。制約：npmのtransitive依存は未lock、実Nodeモジュールの完全なbinary digest／Host grant、外部Provider raw/Manifest同時性、全量coverageは未証明。現在のPR HEADはこの記録追記によりtested SHAより後の版であり、**前回のCI結果を新HEADの全体Healthへ転用しない**。
+
+**次の最短着地点**：この実Evidenceの`data.subject`/`data.provider`/`normalized_result`/`limitations`を**Source-backed typed external observation候補**として、現在のTEI共通read-only Application Operationに載せられるかfit-gapを一Functionに限定して検査する。T0の正常/部分/異常を独立Expectedで維持し、Schemaに新しい第二Source RegistryやREA独自Semantic DSLを導入しない。製品側`order_entry.recent_orders`の実DB Readとは別の独立実験であり、合算して同一E2Eとしない。
