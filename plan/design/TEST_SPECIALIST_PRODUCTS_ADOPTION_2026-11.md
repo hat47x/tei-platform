@@ -1946,3 +1946,42 @@ P0R-01〜07で得られたRead証拠を、#3273 **TEST-T1B**、#3271 **PERF-T0�
 **第3優先**：#2831 self-buildの再現性/予定Artifact/実消費Source閉包の差、#3274 E3のCommit→ACK損失とClient Receiptの断絶、#3278/#3267のTrait/BOM、#2582のNFR/性能へ**各Ownerの独立Pressure Case**として適用する。全製品横断E2Eが成立していないため、新Gateや中央基盤に吸収しない。
 
 **今回の実施状態**：main/PRの既存実Go・CLI・DB試験結果を照合して本設計と既存Ownerの受入条件へ反映。ここで述べたT-Discover/R-Readの新実験、Knowledge JSON自己発見修正、MCP全面同値、独立本番Plugin、Host/Client E3連続実証、外部H2/H3、C1・Owner意味受理は**今回NOT RUN／NOT QUALIFIED**。
+
+<!-- tei-test-20261109-declaration-execution-metatests -->
+### 35.11 2026-11-09 11:31Z：宣言→実行の断絶、Hook境界、DSL順序変異をTest Patternの一組へ集約
+
+前節で定義した **T-Discover／R-ReadのP0実行順は変更しない**。その入力・結果に対し、他チャットで**mainへ統合済みの三つの独立観測**から、横断的なTest Patternの適用条件を具体化する。新たなTest Runner/Executor/Oracle/Hook Engine/Environment Resolverを作らない。
+
+#### 宣言が読めることと、実行が届くことの間を計測する
+
+[main #3757](https://github.com/hat47x/tei-platform/pull/3757)のread-only Caller調査では、`internal/environment.Environment` に実装参照を示す**6種類の宣言**がある。これは6種類全部を実行に繋ぐべきという決定ではない。
+
+| 宣言 | 製品コード・参照で確認した接続位置 | 未確認または存在しない辺／Claim上限 |
+| --- | --- | --- |
+| `DeploymentExecutors` | `routing.RouteCommand`で宣言からExecutor IDを解決する参照方式 | `Router.Dispatch`は参照実装のみ。現製品の実配備Operationまで実Call・Effectが届いたとは言えない |
+| `ObservationProviders` | `observation.Binding`が実`cmd/tei/main.go`で宣言を解決する | `observation.Router`は非テストで未構築。実`Observe`／受領済みObservationは不明 |
+| `EvidenceProviders` | `evidence.Binding`が実`cmd/tei/main.go`で宣言を解決する | `evidence.Router`は非テストで未構築。実`Collect`／外部Evidence受領は不明 |
+| `ResourceBindings` | `resource.MatchBindings`は実装あり | Resourceのマッチ／貸与まで。業務Command/Observer実行の正証人ではない |
+| `Instances` | 環境定義の参照・検証 | この調査では製品実解決／Invokeの対象外 |
+| `Bindings` | 環境定義の参照・検証 | この調査では製品実解決／Invokeの対象外 |
+
+この調査の「非試験Callerの有無」は**Sourceコード上の有界正負証拠**であり、Runtime経路の不存在・認可・外部配備状況を全世界に証明しない。特に `observation.Binding` の成功を `Router.Observe` 成功と見なさない。[判断Draft #3771](https://github.com/hat47x/tei-platform/pull/3771)は、この実態を**既存Composition計画へ持ち込む提案**であり、実行方式のOwner決定ではない。
+
+#### TEST-T1Bが選べる「実行可能な負例」の選定規則
+
+| Pattern群 | 先行の実装／実験 | 独立ExpectedとTest Candidateの判定 |
+| --- | --- | --- |
+| **Declaration→Resolver→Invocation→Receipt** | #3757の6宣言、既存#3516/#3692 C-3参照、および#1251/#2586 | Name/ID/Capabilityが読めてBindingも返っても、実Router/Provider/Consumerに届かなければ`invocation-unobserved`相当の局所Gap。**宣言の6種類を自動的に全て実行させるPatternを選ばない**。Ownerが当該用途で実呼出しをRequiredとして指定した時だけ未カバー義務にする |
+| **Hook outcome vocabulary** | [main #3761](https://github.com/hat47x/tei-platform/pull/3761) の`ValidateOutcome`は語彙外の名前を`HOOK_OUTCOME_UNDECLARED`で拒否、名前無し不成立は正当に許容。6件の追加試験が局所PASS | `valueRejected`等の語彙外、語彙内、名前なし不成立を三分割。内部Hook boundaryの検査PASSを**実外部Plugin→CLI/JSON→業務Command結果**へ転用しない。Rule Accepted／Command Refused／技術Failureは別Outcome |
+| **DSLの順序変異** | [main #3750](https://github.com/hat47x/tei-platform/pull/3750) で`states open closing closed`の**後ろ**に`closes on day 20`がある場合、後続語を状態名に取り込んでいたParserの誤りを修正 | 文法上許された二記述順序について、独立に固定した`states={open,closing,closed}`、`closingDay=20`、拒否Ruleの同じ意味への投影を要求。**どんな任意順序も同値**とする一般命題は置かない。Source raw/Spanの改版は同じ意味でもSource Indexと引用資格が変わる |
+| **CLIの重複引数とCardinality** | [PR #3772](https://github.com/hat47x/tei-platform/pull/3772) HEAD `2643027f37f30092f0a6f988ce8161f8f0ae1e54`では一値flag重複を`INVALID_ARGUMENT`で拒否、`view -input`等の繰返しflagを`commands.repeatableFlags`で明示する変更が**提案中**。個別Go/実CLI試験はPRに記載、PRのHealth等CIは照会時 **in_progress** | 重複が黙って最後勝ちになる既存mainの挙動を「仕様」として採用せず、変更PRが統合されるまでは`pending`。生成AgentはflagのCardinality/argvをDiscoveryから確認し、単一値の重複でSource/Scopeを無言に変更しない。MCPのJSON objectとCLI argvの構造差を考慮し、両Transportの生byte同一性を求めない |
+| **設定Dataの未宣言/重複/既定** | [main #3722](https://github.com/hat47x/tei-platform/pull/3722) の宣言済みKey read／[main #3750](https://github.com/hat47x/tei-platform/pull/3750) の`master.setting`例 | 宣言外Keyを空文字の正常値とせず、重複Key/同一Userを拒否し、User値→共有Defaultの選択を独立Expectedで検証。書込み監査/権限/実DBを未接続のまま正式Setting保存成功としない |
+
+#### 最小検収手順と所有関係
+
+1. **P0は変えず、宣言→実行を一つの有界Context行として付与**：#3262が返す`Function/Rule/Provider`の各Requiredについて、`declared/loaded/resolved/invoked/observed/received`のうち、**当該用途に必要**で実証された段階だけを表示。全段階を埋めるためにProduct Capabilityを勝手に発明しない。
+2. **T-Discoverの未知Gapの分類へ適用**：単に宣言されただけの`ObservationProviders`を「テスト済みObserve」としない。Callerの静的調査を「業務機能は存在しない」に昇格させない。必要であれば#2514の独立Expected・#1180の既存Scenarioに一つの負例を渡す。
+3. **独立した境界変異を追加する場合**：Hookの語彙・DSLの許容順序・CLI flag cardinality・Setting Keyは、それぞれ既存の担当が所有する契約に対する一差分の正負試験とする。Test Generator自身のExpectedやActualからExpectedを再導出しない。
+4. **二試行の優先結果を指標化**：T-Discoverは「入力契約自己発見できたか／未知Gapが真にRequiredか／独立Mutant判別」、R-Readは「選択と実Invokeの同一性／実Query RowsetとScopeの完全性」。補助PatternのCase数で進捗を水増ししない。
+
+**現時点の実証資格**：#3757はread-only Caller inventory、#3761は内部Hook境界試験、#3750/#3722は構文・設定の局所試験でmain統合済み。#3772は**未統合・CI進行中**。本節の横断Test Generator・新Scenario実Run／正式外部Plugin、実Provider DB、Studio/H3、C1/NFR、Owner Meaning Acceptanceは**NOT RUN / NOT QUALIFIED**。第二Owner/Runner/Registry/Authorityを追加しない。
