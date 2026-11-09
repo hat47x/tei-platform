@@ -1157,6 +1157,162 @@ Claimの`boundary`文言を、**このホスト**から**観測した二つの�
 - 実buildの所要時間（測っていない）、別ホストの時間
 - `-rebuild-check`を既定にすべきか。**費用の材料であり、判断ではない**
 
+### 4.28 実buildで`-rebuild-check`の比は1.93倍になった（2026-11-09）
+
+§4.27は参照childで`-rebuild-check`のコストを測り、「実buildでは増分がbuild時間に比例し、比は2倍に近づく」と**推論**した。本節はその推論を実buildで確かめる。
+
+#### 実測
+
+`tools/reference-go-build-with-supply`をbuilder childとして`tei self-build`を走らせた。このchildは**実際に`go build`を実行**し、`-artifact-out`と`-state`を尊重する（`-rebuild-check`が差し替えるのはこの二つである）。
+
+| 項目 | 値 |
+| --- | --- |
+| 対象package | `./internal/core`（外部module依存なし） |
+| 環境 | WSL2 Ubuntu 22.04、`go1.27.3 linux/amd64` |
+| 試行 | 5回ずつ、ウォームアップ1回の後、中央値 |
+
+| 条件 | 中央値 | 最小 | 最大 |
+| --- | --- | --- | --- |
+| なし | **5852.7 ms** | 5562.9 ms | 6739.0 ms |
+| あり | **11272.4 ms** | 10406.8 ms | 11792.5 ms |
+| child単体（Go build） | **5568.2 ms** | 5352.4 ms | 6770.8 ms |
+
+| 値 | 結果 |
+| --- | --- |
+| 中央値の差 | **+5419.7 ms** |
+| 中央値の比 | **1.926倍** |
+
+#### §4.27の推論は当たっていた
+
+| 予想（§4.27） | 実測（本節） |
+| --- | --- |
+| 増分は「entryの固定費 ＋ childの仕事」 | 増分5419.7 ms ≒ child単体5568.2 ms ＋ 固定費 |
+| buildが重いほど比は2倍に近づく | **1.926倍** |
+| 参照childでは固定費が支配的（+110 ms、1.807倍） | 実buildでは**buildが支配的**（+5.4秒、1.926倍） |
+
+**同じflagが、childの重さによって意味の違う費用になる。** 参照childでは「entryの段取り代」、実buildでは「buildをもう一度」である。
+
+#### 副産物：Go buildのartifactも再現した
+
+`artifactReproducibility.state`は**`reproduced`**で、二回のbuildのdigestが一致した（`sha256:1bcf33c2…`）。**plugin packageだけでなく、Go buildの成果物も同じplanから同じバイトになった。** §4.21の再現は参照childに限った話ではなかったことになる。
+
+`l2b.claimed`は`false`のまま。entryが解釈していない（catalogを渡していない）ためで、述語どおりの動作である。
+
+#### 既定化の判断に効くこと
+
+| 問い | 材料 |
+| --- | --- |
+| 参照childで既定にできるか | +110 ms（§4.27） |
+| **実buildで既定にできるか** | **+5.4秒。試行が5.85秒から11.27秒になる** |
+| `-rebuild-check`を既定にすべきか | **依然として決めない。** 費用が2桁違う |
+
+**「実buildでは約2倍」が実測で裏づけられた。** 既定化は「すべての試行の壁時計時間をほぼ倍にする」判断になる。§4.25のP-2（再現だけ既定）は、この費用を全試行に課すことになる。
+
+#### この節が言えないこと
+
+- 別のpackage・別ホストでの時間。`./internal/core`は小さく、重い対象では絶対値が変わる
+- 既定化の是非。**費用の材料であり、判断ではない**
+- catalog 3点セットの出所・`-strong`の名前と粒度（§4.25の残る二つの不足分。未着手）
+
+### 4.29 catalogの欄はリポジトリのどこにも宣言されていない（2026-11-09）
+
+§4.25は判断に足りないものとして「**catalog 3点セットを既定で用意できるか**」を挙げた。本節はその問いを、**catalogの各欄がどこで宣言されているか**という形で測る。
+
+#### 実測
+
+`BuildProvider`の7欄について、`internal/`と`cmd/`から`"欄名"`を検索し、**catalogの型定義以外に宣言面があるか**を確かめた。
+
+| 欄 | catalogの型以外の宣言面 |
+| --- | --- |
+| `contractMajor` | **無い** |
+| `authorityScope` | **無い** |
+| `recipeKinds` | **無い** |
+| `profiles` | **無い** |
+| `targets`（build対象） | **無い**（`internal/index`と`internal/modelref`の`"targets"`は**意味関係の名前**で無関係） |
+| `artifactDigest` | **ある**（`internal/plugin`のlock、宣言の`builder.pin`、runtime service carrier） |
+| `contract`（名前） | 宣言にある。ただし**「どのproviderがどのcontractを提供するか」**はどこにも無い |
+
+**四つ（`contractMajor`・`authorityScope`・`recipeKinds`・`profiles`）は、catalogの型・その試験・`cmd/tei`の試験用catalogにしか現れない。** `targets`も同じで、他の出現は別概念だった。
+
+#### 何が分かったか
+
+**catalogは既存の宣言から導出できない。** 7つのうち5つに宣言面が無いためである。
+
+| 案 | 何が要るか | 評価 |
+| --- | --- | --- |
+| 既存の宣言から生成する | 5欄の出所が無い | **不可** |
+| `plugin`定義にbuilder能力を宣言させる（§4.22 K-2） | **構文拡張** | 可能だが構文と意味の追加 |
+| Workspaceにcatalog欄を設ける（§4.22 K-1） | `tei.workspace.yaml`の拡張 | 可能。Workspaceが「どのbuilderが在るか」の正本になる |
+| 外部の配布物として持つ | catalog自体を成果物にしdigestで名指しする | **K-3が既にこれを前提にしている** |
+
+**「既定で用意できるか」の答えは「今のリポジトリの内容からは用意できない」である。** 用意するには**宣言面を一つ増やす**決定が要る。
+
+#### これは配線の問題ではない
+
+§4.25の表現を借りれば、この不足分は「誰がcatalogを書くか」ではなく、**catalogを書く場所を製品に作るか**という問いである。
+
+§4.22は「**entryがcatalogをどこから読むか**」をK-3（呼び手が名指しする）に決めた。本節はその決定を変えない。変わるのは**「そのcatalogを誰がどう作るか」が未決のまま残る**ことの重みである——既存の宣言からは作れないので、**明示的に作る場所を決めるまで、既定の試行でClaimは立てられない**。
+
+#### この節が言っていないこと
+
+- **どの案が良いか。** K-1・K-2・外部配布物のどれを採るかは契約判断であり、本節は判断しない
+- 外在するconsumerの扱い
+- catalogの中身が正しいこと（§4.22 K-3、SC0-26）
+- `-strong`の名前と粒度（§4.25の三つ目の不足分。未着手）
+
+### 4.30 catalogを名指ししたら、二回目のbuildも既定で行う（2026-11-09）
+
+§4.25は既定経路の強化を四案に整理し、P-4（`-strong`で強さを選ぶ）を推したが決定しなかった。§4.27・§4.28が費用を測り、**参照childで+110 ms、実buildで1.93倍**と分かった。
+
+本節は**一つの場合に限って既定を強くする**。
+
+#### 決めたこと
+
+**`-build-catalog`を渡した試行は、`-rebuild-check`を明示しなくても二回目のbuildを行う。** `-rebuild-check=false`を明示すれば従来どおり一回で終わる。
+
+| 呼び手がしたこと | 二回目のbuild | 理由 |
+| --- | --- | --- |
+| `-build-catalog`を渡した（`-rebuild-check`に触れない） | **行う** | その経路だけがL2-bを立てられる |
+| `-build-catalog`と`-rebuild-check=false` | 行わない | 呼び手が明示的に断った |
+| `-build-catalog`と`-rebuild-check` | 行う | 明示 |
+| `-intent-resolver`（catalogなし） | **行わない** | その経路ではClaimが立たない |
+| どちらも無し | 行わない | 計画を導出しない |
+
+#### なぜこの一つだけか
+
+**catalogを名指しすることは、既に「強い経路を選ぶ」という表明である。** §4.22のK-3により、catalogは呼び手が用意するデータであり、渡すには手間がかかる。その手間を払った呼び手に対して、**同じ経路で取れる最後の観測を既定で取る**のは、費用と便益が同じ側にある。
+
+**child経路は違う。** そちらは`l2b.claimed`が立てられないので、二回目のbuildを足しても費用だけが増える。§4.25が「P-2は非対称」と呼んだのはこの点であり、本節はその非対称を**既定に持ち込まない**形にした。
+
+#### 何が良くなるか
+
+これまでは、catalogを渡した呼び手が`-rebuild-check`を書き忘れると、**何も言われずにClaimが立たなかった**。`l2b.unmet`には理由が出るが、呼び手は「渡したのに立たない」ことに後から気づく。本節の変更で、**catalogを渡せばClaimが立つ**のが既定になる。
+
+費用は実buildで約2倍（§4.28）。**catalogを渡す呼び手だけが払う。**
+
+#### 何が変わらないか
+
+| 項目 | 状態 |
+| --- | --- |
+| 既定の導出経路 | **child のまま**（R-2据え置き。in-processは呼び手が名指しする） |
+| `-intent-resolver`の試行 | 二回目のbuildは既定で行わない |
+| 何も渡さない試行 | 計画も導出せず、二回目のbuildも行わない |
+| `qualified` | `false` のまま |
+| catalogの出所 | §4.22 K-3のまま。**中身を誰が作るかは未決**（§4.29） |
+
+**「既定の試行でClaimが立つ」ようになったわけではない。** catalogを渡すという一手が要る。§4.29が示したとおり、そのcatalogを用意する場所はまだ製品に無い。
+
+#### 覆す条件
+
+- catalogを渡す呼び手が、二回目のbuildを**常に**不要とする場合（費用が受容できない）
+- 二回目のbuildが**失敗しやすい**場合（部分的な成果を返すchildなど）——このときは`-rebuild-check=false`を既定にする
+
+いずれも`-rebuild-check=false`で回避できるため、**既定を戻すのは一行の変更**である。
+
+#### 実測
+
+[記録](../evidence/TEI_GO_SELF_BUILD_INPROCESS_DEFAULT_EVIDENCE_2026-11-09.md)。`-rebuild-check`を**渡さずに**`l2b.claimed=true`になること、`-rebuild-check=false`で`unperformed`の理由が「呼び手が断った」に変わることを確かめた。
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
@@ -1232,8 +1388,10 @@ Claimの`boundary`文言を、**このホスト**から**観測した二つの�
 - [x] §4.8の(a)(b)（builder childが宣言byteを申告し、entryの保持byteと一致する）の実装（§4.14、[記録](../evidence/TEI_GO_SELF_BUILD_CHILD_DECLARATION_2026-11-09.md)、`ee7148138`）
 - [x] entryまたはchildが宣言から**計画まで**独立に導く経路（I-1b。[#3654](https://github.com/hat47x/tei-platform/pull/3654)で`Resolve`を`internal/buildintent`へ移し、fixture catalogは`tools/`に残した。§4.13の反対理由はcatalogについてであり、portについては当たらなかった）
 - [x] (c)の観測：**同じplanを二回、別stateでbuildして同じバイトが出た**（§4.21、[記録](../evidence/TEI_GO_SELF_BUILD_ARTIFACT_REPRODUCIBILITY_2026-11-09.md)。`-rebuild-check`で`artifactReproducibility=reproduced`。lockの`bound`が示せなかった「そのplanがそのartifactを生んだ」を再現で観測した。**L2-bではない**）
+- [x] **実build**での`-rebuild-check`のコスト測定（§4.28。`reference-go-build-with-supply`をchildにして`./internal/core`を実際に`go build`。中央値5852.7 ms→11272.4 ms、**+5419.7 ms・1.926倍**で、§4.27の推論が当たった。二回のbuildのdigestは一致し`artifactReproducibility=reproduced`。[記録](../evidence/TEI_GO_SELF_BUILD_GO_BUILD_REBUILD_COST_2026-11-09.md)）
 - [x] `-rebuild-check`の実コストの測定（§4.27。[記録](../evidence/TEI_GO_SELF_BUILD_REBUILD_CHECK_COST_2026-11-09.md)。参照childでは中央値136.4 ms→246.5 ms（+110.1 ms・1.807倍）で、**増分の大半はchildの仕事ではなくentryの固定費**（child単体3.4 ms）。実buildは未測定）
-- [ ] `-rebuild-check`を**既定**にするかどうかの判断。**§4.25で三つの未決を一つの判断として扱う案（P-1〜P-4）を示した**。実buildの所要時間は未測（§4.25末尾）
+- [x] `-rebuild-check`の既定を**catalogを名指しした試行に限って**強くする決定と実装（§4.30。`-build-catalog`を渡せば二回目のbuildが既定になり、`-rebuild-check=false`で断れる。child経路と何も渡さない試行は変わらない）
+- [ ] `-rebuild-check`を**すべての試行で既定**にするかどうかの判断。**§4.25で三つの未決を一つの判断として扱う案（P-1〜P-4）を示した**。実buildの所要時間は未測（§4.25末尾）
 - [x] catalogの出所の決定（§4.22。**K-3: 呼び手が名指しするcatalogデータ＋必須のdigest**。新しいAuthorityを作らず、既存の`-supply`・`-intent-resolver`と同じ形）
 - [ ] **entryの既定経路をin-processの`Resolve`へ切り替えるか**の判断（§4.16のR-1/R-2/R-3）。前提だったcatalogの出所は§4.22で決めた（K-3）。切り替え自体は段2の完了後に別途決める
 - [x] **段1**：`fixture`を外した名前で`BuildCatalog`・`ParseBuildCatalog`・`ResolveBuilder`・`ResolveDependency`・`CheckTarget`・`DirSourceResolver`を`internal/buildintent`へ移した（`tools/`側は型aliasと薄い委譲。参照実装の試験は**無変更で通る**。§4.22の移行表、[記録](../evidence/TEI_GO_SELF_BUILD_CATALOG_MOVE_2026-11-09.md)）
@@ -1249,7 +1407,9 @@ Claimの`boundary`文言を、**このホスト**から**観測した二つの�
 - [x] `builder`（要求と解決結果の対応規則）の照合（[#3670](https://github.com/hat47x/tei-platform/pull/3670)。対応規則はresolverに既にあり、`BuilderContractVersion`として一箇所に定義した。§4.19、[記録](../evidence/TEI_GO_SELF_BUILD_BUILDER_REQUIREMENT_2026-11-09.md)）
 - [x] `secretRequirements`の扱いの決定（§4.20。**S-1: childで照合しない**。byte一致が成り立てば欄ごとの照合は必ず通るため、保証が増えない。childの入力契約も`plugin.BuildPlan`も広げない）
 - [x] **欄ごとの照合をここで打ち切る**決定（§4.20。原因究明の道具として既存は残すが、これ以上足さない。残る段差は欄照合では埋まらない）
-- [ ] 依存の更なる削減：**entryが計画側も独立に持つ**経路。今はentryのlockもchildの申告から作るため、両方が同じ入力に依存する（§4.11末尾。entryの既定経路の判断（§4.16）と同じ前提に依存する）
+- [x] 依存の更なる削減：**entryが計画側も独立に持つ**経路（[#3729](https://github.com/hat47x/tei-platform/pull/3729)）。lockの計画側はbuilderの申告を優先し、申告が無ければentryの再計算値を使う。どちらを使ったかを`planSideSource`で記録するので、弱い根拠を強い根拠と読ませない（[記録](../evidence/TEI_GO_SELF_BUILD_ENTRY_PLAN_SIDE_2026-11-09.md)）
+- [x] catalogの欄がどこで宣言されているかの実測（§4.29。7欄のうち**5欄にcatalog以外の宣言面が無く**、既存の宣言からは導出できないと分かった。[記録](../evidence/TEI_GO_SELF_BUILD_CATALOG_FIELD_PROVENANCE_2026-11-09.md)）
+- [ ] catalogを**書く場所**を製品に作るか（§4.29。K-1のWorkspace欄・K-2のplugin構文拡張・外部配布物の三択。既定の試行でClaimを立てるには、この決定が要る）
 - [ ] D-1（catalogの`scope`拡張）を採るかどうかの契約判断（採る場合のみ、catalogの広告と実応答の一致を照合へ載せる）
 
 **A-1（`gobuilder`移動）は採らないため、影響範囲の洗い出しは終了条件から外した。** 29ファイルの内訳は[記録](../evidence/TEI_GO_INTERNAL_RULE_AND_BUILDER_MOVE_2026-11-07.md)として残す。I-1は「採らない」から「I-1aとして着手」へ改めた（§4.13）。`ParseFixtureCatalog`（fixture catalog）は`tools/`に残す。

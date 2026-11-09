@@ -326,6 +326,17 @@ func verifyIndexVisibility() error {
 	return nil
 }
 
+// sameDirectory reports whether a and b name the same directory. It falls back
+// to a case-insensitive comparison when either path cannot be stated, so a
+// path that was just printed by git is still accepted.
+func sameDirectory(a, b string) bool {
+	aInfo, aErr := os.Stat(a)
+	bInfo, bErr := os.Stat(b)
+	if aErr == nil && bErr == nil {
+		return os.SameFile(aInfo, bInfo)
+	}
+	return strings.EqualFold(a, b)
+}
 func repositoryIdentity() (string, error) {
 	top, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
 	if err != nil {
@@ -335,7 +346,12 @@ func repositoryIdentity() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if filepath.Clean(strings.TrimSpace(string(top))) != filepath.Clean(cwd) {
+	// Compare the directories themselves, not their spellings: `git rev-parse`
+	// and os.Getwd can disagree about the same directory when one of them goes
+	// through a link or a Windows short name (C:\Users\RUNNER~1\...), which made
+	// this guard report "run from repository root" on the Windows runner
+	// (#3783).
+	if !sameDirectory(filepath.Clean(strings.TrimSpace(string(top))), filepath.Clean(cwd)) {
 		return "", fmt.Errorf("run from repository root")
 	}
 	if err := verifyIndexVisibility(); err != nil {

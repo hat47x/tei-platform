@@ -1,0 +1,197 @@
+{
+  "contracts": {
+    "where-v1": {
+      "id": "std.where",
+      "version": "1",
+      "fingerprint": "where-v1",
+      "effect": "pure",
+      "inputType": "rows/order",
+      "outputType": "rows/order"
+    },
+    "where-v2": {
+      "id": "std.where",
+      "version": "2",
+      "fingerprint": "where-v2",
+      "effect": "pure",
+      "inputType": "rows/order",
+      "outputType": "rows/filtered"
+    },
+    "where-drift": {
+      "id": "std.where",
+      "version": "1",
+      "fingerprint": "where-drift",
+      "effect": "pure",
+      "inputType": "rows/order",
+      "outputType": "rows/order"
+    },
+    "expand": {
+      "id": "std.expand",
+      "version": "1",
+      "fingerprint": "expand-v1",
+      "effect": "pure",
+      "inputType": "rows/order",
+      "outputType": "rows/line"
+    },
+    "invoke": {
+      "id": "std.invoke",
+      "version": "1",
+      "fingerprint": "invoke-v1",
+      "effect": "write",
+      "inputType": "rows/order",
+      "outputType": "rows/order"
+    },
+    "summary": {
+      "id": "std.summary",
+      "version": "1",
+      "fingerprint": "summary-v1",
+      "effect": "pure",
+      "inputType": "rows/line",
+      "outputType": "summary"
+    }
+  },
+  "cases": [
+    {
+      "id": "p0-pure-expand",
+      "source": "rows/order |> std.where |> std.expand",
+      "pins": [
+        "where-v1",
+        "expand"
+      ],
+      "catalog": [
+        "expand",
+        "where-v1"
+      ],
+      "expected": {
+        "stage": "ok",
+        "output_type": "rows/line"
+      }
+    },
+    {
+      "id": "p0-utf8-byte-span",
+      "source": "　rows/order |> std.where",
+      "pins": [
+        "where-v1"
+      ],
+      "catalog": [
+        "where-v1"
+      ],
+      "expected": {
+        "stage": "ok",
+        "output_type": "rows/order",
+        "first_operator_byte_start": 17
+      }
+    },
+    {
+      "id": "p0-confusable-pin",
+      "source": "rows/order |> std.ｗhere",
+      "pins": [
+        "where-v1"
+      ],
+      "catalog": [
+        "where-v1"
+      ],
+      "expected": {
+        "stage": "lower_error",
+        "error_code": "invalid",
+        "step": 0,
+        "span_token": "std.ｗhere"
+      }
+    },
+    {
+      "id": "p0-effect-rejected",
+      "source": "rows/order |> std.invoke",
+      "pins": [
+        "invoke"
+      ],
+      "catalog": [
+        "invoke"
+      ],
+      "expected": {
+        "stage": "lower_error",
+        "error_code": "effect",
+        "step": 0,
+        "span_token": "std.invoke"
+      }
+    },
+    {
+      "id": "p0-version-not-available",
+      "source": "rows/order |> std.where",
+      "pins": [
+        "where-v1"
+      ],
+      "catalog": [
+        "where-v2"
+      ],
+      "expected": {
+        "stage": "lower_error",
+        "error_code": "missing",
+        "step": 0,
+        "span_token": "std.where"
+      }
+    },
+    {
+      "id": "p0-contract-ambiguous",
+      "source": "rows/order |> std.where",
+      "pins": [
+        "where-v1"
+      ],
+      "catalog": [
+        "where-v1",
+        "where-v1"
+      ],
+      "expected": {
+        "stage": "lower_error",
+        "error_code": "ambiguous",
+        "step": 0,
+        "span_token": "std.where"
+      }
+    },
+    {
+      "id": "p0-input-type-break",
+      "source": "rows/order |> std.summary",
+      "pins": [
+        "summary"
+      ],
+      "catalog": [
+        "summary"
+      ],
+      "expected": {
+        "stage": "lower_error",
+        "error_code": "invalid",
+        "step": 0,
+        "span_token": "std.summary"
+      }
+    },
+    {
+      "id": "p0-syntax-whitespace",
+      "source": "rows/order |> std .where",
+      "pins": [
+        "where-v1"
+      ],
+      "catalog": [
+        "where-v1"
+      ],
+      "expected": {
+        "stage": "parse_error",
+        "error_code": "syntax",
+        "step": 0,
+        "span_token": "std .where"
+      }
+    },
+    {
+      "id": "p0-version-explicit",
+      "source": "rows/order |> std.where",
+      "pins": [
+        "where-v2"
+      ],
+      "catalog": [
+        "where-v1",
+        "where-v2"
+      ],
+      "expected": {
+        "stage": "ok",
+        "output_type": "rows/filtered"
+      }
+    }
+  ]
+}

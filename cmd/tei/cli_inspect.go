@@ -82,7 +82,10 @@ func inspectWorkspaceJSONWithService(out io.Writer, root, world, kind, id string
 		var inspection *operations.InspectionError
 		var stage *operations.ValidationFailure
 		code := 2
-		// Unknown Provider errors can contain host-private paths or credentials.
+		// Unknown Provider errors can contain host-private paths or credentials, so
+		// the default message stays generic. The Load and Source Index stages below
+		// replace it with this process's own error text, which keeps the CLI answer
+		// identical to the MCP adapter for the same input (#3420).
 		failure := &cliInspectionFailure{Code: "INSPECTION_FAILED", Message: "workspace inspection failed"}
 		switch {
 		case errors.As(err, &inspection):
@@ -111,6 +114,10 @@ func inspectWorkspaceJSONWithService(out io.Writer, root, world, kind, id string
 				}
 			}
 		case errors.As(err, &stage):
+			// These two stages fail while reading this process's own Workspace. The
+			// text describes the read, not a Provider, so it is safe to report and
+			// must match the MCP adapter's answer for the same input (#3420).
+			failure.Message = err.Error()
 			switch stage.Stage {
 			case operations.StageLoad:
 				failure.Code = "WORKSPACE_LOAD_FAILED"

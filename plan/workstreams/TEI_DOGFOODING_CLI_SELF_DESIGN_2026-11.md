@@ -753,3 +753,123 @@ ADR-0048 §2.4 の「既定値の適用は共通契約で定める」を、CLI �
 **意図的な挙動変更を含む。** 3つの既存試験の期待値を書き換えた。うち1つ（`studiohost` の認可拒否）は、符号が使えなかったための回避策（`strings.Contains(message, "COMMAND_UNAUTHORIZED")`）であり、今回それが必要なくなった。
 
 残る作業: 現れうる符号の集合を契約文書へ反映する（#3419）。起票は [#3807](https://github.com/hat47x/tei-platform/issues/3807)。
+
+## 28. 第23ラウンド（2026-11-09）: 契約文書の符号一覧が実装より狭くなっていた
+
+第22ラウンドで `view -execute` が `internal/command` の21符号をそのまま返すようにした。その結果、契約文書 `plan/design/CLI_JSON_OUTPUT_CONTRACT_2026-10.md` の `view` 行が実装より狭くなっていないかを確かめた。生出力は[第23ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND23_CONTRACT_DOC_2026-11-09/README.md)にある。
+
+- 契約表が名指す符号27個は**すべて Go のソースに存在した**。存在しない符号を書いている箇所は0で、文書は「嘘」ではなく**不足**だった。
+- `view` 行は11符号（うち `COMMAND_*` は4つ）しか挙げていなかったが、実装は `-execute` の失敗で21符号を返しうる。`COMMAND_UNAUTHORIZED`・`COMMAND_DATASOURCE_READ_ONLY`・`COMMAND_COMMIT_FAILED` などが文書に無かった。
+- **discovery は符号を広告しない。** `tei commands` の entry は15欄を持つが失敗符号の欄が無い。呼出し元が「このコマンドはどんな符号を返しうるか」を知る方法は契約文書しかなく、文書が狭いことはそのまま発見可能性の欠落になる。
+
+修正: `view` 行に21符号を列挙し、`COMMAND_EFFECT_UNKNOWN` が優先することを明記した。`COMMAND_FAILED` は「符号を持たない失敗」の受け皿として残る。
+
+再発防止: `cmd/tei/cli_contract_codes_test.go` が `internal/command` のソースを AST で走査して符号を集め、契約表の `view` 行がそれを全部名指すことを確かめる。変異2種で確認 — 文書を前ラウンド前へ戻すと落ち、実装に新しい符号を足して文書を放置しても落ちる。**両方向**を固定した。
+
+第22ラウンドの `ReportedFailure`（入口が報告するか）と対になる形で、対象を「文書が名指すか」へ広げた。次に `internal/command` が符号を増やしたら、文書を直さないと CI が落ちる。
+
+**残り**: `view` 以外の行の機械検査、discovery への符号広告（`commands` の欄を増やす契約変更）。どちらも #3419 に残る。
+
+## 29. 第24ラウンド（2026-11-09）: tool の引数一覧が schema と独立に手書きされていた
+
+第22・23ラウンドで「手書きの一覧から漏れる」型を2つ閉じた。MCP Adapter も同じ構造を持つはずなので、tool を扱う表がいくつ独立しているかを測った。生出力は[第24ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND24_TOOL_TABLE_DRIFT_2026-11-09/README.md)にある。
+
+**表は4つあった**: `toolList()`（広告）、`toolArguments`（受理する引数）、`dispatch` の `switch`（呼出し先）、`cliCommandNameForTool`（CLI 名との対応、試験側）。このうち `toolArguments` は `InputSchema.properties` と**同じ事実を2回書いたもの**だった。
+
+変異で検出力を測ると、**危険な方向だけが無検査**だった。
+
+| 変異 | 試験 |
+| --- | --- |
+| `toolList()` に tool を追加 | FAIL（3試験） |
+| `toolArguments` に schema が宣言しない引数を追加 | **PASS（検出できず）** |
+| `toolArguments` から宣言済みの引数を削除 | FAIL（2試験） |
+
+緩む方向は、各 tool の `rejectUnknownArguments` が偶然止めていた。同じ宣言を2箇所に書いているため、`rejectUnknownArguments` を書き忘れた tool を足すと素通りする。`toolArguments` と `InputSchema.properties` を比べる試験は存在しなかった。
+
+修正: `toolArguments` を削除し、`InputSchema` から導出する（`declaredArguments`・`toolByName`）。**試験で一致を確かめるのではなく、事実を1箇所にした。** 前2ラウンドは「漏れたら落とす」だったが、今回は一覧そのものを消したので漏れようがない。
+
+試験は `tool_arguments_test.go` の4件。変異2種（導出が property を落とす／`required` に未宣言の名前を足す）を検出する。
+
+**残り**: `dispatch` の `switch` と `toolList()` の一致。広告に無い tool を dispatch に書くことは可能だが、`checkArguments` が `toolByName` で先に弾くため実害は無い。必要になれば同じ手法で閉じられる。起票は [#3823](https://github.com/hat47x/tei-platform/issues/3823)。
+
+## 30. 第25ラウンド（2026-11-09）: TEI の標準意味型は TEI で宣言されていない
+
+ここまでの24ラウンドは CLI の整合性を測ってきた。このラウンドは目的そのもの、**TEI 自身が TEI で書かれているか**を測った。生出力は[第25ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND25_STDLIB_SELF_DESCRIPTION_2026-11-09/README.md)にある。
+
+- `std.*` の12型は `model catalog` に現れるが、`prelude: true` と `sourceStatus: "not-indexed"` が同時に付く。**モデルの要素だが、どの Source にも由来しない。**
+- `inspect -subject-kind semantic-type -subject-id std.text` は解決できるが `artifacts: []`・`references: []`。対照の `sales.order` は `sourceStatus: "indexed"` で `semantic/sales/order.tei` とその指紋が入る。
+- `source-index` は参照106件・artifact 54件を返すが、`std.*` への参照は**0件**。
+- 定義は `internal/stdlib/semantic.go` の Go リテラル。コメント自身が「later package/registry implementation can replace this prelude」と過渡期を認めている。
+- `std` は**使えるが宣言できない**。`namespace std` を書くと `SEMANTIC_TYPE_ALIAS_CYCLE`・`DUPLICATE_SEMANTIC_ELEMENT`・`DUPLICATE_SEMANTIC_NAMESPACE` で拒否される。別名前空間からの `type text_t from std.text` は通る。`std` を特別扱いする箇所は `internal/validation/validation.go:1185` と `internal/operations/declaration_counts.go:38`。
+
+**合格条件が CLI だけで測れることを実演した。** 宣言可能な名前空間で `type text_t from std.text` を書くと、同じ catalog に `mine.text_t`（`indexed`）と `std.text`（`not-indexed`）が並び、`inspect`・`source-index` も `mine.text_t` は根拠付きで返す。`std` を `.tei` にすればこの差がそのまま埋まる。新しい API も検証機構も要らない。
+
+**これは欠陥の起票ではない。** 欠陥ではないが目的の達成を妨げている構造であり、判断は [#2620](https://github.com/hat47x/tei-platform/issues/2620) の Owner に属する。材料（測定値・合格条件・移行時の注意点）を提示するに留め、勝手に `std` を `.tei` 化していない。
+
+**注意**: 移行時は `std` の特別扱い2箇所と `internal/stdlib/semantic.go` の二重定義を同時に扱う必要がある。Go の定義を残したまま `.tei` を併置して一致を確かめる段階を挟むのが安全。
+
+## 31. 第26ラウンド（2026-11-09）: std への宣言が「prelude」と誤判定され、件数からも消えていた
+
+25ラウンドで「`std` を `.tei` にできるか」の移行コストを見積もる過程で、`std` の特別扱いが**名前の前方一致**に依存していることに気づいた。利用者が `std` に型を足した場合を測った。生出力は[第26ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND26_PRELUDE_IDENTITY_2026-11-09/README.md)にある。
+
+`namespace std { type email from std.text }` と書くと、**3つの矛盾**が同時に出た。
+
+| 症状 | 内容 |
+| --- | --- |
+| 名前空間の重複 | `DUPLICATE_SEMANTIC_NAMESPACE`（error）。catalog も `std` を2件、両方 `ambiguous:true`・`sourceStatus:indexed` で返す |
+| prelude の誤判定 | `std.email`（利用者の宣言）に `prelude:true` が付く。契約文書 §59 の「Workspaceが宣言したものではない」に反する |
+| 件数の欠落 | `declarationCounts.total` が 0、`WORKSPACE_DECLARES_NO_MODEL_ELEMENTS` 警告。一方 `inspect` は `std.email` を `indexed` で解決する |
+
+原因は4箇所のうち3箇所が名前の前方一致で `std` を特別扱いしていたこと（`preludeSubject`・`declaration_counts.go:38`・`validation.go:1185`）。1箇所（`standardSemanticSubject`）だけが正しく同一性で照合していた。加えて loader が prelude の `std` と利用者の `std` を**別の名前空間として追加**していた。
+
+修正: 「prelude である」ことを名前ではなく同一性で判定する。`isPreludeType(id)`・`hasNonPreludeDeclaration(ns)` を追加し、loader の `byNamespace` を既存の `World.Semantics` から初期化して利用者の宣言を prelude の名前空間へ合流させた。
+
+修正後: `validate` は `ok:true`、`std` は1件で `not-indexed`、`std.email` は `prelude` 無しで `indexed`、`declarationCounts` は `types:1`・`total:2`。prelude のみの Workspace は `total:0` のまま、`reference/workspace` は `total:71` で不変。
+
+試験は `prelude_identity_test.go` の3件。変異2種（前方一致に戻す／名前空間ごと飛ばす）を検出する。
+
+**残り**: `std` 自体を `.tei` にする判断（#2620）は未着手。ただし今回の修正で「prelude と利用者の宣言を同一性で区別する」規則が3箇所に入ったので、`std` を `.tei` にしても同じ規則で扱える。起票は [#3851](https://github.com/hat47x/tei-platform/issues/3851)。
+
+## 32. 第27ラウンド（2026-11-09）: std を .tei にできない理由（primitive 構文と指紋）
+
+25ラウンドの提案「`std` を同梱の `.tei` として宣言する」が、いまの実装で可能かを確かめた。生出力は[第27ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND27_STD_PRIMITIVE_GAP_2026-11-09/README.md)にある。
+
+**結論: そのままでは実装できない。** 独立した2つの理由がある。
+
+1. **`worldFingerprint` が prelude を含む。** loader の prelude 注入行を外して測ると `worldFingerprint` が `sha256:c92de09f…` から `sha256:8d7e160b…` へ変わり、`sourceIndexFingerprint` は同一だった。`worldFingerprint` は正規化 World の JSON 全体のダイジェストなので、prelude を変えると**全 Workspace の指紋と保存済み継続トークンが変わる**。
+2. **`.tei` に primitive を書く構文が無い。** `type` 宣言は必ず `from` を要求する（`internal/syntax/parser.go:1902`）。`type text` 単独は `PARSE_ERROR | expected "from"`。したがって `.tei` の型はすべて別名で、根は Go でしか定義できない。`std.text` を `.tei` で書こうとすると `type text from std.text` になり、`SEMANTIC_TYPE_ALIAS_CYCLE` になる。
+
+**代替案を2つ示した。**
+
+| 案 | 内容 | 指紋への影響 |
+| --- | --- | --- |
+| A | `std.def` を同梱し、prelude の**由来**として `inspect` の `artifacts` に返す | 小（World の構造を変えない） |
+| B | primitive 宣言の構文を追加し、prelude を `.tei` へ移す | 大（全指紋が変わる） |
+
+A は「根拠を辿れる」という #2620 の合格条件を満たしつつ指紋を変えない。B は本質的だが primitive 構文の設計・全指紋の移行・契約文書の更新を伴う。**どちらを選ぶかは #2620 の Owner の判断**であり、私は材料を提示するに留めた。
+
+**学び**: 「正しい方向の提案」でも、文法と指紋という2つの実装制約を確かめずに出すと実装できない。25ラウンドの提案は方向として正しかったが、前提を測っていなかった。
+
+## 33. 第28ラウンド（2026-11-09）: Capability の outcome が参照グラフに現れていなかった
+
+「CLI だけで設計の問いに答えられるか」を、実際の設計（認証→認可）で試した。生出力は[第28ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND28_CAPABILITY_OUTCOME_2026-11-09/README.md)にある。
+
+`reference/workspace/semantic/security/` は `security.authenticate` の outcome `authenticated security.authenticated_subject` を、`security.authorize` が input に取る設計である。ところが:
+
+| コマンド | 結果 |
+| --- | --- |
+| `inspect -subject-id security.authenticate` | `outcomes` に `authenticated` を返す |
+| `trace -subject-id security.authenticate` | `input` の2本だけ。outcome は出ない |
+| `trace -subject-id security.authenticated_subject -direction incoming` | `authorize` が input する1本だけ。**生産者が見えない** |
+
+読み手には「誰も作らないデータを authorize が要求している」ように見える。私も最初そう読んだ。
+
+原因は `internal/index/index.go` の派生処理が Capability の `input` と `output` の辺は作るのに **`outcome` の辺を作っていなかった**こと。`Capability.Outcomes` は IR にあり `inspect` も返しているのに、派生グラフに入っていなかった。
+
+修正後は `trace` が4本（outcome 2・input 2）を返し、`authenticated_subject` の incoming が2本（`authorize - input`・`authenticate - outcome`）になって**連鎖が両側から見える**。
+
+試験は `internal/index/capability_outcome_test.go` の2件。変異（派生を削る）で落ちることを確認した。
+
+**互換性**: `sourceIndexFingerprint` が変わる（Index の JSON に辺が増える）。`worldFingerprint` は不変。`trace` の `snapshotFingerprint` が変わるため保存済み継続トークンは失効する。これは正しい方向（以前は辺が欠けていた）。
+
+**残り**: outcome の名前（`authenticated` / `denied`）を辺に載せていない。現状は「どの capability がどの型を結果として生むか」だけを持ち、結末名は `inspect` の `canonical.outcomes` で見る。どちらが良いかは #3419 の判断。起票は [#3884](https://github.com/hat47x/tei-platform/issues/3884)。

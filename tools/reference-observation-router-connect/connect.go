@@ -43,6 +43,8 @@ counted: resolved (Binding returned an id), selected (the registry held it),
          invoked (the provider's Observe was entered)
 refused when: the binding is missing or ambiguous, the selected id is not in the
               Host registry, or the provider does not conform to the binding
+after entry: a failure inside the provider is unknown, not a refusal; it is
+             counted separately because the call already happened
 not verified: that the fragment reflects external state, that the provider's
               artifact is trusted, or that a grant is current
 not issued: authentication, authority, permission, or a durable receipt
@@ -91,12 +93,20 @@ type Report struct {
 	RuleFingerprint string    `json:"ruleFingerprint"`
 	Environment     string    `json:"environment"`
 	Outcomes        []Outcome `json:"outcomes"`
-	// Observed counts outcomes with StatusObserved. Refused counts every other
-	// status, and Invoked counts entries into a provider's Observe regardless of
-	// whether the answer was usable.
-	Observed int      `json:"observedCount"`
-	Refused  int      `json:"refusedCount"`
-	Invoked  int      `json:"invokedCount"`
+	// Observed counts outcomes with StatusObserved. Refused is strictly
+	// before entry: nothing was called. Unknown is a subset of Invoked: the
+	// provider was entered and then failed, so whether the world was read
+	// cannot be established.
+	Observed int `json:"observedCount"`
+	Refused  int `json:"refusedCount"`
+	Unknown  int `json:"unknownCount"`
+	Invoked  int `json:"invokedCount"`
+	// Attempted is how many kinds were tried. It makes Observed readable: 1 of
+	// 1 and 1 of 2 both give Observed=1, and only Attempted tells them apart.
+	Attempted int `json:"attemptedCount"`
+	// Complete reports that every attempted kind was observed. A partial run
+	// keeps its refusals and is never presented as complete.
+	Complete bool     `json:"complete"`
 	Notes    []string `json:"notes"`
 }
 
@@ -172,13 +182,17 @@ func Run(ctx context.Context, in Input) Report {
 			report.Invoked++
 		}
 		if observeErr != nil {
-			if witness.invoked {
-				outcome.Status = StatusObserveFailed
-			} else {
-				outcome.Status = StatusNotConforming
-			}
 			outcome.Detail = observeErr.Error()
-			report.Refused++
+			if witness.invoked {
+				// The provider was entered and then failed. Whether it read the
+				// world is now unknown, so this is not a refusal.
+				outcome.Status = StatusObserveFailed
+				report.Unknown++
+			} else {
+				// The router stopped before the provider was entered.
+				outcome.Status = StatusNotConforming
+				report.Refused++
+			}
 			report.Outcomes = append(report.Outcomes, outcome)
 			continue
 		}
@@ -198,6 +212,10 @@ func Run(ctx context.Context, in Input) Report {
 		report.Observed++
 		report.Outcomes = append(report.Outcomes, outcome)
 	}
+	// A run is complete only when at least one kind was attempted and every
+	// attempt produced an observation. Partial runs stay partial.
+	report.Attempted = len(report.Outcomes)
+	report.Complete = report.Attempted > 0 && report.Observed == report.Attempted
 	return report
 }
 
@@ -233,6 +251,8 @@ func notes() []string {
 		"the router is the existing observation.Router; no second registry is added",
 		"invoked means the provider's Observe was entered, not that external state was read",
 		"a non-empty fragment is not proof that the observation succeeded in the world",
+		"unknownCount counts entries that failed after the provider was called; it is a subset of invokedCount",
+		"complete means every attempted kind was observed; it is not proof that the world matches",
 		"no authentication, authority, permission or durable receipt is issued here",
 	}
 }
