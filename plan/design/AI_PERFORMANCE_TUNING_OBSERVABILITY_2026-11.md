@@ -571,7 +571,7 @@ Business ActionやDB更新を契機にCacheを失効させる場合、**Hook到�
 
 ### 20.3 観測の粒度と安全なコスト
 
-TEIのTyped Query/Function IDと外部ObservabilityのQuery Summaryは役割が違う。低Cardinalityの集計キーを優先し、実SQL原文、パラメータ、個人・Tenant・Principal IDをMetric labelに使わない。OpenTelemetryのDB Semantic Conventionsでは低Cardinalityの \`db.query.summary\` が推奨され、\`db.query.text\` と \`db.query.parameter.<key>\` には収集・秘匿・容量上の注意がある（外部参照： https://opentelemetry.io/docs/specs/semconv/db/database-spans/ ）。必要な詳細Traceは権限・期間・Samplingを限定し、観測OFFの通常Targetを正式な比較対象に残す。
+TEIのTyped Query/Function IDと外部ObservabilityのQuery Summaryは役割が違う。低Cardinalityの集計キーを優先し、実SQL原文、パラメータ、個人・Tenant・Principal IDをMetric labelに使わない。OpenTelemetryのDB Semantic Conventionsでは低Cardinalityの `db.query.summary` が推奨され、`db.query.text` と `db.query.parameter.<key>` には収集・秘匿・容量上の注意がある（外部参照： https://opentelemetry.io/docs/specs/semconv/db/database-spans/ ）。必要な詳細Traceは権限・期間・Samplingを限定し、観測OFFの通常Targetを正式な比較対象に残す。
 
 計測点は既存Provider/Host/TargetのObserver Bindingで足りるかを先に確認する。外部APMやOTel SDKは任意Adapterであり、収集器の停止・Exporter失敗・Span欠落を業務Read失敗や0msとしない。AIへ渡すPacketには集計Window、標本数、欠測、実Target/Provider、現在の開示資格を添える。実Traceの完全受領が未確認なら「提案候補」に留める。
 
