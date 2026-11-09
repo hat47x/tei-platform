@@ -1,0 +1,2 @@
+CLI direction=both mode=summary
+MCP direction=both mode=summary

@@ -1,0 +1,5 @@
+trace mode=''	CLI rc=0 ok=True code=None	MCP ('rpc', -32602, 'mode must not be an empty string')
+trace direction=''	CLI rc=0 ok=True code=None	MCP ('rpc', -32602, 'direction must not be an empty string')
+trace expectedFingerprint=''	CLI rc=0 ok=True code=None	MCP ('rpc', -32602, 'expectedFingerprint must not be an empty string')
+catalog namespace=''	CLI rc=0 ok=True code=None	MCP ('rpc', -32602, 'namespace must not be an empty string')
+inspect subjectKind=''	CLI rc=2 ok=False code=INVALID_SUBJECT	MCP ('rpc', -32602, 'subjectKind must not be an empty string')
