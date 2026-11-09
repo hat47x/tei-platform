@@ -1,0 +1,12 @@
+[
+  {
+    "request": {
+      "application": "order_entry",
+      "pattern": "order_entry.submit_order",
+      "capability": "sales.order.submit",
+      "inputs": {
+        "order": "ORD-1"
+      }
+    }
+  }
+]
