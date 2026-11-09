@@ -79,7 +79,8 @@
 - [月内締めの区分ごとの閉めの確認](XTEA_LOWCODE_CLOSING_SEGMENT_SCOPE_2026-11.md)（参照実装の試験記録。閉め操作の実行は未実装）
 - [月内締めのCLI観察と状態源の確認](XTEA_LOWCODE_CLOSING_SCOPE_CLI_2026-11.md)（参照実装の試験記録。閉め操作の実行内容は未実装）
 - [期間の閉め操作の確認](XTEA_LOWCODE_PERIOD_CLOSE_OPERATION_2026-11.md)（参照実装の試験記録。閉めの実行内容と権限は未実装）
-- [利用者設定の宣言と結合の確認](XTEA_LOWCODE_USER_SETTINGS_2026-11.md)（参照実装の試験記録。書き込みと例への追加は未実装）
+- [利用者設定の宣言と結合の確認](XTEA_LOWCODE_USER_SETTINGS_2026-11.md)（参照実装の試験記録。例への追加は未実装）
+- [利用者設定の書込みの確認](XTEA_LOWCODE_USER_SETTINGS_WRITE_2026-11.md)（参照実装の試験記録。監査・権限・画面は未実装）
 - [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
 - [X-TEA受容要件の実装対応](XTEA_LOWCODE_ACCEPTANCE_TRACE_2026-11.md)（`AC-1`〜`AC-11`・`RQ-C1`〜`RQ-C3`の参照実装と未確認事項。受容判断は仮承認）
 - [実DBで実行時の判断を確かめる計画](REAL_DATABASE_RUNTIME_DECISION_PLAN_2026-11.md)（期間・権限・効果の判断を実DBで見る案。**NOT RUN**）
@@ -211,6 +212,7 @@
 - [宣言の他の欄もplanと照合する](TEI_GO_SELF_BUILD_INTENT_FIELD_COMPARE_2026-11-09.md)（builder childがrecipe・source集合・dependency集合も比べるようにした。導出値（locator・digest・version）は比べない——比べると正しいbuildをすべて不一致と呼ぶため。不一致は名指しで拒否し、reportを出さない。既存fixtureが実フローと違っていたのも検査が検出した。`l2bClaimed`はfalse。 #2831）
 - [`parameters`も照合する](TEI_GO_SELF_BUILD_PARAMETER_COMPARE_2026-11-09.md)（§4.17は「正規化の意味が未決」として残したが、実測するとどちらの側も名前順ソートのみで値を変えていなかった。前提を確かめてから名前で突き合わせる照合を実装し、順序非依存と正規化の性質自体を試験で固定。L2-bは未。 #2831）
 - [`tei self-build`のbuilder childが宣言の`builder`要求をplanの解決結果と照合する](TEI_GO_SELF_BUILD_BUILDER_REQUIREMENT_2026-11-09.md)（対応規則は推測ではなくresolverの`ResolveBuilder`に既にあり、`internal/buildintent`の`BuilderContractVersion`として一箇所に定義した。contract+major・provider・pinを照合し、不一致は欄を名指ししてreportを出さずexit 1。同じ宣言から導いたplanでは決して失敗しないため、この照合が効くのはplanがその宣言由来でない場合だけ。`provider.implementation`はplanに対応欄が無く未照合。`l2bClaimed`はfalse。SB-C0 §4.19 / #2831）
+- [同じplanを二回buildしてartifactの再現を観測する](TEI_GO_SELF_BUILD_ARTIFACT_REPRODUCIBILITY_2026-11-09.md)（`-rebuild-check`で、同じchild実行物を新しい一時stateと一時出力先で二回起動し、artifactのバイトを比べる。`artifactReproducibility=reproduced`で、§4.8(c)「そのplanがそのartifactを生んだか」を再現で観測した。`bound`が示せなかったことを置き換える。**L2-bではない**（`l2bClaimed`はfalse）。同じ宣言から導いたplanかどうかとは別の軸である。SB-C0 §4.21 / #2831）
 - [traceの継続トークンが2つの同名欄に分かれている](TEI_DOGFOODING_ROUND11_TRACE_CONTINUATION_2026-11-09/README.md)（#3625・#3420 T06。同名の`snapshotFingerprint`が2つあり、継続に使えるのは外側だけ。`nextOffset`の隣の値を渡すと`STALE_SNAPSHOT`になることを修正前に実測した）
 - [mainのtrace継続トークンを実測](TEI_DOGFOODING_ROUND12_CONTINUATION_MAIN_2026-11-09/README.md)（#3625。`e75d599ba`で`graphFingerprint`への改名と`continuation`が入り、`continuation.fingerprint`で継続でき、`graphFingerprint`は拒否されることを確認）
 - [設計変更の影響範囲をCLIだけで答えられるか](TEI_DOGFOODING_ROUND13_DESIGN_IMPACT_2026-11-09/README.md)（#3149 D-9・#2619・#2621。モデル要素の定義箇所は`inspect`で分かるが、設計文書の中の名前はsubjectにならず`SUBJECT_NOT_FOUND`。改名の影響範囲は`grep`が要る。リポジトリ全体はWorkspaceにできない）
@@ -221,3 +223,4 @@
 
 - [trace -mode fullのrowsが0件のとき消える](TEI_DOGFOODING_ROUND15_TRACE_MODE_ROWS_2026-11-09/README.md)（#3693・#3456。`omitempty`が長さ0のスライスも落とすため、`mode=full`の「0件」と「欄が無い」が同じ表現になることを修正前に実測した。mainの`3799997a0`で解消）
 - [継続トークンの失効条件を実測](TEI_DOGFOODING_ROUND16_CONTINUATION_EXPIRY_2026-11-09/README.md)（#3420 CAPI-2c・#3625。Sourceの変更（コメント1行でも）・`-scope`・`-direction`の変更は`STALE_SNAPSHOT`、`summary`⇄`full`は相互に許容。MCPも同じ可否で、新しい欠陥は無し）
+
