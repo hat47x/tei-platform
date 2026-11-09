@@ -16,7 +16,9 @@
 | [配備実行アダプタは、誰がどう組み立てているか](../../plan/evidence/DEPLOYMENT_EXECUTOR_BINDING_SURVEY_2026-11-08/README.md) | 非試験の組み立ては4件、すべて参照実装。CapabilityID は直書きかローカル変数 |
 | [環境の配備実行Bindingは、どこまで使われるか](../../plan/evidence/EXECUTOR_BINDING_CONSUMER_SURVEY_2026-11-08/README.md) | Binding は検証と計画（JSON）まで。`routing.Router` を組み立てる非試験の箇所は0 |
 
-## 2. 現在の形（記録から読める範囲）
+## 2. 2026-11-08時点の形（当時の調査記録）
+
+以下は**2026-11-08当時のSource調査**を保存したもので、現在のmainの非試験Caller件数ではない。C-1/C-2のReference実組立て後の状態と、製品接続の未成立は§10〜11で区別する。
 
 ```text
 宣言（Environment の Binding）
@@ -26,15 +28,15 @@
 ```
 
 - **計画と実行の間に、宣言を読む繋ぎ目がありません。**
-- `servicehost` は Host世代をピン留めする繋ぎ目として存在しますが、**組み立てる非試験の呼出し元がありません**。
-- `routing.Router` は Binding を実行へ繋ぐ繋ぎ目として存在しますが、**非試験で組み立てられていません**。
+- 【当時】`servicehost`はHost世代をピン留めする繋ぎ目を持つが、非試験の呼出し元が0件でした。**後続のC-2参照ツールは構築を実行可能**にしましたが、通常CLI/Studioの本番Hostには未接続です。
+- 【当時】`routing.Router`はBindingを実行へ繋ぐ繋ぎ目を持つが、非試験の呼出し元が0件でした。**後続のC-1参照ツールは実組立て・実呼出し済み**ですが、製品Dispatcherへの標準組込みは未決です。
 
 ## 3. 選べる繋ぎ目（材料から読める範囲）
 
 | # | 繋ぎ目 | 何をするか | 既にある部品 |
 | --- | --- | --- | --- |
-| C-1 | `routing.Router` を CLI で組み立てる | Binding を解決し、`Executor` を登録して実行する | `Router.Dispatch`（試験で動作確認済み） |
-| C-2 | `servicehost` を CLI へ入れる | Host世代をピン留めして Runtime を呼ぶ | `NewSelectedServiceCarrierInvoker`（試験で動作確認済み） |
+| C-1 | `routing.Router` をDeployment入口で組み立てる | Deployment CommandのBindingを解決し、Host登録Executorを呼び出す | `Router.Dispatch`（参照で実組立て・有限実行済み。製品入口未接続） |
+| C-2 | `servicehost` をService要求入口へ接続する | Host世代をピン留めし、Service RequestをCarrierへ運ぶ | `NewSelectedServiceCarrierInvoker`（参照で実組立て・有限実行済み。製品入口未接続） |
 | C-3 | `DeploymentExecutor` の `CapabilityID` を Binding から解決する | 参照実装の直叩きを、宣言由来の能力へ変える | `routing.RouteCommand` の結果 |
 | C-4 | 繋がない（現状維持） | 検証・計画だけを製品が担い、実行は外部の主体に委ねる | なし（現状） |
 
@@ -44,23 +46,23 @@
 
 | 順 | 決定 | 決めると解けること | 決めるまで止まること |
 | --- | --- | --- | --- |
-| 1 | **C-4 を選ぶかどうか**（繋ぐか、繋がないままにするか） | これが「繋がない」なら他3案は不要になる | C-1〜C-3 の比較を続けるかが決まらない |
-| 2 | **C-1 か C-2 か**（配備実行から繋ぐか、Service Carrier から繋ぐか） | 製品 CLI の入口をどちらへ通すかが決まる | どちらの部品を先に非試験で組み立てるかが決まらない |
-| 3 | **C-3 を足すか**（参照実装の直叩きを宣言由来にするか） | 参照実装4件の `CapabilityID` の扱いが決まる | 参照実装が「固定の能力を試す」意図を保てるかが決まらない |
+| 1 | **対象Operation／Targetで、TEI製品内と外部Hostのどちらが実行を所有するか**（C-4も含む） | 外部Host委譲の場合は、その主体から受領すべき証拠契約を定義できる | Ownerと現在Grant、Receipt/独立観測の所在が未確定 |
+| 2 | **Deployment CommandはC-1、Service RequestはC-2という役割別の接続要否** | 必要なOwner・Host提供物・入口が各Operationで定まる。異なる役割なら共存可能 | 同一Operationの実行Ownerが重複しないことを確認できない |
+| 3 | **C-3を必要なDeployment実行に適用するか**（Capability IDの宣言由来解決） | Deployment参照の固定IDを正式な選択結果と照合できる | 固定IDが意図的なReferenceか、製品Binding不足かの区別ができない |
 
-**理由**: C-4 は他の3案を丸ごと不要にしうるので最初です。C-1 と C-2 はどちらも「実行の入口を製品へ引き込む」案で、**両方を同時に選ぶと2つの経路ができます**（現在の `servicehost` と `Runtime` 直接の関係と同じ形）。C-3 は C-1 か C-2 のどちらを選んでも影響するので最後です。
+**理由**：まず実行のOwnerをOperation／Targetごとに確定する。C-4は外部実行を委ねる正当な選択肢であり、全製品の実行方式を一律に選ぶ必要はない。実Source比較ではC-1がDeployment Command、C-2がService Requestであり、**異なる役割の共存は二重実行ではない**。ただし、同一Operation／同一Attemptを二つのOwnerが独立に実行すれば二重実行になるため、その場合は単一の実行OwnerとResult／Effect／Client Receiptの責務を決める。C-3はDeployment側の固定Capability IDの扱いであり、Service Request側へ自動適用しない。([役割の実測](../evidence/CONNECT_POINT_C1_C2_2026-11-09/README.md))
 
 ## 5. この文書で決めないこと
 
 - 決定そのもの（採用・却下・期限）。Gate と成立状況の担当です。
 - 選択肢の推薦。
-- C-1〜C-3 の実装。部品は既にあり、**組み立てる場所を決めるだけ**です。
+- C-1〜C-3の**製品入口**への接続。参照実装は動作済みだが、通常CLI/Studio/本番Hostでの現在実行は未実証です。
 - 「繋ぐべき」という前提。C-4 は現状維持として**正当な選択肢**です。
 
 ## 6. この文書が示さないこと
 
 - **繋がないことが不安全であること**。実行を外部に委ねる設計は、Gate が「実配備先の現在権限」を別に扱っていることと整合するかもしれません。
-- **C-1・C-2 の安全性**。どちらも試験でしか動いておらず、実Host・実Provider では確認されていません。
+- **C-1・C-2 の実運用資格**。両方の参照で組立て可能性は実測したが、実Host・実Provider／Grant／Receiptの安全性は未確認です。
 - **材料の網羅性**。6本の記録はそれぞれ1回の観測で、`main` が進むと数は変わります。
 - **どの案が Gate の G1〜G4 に効くか**。判定は Gate 本文の担当です。
 
@@ -84,11 +86,11 @@
 | C-2 Service Host | Host-pinned generationと実Provider/Artifact/Scopeが、失効後の別Attemptに流用されないか |
 | C-3 Capability ID導出 | 名称一致ではなく実Canonically selected Binding/実Invoke先を比較できるか |
 
-**本追補の判定**は依然「判断材料・未確定」。C-4→C-1/C-2→C-3の順序と正本のOwnerは変えない。追加のHTTP専用Routing/ResolverやProduct schemaは、実行接続の選択前に導入しない。通常`tei inspect`と実Studio Bridgeの同一selected Inspector Provider B実呼出し（#3525/#3531の残るS2）は、局所Go test Helper二経路の成功から区別する。
+**本追補の判定**は依然「判断材料・未確定」。実行Owner（C-4を含む）→役割別C-1/C-2→必要なDeployment C-3の順序と正本のOwnerは変えない。追加のHTTP専用Routing/ResolverやProduct schemaは、実行接続の選択前に導入しない。[mainへ統合済みPR #3540](https://github.com/hat47x/tei-platform/pull/3540)により、通常`tei inspect`のdispatchと通常/生成Studio Hostから、**コンパイル済みの静的Reference Provider `tei.reference.inspector.local`**を既存Compositionで選んで呼ぶ**S2-reference**は実装済み（exact-head Health/Wails/CLI等success）。一方、**正式ProfileでProvider Bを選んだときに両Consumerが実Provider Bへ到達するS2-product**、別ProviderのLoad/Link/Grant/BOMは未達。Go Helperの成功を正式Pluginの実行資格へ昇格しない。
 
 ## 9. C-1参照実行後の不確定性をHTTP/Command側の実証と結ぶ（2026-11-09）
 
-[PR #3573](https://github.com/hat47x/tei-platform/pull/3573)は、[C-1の実測](../evidence/BINDING_TO_EXECUTION_REFERENCE_2026-11-09/README.md)として既存の`routing.RouteCommand→Router.Dispatch→ValidateResult`を用い、Environment Bindingから**Host登録の記録用Executor**まで到達することを参照実装で確認した。この**技術的成立**をC-1の製品採用、実配備、外部Effect、Current Grantの確定へは昇格しない。C-4→C-1対C-2→C-3の判断順序は変更しない。
+[PR #3573](https://github.com/hat47x/tei-platform/pull/3573)は、[C-1の実測](../evidence/BINDING_TO_EXECUTION_REFERENCE_2026-11-09/README.md)として既存の`routing.RouteCommand→Router.Dispatch→ValidateResult`を用い、Environment Bindingから**Host登録の記録用Executor**まで到達することを参照実装で確認した。この**技術的成立**をC-1の製品採用、実配備、外部Effect、Current Grantの確定へは昇格しない。実行Owner（C-4を含む）→Operation種別ごとのC-1/C-2→Deploymentに必要なC-3という判断順序を維持する。
 
 この新しい参照をHTTP側[HDG-E01〜E05](../design/HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md)と照合すると、v0 `bindingexecution.Run`に具体的な情報喪失がある。**実Executor呼出し後**に`Dispatch`がエラーを返した場合や`ValidateResult`が不正な返答を検出した場合にも、v0は`refusedCount`を増やしていた。しかし、拒否＝未呼出しとして読むConsumerでは、**既に作用した可能性を隠す**。
 
@@ -111,5 +113,18 @@
 - C-2 も、既存の `BindHostApplicationEnvironmentRoute`・`composition.NewSelectedCoordinator`・`NewSelectedServiceCarrierInvoker` を順に呼んで試験の外でも組み立てられることを確かめました（[記録](../evidence/SERVICE_CARRIER_CONNECT_REFERENCE_2026-11-09/README.md)）。
 - **両方とも、新しい解決器や選択の仕組みを作らずに動きました。** しかし、これは「繋げられる」ことの証明であって、「繋ぐべき」ことの証明ではありません。
 - C-1 と C-2 は対象が違います（配備の動作と Service の要求）。第 4 節の「両方を選ぶと 2 つの経路ができる」は、同じ対象を取り合う場合の話です（[記録](../evidence/CONNECT_POINT_C1_C2_2026-11-09/README.md)）。
-- **C-3 はまだ実行していません。** 第 4 節の順序（C-4 → C-1/C-2 → C-3）と、決定の Owner は変わりません。
-- 第 9 節が指摘した「実行前拒否と呼出し後の不確定を分ける」条件は、この追記でも満たしていません。両方の参照は `refusedCount` にまとめており、第 9 節の分類（入場前停止と入場後不確定）を実装していません。
+- **C-3はまだ実行していません。** 第4節の順序（実行Owner→役割ごとのC-1/C-2→DeploymentのC-3）と、決定のOwnerは変わりません。
+- **版の訂正**：C-1は[PR #3596](https://github.com/hat47x/tei-platform/pull/3596)のReference v1で`refusedCount`と`unverifiedCount`の分離を実Go CIで合格済み。C-2も実コードではCarrier入場後の不確定を分離していたが、`Schema`と`RuleFingerprint`がv0のまま、READMEはv1という不整合が残っていた。C-2も明示的なv1へ更新して版・テスト・CIを独立に確定する（下記§11）。
+
+## 11. 参照の版と実行主体を一致させる最小受入（2026-11-09）
+
+C-1とC-2が**別種のOperationを運ぶ**ことが、[型・Carrierの独立照合](../evidence/CONNECT_POINT_C1_C2_2026-11-09/README.md)と、C-1/C-2それぞれの参照実行で確認された。したがって「実行経路は必ず一種類に統一する」とは決めない。同一Operation・同一Attemptについて、Ownerの一意性とProvider/Result/Effectの責務境界を問う。
+
+| Reference | 実行入口として観測するもの | versionと区分 | 未認定のこと |
+| --- | --- | --- | --- |
+| C-1 `reference-binding-to-execution` | 実`Executor.Execute`への到達 | `v1`：入場前`refusedCount`、入場後`unverifiedCount`（`ranCount`内数）。[PR #3596](https://github.com/hat47x/tei-platform/pull/3596)のCI completed/success | 外部DB/クラウド実配備、完全なReceipt、現在Authority |
+| C-2 `reference-service-carrier-connect` | Host-pinned Service Carrierの`Invoke`への到達 | `v1`：Carrier入場前`refusedCount`、Carrier入場後`unverifiedCount`（`ranCount`内数）。Provider Processの実呼出しは**別証拠** | 実ProviderのProc到達、Artifact/Host Scope現在資格、外部Effect、Client受領 |
+
+C-2の既存実装では、内部のArtifact Verifierが呼出しを拒否した場合、**Carrierへ入場していてもProcessは呼ばれていない**ことがある。この場合もC-2の`carrierInvoked=true`を「実Provider呼出し済み」としない。内部エラーとGeneration不一致を単なる事前拒否に平坦化しないため、v1で不確定応答の理由コードも事前拒否と区別する。C-2 v0の保存済み実測JSON／SHA-256は変更しない。
+
+**限定Exit達成**：[C-1/C-2専用Go CI #42555954660](https://github.com/hat47x/tei-platform/actions/runs/42555954660)は**completed/success**。C-1/C-2両ReferenceのGoテスト、Go vet、gofmtを同じcheckoutで実行し、C-2実コードBlob `f2952030906b80ba0bf052caeed92082f89c302c`と新V1テストBlob `67b4ed10eaaf0842e2719d5cfda724076fbc5008`を記録した。コード・テストは後続の文書改訂でも同一Blobを保持。これはReference限定であり全体Health、実Service Process資格、製品S2とは別。C-4外部Host委譲の判断、通常CLI/Studioの**S2-reference統合済み／S2-product正式Profile差替え未実証**、外部Source/BOM/Effectの資格はそれぞれ別のOwnerが保持する。Referenceのレポート種別・数値を、製品の業務成功KPIや自動再試行判断へ流用しない。

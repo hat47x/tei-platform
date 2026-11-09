@@ -28,16 +28,16 @@ import (
 const (
 	// Schema identifies the report. It is a reference output, not a product
 	// contract.
-	Schema = "tei.reference.service-carrier-connect/v0"
+	Schema = "tei.reference.service-carrier-connect/v1"
 	// Authority states what the report is allowed to claim.
 	Authority = "derived-reference"
 
 	RuleID      = "tei.reference.service-carrier-connect"
-	RuleVersion = "v0"
+	RuleVersion = "v1"
 )
 
 // rulePolicy is covered by the fingerprint.
-const rulePolicy = `service-carrier-connect/v0
+const rulePolicy = `service-carrier-connect/v1
 selection: the Host supplies the pinned Binding and the route for it
 dispatch: servicehost.SelectedServiceCarrierInvoker.Invoke
 assembled by this reference: BindHostApplicationEnvironmentRoute + NewSelectedServiceCarrierInvoker
@@ -55,7 +55,8 @@ const (
 	RefusedInvalidInput     = "CONNECT_INPUT_INVALID"
 	RefusedRouteUnavailable = "ROUTE_UNAVAILABLE"
 	RefusedBindingMismatch  = "ROUTE_BINDING_MISMATCH"
-	RefusedInvocation       = "SERVICE_INVOCATION_REFUSED"
+	UnverifiedInvocation    = "SERVICE_INVOCATION_UNVERIFIED"
+	UnverifiedGeneration    = "SERVICE_RESULT_GENERATION_MISMATCH"
 )
 
 // Outcome is one invocation's result.
@@ -183,7 +184,7 @@ func Run(in Inputs, requests []Request) Report {
 			report.Outcomes = append(report.Outcomes, Outcome{
 				RequestID: req.RequestID, Generation: in.Binding.Generation,
 				CarrierInvoked: true,
-				Error:          RefusedInvocation + ": " + invokeErr.Error(),
+				Error:          UnverifiedInvocation + ": " + invokeErr.Error(),
 			})
 			continue
 		}
@@ -192,7 +193,7 @@ func Run(in Inputs, requests []Request) Report {
 			report.Outcomes = append(report.Outcomes, Outcome{
 				RequestID: req.RequestID, Generation: invocation.Generation.Generation,
 				CarrierInvoked: true,
-				Error:          RefusedBindingMismatch + ": the answer is not for the pinned generation",
+				Error:          UnverifiedGeneration + ": the answer is not for the pinned generation",
 			})
 			continue
 		}

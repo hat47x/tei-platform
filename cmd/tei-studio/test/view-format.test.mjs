@@ -1,4 +1,4 @@
-import test from "node:test";
+﻿import test from "node:test";
 import assert from "node:assert/strict";
 import {summarizeView} from "../assets/view-format.mjs";
 
@@ -39,7 +39,7 @@ test("application view is summarized into patterns, packages, and periods", () =
     application: "order_entry",
     patterns: [{id: "order_entry.order_record", kind: "record"}],
     packages: [{id: "order_entry.list_to_record", version: "1", bound: true}],
-    periods: [{id: "sales.period", data: "sales.order", businessDate: "sales.order.order_date", states: ["open", "closed"], calendar: "sales.fiscal"}],
+    periods: [{id: "sales.period", data: "sales.order", businessDate: "sales.order.order_date", states: ["open", "closed"], calendar: "sales.fiscal", closingDay: 20}],
     standardBusiness: [{kind: "tax", data: "master.tax_rate", attributes: ["master.tax_rate.applies_from", "master.tax_rate.rate"]}],
   });
   assert.deepEqual(sections.map((section) => section.title), ["Application", "Pattern", "Package", "標準業務", "期間"]);
@@ -50,6 +50,8 @@ test("application view is summarized into patterns, packages, and periods", () =
   // A period names the calendar its boundary follows, so the view shows it
   // instead of leaving the reader to guess a default.
   assert.equal(sections[4].rows[0][4], "sales.fiscal");
+  // A closing day narrower than a month is shown, so a reader does not infer one.
+  assert.equal(sections[4].rows[0][5], "20日");
 });
 
 test("command run includes the plan and the reference execution", () => {
@@ -170,6 +172,8 @@ test("validation view lists diagnostics and unanswered proposals", () => {
   assert.equal(sections[1].rows[0][1], "未受理");
   assert.equal(sections[1].rows[0][2], "sha256:abc");
 });
+
+
 
 
 
