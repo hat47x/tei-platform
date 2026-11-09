@@ -788,6 +788,19 @@ func validateRecordPatternInteraction(
 		default:
 			out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_INTERACTION_HOOK_FAILURE_UNSUPPORTED", "record pattern %s hook %s uses unsupported failure %s", pattern.ID, hook.Phase, hook.Failure))
 		}
+		// The scope says what the hook decides for. An empty scope means the
+		// pattern's own unit, so a scope the pattern does not look at is refused:
+		// a per-row hook on a record pattern would be declared and then never
+		// applied per row.
+		switch hook.Scope {
+		case "":
+		case "row", "record", "item", "header":
+			if kind := pattern.Kind; !scopeFitsPattern(kind, hook.Scope) {
+				out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_INTERACTION_HOOK_SCOPE_MISMATCH", "record pattern %s hook %s declares scope %s that the pattern kind does not look at", pattern.ID, hook.Phase, hook.Scope))
+			}
+		default:
+			out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_INTERACTION_HOOK_SCOPE_UNSUPPORTED", "record pattern %s hook %s uses unsupported scope %s", pattern.ID, hook.Phase, hook.Scope))
+		}
 		for _, attribute := range hook.Reads {
 			if _, ok := dataAttributes[attribute]; !ok {
 				out = append(out, errFor(patternSubject, "UNKNOWN_APPLICATION_PATTERN_INTERACTION_HOOK_READ", "record pattern %s hook %s reads %s that is not an attribute of %s", pattern.ID, hook.Phase, attribute, pattern.Data))

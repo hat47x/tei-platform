@@ -537,8 +537,20 @@ func (p *Parser) parsePatternInteraction() (*application.Interaction, error) {
 						return nil, err
 					}
 					hook.Failure = kindTok.Text
+				case "scope":
+					_, _ = p.next()
+					scopeTok, err := p.expect(TokenIdent)
+					if err != nil {
+						return nil, err
+					}
+					switch scopeTok.Text {
+					case "row", "record", "item", "header":
+					default:
+						return nil, p.errAt(scopeTok, "scope must be row, record, item, or header")
+					}
+					hook.Scope = scopeTok.Text
 				default:
-					return nil, p.errAt(entry, "expected reads, uses, produces, or on-failure in hook")
+					return nil, p.errAt(entry, "expected scope, reads, uses, produces, or on-failure in hook")
 				}
 			}
 			out.Hooks = append(out.Hooks, hook)
