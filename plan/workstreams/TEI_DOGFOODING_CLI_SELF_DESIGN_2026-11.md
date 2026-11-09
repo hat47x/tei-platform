@@ -1209,3 +1209,44 @@ inline:  KNOWLEDGE_BUILD_FAILED: open {"qualifications": [...]}: no such file or
 ### 補助として確かめた正常な挙動
 
 先に `trace` のページング・指紋・alias を確認したが、**すべて設計どおり**だった。`-limit 2` で 2+2+1=5 と `nextOffset` が正しく終端し、継続トークンは `result.snapshotFingerprint` を指し、無関係な名前空間の追加でも `STALE_SNAPSHOT` になる。`graphFingerprint` と `snapshotFingerprint` が常に同値なのは deprecated alias として明記されている。この領域は丁寧に作られている。
+
+## 45. 第42ラウンド（2026-11-10）: realize の実装束縛を参照グラフの辺にした
+
+第41ラウンドで起票した #3983 を修正した。生出力は[第42ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND42_REALIZE_EDGE_2026-11-10/README.md)にある。
+
+### 実装前に読んだこと
+
+| 確認 | 結果 |
+| --- | --- |
+| 誰かが着手済みでないか | `gh pr list`・`git log` に該当なし |
+| `BindingIndexEntry` / `DeclaredDependency` の形 | 両方とも必要な欄を持つ |
+| 既存の関係名 | kebab-case の動詞（`owns-pattern`・`uses-semantic` など） |
+| **`Application` は常に入るか** | パーサは返さないが loader が `b.Application = a.ID` を設定する |
+| `application` はノードになるか | なる。ただし `ApplicationPatterns` 経由のみ |
+
+最後の2点から**「空なら辺を作らない」ガードが必要**と判断した。空キーを指す辺は投影が `unmaterialized-from` として報告するため。
+
+### 修正
+
+`internal/index/index.go` の束縛走査に、`application -realizes-> semantic-capability` の依存を1つ追加した。関係名は DSL の `realize` に対応させた。
+
+### 結果
+
+| capability | realizes 辺 |
+| --- | --- |
+| `security.authenticate` | 1（`order_entry`） |
+| `security.authorize` | 1（`order_entry`） |
+| `sales.order.submit` | 1（`order_entry`） |
+| `order_entry.compose_order_summary` | **0** |
+
+4つ目が0なのは正しい。`order_entry.compose_order_summary` は**どこにも宣言されておらず**、投影が `unmaterialized-to` として報告する。**修正前から存在するワークスペース側の不整合**で、束縛がグラフに入っていなかったため見えなかったものが可視化された。私は触っていない（Owner の判断）。
+
+### 試験と回帰
+
+`internal/index/realizes_test.go` の3件（辺の存在・索引記録の保持・空側ガード）。変異2種（辺の削除・ガードの無効化）が両方落ちることを確認した。`./cmd/tei` を含む全対象パッケージが ok（170.8s）。
+
+### 互換性
+
+`graphFingerprint` が変わる（辺が増えるため）。保存済み継続トークンは失効する。`projectionUnresolved` に上記の `unmaterialized-to` が新たに現れるが、これは既存不整合の可視化である。
+
+**「見えないこと」自体が欠陥だった**ことの証拠でもある。
