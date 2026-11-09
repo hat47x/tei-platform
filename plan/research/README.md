@@ -15,6 +15,7 @@
 - [プラグイン間の依存と入出力に関する他のOSSの調査](PLUGIN_DEPENDENCY_IO_OSS_SURVEY_2026-10.md)
 - [技術調査の統合方針（2026年9月）](TECH_RESEARCH_INTEGRATION_2026-09.md)
 - [技術調査の統合方針（2026年10月）](TECH_RESEARCH_INTEGRATION_2026-10.md)
+- [Model Viewの読取・検証・同一性・被覆・操作の横断資格（2026年11月）](MODEL_VIEW_CROSS_CONSUMER_QUALIFICATION_2026-11.md)：実CLI・Catalog・Studio・Model Mapの局所成功を過剰な設計Claimへ昇格しない受入候補。
 - [直近の技術研究を検証可能な作業に落とす計画（2026年10月16日）](TECH_RESEARCH_EXECUTION_PLAN_2026-10-16.md)
 - [X-TEA（XEAD）のローコード機構に関する知識目録（2026年11月）](XTEA_LOWCODE_KNOWLEDGE_INVENTORY_2026-11.md)
 - [空集合と業務完了の意味（2026年11月）](EMPTY_SET_COMPLETION_SEMANTICS_2026-11.md)：全称条件の空集合（vacuous truth）とLeanでの扱いを、業務類型・EmptyPolicyとの関係で整理する調査ノート。採用判断ではありません。
