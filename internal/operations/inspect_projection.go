@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"strings"
 
 	"tei/internal/sourceindex"
 )
@@ -60,6 +61,11 @@ func canonicalIDMatchesExactField(raw json.RawMessage, requestedID string) bool 
 			return false
 		}
 		if name != "id" {
+			// Reject keys that Go's case-insensitive struct decoding could
+			// treat as the canonical ID, even though they are not "id".
+			if strings.EqualFold(name, "id") {
+				return false
+			}
 			continue
 		}
 		if found {
