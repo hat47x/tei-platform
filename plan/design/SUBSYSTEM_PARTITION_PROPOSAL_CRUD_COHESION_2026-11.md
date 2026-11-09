@@ -567,3 +567,60 @@ must-linkによる無向グラフの連結成分 C に含まれるFunctionは、
 | SP-60 | 承認済みSourceをFull Worldとして解析した後でPublic Nodeだけ隠して表示 | 公開Sliceの資格を再確認し、Private依存のScoreや順位を無権限Consumerへ流さない |
 
 **Implementation/Plan**：先に#3662の tools/README.md 索引不足によるRepository Health失敗を修正したexact-head CIを確認する。続く実Source P0は #3492/#3728のmerged既存APIで一Data×一Functionを読み、L4受理契約の存在/欠落を記録する最小試験。公開Cursor/Studio/Source Write/Provider/DBの接続は各Ownerに引渡す。新Reader/Policy Engine/Graph/Source Resolver/Host/Acceptance SSOTを作らない。論理Subsystem境界はPhysical TargetやHash ID Namespaceと混同しない。
+
+
+## 34. 実Worldの意味モデルとDirect CUD候補の停止線（2026-11-09夜）
+
+現main（調査時点 fecf876059ba9fbab45058df9ee7c9847ba62cfa）の具体的な型・関数を静的照合した。
+
+| 実装箇所 | 現在ある明示的な情報 | **この情報だけでは証明できないこと** |
+| --- | --- | --- |
+| internal/semantic/model.go : Data | Canonical ID、Attribute、Relation、CandidateKey、FunctionalDependency | Primary Subsystem Owner（少なくともこのData型にはフィールドなし）、全Business Writer |
+| internal/application/model.go : Pattern | Kind、Data、Query、Capability、Relation、Interaction、ContractQueryの参照 | Pattern KindやData参照が直接C/U/Dであること |
+| internal/semantic/model.go : Capability / DataEffect | CapabilityのIDと optional Effect {Kind:create/update/delete, Data} | FunctionからDataへの**直接**更新、DB Providerでのdurable Effect、Operationの完全集合 |
+| internal/operations/surface.go : OperationSurface | derived/declared operation、target、binding、gaps、rule fingerprint。実行権限でないread-only投影 | Derived操作からの直接Write復元、Function全体の直CRUD/現在Grant |
+| internal/modelref/derivedbridge/projection.go : FromIndex | Derived Indexからtyped graphへのread-only候補投影。Scope必須 | Business Procedure、accepted Source、Function-level CRUD |
+| internal/operations/inspect.go : InspectSubject | 同一Load内でCanonical Subjectを先に存在・一意解決してからSource Indexを辿る | 複数の独立InspectSubject呼出しが同一原子的Snapshot/Read Attemptを共有したこと |
+
+**追加の結論**：P0の最小モデルは単に「Data×Function」ではなく、もし現行Worldの明示参照を用いるなら
+
+    application-pattern --declares-reference--> semantic-capability
+    semantic-capability --declares-business-effect(create/update/delete)--> semantic-data
+    semantic-data --accepted-primary-owner?--> subsystem
+    function --accepted-direct-write?--> semantic-data
+
+という4種類の**区別された関係**として読む必要がある。最初の2関係はWorldに候補となる宣言があっても、3・4番目は自動導出不可。最後の2関係が未受理のまま、Capability Effectを#1132 FunctionIOや#3662 Writeへ直接流し込まない。
+
+特に1 Capabilityを複数Patternが参照しても、**Pattern数をWrite実発生回数・独立のFunctionIO本数として計上してはならない**。1 Capabilityにはoptional Effect 1件を格納できるだけで、関連するSQL/Trigger/Batch/副次的更新の全量を保証しない。Effect未宣言も「Readである」「Writeゼロである」とは解釈しない。Capability Effectは業務の宣言意図であって、Provider実行で生じたObserved Writeとも異なる。
+
+「Direct」は既存の業務／Function契約として明示された関係に限る。Owner側Commandへの委譲はInvocation EdgeとOwner側Writerとして別に数え、元のFunctionが別SubsystemのDataを直接CUDしたという偽陽性を作らない。一方、Handler/HookやETL/外部バッチの実Writeが未知なら、境界を跨がないと断言しない。#1127 Operations Surfaceと#1132候補診断の既存責務を保つ。
+
+## 35. 直列GateではなくClaim依存DAGとしてのSource/Validation/Acceptance
+
+§31のL0〜L7は**説明上の段階**であって、全てが単一の直列Gateに成功しなければ読取自体を禁止するという意味ではない。現mainはCatalogのValidation診断とread-only Inspectorの対象解決を別APIで提供する。[Draft #3808](https://github.com/hat47x/tei-platform/pull/3808)は検証NG Workspaceでも各read-only投影がどう振る舞うかを研究中であり、Source根のみに関するValidation判定には未証明の負例候補が残る（当Draft自身の実証範囲を超えて断定しない）。
+
+**採るべきClaim依存**：
+
+1. Read/Diagnostic Claimは、対象Workspace・Canonical Identity・当該操作のSource読取の事実を示す。Validation findingが存在しても、Inspectorの限定読取ができた事実は保存できる。
+2. Model Validity Claimは、同じ対象・必要なValidationルール・その実行結果を示す。Catalog.validation.ok、WorldFP、ModelRevisionだけでBusiness Meaningを受理しない。異なるread呼出しのFingerprint同値だけから同一Attempt/物理Rootを推定しない（#3321）。
+3. Business Ownership/Function Direct CRUD Claimは、(1)(2)に加えて必要な**受理済み意味宣言・対象Scope/Source/Role closure**の根拠を持つ。Requirementごとの検証は別にする。現DataにPrimary Owner欄が無いことから、「空欄だからownerなし」とは断定しない。
+4. Candidate Optimization Claimは、入力したOwner/Write/Constraint/Weightの**正確なProblem**に対してのみexact。Accepted Meaning/Current Disclosure/Production Effectは別Claimであり、自動伝播しない。
+5. Public Consumer Claimは先に当該AudienceのCurrent Public Sliceを定め、秘密側のWrite/Owner/Constraint/Weight/スコアを計算してから表示だけ削ることはしない。
+
+**既存実装からのP0 Probe**（提案、NOT RUN）：同一実Workspaceで、明示したapplication-patternのCapability IDとsemantic-capabilityのDataEffect {Kind,Data}、そのsemantic-dataを各々型付きIDで読取照合する。成功した場合も得られるのは「宣言されたCapability Business Effect Intent」まで。次に、Accepted Primary OwnerとFunctionからDataへのDirectnessを証する既存Source/Acceptanceが同Scope/Revisionで見つからなければ、unresolvedを維持する。複数Inspectorの呼出しを「一回の原子的Read」と記録しない。必要な場合は既存Loader/Projectionの同一Load内で相互参照するが、別のReader/Host/Ownership SSOTは作らない。
+
+## 36. 新しい独立反証票（SP-61〜69）と採用優先度
+
+| ID | 条件（追加試験はNOT RUN） | 期待 |
+| --- | --- | --- |
+| SP-61 | Pattern.Dataは存在、Capability.Effectなし | Direct CRUDを自動生成しない。Writeゼロとも断定しない |
+| SP-62 | Pattern.Kind=command、Capability参照はあるがDataEffect未宣言 | KindだけでC/U/Dを補わず、Meaning Claimを未解決に保持 |
+| SP-63 | 一つのCapabilityを複数Patternが参照 | Declared Business Effect一つをPattern数分の独立Direct Writeとして二重計上しない |
+| SP-64 | Capability.Effect.update(Data A)、Data AにAccepted Primary Ownerなし | 宣言Intentは残すが、Subsystem配置の実資格を認定しない |
+| SP-65 | PatternがCapability Aを参照、DataEffectはData B、Pattern.DataはData C | 別の参照と意味対象を保持し、不一致/追加更新を都合よく解決しない |
+| SP-66 | Source index上の正しい参照でもBusiness Ownership未受理 | Source locator成功とCurrent Meaning資格を混同しない |
+| SP-67 | 構造Validation NGでもInspectorの該当Subject限定Readは成功 | Read ObservedとModel Validity/Business Acceptanceを別ステータスで保存 |
+| SP-68 | 同一WorldFPでPatternとCapabilityを異Read Attemptにて取得 | 同一atomic Snapshotの証拠なしにBinding/Owner/Writeの完全性を主張しない |
+| SP-69 | Owner側Capabilityへの委譲は明示、外部ETL/Trigger更新が不明 | 元FunctionのDirect Writeと委譲を区別し、未知Effectにより全域「越境ゼロ」を主張しない |
+
+**優先度更新**：#3662の同一HEAD Repository Health/脆弱性検査は2026-11-09時点で両方 **completed/success**（Health #42620332995、脆弱性 #42620333108）。これによりcandidate-only最適化器の局所リファレンスは回帰検証済みとなった。次のP0は**Owner/Function Directnessの正本宣言と受理根拠の所在確認**。見つからなければ、この1 Probeは未解決を示す成果として閉じ、Source/Type/Acceptanceの既存Ownerに設計Gapを返す。P1は新型の採用を決める前に、現存するCapability Effect Intentとの対応と手順/ETL/Providerとの非同値をレビュー。#3255/#3662はともにDraft・main未統合で、実業務OwnerとRuntime Effectの正式受入・公開資格は依然NOT PROVEN。
