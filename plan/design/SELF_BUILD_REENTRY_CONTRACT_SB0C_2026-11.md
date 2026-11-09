@@ -875,6 +875,75 @@ ContractVersion: fmt.Sprintf("%s/v%d", p.Contract, p.ContractMajor),
 - 既定経路をin-processへ切り替えるか（段3。§4.16のR-1/R-2/R-3は据え置き）
 - catalogの**中身**を誰が作るか（配布物か、Workspaceから生成するか）。K-3は「呼び手が名指しする」ところまでである
 
+### 4.23 L2-bのClaimをいつ立てられるか（2026-11-09）
+
+§4.8はL2を二層に分けた。L2-aはentryが宣言を引き渡したこと、**L2-bはその宣言が計画として解釈され、その計画がartifactを生んだこと**である。§4.14以降、L2-bの材料は一つずつ揃ってきたが、**`l2bClaimed`は定数`false`のまま**だった。
+
+本節はその状態を変える。**ただし、単一の観測がL2-bになるわけではないという原則は変えない。**
+
+#### なぜ定数だったか、なぜ今は違うか
+
+`l2bClaimed`を`false`に固定していたのは、**一つの観測をL2-bと読ませない**ためだった。`intentByteCheckMatched`だけでも、`planArtifactBinding=bound`だけでも、`artifactReproducibility=reproduced`だけでもL2-bではない。この判断は正しく、**今も変わらない**。
+
+変わったのは、**すべてが同時に成り立つ試行を作れるようになった**ことである。
+
+| 材料 | どこで入ったか | 何を確かめるか |
+| --- | --- | --- |
+| 宣言byteの突合（(a)(b)） | §4.14 | builderが読んだ宣言がentryの保持したbyteと同じ |
+| 計画の突合 | §4.9・§4.11 | builderの申告した計画がentryの計画と同じ |
+| plan→artifactの束縛 | §4.11・§4.12 | plan fingerprintとartifact digestが一つのlockで整合し、ディスクと合う |
+| artifactの再現 | §4.21 | そのplanを実行するとそのバイトが出る |
+| **entry自身の解釈** | §4.22 段2 | その計画を導いたのがentryである |
+
+最後の一つが入るまで、**「entryが宣言を解釈した」とは言えなかった**。段2がそれを埋めた。
+
+#### 述語
+
+`l2b.claimed`が`true`になるのは、次の**五つがすべて成り立つ**ときである。一つでも欠ければ`false`で、**欠けた条件をすべて`l2b.unmet`に列挙する**。
+
+| # | 条件 | 欠けたときの述べ方 |
+| --- | --- | --- |
+| 1 | entry自身が計画を導いた（`planReceipt.derivedBy=entry-in-process`かつ`state=resolved`） | 誰が導いたかを名指しする |
+| 2 | 宣言byteの突合が**実施され、一致した** | 未実施か不一致かを区別する |
+| 3 | builderの計画がentryの計画と**一致した** | 突合の状態を述べる |
+| 4 | plan→artifactの束縛が`bound` | 状態を述べる |
+| 5 | artifactが再現された（`reproduced`） | 状態を述べる |
+
+**条件を「欄が存在する」で判定しない。** 欄が無いことを一致と読ませない原則（SC0-18）を、述語にも適用する。`unperformed`はすべて不成立として扱う。
+
+#### 単一の観測の欄は`false`のまま
+
+`planArtifactBinding.l2bClaimed`・`intentBinding.l2bClaimed`は**`false`のまま据え置く**。それぞれの欄は「その観測だけではL2-bではない」ことを述べており、**その記述は正しい**。組み合わせの判断は新しい`l2b`欄が持つ。
+
+**述語はそれらの欄を読まない。** 読むと、`false`を書くことが目的の欄が主張の入力になり、意味が循環する。試験で固定した。
+
+#### 実測
+
+[記録](../evidence/TEI_GO_SELF_BUILD_L2B_CLAIM_2026-11-09.md)。三つの場合を実プロセスで観測した。
+
+| 場合 | `l2b.claimed` | `l2b.unmet` |
+| --- | --- | --- |
+| in-process＋`-intent`＋`-rebuild-check` | **`true`** | 空 |
+| 同じで`-rebuild-check`のみ無し | `false` | `the artifact was not reproduced from the plan (unperformed)` |
+| `-intent-resolver`経由（entryは解釈していない） | `false` | `the plan was derived by "", not by this entry` |
+
+**一つ目の場合、`planArtifactBinding.l2bClaimed`は`false`のまま**である。単一観測の欄と組み合わせの欄が別のことを述べていることが、出力に現れている。
+
+#### このClaimが言っていないこと
+
+`l2b.boundary`が明記する。
+
+- **受理・Runtime Authorityではない**（`qualified`は`false`のまま）
+- **catalogが正しいという主張ではない**（§4.22 K-3、SC0-26）
+- **供給のTrust・Seed Trustの判断ではない**
+- **L2-cでもL3でもない**
+- **このホスト・このbinaryでの観測**である
+
+#### この節が決めていないこと
+
+- `l2b.claimed`を**既定の試行で立てるか**。既定はin-processではなくchild経路のままであり、`-rebuild-check`も既定offである。**Claimを立てるには呼び手が明示する必要がある**
+- 既定経路の切り替え（§4.16のR-1/R-2/R-3）と`-rebuild-check`の既定化（§4.21末尾）。いずれも本節の対象外
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
@@ -905,6 +974,9 @@ ContractVersion: fmt.Sprintf("%s/v%d", p.Contract, p.ContractMajor),
 | SC0-24 | `artifactReproducibility=reproduced`をL2-bの成立と読む | 読まない。再現が示すのは「そのplanがそのartifactを生んだ」こと（(c)）であり、entryが宣言を解釈したことではない。`l2bClaimed`は`false`のまま（§4.21） |
 | SC0-25 | `-build-catalog`だけを渡し、digestを渡さない | 起動しない。**どのcatalogで導いたかを記録できない経路を許さない**（§4.22） |
 | SC0-26 | 呼び手が名指ししたcatalogを使ったことを「そのcatalogが正しい」と読む | 読まない。K-3が言えるのは「名指しされたcatalogを使った」ことまでである（§4.22） |
+| SC0-27 | `l2b.claimed=true`を受理・Runtime Authorityと読む | 読まない。`qualified`は`false`のままで、`l2b.boundary`が範囲を明記する（§4.23） |
+| SC0-28 | 単一の観測（`bound`だけ、`reproduced`だけ）でL2-bを主張する | 主張しない。述語は五条件の同時成立を要求し、欠けた条件をすべて列挙する（§4.23） |
+| SC0-29 | `l2bClaimed`を`false`に固定したまま「L2-bは未成立」と述べ続ける | 述べ続けない。ただし**Claimを立てるには呼び手がin-processと`-rebuild-check`を明示する必要がある**（既定は変わっていない。§4.23） |
 
 ## 6. 未決事項
 
@@ -951,7 +1023,8 @@ ContractVersion: fmt.Sprintf("%s/v%d", p.Contract, p.ContractMajor),
 - [ ] **entryの既定経路をin-processの`Resolve`へ切り替えるか**の判断（§4.16のR-1/R-2/R-3）。前提だったcatalogの出所は§4.22で決めた（K-3）。切り替え自体は段2の完了後に別途決める
 - [x] **段1**：`fixture`を外した名前で`BuildCatalog`・`ParseBuildCatalog`・`ResolveBuilder`・`ResolveDependency`・`CheckTarget`・`DirSourceResolver`を`internal/buildintent`へ移した（`tools/`側は型aliasと薄い委譲。参照実装の試験は**無変更で通る**。§4.22の移行表、[記録](../evidence/TEI_GO_SELF_BUILD_CATALOG_MOVE_2026-11-09.md)）
 - [x] **段2**：`cmd/tei`に`-build-catalog`・`-build-catalog-digest`・`-build-source-root`を足し、in-processで計画を導く経路を作った（`-intent-resolver`とは排他。§4.22、[記録](../evidence/TEI_GO_SELF_BUILD_INPROCESS_RESOLUTION_2026-11-09.md)）。**entryが導いた計画のfingerprintは参照実装のchildが出した値と一致した。** `planRecompute`・`planCrossCheck`・`planArtifactBinding`はin-process経路でも成立する
-- [ ] L2-bのClaimを立てるかどうかの判断。段2で**構造**は揃った（entryが自分で解釈し自分で導いた）が、`l2bClaimed`の意味を変える判断はしていない（§4.22末尾）
+- [x] L2-bのClaimを立てるかの判断と実装（§4.23。**五条件の同時成立**を述語にし、`l2b.claimed`と`l2b.unmet`として出す。[記録](../evidence/TEI_GO_SELF_BUILD_L2B_CLAIM_2026-11-09.md)。単一観測の`l2bClaimed`欄は`false`のまま据え置き、述語はそれらを読まない）
+- [ ] `l2b.claimed`を**既定の試行**で立てられるようにするか（今は呼び手がin-processと`-rebuild-check`を明示する必要がある。§4.23末尾）
 - [x] 宣言とplanの**build座標**（`outputKind`・`target`・`profile`）の照合（[#3652](https://github.com/hat47x/tei-platform/pull/3652)。childが三座標を一つずつ比べ、違えばartifactを書いた後にreportを出さずexit 1。[記録](../evidence/TEI_GO_SELF_BUILD_BUILD_COORDINATES_2026-11-09.md)）
 - [x] 宣言の他の欄のうち、planが同じ形で持つもの（`recipe`・`sources`・`dependencies`）の照合（[#3661](https://github.com/hat47x/tei-platform/pull/3661)。§4.17）
 - [x] `parameters`の照合（[#3664](https://github.com/hat47x/tei-platform/pull/3664)。測るとどちらの側も名前順ソートのみで値を変えないと分かったので、名前で突き合わせる。§4.18）

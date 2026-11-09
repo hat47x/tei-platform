@@ -62,7 +62,11 @@ type selfBuildOuterEvidence struct {
 	// is the observation §4.8(c) asks for; it is never present with state
 	// "reproduced" when the caller did not ask for it.
 	ArtifactReproducibility *selfBuildReproducibility `json:"artifactReproducibility,omitempty"`
-	Error                   *cliFailure               `json:"error,omitempty"`
+	// L2B is the combined claim (§4.23). The per-observation flags above each
+	// still say false, because no single observation is the claim; this record
+	// answers whether all of them hold together and names every one that did not.
+	L2B   *selfBuildL2BClaim `json:"l2b,omitempty"`
+	Error *cliFailure        `json:"error,omitempty"`
 }
 
 // selfBuildIntentBinding separates "which declaration this entry held" from
@@ -540,6 +544,11 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 	if !report.OK {
 		report.Error = &cliFailure{Code: "SELF_BUILD_CHILD_FAILED", Message: evidence.FailureCause}
 	}
+	// §4.23: the L2-b predicate is evaluated last, over every observation this
+	// attempt recorded. It is reported even when the attempt failed, so a reader
+	// can see which conditions were missing rather than only that ok is false.
+	l2b := assessL2B(report)
+	report.L2B = &l2b
 	if err := encodeIndented(out, report); err != nil {
 		return 1, err
 	}
