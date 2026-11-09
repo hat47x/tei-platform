@@ -236,7 +236,11 @@ func TestPutAndGetJavaArtifact(t *testing.T) {
 	}
 	// Keep implicit classpaths and injected Java options out of this attempt.
 	for _, key := range []string{"CLASSPATH", "JAVA_TOOL_OPTIONS", "JDK_JAVA_OPTIONS", "JDK_JAVAC_OPTIONS"} {
-		t.Setenv(key, "")
+		t.Setenv(key, "") // restores the original value on cleanup
+		// An empty value still makes the JVM print "Picked up ...", so unset it.
+		if err := os.Unsetenv(key); err != nil {
+			t.Fatal(err)
+		}
 	}
 	workspace, contract, fixtures, _ := selectionPaths(t)
 	candidates := filepath.Join(t.TempDir(), "candidates")
