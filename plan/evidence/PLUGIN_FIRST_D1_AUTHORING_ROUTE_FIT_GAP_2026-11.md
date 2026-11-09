@@ -292,6 +292,9 @@ S2-referenceの通常CLI/Studio経路が成立した後、既存#3181のWorkspac
 | --- | --- | --- |
 | IS-01 | `internal/inspectoradapter.LocalInspectorHost`1個を二つのWorkspace A/BへBind。同じ`semantic-data:sales.order`に対し異なるData属性と異なるManifest Identityを配置 | A/BのCanonical・World FP・Workspace Identityは区別され、A/BのProviderが根を混同しない。AのSource fileをrename後、AのWorld/Canonicalは不変でSourceIndex FPだけ変わり、Bはどちらも不変。A→BのView混入はFAIL |
 | IS-02 | `cmd/tei-studio`の**実Wails Bridge Go method**に二つのStartup allowlisted Workspaceを指定（`server`／`studio_generated && server`の両Targetを検証対象とする） | 同名Subjectであっても`workspace-1`がA、`workspace-2`がBのCanonical/Workspace Identityを返す。Aのfile rename後BのSource Index FPを変えない。別Rootを選んだのに同一値を返す／Aの変更をBの改訂に混ぜるのはFAIL |
+| IS-03 | `operations.ValidateInspectionProjection`とCLI/Studioの選択Provider経路へ、Subject `sales.order`だがCanonicalのtop-level `id=sales.other`、`id`欠落、`null`、配列などの**構文上は有効なJSON**を投入 | 形式的に妥当なJSONを正しいSubjectのCanonicalと誤認しない。選択Providerの返す`Subject`欄だけが正しくても、Canonical ID不一致は`INSPECTION_PROVIDER_INVALID`（CLI）／不正投影（Studio）として拒否 |
+
+**Canonical Identityの契約補強**：実`operations.InspectSubject`が対象とする現行12 Subject Kindはいずれも正規化Canonical JSONにtop-level `id`を持つ。従来のResult guardは`value.Subject`が一致すればCanonical内の`id`は未検証だったため、別Subjectの正しいJSONを取り違えても受理できた。共通`operations.ValidateInspectionProjection`で`Canonical.id == requested.ID`を機械検査し、CLI/Studio両Transportの負例を追加した。この修正は**返されたJSONの対象Identity整合**までであり、実Workspace Root/Parser byte/ArtifactやProviderの真正性は保証しない。
 
 **境界**：A/B Workspaceの比較はSource/Meaningの実参照の局所的実証であり、`WorldFingerprint`や`SourceIndexFingerprint`を実Artifact/Provider Link/実Authority・Disclosureや外部Providerの同一Load Originへ昇格しない。Source renameはInput Observationと再照合を確認するもので、OwnerのAccepted Meaningの再受理を自動要求しない。独立ExpectedとScenarioの一般化は既存#2514/#1180、raw Provider/Manifestの解析瞬間固定は#3524/#3479、製品S2-provider差替えは#951/#1016/#1251。
 
