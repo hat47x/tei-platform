@@ -216,10 +216,10 @@ class SymbolMatcherTests(unittest.TestCase):
 
     def test_every_known_intrusion_package_is_allowlisted_in_json_api(self):
         for pkg in ("tei/internal/workspace", "tei/internal/syntax",
-                    "tei/internal/sourceindex", "tei/internal/releaseplan",
-                    "tei/internal/application/release",
-                    "tei/internal/plugin/implementation",
-                    "tei/core/subject", "tei/internal/deployment/executor"):
+                    "tei/internal/sourceindex", "tei/internal/plugin/implementation",
+                    "tei/core/subject", "tei/internal/subject",
+                    "tei/internal/deployment/executor", "tei/internal/stdlib",
+                    "tei/internal/validation"):
             with self.subTest(pkg=pkg):
                 result = self.analyze([pkg + ".Load"])
                 self.assertTrue(result["passed"], result["failures"])

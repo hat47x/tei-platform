@@ -92,20 +92,21 @@ FORBIDDEN = (
 # --------------------------------------------------------------------------
 # KNOWN INTRUSION (allowlist, json-api profile only). README.md: "APIバイナリは
 # 現段階では設計時Workspace/Driver機構を含みます". These are exactly the tei
-# packages present in the tei_order_only,tei_api_only binary but absent from the
-# tei_frozen_world binary (observed by diffing the two real binaries).
+# packages in the `go list -deps` closure of the tei_order_only,tei_api_only
+# build that are absent from the closure of the tei_frozen_world build (a
+# symbol diff of one Go version is not reliable: whether a data-only package
+# shows up in nm depends on the Go version, e.g. only as `type:.eq.` symbols).
 # --------------------------------------------------------------------------
 KNOWN_INTRUSION = (
     "tei/internal/workspace",
     "tei/internal/syntax",
     "tei/internal/sourceindex",
-    "tei/internal/releaseplan",
-    "tei/internal/application/release",
     "tei/internal/plugin/implementation",
-    # Found by CI (Go 1.26 build): in the tei_api_only import closure but not in
-    # the tei_frozen_world closure (checked with `go list -deps`).
     "tei/core/subject",
+    "tei/internal/subject",
     "tei/internal/deployment/executor",
+    "tei/internal/stdlib",
+    "tei/internal/validation",
 )
 
 # Runtime mechanism that #1182 item 3 requires the API to keep (Driver,
@@ -121,6 +122,8 @@ RUNTIME_EXPECTED = (
     # symbols, so whether they are linked depends on the Go version (seen in CI
     # on Go 1.26, absent in a local Go 1.27 build).
     "tei/internal/application",
+    "tei/internal/application/release",
+    "tei/internal/releaseplan",
     "tei/internal/database",
     "tei/internal/database/migration",
     "tei/internal/database/persistence",
@@ -141,8 +144,6 @@ RUNTIME_EXPECTED = (
     "tei/internal/semantic/capabilityinvoke",
     "tei/internal/semantic/derivationref",
     "tei/internal/semantic/validationeval",
-    "tei/internal/stdlib",
-    "tei/internal/validation",
     "tei/reference/web-composition/go-host",
     "tei/tools/reference-first-web-target/sharedprojection",
 )
