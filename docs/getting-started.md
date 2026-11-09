@@ -165,6 +165,8 @@ Workspaceがモデル要素を1つも宣言していない場合、`validate`は
 
 `-namespace`には意味名前空間のIDだけを指定します。存在しないID、およびapplicationやqueryのIDを渡した場合は、空の成功ではなく`NAMESPACE_NOT_FOUND`（終了コード1）を返します。`namespaceMatched`と`namespaceMatchKind`は、要求がどの種類のSubjectに一致したかを示します。宣言はあるが要素を持たない名前空間は、`namespaceMatched=true`かつ`entries`が名前空間自身だけになります。
 
+`model catalog`の応答には`validation`（`ok`・`errorCount`・`warningCount`）が入ります（2026-11-09から）。これは`validate -workspace ... -json`と同じ規則の要約で、error重大度の診断もerror重大度のsource-root findingも無いときに`ok:true`になります。**`model catalog`自体は検証NGのWorkspaceでも`ok:true`・終了コード 0 を返します**。一覧は編集中でも読める投影であり、受理判断ではないためです。応答の`ok`とは別の値なので、catalogだけを読む呼出し元が「このモデルは健全か」を判定するときは`validation.ok`を読んでください。診断のコード・位置・提案は複製せず、`validate -json`で読みます（#3674）。
+
 `model catalog`の`modelRevision`は、管理対象Sourceのファイルpathと生バイトの組をsha256で並べた値です。**読み込んだWorldの内容の版ではありません。** 管理対象Sourceが1件も無いWorkspaceでは、空入力のSHA-256（`sha256:e3b0c442…b855`）になります。標準意味型（`std`）の`entries`は`modelRevision`の計算に入らないため、`entries`が0件でなくてもこの値になり得ます。空かどうかを判別するには、`modelRevision`ではなく`declarationCounts.total`を使ってください。`modelRevision`は「管理対象Sourceを1バイトも読まなかった」ことの証拠であり、モデルの同一性・受理・整合性の証拠ではありません。
 
 `validate -json`・`model catalog`・`inspect`・`trace`・`workspace-files`・`view -format json`・`source-index`・`knowledge-context`・`requirements`・`plugin-lock`・`plugin-resolve`・`plugin-runtime-plan`は、結果に`workspace`を返します。`-world`ファイルだけを入力したコマンドは、manifestを読んでいないため`workspace`を返しません。`name`は`tei.workspace.yaml`の`workspace:`に書かれた値、`formatVersion`はmanifestの版、`manifest.sha256`は読んだmanifestのバイトの照合値です。同じCanonical IDが複数のWorkspaceに別の意味で存在し得るため、`worldFingerprint`は内容の同一性を示しますが、どのWorkspaceかは示しません。両者を組み合わせて、結果の混在を防いでください。`workspace:`を書かないmanifestは読み込まれ、`name`は空になります（パスから名前を作りません）。これらは読んだ版の識別子であり、受理・権限・排他ロックではありません。`source-index`の参照一覧は、0件でも`[]`で返り、`null`にはなりません。
