@@ -1,0 +1,60 @@
+name: TEI-EKI external OpenAPI pinned compatibility pressure (Node)
+
+# Synthetic/API-source-only checks; no live EKI/TEI runtime integration or authority.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - 'tools/reference-tei-eki-contract/**'
+      - '.github/workflows/tei-eki-wire-compat-node.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/reference-tei-eki-contract/**'
+      - '.github/workflows/tei-eki-wire-compat-node.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-eki-contract-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  external-contract-source-check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      TARGET_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact candidate head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Pin Node runtime
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22.16.0
+          check-latest: false
+
+      - name: Log exact source and test file identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          node --version
+          for file in \
+            tools/reference-tei-eki-contract/eki-openapi-v1-snapshot.json \
+            tools/reference-tei-eki-contract/probe.test.cjs \
+            tools/reference-tei-eki-contract/README.md; do
+            test -f "$file"
+            printf 'blob=%s file=%s\n' "$(git hash-object "$file")" "$file"
+          done
+
+      - name: Run read-only contract/source and anti-loss tests
+        run: node --test tools/reference-tei-eki-contract/probe.test.cjs

@@ -47,12 +47,26 @@ type workspaceManifest struct {
 // parseWorkspaceManifestYAML accepts the existing small workspace YAML subset
 // plus explicit single-namespace imports. It deliberately does not pretend to
 // be a general YAML parser. All unsupported entries fail with a source line.
+//
+// One leading UTF-8 BOM is ignored, matching the syntax lexer: Windows editors
+// and PowerShell redirection add it, and refusing that file while accepting a
+// BOM in a .tei source was an unexplained asymmetry (#3556). The bytes of the
+// manifest are still hashed as read, so a BOM changes manifestIdentity, not the
+// meaning of the file.
+//
+// A `#` starts a comment only at the start of a line or after whitespace,
+// which is YAML's rule for a plain scalar. `scn#1` is a name containing `#`,
+// not a truncated name (#3557).
 func parseWorkspaceManifestYAML(src string) (workspaceManifest, error) {
+	src = strings.TrimPrefix(src, "\ufeff")
+	if strings.Contains(src, "\ufeff") {
+		return workspaceManifest{}, fmt.Errorf("a UTF-8 BOM is only accepted once, at the start of the file")
+	}
 	var out workspaceManifest
 	section := ""
 	current := -1
 	for n, raw := range strings.Split(src, "\n") {
-		line := strings.TrimSpace(strings.SplitN(raw, "#", 2)[0])
+		line := manifestLine(raw)
 		if line == "" {
 			continue
 		}
@@ -63,7 +77,11 @@ func parseWorkspaceManifestYAML(src string) (workspaceManifest, error) {
 			if out.Name != "" {
 				return workspaceManifest{}, fmt.Errorf("line %d: duplicate workspace name", n+1)
 			}
-			out.Name = strings.TrimSpace(strings.TrimPrefix(line, "workspace:"))
+			name, err := manifestScalar(strings.TrimPrefix(line, "workspace:"))
+			if err != nil {
+				return workspaceManifest{}, fmt.Errorf("line %d: workspace name: %w", n+1, err)
+			}
+			out.Name = name
 			continue
 		}
 		if strings.HasPrefix(line, "formatVersion:") {
@@ -73,9 +91,11 @@ func parseWorkspaceManifestYAML(src string) (workspaceManifest, error) {
 			if out.FormatVersion != 0 {
 				return workspaceManifest{}, fmt.Errorf("line %d: duplicate formatVersion", n+1)
 			}
+			// formatVersion stays unquoted: "1" is refused rather than unquoted
+			// to 1, so a quoted version is not silently accepted (#3557).
 			value := strings.TrimSpace(strings.TrimPrefix(line, "formatVersion:"))
-			version, err := strconv.Atoi(value)
-			if err != nil || version < 1 {
+			version, parseErr := strconv.Atoi(value)
+			if parseErr != nil || version < 1 {
 				return workspaceManifest{}, fmt.Errorf("line %d: formatVersion must be a positive integer", n+1)
 			}
 			out.FormatVersion = version
@@ -94,14 +114,20 @@ func parseWorkspaceManifestYAML(src string) (workspaceManifest, error) {
 			if !strings.HasPrefix(line, "-") {
 				return workspaceManifest{}, fmt.Errorf("line %d: unsupported workspace manifest entry %q", n+1, line)
 			}
-			value := strings.TrimSpace(strings.TrimPrefix(line, "-"))
+			value, err := manifestScalar(strings.TrimPrefix(line, "-"))
+			if err != nil {
+				return workspaceManifest{}, fmt.Errorf("line %d: source root: %w", n+1, err)
+			}
 			if value == "" {
 				return workspaceManifest{}, fmt.Errorf("line %d: empty source root", n+1)
 			}
 			out.Sources = append(out.Sources, value)
 		case "imports":
 			if strings.HasPrefix(line, "- alias:") {
-				alias := strings.TrimSpace(strings.TrimPrefix(line, "- alias:"))
+				alias, err := manifestScalar(strings.TrimPrefix(line, "- alias:"))
+				if err != nil {
+					return workspaceManifest{}, fmt.Errorf("line %d: import alias: %w", n+1, err)
+				}
 				out.Imports = append(out.Imports, WorkspaceImport{Alias: alias})
 				current = len(out.Imports) - 1
 				continue
@@ -114,17 +140,29 @@ func parseWorkspaceManifestYAML(src string) (workspaceManifest, error) {
 				if out.Imports[current].Path != "" {
 					return workspaceManifest{}, fmt.Errorf("line %d: duplicate import path", n+1)
 				}
-				out.Imports[current].Path = strings.TrimSpace(strings.TrimPrefix(line, "path:"))
+				value, err := manifestScalar(strings.TrimPrefix(line, "path:"))
+				if err != nil {
+					return workspaceManifest{}, fmt.Errorf("line %d: import path: %w", n+1, err)
+				}
+				out.Imports[current].Path = value
 			case strings.HasPrefix(line, "namespace:"):
 				if out.Imports[current].Namespace != "" {
 					return workspaceManifest{}, fmt.Errorf("line %d: duplicate import namespace", n+1)
 				}
-				out.Imports[current].Namespace = strings.TrimSpace(strings.TrimPrefix(line, "namespace:"))
+				value, err := manifestScalar(strings.TrimPrefix(line, "namespace:"))
+				if err != nil {
+					return workspaceManifest{}, fmt.Errorf("line %d: import namespace: %w", n+1, err)
+				}
+				out.Imports[current].Namespace = value
 			case strings.HasPrefix(line, "semanticDigest:"):
 				if out.Imports[current].SemanticDigest != "" {
 					return workspaceManifest{}, fmt.Errorf("line %d: duplicate import semanticDigest", n+1)
 				}
-				out.Imports[current].SemanticDigest = strings.TrimSpace(strings.TrimPrefix(line, "semanticDigest:"))
+				value, err := manifestScalar(strings.TrimPrefix(line, "semanticDigest:"))
+				if err != nil {
+					return workspaceManifest{}, fmt.Errorf("line %d: import semanticDigest: %w", n+1, err)
+				}
+				out.Imports[current].SemanticDigest = value
 				if !validImportSemanticDigest(out.Imports[current].SemanticDigest) {
 					return workspaceManifest{}, fmt.Errorf("line %d: invalid import semanticDigest: expected sha256 followed by 64 lowercase hex digits", n+1)
 				}
@@ -165,6 +203,63 @@ func parseWorkspaceManifestYAML(src string) (workspaceManifest, error) {
 		}
 	}
 	return out, nil
+}
+
+// manifestLine strips a YAML comment and trims the result. A `#` begins a
+// comment only at the start of the line or after whitespace and outside quotes,
+// so `scn#1` keeps its `#` (#3557).
+func manifestLine(raw string) string {
+	inSingle, inDouble := false, false
+	for i := 0; i < len(raw); i++ {
+		switch raw[i] {
+		case '\'':
+			if !inDouble {
+				inSingle = !inSingle
+			}
+		case '"':
+			if !inSingle {
+				inDouble = !inDouble
+			}
+		case '#':
+			if inSingle || inDouble {
+				continue
+			}
+			if i != 0 && raw[i-1] != ' ' && raw[i-1] != '\t' {
+				continue
+			}
+			return strings.TrimSpace(raw[:i])
+		}
+	}
+	return strings.TrimSpace(raw)
+}
+
+// manifestScalar reads one value of the manifest subset. A value wrapped in
+// matching quotes is returned without them; otherwise the text is returned as
+// written (already trimmed). A missing closing quote, an unescaped quote inside
+// the value, or trailing text after the closing quote is refused with the
+// reason, so a malformed line is named rather than reinterpreted (#3557).
+// Escape sequences are not interpreted.
+func manifestScalar(value string) (string, error) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return "", nil
+	}
+	if trimmed[0] != '"' && trimmed[0] != '\'' {
+		return trimmed, nil
+	}
+	quote := trimmed[:1]
+	closing := strings.Index(trimmed[1:], quote)
+	if closing < 0 {
+		return "", fmt.Errorf("quoted value is missing its closing %s", quote)
+	}
+	inner := trimmed[1 : 1+closing]
+	if strings.Contains(inner, quote) {
+		return "", fmt.Errorf("quoted value contains an unescaped %s", quote)
+	}
+	if rest := strings.TrimSpace(trimmed[1+closing+1:]); rest != "" {
+		return "", fmt.Errorf("quoted value is followed by %q", rest)
+	}
+	return inner, nil
 }
 
 // validImportSemanticDigest checks the existing semantic fingerprint representation.
@@ -219,6 +314,16 @@ func loadWorkspaceImports(root string, imports []WorkspaceImport, result *Result
 		if imp.SemanticDigest != "" && imp.SemanticDigest != actualDigest {
 			return fmt.Errorf("import %q: semantic digest mismatch for namespace %q (expected %s, got %s); review the provider changes and their impact before updating the pin", imp.Alias, imp.Namespace, imp.SemanticDigest, actualDigest)
 		}
+		// Capture only the selected Namespace's parsed Source bytes from this
+		// provider Load. Source re-location may re-Load a later provider state.
+		capture, err := captureImportedParsedLoad(imp, actualDigest, provider)
+		if err != nil {
+			return fmt.Errorf("import %q: %w", imp.Alias, err)
+		}
+		if result.importedParsedLoads == nil {
+			result.importedParsedLoads = make(map[string]*importedParsedLoad)
+		}
+		result.importedParsedLoads[imp.Alias] = &capture
 		owned[imp.Namespace] = true
 		result.World.Semantics = append(result.World.Semantics, *selected)
 		result.Imports = append(result.Imports, ResolvedImport{

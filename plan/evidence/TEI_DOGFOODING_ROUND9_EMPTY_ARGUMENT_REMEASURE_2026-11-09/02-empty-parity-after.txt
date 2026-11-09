@@ -1,0 +1,5 @@
+trace -mode ''	CLI rc=2 ok=False code=INVALID_ARGUMENT mode=None	MCP status=rpc-error code=-32602
+trace -direction ''	CLI rc=2 ok=False code=INVALID_ARGUMENT mode=None	MCP status=rpc-error code=-32602
+trace -expected-fingerprint ''	CLI rc=2 ok=False code=INVALID_ARGUMENT mode=None	MCP status=rpc-error code=-32602
+trace omitted defaults	CLI rc=0 ok=True code=None mode=summary	MCP status=ok code=None
+trace -mode full	CLI rc=0 ok=True code=None mode=full	MCP status=ok code=None

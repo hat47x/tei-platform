@@ -52,6 +52,38 @@ def as_object(result: subprocess.CompletedProcess[str]) -> dict:
     return value
 
 
+
+def read_current_fingerprints(cli: Path, root: Path, workspace: Path) -> dict[str, str]:
+    """Ask the real CLI for its *current* World + Source Index projection.
+
+    This is NOT a second Source parser, and two separate CLI invocations are
+    not an atomic filesystem snapshot or an external Harness delivery receipt.
+    """
+    result = as_object(real_cli(cli, root, "model", "catalog",
+                                "-workspace", str(workspace)))
+    if result.get("schemaVersion") != "tei.cli.model/v0" or result.get("ok") is not True:
+        raise AssertionError("actual Model Catalog rejected freshness inspection")
+    observed = result.get("result", {})
+    if not isinstance(observed, dict):
+        raise AssertionError("missing actual Model Catalog body")
+    fingerprints = {}
+    for name in ("worldFingerprint", "sourceIndexFingerprint"):
+        value = observed.get(name)
+        if not isinstance(value, str) or not value.startswith("sha256:") or len(value) != 71:
+            raise AssertionError(f"actual CLI returned invalid {name}")
+        fingerprints[name] = value
+    return fingerprints
+
+
+def insist_current_context(expected: dict, actual: dict, phase: str) -> None:
+    """Keep Source Index freshness distinct from Canonical World equality."""
+    for name in ("worldFingerprint", "sourceIndexFingerprint"):
+        original = expected.get(name)
+        current = actual.get(name)
+        if not original or current != original:
+            raise AssertionError(f"{phase}: Design Context {name} stale or absent")
+
+
 def assert_independent_rule(case: dict, expected: str) -> None:
     """Fixed elementary known-case property; not read from Candidate Expected."""
     number = Decimal(case["numbers"]["sales.order_line.line_number"])
@@ -107,6 +139,13 @@ def main() -> None:
         and context.get("observations", {}).get("fingerprintConsistency") == "consistent"
     ):
         raise AssertionError("cannot use incomplete/stale Design Context for local Candidate experiment")
+    recorded_fingerprints = context.get("observations", {}).get("observedFingerprints", {})
+    if not isinstance(recorded_fingerprints, dict):
+        raise AssertionError("Design Context did not provide qualified bounded fingerprints")
+    # Do not infer replay readiness merely from the Context's old success flag.
+    insist_current_context(recorded_fingerprints,
+                           read_current_fingerprints(cli, root, WORKSPACE),
+                           "before-candidate")
     source = (root / VALIDATION_SOURCE).read_bytes()
     declaration = b"validation sales.order_line.line_number_positive positive {"
     if source.count(declaration) != 1:
@@ -160,6 +199,10 @@ def main() -> None:
         generated = real_cli(cli, root, "scenario", "generate", "-scenario",
                              str(proposal), "-workspace", str(WORKSPACE))
         plan = as_object(generated)
+        # Both independent projections SHA-256 the same serialized Canonical
+        # World. The Plan does NOT pin Source Index/authoring location.
+        if "sha256:" + str(plan.get("worldSha256")) != recorded_fingerprints["worldFingerprint"]:
+            raise AssertionError("generated Scenario World is not the reviewed Design Context World")
         commands = plan.get("commands")
         if not isinstance(commands, list) or len(commands) != 7:
             raise AssertionError("new Candidate not in generated command plan")
@@ -181,6 +224,12 @@ def main() -> None:
         result = as_object(real_cli(cli, root, *argv[1:]))
         if result.get("executionMode") != "generated-pinned" or result.get("selectedStepCount") != 1:
             raise AssertionError("candidate not actually run in pinned mode")
+        # The TEI Scenario runner only pins World, Lock, Scenario and Fixture;
+        # the Context Consumer also needs the Source Index metadata to be
+        # current. Neither observation proves that no A->B->A occurred.
+        insist_current_context(recorded_fingerprints,
+                               read_current_fingerprints(cli, root, WORKSPACE),
+                               "after-pinned-run")
         evidence = result.get("evidence", [])
         expected = candidate["steps"][-1]["expectValidations"]
         if (len(evidence) != 1 or evidence[0].get("stepId") != TARGET_STEP
@@ -188,6 +237,52 @@ def main() -> None:
                 or evidence[0].get("validationResults") != expected
                 or evidence[0].get("evidenceNature") != "canonical-validations-synthetic-input-evaluated"):
             raise AssertionError("actual CLI did not evaluate Candidate's required boundary")
+
+
+        # A source-only (presentation/position) revision is not represented by
+        # the Scenario's WorldSHA. Prove the gap with a disposable Workspace
+        # copy and the real Product CLI, not an invented Source parser or fake
+        # fingerprint. First establish the copy's original version; then
+        # change ONLY trailing whitespace in one real *.tei file.
+        isolated_workspace = Path(directory) / "workspace-source-only-drift"
+        shutil.copytree(root / WORKSPACE, isolated_workspace)
+        copy_before = read_current_fingerprints(cli, root, isolated_workspace)
+        insist_current_context(recorded_fingerprints, copy_before,
+                               "isolated-copy-before-drift")
+        copied_rule = isolated_workspace / "semantic/sales/validation.tei"
+        byte_before = copied_rule.read_bytes()
+        copied_rule.write_bytes(byte_before + b"\n")
+        copy_after = read_current_fingerprints(cli, root, isolated_workspace)
+        if copy_after["worldFingerprint"] != copy_before["worldFingerprint"]:
+            raise AssertionError("whitespace-only Source drift unexpectedly changed Canonical World")
+        if copy_after["sourceIndexFingerprint"] == copy_before["sourceIndexFingerprint"]:
+            raise AssertionError("source-only drift escaped actual TEI Source Index")
+        refused_stale_context = False
+        try:
+            insist_current_context(copy_before, copy_after, "isolated-copy-after-drift")
+        except AssertionError as exc:
+            refused_stale_context = "sourceIndexFingerprint" in str(exc)
+        if not refused_stale_context:
+            raise AssertionError("a World-stable but SourceIndex-stale Context was admitted")
+
+        # Scenario's pinned World/Lock/Fixture set can still execute after a
+        # Source-only edit. This is a *limit of what the Plan pins*, not proof
+        # that the source/meaning/historical Authority is unchanged.
+        copied_argv = list(argv)
+        workspace_flag = copied_argv.index("-workspace")
+        copied_argv[workspace_flag + 1] = str(isolated_workspace)
+        copy_pinned_run = as_object(real_cli(cli, root, *copied_argv[1:]))
+        if (copy_pinned_run.get("executionMode") != "generated-pinned" or
+                copy_pinned_run.get("selectedStepCount") != 1 or
+                copy_pinned_run.get("evidence", [{}])[0].get("verified") is not True):
+            raise AssertionError("World-pinned Scenario did not preserve behavior for Source-only change")
+
+        # Byte-content A->B->A returns to the original fingerprint, but this
+        # does not revoke the intervening B, infer the Owner's re-acceptance,
+        # or prove a continuous immutable read.
+        copied_rule.write_bytes(byte_before)
+        copy_restored = read_current_fingerprints(cli, root, isolated_workspace)
+        insist_current_context(copy_before, copy_restored, "isolated-copy-restored")
 
         # Independent controls: invalidating either side of the test must
         # change the verdict. "not-satisfied" is a business result, NOT an error.
@@ -227,6 +322,23 @@ def main() -> None:
                           "worldSHA256": plan.get("worldSha256"),
                           "pluginLockSHA256": plan.get("pluginLockSha256"),
                           "candidateFixtureSHA256": plan.get("fixtureSha256", {}).get(TARGET_STEP)},
+            "contextToScenarioBinding": {
+                "designWorldFingerprint": recorded_fingerprints["worldFingerprint"],
+                "designSourceIndexFingerprint": recorded_fingerprints["sourceIndexFingerprint"],
+                "generatedWorldMatchesDesignContext": True,
+                "freshBeforeCandidate": True,
+                "freshAfterPinnedRun": True,
+                "sourceOnlyDrift": {
+                    "observedCanonicalWorldUnchanged": True,
+                    "observedSourceIndexChanged": True,
+                    "staleDesignContextRejectedByConsumer": True,
+                    "originalWorldPinnedScenarioStillExecutesInIsolatedCopy": True,
+                    "AtoBtoAOriginalFingerprintReturns": True,
+                    "intermediateHistoryOrCurrentGrantProven": False,
+                    "note": "isolated copy has a different root; demonstrates content/revision gap, not Workspace identity grant",
+                },
+                "atomicReadOrExternalDeliveryProven": False,
+            },
             "negativeControls": {
                 "lying-expected": "actual-evaluator-rejected",
                 "lying-fixture": "actual-evaluator-rejected",
@@ -249,8 +361,10 @@ def main() -> None:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps(result_report, ensure_ascii=False, indent=2) + "\n",
                             encoding="utf-8")
-        print("PASS: one proposed new boundary in real pinned CLI; "
+        print("PASS: Context World pin + fresh Source Index recheck and isolated "
+              "World-stable/SourceIndex-stale rejection; 1 proposed boundary; "
               "false expected + false fixture + stale pin rejected")
+        # A successful Scenario Plan alone is not a freshness admission.
         print("LIMIT: not blind AI generation, not Scenario SSOT adoption, "
               "not full test generation qualification")
 

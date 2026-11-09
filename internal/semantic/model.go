@@ -45,6 +45,11 @@ type Period struct {
 	// An empty value means the period does not declare one, and a checker
 	// must not assume a default.
 	Calendar core.CanonicalID `json:"calendar,omitempty"`
+	// ClosingDay splits every month into two segments, 1..28. Zero means the
+	// period is the whole month. X-TEA moved a date after a last-day setting into
+	// the next month (getMSeqOfDate, D:Session.java L2471–2484); here the month
+	// does not move and the segment says which side of the closing the date is on.
+	ClosingDay int `json:"closingDay,omitempty"`
 }
 
 type TypeKind string

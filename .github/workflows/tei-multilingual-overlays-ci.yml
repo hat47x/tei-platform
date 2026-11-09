@@ -73,6 +73,11 @@ jobs:
           node --version
           node -e 'if (Number(process.versions.node.split(".")[0]) < 20) process.exit(1)'
           node --test reference/multilingual-overlays/web/order-form.test.mjs
+      - name: UI Starterの型付き入力境界と既存Action Portを検証（BBR-12）
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test reference/ui-customization/web-react/action-port.test.mjs reference/ui-customization/web-react/row-safe-integer.test.mjs
       - name: 言語別配布候補を生成し余分な言語を含めない
         shell: bash
         run: |

@@ -1,0 +1,4 @@
+M1 replace reportedExecutionCodes with the original 3 codes
+   -> FAIL missing_input:      code="COMMAND_FAILED", want INVALID_COMMAND_INPUT
+   -> FAIL unauthorized_capability: code="COMMAND_FAILED", want COMMAND_UNAUTHORIZED
+restored -> ok (cmd/tei 138.9s)

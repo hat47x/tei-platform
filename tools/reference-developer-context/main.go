@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -56,24 +57,42 @@ func digest(b []byte) string {
 	return "sha256:" + hex.EncodeToString(sum[:])
 }
 
+// safeRelative accepts only a nonempty, slash-separated, workspace-relative
+// path that is already normalized. It cleans with the slash-based `path`
+// package, not `path/filepath`: filepath.Clean rewrites `/` to `\` on Windows,
+// so a caller-provided `internal/validation/validation.go` would never equal
+// its own cleaning result and every target would be rejected there.
 func safeRelative(p string) (string, error) {
 	if p == "" || filepath.IsAbs(p) || filepath.VolumeName(p) != "" || strings.Contains(p, "\\") {
 		return "", errors.New("target must be a nonempty workspace-relative slash path")
 	}
-	cleaned := filepath.Clean(p)
-	if cleaned == "." || cleaned == ".." || strings.HasPrefix(cleaned, ".."+string(filepath.Separator)) || cleaned != p {
+	cleaned := path.Clean(p)
+	if cleaned == "." || cleaned == ".." || strings.HasPrefix(cleaned, "../") || cleaned != p {
 		return "", errors.New("target path is not normalized or escapes workspace")
 	}
 	return cleaned, nil
 }
 
+// readInside reads a workspace-relative file and refuses anything that resolves
+// outside the workspace through a symlink.
+//
+// The root is resolved first. Comparing a resolved file path against an
+// unresolved root reports every file as escaping whenever the root itself is
+// reached through a link or a short name: the Windows CI runner's temporary
+// directory is C:\Users\RUNNER~1\..., which EvalSymlinks expands to
+// C:\Users\runneradmin\..., so the relative path started with ".." and every
+// read failed with "path escapes workspace through symlink" (#3783).
 func readInside(root, rel string) ([]byte, error) {
+	resolvedRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return nil, err
+	}
 	full := filepath.Join(root, filepath.FromSlash(rel))
 	resolved, err := filepath.EvalSymlinks(full)
 	if err != nil {
 		return nil, err
 	}
-	inside, err := filepath.Rel(root, resolved)
+	inside, err := filepath.Rel(resolvedRoot, resolved)
 	if err != nil || inside == ".." || strings.HasPrefix(inside, ".."+string(filepath.Separator)) {
 		return nil, errors.New("path escapes workspace through symlink")
 	}
