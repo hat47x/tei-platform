@@ -100,6 +100,6 @@ node --test reference/application-composition/e11-review-gate.test.mjs
 2. `order_entry.customer_reference → sales.order.customer → customer.customer`で、Relationだけが変更されたときにPattern／ApplicationへのReview候補が現れることを**実Sourceで確認**する。
 3. 複数Application、複数scope、別aliasの同一Database Contract、未知Edge、親Kitの更新、SUIの外部Repository出典を負例にする。Pattern名prefixによる所有推論は廃止し、E5に存在するApplication→Patternの直接参照で選別する。未確認の所属やGraph内で欠けたPatternは偽の局所成功としない。ただしE5の限定した直接参照は、他Project/Native Assetを含む完全な所有閉包ではない。
 4. [#1017 / PR #1111](https://github.com/hat47x/tei-platform/pull/1111)のLoader解析時bytes統一、#1120 Source BridgeのScope不一致の扱いを確認する。
-5. exact-headのtrusted clean full checkoutでGoテスト、Nodeテスト、実WorkspaceのE5→E7→typed Impact、最後に`tools/repository-health-check.sh`全項目PASSを得る。それまではDraftを維持し、mainへ統合しない。
+5. exact-headのtrusted clean full checkoutでGoテスト、Nodeテスト、実WorkspaceのE5→E7→typed Impactを実行し、結果をPR本文へ記録して統合する。`tools/repository-health-check.sh`は任意の広範囲診断として実行し、全項目PASSを統合の一律条件にはしない。実行できない検証は制約と残る危険性を記録する。
 
 **結論**：今回必要だったのは「構成用Graphの新設」ではなく、**すでに担当を持つ二つの診断結果を、権限を増やさずに一つのレビュー導線へ渡す最小の接着部**である。正式Composition Profile自体の要否はE10の二Consumerの実測後に判断する。

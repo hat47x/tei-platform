@@ -1,0 +1,71 @@
+name: Everything Data operation-artifact CLI witness
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'plan/fixtures/crosslane-cli/**'
+      - 'plan/design/CROSSLANE_REAL_CLI_OPERATION_ARTIFACT_2026-11.md'
+      - '.github/workflows/everything-data-cli-handoff.yml'
+      - 'internal/operations/**'
+      - 'internal/artifact/**'
+      - 'cmd/tei/cli_operations_artifacts.go'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# 同じPRの古い実行だけを取り消し、mainへのpushは取り消さない（#3682）。
+concurrency:
+  group: tei-everything-data-cli-handoff-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  observed-real-cli:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Checkout exact candidate HEAD
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ env.EXPECTED_HEAD }}
+
+      - name: Go toolchain from checked go.mod
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      - name: Build actual CLI outside checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          go build -o "$RUNNER_TEMP/tei-real-handoff" ./cmd/tei
+          "$RUNNER_TEMP/tei-real-handoff" version -json
+          echo "candidate-head=$EXPECTED_HEAD"
+          echo "checker-blob=$(git rev-parse HEAD:plan/fixtures/crosslane-cli/verify_operations_artifacts.py)"
+
+      - name: Observe actual Operation and Artifact CLI process handoff
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -B -c 'import ast,pathlib; ast.parse(pathlib.Path("plan/fixtures/crosslane-cli/verify_operations_artifacts.py").read_text(encoding="utf-8"))'
+          python3 -B plan/fixtures/crosslane-cli/verify_operations_artifacts.py \
+            --binary "$RUNNER_TEMP/tei-real-handoff" \
+            --reference-workspace reference/workspace \
+            --negative-workspace reference/standard-crud/workspace \
+            --expected-head "$EXPECTED_HEAD"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"

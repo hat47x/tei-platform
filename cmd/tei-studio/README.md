@@ -87,7 +87,7 @@ Wails Server BuildはEvent broadcastとService singletonを持ちます。本PoC
 
 通常の `go build` は`host_default.go`から`NewReadOnlyWithXeadObserver`を使い、通常Operation経路とStudio限定のXEAD observerを同じWorkspace allowlist配下へ接続する。`studio_generated` ビルドタグ指定時だけ、`host_generated.go` が #1833の出力した `staticservices.NewCatalogService` / `NewValidateService` をコンパイル時の型検査付きでHostの `ServiceFactory` に注入する。Wailsのサービス登録は `StudioBridge` の5操作のみ。生成サービスをWailsへ登録しない。
 
-`internal/studiohost.ReadOnly` がRendererのWorkspace IDを起動時allowlistに照合し、許可済みrootを確定させてからだけFactoryへ渡す。生成サービスは `Catalog(namespace)` / `Validate()` のみ担当し、List/Inspectは従来どおり。通常経路はFactory=nilで直接Operation呼出し。Factory構築失敗、サービス欠落、Operation失敗は従来のHost failure envelopeへ変換し、非分類の内部エラー/絶対パスは公開しない。
+`internal/studiohost.ReadOnly` がRendererのWorkspace IDを起動時allowlistに照合し、許可済みrootを確定させてからだけFactoryへ渡す。**allowlistは名前だけでなく物理rootの同一性を保証する**。起動時に`EvalSymlinks`で実体rootを解決して`os.FileInfo`を保持し、各操作の前に`os.Stat`＋`os.SameFile`で同一性を再検査する（`WORKSPACE_ROOT_CHANGED`）。設定したaliasだけを置換しても、起動時に固定した実体rootは変わらない。root自体のrename・置換はfail closedになる。生成サービスは `Catalog(namespace)` / `Validate()` のみ担当し、List/Inspectは従来どおり。通常経路はFactory=nilで直接Operation呼出し。Factory構築失敗、サービス欠落、Operation失敗は従来のHost failure envelopeへ変換し、非分類の内部エラー/絶対パスは公開しない。
 
 生成器・fixtureの固定版は [#1833 `fe8e37b1c735dc138c36cb2d37db94ee44424b9e`](https://github.com/hat47x/tei-platform/pull/1833)。**生成Goファイルを手書き模倣してcommitしない**。未統合の#1833から該当ディレクトリだけを検証用snapshotに抽出して生成する。
 

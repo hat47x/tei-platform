@@ -76,3 +76,14 @@ func TestRunPlanRequiresAnOutputForCheckpoints(t *testing.T) {
 		t.Fatalf("a checkpoint needs an output: %+v", validation.Validate(world))
 	}
 }
+func TestRunPlanRejectsAnUnknownOutput(t *testing.T) {
+	world := runPlanWorld(semantic.RunPlan{
+		ID:         "sales.outputs",
+		Operations: []core.CanonicalID{"sales.close"},
+		Key:        []core.CanonicalID{"sales.period.month"},
+		Outputs:    []core.CanonicalID{"sales.missing_statement"},
+	})
+	if !codesOf(validation.Validate(world))["RUN_PLAN_UNKNOWN_OUTPUT"] {
+		t.Fatalf("an output must name existing data: %+v", validation.Validate(world))
+	}
+}

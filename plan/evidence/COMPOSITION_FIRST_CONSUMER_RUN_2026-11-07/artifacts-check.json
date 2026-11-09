@@ -1,0 +1,151 @@
+{
+  "inputRevision": "sha256:c60ed68c7c85ab218883b18970df85db1ebcae7d9090336452766d7a95d2b04d",
+  "artifacts": [
+    {
+      "kind": "table-definition",
+      "inputRevision": "sha256:c60ed68c7c85ab218883b18970df85db1ebcae7d9090336452766d7a95d2b04d",
+      "rule": {
+        "id": "tei.artifact.table-definition",
+        "version": "v1",
+        "fingerprint": "sha256:2de929928f966fe4867c734b09c6a31132fcd585ab5e6d62a3472c6d1446184e"
+      },
+      "generator": "tei-artifact-tabledef/v1",
+      "content": "table public.order_archive\ndata sales.order\ncolumn order_id sales.order.order_id int64 required pk\ncolumn status sales.order.status varchar required\nprimary-key sales.order.order_id\n",
+      "digest": "sha256:b89ee5b67e248f6b19aa372c46fb7702fde3d6916b9860bc59c06282065c018e",
+      "unresolved": null
+    },
+    {
+      "kind": "table-definition",
+      "inputRevision": "sha256:c60ed68c7c85ab218883b18970df85db1ebcae7d9090336452766d7a95d2b04d",
+      "rule": {
+        "id": "tei.artifact.table-definition",
+        "version": "v1",
+        "fingerprint": "sha256:2de929928f966fe4867c734b09c6a31132fcd585ab5e6d62a3472c6d1446184e"
+      },
+      "generator": "tei-artifact-tabledef/v1",
+      "content": "table public.notes\ndata sales.note\ncolumn body sales.note.body text optional\nprimary-key (none)\n",
+      "digest": "sha256:8a0b792a7655b9b7dd2c68457196113680db78c5788bc576a18b1e264c49de0b",
+      "unresolved": [
+        {
+          "subject": "sales.note",
+          "reason": "missing-semantics",
+          "detail": "no primary key is declared for the table"
+        }
+      ]
+    },
+    {
+      "kind": "table-definition",
+      "inputRevision": "sha256:c60ed68c7c85ab218883b18970df85db1ebcae7d9090336452766d7a95d2b04d",
+      "rule": {
+        "id": "tei.artifact.table-definition",
+        "version": "v1",
+        "fingerprint": "sha256:2de929928f966fe4867c734b09c6a31132fcd585ab5e6d62a3472c6d1446184e"
+      },
+      "generator": "tei-artifact-tabledef/v1",
+      "content": "table public.orders\ndata sales.order\ncolumn order_id sales.order.order_id int64 required pk\ncolumn status sales.order.status varchar required\nprimary-key sales.order.order_id\n",
+      "digest": "sha256:56c6a0595bfaf3c7cf0c98af3c445d84fff8a126fc25feb51b854257ef478c27",
+      "unresolved": null
+    },
+    {
+      "kind": "function-definition",
+      "inputRevision": "sha256:c60ed68c7c85ab218883b18970df85db1ebcae7d9090336452766d7a95d2b04d",
+      "rule": {
+        "id": "tei.artifact.function-definition",
+        "version": "v1",
+        "fingerprint": "sha256:0b9fa12c6137edbbdc05092621c581b9e62365acb1f6194ab7dab5f8f99de76b"
+      },
+      "generator": "tei-artifact-functiondef/v1",
+      "content": "application ledger\ncapability sales.order.cancel\ninput order sales.order\noutcome cancelled sales.order\noutcome conflict sales.order\neffect update sales.order\ncapability sales.order.register\ninput order sales.order\noutcome created sales.order\noutcome duplicate sales.order\neffect create sales.order\n",
+      "digest": "sha256:ac834b168c94111dc3df9fd591f2f02cfeaf6815b7b303b87055ceb1a14b9d21",
+      "unresolved": [
+        {
+          "subject": "ledger",
+          "reason": "missing-semantics",
+          "detail": "application declares no pattern, so no function has an entry"
+        }
+      ]
+    },
+    {
+      "kind": "operation-surface",
+      "inputRevision": "sha256:c60ed68c7c85ab218883b18970df85db1ebcae7d9090336452766d7a95d2b04d",
+      "rule": {
+        "id": "tei.artifact.operation-surface",
+        "version": "v1",
+        "fingerprint": "sha256:76412dbc390921fa4eae6f8b944a153f971e9b04288dee2e86d492eec5cafd54"
+      },
+      "generator": "tei-artifact-surface/v1",
+      "content": "{\n  \"schemaVersion\": \"tei.operations.operation-surface/v0\",\n  \"application\": \"ledger\",\n  \"rule\": {\n    \"id\": \"tei.operation-surface/standard-crud\",\n    \"version\": \"v1\",\n    \"fingerprint\": \"sha256:92adf0fa3b20816fb6068780a6dd8b9b1fb77973e6c2cff823313346b0e59ae0\"\n  },\n  \"operations\": [\n    {\n      \"id\": \"ledger.list.sales.note\",\n      \"kind\": \"list\",\n      \"target\": \"sales.note\",\n      \"origin\": \"derived\",\n      \"autonomy\": \"unattended\",\n      \"basis\": \"sha256:6ae807d0cea789bed8d9cc13e551fc3eaf7c91bd5402159047da85dcf8b21fce\"\n    },\n    {\n      \"id\": \"ledger.list.sales.order\",\n      \"kind\": \"list\",\n      \"target\": \"sales.order\",\n      \"origin\": \"derived\",\n      \"autonomy\": \"unattended\",\n      \"basis\": \"sha256:3fffc2ae72ebfc6baf68ef167ee58ebdab9e9475d69fb18e8a2e4f20cc1321a9\"\n    },\n    {\n      \"id\": \"ledger.read.sales.order\",\n      \"kind\": \"read\",\n      \"target\": \"sales.order\",\n      \"origin\": \"derived\",\n      \"inputs\": [\n        \"sales.order.order_id\"\n      ],\n      \"autonomy\": \"unattended\",\n      \"basis\": \"sha256:3fffc2ae72ebfc6baf68ef167ee58ebdab9e9475d69fb18e8a2e4f20cc1321a9\"\n    },\n    {\n      \"id\": \"ledger.create.sales.order\",\n      \"kind\": \"create\",\n      \"target\": \"sales.order\",\n      \"origin\": \"derived\",\n      \"inputs\": [\n        \"sales.order.order_id\",\n        \"sales.order.status\"\n      ],\n      \"effects\": [\n        \"create:sales.order\"\n      ],\n      \"binding\": \"sales.order.register\",\n      \"autonomy\": \"attended\",\n      \"basis\": \"sha256:2fafdb426691b7de9c8b33c1356e2d2539212256f073eed3dc6096bf2f2efe68\"\n    },\n    {\n      \"id\": \"ledger.update.sales.order\",\n      \"kind\": \"update\",\n      \"target\": \"sales.order\",\n      \"origin\": \"derived\",\n      \"inputs\": [\n        \"sales.order.order_id\"\n      ],\n      \"effects\": [\n        \"update:sales.order\"\n      ],\n      \"concurrency\": \"expected-state\",\n      \"binding\": \"sales.order.cancel\",\n      \"autonomy\": \"attended\",\n      \"basis\": \"sha256:2fafdb426691b7de9c8b33c1356e2d2539212256f073eed3dc6096bf2f2efe68\"\n    }\n  ],\n  \"gaps\": [\n    {\n      \"target\": \"sales.note\",\n      \"kind\": \"create\",\n      \"reason\": \"missing-semantics\",\n      \"detail\": \"create requires an identifying key\"\n    },\n    {\n      \"target\": \"sales.note\",\n      \"kind\": \"read\",\n      \"reason\": \"missing-semantics\",\n      \"detail\": \"no candidate key or persistence primary key is declared\"\n    },\n    {\n      \"target\": \"sales.order\",\n      \"kind\": \"list\",\n      \"reason\": \"conflict\",\n      \"detail\": \"datasource alias archive is write-only\"\n    },\n    {\n      \"target\": \"sales.order\",\n      \"kind\": \"retire\",\n      \"reason\": \"missing-input\",\n      \"detail\": \"no lifecycle or state declaration exists for this data\"\n    }\n  ],\n  \"summary\": {\n    \"operations\": 5,\n    \"derived\": 5,\n    \"declared\": 0,\n    \"unattended\": 3,\n    \"gaps\": 4\n  }\n}\n",
+      "digest": "sha256:3f19ca3170a4c42fcaa9896800e9cb25c082f5bf8ad082cc55269ad110f5e6d9",
+      "unresolved": [
+        {
+          "subject": "sales.note",
+          "reason": "missing-semantics",
+          "detail": "create: create requires an identifying key"
+        },
+        {
+          "subject": "sales.note",
+          "reason": "missing-semantics",
+          "detail": "read: no candidate key or persistence primary key is declared"
+        },
+        {
+          "subject": "sales.order",
+          "reason": "conflict",
+          "detail": "list: datasource alias archive is write-only"
+        },
+        {
+          "subject": "sales.order",
+          "reason": "missing-input",
+          "detail": "retire: no lifecycle or state declaration exists for this data"
+        }
+      ]
+    }
+  ],
+  "manifest": {
+    "inputRevision": "sha256:c60ed68c7c85ab218883b18970df85db1ebcae7d9090336452766d7a95d2b04d",
+    "entries": [
+      {
+        "kind": "function-definition",
+        "rule": "tei.artifact.function-definition",
+        "version": "v1",
+        "fingerprint": "sha256:0b9fa12c6137edbbdc05092621c581b9e62365acb1f6194ab7dab5f8f99de76b",
+        "digest": "sha256:ac834b168c94111dc3df9fd591f2f02cfeaf6815b7b303b87055ceb1a14b9d21",
+        "unresolved": 1
+      },
+      {
+        "kind": "operation-surface",
+        "rule": "tei.artifact.operation-surface",
+        "version": "v1",
+        "fingerprint": "sha256:76412dbc390921fa4eae6f8b944a153f971e9b04288dee2e86d492eec5cafd54",
+        "digest": "sha256:3f19ca3170a4c42fcaa9896800e9cb25c082f5bf8ad082cc55269ad110f5e6d9",
+        "unresolved": 4
+      },
+      {
+        "kind": "table-definition",
+        "rule": "tei.artifact.table-definition",
+        "version": "v1",
+        "fingerprint": "sha256:2de929928f966fe4867c734b09c6a31132fcd585ab5e6d62a3472c6d1446184e",
+        "digest": "sha256:56c6a0595bfaf3c7cf0c98af3c445d84fff8a126fc25feb51b854257ef478c27",
+        "unresolved": 0
+      },
+      {
+        "kind": "table-definition",
+        "rule": "tei.artifact.table-definition",
+        "version": "v1",
+        "fingerprint": "sha256:2de929928f966fe4867c734b09c6a31132fcd585ab5e6d62a3472c6d1446184e",
+        "digest": "sha256:8a0b792a7655b9b7dd2c68457196113680db78c5788bc576a18b1e264c49de0b",
+        "unresolved": 1
+      },
+      {
+        "kind": "table-definition",
+        "rule": "tei.artifact.table-definition",
+        "version": "v1",
+        "fingerprint": "sha256:2de929928f966fe4867c734b09c6a31132fcd585ab5e6d62a3472c6d1446184e",
+        "digest": "sha256:b89ee5b67e248f6b19aa372c46fb7702fde3d6916b9860bc59c06282065c018e",
+        "unresolved": 0
+      }
+    ],
+    "digest": "sha256:b4fa1ee88cd9b22bd6f91e240a94b910b1fa160a66b056b5c327daf63478584e",
+    "complete": false
+  },
+  "findings": []
+}

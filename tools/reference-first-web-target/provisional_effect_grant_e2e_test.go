@@ -29,12 +29,18 @@ import (
 // the REAL clock (the shipped flag path always reads time.Now).
 func (e *provEnv) writeGrant(t *testing.T, subject, resource string) {
 	t.Helper()
+	e.writeGrantWindow(t, subject, resource, -time.Minute, time.Hour)
+}
+
+// writeGrantWindow is writeGrant with an explicit validity window relative to now.
+func (e *provEnv) writeGrantWindow(t *testing.T, subject, resource string, notBefore, notAfter time.Duration) {
+	t.Helper()
 	g := provisionaleffectgrant.Grant{
 		Issuer: "dev", KeyID: "k1", ApplicationID: "order_entry", Capability: "order_entry.submit_order",
 		SubjectID: subject, Resource: resource,
 		Epochs:    provisionaleffectgrant.Epochs{Source: "local-auth-store", SubjectLink: 1, Membership: 2, Policy: 3},
-		NotBefore: time.Now().UTC().Add(-time.Minute).Format(time.RFC3339),
-		NotAfter:  time.Now().UTC().Add(time.Hour).Format(time.RFC3339),
+		NotBefore: time.Now().UTC().Add(notBefore).Format(time.RFC3339),
+		NotAfter:  time.Now().UTC().Add(notAfter).Format(time.RFC3339),
 	}
 	signed, err := provisionaleffectgrant.Sign(g, e.priv)
 	if err != nil {
@@ -69,6 +75,23 @@ func (b *lockedBuffer) String() string {
 // injected; the effect Grant Reader comes from the three flags.
 func startProvisionalWebTarget(t *testing.T, extra []string) (base string, logs *lockedBuffer, stop func()) {
 	t.Helper()
+	reader, args := provisionalWebTargetArgs(t, extra)
+	reservation, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	address := reservation.Addr().String()
+	_ = reservation.Close()
+	logs = &lockedBuffer{}
+	log.SetOutput(logs)
+	args = append(args, "-listen", address)
+	return runProvisionalWebTarget(t, reader, args, address, logs)
+}
+
+// provisionalWebTargetArgs returns the test-only Source Reader and the flags
+// shared by the Web Target tests here, without -listen.
+func provisionalWebTargetArgs(t *testing.T, extra []string) (syntheticStartupReader, []string) {
+	t.Helper()
 	root := filepath.Dir(filepath.Dir(referenceWorkspacePath(t)))
 	workspacePath := referenceWorkspacePath(t)
 	loaded, err := workspace.Load(workspacePath)
@@ -89,25 +112,21 @@ func startProvisionalWebTarget(t *testing.T, extra []string) (base string, logs 
 	if err := os.WriteFile(publication, raw, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	reservation, err := net.Listen("tcp4", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	address := reservation.Addr().String()
-	_ = reservation.Close()
-	logs = &lockedBuffer{}
-	log.SetOutput(logs)
 	args := append([]string{
 		"-workspace", workspacePath, "-application", "order_entry",
 		"-baseline-id", "B", "-baseline-revision", testBaselineRevision, "-target-revision", testTargetRevision,
 		"-legacy-users", filepath.Join(root, "reference", "legacy-auth", "users.json"),
 		"-legacy-authorization", filepath.Join(root, "reference", "legacy-auth", "authorization.json"),
-		"-listen", address,
 	}, extra...)
+	return syntheticStartupReader{publication: publication}, args
+}
+
+func runProvisionalWebTarget(t *testing.T, reader syntheticStartupReader, args []string, address string, logs *lockedBuffer) (base string, _ *lockedBuffer, stop func()) {
+	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() {
-		done <- runCombinedWebTarget(ctx, syntheticStartupReader{publication: publication}, args)
+		done <- runCombinedWebTarget(ctx, reader, args)
 	}()
 	stop = func() {
 		cancel()
@@ -195,6 +214,46 @@ func TestProvisionalFlagsGateTheHTTPCommandEndToEnd(t *testing.T) {
 	if status != http.StatusOK || !strings.Contains(body, `"completed"`) || strings.Contains(body, "editor-secret") {
 		t.Fatalf("exact Grant was not admitted: %d %s", status, body)
 	}
+	// After an ALLOWED effect the Grant is still re-read at the next request: a
+	// success must not be cached. The order is already completed, so a request
+	// can be refused with 422 HOST_EFFECT_GRANT_UNAVAILABLE only if the Grant
+	// check runs again (a cached success would reach the completed order instead).
+	e.writeTrust(t, func(i *hoststore.TrustedIssuer) { i.Revoked = true }, nil)
+	denied("revoked after a successful effect")
+	e.writeTrust(t, func(*hoststore.TrustedIssuer) {}, nil)
+	status, body = postSubmit(t, base, "legacy-order-editor", "editor-secret")
+	if strings.Contains(body, "HOST_EFFECT_GRANT_UNAVAILABLE") {
+		t.Fatalf("a trusted key again should pass the Grant check: %d %s", status, body)
+	}
+	// An expired Grant (the file's own period ended) is refused on the next request.
+	e.writeGrantWindow(t, "subject-order-editor", "order/1001", -2*time.Hour, -time.Hour)
+	denied("expired after a successful effect")
+}
+
+// A port that is already in use fails the start at bind, before the
+// development-only Grant is announced as active.
+func TestProvisionalWarningIsNotPrintedWhenBindFails(t *testing.T) {
+	e := newProvEnv(t, nil)
+	e.writeGrant(t, "subject-order-editor", "order/1001")
+	occupied, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer occupied.Close()
+	reader, args := provisionalWebTargetArgs(t, []string{
+		"-provisional-effect-grant", e.grantPath, "-provisional-effect-grant-trust", e.trustPath,
+		"-provisional-effect-grant-development-only"})
+	args = append(args, "-listen", occupied.Addr().String())
+	logs := &lockedBuffer{}
+	log.SetOutput(logs)
+	defer log.SetOutput(os.Stderr)
+	err = runCombinedWebTarget(context.Background(), reader, args)
+	if err == nil || !strings.Contains(err.Error(), "WEB_TARGET_LISTEN_FAILED") {
+		t.Fatalf("expected the bind failure to fail the start: %v", err)
+	}
+	if strings.Contains(logs.String(), "PROVISIONAL_EFFECT_GRANT_ACTIVE") {
+		t.Fatalf("a start that could not bind claimed the provisional Grant is active: %s", logs.String())
+	}
 }
 
 // A start that fails before the Target is published must not announce that the
@@ -252,6 +311,12 @@ func TestProvisionalStoreConstructorFixesProvenance(t *testing.T) {
 		src, _ := os.ReadFile(f)
 		if bytes.Contains(src, []byte("newProvisionalSubmitGrantSource(")) {
 			t.Fatalf("%s builds a provisional grant source outside the fixed-Provenance constructors", f)
+		}
+		// A Host in this package must not read the provisional Grant file source
+		// directly (for example to hand it to a real-pg Runner); only
+		// provisional_effect_grant.go may reference the package.
+		if bytes.Contains(src, []byte("provisionaleffectgrant.")) {
+			t.Fatalf("%s uses the provisional Grant package outside provisional_effect_grant.go", f)
 		}
 	}
 }

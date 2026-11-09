@@ -1,0 +1,8 @@
+{
+  "schemaVersion": "tei.cli.plugin-resolve/v0",
+  "ok": false,
+  "error": {
+    "code": "PLUGIN_RESOLVE_FAILED",
+    "message": "unsupported plugin lock format 0"
+  }
+}

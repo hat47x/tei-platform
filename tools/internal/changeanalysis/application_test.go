@@ -4,10 +4,13 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"testing"
 
+	"tei/internal/application"
 	"tei/internal/core"
 	"tei/internal/ir"
+	"tei/internal/validation"
 )
 
 const (
@@ -19,6 +22,60 @@ data Intake {
         key repair_intake.intake.customer_id -> customer.customer.customer_id
 }
 `
+)
+
+func TestDiffApplicationsSemanticUseOrderDoesNotInventChange(t *testing.T) {
+	root := t.TempDir()
+	writeSource(t, root, "tei.workspace.yaml", "workspace: ordering_probe\nformatVersion: 1\nsources:\n  - semantic\n  - applications\n")
+	writeSource(t, root, "semantic/alpha.tei", "namespace alpha\n\ntype AlphaId from std.identifier\n")
+	writeSource(t, root, "semantic/beta.tei", "namespace beta\n\ntype BetaId from std.identifier\n")
+	const path = "applications/example/application.tei"
+	writeSource(t, root, path, "application example {\n    uses semantic alpha\n    uses semantic beta\n}\n")
+	before := loadWorld(t, root).World
+	writeSource(t, root, path, "application example {\n    uses semantic beta\n    uses semantic alpha\n}\n")
+	after := loadWorld(t, root).World
+	if len(before.Applications) != 1 || len(after.Applications) != 1 {
+		t.Fatalf("expected one loaded application, got %d and %d", len(before.Applications), len(after.Applications))
+	}
+	if validation.HasErrors(validation.Validate(before)) || validation.HasErrors(validation.Validate(after)) {
+		t.Fatal("both reordered workspaces must validate")
+	}
+	if reflect.DeepEqual(before.Applications[0].SemanticUses, after.Applications[0].SemanticUses) {
+		t.Fatal("fixture must retain the distinct source order")
+	}
+	strict, err := DiffApplications(before, after)
+	if err != nil || !reflect.DeepEqual(keys(strict), []string{"changed application:example"}) {
+		t.Fatalf("existing strict comparison must preserve declaration order: %+v, %v", strict, err)
+	}
+	diff, err := DiffApplicationMembershipCandidates(before, after)
+	if err != nil || len(diff.Changes) != 0 || !slices.Contains(diff.AuthorityLimits, "source-order-and-target-effects-not-evaluated") || !slices.Contains(diff.AuthorityLimits, "candidate-only-not-acceptance-delta") || !slices.Contains(diff.AuthorityLimits, "dependency-coverage-not-verified") {
+		t.Fatalf("namespace order alone invented a change: %+v, %v", diff, err)
+	}
+	if !reflect.DeepEqual(after.Applications[0].SemanticUses, []core.CanonicalID{"beta", "alpha"}) {
+		t.Fatal("comparison mutated the source World")
+	}
+	writeSource(t, root, path, "application example {\n    uses semantic alpha\n}\n")
+	removed := loadWorld(t, root).World
+	if diff, err := DiffApplicationMembershipCandidates(before, removed); err != nil || !reflect.DeepEqual(keys(diff.Changes), []string{"changed application:example"}) {
+		t.Fatalf("namespace removal must remain a change: %+v, %v", diff, err)
+	}
+	// Validation order is semantically significant to the existing resolver.
+	first, second := before, before
+	first.Applications = append([]application.Application(nil), before.Applications...)
+	second.Applications = append([]application.Application(nil), before.Applications...)
+	first.Applications[0].Validations = []core.CanonicalID{"alpha.first", "alpha.second"}
+	second.Applications[0].Validations = []core.CanonicalID{"alpha.second", "alpha.first"}
+	if diff, err := DiffApplicationMembershipCandidates(first, second); err != nil || !reflect.DeepEqual(keys(diff.Changes), []string{"changed application:example"}) {
+		t.Fatalf("validation evaluation order must remain visible: %+v, %v", diff, err)
+	}
+	second.Applications[0].SemanticUses = []core.CanonicalID{"alpha", "beta", "beta"}
+	second.Applications[0].Validations = first.Applications[0].Validations
+	if diff, err := DiffApplicationMembershipCandidates(first, second); err != nil || len(diff.Changes) != 1 {
+		t.Fatalf("duplicate declarations must not be erased: %+v, %v", diff, err)
+	}
+}
+
+const (
 	repairIntakeApplication = `application repair_intake {
     uses semantic repair_intake
     uses semantic customer

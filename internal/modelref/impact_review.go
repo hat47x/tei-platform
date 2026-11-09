@@ -28,6 +28,7 @@ func ReviewImpact(before Graph, changes []Change, rules []Rule) ImpactReview {
 		Changes:         append([]Change(nil), changes...),
 		AuthorityLimits: []string{
 			"typed-graph-is-a-candidate-not-accepted-meaning",
+			"graph-completeness-and-dynamic-references-unverified",
 			"no-source-revision-or-acceptance-bound",
 			"impact-is-review-candidate-not-observed-runtime-effect",
 		},

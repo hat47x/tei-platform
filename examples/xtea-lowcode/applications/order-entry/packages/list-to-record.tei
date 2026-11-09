@@ -1,0 +1,11 @@
+package order_entry.list_to_record ^1 {
+    application order_entry
+    member browse order_entry.recent_orders
+    member record order_entry.order_record
+    member reference order_entry.customer_reference
+    member header-detail order_entry.order_lines
+    requires semantic sales.order
+    requires relation sales.order.customer
+    projection screen
+    conformance list_to_record
+}

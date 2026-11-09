@@ -26,8 +26,13 @@ import (
 
 const (
 	signedPayloadSchema = "tei.host-acceptance-decision/v0"
-	trustSchema         = "tei.host-acceptance-trust/v0"
-	algorithmEd25519    = "ed25519"
+	// signedPayloadSchemaV1 is used only when the Decision carries an
+	// acceptanceKind (D9). v0 bytes stay exactly as before, so existing signed
+	// Decisions still verify; removing or adding the kind changes the schema and
+	// the bytes, so a signature cannot be carried across the two.
+	signedPayloadSchemaV1 = "tei.host-acceptance-decision/v1"
+	trustSchema           = "tei.host-acceptance-trust/v0"
+	algorithmEd25519      = "ed25519"
 )
 
 // signatureEvidence is the Decision.Evidence shape produced by Sign.
@@ -43,6 +48,17 @@ type signatureEvidence struct {
 func SigningPayload(d Decision) ([]byte, error) {
 	record := cloneRecord(d.Record)
 	sort.Slice(record.Artifacts, func(i, j int) bool { return record.Artifacts[i].Path < record.Artifacts[j].Path })
+	if err := checkKind(d.AcceptanceKind); err != nil {
+		return nil, errors.New("HOST_STORE_ACCEPTANCE_KIND_UNSUPPORTED")
+	}
+	if d.AcceptanceKind != "" {
+		return json.Marshal(struct {
+			Schema         string                  `json:"schema"`
+			Issuer         string                  `json:"issuer"`
+			AcceptanceKind string                  `json:"acceptanceKind"`
+			Record         sourceacceptance.Record `json:"record"`
+		}{signedPayloadSchemaV1, d.Issuer, d.AcceptanceKind, record})
+	}
 	return json.Marshal(struct {
 		Schema string                  `json:"schema"`
 		Issuer string                  `json:"issuer"`
