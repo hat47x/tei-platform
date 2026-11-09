@@ -1,0 +1,102 @@
+{
+  "schemaVersion": "tei.cli.requirements/v0",
+  "ok": true,
+  "result": [
+    {
+      "environment": "development",
+      "scope": "build",
+      "kind": "toolchain",
+      "name": "go",
+      "origins": [
+        {
+          "introducedBy": "custom-go:order_entry.compose_order_summary",
+          "reason": "build custom Go realization"
+        },
+        {
+          "introducedBy": "custom-go:sales.order.submit",
+          "reason": "build custom Go realization"
+        },
+        {
+          "introducedBy": "custom-go:security.authenticate",
+          "reason": "build custom Go realization"
+        },
+        {
+          "introducedBy": "custom-go:security.authorize",
+          "reason": "build custom Go realization"
+        }
+      ]
+    },
+    {
+      "environment": "development",
+      "scope": "editor",
+      "kind": "language-package",
+      "name": "sqlglot",
+      "origins": [
+        {
+          "introducedBy": "plugin:tei.editor.intelligence.sql@1.0.0",
+          "reason": "runtime requirement declared by resolved TEI plugin"
+        }
+      ]
+    },
+    {
+      "environment": "development",
+      "scope": "editor",
+      "kind": "runtime",
+      "name": "python",
+      "origins": [
+        {
+          "introducedBy": "plugin:tei.editor.intelligence.sql@1.0.0",
+          "reason": "runtime requirement declared by resolved TEI plugin"
+        }
+      ]
+    },
+    {
+      "environment": "development",
+      "scope": "migration",
+      "kind": "tool",
+      "name": "atlas",
+      "origins": [
+        {
+          "introducedBy": "plugin:tei.migration.atlas@1.0.0",
+          "reason": "runtime requirement declared by resolved TEI plugin"
+        }
+      ]
+    },
+    {
+      "environment": "production",
+      "scope": "build",
+      "kind": "toolchain",
+      "name": "go",
+      "origins": [
+        {
+          "introducedBy": "custom-go:order_entry.compose_order_summary",
+          "reason": "build custom Go realization"
+        },
+        {
+          "introducedBy": "custom-go:sales.order.submit",
+          "reason": "build custom Go realization"
+        },
+        {
+          "introducedBy": "custom-go:security.authenticate",
+          "reason": "build custom Go realization"
+        },
+        {
+          "introducedBy": "custom-go:security.authorize",
+          "reason": "build custom Go realization"
+        }
+      ]
+    },
+    {
+      "environment": "production",
+      "scope": "migration",
+      "kind": "tool",
+      "name": "atlas",
+      "origins": [
+        {
+          "introducedBy": "plugin:tei.migration.atlas@1.0.0",
+          "reason": "runtime requirement declared by resolved TEI plugin"
+        }
+      ]
+    }
+  ]
+}

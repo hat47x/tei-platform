@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"io"
 	"strings"
 
@@ -43,6 +44,18 @@ func runModelCommand(args []string, out io.Writer) (int, error) {
 		*namespace != strings.TrimSpace(*namespace) {
 		return fail("INVALID_ARGUMENT", "model catalog requires an exact -workspace and optional exact -namespace, without positional arguments", 2)
 	}
+	// This command parses its own FlagSet, so the shared repeat check does not
+	// see it. Both flags hold one value; a second -namespace silently replaced
+	// the first (#3675).
+	if err := validateRepeatableArguments("model catalog", args[1:]); err != nil {
+		return fail("INVALID_ARGUMENT", err.Error(), 2)
+	}
+	if name := emptyStringFlag(fs, emptyStringFlagsNotAllowed["model catalog"]); name != "" {
+		// An explicit -namespace "" is not "no namespace": it used to reach
+		// the catalog as an empty filter and return every entry, which is a
+		// third outcome beside "omitted" and "a namespace ID" (#3605).
+		return fail("INVALID_ARGUMENT", fmt.Sprintf("model catalog: -%s must not be an empty string; omit the flag to list every namespace", name), 2)
+	}
 	result, err := operations.CatalogWorkspace(*root, *namespace)
 	if err != nil {
 		code := "MODEL_CATALOG_FAILED"
@@ -57,18 +70,11 @@ func runModelCommand(args []string, out io.Writer) (int, error) {
 		}
 		return fail(code, err.Error(), 2)
 	}
-	if !result.NamespaceMatched {
-		// A namespace that does not exist is not "a namespace with no entries".
-		// Return a typed failure so a caller cannot read an empty success as
-		// evidence that the namespace declares nothing.
-		message := "namespace " + result.NamespaceFilter + " is not a semantic namespace in this workspace"
-		switch result.NamespaceMatchKind {
-		case "application":
-			message = "application " + result.NamespaceFilter + " is not a semantic namespace; omit -namespace or use a namespace ID"
-		case "query":
-			message = "query " + result.NamespaceFilter + " is not a semantic namespace; omit -namespace or use a namespace ID"
-		}
-		return fail("NAMESPACE_NOT_FOUND", message, 1)
+	// A namespace that does not exist is not "a namespace with no entries".
+	// The projection owns that decision so the MCP adapter answers the same
+	// code and message instead of inventing its own (#3420).
+	if failure := result.NamespaceFilterError(); failure != nil {
+		return fail(failure.Code, failure.Message, 1)
 	}
 	response.OK = true
 	response.Result = &result
