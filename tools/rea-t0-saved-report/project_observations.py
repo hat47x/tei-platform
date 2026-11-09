@@ -123,6 +123,10 @@ def project(report_dir):
     subject, provider = data.get('subject'), data.get('provider')
     if not all(isinstance(x, dict) for x in (normalized, subject, provider)):
         return result
+    if (provider.get('id') != 'rea-javascript-application' or
+            not isinstance(provider.get('version'), str) or
+            not isinstance(data.get('evidence_id'), str) or not data['evidence_id']):
+        return result
     subject_hash = (subject.get('digest') or {}).get('sha256')
     if not isinstance(subject_hash, str) or len(subject_hash) != 64 or subject_hash != normalized.get('root_artifact_sha256'):
         return result
@@ -151,6 +155,8 @@ def project(report_dir):
                 return result
             seen.add(rec['externalOccurrenceID'])
             records.append(rec)
+            if len(records) > MAX_RECORDS:
+                return result
     for e in edges:
         if not isinstance(e, dict) or e.get('source_node_id') not in identifiers or e.get('target_node_id') not in identifiers:
             return result
@@ -160,11 +166,18 @@ def project(report_dir):
             return result
         seen.add(rec['externalOccurrenceID'])
         records.append(rec)
+        if len(records) > MAX_RECORDS:
+            return result
     semantic = normalized.get('semantic_graph')
     if not isinstance(semantic, dict):
         return result
     unknowns = semantic.get('unknowns')
-    if not isinstance(unknowns, list):
+    if not isinstance(unknowns, list) or len(unknowns) > MAX_RECORDS:
+        return result
+    unknown_ids = [u.get('unknown_id') for u in unknowns if isinstance(u, dict)]
+    if (len(unknown_ids) != len(unknowns) or
+            any(not isinstance(i, str) or not i for i in unknown_ids) or
+            len(unknown_ids) != len(set(unknown_ids))):
         return result
     result.update(admission='external-candidates-only', records=records,
                   unknowns=[{'externalUnknownID': u.get('unknown_id'), 'family': u.get('family'),
