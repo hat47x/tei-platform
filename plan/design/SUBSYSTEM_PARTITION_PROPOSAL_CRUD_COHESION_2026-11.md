@@ -469,3 +469,55 @@ must-linkによる無向グラフの連結成分 C に含まれるFunctionは、
 - **他担当との衝突回避**：#1132の既存checker、#3492三視点Workspace Inspector、#1124 Studio、#2516 Policy、#267 Acceptance、#2831 Self-buildとファイル/責務を分離。新Planner/Graph/Parser/Host/Policy engine/Canonicalを追加しない。#1119のProduct Gateや他レーンの直接P0には新Hard Dependencyを置かない。
 
 この文書・#3662ともにOwner正式採用前のDraftであり、**Go Test/CI/Owner受理/実Source結線/実Targetの合格は、対応するexact-headの証拠が取れた時だけ明示する**。旧§26末尾のmain乖離は当時の履歴であり、2026-11-08にはmainを非強制mergeした。次のmain前進には再照合が必要である。
+
+
+## 28. 2026-11-09 現行ConsumerとOwner/Direct CRUDの入場条件
+
+他レーンの限定実証を取り込んでP0をより小さくする。ただし各レーンの成功を相互に合算せず、**同一Claim/Source/Scope/Attemptで再照合**して初めて一つの証拠とする。
+
+| 既存成果 | 今回再利用できる境界 | この成果だけで資格を与えない対象 |
+| --- | --- | --- |
+| [Draft #3492](https://github.com/hat47x/tei-platform/pull/3492) M1a/M1b-local | 実Workspace InspectorでSubject、Relation targetの一意性、Source Index/World/Workspaceの限定照合。後続でData/Function/Relation IDの逆参照へ使用 | Accepted Primary Owner、Function direct CRUD、全Relation/Source closure、同一原子的snapshot、実Provider |
+| [Draft #3518](https://github.com/hat47x/tei-platform/pull/3518) M0 Model Map | 種類付きData→Relation→Data、Pattern→Data/Queryのread-only構造的追跡、欠落Link/重複Identityの負例 | Functionの更新責任とOwner意味、完全Graph、実Effect・利用権限 |
+| [Draft #3543](https://github.com/hat47x/tei-platform/pull/3543) PoC A | 実CLI曖昧A/一意Jから同一Workbench Initial/List/Inspect 0/0/1という限定経路。#1124でSelection不正対象を拒否できる根拠 | 別Scope、Source改版、Current Grant、Graph/Command四入口、Owner正式受理、Subsystem最適化結果の開示 |
+| [Draft #3321](https://github.com/hat47x/tei-platform/pull/3321) Trace境界 | byte同一の別物理Workspace RootがCLI観測上区別不能になる負例。Root/Read Attemptの同一性が必要とされるClaimを識別する | 同一snapshot token/digestのみでPhysical RootやCurrent Read Attemptの同一性を保証すること |
+| [#1132 Reference](https://github.com/hat47x/tei-platform/tree/main/tools/reference-subsystem-cud) | callerが明示したCandidate Owner/Function I/O/Procedureの整合診断 | Input bytes hash一致をSource/Owner Meaning Acceptanceへ昇格させること |
+| [Draft #3662](https://github.com/hat47x/tei-platform/pull/3662) | **候補グラフ限定**の厳密must-link分割最適値とCrossWrite witness | 未知Sourceなし、公開安全性、実業務・Tx効果、Accepted SourceへのBinding |
+
+**最小P0プローブ（提案、NOT RUN）**：
+
+1. Current Read資格のある実Workspaceから**一つのDataと一つのFunction/Pattern**を選び、既存Inspector/ModelMapで型付きSubject ID・Scope・Source位置を照合する。見つからないRoleを名前から補わない。
+2. 同一RevisionでDataのPrimary OwnerとFunctionの**宣言Direct C/U/D**を既存Source/Acceptanceから取得できるか確認する。UI用Derived CRUD、Potential Effect、Observed Writeは宣言Direct CRUDではない。
+3. Required→Selected→Read→Parsed→Bound→AcceptedのClaim相対閉包を確認し、Workspace/Root/Read Attemptが識別可能な範囲を分離。Physical Rootが必要なのにRoot IDが無い場合はnot-proven。Manifest/外部Provider Raw改訂時にはWorld/Index fingerprint不変でも旧Source引用の現在資格を否定する。
+4. 現#1132のcandidate factsと#3662のProblemに、それぞれ**caller-supplied candidate**としてだけread-only入力する。Accepted Bindが別途証明されても、Evaluator自体にOwner資格の判定権は与えない。
+5. 現行#2516で許可されたPublic Sliceを入力に用いる。秘密のWriter/MustLinkがGlobal optimumへ影響する場合、そのScore/順位/理由を公開Consumerへ流さない。
+
+**停止線**：実Workspaceの限定Readが成功しても(2)の受理済みOwner/FunctionIOが無い／意味が曖昧なら、候補計算はできてもAccepted Subsystem Partitionではない。Source改版やRole自己申告でこの不足を埋めない。
+
+## 29. Must-link成分の局所再計算と変更影響証明
+
+§24の成立条件が維持される間は、問題をmust-link連結成分Cに分割でき、全体の既知越境更新最小値は各成分の最小値の総和となる。この**加法性**により、以下の変更は局所再評価できる。
+
+- **一Functionのallowed set、またはそのFunctionだけのdirect writeの変更**：属する成分だけの最適配置・CrossWrite witnessを再計算すれば、他の不変成分の数理値は不変。
+- **Data Ownerの改訂**：そのDataへ書く**すべてのFunction**が属する成分へ影響が及ぶ。変更Functionのみの再評価では足りない。
+- **must-linkの追加**：結線により統合される成分を再計算。**削除**は旧成分を分裂させ得るため、旧成分全体の影響を確認。
+- **Cannot-link、容量、複数時点Owner等の追加**：成分間独立の前提から外れれば、局所最適性証明の資格を撤回する。
+- **Source/Grant/Disclosure/Plugin/解析Policy変化**：数理的な局所値の不変と、現在のSource・開示・実受理資格は別。後者のClaim閉包は再評価する。
+
+この局所性は、元のtyped Graphの依存を完全に図示する場合の**再計算計画**である。隠れCache、暗黙hook、新Canonicalの導入根拠としない。Candidate計算の局所成功をStudio旧DOMの失効・Actual Effectの合格に昇格させない。
+
+## 30. SP-45〜53：実Referenceと統合Producerの追加反証票（提案／NOT RUN）
+
+| ID | 条件 | 期待 |
+| --- | --- | --- |
+| SP-45 | Function/Write/MustLink配列順のみ変更 | 最適値・割当・witnessは不変 |
+| SP-46 | Data Owner改版が別成分の複数Writerへ波及 | 全Writer依存成分を再計算 |
+| SP-47 | must-link追加で成分合流／削除で分裂 | 影響成分を特定し全量計算と一致 |
+| SP-48 | 一成分内のDirect Uだけ変更 | 他の不変成分の数理witnessを保持し、Problem版は更新 |
+| SP-49 | allowed/must-linkの結果にCannot-link/容量を後付け | 旧厳密最適性Claimを撤回 |
+| SP-50 | 同Source digestの別Workspace Root/Read Attempt | 識別できなければ同一Root/現在資格を認定しない |
+| SP-51 | #3492でRelation targetが一意でもData Owner未受理 | candidate-onlyを維持 |
+| SP-52 | #3543の曖昧A/一意J選択をAnalyzer入口で利用 | 曖昧対象拒否、対象Scope/Grantを維持 |
+| SP-53 | Public Slice同値でPrivate Write/MustLinkのみ異なる | 低権限候補・Score・図表・診断が秘密に依存しない |
+
+**優先順**：Reference #3662の**exact HEAD gofmt/Go Test/Health**を確定し、次に(28)のProducer資格を1 Data×1 Functionで確認。数理Referenceの合成成功をP0のProduct資格へ読み替えない。#3492/#3543の別Consumer結果と#3321のRoot反例、#1163同一Attempt Packetは、既存#2514 Independent Expectedと#267 Acceptanceへ引き渡す。
