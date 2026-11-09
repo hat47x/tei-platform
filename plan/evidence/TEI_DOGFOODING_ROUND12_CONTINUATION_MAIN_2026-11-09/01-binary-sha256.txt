@@ -1,0 +1,1 @@
+fc83a50671af2eed9645d3f551f484a99275de975e2930b6fddb9ec67f2ace36  /home/hat47x/dogfood/bin/tei-r12

@@ -185,6 +185,15 @@ func TraceWorkspace(root string, key modelref.Key, options modelref.TraceOptions
 		AuthorityLimits:        append([]string(nil), projection.AuthorityLimits...),
 		Workspace:              &identity,
 	}
+	// A page that can be continued must say, next to nextOffset, which value
+	// continues it. The value is this Workspace-level token; modelref's own
+	// graphFingerprint is not a continuation token (#3625).
+	if out.Trace.NextOffset != nil {
+		out.Trace.Continuation = &modelref.TraceContinuation{
+			Fingerprint: snapshotFP,
+			Field:       "result.snapshotFingerprint",
+		}
+	}
 	if result.Mode == "summary" {
 		return out, nil
 	}

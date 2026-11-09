@@ -1,0 +1,94 @@
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "tools": [
+      {
+        "name": "tei_model_catalog",
+        "description": "List the model elements of the fixed Workspace (same result as `tei model catalog`).",
+        "inputSchema": {
+          "properties": {
+            "namespace": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        }
+      },
+      {
+        "name": "tei_inspect",
+        "description": "Read one exact canonical subject (same result as `tei inspect`).",
+        "inputSchema": {
+          "properties": {
+            "subjectId": {
+              "type": "string"
+            },
+            "subjectKind": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "subjectKind",
+            "subjectId"
+          ],
+          "type": "object"
+        }
+      },
+      {
+        "name": "tei_trace",
+        "description": "Trace declared direct references of one subject (same result as `tei trace`).",
+        "inputSchema": {
+          "properties": {
+            "direction": {
+              "enum": [
+                "outgoing",
+                "incoming",
+                "both"
+              ],
+              "type": "string"
+            },
+            "expectedFingerprint": {
+              "type": "string"
+            },
+            "limit": {
+              "type": "integer"
+            },
+            "mode": {
+              "enum": [
+                "summary",
+                "full"
+              ],
+              "type": "string"
+            },
+            "offset": {
+              "type": "integer"
+            },
+            "scope": {
+              "type": "string"
+            },
+            "subjectId": {
+              "type": "string"
+            },
+            "subjectKind": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "scope",
+            "subjectKind",
+            "subjectId"
+          ],
+          "type": "object"
+        }
+      },
+      {
+        "name": "tei_validate",
+        "description": "Validate the fixed Workspace (same result as `tei validate -workspace ... -json`).",
+        "inputSchema": {
+          "properties": {},
+          "type": "object"
+        }
+      }
+    ]
+  }
+}

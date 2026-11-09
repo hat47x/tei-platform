@@ -1,0 +1,4 @@
+Audit of the contract table (all rows):
+- All 27 codes named in the table exist as Go string literals: no phantom code.
+- The gap was incompleteness, not error: view named 11 codes while the
+  implementation can return any of the 21 ExecutionError codes through -execute.
