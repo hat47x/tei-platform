@@ -146,7 +146,11 @@ func (r Runner) RunReachable(ctx context.Context, applicationID, patternID core.
 		// reason keeps the phase visible instead of silently passing it.
 		if scope := declaration.Scope; scope != "" && scope != string(application.PatternRecord) {
 			report.Skipped = append(report.Skipped, phase)
-			report.Reasons[phase] = fmt.Sprintf("the hook declares scope %s but this runner applies one hook per record", scope)
+			if scope == "row" {
+				report.Reasons[phase] = "the hook declares scope row, so it needs the row set; use RunRows"
+			} else {
+				report.Reasons[phase] = fmt.Sprintf("the hook declares scope %s but this runner applies one hook per record", scope)
+			}
 			continue
 		}
 		if reason := reach.UnreachableReason(phase); reason != "" {

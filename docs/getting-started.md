@@ -27,7 +27,7 @@ go version
 
 ### Windowsでの`go test ./...`
 
-2026-11-09時点のmain（`c90bb502d`）で、Windows 11・go1.27.0の`go test ./...`は完走します（`-count=1 -timeout 90m`で90分規模）。ただし、次の2種類の注意があります。
+2026-11-10時点のmain（`fb766fc5f`系）で、Windows 11・go1.27.0の`go test ./...`は完走し、**CIの`windows-2025`でも `scope=full` が緑**になりました（run [42694376462](https://github.com/hat47x/tei-platform/actions/runs/42694376462)、`GOTEST_EXIT=0`、`-count=1 -timeout 90m`で90分規模、skip 288件）。2026-11-09の初回実行では18件が失敗しており、その原因は「8.3形式の短縮名（`C:\Users\RUNNER~1\...`）によるパス同一性の誤判定」「`core.autocrlf=true` による生バイトのCRLF化」「POSIXシェル資格フロー」「OS固有のエラー文言」でした（#3783）。ただし、次の2種類の注意があります。
 
 **1. Windowsでは理由付きでskipする検査があります。**skipは通過と同じ意味ではありません。
 
@@ -42,9 +42,15 @@ go version
 
 skipの総数は32件（`t.Skip`の理由にWindowsを含むもの）。Linuxで実行した結果を正とします。
 
+**Windowsで落ちやすい3つの型と、その避け方**（#3783 で18件を解消した記録から）:
+
+1. **パスの同一性は両辺を解決してから判定する。** `filepath.EvalSymlinks` した子と未解決の root を `filepath.Rel` で比べると、短縮名の環境で「外に出た」と誤判定します。`os.SameFile` を使うのが確実です。
+2. **生バイトを比較する試験は LF 固定に頼る。** GitHubのWindowsランナーは `core.autocrlf=true` で、リポジトリは `.gitattributes` の `* text=auto eol=lf` でLFに固定しています。生バイトを保持したいパスは従来どおり `-text` を列挙します。
+3. **OS固有のエラー文言ではなく、エラー値で判定する。** `"no such file"` はUnixの文言で、Windowsは "The system cannot find the file specified." です。`errors.Is(err, fs.ErrNotExist)` を使います。
+
 **2. 比較試験はチェックアウトがcleanであることを前提にします。**`tools/reference-plugin-self-build`と`tools/reference-transform-runtime-engine-build`のhistorical比較は、`git status --porcelain=v1 --untracked-files=all`が空であることを確かめてから実行します。`go test ./...`はパッケージを並列に実行するため、別パッケージがcheckout内へ書いた直後にこの前提を読むと落ちることがあります（[#3637](https://github.com/hat47x/tei-platform/issues/3637)）。失敗時は汚れていたpathがメッセージに出るので、原因のパッケージを特定できます。単体で`go test ./tools/reference-plugin-self-build -count=1`を実行した場合は落ちません。
 
-PRごとのWindows確認は`tei-windows-go-test-survey.yml`が`workflow_dispatch`と本workflow自身の変更時に行い、既定（`scope=survey`）では`./internal/plugin/runtime`・`./internal/desktophost`・`./internal/operations`・`./cmd/tei`・`./internal/workspace`・`./internal/modelref`・`./reference/application-composition`・`./tools/reference-developer-context`を対象にします。`scope=full`で`go test ./...`全体（90分規模）を手動実行できます。全パッケージは時間がかかるため必須検査にしていません。
+PRごとのWindows確認は`tei-windows-go-test-survey.yml`が`workflow_dispatch`と本workflow自身の変更時に行い、既定（`scope=survey`）では`./internal/plugin/runtime`・`./internal/desktophost`・`./internal/operations`・`./cmd/tei`・`./internal/workspace`・`./internal/modelref`・`./reference/application-composition`・`./tools/reference-developer-context`・`./tools/reference-build-catalog-authoring`・`./tools/reference-gate-b-final-evidence`・`./tools/reference-target-package-evidence`を対象にします。`scope=full`で`go test ./...`全体（90分規模）を手動実行できます。全パッケージは時間がかかるため必須検査にしていません。
 
 ## 最初の小さな作業領域から始める
 

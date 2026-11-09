@@ -42,6 +42,7 @@
 - [フック実行の配線と失敗の区別の確認](XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)（参照実装の試験記録。Runnerからの配線、NotSatisfiedと実行失敗の区別、参照規則。実PluginとCLI・Studioの配線は未実装）
 - [フック宣言の印刷面への反映の確認](XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md)（参照実装の試験記録。画面と同じフック宣言が印刷面にも出る。実印刷・用紙面の版照合は未確認）
 - [フックの位相順序と途中停止の確認](XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md)（参照実装の試験記録。位相の実行順、不成立での停止位置、`warn`の続行、未対応位相の拒否。CLI・Studioへの配線は未実装）
+- [フックの範囲（Scope）宣言の成立確認](XTEA_LOWCODE_HOOK_SCOPE_2026-11.md)（参照実装の確認記録。範囲は宣言・検証・実行時拒否・表示の四面に在り、`row`の行ごと適用は未実装）
 - [フックの結末名とCommand拒否名の対応を実際の経路で使う確認](XTEA_LOWCODE_OUTCOME_CORRESPONDENCE_USE_2026-11.md)（参照実装の試験記録。対応がJSONとテキストに出る。対応の無い名前はCommand拒否名として出さない）
 - [AC-5の「多重一致」が参照実装に無いことの確認](XTEA_LOWCODE_MULTI_MATCH_GAP_2026-11.md)（読取り記録。参照Storeはキーで一意化するため多重一致を表現できず、符号を発明しなかった判断を残す）
 - [複数の結末があるとき、どれかを選んだことにしない確認](XTEA_LOWCODE_MULTI_OUTCOME_2026-11.md)（参照実装の試験記録。2つ以上の結末を持つ能力は参照実行で結末を返さず、理由を`outcomeUndetermined`に残す。選択規則は未決定）
@@ -101,6 +102,7 @@
 - [RQ-C1の確認方法の観測](XTEA_LOWCODE_RQC1_VERIFICATION_2026-11.md)（参照実装の試験記録。2パッケージの併存・取り外し・Core種別の不増加）
 - [フック宣言の範囲（scope）の確認](XTEA_LOWCODE_HOOK_SCOPE_2026-11.md)（参照実装の試験記録。範囲の宣言・検査・投影）
 - [フック範囲の実行時適用の確認](XTEA_LOWCODE_HOOK_SCOPE_RUN_2026-11.md)（参照実装の試験記録。適用できない範囲を拒否し、D-9の形の欠陥を作り直さない）
+- [行範囲（scope row）の適用の確認](XTEA_LOWCODE_HOOK_ROW_SCOPE_2026-11.md)（参照実装の試験記録。行ごとの繰り返し・行を名指す拒否。呼出し側の配線とitem/headerは未実装）
 - [採番の永続CounterStoreの確認](XTEA_LOWCODE_NUMBERING_SQLITE_STORE_2026-11.md)（参照実装の試験記録。PostgreSQLは未実装）
 - [採番の2プロセス同時実行の確認](XTEA_LOWCODE_NUMBERING_PROCESS_RACE_2026-11.md)（参照実装の試験記録。PostgreSQLと多プロセス構成は未実装）
 - [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
