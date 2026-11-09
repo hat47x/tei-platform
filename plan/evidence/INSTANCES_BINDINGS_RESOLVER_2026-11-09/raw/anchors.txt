@@ -1,0 +1,24 @@
+== does a resolver over Instances+Bindings already exist? ==
+internal/realization/contract_query_binding.go:42:func ResolveContractQueryExecutor(
+
+== the resolved value it returns ==
+32:type ResolvedContractQueryExecutor struct {
+33-	Binding    ContractQueryExecutorBinding `json:"binding"`
+34-	Instance   environment.DatabaseInstance `json:"instance"`
+35-	Capability plugin.ResolvedCapability    `json:"capability"`
+36-}
+37-
+38-// ResolveContractQueryExecutorは、指定されたEnvironment、instance、targetに完全一致するBindingを一つだけ選ぶ。
+
+== non-test product call sites ==
+  internal/driver/header_detail_contract_query_environment.go:67:	selected, err := realization.ResolveContractQueryExecutor(
+  internal/driver/reference_contract_query_environment.go:104:	selected, err := realization.ResolveContractQueryExecutor(
+
+== test call sites ==
+  internal/realization/contract_query_binding_test.go:16
+  reference/local-cpu-reuse/go_actual_catalog_reference_test.go:4
+  reference/local-cpu-reuse/go_executor_resolution_reference_test.go:3
+
+== does it check the instance exists and matches the target? ==
+  59:	instance, ok := env.InstanceByID(instanceID)
+  63:	if instance.Definition != target.Database {
