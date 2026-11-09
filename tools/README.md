@@ -113,6 +113,7 @@
 | [`reference-scenario-state-diff/`](reference-scenario-state-diff/) | 型付きDataset/Snapshotの検証と、Scenario期待値・観測の差の読取り専用参照 |
 | [`reference-scoped-query-preflight/`](reference-scoped-query-preflight/) | 認可済み行スコープを物理SQLへ適用できるかを実行前に判定する参照 |
 | [`reference-tool-neutral-development/`](reference-tool-neutral-development/) | 特定の開発道具に依存しない作業経路の確認 |
+| [`reference-tei-eki-contract/`](reference-tei-eki-contract/) | TEIのJob/Flow設計がEKI（外部）へ渡す契約を、実OpenAPIの形に照らして検査する参照。射影で落ちる情報（`notBefore`のように独立した時刻）を失わないことを確かめる。test-onlyの圧力試験で、EKIクライアントや実行アダプタではなく、実Provider連携の証拠でもない |
 
 ## ビルド、配布、実行
 
