@@ -1,0 +1,13 @@
+pattern order_entry.line_create record {
+    data sales.order_line
+    interaction {
+        item sales.order_line.order_line_id
+        item sales.order_line.order_id
+        item sales.order_line.quantity
+        command sales.create_line {
+            input order_line_id sales.order_line.order_line_id
+            input order_id sales.order_line.order_id
+            input quantity sales.order_line.quantity
+        }
+    }
+}

@@ -23,7 +23,26 @@ type Record struct {
 	AuthorityRevision string                 `json:"authorityRevision"`
 	ModelRevision     string                 `json:"modelRevision"`
 	Artifacts         []sourceindex.Artifact `json:"artifacts"`
+	// AcceptanceKind says how the Host's Decision was issued (D9, provisional).
+	// It is never part of the Record's own JSON: the signed Decision carries it
+	// (hoststore) and the Reader copies it here. Empty from a Reader means the
+	// Decision predates the marker; VerifyCurrent reports that as
+	// AcceptanceKindUnspecified. It is NOT a formal, human Acceptance in any
+	// case: no value of this field makes a Record G-qualifying.
+	AcceptanceKind string `json:"-"`
 }
+
+// Acceptance kinds a verified Record may report (D9). "formal" is deliberately
+// absent: no path in this repository issues or accepts a formal Acceptance yet.
+const (
+	// AcceptanceKindProvisional marks an Acceptance recorded under the D9
+	// provisional approval: not a formal human Acceptance, not G evidence, not a
+	// production deployment basis.
+	AcceptanceKindProvisional = "provisional"
+	// AcceptanceKindUnspecified marks a Decision signed before the marker existed.
+	// It is treated like provisional, never as a formal Acceptance.
+	AcceptanceKindUnspecified = "unspecified"
+)
 
 // ErrCurrentAcceptanceUnavailable is the public, deliberately opaque failure
 // for a Host CURRENT acceptance read. Host errors may include credentials,
@@ -66,6 +85,15 @@ func VerifyCurrent(ctx context.Context, reader Reader, applicationID string, loa
 	}
 	if strings.TrimSpace(record.DecisionRef) == "" || strings.TrimSpace(record.AuthorityRevision) == "" {
 		return Record{}, errors.New("SOURCE_ACCEPTANCE_WITNESS_INVALID: missing Host decision provenance")
+	}
+	switch record.AcceptanceKind {
+	case "":
+		record.AcceptanceKind = AcceptanceKindUnspecified
+	case AcceptanceKindProvisional, AcceptanceKindUnspecified:
+	default:
+		// "formal" or any other value from a Reader is refused: nothing here may
+		// present an Acceptance as formal.
+		return Record{}, errors.New("SOURCE_ACCEPTANCE_WITNESS_INVALID: unsupported acceptance kind")
 	}
 	if !validFingerprint(record.ModelRevision) {
 		return Record{}, errors.New("SOURCE_ACCEPTANCE_WITNESS_INVALID: invalid ModelRevision")

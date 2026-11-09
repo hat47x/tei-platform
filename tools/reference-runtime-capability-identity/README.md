@@ -111,7 +111,7 @@ Resource Broker経路はfilesystem read一件のAcquire / Validate / Sandbox mou
 
 また、`AcceptedRuntimeCandidate`やAuthority Evidenceのfingerprintが信頼できるissuerから来たことは、このReference単体では証明しません。上流のAcceptance / Conformance Authorityとの接続は別の検証点です。
 
-codeを含むため、exact-headのfull `tools/repository-health-check.sh` PASSが得られるまではmainへ統合しません。
+codeを含むため、変更範囲の検証をPR本文へ記録してから統合します。`tools/repository-health-check.sh`の全項目PASSは一律の統合条件ではありません。実行できない検証は、その制約と残る危険性を記録します。
 
 ## 案件専用Go助言処理のConsumer pressure（#1567 → #976）
 

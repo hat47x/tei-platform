@@ -1,3 +1,4 @@
 workspace: sui_reference_adoption_stage0
+formatVersion: 1
 sources:
   - semantic

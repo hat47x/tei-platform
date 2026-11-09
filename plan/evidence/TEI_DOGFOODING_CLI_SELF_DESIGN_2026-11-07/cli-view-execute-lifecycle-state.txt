@@ -1,0 +1,7 @@
+mode: reference (no durable effects)
+command sales.order.submit (submit)
+inputs:
+  - order (sales.order) = sales.order
+ready: true
+committed: true (reference unit of work)
+persisted: false (persistence: not-applicable, durability: none)

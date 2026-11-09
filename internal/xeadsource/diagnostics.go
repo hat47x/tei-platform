@@ -214,16 +214,31 @@ func DiagnoseRelationalSourceFacts(doc Document, facts RelationalSourceFacts) []
 		if !leftOK || !rightOK {
 			continue
 		}
+		// The legacy Modeler permits a FAMILY relationship to use the
+		// parent key as a subset of a longer target PK/SK. This is only
+		// a Source shape, not an explicit pairwise Field correspondence.
+		// Keep the relation unresolved without reporting every such
+		// expansion as a malformed equal-arity relationship.
+		familyExpansion := relation.RelationshipType == "FAMILY" &&
+			len(left.Members) > 0 &&
+			len(left.Members) < len(right.Members) &&
+			(right.KeyType == "PK" || right.KeyType == "SK")
 		if len(left.Members) != len(right.Members) {
+			code := "relationship-key-arity-mismatch"
+			if familyExpansion {
+				code = "relationship-family-correspondence-unresolved"
+			}
 			out = append(out, RelationalDiagnostic{
-				Code:           "relationship-key-arity-mismatch",
+				Code:           code,
 				Locator:        relation.Locator,
 				Nature:         RelationalDiagnosticNature,
 				RelationshipID: relation.RelationshipID,
 				LeftCount:      len(left.Members),
 				RightCount:     len(right.Members),
 			})
-			continue
+			if !familyExpansion {
+				continue
+			}
 		}
 
 		leftMembers, leftOrderOK := orderedLegacyKeyMembers(left)
@@ -250,7 +265,10 @@ func DiagnoseRelationalSourceFacts(doc Document, facts RelationalSourceFacts) []
 				KeyLegacyID:    relation.Key2LegacyID,
 			})
 		}
-		if !leftOrderOK || !rightOrderOK {
+		// Ordering is independently observable even when FAMILY has an
+		// unresolved subset mapping. Never compare Fields positionally
+		// across unequal keys or promote a unique-by-type guess to meaning.
+		if !leftOrderOK || !rightOrderOK || familyExpansion {
 			continue
 		}
 

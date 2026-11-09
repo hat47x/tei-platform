@@ -17,7 +17,7 @@ func sourceAuditWorkspaceFixture(t *testing.T) (string, Input, AnswerInput) {
 	if err := os.MkdirAll(filepath.Join(root, "semantic"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace:\n  sources:\n    - semantic\n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace:\nformatVersion: 1\n  sources:\n    - semantic\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	src := []byte("namespace sales\n\ndata Parent {\n    attribute id type std.identifier\n}\n\ndata Child {\n    attribute parentId type std.identifier\n    relation parent to sales.parent one\n}\n")

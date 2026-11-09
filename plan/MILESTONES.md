@@ -93,9 +93,11 @@ PAS-01・PAS-06          PAS-04・RQ-024
 
 理想化した試験例だけでなく、実際の既存業務の資産を段階的に移行できる状態です。
 
-PostgreSQL以外の実際のデータベースによる検証根拠も重要です。最初の参照事例ではOracleに関する#214・#371・#376が該当し、この能力とマイルストーン8の提供実装の検証に役立ちます。ただし、判定段階Bの第四の必須検証経路には含めません。
+PostgreSQL以外の実際のデータベースによる検証根拠も重要です。最初の参照事例ではOracleに関する#214・#371・#376が該当していましたが、2026-11-04に観測すべき旧Oracle資産が無いことをOwnerが確認し、3件とも取り下げました（not planned）。判定段階Bの第四の必須検証経路には含めていません。
 
 ## マイルストーン3 — 設計を実行・検証環境で動かせる
+
+**追補（2026-11-03、仮承認・D-3）**: 到達条件に、受理済みの意味から導出した標準操作（`list`・`read`・`create`・`update`）と、導出できなかった操作の未解決が読めることを加える。実装は `internal/operations`、確認は `tei operations` と負例の作業領域 `reference/standard-crud/`。
 
 製品受入シナリオ：PAS-02を主な対象とし、PAS-03も含む
 
@@ -104,7 +106,7 @@ PostgreSQL以外の実際のデータベースによる検証根拠も重要で�
 - アプリケーションの構成パターンを実行・検証環境で扱える
 - 一覧・記録・参照・見出しと明細を、画面なしで扱える
 - 宣言から標準操作（一覧・参照・登録・更新）が導出され、導出できない操作が未解決として説明できる
-- 検証・認証・認可を実行できる
+- 検証と認可を実行でき、認証Pluginを束縛した構成では認証も実行できる（認証はTEIコアの規定・実現の対象外、[ADR-0044](adr/0044-authentication-not-a-core-concern.md)）
 - 能力を呼び出した際の業務上の結果と実行時エラーを区別できる
 - 命令の受理応答と、その後の状態の観測結果を区別できる
 - 同じソースを使った参照シナリオを再現できる
@@ -123,6 +125,8 @@ PostgreSQL以外の実際のデータベースによる検証根拠も重要で�
 判定段階Bで`Ready`と判断した後、対象版`R`を引継ぎ基準版として固定します。
 
 ## マイルストーン4 — 一つの実用的な実行先でアプリケーションを動かせる
+
+**追補（2026-11-03、仮承認・D-3）**: 到達条件に、導出した書き込み（`create`・`update`）が既存の能力への束縛で実行され、期待状態の不一致が業務結果（拒否）として返ることを加える。実装は `internal/driver`、確認は `go test ./internal/driver -run BoundOperation`。**実データベースでの並行更新は未検証**（`#2483`）。
 
 製品受入シナリオ：PAS-04を主な対象とする
 
@@ -247,6 +251,8 @@ AIの機能を追加するだけでなく、既存知識の探索・変更候補
 
 ## マイルストーン9 — 実際の利用に向けた運用の境界が整う
 
+**追補（2026-11-03、仮承認・D-3）**: 到達条件に、無人の実行について「宣言と拒否試験」が揃うことを加える。無人の実行は、サービス主体・冪等キー・人の判断段階の不在の三つが揃う場合だけ宣言でき、揃わなければ拒否されることを試験で示す。**`run-plan` の宣言と実行は未実装**（`plan/design/RUN_PLAN_AND_UNATTENDED_EXECUTION_DESIGN_2026-11.md`）。
+
 ### 到達条件
 
 - 本番向けの永続的な保存機構と高可用性に関する境界が確立される
@@ -260,6 +266,20 @@ AIの機能を追加するだけでなく、既存知識の探索・変更候補
 ### 意味
 
 構成の検証にとどまらず、対象を限定して実際の利用へ進められる状態です。
+
+## RQ-036：モデル全容ナビゲーションと、標準／拡張Flowの横断的成熟段階（2026-11-08、既存マイルストーンの補助受入）
+
+この節は既存マイルストーン・Gate B/Cを追加・遡及変更するものではない。要求の正本は[RQ-036](../requirements/TEI_PRODUCT_REQUIREMENTS.md)、具体化した図表・Lifecycle/Plugin/AI Interaction受入は[三要素Method §19（MAP-01〜16）](design/THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)に置く。
+
+| 成熟段階（#1124の既存Modelerを利用） | 必要な利用者可視の事実 | 判定してはならないこと |
+| --- | --- | --- |
+| **M0 Catalog** | 既存Source/意味Revisionに束縛したData／Event／State／Function／Pattern／Providerの型付き全体一覧、Required/Loaded/Unresolved/Hiddenの相対集合をCLI/Headlessで出す | 取り込めた対象だけで「全部ある」とみなさない |
+| **M1 Read-only Graph＋Matrix** | 代表的な一つのOrg/OrderのElement/Relation/Event/Transition/Pattern、Data×Function、Event×State×Actionを相互参照し、未受理要素をGapと表示 | 合成Fixtureや手描き図を実World全容と扱わない |
+| **M2 初学者の導線／複数Consumer** | 「何・なぜ・どこを変えられるか」をGraph/表/CLI（可能ならStudio/SHO）で同じQualified ID/Scopeから案内できる。人が理解した証拠とAIの自動採点は区別 | GUI上のクリックだけでSource/Meaning受理やDisclosureを証明しない |
+| **M3 標準とカスタムの合成** | Typed Graphの不変保証と変更できるHook/Slotを識別し、標準Flow／Patch差分／合成後の実効Flowを版・Plugin/TargetごとにPreviewできる | 一律の固定Step順を要求しない。Graph差分／Conflictを無検証で有効化しない |
+| **M4 生成・実行の別資格** | 実Targetに生成したArtifact、選択Pluginの実Invoke、Source/Model/Generator Revisionと実受信／Effectの成立範囲を比較する | 構造が描けた・コードが生成されたことを現在Grantや実Commitとしない |
+
+**標準要件の完成判定**は、当該ドメインを選択した利用者が入口から必要な図表・定義・未解決へ遡れ、標準保証と案件独自箇所を区別し、合成後の実効Flowが説明できること。初期Referenceは既存のOrg Case／Orderを再利用し、AI WebチャットのStreaming/Tool/Approval/Branchを異質二例目の**設計候補**として#2507/#2620へ引き渡す。新MileStone番号・新Gate・独立Graph Registry・汎用Workflow Engineは作らない。2026-11-08時点でM0〜M4のRQ-036全体受入は**NOT RUN／未成立**。
 
 ## 製品版ごとの到達目標
 

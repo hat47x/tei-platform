@@ -11,7 +11,7 @@ import (
 
 func TestSemanticBusinessRulesLoadIntoWorldAndExactSourceIndex(t *testing.T) {
 	root := t.TempDir()
-	writeSemanticValidationWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: business_rules_test\nsources:\n  - semantic\n")
+	writeSemanticValidationWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: business_rules_test\nformatVersion: 1\nsources:\n  - semantic\n")
 	path := "semantic/sales/rules.tei"
 	src := `namespace sales
 data OrderLine {
@@ -82,7 +82,7 @@ data OrderLine {
 
 func TestSemanticBusinessRuleDoesNotAppearWithoutExplicitDeclaration(t *testing.T) {
 	root := t.TempDir()
-	writeSemanticValidationWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: business_rules_test\nsources:\n  - semantic\n")
+	writeSemanticValidationWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: business_rules_test\nformatVersion: 1\nsources:\n  - semantic\n")
 	writeSemanticValidationWorkspaceFile(t, root, "semantic/sales/order.tei", `namespace sales
 data OrderLine {
     attribute orderId type std.identifier

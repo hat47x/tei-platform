@@ -1,0 +1,72 @@
+name: TEI one-revision CLI and artifact real-reader witness
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'plan/fixtures/capability-handoff/**'
+      - '.github/workflows/tei-one-revision-capability.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# 同じPRの古い実行だけを取り消し、mainへのpushは取り消さない（#3682）。
+concurrency:
+  group: tei-tei-one-revision-capability-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  real-cli-one-revision:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Checkout exact candidate HEAD
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ env.EXPECTED_HEAD }}
+
+      - name: Setup pinned Go module version
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      - name: Verify exact checkout and Python syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          python3 -B -c 'import ast, pathlib; ast.parse(pathlib.Path("plan/fixtures/capability-handoff/verify_real_cli_revision.py").read_text(encoding="utf-8"))'
+          echo "scenario-blob=$(git rev-parse HEAD:plan/fixtures/capability-handoff/verify_real_cli_revision.py)"
+
+      - name: Build actual Go CLI outside checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          go build -o "$RUNNER_TEMP/tei" ./cmd/tei
+          "$RUNNER_TEMP/tei" version -json
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+
+      - name: Verify operation / artifact revision and independent file reader
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -B plan/fixtures/capability-handoff/verify_real_cli_revision.py \
+            --binary "$RUNNER_TEMP/tei" \
+            --workspace reference/standard-crud/workspace \
+            --application ledger \
+            --expected-head "$EXPECTED_HEAD"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"

@@ -1,0 +1,10 @@
+persist sales_core.order {
+    database sales_core
+    semantic sales.order
+    table public.orders
+
+    column sales.order.order_id -> order_id storage int64 required
+    column sales.order.status -> status storage varchar required
+
+    primary-key sales.order.order_id
+}

@@ -64,3 +64,20 @@ func TestParseHeaderDetailApplicationPatternRejectsOtherFields(t *testing.T) {
 		})
 	}
 }
+
+func TestParseHeaderDetailApplicationPatternAggregates(t *testing.T) {
+	src := `pattern order_entry.order_lines header-detail {
+    relation sales.order.lines
+    aggregate total sales.order_line.amount sum
+}`
+	got, err := syntax.NewParser(src).ParseApplicationPattern()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Aggregates) != 1 {
+		t.Fatalf("aggregates=%#v", got.Aggregates)
+	}
+	if got.Aggregates[0].Name != "total" || got.Aggregates[0].Attribute != "sales.order_line.amount" || got.Aggregates[0].Function != "sum" {
+		t.Fatalf("aggregate=%#v", got.Aggregates[0])
+	}
+}

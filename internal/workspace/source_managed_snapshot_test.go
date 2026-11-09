@@ -23,7 +23,7 @@ func writeManagedSnapshotFixture(t *testing.T, root, rel, content string) {
 func snapshotFixture(t *testing.T) (string, string) {
 	t.Helper()
 	root := t.TempDir()
-	writeManagedSnapshotFixture(t, root, "tei.workspace.yaml", "workspace: snapshot\nsources:\n  - semantic\n  - docs\n")
+	writeManagedSnapshotFixture(t, root, "tei.workspace.yaml", "workspace: snapshot\nformatVersion: 1\nsources:\n  - semantic\n  - docs\n")
 	writeManagedSnapshotFixture(t, root, "semantic/model.tei", "namespace snapshot\n")
 	writeManagedSnapshotFixture(t, root, "docs/asset.md", "original bytes\n")
 	return root, "docs/asset.md"

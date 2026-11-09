@@ -141,6 +141,8 @@ Desktopでローカル実行できることは、外部DB、ネットワーク�
 
 オフラインだからといって、期限切れのRemote Authorizationをローカルの権限で置き換えない。同期不能なら未解決として扱い、過去の成功を再生して共有先の状態を作らない。
 
+Localモードでは認証を要求しないのを原則とする（[ADR-0044](../adr/0044-authentication-not-a-core-concern.md)）。ローカルWorkspaceへの参照・検証・提案・受理にログインやcredentialを要求せず、認証が必要なのはConnected / Hybridで接続先の提供主体（Plugin、既存IdP、Remote Provider）が契約として解決する範囲である。認証機構をStudio HostやCLIの必須依存にしない。
+
 ## 6. Wails v3の採否判定（現時点では候補）
 
 第一候補をGo + Wails v3とするが、HostでなくGoの共通Application Serviceが意味操作を所有する。Wails v3の依存は外側のHostへ閉じ込め、Browser共通UIの変更と区別する。
@@ -177,3 +179,56 @@ Wails依存を外したGo Service/合成Adapterの試験と、実WebView起動�
 5. **別Target**: DS-10はStudioと別ブランチ・別成果物・別Evidenceにする。
 
 この文書は要求の新しい正本や実装完了証明ではない。採否は実測・既存担当Issue・設計判断を経て更新する。
+
+<!-- tei-wails-ui-extensions-20261103 -->
+## 8. 2026-11-03 追補：Wailsの上に構築するUI/Go拡張とStudio/生成Targetの切分け（Draft／NOT RUN）
+
+**外部前提の更新**：本書 §6 は2026-10-13時点のbeta情報を残す歴史的記述。Wails公式が2026-10-26に **v3.0.0正式公開**と告知し、正式版は**Go 1.26以上**を要求している。従って以後のPoCは beta/Go1.25 前提でなく、実Wails・Go Toolchain・Frontend runtime/生成Binding・OS別WebViewをexact pinして評価する。公開はTEIのProduction採用・Windows実機検証を意味しない。
+
+**区分**：
+- **Studio（Authoring Client）**：既存 #1158 Typed Operation と #1124 Shared Acceptance を呼ぶ。Wails serviceは外側のtransport/lifecycle adapterであり、Sourceの直接書換え/Business Authorityの正本にならない（既存DS-01〜09）。
+- **生成業務Desktop Application**：Accepted ApplicationからTarget-neutral Presentation/Actionを導き、#997 のUI KitとTarget固有Wails Adapter/Go Serviceを**Build時に静的合成**する対象。#259/#1182 の独立Target Build/配布Evidenceを必要とする。Studioの成果物・DS-09成功を第二Target合格へ流用しない。
+- **Web Browser Target**：共通React等のUI部品を再利用できても、Host側Go service・OS API・local processをBrowserへ露出させない。Browser assetとAPI unit、Origin/Auth/CORS/CSRF/secretの実境界は #1182へ委譲する。
+- **外部プロセス**：独立更新/Native機能/障害隔離の実要件がある場合だけ選択。Wailsを増築する代わりに毎回プロセスを立てることを標準化しない。既存Service Contract/Provider/配置に従い、起動失敗・プロセス終了・ACK喪失/Commit unknownを別扱いにする。
+
+**Go ServiceとUI Extensionの責務**：案件Go serviceは生成物に直接追記せず案件Sourceとして持ち、選択されたService/Operation契約・Binding生成・必要なOS CapabilityをBuild時に登録する。React/TypeScript UI Extensionは #997 のRoot Kitによる公開Slotに provide/replace/decorateし、Wailsの生成Bindingはtransport artifactとして扱う。標準Kitの内部DOMや未公開Go methodへ依存する拡張はUpstream追従保証外。業務Action、Validation、保存Intent、実Provider Commit、Host現在認可をUIやWails serviceへ重複実装しない。
+
+**公開境界とセキュリティ**：同一WebViewに取り込まれた任意JavaScriptは、Kit Slotを使ったことだけでは安全なsandboxにならない。WebView bridgeへ登録するGo methodを絞り、外部URL/非信頼HTML/child frameからの到達、secret、任意file/process、Window lifecycleを実Target条件で検査する。許可・失効・read-onlyはRequest時に再照合。開発・試験用MCP/InstrumentationのProduction物理除去は #2391 の別Evidenceとする。
+
+**既存DSケースへの追加判定（新Gateは設けない）**：
+- **DS-08に加える**：案件Extensionを追加しても共通Operation/AcceptanceへのWails依存逆流、UI→Source/DB直接mutation、第二Resolverを導入しない。
+- **DS-09に加える**：正式版Wails v3.0.0+・Go 1.26+・OS/WebView/Toolchain/Frontend assetの実物版を固定した上で、Service Binding生成・案件Go static composition・起動/終了・untrusted content・更新後の署名/再起動を個別に検証する。
+- **DS-10に加える**：同一Accepted Meaning、Action/Result/Failure/Unknownに対してWeb実Browserと生成Desktop実WebViewの差をTarget別に観測し、Studioと混同しない。
+- **#997 UI-5へ返す**：親Kit旧版→新版、案件Overlay旧版→候補の三者比較、Slot/lifecycle/CSS・exact fingerprint・Target互換・実動作の未実証を診断し、衝突時は稼働中の固定成果物を保持する。
+
+受入Evidenceは **(a) 設計/Reference Resolver、(b) Go/TS buildと依存閉包、(c) 実OS WebView動作、(d) Host認可・Effect/Receipt、(e) 案件UI更新追従** を別列で記録する。今回の追補は文書のみ。Go/Wails実機、生成業務Desktop、独立E2E、正式Extension API/Kit ABI、Owner業務意味受理はすべて**NOT RUN／未採用**。
+
+参照：[UI構成キット階層Reference](../../reference/ui-customization/composition/README.md)、[#997](https://github.com/hat47x/tei-platform/issues/997)、[#1824](https://github.com/hat47x/tei-platform/issues/1824)、[#259](https://github.com/hat47x/tei-platform/issues/259)、[#1158](https://github.com/hat47x/tei-platform/issues/1158)、[#951](https://github.com/hat47x/tei-platform/issues/951)、[#2391](https://github.com/hat47x/tei-platform/issues/2391)。Wails外部根拠：[2026-10-26 v3.0.0告知](https://wails.io/blog/wails-v3-released/)、[Wails Releases](https://github.com/wailsapp/wails/releases)。
+
+<!-- tei-wails-ui-upgrade-live-context-20261103 -->
+## 9. 2026-11-03 横断再深化：Wails UI拡張の実行時継続性とFunction配置（設計／NOT RUN）
+
+#997 UI-5の更新と#1130 Function起動・単一/マルチBuild、#2598 Intent→実Request、#1174 Provider Commit/Receipt、#2391 Wails外部操作の隔離・除去を既存DS試験へ結ぶ。**Wails serviceを共通業務Hostへ昇格させず**、Studioと生成業務Targetを混ぜない。
+
+### 一つの画面と複数の寿命
+同じWails Windowの内側にも、Renderer component（mount/dispose・購読/Focus）、Editing Session（未送信Draft・Context Instance/epoch）、Application Operation（Request/attempt・unknown Commit）、OS Host resource（file handle/process/window）、Browser cache / built asset（版）という異なる寿命がある。Wails window reload後にMarkerが復元されても未送信Draftの実内容やAcceptを復元したことにはならない。逆に、再描画を理由に送信済Actionを再Submitしてはならない。
+
+**受入追加**：
+- DS-04/06：別窓や再起動、Kit v1→v2、Result更新の後着と旧epochが重なるとき、新画面/新Workspaceへ古いイベント・Draft・書込みIntentを流し込まない。未送信Draftを消す必要があるなら利用者に説明し、既存Sessionの保存・復元手段を確認する。見た目の復元≠Sourceの正式Accept。
+- DS-07：Go/Wails bindingが返した成功・Timeout・Window crashは業務結果/Commitと区別。Request送信済みでACK喪失の場合、Operation/Request identityを維持した観測を要求し、自動再送せず旧UI再起動時にも状態不明を表示する。フロント側の同時送信抑止だけを冪等性と扱わない。
+- DS-08：UI Extension/Native componentが直接Source・DBを編集したり、任意Go Methodを実行できる一般Bridgeを持ったりしない。実際の公開MethodとBridge到達性を確認し、拡張のService契約/Target bindingを明示。単なるSlot登録はsandboxではない。
+- DS-09：Wails Window close/reopen、untrusted HTML/navigation、Main/child frame、Go service登録、assetの実digest、frontend bundleのCSS/React競合とIME/focus、起動/停止時のResource解放を実OSごとに観測。開発MCPを組込む場合は#2391に従いProductionビルドで物理不在を証明する。
+- DS-10：同一Business FunctionをWeb/ReactとDesktop/Wailsから呼ぶとき、UI Kit共有部分だけで合格とせず、各Artifactの入口・実Provider経路・Host認可/Disclosure・Business Result/Error/Unknownを独立に比較する。
+
+### FunctionとBuildとの対応（Build管理Ownerへの参照であり第二管理表ではない）
+- 業務System/Subsystem/Functionの定義上の帰属 ≠ UI画面/Slotの配置 ≠ Build Unit/配備Artifact ≠ CLI/HTTP/cron等の外部起動入口。
+- **単一Go実行ファイルを既定**とする。UIとJobを同じArtifactへ静的組み込み可能だが、含有FunctionがそのままCLIやWails Bridgeへ一般公開されるわけではない。呼出対象、必要なGrant/Capability、実Action適用を呼出境界で再確認する。
+- Jobだけ別Buildへ移行する要求が現れた時点で、#1130が担当する既存Function ID→Entry Intent→Target/Build Group→Artifactの導出を利用する。Desktop UI Kitに再入力する配置表は追加しない。UIからJobを起動してもDispatcher/長時間Result/部分失敗/Receiptは通常のAction契約へ戻す。
+- Wails Desktop binary、Web asset、API server、外部Workerは必ずしも同時に更新されない。Build profileとactual artifact identity、旧クライアント/新APIのContract range、公開Endpoint/Callback有無、offline/reconnectを照合し、silent fallbackや旧結果の現在化を拒否する。
+- 依存更新で影響を受けるArtifactだけを再生成できるかは#943/#2600のBuild閉包で評価する。Sourceは同じでもKit/Toolchain/Framework/Providerが変われば、使える旧Evidenceは用途相対に限定される。
+
+**P0 read-only受渡し票（正式Schemaではない）**：
+`[Function/Action ID & accepted revision, UI Extension/Slot & kit pin, context instance/epoch/scope, logical entry, Target/profile, Build unit intent/resolved artifact digest, exposed route, actual Host/Provider/Grant, request/attempt, receipt/observation]`。
+各列の正本は #997/#1158/#1130/#943/#2598/#1174 の**既存Owner**。DS試験は同一試行で照合できた列と未実証列を表示するだけとする。
+
+**受入段階**：P0 契約・Build mappingのread-only説明 → P1 Web/React Slot/Actionの実試験 → P2 Studio Wails service/Window/UI拡張の実OS検証 → P3 **生成**Desktopの第二Target独立比較 → P4 分割Build・混在配備と復旧。UX-08〜14は #997 の追補に置いた。すべて実OS/実Provider/生成Artifactの新規E2Eは **NOT RUN**。新OS permission engine、Kit独自ABI、Scheduler、常駐TEI Hostはこの節では採用しない。

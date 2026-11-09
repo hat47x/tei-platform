@@ -13,6 +13,7 @@ import (
 func TestLoadIndexesHeaderDetailContractQueryBindingSource(t *testing.T) {
 	root := t.TempDir()
 	writeHeaderDetailBindingWorkspaceFile(t, root, "tei.workspace.yaml", `workspace:
+formatVersion: 1
   sources:
     - applications
 `)

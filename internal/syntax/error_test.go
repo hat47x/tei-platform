@@ -20,7 +20,7 @@ func TestParseErrorRangeHighlightsUnexpectedToken(t *testing.T) {
 		t.Fatalf("range text=%q start=%+v end=%+v", got, start, end)
 	}
 	message, ok := syntax.ErrorMessage(err)
-	if !ok || message != "expected database or uses" {
+	if !ok || message != "expected database, uses, or binds" {
 		t.Fatalf("message=%q ok=%v", message, ok)
 	}
 }

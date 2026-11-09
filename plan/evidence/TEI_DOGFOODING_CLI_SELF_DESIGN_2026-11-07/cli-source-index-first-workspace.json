@@ -1,0 +1,141 @@
+{
+  "schemaVersion": "tei.cli.source-index/v0",
+  "ok": true,
+  "mode": "index",
+  "result": {
+    "artifacts": [
+      {
+        "path": "applications/request-log/application.tei",
+        "format": "tei",
+        "fingerprint": "sha256:9e21c42d88bdf3d80e3353dba87650e48a72ec3ea8af9d4b20825dbce2f50ad6"
+      },
+      {
+        "path": "semantic/intake/request.tei",
+        "format": "tei",
+        "fingerprint": "sha256:d662e9e15f427ef2a71b4c349a5b77531d99e75b5a4a0325c758e5b63a962309"
+      }
+    ],
+    "references": [
+      {
+        "subject": {
+          "kind": "application",
+          "id": "request_log"
+        },
+        "artifactPath": "applications/request-log/application.tei",
+        "range": {
+          "start": {
+            "offset": 12,
+            "line": 1,
+            "column": 13
+          },
+          "end": {
+            "offset": 23,
+            "line": 1,
+            "column": 24
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic",
+          "id": "intake"
+        },
+        "artifactPath": "semantic/intake/request.tei",
+        "range": {
+          "start": {
+            "offset": 10,
+            "line": 1,
+            "column": 11
+          },
+          "end": {
+            "offset": 16,
+            "line": 1,
+            "column": 17
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-attribute",
+          "id": "intake.request.request_id"
+        },
+        "artifactPath": "semantic/intake/request.tei",
+        "range": {
+          "start": {
+            "offset": 47,
+            "line": 4,
+            "column": 15
+          },
+          "end": {
+            "offset": 56,
+            "line": 4,
+            "column": 24
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-attribute",
+          "id": "intake.request.status"
+        },
+        "artifactPath": "semantic/intake/request.tei",
+        "range": {
+          "start": {
+            "offset": 127,
+            "line": 6,
+            "column": 15
+          },
+          "end": {
+            "offset": 133,
+            "line": 6,
+            "column": 21
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-attribute",
+          "id": "intake.request.summary"
+        },
+        "artifactPath": "semantic/intake/request.tei",
+        "range": {
+          "start": {
+            "offset": 91,
+            "line": 5,
+            "column": 15
+          },
+          "end": {
+            "offset": 98,
+            "line": 5,
+            "column": 22
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-data",
+          "id": "intake.request"
+        },
+        "artifactPath": "semantic/intake/request.tei",
+        "range": {
+          "start": {
+            "offset": 23,
+            "line": 3,
+            "column": 6
+          },
+          "end": {
+            "offset": 30,
+            "line": 3,
+            "column": 13
+          }
+        },
+        "role": "definition"
+      }
+    ]
+  }
+}

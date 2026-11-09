@@ -1,0 +1,36 @@
+name: TEI developer context bounded discovery characterization
+
+on:
+  pull_request:
+    paths:
+      - "tools/reference-developer-context/**"
+      - ".github/workflows/developer-context-coverage-characterization.yml"
+      - "plan/evaluations/TEI_DEVELOPER_CONTEXT_P2_ACCEPTANCE_2026-11.md"
+  push:
+    paths:
+      - "tools/reference-developer-context/**"
+      - ".github/workflows/developer-context-coverage-characterization.yml"
+      - "plan/evaluations/TEI_DEVELOPER_CONTEXT_P2_ACCEPTANCE_2026-11.md"
+
+permissions:
+  contents: read
+
+# 同じPRの古い実行だけを取り消し、mainへのpushは取り消さない（#3682）。
+concurrency:
+  group: tei-developer-context-coverage-characterizat-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  bounded-discovery:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+      - name: Characterize current Discover and Rerank on public temp directories
+        run: |
+          go test ./tools/reference-developer-context -run 'Test(Discovery|Rerank|CollectionComparison|CollectionFactorial|QuestionRelative|ActualProbe|BlindProbe)' -v -count=1

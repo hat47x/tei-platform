@@ -1,0 +1,12 @@
+tei/internal/composition
+tei/internal/servicehost
+tei/reference/composition-evidence-handoff
+tei/reference/composition-io-mapping
+tei/reference/interface-adapter
+tei/reference/semantic-composition-preflight
+tei/reference/web-composition/go-host
+tei/tools/reference-external-adoption-authority
+tei/tools/reference-first-web-target
+tei/tools/reference-plugin-capability-contract
+tei/tools/reference-project-advice-lit
+tei/tools/reference-studio-static-composition
