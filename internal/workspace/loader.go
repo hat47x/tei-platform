@@ -233,6 +233,12 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 	if err != nil {
 		return Result{}, err
 	}
+	// .tei.md is the intended TEI authoring suffix, but this loader still
+	// dispatches native declarations from .tei. Fail closed until an exact
+	// language/parser binding can consume .tei.md and preserve its provenance.
+	if err := rejectUnboundTEIMarkdownSources(managedFiles); err != nil {
+		return Result{}, err
+	}
 	// Classify declared roots after the physical boundary is verified, so a
 	// misspelling is reported as itself rather than as a downstream cascade and
 	// an escaping symlink keeps the original containment error. Managed but
