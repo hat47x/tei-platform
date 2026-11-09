@@ -1492,6 +1492,63 @@ catalogは**データ**であり、entryはそれを**名指しされたもの�
 - 能力宣言の**版付け**。必要になった時点で決める
 - **すべてのOSでの成立**。二つのホストを観測しただけである
 
+### 4.34 既定に関する残りの判断を閉じる（2026-11-09）
+
+§7に残っていた既定の問いに、**測った材料の範囲で**答える。いずれも**今の振る舞いを変えない**判断で、覆す条件を添える。
+
+#### 判断1：`-rebuild-check`をすべての試行で既定にしない
+
+| 材料 | 内容 |
+| --- | --- |
+| 費用（§4.27） | 参照childで+110 ms（1.807倍） |
+| 費用（§4.28） | 実buildで+5.4秒（**1.926倍**） |
+| 効果 | child経路では`l2b.claimed`が**立てられない**（entryが解釈していない） |
+
+**child経路に二回目のbuildを既定で足すのは、費用だけを倍にして主張を増やさない。** §4.25が「P-2は非対称」と呼んだとおりである。§4.30で**catalogを名指しした試行に限って**既定にしたので、Claimを立てたい呼び手は既に自動で最強の観測を得る。
+
+**決定：既定のまま（catalogを名指ししたときだけ行う）。**
+
+**覆す条件**：child経路がL2-bを立てられるようになったとき。
+
+#### 判断2：既定の導出経路をin-processへ切り替えない（R-1は据え置き）
+
+in-processを既定にするには、**entryがcatalogを自分で選ぶ**必要がある。しかし§4.22は「entryはbuilderを自分で探さない」と決め、K-3でcatalogは**呼び手が名指しするデータ**とした。§4.29はcatalogの5欄に宣言面が無いことを示し、§4.32はcatalogを製品の外に置いた。
+
+**したがって「既定でin-process」は、entryが名指しされていないデータを読むことに等しく、K-3を取り消さない限り実装できない。**
+
+**決定：R-1は据え置き。既定はchild経路のまま。** 強い経路は呼び手が`-build-catalog`一式で選ぶ。
+
+**覆す条件**：呼び手が**一度だけ設定する**catalogの場所が製品の契約として決まったとき（Workspaceの`formatVersion`改版を伴う決定）。
+
+#### 判断3：`l2b.claimed`を既定の試行で立てない
+
+判断2の帰結である。既定はchild経路で、その経路ではentryが解釈しないので五条件の一つ目が成立しない。
+
+**決定：既定では立てない。** Claimは**呼び手の行為**であり、`-build-catalog`一式を渡すことがその表明になる。§4.30により、渡した時点で残りの観測は自動で揃う。
+
+**覆す条件**：判断2を覆すとき。
+
+#### 判断4：D-1（catalogの`scope`拡張）を採らない
+
+| 材料 | 内容 |
+| --- | --- |
+| 既存consumer | `tools/reference-mcp-readonly-adapter`が`effect=read-only`を前提にしている |
+| `scope`の意味 | `selected-read-only-commands`。「選んだ読取り専用」であって「dispatchする全部」ではない |
+| 外在consumer | **測れない** |
+| 失われるもの | `-h`と文書で知れるので**発見性だけ**。§4.33でヘルプに全flagが出るようにした |
+
+**決定：D-3のまま（catalogへ載せない）。** `scope`を広げると、外在consumerの前提を測れないまま変えることになる。発見性は`-h`と`reference/plugin-self-build/README.md`で確保した。
+
+**覆す条件**：外在consumerの一覧ができ、`scope`ではなく`effect`を見ることを契約に書けるようになったとき。
+
+#### 閉じないもの
+
+| 項目 | 状態 |
+| --- | --- |
+| `darwin`・`arm64`・別のGo版の観測 | **未観測のまま。** 本環境では実行できない |
+| 能力宣言の版付け | **未決のまま。** 第二のconsumerが現れた時点で決める |
+| `-strong`（§4.25のP-4） | **採らない。** §4.30が「catalogを名指しすれば最強の観測が既定で揃う」を実現したので、強さを選ぶ別flagは要らない。第二の強さの段が要るようになったら再考する |
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
@@ -1570,16 +1627,16 @@ catalogは**データ**であり、entryはそれを**名指しされたもの�
 - [x] **実build**での`-rebuild-check`のコスト測定（§4.28。`reference-go-build-with-supply`をchildにして`./internal/core`を実際に`go build`。中央値5852.7 ms→11272.4 ms、**+5419.7 ms・1.926倍**で、§4.27の推論が当たった。二回のbuildのdigestは一致し`artifactReproducibility=reproduced`。[記録](../evidence/TEI_GO_SELF_BUILD_GO_BUILD_REBUILD_COST_2026-11-09.md)）
 - [x] `-rebuild-check`の実コストの測定（§4.27。[記録](../evidence/TEI_GO_SELF_BUILD_REBUILD_CHECK_COST_2026-11-09.md)。参照childでは中央値136.4 ms→246.5 ms（+110.1 ms・1.807倍）で、**増分の大半はchildの仕事ではなくentryの固定費**（child単体3.4 ms）。実buildは未測定）
 - [x] `-rebuild-check`の既定を**catalogを名指しした試行に限って**強くする決定と実装（§4.30。`-build-catalog`を渡せば二回目のbuildが既定になり、`-rebuild-check=false`で断れる。child経路と何も渡さない試行は変わらない）
-- [ ] `-rebuild-check`を**すべての試行で既定**にするかどうかの判断。**§4.25がP-1〜P-4を示し、§4.27が参照child、§4.28が実buildのコストを実測した**（それぞれ1.807倍・1.93倍）。**§4.30がcatalog経路だけ既定にした**ので、残る問いはそれ以外の経路でも既定にするかである
+- [x] `-rebuild-check`を**すべての試行で既定**にするかどうかの判断（**§4.34で閉じた：既定にしない。** child経路では費用が倍になるだけでClaimが増えない。catalogを名指しした試行では§4.30が既定で行う） **§4.25がP-1〜P-4を示し、§4.27が参照child、§4.28が実buildのコストを実測した**（それぞれ1.807倍・1.93倍）。**§4.30がcatalog経路だけ既定にした**ので、残る問いはそれ以外の経路でも既定にするかである
 - [x] catalogの出所の決定（§4.22。**K-3: 呼び手が名指しするcatalogデータ＋必須のdigest**。新しいAuthorityを作らず、既存の`-supply`・`-intent-resolver`と同じ形）
-- [ ] **entryの既定経路をin-processの`Resolve`へ切り替えるか**の判断（§4.16のR-1/R-2/R-3）。前提だったcatalogの出所は§4.22で決めた（K-3）。切り替え自体は段2の完了後に別途決める
+- [x] **entryの既定経路をin-processの`Resolve`へ切り替えるか**の判断（**§4.34で閉じた：R-1据え置き。** entryが名指しされていないcatalogを読むことはK-3の取り消しになる。既定はchild経路のまま） 前提だったcatalogの出所は§4.22で決めた（K-3）。切り替え自体は段2の完了後に別途決める
 - [x] **段1**：`fixture`を外した名前で`BuildCatalog`・`ParseBuildCatalog`・`ResolveBuilder`・`ResolveDependency`・`CheckTarget`・`DirSourceResolver`を`internal/buildintent`へ移した（`tools/`側は型aliasと薄い委譲。参照実装の試験は**無変更で通る**。§4.22の移行表、[記録](../evidence/TEI_GO_SELF_BUILD_CATALOG_MOVE_2026-11-09.md)）
 - [x] **段2**：`cmd/tei`に`-build-catalog`・`-build-catalog-digest`・`-build-source-root`を足し、in-processで計画を導く経路を作った（`-intent-resolver`とは排他。§4.22、[記録](../evidence/TEI_GO_SELF_BUILD_INPROCESS_RESOLUTION_2026-11-09.md)）。**entryが導いた計画のfingerprintは参照実装のchildが出した値と一致した。** `planRecompute`・`planCrossCheck`・`planArtifactBinding`はin-process経路でも成立する
 - [x] L2-bのClaimを立てるかの判断と実装（§4.23。**五条件の同時成立**を述語にし、`l2b.claimed`と`l2b.unmet`として出す。[記録](../evidence/TEI_GO_SELF_BUILD_L2B_CLAIM_2026-11-09.md)。単一観測の`l2bClaimed`欄は`false`のまま据え置き、述語はそれらを読まない）
 - [x] L2-bのClaimを**回帰試験**にする（§4.24。参照catalogと参照builder childで五条件が揃うことを`cmd/tei`の試験で固定し、`go test ./...`経由で健康性確認に載る。[記録](../evidence/TEI_GO_SELF_BUILD_L2B_GATE_2026-11-09.md)）
 - [x] 二つのホスト（`linux/amd64`・`windows/amd64`）で同じ計画とartifactが出ることの実測（§4.26。[記録](../evidence/TEI_GO_SELF_BUILD_CROSS_OS_DIGESTS_2026-11-09.md)。`intentFingerprint`・`sourceClosure`・`planFingerprint`・`artifactDigest`の四つが一致し、L2-bのエンドツーエンド試験もWindowsでPASSした。**Go版も違う**）
 - [ ] `darwin`・`arm64`・別のGo版の組合せでの観測（§4.26の範囲外）。**このホストでは実行できない**（macOS無し・`qemu-aarch64`無し・Go版は`go1.27.3`と`go1.27.0`のみ）。クロスコンパイルは4 target で成功し、`internal/buildintent`にhost依存の分岐は0件だが、**どちらも実行による一致の証拠ではない**（[記録](../evidence/TEI_GO_SELF_BUILD_CROSS_COMPILE_SCOPE_2026-11-10.md)）
-- [ ] `l2b.claimed`を**既定の試行**で立てられるようにするか。**呼び手が要るのはin-process経路（`-build-catalog`一式）だけで、`-rebuild-check`は§4.30が既定にした**（実測：`-build-catalog`のみで`claimed=true`・`-rebuild-check=false`で`false`。[記録](../evidence/TEI_GO_SELF_BUILD_L2B_DEFAULT_PREMISE_2026-11-09.md)）。残る問いは「何も渡さない試行」で立てるかであり、§4.29のcatalog決定が前提（§4.31）
+- [x] `l2b.claimed`を**既定の試行**で立てられるようにするか（**§4.34で閉じた：立てない。** 既定はchild経路で五条件の一つ目が成立しない。Claimは呼び手が`-build-catalog`一式を渡す行為） **呼び手が要るのはin-process経路（`-build-catalog`一式）だけで、`-rebuild-check`は§4.30が既定にした**（実測：`-build-catalog`のみで`claimed=true`・`-rebuild-check=false`で`false`。[記録](../evidence/TEI_GO_SELF_BUILD_L2B_DEFAULT_PREMISE_2026-11-09.md)）。残る問いは「何も渡さない試行」で立てるかであり、§4.29のcatalog決定が前提（§4.31）
 - [x] 宣言とplanの**build座標**（`outputKind`・`target`・`profile`）の照合（[#3652](https://github.com/hat47x/tei-platform/pull/3652)。childが三座標を一つずつ比べ、違えばartifactを書いた後にreportを出さずexit 1。[記録](../evidence/TEI_GO_SELF_BUILD_BUILD_COORDINATES_2026-11-09.md)）
 - [x] 宣言の他の欄のうち、planが同じ形で持つもの（`recipe`・`sources`・`dependencies`）の照合（[#3661](https://github.com/hat47x/tei-platform/pull/3661)。§4.17）
 - [x] `parameters`の照合（[#3664](https://github.com/hat47x/tei-platform/pull/3664)。測るとどちらの側も名前順ソートのみで値を変えないと分かったので、名前で突き合わせる。§4.18）
@@ -1593,7 +1650,7 @@ catalogは**データ**であり、entryはそれを**名指しされたもの�
 - [x] 宣言からClaimまでの鎖の**回帰試験**（§4.33。`cmd/tei`のエンドツーエンド試験がツールでcatalogを作り、**`artifactDigest`が実際に走るbuilderのバイトと一致すること**を確かめてから`l2b.claimed`を要求する。builderの解決はdigestで照合しないので、下流では気づけない）
 - [x] catalogを作る**ツール**の能力宣言の形式と実装（§4.33。`tools/reference-build-catalog-authoring`が能力宣言からcatalogを作り、**artifactのdigestは実ファイルから計算**する。宣言にdigestを書くことと`-root`の外を拒否する。宣言から`l2b.claimed=true`まで一本で通った。[記録](../evidence/TEI_GO_SELF_BUILD_CATALOG_AUTHORING_2026-11-09.md)）
 - [ ] 能力宣言の**版付け**。**実測すると「必要になった時点」に決められない**——`formatVersion`を足した宣言は`json: unknown field`で拒否され、版を名乗る手段が導入時点で使えない。宣言を配るなら今足すのが最も安い（D-2）。**判断には「宣言を誰に配るか」が要り、これは§4.32が範囲外とした問い**（[記録](../evidence/TEI_GO_SELF_BUILD_DECLARATION_VERSIONING_2026-11-10.md)）
-- [ ] D-1（catalogの`scope`拡張）を採るかどうかの契約判断（採る場合のみ、catalogの広告と実応答の一致を照合へ載せる）
+- [x] D-1（catalogの`scope`拡張）を採るかどうかの契約判断（**§4.34で閉じた：採らない。** 外在consumerの前提を測れないまま変えない。発見性は`-h`とREADMEで確保した） （採る場合のみ、catalogの広告と実応答の一致を照合へ載せる）
 
 **A-1（`gobuilder`移動）は採らないため、影響範囲の洗い出しは終了条件から外した。** 29ファイルの内訳は[記録](../evidence/TEI_GO_INTERNAL_RULE_AND_BUILDER_MOVE_2026-11-07.md)として残す。I-1は「採らない」から「I-1aとして着手」へ改めた（§4.13）。`ParseFixtureCatalog`（fixture catalog）は`tools/`に残す。
 

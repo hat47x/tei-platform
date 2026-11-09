@@ -524,6 +524,11 @@ func writeViewText(out io.Writer, view applicationview.View) (int, error) {
 		}
 		for _, hook := range view.Hooks {
 			line := fmt.Sprintf("  - %s", hook.Phase)
+			// A declared scope is printed beside the phase; an absent one means the
+			// pattern's own unit and is left implicit.
+			if hook.Scope != "" {
+				line += fmt.Sprintf(" scope %s", hook.Scope)
+			}
 			if len(hook.Reads) > 0 {
 				line += fmt.Sprintf(" reads %s", joinIDs(hook.Reads))
 			}
