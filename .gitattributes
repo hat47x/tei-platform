@@ -157,3 +157,15 @@
 
 # C-2 outcome v1 output is hashed as raw bytes by its README.
 /plan/evidence/SERVICE_CARRIER_CONNECT_OUTCOME_V1_2026-11-09/** -text
+
+# Subagent chain observations are hashed as raw bytes.
+/plan/evidence/DSH_SUBAGENT_CHAIN_2026-11-09/** -text
+
+# Subagent depth-raised observations are hashed as raw bytes.
+/plan/evidence/DSH_SUBAGENT_DEPTH_RAISED_2026-11-09/** -text
+
+# Executor id resolution output is hashed as raw bytes by its README.
+/plan/evidence/EXECUTOR_ID_RESOLUTION_REFERENCE_2026-11-09/** -text
+
+# Subagent fork-chain observations are hashed as raw bytes.
+/plan/evidence/DSH_SUBAGENT_FORK_CHAIN_2026-11-09/** -text

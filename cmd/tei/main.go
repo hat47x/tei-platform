@@ -198,6 +198,7 @@ func main() {
 	artifactCheck := fs.Bool("check", false, "artifacts: fail when the set is inconsistent")
 	periodStates := fs.String("period-states", "", "periods: period=state pairs, comma separated")
 	periodStatePath := fs.String("period-state-file", "", "periods: JSON object of period to state")
+	periodAdvance := fs.String("advance", "", "periods: move this period one step toward closed and record it")
 	dbCheckDSNFlag := fs.String("dsn", "", "dbcheck: PostgreSQL DSN (defaults to TEI_TEST_POSTGRES_DSN)")
 	grantsOut := fs.String("grants-out", "", "grants: write the grants document here instead of stdout")
 	grantCapability := fs.String("grant-capability", "", "issue-grant: the capability the grant is issued to")
@@ -369,7 +370,7 @@ func main() {
 		return
 	}
 	if command == "inspect" {
-		code, err := inspectWorkspaceJSON(os.Stdout, *workspacePath, *worldPath, *subjectKind, *subjectID, fs.NArg())
+		code, err := inspectWorkspaceJSONSelected(os.Stdout, *workspacePath, *worldPath, *subjectKind, *subjectID, fs.NArg())
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}
@@ -609,7 +610,7 @@ func main() {
 		}
 		return
 	case "periods":
-		if err := runPeriodsCommand(*workspacePath, *applicationID, *periodStates, *periodStatePath); err != nil {
+		if err := runPeriodsCommand(*workspacePath, *applicationID, *periodStates, *periodStatePath, *periodAdvance); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}

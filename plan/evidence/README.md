@@ -24,6 +24,8 @@
 - [trace/inspectの段別費用](CLI_TRACE_STAGE_COST_2026-11-09.md)（`-limit 1`が`full`と同じ段を通り費用も同等であること、`reference/workspace`規模ではプロセス起動約1秒が支配的で段の差が出ないことを実測。二重解析の共有・並列化は未実施）
 - [空文字列の引数の拒否](CLI_EMPTY_ARGUMENT_REJECTION_2026-11-09.md)（`-mode ""`が広告既定の`summary`ではなく`full`へ落ちていたのを、明示の空文字列として`INVALID_ARGUMENT`で拒否。省略時は既定維持。内部`modelref`の既定は未集約）
 - [MCP Adapterの4MiB超過要求](MCP_OVERSIZED_REQUEST_2026-11-09.md)（行長超過でプロセスが終了し以降の要求を失っていたのを、`-32600`で拒否してループを続けるよう修正。上限の値の妥当性・同時接続・実HostはNOT RUN）
+- [MCP `tools/call` のparams検査](MCP_CALL_PARAMS_MESSAGES_2026-11-09.md)（params/name欠落が`unknown tool ""`やデコーダ文言で拒否され、実際の誤りを指していなかったのを、入力ごとの文言へ直した。実Host・認可・外部送出はNOT RUN）
+- [CLIとMCPの結果・失敗・成否の一致](TEI_CAPI2_CLI_MCP_PARITY_2026-11-09/README.md)（`catalog`/`inspect`/`trace`の成功文書が完全一致し、validateの6分類で`ok`・`isError`・exit・`error.code`が一致することを実実行物で比較。封じ込め5通りも外部バイト漏れなし。実Host・認可・外部送出はNOT RUN。CAPI-2 / #3420）
 - [traceの既定値の一元化](CLI_TRACE_DEFAULT_SINGLE_SOURCE_2026-11-09.md)（CLI flag・`commands`の`argumentDefaults`・MCP Adapterが別々に持っていた`mode`/`direction`の既定を`modelref`の定数1か所へ寄せた。内部の空Mode→fullは残存）
 - [`version`の自己申告revision](CLI_VERSION_DECLARED_REVISION_2026-11-09.md)（`-buildvcs=false`の実行物が`-ldflags`注入でrevisionを示せるようにし、`vcsRevision`と`declaredRevision`・`source`を区別した。自己申告はtoolchain証拠ではない。署名・来歴はNOT RUN）
 - [健康診断receipt（`005bbee7` / Actions 42152908986）](QUALIFICATION_FULL_HEALTH_005BBEE7_42152908986.json)と[暫定audit結果](REAL_PROVIDER_PROVISIONAL_AUDIT_005BBEE7.json)（`UNQUALIFIED`、残る診断は `E2_PROVIDER_GUARANTEE_NOT_ATOMIC` と `PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE`）
@@ -40,6 +42,8 @@
 - [フック実行の配線と失敗の区別の確認](XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)（参照実装の試験記録。Runnerからの配線、NotSatisfiedと実行失敗の区別、参照規則。実PluginとCLI・Studioの配線は未実装）
 - [フック宣言の印刷面への反映の確認](XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md)（参照実装の試験記録。画面と同じフック宣言が印刷面にも出る。実印刷・用紙面の版照合は未確認）
 - [フックの位相順序と途中停止の確認](XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md)（参照実装の試験記録。位相の実行順、不成立での停止位置、`warn`の続行、未対応位相の拒否。CLI・Studioへの配線は未実装）
+- [フックの結末名とCommand拒否名の対応の確認](XTEA_LOWCODE_HOOK_OUTCOME_VOCABULARY_2026-11.md)（参照実装の試験記録。フックが名乗れる結末名を列挙し、Command側の綴りへ写す。対応の無い名前はCommandの拒否理由にしない）
+- [フック位相の到達範囲を一箇所に置く確認](XTEA_LOWCODE_HOOK_REACHABLE_PHASES_2026-11.md)（参照実装の試験記録。CLIとStudioが同じ位相の選び方を使い、到達しない位相と前提が欠けた位相を区別する）
 - [Studio参照実行からのフック呼出しの確認](XTEA_LOWCODE_HOOK_STUDIO_WIRING_2026-11.md)（参照実装の試験記録。Studioの参照実行がCLIと同じフック境界を使い、未評価・不成立を区別する。実Plugin・実DBは未接続）
 - [CLI参照実行からのフック呼出しの確認](XTEA_LOWCODE_HOOK_CLI_WIRING_2026-11.md)（参照実装の試験記録。`view -command -execute`が宣言フックを呼び、未評価・不成立を区別して報告する。実PluginとStudioは未接続）
 - [フック宣言の機能定義書への反映の確認](XTEA_LOWCODE_HOOK_FUNCTION_DEFINITION_2026-11.md)（参照実装の試験記録。生成規則`function-definition/v1`に`hook`行を追加し、位相順で出す。実行結果の反映は未実装）
@@ -71,13 +75,15 @@
 - [採番の予約と取引の結合の確認](XTEA_LOWCODE_NUMBERING_RESERVATION_TRANSACTION_2026-11.md)（参照実装の試験記録。InvokerのUoW共通化と実DBは未実装）
 - [採番規則の行識別の確認](XTEA_LOWCODE_NUMBERING_RULE_IDENTITY_2026-11.md)（参照実装の試験記録。例への追加は未実装）
 - [採番規則から発行までの一続きの経路の確認](XTEA_LOWCODE_NUMBERING_RULE_RESERVE_2026-11.md)（参照実装の試験記録。例への追加は未実装）
+- [月内締めの期間化の確認](XTEA_LOWCODE_MONTHLY_CLOSING_PERIOD_2026-11.md)（参照実装の試験記録。閉め操作の実装と例への追加は未実施）
+- [月内締めの区分ごとの閉めの確認](XTEA_LOWCODE_CLOSING_SEGMENT_SCOPE_2026-11.md)（参照実装の試験記録。閉め操作の実行は未実装）
+- [月内締めのCLI観察と状態源の確認](XTEA_LOWCODE_CLOSING_SCOPE_CLI_2026-11.md)（参照実装の試験記録。閉め操作の実行内容は未実装）
+- [期間の閉め操作の確認](XTEA_LOWCODE_PERIOD_CLOSE_OPERATION_2026-11.md)（参照実装の試験記録。閉めの実行内容と権限は未実装）
+- [利用者設定の宣言と結合の確認](XTEA_LOWCODE_USER_SETTINGS_2026-11.md)（参照実装の試験記録。例への追加は未実装）
+- [利用者設定の書込みの確認](XTEA_LOWCODE_USER_SETTINGS_WRITE_2026-11.md)（参照実装の試験記録。監査・権限・画面は未実装）
 - [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
 - [X-TEA受容要件の実装対応](XTEA_LOWCODE_ACCEPTANCE_TRACE_2026-11.md)（`AC-1`〜`AC-11`・`RQ-C1`〜`RQ-C3`の参照実装と未確認事項。受容判断は仮承認）
 - [実DBで実行時の判断を確かめる計画](REAL_DATABASE_RUNTIME_DECISION_PLAN_2026-11.md)（期間・権限・効果の判断を実DBで見る案。**NOT RUN**）
-
-
-
-
 
 - [Studio固定Host負例のCI実行記録](STUDIO_FIXED_HOST_CI_2026-11-07.md)（#2948のGo版修正後に試験本体へ到達し、固定Hostのroot置換負例が失敗した記録。#3061で追跡）
 - [宣言と実行の差の保持](XTEA_LOWCODE_OPERATION_DIFFERENCE_2026-11.md)（#3055の記録）
@@ -94,6 +100,7 @@
 - [配備実行アダプタは、誰がどう組み立てているか](DEPLOYMENT_EXECUTOR_BINDING_SURVEY_2026-11-08/README.md)（DeploymentExecutor を名指す19箇所のうち非試験は4件。いずれも参照実装（tools/・examples/）で、4件とも composition.Coordinator を使わず、CapabilityID は直書きかローカル変数で Environment の deployment-executor Binding を通らない。製品パッケージ内の型を組み立てるのは参照実装だけであることを記録する。世代を固定すべきかは示さない）
 - [環境の配備実行Bindingは、どこまで使われるか](EXECUTOR_BINDING_CONSUMER_SURVEY_2026-11-08/README.md)（DeploymentExecutors を読む非試験の箇所は7つ、実行の経路として読むのは routing.RouteCommand だけ。Binding を実行へ繋ぐ routing.Router は非試験で組み立てられず、CLIは RouteCommands の結果を計画JSONとして書き出すだけで executor.Execute を呼ばない。実行する3件は参照実装で固定の能力を直叩きする。servicehost と同じ形の断絶を配備実行側にも記録。断絶が問題かは示さない）
 - [宣言のBindingから実行までを、参照実装で繋いでみる](BINDING_TO_EXECUTION_REFERENCE_2026-11-09/README.md)（`tools/reference-binding-to-execution` として判断材料のC-1を実装。既存の RouteCommand・Router.Dispatch・ValidateResult だけでBinding から実行まで繋がることを示す。未登録の executor を指す Binding は実行せず拒否し、存在しない環境は0件で終わる。Executor の registry は Host が渡すため実配備の成立は示さない）
+- [配備実行の能力IDを、宣言から解決する（C-3）](EXECUTOR_ID_RESOLUTION_REFERENCE_2026-11-09/README.md)（`tools/reference-executor-id-resolution` として判断材料のC-3を実装。routing.RouteCommand で Binding から ID を解決し、BuildPlan の plan が認めるかと SupportsAction を順に確かめる。実lockで RESOLVED、lock無しで LOCK_REJECTED、別のactionでは直書きの migration.atlas ではなく runtime.reference が解決され、直書きがBindingと食い違いうることを示す。実行はしない）
 - [C-2を試験の外で組み立て、C-1と同じ土台で比べる](SERVICE_CARRIER_CONNECT_REFERENCE_2026-11-09/README.md)（`tools/reference-service-carrier-connect` として判断材料のC-2を実装。Hostが渡したCoordinator・Runtime registry・RouteSourceからInvokerを組み立て、ピン留めした世代で要求を運ぶ。Routeが無い場合はInvokerを呼ぶ前に拒否し、別Binding用のRouteも拒否し、入力不足も拒否する。実配備の成立は示さない）
 - [C-2の数も、実行前拒否と実行後不確定を分ける](SERVICE_CARRIER_CONNECT_OUTCOME_V1_2026-11-09/README.md)（C-2の参照Reportをv1にし、ranCountをcarrier入場、refusedCountを入場前停止だけ、unverifiedCountを入場後の失敗や別世代の応答として分ける。artifact検証の拒否はcarrier内部で起きるためunverifiedに入る。反例3件でv0ならrefusedに入っていたケースを固定し、CLIの3場合はcarrierInvoked=falseを示す。製品へ繋ぐべきかは示さない）
 - [C-1とC-2は、同じ問いの2案か](CONNECT_POINT_C1_C2_2026-11-09/README.md)（判断材料が並べたC-1 routing.Router と C-2 servicehost の入口を比べ、入力の型・世代の有無・到達可能性が違うことを示す。C-1は配備の動作を実行しC-2はServiceの要求を運ぶため、両方を選ぶことは経路の重複ではない。C-2は非試験の呼出し元がまだ0件であることを記録。どちらを先に入れるべきかは示さない）
@@ -114,9 +121,6 @@
 - [環境の機能は、すべて選択を検査されるか](FEATURE_SELECTION_CHECK_ASYMMETRY_2026-11-08/README.md)（受理済みWorkspaceを3つ複製し、有効な機能だけを変えて実行。プラグインも能力も無い条件で、editor.sql_analysis は ENVIRONMENT_FEATURE_PLUGIN_MISSING で終了コード1、editor.database_workbench は診断0件で終了コード0。受理済みの複製も0件で終わり、この差が受理済みでは見えないことを示す。検査を足すべきかは示さない）
 - [DSH外部HarnessからのTEI read-only CLI実起動](DSH_H2_TOOL_ONLY_READ_ONLY_2026-11-07/README.md)（#2509。外部AIハーネスの1実Sessionで固定実行物の実起動・実引数・実出力を同一ログで突合。H3・四Session比較・正答採点・Egressは未実施）
 - [DSH実HarnessでのH2/H3四Session実行](DSH_H2_H3_FOUR_SESSION_2026-11-07/README.md)（#2509・TAI #168。H2→H3→H3→H2を同一Taskで実行し、H3のSkill実Load byteを確認。回答採点・Skill効果の因果・Egressは未確認）
-
-
-
 
 - [DSHセッションログ拡張の実送出計測](DSH_SESSION_LOG_EGRESS_MOCK_2026-11-07/README.md)（#2509・TAI #232。ローカルMock宛で拡張fieldの水位・再有効化・Tool結果の複製送出を計測。実Providerへの送出とEgress制御はNOT RUN）
 - [オフラインGo Module供給の検証](TEI_GO_MODULE_SUPPLY_VERIFICATION_2026-11-07.md)（`cmd/tei`の実選択12件を`go.sum`の`h1`へ束縛してオフライン再解決。供給元・署名・Buildは未検証。SB-0b / #2831）
@@ -149,6 +153,9 @@
 - [停滞は「受理eventの不在」としてのみ観測できる](DSH_SESSION_LOG_STALL_DETECTION_2026-11-09/README.md)（#2515 H6-E2。停滞（`maxBytes=306`）と非停滞（4096）を**stderrを混ぜずに同条件**で比べた。stdout・stderrは**両方とも警告を出さない**（stderrは両方0 bytes）。差は永続Logの`session-log-deepseek/delivery-accepted`だけで、非停滞4件（`throughSeq`=`9`,`9`,`11`,`12`）・停滞**0件**。警告ではなく**成功記録の不在**としてしか分からない）
 - [Subagent起動は別Sessionを作り、そのSessionもSession Log拡張を送る](DSH_SUBAGENT_EGRESS_2026-11-09/README.md)（#2515 H6-E2・#2509。`subagent`を1回強制し、親5要求と子1要求を採取。Session IDが2種類あり、子の要求は`afterSeq -1`から`sessionFormatVersion 4`の拡張を送る。`prompt`のcanaryは**親にも子にも**載り、子は独立した永続Log（展開36,774 bytes・19行・`delivery-accepted` 1件）を持つ。Taskあたりの送出量は**子の分も加算**する必要がある。Telemetry・MCP・`subagent_fork`は未観測）
 - [`subagent_fork`は親の完了Turnを子へ運ぶ](DSH_SUBAGENT_FORK_2026-11-09/README.md)（#2515 H6-E2・#2509。Turn1で`pwsh`から親canaryを出して完走させ、Turn2で同じSessionを再開してforkした。子は`afterSeq -1`の別Sessionだが**メッセージ数5**で親の完了Turnを引き継ぎ、**親canaryが子の本文にもLogにも現れる**（`subagent`の子はメッセージ数1だった）。forkでは親が読んだ内容が子のモデル入力にも載るため、`subagent`と同列に扱うと送出を過小評価する。実行中Turnの継承・forkの連鎖・Telemetry・MCPは未観測）
+- [Subagentの連鎖は`maxDepth 1`で止まる](DSH_SUBAGENT_CHAIN_2026-11-09/README.md)（#2515 H6-E2・#2509。Sessionごとに1回`subagent`を強制して連鎖させたところ、Sessionは**3つ（親1・子2）で止まり孫は0**。子は`subagent depth 2 exceeds maxDepth 1`を`isError: true`のTool結果として受け取り、**その文言が子の次のモデル入力にも載る**。拒否後も子は要求を消費する（各3要求）。`subagentMaxDepth`を上げた場合の連鎖、forkの連鎖、Telemetry・MCPはNOT RUN）
+- [`subagent.maxDepth`を上げると連鎖が深くなり送出が段ごとに増える](DSH_SUBAGENT_DEPTH_RAISED_2026-11-09/README.md)（#2515 H6-E2・#2509。`--dump-config-schema`で上限の在処を特定（`subagent`の`maxDepth`、既定`1`、`volatile`）し、`--patch`で`3`にして連鎖させた。**Sessionは4つ（深さ0〜3）になり、深さ4で`subagent depth 4 exceeds maxDepth 3`**（`isError: true`）。12要求・合計765,677 bytes。**深さ上限は既定値であって固定仕様ではなく**、上げれば段ごとにSessionと送出が増える。既定との正確なbyte比較は発火方針が違いNOT RUN）
+- [`subagent_fork`の連鎖も深さ上限で止まり、同一Turn内では文脈が積み上がらない](DSH_SUBAGENT_FORK_CHAIN_2026-11-09/README.md)（#2515 H6-E2・#2509。`maxDepth 3`でforkを連鎖させると**4 Session（深さ0〜3）で止まり、深さ4は`isError: true`で拒否**。forkした子の初回要求は**どれもメッセージ数1**で、**同一Turnの途中では完了Turnを継承しない**（完了Turnを挟んだ先行記録では5）。送出量はspawn連鎖とほぼ同じ（765,350 vs 765,677 bytes、差0.04%）。**forkの危険性は「いつ運ぶか」で決まる**。完了Turnを挟んだforkの連鎖・`4`以上・`maxActiveSubagents`との相互作用・Telemetry・MCPはNOT RUN）
 - [Session Log拡張の`maxBytes`上限とbacklog](DSH_SESSION_LOG_MAXBYTES_2026-11-08/README.md)（#2515 H6-E2・P0-b・#2509。`maxBytes`を2048と512へ下げて実測し、field全体が上限内なら水位`9`まで10 event、上限512では**518 bytes**（ヘッダ込みで上限超過）で水位`2`・3 eventに止まった。`maxBytes`は1要求の上限で総開示量の上限ではない。分割送出と単一eventの停滞は未確定）
 - [Session Logのbacklog分割送出と停滞、上限判定の単位](DSH_SESSION_LOG_SPLIT_AND_STALL_2026-11-08/README.md)（#2515 H6-E2・#2509。`maxBytes=1024`の4 Turnで水位`-1`→`6`→`9`と**後続要求へ分割送出**されることを確認し、`maxBytes=256`ではヘッダ込みで上限を超えるため**fieldが一度も作られず**作業だけが続いた。先行記録の「512で518 bytes＝上限超過」は再直列化した値による誤りで、生byteは474だったと訂正）
 
@@ -164,15 +171,12 @@
 - [TEI自身の設計をCLIで扱う実測 第3ラウンド（Windows）](TEI_DOGFOODING_ROUND3_2026-11-08/README.md)（#3149。main `9a8b9e214` の単一実行物（SHA-256 `7abce6ff…`、Windows・go1.27.0）で、D-1〜D-8の解消とD-3の`view`版欄の解消を再確認。D-9とD-10の形の統一判断は残る。実DB・実Host・MCPはNOT RUN）
 - [値域付き型宣言のanchor走査](SYNTAX_TYPE_VALUES_ANCHOR_2026-11-08.md)（`type ... values { ... }` が Source Index と validate を失敗させていた記録。anchor 走査の読み飛ばしのみで、値集合の意味検証は未確認）
 
-
 - [TEIのread-only MCP AdapterによるCLI/MCP一致の実測](TEI_DOGFOODING_MCP_ROUND_2026-11-08/README.md)（#3400・#3149。参照実装のAdapterで `model catalog`・`inspect`・`trace`・`validate` をMCPから呼び、CLIと同じ値（`worldFingerprint`・`snapshotFingerprint`・`schemaVersion`）になることを確認。製品のMCP契約・実Host・認可・外部送出はNOT RUN）
 
 - [knowledge-contextの名前空間kind名](KNOWLEDGE_CONTEXT_NAMESPACE_KIND_2026-11-08.md)（catalogの`semantic`を渡すと`semanticElement`無しの成功になっていた。`semantic`と`semantic-namespace`の両方を受け付け、未知kindは解決しない。実Provider・他kindの全件突合は未確認）
 - [validateのCLI/MCP応答の一致](CLI_MCP_VALIDATE_SHAPE_2026-11-08.md)（`tei_validate`が`result`包み・数値error.code・意味エラーでisError:falseになっていたのを、CLIと同じ投影と文字列code、`!ok`のisErrorへ寄せた。実Host・認可・外部送出はNOT RUN）
 - [source-indexの空の参照一覧](CLI_SOURCE_INDEX_EMPTY_REFS_2026-11-08.md)（`mode=index`が`references: null`を返していたのを`[]`へ統一。指紋は索引から計算するため不変であることを`reference/workspace`で実測。`null`の意味の全コマンド統一は未決）
 - [二回の独立した駆動試行でも同じstage2成果物になること](TEI_GO_SELF_BUILD_TWO_STAGE_REPEAT_2026-11-08.md)（`-work`を分けた2回の実行で、両方L3に到達しstage1/stage2のartifact digestが一致することを記録。Seed Trust・受入・権限・OS間一致は未確認。SB-C1 / #2831）
-
-
 
 - [`tei self-build`の§4外形](TEI_GO_SELF_BUILD_OUTER_SHAPE_2026-11-08.md)（workspace・intent・supply・state・outputの外形とSC0-01〜05の拒否条件を実装し、実Buildをchildへ委ねて記録する。`-intent`の解決・`-supply`の照合・L2は未実装。`qualified`は常にfalse。SB-C0 §4 / #2831）
 
@@ -205,3 +209,18 @@
 - [builder catalogの出所を探す](TEI_GO_SELF_BUILD_CATALOG_PROVENANCE_2026-11-09.md)（§4.16のR-1の前提を実測。`internal/`・plugin lock・Plugin定義・JSON/YAML・ADRのいずれにも`recipeKinds`を持つcatalogは無く、R-1は「配線」ではなく「catalogの新設」だと分かった。C-1/C-2/C-3の選択肢を挙げ、判断はまだ下さない。 #2831）
 - [`-child-arg`による予約flagの上書きを拒否する](TEI_GO_SELF_BUILD_RESERVED_CHILD_FLAGS_2026-11-09.md)（`-artifact-out`・`-state`・`-supply`を`-child-arg`で重複させると、entryの記録とchildの実際の値が食い違う。修正前は通ってしまうことを試験で確認し、child起動前に名指しで拒否するよう直した。 #2831）
 - [D-1（catalogの`scope`拡張）の判断材料](CLI_CATALOG_SCOPE_D1_IMPACT_2026-11-09.md)（acceptedCommands 50件・catalog record 19件・広告しない36件・effectは全てread-onlyを実測。D-1は不変条件テスト2件と実consumer（MCP adapterのread-only前提）に触れ、`scope`の意味も変える。外在consumerは測れないため推奨しない。判断は未。 #2831）
+- [宣言の他の欄もplanと照合する](TEI_GO_SELF_BUILD_INTENT_FIELD_COMPARE_2026-11-09.md)（builder childがrecipe・source集合・dependency集合も比べるようにした。導出値（locator・digest・version）は比べない——比べると正しいbuildをすべて不一致と呼ぶため。不一致は名指しで拒否し、reportを出さない。既存fixtureが実フローと違っていたのも検査が検出した。`l2bClaimed`はfalse。 #2831）
+- [`parameters`も照合する](TEI_GO_SELF_BUILD_PARAMETER_COMPARE_2026-11-09.md)（§4.17は「正規化の意味が未決」として残したが、実測するとどちらの側も名前順ソートのみで値を変えていなかった。前提を確かめてから名前で突き合わせる照合を実装し、順序非依存と正規化の性質自体を試験で固定。L2-bは未。 #2831）
+- [`tei self-build`のbuilder childが宣言の`builder`要求をplanの解決結果と照合する](TEI_GO_SELF_BUILD_BUILDER_REQUIREMENT_2026-11-09.md)（対応規則は推測ではなくresolverの`ResolveBuilder`に既にあり、`internal/buildintent`の`BuilderContractVersion`として一箇所に定義した。contract+major・provider・pinを照合し、不一致は欄を名指ししてreportを出さずexit 1。同じ宣言から導いたplanでは決して失敗しないため、この照合が効くのはplanがその宣言由来でない場合だけ。`provider.implementation`はplanに対応欄が無く未照合。`l2bClaimed`はfalse。SB-C0 §4.19 / #2831）
+- [同じplanを二回buildしてartifactの再現を観測する](TEI_GO_SELF_BUILD_ARTIFACT_REPRODUCIBILITY_2026-11-09.md)（`-rebuild-check`で、同じchild実行物を新しい一時stateと一時出力先で二回起動し、artifactのバイトを比べる。`artifactReproducibility=reproduced`で、§4.8(c)「そのplanがそのartifactを生んだか」を再現で観測した。`bound`が示せなかったことを置き換える。**L2-bではない**（`l2bClaimed`はfalse）。同じ宣言から導いたplanかどうかとは別の軸である。SB-C0 §4.21 / #2831）
+- [traceの継続トークンが2つの同名欄に分かれている](TEI_DOGFOODING_ROUND11_TRACE_CONTINUATION_2026-11-09/README.md)（#3625・#3420 T06。同名の`snapshotFingerprint`が2つあり、継続に使えるのは外側だけ。`nextOffset`の隣の値を渡すと`STALE_SNAPSHOT`になることを修正前に実測した）
+- [mainのtrace継続トークンを実測](TEI_DOGFOODING_ROUND12_CONTINUATION_MAIN_2026-11-09/README.md)（#3625。`e75d599ba`で`graphFingerprint`への改名と`continuation`が入り、`continuation.fingerprint`で継続でき、`graphFingerprint`は拒否されることを確認）
+- [設計変更の影響範囲をCLIだけで答えられるか](TEI_DOGFOODING_ROUND13_DESIGN_IMPACT_2026-11-09/README.md)（#3149 D-9・#2619・#2621。モデル要素の定義箇所は`inspect`で分かるが、設計文書の中の名前はsubjectにならず`SUBJECT_NOT_FOUND`。改名の影響範囲は`grep`が要る。リポジトリ全体はWorkspaceにできない）
+- [CLIとMCP参照Adapterの一致と厳密入力](TEI_DOGFOODING_ROUND5_CLI_MCP_2026-11-09/README.md)（#3400・#3420。4操作の成功応答と2つの失敗はCLIと一致し、未知の引数だけMCPが無視する。`main` `4f97c86cf` のCLI・MCP実行物で実測）
+- [AIが使うknowledge-*連鎖の端から端までの実測](TEI_DOGFOODING_ROUND14_KNOWLEDGE_CHAIN_2026-11-09/README.md)（#3149・#3186・#3419。context→plan→handoff→disclose→qualify→review-discloseが通り、古い指紋と別subjectのhandoffは拒否される。要件ファイルの形だけCLIの応答から辿れない）
+- [`builder`の契約も照合する](TEI_GO_SELF_BUILD_BUILDER_CONTRACT_COMPARE_2026-11-09.md)（§4.18は「対応規則を決める必要がある」としたが、`contract/vN`の規則は既に`fixture.go`にあった。child側にも規則を明示して照合し、綴り自体を試験で固定。`secretRequirements`はplanにもchildの入力にも比べる相手が無く未照合。L2-bは未。 #2831）
+- [trace fullの0件rows](CLI_TRACE_EMPTY_ROWS_2026-11-09.md)（`mode=full`で参照0件のとき`rows`が省略され「0件」と「欄が無い」を区別できなかったのを、宣言順を保った`MarshalJSON`で`rows: []`として出すよう修正。summaryは欄なしのまま）
+
+- [trace -mode fullのrowsが0件のとき消える](TEI_DOGFOODING_ROUND15_TRACE_MODE_ROWS_2026-11-09/README.md)（#3693・#3456。`omitempty`が長さ0のスライスも落とすため、`mode=full`の「0件」と「欄が無い」が同じ表現になることを修正前に実測した。mainの`3799997a0`で解消）
+- [継続トークンの失効条件を実測](TEI_DOGFOODING_ROUND16_CONTINUATION_EXPIRY_2026-11-09/README.md)（#3420 CAPI-2c・#3625。Sourceの変更（コメント1行でも）・`-scope`・`-direction`の変更は`STALE_SNAPSHOT`、`summary`⇄`full`は相互に許容。MCPも同じ可否で、新しい欠陥は無し）
+

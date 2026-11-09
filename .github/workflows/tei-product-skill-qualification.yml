@@ -18,6 +18,11 @@ env:
 permissions:
   contents: read
 
+# 同じPRの古い実行だけを取り消し、mainへのpushは取り消さない（#3682）。
+concurrency:
+  group: tei-tei-product-skill-qualification-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   product-skill-read-only:
     runs-on: ubuntu-latest
