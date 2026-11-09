@@ -314,13 +314,16 @@ func handle(request rpcRequest, workspace string) rpcResponse {
 }
 
 func toolList() []tool {
+	// Each tool states the closed set its own operation accepts, taken from
+	// that operation instead of being written out here. A client that reads
+	// inputSchema must see the same kinds the CLI advertises (#3420).
 	subjectProps := map[string]any{
-		"subjectKind": map[string]any{"type": "string"},
+		"subjectKind": map[string]any{"type": "string", "enum": operations.InspectionSubjectKinds},
 		"subjectId":   map[string]any{"type": "string"},
 	}
 	traceProps := map[string]any{
 		"scope":               map[string]any{"type": "string"},
-		"subjectKind":         map[string]any{"type": "string"},
+		"subjectKind":         map[string]any{"type": "string", "enum": operations.TraceSubjectKinds},
 		"subjectId":           map[string]any{"type": "string"},
 		"direction":           map[string]any{"type": "string", "enum": []string{"outgoing", "incoming", "both"}},
 		"mode":                map[string]any{"type": "string", "enum": []string{"summary", "full"}},
