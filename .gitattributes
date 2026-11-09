@@ -244,3 +244,6 @@
 
 # Adapter binding blindspot output is hashed as raw bytes by its README.
 /plan/evidence/ADAPTER_BINDING_BLINDSPOT_2026-11-09/** -text
+
+# Binding guarded executor output is hashed as raw bytes by its README.
+/plan/evidence/BINDING_GUARDED_EXECUTOR_REFERENCE_2026-11-09/** -text
