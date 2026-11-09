@@ -81,6 +81,7 @@
 - [期間の閉め操作の確認](XTEA_LOWCODE_PERIOD_CLOSE_OPERATION_2026-11.md)（参照実装の試験記録。閉めの実行内容と権限は未実装）
 - [利用者設定の宣言と結合の確認](XTEA_LOWCODE_USER_SETTINGS_2026-11.md)（参照実装の試験記録。例への追加は未実装）
 - [利用者設定の書込みの確認](XTEA_LOWCODE_USER_SETTINGS_WRITE_2026-11.md)（参照実装の試験記録。監査・権限・画面は未実装）
+- [例の締め日・設定Dataと構文の修正の確認](XTEA_LOWCODE_EXAMPLE_CLOSING_SETTINGS_2026-11.md)（参照実装の試験記録。閉めの実行内容と設定の監査は未実装）
 - [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
 - [X-TEA受容要件の実装対応](XTEA_LOWCODE_ACCEPTANCE_TRACE_2026-11.md)（`AC-1`〜`AC-11`・`RQ-C1`〜`RQ-C3`の参照実装と未確認事項。受容判断は仮承認）
 - [実DBで実行時の判断を確かめる計画](REAL_DATABASE_RUNTIME_DECISION_PLAN_2026-11.md)（期間・権限・効果の判断を実DBで見る案。**NOT RUN**）
@@ -224,5 +225,6 @@
 
 - [trace -mode fullのrowsが0件のとき消える](TEI_DOGFOODING_ROUND15_TRACE_MODE_ROWS_2026-11-09/README.md)（#3693・#3456。`omitempty`が長さ0のスライスも落とすため、`mode=full`の「0件」と「欄が無い」が同じ表現になることを修正前に実測した。mainの`3799997a0`で解消）
 - [継続トークンの失効条件を実測](TEI_DOGFOODING_ROUND16_CONTINUATION_EXPIRY_2026-11-09/README.md)（#3420 CAPI-2c・#3625。Sourceの変更（コメント1行でも）・`-scope`・`-direction`の変更は`STALE_SNAPSHOT`、`summary`⇄`full`は相互に許容。MCPも同じ可否で、新しい欠陥は無し）
+
 
 - [entryが計画側の基準も自分で持つ](TEI_GO_SELF_BUILD_ENTRY_PLAN_SIDE_2026-11-09.md)（束縛の計画側がbuilder childの申告だけに依存していたのを、entryの再計算値へfallbackできるようにした。どちらを使ったかを`planSideSource`で記録し、弱い根拠を強い根拠と読ませない。builder優先の理由も明示。L2-bは未。 #2831）
