@@ -947,7 +947,7 @@ ContractVersion: fmt.Sprintf("%s/v%d", p.Contract, p.ContractMajor),
 - [ ] `-rebuild-check`を**既定**にするかどうかの判断（再現を毎回測ると(c)の取り違えが減るが、build時間が倍になる。§4.21末尾）
 - [x] catalogの出所の決定（§4.22。**K-3: 呼び手が名指しするcatalogデータ＋必須のdigest**。新しいAuthorityを作らず、既存の`-supply`・`-intent-resolver`と同じ形）
 - [ ] **entryの既定経路をin-processの`Resolve`へ切り替えるか**の判断（§4.16のR-1/R-2/R-3）。前提だったcatalogの出所は§4.22で決めた（K-3）。切り替え自体は段2の完了後に別途決める
-- [ ] **段1**：`fixture`を外した名前で`BuildCatalog`・`ParseBuildCatalog`・`ResolveBuilder`・`ResolveDependency`・`CheckTarget`・`DirSourceResolver`を`internal/buildintent`へ移す（`tools/`側は型aliasと薄い委譲。§4.22の移行表）
+- [x] **段1**：`fixture`を外した名前で`BuildCatalog`・`ParseBuildCatalog`・`ResolveBuilder`・`ResolveDependency`・`CheckTarget`・`DirSourceResolver`を`internal/buildintent`へ移した（`tools/`側は型aliasと薄い委譲。参照実装の試験は**無変更で通る**。§4.22の移行表、[記録](../evidence/TEI_GO_SELF_BUILD_CATALOG_MOVE_2026-11-09.md)）
 - [ ] **段2**：`cmd/tei`に`-build-catalog`・`-build-catalog-digest`を足し、in-processで計画を導く経路を作る（SC0-25）。完了するとL2-bの解釈層がclaimできる（§4.22）
 - [x] 宣言とplanの**build座標**（`outputKind`・`target`・`profile`）の照合（[#3652](https://github.com/hat47x/tei-platform/pull/3652)。childが三座標を一つずつ比べ、違えばartifactを書いた後にreportを出さずexit 1。[記録](../evidence/TEI_GO_SELF_BUILD_BUILD_COORDINATES_2026-11-09.md)）
 - [x] 宣言の他の欄のうち、planが同じ形で持つもの（`recipe`・`sources`・`dependencies`）の照合（[#3661](https://github.com/hat47x/tei-platform/pull/3661)。§4.17）
