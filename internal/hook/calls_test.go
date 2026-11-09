@@ -43,6 +43,13 @@ func callWorld(uses ...core.CanonicalID) ir.World {
 					Kind: application.PatternRecord,
 					Data: "sales.order",
 					Interaction: &application.Interaction{
+						// The interaction command states the correspondence the
+						// hook's reads feed: capability parameter "order" is fed
+						// by attribute sales.order.order_id.
+						Commands: []application.InteractionCommand{{
+							Capability: "sales.submit_order",
+							Inputs:     []application.CommandInputBinding{{Name: "order", Attribute: "sales.order.order_id"}},
+						}},
 						Hooks: []application.Hook{{
 							Phase: "before-update",
 							Reads: []core.CanonicalID{"sales.order.order_id"},
@@ -53,15 +60,13 @@ func callWorld(uses ...core.CanonicalID) ir.World {
 				{
 					// CommandPatternFor resolves a command pattern by the
 					// Pattern's Capability, which is how a command pattern
-					// declares the capability it reaches.
+					// declares the capability it reaches. A command pattern
+					// carries no interaction, so the input binding lives on the
+					// record pattern above.
 					ID:         "order_entry.submit_order",
 					Kind:       application.PatternCommand,
 					Capability: "sales.submit_order",
 					Data:       "sales.order",
-					Interaction: &application.Interaction{Commands: []application.InteractionCommand{{
-						Capability: "sales.submit_order",
-						Inputs:     []application.CommandInputBinding{{Name: "order", Attribute: "sales.order.order_id"}},
-					}}},
 				},
 			},
 		}},
@@ -179,7 +184,7 @@ func TestRunDeclaredCallsWithoutUsesCallsNothing(t *testing.T) {
 func TestDeclaredCallsResolvesTheCommandPattern(t *testing.T) {
 	world := callWorld("sales.submit_order")
 	bound, err := hook.DeclaredCalls(world, "order_entry", "order_entry.order_record", "before-update",
-		map[core.CanonicalID]map[string]string{"sales.submit_order": {"order": "ORD-1"}})
+		map[core.CanonicalID]string{"sales.order.order_id": "ORD-1"})
 	if err != nil {
 		t.Fatalf("err=%v", err)
 	}
@@ -190,6 +195,60 @@ func TestDeclaredCallsResolvesTheCommandPattern(t *testing.T) {
 	// A capability with no command pattern is refused.
 	if _, err := hook.DeclaredCalls(callWorld("sales.other"), "order_entry", "order_entry.order_record", "before-update", nil); err == nil {
 		t.Fatal("an undeclared capability was accepted")
+	}
+}
+
+// recordPatternOf returns the record pattern a world declares, so the binding
+// helper can be exercised on the pattern that carries the interaction command.
+func recordPatternOf(world ir.World, applicationID, patternID core.CanonicalID) *application.Pattern {
+	for i := range world.Applications {
+		if world.Applications[i].ID != applicationID {
+			continue
+		}
+		for j := range world.Applications[i].Patterns {
+			if world.Applications[i].Patterns[j].ID == patternID {
+				return &world.Applications[i].Patterns[j]
+			}
+		}
+	}
+	return nil
+}
+
+// TestBindInputsFromReadsUsesTheDeclaredBinding checks the correspondence: the
+// interaction command says parameter "order" is fed by attribute
+// sales.order.order_id, so a hook read of that attribute supplies that parameter.
+func TestBindInputsFromReadsUsesTheDeclaredBinding(t *testing.T) {
+	world := callWorld("sales.submit_order")
+	pattern := recordPatternOf(world, "order_entry", "order_entry.order_record")
+	bound := hook.BindInputsFromReads(pattern, "sales.submit_order",
+		map[core.CanonicalID]string{"sales.order.order_id": "ORD-7"})
+	if bound["order"] != "ORD-7" {
+		t.Fatalf("bound=%+v", bound)
+	}
+}
+
+// TestBindInputsFromReadsOmitsAnUnreadParameter checks the negative direction: a
+// parameter whose attribute the hook did not read is left out, so the call is
+// reported as not made rather than called with a guessed value.
+func TestBindInputsFromReadsOmitsAnUnreadParameter(t *testing.T) {
+	world := callWorld("sales.submit_order")
+	pattern := recordPatternOf(world, "order_entry", "order_entry.order_record")
+	bound := hook.BindInputsFromReads(pattern, "sales.submit_order",
+		map[core.CanonicalID]string{"sales.order.other": "x"})
+	if len(bound) != 0 {
+		t.Fatalf("bound=%+v", bound)
+	}
+}
+
+// TestBindInputsFromReadsIgnoresAnotherCapability checks that bindings are read
+// only from the interaction command that names the capability being called.
+func TestBindInputsFromReadsIgnoresAnotherCapability(t *testing.T) {
+	world := callWorld("sales.submit_order")
+	pattern := recordPatternOf(world, "order_entry", "order_entry.order_record")
+	bound := hook.BindInputsFromReads(pattern, "sales.other",
+		map[core.CanonicalID]string{"sales.order.order_id": "ORD-7"})
+	if len(bound) != 0 {
+		t.Fatalf("bound=%+v", bound)
 	}
 }
 

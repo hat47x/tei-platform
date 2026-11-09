@@ -214,3 +214,5 @@
 
 # Oversize-event recovery observations are hashed as raw bytes.
 /plan/evidence/DSH_SESSION_LOG_OVERSIZE_RECOVERY_2026-11-10/** -text
+# Carrier guard refusal output is hashed as raw bytes by its README.
+/plan/evidence/CARRIER_GUARD_REFUSAL_2026-11-09/** -text

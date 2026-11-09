@@ -42,6 +42,7 @@
 - [フック実行の配線と失敗の区別の確認](XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)（参照実装の試験記録。Runnerからの配線、NotSatisfiedと実行失敗の区別、参照規則。実PluginとCLI・Studioの配線は未実装）
 - [フック宣言の印刷面への反映の確認](XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md)（参照実装の試験記録。画面と同じフック宣言が印刷面にも出る。実印刷・用紙面の版照合は未確認）
 - [フックの位相順序と途中停止の確認](XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md)（参照実装の試験記録。位相の実行順、不成立での停止位置、`warn`の続行、未対応位相の拒否。CLI・Studioへの配線は未実装）
+- [フックの`reads`から能力のパラメータへの対応規則の確認](XTEA_LOWCODE_HOOK_READS_TO_PARAMS_2026-11.md)（参照実装の試験記録。interactionの`command`の`input`が対応を述べており、読んでいない属性のパラメータは埋めない）
 - [フックが宣言した能力を実際に呼ぶ配線の確認](XTEA_LOWCODE_HOOK_DECLARED_CALL_WIRING_2026-11.md)（参照実装の試験記録。CLIとStudioの参照実行が`CommandCaller`を通して`uses`を実際に呼ぶ。`reads`からパラメータへの対応は未設計）
 - [フックが宣言した能力を呼ばないまま「実行した」と報告しない確認](XTEA_LOWCODE_HOOK_DECLARED_CALL_HONESTY_2026-11.md)（参照実装の試験記録。`uses`を宣言した位相を未評価にし、呼ばれなかった能力を名指す。能力を実際に呼ぶ配線は未着手）
 - [フックの提案をCLI・Studioで表示する確認](XTEA_LOWCODE_HOOK_SHOW_PROPOSALS_2026-11.md)（参照実装の試験記録。提案を候補として示し、採用と読ませない）
@@ -118,6 +119,7 @@
 - [digestが変わったとき、旧いピン留めはどうなるか（CON-12c）](DIGEST_CHANGE_REUSE_REFERENCE_2026-11-09/README.md)（CON-12cを識別子を持つ generation.Binding の層で実際に問う。変更後の新しい取得は新しい digest、変更前にピン留めした lease は古い digest のままであることを示し、Publish が同じ世代番号と contract 越えを拒否することも固定する。実配備の切替ではなく、digestも実ビルドの産物ではない）
 - [部分成功を、件数ではなく判定で表す（CON-12d）](PARTIAL_RUN_VERDICT_2026-11-09/README.md)（観測・証拠の両参照に attemptedCount と complete を足し、1/1 と 1/2 を件数から区別できない問題を直す。一部だけ成功した場合も何も試さなかった場合も complete=false。complete=true は全部に答えが返った意味だけで、世界がそうなっている証明ではない。unknownの表現は未）
 - [入った後の失敗を、拒否と分ける（CON-12d 追補）](UNKNOWN_VS_REFUSED_2026-11-09/README.md)（両参照が入場後の失敗も refusedCount に数えており「実行していない」と読めていたのを、unknownCount として分ける。unknownCount は invokedCount の内数。C-1/C-2 の unverifiedCount と区別は同じで名前を対象に合わせた。失効そのものの検出は未）
+- [Host guard の拒否は、実行ではない](CARRIER_GUARD_REFUSAL_2026-11-09/README.md)（C-2の参照が Invoke の前に ranCount を上げており、Host guard の拒否が「実行した」と読めていたのを、Invoke の結果を見てから数えるよう直す。guard拒否とroute不在は refusedCount にだけ入り carrierInvoked=false。C-1がExecutor.Executeの入場をwitnessで観測しているのと同じ形。route不在とguard拒否の区別はservicehost側の変更が要る）
 - [C-2を試験の外で組み立て、C-1と同じ土台で比べる](SERVICE_CARRIER_CONNECT_REFERENCE_2026-11-09/README.md)（`tools/reference-service-carrier-connect` として判断材料のC-2を実装。Hostが渡したCoordinator・Runtime registry・RouteSourceからInvokerを組み立て、ピン留めした世代で要求を運ぶ。Routeが無い場合はInvokerを呼ぶ前に拒否し、別Binding用のRouteも拒否し、入力不足も拒否する。実配備の成立は示さない）
 - [C-2の数も、実行前拒否と実行後不確定を分ける](SERVICE_CARRIER_CONNECT_OUTCOME_V1_2026-11-09/README.md)（C-2の参照Reportをv1にし、ranCountをcarrier入場、refusedCountを入場前停止だけ、unverifiedCountを入場後の失敗や別世代の応答として分ける。artifact検証の拒否はcarrier内部で起きるためunverifiedに入る。反例3件でv0ならrefusedに入っていたケースを固定し、CLIの3場合はcarrierInvoked=falseを示す。製品へ繋ぐべきかは示さない）
 - [C-1とC-2は、同じ問いの2案か](CONNECT_POINT_C1_C2_2026-11-09/README.md)（判断材料が並べたC-1 routing.Router と C-2 servicehost の入口を比べ、入力の型・世代の有無・到達可能性が違うことを示す。C-1は配備の動作を実行しC-2はServiceの要求を運ぶため、両方を選ぶことは経路の重複ではない。C-2は非試験の呼出し元がまだ0件であることを記録。どちらを先に入れるべきかは示さない）
@@ -275,4 +277,4 @@
 - [TEIの標準意味型はTEIで宣言されていない](TEI_DOGFOODING_ROUND25_STDLIB_SELF_DESCRIPTION_2026-11-09/README.md)（#2620・#2619。`std.*`の12型は`prelude:true`かつ`sourceStatus:not-indexed`で、`inspect`も`source-index`も根拠を返さない。定義はGoにあり、`namespace std`は宣言を拒否される。合格条件をCLIだけで測れることを実演）
 - [stdへの宣言がpreludeと誤判定され件数からも消えていた](TEI_DOGFOODING_ROUND26_PRELUDE_IDENTITY_2026-11-09/README.md)（#3851・#3347。`namespace std`に型を足すと重複error・`prelude:true`誤付与・`declarationCounts`0が同時に出た。名前の前方一致3箇所とloaderの二重追加を同一性判定へ）
 - [stdを.teiにできない理由（primitive構文と指紋）](TEI_DOGFOODING_ROUND27_STD_PRIMITIVE_GAP_2026-11-09/README.md)（#2620。`worldFingerprint`がpreludeを含むため移すと全指紋が変わり、DSLは`type X from Y`のみでprimitiveを書けない。代替案A/Bと判断点を提示）
-
+- [Capabilityのoutcomeが参照グラフに現れていなかった](TEI_DOGFOODING_ROUND28_CAPABILITY_OUTCOME_2026-11-09/README.md)（#3884・#3419。`inspect`はoutcomeを返すが`trace`は`input`/`output`だけを辺にし、authenticate→authorizeの連鎖が生産者不在に見えた。派生にoutcome辺を追加）
