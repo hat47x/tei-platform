@@ -258,6 +258,7 @@
 - [同じ値指定flagの重複](CLI_REPEATED_FLAG_2026-11-09.md)（`model catalog -namespace`等の重複が最後の値だけを残して黙って捨てていたのを、1値flagの重複として`INVALID_ARGUMENT`で拒否。繰り返し可能なflagは`repeatableFlags`で広告。既存呼出し元の全件洗い出しは未実施）
 - [inspectの失敗メッセージのCLI/MCP一致](CLI_INSPECT_MESSAGE_PARITY_2026-11-09.md)（Host経由のinspectだけメッセージが`inspection service reported …`に伏せられ、MCPと文言が違っていた。正本のOperationをそのまま返す実装を宣言できるようにし、6ケースでCLIとMCPの文書が完全一致することを実測。実Host・認可・外部送出はNOT RUN）
 - [inspectのload失敗文言のCLI/MCP一致](CLI_INSPECT_LOAD_MESSAGE_PARITY_2026-11-09.md)（4 tool×5状態の20通りで、inspectのload失敗2件だけCLIが汎用文言に置換していたのを、自プロセスの読み取り段階だけ実文言を出すよう修正。未検証Providerの文言は伏せたまま。20通りすべて文書一致）
+- [traceのoffset切詰めの観測](CLI_TRACE_OFFSET_CLAMP_2026-11-10.md)（`-offset`が最終行を超えると黙って行数へ切り詰められ、正当な空ページと区別できなかったため、切り詰め時だけ`requestedOffset`に要求値を残す。切詰め自体は不変。段の削減は未実施）
 - [viewの-inputが-command無しで黙って捨てられていた](TEI_DOGFOODING_ROUND20_VIEW_INPUT_2026-11-09/README.md)（#3778・#3420。`-input`は`-command`と組だが、無い場合に値が捨てられて成功していた。両方向の変異を検出する試験を追加。起票時の誤診と既存試験による発覚も記録）
 - [view -executeの失敗符号が潰れていた](TEI_DOGFOODING_ROUND21_VIEW_EXECUTE_2026-11-09/README.md)（#3797・#3419。入力不正と認可拒否がどちらも`COMMAND_FAILED`に潰れ、理由がmessageの先頭にしかなかった。既知7符号を`error.code`に出す。`-operation-log`の上書き挙動は未決）
 - [手書きの符号許可リストが21中15を潰していた](TEI_DOGFOODING_ROUND22_CODE_COVERAGE_2026-11-09/README.md)（#3807・#3797・#3420。CLIは7符号、Studioは1符号だけを特別扱いし、coreの21符号のうち15が`COMMAND_FAILED`に潰れていた。列挙を廃止し`command.ReportedFailure`へ。AST走査で再発防止）
