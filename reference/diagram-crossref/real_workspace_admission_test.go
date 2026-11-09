@@ -7,6 +7,7 @@ package diagramcrossref
 import (
 	"encoding/json"
 	"errors"
+	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -235,4 +236,81 @@ func TestRealWorkspaceRelationParentAndTargetMatchCatalog(t *testing.T) {
 	// parent Data -> Relation -> target Data in separate read attempts.
 	// It is NOT a full Required closure, multi-read atomic snapshot,
 	// accepted relation meaning, stable graphical edge ID, or edit grant.
+}
+
+// An indexed Source locator is useful for read-only navigation only when
+// its on-disk bytes still match its observed fingerprint and byte positions.
+// This test checks two real TEI-native subjects, not imported Provider raw,
+// Source edit authority, or the completeness of a whole diagram projection.
+func TestRealWorkspaceIndexedSourceRangeAndByteFingerprint(t *testing.T) {
+	root := filepath.Join("..", "workspace")
+	for _, requested := range []sourceindex.Subject{
+		{Kind: "query", ID: "order_entry.recent_orders"},
+		{Kind: "semantic-relation", ID: "sales.order.lines"},
+	} {
+		t.Run(requested.Kind+"/"+requested.ID, func(t *testing.T) {
+			inspected, err := operations.InspectSubject(root, requested)
+			if err != nil {
+				t.Fatal(err)
+			}
+			sources := inspected.Sources
+			if sources.Subject != requested || len(sources.References) == 0 || len(sources.Artifacts) == 0 {
+				t.Fatalf("no source locator bound to exact subject: %+v", sources)
+			}
+			index := sourceindex.Index{
+				Artifacts:  sources.Artifacts,
+				References: sources.References,
+			}
+			read := func(path string) ([]byte, error) {
+				clean, err := sourceindex.NormalizeWorkspacePath(path)
+				if err != nil || clean != path {
+					t.Fatalf("invalid managed Source path %q: %v", path, err)
+				}
+				// Only a trusted, checked-in reference Workspace is used
+				// here. Path normalization is not an OS symlink sandbox.
+				return os.ReadFile(filepath.Join(root, filepath.FromSlash(path)))
+			}
+			if err := index.Validate(read); err != nil {
+				t.Fatalf("actual Source bytes/fingerprint/range mismatch: %v", err)
+			}
+			for _, ref := range sources.References {
+				if ref.Subject != requested {
+					t.Fatalf("Source reference changed subject: %+v", ref)
+				}
+				bytes, err := read(ref.ArtifactPath)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := ref.Range.Validate(bytes); err != nil {
+					t.Fatalf("byte locator is stale: %v", err)
+				}
+			}
+			changedPath := sources.Artifacts[0].Path
+			// A harmless one-byte extension that preserves the old range
+			// must nevertheless invalidate the artifact fingerprint.
+			if err := index.Validate(func(path string) ([]byte, error) {
+				bytes, err := read(path)
+				if err != nil {
+					return nil, err
+				}
+				if path == changedPath {
+					return append(bytes, byte('\n')), nil
+				}
+				return bytes, nil
+			}); err == nil {
+				t.Fatal("changed Source bytes unexpectedly passed old index")
+			}
+			invalid := sourceindex.Index{
+				Artifacts:  append([]sourceindex.Artifact(nil), sources.Artifacts...),
+				References: append([]sourceindex.Reference(nil), sources.References...),
+			}
+			invalid.References[0].Range.End.Offset = 1 << 30
+			if err := invalid.Validate(read); err == nil {
+				t.Fatal("out-of-bounds Source span unexpectedly passed index")
+			}
+			// A matching fingerprint and byte range still cannot certify
+			// that the span semantically owns this relation or that a
+			// current edit/acceptance grant exists.
+		})
+	}
 }
