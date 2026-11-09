@@ -16,6 +16,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 
@@ -43,9 +44,11 @@ dispatch: servicehost.SelectedServiceCarrierInvoker.Invoke
 assembled by this reference: BindHostApplicationEnvironmentRoute + NewSelectedServiceCarrierInvoker
 refused when: the coordinator or route source is missing, the route is
               unavailable, or the route is for a different pinned Binding
-after invocation: ranCount is actual carrier entry; refusedCount is only
-              before that call; unverifiedCount is a subset of ranCount where
-              the carrier returned an error or an unusable answer
+after invocation: ranCount is actual carrier entry, observed at the call; a
+              refusal by the Host guard happens before entry and is counted as
+              refusedCount; unverifiedCount is a subset of ranCount where the
+              carrier was entered and then returned an error or an unusable
+              answer
 not verified: that the Provider's answer reflects external state
 not issued: authentication, authority, permission, or a durable receipt
 `
@@ -55,8 +58,11 @@ const (
 	RefusedInvalidInput     = "CONNECT_INPUT_INVALID"
 	RefusedRouteUnavailable = "ROUTE_UNAVAILABLE"
 	RefusedBindingMismatch  = "ROUTE_BINDING_MISMATCH"
-	UnverifiedInvocation    = "SERVICE_INVOCATION_UNVERIFIED"
-	UnverifiedGeneration    = "SERVICE_RESULT_GENERATION_MISMATCH"
+	// RefusedGuard names a refusal by the Host guard. It happens before the
+	// carrier is entered, so it is a refusal and not an invocation.
+	RefusedGuard         = "CARRIER_GENERATION_UNAVAILABLE"
+	UnverifiedInvocation = "SERVICE_INVOCATION_UNVERIFIED"
+	UnverifiedGeneration = "SERVICE_RESULT_GENERATION_MISMATCH"
 )
 
 // Outcome is one invocation's result.
@@ -175,11 +181,24 @@ func Run(in Inputs, requests []Request) Report {
 	ordered := append([]Request(nil), requests...)
 	sort.Slice(ordered, func(i, j int) bool { return ordered[i].RequestID < ordered[j].RequestID })
 	for _, req := range ordered {
-		// The carrier is entered here. Whatever happens next, an external
-		// effect may already exist, so this is a Ran, not a Refused.
-		report.Ran++
+		// The carrier is entered inside Invoke, after the Host guard. "Ran" must
+		// therefore be observed, not assumed: a guard rejection happens before
+		// entry and is a refusal, not an invocation.
 		invocation, invokeErr := invoker.Invoke(context.Background(), req.RequestID, req.Payload)
 		if invokeErr != nil {
+			if isPreEntryRefusal(invokeErr) {
+				// The Host guard refused before the carrier ran. Nothing was
+				// invoked, so this is a refusal.
+				report.Refused++
+				report.Outcomes = append(report.Outcomes, Outcome{
+					RequestID: req.RequestID, Generation: in.Binding.Generation,
+					CarrierInvoked: false,
+					Error:          RefusedGuard + ": " + invokeErr.Error(),
+				})
+				continue
+			}
+			// The carrier was entered and then failed.
+			report.Ran++
 			report.Unverified++
 			report.Outcomes = append(report.Outcomes, Outcome{
 				RequestID: req.RequestID, Generation: in.Binding.Generation,
@@ -188,6 +207,7 @@ func Run(in Inputs, requests []Request) Report {
 			})
 			continue
 		}
+		report.Ran++
 		if invocation.Generation != in.Binding {
 			report.Unverified++
 			report.Outcomes = append(report.Outcomes, Outcome{
@@ -222,3 +242,10 @@ func fingerprint() string { return fmt.Sprintf("sha256:%x", sha256.Sum256([]byte
 
 // Marshal renders the report as stable, indented JSON.
 func (r Report) Marshal() ([]byte, error) { return json.MarshalIndent(r, "", "  ") }
+
+// isPreEntryRefusal reports whether the invoker refused before entering the
+// carrier. The invoker maps both a Host-guard rejection and a route failure to
+// ErrServiceCarrierGenerationUnavailable, and neither of those runs the carrier.
+func isPreEntryRefusal(err error) bool {
+	return errors.Is(err, servicehost.ErrServiceCarrierGenerationUnavailable)
+}
