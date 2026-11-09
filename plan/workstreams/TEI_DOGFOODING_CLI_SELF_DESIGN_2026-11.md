@@ -646,3 +646,28 @@ ADR-0048 §2.4 の「既定値の適用は共通契約で定める」を、CLI �
 - **MCP も同じ**。`continuation.fingerprint` で継続でき、`graphFingerprint` や別 `scope` は `STALE_SNAPSHOT`。CLI と MCP で可否が一致した。
 
 新しい欠陥は検出しなかった。すべて文書に書かれた挙動と一致している。CAPI-2c のうち「参照実装の継続トークン」はここで一区切りとする（World/Source 改版の別故障モードは #3420 に残る）。
+
+## 22. 第17ラウンド（2026-11-09）: 必須引数の不足が3つの符号に分かれていた
+
+第10ラウンドで「必須引数の欠落だけが層の違い」と記録し、#3420 の未決として残していた。全コマンドを並べたところ、**1つの条件が3つの符号**で返っていた。生出力は[第17ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND17_FAILURE_CLASSIFICATION_2026-11-09/README.md)にある。
+
+| 呼出し | 修正前 | 修正後 |
+| --- | --- | --- |
+| `inspect`（`-workspace`／`-subject-kind`／`-subject-id` のいずれか欠け） | **`INVALID_SUBJECT`** | `INVALID_ARGUMENT` |
+| `trace`・`model catalog`・`source-index`・`requirements` | `INVALID_ARGUMENT` | 変わらず |
+| `knowledge-context`・`knowledge-qualify`・`knowledge-review-*` | **`KNOWLEDGE_BUILD_FAILED`** | `INVALID_ARGUMENT` |
+| `validate`（`-json` 無し） | **JSON を出さない** | 変わらず（text 出力の契約） |
+
+逆向きの不揃いもあった。同じ `inspect` で、`-subject-id` を**書かない**と `INVALID_SUBJECT`、**空文字列**を渡すと `INVALID_ARGUMENT`（#3605）だった。
+
+修正:
+
+- `cmd/tei/cli_argument_error.go` に `argumentError` 型を追加。「呼出し元が引数を間違えた」ことを表す。
+- `inspect` の引数ガードを `INVALID_ARGUMENT` へ。`INVALID_SUBJECT` は「subject の値が使えない」（空白のみ・前後空白）に残す。
+- `knowledge-*` の「`-flag` が足りない」を `newArgumentError` に変え、`knowledgeFailure` が `INVALID_ARGUMENT` へ写す。知識の構築失敗は `KNOWLEDGE_BUILD_FAILED` のまま。
+
+変えないと決めたもの（試験で固定）: 空白のみの subject は `INVALID_SUBJECT`、実在しない subject は exit 1 の `SUBJECT_NOT_FOUND`、要件ファイルが不正なら `KNOWLEDGE_BUILD_FAILED`、`validate` の text 出力は非JSONのまま。
+
+試験は `cmd/tei/cli_failure_classification_test.go` の3件。既存の `TestCLIProcessJSONContract`・`TestResultEnvelopeCommandsJSONContract` を新しい符号へ更新した。`go test ./cmd/tei -count=1` は ok（121.1s）。
+
+**CLI と MCP の符号の統一（`INVALID_ARGUMENT` ⇔ `-32602`）は未着手**で #3420 に残る。今回揃えたのは CLI 内部の一貫性である。起票は [#3733](https://github.com/hat47x/tei-platform/issues/3733)。

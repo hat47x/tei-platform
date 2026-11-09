@@ -801,6 +801,78 @@ ContractVersion: fmt.Sprintf("%s/v%d", p.Contract, p.ContractMajor),
 - 決定性を証明したとは言っていない。**二回の観測**である
 - 再現性がL2-bや受理を意味するとは言っていない
 
+### 4.22 catalogの出所を決める（R-1の前提、2026-11-09）
+
+§4.16はR-1（既定をin-processへ）の前提として「**本物のcatalogがどこから来るか**」を未決として残した。本節は測ったうえで決める。
+
+#### 実測：catalogに相当するものは、まだfixtureにしかない
+
+| 探したもの | 結果 |
+| --- | --- |
+| `internal/`・`cmd/`に`authorityScope`・`recipeKinds`を持つ型 | **無い** |
+| plugin定義（`internal/syntax`）がbuilder能力を宣言する構文 | **無い** |
+| `internal/composition`の`Providers` | 構成の競合判定であり、builder catalogではない |
+| 実際に在るもの | `tools/reference-build-authoring-intent`の`FixtureProvider`だけ |
+
+**Builder catalogが答える問いは6つある。** contract・compatibleMajor・recipeKind・target・profile・（任意でproviderとpin）に適合する**exactなbuilder artifact**はどれか。この6つを持つ型は`FixtureProvider`だけである。
+
+#### 実測：移す範囲は既に切り分けられている
+
+`tools/reference-build-authoring-intent/fixture.go`は407行・21宣言である。**ホストI/Oを持つのは先頭の3つだけ**で、残りは純粋なデータ処理である。
+
+| 範囲 | 内容 | ホストI/O |
+| --- | --- | --- |
+| 31〜142行 | `DirSourceResolver`（`os.Root`・`fs.WalkDir`・symlink拒否） | **あり** |
+| 144〜406行 | `FixtureCatalog`・`ParseFixtureCatalog`・`ResolveBuilder`・`ResolveDependency`・`CheckTarget`・3つのfingerprint・port adapter | なし |
+
+つまり**catalogの機構そのものは既に製品非依存**であり、`fixture`という名前が「参照実装の固定入力」に見せているだけである。
+
+#### 四つの案
+
+| 案 | 出所 | 何が要るか | 何が増えるか |
+| --- | --- | --- | --- |
+| **K-1** | Workspaceの宣言 | `tei.workspace.yaml`にcatalog欄を新設 | Workspaceが「どのbuilderが在るか」の正本になる |
+| K-2 | 導入済みpluginの能力宣言 | **plugin定義の構文拡張**（contract・recipeKinds・targets・profiles・authorityScope） | 構文と意味の追加。受理済みpluginからcatalogを導ける |
+| **K-3** | **呼び手が名指しするcatalogデータ＋そのdigest** | catalogのJSONを行列の入力として受け取り、digestを必須にする | 新しいAuthorityを作らない。既存の`-supply`・`-intent-resolver`と同じ形 |
+| K-4 | fixtureのまま（R-2据え置き） | なし | in-process経路を持たない |
+
+#### K-3を採る
+
+**理由は三点である。**
+
+1. **新しいAuthorityを作らない。** entryは既に「自分で発見せず、渡されたものを記録する」形を採っている（`-child`・`-supply`・`-intent-resolver`はすべて呼び手が名指しする）。catalogも同じ形にすれば、**entryが勝手にbuilderを選ぶ経路が生まれない**
+2. **K-1とK-2は「誰がbuilderの存在を決めるか」を製品へ移す。** それは§4.5のD-3（catalogの`scope`）やD-1と同じ種類の契約判断であり、いま決めるべきものではない
+3. **K-3なら移す作業が機械的である。** 上の表のとおり、機構は既に製品非依存で、名前から`fixture`を外すだけで済む
+
+**digestを必須にする。** 呼び手が名指しする以上、「どのcatalogで導いたか」を記録できなければ、`planReceipt.resolverDigest`と同じ種類の曖昧さが入る。`-build-catalog`と`-build-catalog-digest`を**対**で要求し、片方だけなら起動しない。
+
+#### 移行の形
+
+| 段 | 内容 |
+| --- | --- |
+| 1 | `fixture`を外した名前で`internal/buildintent`へ移す（`BuildCatalog`・`ParseBuildCatalog`・`ResolveBuilder`・`ResolveDependency`・`CheckTarget`・`DirSourceResolver`）。`tools/`側は型aliasと薄い委譲にする（§4.14のI-1aと同じ形） |
+| 2 | `cmd/tei`に`-build-catalog`・`-build-catalog-digest`を足し、**in-processで計画を導く経路**を作る |
+| 3 | 既定をin-processへ切り替えるか（R-1）を別途決める。§4.16のR-2据え置きは段2の完了まで維持する |
+
+**`DirSourceResolver`も移す。** symlink拒否・root外参照の拒否は**方針**であり、entryが独自実装すると方針が二箇所に分かれる。ソースを読むのはホストI/Oだが、それは「製品でない」理由にならない。
+
+#### これでL2-bがclaimできるようになるか
+
+**なる。ただし範囲を明示する。**
+
+段2が終わると、entryは自分で宣言を読み、自分でcatalogを引き、自分で計画を導く。**「このentryが宣言を解釈してその計画を導いた」と言えるようになる。** それが§4.8のL2-bが要求していた内容である。
+
+言えないものは変わらない。
+
+- **意味の受理・Runtime Authority**（`qualified`は`false`のまま）
+- **供給のTrust・Seed Trust・`go.sum`のTrust根拠**
+- **catalogそのものの信頼性**。K-3は「呼び手が名指ししたcatalogを使った」ことまでしか言えない。**そのcatalogが正しいという主張はしない**
+
+#### この節が決めていないこと
+
+- 既定経路をin-processへ切り替えるか（段3。§4.16のR-1/R-2/R-3は据え置き）
+- catalogの**中身**を誰が作るか（配布物か、Workspaceから生成するか）。K-3は「呼び手が名指しする」ところまでである
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
@@ -829,6 +901,8 @@ ContractVersion: fmt.Sprintf("%s/v%d", p.Contract, p.ContractMajor),
 | SC0-22 | `-rebuild-check`を渡し、二回目のbuildが違うバイトを出す | `artifactReproducibility.state=mismatched`・`ok=false`。再現しないartifactはそのplanの出力と言えない（§4.21） |
 | SC0-23 | `-rebuild-check`を渡さず、沈黙を再現の成功と読む | `state=unperformed`と理由が残る。**欄が無いことを一致と読ませない**（§4.21） |
 | SC0-24 | `artifactReproducibility=reproduced`をL2-bの成立と読む | 読まない。再現が示すのは「そのplanがそのartifactを生んだ」こと（(c)）であり、entryが宣言を解釈したことではない。`l2bClaimed`は`false`のまま（§4.21） |
+| SC0-25 | `-build-catalog`だけを渡し、digestを渡さない | 起動しない。**どのcatalogで導いたかを記録できない経路を許さない**（§4.22） |
+| SC0-26 | 呼び手が名指ししたcatalogを使ったことを「そのcatalogが正しい」と読む | 読まない。K-3が言えるのは「名指しされたcatalogを使った」ことまでである（§4.22） |
 
 ## 6. 未決事項
 
@@ -871,7 +945,10 @@ ContractVersion: fmt.Sprintf("%s/v%d", p.Contract, p.ContractMajor),
 - [x] entryまたはchildが宣言から**計画まで**独立に導く経路（I-1b。[#3654](https://github.com/hat47x/tei-platform/pull/3654)で`Resolve`を`internal/buildintent`へ移し、fixture catalogは`tools/`に残した。§4.13の反対理由はcatalogについてであり、portについては当たらなかった）
 - [x] (c)の観測：**同じplanを二回、別stateでbuildして同じバイトが出た**（§4.21、[記録](../evidence/TEI_GO_SELF_BUILD_ARTIFACT_REPRODUCIBILITY_2026-11-09.md)。`-rebuild-check`で`artifactReproducibility=reproduced`。lockの`bound`が示せなかった「そのplanがそのartifactを生んだ」を再現で観測した。**L2-bではない**）
 - [ ] `-rebuild-check`を**既定**にするかどうかの判断（再現を毎回測ると(c)の取り違えが減るが、build時間が倍になる。§4.21末尾）
-- [ ] **entryの既定経路をin-processの`Resolve`へ切り替えるか**の判断。四つのportの実装は今fixtureにしかなく、切り替えには`internal/`側のcatalog新設が要る（§4.16。R-2据え置きが現時点の既定）
+- [x] catalogの出所の決定（§4.22。**K-3: 呼び手が名指しするcatalogデータ＋必須のdigest**。新しいAuthorityを作らず、既存の`-supply`・`-intent-resolver`と同じ形）
+- [ ] **entryの既定経路をin-processの`Resolve`へ切り替えるか**の判断（§4.16のR-1/R-2/R-3）。前提だったcatalogの出所は§4.22で決めた（K-3）。切り替え自体は段2の完了後に別途決める
+- [x] **段1**：`fixture`を外した名前で`BuildCatalog`・`ParseBuildCatalog`・`ResolveBuilder`・`ResolveDependency`・`CheckTarget`・`DirSourceResolver`を`internal/buildintent`へ移した（`tools/`側は型aliasと薄い委譲。参照実装の試験は**無変更で通る**。§4.22の移行表、[記録](../evidence/TEI_GO_SELF_BUILD_CATALOG_MOVE_2026-11-09.md)）
+- [ ] **段2**：`cmd/tei`に`-build-catalog`・`-build-catalog-digest`を足し、in-processで計画を導く経路を作る（SC0-25）。完了するとL2-bの解釈層がclaimできる（§4.22）
 - [x] 宣言とplanの**build座標**（`outputKind`・`target`・`profile`）の照合（[#3652](https://github.com/hat47x/tei-platform/pull/3652)。childが三座標を一つずつ比べ、違えばartifactを書いた後にreportを出さずexit 1。[記録](../evidence/TEI_GO_SELF_BUILD_BUILD_COORDINATES_2026-11-09.md)）
 - [x] 宣言の他の欄のうち、planが同じ形で持つもの（`recipe`・`sources`・`dependencies`）の照合（[#3661](https://github.com/hat47x/tei-platform/pull/3661)。§4.17）
 - [x] `parameters`の照合（[#3664](https://github.com/hat47x/tei-platform/pull/3664)。測るとどちらの側も名前順ソートのみで値を変えないと分かったので、名前で突き合わせる。§4.18）

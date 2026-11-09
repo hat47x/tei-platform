@@ -7,6 +7,7 @@ import (
 
 	"tei/internal/ir"
 	"tei/internal/sourceindex"
+	"tei/internal/validation"
 	"tei/internal/workspace"
 )
 
@@ -43,7 +44,25 @@ type ModelCatalog struct {
 	// standard semantic prelude, which is always present (#2822).
 	DeclarationCounts DeclarationCounts   `json:"declarationCounts"`
 	Entries           []ModelCatalogEntry `json:"entries"`
-	AuthorityLimits   []string            `json:"authorityLimits"`
+	// Validation reports whether this Workspace passes the same checks
+	// `validate -workspace ... -json` runs. The catalog itself is a
+	// navigation projection and still answers for a Workspace with findings,
+	// so a caller that needs "is this model sound" must read this field
+	// instead of inferring it from ok or the fingerprints (#3674).
+	Validation      CatalogValidation `json:"validation"`
+	AuthorityLimits []string          `json:"authorityLimits"`
+}
+
+// CatalogValidation is the validation verdict for the Workspace the catalog
+// was read from. OK is true only when no diagnostic has error severity and no
+// source-root finding is an error, which is the same rule validate uses.
+// ErrorCount and WarningCount are counts, not the diagnostics themselves:
+// `validate -json` returns the detail, and duplicating it here would create a
+// second place to read the same findings.
+type CatalogValidation struct {
+	OK           bool `json:"ok"`
+	ErrorCount   int  `json:"errorCount"`
+	WarningCount int  `json:"warningCount"`
 }
 
 // preludeSubject reports whether a catalog subject belongs to the in-process
@@ -93,7 +112,34 @@ func CatalogWorkspace(root, namespace string) (ModelCatalog, error) {
 	catalog := CatalogWorld(loaded.World, idx, namespace, worldFP, sourceFP)
 	identity := loaded.Identity()
 	catalog.Workspace = &identity
+	catalog.Validation = catalogValidation(loaded)
 	return catalog, nil
+}
+
+// catalogValidation applies validate's rule to the same loaded Workspace, so a
+// caller that only reads the catalog can tell a sound model from one with
+// findings (#3674). It reports counts, not the findings: `validate -json`
+// returns those, and a second copy would be two places to read one fact.
+func catalogValidation(loaded workspace.Result) CatalogValidation {
+	verdict := CatalogValidation{OK: true}
+	for _, finding := range loaded.SourceRootFindings {
+		switch finding.Severity {
+		case "error":
+			verdict.OK = false
+			verdict.ErrorCount++
+		case "warning":
+			verdict.WarningCount++
+		}
+	}
+	for _, diagnostic := range validation.Validate(loaded.World) {
+		if diagnostic.Severity == validation.Error {
+			verdict.OK = false
+			verdict.ErrorCount++
+			continue
+		}
+		verdict.WarningCount++
+	}
+	return verdict
 }
 
 // namespaceMatch reports whether a namespace filter names something in the

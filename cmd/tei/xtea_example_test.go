@@ -39,6 +39,11 @@ func TestXTEAExampleWorkspace(t *testing.T) {
 	if !plan.Ready || len(plan.Inputs) != 1 || plan.Period == nil {
 		t.Fatalf("unexpected command plan: %+v", plan)
 	}
+	// The example declares a closing day, so the plan carries it and a reader sees
+	// the period is narrower than a month.
+	if plan.Period.ClosingDay != 20 {
+		t.Fatalf("closing day lost from the plan: %+v", plan.Period)
+	}
 
 	pkg, err := applicationview.BuildPackage(loaded.World, "order_entry", "order_entry.list_to_record")
 	if err != nil {

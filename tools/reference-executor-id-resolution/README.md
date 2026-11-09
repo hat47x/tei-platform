@@ -32,6 +32,13 @@ go run ./tools/reference-executor-id-resolution/cmd/tei-executor-id-resolution \
 
 **`-plugin-lock` を渡さない場合も `LOCK_REJECTED`** です。この参照は lock を発明しません。
 
+## 版の形（v0）
+
+C-1・C-2 は `v1` で「入場前の拒否」と「入場後の不確定」を分けます。**C-3 は `v0` ですが、それは遅れではありません。**
+この参照は `Executor` も `Carrier` も一度も実行しないため、**入場後の不確定という状態が存在しません**。
+5つの状態はすべて**実行前**の判定です。実行を伴うようになった時点で、C-1/C-2 と同じ `ranCount`／
+`refusedCount`／`unverifiedCount` の分離が必要になります。
+
 ## この参照が示さないこと
 
 - 参照実装の直書きを製品へ変えるべきか（判断材料の C-1〜C-4 は未決）。
