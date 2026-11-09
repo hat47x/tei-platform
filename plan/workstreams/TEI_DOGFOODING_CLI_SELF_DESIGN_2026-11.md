@@ -791,3 +791,19 @@ ADR-0048 §2.4 の「既定値の適用は共通契約で定める」を、CLI �
 試験は `tool_arguments_test.go` の4件。変異2種（導出が property を落とす／`required` に未宣言の名前を足す）を検出する。
 
 **残り**: `dispatch` の `switch` と `toolList()` の一致。広告に無い tool を dispatch に書くことは可能だが、`checkArguments` が `toolByName` で先に弾くため実害は無い。必要になれば同じ手法で閉じられる。起票は [#3823](https://github.com/hat47x/tei-platform/issues/3823)。
+
+## 30. 第25ラウンド（2026-11-09）: TEI の標準意味型は TEI で宣言されていない
+
+ここまでの24ラウンドは CLI の整合性を測ってきた。このラウンドは目的そのもの、**TEI 自身が TEI で書かれているか**を測った。生出力は[第25ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND25_STDLIB_SELF_DESCRIPTION_2026-11-09/README.md)にある。
+
+- `std.*` の12型は `model catalog` に現れるが、`prelude: true` と `sourceStatus: "not-indexed"` が同時に付く。**モデルの要素だが、どの Source にも由来しない。**
+- `inspect -subject-kind semantic-type -subject-id std.text` は解決できるが `artifacts: []`・`references: []`。対照の `sales.order` は `sourceStatus: "indexed"` で `semantic/sales/order.tei` とその指紋が入る。
+- `source-index` は参照106件・artifact 54件を返すが、`std.*` への参照は**0件**。
+- 定義は `internal/stdlib/semantic.go` の Go リテラル。コメント自身が「later package/registry implementation can replace this prelude」と過渡期を認めている。
+- `std` は**使えるが宣言できない**。`namespace std` を書くと `SEMANTIC_TYPE_ALIAS_CYCLE`・`DUPLICATE_SEMANTIC_ELEMENT`・`DUPLICATE_SEMANTIC_NAMESPACE` で拒否される。別名前空間からの `type text_t from std.text` は通る。`std` を特別扱いする箇所は `internal/validation/validation.go:1185` と `internal/operations/declaration_counts.go:38`。
+
+**合格条件が CLI だけで測れることを実演した。** 宣言可能な名前空間で `type text_t from std.text` を書くと、同じ catalog に `mine.text_t`（`indexed`）と `std.text`（`not-indexed`）が並び、`inspect`・`source-index` も `mine.text_t` は根拠付きで返す。`std` を `.tei` にすればこの差がそのまま埋まる。新しい API も検証機構も要らない。
+
+**これは欠陥の起票ではない。** 欠陥ではないが目的の達成を妨げている構造であり、判断は [#2620](https://github.com/hat47x/tei-platform/issues/2620) の Owner に属する。材料（測定値・合格条件・移行時の注意点）を提示するに留め、勝手に `std` を `.tei` 化していない。
+
+**注意**: 移行時は `std` の特別扱い2箇所と `internal/stdlib/semantic.go` の二重定義を同時に扱う必要がある。Go の定義を残したまま `.tei` を併置して一致を確かめる段階を挟むのが安全。
