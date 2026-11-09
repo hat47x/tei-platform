@@ -46,7 +46,6 @@ func (h *ReadOnly) runHooks(world ir.World, applicationID, patternID core.Canoni
 			return pattern, true
 		},
 	}
-	runner.CallInputs = studioHookCallInputs(world, applicationID, patternID, inputs)
 	report, err := runner.RunReachable(context.Background(), applicationID, patternID, studioAttributeValues(inputs), hook.ReferenceReach{})
 	if report == nil {
 		return nil, err
