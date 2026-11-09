@@ -44,7 +44,18 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 	semanticRelations := map[core.CanonicalID]applicationPatternRelationRef{}
 	semanticCapabilities := map[core.CanonicalID]core.CanonicalID{}
 	semanticCapabilityInputs := map[core.CanonicalID]map[string]core.CanonicalID{}
+	// semanticTypes holds the declared type of every identifier a binding may
+	// name. A capability parameter and a data attribute can have different
+	// types, and a binding that joins them has to agree; without this map there
+	// was nothing to compare.
+	semanticTypes := map[core.CanonicalID]semantic.Type{}
 	for _, ns := range w.Semantics {
+		for _, typ := range ns.Types {
+			if _, exists := semanticTypes[typ.ID]; exists {
+				continue
+			}
+			semanticTypes[typ.ID] = typ
+		}
 		for _, data := range ns.Data {
 			semanticData[data.ID] = struct{}{}
 			attributes := map[core.CanonicalID]core.CanonicalID{}
@@ -288,7 +299,7 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 			case application.PatternBrowse:
 				out = append(out, validateBrowsePattern(app, pattern, patternSubject, semanticData, queries)...)
 			case application.PatternRecord:
-				out = append(out, validateRecordPattern(app, pattern, patternSubject, semanticData, semanticDataAttributes, patterns, semanticRelations, semanticCapabilities, semanticCapabilityInputs, commandCapabilities)...)
+				out = append(out, validateRecordPattern(app, pattern, patternSubject, semanticData, semanticDataAttributes, patterns, semanticRelations, semanticCapabilities, semanticCapabilityInputs, semanticTypes, commandCapabilities)...)
 			case application.PatternReference:
 				out = append(out, validateReferencePattern(app, pattern, patternSubject, semanticRelations)...)
 			case application.PatternCommand:
@@ -414,6 +425,7 @@ func validateRecordPattern(
 	semanticRelations map[core.CanonicalID]applicationPatternRelationRef,
 	semanticCapabilities map[core.CanonicalID]core.CanonicalID,
 	semanticCapabilityInputs map[core.CanonicalID]map[string]core.CanonicalID,
+	semanticTypes map[core.CanonicalID]semantic.Type,
 	commandCapabilities map[core.CanonicalID]map[core.CanonicalID]struct{},
 ) []Diagnostic {
 	var out []Diagnostic
@@ -434,7 +446,7 @@ func validateRecordPattern(
 			pattern.Data,
 		))
 	} else {
-		out = append(out, validateRecordPatternInteraction(app, pattern, patternSubject, semanticDataAttributes, patterns, semanticRelations, semanticCapabilities, semanticCapabilityInputs, commandCapabilities)...)
+		out = append(out, validateRecordPatternInteraction(app, pattern, patternSubject, semanticDataAttributes, patterns, semanticRelations, semanticCapabilities, semanticCapabilityInputs, semanticTypes, commandCapabilities)...)
 	}
 
 	if pattern.Relation != "" {
@@ -473,6 +485,47 @@ func validateRecordPattern(
 	return out
 }
 
+// bothPrimitive reports whether two declared types both resolve to a std
+// primitive. A Data reference is not a primitive, so a binding that names one
+// side as Data is left to the Command boundary's value checking.
+func bothPrimitive(types map[core.CanonicalID]semantic.Type, left, right core.CanonicalID) bool {
+	return isPrimitive(underlyingType(types, left)) && isPrimitive(underlyingType(types, right))
+}
+
+// isPrimitive reports whether a type identifier is a std primitive.
+func isPrimitive(id core.CanonicalID) bool {
+	return len(id) > 4 && string(id)[:4] == "std."
+}
+
+// sameType reports whether two declared types are the same type.
+//
+// Aliases are followed to their underlying type on both sides, so
+// `type OrderId from std.identifier` and `std.identifier` agree. A cycle or a
+// missing definition stops the walk and compares what was reached, so a broken
+// declaration is not reported twice: the type layer reports it, and this check
+// stays silent rather than guessing.
+func sameType(types map[core.CanonicalID]semantic.Type, left, right core.CanonicalID) bool {
+	return underlyingType(types, left) == underlyingType(types, right)
+}
+
+// underlyingType follows alias declarations to the type they ultimately name.
+func underlyingType(types map[core.CanonicalID]semantic.Type, id core.CanonicalID) core.CanonicalID {
+	current := id
+	seen := map[core.CanonicalID]bool{}
+	for depth := 0; depth < 32; depth++ {
+		if seen[current] {
+			return current
+		}
+		seen[current] = true
+		typ, ok := types[current]
+		if !ok || typ.Kind != semantic.TypeAlias || typ.Underlying == "" {
+			return current
+		}
+		current = typ.Underlying
+	}
+	return current
+}
+
 func validateRecordPatternInteraction(
 	app application.Application,
 	pattern application.Pattern,
@@ -482,6 +535,7 @@ func validateRecordPatternInteraction(
 	semanticRelations map[core.CanonicalID]applicationPatternRelationRef,
 	semanticCapabilities map[core.CanonicalID]core.CanonicalID,
 	semanticCapabilityInputs map[core.CanonicalID]map[string]core.CanonicalID,
+	semanticTypes map[core.CanonicalID]semantic.Type,
 	commandCapabilities map[core.CanonicalID]map[core.CanonicalID]struct{},
 ) []Diagnostic {
 	var out []Diagnostic
@@ -653,7 +707,8 @@ func validateRecordPatternInteraction(
 				))
 			}
 			seenInputs[binding.Name] = true
-			if _, ok := dataAttributes[binding.Attribute]; !ok {
+			attributeType, ok := dataAttributes[binding.Attribute]
+			if !ok {
 				out = append(out, errFor(
 					patternSubject,
 					"UNKNOWN_APPLICATION_PATTERN_INTERACTION_COMMAND_BINDING_ATTRIBUTE",
@@ -663,6 +718,28 @@ func validateRecordPatternInteraction(
 					binding.Name,
 					binding.Attribute,
 					pattern.Data,
+				))
+				continue
+			}
+			// A binding joins an attribute to a capability parameter. When both
+			// sides are primitives, a difference is a real defect: the bound
+			// value would reach the capability as a value of a type it does not
+			// declare. When either side names a Data rather than a primitive,
+			// the correspondence is not a type equality — a capability that
+			// takes `sales.order` is commonly bound to that data's identifier —
+			// so it is not compared here. That case is recorded as unresolved.
+			parameterType, parameterOK := capabilityInputs[binding.Name]
+			if parameterOK && bothPrimitive(semanticTypes, attributeType, parameterType) && !sameType(semanticTypes, attributeType, parameterType) {
+				out = append(out, errFor(
+					patternSubject,
+					"APPLICATION_PATTERN_INTERACTION_COMMAND_INPUT_TYPE_MISMATCH",
+					"record pattern %s binds command %s input %s of type %s to attribute %s of type %s",
+					pattern.ID,
+					command.Capability,
+					binding.Name,
+					parameterType,
+					binding.Attribute,
+					attributeType,
 				))
 			}
 		}

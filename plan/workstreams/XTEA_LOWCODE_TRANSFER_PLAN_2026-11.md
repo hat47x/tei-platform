@@ -399,6 +399,7 @@ WP10 統合と引継ぎ
 | 宣言した能力を呼ばないまま実行済みと報告しない（`RunReachable`） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_DECLARED_CALL_HONESTY_2026-11.md) |
 | 宣言した能力を実際に呼ぶ配線（`RunDeclaredCalls`） | 実装（参照） | 付録C.5、`internal/hook`、`cmd/tei`、`internal/studiohost`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_DECLARED_CALL_WIRING_2026-11.md) |
 | フックの`reads`から能力のパラメータへの対応（`BindInputsFromReads`） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_READS_TO_PARAMS_2026-11.md) |
+| 能力入力の結び付けの型検査 | 実装 | 付録C.5、`internal/validation`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_BINDING_TYPE_CHECK_2026-11.md) |
 | フックが使う能力の`command` Pattern不在の拒否 | 実装 | 付録C.5、`internal/validation` |
 | フックの実行境界（reject/warn） | 実装 | 付録C.5 |
 | 未使用属性の表示 | 実装 | 付録C.5 |
