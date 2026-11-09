@@ -130,3 +130,70 @@ func TestMapWorkspaceUsesActualOrgSourceWithoutInventingTestOnlyPattern(t *testi
 		t.Fatalf("actual CaseRecord handlingUnit Relation missing from read-only map: %+v", got.Links)
 	}
 }
+
+
+// A unique declaration makes a typed navigation link "resolved" even when
+// no managed Source was indexed. The resolution value MUST NOT be interpreted
+// as Source-current, meaning-accepted, or edit-authorized.
+func TestMapWorldDeclaredLinkIsNotSourceQualified(t *testing.T) {
+	world := ir.World{Semantics: []semantic.Namespace{{
+		ID: "sales",
+		Data: []semantic.Data{
+			{ID: "sales.order", Relations: []semantic.Relation{{ID: "sales.order.lines", Target: "sales.line"}}},
+			{ID: "sales.line"},
+		},
+	}}}
+	catalog := CatalogWorld(world, sourceindex.Index{}, "", "synthetic-world", "empty-index")
+	mapped := MapWorld(world, catalog)
+	wantRelation := sourceindex.Subject{Kind: "semantic-relation", ID: "sales.order.lines"}
+	wantTarget := sourceindex.Subject{Kind: "semantic-data", ID: "sales.line"}
+	var seen int
+	for _, link := range mapped.Links {
+		if link.From == wantRelation && link.To == wantTarget && link.Relation == "refers-to" {
+			seen++
+			if link.Resolution != "resolved" {
+				t.Fatalf("unique declared relation was not resolved: %+v", link)
+			}
+		}
+	}
+	if seen != 1 {
+		t.Fatalf("expected exactly one unique declared relation link, got %d", seen)
+	}
+	for _, entry := range mapped.Catalog.Entries {
+		if (entry.Subject == wantRelation || entry.Subject == wantTarget) &&
+			entry.SourceStatus != "not-indexed" {
+			t.Fatalf("no Source Index was provided, yet Source was claimed: %+v", entry)
+		}
+	}
+	if mapped.Coverage != "partial-projection" {
+		t.Fatalf("declared links alone cannot close the Source World: %+v", mapped)
+	}
+}
+
+// A forged Source Index Reference can be structurally valid but does not
+// supply an actual Canonical World declaration or a Relation edge.
+func TestMapWorldDoesNotInventRelationFromForgedSourceReference(t *testing.T) {
+	phantom := sourceindex.Subject{Kind: "semantic-relation", ID: "sales.order.phantom"}
+	idx := sourceindex.Index{
+		References: []sourceindex.Reference{{
+			Subject: phantom, ArtifactPath: "semantic/source.tei", Role: sourceindex.RoleDefinition,
+		}},
+	}
+	world := ir.World{Semantics: []semantic.Namespace{{
+		ID: "sales",
+		Data: []semantic.Data{{ID: "sales.order"}},
+	}}}
+	mapped := MapWorld(world, CatalogWorld(world, idx, "", "world", "index"))
+	for _, entry := range mapped.Catalog.Entries {
+		if entry.Subject == phantom {
+			t.Fatalf("forged Source Index Reference invented a canonical declaration: %+v", entry)
+		}
+	}
+	for _, link := range mapped.Links {
+		if link.From == phantom || link.To == phantom {
+			t.Fatalf("forged Source Index Reference invented a typed Model Map edge: %+v", link)
+		}
+	}
+	// This is a purely in-memory representation test: it neither tests a
+	// malicious filesystem nor proves that Source references are trustworthy.
+}
