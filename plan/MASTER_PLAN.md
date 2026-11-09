@@ -305,7 +305,7 @@ SQL/NoSQLのデータ、ログファイル、クラウド情報源は別々の�
 
 SQL/NoSQL/ログ等のリバース結果は、**Physical Observation→Structural Candidate→Accepted Data/Function/Business→Diagram/CRUD/SHO**の各段階で資格を分ける。物理FK/UNIQUEやログ中の同一文字列だけから業務Relation、FunctionのCRU(D)、実行権限を生成しない。Catalogの0件や未取得を業務上の「関係なし」にしない。
 
-[Workbench詳細設計§19〜20](design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)へWB-42〜54と三経路（Schema/実Data Read/三視点）を登録。現行`postgres.Provider.Introspect`→`databaseworkbench.Build`の**合成Catalog read-only経路**でCapturedAt/Fingerprint、UNIQUE/FK・複合参照・IndexのNative式/部分索引/Readinessを落とさずTable Viewへ投影する狭いProduct改良を優先する。実Provider/Studio/SHOの適格やOwnerによるMeaning受理は別。機能Readは#2586、Required Design Contextの完全性は#3262、三視点Diagram/CRUDのDraftは#3263/#3303、Plugin-first D1は#1251がOwner。実DBのSchema定義/変更操作は標準、DBA運用は非標準の境界を維持する。
+[Workbench詳細設計§19〜20](design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)へWB-42〜54と三経路（Schema/実Data Read/三視点）を登録。現行`postgres.Provider.Introspect`→`databaseworkbench.Build`の**合成Catalog read-only経路**でCapturedAt/Fingerprint、UNIQUE/FK・複合参照・IndexのNative式/部分索引/Readinessを落とさずTable Viewへ投影する狭いProduct Goコードはmainに存在するが、その検証は合成Catalogに限られ、実DB/Scope・Row Read・Schema Applyの資格とは異なる。実Provider/Studio/SHOの適格やOwnerによるMeaning受理は別。機能Readは#2586、Required Design Contextの完全性は#3262、三視点Diagram/CRUDのDraftは#3263/#3303、Plugin-first D1は#1251がOwner。実DBのSchema定義/変更操作は標準、DBA運用は非標準の境界を維持する。
 
 **2026-11-08 横断調整**：[Workbench設計§21](design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)にREAの外部原本→Evidence→正式TEI Source→実Read/SHO比較、SUI/SEI/KONの任意Consumer境界、共通Operation（ADR-0048）、Migration適用直前のInstance/History/Grant再照合を集約した。最短P0は実Provider Read→Function Data ContextとPlugin-first Inspector二Consumerであり、SUI・SEI・KON・SHOやOntology DSL製品完成を新たなHard dependencyにしない。**
 
