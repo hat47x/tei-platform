@@ -1,0 +1,7 @@
+=== RUN   TestARouteSelectionWithAnotherDigestStopsBeforeTheProvider
+--- PASS: TestARouteSelectionWithAnotherDigestStopsBeforeTheProvider (0.00s)
+=== RUN   TestARouteSelectionWithAnotherContractVersionStopsBeforeTheProvider
+--- PASS: TestARouteSelectionWithAnotherContractVersionStopsBeforeTheProvider (0.00s)
+=== RUN   TestAMatchingSelectionStillRuns
+--- PASS: TestAMatchingSelectionStillRuns (0.00s)
+ok  	tei/tools/reference-service-carrier-connect	0.007s
