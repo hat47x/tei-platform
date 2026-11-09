@@ -129,3 +129,33 @@ test("input getter is rejected without invoking it", () => {
   assert.throws(() => bindPublicTraitClaims(projection(), e), /unqualified_trait_attachment/);
   assert.equal(calls, 0);
 });
+
+
+test("T13: reject exotic Trait and view arrays without executing getters", () => {
+  const e = envelope();
+  let getterCalls = 0;
+  Object.defineProperty(e.claims, "0", {configurable: true, enumerable: true,
+    get() { getterCalls++; return c("secret", "data", "observation", "source-observed"); }});
+  assert.throws(() => bindPublicTraitClaims(projection(), e), /unqualified_trait_attachment/);
+  assert.equal(getterCalls, 0);
+
+  const p = projection();
+  let iteratorCalls = 0;
+  p.views.data[Symbol.iterator] = function* () { iteratorCalls++; yield* []; };
+  assert.throws(() => bindPublicTraitClaims(p, envelope()), /unqualified_trait_attachment/);
+  assert.equal(iteratorCalls, 0);
+});
+
+test("T13: sparse claims, extra view metadata and array subclass are unqualified", () => {
+  const sparse = envelope();
+  delete sparse.claims[1];
+  assert.throws(() => bindPublicTraitClaims(projection(), sparse), /unqualified_trait_attachment/);
+
+  const extraView = projection();
+  extraView.views.business.privateCount = 1;
+  assert.throws(() => bindPublicTraitClaims(extraView, envelope()), /unqualified_trait_attachment/);
+
+  const subclass = envelope();
+  Object.setPrototypeOf(subclass.claims, Object.create(Array.prototype));
+  assert.throws(() => bindPublicTraitClaims(projection(), subclass), /unqualified_trait_attachment/);
+});
