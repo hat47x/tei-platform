@@ -119,6 +119,9 @@ export function compareObservedLoadContext(first, second) {
     return unknown('read_snapshot_mismatch');
   // Caller scopes may differ. No inference about Source-declared scope, grants,
   // general Relation identity, or whether the actual read roots are closed.
+  // Matching observable bytes do not identify a physical Root or a read
+  // Attempt: a byte-for-byte copy can yield an indistinguishable CLI packet.
   return {status:'same-observed-load-context-only',authority:'read-only-candidate',
+    physicalRootIdentity:'not-provided',readAttemptIdentity:'not-provided',
     sourceAndPluginClosure:'unproven',absentClaim:'unknown'};
 }
