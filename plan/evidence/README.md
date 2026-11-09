@@ -238,3 +238,5 @@
 - [必須引数の不足が3つの符号に分かれていた](TEI_DOGFOODING_ROUND17_FAILURE_CLASSIFICATION_2026-11-09/README.md)（#3733・#3420 CAPI-2b。`inspect`は`INVALID_SUBJECT`、`knowledge-*`は`KNOWLEDGE_BUILD_FAILED`、他は`INVALID_ARGUMENT`と分かれていた。11コマンドを`INVALID_ARGUMENT`に揃え、subject値の不正・不在・構築失敗は別の意味として残した）
 - [実装を直したあと文書が古い符号を主張していた](TEI_DOGFOODING_ROUND18_DOC_DRIFT_2026-11-09/README.md)（#3420・#3733。MCP AdapterのREADMEが「CLIはINVALID_SUBJECT」と書いたままだった。文書を実装に合わせ、散文の主張を`readme_claim_test.go`で固定。変異2種を検出）
 - [同じ壊れたplugin-lockが2コマンドで別の終了コードになっていた](TEI_DOGFOODING_ROUND19_PLUGIN_LOCK_CLASSIFICATION_2026-11-09/README.md)（#3765・#3420 CAPI-2b・#3184。`plugin-resolve`はexit 2、`plugin-runtime-plan`はexit 1と5種で食い違った。`LockMismatchError`を追加し両方`INVALID_PLUGIN_LOCK`へ。変異2種を検出）
+
+- [同じ値指定flagの重複](CLI_REPEATED_FLAG_2026-11-09.md)（`model catalog -namespace`等の重複が最後の値だけを残して黙って捨てていたのを、1値flagの重複として`INVALID_ARGUMENT`で拒否。繰り返し可能なflagは`repeatableFlags`で広告。既存呼出し元の全件洗い出しは未実施）
