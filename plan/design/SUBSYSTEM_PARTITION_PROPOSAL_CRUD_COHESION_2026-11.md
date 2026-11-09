@@ -456,3 +456,16 @@ must-linkによる無向グラフの連結成分 C に含まれるFunctionは、
 **実装順**：P0は#3492の実Workspace Readの限定範囲と、受理済みOwner/Function I/OのGapを確定する。P1はmust-linkのみの厳密評価と独立全列挙Oracleを最小のread-only Referenceで比較し、cannot-link/容量/業務意味が現れた段階で初めてSolverや追加評価の費用を検討する。専用Core型・第二Graph/Acceptance・新Host/Policy/Transportを導入しない。
 
 現#3255はmainから大きく乖離したDraftである。本文の数理的結論とSource接続の最小契約を保存した上で、**mainの文書を消さない非強制追随・差分再確認**を行う。旧HEAD時点のtest結果や他PRの合成greenを現在HEADの製品受理に転用しない。
+
+
+## 27. 2026-11-09 実Referenceの分離とP0判断の更新
+
+[Draft PR #3662](https://github.com/hat47x/tei-platform/pull/3662) に、この文書§24の **must-linkのみの条件付き厳密解** を純粋Go実装として独立させた。これは別正本・新Gateではなく、以下を切り分けるためのread-only候補試験である。
+
+- **コードにした範囲**：固定候補Data owner、明示direct C/U/D relation occurrence、Functionのallowed所属、must-link、正の整数重み。連結成分のAllowed積集合、Owner別Write集計、厳密最小越境重み、deterministicな選択、edge witness。cannot-link/規模制限/変更系Effectには対応しない。
+- **独立Oracleの候補**：SP-37〜41に対応する全配置列挙、3機能×3所属先のallowed/must-link 1,372組、無更新・入力拒否・順序安定性。Testソースは実装Draftに保存したが、この記録時点では正規Go Test・Repository Healthの成功を**未確認**とする。数学例のJSでの列挙とGo Testの実行資格は別。
+- **Product接続で未実証**：Accepted Subsystem Owner/FunctionIOを一つのScope/Source/Revisionで取得する実Producer、#1132 checkerとの束縛、#3492のSource/Workspace M1aとの同一性、Disclosureに基づくPublic SliceとConsumer実受領、Studio/CLI/MCP/DB/Target、業務Owner意味受理。
+- **優先順**：P0は必ずAccepted Source→Owner/Function direct CRUDの実Read/資格確認。P1は#3662の小Reference exact-head Go Testと独立全列挙の確認。P2は#3255の候補説明と既存Proposal/Impact/Acceptanceへの接続。P3はLegacy/ETL/実Targetの別試験。P1の合成成功をP0の完成に読み替えない。
+- **他担当との衝突回避**：#1132の既存checker、#3492三視点Workspace Inspector、#1124 Studio、#2516 Policy、#267 Acceptance、#2831 Self-buildとファイル/責務を分離。新Planner/Graph/Parser/Host/Policy engine/Canonicalを追加しない。#1119のProduct Gateや他レーンの直接P0には新Hard Dependencyを置かない。
+
+この文書・#3662ともにOwner正式採用前のDraftであり、**Go Test/CI/Owner受理/実Source結線/実Targetの合格は、対応するexact-headの証拠が取れた時だけ明示する**。旧§26末尾のmain乖離は当時の履歴であり、2026-11-08にはmainを非強制mergeした。次のmain前進には再照合が必要である。
