@@ -13,8 +13,6 @@
 
 `docs/`とは役割を分けます。`docs/`では実装済みの構成と利用方法を説明し、ここでは採用前の案や変更に必要な機能設計を扱います。実装状況が変わった場合は、この設計文書を現行構成の説明に流用せず、`docs/architecture.md`を更新します。
 
-個別の設計候補として、[可変長・可変文字集合のHash由来ID](HASH_DERIVED_ID_SCHEME_DESIGN_2026-11.md)（#2814、未採用）も収録しています。
-
 ## 体裁
 
 新しい文書は[`docs/README.md`](../../docs/README.md)の「設計文書の基本体裁」に沿って作ります。冒頭で文書の役割、正本との関係、対象範囲、現在の結論、根拠、何を主張しないかを明らかにします。形式上の項目を埋めること自体を目的にはしません。
@@ -87,6 +85,7 @@
 | [`TECH_VALIDATION_SAMPLES_2026-10.md`](TECH_VALIDATION_SAMPLES_2026-10.md) | ピーキーな要件の目録と、それを一つの作業の流れで同時に起こす技術検証用サンプル(既存の検証用資産の再編と新設)の構成案(未採用) |
 | [`AI_NATIVE_PLUGIN_COMPOSITION_DESIGN_2026-10.md`](AI_NATIVE_PLUGIN_COMPOSITION_DESIGN_2026-10.md) | 標準機能を含む製品構成を交換可能にし、生成AIの設計・実装・検証の足場にもする最小プラグイン規約の設計候補（[GitHub #1223](https://github.com/hat47x/tei-platform/issues/1223)ほか） |
 | [`BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`](BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md) | 業務手順の設計品質を、業務意味を根拠を失わずに説明・検証・修正できる程度で評価するモデル（RQ-025・RQ-026） |
+| [`HASH_DERIVED_ID_SCHEME_DESIGN_2026-11.md`](HASH_DERIVED_ID_SCHEME_DESIGN_2026-11.md) | 可変長・可変文字集合のHash由来IDについて、Source Revision・衝突予算・Target物理名とOwner受理を別々に検証する設計候補（[#2814](https://github.com/hat47x/tei-platform/issues/2814)、未採用） |
 | [`CLI_C2_DISCLOSURE_BOUNDARY_DESIGN.md`](CLI_C2_DISCLOSURE_BOUNDARY_DESIGN.md) | CLIのinspect・traceで、開示してよい内容を既存のAuthorization Capabilityで判定する境界の設計候補（[GitHub #1178](https://github.com/hat47x/tei-platform/issues/1178)） |
 | [`CLI_JSON_OUTPUT_CONTRACT_2026-10.md`](CLI_JSON_OUTPUT_CONTRACT_2026-10.md) | `tei commands`が広告する読取りコマンドのJSON出力の現状一覧、`tei.cli.*/v0`の互換変更の区別の規則案、schemaVersion追加と失敗時形式の決定案（[GitHub #2354](https://github.com/hat47x/tei-platform/issues/2354)、提案中） |
 | [`CLI_FIRST_INTERFACE_DESIGN.md`](CLI_FIRST_INTERFACE_DESIGN.md) | CLIを主入口とし、画面・API・CLIで共通にする意味（対象ID・版・検証結果・受理の成否など）を分けるインターフェース設計の初期案 |
