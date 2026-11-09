@@ -10,22 +10,35 @@ import (
 )
 
 // reachCallWorld declares a before-update hook that reads the status and
-// declares the capability it calls.
+// declares the capability it calls, plus the command pattern that states which
+// attribute feeds the capability's parameter.
 func reachCallWorld() ir.World {
 	return ir.World{Applications: []application.Application{{
 		ID: "order_entry",
-		Patterns: []application.Pattern{{
-			ID:   "order_entry.order_record",
-			Kind: application.PatternRecord,
-			Data: "sales.order",
-			Interaction: &application.Interaction{
-				Hooks: []application.Hook{{
-					Phase: "before-update",
-					Reads: []core.CanonicalID{"sales.order.status"},
-					Uses:  []core.CanonicalID{"sales.submit_order"},
-				}},
+		Patterns: []application.Pattern{
+			{
+				ID:   "order_entry.order_record",
+				Kind: application.PatternRecord,
+				Data: "sales.order",
+				Interaction: &application.Interaction{
+					Hooks: []application.Hook{{
+						Phase: "before-update",
+						Reads: []core.CanonicalID{"sales.order.status"},
+						Uses:  []core.CanonicalID{"sales.submit_order"},
+					}},
+				},
 			},
-		}},
+			{
+				ID:         "order_entry.submit_order",
+				Kind:       application.PatternCommand,
+				Capability: "sales.submit_order",
+				Data:       "sales.order",
+				Interaction: &application.Interaction{Commands: []application.InteractionCommand{{
+					Capability: "sales.submit_order",
+					Inputs:     []application.CommandInputBinding{{Name: "order", Attribute: "sales.order.status"}},
+				}}},
+			},
+		},
 	}}}
 }
 
@@ -48,9 +61,6 @@ func TestRunReachableCallsTheDeclaredCapability(t *testing.T) {
 		World:          reachCallWorld(),
 		Implementation: ReferenceRule{},
 		Caller:         boundary,
-		CallInputs: map[core.CanonicalID]map[string]string{
-			"sales.submit_order": {"order": "ORD-1"},
-		},
 	}
 	report, err := runner.RunReachable(context.Background(), "order_entry", "order_entry.order_record",
 		map[core.CanonicalID]string{"sales.order.status": "open"}, ReferenceReach{})
@@ -79,9 +89,6 @@ func TestRunReachableStopsAtACallRefusal(t *testing.T) {
 		World:          reachCallWorld(),
 		Implementation: ReferenceRule{},
 		Caller:         refusingCaller{},
-		CallInputs: map[core.CanonicalID]map[string]string{
-			"sales.submit_order": {"order": "ORD-1"},
-		},
 	}
 	report, err := runner.RunReachable(context.Background(), "order_entry", "order_entry.order_record",
 		map[core.CanonicalID]string{"sales.order.status": "open"}, ReferenceReach{})

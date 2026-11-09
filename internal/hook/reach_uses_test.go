@@ -11,22 +11,35 @@ import (
 	"tei/internal/ir"
 )
 
-// usesWorld declares a before-update hook that declares one read and one call.
+// usesWorld declares a before-update hook that declares one read and one call,
+// plus the command pattern the declaration is resolved through.
 func usesWorld() ir.World {
 	return ir.World{Applications: []application.Application{{
 		ID: "order_entry",
-		Patterns: []application.Pattern{{
-			ID:   "order_entry.order_record",
-			Kind: application.PatternRecord,
-			Data: "sales.order",
-			Interaction: &application.Interaction{
-				Hooks: []application.Hook{{
-					Phase: "before-update",
-					Reads: []core.CanonicalID{"sales.order.status"},
-					Uses:  []core.CanonicalID{"sales.submit_order"},
-				}},
+		Patterns: []application.Pattern{
+			{
+				ID:   "order_entry.order_record",
+				Kind: application.PatternRecord,
+				Data: "sales.order",
+				Interaction: &application.Interaction{
+					Hooks: []application.Hook{{
+						Phase: "before-update",
+						Reads: []core.CanonicalID{"sales.order.status"},
+						Uses:  []core.CanonicalID{"sales.submit_order"},
+					}},
+				},
 			},
-		}},
+			{
+				ID:         "order_entry.submit_order",
+				Kind:       application.PatternCommand,
+				Capability: "sales.submit_order",
+				Data:       "sales.order",
+				Interaction: &application.Interaction{Commands: []application.InteractionCommand{{
+					Capability: "sales.submit_order",
+					Inputs:     []application.CommandInputBinding{{Name: "order", Attribute: "sales.order.status"}},
+				}}},
+			},
+		},
 	}}}
 }
 
@@ -75,12 +88,32 @@ func TestRunReachableDoesNotClaimADeclaredCallItDidNotMake(t *testing.T) {
 	}
 }
 
-// TestRunReachableNamesTheCallWhenACallerExistsButWasUnused checks the second
-// reason: with a caller configured, a rule that does not call still leaves the
-// declaration unkept.
-func TestRunReachableNamesTheCallWhenACallerExistsButWasUnused(t *testing.T) {
+// TestRunReachableCallsTheDeclaredCapabilityWhenACallerIsConfigured checks that
+// a caller plus the declaration's own binding is enough to keep the promise: the
+// capability reaches the boundary and the phase is executed.
+func TestRunReachableCallsTheDeclaredCapabilityWhenACallerIsConfigured(t *testing.T) {
 	caller := &recordingCaller{}
 	runner := Runner{World: usesWorld(), Implementation: ReferenceRule{}, Caller: caller}
+	report, err := runner.RunReachable(context.Background(), "order_entry", "order_entry.order_record", usesInputs(), ReferenceReach{})
+	if err != nil {
+		t.Fatalf("err=%v", err)
+	}
+	if len(report.Executed) != 1 || report.Executed[0] != "before-update" {
+		t.Fatalf("executed=%v (reasons=%v)", report.Executed, report.Reasons)
+	}
+	if len(caller.calls) != 1 || caller.calls[0] != "sales.submit_order" {
+		t.Fatalf("the declaration did not reach the boundary: %v", caller.calls)
+	}
+}
+
+// TestRunReachableRecordsAnUnresolvableCapability checks that a `uses` the
+// declaration cannot resolve to a command pattern is recorded, not run and not
+// silently counted as executed.
+func TestRunReachableRecordsAnUnresolvableCapability(t *testing.T) {
+	world := usesWorld()
+	world.Applications[0].Patterns = world.Applications[0].Patterns[:1] // drop the command pattern
+	caller := &recordingCaller{}
+	runner := Runner{World: world, Implementation: ReferenceRule{}, Caller: caller}
 	report, err := runner.RunReachable(context.Background(), "order_entry", "order_entry.order_record", usesInputs(), ReferenceReach{})
 	if err != nil {
 		t.Fatalf("err=%v", err)
@@ -88,11 +121,14 @@ func TestRunReachableNamesTheCallWhenACallerExistsButWasUnused(t *testing.T) {
 	if len(report.Executed) != 0 {
 		t.Fatalf("executed=%v", report.Executed)
 	}
-	if report.Reasons["before-update"] != ReasonDeclaredCallNotMade {
-		t.Fatalf("reason=%q", report.Reasons["before-update"])
+	if len(report.NotEvaluated) != 1 || report.NotEvaluated[0] != "before-update" {
+		t.Fatalf("notEvaluated=%v", report.NotEvaluated)
+	}
+	if report.Reasons["before-update"] == "" {
+		t.Fatal("the unresolved capability has no stated reason")
 	}
 	if len(caller.calls) != 0 {
-		t.Fatalf("the reference rule called %v", caller.calls)
+		t.Fatalf("a capability with no command pattern was called: %v", caller.calls)
 	}
 }
 
@@ -160,6 +196,14 @@ func TestRunReachableUncalledKeepsTheDeclarationOrder(t *testing.T) {
 		"sales.submit_order",
 		"sales.audit_order",
 	}
+	// The second capability also needs a command pattern, or the binding step
+	// refuses before the ordering question is reached.
+	world.Applications[0].Patterns = append(world.Applications[0].Patterns, application.Pattern{
+		ID:         "order_entry.audit_order",
+		Kind:       application.PatternCommand,
+		Capability: "sales.audit_order",
+		Data:       "sales.order",
+	})
 	runner := Runner{World: world, Implementation: ReferenceRule{}}
 	report, err := runner.RunReachable(context.Background(), "order_entry", "order_entry.order_record", usesInputs(), ReferenceReach{})
 	if err != nil {
