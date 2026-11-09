@@ -384,3 +384,24 @@ T1-Aの最小Product受入は、**共通Application API（ADR-0048・#1158）の
 **次のProduct 1回の独立Expected**：同一固定REA Artifactに対して、(a) CLIが読み取ったExternal Observation 1件とRelation 1件のID/Source/unknown、(b) Product側の実Provider選択・実呼出し、(c) 実Receiverへのbyte到達、(d) TEI Canonicalがnullのままであることをそれぞれ実観測。Studio/WailsとSHOへの投影は後続の別資格。**T1-A試験用Python Projectorの成功を、このProduct Exitとして数えない**。
 
 本節はOwnerに実装開始を引き渡すための**設計差分**であり、T1-A Product Operation、外部REA実Provider Link/Grant、Source atomic closure、正式`*.tei.md`、三視点Product Graph/CRUD、SHO Writer、Legacy/Target比較、Owner Meaning Acceptanceを実行・達成したものではない。
+
+
+---
+
+<!-- rea-t0-evidence-health-closure-20261109 -->
+## 19. 本Draft自身のRepository Health失敗を独立に解消（2026-11-09）
+
+[旧PR exact-head Health #42579045035](https://github.com/hat47x/tei-platform/actions/runs/42579045035) は **completed/failure**。実Jobログで`go vet ./...`、`gofmt`、`tei validate`がPASSしていた一方、失敗は**このPRが追加したファイル**に限定された。
+
+- `tools/repository-plan-check.TestToolsReadmeMentionsEveryEntry`：`tools/rea-t0-saved-report/`が`tools/README.md`に未登録（`go test ./...` FAIL）。
+- `tools/ci-workflows-test.py:StaticWorkflowContract.test_every_automatic_workflow_declares_concurrency`：`rea-t0-saved-report-audit.yml`と`rea-t0-static-evidence.yml`の二本でトップレベル`concurrency`が欠落（CI E1／候補HEAD照合 FAIL）。
+
+**対処**：`tools/README.md`へread-only T0 Auditor/Candidate Projectorの索引1行を追加。2 Workflowとも現行標準`concurrency.group = workflow名＋event＋pull_request.number/ref`、`cancel-in-progress: github.event_name == 'pull_request'`を追加し、**古いPR実行のみを取り消し、branch/mainの実行は取り消さない**。単なるCIのgreen化を理由にT0-05結果検証を弱めず、JSONL実exportと途切れたConsumer入力の独立Expectedはそのまま残す。
+
+この対処は既存のWorkflow規約／Tool索引に合わせるだけで、REA/TEIの製品仕様・Provider/Host認可・意味採用を変更しない。**後続HEADのRepository Health完了・T0-05実JSONL結果は独立に確認する**。旧#42579045035のfailureを無かったことにせず、新HEADへ旧T0 4/4／Audit42/42の結果を無条件に転載しない。
+
+### 19.1 追加すべきテストではなく既存Ownerへ渡す次の一辺
+
+External Observation/Evidenceの製品側経路は、[現行Binding利用実態 #3757](https://github.com/hat47x/tei-platform/issues/3757)の`Router`未接続、[Inspector S2-reference #3540](https://github.com/hat47x/tei-platform/pull/3540)の静的Provider実到達、[Graph/Relation #3492](https://github.com/hat47x/tei-platform/pull/3492)の限定main統合を**別資格**とする。
+
+REA Candidate Projectorの外部IDを`InspectSubject`のCanonical IDとして偽装しない。現状の`InspectSubject`がCanonical Worldを先に検索するという仕様を変えず、External Observation 1件＋Relation 1件の実Product read-only受領に必要な最小型・Provider Binding・受領位置の不足だけを#1158/#3419/#1251へ引き渡す。F0 raw Source／F3 actual Invoked／F5 current Receiverと、Owner Accepted Meaning、Runtime Effectの独立資格を維持する。**ここでは新たなSchema/独立Registry/第二Runner/新Host/新Readerは設けない**。
