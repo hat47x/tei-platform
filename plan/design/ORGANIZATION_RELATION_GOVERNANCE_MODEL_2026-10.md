@@ -3833,3 +3833,42 @@ yes/noは実行先で対象CaseとOperationに関し判定できたときだけ�
 | VTR-06 | Case担当D1→D2→D1、Provider返信順逆転・Host Grant/Policy改版 | 同名D1の旧Receipt、旧Policy Scope/Grant/Rowset/Export資格を自動再利用 |
 
 **実証境界**：VTRは既存VP/VE、ORG-TR、ORG-CFの追加cross-productであり、独立のFixture/Scenario SSOTを増やさない。#1131→#1180→#2514の独立Expected/Mutant→#1163の同一Attemptへ接続する。要求/Policyと実Enforcementを区別するため、各対照でSource relation occurrence・Graph/Policy版・Host Principal/Grant epoch・actual Provider Read/SQL/Scope・Consumer/Cache route・Runtime Effect/Receipt・Owner採否を別列にする。§58のfixed-head Node synthetic PASSを実Provider Enforcement/IdP/Studio/SHO/AI/Owner Meaningの安全性に昇格しない。VTR新テスト実行および実DB/HostはNOT RUN。
+
+
+<!-- org-evidence-join-read-decision-effect-20261109 -->
+## 2026-11-09 横断深化：組織責務を Read→判断候補→実Effect→引継ぎへつなぐ証拠接合（設計／未受理）
+
+### 1. 世界／読取／判断／実行の同一性は一致を推定しない
+
+組織Ontology、外部REA観測、SUIの情報候補、SEIの判断候補を受け入れる際に必要なのは、新しい共通Org Runtimeではなく、**同じCase C1について各層の証拠を照合し、照合不能をそのまま残す仕組み**である。単一JSON DTO・Evidence Store・Registry・世界時計の新設ではなく、TEIの既存Source/Meaning/Context/Provider/Host/Receipt/Consumerへの参照として次の5列を説明できることを受入条件とする。
+
+| 層 | 同一性を主張するための最低限の根拠 | そこから推測できないもの |
+| --- | --- | --- |
+| S：Source/Meaning | Workspace、実Source byte/Revision、CaseとRelation occurrence、valid/known、Owner受理したRuleと未受理箇所 | 同名・同一Hash・REA解析候補からの現在Meaning、Grant |
+| Q：実Query/Read | FunctionとQueryの実Binding、selected/loaded/invoked Provider、SQL/params/Target/Scope、実Rowset・Read Cohort・partial・Presence | SourceをInspectできた／0件／ローカルSQL成功からの全業務対象の不存在 |
+| D：判断候補 | Case/Operation、受理済Business Rule、Qの参照集合・不足、候補を述べた主体と候補版 | SUI Item/外部Agent/SEI判断案・Inbox割当てからのOwner受理、実行権限、実Effect |
+| E：Host Effect | Verified Principal、Tenant/Resource/Action、現在GrantとEffect Fence、OperationID、実Commit・不確実Receipt・独立post-image | 旧Grant・HTTP 2xx・Command受付・旧Receiptからの安全な再送、現在の更新成功 |
+| H：Handoff/Consumer | 必要対象L、実Readerで確定したR、対象別ACKのH、Scope/版・実Consumer受信・Disclosure資格 | ACKの総件数、通知送付、表示済みからの全件受領・他Consumerへの配送完了 |
+
+**接合不変条件**：同じCase IDは必要だが十分ではない。Relation occurrence・Policy/Rule版・Actual Read Inputs・Provider Invocation・対象Scope/ResultSlice・OperationID・Consumerをそれぞれ保持し、同じ世界Hash/名称を異ProviderのSnapshotやAuthority Epoch一致へ昇格させない。S→Q→D→E→Hを単一の分散Txと呼ばず、各辺のWitness・Source位置・未取得対象を区別する。別Attemptの正常結果を合算して一回の受入成功としない。
+
+### 2. C1担当移管で起きる二つの見かけの成功を拒否
+
+**負例A**：P1がD1→D2へ異動したとき、C1 handlingUnitのR1/D1はまだ不変。後日CaseをR2/D2へ変更したが、旧D1画面にはキャッシュが残り、D2 Readerは部分取得、Host Grantは別Providerで改訂途中。画面に「新担当D2」と表示できても「旧D1の実Readが禁止済み」「D2の実Readを許可済み」「全案件引継ぎ済み」は、それぞれ現在Reader/Grant/L-R-Hを確認するまでunqualified。秘密開示・更新Actionは既存Hostで拒否/保留、設計候補の表示は許可範囲で維持できる。
+
+**負例B**：さらにvalidAtの遡及訂正でC1の過去D1期間が修正された。**訂正後に再構築した組織上の履歴**と、**当時Hostが実際に確認したGrant、実Commit/Receipt、Consumerへ配送した出力**は異なる事実である。新しい歴史解釈から旧Receiptを現在再利用してはならない。一方、過去の確定Effect/送信をなかったことにしてもならない。業務違反ならOwnerの新Decisionや補正・取消・監査が必要となり得るが、取消方法は受理済Rule/Host契約が所有する。開始時固定、各作業時再評価、移行規則付きの三方式から選んでいない方式を黙って採用しない。
+
+### 3. 最初に本当に検査する一Attemptの6観測（新Evidence Ledgerは作らない）
+
+全TEI最初のProduct R0/HJ-09は引き続き order_entry.recent_orders (#2586)。続くOrg C1 read-only Attemptで、次の項目を同じ試行の実値またはmissing/not-run/unverifiedとして照合する。
+
+1. C1とCaseRecord.handlingUnitのoccurrence R1/R2、同Workspace/Source/valid・known、Source Closureと意味受理の未達（#2386/#3492/#3518）。
+2. Function→Query/Relation→Providerの選択/実Invocationと、実SQL/params・Tenant/Scope・Cohort・Rowset/0件/partial/Field Presence（#2586/#2506/#3500）。
+3. Organization Policyの対象Data/用途・axis/root・Rule版・明示例外を候補として説明し、実Provider Row Filter/Count/Exportに施行証拠がなければEnforcement未証明（§58/#2781/#1656）。
+4. Read結果を一つの実ConsumerへSource/同Attempt/Disclosure範囲とともに渡した証拠。Read Consumer受領があっても判断・Effect・引継ぎを完了扱いしない（#2516/#1163）。
+5. 後続判断のOwner：SUI/外部REA観測はCandidate、SEI/AI/人間の判断はProposal、TEIの受理済RuleとOwner Meaning・Action申請は別記録（#3475/#267）。未受理候補はHost権限へ変換しない。
+6. 後続Effect/HandoffのOwner：現在Principal/Grant・Commit直前条件・OperationID・不確実Receipt・独立再読取、必要集合L/Read集合R/ACK集合H（#1174/#1125/#1444）。main #3717のPostgreSQL 4系統の非SKIP PASSは別Operationの部分証拠であり、Org C1や一OperationのE3ではない。
+
+**既存負例を再利用した最小の反証**：（i）選択されたProviderと実際のInvoked Providerが異なるが返却値が同じ、（ii）D2のRowsetが0件/partialなのに担当不在・全件Handoff成立と表示、（iii）validAt訂正またはA→B→Aの後で旧Grant/Receiptを再有効化。ORG-VTR/ORG-TR/VP/VEを再利用し、期待値は#2514、Scenarioは#1180、Actual Attemptは#1163を唯一の所有先とする。
+
+**受入の停止線**：P0-RでS/Q/Read Consumerを一試行で実測できないうちは、D/E/Hを先行実装して合格扱いしない。P0-MのRQ-036 Mapは同SourceへのNavigationとGapを示し、P0-Cで同一Attempt/Consumerを接合し、その後で現在Grant/Effect/Handoffへ拡張。将来のOntology DSLやDecision Twinを初回ReadのHard Dependencyにしない。新規Org Go/DB/Host/SEI/SHO E2Eは本節ではNOT RUN。
