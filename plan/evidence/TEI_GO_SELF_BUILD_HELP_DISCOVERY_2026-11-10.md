@@ -73,6 +73,6 @@
 
 ## 参照
 
-- 設計：[`SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md`](../plan/design/SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md) §4.6・§4.22・§4.30
-- 利用者向けの手引き：[`reference/plugin-self-build/README.md`](../reference/plugin-self-build/README.md)
+- 設計：[`SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md`](../design/SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md) §4.6・§4.22・§4.30
+- 利用者向けの手引き：[`reference/plugin-self-build/README.md`](../../reference/plugin-self-build/README.md)
 - 既定の決定：[`TEI_GO_SELF_BUILD_INPROCESS_DEFAULT_EVIDENCE_2026-11-09.md`](TEI_GO_SELF_BUILD_INPROCESS_DEFAULT_EVIDENCE_2026-11-09.md)

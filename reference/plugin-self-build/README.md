@@ -88,7 +88,7 @@ tei self-build \
 | `l2b.unmet` | 成立しなかった条件を**すべて**列挙する |
 | `l2b.boundary` | この主張が**言っていないこと**（受理・Runtime Authority・catalogの正しさ・Trust・L2-c/L3） |
 
-`qualified`は常に`false`です。`l2b.claimed`が`true`でも受理を意味しません。判断の中身は[自己構築の再入場契約](../plan/design/SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md)を参照してください。
+`qualified`は常に`false`です。`l2b.claimed`が`true`でも受理を意味しません。判断の中身は[自己構築の再入場契約](../../plan/design/SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md)を参照してください。
 
 catalogは呼び手が用意するデータです。catalogの各欄はWorkspaceやplugin定義には現れないため、**既存の宣言からは生成できません**。現時点では手で用意します。
 
