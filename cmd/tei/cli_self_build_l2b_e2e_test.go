@@ -49,6 +49,10 @@ type l2bEndToEndReport struct {
 		Claimed bool     `json:"claimed"`
 		Unmet   []string `json:"unmet"`
 	} `json:"l2b"`
+	ArtifactReproducibility *struct {
+		State             string `json:"state"`
+		UnperformedReason string `json:"unperformedReason"`
+	} `json:"artifactReproducibility"`
 	Error *struct {
 		Code    string `json:"code"`
 		Message string `json:"message"`
@@ -157,7 +161,7 @@ func TestSelfBuildEstablishesL2BEndToEnd(t *testing.T) {
 		"-build-catalog", catalogPath,
 		"-build-catalog-digest", catalogDigest,
 		"-build-source-root", sourceRoot,
-		"-rebuild-check",
+		// No -rebuild-check: naming a catalog turns the second build on (§4.30).
 		"-child", builderChild,
 		"-child-arg", string(childArg),
 		"-state", filepath.Join(root, "state"),
@@ -226,6 +230,8 @@ func TestSelfBuildWithoutTheRebuildCheckNamesTheMissingCondition(t *testing.T) {
 		"-build-catalog", catalogPath,
 		"-build-catalog-digest", digestOfBytes(catalogBytes),
 		"-build-source-root", sourceRoot,
+		// Turn the default off explicitly: this test is about that path (§4.30).
+		"-rebuild-check=false",
 		"-child", child,
 		"-child-arg", childArgs(t, "-artifact", filepath.Join(root, "pkg.json")),
 		"-state", filepath.Join(root, "state"),
@@ -247,5 +253,14 @@ func TestSelfBuildWithoutTheRebuildCheckNamesTheMissingCondition(t *testing.T) {
 	joined := strings.Join(report.L2B.Unmet, "\n")
 	if !strings.Contains(joined, "not reproduced from the plan") {
 		t.Fatalf("unmet does not name the missing reproduction:\n%s", joined)
+	}
+	// The reason must distinguish "the caller turned it off" from "nobody asked",
+	// because in-process the second build is the default (§4.30).
+	repro := report.ArtifactReproducibility
+	if repro == nil {
+		t.Fatal("no reproducibility record")
+	}
+	if !strings.Contains(repro.UnperformedReason, "turned off") {
+		t.Fatalf("the reason does not say the caller turned it off: %q", repro.UnperformedReason)
 	}
 }

@@ -233,6 +233,12 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 	if err != nil {
 		return Result{}, err
 	}
+	// .tei.md is the intended TEI authoring suffix, but this loader still
+	// dispatches native declarations from .tei. Fail closed until an exact
+	// language/parser binding can consume .tei.md and preserve its provenance.
+	if err := rejectUnboundTEIMarkdownSources(managedFiles); err != nil {
+		return Result{}, err
+	}
 	// Classify declared roots after the physical boundary is verified, so a
 	// misspelling is reported as itself rather than as a downstream cascade and
 	// an escaping symlink keeps the original containment error. Managed but
@@ -575,7 +581,16 @@ func loadSemantics(root string, r *Result) error {
 		return err
 	}
 
+	// Seed the index with namespaces already in the World, which includes the
+	// in-process prelude. A Workspace may add a type to `std` (for example
+	// `type email from std.text`); that declaration joins the prelude
+	// namespace instead of creating a second `std`, which validate reported as
+	// DUPLICATE_SEMANTIC_NAMESPACE and left the declaration invisible to
+	// declarationCounts (#3851).
 	byNamespace := map[core.CanonicalID]int{}
+	for i, existing := range r.World.Semantics {
+		byNamespace[existing.ID] = i
+	}
 	for _, path := range files {
 		src, err := readSourceForLoad(root, r, path)
 		if err != nil {

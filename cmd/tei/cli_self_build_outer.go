@@ -135,7 +135,14 @@ type selfBuildOuterArgs struct {
 	// RebuildCheck asks this entry to build the same plan a second time, in a
 	// fresh state directory, and compare the artifact bytes. Without it the
 	// reproducibility record says why it did not run (§4.21).
-	RebuildCheck bool
+	//
+	// §4.30: when the caller names a build catalog this entry derives the plan
+	// itself, which is the only route that can establish L2-b. That route already
+	// opts into the expensive, evidence-rich path, so the second build is turned on
+	// for it unless the caller named -rebuild-check=false. RebuildCheckSet records
+	// that the caller spoke, so an explicit false is honoured rather than defaulted.
+	RebuildCheck    bool
+	RebuildCheckSet bool
 	// InProcess selects deriving the plan in this process from a caller-named
 	// build catalog (§4.22 step 2). It is mutually exclusive with IntentResolver.
 	InProcess selfBuildInProcessArgs
@@ -175,7 +182,7 @@ func parseSelfBuildOuterArgs(args []string) (selfBuildOuterArgs, error) {
 	fs.StringVar(&parsed.IntentResolver, "intent-resolver", "", "exact executable that resolves the declaration into a plan (I-2)")
 	fs.StringVar(&parsed.IntentResolverArg, "intent-resolver-arg", "", "extra arguments for the intent resolver as a JSON array")
 	fs.StringVar(&parsed.ExpectedPlanFingerprint, "expected-plan-fingerprint", "", "planFingerprint the resolved plan must equal")
-	fs.BoolVar(&parsed.RebuildCheck, "rebuild-check", false, "build the same plan a second time in fresh state and compare the artifact bytes (§4.21)")
+	fs.BoolVar(&parsed.RebuildCheck, "rebuild-check", false, "build the same plan a second time in fresh state and compare the artifact bytes (§4.21); on by default when -build-catalog is given, and -rebuild-check=false keeps it off (§4.30)")
 	fs.StringVar(&parsed.InProcess.CatalogPath, "build-catalog", "", "build catalog JSON the entry resolves against in process (§4.22)")
 	fs.StringVar(&parsed.InProcess.CatalogDigest, "build-catalog-digest", "", "sha256 digest of -build-catalog; required with it")
 	fs.StringVar(&parsed.InProcess.SourceRoot, "build-source-root", "", "root the declaration's source references resolve from; required with -build-catalog")
@@ -185,7 +192,28 @@ func parseSelfBuildOuterArgs(args []string) (selfBuildOuterArgs, error) {
 	if fs.NArg() != 0 {
 		return selfBuildOuterArgs{}, errors.New("self-build does not accept positional arguments")
 	}
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "rebuild-check" {
+			parsed.RebuildCheckSet = true
+		}
+	})
 	return parsed, nil
+}
+
+// applyEvidenceDefaults decides the evidence a caller did not ask for (§4.30).
+//
+// Naming a build catalog is already a request for the strongest route this entry
+// can take: it is the only route that can establish L2-b. That route pays for the
+// evidence, so the second build — the one observation it can still add — is turned
+// on for it. A caller that says -rebuild-check=false keeps the lighter attempt.
+//
+// The child route is untouched: turning the second build on for it would pay the
+// cost twice over without enabling any claim, which is the asymmetry §4.25 named.
+func applyEvidenceDefaults(parsed selfBuildOuterArgs) selfBuildOuterArgs {
+	if parsed.InProcess.requested() && !parsed.RebuildCheckSet {
+		parsed.RebuildCheck = true
+	}
+	return parsed
 }
 
 // runSelfBuildOuterShape enforces the §4 refusal conditions before anything is
@@ -198,6 +226,7 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 	if err := parsed.InProcess.validate(); err != nil {
 		return 2, fmt.Errorf("INVALID_ARGUMENT: %w", err)
 	}
+	parsed = applyEvidenceDefaults(parsed)
 	if parsed.InProcess.requested() && strings.TrimSpace(parsed.IntentResolver) != "" {
 		// §4.16 warned that two derivation routes writing the same record make its
 		// meaning depend on the route. One attempt gets one derivation.
@@ -525,9 +554,15 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 	// The record is always emitted. When the caller did not ask, it says so with a
 	// reason, because a missing field would let a reader take silence for
 	// agreement (the same rule SC0-18 applies to the child's declaration report).
+	unperformedReason := "the caller did not ask for a second build (-rebuild-check)"
+	if parsed.InProcess.requested() && parsed.RebuildCheckSet {
+		// In-process, the second build is the default, so its absence is a
+		// decision the caller made rather than a step it never reached.
+		unperformedReason = "the caller turned off the second build (-rebuild-check=false)"
+	}
 	reproducibility := selfBuildReproducibility{
 		State:             reproducibilityUnperformed,
-		UnperformedReason: "the caller did not ask for a second build (-rebuild-check)",
+		UnperformedReason: unperformedReason,
 		Boundary:          reproducibilityBoundary,
 	}
 	if parsed.RebuildCheck {

@@ -1,4 +1,4 @@
-name: Macro Command effectcommit boundary characterization
+﻿name: Macro Command effectcommit boundary characterization
 
 on:
   pull_request:
@@ -11,12 +11,8 @@ on:
 permissions:
   contents: read
 
-# One result per commit, and a newer pull-request run replaces an older one.
-# CONTRIBUTING.md requires this of every workflow that a push or a pull request
-# can start, and tools/ci-workflows-test.py enforces it; this file was added
-# without it, which turned repository-health red for every pull request (#3682).
 concurrency:
-  group: tei-macro-command-boundary-characterization-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  group: tei-macro-command-boundary-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -55,3 +51,4 @@ jobs:
           echo "command-effectcommit-characterization-head=$EXPECTED_HEAD"
           echo "test-blob=$(git rev-parse HEAD:internal/security/effectcommit/commandadapter/executor_characterization_test.go)"
           echo "result-test-blob=$(git rev-parse HEAD:internal/security/effectcommit/commandadapter/executor_result_characterization_test.go)"
+
