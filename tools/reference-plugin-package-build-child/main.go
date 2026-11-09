@@ -298,16 +298,19 @@ func materialize(planPath, pluginPath, artifactOut, stateDir, intentPath string)
 // compareIntentFields checks the declaration fields that the plan also carries,
 // beyond identity and build coordinates.
 //
-// Compared: recipe kind and entrypoint, source identity (kind and id), and
-// dependency identity (kind and id). Not compared: a source's locator and
-// digest (the plan derives them from bytes, the declaration names a reference),
-// a dependency's version and artifact digest (derived), and parameters.
+// Compared: recipe kind and entrypoint, source identity (kind and id),
+// dependency identity (kind and id), and parameters as a name/value map.
 //
-// Parameters are excluded on purpose. The plan's parameters are what the
-// resolver produced, and the declaration's are what a person wrote; the resolver
-// may order or normalise them, so a mismatch there would not distinguish a wrong
-// declaration from a different normalisation. Comparing them needs its own
-// decision about what equality means.
+// Parameters are compared after measuring what normalisation does to them.
+// Both sides sort parameters by name and nothing else:
+// buildintent.NormalizeIntent sorts the declaration's, plugin.NormalizeBuildPlan
+// sorts the plan's, and neither changes a value. So a difference in values is a
+// real difference, and comparison by name avoids depending on declaration order.
+//
+// Not compared: a source's locator and digest (the plan derives them from
+// bytes, the declaration names a reference) and a dependency's version and
+// artifact digest (derived). Comparing those would call every correct build a
+// mismatch.
 func compareIntentFields(intent buildintent.BuildIntent, plan plugin.BuildPlan) error {
 	if intent.Recipe.Kind != plan.Recipe.Kind {
 		return fmt.Errorf("the declaration's recipe kind %q does not match the plan's %q", intent.Recipe.Kind, plan.Recipe.Kind)
@@ -348,6 +351,25 @@ func compareIntentFields(intent buildintent.BuildIntent, plan plugin.BuildPlan) 
 	}
 	if len(intent.Dependencies) != len(plan.Dependencies) {
 		return fmt.Errorf("the declaration names %d dependencies but the plan has %d", len(intent.Dependencies), len(plan.Dependencies))
+	}
+
+	// Parameters: compared by name, because both sides sort by name and neither
+	// changes a value (see the note above).
+	planParameters := make(map[string]string, len(plan.Parameters))
+	for _, p := range plan.Parameters {
+		planParameters[p.Name] = p.Value
+	}
+	for _, p := range intent.Parameters {
+		value, ok := planParameters[p.Name]
+		if !ok {
+			return fmt.Errorf("the declaration's parameter %q is not in the plan's parameters", p.Name)
+		}
+		if value != p.Value {
+			return fmt.Errorf("the declaration's parameter %q is %q but the plan's is %q", p.Name, p.Value, value)
+		}
+	}
+	if len(intent.Parameters) != len(plan.Parameters) {
+		return fmt.Errorf("the declaration names %d parameters but the plan has %d", len(intent.Parameters), len(plan.Parameters))
 	}
 	return nil
 }

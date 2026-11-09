@@ -615,14 +615,38 @@ builder childが`compareIntentFields`で比べる。
 | dependencyの`version`・`artifactDigest` | 同じくplan側の導出値 |
 | `builder.contract`・`compatibleMajor` | planが持つのは**解決済みの`BuilderIdentity`**（`ContractVersion`・`ArtifactDigest`）であり、宣言の要求（contract名とmajor）と形が違う。比べるには「要求」と「解決結果」の対応規則を決める必要がある |
 | `secretRequirements` | planは**名前だけ**を`SecretRequirementNames`として持つ（`ResolvedBuildReceipt`）。`plugin.BuildPlan`自体には無い。宣言の`Authority`はplanに対応する欄が無い |
-| `parameters` | resolverが正規化・順序替えをする可能性がある。不一致が「誤った宣言」と「異なる正規化」を区別しない |
+| ~~`parameters`~~ | **実測して訂正した。** どちらの側も名前順ソートのみで値を変えない（`buildintent.NormalizeIntent`・`plugin.NormalizeBuildPlan`）。名前で突き合わせれば順序に依存しないので、**照合する**（[#3665](https://github.com/hat47x/tei-platform/pull/3665)、§4.18） |
 
 **「比べられる欄」と「比べるべき欄」は違う。** 導出値を比べると常に不一致になり、形の違うものを比べると定義が要る。比べないことを明示するのが、黙って比べないより安全である。
 
 #### この節が言っていないこと
 
-- 残る欄を**永久に照合しない**とは言っていない。`parameters`は正規化の意味を、`builder`は要求と解決結果の対応規則を決めれば照合できる。
+- ~~残る欄を永久に照合しないとは言っていない。`parameters`は正規化の意味を決めれば照合できる~~ → **`parameters`は測ると正規化がソートだけだったので実装した**（§4.18）。`builder`は要求と解決結果の対応規則を決めれば照合できるが、それは**測れば決まる**種類ではない（§4.18末尾）。
 - 照合の拡大は**L2-bを進めない**。宣言とplanが同じ意味を指すことの確認であり、「その宣言がその計画を導く」ことではない。
+
+### 4.18 `parameters`を照合する（2026-11-09）
+
+§4.17は`parameters`を「正規化の意味が未決」として残した。**測ると前提が誤っていた。**
+
+| 側 | 正規化 | 何をするか |
+| --- | --- | --- |
+| 宣言 | `buildintent.NormalizeIntent` | `Parameters`を**名前でソートするだけ** |
+| plan | `plugin.NormalizeBuildPlan` | `Parameters`を**名前でソートするだけ** |
+
+`resolve.go`は`Parameters: n.Parameters`と代入するだけで、値を変換しない。**したがって値の違いは本物の違いである。** 順序だけが正規化の対象なので、**名前で突き合わせれば順序に依存しない**。
+
+照合は名前の存在・値・件数を見る。不一致は**名前と両方の値**を名指しする。
+
+**正規化の性質そのものを試験で固定した。** 照合が「名前順ソートのみ」という性質に依存しているため、将来`NormalizeIntent`が値を正規化するようになったら、その試験が落ちて気づける。依存を暗黙にしない。
+
+#### 残る2欄は「測れば決まる」種類ではない
+
+| 欄 | 何が要るか |
+| --- | --- |
+| `builder.contract`・`compatibleMajor` | planが持つのは**解決済みの`BuilderIdentity`**（`ContractVersion`・`ArtifactDigest`）であり、宣言の要求と**形が違う**。「要求」と「解決結果」の対応規則を決める必要がある |
+| `secretRequirements` | planは名前を`SecretRequirementNames`として持つが`plugin.BuildPlan`には無い。宣言の`Authority`に対応する欄が無い |
+
+**`parameters`は測れば決まった。この2つは規則そのものを決める必要がある。** 同じ「未決」でも種類が違う。
 
 ## 5. 追加の負例（試験仕様）
 
@@ -688,7 +712,8 @@ builder childが`compareIntentFields`で比べる。
 - [ ] **entryの既定経路をin-processの`Resolve`へ切り替えるか**の判断。四つのportの実装は今fixtureにしかなく、切り替えには`internal/`側のcatalog新設が要る（§4.16。R-2据え置きが現時点の既定）
 - [x] 宣言とplanの**build座標**（`outputKind`・`target`・`profile`）の照合（[#3652](https://github.com/hat47x/tei-platform/pull/3652)。childが三座標を一つずつ比べ、違えばartifactを書いた後にreportを出さずexit 1。[記録](../evidence/TEI_GO_SELF_BUILD_BUILD_COORDINATES_2026-11-09.md)）
 - [x] 宣言の他の欄のうち、planが同じ形で持つもの（`recipe`・`sources`・`dependencies`）の照合（[#3661](https://github.com/hat47x/tei-platform/pull/3661)。§4.17）
-- [ ] 宣言の残る欄のうち、**照合の意味を決める必要があるもの**（`parameters`）。resolverが正規化・順序替えをする可能性があり、不一致が「誤った宣言」と「異なる正規化」を区別しない（§4.17）
+- [x] `parameters`の照合（[#3665](https://github.com/hat47x/tei-platform/pull/3665)。測るとどちらの側も名前順ソートのみで値を変えないと分かったので、名前で突き合わせる。§4.18）
+- [ ] `builder`（要求と解決結果の対応規則）と`secretRequirements`（planに対応する欄が無い）の照合。**規則そのものを決める必要があり、測れば決まる種類ではない**（§4.18末尾）
 - [ ] D-1（catalogの`scope`拡張）を採るかどうかの契約判断（採る場合のみ、catalogの広告と実応答の一致を照合へ載せる）
 
 **A-1（`gobuilder`移動）は採らないため、影響範囲の洗い出しは終了条件から外した。** 29ファイルの内訳は[記録](../evidence/TEI_GO_INTERNAL_RULE_AND_BUILDER_MOVE_2026-11-07.md)として残す。I-1は「採らない」から「I-1aとして着手」へ改めた（§4.13）。`ParseFixtureCatalog`（fixture catalog）は`tools/`に残す。
