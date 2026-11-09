@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"tei/internal/buildintent"
-	"tei/internal/plugin"
 )
 
 // These tests pin the builder-contract comparison (SB-C0 §4.18's remaining
@@ -72,14 +71,31 @@ func TestCompareIntentFieldsIgnoresTheResolvedBuilderIdentity(t *testing.T) {
 	}
 }
 
-// A declaration with an explicit provider selection is still compared only on
-// the contract and major: the provider is a policy the resolver applies.
-func TestCompareIntentFieldsComparesOnlyContractAndMajor(t *testing.T) {
+// A declaration that names the provider the plan actually resolved is accepted.
+// The provider IS compared (main_test.go's provider subtest requires a mismatch
+// to be refused), so an agreeing selection must not be treated as a difference.
+func TestCompareIntentFieldsAcceptsTheProviderThePlanResolved(t *testing.T) {
+	plan := fixturePlan(t)
 	intent := declarationFor(t, func(i *buildintent.BuildIntent) {
-		i.Builder.Provider = &buildintent.ProviderWiring{Plugin: "tei.builder.go"}
+		i.Builder.Provider = &buildintent.ProviderWiring{Plugin: plan.Builder.ID}
 	})
-	if err := compareIntentFields(intent, fixturePlan(t)); err != nil {
-		t.Fatalf("a provider selection broke an otherwise agreeing declaration: %v", err)
+	if err := compareIntentFields(intent, plan); err != nil {
+		t.Fatalf("a provider selection matching the resolved builder was refused: %v", err)
 	}
-	_ = plugin.BuildPlan{}
+}
+
+// A declaration naming a different provider is refused: the choice was not
+// honoured by the resolver.
+func TestCompareIntentFieldsRefusesADifferentProvider(t *testing.T) {
+	plan := fixturePlan(t)
+	intent := declarationFor(t, func(i *buildintent.BuildIntent) {
+		i.Builder.Provider = &buildintent.ProviderWiring{Plugin: "tei.builder.other.seed"}
+	})
+	err := compareIntentFields(intent, plan)
+	if err == nil {
+		t.Fatal("a provider selection the plan did not resolve was accepted")
+	}
+	if !strings.Contains(err.Error(), "tei.builder.other.seed") {
+		t.Fatalf("the refusal did not name the provider: %v", err)
+	}
 }
