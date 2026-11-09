@@ -21,6 +21,7 @@
 | [`repository-architecture-check/`](repository-architecture-check/) | パッケージ構成と依存境界の検査 |
 | [`repository-dependency-report/`](repository-dependency-report/) | Goの直接依存関係の一覧作成 |
 | [`repository-plan-check/`](repository-plan-check/) | ADR・Issueの番号や要求と検証表の対応確認、ADR索引とADRファイルの一致・状態の確認（#2343） |
+| [`reference-adr-index-check/`](reference-adr-index-check/) | `plan/adr/README.md`の索引と`plan/adr/0*.md`の対応を単体で検査する。各ファイルが一度だけ載り、リンク先が実在し、索引の状態がファイルの状態行と一致することを確かめる。索引は文書であり、この検査は記録との対応だけを守る（#2343） |
 | [`doc-reference-probe/`](doc-reference-probe/) | 文書中の明示パス参照と暗黙候補を調べる任意実行の限定試作（#2309） |
 | [`repository-node-tests/`](repository-node-tests/) | どのworkflowからも実行されなかったNode.js試験5ファイルをgo testから実行する（#2346） |
 | [`check-public-boundary/`](check-public-boundary/) | 追跡ファイルに、非公開資料の名前・所在のマーカーが入っていないかを検査する（#2342 / #2436） |
@@ -208,6 +209,9 @@
 | [`reference-ddl-entry/`](reference-ddl-entry/) | 物理対応から提供元が出力できるDDLを表ごとに取り出す入口（#1803） |
 | [`reference-expected-state-concurrency/`](reference-expected-state-concurrency/) | 期待状態の比較による更新が後勝ちを防ぐことを、実PostgreSQLの使い捨てDBで確かめる参照試験（#2483、仮説H1） |
 | [`reference-developer-context/`](reference-developer-context/) | TEIのGoソース1件に対し、実在する関連テストと明示参照する設計資料を根拠付きの調査候補として返す読み取り専用の参照PoC。ローカルのSystem One互換判断モデルは候補の順位付けにだけ使い、失敗時は決定的な基準順を保つ。受理・権限・実行を決めない（#2196 / #2021） |
+| [`reference-issue-test-ability/`](reference-issue-test-ability/) | 既存のTEI Driver Scenario CLIが試験可能かを、実バイナリと合成fixtureだけで確かめる境界付きのprobe。Scenario実行器やDomain Authorityの代替ではなく、正例・負例を同じ実binaryで照合する（#3304） |
+| [`reference-design-context-packet/`](reference-design-context-packet/) | 既存CLI証拠から設計コンテキストのパケットを組み立てる参照Consumer。`obligations.json`の必須項目が欠けた場合・証拠が食い違う場合・応答が完全でない場合は、空の成功ではなく明示の状態として返す。TEI Sourceの解析や開示の権限判断はしない（#3262） |
+| [`reference-verified-composition-bom/`](reference-verified-composition-bom/) | 既に選ばれたバージョン選択（QueryのProvider範囲・Consumer範囲など）を、外部から渡されたexact lock・外部で実行済みのTest Witnessと突き合わせ、束縛の一部が欠けたBOMを`qualified:false`・`reference-fixture-only`として返す参照。BOMは常にこの上限を持ち、公開やVerified BOMとしての推奨をしない（#3267） |
 | [`reference-design-output/`](reference-design-output/) | 受理済みの意味から表・機能・対応一覧・DDL・静的HTML索引を一つのrevisionへ束縛して導出する参照。書式（markdown/text）を差し替えても意味の行を保ち、編集できる正本の位置と、宣言された利用／観測された副作用を別々に示す（#1803） |
 | [`reference-access-matrix/`](reference-access-matrix/) | Application × Dataの宣言された利用の対応表を導出する参照（#1803） |
 | [`reference-operation-pattern-crosswalk/`](reference-operation-pattern-crosswalk/) | 受理済みの意味から、宣言されたPatternと導出された標準操作を、Data ID・能力ID・Relation targetの三つの宣言だけで突き合わせる参照。一致は読み取りであり実行権限ではありません。一致しない宣言は operation-surface の gap 語彙で返し、既定値で埋めません（W3の設計候補を試すためのもの） |
