@@ -761,3 +761,12 @@ M0の`ModelMapLink`は`From(Kind,ID)`／`To(Kind,ID)`／`Relation`／`Resolution
 **M0 read-only Mapの実Source一致 → Source-backed Relation ID/Role/Scope／Coverageを付けた最小Headless Diagram Consumer → Function Data Context由来CRUDの既知セルだけをSource逆引き → 実Query/Provider/Result Slice → Studio/SHOの実受領**を順序として保持。全工程を一つの巨大なGraph Editor／業務Runtimeにまとめず、各々既存Operation・Generator/Consumer・Authority/ScenarioのOwnerへ渡す。
 
 今回の`MapWorld/MapWorkspace`はまだ**Draft上のGo実装**であり、前方移植後の全Go/Health、OS横断、正式M0 API、Event/State/Hookの完全集合、GUI、SHO、業務Effect、Owner意味受理は**CIと別検収で判断**。前のPR HEADや別Productの成功を現HEADの成功に転記しない。
+
+### 30.5 M0に対する2つの誤認防止反例（実Go候補）
+
+`internal/operations/model_map_test.go`に次の独立した合成負例を追加する。どちらもM0 Producerの**読み取り投影**を対象とし、Source Indexの`Index.Validate`やCurrent Grantを再実装しない。
+
+1. **M0-N01：宣言上のResolved ≠ Source Indexed** — Data、Relation、Target Dataの宣言が一意であれば`ModelMapLink.Resolution=resolved`になるが、入力Source Indexが空なら各`Catalog.Entry.SourceStatus=not-indexed`のまま。`resolved`をSource-current／Owner-accepted／編集可能に読み替えない。
+2. **M0-N02：偽Source Index ≠ Canonical Relation** — 実IRに存在しないRelation IDをSource IndexのReferenceだけに足しても、`Catalog`へ新Subjectは生まれず、`MapWorld`にそのSubjectを端点とするLinkも生まれない。旧§29のByte-valid Reference偽装をM0側でも第二正本へ昇格させない。
+
+二つの局所Goテスト（`TestMapWorldDeclaredLinkIsNotSourceQualified`、`TestMapWorldDoesNotInventRelationFromForgedSourceReference`）は、§30.2の**実Native Source→M0 Link比較**と別の検収である。実Source・OS敵対的Path／漏洩、外部Provider、Source/Meaning Owner受理、Event/State/Function CRUD、実Consumer/Editor/SHO/Effectは未証明。最新HEADのCI終了前は「実装済み負例候補」として扱う。
