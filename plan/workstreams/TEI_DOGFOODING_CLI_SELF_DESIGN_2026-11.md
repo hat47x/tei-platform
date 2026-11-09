@@ -635,3 +635,14 @@ ADR-0048 §2.4 の「既定値の適用は共通契約で定める」を、CLI �
 - `main` の `3799997a0` が解消した。`TraceResult` に `MarshalJSON` を足し、`mode=full` では常に `rows` を書き、フィールドを宣言順に明示して文書順序を変えない。
 - 私は「`mode=full` かつ0件のときだけ上書きする」実装を書いて動作を確認したが、`main` の形が上位互換なのでコードは持ち込まず、実測記録だけを残した。
 - このラウンドで踏んだ落とし穴: 最初に `mode=full` のすべてを上書きする実装にしたところ、埋め込み構造体が `rows` を最後に回し、既存の full 応答のバイト列が変わって `reference-cli-trace-benchmark` の golden が2件 FAIL した。**JSON表現を触る変更は、既存応答のバイト列を変えないことを golden で確かめる必要がある。**
+
+## 21. 第16ラウンド（2026-11-09）: 継続トークンの失効条件
+
+第11ラウンドで「どの値が継続トークンか」を扱い、「`-scope`・`-direction` を変えた場合の拒否」と「MCP が `continuation` を返すか」を未確認として残した。生出力は[第16ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND16_CONTINUATION_EXPIRY_2026-11-09/README.md)にある。
+
+- **Source の変更は種類を問わず失効させる**。コメント1行の追加でも属性の追加でも `STALE_SNAPSHOT`（exit 1）。Source の生バイトが `sourceIndexFingerprint` に入るためで、`plan/design/CLI_FIRST_INTERFACE_DESIGN.md` §159 の「非意味的な原文変更は拒否する」と一致した。
+- **選択子の変更も失効させる**。`-scope` を変えると `STALE_SNAPSHOT`、`-direction` を変えると同じく `STALE_SNAPSHOT`。`-mode full` → `summary` は `summary` が `-offset` を受け付けないため `INVALID_ARGUMENT`（exit 2、引数エラーとして正しい）。
+- **`summary` ⇄ `full` は相互に許容される**。`summary` のトークンで `mode=full -offset 0 -limit 2` が成功し、逆向きも成功。`mode`・`offset`・`limit` はトークンの対象外である。
+- **MCP も同じ**。`continuation.fingerprint` で継続でき、`graphFingerprint` や別 `scope` は `STALE_SNAPSHOT`。CLI と MCP で可否が一致した。
+
+新しい欠陥は検出しなかった。すべて文書に書かれた挙動と一致している。CAPI-2c のうち「参照実装の継続トークン」はここで一区切りとする（World/Source 改版の別故障モードは #3420 に残る）。
