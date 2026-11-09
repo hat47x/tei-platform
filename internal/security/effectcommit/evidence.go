@@ -3,6 +3,7 @@ package effectcommit
 import (
 	"context"
 	"errors"
+	"unicode"
 
 	"tei/internal/security/legacyauthorization"
 )
@@ -16,6 +17,12 @@ const (
 	ProvenanceUnspecified Provenance = "unspecified"
 	ProvenanceSynthetic   Provenance = "synthetic"
 	ProvenanceRealPG      Provenance = "real-pg"
+	// ProvenanceProvisionalGrant marks Evidence whose effect Grant came from the
+	// development-only provisional issuer (provisional owner decision D8,
+	// internal/security/provisionaleffectgrant). It is a mark of reduced trust:
+	// such Evidence must never be counted for G2. The composition supplies it;
+	// existing values are unchanged.
+	ProvenanceProvisionalGrant Provenance = "provisional-grant"
 )
 
 // ErrorClass is a coarse class of an Execution Error. It never carries the
@@ -53,6 +60,9 @@ type Evidence struct {
 	ReceiptVersion uint64     // receipt resource version for committed/replayed
 	Provenance     Provenance
 	Guarantee      GuaranteeLevel // the Provider's SELF-DECLARED level (not verified), or undeclared
+	// GuaranteeReason is the Provider's fixed, secret-free reason text for its
+	// declaration (for example "provisional D10: ..."), empty when undeclared.
+	GuaranteeReason string
 }
 
 // EvidenceSink receives Evidence. It has no error return: a sink failure must
@@ -88,6 +98,27 @@ func (r Runner) Lookup(ctx context.Context, req Request, grant legacyauthorizati
 	return res, err
 }
 
+// MaxGuaranteeReasonRunes bounds the reason text copied into Evidence.
+const MaxGuaranteeReasonRunes = 200
+
+// sanitizeReason drops control characters (newlines, NUL, escapes) and
+// truncates to MaxGuaranteeReasonRunes so a Provider cannot inject log lines or
+// bulk text through the declaration. It does not detect secrets: a reason must
+// still be fixed, secret-free text.
+func sanitizeReason(s string) string {
+	out := make([]rune, 0, len(s))
+	for _, r := range s {
+		if unicode.IsControl(r) {
+			continue
+		}
+		out = append(out, r)
+		if len(out) == MaxGuaranteeReasonRunes {
+			break
+		}
+	}
+	return string(out)
+}
+
 func classify(err error) ErrorClass {
 	var unc *CommitUncertainError
 	switch {
@@ -117,7 +148,8 @@ func (r Runner) emit(op string, req Request, grant legacyauthorization.Authoriza
 	if prov == "" {
 		prov = ProvenanceUnspecified
 	}
-	ev := Evidence{Operation: op, Provenance: prov, Guarantee: DeclaredGuarantee(r.Provider).Level}
+	declared := DeclaredGuarantee(r.Provider)
+	ev := Evidence{Operation: op, Provenance: prov, Guarantee: declared.Level, GuaranteeReason: sanitizeReason(declared.Reason)}
 	ev.ErrorClass = classify(err)
 	if ev.ErrorClass == ErrorClassNone {
 		ev.Status = res.Status

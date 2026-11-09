@@ -1,7 +1,15 @@
-name: TEI 旧変換PRの固定コミット再現検査
+name: TEI 旧変換コミットの不具合と修正の再現検査
 
-# #1053: 後日実施する固定SHAの再現試験。当時の実行記録は生成できない。
-# 一般のPRを対象にした新たな必須Gateにはしない。
+# #1053: 旧変換PRの固定コミットを再現する検査。
+#
+# 固定コミット 868156f6 は壊れたマージ解決を含み、internal/plugin/transform が
+# ビルドできない（eval.go が objectShared(fields...) と可変長で呼ぶが、定義は
+# objectShared(fields []Field)）。修正は ed04b700e。
+#
+# この検査は「その不具合が実在したこと」と「修正で解消したこと」を両方向から
+# 確かめる。片側だけでは、対象コミットの取り違えや、修正の巻き戻しを検出できない。
+# #3725: 以前は固定コミットに対して go vet・go test を実行していたため、
+# 対象が壊れている以上どの実行も失敗し、2026-10-12 以降ずっと赤だった。
 on:
   pull_request:
     branches: [main]
@@ -17,127 +25,96 @@ on:
 permissions:
   contents: read
 
+# 同じPRの古い実行だけを取り消し、mainへのpushは取り消さない（#3682）。
+concurrency:
+  group: tei-historical-transform-defect-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  historical-exact-head:
+  historical-defect-reproduction:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 25
     env:
       GOENV: off
       GOWORK: off
       GOFLAGS: ''
       GOTOOLCHAIN: local
-      HISTORICAL_SHA: 868156f603a6af21dc3c56d395e2a9d07c479116
+      BROKEN_SHA: 868156f603a6af21dc3c56d395e2a9d07c479116
+      FIX_SHA: ed04b700e9d566b5606270e648530ba424e17d7f
     steps:
-      - name: 旧PRの固定コミットを完全なGit履歴とともに取得
+      - name: 固定コミットを含む完全なGit履歴を取得
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: 868156f603a6af21dc3c56d395e2a9d07c479116
           fetch-depth: 0
           persist-credentials: false
 
-      - name: 旧ソースの版と清浄性を固定
+      - name: 対象コミットの存在と作業領域を確認
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "$HISTORICAL_SHA"
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
-          test "$(git rev-parse --is-shallow-repository)" = false
-          printf 'historical-exact-head=%s\n' "$HISTORICAL_SHA"
-          printf 'qualification-trigger=%s\n' "$GITHUB_SHA"
+          for sha in "$BROKEN_SHA" "$FIX_SHA"; do
+            git cat-file -e "${sha}^{commit}"
+          done
+          # 修正が不具合より後であること。順序が逆なら再現の前提が崩れている。
+          if ! git merge-base --is-ancestor "$BROKEN_SHA" "$FIX_SHA"; then
+            echo "the fix commit is not a descendant of the broken commit" >&2
+            exit 1
+          fi
+          printf 'broken-commit=%s\nfix-commit=%s\n' "$BROKEN_SHA" "$FIX_SHA"
 
-      - name: 旧コミット指定のGoを使用
+      - name: Go実行環境を準備
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version-file: go.mod
           check-latest: false
           cache: false
 
-      - name: 旧変換器の整形・静的解析・限定試験
+      - name: 固定コミットが実際に壊れていることを確かめる
         shell: bash
         run: |
           set -euo pipefail
-          go version
-          drift="$(gofmt -l internal/plugin/transform/*.go tools/reference-plugin-self-build/*.go)"
-          printf '%s\n' "$drift" | sed '/^$/d' > "$RUNNER_TEMP/historical-gofmt-drift.txt"
-          if [[ -n "$drift" ]]; then
-            printf 'historical formatting deviation (not normalized):\n%s\n' "$drift" >&2
-            printf 'historic-formatting=FAIL (reproduction continues)\n'
-          else
-            printf 'historic-formatting=PASS\n'
+          git checkout --quiet --detach "$BROKEN_SHA"
+          test "$(git rev-parse HEAD)" = "$BROKEN_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          # 壊れた状態を「落ちる」ことで確かめる。落ちなければ対象の取り違え。
+          log="$RUNNER_TEMP/broken-vet.log"
+          if go vet ./internal/plugin/transform/... >"$log" 2>&1; then
+            echo "the pinned commit compiled; it no longer reproduces the historical defect" >&2
+            cat "$log" >&2
+            exit 1
           fi
-          go vet ./internal/plugin/transform/... ./tools/reference-plugin-self-build
-          go test -count=1 -timeout 20m ./internal/plugin/transform/... ./tools/reference-plugin-self-build ./tools/reference-transform-seed-builder
-          printf 'focused-transform-qualification=PASS\n' | tee "$RUNNER_TEMP/focused-test-receipt.txt"
+          cat "$log"
+          if ! grep -Fq 'objectShared' "$log"; then
+            echo "the failure is not the historical objectShared defect:" >&2
+            cat "$log" >&2
+            exit 1
+          fi
+          printf 'historical-defect-reproduced=%s\n' "$BROKEN_SHA"
 
-      - name: 旧ソースからセルフビルドEvidence v2を実生成
+      - name: 修正コミットで解消していることを確かめる
         shell: bash
         run: |
           set -euo pipefail
-          go run ./tools/reference-plugin-self-build -repo . > "$RUNNER_TEMP/historical-evidence-v2.json"
-          jq -e --arg sha "$HISTORICAL_SHA" '
-            .schema == "tei.reference.plugin-self-build-evidence/v2"
-            and .repositoryRevision == $sha
-            and .transformBootstrap.seedBuilderReproducible == true
-            and .transformBootstrap.convergenceResult.converged == true
-            and .transformBootstrap.stage1ArtifactDigest == .transformBootstrap.stage2ArtifactDigest
-            and .transformBootstrap.packageReproducible == true
-            and .transformBootstrap.packageFirstArtifactDigest == .transformBootstrap.packageSecondArtifactDigest
-            and .transformBootstrap.packageFirstArtifactDigest == .transformBootstrap.packageOracleDigest
-            and (.transformBootstrap.runtimeEngineFingerprint | length) == 64
-            and (.transformBootstrap.packageBuildPlanFingerprint | length) == 64
-            and (. as $ev | any($ev.transformBootstrap.packageBuildPlan.dependencies[];
-              .kind == "runtime-engine"
-              and .artifactDigest == $ev.transformBootstrap.runtimeEngine.implementationDigest))
-            and .packageReproducible == true
-            and .nativeReproducible == true
-            and .reproducible == true
-          ' "$RUNNER_TEMP/historical-evidence-v2.json" >/dev/null
-          historical_format_clean=true
-          if [[ -s "$RUNNER_TEMP/historical-gofmt-drift.txt" ]]; then
-            historical_format_clean=false
-          fi
-          jq -n --arg sha "$HISTORICAL_SHA" \
-            --arg workflow_sha "$GITHUB_SHA" \
-            --argjson formatting_clean "$historical_format_clean" \
-            --slurpfile ev "$RUNNER_TEMP/historical-evidence-v2.json" '{
-            schema: "tei.reference.transform-historical-posthoc-receipt/v1",
-            testedHistoricalCommit: $sha,
-            qualificationWorkflowCommit: $workflow_sha,
-            qualificationTiming: "post-merge retrospective reproduction",
-            isHistoricalPreMergeReceipt: false,
-            formattingClean: $formatting_clean,
-            retrospectiveStatus: (if $formatting_clean then "SCOPED_CHECKS_PASSED" else "INCOMPLETE_HISTORICAL_FORMATTING_DRIFT" end),
-            focusedTransformTests: "PASS",
-            evidenceSchema: $ev[0].schema,
-            goVersion: $ev[0].goVersion,
-            runtimeEngineSourceDigest: $ev[0].transformBootstrap.runtimeEngineSourceDigest,
-            runtimeEngineFingerprint: $ev[0].transformBootstrap.runtimeEngineFingerprint,
-            pluginBuildPlanFingerprint: $ev[0].transformBootstrap.packageBuildPlanFingerprint,
-            stage1Digest: $ev[0].transformBootstrap.stage1ArtifactDigest,
-            stage2Digest: $ev[0].transformBootstrap.stage2ArtifactDigest,
-            pluginPackageOracleDigest: $ev[0].transformBootstrap.packageOracleDigest,
-            bootstrapConverged: $ev[0].transformBootstrap.convergenceResult.converged,
-            reproducible: $ev[0].reproducible
-          }' > "$RUNNER_TEMP/historical-posthoc-receipt.json"
-          cat "$RUNNER_TEMP/historical-posthoc-receipt.json"
+          git checkout --quiet --detach "$FIX_SHA"
+          test "$(git rev-parse HEAD)" = "$FIX_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          go vet ./internal/plugin/transform/...
+          go test -count=1 -timeout 15m ./internal/plugin/transform/...
+          printf 'historical-defect-fixed=%s\n' "$FIX_SHA" | tee "$RUNNER_TEMP/historical-fix-receipt.txt"
 
-      - name: 試験後の旧コミットと作業領域を確認
+      - name: 検証後の変更を検出
         if: always()
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "$HISTORICAL_SHA"
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
 
-      - name: 固定コミットの証拠を保存
+      - name: 検証の記録を保存
         if: success()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: tei-historical-transform-${{ github.run_id }}
+          name: tei-historical-transform-defect-${{ github.run_id }}
           path: |
-            ${{ runner.temp }}/historical-gofmt-drift.txt
-            ${{ runner.temp }}/focused-test-receipt.txt
-            ${{ runner.temp }}/historical-evidence-v2.json
-            ${{ runner.temp }}/historical-posthoc-receipt.json
-          if-no-files-found: error
-          retention-days: 7
+            ${{ runner.temp }}/broken-vet.log
+            ${{ runner.temp }}/historical-fix-receipt.txt

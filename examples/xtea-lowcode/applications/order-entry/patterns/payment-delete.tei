@@ -1,0 +1,11 @@
+pattern order_entry.payment_delete record {
+    data sales.payment
+    interaction {
+        item sales.payment.payment_id
+        item sales.payment.order_id
+        command sales.delete_payment {
+            input payment_id sales.payment.payment_id
+            input order_id sales.payment.order_id
+        }
+    }
+}

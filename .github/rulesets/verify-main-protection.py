@@ -67,10 +67,15 @@ def violations(value):
 
 
 def gh_json(endpoint):
+    # gh の出力は UTF-8 であり、Windows の既定ロケール（cp932）で復号すると
+    # 日本語のルール名を含む応答が UnicodeDecodeError になる。復号は常に
+    # UTF-8 を指定し、環境変数に依存させない。
     try:
         completed = subprocess.run(
             ["gh", "api", endpoint], check=True, text=True,
-            capture_output=True, timeout=30)
+            encoding="utf-8", capture_output=True, timeout=30)
+        if completed.stdout is None:
+            raise RuntimeError("GitHubの応答を取得できません")
         return json.loads(completed.stdout)
     except (OSError, subprocess.SubprocessError, ValueError) as exc:
         raise RuntimeError("GitHubから設定を読み取れません: " + type(exc).__name__) from exc

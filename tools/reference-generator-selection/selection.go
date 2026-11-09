@@ -383,7 +383,12 @@ func validateContract(contract Contract) error {
 			if len(contract.Projection.Fields) == 0 {
 				return fmt.Errorf("a record projection requires fields")
 			}
+			inputsByAttribute := map[string]InputSpec{}
+			for _, input := range contract.Inputs {
+				inputsByAttribute[input.Attribute] = input
+			}
 			seen := map[string]bool{}
+			seenInputs := map[string]bool{}
 			for _, field := range contract.Projection.Fields {
 				if strings.TrimSpace(field.Name) == "" || strings.TrimSpace(field.Input) == "" ||
 					strings.TrimSpace(field.Attribute) == "" || strings.TrimSpace(field.Primitive) == "" {
@@ -393,6 +398,27 @@ func validateContract(contract Contract) error {
 					return fmt.Errorf("record field %q is duplicated", field.Name)
 				}
 				seen[field.Name] = true
+				// The runtime reads one map key per field, so two fields sharing
+				// an input key would silently read the same value.
+				if seenInputs[field.Input] {
+					return fmt.Errorf("record field input %q is duplicated", field.Input)
+				}
+				seenInputs[field.Input] = true
+				input, ok := inputsByAttribute[field.Attribute]
+				if !ok {
+					return fmt.Errorf("record field %q references undeclared contract input attribute %q", field.Name, field.Attribute)
+				}
+				if field.Primitive != input.Primitive {
+					return fmt.Errorf("record field %q primitive %q does not match contract input %q primitive %q",
+						field.Name, field.Primitive, field.Attribute, input.Primitive)
+				}
+				// The record template renders many fields as strings. Accepting a
+				// many field with another primitive would pass validation and then
+				// fail at runtime on the first element (#2585 PFC-06).
+				if field.Many && field.Primitive != "std.text" && field.Primitive != "std.identifier" {
+					return fmt.Errorf("record field %q: many is not supported for primitive %q in this Target profile",
+						field.Name, field.Primitive)
+				}
 			}
 		default:
 			return fmt.Errorf("projection kind must be identity, normalize, or record")
@@ -476,6 +502,26 @@ func validateAgainstWorkspace(contract Contract, world ir.World) error {
 	}
 	if _, err := primitiveOf(types, contract.Output.Primitive); err != nil {
 		return fmt.Errorf("output primitive %s: %w", contract.Output.Primitive, err)
+	}
+	// #2585 PFC-08: validate the projection fields directly against the
+	// Workspace, not only through the contract inputs. A field whose attribute
+	// is absent or resolves to another primitive is a contract error even when
+	// an unrelated input still resolves.
+	if contract.Projection != nil && contract.Projection.Kind == "record" {
+		for _, field := range contract.Projection.Fields {
+			attribute, ok := findAttribute(world, field.Attribute)
+			if !ok {
+				return fmt.Errorf("projection field %q references attribute %s which was not found in the Workspace", field.Name, field.Attribute)
+			}
+			primitive, err := primitiveOf(types, string(attribute.TypeRef))
+			if err != nil {
+				return fmt.Errorf("resolve projection field %q attribute %s: %w", field.Name, field.Attribute, err)
+			}
+			if primitive != field.Primitive {
+				return fmt.Errorf("projection field %q attribute %s resolves to %s, field requires %s",
+					field.Name, field.Attribute, primitive, field.Primitive)
+			}
+		}
 	}
 	return nil
 }
@@ -724,6 +770,23 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 	actualDigest := digest(source)
 	if actualDigest != manifest.SourceDigest {
 		return reject("source digest mismatch: declared " + manifest.SourceDigest + ", actual " + actualDigest)
+	}
+	if expectedExtension == ".go" {
+		built, err := goSourceFiles(dir)
+		if err != nil {
+			return reject("go source selection failed: " + err.Error())
+		}
+		declaredName := filepath.Clean(filepath.FromSlash(manifest.Source))
+		bound := false
+		for _, name := range built {
+			if name == declaredName {
+				bound = true
+				break
+			}
+		}
+		if !bound {
+			return reject("declared source " + manifest.Source + " is not among the files passed to go build: " + strings.Join(built, ", "))
+		}
 	}
 	if manifest.Generation != nil && manifest.Generation.OutputDigest != actualDigest {
 		return reject("generation output digest does not match the candidate source")

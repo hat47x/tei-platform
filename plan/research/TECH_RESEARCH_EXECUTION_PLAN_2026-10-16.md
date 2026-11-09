@@ -13,7 +13,7 @@
 1. **仕様・設計の保持**：Code of Theseusの示唆を踏まえ、実装が動くかだけでなく、元の責務・依存関係・業務上の意味が保たれるかを照合する。#982、#998、#1120、#1124、#1803、#1805。
 2. **変更後の状態と操作の追跡**：VisStateCoderの局所更新と状態ずれの考え方を、既存のSource Index / Typed Reference / Scenario / Evidenceを参照する際に利用する。新しいProject State Graphを正本化しない。#1445、#1180、#997、#1824。
 3. **人・AI共通のCapabilityと観測**：ANISのdiscoverability／granularity／observabilityを、TEIの既存Operation／Service Contract／Runtime Authorityに適用する。AI専用の第二Operationを作らない。#951、#1121、#1824、#259。
-4. **検証器を検証する**：Oracle Integrity Auditの失敗注入・既知の正解・実行前後の状態保存を、既存のScenario/Evidence試験の品質評価に加える。検証器自身のPASSを業務上のPASSとみなさない。#1119、#1163、#1445。
+4. **検証器を検証する**：検証基準の健全性監査の失敗注入・既知の正解・実行前後の状態保存を、既存のScenario/Evidence試験の品質評価に加える。検証器自身のPASSを業務上のPASSとみなさない。#1119、#1163、#1445。
 
 既存の製品横断優先順位（受理済みSourceの実Web自身による拘束、同一R1からの実DB書込みと独立観測、三視点の受理）を追い越さない。軽量認知・Wasm/WIT・Studioはこの実業務の証明に**直列の前提として追加しない**。
 
@@ -24,7 +24,7 @@
 | [The Code of Theseus（10/14提出、10/15改訂）](https://arxiv.org/abs/2610.20068) | 設計文書を与えてもheld-outテスト成功はほぼ変わらず（33.7%→35.8%）、再構築したモジュール構造F1は0.54→0.63。ソフトウェアの設計構造と動作は別軸 | Source/三視点/Capability/実装の責務関係を復元できるか。振舞いの適合と設計構造の保持を別に計測する |
 | [VisStateCoder（10/13提出）](https://arxiv.org/abs/2610.17861) | 画面・ファイル・操作・描画証拠の関係を追跡して、更新の状態ずれを抑える。実験成績は研究の評価環境限定 | 差分によって実際に影響するUI部品・操作・Scenarioだけを再確認し、影響外を壊さないか |
 | [ANIS（10/11提出）](https://arxiv.org/abs/2610.15765) | AI操作の発見しやすさ、まとまった操作単位、変更後の読取り確認を分ける。論文の環境ではトークン使用量約73%減 | 同じCapabilityをHuman UIとAgent向け契約で発見・呼出し・別の読取りで照合できるか |
-| [When Agent Evaluation Becomes Unreliable（10/12提出）](https://arxiv.org/abs/2610.16067) | Oracle自身による評価前の状態改変で成功率が過大に見える実例。オフライン故障注入と状態不変条件で調査 | TEIの検証器に既知の正負ケースと故障注入を当て、検証処理が対象の状態・期待値を変えないか |
+| [When Agent Evaluation Becomes Unreliable（10/12提出）](https://arxiv.org/abs/2610.16067) | 検証器自身による評価前の状態改変で成功率が過大に見える実例。オフライン故障注入と状態不変条件で調査 | TEIの検証器に既知の正負ケースと故障注入を当て、検証処理が対象の状態・期待値を変えないか |
 | [Verify Claims, Not Scores（10/1提出）](https://arxiv.org/abs/2610.01348) | 単一スコアより主張別の根拠、未検証、到達可能な範囲の評価を重視 | UI表示、操作成功、業務結果、独立Observation、受理・Authorityの各主張を別々に表示する |
 
 これらの論文にある数値を、TEIの目標値や受理条件として持ち込まない。実装や実験の優先順位は、TEIの製品価値、利用者が確認する負担、検証できるSourceの有無から決める。
@@ -45,7 +45,7 @@ Requirement / original Source
   -> 変更後に影響する範囲だけ再検証
 ```
 
-同じ事例について、少なくとも次の負例を用意する。未受理改変、古いSource版と意味が等価な別Byte版、権限不足、表示は成功したがCommand未実行、Command完了後のObservation失敗、誤ったOracle、他のUIやSourceを巻き込む局所修正。実環境で確認していない負例は「試験案」または「合成試験済み」にとどめる。
+同じ事例について、少なくとも次の負例を用意する。未受理改変、古いSource版と意味が等価な別Byte版、権限不足、表示は成功したがCommand未実行、Command完了後のObservation失敗、誤った検証基準、他のUIやSourceを巻き込む局所修正。実環境で確認していない負例は「試験案」または「合成試験済み」にとどめる。
 
 ## 4. 作業順と完了の境界
 
@@ -117,11 +117,11 @@ Requirement / original Source
 | --- | --- | --- |
 | 意味・設計 | 受理済み／候補／未解決、誤りの検出数と誤警報、Cross-view依存の説明 | 見た目やテスト通過からMeaning Acceptanceを推測 |
 | 機能・UI | 操作を見つけられたか、Action/Commandの結果、拒否結果、画面での説明可能性 | UI描画成功＝業務完了 |
-| 実行・証拠 | exact Source／Artifact版、実Target、現在の権限、別read Observation、Oracle由来と検証器の非改変性 | 合成receipt・自己生成Oracle・古い成功＝本番PASS |
+| 実行・証拠 | exact Source／Artifact版、実Target、現在の権限、別read Observation、検証基準由来と検証器の非改変性 | 合成receipt・自己生成した検証基準・古い成功＝本番PASS |
 | 開発負担 | 操作数、確認時間、AIの追加質問数、局所再テスト件数、無関係なSource更新、再作業 | 生成コード量やトークン削減だけで生産性向上 |
 | 可搬性・資源 | 実行先、ABI、依存、起動、CPU/メモリ、バイナリサイズ、移植の工数 | Studio Host成功＝業務Target適合 |
 
-**Oracle側の健全性試験**を各Referenceの少数の既知正負ケースに必ず含める。少なくとも、期待値を変えても検証器が異常を示さずに成功と判定しないこと、検証器が検査前後の対象状態を書き換えないこと、Observationを取得できないときにPASSとしないこと、異なる実行版の証拠を結合しないことを確認する。必要な実行環境がないときは`not-evaluated`とする。仕様検査に恣意的な大量の性能・品質数値閾値は追加しない。
+**検証基準側の健全性試験**を各Referenceの少数の既知正負ケースに必ず含める。少なくとも、期待値を変えても検証器が異常を示さずに成功と判定しないこと、検証器が検査前後の対象状態を書き換えないこと、Observationを取得できないときにPASSとしないこと、異なる実行版の証拠を結合しないことを確認する。必要な実行環境がないときは`not-evaluated`とする。仕様検査に恣意的な大量の性能・品質数値閾値は追加しない。
 
 ## 6. 開発・統合規約
 
@@ -144,7 +144,7 @@ Requirement / original Source
 ## 8. 見直し条件
 
 - **前倒し**：実WebのSource R0/R2拒否、実DB write→別read、Human/Agent同一Capabilityを同じ版で実証でき、参照済み契約と既存Gateの接続先が判明した。
-- **保留**：原子的Sourceや独立Observationが未取得、Oracleを分離できない、実Host未検証、並行実装のOwnerが確定しない。
+- **保留**：原子的Sourceや独立Observationが未取得、検証基準を分離できない、実Host未検証、並行実装のOwnerが確定しない。
 - **方向転換**：仕様検査が既存の決定的な方法より誤警報や作業負担を増やす、共通UIが案件別の変更を難しくする、Component化がHost Adapterより複雑になる、CPU認知が決定的な基線を上回らない。
 
 **本計画の完成条件**：採用した研究方式の数ではなく、同じ受注事例について「受理済み意味・Source版・対象操作・実Provider・観測・失敗時の未解決」が追跡でき、変更を行う人の確認負担と影響外の再検証が実測で減ったかを説明できること。

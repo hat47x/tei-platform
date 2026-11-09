@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,6 +14,15 @@ import (
 // TestBusinessDFDReferenceNodeSuite runs the actual Node reference tests, not
 // a reconstructed V8 harness. Go-only environments may omit Node; the test
 // explicitly records that those checks were not exercised.
+func nodeSummaryHas(output []byte, kind string, count int) bool {
+	for _, prefix := range []string{"# ", "\u2139 "} {
+		if strings.Contains(string(output), prefix+kind+" "+fmt.Sprint(count)) {
+			return true
+		}
+	}
+	return false
+}
+
 func TestBusinessDFDReferenceNodeSuite(t *testing.T) {
 	node, err := exec.LookPath("node")
 	if err != nil {
@@ -47,7 +57,7 @@ func TestBusinessDFDReferenceNodeSuite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DFD Node tests failed: %v\n%s", err, output)
 	}
-	if !strings.Contains(string(output), "# fail 0") {
+	if !nodeSummaryHas(output, "fail", 0) {
 		t.Fatalf("DFD Node runner did not report zero failures:\n%s", output)
 	}
 	t.Logf("DFD Node reference tests completed using %s\n%s", node, output)

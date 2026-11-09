@@ -30,6 +30,10 @@ type ManagedFile struct {
 	Path       string `json:"path"`
 	SourceRoot string `json:"sourceRoot"`
 	Extension  string `json:"extension,omitempty"`
+	// ReadByLoader reports whether a domain loader consumed the file's bytes
+	// during Load. false means the file is managed but not interpreted: it is
+	// inventoried, not parsed. It does not mean the parser accepted the content.
+	ReadByLoader bool `json:"readByLoader"`
 }
 
 type SourceContribution struct {
@@ -45,13 +49,20 @@ type Result struct {
 	PluginImplementationSources map[string]SourceLocation
 	Sources                     map[string]SourceLocation
 	ManagedFiles                []ManagedFile
-	SourceContributions         []SourceContribution
+	// SourceRootFindings are manifest source-root problems found before any
+	// domain loader read the root. They are source-direct findings: an unknown
+	// or missing root has no Canonical Subject.
+	SourceRootFindings  []WorkspaceSourceRootFinding
+	SourceContributions []SourceContribution
 
 	// Private, transient read provenance. Not part of Canonical World or a
 	// serialized Source Index; only Load may populate this snapshot.
 	sourceSnapshotRoot  string
 	sourceSnapshot      map[string][]byte
 	semanticSourceFiles []string
+
+	// Locally parsed Semantic Source files, grouped by their declared Namespace.
+	semanticFilesByNamespace map[string][]string
 	// Load-time bytes of managed files that no domain loader parsed (for
 	// example a forward-compatible source root asset). Kept separate from
 	// sourceSnapshot so the parser-bound meaning of that map, and of
@@ -62,7 +73,15 @@ type Result struct {
 	// imports. The manifest is NOT a Source Index Artifact (adding it would
 	// change every accepted revision); it is recorded here instead.
 	sourceManifest        ManifestIdentity
+	sourceManifestName    string
 	sourceImportsDeclared bool
+
+	// Original manifest bytes captured by Load; separate from Source Index.
+	sourceManifestBytes *manifestReadBytes
+
+	// Same-Load parsed evidence of explicitly selected external Namespaces.
+	// This private evidence does not grant cross-Provider snapshot qualification.
+	importedParsedLoads map[string]*importedParsedLoad
 	// Format version declared by the Workspace manifest. Semantic files may
 	// declare their own header; when they do, it must agree with this value.
 	manifestFormatVersion int
@@ -92,6 +111,28 @@ type ManifestIdentity struct {
 // ManifestIdentity reports the manifest bytes read by Load (zero for a Result
 // not produced by Load).
 func (r Result) ManifestIdentity() ManifestIdentity { return r.sourceManifest }
+
+// WorkspaceIdentity names which Workspace a read result came from. Several
+// Workspaces may declare the same Canonical IDs with different meanings, and
+// worldFingerprint describes content, not the Workspace, so a caller that
+// mixes results needs this. Name is the author-written `workspace:` value and
+// may be empty (a manifest without it still loads). Manifest is the bytes
+// identity and FormatVersion the declared version. None of these is an
+// acceptance record, a path, or a lock.
+type WorkspaceIdentity struct {
+	Name          string           `json:"name,omitempty"`
+	FormatVersion int              `json:"formatVersion,omitempty"`
+	Manifest      ManifestIdentity `json:"manifest"`
+}
+
+// Identity reports the Workspace identity Load recorded (#3181).
+func (r Result) Identity() WorkspaceIdentity {
+	return WorkspaceIdentity{
+		Name:          r.sourceManifestName,
+		FormatVersion: r.manifestFormatVersion,
+		Manifest:      r.sourceManifest,
+	}
+}
 
 func Load(root string) (Result, error) {
 	return loadWithStack(root, map[string]bool{})
@@ -142,6 +183,8 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 	var roots []string
 	var imports []WorkspaceImport
 	var manifestID ManifestIdentity
+	var manifestRaw []byte
+	manifestName := ""
 	manifestFormatVersion := 0
 	if src, err := readPinnedWorkspaceFile(sourceRoot, "tei.workspace.yaml"); err == nil {
 		manifest, parseErr := parseWorkspaceManifestYAML(string(src))
@@ -164,12 +207,15 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 			return Result{}, fmt.Errorf("%s: unsupported workspace formatVersion %d (supported: 1, 2)", manifestYAML, manifest.FormatVersion)
 		}
 		manifestFormatVersion = manifest.FormatVersion
+		manifestName = manifest.Name
 		roots, imports = manifest.Sources, manifest.Imports
 		manifestID = ManifestIdentity{Path: "tei.workspace.yaml", SHA256: sourceindex.Fingerprint(src)}
+		manifestRaw = append([]byte(nil), src...)
 	} else if src, legacyErr := readPinnedWorkspaceFile(sourceRoot, "tei.workspace.tei"); legacyErr == nil {
 		manifestID = ManifestIdentity{Path: "tei.workspace.tei", SHA256: sourceindex.Fingerprint(src)}
+		manifestRaw = append([]byte(nil), src...)
 		var parseErr error
-		roots, parseErr = syntax.NewParser(string(src)).ParseWorkspace()
+		manifestName, roots, parseErr = syntax.NewParser(string(src)).ParseWorkspace()
 		if parseErr != nil {
 			return Result{}, fmt.Errorf("%s: %w", manifestTEI, parseErr)
 		}
@@ -180,22 +226,37 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 		return Result{}, err
 	}
 	// Inventory and verify the physical boundary before any domain loader can
-	// read a Source file or parse a symlink to an outside target.
+	// read a Source file or parse a symlink to an outside target. Containment
+	// failures keep their existing fail-closed error and are never reclassified
+	// as a finding.
 	managedFiles, err := scanManagedFiles(sourceRoot, roots)
 	if err != nil {
 		return Result{}, err
 	}
+	// Classify declared roots after the physical boundary is verified, so a
+	// misspelling is reported as itself rather than as a downstream cascade and
+	// an escaping symlink keeps the original containment error. Managed but
+	// not interpreted files are named separately from root findings. Neither
+	// becomes a semantic Diagnostic: there is no Subject.
+	sourceRootFindings, err := checkWorkspaceSourceRoots(sourceRoot, roots)
+	if err != nil {
+		return Result{}, err
+	}
+	sourceRootFindings = append(sourceRootFindings, CheckWorkspaceManagedFileNames(managedFiles)...)
 	r := Result{
 		Sources:                     map[string]SourceLocation{},
 		PluginImplementationSources: map[string]SourceLocation{},
 		ManagedFiles:                managedFiles,
+		SourceRootFindings:          sourceRootFindings,
 		sourceSnapshotRoot:          rootReal,
 		sourceSnapshot:              make(map[string][]byte),
 		sourceReadRoot:              sourceRoot,
 		sourceManifest:              manifestID,
+		sourceManifestName:          manifestName,
 		sourceImportsDeclared:       len(imports) > 0,
 		manifestFormatVersion:       manifestFormatVersion,
 	}
+	r.sourceManifestBytes = &manifestReadBytes{content: manifestRaw}
 	// TEI standard semantic types are a library prelude, not Micro Kernel kinds.
 	r.World.Semantics = append(r.World.Semantics, stdlib.SemanticNamespace())
 	if hooks.afterPin != nil {
@@ -268,11 +329,26 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 	if err := captureManagedExtra(&r); err != nil {
 		return Result{}, err
 	}
+	markManagedFilesReadByLoader(&r)
 	Normalize(&r.World)
 	// The loader snapshot stays available, but an OS handle must not escape
 	// the Load lifetime. Imports close their own pinned roots independently.
 	r.sourceReadRoot = nil
 	return r, nil
+}
+
+// markManagedFilesReadByLoader records which managed files a domain loader
+// consumed. The sourceSnapshot holds exactly the bytes read through
+// readSourceForLoad; sourceManagedExtra holds the rest. ManagedFile.Path and
+// snapshot keys share the normalized slash form.
+func markManagedFilesReadByLoader(result *Result) {
+	for i := range result.ManagedFiles {
+		path, err := sourceindex.NormalizeWorkspacePath(result.ManagedFiles[i].Path)
+		if err != nil {
+			continue
+		}
+		_, result.ManagedFiles[i].ReadByLoader = result.sourceSnapshot[path]
+	}
 }
 
 // parseWorkspaceYAML is retained for existing callers of the source-root-only API.
@@ -522,6 +598,11 @@ func loadSemantics(root string, r *Result) error {
 			return sourceErr(path, fmt.Errorf("workspace formatVersion 2 requires an explicit semantic formatVersion header"))
 		}
 		r.semanticSourceFiles = append(r.semanticSourceFiles, relPath(root, path))
+		if r.semanticFilesByNamespace == nil {
+			r.semanticFilesByNamespace = make(map[string][]string)
+		}
+		r.semanticFilesByNamespace[string(ns.ID)] = append(
+			r.semanticFilesByNamespace[string(ns.ID)], relPath(root, path))
 		idx, ok := byNamespace[ns.ID]
 		if !ok {
 			idx = len(r.World.Semantics)
@@ -533,8 +614,10 @@ func loadSemantics(root string, r *Result) error {
 		r.World.Semantics[idx].Data = append(r.World.Semantics[idx].Data, ns.Data...)
 		r.World.Semantics[idx].Capabilities = append(r.World.Semantics[idx].Capabilities, ns.Capabilities...)
 		r.World.Semantics[idx].Validations = append(r.World.Semantics[idx].Validations, ns.Validations...)
+		r.World.Semantics[idx].Calendars = append(r.World.Semantics[idx].Calendars, ns.Calendars...)
 		r.World.Semantics[idx].Periods = append(r.World.Semantics[idx].Periods, ns.Periods...)
 		r.World.Semantics[idx].EffectRules = append(r.World.Semantics[idx].EffectRules, ns.EffectRules...)
+		r.World.Semantics[idx].RunPlans = append(r.World.Semantics[idx].RunPlans, ns.RunPlans...)
 		for _, typ := range ns.Types {
 			r.Sources["semantic-type:"+string(typ.ID)] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}
 		}

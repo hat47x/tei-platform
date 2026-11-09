@@ -1,0 +1,115 @@
+{
+  "note": "What a subagent launch sends to the provider: request order, session identity, tool surface, and whether the subagent prompt reaches both the parent and the child.",
+  "promptCanary": "SUBAGENT_PROMPT_CANARY_931",
+  "requests": [
+    {
+      "file": "001-request.json",
+      "bytes": 66922,
+      "sha256": "92d13df9c6c40d3fd7c6f7740d15c36bfa1eeb5f5a07c1e63122af0c2fd39084",
+      "toolCount": 24,
+      "toolNamesHash": "07df955ad5f09e50",
+      "messageCount": 1,
+      "roles": [
+        "user"
+      ],
+      "systemBytes": 2800,
+      "sessionId": "session-43e5348a-0267-43b3-8947-459fbf754114",
+      "sessionFormatVersion": 4,
+      "afterSeq": -1,
+      "throughSeq": 17,
+      "eventCount": 18,
+      "promptCanaryPresent": false,
+      "descriptionPresent": false
+    },
+    {
+      "file": "002-request.json",
+      "bytes": 40484,
+      "sha256": "fcd4ec324296b74457533e4613e2b4718fcf5167e4cfac4991a1cdb191a0afed",
+      "toolCount": 0,
+      "toolNamesHash": "e3b0c44298fc1c14",
+      "messageCount": 1,
+      "roles": [
+        "user"
+      ],
+      "systemBytes": 487,
+      "sessionId": "session-43e5348a-0267-43b3-8947-459fbf754114",
+      "sessionFormatVersion": 4,
+      "afterSeq": -1,
+      "throughSeq": 17,
+      "eventCount": 18,
+      "promptCanaryPresent": false,
+      "descriptionPresent": false
+    },
+    {
+      "file": "003-request.json",
+      "bytes": 37079,
+      "sha256": "a05ca9ecc8bf258a1243b9cddb8839f40cc30e8bc3e531d6838fddaba621e3dd",
+      "toolCount": 24,
+      "toolNamesHash": "07df955ad5f09e50",
+      "messageCount": 3,
+      "roles": [
+        "user",
+        "assistant",
+        "user"
+      ],
+      "systemBytes": 2800,
+      "sessionId": "session-43e5348a-0267-43b3-8947-459fbf754114",
+      "sessionFormatVersion": 4,
+      "afterSeq": 17,
+      "throughSeq": 26,
+      "eventCount": 9,
+      "promptCanaryPresent": true,
+      "descriptionPresent": true
+    },
+    {
+      "file": "004-request.json",
+      "bytes": 69666,
+      "sha256": "7cc59f05c018a4f9402a610d3e3d3e03a07a4a766e86deb4de4aee2ea71dc709",
+      "toolCount": 24,
+      "toolNamesHash": "07df955ad5f09e50",
+      "messageCount": 1,
+      "roles": [
+        "user"
+      ],
+      "systemBytes": 2800,
+      "sessionId": "a1870c9d-002c-42f5-94d1-1a51e62c3f8b",
+      "sessionFormatVersion": 4,
+      "afterSeq": -1,
+      "throughSeq": 13,
+      "eventCount": 14,
+      "promptCanaryPresent": true,
+      "descriptionPresent": true
+    },
+    {
+      "file": "005-request.json",
+      "bytes": 37068,
+      "sha256": "f2c0562bf9c0a7063e2fe7d06e87810046abc27d33b7dda1603164915a87a2aa",
+      "toolCount": 24,
+      "toolNamesHash": "07df955ad5f09e50",
+      "messageCount": 5,
+      "roles": [
+        "user",
+        "assistant",
+        "user",
+        "assistant",
+        "user"
+      ],
+      "systemBytes": 2800,
+      "sessionId": "session-43e5348a-0267-43b3-8947-459fbf754114",
+      "sessionFormatVersion": 4,
+      "afterSeq": 26,
+      "throughSeq": 35,
+      "eventCount": 9,
+      "promptCanaryPresent": true,
+      "descriptionPresent": true
+    }
+  ],
+  "distinctSessionIds": 2,
+  "sessionOrder": [
+    "session-43e5348a-0267-43b3-8947-459fbf754114",
+    "session-43e5348a-0267-43b3-8947-459fbf754114",
+    "session-43e5348a-0267-43b3-8947-459fbf754114",
+    "a1870c9d-002c-42f5-94d1-1a51e62c3f8b",
+    "session-43e5348a-0267-43b3-8947-459fbf754114"
+  ]
+}

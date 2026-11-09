@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "tei.cli.workspace-files/v0",
+  "ok": true,
+  "result": {
+    "managedFiles": [
+      {
+        "path": "docs/overview.md",
+        "sourceRoot": "docs",
+        "extension": ".md",
+        "readByLoader": false
+      },
+      {
+        "path": "plan/CLI_FIRST_INTERFACE_DESIGN.md",
+        "sourceRoot": "plan",
+        "extension": ".md",
+        "readByLoader": false
+      }
+    ],
+    "sourceRootFindings": [
+      {
+        "root": "docs",
+        "message": "source root \"docs\" is not interpreted by this Loader; its files are managed but not read",
+        "severity": "warning"
+      },
+      {
+        "root": "plan",
+        "message": "source root \"plan\" is not interpreted by this Loader; its files are managed but not read",
+        "severity": "warning"
+      }
+    ]
+  }
+}

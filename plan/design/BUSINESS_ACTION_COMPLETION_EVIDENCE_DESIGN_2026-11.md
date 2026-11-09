@@ -148,7 +148,7 @@ BC-08/09のOwner仮説P3、BC-07の正式回復条件、BC-12の量化/再集計
 - **証明範囲**：与えられた情報を失うProjectionだけからは、二世界に異なるClaimを正しく判定することが不可能、という*有限個の合成反例*。見えない値が実際にあること、OwnerのP3/Recovery規則が受理済みであること、TEI Consumerが現在誤判定していること、過去のReceiptや外部効果を実測したことは証明していない。
 - **次に必要な製品接続**：#2506/#2500/#2516の実read-only Consumerと、#1174/#1129が所有する実Provider/Effect証拠に対し、合成の同一表示ケースを投入し、「根拠不足」の説明と実行許可が適切に分離することを観測する。実原モデル・Owner判断は#1125/#267に留める。
 
-このfixtureは**計画の十分性を反証する補助証拠**であり、第二のBusiness Rule Engine／汎用Oracle/Runtime Acceptanceを構成しない。追加の合成Case数を製品Gate PASSへ加算しない。
+このfixtureは**計画の十分性を反証する補助証拠**であり、第二のBusiness Rule Engine／汎用検証基準/Runtime Acceptanceを構成しない。追加の合成Case数を製品Gate PASSへ加算しない。
 
 
 ## 9. 操作意味と共有確定境界の二世界（2026-11-02追補・Claim別反証）
@@ -177,7 +177,7 @@ BC-14の**B側の限定的な旧挙動**は、[統合済み#2154](https://github
 
 ### 9.3 合成反証と製品受入の線引き
 
-既存の[自作two-world fixture](../fixtures/business-completion-claims/verify_claim_projections.py)へBC-13/14の二組を追加する。まず同一の公開Projectionに対し架空OracleのB₀/取消Claimが逆になることだけを検証する。その後、**BC-13**は#2598でIntent→Actual Capability/Request、**BC-14**は#1129/1174で子Function→親Pending→独立DB readを同じCase/Revisionで結合する。実Effect帰属や正式Owner意味の判定は、#1163同一Runの証拠が得られるまで保留する。
+既存の[自作two-world fixture](../fixtures/business-completion-claims/verify_claim_projections.py)へBC-13/14の二組を追加する。まず同一の公開Projectionに対し架空の検証基準のB₀/取消Claimが逆になることだけを検証する。その後、**BC-13**は#2598でIntent→Actual Capability/Request、**BC-14**は#1129/1174で子Function→親Pending→独立DB readを同じCase/Revisionで結合する。実Effect帰属や正式Owner意味の判定は、#1163同一Runの証拠が得られるまで保留する。
 
 **今回の資格**：本追加は設計候補と自作合成反例であり、旧Driver/実PG/製品Web/Windows/SHO/正式Owner受理を新しく実行・採用したものではない。#2154の既存実動、#2597のSQLite局所結果、#2598/#2485の設計所見は、それぞれの固定版・範囲に限る。成果物のPublish/Manifest一式整合は独立した[#2604](https://github.com/hat47x/tei-platform/issues/2604)が所有し、設計書のbyte/公開成功をAction Meaning受理へ昇格させない。
 
@@ -433,3 +433,70 @@ Markdown表、構造化Record、インデントDSL、Typed Graphviz、メソッ�
 - **#1119**：P0-a実PG K/O/Lookup、P0-b二Function Owner-write、S0/J5およびG0〜G4を先行。P1の最小製品実証はまず一Provider・一Claimで「既知変更」「観測Gap」「完全性不明」をread-only診断し、次に異Providerと開示Consumerへ接続する。新Host/新中央Claim Engine/共通Event Registry/新Gateは追加しない。
 
 **検証状態**：この追補は隔離した自作Python有限fixtureのみ。実TEI Go/Provider・Change Stream・PG/DB・元X-TEA意味・SHO/AI/外部Target・Owner正式受理は**NOT RUN/NOT ACCEPTED**。既存§13のCQ-01〜13の結果を製品資格へ昇格しない。
+
+## 15. Commit後の独立ReadとBusiness完了は別：経路・因果可視性・Owner対象集合の接合（2026-11-03追補）
+
+### 15.1 §11〜14から残った「同じ値に見える」という誤った完了証拠
+
+§11はMeaning→Invocation→Request→Receipt→Effectの因果接合、§12は実取得・開示資格、§13〜14はClaim依存と変更観測窓の閉包を扱う。しかし「Receiptの後で別Readが同じ値を返した」というだけでは、**そのReadが当該Commitを含むか、当該Owner Actionがその値を生んだか、必要な業務対象集合Lが全て満たされたか**を一度に証明できない。
+
+[#2598 IB-R1〜R6](https://github.com/hat47x/tei-platform/issues/2598#issuecomment-6579889382)は、PrimaryでCommitしてもReplicaが旧値を読めること、ACK消失時にReplica旧値から未Commitや安全な再送を推定できないことを整理した。本節は同じProvider動作を実装せず、**#1125 S3の完了証拠に接合する際の資格の分解**を扱う。原モデルのOwner Action意味を推定・採用しない。
+
+| 主張 | 必要な独立根拠 | 禁止する短絡 |
+| --- | --- | --- |
+| **U：Owner Action意味に沿う実Request** | 受理済みAction/Meaning版、typed Intent→実送信byte変換、実Target/Scope/Operation/Hash/Capability Binding（#267/#2598/#2485） | 同Effect/Data型、同名Action、同じRequestHashだけで意味同値 |
+| **K：当時のCommit/Receipt** | 実ProviderのQualified Receipt、Scope/Operation/不変Requestと対象Effectの照合（#1174） | Caller ACK消失またはRead旧値を未Commitと認定 |
+| **V：後続Readが当該Commitを含むこと** | 実ReadのRoute・Tenant/Namespace・対象・Query Scope、比較可能なSource log/commit位置、Providerが**そのReadへ実際に適用した**可視位置・Fence（#2611/#2622/#1708） | 同値Result、時刻近接、同名Snapshot Token、宣言だけのread-your-writes |
+| **O：Postimageとして何を観測したか** | Vに加え独立Read値・Field/Grain・Read ID・後続変更に関する必要な履歴（#1163/#2582） | Readが旧値だからKが偽、値が一致したから当該Action由来 |
+| **B：OwnerのBusiness完了** | Owner受理済み述語、必要対象Lの全被覆・非出力依存/Rule・外部Handoff/手作業・有効期間、必要K/Oの因果接合（#1125/#1129/#267） | 一明細K/O、UI保存表示、個別Patch成功だけで業務全体完了 |
+| **D：現在Consumerへ説明可能** | 現在のAudience/目的に対するDisclosure Grant、実ロード成果物/説明版、各Witnessの開示資格（#2516/#1178/#2604） | 当時の読取権限や内部K/O保存から外部開示を自動許可 |
+
+**Vの限定**：異Providerの数値位置は比較不能。ReplicaがPrimary由来Commit適用位置を宣言していても、当該Readに適用されたFence・Route・Scopeの実証が必要。ReadがそのCommit以降を含むことと、現在表示が当時のPostimageと一致することも異なる（後続Action・補償があり得る）。値が一致しても因果帰属の証明にはならない。全ProviderにCDCや共通分散Clockを強制せず、保証できないときはClaim相対に **not-established** とする。
+
+**KとResult/再試行の限定**：初回BusinessResult、確定K、Read可視性、現在Projection、Owner完了Bは別資格。ACK不明でReplicaが旧値でも、元の不変Request/Scope/Operationに対する[#1174 Lookup/Recovery](https://github.com/hat47x/tei-platform/issues/1174)の可能性を判定し、**新OperationIDによる盲目的な再送を安全と表示しない**。既存K再照会Txの終了エラー（#1174 RR-P5）と初回書込みCommit不明を同一障害に丸めない。
+
+### 15.2 PO-01〜15：合成決定票による最小反例
+
+[独立した自作Python fixture](../fixtures/business-completion-claims/verify_post_commit_observation_qualification.py)は、Action（Meaning/Target/Scope/RequestHash/typed-to-byte帰属/Caller ACK）、Receipt（対象/実ログ/Commit位置/資格）、Read（実Route/対象/Source log/適用位置/そのReadのFence資格/値）を**架空の証拠入力**として比較する。既存Runner・Provider・Grant・Owner Ruleを実装したものではない。
+
+| ケース | 限定的に識別する結果 |
+| --- | --- |
+| **PO-01** | 同一対象/Scope/Log、当該Readへ実適用された位置がCommit位置以上、値一致 → KとReadの可視性候補のみ。B/Dは未確立 |
+| **PO-02〜04** | 遅れたReplica、ACK喪失後にQualified Kを別途取得できた場合、ACK不明かつK未取得の場合を区別。旧値/ACK不明からK否定や再Submit許可を導かない |
+| **PO-05〜08** | 異対象、異Source Logの同数値位置、当該ReadのFence未確認、Replica適用位置不明 → 同値ResultでもV未確立 |
+| **PO-09** | K後の別変更で可視値が変わる → ReadがCommit以降を含んでもKは消えず、現在値≠元のPostimage |
+| **PO-10〜12** | typed→byte帰属の欠損、RequestHash/Meaning版不一致 → Qualified K/Readが存在してもOwner Action U→Kを接合しない |
+| **PO-13〜15** | Read Scope不明、Owner必要対象Lの被覆を単一行から推定、異Tenant Scope → B/開示資格を成立させない |
+
+**限定実測**：隔離Python 3.13.5で構文検査 PASS、unittest **15/15 PASS**。ローカル実行byteとGitHub保存fileのBlob **00744f28141b5e5298539e845b64b1fb1f36ffee** の一致を確認。Receipt資格、typed→request対応、当該ReadのFence保証、取得Scopeは**作者が入力として与えた仮定**である。実TEI Provider/Hostがこの証拠を発行できるという実証ではない。Business completedとCurrent disclosureは本比較器では**常にnot-established**であり、新しいOwner判断/認可器を持たない。
+
+### 15.3 既存計画への引渡しと実Providerでの次の一件
+
+- **P0-a #1174**：同じ不変Requestの実PG post-commit異常→K/独立O/Lookupを最優先。ReceiptとRead結果の因果接合を別Evidence列で実記録し、結果の旧値・異値を即未Commit/再送可と扱わない。
+- **P0-b #1129／#1125**：二Function Owner-writeについて子K・親Pending・Owner必要集合L/最終Invariant/手作業/外部Handoffを別に確認。各部分KをBへ足し算しない。
+- **P1 #2598/#2611/#2622/#1708**：一ProviderのPrimary/Replica対照で、当該Readの実可視位置・Target・Scopeが取得できるか確かめる。不可ならnot-established。異Providerの同名Positionを強引に比較せず、既存IB-R試験Ownerを維持。
+- **P1 #2582/#2506/#2516/#2604/#1163**：選択epoch・旧応答・Result Slice、Consumerの現Grant・実読込Artifact、Source/Request/Provider/Readを同一固定試行に接合。§14の必要変更窓が不明なら現在のB/確認資格も未確立とする。
+- **#267 Owner判断**：原Functionの利用箇所Uと業務Actionの対応、完了述語の対象L・時間・Rule/外部工程、初回Result再生の義務を未受理と明示する。原モデルの未許諾固有内容を転載せず、合成Actionを正式意味へ昇格させない。
+
+**適用判断**：本節は既存[#1119 G0〜G4](https://github.com/hat47x/tei-platform/issues/1119)に必要な証拠の受渡し条件であり、新Gate、Host、Permission Engine、Evidence Registry、Receipt/Result Schema、共通Read-after-write実行器を増やさない。実Provider可視性・実DB・外部Host・SHO Consumer・Owner完了条件・実Target同等性は**NOT RUN / NOT ACCEPTED**。合成PASSを完全移植や実Provider E2Eへ合算しない。
+
+### 15.4 0件・複数Provider・変換結果でも「V成立＝B完了」としない（2026-11-03追加）
+
+§15.1のV（ある実ReadがそのCommitを含む）を、**Ownerの必要対象集合Lの完全性**や**複数Readの共同時点整合**へ無条件に拡張しない。既存[#2598 IB-N1〜06](https://github.com/hat47x/tei-platform/issues/2598#issuecomment-6585298131)、[#2582 QX-32](https://github.com/hat47x/tei-platform/issues/2582#issuecomment-6585309158)、[#2622 実SQLite列READ](https://github.com/hat47x/tei-platform/issues/2622#issuecomment-6585720562)の局所観測を**新しいEngineで模倣せず**、同一移植検収票へ受渡す。
+
+| 境界 | 判別すべき事実 | Owner完了Claimへの帰結 |
+| --- | --- | --- |
+| **空結果の母集団** | Read=空、Complete=true は、当該Provider/Predicate/Principal/Policy/Scope/時点での完全性にすぎない。RLS不可視行・未取得Tenant・否定Predicate・Relation Pathは別 | Owner対象L全体の不存在や「一度も割当なし」を推定しない。後者は§14の履歴窓被覆も必要 |
+| **保存後の空Read** | PrimaryにKがあり、Replicaは旧空結果、あるいは行がRLSで不可視であり得る。該当ReadにKを含むFenceが無い場合Vは未確立（IB-N1/3） | ACK-lossと旧Readから「未保存」「再作成可」を導かない。同一不変OperationID/RequestのLookup/Recoveryへ戻す |
+| **ABA** | 空→1件→空と無変更は値だけでは見分けられない（IB-N4/§14） | 現在不存在と歴史的Effectや「一度も存在しない」Claimを独立に扱う |
+| **二Providerのfractured read** | P1で旧Relation、P2で新属性を読むと、それぞれ個別のRead資格があっても同時の実業務世界に無い組を得られる。QX-32は実SQLiteで局所反例を観測済み | 各ReadのV/Completeを足して全体Bを証明しない。同時整合が必要なら共同Cut/再評価/適格な調停、不可ならunresolved |
+| **SQL/Query意味** | 基本Data ModelはTable/Field/Key/Relationの直接宣言。SQLは主としてLINQ型の変換記述で、TEI QueryとNative SQLを別解釈（[#2387補正](https://github.com/hat47x/tei-platform/issues/2387#issuecomment-6586014585)）。同じSQL byteでもSchema/Dialect、NATURAL JOINの暗黙列集合、非出力Predicate、JSON missing/nullが変わる | SQL byte/出力値一致から対象L・Join/Lineage・Grain・Rule意味同値へ飛躍しない。Sourceの元Syntax Sugar保存とOperator/Schema/Provider Pinを分離 |
+| **取得と開示** | Function Context明示MappingはD(display)/V(rule)/Q(predicate,sort,negative)/A(action)。実SQLite列READはStorage Row/Host Grantの証明ではない | 内部で秘密Predicateを読めてもConsumerへそのFieldや非公開Actionの存在を自動開示しない |
+
+**既存#1163同一Attempt票への追加列（Schema採用ではない）**：Query解釈／Schema・Dialect・Operator版／実Provider Route、Predicate・Relation・negative dependencyの母集団と実Read Scope、Result SliceのCompleteが意味する範囲、Owner対象Lとの包含・一致、各Readが含むCommit位置と共同Cutの有無、Path/Occurrence/Grain・Missing/NULL区別、Consumer用途・現Grantと実Reader出力。**各局所Go/SQLite/PythonのPASSを一本の製品実証に合算しない**。
+
+**実行順はP0を変更しない**。P0-a #1174は実PGの初回Commit不明後のK/独立O/Lookupを実証し、現行[#2664 Caller/Barrier](https://github.com/hat47x/tei-platform/pull/2664)を既存Producer候補として使う。ただしその合成Grant/試験DDL/CLI形driverは正式本番受理ではない。別[#2680 RR-P5 Go回帰](https://github.com/hat47x/tei-platform/pull/2680)は**既存Kを読むだけの再送/Lookup Tx終了故障**の局所回帰であり、実PG postcommit事例とは別。P0-b #1129/#1125は二Function同Rule・親最終Invariant・Owner対象L・手作業/Handoffを通して初めてBを審査する。P1では(A)因果位置と必要集合が証明できるRead、(B)旧Replica空ReadやRLS部分Read、(C)二Providerのfractured read、の3対照を#2582/#2622/#2598/#1163のOwnerへ渡す。
+
+**SHO・外部Targetへの移植**：原モデル→TEI統合モデルを意味正本とし、SQL/Markdownの元記法を勝手に展開形式へ書き戻さない。生成した.NET/Java/WASM LibraryとSHO設計書は同じ受理Meaningに帰属するが、実ロードbyte、Host Authority、Target別のNULL/精度/作用、Consumer Disclosure、Owner受理を別証拠として保つ。独自TEI Host、第二Canonical、共通Snapshot Registryや新Gateは追加しない。
+
+**資格**：上記は既存ローカル合成/SQLite/実Goの限定報告を同一Attemptへ接続する**設計・受渡し**であり、TEI本体→実PG→二Function→SHO/Consumer→Owner受理の縦断は **NOT RUN / NOT ACCEPTED**。

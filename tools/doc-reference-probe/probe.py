@@ -9,10 +9,22 @@ import sys
 from datetime import date
 from pathlib import Path
 
-RULE = "repo-path-v3"
-TOKEN = re.compile(r"`(?:(ref|planned):)?((?:docs|plan|tools|reference|requirements|product)/[A-Za-z0-9_./-]+)`")
+RULE = "repo-path-v4"
+TOKEN = re.compile(r"`(?:(ref|planned):)?((?:cmd|core|docs|internal|plan|plugins|tools|reference|requirements|product)/[A-Za-z0-9_./-]*)`")
 DECLARATION = re.compile(r"`(ref|planned):([^`\n]*)`")
 FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})([^\r\n]*)")
+
+
+def parse_allowlist(raw):
+    """Reject duplicate JSON keys instead of silently choosing the last value."""
+    def unique_object(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError(f"duplicate JSON key: {key}")
+            result[key] = value
+        return result
+    return json.loads(raw, object_pairs_hook=unique_object)
 
 
 def mask_fences(text):
@@ -201,14 +213,14 @@ def main():
     if args.allowlist:
         try:
             today = date.today()
-            allowlist = json.loads(args.allowlist.read_text(encoding="utf-8"))
+            allowlist = parse_allowlist(args.allowlist.read_text(encoding="utf-8"))
             apply_allowlist(report, allowlist, today)
             if args.baseline_allowlist:
                 baseline_bytes = args.baseline_allowlist.read_bytes()
                 baseline_digest = hashlib.sha256(baseline_bytes).hexdigest()
                 if args.baseline_sha256 and not hmac.compare_digest(baseline_digest, args.baseline_sha256):
                     raise ValueError("baseline SHA-256 mismatch")
-                compare_allowlists(report, json.loads(baseline_bytes.decode("utf-8")), allowlist, today)
+                compare_allowlists(report, parse_allowlist(baseline_bytes.decode("utf-8")), allowlist, today)
                 report["allowlist"]["baseline_sha256"] = baseline_digest
                 report["allowlist"]["baseline_digest_verified"] = bool(args.baseline_sha256)
             if args.audit_allowlist:

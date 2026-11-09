@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -91,9 +92,9 @@ func TestPreparePostgresDSNHandoffCreatesExternalOwnerOnlyFileAndCleansUp(t *tes
 		cleanup()
 		t.Fatalf("handoff file mode=%v", fileInfo.Mode())
 	}
-	if got := fileInfo.Mode().Perm(); got&0o077 != 0 {
+	if got := fileInfo.Mode().Perm(); runtime.GOOS != "windows" && got&0o077 != 0 {
 		cleanup()
-		t.Fatalf("handoff fileがgroup/otherへ権限を持っています: %o", got)
+		t.Fatalf("handoff file has group/other permissions: %o", got)
 	}
 
 	dirInfo, err := os.Stat(filepath.Dir(path))
@@ -101,9 +102,9 @@ func TestPreparePostgresDSNHandoffCreatesExternalOwnerOnlyFileAndCleansUp(t *tes
 		cleanup()
 		t.Fatal(err)
 	}
-	if got := dirInfo.Mode().Perm(); got&0o077 != 0 {
+	if got := dirInfo.Mode().Perm(); runtime.GOOS != "windows" && got&0o077 != 0 {
 		cleanup()
-		t.Fatalf("handoff directoryがgroup/otherへ権限を持っています: %o", got)
+		t.Fatalf("handoff directory has group/other permissions: %o", got)
 	}
 
 	dir := filepath.Dir(path)
