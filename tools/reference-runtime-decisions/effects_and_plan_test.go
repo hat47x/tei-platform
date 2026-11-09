@@ -12,6 +12,14 @@ import (
 	"tei/internal/semantic"
 )
 
+// noConditions says nothing stops the step. An unattended plan refuses to run
+// without a precondition check, so this test names "nothing blocks" explicitly
+// instead of passing nil, which would stop the run for a different reason than
+// the one under test.
+func noConditions() execution.PreconditionFunc {
+	return func(core.CanonicalID) string { return "" }
+}
+
 // updateStep writes the probe row and reports how many times it ran.
 func updateStep(t *testing.T, conn *pgx.Conn, calls *int) execution.StepFunc {
 	return func(ctx context.Context, operation core.CanonicalID) execution.StepResult {
@@ -61,7 +69,7 @@ func TestACompletedRunIsRefusedWithoutASecondWrite(t *testing.T) {
 
 	journal := &memoryJournal{}
 	firstCalls := 0
-	if _, results, err := execution.RunPlan(context.Background(), probePlan(), []string{"2026-10"}, journal, updateStep(t, conn, &firstCalls), nil); err != nil || len(results) != 1 || results[0].Status != "resolved" {
+	if _, results, err := execution.RunPlan(context.Background(), probePlan(), []string{"2026-10"}, journal, updateStep(t, conn, &firstCalls), noConditions()); err != nil || len(results) != 1 || results[0].Status != "resolved" {
 		t.Fatalf("the first run must succeed: results=%+v err=%v", results, err)
 	}
 	if got := status(t, conn); got != "closed" {
@@ -69,7 +77,7 @@ func TestACompletedRunIsRefusedWithoutASecondWrite(t *testing.T) {
 	}
 
 	secondCalls := 0
-	decision, results, err := execution.RunPlan(context.Background(), probePlan(), []string{"2026-10"}, journal, updateStep(t, conn, &secondCalls), nil)
+	decision, results, err := execution.RunPlan(context.Background(), probePlan(), []string{"2026-10"}, journal, updateStep(t, conn, &secondCalls), noConditions())
 	if err != nil {
 		t.Fatalf("second run: %v", err)
 	}

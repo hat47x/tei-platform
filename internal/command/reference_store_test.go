@@ -17,6 +17,7 @@ func referenceWorld(effect semantic.DataEffectKind) ir.World {
 func TestReferenceDataExecutorCreatesRecord(t *testing.T) {
 	store := NewMemoryStore()
 	invoker := Invoker{
+		Authorizer: ReferenceAuthorizer{},
 		World:      referenceWorld(semantic.DataEffectCreate),
 		Executor:   ReferenceDataExecutor{World: referenceWorld(semantic.DataEffectCreate), Store: store},
 		UnitOfWork: &StoreUnitOfWork{Store: store},
@@ -34,6 +35,7 @@ func TestReferenceStoreRollsBackOnCommitFailure(t *testing.T) {
 	store := NewMemoryStore()
 	world := referenceWorld(semantic.DataEffectCreate)
 	invoker := Invoker{
+		Authorizer: ReferenceAuthorizer{},
 		World:      world,
 		Executor:   ReferenceDataExecutor{World: world, Store: store},
 		UnitOfWork: &StoreUnitOfWork{Store: store, FailCommit: true},
@@ -51,6 +53,7 @@ func TestReferenceDataExecutorDeletesRecord(t *testing.T) {
 	store := NewMemoryStore()
 	create := referenceWorld(semantic.DataEffectCreate)
 	if _, err := (Invoker{
+		Authorizer: ReferenceAuthorizer{},
 		World:      create,
 		Executor:   ReferenceDataExecutor{World: create, Store: store},
 		UnitOfWork: &StoreUnitOfWork{Store: store},
@@ -59,6 +62,7 @@ func TestReferenceDataExecutorDeletesRecord(t *testing.T) {
 	}
 	remove := referenceWorld(semantic.DataEffectDelete)
 	if _, err := (Invoker{
+		Authorizer: ReferenceAuthorizer{},
 		World:      remove,
 		Executor:   ReferenceDataExecutor{World: remove, Store: store},
 		UnitOfWork: &StoreUnitOfWork{Store: store},

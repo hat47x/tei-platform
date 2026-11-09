@@ -14,7 +14,7 @@ X-TEAから回収したローコードの知見を、TEIの意味・対話契約
 - どの知見を、どの設計判断へ渡すか。
 - どの順序なら、Coreを増やさずに定型の生産性を確かめられるか。
 - 何を確認できたら「受け止めた」と言えるか。
-- どこで止まり、人へ返すか。
+- どこで外部効果が出て、どこから先を人に確認するか。
 
 本文では、実行能力（Capability）を「能力」、正本から導出した表示・成果物（Projection）を「投影」と呼びます。受容は知識を受け止める設計上の行為、受理は意味を正本へ取り込む判断を指します。アプリケーションの型（Application Pattern）を「Pattern」、拡張を「Plugin」、設計・編集環境を「Studio」と呼びます。
 
@@ -35,7 +35,7 @@ X-TEAの4アプリケーション（固定したcommit）
 - X-TEAのソースは非公開の複製にあり、公開文書へパス・名称・集計を出しません。根拠は公開upstreamのcommitとファイル位置で示します。
 - 参照モデル・手引書の本文は転載しません。利用条件の確認は[#941](https://github.com/hat47x/tei-platform/issues/941)の担当です。
 - ソースの静的読解を、旧Runtimeの実行観測と呼ばない。実測は[#940](https://github.com/hat47x/tei-platform/issues/940)に譲ります。
-- 意味の受理、要求の採用、権限、ライセンスは、人の判断を待ちます（[ADR-0035](../adr/0035-autonomy-levels-and-verification-packets.md)のA4）。
+- 意味の受理、要求の採用、権限、ライセンスは、開発作業の停止条件にしません。PoCとして案を実装・検証し、案の採否と版を記録して進めます（[ADR-0035](../adr/0035-autonomy-levels-and-verification-packets.md)のA3・A4）。人の確認を待つのは、対外公開や本番配備など、外部へ取り消せない効果を出す場合だけです。
 - この計画の文書作業は隔離ブランチで行い、`main`を直接変更しません。実装を伴う作業は、対応Issueの条件に従います。
 
 ## 3. 現在地
@@ -152,7 +152,7 @@ X-TEAの4アプリケーション（固定したcommit）
 
 - **目的**: 暦・会計期間・税・通貨・採番のうち、どれを製品の意味として扱うかを決める材料を作る。
 - **内容**: [受容アーキテクチャのD6.1](../design/XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md)の推奨に従い、暦と会計期間を意味として試し、営業日・休日・年度・月度・締め・期間の状態を、適用期間と評価時点を持つ宣言として表せるか調べる。税・通貨・採番は、PluginのCapabilityとDataの契約として試す。二つ以上の反復、生成器・帳票からの構造参照、実行先間の一致、業務上の可視性のいずれかを満たした場合だけ、意味へ昇格する。法制度・業種差の調査は、必要最小限に限る。
-- **成果物**: 研究記録、意味の候補、提供元の候補、負例、昇格条件の判定記録。
+- **成果物**: 研究記録、意味の候補、提供元の候補、負例、昇格条件の判定記録。暦・会計期間の宣言の形と、税・通貨・採番の契約は[標準業務の受容設計](../design/XTEA_STANDARD_BUSINESS_SEMANTICS_2026-11.md)にある。
 - **受入**: 適用期間の境界試験ができる。案件固有の規則をCoreの変更なしに差し替えられる。昇格の条件を満たした場合だけ、Coreの意味を追加している。
 - **依存**: WP2のD6の判断。
 - **危険度**: A0/A1。採用はA4。
@@ -163,7 +163,7 @@ X-TEAの4アプリケーション（固定したcommit）
 - **目的**: 未定義参照、未被呼出し、未使用の表、三視点の抜け、対話契約の不整合を、受理済み意味の診断として出せるか確かめる。
 - **内容**: 既存の検証の上に、三視点の行列と対話契約の検査を加える。診断は修正案を作れるが、自動で受理しない。負例で偽陽性・偽陰性を確認する。
 - **成果物**: 診断の一覧、負例、修正案の受理境界の記録。
-- **受入**: AC-9に対応する確認が取れる。
+- **受入**: AC-9に対応する確認が取れる。作者環境の面ごとの検査と、生成物を未受理で置く境界はAC-12として分けて確認する（[作者環境の受容設計](../design/XTEA_AUTHORING_SURFACE_RECEPTION_2026-11.md)）。
 - **依存**: WP3。
 - **既存の担当**: [#1802](https://github.com/hat47x/tei-platform/issues/1802)、[#1124](https://github.com/hat47x/tei-platform/issues/1124)、[#1125](https://github.com/hat47x/tei-platform/issues/1125)。
 - **危険度**: A2。
@@ -177,7 +177,7 @@ X-TEAの4アプリケーション（固定したcommit）
 - **受入**: 索引から全成果物へ到達できる。未解決事項が、何が分かれば決まるかとともに残る。
 - **依存**: WP1〜WP9のうち、実施したもの。
 - **危険度**: A0/A2。
-- **停止条件**: 並行作業と衝突する場合は、統合せず人へ返す。
+- **停止条件**: 並行作業と衝突する場合は、その変更だけを保留し、衝突の内容をPRへ記録して他の作業を続ける。
 
 ## 5. 順序とゲート
 
@@ -258,7 +258,7 @@ WP10 統合と引継ぎ
 - X-TEAの画面・書式・機能型の再現。
 - 旧Runtimeの実行結果の取得（[#940](https://github.com/hat47x/tei-platform/issues/940)）。
 - 参照モデル・手引書の内容の転載（[#941](https://github.com/hat47x/tei-platform/issues/941)）。
-- 要求本文の変更（人の判断）。
+- 要求本文の、製品としての最終的な採否（PoCの作業では案を更新して進める）。
 - 実装コードの一括変更。実装は、対応Issueの受入条件に従って小さく行う。
 - 新しい判定段階（Gate）の追加。既存のGateと混同しない。
 
@@ -348,6 +348,23 @@ WP10 統合と引継ぎ
 | Command効果の宣言照合 | 実装 | 付録C.5 |
 | Command実行の記録契約 | 実装 | 付録C.5 |
 | CLI実行記録 | 実装 | 付録C.5 |
+| 適用操作の照合 | 実装（`Differences`を含む） | 付録C.5 |
+| 診断の修正案 | 実装 | 付録C.5 |
+| 能力の宣言許可の照合 | 実装 | 付録C.5 |
+| CLIの失敗符号 | 実装 | 付録C.5 |
+| 読み取り専用datasourceの事前検査 | 実装 | 付録C.5 |
+| 画面・帳票の版 | 実装 | 付録C.5 |
+| フックの宣言外呼出し | 実装 | 付録C.5 |
+| フックの呼出しのCommand境界への委譲 | 実装 | 付録C.5、`internal/hook`（[#3108](https://github.com/hat47x/tei-platform/pull/3108)） |
+| フック実行からの宣言制限呼出し元の配線 | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md) |
+| フックの不成立と実行失敗の区別 | 実装 | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md) |
+| 判定と能力呼出しの連結（`Guarded`） | 実装（参照） | 付録C.5、`internal/hook` |
+| 能力から`command` Patternの解決（`CommandPatternFor`） | 実装 | 付録C.5、`internal/hook` |
+| フック宣言の画面・印刷面への反映 | 実装 | 付録C.5、`internal/applicationview`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md) |
+| 参照Storeの拒否符号 | 実装 | 付録C.5 |
+| 作者環境の面ごとの検査（AC-12） | 設計のみ | 作者環境の受容設計§3.1〜3.4 |
+| 派生出力の版・未解決（AC-7） | 設計のみ | 派生出力の受容設計§3.1〜3.5 |
+| 標準業務の宣言（RQ-C3） | 一部実装（暦・期間キー・税・通貨・採番） | 標準業務の受容設計§3.1〜3.7、§5.1 |
 | 参照データ記憶域（MemoryStore） | 実装 | 付録C.5 |
 | 参照Storeの削除ポリシー実行 | 実装 | 付録C.5 |
 | 参照Storeのキー対応削除 | 実装 | 付録C.5 |
@@ -366,6 +383,22 @@ WP10 統合と引継ぎ
 | 期間の閉塞によるCommand拒否 | 実装 | 付録C.5 |
 | CLI参照実行の期間状態 | 実装 | 付録C.5 |
 | フックの宣言（位相・読み書き・失敗時） | 実装 | 付録C.5 |
+| フックの位相の重複宣言の拒否 | 実装 | 付録C.5、`internal/validation` |
+| フックの位相順序と途中停止の記録（`RunSequence`） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md) |
+| フックの宣言した読み取りだけの授受（`ReadsFor`） | 実装 | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_DECLARED_READS_2026-11.md) |
+| 位相ごとの読み取り範囲（`RunSequence`） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_PER_PHASE_READS_2026-11.md) |
+| 提案された値の宣言照合（`ProducesFor`） | 実装 | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_DECLARED_PRODUCES_2026-11.md) |
+| フック宣言の機能定義書への反映 | 実装 | 付録C.5、`internal/artifact`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_FUNCTION_DEFINITION_2026-11.md) |
+| CLI参照実行からのフック呼出し | 実装（参照） | 付録C.5、`cmd/tei`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_CLI_WIRING_2026-11.md) |
+| Studio参照実行からのフック呼出し | 実装（参照） | 付録C.5、`internal/studiohost`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_STUDIO_WIRING_2026-11.md) |
+| フック位相の到達範囲（`RunReachable`） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_REACHABLE_PHASES_2026-11.md) |
+| フックの結末名とCommand拒否名の対応 | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_OUTCOME_VOCABULARY_2026-11.md) |
+| フックが名乗る結末名の語彙照合 | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_OUTCOME_CHECK_2026-11.md) |
+| 到達できる位相の経路での提案の照合（`RunReachable`） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_REACHABLE_PROPOSES_2026-11.md) |
+| フックの提案のCLI・Studio表示 | 実装（参照） | 付録C.5、`cmd/tei`、`cmd/tei-studio`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_SHOW_PROPOSALS_2026-11.md) |
+| 宣言した能力を呼ばないまま実行済みと報告しない（`RunReachable`） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_DECLARED_CALL_HONESTY_2026-11.md) |
+| 宣言した能力を実際に呼ぶ配線（`RunDeclaredCalls`） | 実装（参照） | 付録C.5、`internal/hook`、`cmd/tei`、`internal/studiohost`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_DECLARED_CALL_WIRING_2026-11.md) |
+| フックが使う能力の`command` Pattern不在の拒否 | 実装 | 付録C.5、`internal/validation` |
 | フックの実行境界（reject/warn） | 実装 | 付録C.5 |
 | 未使用属性の表示 | 実装 | 付録C.5 |
 | 属性の役割（role） | 実装 | 付録C.5 |
@@ -380,6 +413,7 @@ WP10 統合と引継ぎ
 | Studioからの期間状態付き参照実行 | 実装 | 付録C.5 |
 | Studioの認可AllowList | 実装 | 付録C.5 |
 | Studio実行記録 | 実装 | 付録C.5 |
+| 既存認可規則との接続 | 実装（`CommandAuthorizer`） | 付録C.5 |
 | Studioのビュー要約表示 | 実装 | 付録C.5 |
 | StudioのPackageビュー | 実装 | 付録C.5 |
 | Applicationビューの期間 | 実装 | 付録C.5 |
@@ -387,7 +421,7 @@ WP10 統合と引継ぎ
 | Package（宣言・検証・版束縛・衝突・ビュー表示） | 実装 | 付録C.5、`internal/application`・`internal/validation` |
 | Semantic fingerprint（投影の意味の版） | 実装 | 付録C.5、`internal/semantic` |
 | 統合試験（Semantic→Application→Package→view/print） | 実装 | `cmd/tei/product_slice_test.go` |
-| 残る未実装 | 実Provider接続、集計の実データ計算、削除の効果、帳票テンプレートの版管理 | 付録C.5、D5・D7 |
+| 残る未実装 | 実Provider接続、集計の実データ計算、削除の効果、帳票テンプレートの版管理、フックの実PluginとCLI・Studioへの配線 | 付録C.5、D5・D7 |
 
 **文書の読み方.**
 
@@ -399,7 +433,7 @@ WP10 統合と引継ぎ
 
 **統合の経緯.** 仮承認の下で統合を進めた過程で、PR番号の取り違えにより[#2690](https://github.com/hat47x/tei-platform/pull/2690)・[#2699](https://github.com/hat47x/tei-platform/pull/2699)・[#2702](https://github.com/hat47x/tei-platform/pull/2702)（いずれも期間機能の文書・実装）を意図せず統合しました。内容を点検し、期間機能の範囲を出ていないことを確認しています。取り消しはしていません。
 
-**人の判断が必要な事項.** §9の5項目です。利用者の指示により、これらは**仮承認**として扱い、実装と統合まで進めました。要求の最終採否、D1〜D8の採用範囲、D6の対象、fixtureの利用条件、Issueへの結び付けは別途判断します。
+**人の確認が必要な事項.** §9の5項目です。利用者の指示により、これらは**仮承認**として扱い、実装と統合まで進めました。要求の最終採否、D1〜D8の採用範囲、D6の対象、fixtureの利用条件、Issueへの結び付けは、別の担当の判断として残ります。この判断は開発作業を止める条件ではありません。既定案で進め、判断が変わったときに戻せる形にします。
 
 **直近の検証.** `main`の健全性CIは、`#2773`の`2f7c775e7`、`#2799`の`605599a6d`、`#2803`の`080caada4`で成功しています。変更したGoパッケージの単体・統合試験、`go build ./...`、`go vet`、`gofmt -l`、Studioの`node --test`も各PRで確認しています。
 
@@ -421,14 +455,7 @@ WP10 統合と引継ぎ
 
 **PRの関係.** 文書は[#2519](https://github.com/hat47x/tei-platform/pull/2519)、対話契約のPoCは[#2521](https://github.com/hat47x/tei-platform/pull/2521)です。PoCは文書のD1・D3.1の最小部分を実装し、`main`には未統合です。
 
-**統合の条件.** 要求・設計の採否が決まり、PRがDraftでなくなり、CIとレビューが通ることです。Draftのままでは統合しません。
-
-
-
-
-
-
-
+**統合の条件.** 要求・設計の採否は開発作業の停止条件にしません。PRは、変更範囲の検証結果を本文へ記録し、Draftなら解除してから統合します。CIとレビューは、実行できた範囲を記録します。Draftのまま放置せず、統合できる状態になった時点で解除します。
 
 
 

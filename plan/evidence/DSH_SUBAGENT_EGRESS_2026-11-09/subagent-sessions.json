@@ -1,0 +1,62 @@
+{
+  "note": "Parent vs child persisted session logs after one subagent launch. The child is a separate session with its own log.",
+  "promptCanary": "SUBAGENT_PROMPT_CANARY_931",
+  "parent": {
+    "file": "parent",
+    "bytes": 41644,
+    "sha256": "077648950d2c813089c1fb01696e0596bd54be0af9cad9bed1735614209d2044",
+    "lines": 41,
+    "eventTypeCounts": {
+      "session": 1,
+      "permission/preset": 2,
+      "sandbox/mode": 2,
+      "approval/policy": 2,
+      "agent/inbox/spliced": 4,
+      "turn/start": 2,
+      "step/start": 3,
+      "system/message": 1,
+      "user/message": 4,
+      "request/header": 1,
+      "request/context": 1,
+      "session/title": 2,
+      "session/title-llm-request": 1,
+      "session-log-deepseek/delivery-accepted": 4,
+      "assistant/message": 3,
+      "tool/call": 1,
+      "subagent/catalog": 1,
+      "tool/result": 1,
+      "step/end": 3,
+      "turn/end": 2
+    },
+    "promptCanaryPresent": true,
+    "hasSubagentEvent": true,
+    "hasDeliveryAccepted": true
+  },
+  "child": {
+    "file": "child",
+    "bytes": 36774,
+    "sha256": "39611dd95ac3f50bb3e980b0ec58e53f600146a25b40f9c8575a5cc77aa3faf0",
+    "lines": 19,
+    "eventTypeCounts": {
+      "session": 1,
+      "subagent/descriptor": 1,
+      "sandbox/mode": 1,
+      "approval/policy": 1,
+      "agent/inbox/spliced": 2,
+      "turn/start": 1,
+      "step/start": 1,
+      "system/message": 1,
+      "user/message": 3,
+      "request/header": 1,
+      "request/context": 1,
+      "session/title": 1,
+      "session-log-deepseek/delivery-accepted": 1,
+      "assistant/message": 1,
+      "step/end": 1,
+      "turn/end": 1
+    },
+    "promptCanaryPresent": true,
+    "hasSubagentEvent": true,
+    "hasDeliveryAccepted": true
+  }
+}

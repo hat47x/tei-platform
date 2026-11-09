@@ -53,3 +53,89 @@ issued, err := access.Issue(log, runKey, capabilityID, spec, "operator requested
 ## 7. ついでに直したこと
 
 移行済みツールの能力IDが `tei.frozen-world.lineage` と、**正規の識別子（小文字と下線のみ）に反して**いました。`tei.frozen_world.lineage` に修正しています。識別子の検証を通していなかったため見逃していたものです。
+## 8. 発行の CLI と配線（2026-11-06 追記）
+
+`tei issue-grant` を追加し、スクリプトの付与作成をこのコマンドに置き換えました。
+
+```sh
+go run ./cmd/tei issue-grant \
+  -grant-capability tei.frozen_world.lineage \
+  -grant-scope "$scratch/generated-world-observation.json" \
+  -grant-issuer "script:reference-first-web-two-unit-e1" \
+  -grant-reason "build_frozen_json_api observation" \
+  -grant-run-key "$2@$3" \
+  -grant-out "$scratch/frozen-world-grants.json" \
+  -issue-log "$scratch/frozen-world-issued.jsonl"
+```
+
+- 発行は**記録が先**。記録できなければ発行も書出しもしない。
+- 出力する grants ファイルはアダプタが読む形式（`access.ParseDocument`）と同じであることを試験で固定。
+- 発行の記録には `runKey`・能力・付与・根拠が残る。
+
+**残る限界**: 発行しているのは**同じスクリプト**であり、第三者の承認ではありません。発行の主体（ホスト・運用・別の権威）を決めるのは次の段です。
+## 9. 発行の主体を名指しする（2026-11-06 追記）
+
+発行の記録にも grants ファイルにも、**誰が決めたか**を書く欄を足しました（`issuer`、ファイルでは `issuedBy`）。
+
+| 書き手 | `issuedBy` の値 |
+| --- | --- |
+| 環境の宣言（`tei grants`） | `environment:<環境ID>` |
+| 実行時の発行（`tei issue-grant`） | `-grant-issuer` で名指しした値 |
+
+- 環境の宣言から作った付与は、**その環境**が決めたことになります。ツールやスクリプトは決めていません。
+- 実行時の発行は、`-grant-issuer` と `-grant-reason` の両方が要ります。どちらかが空なら発行しません。
+- 発行の記録（`Issued`）にも `issuer` が入ります。
+
+**拒否する形**: 能力が**自分自身**を発行者として付与を受け取ることはありません（`access.AcceptIssuedBy`、`access.Issue` の両方で拒否）。移行済みのツールは、自分が発行したと書かれた付与ファイルを読んだ時点で失敗します。
+
+**この拒否が示すこと・示さないこと**:
+
+- 示す: 付与を**要求する側が書いた**経路は通らない。少なくとも「誰が決めたか」が別に要る。
+- 示さない: `issuedBy` は**署名ではない**。文字列を書ける者は誰でも `script:...` と書ける。第三者の承認を証明するものではなく、**自己発行を除外するだけ**の検査です。名前の偽装を防ぐには、署名・鍵・受理の記録が要ります（未着手）。
+## 10. 発行を宣言の内側に収める（2026-11-06 追記）
+
+第1章の不一致（宣言は論理名、実行は絶対パス）に対して、**案Aと案Bの合成**を実装しました。付与を発行するときに、宣言の内側に収まっているかを確かめます（`access.Ground`）。
+
+```
+[環境の宣言]      migration-workdir                    （論理名。環境が決めた）
+   └─[この実行の解像] host:build-frozen-api: migration-workdir -> /tmp/run
+        └─[この実行の発行] script:build-frozen-api: /tmp/run/observed.json
+```
+
+| 部品 | 何を決めるか | 拒否する形 |
+| --- | --- | --- |
+| 宣言（`tei grants`） | 環境が**そもそも**許す範囲（論理名） | — |
+| 解像（`-grant-declared-scope` / `-grant-resolved-root`） | 論理名を、**この実行の**具体的な場所へ写す | 片方だけ／解像したのが能力自身／宣言に無い論理名 |
+| 発行（`tei issue-grant`） | **この実行**が触る範囲（具体パス） | 解像の外／宣言が無い／宣言がその能力を名指ししていない／自己発行 |
+
+- 解像は**記録に残る**（`Issued.Resolutions`）。具体パスだけの記録では、どの宣言が許したのかを後から辿れません。
+- 宣言が**別の能力**を名指ししている場合は、その能力の根拠にしません（`access.Declares`）。「環境が migration.atlas に許した」は「lineage が書いてよい」ではありません。
+- `-grant-declaration` を渡さない発行は**拒否しません**が、grounded でないことを標準エラーに書きます。記録に解像が残らないため、後から宣言に照らせません。
+
+**この検査が示すこと**: 発行が宣言の内側にあること、宣言の外への発行が通らないこと。
+**示さないこと**: 解像が正しいこと。`-grant-resolved-root` を書くのは呼び出し側であり、その値が「環境が決めた」ことの証明にはなりません。`issuedBy` と同じ限界です（第9章）。
+
+### 「ツールを宣言に載せる」はまだ通らない（2026-11-07 追記）
+
+第8章からの**未着手**（参照ツールの能力を環境に宣言する）を試しました。**検証で止まります**。
+
+```text
+error PERMISSION_GRANT_CAPABILITY_NOT_RESOLVED
+  environment development grants permission to unresolved capability deployment-executor tei.frozen_world.lineage
+```
+
+`internal/validation/validation.go` は、環境の付与が指す能力を**プラグインカタログから解決**できることを要求します。参照ツール（`tools/...`）はプラグインではないので、`tei.frozen_world.lineage` は解決できません。
+
+**これは検証の欠陥ではなく、設計の問いです。** 参照ツールは「プラグイン」なのか、それとも別の種類の主体なのか。プラグインにすると、ツールはプラグインの宣言・成果物・検証の対象になります（それは大きな変更です）。別の主体にすると、環境の付与は「能力」ではなく「ツール」を名指しできる必要があります。
+
+**決めていません**。この経路を使うには、どちらかを決める必要があります。だから「環境の宣言からツールへ付与を渡す配線」は、**検証を通らない状態のまま**です。
+
+### 読み手側でも同じ検査をする
+
+発行する側だけでなく、**付与を読む側**でも宣言と突き合わせます（`reference-first-web-frozen-world-generate` の `-declaration`）。
+
+- `-grants` と `-declaration` の両方を渡すと、`access.Ground` を通してから書きます。渡さなければ従来どおり（宣言との照合なし）です。
+- 発行する側だけの検査では、**付与ファイルを後から差し替えられた場合**に効きません。読む側でも見ることで、差し替えは「宣言の外」として止まります。
+- ただし読む側は解像を持ちません（このツールは解像を渡さない）。したがって**宣言の論理名と一致する付与**だけが通ります。参照ツールの能力はまだ環境に宣言されていないため、いまはこの経路を使っていません。
+
+**発行と読み取りで、同じ関数を通す**ようにしました（`access.GroundFile`）。書き手と読み手が別々に「宣言を読んで突き合わせる」処理を持つと、片方だけを変えてもう片方が黙って別の判断をする状態を作れます。`GroundFile` を通すことで、**発行側が拒否するものを読む側も拒否する**ことを試験で固定しています（`TestGroundFileRunsTheSameCheckForTheReader`）。

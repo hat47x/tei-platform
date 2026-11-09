@@ -1,0 +1,5 @@
+tei_inspect: no subjectId	rpc	-32602	subjectId is required
+tei_inspect: no subjectKind	rpc	-32602	subjectKind is required
+tei_inspect: both empty	rpc	-32602	subjectKind must not be an empty string
+tei_trace: no scope	rpc	-32602	scope is required
+tei_trace: no subjectId	rpc	-32602	subjectId is required

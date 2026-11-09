@@ -1,0 +1,472 @@
+{
+  "artifactKind": "synthetic-pressure-input",
+  "format": "tei.diagram-crossref.pressure-input/v0 (not a TEI parser format)",
+  "status": "illustrative; not accepted canonical; no runtime evidence",
+  "sourceRevision": "diagram-pressure-r1",
+  "worldScope": "synthetic.order-entry",
+  "entities": [
+    {
+      "id": "data.order",
+      "label": "受注",
+      "businessKey": [
+        "orderNo"
+      ],
+      "owner": "sales"
+    },
+    {
+      "id": "data.line",
+      "label": "受注明細",
+      "businessKey": [
+        "orderNo",
+        "lineNo"
+      ],
+      "owner": "sales"
+    },
+    {
+      "id": "data.customer",
+      "label": "顧客",
+      "businessKey": [
+        "customerNo"
+      ],
+      "owner": "crm"
+    },
+    {
+      "id": "data.sku",
+      "label": "品目",
+      "businessKey": [
+        "sku"
+      ],
+      "owner": "inventory"
+    },
+    {
+      "id": "data.stock",
+      "label": "倉庫別在庫",
+      "businessKey": [
+        "sku",
+        "warehouseCode"
+      ],
+      "owner": "inventory"
+    },
+    {
+      "id": "data.warehouse",
+      "label": "倉庫",
+      "businessKey": [
+        "warehouseCode"
+      ],
+      "owner": "inventory"
+    },
+    {
+      "id": "data.payment",
+      "label": "入金",
+      "businessKey": [
+        "orderNo",
+        "paymentNo"
+      ],
+      "owner": "sales"
+    },
+    {
+      "id": "data.order.status",
+      "label": "状況",
+      "businessKey": [
+        "orderNo"
+      ],
+      "owner": "sales"
+    },
+    {
+      "id": "data.flow.status",
+      "label": "状況",
+      "businessKey": [
+        "processId"
+      ],
+      "owner": "sales"
+    }
+  ],
+  "relations": [
+    {
+      "id": "rel.order.lines",
+      "from": "data.order",
+      "to": "data.line",
+      "kind": "contained-child",
+      "multiplicity": "1:N",
+      "optional": false
+    },
+    {
+      "id": "rel.order.customer",
+      "from": "data.order",
+      "to": "data.customer",
+      "kind": "reference",
+      "multiplicity": "N:1",
+      "optional": false
+    },
+    {
+      "id": "rel.line.sku.primary",
+      "from": "data.line",
+      "to": "data.sku",
+      "kind": "reference",
+      "role": "orderedItem",
+      "multiplicity": "N:1",
+      "optional": false
+    },
+    {
+      "id": "rel.line.sku.alt",
+      "from": "data.line",
+      "to": "data.sku",
+      "kind": "reference",
+      "role": "substituteItem",
+      "multiplicity": "N:1",
+      "optional": true
+    },
+    {
+      "id": "rel.stock.sku",
+      "from": "data.stock",
+      "to": "data.sku",
+      "kind": "reference",
+      "multiplicity": "N:1",
+      "optional": false
+    },
+    {
+      "id": "rel.stock.warehouse",
+      "from": "data.stock",
+      "to": "data.warehouse",
+      "kind": "reference",
+      "multiplicity": "N:1",
+      "optional": false
+    },
+    {
+      "id": "rel.order.payments",
+      "from": "data.order",
+      "to": "data.payment",
+      "kind": "contained-child",
+      "multiplicity": "1:N",
+      "optional": false
+    }
+  ],
+  "functions": [
+    {
+      "id": "fn.order.register",
+      "label": "受注登録",
+      "owner": "sales",
+      "declaredCrudComplete": true,
+      "uses": [
+        {
+          "data": "data.order",
+          "operations": [
+            "C"
+          ]
+        },
+        {
+          "data": "data.line",
+          "operations": [
+            "C"
+          ]
+        },
+        {
+          "data": "data.customer",
+          "operations": [
+            "R"
+          ]
+        },
+        {
+          "data": "data.stock",
+          "operations": [
+            "R"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fn.order.edit",
+      "label": "受注変更",
+      "owner": "sales",
+      "declaredCrudComplete": true,
+      "uses": [
+        {
+          "data": "data.order",
+          "operations": [
+            "R",
+            "U"
+          ]
+        },
+        {
+          "data": "data.line",
+          "operations": [
+            "R",
+            "U"
+          ]
+        },
+        {
+          "data": "data.customer",
+          "operations": [
+            "R"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fn.ship.finalize",
+      "label": "出荷確定",
+      "owner": "sales",
+      "declaredCrudComplete": true,
+      "uses": [
+        {
+          "data": "data.order",
+          "operations": [
+            "U"
+          ]
+        },
+        {
+          "data": "data.line",
+          "operations": [
+            "R"
+          ]
+        },
+        {
+          "data": "data.stock",
+          "operations": [
+            "U"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fn.external.dispatch",
+      "label": "外部配送",
+      "owner": "external",
+      "declaredCrudComplete": false,
+      "uses": []
+    }
+  ],
+  "businessActions": [
+    {
+      "id": "action.order.entry",
+      "label": "受注入力",
+      "kind": "system-invocation",
+      "function": "fn.order.register"
+    },
+    {
+      "id": "action.ship.approval",
+      "label": "出荷承認",
+      "kind": "system-invocation",
+      "function": "fn.ship.finalize"
+    },
+    {
+      "id": "action.phone.confirm",
+      "label": "電話確認",
+      "kind": "manual",
+      "function": null
+    }
+  ],
+  "datasets": {
+    "id": "dataset.sample-r1",
+    "kind": "synthetic-example-not-real-provider",
+    "observations": [
+      {
+        "data": "data.order",
+        "ids": [
+          "O100"
+        ]
+      },
+      {
+        "data": "data.line",
+        "ids": [
+          "O100/L1",
+          "O100/L2"
+        ]
+      },
+      {
+        "data": "data.payment",
+        "ids": [
+          "O100/P1",
+          "O100/P2",
+          "O100/P3"
+        ]
+      }
+    ],
+    "note": "Flattening two independent 1:N collections under O100 can yield 2*3=6 joined rows; not six lines or payments."
+  },
+  "sourceCoverage": {
+    "declaredFunctions": [
+      "fn.order.register",
+      "fn.order.edit",
+      "fn.ship.finalize"
+    ],
+    "incompleteFunctions": [
+      "fn.external.dispatch"
+    ],
+    "actualProviderEffect": "not-observed",
+    "disclosureScope": "synthetic-public",
+    "dataResultSlices": [
+      {
+        "data": "data.line",
+        "scope": "synthetic order O100",
+        "observedOccurrences": 2,
+        "completeness": "complete-for-this-synthetic-order-only"
+      },
+      {
+        "data": "data.payment",
+        "scope": "synthetic order O100",
+        "observedOccurrences": 3,
+        "completeness": "complete-for-this-synthetic-order-only"
+      },
+      {
+        "data": "data.stock",
+        "scope": "external inventory",
+        "observedOccurrences": null,
+        "completeness": "partial-or-unknown",
+        "note": "Do not infer empty stock or absence of actual effect"
+      }
+    ]
+  },
+  "negativeVariants": [
+    {
+      "id": "N01",
+      "mutation": "remove rel.line.sku.alt while keeping labels"
+    },
+    {
+      "id": "N02",
+      "mutation": "collapse data.order.status and data.flow.status by identical label"
+    },
+    {
+      "id": "N03",
+      "mutation": "flatten line x payment 2*3 and treat six rows as six child identities"
+    },
+    {
+      "id": "N04",
+      "mutation": "make fn.external.dispatch empty CRUD cells despite incomplete declarations"
+    },
+    {
+      "id": "N05",
+      "mutation": "change presentation-only display alias and diagram node order while preserving authoritative semantic Source"
+    },
+    {
+      "id": "N06",
+      "mutation": "source revision r1->r2->r3 with same r1 and r3 byte digest; revive stale edit grant"
+    },
+    {
+      "id": "N07",
+      "mutation": "select a display cell without a unique semantic write target"
+    },
+    {
+      "id": "N08",
+      "mutation": "replace an external inventory direct update with delegation; claim effect disappeared"
+    },
+    {
+      "id": "N09",
+      "mutation": "show two Function-level CRUD paths as Business Action effects"
+    },
+    {
+      "id": "N10",
+      "mutation": "make plugin/renderer/font update but reuse previous visual verification and asset digest"
+    },
+    {
+      "id": "N11",
+      "mutation": "hide rel.line.sku.alt in a Tree and then write back an edge deletion"
+    },
+    {
+      "id": "N12",
+      "mutation": "treat a diagram containing an HTTP auth guard as proof that the runtime guard executed"
+    },
+    {
+      "id": "N13",
+      "mutation": "re-use same presentation occurrence ID for two different canvas views and silently conflate selections"
+    },
+    {
+      "id": "N14",
+      "mutation": "split/merge/collapse canvas layouts and incorrectly delete or replicate the shared semantic Entity/Relation"
+    }
+  ],
+  "canvasViews": [
+    {
+      "id": "canvas.sales-overview",
+      "purpose": "Business/Data overview",
+      "projectionScope": "synthetic.order-entry/sales",
+      "instances": [
+        {
+          "occurrenceId": "view.sales.order",
+          "subjectId": "data.order",
+          "x": 120,
+          "y": 100
+        },
+        {
+          "occurrenceId": "view.sales.customer",
+          "subjectId": "data.customer",
+          "x": 300,
+          "y": 100
+        },
+        {
+          "occurrenceId": "view.sales.line",
+          "subjectId": "data.line",
+          "x": 120,
+          "y": 260
+        },
+        {
+          "occurrenceId": "view.sales.status",
+          "subjectId": "data.order.status",
+          "x": 300,
+          "y": 260
+        }
+      ],
+      "relationOccurrences": [
+        {
+          "id": "view.sales.edge.order-lines",
+          "relationId": "rel.order.lines"
+        },
+        {
+          "id": "view.sales.edge.order-customer",
+          "relationId": "rel.order.customer"
+        }
+      ]
+    },
+    {
+      "id": "canvas.fulfillment",
+      "purpose": "Data/Function fulfillment detail",
+      "projectionScope": "synthetic.order-entry/sales-inventory",
+      "instances": [
+        {
+          "occurrenceId": "view.fulfillment.order",
+          "subjectId": "data.order",
+          "x": 100,
+          "y": 120
+        },
+        {
+          "occurrenceId": "view.fulfillment.line",
+          "subjectId": "data.line",
+          "x": 310,
+          "y": 120
+        },
+        {
+          "occurrenceId": "view.fulfillment.stock",
+          "subjectId": "data.stock",
+          "x": 320,
+          "y": 300
+        },
+        {
+          "occurrenceId": "view.fulfillment.sku",
+          "subjectId": "data.sku",
+          "x": 520,
+          "y": 140
+        },
+        {
+          "occurrenceId": "view.fulfillment.warehouse",
+          "subjectId": "data.warehouse",
+          "x": 520,
+          "y": 300
+        }
+      ],
+      "relationOccurrences": [
+        {
+          "id": "view.fulfillment.edge.order-lines",
+          "relationId": "rel.order.lines"
+        },
+        {
+          "id": "view.fulfillment.edge.line-sku",
+          "relationId": "rel.line.sku.primary"
+        },
+        {
+          "id": "view.fulfillment.edge.stock-sku",
+          "relationId": "rel.stock.sku"
+        }
+      ]
+    }
+  ]
+}

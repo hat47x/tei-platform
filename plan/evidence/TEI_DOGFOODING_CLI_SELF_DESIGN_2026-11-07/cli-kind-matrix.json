@@ -1,0 +1,192 @@
+[
+  {
+    "id": "order_entry",
+    "inspectError": null,
+    "inspectExit": 0,
+    "kind": "application",
+    "traceError": null,
+    "traceExit": 0,
+    "traceTotal": 11,
+    "workspace": "reference/workspace"
+  },
+  {
+    "id": "order_entry.customer_reference",
+    "inspectError": null,
+    "inspectExit": 0,
+    "kind": "application-pattern",
+    "traceError": null,
+    "traceExit": 0,
+    "traceTotal": 3,
+    "workspace": "reference/workspace"
+  },
+  {
+    "id": "order_entry.recent_orders",
+    "inspectError": null,
+    "inspectExit": 0,
+    "kind": "query",
+    "traceError": null,
+    "traceExit": 0,
+    "traceTotal": 1,
+    "workspace": "reference/workspace"
+  },
+  {
+    "id": "customer",
+    "inspectError": null,
+    "inspectExit": 0,
+    "kind": "semantic",
+    "traceError": null,
+    "traceExit": 0,
+    "traceTotal": 2,
+    "workspace": "reference/workspace"
+  },
+  {
+    "id": "customer.customer.customer_id",
+    "inspectError": null,
+    "inspectExit": 0,
+    "kind": "semantic-attribute",
+    "traceError": null,
+    "traceExit": 0,
+    "traceTotal": 3,
+    "workspace": "reference/workspace"
+  },
+  {
+    "id": "sales.order.submit",
+    "inspectError": null,
+    "inspectExit": 0,
+    "kind": "semantic-capability",
+    "traceError": null,
+    "traceExit": 0,
+    "traceTotal": 3,
+    "workspace": "reference/workspace"
+  },
+  {
+    "id": "customer.customer",
+    "inspectError": null,
+    "inspectExit": 0,
+    "kind": "semantic-data",
+    "traceError": null,
+    "traceExit": 0,
+    "traceTotal": 2,
+    "workspace": "reference/workspace"
+  },
+  {
+    "id": "repair_intake.intake.customer",
+    "inspectError": null,
+    "inspectExit": 0,
+    "kind": "semantic-relation",
+    "traceError": null,
+    "traceExit": 0,
+    "traceTotal": 2,
+    "workspace": "reference/workspace"
+  },
+  {
+    "id": "customer.customer_id",
+    "inspectError": null,
+    "inspectExit": 0,
+    "kind": "semantic-type",
+    "traceError": null,
+    "traceExit": 0,
+    "traceTotal": 4,
+    "workspace": "reference/workspace"
+  },
+  {
+    "id": "sales.order.lines.line_number_unique",
+    "inspectError": null,
+    "inspectExit": 0,
+    "kind": "semantic-validation",
+    "traceError": null,
+    "traceExit": 0,
+    "traceTotal": 3,
+    "workspace": "reference/workspace"
+  },
+  {
+    "id": "order_entry",
+    "inspectError": null,
+    "inspectExit": 0,
+    "kind": "application",
+    "traceError": null,
+    "traceExit": 0,
+    "traceTotal": 12,
+    "workspace": "examples/xtea-lowcode"
+  },
+  {
+    "id": "order_entry.customer_reference",
+    "inspectError": null,
+    "inspectExit": 0,
+    "kind": "application-pattern",
+    "traceError": null,
+    "traceExit": 0,
+    "traceTotal": 2,
+    "workspace": "examples/xtea-lowcode"
+  },
+  {
+    "id": "order_entry.recent_orders",
+    "inspectError": null,
+    "inspectExit": 0,
+    "kind": "query",
+    "traceError": null,
+    "traceExit": 0,
+    "traceTotal": 1,
+    "workspace": "examples/xtea-lowcode"
+  },
+  {
+    "id": "customer",
+    "inspectError": null,
+    "inspectExit": 0,
+    "kind": "semantic",
+    "traceError": null,
+    "traceExit": 0,
+    "traceTotal": 1,
+    "workspace": "examples/xtea-lowcode"
+  },
+  {
+    "id": "customer.customer.customer_id",
+    "inspectError": null,
+    "inspectExit": 0,
+    "kind": "semantic-attribute",
+    "traceError": null,
+    "traceExit": 0,
+    "traceTotal": 1,
+    "workspace": "examples/xtea-lowcode"
+  },
+  {
+    "id": "sales.order.order_identity",
+    "inspectError": null,
+    "inspectExit": 0,
+    "kind": "semantic-candidate-key",
+    "traceError": "SUBJECT_NOT_FOUND",
+    "traceExit": 1,
+    "traceTotal": null,
+    "workspace": "examples/xtea-lowcode"
+  },
+  {
+    "id": "sales.create_line",
+    "inspectError": null,
+    "inspectExit": 0,
+    "kind": "semantic-capability",
+    "traceError": null,
+    "traceExit": 0,
+    "traceTotal": 3,
+    "workspace": "examples/xtea-lowcode"
+  },
+  {
+    "id": "customer.customer",
+    "inspectError": null,
+    "inspectExit": 0,
+    "kind": "semantic-data",
+    "traceError": null,
+    "traceExit": 0,
+    "traceTotal": 1,
+    "workspace": "examples/xtea-lowcode"
+  },
+  {
+    "id": "sales.order.customer",
+    "inspectError": null,
+    "inspectExit": 0,
+    "kind": "semantic-relation",
+    "traceError": null,
+    "traceExit": 0,
+    "traceTotal": 2,
+    "workspace": "examples/xtea-lowcode"
+  }
+]

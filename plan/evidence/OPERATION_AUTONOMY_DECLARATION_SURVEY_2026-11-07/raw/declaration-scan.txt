@@ -1,0 +1,32 @@
+== non-test occurrences of autonomy-related declarations ==
+-- ServiceSubject --
+-- service subject --
+-- human-gated --
+internal/artifact/consistency.go:250:	case "unattended", "attended", "human-gated":
+-- Autonomy --
+internal/artifact/consistency.go:142:			if operation.Basis == "" || !knownAutonomy(operation.Autonomy) {
+internal/artifact/consistency.go:145:					Detail: fmt.Sprintf("basis=%q autonomy=%q", operation.Basis, operation.Autonomy),
+internal/artifact/consistency.go:246:// knownAutonomy lists the autonomy classes a surface may declare. An unknown
+internal/artifact/consistency.go:248:func knownAutonomy(value string) bool {
+internal/artifact/functiondef.go:169:		if plan.Autonomy != "" {
+internal/artifact/functiondef.go:170:			fmt.Fprintf(&b, " autonomy %s", plan.Autonomy)
+internal/execution/runplan.go:77:		if plan.Autonomy == "unattended" {
+internal/operations/surface.go:84:	Autonomy      string   `json:"autonomy"`
+internal/operations/surface.go:297:					Autonomy: "unattended",
+internal/operations/surface.go:314:						Autonomy: "unattended",
+internal/operations/surface.go:344:				Autonomy:      "attended",
+internal/operations/surface.go:363:				Autonomy:      "attended",
+internal/operations/surface.go:579:		if operation.Autonomy == "unattended" {
+internal/semantic/model.go:237:	Autonomy    string             `json:"autonomy,omitempty"`
+internal/syntax/parser.go:2720:			plan.Autonomy = value.Text
+internal/validation/runplan.go:12:var runPlanAutonomy = map[string]bool{"attended": true, "unattended": true}
+internal/validation/runplan.go:65:			if plan.Autonomy != "" && !runPlanAutonomy[plan.Autonomy] {
+internal/validation/runplan.go:66:				out = append(out, errFor(subj, "RUN_PLAN_UNKNOWN_AUTONOMY", "run plan %s declares unknown autonomy %q", plan.ID, plan.Autonomy))
+
+== Environments present in the fixtures used ==
+-- reference/standard-crud/workspace --
+-- reference/workspace --
+environments/development/contract-query-executors/customer-find-by-id.tei
+environments/development/contract-query-executors/order-line-find-by-order.tei
+environments/development/environment.tei
+environments/production/environment.tei

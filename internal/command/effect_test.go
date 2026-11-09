@@ -19,6 +19,7 @@ func (e effectExecutor) Execute(context.Context, Request) (Result, error) {
 func TestInvokerRejectsUndeclaredEffect(t *testing.T) {
 	world := commandWorld()
 	invoker := Invoker{
+		Authorizer: ReferenceAuthorizer{},
 		World:      world,
 		Executor:   effectExecutor{effect: &semantic.DataEffect{Kind: semantic.DataEffectCreate, Data: "sales.order"}},
 		UnitOfWork: &MemoryUnitOfWork{},
@@ -33,6 +34,7 @@ func TestInvokerRejectsUndeclaredEffect(t *testing.T) {
 func TestInvokerAcceptsDeclaredEffect(t *testing.T) {
 	world := commandWorld()
 	invoker := Invoker{
+		Authorizer: ReferenceAuthorizer{},
 		World:      world,
 		Executor:   effectExecutor{effect: &semantic.DataEffect{Kind: semantic.DataEffectUpdate, Data: "sales.order"}},
 		UnitOfWork: &MemoryUnitOfWork{},

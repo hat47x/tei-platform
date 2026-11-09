@@ -82,12 +82,13 @@ func TestInjectedOperationsOnlyReceiveAllowlistedResolvedRoot(t *testing.T) {
 	}
 	subject := base.CatalogWorkspace("workspace-1", "").Value.Entries[0].Subject
 	got := h.InspectSubject("workspace-1", subject.Kind, subject.ID)
-	want := base.InspectSubject("workspace-1", subject.Kind, subject.ID)
-	if !reflect.DeepEqual(got, want) {
-		t.Fatal("InspectSubject operation changed")
+	// An explicit Host factory with no Inspection binding must fail closed.
+	// It must not silently reuse the built-in direct Inspector.
+	if got.OK || got.Value != nil || got.Failure == nil || got.Failure.Code != "OPERATION_FAILED" {
+		t.Fatalf("unbound Host Inspector unexpectedly succeeded: %+v", got)
 	}
-	if factoryCalls != 2 {
-		t.Fatal("inspect must not resolve generated services")
+	if factoryCalls != 3 {
+		t.Fatalf("Inspector must resolve Host-selected services once: calls=%d", factoryCalls)
 	}
 }
 

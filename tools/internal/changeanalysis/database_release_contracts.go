@@ -3,8 +3,6 @@ package changeanalysis
 import (
 	"fmt"
 	"sort"
-	"strconv"
-	"strings"
 
 	"tei/internal/core"
 	dbrelease "tei/internal/database/release"
@@ -16,7 +14,10 @@ import (
 // DATABASE_RELEASE_CONTRACT_AHEAD_OF_CURRENT_DEFINITION does not warn about:
 // the latest release in a major line provides an older major than the current
 // definition. Older releases in the same line are historical and are not
-// repeated; this is not an acceptance finding.
+// repeated; this is not an acceptance finding. The contractCandidates
+// database-release-contract-provided kind answers a different question: which
+// release in each major line last provides a changed contract. A release may
+// appear in both observations without being a duplicate.
 type DatabaseReleaseContractCandidate struct {
 	Snapshot        string           `json:"snapshot"`
 	Database        core.CanonicalID `json:"database"`
@@ -90,34 +91,4 @@ func latestDatabaseReleaseLines(w ir.World) []dbrelease.Definition {
 		out = append(out, r)
 	}
 	return out
-}
-
-func compareReleaseVersion(a, b string) int {
-	av, _ := parseReleaseVersion(a)
-	bv, _ := parseReleaseVersion(b)
-	for i := 0; i < 3; i++ {
-		if av[i] < bv[i] {
-			return -1
-		}
-		if av[i] > bv[i] {
-			return 1
-		}
-	}
-	return 0
-}
-
-func parseReleaseVersion(v string) ([3]int, bool) {
-	var out [3]int
-	parts := strings.Split(v, ".")
-	if len(parts) != 3 {
-		return out, false
-	}
-	for i, part := range parts {
-		n, err := strconv.Atoi(part)
-		if err != nil || n < 0 {
-			return out, false
-		}
-		out[i] = n
-	}
-	return out, true
 }
