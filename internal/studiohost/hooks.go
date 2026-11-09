@@ -3,6 +3,7 @@ package studiohost
 import (
 	"context"
 
+	"tei/internal/command"
 	"tei/internal/core"
 	"tei/internal/hook"
 	"tei/internal/ir"
@@ -26,11 +27,62 @@ const hookRunNote = "the reference rule evaluates the declared reads only; runni
 // reach, before the reference command runs.
 func (h *ReadOnly) runHooks(world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string) (*HookRunReport, error) {
 	runner := hook.Runner{World: world, Implementation: hook.ReferenceRule{}}
+	// A hook that declares `uses` promises a call. Give the runner the boundary
+	// that can keep it, the same way the CLI does, so Studio does not report a
+	// phase as executed while its declared call never happened.
+	runner.Caller = hook.CommandCaller{
+		Invoker: command.Invoker{
+			World:      world,
+			Executor:   command.ReferenceExecutor{World: world},
+			UnitOfWork: &command.MemoryUnitOfWork{},
+			Authorizer: command.ReferenceAuthorizer{},
+		},
+		Application: applicationID,
+		Pattern: func(capability core.CanonicalID) (core.CanonicalID, bool) {
+			pattern, err := hook.CommandPatternFor(world, applicationID, capability)
+			if err != nil {
+				return "", false
+			}
+			return pattern, true
+		},
+	}
+	runner.CallInputs = studioHookCallInputs(world, applicationID, patternID, inputs)
 	report, err := runner.RunReachable(context.Background(), applicationID, patternID, studioAttributeValues(inputs), hook.ReferenceReach{})
 	if report == nil {
 		return nil, err
 	}
 	return &HookRunReport{PhaseReport: report, Pattern: patternID, Note: hookRunNote}, err
+}
+
+// studioHookCallInputs binds, for each capability a pattern's hooks declare in
+// `uses`, the inputs the Command boundary receives. The hook's own inputs are
+// used as-is; this function does not invent a mapping from a hook's reads to a
+// capability's parameters. An unbound capability is reported as not called.
+func studioHookCallInputs(world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string) map[core.CanonicalID]map[string]string {
+	bound := map[core.CanonicalID]map[string]string{}
+	for i := range world.Applications {
+		if world.Applications[i].ID != applicationID {
+			continue
+		}
+		for _, pattern := range world.Applications[i].Patterns {
+			if pattern.ID != patternID || pattern.Interaction == nil {
+				continue
+			}
+			for _, declaration := range pattern.Interaction.Hooks {
+				for _, capability := range declaration.Uses {
+					if _, done := bound[capability]; done {
+						continue
+					}
+					values := make(map[string]string, len(inputs))
+					for name, value := range inputs {
+						values[name] = value
+					}
+					bound[capability] = values
+				}
+			}
+		}
+	}
+	return bound
 }
 
 // studioAttributeValues keys the caller's inputs by canonical attribute name so

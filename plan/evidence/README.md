@@ -42,6 +42,7 @@
 - [フック実行の配線と失敗の区別の確認](XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)（参照実装の試験記録。Runnerからの配線、NotSatisfiedと実行失敗の区別、参照規則。実PluginとCLI・Studioの配線は未実装）
 - [フック宣言の印刷面への反映の確認](XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md)（参照実装の試験記録。画面と同じフック宣言が印刷面にも出る。実印刷・用紙面の版照合は未確認）
 - [フックの位相順序と途中停止の確認](XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md)（参照実装の試験記録。位相の実行順、不成立での停止位置、`warn`の続行、未対応位相の拒否。CLI・Studioへの配線は未実装）
+- [フックが宣言した能力を実際に呼ぶ配線の確認](XTEA_LOWCODE_HOOK_DECLARED_CALL_WIRING_2026-11.md)（参照実装の試験記録。CLIとStudioの参照実行が`CommandCaller`を通して`uses`を実際に呼ぶ。`reads`からパラメータへの対応は未設計）
 - [フックが宣言した能力を呼ばないまま「実行した」と報告しない確認](XTEA_LOWCODE_HOOK_DECLARED_CALL_HONESTY_2026-11.md)（参照実装の試験記録。`uses`を宣言した位相を未評価にし、呼ばれなかった能力を名指す。能力を実際に呼ぶ配線は未着手）
 - [フックの提案をCLI・Studioで表示する確認](XTEA_LOWCODE_HOOK_SHOW_PROPOSALS_2026-11.md)（参照実装の試験記録。提案を候補として示し、採用と読ませない）
 - [到達できる位相の経路で提案を捨てない確認](XTEA_LOWCODE_HOOK_REACHABLE_PROPOSES_2026-11.md)（参照実装の試験記録。`RunReachable`が`RunWithDeclaredValues`を通り、宣言した`produces`が残り、宣言外の提案が拒否される）
