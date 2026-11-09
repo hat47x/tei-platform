@@ -57,7 +57,12 @@ type selfBuildOuterEvidence struct {
 	// reported plan fingerprint to the artifact digest, with the digest
 	// independently read back from disk.
 	PlanArtifactBinding *planArtifactBinding `json:"planArtifactBinding,omitempty"`
-	Error               *cliFailure          `json:"error,omitempty"`
+	// ArtifactReproducibility is §4.21: a second, independent build of the same
+	// plan produced the same artifact bytes. Together with planArtifactBinding it
+	// is the observation §4.8(c) asks for; it is never present with state
+	// "reproduced" when the caller did not ask for it.
+	ArtifactReproducibility *selfBuildReproducibility `json:"artifactReproducibility,omitempty"`
+	Error                   *cliFailure               `json:"error,omitempty"`
 }
 
 // selfBuildIntentBinding separates "which declaration this entry held" from
@@ -123,6 +128,10 @@ type selfBuildOuterArgs struct {
 	// ExpectedPlanFingerprint is a value the caller declared out of band. When
 	// given, the resolver's plan must equal it or the attempt stops.
 	ExpectedPlanFingerprint string
+	// RebuildCheck asks this entry to build the same plan a second time, in a
+	// fresh state directory, and compare the artifact bytes. Without it the
+	// reproducibility record says why it did not run (§4.21).
+	RebuildCheck bool
 }
 
 // looksLikeOuterShape reports whether the caller used any §4 flag. A caller that
@@ -134,7 +143,7 @@ func looksLikeOuterShape(args []string) bool {
 			name = arg[:index]
 		}
 		switch name {
-		case "-workspace", "-intent", "-intent-file", "-supply", "-state", "-output":
+		case "-workspace", "-intent", "-intent-file", "-supply", "-state", "-output", "-rebuild-check":
 			return true
 		}
 	}
@@ -158,6 +167,7 @@ func parseSelfBuildOuterArgs(args []string) (selfBuildOuterArgs, error) {
 	fs.StringVar(&parsed.IntentResolver, "intent-resolver", "", "exact executable that resolves the declaration into a plan (I-2)")
 	fs.StringVar(&parsed.IntentResolverArg, "intent-resolver-arg", "", "extra arguments for the intent resolver as a JSON array")
 	fs.StringVar(&parsed.ExpectedPlanFingerprint, "expected-plan-fingerprint", "", "planFingerprint the resolved plan must equal")
+	fs.BoolVar(&parsed.RebuildCheck, "rebuild-check", false, "build the same plan a second time in fresh state and compare the artifact bytes (§4.21)")
 	if err := fs.Parse(args); err != nil {
 		return selfBuildOuterArgs{}, err
 	}
@@ -446,6 +456,28 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 			appendSelfBuildFailure(&evidence, planArtifactMismatchCause(binding))
 		}
 	}
+
+	// §4.21: a second independent build answers §4.8(c) — whether the artifact on
+	// disk is the one this plan produces — which the lock alone cannot.
+	//
+	// The record is always emitted. When the caller did not ask, it says so with a
+	// reason, because a missing field would let a reader take silence for
+	// agreement (the same rule SC0-18 applies to the child's declaration report).
+	reproducibility := selfBuildReproducibility{
+		State:             reproducibilityUnperformed,
+		UnperformedReason: "the caller did not ask for a second build (-rebuild-check)",
+		Boundary:          reproducibilityBoundary,
+	}
+	if parsed.RebuildCheck {
+		reproducibility = checkArtifactReproducibility(parsed.Child, childArgs, evidence.ChildArtifact, parsed.Output)
+		switch reproducibility.State {
+		case reproducibilityMismatched:
+			appendSelfBuildFailure(&evidence, "a second build of the same plan produced different artifact bytes")
+		case reproducibilityUnperformed:
+			appendSelfBuildFailure(&evidence, "the reproducibility check did not run: "+reproducibility.UnperformedReason)
+		}
+	}
+	report.ArtifactReproducibility = &reproducibility
 	report.OK = evidence.CrossCheckOK && evidence.FailureCause == ""
 	if !report.OK {
 		report.Error = &cliFailure{Code: "SELF_BUILD_CHILD_FAILED", Message: evidence.FailureCause}
