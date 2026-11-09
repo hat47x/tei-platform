@@ -42,6 +42,7 @@
 - [フック実行の配線と失敗の区別の確認](XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)（参照実装の試験記録。Runnerからの配線、NotSatisfiedと実行失敗の区別、参照規則。実PluginとCLI・Studioの配線は未実装）
 - [フック宣言の印刷面への反映の確認](XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md)（参照実装の試験記録。画面と同じフック宣言が印刷面にも出る。実印刷・用紙面の版照合は未確認）
 - [フックの位相順序と途中停止の確認](XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md)（参照実装の試験記録。位相の実行順、不成立での停止位置、`warn`の続行、未対応位相の拒否。CLI・Studioへの配線は未実装）
+- [能力入力の結び付けのData対応と、1属性の複数パラメータへの束ねの確認](XTEA_LOWCODE_HOOK_BINDING_DATA_MATCH_2026-11.md)（参照実装の試験記録。Data型パラメータへ別Dataの属性を結ぶ宣言を拒否し、1属性を複数パラメータへ束ねる形は既に動くことを固定）
 - [能力入力の結び付けの型検査の確認](XTEA_LOWCODE_HOOK_BINDING_TYPE_CHECK_2026-11.md)（参照実装の試験記録。原始型同士の食い違いを宣言段階で拒否し、Dataを名指す結び付けは比較しない）
 - [フックの`reads`から能力のパラメータへの対応規則の確認](XTEA_LOWCODE_HOOK_READS_TO_PARAMS_2026-11.md)（参照実装の試験記録。interactionの`command`の`input`が対応を述べており、読んでいない属性のパラメータは埋めない）
 - [フックが宣言した能力を実際に呼ぶ配線の確認](XTEA_LOWCODE_HOOK_DECLARED_CALL_WIRING_2026-11.md)（参照実装の試験記録。CLIとStudioの参照実行が`CommandCaller`を通して`uses`を実際に呼ぶ。`reads`からパラメータへの対応は未設計）
