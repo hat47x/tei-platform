@@ -233,3 +233,6 @@
 
 # Adapter identity masking output is hashed as raw bytes by its README.
 /plan/evidence/ADAPTER_IDENTITY_MASKING_2026-11-09/** -text
+
+# Executor adapter identity output is hashed as raw bytes by its README.
+/plan/evidence/EXECUTOR_ADAPTER_IDENTITY_2026-11-09/** -text
