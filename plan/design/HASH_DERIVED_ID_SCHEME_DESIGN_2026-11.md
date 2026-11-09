@@ -298,7 +298,7 @@ flowchart TD
 | 順 | Gap／最小証拠 | 現行主担当との関係 |
 | --- | --- | --- |
 | P0 | Scheme／Generator／Target Snapshotの局所不変条件（重複した旧割当を含む）をGo・Node・TypeScript Goldenと負例で固定 | #2814 Draft内Reference。独立Output Oracleを維持 |
-| P0 | Source Identity/Revision/Scopeと実Consumerが**同一Attempt**で読んだbyte列を結び付ける。A→B→Aと異Scopeを必須負例にする | #2814でCaller `ReadClaim`比較に加え、**既存Source IndexのPath/Fingerprint/ModelRevisionとの局所照合**・兄弟Source変更／rename／ABA負例までReference化（**実Reader同一Attempt・実Consumer byte証拠なし／未完**）。本体の#1017/#1124/#2595を再利用 |
+| P0 | Source Identity/Revision/Scopeと実Consumerが**同一Attempt**で読んだbyte列を結び付ける。HR-P0-01〜08（§9.11）を負例として限定し、A→B→A・別Workspace同Manifest・異Scope・宣言/実Tool消費不一致を別契約で追跡 | #2814はCaller `ReadClaim`と既存Source IndexのPath/Fingerprint/ModelRevision局所照合のみ実装。**実Reader同一Attempt／全Consumed Closure／Workspace physical Root／Owner受理は未実証**。#1017/#1124/#2595/#1163とDraft #3321/#3327/#3492を再利用し、第二Reader/Consumerを増やさない |
 | P1 | Target Providerの現行Collation・既存割当・競合と実物理一意制約を検証、Owner Authorityと独立readbackを分ける | #2094を利用しW3を独立Gateへ。SQLite単一接続の合成試験を一般化しない |
 | P1 | Script-first Studio／Headless Scenarioの同Scheme・同結果を投影し、TypeScriptの実Providerを独立検査 | #2619/#1124/#1180。表示の成否をSource Acceptanceへ昇格しない |
 | P2 | バッチ・セルフビルド・Registry・公開物での必要性とコスト／効果を実測してから標準Plugin/Schemaを採否判断 | #943/#951/#2016。Coreに必須機能を導入しない |
