@@ -101,6 +101,17 @@ func (r Runner) Run(ctx context.Context, invocation Invocation) error {
 	if declared == nil {
 		return &Error{Code: "HOOK_NOT_DECLARED", Message: fmt.Sprintf("pattern %s does not declare a %s hook", invocation.Pattern, invocation.Phase)}
 	}
+	// The runner runs one hook per record, so it can apply a record scope and the
+	// pattern's own unit. Any other scope is declared but not applied, which is the
+	// X-TEA defect this boundary exists to avoid (D-9: a definition that is present
+	// in the source and does nothing at run time). Refuse it instead of running the
+	// hook as if the scope did not matter.
+	if declared.Scope != "" && declared.Scope != string(application.PatternRecord) {
+		return &Error{
+			Code:    "HOOK_SCOPE_UNAPPLIED",
+			Message: fmt.Sprintf("hook %s declares scope %s but this runner applies one hook per record", invocation.Phase, declared.Scope),
+		}
+	}
 	implementation := r.implementationFor(invocation.Phase)
 	if implementation == nil {
 		return &Error{Code: "HOOK_IMPLEMENTATION_UNAVAILABLE", Message: "no implementation is configured for this hook boundary"}
