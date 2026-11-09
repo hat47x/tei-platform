@@ -77,21 +77,45 @@ func TestInvokeClosesOneHalfOfASplitMonth(t *testing.T) {
 	}
 }
 
+// monthOnlyState implements only the base PeriodState, so it cannot answer for a
+// half month.
+type monthOnlyState struct{}
+
+func (monthOnlyState) Closed(context.Context, core.CanonicalID) (bool, error) { return false, nil }
+
 // TestInvokeRefusesASplitPeriodWithoutHalfState checks that a state which only knows
 // whole months does not answer for a half. Reading the month's closure as the
 // half's closure would allow or refuse the wrong half.
 func TestInvokeRefusesASplitPeriodWithoutHalfState(t *testing.T) {
-	state := NewMemoryPeriodState()
-	state.SetClosed("sales.period", false)
 	invoker := Invoker{
 		Authorizer: ReferenceAuthorizer{},
 		World:      splitPeriodWorld(20),
 		Executor:   fakeExecutor{},
-		Periods:    state,
+		Periods:    monthOnlyState{},
 	}
 	_, err := invoker.Invoke(context.Background(), splitRequest("2026-05-21"))
 	if code := executionCode(t, err); code != "COMMAND_PERIOD_SCOPE_UNAVAILABLE" {
 		t.Fatalf("code=%s", code)
+	}
+}
+
+// TestMemoryPeriodStateAnswersForHalfMonths checks that the reference state can be
+// told a half's closure, so a caller can drive the split path without a provider.
+func TestMemoryPeriodStateAnswersForHalfMonths(t *testing.T) {
+	state := NewMemoryPeriodState()
+	state.SetScopeClosed("sales.period#1", true)
+	invoker := Invoker{
+		Authorizer: ReferenceAuthorizer{},
+		World:      splitPeriodWorld(20),
+		Executor:   fakeExecutor{result: Result{Outcome: &semantic.Outcome{Name: "submitted", Payload: "sales.order"}}},
+		Periods:    state,
+	}
+	_, err := invoker.Invoke(context.Background(), splitRequest("2026-05-20"))
+	if code := executionCode(t, err); code != "COMMAND_PERIOD_CLOSED" {
+		t.Fatalf("code=%s", code)
+	}
+	if _, err := invoker.Invoke(context.Background(), splitRequest("2026-05-21")); err != nil {
+		t.Fatalf("the open half was refused: %v", err)
 	}
 }
 
