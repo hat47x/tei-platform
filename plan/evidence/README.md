@@ -87,7 +87,8 @@
 - [利用者設定の書込みの確認](XTEA_LOWCODE_USER_SETTINGS_WRITE_2026-11.md)（参照実装の試験記録。監査・権限・画面は未実装）
 - [例の締め日・設定Dataと構文の修正の確認](XTEA_LOWCODE_EXAMPLE_CLOSING_SETTINGS_2026-11.md)（参照実装の試験記録。閉めの実行内容と設定の監査は未実装）
 - [為替の月次・年次を別Dataに分ける構成の確認](XTEA_LOWCODE_CURRENCY_TWO_TABLES_2026-11.md)（参照実装の試験記録。宣言語彙と例への追加は未実装）
-- [採番の永続CounterStoreの確認](XTEA_LOWCODE_NUMBERING_SQLITE_STORE_2026-11.md)（参照実装の試験記録。2プロセス同時実行とPostgreSQLは未実装）
+- [採番の永続CounterStoreの確認](XTEA_LOWCODE_NUMBERING_SQLITE_STORE_2026-11.md)（参照実装の試験記録。PostgreSQLは未実装）
+- [採番の2プロセス同時実行の確認](XTEA_LOWCODE_NUMBERING_PROCESS_RACE_2026-11.md)（参照実装の試験記録。PostgreSQLと多プロセス構成は未実装）
 - [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
 - [X-TEA受容要件の実装対応](XTEA_LOWCODE_ACCEPTANCE_TRACE_2026-11.md)（`AC-1`〜`AC-11`・`RQ-C1`〜`RQ-C3`の参照実装と未確認事項。受容判断は仮承認）
 - [実DBで実行時の判断を確かめる計画](REAL_DATABASE_RUNTIME_DECISION_PLAN_2026-11.md)（期間・権限・効果の判断を実DBで見る案。**NOT RUN**）
@@ -264,3 +265,4 @@
 - [契約文書の符号一覧が実装より狭くなっていた](TEI_DOGFOODING_ROUND23_CONTRACT_DOC_2026-11-09/README.md)（#3419・#3807。`view`行は11符号しか挙げず実装は21符号を返しうる。discoveryは符号を広告しないため文書が唯一の発見経路。AST走査で文書と実装の一致を両方向に固定）
 - [toolの引数一覧がschemaと独立に手書きされていた](TEI_DOGFOODING_ROUND24_TOOL_TABLE_DRIFT_2026-11-09/README.md)（#3823・#3419。`toolArguments`が`InputSchema.properties`と同じ事実を2回書いており、緩む方向の不一致を誰も検出できなかった。表を削除しschemaから導出する形に）
 - [TEIの標準意味型はTEIで宣言されていない](TEI_DOGFOODING_ROUND25_STDLIB_SELF_DESCRIPTION_2026-11-09/README.md)（#2620・#2619。`std.*`の12型は`prelude:true`かつ`sourceStatus:not-indexed`で、`inspect`も`source-index`も根拠を返さない。定義はGoにあり、`namespace std`は宣言を拒否される。合格条件をCLIだけで測れることを実演）
+
