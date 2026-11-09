@@ -303,3 +303,4 @@
 - [`darwin`・`arm64`で何が確かめられ、何が確かめられないか](TEI_GO_SELF_BUILD_CROSS_COMPILE_SCOPE_2026-11-10.md)（§7の残項目について、クロスコンパイルは4 target で成功するが**実行はできない**（qemu無し・macOS無し）。`internal/buildintent`にhost依存の分岐が0件という静的確認まで。**実行による一致は未観測**で、§7の項目は未チェックのまま。 #2831）
 - [桁数を綴るhelperが1桁しか扱えず検査が静かに止まっていた](TEI_DOGFOODING_ROUND34_ITOA_DIGITS_2026-11-09/README.md)（#3919。`itoa(10)`が`":"`になり正規表現が0一致。panicせず検査が無くなる。`strconv.Itoa`へ置換し試験2件を追加。第33ラウンドの記述誤りも訂正）
 
+- [能力宣言に版付けの余地が無いことの実測](TEI_GO_SELF_BUILD_DECLARATION_VERSIONING_2026-11-10.md)（§7の「必要になった時点で決める」を検証。`formatVersion`を足した宣言は`json: unknown field`で**拒否される**——版を名乗る手段が導入時点で使えない。D-1/D-2/D-3を比較し、D-2が最も安い理由を示すが**判断はしない**。 #2831）
