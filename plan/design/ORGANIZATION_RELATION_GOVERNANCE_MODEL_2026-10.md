@@ -3691,3 +3691,145 @@ where case_id = :case_id
 | E Consumerと独立照合 | 同一AttemptでC1→D1を受けた出力を独立Expectedと比較。0行/未取得、部分/complete、異Tenantの資格は既存§79/83に渡す | 一件の限定E2。完成・承認・Host Write資格なし |
 
 **実装優先**：現mainにCase Query/Mappingがまだ入っておらず、Org `org_view`のBrowse Patternもないことをまず欠落事実として記録。これらを単純に新Core/Query Engine不足と同一視しない。#2586がProduct読取入口・統合証拠、#2506がFunction Context、#2611/#2622がTarget・Provider、#2386が組織意味とCase扱いのOwner。現`*.tei`の一件を先に扱い、新`*.tei.md` Parserは#3030/#3031に委ねる。**本追補はSource-staticと計画の更新のみで、新Go/SQL/DB/Consumer E2、旧#3024の再実行、Owner受理・閉鎖PR再開はNOT RUN。**
+
+
+<!-- org-currentmain-crossview-20261109 -->
+## 2026-11-09 横断統合：組織変更・案件責務・実行の「別の同一性」を一つの現在main受入へ接続する（設計／未受理）
+
+本節は[組織意味Owner #2386](https://github.com/hat47x/tei-platform/issues/2386)の既存第81〜84節に対し、[RQ-036 全容モデルマップ・main統合済み #3505](https://github.com/hat47x/tei-platform/pull/3505)、[read-only型付きModel Map Draft #3518](https://github.com/hat47x/tei-platform/pull/3518)、[三視点/CRUDの実Source Reader照合Draft #3492](https://github.com/hat47x/tei-platform/pull/3492)、[一Function実Read Owner #2586](https://github.com/hat47x/tei-platform/issues/2586)、[組織Case Pattern/DB connector Draft #3500](https://github.com/hat47x/tei-platform/pull/3500)、[Lifecycle/Traitのmain統合 #3510](https://github.com/hat47x/tei-platform/pull/3510)、[論理Subsystem分割候補 #3250](https://github.com/hat47x/tei-platform/issues/3250)との**重複しない差分**だけを記す。旧[組織Profile Draft #3243](https://github.com/hat47x/tei-platform/pull/3243)の§9〜13は未統合の設計・Expected履歴として参照し、その旧MASTER_PLANや旧READMEを現mainへ全文コピーしない。
+
+### A. 分離すべきIdentityと業務上の因果関係
+
+組織図、案件、業務承認、実行のすべてを単一の「所属先」や単一のTime Snapshotに潰さない。
+
+| Identity/Relation | 何を答えるか | 直接は答えられないこと |
+| --- | --- | --- |
+| Person / Employment / Membership occurrence | 人・雇用・所属の業務事実、兼務、valid/known/TEI observed時点 | 現実のPrincipalや委任Grant、単一の本務親、実案件の担当 |
+| OrgUnit / typed OrgRelation / Position / Occupancy | 組織軸・指揮・職位と在任、多重Path・時点 | 現在の案件責任・対象Resourceに対する許可 |
+| CaseRecord / handlingUnit occurrence / Case revision | 案件が現在どの担当部門を指しているか | 所属異動だけからのCase一括自動移管、実引継ぎ済み |
+| Business Rule / Decision Candidate / Procedure Step | なぜ誰を承認候補に選び、何をしなければならないか | 対象Principalの現Grant、DB Commit、全件Handoff |
+| Verified Principal / Delegation / Host Grant / Effect / Receipt | 誰が何の権限で対象へ働きかけ、何を観測したか | 過去の組織意味の正式受理、相手方の独立受領 |
+| Event / Source ChangeSet / actual Observed Trace | 何が提案・発令・受信・適用・確認されたか | 1つのEvent表示だけで関係の有効版や外部原子性が確定したか |
+
+**最小の独立反例**：時刻T0にP1がMembership A1でD1所属、Case C1のhandlingUnitもD1。T1でP1がD2へ異動しても、C1→D1は**別Relation occurrence**であるため、受理された担当変更Rule/Effectがなければ自動的にはC1→D2にならない。逆にC1の担当がD2へ移っても、旧D1担当者のRunning Attempt／旧Grant／受信ACKは新担当へ自動転用できない。複数法人・Tenantの名寄せと越境アクセスも別。表示用Treeに複製されたD1/D2/C1は新Entityではない。実行前に必要な対象・Rule・委任・権限の現在性を再照合し、異Providerの時計/連番の大小から因果順序を補わない（旧Draft #3243 ORG-CF-01〜08）。
+
+**時間の境界**：Sourceのvalid time、Sourceが記録したknown time、TEIが実際に受信したobserved time、Ownerが受理したMeaning revision、業務decision time、Providerのread cohort／実Read、HostのCommit時判断、ACK受領時点を区別。遡及訂正で過去に存在した資料を、当時TEI／Consumerが受け取った証拠へ昇格させない。異なるAuthority domain間に比較可能なrevision token/共通Snapshotがないなら現在性はunverified。旧ResponseのA→B→Aで古い確認を復活させない。
+
+### B. RQ-036から組織Profileへ移すのは「全容の見え方」と受理対象の追跡
+
+現在mainで採用済みなのは**RQ-036の全体像・Source/Gap付きNavigation要件**であって、組織Event/State Graph、GUI、生成結果の製品適合を宣言するものではない。Draft #3518の型付きMapは既存World/Source Index/Canonical Catalogに依存するread-only M0候補であり、declared resolvedは意味受理／実Provider／現Grantとは異なる。Draft #3492が示すRelationのParent/Target Source Reader一致は、三視点CRUDの実生成・Reader/Writer往復を保証しない。
+
+**組織で必要な派生ビューの束**：
+- Data：Person、OrgUnit、Membership、Position、Occupancy、Case、Relation occurrence、valid/known、scopeとSource。
+- Function：どのContext/Query/PatternがどのRelationとFieldを必要とし、現在何を実取得し、どの用途へDisclosureしたか。
+- Business：異動候補、辞令の発効、案件担当変更、代理・承認、HandoffのProcedure/Event/State/Guardを、受理済みと未接続候補に区分。
+- Matrix：Data × FunctionのCRUD、Business Event × State × Action、責任Actor/Agent × Resource/対象Case × Effect/Receipt、さらに表示上のNode/Edge/Pathから元Relation Sourceへのナビ。
+- Standard/Custom/Effective/Observed：固定するのはGuard・identity・Scope・Effectと不明状態の取扱いなど**全経路保証**。PluginのHook Patchや業務上の追加Stepは受理後の実効Graphへ合成し、未選択Pluginや未実装Transitionを実行済みとして描かない。
+
+「全容」は対象World/Scope/ConsumerのRequired閉包が示せる範囲だけ。未読込Source、非開示、部分取得、対応Role不明、未宣言Event、Source-onlyのImported Provider改訂をそれぞれGapに残し、Graphの欠落を不存在と推論しない。Graph/Tree/Matrix/SHOの表現損失を明示し、同名ラベルや図の位置からSource identityを逆算しない。Graphのread-only表示、意味編集候補、Owner Acceptance、実Runtime/Target Effectを別能力としてナビゲーションに示す。
+
+**REA/Everything is Dataとの整合**：Person・OrgUnit・外部Actorは用途別のAgent Roleになり得る。Capacityや予算はQuantity Kind/Sourceが受理された範囲でResource候補、辞令・委任・申請・承認・受領は異なるEvent/Action Roleの候補となり得る。しかし観測・提案・予定・発令・適用・Receiptを一つのEventとして固定しない。Item/Action/Event/TaskをCoreの固定継承階層へ追加せず、標準データへの多重Roleと受理したProcedureを使用する。異なるDomainのREA EventがTEI Host Effectを自動的に生成することもない。
+
+**Subsystem境界**：#3250の論理CRUD分割を組織境界へ無条件転写しない。Caseの業務上のhandlingUnit、Data/Functionの更新Owner候補、Deployment/Provider配置、Tenant Grantは別軸。跨Org direct-CUDや多Writerの問題は候補として診断するが、部門移管を物理DB分割やサービス再配置の指示にしない。
+
+### C. 最短のProduct接続順・新しい第二Gateを作らない
+
+1. **全TEI P0-R**：mainのMASTER_PLANに記載された最初のR0／HJ-09対象は **order_entry.recent_orders**。一Function→明示Pattern/Query→実Selected/Invoked Provider→SQL/params→raw Rows/Field Presence→Mapping→Function Context→Consumerの同一Attemptと独立Expectedを[#2586](https://github.com/hat47x/tei-platform/issues/2586)で検収する。組織Caseをこの第一Targetへすり替えない。
+2. **組織固有P0-M/P0-Rの圧力**：上記の横断Readが接続したら、既存C1→D1、C2→D2のNative Org Source/Resultと、Draft #3500 E1fのPattern→Driver→instrumented DB Connectorを流用して、C1について同じProducer/Read/Consumer契約を実DB/Trusted Scopeまで判別する。#3500のopt-in隔離PostgreSQLは既存CIでSKIPであり、instrumented Connectorの合格は実物理DBや認可済みReaderを意味しない。
+3. **組織P0-Cの説明**：同一Scope・Source revision・Read CohortからTyped Model Map/三視点/CRUD/Business Flowへ参照を渡し、元のCase Relation ID・Action Role・Rule・Source位置・Known Gapが同じか確かめる。別々のGo/Node合成PASSを足してProduct E2としない。
+4. **P1 Effect/Handoff**：古い承認候補、代理Grant取消、職務分掌、同一Principalの自己承認、対象Case/Resourceの差し替え、L（業務上必要な集合）・R（実Read）・H（相手方ACK）の不一致を、#1174/#2499/#1125/#1444の既存実行/手順境界で検証。業務資料の表示はEffect・全件移管完了の証拠でない。
+5. **P1/P2 編集・Target**：Graph/CRUDの編集対象が一意なRelation/Source/Revisionに束縛できる場合のみTyped Change Proposalへ渡し、Preview→Owner Acceptance→再Load/再Projectionで差分を比較。Custom Hook/State/Targetの成果物や既存Attemptの実行中移行は独立に検証する。組織ProfileがHook Compiler/第二権限Engine/第二Dataset Store/独立Scenario Runnerを所有しない。
+
+**再利用する独立負例**：旧Draft #3243のORG-MAP-A〜J／ORG-CF-01〜08、および本書第81〜84節のORG-APP/TB/Completionを新しい製品Case正本として複製しない。#1131 Dataset候補→#1180 Scenario→#2514 独立Expected/Mutant→#1163 exact Attemptへ実行証拠を帰属する。必要なRoot/Imported Source/Current Provider/Consumer Replyが見つからないときはUnknown、出力可視範囲が狭いときはPartialと判定する。データが0行でも全世界の不存在/全件完了としない。
+
+**現時点の資格**：本節のSource/Issue/PR照合と受入順は**設計のみ**。mainでRQ-036要件と既存の限定Local CLI/Go Evidenceは確認可能だが、Draft #3518/#3492/#3500/#3243の製品統合、全Org実Read/Graph/CRUD/SHO/Owner Meaning、実Host Grant・全件Handoffは**未証明**。RQ-036（全容Map）とBOM側RQ-037の採番修復は[Draft #3592](https://github.com/hat47x/tei-platform/pull/3592)が所有し、この節でRequirement番号やTrace正本を重複編集しない。
+
+
+<!-- org-transfer-obligation-cutover-20261109 -->
+## 2026-11-09 追加：組織改編時の実効責務の切替・未完了作業・外部観測（採用前）
+
+### A. 所属・案件担当・業務候補・実行能力・相手方受領は異なる関係
+
+旧§81〜84および現main基線PR #3669を踏まえる。あるPersonのMembershipがD1→D2へ変わることは、Case C1のhandlingUnit、旧担当の実Grant、新担当の受領、未完了Attemptが自動的に切り替わることではない。
+
+- Assignment：Membership、Occupancy、Case handlingUnitを独立Relation occurrence・時点・版で扱う。
+- Responsibility Candidate：Owner受理済みRule/Procedureから導出する、CaseとOperationに相対的な担当役割・組織・候補者。通知/Inbox表示でも現在Grantは証明しない。
+- Effect Eligibility：Case現行版・Rule/SoD・実Principal・委任・Grant・対象Resource・条件付き更新の現在性を実行境界で検査。静的Roleや表示候補だけでは実行可能としない。
+- Handoff：必要対象集合L、Provider実Read集合R、対象/版に束縛した相手方受領集合Hを区別。Request送出・HTTP 2xx・ACKの個数だけで全件移管完了にしない。
+
+**全組織で単独責任を強制しない**。単独担当／共同担当／合議／保留の許容条件は業務OwnerのCase/Action相対Ruleで判断し、新固定TransferStatus enum・第二Workflow/Handoff Ledgerは作らない。
+
+### B. 旧側と新側の実効能力の4象限
+
+| 旧側の実行能力 | 新側の実行能力 | 単独責任を受理したProfileでの検査 |
+| --- | --- | --- |
+| yes | no | 切替前として成立する可能性。Case/Rule/Grantが同じ現在性条件を満たす必要 |
+| no | yes | 切替後として成立する可能性。相手方受領はなお独立 |
+| yes | yes | 二重有効。単独責任なら衝突、共同責任を明示受理した場合は正常候補 |
+| no | no | 無担当。一時的保留が許容されても業務完了とは扱わない |
+
+yes/noは実行先で対象CaseとOperationに関し判定できたときだけ使う。旧・新のいずれかが未取得／部分取得／現在Grant未照合ならunknown/unverifiedとし、明示denyとも区別する。異なるDB/APIの時刻・revision番号の大小を因果順序にしない。A→B→Aの担当先ラベル復帰でも、古いRelation occurrence/ACK/実行許可を復活させない。Running AttemptのGraph/担当版を黙って移行しない。
+
+### C. 他チャットの新しい実装証拠との境界
+
+1. **Typed Lifecycle/Hook**：Traitの全Path保証はmain統合 #3510。Studio参照実行のHook状態記録はmainの #3635（executed/notEvaluated/skipped/refused）。欠落入力でnotEvaluatedでも参照Commandが動き得るが、それを業務上重要なGuardの成立・現在Grant・実Effectの許可としない。旧担当を迂回するPlugin Patchや、未選択Pluginの実行済み表示を拒否する。
+2. **Plugin-first Inspector**：mainに通常CLI/Studioへ静的参照Providerを選択する #3540 の実装が存在する。これは正式Org DB Provider/Plugin Binary Link/実Rowset/Principal Grantとは別。RQ-036型付きMap Draft #3518でresolvedされたことも実行可能性でない。
+3. **REA外部Evidence**：Draft #3496の実REA 6.7.0 T0四ケース/保存Artifact/独立監査は、Source解析の限定Witness。REA Agent/Event/ResourceをTEIの正式Person/Case/Effectとして自動受理しない。raw Source・tool版・partial/limitations/error・TEI観測・Owner Meaningを分離。JSONLのtype:errorは業務データ行や不存在証明でない。T1-A Intakeは既存Application Operation/Source/Acceptance Ownerへ。
+4. **Subsystem分割**：#3250/Draft #3662の固定Owner・宣言Direct Writeの数理Referenceは、組織の実業務責任／越境Update/実Principal Grantの最適化ではない。部門変更を物理DB/Service移動に直結させない。未知のWriter/Effectを越境0と計上しない。
+
+### D. ORG-TR-01〜08：旧合成Case C1/C2を使う独立Expected案（全件未実行）
+
+| ID | 変更・対照 | 必要な判別 |
+| --- | --- | --- |
+| TR-01 所属のみ異動 | P1 Membership D1→D2、C1担当はD1のまま | C1への担当変更Event/Effect/ACKを捏造しない |
+| TR-02 Case先行移管 | C1担当 D1→D2、旧D1のGrantは未照合 | 旧画面・旧候補から実Commitを許さず現在Case/SoD/Grantを実行時照合 |
+| TR-03 片側ACK | L={C1,C2}、Rは2件、H={C1} | 全件Handoffのholdsを認めない。C2は未受領 |
+| TR-04 重複と遅延 | C1のACK二通・C2なし、旧D1遅延Command | 件数ではなくID/Scope/Relation版で判別。旧Commandは別Attempt |
+| TR-05 合議 | D1/D2両方が有効、共同責任Ruleは受理済み | 無条件の二重担当Errorを出さずActionごとの権限・成立条件を検証 |
+| TR-06 A→B→A | C1担当 D1→D2→D1、表示名は元通り | 初期D1の旧ACK/Grant/Receiptを新D1期間へ流用しない |
+| TR-07 Hook未評価 | 重要なChange Guardの入力欠落、Hook notEvaluated | 参照表示の成功をHost Effect/Authorized/Committedに昇格しない |
+| TR-08 External partial | REA解析partial、またはSubsystem数理候補のみ | 未受理のAgent/Relation/OwnerからCase更新や完了を生成しない |
+
+新しいテスト正本や別受入Gateは作らない。#1131 Dataset候補→#1180 Driver Scenario→#2514 Independent Expected/Mutant→#1163 exact Attemptを継続使用。旧#3243のORG-CF/MAP、#2510のCorpus、現書§81〜84のAPP/TBとの重複は共通fixture・差分表で解消する。
+
+**最短の実装順**：全TEI初回R0/HJ-09 order_entry.recent_ordersの実Function→選択Provider→SQL/Rows→Mapping→Context→Consumerを先行（#2586）。次に組織C1→D1を同じRead契約で接続し、Source付きModel Map/三視点へ説明を投影。その後2件Handoffと二重有効・無担当・旧Grant/ACKを#1125/#1444/#1174/#2499へ渡す。実DB/Effect/Owner意味受理を初回ReadのHard Dependencyにしない。
+
+**証拠上限**：現mainでinspectoradapter/local_host.goとstudiohost/hooks.goを確認した。Org実Provider/Typed Model Map全容/実Host Grant/Effect、REA T1-A取込、Subsystem Product最適化、ORG-TR-01〜08の新Go/DB/Consumer/Owner受理はNOT RUN/NOT PROVEN。全体CI・本番適合を局所参照結果から推論しない。
+
+
+<!-- org-transitive-policy-cutover-v2-20261109 -->
+## 2026-11-09 追加：推移的な組織Policyと実効責務Cutoverを一つのRead／Effect境界で照合する（採用前）
+
+### A. 第58節を再設計せず、ORG-TRのCase担当変更へ適用する
+
+本書§58には、広域のレコード可視性・参照専用・明示除外、typed階層の推移的到達、Host/Provider Enforcement、List/Count/Page/Export等の裏口防止を既に定義した。既存[合成Reference Draft #2781](https://github.com/hat47x/tei-platform/pull/2781)のVP-01〜33とVE-01〜20もこれに対応する。新たなPolicy Engineや必須全組織ACL、同じVP/VEの複製試験は不要である。本節は、前節ORG-TR-01〜08で分離した「所属・Case担当・旧/新実効権限・受領」の**切替中に、§58の適用結果がどう変わるべきか**に限る。
+
+選択された業務Data Kindに対してOrg-linked Policyを既定適用し、Record/用途ごとに適用除外・参照専用を明示できるUXを保つ。これは**当該選択済Policyを広く適用する既定**であり、Host/Providerが未認証者、別Tenant、別ResourceへのRead/Writeを既定許可するという意味ではない。除外は当該Policyのnot-applicableであってpublic/allowでない。通常Org Dataは同一TEI World内の通常利用を基本とし、別Tenant境界や対象指定した業務Recordに必要な保護のみを適用する。
+
+### B. Case C1の担当D1→D2における現在性の最小シナリオ
+
+同じ業務Case C1（ScopeはTenant T、handlingUnit relation occurrenceはR1）について、T0では組織階層commandのD1配下として可視候補である。旧ViewerのVerified PrincipalとGrantはD1 root/command/当該Policy版に限定される。T1でC1 handlingUnitがD2へ変更されR2となるが、P1のMembershipや通知Inbox、旧Viewerの画面・Cacheは必ずしも同時に変化しない。T2のRead/Count/Export/Updateは**R2と当該Providerが実際に読んだ関係集合・Scope・現在Grant/Policy版**に再束縛して判断する。
+
+旧D1は、旧画面にC1が残ること、旧Historyを読むこと、古いReceipt/ACKを持つことだけでは現行C1を再Read・更新できない。D2も「CaseがD2へ移った」という構造的事実だけで許可されず、現在の独立Grantが必要。旧D1を個別Exceptionで引継ぎ用にRead-onlyにすることは候補だが、それも明示したSubject/対象/有効期間と既存Host Read Grantを必要とする。実行権限の旧/新四象限と、現在Read資格の旧/新四象限は別評価である。
+
+組織の多重Path、同端点別Relation occurrence、valid/known訂正、Replica lag、Imported Provider Source-only変更、A→B→Aの同ラベル復帰は、依存Footprintと再評価対象を変える。Pathが2本でも対象Caseは一件。元R1のRead許可を、新しいR2やR3へ見た目のラベル一致で転用しない。改訂版の比較根拠が異Provider間に存在しなければ、現在性はunknown/unverifiedとし、消費済み旧Dataが存在する事実も無効化できない。未確認なのに現在の公開/実行資格を復活させない。
+
+### C. 必要な機能と適用点は既存Ownerへ渡す
+
+1. Read入口（#2506/#2586/#1656）：Functionからの型付きRelation Path/Policy binding、selected/invoked Provider、実SQL/params、authorized Reader、actual Rowset、Snapshot/Cohort、Field PresenceとConsumer受領を同一Attemptで照合。認可/行条件はClient filter・sort・count・aggregate・pagination以前に強制する。Post-filter、JavaScript非表示、Mapの表示制限だけでは実保護としない。押し下げ不能・Scope/Policy不明なRouteは保護要求のある場合に拒否する。
+2. BehaviorとEffect（#1174/#2499/#1125）：Read-only、業務承認候補、自己承認禁止、Conditional Update、引継ぎACKを独立資格とする。Caseへの更新前に現在Grant・対象Revision・必要Guardを実行境界で再評価。Studio参照HookのnotEvaluatedをHost Grant/Effect成功へ昇格しない。過去に成立したReceiptは現在Read Grantの資格を復元しない。
+3. 全体像（#1124/#2516/RQ-036）：Studioの一か所から、選択されたData Kind、Record→Org relation、axis/root/valid/known、Owner Policy・例外・Read-only、Function/Query/Consumer/Cacheへの影響をナビゲート可能にする。実データのGraph/件数や診断に非開示の存在を漏らさず、Authorized Public Sliceと未解決Gapを分離。SHO/SUI Item/SEIの判断候補はSource/意味受理・Consumer Disclosureの別入口とし、ItemのLabelやAI案からPolicy受理・Grant・Effectを自動導出しない。
+4. 現行主要優先：全TEI初回R0/HJ-09（order_entry.recent_orders）は不変。組織C1→D1/D2の実Readへ§58のPolicy ON/OFF・現在性・Consumer差分を後続ドメインPressureとして付加。新しい認可/キャッシュEngine、Graph Runner、全製品共通Hostは設けない。
+
+### D. §58 VP/VE × ORG-TRを再利用する交差負例（ORG-VTR-01〜06、独立Expected案）
+
+| ID | 一つの変化 | 不合格となる具体的誤判定 |
+| --- | --- | --- |
+| VTR-01 | Membership D1→D2、C1 handlingUnitはR1/D1のまま | 本人の異動だけでC1がD2に移った、または新Grantが得られたと断定 |
+| VTR-02 | Case relation R1/D1→R2/D2、旧D1 Viewerに旧Read Cacheあり | 旧表示や同じCase IDを根拠に、D1の現Read/Count/Exportを許可 |
+| VTR-03 | C1をOrg Policy適用除外にし、別Host Denyは有効 | excludeをpublic read/更新許可へ変換 |
+| VTR-04 | D1を時限Read-only例外にし、更新AttemptはD2へ | Read候補をUpdate/承認/Commit許可として使用、またはReader未確認でRead許可 |
+| VTR-05 | command階層の二経路で同一C1到達、budget軸には別Path | C1を二件と数え、別Axis／TenantへScope拡張、partialで不存在を宣言 |
+| VTR-06 | Case担当D1→D2→D1、Provider返信順逆転・Host Grant/Policy改版 | 同名D1の旧Receipt、旧Policy Scope/Grant/Rowset/Export資格を自動再利用 |
+
+**実証境界**：VTRは既存VP/VE、ORG-TR、ORG-CFの追加cross-productであり、独立のFixture/Scenario SSOTを増やさない。#1131→#1180→#2514の独立Expected/Mutant→#1163の同一Attemptへ接続する。要求/Policyと実Enforcementを区別するため、各対照でSource relation occurrence・Graph/Policy版・Host Principal/Grant epoch・actual Provider Read/SQL/Scope・Consumer/Cache route・Runtime Effect/Receipt・Owner採否を別列にする。§58のfixed-head Node synthetic PASSを実Provider Enforcement/IdP/Studio/SHO/AI/Owner Meaningの安全性に昇格しない。VTR新テスト実行および実DB/HostはNOT RUN。
