@@ -6,6 +6,10 @@
 - 既存の設計：[経路間の業務機能完全性とScenario由来E2E](CROSS_ROUTE_FUNCTIONAL_PARITY_AND_TEST_DERIVATION.md)。こちらの文書は置換しない。
 - 限界：本書の製品機能は2026-11-07確認時点の公式文書に基づく比較。性能、費用、TEIとの相互運用性、製品別ライセンス適合は未実測。OwnerのMeaning受理・実Host Grant・Production資格は含まれない。
 
+<!-- tei-test-status-nov09-cli-knowledge-and-mcp -->
+> **現行の検収上限（2026-11-09。以下の古い「queued／未統合」は当時の記録）**：main [#3685](https://github.com/hat47x/tei-platform/pull/3685)の実CLI knowledge-* 連鎖、main [#3633](https://github.com/hat47x/tei-platform/pull/3633)のtrace継続指紋、修正済み[#3693](https://github.com/hat47x/tei-platform/issues/3693)のfull-mode空配列、main [#3540](https://github.com/hat47x/tei-platform/pull/3540)のInspector **S2-reference** を局所実績として採用。一方で **knowledge入力SchemaのCLI自己記述、Markdown本文の意味取得、実Function Provider P0-R、Blind TEST-T1B、外部H3配送、S2-product/Current Grant、C1・Owner業務意味受理**は未成立。最新の受入順は§35.7〜35.9と各Owner Issueを優先し、新Reader/Runner/Registryを設けない。
+
+
 
 <!-- tei-test-nov08-1136z-qualification-delta -->
 > **検収更新（2026-11-08 11:36Z、旧queued記録を上書き）**：
