@@ -18,6 +18,12 @@ on:
 permissions:
   contents: read
 
+# Cancel only stale PR runs; never cancel an independent main/branch run.
+concurrency:
+  group: rea-t0-static-evidence-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+
 jobs:
   t0-static:
     name: T0 observed ${{ matrix.t0_case }}
