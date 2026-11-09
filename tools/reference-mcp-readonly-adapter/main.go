@@ -135,15 +135,34 @@ func main() {
 	}
 }
 
+// maxRequestBytes bounds one request line. A larger line is refused as an
+// invalid request instead of ending the loop, so one oversized call cannot
+// stop the server for every later request (#3420).
+const maxRequestBytes = 4 * 1024 * 1024
+
 // serve runs the JSON-RPC loop. It reads one request per line, replies on
 // standard output, and never writes anything else there.
 func serve(in io.Reader, out io.Writer, workspace string) error {
-	scanner := bufio.NewScanner(in)
-	scanner.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
+	reader := bufio.NewReaderSize(in, 64*1024)
 	encoder := json.NewEncoder(out)
 	encoder.SetEscapeHTML(false)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
+	for {
+		line, oversized, err := readRequestLine(reader)
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
+			return err
+		}
+		if oversized {
+			// JSON-RPC -32600: the request could not be read as one request.
+			if err := encoder.Encode(rpcResponse{JSONRPC: "2.0",
+				Error: &rpcError{Code: -32600, Message: "request exceeds the 4 MiB line limit"}}); err != nil {
+				return err
+			}
+			continue
+		}
+		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
@@ -163,7 +182,64 @@ func serve(in io.Reader, out io.Writer, workspace string) error {
 			return err
 		}
 	}
-	return scanner.Err()
+}
+
+// readRequestLine reads one line without buffering more than maxRequestBytes
+// plus a little. It reports oversized instead of returning a partial line, and
+// consumes the rest of an oversized line so the next request starts cleanly.
+func readRequestLine(reader *bufio.Reader) (line string, oversized bool, err error) {
+	var builder strings.Builder
+	for {
+		chunk, readErr := reader.ReadSlice('\n')
+		if len(chunk) > 0 {
+			if builder.Len()+len(chunk) > maxRequestBytes {
+				// The chunk may already hold the newline; either way the rest of
+				// this line must be drained before the next request is read.
+				if !bytes.HasSuffix(chunk, []byte("\n")) {
+					return "", true, drainLine(reader, readErr)
+				}
+				return "", true, nil
+			}
+			builder.Write(chunk)
+		}
+		if readErr == nil {
+			return builder.String(), false, nil
+		}
+		if errors.Is(readErr, bufio.ErrBufferFull) {
+			continue
+		}
+		if errors.Is(readErr, io.EOF) {
+			if builder.Len() == 0 {
+				return "", false, io.EOF
+			}
+			return builder.String(), false, nil
+		}
+		return "", false, readErr
+	}
+}
+
+// drainLine consumes the remainder of an oversized line. A read error other
+// than EOF ends the loop, because the stream state is unknown.
+func drainLine(reader *bufio.Reader, pending error) error {
+	for {
+		chunk, err := reader.ReadSlice('\n')
+		if len(chunk) > 0 && bytes.HasSuffix(chunk, []byte("\n")) {
+			return nil
+		}
+		if err == nil {
+			return nil
+		}
+		if errors.Is(err, bufio.ErrBufferFull) {
+			continue
+		}
+		if errors.Is(err, io.EOF) {
+			if pending == nil || errors.Is(pending, io.EOF) {
+				return nil
+			}
+			return pending
+		}
+		return err
+	}
 }
 
 func handle(request rpcRequest, workspace string) rpcResponse {
@@ -313,10 +389,10 @@ func dispatch(name string, arguments map[string]json.RawMessage, workspace strin
 			return nil, false, err
 		}
 		options := modelref.TraceOptions{}
-		if options.Direction, err = optionalString(arguments, "direction", "both"); err != nil {
+		if options.Direction, err = optionalString(arguments, "direction", modelref.TraceDefaultDirection); err != nil {
 			return nil, false, err
 		}
-		if options.Mode, err = optionalString(arguments, "mode", "summary"); err != nil {
+		if options.Mode, err = optionalString(arguments, "mode", modelref.TraceDefaultMode); err != nil {
 			return nil, false, err
 		}
 		if options.ExpectedFingerprint, err = optionalString(arguments, "expectedFingerprint", ""); err != nil {

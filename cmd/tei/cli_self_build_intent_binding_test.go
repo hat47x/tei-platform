@@ -25,9 +25,13 @@ type selfBuildIntentBindingResult struct {
 		ChildPlanFP       string `json:"childPlanFingerprint"`
 		CheckPerformed    bool   `json:"intentByteCheckPerformed"`
 		CheckMatched      bool   `json:"intentByteCheckMatched"`
+		EntryIntentFP     string `json:"entryIntentFingerprint"`
+		FPPerformed       bool   `json:"intentFingerprintCheckPerformed"`
+		FPMatched         bool   `json:"intentFingerprintMatched"`
 		L2BClaimed        bool   `json:"l2bClaimed"`
 		Boundary          string `json:"boundary"`
 		UnperformedReason string `json:"byteCheckNotPerformedReason"`
+		FingerprintReason string `json:"fingerprintCheckNotPerformedReason"`
 	} `json:"intentBinding"`
 	Error *struct {
 		Code    string `json:"code"`
@@ -122,11 +126,26 @@ func TestSelfBuildOuterBindsTheDeclarationBytesItHeld(t *testing.T) {
 	dir := t.TempDir()
 	child := buildIntentReportingChild(t, dir)
 	workspace := outerWorkspace(t, dir)
-	intentFile := filepath.Join(dir, "intent.json")
-	if err := os.WriteFile(intentFile, []byte(`{"formatVersion":1,"subject":{"kind":"plugin","id":"intent.sample"}}`), 0o600); err != nil {
+	// The declaration must pass the strict reader that the entry now shares with
+	// the reference resolver (SB-C0 §4.13 I-1a), so this is a real declaration
+	// rather than an arbitrary JSON object.
+	intentFile := outerIntentFile(t, dir)
+	rawIntent, err := os.ReadFile(intentFile)
+	if err != nil {
 		t.Fatal(err)
 	}
-	wantDigest := digestOfBytes([]byte(`{"formatVersion":1,"subject":{"kind":"plugin","id":"intent.sample"}}`))
+	wantDigest := digestOfBytes(rawIntent)
+	// The child reports the fingerprint the entry itself derives, so this case
+	// exercises agreement. A made-up value would exercise the mismatch path and
+	// stop the attempt (see the fingerprint comparison in cli_self_build_outer.go).
+	declaration, err := readIntentDeclaration(intentFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantFingerprint := declaration.Fingerprint
+	if wantFingerprint == "" {
+		t.Fatal("the entry derived no intent fingerprint for the fixture")
+	}
 	output := filepath.Join(dir, "artifact")
 	// Compute the digest the child will produce so the artifact check matches.
 	if err := os.WriteFile(output, []byte("artifact-bytes"), 0o600); err != nil {
@@ -151,7 +170,7 @@ func TestSelfBuildOuterBindsTheDeclarationBytesItHeld(t *testing.T) {
 			"-artifact", output,
 			"-digest", artifactDigest,
 			"-report-intent-bytes", wantDigest,
-			"-report-intent-fingerprint", "fp.intent",
+			"-report-intent-fingerprint", wantFingerprint,
 			"-report-plan-fingerprint", "fp.plan"),
 	)
 	if code != 0 {
@@ -167,8 +186,17 @@ func TestSelfBuildOuterBindsTheDeclarationBytesItHeld(t *testing.T) {
 	if !binding.CheckPerformed || !binding.CheckMatched {
 		t.Fatalf("byte check was not performed and matched: %+v", binding)
 	}
-	if binding.ChildIntentFP != "fp.intent" || binding.ChildPlanFP != "fp.plan" {
+	if binding.ChildIntentFP != wantFingerprint || binding.ChildPlanFP != "fp.plan" {
 		t.Fatalf("child fingerprints were not recorded: %+v", binding)
+	}
+	// The entry now derives its own intent fingerprint, so the record carries a
+	// basis the byte check does not: the byte check needs the child to report
+	// what it read, while this needs only the entry's own reading.
+	if binding.EntryIntentFP != wantFingerprint {
+		t.Fatalf("the entry's own fingerprint was not recorded: %+v", binding)
+	}
+	if !binding.FPPerformed || !binding.FPMatched {
+		t.Fatalf("the fingerprint comparison was not performed and matched: %+v", binding)
 	}
 	if binding.L2BClaimed {
 		t.Fatal("L2-b was claimed")
@@ -186,10 +214,7 @@ func TestSelfBuildOuterDetectsAChildThatReadADifferentDeclaration(t *testing.T) 
 	dir := t.TempDir()
 	child := buildIntentReportingChild(t, dir)
 	workspace := outerWorkspace(t, dir)
-	intentFile := filepath.Join(dir, "intent.json")
-	if err := os.WriteFile(intentFile, []byte(`{"formatVersion":1,"subject":{"kind":"plugin","id":"intent.sample"}}`), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	intentFile := outerIntentFile(t, dir)
 	output := filepath.Join(dir, "artifact")
 	if err := os.WriteFile(output, []byte("artifact-bytes"), 0o600); err != nil {
 		t.Fatal(err)
@@ -247,10 +272,7 @@ func TestSelfBuildOuterRecordsWhyTheByteCheckWasNotPerformed(t *testing.T) {
 	child := buildSelfBuildChild(t, dir)
 	workspace := outerWorkspace(t, dir)
 	output := filepath.Join(dir, "artifact")
-	intentFile := filepath.Join(dir, "intent.json")
-	if err := os.WriteFile(intentFile, []byte(`{"formatVersion":1,"subject":{"kind":"plugin","id":"intent.sample"}}`), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	intentFile := outerIntentFile(t, dir)
 	report, _ := runOuterShapeWithIntent(t,
 		"-child", child,
 		"-workspace", workspace,

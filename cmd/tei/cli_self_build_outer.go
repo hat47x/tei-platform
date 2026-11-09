@@ -50,7 +50,14 @@ type selfBuildOuterEvidence struct {
 	// builder's reported plan, compared. Agreement of two self-reports still
 	// does not establish L2-b.
 	PlanCrossCheck *planCrossCheck `json:"planCrossCheck,omitempty"`
-	Error          *cliFailure     `json:"error,omitempty"`
+	// PlanRecompute is the entry's own derivation of the receipt's plan
+	// fingerprint. It checks the resolver's arithmetic, not the builder's work.
+	PlanRecompute *planRecompute `json:"planRecompute,omitempty"`
+	// PlanArtifactBinding is §4.8(c): one validated BuildArtifactLock tying the
+	// reported plan fingerprint to the artifact digest, with the digest
+	// independently read back from disk.
+	PlanArtifactBinding *planArtifactBinding `json:"planArtifactBinding,omitempty"`
+	Error               *cliFailure          `json:"error,omitempty"`
 }
 
 // selfBuildIntentBinding separates "which declaration this entry held" from
@@ -65,9 +72,24 @@ type selfBuildIntentBinding struct {
 	ChildPlanFP       string `json:"childPlanFingerprint,omitempty"`
 	CheckPerformed    bool   `json:"intentByteCheckPerformed"`
 	CheckMatched      bool   `json:"intentByteCheckMatched"`
-	L2BClaimed        bool   `json:"l2bClaimed"`
-	BoundaryStatement string `json:"boundary"`
-	UnperformedReason string `json:"byteCheckNotPerformedReason,omitempty"`
+	// EntryIntentFingerprint is what the entry itself derived from the bytes it
+	// held (SB-C0 §4.13, I-1a). It is a second, independent basis for comparing
+	// readings: the byte check above depends on the child reporting the bytes it
+	// read, while this depends only on the entry's own reading.
+	EntryIntentFingerprint string `json:"entryIntentFingerprint,omitempty"`
+	// FingerprintCheckPerformed is true only when both sides produced a
+	// fingerprint. An absent side leaves it false with the reason, never true.
+	FingerprintCheckPerformed bool `json:"intentFingerprintCheckPerformed"`
+	// FingerprintMatched compares the child's reported intent fingerprint with
+	// the entry's own. It is a different question from the byte check: two
+	// different byte sequences cannot produce the same declaration fingerprint
+	// unless they normalise to the same declaration, and the same bytes always
+	// do. Disagreement means the child read a different declaration.
+	FingerprintMatched bool   `json:"intentFingerprintMatched"`
+	L2BClaimed         bool   `json:"l2bClaimed"`
+	BoundaryStatement  string `json:"boundary"`
+	UnperformedReason  string `json:"byteCheckNotPerformedReason,omitempty"`
+	FingerprintReason  string `json:"fingerprintCheckNotPerformedReason,omitempty"`
 }
 
 const selfBuildIntentBindingBoundary = "the entry held the declaration and the child reported its own readings; l2bClaimed is always false: agreement of digests is not proof that the child derived the same plan from the same meaning"
@@ -213,6 +235,21 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 		resolverArgs = append(resolverArgs, "-intent", parsed.IntentFile)
 		receipt := resolveIntentVia(parsed.IntentResolver, resolverArgs, parsed.ExpectedPlanFingerprint)
 		report.PlanReceipt = &receipt
+		// The entry recomputes the plan fingerprint from the plan the receipt
+		// carries. A receipt whose plan does not hash to its own reported
+		// fingerprint stops the attempt: the resolver's arithmetic is part of
+		// what the entry is relying on.
+		if receipt.State == intentResolutionResolved {
+			recompute := recomputeReceiptPlanFingerprint(receipt.ReceiptJSON)
+			report.PlanRecompute = &recompute
+			if recompute.State == planRecomputeMismatched {
+				report.Error = &cliFailure{Code: selfBuildCodeIntentResolutionFailed, Message: recompute.FailureCause}
+				if encodeErr := encodeIndented(out, report); encodeErr != nil {
+					return 2, encodeErr
+				}
+				return 2, nil
+			}
+		}
 		if receipt.State != intentResolutionResolved {
 			report.Error = &cliFailure{Code: selfBuildCodeIntentResolutionFailed, Message: receipt.FailureCause}
 			if encodeErr := encodeIndented(out, report); encodeErr != nil {
@@ -281,6 +318,16 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 			return 2, fmt.Errorf("INVALID_ARGUMENT: -child-arg is not a JSON array of strings: %w", err)
 		}
 	}
+	// Three of the child's flags are this entry's own contract with it: the
+	// artifact path, the isolated state and the supply. A caller that repeats
+	// one of them in -child-arg would give the child two values for one thing,
+	// and which wins depends on the child's flag parser (Go takes the last,
+	// some take the first). Either way the record would describe one value
+	// while the child used another. Refusing is the same rule the read-only
+	// command allowlist applies to its own flags: no silent loss of intent.
+	if reserved := reservedChildFlagIn(childArgs); reserved != "" {
+		return 2, fmt.Errorf("INVALID_ARGUMENT: -child-arg must not set %s; this entry supplies it (pass child-specific arguments only)", reserved)
+	}
 	// §4.8 L2-a: this entry records the declaration bytes it holds. The bytes
 	// are hashed before anything starts, so a later change to the file cannot
 	// be mistaken for the declaration that was handed over.
@@ -295,6 +342,13 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 			IntentBytesDigest: digestOfBytes(rawIntent),
 			L2BClaimed:        false,
 			BoundaryStatement: selfBuildIntentBindingBoundary,
+		}
+		// The entry's own reading of the same bytes, derived with the package the
+		// reference resolver shares. This is the basis the byte check cannot
+		// provide: the byte check needs the child to report what it read, while
+		// this needs nobody but the entry.
+		if report.IntentRecord != nil {
+			intentBinding.EntryIntentFingerprint = report.IntentRecord.Fingerprint
 		}
 		// The declaration is NOT injected into the builder's argv: the entry does
 		// not invent child arguments, and the builder it is pointed at may have no
@@ -335,6 +389,23 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 		} else {
 			intentBinding.UnperformedReason = "child did not report the declaration byte digest it read"
 		}
+
+		// The fingerprint comparison runs on its own evidence: the entry's
+		// derived value and the child's reported one. It does not inherit the
+		// byte check's outcome, so a child that reports a fingerprint but not
+		// the bytes it read still gets compared.
+		switch {
+		case intentBinding.EntryIntentFingerprint == "":
+			intentBinding.FingerprintReason = "the entry derived no intent fingerprint from the declaration it held"
+		case evidence.ChildIntentFingerprint == "":
+			intentBinding.FingerprintReason = "the child did not report the intent fingerprint of the declaration it read"
+		default:
+			intentBinding.FingerprintCheckPerformed = true
+			intentBinding.FingerprintMatched = evidence.ChildIntentFingerprint == intentBinding.EntryIntentFingerprint
+			if !intentBinding.FingerprintMatched {
+				appendSelfBuildFailure(&evidence, "child reported an intent fingerprint that differs from the one this entry derived")
+			}
+		}
 	}
 	report.IntentBinding = intentBinding
 
@@ -346,6 +417,21 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 		report.PlanCrossCheck = &record
 		if record.State == planCrossCheckMismatched {
 			appendSelfBuildFailure(&evidence, planMismatchCause().Error())
+		}
+		// §4.8(c): bind the builder's plan fingerprint to the artifact digest it
+		// reported, and confirm that digest against the bytes on disk. This is a
+		// separate record from the cross-check: agreement of two plan fingerprints
+		// says nothing about which artifact came out.
+		binding := bindPlanToArtifact(
+			report.PlanReceipt,
+			evidence.ChildPlanFingerprint,
+			evidence.ChildArtifact,
+			evidence.CrossChecked,
+			evidence.ChildLock,
+		)
+		report.PlanArtifactBinding = &binding
+		if binding.State == planArtifactMismatched {
+			appendSelfBuildFailure(&evidence, planArtifactMismatchCause(binding))
 		}
 	}
 	report.OK = evidence.CrossCheckOK && evidence.FailureCause == ""
@@ -359,6 +445,27 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 		return 1, nil
 	}
 	return 0, nil
+}
+
+// reservedChildFlags are the child flags this entry writes itself. A caller may
+// not override them through -child-arg.
+var reservedChildFlags = []string{"-artifact-out", "-state", "-supply"}
+
+// reservedChildFlagIn reports the first reserved flag present in the caller's
+// child arguments, including the -flag=value spelling, or "" when none is.
+func reservedChildFlagIn(childArgs []string) string {
+	for _, arg := range childArgs {
+		name := arg
+		if index := strings.IndexByte(name, '='); index >= 0 {
+			name = name[:index]
+		}
+		for _, reserved := range reservedChildFlags {
+			if name == reserved {
+				return reserved
+			}
+		}
+	}
+	return ""
 }
 
 func selfBuildOuterPrecondition(out io.Writer, report selfBuildOuterEvidence, message string) (int, error) {

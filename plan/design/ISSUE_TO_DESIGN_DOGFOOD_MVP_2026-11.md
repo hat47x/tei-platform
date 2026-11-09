@@ -542,3 +542,34 @@ P1 Inspectorでまず判別するのは、①Contractと対象Operationの宣言
 試験結果の対人表示は、**何が分かったか→何が分からないか→使ってよい用途→最初のMissing Edge→次に必要なProbe**の順を推奨する。既知情報を消さず、ただし未資格な使用を進めない。既存の#1180/#2514のScenario/独立Expected、#1163のEvidence、#1119のGateに属し、新統一Test Engine/BOM Authority/Graph Storeは設けない。
 
 **今回のEvidence ceiling**：この§14.18〜14.21はmain #3353/#3354/#3363とOpen Draft #3263/#3370、関連Issueの限定観測に基づくdocs-only追補。合成FixtureのGo Test、実Provider/CLI/Studioの新Call、Cross-view Product E2E、独立Oracle・Owner業務意味の受理は今回NOT RUN。開いているDraftをmerge済みと扱わず、各exact HEADのCIとmainの互換を別検証する。
+<!-- tei-intake-currentmain-mcp-source-import-sho-rea-20261108 -->
+## 14. 現行mainの設計取込・実Consumer接続に必要な最小資格（2026-11-08）
+
+**採用範囲と正本**：旧[設計取込Draft #3355](https://github.com/hat47x/tei-platform/pull/3355) §14.1〜14.21の成熟内容を、現行mainで成立した実装と突き合わせて**最短の受入順**に凝縮する。詳細履歴を再挿入しない。TEIの既存Source/Reference、Semantic Model、Function Context、Plugin Contract、Host/Consumer、#1180 Scenario、#2514独立Expectedを再利用する。**Rawの所在、Structural Candidate、Ownerが受理したMeaning、Build/Hostでの現在実行資格、Tool/保存後の実効果**を異なるClaimとして保持し、第二Meaning Store・Reader Registry・Resolver・Host・Test Runner・Policy Engineを作らない。
+
+### 14.1 成立した実観測と、その厳密な上限
+
+| 現行mainの根拠 | 成立した範囲／禁止する推論 |
+| --- | --- |
+| [#3354](https://github.com/hat47x/tei-platform/pull/3354) Design Context Gate | 同一実CLIの**11 read-only Reply**、公開3 Validation RuleとFocused Source/Relation、32合成Consumer対照が成立。全Data/Function/Business Required閉包、全Test Coverage、T1-B未知Rule発見、実外部Tool配送は未実証。 |
+| [#3403](https://github.com/hat47x/tei-platform/pull/3403) MCP参照Adapter＋[#3439](https://github.com/hat47x/tei-platform/pull/3439) ADR-0048 | 現在は**MCPのread-only 4 Toolの参照実入口がある**。旧「MCP入口なし」は#3356以前の歴史的観測。ADRはCLI/MCP/API/Web/Desktopが**共通Application APIを呼ぶ**方針を採用。全Transportの同値・製品MCP Host・現認可・外部Harness完全受領は未成立。 |
+| [#3458](https://github.com/hat47x/tei-platform/pull/3458) CLI↔MCP `validate` | 最上位診断/エラー文字列/意味エラーの成否を共通投影に統一し、実CLIとAdapterで局所対照。残る`catalog/inspect/trace`や異版・部分配送・外部Grantを全件同値と扱わない。 |
+| [#3366](https://github.com/hat47x/tei-platform/pull/3366)・[#3370](https://github.com/hat47x/tei-platform/pull/3370) | `view`にWorld/Source Index Fingerprint、`requirements.result`の**array shape**をDiscoveryへ追加。Application範囲の`semanticFingerprint`とWorld全体を比較しない。`resultShape`未指定をobject確定へ変換しない。旧ConsumerのJSON解釈は別検証（#3345/#3347/#2824）。 |
+| [#3477](https://github.com/hat47x/tei-platform/pull/3477) 同一Workspace Source-only失効 | Canonical Worldが同じでも原文だけ変わる場合、実CLI/Source Indexの版ずれを限定検出。ただし**importされた別Provider原文**はConsumer Indexの二指紋だけでは監視できない。[Draft #3479](https://github.com/hat47x/tei-platform/pull/3479)の独立負例は未統合。A→B→A履歴、複数Sourceの同時Snapshot、現在Grantを証明しない。 |
+| [#3372](https://github.com/hat47x/tei-platform/pull/3372) Workbench Draft＋[#3371](https://github.com/hat47x/tei-platform/pull/3371) Inspector Draft | 前者は物理Catalogの複合FK/UNIQUE/Index・CapturedAtを**構造観測として**保持する候補。後者はStudioのHost選択Inspection Serviceへの強制Routing候補。いずれも**現main製品E2E完成ではない**。物理FK→業務Relation/CRUD自動採用、Service到達→selected Pluginの実Provider呼出しは飛躍。 |
+
+### 14.2 最初の一Subject・一Revision・一Attemptで測る受入順
+
+| 順位 | 同じ証拠に束縛する実作業と負例 | Owner／停止条件 |
+| --- | --- | --- |
+| **P0-D Raw/Source** | 一般Markdown・未分類Raw Item・旧`*.tei`・TEI Authoring候補`*.tei.md`・SQL・外部リバースEvidenceを**元byte/Location/Revision/Reader資格**付きで保持。管理Inventoryにあるが`readByLoader=false`のMarkdownを「存在しない」と表示しない。 | #3346/#2621/#2823。原資料の読取とParsed Role/Accepted Meaningは別。外部REA等のReverse解析はPlugin由来の**Observation→Candidate**まで、業務意味はOwner受理が必要。正式`*.tei.md` Readerは未完了。 |
+| **P0-I Scope相対のDesign Context** | `Subject/用途/必要Rule/Relation/Function/Source/Actor/Scope`を独立Requiredで固定。CLIとMCP 4操作の共通意味・Raw Reply/Mode/Schema/各FP・Source Range・受信終端を確認。さらに**import先Provider Sourceの原byte/位置/改訂**をConsumerのWorld/Indexとは別に照合。 | #3262/#2514/#3479/#3420。wrong-mode、未読込、permission-denied、部分配送、Scope違いをnot-found/zero/completeに縮約しない。MCP参照実装の成功から外部Harnessの完遂を主張しない。 |
+| **P0-M 三視点・標準表現** | 同一Accepted Data/Function/Business Sourceから三図とCRUD、Functionに束縛されたForm/Tableをread-onlyで投影。物理FK・UNIQUE・Index・ログ関係は**別色の観測候補**に留め、同名別Subject、二Canvas occurrence、多重有向辺、部分CRUDの既知Rと未知セル、Edge/CellのSource逆引きを保持。 | #1124/#1125/#1126/#3263/#3372/#2507。physical PK≠業務Key、同名Node≠同一Entity、描画できた≠実更新可能、Source未列挙≠Relationなし。三図の実TEI Loader→Consumer E2Eは未受入。 |
+| **P0-R 実Function Read** | `order_entry.recent_orders`のFunction→**実際に選んだQueryとSQL原byte+bind `:from`**→選択Instance/Plugin/physical Provider**実Invoke**→Rowset/Field Presence/Scope/Cohort→Function Data Contextを同一Attemptで比較。 | #2586/#2611/#1251/#951。Isolation PG Reference・DB Capability selected・Schema投影・合成ResultだけでProduct E2をPASSにしない。複数Aliasに曖昧な選択があれば拒否。 |
+| **P0-C Crossview接合** | P0-MとP0-Rの**Source/Meaning Revision/Subject/Occurrence/Function/Scope/Read Epoch/Consumer Disclosure**が比較可能な部分だけ接合。Provider Row1件と画面上Node1個のIdentityを無根拠に同一化しない。 | #3262/#2507/#2516/#2582。同じWorld Fingerprintだけで外部Provider Source変更や現在権限を承認しない。旧Receiptの再読取≠業務Recordの現在値再読取。 |
+| **P1 Inspector・編集／SHO** | 同じPinned Tooling ContractをCLIとStudioの**別の実Call Site**で使い、選択B→実呼出Aを結果同値でも拒否。SHOではEditorのSource byte-span、差分候補/明示承認、Working Copy実書込み/別Open再読取、Owner/Source Revisionを独立に検証。 | #1251/#1824/#1174、SHO [Draft #25](https://github.com/hat47x/sho-composer/pull/25)。SHO G2-W1は**別名Working Copyの限定試験**。本番Writer、原子的Publish、A→B→A検出、保存後Source資格、TEI意味採用・SUIとの連携は別受入。 |
+| **P2 他Domain／複数Transport** | 原資料のRaw保管と、ItemのTask/Action/Event等の**複数Role**、Canvas上の表示Occurrence、SHO本文の位置、実Execution/Event/Receiptを分離。異DomainのSource→Candidate→受理→独立Consumerを再利用検証する。 | #2619/#2620/#2516/#1180。SUI探索からTEI Meaningへの自動昇格なし。SEI判断・Host実EffectとTEIモデルの関係はProposal/Grant/Outcomeで別途検証。 |
+
+**判別に必要な独立負例を新Case番号なしで渡す**：同一World/別Provider raw改訂（#3479）、管理ファイルだがLoader未読込（#3346）、正しいRequiredが一件欠けた正常JSON（#3354）、同名別Schema/二つのFKで物理Relationから業務CRUDを過大合成（#3372）、選択B/実Invoker A（#1251）、部分Scenario目録から未試験を確定（#3365）、CLI/MCP `validate`の成否分岐（#3458）、Working Copyの同bytes異FileとA→B→A（SHO #25）。**#1180のScenario正本と#2514独立Expectedの既存Ownerにのみ試験採否を返す**。
+
+**最短の次の実行**：P0-DとP0-Iを並列、P0-MとP0-Rも並列とし、**最初に不足する接続辺**（Source/Provider/Tool/Consumer）を1つずつ閉じる。P0-Cは先行する両方の実証が揃った後だけ。外部Parser、全UI、全MCP Tool、分散SEI、BOM完全組合せ、Generated Runtime Self-build完成をP0-Rの前提に増やさない。正式Owner Meaningと現在Host Grantは各々別Claim。これは**現行main根拠を整理したdocs-only計画**であり、新Go/実DB/Studio/SHO/外部H3実行・本番認可・製品E2E・Owner正式受理は**今回NOT RUN**。

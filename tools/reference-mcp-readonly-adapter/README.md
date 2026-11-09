@@ -52,6 +52,7 @@ go build -o /tmp/tei-mcp ./tools/reference-mcp-readonly-adapter
 - 書込み・受理・配備・付与・実行の tool はありません。`tools/list` を試験で固定し、名前にもそれらの語を含めません。
 - 認可・開示範囲・秘匿は、この Adapter では判定しません。呼び出し元の Host とTEIの既存の境界に委ねます。
 - 期限・同時実行・再接続は扱いません。1プロセス・逐次の参照経路です。
+- 1回の要求は1行で、上限は4 MiB です。超えた行は `-32600`（invalid request）で拒否し、その行だけを読み捨てて次の要求の処理を続けます（`bufio.Scanner` の行長超過がプロセス全体を止めていたのを直しました）。
 - MCP のプロトコル版は `2024-11-05` を名乗ります。後の版で同じ挙動になるとの主張ではありません。
 
 ## 検証
@@ -62,6 +63,9 @@ go build -o /tmp/tei-mcp ./tools/reference-mcp-readonly-adapter
 - 4つの tool の結果が、同じ Workspace に対する `operations` の戻り値と一致すること（`worldFingerprint`・`sourceIndexFingerprint`・`snapshotFingerprint`・`schemaVersion`）
 - `tei_validate` の文書が、実 CLI の `validate -workspace ... -json` と同じ欄と同じ値を持ち、`isError` と `ok` が対応すること（`validate_parity_test.go`）
 - 未対応の対象種類が `isError: true` と `UNSUPPORTED_SUBJECT_KIND` で返ること
+- `inspect`・`trace` が、実CLIと実MCPの別プロセスで同じ値と同じ `error.code` を返すこと（成功2件・対象不在・未知kind・古い指紋・負のoffset）。`ok` と `isError` の反転一致も含む（`inspect_trace_parity_test.go`）
+- 必須引数の欠落が、CLI では `INVALID_SUBJECT`、MCP では `-32602` で**両方拒否**されること（符号の差は #3420 の判断事項として、広げないよう固定）
+- 広告する4 tool が、実CLIの `commands` と一致すること（対応するコマンドの存在・`effect` が read-only・`writeFlags` が無い・`schemaVersion`・`jsonContract`）。tool の説明が対応する CLI 呼出しを名指しすること（`discovery_parity_test.go`）
 - `initialize` の応答と、通知に返答しないこと
 - tool の入力スキーマに `workspace`・`path`・`root`・`file` を含めないこと
 - 型不正・`null`・空文字列・宣言のない欄を `-32602` で拒否し、省略時だけ既定値を使うこと（`strict_arguments_test.go`）

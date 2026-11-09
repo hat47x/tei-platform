@@ -6,6 +6,13 @@
 
 独立した参照プラグインの検査入口は [`check-reference-plugin-isolation.sh`](check-reference-plugin-isolation.sh) です。`plugins/`配下の参照実装を一時Goモジュールへ複製してオフラインで検証します。
 
+## 実行環境の前提
+
+- `tools/` の参照ツールは、Linux CI（`ubuntu-24.04`）の結果を正とします。Windowsで `go test ./...` を回すと、環境前提の差で失敗または skip になる検査があります（[#3460](https://github.com/hat47x/tei-platform/issues/3460) に原因別の一覧）。
+- 外部コマンドを `bash -c` で起動する試験（`reference-cognition-port`・`reference-generator-selection`）は POSIXシェル前提です。Windowsでは `cp <Windowsパス>` が解決できないため、該当試験は理由を付けて skip します（[#3461](https://github.com/hat47x/tei-platform/issues/3461)）。skip は「この環境では検査していない」の記録であり、成功と同じには扱いません。
+- POSIXのファイル権限（`0600` など）や rename の置換を前提にした検査は、Windowsでは skip または別経路に分けます。
+- checkoutのclean（`git status` が空）を前提にする比較試験（`reference-plugin-self-build`・`reference-transform-runtime-engine-build` の historical parity）は、`go test ./...` で並列に走る他のパッケージが checkout へ書き込むと、前提を満たさずに落ちます（[#3460](https://github.com/hat47x/tei-platform/issues/3460)）。2026-11-09から、この前提を満たさない場合は**理由付きで skip** し、比較そのものは実行しません。clean な checkout で単体実行すれば従来どおり比較します（`go test ./tools/reference-transform-runtime-engine-build -run TestHistoricalRuntimeEngineRunnerParity -count=1`）。
+- 同じ理由で、`go test ./...` の結果だけで「checkout を前提にした比較が成立した」とは読みません。skip の理由に `repository must be clean` が出ていれば、その比較は未実行です。
 ## リポジトリ検査と共通部品
 
 | 場所 | 役割 |
@@ -130,6 +137,7 @@
 | [`reference-native-plugin-builder/`](reference-native-plugin-builder/) | ネイティブPluginの構築例 |
 | [`reference-plugin-capability-contract/`](reference-plugin-capability-contract/) | Pluginが提供する機能の契約確認 |
 | [`reference-plugin-package-builder/`](reference-plugin-package-builder/) | Plugin配布物の組立て例 |
+| [`reference-plugin-package-build-child/`](reference-plugin-package-build-child/) | 計画を消費してPlugin配布物を作り、消費した計画の照合値を申告するchild（SB-C0 §4.10 P-1 / #2831） |
 | [`reference-plugin-self-build/`](reference-plugin-self-build/) | Plugin自身が構築手順を提供する場合の確認 |
 | [`reference-plugin-build-supply/`](reference-plugin-build-supply/) | 技術検証用サンプル`plugin-build-supply`の工程1〜4の通しの検証。構築意図と実ファイル・観測したGoから`tei.process.reference`の計画を確定し、その照合値を、ホストが発行する発生識別子つきの二回の実構築と内容アドレスの保管庫、既存の自己構築の実行器の検証根拠(二回構築、段階の収束、ホスト登録)、保管庫から再取得したバイト列のプロセス通信の版1での呼出しまで引き継ぐ。提供元の曖昧さ・追加・信頼の失効、部分出力を残す失敗・二回構築の不一致・一回の実行の二重計上・同時の試行の強制終了、汚れた作業ツリー・外部モジュール・ソースとツールチェーンの食い違い・ホストのGo設定、工程間の識別の差替えと工程の欠落を注入する(同じ機械の上の実際のGoの構築。提供元のカタログと信頼の失効は合成) |
 | [`reference-order-multilingual-operation/`](reference-order-multilingual-operation/) | 技術検証用サンプル`order-multilingual-operation`の工程1〜6の通しの検証。複製した作業領域に受注の所有プラグイン、`std.message`、言語プラグインを加え、所有者・環境・原文言語・項目名を一組にして既存の多言語資産を変更せずに呼ぶ。日本語原文を一回改訂した前後の同じ対象一覧の突合表で、従属訳だけの失効と配布候補の再生成を確かめる。許可・受理・固定情報の失効と言語プラグインの撤去、配布候補の訳文の書換えと固定情報の差替え、改訂直後の旧配布候補、翻訳器の失敗・取消し・結果不明と機密の外部送信、翻訳中の同時編集、PostgreSQLとSQLiteの並びの差を注入する(合成のホスト、模擬の翻訳器、PostgreSQLの一つのインスタンス、SQLiteはPythonの標準モジュールでのファイル、Node) |

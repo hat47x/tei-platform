@@ -239,6 +239,9 @@ D1aの製品試験へ、既存Data/Validation/Relationの3 Subjectに加え、**
 ## 14. D1bの合流実装：同じSelected InspectorをCLIとStudioの二Consumerへ注入（2026-11-08）
 
 **この節の位置付け**：mainへ統合済み[#3371](https://github.com/hat47x/tei-platform/pull/3371)のStudio Host Inspector Serviceと、旧[CLI Draft #3381](https://github.com/hat47x/tei-platform/pull/3381)の型付き注入口／authoring-tool Selectionを、同じmain基線で組み合わせるための**実装候補**。上記§10〜13の「Draft／現main」はその節の記録時点の状況であり、現在の実装状態はこの節と対応PRのexact HEADを優先する。
+## 12. D1bの合流実装：同じSelected InspectorをCLIとStudioの二Consumerへ注入（2026-11-08）
+
+**この節の位置付け**：mainへ統合済み[#3371](https://github.com/hat47x/tei-platform/pull/3371)のStudio Host Inspector Serviceと、旧[CLI Draft #3381](https://github.com/hat47x/tei-platform/pull/3381)の型付き注入口／authoring-tool Selectionを、同じmain基線で組み合わせるための**実装候補**。上記§10〜11の「Draft／現main」はその節の記録時点の状況であり、現在の実装状態はこの節と対応PRのexact HEADを優先する。
 
 ### 一つのRuntime/Resolverを増やさない実装
 

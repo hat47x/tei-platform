@@ -8,6 +8,8 @@ TEIは現在、設計上の境界をGoのコードで検証している段階で
 
 主要な手順を試すには、Goの開発環境が必要です。必要なGoの版は、リポジトリ直下の`go.mod`にある`go`行が示す版以上です。この文書は版の数値を複製しません。`go.mod`の更新のたびに文書が古くなるためです。2026-11-07時点の`go.mod`は`go 1.26.10`を要求します。数値は必ず`go.mod`で確認してください。
 
+
+`tools/` の参照ツールのうち、外部コマンドを `bash -c` で起動する試験（`tools/reference-cognition-port`・`tools/reference-generator-selection`）は **POSIXシェルを前提**にしています。Windowsでは、WSL または Git Bash の `bash` でも `cp <Windowsパス>` を解決できない場合があるため、該当試験は明示的に skip し、Linux CI の結果を正とします（#3461）。skip は失敗ではなく「この環境では検査していない」という記録です。`go test ./...` の結果を読むときは、skip の理由も確認してください。
 ```bash
 grep '^go ' go.mod
 go version
@@ -22,6 +24,14 @@ go version
 リポジトリ全体のGo試験は、`go test ./...`の一部として、どのworkflowからも参照されていなかったNode.js試験5ファイルを実行します（`tools/repository-node-tests/`）。Node.jsが無い環境ではskipし、GitHub Actionsでは必須です。手元でNode.js試験を再現する場合はNode.jsを用意してください。
 
 個別の参照ツールは、それぞれの`package.json`の`engines`が要求版を示します。2026-11-07時点では、`reference/tei-studio-independent-consumer`が`>=22.16.0`、`reference/tei-studio-workbench`が`>=24`です。workflowには`22`・`22.16.0`・`24`・`24.21.0`が混在しており、単一の版へ統一していません。使うツールの`package.json`を確認し、版が合わない場合はそのツールの試験を実行しないでください。この混在を解消するかは未決です（[#2953](https://github.com/hat47x/tei-platform/issues/2953)）。
+
+### Windowsでの`go test ./...`
+
+`tools/reference-cognition-port`と`tools/reference-generator-selection`の外部コマンド試験は、コマンドを`bash -c`で起動し、`cp <fixture> $TEI_...`のようにfixtureのパスを渡します。Windowsのfixtureのパスは`D:\GIT\...`の形で、WSLの`bash.exe`にもGit Bashにもそのままでは解決されません。このため、この2パッケージの外部コマンド試験はWindowsでは理由付きでskipします。`bash`が見つからない環境でもskipします。
+
+- skipは通過と同じ意味ではありません。Windowsでは、外部コマンドを経由する経路は未検証です。Linuxで実行した結果を正とします。
+- 実装の契約（`bash -c`で外部コマンドを実行する）は変えていません。
+- この扱いは暫定です。Windowsでも成立する形へ契約を変えるか、`tools/reference-change-packet`など`bash`を前提にする他のツールへ広げるかは、[#3461](https://github.com/hat47x/tei-platform/issues/3461)で決めます。
 
 ## 最初の小さな作業領域から始める
 
@@ -86,6 +96,17 @@ go build -o tei ./cmd/tei
 ```
 
 `go run`や`-buildvcs=false`でbuildした場合はコミットが埋め込まれないため、`source`が`unavailable`になります。識別は再現の手掛かりであり、配布の承認や署名ではありません。
+
+checkoutの外でbuildするなど、toolchainがコミットを埋め込めない場合は、buildする側がrevisionを注入できます。
+
+```bash
+go build -buildvcs=false \
+  -ldflags="-X main.teiDeclaredRevision=$(git rev-parse HEAD)" \
+  -o tei ./cmd/tei
+./tei version -json
+```
+
+この場合、`source`は`ldflags`になり、値は`vcsRevision`ではなく`declaredRevision`へ入ります。`declaredRevision`は**buildした側の自己申告**で、実行物がそのcommitのsourceから作られたことを証明するものではありません。toolchainの`vcsRevision`がある場合は、より強い証拠として`source`は`build-info`のままです（両方を持つ場合も`declaredRevision`は残ります）。注入しないbuildは、従来どおり`source`が`unavailable`になります。
 
 モデルや定義の整合性を調べる場合、生成AIなどの呼出し元は次のようにJSON形式の診断結果を取得できます。
 
@@ -171,7 +192,7 @@ go run ./cmd/tei trace \
   -direction both -mode full
 ```
 
-`-scope`には、呼出し元が**関係図を作る際の文脈を識別する値**を指定します。作業領域名や業務上の所属名前空間、受理の状態、認可の範囲を自動的に証明するものではありません。`-mode summary`は件数・未解決件数を取得し、`-mode full`では宣言された直接の参照を省略せず返します。大規模な結果を分割する場合のみ`-limit 100`のように指定し、`result.trace.nextOffset`と**`result.snapshotFingerprint`（作業領域全体の継続用トークン）**を次回の`-offset`、`-expected-fingerprint`へ渡してください。`result.trace.snapshotFingerprint`は関係図、関係規則、選択条件の照合値であり、コマンドラインで結果の取得を続けるためには使いません。入力した関係図、対象や方向、正規化した全体モデル、入力元索引（元ファイルの内容や場所を含む）が変化している場合、`STALE_SNAPSHOT`で継続を拒否します。
+`-scope`には、呼出し元が**関係図を作る際の文脈を識別する値**を指定します。作業領域名や業務上の所属名前空間、受理の状態、認可の範囲を自動的に証明するものではありません。`-mode summary`は件数・未解決件数を取得し、`-mode full`では宣言された直接の参照を省略せず返します。大規模な結果を分割する場合のみ`-limit 100`のように指定し、`result.trace.nextOffset`と**`result.snapshotFingerprint`（作業領域全体の継続用トークン）**を次回の`-offset`、`-expected-fingerprint`へ渡してください。`result.trace.graphFingerprint`（2026-11-09より前の名前は`result.trace.snapshotFingerprint`。旧名も同じ値で残る）は関係図、関係規則、選択条件の照合値であり、コマンドラインで結果の取得を続けるためには使いません。継続に使う値は`nextOffset`の隣の`result.trace.continuation.fingerprint`（`field`は`result.snapshotFingerprint`）にも書かれているので、そこから取れます。入力した関係図、対象や方向、正規化した全体モデル、入力元索引（元ファイルの内容や場所を含む）が変化している場合、`STALE_SNAPSHOT`で継続を拒否します。
 
 結果に含まれる`worldFingerprint`と`sourceIndexFingerprint`は、`inspect`が返す同名の項目と比較できます。意味の正本を識別する前者が同じでも、入力元ファイルの移動や注記の変更があれば、後者は変わります。結果の`source`は選択要素の元定義、`relatedSources`は全件出力のそのページに登場した参照先・参照元の情報源の候補を示します。`projectionUnresolved`は、派生索引を作った時点で解決できなかった参照を示します。関係の`resolved`は宣言の解決に成功したことのみを意味し、実行の成功・人間による承認・書込み許可を意味しません。入力元索引と原ファイルの間で生じる同時更新は、一つの処理として固定できていません。
 
