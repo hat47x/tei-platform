@@ -200,7 +200,17 @@ func Apply(state State, req UpdateRequest) (State, Result) {
 	// A retry of the same request is not applied again. Reusing the key for a
 	// different update is rejected rather than silently applied.
 	if applied, ok := out.Applied[req.IdempotencyKey]; ok {
-		if applied.Key == req.Key && applied.NewValue == req.NewValue {
+		// The replay fingerprint covers the compared expectation as well as the
+		// target and the new value (#2564): the same key with another expected
+		// value is a different request, not a retry.
+		sameExpectation := false
+		switch mode {
+		case CompareValue:
+			sameExpectation = applied.Before == req.Expected
+		case CompareDigest:
+			sameExpectation = valueDigest(applied.Before) == strings.TrimSpace(req.ExpectedDigest)
+		}
+		if applied.Key == req.Key && applied.NewValue == req.NewValue && sameExpectation {
 			result.Outcome = OutcomeIdempotentReplay
 			result.Before = applied.Before
 			result.NewValue = applied.NewValue
