@@ -875,6 +875,15 @@ func writeHookReportText(out io.Writer, report cliHookReport) (int, error) {
 		if _, err := fmt.Fprintf(out, "  hook %s: not evaluated (%s)\n", phase, report.Reasons[phase]); err != nil {
 			return 2, err
 		}
+		// A declared `uses` that was never called is the difference between
+		// "the hook passed" and "the hook's call did not happen". Print it.
+		if uncalled := report.Uncalled[phase]; len(uncalled) > 0 {
+			for _, capability := range uncalled {
+				if _, err := fmt.Fprintf(out, "    uncalled %s\n", capability); err != nil {
+					return 2, err
+				}
+			}
+		}
 	}
 	for _, phase := range report.Skipped {
 		if hookReportHolds(report.NotEvaluated, phase) {
