@@ -434,4 +434,13 @@ ArtifactDigestは現行contractどおりhex caseを正規化して比較しま�
 - 同じ手順を入れ子module`cmd/tei-studio`へ適用し、`go.sum`を欠いた一時コピーでは`go build`の失敗を観測してBlockedにする。rootの成功をnested moduleの根拠にしない。
 - `go list`が失敗する、またはgo実行ファイルが使えない場合は`unconfirmed`にする。
 
+環境とbuild引数:
+
+- buildへ渡す環境は許可リスト方式です(PATH、一時・キャッシュ・GOPATH系、GOPROXY系のみ通す)。`GOEXPERIMENT`、`GOAMD64`等のGOARCH別設定、`GOENV`、`GODEBUG`、`GOFIPS140`、`GOCACHEPROG`、`GOFLAGS`は呼び出し側の値を通さず、空または固定値(`GOENV=off`)にします。
+- `go env -json`の該当キーの観測値を、buildと同じ環境で取得してPlanのParameters(`goenv.*`)へ入れます。値が変わればPlan指紋が変わります。
+- build引数は`realBuildFlags`の1箇所で定義し、Planの`flags`もそこから作ります。
+- `TEI_REQUIRE_REAL_BUILD=1`のとき、goが無い・入れ子moduleの閉包を列挙できないといったSkipは失敗になります。設定しない場合はSkipで、Skipは成功の根拠にしません。
+
+限界(追加): `verifyPlanSourcesMatchClosure`は同じ閉包からPlanを作るため循環的で、独立した証拠ではありません(独立性は、閉包のみの複製がbuildできて同じartifactになること、負例側の改変で見ます)。閉包digestは作業ツリーのbyteで、CRLF設定(autocrlf)に依存します。GOROOTの標準ライブラリ全体と、上記`go env`入力のうち未束縛のもの(`go env -json`が報告しないキー、`CC`等のcgo無効時に無関係なもの、OSレベルの入力)は束縛していません。
+
 限界: toolchain同一性は`go`実行ファイルのdigestと`go version`までで、GOROOTの標準ライブラリ全体は束縛しません。Go build cacheを使うため、toolchain信頼からの独立性はありません。モジュール外の依存はgo.sumによる固定で、byteを個別に閉包へ入れていません。Stage1/Stage2の比較、seed信頼、Host署名、Owner受理は対象外で、#1119 G4は引き続きUNQUALIFIEDです。
