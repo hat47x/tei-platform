@@ -1,6 +1,7 @@
-name: TEI Binding-to-Execution bounded invocation evidence
+name: TEI C-1/C-2 bounded invocation evidence
 
-# Read-only reference. A recorded Execute call is not an effect receipt,
+# Read-only references. Executor and Service Carrier entry are distinct,
+# and neither is a verified external effect or receipt.
 # and product execution/Host ownership is not selected by this workflow.
 on:
   pull_request:
@@ -8,6 +9,7 @@ on:
     paths:
       - '.github/workflows/tei-binding-execution-reference-ci.yml'
       - 'tools/reference-binding-to-execution/**'
+      - 'tools/reference-service-carrier-connect/**'
       - 'internal/deployment/routing/executor.go'
       - 'internal/deployment/executor/model.go'
   push:
@@ -15,6 +17,7 @@ on:
     paths:
       - '.github/workflows/tei-binding-execution-reference-ci.yml'
       - 'tools/reference-binding-to-execution/**'
+      - 'tools/reference-service-carrier-connect/**'
       - 'internal/deployment/routing/executor.go'
       - 'internal/deployment/executor/model.go'
 
@@ -45,23 +48,29 @@ jobs:
           printf 'binding-reference-blob=%s\n' "$(git rev-parse HEAD:tools/reference-binding-to-execution/bindingexecution.go)"
           printf 'effect-negative-test-blob=%s\n' "$(git rev-parse HEAD:tools/reference-binding-to-execution/bindingexecution_effect_unknown_test.go)"
           printf 'routing-source-blob=%s\n' "$(git rev-parse HEAD:internal/deployment/routing/executor.go)"
+          printf 'service-carrier-reference-blob=%s\n' "$(git rev-parse HEAD:tools/reference-service-carrier-connect/connect.go)"
+          printf 'service-carrier-v1-test-blob=%s\n' "$(git rev-parse HEAD:tools/reference-service-carrier-connect/connect_report_v1_test.go)"
       - name: 対象Go版を用意
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version-file: go.mod
           check-latest: false
           cache: false
-      - name: 実Executor呼出しと効果不明の負例を実Goテスト
+      - name: C-1 ExecutorとC-2 Service Carrierの実入口と効果不明をGo検証
         shell: bash
         run: |
           set -euo pipefail
           go version
-          go test -count=1 -v ./tools/reference-binding-to-execution/... ./internal/deployment/routing
-          go vet ./tools/reference-binding-to-execution/... ./internal/deployment/routing
+          go test -count=1 -v ./tools/reference-binding-to-execution/... ./tools/reference-service-carrier-connect/... ./internal/deployment/routing
+          go vet ./tools/reference-binding-to-execution/... ./tools/reference-service-carrier-connect/... ./internal/deployment/routing
           files=(
             tools/reference-binding-to-execution/bindingexecution.go
             tools/reference-binding-to-execution/bindingexecution_test.go
             tools/reference-binding-to-execution/bindingexecution_effect_unknown_test.go
+            tools/reference-service-carrier-connect/connect.go
+            tools/reference-service-carrier-connect/connect_test.go
+            tools/reference-service-carrier-connect/connect_effect_unknown_test.go
+            tools/reference-service-carrier-connect/connect_report_v1_test.go
           )
           if [[ -n "$(gofmt -l "${files[@]}")" ]]; then
             gofmt -d "${files[@]}"
