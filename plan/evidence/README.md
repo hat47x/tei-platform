@@ -85,6 +85,7 @@
 - [利用者設定の宣言と結合の確認](XTEA_LOWCODE_USER_SETTINGS_2026-11.md)（参照実装の試験記録。例への追加は未実装）
 - [利用者設定の書込みの確認](XTEA_LOWCODE_USER_SETTINGS_WRITE_2026-11.md)（参照実装の試験記録。監査・権限・画面は未実装）
 - [例の締め日・設定Dataと構文の修正の確認](XTEA_LOWCODE_EXAMPLE_CLOSING_SETTINGS_2026-11.md)（参照実装の試験記録。閉めの実行内容と設定の監査は未実装）
+- [為替の月次・年次を別Dataに分ける構成の確認](XTEA_LOWCODE_CURRENCY_TWO_TABLES_2026-11.md)（参照実装の試験記録。宣言語彙と例への追加は未実装）
 - [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
 - [X-TEA受容要件の実装対応](XTEA_LOWCODE_ACCEPTANCE_TRACE_2026-11.md)（`AC-1`〜`AC-11`・`RQ-C1`〜`RQ-C3`の参照実装と未確認事項。受容判断は仮承認）
 - [実DBで実行時の判断を確かめる計画](REAL_DATABASE_RUNTIME_DECISION_PLAN_2026-11.md)（期間・権限・効果の判断を実DBで見る案。**NOT RUN**）
@@ -231,6 +232,7 @@
 - [同じ宣言からWindowsとLinuxで同じ計画とartifactが出る](TEI_GO_SELF_BUILD_CROSS_OS_DIGESTS_2026-11-09.md)（§4.21・§4.23・§4.24が「このホスト」と限定していた範囲を二つのホストへ広げた。同じ宣言・source・catalogから`intentFingerprint`・`sourceClosure`・`planFingerprint`・`artifactDigest`の四つが`linux/amd64`と`windows/amd64`で一致し、**Go版も違う**（1.27.3と1.27.0）。L2-bのエンドツーエンド試験もWindowsのGoでPASSした。一致は偶然ではなく、source closureが相対pathと内容だけから決まること・計画の正規化・artifactの直列化から説明できる。`boundary`文言を「観測した二つのホスト」へ改めた。`darwin`・`arm64`・別のGo版は未観測。SB-C0 §4.25 / #2831）
 - [`-rebuild-check`の実コストを測る](TEI_GO_SELF_BUILD_REBUILD_CHECK_COST_2026-11-09.md)（§4.25が「決めるために足りないもの」として挙げた実buildの所要時間を測った。参照childで7回ずつ計測し、中央値136.4 ms→246.5 ms（**+110.1 ms・1.807倍**）。ただし**増分の大半はchildの仕事ではなくentryの固定費**で、child単体は3.4 msしかない。§4.25の「build時間をほぼ倍にする」は参照childについては正確でないと分かった。実build（Go buildを伴うchild）は未測定で、比は2倍に近づくと推論する。既定化の判断はしない。SB-C0 §4.27 / #2831）
 - [実buildで`-rebuild-check`の比は1.93倍になった](TEI_GO_SELF_BUILD_GO_BUILD_REBUILD_COST_2026-11-09.md)（§4.27が参照child（buildは3.4 ms）で測って「実buildでは比が2倍に近づく」と推論したことを、`reference-go-build-with-supply`をchildにして`./internal/core`を実際に`go build`させて確かめた。中央値5852.7 ms→11272.4 msで**+5419.7 ms・1.926倍**。増分はchild単体5568.2 msとほぼ一致し、**同じflagがchildの重さで意味の違う費用になる**ことが分かった。副産物として二回のGo buildのdigestが一致し`artifactReproducibility=reproduced`（§4.21の再現は参照childに限らない）。既定化の判断はしない。SB-C0 §4.28 / #2831）
+- [catalogの欄はリポジトリのどこにも宣言されていない](TEI_GO_SELF_BUILD_CATALOG_FIELD_PROVENANCE_2026-11-09.md)（§4.25が「既定で用意できるか」を挙げたのに対し、`BuildProvider`の7欄がどこで宣言されているかを測った。`contractMajor`・`authorityScope`・`recipeKinds`・`profiles`・`targets`の**5欄にcatalog以外の宣言面が無く**、既存の宣言からcatalogは導出できないと分かった。`artifactDigest`だけはlock・宣言の`builder.pin`・service carrierにある。したがって不足分は「誰が書くか」ではなく**catalogを書く場所を製品に作るか**という契約判断であり、決めるまで既定の試行でClaimは立てられない。K-1・K-2・外部配布物のどれを採るかは判断しない。SB-C0 §4.29 / #2831）
 - [traceの継続トークンが2つの同名欄に分かれている](TEI_DOGFOODING_ROUND11_TRACE_CONTINUATION_2026-11-09/README.md)（#3625・#3420 T06。同名の`snapshotFingerprint`が2つあり、継続に使えるのは外側だけ。`nextOffset`の隣の値を渡すと`STALE_SNAPSHOT`になることを修正前に実測した）
 - [mainのtrace継続トークンを実測](TEI_DOGFOODING_ROUND12_CONTINUATION_MAIN_2026-11-09/README.md)（#3625。`e75d599ba`で`graphFingerprint`への改名と`continuation`が入り、`continuation.fingerprint`で継続でき、`graphFingerprint`は拒否されることを確認）
 - [設計変更の影響範囲をCLIだけで答えられるか](TEI_DOGFOODING_ROUND13_DESIGN_IMPACT_2026-11-09/README.md)（#3149 D-9・#2619・#2621。モデル要素の定義箇所は`inspect`で分かるが、設計文書の中の名前はsubjectにならず`SUBJECT_NOT_FOUND`。改名の影響範囲は`grep`が要る。リポジトリ全体はWorkspaceにできない）
@@ -251,7 +253,9 @@
 
 - [同じ値指定flagの重複](CLI_REPEATED_FLAG_2026-11-09.md)（`model catalog -namespace`等の重複が最後の値だけを残して黙って捨てていたのを、1値flagの重複として`INVALID_ARGUMENT`で拒否。繰り返し可能なflagは`repeatableFlags`で広告。既存呼出し元の全件洗い出しは未実施）
 - [inspectの失敗メッセージのCLI/MCP一致](CLI_INSPECT_MESSAGE_PARITY_2026-11-09.md)（Host経由のinspectだけメッセージが`inspection service reported …`に伏せられ、MCPと文言が違っていた。正本のOperationをそのまま返す実装を宣言できるようにし、6ケースでCLIとMCPの文書が完全一致することを実測。実Host・認可・外部送出はNOT RUN）
+- [inspectのload失敗文言のCLI/MCP一致](CLI_INSPECT_LOAD_MESSAGE_PARITY_2026-11-09.md)（4 tool×5状態の20通りで、inspectのload失敗2件だけCLIが汎用文言に置換していたのを、自プロセスの読み取り段階だけ実文言を出すよう修正。未検証Providerの文言は伏せたまま。20通りすべて文書一致）
 - [viewの-inputが-command無しで黙って捨てられていた](TEI_DOGFOODING_ROUND20_VIEW_INPUT_2026-11-09/README.md)（#3778・#3420。`-input`は`-command`と組だが、無い場合に値が捨てられて成功していた。両方向の変異を検出する試験を追加。起票時の誤診と既存試験による発覚も記録）
 - [view -executeの失敗符号が潰れていた](TEI_DOGFOODING_ROUND21_VIEW_EXECUTE_2026-11-09/README.md)（#3797・#3419。入力不正と認可拒否がどちらも`COMMAND_FAILED`に潰れ、理由がmessageの先頭にしかなかった。既知7符号を`error.code`に出す。`-operation-log`の上書き挙動は未決）
 - [手書きの符号許可リストが21中15を潰していた](TEI_DOGFOODING_ROUND22_CODE_COVERAGE_2026-11-09/README.md)（#3807・#3797・#3420。CLIは7符号、Studioは1符号だけを特別扱いし、coreの21符号のうち15が`COMMAND_FAILED`に潰れていた。列挙を廃止し`command.ReportedFailure`へ。AST走査で再発防止）
 - [契約文書の符号一覧が実装より狭くなっていた](TEI_DOGFOODING_ROUND23_CONTRACT_DOC_2026-11-09/README.md)（#3419・#3807。`view`行は11符号しか挙げず実装は21符号を返しうる。discoveryは符号を広告しないため文書が唯一の発見経路。AST走査で文書と実装の一致を両方向に固定）
+
