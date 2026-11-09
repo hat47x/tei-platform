@@ -1,0 +1,132 @@
+{
+  "note": "With the MCP client configured correctly, the forced model tool call reached the MCP server as tools/call with the model-produced arguments unchanged, and the server's result came back into the next model request.",
+  "toolNameModelFacing": "mcp__synthetic__synthetic_echo",
+  "toolNameOnWire": "synthetic_echo",
+  "mcpRequests": [
+    {
+      "file": "mcp-001-request.bin",
+      "bytes": 280,
+      "sha256": "2d6e560663b30185c0680e157110159805f2f628045dd515a6a0557bcd66916f",
+      "method": "server/discover",
+      "id": "server-discover-probe-1",
+      "paramsKeys": [
+        "_meta"
+      ],
+      "argCanaryPresent": false
+    },
+    {
+      "file": "mcp-002-request.bin",
+      "bytes": 163,
+      "sha256": "40902c765afca2b3658a4c98787806ed8b1a716cf4a4874b273eadce48a9ffb8",
+      "method": "initialize",
+      "id": 0,
+      "paramsKeys": [
+        "capabilities",
+        "clientInfo",
+        "protocolVersion"
+      ],
+      "argCanaryPresent": false
+    },
+    {
+      "file": "mcp-003-request.bin",
+      "bytes": 54,
+      "sha256": "59951ca0b212b103876fa23a9e58bcbbc8fbcc0120e3f5ee7214461e2bd1cd5e",
+      "method": "notifications/initialized",
+      "id": null,
+      "paramsKeys": [],
+      "argCanaryPresent": false
+    },
+    {
+      "file": "mcp-004-request.bin",
+      "bytes": 46,
+      "sha256": "75f0c7627a35c7e96a0a88482622a0d1ec7e81c0eb5414a88ba7aab9450cf73b",
+      "method": "tools/list",
+      "id": 1,
+      "paramsKeys": [],
+      "argCanaryPresent": false
+    },
+    {
+      "file": "mcp-005-request.bin",
+      "bytes": 123,
+      "sha256": "7b2405b2d74932333e3293281cd3b948c4d1c7d22e2b795b2d60eb29cfb81131",
+      "method": "tools/call",
+      "id": 2,
+      "paramsKeys": [
+        "arguments",
+        "name"
+      ],
+      "argCanaryPresent": true
+    }
+  ],
+  "methodsSeen": [
+    "server/discover",
+    "initialize",
+    "notifications/initialized",
+    "tools/list",
+    "tools/call"
+  ],
+  "toolsCall": {
+    "file": "mcp-005-request.bin",
+    "bytes": 123,
+    "sha256": "7b2405b2d74932333e3293281cd3b948c4d1c7d22e2b795b2d60eb29cfb81131",
+    "method": "tools/call",
+    "id": 2,
+    "paramsKeys": [
+      "arguments",
+      "name"
+    ],
+    "argCanaryPresent": true
+  },
+  "modelRequests": [
+    {
+      "file": "model-001-request.json",
+      "bytes": 99900,
+      "sha256": "f993d133337e5dba4c0e3c7e8863237d5d890358e08085f0801d486af51b13f1",
+      "toolCount": 28,
+      "mcpTools": [
+        "list_mcp_resource_templates",
+        "list_mcp_resources",
+        "mcp__synthetic__synthetic_echo",
+        "read_mcp_resource"
+      ],
+      "messageCount": 1,
+      "argCanaryPresent": false,
+      "resultCanaryPresent": false,
+      "afterSeq": -1,
+      "throughSeq": 18
+    },
+    {
+      "file": "model-002-request.json",
+      "bytes": 57372,
+      "sha256": "8083cfac2346a85e73f6fdfc4e6d084864807afd86b9b16ed4b2e20c8774c1b0",
+      "toolCount": 0,
+      "mcpTools": [],
+      "messageCount": 1,
+      "argCanaryPresent": false,
+      "resultCanaryPresent": false,
+      "afterSeq": -1,
+      "throughSeq": 18
+    },
+    {
+      "file": "model-003-request.json",
+      "bytes": 52633,
+      "sha256": "cf96b8dcba4821ca8a6f6fb6a3e39275f5c3cb629cce387e82901442f06a5c3c",
+      "toolCount": 28,
+      "mcpTools": [
+        "list_mcp_resource_templates",
+        "list_mcp_resources",
+        "mcp__synthetic__synthetic_echo",
+        "read_mcp_resource"
+      ],
+      "messageCount": 3,
+      "argCanaryPresent": true,
+      "resultCanaryPresent": true,
+      "afterSeq": 18,
+      "throughSeq": 26
+    }
+  ],
+  "argumentCanary": "MCP_ARG_CANARY_994",
+  "resultCanary": "MCP_RESULT_CANARY_995",
+  "argumentLeft": true,
+  "resultReturned": true
+}
