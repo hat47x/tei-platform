@@ -1,0 +1,252 @@
+package main
+
+import (
+	"fmt"
+	"path"
+	"reflect"
+	"sort"
+	"strings"
+)
+
+// PackageChange describes changed compiled-source or import edges in one
+// package shared by two static Go build entry closures.
+type PackageChange struct {
+	ImportPath string        `json:"importPath"`
+	Before     SourcePackage `json:"before"`
+	After      SourcePackage `json:"after"`
+}
+
+// ClosureComparison describes E0 source-level differences, not which symbols
+// survive linking or whether a runtime capability has been safely removed.
+type ClosureComparison struct {
+	SourceRevision  string            `json:"sourceRevision"`
+	Module          string            `json:"module"`
+	GoVersion       string            `json:"goVersion"`
+	GOOS            string            `json:"goos"`
+	GOARCH          string            `json:"goarch"`
+	CGOEnabled      string            `json:"cgoEnabled"`
+	GoFlags         string            `json:"goFlags"`
+	TargetFeatures  map[string]string `json:"targetFeatures,omitempty"`
+	CgoToolchain    map[string]string `json:"cgoToolchain,omitempty"`
+	BeforeEntry     string            `json:"beforeEntry"`
+	AfterEntry      string            `json:"afterEntry"`
+	BeforeBuildTags string            `json:"beforeBuildTags,omitempty"`
+	AfterBuildTags  string            `json:"afterBuildTags,omitempty"`
+	BeforeOnly      []string          `json:"beforeOnly"`
+	AfterOnly       []string          `json:"afterOnly"`
+	Changed         []PackageChange   `json:"changed"`
+}
+
+// normalizeEvidencePackage rejects inventories impossible for a single
+// go list package. Canonicalizing order is safe; silently dropping duplicate
+// or unsafe paths would turn fabricated JSON into apparent source removal.
+func normalizeEvidencePackage(p SourcePackage) (SourcePackage, error) {
+	validPath := func(name string) bool {
+		return name != "" && name != "." && name != ".." &&
+			!strings.HasPrefix(name, "../") && !strings.HasPrefix(name, "/") &&
+			!strings.Contains(name, "\\") && path.Clean(name) == name
+	}
+	if !validPath(p.ImportPath) {
+		return SourcePackage{}, fmt.Errorf("unsafe package import path %q", p.ImportPath)
+	}
+	seenCompiled := make(map[string]bool)
+	normalizeSource := func(files []string, kind string) ([]string, error) {
+		out := append([]string(nil), files...)
+		for _, name := range out {
+			if !validPath(name) || name == ".." || strings.HasPrefix(name, "../") {
+				return nil, fmt.Errorf("package %q has unsafe %s input %q", p.ImportPath, kind, name)
+			}
+			if seenCompiled[name] {
+				return nil, fmt.Errorf("package %q lists compiled source %q more than once", p.ImportPath, name)
+			}
+			seenCompiled[name] = true
+		}
+		sort.Strings(out)
+		return out, nil
+	}
+	var err error
+	if p.GoFiles, err = normalizeSource(p.GoFiles, "go"); err != nil {
+		return SourcePackage{}, err
+	}
+	if p.CgoFiles, err = normalizeSource(p.CgoFiles, "cgo"); err != nil {
+		return SourcePackage{}, err
+	}
+	allowedKinds := map[string]bool{
+		"embed": true, "c": true, "cxx": true, "objective-c": true,
+		"header": true, "fortran": true, "assembly": true,
+		"swig": true, "swig-cxx": true, "syso": true,
+	}
+	seenAuxiliary := make(map[SourceInput]bool)
+	p.AuxiliaryInputs = append([]SourceInput(nil), p.AuxiliaryInputs...)
+	for _, input := range p.AuxiliaryInputs {
+		if !allowedKinds[input.Kind] || !validPath(input.Path) ||
+			input.Path == ".." || strings.HasPrefix(input.Path, "../") {
+			return SourcePackage{}, fmt.Errorf("package %q has unsupported or unsafe auxiliary input %+v", p.ImportPath, input)
+		}
+		if seenAuxiliary[input] {
+			return SourcePackage{}, fmt.Errorf("package %q repeats auxiliary input %+v", p.ImportPath, input)
+		}
+		seenAuxiliary[input] = true
+	}
+	sort.Slice(p.AuxiliaryInputs, func(i, j int) bool {
+		if p.AuxiliaryInputs[i].Kind != p.AuxiliaryInputs[j].Kind {
+			return p.AuxiliaryInputs[i].Kind < p.AuxiliaryInputs[j].Kind
+		}
+		return p.AuxiliaryInputs[i].Path < p.AuxiliaryInputs[j].Path
+	})
+	p.Imports = append([]string(nil), p.Imports...)
+	seenImport := make(map[string]bool)
+	for _, dep := range p.Imports {
+		if dep != "C" && !validPath(dep) {
+			return SourcePackage{}, fmt.Errorf("package %q has unsafe import path %q", p.ImportPath, dep)
+		}
+		if seenImport[dep] {
+			return SourcePackage{}, fmt.Errorf("package %q repeats import edge %q", p.ImportPath, dep)
+		}
+		seenImport[dep] = true
+	}
+	sort.Strings(p.Imports)
+	return p, nil
+}
+
+func packageMap(report Report) (map[string]SourcePackage, error) {
+	if report.Entry == "" || report.Module == "" || report.SourceRevision == "" ||
+		report.GoVersion == "" || report.GOOS == "" || report.GOARCH == "" || report.CGOEnabled == "" {
+		return nil, fmt.Errorf("incomplete Go package report identity")
+	}
+	if report.CGOEnabled != "0" && report.CGOEnabled != "1" {
+		return nil, fmt.Errorf("invalid CGO_ENABLED in package report")
+	}
+	if report.CGOEnabled == "1" {
+		// Old or hand-written JSON without a compiler profile is not
+		// comparable as if it were produced by the hardened E0 observer.
+		for _, key := range []string{
+			"CC", "CXX", "CGO_CFLAGS", "CGO_CPPFLAGS",
+			"CGO_CXXFLAGS", "CGO_LDFLAGS", "PKG_CONFIG",
+		} {
+			if _, exists := report.CgoToolchain[key]; !exists {
+				return nil, fmt.Errorf("missing cgo toolchain setting %s", key)
+			}
+		}
+	}
+	pkgs := make(map[string]SourcePackage, len(report.Packages))
+	for _, p := range report.Packages {
+		if p.ImportPath == "" {
+			return nil, fmt.Errorf("empty package path")
+		}
+		if _, exists := pkgs[p.ImportPath]; exists {
+			return nil, fmt.Errorf("duplicate package %q", p.ImportPath)
+		}
+		normalized, err := normalizeEvidencePackage(p)
+		if err != nil {
+			return nil, err
+		}
+		pkgs[p.ImportPath] = normalized
+	}
+	if len(pkgs) == 0 {
+		return nil, fmt.Errorf("empty Go package closure")
+	}
+	if _, ok := pkgs[report.Entry]; !ok {
+		return nil, fmt.Errorf("entry %q absent from package closure", report.Entry)
+	}
+	// E0 output contains only main-module packages. A comparison of two
+	// imported JSON reports must reject fabricated, dangling or disconnected
+	// main-module nodes instead of displaying them as physical removals.
+	inModule := func(importPath string) bool {
+		return importPath == report.Module || strings.HasPrefix(importPath, report.Module+"/")
+	}
+	for _, pkg := range pkgs {
+		if !inModule(pkg.ImportPath) {
+			return nil, fmt.Errorf("package %q is not in main module %q", pkg.ImportPath, report.Module)
+		}
+		if len(pkg.GoFiles)+len(pkg.CgoFiles) == 0 {
+			return nil, fmt.Errorf("package %q has no compiled Go source", pkg.ImportPath)
+		}
+	}
+	reached := make(map[string]bool, len(pkgs))
+	stack := []string{report.Entry}
+	for len(stack) > 0 {
+		importPath := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		if reached[importPath] {
+			continue
+		}
+		reached[importPath] = true
+		pkg := pkgs[importPath]
+		for _, dep := range pkg.Imports {
+			// C is a cgo pseudo-import, not a Go package.
+			if dep == "C" {
+				if len(pkg.CgoFiles) == 0 {
+					return nil, fmt.Errorf("package %q has C pseudo-import without cgo source", importPath)
+				}
+				continue
+			}
+			if !inModule(dep) {
+				// Standard library and external modules are intentionally
+				// excluded from the source-level report.
+				continue
+			}
+			if _, ok := pkgs[dep]; !ok {
+				return nil, fmt.Errorf("main-module import %q from %q absent from package closure", dep, importPath)
+			}
+			stack = append(stack, dep)
+		}
+	}
+	if len(reached) != len(pkgs) {
+		for importPath := range pkgs {
+			if !reached[importPath] {
+				return nil, fmt.Errorf("unreachable package %q in source closure", importPath)
+			}
+		}
+	}
+	return pkgs, nil
+}
+
+// compareReports requires the same source revision and Go toolchain profile.
+// Explicit build tags may differ and remain visible in the comparison; a
+// change in build tags is not itself evidence of a minimal binary.
+func compareReports(before, after Report) (ClosureComparison, error) {
+	a, err := packageMap(before)
+	if err != nil {
+		return ClosureComparison{}, fmt.Errorf("before: %w", err)
+	}
+	b, err := packageMap(after)
+	if err != nil {
+		return ClosureComparison{}, fmt.Errorf("after: %w", err)
+	}
+	if before.SourceRevision != after.SourceRevision || before.Module != after.Module ||
+		before.GoVersion != after.GoVersion || before.GOOS != after.GOOS ||
+		before.GOARCH != after.GOARCH || before.CGOEnabled != after.CGOEnabled ||
+		before.GoFlags != after.GoFlags || !reflect.DeepEqual(before.TargetFeatures, after.TargetFeatures) ||
+		!reflect.DeepEqual(before.CgoToolchain, after.CgoToolchain) {
+		return ClosureComparison{}, fmt.Errorf("source revision, module, or Go build environment differs")
+	}
+	out := ClosureComparison{
+		SourceRevision: before.SourceRevision, Module: before.Module,
+		GoVersion: before.GoVersion, GOOS: before.GOOS, GOARCH: before.GOARCH,
+		CGOEnabled: before.CGOEnabled, GoFlags: before.GoFlags,
+		TargetFeatures: before.TargetFeatures, CgoToolchain: before.CgoToolchain,
+		BeforeEntry: before.Entry, AfterEntry: after.Entry,
+		BeforeBuildTags: before.BuildTags, AfterBuildTags: after.BuildTags,
+		BeforeOnly: []string{}, AfterOnly: []string{}, Changed: []PackageChange{},
+	}
+	for name, original := range a {
+		revised, exists := b[name]
+		if !exists {
+			out.BeforeOnly = append(out.BeforeOnly, name)
+			continue
+		}
+		if !reflect.DeepEqual(original, revised) {
+			out.Changed = append(out.Changed, PackageChange{ImportPath: name, Before: original, After: revised})
+		}
+	}
+	for name := range b {
+		if _, exists := a[name]; !exists {
+			out.AfterOnly = append(out.AfterOnly, name)
+		}
+	}
+	sort.Strings(out.BeforeOnly)
+	sort.Strings(out.AfterOnly)
+	sort.Slice(out.Changed, func(i, j int) bool { return out.Changed[i].ImportPath < out.Changed[j].ImportPath })
+	return out, nil
+}

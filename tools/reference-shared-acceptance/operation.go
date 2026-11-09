@@ -15,10 +15,15 @@ const (
 	opAddValidation               = "add-validation"
 	opAddData                     = "add-data"
 	opAddRelation                 = "add-relation"
+	opAddCandidateKey             = "add-candidate-key"
+	opAddFunctionalDependency     = "add-functional-dependency"
+	opRemoveCandidateKey          = "remove-candidate-key"
+	opRemoveFunctionalDependency  = "remove-functional-dependency"
 	opAddEnvironmentBinding       = "add-environment-binding"
 	opAddApplication              = "add-application"
 	opAddReferencePattern         = "add-reference-pattern"
 	opAddApplicationValidationUse = "add-application-validation-use"
+	opSetSymbol                   = "set-symbol"
 )
 
 // Operationは、型付きの最小semantic deltaの一単位である。
@@ -32,11 +37,18 @@ type Operation struct {
 	Attribute string `json:"attribute,omitempty"`
 	Relation  string `json:"relation,omitempty"`
 	Placement string `json:"placement,omitempty"`
+	// AttributeTypeはset-attribute-typeの新しい型（完全なCanonical ID）。
+	AttributeType string `json:"attributeType,omitempty"`
+	// Symbolは、set-symbolが既存subjectへ設定する表示名である。Canonical IDは変えない。
+	Symbol string `json:"symbol,omitempty"`
 
-	Data        *DataSpec        `json:"data,omitempty"`
-	AddRelation *AddRelationSpec `json:"addRelation,omitempty"`
-	Application *ApplicationSpec `json:"application,omitempty"`
-	Pattern     *PatternSpec     `json:"pattern,omitempty"`
+	Data                    *DataSpec                    `json:"data,omitempty"`
+	AddRelation             *AddRelationSpec             `json:"addRelation,omitempty"`
+	AddCandidateKey         *AddCandidateKeySpec         `json:"addCandidateKey,omitempty"`
+	AddFunctionalDependency *AddFunctionalDependencySpec `json:"addFunctionalDependency,omitempty"`
+	RemoveBusinessRule      *RemoveBusinessRuleSpec      `json:"removeBusinessRule,omitempty"`
+	Application             *ApplicationSpec             `json:"application,omitempty"`
+	Pattern                 *PatternSpec                 `json:"pattern,omitempty"`
 
 	EnvironmentBinding *EnvironmentBindingSpec `json:"environmentBinding,omitempty"`
 
@@ -61,11 +73,13 @@ type EnvironmentBindingSpec struct {
 
 // DataSpecは、新しいsemantic namespaceに一つのDataを追加する意味を表す。
 type DataSpec struct {
-	Namespace  string          `json:"namespace"`
-	ID         string          `json:"id"`
-	Symbol     string          `json:"symbol"`
-	Attributes []AttributeSpec `json:"attributes,omitempty"`
-	Relations  []RelationSpec  `json:"relations,omitempty"`
+	Namespace              string                        `json:"namespace"`
+	ID                     string                        `json:"id"`
+	Symbol                 string                        `json:"symbol"`
+	Attributes             []AttributeSpec               `json:"attributes,omitempty"`
+	Relations              []RelationSpec                `json:"relations,omitempty"`
+	CandidateKeys          []AddCandidateKeySpec         `json:"candidateKeys,omitempty"`
+	FunctionalDependencies []AddFunctionalDependencySpec `json:"functionalDependencies,omitempty"`
 }
 
 type AttributeSpec struct {
@@ -96,6 +110,35 @@ type AddRelationSpec struct {
 	Target      string            `json:"target"`
 	Cardinality string            `json:"cardinality"`
 	Keys        []RelationKeySpec `json:"keys,omitempty"`
+}
+
+// AddCandidateKeySpec is an explicit assertion of a logical business key.
+// It never implies a physical PK, uniqueness DDL, or record row identity.
+type AddCandidateKeySpec struct {
+	Data       string   `json:"data"`
+	ID         string   `json:"id"`
+	Symbol     string   `json:"symbol"`
+	Attributes []string `json:"attributes"`
+}
+
+// AddFunctionalDependencySpec is an explicit determinant/dependent assertion.
+// It never derives a database index or a physical constraint.
+type AddFunctionalDependencySpec struct {
+	Data         string   `json:"data"`
+	ID           string   `json:"id"`
+	Symbol       string   `json:"symbol"`
+	Determinants []string `json:"determinants"`
+	Dependents   []string `json:"dependents"`
+}
+
+// RemoveBusinessRuleSpec names an existing logical assertion to retract.
+// sourceFingerprint pins the complete current canonical source file;
+// baseModelRevision and the normal review/accept boundary remain mandatory.
+type RemoveBusinessRuleSpec struct {
+	Data              string `json:"data"`
+	ID                string `json:"id"`
+	Symbol            string `json:"symbol"`
+	SourceFingerprint string `json:"sourceFingerprint"`
 }
 
 // ApplicationSpecは、Environment bindingを含まないApplication定義の意味を表す。
@@ -170,8 +213,12 @@ func normalizePlacement(op Operation) (string, error) {
 func onlyFields(op Operation, allowed ...string) error {
 	present := map[string]bool{
 		"namespace": op.Namespace != "", "id": op.ID != "", "kind": op.Kind != "",
-		"attribute": op.Attribute != "", "relation": op.Relation != "",
-		"data": op.Data != nil, "addRelation": op.AddRelation != nil, "application": op.Application != nil, "pattern": op.Pattern != nil,
+		"attribute": op.Attribute != "", "relation": op.Relation != "", "attributeType": op.AttributeType != "",
+		"symbol": op.Symbol != "",
+		"data":   op.Data != nil, "addRelation": op.AddRelation != nil,
+		"addCandidateKey": op.AddCandidateKey != nil, "addFunctionalDependency": op.AddFunctionalDependency != nil,
+		"removeBusinessRule": op.RemoveBusinessRule != nil,
+		"application":        op.Application != nil, "pattern": op.Pattern != nil,
 	}
 	for _, name := range allowed {
 		delete(present, name)
@@ -193,6 +240,12 @@ func normalizeOperation(op Operation) (Operation, error) {
 		return normalizeAddData(op)
 	case opAddRelation:
 		return normalizeAddRelation(op)
+	case opAddCandidateKey:
+		return normalizeAddCandidateKey(op)
+	case opAddFunctionalDependency:
+		return normalizeAddFunctionalDependency(op)
+	case opRemoveCandidateKey, opRemoveFunctionalDependency:
+		return normalizeRemoveBusinessRule(op)
 	case opAddEnvironmentBinding:
 		return normalizeAddEnvironmentBinding(op)
 	case opAddApplicationValidationUse:
@@ -201,9 +254,12 @@ func normalizeOperation(op Operation) (Operation, error) {
 		return normalizeAddApplication(op)
 	case opAddReferencePattern:
 		return normalizeAddReferencePattern(op)
+	case opSetSymbol:
+		return normalizeSetSymbol(op)
+	case opSetAttributeType:
+		return normalizeSetAttributeType(op)
 	default:
-		return op, fmt.Errorf("operation %q は未対応です（%s / %s / %s / %s / %s / %s / %s だけを扱います）",
-			op.Op, opAddValidation, opAddData, opAddRelation, opAddApplication, opAddReferencePattern, opAddEnvironmentBinding, opAddApplicationValidationUse)
+		return op, fmt.Errorf("operation %q は未対応です（add-validation / add-data / add-relation / add-candidate-key / add-functional-dependency / remove-candidate-key / remove-functional-dependency / add-application / add-reference-pattern / add-environment-binding / add-application-validation-use / set-symbol / set-attribute-type）", op.Op)
 	}
 }
 
@@ -350,6 +406,9 @@ func normalizeAddData(op Operation) (Operation, error) {
 			spec.Keys = append(spec.Keys, RelationKeySpec{SourceAttribute: string(source), TargetAttribute: string(targetAttr)})
 		}
 		out.Relations = append(out.Relations, spec)
+	}
+	if err := normalizeNewDataBusinessRules(d, &out, seen); err != nil {
+		return op, err
 	}
 	return Operation{Op: op.Op, Placement: placement, Data: &out}, nil
 }
@@ -603,6 +662,14 @@ func operationKey(op Operation) string {
 		return "data:" + op.Data.ID
 	case opAddRelation:
 		return "relation:" + op.AddRelation.ID
+	case opAddCandidateKey:
+		return "candidate-key:" + op.AddCandidateKey.ID
+	case opAddFunctionalDependency:
+		return "functional-dependency:" + op.AddFunctionalDependency.ID
+	case opRemoveCandidateKey:
+		return "candidate-key:" + op.RemoveBusinessRule.ID
+	case opRemoveFunctionalDependency:
+		return "functional-dependency:" + op.RemoveBusinessRule.ID
 	case opAddEnvironmentBinding:
 		b := op.EnvironmentBinding
 		return "environment-binding:" + b.Environment + "/" + b.Application + "." + b.Alias
@@ -613,6 +680,10 @@ func operationKey(op Operation) string {
 		return "application:" + op.Application.ID
 	case opAddReferencePattern:
 		return "application-pattern:" + op.Pattern.ID
+	case opSetSymbol:
+		return op.Kind + ":" + op.ID
+	case opSetAttributeType:
+		return "attribute-type:" + op.ID
 	}
 	return op.Op
 }

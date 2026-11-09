@@ -1,0 +1,19 @@
+{
+  "schema": "tei.reference.cognition-provider/v0",
+  "id": "external-local",
+  "model": "example-local-model",
+  "version": "v1",
+  "execution": "external",
+  "network": "none",
+  "capabilities": [
+    "validation-candidate"
+  ],
+  "limits": {
+    "maxContextBytes": 65536,
+    "maxOutputBytes": 65536,
+    "timeoutSeconds": 10
+  },
+  "settings": {
+    "note": "端末内の外部コマンドを想定した参照。"
+  }
+}

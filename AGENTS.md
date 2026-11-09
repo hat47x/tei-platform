@@ -1,68 +1,90 @@
-# AGENTS.md
+# TEIリポジトリ管理規則
 
-TEI Repositoryの文書構成と管理ルールです。ここを文書配置の正本とします。
+この文書は、開発エージェントがTEIリポジトリで作業するときの判断基準です。製品の構成・仕様・依存関係の正本ではありません。説明はREADMEと設計文書に置き、ここへ複製しません。
 
-## フォルダ構成
+## 基本姿勢
 
-```text
-product/          守る価値・原則・Vision
-requirements/     満たすべきProduct Requirement（RQ-001〜）
-plan/             計画管理（Master Plan、Milestone、Gateの監査・契約・Runbook）
-  design/         機能ごとの設計文書
-    mockups/      画面モック（単体で開けるHTML。正本ではない）
-  issue/          作業定義と要件詳細化（000001-*.md）
-  adr/            長く残る設計判断（0001-*.md）
-docs/             利用者向け文書（overview / status / architecture / naming / security）
-  conformance/    意味境界のConformance記述
-  adr/            旧URL互換の案内のみ。本文は plan/adr が正本
-  audits/         過去の監査記録
-reference/        Reference Workspaceと観測fixture
-internal/         Core実装
-cmd/ tools/       CLIと補助tool
-examples/ bootstrap/
+現工程はPoCです。作業を止める規則より、根拠を残して前に進む規則を優先します。
+
+- 既定は自律です。読む、書く、検証する、統合するまでを、機械で確認できる範囲で一人で進めます。
+- 人の確認を待つのは、取り消せない効果がリポジトリの外へ出る場合だけです。具体的には、秘密情報・顧客データの外部送信、本番環境への配備、外部システムの削除や破壊的移行、第三者ライセンスの法的判断、対外公開です。これらに当たらない作業を「念のため」人へ回しません。
+- 判断に迷ったときは、止まらずに狭く安全な解釈で進め、仮定をPR本文かコミットメッセージへ残します。後から覆せる形を選びます。
+- 検証できない場合は、実行できた範囲と残る危険性を記録して進めます。分からないことを成功として扱いませんが、分からないことを停止理由にもしません。
+
+## 最初に確認すること
+
+- ルートの[README](README.md)と、変更対象のREADMEを読みます。
+- 現行構成は[docs/architecture.md](docs/architecture.md)、実装の成立状況は[docs/status.md](docs/status.md)で確認します。
+- 関連するIssue・PR・ADRを読みます。設計判断が食い違う場合は、採用済みのADRを優先して進み、食い違いをPR本文へ書きます。解決のために作業全体を止めません。
+- `reference/workspace`は、**Gate B / Gate Cで固定した版**と、**現在の参照用作業領域**を区別して扱います。固定版は、Gate Bが固定したcommit `e5231839a5dcc62cce1181a2731fcb7c70d16736`（Gate Cのbaseline Rも同じ値）と、Gate Cが固定したtarget build `0ba87a4e0a96f70a198b03ff7652fb00e3826abe`（T）です。固定版は履歴から参照し、現在の作業領域の内容を固定版として引用しません。現在の作業領域を変更する場合は、Issue番号と理由をPRへ明記し、`reference-shared-acceptance`の受理経路（`-allow-reference-baseline`付き）を使います。`.tei`ファイルを手編集しません。受理した変更は`.tei/decisions/*.json`のDecisionに記録されるため、PRはそのファイルのパスを引用します。
+- 秘密情報、顧客データ、未公開資料を、コミット・Issue・PR・ログへ入れません。
+- コアとプラグインのサブプロジェクト化は[ADR-0033](plan/adr/0033-core-and-plugin-subprojects.md)に従います。目標配置を実装済みとみなさず、一括移動やGoモジュールの一律分割をしません。
+
+## 作業の進め方
+
+- `main`へ直接変更しません。作業ブランチを使い、必要なら短命のブランチを新しく作ります。共有ブランチでrebase・reset・force更新をしません。
+- 変更は小さく保ちます。関連する単体試験、静的解析、境界値試験、既存の動作との照合から、**変更範囲に必要な検証を自分で選びます**。`tools/repository-health-check.sh`の全項目PASSは統合条件ではなく、一律には実行しません。
+- 検証を実行できない場合は、その制約、代替の検証、残る危険性をPRへ書きます。実行した検証と未実行の検証を区別します。
+- 文書だけを変更する場合も、正本・リンク・状態の説明・並行作業への影響を確認します。
+- 統合は、検証結果をPR本文へ記録したうえで行います。Draftは作業中の表示であり、統合を妨げる条件ではありません。統合の直前にPRを再取得し、exact head、base、変更path、現在の`main`を確認し、Draftなら解除します。以前のPR状態やGitHubの`mergeable`表示を、統合の根拠にしません。
+- 統合の直前に、並行変更との意味的な整合性を確認します。確認した版が変わった場合は差分を再点検します。
+- 検証やEvidenceの取得中は、判定に必要なブランチや`main`を不用意に更新しません。
+
+## 自律性と統合の範囲
+
+作業の段階は、変更の種類で決めます。作業者の自信では決めません。段階と統合の条件は[ADR-0035](plan/adr/0035-autonomy-levels-and-verification-packets.md)に定めます。
+
+- `A0` 読み取り・分析、`A1` 受理済み意味からの決定的な派生物、`A2` 隔離ブランチでのSource・コード・試験の変更は、自律的に進めます。
+- `A3` 統合は、変更範囲・検証・証拠が機械確認できれば自律的に行います。意味・契約・Authorityの変更を含む場合も、受理済みの検証経路と機械可読な記録で確認できれば同じ扱いにします。人の承認を前提にしません。
+- `A4` 取り消せない外部効果は、影響範囲と選択肢を書いたうえで人に確認します。対象は、秘密情報・顧客データの外部送信、本番環境への配備、外部システムの削除や破壊的移行、第三者ライセンスの法的判断、対外公開です。
+- `A4`に当たるか迷う場合は、当たらない形へ変更を分割します。分割できない場合は、既定案を選んで進み、選んだ理由と覆す条件をIssue・PRへ残します。
+- 不明な依存、未確認の状態、検証環境の不足を、成功として扱いません。検証できる範囲を記録し、代替の検証を選んで進みます。
+- 必要なら[change packet](tools/reference-change-packet/README.md)で、変更範囲・危険度・検証・停止条件を宣言できます。`passed=true`は範囲と検証の一致を示すだけで、意味の受理や権限を与えません。
+
+## 情報の置き場所
+
+- `requirements/`: 製品が満たすべき内容。
+- `plan/`: 着手順、設計案、受入条件、検証手順、段階判定、移行計画。
+- `plan/adr/`: 採用した設計判断。提案中は状態を明記します。
+- `plan/design/`: 複数のIssueにまたがる機能設計。採用前の案もここへ置きます。
+- `plan/gate/`: 受入条件・実行手順・判定記録。判定記録には対象となる版と根拠を明記し、現在の実装状況は`docs/status.md`を正本とします。
+- `docs/`: 利用者・運用者向けの説明、現行構成、準拠確認。
+- `tools/`: 再現可能な検証・参照ツール。
+- `research/`: 研究目的と有効な制約があり、既存の参照実装で代替できない実装・データ。
+
+同じ内容を別の場所へ複製せず、必要な場所から参照します。計画上の設計を現行実装の説明として書かず、実装説明を計画の複製にしません。既存ファイルは一括移動せず、参照関係・生成手順・並行作業への影響を確認します。互換用の文書に別の正本を作りません。下位のAGENTS.mdを追加しません。
+
+意味を扱う中核部分を、UI・CLI・Provider・検証ツールへ依存させません。標準機能もプラグインで構成できる設計を目指し、基盤の機能と個別案件の拡張を分けます。
+
+`tools/`の項目を削除する場合は、Issue・計画・実行手順からの参照、再現可能なEvidence、他のツールへの依存を調べます。完了済みの一回限りの手順で、再利用・監査価値もない場合だけ削除し、[tools/README.md](tools/README.md)を更新します。
+
+## PoCの判断
+
+現工程は、既存設計の完成ではなく、実効性のある抽象構造を見つけるPoCです。判断に迷ったら[PoC工程の横断基準 #1973](https://github.com/hat47x/tei-platform/issues/1973)を参照します。
+
+- 新しい抽象概念は、「従来できなかった何が可能になるか」「どう観測するか」「効果がなければどう撤回するか」で評価します。
+- 提案、採用、実装、合成試験、実環境での確認を混同しません。合成データやモックの成功を、実際のProviderや本番環境で動く証拠にしません。
+- 既存ADR、受入条件、確認済み証拠の扱いを維持します。効果が確認できない場合は、抽象を撤回するか、参照実装の範囲へ戻します。
+- 効果がまだ確認できていない抽象でも、PoCとして試すために必要な実装は止めません。試したことと、確認できたことを分けて書きます。
+
+## 文書と帰属
+
+- 説明は日本語で書きます。共通用語は[docs/naming.md](docs/naming.md)、品質は[docs/documentation-quality.md](docs/documentation-quality.md)に合わせます。コード上の識別子として英語が必要な場合は、その表記を保ちます。
+- 外部資料は、出典の事実とTEI側の要求・設計判断を区別します。著作者名が必要な書誌情報・権利表示は維持し、要件・実装の見出し、識別子、ファイル名には個人名を不用意に持ち込みません。
+- 参照モデル・手引書の本文を転載しません。利用条件の確認は[#941](https://github.com/hat47x/tei-platform/issues/941)の担当です。
+- ブランチ名、コミット、PRのタイトル・本文には、変更の目的・対象・検証結果を書きます。外部の人物名は、出典の特定に不可欠な場合を除いて記載しません。
+- 公開済み・共有済みの履歴を、表記の整理だけで書き換えません。変更が必要な場合は、参照・進行中の作業・外部の複製・証拠への影響を調べてから判断します。
+
+## 困ったとき
+
+- 規則が食い違う、製品の意味・権限に触れる、検証できない、並行変更が重なる場合は、進められる範囲を分けて実行し、残った判断と選んだ既定案をIssue・PR・作業票へ書きます。人の返答を待つ間も、後続の作業を止めません。
+- 具体的な開発手順は[CONTRIBUTING.md](CONTRIBUTING.md)、設計判断は[plan/adr/](plan/adr/README.md)、作業条件はGitHubのIssueに従います。
+
+## よく使う確認
+
+```bash
+gofmt -l <変更したGoのディレクトリ>
+go vet ./<変更したパッケージ>
+go test ./<変更したパッケージ> -count=1
+go run ./cmd/tei validate -workspace reference/workspace
 ```
-
-## 文書ルール
-
-- 正本を一つにする。価値は`product/`、要求は`requirements/`、進行は`plan/issue/`、判断は`plan/adr/`、機能設計は`plan/design/`。同じ内容を複数の場所へ複製しない。
-- `plan/`直下は計画管理文書だけに限定する。機能ごとの設計文書は`plan/design/`へ置く。小さい機能では新しい設計文書を作らず、Issue本文へ書く。
-- ADRは4桁連番、Issueは6桁連番。ファイル名は`0001-short-description.md`形式。
-- ADRの状態は `提案中` / `採用` / `置き換え済み` / `却下`。採用済みADRを書き換えず、判断が変わったら新しいADRを追加する。
-- Issueの状態は `Proposed` / `Ready` / `In Progress` / `Blocked` / `Done` / `Superseded`。
-- 未採用の文書は「評価待ち」と明記し、実装やReference変更の根拠にしない。
-- 実装済みの機能と設計検証段階を同じ表現で書かない。実装状況は`docs/status.md`が正本。
-- 各作業では、どのProduct Requirementの不確実性を減らすのかを書く。
-- Canonicalな意味とEvidenceを混ぜない。syntheticな成功を実Provider・外部資産・本番運用の保証へ昇格させない。
-- 文章は日本語を基本とし、Repository上の正式名称・identifier・一般的な技術用語は必要に応じて英語を併記する。英語の語を並べるだけで意味を説明したことにしない。
-- 詳細な方式やfieldから書き始めず、原則として「背景 → 防ぎたい失敗 → 守る原則 → 必要能力 → 具体例 → 設計詳細 → 未解決 / 非主張範囲」の順で読めるようにする。
-- 箇条書きだけで背景や判断理由が失われる場合は文章で補う。Requirement、ADR、Security境界等では「なぜ必要か」「満たさないと何が起きるか」「何をまだ保証しないか」まで説明する。
-- TEIの要求技術・業務知識が高いことを、説明不足の理由にしない。主担当より一段浅い知識の読者でも目的・境界・判断理由をレビューできることを目標にする。
-- 専門語・TEI固有語は、読者が意味を推測しなくて済むよう、初出または近い入口で短い日本語説明を添える。
-- 抽象境界を説明するときは、可能な範囲でReferenceに沿った具体例、失敗例、因果を示す図を使う。ただし例をRequirementやCanonical meaningへ昇格させない。
-- 文書の入口では、役割、正本との関係、対象範囲、現在の状態、非主張範囲を必要に応じて明示する。
-- 詳細な執筆・レビュー指針は[`docs/documentation-quality.md`](docs/documentation-quality.md)を参照する。
-
-## 外部資料の帰属と固有名詞
-
-- 外部の研究成果や実装から得た知見は、TEIの要件・設計判断・検証可能な根拠へ翻訳して記述する。原則として個人名を要件、ADR、Issue、実装名、テスト名、見出しやファイル名の主語にしない。
-- 著者名の明記は、文献情報、権利表示、正確な出典帰属など必要な箇所へ限定する。出典は失わず、同じ人物への言及を各文書に繰り返し複製しない。
-- branch名、commit message、PRのtitle / bodyには、出典の特定に不可欠な場合を除き個人名を記載しない。設計上の変更内容と対象境界を記述する。
-- 既に共有したcommit履歴を表記整理だけのためにrebase / force updateしない。Git履歴を書き換える場合は、参照しているbranch・PR・共同作業・外部cloneへの影響を個別に評価し、安全な移行手順を別途定める。
-
-## 開発フロー
-
-- human ownerは単独でも、複数のAI session / processが同時にRepositoryを更新する。**単独process前提で`main`へ直接commitしない。**
-- 既存のtask / lane branchがある作業はそのbranchを再利用する。並行作業のたびに新しいremote branchを増やさず、milestone / Gate単位で`main`へPRまたは通常mergeし、その後にbranchを収束させる。
-- write前に`git fetch --prune`相当のremote再取得、open PR、対象branchのahead / behind、変更pathの競合を確認する。active PRのheadや独自aheadを持つbranchをcleanup対象にしない。
-- 複数sessionが共有するlive branchではrebase / reset / force updateをしない。最新`main`への追随は、必要なら現在のlane tipを第一親にした通常mergeで行う。`main`もforce updateしない。
-- **コードを変えたら、`main`へ統合する前に`tools/repository-health-check.sh`を通し、失敗または未実行のコードを統合しない。** gofmt差は`--fix`で自動整形できる（`--fast`で`go test`を省く）。GoがPATHにない環境では、Goのあるtrusted local cloneで実行する。GitHub Actionsが利用できない期間もこのGateを弱めない。
-- **code変更を含むDraft PRはmerge authorityではない。** exact-headのfull `tools/repository-health-check.sh` PASSとpre/post clean stateが記録されるまで、Draftのまま保持し、generic merge / local merge / branch-to-main mergeを行わない。PRがmergeableであることやdiffが小さいことは代替Evidenceにならない。
-- exact-head / exact-mainにbindingされたqualificationを実行中は、**そのreceiptを無効化する`main`移動を起こさない。** 無関係なdocs-only PRでも`main`を動かすなら、既存branchに保持したままPRをclose/parkし、protected sequenceが安定してから同じPR/branchを再開する。Draftであることだけをmerge防止策にしない。
-- **`merged`というGitHub状態それ自体はqualification Evidenceではない。** 必須PASSなしにcode-changing PRがmergeされた場合は、そのmergeを既成事実として次のprotected integrationへ流用せず、incidentを正本へ記録し、protected candidate refを凍結したままcurrent `main` exact headのtrusted full Repository healthを新しいforward stopとする。
-- open PRを機械的に一括mergeしない。各PRについてGate authority・exact head・main movement・並行laneを個別に再取得してから統合する。
-- containment / qualification / candidateとして明示的に保持されているbranchは、PRがclosed/mergedになっていても正本のGate handoffが完了するまでcleanup対象にしない。特に`ci/reference-pressure-evidence`、`research/selective-knowledge-routing-r6`、`research/tei-ld-0a-corpus-v0`はlive stateとIssue/PRの最新記録を再取得してから動かす。
-- 文書だけの変更でも、正本・Gate / Evidence claim・並行branchとの競合を確認してから統合する。
-- R7Bのlive qualification branch `research/selective-knowledge-routing-r6` は特別なGate対象である。**generic merge / squash / cherry-pick / source copyでcanonical 11を`main`へ入れない。** `plan/issue/000069-first-web-target-r7b-exact-t-replay.md`に定めるtrusted-local PASS receipt → integration preflight → exact-parent merge preparation → non-force publication → post-merge verificationの順だけをintegration authorityとする。receiptが無い状態でcanonical sourceが`main`に見えてもqualifiedとは扱わず、fail closedでreconcileする。
-- 詳細は[`CONTRIBUTING.md`](CONTRIBUTING.md)を参照する。
-
-コードの検証手順も[`CONTRIBUTING.md`](CONTRIBUTING.md)を参照します。

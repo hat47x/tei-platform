@@ -27,6 +27,89 @@ func TestLockPinsVersionEvenWhenNewerCompatibleAppears(t *testing.T) {
 	}
 }
 
+// Two projects may select the same logical Plugin while adopting its releases
+// at different times. A new catalog release must not modify either pinned lock.
+func TestIndependentEnvironmentsAdoptSharedPluginOnSeparateLocks(t *testing.T) {
+	id := core.MustCanonicalID("tei.reference.shared_derivation")
+	v1 := plugin.Definition{
+		ID:      id,
+		Version: "1.0.0",
+		Runtime: plugin.Runtime{Kind: plugin.RuntimeBuiltin},
+		Provides: []plugin.Capability{{
+			Kind: plugin.CapabilityEditorIntelligence,
+			ID:   core.MustCanonicalID("reference.derive"),
+		}},
+	}
+	projectA := environment.Environment{
+		ID:      core.MustCanonicalID("project.alpha"),
+		Plugins: []environment.ExtensionRequirement{{ID: id, CompatibleMajor: 1}},
+	}
+	projectB := environment.Environment{
+		ID:      core.MustCanonicalID("project.beta"),
+		Plugins: []environment.ExtensionRequirement{{ID: id, CompatibleMajor: 1}},
+	}
+	catalog := plugin.Catalog{Plugins: []plugin.Definition{v1}}
+	pinnedA, err := plugin.BuildLock(catalog, []environment.Environment{projectA})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	v11 := v1
+	v11.Version = "1.1.0"
+	catalog.Plugins = append(catalog.Plugins, v11)
+	pinnedB, err := plugin.BuildLock(catalog, []environment.Environment{projectB})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Another compatible release must not silently upgrade either project.
+	v12 := v1
+	v12.Version = "1.2.0"
+	catalog.Plugins = append(catalog.Plugins, v12)
+	assertVersion := func(env environment.Environment, lock plugin.Lock, want string) {
+		t.Helper()
+		resolved, err := catalog.ResolveEnvironmentWithLock(env, lock)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(resolved.Plugins) != 1 || resolved.Plugins[0].Version != want {
+			t.Fatalf("%s: resolved %#v, want %s", env.ID, resolved.Plugins, want)
+		}
+		if _, ok := resolved.Capability(plugin.CapabilityEditorIntelligence, core.MustCanonicalID("reference.derive")); !ok {
+			t.Fatalf("%s: shared capability was not resolved", env.ID)
+		}
+	}
+	assertVersion(projectA, pinnedA, "1.0.0")
+	assertVersion(projectB, pinnedB, "1.1.0")
+
+	// Project A may adopt the new version and then explicitly roll back.
+	upgradedA, err := plugin.BuildLock(catalog, []environment.Environment{projectA})
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertVersion(projectA, upgradedA, "1.2.0")
+	assertVersion(projectA, pinnedA, "1.0.0")
+	assertVersion(projectB, pinnedB, "1.1.0")
+
+	// Each lock is scoped to its own environment, not a repository-wide default.
+	if _, err := catalog.ResolveEnvironmentWithLock(projectA, pinnedB); err == nil {
+		t.Fatal("another project's lock must not authorize this environment")
+	}
+	if _, err := catalog.ResolveEnvironmentWithLock(projectB, pinnedA); err == nil {
+		t.Fatal("another project's lock must not authorize this environment")
+	}
+
+	// Mutation of a pinned definition invalidates only the affected project.
+	mutated := plugin.Catalog{Plugins: append([]plugin.Definition(nil), catalog.Plugins...)}
+	mutated.Plugins[0].Runtime = plugin.Runtime{Kind: plugin.RuntimeProcess, Command: "changed"}
+	if _, err := mutated.ResolveEnvironmentWithLock(projectA, pinnedA); err == nil {
+		t.Fatal("changed pinned definition must be rejected")
+	}
+	if _, err := mutated.ResolveEnvironmentWithLock(projectB, pinnedB); err != nil {
+		t.Fatalf("unrelated project's pinned release must remain usable: %v", err)
+	}
+}
+
 func TestLockDetectsDescriptorMutation(t *testing.T) {
 	base := plugin.Definition{ID: core.MustCanonicalID("tei.x"), Version: "1.0.0", Runtime: plugin.Runtime{Kind: plugin.RuntimeBuiltin}}
 	env := environment.Environment{ID: core.MustCanonicalID("prod"), Plugins: []environment.ExtensionRequirement{{ID: base.ID, CompatibleMajor: 1}}}

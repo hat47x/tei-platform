@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "business-procedure-reference-v0",
+  "artifactRole": "reference-authoring-fixture",
+  "canonical": false,
+  "procedure": {
+    "id": "order-entry.warehouse-preparation",
+    "identityStatus": "reference-local-stable",
+    "purpose": "assess shipping preparation and request physical handling",
+    "actor": {
+      "status": "candidate",
+      "label": "warehouse coordinator"
+    },
+    "trigger": {
+      "status": "candidate",
+      "text": "qualified request for shipment preparation"
+    }
+  },
+  "steps": [
+    {
+      "id": "WH-00",
+      "businessAction": "receive authorized shipment preparation request",
+      "realization": "manual-external-unresolved"
+    },
+    {
+      "id": "WH-10",
+      "businessAction": "verify physical inventory and prepare picking plan",
+      "realization": "manual-unresolved"
+    }
+  ]
+}

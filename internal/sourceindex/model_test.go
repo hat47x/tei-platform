@@ -1,6 +1,7 @@
 package sourceindex_test
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
@@ -85,5 +86,100 @@ func TestIndexReferencesForSubject(t *testing.T) {
 	}
 	if err := idx.Validate(func(string) ([]byte, error) { return content, nil }); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestNormalizeIsDeterministicWhenReferencesShareStartOffset(t *testing.T) {
+	sub := sourceindex.Subject{Kind: "semantic-data", ID: "sales.order"}
+	makeRef := func(end int) sourceindex.Reference {
+		return sourceindex.Reference{
+			Subject:      sub,
+			ArtifactPath: "semantic/sales/order.tei",
+			Role:         sourceindex.RoleDefinition,
+			Range: sourceindex.Range{
+				Start: sourceindex.Position{Offset: 10, Line: 1, Column: 11},
+				End:   sourceindex.Position{Offset: end, Line: 1, Column: end + 1},
+			},
+		}
+	}
+	indexA := sourceindex.Index{References: []sourceindex.Reference{
+		makeRef(14), makeRef(12), makeRef(13),
+	}}
+	indexB := sourceindex.Index{References: []sourceindex.Reference{
+		makeRef(12), makeRef(13), makeRef(14),
+	}}
+	indexA.Normalize()
+	indexB.Normalize()
+	if !reflect.DeepEqual(indexA.References, indexB.References) {
+		t.Fatalf("Source Index normalized differently for the same logical references: %+v / %+v", indexA.References, indexB.References)
+	}
+	for i, ref := range indexA.References {
+		if ref.Range.End.Offset != i+12 {
+			t.Fatalf("equal-start reference order is unstable: %+v", indexA.References)
+		}
+	}
+}
+
+// ModelRevision must stay byte-for-byte compatible with the established Shared
+// Acceptance revision algorithm, including the NUL separator and path order.
+func TestManagedSourceRevisionLegacyCompatibility(t *testing.T) {
+	a, err := sourceindex.NewArtifact("a.tei", []byte("hello\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := sourceindex.NewArtifact("b.tei", []byte("world"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	index := sourceindex.Index{Artifacts: []sourceindex.Artifact{b, a}}
+	const want = "sha256:80f05da9df82519698ffa156665c2f0adab6ec75b731a13b51f748168bc38d21"
+	if got := sourceindex.ModelRevision(index); got != want {
+		t.Fatalf("Shared Acceptance revision changed: got %s, want %s", got, want)
+	}
+	if got := sourceindex.ModelRevision(sourceindex.Index{Artifacts: []sourceindex.Artifact{a, b}}); got != want {
+		t.Fatalf("Source order affected revision: %s", got)
+	}
+}
+
+func TestManagedSourceRevisionByteAndMembershipSensitivity(t *testing.T) {
+	a, _ := sourceindex.NewArtifact("applications/order-entry/application.tei", []byte("application order_entry {}\n"))
+	b, _ := sourceindex.NewArtifact("semantic/sales/order.tei", []byte("data sales.order {}\n"))
+	original := sourceindex.ModelRevision(sourceindex.Index{Artifacts: []sourceindex.Artifact{a, b}})
+	r2, _ := sourceindex.NewArtifact(a.Path, []byte("application order_entry {}\n\n"))
+	if got := sourceindex.ModelRevision(sourceindex.Index{Artifacts: []sourceindex.Artifact{r2, b}}); got == original {
+		t.Fatal("blank-line-only R2 should change managed Source revision")
+	}
+	if got := sourceindex.ModelRevision(sourceindex.Index{Artifacts: []sourceindex.Artifact{a}}); got == original {
+		t.Fatal("omitted member should change managed Source revision")
+	}
+	b.Path = "semantic/sales/renamed.tei"
+	if got := sourceindex.ModelRevision(sourceindex.Index{Artifacts: []sourceindex.Artifact{a, b}}); got == original {
+		t.Fatal("changed path should change managed Source revision")
+	}
+}
+
+// A Workspace that declares no managed Source bytes yields the SHA-256 of the
+// empty input. That value is the revision of "no managed Source artifact was
+// read", not of "the loaded World is empty": the standard semantic prelude is
+// always loaded and appears in the catalog entries, while the revision stays
+// at the empty digest (#2822). Reading it as a model identity would make two
+// unrelated empty Workspaces look like the same model.
+func TestManagedSourceRevisionOfAnEmptyIndexIsTheEmptyDigest(t *testing.T) {
+	const emptyInput = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+	if got := sourceindex.ModelRevision(sourceindex.Index{}); got != emptyInput {
+		t.Fatalf("empty managed Source revision changed: %s", got)
+	}
+	if got := sourceindex.ModelRevision(sourceindex.Index{Artifacts: []sourceindex.Artifact{}}); got != emptyInput {
+		t.Fatalf("empty artifact list is not the empty index: %s", got)
+	}
+	// One zero-length artifact is still a member: it must not collapse to the
+	// empty digest, or a Workspace that manages an empty file would be
+	// indistinguishable from one that manages no file at all.
+	empty, err := sourceindex.NewArtifact("semantic/empty/placeholder.tei", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := sourceindex.ModelRevision(sourceindex.Index{Artifacts: []sourceindex.Artifact{empty}}); got == emptyInput {
+		t.Fatal("an empty managed file must not read as the empty index")
 	}
 }

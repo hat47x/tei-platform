@@ -45,6 +45,8 @@ type ReviewProjection struct {
 	Intent               string                `json:"intent,omitempty"`
 	CandidateFingerprint string                `json:"candidateFingerprint,omitempty"`
 	EvidenceFingerprint  string                `json:"evidenceFingerprint,omitempty"`
+	ManifestPath         string                `json:"workspaceManifestPath,omitempty"`
+	ManifestFingerprint  string                `json:"workspaceManifestFingerprint,omitempty"`
 	ReviewFingerprint    string                `json:"reviewFingerprint,omitempty"`
 	PreviewAcceptable    bool                  `json:"previewAcceptable"`
 	Coverage             ReviewCoverageSummary `json:"coverage"`
@@ -59,6 +61,8 @@ func buildReviewProjection(ev evaluation) ReviewProjection {
 		Intent:               ev.candidate.Intent,
 		CandidateFingerprint: p.CandidateFingerprint,
 		EvidenceFingerprint:  p.EvidenceFingerprint,
+		ManifestPath:         ev.before.manifest.Path,
+		ManifestFingerprint:  ev.before.manifest.Fingerprint,
 		PreviewAcceptable:    p.Acceptable,
 	}
 
@@ -281,6 +285,10 @@ func buildReviewProjection(ev evaluation) ReviewProjection {
 		if p.EvidenceFingerprint != "" {
 			a7.Items = append(a7.Items, "evidenceFingerprint: "+p.EvidenceFingerprint)
 		}
+		if review.ManifestFingerprint != "" {
+			a7.Items = append(a7.Items,
+				"workspace manifest: "+review.ManifestPath+" fingerprint="+review.ManifestFingerprint)
+		}
 		for _, evidence := range ev.candidate.Evidence {
 			a7.Items = append(a7.Items, describeReviewEvidence(evidence))
 			for _, dependency := range evidence.QualificationDependencyEvidence {
@@ -394,6 +402,28 @@ func describeReviewEvidence(e Evidence) string {
 				"evaluationFingerprint="+evaluation.EvidenceFingerprint,
 			)
 		}
+		if rmt, ok := rmtTranscriptionFromEvidence(e); ok {
+			parts = append(parts,
+				"sourceFormat="+rmt.SourceFormat,
+				"sourceFormatVersion="+rmt.SourceFormatVersion,
+				"sourceArtifact="+rmt.SourceArtifactDigest,
+				"sourceToken="+rmt.SourceToken,
+				"mappingContract="+rmt.MappingContractFingerprint,
+				"mappingStatus="+string(rmt.MappingStatus),
+				"rmtEvidenceFingerprint="+rmt.EvidenceFingerprint,
+				"observerConformance=not-verified",
+				"externalSourceFreshness=not-verified-by-shared-acceptance",
+			)
+			if rmt.SourceConstructKnown {
+				parts = append(parts, "sourceConstruct="+rmt.SourceConstruct)
+			}
+			if len(rmt.Classification) > 0 {
+				parts = append(parts, "classification="+strings.Join(rmt.Classification, ","))
+			}
+			if rmt.Extension != "" {
+				parts = append(parts, "extension="+rmt.Extension)
+			}
+		}
 	}
 	switch {
 	case e.SubjectKind != "" && e.Subject != "":
@@ -439,6 +469,9 @@ func renderReviewProjection(review ReviewProjection) string {
 	}
 	if review.EvidenceFingerprint != "" {
 		fmt.Fprintf(&b, "evidence fingerprint: %s\n", review.EvidenceFingerprint)
+	}
+	if review.ManifestFingerprint != "" {
+		fmt.Fprintf(&b, "workspace manifest: %s fingerprint=%s\n", review.ManifestPath, review.ManifestFingerprint)
 	}
 	if review.ReviewFingerprint != "" {
 		fmt.Fprintf(&b, "review fingerprint: %s\n", review.ReviewFingerprint)

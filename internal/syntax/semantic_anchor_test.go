@@ -32,14 +32,16 @@ capability sales.order.submit {
 	}
 
 	want := map[string]string{
-		"semantic:sales":                             "sales",
-		"semantic-type:sales.order_id":               "OrderId",
-		"semantic-type:sales.order_status":           "OrderStatus",
-		"semantic-data:sales.order":                  "Order",
-		"semantic-attribute:sales.order.order_id":    "orderId",
-		"semantic-attribute:sales.order.customer_id": "customerId",
-		"semantic-relation:sales.order.customer":     "customer",
-		"semantic-capability:sales.order.submit":     "sales.order.submit",
+		"semantic:sales":                                  "sales",
+		"semantic-type:sales.order_id":                    "OrderId",
+		"semantic-type:sales.order_status":                "OrderStatus",
+		"semantic-data:sales.order":                       "Order",
+		"semantic-attribute:sales.order.order_id":         "orderId",
+		"semantic-attribute:sales.order.customer_id":      "customerId",
+		"semantic-attribute-type:sales.order.order_id":    "sales.order_id",
+		"semantic-attribute-type:sales.order.customer_id": "customer.customer_id",
+		"semantic-relation:sales.order.customer":          "customer",
+		"semantic-capability:sales.order.submit":          "sales.order.submit",
 	}
 	seen := map[string]bool{}
 	for _, item := range got.Anchors {
@@ -157,5 +159,29 @@ data OrderLine {
 	}
 	if len(want) != 0 {
 		t.Fatalf("missing normalized anchors=%v", want)
+	}
+}
+
+func TestParseSemanticFileAnchoredSkipsRelationOnDelete(t *testing.T) {
+	src := `namespace sales
+
+data Order {
+    attribute orderId type std.identifier
+    relation lines to sales.order_line many on-delete cascade
+        key sales.order.order_id -> sales.order_line.order_id
+}
+`
+	got, err := syntax.ParseSemanticFileAnchored(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, anchor := range got.Anchors {
+		if anchor.Kind == "semantic-relation" && anchor.ID == "sales.order.lines" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("relation anchor missing: %+v", got.Anchors)
 	}
 }

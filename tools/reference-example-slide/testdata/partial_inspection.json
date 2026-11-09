@@ -1,0 +1,46 @@
+{
+  "catalog": {
+    "revision": "synthetic-2026-10-10",
+    "tables": {
+      "purchase_order": {"fields": [
+        {"id":"number","type":"string","required":true,"visible":true},
+        {"id":"quantity","type":"integer","required":true,"visible":true}
+      ]},
+      "receipt": {"fields": [
+        {"id":"number","type":"string","required":true,"visible":true},
+        {"id":"order","type":"ref","refTable":"purchase_order","required":true,"visible":false},
+        {"id":"quantity","type":"integer","required":true,"visible":true}
+      ]},
+      "inspection": {"fields": [
+        {"id":"receipt","type":"ref","refTable":"receipt","required":true,"visible":false},
+        {"id":"accepted","type":"integer","required":true,"visible":true},
+        {"id":"rejected","type":"integer","required":true,"visible":true}
+      ]}
+    }
+  },
+  "example": {
+    "id":"partial-inspection",
+    "modelRevision":"synthetic-2026-10-10",
+    "base":[{"id":"po-001","table":"purchase_order","values":{"number":"PO-001","quantity":10}}],
+    "stages":[
+      {"id":"received","changes":[{"op":"create","record":{"id":"rec-001","table":"receipt","values":{"number":"RC-001","order":"po-001","quantity":6}}}]},
+      {"id":"inspected","changes":[{"op":"create","record":{"id":"ins-001","table":"inspection","values":{"receipt":"rec-001","accepted":4,"rejected":2}}}]}
+    ],
+    "questions":[{"id":"residual","text":"検収不合格品を履行残数量に含めるか"}]
+  },
+  "diagram": {
+    "id":"purchase-er",
+    "placements":[
+      {"id":"po-box","table":"purchase_order","x":20,"y":30},
+      {"id":"receipt-box","table":"receipt","x":315,"y":30,"show":["order"],"hide":["quantity"]},
+      {"id":"inspect-box","table":"inspection","x":610,"y":30}
+    ]
+  },
+  "presentation": {
+    "frames":[
+      {"id":"first","title":"発注","stage":"base"},
+      {"id":"second","title":"一部入荷","stage":"received"},
+      {"id":"third","title":"検収","stage":"inspected"}
+    ]
+  }
+}

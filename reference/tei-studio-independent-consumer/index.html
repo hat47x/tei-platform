@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reading Journal — independent consumer fixture</title>
+  <style>
+    :root { color-scheme: light dark; font: 16px/1.5 system-ui, sans-serif; }
+    body { max-width: 60rem; margin: 2rem auto; padding: 0 1rem; }
+    header { border-bottom: 1px solid #8888; margin-bottom: 1rem; }
+    .overview { padding: .75rem 1rem; border: 1px solid #8888; border-radius: .4rem; }
+    .components { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; margin-top: 1rem; }
+    .component { padding: 1rem; border: 1px dashed #8888; border-radius: .4rem; min-width: 0; }
+    #editor-slot { min-height: 10rem; overflow: auto; }
+    #editor-slot .cm-editor { min-height: 10rem; border: 1px solid #8886; }
+    #graph-slot { min-width: 0; max-width: 100%; }
+    .component button { font: inherit; margin: .35rem .25rem .5rem 0; }
+    .pending { font-size: .9rem; }
+    select { font: inherit; padding: .4rem; max-width: 100%; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Reading Journal</h1>
+    <p>Independent sample application. No TEI Workspace, Source, or acceptance semantics.</p>
+  </header>
+  <main>
+    <label for="note-picker">Entry</label>
+    <select id="note-picker"></select>
+    <section class="overview" aria-live="polite">
+      <h2 id="note-title"></h2>
+      <p id="note-body"></p>
+      <p>Related entries: <span id="note-links"></span></p>
+    </section>
+    <div class="components">
+      <section class="component" aria-labelledby="editor-title">
+        <h2 id="editor-title">Shared Editor</h2>
+        <p>Read-only journal entry. Selection is navigation only.</p>
+        <button id="dispose-editor" type="button">Unmount Editor</button>
+        <button id="remount-editor" type="button" disabled>Remount Editor</button>
+        <div id="editor-slot"><p class="pending">Run the consumer bundle to connect CodeMirror.</p></div>
+      </section>
+      <section class="component" aria-labelledby="command-title">
+        <h2 id="command-title">Shared Command / Diagnostics</h2>
+        <button id="dispose-command" type="button">Unmount Command</button>
+        <button id="remount-command" type="button" disabled>Remount Command</button>
+        <div id="command-slot"><p class="pending">BLOCKED: no provider module has been delivered or imported.</p></div>
+      </section>
+      <section class="component" aria-labelledby="graph-title">
+        <h2 id="graph-title">Shared Graph</h2>
+        <button id="dispose-graph" type="button">Unmount Graph</button>
+        <button id="remount-graph" type="button" disabled>Remount Graph</button>
+        <div id="graph-slot"><p class="pending">BLOCKED: no provider module has been delivered or imported.</p></div>
+      </section>
+    </div>
+  </main>
+  <script type="module" src="./main.mjs"></script>
+  <script type="module" src="./graph-entry.mjs"></script>
+  <script type="module" src="./command-entry.mjs"></script>
+  <script type="module" src="./editor-entry.mjs"></script>
+</body>
+</html>

@@ -1,0 +1,3 @@
+?? tools/reference-operation-pattern-crosswalk/cmd/tei-operation-pattern-crosswalk/main.go
+?? tools/reference-operation-pattern-crosswalk/crosswalk.go
+?? tools/reference-operation-pattern-crosswalk/crosswalk_test.go

@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scope Placement Editor スケッチ</title>
+<style>
+:root{--bg:#f7f7f5;--panel:#fff;--ink:#1d2127;--sub:#5b6470;--line:#d9dde2;--ok:#1b7a43;--ng:#b3261e;--un:#8a5a00;--na:#5b6470;--acc:#2456a6;--okbg:#e6f4ec;--ngbg:#fbe9e7;--unbg:#fff3d6;--nabg:#eceef1}
+@media (prefers-color-scheme:dark){:root{--bg:#14171a;--panel:#1c2024;--ink:#e8eaed;--sub:#9aa3ad;--line:#343b43;--ok:#6cc58c;--ng:#f2a49d;--un:#e8bb63;--na:#9aa3ad;--acc:#8ab4f8;--okbg:#17301f;--ngbg:#3a1d1a;--unbg:#38300f;--nabg:#262b30}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.6 system-ui,"Hiragino Sans","Noto Sans JP",sans-serif}
+header,main{max-width:1200px;margin:0 auto;padding:0 16px}
+h1{font-size:20px;margin:20px 0 4px}h2{font-size:15px;margin:0 0 8px}
+.note{background:var(--unbg);color:var(--ink);border:1px solid var(--un);border-radius:6px;padding:8px 12px;margin:12px 0;font-size:13px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:760px){.grid{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin-bottom:12px}
+.sub{color:var(--sub);font-size:12px}
+.tag{display:inline-block;font-size:11px;border:1px solid var(--line);border-radius:4px;padding:0 6px;color:var(--sub)}
+label{display:block;font-size:12px;color:var(--sub);margin-top:8px}
+select,input[type=text]{width:100%;padding:5px 8px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:4px;font:inherit}
+input[disabled],select[disabled]{opacity:.55}
+table{border-collapse:collapse;width:100%}th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top;font-size:13px}
+th{background:var(--nabg);font-weight:600}
+button.cell{width:100%;text-align:left;border:1px solid transparent;border-radius:4px;padding:4px 6px;font:inherit;cursor:pointer;color:var(--ink)}
+button.cell:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+button.cell[aria-pressed=true]{border-color:var(--acc)}
+.satisfied{background:var(--okbg)}.unsatisfied{background:var(--ngbg)}.unresolved{background:var(--unbg)}.unsupported{background:var(--nabg)}
+.state{font-weight:600}.state.satisfied{color:var(--ok);background:none}.state.unsatisfied{color:var(--ng);background:none}.state.unresolved{color:var(--un);background:none}.state.unsupported{color:var(--na);background:none}
+ul{margin:4px 0 4px 18px;padding:0}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+button.btn{padding:6px 12px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:6px;font:inherit;cursor:pointer}
+button.btn.primary{background:var(--acc);color:#fff;border-color:var(--acc)}
+button.btn[disabled]{opacity:.5;cursor:not-allowed}
+code{font-family:ui-monospace,Menlo,monospace;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+<h1>Scope Placement Editor スケッチ</h1>
+<div class="sub">状態: 評価待ち（未採用）。実装済みの画面ではなく、Reference Workspaceの定義にも存在しません。正本は <code>plan/design/SUI_MIGRATION_EXTENSION_AND_SPLIT_DESIGN_2026-10.md</code> の5.5です。</div>
+<div class="note">画面内の区分名・実現名・判定結果は<strong>すべて説明用のサンプル</strong>です。Canonical IDやProviderの実在、conformanceの通過を示しません。このモックで決まったことは、ADRまたはIssueへ移します。</div>
+</header>
+<main>
+<div class="grid">
+  <section class="panel" aria-labelledby="req-h">
+    <h2 id="req-h">業務要件 <span class="tag">Canonical / Application側</span></h2>
+    <div class="sub">満たすべき性質だけを書きます。DB名・製品名の入力欄はありません。</div>
+    <label for="cls">隔離区分</label>
+    <select id="cls">
+      <option value="standard">standard — アプリとデータ層の二重判定</option>
+      <option value="strict">strict — データ層が物理的に分かれる</option>
+    </select>
+    <label for="hide">他scopeの資源への応答</label>
+    <select id="hide"><option>存在を推測させない（not-foundに相当）</option></select>
+    <label for="ret">保持・削除</label>
+    <input type="text" id="ret" value="削除要求後30日以内に完了（サンプル）">
+    <label for="res">データの所在</label>
+    <select id="res"><option>国内に限る（サンプル）</option></select>
+    <label>面ごとの閲覧境界</label>
+    <ul class="sub"><li>Data Plane: scope内の許可済み資源</li><li>Tenant Admin: 自scopeのmembershipだけ</li><li>Platform: 本文・タイトルを見ない</li></ul>
+  </section>
+
+  <section class="panel" aria-labelledby="plc-h">
+    <h2 id="plc-h">配置 <span class="tag">Environment側</span></h2>
+    <div class="sub">実現方法だけを書きます。業務の意味の編集欄はありません。</div>
+    <label for="real">実現方法（Provider）</label>
+    <select id="real">
+      <option value="shared">共有スキーマ + RLS（postgres-provider）</option>
+      <option value="dedicated">専用DB（postgres-provider）</option>
+      <option value="sqlite">共有スキーマ（sqlite-provider）</option>
+    </select>
+    <label for="store">object storage</label>
+    <select id="store"><option>scopeごとのprefix（参照: res://object-store/main）</option></select>
+    <label for="key">暗号鍵</label>
+    <select id="key"><option>参照: res://kms/tenant-keys（実体・秘密は入力しません）</option></select>
+    <label for="reg">地域</label>
+    <select id="reg"><option>ap-northeast（サンプル）</option></select>
+    <div class="sub" style="margin-top:8px">DSN・token・鍵の値は、この画面では入力も表示もしません。</div>
+  </section>
+</div>
+
+<section class="panel" aria-labelledby="mat-h">
+  <h2 id="mat-h">つなぐ表 <span class="tag">Scope Placement Binding</span></h2>
+  <div class="sub">行: 業務要件の区分 / 列: 実現方法。セルを選ぶと下に診断を表示します（キーボードで移動できます）。</div>
+  <table>
+    <thead><tr><th scope="col">区分 \ 実現</th><th scope="col">共有スキーマ + RLS</th><th scope="col">専用DB</th><th scope="col">共有スキーマ（SQLite）</th></tr></thead>
+    <tbody id="matrix"></tbody>
+  </table>
+</section>
+
+<section class="panel" aria-labelledby="diag-h" aria-live="polite">
+  <h2 id="diag-h">診断</h2>
+  <div id="diag"></div>
+  <div class="actions">
+    <button class="btn" id="prev" type="button">Preview（候補を作る）</button>
+    <button class="btn primary" id="acc" type="button" disabled>Accept（受理）</button>
+    <button class="btn" id="rej" type="button">Reject</button>
+  </div>
+  <div class="sub" id="gate" style="margin-top:6px"></div>
+</section>
+
+<section class="panel">
+  <h2>この画面が守ること</h2>
+  <ul>
+    <li>画面は第二の正本ではありません。保存先はEnvironment / Semanticのsourceで、変更はcandidateとしてShared Acceptance Boundaryを通ります。</li>
+    <li>要件側の変更と配置側の変更は別のcandidateです。片方でもう片方は変わりません。</li>
+    <li>Bindingを受理しても、接続や実行の権限は与えません（Permission grant、Resource binding、leaseは別に確認します）。</li>
+    <li>AIが作った変更も同じ経路を通り、AIの提案に受理権限はありません。</li>
+    <li>顧客ごとの割り当て（どのscopeをどの区分へ置くか）は運用データであり、この画面の対象外です（設計文書の未解決事項）。</li>
+  </ul>
+</section>
+</main>
+<script>
+const classes=[["standard","standard"],["strict","strict"]];
+const reals=[["shared","共有スキーマ + RLS"],["dedicated","専用DB"],["sqlite","共有スキーマ（SQLite）"]];
+const R={
+ "standard|shared":["satisfied","両層の二重判定を提供し、越境の負例マトリクスを通過した（サンプル）。",[]],
+ "standard|dedicated":["satisfied","物理分離は二重判定の下限を上回る。アプリ側の判定は引き続き必要。",[]],
+ "standard|sqlite":["unsupported","このProviderはデータ層のscopeガードを提供しない。standardでも共有スキーマ型では動かさない。",["providerの能力宣言: scope-guard なし","対処: 別のProviderを選ぶか、専用DB区分へ変更"]],
+ "strict|shared":["unsatisfied","共有スキーマは『データ層が物理的に分かれる』を満たさない。",["要件の下限: 物理分離","提供される性質: 行単位のガード（論理分離）"]],
+ "strict|dedicated":["unresolved","性質は満たす見込みだが、適合を示すconformanceの証跡が未取得。",["未取得: 接続プールでscopeが漏れないことの試験","未取得: 暗号鍵参照の解決確認"]],
+ "strict|sqlite":["unsupported","Providerがscopeガードを提供しない。",["providerの能力宣言: scope-guard なし"]]
+};
+const label={satisfied:"satisfied（満たす）",unsatisfied:"unsatisfied（満たさない）",unresolved:"unresolved（未確定）",unsupported:"unsupported（非対応）"};
+const tb=document.getElementById("matrix");let sel=null;
+classes.forEach(([c,n])=>{const tr=document.createElement("tr");const th=document.createElement("th");th.scope="row";th.textContent=n;tr.appendChild(th);
+ reals.forEach(([r])=>{const [st]=R[c+"|"+r];const td=document.createElement("td");td.className=st;const b=document.createElement("button");b.type="button";b.className="cell "+st;b.setAttribute("aria-pressed","false");b.dataset.k=c+"|"+r;b.innerHTML='<span class="state '+st+'">'+label[st]+'</span>';b.addEventListener("click",()=>show(c+"|"+r));td.appendChild(b);tr.appendChild(td);});tb.appendChild(tr);});
+function show(k){sel=k;document.querySelectorAll("button.cell").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.k===k)));
+ const [st,why,det]=R[k];const [c,r]=k.split("|");
+ document.getElementById("diag").innerHTML='<p><span class="state '+st+'">'+label[st]+'</span> — 区分 <code>'+c+'</code> × 実現 <code>'+r+'</code></p><p>'+why+'</p>'+(det.length?'<ul>'+det.map(d=>'<li>'+d+'</li>').join('')+'</ul>':'');
+ const acc=document.getElementById("acc");acc.disabled=true;document.getElementById("gate").textContent=st==="satisfied"?"Previewを実行するとAcceptできます（サンプル動作）。":"この組み合わせはAcceptできません。理由を解消するか、別の組み合わせを選んでください。";}
+document.getElementById("prev").addEventListener("click",()=>{if(!sel){document.getElementById("gate").textContent="先に表のセルを選んでください。";return}
+ const ok=R[sel][0]==="satisfied";document.getElementById("acc").disabled=!ok;document.getElementById("gate").textContent=ok?"candidateを作成しました。受理するまでsourceは変わりません。受理しても実行権限は与えません。":"unsatisfied / unsupported / unresolved の組み合わせはcandidateにできません。";});
+document.getElementById("rej").addEventListener("click",()=>{document.getElementById("acc").disabled=true;document.getElementById("gate").textContent="candidateを破棄しました。sourceは変わっていません。";});
+document.getElementById("cls").addEventListener("change",e=>{const r=document.getElementById("real").value;show(e.target.value+"|"+r)});
+document.getElementById("real").addEventListener("change",e=>{const c=document.getElementById("cls").value;show(c+"|"+e.target.value)});
+show("standard|shared");
+</script>
+</body>
+</html>

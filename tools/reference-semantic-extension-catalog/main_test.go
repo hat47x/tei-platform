@@ -24,6 +24,7 @@ func TestLoadSemanticNamespaceAuthoritiesUsesStrictJSON(t *testing.T) {
 		`{
 			"namespace":"std.validation",
 			"extension":"tei.std.validation",
+			"issuer":{"id":"tei.reference.semantic-authority-publisher","version":"1.0.0"},
 			"evidenceFingerprint":"sha256:`+strings.Repeat("a", 64)+`"
 		}`,
 	)
@@ -33,7 +34,9 @@ func TestLoadSemanticNamespaceAuthoritiesUsesStrictJSON(t *testing.T) {
 	}
 	if len(values) != 1 ||
 		values[0].Namespace != "std.validation" ||
-		values[0].Extension != "tei.std.validation" {
+		values[0].Extension != "tei.std.validation" ||
+		values[0].Issuer.ID != "tei.reference.semantic-authority-publisher" ||
+		values[0].Issuer.Version != "1.0.0" {
 		t.Fatalf("namespace authority=%+v", values)
 	}
 
@@ -63,6 +66,46 @@ func TestLoadSemanticNamespaceAuthoritiesUsesStrictJSON(t *testing.T) {
 	)
 	if _, err := loadSemanticNamespaceAuthorities([]string{trailing}); err == nil {
 		t.Fatal("trailing namespace authority JSON was accepted")
+	}
+}
+
+func TestLoadPublisherTrustGrantsUsesStrictJSON(t *testing.T) {
+	grant, trust := semanticNamespaceAuthorityForTest(
+		t,
+		"std.validation",
+		"tei.std.validation",
+		"a",
+		"b",
+		true,
+	)
+	_ = grant
+	encoded, err := json.Marshal(trust[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	valid := writeReferenceJSON(t, "publisher-trust.json", string(encoded))
+	values, err := loadPublisherTrustGrants([]string{valid})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(values) != 1 ||
+		values[0].AuthorityClass != semanticNamespacePublisherAuthorityClass ||
+		values[0].Scope != semanticNamespaceTrustScope("std.validation") {
+		t.Fatalf("publisher trust=%+v", values)
+	}
+
+	var raw map[string]any
+	if err := json.Unmarshal(encoded, &raw); err != nil {
+		t.Fatal(err)
+	}
+	raw["unexpected"] = true
+	unknownBytes, err := json.Marshal(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unknown := writeReferenceJSON(t, "publisher-trust-unknown.json", string(unknownBytes))
+	if _, err := loadPublisherTrustGrants([]string{unknown}); err == nil {
+		t.Fatal("unknown publisher trust field was accepted")
 	}
 }
 

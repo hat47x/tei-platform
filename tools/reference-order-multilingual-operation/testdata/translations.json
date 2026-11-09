@@ -1,0 +1,27 @@
+{
+  "translations": [
+    {"provider": "std.lang_en", "kind": "message", "target": "order.batch_confirmed", "locale": "en-US", "release": "r1",
+     "text": "Confirmed {count} orders.", "plural": {"one": "Confirmed {count} order."}},
+    {"provider": "std.lang_de", "kind": "message", "target": "order.batch_confirmed", "locale": "de-DE", "release": "r1",
+     "text": "{count} Aufträge bestätigt."},
+    {"provider": "partner.lang_en", "kind": "message", "target": "order.submit_rejected", "locale": "en-US", "release": "r1",
+     "text": "Order {orderId} could not be confirmed."},
+    {"provider": "std.lang_de", "kind": "message", "target": "order.submit_rejected", "locale": "de-DE", "release": "r1",
+     "text": "Auftrag {orderId} konnte nicht bestätigt werden."},
+    {"provider": "std.lang_en", "kind": "display", "target": "data:sales.order", "locale": "en-US", "release": "r1",
+     "text": "Order"},
+    {"provider": "std.lang_en", "kind": "display", "target": "data:sales.order_line", "locale": "en-US", "release": "r1",
+     "text": "Order line"},
+    {"provider": "std.lang_de", "kind": "display", "target": "data:sales.order_line", "locale": "de-DE", "release": "r1",
+     "text": "Auftragsposition"},
+    {"provider": "std.lang_en", "kind": "display", "target": "capability:sales.order.submit", "locale": "en-US", "release": "r1",
+     "text": "Confirm order"},
+    {"provider": "std.lang_en", "kind": "message", "target": "order.batch_confirmed", "locale": "en-US", "release": "r2",
+     "text": "Confirmed {count} orders and issued shipping instructions.",
+     "plural": {"one": "Confirmed {count} order and issued shipping instructions."}},
+    {"provider": "std.lang_en", "kind": "display", "target": "data:sales.order", "locale": "en-US", "release": "r2",
+     "text": "Order slip"},
+    {"provider": "std.lang_en", "kind": "display", "target": "capability:sales.order.submit", "locale": "en-US", "release": "r2",
+     "text": "Confirm order and issue shipping"}
+  ]
+}

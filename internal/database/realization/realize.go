@@ -33,3 +33,13 @@ func RealizeDesired(mappings []persistence.Mapping, databaseID string, provider 
 	}
 	return persistence.RealizeDesired(mappings, databaseID, policy)
 }
+
+// RealizeDesiredWithUnresolved is RealizeDesired that reports tables whose
+// generated constraint names collide instead of failing the whole database.
+func RealizeDesiredWithUnresolved(mappings []persistence.Mapping, databaseID string, provider environment.DatabaseProvider) (physical.SchemaSnapshot, []persistence.UnresolvedTable, error) {
+	policy, err := PolicyFor(provider)
+	if err != nil {
+		return physical.SchemaSnapshot{}, nil, err
+	}
+	return persistence.RealizeDesiredWithUnresolved(mappings, databaseID, policy)
+}

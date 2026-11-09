@@ -20,8 +20,8 @@ func uniqueSchema(constraints ...physical.UniqueConstraint) physical.SchemaSnaps
 	}.Normalize()
 }
 
-func TestCompareUniqueConstraintIgnoresNameOnlyDifference(t *testing.T) {
-	desired := uniqueSchema(physical.UniqueConstraint{Name: "customers_email_key", Columns: []string{"email"}})
+func TestCompareUniqueConstraintIgnoresGeneratedNameDifference(t *testing.T) {
+	desired := uniqueSchema(physical.UniqueConstraint{Name: "customers_email_key", NameGenerated: true, Columns: []string{"email"}})
 	actual := uniqueSchema(physical.UniqueConstraint{Name: "generated_unique_42", Columns: []string{"email"}})
 
 	diff, err := schemadiff.Compare(desired, actual)

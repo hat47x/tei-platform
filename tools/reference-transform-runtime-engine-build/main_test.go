@@ -1,0 +1,569 @@
+package main
+
+import (
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"testing"
+)
+
+func TestExactRuntimeEngineIdentitySeparatesLogicalVersionFromRepositoryRevision(t *testing.T) {
+	digest := "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	engine, err := exactRuntimeEngineIdentity(digest, "host/test/test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(engine.ID) != engineID {
+		t.Fatalf("engine id: got %s want %s", engine.ID, engineID)
+	}
+	if engine.Version != engineVersion {
+		t.Fatalf("engine version: got %s want %s", engine.Version, engineVersion)
+	}
+	if engine.ContractVersion != engineContract {
+		t.Fatalf("engine contract: got %s want %s", engine.ContractVersion, engineContract)
+	}
+	if engine.ImplementationDigest != digest {
+		t.Fatalf("engine implementation digest: got %s want %s", engine.ImplementationDigest, digest)
+	}
+	if engine.Target != "host/test/test" {
+		t.Fatalf("engine target: got %s", engine.Target)
+	}
+
+	evidenceA := buildEvidence{
+		Schema:             evidenceSchema,
+		RepositoryRevision: "revision-a",
+		EngineID:           engineID,
+		EngineVersion:      engineVersion,
+		EngineContract:     engineContract,
+		Target:             engine.Target,
+		RuntimeEngine:      &engine,
+	}
+	evidenceB := evidenceA
+	evidenceB.RepositoryRevision = "revision-b"
+
+	if evidenceA.RuntimeEngine.Version != evidenceB.RuntimeEngine.Version {
+		t.Fatal("repository revision changed logical Runtime Engine version")
+	}
+	if evidenceA.RuntimeEngine.ImplementationDigest != evidenceB.RuntimeEngine.ImplementationDigest {
+		t.Fatal("repository revision changed exact Runtime Engine artifact identity")
+	}
+}
+
+func TestExactRuntimeEngineIdentityRejectsUnresolvedArtifact(t *testing.T) {
+	if _, err := exactRuntimeEngineIdentity("", "host/test/test"); err == nil {
+		t.Fatal("expected unresolved artifact digest to fail")
+	}
+}
+
+func TestResolveReproducibilityKeepsDivergentArtifactUnresolved(t *testing.T) {
+	ok, artifact := resolveReproducibility(
+		"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+	)
+	if ok {
+		t.Fatal("different artifact digests were reported as reproducible")
+	}
+	if artifact != "" {
+		t.Fatalf("non-reproducible artifact was assigned a canonical digest: %s", artifact)
+	}
+
+	ok, artifact = resolveReproducibility(
+		"sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+		"sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+	)
+	if !ok {
+		t.Fatal("matching artifact digests were not reported as reproducible")
+	}
+	if artifact != "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" {
+		t.Fatalf("reproducible artifact digest: %s", artifact)
+	}
+}
+
+func TestSourceClosureFingerprintIgnoresMemberOrder(t *testing.T) {
+	a := []sourceMember{
+		{Path: "b.go", Digest: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+		{Path: "a.go", Digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+	}
+	b := []sourceMember{a[1], a[0]}
+	if sourceClosureFingerprint(a) != sourceClosureFingerprint(b) {
+		t.Fatal("source closure fingerprint depends on declaration order")
+	}
+}
+
+func TestSourceClosureFingerprintChangesWithSourceDigest(t *testing.T) {
+	base := []sourceMember{{
+		Path:   "a.go",
+		Digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+	}}
+	changed := []sourceMember{{
+		Path:   "a.go",
+		Digest: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+	}}
+	if sourceClosureFingerprint(base) == sourceClosureFingerprint(changed) {
+		t.Fatal("source closure fingerprint ignored member digest")
+	}
+}
+
+func TestEvidenceFingerprintBindsBuildInputsAndArtifact(t *testing.T) {
+	base := buildEvidence{
+		Schema:              evidenceSchema,
+		RepositoryRevision:  "revision-a",
+		EngineID:            engineID,
+		EngineContract:      engineContract,
+		Target:              "host/test/test",
+		Entrypoint:          enginePackage,
+		SourceClosure:       []sourceMember{{Path: "go.mod", Digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}},
+		SourceClosureDigest: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+		Builder: goBuilderEvidence{
+			Version:         "go version go1.test",
+			BinaryDigest:    "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+			ToolchainDigest: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+		},
+		Recipe:               []string{"go", "build", "-trimpath", enginePackage},
+		BuildSettings:        []string{"CGO_ENABLED=0", "GOTOOLCHAIN=local"},
+		FirstArtifactDigest:  "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+		SecondArtifactDigest: "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+		Reproducible:         true,
+		ArtifactDigest:       "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+	}
+	baseFP, err := evidenceFingerprint(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	changed := base
+	changed.BuildSettings = append([]string(nil), base.BuildSettings...)
+	changed.BuildSettings[0] = "CGO_ENABLED=1"
+	changedFP, err := evidenceFingerprint(changed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if changedFP == baseFP {
+		t.Fatal("evidence fingerprint ignored build settings")
+	}
+
+	changed = base
+	changed.ArtifactDigest = "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+	changedFP, err = evidenceFingerprint(changed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if changedFP == baseFP {
+		t.Fatal("evidence fingerprint ignored artifact digest")
+	}
+
+	changed = base
+	changed.EvidenceFingerprint = strings.Repeat("f", 64)
+	changedFP, err = evidenceFingerprint(changed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if changedFP != baseFP {
+		t.Fatal("evidence fingerprint recursively depended on itself")
+	}
+}
+
+func TestSelectGoExecutableDoesNotDependOnPATHForExplicitPath(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "go-test")
+	if err := os.WriteFile(path, []byte("not-an-actual-go-binary"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", filepath.Join(root, "unrelated"))
+	got, err := selectGoExecutable(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != want {
+		t.Fatalf("selected Go executable: got %s want %s", got, want)
+	}
+}
+
+func TestSelectGoExecutableRejectsDirectory(t *testing.T) {
+	if _, err := selectGoExecutable(t.TempDir()); err == nil {
+		t.Fatal("expected directory Go executable to fail")
+	}
+}
+
+func TestAllowedHostEnvironmentIsExplicitAndRejectsConflicts(t *testing.T) {
+	got, err := allowedHostEnvironmentForOS([]string{
+		"PATH=C:\\ambient",
+		"SystemRoot=C:\\Windows",
+		"COMSPEC=C:\\Windows\\System32\\cmd.exe",
+		"AWS_SECRET_ACCESS_KEY=secret",
+	}, "windows")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{
+		"COMSPEC=C:\\Windows\\System32\\cmd.exe",
+		"SYSTEMROOT=C:\\Windows",
+	}
+	if len(got) != len(want) {
+		t.Fatalf("allowed Host environment: got %#v want %#v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("allowed Host environment: got %#v want %#v", got, want)
+		}
+	}
+
+	if _, err := allowedHostEnvironmentForOS([]string{
+		"SystemRoot=C:\\Windows",
+		"SYSTEMROOT=D:\\Windows",
+	}, "windows"); err == nil {
+		t.Fatal("expected conflicting case-insensitive Host environment to fail")
+	}
+
+	unix, err := allowedHostEnvironmentForOS([]string{
+		"PATH=/ambient/bin",
+		"HOME=/ambient/home",
+		"LANG=ja_JP.UTF-8",
+	}, "linux")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(unix) != 0 {
+		t.Fatalf("Unix Reference inherited unexpected Host environment: %#v", unix)
+	}
+}
+
+func TestBuildEnvironmentDropsAmbientHostVariables(t *testing.T) {
+	state := t.TempDir()
+	env, err := buildEnvironment([]string{
+		"PATH=/ambient/bin",
+		"HOME=/ambient/home",
+		"LANG=ja_JP.UTF-8",
+		"HTTPS_PROXY=https://proxy.example",
+		"AWS_SECRET_ACCESS_KEY=secret",
+		"GOFLAGS=-mod=mod",
+	}, state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, forbidden := range []string{
+		"PATH=/ambient/bin",
+		"HOME=/ambient/home",
+		"LANG=ja_JP.UTF-8",
+		"HTTPS_PROXY=https://proxy.example",
+		"AWS_SECRET_ACCESS_KEY=secret",
+		"GOFLAGS=-mod=mod",
+	} {
+		for _, got := range env {
+			if got == forbidden {
+				t.Fatalf("ambient environment leaked into build: %s", forbidden)
+			}
+		}
+	}
+	requiredPrefixes := []string{
+		"CGO_ENABLED=0",
+		"GOENV=off",
+		"GOPROXY=off",
+		"GOTOOLCHAIN=local",
+		"GOWORK=off",
+		"GOCACHE=",
+		"GOMODCACHE=",
+		"GOPATH=",
+		"HOME=",
+		"USERPROFILE=",
+		"TMPDIR=",
+		"TMP=",
+		"TEMP=",
+	}
+	for _, prefix := range requiredPrefixes {
+		found := false
+		for _, got := range env {
+			if strings.HasPrefix(got, prefix) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("isolated build environment is missing %q in %#v", prefix, env)
+		}
+	}
+}
+
+func TestRecordedBuildSettingsDescribeIsolationWithoutInjectingPolicyVariable(t *testing.T) {
+	recorded := recordedBuildSettings()
+	foundIsolation := false
+	foundPolicy := false
+	for _, setting := range recorded {
+		if setting == "STATE_ISOLATION=GOCACHE,GOMODCACHE,GOPATH,HOME,USERPROFILE,TMPDIR,TMP,TEMP" {
+			foundIsolation = true
+		}
+		if setting == "HOST_ENVIRONMENT=deny-by-default" {
+			foundPolicy = true
+		}
+	}
+	if !foundIsolation || !foundPolicy {
+		t.Fatalf("recorded build settings do not describe isolation: %#v", recorded)
+	}
+
+	env, err := buildEnvironment(nil, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, setting := range env {
+		if strings.HasPrefix(setting, "STATE_ISOLATION=") || strings.HasPrefix(setting, "HOST_ENVIRONMENT=") {
+			t.Fatalf("Evidence-only policy marker leaked into subprocess environment: %s", setting)
+		}
+	}
+}
+
+func TestFixedGoBuildSettingsPinTargetAndAmbientGoControls(t *testing.T) {
+	settings := fixedGoBuildSettings()
+	required := []string{
+		"CGO_ENABLED=0",
+		"GOARCH=" + runtime.GOARCH,
+		"GOENV=off",
+		"GOOS=" + runtime.GOOS,
+		"GOPROXY=off",
+		"GOTOOLCHAIN=local",
+		"GOWORK=off",
+	}
+	for _, want := range required {
+		found := false
+		for _, got := range settings {
+			if got == want {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("missing fixed Go build setting %q in %#v", want, settings)
+		}
+	}
+}
+
+func TestCopyVerifiedArtifactRequiresDestinationOutsideRepository(t *testing.T) {
+	root := t.TempDir()
+	source := filepath.Join(t.TempDir(), "engine")
+	if err := os.WriteFile(source, []byte("engine-bytes"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	digest, err := hashFile(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	inside := filepath.Join(root, "engine-copy")
+	if err := copyVerifiedArtifactOutsideRepository(root, source, inside, digest); err == nil {
+		t.Fatal("expected artifact export inside repository to fail")
+	}
+	if _, err := os.Stat(inside); !os.IsNotExist(err) {
+		t.Fatalf("inside-repository artifact was created: %v", err)
+	}
+
+	outsideDir := t.TempDir()
+	outside := filepath.Join(outsideDir, "engine-copy")
+	if err := copyVerifiedArtifactOutsideRepository(root, source, outside, digest); err != nil {
+		t.Fatal(err)
+	}
+	got, err := hashFile(outside)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != digest {
+		t.Fatalf("copied artifact digest changed: got %s want %s", got, digest)
+	}
+}
+
+func TestCopyVerifiedArtifactRejectsUnexpectedDigest(t *testing.T) {
+	root := t.TempDir()
+	source := filepath.Join(t.TempDir(), "engine")
+	if err := os.WriteFile(source, []byte("engine-bytes"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(t.TempDir(), "engine-copy")
+	err := copyVerifiedArtifactOutsideRepository(
+		root,
+		source,
+		outside,
+		"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+	)
+	if err == nil {
+		t.Fatal("expected unexpected artifact digest to fail")
+	}
+	if _, statErr := os.Stat(outside); !os.IsNotExist(statErr) {
+		t.Fatalf("artifact-out remained after digest failure: %v", statErr)
+	}
+}
+
+func TestCopyVerifiedArtifactRejectsExistingDestination(t *testing.T) {
+	root := t.TempDir()
+	source := filepath.Join(t.TempDir(), "engine")
+	if err := os.WriteFile(source, []byte("engine-bytes"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	digest, err := hashFile(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(t.TempDir(), "engine-copy")
+	if err := os.WriteFile(outside, []byte("existing"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := copyVerifiedArtifactOutsideRepository(root, source, outside, digest); err == nil {
+		t.Fatal("expected existing artifact-out to fail")
+	}
+	raw, err := os.ReadFile(outside)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(raw) != "existing" {
+		t.Fatal("existing artifact-out was overwritten")
+	}
+}
+
+func TestPublishVerifiedArtifactNoClobberRejectsLateDestination(t *testing.T) {
+	dir := t.TempDir()
+	tempPath := filepath.Join(dir, ".verified-temp")
+	destination := filepath.Join(dir, "engine")
+	if err := os.WriteFile(tempPath, []byte("verified"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// This destination models a competing writer that created the final path
+	// after copyVerifiedArtifactOutsideRepository's initial non-existence check.
+	if err := os.WriteFile(destination, []byte("competitor"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	before, err := os.Stat(destination)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := publishVerifiedArtifactNoClobber(tempPath, destination); err == nil {
+		t.Fatal("expected no-clobber publish to reject late destination")
+	}
+
+	raw, err := os.ReadFile(destination)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(raw) != "competitor" {
+		t.Fatalf("late destination was replaced: %q", raw)
+	}
+	after, err := os.Stat(destination)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.Mode().Perm() != before.Mode().Perm() {
+		t.Fatalf("late destination mode changed: before=%v after=%v", before.Mode().Perm(), after.Mode().Perm())
+	}
+}
+
+func TestPublishVerifiedArtifactNoClobberPublishesSameArtifact(t *testing.T) {
+	dir := t.TempDir()
+	tempPath := filepath.Join(dir, ".verified-temp")
+	destination := filepath.Join(dir, "engine")
+	if err := os.WriteFile(tempPath, []byte("verified"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := publishVerifiedArtifactNoClobber(tempPath, destination); err != nil {
+		t.Fatal(err)
+	}
+	tempDigest, err := hashFile(tempPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	destinationDigest, err := hashFile(destination)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if destinationDigest != tempDigest {
+		t.Fatalf("published artifact digest changed: got %s want %s", destinationDigest, tempDigest)
+	}
+}
+
+func TestNoClobberPublishSurvivesVerifiedTempCleanup(t *testing.T) {
+	dir := t.TempDir()
+	tempPath := filepath.Join(dir, ".verified-temp")
+	destination := filepath.Join(dir, "engine")
+	if err := os.WriteFile(tempPath, []byte("verified"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := publishVerifiedArtifactNoClobber(tempPath, destination); err != nil {
+		t.Fatal(err)
+	}
+	tempInfo, err := os.Stat(tempPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	destinationInfo, err := os.Stat(destination)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !os.SameFile(tempInfo, destinationInfo) {
+		t.Fatal("no-clobber publish did not create a hard link to the verified temp artifact")
+	}
+
+	if err := os.Remove(tempPath); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(tempPath); !os.IsNotExist(err) {
+		t.Fatalf("verified temp path still exists after cleanup: %v", err)
+	}
+	raw, err := os.ReadFile(destination)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(raw) != "verified" {
+		t.Fatalf("published destination changed after temp cleanup: %q", raw)
+	}
+}
+
+func TestCopyVerifiedArtifactRejectsRepositoryInternalDestinationThroughSymlinkedRepoPath(t *testing.T) {
+	parent := t.TempDir()
+	realRepo := filepath.Join(parent, "real-repo")
+	if err := os.Mkdir(realRepo, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	repoAlias := filepath.Join(parent, "repo-alias")
+	if err := os.Symlink(realRepo, repoAlias); err != nil {
+		t.Skipf("symlink is unavailable: %v", err)
+	}
+
+	source := filepath.Join(t.TempDir(), "engine")
+	if err := os.WriteFile(source, []byte("engine-bytes"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	digest, err := hashFile(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	destination := filepath.Join(realRepo, "must-not-publish")
+	if err := copyVerifiedArtifactOutsideRepository(repoAlias, source, destination, digest); err == nil {
+		t.Fatal("repository-internal destination was accepted through a symlinked repository path")
+	}
+	if _, err := os.Stat(destination); !os.IsNotExist(err) {
+		t.Fatalf("repository-internal artifact was created: %v", err)
+	}
+}
+
+func TestCopyVerifiedArtifactRejectsUnresolvableRepositoryPath(t *testing.T) {
+	source := filepath.Join(t.TempDir(), "engine")
+	if err := os.WriteFile(source, []byte("engine-bytes"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	digest, err := hashFile(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(t.TempDir(), "engine-copy")
+	missingRepo := filepath.Join(t.TempDir(), "missing-repository")
+	if err := copyVerifiedArtifactOutsideRepository(missingRepo, source, outside, digest); err == nil {
+		t.Fatal("unresolvable repository path was accepted for artifact containment checking")
+	}
+	if _, err := os.Stat(outside); !os.IsNotExist(err) {
+		t.Fatalf("artifact was created despite unresolved repository root: %v", err)
+	}
+}

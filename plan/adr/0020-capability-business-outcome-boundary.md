@@ -211,8 +211,8 @@ retryや障害解析、Resource / Runtimeの責務が業務modelへ逆流する�
 
 - `plan/design/CAPABILITY_OUTCOME_V1_DESIGN.md`
 - `plan/design/LEGACY_AUTH_V1_DESIGN.md`
-- `plan/issue/000003-legacy-authentication-compatibility-reference.md`
-- `plan/issue/000006-application-driver-vertical-slice.md`
-- `plan/issue/000007-first-web-target-projection.md`
-- `plan/issue/000009-capability-outcome-and-execution-error.md`
+- ISSUE-000003-legacy-authentication-compatibility-reference.md
+- ISSUE-000006-application-driver-vertical-slice.md
+- ISSUE-000007-first-web-target-projection.md
+- ISSUE-000009-capability-outcome-and-execution-error.md
 - `requirements/TEI_PRODUCT_REQUIREMENTS.md` RQ-001、RQ-008、RQ-012、RQ-018、RQ-021

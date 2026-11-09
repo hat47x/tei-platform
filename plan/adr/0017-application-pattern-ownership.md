@@ -166,6 +166,6 @@ Custom UIは、Application PatternやCapabilityなどのCanonicalな意味へ接
 ## 関連文書
 
 - `requirements/TEI_PRODUCT_REQUIREMENTS.md` RQ-001、RQ-011、RQ-012、RQ-013、RQ-014、RQ-017、RQ-021
-- `plan/issue/000005-application-pattern-reference.md`
-- `plan/issue/000006-application-driver-vertical-slice.md`
-- `plan/issue/000007-first-web-target-projection.md`
+- ISSUE-000005-application-pattern-reference.md
+- ISSUE-000006-application-driver-vertical-slice.md
+- ISSUE-000007-first-web-target-projection.md

@@ -1,0 +1,27 @@
+== before ==
+  worldFingerprint: sha256:bd53dbaca0ac2c20bc911e0b69083467f2ad38273911269d525db666e681817f
+  modelRevision: sha256:c60ed68c7c85ab218883b18970df85db1ebcae7d9090336452766d7a95d2b04d
+  operations: 5
+  ledger.list.sales.note | basis=sha256:6ae807d0cea789bed8d9cc13e551fc3eaf7c91bd5402159047da85dcf8b21fce
+  ledger.list.sales.order | basis=sha256:3fffc2ae72ebfc6baf68ef167ee58ebdab9e9475d69fb18e8a2e4f20cc1321a9
+  ledger.read.sales.order | basis=sha256:3fffc2ae72ebfc6baf68ef167ee58ebdab9e9475d69fb18e8a2e4f20cc1321a9
+  ledger.create.sales.order | basis=sha256:2fafdb426691b7de9c8b33c1356e2d2539212256f073eed3dc6096bf2f2efe68
+  ledger.update.sales.order | basis=sha256:2fafdb426691b7de9c8b33c1356e2d2539212256f073eed3dc6096bf2f2efe68
+
+== after ==
+  worldFingerprint: sha256:bf289866320d316d4cfb37d8cbbe8f80c2f403847e086b193ed5a73741a6a161
+  modelRevision: sha256:92102c0e5d6b9ab6297a65d181ea8367a2dfecf64fb3e1bfff54ce5a0c407642
+  operations: 5
+  ledger.list.sales.note | basis=sha256:6ae807d0cea789bed8d9cc13e551fc3eaf7c91bd5402159047da85dcf8b21fce
+  ledger.list.sales.order | basis=sha256:3fffc2ae72ebfc6baf68ef167ee58ebdab9e9475d69fb18e8a2e4f20cc1321a9
+  ledger.read.sales.order | basis=sha256:3fffc2ae72ebfc6baf68ef167ee58ebdab9e9475d69fb18e8a2e4f20cc1321a9
+  ledger.create.sales.order | basis=sha256:2fafdb426691b7de9c8b33c1356e2d2539212256f073eed3dc6096bf2f2efe68
+  ledger.update.sales.order | basis=sha256:2fafdb426691b7de9c8b33c1356e2d2539212256f073eed3dc6096bf2f2efe68
+
+worldFingerprint changed: True
+modelRevision changed: True
+shared operation ids: 5
+shared basis unchanged: True
+
+NOTE: nothing in the CLI compares these fingerprints before a run;
+      the question is whether a caller CAN, not whether it did.

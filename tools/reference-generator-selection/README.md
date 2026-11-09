@@ -1,0 +1,336 @@
+# reference-generator-selection（#2016）
+
+受理済みWorkspaceの属性・型に結び付けた一つの参照契約について、複数の生成器候補を同じ期待値fixtureで比較し、実際の出力と出所をreceiptへ記録する参照です。ADR-0034の「生成器を版付き成果物として扱い、由来ではなく適合で選ぶ」の最小PoCです。
+
+```text
+go run ./tools/reference-generator-selection/cmd/tei-generator-select \
+  -workspace reference/workspace \
+  -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
+  -fixtures tools/reference-generator-selection/testdata/line-amount/fixtures.json \
+  -candidates tools/reference-generator-selection/testdata/candidates
+```
+
+registryを使うと、登録済みで有効な版だけを選抜できます。
+
+`manifest.Source`は候補directory内の相対pathに限定します。絶対path、`..`、候補外へ解決するsymlinkは、実行前に拒否します。Python/JavaScriptのscript候補は、各caseの実行前後でsource bytesのdigestを再確認し、変化した場合は`source changed during execution`で候補を拒否します。caseごとの`execution.sourceDigest`に、そのcaseの直前に読んだsourceのdigestを残します。これは一つのAttempt内で同じsource bytesが実行されたことの技術的な記録であり、生成AIが見た入力全体の完全性や、OS・networkの隔離を証明しません。
+
+caseごとの `execution.measurement` に、実行呼出し直前から終了待ち・入出力の完了までの経過時間 `elapsedNanos`、OSのprocess stateから取得した `userCpuNanos` と `systemCpuNanos` を記録します。単位はいずれもnanosecondです。build・処理系検出・終了後のJSON検証はこの経過時間に含めません。`goos`、`goarch`、`harnessGoVersion` は参照実行器の環境を示します。候補のsource/binary digestと処理系・buildの証拠は既存の項目に残します。
+
+観測値を含むreceiptのbytesは試行ごとに変わります。receipt digestとその署名は個々の試行に対応し、source/binaryの再現性は既存のdigestで別に確認します。
+
+非0終了・不正な出力・起動後のtimeoutでも、process stateを取得できた場合は観測値を残します。起動失敗などでstateがなければmeasurementを省略し、0として埋めません。CPU時間0はOSの時間分解能内での有効な観測値です。複数threadのCPU時間が加算されるため、経過時間を上回る場合があります。CPU時間はGoの `os.ProcessState` が返すprocessと子processの会計値で、wrapperを指定した場合はその影響も受けます。子孫process全体の監視、メモリ量・CPU上限の強制、実Targetの測定や性能順位を示すものではありません。
+
+```text
+go run ./tools/reference-generator-selection/cmd/tei-generator-registry \
+  validate -registry tools/reference-generator-selection/testdata/registry.json \
+  -contract tools/reference-generator-selection/testdata/line-amount/contract.json
+
+go run ./tools/reference-generator-selection/cmd/tei-generator-select \
+  -workspace reference/workspace \
+  -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
+  -fixtures tools/reference-generator-selection/testdata/line-amount/fixtures.json \
+  -candidates tools/reference-generator-selection/testdata/candidates \
+  -registry tools/reference-generator-selection/testdata/registry.json
+```
+
+`projection`を持つ契約では、`-strategy text-template`で文字列投影の候補を生成できます。`identity`は入力をそのまま、`normalize`は前後の空白を除きます。`projection`がないmoney契約は従来のstrategyだけを受け付けます。
+
+`projection`の`kind=record`では、`-strategy text-record-template`で複数属性を一つのrecordとして投影する候補を生成できます。`present`はcanonical JSONオブジェクト、`missing`は欠落フィールド名のJSON配列、`unresolved`は状態だけを返し、空文字は`present`として区別します。`testdata/sui-text`と`testdata/sui-record`の適合fixtureは、生成した候補を実際にビルドして実行し、caseごとの出力、source digest、generator provenanceを確認します。
+候補sourceは、契約から固定strategyで生成できます。
+
+```text
+go run ./tools/reference-generator-selection/cmd/tei-generator-build \
+  -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
+  -out /tmp/line-amount-candidates -all
+```
+
+版を明示して一つのstrategyだけを生成できます。`-version`は候補manifestとgenerator provenanceへ記録され、source自体は変えません。既存の生成物を置換する場合は、新しい版の候補を別directoryへ生成し、固定fixtureで再選抜します。
+
+```text
+go run ./tools/reference-generator-selection/cmd/tei-generator-build \
+  -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
+  -strategy template -version 2 -out /tmp/line-amount-template-v2
+```
+
+同じ契約からPythonの参照候補も生成できます。
+
+```text
+go run ./tools/reference-generator-selection/cmd/tei-generator-build \
+  -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
+  -strategy python-template -out /tmp/line-amount-python
+```
+
+JavaScriptの参照候補も生成できます。
+
+```text
+go run ./tools/reference-generator-selection/cmd/tei-generator-build \
+  -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
+  -strategy javascript-template -out /tmp/line-amount-javascript
+```
+
+Javaの参照候補も生成できます。
+
+```text
+go run ./tools/reference-generator-selection/cmd/tei-generator-build \
+  -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
+  -strategy java-template -out /tmp/line-amount-java
+```
+
+WebAssemblyの参照候補も生成できます。
+
+```text
+go run ./tools/reference-generator-selection/cmd/tei-generator-build \
+  -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
+  -strategy wasm-template -out /tmp/line-amount-wasm
+
+go run ./tools/reference-generator-selection/cmd/tei-generator-build \
+  -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
+  -strategy wasi-template -out /tmp/line-amount-wasi
+```
+
+外部モデルが出したsourceは、promptとcontextとともに記録できます。
+
+```text
+go run ./tools/reference-generator-selection/cmd/tei-generator-record \
+  -id model-candidate -provider example-provider -model example-model-v1 \
+  -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
+  -source /tmp/model-main.go -prompt /tmp/prompt.txt -context /tmp/context.json \
+  -out /tmp/recorded-candidate
+```
+
+`-language python`を指定すると、`.py`のsourceを`main.py`として記録できます。
+
+```text
+go run ./tools/reference-generator-selection/cmd/tei-generator-record \
+  -id model-python -provider example-provider -model example-model-v1 \
+  -language python \
+  -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
+  -source /tmp/model-main.py -prompt /tmp/prompt.txt -context /tmp/context.json \
+  -out /tmp/recorded-python
+```
+
+`tei-generator-record`はモデルを呼び出しません。生成済みsourceをbyte単位で複製し、prompt・contextを同じdirectoryへ保存して、selectionがdigestを独立に確認できるようにします。`language`とsource拡張子が一致しない場合は拒否します。
+
+外部の生成コマンドを呼び出し、その出力をそのまま記録することもできます。
+
+```text
+go run ./tools/reference-generator-selection/cmd/tei-generator-model \
+  -id model-candidate -provider example-provider -model example-model-v1 \
+  -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
+  -prompt /tmp/prompt.txt -context /tmp/context.json \
+  -out /tmp/recorded-candidate \
+  -command 'your-model-cli ... "$TEI_PROMPT" "$TEI_CONTEXT" > "$TEI_SOURCE"'
+```
+
+`tei-generator-model`は、`TEI_CONTRACT`、`TEI_LANGUAGE`、`TEI_PROMPT`、`TEI_CONTEXT`、`TEI_SOURCE`、`TEI_TMPDIR`、`TEI_PROVIDER`、`TEI_MODEL`を環境変数で渡し、コマンドが`TEI_SOURCE`へ書いたsourceを記録します。`-language python`では`TEI_SOURCE`が`.py`になり、記録先も`main.py`です。`TEI_CONTRACT`は候補の契約digestを求める入力であり、コマンドが別契約向けのsourceを出しても、選抜は現在の契約との不一致として拒否します。特定ベンダーのAPI・認証・課金・モデル版管理は埋め込みません。コマンドは信頼済みのものだけを指定し、秘密情報を出力しないでください。コマンドは`bash -c`で起動し、loginシェル（`~/.profile`等）は読まないため、receiptは利用者のlogin環境に依存しません。コマンドの解決は親プロセスの環境（`PATH`を含む）に依存します。
+
+外部の**生成器**が候補sourceを生成する場合は、生成器を深さ1で実行して記録できます。
+
+```text
+go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
+  -id meta-template -provider recorded-fixture -model meta-fixture-v0 \
+  -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
+  -generator tools/reference-generator-selection/testdata/meta/generator.go \
+  -prompt /tmp/prompt.txt -context /tmp/context.json \
+  -out /tmp/meta-candidate
+```
+
+`tei-generator-meta`は、生成器をビルドし、`-contract`を渡して1回だけ実行し、その出力を候補sourceとして記録します。生成器のsourceとdigestは`lineage`へ残します。selectionは生成器を再ビルド・再実行し、候補sourceと一致することを確認します。深さ2以上のメタ生成は拒否します。
+
+`passed=true`は、少なくとも1つの候補が固定fixtureをすべて満たしたことだけを示します。意味の受理、生成器の採用、権限の付与、実Providerや本番環境の証明ではありません。
+
+## 対象契約
+
+`testdata/line-amount/contract.json`は、`reference/workspace`で受理済みの次の属性・型を使います。
+
+- `sales.order_line.quantity`（`std.decimal`）
+- `sales.order_line.unit_price`（`std.money`）
+- 出力 `std.money`
+- DECIMAL(8,2)、half-up
+
+数量 × 単価という複合規則そのものは、まだCanonicalな受理済み規則ではありません。契約の`status`は`reference-local`で、受理済みの入力・型に結び付けた参照用の契約として扱います。Workspaceの属性・型が変われば、選抜はfail closedします。
+
+## 候補
+
+`testdata/candidates/`に3つの候補を置いています。
+
+| 候補 | 由来 | 実装 | 期待 |
+| --- | --- | --- | --- |
+| `template` | template（生成済みsource） | 正確な有理数で計算し、最後にhalf-up | 全fixture合格 |
+| `alternative` | handwritten | 10進を整数へ変換し、最後に一度だけ丸める | 全fixture合格 |
+| `dangerous` | generated-ai | float64、欠落の0化、通貨・単位無視、精度検査なし | 負例で不合格 |
+
+`testdata/candidates/`の4候補はGoです（`long-running-template`を含む）。Python候補は`-strategy python-template`、JavaScript候補は`-strategy javascript-template`、Java候補は`-strategy java-template`、WASM候補は`-strategy wasm-template`で生成し、同じ`-candidates`directoryへ置いて選抜できます。候補は`candidate.json`で`id`、`language`、`origin`、source path、source digestを宣言します。選抜はsource digestを実byteで再計算し、一致しなければビルド前に拒否します。ビルドに成功したことや、候補の自己申告は合格の根拠にしません。
+
+## 生成AI候補のprovenance
+
+`origin: generated-ai`の候補は、`generation`を必須とします。
+
+- `provider`、`model`
+- `contractDigest`（候補を作ったときの契約）
+- `promptDigest`、`contextDigest`
+- `outputDigest`
+- `promptPath`、`contextPath`（任意。記録したprompt・contextの相対path）
+
+選抜は、`contractDigest`が現在の契約と一致すること、`outputDigest`が候補sourceのdigestと一致することを確認します。`generation`のない`generated-ai`候補は拒否します。契約が変わった候補を、別契約の証拠として再利用できません。`promptPath`・`contextPath`がある場合は、そのfileを読み、digestが記録と一致することを確認します。pathは候補directory内の相対pathに限り、シンボリックリンクを拒否します。
+
+`tei-generator-record`は、外部モデルが出したsourceとprompt・contextを一つの候補directoryへ記録します。モデル呼出し自体は行いません。`language`は`go`・`python`・`javascript`・`java`・`wasm`で、source拡張子と記録先（`main.go`/`main.py`/`main.js`/`Main.java`/`main.go`）を一致させます。`wasm`のsourceはGo source `.go`で、記録先は`main.go`です。
+
+`testdata/candidates/dangerous`の`generation`は`recorded-fixture`で、実モデルを呼び出した記録ではありません。生成AIのprovenance境界を試験するための固定fixtureです。実モデル実行では、同じ項目へ実際のprovider・model・prompt・contextのdigestを入れる必要があります。
+
+## 生成器sourceの生成
+
+`tei-generator-build`は、契約JSONと固定strategy（`template`、`alternative`、`dangerous`、`python-template`、`javascript-template`、`java-template`、`wasm-template`、`wasi-template`、`long-running-template`、`python-long-running-template`、`javascript-long-running-template`、`java-long-running-template`、`wasm-long-running-template`、`wasi-long-running-template`）から、候補sourceを決定的に生成します。
+
+- Goのsourceは`go/format`で整形してから書き出します。Python・JavaScript・Javaのsourceは整形せず、生成したbyte列をそのまま使います。
+- `candidate.json`には`language`、`source`（`main.go`/`main.py`/`main.js`）、`generator`を記録します。
+  - 生成器のid・version・strategy・language
+  - 契約のdigest
+  - テンプレートのdigest
+- 選抜は、`generator.contractDigest`が現在の契約のdigestと一致するかを確認します。さらに、契約・strategy・versionからsourceを再生成し、候補のsourceとbyte一致することを確認します。別の契約・別のstrategy・別の言語から生成した候補を、現在の契約の証拠として使えません。
+- 生成先は未存在のdirectoryに限ります。
+- 同じ契約・strategyからは、同じsourceと`sourceDigest`が得られます。
+
+`template`と`dangerous`の生成器は同じ契約パラメータ（通貨、scale、整数桁）を使いますが、実装方式と安全性は異なります。生成器の由来はreceiptへ残しますが、生成AIのモデル・prompt・文脈はまだ記録しません。
+
+## 別言語候補の実行
+
+`python-template`はPython、`javascript-template`はJavaScript、`java-template`はJava、`wasm-template`はGo sourceからWebAssemblyの参照候補、`wasi-template`はGo sourceからWASI preview1の参照候補を生成します。候補manifestの`language`は`python`/`javascript`/`java`/`wasm`/`wasi`、sourceは`main.py`/`main.js`/`Main.java`/`main.go`です。
+
+- Go候補は`go build`で実行ファイルを作り、`binaryDigest`を記録します。
+- Python候補は`python3`または`python`、JavaScript候補は`node`でsourceを実行します。どちらも`binaryDigest`は空です。
+- Java候補はsourceを2つの別directoryへcopyし、それぞれ`javac -d <classes> Main.java`でcompileして`Main.class`のdigestを比較します。一致した場合だけ合格し、`java -cp <classes> Main`で実行します。`binaryDigest`は`Main.class`のdigest、`reproducibility`は`path-independent-twice`です。
+- WASM候補はsourceを2つの別directoryへcopyし、それぞれ`GOOS=js GOARCH=wasm go build -trimpath -buildvcs=false`で`.wasm`を作ってdigestを比較します。一致した場合だけ合格し、`node <GOROOT>/lib/wasm/wasm_exec_node.js <candidate.wasm>`で実行します。`binaryDigest`はwasm binaryのdigest、`reproducibility`は`path-independent-twice`です。
+- WASI候補はsourceを2つの別directoryへcopyし、それぞれ`GOOS=wasip1 GOARCH=wasm go build -trimpath -buildvcs=false`で`.wasm`を作ってdigestを比較します。一致した場合だけ合格し、`node --no-warnings <embedded wasi_node.js> <candidate.wasm>`で実行します。`binaryDigest`はwasm binaryのdigest、`reproducibility`は`path-independent-twice`です。runnerはstdoutのflush前に終了して出力を切り捨てないよう、`process.exit`ではなく`exitCode`を使います。
+- receiptの`runtime`へ、言語、起動方法、処理系のversion、利用可否を記録します。Javaは`javac`と`java`、WASMは`node`と`wasm_exec_node.js`、WASIは`node`の`node:wasi`が必要です。
+- 処理系が見つからない場合は`runtime unavailable`として拒否し、PASSや空の結果へ潰しません。
+- source拡張子が`language`と一致しない候補、未知の`language`を拒否します。
+- 同じfixtureでGo候補とPython候補、Go候補とJavaScript候補、Go候補とJava候補、Go候補とWASM候補、Go候補とWASI候補の出力を比較する試験を持つ。これは同じ参照契約の範囲であり、すべての言語・Runtimeの同等性を証明しません。
+- Java、WASM、WASIは、同じ環境でのsource path非依存build一致までを確認します。別machine・別toolchain・clean cache・実JVM/実WASM runtimeでの再現性は未検証です。JVM/WASM runtimeの版・依存解決・実Targetでの起動は別の境界です。
+- WASIはNodeの`node:wasi`（preview1）を使う参照実行であり、Nodeのexperimental機能に依存します。wasmtime/browser/embedded runtime、実Targetでの起動は未対応です。
+
+これらの参照は、別言語・別実行形式の候補を同じ選抜経路へ載せられることの確認であり、Python/JavaScript/Java/WASM製品実装の採用や、実Targetでの処理系固定を意味しません。
+
+`SelectForTargetWithExecution`は、信頼済みの実行wrapperをexecutable/argvのprefixとして指定する参照APIです。選抜の全case実行へ適用し、wrapperの失敗を候補の失敗として扱います。ビルドと処理系の検出は対象外です。別runnerで候補コードを動かすlineage検証は、wrapper指定中は未対応として拒否します。prefixの存在は、隔離能力や実行権限の証明にはなりません。Target ProfileはLinux namespaceの利用可否を確認してから、このAPIへ接続します。
+
+## long-running候補
+
+`long-running-template`は、標準入力のnewline-delimited JSONを繰り返し読み、1 requestごとに1 JSONを標準出力へ返すGo候補を生成します。単発実行では1 requestを処理して終了し、Target Profileのlong-running probeでは同じprocessへ複数requestを送ります。
+
+- 選抜のfixture実行は、これまでどおりcaseごとにprocessを起動します。
+- `tei-target-profile`のlong-running profileは、この候補を1 processで起動し、全requestのresponseをfixtureと比較します。
+- processが途中で終了した場合、response数が足りない場合、fixtureと異なる場合は失敗します。
+- `python-long-running-template`、`javascript-long-running-template`、`java-long-running-template`、`wasm-long-running-template`、`wasi-long-running-template`は、同じ計算・拒否を各言語・実行形式のnewline-delimited JSON処理として生成します。既存の単発テンプレートは変更せず、別のtemplate digestで識別します。
+- Target ProfileのprobeはGo・Python・JavaScript・Java・WASM・WASI候補を対象とします。WASMのlong-running/batchはLinux CIで検証し、WindowsのNode wasm_execは未対応です。WASIはNodeの`node:wasi`で実行します。処理系がなければ不合格とし、Go以外にはGoのメモリ上限が効かないことをreceiptへ記録します。
+
+## Go候補のbuild evidence
+
+Go候補のreceiptには`buildEvidence`を記録します。
+
+- `toolchain`: `go version`の結果
+- `goos`、`goarch`、`cgoEnabled`、`goflags`: build時の環境
+- `sourceDigest`: buildしたsource
+- `binaryDigest`: 得られた実行ファイル
+- `reproducedDigest`: sourceを別directoryへcopyし、`-trimpath -buildvcs=false`でもう一度buildした実行ファイル
+- `buildInputDigest`: build command・source・toolchain・GOOS/GOARCH・CGO・GOFLAGSを結合したdigest
+- `reproducibility: path-independent-twice`
+
+同じ候補を`go build -trimpath -buildvcs=false`で2回buildします。2回目はGo sourceを別の一時directoryへcopyしてbuildし、`binaryDigest`と`reproducedDigest`が一致する場合だけ合格します。一致しなければ`reproducibility: mismatch`として候補を拒否します。
+
+これは同じ環境・同じtoolchainで、source pathに依存せず同じbinaryが得られることの確認です。別machine・別toolchain・clean cache・外部依存での再現性や、artifact store・署名を証明しません。`buildInputDigest`は、どのsourceとbuild環境から候補を得たかをreceipt内で結び付けるための参照値です。`binaryDigest`はGoの版・OS・build設定に依存します。
+
+## メタ生成（深さ1）
+
+生成器そのものを外部で生成し、その生成器が候補sourceを出す経路を、深さ1に限って扱います。
+
+- 生成器は`-contract FILE`を受け取り、Go sourceを標準出力へ書きます。
+- TEIは生成器をビルドし、1回だけ実行します。
+- 候補manifestの`lineage`へ、深さ、生成器sourceの相対path・digest・originを記録します。
+- 選抜は生成器を再ビルド・再実行し、候補sourceとのbyte一致を確認します。
+- `depth`が1以外の場合は拒否します。生成器が別の生成器を生成する再帰は、このPoCの対象外です。
+- `testdata/meta/generator.go`は固定fixtureで、実モデルが生成した生成器ではありません。
+
+## 生成器registryとライフサイクル
+
+`testdata/registry.json`（v0）は契約ごとに生成器のid・version・状態・source digestを記録します。`testdata/registry-lifecycle.json`（v1）は、置換と失効の理由まで記録します。
+
+- `status: active`のentryだけを、そのidの現在の版として解決します。
+- `status: superseded`は後継の版に置き換えられた版です。`supersedes`で後継元を示し、ちょうど1つの後継を持たなければなりません。
+- `status: revoked`は使用してはならない版です。v1では`reason`を必須にします。
+- 同じid・versionの重複、契約digestの不一致、source digestの不一致、置換先の欠落・二重の後継・循環を拒否します。
+- `tei-generator-select -registry`を使うと、registryにない候補、失効した候補、置換済みの候補、versionやsource digestが一致しない候補を拒否します。
+
+v1のregistryは意味の受理・権限・本番配備の許可ではありません。版の系列と現在のactive版をプロジェクト内で宣言するだけです。
+
+### 候補への影響確認
+
+`tei-generator-reconcile`は、registryと候補directoryを比較し、候補が現在のactive版かを報告します。
+
+```text
+go run ./tools/reference-generator-selection/cmd/tei-generator-reconcile \
+  -registry tools/reference-generator-selection/testdata/registry-lifecycle.json \
+  -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
+  -candidates tools/reference-generator-selection/testdata/candidates
+```
+
+- `current`: active版とversion・source digestが一致する。
+- `stale-version` / `stale-source` / `stale-contract`: 再生成または再選抜が必要。
+- `superseded` / `revoked`: その版を使ってはならない。
+- `unregistered`: registryにない候補。
+- 登録済みのidに現在の候補がなければ、`generators`で不足を示す。
+
+reconcileは候補をビルド・実行・選抜しません。再生成した候補も、固定fixtureでの選抜をやり直す必要があります。自動再生成・自動選抜・失効の承認は行いません。
+
+## receipt
+
+`tei-generator-select`は次を返します。
+
+- 契約のid・version・status
+- WorkspaceのSource Indexから求めた`workspaceRevision`
+- fixtureのdigestと、契約・fixtureを合わせた`suiteVersion`
+- 候補ごとの`language`、`sourceDigest`、`binaryDigest`、`runtime`、`buildEvidence`、`generator`・`generation`（あれば）、各caseの`got`/`want`、`passed`、`rejectReason`
+- 各caseの`execution`（`exitCode`、stdout/stderrのdigest、`timedOut`）
+- 合格した候補の`qualified`と、不合格の`rejected`
+- `grantsRuntimeAuthority: false`、`provesRealProvider: false`
+
+同じWorkspace・契約・fixture・候補sourceからは、同じ`sourceDigest`と結果が得られます。`buildEvidence`は同じ環境でsource pathを変えた反復build一致を記録しますが、別環境での再現性は未検証です。`execution`はstdout/stderrの内容そのものではなくdigestとexit stateだけを残し、時刻や実行者のidentityは含めません。
+
+## 守っている境界
+
+- 受理済みWorkspaceの属性・型を、契約の入力として実際に解決する。存在しない属性や型の不一致を拒否する。
+- 期待値fixtureは候補より先に固定し、候補に合わせて書き換えない。
+- 候補のsource digestを実byteで確認する。digest不一致の候補をビルドしない。
+- `manifest.Source`を候補directory内の相対pathに限定し、絶対path・`..`・候補外へ解決するsymlinkを実行前に拒否する。
+- Python/JavaScriptのscript候補は、各caseの実行前後でsource bytesのdigestを再確認し、変化した候補を拒否する。caseごとの`execution.sourceDigest`に実行直前のdigestを残す。
+- 候補の出力を独立に比較する。候補が「合格」と自己申告しても採用しない。
+- 危険な候補を、欠落・通貨・丸め・精度の負例で落とす。
+- 生成AI候補のgeneration provenanceを、現在の契約digestへ束縛する。
+- 候補の言語とsource拡張子を一致させ、処理系が無い場合は成功扱いにしない。
+- 生成器の選択を、意味の受理・権限・本番配備へ接続しない。
+
+## 未実装
+
+- 特定ベンダーのAPI呼出し・認証・課金・モデル版管理。外部コマンドへ委ねており、TEI内には実装していません。
+- `promptPath`・`contextPath`を省略した候補では、digestの形式だけを確認し、内容との対応は検証しません。
+- 深さ2以上のメタ生成、失効に伴う自動再生成・自動選抜・失効の承認。
+- Python/JavaScript/Java/WASM sourceを出力するメタ生成器のlineage検証。
+- WindowsでのWASM long-running候補。
+- Java以外のJVM言語、.NET/WASM等と、実Targetでの処理系固定・依存解決。
+- 実Provider・実Targetでの比較。
+- 候補のartifact store、別machine・別toolchain・clean cacheでのbuild再現性（#943 / #1370 / #1104）。
+
+## 丸め契約と固定生成器の対応範囲
+
+契約の検証は`half-up`と`half-even`を区別して許容しますが、現在の固定strategyが生成できるのは`half-up`だけです。`half-even`を指定した生成は、source・manifest・出力directoryの公開前に明示的に拒否します。`Generate` / `GenerateVersion` / `GenerateAll`、来歴確認での再描画、`RenderForWorld`と設計bundleへの接続に共通の検査です。対応していない丸めを別の方式へ置き換えません。
+
+これは固定生成器の制約であり、業務で`half-up`を採用する判断や、契約全体から`half-even`を禁止する変更ではありません。将来対応する場合は、正負のtie（1.005 / -1.005等）を既存D8の独立期待値と比較し、各生成言語・単発/常駐で確認します。通常の`half-up`のtemplate bytes・出力・digestは変更しません。
+
+## 読込み済みWorldからの描画
+
+`RenderForWorld`は、呼出元が一度読み込んだWorldと契約JSONのbyte列を受け取り、入力属性・型と出力型を照合してから、既存の固定strategyのsourceとcandidate manifestを返します。filesystemの出力、build・選抜・実行は行いません。契約の複合規則の受理やHostの実行許可を与えるAPIではありません。
+
+[設計成果物bundle](../reference-design-output/README.md)では、文書とコード候補を同じWorldとsource revisionへ結び付けるために使います。manifestの対応は来歴であり、モデル全体の意味的な網羅や実行適合の証拠とは区別します。
+
+## 文字列投影（reference-local）
+
+契約に`projection`がある場合、`rounding`は不要です。`identity`は入力をそのまま、`normalize`は前後の空白を除いて投影します。比較結果は`state`と`text`を使い、`missing`・`empty`（`state=present`で空）・`unresolved`を区別します。既存のmoney契約は`projection`を持たず、従来どおり`rounding`が必要です。

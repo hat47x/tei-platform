@@ -1,0 +1,17 @@
+{
+  "schema": "tei.reference.generator-revocation-approvals/v0",
+  "contractId": "sales.line-amount",
+  "contractVersion": "1",
+  "contractDigest": "sha256:1c1371a2c140a72ab85405ef933ed33411cd78c36035be2052afb038346ca971",
+  "approvals": [
+    {
+      "id": "template",
+      "version": "2",
+      "sourceDigest": "sha256:b88797f6b2ccba69b7a52e02fc200477eaf583912014836e010f989a55a6129a",
+      "authority": "release-board",
+      "role": "generator-owner",
+      "evidenceDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "approvedRevision": "rev-2026-10-20"
+    }
+  ]
+}

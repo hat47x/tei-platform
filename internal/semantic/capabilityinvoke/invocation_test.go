@@ -139,6 +139,50 @@ func TestOutcomeCannotBeReturnedForSingleOutputCapability(t *testing.T) {
 	}
 }
 
+// Cancellation known before dispatch is a non-execution result, even for
+// effectful single-output Capabilities. No Adapter invocation is permitted.
+func TestCancelledContextDoesNotDispatchCapabilityAdapter(t *testing.T) {
+	capability := referenceCapability(t, "sales.order.submit")
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	calls := 0
+	adapter := adapterFunc(func(context.Context, core.CanonicalID, any) (capabilityinvoke.BusinessResult, error) {
+		calls++
+		return capabilityinvoke.BusinessResult{
+			Capability: capability.ID,
+			Mode:       capabilityinvoke.ResultOutput,
+			Payload:    "unexpected",
+		}, nil
+	})
+
+	result, err := capabilityinvoke.Invoke(ctx, capability, adapter, nil)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("pre-dispatch cancellation must remain an execution error: result=%#v err=%v", result, err)
+	}
+	if calls != 0 {
+		t.Fatalf("cancelled request dispatched adapter %d times", calls)
+	}
+	if result.Capability != "" || result.Mode != "" || result.Outcome != "" || result.Payload != nil {
+		t.Fatalf("cancelled request produced an invented business result: %#v", result)
+	}
+}
+
+// Adapter errors retain identity through invocation; they are never interpreted
+// as an accepted business denial or proof that an effect was rolled back.
+func TestAdapterCancellationErrorDoesNotBecomeBusinessOutcome(t *testing.T) {
+	capability := referenceCapability(t, "sales.order.submit")
+	adapter := adapterFunc(func(context.Context, core.CanonicalID, any) (capabilityinvoke.BusinessResult, error) {
+		return capabilityinvoke.BusinessResult{}, context.Canceled
+	})
+	result, err := capabilityinvoke.Invoke(context.Background(), capability, adapter, nil)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("adapter cancellation error identity was lost: result=%#v err=%v", result, err)
+	}
+	if result.Outcome != "" || result.Mode != "" || result.Payload != nil {
+		t.Fatalf("adapter failure became business result: %#v", result)
+	}
+}
+
 func referenceCapability(t *testing.T, id core.CanonicalID) semantic.Capability {
 	t.Helper()
 	_, filename, _, ok := runtime.Caller(0)

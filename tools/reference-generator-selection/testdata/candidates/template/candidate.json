@@ -1,0 +1,8 @@
+{
+  "schema": "tei.reference.generator-candidate/v0",
+  "id": "template",
+  "origin": "template",
+  "source": "main.go",
+  "sourceDigest": "sha256:ccb117f0c0658bc4f074f1efa0fa18ae1a75f793a17f02f0e79a75176ccdafd6",
+  "note": "template由来の生成済みsource。テンプレート自体の検証は未実装。正確な有理数で計算する。"
+}

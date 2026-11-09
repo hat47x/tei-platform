@@ -1,0 +1,72 @@
+{
+  "schema": "tei.reference.invocation-shape/v0",
+  "canonicalization": "tei.reference.invocation-shape-canonicalization/v0",
+  "id": "tei.reference.source-adapter.inspection/v0",
+  "issuer": {
+    "id": "tei.reference.plugin-capability-contract",
+    "version": "0.1.0"
+  },
+  "payloadCodec": "application/json;profile=tei-reference-v0",
+  "format": "tei.reference.json-shape/v0",
+  "root": {
+    "kind": "object",
+    "required": [
+      "document",
+      "candidates",
+      "relationalFacts",
+      "relationalResolutionStatus",
+      "relationalResolutionPolicyRevision",
+      "authorityLimits"
+    ],
+    "properties": {
+      "document": {
+        "kind": "object",
+        "additionalProperties": {
+          "kind": "any"
+        }
+      },
+      "candidates": {
+        "kind": "array",
+        "items": {
+          "kind": "any"
+        }
+      },
+      "relationalFacts": {
+        "kind": "object",
+        "additionalProperties": {
+          "kind": "any"
+        }
+      },
+      "relationalDiagnostics": {
+        "kind": "array",
+        "items": {
+          "kind": "any"
+        }
+      },
+      "relationalFactResolutions": {
+        "kind": "array",
+        "items": {
+          "kind": "any"
+        }
+      },
+      "relationalResolutionStatus": {
+        "kind": "string"
+      },
+      "relationalResolutionPolicyRevision": {
+        "kind": "string"
+      },
+      "classificationPolicyFingerprint": {
+        "kind": "string"
+      },
+      "transcriptionContractFingerprint": {
+        "kind": "string"
+      },
+      "authorityLimits": {
+        "kind": "array",
+        "items": {
+          "kind": "string"
+        }
+      }
+    }
+  }
+}

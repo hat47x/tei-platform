@@ -94,6 +94,11 @@ func Build(w ir.World, sources sourceindex.Index, target subject.Subject) Contex
 			if persistenceSubjectCount(w, core.CanonicalID(target.ID)) != 1 {
 				ctx.Unresolved = append(ctx.Unresolved, "data-design-persistence-subject-not-uniquely-resolvable")
 			}
+		case "contract-query-sql-realization":
+			ctx.Unresolved = append(
+				ctx.Unresolved,
+				"data-design-contract-query-sql-realization-scope-not-uniquely-resolvable",
+			)
 		}
 	}
 
@@ -150,7 +155,10 @@ func subjectMatches(candidate, target subject.Subject) bool {
 
 func semanticElementKind(subjectKind string) (string, bool) {
 	switch subjectKind {
-	case "semantic-namespace":
+	case "semantic", "semantic-namespace":
+		// The CLI's catalog, inspect and trace name a namespace "semantic";
+		// knowledge-context used "semantic-namespace". Accept both so the same
+		// Subject identifier works in every read command (#3242 follow-up).
 		return "namespace", true
 	case "semantic-type":
 		return "type", true

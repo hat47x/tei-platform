@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -62,6 +63,9 @@ type Decision struct {
 	Evidence   []Evidence                  `json:"evidence,omitempty"`
 	Unresolved []changeanalysis.Unresolved `json:"unresolved,omitempty"`
 	RecordPath string                      `json:"recordPath,omitempty"`
+	// Warningsは、判定自体は成立したが、付随する記録・出力を残せなかったことを示す。
+	// Refusalsと違い、Sourceの受理状態を覆さない。現在はDecision ledgerの書込み失敗だけが入る。
+	Warnings []Diagnostic `json:"warnings,omitempty"`
 }
 
 // beforeEachWriteHookはtestが「Previewの後にsourceが変わる」状況を再現するための差し込み口である。
@@ -116,6 +120,44 @@ func decisionFrom(p Preview, kind string) Decision {
 // 派生物を決定論的に再生成できるかを確認し、一つでも満たさなければ元のsourceへ戻す
 // （追記したfileは元の内容へ、作成したfileと、そのために作ったdirectoryは削除する）。
 func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
+	// Pin the named Workspace before any read; concurrent Shared Acceptance
+	// operations must use the SAME create-only lock, including Preview,
+	// mutation, conformance reload, and rollback. Uncooperative external
+	// writers are NOT serialized by this Reference.
+	files, err := os.OpenRoot(root)
+	if err != nil {
+		return Decision{}, fmt.Errorf("open Acceptance Workspace root: %w", err)
+	}
+	defer files.Close()
+
+	guard, err := acquireSourceAcceptLock(files)
+	if errors.Is(err, errSourceAcceptBusy) {
+		return Decision{
+			Schema:        decisionSchema,
+			Decision:      "refused",
+			SourceChanged: false,
+			Refusals: []Diagnostic{{
+				Code:    "SOURCE_ACCEPT_BUSY",
+				Message: "別の受理操作または未確認の古いlockが存在します。処理を再送せず、現在のSourceとlockを確認してください",
+			}},
+		}, nil
+	}
+	if err != nil {
+		return Decision{}, fmt.Errorf("acquire Workspace Acceptance lock: %w", err)
+	}
+	decision, acceptErr := acceptWithPinnedRoot(root, files, data, opts)
+	releaseErr := guard.release()
+	if releaseErr != nil {
+		return decision, errors.Join(acceptErr, fmt.Errorf(
+			"Acceptance outcome may have changed Source, but lock cleanup could not be confirmed: %w", releaseErr))
+	}
+	return decision, acceptErr
+}
+
+// acceptWithPinnedRoot runs only while the caller owns the cooperative lock.
+// This is still the SAME shared Acceptance implementation, not a new entry
+// point for Studio or AI. Call accept, never this helper, from adapters.
+func acceptWithPinnedRoot(root string, files *os.Root, data []byte, opts acceptOptions) (Decision, error) {
 	ev, err := evaluate(root, data)
 	if err != nil {
 		return Decision{}, err
@@ -149,43 +191,78 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 
 	var written []SourceEdit
 	var createdDirs []string
-	rollback := func() {
-		for _, e := range written {
-			target := filepath.Join(root, filepath.FromSlash(e.Path))
+	// Rollback must not blindly overwrite a file another process modified
+	// after our write. This is a best-effort byte guard, NOT an atomic
+	// compare-and-swap: path replacement between read and restore remains
+	// unresolved until the common Source Authority owns the write fence.
+	rollback := func() []string {
+		var incomplete []string
+		for i := len(written) - 1; i >= 0; i-- {
+			e := written[i]
+			current, err := sourceReadWithinRoot(files, e.Path)
+			if err != nil || sourceindex.Fingerprint(current) != e.AfterFingerprint {
+				incomplete = append(incomplete, e.Path)
+				continue
+			}
 			if e.Created {
-				_ = os.Remove(target)
+				err = sourceRemoveWithinRoot(files, e.Path)
 			} else {
-				_ = writeFileAtomic(target, e.before)
+				err = sourceWriteWithinRoot(files, e.Path, e.before, false)
+			}
+			if err != nil {
+				incomplete = append(incomplete, e.Path)
 			}
 		}
-		for i := len(createdDirs) - 1; i >= 0; i-- {
-			_ = os.Remove(createdDirs[i])
-		}
+		incomplete = append(incomplete, sourceRemoveDirsIfEmpty(files, createdDirs)...)
+		return incomplete
 	}
 	refuse := func(code, message string) Decision {
-		rollback()
+		incomplete := rollback()
 		decision.Decision = "refused"
-		decision.SourceChanged = false
+		decision.SourceChanged = len(incomplete) > 0
 		decision.Refusals = append(decision.Refusals, Diagnostic{Code: code, Message: message})
+		if len(incomplete) > 0 {
+			sort.Strings(incomplete)
+			decision.Refusals = append(decision.Refusals, Diagnostic{
+				Code:    "ROLLBACK_INCOMPLETE",
+				Message: fmt.Sprintf("並行変更または書込み失敗により元のSourceへ完全に戻せません: %s。再読込と明示的な競合解消が必要です", strings.Join(incomplete, ", ")),
+			})
+		}
 		return decision
 	}
 
+	if err := checkAcceptanceManifest(files, ev.before.manifest); err != nil {
+		return refuse("SOURCE_MANIFEST_CHANGED_DURING_ACCEPT", err.Error()), nil
+	}
 	for i, e := range ev.edits {
 		if beforeEachWriteHook != nil {
 			beforeEachWriteHook(i, e)
 		}
-		target := filepath.Join(root, filepath.FromSlash(e.Path))
+		if err := checkAcceptedWorkspaceIdentity(root, files); err != nil {
+			return refuse("SOURCE_WORKSPACE_REPLACED", err.Error()), nil
+		}
+		if err := checkAcceptanceManifest(files, ev.before.manifest); err != nil {
+			return refuse("SOURCE_MANIFEST_CHANGED_DURING_ACCEPT", err.Error()), nil
+		}
 		if e.Created {
-			if _, err := os.Stat(target); err == nil {
+			name, err := acceptedSourcePath(e.Path)
+			if err != nil {
+				return refuse("SOURCE_WRITE_FAILED", err.Error()), nil
+			}
+			_, err = files.Lstat(name)
+			if err == nil {
 				return refuse("SOURCE_CHANGED_DURING_ACCEPT", fmt.Sprintf("作成先 %s がPreviewの後に作られました", e.Path)), nil
 			}
-			dirs, err := makeDirs(filepath.Dir(target))
+			if !os.IsNotExist(err) {
+				return refuse("SOURCE_UNREADABLE", err.Error()), nil
+			}
+			dirs, err := sourceMakeDirs(files, filepath.Dir(name))
 			createdDirs = append(createdDirs, dirs...)
 			if err != nil {
 				return refuse("SOURCE_WRITE_FAILED", err.Error()), nil
 			}
 		} else {
-			current, err := os.ReadFile(target)
+			current, err := sourceReadWithinRoot(files, e.Path)
 			if err != nil {
 				return refuse("SOURCE_UNREADABLE", err.Error()), nil
 			}
@@ -193,7 +270,10 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 				return refuse("SOURCE_CHANGED_DURING_ACCEPT", fmt.Sprintf("%s がPreviewの後に変更されました", e.Path)), nil
 			}
 		}
-		if err := writeFileAtomic(target, e.after); err != nil {
+		if err := sourceWriteWithinRoot(files, e.Path, e.after, e.Created); err != nil {
+			if e.Created && os.IsExist(err) {
+				return refuse("SOURCE_CHANGED_DURING_ACCEPT", fmt.Sprintf("作成先 %s が書込み前に作られました", e.Path)), nil
+			}
 			return refuse("SOURCE_WRITE_FAILED", err.Error()), nil
 		}
 		written = append(written, e)
@@ -202,9 +282,15 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 	if afterWritesHook != nil {
 		afterWritesHook(root)
 	}
+	if err := checkAcceptanceManifest(files, ev.before.manifest); err != nil {
+		return refuse("SOURCE_MANIFEST_CHANGED_DURING_ACCEPT", err.Error()), nil
+	}
 	post, err := takeSnapshot(root)
 	if err != nil {
 		return refuse("POST_ACCEPT_RELOAD_FAILED", err.Error()), nil
+	}
+	if post.manifest != ev.before.manifest {
+		return refuse("SOURCE_MANIFEST_CHANGED_DURING_ACCEPT", "Workspace manifest changed during post-Accept reload"), nil
 	}
 	postSemantic, err := changeanalysis.Diff(ev.before.loaded.World, post.loaded.World)
 	if err != nil {
@@ -260,6 +346,9 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 		}
 	}
 
+	if err := checkAcceptanceManifest(files, ev.before.manifest); err != nil {
+		return refuse("SOURCE_MANIFEST_CHANGED_DURING_ACCEPT", err.Error()), nil
+	}
 	decision.SourceChanged = true
 	decision.ModelRevisionAfter = post.revision
 	decision.SourceEdits = ev.edits
@@ -272,26 +361,6 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 	decision.Evidence = ev.candidate.Evidence
 	decision.Unresolved = ev.preview.Unresolved
 	return decision, nil
-}
-
-// makeDirsは、directoryを作り、そのために新しく作ったdirectory（外側から内側の順）を返す。
-func makeDirs(dir string) ([]string, error) {
-	var missing []string
-	for d := dir; ; d = filepath.Dir(d) {
-		if _, err := os.Stat(d); err == nil {
-			break
-		}
-		missing = append([]string{d}, missing...)
-		if filepath.Dir(d) == d {
-			break
-		}
-	}
-	for _, d := range missing {
-		if err := os.Mkdir(d, 0o755); err != nil {
-			return missing, err
-		}
-	}
-	return missing, nil
 }
 
 // rejectは、candidateを退け、authoritative sourceを変更しないことを記録する。
@@ -361,7 +430,12 @@ type DecisionRecord struct {
 	ReviewDiagnostics           []Diagnostic        `json:"reviewDiagnostics,omitempty"`
 	DecisionActorStatus         string              `json:"decisionActorStatus"`
 	DecisionAuthorityStatus     string              `json:"decisionAuthorityStatus"`
-	Decision                    Decision            `json:"decision"`
+	// DecisionWitnessStatusは、OpenSSH署名witness（.tei/decision-witnesses）とこの
+	// recordのexact binding状態を示す。none / recorded / verified / invalid /
+	// conflicted。verifiedでも受理状態やaccepted meaningは変わらない。
+	DecisionWitnessStatus string       `json:"decisionWitnessStatus"`
+	WitnessDiagnostics    []Diagnostic `json:"witnessDiagnostics,omitempty"`
+	Decision              Decision     `json:"decision"`
 }
 
 type DecisionIndex struct {
@@ -373,6 +447,8 @@ type DecisionIndex struct {
 // recordDecisionは、決定を派生物として保存し、保存先のworkspace相対pathを返す。
 // 内容でaddressingするため、同じ決定を二度保存しても増えない。
 // この記録はauthorityではない。消してもaccepted meaningもmodel revisionも変わらない。
+// 書き込みはWorkspace rootに固定したos.Rootの相対操作で行い、ledger directoryの
+// 外向きシンボリックリンクを辿らない。
 func recordDecision(root string, d Decision) (string, error) {
 	d.RecordPath = ""
 	encoded, err := encodeJSON(d)
@@ -381,11 +457,12 @@ func recordDecision(root string, d Decision) (string, error) {
 	}
 	sum := sha256.Sum256(encoded)
 	rel := decisionDir + "/" + hex.EncodeToString(sum[:]) + ".json"
-	target := filepath.Join(root, filepath.FromSlash(rel))
-	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-		return "", err
+	files, err := os.OpenRoot(root)
+	if err != nil {
+		return "", fmt.Errorf("open Workspace root for Decision ledger: %w", err)
 	}
-	if err := writeFileAtomic(target, encoded); err != nil {
+	defer files.Close()
+	if err := ledgerWriteFile(files, rel, encoded); err != nil {
 		return "", err
 	}
 	return rel, nil
@@ -393,7 +470,9 @@ func recordDecision(root string, d Decision) (string, error) {
 
 // loadDecisionRecordsは、保存された決定を読み、現在のworkspaceに対して検証する。
 // 記録の内容を信用してmeaningを再構成せず、現在のsourceと照合した結果だけを付ける。
-func loadDecisionRecords(root string) (DecisionIndex, error) {
+// witnessがnilでない場合、.tei/decision-witnessesのOpenSSH署名witnessをrecord本文に
+// exactにbindingして検証する。nilなら検証せず、witnessがあってもstatusを解決しない。
+func loadDecisionRecords(root string, witness *WitnessVerifyOptions) (DecisionIndex, error) {
 	index := DecisionIndex{Schema: decisionIndexSchema, Records: []DecisionRecord{}}
 	s, err := takeSnapshot(root)
 	if err != nil {
@@ -401,10 +480,14 @@ func loadDecisionRecords(root string) (DecisionIndex, error) {
 	}
 	index.ModelRevision = s.revision
 
-	dir := filepath.Join(root, filepath.FromSlash(decisionDir))
-	entries, err := os.ReadDir(dir)
+	files, err := os.OpenRoot(root)
 	if err != nil {
-		if os.IsNotExist(err) {
+		return index, fmt.Errorf("open Workspace root for Decision ledger: %w", err)
+	}
+	defer files.Close()
+	entries, err := ledgerReadDir(files, decisionDir)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
 			return index, nil
 		}
 		return index, err
@@ -417,9 +500,14 @@ func loadDecisionRecords(root string) (DecisionIndex, error) {
 	}
 	sort.Strings(names)
 
+	// witness判定にはrecord本文のdigestと、mutate可能なrecordの参照が必要である。
+	// 最後に値へ戻してindexへ入れる。
+	witnessRecords := make([]*DecisionRecord, 0, len(names))
+	witnessDigests := make(map[string]string, len(names))
+
 	for _, name := range names {
 		rel := decisionDir + "/" + name
-		content, err := os.ReadFile(filepath.Join(dir, name))
+		content, err := ledgerReadFile(files, rel)
 		if err != nil {
 			return index, err
 		}
@@ -449,8 +537,9 @@ func loadDecisionRecords(root string) (DecisionIndex, error) {
 			ArtifactEvidenceStatus:  "none",
 			ReviewBindingStatus:     "none",
 			ReviewCoverageStatus:    "none",
-			DecisionActorStatus:     "unresolved",
-			DecisionAuthorityStatus: "unresolved",
+			DecisionActorStatus:     actorStatusUnresolved,
+			DecisionAuthorityStatus: authorityStatusUnresolved,
+			DecisionWitnessStatus:   witnessStatusNone,
 		}
 		if d.ModelRevisionAfter == s.revision {
 			record.Status = "current"
@@ -458,7 +547,7 @@ func loadDecisionRecords(root string) (DecisionIndex, error) {
 		if len(d.SourceEdits) > 0 {
 			record.SourceEdits = "intact"
 			for _, e := range d.SourceEdits {
-				current, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(e.Path)))
+				current, err := sourceReadWithinRoot(files, e.Path)
 				if err != nil || sourceindex.Fingerprint(current) != e.AfterFingerprint {
 					record.SourceEdits = "diverged"
 					record.Diverged = append(record.Diverged, e.Path)
@@ -538,7 +627,25 @@ func loadDecisionRecords(root string) (DecisionIndex, error) {
 			}
 		}
 		record.Decision.RecordPath = rel
-		index.Records = append(index.Records, record)
+		witnessRecords = append(witnessRecords, &record)
+		witnessDigests[rel] = "sha256:" + hex.EncodeToString(sum[:])
+	}
+
+	witnesses, err := loadDecisionWitnesses(files)
+	if err != nil {
+		return index, err
+	}
+	verifier := (*witnessVerifyInternal)(nil)
+	if witness != nil {
+		// loader層ではprovider binaryをPATHから選ばせる（flagsの明示指定は
+		// Reference / test用に限定する）。
+		verifier = &witnessVerifyInternal{WitnessVerifyOptions: *witness}
+	}
+	if err := bindDecisionWitnesses(witnessRecords, witnessDigests, witnesses, verifier); err != nil {
+		return index, err
+	}
+	for _, record := range witnessRecords {
+		index.Records = append(index.Records, *record)
 	}
 
 	return index, nil

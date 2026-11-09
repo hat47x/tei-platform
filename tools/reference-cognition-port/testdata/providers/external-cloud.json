@@ -1,0 +1,19 @@
+{
+  "schema": "tei.reference.cognition-provider/v0",
+  "id": "external-cloud",
+  "model": "example-cloud-model",
+  "version": "v1",
+  "execution": "external",
+  "network": "required",
+  "capabilities": [
+    "validation-candidate"
+  ],
+  "limits": {
+    "maxContextBytes": 65536,
+    "maxOutputBytes": 65536,
+    "timeoutSeconds": 10
+  },
+  "settings": {
+    "note": "外部コマンド境界の参照。実ベンダーAPIは埋め込まない。"
+  }
+}

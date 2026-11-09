@@ -1,0 +1,102 @@
+name: TEI X-TEA Driver control Python checks
+
+# Check synthetic Python and Swing-agent paths without external X-TEA JARs or
+# reference models. The synthetic Swing check runs on Xvfb, not Windows/Driver.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - 'tools/reference-xtea-control/**'
+      - '.github/workflows/tei-xtea-driver-control-python-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/reference-xtea-control/**'
+      - '.github/workflows/tei-xtea-driver-control-python-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-xtea-python-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  synthetic-python:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Verify candidate and Python runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          python3 --version
+          printf 'candidate=%s\n' "$CANDIDATE_SHA"
+
+      - name: Run synthetic inventory and Driver result regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd tools/reference-xtea-control
+          env -u XTEA_RUNTIME_HOME python3 tests/test_inventory.py
+          env -u XTEA_RUNTIME_HOME python3 tests/test_driver_result.py
+
+      - name: Install pinned Java 11
+        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v4
+        with:
+          distribution: temurin
+          java-version: '11'
+
+      - name: Build Java 8-compatible agent and synthetic fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          java -version
+          javac -version
+          cd tools/reference-xtea-control
+          sh build.sh
+          test -s build/xtea-control-agent.jar
+          test -f build/fixture-classes/FakeXteaApp.class
+
+      - name: Run synthetic Swing control over dedicated Xvfb display
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v xvfb-run
+          cd tools/reference-xtea-control
+          xvfb-run -a python3 - <<'PY'
+          import sys
+          import unittest
+          from pathlib import Path
+
+          sys.path.insert(0, str(Path("tests").resolve()))
+          from test_integration import IntegrationTest
+
+          suite = unittest.defaultTestLoader.loadTestsFromTestCase(IntegrationTest)
+          result = unittest.TextTestRunner(verbosity=2).run(suite)
+          if result.testsRun != 12 or not result.wasSuccessful() or result.skipped or result.expectedFailures:
+              raise SystemExit("Synthetic Swing verification incomplete or failed: "
+                               f"ran={result.testsRun} skipped={len(result.skipped)}")
+          print("synthetic-swing-passed=12")
+          PY
+
+      - name: Check repository unchanged
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"

@@ -1,0 +1,29 @@
+{
+  "schema": "tei.reference.generator-registry/v0",
+  "contractId": "sales.line-amount",
+  "contractVersion": "1",
+  "contractDigest": "sha256:1c1371a2c140a72ab85405ef933ed33411cd78c36035be2052afb038346ca971",
+  "entries": [
+    {
+      "id": "template",
+      "version": "1",
+      "status": "active",
+      "sourceDigest": "sha256:ccb117f0c0658bc4f074f1efa0fa18ae1a75f793a17f02f0e79a75176ccdafd6",
+      "note": "生成済みtemplate source"
+    },
+    {
+      "id": "alternative",
+      "version": "1",
+      "status": "active",
+      "sourceDigest": "sha256:b4f21cef0fcfb09c1fd854cc959de7c99022e6d572b276461b6b5ad00b0eb549",
+      "note": "手書きの別実装"
+    },
+    {
+      "id": "dangerous",
+      "version": "1",
+      "status": "revoked",
+      "sourceDigest": "sha256:9f9d3e51daccc9f1c4f327a082d3ae8b779f840935730dd2101054f7881d92b8",
+      "note": "float64と欠落0化のため失効"
+    }
+  ]
+}

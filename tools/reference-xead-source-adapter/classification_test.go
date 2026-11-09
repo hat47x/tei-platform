@@ -8,6 +8,12 @@ import (
 
 func classificationContractFixture() []byte {
 	value := map[string]any{
+		"sourceProfiles": map[string]any{
+			"xead": map[string]any{
+				"rootKind":                "System",
+				"supportedFormatVersions": []string{"1.2"},
+			},
+		},
 		"constructMappings": map[string]any{
 			"xead": map[string]any{
 				"System": map[string]any{
@@ -28,7 +34,7 @@ func classificationContractFixture() []byte {
 }
 
 func TestLocalClassificationKeepsLocatorAndMappingSeparateFromSemanticUnresolved(t *testing.T) {
-	doc, err := Observe(FormatXead, []byte(`<System><Table ID="local"/><Mystery/></System>`))
+	doc, err := Observe(FormatXead, []byte(`<System FormatVersion="1.2"><Table ID="local"/><Mystery/></System>`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +57,7 @@ func TestLocalClassificationKeepsLocatorAndMappingSeparateFromSemanticUnresolved
 }
 
 func TestPublishedClassificationDoesNotContainSourceLocatorOrValues(t *testing.T) {
-	doc, err := Observe(FormatXead, []byte(`<System ID="private-system"><Table ID="private-table"/></System>`))
+	doc, err := Observe(FormatXead, []byte(`<System FormatVersion="1.2" ID="private-system"><Table ID="private-table"/></System>`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +81,7 @@ func TestPublishedClassificationDoesNotContainSourceLocatorOrValues(t *testing.T
 }
 
 func TestPublishedClassificationRedactsArbitraryUnmappedKindName(t *testing.T) {
-	doc, err := Observe(FormatXead, []byte(`<System><Mystery/></System>`))
+	doc, err := Observe(FormatXead, []byte(`<System FormatVersion="1.2"><Mystery/></System>`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +102,7 @@ func TestPublishedClassificationRedactsArbitraryUnmappedKindName(t *testing.T) {
 }
 
 func TestNamespacedLookalikeDoesNotHideBehindMappedLocalName(t *testing.T) {
-	doc, err := Observe(FormatXead, []byte(`<System xmlns:x="urn:ext"><Table/><x:Table/></System>`))
+	doc, err := Observe(FormatXead, []byte(`<System FormatVersion="1.2" xmlns:x="urn:ext"><Table/><x:Table/></System>`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +122,7 @@ func TestNamespacedLookalikeDoesNotHideBehindMappedLocalName(t *testing.T) {
 }
 
 func TestNamespacedOnlyLookalikeDoesNotPublishKnownMappingClassification(t *testing.T) {
-	doc, err := Observe(FormatXead, []byte(`<System xmlns:x="urn:ext"><x:Table/></System>`))
+	doc, err := Observe(FormatXead, []byte(`<System FormatVersion="1.2" xmlns:x="urn:ext"><x:Table/></System>`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,8 +146,8 @@ func TestNamespacedOnlyLookalikeDoesNotPublishKnownMappingClassification(t *test
 }
 
 func TestClassificationRejectsMappingWithoutClassification(t *testing.T) {
-	contract := []byte(`{"constructMappings":{"xead":{"System":{"extension":"reference.compat.xead.source"}}}}`)
-	doc, err := Observe(FormatXead, []byte(`<System/>`))
+	contract := []byte(`{"sourceProfiles":{"xead":{"rootKind":"System","supportedFormatVersions":["1.2"]}},"constructMappings":{"xead":{"System":{"extension":"reference.compat.xead.source"}}}}`)
+	doc, err := Observe(FormatXead, []byte(`<System FormatVersion="1.2"/>`))
 	if err != nil {
 		t.Fatal(err)
 	}

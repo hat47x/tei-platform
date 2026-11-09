@@ -1,0 +1,37 @@
+{
+  "formatVersion": 1,
+  "subject": {
+    "kind": "plugin",
+    "id": "tei.process.reference",
+    "version": "1.0.0",
+    "definitionSource": "tei-process-reference-definition"
+  },
+  "sources": [
+    {"kind": "plugin-definition", "id": "tei-process-reference-definition", "ref": "reference/plugin-self-build/workspace/plugins/tei-process-reference/1.0.0/plugin.tei"},
+    {"kind": "go-source-closure", "id": "tei-process-reference-go", "ref": "tools/reference-process-plugin"}
+  ],
+  "builder": {"contract": "tei.plugin-build", "compatibleMajor": 1},
+  "recipe": {"kind": "go-package", "entrypoint": "./tools/reference-process-plugin"},
+  "outputKind": "runtime-artifact",
+  "target": "host-process/linux/amd64",
+  "profile": "reference",
+  "parameters": [
+    {"name": "buildvcs", "value": "false"},
+    {"name": "cgo", "value": "disabled"},
+    {"name": "goarch", "value": "amd64"},
+    {"name": "goenv", "value": "off"},
+    {"name": "goexperiment", "value": "default"},
+    {"name": "gocache", "value": "isolated"},
+    {"name": "goflags", "value": "empty"},
+    {"name": "gomodcache", "value": "isolated-empty"},
+    {"name": "goos", "value": "linux"},
+    {"name": "gopath", "value": "isolated-empty"},
+    {"name": "goproxy", "value": "off"},
+    {"name": "gosumdb", "value": "off"},
+    {"name": "gotoolchain", "value": "local"},
+    {"name": "govcs", "value": "*:off"},
+    {"name": "gowork", "value": "off"},
+    {"name": "mod", "value": "readonly"},
+    {"name": "trimpath", "value": "true"}
+  ]
+}

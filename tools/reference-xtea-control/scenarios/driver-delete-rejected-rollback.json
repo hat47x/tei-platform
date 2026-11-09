@@ -1,0 +1,26 @@
+{
+  "name": "driver-delete-rejected-rollback",
+  "description": "Attempt to delete a referenced department. The delete is rejected with an error, the detail screen stays open, and the row count remains unchanged. This exercises XF200's failure rollback, not a user-visible rollback button.",
+  "steps": [
+    { "op": "wait_window", "title": "1\\.0\\.8|Skeleton|管理", "timeoutMs": 30000 },
+    { "op": "set", "selector": { "path": "0.0.5" }, "value": "00000" },
+    { "op": "set", "selector": { "path": "0.0.6" }, "value": "0000000000" },
+    { "op": "invoke", "selector": { "role": "button", "text": "ログイン|Login" }, "settleMs": 1000 },
+    { "op": "wait_window", "title": "1\\.0\\.8", "timeoutMs": 30000 },
+    { "op": "invoke", "selector": { "role": "button", "text": "部門情報の一覧・保守" }, "settleMs": 1000 },
+    { "op": "wait_window", "title": "部門情報の一覧", "timeoutMs": 30000 },
+    { "op": "table_row_count", "selector": { "role": "table" }, "equals": 2 },
+    { "op": "select", "selector": { "role": "table" }, "row": 0, "column": 0 },
+    { "op": "key", "selector": { "role": "table" }, "key": "ENTER" },
+    { "op": "wait_window", "title": "関連情報|部門と", "timeoutMs": 30000 },
+    { "op": "invoke", "selector": { "window": "関連情報|部門と", "role": "button", "text": "F8 部門情報" }, "settleMs": 1000 },
+    { "op": "wait_window", "title": "詳細確認", "timeoutMs": 30000 },
+    { "op": "invoke", "selector": { "window": "詳細確認", "role": "button", "text": "F9 削除" }, "settleMs": 1000 },
+    { "op": "sleep", "ms": 1000 },
+    { "op": "assert_text", "selector": { "window": "詳細確認", "role": "text" }, "contains": "削除できません" },
+    { "op": "table_row_count", "selector": { "role": "table" }, "equals": 2 },
+    { "op": "invoke", "selector": { "window": "詳細確認", "role": "button", "text": "F3 閉じる" }, "settleMs": 500 },
+    { "op": "invoke", "selector": { "window": "関連情報|部門と", "role": "button", "text": "F3 閉じる" }, "settleMs": 500 },
+    { "op": "invoke", "selector": { "window": "部門情報の一覧", "role": "button", "text": "F3 閉じる" }, "settleMs": 500 }
+  ]
+}

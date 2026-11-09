@@ -1,0 +1,26 @@
+{
+  "name": "editor-add-function",
+  "description": "Add a function through the Editor function-list wizard, fill ID 999 and name TEST_FUNCTION, select XF100 from the type combo, save, and verify the function in the XML. Uses a disposable MfgOrder.xead copy.",
+  "steps": [
+    { "op": "wait_window", "title": "X-TEA Editor", "timeoutMs": 30000 },
+    { "op": "select", "selector": { "role": "tree" }, "path": [0, 1, 0, 1] },
+    { "op": "key", "selector": { "role": "tree" }, "key": "ENTER" },
+    { "op": "sleep", "ms": 1000 },
+    { "op": "invoke_method", "selector": { "role": "window", "window": "X-TEA Editor" }, "method": "jMenuItemXETreeNodeAdd_actionPerformed" },
+    { "op": "sleep", "ms": 1000 },
+    { "op": "click", "selector": { "window": "機能定義の追加", "path": "0.1.3.0" }, "count": 1 },
+    { "op": "sleep", "ms": 500 },
+    { "op": "click", "selector": { "path": "0.0.0.0.0" }, "count": 1, "row": 1 },
+    { "op": "sleep", "ms": 500 },
+    { "op": "set", "selector": { "window": "機能定義の追加", "path": "0.1.1" }, "value": "999" },
+    { "op": "set", "selector": { "window": "機能定義の追加", "path": "0.1.5" }, "value": "TEST_FUNCTION" },
+    { "op": "invoke", "selector": { "window": "機能定義の追加", "role": "button", "text": "次へ" }, "settleMs": 1000 },
+    { "op": "sleep", "ms": 1000 },
+    { "op": "invoke", "selector": { "window": "X-TEA Editor", "path": "m.0.5" }, "settleMs": 1000 },
+    { "op": "wait_window", "title": "バックアップの確認", "timeoutMs": 30000 },
+    { "op": "invoke", "selector": { "window": "バックアップの確認", "role": "button", "text": "はい" }, "settleMs": 1000 },
+    { "op": "wait_window", "title": "バックアップの確認", "state": "absent", "timeoutMs": 30000 },
+    { "op": "sleep", "ms": 1500 },
+    { "op": "model_assert_function", "path": "build/editor-fixture/MfgOrder.xead", "functionId": "999", "name": "TEST_FUNCTION", "type": "XF000" }
+  ]
+}

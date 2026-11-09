@@ -1,0 +1,3 @@
+pattern product_contracts_flow.eki_result_accept command {
+    capability product_contracts.eki_result_accept
+}

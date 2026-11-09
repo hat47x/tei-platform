@@ -1,0 +1,10 @@
+{
+  "schema": "tei.reference.delivery-plugin/v0",
+  "id": "audit",
+  "version": "1",
+  "kind": "delivery-foundation",
+  "capabilities": ["audit"],
+  "entrypoints": ["audit.record", "audit.read"],
+  "guarantees": ["append-only audit entries"],
+  "notGuaranteed": ["external SIEM delivery", "immutable storage"]
+}

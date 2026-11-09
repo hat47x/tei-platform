@@ -11,7 +11,36 @@ import (
 // RealizeDesired projects provider-neutral Persistence Mapping intent into a
 // provider-specific Desired Physical Schema using an offline provider policy.
 // The mapping remains canonical and the resulting snapshot is deterministic.
+//
+// When the policy implements ConstraintNamingPolicy, unnamed unique
+// constraints and foreign keys receive the policy's deterministic name. If
+// generated names collide, RealizeDesired returns a *ConstraintNamingError;
+// callers that can report tables one by one use RealizeDesiredWithUnresolved.
 func RealizeDesired(mappings []Mapping, databaseID string, policy PhysicalRealizationPolicy) (physical.SchemaSnapshot, error) {
+	snapshot, unresolved, err := RealizeDesiredWithUnresolved(mappings, databaseID, policy)
+	if err != nil {
+		return physical.SchemaSnapshot{}, err
+	}
+	if len(unresolved) > 0 {
+		return physical.SchemaSnapshot{}, &ConstraintNamingError{Unresolved: unresolved}
+	}
+	return snapshot, nil
+}
+
+// RealizeDesiredWithUnresolved is RealizeDesired that keeps going when
+// generated constraint names collide. The colliding tables are listed in the
+// second result; in the snapshot their generated names are left empty, so a
+// renderer that requires names refuses them instead of guessing.
+func RealizeDesiredWithUnresolved(mappings []Mapping, databaseID string, policy PhysicalRealizationPolicy) (physical.SchemaSnapshot, []UnresolvedTable, error) {
+	snapshot, err := realizeDesiredTables(mappings, databaseID, policy)
+	if err != nil {
+		return physical.SchemaSnapshot{}, nil, err
+	}
+	unresolved := assignConstraintNames(snapshot.Tables, policy)
+	return snapshot.Normalize(), unresolved, nil
+}
+
+func realizeDesiredTables(mappings []Mapping, databaseID string, policy PhysicalRealizationPolicy) (physical.SchemaSnapshot, error) {
 	if policy == nil {
 		return physical.SchemaSnapshot{}, fmt.Errorf("physical realization policy is nil")
 	}

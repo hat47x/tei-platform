@@ -45,7 +45,7 @@ Provider-neutral Database lifecycle
   - Migration Proposal
 ```
 
-M0.26のReference integrationでは、`lib/pq`を`database/sql` driverの具体例として利用します。これはTEI Coreがlib/pqを標準driverとして固定するという意味ではありません。将来、Reference assemblyをpgx/stdlib等へ交換しても、Provider Coreの意味境界は変えないことを意図しています。
+M0.26のReference integrationでは、`pgx/stdlib`を`database/sql` driverの具体例として利用します。これはTEI Coreがpgxを標準driverとして固定するという意味ではありません。Provider Coreの意味境界を保ちつつ、Reference assembly側でPostgreSQL driverを選択します。
 
 ## credentialと接続情報
 
@@ -94,7 +94,7 @@ catalog readerの局所的な動作は検証できますが、PostgreSQLが実�
 
 - PostgreSQL providerは引き続き`database/sql`境界を中心に保てる
 - Reference toolや将来のHost adapterがdriver、DSN、credentialを組み立てる
-- lib/pqはM0.26 Reference integrationの具体実装であり、Canonical modelの一部ではない
+- pgx/stdlibはM0.26 Reference integrationの具体実装であり、Canonical modelの一部ではない
 - actual PostgreSQLを使うCIを追加しても、production接続policyを実装済みとは扱わない
 - 将来MySQLや他DBをactual integrationする場合も、同じHost assembly原則を適用できる
 

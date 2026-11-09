@@ -81,6 +81,16 @@ func flattenSemantics(namespaces []semantic.Namespace) (subjectSet, error) {
 					return nil, err
 				}
 			}
+			for _, key := range d.CandidateKeys {
+				if err := out.add("candidate-key", key.ID, key); err != nil {
+					return nil, err
+				}
+			}
+			for _, fd := range d.FunctionalDependencies {
+				if err := out.add("functional-dependency", fd.ID, fd); err != nil {
+					return nil, err
+				}
+			}
 		}
 		for _, c := range ns.Capabilities {
 			if err := out.add("capability", c.ID, c); err != nil {
@@ -99,7 +109,7 @@ func flattenSemantics(namespaces []semantic.Namespace) (subjectSet, error) {
 // flattenApplicationsは、Applicationの本体とPatternを別のsubjectとして並べる。
 // Application本体の比較にはPatternを含めないため、Patternだけの変更でApplication本体まで
 // 二重にchangedとは扱わない。datasource aliasとContract requirementはApplication本体の意味に含める。
-func flattenApplications(apps []application.Application) (subjectSet, error) {
+func flattenApplications(apps []application.Application, normalizeSemanticUses bool) (subjectSet, error) {
 	out := subjectSet{}
 	type applicationIdentity struct {
 		ID           core.CanonicalID                  `json:"id"`
@@ -108,7 +118,14 @@ func flattenApplications(apps []application.Application) (subjectSet, error) {
 		Databases    []application.DatabaseRequirement `json:"databases,omitempty"`
 	}
 	for _, app := range apps {
-		identity := applicationIdentity{ID: app.ID, SemanticUses: app.SemanticUses, Validations: app.Validations, Databases: app.Databases}
+		semanticUses := app.SemanticUses
+		if normalizeSemanticUses {
+			// Preserve duplicates, and never reorder Validations: their
+			// declaration order controls evaluation.
+			semanticUses = append([]core.CanonicalID(nil), app.SemanticUses...)
+			sort.Slice(semanticUses, func(i, j int) bool { return semanticUses[i] < semanticUses[j] })
+		}
+		identity := applicationIdentity{ID: app.ID, SemanticUses: semanticUses, Validations: app.Validations, Databases: app.Databases}
 		if err := out.add("application", app.ID, identity); err != nil {
 			return nil, err
 		}
@@ -164,11 +181,36 @@ func Diff(before, after ir.World) ([]SubjectChange, error) {
 // DiffApplicationsは、二つのCanonical WorldのApplication層の差をsubject単位で返す。
 // subject kindは application（本体）と application-pattern（Pattern）の二つである。
 func DiffApplications(before, after ir.World) ([]SubjectChange, error) {
-	b, err := flattenApplications(before.Applications)
+	return diffApplications(before, after, false)
+}
+
+type ApplicationMembershipCandidateDiff struct {
+	Changes         []SubjectChange `json:"changes"`
+	AuthorityLimits []string        `json:"authorityLimits"`
+}
+
+// DiffApplicationMembershipCandidates is an opt-in, read-only comparison of
+// namespace membership. It is not an acceptance delta or a Target equivalence
+// check; use DiffApplications for exact declaration order.
+func DiffApplicationMembershipCandidates(before, after ir.World) (ApplicationMembershipCandidateDiff, error) {
+	changes, err := diffApplications(before, after, true)
+	return ApplicationMembershipCandidateDiff{
+		Changes: changes,
+		AuthorityLimits: []string{
+			"candidate-only-not-acceptance-delta",
+			"semantic-and-non-application-changes-not-evaluated",
+			"source-order-and-target-effects-not-evaluated",
+			"dependency-coverage-not-verified",
+		},
+	}, err
+}
+
+func diffApplications(before, after ir.World, normalizeSemanticUses bool) ([]SubjectChange, error) {
+	b, err := flattenApplications(before.Applications, normalizeSemanticUses)
 	if err != nil {
 		return nil, fmt.Errorf("変更前のApplication層: %w", err)
 	}
-	a, err := flattenApplications(after.Applications)
+	a, err := flattenApplications(after.Applications, normalizeSemanticUses)
 	if err != nil {
 		return nil, fmt.Errorf("変更後のApplication層: %w", err)
 	}

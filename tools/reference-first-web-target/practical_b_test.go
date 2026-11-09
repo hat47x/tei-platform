@@ -1,3 +1,5 @@
+//go:build !tei_repair_only
+
 package main
 
 import (
@@ -6,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -22,16 +25,16 @@ import (
 	"tei/internal/workspace"
 )
 
-// 実証記録B（受理待ち）の機械的な証明。詳細はplan/issue/000075-practical-scenario-mvp-demonstration.md。
+// 合成候補を用い、scratch copy上でだけ候補受理ができることを確認する。
 //
-// reference/workspaceには書き込まない。候補 plan/issue/000075-practical-b/candidate.json は、
+// reference/workspaceには書き込まない。合成候補は、
 // workspaceのcopy（t.TempDir）に対してだけ、tools/reference-shared-acceptanceのCLIで受理する。
 // そのpackageはmain packageなのでimportできず、CLIを実行して受理する。
 //
 // このtestが示すのは、scratch copyの中で候補がacceptedになり、order_entryの宣言と評価がその規則を含むことだけである。
 // 実際のowner受理、Gate Evidence、browser上の表示は示さない。
 const (
-	practicalBCandidate = "plan/issue/000075-practical-b/candidate.json"
+	practicalBCandidate = "tools/reference-first-web-target/testdata/line-number-positive.synthetic-candidate.json"
 	practicalBRule      = "sales.order_line.line_number_positive"
 )
 
@@ -291,10 +294,55 @@ func copyPracticalBWorkspace(t *testing.T, src, dst string) {
 		if err != nil {
 			return err
 		}
+		// This historical candidate fixes LF Source fingerprints. Reconstruct
+		// that fixture only in scratch, even after an autocrlf checkout. Runtime
+		// loaders and the reference baseline must keep their exact bytes.
+		if ext := filepath.Ext(rel); ext == ".tei" || ext == ".sql" || ext == ".md" {
+			data = bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n"))
+		}
 		return os.WriteFile(target, data, 0o644)
 	})
 	if err != nil {
 		t.Fatalf("workspace copyを作れません: %v", err)
+	}
+}
+
+func TestPracticalBScratchFixtureLineEndings(t *testing.T) {
+	for _, newline := range []string{"\n", "\r\n"} {
+		t.Run(fmt.Sprintf("newline-%x", newline), func(t *testing.T) {
+			source, scratch := t.TempDir(), t.TempDir()
+			original := []byte("application fixture {" + newline + "}" + newline)
+			binary := []byte{0, '\r', '\n', 0xff}
+			if err := os.WriteFile(filepath.Join(source, "application.tei"), original, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(source, "attachment.bin"), binary, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(source, "query.sql"), []byte("select 1;"+newline), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(source, "README.md"), []byte("managed fixture"+newline), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			copyPracticalBWorkspace(t, source, scratch)
+			copied := readPracticalBTree(t, scratch)
+			if copied["application.tei"] != "application fixture {\n}\n" {
+				t.Fatal("scratch Source does not match the fixed LF fixture")
+			}
+			if copied["attachment.bin"] != string(binary) {
+				t.Fatal("non-Source bytes changed")
+			}
+			if copied["query.sql"] != "select 1;\n" {
+				t.Fatal("scratch SQL does not match the fixed LF fixture")
+			}
+			if copied["README.md"] != "managed fixture\n" {
+				t.Fatal("scratch managed documentation does not match the fixed LF fixture")
+			}
+			if got := readPracticalBTree(t, source); got["application.tei"] != string(original) || got["attachment.bin"] != string(binary) || got["query.sql"] != "select 1;"+newline || got["README.md"] != "managed fixture"+newline {
+				t.Fatal("fixture preparation changed its source")
+			}
+		})
 	}
 }
 

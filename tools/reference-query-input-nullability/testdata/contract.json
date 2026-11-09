@@ -1,0 +1,25 @@
+{
+  "schema": "tei.reference.query-input-nullability-contract/v0",
+  "id": "customer.find",
+  "version": "1",
+  "inputs": [
+    {
+      "name": "customer_id",
+      "type": "customer.customer_id",
+      "presence": "required",
+      "null": "forbidden"
+    },
+    {
+      "name": "nickname",
+      "type": "std.text",
+      "presence": "optional",
+      "null": "allowed"
+    },
+    {
+      "name": "region",
+      "type": "std.code",
+      "presence": "optional",
+      "null": "forbidden"
+    }
+  ]
+}

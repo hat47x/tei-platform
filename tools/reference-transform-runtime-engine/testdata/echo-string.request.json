@@ -1,0 +1,12 @@
+{
+  "schema": "tei.reference.transform-engine-request/v1",
+  "inputs": [
+    {
+      "name": "message",
+      "value": {
+        "kind": "string",
+        "string": "hello from exact engine"
+      }
+    }
+  ]
+}

@@ -1,0 +1,234 @@
+# Desktop Studio Hostの操作・状態・資源境界（設計候補）
+
+- **状態**: 設計候補。Wailsの実機起動、Desktopの操作E2E、OS別の安全性・配布検証は未実施。
+- **整理日**: 2026-10-13
+- **対象**: 開発者向けDesktop Studioの外側のHost。CLI/Webと共有するApplication Operationの利用者。
+- **既存の担当**: [#1158](https://github.com/hat47x/tei-platform/issues/1158)（型付き操作契約）、[#1124](https://github.com/hat47x/tei-platform/issues/1124)（三視点の編集・投影）、[#1178](https://github.com/hat47x/tei-platform/issues/1178)（情報開示）、[#259](https://github.com/hat47x/tei-platform/issues/259)（第二Application Target）、[#1180](https://github.com/hat47x/tei-platform/issues/1180)（Driver Scenario）。
+- **前提文書**: [CLI主入口](CLI_FIRST_INTERFACE_DESIGN.md)、[経路間の業務機能完全性](CROSS_ROUTE_FUNCTIONAL_PARITY_AND_TEST_DERIVATION.md)、[全体構成](../../docs/architecture.md)、[実装状況](../../docs/status.md)。
+
+## 1. 対象と非対象
+
+Desktop Studioは、Sourceの参照・編集提案・差分確認・受理・投影に使う**開発者向けのAuthoring Client**である。Canonical SourceやApplication Driverの第二実装ではない。Web/CLIと同じ意味操作、Validation、Shared Acceptance、Authorization、Plugin/Capability解決を再利用する。
+
+**生成業務アプリケーションのDesktop Targetとは別物**である。
+
+```text
+                         Canonical Source / Shared Acceptance
+                                           ^
+                                  Application Services
+                                           ^
+                   +-----------------------+----------------------+
+                   |                       |                      |
+                CLI adapter             Web adapter       Desktop Studio adapter
+                   |                       |                      |
+               argv/stdin             HTTP/Auth           Wails/WebView/Host
+```
+
+- Studio HostのWebView、IPC、ファイル選択、ウィンドウ状態をCanonicalに持ち込まない。
+- StudioがWailsで動いたことを、生成業務Desktop Targetの実証やPAS-04の第二Target合格とは数えない。
+- Generated Desktop Targetが必要になったら、[#259](https://github.com/hat47x/tei-platform/issues/259)でTarget-neutral Presentation IRから独立したTarget Packとして検証する。
+- Desktop導入を口実に第二Plugin Resolver、第二Policy Engine、CLI子プロセスによる業務APIの常用経路を作らない。
+- 初期実装の置き場やGo package名、永続schemaは[#1158](https://github.com/hat47x/tei-platform/issues/1158)の実consumerを確認してから決める。
+
+### 現行の共通Operationから見える制約
+
+- `internal/operations/validate.go` の `ValidateWorkspace` は現に存在するread-only入口であり、Source変更や受理権限は提供しない。
+- `internal/operations/inspect.go` は正規化されたWorldとSource Indexの投影を返すが、`WorldFingerprint` / `SourceIndexFingerprint` は観測値であり、書込みrevisionや受理許可ではない。`internal/operations/snapshot.go` にもその区別が明記されている。
+- したがって、既存のfingerprint値をそのままDesktopの楽観ロックに転用しない。書込み直前の実Source byte照合と、既存Acceptanceのrevision/authority条件を橋渡しする最小Operationが必要であり、この接続は**未実装・未検証**である。
+
+## 2. 呼出し経路と型付きOperation
+
+```text
+Desktop UI
+  -> Wails service binding / Host IPC
+  -> Desktop Studio Adapter（Hostの入力検証・変換）
+  -> framework-neutral Application Operation
+  -> existing Studio/Source/Acceptance/Driver/Authorization
+  -> typed Result/Diagnostic/Failure + provenance
+  -> UI projection
+```
+
+### 2.1 最初の操作集合（候補）
+
+| 操作意図 | 作用 | 所有者 | 初期評価 |
+| --- | --- | --- | --- |
+| Workspaceの選択・読込み | local read | Host + 既存Workspace操作 | 実Path・ファイル内容を照合 |
+| Validate / Inspect / Trace | read | 共通Operation | 出所情報は閲覧と外部送信を分けて認可 |
+| Proposal Preview | proposalのみ | Studio Service | Accepted Sourceを変更しない |
+| Accept / Reject | protected mutation / decision | Shared Acceptance | Revisionと実Sourceを再検証 |
+| Driver Scenario確認 | read / isolated execute | 既存Driver | 本物の業務副作用には実行権限と分離されたEvidence |
+| Progress / Cancel | Host control | Host + operation lifecycle | eventを新しいmutation経路にしない |
+
+**下記は試験用の概念的なメッセージ形状であり、採用済みAPI・schemaではない。**
+
+```json
+{
+  "operation": "studio.proposal.preview",
+  "workspaceRef": "workspace-handle-01",
+  "baseModelRevision": 214,
+  "sourceSnapshot": "sha256:...",
+  "candidateRef": "draft-12"
+}
+```
+
+- `workspaceRef`はHostで解決した限定的な参照。入力文字列やファイルパスそのものを権限とみなさない。
+- `baseModelRevision`はAccepted Modelの競合検知。`sourceSnapshot`は外部ファイル編集の検知に必要な**別の情報**。前者だけで後者を代用しない。
+- `candidateRef`は未受理の候補の識別子。受理前の候補をAccepted Sourceとして参照しない。
+- Principal、認証済みCaller、tenant/scope、Policy revision、Resource Leaseは、検証済みExecution Contextから渡す。WebViewやAIが送った自己申告は権限にならない。
+- 操作結果はBusiness Outcome、Execution Error、Diagnostic、独立Observation、Host transport failureを区別する。UIの「成功表示」やIPC正常応答は業務成功の証拠ではない。
+- 進捗通知・ファイル監視イベントはread-onlyのHost通知。Acceptや外部副作用をイベント購読だけで発火させない。
+- 副作用の完了が不明な場合は`UNKNOWN`として観測を求め、UI再接続やリトライで無条件に再実行しない。
+
+### 2.2 最初のAuthoring一巡
+
+1. Workspaceを開き、Accepted Sourceの`modelRevision`と対象Sourceのsnapshot/fingerprintを取得する。
+2. Data / Function / BusinessのProjectionから変更候補を生成し、PreviewでSemantic Diff、Validation、Persistence・UI影響を返す。
+3. PreviewはAccepted Sourceを変更しない。Rejectも変更しない。
+4. Accept直前にAuthority、Revision、参照先、Sourceの実バイト、必要なResourceを再確認する。stale/unknown/deniedならfail closed。
+5. Shared Acceptanceへ引き渡し、再読込みしたAccepted SourceからProjectionを作り直す。UI内の変更済みオブジェクトを正本として再利用しない。
+6. 手編集・AI提案・CLI・Webからの同内容の変更は、Host表現を除いた意味と失敗分類を比較する。
+
+## 3. Desktop固有の状態分類
+
+| 状態 | 保存先・権限 | Sourceへの反映 |
+| --- | --- | --- |
+| Accepted Source / modelRevision | Workspaceの既存Authority | Shared Acceptance経由のみ |
+| 編集中のDraft | Host管理の限定的な作業領域 | 明示受理まで反映しない |
+| 未受理CandidateとPreview | Candidate Store / 派生Cache | Preview/Rejectでは変更しない |
+| Data/Function/Business Projection | Source revisionに紐付く再生成可能なCache | 正本にはしない |
+| 選択・タブ・パネル・ウィンドウ位置 | DesktopのUI設定 | 業務意味にしない |
+| 進行中Operation / 外部副作用 | 既存Run/Execution Authorityと必要なHost receipt | UI状態だけで完了を確定しない |
+| OS秘密情報 / Resource Lease | OSのSecret Adapter / Resource Broker | Draft/Log/Canonicalへ埋め込まない |
+
+### 3.1 ファイル変更と競合
+
+- Hostのファイル監視は**変更の可能性の通知**に限る。通知回数・mtime・Watcherの順序をAccepted revisionと同一視しない。
+- 保存またはAccept前に対象Sourceの実バイト指紋を取り直す。外部エディター・Git操作・別TEIプロセスによる変更を検知したら、古いPreviewから自動確定しない。
+- Snapshotが一致しなければ差分確認・再Preview・再受理を要求する。Watcherの通知漏れでも保存時の検査で捕捉する。
+- 出力先がSymlink等でWorkspace外へ逸脱しないことを、開く時点だけでなく、実際の読取り／書込み直前のHost境界で確認する。Path文字列の正規化だけで競合・差替えに安全とは宣言しない。
+- 原子的なSource更新や複数ファイル更新の成否・ロールバックは既存Acceptance/Source所有者の契約に従い、Hostで擬似的な第二トランザクションを作らない。
+- 同じWorkspaceを複数ウィンドウ・プロセスから扱う場合、UIタブごとの排他ではなく、Sourceのrevision/snapshot条件で衝突を判定する。
+
+### 3.2 クラッシュ・復旧
+
+1. WebViewまたはDesktop Host再起動後、最初にAccepted Sourceを再読込みする。
+2. 保存済みDraftは、出所・保存時の基準revision・内容の機密区分を確認したうえで復元候補として表示する。**自動Acceptしない**。
+3. Draftの安全な保存が未実装なら、その状態を利用者へ示し、機密Draftを安易に平文ファイルへ保存しない。
+4. Hostが不明な外部Commandを再実行してはならない。Durable Run/Observationで状態を確認し、未知なら利用者判断へ戻す。
+5. バージョン変更後の旧Draftはschema互換性と出所を検査し、変換不能なら読み取り専用で保全する。
+
+## 4. Host Resourceと安全性
+
+Desktopでローカル実行できることは、外部DB、ネットワーク、Secret、プロセス実行、Pluginの権限を意味しない。
+
+- **File**: 明示的に選んだWorkspace・ファイル範囲だけを扱う。ディレクトリの再解決・Symlink・競合を負例試験に含める。
+- **Process**: 任意shell実行をFrontendへ公開せず、既存のCapability/Providerと許可済み実行の範囲に限定。Hostの環境変数・Secretを暗黙継承させない。
+- **Network / Secret**: Endpoint・作用・Lease期間を制限し、Secretの生値はWebView、Canonical、持続Logへ渡さない。
+- **Authorization**: read、mutation、外部egress、外部effectを分け、各操作直前に必要なAuthorityを確認する。
+- **UI origin / IPC**: 開発用画面の差替え、外部URLのナビゲーション、Deep Link、任意のJS入力を権限昇格経路にしない。公開Serviceと渡すDTOを最小化する。
+- **Observability**: Path・Source Index・対象名も情報開示の対象。Logとクラッシュレポートの送出には[#1178](https://github.com/hat47x/tei-platform/issues/1178)の開示境界を適用する。
+- **Distribution**: OS署名・公証・Artifact署名/検証・更新後の再起動/失敗復旧はHost固有の試験。署名済みという事実を業務Authorizationの代替にしない。
+
+既存のResource Broker / Lease、Plugin Lock、Artifact検証を使い、Desktop固有の汎用Policy EngineやPlugin実行器を複製しない。Hostで制約を実効的に強制できないCapabilityは`unsupported`/`unresolved`にする。
+
+## 5. ローカル・接続・ハイブリッド
+
+| モード | 許される操作 | 明示すべき条件 |
+| --- | --- | --- |
+| Local | ローカルSource参照・検証・ローカル権限内の提案 | 認可されていない外部副作用を伴わない |
+| Connected | 認証済みRemote Providerの利用 | 期限・Policy revision・ネットワーク断・再認証 |
+| Hybrid | ローカルDraft/Sourceと共有先の明示的な統合 | Git/Source競合と業務DB競合を混同しない |
+
+オフラインだからといって、期限切れのRemote Authorizationをローカルの権限で置き換えない。同期不能なら未解決として扱い、過去の成功を再生して共有先の状態を作らない。
+
+Localモードでは認証を要求しないのを原則とする（[ADR-0044](../adr/0044-authentication-not-a-core-concern.md)）。ローカルWorkspaceへの参照・検証・提案・受理にログインやcredentialを要求せず、認証が必要なのはConnected / Hybridで接続先の提供主体（Plugin、既存IdP、Remote Provider）が契約として解決する範囲である。認証機構をStudio HostやCLIの必須依存にしない。
+
+## 6. Wails v3の採否判定（現時点では候補）
+
+第一候補をGo + Wails v3とするが、HostでなくGoの共通Application Serviceが意味操作を所有する。Wails v3の依存は外側のHostへ閉じ込め、Browser共通UIの変更と区別する。
+
+2026-10-13時点の公式資料では、Wails v3はbeta、Go 1.25以上が必要。OS別のWebView Runtime/Toolchainを要求する。リリース番号の固定、Framework APIの互換性、Windows WebView2、macOS WKWebView、Linux WebKitGTKを実機で確認するまでProduction採用は確定しない。
+
+検証時に固定するもの: Host OS/Architecture、Go/Wails version、WebView Runtime、frontend build identity、Application/Source revision、Plugin/Resource構成、再現手順。
+
+Wails依存を外したGo Service/合成Adapterの試験と、実WebView起動・入力・Host permission・OS別配布のE2Eは**別のEvidence**として記録する。
+
+参照: [Wails v3 Installation](https://v3.wails.io/quick-start/installation/)、[Wails v3 FAQ](https://v3.wails.io/faq/)、[Wails Releases](https://github.com/wailsapp/wails/releases)。
+
+## 7. 最小Referenceの受入条件と負例
+
+| ID | 実証条件 | 不合格とする状態 |
+| --- | --- | --- |
+| DS-01 | 一つのAccepted WorkspaceをCLIとIn-process Studio Adapterが同じ意味で読める | 表示だけを同等と判断 |
+| DS-02 | Relation変更のPreview→RejectではSource byte/revision不変 | UI非更新のみで成功 |
+| DS-03 | 同じProposalのPreview→Acceptが共有Acceptanceを通り、再読込み後にRevisionが更新 | WebViewが直接Sourceを書換え |
+| DS-04 | 別プロセス編集・stale revision・fingerprint不一致を拒否 | Watcher通知がなかったので受理 |
+| DS-05 | 権限不足・失効・別Workspaceのmutating actionを拒否 | Desktopはローカルなので許可 |
+| DS-06 | WebView/Host再起動でDraftとAcceptedを取り違えない | Draftの自動受理・副作用再実行 |
+| DS-07 | Hostのfile/process/secret/network denialと不確定結果を識別できる | IPC成功・空の結果を業務成功 |
+| DS-08 | Core・Application ServiceにWails/DOM/Hostのimportがなく、Adapterから受理内部へ直接到達しない | Host固有の第二Mutation経路 |
+| DS-09 | 実Wails起動・Native file dialog・Frontend binding・crash recoveryを少なくともWindows環境で観測 | 合成AdapterのPASSを実HostのPASSへ読み替え |
+| DS-10 | 生成業務Desktop Targetの同等性は[#259](https://github.com/hat47x/tei-platform/issues/259)と[#1180](https://github.com/hat47x/tei-platform/issues/1180)で別Evidenceを取得 | Studio Host成功を第二Target合格とする |
+
+### 推奨する実証順序
+
+1. **[#1158](https://github.com/hat47x/tei-platform/issues/1158)**: 既存`internal/operations`を再利用し、`read/validate`・`preview`・`accept`の必要最小限を型付きOperationへ切り出す。既存のデータ型と一致しないDTOを先に正本化しない。
+2. **[#1124](https://github.com/hat47x/tei-platform/issues/1124)**: 同じServiceで一つのRelation変更をPreview→Acceptし、stale/invalid/unauthorizedを確認する。
+3. **Desktop固有の小さなReference**: 既存Operationの合成Host consumerでDS-01〜DS-08のうちHostに関係する負例を先に実証する。
+4. **Wails v3実機ゲート**: DS-09を実WebViewとOS Resourceで確認し、実行結果からWails採否を決める。
+5. **別Target**: DS-10はStudioと別ブランチ・別成果物・別Evidenceにする。
+
+この文書は要求の新しい正本や実装完了証明ではない。採否は実測・既存担当Issue・設計判断を経て更新する。
+
+<!-- tei-wails-ui-extensions-20261103 -->
+## 8. 2026-11-03 追補：Wailsの上に構築するUI/Go拡張とStudio/生成Targetの切分け（Draft／NOT RUN）
+
+**外部前提の更新**：本書 §6 は2026-10-13時点のbeta情報を残す歴史的記述。Wails公式が2026-10-26に **v3.0.0正式公開**と告知し、正式版は**Go 1.26以上**を要求している。従って以後のPoCは beta/Go1.25 前提でなく、実Wails・Go Toolchain・Frontend runtime/生成Binding・OS別WebViewをexact pinして評価する。公開はTEIのProduction採用・Windows実機検証を意味しない。
+
+**区分**：
+- **Studio（Authoring Client）**：既存 #1158 Typed Operation と #1124 Shared Acceptance を呼ぶ。Wails serviceは外側のtransport/lifecycle adapterであり、Sourceの直接書換え/Business Authorityの正本にならない（既存DS-01〜09）。
+- **生成業務Desktop Application**：Accepted ApplicationからTarget-neutral Presentation/Actionを導き、#997 のUI KitとTarget固有Wails Adapter/Go Serviceを**Build時に静的合成**する対象。#259/#1182 の独立Target Build/配布Evidenceを必要とする。Studioの成果物・DS-09成功を第二Target合格へ流用しない。
+- **Web Browser Target**：共通React等のUI部品を再利用できても、Host側Go service・OS API・local processをBrowserへ露出させない。Browser assetとAPI unit、Origin/Auth/CORS/CSRF/secretの実境界は #1182へ委譲する。
+- **外部プロセス**：独立更新/Native機能/障害隔離の実要件がある場合だけ選択。Wailsを増築する代わりに毎回プロセスを立てることを標準化しない。既存Service Contract/Provider/配置に従い、起動失敗・プロセス終了・ACK喪失/Commit unknownを別扱いにする。
+
+**Go ServiceとUI Extensionの責務**：案件Go serviceは生成物に直接追記せず案件Sourceとして持ち、選択されたService/Operation契約・Binding生成・必要なOS CapabilityをBuild時に登録する。React/TypeScript UI Extensionは #997 のRoot Kitによる公開Slotに provide/replace/decorateし、Wailsの生成Bindingはtransport artifactとして扱う。標準Kitの内部DOMや未公開Go methodへ依存する拡張はUpstream追従保証外。業務Action、Validation、保存Intent、実Provider Commit、Host現在認可をUIやWails serviceへ重複実装しない。
+
+**公開境界とセキュリティ**：同一WebViewに取り込まれた任意JavaScriptは、Kit Slotを使ったことだけでは安全なsandboxにならない。WebView bridgeへ登録するGo methodを絞り、外部URL/非信頼HTML/child frameからの到達、secret、任意file/process、Window lifecycleを実Target条件で検査する。許可・失効・read-onlyはRequest時に再照合。開発・試験用MCP/InstrumentationのProduction物理除去は #2391 の別Evidenceとする。
+
+**既存DSケースへの追加判定（新Gateは設けない）**：
+- **DS-08に加える**：案件Extensionを追加しても共通Operation/AcceptanceへのWails依存逆流、UI→Source/DB直接mutation、第二Resolverを導入しない。
+- **DS-09に加える**：正式版Wails v3.0.0+・Go 1.26+・OS/WebView/Toolchain/Frontend assetの実物版を固定した上で、Service Binding生成・案件Go static composition・起動/終了・untrusted content・更新後の署名/再起動を個別に検証する。
+- **DS-10に加える**：同一Accepted Meaning、Action/Result/Failure/Unknownに対してWeb実Browserと生成Desktop実WebViewの差をTarget別に観測し、Studioと混同しない。
+- **#997 UI-5へ返す**：親Kit旧版→新版、案件Overlay旧版→候補の三者比較、Slot/lifecycle/CSS・exact fingerprint・Target互換・実動作の未実証を診断し、衝突時は稼働中の固定成果物を保持する。
+
+受入Evidenceは **(a) 設計/Reference Resolver、(b) Go/TS buildと依存閉包、(c) 実OS WebView動作、(d) Host認可・Effect/Receipt、(e) 案件UI更新追従** を別列で記録する。今回の追補は文書のみ。Go/Wails実機、生成業務Desktop、独立E2E、正式Extension API/Kit ABI、Owner業務意味受理はすべて**NOT RUN／未採用**。
+
+参照：[UI構成キット階層Reference](../../reference/ui-customization/composition/README.md)、[#997](https://github.com/hat47x/tei-platform/issues/997)、[#1824](https://github.com/hat47x/tei-platform/issues/1824)、[#259](https://github.com/hat47x/tei-platform/issues/259)、[#1158](https://github.com/hat47x/tei-platform/issues/1158)、[#951](https://github.com/hat47x/tei-platform/issues/951)、[#2391](https://github.com/hat47x/tei-platform/issues/2391)。Wails外部根拠：[2026-10-26 v3.0.0告知](https://wails.io/blog/wails-v3-released/)、[Wails Releases](https://github.com/wailsapp/wails/releases)。
+
+<!-- tei-wails-ui-upgrade-live-context-20261103 -->
+## 9. 2026-11-03 横断再深化：Wails UI拡張の実行時継続性とFunction配置（設計／NOT RUN）
+
+#997 UI-5の更新と#1130 Function起動・単一/マルチBuild、#2598 Intent→実Request、#1174 Provider Commit/Receipt、#2391 Wails外部操作の隔離・除去を既存DS試験へ結ぶ。**Wails serviceを共通業務Hostへ昇格させず**、Studioと生成業務Targetを混ぜない。
+
+### 一つの画面と複数の寿命
+同じWails Windowの内側にも、Renderer component（mount/dispose・購読/Focus）、Editing Session（未送信Draft・Context Instance/epoch）、Application Operation（Request/attempt・unknown Commit）、OS Host resource（file handle/process/window）、Browser cache / built asset（版）という異なる寿命がある。Wails window reload後にMarkerが復元されても未送信Draftの実内容やAcceptを復元したことにはならない。逆に、再描画を理由に送信済Actionを再Submitしてはならない。
+
+**受入追加**：
+- DS-04/06：別窓や再起動、Kit v1→v2、Result更新の後着と旧epochが重なるとき、新画面/新Workspaceへ古いイベント・Draft・書込みIntentを流し込まない。未送信Draftを消す必要があるなら利用者に説明し、既存Sessionの保存・復元手段を確認する。見た目の復元≠Sourceの正式Accept。
+- DS-07：Go/Wails bindingが返した成功・Timeout・Window crashは業務結果/Commitと区別。Request送信済みでACK喪失の場合、Operation/Request identityを維持した観測を要求し、自動再送せず旧UI再起動時にも状態不明を表示する。フロント側の同時送信抑止だけを冪等性と扱わない。
+- DS-08：UI Extension/Native componentが直接Source・DBを編集したり、任意Go Methodを実行できる一般Bridgeを持ったりしない。実際の公開MethodとBridge到達性を確認し、拡張のService契約/Target bindingを明示。単なるSlot登録はsandboxではない。
+- DS-09：Wails Window close/reopen、untrusted HTML/navigation、Main/child frame、Go service登録、assetの実digest、frontend bundleのCSS/React競合とIME/focus、起動/停止時のResource解放を実OSごとに観測。開発MCPを組込む場合は#2391に従いProductionビルドで物理不在を証明する。
+- DS-10：同一Business FunctionをWeb/ReactとDesktop/Wailsから呼ぶとき、UI Kit共有部分だけで合格とせず、各Artifactの入口・実Provider経路・Host認可/Disclosure・Business Result/Error/Unknownを独立に比較する。
+
+### FunctionとBuildとの対応（Build管理Ownerへの参照であり第二管理表ではない）
+- 業務System/Subsystem/Functionの定義上の帰属 ≠ UI画面/Slotの配置 ≠ Build Unit/配備Artifact ≠ CLI/HTTP/cron等の外部起動入口。
+- **単一Go実行ファイルを既定**とする。UIとJobを同じArtifactへ静的組み込み可能だが、含有FunctionがそのままCLIやWails Bridgeへ一般公開されるわけではない。呼出対象、必要なGrant/Capability、実Action適用を呼出境界で再確認する。
+- Jobだけ別Buildへ移行する要求が現れた時点で、#1130が担当する既存Function ID→Entry Intent→Target/Build Group→Artifactの導出を利用する。Desktop UI Kitに再入力する配置表は追加しない。UIからJobを起動してもDispatcher/長時間Result/部分失敗/Receiptは通常のAction契約へ戻す。
+- Wails Desktop binary、Web asset、API server、外部Workerは必ずしも同時に更新されない。Build profileとactual artifact identity、旧クライアント/新APIのContract range、公開Endpoint/Callback有無、offline/reconnectを照合し、silent fallbackや旧結果の現在化を拒否する。
+- 依存更新で影響を受けるArtifactだけを再生成できるかは#943/#2600のBuild閉包で評価する。Sourceは同じでもKit/Toolchain/Framework/Providerが変われば、使える旧Evidenceは用途相対に限定される。
+
+**P0 read-only受渡し票（正式Schemaではない）**：
+`[Function/Action ID & accepted revision, UI Extension/Slot & kit pin, context instance/epoch/scope, logical entry, Target/profile, Build unit intent/resolved artifact digest, exposed route, actual Host/Provider/Grant, request/attempt, receipt/observation]`。
+各列の正本は #997/#1158/#1130/#943/#2598/#1174 の**既存Owner**。DS試験は同一試行で照合できた列と未実証列を表示するだけとする。
+
+**受入段階**：P0 契約・Build mappingのread-only説明 → P1 Web/React Slot/Actionの実試験 → P2 Studio Wails service/Window/UI拡張の実OS検証 → P3 **生成**Desktopの第二Target独立比較 → P4 分割Build・混在配備と復旧。UX-08〜14は #997 の追補に置いた。すべて実OS/実Provider/生成Artifactの新規E2Eは **NOT RUN**。新OS permission engine、Kit独自ABI、Scheduler、常駐TEI Hostはこの節では採用しない。

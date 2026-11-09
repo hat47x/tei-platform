@@ -1,86 +1,140 @@
-# TEIの命名とWorkspace identity
+# TEIの名称と共通用語
 
-この文書は、TEIで使う名称と、Workspace・Semantic ID・物理ファイルを混同しないための規則を整理します。名称そのものの変更ではなく、現在採用している命名方針の説明です。
+この文書では、TEIの名称、共通用語、作業領域や意味上の識別子、物理ファイルの呼び方を定めます。本文では、製品名や正式な技術名も含め、まず日本語で自然に説明できる呼び方を選びます。コード上の識別子、ファイル名、コマンド、仕様で定めた値など、参照先や動作を決める表記は変更しません。製品名や規格名の原表記は、対象を正確に特定する必要がある箇所に残します。
 
-## Product name
+## 製品名
 
-現在のプラットフォーム名は TEI（鼎／テイ） です。
+現在の製品名はTEI（鼎／テイ）です。
 
-`TEI`を一つの英語展開へ固定しません。次の3つは競合する正式名称ではなく、同じ設計を異なる面から説明する補助的な読みです。
+TEIの英語展開は一つに定めません。次の表現は競合する正式名称ではなく、同じ設計を別の面から説明するものです。
 
-- **Traceable Execution of Intent** — 意図がSemantic Definition、Realization、Execution、Observation、Evidence、Recoveryまで追跡できること。
-- **Target-neutral Executable Infrastructure** — Semantic / Application Definitionが、特定の実装言語、Database、UI技術、Deployment target、Executorを意味上の特権として持たないこと。
-- **Three-Element Integration** — 異なる層を一つのsource of truthへ潰さずに接続すること。たとえばsemantic / realization / execution、logical / physical / observed、application / database / environmentなどです。
+- **Traceable Execution of Intent** — 意図を意味の定義、実装、実行、観測、検証根拠、復旧まで追跡できること。
+- **Target-neutral Executable Infrastructure** — 意味やアプリケーションの定義が、特定の実装言語、データベース、画面技術、実行先、実行役を優先しないこと。
+- **Three-Element Integration** — 異なる層を一つの正本へ押し込まずに結び付けること。たとえば、意味・実現・実行、論理・物理・観測、アプリケーション・データベース・実行環境の関係を保つことです。
 
-通常のUIや文書で、TEIを毎回これらの英語へ展開して表記する必要はありません。
+画面や文書でTEIを使うたびに、これらの英語表記を添える必要はありません。
 
-## Canonical technical names
+## 本文で使う共通用語
 
-技術上の標準名称は次のとおりです。
+説明文では概念を日本語で表します。英語は、概念名を特定するときや、コード・仕様・文書で使われる識別子を示すときに用います。初出時に英語名を添える場合も、その後の説明は日本語で続けます。英語名だけを並べたり、英語の語句を日本語の文へそのまま差し込んだりしません。
 
-- monorepo: `tei`
-- CLI: `tei`
-- visible workspace declaration: `tei.workspace.yaml`
-- TEI-native DSL extension: `.tei`
-- standard semantic namespace: `std.*`
-- generated artifacts: `.tei-generated/`
-- derived metadata / index / cache / tool state: `.tei/`
-- Go module used by this architecture probe: `tei`
+| 概念 | 本文で使う表現 | 使い分け |
+| --- | --- | --- |
+| Canonical | 正本、正本となる | 意味や情報の基準となる内容を指す。識別子や型の名前に含まれる場合は原表記を保つ。 |
+| Reference | 参照用、参照実装、参照資料 | 実際の役割に合わせて使い分ける。正式な資料名や型名は原表記を保つ。 |
+| Source / Source Index | ソース / 入力元索引 | コードや定義ファイルは「ソース」、意味の定義元を示す索引は「入力元索引」、情報の出どころは「情報源」とする。 |
+| Evidence | 検証根拠、根拠 | 検証や判断を支える資料を指すときは「検証根拠」とする。 |
+| Gate | 判定段階 | Gate A、Gate B、Gate Cなどの正式な識別名は維持し、本文では「判定段階A」のように書く。 |
+| Target | 実行先、対象環境 | 配備・実行先は「実行先」、評価の対象全般は「対象」とする。正式名称は維持する。 |
+| Provider | 提供元 | 外部機能の提供元を指す。コード上の型名や境界名は維持する。 |
+| Application | アプリケーション | 製品や定義の正式名称に含まれる場合を除く。 |
+| Capability | 機能、実行能力 | 利用者向けの機能は「機能」、実行できる操作の種類は「実行能力」とする。 |
+| Runtime | 実行環境 | 実行時の状態や動作は「実行時」とする。 |
+| Workspace | 作業領域 | 製品名や固定の設定項目名に含まれる場合は原表記を保つ。 |
+| Authority | 権限、判断権限 | 操作の許可は「権限」、受理や決定を行う権限は「判断権限」とする。 |
+| Proposal / Acceptance | 提案 / 受理 | 変更案と、その案を正式な情報源へ取り込む判断を指す。 |
+| Observation | 観測 | 外部状態を実際に調べて得た結果を指す。 |
+| Contract | 契約、仕様 | 構成要素間で合意した境界は「契約」、記述された条件は「仕様」とする。 |
+| Revision | 版 | 内容の識別に使う値や更新単位を指す。 |
+| Artifact | 成果物 | 生成・配布・検証の対象となるファイルやデータを指す。 |
+| Traceability | 追跡可能性 | 由来や変更の関係をたどれる性質を指す。 |
+| Handoff | 引継ぎ | 作業や責任を次の担当へ渡すことを指す。 |
+| Product / Requirement | 製品 / 要求 | 文書名に英語が含まれていても、見出しや説明では日本語にする。 |
+| Architecture | 構成、設計 | システム全体の構造は「構成」、設計内容全般は「設計」とする。 |
+| Issue / PR | 課題 / プルリクエスト | GitHub上の作業記録と変更提案を指す。番号や画面上の名称を示す場合を除き、日本語で書く。 |
+| Branch / Commit | ブランチ / コミット | 日本語の技術文書で定着している表現を使う。 |
+| Review | 確認、レビュー | 内容の妥当性を人が調べる場合は「確認」、作業工程やGitHub機能の名称は「レビュー」とする。 |
+| Current / Actual | 現在の / 実際の | 時点や観測対象に合わせて使い分ける。 |
+| Production | 本番環境 | 本番環境での利用や運用を指す。 |
+| Workflow | 手順、処理の流れ | 業務手順と機械処理の流れを区別して書く。 |
+| Identity | 識別子、同一性 | 値を指す場合は「識別子」、同じ対象かどうかを指す場合は「同一性」とする。 |
+| Fingerprint | 照合値 | ハッシュ値を指す場合は、初出時にその旨を明記する。 |
 
-業務上のCanonical IDには`tei.` prefixを付けません。たとえば`sales.order`は`sales.order`のままであり、`tei.sales.order`にはしません。
+表の語は、文の意味に合わせて助詞や語尾を補って使います。文章中では日本語の呼称を使い、表の概念名や識別子の欄では必要な英語表記を使います。異なる意味を一つの用語にまとめません。コードや外部仕様から参照される識別子の値は変更せず、本文ではその役割を日本語で説明します。カタカナ語は日本語として定着した語に限り、製品名や専門用語も原表記を繰り返す必要がないか確かめます。
 
-## Workspace identityは拡張子だけで決めない
+## 標準の技術名称
 
-TEI Workspaceは、`tei.workspace.yaml`と、そこで管理対象として宣言されたsource root / directoryによって識別します。
+次は、コード、設定、文書から参照する正式な名称です。本文で役割を説明するときは、共通用語の表現を使います。
 
-`.tei`はTEI-native DSLの拡張子ですが、「そのdirectoryがTEI Workspaceである」ことを示す唯一の印ではありません。
+- 一つのリポジトリで管理する対象: `tei`
+- コマンドラインの名称: `tei`
+- 作業領域の宣言ファイル: `tei.workspace.yaml`
+- TEI独自の定義言語の拡張子: `.tei`
+- 標準の意味名前空間: `std.*`
+- 生成物: `.tei-generated/`
+- 派生した情報・索引・キャッシュ・ツール状態: `.tei/`
+- この構成検証で使うGoのモジュール: `tei`
 
-物理ファイルは、その用途に自然な形式を保ちます。`.sql`、`.go`、`.json`、`.yaml`、`.md`等をTEI管理下へ置いても、それらを無理にTEI DSLへ変換しません。Editorは管理対象resourceとして列挙できますが、すべてのファイルを同じparserへ押し込めません。
+業務上の正本識別子に`tei.`接頭辞を付けません。たとえば`sales.order`はそのまま使い、`tei.sales.order`とはしません。
 
-この方針では、次の3つを明確に分けます。
+## 作業領域とファイルの識別
 
-- **workspace / unit identity** — directory + manifest / context
-- **semantic identity** — `sales.order`等のCanonical ID
-- **physical representation** — `.tei`、`.sql`、`.go`、`.json`、`.yaml`、`.md`等
+TEIの作業領域は、`tei.workspace.yaml`と、そこで管理対象として宣言されたソースの起点やディレクトリによって識別します。
 
-現在のcompilerは、TEI-native DSL semanticsが必要な`.tei`をparseします。他のmanaged fileはnative fileとして保持・列挙し、必要なProviderやEditor Capabilityが扱います。
+`.tei`はTEI独自の定義言語の拡張子ですが、そのディレクトリがTEIの作業領域であることを示す唯一の印ではありません。
 
-## 現在使っているProduct boundary名
+物理ファイルは用途に合った形式のまま保ちます。`.sql`、`.go`、`.json`、`.yaml`、`.md`などをTEIの管理下に置いても、無理にTEI独自の定義言語へ変換しません。編集機能は管理対象の資源を一覧できますが、すべてのファイルを同じ解析器へ通す必要はありません。
 
-次の名称は、場当たり的に`TEI` prefixを付け直さず、アーキテクチャ上の役割を表す名称として維持します。
+次の三つを区別します。
 
-- **Editor Intelligence** — 切り離し可能なanalysis / intelligence境界。SQL analysisでは現在Python + SQLGlotを使います。
-- **Database Workbench** — schema / query / lineage / planを扱うderived editor projection。Canonical source of truthにはしません。
-- **DatabaseProvider / CatalogReader** — driver-neutralなDatabase observation境界。
-- **Migration Provider / HistoryReader** — 外部migration toolとの統合境界。
-- Execution Plan IR, Physical Schema Snapshot, Derived Query IR, Persistence Mapping — 明示的なmodel / artifact名称。
-- **Deployment Executor SPI** — provider-neutralなcommand境界。
-- **Observation Provider** — provider-neutralなlive-state observation境界。
-- **Evidence Provider** — rollout / decisionに必要なevidenceの境界。
-- **Resource Broker** — logical Resource IDをinvocation-scoped secret handle、network endpoint、mount等へ解決するHost境界。
-- **Sandbox Profile** — 1回のprocess invocationに必要なleast-authority enforcement request。Profileが存在するだけで実際のenforcement済みとはみなしません。
-- **Runtime Policy fingerprint** — Plugin Lock identityとは別のexecution-policy identity。Durable Runが利用するCapability PermissionとResource Bindingを固定します。
+- **作業領域と単位の識別** — ディレクトリと宣言ファイル、または実行時の文脈
+- **意味上の識別** — `sales.order`などの正本識別子
+- **物理的な表現** — `.tei`、`.sql`、`.go`、`.json`、`.yaml`、`.md`など
 
-## Historical references
+現在のコンパイラは、TEI独自の定義言語としての意味を必要とする`.tei`を解析します。他の管理対象ファイルは元の形式のまま保持して一覧に加え、必要な提供元や編集機能が扱います。
 
-X-TEA / XEAD は現在の製品・プラットフォーム名ではありません。
+## 現在使っている製品境界の名称
 
-TEIはX-TEA / XEADの公式な後継・派生プロジェクトを名乗りません。公開資料や参照モデルから得た設計上の示唆を説明するとき、またはprovenanceを保つ必要がある既存artifactを指すときに、独立した参照対象として歴史的名称を用います。
+次の名称は、個々の役割を示す正式名称として維持します。本文では最初に役割を日本語で説明します。
 
-新しい実装symbol、Repository path、CLI command、generated artifact、Canonical DefinitionではTEIの名称を使います。
+- **Editor Intelligence** — 切り離して使える分析機能の境界。SQLの分析には現在PythonとSQLGlotを使います。
+- **Database Workbench** — スキーマ、問い合わせ、由来、実行計画を扱う派生表示。正本にはしません。
+- **DatabaseProvider / CatalogReader** — データベース製品に依存しない観測境界。
+- **Migration Provider / HistoryReader** — 外部の移行ツールと連携する境界。
+- **Execution Plan IR、Physical Schema Snapshot、Derived Query IR、Persistence Mapping** — 明示的なモデルや成果物の名称。
+- **Deployment Executor SPI** — 提供元に依存しないコマンド実行境界。
+- **Observation Provider** — 提供元に依存しない実環境の状態観測境界。
+- **Evidence Provider** — 導入や判断に必要な検証根拠を提供する境界。
+- **Resource Broker** — 論理資源の識別子を、実行ごとの秘密情報参照、接続先、マウントなどへ解決する実行環境の境界。
+- **Sandbox Profile** — 一回のプロセス実行に必要な最小権限の要求。設定があるだけで、実際に制限が働いたとはみなしません。
+- **Runtime Policy fingerprint** — Plugin Lockとは別の実行方針の識別値。長時間実行では、利用する機能の権限と資源の対応付けを固定します。
 
-## Naming rule
+これらの名称は、コード上の型名、API、設定名、文書への参照に必要な場合に原表記で記します。本文では日本語の役割名を優先し、英語名の列挙だけで説明を済ませません。
 
-概念に明確なdomain / architecture上の役割名がある場合は、その名称を優先します。`Database Workbench`、`Execution Plan IR`、`Migration Provider`のような語へ、機械的にすべて`TEI`を付ける必要はありません。
 
-`TEI` prefixは、プラットフォーム、CLI / module / repository boundaryを示す場合や、他システムとの区別が必要な場合に使います。
+## テストの判定根拠とOracle Databaseを区別する
 
-## PluginとBundleの命名
+テスト理論でいう *test oracle* の意味では、TEIの日本語説明に「Oracle」を使用しません。データベース製品のOracleとの混同を防ぐため、次の具体的な用語を使います。
 
-TEIが配布するPlugin package IDにはTEI package namespaceを使います。例として`tei.migration.atlas`、`tei.database.postgres`があります。
+- **テスト判定基準**：入力と実測結果を合格・不合格に分類する規則の総称。
+- **独立期待値**：検査対象の実装から独立した手段・資料によって導出した期待結果。値そのものを指すときに使用します。
+- **独立検証基準**：期待値の出典、適用範囲、判定規則、負例を含む検証の根拠。値だけでは足りないときに使用します。
+- **期待結果の妥当性**：期待値と判定規則が対象の意味・定義域に照らして正しいこと。
+- **期待結果の出典**：期待値を誰が・どの資料・版・方法から導出したか。
+- **適合判定**：定義した基準と実測結果を照合する行為。実行成功や業務Ownerによる受理とは区別します。
 
-Capability IDは`migration.atlas`、`database.postgres`、`runtime.reference`のように役割を表す名称のままにします。Bindingが指すのはpackageそのものではなくCapabilityだからです。
+一方、RDBMSの製品名は **Oracle Database** と明記します。実装上の `oracle` パッケージ、既存のAPI・ファイル名・テスト用ID、過去のEvidenceや外部への参照は、名称変更によって互換性・参照可能性を損ねないよう別途評価します。歴史的な引用やコード識別子を、説明文の用語統一だけを理由に書き換えません。
 
-Bundle IDは、`tei.reference.providers`のように、まとめて配布するpackage setを識別します。
+## X-TEA / XEADとの関係
 
-業務上のCanonical IDには、ここでも`tei.` prefixを付けません。
+X-TEA / XEADは現在の製品名やプラットフォーム名ではありません。
+
+TEIはX-TEA / XEADの公式な後継・派生プロジェクトを名乗りません。公開資料や参照モデルから得た設計上の示唆を説明するとき、または出どころを保つ必要がある既存成果物を指すときに、歴史的な名称を参照先として使います。
+
+新しい実装上の名前、リポジトリ内の場所、コマンド、生成物、正本の定義にはTEIの名称を使います。
+
+## 命名の原則
+
+概念に明確な分野上・構成上の役割名がある場合は、その名称を優先します。`Database Workbench`、`Execution Plan IR`、`Migration Provider`のような正式名称へ、機械的にすべて`TEI`を付ける必要はありません。
+
+`TEI`接頭辞は、プラットフォーム、コマンドライン、モジュール、リポジトリの境界を示す場合や、他システムと区別する必要がある場合に使います。
+
+## 拡張機能と配布一式の命名
+
+TEIが配布する拡張機能の識別子には、TEIの名前空間を使います。例は`tei.migration.atlas`、`tei.database.postgres`です。
+
+機能の識別子は、`migration.atlas`、`database.postgres`、`runtime.reference`のように役割を示す名称のままにします。対応付けが指すのは拡張機能そのものではなく、そこから利用する機能だからです。
+
+配布一式の識別子は、まとめて配布する構成要素を示します。例は`tei.reference.providers`です。
+
+業務上の正本識別子には、プラグインの識別子と異なり、`tei.`接頭辞を付けません。

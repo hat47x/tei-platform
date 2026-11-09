@@ -1,0 +1,10 @@
+{
+  "schema": "tei.reference.order-assist.approval-policy/candidate-v0",
+  "version": "discount-approval/v1",
+  "stages": [
+    {"id": "S1-manager", "role": "manager"},
+    {"id": "S2-sales-head", "role": "sales-head", "sendbackTo": "S1-manager"},
+    {"id": "S3-director", "role": "director", "creditBefore": true, "sendbackTo": "S2-sales-head"}
+  ],
+  "sendbackInvalidates": "target-and-later"
+}

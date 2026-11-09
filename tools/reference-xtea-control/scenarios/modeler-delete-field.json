@@ -1,0 +1,19 @@
+{
+  "name": "modeler-delete-field",
+  "description": "Activate the TXTEKIYO field node, invoke the Modeler delete action, save, and verify that the field is removed from the XML. Uses a disposable MfgOrder.xead copy. The node must be activated first because the delete action reads the current tree node.",
+  "steps": [
+    { "op": "wait_window", "title": "X-TEA Modeler", "timeoutMs": 30000 },
+    { "op": "select", "selector": { "role": "tree" }, "path": [0, 2, 0, 0, 0, 0, 3] },
+    { "op": "key", "selector": { "role": "tree" }, "key": "ENTER" },
+    { "op": "sleep", "ms": 1000 },
+    { "op": "set", "selector": { "window": "X-TEA Modeler", "path": "0.1.2.11.0.1.0.0.0.1" }, "value": "削除テスト" },
+    { "op": "invoke_method", "selector": { "role": "window", "window": "X-TEA Modeler" }, "method": "jMenuItemXeadTreeNodeDelete_actionPerformed" },
+    { "op": "sleep", "ms": 1000 },
+    { "op": "invoke", "selector": { "window": "X-TEA Modeler", "path": "m.0.7" }, "settleMs": 1000 },
+    { "op": "wait_window", "title": "バックアップの確認", "timeoutMs": 30000 },
+    { "op": "invoke", "selector": { "window": "バックアップの確認", "role": "button", "text": "はい" }, "settleMs": 1000 },
+    { "op": "wait_window", "title": "バックアップの確認", "state": "absent", "timeoutMs": 30000 },
+    { "op": "sleep", "ms": 1500 },
+    { "op": "file_not_contains", "path": "build/modeler-fixture/MfgOrder.xead", "contains": "削除テスト" }
+  ]
+}

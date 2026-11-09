@@ -1,0 +1,210 @@
+# Local Build Artifact Store Reference
+
+GitHub #1105 の最小Referenceです。
+
+Build / Runtime Lockが固定したSHA-256 digestからexact artifact bytesを再取得するための、local content-addressed directoryだけを扱います。
+
+production Artifact Registry、cache、Acceptance Authorityではありません。
+
+## Identity
+
+```text
+Artifact identity = exact SHA-256 digest
+Locator           = store-relative content-addressed locator
+```
+
+同じbytesを異なるstoreへ置いてもdigestは同じです。store rootやabsolute Host pathをartifact identityへ含めません。
+
+Receiptの`Locator`は`sha256/<64-lowercase-hex>`のstore-relative形式です。別Host / 別store rootへEvidenceを持ち運んでもabsolute pathを持ち込みません。
+
+## Layout
+
+Reference layout:
+
+```text
+<store-root>/
+  sha256/
+    <64 lowercase hex>
+```
+
+入力digestは現行TEIのSHA-256 validationと合わせてhex大文字小文字を受理し、store pathはlowercaseへ正規化します。
+
+mutable tag、friendly name、latest pointerは持ちません。
+
+## Put
+
+`PutBytes`は:
+
+1. input bytesからSHA-256を計算
+2. 同digest pathが既にあればstored bytesを再検証
+3. 無ければsame-directory tempへ書く
+4. temp bytesをdigest再検証
+5. hard linkでno-clobber publish
+6. concurrent writerが先に同digest pathを作った場合は、そのstored bytesを再検証
+7. digest一致ならidempotent success
+
+とします。
+
+既存content-addressed pathが壊れている場合、正しいbytesで暗黙修復しません。corruptionをEvidenceとして表面化させ、fail-closedです。
+
+## Get
+
+`GetBytes(expectedDigest)`はstore filenameを信用しません。
+
+- symlink / non-regular objectをreject
+- configured Reference maxBytesを超えるobjectをreject
+- open前後でsame fileを確認
+- bytesを読みながらSHA-256を再計算
+- expected digest不一致をreject
+- read後にpathが別fileへ差し替わっていないことを確認
+
+unknown digestはnot-foundとして区別します。
+
+## Bounded Reference profile
+
+このReferenceは`maxBytes`をopen時に明示し、`GetBytes`の無制限allocationを避けます。
+
+この値はartifact content identityではなく、local consumerのresource policyです。別のmaxBytesで同じstoreを開いてもdigest identityは変わりません。
+
+productionで大きなartifactを扱う場合はstreaming materialization等の別APIを検討できます。最初のReferenceから無制限readへはしません。
+
+## Authority
+
+store receiptは次を明示します。
+
+```text
+store availability != artifact trust
+store availability != build provenance
+store availability != Acceptance Authority
+store availability != Runtime Authority
+locator != content identity
+```
+
+bytesをdigestどおり再取得できても、そのartifactのBuild Attestationや現在のTrustは#1104等で別に検証します。
+
+## Artifact Set
+
+#1102のArtifact Setを保存する場合も、このstore primitiveはmember bytesをdigestで扱うだけです。
+
+Set manifestやRole解決は上位契約です。Artifact Set manifestだけ存在してmemberが欠ける状態を「set available」と判定する責務は、この最小Storeへ入れません。
+
+## 非目標
+
+- remote object storage
+- OCI / package registry
+- replication
+- GC
+- cache replacement
+- rebuild-on-miss
+- crash recovery / orphan temp GC
+- signature / Attestation verification
+- Runtime deployment selection
+
+
+## Filesystem boundary
+
+Store open時に`sha256/`directoryのfilesystem identityを保持します。
+
+put / get時に:
+
+- algorithm directoryがsymlinkへ変わっていない
+- directory自体が別inodeへ差し替わっていない
+
+ことを再確認します。
+
+content-addressed filenameだけ正しくても、Store directoryを後から別場所へ差し替えてartifactを書かせる状態を受理しません。
+
+normal concurrent putではsame-directory tempをno-clobber hard linkでpublishし、各operation終了時にtemp linkをcleanupします。crash途中のorphan temp回収は非目標のままです。
+
+このReferenceは悪意あるfilesystem管理者に対する完全なsandboxを主張しません。Store rootはTEI build processが管理できるfilesystem領域であることを前提とし、その範囲でpath差替え・symlink・content driftをfail-closedにします。
+
+## Build Lock bridge
+
+current `internal/plugin.LockedBuild.ArtifactDigest`から、Store固有locatorをLockへ追加せずexact bytesを再取得できることをtestします。
+
+```text
+LockedBuild.ArtifactDigest
+  -> Local Artifact Store GetBytes(expected digest)
+  -> reverified exact bytes
+```
+
+Lockが保持するのはcontent identityです。Store rootやrelative LocatorはStore側のretrieval contextであり、Build Lock / Runtime Lockのlogical identityへ混ぜません。
+
+Store missやcorruptionが起きても、Lockを別digestへ暗黙更新しません。
+
+## Evidence runner
+
+```bash
+go run ./tools/reference-build-artifact-store
+```
+
+固定fixtureで次を実行します。
+
+1. 一時Storeを作成
+2. artifact bytesをPut
+3. current BuildPlanからLockedBuildを作成
+4. `LockedBuild.ArtifactDigest`だけでGet
+5. Storeを再open
+6. 同じLock digestから再取得
+7. exact bytes一致を確認
+8. JSON Evidenceをstdoutへ出力
+9. 一時Storeを削除
+
+EvidenceにはStore rootのabsolute pathを含めません。
+
+Receipt Locatorはstore-relative `sha256/<hex>`だけです。
+
+runner成功はStore availability / Build provenance / Acceptance / Runtime Authorityを意味しません。
+
+## 選択済み取得サービスと実CASの横断試験（Issue #1570）
+
+`semantic_distribution_test.go`は、既存の独立した試験を拡張し、
+Composition Kernelの`Registry.InspectWiringSet`による**明示的な取得サービスの構造的候補**、
+`BuildArtifactLock`の厳密な選択、実ローカルCASからのバイト再取得、
+Semanticの内容照合、実Workspaceで記述した外部型参照の検証を一つにつなぐ。
+
+`monitoring`のモデルが参照する`os.process_id`は、
+利用側Sourceにインポート元パスを偽装せずに、
+**明示選択した`os`データ配布物**から検査する。
+配布物がCASに存在しない場合の勝手な代替選択、
+バイト取得中に選択された取得サービスを取り消した場合の旧提案の再利用を拒否する。
+
+```sh
+go test -count=1 ./tools/reference-build-artifact-store
+```
+
+あくまで参照用の選択とローカルStoreとの結合試験であり、
+実Builderの信頼証明、発行者署名、Trusted Publisher登録、
+Host権限、案件による業務意味の受理は**未検証**。
+サービスの契約・Provider IDと配布物Packageの正当な対応関係も
+この試験のみでは実証しない。新たなResolverやArtifact Lockは設けない。
+
+## 時間差の競合の試験（Issue #1149）
+
+`readVerified`は、`Lstat`の後・`Open`の前（`after-lstat`）と、読出しの後・最後の`Lstat`の前（`before-final-lstat`）、`PutBytes`の`os.Link`の前（`before-link`）で、試験用の差込み点`testHook`を呼びます。`testHook`は本番では`nil`で、挙動は変わりません。
+
+次の三点を試験で固定します。
+
+- `Lstat`と`Open`の間にobjectが同じbytesの別のinodeへ入れ替わったら、`errArtifactCorrupt`で拒否する。
+- 読出しの後に経路が別のinodeへ入れ替わったら、`errArtifactCorrupt`で拒否する。
+- 公開の直前に同じ経路のobjectが現れても、`os.Link`は上書きせず、既存objectを保つ。破損したobjectが現れた場合も、修復せず拒否する。
+
+入れ替えるbytesは元と同じにしてあり、digestの照合だけでは検出できないため、open時の同一性検査と読出し後の再確認を個別に確かめられます。
+
+固定できていない範囲は次のとおりです。差込み点は上の三か所だけで、読出しの途中でbytesを書き換える競合や、`algorithm`ディレクトリの入替え時点の網羅は、既存の試験が個別に確かめる範囲にとどまります。悪意のあるfilesystem管理者への耐性は主張しません。
+
+
+## Build出力集合の公開と再確認（#1105・PoC補完）
+
+`publishExactMembers(expected, built)` は既存CASの `PutBytes` と `getMembers` を再利用する、Host/build側からStore側への **明示的な公開操作** です。新しいArtifact Resolver、Artifact Set ID、Trust権限は作りません。
+
+1. 期待するRoleと正確なSHA-256 digest、および実際にBuildが返したRole→bytesの集合を別入力として受け取る。
+2. Role欠落・余剰・重複・不正digestを拒否し、**全Role**について実bytesのdigestが期待に一致するまでCASへ一件も書かない。バイト列は公開前にPrivate Snapshotへコピーする。
+3. 検査済みのRole順で、既存`PutBytes`のno-clobber・冪等CAS公開を行う。
+4. 公開後、全Roleを既存`getMembers`で再取得してdigestを再検証し、全件availableだったときだけ`artifactSetPublication`を返す。返すのはRoleごとのputとgetのReceiptであり、Acceptanceや署名を含まない。
+
+**失敗時の区別**：事前検査が失敗した場合は公開ゼロ。途中のディスク故障・既存破損などの公開失敗後には、最初の一部RoleがすでにCASへ残っていることがある。CASをロールバック可能なトランザクションとして偽装せず、**集合の公開成功結果は返さない**。後続Consumerは`getMembers`を再実行して全memberの現在の可用性を確認する。既存の不正なdigest pathは自動修復しない。
+
+`go test ./tools/reference-build-artifact-store` は、二件の完全公開・順序非依存・冪等再公開、Role欠落・余剰・後段digest不一致の公開ゼロ、破損二件目での部分公開失敗、ゼロ長artifactの正確な取得を検証する。
+
+**未成立**：実Builderからの`ArtifactSet`生成と権限あるPublishの経路、複数CASオブジェクトの原子的Commit、別Host間での可用性、本番署名・Build AttestationのTrust、Deployment/Runtime Acceptance、失効、GC。従来の`buildReferenceEvidence`は固定digestの合成Referenceであるため、この公開経路へ接続しただけでは実Build end-to-endの成立としません。

@@ -1,0 +1,6 @@
+<System DatabasePassword="synthetic-system-secret">
+  <Table ID="T1" Name="Order">
+    <TableField ID="F1" Name="OrderID" DataTypeID="D1" Default="synthetic-default-secret" />
+    <Instance Text="synthetic-instance-secret"><PrivateValue>synthetic-unknown-secret</PrivateValue></Instance>
+  </Table>
+</System>

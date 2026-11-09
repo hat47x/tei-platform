@@ -1,0 +1,21 @@
+{
+  "state": {
+    "pluginId": "p",
+    "areas": [
+      {"key": "a", "mapping": "confirmed", "owners": ["p"]}
+    ],
+    "files": [
+      {"path": "src/order.tei", "segments": [
+        {"key": "s1", "area": "a", "kind": "owned", "bytes": "A1"}
+      ]}
+    ]
+  },
+  "request": {
+    "fromVersion": "1",
+    "toVersion": "2",
+    "convert": false,
+    "changes": [
+      {"area": "a", "kind": "owned", "before": "A1", "after": "A1x", "preservable": true}
+    ]
+  }
+}

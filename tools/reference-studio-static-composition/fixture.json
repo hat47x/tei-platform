@@ -1,0 +1,21 @@
+{
+  "fixtureVersion": "tei-studio-poc-b-reference-v0",
+  "scope": "studio.local",
+  "services": [
+    {"id": "studio.validate", "version": "0.1.0"},
+    {"id": "studio.catalog", "version": "0.1.0"}
+  ],
+  "uiKit": {
+    "schemaVersion": "tei-ui-composition-reference-v0",
+    "kind": "ui-composition-kit",
+    "id": "studio.readonly",
+    "version": "0.1.0",
+    "target": "web",
+    "framework": {"id": "vanilla-dom", "major": 1},
+    "slots": ["graph", "commands"],
+    "changes": [
+      {"op": "provide", "slot": "graph", "implementation": "studio.graph"},
+      {"op": "provide", "slot": "commands", "implementation": "studio.commands"}
+    ]
+  }
+}

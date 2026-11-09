@@ -29,12 +29,19 @@ func (s AuthorityScope) Valid() bool {
 }
 
 type Contract struct {
-	ID                 string `json:"id"`
-	Version            string `json:"version"`
-	RequestSemantics   string `json:"requestSemantics"`
-	ResultSemantics    string `json:"resultSemantics"`
-	FailureSemantics   string `json:"failureSemantics"`
-	ConformanceProfile string `json:"conformanceProfile"`
+	ID                      string                 `json:"id"`
+	Version                 string                 `json:"version"`
+	RequestSemantics        string                 `json:"requestSemantics"`
+	ResultSemantics         string                 `json:"resultSemantics"`
+	FailureSemantics        string                 `json:"failureSemantics"`
+	RequestShape            string                 `json:"requestShape,omitempty"`
+	RequestShapeFingerprint string                 `json:"requestShapeFingerprint,omitempty"`
+	ResultShape             string                 `json:"resultShape,omitempty"`
+	ResultShapeFingerprint  string                 `json:"resultShapeFingerprint,omitempty"`
+	PayloadCodec            string                 `json:"payloadCodec,omitempty"`
+	ShapeIssuer             *InvocationShapeIssuer `json:"shapeIssuer,omitempty"`
+	InvocationEffect        string                 `json:"invocationEffect,omitempty"`
+	ConformanceProfile      string                 `json:"conformanceProfile"`
 }
 
 type Requirement struct {
@@ -148,6 +155,12 @@ func resolveCapability(input ResolveInput) (Resolution, error) {
 
 	if wiring != nil {
 		return Resolution{}, fmt.Errorf("wired provider %s@%s/%s is not conformant for contract %s", wiring.PluginID, wiring.PluginVersion, wiring.ImplementationID, input.Requirement.ContractID)
+	}
+	// Contract-only distribution is valid. Absence of any implementation is
+	// different from a declared Provider that failed scope/conformance checks.
+	// Neither condition authorizes auto-generation or invocation.
+	if len(input.Providers) == 0 {
+		return Resolution{}, fmt.Errorf("no provider implementation for contract %s in scope %s", input.Requirement.ContractID, input.Scope)
 	}
 	return Resolution{}, fmt.Errorf("no conformant provider for contract %s", input.Requirement.ContractID)
 }

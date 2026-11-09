@@ -1,0 +1,27 @@
+{
+  "retrievedAt": "2026-10-21",
+  "source": "https://github.com/xead",
+  "note": "Latest public master at retrieval time. The bridge attaches to any build; these commits identify the source snapshot used for the route inventory.",
+  "repositories": {
+    "XeadModeler": {
+      "url": "https://github.com/xead/XeadModeler.git",
+      "commit": "68f1535b1c5dd80a327dfced37be401ecd3093c9",
+      "license": "BSD-3-Clause"
+    },
+    "XeadEditor": {
+      "url": "https://github.com/xead/XeadEditor.git",
+      "commit": "ee19a27609b2749110ec39b62d4540693347fe09",
+      "license": "BSD-3-Clause"
+    },
+    "XeadDriver": {
+      "url": "https://github.com/xead/XeadDriver.git",
+      "commit": "6c077773b74c6d7dbcc253835cf8d347e4ffb1ef",
+      "license": "BSD-3-Clause"
+    },
+    "XeadServer": {
+      "url": "https://github.com/xead/XeadServer.git",
+      "commit": "7947b52bdb56dc51d2d4c2ba80cba57eda7ece3d",
+      "license": "BSD-3-Clause"
+    }
+  }
+}

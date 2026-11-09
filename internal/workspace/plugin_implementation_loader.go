@@ -2,8 +2,6 @@ package workspace
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"sort"
 
 	"tei/internal/plugin"
@@ -13,28 +11,15 @@ import (
 )
 
 func loadPluginImplementations(root string, r *Result) error {
-	base := filepath.Join(root, "plugin-implementations")
-	var files []string
-	err := filepath.WalkDir(base, func(path string, d os.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			if os.IsNotExist(walkErr) {
-				return nil
-			}
-			return walkErr
-		}
-		if d.IsDir() || d.Name() != "implementation.tei" {
-			return nil
-		}
-		files = append(files, path)
-		return nil
+	files, err := listPinnedDomainSources(root, r, "plugin-implementations", func(name string) bool {
+		return name == "implementation.tei"
 	})
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil {
 		return err
 	}
-	sort.Strings(files)
 
 	for _, path := range files {
-		src, err := os.ReadFile(path)
+		src, err := readSourceForLoad(root, r, path)
 		if err != nil {
 			return err
 		}

@@ -45,6 +45,13 @@ func (r Resolver) InvokeCapability(
 		return CapabilityInvocation{}, fmt.Errorf("Binding %sに対応するAdapter resolverが指定されていません", binding.Binding.Identity())
 	}
 
+	// Adapter resolution may load a Plugin or acquire resources. Reject a request
+	// already cancelled before crossing that boundary; post-resolution cancellation
+	// is guarded again by capabilityinvoke.Invoke immediately before dispatch.
+	if err := ctx.Err(); err != nil {
+		return CapabilityInvocation{}, err
+	}
+
 	adapter, err := adapters.ResolveAdapter(ctx, binding.Binding)
 	if err != nil {
 		return CapabilityInvocation{}, fmt.Errorf("Binding %sに対応するAdapterを解決できません: %w", binding.Binding.Identity(), err)

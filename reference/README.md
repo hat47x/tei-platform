@@ -1,24 +1,24 @@
-# Reference artifacts
+# 参照資料
 
-`reference/` には、TEIの重要な設計境界を小さなシナリオで再現するためのWorkspace、観測状態、golden出力を置いています。
+`reference/`には、TEIの重要な設計上の境界を小さなシナリオで検証するために、作業領域、観測状態、比較の基準となる出力を保存しています。
 
-ここは、CLIが生成した結果を何でも保存しておく場所ではありません。テストや実行例の前提として長く共有する価値があり、別の環境でも同じ状態を再現したいものだけを保持します。
+これらは長期間共有し、異なる環境でも同じ状態を再現するための資料です。
 
-## Reference Workspace
+## 参照用作業領域
 
-`reference/workspace/` は、M0.22.1の主要な設計要素を一つにつないだ小さなTEI Workspaceです。Semantic Definition、Application、Database、Release、Environment、Plugin / Bundleなどを含みます。
+`reference/workspace/`は、M0.22.1の主要な設計要素を組み合わせた、小さなTEIの作業領域です。意味の定義、アプリケーション、データベース、配布版、環境、拡張機能、配布一式などが含まれます。
 
-まずWorkspace自体の整合性は、次のコマンドで確認できます。
+次のコマンドで、作業領域の整合性を確認できます。
 
 ```bash
 go run ./cmd/tei validate -workspace reference/workspace
 ```
 
-参照用のhistorical contractについてwarningが表示されますが、最後に`ok`となれば、このWorkspaceは意図した状態で読み込めています。
+過去の利用契約に関する警告が表示されても、最後に`ok`と表示されれば、作業領域は意図した状態で読み込まれています。
 
 ## `world.json`
 
-`reference/world.json` は、Reference Workspaceを正規化して得られるWorldのgolden snapshotです。
+`reference/world.json`は、参照用の作業領域から生成した、正規化済みの全体モデルを比較するための基準記録です。
 
 ```bash
 go run ./cmd/tei world \
@@ -28,11 +28,11 @@ go run ./cmd/tei world \
 diff -u reference/world.json /tmp/tei-reference-world.json
 ```
 
-Worldの生成結果が変わること自体を禁止しているわけではありません。意味モデルやWorkspaceを意図的に変更した結果として差分が生じた場合は、`world.json`も更新します。その際は、生成物だけを機械的に更新するのではなく、なぜWorldが変わったのかを確認できる状態にします。
+意味モデルや作業領域を意図的に変更した場合は、`world.json`も更新します。ただし、更新する前に、差分が生じた理由を確認してください。
 
-## Plugin Lock
+## 拡張機能の固定情報
 
-`reference/workspace/.tei/plugin-lock.json` は、Reference Workspaceから解決したPlugin Lockのgoldenです。Plugin / Bundleの選択結果とruntime policyの前提を、実行例の間で揃えるために保持しています。
+`reference/workspace/.tei/plugin-lock.json`は、参照用の作業領域で選択した拡張機能の固定情報を保存する基準ファイルです。拡張機能と配布一式の選択結果、実行方針の前提を複数の実行例でそろえるために使います。
 
 ```bash
 go run ./cmd/tei plugin-lock \
@@ -44,31 +44,31 @@ diff -u \
   /tmp/tei-reference-plugin-lock.json
 ```
 
-WorkspaceやPlugin定義を変更したときにこの差分が出た場合も、意図した解決結果の変化かを確認してから更新します。
+作業領域や拡張機能の定義を変更して差分が生じた場合も、意図した選択結果の変化であることを確認してから基準ファイルを更新します。
 
-## WorldとPlugin Lockをまとめて確認・更新する
+## 全体モデルと拡張機能の固定情報をまとめて確認・更新する
 
-`world.json`とPlugin Lockは、同じCanonical Workspaceから導かれる生成物です。片方だけを更新して整合性を失わないよう、通常は次のtoolからまとめて確認します。
+`world.json`と拡張機能の固定情報は、同じ作業領域から生成します。両者の整合性を保つため、通常は次のコマンドでまとめて確認します。
 
 ```bash
 go run ./tools/reference-golden
 ```
 
-このコマンドは既定ではRepositoryを変更しません。現在の`reference/workspace`からWorldとPlugin Lockを生成し、保存済みのgoldenとbyte単位で一致するかを確認します。不一致または未作成のartifactがあれば、対象pathを表示して失敗します。
+このコマンドは通常、リポジトリを変更しません。現在の`reference/workspace`から全体モデルと拡張機能の固定情報を生成し、保存済みの基準記録とバイト単位で比較します。一致しない場合や成果物がまだ作られていない場合は、対象を示して失敗します。
 
-加えて、既定のReference Durable Runである`reference/order_rollout.durable-run.m0.21.start.json`を読み込み、そのEnvironmentに対して現在のCanonical Workspaceから生成したPlugin Lock fingerprintを再計算します。Durable Runに保存された`pluginLockFingerprint`と一致しない場合も失敗します。
+さらに、保存済みの実行記録`reference/order_rollout.durable-run.m0.21.start.json`を既定の入力として読み込みます。記録された環境について、現在の正本から拡張機能の固定情報の照合値を再計算し、実行記録内の`pluginLockFingerprint`と比較します。一致しない場合も失敗します。
 
-この依存検査ではfingerprintを補正しません。Durable Runが古い場合は、後述する`tei deployment-start`の正規経路から再生成します。別のDurable Runを調査するときは`-durable-run <path>`で対象を変更できます。依存検査だけを意図的に外す必要がある調査では空文字を指定できますが、通常のReference確認では外しません。
+この依存関係の検査では照合値を確認するだけで、値は変更しません。保存済みの実行記録が古い場合は、後述の`tei deployment-start`で再生成します。別の記録を調べるときは`-durable-run <path>`で指定します。依存関係の検査を省く場合は、空文字を指定することもできます。
 
-意図したCanonical authoring変更に伴ってgoldenを更新する場合だけ、`-write`を指定します。
+`-write`は、正本を意図的に変更し、それに合わせて基準記録を更新する場合に限って指定します。
 
 ```bash
 go run ./tools/reference-golden -write
 ```
 
-`-write`はWorldとPlugin Lockを更新しますが、Durable Runは書き換えません。更新後のPlugin LockとDurable Runが一致しない場合は、World / Plugin Lockを更新した事実を明示したうえで失敗します。これは依存artifactの更新漏れを検出するための挙動です。
+`-write`を指定すると、全体モデルと拡張機能の固定情報が更新されます。保存済みの実行記録は変更されません。更新した固定情報と実行記録が一致しなければ、変更内容を示して失敗し、関連する成果物の更新漏れを検出します。
 
-`-write`は生成差分の内容が正しいことを自動判定するものではありません。更新後は必ず次のように差分を確認し、Semantic Definition、Application、Database、Plugin / Bundle等の変更から説明できる差分だけを受け入れます。
+`-write`は、生成した差分が正しいかを自動判定しません。更新後は必ず次のコマンドで差分を確認してください。意味の定義、アプリケーション、データベース、拡張機能、配布一式などの変更によって説明できる差分だけを受け入れます。
 
 ```bash
 git diff -- \
@@ -76,61 +76,61 @@ git diff -- \
   reference/workspace/.tei/plugin-lock.json
 ```
 
-個別の`tei world` / `tei plugin-lock`コマンドは、各生成物の仕組みを確認したり個別に調査したりするときの正規入口として引き続き利用できます。`reference-golden`はそれらと同じWorld / Plugin Lock生成APIを使い、日常的な一括確認と更新漏れ防止を担います。
+`tei world`と`tei plugin-lock`も、生成の仕組みを調べるための正式なコマンドです。`reference-golden`は同じ生成用APIを使って、全体モデルと拡張機能の固定情報をまとめて確認し、更新漏れを防ぎます。
 
-## Reference artifactの依存関係
+## 参照資料どうしの関係
 
-現在Repositoryへ保存している主要artifactは、次の依存関係として扱います。
+リポジトリに保存した主な成果物は、次のように依存しています。
 
 ```text
-reference/workspace/                 Canonical authoring
-  ├─> reference/world.json           生成golden
-  └─> .tei/plugin-lock.json          生成golden
+reference/workspace/                 正本の記述
+  ├─> reference/world.json           生成した基準記録
+  └─> .tei/plugin-lock.json          生成した基準記録
           │
-          └─ Plugin Lock fingerprint
+          └─ 拡張機能の固定情報の照合値
 
-reference/observed/production.deployment-state.json   固定fixture
-reference/workspace/ + Plugin Lock + observed fixture
+reference/observed/production.deployment-state.json   固定した試験用データ
+reference/workspace/ + 拡張機能の固定情報 + 試験用データ
   └─> reference/order_rollout.durable-run.m0.21.start.json
-                                                  生成golden
+                                                  生成した基準記録
        └─> tools/reference-deployment-attempt の既定入力
 ```
 
-`reference/observed/`はCanonical Workspaceから自動導出する対象ではありません。外部状態を模した固定fixtureなので、Canonical authoring変更だけを理由に機械的に更新しません。
+`reference/observed/`は正本の作業領域から自動生成するものではありません。外部の状態を模した固定の試験用データであり、正本の記述を変更しても自動的には更新されません。
 
-現時点ではSource Index自体をRepository上のReference snapshotとして保存していません。Source Indexは必要時にCanonical sourceから導出し、将来保存する場合は、この依存関係と再生成経路を明示してから追加します。
+入力元索引そのものは、現時点では参照用の記録として保存していません。必要なときに正本から生成します。将来保存する場合は、ほかの成果物との依存関係と再生成手順を明らかにしてから追加します。
 
-## 観測状態のfixture
+## 観測状態の試験用データ
 
-`reference/observed/` にあるJSONは、実際の本番環境から取得した最新データではありません。Deployment、Validation、Durable Runなどを再現するために、時点を固定した参照シナリオです。
+`reference/observed/`のJSONは、実際の本番環境から取得した最新のデータではありません。配備・検証・実行記録の再現に使うため、特定の時点に固定した試験用データです。
 
 ### `production.deployment-state.json`
 
 通常の展開を始める前の基準状態を表します。
 
 - `order_entry` 3.7.0が稼働中
-- `sales_core` はDatabase Release 4.0.0
-- `master_data.customer` 2.4はobserved stateとして利用可能
+- `sales_core`はデータベースの配布版4.0.0
+- `master_data.customer` 2.4は観測状態として利用可能
 
-`observedAt`の日時は、このシナリオを固定するための値です。現在時刻や実環境の鮮度を示すものではありません。
+`observedAt`はシナリオの時点を表す日時です。現在の時刻や、実環境の情報が新しいことを示す値ではありません。
 
 ### `production.canary.deployment-state.json`
 
-canary展開の途中を表します。
+段階的な切替の途中を表します。
 
 - `order_entry` 3.7.0と3.8.0が並行稼働
-- trafficは70% / 30%
-- `sales_core` はDatabase Release 4.1.0
+- 通信量は70% / 30%
+- `sales_core`はデータベースの配布版4.1.0
 
-このfixtureは、複数Application Releaseが同時に存在する状態やtraffic配分を含め、Deployment validationの境界を確かめるために使います。
+この試験用データでは、アプリケーションの異なる配布版が並行稼働する状態や通信量の配分など、配備時に確認すべき事項を検証します。
 
-## Durable Runの開始状態
+## 保存した実行記録の開始状態
 
-`reference/order_rollout.durable-run.m0.21.start.json` は、`order_rollout@2026.8.27` をproductionへ展開し始める時点のDurable Runです。
+`reference/order_rollout.durable-run.m0.21.start.json`は、`order_rollout@2026.8.27`を本番環境へ配備し始める時点を表す保存済みの実行記録です。
 
-ファイル名に`m0.21`が残っているのは、この実行例がM0.21で導入したHost-supervised lease lifecycleの縦切りを引き続き再現しているためです。Repository全体の現在地がM0.21へ戻ったという意味ではありません。M0.22.1では、この成果を含んだうえでruntime reattachまで設計検証を進めています。
+ファイル名に`m0.21`が残っているのは、M0.21で導入した実行環境による利用権の監督を、この例で引き続き再現しているためです。リポジトリ全体がM0.21へ戻ったという意味ではありません。M0.22.1では、さらに実行状態への再接続まで設計検証を進めています。
 
-このDurable Runは、Reference Workspace、基準となるobserved state、Plugin Lockから再生成できます。
+この実行記録は、参照用の作業領域、基準となる観測状態、拡張機能の固定情報から再生成できます。
 
 ```bash
 go run ./cmd/tei deployment-start \
@@ -147,44 +147,52 @@ diff -u \
   /tmp/tei-reference-deployment-run.json
 ```
 
-Plugin Lockを更新した結果、このdiffが出る場合は`pluginLockFingerprint`だけを手編集しません。`deployment-start`の出力全体を確認し、plan / runtime policy / action構造を含めて現在の入力から説明できる差分であることを確認してからDurable Run goldenを更新します。その後、`go run ./tools/reference-golden`を再実行し、World / Plugin Lock / Durable Runの依存がそろっていることを確認します。
+拡張機能の固定情報を更新して差分が出ても、`pluginLockFingerprint`だけを手作業で書き換えてはいけません。`deployment-start`の出力全体を確認し、計画、実行方針、操作の構成などに生じた差分を現在の入力から説明できることを確かめます。そのうえで保存済みの実行記録を更新し、`go run ./tools/reference-golden`を再実行して成果物の依存関係を確認します。
 
-このファイルは、`tools/reference-deployment-attempt` の既定入力としても使われます。
+このファイルは、`tools/reference-deployment-attempt`の既定の入力にも使われます。
 
 ```bash
 go run ./tools/reference-deployment-attempt
 ```
 
-この実行例の出力には実行時刻に由来する値が含まれるため、出力全体をgoldenとして固定するのではなく、実行が正常に完了することをCIで確認します。
+この実行例の出力には、実行時刻に由来する値が含まれます。そのため、出力全体を基準記録として固定せず、処理が正常に完了したかを自動的に確認します。
 
-## Reference Model Transfer Evidence
+## SUIの段階的移管を試すデータ
 
-`reference/reference-model-transfer/` は、[ISSUE-000078](../plan/issue/000078-reference-model-transfer-gate.md)で進める成熟Reference Model転写のsource-derived Evidenceです。
+`reference/sui-adoption/`は、SUI SensemakingをTEIへ段階的に移せるか検証するために用意した、初期段階の試験用データです。
 
-初回benchmarkの原model / manualはRepository外に保持し、ここにはexact digest、aggregate inventory、初期pressure等、原内容を大量転載せず転写coverageを再現するための情報だけを置きます。
+現時点で固定しているのは、SUIの既存の`IslandHierarchyContractV1`に対応するM1～M4だけです。TEIの意味や製品要求の正本ではありません。段階ごとに判断しながら、読み取り専用の対応付けと検証を試すために、手作業で用意したデータです。
 
-このdirectoryが存在しても、Reference ModelをTEIへ転写済み、original Runtimeとbehavior equivalent、再配布条件確認済みという意味ではありません。判定契約は[Reference Model Transfer Evidence Gate](../plan/REFERENCE_MODEL_TRANSFER_GATE_2026-10.md)を参照してください。
+設計は `../plan/design/SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md`、作業単位は `../plan/issue/000052-sui-reference-adoption-and-plugin-surface-evaluation.md` を参照してください。
 
-## SUI Reference Adoption fixture
+## プロダクト契約の型宣言
 
-`reference/sui-adoption/` は、SUI SensemakingをTEI上へ段階移管できるかを検証するためのStage 0 fixtureです。
+`reference/product-contracts/`は、TAI配下5製品の主要な契約をTEIの型として並べた参照workspaceです。型の宣言だけを持ち、各製品の実装・権限・検証・受理を置き換えません。位置づけと含める型は[README](product-contracts/README.md)にあります。
 
-現時点ではSUI既存の `IslandHierarchyContractV1` に対応するM1〜M4だけを固定しています。TEIのCanonical WorkspaceやProduct Requirementの正本ではなく、Gateを飛び越えずread-only mapping / validationを試すためのhand-written fixtureです。
+`validate`が通ることは、宣言が読めて型名が実在することを示すだけです。能力の出力型と次の入力型の接続は検査しません。`cmd/tei`のGo試験`TestProductContractsReferenceWorkspaceValidates`が、`go test ./cmd/tei`で`validate`の成否を確認します。`worldFingerprint`の固定値は試験に埋め込みません。全PRへの必須検査は増やしません([#2409](https://github.com/hat47x/tei-platform/issues/2409))。
 
-設計は `../plan/SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md`、作業単位は `../plan/issue/000052-sui-reference-adoption-and-plugin-surface-evaluation.md` を参照してください。
+## 技術検証用サンプルの構成
 
-## Reference artifactを追加・更新するとき
+検証用資産を、業務系システムで頻出するが素朴な設計では破綻しやすい要件(ピーキーな要件)を一つの作業の流れで同時に起こし、基盤に技術的な設計圧力をかける題材として、十一の技術検証用サンプルへ再編する案があります。要件の目録、資産の割当て、各サンプルの失敗注入と通しの完了条件は、[技術検証用サンプルの統合設計](../plan/design/TECH_VALIDATION_SAMPLES_2026-10.md)にまとめています。この設計は採用前の提案で、資産の移動や削除はしておらず、この文書の以降の記述は現在の配置のままです。一方、通しの検証は、`order-workflow`を除く十のサンプルについて、入口の`reference/<サンプルの識別子>/README.md`と実装の`tools/reference-*`が`main`に統合されています。いずれも合成データ、同種のDB、模擬の提供元での確認で、実環境での確認ではありません。サンプルごとの範囲と未成立の事項は、設計文書の[7.3節](../plan/design/TECH_VALIDATION_SAMPLES_2026-10.md#73-段階2-通しの検証の追加)と各入口のREADMEを参照してください。
 
-Reference artifactは、生成できるから保存するのではなく、設計境界を再現するための共有基準として必要かどうかで判断します。
+新しい資産を追加するときは、独立した入口を作る前に、統合設計の要件目録と対応表を見て、既存のサンプルの工程や失敗注入として扱えるかを確かめてください。
 
-生成可能なgoldenをRepositoryへ保持する場合は、できる限りCIでも再生成し、保存済みの内容と一致することを確認します。一方、外部状態を模したfixtureは、どのシナリオを表しているのかを説明できる固定値として扱います。
+## 標準CRUDの負例
 
-新しいartifactを追加するときは、少なくとも次の点を説明できる状態にします。
+`reference/standard-crud/`は、操作面の導出が返す未解決を、実際の宣言で固定する負例の作業領域です。主キーも候補キーも無いデータ、同時更新の検出方法が無いデータ、更新の意図はあるがライフサイクルの宣言が無いデータ、書込み専用の別名を一つの作業領域に置き、`validate`は通るが操作としては導出できない状態を再現します。位置づけと期待する未解決は[README](standard-crud/README.md)にあります。製品機能ではなく、参照用作業領域(`reference/workspace`)の代替でもありません。
+
+## 参照資料を追加・更新するとき
+
+成果物を保存するかどうかは、生成できるかどうかでは決めません。設計上の境界を再現する共有の基準として必要かどうかで判断します。
+
+生成可能な基準記録をリポジトリに保存する場合は、できる限り自動検査で再生成し、保存した内容と一致することを確認します。一方、外部状態を模した試験用データは、どのシナリオを表すか説明できる固定値として扱います。
+
+新しい成果物を追加するときは、少なくとも次の点を説明できるようにします。
 
 - 何を再現するためのものか
-- 手書きのfixtureか、他の入力から生成できるgoldenか
+- 手書きの試験用データか、他の入力から生成できる基準記録か
 - 生成できる場合、そのコマンドは何か
-- どのテストまたは実行例がそのartifactに依存しているか
+- どのテストまたは実行例がその成果物に依存しているか
 - 値を更新したとき、設計上どの意味が変わるのか
 
-この考え方の背景は、[ADR-0003](../docs/adr/0003-reference-fixtures.md) に記録しています。
+この考え方の背景は、[ADR-0003](../plan/adr/0003-reference-fixtures.md) に記録しています。

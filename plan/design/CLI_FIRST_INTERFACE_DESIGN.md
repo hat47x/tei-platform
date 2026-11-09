@@ -1,0 +1,252 @@
+# CLIを主入口とするTEIインターフェース設計（初期案）
+
+> 2026-11-08 方針の具体化: [ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)を採用。CLI-firstは共通APIを先に実装して各入口から使う順序を指し、CLI自体に意味処理を所有させる方針ではない。HTTPサーバーは必須にせず、CLI/MCP/HTTP/Web/Desktopの共通意味とAdapter責務・移行手順は同ADRを参照する。過去の候補・検証記録はその時点のものとして残す。
+
+- **状態**: 評価・実装着手中（2026-10-10）。初期のCLI参照実装はPR内の候補であり、mainへ統合済みとは扱わない。
+- **担当課題**: [#1155](https://github.com/hat47x/tei-platform/issues/1155)。
+- **関連文書**: [全体構成](../../docs/architecture.md)、[案件ごとのPlugin構成](PROJECT_PLUGIN_COMPOSITION_DESIGN.md)、[Web構成](WEB_APPLICATION_COMPOSITION_DESIGN.md)、[開発手順](../../CONTRIBUTING.md)。
+
+## 1. なぜCLIから始めるか
+
+TEIは、最初から画面を揃えるよりも、業務モデルを読み取り、整合性を調べ、変更案を作り、受理可能か確かめる流れを先に成立させたい。その入口として、端末や生成AIが同じ操作を再現できるCLIを優先する。Goだけで作れる小さな呼び出し口を先に揃える方が、Webやデスクトップの画面設計に引きずられず、中核機能の不足を発見しやすい。
+
+ただし「CLIを先に作る」は「すべてをコマンドの中に実装する」ではない。コマンド固有の文字列解析、表示形式、終了コードは周辺の関心事とし、意味の読取り、変更案の検証、業務の実行権限をCLIの内部へ閉じ込めない。
+
+## 2. 将来のWebとデスクトップまで共有する境界
+
+```text
+LLM / human / automation        Browser                 Desktop/WebView
+        |                         |                         |
+   tei CLI adapter           HTTP/API adapter         local IPC adapter
+        |                         |                         |
+        +-------------------------+-------------------------+
+                                  |
+                     Application-facing operations
+                      (Go service / typed contracts)
+                                  |
+            +---------------------+---------------------+
+            |                     |                     |
+     Workspace/Source       Proposal/Acceptance     Driver/Capability
+       Canonical Model       existing authority      Runtime/Plugin
+            |                     |                     |
+            +---------------------+---------------------+
+                                  |
+                    Evidence / observation / state
+```
+
+この図は**目標とする依存方向**であり、共通Application Serviceがすべて完成しているという説明ではない。現行`cmd/tei/main.go`には直接各パッケージを呼んでいる箇所が多い。C0では最初の対象として`internal/operations.ValidateWorkspace`を設け、ソース読込み、既存Validation、Source Indexへの投影をCLIの表示処理から切り離した。CLIのテキスト表示とJSON表示は、同じ型付き結果を受け取る。ただし、これは共通Application Service全体が完成したという意味ではない。次に必要な操作から同様の境界を検証する。
+
+共通にするのは、業務上の対象ID、版・fingerprint、Validation結果、Proposal／Acceptanceの成否、権限評価を求める対象、業務Action結果などの**意味**である。CLIのargv、HTTPのstatus・Cookie、WebViewのIPCメッセージ、画面の選択状態は共通契約へ持ち込まない。
+
+特に、WebのHTTP要求をCLIコマンドの単なるラッパーとして実行しない。Web Hostは認証、CSRF対策、セッション、経路認可、入力制限などを独立して強制する必要がある。デスクトップでローカルに実行する場合も、端末操作権限が外部DBやPluginへの許可を自動的に与えるわけではない。
+
+## 3. LLMに使いやすいCLIの小さな約束
+
+### 3.1 コマンドを発見できる
+
+`tei commands` は、初期対象とした**読み取り専用**コマンドをJSONで返す。名前、必要な引数、主要な任意引数、出力形式、作用を機械的に確認できるようにする。
+
+```sh
+go run ./cmd/tei commands
+```
+
+`schemaVersion=tei.cli.discovery/v0`、`scope=selected-read-only-commands` は、一覧が全コマンドやPlugin実装の完全な登録簿ではないことを示す。既存CLIの中には高度な配備関連操作もあるため、最初から「表示されたものは全部安全」とは扱わない。将来は既存の機能契約と拡張のメタデータから候補を得る方式を検討するが、Plugin Resolverの第二実装を作らない。
+
+### 3.2 診断は機械可読、従来の表示も保持する
+
+```sh
+go run ./cmd/tei validate -workspace reference/workspace -json
+```
+
+`schemaVersion=tei.cli.validate/v0`、`ok`、`diagnostics`、必要な場合の`error`を持つ。Workspaceを読込み・索引化できた場合は、`inspect`と同じ計算の`worldFingerprint`・`sourceIndexFingerprint`も持つ（構文エラーと読込み失敗では省く。schemaVersionは`v0`のまま項目を追加した。[#2317](https://github.com/hat47x/tei-platform/issues/2317)）。Validationの`subject`が成立している場合はそのまま使い、Source Indexから位置を戻す。構文解析時点のエラーは意味上のSubjectがまだないため、出所の位置だけを付ける。
+
+`validate -workspace`の従来のテキスト出力は互換性のため維持する。初版の`-json`はこの経路だけに対応する。既存`world`等のJSON結果を共通の`result`形式へ一斉に包み直さない。
+
+終了コードは当面、`0`がValidation成功（Warningを含む）、`1`がValidation findingによる失敗、`2`が入力・読込み・出力等の実行上の失敗を意味する。JSONモードでは、読込み失敗に加え、不足・衝突した引数も可能な範囲でstdoutの一つのJSON文書として返し、人間向けエラー行や進行表示を混ぜない。Goのフラグパーサー自体が拒否した入力など、まだJSON化していない経路もある。パイプラインでは終了コードと`ok`の**両方**を確認する。
+
+### 3.3 入力と副作用の条件
+
+- **取得**: `inspect`、`source-index`、`validate`、`diff`など。原則として意味の正本を書き換えない。外部接続の有無や公開できる結果は別途宣言する。
+- **提案**: `proposal`、`plan`、`preview`など。未受理の候補を返すだけで、Source更新・権限付与・配備を行わない。
+- **受理・変更**: 対象、期待するrevision／fingerprint、変更範囲、判断主体、承認経路を明示する。成功を単なるプロセス終了と同一視しない。
+- **実行・運用**: Resource、Environment、作用範囲、権限、監査情報を事前に確認する。外部作用が不明な失敗を無条件に再実行しない。
+
+これは**操作を分類する設計方針**であって、上記の名前のコマンドすべてが実装済みという意味ではない。特にAIに与えるTool定義は、コマンド名の羅列でなく、実際に利用できる操作と当該利用者・実行環境の権限に基づいて組み立てる。
+
+## 4. 初期の縦切りと次の優先順位
+
+| 段階 | 作業 | 既存基盤への接続 | 確認すること |
+| --- | --- | --- | --- |
+| C0（着手） | `commands`、`validate -json` | `cmd/tei`、Workspace、Source Index、Validation | 読取り、diagnosticの構造、互換出力、失敗の分類 |
+| C1 | `inspect`／`trace`／`diff` を整理 | Canonical、Source Index、三視点の既存Projection | LLMが対象を絞り、根拠へ戻れる |
+| C2 | 変更候補と`preview` | 既存Shared Acceptance／設計Workspace | 仮説、候補、受理済みの区別 |
+| C3 | 制約付き変更と安全な業務Action | Application Driver、Permission、Runtime Authority | stale revision拒否、権限拒否、外部作用の再実行防止 |
+| W0（設計） | Web APIと画面のAdapter契約 | Web構成キット、Authentication、Driver | CLI固有のargv／exitを持ち込まない |
+| D0（設計） | デスクトップIPC／ローカルWorkspace入口 | Wails/WebView候補、Go service | Host権限と業務権限を混同しない |
+
+C1以降の名称・階層は候補であり、現行コマンドを大量に改名することは初回の目的ではない。とくにモデル編集は、[統合モデラー課題 #1124](https://github.com/hat47x/tei-platform/issues/1124)と同じSource／Acceptanceを使い、新たな編集正本を作らない。
+
+## 5. 前倒しで決められること／保留すること
+
+**先に固定する方向**は次のとおり。
+
+1. Canonical meaning・正本への反映権限・Plugin解決をインターフェースごとに複製しない。
+2. CLI/HTTP/IPCは同じGoのApplication-facing操作を呼ぶが、それぞれの入出力・本人確認・セキュリティ境界は独立させる。
+3. 外部LLMには構造化された短い結果を優先し、詳しいEvidenceは必要時に取得する。ログ・秘密値は結果から分離する。
+4. 書込み・実行は読取りとは異なる作用として契約化し、expected revision、権限、確認記録を省略しない。
+5. JSON契約にはversionを付け、破壊的変更時に段階移行できるようにする。
+
+**まだ固定しないもの**は、GUIフレームワーク、Webの標準画面構成、RPC方式、CLIサブコマンド階層の最終形、全PluginのTool schema自動生成方式、Remote CLI接続方式、AIの自動承認条件である。代表的な業務変更をCLIから最後まで実証し、その結果からWeb/デスクトップの最小契約を選ぶ。
+
+## 6. 受入条件と未検証範囲
+
+C0の受入は、正常系・構文エラー・意味エラー・入力読込み障害・不正な組合せの引数について、`-json`が一つの構造化結果を返し、従来のテキスト表示を壊さず、`commands`の契約がテストできることとする。加えて、独立したGoの読取り操作から同じValidation結果を取得できること、実バイナリのstdout・stderr・exit codeをプロセステストで確認できることを条件にする。
+
+実装PRをmainへ取り込むには、対象exact headとcurrent mainについて、[リポジトリの統合規則](../../AGENTS.md)が要求するactual full Repository Healthの証拠が必要となる。コードの存在、合成テスト、レビュー、GitHub上のPR作成をその代用としない。
+
+この文書もC0も、production-ready Editor、HTTP API、OS認証連携、デスクトップ版の実現、AIの安全な自律実行を証明するものではない。
+
+
+## 7. C1: Canonical Subject inspection (draft)
+
+Issue #1165 の第一段階では、`tei inspect` からモデル要素一件の意味情報とSource Index上の出所を取得する。初期対応は`semantic-data`、`application`、`query`の三種類で、kindとCanonical IDの完全一致を要求する。
+
+`internal/operations.InspectSubject`が既存のNormalized Worldから要素を抽出し、同じWorkspaceロードで構築したSource Indexに結び付ける。CLIは引数・JSON・終了コードのみを処理し、新しい意味モデルを所有しない。不在は`SUBJECT_NOT_FOUND`、重複は`SUBJECT_AMBIGUOUS`として一件目を採用しない。
+
+`worldFingerprint`は正規化Worldの内容ハッシュであり、書込み用revisionやAcceptanceを意味しない。`sourceStatus=not-indexed`は対応する出所参照の欠落を示すが、Canonicalの不存在とは異なる。結果は適切な情報開示制御の下で利用する。
+
+この実装候補はグラフの参照先・参照元探索、差分比較、更新、認可、原子的Snapshotを含まない。テストの記述だけでは適合の証拠とせず、actual clean checkoutの全Repository Healthを確認してから統合する。
+
+
+## 8. C1: 型付き参照traceをCLIへ接続する統合候補
+
+Issue #1165に対し、既存 `index.Build` → `modelref/derivedbridge.FromIndex` → `modelref.TraceDirect` → `modelref/sourcebridge.NewResolver` を、一つの型付きGo操作 `operations.TraceWorkspace` でつなぐ。CLIの `tei trace` は引数・JSON schema・終了コードを変換する薄いAdapterとし、別のEdge正本は持たない。
+
+- `-workspace`、`-scope`、`-subject-kind`、`-subject-id`を必須とする。`scope`はProjectionの文脈ラベルであり、業務namespace・ユーザーの認可scope・受理済みrevisionとの一致を証明しない。
+- `direction=outgoing|incoming|both`、`mode=summary|full`。CLIはsummaryを既定とする。Fullは明示的な件数上限がなければ全件出力し、`limit`が正の場合のみ `nextOffset`を返す。
+- Source Indexの既存Artifact fingerprintとRangeを検証してからSource Navigationに利用する。GraphとSource Indexが不一致ならエラー扱いとし、Sourceから業務関係を推測しない。元定義のLocationが見つかってもAcceptedや書込み許可を推定しない。
+- JSONの `schemaVersion=tei.cli.trace/v0`、`ok`、`result.trace`、`result.source`、`result.relatedSources`（Fullの出力ページのみ）、`result.projectionUnresolved`を返す。意味的な直接参照だけでなく、Derived Indexの投影時点で脱落した関係の情報を保持する。
+- 未存在・重複・stale snapshotを終了コード1、不正引数・読込失敗・Source Index検証失敗等を終了コード2とする。機械可読JSONの`error.code`で詳細を識別する。
+- `snapshotFingerprint`は候補GraphとPolicyのバイト列に関するハッシュ。ページ間で変化を検出できるが、**Source Index自体を同一時点へ固定せず**、Sourceファイルの読取競合や同時書換えに対する完全な一貫性を保証しない。完全なSnapshot境界は#1017と別途調整する。
+- `sourcebridge`に渡す読取関数で相対path正規化、symlinkによるWorkspace外参照拒否、regular file確認を実施する。ただしsymlinkのswapを原子的に防ぐ仕組みではなく、これをproductionのsecure source readerとは呼ばない。
+- 初期の関係は既存Derived Indexがすでに提供する宣言済みData/Pattern/Relation等に限られる。Business Procedure/DFD、物理CRUD、共有Acceptance、暗黙のtransitive path探索は未実装。
+
+### PRの統合順
+
+本作業は、独立したDraft系列（[#1159](https://github.com/hat47x/tei-platform/pull/1159) → [#1169](https://github.com/hat47x/tei-platform/pull/1169) と [#1139](https://github.com/hat47x/tei-platform/pull/1139) → [#1171](https://github.com/hat47x/tei-platform/pull/1171)）を参照する**統合用Draft候補**である。統合ブランチで履歴を接続していても各元PRがmainへ統合可能と認定されたわけではない。元PRのheadを変更せず、上流の検証・マージ順序を尊重して最終的な差分を再評価する。
+
+具体的には、executable CLIによる`commands`、`inspect`、`trace`、`validate`の戻り値/出力整合性と、typed Go操作/CLIの同等性を確認する。CIは停止中につき、Goのunit/プロセステストを追加した事実とclean checkoutにおける実行済みPASSを混同しない。`AGENTS.md`に定めるとおり、`tools/repository-health-check.sh`は任意の広範囲診断であり統合の一律条件にはしない。変更範囲の検証結果を記録し、Draftは解除して統合する。
+
+
+### 8.1 統合候補の静的レビューで修正した境界
+
+- **同じ論理対象をinspectとtraceで扱えるようにする**: 初期 `inspect` は `semantic-data`、`application`、`query` に加えて、`semantic-relation` と `application-pattern` の既存World定義を取得する。関係Graphの再生成はしない。CLIプロセス試験は `sales.order.customer` の両コマンドが同じSubjectと定義元を指すことを確認する。
+- **重複Canonical宣言を誤って一意と判定しない**: `derivedbridge` が同じIDの使用をまとめても、`operations.TraceWorkspace` は対応するCanonical種別について `inspectCanonical` と同じexact resolverを通し、欠落・重複を拒否する。候補Graphの重複排除をCanonicalな重複検証の代用にしない。
+- **ページ継続は検索対象と方向にも結び付く**: `trace.snapshotFingerprint` はGraphとRuleに加え、`scope/kind/id` と `direction` を含める。`summary → full` や `offset/limit` の変更では有効のままとし、対象や方向が異なる要求を以前のページの継続として受理しない。
+- **静的なテスト不備の修正**: `cmd/tei/cli_trace_test.go` 内の未定義な`testRepositoryRoot`参照を、既存CLI試験と同じ相対的なReference Workspaceの指定に変更した。CLI/Go結果の意味一致と、方向を変更したときの `STALE_SNAPSHOT` も回帰テストに含めた。
+
+これらはコードとテスト**候補の変更**であり、テストPASSの報告ではない。Goの書式・コンパイル、actual `go test ./...`、`go vet ./...`、`tools/repository-health-check.sh` については未検証である。
+
+`trace.snapshotFingerprint` は検索条件とGraph/Policyの継続検査用であり、Source Index、Workspace全ファイル、外部Providerの状態を含む単一トランザクションのrevisionではない。Sourceファイル移動・内容変更と併発する場合はSource側のfingerprintも別に確認する必要がある。
+
+
+### 8.2 Canonical/Sourceの複合スナップショット（2026-10-10）
+
+`tei trace` がSource Indexを含めずGraphだけで継続判定すると、同じCanonical Worldで元ファイルが移動した場合や、コメントだけが変わった場合に、古いページの位置・根拠と新しいページの元定義が混在する。この欠落を以下のように修正した。
+
+1. `workspaceProjectionFingerprints` は正規化 `ir.World` と、既存 `workspace.BuildSourceIndex` で生成・Normalizeした `sourceindex.Index` のJSONを、それぞれ独立してfingerprint化する。前者はSourceファイル移動では不変、後者はArtifact path/digest/Source Referenceの変化で変わる。
+2. `operations.TraceWorkspace` は既存 `modelref.TraceDirect` のgraph+rule+query fingerprintと、上記二種類のfingerprintを結合して `tei.operations.trace.snapshot/v1` の継続用トークンを算出する。出力 `result.snapshotFingerprint` がこのトークンであり、`result.trace.graphFingerprint`（2026-11-09より前の名前は`result.trace.snapshotFingerprint`。旧名は1 cycleのaliasとして同値を残す）はGraph限定の内部読取識別子として残す。継続ページには `result.trace.nextOffset` の隣へ `result.trace.continuation.fingerprint`（外側のトークンと同値）と `field` を置き、どの値を継続に渡すかを応答の中だけで判別できるようにする（#3625）。
+3. CLIの `-expected-fingerprint` は**Workspaceレベルの`result.snapshotFingerprint`**のみを受け付ける。違う場合は `STALE_SNAPSHOT`、終了コード1。`summary→full`やoffset/limitだけの変更は同じWorkspace状態であれば許容し、同じWorldに対するSource移動や非意味的な原文変更は拒否する。
+4. `operations.InspectSubject` も `worldFingerprint` と `sourceIndexFingerprint` を共通ヘルパーから取得する。CLIから両操作を別々に呼んだ場合に、観測したCanonicalとSourceのスナップショットが一致したか検証できるようにする。
+
+回帰試験には、合成WorkspaceのSemantic Dataについて `order.tei→renamed.tei` の移動、およびファイル末尾空行の追加を組み込む。どちらも意味情報とmodelref graphが変わらないことを確認しながら、Source Index fingerprintと継続用トークンの変更、および古いトークンの拒否を検証する（テストコード追加、**actual PASS未確認**）。
+
+なお、`BuildSourceIndex` と `sourcebridge.NewResolver` における原ファイル検証は同時読取の競合を完全には閉じない。複合トークンは複数CLI呼出し間の**観測結果の変化検出**であり、単一読取トランザクションの保証、OSのatomic open、Shared Acceptanceの書込み排他ではない。Source全体を本文に展開して後解析する方式にも、同じスナップショット固定・情報開示制御が別途必要となる。
+
+
+### 8.3 CLI引数契約と候補Graphの決定性（2026-10-10）
+
+- `inspect`/`trace` は、未知フラグ・型変換不能値・他コマンド用の既知フラグをJSON `INVALID_ARGUMENT` と終了コード2で返す。CLI入力が正当だと確認する前に、正本をロードしない。失敗時に標準エラーだけが唯一の診断経路にならないよう、選択コマンドに限りFlagSetの`ContinueOnError`でparse結果を受け取る。
+- `modelref.TraceDirect` のスナップショットv2は、GraphのNode/Edge/Evidenceを順序に依存しない形で直列化し、Rule fingerprintと選択Subject/Directionを結合する。重複したNode/Edgeは勝手に除去しない。同じgraphを異なる走査順で生成しても`STALE_SNAPSHOT`にならない一方、重複宣言・意味変更ならtokenが変わる。
+- 不正なSource Evidenceが複数ある場合の`Issue`も同じ根拠順序で選択し、全件出力のrow情報とスナップショットの間の整合を保つ。`summary`は未解決件数を全辺に対して数えるがrow自体は構築しない。
+- Source Indexの同開始位置・同roleの参照は終了offset等で正規化順序を決定し、元の入力順によるfingerprint変化を避ける。
+- 上記の静的修正だけでは品質Gateは通過しない。検証実施手順と未証明の境界は `docs/conformance/cli-c1-trace-integration-gate.md` を参照する。
+
+結果の階層は `result.snapshotFingerprint`（CLI継続用のWorkspace合成token）と `result.trace.snapshotFingerprint`（Goモデルの候補Graph限定token）を意図的に区別する。これは生成AIとUI Adapterが継続の対象を誤解しないための契約であり、新たなAuthorityや二重管理を意味しない。
+
+## 9. 型付き読取り操作の依存方向とCLI同値性（#1158、2026-10-13）
+
+[#1158](https://github.com/hat47x/tei-platform/issues/1158)の設計段階の完了条件のうち、次の二つを自動試験で固定した。
+
+- **依存方向**: `internal/operations/dependency_test.go`が`go list -deps`で`internal/operations`の推移的依存を取得し、`tei/cmd/`、`tei/tools/`、`tei/reference/`、`flag`、`net`配下（`net/http`を含む）、`syscall/js`、`html/template`、Wails、`golang.org/x/net`が含まれないこと、およびTEI外の外部モジュールを含まないことを検査する。検査関数は、禁止先を全体の経路要素で照合するため`tei/internal/network`のような別名を誤って拒否しない。この試験は、CLI・HTTP・デスクトップのアダプタが操作を呼び出す側であり、操作がアダプタへ依存しないことを守る。なお`os/exec`は、Validationが依存する配備実行部品を経由して現状でも到達できる。この試験は`os/exec`を禁止しておらず、推移的閉包が子プロセスを起動しないとは主張しない。
+- **CLI同値性**: `cmd/tei/cli_inprocess_parity_test.go`が、実`reference/workspace`と一時Workspaceに対して、CLIの`inspect`・`validate`のJSON結果とプロセス内の`operations.InspectSubject`・`operations.ValidateWorkspace`の結果が一致することを確認する。不在・未対応種別・空白付きIDの失敗コードも、操作の型付き誤りと一致することを検査する。`trace`は既存の`cli_trace_test.go`が同じ比較を行う。
+
+この二つは、同一プロセス内の合成ではなく実際のGo操作を用いる。ただし次は証明しない。
+
+- 認可を伴う操作、無認証HTTP・偽の主体・古いrevisionの拒否（#1158の完了条件2）。認可付き操作とHTTP/IPCのアダプタは未実装であり、本節では扱わない。
+- 実際のWebやデスクトップでの認証・実行。合成アダプタや同一プロセスの呼出しの結果を、その代用にしない。
+- HTTP方式、デスクトップのIPC方式、Wailsの採否（完了条件5）。
+
+## 10. JSON出力の契約一覧とv0内の互換規則（#2354、2026-10-29）
+
+`tei commands`が広告する読取りコマンド（件数は固定せず`tei commands`と試験を正本とする）について、版固定の候補を整理する。下の「採否」は提案であり、採用にはOwnerの判断が要る。
+
+**§10.1の表は2026-10-31時点の記録であり、現在の実装ではない。** その後の#2354第一陣〜第三陣で`workspace-files`・`source-index`・`knowledge-*`・`requirements`・`plugin-*`は`tei.cli.*/v0`のエンベロープを持つようになり、`tei commands`の各entryは`schemaVersion`と`jsonContract`を広告する（#2824）。現在の一覧と失敗時の形式は[CLI JSON出力契約](CLI_JSON_OUTPUT_CONTRACT_2026-10.md)§4を正本とし、ここへ複製しない。以下は版固定の判断材料として残す。
+
+### 10.1 現状の一覧
+
+| コマンド | 出力のschemaVersion | 失敗時の機械可読形式 | 出力の実体 |
+| --- | --- | --- | --- |
+| `model catalog` | あり（`tei.cli.model/v0`） | JSONの`error.code`、終了コード2 | CLI用の応答型 |
+| `inspect` | あり（`tei.cli.inspect/v0`） | JSONの`error.code`、終了コード1または2 | CLI用の応答型 |
+| `trace` | あり（`tei.cli.trace/v0`） | JSONの`error.code`、終了コード1または2 | CLI用の応答型 |
+| `validate -workspace -json` | あり（`tei.cli.validate/v0`） | JSONの`error.code`、終了コード1または2 | CLI用の応答型 |
+| `commands` | あり（`tei.cli.discovery/v0`） | 引数があれば標準エラーの自由文、終了コード2 | CLI用の応答型 |
+| `version -json` | あり（`tei.cli.version/v0`、#2318で追加） | 未知の引数は標準エラーの自由文、終了コード2。標準出力は空（2026-11-07に実装を修正、#2993） | CLI用の応答型 |
+| `validate`（テキスト） | なし（tab区切り行または`ok`） | 標準エラーの自由文、終了コード1または2 | 該当なし |
+| `workspace-files` | なし | 標準エラーの自由文、終了コード2 | `workspace.ManagedFile`の配列を直接出力 |
+| `source-index` | なし | 標準エラーの自由文、終了コード2 | 主体指定なしは`sourceindex.Index`（`artifacts`・`references`）、主体指定ありは`operations.SubjectSources`を直接出力 |
+| `knowledge-context` | なし | 標準エラーの自由文、不一致は終了コード1、そのほかは2 | `knowledgecontext.Context`または選択開示の構造体を直接出力 |
+| `world` | なし | 標準エラーの自由文、終了コード2 | `ir.World`を直接出力 |
+| `requirements` | なし | 同上 | `dependency.Derive`の結果を直接出力 |
+| `plugin-lock` | なし | 同上 | `plugin.Lock`を直接出力 |
+| `plugin-resolve` | なし | 同上 | `plugin.ResolvedSet`を直接出力 |
+| `plugin-runtime-plan` | なし | 同上（計画の構築失敗は終了コード1） | `pluginruntime`の計画を直接出力 |
+
+読取りコマンドの出力型のうち、`source-index`の型は上のとおり確定した（Issue起票時は未確認だった）。表の「なし」は2026-10-31時点の状態であり、現在は上に書いたとおりエンベロープへ移行済みである。
+
+### 10.2 v0の中での互換な変更と、versionを上げる変更（提案）
+
+`tei.cli.*/v0`の読み手には、未知の欄を無視することを求める。この前提で次のように分ける。
+
+- v0のまま行える変更: 出力へ欄を追加する。`error.code`に新しい値を追加する。既存の欄の意味・型・単位を変えない。配列の既存要素の並び順を変えない。
+- versionを上げる変更: 既存の欄の削除・改名・型変更・意味の変更。`ok`と終了コードの対応の変更。既存の`error.code`の意味の変更。必須の入力flagの追加。
+
+読み手は`error.code`を、列挙された既知の値以外が来ても失敗として扱う。`schemaVersion`が自分の知るもの以外なら、結果を解釈せず失敗として扱う。
+
+### 10.3 版固定が必要なコマンドと追加案（提案）
+
+外部の利用者（TAIの`reference-tei-model`など）が機械的に読む可能性が高いのは、`workspace-files`、`source-index`、`knowledge-context`である。`world`・`requirements`・`plugin-lock`・`plugin-resolve`・`plugin-runtime-plan`は内部構造体の直接出力であり、外部契約か内部デバッグ用かの宣言が先に必要になる（Owner判断）。
+
+内部構造体の直接出力に版を足す方法は次の2案がある。
+
+1. 現在の出力を`result`へ入れる包みを足す: `{"schemaVersion": "...", "ok": true, "result": <現在の出力>}`。既存の応答型（`inspect`など）と形がそろう。一方、出力の最上位の形が変わるため、現在の出力を読んでいる呼出しは壊れる。v0の互換規則では扱えず、新しいversionまたは新しいflagが要る。
+2. 現在の最上位に`schemaVersion`欄だけを足す: 配列を直接出力している`workspace-files`には使えない。オブジェクトを出力するコマンドは、v0の互換変更として足せる。ただし内部構造体の欄の増減が、そのまま外部の出力の変更になる状態は残る。
+
+投影型を挟む案は、内部構造体の変更を外部の出力から切り離せる。代わりに、型・変換・試験の保守が増える。選択はOwner判断とし、本節では決めない。
+
+### 10.4 失敗時の形式（提案、未決）
+
+選択肢は、(a)`validate -json`と同じ`error.code`付きJSONを対象コマンドへ広げる、(b)現状（標準エラーの自由文と終了コード）を契約として明記する、の2つである。(b)を選ぶ場合、呼出し側は標準出力が空であることと成功した空の結果を、終了コードで区別する。終了コードの意味は§3.2の記載（0成功、1 findingまたは不一致、2入力・読込み・出力の失敗）を使う。(a)の対象範囲と、`v0`の維持か`v1`への移行かが未決である。
+
+### 10.4.1 実行ファイルの識別（#2318）
+
+`tei version`（テキスト）と`tei version -json`（`tei.cli.version/v0`）は、Goツールチェーンが実行ファイルへ埋め込んだbuild情報を返す。項目は`goVersion`、`goos`、`goarch`、`vcsRevision`、`vcsModified`、build結果を変える設定の`buildSettings`、情報源の`source`である。`git`や作業ツリーは読まない。そのため、別のcheckoutに置かれた実行ファイルでも、そのファイル自身の識別を返す。
+
+build情報にコミットが無い場合（`-buildvcs=false`、checkout外でのbuild、`go run`など）は`source=unavailable`とし、`vcsRevision`を推測で埋めない。`vcsModified=true`は未コミットの変更を含むbuildであり、`vcsRevision`だけでは再現できない。外部の利用者が結果を版固定するときは、`schemaVersion`の照合に加え、この識別を結果と一緒に記録する。識別は再現の手掛かりであり、配布の承認・署名・特定コミットとの一致の証明ではない。
+
+### 10.5 この節が確認していないこと
+
+- 各コマンドを実際に実行した出力の確認。型の読取りだけである。
+- 本節の互換規則を、既存の読み手（TAIを含む）が満たしているかの確認。
+- Issue #2318（tei自身のbuild識別）の出力形式。本文が別の内容になっており、人間の確認待ちである。

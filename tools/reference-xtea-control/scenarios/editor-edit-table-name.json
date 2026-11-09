@@ -1,0 +1,17 @@
+{
+  "name": "editor-edit-table-name",
+  "description": "Open the department table from the Editor tree, change its name, save, answer the backup prompt, and verify the written XML. Uses a disposable MfgOrder.xead copy.",
+  "steps": [
+    { "op": "wait_window", "title": "X-TEA Editor", "timeoutMs": 30000 },
+    { "op": "select", "selector": { "role": "tree" }, "path": [0, 1, 0, 0, 2] },
+    { "op": "key", "selector": { "role": "tree" }, "key": "ENTER" },
+    { "op": "sleep", "ms": 1000 },
+    { "op": "set", "selector": { "window": "X-TEA Editor", "path": "0.1.2.6.0.0.0.2" }, "value": "部門TEST" },
+    { "op": "invoke", "selector": { "window": "X-TEA Editor", "path": "m.0.5" }, "settleMs": 1000 },
+    { "op": "wait_window", "title": "バックアップの確認", "timeoutMs": 30000 },
+    { "op": "invoke", "selector": { "window": "バックアップの確認", "role": "button", "text": "はい" }, "settleMs": 1000 },
+    { "op": "wait_window", "title": "バックアップの確認", "state": "absent", "timeoutMs": 30000 },
+    { "op": "sleep", "ms": 1500 },
+    { "op": "file_contains", "path": "build/editor-fixture/MfgOrder.xead", "contains": "部門TEST" }
+  ]
+}

@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
+	"tei/internal/access"
 	"tei/internal/resource"
 )
 
@@ -148,6 +150,9 @@ func (c *hostRefreshingLeaseController) Refresh(ctx context.Context) (resource.L
 // the adapters required to enforce deny-by-default network/filesystem policy and
 // any requested secret injection.
 type HostSandboxLauncher struct {
+	// Access records the decision about the declared permissions. A nil journal
+	// keeps the decision but drops the record.
+	Access         access.Journal
 	Network        NetworkEnforcer
 	Filesystem     FilesystemEnforcer
 	Secrets        SecretInjector
@@ -157,6 +162,14 @@ type HostSandboxLauncher struct {
 	// hosts normally leave it nil (time.Now); tests and deterministic hosts may
 	// inject the same clock used by their Resource Broker.
 	Now func() time.Time
+}
+
+// boundSandboxProcessImage exposes the actual held executable to Registry's
+// pre-lease verification check. A pathname runner provides no bound image.
+// Host configuration must remain stable throughout an invocation.
+func (h HostSandboxLauncher) boundSandboxProcessImage() processImageBound {
+	image, _ := h.Runner.(processImageBound)
+	return image
 }
 
 func (h HostSandboxLauncher) Invoke(ctx context.Context, spec SandboxSpec, req Request) (Response, error) {
@@ -171,6 +184,26 @@ func (h HostSandboxLauncher) Invoke(ctx context.Context, spec SandboxSpec, req R
 	}
 	if len(spec.Profile.SecretInjections) > 0 && h.Secrets == nil {
 		return Response{}, fmt.Errorf("host sandbox has secret injection requirements but no secret injector")
+	}
+	// The profile must stay within the declared permissions. A profile that
+	// allows more than the declaration names would enforce a policy nobody
+	// accepted, so the run is refused before any process starts. When nothing is
+	// declared there is no baseline to compare against; the deny-by-default
+	// policies are still required.
+	var violations []string
+	if len(spec.Permissions) > 0 {
+		violations = ProfileExceedsDeclarations(spec.Profile, spec.Permissions)
+	} else {
+		violations = ProfilePolicyViolations(spec.Profile)
+	}
+	if h.Access != nil {
+		record := access.Record{Capability: string(spec.Plugin.ID), Allowed: len(violations) == 0, Missing: append([]string(nil), violations...)}
+		if err := h.Access.Append(record); err != nil {
+			return Response{}, fmt.Errorf("record the access decision: %w", err)
+		}
+	}
+	if len(violations) > 0 {
+		return Response{}, fmt.Errorf("the sandbox profile is wider than what was accepted: %s", strings.Join(violations, "; "))
 	}
 
 	var cleanups []Cleanup
@@ -192,30 +225,55 @@ func (h HostSandboxLauncher) Invoke(ctx context.Context, spec SandboxSpec, req R
 
 	if h.Network != nil {
 		c, err := h.Network.ApplyNetworkPolicy(ctx, NetworkPolicy{DenyByDefault: spec.Profile.DenyNetworkByDefault, Allowlist: append([]string(nil), spec.Profile.NetworkAllowlist...)})
+		// On a partial failure, an adapter may still return a cleanup hook.
+		// Register it before processing the error to roll back partial work.
+		if c != nil {
+			cleanups = append(cleanups, c)
+		}
 		if err != nil {
 			return fail(fmt.Errorf("network policy enforcement failed: %w", err))
 		}
-		cleanups = append(cleanups, c)
+		// Without an undo hook the Host cannot guarantee invocation-scoped
+		// cleanup; fail before dispatch rather than silently accepting it.
+		if c == nil {
+			return fail(fmt.Errorf("network policy enforcement provided no cleanup"))
+		}
 	}
 	if h.Filesystem != nil {
 		c, err := h.Filesystem.ApplyFilesystemPolicy(ctx, FilesystemPolicy{DenyByDefault: spec.Profile.DenyFilesystemByDefault, Mounts: append([]SandboxMount(nil), spec.Profile.Mounts...)})
+		if c != nil {
+			cleanups = append(cleanups, c)
+		}
 		if err != nil {
 			return fail(fmt.Errorf("filesystem policy enforcement failed: %w", err))
 		}
-		cleanups = append(cleanups, c)
+		if c == nil {
+			return fail(fmt.Errorf("filesystem policy enforcement provided no cleanup"))
+		}
 	}
 	if len(spec.Profile.SecretInjections) > 0 {
 		c, err := h.Secrets.InjectSecrets(ctx, append([]SecretInjection(nil), spec.Profile.SecretInjections...))
+		if c != nil {
+			cleanups = append(cleanups, c)
+		}
 		if err != nil {
 			return fail(fmt.Errorf("secret injection failed: %w", err))
 		}
-		cleanups = append(cleanups, c)
+		if c == nil {
+			return fail(fmt.Errorf("secret injection provided no cleanup"))
+		}
 	}
 
 	invokeCtx, cancelInvoke := context.WithCancel(ctx)
 	defer cancelInvoke()
 	var supervisorErrCh chan error
 	var ownershipErrCh chan error
+	// A capability without Permissions has no lease. The caller may pass that as a
+	// nil *leaseController wrapped in the interface, which is not == nil.
+	if lc, ok := spec.LeaseController.(*leaseController); ok && lc == nil {
+		spec.LeaseController = nil
+		req.LeaseController = nil
+	}
 	if spec.LeaseController != nil {
 		wrapped := &hostRefreshingLeaseController{base: spec.LeaseController, host: &h}
 		spec.LeaseController = wrapped

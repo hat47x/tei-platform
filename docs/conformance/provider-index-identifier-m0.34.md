@@ -1,46 +1,46 @@
-# M0.34 プロバイダー固有のIndex識別子 Conformance
+# M0.34 提供元固有の索引識別子に関する準拠確認
 
 ## 目的
 
-M0.34では、Advanced Indexの`collation`と`operator class`について、DesiredとActualの表記差を安全に比較できるようにします。
+M0.34では、高度な索引の`collation`と`operator class`について、期待する構造と実際の構造で表記が異なる場合にも、安全に比較できるようにします。
 
-重要なのは、文字列が異なるという理由だけでIndex再作成へ進まないことと、情報が足りない状態で同じ意味だと決めつけないことです。
+文字列が異なるだけで索引の再作成を決めず、情報が足りない場合に同じ意味だと決めつけないことが重要です。
 
-M0.31で導入した`Diff.Unresolved`を、ProviderExpressionだけでなく、プロバイダー固有のIndex識別子にも適用します。
+M0.31で導入した`Diff.Unresolved`を、提供元固有の式だけでなく、索引の識別子にも適用します。
 
 ## 固定する境界
 
-### Desired Physical realization
+### 期待する物理構造の生成
 
-PostgreSQLのオフライン`RealizationPolicy`は、DBへ接続しなくても意味を確定できる既定値だけを正規化します。
+PostgreSQLの接続不要の`RealizationPolicy`では、データベースへ接続しなくても意味が確定する既定値だけを、共通の表記にそろえます。
 
-次の正規化は維持します。
+次の表記統一を維持します。
 
-- 既定のindex methodを`btree`として解決する
-- unique indexの既定NULL treatmentを`distinct`として解決する
-- B-treeの`ASC`をeffective defaultへ畳む
-- B-treeの`ASC NULLS LAST`をeffective defaultへ畳む
-- B-treeの`DESC NULLS FIRST`をeffective defaultへ畳む
+- 索引方式の既定値を`btree`として確定する
+- 一意索引におけるNULLの扱いの既定値を`distinct`として確定する
+- B-treeの`ASC`を実際に適用される既定値の表現へそろえる
+- B-treeの`ASC NULLS LAST`を実際に適用される既定値の表現へそろえる
+- B-treeの`DESC NULLS FIRST`を実際に適用される既定値の表現へそろえる
 
-一方、明示された`pg_catalog.default` collationは、そのまま保持します。
+ただし、明示された照合順序`pg_catalog.default`は、そのまま保持します。
 
-PostgreSQLではcollationを省略すると、列または式が持つcollationを利用します。そのため、明示値と省略をオフライン処理だけで同一視しません。
+PostgreSQLで照合順序を省略すると、列や式の照合順序を引き継ぎます。そのため、明示した値と省略した場合を、接続不要の処理だけで同じ意味とは判断しません。
 
-### PostgreSQL Actual observation
+### PostgreSQLの実状態の観測
 
-Actual adapterは、実際のカタログ情報を根拠に正規化できます。
+実際の状態を読み取る接続部では、データベースの管理情報を根拠に表記を統一できます。
 
-現在は次の契約を持ちます。
+この段階では、次の規則を適用します。
 
-- カタログ上の`pg_catalog.default` collationを空表現へ正規化する
-- `pg_opclass.opcdefault = true`のoperator classを空表現へ正規化する
-- 既定値ではないoperator classはschema-qualifiedな明示値として保持する
+- 管理情報にある照合順序`pg_catalog.default`を空の表現へそろえる
+- `pg_opclass.opcdefault = true`を満たす演算子クラスを空の表現へそろえる
+- 既定値でない演算子クラスは、スキーマ名を付けた明示値として保持する
 
-Actual側がカタログを根拠に空値へ正規化できることと、Desired側が同じ値をオフラインで空値へ正規化できることは、別の問題として扱います。
+実際の状態を管理情報に基づいて空の表現へ統一できることと、期待する構造を接続不要の処理で同じように統一できることは、別の問題です。
 
-## Schema Diffの三値比較
+## 構造差分の三値比較
 
-Index keyのプロバイダー固有識別子は、次の3状態に分けます。
+索引のキーに含まれる提供元固有の識別子は、次の三つの状態に分けて判断します。
 
 ```text
 同一
@@ -48,9 +48,9 @@ Index keyのプロバイダー固有識別子は、次の3状態に分けます�
 比較未確定
 ```
 
-比較未確定は`Change`ではなく、`Diff.Unresolved`に格納します。
+比較未確定は`Change`にせず、`Diff.Unresolved`へ記録します。
 
-### collation
+### 照合順序
 
 | Desired | Actual | 結果 |
 | --- | --- | --- |
@@ -60,9 +60,9 @@ Index keyのプロバイダー固有識別子は、次の3状態に分けます�
 | 明示値 | 空 | 比較未確定 |
 | 空 | 空 | 同一 |
 
-collationの省略は、列または式からの継承を含みます。片側だけが空の場合、現在のPhysical Schemaだけでは同値性を安全に確定できません。
+照合順序の省略には、列や式から引き継ぐ場合があります。一方だけが空のとき、現在の物理構造の情報だけでは同じ意味かどうかを安全に判断できません。
 
-### operator class
+### 演算子クラス
 
 | Desired | Actual | 結果 |
 | --- | --- | --- |
@@ -72,21 +72,21 @@ collationの省略は、列または式からの継承を含みます。片側�
 | 明示値 | 空 | 比較未確定 |
 | 空 | 空 | 同一 |
 
-Desiredでoperator classを省略した場合は、既定のoperator classを使うというintentになります。
+期待する構造で演算子クラスを省略すると、既定の演算子クラスを使うという意図になります。
 
-PostgreSQL Actual adapterは、実カタログで既定値だと確認したoperator classを空表現へ正規化します。そのため、Actualに明示値が残っている場合、その値は既定operator classではないと判断できます。
+PostgreSQLの実状態を読む接続部は、管理情報から既定値だと確認できた演算子クラスを空の表現にそろえます。そのため、実際の状態に明示値が残っていれば、既定の演算子クラスではないと判断できます。
 
-逆に、Desiredで明示されたoperator classがActual環境では既定値である可能性は、オフライン処理だけでは判定できません。Actualが空の場合は、構造差とは断定せず比較未確定にします。
+逆に、期待する構造に明示した演算子クラスが実環境では既定値に当たるかどうかは、接続不要の処理だけでは判断できません。実際の状態が空であれば、構造差とは断定せず比較未確定とします。
 
-## UnresolvedComparison
+## 比較未確定の結果
 
-M0.34では`UnresolvedKind`に次を追加します。
+M0.34では、`UnresolvedKind`に次の種類を追加します。
 
 ```text
 provider-identifier
 ```
 
-プロバイダー固有識別子の比較未確定では、次の情報を保持します。
+提供元固有の識別子について比較を確定できない場合、次の情報を保持します。
 
 ```text
 kind
@@ -103,7 +103,7 @@ desiredValue
 actualValue
 ```
 
-例は次のとおりです。
+記録例を次に示します。
 
 ```json
 {
@@ -117,34 +117,34 @@ actualValue
 }
 ```
 
-Desiredが空の場合、`omitempty`によって`desiredValue`がJSONに出力されないことがあります。空であるという入力自体は、比較処理の中で保持されています。
+期待する値が空の場合、`omitempty`の指定により`desiredValue`がJSONへ出力されないことがあります。ただし、空の値が入力された事実は比較処理の中で保持しています。
 
-## Migration safety
+## 移行時の安全性
 
-M0.31以降のルールを変更しません。
+M0.31から続く安全規則は変更しません。
 
-`Diff.Unresolved`が1件でも残っているSchema Diffからは、migration SQLを生成しません。
+`Diff.Unresolved`が1件でも残る構造差分からは、移行用SQLを生成しません。
 
-そのため、collationやoperator classの同値性を確定できない状態から、自動的に`DROP INDEX` / `CREATE INDEX`へ進むことはありません。
+そのため、照合順序や演算子クラスが同じ意味か確定できなければ、自動的に`DROP INDEX`や`CREATE INDEX`の生成へ進みません。
 
-## Unit Conformance
+## 単体での準拠確認
 
 `internal/database/schemadiff/provider_identifier_test.go`では、少なくとも次を確認します。
 
-- collationの片側省略が`UnresolvedProviderIdentifier`になる
-- 明示した`pg_catalog.default`とActualの空表現を、根拠なく同一視しない
-- 異なる明示collationはIndexのdrop/addになる
-- Desired省略・Actual明示の非既定operator classは構造差になる
-- Desired明示operator class・Actual既定値表現は比較未確定になる
-- 同じ明示collation / operator classは収束する
+- 照合順序を一方だけ省略した場合は`UnresolvedProviderIdentifier`になる
+- 明示した`pg_catalog.default`と実際の状態の空の表現を、根拠なく同じ意味としない
+- 明示した照合順序どうしが異なれば、索引の削除と追加の差分になる
+- 期待する側が省略し実際の側に既定でない演算子クラスが明示されていれば、構造差となる
+- 期待する側に演算子クラスが明示され、実際の側が既定値の表現なら比較未確定となる
+- 同じ照合順序や演算子クラスが明示されていれば一致する
 
-`internal/database/persistence/advanced_index_normalization_test.go`では、PostgreSQL B-treeのsort / NULL ordering既定値を従来どおり正規化しながら、明示されたcollationを保持することを確認します。
+`internal/database/persistence/advanced_index_normalization_test.go`では、PostgreSQLのB-treeの並べ替えやNULLの順序を従来どおり統一しつつ、明示された照合順序を残すことを確認します。
 
-`internal/database/migration/provider_identifier_unresolved_test.go`では、プロバイダー固有識別子の比較未確定が残るSchema Diffからmigration planを生成できないことを確認します。
+`internal/database/migration/provider_identifier_unresolved_test.go`では、提供元固有の識別子について比較未確定が残る場合、構造差分から移行計画を生成できないことを確認します。
 
-## 既存Conformanceとの関係
+## 既存の準拠確認との関係
 
-M0.34は、次の既存契約を変更しません。
+M0.34では、次の既存の規則を変更しません。
 
 - M0.29 Advanced Index Actual / Diff
 - M0.30 Advanced Index Desired authoring
@@ -152,16 +152,16 @@ M0.34は、次の既存契約を変更しません。
 - M0.32 ProviderExpression representation / comparison
 - M0.33 offline Physical realization policy
 
-ProviderExpressionとプロバイダー固有識別子は、ともに「分からない差をmigration Changeへ変換しない」という原則に従います。ただし、意味や判定に必要な情報が異なるため、表現と比較規則は分けて保ちます。
+提供元固有の式と索引の識別子は、ともに「判断できない違いを移行の変更項目へ変換しない」という原則に従います。ただし、意味や判断に必要な情報が異なるため、表現方法と比較規則は別々に保ちます。
 
-## 現時点で行わないこと
+## 現時点で対象にしないこと
 
-M0.34では次を行いません。
+M0.34では、次の機能は扱いません。
 
-- PostgreSQLの既定operator class一覧をオフラインの固定表として複製する
-- プロバイダーのバージョンごとにidentifier catalog snapshotを導入する
-- 実DBへのround-tripを通常のDesired realizationへ必須化する
-- collationやoperator classを新しい大規模なPhysical型へ置き換える
-- ProviderExpressionとidentifierの正規化機構を、一つの巨大なinterfaceへ統合する
+- PostgreSQLの既定の演算子クラス一覧を、接続不要の固定表として複製する
+- 提供元の版ごとに識別子の一覧を記録する仕組みを導入する
+- 実際のデータベースとの往復を、期待する構造の生成に必須とする
+- 照合順序や演算子クラスを、新たな大規模な物理構造の型に置き換える
+- 提供元固有の式と識別子の表記統一を、一つの巨大なインターフェースへまとめる
 
-必要性が確認できたものだけを、後続Issueで小さく追加します。
+必要性が確認できたものだけを、後続の課題で段階的に追加します。

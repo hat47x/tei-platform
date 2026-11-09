@@ -1,0 +1,27 @@
+{
+  "schema": "tei.reference.quote-shape-mapping/candidate-v0",
+  "status": "unaccepted",
+  "capability": "sales.order.quote_lines",
+  "requestData": "sales.quote_request",
+  "lineData": "sales.quote_line",
+  "resultData": "sales.quote_result",
+  "transportContractId": "reference.order.quote-lines/v1",
+  "requestShape": "reference.order.quote-lines.request/candidate-v0",
+  "resultShape": "reference.order.quote-lines.result/candidate-v0",
+  "fieldMappings": {
+    "sales.quote_request.currency": "currency",
+    "sales.quote_request.lines": "lines",
+    "sales.quote_line.sku": "lines[].sku",
+    "sales.quote_line.quantity": "lines[].quantity",
+    "sales.quote_line.unit_price_minor": "lines[].unitPriceMinor",
+    "sales.quote_result.currency": "currency",
+    "sales.quote_result.line_count": "lineCount",
+    "sales.quote_result.subtotal_minor": "subtotalMinor"
+  },
+  "limits": [
+    "unaccepted-candidate-not-canonical-authority",
+    "numeric-json-shape-does-not-prove-integer-range-or-JPY",
+    "does-not-replace-current-transport-fingerprint",
+    "runtime-authority-and-artifact-signature-not-proven"
+  ]
+}

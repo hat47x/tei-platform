@@ -1,0 +1,14 @@
+{
+  "schema": "tei.reference.target-profile/v0",
+  "id": "server",
+  "version": "1",
+  "description": "long-running server profile with rolling update",
+  "processModel": "long-running",
+  "storage": "filesystem",
+  "network": "allowed",
+  "update": "rolling",
+  "memoryLimitBytes": 67108864,
+  "observability": ["stdout", "exit-code"],
+  "unsupported": ["hard-realtime", "audit-log"],
+  "generatorId": "long-running-template"
+}

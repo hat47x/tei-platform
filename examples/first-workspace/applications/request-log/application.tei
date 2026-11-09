@@ -1,0 +1,3 @@
+application request_log {
+    uses semantic intake
+}

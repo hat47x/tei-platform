@@ -5,7 +5,9 @@ import (
 	"strings"
 )
 
-const RelationalResolutionPolicyRevision = "tei.xeadsource.relational-resolution/v1"
+// v2 distinguishes permissible legacy FAMILY target-key expansion from an
+// equal-arity mismatch without treating unresolved Field correspondence as accepted.
+const RelationalResolutionPolicyRevision = "tei.xeadsource.relational-resolution/v2"
 
 const (
 	RelationalFactResolutionResolved    = "resolved"
@@ -38,6 +40,10 @@ func Inspect(format Format, source []byte, policy ClassificationPolicy) (Inspect
 	if err != nil {
 		return Inspection{}, err
 	}
+	return inspectDocument(doc, policy), nil
+}
+
+func inspectDocument(doc Document, policy ClassificationPolicy) Inspection {
 	facts := ExtractRelationalSourceFacts(doc)
 	diagnostics := DiagnoseRelationalSourceFacts(doc, facts)
 	factResolutions := ProjectRelationalFactResolutions(facts, diagnostics)
@@ -63,7 +69,7 @@ func Inspect(format Format, source []byte, policy ClassificationPolicy) (Inspect
 			"unvalidated-relational-fact-blocks-deterministic-semantic-lowering",
 			"unresolved-relational-resolution-blocks-full-set-deterministic-semantic-lowering",
 		},
-	}, nil
+	}
 }
 
 func ProjectRelationalFactResolutions(

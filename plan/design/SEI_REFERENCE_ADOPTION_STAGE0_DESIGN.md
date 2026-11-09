@@ -2,7 +2,7 @@
 
 - 状態: Reference Design + fixture-local Executable Evidence
 - 更新日: 2026-09-18
-- Parent Issue: `plan/issue/000054-sei-reference-adoption-resume-review.md`
+- Parent Issue: ISSUE-000054-sei-reference-adoption-resume-review.md
 - SEI counterpart: `hat47x/sei-cognition` ISSUE-000079
 - Gate impact: None
 - Product Requirement impact: None in this document
@@ -348,7 +348,7 @@ therefore:
 
 Change 1の次候補として、canonical meaningを変えず表示順やprogressive disclosureだけを変更するChange 2を検討した。
 
-しかしcurrent TEIはGate B Not Ready、Gate C Blockedであり、First Web Targetとcomplete Target-neutral Presentation IRは未成立である（2026-09-21注記: 起票時点の記述。Gate BはR = `e5231839`、Gate CはT = `0ba87a4e`で2026-09-19にReadyとなり、第一Web Targetも実装・Evidence取得済みである。判定は[Gate C Readiness Audit](../GATE_C_READINESS_AUDIT.md)）（complete Target-neutral Presentation IRは現在も未成立）。第一Web Targetの計画自体も、Gate B前に完全なPresentation IRを先行設計しないことを明示している。
+しかしcurrent TEIはGate B Not Ready、Gate C Blockedであり、First Web Targetとcomplete Target-neutral Presentation IRは未成立である（2026-09-21注記: 起票時点の記述。Gate BはR = `e5231839`、Gate CはT = `0ba87a4e`で2026-09-19にReadyとなり、第一Web Targetも実装・Evidence取得済みである。判定は[Gate C Readiness Audit](../gate/GATE_C_READINESS_AUDIT.md)）（complete Target-neutral Presentation IRは現在も未成立）。第一Web Targetの計画自体も、Gate B前に完全なPresentation IRを先行設計しないことを明示している。
 
 このため、Stage 0 Referenceへ専用のordering schemaやPresentation helperを追加しない。
 
@@ -363,7 +363,7 @@ Change 2の再開条件は、Gate B Ready + Handover Baseline固定 + First Web 
 
 この判断は`reference/sei-adoption/change2-presentation-gate-boundary-20260918.json`へmachine-readableに固定する。
 
-2026-09-27注記: 上の再開条件のうち、Gate B Ready + Handover Baseline固定 + First Web Target着手は成立している（Gate C Readyの判定も含め、根拠は上の2026-09-21注記と同じ）。target-neutral Presentation機構は引き続き未成立である。再開は[ISSUE-000070](../issue/000070-sei-reference-adoption-change2-resumption.md)（Proposed・評価待ち）で扱い、最初にSEI Resumeを既存のApplication Patternと第一Web Targetの仕組みで扱えるかをread-onlyで確かめる。Change 2は未実行であり、下の整理はまだ更新しない。
+2026-09-27注記: 上の再開条件のうち、Gate B Ready + Handover Baseline固定 + First Web Target着手は成立している（Gate C Readyの判定も含め、根拠は上の2026-09-21注記と同じ）。target-neutral Presentation機構は引き続き未成立である。再開はISSUE-000070（Proposed・評価待ち）で扱い、最初にSEI Resumeを既存のApplication Patternと第一Web Targetの仕組みで扱えるかをread-onlyで確かめる。Change 2は未実行であり、下の整理はまだ更新しない。
 
 現時点では、
 

@@ -27,6 +27,7 @@ type SourceEdit struct {
 	BeforeFingerprint string `json:"beforeFingerprint,omitempty"`
 	AfterFingerprint  string `json:"afterFingerprint"`
 	InsertedText      string `json:"insertedText"`
+	RemovedText       string `json:"removedText,omitempty"`
 
 	before []byte
 	after  []byte
@@ -179,6 +180,14 @@ func renderData(d DataSpec) string {
 			fmt.Fprintf(&b, "        key %s -> %s\n", k.SourceAttribute, k.TargetAttribute)
 		}
 	}
+	for i := range d.CandidateKeys {
+		spec := d.CandidateKeys[i]
+		b.WriteString(renderBusinessRuleAddition(Operation{Op: opAddCandidateKey, AddCandidateKey: &spec}, "\n"))
+	}
+	for i := range d.FunctionalDependencies {
+		spec := d.FunctionalDependencies[i]
+		b.WriteString(renderBusinessRuleAddition(Operation{Op: opAddFunctionalDependency, AddFunctionalDependency: &spec}, "\n"))
+	}
 	b.WriteString("}")
 	return b.String()
 }
@@ -317,6 +326,45 @@ func planEdits(s snapshot, ops []Operation) ([]SourceEdit, []Diagnostic) {
 				continue
 			}
 			path = location.File
+		case opRemoveCandidateKey, opRemoveFunctionalDependency:
+			location, ok := s.loaded.Sources["semantic-data:"+op.RemoveBusinessRule.Data]
+			if !ok {
+				diagnostics = append(diagnostics, Diagnostic{Code: "PLACEMENT_UNRESOLVED", Message: fmt.Sprintf("no canonical source declares Data %s", op.RemoveBusinessRule.Data), Subject: key})
+				continue
+			}
+			path = location.File
+		case opAddCandidateKey, opAddFunctionalDependency:
+			data, _, _ := businessRuleOperationSubject(op)
+			location, ok := s.loaded.Sources["semantic-data:"+data]
+			if !ok {
+				diagnostics = append(diagnostics, Diagnostic{Code: "PLACEMENT_UNRESOLVED", Message: fmt.Sprintf("no canonical source declares Data %s", data), Subject: key})
+				continue
+			}
+			path = location.File
+		case opSetSymbol:
+			_, owner, ok := symbolSubject(s, op.Kind, op.ID)
+			if !ok {
+				diagnostics = append(diagnostics, Diagnostic{Code: "SYMBOL_SUBJECT_NOT_FOUND", Message: fmt.Sprintf("%s %s は既存のCanonical Worldにありません", op.Kind, op.ID), Subject: key})
+				continue
+			}
+			location, ok := s.loaded.Sources["semantic-data:"+owner]
+			if !ok {
+				diagnostics = append(diagnostics, Diagnostic{Code: "SYMBOL_SOURCE_NOT_FOUND", Message: fmt.Sprintf("%s %s を宣言したsource fileを特定できません", op.Kind, op.ID), Subject: key})
+				continue
+			}
+			path = location.File
+		case opSetAttributeType:
+			_, owner, ok := attributeOf(s, op.ID)
+			if !ok {
+				diagnostics = append(diagnostics, Diagnostic{Code: "ATTRIBUTE_NOT_FOUND", Message: fmt.Sprintf("属性 %s は既存のCanonical Worldにありません", op.ID), Subject: key})
+				continue
+			}
+			location, ok := s.loaded.Sources["semantic-data:"+owner]
+			if !ok {
+				diagnostics = append(diagnostics, Diagnostic{Code: "ATTRIBUTE_SOURCE_NOT_FOUND", Message: fmt.Sprintf("属性 %s を宣言したsource fileを特定できません", op.ID), Subject: key})
+				continue
+			}
+			path = location.File
 		default:
 			path = op.Placement
 			if path == "" {
@@ -353,8 +401,37 @@ func planEdits(s snapshot, ops []Operation) ([]SourceEdit, []Diagnostic) {
 			return nil, []Diagnostic{{Code: "SOURCE_UNREADABLE", Message: err.Error(), Subject: "file:" + path}}
 		}
 		content := before
-		var inserted strings.Builder
+		var inserted, removed strings.Builder
 		for _, op := range group {
+			if op.Op == opRemoveCandidateKey || op.Op == opRemoveFunctionalDependency {
+				var removedText string
+				content, removedText, err = removeExactBusinessRuleBlock(content, op)
+				if err != nil {
+					return nil, []Diagnostic{{Code: "BUSINESS_RULE_REMOVAL_FAILED", Message: err.Error(), Subject: operationKey(op)}}
+				}
+				removed.WriteString(removedText)
+				continue
+			}
+			if op.Op == opSetSymbol {
+				var removedText string
+				content, removedText, err = replaceSymbolToken(content, op)
+				if err != nil {
+					return nil, []Diagnostic{{Code: "SYMBOL_REPLACEMENT_FAILED", Message: err.Error(), Subject: operationKey(op)}}
+				}
+				inserted.WriteString(op.Symbol)
+				removed.WriteString(removedText)
+				continue
+			}
+			if op.Op == opSetAttributeType {
+				var removedText string
+				content, removedText, err = replaceAttributeTypeToken(content, op)
+				if err != nil {
+					return nil, []Diagnostic{{Code: "ATTRIBUTE_TYPE_REPLACEMENT_FAILED", Message: err.Error(), Subject: operationKey(op)}}
+				}
+				inserted.WriteString(op.AttributeType)
+				removed.WriteString(removedText)
+				continue
+			}
 			if op.Op == opAddEnvironmentBinding {
 				var text string
 				content, text, err = insertIntoEnvironmentBlock(content, op.EnvironmentBinding.Environment, *op.EnvironmentBinding)
@@ -369,6 +446,20 @@ func planEdits(s snapshot, ops []Operation) ([]SourceEdit, []Diagnostic) {
 				content, text, err = insertApplicationValidationUse(content, *op.ApplicationValidationUse)
 				if err != nil {
 					return nil, []Diagnostic{{Code: "APPLICATION_BLOCK_INSERTION_FAILED", Message: err.Error(), Subject: operationKey(op)}}
+				}
+				inserted.WriteString(text)
+				continue
+			}
+			if op.Op == opAddCandidateKey || op.Op == opAddFunctionalDependency {
+				data, _, _ := businessRuleOperationSubject(op)
+				symbol, ok := dataSymbol(s, data)
+				if !ok {
+					return nil, []Diagnostic{{Code: "DATA_NOT_FOUND", Message: fmt.Sprintf("Data %s does not exist", data), Subject: operationKey(op)}}
+				}
+				var text string
+				content, text, err = insertBusinessRuleIntoDataBlock(content, symbol, op)
+				if err != nil {
+					return nil, []Diagnostic{{Code: "DATA_BLOCK_INSERTION_FAILED", Message: err.Error(), Subject: operationKey(op)}}
 				}
 				inserted.WriteString(text)
 				continue
@@ -402,6 +493,7 @@ func planEdits(s snapshot, ops []Operation) ([]SourceEdit, []Diagnostic) {
 			BeforeFingerprint: sourceindex.Fingerprint(before),
 			AfterFingerprint:  sourceindex.Fingerprint(content),
 			InsertedText:      inserted.String(),
+			RemovedText:       removed.String(),
 			before:            before,
 			after:             content,
 		})

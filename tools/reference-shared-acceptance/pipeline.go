@@ -249,7 +249,7 @@ func evaluate(root string, data []byte) (evaluation, error) {
 	})
 
 	run("impact", func() []Diagnostic {
-		ev.preview.Impact, ev.preview.Unresolved = changeanalysis.Impact(after.loaded.World, allChanges(ev.preview))
+		ev.preview.Impact, ev.preview.Unresolved = changeanalysis.ImpactWithBefore(before.loaded.World, after.loaded.World, allChanges(ev.preview))
 		return nil
 	})
 
@@ -369,8 +369,22 @@ func expectedChanges(ops []Operation) []changeanalysis.SubjectChange {
 			for _, r := range op.Data.Relations {
 				add("relation", r.ID)
 			}
+			for _, key := range op.Data.CandidateKeys {
+				add("candidate-key", key.ID)
+			}
+			for _, fd := range op.Data.FunctionalDependencies {
+				add("functional-dependency", fd.ID)
+			}
 		case opAddRelation:
 			add("relation", op.AddRelation.ID)
+		case opAddCandidateKey:
+			add("candidate-key", op.AddCandidateKey.ID)
+		case opAddFunctionalDependency:
+			add("functional-dependency", op.AddFunctionalDependency.ID)
+		case opRemoveCandidateKey:
+			out = append(out, changeanalysis.SubjectChange{Kind: "candidate-key", ID: op.RemoveBusinessRule.ID, Change: "removed"})
+		case opRemoveFunctionalDependency:
+			out = append(out, changeanalysis.SubjectChange{Kind: "functional-dependency", ID: op.RemoveBusinessRule.ID, Change: "removed"})
 		case opAddApplication:
 			add("application", op.Application.ID)
 		case opAddReferencePattern:
@@ -385,6 +399,12 @@ func expectedChanges(ops []Operation) []changeanalysis.SubjectChange {
 				changedApplications[op.ApplicationValidationUse.Application] = true
 				out = append(out, changeanalysis.SubjectChange{Kind: "application", ID: op.ApplicationValidationUse.Application, Change: "changed"})
 			}
+		case opSetAttributeType:
+			// 型の付け替えは属性のCanonical IDを変えないため、同じ属性のchangedになる。
+			out = append(out, changeanalysis.SubjectChange{Kind: "attribute", ID: op.ID, Change: "changed"})
+		case opSetSymbol:
+			// symbolだけの改名はCanonical IDを変えないため、同じsubjectのchangedになる。
+			out = append(out, changeanalysis.SubjectChange{Kind: op.Kind, ID: op.ID, Change: "changed"})
 		}
 	}
 	sortChanges(out)
@@ -396,7 +416,7 @@ func expectedCollections(ops []Operation) []string {
 	set := map[string]bool{}
 	for _, op := range ops {
 		switch op.Op {
-		case opAddValidation, opAddData, opAddRelation:
+		case opAddValidation, opAddData, opAddRelation, opAddCandidateKey, opAddFunctionalDependency, opRemoveCandidateKey, opRemoveFunctionalDependency, opSetSymbol, opSetAttributeType:
 			set["semantics"] = true
 		case opAddApplication, opAddReferencePattern, opAddApplicationValidationUse:
 			set["applications"] = true

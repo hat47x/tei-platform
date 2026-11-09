@@ -1,0 +1,33 @@
+{
+  "schema": "tei.reference.order-assist.quote-rule/candidate-v0",
+  "status": "unaccepted",
+  "ruleVersion": "reference.order.quote-rule/v2",
+  "revises": "reference.order.quote-rule/v1",
+  "change": "optional member discountRateBp (integer 0..3000); discountMinor = floor(subtotalMinor * discountRateBp / 10000); netMinor = subtotalMinor - discountMinor. Requests without the member keep the v1 subtotal with a zero discount.",
+  "description": "Independent expected values written by hand for the generation-2 boundary of the quote rule. Used together with the 23 vectors of reference/candidates/order-quote/semantic-vectors-v0.json. Not an acceptance certificate.",
+  "vectors": [
+    {"name": "discount 5 percent", "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"PEN\",\"quantity\":3,\"unitPriceMinor\":250},{\"sku\":\"BOOK\",\"quantity\":2,\"unitPriceMinor\":400}],\"discountRateBp\":500}",
+     "expect": {"subtotalMinor": 1550, "lineCount": 2, "discountRateBp": 500, "discountMinor": 77, "netMinor": 1473}},
+    {"name": "explicit zero discount", "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"PEN\",\"quantity\":3,\"unitPriceMinor\":250},{\"sku\":\"BOOK\",\"quantity\":2,\"unitPriceMinor\":400}],\"discountRateBp\":0}",
+     "expect": {"subtotalMinor": 1550, "lineCount": 2, "discountRateBp": 0, "discountMinor": 0, "netMinor": 1550}},
+    {"name": "maximum discount", "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"PEN\",\"quantity\":3,\"unitPriceMinor\":250},{\"sku\":\"BOOK\",\"quantity\":2,\"unitPriceMinor\":400}],\"discountRateBp\":3000}",
+     "expect": {"subtotalMinor": 1550, "lineCount": 2, "discountRateBp": 3000, "discountMinor": 465, "netMinor": 1085}},
+    {"name": "one basis point floors to zero", "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"PEN\",\"quantity\":3,\"unitPriceMinor\":250},{\"sku\":\"BOOK\",\"quantity\":2,\"unitPriceMinor\":400}],\"discountRateBp\":1}",
+     "expect": {"subtotalMinor": 1550, "lineCount": 2, "discountRateBp": 1, "discountMinor": 0, "netMinor": 1550}},
+    {"name": "fraction floors", "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"PEN\",\"quantity\":3,\"unitPriceMinor\":250},{\"sku\":\"BOOK\",\"quantity\":2,\"unitPriceMinor\":400}],\"discountRateBp\":333}",
+     "expect": {"subtotalMinor": 1550, "lineCount": 2, "discountRateBp": 333, "discountMinor": 51, "netMinor": 1499}},
+    {"name": "maximum subtotal with maximum discount", "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"S0\",\"quantity\":100,\"unitPriceMinor\":1000000000},{\"sku\":\"S1\",\"quantity\":100,\"unitPriceMinor\":1000000000},{\"sku\":\"S2\",\"quantity\":100,\"unitPriceMinor\":1000000000},{\"sku\":\"S3\",\"quantity\":100,\"unitPriceMinor\":1000000000},{\"sku\":\"S4\",\"quantity\":100,\"unitPriceMinor\":1000000000},{\"sku\":\"S5\",\"quantity\":100,\"unitPriceMinor\":1000000000},{\"sku\":\"S6\",\"quantity\":100,\"unitPriceMinor\":1000000000},{\"sku\":\"S7\",\"quantity\":100,\"unitPriceMinor\":1000000000},{\"sku\":\"S8\",\"quantity\":100,\"unitPriceMinor\":1000000000},{\"sku\":\"S9\",\"quantity\":100,\"unitPriceMinor\":1000000000}],\"discountRateBp\":3000}",
+     "expect": {"subtotalMinor": 1000000000000, "lineCount": 10, "discountRateBp": 3000, "discountMinor": 300000000000, "netMinor": 700000000000}},
+    {"name": "C5 quote after reprice", "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"PEN\",\"quantity\":4,\"unitPriceMinor\":250},{\"sku\":\"BOOK\",\"quantity\":6,\"unitPriceMinor\":450}],\"discountRateBp\":500}",
+     "expect": {"subtotalMinor": 3700, "lineCount": 2, "discountRateBp": 500, "discountMinor": 185, "netMinor": 3515}},
+    {"name": "discount above maximum", "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"PEN\",\"quantity\":1,\"unitPriceMinor\":250}],\"discountRateBp\":3001}", "reject": true},
+    {"name": "negative discount", "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"PEN\",\"quantity\":1,\"unitPriceMinor\":250}],\"discountRateBp\":-1}", "reject": true},
+    {"name": "fractional discount", "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"PEN\",\"quantity\":1,\"unitPriceMinor\":250}],\"discountRateBp\":500.0}", "reject": true},
+    {"name": "exponent discount", "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"PEN\",\"quantity\":1,\"unitPriceMinor\":250}],\"discountRateBp\":5e2}", "reject": true},
+    {"name": "null discount", "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"PEN\",\"quantity\":1,\"unitPriceMinor\":250}],\"discountRateBp\":null}", "reject": true},
+    {"name": "string discount", "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"PEN\",\"quantity\":1,\"unitPriceMinor\":250}],\"discountRateBp\":\"500\"}", "reject": true},
+    {"name": "duplicate discount", "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"PEN\",\"quantity\":1,\"unitPriceMinor\":250}],\"discountRateBp\":0,\"discountRateBp\":3000}", "reject": true},
+    {"name": "case variant discount", "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"PEN\",\"quantity\":1,\"unitPriceMinor\":250}],\"DiscountRateBp\":500}", "reject": true},
+    {"name": "discount inside a line", "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"PEN\",\"quantity\":1,\"unitPriceMinor\":250,\"discountRateBp\":500}]}", "reject": true}
+  ]
+}

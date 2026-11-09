@@ -1,0 +1,100 @@
+# 空集合と業務完了の意味（#1125 BP-05）
+
+- 状態: 判断材料と、2026-11-03のOwner判断（EmptyPolicyの決め方）の記録。設計の採否は #267。
+- 契機: #1125 BP-05 の「必須条件が全対象行で成立するとき、対象集合が0行なら完了と言えるか」というOwner条件。
+- 関連: `plan/design/BUSINESS_ACTION_COMPLETION_EVIDENCE_DESIGN_2026-11.md`（実装前設計・Owner未受理）、#267（採用判断の入口）。
+
+## 1. 何が問題か
+
+完了条件を `∀x ∈ L: P(x)` と書くと、`L = ∅` のとき命題は**真**になる（vacuous truth）。しかし業務では「対象が無いこと」と「対象全部が条件を満たすこと」は同じ意味ではない。空の受注一覧に対して「全明細の数量が正しい」と言っても、明細が存在しないのだから確認したことにならない。
+
+同時に、「該当がないことを確認する」ことが要件の業務もある。この場合、空は成功条件であり、失敗ではない。つまり空集合の扱いは述語の形だけでは決まらない。
+
+## 2. 形式系（Lean）での扱い
+
+- Leanでは `∀ x ∈ (∅ : Finset α), P x` は証明できる。`Finset.all` も空集合で `true` を返す。これは論理として正しい。
+- 形式証明が保証するのは「述語が対象集合の全要素で成立すること」であり、**対象集合 `L` が業務上正しい `L` であること**は別の命題である。
+- したがって業務完了をLeanで表すなら、少なくとも三つを分ける必要がある。
+  1. `L` の定義（Ownerが定めた対象集合）
+  2. `R = L` の証拠（実Readが対象集合を覆ったこと。Scope・Filter・Provider・時点に相対）
+  3. `∀x ∈ L: P(x)`（述語の成立）
+- `R = ∅` から 2 を導くには、「対象が無いこと」の独立証拠が要る。形式系はこの証拠を自動では与えない。
+
+## 3. 業務類型ごとの空集合の意味（案）
+
+| 業務類型 | 述語の形 | 空集合の意味 | 完了に必要な追加証拠 |
+| --- | --- | --- | --- |
+| 全称（全対象が条件を満たす） | `∀x ∈ L: P(x)` | 対象が無いので「確認した」とは言えない | 対象集合が空であることの独立証拠（同一Scope/版の全件取得、Provider契約） |
+| 不在確認（該当が無いことが要件） | `¬∃x ∈ L: Q(x)` | 空は成功条件 | 探索の完全性（Scope/Filter/Provider/時点）の証拠 |
+| 存在（少なくとも1件） | `∃x ∈ L: P(x)` | 空は失敗 | 不要（空なら不成立） |
+| 集計（合計・件数） | `Σ f(x)` | 0 として定義できる | 0 が業務上許容かのOwner宣言 |
+| 引継ぎ・外部確認 | 外部証憑 | 空でも外部確認が必要な場合がある | Ownerが定めたhandoff condition |
+
+この表は類型ごとの**既定候補**であり、業務ごとの上書きを禁止しない。
+
+## 4. 一義に選べるか
+
+述語の形（全称・存在・集計）だけでは決まらない。「対象集合をどう定めるか」と「空を成功とするか」は別の宣言であり、Ownerの業務判断である。したがって完了述語は次の三つ組として扱うのが自然である。
+
+```text
+CompletionPredicate = (
+  TargetSet L,          // Ownerが定めた対象集合
+  EmptyPolicy,          // 空を成功とするか、独立証拠を要求するか
+  Predicate P           // 対象行に要求する条件
+)
+```
+
+`EmptyPolicy` を述語の形から自動導出すると、不在確認と全称を同じ形で扱えず破綻する。
+
+## 5. Leanへの写像（案）
+
+```text
+-- 形式部分（述語の成立）
+theorem all_hold (h : ∀ x ∈ L, P x) : ...
+
+-- 業務部分（対象集合の被覆と空の扱い）
+structure CompletionClaim where
+  L : Finset Target
+  emptyPolicy : EmptyPolicy
+  covered : R = L
+  predicate : ∀ x ∈ L, P x
+  emptyJustified : L = ∅ → emptyPolicy = allow
+```
+
+形式証明 `predicate` と、業務証拠 `covered` / `emptyJustified` を別フィールドにする。Leanの証明が埋まっても、`covered` と `emptyJustified` が未提供なら完了ではない。
+
+## 6. 決定（2026-11-03 Owner）
+
+空集合の完了扱いは、**業務類型ごとの既定候補を用意し、ActionごとにOwnerが宣言して上書きできる**形にする。
+
+- `EmptyPolicy` は述語の形から自動導出しない。全称と不在確認を同じ形で扱えないため。
+- 完了述語は `(TargetSet L, EmptyPolicy, Predicate P)` の三つ組として扱う。
+- 既定候補は §3 の表を使い、Action側の宣言が既定を上書きする。
+- 宣言の構文・保存先は **Actionの`.tei`宣言の`emptyPolicy`属性**とする（2026-11-04 Owner判断）。
+  - `capability <action> { ... emptyPolicy allow | requires-evidence | deny }`
+  - 未宣言は業務類型の既定候補（`internal/semantic.DefaultEmptyPolicy`）を使う
+  - 意味の正本は`.tei`側に置き、実行時記録は宣言を参照する
+
+## 7. 実装状況（2026-11-06）
+
+- `internal/semantic`: `EmptyPolicy`（`allow` / `requires-evidence` / `deny`）、`DefaultEmptyPolicy(condition)`、`Capability.EffectiveEmptyPolicy(condition)`。
+- `internal/syntax`: capability宣言の`emptyPolicy`属性。未知の値と二重宣言を拒否する。
+- **`CompletionClaim` 評価（#267 仮承認・2026-11-06）**: `EvaluateCompletion(capability, kind, evidence)` が `(TargetSet L, EmptyPolicy, Predicate P)` を評価する。
+  - 入力は観測済みの `TargetResult` と `Coverage`（完全/部分/未測定）、`EmptyJustified`、`HandoffConfirmed`、`Conflicting`。
+  - 判定は `holds` / `fails` / `unverified` / `contradiction`。
+  - 反例が1件でもあれば `fails`（coverage不明でも）。空集合は `deny` → `fails`、`allow` → coverage完全のみ `holds`、`requires-evidence` → 独立した空証明が必須。
+  - coverage不明・空証明なし・handoff未確認・既定の無いconditionは `unverified`（fail-closed）。
+  - この評価器はLを述語形や件数から推定しない。Lの被覆と空の証明は呼出側の証拠として渡す。
+- 試験: 既定候補、Action宣言による上書き、未知値・重複の拒否、未宣言の扱い、上記の完了判定（allow / requires-evidence / deny / handoff / contradiction）。
+
+## 8. 未決
+
+- 不在確認の「探索の完全性」を、既存のProvider契約・観測（#2598・#2582・#2387・#2622）のどこまでで保証できるか。
+- 形式系の検証をどこまで実装するか（Leanの特定版での機械検証は未実施）。
+- `CompletionClaim` 評価の実Consumer接続（実RuntimeのTargetSet・Coverage・独立空証明の供給）。#267の正式採否は仮承認のまま実物で見直す。
+
+## 9. 主張しないこと
+
+- この文書はCore Schema・実行Status・製品保証を変更しない。設計の採否は #267。
+- Leanの特定バージョンで上記の写像を機械検証していない。
+- 業務類型の表は候補であり、全ての業務を網羅した分類ではない。

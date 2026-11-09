@@ -1,0 +1,584 @@
+name: TEI Studio PoC A Wails Host
+
+# #1824 PoC A専用。既存全体CI・Gateを置き換えない。
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tei-studio-wails-poc-a-ci.yml
+      - cmd/tei-studio/**
+      - go.mod
+      - go.sum
+      # Exact Go production import closure from cmd/tei-studio, studiohost, operations and xeadsource.
+      - internal/application/**
+      - internal/consumerimpact/**
+      - internal/core/**
+      - internal/database/**
+      - internal/dependency/**
+      - internal/deployment/**
+      - internal/environment/**
+      - internal/index/**
+      - internal/ir/**
+      - internal/modelref/**
+      - internal/operations/**
+      - internal/permission/**
+      - internal/plugin/**
+      - internal/query/**
+      - internal/realization/**
+      - internal/releaseplan/**
+      - internal/resource/**
+      - internal/semantic/**
+      - internal/sourceindex/**
+      - internal/stdlib/**
+      - internal/studiohost/**
+      - internal/subject/**
+      - internal/syntax/**
+      - internal/validation/**
+      - internal/workspace/**
+      - internal/xeadsource/**
+      - tools/reference-studio-static-composition/**
+      - reference/tei-studio-*/**
+      - reference/ui-customization/composition/**
+      - reference/workspace/**
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - .github/workflows/tei-studio-wails-poc-a-ci.yml
+      - cmd/tei-studio/**
+      - go.mod
+      - go.sum
+      # Exact Go production import closure from cmd/tei-studio, studiohost, operations and xeadsource.
+      - internal/application/**
+      - internal/consumerimpact/**
+      - internal/core/**
+      - internal/database/**
+      - internal/dependency/**
+      - internal/deployment/**
+      - internal/environment/**
+      - internal/index/**
+      - internal/ir/**
+      - internal/modelref/**
+      - internal/operations/**
+      - internal/permission/**
+      - internal/plugin/**
+      - internal/query/**
+      - internal/realization/**
+      - internal/releaseplan/**
+      - internal/resource/**
+      - internal/semantic/**
+      - internal/sourceindex/**
+      - internal/stdlib/**
+      - internal/studiohost/**
+      - internal/subject/**
+      - internal/syntax/**
+      - internal/validation/**
+      - internal/workspace/**
+      - internal/xeadsource/**
+      - tools/reference-studio-static-composition/**
+      - reference/tei-studio-*/**
+      - reference/ui-customization/composition/**
+      - reference/workspace/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-studio-poc-a-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  server-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      GOTOOLCHAIN: local
+      GOWORK: off
+    steps:
+      - name: ソースを固定
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Go 1.26.10を固定
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      - name: CLI実行ファイルを作成
+        shell: bash
+        run: |
+          set -euo pipefail
+          go build -mod=readonly -o "$RUNNER_TEMP/tei-cli" ./cmd/tei
+
+      - name: Node 22を固定
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          check-latest: false
+
+      - name: Host-neutral Go read-onlyの試験
+        shell: bash
+        run: |
+          set -euo pipefail
+          go version
+          go test -count=1 ./internal/studiohost/...
+
+      - name: 通常HostのServer Go試験
+        working-directory: cmd/tei-studio
+        shell: bash
+        run: |
+          set -euo pipefail
+          CGO_ENABLED=0 go test -mod=readonly -count=1 -tags server .
+
+      - name: JS Bridgeの試験
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --version
+          node --test cmd/tei-studio/test/*.test.mjs
+
+      - name: 固定Wails版を解決してServer Build
+        working-directory: cmd/tei-studio
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s go.sum
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
+          grep -F 'github.com/wailsapp/wails/v3 v3.0.0-beta.29' go.mod
+          CGO_ENABLED=0 go build -mod=readonly -tags server -o "$RUNNER_TEMP/tei-studio-server" .
+          CGO_ENABLED=0 go vet -mod=readonly -tags server ./...
+
+      - name: 実ブラウザー用Playwrightを準備
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/tei-studio-playwright"
+          "$RUNNER_TEMP/tei-studio-playwright/bin/python" -m pip install --disable-pip-version-check --no-cache-dir 'playwright==1.57.0'
+          "$RUNNER_TEMP/tei-studio-playwright/bin/python" -m playwright install --with-deps --only-shell chromium
+
+      - name: loopback HTTPの実起動・埋込みasset smoke
+        working-directory: cmd/tei-studio
+        shell: bash
+        run: |
+          set -euo pipefail
+          if WAILS_SERVER_HOST=0.0.0.0 "$RUNNER_TEMP/tei-studio-server" -workspace ../../reference/workspace -port 43123 > "$RUNNER_TEMP/studio-env-refused.log" 2>&1; then
+            echo "unexpected public-listener override accepted" >&2
+            exit 1
+          fi
+          grep -Fq 'WAILS_SERVER_HOST must be unset or exactly 127.0.0.1' "$RUNNER_TEMP/studio-env-refused.log"
+          "$RUNNER_TEMP/tei-studio-server" -workspace ../../reference/workspace -port 43123 > "$RUNNER_TEMP/tei-studio-server.log" 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          healthy=0
+          for _ in {1..30}; do
+            if curl -fsS --max-time 2 http://127.0.0.1:43123/health > "$RUNNER_TEMP/studio-health.json"; then
+              healthy=1
+              break
+            fi
+            sleep 1
+          done
+          test "$healthy" = 1
+          grep -q '"status":"ok"' "$RUNNER_TEMP/studio-health.json"
+          curl -fsS --max-time 5 http://127.0.0.1:43123/ > "$RUNNER_TEMP/studio-index.html"
+          grep -q 'TEI Studio' "$RUNNER_TEMP/studio-index.html"
+
+          "$RUNNER_TEMP/tei-studio-playwright/bin/python" test/browser_smoke.py http://127.0.0.1:43123/
+
+          python3 test/cli_catalog_parity.py \
+            --cli "$RUNNER_TEMP/tei-cli" \
+            --server "$RUNNER_TEMP/tei-studio-server" \
+            --workspace ../../reference/workspace \
+            --base-url http://127.0.0.1:43123
+
+          runtime_url=http://127.0.0.1:43123/wails/runtime
+          runtime_call='{"object":0,"method":0,"args":{"call-id":"studio-ci-list-workspaces","methodName":"main.StudioBridge.ListWorkspaces","args":[]}}'
+          runtime_status=$(curl -sS --max-time 5 -o "$RUNNER_TEMP/studio-runtime-success.json" -w '%{http_code}' -X POST "$runtime_url" \
+            -H 'Host: 127.0.0.1:43123' \
+            -H 'Origin: http://127.0.0.1:43123' \
+            -H 'Content-Type: application/json' \
+            --data "$runtime_call")
+          if [ "$runtime_status" != 200 ]; then
+            echo "successful runtime RPC returned HTTP $runtime_status, expected 200" >&2
+            cat "$RUNNER_TEMP/studio-runtime-success.json" >&2
+            exit 1
+          fi
+          python3 - "$RUNNER_TEMP/studio-runtime-success.json" <<'PY'
+          import json
+          import sys
+
+          with open(sys.argv[1], encoding="utf-8") as response_file:
+              response = json.load(response_file)
+          assert response.get("ok") is True, response
+          assert response.get("value") == [{"id": "workspace-1", "label": "workspace"}], response
+          PY
+
+          assert_runtime_denied() {
+            local name="$1"
+            local url="$2"
+            local origin="$3"
+            local host="$4"
+            local resolve_args=("${@:5}")
+            local status
+            status=$(curl -sS --max-time 5 "${resolve_args[@]}" -o "$RUNNER_TEMP/studio-runtime-${name}.json" \
+              -w '%{http_code}' -X POST "$url" \
+              -H "Host: $host" \
+              -H "Origin: $origin" \
+              -H 'Content-Type: application/json' \
+              --data "{\"object\":0,\"method\":0,\"args\":{\"call-id\":\"studio-ci-${name}\",\"methodName\":\"main.StudioBridge.ListWorkspaces\",\"args\":[]}}")
+            if [ "$status" != 403 ]; then
+              echo "runtime ${name} boundary returned HTTP $status, expected 403" >&2
+              cat "$RUNNER_TEMP/studio-runtime-${name}.json" >&2
+              return 1
+            fi
+          }
+
+          assert_runtime_denied origin http://127.0.0.1:43123/wails/runtime http://attacker.example:43123 127.0.0.1:43123
+          assert_runtime_denied host http://127.0.0.1:43123/wails/runtime http://127.0.0.1:43123 attacker.example:43123
+          assert_runtime_denied host-origin http://attacker.example:43123/wails/runtime http://attacker.example:43123 attacker.example:43123 --resolve attacker.example:43123:127.0.0.1
+
+      - name: 同一loopback Host上の二BrowserContextと遅延応答分離
+        working-directory: cmd/tei-studio
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/tei-studio-playwright/bin/python" test/browser_isolation_smoke.py \
+            --server "$RUNNER_TEMP/tei-studio-server" \
+            --port 43124
+
+      - name: Bootstrapの実Chromiumにおける遅着Catalog応答・DOM/ARIAを検証
+        working-directory: cmd/tei-studio
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/tei-studio-playwright/bin/python" test/bootstrap_async_smoke.py \
+            --server "$RUNNER_TEMP/tei-studio-server" \
+            --port 43130
+
+      - name: 依存checksum証拠を保持（ソースには自動反映しない）
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tei-studio-poc-a-server-lock-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            cmd/tei-studio/go.mod
+            cmd/tei-studio/go.sum
+          retention-days: 7
+          if-no-files-found: error
+
+  paired-host-semantic-parity:
+    # Same source, fixture, runner, and invocation for both Host build modes.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      GOTOOLCHAIN: local
+      GOWORK: off
+    steps:
+      - name: ソースを固定
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Go 1.26.10を固定
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      - name: 通常Hostと生成Hostを同一ソースから作成
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/tei-studio-poc-b-paired-host"
+          go version
+          git rev-parse HEAD
+          go run ./tools/reference-studio-static-composition \
+            -fixture tools/reference-studio-static-composition/fixture.json \
+            -out internal/studiohost/staticservices
+          test -s internal/studiohost/staticservices/services.generated.go
+          cd cmd/tei-studio
+          CGO_ENABLED=0 go test -mod=readonly -count=1 -tags server .
+          CGO_ENABLED=0 go build -mod=readonly -tags server -o "$RUNNER_TEMP/tei-studio-poc-b-paired-host/tei-studio-ordinary" .
+          CGO_ENABLED=0 go test -mod=readonly -count=1 -tags 'studio_generated,server' .
+          CGO_ENABLED=0 go build -mod=readonly -tags 'studio_generated,server' -o "$RUNNER_TEMP/tei-studio-poc-b-paired-host/tei-studio-generated" .
+
+      - name: 同一WorkspaceのCatalog・Validate・allowlist拒否を比較
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 cmd/tei-studio/test/host_pair_parity.py \
+            --ordinary "$RUNNER_TEMP/tei-studio-poc-b-paired-host/tei-studio-ordinary" \
+            --generated "$RUNNER_TEMP/tei-studio-poc-b-paired-host/tei-studio-generated" \
+            --workspace reference/workspace \
+            --generator tools/reference-studio-static-composition/main.go \
+            --fixture tools/reference-studio-static-composition/fixture.json \
+            --generated-source internal/studiohost/staticservices/services.generated.go \
+            --source-sha "$(git rev-parse HEAD)" \
+            --output "$RUNNER_TEMP/tei-studio-poc-b-paired-host"
+
+      - name: 比較値と来歴を保存
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tei-studio-poc-b-paired-host-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/tei-studio-poc-b-paired-host
+          retention-days: 7
+          if-no-files-found: warn
+
+  desktop-windows-build:
+    runs-on: windows-2022
+    timeout-minutes: 25
+    env:
+      GOTOOLCHAIN: local
+      GOWORK: off
+    steps:
+      - name: ソースを固定
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Go 1.26.10を固定
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+      - name: 固定Wails版を解決してDesktop Build（GUI起動は別証拠）
+        shell: pwsh
+        working-directory: cmd/tei-studio
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not (Test-Path "go.sum")) { exit 1 }
+          go mod tidy
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git diff --exit-code -- go.mod go.sum
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          go build -mod=readonly -o "$env:RUNNER_TEMP/tei-studio.exe" .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not (Test-Path "$env:RUNNER_TEMP/tei-studio.exe")) { exit 1 }
+
+      - name: 固定生成Goを使ったWindows Desktop Build（実WebView非実行）
+        shell: bash
+        env:
+          POC_B_GENERATOR_SHA: fe8e37b1c735dc138c36cb2d37db94ee44424b9e
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=50 https://github.com/hat47x/tei-platform.git refs/pull/1833/head
+          git cat-file -e "$POC_B_GENERATOR_SHA^{commit}"
+          git archive "$POC_B_GENERATOR_SHA" tools/reference-studio-static-composition | tar -xf -
+          go run ./tools/reference-studio-static-composition \
+            -fixture tools/reference-studio-static-composition/fixture.json \
+            -out internal/studiohost/staticservices
+          cd cmd/tei-studio
+          test -s go.sum
+          go build -mod=readonly -tags studio_generated -o tei-studio-generated.exe .
+          test -s tei-studio-generated.exe
+
+  generated-host-server:
+    # Deliberately separate from the ordinary Host. Never merge #1833.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      GOTOOLCHAIN: local
+      GOWORK: off
+      POC_B_GENERATOR_SHA: fe8e37b1c735dc138c36cb2d37db94ee44424b9e
+      POC_B_WORKBENCH_FIXTURE_SHA: b513e1e9332e8ddd6dc854cb12dd71ab89f6d5c6
+    steps:
+      - name: PoC AのPR headを正確にcheckout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Go 1.26.10を固定
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+      - name: Node 22を固定（生成UI試験）
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          check-latest: false
+      - name: 固定生成器と固定Workbench試料を検証snapshotへ抽出
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --version
+          git fetch --no-tags --depth=50 https://github.com/hat47x/tei-platform.git refs/pull/1833/head
+          git cat-file -e "$POC_B_GENERATOR_SHA^{commit}"
+          if ! git cat-file -e "$POC_B_WORKBENCH_FIXTURE_SHA^{commit}" 2>/dev/null; then
+            git fetch --no-tags --depth=1 origin "$POC_B_WORKBENCH_FIXTURE_SHA"
+          fi
+          git cat-file -e "$POC_B_WORKBENCH_FIXTURE_SHA^{commit}"
+          git archive "$POC_B_GENERATOR_SHA" tools/reference-studio-static-composition | tar -xf -
+          git archive "$POC_B_WORKBENCH_FIXTURE_SHA" \
+            tools/reference-studio-static-composition/connect-workbench.test.mjs \
+            tools/reference-studio-static-composition/testdata/poc-b-workbench-snapshot | tar -xf -
+          go test -count=1 ./tools/reference-studio-static-composition
+          go run ./tools/reference-studio-static-composition \
+            -fixture tools/reference-studio-static-composition/fixture.json \
+            -out internal/studiohost/staticservices
+          test -s internal/studiohost/staticservices/services.generated.go
+          grep -q 'func NewCatalogService' internal/studiohost/staticservices/services.generated.go
+          grep -q 'func NewValidateService' internal/studiohost/staticservices/services.generated.go
+          sha256sum internal/studiohost/staticservices/services.generated.go
+      - name: 生成2サービスのtyped Host経路・拒否・診断を実行
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test -count=1 -v ./internal/studiohost/...
+          go vet ./internal/studiohost/...
+          cd cmd/tei-studio
+          test -s go.sum
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
+          CGO_ENABLED=0 go test -mod=readonly -count=1 -v -tags 'studio_generated,server' .
+          CGO_ENABLED=0 go vet -mod=readonly -tags 'studio_generated,server' ./...
+          CGO_ENABLED=0 go build -mod=readonly -tags 'studio_generated,server' -o "$RUNNER_TEMP/tei-studio-generated-server" .
+      - name: 生成Hostの同一Wails Serverをloopback起動
+        working-directory: cmd/tei-studio
+        shell: bash
+        run: |
+          set -euo pipefail
+          if WAILS_SERVER_HOST=0.0.0.0 "$RUNNER_TEMP/tei-studio-generated-server" -workspace ../../reference/workspace -port 43128 > "$RUNNER_TEMP/generated-env-refused.log" 2>&1; then
+            echo 'generated Host accepted public listener' >&2
+            exit 1
+          fi
+          grep -Fq 'WAILS_SERVER_HOST must be unset or exactly 127.0.0.1' "$RUNNER_TEMP/generated-env-refused.log"
+          "$RUNNER_TEMP/tei-studio-generated-server" -workspace ../../reference/workspace -port 43128 > "$RUNNER_TEMP/generated-host.log" 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          healthy=0
+          for _ in {1..30}; do
+            if curl -fsS --max-time 2 http://127.0.0.1:43128/health > "$RUNNER_TEMP/generated-health.json"; then
+              healthy=1
+              break
+            fi
+            sleep 1
+          done
+          test "$healthy" = 1
+          grep -q '"status":"ok"' "$RUNNER_TEMP/generated-health.json"
+          curl -fsS --max-time 5 http://127.0.0.1:43128/ > "$RUNNER_TEMP/generated-index.html"
+          grep -q 'TEI Studio' "$RUNNER_TEMP/generated-index.html"
+
+  generated-current-workbench-browser:
+    # Compose the current-main Workbench through PoC B and exercise it in the generated Host.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      GOTOOLCHAIN: local
+      GOWORK: off
+    steps:
+      - name: PR headを正確にcheckout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Go 1.26.10を固定
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+      - name: Node 24を固定
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          check-latest: false
+      - name: 現行Workbenchの完全なpinを検証してUIを生成・接続
+        shell: bash
+        run: |
+          set -euo pipefail
+          go version
+          node --version
+          go test -count=1 ./tools/reference-studio-static-composition
+          go run ./tools/reference-studio-static-composition \
+            -fixture tools/reference-studio-static-composition/fixture.json \
+            -out internal/studiohost/staticservices
+          node tools/reference-studio-static-composition/compose-ui.mjs \
+            tools/reference-studio-static-composition/fixture.json \
+            tools/reference-studio-static-composition/generated
+          node tools/reference-studio-static-composition/connect-workbench.mjs \
+            reference/tei-studio-workbench/main.ts
+          cd reference/tei-studio-workbench
+          npm ci
+          npm test
+          npm run typecheck
+          node --input-type=module -e 'import { build } from "esbuild"; import { resolve } from "node:path"; await build({ absWorkingDir: process.cwd(), entryPoints: ["main.generated.ts"], outfile: resolve(process.cwd(), "../../cmd/tei-studio/assets/workbench/main.js"), bundle: true, format: "esm", platform: "browser", target: "es2022", nodePaths: [resolve(process.cwd(), "node_modules")] });'
+          cd ../..
+          {
+            printf 'head=%s\n' "$(git rev-parse HEAD)"
+            printf 'workbench_blob=%s\n' "$(git rev-parse HEAD:reference/tei-studio-workbench/main.ts)"
+            printf 'command_blob=%s\n' "$(git rev-parse HEAD:reference/tei-studio-command/command.ts)"
+            printf 'responses_blob=%s\n' "$(git rev-parse HEAD:reference/tei-studio-workbench/responses.ts)"
+            printf 'graph_blob=%s\n' "$(git rev-parse HEAD:reference/tei-studio-graph/graph.ts)"
+            printf 'fixture_sha256=%s\n' "$(sha256sum tools/reference-studio-static-composition/fixture.json | cut -d' ' -f1)"
+            printf 'generated_ui_sha256=%s\n' "$(sha256sum tools/reference-studio-static-composition/generated/ui.generated.mjs | cut -d' ' -f1)"
+            printf 'workbench_bundle_sha256=%s\n' "$(sha256sum cmd/tei-studio/assets/workbench/main.js | cut -d' ' -f1)"
+            printf 'generated_go_sha256=%s\n' "$(sha256sum internal/studiohost/staticservices/services.generated.go | cut -d' ' -f1)"
+          } | tee "$RUNNER_TEMP/composition-provenance.txt"
+      - name: 生成Hostの試験・静的解析・Server build
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test -count=1 ./internal/studiohost/...
+          go vet ./internal/studiohost/...
+          cd cmd/tei-studio
+          CGO_ENABLED=0 go test -mod=readonly -count=1 -tags 'studio_generated,server' .
+          CGO_ENABLED=0 go vet -mod=readonly -tags 'studio_generated,server' ./...
+          CGO_ENABLED=0 go build -mod=readonly -tags 'studio_generated,server' \
+            -o "$RUNNER_TEMP/tei-studio-generated-current-workbench" .
+          sha256sum "$RUNNER_TEMP/tei-studio-generated-current-workbench" \
+            | tee "$RUNNER_TEMP/host-binary.sha256"
+      - name: Chromiumを用意
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/tei-studio-current-browser"
+          "$RUNNER_TEMP/tei-studio-current-browser/bin/python" -m pip install \
+            --disable-pip-version-check --no-cache-dir 'playwright==1.57.0'
+          "$RUNNER_TEMP/tei-studio-current-browser/bin/python" -m playwright install \
+            --with-deps --only-shell chromium
+      - name: 生成UIを含むHostでGraph選択とCommand検証を実操作
+        shell: bash
+        working-directory: cmd/tei-studio
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/tei-studio-generated-current-workbench" \
+            -workspace ../../reference/workspace -port 43129 > "$RUNNER_TEMP/current-workbench-host.log" 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          healthy=0
+          for _ in {1..30}; do
+            if curl -fsS --max-time 2 http://127.0.0.1:43129/health > "$RUNNER_TEMP/current-workbench-health.json"; then
+              healthy=1
+              break
+            fi
+            sleep 1
+          done
+          test "$healthy" = 1
+          grep -q '"status":"ok"' "$RUNNER_TEMP/current-workbench-health.json"
+          "$RUNNER_TEMP/tei-studio-current-browser/bin/python" test/browser_smoke.py \
+            http://127.0.0.1:43129/ | tee "$RUNNER_TEMP/current-workbench-browser.log"
+      - name: 検証根拠を保存
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: generated-current-workbench-browser-evidence
+          path: |
+            ${{ runner.temp }}/composition-provenance.txt
+            ${{ runner.temp }}/host-binary.sha256
+            ${{ runner.temp }}/current-workbench-health.json
+            ${{ runner.temp }}/current-workbench-browser.log
+            ${{ runner.temp }}/current-workbench-host.log
+            tools/reference-studio-static-composition/generated/ui.provenance.json
+            internal/studiohost/staticservices/services.generated.go
+          if-no-files-found: warn

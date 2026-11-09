@@ -14,6 +14,9 @@ import (
 type FixtureStore struct {
 	sourcePath string
 	users      map[string]User
+	// subject identity is unique across login IDs. A linear map scan could
+	// choose an arbitrary role when two accounts share a SubjectID.
+	bySubject map[string]User
 }
 
 type fixtureDocument struct {
@@ -49,13 +52,18 @@ func LoadFixtureStore(path string) (*FixtureStore, error) {
 		return nil, fmt.Errorf("legacy authentication fixtureにschema識別子がありません")
 	}
 
-	store := &FixtureStore{sourcePath: path, users: map[string]User{}}
+	store := &FixtureStore{sourcePath: path, users: map[string]User{}, bySubject: map[string]User{}}
 	for _, src := range doc.Users {
 		if src.UserID == "" {
 			return nil, fmt.Errorf("legacy authentication fixtureにuser_idのないrecordがあります")
 		}
 		if _, exists := store.users[src.UserID]; exists {
 			return nil, fmt.Errorf("legacy authentication fixtureにuser_id %sが重複しています", src.UserID)
+		}
+		if src.SubjectID != "" {
+			if _, exists := store.bySubject[src.SubjectID]; exists {
+				return nil, fmt.Errorf("legacy authentication fixtureにsubject_id %sが重複しています", src.SubjectID)
+			}
 		}
 		validFrom, err := parseFixtureTime(src.ValidFrom, "valid_from", src.UserID)
 		if err != nil {
@@ -69,7 +77,7 @@ func LoadFixtureStore(path string) (*FixtureStore, error) {
 		if err != nil {
 			return nil, err
 		}
-		store.users[src.UserID] = User{
+		user := User{
 			LoginID:           src.UserID,
 			SubjectID:         src.SubjectID,
 			CredentialRef:     src.CredentialRef,
@@ -80,6 +88,10 @@ func LoadFixtureStore(path string) (*FixtureStore, error) {
 			LockedUntil:       lockedUntil,
 			OrganizationCode:  src.OrganizationCode,
 			RoleCode:          src.RoleCode,
+		}
+		store.users[src.UserID] = user
+		if src.SubjectID != "" {
+			store.bySubject[src.SubjectID] = user
 		}
 	}
 	return store, nil
@@ -99,12 +111,11 @@ func (s *FixtureStore) FindBySubject(_ context.Context, subjectID string) (User,
 	if s == nil {
 		return User{}, false, fmt.Errorf("legacy authentication fixture storeがnilです")
 	}
-	for _, user := range s.users {
-		if user.SubjectID == subjectID {
-			return user, true, nil
-		}
+	if subjectID == "" {
+		return User{}, false, nil
 	}
-	return User{}, false, nil
+	user, ok := s.bySubject[subjectID]
+	return user, ok, nil
 }
 
 // SourcePathは、Reference Storeがどのlegacy fixtureを正本として読んだかを返す。

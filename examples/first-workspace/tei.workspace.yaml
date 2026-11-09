@@ -1,0 +1,5 @@
+workspace: first_model_change
+formatVersion: 1
+sources:
+  - semantic
+  - applications

@@ -1,6 +1,7 @@
 package validation_test
 
 import (
+	"strings"
 	"testing"
 
 	"tei/internal/application"
@@ -109,6 +110,58 @@ func TestReferenceWorldPasses(t *testing.T) {
 		if d.Severity == validation.Error {
 			t.Fatalf("unexpected error: %s: %s", d.Code, d.Message)
 		}
+	}
+}
+
+// A valid explicit semantic traversal key must remain acceptable through the
+// default validator, while changing the source key to a different semantic
+// type must be rejected before any Function/Provider can use the mapping.
+func TestDefaultValidationPreservesWellTypedRelationKeyAndRejectsMismatch(t *testing.T) {
+	w := referenceWorld()
+	for i := range w.Semantics {
+		switch w.Semantics[i].ID {
+		case cid("sales"):
+			data := &w.Semantics[i].Data[0]
+			data.Attributes = append(data.Attributes, semantic.Attribute{
+				ID: cid("sales.order.customer_id"), Symbol: "customerId", TypeRef: cid("std.identifier"),
+			})
+			data.Relations[0].Keys = []semantic.RelationKey{{
+				SourceAttribute: cid("sales.order.customer_id"),
+				TargetAttribute: cid("customer.customer.customer_id"),
+			}}
+		case cid("customer"):
+			data := &w.Semantics[i].Data[0]
+			data.Attributes = append(data.Attributes, semantic.Attribute{
+				ID: cid("customer.customer.customer_id"), Symbol: "customerId", TypeRef: cid("std.identifier"),
+			})
+		}
+	}
+	for _, d := range validation.Validate(w) {
+		if d.Severity == validation.Error {
+			t.Fatalf("default Validation rejected a well-typed explicit Relation key: %+v", d)
+		}
+	}
+
+	for i := range w.Semantics {
+		if w.Semantics[i].ID == cid("sales") {
+			// status has sales.order_status semantics and does not match
+			// the target identifier's std.identifier identity.
+			w.Semantics[i].Data[0].Relations[0].Keys[0].SourceAttribute = cid("sales.order.status")
+		}
+	}
+	count := 0
+	for _, d := range validation.Validate(w) {
+		if d.Code != "SEMANTIC_RELATION_KEY_TYPE_MISMATCH" {
+			continue
+		}
+		if d.Severity != validation.Error || d.Subject == nil ||
+			d.Subject.Kind != "semantic-relation" || d.Subject.ID != "sales.order.customer" {
+			t.Fatalf("invalid Relation key diagnostic lacks its canonical Subject: %+v", d)
+		}
+		count++
+	}
+	if count != 1 {
+		t.Fatalf("default Validation must report exactly one Relation key mismatch, got %d", count)
 	}
 }
 
@@ -342,4 +395,58 @@ func TestDuplicateEnvironmentResourceBindingIsError(t *testing.T) {
 		}
 	}
 	t.Fatalf("expected DUPLICATE_ENVIRONMENT_RESOURCE_BINDING, got %#v", ds)
+}
+
+// #2400: DUPLICATE_SEMANTIC_ELEMENT must carry the later declaration's Subject,
+// and a same-kind duplicate must not read "as both attribute and attribute".
+func TestDuplicateSemanticElementCarriesSubjectAndReadableWording(t *testing.T) {
+	w := referenceWorld()
+	for i := range w.Semantics {
+		if w.Semantics[i].ID == cid("sales") {
+			w.Semantics[i].Data[0].Attributes = append(w.Semantics[i].Data[0].Attributes, semantic.Attribute{
+				ID: cid("sales.order.status"), Symbol: "status", TypeRef: cid("sales.order_status"),
+			})
+		}
+	}
+	dups := 0
+	for _, d := range validation.Validate(w) {
+		if d.Code != "DUPLICATE_SEMANTIC_ELEMENT" {
+			continue
+		}
+		dups++
+		if d.Subject == nil || d.Subject.Kind != "semantic-attribute" || d.Subject.ID != "sales.order.status" {
+			t.Fatalf("duplicate attribute diagnostic lacks its canonical Subject: %+v", d)
+		}
+		if !strings.Contains(d.Message, "declared more than once as attribute") {
+			t.Fatalf("same-kind duplicate wording is not readable: %s", d.Message)
+		}
+	}
+	if dups != 1 {
+		t.Fatalf("expected exactly one DUPLICATE_SEMANTIC_ELEMENT, got %d", dups)
+	}
+
+	cross := referenceWorld()
+	for i := range cross.Semantics {
+		if cross.Semantics[i].ID == cid("sales") {
+			cross.Semantics[i].Types = append(cross.Semantics[i].Types, semantic.Type{
+				ID: cid("customer.customer"), Symbol: "Customer", Kind: semantic.TypeAlias, Underlying: cid("std.code"),
+			})
+		}
+	}
+	found := false
+	for _, d := range validation.Validate(cross) {
+		if d.Code != "DUPLICATE_SEMANTIC_ELEMENT" {
+			continue
+		}
+		found = true
+		if d.Subject == nil || d.Subject.Kind != "semantic-data" || d.Subject.ID != "customer.customer" {
+			t.Fatalf("cross-kind duplicate diagnostic lacks its canonical Subject: %+v", d)
+		}
+		if !strings.Contains(d.Message, "as both type and data") {
+			t.Fatalf("cross-kind duplicate wording changed: %s", d.Message)
+		}
+	}
+	if !found {
+		t.Fatal("expected a DUPLICATE_SEMANTIC_ELEMENT for the cross-kind duplicate")
+	}
 }

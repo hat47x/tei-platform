@@ -41,6 +41,11 @@ type SchemaObservation struct {
 	Snapshot                     physical.SchemaSnapshot `json:"snapshot"`
 	Partitions                   []PartitionRelation     `json:"partitions,omitempty"`
 	PartitionObservationComplete bool                    `json:"partitionObservationComplete"`
+	// ConstraintData holds the existing-data counts for constraints a diff adds
+	// to existing tables (see ObserveConstraintData). It is diff-specific and
+	// empty after ObserveSchema; an addition without a matching observed entry
+	// is unresolved.
+	ConstraintData []ConstraintDataCheck `json:"constraintData,omitempty"`
 }
 
 // ObserveSchema preserves the existing Introspect contract while adding

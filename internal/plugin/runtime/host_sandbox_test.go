@@ -66,6 +66,10 @@ func TestHostSandboxLauncherAppliesNetworkMountAndSecretInjection(t *testing.T) 
 		NetworkAllowlist: []string{"db.internal:5432"},
 		Mounts:           []pruntime.SandboxMount{{Scope: "migration-workdir", ResourceID: core.MustCanonicalID("prod.workdir"), SourceHandle: "mount://source", Target: "/tei/migration", Access: permission.AccessReadWrite}},
 		SecretInjections: []pruntime.SecretInjection{{Scope: "database-credential", ResourceID: core.MustCanonicalID("prod.secret"), Handle: "vault://opaque", Delivery: resource.SecretDeliveryEnvironment, Target: "TEI_DATABASE_CREDENTIAL"}},
+	}, Permissions: []permission.Spec{
+		{Kind: permission.KindNetwork, Access: permission.AccessConnect, Scope: "db.internal:5432"},
+		{Kind: permission.KindFilesystem, Access: permission.AccessReadWrite, Scope: "migration-workdir"},
+		{Kind: permission.KindSecret, Access: permission.AccessRead, Scope: "database-credential"},
 	}}
 	if _, err := launcher.Invoke(context.Background(), spec, pruntime.Request{}); err != nil {
 		t.Fatal(err)
@@ -136,6 +140,65 @@ func TestHostSandboxLauncherRejectsMissingDefaultDenyEnforcer(t *testing.T) {
 	_, err := launcher.Invoke(context.Background(), pruntime.SandboxSpec{Profile: pruntime.SandboxProfile{DenyNetworkByDefault: true, DenyFilesystemByDefault: true}}, pruntime.Request{})
 	if err == nil {
 		t.Fatal("expected missing host network/filesystem enforcer rejection")
+	}
+}
+
+func TestZeroPermissionSandboxedCapabilityDoesNotStartLeaseSupervisor(t *testing.T) {
+	def := plugin.Definition{
+		ID:      cid("tei.zero_permission"),
+		Version: "1.0.0",
+		Runtime: plugin.Runtime{
+			Kind:    plugin.RuntimeProcess,
+			Command: "worker",
+			Sandbox: plugin.SandboxRequired,
+		},
+		Provides: []plugin.Capability{{
+			Kind: plugin.CapabilityDeploymentExecutor,
+			ID:   cid("zero.permission"),
+		}},
+	}
+	env := environment.Environment{
+		ID: cid("zero_permission_env"),
+		Plugins: []environment.ExtensionRequirement{{
+			ID:              def.ID,
+			CompatibleMajor: 1,
+		}},
+	}
+	cat := plugin.Catalog{Plugins: []plugin.Definition{def}}
+	lock, err := plugin.BuildLock(cat, []environment.Environment{env})
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan, err := pruntime.BuildPlan(cat, env, lock)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	runner := &sandboxRunner{}
+	registry := pruntime.Registry{
+		Sandboxes: pruntime.HostSandboxLauncher{
+			Network:    &netEnforcer{},
+			Filesystem: &fsEnforcer{},
+			Runner:     runner,
+		},
+	}
+	inv, err := registry.InvokeWithProvenance(
+		context.Background(),
+		plan,
+		plugin.CapabilityDeploymentExecutor,
+		cid("zero.permission"),
+		"execute",
+		"zero-permission-sandbox",
+		nil,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !runner.called || !inv.Provenance.Sandboxed {
+		t.Fatalf("zero-permission sandbox invocation did not complete: %#v", inv.Provenance)
+	}
+	if inv.Provenance.ResourceLeaseID != "" {
+		t.Fatalf("zero-permission capability unexpectedly acquired lease %q", inv.Provenance.ResourceLeaseID)
 	}
 }
 

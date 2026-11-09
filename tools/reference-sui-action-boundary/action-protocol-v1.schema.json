@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TEI resource-scoped Action commit request v1",
+  "description": "Application-independent conditional Action invocation envelope. The application owns the payload schema.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocolVersion",
+    "applicationID",
+    "resourceID",
+    "actionID",
+    "expectedRevision",
+    "payload"
+  ],
+  "properties": {
+    "protocolVersion": {
+      "const": "1"
+    },
+    "applicationID": {
+      "type": "string",
+      "minLength": 1
+    },
+    "resourceID": {
+      "type": "string",
+      "minLength": 1
+    },
+    "actionID": {
+      "type": "string",
+      "minLength": 1
+    },
+    "expectedRevision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "payload": {
+      "not": {
+        "type": "null"
+      },
+      "description": "Opaque application-owned command input; decoded by (applicationID, actionID)."
+    }
+  }
+}

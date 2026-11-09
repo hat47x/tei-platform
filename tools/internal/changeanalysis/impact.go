@@ -33,6 +33,7 @@ func subjectKey(kind string, id core.CanonicalID) string { return kind + ":" + s
 //   - validation: 制約対象のAttribute、所有Data、そのDataを指すRelation、そのRelationを使うPattern、namespaceを利用するApplication
 //   - relation: target Data、key Attribute、そのRelationを使うPattern
 //   - attribute: 所有Data
+//   - type: 明示的な型別名、Attribute、Database Contract Queryの入力型
 //   - namespace: それを利用するApplication
 //   - application: 利用するsemantic namespace、要求するDatabase・Contract
 //   - application-pattern: owner Application、Relation、Contract Query、入力Attribute
@@ -44,19 +45,30 @@ func Impact(after ir.World, changes []SubjectChange) ([]ImpactEdge, []Unresolved
 	applicationAdded := map[string]bool{}
 	environmentBindingAdded := map[string]bool{}
 	undecidedStorage := map[string]string{}
+	unverifiedBusinessRules := map[string]bool{}
+	unverifiedTypeImpacts := map[string]bool{}
 
 	for _, change := range changes {
 		if change.Change == "removed" {
+			if change.Kind == "type" {
+				unverifiedTypeImpacts[change.ID] = true
+			}
 			continue
 		}
 		id := core.CanonicalID(change.ID)
 		switch change.Kind {
+		case "type":
+			edges = append(edges, typeReferenceEdges(after, id)...)
+			unverifiedTypeImpacts[change.ID] = true
 		case "validation":
 			es, apps := validationEdges(after, id)
 			edges = append(edges, es...)
 			for _, app := range apps {
 				undeclaredValidation[app] = true
 			}
+		case "candidate-key", "functional-dependency":
+			edges = append(edges, logicalRuleEdges(after, change.Kind, id)...)
+			unverifiedBusinessRules[change.Kind+":"+change.ID] = true
 		case "relation":
 			es, undecided := relationEdges(after, id)
 			edges = append(edges, es...)
@@ -141,11 +153,57 @@ func Impact(after ir.World, changes []SubjectChange) ([]ImpactEdge, []Unresolved
 	for _, id := range storageRelations {
 		unresolved = append(unresolved, Unresolved{Code: "RELATION_STORAGE_NOT_AUTHORED", Message: undecidedStorage[id]})
 	}
+	for _, id := range sortedKeys(unverifiedBusinessRules) {
+		unresolved = append(unresolved, Unresolved{
+			Code:    "LOGICAL_BUSINESS_RULE_UNVERIFIED",
+			Message: id + " is an explicit authored assertion; its universal business truth, candidate-key minimality and physical PK/FK mapping have not been verified",
+		})
+	}
+	for _, id := range sortedKeys(unverifiedTypeImpacts) {
+		unresolved = append(unresolved, Unresolved{
+			Code:    "SEMANTIC_TYPE_IMPACT_INCOMPLETE",
+			Message: "type " + id + " の解析は直接の型別名・Attribute・Contract Query入力に限られ、削除時は変更前のsnapshotが必要。推移的依存、他の参照、保存データ、移行、互換性、実行時の影響は未確認",
+		})
+	}
 	unresolved = append(unresolved,
 		Unresolved{Code: "DRIVER_SCENARIO_NOT_RUN", Message: "解析はDriver scenarioを実行しない。実行結果への影響はこの解析の根拠にしていない"},
 		Unresolved{Code: "TARGET_PROJECTION_NOT_EVALUATED", Message: "解析はWeb Target Projectionを評価しない。World直下の他collectionが不変であること以上は主張しない"},
 	)
 	return edges, unresolved
+}
+
+// typeReferenceEdges finds only declared, exact-ID references. It neither
+// infers compatibility nor claims that the three scanned locations are all
+// possible consumers of a semantic type.
+func typeReferenceEdges(world ir.World, id core.CanonicalID) []ImpactEdge {
+	var edges []ImpactEdge
+	from := subjectKey("type", id)
+	for _, ns := range world.Semantics {
+		for _, typ := range ns.Types {
+			if typ.Underlying == id {
+				edges = append(edges, ImpactEdge{From: from, To: subjectKey("type", typ.ID), Via: "semantic.type.underlying", Reason: "型別名がこの型を基底として参照している"})
+			}
+		}
+		for _, data := range ns.Data {
+			for _, attr := range data.Attributes {
+				if attr.TypeRef == id {
+					edges = append(edges, ImpactEdge{From: from, To: subjectKey("attribute", attr.ID), Via: "semantic.attribute.type", Reason: "Attributeがこの型を参照している"})
+				}
+			}
+		}
+	}
+	for _, db := range world.Databases {
+		for _, contract := range db.Contracts {
+			for _, query := range contract.Queries {
+				for _, input := range query.Inputs {
+					if input.Type == id {
+						edges = append(edges, ImpactEdge{From: from, To: "contract-query:" + string(contract.ID) + "/" + query.Name, Via: "database.contract-query.input-type", Reason: "Contract Queryの入力がこの型を参照している"})
+					}
+				}
+			}
+		}
+	}
+	return edges
 }
 
 // validationEdgesは、Validationから辿れる辺と、それを`uses validation`で宣言していないApplicationを返す。

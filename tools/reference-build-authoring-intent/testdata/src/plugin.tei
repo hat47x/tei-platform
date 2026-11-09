@@ -1,0 +1,6 @@
+plugin tei.plugin.authoring_example v1.0.0 {
+    runtime builtin
+    provides deployment-executor runtime.authoring_example {
+        action application-start
+    }
+}

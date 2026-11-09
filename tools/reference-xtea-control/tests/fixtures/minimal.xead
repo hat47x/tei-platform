@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<System Name="テストシステム" Version="1.0.0" FormatVersion="1.2" Descriptions="テスト用">
+  <Subsystem ID="1" Name="業務" SortKey="A" Descriptions="業務サブシステム" />
+  <DataType ID="1" Name="文字列" BasicType="String" Length="10" Decimal="0"
+            SQLExpression="CHAR(10)" SortKey="CHAR" />
+  <DataType ID="2" Name="数値" BasicType="Integer" Length="9" Decimal="0"
+            SQLExpression="INTEGER" SortKey="INTEGER" />
+  <FunctionType ID="1" Name="一覧" SortKey="XF100" Descriptions="一覧表示" />
+  <FunctionType ID="2" Name="メニュー" SortKey="Menu" Descriptions="メニュー" />
+  <Table ID="10" Name="部門" Alias="AT010" SortKey="AT010" SubsystemID="1">
+    <TableField ID="1" Alias="CDBUMON" Name="部門コード" DataTypeID="1"
+                NotNull="true" ShowOnModel="true" SortKey="0010" />
+    <TableField ID="2" Alias="TXBUMON" Name="部門名" DataTypeID="1"
+                NotNull="false" ShowOnModel="true" SortKey="0020" />
+    <TableKey ID="1" Type="PK" SortKey="">
+      <TableKeyField FieldID="1" SortKey="0010" />
+    </TableKey>
+  </Table>
+  <Function ID="20" Name="部門一覧" FunctionTypeID="1" SubsystemID="1"
+            Parameters="検索条件" Return="終了コード" SortKey="AF010"
+            Summary="部門を一覧表示する">
+    <IOTable ID="1" TableID="10" OpC="+" OpR="+" OpU="" OpD="" SortKey="010" />
+  </Function>
+  <Function ID="21" Name="メニュー" FunctionTypeID="2" SubsystemID="1"
+            Parameters="セッション" Return="終了コード" SortKey="ZF010"
+            Summary="業務メニュー">
+    <IOPanel ID="1" Name="メイン" Size="80,24" Background="WINDOW" SortKey="010" />
+    <FunctionUsedByThis FunctionID="20" LaunchEvent="" SortKey="0010" />
+  </Function>
+</System>

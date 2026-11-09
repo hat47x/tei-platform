@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>業務DFDの参照画面（未受理）</title>
+<style>
+:root{color-scheme:light;font:15px/1.5 system-ui,sans-serif;color:#182538;background:#f5f7fa}
+body{margin:0}header{padding:16px 24px;background:#183047;color:white}
+h1{font-size:1.25rem;margin:0 0 4px}header p{margin:0;font-size:.9rem}
+.controls{display:flex;flex-wrap:wrap;gap:14px;align-items:end;padding:16px 24px;background:white;border-bottom:1px solid #dce4ed}
+label{display:grid;gap:3px;font-weight:600;font-size:.88rem}
+input{font:inherit}input[type=file]{font-size:.84rem;max-width:235px}
+button{font:inherit;border:1px solid #71849a;background:white;border-radius:6px;padding:8px 12px;cursor:pointer}
+button:disabled{opacity:.4;cursor:default}button:hover:enabled{background:#eaf0f7}
+main{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;margin:16px 24px;align-items:start}
+#canvas{background:white;border:1px solid #dce4ed;border-radius:8px;min-height:460px;overflow:auto}
+svg{width:100%;min-width:600px;height:600px;touch-action:none}
+.node{cursor:grab}.node:active{cursor:grabbing}.node rect{stroke:#3e5e7d;stroke-width:1.3;fill:#eef3f9}
+.node.manual rect{fill:#fff1d6;stroke:#a27829}.node.external rect{fill:#e9f3ec;stroke:#487557}
+.node text{font-size:12px;pointer-events:none;user-select:none}.node.selected rect{stroke:#2479c5;stroke-width:3}
+.edge{stroke:#818fa0;stroke-width:1.6;fill:none}.edge.information{stroke:#0d7b78;stroke-dasharray:5 4}.edge.responsibility,.edge.function{stroke:#906db1;stroke-dasharray:2 5}.edge.exception{stroke:#b45447;stroke-dasharray:8 4}.edge.branch{stroke:#ae7a33;stroke-dasharray:4 3}.edge-label{font:11px system-ui,sans-serif;fill:#536578;pointer-events:none}
+aside{background:white;border:1px solid #dce4ed;border-radius:8px;padding:16px;word-break:break-word}aside h2{font-size:1rem;margin:0 0 10px}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.5 ui-monospace,monospace;margin:6px 0}
+#status{padding:10px 24px;font-size:.9rem;color:#334a63}#status.error{color:#a12828}
+#preview{border-top:1px solid #dce4ed;padding-top:12px;margin-top:12px}
+small{display:block;color:#566a7d}#legend{margin:10px 16px;font-size:.8rem;color:#516b80}
+@media(max-width:900px){main{grid-template-columns:1fr}aside{order:2}}
+</style>
+</head>
+<body>
+<header><h1>一階層業務DFD — 参照と配置</h1><p>未受理の設計情報です。配置の変更は業務の意味や正本を変更しません。</p></header>
+<section class="controls" aria-label="図の入力">
+<label>DFD投影（JSON）<input id="dfd-file" type="file" accept=".json,application/json"></label>
+<label>配置ファイル（任意）<input id="layout-file" type="file" accept=".json,application/json"></label>
+<label>World（任意）<input id="world-file" type="file" accept=".json,application/json"></label>
+<label>Worldの版（任意）<input id="revision" type="text" placeholder="sha256:…"></label>
+<label>参照業務手順（JSON）<input id="procedure-file" type="file" accept=".json,application/json"></label>
+<label>未受理レビュー案（JSON）<input id="review-file" type="file" accept=".json,application/json"></label>
+<button id="apply" disabled>配置だけを反映</button>
+<button id="export" disabled>配置を保存</button>
+</section>
+<div id="status" role="status">DFD投影のJSONを選択してください。</div>
+<main>
+<section id="canvas" aria-label="業務DFD"><svg id="diagram" viewBox="0 0 1100 600" aria-label="業務の流れ"></svg><div id="legend">青緑の破線：情報の授受 ／ 灰色：順序 ／ 茶色：分岐 ／ 赤色：例外 ／ 紫の点線：業務責任・Function参照 ／ 黄色：手作業。いずれも実行済みを意味しません。</div></section>
+<aside><section aria-label="DFD投影診断"><h2>投影診断（出典位置付き・未認証）</h2><div id="diagnostics">DFD投影を読み込むと診断を表示します。</div></section><h2>選択した要素</h2><div id="details">要素を選択すると出典と参照関係を表示します。</div><div id="preview" hidden><h2>配置変更の確認</h2><pre id="pending"></pre><small>「配置だけを反映」は画面内の一時表示を更新します。正本やファイルには書き込みません。</small></div>
+<section id="semantic-review" aria-label="業務DFDの未受理変更案"><h2>業務上の変更候補</h2>
+<p>起動契機の説明文、Stepの担当・遷移・情報の授受に加え、外部主体や概念StoreからStepへの情報の授受を提案できます。元の手順と未受理レビュー案が必要です。</p>
+<label>起動契機の新しい説明文<input id="trigger-label" type="text" disabled placeholder="起動契機を選択してください"></label>
+<label>選択要素の変更種類<select id="step-action" disabled>
+<option value="assign-business-role">担当業務Roleを追加</option>
+<option value="add-control-transition">順序・分岐・例外の遷移を追加</option>
+<option value="add-information-flow">情報の授受を追加</option>
+</select></label>
+<label>Stepに追加する業務Role<select id="step-role" disabled><option value="">Stepを選択してください</option></select></label>
+<label>遷移先Step<select id="step-transition-to" disabled></select></label>
+<label>遷移の種類<select id="step-transition-kind" disabled>
+<option value="branch">分岐</option><option value="exception">例外</option><option value="sequence">順序</option>
+</select></label>
+<label>分岐・例外の条件<input id="step-transition-condition" type="text" disabled placeholder="どのような場合に進むか"></label>
+<label>情報の授受の識別子<input id="step-info-id" type="text" disabled placeholder="INFO-NEW"></label>
+<label>情報の宛先の種類（外部主体・Storeを選択した場合はStep固定）<select id="step-info-to-kind" disabled>
+<option value="party">外部主体</option><option value="store">概念Store</option><option value="step">別のStep</option>
+</select></label>
+<label>情報の宛先<select id="step-info-to-id" disabled></select></label>
+<label>授受する情報<input id="step-info-payload" type="text" disabled placeholder="何を受け渡すか"></label>
+<small>情報の授受は選択した要素を出発点とし、少なくとも一方の端点がStepである必要があります。概念Storeからの授受は実際の読取り・書込みではありません。認可Roleや実行設定、正本の採用には結び付けません。</small>
+<button id="semantic-propose" disabled>未受理の変更候補を確認</button>
+<div id="semantic-preview" hidden><h2>未受理の差分</h2><pre id="semantic-pending"></pre>
+<button id="semantic-export" disabled>未受理候補を保存</button></div>
+<small>正本の更新、Source Acceptance、起動処理の設定は行いません。出典の同一版は未認証です。</small>
+</section></aside>
+</main>
+<script type="module" src="./dfd-view-studio.mjs"></script>
+</body></html>

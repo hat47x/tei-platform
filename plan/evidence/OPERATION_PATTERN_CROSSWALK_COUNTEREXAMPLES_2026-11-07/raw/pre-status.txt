@@ -1,0 +1,3 @@
+ D tmpw/a.sh
+ D tmpw/c.sh
+ D tmpw/idx.sh

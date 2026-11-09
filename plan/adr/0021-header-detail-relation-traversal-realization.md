@@ -287,13 +287,13 @@ PR #235〜#243で、少なくとも次を確認しました。
 
 ## 関連文書
 
-- `plan/issue/000006-application-driver-vertical-slice.md`
-- `plan/issue/000011-order-line-semantic-reference.md`
-- `plan/issue/000012-header-detail-application-pattern.md`
-- `plan/issue/000017-semantic-relation-traversal-key.md`
-- `plan/issue/000018-database-contract-query-execution.md`
-- `plan/issue/000023-header-detail-relation-traversal-boundary.md`
-- `plan/issue/000024-keyless-relation-physical-storage.md`
+- ISSUE-000006-application-driver-vertical-slice.md
+- ISSUE-000011-order-line-semantic-reference.md
+- ISSUE-000012-header-detail-application-pattern.md
+- ISSUE-000017-semantic-relation-traversal-key.md
+- ISSUE-000018-database-contract-query-execution.md
+- ISSUE-000023-header-detail-relation-traversal-boundary.md
+- ISSUE-000024-keyless-relation-physical-storage.md
 - GitHub Issue #69 / #117 / #118 / #178 / #179 / #233 / #244
 - GitHub PR #235〜#243
 - RQ-005 / RQ-009 / RQ-012 / RQ-014

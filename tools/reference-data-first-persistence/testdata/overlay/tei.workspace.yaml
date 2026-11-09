@@ -1,0 +1,8 @@
+workspace: first_model_change_data_first_persistence
+formatVersion: 1
+sources:
+  - plugins
+  - semantic
+  - applications
+  - databases
+  - environments

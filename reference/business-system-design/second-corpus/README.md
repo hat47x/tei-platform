@@ -1,6 +1,5 @@
 # Second realistic Reference — 受注生産の製造と在庫への受入
 
-`order_entry`とは独立した、二つ目のBusiness Procedure Referenceです。`ISSUE-000050`（Contract ADR readinessのBlocker B）が求める「独立したBusiness needから生じた、TEI-originalの二つ目のHandoff」を、[Lane B Acceptance Contract](../../../plan/LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md)のRRB-P1 / P2 / P3に沿って示します。
 
 ## 何を置いているか
 

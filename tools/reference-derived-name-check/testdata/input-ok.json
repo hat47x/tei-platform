@@ -1,0 +1,8 @@
+{
+  "schema": "tei.reference.derived-name-input/v0",
+  "elements": [
+    {"id": "ent-0001", "name": "sales_order"},
+    {"id": "ent-0002", "name": "sales_order_line"},
+    {"id": "ent-0003", "name": "customer"}
+  ]
+}

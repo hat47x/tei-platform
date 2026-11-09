@@ -1,0 +1,26 @@
+{
+  "formatVersion": 1,
+  "subject": {
+    "kind": "plugin",
+    "id": "tei.plugin.authoring_example",
+    "version": "1.0.0",
+    "definitionSource": "definition"
+  },
+  "sources": [
+    {"kind": "plugin-definition", "id": "definition", "ref": "plugin.tei"},
+    {"kind": "go-package", "id": "implementation", "ref": "impl"}
+  ],
+  "builder": {
+    "contract": "tei.plugin-build",
+    "compatibleMajor": 1
+  },
+  "recipe": {"kind": "go-package", "entrypoint": "./impl"},
+  "outputKind": "runtime-artifact",
+  "dependencies": [
+    {"kind": "build-artifact", "id": "tei.support.codec", "compatibleMajor": 1}
+  ],
+  "target": "host/linux/amd64",
+  "profile": "release",
+  "parameters": [{"name": "optimization", "value": "size"}],
+  "secretRequirements": [{"name": "SIGNING_KEY", "authority": "external-signing-authority"}]
+}

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -171,6 +173,411 @@ func TestCheckKnowledgeDisclosureFingerprint(t *testing.T) {
 	}
 }
 
+func TestBuildBuilderReviewPlanRoutesCurrentKnowledge(t *testing.T) {
+	root := testRepositoryRoot(t)
+	plan, err := buildBuilderReviewPlan(
+		filepath.Join(root, "reference", "workspace"),
+		"semantic-data",
+		"sales.order_line",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.ProjectionRevision != "tei.knowledge.builder-review-plan/v1" ||
+		plan.Purpose != "design-change" ||
+		plan.RoutingScope != "current-knowledge-context" ||
+		plan.Fingerprint == "" {
+		t.Fatalf("builder review plan identity is incomplete: %+v", plan)
+	}
+	for _, section := range []string{"source", "definition", "data-design", "dependencies"} {
+		if !containsKnowledgeContextString(plan.RecommendedDisclosureSections, section) {
+			t.Fatalf("builder review section %q is missing: %+v", section, plan.RecommendedDisclosureSections)
+		}
+	}
+	if len(plan.ReviewSequence) == 0 ||
+		plan.ReviewSequence[0] != "review-current-source-and-evidence" {
+		t.Fatalf("builder review sequence does not start from current Evidence: %+v", plan.ReviewSequence)
+	}
+	if err := checkBuilderReviewPlanFingerprint(plan, ""); err != nil {
+		t.Fatalf("empty expected review-plan fingerprint enabled the guard: %v", err)
+	}
+	if err := checkBuilderReviewPlanFingerprint(plan, plan.Fingerprint); err != nil {
+		t.Fatalf("current review-plan fingerprint was rejected: %v", err)
+	}
+	if err := checkBuilderReviewPlanFingerprint(plan, "sha256:stale"); err == nil ||
+		!strings.Contains(err.Error(), "fingerprint mismatch") {
+		t.Fatalf("stale review-plan fingerprint was not rejected: %v", err)
+	}
+}
+
+func TestBuildBuilderReviewPlanRoutesApplicationPatternAcrossViews(t *testing.T) {
+	root := testRepositoryRoot(t)
+	plan, err := buildBuilderReviewPlan(
+		filepath.Join(root, "reference", "workspace"),
+		"application-pattern",
+		"order_entry.customer_reference",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, section := range []string{"source", "definition", "dependencies"} {
+		if !containsKnowledgeContextString(plan.RecommendedDisclosureSections, section) {
+			t.Fatalf("application pattern review section %q is missing: %+v", section, plan.RecommendedDisclosureSections)
+		}
+	}
+	// order_entry.customer_reference is a reference Pattern without an explicit
+	// data reference (index_test.go pins Data == ""). plan/issue/000047 forbids
+	// inferring Data from its Relation or Query, so data-design must not be offered.
+	if containsKnowledgeContextString(plan.RecommendedDisclosureSections, "data-design") {
+		t.Fatalf("data-design was inferred for a pattern without explicit data: %+v", plan.RecommendedDisclosureSections)
+	}
+	for _, stage := range []string{
+		"review-current-source-and-evidence",
+		"review-current-definition",
+		"review-dependencies-and-impact",
+		"review-cross-view-constraints-authority-and-known-conflicts",
+	} {
+		if !containsKnowledgeContextString(plan.ReviewSequence, stage) {
+			t.Fatalf("application pattern review stage %q is missing: %+v", stage, plan.ReviewSequence)
+		}
+	}
+	if containsKnowledgeContextString(plan.ReviewSequence, "review-data-design-and-its-review-protocol") {
+		t.Fatalf("data-design review stage was offered without data-design: %+v", plan.ReviewSequence)
+	}
+	if !containsKnowledgeContextString(
+		plan.AuthorityLimits,
+		"recommended-sections-cover-current-knowledge-context-not-all-builder-knowledge",
+	) {
+		t.Fatalf("builder review scope limit is missing: %+v", plan.AuthorityLimits)
+	}
+}
+
+func TestBuildBuilderReviewHandoffQualifiesBeforeDisclosure(t *testing.T) {
+	root := testRepositoryRoot(t)
+	handoff, err := buildBuilderReviewHandoffFromFile(
+		filepath.Join(root, "reference", "workspace"),
+		"application-pattern",
+		"order_entry.customer_reference",
+		filepath.Join(
+			root,
+			"reference",
+			"business-system-design",
+			"order-entry-customer-reference-review-qualification.json",
+		),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if handoff.ProjectionRevision != "tei.knowledge.builder-review-handoff/v1" ||
+		handoff.Status != "qualified-for-disclosure" ||
+		handoff.Fingerprint == "" ||
+		handoff.ReviewPlanProjectionRevision != "tei.knowledge.builder-review-plan/v1" ||
+		handoff.ReviewPlanFingerprint == "" ||
+		handoff.RoutingScope != "current-knowledge-context" {
+		t.Fatalf("builder review handoff identity is incomplete: %+v", handoff)
+	}
+	if handoff.Qualification.Status != knowledgecontext.QualificationApplicable ||
+		len(handoff.Qualification.Evidence) == 0 ||
+		len(handoff.Qualification.DependencyEvidence) == 0 {
+		t.Fatalf("builder review handoff lost qualification Evidence: %+v", handoff.Qualification)
+	}
+	for _, section := range []string{"source", "definition", "dependencies"} {
+		if !containsKnowledgeContextString(handoff.SelectedSections, section) {
+			t.Fatalf("qualified review section %q is missing: %+v", section, handoff.SelectedSections)
+		}
+	}
+	if containsKnowledgeContextString(handoff.SelectedSections, "data-design") {
+		t.Fatalf("data-design was disclosed for a pattern without explicit data: %+v", handoff.SelectedSections)
+	}
+	if err := checkBuilderReviewHandoffFingerprint(handoff, ""); err != nil {
+		t.Fatalf("empty expected handoff fingerprint enabled the guard: %v", err)
+	}
+	if err := checkBuilderReviewHandoffFingerprint(handoff, handoff.Fingerprint); err != nil {
+		t.Fatalf("current handoff fingerprint was rejected: %v", err)
+	}
+	if err := checkBuilderReviewHandoffFingerprint(handoff, "sha256:stale"); err == nil ||
+		!strings.Contains(err.Error(), "fingerprint mismatch") {
+		t.Fatalf("stale handoff fingerprint was not rejected: %v", err)
+	}
+}
+
+func TestBuildBuilderReviewHandoffKeepsUnknownQualificationBlocked(t *testing.T) {
+	root := testRepositoryRoot(t)
+	handoff, err := buildBuilderReviewHandoff(
+		filepath.Join(root, "reference", "workspace"),
+		"semantic-data",
+		"missing.example",
+		knowledgecontext.QualificationRequirements{
+			ExpectedKind: "semantic-data",
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if handoff.Status != "blocked-unresolved" ||
+		handoff.Qualification.Status != knowledgecontext.QualificationUnknown {
+		t.Fatalf("unknown qualification became disclosable: %+v", handoff)
+	}
+	if len(handoff.Qualification.Reasons) == 0 {
+		t.Fatalf("blocked handoff lost qualification reasons: %+v", handoff.Qualification)
+	}
+}
+
+func TestBuildBuilderReviewHandoffRequiresQualificationRequirements(t *testing.T) {
+	if _, err := buildBuilderReviewHandoffFromFile(
+		"unused",
+		"application-pattern",
+		"order_entry.customer_reference",
+		"",
+	); err == nil || !strings.Contains(err.Error(), "requires -qualification-requirements") {
+		t.Fatalf("missing qualification requirements were accepted: %v", err)
+	}
+}
+
+func TestBuildBuilderReviewDisclosureFromFileUsesQualifiedCurrentHandoff(t *testing.T) {
+	root := testRepositoryRoot(t)
+	workspacePath := filepath.Join(root, "reference", "workspace")
+	requirementsPath := filepath.Join(
+		root,
+		"reference",
+		"business-system-design",
+		"order-entry-customer-reference-review-qualification.json",
+	)
+	handoff, err := buildBuilderReviewHandoffFromFile(
+		workspacePath,
+		"application-pattern",
+		"order_entry.customer_reference",
+		requirementsPath,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if handoff.Status != "qualified-for-disclosure" {
+		t.Fatalf("fixture handoff status=%q", handoff.Status)
+	}
+
+	raw, err := json.Marshal(handoff)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handoffPath := filepath.Join(t.TempDir(), "review-handoff.json")
+	if err := os.WriteFile(handoffPath, raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	disclosure, loadedHandoff, err := buildBuilderReviewDisclosureFromFile(
+		workspacePath,
+		"application-pattern",
+		"order_entry.customer_reference",
+		handoffPath,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loadedHandoff.Fingerprint != handoff.Fingerprint {
+		t.Fatalf(
+			"review handoff identity changed while loading: got=%s want=%s",
+			loadedHandoff.Fingerprint,
+			handoff.Fingerprint,
+		)
+	}
+	if disclosure.Status != "complete" ||
+		len(disclosure.UnavailableSections) != 0 ||
+		len(disclosure.OmittedAvailableSections) != 0 {
+		t.Fatalf("qualified review disclosure is incomplete: %+v", disclosure)
+	}
+	for _, section := range handoff.SelectedSections {
+		if !containsKnowledgeContextString(disclosure.DisclosedSections, section) {
+			t.Fatalf(
+				"qualified section %q was not disclosed: %+v",
+				section,
+				disclosure.DisclosedSections,
+			)
+		}
+	}
+	if err := checkBuilderReviewHandoffFingerprint(
+		loadedHandoff,
+		handoff.Fingerprint,
+	); err != nil {
+		t.Fatalf("current handoff fingerprint was rejected: %v", err)
+	}
+	if err := checkKnowledgeDisclosureFingerprint(
+		disclosure,
+		disclosure.Fingerprint,
+	); err != nil {
+		t.Fatalf("current qualified disclosure fingerprint was rejected: %v", err)
+	}
+}
+
+func TestBuildBuilderReviewDisclosureFromFileRejectsBlockedHandoff(t *testing.T) {
+	root := testRepositoryRoot(t)
+	workspacePath := filepath.Join(root, "reference", "workspace")
+	handoff, err := buildBuilderReviewHandoff(
+		workspacePath,
+		"semantic-data",
+		"missing.example",
+		knowledgecontext.QualificationRequirements{
+			ExpectedKind: "semantic-data",
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if handoff.Status != "blocked-unresolved" {
+		t.Fatalf("fixture handoff status=%q", handoff.Status)
+	}
+
+	raw, err := json.Marshal(handoff)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handoffPath := filepath.Join(t.TempDir(), "blocked-review-handoff.json")
+	if err := os.WriteFile(handoffPath, raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, _, err = buildBuilderReviewDisclosureFromFile(
+		workspacePath,
+		"semantic-data",
+		"missing.example",
+		handoffPath,
+	)
+	if err == nil || !strings.Contains(err.Error(), "blocked by handoff status") {
+		t.Fatalf("blocked handoff disclosed Knowledge: %v", err)
+	}
+}
+
+func TestBuildBuilderReviewDisclosureFromFileRequiresHandoff(t *testing.T) {
+	_, _, err := buildBuilderReviewDisclosureFromFile(
+		"unused",
+		"application-pattern",
+		"order_entry.customer_reference",
+		"",
+	)
+	if err == nil || !strings.Contains(err.Error(), "requires -review-handoff") {
+		t.Fatalf("missing review handoff was accepted: %v", err)
+	}
+}
+
+func TestStrictKnowledgeJSONRejectsUnknownFieldsAndTrailingValues(t *testing.T) {
+	dir := t.TempDir()
+
+	unknownPath := filepath.Join(dir, "unknown.json")
+	if err := os.WriteFile(
+		unknownPath,
+		[]byte(`{"expectedKind":"semantic-data","accepted":true}`),
+		0o644,
+	); err != nil {
+		t.Fatal(err)
+	}
+	var requirements knowledgecontext.QualificationRequirements
+	if err := decodeStrictKnowledgeJSONFile(unknownPath, &requirements); err == nil ||
+		!strings.Contains(err.Error(), "unknown field") {
+		t.Fatalf("unknown qualification field was not rejected: %v", err)
+	}
+
+	trailingPath := filepath.Join(dir, "trailing.json")
+	if err := os.WriteFile(
+		trailingPath,
+		[]byte(`{"expectedKind":"semantic-data"} {"accepted":true}`),
+		0o644,
+	); err != nil {
+		t.Fatal(err)
+	}
+	requirements = knowledgecontext.QualificationRequirements{}
+	if err := decodeStrictKnowledgeJSONFile(trailingPath, &requirements); err == nil ||
+		!strings.Contains(err.Error(), "trailing JSON value") {
+		t.Fatalf("trailing qualification JSON was not rejected: %v", err)
+	}
+}
+
+func TestBuildBuilderReviewPlanRequiresWorkspaceAndSubject(t *testing.T) {
+	if _, err := buildBuilderReviewPlan("", "semantic-data", "sales.order_line"); err == nil ||
+		!strings.Contains(err.Error(), "knowledge-review-plan requires -workspace") {
+		t.Fatalf("empty workspace was not rejected clearly: %v", err)
+	}
+	if _, err := buildBuilderReviewPlan("unused", "", "sales.order_line"); err == nil ||
+		!strings.Contains(err.Error(), "requires -subject-kind and -subject-id") {
+		t.Fatalf("empty subject kind was not rejected clearly: %v", err)
+	}
+	if _, err := buildBuilderReviewPlan("unused", "semantic-data", ""); err == nil ||
+		!strings.Contains(err.Error(), "requires -subject-kind and -subject-id") {
+		t.Fatalf("empty subject id was not rejected clearly: %v", err)
+	}
+}
+
+func TestDataDesignContextExposesOrderedAIReviewProtocol(t *testing.T) {
+	root := testRepositoryRoot(t)
+	ctx, err := buildKnowledgeContext(
+		filepath.Join(root, "reference", "workspace"),
+		"semantic-data",
+		"sales.order_line",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ctx.DataDesign == nil {
+		t.Fatal("Data Design Context is missing")
+	}
+	if ctx.DataDesign.ProjectionRevision != "tei.knowledge.data-design/v7" {
+		t.Fatalf("data design projection revision=%q", ctx.DataDesign.ProjectionRevision)
+	}
+	want := []string{
+		"resolve-current-semantic-data-and-source-evidence-before-design-change",
+		"separate-business-occurrence-identity-from-persistence-runtime-and-ui-identifiers",
+		"classify-relation-archetype-before-promoting-business-identity-or-functional-dependency",
+		"require-source-backed-association-semantics-before-composite-identity",
+		"establish-business-identifier-candidate-key-scope-time-and-equivalence-from-evidence",
+		"preserve-accepted-business-uniqueness-when-using-surrogate-identifiers",
+		"establish-functional-dependency-as-business-semantic-claim-not-sample-data-correlation",
+		"distinguish-functional-dependency-from-composite-domain-constraint",
+		"treat-relation-keys-scoped-uniqueness-and-persistence-keys-as-candidates-not-authority",
+		"preserve-unresolved-when-required-business-evidence-is-missing",
+		"review-derived-candidates-by-stable-fingerprint-and-evidence-requirement-before-authoring",
+		"resolve-first-class-authoring-contract-before-promoting-derived-candidate",
+		"route-derived-identity-and-dependency-proposals-through-shared-acceptance",
+	}
+	if !reflect.DeepEqual(ctx.DataDesign.DesignReviewProtocol, want) {
+		t.Fatalf("data design review protocol drifted:\n got=%+v\nwant=%+v", ctx.DataDesign.DesignReviewProtocol, want)
+	}
+	if !containsKnowledgeContextString(
+		ctx.DataDesign.AuthorityLimits,
+		"data-design-review-protocol-is-derived-guidance-not-semantic-authority",
+	) {
+		t.Fatalf("review protocol authority limit is missing: %+v", ctx.DataDesign.AuthorityLimits)
+	}
+	if !containsKnowledgeContextString(
+		ctx.DataDesign.AuthorityLimits,
+		"relation-archetype-review-is-guidance-not-semantic-proof",
+	) {
+		t.Fatalf("relation archetype authority limit is missing: %+v", ctx.DataDesign.AuthorityLimits)
+	}
+	for _, limit := range []string{
+		"current-data-uniqueness-is-not-functional-dependency-proof",
+		"statistical-correlation-is-not-functional-dependency",
+		"functional-dependency-direction-is-not-symmetric-by-default",
+		"discovered-functional-dependency-is-proposal-not-accepted-business-semantics",
+	} {
+		if !containsKnowledgeContextString(ctx.DataDesign.AuthorityLimits, limit) {
+			t.Fatalf("functional dependency authority limit %q is missing: %+v", limit, ctx.DataDesign.AuthorityLimits)
+		}
+	}
+	if !containsKnowledgeContextString(
+		ctx.DataDesign.FunctionalDependencyEvidenceQuestions,
+		"is-the-dependency-an-accepted-business-rule-or-only-observed-in-current-data",
+	) {
+		t.Fatalf("functional dependency evidence question is missing: %+v", ctx.DataDesign.FunctionalDependencyEvidenceQuestions)
+	}
+
+	disclosure, err := buildKnowledgeDisclosure(ctx, "data-design")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if disclosure.DataDesign == nil || !reflect.DeepEqual(disclosure.DataDesign.DesignReviewProtocol, want) {
+		t.Fatalf("data-design disclosure lost review protocol: %+v", disclosure.DataDesign)
+	}
+}
+
 func TestCheckDataDesignFingerprint(t *testing.T) {
 	root := testRepositoryRoot(t)
 	ctx, err := buildKnowledgeContext(
@@ -285,6 +692,57 @@ func TestBuildKnowledgeContextReturnsScopedApplicationPatternContext(t *testing.
 	} {
 		if !containsKnowledgeContextString(got.AuthorityLimits, limit) {
 			t.Fatalf("authority limit %q is missing: %+v", limit, got.AuthorityLimits)
+		}
+	}
+}
+
+func TestContractQuerySQLRealizationReverseTracesByExplicitResultMappingOnly(t *testing.T) {
+	root := testRepositoryRoot(t)
+	const realizationID = "sales_core/sales_core.order_line/find_by_order/sql/postgres"
+	got, err := buildKnowledgeContext(
+		filepath.Join(root, "reference", "workspace"),
+		"contract-query-sql-realization",
+		realizationID,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.DataDesign == nil ||
+		got.DataDesign.Data != "sales.order_line" ||
+		got.DataDesign.Focus.Kind != "contract-query-sql-realization" ||
+		got.DataDesign.Focus.ID != realizationID {
+		t.Fatalf("SQL realization did not reverse trace to Semantic Data: %+v", got.DataDesign)
+	}
+	if len(got.References) == 0 || len(got.Artifacts) == 0 {
+		t.Fatalf("SQL realization source trace is missing: references=%+v artifacts=%+v", got.References, got.Artifacts)
+	}
+	if !hasDataDesignEvidence(
+		got.DataDesign,
+		"contract-query-sql-realization",
+		realizationID,
+		"databases/sales-core/query-realizations/order-line-find-by-order.tei",
+	) {
+		t.Fatalf("SQL realization authoring Evidence is missing: %+v", got.DataDesign.Evidence)
+	}
+	if got.DataDesign.BusinessOccurrenceIdentifier.Nature != "unresolved" ||
+		got.DataDesign.CandidateKeys.Nature != "unresolved" ||
+		got.DataDesign.FunctionalDependencies.Nature != "unresolved" {
+		t.Fatalf("SQL realization identity was promoted to business identity: %+v", got.DataDesign)
+	}
+	for _, candidate := range got.DataDesign.BusinessIdentityCandidates {
+		for _, component := range candidate.Components {
+			if component.Attribute == "sales.order_line.order_line_id" {
+				t.Fatalf("raw SQL result identity leaked into business identity candidate: %+v", candidate)
+			}
+		}
+	}
+	for _, limit := range []string{
+		"contract-query-sql-realization-identity-is-not-business-data-identity",
+		"raw-result-column-is-not-business-identity",
+		"provider-specific-realization-is-not-semantic-authority",
+	} {
+		if !containsKnowledgeContextString(got.DataDesign.AuthorityLimits, limit) {
+			t.Fatalf("SQL realization authority limit %q is missing: %+v", limit, got.DataDesign.AuthorityLimits)
 		}
 	}
 }
@@ -492,7 +950,9 @@ func TestRelationUniqueValidationResolvesScopedDataDesignWithoutInventingIdentit
 	}
 	fdCandidate := got.DataDesign.FunctionalDependencyCandidates[0]
 	if len(fdCandidate.Determinants) != 2 ||
-		fdCandidate.Determinants[0].Kind != "relation-source-occurrence" ||
+		fdCandidate.Determinants[0].Kind != "related-occurrence" ||
+		fdCandidate.Determinants[0].Relation != "sales.order.lines" ||
+		fdCandidate.Determinants[0].End != "source" ||
 		fdCandidate.Determinants[0].Data != "sales.order" ||
 		fdCandidate.Determinants[1].Kind != "attribute" ||
 		fdCandidate.Determinants[1].Attribute != "sales.order_line.line_number" {
@@ -502,6 +962,50 @@ func TestRelationUniqueValidationResolvesScopedDataDesignWithoutInventingIdentit
 		got.DataDesign.CandidateKeys.Nature != "unresolved" ||
 		got.DataDesign.FunctionalDependencies.Nature != "unresolved" {
 		t.Fatalf("validation context invented accepted identity or FD: %+v", got.DataDesign)
+	}
+}
+
+func TestAuthorizationGrantDoesNotInferCompositeBusinessIdentityFromIdentifierLikeFields(t *testing.T) {
+	root := testRepositoryRoot(t)
+	got, err := buildKnowledgeContext(
+		filepath.Join(root, "reference", "workspace"),
+		"semantic-data",
+		"security.authorization_grant",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.DataDesign == nil || got.DataDesign.Data != "security.authorization_grant" {
+		t.Fatalf("AuthorizationGrant Data Design Context is missing: %+v", got.DataDesign)
+	}
+	if len(got.DataDesign.Attributes) != 3 {
+		t.Fatalf("AuthorizationGrant attribute context is incomplete: %+v", got.DataDesign.Attributes)
+	}
+	if len(got.DataDesign.BusinessIdentityCandidates) != 0 ||
+		len(got.DataDesign.FunctionalDependencyCandidates) != 0 {
+		t.Fatalf("subject/action/resource shape was generalized into determinant candidates: %+v", got.DataDesign)
+	}
+	if got.DataDesign.BusinessOccurrenceIdentifier.Nature != "unresolved" ||
+		got.DataDesign.CandidateKeys.Nature != "unresolved" ||
+		got.DataDesign.FunctionalDependencies.Nature != "unresolved" {
+		t.Fatalf("AuthorizationGrant identity was invented from identifier-like fields: %+v", got.DataDesign)
+	}
+	if !hasDataDesignEvidence(
+		got.DataDesign,
+		"semantic-data",
+		"security.authorization_grant",
+		"semantic/security/authorization.tei",
+	) {
+		t.Fatalf("AuthorizationGrant Source Evidence is missing: %+v", got.DataDesign.Evidence)
+	}
+	for _, question := range []string{
+		"which-fields-identify-the-business-occurrence",
+		"what-is-the-uniqueness-scope",
+		"is-this-business-occurrence-identity-or-history-version-identity",
+	} {
+		if !containsKnowledgeContextString(got.DataDesign.BusinessIdentityEvidenceQuestions, question) {
+			t.Fatalf("AuthorizationGrant identity question %q is missing: %+v", question, got.DataDesign.BusinessIdentityEvidenceQuestions)
+		}
 	}
 }
 
@@ -524,7 +1028,7 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		dataDesign.Focus.ID != "sales.order_line" {
 		t.Fatalf("data design scope drifted: %+v", dataDesign)
 	}
-	if dataDesign.ProjectionRevision != "tei.knowledge.data-design/v5" ||
+	if dataDesign.ProjectionRevision != "tei.knowledge.data-design/v7" ||
 		len(dataDesign.Fingerprint) <= len("sha256:") ||
 		dataDesign.Fingerprint[:len("sha256:")] != "sha256:" ||
 		dataDesign.ResolutionStatus != "resolved" ||
@@ -605,6 +1109,7 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 	for _, question := range []string{
 		"what-business-meaning-does-the-relation-express",
 		"is-the-relation-a-changeable-reference-parent-contained-repeat-or-independent-association",
+		"does-this-relation-archetype-support-business-identity-or-functional-dependency-or-only-topology",
 		"what-cardinality-is-required",
 		"is-the-relation-current-only-or-temporal",
 		"what-history-or-validity-period-must-be-preserved",
@@ -678,7 +1183,9 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		t.Fatalf("business identity candidate drifted: %+v", identityCandidate)
 	}
 	if len(identityCandidate.Components) != 2 ||
-		identityCandidate.Components[0].Kind != "relation-source-occurrence" ||
+		identityCandidate.Components[0].Kind != "related-occurrence" ||
+		identityCandidate.Components[0].Relation != "sales.order.lines" ||
+		identityCandidate.Components[0].End != "source" ||
 		identityCandidate.Components[0].Data != "sales.order" ||
 		identityCandidate.Components[1].Kind != "attribute" ||
 		identityCandidate.Components[1].Data != "sales.order_line" ||
@@ -718,7 +1225,9 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		t.Fatalf("functional dependency candidate drifted: %+v", fdCandidate)
 	}
 	if len(fdCandidate.Determinants) != 2 ||
-		fdCandidate.Determinants[0].Kind != "relation-source-occurrence" ||
+		fdCandidate.Determinants[0].Kind != "related-occurrence" ||
+		fdCandidate.Determinants[0].Relation != "sales.order.lines" ||
+		fdCandidate.Determinants[0].End != "source" ||
 		fdCandidate.Determinants[0].Data != "sales.order" ||
 		fdCandidate.Determinants[0].Attribute != "" ||
 		fdCandidate.Determinants[1].Kind != "attribute" ||
@@ -1051,5 +1560,31 @@ func TestBuildKnowledgeQualificationPreservesUnknownSubject(t *testing.T) {
 	}
 	if got.Status != knowledgecontext.QualificationUnknown {
 		t.Fatalf("status=%s reasons=%+v", got.Status, got.Reasons)
+	}
+}
+
+// The reading guide points at this file as the shape of
+// -qualification-requirements (#3186). If the struct or the normalization
+// rules change, the documented example must fail here instead of drifting.
+func TestDocumentedQualificationRequirementsExampleIsAccepted(t *testing.T) {
+	root := testRepositoryRoot(t)
+	got, err := buildKnowledgeQualificationFromFile(
+		filepath.Join(root, "reference", "workspace"),
+		"application-pattern",
+		"order_entry.customer_reference",
+		filepath.Join(root, "reference", "business-system-design",
+			"order-entry-customer-reference-review-qualification.json"),
+	)
+	if err != nil {
+		t.Fatalf("documented example was rejected: %v", err)
+	}
+	if got.Status != knowledgecontext.QualificationApplicable ||
+		got.Requirements.ExpectedKind != "application-pattern" ||
+		got.Requirements.Application != "order_entry" ||
+		len(got.Requirements.RequiredDependencies) != 1 {
+		t.Fatalf("documented example did not produce the expected qualification: %+v", got)
+	}
+	if len(got.Evidence) == 0 || len(got.DependencyEvidence) == 0 {
+		t.Fatalf("documented example lost its Evidence: %+v", got)
 	}
 }

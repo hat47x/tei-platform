@@ -1,0 +1,12 @@
+{
+  "schema": "tei.reference.order-assist.policy-migration/candidate-v0",
+  "from": "discount-approval/v1",
+  "to": "discount-approval/v2",
+  "stageMap": {
+    "S1-manager": "T1-manager",
+    "S3-director": "T2-finance"
+  },
+  "approvalMap": {
+    "S1-manager": "T1-manager"
+  }
+}

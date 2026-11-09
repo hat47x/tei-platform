@@ -1,0 +1,18 @@
+{
+  "name": "editor-delete-table",
+  "description": "Open table 61 in the Editor, invoke the tree-node delete action after activation, save, and verify that the table is gone from the XML. Uses a disposable MfgOrder.xead copy.",
+  "steps": [
+    { "op": "wait_window", "title": "X-TEA Editor", "timeoutMs": 30000 },
+    { "op": "select", "selector": { "role": "tree" }, "path": [0, 1, 0, 0, 2] },
+    { "op": "key", "selector": { "role": "tree" }, "key": "ENTER" },
+    { "op": "sleep", "ms": 1000 },
+    { "op": "invoke_method", "selector": { "role": "window", "window": "X-TEA Editor" }, "method": "jMenuItemXETreeNodeDelete_actionPerformed" },
+    { "op": "sleep", "ms": 1000 },
+    { "op": "invoke", "selector": { "window": "X-TEA Editor", "path": "m.0.5" }, "settleMs": 1000 },
+    { "op": "wait_window", "title": "バックアップの確認", "timeoutMs": 30000 },
+    { "op": "invoke", "selector": { "window": "バックアップの確認", "role": "button", "text": "はい" }, "settleMs": 1000 },
+    { "op": "wait_window", "title": "バックアップの確認", "state": "absent", "timeoutMs": 30000 },
+    { "op": "sleep", "ms": 1500 },
+    { "op": "model_assert_table_absent", "path": "build/editor-fixture/MfgOrder.xead", "tableId": "61" }
+  ]
+}

@@ -1,0 +1,94 @@
+name: TEI organization semantic synthetic Reference (Node)
+
+# Exact-head qualification for isolated synthetic fixtures only.
+# This does not establish TEI Query/Context/UI/Driver/Host or business acceptance.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - 'reference/org-semantic-views/**'
+      - '.github/workflows/tei-org-semantic-reference-node.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'reference/org-semantic-views/**'
+      - '.github/workflows/tei-org-semantic-reference-node.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: org-semantic-synthetic-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  synthetic-node:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      TARGET_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact candidate head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Pin Node runtime
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22.16.0
+          check-latest: false
+
+      - name: Verify head and log fixture/test blobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          node --version
+          for file in \
+            reference/org-semantic-views/source-fixture.json \
+            reference/org-semantic-views/scenario-fixture.json \
+            reference/org-semantic-views/source-fixture.mjs \
+            reference/org-semantic-views/verify.mjs \
+            reference/org-semantic-views/verify-change.mjs \
+            reference/org-semantic-views/verify-handoff.mjs \
+            reference/org-semantic-views/verify-projection.mjs \
+            reference/org-semantic-views/verify-context.mjs \
+            reference/org-semantic-views/verify-acquisition.mjs \
+            reference/org-semantic-views/verify-rule-footprint.mjs \
+            reference/org-semantic-views/verify-query-dependencies.mjs \
+            reference/org-semantic-views/verify-succession.mjs \
+            reference/org-semantic-views/verify-consumer-freshness.mjs \
+            reference/org-semantic-views/verify-field-observation.mjs; do
+            test -f "$file"
+            printf 'blob=%s file=%s\n' "$(git hash-object "$file")" "$file"
+          done
+
+      - name: Run pure JS reference and native Node tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          node reference/org-semantic-views/verify.mjs
+          node --test \
+            reference/org-semantic-views/verify-change.mjs \
+            reference/org-semantic-views/verify-handoff.mjs \
+            reference/org-semantic-views/verify-projection.mjs \
+            reference/org-semantic-views/verify-context.mjs \
+            reference/org-semantic-views/verify-acquisition.mjs \
+            reference/org-semantic-views/verify-rule-footprint.mjs \
+            reference/org-semantic-views/verify-query-dependencies.mjs \
+            reference/org-semantic-views/verify-succession.mjs \
+            reference/org-semantic-views/verify-consumer-freshness.mjs \
+            reference/org-semantic-views/verify-field-observation.mjs
+
+      - name: Assert test workspace remains clean
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"

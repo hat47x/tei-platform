@@ -1,0 +1,235 @@
+// Package postgres is a PostgreSQL-backed reference implementation of the
+// authorized effect-commit boundary. Deployment must independently attest that
+// the schema and authority mutation paths satisfy the transaction contract.
+package postgres
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"math"
+	"regexp"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"tei/internal/security/effectcommit"
+	"tei/internal/security/legacyauthorization"
+)
+
+var schemaName = regexp.MustCompile(`^[a-z][a-z0-9_]{0,62}$`)
+
+// Provider requires one PostgreSQL database for authority, effects, and receipts.
+// The schema is supplied by deployment, never taken from a user request.
+type Provider struct {
+	Pool   *pgxpool.Pool
+	Schema string
+
+	// trustedOwnerRoutine is enabled only by trusted host composition, never
+	// from untrusted Plugin/Binding input.
+	trustedOwnerRoutine bool
+}
+
+func New(pool *pgxpool.Pool, schema string) (Provider, error) {
+	if pool == nil || !schemaName.MatchString(schema) {
+		return Provider{}, fmt.Errorf("PostgreSQLの接続または固定スキーマ名が不正です")
+	}
+	return Provider{Pool: pool, Schema: schema}, nil
+}
+
+// NewWithTrustedOwnerRoutine opts into a deployment-owned, fixed-name
+// apply_owner_effect(text,text,bigint,bytea,text) function in the fixed schema.
+// The function must enforce resource CAS and owner-side effects in the caller's
+// PostgreSQL transaction: positive = next resource version, 0 = resource
+// version conflict, -1 = Owner business denial, -2 = invalid Owner input.
+// Other negative values are contract violations (execution errors).
+// It must not commit, publish externally, or be controlled by a Plugin request.
+// DB ownership, EXECUTE grants, and all authority mutation paths require
+// independent deployment verification.
+func NewWithTrustedOwnerRoutine(pool *pgxpool.Pool, schema string) (Provider, error) {
+	p, err := New(pool, schema)
+	if err != nil {
+		return Provider{}, err
+	}
+	p.trustedOwnerRoutine = true
+	return p, nil
+}
+
+// ReasonProvisionalD10 is the Guarantee.Reason of a Provider built by
+// NewWithTrustedOwnerRoutine. It is fixed text (no secrets) so that an Evidence
+// reader can tell the declaration is provisional.
+const ReasonProvisionalD10 = "provisional D10: trusted-owner routine path; re-verify against real deployment"
+
+// Guarantee implements effectcommit.GuaranteeDeclarer.
+//
+// Provisional delegated decision D10: ONLY a Provider built by
+// NewWithTrustedOwnerRoutine claims atomic-with-commit, and only for that
+// trusted-owner routine path. Every other Provider (New, the direct objects
+// UPDATE path, the zero value) declares nothing and is refused by
+// RequireGuarantee. The claim is a self-declaration, not proof: authority
+// check, effect and receipt are claimed to share one commit, which the real
+// PostgreSQL tests listed in README.md exercise but cannot establish for a
+// real deployment (routine body, ownership, EXECUTE grants and every authority
+// mutation path need independent verification).
+//
+// The level is derived from the unexported trustedOwnerRoutine field, which no
+// code outside this package can set. A wrapper that EMBEDS Provider would have
+// this method promoted and so inherit the claim; wrappers must declare their
+// own level or hold the Provider in a named field (see effectcommit.GuaranteeDeclarer).
+func (p Provider) Guarantee() effectcommit.Guarantee {
+	if !p.trustedOwnerRoutine {
+		return effectcommit.Guarantee{Level: effectcommit.GuaranteeUndeclared}
+	}
+	return effectcommit.Guarantee{Level: effectcommit.GuaranteeAtomicWithCommit, Reason: ReasonProvisionalD10}
+}
+
+func (p Provider) Begin(ctx context.Context) (effectcommit.Transaction, error) {
+	if p.Pool == nil || !schemaName.MatchString(p.Schema) {
+		return nil, effectcommit.ErrMissingProvider
+	}
+	tx, err := p.Pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &transaction{tx: tx, schema: `"` + p.Schema + `"`, trustedOwnerRoutine: p.trustedOwnerRoutine}, nil
+}
+
+type transaction struct {
+	tx                  pgx.Tx
+	schema              string
+	trustedOwnerRoutine bool
+}
+
+func (t *transaction) table(name string) string { return t.schema + `."` + name + `"` }
+
+// CheckAuthority acquires a row lock that is held until transaction completion.
+// Every authority mutation must lock or UPDATE the same row, including indirect
+// subject and role changes. A separate authority DB cannot satisfy this contract.
+func (t *transaction) CheckAuthority(ctx context.Context, s effectcommit.Scope, e legacyauthorization.AuthorityEpochs) (bool, error) {
+	if e.SubjectLink > math.MaxInt64 || e.Membership > math.MaxInt64 || e.Policy > math.MaxInt64 {
+		return false, effectcommit.ErrInvalidRequest
+	}
+	// A SELECT FOR UPDATE directly against authority would require UPDATE privileges
+	// for the effect-writer DB role. That role could then bypass revocation.
+	// A trusted, narrowly granted SECURITY DEFINER function performs the lock
+	// and comparison; the caller has no direct UPDATE on authority.
+	q := "SELECT " + t.table("lock_authority") + "($1,$2,$3,$4,$5,$6,$7,$8,$9)"
+	var allowed bool
+	err := t.tx.QueryRow(ctx, q, s.Application, s.Capability, s.Subject, s.Action, s.Resource,
+		e.Source, int64(e.SubjectLink), int64(e.Membership), int64(e.Policy)).Scan(&allowed)
+	if err != nil {
+		return false, err
+	}
+	return allowed, nil
+}
+
+func (t *transaction) FindReceipt(ctx context.Context, operationID string) (effectcommit.Receipt, bool, error) {
+	q := "SELECT application, capability, subject, action, resource, request_hash, resource_version FROM " +
+		t.table("receipts") + " WHERE operation_id=$1"
+	var rec effectcommit.Receipt
+	var version int64
+	err := t.tx.QueryRow(ctx, q, operationID).Scan(&rec.Scope.Application, &rec.Scope.Capability,
+		&rec.Scope.Subject, &rec.Scope.Action, &rec.Scope.Resource, &rec.RequestHash, &version)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return effectcommit.Receipt{}, false, nil
+	}
+	if err != nil {
+		return effectcommit.Receipt{}, false, err
+	}
+	if version <= 0 {
+		return effectcommit.Receipt{}, false, fmt.Errorf("PostgreSQL確定記録の対象版が不正です")
+	}
+	rec.OperationID = operationID
+	rec.ResourceVersion = uint64(version)
+	return rec, true, nil
+}
+
+func (t *transaction) WriteResource(ctx context.Context, req effectcommit.Request) (uint64, error) {
+	if req.ExpectedVersion >= math.MaxInt64 {
+		return 0, effectcommit.ErrResourceConflict
+	}
+	var next int64
+	if t.trustedOwnerRoutine {
+		// The name is fixed, never supplied by request/Plugin. This call runs
+		// under the SAME pgx.Tx and authority lock as SaveReceipt and Commit.
+		// The trusted DB owner controls the routine body and its privileges.
+		q := "SELECT " + t.table("apply_owner_effect") + "($1,$2,$3,$4,$5)"
+		err := t.tx.QueryRow(ctx, q, req.Scope.Application, req.Scope.Resource,
+			int64(req.ExpectedVersion), req.Payload, req.OperationID).Scan(&next)
+		if err != nil {
+			return 0, err // missing routine, DB failure: fail closed, rollback
+		}
+		switch next {
+		case 0:
+			return 0, effectcommit.ErrResourceConflict
+		case -1:
+			return 0, effectcommit.ErrBusinessDenied
+		case -2:
+			return 0, effectcommit.ErrInvalidRequest
+		}
+	} else {
+		q := "UPDATE " + t.table("objects") +
+			" SET value=$3, version=version+1 WHERE application=$1 AND resource=$2 AND version=$4 RETURNING version"
+		err := t.tx.QueryRow(ctx, q, req.Scope.Application, req.Scope.Resource,
+			req.Payload, int64(req.ExpectedVersion)).Scan(&next)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, effectcommit.ErrResourceConflict
+		}
+		if err != nil {
+			return 0, err
+		}
+	}
+	if next <= 0 {
+		return 0, fmt.Errorf("PostgreSQLの対象版が不正です")
+	}
+	return uint64(next), nil
+}
+
+func (t *transaction) SaveReceipt(ctx context.Context, r effectcommit.Receipt) error {
+	if r.ResourceVersion == 0 || r.ResourceVersion > math.MaxInt64 {
+		return effectcommit.ErrInvalidRequest
+	}
+	q := "INSERT INTO " + t.table("receipts") +
+		" (operation_id, application, capability, subject, action, resource, request_hash, resource_version)" +
+		" VALUES ($1,$2,$3,$4,$5,$6,$7,$8)"
+	_, err := t.tx.Exec(ctx, q, r.OperationID, r.Scope.Application, r.Scope.Capability,
+		r.Scope.Subject, r.Scope.Action, r.Scope.Resource, r.RequestHash, int64(r.ResourceVersion))
+	return err
+}
+
+func (t *transaction) Commit(ctx context.Context) error { return t.tx.Commit(ctx) }
+func (t *transaction) Rollback() error                  { return t.tx.Rollback(context.Background()) }
+
+// ReadResource reads the resource's current state through a separate pool
+// connection, after the write transaction has completed. It is an independent
+// read of the stored value; it does not re-check authority and its payload must
+// not be exposed to the caller.
+func (p Provider) ReadResource(ctx context.Context, s effectcommit.Scope) (effectcommit.ResourceState, error) {
+	if p.Pool == nil || !schemaName.MatchString(p.Schema) {
+		return effectcommit.ResourceState{}, effectcommit.ErrMissingProvider
+	}
+	if s.Application == "" || s.Resource == "" || s.Capability == "" ||
+		s.Subject == "" || s.Action == "" {
+		return effectcommit.ResourceState{}, effectcommit.ErrInvalidRequest
+	}
+	q := "SELECT version,value FROM " + `"` + p.Schema + `"."objects"` +
+		" WHERE application=$1 AND resource=$2"
+	var version int64
+	var payload []byte
+	err := p.Pool.QueryRow(ctx, q, s.Application, s.Resource).Scan(&version, &payload)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return effectcommit.ResourceState{Found: false}, nil
+	}
+	if err != nil {
+		return effectcommit.ResourceState{}, err
+	}
+	if version <= 0 || version > math.MaxInt64 {
+		return effectcommit.ResourceState{}, fmt.Errorf("PostgreSQL resource version is invalid")
+	}
+	return effectcommit.ResourceState{Version: uint64(version), Payload: payload, Found: true}, nil
+}
+
+var _ effectcommit.Provider = Provider{}
+var _ effectcommit.GuaranteeDeclarer = Provider{}
+var _ effectcommit.ResourceReader = Provider{}
+var _ effectcommit.Transaction = (*transaction)(nil)

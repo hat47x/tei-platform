@@ -31,11 +31,44 @@ type Diagnostic struct {
 	Subject  *subject.Subject `json:"subject,omitempty"`
 }
 
+// attributeRoles lists the roles a semantic attribute may carry. The first
+// group is the display and meaning vocabulary; the second group names the
+// attributes a standard business declaration binds to (tax, exchange rate,
+// numbering, holiday). They are here so a declaration that names one is
+// accepted, and a typo is still reported.
+var attributeRoles = map[string]bool{
+	"key": true, "business-key": true, "due-date": true, "period": true,
+	"quantity": true, "amount": true, "status": true, "timestamp": true,
+	"name": true, "code": true, "note": true, "description": true,
+
+	// Standard business binding roles.
+	"tax-applies-from": true, "tax-applies-until": true, "tax-category": true,
+	"tax-value": true, "tax-rounding": true,
+	"currency-rate-currency": true, "currency-rate-fiscal-year": true,
+	"currency-rate-month-sequence": true, "currency-rate-middle": true,
+	"currency-rate-buying": true, "currency-rate-selling": true,
+	"currency-rate-fallback": true,
+	"numbering-counter":      true, "numbering-digits": true, "numbering-prefix": true,
+	"numbering-check": true, "numbering-overflow": true, "numbering-rule": true,
+	"holiday-date": true, "holiday-calendar": true,
+	"setting-key": true, "setting-value": true, "setting-user": true,
+}
+
 func Validate(w ir.World) []Diagnostic {
-	out := validateApplicationPatterns(w)
+	out := validateWorkspaceIsNotEmpty(w)
+	out = append(out, validateApplicationPatterns(w)...)
+	out = append(out, validateApplicationPackages(w)...)
 	out = append(out, validateQueryResultMappings(w)...)
+	out = append(out, validateQueryInputs(w)...)
 	out = append(out, validateSemanticBusinessValidations(w)...)
+	out = append(out, validateSemanticBusinessRules(w)...)
 	out = append(out, validateCapabilityOutcomes(w)...)
+	out = append(out, validateCapabilityDataEffects(w)...)
+	out = append(out, validateSemanticCalendars(w)...)
+	out = append(out, validatePeriodCalendars(w)...)
+	out = append(out, validateSemanticPeriods(w)...)
+	out = append(out, validateSemanticEffectRules(w)...)
+	out = append(out, validateSemanticRunPlans(w)...)
 	out = append(out, validateBusinessValidationReferences(w)...)
 
 	pluginCatalog := plugin.Catalog{Plugins: w.Plugins, Bundles: w.Bundles}
@@ -65,28 +98,35 @@ func Validate(w ir.World) []Diagnostic {
 			out = append(out, errd("INVALID_PLUGIN_ARTIFACT", "plugin %s: %v", p.ID, err))
 		}
 		for _, ext := range p.External {
-			validScope := ext.Scope == "editor" || ext.Scope == "build" || ext.Scope == "test" || ext.Scope == "runtime" || ext.Scope == "migration"
-			validKind := ext.Kind == "toolchain" || ext.Kind == "runtime" || ext.Kind == "language-package" || ext.Kind == "tool"
-			if !validScope {
+			if !ext.ValidScope() {
 				out = append(out, errd("INVALID_PLUGIN_EXTERNAL_SCOPE", "plugin %s external requirement %s has invalid scope %s", p.ID, ext.Name, ext.Scope))
 			}
-			if !validKind {
+			if !ext.ValidKind() {
 				out = append(out, errd("INVALID_PLUGIN_EXTERNAL_KIND", "plugin %s external requirement %s has invalid kind %s", p.ID, ext.Name, ext.Kind))
 			}
-			if strings.TrimSpace(ext.Name) == "" {
+			if !ext.ValidName() {
 				out = append(out, errd("PLUGIN_EXTERNAL_NAME_REQUIRED", "plugin %s has external requirement with empty name", p.ID))
 			}
 		}
-		seenCaps := map[string]struct{}{}
+		if err := plugin.ValidateUniqueExternalRequirements(p.External); err != nil {
+			out = append(out, errd("DUPLICATE_PLUGIN_EXTERNAL_REQUIREMENT", "plugin %s: %v", p.ID, err))
+		}
+		if err := plugin.ValidateUniqueRequirements(p.Requires); err != nil {
+			out = append(out, errd("DUPLICATE_PLUGIN_REQUIREMENT", "plugin %s: %v", p.ID, err))
+		}
+		if err := plugin.ValidateRequirementValues(p.Requires); err != nil {
+			out = append(out, errd("INVALID_PLUGIN_REQUIREMENT", "plugin %s: %v", p.ID, err))
+		}
+		if err := plugin.ValidateUniqueCapabilities(p.Provides); err != nil {
+			out = append(out, errd("DUPLICATE_PLUGIN_CAPABILITY", "plugin %s: %v", p.ID, err))
+		}
 		for _, c := range p.Provides {
+			if err := plugin.ValidateCapabilityID(c.ID); err != nil {
+				out = append(out, errd("INVALID_PLUGIN_CAPABILITY_ID", "plugin %s: %v", p.ID, err))
+			}
 			if !c.Kind.Valid() {
 				out = append(out, errd("INVALID_PLUGIN_CAPABILITY_KIND", "plugin %s capability %s has invalid kind %s", p.ID, c.ID, c.Kind))
 			}
-			ck := string(c.Kind) + "|" + string(c.ID)
-			if _, dup := seenCaps[ck]; dup {
-				out = append(out, errd("DUPLICATE_PLUGIN_CAPABILITY", "plugin %s provides %s %s more than once", p.ID, c.Kind, c.ID))
-			}
-			seenCaps[ck] = struct{}{}
 			for _, a := range c.Actions {
 				if !a.Valid() {
 					out = append(out, errd("INVALID_PLUGIN_ACTION_SUPPORT", "plugin %s capability %s lists invalid action %s", p.ID, c.ID, a))
@@ -107,15 +147,26 @@ func Validate(w ir.World) []Diagnostic {
 					out = append(out, errd("INVALID_PLUGIN_DATABASE_PROVIDER_SUPPORT", "plugin %s capability %s lists invalid database provider %s", p.ID, c.ID, dbp))
 				}
 			}
-			seenPermissions := map[string]struct{}{}
+			for _, tool := range c.MigrationTools {
+				if !tool.Valid() {
+					out = append(out, errd("INVALID_PLUGIN_MIGRATION_TOOL_SUPPORT", "plugin %s capability %s lists invalid migration tool %s", p.ID, c.ID, tool))
+				}
+			}
+			for _, feature := range c.Features {
+				if !feature.Known() {
+					out = append(out, errd("INVALID_PLUGIN_FEATURE_SUPPORT", "plugin %s capability %s lists invalid feature %s", p.ID, c.ID, feature))
+				}
+			}
+			if err := plugin.ValidateUniqueCapabilitySupports(c); err != nil {
+				out = append(out, errd("DUPLICATE_PLUGIN_CAPABILITY_SUPPORT", "plugin %s: %v", p.ID, err))
+			}
 			for _, perm := range c.Permissions {
 				if err := perm.Validate(); err != nil {
 					out = append(out, errd("INVALID_PLUGIN_PERMISSION", "plugin %s capability %s: %v", p.ID, c.ID, err))
 				}
-				if _, dup := seenPermissions[perm.Key()]; dup {
-					out = append(out, errd("DUPLICATE_PLUGIN_PERMISSION", "plugin %s capability %s declares permission %s more than once", p.ID, c.ID, perm.Key()))
-				}
-				seenPermissions[perm.Key()] = struct{}{}
+			}
+			if err := plugin.ValidateUniqueCapabilityPermissions(c.Permissions); err != nil {
+				out = append(out, errd("DUPLICATE_PLUGIN_PERMISSION", "plugin %s capability %s: %v", p.ID, c.ID, err))
 			}
 		}
 	}
@@ -128,6 +179,12 @@ func Validate(w ir.World) []Diagnostic {
 		seenBundleVersions[key] = struct{}{}
 		if _, err := plugin.ParseVersion(b.Version); err != nil {
 			out = append(out, errd("INVALID_BUNDLE_VERSION", "bundle %s: %v", b.ID, err))
+		}
+		if err := plugin.ValidateUniqueRequirements(b.Plugins); err != nil {
+			out = append(out, errd("DUPLICATE_BUNDLE_PLUGIN_REQUIREMENT", "bundle %s version %s: %v", b.ID, b.Version, err))
+		}
+		if err := plugin.ValidateRequirementValues(b.Plugins); err != nil {
+			out = append(out, errd("INVALID_BUNDLE_PLUGIN_REQUIREMENT", "bundle %s version %s: %v", b.ID, b.Version, err))
 		}
 	}
 
@@ -143,7 +200,13 @@ func Validate(w ir.World) []Diagnostic {
 
 	addSemanticElement := func(id core.CanonicalID, kind string) {
 		if prior, exists := semanticElements[id]; exists {
-			out = append(out, errd("DUPLICATE_SEMANTIC_ELEMENT", "semantic element %s is declared as both %s and %s", id, prior, kind))
+			// The Subject identifies the duplicate name and kind, but does not
+			// distinguish individual declarations with the same identity (#2400).
+			if prior == kind {
+				out = append(out, errFor(subject.Subject{Kind: "semantic-" + kind, ID: string(id)}, "DUPLICATE_SEMANTIC_ELEMENT", "semantic element %s is declared more than once as %s", id, kind))
+				return
+			}
+			out = append(out, errFor(subject.Subject{Kind: "semantic-" + kind, ID: string(id)}, "DUPLICATE_SEMANTIC_ELEMENT", "semantic element %s is declared as both %s and %s", id, prior, kind))
 			return
 		}
 		semanticElements[id] = kind
@@ -160,6 +223,17 @@ func Validate(w ir.World) []Diagnostic {
 			}
 			if !typ.Kind.Valid() {
 				out = append(out, errd("INVALID_SEMANTIC_TYPE_KIND", "type %s has invalid kind %q", typ.ID, typ.Kind))
+			}
+			seenValues := map[string]bool{}
+			for _, value := range typ.Values {
+				if value == "" {
+					out = append(out, errFor(subject.Subject{Kind: "semantic-type", ID: string(typ.ID)}, "SEMANTIC_TYPE_VALUE_EMPTY", "type %s has an empty value", typ.ID))
+					continue
+				}
+				if seenValues[value] {
+					out = append(out, errFor(subject.Subject{Kind: "semantic-type", ID: string(typ.ID)}, "SEMANTIC_TYPE_VALUE_DUPLICATE", "type %s declares value %q more than once", typ.ID, value))
+				}
+				seenValues[value] = true
 			}
 			addSemanticElement(typ.ID, "type")
 			semanticTypes[typ.ID] = typ
@@ -239,12 +313,21 @@ func Validate(w ir.World) []Diagnostic {
 
 	for _, a := range semanticAttributes {
 		if _, ok := semanticTypes[a.TypeRef]; !ok {
-			out = append(out, errd("UNKNOWN_SEMANTIC_ATTRIBUTE_TYPE", "attribute %s refers to unknown semantic type %s", a.ID, a.TypeRef))
+			out = append(out, errFor(subject.Subject{Kind: "semantic-attribute", ID: string(a.ID)}, "UNKNOWN_SEMANTIC_ATTRIBUTE_TYPE", "attribute %s refers to unknown semantic type %s", a.ID, a.TypeRef))
+		}
+		if a.Role != "" && !attributeRoles[a.Role] {
+			out = append(out, errFor(subject.Subject{Kind: "semantic-attribute", ID: string(a.ID)}, "SEMANTIC_ATTRIBUTE_ROLE_UNSUPPORTED", "attribute %s uses unsupported role %s", a.ID, a.Role))
 		}
 	}
+	out = append(out, validateAttributeRoleTypes(semanticAttributes, semanticTypes)...)
 	for _, r := range semanticRelations {
 		if _, ok := semanticData[r.Target]; !ok {
-			out = append(out, errd("UNKNOWN_SEMANTIC_RELATION_TARGET", "relation %s targets unknown semantic data %s", r.ID, r.Target))
+			out = append(out, errFor(subject.Subject{Kind: "semantic-relation", ID: string(r.ID)}, "UNKNOWN_SEMANTIC_RELATION_TARGET", "relation %s targets unknown semantic data %s", r.ID, r.Target))
+		}
+		switch r.OnDelete {
+		case "", "restrict", "cascade", "preserve":
+		default:
+			out = append(out, errFor(subject.Subject{Kind: "semantic-relation", ID: string(r.ID)}, "SEMANTIC_RELATION_ON_DELETE_UNSUPPORTED", "relation %s uses unsupported on-delete %s", r.ID, r.OnDelete))
 		}
 	}
 	semanticValueTypeExists := func(id core.CanonicalID) bool {
@@ -257,11 +340,11 @@ func Validate(w ir.World) []Diagnostic {
 	for _, c := range semanticCapabilities {
 		for _, in := range c.Inputs {
 			if !semanticValueTypeExists(in.Type) {
-				out = append(out, errd("UNKNOWN_SEMANTIC_CAPABILITY_INPUT", "capability %s input %s refers to unknown semantic value type %s", c.ID, in.Name, in.Type))
+				out = append(out, errFor(subject.Subject{Kind: "semantic-capability", ID: string(c.ID)}, "UNKNOWN_SEMANTIC_CAPABILITY_INPUT", "capability %s input %s refers to unknown semantic value type %s", c.ID, in.Name, in.Type))
 			}
 		}
 		if c.Output != "" && !semanticValueTypeExists(c.Output) {
-			out = append(out, errd("UNKNOWN_SEMANTIC_CAPABILITY_OUTPUT", "capability %s output refers to unknown semantic value type %s", c.ID, c.Output))
+			out = append(out, errFor(subject.Subject{Kind: "semantic-capability", ID: string(c.ID)}, "UNKNOWN_SEMANTIC_CAPABILITY_OUTPUT", "capability %s output refers to unknown semantic value type %s", c.ID, c.Output))
 		}
 
 	}
@@ -292,7 +375,7 @@ func Validate(w ir.World) []Diagnostic {
 	for _, a := range w.Applications {
 		for _, ns := range a.SemanticUses {
 			if _, ok := semanticNamespaces[ns]; !ok {
-				out = append(out, errd("UNKNOWN_APPLICATION_SEMANTIC_NAMESPACE", "application %s uses unknown semantic namespace %s", a.ID, ns))
+				out = append(out, errFor(subject.Subject{Kind: "application", ID: string(a.ID)}, "UNKNOWN_APPLICATION_SEMANTIC_NAMESPACE", "application %s uses unknown semantic namespace %s", a.ID, ns))
 			}
 		}
 	}
@@ -793,6 +876,10 @@ func Validate(w ir.World) []Diagnostic {
 				out = append(out, errd("DUPLICATE_ENVIRONMENT_PLUGIN_REQUIREMENT", "environment %s requires plugin %s more than once", e.ID, req.ID))
 			}
 			seenPluginReq[req.ID] = struct{}{}
+			parsed, err := core.ParseCanonicalID(string(req.ID))
+			if err != nil || parsed != req.ID {
+				out = append(out, errd("INVALID_ENVIRONMENT_PLUGIN_ID", "environment %s requires invalid plugin id %q", e.ID, req.ID))
+			}
 			if req.CompatibleMajor < 1 {
 				out = append(out, errd("INVALID_ENVIRONMENT_PLUGIN_VERSION", "environment %s plugin %s has invalid major %d", e.ID, req.ID, req.CompatibleMajor))
 			}
@@ -803,6 +890,10 @@ func Validate(w ir.World) []Diagnostic {
 				out = append(out, errd("DUPLICATE_ENVIRONMENT_BUNDLE_REQUIREMENT", "environment %s requires bundle %s more than once", e.ID, req.ID))
 			}
 			seenBundleReq[req.ID] = struct{}{}
+			parsed, err := core.ParseCanonicalID(string(req.ID))
+			if err != nil || parsed != req.ID {
+				out = append(out, errd("INVALID_ENVIRONMENT_BUNDLE_ID", "environment %s requires invalid bundle id %q", e.ID, req.ID))
+			}
 			if req.CompatibleMajor < 1 {
 				out = append(out, errd("INVALID_ENVIRONMENT_BUNDLE_VERSION", "environment %s bundle %s has invalid major %d", e.ID, req.ID, req.CompatibleMajor))
 			}
@@ -1084,6 +1175,25 @@ func HasErrors(ds []Diagnostic) bool {
 	return false
 }
 
+// validateWorkspaceIsNotEmpty warns when the Workspace declared no model
+// elements at all. The standard `std` namespace is a prelude, not a
+// declaration, so it is excluded (#2822). The finding is a warning: an empty
+// Workspace is not an error, but ok=true alone must not be read as "model
+// declarations were loaded and checked".
+func validateWorkspaceIsNotEmpty(w ir.World) []Diagnostic {
+	for _, ns := range w.Semantics {
+		if string(ns.ID) != "std" {
+			return nil
+		}
+	}
+	if len(w.Applications) > 0 || len(w.Databases) > 0 || len(w.Environments) > 0 ||
+		len(w.Queries) > 0 || len(w.Plugins) > 0 || len(w.Bundles) > 0 ||
+		len(w.Persistence) > 0 {
+		return nil
+	}
+	return []Diagnostic{warnd("WORKSPACE_DECLARES_NO_MODEL_ELEMENTS", "Workspace declares no model elements; only the standard semantic prelude is loaded")}
+}
+
 func errd(code, format string, args ...any) Diagnostic {
 	return Diagnostic{Code: code, Severity: Error, Message: fmt.Sprintf(format, args...)}
 }
@@ -1094,8 +1204,4 @@ func errFor(s subject.Subject, code, format string, args ...any) Diagnostic {
 
 func warnd(code, format string, args ...any) Diagnostic {
 	return Diagnostic{Code: code, Severity: Warning, Message: fmt.Sprintf(format, args...)}
-}
-
-func warnFor(s subject.Subject, code, format string, args ...any) Diagnostic {
-	return Diagnostic{Code: code, Severity: Warning, Message: fmt.Sprintf(format, args...), Subject: &s}
 }

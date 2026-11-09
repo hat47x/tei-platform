@@ -2,8 +2,6 @@ package workspace
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"tei/internal/sourceindex"
@@ -16,7 +14,43 @@ import (
 // subjects continue to use the loader's legacy point location until their
 // parser anchors are introduced.
 func BuildSourceIndex(root string, result Result) (sourceindex.Index, error) {
+	return buildSourceIndex(root, result, false)
+}
+
+// BuildSourceIndexFromLoad builds the Source Index only from bytes captured by
+// Load: the parsed-file snapshot plus the Load-time capture of managed files
+// that no loader parsed. It never reads the filesystem; a path outside both
+// is an error, as is a Result without a Load snapshot or from another root.
+//
+// Identity is bound to Load-time bytes for managed files of this Workspace.
+// This is NOT an atomic multi-file snapshot (scan, domain reads and the extra
+// capture happen at different moments), does not detect files that never
+// entered ManagedFiles, does not cover imported Workspaces, and adds no
+// authority. It also refuses (ErrImportsNotBound) a Workspace that declares
+// imports, and it does not bind the workspace manifest: see
+// Result.ManifestIdentity.
+func BuildSourceIndexFromLoad(root string, result Result) (sourceindex.Index, error) {
+	return buildSourceIndex(root, result, true)
+}
+
+func buildSourceIndex(root string, result Result, strict bool) (sourceindex.Index, error) {
+	rootReal, err := canonicalWorkspaceRoot(root)
+	if err != nil {
+		return sourceindex.Index{}, err
+	}
+	if strict && (result.sourceSnapshot == nil || result.sourceManagedExtra == nil) {
+		return sourceindex.Index{}, fmt.Errorf("Result has no Load-time source bytes; it was not produced by Load")
+	}
+	if strict && (result.sourceImportsDeclared || len(result.Imports) > 0) {
+		return sourceindex.Index{}, ErrImportsNotBound
+	}
+	if result.sourceSnapshot != nil && result.sourceSnapshotRoot != rootReal {
+		return sourceindex.Index{}, fmt.Errorf("loaded source snapshot belongs to another Workspace")
+	}
 	idx := sourceindex.Index{}
+	// 意味定義ファイルの構文解析結果は、この呼出し内の同一バイト列に限って共有する。
+	// 呼出しをまたいで保持せず、Revisionに束縛しない永続キャッシュは持たない。
+	anchorTables := map[string]*semanticAnchorTable{}
 	contents := map[string][]byte{}
 	artifacts := map[string]sourceindex.Artifact{}
 
@@ -28,7 +62,32 @@ func BuildSourceIndex(root string, result Result) (sourceindex.Index, error) {
 		if content, ok := contents[p]; ok {
 			return content, nil
 		}
-		content, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(p)))
+		// For a Result produced by Load, use the exact bytes parsed by
+		// the domain loader. A forged/standalone Result has no snapshot
+		// and retains the existing checked filesystem read fallback.
+		if snapshot, ok := result.sourceSnapshot[p]; ok {
+			// Load retained an independent copy of the parsed bytes. Source
+			// Index only reads it; a second full-file copy is unnecessary.
+			contents[p] = snapshot
+			return snapshot, nil
+		}
+		// Managed files that no domain loader parsed are still captured at
+		// Load through the same pinned Root. Use those bytes so Source Index
+		// does not re-read the filesystem after Load. They are deliberately
+		// not exposed by IndexedLoadedSnapshot, which attests parsed bytes.
+		if extra, ok := result.sourceManagedExtra[p]; ok {
+			contents[p] = extra
+			return extra, nil
+		}
+		if strict {
+			// BuildSourceIndexFromLoad never falls back to the filesystem: a path
+			// outside the Load-time bytes is an error, not a re-read.
+			return nil, fmt.Errorf("source %q is not covered by the Load-time bytes", p)
+		}
+		// Standalone Results and intentionally partial snapshots use a
+		// traversal-resistant rooted open per read. This is NOT a pinned
+		// multi-file Workspace snapshot, unlike the bytes retained by Load.
+		content, err := readWorkspaceFile(rootReal, p)
 		if err != nil {
 			return nil, err
 		}
@@ -70,7 +129,7 @@ func BuildSourceIndex(root string, result Result) (sourceindex.Index, error) {
 		}
 		content := contents[artifact.Path]
 		subject := subjectFromSourceKey(key)
-		rng, exact, err := exactSubjectRange(content, subject)
+		rng, exact, err := exactSubjectRange(content, subject, anchorTables, artifact.Path)
 		if err != nil {
 			return sourceindex.Index{}, fmt.Errorf("source %s in %s: %w", key, artifact.Path, err)
 		}
@@ -161,17 +220,41 @@ func BuildSourceIndex(root string, result Result) (sourceindex.Index, error) {
 	return idx, nil
 }
 
-func exactSubjectRange(content []byte, subject sourceindex.Subject) (sourceindex.Range, bool, error) {
-	if isSemanticSubjectKind(subject.Kind) {
-		anchored, err := syntax.ParseSemanticFileAnchored(string(content))
-		if err != nil {
-			return sourceindex.Range{}, true, err
+// semanticAnchorTable は1ファイル分の構文解析結果。解析の成否も保持し、
+// 失敗したファイルでは従来と同じ誤りを同じ文言で返す。
+type semanticAnchorTable struct {
+	err     error
+	offsets map[sourceindex.Subject][2]int // 同一Subjectが複数ある場合は先頭のanchorを採る（従来のfirst-match）
+}
+
+func buildSemanticAnchorTable(content []byte) *semanticAnchorTable {
+	anchored, err := syntax.ParseSemanticFileAnchored(string(content))
+	if err != nil {
+		return &semanticAnchorTable{err: err}
+	}
+	table := &semanticAnchorTable{offsets: make(map[sourceindex.Subject][2]int, len(anchored.Anchors))}
+	for _, item := range anchored.Anchors {
+		key := sourceindex.Subject{Kind: item.Kind, ID: item.ID}
+		if _, exists := table.offsets[key]; !exists {
+			table.offsets[key] = [2]int{item.Anchor.Start.Offset, item.Anchor.End.Offset}
 		}
-		for _, item := range anchored.Anchors {
-			if item.Kind == subject.Kind && item.ID == subject.ID {
-				rng, err := sourceindex.RangeFromOffsets(content, item.Anchor.Start.Offset, item.Anchor.End.Offset)
-				return rng, true, err
-			}
+	}
+	return table
+}
+
+func exactSubjectRange(content []byte, subject sourceindex.Subject, tables map[string]*semanticAnchorTable, path string) (sourceindex.Range, bool, error) {
+	if isSemanticSubjectKind(subject.Kind) {
+		table, ok := tables[path]
+		if !ok {
+			table = buildSemanticAnchorTable(content)
+			tables[path] = table
+		}
+		if table.err != nil {
+			return sourceindex.Range{}, true, table.err
+		}
+		if span, found := table.offsets[subject]; found {
+			rng, err := sourceindex.RangeFromOffsets(content, span[0], span[1])
+			return rng, true, err
 		}
 		return sourceindex.Range{}, true, fmt.Errorf("semantic subject %s:%s has no syntax anchor", subject.Kind, subject.ID)
 	}
@@ -192,7 +275,7 @@ func exactSubjectRange(content []byte, subject sourceindex.Subject) (sourceindex
 
 func isSemanticSubjectKind(kind string) bool {
 	switch kind {
-	case "semantic", "semantic-type", "semantic-data", "semantic-attribute", "semantic-relation", "semantic-capability", "semantic-validation":
+	case "semantic", "semantic-type", "semantic-data", "semantic-attribute", "semantic-relation", "semantic-candidate-key", "semantic-functional-dependency", "semantic-capability", "semantic-validation":
 		return true
 	default:
 		return false

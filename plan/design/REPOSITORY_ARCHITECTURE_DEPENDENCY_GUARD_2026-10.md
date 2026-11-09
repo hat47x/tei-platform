@@ -146,6 +146,28 @@ Plugin capabilityの変更は #951 / PR #963、TEI-native sourceは #957 / PR #9
 
 **検証の優先順**： (1) 既存Kind・新IDでResolveEnvironment→Capability取得、(2) 未知KindのDefinitionの検証箇所特定、(3) Lock/Packageの正規化・fingerprint・旧形式互換、(4) 実行権限とAdapter dispatch。各段階の結果は成功・失敗とその位置を記録し、全経路を通す前に「任意Capability対応済」と宣言しない。
 
+## Source Adapterを外してもCanonicalの構成が変わらないことの検査（#950）
+
+#950は「source adapterを外しても既存TEI Canonical meaningが変わらない」ことを適合圧力として挙げている。これまでの試験は、Source Adapterが出力に権限制限を付けること、Capability Consumerが実行権限の範囲を拒否することまでを確かめていた。製品側のコードがSource Adapterを必要としていないことは、機械検査として置かれていなかった。
+
+`tools/repository-architecture-check/source_adapter_isolation_test.go`は、現在の`internal/xeadsource`について次の四点を確かめる。対象にするのは`cmd`、`core`、`internal`、`plugins`の各packageである。
+
+1. Go toolchainが解決した推移的な依存を調べ、`internal/xeadsource`、`tools/internal/rmtevidence`、`tools/internal/rmtlink`のいずれにも依存しないこと。ネイティブ向けと`GOOS=js GOARCH=wasm`向けの両方で調べ、build constraintで切り替わる依存も見る。
+2. `internal/xeadsource`の全Goファイルをoverlayで取り除いたbuildでも、上記の製品packageがすべてbuildできること。同じ条件で、実際にadapterをimportするReferenceのpackageはbuildに失敗することを対照として確かめ、取り除きが有効であることを示す。
+3. 検出器が実在する依存を見つけられること。既存のReference consumer二つについて、解決済みの依存グラフに`internal/xeadsource`が現れることを確かめる。
+4. `internal/xeadsource`が、Canonicalの記述・検証・読込みを担う`internal/ir`、`syntax`、`validation`、`workspace`、`plugin`、`sourceindex`へ依存しないこと。読み取った資料がこれらを通じて第二のCanonical経路になることを防ぐ。
+
+判定の分類関数は合成グラフでも試験し、推移的な依存、RMT Evidence側packageへの依存、adapterから書込み側packageへの依存の三つを拒否することを確かめた。
+
+この検査が示すのは、build時点の依存関係に限る。次のことは示さない。
+
+- adapterの出力が正しいこと、またはCanonicalの意味として受理できること。
+- adapterのinstallがRuntime Authorityを与えないこと。これは既存のCapability Consumerの試験とAuthority Limitが別に扱う。
+- Plugin Capabilityとして登録する経路（#951）が将来も同じ依存関係を保つこと。
+- `tools/`配下のReferenceがadapterを利用する構成の是非。これらは製品packageではなく、検査の対象外である。
+
+新しい製品packageやReferenceが意図してadapterを使う場合は、この検査を緩める前に、Source Adapterを製品側から参照する設計判断をADRとして記録する。
+
 ## 非目標
 
 本ガードはRuntime Permission、Plugin Authority、Provider Conformance、外部実装のsource identityを検査しない。また、Plugin packageとphysical process / Wasm artifactが一対一であることを要求しない。Source importがきれいでもRuntimeの振る舞いまで安全・適合済みとはいえない。

@@ -1,0 +1,16 @@
+{
+  "evidenceNature": "running-web-http-negative-synthetic-fixture-overlay",
+  "integrationHead": "466b1d10080460390d46b3b342d8bc9c19e09208",
+  "acceptedSourceRevisionClaim": "sha256:b78d5a186b1227f2bc4863ba2063c4f7edb5640c1d38faebaf2864c0423e3c07",
+  "selectedValidation": "sales.order_line.unit_price_positive",
+  "evaluation": "not-satisfied",
+  "stage": "validation-not-satisfied",
+  "httpStatus": 200,
+  "commandDispatched": false,
+  "observationExecuted": false,
+  "targetBinarySHA256": "95a753f733bbb3d9bb1812860df5fc8d6b259a1d5ed87618e1f8d76ad0717e53",
+  "manifestSemanticSHA256": "9f0986e2423c06988e143f1de0361d37af57bca641d227b221de973aad42edc4",
+  "httpResponseSHA256": "8853b103687c8bfdfc5fc7554d35ffc8ead0d876ccfd3558dbb8d419d8878adf",
+  "productionTargetUnmodified": true,
+  "independentDatabaseRead": false
+}

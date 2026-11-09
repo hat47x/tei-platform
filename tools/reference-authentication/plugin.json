@@ -1,0 +1,10 @@
+{
+  "schema": "tei.reference.delivery-plugin/v0",
+  "id": "authentication",
+  "version": "1",
+  "kind": "delivery-foundation",
+  "capabilities": ["authentication"],
+  "entrypoints": ["authn.Authenticate"],
+  "guarantees": ["explicit authentication boundary", "no anonymous principal", "tenant binding"],
+  "notGuaranteed": ["credential issuance", "OIDC/SAML integration", "MFA", "session management"]
+}

@@ -77,17 +77,22 @@ func TestSemanticLockRejectsSameVersionDeclarationDrift(t *testing.T) {
 
 func TestSemanticLockRejectsUnresolvedCatalog(t *testing.T) {
 	descriptor := semanticLockDescriptor("1.0.0", "policy.example")
+	authority, publisherTrust := semanticNamespaceAuthorityForTest(
+		t,
+		"unrelated.namespace",
+		descriptor.ID,
+		"a",
+		"1",
+		true,
+	)
 	catalog, err := resolveSemanticCatalogWithAllInputs(
 		CoreCatalogInput{},
 		[]ExtensionDescriptor{descriptor},
 		[]ExtensionRequirement{{Extension: descriptor.ID, CompatibleMajor: 1}},
 		nil,
 		nil,
-		[]SemanticNamespaceAuthority{{
-			Namespace:           "unrelated.namespace",
-			Extension:           descriptor.ID,
-			EvidenceFingerprint: namespaceAuthorityEvidence("a"),
-		}},
+		[]SemanticNamespaceAuthority{authority},
+		publisherTrust,
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -137,17 +142,22 @@ func TestSemanticLockReconstructsAcceptedNamespaceAuthorityWithoutEvidenceIdenti
 			Subject: subject.Subject{Kind: "standard-view", ID: "std.reference.example"},
 		}},
 	}
+	authority, publisherTrust := semanticNamespaceAuthorityForTest(
+		t,
+		descriptor.Namespace,
+		descriptor.ID,
+		"c",
+		"2",
+		true,
+	)
 	catalog, err := resolveSemanticCatalogWithAllInputs(
 		CoreCatalogInput{},
 		[]ExtensionDescriptor{descriptor},
 		[]ExtensionRequirement{{Extension: descriptor.ID, CompatibleMajor: 1}},
 		nil,
 		nil,
-		[]SemanticNamespaceAuthority{{
-			Namespace:           descriptor.Namespace,
-			Extension:           descriptor.ID,
-			EvidenceFingerprint: namespaceAuthorityEvidence("c"),
-		}},
+		[]SemanticNamespaceAuthority{authority},
+		publisherTrust,
 	)
 	if err != nil {
 		t.Fatal(err)

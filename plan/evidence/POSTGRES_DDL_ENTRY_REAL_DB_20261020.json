@@ -1,0 +1,132 @@
+{
+  "results": [
+    {
+      "case": "A reference/workspace sales_core (ddl-entry order)",
+      "statements": [
+        "CREATE TABLE \"public\".\"order_lines\" ();",
+        "ALTER TABLE \"public\".\"order_lines\" ADD COLUMN \"order_line_id\" pg_catalog.int8 NOT NULL;",
+        "ALTER TABLE \"public\".\"order_lines\" ADD COLUMN \"line_number\" pg_catalog.int8 NOT NULL;",
+        "ALTER TABLE \"public\".\"order_lines\" ADD COLUMN \"item_code\" pg_catalog.varchar NOT NULL;",
+        "ALTER TABLE \"public\".\"order_lines\" ADD COLUMN \"quantity\" pg_catalog.numeric NOT NULL;",
+        "ALTER TABLE \"public\".\"order_lines\" ADD COLUMN \"unit_price\" pg_catalog.numeric NOT NULL;",
+        "ALTER TABLE \"public\".\"order_lines\" ADD COLUMN \"order_id\" pg_catalog.int8 NOT NULL;",
+        "ALTER TABLE \"public\".\"order_lines\" ADD PRIMARY KEY (\"order_line_id\");",
+        "CREATE TABLE \"public\".\"orders\" ();",
+        "ALTER TABLE \"public\".\"orders\" ADD COLUMN \"order_id\" pg_catalog.int8 NOT NULL;",
+        "ALTER TABLE \"public\".\"orders\" ADD COLUMN \"customer_id\" pg_catalog.int8 NOT NULL;",
+        "ALTER TABLE \"public\".\"orders\" ADD COLUMN \"ordered_at\" pg_catalog.timestamptz NOT NULL;",
+        "ALTER TABLE \"public\".\"orders\" ADD COLUMN \"status\" pg_catalog.varchar NOT NULL;",
+        "ALTER TABLE \"public\".\"orders\" ADD COLUMN \"total_amount\" pg_catalog.numeric NOT NULL;",
+        "ALTER TABLE \"public\".\"orders\" ADD COLUMN \"external_id\" pg_catalog.varchar;",
+        "CREATE INDEX \"orders_customer_idx\" ON \"public\".\"orders\" (\"customer_id\");",
+        "ALTER TABLE \"public\".\"orders\" ADD PRIMARY KEY (\"order_id\");"
+      ],
+      "constraints": [
+        "public.order_lines p order_lines_pkey PRIMARY KEY (order_line_id)",
+        "public.orders p orders_pkey PRIMARY KEY (order_id)"
+      ],
+      "indexes": [
+        "public.order_lines_pkey CREATE UNIQUE INDEX order_lines_pkey ON public.order_lines USING btree (order_line_id)",
+        "public.orders_customer_idx CREATE INDEX orders_customer_idx ON public.orders USING btree (customer_id)",
+        "public.orders_pkey CREATE UNIQUE INDEX orders_pkey ON public.orders USING btree (order_id)"
+      ],
+      "converged": true,
+      "rerunError": "ERROR: relation \"order_lines\" already exists (SQLSTATE 42P07) :: CREATE TABLE \"public\".\"order_lines\" ();"
+    },
+    {
+      "case": "B1 synthetic, ddl-entry per-table order",
+      "statements": [
+        "CREATE TABLE \"tei_ddl_pgcheck\".\"alpha\" ();",
+        "ALTER TABLE \"tei_ddl_pgcheck\".\"alpha\" ADD COLUMN \"code\" pg_catalog.varchar NOT NULL;",
+        "ALTER TABLE \"tei_ddl_pgcheck\".\"alpha\" ADD COLUMN \"label\" pg_catalog.varchar NOT NULL;",
+        "ALTER TABLE \"tei_ddl_pgcheck\".\"alpha\" ADD COLUMN \"beta_code\" pg_catalog.varchar;",
+        "ALTER TABLE \"tei_ddl_pgcheck\".\"alpha\" ADD PRIMARY KEY (\"code\");",
+        "ALTER TABLE \"tei_ddl_pgcheck\".\"alpha\" ADD CONSTRAINT \"alpha_label_named_uq\" UNIQUE (\"label\");",
+        "ALTER TABLE \"tei_ddl_pgcheck\".\"alpha\" ADD FOREIGN KEY (\"beta_code\") REFERENCES \"tei_ddl_pgcheck\".\"beta\" (\"code\");",
+        "CREATE TABLE \"tei_ddl_pgcheck\".\"beta\" ();",
+        "ALTER TABLE \"tei_ddl_pgcheck\".\"beta\" ADD COLUMN \"code\" pg_catalog.varchar NOT NULL;",
+        "ALTER TABLE \"tei_ddl_pgcheck\".\"beta\" ADD COLUMN \"name\" pg_catalog.varchar NOT NULL;",
+        "ALTER TABLE \"tei_ddl_pgcheck\".\"beta\" ADD PRIMARY KEY (\"code\");",
+        "ALTER TABLE \"tei_ddl_pgcheck\".\"beta\" ADD UNIQUE (\"name\");",
+        "CREATE TABLE \"tei_ddl_pgcheck\".\"gamma\" ();",
+        "ALTER TABLE \"tei_ddl_pgcheck\".\"gamma\" ADD COLUMN \"code\" pg_catalog.varchar NOT NULL;",
+        "ALTER TABLE \"tei_ddl_pgcheck\".\"gamma\" ADD COLUMN \"seq\" pg_catalog.varchar NOT NULL;",
+        "ALTER TABLE \"tei_ddl_pgcheck\".\"gamma\" ADD COLUMN \"alpha_code\" pg_catalog.varchar NOT NULL;",
+        "ALTER TABLE \"tei_ddl_pgcheck\".\"gamma\" ADD COLUMN \"note\" pg_catalog.varchar;",
+        "ALTER TABLE \"tei_ddl_pgcheck\".\"gamma\" ADD PRIMARY KEY (\"code\", \"seq\");",
+        "ALTER TABLE \"tei_ddl_pgcheck\".\"gamma\" ADD UNIQUE (\"alpha_code\", \"note\");",
+        "ALTER TABLE \"tei_ddl_pgcheck\".\"gamma\" ADD CONSTRAINT \"gamma_alpha_named_fk\" FOREIGN KEY (\"alpha_code\") REFERENCES \"tei_ddl_pgcheck\".\"alpha\" (\"code\");"
+      ],
+      "execError": "ERROR: relation \"tei_ddl_pgcheck.beta\" does not exist (SQLSTATE 42P01)",
+      "failedSQL": "ALTER TABLE \"tei_ddl_pgcheck\".\"alpha\" ADD FOREIGN KEY (\"beta_code\") REFERENCES \"tei_ddl_pgcheck\".\"beta\" (\"code\");",
+      "converged": false
+    },
+    {
+      "case": "B2 synthetic, one diff for all tables (Provider order)",
+      "statements": [
+        "CREATE TABLE \"tei_ddl_pgcheck\".\"alpha\" ();",
+        "ALTER TABLE \"tei_ddl_pgcheck\".\"alpha\" ADD COLUMN \"code\" pg_catalog.varchar NOT NULL;",
+        "ALTER TABLE \"tei_ddl_pgcheck\".\"alpha\" ADD COLUMN \"label\" pg_catalog.varchar NOT NULL;",
+        "ALTER TABLE \"tei_ddl_pgcheck\".\"alpha\" ADD COLUMN \"beta_code\" pg_catalog.varchar;",
+        "CREATE TABLE \"tei_ddl_pgcheck\".\"beta\" ();",
+        "ALTER TABLE \"tei_ddl_pgcheck\".\"beta\" ADD COLUMN \"code\" pg_catalog.varchar NOT NULL;",
+        "ALTER TABLE \"tei_ddl_pgcheck\".\"beta\" ADD COLUMN \"name\" pg_catalog.varchar NOT NULL;",
+        "CREATE TABLE \"tei_ddl_pgcheck\".\"gamma\" ();",
+        "ALTER TABLE \"tei_ddl_pgcheck\".\"gamma\" ADD COLUMN \"code\" pg_catalog.varchar NOT NULL;",
+        "ALTER TABLE \"tei_ddl_pgcheck\".\"gamma\" ADD COLUMN \"seq\" pg_catalog.varchar NOT NULL;",
+        "ALTER TABLE \"tei_ddl_pgcheck\".\"gamma\" ADD COLUMN \"alpha_code\" pg_catalog.varchar NOT NULL;",
+        "ALTER TABLE \"tei_ddl_pgcheck\".\"gamma\" ADD COLUMN \"note\" pg_catalog.varchar;",
+        "ALTER TABLE \"tei_ddl_pgcheck\".\"alpha\" ADD PRIMARY KEY (\"code\");",
+        "ALTER TABLE \"tei_ddl_pgcheck\".\"beta\" ADD PRIMARY KEY (\"code\");",
+        "ALTER TABLE \"tei_ddl_pgcheck\".\"gamma\" ADD PRIMARY KEY (\"code\", \"seq\");",
+        "ALTER TABLE \"tei_ddl_pgcheck\".\"alpha\" ADD CONSTRAINT \"alpha_label_named_uq\" UNIQUE (\"label\");",
+        "ALTER TABLE \"tei_ddl_pgcheck\".\"beta\" ADD UNIQUE (\"name\");",
+        "ALTER TABLE \"tei_ddl_pgcheck\".\"gamma\" ADD UNIQUE (\"alpha_code\", \"note\");",
+        "ALTER TABLE \"tei_ddl_pgcheck\".\"alpha\" ADD FOREIGN KEY (\"beta_code\") REFERENCES \"tei_ddl_pgcheck\".\"beta\" (\"code\");",
+        "ALTER TABLE \"tei_ddl_pgcheck\".\"gamma\" ADD CONSTRAINT \"gamma_alpha_named_fk\" FOREIGN KEY (\"alpha_code\") REFERENCES \"tei_ddl_pgcheck\".\"alpha\" (\"code\");"
+      ],
+      "constraints": [
+        "tei_ddl_pgcheck.alpha f alpha_beta_code_fkey FOREIGN KEY (beta_code) REFERENCES tei_ddl_pgcheck.beta(code)",
+        "tei_ddl_pgcheck.alpha p alpha_pkey PRIMARY KEY (code)",
+        "tei_ddl_pgcheck.alpha u alpha_label_named_uq UNIQUE (label)",
+        "tei_ddl_pgcheck.beta p beta_pkey PRIMARY KEY (code)",
+        "tei_ddl_pgcheck.beta u beta_name_key UNIQUE (name)",
+        "tei_ddl_pgcheck.gamma f gamma_alpha_named_fk FOREIGN KEY (alpha_code) REFERENCES tei_ddl_pgcheck.alpha(code)",
+        "tei_ddl_pgcheck.gamma p gamma_pkey PRIMARY KEY (code, seq)",
+        "tei_ddl_pgcheck.gamma u gamma_alpha_code_note_key UNIQUE (alpha_code, note)"
+      ],
+      "indexes": [
+        "tei_ddl_pgcheck.alpha_label_named_uq CREATE UNIQUE INDEX alpha_label_named_uq ON tei_ddl_pgcheck.alpha USING btree (label)",
+        "tei_ddl_pgcheck.alpha_pkey CREATE UNIQUE INDEX alpha_pkey ON tei_ddl_pgcheck.alpha USING btree (code)",
+        "tei_ddl_pgcheck.beta_name_key CREATE UNIQUE INDEX beta_name_key ON tei_ddl_pgcheck.beta USING btree (name)",
+        "tei_ddl_pgcheck.beta_pkey CREATE UNIQUE INDEX beta_pkey ON tei_ddl_pgcheck.beta USING btree (code)",
+        "tei_ddl_pgcheck.gamma_alpha_code_note_key CREATE UNIQUE INDEX gamma_alpha_code_note_key ON tei_ddl_pgcheck.gamma USING btree (alpha_code, note)",
+        "tei_ddl_pgcheck.gamma_pkey CREATE UNIQUE INDEX gamma_pkey ON tei_ddl_pgcheck.gamma USING btree (code, seq)"
+      ],
+      "converged": true,
+      "rerunError": "ERROR: relation \"alpha\" already exists (SQLSTATE 42P07) :: CREATE TABLE \"tei_ddl_pgcheck\".\"alpha\" ();"
+    },
+    {
+      "case": "C synthetic, unqualified table names",
+      "statements": [
+        "CREATE TABLE \"beta\" ();",
+        "ALTER TABLE \"beta\" ADD COLUMN \"code\" pg_catalog.varchar NOT NULL;",
+        "ALTER TABLE \"beta\" ADD COLUMN \"name\" pg_catalog.varchar NOT NULL;",
+        "ALTER TABLE \"beta\" ADD PRIMARY KEY (\"code\");",
+        "ALTER TABLE \"beta\" ADD UNIQUE (\"name\");"
+      ],
+      "unresolved": [
+        {
+          "table": "alpha",
+          "reason": "add-foreign-key alpha has no referenced schema; the referenced table is not resolved by search_path"
+        },
+        {
+          "table": "gamma",
+          "reason": "add-foreign-key gamma has no referenced schema; the referenced table is not resolved by search_path"
+        }
+      ],
+      "converged": false
+    }
+  ],
+  "serverVersion": "16.15 (Debian 16.15-1.pgdg13+2)"
+}

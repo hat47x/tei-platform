@@ -1,0 +1,73 @@
+# PostgreSQLによる副作用確定の実DB検証
+
+この実装は、製品側の`effectcommit.Provider`を実PostgreSQLトランザクションへ接続した**参照アダプター**です。既存のDBメタデータ用PostgreSQL Providerには認可規則を組み込みません。
+
+`CheckAuthority`は主体・操作・対象・正本識別子と3種類の版を照合するとき、**信頼されたDB所有者が管理するセキュリティ定義関数**を呼び出します。その関数が内部で認可版の行を`SELECT … FOR UPDATE`でロックします。保存処理用のDB利用者自身には、認可正本への直接の更新権限を与えません。対象の版付き更新、操作識別子で一意な確定記録の保存、`COMMIT`は同じ物理トランザクション上で実行します。権限変更側も**必ずその行を更新する**ことで、失効と副作用の確定を直列化します。
+
+## 試験方法
+
+専用GitHub Actions `.github/workflows/tei-effect-fence-postgres-ci.yml`はPostgreSQL 16のサービスを起動して次を実行します。
+
+```bash
+TEI_EFFECT_POSTGRES_DSN='postgres://…' go test -race -count=3 ./internal/security/effectcommit/...
+go vet ./internal/security/effectcommit/...
+```
+
+実DB試験では専用の隔離スキーマを使い、既存`security.authorize`がそのDBの利用者レコードと認可版を読み取ります。ロールや無効状態を更新するとDBトリガーで所属版が増えます。版が変わったとき、確定済み結果は再認可なしに開示されません。
+
+試験対象は、確定・再送・再接続後の記録照会、ロール変更と書込みの競合、対象版の比較更新、確定記録の保存失敗時のロールバック、操作識別子の再利用、確定応答喪失後の同一操作識別子による復旧です。
+
+## 運用に採用する前の必須確認
+
+- この参照アダプターは、**DBのスキーマ定義・権限制約・認可正本の変更経路を作成または管理しません**。テスト側だけでDDLとロール変更トリガーを設置しています。
+- 実運用で採用するには、管理されたスキーマとDB権限、版更新を迂回できない全変更経路、主体リンク・所属・認可規則それぞれの変更版、変更の証跡を独立に検証する必要があります。
+- PostgreSQLのトランザクション能力を示すだけでは、外部認可サービスやキューをまたいで権限失効と副作用が原子的になるわけではありません。
+- 認可Grantの真正性は呼出側が保証すること。実装側は対応する正本版を再照合しますが、呼出側が偽のGrantを自作しないことまでこのAPIは証明しません。
+- DBコミットの応答喪失は確定結果不明であり、別の操作識別子で再送してはいけません。現在の認可の下で同じ操作識別子の記録を再照会します。
+- この実装を完成した本番Providerの適合性証明として扱わず、Issue #1174は継続します。
+
+## 最小権限に関する実DB試験
+
+PostgreSQLの`SELECT ... FOR UPDATE`には対象表への更新権限が必要です。保存処理用のDB利用者が認可正本を直接ロックする従来方式では、その利用者が認可版を意図せず変更・偽装できる問題がありました。
+
+参照アダプターを変更し、信頼された所有者が管理する`lock_authority`関数にロックと版照合を閉じ込めました。関数は`SECURITY DEFINER`を指定し、`search_path`を固定し、参照する認可表をスキーマ付きで特定します。試験用DDLは当該関数への一般公開実行権限を取り消します。
+
+実DBで別ログインの保存処理用利用者と、ログイン不能の関数所有者を作成します。保存処理用利用者は、認可表・利用者表への直接更新、認可表の直接読取り、トリガー削除、関数の所有者変更を許されません。しかし関数への限定実行権限によって、版付き許可を確定時に照合できます。信頼された管理側が権限を変更した後は、古い許可で確定記録を開示できません。関数自体が欠けている場合は**業務拒否ではなく実行エラーで停止**し、対象データも書き換えません。
+
+**まだ保証していない点**：現時点の保存処理用DB利用者は、業務対象データの直接更新と確定記録表への直接挿入を行える権限を持ちます。これはアプリケーションが`effectcommit`を必ず通るよう制御する場合の**参照実装**であり、保存処理用のDB資格情報が侵害されても不正な副作用を防止する「DB単体の強制境界」ではありません。そこまで要求する運用構成では、対象データの更新と確定記録の書込みも、最小権限で公開する専用の保存手続きへ移す必要があります。関数所有者の権限、変更経路の網羅、スキーマの改変防止、監査記録、実際の利用者・所属・規則情報との対応も別途確認してください。
+
+今回のDB試験はテスト専用スキーマでの最小権限の**限定的な実証**であり、本番保証への昇格を意味しません。
+
+## 信頼済みOwner更新のopt-in同一Tx経路（#1174 / #1129）
+
+`NewWithTrustedOwnerRoutine(pool, schema)`は、DB所有者が管理し実行主体の権限で検証済みの固定ルーチン `schema.apply_owner_effect(TEXT,TEXT,BIGINT,BYTEA,TEXT) RETURNS BIGINT`を`WriteResource`から呼び出します。引数はApplication・Resource・ExpectedVersion・Payload・OperationIDの**型付き値のみ**で、SQL文や関数名を未信頼Pluginや要求が指定する仕組みはありません。`New`の既存単一`objects`更新は変更しません。
+
+ルーチンは対象版CASと信頼済みOwnerの複数表更新（必要なら同一DBのpending outbox）を**同じpgx.Tx**内で行います。固定署名の`BIGINT`戻り値は **正数=更新後の対象版、`0`=対象版CAS不一致、`-1`=Owner側の業務拒否（在庫不足等）、`-2`=Owner入力不正** とします。`0`は既存`ErrResourceConflict`→`StatusConflict`、`-1`は既存`StatusDenied`、`-2`は既存`ErrInvalidRequest`による実行エラー（未確定/無作用）、その他の負数は契約違反の実行エラーです。対象版は一致しているが在庫だけ不足する場合を「対象版が古い」と扱わず、CAS再試行が安全だと自動判定しません。すべての無確定経路はRunnerのRollbackにより、対象版更新を含む部分効果を残しません。関数欠落・DB異常もExecution ErrorとしてRollbackします。`CheckAuthority`のロック、`FindReceipt`、この呼出、`SaveReceipt`、`Commit`は既存の一トランザクションのままです。ルーチン内から独自COMMITや外部送信は行いません。
+
+**受入/配備制約**：このopt-inは信頼されたホスト構成だけが選択し、Pluginの任意SQL/Script APIに転用しない。DB関数の所有者、SQL本文、固定`search_path`、公開EXECUTE権限、書込対象、DBロールと認可正本の全更新経路を配備者が監査する必要があります。テスト用関数は`SECURITY INVOKER`であり、実運用向けのDB権限制約・不正な直接UPDATE防止まで証明しません。本番の強制フェンスや多DB/外部通知の原子性を主張しません。
+
+実PostgreSQL fixture `trusted_owner_integration_test.go`は共有在庫3を異なる二つのResourceが各3確保する競合の正負（在庫不足は`StatusDenied`）、対象版一致/在庫のみ不足、版不一致/在庫十分、入力数量不正の分類、receipt INSERT失敗時の全Owner効果のRollback、関数欠落時のfail-closedを検査します。これは**参照用の実DB試験であって#1129の製品Source/Plugin/Provider結線・旧Runtime適合ではありません**。
+
+## 保証水準の宣言（仮承認D10）
+
+`NewWithTrustedOwnerRoutine`で作ったProviderだけが、`Guarantee()`で`atomic-with-commit`を宣言します。理由欄は`provisional D10: trusted-owner routine path; re-verify against real deployment`（定数`ReasonProvisionalD10`）です。`New`で作ったProvider（従来の`objects`直接更新の経路）、ゼロ値、フィールドを直接指定した値は何も宣言せず、`RequireGuarantee`と`NewRequiredRunner`は拒否します。宣言は`trustedOwnerRoutine`フィールドから決まり、パッケージ外からは設定できません。`Provider`を**埋め込む**型は`Guarantee()`が昇格し、ラッパーが非原子的な処理を加えても`atomic-with-commit`と報告されます（`TestEmbeddingWrapperInheritsDeclarationKnownLimitation`が既知の限界として固定）。これはこのパッケージでは防げないため、**composition review**で、`Provider`を埋め込むラッパーがないこと（名前付きフィールドで保持するか、自分の水準を明示していること）を確認してください。
+
+**宣言は主張であって証明ではありません。** 実PostgreSQL試験の合格は、試験用スキーマ・試験用ルーチンでの確認にとどまります。ルーチン本体、DB所有者、EXECUTE権限、権限変更の全経路は、実配備ごとに独立して再検証してください。G1/G2はUNQUALIFIEDのままです。Evidenceの`Guarantee`は自己宣言の水準、`GuaranteeReason`は理由欄をそのまま運ぶので、`provisional D10`の文字列から仮宣言であることを読み取れます。
+
+宣言を支える試験。実PostgreSQL試験は、環境変数`TEI_EFFECT_POSTGRES_DSN`（`internal/security/effectcommit/postgres`）または`TEI_TEST_POSTGRES_DSN`（`tools/reference-first-web-target`）が無いとSKIPし、SKIPは証拠になりません。検出力は、変異（コードを意図的に壊す）を入れて赤になるかで確認した結果です（PR #2794の本文に変異表）。
+
+| 観点 | 試験 | 検出できる変異 |
+| --- | --- | --- |
+| 宣言の経路別の出し分け（DB不要） | `guarantee_declaration_test.go`の`TestTrustedOwnerProviderDeclaresProvisionalAtomicWithCommit`、`TestOtherPostgresProvidersDeclareNothingAndAreRefused`、`TestWrapperDeclarationDoesNotLeakThroughNamedField`、`TestEmbeddingWrapperInheritsDeclarationKnownLimitation` | 宣言の付与・撤回 |
+| **権限行ロック**: 失効UPDATEが未commitの間、Executeがブロックし、失効commit後にDeniedで効果・受領ゼロ | `TestDeclaredProviderRequiredRunnerBlocksOnUncommittedRevocation`（決定的） | `lock_authority`の`FOR UPDATE`除去、`CheckAuthority`がロック関数を呼ばず常にtrue |
+| **受領が同一commit**: commit前に失敗（Rollbackしてerror）したとき、受領もOwner効果も残らない | `TestDeclaredProviderRequiredRunnerPreCommitFailureLeavesNoReceiptNorOwnerEffect` | 受領INSERTを別接続（commit外）にする、Owner効果を別接続にする |
+| **Owner効果が同一commit**: 受領INSERT失敗で全Owner効果がRollback、関数欠落でfail-closed | 旧`trusted_owner_integration_test.go`の`TestTrustedOwnerRoutineReceiptFailureRollsBackAndMissingRoutineFailsClosed`ほか（根拠はこちら） | Owner効果を別接続（commit外）にする |
+| 版衝突・Owner拒否・入力不正の分類と、非commit時にDBを変えないこと | `TestTrustedOwnerRoutineDistinguishesVersionConflictOwnerDenialAndInvalidInput` | Owner効果のcommit外化 |
+| 共有在庫の競合（2 Resourceが同時に確保して1件だけ確定） | `TestTrustedOwnerRoutineConcurrentSharedInventory` | Owner効果のcommit外化 |
+| ack喪失後の再接続Lookup・同一OperationIDの再送・別内容の衝突拒否 | `TestTrustedOwnerRoutineAckLossReconnectedReplay`、宣言したProvider経路の`TestDeclaredProviderRequiredRunnerAckLossThenReplay` | 再送時の重複効果 |
+| 同一OperationIDの並行実行で1回だけ確定 | `TestDeclaredProviderRequiredRunnerConcurrentSameOperationCommitsOnce` | ロック除去を検出する場合もあるが、タイミング依存で確実ではない |
+| 失効とcommitの並行 | `TestPostgresConcurrentRevokeAndCommitLinearize`、`TestDeclaredProviderRequiredRunnerConcurrentRevokeIsAllOrNothing` | **単独ではロック除去を検出できない**（完全commitか完全Deniedしか見ないため）。ロックの検査は上のブロック試験が担う |
+| 保存用DB利用者が権限を直接更新できないこと・ロック関数欠落時のfail-closed | `privilege_integration_test.go` | 権限分離の破壊 |
+| EvidenceのGuarantee欄・理由欄（制御文字除去と200文字上限） | `tools/reference-first-web-target/runner_order_submit_evidence_postgres_test.go`（`atomic-with-commit`と理由欄を期待。ack喪失用ラッパーは宣言を隠すため`undeclared`）、`effectcommit`の`TestEvidenceGuaranteeReasonIsSanitizedAndBounded` | 宣言・理由欄の欠落 |
+
+直接書込みなど`NewWithTrustedOwnerRoutine`を通らない経路は、宣言の対象外です。

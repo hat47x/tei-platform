@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -465,7 +466,7 @@ func TestDecisionRecordContentAddressRejectsInPlaceTampering(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := loadDecisionRecords(dir); err == nil {
+	if _, err := loadDecisionRecords(dir, nil); err == nil {
 		t.Fatal("content-addressed decision recordのin-place改ざんを拒否していません")
 	} else if !strings.Contains(err.Error(), "content hashがfile名と一致しません") {
 		t.Fatalf("unexpected error: %v", err)
@@ -779,6 +780,9 @@ func TestUnreadableDecisionRecordFailsClosed(t *testing.T) {
 // 原子的ではなかった。`reference/world.json`のようなgoldenを指された状態で書き込みが失敗すると、
 // 既にあるfileを壊したままsourceだけ巻き戻る可能性があった。
 func TestAcceptDoesNotDamageAnExistingDerivedArtifactWhenItCannotBeWritten(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the read-only simulation does not deny writes on Windows")
+	}
 	dir := scratchWorkspaceBeforeSecondApplication(t)
 	before := revisionOfDir(t, dir)
 

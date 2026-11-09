@@ -1,0 +1,178 @@
+# Critical Path Evidence Packet preflight (#1119 / Reference-only)
+
+**目的:** #1119 の G1→G2 / 最初の受注明細 Validation 変更を、一つの `R0→Preview→Decision→R1→Web→Observation` 証跡として提出する際に、受け渡しの欠落や合成証拠の昇格を静的に検出する。**既存のGate判定器、Shared Acceptance、Driver、Schema検査、Host認可を代替しない。**
+
+これは `tei.critical-path-evidence/v0` の実験用、案件／シナリオ特化の前提検査である。正本の汎用schemaでも自動デプロイ条件でもない。ソースを変更せず、`-packet` で渡されたJSON以外の証跡を読み込まない。
+
+## 使用
+
+```sh
+# trusted checkoutの正確なheadと、レビュー対象のmain SHAを指定する。
+# ローカルmainがcurrent remote mainと一致しているかは別途確認する。
+head="$(git rev-parse HEAD)"
+main="$(git rev-parse main)"
+go run ./tools/reference-critical-path-evidence-audit \
+  -packet /path/to/receipt.json -head "$head" -main "$main"
+
+# 単体試験（full Repository Healthの代替ではない）
+go test -count=1 ./tools/reference-critical-path-evidence-audit
+```
+
+出力の `status` は `INCOMPLETE` または `REVIEW_REQUIRED`。`productGate` は**常に `UNQUALIFIED`**。`REVIEW_REQUIRED`、exit code 0、`FullHealth: PASS`という入力文字列のいずれも、Gate PASS / mainへの統合許可ではない。`REVIEW_REQUIRED` は**形式上の必須欄が揃っただけ**で、証跡の実在、真正性、検査時点、Authorityを独立して調べる必要がある。
+
+## P0の現在地を再現する例
+
+`testdata/p0-order-unit-price-incomplete.json` は、受注明細単価の追加Validationについて**既存のGoテストソースまでは確認したが、actual running Web・Source R0/R1・trusted checkoutのEvidenceが未取得**である現状を、そのまま機械可読化した負例である。見本データの`head`/`main`や実行receiptを、存在しないのに埋めてはならない。
+
+```sh
+go run ./tools/reference-critical-path-evidence-audit \
+  -packet tools/reference-critical-path-evidence-audit/testdata/p0-order-unit-price-incomplete.json \
+  -head "$(git rev-parse HEAD)" -main "$(git rev-parse main)"
+```
+
+正しい動作は`INCOMPLETE`・`productGate=UNQUALIFIED`・非ゼロ終了である。欠けている証拠には`R0→R1`、実Webの新規単価負例、Repository Health、独立Observationが含まれる。テスト`TestCurrentP0FixtureCannotBeSubmittedAsEvidence`が、「既存テストがある」という事実だけでE1を認定してしまう回帰を防止する。
+
+## 親#1119のexact-head資格確認（手動・任意）
+
+本Reference専用の`qualify.sh`は、このDraft PRの**ソース自体**をcurrent remote main上のtrusted full checkoutで検査するための実行手順である。E1/E2の製品実行を自動完了させるコマンドではない。
+
+```bash
+# 実際のGitHub current SHAを確認し、この2変数へ正確に指定する。
+# コマンドはrepo rootで実行。checkoutはPR #1135のbranch・完全clean必須。
+TEI_CP_EXPECTED_HEAD=<exact-PR-HEAD-40hex> \
+TEI_CP_EXPECTED_MAIN=<current-origin-main-40hex> \
+bash tools/reference-critical-path-evidence-audit/qualify.sh
+```
+
+`qualify.sh`は**正規のGitHub `hat47x/tei-platform` remote URLのみを許容**（ローカル偽remote・forkのcurrent mainを採用しない）。そのremoteをfetchし、候補HEADとmainのexact一致・main ancestry・変更path、pre/postの未追跡/ignoredおよび非標準index状態を照合する。監査Goのrace test/vet/gofmt、既存Shared AcceptanceとWeb Driverのfocused conformance、既存`tools/repository-health-check.sh`全体を実施し、最後に再fetchして変化を拒否する。失敗時に部分的な成功をPASSとして出さない。
+
+成功出力は`CRITICAL_PATH_LOCAL_SOURCE_QUALIFIED_ONLY`であり、**Product Gate PASSではない**。これは他Draft（#1124/#1121）の未統合Sourceをtestするものではなく、R0→R1を使用した実running Webの新単価負例、実DB保存、独立read、人間の受入を検証しない。またリモート取得・Go/Node等が使えない環境では実行できない。作業済みの単独Go試験を、これらのtrusted full checkout資格と取り違えない。
+
+## 最新mainと#1163候補の一時結合・Web正常系と異常系
+
+旧来の4本の並走ブランチ（#1119・#1120・#1124・#1121）はmainに統合されました。親計画#1119が管理する共通`compose-smoke.sh`には現在`integrated-main`モードが追加されています。**親のスクリプトは変更せず**、#1163固有の`compose-issue-1163-smoke.sh`を別途設けて、**最新mainと本PR #1262の正確な先端だけ**を一時作業領域で結合して検査します。元のリポジトリ・各ブランチ・mainへマージしません。
+
+正規GitHubへ接続できる完全にクリーンな**PR #1262のチェックアウト**で、その時点のGitHub上のmainとPR先端の40桁SHAを取得して指定します。
+
+```bash
+TEI_CP_COMPOSE_MAIN=<current-origin-main-SHA40> \
+TEI_CP_COMPOSE_1163=<exact-PR-1262-HEAD-SHA40> \
+bash tools/reference-critical-path-evidence-audit/compose-issue-1163-smoke.sh
+```
+
+- 正規GitHubのremote URL、実際のmain/PR branch先端、作業元HEADと入力SHA、実行前後の完全cleanと非標準indexを照合します。途中でmainやPRが進んだ場合は失敗します。
+- detachedの一時worktree上だけでmainにPRを結合し、コンフリクトや証跡検査器・Web試験の入力ソースがPRと異なる場合は拒否します。
+- StudioのNode・E2E、型付き参照とWorkspace、Lowering、既存Webと資格検査器のGo test、リポジトリ全体の健全性検査を実行します。選択対象が0件の`go test -run`だけで全体合格を宣言しません。
+- `TEI_CP_LIVE_R1_SMOKE=1 node tools/reference-critical-path-evidence-audit/live-r1-smoke.mjs`により、隔離scratchにStudio候補→Shared Acceptance Preview/Review→試験用のAccept→受理後R1を作ります。別CLIによるWorldの再読込と受理記録のWorld指紋一致を要求し、元Sourceの変更を監視します。
+- Web正常系は標準の合成注文を実行し、4件のValidation成立、Commandと**synthetic** Observationを確認します。単価異常系は`go build -overlay`で注文1001の合成単価を0にした**別バイナリ**を起動し、単価規則だけが不成立でCommand・Observationが未実行になることを確認します。さらにN11負例では、**三つ目の隔離バイナリ**でCommand実行後の合成Observation readだけを失敗させ、HTTP 422・Command結果あり・Observation結果なしを検査します。正常・単価0・N11の3ケースでは同じscratch R1を指定し、元Sourceは変更しません。加えて**同じ正常系Webバイナリを古いSource R0で起動し、正しいR1やTarget版を名乗る引数を与えても、実Manifestに新規単価規則がなく受理後R1と一致しない**負例を追加します。この時点でTarget自身は誤ったラベルを拒否しないため、**現行RuntimeにR1の強制拘束があるとは主張しません**。さらに受理後R1を複製し、管理対象`application.tei`へ空行だけを加えたR2を作ってWebを起動します。R2のSource fingerprintがR1と異なる一方、独立CLIの派生Worldと実HTTP ManifestがR1と同じになることを検査します。**Manifestの意味が一致してもSourceの実バイトが同じとは限らない**負例です。各Webサーバの`/manifest.json`から実際に表示されたApplicationのValidation・Pattern等を取り出し、別CLIで読み直した受理後Worldと、3サーバ相互の意味を照合します。これはTargetに渡したB/R/T文字列やSourceの原子的読み込みを証明するものではありません。
+- 上記はtest-onlyの受理と**異なる3つの合成バイナリ**による限定検証です。N11の異常系を合成read failureとして再現するもので、製品環境でのread不能や永続DBの障害を証明しません。製品バイナリの実DB/Authority/独立Observation、S02・S05・第二Target、G1〜G4や製品Gateを証明しません。`ISSUE_1163_CANDIDATE_SMOKE_ONLY_NO_PRODUCT_GATE`が出ても本PRの独立レビューと元候補HEADでの資格確認は別途必要です。
+
+**任意の限定証跡保存**: 実行前に `TEI_CP_EVIDENCE_DIR=/absolute/path/to/new-directory` を指定すると、Node実験は検証完了後に次の8つのJSONを**リポジトリ外の新規ディレクトリ**へ保存する。保存先は実行前に存在していてはならず、親ディレクトリは存在が必要。symlink/相対pathを悪用してrootやscratch内へ保存する指定は拒否する。書込みは新規ファイル限定、credentialや注文内容の生HTTP応答は保存しない。
+
+- `workspace-r1.json`：R0→test-only Accept→R1、Preview/ReviewとDecisionの指紋、変更Sourceの相対pathと実行前後の管理対象差分を記録。さらに`cmd/tei world -workspace`を**別のCLI呼び出し**で再実行し、実際のJSONバイト列のSHA-256が受理時の`Decision.DerivedWorldSHA256`と一致するか検査する。Human Approvalと主張しない。
+- `target-launch.json`：正常系WebバイナリのSHA256、合成integration HEAD、B/R/T、loopback endpoint・process・health OKを記録。同じ証跡内に、単価負例とN11用の**二つの別バイナリ**の指紋・起動先・差替Source指紋、実HTTP Manifestの意味内容の指紋も併記し、三つの起動を一つの実行成果物と偽らない。さらに空行だけ異なるR2の`equivalentSourceControl`をこのファイルに保存し、R1と違うSource revision・同じWorld／Manifest・同じバイナリとB/R/T申告を記録する。旧R0を使った負例は、親#1119の最新CI契約に従い別の`stale-source-control.json`で保存する。いずれも外部テストによる検出であり、Targetの起動拒否機構ではない。Host権限の確認ではない。
+- `web-positive.json`：HTTP正常系のValidation ID/結果4件、Command観測とsynthetic Observation。認証情報、実DBの値・注文個人情報は含めない。
+- `target-negative-launch.json`：テスト専用Go Overlayによる別バイナリの指紋、元fixtureと差替fixtureの指紋、起動先、同じR1申告を記録。通常Targetと同一バイナリとはみなさない。
+- `web-negative-unit-price.json`：実行中の別Webサーバに対して単価0で`not-satisfied`を得て、CommandとObservationが未実行であることを記録。合成データによる負例であり、実DBの独立観測ではない。
+- `target-n11-launch.json`：Observation readだけを失敗させる隔離Go Overlayバイナリと起動プロセス・SHA-256を記録。通常バイナリの性質へ一般化しない。
+- `n11-unobserved-control.json`：Command結果は存在するが合成Observation readが失敗し、HTTP 422・Observation結果なしとなった実サーバの負例を記録。実DBや外部readの障害証跡ではない。
+- `stale-source-control.json`：**同じ正常系Webバイナリ**に旧R0を与え、B/R/Tの申告ラベルは正常系と同一のまま実HTTP ManifestでR1新規規則が欠落することを示す負例。Targetではなく外部テストハーネスによる不一致検出。
+
+
+この8ファイルは同じtest harness由来の**別段階の限定的なreceipt**であり、第三者の独立署名や外部Authorityの証明ではない。各Web応答のSHA-256とManifestの意味内容のSHA-256を記録し、保存した8ファイルのSHA-256もCIの標準エラー出力に記録する。旧R0負例は独立した`stale-source-control.json`、空行だけ異なるR2負例は`target-launch.json`の`equivalentSourceControl`として保存する。#1119のGitHub Actionsは8ファイルを厳格に照合し、SHA-256目録付きの短期（7日）Artifactとして保存する。CIログと保存ファイルを後から照合できるが、**Source・権限・外部効果の独立証明にはならない**。実行失敗時の断片を完全証拠として扱わない。実行自体が失敗して途中ファイルが残っても全体成功と見なさず、標準出力の正常終了・Go/Node/full Healthの実結果も併記する。単価0とN11 read失敗の実Web負例は**合成Overlay別ビルドの試験コード**であり、実行前は結果未取得、実行後も外部Authorityや実際の独立DB Observationなどは未解消のため、`tei.critical-path-evidence/v0`でE1完全packetとして提出してはならない。
+
+**実行済みの範囲**: [旧版のE1 Web検査 #38238866937](https://github.com/hat47x/tei-platform/actions/runs/38238866937)と[正規全体健全性 #38238866923](https://github.com/hat47x/tei-platform/actions/runs/38238866923)は、受理後R1を使う3種の合成Web実行と、同じバイナリで旧R0を使う負例を含め成功している。空行だけ異なるR2の負例は、この過去のrunにはまだ含まれない。その後、親#1119のArtifact保存契約は当初7ファイルから**旧R0負例を含む8ファイル**へ拡張された。空行だけ異なるR2の検証も新たに追加している。最新のPR先端については、E1 Actionsの試験と8ファイルの保存の両方を確認する。実DB／独立Observation／人による受理は未実証であり、過去版のPASSを新しいコミットへ流用しない。
+
+## GitHub Actions・GitHub接続なしの固定コミット検査（オフライン）
+
+Actionsやネットワークを使えない場合、**以前に信頼できる経路で確認した40桁のコミットSHA**と、完全なGit checkout（必要なGo modulesを事前取得済み）を用い、既存`compose-smoke.sh`でその版**だけ**を隔離worktreeで検査できる。これは`integrated-main`と異なり、GitHubの最新mainを確認しない。git remoteのURL文字列は検査するが真正性の認定にはならない。原本のSource受理や実DBの資格を補完するものでもない。
+
+```bash
+# ネットワークが使える時点で、reviewerがGitHub上のSHAを別途確認して固定する。
+# 完全でcleanなcheckoutのHEADを、固定したSHAに一致させる（履歴を改変しない）。
+TEI_CP_COMPOSE_MODE=integrated-pinned-offline \
+TEI_CP_COMPOSE_MAIN=<reviewed-exact-commit-SHA40> \
+bash tools/reference-critical-path-evidence-audit/compose-smoke.sh
+```
+
+- テスト開始時にチェックアウトの実HEADが指定SHAと完全一致すること、完全履歴を持つnon-shallow・non-promisor cloneであること、commit object・canonical remote URL・未追跡/ignored file・非標準indexがないことを確認。Draft tipの環境変数は拒否し、Onlineモードと違って`git fetch`を行わない。途中でもGit branchは変更せず、一時detached worktreeを終了時に消去。
+- `GOPROXY=off`、`GOSUMDB=off`、`GOTOOLCHAIN=local`により、Go依存やツールチェーンの暗黙ダウンロードを禁止。Node、Go、Source/Studio/Lowering/Webの限定的回帰、合成E1 HTTP、Repository Healthは**実際のそのコミットのコード**で試す。事前キャッシュや必要なコマンドが欠ければその検査は失敗する。
+- 成功時のマーカーは`PINNED_OFFLINE_CROSS_LANE_SMOKE_ONLY_NO_REMOTE_FRESHNESS_NO_PRODUCT_GATE`。併せて`remoteFreshness=NOT_CHECKED_offline_operator_pinned`を出す。offline中はremote refを更新できず、現在のmainとの同一性、他のOwner branchとの追随、GitHub CI、人的受理、実DB副作用、独立read、Source実行時拘束を認定しない。指定SHAが古くなれば、別の信頼できる接続時に新しいSHAを確認して再実行する。
+- 制御フローは`python3 -B tools/reference-critical-path-evidence-audit/compose_offline_test.py`で隔離Git fixtureを使って再検査可能。この**Shell契約の試験はGo/Nodeをスタブ化**しており、TEI本体のテストPASSではない。実製品コードの成功には上の本コマンドを必要な依存が揃ったtrusted checkoutで実行する。
+
+## v0の対象シナリオと判断境界
+
+- `claim` は `E0`、`E1`、`E2`（計画文書§16参照）。これは提出者の**申告区分**であって実証済み能力ではない。
+- 全区分で exact candidate `head` / reviewed `main`、full Repository Health PASS、実行前後clean、検証receiptの**申告**を要求する。この条件はあくまで提出に必要な情報で、受領側がcheckoutとreceiptを検証する必要がある。
+- `E0` でもProducer/Consumerの実装箇所、正負のテスト名、証拠の性質（`source-only`、`synthetic-tested`、`actual-observed`）が必要。単なるCase名では不足とする。**E1/E2で `evidenceClass=source-only` または `synthetic-tested` を指定すると、他の欄がそろっていても `E1_E2_ACTUAL_EXECUTION_CLASS_REQUIRED` で拒否する。** WebのProviderがsyntheticでも、E1では *Webサーバの実行* が必要という意味である。E1/E2で `evidenceClass` が空または未知の場合も同じ1件だけを出し、`E0_CONTRACT_OR_POSITIVE_NEGATIVE_TEST_MISSING` を重ねない（その診断は、Producer/Consumerや正負テスト名が実際に欠けたときのために残す）。
+- `E1` は `R0 != R1`、Candidate/Reviewの**それぞれ独立した指紋**とReviewが参照するCandidateの指紋、Decision、R1再読込、`add-validation` と `add-application-validation-use` の同時受理、R1の `order_entry` が `sales.order_line.unit_price_positive` を選択した実Web正負試験、N11 controlを要求する。WebのProviderは合成でもよいが、`web.runMode=running-server` と**実Web操作receipt**が必要。さらに `web.negativeValidation` は**新しい単価規則そのもの**、`web.negativeEvidenceMode` は `running-server` であることを申告させる。併せて `web.workspaceRevisionReceipt`（実際にWebが使用したWorkspaceのmanaged-source R1再観測）と `web.targetLaunchReceipt`（実際のTarget起動先・build revision・起動前後の記録、認証情報は含めない）を**互いに別のreceipt**として要求する。既存Web JSONの `baselineRepositoryRevision` / `targetBuildRevision` はGit revisionであって、Accepted Sourceの `modelRevision` を証明しない。従来の数量0による正常な拒否や、Goの `httptest` による単価0の負例だけでは、実行中Webサーバが新しい単価規則を拒否した証拠にならない。`handler-only` / `httptest` はE0の有用な証跡だが、このE1の実サーバ操作要件を満たさない。
+- `E2` はE1に加え `actual-db` Provider、R1に対するDatasource/schema互換性証跡、current Host Authority、Commandと独立readの**別receipt**、同一record、S02/S05の拒否試験を要求する。Web synthetic Providerを `E2` として提出すると拒否する。`web.providerKind` が空または未知の場合は `WEB_PROVIDER_KIND_UNRESOLVED` だけで拒否し、synthetic固有の診断を重ねない（Providerを宣言していないパケットを「synthetic」と呼ぶのは誤りであり、同じ欠陥の二重報告になる）。いずれの場合も `INCOMPLETE` は変わらない。
+- `physical.hostAuthorityProvenance`（任意）が`provisional-grant`（開発専用の暫定効果許可、D8）のパケットは、E0〜E2のどの主張でも`PROVISIONAL_GRANT_NOT_G2_EVIDENCE`を出して`INCOMPLETE`になります。ただし検出できるのは、大文字小文字・`_`・空白・ゼロ幅/bidi制御文字を畳んだ結果が`provisional-grant`になる表記だけです。別の文字種で似せた表記（ホモグリフ。例: キリル文字のoを含む`provisional-grant`）は畳まれません。E2では許可リスト外の値として`E2_HOST_AUTHORITY_PROVENANCE_REQUIRED`で拒否しますが、E0/E1はPhysical証跡を持たない前提で、この欄を検査しません。そのためE0/E1ではホモグリフ版は検出されません（`TestHomoglyphProvisionalLabelIsOnlyCaughtByTheE2AllowList`）。暫定許可はG2へ数えません。
+- E2の主張では、`physical.hostAuthorityProvenance`が既知の値（`real-pg`または`synthetic`、完全一致）であることを要求します。省略、未知の値、表記ゆれ（大文字小文字・`_`・ゼロ幅文字入りの`real-pg`など）は`E2_HOST_AUTHORITY_PROVENANCE_REQUIRED`で`INCOMPLETE`です。`provisional-grant`は、大文字小文字・`_`・空白・ゼロ幅/bidi制御文字を畳んで比較し、別名でも`PROVISIONAL_GRANT_NOT_G2_EVIDENCE`にします。この値はパケット作成者の自己申告で、Evidenceの真正性は確認しません。新しい値は、この許可リストへ意図して追加します。
+- `acceptance.acceptanceKind`（任意、D9）が`provisional`または`unspecified`（印を導入する前に署名されたDecision）のパケットは、E0〜E2のどの主張でも`PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE`を出して`INCOMPLETE`になります。大文字小文字・`_`・空白・ゼロ幅/bidi制御文字を畳んで比較するため、別名では回避できません。`formal`の自己申告を含むそれ以外の値は`ACCEPTANCE_KIND_UNRECOGNIZED`です（Storeも`formal`を拒否します）。**E2の主張では欄の省略を`E2_ACCEPTANCE_KIND_REQUIRED`で`INCOMPLETE`にします**（同じ畳み込み後に空になる、空白・ゼロ幅/bidi制御文字だけの値も省略と同じ扱いです）。省略を診断しないと、欄を書かないパケットが暫定Acceptanceの診断を免れるためです（`hostAuthorityProvenance`・`physical.guarantee`のE2必須化と同じ作りです）。E0/E1は従来どおり省略を診断しません。正式なAcceptance種別を発行する経路がまだ無いため、E2のパケットは`REVIEW_REQUIRED`に到達できません（種別を書けば`PROVISIONAL_*`または`ACCEPTANCE_KIND_UNRECOGNIZED`、書かなければ`E2_ACCEPTANCE_KIND_REQUIRED`で`INCOMPLETE`）。この値はパケット作成者の**申告**で、このツールは検証しません（Storeから読み出した値を写すかどうかは作成側の責任です）。`productGate`は常に`UNQUALIFIED`です。暫定（D9）の見直し条件は、組織の受理手続・署名者が決まったときです。
+- `physical.guarantee`（`level`・`reason`、任意）は、Providerの原子性宣言（`effectcommit.Evidence`の`Guarantee`・`GuaranteeReason`）を、Runnerが出したEvidenceから写す欄です。E2の主張では`level`が`atomic-with-commit`（完全一致）であることを要求し、欄が無い（Evidenceを出さない経路を含む）、`undeclared`、`not-atomic`、未知の値、表記ゆれ（大文字小文字・`_`・ゼロ幅文字入り）は`E2_PROVIDER_GUARANTEE_NOT_ATOMIC`で`INCOMPLETE`です。E0/E1は欄が無くても診断しません。どの主張でも、`level`または`reason`が、大文字小文字・`_`・空白・ゼロ幅/bidi制御文字を畳んだ結果に`provisional`を含む場合（D10の仮宣言は`reason`が`provisional D10`で始まります）は`PROVISIONAL_GUARANTEE_NOT_G2_EVIDENCE`を出して`INCOMPLETE`です。E2で`level`自体が`provisional`を含む場合は、完全一致の`atomic-with-commit`要件にも反するため、`E2_PROVIDER_GUARANTEE_NOT_ATOMIC`と`PROVISIONAL_GUARANTEE_NOT_G2_EVIDENCE`の2件を出します。両者は独立で、`level`が`atomic-with-commit`で`reason`だけがprovisionalの場合は原子性の診断を出さず、`level`も`reason`もprovisionalを含まない非原子levelではG2の診断を出しません。別の文字種で似せた表記（ホモグリフ）は畳まれません。**宣言は主張であって証明ではありません。** このツールは申告を検証せず、`atomic-with-commit`の宣言がある、また仮宣言でないことは、実際に原子的であることを意味しません。`productGate`は常に`UNQUALIFIED`です。
+- N11（Command後のObservation readが結果を返せない条件）は、正負のWeb応答、Workspace版の証跡、Target起動記録、E2のCommand・独立readとは**別の証跡**で確認する。空白だけのlocatorや別段階の記録をN11に流用した申告は`N11_UNOBSERVED_CONTROL_MISSING`とする。これはlocatorの形式検査であり、実際にreadが未実施だったことを証明しない。E2のCommand/独立readについても空白だけのlocatorは拒否する。
+- Source、Target、DB schema、Git revisionを値の一致だけで同一視しない。DB schemaとApplicationは別のライフサイクルであり、`schemaCompatibility=compatible` は**提出された判定結果の表明**に過ぎない。Providerの実状態・readの独立性・記録時点はreviewerが確認する。
+- `E0` のフォーム検査が通っても、C0/Studio/Business/Loweringの本当のproducer-consumer接続や製品上の動作を証明しない。
+
+## 一改訂packetの未実行見本（E2）
+
+`testdata/p0-order-entry-e2-not-executed.json` は、#1163が求める「同じ新しい1回の実runから記録する」packet（受理済みSource R1・Host認可・Web build・DB schema・Command・別invocationのObservation・S02/S05/N11の負例）の欄を揃え、**実行した欄を一つも埋めていない**見本である。未実行の欄は空文字にする。`not-executed` のような文字列を入れると、このpreflightは非空のlocatorを「証跡あり」と数える。
+
+期待結果は`INCOMPLETE`・`productGate=UNQUALIFIED`・非ゼロ終了で、`REVISION_QUALIFICATION_STALE_OR_MISSING`、`ACCEPTED_R0_R1_LINEAGE_MISSING`、`S02_*`・`S05_*`・`N11_UNOBSERVED_CONTROL_MISSING`、`E2_COMMAND_AND_INDEPENDENT_READ_NOT_CORRELATED`、`E2_ACCEPTANCE_KIND_REQUIRED`、`E2_PROVIDER_GUARANTEE_NOT_ATOMIC`など20件の不足が列挙される。`not_executed_fixture_test.go` がこの一覧を固定し、欄が値で埋まった見本を「未実行」と呼べなくする。
+
+R0・意味同値R2を**Web自身が**実行前に拒否したことは、現行のpacket形式に欄が無く、この見本は主張しない。外部ハーネスによる検出と区別して記録する欄は、実runが得られる時点で別途検討する。これは実行結果でも、G1/G2のPASSでもない。
+
+## 記録の例（不足しているため必ずINCOMPLETE）
+
+```json
+{
+  "schema": "tei.critical-path-evidence/v0",
+  "claim": "E1",
+  "contract": {
+    "producerPath": "", "consumerPath": "", "positiveTest": "",
+    "negativeTest": "", "evidenceClass": "source-only"
+  },
+  "qualification": {
+    "head": "", "main": "", "fullHealth": "NOT_RUN",
+    "cleanBefore": false, "cleanAfter": false, "receipt": ""
+  },
+  "acceptance": {
+    "r0": "", "r1": "", "candidateFingerprint": "",
+    "reviewFingerprint": "", "reviewCandidateFingerprint": "",
+    "decisionReceipt": "", "reloadReceipt": "",
+    "delta": ["add-validation", "add-application-validation-use"]
+  },
+  "web": {
+    "acceptedRevision": "", "application": "order_entry", "target": "web",
+    "selectedValidation": "sales.order_line.unit_price_positive",
+    "negativeValidation": "sales.order_line.unit_price_positive",
+    "negativeEvidenceMode": "handler-only",
+    "providerKind": "synthetic", "runMode": "handler-only",
+    "workspaceRevisionReceipt": "", "targetLaunchReceipt": "", "positiveReceipt": "",
+    "negativeReceipt": "", "unobservedControlReceipt": ""
+  },
+  "physical": {}
+}
+```
+
+**ReviewとCandidateの結び付き**: Shared Acceptanceの`normalizeCandidate`が算出する`candidateFingerprint`と、`fingerprintReviewProjection`が算出する`reviewFingerprint`は別の内容の指紋であり、通常は一致しない。`acceptance.reviewCandidateFingerprint`にはReview Projection内の`candidateFingerprint`を記録し、Candidate自身の指紋と比較する。Reviewの指紋はそれとは独立して保持する。これは提出者が記載した対応関係の形式検査であり、実際のReview、Decisionの内容とその作成元が一致するかは別途確認する。`decisionReceipt`のパスがあるだけで受理を立証しない。
+
+本Referenceは実際の証拠ファイルを自動取得・検証しないため、`receipt`にパスを記述しただけでは検証済みにはならない。提出物にはsecret、credentials、個人情報を含めない。
+
+**当面のE1残Gap**: 現在の通常Web用synthetic fixtureは単価が常に正であり、受注1002の拒否理由は数量0。既存 `practical_business_rule_test.go` は `staticReadScenarioRunner` で単価0をテストできるが、これはhandler-onlyである。実行中Web Targetで新規規則の負例を観測するには、#1127がテスト専用の隔離したfixture/Target起動構成を用意する等、**受理済み業務意味・標準API・実Providerを汚さない方法**を追加検討する。このpreflight自身が `running-server` の申告や入力receiptの真偽を確認するわけではない。
+
+**E1のR1連結上の注意**: `tools/reference-first-web-target`の現HTTP envelope/manifestには `handoverBaselineId`、`baselineRepositoryRevision`、`targetBuildRevision` はあるが、使用したscratch Workspaceの **Shared Acceptance `modelRevision` 自体は載らない**。テスト側で実起動時の `-workspace` と、前後に同じWorkspaceで取得した `revision -workspace` の結果を別receiptに固定し、Targetの本当の読込時点と合致するかをレビューする。Preflightはこれらのファイル名を受け取るだけで、競合・起動時のsnapshot・TOCTOUを実証しない。
+
+## 入力の取り扱いとpreflightの追加負例
+
+- JSONは最大1 MiB、UTF-8の厳密な入力のみを受ける。ファイル先頭1 MiBが妥当でも、その後に隠れたJSON・テキストがあれば受け付けない。
+- 未知field、トップレベルと入れ子の重複key、`claim`/`Claim`やUnicodeの`Key`/`key`のようなcase-folded alias、64階層を超える深い入れ子は拒否する。Goの通常のJSON decoderが最後の同名fieldを採用する挙動で権限・証跡を上書きさせない。異なるkeyを大量に渡されても、従来の全既出key走査（最悪二乗時間）ではなく、Unicode simple foldしたkeyのmap照合で線形の検査コストに抑える。
+- `run` のCLI全体に対しても `INCOMPLETE`時の非ゼロ終了と機械可読JSON、`REVIEW_REQUIRED`時でも常に `productGate=UNQUALIFIED` を確認する。
+- focused testは `go test -race -count=1 ./tools/reference-critical-path-evidence-audit` で検査できるが、必須のfull `tools/repository-health-check.sh` を置き換えない。
+
+## このtoolが検証しないこと
+
+GitHub remoteの本当のHEAD、信頼できるtest runner、実Source Acceptance、現行Providerの契約/権限、実Database、readの独立性/鮮度、Business ProcedureがAcceptedであるか、case自身の真偽、署名、証拠ファイルの内容は検証しない。特に **`productGate=UNQUALIFIED` を他の自動化処理でPASSとして使用してはならない**。
+
+Mainへ統合する場合は、まずこのPR自身のexact headで `tools/repository-health-check.sh` をtrusted full checkoutにて全件実行し、clean pre/post と current main一致を別途取得する。

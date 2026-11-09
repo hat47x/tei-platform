@@ -1,0 +1,14 @@
+{
+  "schema": "tei.reference.target-profile/v0",
+  "id": "desktop-replace",
+  "version": "1",
+  "description": "filesystem deployment with whole-artifact replacement",
+  "processModel": "oneshot",
+  "storage": "filesystem",
+  "network": "none",
+  "update": "replace",
+  "memoryLimitBytes": 33554432,
+  "observability": ["stdout", "exit-code"],
+  "unsupported": ["hard-realtime", "rolling-update"],
+  "generatorId": "template"
+}

@@ -1,0 +1,23 @@
+{
+  "schema": "tei.reference.delivery-profile/v0",
+  "id": "sier-delivery",
+  "version": "1",
+  "requiredCapabilities": ["export-package", "authentication"],
+  "plugins": [
+    {
+      "id": "export-package",
+      "version": "1",
+      "path": "../../../reference-export-package/plugin.json"
+    },
+    {
+      "id": "authentication",
+      "version": "1",
+      "path": "../../../reference-authentication/plugin.json"
+    },
+    {
+      "id": "audit",
+      "version": "1",
+      "path": "../../../reference-audit-log/plugin.json"
+    }
+  ]
+}

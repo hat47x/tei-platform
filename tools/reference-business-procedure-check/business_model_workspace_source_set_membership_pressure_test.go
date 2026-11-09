@@ -15,7 +15,7 @@ func TestBusinessWorkspaceSourceRootMembershipChangesManagedAuthorityReachabilit
 	candidatePath := filepath.Join(root, filepath.FromSlash(candidateRel))
 
 	writeBusinessWorkspaceDiscoveryFileProbe(t, candidatePath, []byte(`{"schemaVersion":"business-authoring-candidate-probe-v0","procedure":"order-entry.order-handling"}`))
-	writeBusinessWorkspaceDiscoveryFileProbe(t, manifestPath, []byte("workspace: business_membership_pressure\nsources:\n  - business\n"))
+	writeBusinessWorkspaceDiscoveryFileProbe(t, manifestPath, []byte("workspace: business_membership_pressure\nformatVersion: 1\nsources:\n  - business\n"))
 
 	before, err := workspace.Load(root)
 	if err != nil {
@@ -36,7 +36,7 @@ func TestBusinessWorkspaceSourceRootMembershipChangesManagedAuthorityReachabilit
 	// Keep the candidate bytes untouched on disk and change only which source
 	// root the workspace declares authoritative/reachable. Physical existence
 	// must not keep the old file in ManagedFiles or the Source Index.
-	writeBusinessWorkspaceDiscoveryFileProbe(t, manifestPath, []byte("workspace: business_membership_pressure\nsources:\n  - other\n"))
+	writeBusinessWorkspaceDiscoveryFileProbe(t, manifestPath, []byte("workspace: business_membership_pressure\nformatVersion: 1\nsources:\n  - other\n"))
 
 	after, err := workspace.Load(root)
 	if err != nil {
@@ -60,7 +60,7 @@ func TestBusinessWorkspaceSourceRootMembershipChangesManagedAuthorityReachabilit
 func TestBusinessWorkspaceSourceAddRemoveChangesManagedSourceSet(t *testing.T) {
 	root := t.TempDir()
 	manifestPath := filepath.Join(root, "tei.workspace.yaml")
-	writeBusinessWorkspaceDiscoveryFileProbe(t, manifestPath, []byte("workspace: business_add_remove_pressure\nsources:\n  - business\n"))
+	writeBusinessWorkspaceDiscoveryFileProbe(t, manifestPath, []byte("workspace: business_add_remove_pressure\nformatVersion: 1\nsources:\n  - business\n"))
 
 	primaryRel := filepath.ToSlash(filepath.Join("business", "order-entry-procedure.json"))
 	secondaryRel := filepath.ToSlash(filepath.Join("business", "follow-up-procedure.json"))

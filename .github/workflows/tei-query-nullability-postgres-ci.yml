@@ -1,0 +1,111 @@
+name: TEI Query入力NULLの実PostgreSQL証拠
+
+# #2056 の参照契約について、missing・明示NULL・空文字・拒否を
+# 一時PostgreSQLへ実際にbindして観測する。本番DB・Provider間同等性は証明しない。
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize]
+    paths:
+      - '.github/workflows/tei-query-nullability-postgres-ci.yml'
+      - 'tools/reference-query-input-nullability/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-query-nullability-postgres-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  nullability-postgres:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: tei_nullability
+          POSTGRES_PASSWORD: local_fixture_only
+          POSTGRES_DB: tei_nullability
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tei_nullability -d tei_nullability"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+    steps:
+      - name: PRのmerge commitを完全取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: 実行前のheadとcleanを照合
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git ls-files -v | awk '/^[a-zS]/ {print}')"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+      - name: Go版を確定
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+      - name: 参照binderの単体試験
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test -count=1 ./tools/reference-query-input-nullability/...
+      - name: 一時PostgreSQLでmissing・明示NULL・空文字・拒否を観測
+        shell: bash
+        env:
+          TEI_TEST_POSTGRES_DSN: postgres://tei_nullability:local_fixture_only@127.0.0.1:5432/tei_nullability?sslmode=disable
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/tei-query-nullability-${GITHUB_RUN_ID}"
+          go run ./tools/reference-query-input-nullability/cmd/tei-query-nullability-postgres \
+            -contract tools/reference-query-input-nullability/testdata/contract.json \
+            > "$RUNNER_TEMP/tei-query-nullability-${GITHUB_RUN_ID}/receipt.json"
+          python3 - "$RUNNER_TEMP/tei-query-nullability-${GITHUB_RUN_ID}/receipt.json" <<'PY'
+          import json, pathlib, sys
+          receipt = json.loads(pathlib.Path(sys.argv[1]).read_bytes())
+          def ensure(cond, what):
+              if not cond: raise SystemExit("nullability receipt mismatch: " + what)
+          ensure(receipt["passed"] is True, "passed")
+          ensure(receipt["evidenceNature"] == "real-postgres-ephemeral-fixture", "evidence nature")
+          ensure(receipt["databaseProvider"] == "postgres", "provider")
+          cases = {case["name"]: case for case in receipt["cases"]}
+          ensure(len(cases) == 5, "case count")
+          for name in ("explicit-null-allowed", "omitted-optional"):
+              ensure(cases[name]["observedNull"] is True, name + " SQL NULL")
+          empty = cases["empty-string-is-value"]
+          ensure(empty["observedNull"] is False and empty["observedValue"] == "", "empty string")
+          for name in ("forbidden-null", "missing-required"):
+              ensure(cases[name]["queryNotExecuted"] is True, name + " rejected")
+              ensure(len(cases[name]["rejected"]) > 0, name + " diagnostic")
+          print(json.dumps({"passed": True, "evidenceNature": receipt["evidenceNature"],
+                            "provider": receipt["databaseProvider"], "cases": sorted(cases)}, sort_keys=True))
+          PY
+      - name: 検証用receiptを短期間保全
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tei-query-nullability-postgres-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/tei-query-nullability-${{ github.run_id }}/receipt.json
+          retention-days: 7
+          if-no-files-found: error
+      - name: 実行後のheadとcleanを再検証
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git ls-files -v | awk '/^[a-zS]/ {print}')"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"

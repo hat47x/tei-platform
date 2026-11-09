@@ -1,0 +1,21 @@
+{
+  "name": "editor-rename-function-id",
+  "description": "Rename function 232 to 998 through the Editor tree rename dialog, save, and verify the new ID. Uses a disposable MfgOrder.xead copy. Rename changes the ID, not the display name.",
+  "steps": [
+    { "op": "wait_window", "title": "X-TEA Editor", "timeoutMs": 30000 },
+    { "op": "select", "selector": { "role": "tree" }, "path": [0, 1, 0, 1, 3] },
+    { "op": "key", "selector": { "role": "tree" }, "key": "ENTER" },
+    { "op": "sleep", "ms": 1000 },
+    { "op": "invoke_method", "selector": { "role": "window", "window": "X-TEA Editor" }, "method": "jMenuItemXETreeNodeRename_actionPerformed" },
+    { "op": "sleep", "ms": 1000 },
+    { "op": "set", "selector": { "window": "入力", "path": "0.0.0.0.1.1" }, "value": "998" },
+    { "op": "invoke", "selector": { "window": "入力", "role": "button", "text": "OK" }, "settleMs": 1000 },
+    { "op": "sleep", "ms": 1000 },
+    { "op": "invoke", "selector": { "window": "X-TEA Editor", "path": "m.0.5" }, "settleMs": 1000 },
+    { "op": "wait_window", "title": "バックアップの確認", "timeoutMs": 30000 },
+    { "op": "invoke", "selector": { "window": "バックアップの確認", "role": "button", "text": "はい" }, "settleMs": 1000 },
+    { "op": "wait_window", "title": "バックアップの確認", "state": "absent", "timeoutMs": 30000 },
+    { "op": "sleep", "ms": 1500 },
+    { "op": "model_assert_function", "path": "build/editor-fixture/MfgOrder.xead", "functionId": "998" }
+  ]
+}

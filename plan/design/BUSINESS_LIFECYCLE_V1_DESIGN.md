@@ -2,7 +2,7 @@
 
 - 状態: 評価待ち（未採用）
 - 日付: 2026-09-05
-- 対象Issue: [ISSUE-000038](../issue/000038-business-lifecycle-semantics.md)
+- 対象Issue: ISSUE-000038
 - 関連ADR: [ADR-0024](../adr/0024-business-lifecycle-ownership.md) / [ADR-0025](../adr/0025-transition-evaluation-and-conflict-result.md)（いずれも提案中）
 
 この文書は要件の詳細化であり、採用済みの設計基線ではありません。評価が終わるまで、ここに書いた意味モデル、構文、診断、実行順序、結果契約を実装の根拠にしません。
@@ -181,7 +181,7 @@ Application側では、[既存のValidation参照検査](../../internal/validati
 - Lifecycleのidentityにfile pathを含めません。`sales/order.tei`と`sales/lifecycle.tei`のどちらへ書いても同じCanonical meaningになります（RQ-002）。
 - `Lifecycles`は`omitempty`とし、Lifecycleを持たないWorkspaceの`world.json`をbyte単位で変えません。既存のgenerated artifact Evidenceへ不要な差分を出さないためです。
 - [Semantic anchor](../../internal/syntax/semantic_anchor.go)へ`semantic-lifecycle` / `semantic-lifecycle-state` / `semantic-lifecycle-transition`を追加し、上記の診断がすべてauthoring sourceの位置へ戻れるようにします。
-- Reference WorkspaceへLifecycleを追加する変更は`world.json`のgoldenを更新します。[ISSUE-000025](../issue/000025-reference-generated-artifacts-refresh.md)の手順に従い、`-write`直後のdirty treeを完了Evidenceとせず、修復差分をcommitしたclean revisionでcheck-onlyを再実行します。
+- Reference WorkspaceへLifecycleを追加する変更は`world.json`のgoldenを更新します。ISSUE-000025の手順に従い、`-write`直後のdirty treeを完了Evidenceとせず、修復差分をcommitしたclean revisionでcheck-onlyを再実行します。
 
 ## Realization: 状態コードのMapping
 
@@ -295,7 +295,7 @@ const (
 
 ### 遷移が成立しなかった場合の結果契約
 
-現在の`sales.order.submit`は単一`output sales.order`です。[ISSUE-000009](../issue/000009-capability-outcome-and-execution-error.md) / [ADR-0020](../adr/0020-capability-business-outcome-boundary.md)に従い、事前Validationの不成立をOutcomeへ二重定義せず、理由なく全Capabilityをnamed Outcomeへ変更しません。
+現在の`sales.order.submit`は単一`output sales.order`です。ISSUE-000009 / [ADR-0020](../adr/0020-capability-business-outcome-boundary.md)に従い、事前Validationの不成立をOutcomeへ二重定義せず、理由なく全Capabilityをnamed Outcomeへ変更しません。
 
 一方、条件付き更新が成立しなかった状態は、実行を完了できなかった状態ではありません。処理は正常に終わり、業務としては「確定しなかった」という結末です。事前に判定できない実行時の結末であり、二重定義にはあたりません。そのため名前付きOutcome契約へ変更します。
 
@@ -329,7 +329,7 @@ Command payloadから観測状態を作らないこと、readの失敗と期待�
 - 遷移に必要なValidation
 - 状態コードの文字列
 
-Gate Cでは、同じCanonical規則をDriverとWebが利用していること、単一正本の条件変更が双方の結果へ反映されることを、[Gate C Evidence契約](../GATE_C_EVIDENCE_CONTRACT.md)のSemantic / Functional / Visualの区分に沿って確認します。表示できたことをSemantic Conformanceの合格にしません。
+Gate Cでは、同じCanonical規則をDriverとWebが利用していること、単一正本の条件変更が双方の結果へ反映されることを、[Gate C Evidence契約](../gate/GATE_C_EVIDENCE_CONTRACT.md)のSemantic / Functional / Visualの区分に沿って確認します。表示できたことをSemantic Conformanceの合格にしません。
 
 ## Reference / Conformance
 
@@ -379,10 +379,17 @@ Conformanceは`docs/conformance/business-lifecycle-v1.md`へまとめ、少な�
 - 遷移から導出するUIやCapabilityの自動生成
 - `std.*`へのLifecycle標準語彙の予約
 - 状態コードMappingの最終的な所有層
+- 定義の変更と既存の状態値の関係。この設計では状態をDataの属性値として保存し、記録ごとに定義の版を固定しない。そのため、状態や遷移の削除・改名は既存の記録へ直接効く。廃止した状態にある記録の移し先は[意味の変更に伴う既存データの移行設計](SEMANTIC_CHANGE_DATA_EVOLUTION_DESIGN_2026-10.md)のDE-08が扱う。それ以外に次を検討する。
+  - 変更後に、どの遷移の遷移元にもならず、終了状態でもない状態を検出する。終了状態の宣言（上の項目）と合わせて判断する。
+  - 状態コードMappingが、既存データに残る物理コードをすべて覆うかを、受理前に観測で確かめる。
+  - 機械的に保証する範囲を「状態値が新しい定義で正当であること」までとし、飛ばした工程の出力など業務上の前提は保証しないと明記する。
+  - 時間や外部イベントを待つ遷移を扱う段階では、遷移がどの定義の版の下で起きたかを記録する。遷移履歴の保持方法と合わせて判断する。
+
+  参考: kintoneは、該当する記録がある状態の削除や、ある記録で実行できる操作が無くなる変更を拒否する（[公式ヘルプ](https://jp.kintone.help/k/ja/app/process/change_processsettings.html)）。Camunda 8は進行中の業務を既定では開始時の版で完了させ、別の版へ移す場合は要素の対応を明示させて構造を検査するが、移行時には要素対応と構造上の制約が検証される。業務上の前提が満たされるかは別途受入条件で確認する（後半はTEI側の設計上の整理）（[移行の説明](https://docs.camunda.io/docs/components/concepts/process-instance-migration/)）。
 
 ## 関連文書
 
-- [ISSUE-000038](../issue/000038-business-lifecycle-semantics.md): 作業範囲、実装順、完了条件
+- ISSUE-000038: 作業範囲、実装順、完了条件
 - [ADR-0024](../adr/0024-business-lifecycle-ownership.md) / [ADR-0025](../adr/0025-transition-evaluation-and-conflict-result.md)
 - [ADR-0017](../adr/0017-application-pattern-ownership.md) / [ADR-0019](../adr/0019-authentication-capability-boundary.md) / [ADR-0020](../adr/0020-capability-business-outcome-boundary.md) / [ADR-0023](../adr/0023-command-observation-explicit-read-boundary.md)
 - [Product Requirements](../../requirements/TEI_PRODUCT_REQUIREMENTS.md)

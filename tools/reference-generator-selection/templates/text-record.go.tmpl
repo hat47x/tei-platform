@@ -1,0 +1,158 @@
+package main
+
+// Generated candidate for the {{.ContractID}} record projection contract at
+// version {{.ContractVersion}}. Missing, unresolved and empty are distinct.
+// A present record is a canonical JSON object; a missing result lists the
+// absent field names as a JSON array.
+
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"os"
+)
+
+type output struct {
+	State string `json:"state"`
+	Text  string `json:"text,omitempty"`
+}
+
+func emit(out output) {
+	encoded, _ := json.Marshal(out)
+	fmt.Println(string(encoded))
+}
+
+func main() {
+	var in map[string]any
+	decoder := json.NewDecoder(os.Stdin)
+	if err := decoder.Decode(&in); err != nil {
+		emit(output{State: "error"})
+		os.Exit(2)
+	}
+	// One top-level JSON value is the input. Trailing data means the input is
+	// ambiguous, so reject it instead of silently using the first value.
+	var trailing json.RawMessage
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		emit(output{State: "error"})
+		os.Exit(2)
+	}
+	record := map[string]any{}
+	var missing []string
+	unresolved := false
+	{{- range .Fields }}
+	{{- if .Optional }}
+	{{- if .Many }}
+	if value, ok := in["{{.Input}}"]; ok && value != nil {
+		items, ok := value.([]any)
+		if !ok {
+			emit(output{State: "error"})
+			os.Exit(2)
+		}
+		values := make([]string, 0, len(items))
+		for _, item := range items {
+			text, ok := item.(string)
+			if !ok {
+				emit(output{State: "error"})
+				os.Exit(2)
+			}
+			values = append(values, text)
+		}
+		record["{{.Name}}"] = values
+	}
+	{{- else if or (eq .Primitive "std.decimal") (eq .Primitive "std.integer") }}
+	if value, ok := in["{{.Input}}"]; ok && value != nil {
+		number, ok := value.(float64)
+		if !ok {
+			emit(output{State: "error"})
+			os.Exit(2)
+		}
+		record["{{.Name}}"] = number
+	}
+	{{- else if eq .Primitive "std.boolean" }}
+	if value, ok := in["{{.Input}}"]; ok && value != nil {
+		flag, ok := value.(bool)
+		if !ok {
+			emit(output{State: "error"})
+			os.Exit(2)
+		}
+		record["{{.Name}}"] = flag
+	}
+	{{- else }}
+	if value, ok := in["{{.Input}}"]; ok && value != nil {
+		text, ok := value.(string)
+		if !ok {
+			emit(output{State: "error"})
+			os.Exit(2)
+		}
+		record["{{.Name}}"] = text
+	}
+	{{- end }}
+	{{- else }}
+	{{- if .Many }}
+	if value, ok := in["{{.Input}}"]; !ok {
+		missing = append(missing, "{{.Name}}")
+	} else if value == nil {
+		unresolved = true
+	} else if items, ok := value.([]any); !ok {
+		emit(output{State: "error"})
+		os.Exit(2)
+	} else {
+		values := make([]string, 0, len(items))
+		for _, item := range items {
+			text, ok := item.(string)
+			if !ok {
+				emit(output{State: "error"})
+				os.Exit(2)
+			}
+			values = append(values, text)
+		}
+		record["{{.Name}}"] = values
+	}
+	{{- else if or (eq .Primitive "std.decimal") (eq .Primitive "std.integer") }}
+	if value, ok := in["{{.Input}}"]; !ok {
+		missing = append(missing, "{{.Name}}")
+	} else if value == nil {
+		unresolved = true
+	} else if number, ok := value.(float64); !ok {
+		emit(output{State: "error"})
+		os.Exit(2)
+	} else {
+		record["{{.Name}}"] = number
+	}
+	{{- else if eq .Primitive "std.boolean" }}
+	if value, ok := in["{{.Input}}"]; !ok {
+		missing = append(missing, "{{.Name}}")
+	} else if value == nil {
+		unresolved = true
+	} else if flag, ok := value.(bool); !ok {
+		emit(output{State: "error"})
+		os.Exit(2)
+	} else {
+		record["{{.Name}}"] = flag
+	}
+	{{- else }}
+	if value, ok := in["{{.Input}}"]; !ok {
+		missing = append(missing, "{{.Name}}")
+	} else if value == nil {
+		unresolved = true
+	} else if text, ok := value.(string); !ok {
+		emit(output{State: "error"})
+		os.Exit(2)
+	} else {
+		record["{{.Name}}"] = text
+	}
+	{{- end }}
+	{{- end }}
+	{{- end }}
+	if unresolved {
+		emit(output{State: "unresolved"})
+		return
+	}
+	if len(missing) > 0 {
+		encoded, _ := json.Marshal(missing)
+		emit(output{State: "missing", Text: string(encoded)})
+		return
+	}
+	encoded, _ := json.Marshal(record)
+	emit(output{State: "present", Text: string(encoded)})
+}

@@ -11,6 +11,20 @@ file edit・CLI・Studio・AIのどの入口から来た変更candidateも、同
 - AIによる候補生成、Studio UI、read-only探索そのものは含みません。これらはcandidateの生成側です。一方、`ISSUE-000047`で`applicable`になったqualification結果は、exactなsubject・source・fingerprint・requirementsをEvidenceとしてcandidateへ付与できます。requirementsが明示的なdependencyを含む場合は、そのdependencyのauthoritative sourceとfingerprintも必要な範囲だけ保持します。このtoolはPreview時に同じrequirementsで再qualificationし、現在も適用可能かを確認します。
 - Gate B / Gate CのBaseline Evidenceは、その判定時のrevisionに固定されたhistorical Evidenceです。current `reference/workspace`を永久凍結する意味ではありませんが、baseline名のworkspaceへの誤書込みを避けるため、`accept`は`-allow-reference-baseline`が無い限り拒否します。通常はscratch copyで検証し、post-Gate-CのintentionalなReference更新だけをexplicit decision + flagで行います。Second Applicationの別生成AIレビューは2026-09-21に完了し、`review-clear-with-conditions`となりました。実際の`reference/workspace`へのacceptには、なおexact Proposalに対するexplicit human Acceptance decisionが必要です（`ISSUE-000040`）。
 
+`-workspace`に`reference/workspace`を指すシンボリックリンクを渡した場合も、同じbaseline書込み保護を適用します。パスの字面だけでなく、存在するworkspace rootのリンク解決先を確認します。このガードは意図しないbaseline更新を避けるためのもので、任意の不正なfilesystem構成を隔離するセキュリティサンドボックスではありません。受理に必要な人の判断・review fingerprint・明示フラグはそれぞれ別の条件です。
+
+`-out`と`accept -derived-out`も書き込み先です。たとえ`-workspace`がscratchであっても、出力先が`reference/workspace`配下のファイル、または派生Golden `reference/world.json`を指す場合は、`-allow-reference-baseline`なしでは実行前に拒否します。既存ファイル、新規出力先、workspaceへのシンボリックリンクや`..`を経由する表記も対象です。一方、**解決先が保護対象外と確認できる通常の出力ファイルへのシンボリックリンクは許可**します。宛先を解決できないdangling / cyclicな出力ファイルのリンクは安全を確認できないため拒否します。実際にbaselineを更新する場合は、ファイルの用途と受理判断を確認したうえで明示フラグを指定します。保護対象のパス表記では大小文字を保守的に同一視するため、大文字・小文字を区別するfilesystemでは似た名称の無関係な出力先まで拒否することがあります。この判定は誤操作防止であり、並行したファイル差替えやHard Linkを含む敵対的なfilesystemへの完全な隔離保証ではありません。
+
+`accept`の`-out`と`-derived-out`を同じ実ファイルに向けると、受理後に生成したWorld JSONをDecision JSONが上書きしてしまいます。そのため両出力先が同一なら、別名パス・シンボリックリンク・既存ファイルのハードリンクによる同一実体も含めて実行前に拒否します。この判定は`-allow-reference-baseline`を指定しても解除できません。WorldとDecisionは別々の出力先に指定してください。
+
+また、`accept -out`と`accept -derived-out`のいずれも、入力candidateと同一の実ファイルを指定できません。受理後にDecisionやWorldで候補JSONが上書きされると、検査した候補の再参照・再試行ができなくなるためです。シンボリックリンク、既存ファイルのハードリンク、大小文字の異なる表記を含めて出力前に検査し、`-allow-reference-baseline`でも解除しません。
+
+`preview`・`review`・`reject`の`-out`も入力`-candidate`と同じ実ファイルを指定できません。`confirm-check`・`confirm-record`では同様に入力`-input`を保護します。読み取り・判断記録の出力が提案や確認入力を破壊しないよう、同じinodeを指すハードリンクも含めて、candidateの解析やDecisionの記録に入る**前**に拒否します。この制約は明示的なbaseline更新フラグでも解除できません。候補を意図的に変換する`attach-*`・`propose-qualified-reference-pattern`等の操作では、従来の出力指定を維持します。
+
+`-workspace`がscratchであっても、`-out`・`accept -derived-out`を同じWorkspace内の**管理対象Source**（Source Indexに記録された`.tei` / JSON / YAML等）や`tei.workspace.yaml`、`.tei/plugin-lock.json`、`.tei/decisions/`、`.tei/confirmations/`に向けることはできません。これはBaseline固有の保護とは別の正本・Decision根拠保全規則で、`-allow-reference-baseline`でも解除されません。Acceptは受理後の再読込検査が終わってから派生物を出力するため、その出力でSourceを破壊すると検査済みのRevisionが失われます。逆に、Workspace内でも**管理対象ではない通常のレポート出力**は引き続き許可します。判定は既存のSource Indexから導出し、型別のSource拡張子をCLIへ二重登録しません。また、Source Indexに管理対象ファイルが存在するトップレベルのSourceルート配下では、**まだ存在しない新規ファイル**も出力として作成しないようにします。まだファイルが一つも存在せずSource Indexに現れない空のSourceルートについては、現段階でこの方法による推論はできません。この出力ガードは同時書換えへの原子的保証ではありません。
+
+入力candidateを意図的に置換する変換操作でも、**独立した根拠の入力**は保護します。`attach-qualification`の`-qualification`、`propose-qualified-reference-pattern`の`-qualification`と`-reference-reuse`、`attach-semantic-evaluation`の`-semantic-evaluation`、`attach-rmt-transcription`の`-rmt-transcription`と同じ実ファイルを`-out`に指定した場合は事前に拒否します。既存ファイルのハードリンクで同じ実体を指す場合も拒否します。候補とEvidenceを区別し、提案生成時に資格確認・評価・転写の原本を消さないためです。候補自身への意図的なin-place変換は引き続き許可します。
+
 ## 受入境界
 
 ```text
@@ -43,6 +57,7 @@ go run ./tools/reference-shared-acceptance propose-qualified-reference-pattern -
 go run ./tools/reference-shared-acceptance revision -workspace DIR
 go run ./tools/reference-shared-acceptance preview  -workspace DIR -candidate FILE [-out FILE]
 go run ./tools/reference-shared-acceptance review   -workspace DIR -candidate FILE [-format text|json|html] [-out FILE]
+go run ./tools/reference-shared-acceptance compare-application-membership -before DIR -after DIR [-include-unvalidated-candidates]
 go run ./tools/reference-shared-acceptance accept   -workspace DIR -candidate FILE -expected-review-fingerprint SHA256 [-derived-out FILE] [-out FILE]
 go run ./tools/reference-shared-acceptance reject   -workspace DIR -candidate FILE [-reason TEXT] [-out FILE] [-allow-reference-baseline]
 go run ./tools/reference-shared-acceptance decisions -workspace DIR [-out FILE]
@@ -53,6 +68,22 @@ go run ./tools/reference-shared-acceptance decisions -workspace DIR [-out FILE]
 - `revision`: workspaceの現在のmodel revision（管理対象source全fileの相対pathと内容fingerprintから導出）を出力します。candidateの`baseModelRevision`にはこれを使います。
 - `preview`: sourceを一切書き換えずに、各stageの結果・Semantic Diff・impact・unresolvedを出力します。受理可能でなければ終了コード1です。
 - `review`: `preview`と同じread-only評価を使い、承認時に確認する内容をA1〜A8の順で表示します。既定は人が読むtextで、`-format json`を指定すると同じ内容を機械可読で出力し、`-format html`を指定すると同じ内容を1枚のHTMLで出力します。HTMLは外部のscript・stylesheet・font・imageを使わず、JavaScriptなしで読めます。権限差分とnative codeの残存箇所は現時点で専用評価がないため、推測で「変更なし」とせず`未評価`と表示します。
+- `compare-application-membership`: 二つのWorkspaceを読み、Semanticのsubject差分、Applicationの厳密な差分と、意味名前空間の利用順を区別しない限定候補を別々に標準出力へ表示します。候補が空でもSemanticや他の層に差分がないことを意味しません。どちらかに検証エラーがあれば既定では診断を返して終了1とし、候補を出しません。`-include-unvalidated-candidates`を明示した場合は、元の診断と`workspaceValidationPassed: false`を保持し、差分計算が可能なら未検証候補も表示しますが、終了1のままです。読込み自体に失敗した場合は続行できず、差分計算が失敗した場合も候補を返しません。`-out`は受け付けず、SourceやDecisionを変更しません。**受理用PreviewやDecisionではなく**、受理・互換性・影響なしの判定には使えません。Semantic・Application以外の層、Sourceの並び、Targetへの影響、依存の網羅性、二つのWorkspaceが固定された同時点のsnapshotであることは確認しません。Validationの宣言順と重複は保持します。
+
+この比較はSemantic差分がある場合、既存の限定的な影響候補と未解決事項も表示します。型変更では、直接の型別名・Attribute・Database Contract Query入力をexact IDで探し、変更・削除前の参照も区別して示します。推移依存、未走査の参照、保存データや移行への影響は未確認で、候補が空でも影響がないとは判断できません。
+
+`changedCollections` はWorld直下のcollectionを粗く比較した名前の一覧です。Database等の変更をSemantic・Applicationの差分が空の場合にも見落としにくくしますが、詳細な差分・依存関係・互換性の分析ではありません。検証エラーで既定の比較が停止した場合や比較に失敗した場合、この一覧から変更なしと判断できません。
+
+`contractCandidates` は変更されたDatabase Contractについて、前後それぞれのApplicationのContract要求、Application ReleaseのContract要求、reference PatternのContract Query呼び出し、Database Releaseの提供Contract、Solution ReleaseのContract gate、header-detail Binding、Executor Binding、SQL realizationの明示参照を候補として表示します。DatabaseとContractの完全一致で拾い、Queryを持つ候補にはQuery名を添えます。Contract単位の比較なので、変更箇所以外のQueryも同じContractに属せば保守的に表示します。その他の参照、動的依存、実行結果、互換性は未確認であり、候補が空でも影響なしの証明ではありません。Release記録と現在定義のmajor不一致（例：現行がv5.0でRelease記録が4.xを提供）は `validate` では診断されず、候補にだけ現れます。Solution Releaseのgateは、Application Releaseの前提としてだけ `validate` のrelease compilationで照合され、現在定義との互換majorは照合されません。どのApplication Releaseからも使われないgateは、存在しないContractを指していても `validate` が成功します。ApplicationのContract要求とApplication ReleaseのContract要求は、現在定義と不変のReleaseスナップショットという別の宣言であり、同じ要求を両方が持っていても片方へ統合しません。現在定義だけが要求する場合と、履歴Releaseだけが要求する場合のどちらも参照を見落とさないためです。Application ReleaseのContract要求は、Application・Release major系統・datasource aliasごとに、そのContractを最後に宣言したReleaseだけを表示します。同じ系統のpatch/minor Releaseが同じ要求を繰り返しても重複表示せず、新しいReleaseで要求が落ちても最後に宣言したReleaseからは表示します。数値のmajor.minor.patchでないversionは順序付けできないため表示しません。同じApplication・同じmajorで明示的な系統識別子がない並行系統では最新宣言1件に集約されるため、この境界は `authorityLimits` の `contract-candidates-application-release-latest-declaration-per-major-line-no-explicit-line-identity` で示します。Database Releaseの提供Contractは、Database・Release major系統ごとに、そのContractを最後に提供したReleaseだけを表示します。同じ系統のpatch/minor Releaseが提供を繰り返しても重複表示せず、提供を最後に宣言したReleaseが履歴側にしかなくても表示します。数値のmajor.minor.patchでないversionは順序付けできないため表示しません。この境界は `authorityLimits` の `contract-candidates-database-release-latest-provider-per-major-line-no-explicit-line-identity` で示します。無効なWorkspaceでは既定で候補を出さず、明示的な未検証モードでも終了1と診断を維持します。
+
+`unreferencedUnsatisfiableGateCandidates` は、Solution Releaseの `database-gate` のうち、どのApplication Releaseからも前提として使われず（Database・Contract・互換majorが一致する要求がない）、かつ現在のContract定義にもDatabase Releaseにも互換majorを満たす提供がないものを、前後snapshot別に列挙します。どちらか一方だけに当てはまるgateは出しません。参照されるgateはrelease compilationで検査され、満たせるgateには提供元があるためです。参照・充足の判定は `internal/releaseplan` の前提解決と同じ互換majorの完全一致で行い、候補側だけで一致条件を緩めません。これは読み取り専用の観測であり、gateの正否、実行時のDeployment状態、動的な利用者、Providerの動作を示しません。候補が空でも問題なしの証明ではありません。無効なWorkspaceでは既定で候補を出さず、明示的な未検証モードでも終了1と診断を維持します。
+
+`applicationReleaseContractCandidates` は、Application Releaseが宣言したContract要求のうち、互換majorが現在定義のmajorと異なるものだけを前後snapshot別に列挙します。ApplicationごとのRelease major系統・datasource alias・Contractごとに、その要求を最後に宣言したReleaseだけを観測します。同じ系統のpatch/minor Releaseが同じ要求を繰り返しても同じ状態を何度も報告せず、より新しいReleaseが同じ要求を宣言すれば置き換え、新しいReleaseで要求が落ちても最後に宣言したReleaseからは報告します。minorの差は含めません。現在定義に存在しない要求は既存の `APPLICATION_RELEASE_CONTRACT_NOT_CURRENT` が扱うため、候補では繰り返しません。数値のmajor.minor.patchでないversionは順序付けできないため観測しません。同じApplication・同じmajorで明示的な系統識別子がない並行系統では、同じContractの要求は最新宣言1件に集約されます（過小報告）。この制約は `authorityLimits` の `application-release-candidates-latest-declaration-per-major-line-no-explicit-line-identity` で示します。現行Referenceでは候補は空です。現在のApplication要求が満たされていれば `validate` は成功するため、履歴Release側の `^4` と現在のv5.0のような向きの不一致を読み取り専用で可視化します。契約の存在・所有者だけを検査する既存診断を置き換えず、受理にも接続しません。動的な利用者、実行時のDeployment状態、Providerの動作は未確認であり、候補が空でも履歴Releaseの安全性を示しません。無効なWorkspaceでは既定で候補を出さず、明示的な未検証モードでも終了1と診断を維持します。
+
+`databaseReleaseContractCandidates` は、各Databaseの各major系統で最新のReleaseが提供するContractのうち、majorが現在定義より古いものを前後snapshot別に列挙します。同一系統の履歴Releaseをすべて繰り返すと同じ古い状態を重複して報告するため、系統ごとの最新Releaseだけを観測します。複数major系統の並行保守を隠しません。Databaseが異なれば同じmajorでも別系統として扱います。同じDatabase・同じmajorで明示的な系統識別子がない場合、候補はmajor単位で最新1件に集約され、低いversionの系統は報告されません（過小報告）。系統識別子は追加せず、別Databaseを系統の境界とする未対応境界として受理します。この制約は `authorityLimits` の `database-release-candidates-latest-per-major-line-no-explicit-line-identity` で示します。既存の `DATABASE_RELEASE_CONTRACT_AHEAD_OF_CURRENT_DEFINITION` が扱う先行方向の逆で、現在定義に存在しないContractは既存の `DATABASE_RELEASE_CONTRACT_NOT_CURRENT` が扱うため除外します。minorだけが古い提供は含めません。現在v4.2のReferenceでは候補は空で、Contractをv5.0へ上げると最新の4.2.0だけが `providedContractVersion` と `currentContractVersion: 5.0` 付きで変更後に出ます。Contractをv3.0へ下げると4.1.0と4.2.0は既存の先行警告だけになり、候補は空です。履歴Releaseの正否、実行時のDeployment状態、データ移行、Providerの動作は未確認であり、空の候補は問題なしの証明ではありません。受理条件は変更しません。`contractCandidates` の `database-release-contract-provided` は変更Contractを提供する全Database Releaseを影響範囲として列挙するのに対し、この候補は各major系統の最新Releaseが現在定義より古いmajorを提供する状態だけを見ます。同じReleaseが両方に現れても、変更影響と系統の古さという別の問いであり、重複ではありません。
+
+独立したWorkspace複製による負担比較では、無関係なContractのminor更新と対象Contractのminor更新で新しい3ビュー（gate・appRelease・dbRelease）はbaselineのまま、協調したmajor更新でdbReleaseが2件・appReleaseが1件だけ増え、未使用gateの追加でgateが1件だけ増えました。要求を更新しないmajor変更は既定で終了1・候補0件、`-include-unvalidated-candidates` でも終了1とエラー診断を維持します。対象は合成Referenceの5シナリオに限られ、実変更履歴や実利用者の負担を示しません。
+
 - `accept`: CLIからauthoritative sourceを更新する場合は、先に`review`で得た`reviewFingerprint`を`-expected-review-fingerprint`へ必ず渡します。同じ検査とReview Projectionを最初から作り直し、fingerprintが一致して受入検査も通った場合だけsourceを更新します。更新後はtoolを介さない共有loaderで再読込し、Previewが示した差分どおりか・Validationが通るか・派生物を決定論的に再生成できるかを確認します。一つでも満たさなければ元のsourceへ戻します。`-derived-out`にaccepted sourceから再生成したCanonical World JSONを書き出せます。
 - `reject`: authoritative sourceを変更せず、退けたcandidateをcontent-addressed Decisionとして`.tei/decisions/`へ記録します。staleなcandidateも退けられ、基準revisionとcurrent revisionの食い違いをDecisionへ残します。Decision ledgerはmanaged sourceではないためmodel revisionを変えません。Gate B / Gate Cのreference baselineへ記録する場合だけ`-allow-reference-baseline`が必要です。
 - `decisions`: accepted / rejected Decisionの記録を、現在のworkspaceと照合して出力します。workspace全体のrevision、Decisionが書いたsourceの有無・現在性、判断時に使ったEvidenceの現在性を別々に確認します。
@@ -75,6 +106,10 @@ CLIから`accept`する場合、`-expected-review-fingerprint`は必須です。
 
 `accept`はauthoritative sourceを更新したあと、その受理を`.tei/decisions/<内容のSHA-256>.json`へ残します。`reject`もsourceを変更せず、退けたcandidateと理由を同じcontent-addressed Decision ledgerへ残します。数か月後や別sessionのAIが、会話履歴だけに頼らず「なぜこのsourceがあるのか」「なぜこのcandidateは採用されなかったのか」を機械的に辿るためです。
 
+Decision ledgerの書込み・読取りも、Sourceと同じ`os.OpenRoot(workspace)`のルートに固定します。`.tei/decisions`またはその親がWorkspace外を指すシンボリックリンクであれば、記録を作らず、`decisions`もそのledgerを読まずに失敗します。記録は内容でaddressingするため、同じ名前が同じ内容なら成功、違う内容なら上書きせず拒否します。
+
+`accept`のSource更新は既に成立しているため、その後のDecision記録に失敗してもSourceを巻き戻しません。この場合`accept`はSourceが変わったaccepted Decisionを`recordPath`なし・`warnings`の`DECISION_RECORD_FAILED`付きで出力し、終了コード1で終わります。受理の成否と、根拠記録の永続化は別の事実として扱います。`reject`でも同じく、判定は出力したうえで記録失敗を終了コード1で知らせます。
+
 accepted Decisionには、fingerprintへ入らない`intent`と`evidence`、候補の同一性（`candidateFingerprint`）、基準と受理後のrevision、書いたfileとその前後のfingerprint、Semantic / Application差分、受理後Conformance、残ったunresolvedが入ります。rejected Decisionは同じcandidate / Evidence identityと判断理由を持ちますが、`sourceChanged=false`、`sourceEdits=none`です。stale candidateをrejectした場合は、candidateの`baseModelRevision`と判断時のcurrent revision、およびstale時の明示的な選択肢も保存します。
 
 ```bash
@@ -94,16 +129,103 @@ go run ./tools/reference-shared-acceptance decisions -workspace DIR
 - `reviewCoverageStatus`: `complete`、`incomplete`、`none`、`invalid`。受理時に記録したA1〜A8のcoverageを分類した結果
 - `reviewIncomplete`: 受理時に`partial`または`not-evaluated`だったsection。有効なReview bindingでだけ表示
 - `reviewDiagnostics`: Review bindingの不整合。A1〜A8の件数、Partial / NotEvaluatedの内訳、section code、Projection schema、Projection再計算fingerprint、coverage一致を検査する
-- `decisionActorStatus`: current Referenceでは`unresolved`。candidateの`origin.actor`やCLI実行者をDecision actorへ読み替えない
-- `decisionAuthorityStatus`: current Referenceでは`unresolved`。Review bindingやDecision recordの存在をauthoring authorityの証明にしない
+- `decisionActorStatus`: `unresolved`。OpenSSH署名witnessの検証がexactに成立した場合だけ`identity-resolved`に上がる（次節）。candidateの`origin.actor`やCLI実行者をDecision actorへ読み替えない
+- `decisionAuthorityStatus`: `unresolved`。witness検証がexactに成立した場合だけ`authority-qualified`に上がる（次節）。Review bindingやDecision recordの存在を、それ自体authoring authorityの証明にしない
+- `decisionWitnessStatus`: witness ledgerとこのrecordのbinding状態。`none / recorded / verified / invalid / conflicted`。詳細は次節
+- `witnessDiagnostics`: witnessのbinding・検証結果。`WITNESS_*`codeで失敗理由とqualified provenanceを残す
 - 読み込み時は、まずfile名のSHA-256と実内容が一致するかを確認し、その後にJSON/schema、Source、Evidence、Review bindingを検査します
 - 読めない記録があれば、黙って飛ばさずerrorにします
 
-この記録はauthorityではありません。`.tei/`はmanaged sourceではないため、accepted / rejectedのどちらの記録を置いてもmodel revisionは変わらず、全部消してもaccepted meaningは変わりません。同じfile名のまま内容を書き換えたrecordはcontent-address不一致として拒否します。正しいcontent-addressを持つ偽recordでもmeaningは動かず、現在のworkspaceとの照合結果が食い違いとして出ます（`record_test.go`）。content-addressは記録内容の同一性を確認するもので、誰が承認・拒否したかを証明する署名ではありません。current Referenceでは`decisionActorStatus`と`decisionAuthorityStatus`をともに`unresolved`として返し、Proposal originやReview identityから判断者を補完しません。`reviewBindingStatus=verified`も、人がReviewを読んだことの証明ではありません。保存されたProjectionとfingerprintの一致を確認したことだけを示します。`recorded`はProjection snapshotを持たない旧形式のため、元のReview内容までは検証できません。`RQ-027`のaccepted Decision到達性に加え、PV-AI-01ではrejected / stale candidateの追跡可能性として同じledgerを再利用します。
+この記録はauthorityではありません。`.tei/`はmanaged sourceではないため、accepted / rejectedのどちらの記録を置いてもmodel revisionは変わらず、全部消してもaccepted meaningは変わりません。同じfile名のまま内容を書き換えたrecordはcontent-address不一致として拒否します。正しいcontent-addressを持つ偽recordでもmeaningは動かず、現在のworkspaceとの照合結果が食い違いとして出ます（`record_test.go`）。content-addressは記録内容の同一性を確認するもので、誰が承認・拒否したかを証明する署名ではありません。current Referenceでは、witness検証configurationを与えない限り`decisionActorStatus`と`decisionAuthorityStatus`をともに`unresolved`のまま返し、Proposal originやReview identityから判断者を補完しません。`reviewBindingStatus=verified`も、人がReviewを読んだことの証明ではありません。保存されたProjectionとfingerprintの一致を確認したことだけを示します。`recorded`はProjection snapshotを持たない旧形式のため、元のReview内容までは検証できません。`RQ-027`のaccepted Decision到達性に加え、PV-AI-01ではrejected / stale candidateの追跡可能性として同じledgerを再利用します。
+
+### Decision witness — OpenSSH署名によるexact binding（Reference pressure、#974）
+
+Decision recordの本文全体へ、OpenSSH（ssh-keygen -Y sign / verify）の署名witnessを結び付けられます。`tools/internal/opensshwitness`のprovider libraryを利用します。witness記録は`.tei/decision-witnesses/<内容のSHA-256>.json`へcontent-addressedで置かれ、Decision / Confirmation ledgerと同じ`os.OpenRoot(workspace)`のcontainmentに置かれます。witnessは付加Evidenceであり、Canonical sourceではありません。削除してもmodel revisionもaccepted meaningも変わらず、`authority-qualified`なwitnessがあっても受理状態・Source書込みは変わりません（Evidence Gate 2026-10 §6）。
+
+```bash
+# 決定記録へのwitness署名と記録（Reference harnessの鍵）
+go run ./tools/reference-shared-acceptance witness-decision -workspace DIR \
+  -decision .tei/decisions/<SHA>.json -workspace-identity ws-ref-001 \
+  -key witness_ed25519 -witness-identity reviewer@example.test \
+  -witness-issued-at 20261028T120000Z
+
+# policyとpinned verify-timeを与えたときは、書込み直後に検証結果も出す
+go run ./tools/reference-shared-acceptance witness-decision ... \
+  -witness-allowed-signers allowed_signers -witness-verify-time 20261028120000Z
+
+# Decision ledger読み込み時にwitnessをrecord本文へ検証して分類する
+go run ./tools/reference-shared-acceptance decisions -workspace DIR \
+  -witness-allowed-signers allowed_signers -witness-verify-time 20261028120000Z \
+  [-witness-revocation krl]
+```
+
+bindingと検証の規則（fail closed）:
+
+- witness messageはDecision record本文（candidate / review binding / 基準revision / 決定semantics / 理由 / source scopeのdigest）から再導出します。recordの改変・飲み替えはdigest照合とprovider検証で検知します
+- namespaceをDecision record本文から決定論的に導出するため、policy側のnamespace許可がworkspace・semantics・scopeのexact bindingを確定します。policy・verify time・revocationはCLI flags（operator管理のboundary）だけから得て、workspace・candidate・recordの内容から補完しません
+- 構造的なbinding（本文digest・message digest・signature digestの一致）が通るだけでは`recorded`に留まり、actor / authorityは解決しません。provider不在・verify-time非対応でも同じです
+- providerが`authority-qualified`を出した場合だけ、`decisionActorStatus=identity-resolved`、`decisionAuthorityStatus=authority-qualified`に上がります。policy不一致・満了・失効・改変は拒絶として`WITNESS_PROVIDER_REJECTED`で残り、未解決のままです
+- 同一candidateに対しaccepted / rejected双方のwitnessがqualifiedになった場合、winnerを決められないため、両方`authority-conflicted`へ落ちます（Evidence Gate §10）
+- reviewBindingを持たないrecord（current Referenceのreject）はwitness対象になりません。E6のexact bindingにはreview Projection identityが必須であるためです
+- これはReference harness pressure（test供給の鍵・policy）であり、production identity providerではありません。provider SPIの採否判定（#974）は、この実装とは別に判断します
+
+### 確認の記録 — 一度答えた確認を繰り返さない
+
+確認とその答えを`.tei/confirmations/`へ派生物として記録し、同じ確認を理由なく繰り返さないための入口です（ISSUE-000074、RQ-016）。決定記録と同じく、managed sourceではなくmodel revisionに入らず、消しても意味は変わりません。消すと確認がもう一度出るだけです。Confirmation ledgerもWorkspace rootに固定し、`.tei/confirmations`がWorkspace外を指すシンボリックリンクなら記録・読取りを拒否します。
+
+```bash
+go run ./tools/reference-shared-acceptance confirm-record -workspace DIR -input answer.json
+go run ./tools/reference-shared-acceptance confirm-check  -workspace DIR -input query.json
+go run ./tools/reference-shared-acceptance confirmations  -workspace DIR
+```
+
+`confirm-check`は`ask: true / false`と理由を返します。判定に使うのは確認の種類と対象、答えた時点の前提(subjectを宣言しているfileのfingerprint)が今も同じかだけで、確認の文面と記録の古さは使いません。記録が無い、前提が変わった、記録が読めない、履歴が分岐している、答えが人によるものでない場合は、確認を出す側へ倒します。答えを変えるときは`supersedes`で先頭の記録を指定します。詳細と暫定判断はISSUE-000074を参照します。
+
+退けた提案は、`reject`が書いた決定記録へ`linkedDecision`で結び、人が退けた提案を、前提が変わるまで再び出さないための記録として残せます（`rejected-proposal`、暫定）。`reject`の出力と決定記録の形は変えていません。流れは次のとおりです。`jq`が無ければ、`reject.json`から`candidateFingerprint`と`recordPath`を読み取り、同じ値を入れてください。
+
+```bash
+# 1. 候補を退ける（既存の動作。.tei/decisions/ に決定記録が残り、出力に recordPath と candidateFingerprint が入る）
+go run ./tools/reference-shared-acceptance reject -workspace DIR -candidate candidate.json -reason "今回は見送る" -out reject.json
+
+# 2. 人の退けを、決定記録と候補のfingerprintへ結んで記録する
+#    identity.subject = candidateFingerprint / linkedDecision = recordPath / basisSubjects = 候補が触るCanonical subject（一つ以上）
+FP=$(jq -r .candidateFingerprint reject.json)
+REC=$(jq -r .recordPath reject.json)
+cat > rejected.json <<EOF
+{
+  "outcome": "rejected-proposal",
+  "identity": {"kind": "proposal", "subject": "$FP"},
+  "basisSubjects": [{"kind": "semantic-attribute", "id": "sales.order_line.unit_price"}],
+  "answer": "rejected",
+  "reason": "今回は見送る",
+  "decidedBy": {"kind": "human", "id": "owner"},
+  "linkedDecision": "$REC"
+}
+EOF
+go run ./tools/reference-shared-acceptance confirm-record -workspace DIR -input rejected.json
+
+# 3. 同じ候補を再び出す前に確認する（前提が同じで人が退けていれば ask: false）
+cat > query.json <<EOF
+{"kind": "proposal", "subject": "$FP"}
+EOF
+go run ./tools/reference-shared-acceptance confirm-check -workspace DIR -input query.json
+```
+
+注意点は次のとおりです。
+
+- `candidateFingerprint`は`baseModelRevision`を含みます。model revisionが変わった後に同じdeltaを出し直すと別のidentityになり、古い記録では抑制されず、確認が再び出ます（安全側）。
+- `reference/workspace`へは、`-allow-reference-baseline`なしでは`confirm-record`で書けません。
+- `linkedDecision`は、`.tei/decisions/<64桁の16進>.json`の形で、その決定記録が`reject`の決定（`decision: rejected`）であり、`candidateFingerprint`が`identity.subject`と一致するものだけを受け付けます。書くときも読むときも同じ確かめ方をします。決定記録が後から消された場合でも、確認の抑制は止まりません（決定記録は消せる派生物のため）。
+- `basisSubjects`は運用者が入力するもので、候補が実際に触れたsubjectとは照合していません。`reject`の決定記録は触れたsubjectを持たないため、この照合は今の形では行えません（ISSUE-000074のowner判断）。
+- `decidedBy`は呼び出し側の自己申告です。CLIは記録する人が人であることを検証しません。AIが`human`と書いた記録は、人の答えとして扱われます。
+- 前提のsubjectが宣言から消えた場合も、前提が変わったものとして`basis-changed`で確認を出します。
+- AIが退けた記録は抑制に使いません（`answer-not-by-human`）。
 
 ### knowledge qualificationからcandidateへの接続
 
-`tei knowledge-qualify`で候補を`applicable`と判定した場合、結果にはauthoritativeなsubject kind、Source Index identity、source path、source fingerprintが含まれます。required dependencyを明示した場合は、そのdependencyについてもDefinition / Authoring sourceとfingerprintを`dependencyEvidence`へ含めます。`attach-qualification`は、そのEvidenceと判定時のrequirementsを既存candidateへ付与します。requirementsは同じ共有正規化を通すため、空の`expectedKind`、不正なdependency指定、重複dependency、`expectedKind`と`subjectKind`の不一致をgrounded candidateとして出力する前にfail closedで拒否します。required dependencyのEvidenceが欠ける場合や、requirementsに無いdependency Evidenceが混入した場合も拒否します。
+`tei knowledge-qualify`で候補を`applicable`と判定した場合、結果にはauthoritativeなsubject kind、Source Index identity、source path、source fingerprintが含まれます。required dependencyを明示した場合は、そのdependencyについてもDefinition / Authoring sourceとfingerprintを`dependencyEvidence`へ含めます。`attach-qualification`は、そのEvidenceと判定時のrequirementsを既存candidateへ付与します。
+
+AI Builderが`tei knowledge-review-handoff`を利用した場合は、そのHandoff JSONを`-qualification`へ直接渡してもよい。adapterはHandoffのschema / purpose / routing scope / subject / Review Plan identity / fingerprintを検証し、`qualified-for-disclosure`かつ内包Qualificationが`applicable`の場合だけ、既存のQualification Evidence経路へ変換する。Handoff自体やDisclosure本文を新しいProposal Evidence schemaとして保存しない。requirementsは同じ共有正規化を通すため、空の`expectedKind`、不正なdependency指定、重複dependency、`expectedKind`と`subjectKind`の不一致をgrounded candidateとして出力する前にfail closedで拒否します。required dependencyのEvidenceが欠ける場合や、requirementsに無いdependency Evidenceが混入した場合も拒否します。
 
 ```bash
 go run ./cmd/tei knowledge-qualify \
@@ -116,6 +238,26 @@ go run ./cmd/tei knowledge-qualify \
 go run ./tools/reference-shared-acceptance attach-qualification \
   -candidate candidate.json \
   -qualification qualification.json \
+  > grounded-candidate.json
+
+go run ./tools/reference-shared-acceptance preview \
+  -workspace DIR \
+  -candidate grounded-candidate.json
+```
+
+Builder Review経路では、bare Qualification Resultを別に作り直さず、Handoffを同じ`-qualification`へ渡せる。
+
+```bash
+go run ./cmd/tei knowledge-review-handoff \
+  -workspace DIR \
+  -subject-kind application-pattern \
+  -subject-id order_entry.customer_reference \
+  -qualification-requirements requirements.json \
+  > review-handoff.json
+
+go run ./tools/reference-shared-acceptance attach-qualification \
+  -candidate candidate.json \
+  -qualification review-handoff.json \
   > grounded-candidate.json
 
 go run ./tools/reference-shared-acceptance preview \
@@ -214,11 +356,14 @@ Evaluation artifactはcandidateの意味を変えないため、`candidateFinger
 | `add-application` | Environment bindingを含まないApplication（semantic利用・Database requirement）を追加する | 新しい`applications/<dir>/application.tei`（`placement`必須） |
 | `add-reference-pattern` | reference Patternを追加する | 新しい`applications/<dir>/patterns/<file>.tei`（`placement`必須） |
 | `add-application-validation-use` | **既存の**Applicationが評価するValidationを`uses validation`として一件宣言する。宣言順が評価順になる（ADR-0029） | 既存のApplication source fileの、最後の`uses`宣言の後ろへ一行挿入（`placement`は必須で、そのApplicationを宣言しているfileに限る）。同じApplicationへの複数の宣言は、candidateが指定した順序を保つ（この順序はfingerprintにも入る） |
+| `set-symbol` | **既存の**subject（`data` / `attribute` / `relation` / `candidate-key` / `functional-dependency`）の表示名symbolだけを変える。Canonical IDは変えない | 対象subjectを宣言した既存semantic fileの、該当symbolトークン一件を置換（`placement`は持たない） |
+| `set-attribute-type` | **既存の**属性が指す型を、同じ基の表現を持つ別の型へ付け替える。属性のCanonical IDは変えない | 対象属性を宣言した既存semantic fileの、型参照トークン一件を置換（`placement`は持たない） |
 
+- 一つのcandidate内で`add-validation`と、そのValidationを使う`add-application-validation-use`を同時に記述できます。参照先のIDは既存のCanonical Worldまたは**同じcandidateで宣言された追加**から決定論的に解決し、未知のIDを黙って認めません。重複するoperation identityは既存の`normalizeCandidate`で拒否します。この経路は、業務規則だけを追加してApplicationが評価しない状態を避けるためのReferenceです。実装・テストが含まれるDraft PR #985の資格確認が完了するまでは、動作確認済みとは扱いません。
 - 新しいfileを作るoperationのplacementは、意味を所有する層のprefix（semantic / applications）とloaderが読む形式に合い、まだ存在せず、他のoperationと重ならない必要があります。PatternはそのPatternを所有するApplicationのdirectoryに置きます（loaderはApplication manifestと同じdirectoryの`patterns/`をそのApplicationのものとして読みます）。
 - `usesSemantic`や`databases`の順序は、authoredされたsourceの順序としてそのまま保ちます（入れ替えるとsourceとfingerprintが変わります）。
 - 変わるべきWorld collectionは、deltaの種類から導きます（semantic層のoperationは`semantics`、Application層のoperationは`applications`）。実際に変わったcollectionの集合とexactに一致しなければ拒否します。
-- 受理はfileを新しく作るため、失敗時は作ったfileと、そのために作ったdirectoryを削除して元へ戻します（既存fileへの挿入・追記は元のbyteへ戻します）。
+- 受理途中で失敗した場合、Shared Acceptanceが自分で書いた後のSourceバイト指紋を再検査し、一致するfileだけを元へ戻します（新規fileは削除、既存fileは元のbyteへ復元）。書込み後に他プロセスが内容を変えた可能性があるfileを無条件で上書きせず、復元できなかった場合は`ROLLBACK_INCOMPLETE`で明示します。
 - Relationの追加・変更では、Previewが端点（source / target Data）を実現するPersistence Mappingへの辺と、Relationの保存方法（relation storageが定義済み / keyのsource Attributeが列として実現済みで導ける / 未決定）を返します。未決定なら`RELATION_STORAGE_NOT_AUTHORED`として残し、この変更がPersistence Mapping・migrationを変えないことも示します。
 
 ## このtoolが示すこと / 示さないこと
@@ -230,19 +375,39 @@ Evaluation artifactはcandidateの意味を変えないため、`candidateFinger
 - staleなcandidateを黙って適用しない
 - 不正なcandidate（未知field / 存在しない参照 / 別layerへのplacement / 数値ではないAttributeへの`positive` / 宣言外の副作用）はsourceを変えずに拒否される
 - どの入口のcandidateも同じ`candidateFingerprint`・同じsource・同じCanonical Worldになり、AI固有のEvidenceがCanonicalへ入らない。同値なEvidenceは同じ`evidenceFingerprint`へ正規化され、Evidenceだけを変えてもsemantic fingerprintは変わらない
-- accept途中の並行変更・受理後Conformance失敗では、書いたfileを元へ戻す
+- accept途中の並行変更・受理後Conformance失敗では、**自分が書いたバイトのままのfile**について復元を試みる。書込み後に別Actorが変更した可能性のあるfileは上書きせず、`ROLLBACK_INCOMPLETE`と`sourceChanged=true`で未解決の状態を明示する。復旧完了を偽装しない（`desktop_external_process_race_test.go`）
 - 同じ意味を別fileへ移すだけならsemantic差分は出ず、論理的な改名はremoved / addedとして現れる
 - 派生物（Canonical World JSON）を消しても、accepted sourceから同じものを再生成できる
 - Environment binding: 既存のEnvironment fileへ`bind <application>.<alias> -> <instance>`を一行挿入します。Environment blockの閉じ括弧の直前へ入れ、内側のblock（`database-instance { … }`等）と取り違えません。挿入先は、そのEnvironmentを宣言しているfileに限ります。
 - `ISSUE-000046`が最小loopとして名指しするRelation変更（既存Data `sales.order_line`へ`order`を追加）について、Preview（Semantic Diff・exact dependencyのimpact・Persistence Mappingへの辺と保存方法が未決定であること）→ Reject → Accept → toolなしの再読込までを通し、変わるのは一つのfileの挿入した行だけである（`relation_test.go`）
 - Second Application `repair_intake`（改訂版S4 Proposal、SHA-256 `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d`）を、3つの型付きoperationとして表し、source・payload・candidate identityをS4 Proposalへ結び付けられる（`composition_test.go`）
-- そのcompositionをscratch copyへacceptすると、宣言した3 fileだけが作られ、Environmentは変わらず、受理後の再読込・Conformance・Previewとの差分一致が通る。並行変更・受理後Conformance失敗では、3 fileと作ったdirectoryを元へ戻す
-- 同じcompositionを実際の`reference/workspace`へPreviewすると全stageがPASSし、`reference/workspace`は変更されない（Previewの結果は`plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_IMPLEMENTATION_PACKET_2026-09.md`「実装記録」）
+- そのcompositionをscratch copyへacceptすると、宣言した3 fileだけが作られ、Environmentは変わらず、受理後の再読込・Conformance・Previewとの差分一致が通る。並行変更・受理後Conformance失敗では、作成後バイトが変わっていないfileとdirectoryの復元を試みる。外部変更の可能性があるfileは保護し、元の状態へ戻せなければ未完了と報告する
 - `ISSUE-000047`の`applicable`なqualificationをexact Evidenceとしてcandidateへ付与し、Preview時にcurrent Source Indexと同じrequirementsへ戻って再qualificationできる。required dependencyのauthoritative source / fingerprintもscoped Evidenceとして照合し、同じIDのdependency sourceが変わったcaseをfail closedにできる。requirements外のdependency Evidenceはhandoffしない（`qualification_handoff_test.go`）
 - Semantic Evaluation Evidenceをartifact-only Evidenceとしてcandidateへ付与し、内部Evaluation fingerprintと外側artifact fingerprintを二重に固定できる。`pass / fail / unknown`はReview A3/A7へ露出するが、candidate meaningやAcceptance authorityへ昇格しない（`semantic_evaluation_handoff_test.go`）
 - accepted / rejected Decisionが、会話履歴なしでworkspaceから読める。Decision Indexはworkspace全体の`current / superseded`、そのDecisionが書いたsourceの`intact / diverged / none`、判断理由に使ったEvidenceの集約statusとSource/artifact別statusを返す。stale rejectはrevision conflictも保持する。記録はauthorityではなく、消してもmodel revisionもaccepted meaningも変わらない（`record_test.go` / `semantic_evaluation_handoff_test.go`）
 - Environment binding（`add-environment-binding`）をApplication意味の変更と分けて扱える。差分は`environmentDiff`へ出て意味の差分は空のまま、変わるcollectionは`environments`だけ、impactはEnvironment / Application / database instanceへexact identityで辿り、権限が付かないことを`RUNTIME_AUTHORITY_NOT_GRANTED`として残す（`environment_test.go`）
 - そのbindingでも、層をまたぐ正しさ（unknown alias / unknown instance / target mismatch）は境界が再実装せず、共有Validationのdiagnosticとして`validate` stageに現れる
+
+Shared Acceptanceでauthoritative Sourceを書き込む経路は、`os.OpenRoot(workspace)`で開いたWorkspaceルートに固定し、入力元の相対Sourceパスを一貫してそのルートから開きます。書込み前には親ディレクトリと終端ファイルのシンボリックリンクを拒否し、一時ファイル作成・実際の置換・失敗時復元を`os.Root`の相対操作で行います。新規Sourceは`Root.Link`のcreate-only公開により、並行プロセスが作成した同名ファイルを上書きしません。書込み途中でHostがWorkspaceの親ディレクトリをWorkspace外へのリンクに差し替えても、`Root`により外部のファイルは書き換えません（#1529）。Decision / Confirmation ledgerの作成・公開・読取りも同じルート相対で行い、`.tei/decisions`・`.tei/confirmations`の外向きシンボリックリンクや、`linkedDecision`の終端シンボリックリンクを辿りません。
+
+ただし、この**書込み側のResource containment**は、Workspace読み込み時点のSource Reader（#1017）、review fingerprintと現権限の再確認、変更済みSourceの原子的Compare-and-Swap、複数Sourceの全体トランザクションを代替しません。また、`os.Root`はJS/WASM上でOSネイティブと同一の安全性を保証しません。実Wails Hostと、OS/ファイルシステム別の互換性は未検証です。
+
+Shared Acceptance の `accept` は、評価開始前に同じWorkspaceの`.tei-accept.lock`を`os.Root.OpenFile(O_CREATE|O_EXCL)`で排他的に作成し、Previewの再評価・Review指紋照合・Source更新・再読込・Conformance・失敗時復元を終えるまで保持します。別のCLI/Studio/AIなど**この共通Accept経路を使用する協調Writer**が同時に操作すると、後から来た受理は`SOURCE_ACCEPT_BUSY`として書き込まずに拒否します。これは実OSプロセス間でも働くReferenceで、待機・自動再送・ロック奪取はしません。
+
+- lockはSource Indexの対象外にあるHost作業制御の目印であり、モデルrevision・承認・利用者権限・リソース権限を代替しません。PIDは診断用、乱数はロック所有者の復元時識別用であり、どちらも権限トークンではありません。
+- プロセスクラッシュ時に残るlockは**自動削除しません**。PIDの再利用や経過時間から安全を推測せず、運用者が他の受理実行中プロセスの不存在とSource状態を確認した後にのみ明示削除します。連携するHostでは削除前後に再Reviewが必要です。
+- lock解除時には自分が取得したファイルの実体と所有マーカーを再照合し、別Actorが置換したファイルを消しません。解除に失敗した場合は、**Acceptanceの結果自体が確定済みでもcleanup未確認のerror**として呼出し側に伝えます。Sourceを勝手に再試行しません。
+- 外部エディター、Git、別のSource書込み実装はこの協調lockに参加しないため、**任意の独立Writerを排除するatomic CASではありません**。さらに複数Sourceのtransaction、プロセス強制終了後の永続的lease/ownership、ローカルホスト外の分散lock、OS別の安全性は別検証が必要です（#267、#1017、#1529）。
+
+### Workspace ManifestとReviewを結ぶ受理時の検査（#1529）
+
+モデルrevisionはSource Indexの管理対象ファイルの変更を表し、Workspace Manifest（`tei.workspace.yaml`、または`tei.workspace.tei`）の**コメントを含む実バイト**の変更を必ずしも表しません。Shared AcceptanceはWorkspaceの読み込み前後でManifestのバイト指紋を確認し、Review Projectionへ`workspaceManifestPath`・`workspaceManifestFingerprint`を組み込むことで、同じ意味の候補でも、Manifestだけを外部変更した場合は以前の`expectedReviewFingerprint`を再利用できないようにします。
+
+受理時には共通の`os.Root`からManifestの実バイトを各Source書込み前、書込み終了時、再読込後にも再検査します。変更があれば`SOURCE_MANIFEST_CHANGED_DURING_ACCEPT`として拒否し、既に書いたSourceについては既存の条件付きロールバックを実施します。このガードはCLI/Studio/AIごとに複製せず、同一のShared Acceptance内で実行します。Manifestの最大読込みは2 MiBに制限し、通常ファイルではないManifestを拒否します。
+
+**限界：** 実バイト検査は確認時点の事実であって、別のWriterによるManifest変更、旧内容への復元（ABA）、複数Sourceの同時書込みを原子的に拘束しません。SnapshotでのManifest観測とWorkspace Loaderの各Source読込みは同一のOSトランザクションではありません。Review fingerprintは人間の承認・権限を証明せず、`accept`の内部Reference呼出しで省略可能なことも変わりません。外部Writerが共通lockに協力しないケースは引き続き個別検証が必要です（#267、#1017、#1158）。
+
+既存の競合検出は、受理時の各Source書込み直前とロールバック開始時の**実バイト指紋**の再照合です。検査してから`os.Rename`等で置き換えるまでの時間差を消す原子的なcompare-and-swapではありません。親ディレクトリ・シンボリックリンク・inodeの同時差替えや、複数Writerの全体取引を防ぐ共有Source Authorityは引き続き未実装です（#1017 / #267）。`ROLLBACK_INCOMPLETE`がある場合には自動再試行せず、Sourceを再読込して人間の判断・競合解消を求めます。
 
 示さないこと:
 
@@ -259,3 +424,183 @@ go test ./tools/reference-shared-acceptance -count=1
 ```
 
 testはGate B / Gate Cのbaselineを変更せず、`reference/workspace`のscratch copyだけを使います。最初のtestは、scratch copyから得たCanonical Worldが`reference/world.json`とbyte単位で一致すること（実際のReferenceで試していること）を確認します。
+
+
+## 既存Dataへの候補キー・関数従属性の型付き追加（#1126）
+
+`add-candidate-key` と `add-functional-dependency` は、前段でSemantic DSLへ導入した**明示的な論理規則の追加**だけを、通常のShared Acceptance経路でPreview・Review・AcceptするためのReferenceです。既存DataのSource Indexに対応するauthoritative `.tei` ファイルを自動特定し、Dataの外側の閉じ括弧直前へ宣言を挿入します。規則内部に入れ子の波括弧があっても外側のDataを正確に識別し、元のソースの他のバイトを変更しません。
+
+```json
+{
+  "op": "add-candidate-key",
+  "addCandidateKey": {
+    "data": "sales.order_line",
+    "id": "sales.order_line.business_line",
+    "symbol": "businessLine",
+    "attributes": ["sales.order_line.order_line_id", "sales.order_line.line_number"]
+  }
+}
+```
+
+```json
+{
+  "op": "add-functional-dependency",
+  "addFunctionalDependency": {
+    "data": "sales.order_line",
+    "id": "sales.order_line.item_by_line",
+    "symbol": "itemByLine",
+    "determinants": ["sales.order_line.order_line_id", "sales.order_line.line_number"],
+    "dependents": ["sales.order_line.item_code"]
+  }
+}
+```
+
+上記は通常の`tei.reference.change-candidate/v0`における`delta`の要素であり、単独で受理できるJSONではありません。実行には`baseModelRevision`、`origin`、`intent`、現行Sourceに対応するEvidence、Review fingerprint、明示的Accept decision等の既存の条件が適用されます。
+
+- 未存在Data・属性、Data外の属性、重複属性、既存あるいは同じcandidate内で衝突する規則ID、識別子とsymbolの不一致、placementの偽装、混在したpayloadは拒否します。対象Dataの出所を解決できない場合にも、ほかのファイルへ恣意的に書き込まず停止します。
+- Previewは規則を`candidate-key:<id>`、`functional-dependency:<id>`として**異なるSemantic subject差分**に記録します。影響解析では対象Dataと使用属性の正確な参照を示し、`LOGICAL_BUSINESS_RULE_UNVERIFIED`で業務上の妥当性・候補キー最小性・物理PK/FK対応が未確認であることを残します。
+- 物理DBのPK/UNIQUE/FK/Index、Persistence Mapping、Migrationには変更を加えません。Canonicalな規則宣言が追加されることと、業務上の規則が実証・承認されることは別です。
+- 今回は**追加のみ**です。既存規則の変更・削除、ER図UI操作、実データ検証による保証、論理から物理へのmapping、自動DDL生成は未対応とし、無理に既存の`add-relation`や別操作で代用しません。
+
+
+## 新しいDataを追加する際の業務キーとFDの同時宣言（#1126）
+
+既存の`add-data`（新namespace / 新source fileを一つ作成）の`data` payloadに、任意の`candidateKeys`と`functionalDependencies`を追加できます。別々に`add-candidate-key`を後から適用する必要はなく、**属性を追加する同一候補の中で業務上の意味を明示**します。
+
+```json
+{
+  "op": "add-data",
+  "placement": "semantic/fulfillment/package_line.tei",
+  "data": {
+    "namespace": "fulfillment",
+    "id": "fulfillment.package_line",
+    "symbol": "PackageLine",
+    "attributes": [
+      {"id":"fulfillment.package_line.order_ref","symbol":"orderRef","type":"std.identifier"},
+      {"id":"fulfillment.package_line.line_no","symbol":"lineNo","type":"std.integer"},
+      {"id":"fulfillment.package_line.label","symbol":"label","type":"std.text"}
+    ],
+    "candidateKeys": [{
+      "data": "fulfillment.package_line",
+      "id": "fulfillment.package_line.business_line",
+      "symbol": "businessLine",
+      "attributes": ["fulfillment.package_line.order_ref","fulfillment.package_line.line_no"]
+    }],
+    "functionalDependencies": [{
+      "data": "fulfillment.package_line",
+      "id": "fulfillment.package_line.label_by_line",
+      "symbol": "labelByLine",
+      "determinants": ["fulfillment.package_line.order_ref","fulfillment.package_line.line_no"],
+      "dependents": ["fulfillment.package_line.label"]
+    }]
+  }
+}
+```
+
+このJSONは通常の`tei.reference.change-candidate/v0`の`delta`要素です。候補全体には引き続き`baseModelRevision`、`intent`、`origin`と正本Source Evidenceなどが必要で、実際のAcceptには既存のDecision条件が適用されます。
+
+宣言された論理規則の属性は、**同一`add-data`に明示されたAttributeに限る**ため、まだ存在しない別のDataや類似名から業務IDを推測しません。属性・Relation・key・FDの各IDの重複も拒否します。新しいDataの候補キー・FDは差分上も独立のsubjectになり、Source Indexには正確な宣言名の位置が入ります。候補キーやFDが空の場合は、従来の`add-data`と同じソースを出力します。
+
+これは**ソースへの宣言の受理**です。業務上の規則の検証や承認権限の真正性、物理PK/FK・Migrationの生成、ER図UI上の編集を意味しません。既存namespace内の新Data追加は従来どおり非対応であり、この拡張によって機能を増やしていません。
+
+
+## 候補キー／関数従属性の変更・撤回に伴う過去参照の扱い（#1126）
+
+既存のShared Acceptanceで型付きに追加できる候補キー・関数従属性について、読み取り専用の影響解析を拡張しています。`tools/internal/changeanalysis.ImpactWithBefore(before, after, changes)` は、後状態だけでは失われる**撤回済み規則の旧Data・旧属性の参照**を、変更前のCanonical Worldから取り出してPreviewへ示します。新しい宣言への参照は従来どおり`semantic.*`、撤回・変更前の参照は`previous.semantic.*`で明確に区別します。
+
+規則の`removed`／`changed`ごとに`LOGICAL_RULE_RETRACTION_REQUIRES_REVIEW`を残し、下流の業務規則、候補キーの最小性、物理PK/FK等の影響を推測で「なし」にしません。宣言されていたはずの過去規則を旧Worldから見つけられない場合も`LOGICAL_RULE_PREVIOUS_DECLARATION_MISSING`で未確認を明示します。通常の追加は従来の影響解析と同じで、過去に存在しないリンクを合成しません。
+
+**この段階で撤回・更新の操作は解放していません。** 書き戻しに必要な規則本文の厳密な範囲、変更前ソース指紋の固定、旧規則の参照元への説明、権限ある意思決定の記録を確認してから別の型付き操作として導入します。今回の変更は差分と影響の読み取り境界に留まり、Source、実DB、DDL、Provider、Runtime authorityを変更しません。
+
+
+## 論理候補キー・関数従属性の撤回（#1126）
+
+既存Dataに明示された論理規則を撤回する型付き操作`remove-candidate-key`と`remove-functional-dependency`を追加しました。追加操作と同じ通常のShared Acceptanceで`Preview → Review → Accept`を行い、権限を省略する別ルートは設けません。
+
+```json
+{
+  "op": "remove-candidate-key",
+  "removeBusinessRule": {
+    "data": "sales.order_line",
+    "id": "sales.order_line.business_line",
+    "symbol": "businessLine",
+    "sourceFingerprint": "sha256:<current-source-file-fingerprint>"
+  }
+}
+```
+
+`remove-functional-dependency`も同じ`removeBusinessRule`オブジェクトを使います。`sourceFingerprint`は**対象Dataの現在の正本ソースファイル全体**から計算した実指紋が必要です。元Worldの`baseModelRevision`も従来どおり必須です。対象規則の実在、kind・Data・symbolの一致、Source Indexで一意の`definition`位置、Data所有元ファイルとの一致、ファイル指紋を確認してから編集候補を作ります。
+
+編集対象は正本Semanticソース中の、規則名トークンで厳密に同定された宣言ブロック１件のみです。行の途中の宣言、閉じ括弧後に別の内容がある場合、現行ソースと食い違う場合は曖昧な削除をせず拒否します。Previewの`SourceEdits[].removedText`は削除されるソース断片を示します。
+
+差分は`removed candidate-key:<id>`または`removed functional-dependency:<id>`として独立したsubjectに記録します。`ImpactWithBefore`を用いて撤回前のData/Attribute参照を`previous.*`の辺として保持し、`LOGICAL_RULE_RETRACTION_REQUIRES_REVIEW`で影響の再確認を要求します。規則を撤回しても、**物理PK、UNIQUE、FK、Index、Migrationが自動的に削除されるわけではありません**。
+
+このReferenceが成立させるのはソースの意図的な撤回と監査用の差分です。実業務で規則の撤回が妥当か、権限を持つ者が決定したか、既存DBの整合性がどう変わるかは別途確認が必要です。今回は同じ規則IDの改名・属性集合の変更・別kindへの変換は扱いません。
+
+
+## 既存subjectのsymbol改名（#1935）
+
+`set-symbol` は、既存subjectの表示名（source上のsymbol）だけを変更する型付き操作です。Canonical IDは変えません。対象はsymbolを持つ次のsubject kindです。
+
+- `data`（`data <symbol> { … }`）
+- `attribute`（`attribute <symbol> type …`）
+- `relation`（`relation <symbol> to …`）
+- `candidate-key`（`candidate-key <symbol> { … }`）
+- `functional-dependency`（`functional-dependency <symbol> { … }`）
+
+```json
+{
+  "op": "set-symbol",
+  "kind": "data",
+  "id": "sales.order_line",
+  "symbol": "Order_Line"
+}
+```
+
+- symbolから導かれるcanonical segmentがIDの最後のsegmentと一致する場合にだけ許可します。`OrderLine` → `Order_Line`、`customer` → `Customer`、`businessLine` → `BusinessLine` はいずれも同じsegment（`order_line` / `customer` / `business_line`）を導くため、改名しても同じsubjectのままです。
+- segmentが変わる改名（例: `sales.order_line` を `Item` にする）は、identifier（Canonical ID）を変えてsubjectを分裂させるため、normalizeで拒否します。存在しないsubject、`placement`の偽装、`data` payloadの混在、symbolが変わらない候補も拒否します。
+- 編集は、対象subjectを宣言した正本semantic file上の、そのsymbolトークン一件だけを置換します。Source Indexと同じ`semantic-<kind>`のdefinition anchorを厳密に一意で特定し、行の途中の類似名や同じsymbolを持つ別subjectは対象にしません。
+- 差分は`changed data:<id>`のように**同じsubjectのchanged**として現れます。追加・削除ではありません。変わるWorld collectionは`semantics`だけです。
+- 影響解析は、改名されたsubjectから宣言済みのexact identityを辿ります。Relationの改名では`semantic.relation.key.source` / `semantic.relation.key.target`でkeyのsource側・target側Attributeへの辺が、candidate-keyの改名では`semantic.candidate-key.field`でfield属性への辺が出ます。`ImpactWithBefore`により`previous.*`の辺と`RELATION_RETRACTION_REQUIRES_REVIEW` / `LOGICAL_RULE_RETRACTION_REQUIRES_REVIEW`も残り、旧宣言の再確認を要求します。
+- 論理規則（candidate-key / functional-dependency）の改名では、従来どおり`LOGICAL_BUSINESS_RULE_UNVERIFIED`が残ります。改名は宣言名を変えるだけで、業務上の妥当性・候補キー最小性・物理PK/FK対応を検証しません。
+- Previewはauthoritative sourceを変更しません。`Preview → Review → Accept`の通常経路だけを通り、権限を省略する別ルートは設けません。
+
+### #1804の名前置換Proposalからの変換
+
+#1804で導入されたsymbol付きidentityの名前置換Proposalは、`old` / `new`の表示名と対象subjectを持つ。これをこの候補へは、対象subjectのCanonical ID（`id`）と新しい表示名（`symbol`）を取り出し、`kind`をProposalが名指しするsubject種別へ対応させれば変換できる。生成器は設けず、対応は次のとおりである。
+
+| #1804のProposal | set-symbol |
+| --- | --- |
+| 対象subjectの種別（data / attribute / relation / candidate-key / functional-dependency） | `kind` |
+| 対象subjectのCanonical ID（不変） | `id` |
+| 新しい表示名 | `symbol` |
+
+たとえば、`sales.order_line` の表示名を `OrderLine` から `Order_Line` へ置き換えるProposalは、上記のJSON一件へ変換できる。変換後はbase revision、intent、正本Source Evidence、Review fingerprint、明示的Accept decisionなど、通常の`tei.reference.change-candidate/v0`の条件が適用される。Proposalの`old`表示名は候補には含めず、現行Canonical Worldのsymbolと突き合わせて改名かどうかを判定する（`SYMBOL_UNCHANGED`）。
+
+この境界が成立させるのは、**source上の表示名を変えることと監査用の差分**です。実行時の名称解決、外部キー名・列名・Generator契約への波及、rename migration、別fileへの移動やfile名の変更は扱いません。
+
+## 属性の型の付け替え（#1935）
+
+`set-attribute-type` は、既存の属性が指す型を、**基の表現が同一**の別の型へ付け替える型付き操作です。属性のCanonical IDは変えません。
+
+~~~json
+{
+  "op": "set-attribute-type",
+  "id": "sales.order_line.order_line_id",
+  "attributeType": "sales.order_id"
+}
+~~~
+
+- 型は完全なCanonical IDで指定します。source上の型参照も常に完全なCanonical IDです。
+- 基の表現とは、別名の型を`from`の連鎖でたどった終点です（`sales.order_id`も`sales.order_line_id`も`std.identifier`）。
+- 基の表現が異なる付け替えは`ATTRIBUTE_TYPE_REPRESENTATION_DIFFERS`でresolveが止めます。既存データの変換を伴うため、この操作では扱いません（意味の変更に伴う既存データの移行設計の「縮小」「再構成」）。
+- 宣言されていない型、存在しない属性、現在と同じ型、`placement`の指定、他のpayloadの混在も拒否します。
+- 編集は、対象属性を宣言した正本semantic file上の型参照トークン一件だけを置換します。位置は構文の`semantic-attribute-type`のanchorで厳密に一意に特定します。
+- 差分は`changed attribute:<id>`として現れます。変わるWorld collectionは`semantics`だけです。
+- 型の統合は意味の判断です。表現が同じでも自動では受理せず、`Preview → Review → Accept`の通常経路で人が受理します。
+
+### 確認していないこと
+
+- すでに型が異なっていた関連のキーが、付け替えで見えなくなる場合の警告は実装していません（#1806の影響一覧の診断で確認します）。
+- 既存データや物理スキーマの変更は扱いません。物理の格納型が同じ場合に限る前提です。この前提はこの操作では検査しません。
+- 実Workspaceでの`accept`後の再投影は未確認です。

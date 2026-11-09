@@ -1,27 +1,27 @@
-# M0.32 ProviderExpression Representation / Comparison Conformance
+# M0.32 提供元固有の式の表現と比較に関する準拠確認
 
 ## 目的
 
-M0.32では、ProviderExpressionに格納された文字列が「利用者が記述した式」なのか、「providerが内部表現から再構成した式」なのかを明示し、表記差だけを根拠に破壊的なSchema Changeを生成しない比較契約を固定します。
+M0.32では、ProviderExpressionに保存した文字列が利用者の記述した式なのか、提供元が内部表現から復元した式なのかを区別します。表記の違いだけを根拠に破壊的な構造変更を生成しないための比較規則を定めます。
 
-対象はIssue #54とADR-0012です。M0.31で導入した`Diff.Unresolved`を比較結果の安全な受け皿として利用します。
+対象はIssue #54とADR-0012です。比較結果を確定できない場合は、M0.31で導入した`Diff.Unresolved`に記録します。
 
-## representation
+## 表現の種類
 
-`physical.ProviderExpression`は次のrepresentationを区別します。
+`physical.ProviderExpression`では、次の二種類の表現を区別します。
 
 ```text
 authored
 provider-normalized
 ```
 
-`authored`はPersistence authoring等で利用者が記述したauthoritative textです。
+`authored`は、保存先の定義などに利用者が記述した、正本となる式の文字列です。
 
-`provider-normalized`はprovider自身の内部表現から再構成された比較用表現です。ここでいうnormalizedは数学的なcanonical formを意味しません。
+`provider-normalized`は、提供元が自身の内部表現から復元した比較用の文字列です。ここでいう表記統一は、数学的に一意な標準形になったことを意味しません。
 
-## normalization provenance
+## 表記統一の由来
 
-provider-normalized表現には、必要に応じて次のprovenanceを付与します。
+提供元が復元した表現には、必要に応じて次の来歴を付けます。
 
 ```text
 ExpressionNormalization
@@ -29,78 +29,78 @@ ExpressionNormalization
   ProviderVersion?
 ```
 
-`Authority`は、どのprovider-ownedな正規化・deparse契約で生成されたかを示します。
+`Authority`は、提供元が管理するどの表記統一・式の復元規則によって生成したかを示します。
 
-`ProviderVersion`は、その表現契約がprovider versionに依存する場合の比較範囲です。値を取得できない場合に推測で補いません。
+`ProviderVersion`は、表現の規則が提供元の版に依存するとき、どの版で比較できるかを示します。版を取得できない場合は推測で補いません。
 
-## Desired
+## 期待する構造
 
-Persistence MappingからDesired Physical Schemaへrealizeしたexpression key / predicateは`authored`です。
+保存先への対応付けから期待する物理構造として生成した式のキーと条件式は、`authored`になります。
 
-Sourceは前後空白を除く既存のauthor textを保持します。normalization provenanceは持ちません。
+式の文字列は前後の空白だけを除いて保持し、表記統一に関する来歴は付けません。
 
-Source Indexのauthoritative sourceは引き続きPersistence fileであり、provider-normalized表現へ置き換えません。
+入力元索引が示す正本は引き続き保存先の定義ファイルです。提供元が復元した表現へ置き換えません。
 
-## PostgreSQL Actual
+## PostgreSQLの実状態
 
-PostgreSQL catalog adapterが`pg_get_expr` / `pg_get_indexdef`系の経路から取得したexpression / predicateは`provider-normalized`として扱います。
+PostgreSQLの管理情報を読む接続部が`pg_get_expr`や`pg_get_indexdef`から取得した式と条件式は、`provider-normalized`として扱います。
 
-M0.32ではnormalization authorityを次に固定します。
+M0.32では、表記統一の規則を識別する値を次のとおり定めます。
 
 ```text
 postgresql-catalog-deparse
 ```
 
-現行CatalogReaderはserver versionをexpression provenanceとして返さないため、`ProviderVersion`は空のままです。
+この段階のCatalogReaderは、式の来歴としてサーバーの版を返しません。そのため、`ProviderVersion`は空のままです。
 
-versionを知らない状態で、異なるprovider-normalized textを「意味が違う」と断定しません。
+提供元の版が分からない場合、復元された文字列が違っても意味が異なるとは断定しません。
 
 ## 比較規則
 
-Provider / Dialectが異なる場合は明確な構造差です。
+提供元またはSQLの方言が異なる場合は、明確な構造差として扱います。
 
-Provider / Dialectが同じ場合は次の順に判定します。
+提供元とSQLの方言が同じ場合は、次の順に判断します。
 
-### source textが同一
+### 入力文字列が同じ場合
 
-representationが異なっても一致とします。
+表現の種類が異なっていても一致とします。
 
-これは数学的同値性の推測ではなく、比較対象のprovider-native text自体が一致しているためです。
+これは式の数学的な同値性を推測したのではなく、提供元固有の式の文字列が一致しているためです。
 
-### authored / authoredでsourceが異なる
+### 利用者記述どうしで入力が異なる場合
 
-異なるauthoring intentとして構造差とします。
+利用者が異なる式を記述した事実に基づき、構造差として扱います。
 
 TEIが一方をもう一方へ自動的にcanonicalizeしたものではないため、利用者が明示的に異なる式を書いた事実を保持します。
 
-### provider-normalized / provider-normalizedでsourceが異なる
+### 提供元が統一した表現どうしで入力が異なる場合
 
 次の条件をすべて満たす場合だけ構造差と確定します。
 
 - normalization authorityが同一かつ空でない
 - provider versionが同一かつ空でない
 
-同じ契約・同じversionのprovider-normalized表現で異なるtextが得られたためです。
+同じ規則と同じ版で復元したにもかかわらず、異なる文字列が得られたためです。
 
-version不明、authority不明、または契約が異なる場合は`Unresolved`とします。
+版または表記統一の規則が不明な場合や、規則が異なる場合は`Unresolved`とします。
 
-### authored / provider-normalizedでsourceが異なる
+### 利用者記述と提供元表現の入力が異なる場合
 
-信頼できるnormalizerをまだ通していないため`Unresolved`とします。
+信頼できる表記統一の処理をまだ経ていないため、`Unresolved`とします。
 
-この状態から`drop-index + add-index`を生成しません。
+この状態を根拠に`drop-index + add-index`を生成することはしません。
 
-### legacy representation
+### 旧形式の表現
 
-`Representation`が空の旧来データは、sourceが一致する場合のみ一致できます。
+`Representation`が空の旧形式のデータは、式の文字列が一致する場合に限って一致と判断します。
 
-sourceが異なる場合は、representationを推測せず`Unresolved`とします。
+文字列が異なる場合は、表現の種類を推測せず`Unresolved`とします。
 
-## migration safety
+## 移行時の安全性
 
-M0.31の契約どおり、`Diff.Unresolved`が残る場合はmigration SQLを生成しません。
+M0.31の規則に従い、`Diff.Unresolved`が残る場合は移行用SQLを生成しません。
 
-したがって、Desired authored textとPostgreSQL provider-normalized textが表記だけ異なる可能性のあるケースから、自動的なIndex drop/recreateへ進みません。
+したがって、期待する式とPostgreSQLが復元した式の表記だけが異なる可能性がある場合、自動的な索引の削除や再作成には進みません。
 
 ## 非目標
 
@@ -112,9 +112,9 @@ M0.31の契約どおり、`Diff.Unresolved`が残る場合はmigration SQLを生
 - collation / operator class等のnormalization（Issue #58）
 - Advanced Index DDL rendering（Issue #55）
 
-## Conformance
+## 準拠確認
 
-M0.32では少なくとも次を固定します。
+M0.32では、少なくとも次の条件を確認します。
 
 1. Desired expression / predicateは`authored`になる
 2. PostgreSQL Actual expressionは`provider-normalized`になり、authorityを保持する
@@ -129,6 +129,6 @@ M0.32では少なくとも次を固定します。
 
 ## 次の段階
 
-M0.32によって、ProviderExpressionの表現段階と比較契約はPhysical Schema上で明示されます。
+M0.32によって、式の表現の種類と比較規則が物理構造上で明示されます。
 
-次に必要なのは、Issue #59でprovider-ownedなoffline realization / normalization policyの所有場所を整理し、必要な場合にDesired authored textから比較可能なprovider-normalized representationを生成する境界を設計することです。
+次の課題は、Issue #59で接続を伴わない物理構造生成と表記統一の規則をどこで管理するか整理することです。そのうえで必要なら、利用者が記述した式から比較可能な提供元固有の表現を生成する境界を設計します。

@@ -207,3 +207,25 @@ func authorizationPatternByID(patterns []application.Pattern, id core.CanonicalI
 	}
 	return application.Pattern{}, false
 }
+
+func TestLegacyAuthorizationRejectsDifferentSubjectFromStore(t *testing.T) {
+	for _, subject := range []string{"subject-another-user", ""} {
+		t.Run("stored-subject-"+subject, func(t *testing.T) {
+			evaluations := 0
+			adapter := legacyauthorization.Adapter{
+				Store: authorizationStoreFunc(func(context.Context, string) (legacyauth.User, bool, error) {
+					return legacyauth.User{SubjectID: subject, RoleCode: "ADMIN"}, true, nil
+				}),
+				Rule: authorizationRuleFunc(func(context.Context, legacyauth.User, string, string) (bool, string, error) {
+					evaluations++
+					return true, "", nil
+				}),
+			}
+			got, err := adapter.Invoke(context.Background(), legacyauthorization.AuthorizationCapability,
+				legacyauthorization.Input{SubjectID: "subject-editor", Action: "edit", Resource: "order_entry.order_record"})
+			if err == nil || got.Outcome != "" || evaluations != 0 {
+				t.Fatalf("別主体の権限が評価されました: result=%+v err=%v evaluations=%d", got, err, evaluations)
+			}
+		})
+	}
+}

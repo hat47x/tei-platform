@@ -1,85 +1,119 @@
-# Plugin / Bundle
+# プラグインと配布一式
 
-TEIでは、Pluginを業務意味のprimitiveではなく、**Capabilityの実装を配布する単位**として扱います。
+> **構成に関する判断**：[ADR-0032](../plan/adr/0032-composition-kernel-replacement.md)は契約中心の合成を扱います。後続の[ADR-0043](../plan/adr/0043-target-native-artifacts-without-tei-host.md)により、TEI独自の共通Hostの構築は前提から外れました。この文書の固定された`CapabilityKind`、既存のPlugin実行・固定機構、`Host`という実装名は現行実装・参照経路の説明です。
+>
+> `internal/composition/`の試作を、すべての成果物に必須の本番実行基盤とはみなしません。既存の権限・副作用・結果伝播の検証証拠は、その接続範囲に限って有効です。
 
-## Identityを分ける
 
-次のIDは別物です。
+TEIでは、プラグインを業務上の意味を表す最小単位とはせず、**機能の実装を配布する単位**として扱います。
 
-- business Canonical ID — 例: `sales.order`
-- Capability ID — 例: `migration.atlas`
-- Plugin package ID — 例: `tei.migration.atlas`
+プラグインの実現方式と最適化を検討するときは、[Target別の実現・最適化要件（2026-11、設計候補）](../plan/design/PLUGIN_REALIZATION_AND_OPTIMIZATION_REQUIREMENTS_2026-11.md)を参照します。Contract/Provider選択、物理Artifact、実行時のAuthority、性能測定を別々に確認し、未実装・未実行の提案を現行Runtimeの保証とみなしません。
 
-EnvironmentはCapabilityへBindingし、特定package名を業務モデルへ埋め込みません。
+> **名前空間の設計候補（2026-10-26）**：予約ルートを`tei.*`とし、`tei.std.*`・`tei.experimental.*`・`tei.contrib.*`を区別する案を[設計候補](../plan/design/PLUGIN_NAMESPACE_AND_OPTIONAL_COMPOSITION_2026-10.md)に整理しています。これは現行の`std.*`や`tei.migration.*`の実装IDを変更した報告ではありません。既存ID、Lock、Consumerの移行は未実施で、契約・公開権限の正本は引き続き#951・ADR-0032の境界に従います。
 
-## Plugin Lock
+## 識別子を分ける
 
-Environmentが要求するPlugin / Bundleのcompatible majorから実装を解決し、Plugin Lockでexact versionとdescriptor fingerprintを固定します。
+次の三つの識別子は、それぞれ異なるものを表します。
 
-これにより、開発時に「たまたま見つかった実装」と本番で使う実装が暗黙に変わることを避けます。
+- 業務上の意味を識別する値。例：`sales.order`
+- 機能を識別する値。例：`migration.atlas`
+- プラグインのパッケージを識別する値。例：`tei.migration.atlas`
 
-Plugin LockはRuntimeで利用する実装を固定するためのものです。PluginをSourceから再構築するためのBuild入力まで、同じLockへ押し込みません。
+環境では、必要な機能とその実装を対応付けます。業務モデルに特定のパッケージ名を埋め込むことはしません。
 
-既存のformat 2 Plugin Lockは、Plugin version、descriptor fingerprint、必要な場合はartifact digestを固定します。SourceからbuildしたRuntime implementationを採用する場合は、exact Build PlanのfingerprintだけをPlugin Lockへ追加でbindし、build trace付きformat 3へ昇格します。
+## プラグインの実装を固定する
 
-Build PlanのSource closure、builder、dependency、parameterそのものはBuildArtifactLock側に残します。Runtime Plugin Lockは`buildPlanFingerprint`と`artifactDigest`を持つことで、選択した実装からexact buildへ逆追跡できるようにします。同じphysical artifactを複数のlogical Pluginが共有しても、PluginごとのBuild Plan fingerprintは失いません。
+環境が要求するプラグインや配布一式について、互換性のあるメジャーバージョンから実装を選びます。プラグインの実装固定情報には、厳密なバージョンと記述情報の照合値を記録します。
 
-format 2は読み取り互換を維持します。format 3へ移行しただけで、build traceを持たない既存Pluginまでself-build済みとみなしません。
+開発時と本番環境で、意図せず別の実装が選ばれることを防ぎます。
 
-## Capability negotiation
+実装固定情報が定めるのは、実行時に利用するプラグインです。ソースから再構築する際に必要な入力まで、同じ情報にまとめません。
 
-現在のarchitecture probeでは、Database Provider、Migration Provider、Deployment Executor、Observation Provider、Evidence Provider、SQL analysis等のCapabilityを明示的に解決します。
+既存の形式2では、プラグインのバージョン、記述情報の照合値、必要に応じて成果物の照合値を固定します。ソースから構築した実行用の実装を採用する場合は、正確な構築計画の照合値を実装固定情報に追加し、構築履歴を追跡できる形式3へ移行します。
 
-候補が欠けている場合や同じ優先度で複数存在する場合、TEIはheuristicに選ばずerrorとします。
+構築計画に含まれるソース一式、構築器、依存関係、引数の詳細は`BuildArtifactLock`側に残します。実行時の実装固定情報には`buildPlanFingerprint`と`artifactDigest`を持たせ、選択した実装から使用した構築条件まで追跡できるようにします。複数の論理的なプラグインが同じ物理的な成果物を共有しても、各プラグインの構築計画の照合値は保持します。
 
-## Bundle
+形式2との読み取り互換性は維持します。形式3へ移行しただけで、構築履歴のない既存プラグインまで自己構築済みとはみなしません。
 
-Bundleは互換性のあるPlugin requirementをまとめる配布上の便宜です。BundleそのものをSemantic Coreの新しいkindにはしません。
+## 利用する機能の解決
 
-BundleやPluginのlogical identityを、そのまま物理artifact、process、Wasm moduleの境界にはしません。一つのTarget artifactへ複数Plugin実装をまとめたり、同じartifactを複数のlogical Pluginから参照したりできる余地を保ちます。
+現在の構成検証では、データベースの接続、移行、配備の実行、状態の観測、検証根拠の取得、SQLの解析などに用いる機能の提供実装を、明示的に選びます。
 
-Targetごとのpackagingでは、Semantic / Capability上のidentity、version、Lock、provenanceを保ったまま、未使用実装の除外、共通runtimeの共有、artifactの重複排除、static linking、Wasmへの統合、lazy loading等を選べる構造を目指します。
+候補が見つからない場合や、同じ優先度の候補が複数ある場合は、推測で選ばずエラーとします。
 
-この最適化によってPlugin境界を消したことにはしません。diagnostic、Evidence、更新影響、Authorityは、最適化後も元のlogical Plugin / Capabilityへ逆追跡できる必要があります。
+検査する範囲は、環境が宣言する結び付け（配備実行・状態観測・検証根拠・データベースインスタンス・移行・機能）ごとに決まります。このうち**環境の機能は、いま `editor.sql_analysis` だけを能力と突き合わせています**。`editor.database_workbench` は既知の機能として受理されますが、対応する能力が無くても診断は出ません。この差は[実行記録](../plan/evidence/FEATURE_SELECTION_CHECK_ASYMMETRY_2026-11-08/README.md)にあります。検査を広げるかどうかは未決です。
 
-## Build / self-build
+## 配布一式
 
-Plugin descriptorをTEIで記述できることと、Plugin implementationをTEI自身で再構築できることは別です。
+配布一式は、互換性のあるプラグインの要求をまとめるための単位です。配布一式そのものを、意味を扱う中核の新しい概念種別にはしません。
 
-現行の`artifact`は、出来上がったartifactのdigest / signature / provenanceを記述できます。しかし、それだけではartifactを作ったSource、builder、build dependency、Target、parameterをRepositoryから再現できません。
+配布一式やプラグインの論理的な識別子を、物理的な成果物、プロセス、Wasmモジュールの単位と一致させる必要はありません。一つの実行先向け成果物に複数のプラグイン実装をまとめたり、一つの成果物を複数の論理的なプラグインから参照したりできる構造を保ちます。
 
-Plugin self-buildでは、次の経路を独立したBuild contractとして扱います。
+実行先ごとの配布形態では、意味や機能の識別、バージョン、固定された構成、出所を保ちます。そのうえで、未使用実装の除外、対象環境が既に提供するRuntime・ライブラリの利用、成果物の重複排除、静的リンク、Wasmへの統合、必要時の読み込みなどを選べる構造を目指します。
+
+実装をまとめても、プラグイン間の論理的な境界は残ります。診断結果、検証根拠、変更の影響、権限については、最適化後も元のプラグインや機能まで追跡できる必要があります。
+
+## ビルドとセルフビルド
+
+プラグインの記述情報をTEIで定義できることと、プラグインの実装そのものをTEIで再構築できることは別です。
+
+現行の`artifact`では、完成した成果物の照合値、署名、出所を記述できます。ただし、それだけでは構築に使ったソース、構築器、依存関係、実行先、引数をリポジトリから再現できません。
+
+プラグインの自己構築では、次の経路を独立した構築契約として扱います。
 
 ```text
-Plugin / implementation Source
-  -> Build inputs
-  -> Builder
-  -> Build Evidence
-  -> Artifact
-  -> Plugin Lock
-  -> Runtime
+プラグイン / 実装のソース
+  -> 構築に必要な入力
+  -> 構築器（Builder）
+  -> 構築の検証根拠（Build Evidence）
+  -> 成果物
+  -> プラグインの実装固定情報（Plugin Lock）
+  -> 実行環境（Runtime）
 ```
 
-Runtime dependencyとbuild-time dependencyも分離します。compiler、generator、SDK等を`requires plugin`へ混ぜ、実行時に不要な依存まで残す設計にはしません。
+実行時に必要な依存関係と、構築時に必要な依存関係も分けます。コンパイラ、生成器、開発用の道具などを`requires plugin`に混ぜ、実行時に不要な依存関係まで残す設計にはしません。
 
-self-buildは段階を分けて評価します。
+自己構築は三つの段階に分けて評価します。
 
-- SB-1: TEI sourceからPlugin packageを再構築できる
-- SB-2: Pluginの実行artifactを再構築できる
-- SB-3: TEI-native builderをstage0 seedから構築し、そのbuilderで再構築してconvergenceを確認できる
+- SB-1：TEIのソースからプラグインのパッケージを再構築できる
+- SB-2：プラグインの実行用成果物を再構築できる
+- SB-3：初期構築用の基底実装からTEI自身の構築器を作り、その構築器で再構築して収束を確かめられる
 
-stage0 seedは隠しません。seedのidentityとtrust boundaryをBuild Evidenceへ残します。
+初期構築に使った基底実装を隠しません。その識別情報と信頼の境界を構築の検証根拠に残します。
 
-TEI-native Pluginを優先してReference化しますが、Go、Rust、JavaScript、WebAssembly等の実装も禁止しません。言語ごとに別のPlugin modelを作らず、builder adapterを差し替えて同じSource → Build → Artifact契約へ載せます。
+TEIで実装したプラグインを優先して参照事例にしますが、Go、Rust、JavaScript、WebAssemblyなどによる実装も認めます。言語ごとに別のプラグインモデルを作らず、構築器への接続部品を切り替えて、同じソース・構築・成果物の契約を使います。
 
-Build可能であること、artifactをAccepted Plugin Lockへ採用できること、RuntimeでCapabilityをinvokeできることは別のAuthorityです。Build成功をAcceptanceやRuntime Authorityへ自動昇格させません。
+構築に成功したこと、成果物を受理済みのプラグインの実装固定情報へ採用できること、実行時に機能を呼び出せることは、それぞれ異なる権限に基づきます。構築の成功を、採用の承認や実行権限が得られたこととみなしません。
 
-詳細な作業契約は [ISSUE-000079](../plan/issue/000079-plugin-self-build.md) で管理します。
+### SB-1パッケージ構築の入力の受理契約
 
-## Runtime
+プラグインの記述情報には、`provides`、`requires`、`externalRequirements`、`runtime.args`、機能ごとの`actions`・`observations`・`evidence`・`databaseProviders`・`migrationTools`・`features`・`permissions`という、空のときに省略される配列があります。Goの実装では、これらがnilでも空の配列でも、同じ記述情報、同じ照合値、同じパッケージのバイト列になります。
 
-process Pluginは、Plugin LockだけでなくPermission Grant、Resource Binding、Sandbox Profile、Resource Lease、Supervisor ownership / fencing等の実行時境界を通ります。
+TEIで書いた構築器（`plugin-package-v1.transform.json`）は、入力のJSONに現れる項目の有無と順序をそのまま使って記述情報の照合値を再計算し、構築計画の値と照合します。そのため、次のとおり扱います。
 
-processはRuntime実装の一形態であり、Plugin化そのものがprocess分離を要求するわけではありません。Web Target等でprocess実行が成立しない場合は、builtin / linked implementation、browser-compatible WebAssembly、JavaScript host integration等、Targetが許容する実現方式を選べる必要があります。Targetが要求するRuntime機能を満たせない場合は、暗黙のfallbackで意味を変えず、build / Conformance段階でUnresolvedまたは非対応として扱います。
+- 受理する入力は、空の配列を省き、Goの`json.Marshal`と同じ項目順で書いたものです。Goの経路は、nil、空の配列、省略のいずれからも同じバイト列を出します。
+- `"provides":[]`のように空の配列を明示した入力は、上の十一項目のどれについても、照合値の不一致（`assert-equal failed`）で拒否します。出力は作られません。
+- 項目順だけが異なる入力も、同じ理由で拒否します。
+- これらの不一致を、構築器が黙って補正することはありません。
 
-詳しくは [Security / Trust Boundary](security.md) を参照してください。
+空の配列を省く汎用の演算を足して意味を揃える方法は、現時点では採りません。固定されたセルフビルドの実行エンジンは、未知の演算を実行前に拒否します。また、構築器のソースを書き換えると、そのソースの照合値と、過去のSB-3の検証根拠が指す構築器が変わるためです。必要になった場合は、新しいプロファイルまたは実行エンジンの版に束縛した正規化として、旧版の検証を保ったまま導入します。この正規化はまだ実装していません。受理・拒否の対応は、`internal/plugin/transform/plugin_empty_array_input_matrix_test.go`が現状のまま固定しています。
+
+実行できる検証例と、現在確認できている範囲は[プラグインの自己構築の参照事例](../reference/plugin-self-build/README.md)を参照してください。
+
+## 実行時の扱い
+
+別プロセスで動作するプラグインには、実装固定情報だけでなく、実行許可、資源の対応付け、隔離環境の設定、資源の利用権、実行管理者の所有権と世代確認などの境界も適用します。
+
+別プロセスでの実行は実現方式の一つであり、プラグイン化しただけでプロセス分離が必要になるわけではありません。ブラウザなどプロセス実行ができない環境では、組込み・リンク済み実装、ブラウザ対応のWebAssembly、JavaScriptによる実行環境との連携など、その実行先で利用できる方式を選べる必要があります。実行先が必要とする機能を満たせない場合は、別方式へ暗黙に切り替えて意味を変えません。構築や準拠性確認の段階で、未解決または非対応として扱います。
+
+汎用的な機能契約をアプリケーションの実行基盤で使う場合も、実装の選択機構そのものには実行権限を与えません。参照事例では、汎用的な提供実装を既存の環境計画にある機能へ明示的に対応付け、実際の呼出しは本番用実行基盤の登録機構へ戻します。この構成によって、汎用的な呼出しから実行許可、資源の利用権、成果物の検証、隔離環境などの既存の境界を迂回できないことを検証しています。
+
+この接続は移行用の参照事例であり、本番環境の`CapabilityKind`を置き換えたものではありません。また、本番の実行基盤が返す呼出しの来歴を、汎用的な呼出しの共通の検証根拠として渡す仕組みは未確定です。
+
+汎用的な機能の呼出しを実際の通信手段へ載せる際も、プロセス間の通信規約をすべての実装に共通するバイナリ規約とはしません。課題`ISSUE-000086`の参照事例では、既存のプロセス起動機構と、合成したローカルのHTTP通信という二つの方式を用います。どちらでも、契約、提供実装、実行先、データ形式の識別を通信手段から独立して保てるか確認しています。
+
+通信機構が要求内の識別情報をそのまま権限の根拠としないよう、両方式とも上流の`TransportDispatchPlan`と送信時の識別情報を照合します。一致しない場合は、プロセス起動やHTTP送信の前に停止します。受領記録には計画の照合値を残します。ただし、計画そのものを機能の準拠性や実行権限の根拠とはしません。
+
+現行のプロセス間の要求・応答では、最上位の識別情報として従来の`CapabilityKind`と`CapabilityID`を前提としています。HTTPによる参照事例にも本番用実行基盤の権限はありません。上流で機能を選択し、実行権限を確認してから計画を導出する一連の処理も、まだ実証していません。そのため、汎用的な機能を本番の通信機構へ統合できたとはみなしません。
+
+詳しくは[安全性と信頼の境界](security.md)を参照してください。

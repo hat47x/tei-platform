@@ -89,6 +89,12 @@ func indexWorld(s snapshot) worldIndex {
 				idx.relations[r.ID] = true
 				idx.subjects[string(r.ID)] = true
 			}
+			for _, k := range d.CandidateKeys {
+				idx.subjects[string(k.ID)] = true
+			}
+			for _, fd := range d.FunctionalDependencies {
+				idx.subjects[string(fd.ID)] = true
+			}
 		}
 	}
 	for _, app := range world.Applications {
@@ -114,24 +120,23 @@ func resolveCandidate(s snapshot, c Candidate) []Diagnostic {
 	fingerprints := s.fingerprints()
 
 	deltaApplications := map[core.CanonicalID]string{}
+	// A candidate may add a Validation and declare its use in one semantic change.
+	// Check the whole candidate rather than requiring the new Validation to exist
+	// in the baseline World. Unrelated or unknown IDs still fail closed.
+	deltaValidations := map[core.CanonicalID]bool{}
 	for _, op := range c.Delta {
 		switch op.Op {
 		case opAddApplication:
 			deltaApplications[core.CanonicalID(op.Application.ID)] = op.Placement
-		}
-	}
-	// 同じdeltaで追加するValidationは、`uses validation`の参照先として既に存在するものと同じに扱う（ADR-0029の確かめ方1）。
-	// ここで確かめるのは、参照先のIDが基準のWorldのValidation、または同じdeltaのadd-validationのIDと完全一致することだけである。
-	// overlay適用後のreloadとvalidate（UNKNOWN_APPLICATION_VALIDATION）は別の確認で、多層防御として残す。
-	deltaValidations := map[core.CanonicalID]bool{}
-	for _, op := range c.Delta {
-		if op.Op == opAddValidation {
+		case opAddValidation:
+			// normalizeCandidate already rejects duplicate operation identities.
 			deltaValidations[core.CanonicalID(op.ID)] = true
 		}
 	}
 
 	planned := map[string]string{}
 	seenNamespaces := map[core.CanonicalID]bool{}
+	seenBusinessRuleIDs := map[string]bool{}
 	for _, op := range c.Delta {
 		key := operationKey(op)
 		diag := func(code, format string, args ...any) {
@@ -190,8 +195,9 @@ func resolveCandidate(s snapshot, c Candidate) []Diagnostic {
 				diag("APPLICATION_NOT_FOUND", "application %s は存在しません（%s は既存のApplicationへ宣言を追加します）", u.Application, opAddApplicationValidationUse)
 				break
 			}
-			if !idx.validations[core.CanonicalID(u.Validation)] && !deltaValidations[core.CanonicalID(u.Validation)] {
-				diag("VALIDATION_NOT_FOUND", "validation %s は存在しません", u.Validation)
+			if !idx.validations[core.CanonicalID(u.Validation)] &&
+				!deltaValidations[core.CanonicalID(u.Validation)] {
+				diag("VALIDATION_NOT_FOUND", "validation %s は既存Worldにも同じcandidateにも存在しません", u.Validation)
 			}
 			if _, ok := fingerprints[op.Placement]; !ok {
 				diag("PLACEMENT_NOT_MANAGED_SOURCE", "placement %s は管理対象sourceではありません", op.Placement)
@@ -211,6 +217,27 @@ func resolveCandidate(s snapshot, c Candidate) []Diagnostic {
 				diag("RELATION_ALREADY_EXISTS", "relation %s は既に存在します", op.AddRelation.ID)
 			}
 
+		case opAddCandidateKey, opAddFunctionalDependency:
+			data, id, attrs := businessRuleOperationSubject(op)
+			if !idx.dataIDs[core.CanonicalID(data)] {
+				diag("DATA_NOT_FOUND", "logical business rule requires an existing Data %s", data)
+			}
+			if idx.subjects[id] || seenBusinessRuleIDs[id] {
+				diag("BUSINESS_RULE_ID_ALREADY_EXISTS", "business rule identity %s already exists or is repeated", id)
+			}
+			seenBusinessRuleIDs[id] = true
+			for _, attr := range attrs {
+				if !idx.attributes[core.CanonicalID(attr)] {
+					diag("ATTRIBUTE_NOT_FOUND", "business rule %s references unknown attribute %s", id, attr)
+				}
+			}
+			if _, ok := s.loaded.Sources["semantic-data:"+data]; !ok {
+				diag("DATA_SOURCE_NOT_FOUND", "no authoritative source identifies Data %s", data)
+			}
+
+		case opRemoveCandidateKey, opRemoveFunctionalDependency:
+			out = append(out, resolveBusinessRuleRetraction(s, op)...)
+
 		case opAddApplication:
 			if _, exists := idx.applications[core.CanonicalID(op.Application.ID)]; exists {
 				diag("APPLICATION_ALREADY_EXISTS", "application %s は既に存在します", op.Application.ID)
@@ -223,6 +250,11 @@ func resolveCandidate(s snapshot, c Candidate) []Diagnostic {
 			}
 			out = append(out, checkNewFile(s, fingerprints, planned, key, op.Placement, layerApplication, patternFilePattern, "applications/<dir>/patterns/<file>.tei")...)
 			out = append(out, checkPatternOwner(key, op, idx, deltaApplications)...)
+
+		case opSetSymbol:
+			out = append(out, resolveSetSymbol(s, op)...)
+		case opSetAttributeType:
+			out = append(out, resolveSetAttributeType(s, op)...)
 		}
 	}
 

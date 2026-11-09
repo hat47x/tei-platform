@@ -1,0 +1,109 @@
+package modelref_test
+
+import (
+	"fmt"
+	"testing"
+
+	"tei/internal/modelref"
+)
+
+func TestBadRefStillReportsItsEvidenceAndRuleConflict(t *testing.T) {
+	graph := fixture()
+	graph.Edges[0].To.Subject.ID = "not-present"
+	graph.Edges[0].Evidence = []modelref.Evidence{{Authority: "derived", ArtifactFingerprint: "sha256:source"}}
+	policy := append(rules(), modelref.Rule{Relation: "reads", FromKind: "function", ToKind: "data", AcyclicGroup: "unrelated"})
+	diagnostics := modelref.Validate(graph, policy)
+	for _, code := range []string{"missing-reference", "unbound-derivation-evidence", "conflicting-rule"} {
+		if !hasCode(diagnostics, code) {
+			t.Errorf("lost %s when other diagnostics were present: %#v", code, diagnostics)
+		}
+	}
+	policy = append(rules(), modelref.Rule{Relation: " ", FromKind: "", ToKind: "data"})
+	if !hasCode(modelref.Validate(fixture(), policy), "invalid-rule") {
+		t.Fatal("empty plugin rule accepted")
+	}
+}
+
+func TestIndexedValidationForThousandsOfDistinctSubjects(t *testing.T) {
+	const count = 4096
+	graph := modelref.Graph{Schema: "tei.modelref.v0"}
+	policy := []modelref.Rule{{Relation: "reads", FromKind: "function", ToKind: "data"}}
+	for i := 0; i < count; i++ {
+		id := fmt.Sprintf("data-%04d", i)
+		function := fmt.Sprintf("function-%04d", i)
+		graph.Nodes = append(graph.Nodes, node("data", id, "1"), node("function", function, "1"))
+		graph.Edges = append(graph.Edges, modelref.Edge{From: key("function", function), To: ref(key("data", id), "1"), Relation: "reads"})
+	}
+	if got := modelref.Validate(graph, policy); len(got) != 0 {
+		t.Fatalf("big valid graph: %+v", got[:1])
+	}
+	graph.Edges[count/2].To.Subject.ID = "missing"
+	if got := modelref.Validate(graph, policy); len(got) != 1 || got[0].Code != "missing-reference" {
+		t.Fatalf("big graph missing reference: %+v", got)
+	}
+}
+
+func BenchmarkValidate4096References(b *testing.B) {
+	const count = 4096
+	graph := modelref.Graph{Schema: "tei.modelref.v0"}
+	for i := 0; i < count; i++ {
+		id, function := fmt.Sprintf("data-%04d", i), fmt.Sprintf("function-%04d", i)
+		graph.Nodes = append(graph.Nodes, node("data", id, "1"), node("function", function, "1"))
+		graph.Edges = append(graph.Edges, modelref.Edge{From: key("function", function), To: ref(key("data", id), "1"), Relation: "reads"})
+	}
+	policy := []modelref.Rule{{Relation: "reads", FromKind: "function", ToKind: "data"}}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if ds := modelref.Validate(graph, policy); len(ds) != 0 {
+			b.Fatal(ds[0])
+		}
+	}
+}
+
+func TestNodeEvidenceOrderIsNotSemanticDifference(t *testing.T) {
+	before := fixture()
+	before.Nodes[0].Evidence = []modelref.Evidence{
+		{Authority: "source-observation", SourceToken: "a", ArtifactFingerprint: "sha256:first"},
+		{Authority: "source-observation", SourceToken: "b", ArtifactFingerprint: "sha256:second"},
+	}
+	after := fixture()
+	after.Nodes[0].Evidence = []modelref.Evidence{before.Nodes[0].Evidence[1], before.Nodes[0].Evidence[0]}
+	if ds := modelref.Diff(before, after); len(ds) != 0 {
+		t.Fatalf("unordered evidence created a false diff: %+v", ds)
+	}
+	after.Nodes[0].Evidence[1].ArtifactFingerprint = "sha256:changed"
+	if ds := modelref.Diff(before, after); len(ds) != 1 || ds[0].Kind != "evidence-changed" {
+		t.Fatalf("actual evidence change was ignored: %+v", ds)
+	}
+}
+
+func TestScopeKeyAndExplicitRefUseSameWhitespaceRule(t *testing.T) {
+	for _, scope := range []string{
+		" orders-v1", "orders-v1 ",
+		"\u00a0orders-v1", "orders-v1\u00a0",
+	} {
+		t.Run(fmt.Sprintf("%q", scope), func(t *testing.T) {
+			invalid := key("data", "order-line")
+			invalid.Scope = scope
+			g := modelref.Graph{
+				Schema: "tei.modelref.v0",
+				Nodes:  []modelref.Node{{Key: invalid}},
+			}
+			if _, issue := modelref.Resolve(g.Nodes, modelref.Ref{Scope: scope, Subject: invalid.Subject}); issue != "invalid-reference" {
+				t.Fatalf("explicit padded scope must be rejected, got %q", issue)
+			}
+			if !hasCode(modelref.Validate(g, nil), "invalid-node-key") {
+				t.Fatalf("node scope accepted even though explicit references reject it: %q", scope)
+			}
+		})
+	}
+
+	valid := key("data", "order-line")
+	g := modelref.Graph{Schema: "tei.modelref.v0", Nodes: []modelref.Node{{Key: valid}}}
+	if diagnostics := modelref.Validate(g, nil); len(diagnostics) != 0 {
+		t.Fatalf("valid hyphenated logical scope rejected: %+v", diagnostics)
+	}
+	if resolved, issue := modelref.Resolve(g.Nodes, modelref.Ref{Scope: valid.Scope, Subject: valid.Subject}); issue != "" || resolved != valid {
+		t.Fatalf("valid explicit scope did not resolve: resolved=%+v issue=%q", resolved, issue)
+	}
+}

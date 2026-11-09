@@ -1,0 +1,12 @@
+{
+  "expectedKind": "application-pattern",
+  "application": "order_entry",
+  "requiredDependencies": [
+    {
+      "direction": "outgoing",
+      "relation": "contract-query",
+      "kind": "database-contract-query",
+      "id": "master_data.customer/find_by_id"
+    }
+  ]
+}

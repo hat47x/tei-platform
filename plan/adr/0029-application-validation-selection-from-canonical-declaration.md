@@ -2,7 +2,7 @@
 
 - 状態: 採用
 - 日付: 2026-10-01（採用: 2026-10-06）
-- 関連Issue: [ISSUE-000073](../issue/000073-derive-validation-selection-from-canonical.md)（作業範囲）、[ISSUE-000072](../issue/000072-rule-change-hand-edit-count.md)（この欠落を見つけた静的読解の記録。研究に留保）、[ISSUE-000027](../issue/000027-ai-proposal-acceptance-boundary.md)（`APPLICATION_VALIDATION_SELECTION_NOT_CANONICAL`を最初に記録）
+- 関連Issue: ISSUE-000073（作業範囲）、ISSUE-000072（この欠落を見つけた静的読解の記録。研究に留保）、ISSUE-000027（`APPLICATION_VALIDATION_SELECTION_NOT_CANONICAL`を最初に記録）
 - 関連ADR: [ADR-0024](0024-business-lifecycle-ownership.md) / [ADR-0025](0025-transition-evaluation-and-conflict-result.md)（遷移ごとの`requires`。いずれも提案中）
 - 主担当要求: RQ-003 / RQ-013 / RQ-017 / RQ-021
 
@@ -129,4 +129,4 @@ Previewは、Validationが追加または変更されたとき（削除は対象
 1. 正本へValidationを一件足し、Applicationへ宣言を一行足すだけで、Target側のコードを変えずに、画面からの確定でその規則が評価される。
 2. 宣言を外すと、評価されないまま成功するのではなく、判定不能として返る。
 3. 既存のCommand scenario（成功、Authorization拒否、Validation不成立、Execution Error、Observation）の結果と、Evidence auditの期待値が変わらない。
-4. 手直しの箇所数は確認の基準にしない（[ISSUE-000072](../issue/000072-rule-change-hand-edit-count.md)、Product Value「価値の確かめ方」）。代わりに、1〜3の動作を、実際に動くscenarioで通して確かめる。
+4. 手直しの箇所数は確認の基準にしない（ISSUE-000072、Product Value「価値の確かめ方」）。代わりに、1〜3の動作を、実際に動くscenarioで通して確かめる。

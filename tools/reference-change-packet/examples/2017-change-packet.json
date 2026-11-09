@@ -1,0 +1,45 @@
+{
+  "schema": "tei.reference.change-packet/v0",
+  "id": "issue-2017-change-packet",
+  "issue": 2017,
+  "title": "作業票の検証と変更範囲の機械確認を追加する",
+  "level": "A2",
+  "base": "main",
+  "allowedPaths": [
+    "tools/reference-change-packet/**",
+    "tools/README.md"
+  ],
+  "forbiddenPaths": [
+    "reference/workspace/**",
+    ".tei/**"
+  ],
+  "verification": [
+    {
+      "name": "gofmt",
+      "run": "test -z \"$(gofmt -l tools/reference-change-packet)\"",
+      "timeoutSeconds": 120
+    },
+    {
+      "name": "go vet",
+      "run": "go vet ./tools/reference-change-packet/...",
+      "timeoutSeconds": 300
+    },
+    {
+      "name": "go test",
+      "run": "go test ./tools/reference-change-packet/... -count=1",
+      "timeoutSeconds": 600
+    }
+  ],
+  "stopConditions": [
+    "許可path外の変更が必要になった",
+    "reference/workspaceまたは.tei配下の変更が必要になった",
+    "検証環境が得られない、または検証が未実行のまま統合したい",
+    "意味の受理・権限・本番配備に関わる変更を含む"
+  ],
+  "evidence": [
+    "exact headとbase",
+    "変更fileの一覧",
+    "各検証の終了コードと出力",
+    "未検証の範囲"
+  ]
+}

@@ -32,6 +32,30 @@
 - Gate C Functional Evidence
 - Gate C Visual Evidence
 
+## 起動前の受理済みSource照合（#1119 / #1121）
+
+通常の複合Web Targetの起動関数 `runCombinedWebTarget(ctx, reader, args)` は、Hostから渡された `sourceacceptance.Reader` を `LoadVerifiedWorkspace` に渡し、成功した **同じ `Loaded.World`** でProjectionとRunnerを構築します。Reader欠落、受理失効、Application不一致、管理対象ファイルの追加・欠落やbyte fingerprint不一致は、HTTP HandlerとRunnerの生成より前に拒否します。B/R/Tのラベルはこの照合の代わりになりません。Readerを渡した経路では診断フラグとの併用も拒否します。
+
+照合するSource Indexは、再読込みではなく **Load時に固定したバイト列** から作ります（#1017）。次の点に注意してください。importを宣言するWorkspaceは、取り込み元の内容をSource Indexで識別できないため、`SOURCE_WORKSPACE_IMPORTS_UNBOUND` で起動前に拒否します（束縛ではなく拒否です）。Workspaceのmanifest（`tei.workspace.yaml`など）はSource Indexに含まれず、受理記録は束縛しません。`VerifiedWorkspace.Manifest` はLoad時の証拠として公開するだけです。複数ファイルの原子的な読込みと、管理対象に入らなかったファイルの検出は保証しません。
+
+**現時点のCLIは正式なHost受理元へ未接続です。** フラグを省略した通常起動は `SOURCE_ACCEPTANCE_READER_REQUIRED` で終了します。`.tei/decisions/` の記録や呼出元JSONから受理権限を生成しません。以下の既存合成fixture手順には `-diagnostic-unaccepted-source` を明示し、起動ログに `SOURCE_ACCEPTANCE_NOT_VERIFIED` を残します。この診断経路は製品G1の証拠に数えません。
+
+`tei_order_only` / `tei_repair_only` と凍結Worldの別実行ファイルは既存の診断Referenceのままで、今回のReader注入経路の対象外です。これらも正式な受理済みSourceを検証したTargetとは扱いません。
+
+回帰試験 `TestCombinedWebTargetSourceGateLiveProcesses` は、実Shared Acceptance CLIのscratch R1から合成Readerを作り、別OSプロセスで同じWeb起動コードを動かします。R1のHTTP 200・4 Validation・Command・合成Observation、旧R0、意味同一の空行R2、Reader欠落・失効・読取障害の起動拒否を検査します。これは**試験実行ファイルへの合成Reader注入**であり、配布CLIへの真正なHost Readerの接続、人的受理、実DB保存、dispatch時のHost Grant、起動後の失効、跨ファイルの原子的読込みは未実証です。G1/G2は未合格を維持します。
+
+### 暫定の受理印（D9）
+
+`-host-acceptance-store`が返す受理は、所有者の仮承認D9により`provisional`（印のない従来のDecisionは`unspecified`）です。正式な人的Acceptanceではなく、G合格・本番配備の根拠にしません。起動時に標準エラーへ`SOURCE_ACCEPTANCE_PROVISIONAL`（または`..._UNSPECIFIED`）の警告を出し、全HTTP応答に`X-TEI-Source-Acceptance-Kind`ヘッダを付けます。実行中に受理の種別が変わると、開始時の受理と一致しないため応答を止めます。詳細と見直し条件は[`reference-host-acceptance`](../reference-host-acceptance/README.md)を参照してください。
+
+## 受理済みSourceと実行時Host Grantは別のAuthority（#1119）
+
+通常の複合WebのHost起動経路では、Source Readerに加えて、独立した`HostEffectGrantReader`を注入できます。`Source Acceptance`が正常でも、`order_entry.submit_order`のCommandはHostの現在のEffect Grantが無い限り実行しません。HTTP入口のSource再照合に加え、実行直前のCommand Adapterが現在Sourceを再照合し、**authenticated subject / Action / Source Decision・Authority Revision / Model Revision**を一組としたHost Grantを要求します。受理失効、別Subject/Action/Revision、Grant失効、Reader欠落、Context取消は`HOST_EFFECT_GRANT_UNAVAILABLE`で状態更新前に拒否します。Host内部エラーの本文は公開しません。
+
+これは第二のGrant台帳や発行機構ではありません。Host Readerの真正性、Grantの発行・保存・取消、ProviderとDB内の原子的な権限＋効果のCommitは**未実装**です。既存`runCombinedWebTarget(ctx, sourceReader, args)`のみを使う場合、Sourceは一致してもEffect Readerが無いためCommandを拒否します。既存の明示`-diagnostic-unaccepted-source`は合成Scenarioの継続検証用であり、正式Host受理・Grantの証明ではありません。受理済みR1を用いる子プロセスのCommand正例テストは、**test executableだけ**に異なる二つの合成Readerを注入します。
+
+**開発・検証専用の暫定効果許可（D8）**: 明示の3つのフラグ`-provisional-effect-grant FILE`、`-provisional-effect-grant-trust FILE`、`-provisional-effect-grant-development-only`をすべて与えたときだけ、署名つきの暫定効果許可（[`reference-host-effect-grant`](../reference-host-effect-grant/README.md)が発行）を`HostEffectGrantReader`として使います。1つでも欠けるか、Hostが注入したReaderや`-diagnostic-unaccepted-source`と併用すると起動を拒否します。起動時にstderrへ`PROVISIONAL_EFFECT_GRANT_ACTIVE`の警告を出し、実行のたびにGrantと信頼ファイルを再検証します（失効・期限は再起動なしで効きます）。Subject・Resource（`order/<id>`）・Capabilityが署名と一致しない要求は拒否します。**本番の権限発行ではありません。** この許可を使って作るEvidenceのProvenanceは`provisional-grant`で、G2へ数えません。フラグ無しの既定経路は従来どおり、Commandを実行前に拒否します。
+
 ## 実行
 
 Target build revisionは実際に実行するcheckoutから取得します。
@@ -40,6 +64,7 @@ Target build revisionは実際に実行するcheckoutから取得します。
 TARGET_REVISION="$(git rev-parse HEAD)"
 
 go run ./tools/reference-first-web-target \
+  -diagnostic-unaccepted-source \
   -workspace reference/workspace \
   -application order_entry \
   -baseline-id B \
@@ -80,6 +105,7 @@ curl -sS -X POST http://127.0.0.1:8080/scenario/submit \
 
 ```bash
 go run ./tools/reference-first-web-target \
+  -diagnostic-unaccepted-source \
   -workspace reference/workspace -application repair_intake \
   -baseline-id B -baseline-revision e5231839a5dcc62cce1181a2731fcb7c70d16736 \
   -target-revision "$(git rev-parse HEAD)" -listen 127.0.0.1:8080
@@ -90,12 +116,15 @@ go run ./tools/reference-first-web-target \
 
 Customer IDから`repair_intake.intake.customer_id`のmapped rowを作り、`repair_intake.customer_reference`をDriverのEnvironment-aware Contract Query resolutionで実行します。`order_entry`が使う`customer.customer`の意味とContract Query（`master_data.customer`の`find_by_id`）を、コピーせず同じidentityで使います。
 
+JSON結果では、HTTP入力を`requestedCustomerId`として明示します。これは入力値を記録するruntime stateであり、business occurrence identifierの宣言ではありません。同様にRead Scenarioの`selectedRowIndex`はruntime上の選択位置です。mapped row、Contract Queryの結果row、個々のAttribute値も、それだけではbusiness identityのEvidenceになりません。`scenarioId`、`applicationId`、Environment、Instance、executor binding等のidentityも実行文脈を示すもので、business data identityとは別です。
+
 限界:
 
 - developmentのExecutorはsynthetic fixtureで、実Databaseへの接続ではありません。
 - productionにはContract Query executor bindingが無く、productionでは実行できません。developmentのExecutorへ代替しません。
 - 認証の門はありません（Reference診断用）。
 - Customer IDを整数へ変換するのはTarget内のfixture上の選択で、Canonicalな型規則ではありません。
+- `requestedCustomerId`、`selectedRowIndex`、mapped row、result rowをbusiness keyへ昇格しません。business identityはCanonical / accepted Evidence側で別に確認します。
 
 ## Authority boundary
 
@@ -140,7 +169,7 @@ custom-submit-validation-not-satisfied.html
 custom-submit-execution-error.html
 ```
 
-これはFunctional Evidenceの再現性を高めるためのartifactであり、Screenshot / Visual Fidelity Evidenceそのものではありません。Visual capture recipeの正本は `plan/GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md` です。
+これはFunctional Evidenceの再現性を高めるためのartifactであり、Screenshot / Visual Fidelity Evidenceそのものではありません。Visual capture recipeの正本は `plan/gate/GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md` です。
 
 ## Evidence高さ
 
@@ -183,4 +212,123 @@ Visualは `tools/reference-first-web-target-visual-evidence-audit`、architectur
 
 Semantic / Functional runner単独ではVisual Fidelity Evidenceを取得しません。Semantic / Functionalが成功してもsummaryは `visualEvidence.status = pending`、`gateCReady = false` のままです。Visual audit単独もGate C Readyを宣言しません。
 
-手順の正本は `plan/GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md` です。
+手順の正本は `plan/gate/GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md` です。
+
+## E1へ向けたApplication別のHTTP構成境界（実装準備段階）
+
+[#1167](https://github.com/hat47x/tei-platform/issues/1167)の実装準備として、`read_scenario.go`に同居していたOracle/PostgreSQLの共有Contract Query Fixtureを`reference_contract_query_fixture.go`へ切り出しました。これは`order_entry`と`repair_intake`が利用する同一実装であり、業務意味や契約を複製しません。
+
+さらに、受注用のHTTP read/commandレスポンス型・ハンドラーと`/custom-submit`のルート登録を`order_scenario_http.go`にまとめ、repair側の`/scenario/customer-lookup`・`/customer-lookup`のルート登録とHTTPハンドラーは`repair_scenario_http.go`へ配置しました。業務RunnerはHTTP依存を持たない`customer_lookup_scenario.go`に残しています。共通`server.go`の`Handler()`は二つの登録関数を呼び出します。
+
+共有行Projectionの型・変換は`read_scenario.go`から、独立Goパッケージ[`sharedprojection`](sharedprojection/README.md)へ移しました。`shared_semantic_projection.go`は従来の名前と関数署名を保つための型エイリアス・薄いラッパーだけを残し、受注Runnerと修理受付Runnerが型や変換処理を複製せず利用できるようにしました。新しいパッケージはWorkspace LoaderやLegacy認証・認可を直接参照せず、Goの依存閉包についても専用テストで負例を固定します。さらに、`repair_intake`のExecutor Registryは顧客参照用Oracleだけを登録する構成へ縮小しました。`order_entry`ではOracle顧客参照とPostgreSQL明細参照の両方を引き続き登録します。`runner_transport_boundary_test.go`で業務RunnerソースへのHTTP/JSON Transport import混入を拒否し、`reference_contract_query_fixture_test.go`で二Applicationの登録範囲を検査します。**これらのテストは最新PR HEADでは未実行です。**
+
+**現行の第一Web Targetは、従来どおり両Applicationのルートを登録する一つのGo `package main`です。** 未設定RunnerへのHTTP 503、非対応methodへの405、存在しないパスへの404を維持するための回帰テストを追加しました。この整理のみで不要なGo実装がコンパイル・リンクから除外されたとは言えません。
+
+さらに、`webTargetServer.ScopedHandler()`を**オプトインの参照構成**として追加しました。ProjectionのApplication IDが`order_entry`なら受注用、`repair_intake`なら修理受付用のルートだけを登録し、他方のHTTPパスは404になります。不明なApplication IDや、別ApplicationのRunnerが混入した構成はHandlerを返さず失敗します。一方、従来の`Handler()`はGate C用の複数Application診断ルートを変更せず維持します。`scoped_routes_test.go`ではルート非公開・Runner混入拒否を、`scoped_parity_test.go`では同じ実Workspace fixtureを使ったread/Command/認証・認可拒否/Execution Error/customer lookupのHTTPレスポンスと想定ステータスの同等性を回帰条件にしています。**これらの追加テストは現HEADでのPASS未取得**であり、Goソースの物理的な分離を証明するものではありません。
+
+現行Go CLIでも、診断時に`-scoped-routes`を指定すると選択Applicationのルートだけを公開できます。省略時は従来の複数Application診断ルートを保ちます。
+
+```sh
+go run ./tools/reference-first-web-target \
+  -diagnostic-unaccepted-source \
+  -workspace reference/workspace \
+  -application order_entry \
+  -baseline-id B \
+  -baseline-revision "$ACCEPTED_BASELINE_R" \
+  -target-revision "$(git rev-parse HEAD)" \
+  -scoped-routes \
+  -listen 127.0.0.1:8080
+```
+
+これは**HTTPルートの公開面積を狭めるだけ**です。同じ実行ファイル内の未選択Application実装のGo依存・権限・Secretが消えたわけではないため、E1の物理除外や本番のAuthorization境界として受け入れないでください。
+
+E1で異なるApplication向けバイナリを成立させるには、共通Transportの契約とApplication固有Route/Runnerの依存を**別Goパッケージとcompile-time entry**へ分離し、その上で既存Gate CのBusiness Result・Execution Error・Observation・Authorizationについて差分回帰を行う必要があります。物理除外は`go list`だけでなく実`go build`・`go tool nm`・成果物digestで確認します。実配備機構や第二のProvider Resolverをここで増設しません。
+
+## Application別コンパイル時Go入口（E1実装・要実行検証）
+
+従来のタグなし`package main`はGate C用の複合Reference Targetとして残しています。
+試験用の`tei_order_only` / `tei_repair_only`で、それぞれのApplication固有Runner・HTTPルート・画面Template・単独`main`をコンパイル時に選択します。
+
+```sh
+# 通常の複合Target: 従来のGate C互換を維持
+go test -count=1 ./tools/reference-first-web-target
+
+# 専用Target: Applicationを別の起動引数へ変更することはできない
+go test -count=1 -tags=tei_order_only ./tools/reference-first-web-target
+go test -count=1 -tags=tei_repair_only ./tools/reference-first-web-target
+go build -trimpath -ldflags=-buildid= -tags=tei_order_only \
+  -o /tmp/tei-order-entry ./tools/reference-first-web-target
+go build -trimpath -ldflags=-buildid= -tags=tei_repair_only \
+  -o /tmp/tei-repair-intake ./tools/reference-first-web-target
+
+# 同じclean HEAD / Goプロファイルでsource closure・バイナリ・SHA・nmを一括観測
+bash tools/reference-first-web-target/measure_tagged_targets.sh \
+  /tmp/tei-first-web-e1-evidence-NEW
+```
+
+出力先は未作成の絶対パス、リポジトリ外にしてください。計測スクリプトは前後のcheckout clean、HEAD不変、実`go list`によるGoFile選択、3種類の`go build`、`go tool nm`、byte数、SHA-256、およびE0比較JSONを記録します。失敗時は結果を正規Evidenceとみなしません。Goコードによる`tagged_source_selection_test.go`でも、3種類のGoFile集合と相手Applicationの実装除外を検証します。
+
+`repair_intake`専用バイナリについては、同一Goパッケージの受注専用ソース除外に加え、E0の実import閉包に`tei/internal/security/legacyauth`と`tei/internal/security/legacyauthorization`が**存在しない**ことを検査します。複合版・受注専用版には両方が存在することも確認し、検査の空振りを防ぎます。さらに実バイナリの`go tool nm`で修理受付専用版への両パッケージのシンボル混入を拒否します。これはSource / Linkの限定的な負例であり、認可の正しさ、本番Secretや権限の総合監査、同じB/R/Tの業務同等性を証明するものではありません。
+
+ビルド時に選択するApplicationごとに、トップ画面の案内リンクも切り替えます。共通`server.go`はリンク先を決めず、タグ別の`referenceIndexFooterHTML()`がHTML断片を提供します。従来の複合Targetのfooterは変更せず、`order_entry`専用ビルドではread/submit/custom-submit、`repair_intake`専用ビルドではcustomer-lookupのみを案内します。別Applicationのルートが404でも画面上の誘導として残らないよう、タグ別のHTMLテストと実バイナリのオプトインテストを追加しました。これはUI案内上の整合性であり、認可を代替しません。
+
+`repair_intake`では顧客参照用Oracle実装のみをリンク対象にするため、PostgreSQL明細Queryの実装は別ソース`reference_order_contract_query_fixture.go`へ移しました。両Applicationで共用するOracle実装を複製せず、DriverのBinding identityも変えていません。
+
+**検証状態と限界**：2026-10-12の既存E1変更ではGitHub Actionsでタグ別実ビルド・合成Fixture HTTP同等性・Repository HealthのPASSを取得し、mainへ統合しました（[#1302](https://github.com/hat47x/tei-platform/pull/1302)、[#1340](https://github.com/hat47x/tei-platform/pull/1340)）。ただし、今回の認証・認可パッケージ閉包チェックを加えた新しい候補HEADについては、CIの再実行結果により別途判断します。原Goソースの区別だけでlink後の完全なSecret/Authority除外は示せません。Workspace Loader/Driverを使う合成Referenceであり、Build Artifact Lockを承認する権限、Production認証認可、Browser/API二単位配備、同じ受理済みHandover B/R/Tでの実Business Result/Execution Error/Observationの完全同等性も未実証です。これらのE1受入条件は[#1167](https://github.com/hat47x/tei-platform/issues/1167)に残します。
+
+### 実バイナリのHTTP結果同等性（明示実行する統合テスト）
+
+`tagged_binary_parity_integration_test.go`では、従来の複合Targetとorder/repair専用Goバイナリを**実際にビルドして起動**し、同じFixture B/R/TでHTTP結果を比較します。正常read、注文送信、認証拒否、認可拒否、Execution Error、入力不正、顧客参照、未公開Route 404を対象にします。成功・拒否のStage、Observationの境界、認証情報の非漏洩も検査します。
+
+通常の`go test`では実行しません。信頼できる完全なclean checkoutで次を実行します。
+
+```sh
+TEI_E1_BINARY_PARITY=1 go test -count=1 \
+  -run '^TestTaggedBinariesPreserveFirstWebBusinessHTTPParity$' \
+  ./tools/reference-first-web-target
+```
+
+3バイナリの依存閉包・ファイル・SHA-256・シンボル・サイズ計測にも同じHTTP parityを追加し、実行ログを外部Evidenceフォルダへ残す場合：
+
+```sh
+TEI_E1_RUN_HTTP_PARITY=1 \
+  bash tools/reference-first-web-target/measure_tagged_targets.sh \
+  /tmp/tei-first-web-e1-fixture-evidence-NEW
+```
+
+`measurement.json`は、実行を省いた場合`syntheticFixtureHttpParityVerified: false`、成功した場合のみ`true`とし、`tagged-http-parity.test.txt`を保持します。合成Fixtureの一致は実DB接続・本番Authorization・Build Artifact Lockの承認を意味しません。`sameHandoverBusinessParityVerified`・`productionAuthorizationVerified`・`artifactAuthority`などの上位条件は自動的にtrueになりません。
+
+**留意**：GitHubにテストと計測手順をコミットしただけでは、Go build・Go test・Repository HealthのPASS資格は得られません。必ず実行したcheckoutのHEAD/clean前後と証跡を保存してください。
+
+## 保護された受注操作とプラグイン合成の接続（参照実装）
+
+[Issue #1145](https://github.com/hat47x/tei-platform/issues/1145)の次段階として、`session_command_route.go`の**保護済み業務操作の内側**に、合成基盤が選択した実装への接続を追加しました。従来の受注操作は変更せず、案件側が明示的に`SelectedAction`を与えた場合に限って使います。
+
+- Web入口では、本人確認、要求元保護、主体の対応付け、既存の`security.authorize`による操作認可を従来どおり先に行います。
+- 認可後、合成基盤の`Coordinator.Acquire`で現在の提供者選択とホストの権限を確認し、呼出し中は選択した世代を保持します。
+- 提供者識別子、機能契約の識別子・版、成果物の指紋がホスト側の登録情報と一致した場合だけ、既存の`RunVerifiedSessionCommand`へ進みます。提供者が消えたり実行権限が失効したりした場合は、業務操作に進まず503として監査します。
+- 登録した提供者と指紋は構成時に固定し、HTTP要求に含まれる任意の利用者ID、提供者ID、ヘッダーから選択を変更しません。業務操作内のValidation、認可の再確認、結果・Observationの扱いは従来どおりです。
+
+`session_composition_test.go`は実Workspace、既存Driver、既存の業務認可規則と受注操作を使用し、正常系、閲覧者の業務認可拒否、未認証、ホスト権限の失効、提供者撤去、設定不足を検証します。
+
+```sh
+go test -count=1 -run '^TestSelected(CompositionRunsCanonicalProtectedOrderAction|OrderActionRejectsIncompleteHostConfiguration)$' ./tools/reference-first-web-target
+go test -count=1 ./reference/web-composition/go-host
+```
+
+**実証範囲の限界**：本人確認と要求元検査は合成Fixtureです。提供者選択に使用する指紋もテスト用の宣言であり、成果物の実バイト列や署名を検査したものではありません。また、この第一段階では複数の論理的提供者を**同じ既存Action Runner**へ接続するだけで、異なる物理実装への差し替えや実プロセスの無停止更新を証明しません。合成選択の成功だけで実行権限・永続的な副作用・本番利用の安全性が成立するわけではありません。
+
+### 選択済み業務操作の保護経路を固定する
+
+合成基盤で選択した業務操作の呼出し口は、提供者を選択できるだけでは安全になりません。Web Hostの保護経路を経由せず、呼出し口をHTTP経路へ直接登録すると、業務認可を経ない呼出しにつながるおそれがあります。
+
+そのため、[選択済み操作の接続部](../../reference/web-composition/go-host/selected_action.go)は、**現在の要求について、Web Hostが検証済みの利用者と、その操作の認可完了を引き継いだ場合だけ**提供者を取得します。ホストは本人確認、要求元検査、業務認可のすべてに成功した後で、要求内だけで有効な印を付けます。別の業務操作に対する認可では通過できません。印は非公開のGoコンテキストキーで保持し、HTTPヘッダーや本文の値で代用できません。元の保護付き要求が終了すると印も失効し、以前の要求の実行文脈を保存して後から呼び直しても提供者を取得できません。
+
+この印は実行権限そのものではありません。合成基盤の提供者選択、現在の権限確認、および既存の業務操作内部の認可再確認は引き続き必要です。試験では保護経路を経ない直接呼出し、別操作の認可の流用、認証失敗、要求元確認失敗、業務認可拒否、提供者撤去を区別し、下流を呼び出さないことを確認します。
+
+```sh
+go test -count=1 ./reference/web-composition/go-host
+go test -count=1 ./tools/reference-first-web-target
+```
+
+合成された認証、要求元確認、業務Fixtureによる検証であり、実際の認証事業者や本番の権限ストアによる保証を示すものではありません。また、実装を別プロセスへ移すときはGoコンテキストの印をそのまま送信せず、ホストが所有する委譲契約を別途設計する必要があります。

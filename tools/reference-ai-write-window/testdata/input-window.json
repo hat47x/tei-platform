@@ -1,0 +1,49 @@
+{
+  "schema": "tei.reference.ai-write-window-input/v0",
+  "mode": "window",
+  "window": {
+    "id": "case.order-discount",
+    "declaredBy": "human",
+    "sourceRevision": "rev-10",
+    "providerRevision": "order-plugin-1.0.0",
+    "allowedPaths": ["src/order/discount.go"],
+    "allowedExpressions": ["Order.line.total", "customer.tier"],
+    "allowedTypes": ["decimal", "string"],
+    "allowedEffects": ["read"],
+    "allowedKinds": ["expression", "datatype"]
+  },
+  "edit": {
+    "id": "candidate-1",
+    "author": "ai",
+    "baseSourceRevision": "rev-10",
+    "baseProviderRevision": "order-plugin-1.0.0",
+    "changes": [
+      {
+        "path": "src/order/discount.go",
+        "kind": "expression",
+        "expressions": ["Order.line.total"],
+        "types": ["decimal"],
+        "effects": ["read"]
+      }
+    ],
+    "semanticChange": false,
+    "authorityChange": false,
+    "helpers": [
+      {"name": "sumLines", "effects": ["read"], "resolved": true}
+    ],
+    "tests": [
+      {
+        "command": "go test ./src/order -run TestDiscount",
+        "head": "abc1234",
+        "exitCode": 0,
+        "unverified": ["real PostgreSQL", "Windows"]
+      }
+    ],
+    "selfReportedPass": false
+  },
+  "targets": ["go", "wasm"],
+  "targetCapabilities": {
+    "go": ["read"],
+    "wasm": ["read"]
+  }
+}

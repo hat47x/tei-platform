@@ -435,6 +435,6 @@ Application Pattern #67  完了
 - `plan/adr/0017-application-pattern-ownership.md`
 - `plan/adr/0018-application-pattern-authoring-source.md`
 - `plan/adr/0020-capability-business-outcome-boundary.md`
-- `plan/issue/000003-legacy-authentication-compatibility-reference.md`
-- `plan/issue/000005-application-pattern-reference.md`
-- `plan/issue/000006-application-driver-vertical-slice.md`
+- ISSUE-000003-legacy-authentication-compatibility-reference.md
+- ISSUE-000005-application-pattern-reference.md
+- ISSUE-000006-application-driver-vertical-slice.md

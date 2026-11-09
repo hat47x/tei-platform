@@ -1,0 +1,8 @@
+{
+  "schema": "tei.reference.generator-candidate/v0",
+  "id": "alternative",
+  "origin": "handwritten",
+  "source": "main.go",
+  "sourceDigest": "sha256:b4f21cef0fcfb09c1fd854cc959de7c99022e6d572b276461b6b5ad00b0eb549",
+  "note": "別の実装。10進を整数へ変換し、最後に一度だけ丸める。"
+}

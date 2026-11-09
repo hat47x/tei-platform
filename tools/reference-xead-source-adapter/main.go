@@ -121,9 +121,20 @@ func main() {
 	inputFlag := flag.String("input", "", "path to the source XML")
 	contractFlag := flag.String("contract", "", "optional transcription contract JSON")
 	localCandidatesFlag := flag.Bool("local-candidates", false, "include source-locator candidate classification; local/private output only")
+	candidateNodeFlag := flag.Int("candidate-evidence-node", 0, "emit one redacted typed RMT Evidence for a local node ordinal (requires -contract)")
 	flag.Parse()
 	if *formatFlag == "" || *inputFlag == "" {
-		fmt.Fprintln(os.Stderr, "usage: reference-xead-source-adapter -format xead|xeaf -input <file> [-contract transcription-contract.json] [-local-candidates]")
+		fmt.Fprintln(os.Stderr, "usage: reference-xead-source-adapter -format xead|xeaf -input <file> [-contract transcription-contract.json] [-local-candidates | -candidate-evidence-node N]")
+		os.Exit(2)
+	}
+	candidateEvidenceRequested := false
+	flag.Visit(func(option *flag.Flag) {
+		if option.Name == "candidate-evidence-node" {
+			candidateEvidenceRequested = true
+		}
+	})
+	if candidateEvidenceRequested && (*candidateNodeFlag <= 0 || *contractFlag == "" || *localCandidatesFlag) {
+		fmt.Fprintln(os.Stderr, "-candidate-evidence-node must be positive, requires -contract and cannot be combined with -local-candidates")
 		os.Exit(2)
 	}
 	content, err := os.ReadFile(*inputFlag)
@@ -151,6 +162,23 @@ func main() {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
+	}
+
+	if candidateEvidenceRequested {
+		evidence, err := BuildTranscriptionCandidateEvidence(format, doc, contractBytes, *candidateNodeFlag)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+		if err := VerifyTranscriptionCandidateEvidence(format, doc, contractBytes, evidence); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+		if err := encoder.Encode(evidence); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+		return
 	}
 	coverage, err := CheckClassificationCoverage(format, doc, contractBytes)
 	if err != nil {
@@ -207,6 +235,7 @@ func Observe(format SourceFormat, content []byte) (ObservedDocument, error) {
 
 	decoder := xml.NewDecoder(strings.NewReader(string(content)))
 	var stack []*parseFrame
+	rootSeen := false
 	for {
 		tok, err := decoder.Token()
 		if err == io.EOF {
@@ -217,6 +246,12 @@ func Observe(format SourceFormat, content []byte) (ObservedDocument, error) {
 		}
 		switch t := tok.(type) {
 		case xml.StartElement:
+			if len(stack) == 0 {
+				if rootSeen {
+					return ObservedDocument{}, fmt.Errorf("parse %s: multiple root elements are not allowed", format)
+				}
+				rootSeen = true
+			}
 			ordinal := 1
 			parentPath := ""
 			qualifiedKind := xmlElementName(t.Name)
@@ -232,6 +267,14 @@ func Observe(format SourceFormat, content []byte) (ObservedDocument, error) {
 				name := attr.Name.Local
 				if attr.Name.Space != "" {
 					name = "{" + attr.Name.Space + "}" + attr.Name.Local
+				}
+				if _, duplicate := attrs[name]; duplicate {
+					return ObservedDocument{}, fmt.Errorf(
+						"parse %s: duplicate attribute %s at %s",
+						format,
+						name,
+						path,
+					)
 				}
 				attrs[name] = attr.Value
 			}
@@ -262,6 +305,9 @@ func Observe(format SourceFormat, content []byte) (ObservedDocument, error) {
 			}
 		case xml.CharData:
 			if len(stack) == 0 {
+				if strings.TrimSpace(string(t)) != "" {
+					return ObservedDocument{}, fmt.Errorf("parse %s: non-whitespace character data outside root element", format)
+				}
 				continue
 			}
 			idx := stack[len(stack)-1].nodeIndex
@@ -283,6 +329,9 @@ func Observe(format SourceFormat, content []byte) (ObservedDocument, error) {
 	}
 	if len(stack) != 0 {
 		return ObservedDocument{}, fmt.Errorf("unclosed XML elements")
+	}
+	if !rootSeen {
+		return ObservedDocument{}, fmt.Errorf("parse %s: XML document has no root element", format)
 	}
 	return doc, nil
 }
@@ -326,7 +375,7 @@ func PublicReceipt(doc ObservedDocument) PublicationReceipt {
 			receipt.UnknownElementCount++
 			receipt.UnknownAttributeCount += len(node.Attributes)
 		}
-		locatorDigest := digestString(fmt.Sprintf("%s|node-ordinal:%d", doc.ArtifactSHA256, i+1))
+		locatorDigest := sourceNodeToken(doc.ArtifactSHA256, i+1)
 		publicLocatorByPath[node.Locator.Path] = locatorDigest
 		locatorDigests = append(locatorDigests, locatorDigest)
 	}

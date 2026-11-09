@@ -1,0 +1,19 @@
+{
+  "name": "modeler-reorder-field",
+  "description": "Open the Modeler field list and drag TXTEKIYO from row 3 to row 1, then save and verify the swapped sort keys. Uses a disposable MfgOrder.xead copy.",
+  "steps": [
+    { "op": "wait_window", "title": "X-TEA Modeler", "timeoutMs": 30000 },
+    { "op": "select", "selector": { "role": "tree" }, "path": [0, 2, 0, 0, 0, 0] },
+    { "op": "key", "selector": { "role": "tree" }, "key": "ENTER" },
+    { "op": "sleep", "ms": 1000 },
+    { "op": "drag", "selector": { "path": "0.1.2.10.0.2.0" }, "fromRow": 3, "toRow": 1, "column": 0 },
+    { "op": "sleep", "ms": 1000 },
+    { "op": "invoke", "selector": { "window": "X-TEA Modeler", "path": "m.0.7" }, "settleMs": 1000 },
+    { "op": "wait_window", "title": "バックアップの確認", "timeoutMs": 30000 },
+    { "op": "invoke", "selector": { "window": "バックアップの確認", "role": "button", "text": "はい" }, "settleMs": 1000 },
+    { "op": "wait_window", "title": "バックアップの確認", "state": "absent", "timeoutMs": 30000 },
+    { "op": "sleep", "ms": 1500 },
+    { "op": "model_assert_field", "path": "build/modeler-fixture/MfgOrder.xead", "tableId": "61", "fieldAlias": "TXTEKIYO", "sortKey": "0030" },
+    { "op": "model_assert_field", "path": "build/modeler-fixture/MfgOrder.xead", "tableId": "61", "fieldAlias": "NRKANRISYA", "sortKey": "0040" }
+  ]
+}

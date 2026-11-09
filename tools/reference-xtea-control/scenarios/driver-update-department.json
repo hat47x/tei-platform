@@ -1,0 +1,31 @@
+{
+  "name": "driver-update-department",
+  "description": "Update one department name on a disposable Skeleton database, then reopen the list and verify the new value. Never run against a real or shared database.",
+  "steps": [
+    { "op": "wait_window", "title": "1\\.0\\.8|Skeleton|管理", "timeoutMs": 30000 },
+    { "op": "set", "selector": { "path": "0.0.5" }, "value": "00000" },
+    { "op": "set", "selector": { "path": "0.0.6" }, "value": "0000000000" },
+    { "op": "invoke", "selector": { "role": "button", "text": "ログイン|Login" }, "settleMs": 1000 },
+    { "op": "wait_window", "title": "1\\.0\\.8", "timeoutMs": 30000 },
+    { "op": "invoke", "selector": { "role": "button", "text": "部門情報の一覧・保守" }, "settleMs": 1000 },
+    { "op": "wait_window", "title": "部門情報の一覧", "timeoutMs": 30000 },
+    { "op": "select", "selector": { "role": "table" }, "row": 0, "column": 0 },
+    { "op": "key", "selector": { "role": "table" }, "key": "ENTER" },
+    { "op": "wait_window", "title": "関連情報|部門と", "timeoutMs": 30000 },
+    { "op": "invoke", "selector": { "window": "関連情報|部門と", "role": "button", "text": "F8 部門情報" }, "settleMs": 1000 },
+    { "op": "wait_window", "title": "詳細確認", "timeoutMs": 30000 },
+    { "op": "invoke", "selector": { "window": "詳細確認", "role": "button", "text": "F5 編集" }, "settleMs": 1000 },
+    { "op": "wait_window", "title": "編集", "timeoutMs": 30000 },
+    { "op": "set", "selector": { "window": "編集", "path": "0.0.0.2.0.0.1.0.0.0" }, "value": "検証部門" },
+    { "op": "invoke", "selector": { "window": "編集", "role": "button", "text": "F5 更新" }, "settleMs": 1000 },
+    { "op": "wait_window", "title": "編集", "state": "absent", "timeoutMs": 30000 },
+    { "op": "invoke", "selector": { "window": "関連情報|部門と", "role": "button", "text": "F3 閉じる" }, "settleMs": 500 },
+    { "op": "wait_window", "title": "関連情報|部門と", "state": "absent", "timeoutMs": 10000 },
+    { "op": "invoke", "selector": { "window": "部門情報の一覧", "role": "button", "text": "F3 閉じる" }, "settleMs": 500 },
+    { "op": "wait_window", "title": "部門情報の一覧", "state": "absent", "timeoutMs": 10000 },
+    { "op": "invoke", "selector": { "role": "button", "text": "部門情報の一覧・保守" }, "settleMs": 1000 },
+    { "op": "wait_window", "title": "部門情報の一覧", "timeoutMs": 30000 },
+    { "op": "table_assert", "selector": { "role": "table" }, "row": 0, "column": "AT010.TXBUMON", "equals": "検証部門" },
+    { "op": "invoke", "selector": { "window": "部門情報の一覧", "role": "button", "text": "F3 閉じる" }, "settleMs": 500 }
+  ]
+}

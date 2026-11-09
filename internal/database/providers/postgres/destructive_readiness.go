@@ -119,6 +119,12 @@ func (o SchemaObservation) AssessDestructiveReadiness(diff schemadiff.Diff) (Des
 // entry point. A DropTable reaches the package-private raw SQL renderer only
 // after a complete provider-owned partition observation proves that the target
 // is not a partition child and has no attached descendants.
+//
+// It is also the only entry point that adds a primary key, a unique
+// constraint or a foreign key to an existing table: each addition needs an
+// observed ConstraintData entry with no violating row (#1803 P4). A missing or
+// unobserved entry, or a non-zero count, refuses the whole diff with a
+// ConstraintDataReadinessError.
 func RenderMigrationSQLWithObservation(diff schemadiff.Diff, observation SchemaObservation) ([]string, error) {
 	if err := validateResolvedMigrationDiff(diff); err != nil {
 		return nil, err
@@ -130,7 +136,18 @@ func RenderMigrationSQLWithObservation(diff schemadiff.Diff, observation SchemaO
 	if !readiness.Executable {
 		return nil, &DestructiveReadinessError{Readiness: readiness}
 	}
-	return renderResolvedMigrationSQL(diff)
+	constraintReadiness, err := observation.AssessConstraintDataReadiness(diff)
+	if err != nil {
+		return nil, err
+	}
+	if !constraintReadiness.Executable {
+		return nil, &ConstraintDataReadinessError{Readiness: constraintReadiness}
+	}
+	checked := map[string]ConstraintDataCheck{}
+	for _, addition := range constraintReadiness.Additions {
+		checked[addition.Check.identity()] = addition.Check
+	}
+	return renderResolvedMigrationSQL(diff, checked)
 }
 
 func relationIdentityFromQualifiedName(value string) (RelationIdentity, error) {

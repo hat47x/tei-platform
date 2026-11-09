@@ -17,6 +17,7 @@ import (
 type ContractQueryInputParameterMapping struct {
 	Input     core.LocalName `json:"input"`
 	Parameter string         `json:"parameter"`
+	Nullable  bool           `json:"nullable,omitempty"`
 }
 
 // ContractQuerySQLRealizationは、一つのDatabase-owned Contract Queryをnative SQLで実現するための
@@ -76,6 +77,9 @@ func (r ContractQuerySQLRealization) ValidateContract(contract database.QueryCon
 		if _, exists := declaredInputs[mapping.Input]; !exists {
 			return fmt.Errorf("Contract Query SQL realization %sがsignatureにないinput %sをparameterへ対応付けています", r.Identity(), mapping.Input)
 		}
+		if mapping.Nullable != declaredInputs[mapping.Input].Nullable {
+			return fmt.Errorf("Contract Query SQL realization %s の input %s の nullable が signature と一致しません", r.Identity(), mapping.Input)
+		}
 		if _, exists := usedInputs[mapping.Input]; exists {
 			return fmt.Errorf("Contract Query SQL realization %sでinput %sのparameter mappingが重複しています", r.Identity(), mapping.Input)
 		}
@@ -130,6 +134,9 @@ func (r ContractQuerySQLRealization) MapRuntimeParameters(parameters map[string]
 		value, exists := parameters[input]
 		if !exists {
 			return nil, fmt.Errorf("Contract Query SQL realization %sへ渡すinput %sのruntime値がありません", r.Identity(), input)
+		}
+		if value == nil && !mapping.Nullable {
+			return nil, fmt.Errorf("Contract Query SQL realization %s の input %s は NULL を受け付けません", r.Identity(), input)
 		}
 		if _, exists := mapped[mapping.Parameter]; exists {
 			return nil, fmt.Errorf("Contract Query SQL realization %sで物理parameter %qへ複数のruntime値を渡そうとしています", r.Identity(), mapping.Parameter)

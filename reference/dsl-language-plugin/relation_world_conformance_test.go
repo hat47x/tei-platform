@@ -1,0 +1,201 @@
+package languagereference
+
+import (
+	"strings"
+	"testing"
+
+	"tei/internal/core"
+	"tei/internal/ir"
+	"tei/internal/semantic"
+	"tei/internal/validation"
+)
+
+func TestWorldRelationAcrossNamespacesMatchesCanonicalValidator(t *testing.T) {
+	w := crossNamespaceRelationFixture()
+	if ds := validation.Validate(w); validation.HasErrors(ds) {
+		t.Fatalf("cross-namespace fixture is not a valid canonical world: %#v", ds)
+	}
+	if ds := validation.ValidateSemanticRelationKeys(w); len(ds) != 0 {
+		t.Fatalf("canonical relation keys invalid: %#v", ds)
+	}
+	if err := ValidateRelationKeys(w, "sales.order", "sales.order.customer"); err != nil {
+		t.Fatal(err)
+	}
+	pin := OperatorContract{
+		ID: "std.op.expand", Version: "1", Fingerprint: "cross-namespace-v1",
+		Effect: "pure", InputType: "rows/sales.order", OutputType: "rows/customer.customer",
+	}
+	out, err := ExpandRelationReference(w, "sales.order", "sales.order.customer",
+		PinnedCall{Contract: pin, InputType: pin.InputType}, []OperatorContract{pin})
+	if err != nil || out != pin.OutputType {
+		t.Fatalf("cross-namespace expansion rejected: %q: %v", out, err)
+	}
+	shape, err := TraceRelationPath(w, "sales.order", []core.CanonicalID{
+		"sales.order.customer", "customer.customer.addresses",
+	})
+	if err != nil || shape.TargetID != "address.address" || shape.Multiplicity != semantic.CardinalityMany {
+		t.Fatalf("cross-namespace path %#v: %v", shape, err)
+	}
+}
+
+func TestWorldRelationRejectsSameFailuresAsCanonicalValidator(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		mutate func(*ir.World)
+		code   string
+	}{
+		{"wrong cross-namespace key type", func(w *ir.World) {
+			w.Semantics[1].Data[0].Attributes[0].TypeRef = "customer.other_id"
+		}, "SEMANTIC_RELATION_KEY_TYPE_MISMATCH"},
+		{"duplicate key pair", func(w *ir.World) {
+			w.Semantics[0].Data[0].Relations[0].Keys = append(w.Semantics[0].Data[0].Relations[0].Keys,
+				semantic.RelationKey{SourceAttribute: "sales.order.customer_id", TargetAttribute: "customer.customer.id"})
+		}, "DUPLICATE_SEMANTIC_RELATION_KEY"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			w := crossNamespaceRelationFixture()
+			tc.mutate(&w)
+			found := false
+			for _, d := range validation.ValidateSemanticRelationKeys(w) {
+				if d.Code == tc.code {
+					found = true
+				}
+			}
+			if !found {
+				t.Fatalf("expected canonical diagnostic %q", tc.code)
+			}
+			if err := ValidateRelationKeys(w, "sales.order", "sales.order.customer"); err == nil || !strings.Contains(err.Error(), tc.code) {
+				t.Fatalf("reference diverged from canonical diagnostic: %v", err)
+			}
+		})
+	}
+}
+
+func TestWorldRelationRejectsAmbiguousTarget(t *testing.T) {
+	w := crossNamespaceRelationFixture()
+	w.Semantics = append(w.Semantics, w.Semantics[1])
+	if err := ValidateRelationKeys(w, "sales.order", "sales.order.customer"); err == nil {
+		t.Fatal("ambiguous target accepted")
+	}
+}
+
+func TestWorldRelationPathRejectsLaterHopIdentityCollision(t *testing.T) {
+	w := crossNamespaceRelationFixture()
+	// Only the second hop is ambiguous. The first hop remains valid.
+	w.Semantics[0].Data[0].Relations = append(w.Semantics[0].Data[0].Relations,
+		semantic.Relation{
+			ID: "customer.customer.addresses", Target: "address.address",
+			Cardinality: semantic.CardinalityMany,
+		})
+	_, err := TraceRelationPath(w, "sales.order", []core.CanonicalID{
+		"sales.order.customer", "customer.customer.addresses",
+	})
+	if err == nil || !strings.Contains(err.Error(), "step 1") {
+		t.Fatalf("later-hop global relation collision not located: %v", err)
+	}
+}
+
+func TestWorldRelationPathLocatesCanonicalKeyFailureAtLaterHop(t *testing.T) {
+	w := crossNamespaceRelationFixture()
+	// The first relation is valid, while the key type of the second
+	// relation no longer agrees with its target attribute.
+	w.Semantics[2].Data[0].Attributes[0].TypeRef = "address.invalid_type"
+	canonicalCode := "SEMANTIC_RELATION_KEY_TYPE_MISMATCH"
+	found := false
+	for _, d := range validation.ValidateSemanticRelationKeys(w) {
+		if d.Code == canonicalCode && d.Subject != nil && d.Subject.ID == "customer.customer.addresses" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("expected the canonical second-hop key diagnostic")
+	}
+	_, err := TraceRelationPath(w, "sales.order", []core.CanonicalID{
+		"sales.order.customer", "customer.customer.addresses",
+	})
+	if err == nil || !strings.Contains(err.Error(), "step 1") || !strings.Contains(err.Error(), canonicalCode) {
+		t.Fatalf("canonical second-hop error lost its location: %v", err)
+	}
+}
+
+// TestWorldRelationRejectsGlobalRelationIdentityCollision verifies that a
+// relation ID cannot also refer to a relation under another Data.
+func TestWorldRelationRejectsGlobalRelationIdentityCollision(t *testing.T) {
+	w := crossNamespaceRelationFixture()
+	// The duplicate is declared under a different Data; looking only at
+	// the source's relation slice would wrongly treat the ID as unique.
+	w.Semantics[1].Data[0].Relations = append(w.Semantics[1].Data[0].Relations,
+		semantic.Relation{
+			ID: "sales.order.customer", Target: "address.address",
+			Cardinality: semantic.CardinalityMany,
+		})
+	if err := ValidateRelationKeys(w, "sales.order", "sales.order.customer"); err == nil {
+		t.Fatal("globally ambiguous relation identity was accepted")
+	}
+}
+
+// TestWorldRelationDoesNotAddStricterKeyRules ensures the reference does not
+// invent a source-key uniqueness restriction absent from the canonical
+// validator. Distinct target attributes remain independently mapped.
+func TestWorldRelationDoesNotAddStricterKeyRules(t *testing.T) {
+	w := crossNamespaceRelationFixture()
+	w.Semantics[1].Data[0].Attributes = append(w.Semantics[1].Data[0].Attributes,
+		semantic.Attribute{ID: "customer.customer.alt_id", TypeRef: "customer.customer_id"})
+	w.Semantics[0].Data[0].Relations[0].Keys = append(w.Semantics[0].Data[0].Relations[0].Keys,
+		semantic.RelationKey{SourceAttribute: "sales.order.customer_id", TargetAttribute: "customer.customer.alt_id"})
+	if ds := validation.ValidateSemanticRelationKeys(w); len(ds) != 0 {
+		t.Fatalf("canonical validator rejected distinct target keys: %#v", ds)
+	}
+	if err := ValidateRelationKeys(w, "sales.order", "sales.order.customer"); err != nil {
+		t.Fatalf("reference must preserve canonical relation key semantics: %v", err)
+	}
+}
+
+func crossNamespaceRelationFixture() ir.World {
+	return ir.World{Semantics: []semantic.Namespace{
+		{
+			ID: "sales",
+			Data: []semantic.Data{{
+				ID: "sales.order",
+				Attributes: []semantic.Attribute{
+					{ID: "sales.order.customer_id", TypeRef: "customer.customer_id"},
+				},
+				Relations: []semantic.Relation{{
+					ID: "sales.order.customer", Target: "customer.customer",
+					Cardinality: semantic.CardinalityOne,
+					Keys: []semantic.RelationKey{{
+						SourceAttribute: "sales.order.customer_id",
+						TargetAttribute: "customer.customer.id",
+					}},
+				}},
+			}},
+		},
+		{
+			ID:    "customer",
+			Types: []semantic.Type{{ID: "customer.customer_id", Symbol: "CustomerId", Kind: semantic.TypePrimitive}},
+			Data: []semantic.Data{{
+				ID: "customer.customer",
+				Attributes: []semantic.Attribute{
+					{ID: "customer.customer.id", TypeRef: "customer.customer_id"},
+				},
+				Relations: []semantic.Relation{{
+					ID: "customer.customer.addresses", Target: "address.address",
+					Cardinality: semantic.CardinalityMany,
+					Keys: []semantic.RelationKey{{
+						SourceAttribute: "customer.customer.id",
+						TargetAttribute: "address.address.customer_id",
+					}},
+				}},
+			}},
+		},
+		{
+			ID: "address",
+			Data: []semantic.Data{{
+				ID: "address.address",
+				Attributes: []semantic.Attribute{
+					{ID: "address.address.customer_id", TypeRef: "customer.customer_id"},
+				},
+			}},
+		},
+	}}
+}

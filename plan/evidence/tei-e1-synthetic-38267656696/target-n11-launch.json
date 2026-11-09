@@ -1,0 +1,17 @@
+{
+  "evidenceNature": "test-only-Go-overlay-Web-target-N11",
+  "integrationHead": "466b1d10080460390d46b3b342d8bc9c19e09208",
+  "targetBuildRevisionLabel": "466b1d10080460390d46b3b342d8bc9c19e09208",
+  "loopbackAddress": "127.0.0.1:36183",
+  "targetProcessID": 5574,
+  "targetBinarySHA256": "8dad4053db037f2271e448e552b9e67086588c2f55460c61958019a0f9acd5fb",
+  "acceptedSourceRevisionClaim": "sha256:b78d5a186b1227f2bc4863ba2063c4f7edb5640c1d38faebaf2864c0423e3c07",
+  "overlay": {
+    "sourceFile": "tools/reference-first-web-target/command_scenario.go",
+    "originalSHA256": "eb4168c29c3e7e0832389d556b9445c062b36c58d7628112cde26c71031fc7ea",
+    "overlaySHA256": "1cf920ecf0984a13fd8a22baec1cf7bcf4353887e5c3631b12462446c5f84f9f",
+    "override": "synthetic post-Command Observation read reports unavailable",
+    "authority": "test-only-build-overlay"
+  },
+  "runtimeAuthorityVerified": false
+}

@@ -1,394 +1,67 @@
-# 現在の実装状況
+﻿# TEIの実装状況
 
-- 更新日: 2026-09-20
-- Product phase: architecture & product validation / research implementation
-- Gate A: **Ready**
-- Gate B: **Ready**（candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`、Handover Baseline `B`固定済み）
-- Gate C: **Ready**（First Web Target build `T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`、Handover Baseline `B / R`。Visual Fidelityは単一のAI評価者による評価 — [`GATE_C_READINESS_AUDIT.md`](../plan/GATE_C_READINESS_AUDIT.md)）
-- R7 Replayable Behavior: **Source / Design進行中**（R7A handoff、R7B execution intake、exact replay plan、exact-T operational replay contractまで定義済み。Gate C origin EvidenceはRelease `gate-c-evidence-T-0ba87a4` に保管済み。actual R7A/R7B materialization、replay execution、repeatabilityは未実行）
+- 整理日: 2026-11-07（更新のたびに更新する。過去の内容はgit履歴を正本とする）
+- 開発段階: **参照実装を使った実験と検証**
+- 品質に関する注意: **生成AIを用いて開発中であり、コード・設計・安全性の体系的な人的確認は未実施**です。本番利用を想定していません。
 
-TEIは完成したlow-code製品ではありません。
+TEIは、分野固有の知識と実装技術を分けて管理するローコード開発基盤を目指しています。現在は業務システムを主な参照事例とし、コマンドラインと参照用作業領域を使って、設計・実装・実行・観測の関係を確かめています。現時点では、完成した製品、画面編集機能、汎用の実行基盤は提供していません。全体像は[README](../README.md)、価値と対象範囲は[製品が大切にする価値](../product/value/TEI_PRODUCT_VALUE.md)と[製品要求](../requirements/TEI_PRODUCT_REQUIREMENTS.md)を参照してください。
 
-業務上の意味、authoring source、実現方法、実行結果、外部観測をどこで分けるべきかを、実行可能なcode、Reference、Conformance、Evidenceから段階的に検証しています。
+## 実装と検証で確認できること
 
-## 現在地
+| 領域 | 状況 | 確認先 |
+| --- | --- | --- |
+| 初回の業務モデル変更 | 独立した小さな作業領域で定義・入力元索引・検証・修復を扱う参照事例と回帰試験を用意。**画面生成・保存・外部連携の実証ではありません** | [初回モデル変更の手順](../examples/first-workspace/README.md)、[課題 #1161](https://github.com/hat47x/tei-platform/issues/1161) |
+| GitHub Actionsによるコード検証 | `main`へのpushごとに、ワークフロー「TEI PR・main 健全性確認」が`tools/repository-health-check.sh`を実行する。結果は各コミットのActions実行で確認する（例：2026年10月28日の`6b144da54499e62ba40feeb77d89c352075c2c01`でRepository Healthが成功、[実行 #40739571851](https://github.com/hat47x/tei-platform/actions/runs/40739571851)）。この成功は、そのコミットで上記スクリプトが通ったことだけを示す。`main`には2026年10月31日からGitHub Rulesetsによる保護（PR経由のみ・強制更新と削除の拒否・迂回なし、Ruleset ID 26270836）を適用済みで、必須ステータスチェックは開発規則どおり一律には設定しない。製品としての受入や意味の受理は示さない。2026年10月18日のPR #2012統合コミット`0cc76fd992b0d25960ad0a6b27b96c569a9472b4`の実行は、次の行のStudio PoC Aの記録として残す | [ワークフロー定義](../.github/workflows/tei-repository-health-ci.yml)、[Repository Health #39112031894](https://github.com/hat47x/tei-platform/actions/runs/39112031894)、[CI整備の課題 #1189](https://github.com/hat47x/tei-platform/issues/1189) |
+| Goのコマンドラインと作業領域 | `cmd/tei`に作業領域の読み込み、検証、入力元索引の作成などを実装。2026年11月2日に `tei operations`（操作面）と `tei artifacts`（成果物一式。`-out` でファイル出力）を追加。コマンドの例は導入手順に記載 | [使い始める](getting-started.md)、[参照用資料](../reference/README.md) |
+| TEI StudioのPoC A（Wails Web/Desktop Host） | 2026年10月18日、PR #2012の検証済み候補`c2d8866ba72bb877c4b74f444fe95b3b89368097`で二つのBrowserContext間のWorkspace選択・Catalog・Inspect・Validate・ObserveXeadと遅延応答の分離を確認し、統合コミット`0cc76fd992b0d25960ad0a6b27b96c569a9472b4`でもHost、Windows Desktop WebView2、Repository Healthが成功。後続PR #2014では空結果と読取失敗のDesktop表示も確認。**証拠は同一OS利用者・loopback Host内に限り、Workspace-ID認可、共有WebやPrincipal別の利用者分離、実利用者の価値を示しません。PoC A/B/C全体の完了も示しません** | [協調Issue #1824](https://github.com/hat47x/tei-platform/issues/1824)、[PR #2012](https://github.com/hat47x/tei-platform/pull/2012)、[PR #2014](https://github.com/hat47x/tei-platform/pull/2014)、[Wails Host #39112031888](https://github.com/hat47x/tei-platform/actions/runs/39112031888)、[Desktop WebView2 #39112031903](https://github.com/hat47x/tei-platform/actions/runs/39112031903)、[PR #2014 Desktop WebView2 #39113218123](https://github.com/hat47x/tei-platform/actions/runs/39113218123) |
+| アプリケーションとドライバー | `order_entry`で一覧表示、記録、参照、親子関係にある明細、操作などの意味上の境界を実証 | [全体構成](architecture.md)、[版1の計画](../plan/V1_REFERENCE_APPLICATION_PLAN.md) |
+| X-TEAローコード知見の受容 | `tei view`で一覧・単票・見出し明細・command・Application・Packageを投影し、`view -command -execute`で参照実行する（業務副作用なし）。参照Storeは期間、削除ポリシー（`Relation.Keys`の行単位・複数段カスケード・失敗時復元）、必須属性、値域、候補キー（型正規化）を検査する。Commandは`effectcommit.Runner`へのアダプタを持ち、**そのアダプタ経路では**認可・OperationID・receiptを省略しないが、実PostgreSQL接続は`TEI_EFFECT_POSTGRES_DSN`を設定した場合だけ試験する。Command実行前の`Authorizer`（能力AllowList・既存認可規則のadapter・能力の宣言許可と発行許可の照合）、宣言効果と報告効果の照合、宣言と異なる適用範囲の差（`Differences`）の保持、実行記録（CLIの`-operation-log`、Studioの`records`）を持つ。読み取り専用として宣言したdatasourceへの書込みは実行前に拒否する。フックは、対話の位相・`reads`・`uses`・`produces`・`on-failure`を宣言でき、宣言した能力以外の呼出し（`hook.Declared`）と、宣言していない読み取り・提案（`hook.ReadsFor`・`hook.ProducesFor`）を拒否する。`hook.RunSequence`は位相を固定順で実行し、途中で止まった位相を記録する。業務上の不成立は`hook.NotSatisfied`として実行の失敗と区別する。**CLIの参照実行（`view -command -execute`）とStudioの参照実行は、到達できる位相（`before-*`）のフックを`hook.Runner`経由で呼び、未評価・不成立・到達しない位相を理由つきで報告する（参照実行は何も書かないため`after-*`へは到達しない）。位相の選び方は`hook.RunReachable`が一つだけ持ち、両方の入口が同じ規則を使う**。**`after-*`へ到達する実行経路と、規則Pluginの実供給路は未実装で、規則は参照実装だけ**。標準業務は暦（年度開始月・週開始・休日Data）の宣言と期間への結合、暦からの日付差・営業日加算・会計年度・期間キーの導出、税率の適用期間と端数処理、通貨の率と方向、採番の契約を参照実装で照会する（Data宣言との結合は未実装）。Studioホストはビュー・Command計画・参照実行・期間状態・能力単位の認可AllowListを扱う。**実Provider・実DB・旧X-TEA Runtimeでの実行観測ではなく、設計・要件・受容判断は仮承認** | [受容設計](../plan/design/XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md)、[知識目録](../plan/research/XTEA_LOWCODE_KNOWLEDGE_INVENTORY_2026-11.md)、[受容要件](../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md)、[受容例](../examples/xtea-lowcode/README.md)、[実装対応](../plan/evidence/XTEA_LOWCODE_ACCEPTANCE_TRACE_2026-11.md) |
+| Command境界の実行前検査と適用不明 | `command.Invoker`は認可の未設定を拒否し（`COMMAND_AUTHORIZER_UNAVAILABLE`）、参照実行は`ReferenceAuthorizer`で**認可判断を省略したこと**を明示する。期間を宣言したCommandで期間状態が未設定なら拒否する。Executorが宣言外の効果・結末・適用操作を返した場合は、実行後に検出するため`EffectUnknown`としてLifecycleへ渡し、同じowner/generationの再送を拒否する。参照実行の応答は`committed`（取引のCommit呼出し）と`persisted`（保存の有無）・`persistence`（`not-applicable`／`not-observed`／`receipt-observed`／`resource-observed`）・`durability`を分け、参照実行は`persisted:false`・`persistence:"not-applicable"`・`durability:"none"`を返す。`persisted:true`は`resource-observed`のときだけ。`receipt-observed`はCommit済みOperationのreceiptを独立読取りで確認した状態であり、資源の現在値の一致ではない。`effectcommit`の`ResourceRead`は別pool接続で`objects`の現在値を読み、Commitしたpayloadとの一致を確かめる。実行を許した認可判断の種別は`authorizationMode`（`reference-allow-all`／`reference-allow-list`／`external`）で返す。**実PostgreSQLではreceipt Lookupと資源読取りの両方を`postgres-conformance`で確認済み。`not-observed`／`receipt-observed`の停止条件化は未実装****本物の主体・権限・規則の評価、宣言外の効果が実際に適用されたかの確認、実DBでの観測は未確認。`ReferenceAuthorizer`は本番用ではない** | [Command境界の安全設計](../plan/design/COMMAND_BOUNDARY_SAFETY_2026-11.md)、[#2996](https://github.com/hat47x/tei-platform/issues/2996)、[#2997](https://github.com/hat47x/tei-platform/issues/2997)、[#2999](https://github.com/hat47x/tei-platform/issues/2999) |
+| Command段階の再起動境界 | `command.Lifecycle`は、実行を送ったが結末を観測していない`dispatched`、結末または明確な拒否を観測した`observed`、適用の有無が確定していない`unknown`の三段階を持ち、同じowner/generationの再送を拒否する。`durable_lifecycle.go`のファイル保存（一時ファイルとrename、未知schema・破損は空扱いにしない）、`lifecyclesqlite`（immediate書込み取引）、`lifecyclepg`（行ロック）が同じ規則を実装する。CLIの`view -execute -lifecycle-state`はSQLite保存を使い、別プロセスの再送を`COMMAND_LIFECYCLE_REFUSED`で拒否する。**この環境で確認したのは、ファイル保存の再起動試験、SQLiteの2プロセス同時dispatchの拒否、実CLIの再起動拒否まで。PostgreSQL保存の試験は`TEI_COMMAND_PG_DSN`未設定でSKIPした（実DBでの行ロック・再接続は未確認）。2026-11-09から`tei-postgres-unrun-suites-ci.yml`が使い捨ての`postgres:16`で`TEI_COMMAND_PG_DSN`を設定して実行し、DSN未設定のSKIPが残っていないことと対象試験のPASSを確かめる（#3681）。保持期間・監査・署名（#2845）は未着手** | [Command境界の安全設計](../plan/design/COMMAND_BOUNDARY_SAFETY_2026-11.md)、[#2564](https://github.com/hat47x/tei-platform/issues/2564)、[#2999](https://github.com/hat47x/tei-platform/issues/2999) |
+| Workspaceの読み込み範囲と検証の観測 | `validate -json` は `declarationCounts`（`std` を除く宣言件数）と `sourceRootFindings` を返す。`sources` の存在しないrootはerror、未知rootはwarning、Loaderが読まない近似名の管理ファイルもwarningになる。モデル要素0件のWorkspaceは `WORKSPACE_DECLARES_NO_MODEL_ELEMENTS`（warning）を返し、`ok:true` だけを「宣言が読み込まれた証拠」と読ませない。`workspace-files` は各ファイルの `readByLoader` を返し、管理対象とLoad中にdomain loaderが読んだファイルを区別する。**`readByLoader:true` はParserの意味受理・整合性合格・Build consumptionを意味しない。`*.tei.md` の新形式Parserは未束縛** | [使い始める](getting-started.md)、[CLI JSON出力契約](../plan/design/CLI_JSON_OUTPUT_CONTRACT_2026-10.md)、[#2822](https://github.com/hat47x/tei-platform/issues/2822)、[#2823](https://github.com/hat47x/tei-platform/issues/2823) |
+| 権限の宣言と強制 | 権限（`filesystem`・`network`・`secret`）を宣言でき、著者時に形式・重複・能力の要求と環境の付与の対応を検証する。実行時は、環境の付与から能力のガードを組み立て（`execution.GuardFromGrants`）、サンドボックスのプロファイルが宣言を超えていないかを実行直前に確かめる（ネットワークは名前で、秘密・マウントは種類で）。ファイル・接続・秘密の三種について、判定つきのアダプタ（`access.FileSystem`・`Network`・`Secrets`）と、許可・拒否の記録（`access.File`）がある。**既存の参照アダプタは未移行で、`os`・`net` を直接呼ぶ経路には強制が効かない。実行時の判定の記録はまだ実行経路に接続していない** | [権限の現状調査](../plan/design/PERMISSION_ENFORCEMENT_SURVEY_2026-11.md)、[適用計画](../plan/design/PERMISSION_ADOPTION_PLAN_2026-11.md) |
+| 実行計画（意味の宣言） | `run-plan` を宣言でき、操作の並び・実行を同定するキー・同時実行・再開・出力・自律区分を検証する（8診断）。実行は `runKey`（計画＋キー）で同定し、前回未完了なら再開（`checkpoint` のときだけ）または拒否、完了済みなら拒否する。進捗は操作ごとに記録し、途中から再開できる。`unattended` は**前提を確かめられない限り実行しない**（`blocked` を記録し、失敗とは区別）。期間の拒否は `PeriodPreconditions` でそのまま停止条件になり、確定後効果の観測可否は `EffectPreconditions` として同じ停止条件に合成される。機能定義書に `run-plan` の行を出す。**帳票としての出力の整形と、実データベースでの実行は未着手** | [実行計画の設計](../plan/design/RUN_PLAN_AND_UNATTENDED_EXECUTION_DESIGN_2026-11.md)、[#1130](https://github.com/hat47x/tei-platform/issues/1130) |
+| 効果の規則（意味の宣言） | `effect-rule` を宣言でき、対象の能力・段階（`derivation`〜`compensation`）・効果の種類とデータ・委譲先の能力・失敗時の扱いを検証する（6診断）。操作面は束縛された操作に `effectRules` を載せ、機能定義書に `effect-rule` の行を出す。実行時は `Succeeded`（能力の実行）と `Observed`（独立した読取り）を**別々に記録**し、確定後・補償の効果を能力の結末と混ぜない。補償は宣言順に実行し、補償自体の失敗も記録する。**評価はまだ実データベースで行っていない** | [効果の規則の設計](../plan/design/EFFECT_RULE_AUTHORING_DESIGN_2026-11.md)、[#1129](https://github.com/hat47x/tei-platform/issues/1129) |
+| 期間の状態（意味の宣言） | `period` を宣言でき、対象データ・業務日付属性・`open`・`closing`・`closed` の三状態・能力の実在・閉じた期間が拒否する操作を検証する。操作面は `period` と `periodRejects` を載せ、機能定義書に期間の行を出す。`tei periods -period-state-file` で運用者が期間の状態を渡し、閉じた期間が拒否する操作を一覧できる（拒否があれば終了コード 1）。`operations.CheckPeriods`・`operations.GuardCapability`・`operations.GuardCapabilityWith` が判定を行い、拒否は値として返す（実行エラーと区別）。**実行の入口でガードを呼ぶ配線と、実データベースでの確認は未着手** | [期間の状態の設計](../plan/design/PERIOD_STATE_SEMANTICS_DESIGN_2026-11.md)、[#2144](https://github.com/hat47x/tei-platform/issues/2144) |
+| 標準操作の導出と設計成果物 | 受理済みの意味から `list`・`read`・`create`・`update` を導出し、導出できない場合は理由付きの未解決として返す。書き込みは既存の能力への束縛で実行し、拒否は業務結果として返す（**合成の保存領域での確認**）。表定義書・機能定義書・操作面・目録を決定的に生成し、11種類の整合検査を通す。**実データベースでの競合、`run-plan`・`period`・`effect-rule` の宣言、Scenario の書き込み語彙は未実装または未検証** | [標準CRUDの設計](../plan/design/DERIVED_CRUD_OPERATION_DESIGN_2026-11.md)、[操作面の設計](../plan/design/OPERATION_SURFACE_DESIGN_2026-11.md)、[成果物の設計](../plan/design/DERIVED_DESIGN_ARTIFACTS_DESIGN_2026-11.md)、[検証記録](../plan/evidence/SURFACE_AND_ARTIFACT_VERIFICATION_2026-11.md)、[#1127](https://github.com/hat47x/tei-platform/issues/1127)、[#1803](https://github.com/hat47x/tei-platform/issues/1803) |
+| プラグイン合成基盤 | 契約と利用範囲による提供元の選択、推移的な依存宣言の鮮度、呼出しの世代保持、逆順解放を扱うReferenceを実装。構成案の一括診断と、未検証の適合証拠参照との照合も実装。対象コミットでの全体健全性とRace Detectorによる試験を確認 | [KernelのReference](../reference/composition-kernel/README.md)、[資格記録 #1233](https://github.com/hat47x/tei-platform/pull/1233)、[二Applicationの資格記録 #1622](https://github.com/hat47x/tei-platform/pull/1622) |
+| HTTP Decision Graphの有限Reference実行・Effectの非推論 | 実`order_entry` Workspaceから`InspectSubject`→`ResolveCommandBinding`→実`NewHost`/`NewCanonicalActionAuthorizer`→実Driverで合成Submit Adapterを呼び出す参照試験をmainへ統合。`HTTP 202`は合成状態が更新済みとも未更新ともなり、`HTTP 503`も更新済み・未更新の両方を観測。`driver.ExecuteObservationRead`はHTTPとは別に明示呼出し、read障害では状態不明を保持する。**合成メモリ状態・テスト用認証/Providerであり、実DB Commit/Receipt、Client実受領、実Plugin Provider、E1静的Graph→全Host実行経路の保証を実証していない**。PR #3537の限定Node/Go CIは成功、同HEAD全体Healthは独立CIワークフロー契約違反で失敗（本行の試験自体はPASS）。現mainの対象Workflow修正は別HEAD。製品の宣言→実行接続はC-4（外部Host委譲）を含む未決事項であり、Referenceの成功から採用方式を決めない | [HTTP設計§19–20](../plan/design/HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md)、[PR #3537](https://github.com/hat47x/tei-platform/pull/3537)、[限定CI #42486408608](https://github.com/hat47x/tei-platform/actions/runs/42486408608)、[全体Health #42486408590](https://github.com/hat47x/tei-platform/actions/runs/42486408590)、[構成接続判断資料](../plan/workstreams/COMPOSITION_CONNECT_POINT_BRIEF_2026-11.md)、[#3274](https://github.com/hat47x/tei-platform/issues/3274) |
+| Plugin-first Inspectorの開発環境内ドッグフーディング（S2-reference限定） | [main #3381](https://github.com/hat47x/tei-platform/pull/3381)の`inspectoradapter.Selected`は既存CompositionのContract/Scope/Provider/Epoch/Host登録実装を照合し、Provider誤接続・Guard撤回・staleを拒否する。続く[main #3540](https://github.com/hat47x/tei-platform/pull/3540)（統合`2eeec81c36db6dfe8c4b6f5c464e0280f8facd87`）で、**通常CLIの`main.go` `inspect`、通常Studio Hostと生成Studio Hostの両起動経路**から`tei.reference.inspector.local`を選択し、既存`operations.InspectSubject`へ実結線した。CLI実サブプロセス、Studio Bridge/allowlist、両Hostバリアントのテストを追加。PR exact-head `a5cf28ac`のRepository Health、Wails Host、Windows Desktop WebView、Studio参照編集、Action Surface CLIの各CIは成功（[#42505204119](https://github.com/hat47x/tei-platform/actions/runs/42505204119)、[#42505204133](https://github.com/hat47x/tei-platform/actions/runs/42505204133)、[#42505204245](https://github.com/hat47x/tei-platform/actions/runs/42505204245)）。**これは静的参照Providerの正常な起動経路のみ**。Host実行ファイルから読んだSHA-256は、Provider固有の実Link/署名/Conformance/ロード済Byte/現在Principal Grantの独立証明ではない。正式Environment ProfileからのProvider選択・外部Plugin差替え・Required Source/Role Closure・Provider別実Artifact・2×2 Verified BOM・完全Tool受領・Owner意味受理は**S2-product/S3未証明**。main統合後のCIはPRのexact-head CIと別に判断する | [PR #3381](https://github.com/hat47x/tei-platform/pull/3381)、[PR #3540](https://github.com/hat47x/tei-platform/pull/3540)、[D1実装・検証計画](../plan/evidence/PLUGIN_FIRST_D1_AUTHORING_ROUTE_FIT_GAP_2026-11.md)、[横断受入](../plan/design/PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md)、[#1251](https://github.com/hat47x/tei-platform/issues/1251) |
+| プラグイン間の項目対応 | 既存の登録簿を使い、局所名、型・単位・多重度、出力から入力への順序を検査する参照実装を追加。恒等のスカラー試料を投影し、空文字・null・欠損・取得不能・未確定を区別する。製品の入力形式や実行時の対応付けは未確定 | [項目対応の参照実装](../reference/composition-io-mapping/README.md)、[資格記録 #1667](https://github.com/hat47x/tei-platform/pull/1667) |
+| 判定段階A | **合格**。アプリケーションの型からドライバーへ渡す意味上の境界を確認した過去の判定 | [段階Aの判定記録](../plan/gate/GATE_A_READINESS_AUDIT.md) |
+| 判定段階B | **合格**。2026年9月19日に固定した版`e5231839a5dcc62cce1181a2731fcb7c70d16736`について、リポジトリ上の再現性、生成物、PostgreSQL実環境を同じ実行で確認 | [段階Bの判定記録](../plan/gate/GATE_B_READINESS_AUDIT.md)、[実行手順](../plan/gate/GATE_B_EVIDENCE_RUNBOOK.md) |
+| 判定段階Cと最初のウェブ実行先 | **合格**。2026年9月19日に固定したビルド`0ba87a4e0a96f70a198b03ff7652fb00e3826abe`の意味、機能、表示を検証。**表示の忠実度は一人のAI評価者が判定しており、人による承認ではありません** | [段階Cの判定記録](../plan/gate/GATE_C_READINESS_AUDIT.md)、[検証根拠の条件](../plan/gate/GATE_C_EVIDENCE_CONTRACT.md) |
+| 共通受理と二つ目のアプリケーション | `repair_intake`の意味定義の一部を、明示的な受理を経て参照用作業領域へ取り込む経路などを検討・実装。受理済みであることと、実行先で動作を確認済みであることは別 | [参照用作業領域の案内](../reference/README.md)、[実装の構成](architecture.md) |
+| Web起動前の入力元照合 | 複合Web TargetにHost Readerの注入口を追加し、同じ読込結果から管理対象Sourceを照合してからRunnerとHTTPを生成する。通常CLIは正式Reader未接続のため起動拒否。合成fixtureには明示的な診断起動を用いる。**真正なHost受理・人的受理・製品G1/G2は未達** | [Web起動前の照合](../tools/reference-first-web-target/README.md)、[横断受入 #1119](https://github.com/hat47x/tei-platform/issues/1119) |
+| 生成器候補の選抜・来歴・artifact | 固定fixtureの選抜、source/binary digest、Go/Java/WASM/WASI/Python/JavaScriptのartifact保存、prune auditとcheckpointの署名・再検証を参照実装で確認。**実Provider・実Target・署名者Authority・別machine再現性は未確認** | [tools索引](../tools/README.md)、[ADR-0041](../plan/adr/0041-generated-artifact-provenance-boundaries.md)、[#2016](https://github.com/hat47x/tei-platform/issues/2016) |
+| Target Profileの配備境界 | oneshot/long-running/batch、Go/Python/JavaScript/Java/WASM/WASIの実行、filesystem/sqlite artifactのreplace・rollback、historyの検証・prune・hash-chain audit・署名済みapprovalを参照実装で確認。**remote storage、実Targetのsupervisor・health check・traffic drain、署名者Authority・trust rootは未確認** | [Target Profile](../tools/reference-target-profile/README.md)、[#2019](https://github.com/hat47x/tei-platform/issues/2019) |
+| 技術検証用サンプル | 業務系システムで頻出する難しい要件を一つの作業の流れで重ねて起こす通しの検証が、2026年10月20日〜29日に10サンプルで`main`へ統合された（`order-workflow`を除く。うち受注の画面経路と補助機能は拡張の工程のみ）。使い捨てのPostgreSQLと合成データ、同じ機械上の別プロセス、模擬の提供元で、工程の記録を照合値でつなぐ。異種DBはPostgreSQLとSQLiteの値の往復までで、**TEIのSQLite提供元はなく、主DBと参照系DBを異種で組む構成も成立していません。実環境での確認ではありません。`order-workflow`との接続、共通受理を通した受理、実際の外部提供元・取引先、複数サーバの本番構成は未確認** | [統合設計](../plan/design/TECH_VALIDATION_SAMPLES_2026-10.md)、[統合状況の一覧](../plan/design/TECH_VALIDATION_SAMPLES_2026-10.md#73-段階2-通しの検証の追加)、[参照用資料の案内](../reference/README.md#技術検証用サンプルの構成) |
 
-`order_entry` Applicationでは次が成立しています。
+判定段階A・B・Cの「合格」は、**各判定時点に固定したソース、ビルド、検証根拠に対するもの**です。現在の`main`、すべての提供元、未知の業務、本番環境、別の実行先を自動的に合格とするものではありません。過去の検証結果を、そのまま新しい変更の検証根拠にはしません。
 
-- Application Pattern Stage 1
-- Gate A
-- Application Driverの主要意味境界
-- browse / record / reference / header-detail / commandのUI-less Scenario構造
-- Validation
-- Authentication / Authorization
-- Capability Binding
-- Business Result / Execution Error
-- Command後のseparate Observation read
-- external Evidence intake boundary
-- generated artifact Evidence runner
-- deterministic Repository Evidence runner
-- real PostgreSQL ephemeral fixture Evidence runner / safety boundary
-- Gate B final convergenceで保持したsame-run child Evidenceの独立artifact監査tool / Runbook接続
-- Gate B actual #310 / #255 / #308 final Evidence（candidate `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`、2026-09-19）
-- Gate B → Gate C Handover Baseline `B / R`固定（[`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](../plan/GATE_B_TO_C_HANDOVER_BASELINE_B.md)）
-- Gate C actual Evidence（Semantic / Functional、Visual Fidelity、architecture conformance、final readiness audit `gateCReady = true`。`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`、2026-09-19、[`GATE_C_READINESS_AUDIT.md`](../plan/GATE_C_READINESS_AUDIT.md)）
+合成基盤と[実Processとの接続Reference](../tools/reference-composition-process-bridge/README.md)では、実際に構築した成果物と子プロセスの応答を照合します。呼出しごとに起動するProcessの経路切替と、試験用のHostガードを確認する範囲です。常駐サービスの無停止更新、実配備先の現在権限、製品Consumerからの旧Resolver撤去は未完了で、[合成Kernelの移行判定](../plan/gate/COMPOSITION_KERNEL_MIGRATION_GATE_2026-10.md)と[課題 #1223](https://github.com/hat47x/tei-platform/issues/1223)で追跡します。**この「製品Consumerからの旧Resolver撤去」の実態は、検証と計画の側だけが宣言から作られ、実行の側は別の入口から入る形です。** internal/servicehost の Host世代ピン留めを組み立てる非試験の呼出し元は0件（[記録](../plan/evidence/SERVICEHOST_CONNECTION_PATH_SURVEY_2026-11-08/README.md)）、Runtime へは InvokeWithProvenance を直接呼ぶ経路が3件あり、いずれも composition.Coordinator を使わない（[記録](../plan/evidence/RUNTIME_UNPINNED_PATH_PURPOSES_2026-11-08/README.md)）。配備実行でも同じ形で、環境の deployment-executor Binding は検証と計画（JSON）まで使われ、実行する3件は参照実装で固定の能力を直叩きする（[記録](../plan/evidence/EXECUTOR_BINDING_CONSUMER_SURVEY_2026-11-08/README.md)）。入出力の一般的な対応付けは[評価中の設計候補](../plan/design/PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md)で、正本の項目定義、集合の縮約、演算子との接続が残ります。
 
-2026-09-08には、datasource aliasのdeclaration existenceとruntime / authority上のexact-one resolutionを分離する#511と、Business Procedure / Handoffのcross-view pressureを扱う#482がmainへ統合されています。
+## 未完成または未検証のこと
 
-2026-09-19には、actual Evidence取得中に見つかった2件のsource-navigation bug（`semanticDataAnchors`のrelation `key`句未対応、`database-contract-query`のcontract wrapper未対応）をPR [#726](https://github.com/hat47x/tei-platform/pull/726)で、独立artifact auditが検出した`contractQueryTarget`期待値のstaleさをPR [#727](https://github.com/hat47x/tei-platform/pull/727)で修正し、両PRのsquash-merge後の`main` HEAD（`e5231839a5dcc62cce1181a2731fcb7c70d16736`）をclean checkoutして#310 / #255 / #308 / #387 / 独立artifact auditを最初から再実行しました。**Gate Bのactual Product Evidenceは、この`R`についてすべて揃っています。**
+- **統合モデラーと編集環境**: 人やAIの入力からデータ、機能、業務の三つの視点を一貫して編集・受理・実行する製品としては未完成です。
+- **二つ目の実行先と多様な配備先**: 同じ業務定義から汎用ウェブ、デスクトップ、モバイル、組み込み機器、IoTを動かした製品上の検証根拠はありません。
+- **外部接続と実際の提供元**: 参照実装で使う合成試験データによる確認と、Oracleなどの実環境で認証・接続・操作が成立したことを区別します。未取得の検証根拠を成功として扱いません。
+- **実データベースでの同時更新**: 使い捨ての PostgreSQL 16.14（`postgres:16`、Docker）で `TestExpectedStateStopsTheSecondWriter` と `TestExpectedStateAllowsTheSecondWriterAfterAReRead` を実行し、2件とも成功しました。初回は試験側の同期不足で二重更新になったため、両読み手が読む前に開始しないよう修正しました（`tools/reference-expected-state-concurrency/`、[#2483](https://github.com/hat47x/tei-platform/issues/2483)）。実Provider・本番権限・データ移行は別途未検証です。接続先の準備状況は `tei dbcheck`（`TEI_TEST_POSTGRES_DSN` か `-dsn`）で確かめられます。DSN が無い場合は検査を実行せず、終了コード 2 で理由を返します。 実行時の判断（期間・効果・実行計画・権限）についても、実DBで「判断が行を変えないこと」を見る試験を用意しました（`tools/reference-runtime-decisions`。DSN 未設定ではスキップ。**この環境では未実行**）。
+- **実行先での再現可能な操作**: 判定段階Cの初回結果と、後続のR7再実行・反復確認は別の検証です。未実施の確認も残っています。
+- **安全性と品質**: 安全性、個人情報、第三者の素材の利用条件、権限設定に関する包括的な監査、体系的な人的確認、本番運用での耐久性・高可用性の確認は未完了です。
+- **開発用CIと製品上の受入**: GitHub Actionsでは固定した版ごとにコード検証とStudioのHost・実ブラウザー・Windows WebView2スモーク確認を実施しています。一方、まだ確認していない改訂や別のプルリクエストまで自動的に合格とはなりません。Studioの確認は、初めて利用する人による一連の操作、三つの視点の編集と再反映、データベースへの保存、独立した読取りによる結果確認、認可境界、実利用者の価値を示しません。PoC A/B/Cの完了判定と必要な製品実証は[協調Issue #1824](https://github.com/hat47x/tei-platform/issues/1824)、[要件の優先順位 #982](https://github.com/hat47x/tei-platform/issues/982)、[横断受入 #1119](https://github.com/hat47x/tei-platform/issues/1119)で追跡します。`main`の保護（PR経由のみ・強制更新と削除の拒否・迂回なし）は2026年10月31日に適用済みで、適用・読み戻し・拒否試験の記録は[課題 #1189](https://github.com/hat47x/tei-platform/issues/1189)にあります。同じ定義を同日、TAI Pleroma・SEI・EKI・MMI・SUIの`main`にも適用し、各リポジトリの適用・読み戻し・拒否試験の記録を残しました（[TAI #178](https://github.com/hat47x/tai-pleroma/issues/178)、[SEI #763](https://github.com/hat47x/sei-cognition/issues/763)、[EKI #331](https://github.com/hat47x/eki-fabric/issues/331)、[MMI #750](https://github.com/hat47x/markdown-matrix-injector/issues/750)、[SUI #3316](https://github.com/hat47x/sui-sensemaking/issues/3316)）。
 
-判定の詳細は[`GATE_B_READINESS_AUDIT.md`](../plan/GATE_B_READINESS_AUDIT.md)、Handoverは[`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](../plan/GATE_B_TO_C_HANDOVER_BASELINE_B.md)を参照してください。
+検証済みの実装と、まだ確定していない設計を区別して開発を進めます。優先順位は[TEIの全体計画](../plan/MASTER_PLAN.md)、技術上の境界は[全体構成](architecture.md)、業務設計の考え方は[業務システム設計](business-system-design.md)を参照してください。
 
-現在必要なのは、新しいDriver abstractionを増やすことではなく、Gate C通過後の並行lane（Studio / knowledge-first・AI Proposal / 第二Application・第二Target）をどの順で開始するかを、Evidenceに基づいて判断することです。
+## 最初に動かす
 
-第一Web Targetでは `tools/reference-first-web-target` にReference-specificなprojectionを置き、Driver Resolverが解決した5種類のApplication PatternをHTML / JSONへProjectionしている。read-only sliceとしてbrowse → record → customer reference → order-lines header-detailをDriver executionへ接続し、さらにAuthentication → Canonical Validation → Authorization → Command Business Result → separate ObservationのScenario sourceまで接続した。Business denial / Validation not-satisfied / Execution Error / Observationを同一errorへ畳まない。Custom UIもJSON APIと同じ`commandScenarioRunner`を共有し、form / layout / HTML renderingだけをTarget固有差として持つ。汎用Presentation IRやWeb frameworkをCanonicalへ追加していない。browseのEnvironment instance selectionはcurrent Driver APIに存在しないためWeb側で推測せずunresolvedとして保持する。actual Target run用のSemantic / Functional Evidence runner / independent audit sourceに加え、同一`T`のScreenshotと評価記録を受け入れるVisual Evidence audit sourceも追加している。 さらにHandover `R`→Target `T`のWorkspace / generated World不変とWeb Target authority boundaryを確認するarchitecture conformance sourceを追加し、same-run `architecture-conformance.json`として取得する設計にした。Custom UIのsuccess / Authorization denied / Validation not-satisfied / Execution Errorを構造化した画面状態として分離し、Semantic / Functional runnerが各stateのHTML artifactも保存・auditするようにした。Runbookには同じ`T`で各Screenshot stateを再現するdeterministic capture recipeも追加した。さらにstandard Projectionと各Custom UI stateのsame-run Target-rendered HTMLをraw artifactとしてfingerprintし、Visual manifestの各Screenshotへ`sourceArtifact / sourceSHA256`を自動で結び付けるようにした。これによりreviewerはcredential付き操作を再入力せず保存済みHTML replayからcaptureできる。さらに`tools/reference-first-web-target-visual-replay`でsame-run digestを再検証し、required HTMLをloopbackからexact bytesで配信できるようにした。 Visual manifest scaffoldを渡せばcapture route / Screenshot filename / evaluator / criterion-capture対応をreview indexで一覧できるが、この画面は閲覧補助でありVisual evaluatorやauditの代替ではない。HTML artifactをVisual Fidelityへ読み替えず、Visual auditがpassしてもそれだけでGate C Readyにしない。2026-09-19に、clean checkout（`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`）上でactual server run / Functional artifact / Screenshot / evaluator recordを取得し、final Gate C readiness auditが`gateCReady = true`を返した（[`GATE_C_READINESS_AUDIT.md`](../plan/GATE_C_READINESS_AUDIT.md)）。取得の過程で、Runbookのsource qualificationがuncompilableなtest fileとgofmt差で停止したこと（PR [#815](https://github.com/hat47x/tei-platform/pull/815)）、Visual reviewで標準Projection headerのrevision値が重なる不具合が見つかり修正したこと（PR [#816](https://github.com/hat47x/tei-platform/pull/816)）を、旧`T`のEvidenceをcarry-forwardせず最初から再取得して解消している。Visual Fidelityの評価者は単一のAI評価者（VLM）であり、人による確認ではない。保持したScreenshotは別の評価者が再評価でき、`fail`が出た場合はGate Cを再監査する。
+Goの開発環境で行う主なローカル確認は、次のとおりです。
 
-## Business Procedure / Lane C Pre-ADR
-
-本status冒頭およびv1主線の`Gate A — Ready`は、Product主線のGate Aを指します。Business Procedure / HandoffのContract ADR readinessで使う**Lane C Pre-ADR Gate A — actual execution**とは別の判定です。
-
-```text
-Product Gate A
-  = Ready
-
-Lane C Pre-ADR Gate A
-  = actual Repository execution PASS（R = e2856e6、2026-09-20）
-
-Business Procedure Contract ADR
-  = Not Ready
+```bash
+go test ./...
+go run ./cmd/tei validate -workspace reference/workspace
 ```
 
-Lane Cの作業正本は`ISSUE-000048`で、現在は**In Progress**です。Material blockerは当初二つでしたが、Blocker Aは2026-09-20に充足し、Blocker Bは2026-09-21にEvidenceを取得しました。残るのは、別の生成AIによる独立reviewと、その後のPre-ADR Auditによる再判定です。
+詳しい確認手順と参照用作業領域の範囲は[使い始める](getting-started.md)を参照してください。手順の掲載は、公開候補や最新のコミットが試験に合格したことを意味しません。
 
-```text
-Blocker A — 充足（2026-09-20）
-  actual Gate A green
-  including source-uniqueness / source-root membership /
-  candidate-only fresh-process / second-corpus non-inference Pressure
 
-Blocker B — Evidence取得済み（2026-09-21、R = 82e4301、作成者self-review。再判定は未実施）
-  independent second realistic TEI-original Handoff
-  from / to / condition sufficiency
-```
-
-現在のexecution priorityは、Blocker Bの再判定です。`ISSUE-000050`で`order_entry`から独立した製造・入庫のsecond Referenceをauthorし、責任のHandoffを一件置き、source / test levelと、同一revision `R = 82e4301`のactual execution（Gate A A1〜A8、critical 39件PASS）のEvidenceを取得しました（2026-09-21）。ただし作成者によるself-reviewだけで、独立reviewは未実施です。利用者の方針（2026-09-21）として、再判定は別の生成AIによる独立レビューの後に行います。Handoff一般の妥当性は主張せず、Contract ADRは**Not Ready**のままです。
-
-Lane Cの判定正本は[`BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md`](../plan/BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md)、actual execution手順は[`BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md`](../plan/BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md)です。
-
-## 現在のv1主線
-
-```text
-Application Pattern Stage 1 — Done
-        ↓
-Gate A — Ready
-        ↓
-Application Driver — major semantics ready
-        ↓
-Gate B — Ready（R = e5231839a5dcc62cce1181a2731fcb7c70d16736）
-        ↓
-Handover Baseline B / revision R — 固定済み
-        ↓
-First Web Target build T — 実装・Evidence取得済み（T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe）
-        ↓
-Gate C — Ready
-        ↓
-   ┌──────┼──────────────┐
-   ↓      ↓              ↓
-Studio  knowledge / AI  Second Target
-PAS-01  PAS-06 / 01     PAS-04
-```
-
-## Gate B — actual Evidence成立
-
-Ready判定へ必須とするsource-dependent Evidenceは次の三つで、いずれもcandidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`のsame-runで成立しています（2026-09-19）。
-
-| Evidence | Issue | 実装状態 | actual Evidence |
-| --- | --- | --- | --- |
-| deterministic Repository | `ISSUE-000032` / #310 | runner / source guard Ready | 成立 |
-| generated artifact reproducibility | `ISSUE-000025` / #255 | check / repair / source guard Ready | 成立 |
-| real PostgreSQL Provider + ephemeral fixture | `ISSUE-000031` / #308 | runner / DB safety / cleanup境界 Ready | 成立 |
-
-三つは`ISSUE-000037` / #387のfinal runnerでsame-Rの収束を確認済みです。
-
-#273の独立監査は、#387が実際に読んだsame-run 3 child artifactを`tools/reference-gate-b-readiness-artifact-audit`で再確認する形まで機械化し、正規Runbookへ接続済みです。fixed filename / exact bytes SHA-256 / lane identity / repository revision / post-run clean stateに加え、#310はWorkspaceと実行command、#255はgolden check command、#308はSemantic結果・fixture safety・cleanup等を再照合します。このartifact監査は第四Required laneではなく、`artifactAuditPassed=true`だけでGate B Readyにはしません。`R = e5231839a5dcc62cce1181a2731fcb7c70d16736`に対する独立監査は`artifactAuditPassed = true`でした。
-
-actual Oracle #214 / #371 / #376は未実証部分が残っていますが、Gate Bの第四Required laneではありません。
-
-- actual external asset / legacy compatibility / second-provider Evidenceとして継続
-- 未完了ならHandover `unresolved`
-- #310 synthetic Evidenceや#308 PostgreSQL Evidenceをactual Oracle成功へ読み替えない
-
-### 検証とGitHub Actions
-
-GitHub Actionsは月間quotaの都合で使えず、GitHub-hosted runnerがjob開始前に割り当てられない状態が続いています（`runner_id=0` / `steps=[]`のcheckout前failure）。これをApplication / Driverのcode failureへ読み替えません。
-
-検証の正本はlocalの`tools/repository-health-check.sh`（`gofmt -l` / `go vet` / `go test` / `tei validate`）です。2026-09-19にリポジトリ全体を点検し、gofmt差・コンパイルできないpackage・古くなったtestを解消して、mainがすべてgreenであることを確認しました（[`ISSUE-000055`](../plan/issue/000055-verification-gate-while-ci-suspended.md)）。
-
-Gate BのProduct Evidenceは、利用可能なactual full checkoutでのlocal actual executionだけを根拠にしています。CI greenはProduct Evidenceの代わりにはならず、今後もそうです。過去のGate B専用source qualification workflowは、health checkに包含されるため削除しました。
-
-Gate B判定の正本は[`GATE_B_READINESS_AUDIT.md`](../plan/GATE_B_READINESS_AUDIT.md)です。
-
-## Semantic / Source
-
-実装済みの主な基線は次のとおりです。
-
-- Workspace / Canonical ID
-- Semantic namespace / type / data / relation / capability
-- Source Index
-- source fingerprint / range / role
-- Diagnostic → Source projection
-- native `.sql` authoritative source
-- file pathとsemantic identityの分離
-
-file moveだけでlogical identityが変わらない場合はsemantic no-opになり得ます。
-
-logical rename / Canonical identity変更はSemantic changeとして扱います。
-
-## Application / Pattern
-
-`order_entry`では次の5 PatternをApplication-owned intentとして扱えます。
-
-```text
-browse
-record
-reference
-header-detail
-command
-```
-
-成立している主な境界は次のとおりです。
-
-- Application `DatabaseRequirement[]`
-- logical Datasource
-- read / read-write Access
-- Pattern Canonical identity
-- Pattern Source / Diagnostic
-- Pattern Validation
-- Capability Binding
-- Authentication / Authorization
-- Canonical business Validation
-
-5分類をTEI全体の永久的な標準Catalogとはみなしません。
-
-## Driver / Execution
-
-主要なUI-less意味境界は成立しています。
-
-```text
-Authentication
- -> browse
- -> record
- -> reference
- -> header-detail
- -> Validation
- -> Authorization
- -> Command
- -> Business Result
- -> separate explicit read
- -> Observation
-```
-
-次を混同しません。
-
-- Business Result
-- named Outcome
-- Execution Error
-- Observation
-- Developer Diagnostic
-
-Command acknowledgementだけでexternal state成立とはみなしません。
-
-## Database / Provider
-
-実装・Referenceで確認している主な境界:
-
-- Database Contract
-- Persistence Mapping
-- Desired / Actual Physical Schema
-- Diff / Unresolved
-- Migration
-- Provider-specific normalization / rendering
-- PostgreSQL observation
-- Contract Query SQL realization
-- provider-specific runtime Runner
-- Database-owned Relation Storage
-
-PostgreSQL partitionについては、ADR-0026のprovider-owned partition observation incrementがPR #528でmainへ統合済みです。partition childをgeneric Schema Driftの独立convergence subjectとして扱わず、provider observationとして保持する境界までがcurrent baselineです。
-
-ADR-0027 / #533の`DropTable` destructive readiness planning / rendering sourceもcurrent mainへ既に含まれています。旧stacked PR #535 head `17e80473adbc2b0cbe7ea213123c9b4296efe79e`がmainの祖先になったため、#535自体はintegration vehicleとして不要となりclosedされました。partition tree / target child / observation unavailableをfail closedし、complete observationを伴うordinary tableだけplain `DROP TABLE`へ進めるsourceは存在します。#533はsource implementation taskとして2026-09-15にcompleted closeし、actual Repository qualificationはPR #599で拡張したbaseline source qualificationと#273へ集約しました。sourceの存在やIssue closeをactual greenやGate B Evidenceへ読み替えません。
-
-#534 / PR #548の別incrementもcurrent mainへ統合済みです。PostgreSQL destructive `DropTable`のapply直前にfresh `SchemaObservation`を取得し、fresh observation-aware renderingとplanned statementsのexact一致を再確認します。stale / incomplete observation、新しいpartition child / descendant、realization差分ではexecutorを呼ばずfail closedします。これはgeneric migration revision protocolではなくPostgreSQL apply safetyの最小境界です。#534もsource implementation taskとしてcompletedであり、**actual Repository testは未取得のため、merge済みsourceをactual qualificationやGate B Evidenceへ読み替えません。**
-
-PostgreSQLは深いReference Providerとして利用しています。
-
-PostgreSQL以外の実Database Provider（actual second-provider）と、既存外部資産の受け入れは別Evidenceとして継続します。第一Referenceの`master_data`はOracleなので、最初の具体例はOracleです。Oracleに限定した要件ではなく、他のProviderも同じ境界で検証できる必要があります。
-
-## Plugin / Runtime / Resource
-
-成立している主な境界は次のとおりです。
-
-- Plugin / Bundle / Capability negotiation
-- Plugin Lock
-- in-process / process runtime
-- actual child process stdio boundary
-- artifact verification
-- explicit Permission Grant
-- Resource Broker / Lease
-- secret / network / filesystem logical binding
-- Sandbox Profile
-- Host Lease Supervisor
-- ownership / heartbeat / fencing
-- Durable Invocation Handle
-- observe / reattach
-- no-auto-replay / unknown保持
-
-Application userのAuthentication / Authorizationと、Plugin / Runtime Permission / Resource authorityは別の責務です。
-
-## Handover / Target
-
-Gate B Readyを受けて、candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`をHandover Baseline `B`として固定しました（[`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](../plan/GATE_B_TO_C_HANDOVER_BASELINE_B.md)）。
-
-First Web Targetの実装revisionは`T1`として別に追跡します。
-
-```text
-Handover B at R  ← 固定済み
-      ↓ meaning baseline
-Web build T1  ← source implementation / Evidence tooling成立
-      ↓          actual clean T1 runは未取得
-Gate C Evidence
-```
-
-Gate Cでは次を別Evidenceとして扱います。
-
-1. Semantic Conformance
-2. Interaction / Functional Evidence
-3. Visual Fidelity Evidence
-4. 必要に応じたPerformance Evidence
-
-First Targetは実装済みで、actual clean Target run、Visual capture、final Gate C readiness auditを`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`で取得し、Gate C Readyと判定しました（[`GATE_C_READINESS_AUDIT.md`](../plan/GATE_C_READINESS_AUDIT.md)）。Visual Fidelityの評価者は単一のAI評価者で、人による確認は行っていません。
-
-## Studio / Authoring
-
-Studio UIはDesign Onlyです。ただしStudioも使うShared Acceptance Boundaryは、2026-09-21に決定論的なReferenceとして成立しました（[`tools/reference-shared-acceptance`](../tools/reference-shared-acceptance/README.md)）。file / CLI / Studio / AIのどの入口のcandidateも同じ検査を通り、acceptだけがauthoritative sourceを書き換えます。scratch copyでPreview / Reject / Accept / stale / 受理後の再読込を確認済みで、扱うoperationは`add-validation`、既存DataへのRelation追加（`add-relation`。`ISSUE-000046`の最小loop）、Second Application用の型付きoperation（`add-data` / `add-application` / `add-reference-pattern`）です。Second Applicationの改訂版Proposal（`c18ae0fd…`）は、read-only Preview全stage PASS、別の生成AI（GPT-5.6 Sol）による独立レビュー完了（`review-clear-with-conditions`、必須修正なし）を経て、**2026-09-21に利用者の明示的なAcceptance decisionにより実際の`reference/workspace`へ受理しました**。受理されたのは`repair_intake`のSemantic / Application / Patternの3 sourceで、ディスク上の内容はレビュー済みProposal（741 bytes、`c18ae0fd…`）とバイト一致します。`reference/world.json`は同じ変更でrepair_intake部分木の追加のみを反映し（68行追加・0行削除）、reference-golden・evidence runner・repository health checkはすべてPASSしました。受理の記録は`reference/workspace/.tei/decisions/`にあります。witnessと実行記録の正本は[`ISSUE-000040`](../plan/issue/000040-semantic-component-composition.md)です。Environment Binding（S7）はこの受理では承認していません。S6（受理したsourceがAcceptance tool無しで通常のTEI sourceとして自立することの確認）も同日に完了し、、model revision一致、goldenとのbyte一致、Source Index 6 subjectの復帰、共有authorityとEnvironmentの不変をすべて確認しました。決定記録は機械到達できる一方、除いてもmodel revisionとCanonical Worldが変わらないこと（Evidenceでありauthorityではないこと）も確認済みです。S7（Environment binding）は、受入境界へ`add-environment-binding`を追加して同じ経路で扱う方針を仮採用し、2026-09-21に利用者の明示的なAcceptance decisionにより受理しました。`repair_intake.customer_master`が各Environmentの既存`master_data`インスタンスへ結ばれ、変わったのは2つのEnvironment fileの1行ずつと`reference/world.json`だけです。受理後のConformance7件、golden、evidence runner、health checkはすべてPASSしました。ただしこの受理はPermission grant・Resource binding・lease・実行principalを与えません（`RUNTIME_AUTHORITY_NOT_GRANTED`をunresolvedとして保持）。bindingができたことを「接続できる」「実行できる」と読み替えません。
-
-2026-09-22、受理済みの第二Applicationを通常のDriver経路で実行するScenarioを確認しました（S8）。developmentでは解決・実行が通り、**第二Applicationのために新しいEnvironment sourceは不要**でした。Contract Query executor bindingはApplicationではなく`(environment, instance, database, contract, query)`で識別されるため、`order_entry`のために書かれた既存bindingがそのまま効きます。
-
-一方、`production`にはContract Query executor bindingが一件も無いため、productionでは実行できません。これは第二Application固有ではなく`order_entry`でも同じで、current Referenceの既存の状態です（Reference範囲として意図的かどうかは未判定）。この確認で、runtime executor registryのkeyからEnvironment成分を落としても既存testが通ってしまうという製品側のcoverageの穴が見つかり、あわせて塞ぎました。使用したExecutorはtest doubleで、実Database接続の証拠ではありません。
-
-acceptは、更新したsourceに加えて受理そのものを`.tei/decisions/`へ残すようになりました（2026-09-21、`RQ-027`）。後から入るAIや人が、会話履歴を持たずに「このsourceはなぜここにあるのか」——intent、Evidence、基準revision、書いたfile、意味の差分、残ったunresolved——を`decisions`コマンドで読めます。記録はauthorityではなく、`.tei/`はmanaged sourceではないため、消してもmodel revisionもaccepted meaningも変わりません。
-
-Gate C後の最初のStudio Referenceは`ISSUE-000046`です（In Progress。UI・Relation変更は未着手）。
-
-Gate B / Gate CのEvidenceは、そのexact revision（`R = e5231839…` / `T = 0ba87a4e…`）へ紐づく歴史的Evidenceとして保持します。第二Application受理後のcurrent Workspaceを、旧baselineのcurrent equivalentとして読み替えません。
-
-```text
-Select
- -> Propose
- -> Preview
- -> Accept / Reject
- -> Shared Acceptance Boundary
- -> authoritative source
- -> reload / Conformance
-```
-
-StudioはCanonicalの第二正本にはしません。
-
-Preview / Rejectはnon-mutating、stale `baseModelRevision`は明示処理します。
-
-Studio都合でmandatory authored Stable ID / UUIDを導入しません。
-
-Studioのdeveloper-facing Wails HostをGenerated Wails Desktop Application Targetと混同しません。
-
-## knowledge-first / AI
-
-現時点ではDesign Onlyです。
-
-### knowledge-first exploration
-
-`ISSUE-000047`でGate C後に実証します。
-
-Human / AIが同じauthoritative source / Canonical / Evidenceをread-only探索し、次を分けます。
-
-- applicable
-- incompatible
-- unknown
-
-search ranking / similarity / embedding / model confidenceをSemantic Evidenceへ格上げしません。
-
-### AI Proposal
-
-`ISSUE-000027` / ADR-0022で扱います。AIによるcandidateの生成は未着手ですが、受け取る側の境界は上記のReferenceとして存在し、AI由来のcandidate（`origin.kind = ai`）も同じ経路を通ります。
-
-AI ProposalはCanonical authorityではありません。
-
-file-native / Studio / CLI / AIをShared Acceptance Boundaryへ収束させます。
-
-AI provider、vector database、Proposal最終schema、chat-first UXは未固定です。
-
-## Reference Model Transfer
-
-2026-10-06に、成熟した既存業務モデルを一式でTEIへ転写できるかを確かめる横断Evidence laneを[ISSUE-000078](../plan/issue/000078-reference-model-transfer-gate.md)として開始しました。最初のbenchmarkはX-TEA / XEAD系「CONCEPTWARE／受注生産」です。これはProduct Gate Dではなく、RQ-001 / 002 / 003 / 004 / 010〜013 / 021 / 022 / 025 / 026 / 029 / 031〜033をまとめてpressureするReferenceです。
-
-RMT-0 / RMT-1の開始Evidenceとして、渡辺幸三氏のXeadModeler / XeadEditor / XeadDriver source revision、利用者が保持するmodel / manualのdigest、model構造のaggregate inventory、modernization pressureを`reference/reference-model-transfer/`へ記録しました。原Reference Modelの内容そのものはRepositoryへ転載していません。
-
-初回解析では、基本設計側のFunctionと実行仕様側のFunctionが1対1ではないこと、Function / Table I/Oの明示CRUDとは別にnative ScriptがDatabase effectを持ち得ること、transaction / Session / Environment / Secret等に旧Runtime固有の暗黙前提があることを確認しています。これらをTEI側で黙って補完せず、Canonical / Realization / Native / Derived / Unresolvedへ分類していきます。
-
-現時点で**転写成立は未実証**です。original X-TEA Runtimeでのactual behavior取得はGitHub #940、Reference Model本体の再利用・公開条件確認はGitHub #941へ分離しています。RMT-2以降のtranscription、cross-view全体検査、TEI Driver / Targetでの代表Scenario実行も未取得です。
-
-## Second Target
-
-現時点ではDesign Onlyです。
-
-Gate C後、`ISSUE-000026`で第一Targetと十分に異なるApplication Targetを選びます。
-
-比較対象は次のとおりです。
-
-- Handover / Canonical meaning
-- Target build identity
-- Target Capability
-- Runtime Binding
-- Execution / Trust Profile
-- Host control plane
-- Semantic / Functional / Visual Evidence
-- RQ-024 performance
-
-Studio Wails Hostは第二Application Target Evidenceへ数えません。
-
-## 現時点で完成済みとは言わないもの
-
-- PostgreSQL以外の実Database Providerでの E2E（第一Referenceの既存資産ではactual Oracle）
-- Visual Fidelityの人による承認（Gate C Visualは単一のAI評価者による評価）
-- complete Target-neutral Presentation IR
-- production-ready Web / Desktop / Mobile Target
-- Studio actual Authoring Reference
-- production-ready GUI Editor
-- knowledge-first exploration actual Reference
-- AI Proposal / Decision UX actual Reference
-- mature Reference Modelのfull transcription / executable comparison
-- second Application Target
-- production-grade Workflow / HA / distributed ownership
-- generic OS sandbox
-- API compatibility guarantee
-
-設計契約、isolated test、runner実装をactual Product Evidenceへ格上げしません。
-
-## 参照先
-
-- [TEI Master Plan](../plan/MASTER_PLAN.md)
-- [v1 Reference Application Plan](../plan/V1_REFERENCE_APPLICATION_PLAN.md)
-- [Upstream Acceptance Scenario Traceability](../plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md)
-- [Product Requirement Gap Audit](../plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md)
-- [Gate B Readiness Audit](../plan/GATE_B_READINESS_AUDIT.md)
-- [Gate B Evidence Runbook](../plan/GATE_B_EVIDENCE_RUNBOOK.md)
-- [Gate B → C Handover Contract](../plan/GATE_B_TO_C_HANDOVER_CONTRACT.md)
-- [Gate B → C Handover Baseline B](../plan/GATE_B_TO_C_HANDOVER_BASELINE_B.md)
-- [Gate C Evidence Contract](../plan/GATE_C_EVIDENCE_CONTRACT.md)
-- [Gate C First Web Target Evidence Runbook](../plan/GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md)
-- [Architecture](architecture.md)
-
-細かなM0.xxの検証履歴は`docs/conformance/`、ADR、Git historyから追跡します。本statusはcurrent snapshotを優先します。
-
-
-Second ApplicationはS5/S6/S7まで完了し、`repair_intake` sourceとdevelopment / productionの`customer_master -> master_data` Environment bindingがcurrent Referenceへ受理済みです。S8 preflightでは、developmentの既存Contract Query executor bindingを使えばsynthetic Driver lookupを既存Driver APIで再現できる一方、productionには同等executor bindingが無いこと、First Web TargetのProjectionはApplication切替可能でもread scenario runnerが`order_entry`固定であることを確認しました。この点は2026-10-05に、First Web Targetのmanifest / runner identity mismatchをfail closed（runnerが別のApplicationを実行する場合、またはApplicationを宣言しない場合は起動時に拒否）にし、Customer ID inputから`repair_intake.intake.customer_id` mapped rowを経て`repair_intake.customer_reference`をDriverのEnvironment-aware経路で実行するTarget-local lookup（画面とJSON）を追加しました（`tools/reference-first-web-target`、[ISSUE-000075](../plan/issue/000075-practical-scenario-mvp-demonstration.md)のMVP実証A）。`order_entry`と同じ`customer.customer`の意味とContract Queryが同じExecutor bindingで解決されることをtestで固定しています。ただし、Executorはsynthetic fixture（test double）で実Databaseへの接続ではなく、productionでは実行できません。actual Oracle principal / credential / network authorityは未観測のままで、synthetic Evidenceへ読み替えません。Gate C Evidence（`T`）の対象ではなく、`T`以降のrevisionでの実装です。
-
-2026-10-06には、Applicationが評価するValidationの選択を、Target側の一覧ではなくApplicationの`uses validation`宣言から導くようにしました（[ADR-0029](../plan/adr/0029-application-validation-selection-from-canonical-declaration.md)、[ISSUE-000073](../plan/issue/000073-derive-validation-selection-from-canonical.md)）。Driverの`Resolver`が宣言を宣言順に返し、第一Web Targetとscenario testはそれを使います。宣言が無いApplicationは判定不能（Execution Error側）で、空を成功にしません。`order_entry`の宣言（2行）は、Shared Acceptance Boundary（新しいoperation `add-application-validation-use`）を通してownerが受理しました。この変更後のworkspaceは、Gate Bの`R`・Gate Cの`T`のworkspaceと同一ではありません。Gate Cのarchitecture conformance tool（`tools/reference-first-web-target-architecture-evidence`）は、`reference/workspace`と`reference/world.json`が、Handover Baseline `R`（`e5231839…`）からTarget build `T`（`0ba87a4e…`）の間で変わらないことを要求します。`R`から`T`の間には、この2つのパスの変更がありません。一方、`T`より後のコミットで、この2つのパスを変えたものは次の4件です（2026-10-08に`main`（`d3aab052`）まで確認した。4件目は同日の受理）: `0423b95e`（`repair_intake`の受理）、`0ca2016b`（S7 Environment bindingの受理）、`1619de2c`（`order_entry`のValidation宣言の受理）、および2026-10-08の`sales.order_line.line_number_positive`の受理（決定記録`a043abc84702feb4a4558e2fbfd6fa17bd60867075f65d126d648998a11f2523.json`。受理commitのhashは、そのcommitの中には書けないため記さない）。そのため、`R`を基準に現在の`main`を対象とすると、このtoolの判定条件は満たしません。ただし、これは過去のGate C Readyを否定するものではありません。Gate C Readyは`B / R / T`に結び付いた主張です。現在の`main`に対してtoolを実行した結果は、この文書には記録していません。2026-10-08に行った読み取り専用の確認では、`T`の清潔なdetached checkoutを`git worktree add --detach`で作り、`tools/run-first-web-target-gate-c-evidence.sh`と同じ引数（`-baseline-id B -baseline-revision e5231839… -target-revision 0ba87a4e…`）でtoolを実行しました。3つのcheck（R→T間のworkspace / world不変、Web Target authority boundary、shared command boundary）はすべて`passed = true`で、exit 0で終了しました。確認後、そのcheckoutは`git worktree remove`で削除しました。この確認はGate C Evidenceとして取得・保存したものではありません。`T`の木は、2026-10-08の`line_number_positive`の受理では変わらず、その受理は`T`より後のコミットとして入るため、`T`の清潔なcheckoutは、この受理の後も上の3つのcheckを引き続きpassします。ただし、これは2026-10-08に行った上の読み取り専用確認に基づく結論であり、現在の`main`がpassすることを意味しません。後継Handoverを今は発行しないことは、ownerが2026-10-06に判断しています（[ISSUE-000073](../plan/issue/000073-derive-validation-selection-from-canonical.md)）。

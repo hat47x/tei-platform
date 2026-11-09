@@ -198,7 +198,12 @@ func NormalizeDefinition(d Definition) Definition {
 		}
 		return d.Provides[i].ID < d.Provides[j].ID
 	})
-	sort.Slice(d.Requires, func(i, j int) bool { return d.Requires[i].Plugin < d.Requires[j].Plugin })
+	sort.Slice(d.Requires, func(i, j int) bool {
+		if d.Requires[i].Plugin != d.Requires[j].Plugin {
+			return d.Requires[i].Plugin < d.Requires[j].Plugin
+		}
+		return d.Requires[i].CompatibleMajor < d.Requires[j].CompatibleMajor
+	})
 	sort.Slice(d.External, func(i, j int) bool {
 		if d.External[i].Scope != d.External[j].Scope {
 			return d.External[i].Scope < d.External[j].Scope

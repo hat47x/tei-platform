@@ -9,6 +9,12 @@ import (
 //
 // Persistence Mappingは保存構造との対応を所有するのに対し、このmappingはQuery固有の結果射影を所有する。
 // DriverやProviderは、列名の類似やPersistence Mappingからこの意味を推測しない。
+// Inputは、Queryが受け付けるパラメータである。
+type Input struct {
+	Name core.LocalName   `json:"name"`
+	Type core.CanonicalID `json:"type"`
+}
+
 type ResultColumnMapping struct {
 	Column    string           `json:"column"`
 	Attribute core.CanonicalID `json:"attribute"`
@@ -20,10 +26,6 @@ type EmbeddedSQL struct {
 	Datasource    core.LocalName               `json:"datasource"`
 	Dialect       environment.DatabaseProvider `json:"dialect"`
 	Source        string                       `json:"source"`
+	Inputs        []Input                      `json:"inputs,omitempty"`
 	ResultColumns []ResultColumnMapping        `json:"resultColumns,omitempty"`
-}
-
-type PhysicalReference struct {
-	Database core.CanonicalID `json:"database"`
-	Object   string           `json:"object"`
 }

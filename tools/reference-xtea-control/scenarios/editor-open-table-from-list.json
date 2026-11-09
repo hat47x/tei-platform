@@ -1,0 +1,15 @@
+{
+  "name": "editor-open-table-from-list",
+  "description": "Open the Editor table list, double-click the department table row, and verify that the table editor shows table ID 61 and name 部門. Read-only: no save.",
+  "steps": [
+    { "op": "wait_window", "title": "X-TEA Editor", "timeoutMs": 30000 },
+    { "op": "select", "selector": { "role": "tree" }, "path": [0, 1, 0, 0] },
+    { "op": "key", "selector": { "role": "tree" }, "key": "ENTER" },
+    { "op": "sleep", "ms": 1000 },
+    { "op": "select", "selector": { "path": "0.1.2.5.0.0.0" }, "row": 2, "column": 1 },
+    { "op": "click", "selector": { "path": "0.1.2.5.0.0.0" }, "count": 2, "row": 2, "column": 1 },
+    { "op": "sleep", "ms": 1500 },
+    { "op": "wait_selector", "selector": { "path": "0.1.2.6.0.0.0.2" }, "timeoutMs": 10000 },
+    { "op": "assert_text", "selector": { "path": "0.1.2.6.0.0.0.2" }, "equals": "部門" }
+  ]
+}

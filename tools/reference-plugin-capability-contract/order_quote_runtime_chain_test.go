@@ -1,0 +1,612 @@
+package main
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"reflect"
+	"runtime"
+	"strings"
+	"testing"
+	"time"
+
+	"tei/internal/core"
+	"tei/internal/permission"
+	"tei/internal/plugin"
+	pruntime "tei/internal/plugin/runtime"
+	web "tei/reference/web-composition/go-host"
+)
+
+// This wire DTO is confined to a test of the existing legacy stdio carrier.
+// It is not a new TEI Capability ABI or a mapping from Quote to Contract Query.
+type quoteChainWire struct {
+	Schema                  string            `json:"schema"`
+	ContractID              string            `json:"contractId"`
+	ContractFingerprint     string            `json:"contractFingerprint"`
+	Target                  string            `json:"target"`
+	Provider                map[string]string `json:"provider"`
+	RequestShapeFingerprint string            `json:"requestShapeFingerprint"`
+	ResultShapeFingerprint  string            `json:"resultShapeFingerprint"`
+	PayloadCodec            string            `json:"payloadCodec"`
+	Payload                 []byte            `json:"payload"`
+}
+
+type quoteChainHashVerifier struct {
+	path  string
+	calls int
+}
+
+func (v *quoteChainHashVerifier) Verify(
+	_ context.Context, _ plugin.Identity, artifact plugin.Artifact,
+) (pruntime.ArtifactVerification, error) {
+	v.calls++
+	bytes, err := os.ReadFile(v.path)
+	if err != nil {
+		return pruntime.ArtifactVerification{}, err
+	}
+	sum := sha256.Sum256(bytes)
+	if artifact.Digest != "sha256:"+hex.EncodeToString(sum[:]) {
+		return pruntime.ArtifactVerification{}, errors.New("test-only executable digest mismatch")
+	}
+	return pruntime.ArtifactVerification{
+		VerifierID: "reference.quote-chain.test-hash-only", DigestVerified: true,
+	}, nil
+}
+
+type quoteChainLauncher struct {
+	calls int
+	last  pruntime.Request
+}
+
+func (p *quoteChainLauncher) Invoke(ctx context.Context, cmd pruntime.ProcessCommand, req pruntime.Request) (pruntime.Response, error) {
+	p.calls++
+	p.last = req
+	return (pruntime.StdioProcessLauncher{}).Invoke(ctx, cmd, req)
+}
+
+func quoteChainDigest(raw []byte) string {
+	sum := sha256.Sum256(raw)
+	return "sha256:" + hex.EncodeToString(sum[:])
+}
+
+// These stages are exercised in sequence, on the SAME request:
+// candidate shape authority + publisher trust (synthetic test fixtures only);
+// provider conformance (synthetic evidence, exact real-binary SHA-256);
+// product Runtime Registry (test EnvironmentPlan, digest/permission/sandbox
+// gates); actual independent child process; shape-checked business result.
+// This deliberately proves no production trust grant, pinned executable
+// image, signing, OS sandbox, durable effect or canonical model acceptance.
+func TestCandidateQuoteShapeConformanceAndRealRuntimeProcessOneInvocation(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("reference process requires a platform-specific executable policy")
+	}
+	source, err := os.ReadFile("../../plugins/reference-order-quote/main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	isolated := t.TempDir()
+	if err := os.WriteFile(filepath.Join(isolated, "main.go"), source, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(isolated, "go.mod"),
+		[]byte("module example.invalid/quote-chain\n\ngo 1.23\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	binary := filepath.Join(t.TempDir(), "quote-chain")
+	// #2057: go buildはキャッシュなし・CPU競合のCIで数十秒かかる一方、実プロセスの起動は
+	// 1回あたり数十ms以内である。buildは独立した長い期限で待ち、実プロセスの期限は
+	// build後に始めて、build時間が起動側の予算を食わないようにする。
+	buildCtx, cancelBuild := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancelBuild()
+	build := exec.CommandContext(buildCtx, "go", "build", "-o", binary, ".")
+	build.Dir = isolated
+	build.Env = append(os.Environ(), "GOWORK=off", "GOTOOLCHAIN=local")
+	if output, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("compile independent quote provider: %v\n%s", err, output)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+	binaryBytes, err := os.ReadFile(binary)
+	if err != nil {
+		t.Fatal(err)
+	}
+	digest := quoteChainDigest(binaryBytes)
+
+	unusedCalls := 0
+	contract, provider, impl := quoteCandidateRegistryFixture(t, &unusedCalls)
+	provider.ArtifactDigest = digest
+	impl.Provider = provider
+	impl.AuthorityLimits = []string{
+		"candidate-shape-and-publisher-grants-are-only-test-fixtures",
+		"provider-conformance-evidence-is-only-test-fixture",
+		"runtime-plan-and-image-verifier-are-test-only",
+		"legacy-contract-query-kind-is-stdio-carrier-not-domain-query",
+		"no-signed-publisher-provider-or-artifact-acceptance",
+		"no-pinned-process-image-sandbox-or-resource-lease",
+	}
+
+	identity := plugin.Identity{
+		ID: core.MustCanonicalID(provider.PluginID), Version: provider.PluginVersion,
+	}
+	capabilityID := core.MustCanonicalID("transport.order_quote_carrier")
+	descriptor := quoteChainDigest([]byte("reference.order-quote.transport-carrier/v1"))
+	plan := pruntime.EnvironmentPlan{
+		Environment:           core.MustCanonicalID("reference"),
+		PluginLockFingerprint: "test-only-quote-chain-lock",
+		Plugins: []pruntime.PluginRuntime{{
+			Plugin: identity, DescriptorFingerprint: descriptor,
+			Boundary: pruntime.BoundaryProcess, Trust: pruntime.TrustExternalProcess,
+			Command: binary, SandboxPolicy: plugin.SandboxNone,
+			Artifact: plugin.Artifact{Digest: digest},
+		}},
+		Capabilities: []pruntime.CapabilityRuntime{{
+			Plugin: identity,
+			Capability: plugin.Capability{
+				Kind: plugin.CapabilityContractQueryExecutor, ID: capabilityID,
+			},
+			Boundary: pruntime.BoundaryProcess,
+		}},
+	}
+	plan.RuntimePolicyFingerprint = pruntime.PolicyFingerprint(plan)
+	verifier := &quoteChainHashVerifier{path: binary}
+	launcher := &quoteChainLauncher{}
+	host := pruntime.Registry{Processes: launcher, Verifier: verifier}
+	var provenance pruntime.InvocationProvenance
+	// Faults are injected AFTER the real child has returned. They exercise
+	// consumer-side proof boundaries, not the child process implementation.
+	var corruptTransportIdentity bool
+	var alterBusinessResult func([]byte) []byte
+	sequence := 0
+	impl.Invoke = func(ctx context.Context, quote []byte) ([]byte, error) {
+		sequence++
+		wire := quoteChainWire{
+			Schema:              "tei.reference.capability-transport-dispatch/v0",
+			ContractID:          contract.ID,
+			ContractFingerprint: quoteChainDigest([]byte("reference.order.quote-lines.contract/v1")),
+			Target:              "reference/order_entry",
+			Provider: map[string]string{
+				"pluginId": provider.PluginID, "pluginVersion": provider.PluginVersion,
+				"implementationId": provider.ImplementationID,
+				"artifactDigest":   provider.ArtifactDigest,
+			},
+			RequestShapeFingerprint: quoteChainDigest([]byte("reference.order.quote-lines.request/v1")),
+			ResultShapeFingerprint:  quoteChainDigest([]byte("reference.order.quote-lines.result/v1")),
+			PayloadCodec:            "application/json",
+			Payload:                 quote,
+		}
+		// The inner transport retains the pre-existing legacy reference
+		// fingerprints. The OUTER candidate shapes are validated by the
+		// InvocationRegistry, not asserted as accepted by the child binary.
+		inv, err := host.InvokeWithProvenance(
+			ctx, plan, plugin.CapabilityContractQueryExecutor,
+			capabilityID, "generic-dispatch-v0",
+			fmt.Sprintf("quote-chain-%d", sequence), wire,
+		)
+		if err != nil {
+			return nil, err
+		}
+		provenance = inv.Provenance
+		var response quoteChainWire
+		if err := decodeReferenceJSONExact(inv.Response.Payload, &response); err != nil {
+			return nil, err
+		}
+		expected := wire
+		expected.Schema = "tei.reference.capability-transport-result/v0"
+		expected.Payload = nil
+		out := response.Payload
+		response.Payload = nil
+		if corruptTransportIdentity {
+			response.ContractFingerprint = quoteChainDigest([]byte("forged-transport-contract"))
+		}
+		if !reflect.DeepEqual(expected, response) {
+			return nil, errors.New("real process transport identity drifted")
+		}
+		if alterBusinessResult != nil {
+			return alterBusinessResult(out), nil
+		}
+		return out, nil
+	}
+	shapeEvidence := invocationShapeAuthoritiesForTest([]InvocationImplementation{impl})
+	generic, err := NewInvocationRegistry(
+		[]InvocationImplementation{impl},
+		shapeEvidence,
+		invocationShapePublisherTrustForTest(t, shapeEvidence),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := ResolveInput{
+		Scope:       ScopeApplicationRuntime,
+		Requirement: Requirement{ContractID: contract.ID, CompatibleMajor: 1},
+		Contracts:   []Contract{contract},
+		Providers:   []Provider{provider},
+	}
+	payload := []byte(`{"currency":"JPY","lines":[{"sku":"PEN","quantity":3,"unitPriceMinor":250},{"sku":"BOOK","quantity":2,"unitPriceMinor":400}]}`)
+	attempt := func(t *testing.T, name string, want string, mutate func()) {
+		t.Helper()
+		before := launcher.calls
+		mutate()
+		_, err := generic.ResolveAndInvoke(ctx, input, payload)
+		if err == nil || !strings.Contains(err.Error(), want) || launcher.calls != before {
+			t.Fatalf("%s: want pre-launch rejection %q; err=%v launches=%d",
+				name, want, err, launcher.calls-before)
+		}
+	}
+
+	t.Run("candidate shape grants do not imply provider conformance", func(t *testing.T) {
+		attempt(t, "no evidence", "no conformant provider", func() { input.Evidence = nil })
+	})
+	t.Run("incorrect provider artifact evidence stops before Runtime", func(t *testing.T) {
+		e := evidenceFor(provider, contract, "synthetic-test-only")
+		e.ArtifactDigest = quoteChainDigest([]byte("other artifact"))
+		attempt(t, "wrong evidence", "no conformant provider", func() { input.Evidence = []ConformanceEvidence{e} })
+	})
+	input.Evidence = []ConformanceEvidence{evidenceFor(provider, contract, "synthetic-test-only")}
+	t.Run("changed provider and shape through real runtime", func(t *testing.T) {
+		// Only a copied provider is changed: zero is a test marker, not a tax rule.
+		anchor := "\tSubtotalMinor int64  `json:\"subtotalMinor\"`\n"
+		if strings.Count(string(source), anchor) != 1 {
+			t.Fatal("provider result anchor is not unique")
+		}
+		changedSource := strings.Replace(string(source), anchor, anchor+"\tTaxMinor int64 `json:\"taxMinor\"`\n", 1)
+		providerDir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(providerDir, "main.go"), []byte(changedSource), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(providerDir, "go.mod"), []byte("module example.invalid/changed-quote\n\ngo 1.23\n"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		changedBinary := filepath.Join(providerDir, "quote")
+		build := exec.CommandContext(buildCtx, "go", "build", "-o", changedBinary, ".")
+		build.Dir = providerDir
+		build.Env = append(os.Environ(), "GOWORK=off", "GOTOOLCHAIN=local", "GOPROXY=off")
+		if out, err := build.CombinedOutput(); err != nil {
+			t.Fatalf("build changed provider: %v: %s", err, out)
+		}
+		changedBytes, err := os.ReadFile(changedBinary)
+		if err != nil {
+			t.Fatal(err)
+		}
+		changedDigest := quoteChainDigest(changedBytes)
+		if changedDigest == digest {
+			t.Fatal("changed provider retained original digest")
+		}
+		originalContract, originalProvider, originalPlan, originalHost := contract, provider, plan, host
+		defer func() {
+			contract, provider, plan, host = originalContract, originalProvider, originalPlan, originalHost
+		}()
+		shape := readQuoteCandidateShape(t, "result-v0.json")
+		shape.Root.Properties["taxMinor"] = InvocationShapeNode{Kind: "number"}
+		shape.Root.Required = append(shape.Root.Required, "taxMinor")
+		loaded := loadQuoteOverlayWorldWithEdit(t, func(raw []byte) []byte {
+			anchor := "    attribute subtotalMinor type std.integer\n"
+			if strings.Count(string(raw), anchor) != 1 {
+				t.Fatal("semantic anchor not unique")
+			}
+			return []byte(strings.Replace(string(raw), anchor, anchor+"    attribute taxMinor type std.integer\n", 1))
+		})
+		mappingBytes, err := os.ReadFile("../../reference/candidates/order-quote/shape-mapping.json")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var mapping quoteCandidateShapeMapping
+		if err := json.Unmarshal(mappingBytes, &mapping); err != nil {
+			t.Fatal(err)
+		}
+		semanticFound := false
+		for _, ns := range loaded.World.Semantics {
+			for _, data := range ns.Data {
+				for _, attr := range data.Attributes {
+					semanticFound = semanticFound || (attr.ID == "sales.quote_result.tax_minor" && attr.TypeRef == "std.integer")
+				}
+			}
+		}
+		if !semanticFound {
+			t.Fatal("changed semantic attribute absent")
+		}
+		authorize, editor, viewer := changedQuoteAuthorizer(t, loaded.World)
+		contract.ResultShapeFingerprint = invocationShapeFingerprint(shape)
+		provider.ContractFingerprint = fingerprint(contract)
+		provider.ArtifactDigest = changedDigest
+		plan.Plugins = append([]pruntime.PluginRuntime(nil), plan.Plugins...)
+		plan.Plugins[0].Command = changedBinary
+		plan.Plugins[0].Artifact.Digest = changedDigest
+		plan.RuntimePolicyFingerprint = pruntime.PolicyFingerprint(plan)
+		host.Verifier = &quoteChainHashVerifier{path: changedBinary}
+		changedImpl := impl
+		changedImpl.Provider = provider
+		changedImpl.ResultShapeArtifact = shape
+		changedImpl.ResultShapeFingerprint = contract.ResultShapeFingerprint
+		authorities := invocationShapeAuthoritiesForTest([]InvocationImplementation{changedImpl})
+		registry, err := NewInvocationRegistry([]InvocationImplementation{changedImpl}, authorities, invocationShapePublisherTrustForTest(t, authorities))
+		if err != nil {
+			t.Fatal(err)
+		}
+		changedInput := input
+		changedInput.Contracts = []Contract{contract}
+		changedInput.Providers = []Provider{provider}
+		// Explicit test-only gate: the Reference authorizer does not perform
+		// semantic-to-wire mapping or prove business acceptance by itself.
+		invoke := func(principal web.Principal) (InvocationExecution, error) {
+			if mapping.FieldMappings["sales.quote_result.tax_minor"] != "taxMinor" || shape.Root.Properties["taxMinor"].Kind != "number" {
+				return InvocationExecution{}, errors.New("unresolved test-only semantic mapping")
+			}
+			allowed, err := authorize(ctx, principal, "order_entry.preview_order_quote")
+			if err != nil {
+				return InvocationExecution{}, err
+			}
+			if !allowed {
+				return InvocationExecution{}, errors.New("candidate action denied")
+			}
+			return registry.ResolveAndInvoke(ctx, changedInput, payload)
+		}
+		before := launcher.calls
+		if _, err := invoke(editor); err == nil || !strings.Contains(err.Error(), "mapping") || launcher.calls != before {
+			t.Fatalf("unmapped semantic change reached process: %v", err)
+		}
+		mapping.FieldMappings["sales.quote_result.tax_minor"] = "taxMinor"
+		if _, err := invoke(viewer); err == nil || !strings.Contains(err.Error(), "denied") || launcher.calls != before {
+			t.Fatalf("unapproved viewer reached process: %v", err)
+		}
+		if _, err := invoke(editor); err == nil || launcher.calls != before {
+			t.Fatalf("old evidence permitted changed provider/contract: %v", err)
+		}
+		changedInput.Evidence = []ConformanceEvidence{evidenceFor(provider, contract, "synthetic-changed-only")}
+		got, err := invoke(editor)
+		if err != nil || launcher.calls != before+1 || !strings.Contains(string(got.ResultPayload), `"taxMinor":0`) {
+			t.Fatalf("changed provider and shape: %+v, %v", got, err)
+		}
+		if err := validateInvocationPayload(shape, got.ResultPayload); err != nil {
+			t.Fatal(err)
+		}
+		// A presentation-only reorder of required fields is normalized by the
+		// existing v0 rule; retain the exact same Shape and provider evidence.
+		reordered := shape
+		reordered.Root.Required = append([]string(nil), shape.Root.Required...)
+		for left, right := 0, len(reordered.Root.Required)-1; left < right; left, right = left+1, right-1 {
+			reordered.Root.Required[left], reordered.Root.Required[right] = reordered.Root.Required[right], reordered.Root.Required[left]
+		}
+		if reflect.DeepEqual(reordered.Root.Required, shape.Root.Required) || invocationShapeFingerprint(reordered) != contract.ResultShapeFingerprint {
+			t.Fatal("required-order-only edit should preserve the v0 Shape fingerprint")
+		}
+		reorderedImpl := changedImpl
+		reorderedImpl.ResultShapeArtifact = reordered
+		registry, err = NewInvocationRegistry([]InvocationImplementation{reorderedImpl}, authorities, invocationShapePublisherTrustForTest(t, authorities))
+		if err != nil {
+			t.Fatalf("unchanged evidence rejected on required reorder: %v", err)
+		}
+		before = launcher.calls
+		if result, err := invoke(editor); err != nil || launcher.calls != before+1 || !strings.Contains(string(result.ResultPayload), `"taxMinor":0`) {
+			t.Fatalf("same evidence and changed provider after reorder: %+v, %v", result, err)
+		}
+		weakened := reordered
+		weakened.Root.Required = append([]string(nil), reordered.Root.Required[1:]...)
+		if invocationShapeFingerprint(weakened) == contract.ResultShapeFingerprint {
+			t.Fatal("removed requirement reused old fingerprint")
+		}
+		weakenedImpl := reorderedImpl
+		weakenedImpl.ResultShapeArtifact = weakened
+		if _, err := NewInvocationRegistry([]InvocationImplementation{weakenedImpl}, authorities, invocationShapePublisherTrustForTest(t, authorities)); err == nil || launcher.calls != before+1 {
+			t.Fatalf("changed requirement reused old pin or launched process: %v", err)
+		}
+		t.Log("required field reorder needs no Shape or Provider evidence change; removing a required field cannot reuse the old pin")
+		t.Log("isolated changed semantic, test-only mapping gate, candidate authorizer, synthetic evidence and changed real provider executed in order; missing mapping, denied viewer and old evidence stopped before process; tax=0 is a test marker")
+	})
+	t.Run("isolated result shape change does not inherit old evidence", func(t *testing.T) {
+		// Modify a separate copy, never the unaccepted candidate on disk.
+		original, err := os.ReadFile("../../reference/candidates/order-quote/shapes/result-v0.json")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var changed InvocationShapeArtifact
+		if err := json.Unmarshal(original, &changed); err != nil {
+			t.Fatal(err)
+		}
+		changed.Root.Properties["taxMinor"] = InvocationShapeNode{Kind: "number"}
+		changed.Root.Required = append(changed.Root.Required, "taxMinor")
+		if err := validateInvocationShapeArtifact(changed); err != nil {
+			t.Fatal(err)
+		}
+		copyPath := filepath.Join(t.TempDir(), "result-v0.json")
+		copyBytes, err := json.Marshal(changed)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(copyPath, copyBytes, 0600); err != nil {
+			t.Fatal(err)
+		}
+		if invocationShapeFingerprint(changed) == impl.ResultShapeFingerprint {
+			t.Fatal("changed shape retained old fingerprint")
+		}
+		changedImpl := impl
+		changedImpl.ResultShapeArtifact = changed
+		before := launcher.calls
+		if _, err := NewInvocationRegistry([]InvocationImplementation{changedImpl}, shapeEvidence, invocationShapePublisherTrustForTest(t, shapeEvidence)); err == nil || !strings.Contains(err.Error(), "does not match declaration") {
+			t.Fatalf("old shape pin accepted: %v", err)
+		}
+		changedImpl.ResultShapeFingerprint = invocationShapeFingerprint(changed)
+		if _, err := NewInvocationRegistry([]InvocationImplementation{changedImpl}, shapeEvidence, invocationShapePublisherTrustForTest(t, shapeEvidence)); err == nil || !strings.Contains(err.Error(), "no accepted Shape Authority Evidence") {
+			t.Fatalf("old authority evidence accepted: %v", err)
+		}
+		if launcher.calls != before {
+			t.Fatal("stale shape caused process execution")
+		}
+		got, err := generic.ResolveAndInvoke(ctx, input, payload)
+		if err != nil || launcher.calls != before+1 {
+			t.Fatalf("original shape should still invoke actual provider: %+v, %v", got, err)
+		}
+		if err := validateInvocationPayload(changed, got.ResultPayload); err == nil {
+			t.Fatalf("old provider output unexpectedly satisfies new required taxMinor: %s", got.ResultPayload)
+		}
+		if err := validateInvocationPayload(changed, []byte(`{"currency":"JPY","lineCount":2,"subtotalMinor":1550,"taxMinor":0}`)); err != nil {
+			t.Fatalf("new candidate-shaped example rejected: %v", err)
+		}
+		t.Log("one isolated result Shape changed: old pin and old synthetic Shape evidence rejected before process; original provider still works under original Shape, but output lacks new required field")
+	})
+	t.Run("outer request shape violation prevents Runtime", func(t *testing.T) {
+		bad := payload
+		payload = []byte(`{"currency":"JPY","lines":[{"sku":"PEN","quantity":"3","unitPriceMinor":250}]}`)
+		defer func() { payload = bad }()
+		attempt(t, "bad input", "request does not conform", func() {})
+	})
+	t.Run("missing Runtime verifier prevents execution", func(t *testing.T) {
+		before := host
+		defer func() { host = before }()
+		attempt(t, "no verifier", "no artifact verifier", func() { host.Verifier = nil })
+	})
+	t.Run("Runtime digest mismatch prevents process", func(t *testing.T) {
+		before := plan
+		defer func() { plan = before }()
+		attempt(t, "wrong digest", "digest mismatch", func() {
+			plan.Plugins = append([]pruntime.PluginRuntime(nil), plan.Plugins...)
+			plan.Plugins[0].Artifact.Digest = quoteChainDigest([]byte("incorrect bytes"))
+			plan.RuntimePolicyFingerprint = pruntime.PolicyFingerprint(plan)
+		})
+	})
+	t.Run("missing Runtime capability prevents process", func(t *testing.T) {
+		before := plan
+		defer func() { plan = before }()
+		attempt(t, "no capability", "not uniquely resolved", func() {
+			plan.Capabilities = nil
+			plan.RuntimePolicyFingerprint = pruntime.PolicyFingerprint(plan)
+		})
+	})
+	t.Run("Runtime permission not granted prevents process", func(t *testing.T) {
+		before := plan
+		defer func() { plan = before }()
+		attempt(t, "no network grant", "requires permission", func() {
+			plan.Capabilities = append([]pruntime.CapabilityRuntime(nil), plan.Capabilities...)
+			plan.Capabilities[0].Capability.Permissions = []permission.Spec{{
+				Kind: permission.KindNetwork, Access: permission.AccessConnect,
+				Scope: "database.primary",
+			}}
+			plan.RuntimePolicyFingerprint = pruntime.PolicyFingerprint(plan)
+		})
+	})
+	t.Run("missing required sandbox prevents process", func(t *testing.T) {
+		before := plan
+		defer func() { plan = before }()
+		attempt(t, "required sandbox", "requires sandbox launcher", func() {
+			plan.Plugins = append([]pruntime.PluginRuntime(nil), plan.Plugins...)
+			plan.Plugins[0].SandboxPolicy = plugin.SandboxRequired
+			plan.RuntimePolicyFingerprint = pruntime.PolicyFingerprint(plan)
+		})
+	})
+
+	// A process can execute successfully while returning a response that is
+	// unacceptable to the selected contract. The outer InvocationRegistry
+	// must reject the result instead of treating Runtime launch success as
+	// proof of business-conformant output. No completed InvocationExecution
+	// (and therefore no success provenance) may escape.
+	t.Run("tampered transport identity rejected after real child execution", func(t *testing.T) {
+		before := launcher.calls
+		corruptTransportIdentity = true
+		defer func() { corruptTransportIdentity = false }()
+		got, err := generic.ResolveAndInvoke(ctx, input, payload)
+		if err == nil || !strings.Contains(err.Error(), "real process transport identity drifted") ||
+			launcher.calls != before+1 || !reflect.DeepEqual(got, InvocationExecution{}) {
+			t.Fatalf("invalid transport identity was accepted: err=%v launches=%d result=%+v",
+				err, launcher.calls-before, got)
+		}
+	})
+	for _, tc := range []struct {
+		name   string
+		result string
+	}{
+		{"wrong subtotal type", `{"currency":"JPY","lineCount":2,"subtotalMinor":"1550"}`},
+		{"missing currency", `{"lineCount":2,"subtotalMinor":1550}`},
+		{"unknown submitted effect", `{"currency":"JPY","lineCount":2,"subtotalMinor":1550,"submitted":true}`},
+	} {
+		t.Run("real process response rejected: "+tc.name, func(t *testing.T) {
+			before := launcher.calls
+			alterBusinessResult = func([]byte) []byte { return []byte(tc.result) }
+			defer func() { alterBusinessResult = nil }()
+			got, err := generic.ResolveAndInvoke(ctx, input, payload)
+			if err == nil || !strings.Contains(err.Error(), "result does not conform") ||
+				launcher.calls != before+1 || !reflect.DeepEqual(got, InvocationExecution{}) {
+				t.Fatalf("invalid business response was accepted: err=%v launches=%d result=%+v",
+					err, launcher.calls-before, got)
+			}
+		})
+	}
+	// A structurally valid response may still contain a wrong subtotal.
+	// The current shape is only structural; this test MUST NOT claim that
+	// provider conformance verifies arithmetic or result business semantics.
+	t.Run("structural shape alone cannot prove correct subtotal", func(t *testing.T) {
+		before := launcher.calls
+		alterBusinessResult = func([]byte) []byte {
+			return []byte(`{"currency":"JPY","lineCount":2,"subtotalMinor":1}`)
+		}
+		defer func() { alterBusinessResult = nil }()
+		got, err := generic.ResolveAndInvoke(ctx, input, payload)
+		if err != nil || launcher.calls != before+1 ||
+			!strings.Contains(string(got.ResultPayload), `"subtotalMinor":1`) {
+			t.Fatalf("shape unexpectedly proved business arithmetic: err=%v launches=%d result=%+v",
+				err, launcher.calls-before, got)
+		}
+		if err := verifyQuoteReceiptForTest(payload, got.ResultPayload); err == nil {
+			t.Fatal("test-only independent receipt oracle accepted wrong arithmetic")
+		}
+	})
+
+	t.Run("synthetic outer evidence plus real Runtime yields actual quote", func(t *testing.T) {
+		before := launcher.calls
+		got, err := generic.ResolveAndInvoke(ctx, input, payload)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var quote struct {
+			Currency      string `json:"currency"`
+			LineCount     int    `json:"lineCount"`
+			SubtotalMinor int64  `json:"subtotalMinor"`
+		}
+		if err := decodeReferenceJSONExact(got.ResultPayload, &quote); err != nil {
+			t.Fatal(err)
+		}
+		if quote.Currency != "JPY" || quote.LineCount != 2 || quote.SubtotalMinor != 1550 ||
+			launcher.calls != before+1 || unusedCalls != 0 {
+			t.Fatalf("expected real child calculation, not stub: %+v launcher=%d stub=%d",
+				quote, launcher.calls-before, unusedCalls)
+		}
+		if err := verifyQuoteReceiptForTest(payload, got.ResultPayload); err != nil {
+			t.Fatalf("real independent quote failed consumer semantic receipt check: %v", err)
+		}
+		if got.Resolution.Provider.ArtifactDigest != digest ||
+			got.RequestShapeAuthorityEvidenceFingerprint == "" ||
+			got.ResultShapeAuthorityEvidenceFingerprint == "" ||
+			got.RequestShapeTrustQualificationFingerprint == "" ||
+			got.ResultShapeTrustQualificationFingerprint == "" ||
+			got.Resolution.EvidenceFingerprint == "" ||
+			!containsString(got.AuthorityLimits, "candidate-shape-and-publisher-grants-are-only-test-fixtures") {
+			t.Fatalf("outer synthetic provenance/limits dropped: %+v", got)
+		}
+		if provenance.Plugin != identity ||
+			provenance.Artifact.Digest != digest ||
+			provenance.PluginLockFingerprint != plan.PluginLockFingerprint ||
+			provenance.CapabilityID != capabilityID ||
+			provenance.Boundary != pruntime.BoundaryProcess ||
+			provenance.Verification == nil ||
+			!provenance.Verification.DigestVerified ||
+			provenance.Verification.SignatureVerified ||
+			provenance.Verification.ProvenanceChecked ||
+			provenance.Sandboxed ||
+			provenance.ResourceLeaseID != "" {
+			t.Fatalf("Runtime provenance falsely implies production authority: %+v", provenance)
+		}
+		if launcher.last.PluginLockFingerprint != plan.PluginLockFingerprint ||
+			launcher.last.CapabilityID != capabilityID {
+			t.Fatalf("child did not receive correct Runtime carrier identity: %+v", launcher.last)
+		}
+		for _, forbidden := range []string{"Bearer ", "principalId", "sessionId", "hostApproval"} {
+			if strings.Contains(string(launcher.last.Payload), forbidden) {
+				t.Fatalf("Host credential/approval leaked to child: %q", forbidden)
+			}
+		}
+	})
+}

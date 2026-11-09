@@ -2,7 +2,6 @@ package workspace
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"sort"
 
@@ -17,12 +16,12 @@ import (
 // Datasource / Contract Query targetは必ずsource本文から取得する。ディレクトリ名やファイル名から
 // 不足情報を補完しない。
 func loadHeaderDetailContractQueryBindings(root string, r *Result) error {
-	files, err := globSorted(filepath.Join(root, "applications", "*", "realizations", "header-detail", "*.tei"))
+	files, err := listPinnedUnitFiles(root, r, filepath.Join(root, "applications"), []string{"realizations", "header-detail"}, "*.tei")
 	if err != nil {
 		return err
 	}
 	for _, path := range files {
-		src, err := os.ReadFile(path)
+		src, err := readSourceForLoad(root, r, path)
 		if err != nil {
 			return err
 		}

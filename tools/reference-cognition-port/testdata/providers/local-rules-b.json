@@ -1,0 +1,21 @@
+{
+  "schema": "tei.reference.cognition-provider/v0",
+  "id": "local-rules-b",
+  "model": "deterministic-rules",
+  "version": "1",
+  "execution": "local",
+  "network": "none",
+  "capabilities": [
+    "validation-candidate",
+    "diagnosis"
+  ],
+  "limits": {
+    "maxContextBytes": 65536,
+    "maxOutputBytes": 65536,
+    "timeoutSeconds": 10
+  },
+  "settings": {
+    "strategy": "all",
+    "note": "同じ規則で全候補を返す参照proposer。"
+  }
+}

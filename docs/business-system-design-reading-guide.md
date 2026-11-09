@@ -1,18 +1,18 @@
-# TEI 業務システム設計 読み方ガイド
+# TEIの業務システム設計を読むための案内
 
-この文書は、[`business-system-design.md`](business-system-design.md) の内容を、**業務知識やモデリング経験が十分でなくても、なぜその境界が必要なのかを追えるようにする入口**です。
+この文書は、[`business-system-design.md`](business-system-design.md)で定める内容について、**業務知識やモデリング経験が少ない人でも、なぜその境界が必要なのかを理解できるようにする案内**です。
 
-業務システム設計Architectureの正本は`business-system-design.md`です。この文書は新しいRequirementやCanonical schemaを追加しません。
+業務システム設計の正本は`business-system-design.md`です。この案内では、新しい要求や意味の構造を追加しません。
 
-TEIでは、Data Model、画面、業務手順のどれか一つを詳しく作るだけでは、業務システム全体を設計したとはみなしません。一方で、三つを別々に人が管理すると、今度は同じ意味を重複して持つことになります。
+TEIでは、データモデル、画面、業務手順のどれか一つを詳しく設計しただけでは、業務システム全体を設計したとはみなしません。一方、三つを別々に人が管理すると、同じ意味を重複して保存することになります。
 
-この文書では、まずその問題から説明します。
+この案内では、まずこの問題から説明します。
 
 ## 1. 何を防ぐための設計か
 
 たとえば「受注を登録する」業務を考えます。
 
-Dataだけを見ると、次のようにきれいに設計できるかもしれません。
+データだけに注目すると、次のように整理して設計できるかもしれません。
 
 ```text
 Order
@@ -21,16 +21,16 @@ Order
   └─ lines[]
 ```
 
-しかし、それだけでは次のことがわかりません。
+ただし、これだけでは次のことが分かりません。
 
 - 誰が、何をきっかけに受注登録を始めるのか
-- Customerはどこから選ぶのか
-- 顧客masterは参照だけなのか、更新もできるのか
+- 顧客はどこから選ぶのか
+- 顧客マスタは参照だけなのか、更新もできるのか
 - 数量が不正な場合、どこで止めるのか
 - 登録後に別部署へ何を引き継ぐのか
-- Application上の「登録成功」と、現実の業務上の完了は同じなのか
+- アプリケーション上の「登録成功」と、現実の業務上の完了は同じなのか
 
-逆に、画面だけを詳しく設計しても、画面上の操作がどのDataや業務意味へ対応するかわからなければ、実装都合が業務設計を支配します。
+逆に画面だけを詳しく設計しても、操作に対応するデータや業務上の意味が不明なままでは、実装上の都合が業務設計に影響します。
 
 TEIが三つの視点を使うのは、そのためです。
 
@@ -41,88 +41,86 @@ TEIが三つの視点を使うのは、そのためです。
             Data -------- Function / Interaction
 ```
 
-三つの別システムを作るのではありません。
+この三つは、別々のシステムを作るための視点ではありません。
 
-**同じaccepted meaningを別の角度から見て、片方だけでは見つからない欠落・矛盾・思い込みを発見する**ための視点です。
+**同じ受け入れ済みの意味を別の角度から確認し、一つの視点だけでは見つからない欠落・矛盾・思い込みを発見する**ためのものです。
 
-## 2. 三つの視点を日常語にすると
+## 2. 三つの視点を身近な言葉にすると
 
-### Data — 何について、どんな事実を持つか
+### データ — 何について、どんな事実を持つか
 
-Data視点では、業務で扱う事実や関係を見ます。
+データの視点では、業務で扱う事実や関係を見ます。
 
 受注なら、たとえば次です。
 
-- Orderは何で識別するか
-- Customerとどう関係するか
-- OrderLineをいくつ持てるか
-- quantityにはどんな制約があるか
+- 受注を何で識別するか
+- 顧客とどう関係するか
+- 明細をいくつ持てるか
+- 数量にどんな制約があるか
 - 状態はどう変化するか
 
-ここでは「どの画面componentを使うか」「PostgreSQLでどのtableにするか」はまだ中心ではありません。
+ここでは「どの画面部品を使うか」「PostgreSQLでどの表にするか」はまだ中心ではありません。
 
-### Function / Interaction — 人や外部systemはどう利用するか
+### 機能と操作 — 人や外部システムはどう利用するか
 
-Function / Interaction視点では、その意味をApplicationからどう利用するかを見ます。
-
-受注なら、たとえば次です。
+機能や操作の視点では、その意味をアプリケーションからどう利用するかを見ます。
 
 - 受注一覧を見る
 - 受注を一件開く
-- 顧客masterからCustomerを選ぶ
+- 顧客マスタから顧客を選ぶ
 - 複数の明細を編集する
 - 受注を登録する
 
-TEIでは、`browse`、`record`、`reference`、`header-detail`、`command`等のApplication Patternがこの視点を支えます。
+TEIでは、`browse`、`record`、`reference`、`header-detail`、`command`等のアプリケーションの型がこの視点を支えます。
 
-ただし、Web画面そのものを業務意味にはしません。同じ意味をDesktop、API、MCP等へProjectionできる余地を残します。
+ただし、ウェブ画面そのものを業務上の意味とはしません。同じ意味をデスクトップやAPI、MCPなどへ投影できる余地を残します。
 
-### Business — なぜ、誰が、どんな仕事として行うか
+### 業務 — なぜ、誰が、どんな仕事として行うか
 
-Business視点では、Applicationの外側も含めて仕事そのものを見ます。
+業務の視点では、アプリケーションの外側も含めて仕事そのものを見ます。
 
 - 何をきっかけに仕事が始まるか
-- 誰／どの主体が責任を持つか
+- 誰が、またはどの主体が責任を持つか
 - 人が判断する箇所はどこか
-- 電話・現物確認・外部承認等があるか
-- Applicationをどこで使うか
+- 電話、現物確認、外部承認などがあるか
+- アプリケーションをどこで使うか
 - 次の仕事へ何を引き継ぐか
 - 何をもって業務上の完了とするか
 
-ここで重要なのは、**Applicationを使わない仕事も正当な業務意味として残すこと**です。
+ここでは、**アプリケーションを使わない仕事も、業務上必要な行為として残すこと**が重要です。
 
-## 3. Business ActionとApplication Functionを分ける理由
+## 3. 業務上の操作とアプリケーションの機能を分ける理由
 
 たとえば、受注前に営業担当者が電話で顧客と納期を確認するとします。
 
-これはBusiness Actionです。
+これは業務上の操作です。
 
-しかし、TEI Applicationに「電話する」というFunctionが存在する必要はありません。
+しかし、TEIのアプリケーションに「電話する」という機能が存在する必要はありません。
 
 ```text
-Business Action
+業務上の操作
   顧客へ納期を確認する
 
 実現
   人が電話する
 ```
 
-これを「すべての業務行為にはApplication Functionが必要」とすると、実行可能に見せるためだけの架空FunctionやCapabilityが増えます。
+すべての業務行為にアプリケーションの機能が必要だと考えると、実行可能に見せるためだけの架空の機能が増えます。
 
-逆に、一つのApplication Functionが複数のBusiness Actionから使われることもあります。
+逆に、一つのアプリケーションの機能が複数の業務上の操作から使われることもあります。
 
 そのため、TEIは次を同一視しません。
 
 ```text
-Business Action
-    != Application Function
+業務上の操作
+    != アプリケーションの機能
     != Capability
     != Realization
 ```
 
-この分離により、「仕事として何が必要か」と「現在のsystemがどこまで支援するか」を別々にレビューできます。
+このように分けることで、仕事として何が必要か、現在のシステムがどこまで支援するかを別々に確認できます。
 
-## 4. 「指示した」「systemが成功した」「現実に起きた」を分ける
+## 4. 「指示した」「システムが処理した」「現実に起きた」を分ける
 
 業務システムでは、この区別が特に重要です。
 
@@ -132,13 +130,13 @@ Business Action
 1. Business instruction
    出荷してください
 
-2. system result
+2. システムの処理結果
    出荷依頼APIが成功した
 
 3. external actuality
    現物が実際に出荷された
 
-4. Business acceptance / continuation
+4. 業務上の受け入れ / continuation
    出荷済みとして請求業務へ進めてよい
 ```
 
@@ -150,16 +148,16 @@ APIが成功しても、現物が出荷されたとは限りません。
 
 ```text
 Business instruction
-  != system result
-  != external fact
-  != Business acceptance
+  != システムの処理結果
+  != 外部で確認された事実
+  != 業務上の受け入れ
 ```
 
-domain contractで同値性が明示された範囲だけを同じ意味として扱います。
+業務上の契約で同じ意味であると明示された範囲に限り、同一の状態として扱います。
 
-## 5. Handoffは「次のStepへ進んだ」ことではない
+## 5. 引き継ぎは「次の段階へ進んだ」ことではない
 
-Handoffは、単なる順序ではなく**責任ある仕事の継続関係**です。
+引き継ぎは、単なる順序ではなく**責任ある仕事の継続関係**です。
 
 たとえば、営業が受注内容を確定し、物流が出荷準備を開始する場合を考えます。
 
@@ -167,16 +165,16 @@ Handoffは、単なる順序ではなく**責任ある仕事の継続関係**で
 営業側Step
   受注内容を確定する
         ↓
-Business condition
+業務上の条件
   出荷可能な受注として受理されている
         ↓
 物流側Step
   出荷準備を開始する
 ```
 
-ここで営業と物流でactorが変わることは、Handoffを考えるヒントにはなります。しかし、actorが変わっただけでHandoffが成立するわけではありません。
+営業から物流へ担当者が変わることは、引き継ぎを検討する手掛かりになります。ただし、担当者の変更だけでは引き継ぎが成立したとは判断できません。
 
-同様に、画面遷移やFunction呼び出しが次へ進んでも、それだけでBusiness responsibilityが移ったとは限りません。
+同様に、画面遷移や機能の呼び出しが次へ進んでも、それだけで業務上の責任が移ったとは限りません。
 
 ```text
 actor changed      != Handoff proven
@@ -184,21 +182,21 @@ Step adjacency     != Handoff proven
 command succeeded  != Handoff proven
 ```
 
-何を条件に、どの仕事が、どこへ継続するのかをBusiness meaningとして確認します。
+何を条件に、どの仕事が、どこへ継続するのかを業務上の意味として確認します。
 
-## 6. `unresolved`を残すことは設計放棄ではない
+## 6. 未解決の点を残して設計の状況を示す
 
 上流設計では、資料やヒアリングだけでは確定できない情報があります。
 
 たとえば、
 
 - 誰が最終承認者なのかわからない
-- 外部systemの応答を業務完了と見なせるか確認できない
-- 明細順序が業務identityなのか表示順なのかわからない
+- 外部システムの応答を業務完了と見なせるか確認できない
+- 明細順序が業務上の識別なのか表示順なのかわからない
 
 といった状態です。
 
-この場合、もっともらしい値で埋めるより、`unresolved`として残す方が安全です。
+この場合は、もっともらしい値で埋めるよりも、未解決の状態として残す方が安全です。
 
 ```text
 explicit unresolved
@@ -208,13 +206,13 @@ unsupported completion
   = 根拠のない仮定が設計へ混入する
 ```
 
-TEIでは「空欄がないこと」よりも、known / accepted / derived / proposal / unresolvedの境界を説明できることを重視します。
+TEIでは、空欄をなくすことより、既知、受け入れ済み、導出済み、提案、未解決の各状態を説明できることを重視します。
 
-## 7. Cross-view reviewは何を見つけるのか
+## 7. 複数の視点による確認は何を見つけるのか
 
 三視点を合わせると、各視点だけでは見つけにくい問題を発見できます。
 
-### 例1 — read-only masterなのに編集できる
+### 例1 — 読み取り専用のマスタなのに編集できる
 
 ```text
 Data / Database
@@ -226,7 +224,7 @@ Function / UI
 → contradiction candidate
 ```
 
-### 例2 — 業務で必要だがDataにない
+### 例2 — 業務で必要だがデータにない
 
 ```text
 Business
@@ -240,7 +238,7 @@ Data
 
 traceがないから「配送条件は不要」とは判断しません。
 
-### 例3 — system成功を業務完了へ昇格している
+### 例3 — システムの成功を業務完了とみなしている
 
 ```text
 Function
@@ -249,10 +247,10 @@ Function
 Business
   実際の現物作業完了を要求
 
-→ system resultとactualityの混同
+→ システムの処理結果とactualityの混同
 ```
 
-### 例4 — actor名から権限を推測している
+### 例4 — 担当者名から権限を推測している
 
 ```text
 Business actor
@@ -264,38 +262,36 @@ Security
 → actor labelだけではAuthorization根拠にならない
 ```
 
-このようなdiagnosticは設計者を責めるためではなく、**まだ確認すべき意味を表面化するため**に使います。
+このような診断は設計者を責めるためではなく、**まだ確認すべき意味を表面化するため**に使います。
 
-## 8. MatrixやGraphは何のためにあるか
+## 8. 対応表や関係図は何のためにあるか
 
-CRUD表、Matrix、Graph、Flowは、関係を高密度に見つけるために有効です。
-
-たとえば、
+登録・参照・更新・削除を整理した表や対応表、関係図、流れ図は、多くの関係を一度に見つけるのに役立ちます。
 
 ```text
-Business Action × Application Pattern
-Business Action × Data
+業務上の操作 × Application Pattern
+業務上の操作 × Data
 Procedure Step × View / Action
 Data × impacted Procedure
 ```
 
-をMatrixで見ると、欠落や不自然な偏りを発見しやすくなります。
+を対応表で見ると、欠落や偏りに気付きやすくなります。
 
-しかし、Matrix自体を第二の正本にすると、人がCanonicalとMatrixの両方を更新し続けることになります。
+対応表をもう一つの正本にすると、正本と対応表の両方を更新し続ける必要が生じます。
 
-そのため、可能な限りaccepted meaningからderived Projectionとして生成します。
+そのため、可能な限り受け入れ済みの意味から派生した表示として生成します。
 
-Matrixの空欄も即座に「関係なし」とは解釈しません。
+対応表の空欄も、直ちに「関係なし」とは解釈しません。
 
-- 本当にnot applicableなのか
-- traceがまだ無いのか
-- unresolvedなのか
+- 本当に該当なしなのか
+- 対応関係の記録がまだないのか
+- 未解決なのか
 
 を必要に応じて区別します。
 
-## 9. EditorとAIはこの設計をどう支援するか
+## 9. 編集画面とAIはこの設計をどう支援するか
 
-将来のEditorでは、Data、Function、Businessを別々の画面へ完全分断するのではなく、関連する意味を局所的に追える高密度Projectionを目指します。
+将来の編集画面では、データ、機能、業務の関連する意味を、画面を行き来せずまとめて確認できる表示を目指します。
 
 ```text
 Business Procedure
@@ -307,22 +303,129 @@ Business Procedure
           └─ Source / Evidence
 ```
 
-AIも、この関係から次のような支援ができます。
+AIは、こうした関係をもとに次の支援を行えます。
 
-- 既存の関連Data / Patternを探す
-- cross-viewの矛盾候補を出す
+- 既存の関連データ / 型を探す
+- 複数の視点にまたがる矛盾候補を出す
 - まだ確認されていない前提を示す
-- 複数のモデリング案を比較する
+- 複数のモデル案を比較する
 - 影響範囲を示す
 
-ただし、AIが「もっともらしい関係」を見つけたことと、その関係がaccepted Business meaningであることは別です。
+ただし、AIがもっともらしい関係を見つけても、その関係が業務上の意味として受け入れ済みであるとは限りません。
 
 ```text
 AI proposal != accepted meaning
 similarity  != applicability
 ```
 
-最終的にはShared Acceptance Boundaryを通してauthoritative sourceへ戻します。
+採用する変更は、共通の受け入れ手順を通して正本となる情報源へ反映します。
+
+### AIが設計変更へ入るときの読み順
+
+AIが設計変更を始めるときは、通常の知識の文脈とは別に、設計確認計画（`Builder Review Plan`）を取得できます。
+
+```text
+tei knowledge-review-plan
+  -workspace <workspace>
+  -subject-kind <kind>
+  -subject-id <id>
+```
+
+この表示では、個々の設計原則を重複して記録しません。`routingScope = current-knowledge-context`の範囲で、現在利用できる`source`、`definition`、`data-design`、`dependencies`のうち、何を確認すべきかを`recommendedDisclosureSections`に示します。確認する順序は`reviewSequence`に示します。推奨された区画が、そのまま適用可能な知識や、適用条件を確認済み・開示済みの知識になるわけではありません。必要な適用条件を確認してから設計判断に使います。データ設計の詳細な確認事項は、従来どおり`dataDesign.designReviewProtocol`で扱います。
+
+計画に沿って読む候補を得た後、設計変更の対象範囲を明示できる場合は、知識の適用条件を確認して設計確認の引き継ぎ（`Builder Review Handoff`）を作成できます。
+
+```text
+tei knowledge-review-handoff
+  -workspace <workspace>
+  -subject-kind <kind>
+  -subject-id <id>
+  -qualification-requirements <requirements.json>
+```
+
+`-qualification-requirements`に渡すJSONは、`internal/knowledgecontext`の`QualificationRequirements`が受け付ける形です。既存の例として[`reference/business-system-design/order-entry-customer-reference-review-qualification.json`](../reference/business-system-design/order-entry-customer-reference-review-qualification.json)があります。
+
+| 欄 | 必須 | 内容 |
+| --- | --- | --- |
+| `expectedKind` | 必須 | 対象の種類。`-subject-kind`と一致しないと`incompatible`（理由`expected-kind-mismatch`）になる。空文字・空白のみは`KNOWLEDGE_BUILD_FAILED`（終了コード2）で拒否される。 |
+| `application` | 任意 | `expectedKind`が`application-pattern`のときだけ指定できる。他の種類と併用すると`qualification application scope requires expectedKind=application-pattern`で拒否される。 |
+| `requiredDependencies` | 任意 | 配列。各要素は`direction`（`outgoing`／`incoming`）・`relation`・`kind`・`id`が必須で、`alias`は任意。同じ組の重複は拒否される。 |
+
+最小形は`{"expectedKind":"semantic-data"}`です。依存を要求しない場合は`requiredDependencies`を省略します。未知の欄は`json: unknown field`で拒否され、末尾に別のJSON値を続けても拒否されます。UTF-8（BOMなし）で保存してください。BOM付きは`invalid character '\ufeff'`で拒否されます。`knowledge-qualify`も同じ形のファイルを受け取ります。
+
+引き継ぎには知識の本文を含めません。代わりに、確認計画の改訂番号と照合値、対象範囲、参照候補の区画、明示した適用条件、確認結果、情報源の検証根拠を結び付けます。適用可能で、正本性を裏付ける検証根拠と必要な依存関係の検証根拠が揃い、文脈と入力元索引にある対象の検証根拠が同じ改訂に基づく場合に限り、状態を`qualified-for-disclosure`にします。不明な状態は`blocked-unresolved`、不適合は`blocked-incompatible`として保持します。ここでいう`disclosure`は、AIの設計支援へ渡す知識の区画を選ぶことです。アクセス制御、秘匿、役割に基づく権限付与を表すものではありません。
+
+```text
+available
+  -> Builder Review Planでselected候補を決める
+  -> explicit requirementsでqualifiedを確認する
+  -> Builder Review Handoff
+  -> current Knowledgeからdiscloseする
+```
+
+引き継ぎ自体は開示ではありません。引き継ぎの照合値も開示内容の最新性を証明しないため、開示した知識を再利用するときは、開示内容側の照合値を使います。
+
+適用条件を確認した引き継ぎから現在の知識を開示するときは、引き継ぎのJSONを入力として`knowledge-review-disclose`を使います。
+
+```text
+tei knowledge-review-disclose
+  -workspace <workspace>
+  -subject-kind <kind>
+  -subject-id <id>
+  -review-handoff <handoff.json>
+```
+
+このコマンドは引き継ぎ自体の照合値を調べ、同じ要件から現在の文脈と入力元索引に基づく引き継ぎを再構成します。照合値が一致し、状態が`qualified-for-disclosure`の場合に限り、既存の`DisclosureProjection`を返します。古いもの、改ざんされたもの、対象が一致しないもの、保留中の引き継ぎは開示に使えません。
+
+ただし、`qualified-for-disclosure`は各区画の内部まで解決済みであることを保証しません。たとえば`dataDesign.resolutionStatus`や`dataDesign.evidenceCoverageStatus`は開示内容の中で個別に確認します。上位の`Context.unresolved`が空でも、区画内に未解決の点や検証根拠の不足が残る場合があります。
+
+個々の対象について適用条件を確認しても、変更全体が複数の視点から見て妥当かどうかまでは保証できません。アプリケーションの型が適用可能でも、業務手順、データソースへのアクセス、認可、契約、既知の競合などが別の領域に関わる場合があります。確認計画では提案を作る前に`review-cross-view-constraints-authority-and-known-conflicts`を実行し、必要な検証根拠が未解決なら処理を止めます。
+
+返すJSONは通常の開示内容と同じです。引き継ぎや適用条件の確認結果を本文に含めません。同じ知識を別の作業で再利用するときは、その作業に合わせて適用条件を改めて確認します。保留中でも、診断や根拠確認のために知識を読むことはできます。ただし、適用条件を確認していない知識を、その作業に適用可能な意味として扱うことはできません。
+
+確認計画はAIの設計支援に向けた用途別の表示です。通常の知識の文脈、人向けの表示、業務実行用の文脈には含めません。現在の知識の文脈に区画がないことだけから、リポジトリや外部の知識全体にも情報がないとは判断できません。確認計画の照合値が一致しても、選択した知識が最新であることまでは証明できません。知識を再利用するときは、対応するデータ設計や開示内容の照合値も確認します。
+
+```text
+Builder Review Plan
+  -> 何をどの順で読むか
+  -> 必要なQualification境界を通す
+
+dataDesign.designReviewProtocol
+  -> Data設計で何を確認するか
+
+どちらも
+  != accepted business meaning
+  != semantic applicability
+  != write / runtime authority
+```
+
+### AIがデータ設計を変更するときの入口
+
+AIがデータ、関係、検証、永続化、記録用の型に関わる変更を検討するときは、設計資料を検索するだけでなく、対象データの知識の文脈を先に取得します。
+
+```text
+tei knowledge-context
+  -workspace <workspace>
+  -subject-kind semantic-data
+  -subject-id <data-id>
+  -disclose data-design
+```
+
+`data-design`には、現在のデータ / 関係 / 制約 / 永続化の対応関係だけでなく、識別子、候補キー、関数従属性、複合的な値制約、履歴・有効期間について確認すべき問いと、誤って意味を確定しないための制約が含まれます。
+
+さらに、`designReviewProtocol`は設計確認の順序を機械で扱える形で返します。AIは少なくとも次の順序で確認します。
+
+1. 対象データと、根拠となる現在の情報源や検証根拠を特定する。
+2. 業務上の同一性を、データベースの主キーや画面・実行環境の識別子から分けて考える。
+3. 識別子と候補キーについて、重複を許さない範囲、時点や期間、同値性の扱いを検証根拠から確認する。
+4. 代理識別子を採用する場合も、業務上必要な一意性を保つ。
+5. 関数従属性は業務上の意味や規約として確認する。現在のデータで偶然一意であることや統計的な相関だけから確定しない。
+6. 関数従属性と、単なる複合的な値制約を分ける。
+7. 関係キー、局所的な一意制約、永続化の主キーや`UNIQUE`を、業務上の識別子や関数従属性へ自動的に昇格させない。
+8. 根拠が足りなければ`unresolved`を残す。
+9. 導出した識別子や従属性の候補は提案として扱い、共通の受け入れ手順を経てから受け入れ済みの意味へ反映する。
+
+この手順は業務上の意味を定めるものではありません。現在の知識から導いた設計支援の手順です。`authorityLimits`にもその範囲を明示します。知識の文脈の照合値が変わった場合は、古い文脈を再利用せず、現在のデータ設計の文脈を取得し直します。
 
 ## 10. 一つの業務例を縦に追う
 
@@ -351,24 +454,24 @@ Function / Interaction
 
 ここから、たとえば次を確認します。
 
-- Customerはread-only参照でよいか
+- 顧客は読み取り専用の参照でよいか
 - OrderLineの数量制約は何か
 - 出荷可能性の判断に必要なDataは揃っているか
 - `submit`成功と物流へのHandoffを同一視していないか
-- 人による確認作業を架空Functionへ変換していないか
+- 人による確認作業を実在しない機能に置き換えていないか
 
-このように、一つの視点を完成させてから次へ進むのではなく、**同じ業務意味を往復しながら不足を発見する**のがTEIのBusiness System Designです。
+TEIの業務システム設計では、一つの視点を完成させてから次へ進むのではなく、**同じ業務上の意味を複数の視点から確かめ、不足を見つけます**。
 
 ## 11. 読む順序
 
 初めてこの領域を読む場合は、次の順を推奨します。
 
 1. 本書 — 問題と三視点を具体例から理解する
-2. [`requirements/README.md`](../requirements/README.md) — Product Requirement全体の中での位置を確認する
+2. [`requirements/README.md`](../requirements/README.md) — 製品要求全体の中での位置を確認する
 3. [`requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md`](../requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md) — RQ-025 / RQ-026の解釈を確認する
-4. [`business-system-design.md`](business-system-design.md) — Architecture境界を詳細に読む
-5. [`../plan/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`](../plan/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md) — Procedure reviewの具体的な品質観点へ進む
-6. 対応するReference / Plan Issue / Evidence — 実際にどこまで確認されたかを見る
+4. [`business-system-design.md`](business-system-design.md) — 設計上の境界を詳しく読む
+5. [現在の実装状況](status.md) — 業務手順の実装・検証範囲と未解決の条件を確かめる
+6. 対応する参照資料 / 検証根拠 — 必要な検証手順と根拠を確認する
 
 ## 12. このガイドから一般化しないこと
 
@@ -376,11 +479,527 @@ Function / Interaction
 
 次を意味しません。
 
-- `Procedure`を必ずtop-level Canonical objectにする
-- Handoff schemaが確定済みである
-- 三視点を同型のobjectとして保存する
-- Matrixを必ず永続化する
-- 受注domainがTEIの標準domainである
-- AI diagnosticをhard errorへ自動昇格する
+- 手順を必ず最上位の正本オブジェクトにする
+- 引継ぎのスキーマが確定済みである
+- 三つの視点を同じ形式のオブジェクトとして保存する
+- 対応表を必ず永続化する
+- 受注分野がTEIの標準的な対象分野である
+- AIの診断を重大なエラーへ自動的に引き上げる
 
-表現方式はReference EvidenceとADRで判断します。
+表現方式は参照資料による検証根拠と設計判断記録をもとに判断します。
+﻿# TEIの業務システム設計を読むための案内
+
+この文書は、[`business-system-design.md`](business-system-design.md)で定める内容について、**業務知識やモデリング経験が少ない人でも、なぜその境界が必要なのかを理解できるようにする案内**です。
+
+業務システム設計の正本は`business-system-design.md`です。この案内では、新しい要求や意味の構造を追加しません。
+
+TEIでは、データモデル、画面、業務手順のどれか一つを詳しく設計しただけでは、業務システム全体を設計したとはみなしません。一方、三つを別々に人が管理すると、同じ意味を重複して保存することになります。
+
+この案内では、まずこの問題から説明します。
+
+## 1. 何を防ぐための設計か
+
+たとえば「受注を登録する」業務を考えます。
+
+データだけに注目すると、次のように整理して設計できるかもしれません。
+
+```text
+Order
+  ├─ customerId
+  ├─ orderedAt
+  └─ lines[]
+```
+
+ただし、これだけでは次のことが分かりません。
+
+- 誰が、何をきっかけに受注登録を始めるのか
+- 顧客はどこから選ぶのか
+- 顧客マスタは参照だけなのか、更新もできるのか
+- 数量が不正な場合、どこで止めるのか
+- 登録後に別部署へ何を引き継ぐのか
+- アプリケーション上の「登録成功」と、現実の業務上の完了は同じなのか
+
+逆に画面だけを詳しく設計しても、操作に対応するデータや業務上の意味が不明なままでは、実装上の都合が業務設計に影響します。
+
+TEIが三つの視点を使うのは、そのためです。
+
+```text
+                 Business
+                /        \
+               /          \
+            Data -------- Function / Interaction
+```
+
+この三つは、別々のシステムを作るための視点ではありません。
+
+**同じ受け入れ済みの意味を別の角度から確認し、一つの視点だけでは見つからない欠落・矛盾・思い込みを発見する**ためのものです。
+
+## 2. 三つの視点を身近な言葉にすると
+
+### データ — 何について、どんな事実を持つか
+
+データの視点では、業務で扱う事実や関係を見ます。
+
+受注なら、たとえば次です。
+
+- 受注を何で識別するか
+- 顧客とどう関係するか
+- 明細をいくつ持てるか
+- 数量にどんな制約があるか
+- 状態はどう変化するか
+
+ここでは「どの画面部品を使うか」「PostgreSQLでどの表にするか」はまだ中心ではありません。
+
+### 機能と操作 — 人や外部システムはどう利用するか
+
+機能や操作の視点では、その意味をアプリケーションからどう利用するかを見ます。
+
+- 受注一覧を見る
+- 受注を一件開く
+- 顧客マスタから顧客を選ぶ
+- 複数の明細を編集する
+- 受注を登録する
+
+TEIでは、`browse`、`record`、`reference`、`header-detail`、`command`等のアプリケーションの型がこの視点を支えます。
+
+ただし、ウェブ画面そのものを業務上の意味とはしません。同じ意味をデスクトップやAPI、MCPなどへ投影できる余地を残します。
+
+### 業務 — なぜ、誰が、どんな仕事として行うか
+
+業務の視点では、アプリケーションの外側も含めて仕事そのものを見ます。
+
+- 何をきっかけに仕事が始まるか
+- 誰が、またはどの主体が責任を持つか
+- 人が判断する箇所はどこか
+- 電話、現物確認、外部承認などがあるか
+- アプリケーションをどこで使うか
+- 次の仕事へ何を引き継ぐか
+- 何をもって業務上の完了とするか
+
+ここでは、**アプリケーションを使わない仕事も、業務上必要な行為として残すこと**が重要です。
+
+## 3. 業務上の操作とアプリケーションの機能を分ける理由
+
+たとえば、受注前に営業担当者が電話で顧客と納期を確認するとします。
+
+これは業務上の操作です。
+
+しかし、TEIのアプリケーションに「電話する」という機能が存在する必要はありません。
+
+```text
+業務上の操作
+  顧客へ納期を確認する
+
+実現
+  人が電話する
+```
+
+すべての業務行為にアプリケーションの機能が必要だと考えると、実行可能に見せるためだけの架空の機能が増えます。
+
+逆に、一つのアプリケーションの機能が複数の業務上の操作から使われることもあります。
+
+そのため、TEIは次を同一視しません。
+
+```text
+業務上の操作
+    != アプリケーションの機能
+    != Capability
+    != Realization
+```
+
+このように分けることで、仕事として何が必要か、現在のシステムがどこまで支援するかを別々に確認できます。
+
+## 4. 「指示した」「システムが処理した」「現実に起きた」を分ける
+
+業務システムでは、この区別が特に重要です。
+
+たとえば倉庫へ出荷を依頼する場合、次の四つは別の状態です。
+
+```text
+1. Business instruction
+   出荷してください
+
+2. システムの処理結果
+   出荷依頼APIが成功した
+
+3. external actuality
+   現物が実際に出荷された
+
+4. 業務上の受け入れ / continuation
+   出荷済みとして請求業務へ進めてよい
+```
+
+APIが成功しても、現物が出荷されたとは限りません。
+
+現物が出荷されても、それだけで責任が自動的に次部署へ移ったとは限りません。
+
+このためTEIでは、次を短絡しません。
+
+```text
+Business instruction
+  != システムの処理結果
+  != 外部で確認された事実
+  != 業務上の受け入れ
+```
+
+業務上の契約で同じ意味であると明示された範囲に限り、同一の状態として扱います。
+
+## 5. 引き継ぎは「次の段階へ進んだ」ことではない
+
+引き継ぎは、単なる順序ではなく**責任ある仕事の継続関係**です。
+
+たとえば、営業が受注内容を確定し、物流が出荷準備を開始する場合を考えます。
+
+```text
+営業側Step
+  受注内容を確定する
+        ↓
+業務上の条件
+  出荷可能な受注として受理されている
+        ↓
+物流側Step
+  出荷準備を開始する
+```
+
+営業から物流へ担当者が変わることは、引き継ぎを検討する手掛かりになります。ただし、担当者の変更だけでは引き継ぎが成立したとは判断できません。
+
+同様に、画面遷移や機能の呼び出しが次へ進んでも、それだけで業務上の責任が移ったとは限りません。
+
+```text
+actor changed      != Handoff proven
+Step adjacency     != Handoff proven
+command succeeded  != Handoff proven
+```
+
+何を条件に、どの仕事が、どこへ継続するのかを業務上の意味として確認します。
+
+## 6. 未解決の点を残して設計の状況を示す
+
+上流設計では、資料やヒアリングだけでは確定できない情報があります。
+
+たとえば、
+
+- 誰が最終承認者なのかわからない
+- 外部システムの応答を業務完了と見なせるか確認できない
+- 明細順序が業務上の識別なのか表示順なのかわからない
+
+といった状態です。
+
+この場合は、もっともらしい値で埋めるよりも、未解決の状態として残す方が安全です。
+
+```text
+explicit unresolved
+  = 何がわかっていないかをレビューできる
+
+unsupported completion
+  = 根拠のない仮定が設計へ混入する
+```
+
+TEIでは、空欄をなくすことより、既知、受け入れ済み、導出済み、提案、未解決の各状態を説明できることを重視します。
+
+## 7. 複数の視点による確認は何を見つけるのか
+
+三視点を合わせると、各視点だけでは見つけにくい問題を発見できます。
+
+### 例1 — 読み取り専用のマスタなのに編集できる
+
+```text
+Data / Database
+  Customer master = read-only
+
+Function / UI
+  Customerを編集できる
+
+→ contradiction candidate
+```
+
+### 例2 — 業務で必要だがデータにない
+
+```text
+Business
+  出荷可否を判断するには配送条件が必要
+
+Data
+  配送条件を保持・参照するtraceが見つからない
+
+→ unresolved / missing meaning candidate
+```
+
+traceがないから「配送条件は不要」とは判断しません。
+
+### 例3 — システムの成功を業務完了とみなしている
+
+```text
+Function
+  外部API success
+
+Business
+  実際の現物作業完了を要求
+
+→ システムの処理結果とactualityの混同
+```
+
+### 例4 — 担当者名から権限を推測している
+
+```text
+Business actor
+  営業担当者
+
+Security
+  update permission
+
+→ actor labelだけではAuthorization根拠にならない
+```
+
+このような診断は設計者を責めるためではなく、**まだ確認すべき意味を表面化するため**に使います。
+
+## 8. 対応表や関係図は何のためにあるか
+
+登録・参照・更新・削除を整理した表や対応表、関係図、流れ図は、多くの関係を一度に見つけるのに役立ちます。
+
+```text
+業務上の操作 × Application Pattern
+業務上の操作 × Data
+Procedure Step × View / Action
+Data × impacted Procedure
+```
+
+を対応表で見ると、欠落や偏りに気付きやすくなります。
+
+対応表をもう一つの正本にすると、正本と対応表の両方を更新し続ける必要が生じます。
+
+そのため、可能な限り受け入れ済みの意味から派生した表示として生成します。
+
+対応表の空欄も、直ちに「関係なし」とは解釈しません。
+
+- 本当に該当なしなのか
+- 対応関係の記録がまだないのか
+- 未解決なのか
+
+を必要に応じて区別します。
+
+## 9. 編集画面とAIはこの設計をどう支援するか
+
+将来の編集画面では、データ、機能、業務の関連する意味を、画面を行き来せずまとめて確認できる表示を目指します。
+
+```text
+Business Procedure
+  └─ Step
+      └─ Application Pattern
+          ├─ Data / Relation
+          ├─ Query / Capability
+          ├─ Rule / Validation
+          └─ Source / Evidence
+```
+
+AIは、こうした関係をもとに次の支援を行えます。
+
+- 既存の関連データ / 型を探す
+- 複数の視点にまたがる矛盾候補を出す
+- まだ確認されていない前提を示す
+- 複数のモデル案を比較する
+- 影響範囲を示す
+
+ただし、AIがもっともらしい関係を見つけても、その関係が業務上の意味として受け入れ済みであるとは限りません。
+
+```text
+AI proposal != accepted meaning
+similarity  != applicability
+```
+
+採用する変更は、共通の受け入れ手順を通して正本となる情報源へ反映します。
+
+### AIが設計変更へ入るときの読み順
+
+AIが設計変更を始めるときは、通常の知識の文脈とは別に、設計確認計画（`Builder Review Plan`）を取得できます。
+
+```text
+tei knowledge-review-plan
+  -workspace <workspace>
+  -subject-kind <kind>
+  -subject-id <id>
+```
+
+この表示では、個々の設計原則を重複して記録しません。`routingScope = current-knowledge-context`の範囲で、現在利用できる`source`、`definition`、`data-design`、`dependencies`のうち、何を確認すべきかを`recommendedDisclosureSections`に示します。確認する順序は`reviewSequence`に示します。推奨された区画が、そのまま適用可能な知識や、適用条件を確認済み・開示済みの知識になるわけではありません。必要な適用条件を確認してから設計判断に使います。データ設計の詳細な確認事項は、従来どおり`dataDesign.designReviewProtocol`で扱います。
+
+計画に沿って読む候補を得た後、設計変更の対象範囲を明示できる場合は、知識の適用条件を確認して設計確認の引き継ぎ（`Builder Review Handoff`）を作成できます。
+
+```text
+tei knowledge-review-handoff
+  -workspace <workspace>
+  -subject-kind <kind>
+  -subject-id <id>
+  -qualification-requirements <requirements.json>
+```
+
+`-qualification-requirements`が読むJSONの最小形は次のとおりです（#3186）。`expectedKind`は対象のSubject種別と同じ値でなければならず、`knowledge-qualify`はここで指定した種別と対象が一致しなければ`incompatible`を返します。
+
+```json
+{
+  "expectedKind": "semantic-data"
+}
+```
+
+`tei knowledge-qualify -workspace reference/workspace -subject-kind semantic-data -subject-id sales.order -qualification-requirements <上記>` は、終了コード0で `status: "applicable"` を返します。
+
+依存関係の確認も要求する場合は`requiredDependencies`を足します。各要素は`direction`（`outgoing`または`incoming`）、`relation`（関係名）、`kind`（相手のSubject種別）、`id`（相手のID）が必須で、`alias`は任意です。`kind`は`knowledge-context`の`outgoing`／`incoming`が返す値（`semantic-data`・`semantic-element`・`semantic-capability`・`application-pattern`など）に合わせます。
+
+```json
+{
+  "expectedKind": "semantic-data",
+  "requiredDependencies": [
+    {"direction": "outgoing", "relation": "customer", "kind": "semantic-data", "id": "customer.customer"}
+  ]
+}
+```
+
+この例の`sales.order`は`customer`への出方向の宣言済み関係を持たないため、`status: "incompatible"`と`required-dependency-missing`が返ります。要求を満たす例は`tei knowledge-context`の出力から作ります。たとえば`sales.order.submit`（`semantic-capability`）は`input`で`sales.order`（`semantic-element`）へ出方向の辺を持つため、上記の`relation`・`kind`・`id`をそれに合わせると、依存関係の欠落ではなく、根拠の不備を示す`required-dependency-authoritative-evidence-unavailable`（`status: "unknown"`）になります。**`incompatible`（要求と合わない）と`unknown`（判断する根拠が足りない）は別の結末**であり、どちらも適用可能を意味しません。
+
+`application`は`expectedKind`が`application-pattern`のときだけ指定できます。`status: "applicable"`まで到達する例は次のとおりです。`order_entry.customer_reference`が宣言している`contract-query`の依存を、そのまま要求として書きます。
+
+```json
+{
+  "expectedKind": "application-pattern",
+  "application": "order_entry",
+  "requiredDependencies": [
+    {"direction": "outgoing", "relation": "contract-query", "kind": "database-contract-query", "id": "master_data.customer/find_by_id"}
+  ]
+}
+```
+
+このファイルは未知の欄を厳密に拒否するため（`unknown field`）、上記以外の欄は書かないでください。
+
+引き継ぎには知識の本文を含めません。代わりに、確認計画の改訂番号と照合値、対象範囲、参照候補の区画、明示した適用条件、確認結果、情報源の検証根拠を結び付けます。適用可能で、正本性を裏付ける検証根拠と必要な依存関係の検証根拠が揃い、文脈と入力元索引にある対象の検証根拠が同じ改訂に基づく場合に限り、状態を`qualified-for-disclosure`にします。不明な状態は`blocked-unresolved`、不適合は`blocked-incompatible`として保持します。ここでいう`disclosure`は、AIの設計支援へ渡す知識の区画を選ぶことです。アクセス制御、秘匿、役割に基づく権限付与を表すものではありません。
+
+```text
+available
+  -> Builder Review Planでselected候補を決める
+  -> explicit requirementsでqualifiedを確認する
+  -> Builder Review Handoff
+  -> current Knowledgeからdiscloseする
+```
+
+引き継ぎ自体は開示ではありません。引き継ぎの照合値も開示内容の最新性を証明しないため、開示した知識を再利用するときは、開示内容側の照合値を使います。
+
+適用条件を確認した引き継ぎから現在の知識を開示するときは、引き継ぎのJSONを入力として`knowledge-review-disclose`を使います。
+
+```text
+tei knowledge-review-disclose
+  -workspace <workspace>
+  -subject-kind <kind>
+  -subject-id <id>
+  -review-handoff <handoff.json>
+```
+
+このコマンドは引き継ぎ自体の照合値を調べ、同じ要件から現在の文脈と入力元索引に基づく引き継ぎを再構成します。照合値が一致し、状態が`qualified-for-disclosure`の場合に限り、既存の`DisclosureProjection`を返します。古いもの、改ざんされたもの、対象が一致しないもの、保留中の引き継ぎは開示に使えません。
+
+ただし、`qualified-for-disclosure`は各区画の内部まで解決済みであることを保証しません。たとえば`dataDesign.resolutionStatus`や`dataDesign.evidenceCoverageStatus`は開示内容の中で個別に確認します。上位の`Context.unresolved`が空でも、区画内に未解決の点や検証根拠の不足が残る場合があります。
+
+個々の対象について適用条件を確認しても、変更全体が複数の視点から見て妥当かどうかまでは保証できません。アプリケーションの型が適用可能でも、業務手順、データソースへのアクセス、認可、契約、既知の競合などが別の領域に関わる場合があります。確認計画では提案を作る前に`review-cross-view-constraints-authority-and-known-conflicts`を実行し、必要な検証根拠が未解決なら処理を止めます。
+
+返すJSONは通常の開示内容と同じです。引き継ぎや適用条件の確認結果を本文に含めません。同じ知識を別の作業で再利用するときは、その作業に合わせて適用条件を改めて確認します。保留中でも、診断や根拠確認のために知識を読むことはできます。ただし、適用条件を確認していない知識を、その作業に適用可能な意味として扱うことはできません。
+
+確認計画はAIの設計支援に向けた用途別の表示です。通常の知識の文脈、人向けの表示、業務実行用の文脈には含めません。現在の知識の文脈に区画がないことだけから、リポジトリや外部の知識全体にも情報がないとは判断できません。確認計画の照合値が一致しても、選択した知識が最新であることまでは証明できません。知識を再利用するときは、対応するデータ設計や開示内容の照合値も確認します。
+
+```text
+Builder Review Plan
+  -> 何をどの順で読むか
+  -> 必要なQualification境界を通す
+
+dataDesign.designReviewProtocol
+  -> Data設計で何を確認するか
+
+どちらも
+  != accepted business meaning
+  != semantic applicability
+  != write / runtime authority
+```
+
+### AIがデータ設計を変更するときの入口
+
+AIがデータ、関係、検証、永続化、記録用の型に関わる変更を検討するときは、設計資料を検索するだけでなく、対象データの知識の文脈を先に取得します。
+
+```text
+tei knowledge-context
+  -workspace <workspace>
+  -subject-kind semantic-data
+  -subject-id <data-id>
+  -disclose data-design
+```
+
+`data-design`には、現在のデータ / 関係 / 制約 / 永続化の対応関係だけでなく、識別子、候補キー、関数従属性、複合的な値制約、履歴・有効期間について確認すべき問いと、誤って意味を確定しないための制約が含まれます。
+
+さらに、`designReviewProtocol`は設計確認の順序を機械で扱える形で返します。AIは少なくとも次の順序で確認します。
+
+1. 対象データと、根拠となる現在の情報源や検証根拠を特定する。
+2. 業務上の同一性を、データベースの主キーや画面・実行環境の識別子から分けて考える。
+3. 識別子と候補キーについて、重複を許さない範囲、時点や期間、同値性の扱いを検証根拠から確認する。
+4. 代理識別子を採用する場合も、業務上必要な一意性を保つ。
+5. 関数従属性は業務上の意味や規約として確認する。現在のデータで偶然一意であることや統計的な相関だけから確定しない。
+6. 関数従属性と、単なる複合的な値制約を分ける。
+7. 関係キー、局所的な一意制約、永続化の主キーや`UNIQUE`を、業務上の識別子や関数従属性へ自動的に昇格させない。
+8. 根拠が足りなければ`unresolved`を残す。
+9. 導出した識別子や従属性の候補は提案として扱い、共通の受け入れ手順を経てから受け入れ済みの意味へ反映する。
+
+この手順は業務上の意味を定めるものではありません。現在の知識から導いた設計支援の手順です。`authorityLimits`にもその範囲を明示します。知識の文脈の照合値が変わった場合は、古い文脈を再利用せず、現在のデータ設計の文脈を取得し直します。
+
+## 10. 一つの業務例を縦に追う
+
+受注登録から出荷準備までを簡略化すると、三視点は次のように重なります。
+
+```text
+Business
+  顧客から注文を受ける
+  ↓
+  内容を確認する
+  ↓
+  出荷可能なら物流へ引き継ぐ
+
+Data
+  Customer
+  Order
+  OrderLine
+  shipping condition
+
+Function / Interaction
+  customer reference
+  order record
+  order lines header-detail
+  submit command
+```
+
+ここから、たとえば次を確認します。
+
+- 顧客は読み取り専用の参照でよいか
+- OrderLineの数量制約は何か
+- 出荷可能性の判断に必要なDataは揃っているか
+- `submit`成功と物流へのHandoffを同一視していないか
+- 人による確認作業を実在しない機能に置き換えていないか
+
+TEIの業務システム設計では、一つの視点を完成させてから次へ進むのではなく、**同じ業務上の意味を複数の視点から確かめ、不足を見つけます**。
+
+## 11. 読む順序
+
+初めてこの領域を読む場合は、次の順を推奨します。
+
+1. 本書 — 問題と三視点を具体例から理解する
+2. [`requirements/README.md`](../requirements/README.md) — 製品要求全体の中での位置を確認する
+3. [`requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md`](../requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md) — RQ-025 / RQ-026の解釈を確認する
+4. [`business-system-design.md`](business-system-design.md) — 設計上の境界を詳しく読む
+5. [現在の実装状況](status.md) — 業務手順の実装・検証範囲と未解決の条件を確かめる
+6. 対応する参照資料 / 検証根拠 — 必要な検証手順と根拠を確認する
+
+## 12. このガイドから一般化しないこと
+
+この文書の例は説明用です。
+
+次を意味しません。
+
+- 手順を必ず最上位の正本オブジェクトにする
+- 引継ぎのスキーマが確定済みである
+- 三つの視点を同じ形式のオブジェクトとして保存する
+- 対応表を必ず永続化する
+- 受注分野がTEIの標準的な対象分野である
+- AIの診断を重大なエラーへ自動的に引き上げる
+
+表現方式は参照資料による検証根拠と設計判断記録をもとに判断します。

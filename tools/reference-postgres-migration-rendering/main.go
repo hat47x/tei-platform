@@ -8,8 +8,6 @@ import (
 	"os"
 	"time"
 
-	_ "github.com/lib/pq"
-
 	"tei/internal/core"
 	"tei/internal/database/migration"
 	"tei/internal/database/physical"
@@ -17,6 +15,7 @@ import (
 	"tei/internal/database/providers/postgres"
 	"tei/internal/database/schemadiff"
 	"tei/internal/environment"
+	"tei/tools/internal/postgresdb"
 )
 
 const databaseID = "migration_render_postgres"
@@ -36,7 +35,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "TEI_TEST_POSTGRES_DSN is required")
 		os.Exit(2)
 	}
-	db, err := sql.Open("postgres", dsn)
+	db, err := postgresdb.OpenSQL(dsn)
 	if err != nil {
 		panic(err)
 	}

@@ -1,0 +1,10 @@
+{
+  "providerNullSemantics": true,
+  "providerDecimalPrecision": true,
+  "providerRelationMultiplicity": true,
+  "providerAuthority": true,
+  "limitBeforeDerive": false,
+  "unsupportedExpression": false,
+  "fetchComplete": true,
+  "fetchBounded": true
+}

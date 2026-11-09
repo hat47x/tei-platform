@@ -1,0 +1,402 @@
+package modelref
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"sort"
+	"strconv"
+	"strings"
+)
+
+// TraceOptions selects only direct declared references. There is no inferred
+// transitive business impact or implicit wildcard scope.
+type TraceOptions struct {
+	Direction           string `json:"direction"` // outgoing, incoming, both
+	Mode                string `json:"mode"`      // summary, full
+	Offset              int    `json:"offset,omitempty"`
+	Limit               int    `json:"limit,omitempty"`
+	ExpectedFingerprint string `json:"expectedFingerprint,omitempty"`
+}
+
+type TraceError struct {
+	Code    string
+	Message string
+}
+
+func (e *TraceError) Error() string { return e.Message }
+
+// TraceRow preserves the original edge and its evidence, even if the target
+// cannot be resolved. Only rows with Status "resolved" have a ResolvedTo key.
+// A resolved row is still a graph candidate, not Accepted meaning.
+type TraceRow struct {
+	Status     string `json:"status"` // resolved, unresolved
+	Edge       Edge   `json:"edge"`
+	ResolvedTo *Key   `json:"resolvedTo,omitempty"`
+	Issue      string `json:"issue,omitempty"`
+}
+
+// TraceResult is an indexed, stable read of a candidate graph. "summary" only
+// returns counts. "full" has no implicit truncation; a supplied positive Limit
+// enables explicit paging through NextOffset.
+type TraceResult struct {
+	SchemaVersion string `json:"schemaVersion"`
+	// GraphFingerprint identifies this candidate graph, its rules and the
+	// selected subject and direction. It is NOT the continuation token: the
+	// CLI continuation value is result.snapshotFingerprint (outer), which also
+	// binds the World and the Source Index. It used to be called
+	// snapshotFingerprint, the same name as the outer value, so a reader that
+	// took the field next to nextOffset out of habit got STALE_SNAPSHOT (#3625).
+	GraphFingerprint string `json:"graphFingerprint"`
+	// SnapshotFingerprint is the deprecated alias of GraphFingerprint. It is
+	// emitted with the same value for one v0 cycle so existing readers keep
+	// working; new readers use graphFingerprint. It must never be passed as the
+	// continuation fingerprint.
+	SnapshotFingerprint string `json:"snapshotFingerprint,omitempty"`
+	RuleFingerprint     string `json:"ruleFingerprint"`
+	Subject             Key    `json:"subject"`
+	Direction           string `json:"direction"`
+	Mode                string `json:"mode"`
+	Authority           string `json:"authority"`
+	Total               int    `json:"total"`
+	Unresolved          int    `json:"unresolved"`
+	Offset              int    `json:"offset,omitempty"`
+	// Rows is present in full mode even when there are no rows, so a reader
+	// can tell "this subject declares no references" from "this response has
+	// no rows field". In summary mode the field stays absent: summary returns
+	// counts only. MarshalJSON writes it because omitempty would drop an empty
+	// slice too (#3693).
+	Rows       []TraceRow `json:"rows,omitempty"`
+	NextOffset *int       `json:"nextOffset,omitempty"`
+	// Continuation, when present, names the fingerprint to pass as the
+	// continuation token for NextOffset. The Workspace-level caller fills it
+	// because only it can bind the World and the Source Index; modelref alone
+	// cannot (#3625). It sits next to NextOffset so the value a reader needs
+	// is not mistaken for this graph's own fingerprint.
+	Continuation *TraceContinuation `json:"continuation,omitempty"`
+}
+
+// TraceContinuation names the token that continues this page. Fingerprint is
+// the Workspace-level continuation value (the CLI's result.snapshotFingerprint
+// placed beside nextOffset); it is descriptive and is not an acceptance
+// revision or a write token.
+type TraceContinuation struct {
+	Fingerprint string `json:"fingerprint"`
+	Field       string `json:"field"`
+}
+
+// MarshalJSON always writes rows in full mode. encoding/json drops a slice
+// behind omitempty when it is empty, which made "zero references" and "no
+// rows field" indistinguishable (#3693). Summary keeps the field absent.
+func (r TraceResult) MarshalJSON() ([]byte, error) {
+	type alias TraceResult
+	if r.Mode != "full" {
+		return json.Marshal(alias(r))
+	}
+	rows := r.Rows
+	if rows == nil {
+		rows = []TraceRow{}
+	}
+	// Spell the fields out in declaration order so forcing rows does not
+	// reorder the document and change otherwise identical bytes.
+	return json.Marshal(struct {
+		SchemaVersion       string             `json:"schemaVersion"`
+		GraphFingerprint    string             `json:"graphFingerprint"`
+		SnapshotFingerprint string             `json:"snapshotFingerprint,omitempty"`
+		RuleFingerprint     string             `json:"ruleFingerprint"`
+		Subject             Key                `json:"subject"`
+		Direction           string             `json:"direction"`
+		Mode                string             `json:"mode"`
+		Authority           string             `json:"authority"`
+		Total               int                `json:"total"`
+		Unresolved          int                `json:"unresolved"`
+		Offset              int                `json:"offset,omitempty"`
+		Rows                []TraceRow         `json:"rows"`
+		NextOffset          *int               `json:"nextOffset,omitempty"`
+		Continuation        *TraceContinuation `json:"continuation,omitempty"`
+	}{
+		r.SchemaVersion, r.GraphFingerprint, r.SnapshotFingerprint, r.RuleFingerprint,
+		r.Subject, r.Direction, r.Mode, r.Authority, r.Total, r.Unresolved, r.Offset,
+		rows, r.NextOffset, r.Continuation,
+	})
+}
+
+// TraceDirect selects and validates one-hop edges from the existing typed
+// Graph. It never fabricates a relation from matching names or Source paths.
+// Rules must be supplied by the caller's semantic extension, not the CLI.
+func TraceDirect(graph Graph, rules []Rule, subject Key, options TraceOptions) (TraceResult, error) {
+	if graph.Schema != "tei.modelref.v0" {
+		return TraceResult{}, &TraceError{Code: "UNSUPPORTED_SCHEMA", Message: "unsupported model reference graph schema"}
+	}
+	options, requestErr := normalizeTraceRequest(subject, options)
+	if requestErr != nil {
+		return TraceResult{}, requestErr
+	}
+	// The token binds pages to normalized graph meaning, selector and extension policy.
+	// It is descriptive, not Shared Acceptance, nor an optimistic write token.
+	raw, err := traceGraphSnapshotBytes(graph)
+	if err != nil {
+		return TraceResult{}, fmt.Errorf("serialize canonical graph snapshot: %w", err)
+	}
+	policyFingerprint := RuleFingerprint(rules)
+	// A page belongs to a specific subject and direction. Changing either
+	// while reusing a continuation token would otherwise silently select
+	// a different result set from the very same graph and rule snapshot.
+	// Mode, offset and limit are excluded so summary -> full and paged full
+	// remain compatible for an unchanged query.
+	queryJSON, err := json.Marshal(struct {
+		Subject   Key    `json:"subject"`
+		Direction string `json:"direction"`
+	}{Subject: subject, Direction: options.Direction})
+	if err != nil {
+		return TraceResult{}, fmt.Errorf("serialize trace selector: %w", err)
+	}
+	snapshotBytes := []byte("tei.modelref.trace.snapshot/v2\n")
+	snapshotBytes = append(snapshotBytes, raw...)
+	snapshotBytes = append(snapshotBytes, '\n')
+	snapshotBytes = append(snapshotBytes, policyFingerprint...)
+	snapshotBytes = append(snapshotBytes, '\n')
+	snapshotBytes = append(snapshotBytes, queryJSON...)
+	digest := sha256.Sum256(snapshotBytes)
+	snapshotFingerprint := "sha256:" + hex.EncodeToString(digest[:])
+	if options.ExpectedFingerprint != "" && options.ExpectedFingerprint != snapshotFingerprint {
+		return TraceResult{}, &TraceError{Code: "STALE_SNAPSHOT", Message: "trace subject, direction, graph, or rule fingerprint differs from the prior page"}
+	}
+	counts := make(map[Key]int, len(graph.Nodes))
+	for _, node := range graph.Nodes {
+		counts[node.Key]++
+	}
+	if counts[subject] == 0 {
+		return TraceResult{}, &TraceError{Code: "SUBJECT_NOT_FOUND", Message: "subject does not exist in typed graph"}
+	}
+	if counts[subject] != 1 {
+		return TraceResult{}, &TraceError{Code: "SUBJECT_AMBIGUOUS", Message: "subject is declared more than once in typed graph"}
+	}
+
+	type ruleKey struct{ relation, fromKind, toKind string }
+	type ruleValue struct {
+		rule     Rule
+		conflict bool
+	}
+	rulesByKey := make(map[ruleKey]ruleValue, len(rules))
+	for _, rule := range rules {
+		key := ruleKey{rule.Relation, rule.FromKind, rule.ToKind}
+		previous, exists := rulesByKey[key]
+		if exists && previous.rule != rule {
+			previous.conflict = true
+			rulesByKey[key] = previous
+		} else if !exists {
+			rulesByKey[key] = ruleValue{rule: rule}
+		}
+	}
+	lookup := newLookup(graph.Nodes)
+	var rows []TraceRow
+	total, unresolved := 0, 0
+	for _, edge := range graph.Edges {
+		outgoing := edge.From == subject
+		// A scope-less ref may or may not resolve to the requested subject.
+		// Keep it visible as unresolved evidence when resolution is ambiguous.
+		incoming := edge.To.Subject == subject.Subject &&
+			(edge.To.Scope == "" || edge.To.Scope == subject.Scope)
+		if options.Direction == "outgoing" && !outgoing ||
+			options.Direction == "incoming" && !incoming ||
+			options.Direction == "both" && !outgoing && !incoming {
+			continue
+		}
+		row := TraceRow{Status: "unresolved", Edge: edge}
+		switch {
+		case !validKey(edge.From) || counts[edge.From] == 0:
+			row.Issue = "invalid-source"
+		case counts[edge.From] > 1:
+			row.Issue = "ambiguous-source"
+		default:
+			dest, issue := lookup.resolve(edge.To)
+			if issue != "" {
+				row.Issue = issue
+			} else {
+				rule, exists := rulesByKey[ruleKey{edge.Relation, edge.From.Subject.Kind, dest.Subject.Kind}]
+				switch {
+				case !validKey(dest):
+					row.Issue = "invalid-target"
+				case !exists:
+					row.Issue = "invalid-edge-type"
+				case strings.TrimSpace(rule.rule.Relation) == "" ||
+					strings.TrimSpace(rule.rule.FromKind) == "" ||
+					strings.TrimSpace(rule.rule.ToKind) == "":
+					row.Issue = "invalid-rule"
+				case rule.conflict:
+					row.Issue = "conflicting-rule"
+				default:
+					findings := evidenceDiagnostics("edge", sortedTraceEvidence(edge.Evidence))
+					if len(findings) != 0 {
+						row.Issue = findings[0].Code
+					} else {
+						row.Status = "resolved"
+						row.ResolvedTo = &dest
+					}
+				}
+			}
+		}
+		total++
+		if row.Status == "unresolved" {
+			unresolved++
+		}
+		if options.Mode == "summary" {
+			continue // count the entire graph without allocating result rows
+		}
+		// Evidence has set semantics in modelref. Normalize a copy so
+		// equivalent input produces stable JSON without mutating Graph.
+		row.Edge.Evidence = sortedTraceEvidence(edge.Evidence)
+		rows = append(rows, row)
+	}
+	if options.Mode == "full" {
+		// Sorting only applies to returned rows. Summary can count without
+		// constructing or sorting a potentially large result set.
+		sortTraceRows(rows)
+	}
+	result := TraceResult{
+		SchemaVersion: "tei.modelref.trace/v0", Subject: subject,
+		GraphFingerprint: snapshotFingerprint, SnapshotFingerprint: snapshotFingerprint,
+		RuleFingerprint: policyFingerprint,
+		Direction:       options.Direction, Mode: options.Mode, Authority: "candidate-read-only",
+		Total: total, Unresolved: unresolved,
+	}
+	if options.Mode == "summary" {
+		return result, nil
+	}
+	start := options.Offset
+	if start > len(rows) {
+		start = len(rows)
+	}
+	end := len(rows)
+	if options.Limit > 0 && options.Limit < end-start {
+		end = start + options.Limit
+	}
+	result.Offset = start
+	result.Rows = rows[start:end]
+	if result.Rows == nil {
+		result.Rows = []TraceRow{}
+	}
+	if end < len(rows) {
+		next := end
+		result.NextOffset = &next
+	}
+	return result, nil
+}
+
+// TraceDirections and TraceModes are the closed value sets TraceDirect accepts.
+// They are exported so the CLI advertises exactly what it validates (#3242).
+var (
+	TraceDirections = []string{"outgoing", "incoming", "both"}
+	TraceModes      = []string{"summary", "full"}
+)
+
+// TraceDefaultDirection and TraceDefaultMode are the values an adapter applies
+// when the caller omits the flag. They are exported so the CLI flag defaults,
+// `tei commands` argumentDefaults, the MCP adapter and the checks in this
+// package read one value instead of three copies (#3605).
+//
+// An adapter must not treat an explicit empty string as "use the default":
+// omitted flags carry these values, and an explicit "" is rejected before the
+// call (see cmd/tei/cli_flag_contract.go and the MCP adapter). normalizeTraceRequest
+// still maps an empty Mode to "full" for direct in-process callers; that is not
+// an adapter default and TraceDefaultMode is not it.
+const (
+	TraceDefaultDirection = "both"
+	TraceDefaultMode      = "summary"
+)
+
+func containsValue(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
+}
+
+// ValidateTraceRequest returns the *TraceError that TraceDirect reports for the
+// subject and options alone, before it looks at any graph, or nil. A caller that
+// would otherwise do expensive work for a request that is certain to be
+// rejected can use it to fail first. It never reports graph-dependent errors
+// such as UNSUPPORTED_SCHEMA, SUBJECT_NOT_FOUND or STALE_SNAPSHOT.
+func ValidateTraceRequest(subject Key, options TraceOptions) error {
+	_, err := normalizeTraceRequest(subject, options)
+	return err
+}
+
+// normalizeTraceRequest applies the defaults and the argument checks that do
+// not depend on the graph. The checks and their order are TraceDirect's.
+func normalizeTraceRequest(subject Key, options TraceOptions) (TraceOptions, error) {
+	if !validKey(subject) {
+		return options, &TraceError{Code: "INVALID_SUBJECT", Message: "scope, kind, and id are required"}
+	}
+	if options.Direction == "" {
+		options.Direction = TraceDefaultDirection
+	}
+	if options.Mode == "" {
+		// Not an adapter default: the adapters reject an explicit empty string
+		// and pass TraceDefaultMode when the flag is omitted. This branch only
+		// serves direct in-process callers and keeps its historical value.
+		options.Mode = "full"
+	}
+	if !containsValue(TraceDirections, options.Direction) {
+		return options, &TraceError{Code: "INVALID_ARGUMENT", Message: "direction must be outgoing, incoming, or both"}
+	}
+	if !containsValue(TraceModes, options.Mode) {
+		return options, &TraceError{Code: "INVALID_ARGUMENT", Message: "mode must be summary or full"}
+	}
+	if options.Offset < 0 || options.Limit < 0 || options.Mode == "summary" && (options.Offset != 0 || options.Limit != 0) {
+		return options, &TraceError{Code: "INVALID_ARGUMENT", Message: "offset/limit require nonnegative values and full mode"}
+	}
+	return options, nil
+}
+
+// sortTraceRows orders rows by traceRowKey. Each key is built once per row;
+// building it inside the comparison costs O(n log n) key constructions, each
+// of which formats eleven fields and JSON-encodes the evidence.
+func sortTraceRows(rows []TraceRow) {
+	if len(rows) < 2 {
+		return
+	}
+	keys := make([]string, len(rows))
+	for i := range rows {
+		keys[i] = traceRowKey(rows[i])
+	}
+	sort.Sort(traceRowsByKey{rows: rows, keys: keys})
+}
+
+type traceRowsByKey struct {
+	rows []TraceRow
+	keys []string
+}
+
+func (s traceRowsByKey) Len() int           { return len(s.rows) }
+func (s traceRowsByKey) Less(i, j int) bool { return s.keys[i] < s.keys[j] }
+func (s traceRowsByKey) Swap(i, j int) {
+	s.rows[i], s.rows[j] = s.rows[j], s.rows[i]
+	s.keys[i], s.keys[j] = s.keys[j], s.keys[i]
+}
+
+func traceRowKey(row TraceRow) string {
+	to := row.Edge.To
+	// Length-prefixed fields prevent collisions when user-defined IDs contain
+	// separators (including hyphens, colons, and slashes).
+	fields := [...]string{
+		row.Edge.From.Scope, row.Edge.From.Subject.Kind, row.Edge.From.Subject.ID,
+		to.Scope, to.Subject.Kind, to.Subject.ID,
+		to.Version, row.Edge.Relation, row.Status, row.Issue, evidenceKey(row.Edge.Evidence),
+	}
+	size := 0
+	for _, field := range fields {
+		size += len(field) + 8 // generous room for the decimal length and ':'
+	}
+	out := make([]byte, 0, size)
+	for _, field := range fields {
+		out = strconv.AppendInt(out, int64(len(field)), 10)
+		out = append(out, ':')
+		out = append(out, field...)
+	}
+	return string(out)
+}

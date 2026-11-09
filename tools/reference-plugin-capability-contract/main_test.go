@@ -3,16 +3,172 @@ package main
 import (
 	"strings"
 	"testing"
+
+	authoritytrust "tei/tools/reference-authority-evidence-trust/trust"
 )
+
+func TestNonInvocationContractFingerprintDoesNotGainEmptyShapeIssuer(t *testing.T) {
+	contract := Contract{
+		ID:                 "reference.no-invocation",
+		Version:            "1.0.0",
+		RequestSemantics:   "none",
+		ResultSemantics:    "none",
+		FailureSemantics:   "none",
+		ConformanceProfile: "tei.reference.no-invocation/v0",
+	}
+	legacy := struct {
+		ID                      string `json:"id"`
+		Version                 string `json:"version"`
+		RequestSemantics        string `json:"requestSemantics"`
+		ResultSemantics         string `json:"resultSemantics"`
+		FailureSemantics        string `json:"failureSemantics"`
+		RequestShape            string `json:"requestShape,omitempty"`
+		RequestShapeFingerprint string `json:"requestShapeFingerprint,omitempty"`
+		ResultShape             string `json:"resultShape,omitempty"`
+		ResultShapeFingerprint  string `json:"resultShapeFingerprint,omitempty"`
+		PayloadCodec            string `json:"payloadCodec,omitempty"`
+		ConformanceProfile      string `json:"conformanceProfile"`
+	}{
+		ID:                 contract.ID,
+		Version:            contract.Version,
+		RequestSemantics:   contract.RequestSemantics,
+		ResultSemantics:    contract.ResultSemantics,
+		FailureSemantics:   contract.FailureSemantics,
+		ConformanceProfile: contract.ConformanceProfile,
+	}
+	if got, want := fingerprint(contract), fingerprint(legacy); got != want {
+		t.Fatalf("optional shape issuer changed non-invocation contract identity: got=%s want=%s", got, want)
+	}
+}
+
+func invocationShapeAuthorityEvidenceForTest(
+	artifact InvocationShapeArtifact,
+	marker string,
+) InvocationShapeAuthorityEvidence {
+	value := InvocationShapeAuthorityEvidence{
+		Schema:           invocationShapeAuthorityEvidenceSchema,
+		Issuer:           artifact.Issuer,
+		ShapeID:          artifact.ID,
+		ShapeFingerprint: invocationShapeFingerprint(artifact),
+		AuthoritySourceFingerprint: fingerprint(struct {
+			Marker string `json:"marker"`
+		}{
+			Marker: marker,
+		}),
+	}
+	value.EvidenceFingerprint = invocationShapeAuthorityEvidenceFingerprint(value)
+	return value
+}
+
+func invocationShapeAuthoritiesForTest(
+	implementations []InvocationImplementation,
+) []InvocationShapeAuthorityEvidence {
+	seen := map[string]struct{}{}
+	var out []InvocationShapeAuthorityEvidence
+	for _, implementation := range implementations {
+		for _, artifact := range []InvocationShapeArtifact{
+			implementation.RequestShapeArtifact,
+			implementation.ResultShapeArtifact,
+		} {
+			key := invocationShapeAuthorityKey(
+				artifact.Issuer,
+				artifact.ID,
+				invocationShapeFingerprint(artifact),
+			)
+			if _, exists := seen[key]; exists {
+				continue
+			}
+			seen[key] = struct{}{}
+			out = append(
+				out,
+				invocationShapeAuthorityEvidenceForTest(
+					artifact,
+					"accepted-reference-shape-authority",
+				),
+			)
+		}
+	}
+	return out
+}
+
+func invocationShapePublisherTrustForTest(
+	t *testing.T,
+	authorities []InvocationShapeAuthorityEvidence,
+) []authoritytrust.Grant {
+	t.Helper()
+	seen := map[string]struct{}{}
+	var out []authoritytrust.Grant
+	for _, authority := range authorities {
+		key := strings.Join(
+			[]string{
+				authority.Issuer.ID,
+				authority.Issuer.Version,
+				authority.ShapeID,
+			},
+			"\x00",
+		)
+		if _, duplicate := seen[key]; duplicate {
+			continue
+		}
+		seen[key] = struct{}{}
+		grant, err := authoritytrust.NewGrant(
+			invocationShapePublisherAuthorityClass,
+			invocationShapeTrustScope(authority.ShapeID),
+			authoritytrust.Issuer{
+				ID:      authority.Issuer.ID,
+				Version: authority.Issuer.Version,
+			},
+			fingerprint(struct {
+				Issuer  InvocationShapeIssuer `json:"issuer"`
+				ShapeID string                `json:"shapeId"`
+				Policy  string                `json:"policy"`
+			}{
+				Issuer:  authority.Issuer,
+				ShapeID: authority.ShapeID,
+				Policy:  "accepted-reference-publisher-trust",
+			}),
+			true,
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		out = append(out, grant)
+	}
+	return out
+}
+
+func newInvocationRegistryForTest(
+	t *testing.T,
+	implementations []InvocationImplementation,
+) *InvocationRegistry {
+	t.Helper()
+	authorities := invocationShapeAuthoritiesForTest(implementations)
+	registry, err := NewInvocationRegistry(
+		implementations,
+		authorities,
+		invocationShapePublisherTrustForTest(t, authorities),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return registry
+}
 
 func sourceAdapterContract() Contract {
 	return Contract{
-		ID:                 "authoring.source-adapter.xead",
-		Version:            "1.0.0",
-		RequestSemantics:   "exact-source-bytes",
-		ResultSemantics:    "source-faithful-inventory-with-unresolved",
-		FailureSemantics:   "unsupported-or-invalid-is-not-success",
-		ConformanceProfile: "tei.reference.source-adapter/v0",
+		ID:                      "authoring.source-adapter.xead",
+		Version:                 "1.0.0",
+		RequestSemantics:        "exact-source-bytes",
+		ResultSemantics:         "source-faithful-inventory-with-unresolved",
+		FailureSemantics:        "unsupported-or-invalid-is-not-success",
+		RequestShape:            sourceAdapterRequestShape,
+		RequestShapeFingerprint: sourceAdapterRequestShapeFingerprint,
+		ResultShape:             sourceAdapterResultShape,
+		ResultShapeFingerprint:  sourceAdapterResultShapeFingerprint,
+		PayloadCodec:            referenceJSONPayloadCodec,
+		ShapeIssuer:             referenceInvocationShapeIssuerPointer(),
+		InvocationEffect:        invocationEffectReadOnly,
+		ConformanceProfile:      "tei.reference.source-adapter/v0",
 	}
 }
 
@@ -223,12 +379,19 @@ func TestContractFingerprintMismatchFailsClosed(t *testing.T) {
 
 func runtimeContract() Contract {
 	return Contract{
-		ID:                 "runtime.contract-query-executor",
-		Version:            "1.0.0",
-		RequestSemantics:   "contract-query-with-bound-parameters",
-		ResultSemantics:    "rows-or-explicit-unresolved",
-		FailureSemantics:   "execution-error-is-not-empty-result",
-		ConformanceProfile: "tei.reference.contract-query-executor/v0",
+		ID:                      contractQueryCapabilityContractID,
+		Version:                 "1.0.0",
+		RequestSemantics:        "contract-query-with-bound-parameters",
+		ResultSemantics:         "rows-or-explicit-unresolved",
+		FailureSemantics:        "execution-error-is-not-empty-result",
+		RequestShape:            contractQueryRequestShape,
+		RequestShapeFingerprint: contractQueryRequestShapeFingerprint,
+		ResultShape:             contractQueryResultShape,
+		ResultShapeFingerprint:  contractQueryResultShapeFingerprint,
+		PayloadCodec:            referenceJSONPayloadCodec,
+		ShapeIssuer:             referenceInvocationShapeIssuerPointer(),
+		InvocationEffect:        invocationEffectReadOnly,
+		ConformanceProfile:      "tei.reference.contract-query-executor/v0",
 	}
 }
 

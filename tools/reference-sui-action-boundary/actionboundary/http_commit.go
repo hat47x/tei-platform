@@ -1,0 +1,125 @@
+package actionboundary
+
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"io"
+	"mime"
+	"net/http"
+	"net/url"
+	"strings"
+)
+
+// PayloadDecoder resolves an application-owned JSON payload into native command
+// input. The tuple (ApplicationID, ActionID) selects the payload grammar.
+// Unrecognized tuples and invalid payloads must fail closed.
+type PayloadDecoder func(applicationID, actionID string, raw json.RawMessage) (any, error)
+
+// JSONCommitHandler is a reference-only HTTP transport for native UI actions.
+// Production runtime must supply Host authorization backed by a trusted session,
+// a command resolver, and an application-owned persistent Store.
+type JSONCommitHandler struct {
+	Host          Host
+	DecodePayload PayloadDecoder
+}
+
+// Protocol version 1 is a generic resource-scoped conditional Action,
+// not a SUI DocumentV1 mutation schema. Each Application owns its payload.
+type httpCommitIntent struct {
+	ProtocolVersion  string          `json:"protocolVersion"`
+	ApplicationID    string          `json:"applicationID"`
+	ResourceID       string          `json:"resourceID"`
+	ActionID         string          `json:"actionID"`
+	ExpectedRevision string          `json:"expectedRevision"`
+	Payload          json.RawMessage `json:"payload"`
+}
+
+// ServeHTTP does not use claims of subject identity from the request body.
+// Requiring a non-simple header and same-origin requests constrains browser
+// CSRF, but does not replace runtime authorization or a deployment CSRF policy.
+func (h JSONCommitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	reject := func(status int, code string) {
+		w.WriteHeader(status)
+		_ = json.NewEncoder(w).Encode(map[string]string{"protocolVersion": "1", "error": code})
+	}
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		reject(http.StatusMethodNotAllowed, "method_not_allowed")
+		return
+	}
+	if r.Header.Get("X-TEI-Action") != "commit" || !sameHostOrigin(r) {
+		reject(http.StatusForbidden, "request_origin_denied")
+		return
+	}
+	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	if err != nil || mediaType != "application/json" {
+		reject(http.StatusUnsupportedMediaType, "unsupported_content_type")
+		return
+	}
+	if h.DecodePayload == nil {
+		reject(http.StatusServiceUnavailable, "payload_decoder_unavailable")
+		return
+	}
+	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10))
+	input, err := decodeStrictHTTPCommitIntent(decoder)
+	if err != nil {
+		reject(http.StatusBadRequest, "invalid_intent")
+		return
+	}
+	var extra any
+	if err := decoder.Decode(&extra); err != io.EOF {
+		reject(http.StatusBadRequest, "invalid_intent")
+		return
+	}
+	if input.ProtocolVersion != "1" || input.ApplicationID == "" || input.ResourceID == "" || input.ActionID == "" || input.ExpectedRevision == "" ||
+		len(input.Payload) == 0 || bytes.Equal(bytes.TrimSpace(input.Payload), []byte("null")) {
+		reject(http.StatusBadRequest, "invalid_intent")
+		return
+	}
+	payload, err := h.DecodePayload(input.ApplicationID, input.ActionID, input.Payload)
+	if err != nil || payload == nil {
+		reject(http.StatusBadRequest, "invalid_payload")
+		return
+	}
+	revision, err := h.Host.Commit(r.Context(), Intent{
+		ApplicationID: input.ApplicationID, ResourceID: input.ResourceID, ActionID: input.ActionID,
+		ExpectedRevision: input.ExpectedRevision, Payload: payload,
+	})
+	switch {
+	case errors.Is(err, ErrDenied):
+		reject(http.StatusForbidden, "action_denied")
+	case errors.Is(err, ErrConflict):
+		reject(http.StatusConflict, "revision_conflict")
+	case errors.Is(err, ErrInvalid):
+		reject(http.StatusBadRequest, "invalid_action")
+	case err != nil || revision == "":
+		reject(http.StatusInternalServerError, "execution_failed")
+	default:
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]string{"protocolVersion": "1", "revision": revision})
+	}
+}
+
+func sameHostOrigin(r *http.Request) bool {
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		return true
+	}
+	u, err := url.Parse(origin)
+	return err == nil && (u.Scheme == "http" || u.Scheme == "https") &&
+		u.User == nil && u.Path == "" && u.RawQuery == "" && u.Fragment == "" &&
+		u.Scheme == requestScheme(r) && strings.EqualFold(u.Host, r.Host)
+}
+
+// Never trust X-Forwarded-Proto here: proxy deployment must normalize the
+// request scheme through trusted server configuration before it reaches us.
+func requestScheme(r *http.Request) string {
+	if r.TLS != nil {
+		return "https"
+	}
+	return "http"
+}

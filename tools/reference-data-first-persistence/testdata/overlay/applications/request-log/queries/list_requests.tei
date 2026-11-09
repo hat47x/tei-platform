@@ -1,0 +1,9 @@
+query request_log.list_requests {
+    datasource store
+    sql postgres file "list_requests.sql"
+    result {
+        column request_id -> intake.request.request_id
+        column summary -> intake.request.summary
+        column status -> intake.request.status
+    }
+}

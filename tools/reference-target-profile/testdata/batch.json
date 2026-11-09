@@ -1,0 +1,14 @@
+{
+  "schema": "tei.reference.target-profile/v0",
+  "id": "batch",
+  "version": "1",
+  "description": "single ephemeral batch process over all fixture requests",
+  "processModel": "batch",
+  "storage": "filesystem",
+  "network": "allowed",
+  "update": "replace",
+  "memoryLimitBytes": 67108864,
+  "observability": ["stdout", "exit-code"],
+  "unsupported": ["hard-realtime", "rolling-update"],
+  "generatorId": "long-running-template"
+}

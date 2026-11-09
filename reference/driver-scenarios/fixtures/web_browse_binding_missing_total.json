@@ -1,0 +1,11 @@
+{
+  "stepId": "browse-synthetic",
+  "method": "GET",
+  "route": "/test/order-entry/recent-orders",
+  "responseFields": {
+    "sales.order.order_id": "orderId",
+    "sales.order.customer_id": "customerId",
+    "sales.order.ordered_at": "orderedAt",
+    "sales.order.status": "status"
+  }
+}

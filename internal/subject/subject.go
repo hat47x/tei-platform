@@ -1,13 +1,9 @@
+// Package subject is the legacy import-path adapter for the canonical Core
+// subject value. Do not duplicate fields or validation in this package.
 package subject
 
-// Subject identifies a path-independent semantic or logical target inside a
-// TEI World. It deliberately contains no file path, line, column, or source
-// range. Authoring-side components may resolve a Subject through a Source Index.
-type Subject struct {
-	Kind string `json:"kind"`
-	ID   string `json:"id"`
-}
+import coresubject "tei/core/subject"
 
-func (s Subject) IsZero() bool {
-	return s.Kind == "" && s.ID == ""
-}
+// Subject is an alias, not a new type. Existing code may continue importing
+// tei/internal/subject while the single source of behavior is core/subject.
+type Subject = coresubject.Subject

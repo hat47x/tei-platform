@@ -1,6 +1,6 @@
 # Native Interaction / Application Action bridge — Reference E1
 
-This is an **executable, browser-portable Reference candidate**, not a production TEI Runtime or SUI Canvas integration. See [ISSUE-000052](../../plan/issue/000052-sui-reference-adoption-and-plugin-surface-evaluation.md) and GitHub Issue #993.
+This is an **executable, browser-portable Reference candidate**, not a production TEI Runtime or SUI Canvas integration. See ISSUE-000052 and GitHub Issue #993.
 
 ## Product question
 

@@ -1,0 +1,15 @@
+{
+  "release": "r1",
+  "messages": [
+    {"id": "order.batch_confirmed", "sourceLocale": "ja-JP", "text": "{count}件の受注を確定しました", "format": "named-v0",
+     "parameters": [{"name": "count", "kind": "integer"}]},
+    {"id": "order.submit_rejected", "sourceLocale": "ja-JP", "text": "受注{orderId}は確定できませんでした", "format": "named-v0",
+     "parameters": [{"name": "orderId", "kind": "text"}]},
+    {"id": "order.tax_notice", "sourceLocale": "en-US", "text": "Prices exclude consumption tax.", "format": "plain"}
+  ],
+  "displays": [
+    {"kind": "data", "id": "sales.order", "text": "受注"},
+    {"kind": "data", "id": "sales.order_line", "text": "受注明細"},
+    {"kind": "capability", "id": "sales.order.submit", "text": "受注を確定"}
+  ]
+}

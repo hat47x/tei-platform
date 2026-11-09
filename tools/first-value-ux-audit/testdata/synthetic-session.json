@@ -1,0 +1,20 @@
+{
+  "schema": "tei.first-value-ux-session/v1",
+  "sessionId": "SYNTHETIC-example-only",
+  "taskId": "E0-model-change",
+  "phase": "E0",
+  "actor": "new-agent",
+  "provenance": "synthetic",
+  "repositorySHA": "0000000000000000000000000000000000000000",
+  "startedAt": "2026-10-10T08:00:00Z",
+  "finishedAt": "2026-10-10T08:00:40Z",
+  "events": [
+    {"at": "2026-10-10T08:00:01Z", "kind": "command", "exitCode": 0, "evidenceRef": "synthetic:validate-before"},
+    {"at": "2026-10-10T08:00:02Z", "kind": "source-edit"},
+    {"at": "2026-10-10T08:00:03Z", "kind": "manual-fields", "count": 1},
+    {"at": "2026-10-10T08:00:05Z", "kind": "command", "exitCode": 1, "evidenceRef": "synthetic:validation-error"},
+    {"at": "2026-10-10T08:00:10Z", "kind": "recovery"},
+    {"at": "2026-10-10T08:00:20Z", "kind": "source-edit"},
+    {"at": "2026-10-10T08:00:39Z", "kind": "command", "exitCode": 0, "evidenceRef": "synthetic:validate-after"}
+  ]
+}

@@ -1,0 +1,91 @@
+{
+  "kind": "tei-e35-pinned-project-reference-ci-evidence-v0",
+  "repository": "hat47x/tei-platform",
+  "pullRequest": 1567,
+  "headSha": "5fde80b0385b471f1c15d701f3c9f61761405c27",
+  "wasDraft": true,
+  "files": [
+    {
+      "path": "tools/reference-project-advice-lit/contract_bridge.go",
+      "blobSha": "7a44b4d0a84aefac33cc7f56c19027a5dbaab9d4"
+    },
+    {
+      "path": "tools/reference-project-advice-lit/contract_bridge_test.go",
+      "blobSha": "d454c1b377910830dc10353e8b8deb259d8e51c6"
+    },
+    {
+      "path": "tools/reference-project-advice-lit/smoke_order_entry.sh",
+      "blobSha": "c1920cb93fdff9e19278fd45c83316d932214c44"
+    },
+    {
+      "path": "tools/reference-project-advice-lit/main.go",
+      "blobSha": "dcc8df49f16f5fe38e3da4ed86d66bbdc4567b81"
+    },
+    {
+      "path": "tools/reference-project-advice-lit/web/advice-element.mjs",
+      "blobSha": "0f415f06f9e325b3d2f544cbbe7836f0c3f3e65f"
+    },
+    {
+      "path": "tools/reference-project-advice-lit/order_entry_context.go",
+      "blobSha": "6e05e787025d22895ba89fc664f76e9a58fc8ef3"
+    }
+  ],
+  "workflowRuns": [
+    {
+      "role": "go-node-readonly-integration",
+      "runId": 38378147159,
+      "workflow": "TEI 案件Go・Lit補助参照テスト",
+      "jobId": 115231601698,
+      "criticalSteps": [
+        "Go形式と案件コードを検証",
+        "実order_entry APIからの読み取り専用接続を検証",
+        "UI通信とJavaScript構文を検証"
+      ],
+      "headSha": "5fde80b0385b471f1c15d701f3c9f61761405c27",
+      "status": "completed",
+      "conclusion": "success",
+      "jobConclusion": "success",
+      "stepConclusions": {
+        "Go形式と案件コードを検証": "success",
+        "実order_entry APIからの読み取り専用接続を検証": "success",
+        "UI通信とJavaScript構文を検証": "success"
+      }
+    },
+    {
+      "role": "real-chrome-reference",
+      "runId": 38378147239,
+      "workflow": "TEI 案件Lit実Chrome参照検証",
+      "jobId": 115231957263,
+      "criticalSteps": [
+        "正確な対象版と実Chromeを確認",
+        "実Go API・Go案件HostとLitをChromeで操作"
+      ],
+      "headSha": "5fde80b0385b471f1c15d701f3c9f61761405c27",
+      "status": "completed",
+      "conclusion": "success",
+      "jobConclusion": "success",
+      "stepConclusions": {
+        "正確な対象版と実Chromeを確認": "success",
+        "実Go API・Go案件HostとLitをChromeで操作": "success"
+      }
+    },
+    {
+      "role": "pr-repository-health",
+      "runId": 38378147208,
+      "workflow": "TEI PR・main 健全性確認",
+      "jobId": 115232180174,
+      "criticalSteps": [
+        "正規の全体健全性確認を実行",
+        "PR候補HEADそのもののE1を検証"
+      ],
+      "headSha": "5fde80b0385b471f1c15d701f3c9f61761405c27",
+      "status": "completed",
+      "conclusion": "success",
+      "jobConclusion": "success",
+      "stepConclusions": {
+        "正規の全体健全性確認を実行": "success",
+        "PR候補HEADそのもののE1を検証": "success"
+      }
+    }
+  ]
+}
