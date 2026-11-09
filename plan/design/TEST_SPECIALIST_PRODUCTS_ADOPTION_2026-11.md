@@ -6,6 +6,10 @@
 - 既存の設計：[経路間の業務機能完全性とScenario由来E2E](CROSS_ROUTE_FUNCTIONAL_PARITY_AND_TEST_DERIVATION.md)。こちらの文書は置換しない。
 - 限界：本書の製品機能は2026-11-07確認時点の公式文書に基づく比較。性能、費用、TEIとの相互運用性、製品別ライセンス適合は未実測。OwnerのMeaning受理・実Host Grant・Production資格は含まれない。
 
+<!-- tei-test-20261109-1120z-evidence-status -->
+> **追加検収（2026-11-09 11:20Z）**：前の11/9カードを取り消すのではなく、[merged #3749](https://github.com/hat47x/tei-platform/pull/3749)でCLI必須引数未指定の`INVALID_ARGUMENT`分類を統一し、[merged #3763](https://github.com/hat47x/tei-platform/pull/3763)でMCP説明文の旧Failure主張をGo試験で固定。[merged #3731](https://github.com/hat47x/tei-platform/pull/3731)は同Plan二回Buildの再現性、[merged #3760](https://github.com/hat47x/tei-platform/pull/3760)は明示Catalogからのin-process Plan導出を限定実証。いずれも実Source完全閉包/G4、外部MCP全文配送、未知TEST-T1B、`recent_orders`実DB Read、Product Plugin S2、業務意味受理は示さない。**次の実行票は§35.10のT-Discover/R-Read**。本更新の新実CI・Go試験はNOT RUN。
+
+
 <!-- tei-test-status-nov09-cli-knowledge-and-mcp -->
 > **現行の検収上限（2026-11-09。以下の古い「queued／未統合」は当時の記録）**：main [#3685](https://github.com/hat47x/tei-platform/pull/3685)の実CLI knowledge-* 連鎖、main [#3633](https://github.com/hat47x/tei-platform/pull/3633)のtrace継続指紋、修正済み[#3693](https://github.com/hat47x/tei-platform/issues/3693)のfull-mode空配列、main [#3540](https://github.com/hat47x/tei-platform/pull/3540)のInspector **S2-reference** を局所実績として採用。一方で **knowledge入力SchemaのCLI自己記述、Markdown本文の意味取得、実Function Provider P0-R、Blind TEST-T1B、外部H3配送、S2-product/Current Grant、C1・Owner業務意味受理**は未成立。最新の受入順は§35.7〜35.9と各Owner Issueを優先し、新Reader/Runner/Registryを設けない。
 
