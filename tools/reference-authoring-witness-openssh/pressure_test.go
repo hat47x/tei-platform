@@ -33,6 +33,15 @@ func TestOpenSSHAuthoringWitnessPressure(t *testing.T) {
 	cmd.Env = append(os.Environ(), "SSH_KEYGEN="+sshKeygen, "VERIFY_TIME=20261007120000Z")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		// Exit 77 is the script's "this host cannot qualify it" signal: the
+		// installed ssh-keygen lacks the -Y verify verify-time option this
+		// fixture needs (seen on Windows, where the bundled OpenSSH is older).
+		// Skipping with the script's own output keeps "not qualified" distinct
+		// from "failed", which is what the script itself refuses to blur.
+		var exit *exec.ExitError
+		if errors.As(err, &exit) && exit.ExitCode() == 77 {
+			t.Skipf("OpenSSH provider on this host cannot run the verify-time fixture:\n%s", output)
+		}
 		t.Fatalf("OpenSSH sign/verify pressure failed: %v\n%s", err, output)
 	}
 	for _, evidence := range []string{

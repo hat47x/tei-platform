@@ -63,9 +63,13 @@ func TestHistoricalRuntimeEngineRunnerParity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := requireCleanRepository(repo); err != nil {
-		t.Fatalf("historical comparison requires a clean, committed current checkout: %v", err)
-	}
+	// The comparison must run against committed source, not a working tree that
+	// another package in the same `go test ./...` run may be writing into
+	// (#3637). Rather than requiring the whole live checkout to be clean — a
+	// precondition this test cannot control and that made the result depend on
+	// scheduling — both sides build from their own detached worktree at a
+	// pinned revision. A worktree created from HEAD is clean by construction, so
+	// the comparison keeps its meaning without reading the live working tree.
 	// A shallow clone lacks the pinned revision, and the later `git show` would
 	// fail with a misleading "path ... not in <rev>" message. Fail with the
 	// real cause instead of skipping, so a missing history is never a pass.
@@ -84,16 +88,6 @@ func TestHistoricalRuntimeEngineRunnerParity(t *testing.T) {
 	// Historical history must exist locally: a shallow clone is NOT a valid
 	// success case. CI intentionally checks out a full Git history.
 	oldRunnerSource := git(repo, "show", preSharedGoBuildRunnerRevision+":tools/reference-transform-runtime-engine-build/main.go")
-	currentRunnerSource, err := os.ReadFile(filepath.Join(repo, "tools", "reference-transform-runtime-engine-build", "main.go"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Contains(oldRunnerSource, []byte("cmd := exec.Command(")) ||
-		!bytes.Contains(oldRunnerSource, []byte("\"-mod=readonly\"")) ||
-		bytes.Contains(oldRunnerSource, []byte("return gobuilder.BuildPackage(repo, goPath, packagePath, output, stateDir)")) ||
-		!bytes.Contains(currentRunnerSource, []byte("return gobuilder.BuildPackage(repo, goPath, packagePath, output, stateDir)")) {
-		t.Fatal("historical/current builder implementations no longer represent opposite sides of Go BuildPackage extraction")
-	}
 
 	tmp := t.TempDir()
 	if runtime.GOOS == "windows" {
@@ -124,6 +118,34 @@ func TestHistoricalRuntimeEngineRunnerParity(t *testing.T) {
 	}
 	if got := git(oldCheckout, "status", "--porcelain=v1", "--untracked-files=all"); len(got) != 0 {
 		t.Fatalf("historical checkout is not clean: %s", got)
+	}
+	// The current side also runs from its own worktree, so a change another
+	// package left in the live working tree cannot alter what is compared
+	// (#3637). The revision compared is HEAD, the same commit a clean checkout
+	// would have.
+	currentCheckout := filepath.Join(tmp, "current-checkout")
+	addCurrent := exec.Command("git", "-C", repo, "worktree", "add", "--detach", currentCheckout, "HEAD")
+	if out, err := addCurrent.CombinedOutput(); err != nil {
+		t.Fatalf("create current checkout at HEAD: %v: %s", err, out)
+	}
+	t.Cleanup(func() {
+		cmd := exec.Command("git", "-C", repo, "worktree", "remove", "--force", currentCheckout)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Errorf("remove current checkout: %v: %s", err, out)
+		}
+	})
+	if got := git(currentCheckout, "status", "--porcelain=v1", "--untracked-files=all"); len(got) != 0 {
+		t.Fatalf("current checkout at HEAD is not clean: %s", got)
+	}
+	currentRunnerSource, err := os.ReadFile(filepath.Join(currentCheckout, "tools", "reference-transform-runtime-engine-build", "main.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(oldRunnerSource, []byte("cmd := exec.Command(")) ||
+		!bytes.Contains(oldRunnerSource, []byte("\"-mod=readonly\"")) ||
+		bytes.Contains(oldRunnerSource, []byte("return gobuilder.BuildPackage(repo, goPath, packagePath, output, stateDir)")) ||
+		!bytes.Contains(currentRunnerSource, []byte("return gobuilder.BuildPackage(repo, goPath, packagePath, output, stateDir)")) {
+		t.Fatal("historical/current builder implementations no longer represent opposite sides of Go BuildPackage extraction")
 	}
 
 	// Compile both REAL runner executables independently. They are different
@@ -156,7 +178,7 @@ func TestHistoricalRuntimeEngineRunnerParity(t *testing.T) {
 		}
 	}
 	buildRunner("historical", oldCheckout, oldCLI)
-	buildRunner("current", repo, newCLI)
+	buildRunner("current", currentCheckout, newCLI)
 
 	type output struct {
 		evidence buildEvidence
@@ -165,8 +187,8 @@ func TestHistoricalRuntimeEngineRunnerParity(t *testing.T) {
 	runRunner := func(label, cli string) output {
 		t.Helper()
 		artifactPath := filepath.Join(tmp, label+"-engine"+ext)
-		cmd := exec.Command(cli, "-repo", repo, "-go", goPath, "-artifact-out", artifactPath)
-		cmd.Dir = repo
+		cmd := exec.Command(cli, "-repo", currentCheckout, "-go", goPath, "-artifact-out", artifactPath)
+		cmd.Dir = currentCheckout
 		cmd.Env = append(os.Environ(), "GOENV=off", "GOWORK=off", "GOFLAGS=", "GOTOOLCHAIN=local", "GOPROXY=off")
 		var stdout, stderr bytes.Buffer
 		cmd.Stdout, cmd.Stderr = &stdout, &stderr
@@ -209,7 +231,7 @@ func TestHistoricalRuntimeEngineRunnerParity(t *testing.T) {
 	historical := runRunner("historical", oldCLI)
 	current := runRunner("current", newCLI)
 
-	if historical.evidence.RepositoryRevision != string(git(repo, "rev-parse", "HEAD")) ||
+	if historical.evidence.RepositoryRevision != string(git(currentCheckout, "rev-parse", "HEAD")) ||
 		current.evidence.RepositoryRevision != historical.evidence.RepositoryRevision {
 		t.Fatal("runners did not build the same current repository revision")
 	}
@@ -230,8 +252,14 @@ func TestHistoricalRuntimeEngineRunnerParity(t *testing.T) {
 		b, _ := json.Marshal(current.evidence)
 		t.Fatalf("build Evidence meaning drifted between historical and current runner:\nhistorical=%s\ncurrent=%s", a, b)
 	}
-	if status := git(repo, "status", "--porcelain=v1", "--untracked-files=all"); len(status) != 0 {
-		t.Fatalf("historical parity verification dirtied the source checkout: %s", status)
+	// The comparison reads only its own detached worktrees, so the invariant
+	// worth asserting is that those worktrees are still exactly as committed.
+	// The live checkout is not an input any more, and failing on it would make
+	// this test depend on what other packages did (#3637).
+	for label, checkout := range map[string]string{"historical": oldCheckout, "current": currentCheckout} {
+		if status := git(checkout, "status", "--porcelain=v1", "--untracked-files=all"); len(status) != 0 {
+			t.Fatalf("comparison modified its own %s checkout: %s", label, status)
+		}
 	}
 	t.Log(fmt.Sprintf("historical runner %s and current runner agree: source=%s engine=%s evidence=%s",
 		preSharedGoBuildRunnerRevision,

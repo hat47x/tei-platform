@@ -342,7 +342,22 @@ func runLongRunningProbe(ctx context.Context, opts RunOptions, fixture generator
 	if evidence.Responses != evidence.Requests && evidence.Reason == "" {
 		evidence.Reason = fmt.Sprintf("candidate returned %d of %d responses", evidence.Responses, evidence.Requests)
 	}
+	// A case that answers with an empty result is usually a crash in the
+	// candidate program, and its own message is the only clue: keep the last
+	// part of stderr next to the reason (#3801).
+	if !evidence.Passed && evidence.Reason != "" && stderr.Len() > 0 {
+		evidence.Reason += "; stderr: " + stderrTail(stderr.String(), 2000)
+	}
 	return evidence
+}
+
+// stderrTail returns the end of s, which is where an interpreter puts the
+// traceback that explains a crash.
+func stderrTail(s string, limit int) string {
+	if len(s) <= limit {
+		return strings.TrimSpace(s)
+	}
+	return strings.TrimSpace(s[len(s)-limit:])
 }
 
 func findJavaForProbe() (javacPath, javaPath, version string, available bool) {

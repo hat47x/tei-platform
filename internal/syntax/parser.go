@@ -38,36 +38,39 @@ type Parser struct {
 
 func NewParser(src string) *Parser { return &Parser{lx: NewLexer(src)} }
 
-func (p *Parser) ParseWorkspace() ([]string, error) {
+// ParseWorkspace reads the legacy `tei.workspace.tei` manifest. The name is
+// the declared workspace identity; it is returned so callers can report which
+// Workspace a read came from instead of inferring it from a path (#3181).
+func (p *Parser) ParseWorkspace() (name string, roots []string, err error) {
 	if _, err := p.expectText("workspace"); err != nil {
-		return nil, err
+		return "", nil, err
 	}
-	if _, err := p.expect(TokenIdent); err != nil {
-		return nil, err
+	nameTok, err := p.expect(TokenIdent)
+	if err != nil {
+		return "", nil, err
 	}
 	if _, err := p.expect(TokenLBrace); err != nil {
-		return nil, err
+		return "", nil, err
 	}
-	var roots []string
 	for {
 		t, err := p.peek()
 		if err != nil {
-			return nil, err
+			return "", nil, err
 		}
 		if t.Kind == TokenRBrace {
 			_, _ = p.next()
 			break
 		}
 		if _, err := p.expectText("source"); err != nil {
-			return nil, err
+			return "", nil, err
 		}
 		v, err := p.expect(TokenIdent)
 		if err != nil {
-			return nil, err
+			return "", nil, err
 		}
 		roots = append(roots, strings.TrimSuffix(v.Text, "/**"))
 	}
-	return roots, p.expectEOF()
+	return nameTok.Text, roots, p.expectEOF()
 }
 
 func (p *Parser) ParseApplication() (application.Application, error) {
@@ -1982,6 +1985,7 @@ func (p *Parser) parseSemanticData(namespace core.CanonicalID) (semantic.Data, e
 			required := false
 			immutable := false
 			role := ""
+			roleDeclared := false
 			var declaredValue *string
 		attributeOptions:
 			for {
@@ -2019,12 +2023,16 @@ func (p *Parser) parseSemanticData(namespace core.CanonicalID) (semantic.Data, e
 					_, _ = p.next()
 					immutable = true
 				case "role":
+					if roleDeclared {
+						return d, p.errAt(nt, "duplicate role option for attribute "+aSym.Text)
+					}
 					_, _ = p.next()
 					roleTok, err := p.expect(TokenIdent)
 					if err != nil {
 						return d, err
 					}
 					role = roleTok.Text
+					roleDeclared = true
 				default:
 					break attributeOptions
 				}
@@ -2506,8 +2514,25 @@ func (p *Parser) parseSemanticPeriod(namespace core.CanonicalID) (semantic.Perio
 				return period, err
 			}
 			period.Correction = value
+		case "closes":
+			_, _ = p.next()
+			if _, err := p.expectText("on"); err != nil {
+				return period, err
+			}
+			if _, err := p.expectText("day"); err != nil {
+				return period, err
+			}
+			dayTok, err := p.expect(TokenIdent)
+			if err != nil {
+				return period, err
+			}
+			day, convErr := strconv.Atoi(dayTok.Text)
+			if convErr != nil {
+				return period, p.errAt(dayTok, "closing day is not a whole number")
+			}
+			period.ClosingDay = day
 		default:
-			return period, p.errAt(t, "expected data, business-date, calendar, states, close-requires, closed-rejects, or correction")
+			return period, p.errAt(t, "expected data, business-date, calendar, states, close-requires, closed-rejects, correction, or closes")
 		}
 	}
 	return period, nil
@@ -2532,6 +2557,9 @@ func (p *Parser) readPeriodNames() ([]string, error) {
 	stop := map[string]bool{
 		"data": true, "business-date": true, "states": true,
 		"close-requires": true, "closed-rejects": true, "correction": true,
+		// closes starts the closing-day declaration, so a states list must end
+		// before it; otherwise the day number is read as another state name.
+		"closes": true,
 	}
 	var values []string
 	for {
