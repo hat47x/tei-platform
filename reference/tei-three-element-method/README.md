@@ -179,3 +179,45 @@ public input. This Reference never reads a private model, computes
 Disclosure, proves complete Source coverage, or supplies current
 authority. The correct production solution is a trusted ingestion and
 qualified Consumer boundary, not adding a second Policy Engine here.
+
+
+### T18: successful Catalog read and unsound Workspace remain separate
+
+[ModelCatalog validation status #3728](https://github.com/hat47x/tei-platform/pull/3728)
+has merged in main. Its real `CatalogWorkspace` can successfully return a
+catalog whose `validation.ok=false`; the verdict also contains
+`errorCount` and `warningCount`. Diagnostic details remain in
+`validate -json`. The ModelCatalog result and the transport `ok` have
+different meanings.
+
+The new `catalog-validation.mjs` is **not a duplicate validator**. It
+binds only a **caller-prequalified, already disclosed** Catalog-read-success
+statement and the existing `validation` summary to the exact
+`publicProjection.scope / snapshot / workspaceObservation`. The output
+preserves `catalogReadSucceeded:true` separately from `validation.ok`,
+with no per-Subject validity, edit qualification, complete Writer inventory
+or Owner Accepted meaning synthesized. Counts are passed through, not
+recomputed; a failed/absent read fails closed rather than becoming
+`validation.ok=false`. The `catalogReadSucceeded` fixture field is
+caller-supplied and is **not** a verified CLI envelope or Reader Attempt.
+
+The 6 synthetic T18 tests check read success alongside Validation failure,
+warnings without errors, missing/failed reads, cross-Workspace/old Snapshot,
+malformed counts and unqualified metadata/getters. They invoke the existing
+public-slice projector, but **not** real Go CLI, a real Workspace, the
+current Policy, Studio, browser DOM, or the official Validator. The raw
+Catalog summary's global diagnostic counts can disclose non-public facts;
+the producer must make an independent current Disclosure decision
+**before** passing this subset to a lower-privilege TEA Consumer.
+
+```sh
+node --test \
+  reference/tei-three-element-method/public-slice.test.mjs \
+  reference/tei-three-element-method/trait-attachments.test.mjs \
+  reference/tei-three-element-method/catalog-validation.test.mjs
+```
+
+This branch's suite is now **14 + 17 + 6 = 37 synthetic tests**.
+Earlier counts above describe prior versions. Only the exact-head native
+Node CI completed successfully for this 37-case version can establish
+native Node test passage; successful V8-shim assertions alone cannot.
