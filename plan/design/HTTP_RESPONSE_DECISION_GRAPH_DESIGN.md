@@ -392,6 +392,54 @@ PR [#3382](https://github.com/hat47x/tei-platform/pull/3382) exact head `c31ade7
 
 次のP0最小縦切りは**既存Go Hostの10経路Witnessを基線に、E1構成DAG側のRoute/Guard/Terminal宣言とRuntime実装をread-onlyの照合票で結ぶ**こと。対応が証明できない項目は`unbound/unknown`として停止し、同名のGuardやHTTP statusからBindingを捏造しない。続いて1 Functionの実TEI Source Reader→Required Relation/Edge/Guard→Graph/Table投影を実Consumerで通してはじめてP0 Graph資格を評価する。既存の三視点・Scenario・Effect EvidenceのOwnerを維持する。
 
+## 15. 参考資料と採否
+## 8. 参考資料と採否
+## 13. 参考資料と採否
+## 14. 2026-11-08：実Node完了・実Go Hostの分岐観測へ進む（P-1c）
+
+### 14.1 前回CIの完了資格を更新
+
+PR [#3382](https://github.com/hat47x/tei-platform/pull/3382) exact head `c31ade7851a4de5576845a88ee2ac0e9f2772f56` に対する[専用CI #42396614454](https://github.com/hat47x/tei-platform/actions/runs/42396614454) は**completed/success**。実Nodeのcheckout・版記録・`node --check`・`node --test`各Stepはsuccess。これによりHDG-21の**現在の構成器の限定Characterization**は、V8だけでなく実Node test runnerの成功として報告できる。ただしSourceで明示される`configurationAccepted=true, pathAuditProof=false, runtimeAudit=unknown`を上書きしない。
+
+同PRの[全体Health #42396614480](https://github.com/hat47x/tei-platform/actions/runs/42396614480)は**completed/failure**。Jobログでは`go vet ./...`、`go test -count=1 -timeout 60m ./...`、参照Workspace validateがそれぞれPASSし、失敗したのは`gofmt -l . is empty`（`tools/reference-plugin-capability-coverage/coverage_test.go` の整形ドリフト）。**当該PRのGo/HTTP機能が全体資格を獲得したという意味ではない**。整形ドリフトの所有範囲と、HTTP実証の対象変更は分離する。
+
+### 14.2 現行Go Hostの実装を読んだFit/Gap
+
+現行 `reference/web-composition/go-host/host.go` blob `407aadbb87fdee4f59f96cf2d2b2f8115ed31281` は `NewHost`で必須Callbacks（`VerifySession`・`VerifyCSRF`・`Authorize`・`Invoke`・`Audit`）の非nilを要求し、**各request handlerに`defer`で`AuditRecord`を一回出力する**実装を持つ。認証失敗・Issuer差・CSRF拒否・Authorize障害・Handler成功・panicの経路を通る。既存`host_test.go` blob `d1abb5db50ec523c61a784c8a5dad30c1779c93c`には、拒否Pathの監査、Loopbackの202/403、レスポンス開始後のpanicを検査するGo試験がすでにある。
+
+**以前の『実Hostの監査は全く未検証』という表現は不正確**。正確には、合成Go Hostに**監査の実装と既存試験はある**が、**E1静的構成DAGの`onTerminal`宣言がこのGo Hostの実際の分岐/監査にBindingされ、すべての必要なRuntime/Effect経路で強制されるという縦断証拠がない**。ここを#1043が担当する。独立Graph Runnerや第二Audit Engineを作る理由にはならない。
+
+さらに、`AuditRecord.Stage`はこのHostでは**HTTP Handler処理の終了状態**であり、正式Business OutcomeやEffect確定状態ではない。HTTP 202と`Stage=completed`が同時に現れても、Business Commit/独立read証拠は存在しない。Handlerが202を送出してからpanicすると、**Client visible statusは202のまま、Host監査は`Stage=error`**になり得る。この差は既存の`TestPanicAfterResponseStartedRemainsAuditError`にも現れる。Problem Details/WWW-Authenticate等のProtocol conformanceは、実際の採用Auth Scheme・HTTP API profileが未決の段階でこのsynthetic Hostへ一律強制しない（#1656）。
+
+### 14.3 Go Hostの分岐Witnessを同じ受入軸へ追加
+
+[新テスト `decision_path_test.go`](../../reference/web-composition/go-host/decision_path_test.go)は、現行Go HostのCallback実通過順とAuditを**独立した期待順序**で比較する（Go HTTP Handlerを実際に動かす）。実行対象と独立Expectedは次の10経路に限定する。
+
+| Path ID | 期待HTTP | 通過Callbackの要点 | 最低限の資格 |
+| --- | ---: | --- | --- |
+| HDG-H01 | 404 | Auditのみ | route不一致で他Guard不実行 |
+| HDG-H02 | 405 | Auditのみ | method不一致でAction不実行 |
+| HDG-H03 | 401 | Session→Audit | Session拒否 |
+| HDG-H04 | 401 | Session→Audit | Issuer不一致 |
+| HDG-H05 | 403 | Session→CSRF→Audit | Origin/CSRF拒否 |
+| HDG-H06 | 403 | Session→CSRF→Authorize→Audit | Action認可拒否 |
+| HDG-H07 | 503 | Session→CSRF→Authorize→Audit | 認可Service障害 |
+| HDG-H08 | 202 | Session→CSRF→Authorize→Invoke→Audit | `Audit.Stage=completed`だがEffect未確定 |
+| HDG-H09 | 422 | Session→CSRF→Authorize→Invoke→Audit | Handler呼出後の拒否、no-effectは未証明 |
+| HDG-H10 | 202 | Session→CSRF→Authorize→Invoke→Audit | Header送出後panic、`Audit.Stage=error` |
+
+このWitnessは**Go Reference HostのCallbackのみ**の実観測。Route/Methodの内部処理、Authorization Providerの本物の妥当性、任意のMiddleware/Proxy、Browserでの完全受領、実業務Action Effect、TEI標準Graph Loader、全可到達Pathの網羅性は証明しない。Sourceに安定Node/Edge IDを新設していないため、表のPath IDも**テストケース識別子**に限り、TEI Canonical Edge identityへ昇格させない。
+
+既存専用Workflowは**NodeのHDG-21限定テストとGo Hostのこの限定経路試験の双方**を同一checkoutで走らせる候補へ拡張する。結果が得られるまではGo新テストを実Go PASSと記載しない。全Repo HealthとGo Host局所PASSは別資格とする。
+
+### 14.4 他チャットで成熟した計画との統合と、次の一辺
+
+- **#3262 / merged #3354**：実CLI11種と必要Validation/Relation/Sourceの限定Context Consumerを活用するが、そのTT-56の一部のSource集合が**HTTP GraphのRequired Node/Edge/Guard分母**に一致するわけではない。`required/discovered/loaded/parsed/bound/returned`をHTTP対象で独立に固定し、未消費GraphはUNKNOWNのまま保留する。
+- **#1124 / #2497 / SUI・SHO Consumer**：同名Nodeと多重Edge、Graph→表→Markdownの非単射、Canvas/OccurrenceのUI選択とSemantic Subjectの区別を維持。CLIから実Graph Edge identityがLoaderを経由して来るまで、Mermaidの見た目やテストPath名で欠落したRelationを補わない。投影表示の現在資格と、過去に受信したエラーの保持を別に検証する。
+- **#3278 / #3279 / #951 / #3267**：`TerminalCoverage`と`ClientReactionPolicy`をatomic Traitの**義務候補**として保持する。Plugin宣言・Provider選択・実呼出・Conformance・Runtime Grant・BOM exact tupleを区別し、標準Pluginへ移すのは現Hostの実Callback Evidenceから必要な不足が特定できた後。
+- **#1174 / #1158 / #997 / KON/SEI**：ClientはBusiness Decisionの正本でも分散Effect coordinatorでもない。将来KON Dataspace等がData Provider、SEIが意思決定先となっても、Response Interpretation → Reaction Qualification → 認可済みAction/Effect → 独立Observationの分離を維持し、それら別製品のHostや認可正本をHTTP Graphへ移植しない。
+
+次のP0最小縦切りは**既存Go Hostの10経路Witnessを基線に、E1構成DAG側のRoute/Guard/Terminal宣言とRuntime実装をread-onlyの照合票で結ぶ**こと。対応が証明できない項目は`unbound/unknown`として停止し、同名のGuardやHTTP statusからBindingを捏造しない。続いて1 Functionの実TEI Source Reader→Required Relation/Edge/Guard→Graph/Table投影を実Consumerで通してはじめてP0 Graph資格を評価する。既存の三視点・Scenario・Effect EvidenceのOwnerを維持する。
 ## 15. 2026-11-08 P0-R：E1宣言とGo Hostの明示Route照合（Source二視点・限定PoC）
 
 ### 15.1 今回の最小実験と資格の限界
@@ -553,7 +601,7 @@ Source Indexを前段P0-Sで読めても、このDriver解決は`Source Index→
 
 他領域で成熟しているLifecycle Graphの考え方を、この実験の**型付き責務境界**として扱う。実行可能Graphを固定の逐次手順に閉じず、Guard、拒否、取消、Retry、補償、非同期応答を扱えるようにする一方、全実行可能経路で`Authorize→Effect`、必要なHost guard、実Effect後の結果不確定性を迂回しないことを不変条件とする。**構成時GraphとPlugin適用後Graph、生成物の制御フロー、実走行Traceは別証拠**であり、`onTerminal`という宣言名やAudit callback 1回だけから完全Graphを推論しない。
 
-製品横断の**先行P0/S2**は、[Plugin-first方針 #3525](https://github.com/hat47x/tei-platform/pull/3525)／[Inspector状態整理 #3531](https://github.com/hat47x/tei-platform/pull/3531)のとおり、**通常`tei inspect`と実Studio Bridgeから、同じ選択済みInspector ContractのProvider Bをそれぞれ実呼出しすること**である。HTTP側に専用Plugin Registryを新設してそのS2を横取りしない。HTTPの次段は、既存Service Carrier／Plugin Runtimeの**選択・Artifact/Policy・実Invoke・現在Authority・同一Attemptの結果**が揃ってから同じClient Reaction/Evidence分類を利用する。CLI/StudioのProvider Bとこの合成Submit Adapterを同一資格として扱わない。
+製品横断の**現行S2-reference**は、[main #3540](https://github.com/hat47x/tei-platform/pull/3540)で通常`tei inspect`と通常・生成Studio Hostから**同じ静的Reference Inspector Provider**を選択・実呼出しするところまで統合済み（exact-head Health/Wails/CLI CIはsuccess）。次のP0である**S2-product**は、正式Profileが選んだProvider Bと両Consumerの実呼出し先Bの同一性、Artifact/Entryの独立検証であり、**まだ未資格**。HTTP側に専用Plugin Registryを新設してそのS2を横取りしない。HTTPの次段は、既存Service Carrier／Plugin Runtimeの**選択・Artifact/Policy・実Invoke・現在Authority・同一Attemptの結果**が揃ってから同じClient Reaction/Evidence分類を利用する。CLI/StudioのProvider Bとこの合成Submit Adapterを同一資格として扱わない。
 
 - **Graph／SHO**：E01とE04は`503/error`表面が同じだが内部Effectが違う。Graph/Table/Traceでは`HTTP branch/status`、`Adapter invoked`、`Effect disposition (unknown)`、`observation nature/result`を別列で表し、出典Occurrence・Node/Edge identityを保持する。全Required Node/Guard/Relationの取得は#3262/#1124/#2497で別途検証。
 - **TEI性能観測／最適化**：`HTTP 503`の件数から「失敗した更新件数」や「再試行可能件数」を推定しない。技術的タイミング・Adapter呼出し・実業務確定・read後の状態を別指標として扱い、実統計・独立Before/After比較がない最適化は候補にとどめる。
@@ -563,7 +611,142 @@ Source Indexを前段P0-Sで読めても、このDriver解決は`Source Index→
 
 まず今回の`HDG-E01〜E05`について、**新規テスト自体のCI PASS**を独立に取得する。その後のP0一辺は、既存実Provider/Service Carrierの同一Attemptにおける選択・Artifact資格・実呼出し・Result受領と、外部Observationを**異なる資格票**として結合すること。完了した部分だけを昇格し、Client完全受領／実DB/外部Effectの意味受理は独立確認が得られるまでUNKNOWNとする。
 
-## 20. 参考資料と採否
+## 20. 2026-11-09 横断統合：HTTP効果観測の実証とComposition接続判断を分離する
+
+### 20.1 実行済み証拠と資格票を確定
+
+前段[PR #3537](https://github.com/hat47x/tei-platform/pull/3537)はmainへ統合済み。exact HEAD `a3448847bac5fcefac304f3f32b08150a1e3f282`の[限定CI #42486408608](https://github.com/hat47x/tei-platform/actions/runs/42486408608)は**completed/success**で、Node 7/7、Go Host package全PASS、HDG-E01〜E05の各サブテストとGo formatting PASS。脆弱性確認 #42486408701もsuccess。同HEADの[全体Health #42486408590](https://github.com/hat47x/tei-platform/actions/runs/42486408590)は**completed/failure**。全体`gofmt/go vet/go test ./.../tei validate`は**すべてPASS**したが、別ステップの`tools/ci-workflows-test.py`が、並行追加の`tei-ai-tuning-reference-ci.yml`の`actions/checkout@v4`未ピン留めと`synthetic-controls`の`timeout-minutes`欠落を検出した。現行mainの当該WorkflowはSHAピン留め・10分timeoutへ修正済み（**異なるHEAD**）。以前のfailureをsuccessへ改変しない。
+
+| 証拠面 | 実証した最小事実 | 残る資格 |
+| --- | --- | --- |
+| Canonical / Driver | 実`order_entry.submit_order→sales.order.submit→CustomGoBinding`を既存Driverで解決 | 現在の業務意味Owner受理、外部Provider適格性 |
+| Runtime HTTP | 実Reference Host・Canonical認可・Driverの有限Guard/分岐と**合成**Adapter実Invoke／Audit | E1静的`onTerminal`→Runtime全Branch保証、実IdP／Cookie／CSRF |
+| Effect | 合成Adapterの更新前後と別`ExecuteObservationRead`の値の違い（503/202で一意でない） | 実DB Commit/Receipt、外部Observation、現在Snapshot、Client受領 |
+| Plugin/Composition | 既存`servicehost`／Service Carrierのtest-only selected／Invoke witnessは別テストに存在 | **製品**CLI/Studio/Runtimeの宣言→実行への接続、実Provider B／Artifact・Authority |
+| Design Context / Graph | Required Source、Source Index、Pattern/Capability等の別検証実績がある | HTTPの全Required Graph Node/Edge/Branchを同Source/Versionで実Consumerへ投影 |
+
+**Client Reactionの非推論規則**：HTTP `202`でも「業務成功・保存済み」と表示せず、`503`でも「未適用だから非冪等POSTを再送してよい」と判断しない。Result/Receipt/Observationの未取得・不明・staleを明示し、実行後不確定なら現在Grant／Operation identityに束縛した**既存**のCommand Lifecycle/Effect fence（#1174/#2999）へ戻す。この表は**設計上の停止線**であり、製品Clientに自動Retry抑止機構が実装済みとの主張ではない。
+
+### 20.2 他チャットのComposition実行接続判断が先行Gate
+
+[構成接続点の判断資料（PR #3549）](../workstreams/COMPOSITION_CONNECT_POINT_BRIEF_2026-11.md)の6つの実測記録によれば、現在の**製品**`cmd/tei`は`operations`入口を持つが`composition`を直接使わず、Reference`go-host`は別経路で`composition`を使う。`servicehost`の非試験呼出し元は無く、宣言されたEnvironment Bindingは検証・計画へ届いても、非試験`routing.Router`の組立てにはまだ届いていない。この**発見は参考実装中のHost→selected Service Carrier呼出し成功と矛盾しない**。test-onlyの局所結合と、製品入口の宣言→実実行配線は別である。
+
+| 上流の未決選択 | HTTPでの意味 | 今回扱う/扱わない |
+| --- | --- | --- |
+| C-4: 製品が宣言→実行を接続せず外部Hostへ委ねる | 外部Host契約が、現在Authority/Plugin artifact/Effect receiptの実行資格を所有し得る | **有効な選択肢として保持**。HTTP分野が暗黙にC-4を棄却しない |
+| C-1: `routing.Router`を製品CLI入口で組立てる | Deployment Commandの宣言を実実行へ接続する候補 | 上流Gate決定以前にHTTP独自CLI Routerを新設しない |
+| C-2: `servicehost`をCLI/Hostへ接続する | ProviderのHost世代ピン留めとGateway配線の候補 | 既存Referenceの成功を製品実行の受理へ昇格しない |
+| C-3: `DeploymentExecutor`のCapability IDをBinding由来にする | Reference固定ID呼出しの宣言との一致を強化し得る | C-1/C-2決定と固定Referenceの目的を検討するまで保留 |
+
+優先判断は**対象Operation/Targetの実行Owner（C-4外部委譲を含む）→役割別C-1 Deployment/C-2 Service→必要ならC-3**。Ownerは[Composition Kernel移行Gate](../gate/COMPOSITION_KERNEL_MIGRATION_GATE_2026-10.md)と製品成立状況（`docs/status.md`）であり、HTTP設計では選択・採用を決定しない。C-1/C-2は別種Operationなら共存できるが、**同一Attemptの二重Owner**は許さない。Pluginの[静的S2-reference #3540](https://github.com/hat47x/tei-platform/pull/3540)成功を正式Provider Bの**S2-product**へ昇格せず、HTTP本番結合より先に選択B→実Invoke Bを独立確認する。
+
+### 20.3 次の最小Exitを「追加参考テスト」ではなく実Consumerに置く
+
+**次の成果物候補は新しいGraph engine/Resolverではない**。上流C-4の判断を得るか、外部Hostに委ねる場合の現在資格・実行証拠IFを定めた後、選んだ**一つの製品実入口**で、同一`Operation`について（1）宣言のSource/Version、（2）実選択・Artifact/Host Grant、（3）Provider invoked/received、（4）Effect Receipt/独立観測、（5）HTTP Client Reactionの各Evidenceを別々に記録する。各証拠は一部のみ得られても残りを`unknown`として保持する。SUI/SHOへGraph/Table/Traceを描く場合、`Source occurrence`と実Attemptを区別し、KON/SEIに保存された履歴・提案を現在の権限や実Effectへ昇格しない。
+
+性能計測の接続では、`503件数`や`Audit completed件数`を「反映失敗／成功件数」に読み替えない。[AI性能チューニング設計](AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md)の**統計・ヒント・実測・独立比較**を区別する方針に従い、正しい分母は`eligible attempts / actually invoked / externally observed`等の観測定義を固定してから計測する。AIの推奨・予測だけでContext Cache、Plugin Provider、Retry Policyを適用しない。
+
+## 21. 参考資料と採否
+## 16. 参考資料と採否
+## 17. 参考資料と採否
+## 18. 参考資料と採否
+## 19. 参考資料と採否
+## 21. 2026-11-09 C-1 Bridge：配備Executorの呼出し後不確定とHTTP Responseを同じ停止線へ置く
+
+他チャットから統合された[PR #3573](https://github.com/hat47x/tei-platform/pull/3573)はEnvironmentの`deployment-executor` Bindingを、既存`routing.RouteCommand→routing.Router.Dispatch→routing.ValidateResult`で**Host登録の記録用Executor**へ渡すC-1のReferenceである。これは前段§20の`C-1/C-2/C-4`判断を解決しないが、HTTP Command処理と共通の重要な失敗境界を持つことが分かった。
+
+`tools/reference-binding-to-execution/bindingexecution.go`のv0では、`Router.Dispatch`失敗後、または`ValidateResult`の応答不一致後に`refusedCount++`とした。ところが`Router.Dispatch`の既存コードは**実`Executor.Execute`を呼んだ後に失敗する場合がある**。後から届くエラーを「Executorへ未到達」という意味のRefusedへ再分類すると、HTTP 503を未適用と誤認するHDG-E01と同じ情報喪失が起きる。
+
+**成熟差分（Reference v1）**：新たな製品型ではなく、既存のHost登録Executorにread-onlyの呼出し観測ラッパーを被せて`Execute`入口だけを識別する。`ranCount`＝実呼出し入口、`refusedCount`＝入口以前の拒否、`unverifiedCount`＝入口以後のエラーまたは不正応答（`ranCount`の内数）として別々に報告する。`executorInvoked`は外部Effect/Grant/Receiptの証拠ではない。`Report Schema/RuleVersion/RuleFingerprint`はv1へ更新し、[旧v0実測](../evidence/BINDING_TO_EXECUTION_REFERENCE_2026-11-09/README.md)を上書きしない。
+
+| C-1 Reference反例 | HTTP E系との意味対応 | 不変条件 |
+| --- | --- | --- |
+| `Supports=false`、未呼出し | Session/CSRF/Authorization拒否でCommand Adapter未到達 | Refused。未実行という**限定**観測 |
+| Executeで合成更新後にエラー／不正ID ACK | HTTP 503後に合成状態が`submitted`にもなり得る | **実呼出し済み・Result未検証**。Effect適用有無は別Observation |
+| Executeで更新前にエラー | HTTP 503後に状態が`pending`にもなり得る | 同じエラー形から自動再送を許可しない |
+| Accepted ACK、合成状態は更新なし | HTTP 202後にも`pending`があり得る | `OutcomeAccepted`≠Commit/永続保存 |
+
+[テストBXE-01〜06](../../tools/reference-binding-to-execution/bindingexecution_effect_unknown_test.go)は本物の`Router.Dispatch`経由、合成Executorの呼出し回数とメモリ状態を独立Expectedで照合する。**[限定Go CI #42505232348](https://github.com/hat47x/tei-platform/actions/runs/42505232348)がcompleted/success**で、実`Router.Dispatch`によるBXE-01〜06・元の別Executor ACK回帰・Go vet/gofmtはPASS。ここでqualifiedなのはこのReference v1の有限Caseだけであり、製品のC-1採用、外部Provider/実Effect、完全なGraph/Client Reactionではない。先行する[HDG-E01〜05の専用CI成功 #42486408608](https://github.com/hat47x/tei-platform/actions/runs/42486408608)は別HEAD/別実装の証拠であり、今回のC-1変更のテスト合格に流用しない。
+
+**次のExit**はHTTP専用の第二Result EngineやDeployment Executorへ自動Retryを組み込むことではない。#1174/#2999の既存Operation identity・Effect fence、#951/#3279/#3267のProvider/Host資格と、#3262のDesign Context出典を**製品で選択された一つのOwner/Consumer**へ接続する。C-4外部Host委譲も有効な選択肢。SUI/SHO/StudioとCLIが同じ種別のResultを表示するときも、`pre-execute refused`と`post-execute unverified`を同じ業務拒否や無条件再試行可能エラーに平坦化しない。実外部Effect/Client受領/Owner受理は引き続き未実証。
+
+## 22. 2026-11-09：C-1 Deployment／C-2 Serviceの別経路をHTTP Client Reactionへ接続
+
+最新の[Composition判断資料§10〜11](../workstreams/COMPOSITION_CONNECT_POINT_BRIEF_2026-11.md)と[独立したCarrierの実測](../evidence/CONNECT_POINT_C1_C2_2026-11-09/README.md)から、以前の「C-1 RouterとC-2 Service Carrierは必ず二者択一」という前提を訂正する。C-1は**配備Command**、C-2は**Service Request**であり、同じ業務Operationの二重実行Ownerにしない限り共存できる。C-4外部Host委譲はOperation／Targetごとに判断し、C-3はDeployment側のCapability解決であってHTTP Serviceへ無条件に適用しない。
+
+| 実入口 | 呼出しを実際に観測した時点 | Refused／Unverifiedの境界 | HTTP/Graph表示で追加すべき列 |
+| --- | --- | --- | --- |
+| C-1`routing.Router.Dispatch` | `Executor.Execute`へ入場 | `Execute`前停止／入場後障害または不正ACK | Deployment Action／Executor ID／Attempt／ACKの有効性／外部Effect Unknown |
+| C-2`SelectedServiceCarrierInvoker.Invoke` | Host-pinned Service Carrierへ入場 | Carrier入場前停止／入場後障害または不正世代結果 | Service Contract／Provider Selection／Host Generation／Carrier入場／Process実Invokeの有無／外部Effect Unknown |
+
+**C-2で特に注意する点**：Carrierへの入場はProvider Processへの到達ではない。Host-owned RouteやArtifact Verifierが**Carrierの内部**で拒否する経路があるため、`carrierInvoked=true`だけで`providerInvoked=true`と推論しない。Carrier参照v0ではReportの版名と一部説明が食い違っていたため、`tei.reference.service-carrier-connect/v1`へ切り分け、実Resultの事前拒否と呼出し後不確定を別のError Codeで扱う。保存済みv0 RAW/SHAと新v1を混ぜず、新規CIの結果を受けて別途Qualifiedとする。
+
+**次のプロダクト受入**：選択したOperation Ownerがどちらかを先に確認し、`selected→actual carrier/process invocation→returned ACK→effect independent read→Client Reaction`を同一Attemptの**別証拠**として要求する。既存Result/Command Effect fence（#1174）、Plugin/Current GrantとBOM（#951/#3279/#3267）、Design Context（#3262）を利用し、第二Resolver/Authority/Receipt StoreをHTTP専用に作らない。CLI/Studioの静的Reference Providerについて**通常入口への接続がある**ことと、正式Provider BでのProduct S2／Artifact検証が未成立であることを区別する。
+
+## 23. 2026-11-09 横断取込み：C-3解決・Hook結末・実PostgreSQLをHTTP受入へ束縛
+
+### 23.1 直近の実行済み証拠を、同一HTTP Requestの実証と取り違えない
+
+前段§19〜22では、実Go Host→Canonical Authorization→Driver→合成Adapterを一つのHTTP Requestで実行し、HTTP 202/503と合成状態の独立Readが一致しない反例を確認した。またC-1 Deployment Executor、C-2 Service Carrierの有限Referenceが個別に成立し、どちらの入場・応答も外部Effect Receiptとは異なることを固定した。その後、**異なるレーンの実装とCI**が進んだため、現在のOwnerと入場条件を整理する。
+
+| 新たに確認した成果（main統合） | 実証している最小事実 | HTTP／Productについて未実証 |
+| --- | --- | --- |
+| [C-3 PR #3692](https://github.com/hat47x/tei-platform/pull/3692)、[判断資料更新 #3720](https://github.com/hat47x/tei-platform/pull/3720) | `routing.RouteCommand`→`pruntime.BuildPlan`→`Capability.SupportsAction`で宣言Binding由来のExecutor IDを**読取解決**。異なるActionで直書き`migration.atlas`と実選択`runtime.reference`が食い違う反例。Lockなしは`LOCK_REJECTED` | `Executor.Execute`もCarrierも**呼ばない**。C-3 `v0`は「未実装／C-1・C-2 v1より遅れ」ではなく、**実行前限定の別目的**。採用するDeployment製品経路も未決 |
+| [Hook結末名 PR #3721](https://github.com/hat47x/tei-platform/pull/3721) | `internal/hook.NotSatisfiedOutcomes`、`CommandOutcomeFor`、`OutcomeOf`を導入し、**参照Hookの** `not-found`／`value-rejected`等を既存Command拒否名へ対応付ける8件のGo試験。 `not-satisfied`はCommand拒否名へ写さず`false`、技術的Hook Errorから業務結末を生成しない | **後続main #3761で`hook.Runner`境界の語彙検査は実装済み**。ただし外部Plugin Transportを通る入力検査とCLI/HTTPへの実Consumer接続は未実証。`OutcomeOf`は`NotSatisfied.Outcome`を返すが、この関数だけでは外部文字列の語彙適格性を証明しない。CLI JSON→Command→HTTPの一貫したResult変換・Client受領も未確認 |
+| [実PostgreSQL CI PR #3717](https://github.com/hat47x/tei-platform/pull/3717)、[専用CI #42570360880](https://github.com/hat47x/tei-platform/actions/runs/42570360880) | **completed/success**。`postgres:16`でDSNを明示し、`internal/command/lifecyclepg`、`internal/driver`、`tools/reference-expected-state-update`、`reference/web-api-contract`の必要試験を実行。行ロック、Commit後ACK喪失、冪等再適用拒否、CAS、tenant範囲等の個別テストがPASS。SKIPで緑にならないチェックあり | 4テスト系列は**別DB・別Action・別Request／Operation**。`order_entry.submit_order`の実Go Host→実Command→DB Commit→別Connection Receipt→実Client Reactionの**同一Attempt**を実証しない。実Provider選択／Grant／Owner意味受理も別 |
+| [CLI/MCP継続トークン実測 PR #3723](https://github.com/hat47x/tei-platform/pull/3723) | 参照Design Contextの継続トークンはSource byte・scope・direction変更で`STALE_SNAPSHOT`、同じ選択子ではCLI/MCPとも継続できる。非意味的なコメント変更でも旧Tokenは失効 | CLI/MCPのSnapshot一致を、HTTP Responseを生成した実Runtime Source revisionや現在Grantと同じものとして自動受理しない |
+
+これらの成果は**別々の資格票として有効**であり、同一リクエストの縦断実証として足し合わせない。C-3の`RESOLVED`は実行権限でも外部Effectでもなく、Hookの`not-satisfied`はCommand拒否でもHTTP 4xxでもない。Hook業務拒否、Command検証、HTTP決定、外部DBへの副作用、Clientへの完全送達は別Ownerの段階である。
+
+### 23.2 Resultを勝手に昇格しないための受入行列（提案・NOT RUN）
+
+| ID | 対照する実経路／反例 | 必須の独立Expectedと停止線 | Owner |
+| --- | --- | --- | --- |
+| HDG-X01 | C-3実Bindingで`runtime.reference`選択、比較用固定IDは`migration.atlas` | 選択IDをResolver/Plan/Supportsで照合し、違うExecutorへ`Execute`しない。Read-onlyの`RESOLVED`から`invoked`を創作しない | #1016／#951 |
+| HDG-X02 | Hook `NotSatisfied{Outcome:"not-satisfied"}` | Hook判定は記録するが、`CommandOutcomeFor`は`false`。業務失敗種別・HTTP Status・Effectの有無を推測しない | X-TEA Hook Owner／#1158 |
+| HDG-X03 | Hook `NotSatisfied{Outcome:"value-rejected"}`と技術Errorの対照 | 前者はCommand拒否名への候補対応があるが、**実HTTP応答と連動するか**は実Consumerで別検査。後者を`value-rejected`に変換しない。`hook.Runner`での未知語彙拒否（#3761）は有効だが、実Plugin Transportからの未知語彙やHTTPへの投影は**別の実Consumer試験**で確認する | Hook／#1043／#1158 |
+| HDG-X04 | 実DBでCommitしたがHTTP Ack/Client受領を喪失 | 同一Operation ID・Idempotency Key・Source revision・Grant epoch・実DB状態・Receipt/別Connection Observation・実Client Reactionを別記録。HTTP 503単独でno-effectや安全Retryにしない | #1174／#2999／#1158 |
+| HDG-X05 | 旧Design Context継続TokenでSource/Scopeが変化 | Read-only Contextで`STALE_SNAPSHOT`を返し、旧SnapshotのGraph・Provider/Operation判断を現在のAuthorityに流用しない。新Snapshotの選択・実呼出しは独立資格 | #3262／#3420／#951 |
+| HDG-X06 | C-1／C-2／C-4で同一業務Operationを二重実行 | 異なるDeployment/Service仕事の併存は許容、**同一Operation／Attemptの実Ownerは一つ**に限定。委譲先は外部Receiptの取得までは`delegated/unknown`。無条件再実行しない | #1016／#1174 |
+
+受入開始時は、**一つの現実のOperation／Target**を先に固定し、必要Sourceの`required/discovered/loaded/bound/returned/disclosable`とHost世代・本番Provider/現在Grant・外部Readを揃える。その上で、既存Command/Hook/HTTPと別DB Observationの各実Callbackが**同じAttempt**を参照するかを検証する。実DBスイートの成功や、C-3／Hook単体Go試験の成功を材料にしても、欠けた段階は`unknown`のまま残す。
+
+### 23.3 製品横断の優先順位と撤回条件
+
+1. **既存S2-referenceを再実装しない**。[#3540](https://github.com/hat47x/tei-platform/pull/3540)の通常CLI/Studioの静的Inspectorは成立済み。先行するS2-productは正式Profileで`selected Provider B`と`actual Provider B`の同一性、B選択→A実行の負例、実Build Artifact/現在Grantを別々に確認する（#1251/#951）。
+2. **HTTPの新Engineより実Consumerを優先**。C-1 Deployment／C-2 Serviceは別Operationなら両立でき、C-3は実行前解決、C-4外部Host委譲は有効な未決選択肢。Product Ownerの選択を下流HTTP設計が先取りせず、同じHook/Command/Effectの資格を第二Host／Registryへ複製しない。
+3. **PGの資格を正しい場所で利用**。[#3717のCI](https://github.com/hat47x/tei-platform/actions/runs/42570360880)は実DBテストがskipでないことを証明したため、次の縦断テストではそのテスト基盤とOperation Effect Fenceを再利用する。ただし実HTTP Client/Provider受領まで含まない場合、E3の完了扱いにはしない。
+
+本節の行列は**実装前の独立Expected／受入計画**であり、HDG-X01〜06をGo/DB/HTTP E2Eで実行したことを示さない。現在のHook結果の語彙対応をそのままHTTPコード表やPluginの権限検査へ昇格させることはしない。
+
+## 24. 2026-11-09 第2次横断反映：Hook実境界の語彙制約・6種Binding Consumer・Build Plan出典
+
+### 24.1 別PRの限定合格を更新する
+
+[PR #3736](https://github.com/hat47x/tei-platform/pull/3736)の[全体Health #42576080511](https://github.com/hat47x/tei-platform/actions/runs/42576080511)は**completed/success**。ただし同PRが定義した`HDG-X01〜X06`は独立Expectedの**計画でありNOT RUN**という状態を変えない。
+
+[Hook境界 PR #3761](https://github.com/hat47x/tei-platform/pull/3761)（[全体CI #42606902787](https://github.com/hat47x/tei-platform/actions/runs/42606902787)、completed/success）は、`hook.ValidateOutcome`を実装し、`Runner`の`wrapFailure`で**実装が報告した結末名が`NotSatisfiedOutcomes`内にあるか**を確認する。`valueRejected`など未知名は`HOOK_OUTCOME_UNDECLARED`で拒否し、`value-rejected`のような既知名と、名前のない理由だけの不成立は許容。既存`CommandOutcomeFor`との対応関係を変更せず、`not-satisfied`をCommand拒否へ創作しない。**実外部PluginのProcess/IPC/API経由とHTTP/Web/Studio Clientの伝送・表示は未実証**。
+
+[6宣言のConsumer調査 PR #3757](https://github.com/hat47x/tei-platform/pull/3757)（[全体CI #42606374129](https://github.com/hat47x/tei-platform/actions/runs/42606374129)、completed/success）は`Environment`の6種について、解析／検証と**宣言由来の実解決**と**実ProviderのInvoke**を分離した。[観測の元データ](../evidence/BINDING_FORMS_CONSUMER_SURVEY_2026-11-09/README.md)は`main 0837a6f4`の一時点であり、現在mainの呼出し件数の証明ではない。通常`cmd/tei`が`observation.Binding`／`evidence.Binding`を`-plan`のため呼ぶ経路は既存だが、同調査では`observation.Router{}`／`evidence.Router{}`の非試験組立ては0件。`resolved`≠`invoked`≠`received`を**観測・証拠の両Provider**にも適用する（[Composition判断資料§12](../workstreams/COMPOSITION_CONNECT_POINT_BRIEF_2026-11.md)）。
+
+[Self-build PR #3760](https://github.com/hat47x/tei-platform/pull/3760)（[全体CI #42605259664](https://github.com/hat47x/tei-platform/actions/runs/42605259664)、completed/success）は、呼び手指定の`-build-catalog`・digest・Source Rootから`self-build`のentryがin-processでPlanを導出し、別child Referenceと`planFingerprint`一致を確認した。**`ok=true`でも`qualified=false`／`l2bClaimed=false`**であり、catalog／digestの同一性や`planArtifactBinding=bound`からRuntime ArtifactのTrust、現在Grant、業務Effectを推論しない。HTTPのPlugin/Source取得へは「読んだ宣言／生成した計画／実ConsumeしたArtifact」の分離を再利用するだけで、この場ではSelf-build Gateを変更しない。
+
+### 24.2 更新した独立受入Expected（本PRでは新E2EはNOT RUN）
+
+| ID | Sourceから実Consumerまで必要な観測 | 誤った昇格を拒否する条件 |
+| --- | --- | --- |
+| **HDG-X02a** | 実`Runner.Run/RunReachable`へ既知`value-rejected`、未知`valueRejected`、空Outcome、`not-satisfied`を供給し、Hook Resultと`CommandOutcomeFor`の照合を別記録 | 既知名でも`HTTP 4xx`は自動決定しない。未知名は`HOOK_OUTCOME_UNDECLARED`、空／`not-satisfied`をCommand拒否へ創作しない |
+| **HDG-X03a** | 実外部Pluginが報告したResultを`hook.Runner`境界へ渡し、受信したOutcomeのbyte／拒否理由／Sourceと実Client表示を同一Attemptで別票化 | 内部Goテストの語彙検査成功を、Plugin輸送・HTTP Status/Problem・Client送達に流用しない |
+| **HDG-X05a** | `ObservationProviders`／`EvidenceProviders`の宣言・Binding・選択Providerと`Observe`／`Collect`実呼出しの有無・Partial／Snapshot／Open Scopeを分けて記録 | 通常CLIの`-plan`でBindingが出るだけなら`invoked=not-observed`。Router不在を自動Provider実行で補完しない |
+| **HDG-X05b** | 実行元のSource/World revision、Build Plan fingerprint、実Artifact/PluginのVersion/Grant epoch、受信Observer/Clientの時点を別Evidenceとして対応付け | digest一致／Plan`bound`だけでRuntime Trust、Accepted Meaning、現在のEffect/Client Receiptへ昇格しない |
+
+この行列は前段`HDG-X01〜X06`の**追加負例案**であり、本PRによってGo、Provider、実HTTP、実DB、実GUI/Clientを通した検証が完了したものではない。Function/Graph/SHO・KONへの表示は`Source declared`、`resolved`、`selected`、`actual invoked`、`received`、`observed effect`、`disclosable`を**同一列に畳まない**。Source location・Relation/Edge occurrence・Current Authorityが欠ければ欠けた列を`unknown`として保持する。#3419/#3421の共通APIと#1174のEffect FenceをOwnerにし、第二Hook Engine、Provider Registry、Tx HostをHTTP側に作らない。
+
+### 24.3 最短の次アクション
+
+**優先1**は#1251のS2-product（正式Profileの`selected B`と通常CLI＋Studio実`invoked B`の照合）で、静的Referenceを再実装しない。**優先2**はC-4を含む実行Owner判断に応じた既存Observer/Evidence Consumerの一つの実Invoke Gateで、Bindingがすでに製品`-plan`に出るところを重複実装しない。**優先3**は単一OperationのHook→Command→HTTP→Postgres Commit/Receipt→Client Reactionを共通APIで連結するE3/E2E。各優先の独立Expected・Source／Artifact／Client受領を記録し、未確認なら未受理として保留する。
+
+## 25. 参考資料と採否
 
 - [Liberator repository](https://github.com/clojure-liberator/liberator) ― ClojureのREST decision modelの先行例。ライブラリ移植ではない。
 - [Webmachine mechanics](https://webmachine.github.io/mechanics.html)、[Decision flow](https://webmachine.github.io/diagram.html)、[Resource functions](https://webmachine.github.io/resources.html) ― decision flow・契約・処理に分離する参考資料（古いHTTP版があるため仕様の正本にはしない）。
