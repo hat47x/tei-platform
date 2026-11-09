@@ -130,6 +130,7 @@ def _record(identity, record_kind, evidence, hashes, snapshots_verified=False, *
 
 
 def project(report_dir):
+    report_dir = Path(report_dir)
     a = audit.audit(report_dir)
     result = {'projectionSchema': 'rea.external-observation.candidate-test/v0',
               'effect': 'read-only', 'TEICanonicalSubject': None, 'acceptedMeaning': False,
