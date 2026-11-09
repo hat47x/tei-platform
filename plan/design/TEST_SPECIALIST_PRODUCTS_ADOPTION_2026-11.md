@@ -1889,3 +1889,56 @@ P0R-01〜07で得られたRead証拠を、#3273 **TEST-T1B**、#3271 **PERF-T0�
 **受入の所有と順序**：入力Schemaの発見可能性＝#3419、CLI/MCPの不正Input/Result/継続パリティ＝#3420、Source/独立Required＝#3262、Authoring本文意味化＝#2619/#2621、未知テスト生成＝#3273、Expected/Scenario/Evidence＝#2514/#1180/#1163。まず既存mainのread-only CLIで**一つの合法な自己完結Request**を作れるか実証し、その後MCPで同一Operationの意味結果を対照。#2586の実Readと並行可、外部H2/H3・正式Product S2/BOMまで一律に待機しない。
 
 **停止線**：`knowledge-review-disclose:complete`≠Source/Meaning全閉包、`trace rows:[]`≠業務上不存在、Fingerprint一致≠Current Grant、Tool Replyを返したこと≠外部Agentが完全受領、S2-reference≠実Plugin/Read、設計試験の増設≠Test能力進捗。新しい本章の一往復・外部MCP/Harness/T1-B/実ProviderやC1をこの更新では実行していない。
+
+<!-- tei-test-20261109-contract-close-vs-executable-gap -->
+### 35.10 2026-11-09 夕方：実CLIの診断統一・文書ドリフト検出とBuild/Effect証拠を、次のTest Capability試行へ接続
+
+**本節の狙い**：設計情報を集めるためのTool契約が曖昧なまま、生成AIに「不足を見つけてテストを作る」と期待することを避ける。同時に、既に実装されたCLI/MCP・参照Inspector・PostgreSQL・self-buildの**局所証拠**を使い、未知のTEST-T1B一件と実Function P0-R一件に必要な最初の欠損辺だけを解消する。別のTest Generator・検証正本・API Registry・実行Host・Plugin Resolverを作らない。
+
+#### 35.10.1 追加の限定実装成果と、そのClaim Ceiling
+
+| 既存Owner／最新の確定実績 | できたこと（現行main/PRに限定） | できたと宣言しないこと |
+| --- | --- | --- |
+| CLI引数分類 [merged #3749](https://github.com/hat47x/tei-platform/pull/3749)、[merged #3763](https://github.com/hat47x/tei-platform/pull/3763) | `inspect`・`knowledge-*`の必須引数**未指定**を`INVALID_ARGUMENT`へ統一。空白/不正Subjectの`INVALID_SUBJECT`、対象不在`SUBJECT_NOT_FOUND`、不正要件ファイル`KNOWLEDGE_BUILD_FAILED`は区別した。MCP READMEに残る旧コードの文章を修正し、戻し/説明削除の負例を拒否する実Goテストを追加 | これだけでMCP JSON-RPCの`-32602`とCLI Exitの完全共通化、全メソッド入力の厳密検査、実外部Skill受領まで合格にしない |
+| Model/catalog表示 [merged #3754](https://github.com/hat47x/tei-platform/pull/3754) | `model catalog`の列挙成功と、内部`validation`判定を利用者向けに区別して説明。Contract拡張は必要に応じて#3419/#3420で評価 | catalog `ok:true`や `std` Builtin列挙を、業務Source Load済み・Meaning受理・Required充足としない |
+| CLI/MCP read-onlyドッグフード [Round 16–18](https://github.com/hat47x/tei-platform/blob/main/plan/workstreams/TEI_DOGFOODING_CLI_SELF_DESIGN_2026-11.md) | Trace継続のSource/Scope/Direction失効、full mode空`rows:[]`、CLI内Error分類、ドキュメントとコードの符号ずれを実測/補正。対応PRの局所Go実行記録あり | 実AgentがTool自己記述だけから `knowledge-qualify` 入力を一度で生成できる、管理Markdown内参照まで探索できる、外部MCP全受領を証明したわけではない |
+| Inspector [merged #3540](https://github.com/hat47x/tei-platform/pull/3540)、[merged #3740](https://github.com/hat47x/tei-platform/pull/3740) | 通常CLI/Studioの静的参照S2-referenceと、ID完全一致/同Content別WorkspaceのOrigin問題を独立に計画化 | `Canonical.id`一致・`World`一致・`ArtifactDigest`一致で、実Source Kind、Plugin B実呼出、現在Principal Grant・S2-product適格性を自動認定しない |
+| self-build [merged #3731](https://github.com/hat47x/tei-platform/pull/3731)、[merged #3753](https://github.com/hat47x/tei-platform/pull/3753)、[merged #3760](https://github.com/hat47x/tei-platform/pull/3760) | 同じPlanの2回Build結果を比較し`reproduced/mismatched/unperformed`を分離。呼出し元が明示したCatalogによるin-process Intent→Plan導出と、欠損/不一致/二重指定の拒否を限定検証 | 原入力Sourceの閉包・Catalog/Seed Trust・既定経路切替・G4の成立、製品配備/外部Hostの同等性ではない。再Build2回は計測費用も追加する |
+| PostgreSQL／HTTP E3 [merged #3736](https://github.com/hat47x/tei-platform/pull/3736)、既存[PG実証の4系統](https://github.com/hat47x/tei-platform/issues/3274) | Row lock、CAS、Commit後ACK喪失、冪等再実行、Tenant scopeなどの**個別実DB試験**を計画の部分Evidenceに採用。Hook・Command Outcome分類も個別実装あり | 同一OperationのHTTP→Authorization→Executor→DB Commit→Receipt→Client受領が一続きで成功したこと、Business Completion、Hook全実Pathを証明しない |
+| 異種宣言の実利用調査 [merged #3757](https://github.com/hat47x/tei-platform/pull/3757) | 宣言がConsumerで参照されることと実Dispatchされることに断絶があると確認 | 参照されたBinding/Instancesを実行へ繋ぐべきとのOwner選択、実Callback/Effect資格はまだ採用しない |
+
+#### 35.10.2 AI/Skill/人間が同じ失敗を理解するための最小「Reason契約」
+
+**新たなError Enumの採用ではなく既存CLI v0／MCP運用のExpected分類票**とする。まず次の**入力→結果→次の一手**を一つのread-only Operationと対象Workspaceで独立に対照する。
+
+| 入力・必要Scope | 合法な結果の分類 | 次に選ぶ行動／誤判定防止 |
+| --- | --- | --- |
+| 必須`-subject-kind`/`-subject-id`等を**未指定** | CLI `INVALID_ARGUMENT`・exit 2。MCPは不正引数のProtocol Error `-32602`（同一wire表現ではない） | Tool説明・必須Parameterの発見に戻す。Source/Subjectの意味的欠損やRule不在と呼ばない |
+| 指定Subjectが**空白等の不正値** | `INVALID_SUBJECT`など既存Operationの値検証Failure | 値を訂正。勝手にdefault Subjectへ代替しない |
+| 合法IDだが**対象不存在** | `SUBJECT_NOT_FOUND`、認可されたScope内のnot-found | Selector/Source Role/Loader/Scopeを再照会。全Domainで「存在しない」と断言しない |
+| `knowledge-qualify` の**JSON Shape/Requiredが不正** | `KNOWLEDGE_BUILD_FAILED`等、必要な独立入力の不適格 | #3419型付き契約・説明Refへ戻す。適当なEmpty Expectedを自動合成しない |
+| `trace` full の**正常0件** | `rows:[]` + 明示Scope／Mode／指紋・終端の条件 | 「この指定Traceの0行」。未Loaded Relationや非公開Ruleの不存在としない |
+| `trace` の**古い/異Scope/誤Fingerprint継続** | `STALE_SNAPSHOT`等の現在版不一致 | 正しい`continuation.fingerprint`で当該Scopeを再読。異版ページのRowを継ぎ足さない |
+| Catalog/Inspectの**成功応答だが実Source不足** | Operation/Envelope成功、独立Required/Source/Meaningは`partial/unknown` | 既知の合法Roleだけにprovisional Test Candidate。不足したSourceの追跡を薦める |
+| 実Provider/Effectが**未観測** | Inspector S2-reference、Capability宣言、Plan/Build Artifactの各局所正例は保持 | `order_entry.recent_orders`の同一Attempt Read、選択と実Invoke、独立DB行/Receiptへ進み、Step/Coverage成功を転用しない |
+
+**引数欠落・Subject意味不在・Source未読・Tool送信失敗・Partial Deliveryは同一Unknownに丸めない**。一方で、認可されないObjectの存在/件数や、隠れたRequired項目をエラー診断から漏らさない。Reason分類の「実行可能な次の操作」は、現在のTool Discovery／Effect Profile／Audience/Grantを参照して制約する。
+
+#### 35.10.3 「Test Abilityが成立した」と初めて言える最短の2試行
+
+| Gate | 入力、実行、独立Expected | PASSの証拠 | FAIL/UNKNOWNへの停止線 |
+| --- | --- | --- | --- |
+| **T-Discover（TEST-T1B、#3273）** | 独立Reviewerが未提示のRequired Rule Gap/合法Baseline/Mutant・Expectedを固定。生成Agentには許可Subjectと短い依頼のみ。既存read-only Skill→共通Operation CLIからSchema/必要Source/traceを取得→本当に未知の一差分Caseを提案→#1180 Review/実Pinned Step→#2514独立検証 | 生成時の許可Context・非提示Holdout・Subject/Source/Attempt・新Case ID・対象Rule実Outcome・Mutant検出・Tool Complete Receipt。トークン/Tool CallとFalse-qualifiedも測定 | 入力形が発見不能なら`blocked`、Source/Authority/Query不足なら`provisional/unknown`。旧行番号0のT1-Aや9件Receipt Copyの再実行は新規発見に数えない |
+| **R-Read（P0-R、#2586）** | `order_entry.recent_orders`で実Function Entry→同一Query Source/args→明示Datasource Alias→selected/actual Provider→実Read→Mapping/Context→独立Rowset Expected。正常1行／0行／部分＋error／未Binding／B選択A実Invokeは§35.7の既存7Caseを流用 | 同一AttemptのQuery原byte/Provider Identity/Scope/Rowset completeness/Parser/Mapper/Observer/Client受領。隔離PostgreSQLを使うならSKIPなし実Readと対象DBの証明 | 別Function `org_view.case_browse`、Fake Connector、静的Inspector、Command系実Call、PostgreSQL個別E3テストだけなら`real recent_orders Read`は**未確認** |
+
+**製品全体のCoverage/C1/NFRをPASSの分母にしない**。T-Discoverの新規性とR-Readの実Data Contextは別指標だが、必要な一Attemptの実Source/Plugin/Tool Delivery/Expectedを既存Evidence参照で比較できるようにする。生成AIは判定/採用の代行権限を持たず、Ownerの業務意味受理と実Hostの現在認可は別ゲート。
+
+#### 35.10.4 計画の持ち主と実行順は変更しない
+
+**第1優先**：#3419に型付きRequestの自己記述、#3420にCLI/MCP不正値/Failureの非破壊対応表を集約し、既存実バイナリとMCPだけで合法Knowledge Requestを試す。PR #3763のREADME主張を実テスト化する方法を同じ契約書・参照説明へ適用する。Markdownの意味検索は#2619/#2621で継続、T-Discoverが全Markdown解析を要求しないようScopeを限定。
+
+**第2優先（並列）**：T-Discover TEST-T1B一件とR-Read `recent_orders`一件を進める。まずSample/Required Universe/独立Expectedを固定し、結果0件・Error・Provider不一致を同じ「取得なし」に丸めず、実Tool/Consumer受領へ結ぶ。
+
+**第3優先**：#2831 self-buildの再現性/予定Artifact/実消費Source閉包の差、#3274 E3のCommit→ACK損失とClient Receiptの断絶、#3278/#3267のTrait/BOM、#2582のNFR/性能へ**各Ownerの独立Pressure Case**として適用する。全製品横断E2Eが成立していないため、新Gateや中央基盤に吸収しない。
+
+**今回の実施状態**：main/PRの既存実Go・CLI・DB試験結果を照合して本設計と既存Ownerの受入条件へ反映。ここで述べたT-Discover/R-Readの新実験、Knowledge JSON自己発見修正、MCP全面同値、独立本番Plugin、Host/Client E3連続実証、外部H2/H3、C1・Owner意味受理は**今回NOT RUN／NOT QUALIFIED**。
