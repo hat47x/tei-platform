@@ -221,7 +221,7 @@ func decodeRequest(line string) (rpcRequest, *rpcResponse) {
 		return invalid("method must be a non-empty string")
 	}
 	if raw, ok := fields["params"]; ok {
-		if first := strings.TrimSpace(string(raw)); first == "" || (first[0] != '{' && first[0] != '[') {
+		if first := strings.TrimSpace(string(raw)); first == "" || (first != "null" && first[0] != '{' && first[0] != '[') {
 			return invalid("params must be an object or an array")
 		}
 		request.Params = raw
