@@ -3,6 +3,7 @@ package commandadapter
 import (
 	"context"
 	"errors"
+	"reflect"
 	"testing"
 
 	"tei/internal/command"
@@ -62,7 +63,8 @@ func (*replayCharacterizationTx) Rollback() error { return nil }
 func TestCharacterizationCommittedAndReplayedHaveIdenticalCommandResults(t *testing.T) {
 	provider := &replayCharacterizationProvider{}
 	invoker := command.Invoker{
-		World: adapterWorld(),
+		Authorizer: command.ReferenceAuthorizer{},
+		World:      adapterWorld(),
 		Executor: Executor{
 			Runner:      effectcommit.Runner{Provider: provider},
 			Grant:       grant(),
@@ -83,8 +85,8 @@ func TestCharacterizationCommittedAndReplayedHaveIdenticalCommandResults(t *test
 	if provider.writes != 1 || provider.saves != 1 || provider.commits != 2 {
 		t.Fatalf("same operation must replay without a second write: %+v", provider)
 	}
-	if first != (command.Result{}) || second != (command.Result{}) {
-		t.Fatalf("current adapter should return empty Command results, first=%+v second=%+v", first, second)
+	if !reflect.DeepEqual(first, second) || first.Outcome != nil || first.Effect != nil || len(first.Applied) != 0 {
+		t.Fatalf("current adapter should return identical Command results without outcome, effect or applied operations, first=%+v second=%+v", first, second)
 	}
 	// An actual receipt was retained inside the fake Provider, but no status
 	// or receipt from either Runner call survives in command.Result. A Command
@@ -118,7 +120,8 @@ func (*uncertainCharacterizationTx) Rollback() error { return nil }
 
 func TestCharacterizationCommitUnknownRetainsTypedCauseUnderGenericCommandError(t *testing.T) {
 	invoker := command.Invoker{
-		World: adapterWorld(),
+		Authorizer: command.ReferenceAuthorizer{},
+		World:      adapterWorld(),
 		Executor: Executor{
 			Runner:      effectcommit.Runner{Provider: uncertainCharacterizationProvider{}},
 			Grant:       grant(),

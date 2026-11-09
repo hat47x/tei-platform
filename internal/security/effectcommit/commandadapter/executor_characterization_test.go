@@ -68,7 +68,8 @@ func TestCharacterizationExplicitPayloadDiffersFromCommandInput(t *testing.T) {
 	// This is deliberately NOT the input the caller selected.
 	explicitPayload := []byte(`{"order":"ORD-2"}`)
 	invoker := command.Invoker{
-		World: adapterWorld(),
+		Authorizer: command.ReferenceAuthorizer{},
+		World:      adapterWorld(),
 		Executor: Executor{
 			Runner:      effectcommit.Runner{Provider: provider},
 			Grant:       grant(),
@@ -120,7 +121,8 @@ func TestCharacterizationInnerCommitCanPrecedeOuterCommitFailure(t *testing.T) {
 	provider := &characterizationProvider{}
 	outer := &failingOuterUnitOfWork{}
 	invoker := command.Invoker{
-		World: adapterWorld(),
+		Authorizer: command.ReferenceAuthorizer{},
+		World:      adapterWorld(),
 		Executor: Executor{
 			Runner:      effectcommit.Runner{Provider: provider},
 			Grant:       grant(),
