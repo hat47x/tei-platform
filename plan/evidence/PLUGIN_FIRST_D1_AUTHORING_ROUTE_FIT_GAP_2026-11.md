@@ -262,3 +262,21 @@ D1aの製品試験へ、既存Data/Validation/Relationの3 Subjectに加え、**
 **否定する誤った推論**：`selection.ProviderID == registration.ProviderID`とテスト内で固定した`ArtifactDigest`の一致は、実Binary収録証明や独立Attestationではない。同じ実Go関数をCLI/Studioの両方から注入した成功も**通常公開入口のProvider B選択**を証明しない。この差分で確保するのは、後続の製品入口接続が誤ったProvider／失効したRegistryへすり抜けないための**実装可能な一つの型付き足場**である。
 
 **次の最小作業**：PRのexact-head CIに合格した後、`cmd/tei/main.go`と`cmd/tei-studio/host_generated.go`で選択済みBindingを受け取る正式なComposition入口のFit/Gapを対象にする。新Runner、Registry、独立Contract Authorityを追加しない。実HTTP/VUI/DB/SHOの他ConsumerをこのD1のHard Gateにしない。
+
+## 15. 通常CLIとStudio Hostの静的Reference Provider実結線（2026-11-08、候補実装）
+
+**解く不足**：main #3381のD1b-I2はCLIのテスト用`inspectWorkspaceJSONWithService`とStudio Host APIを呼ぶだけだった。今回の作業ブランチでは**通常`cmd/tei/main.go`の`inspect` dispatch、および`cmd/tei-studio/host_default.go`と`host_generated.go`の両起動形態**を、Hostが選択した`inspectoradapter.Selected`へ明示接続する。既存`studiohost.ReadOnly`のallowlist・root identity、CLIのJSON/Exit/Flags、標準Catalog/ValidationとWailsの公開メソッド数を維持する。これは**静的にコンパイル済みの参照Provider**のみであり、任意Pluginの発見/取込・正式Version Lock・配備を意味しない。
+
+- `internal/inspectoradapter/local_host.go`：`composition.Registry.Apply/Select`で唯一の`tei.reference.inspector.local`（`authoring-tool` Scope、`tei.operations.inspect` v0）を選択。`NewSelectedCoordinator`および既存`Selected.Inspect`へ一貫して束縛。実装は従来の`operations.InspectSubject`を呼ぶ**明示的なHost登録関数**で、第二Resolverを作らない。
+- ArtifactDigest欄は、`os.Executable()`が示した**読み取り可能な実行ファイルの内容のSHA-256**にする。テスト内で任意値を組み立てた従来S1より物理入力に近いが、**OSが実際にロードしたbyteの独立検証、Inspectorのリンク元証明、Plugin Artifactの署名/Conformance、選択RuleのAccepted Meaningを意味しない**。現在の`NewLocalInspectorHost`は現在PrincipalのOSで実行ファイルが読めなければ失敗し、Builtinへ黙ってfallbackしない。実バイナリの別machine再現性や署名資格は#943/#3267。
+- CLIは`inspectWorkspaceJSONSelected`を通常dispatchから呼ぶ。構文エラーと公開JSON Envelopeを維持し、Host選択/実装登録が不可能なら`INSPECTION_PROVIDER_UNAVAILABLE`で停止。既存`inspectWorkspaceJSON`は旧direct基線を比較するTest Helperとして保持し、**通常dispatchから直接呼ばない**。
+- Studioは通常起動`host_default`と生成Catalog/Validationを使う`host_generated`のどちらも、`newStudioHost`時にReference Local Hostを組み立て、allowlistで決定した`trustedRoot`だけを`Bind`する。Wails BrowserからProvider ID、Root、Contractを設定するAPIを追加しない。
+- Host Guardは現在のHost内Bindingと不変登録の整合確認に限定する。**実Principal/ACL/DisclosureのGrant判断を行ったと主張しない**。WorkspaceのSource Revision/Required closure/Provider raw/Rule driftも現時点ではProvider選択へ織り込んでいない。
+
+**独立Expectedへ渡すProduct入口の局所試験候補**：`TestNormalCLIInspectUsesHostSelectedReferenceProvider`（CLI通常dispatch相当入口→既存Workspace実読込）、`TestNormalCLIInspectDoesNotFallbackForMissingWorkspace`（Manifestなし→Load拒否）、`TestNormalStudioBridgeUsesHostSelectedLocalInspector`（実Wails Bridge Goメソッド→RootServices→Selected→Operation）、`TestStudioSelectedInspectorStillEnforcesWorkspaceAllowlist`（非許可IDは拒否）、`TestLocalReferenceHostChoosesRealCompositionRoute`（選択・登録）、`TestLocalReferenceHostFailsWithoutBindingAndAfterRemoval`（Epoch撤回）、`TestLocalReferenceHostRejectsInvalidDigest`および`TestLocalReferenceHostKeepsTypedInspectionFailure`。Studio testは`server` build tag、生成Hostは`studio_generated && server`で既存テストも含めて確認する。テストを保存しただけではPASSとしない。
+
+**S2の段階差**：この縦切りがGo Test/実CLI/Studio Wails Host smokeで合格すれば、「通常Hostで局所参照Providerを選択して呼べる」というS2-referenceを得る。だが**本来のS2-product**（ProviderをEnvironment Profileから選択、実Catalog/Build closureで標準Plugin/案件Pluginの差し替え、CLIとStudioの各Targetで選択と実Entryが正しく対応、Contract Conformance/Authority）とは別であり、S2-referenceの成功をS2-productへ拡大しない。古い実Direct処理が使われる別Command/Toolは未移行として残す。
+
+**次の採否順序**：①変更範囲のGo Test/gofmt/CI・実CLI Binary/Studio Server確認、②Host登録A/Bを入れ替えた実Targetの否定試験、③#951/#1016の実Profile選択／#943のBuild closure／#3262のRequired Context／#2516のDisclosureと対応付けた実Attempt、④一般的なContribution PointやTarget別Plugin Realization。Typed Lifecycle Graph/Chat/B2C/AI Tuningの新しいHook試験は③の入口を利用する後続Pressureであり、本件S2の先行必須要件にはしない。
+
+**今回の実装資格**：作業ブランチへコードとテストを追加した段階。CI、実CLI Binary/Studio Wails UIの成否、実Provider差し替え、Owner受理、外部Tool/Effect/DBは**この追記時点で未検証**。必要なGo試験の結果をPR exact-headで別記する。
