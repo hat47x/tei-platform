@@ -77,7 +77,7 @@ TEIが共通化するのは画面やDomain固有の工程列ではなく、**意
 - [main統合PR #3482](https://github.com/hat47x/tei-platform/pull/3482)の実CLI **13応答とConsumer判別42件**は`semantic-capability:sales.order.submit`に必要なCapability/Application/Source等の**宣言存在と不備の検出**に限定される。具体Function→Query→実Provider→Rowset、未知Ruleの発見、業務Commit、完全Context Closureは別。
 - [#167](https://github.com/hat47x/tei-platform/issues/167)では歴史的Referenceとして`order_entry.recent_orders`の実PostgreSQL raw resultと明示列mappingが扱われている。これは**実DBからrawを取得した能力**の既存参照であり、現在の選択FunctionからそのQueryを呼び、同一AttemptでMapper→Function Data Context→CLI/Studioに届けたという新しい証拠ではない。Product `public.orders`と隔離Reference `public.tei_web_scoped_orders_reference`のScope・母集団を混同しない（[#2586](https://github.com/hat47x/tei-platform/issues/2586)）。
 - [main統合PR #3479](https://github.com/hat47x/tei-platform/pull/3479)の負例により、**Imported Providerのraw Source/Manifestが変化してもConsumer World/Source Index Fingerprintは不変になり得る**。したがってこの二Fingerprintだけを実Provider Sourceの鮮度や現行資格に使わない。[Draft #3524](https://github.com/hat47x/tei-platform/pull/3524)のsame-Load private witnessは現在**未統合の候補**であり、複数Sourceの原子的Snapshotや全依存閉包を保証しない。
-- [main #3381](https://github.com/hat47x/tei-platform/pull/3381)ではComposition B選択、Go typed Inspector Service、CLI helperとStudio Host APIの**局所6対象×2呼出し**、B選択→A登録拒否等が成立。[main #3531](https://github.com/hat47x/tei-platform/pull/3531)は、**通常CLIとStudio production入口から同じ選択済みProviderを実呼出しするS2は未成立**と区別する。[#1251](https://github.com/hat47x/tei-platform/issues/1251)のD1は新Serviceを設計することではなく、既存のService seamをproductionの実Entryに接続して検証することに狭める。
+- [main #3381](https://github.com/hat47x/tei-platform/pull/3381)の局所二Consumer seamに続き、[main #3540](https://github.com/hat47x/tei-platform/pull/3540)は通常CLI dispatchとStudio両Hostへ**静的参照Provider**を配線し、silent builtin fallbackを拒否するS2-referenceを成立させた。ただし同じGo関数・Host Binary digestは正式Pluginの実Link/Load/置換・案件Profile・独立Host Grantを証明しない。D1の次の最小差分は**S2-productの実Provider差替えと実Target Conformance**であり、既存Selected Service/Adapterを再実装しない（[#1251](https://github.com/hat47x/tei-platform/issues/1251)）。
 
 ### 6.2 直近の二本の縦断。共通証拠は使うがAttemptを偽って連結しない
 
@@ -134,7 +134,7 @@ TEIが共通化するのは画面やDomain固有の工程列ではなく、**意
 
 | 実装・観測 | 本当に成立したこと | まだ成立していないこと／担当 |
 | --- | --- | --- |
-| [merged #3381](https://github.com/hat47x/tei-platform/pull/3381)、[merged #3531](https://github.com/hat47x/tei-platform/pull/3531) | Selected Inspectorの局所Go二Consumer、型付き結果・B/A不一致拒否 | **通常CLI dispatch＋実Studio production Host→同じactual B**は未実証。#1251/#951/#1158 |
+| [merged #3381](https://github.com/hat47x/tei-platform/pull/3381)、[#3540](https://github.com/hat47x/tei-platform/pull/3540) | Selected Inspectorの局所二Consumerに加え、静的参照Providerが通常CLI＋Studio両Hostへ配線された（S2-reference） | **S2-product**：案件Profileで正式Pluginを差替え、実Target Link/Load/Conformance・現在Grant/Source/Lockを独立検証。#1251/#951/#1158 |
 | [merged #3551](https://github.com/hat47x/tei-platform/pull/3551)、[merged #3563](https://github.com/hat47x/tei-platform/pull/3563)、[merged #3582](https://github.com/hat47x/tei-platform/pull/3582) | MCP不正引数拒否、Namespace不在失敗、4 read-only ToolのCLI/MCP成功・失敗・入力の限定比較 | 全Discovery・Transport・Host権限、外部Harnessへの完全配送、現在のDisclosureは未資格。#3420/#3419/#3262 |
 | [merged #3567](https://github.com/hat47x/tei-platform/pull/3567) | Go Generator候補の宣言SourceがBuild対象外なら拒否 | ScriptのCheck→実Interpreter ReadのABA、全Build member/実Tool/実byteの閉包、現在のSource Grant。#2595/#2514 |
 | [merged #3579](https://github.com/hat47x/tei-platform/pull/3579) | Function定義書へHook宣言を位相順で追加。生成規則Fingerprintも変化 | 同位相のPlugin合成順、実Hook RunnerとProvider/Effect、旧Artifact再資格化。#3503/#1127/#1803/#2600 |
@@ -164,7 +164,7 @@ D1とR0のAttemptは**別々の試行**でよい。完全性は無制限の全Wo
 - **P0-S／Source Admission**（#3262/#2621/#2595）：実Loader・Source/Parser/Readerと必要集合を固定する。宣言を読めることと、Functionの実Readができることを分ける。Script/Markdownの受理範囲、Input ABAとSource-only import改版を負例にする。
 - **P0-M／read-only Model Map**（#1124/#1125/#1126/#1127）：同じMeaningからData/Function/Business/組織のRole Projection、CRUD/Relation/Pattern、Functionが所有するRepresentation occurrenceとDataへのBindingを導出する。Presentation topologyとData topologyは別。多重辺・未受理関係・編集不能な逆写像を保持する。
 - **P0-R／Function実Read**（#2586/#2506/#2622）：Function→Query→実選択Provider→実Rowset→明示Mapping→Data Context→Consumerまで一Attemptで結ぶ。物理Relation/SQL/params/Read Cohort/NULL・partial・0件・非出力条件と、受領したConsumer結果を比較する。
-- **P0-P／Plugin production入口**（#1251/#951/#1158）：既存Selected Inspector Seamを通常CLIと実Studio入口に接続し、B selected→A invoked、欠落Service、Grant失効、Secretを含むtyped Error、異なる実Buildの負例を拒否する。
+- **P0-P／S2-product検証**（#1251/#951/#1158）：[main #3540](https://github.com/hat47x/tei-platform/pull/3540)の通常CLI・Studio静的参照Hostを固定し、異なる正式Providerを案件Profileで選択する。実Target Artifact/Lock・Load/Invoke・現在Grantを別列にし、B selected→A invoked／黙ったBuiltin fallback／未選択Plugin init・secret漏出を負例にする。S2-referenceの再実装はしない。
 - **P1-E／Effectと現在資格**（#1174/#1129/#2600/#2831）：Read成功とWrite/Commitは別。実read-back/Receipt/unknown commitを検証。セルフビルドはL1（外部Go Build）、L2-a（宣言・計画の受渡し）、L2-b（計画と実Builder入力・成果物の帰属）、L3（生成TEI自身→Stage2実行）を別Claimにする。**cmd/teiの限定L3は実測済み**。ただしL2-bおよびG4資格は未成立であり、L2-aのReceiptでL2-bを合格にしない。
 
 この順序は**全領域の逐次Gateではない**。P0-SとP0-M、D1とR0は並列可能。P0-Rを開始するために、全Studio/MCP、全BOM版Matrix、実VUI、Ontology DSL、SHO正式Writer、外部Consumerの配備をHard Dependencyにしない。外部逆解析のLegacy Observed Actual、Owner Accepted Desired、Target Observed Actualは、[#3394](https://github.com/hat47x/tei-platform/issues/3394)でそれぞれ独立Expectedを持つ比較とし、ひとつの「移行成功」に畳まない。
@@ -173,7 +173,7 @@ D1とR0のAttemptは**別々の試行**でよい。完全性は無制限の全Wo
 
 **採用する計画差分**：存在・宣言の試験をむやみに追加せず、既存の型付きApplication API／Plugin-first／Script-first Modelerに対し、actual entry・Provider・Source・Consumerまでの**最初の未接続辺を塞ぐ**。限定的に成立したGo Inspector・MCP引数拒否・Go Source選択・Function定義書Hook投影は重複実装せず、先行実績として計画に束縛する。
 
-**今回新たに実行していないこと**：D1実production二Consumer、R0実Function→実DB→Consumer同一Attempt、実外部Harness全ページ完全配送、完全なSource/Toolchain Closure、Self-build L2-b／G4（限定L3とは別資格）、REAからの正式意味受理とSHO正式保存、2×2 BOM全exact tuple、Ownerの業務意味受理。Draftの観測とmainの実績を混同せず、現行ソースとの再照合が必要になれば個別Ownerへ差し戻す。
+**今回新たに実行していないこと**：D1の正式Pluginへ差し替えるS2-product、R0実Function→実DB→Consumer同一Attempt、実外部Harness全ページ完全配送、完全なSource/Toolchain Closure、製品全体G4（限定L3および限定L2-b Claimとは別資格）、REAからの正式意味受理とSHO正式保存、2×2 BOM全exact tuple、Ownerの業務意味受理。Draftの観測とmainの実績を混同せず、現行ソースとの再照合が必要になれば個別Ownerへ差し戻す。
 
 ## 8. 2026-11-09 追加照合：限定L3・Build Plan・契約実値の受入上限
 
@@ -187,7 +187,7 @@ D1とR0のAttemptは**別々の試行**でよい。完全性は無制限の全Wo
 | --- | --- | --- |
 | **L1 実Go Build** | 実BuildとArtifact digest、stage0外部seedの存在 | 供給/Toolchainの現行資格と異環境比較 |
 | **L2-a 宣言→Planの受渡し** | [#3584](https://github.com/hat47x/tei-platform/pull/3584)等の自己申告Plan一致・不一致を区別。[#3654](https://github.com/hat47x/tei-platform/pull/3654)でResolve portを内部へ移管 | 解決child/Builder双方の実読込byte、申告でない独立帰属 |
-| **L2-b 計画→実Builder→Artifact** | [#3659](https://github.com/hat47x/tei-platform/pull/3659)で予約flagによる上書きを起動前拒否。[#3661](https://github.com/hat47x/tei-platform/pull/3661)でrecipe/source/dependency、[#3664](https://github.com/hat47x/tei-platform/pull/3664)でparametersを比較 | **未成立**。Builder要求と解決Identityの関係、Secret/Authority、実入力・結果を同一Attemptで独立検証 |
+| **L2-b 計画→実Builder→Artifact** | [#3775](https://github.com/hat47x/tei-platform/pull/3775)で五条件の合成Claim、[#3785](https://github.com/hat47x/tei-platform/pull/3785)の参照Build実試行、[#3795](https://github.com/hat47x/tei-platform/pull/3795)のLinux/Windows二Host確認により**限定L2-b claimed=true**を実測。さらに[#3839](https://github.com/hat47x/tei-platform/pull/3839)は実cmd/tei Go BuildをBuildExecutionPlan/ArtifactSetに束縛。 | Claimの対象は指定参照Catalog/実行物/ホスト。Builder要求と解決Identity、Secret/Authority、Catalogの出典・供給Trust・全Target/G4は別資格。現製品の既定動作で常にClaimが立つわけではない。 |
 | **限定L3 実TEI→次のBuild駆動** | stage1生成物＝stage2実Invoker、両段Artifact byteとRecipeの限定一致を記録 | 成立範囲を保存。L2-b・G4の不足と無関係な資格へ拡張しない |
 
 **方式採用を先行させない**：[main #3655](https://github.com/hat47x/tei-platform/pull/3655)/[#3656](https://github.com/hat47x/tei-platform/pull/3656)の調査では、Builder catalogの実製品データソースは未存在。in-process解決を既定へ切り替えるには、fixtureではないCatalogの出所とTrustが必要。現行のchild経由と、既存Resolverのport/fixture分離を維持する。[#3660](https://github.com/hat47x/tei-platform/pull/3660)が実測したCLI Catalog 19件は読取り向け部分集合であり、dispatch全50件と同一ではない。
@@ -210,3 +210,37 @@ D1/R0の型付き縦断では、**Declared Output → actual Binding Output → 
 **#1251/#2586**：既存Inspector二ConsumerとFunction read-firstの各Scenarioへ、実出力の必要属性と次Consumer受領を1行追加し、欠落時は不合格。**#2831**：限定L3の実測を保持しつつ、L2-bの実入力閉包・Builder Identityの意味規則・Authorityを前進させる。**#1124/#3503/#3250**：read-only Model Map、CRUD/Function/RoleとHookの未評価状態を同じSourceへ投影する。論理分割の自動採用は禁止。**#2514/#3262**：Required集合に次段必要属性、Tool Resultの完全受領と現在Disclosureを含める。
 
 **本節は計画反映のみ**。XV-09〜12の新しい製品E2E、L2-b/G4、外部live Provider、Studio/Wails実画面、2×2 BOM、Ownerの正式意味受理はNOT RUN／NOT ACCEPTED。各既存Reference/CIのPASSをその対象外へ一般化しない。
+
+## 9. 2026-11-10 現行main：製品に届いた経路と次の不足辺（旧節の状態表より優先）
+
+この節は受入判定の**基線更新**であり、#1251／#2586／#2831／#1124／#1180などのOwnerを移さない。各領域の詳細な設計・実装記録はリンク先を正本とする。
+
+### 9.1 到達点と、新たな製品出口
+
+| 縦断 | mainに統合された限定成果 | 次の実証だけを受け入れる条件 |
+| --- | --- | --- |
+| **D1 Plugin-first** | [#3540](https://github.com/hat47x/tei-platform/pull/3540)が通常CLIとStudio Hostに静的参照Providerを配線した。**S2-reference成立**。 | 案件Profileで**別実装B**を選択→実BinaryでLink/Load/InvokeしたBを観測。A選択／B実呼出しやfallback、未選択実装の混入・権限越境を拒否。S2-productは未資格（#1251/#951/#3267）。 |
+| **R0 Function→実Read** | 既存実PG raw取得と[#3262](https://github.com/hat47x/tei-platform/issues/3262)の宣言Requiredは別々に進展。 | 一FunctionのInvocation→Query→実DB Provider→raw/明示Mapping→Context→**実Reader受領**を一Attemptに束縛。母集団、NULL/Presence、partial、非出力WHERE/否定依存、Scopeと独立Expectedを比較。**未実証**（#2586）。 |
+| **Hook/Operation** | [#3635](https://github.com/hat47x/tei-platform/pull/3635)のStudio参照評価に続き、[#3761](https://github.com/hat47x/tei-platform/pull/3761)は宣言外の結末名を拒否、[#3843](https://github.com/hat47x/tei-platform/pull/3843)は宣言usesのCapabilityをCLI/Studio参照Callerから実呼出しし、呼出し結果を保持。 | 入力のreads→Capability引数対応、**実Rule Plugin**／実Provider・Effect／after-*、Wails製品E2Eは別試験（#1127/#3503/#1180）。「calls.called=true」は業務Commitではない。 |
+| **Build/Self-build** | [#3775](https://github.com/hat47x/tei-platform/pull/3775)/[#3785](https://github.com/hat47x/tei-platform/pull/3785)/[#3795](https://github.com/hat47x/tei-platform/pull/3795)で限定L2-bの五条件Claimを実試行・二Hostに固定。[#3760](https://github.com/hat47x/tei-platform/pull/3760)は呼出し元指定Catalogによるentry内Resolve。[#3839](https://github.com/hat47x/tei-platform/pull/3839)は実cmd/teiのGo Build・ArtifactSetと入力閉包を限定接続。先行の**限定L3**も保持。 | 実Builderの全入力Closure、Catalog出典・Trust、Secret/Authority、配布Profileの現行資格が残る。**G4=UNQUALIFIED**。追加再Buildは実Go測定[#3818](https://github.com/hat47x/tei-platform/pull/3818)で約1.93倍の費用。強化既定は[#3844](https://github.com/hat47x/tei-platform/pull/3844)/[#3849](https://github.com/hat47x/tei-platform/pull/3849)の**未統合PR**の範囲を確認し、全試行に強制しない。 |
+| **外部Source/CLI/Consumer** | [#2812](https://github.com/hat47x/tei-platform/pull/2812)は選択済みProviderの**同一Loadで実Parserが消費した原文/Manifest**をprivate witnessに固定。[#3829](https://github.com/hat47x/tei-platform/pull/3829)はMCP入力schemaから許容引数を導出、[#3846](https://github.com/hat47x/tei-platform/pull/3846)はtrace offset打切りを明示。 | 公開可否/Source全閉包/実Provider invokeは未保証。CLI Tool SuccessやScenario Verifiedは実DB・受領完了の証拠ではない（[#2830](https://github.com/hat47x/tei-platform/pull/2830)）。#2516/#3262/#3420。 |
+
+### 9.2 P0の採否を決める二つの小さなPacket
+
+新規Harness/中央Ledger/第二Expectedを作らず、既存Scenario・Artifact・Traceの同じAttempt参照を相互に結ぶ。D1・R0は**別Attemptとして独立に完了可能**。
+
+**D1 Product Packet（#1251）**：Workspace/Host Principal/Grant、Application Operation/Subject/Revision、Profile/Contract/Selected Provider ID+version/実Binary digest、Loaded/Invoked Providerと結果、許可範囲、実Consumer受領、B→Aすり替え負例、独立Expected。S2-referenceのGo関数が呼ばれた証拠だけなら**reference PASS／product NOT RUN**と表示。正式Provider差替えの実テストが無い状態でBOMをverifiedとしない。
+
+**R0 Read Packet（#2586）**：FunctionとQueryの**実Binding**、native SQL原byte/展開byte/物理Relation/Dialect/params、actual Provider/Read Cohort、raw Rowsetと明示Mapping、Context grain/Source/partial・NULL/0件、実Reader受領byte/ページ終端、独立ExpectedとDisclosure。Function/Query単独Inspect、実PG Queryだけの成功、途中で切れたTool Replyは**Product R0 PASSに足さない**。
+
+両Packetで必須項目が未観測なら該当軸をunknown/not-runに保ち、実施した負例が不正ならFAILにする。成功率の分母は独立に固定したRequired集合であり、「表示できた要素数」を全体母数と推測しない。
+
+### 9.3 横断の後続：設計ガイド→業務効果→性能と普及
+
+- **図面は全体の案内**：[main #3847](https://github.com/hat47x/tei-platform/pull/3847)のRQ-036/MAP-17〜23を引き継ぎ、概観を保持した現在地→詳細→復帰、人間用図表とAI/CLI/MCP用の**同一Source由来の構造化投影**を比較する。現在地/レイアウトは表示状態、Accepted Meaning/Sourceは一つ。正式Graph Storeや第二Writerを作らない（#1124）。
+- **実作用は独立の次段**：[Draft #3854](https://github.com/hat47x/tei-platform/pull/3854)はRunEffect/Compensate/RunPlanを実PostgreSQLで試験し、Succeeded/Observedの分離や補償失敗の保持を限定観測した候補。PR未統合で、Host現在Grant・本番相当Provider・必要Checkの製品保証／G3合格ではない（#1129/#1130/#1174）。
+- **最初の性能比較**：[main #3856](https://github.com/hat47x/tei-platform/pull/3856)のNo Cache対Request-local/Memoryを、**R0実Readが成立した同一Function/Provider/Workload/独立Expected**に限定して比較。Cold/Warm、同時Miss、失効競合、Origin障害、Tenant Grant/partial・0件を負例にし、正しさが未検証なら速度を有効改善と数えない（#3271/#2600）。
+- **製品価値と汎用性**：[#3796](https://github.com/hat47x/tei-platform/issues/3796)の中小規模案件の標準構成受入、[#3791](https://github.com/hat47x/tei-platform/issues/3791)の物流・GIS等の対照を既存Product Scopeに接続する。最初のD1/R0に分野全域の対応を前提化せず、成立/既存資産接続/新Plugin要/未成立を実測で数える。AIが作る複数Pluginの個別PASSを組合せPASSにしない。
+- **外部実行**：[main #2787](https://github.com/hat47x/tei-platform/pull/2787)のEKI OpenAPI固定対照・[#3658](https://github.com/hat47x/tei-platform/pull/3658)のOutput→Next Input不一致を利用。TaskAccepted・Task完了・独立Artifact Read・TEI業務Commit・Owner Meaning Acceptanceは別。EKI/TAI/SHO/KON等のOwnerをTEI Coreへ移さない。
+
+**更新した計画の停止線**：正式Plugin ABIやCatalogの置場、G4の製品受理、RQ-036全図面完成、実Effect/本番性能、Owner意味受理を本書で採用済みにしない。§3〜8の古い「未実装」は歴史的基線であり、現在の合否は本§9とリンク先の**exact revision/実行証拠**を優先する。本追補自身は**文書変更のみ**で、新しいD1 S2-product／R0実Read／G4全体／外部Consumer E2Eを実行していない。
