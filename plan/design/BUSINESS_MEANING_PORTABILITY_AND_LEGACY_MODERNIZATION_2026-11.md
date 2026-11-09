@@ -445,9 +445,29 @@ GitHubの二つのBlob実内容を直接照合した（いずれも `examples/xt
 
 [Draft #3742](https://github.com/hat47x/tei-platform/pull/3742)（初回HEAD `a305de20da7dde57d90cec7f07d5c078ee0d80fb`）を、**本書のLP-01のうちProduct Loader/Source Indexだけ**を検証する最小実装候補として追加した。本文・計画PR #3252とはファイル編集を分け、他担当の#3320 Role型負例／#3477 Context Scenario／#3479 Imported Provider／#3420 CLI/MCP試験を変更しない。
 
-- **対象の固定**：`examples/xtea-lowcode/semantic/master/standard.tei` の現行Source Git Blob Bを直接読んで固定Blob IDと比較。確認済みBOM／採番Rule一行／末尾CRLFの差を取り消し、AのGit Blob IDも照合。Git SHA-1形式のBlob IDは**履歴byte同一性の参照**であり、Trust/Authorityの証明ではない。
+- **対象の固定**：`cmd/tei/testdata/xtea_standard_20261108_b.tei` に保存した**履歴Source Git Blob Bの正確なbyte**を読み、固定Blob IDと比較（最新の`examples/xtea-lowcode`とは独立）。確認済みBOM／採番Rule一行／末尾CRLFの差を取り消し、AのGit Blob IDも照合。Git SHA-1形式のBlob IDは**履歴byte同一性の参照**であり、Trust/Authorityの証明ではない。
 - **実Loaderによる判定候補**：AとBを個別の `semantic` だけを宣言する一時Workspaceへ書き、既存 `workspace.Load` と `workspace.BuildSourceIndexFromLoad` に通す。独立に固定したExpectedはA 17件／B 18件、`master.numbering_rule.rule` のみ追加、`master.tax_rate.rate` のRole/型が不変、IndexのSource byte fingerprintとRevisionが異なること。
 - **対象外を保全**：この一Fileの最小Workspaceは完全な `examples/xtea-lowcode` や旧Java/実DB/外部Writerを収集していない。Source Indexの一致/変化からBusiness Meaning/Consumer/Targetの現在資格、全Required/Principal・Grantを推測しない。
 - **検収**：`go test ./cmd/tei -run TestXTEAStandardSourceRevisionBoundedLoad -count=1 -v` とPR exact HEADのGo/Health、main取り込み後の実試験は**別々に確認する**。本追補時点では新実行結果を未確認とし、**PASS/merge/Owner正式受理を主張しない**。この最小実証が成立した後のLP-03 CLI/MCP実Process比較、外部H3完全受領とLP-04実Provider Rowは別Ownerの後段へ渡す。
 
-試験用FixtureはRepository内の実Source blobから構築し、別のLegacy CanonicalやRole Resolver、業務Scenario SSOT、Build/Runtime Engineを増やさない。現在のBが将来変更された場合は**暗黙に新しい履歴版へ書き換えず**、固定Blobとの不一致を報告して受入記録を更新する。
+試験用FixtureはRepository内の実Source blobから構築し、別のLegacy CanonicalやRole Resolver、業務Scenario SSOT、Build/Runtime Engineを増やさない。履歴Bの試験用Blobが変更された場合は**暗黙に別の版へ書き換えず**、固定Blobとの不一致を報告して受入記録を更新する。
+
+### 17.5 第三版Cと継続改版時の検証責務（2026-11-09、履歴A/BのGo実証＋最新Cの静的照合）
+
+main `8c4f43248aaa6fd47b6a4e34a24c24411fa1c0fb` で同じ実Source Fileの**第三版C**（Git Blob `a32a095dabdfdc3a2281d08c22f14f50178da220`）を直接読んだ。`namespace/data/attribute type role` の限定静的抽出結果は、A 17件／B 18件／C **21件**。B→Cに加わったRole付きAttributeは `master.Setting.key type std.identifier role setting-key`、`master.Setting.value type std.text role setting-value`、`master.Setting.user type std.identifier role setting-user` の3件で、既存18 AttributeのRole・型に差は確認されなかった。実Loader・正式Meaning・全Workspace Consumerでの同等性は未実証。
+
+**発見した失敗モード**：初回#3742試験はBが`examples/xtea-lowcode` の「現在のSource」であることに依存していた。実際にCへ進化したため、固定BのGit Blob照合が将来mainへ追随する際に失敗する。これはRole差の検証失敗ではなく、**歴史的Expectedの入力供給を可変Sourceへ結び付けたテスト設計上のGap**である。過去のB固定HEADで実行済みの[Repository Health #42596114970](https://github.com/hat47x/tei-platform/actions/runs/42596114970) は成功（`go test -count=1 -timeout 60m ./...`、`go vet`、`gofmt`）。ただしこの成功を改版後mainでの同一試験結果へ転用しない。
+
+**対策済みの試験候補**：[Draft #3742](https://github.com/hat47x/tei-platform/pull/3742) 現HEAD `c55fe7f0d5a038690bdecee1a0e9cb4b33928c96` に、**元Bと完全同一Git Blob ID**の固定`cmd/tei/testdata/xtea_standard_20261108_b.tei`（`.gitattributes`でbyte保存）を追加した。B→Aは既知のBOM／採番Rule／末尾改行差分を反転し、AのGit Blob IDでも検査。A/B両方を一時Workspaceへ実Loaderで通すが、現行Cの業務適合性はこの履歴試験の対象としない。
+
+| 検証すべきClaim | 既存Evidence／読み方 | 残る検収 |
+| --- | --- | --- |
+| **Read**：A/Bのbyteを実Loaderが取り込めるか | #3742の旧HEAD全件Go PASS。新HEADの固定Fixture供給とSource Index差は別CIで検査中 | **新HEAD exact-go/CI成功を確認**。Cは別の生きたExample試験に属する |
+| **Validation**：Loaderが返ったから健全か | merged [#3728](https://github.com/hat47x/tei-platform/pull/3728) で `model catalog` の `result.validation.ok/errorCount/warningCount` が `validate -json` と同じ基準で追加された。Navigationの外側`ok:true`は検証PASSを意味しない | CやA/Bを実CLIで検査する場合は`validation.ok`、診断詳細、Role/型のOwner修正#3320を独立確認 |
+| **Identity**：Source/Workspaceが同じか | Source blob、World/Index FP、Manifestを区別。#3321は同byteの物理コピーRootをFPだけで識別できない限定反例 | Workspace root/Reader Attemptを必要とするClaimは別観測。A→B→Aで以前のGrantや受理が復元するとはしない |
+| **Coverage**：必要情報が揃ったか | Role付き属性数17/18/21は**この一Source Fileの分子**であり、Business FunctionのRequired Rule/Writer分母ではない。#3262は限定13 CLI/42 Controls | 全Required/外部Provider/実消費・受信/未取得を別列とする |
+| **Eligibility**：現在の生成・公開・実行が可能か | Role静的検証、局所Go testやCatalogのNavigation成功だけでは未証明 | #2831 Build実消費、#2604 Consumer公開、#2516 Disclosure、#2555現行Owner/Effectで独立検証 |
+
+**順序**：履歴A/Bの再現可能な**局所回帰**を先に固定し、現在のCを含む生きたExampleの受入は既存#3318/Role/Provider/Context担当へ残す。別Targetや別Consumerで必要なRule/Sourceを参照する際は、実入力Source version/Scope、現在のHost選択、最新開示と受信Attemptを明示して対照。旧テストの成功をCの意味資格に合算しない。Cの静的Role抽出は本PRではTEI Loaderの新規実走ではない。
+
+**この節のEvidence Ceiling**：旧HEAD #3742の全件Go/Health成功、固定Fixture Blob一致、Git Blob A/B/Cの独立静的内容比較が観測済み。新HEADへの再合格、A/B/CのCLI/MCP実Consumer受領、現在のRuntime Provider、Business Meaning、実DB/Writer・Owner受理は**別資格またはNOT RUN**。試験の不変量は、**履歴の固定byteと独立Expected**であり、変化する現行Exampleの内容ではない。
