@@ -18,7 +18,14 @@ export function observeDirectTrace(envelope) {
   if (r.schemaVersion !== 'tei.operations.trace/v0' || !record(trace) ||
       trace.schemaVersion !== 'tei.modelref.trace/v0' || trace.authority !== 'candidate-read-only' ||
       !exact(r.snapshotFingerprint) || !exact(r.worldFingerprint) || !exact(r.sourceIndexFingerprint) ||
-      !exact(trace.snapshotFingerprint)) return unknown('unqualified_trace_shape');
+      !exact(trace.graphFingerprint) || !exact(trace.ruleFingerprint))
+    return unknown('unqualified_trace_shape');
+  // #3625: the inner snapshotFingerprint is a deprecated alias of this Graph
+  // token. The outer result.snapshotFingerprint is the *only* workspace-level
+  // continuation value, and must not be substituted with the Graph token.
+  if (trace.snapshotFingerprint !== undefined &&
+      trace.snapshotFingerprint !== trace.graphFingerprint)
+    return unknown('graph_fingerprint_alias_mismatch');
   // Load-time manifest provenance (#3181), not an Acceptance record or lock.
   const ws=r.workspace;
   if (!record(ws) || !record(ws.manifest) ||
@@ -31,7 +38,8 @@ export function observeDirectTrace(envelope) {
       !Number.isSafeInteger(trace.total) || trace.total < 0 ||
       !Number.isSafeInteger(trace.unresolved) || trace.unresolved < 0 ||
       !Array.isArray(trace.rows)) return unknown('unqualified_trace_shape');
-  if ((trace.offset ?? 0) !== 0 || trace.nextOffset !== undefined || trace.rows.length !== trace.total)
+  if ((trace.offset ?? 0) !== 0 || trace.nextOffset !== undefined ||
+      trace.continuation !== undefined || trace.rows.length !== trace.total)
     return unknown('incomplete_direct_trace_page');
   // SourceBridge Navigation carries the subject it located. A "located"
   // status from another subject must not be attached to this trace selector.
@@ -68,6 +76,18 @@ export function observeDirectTrace(envelope) {
     const from=key(row.edge.from), target=key(row.resolvedTo);
     if (!from) return unknown('invalid_direct_edge');
     if (row.status === 'resolved' && !target) return unknown('unresolved_direct_edge');
+    // Row.ResolvedTo must agree with the declaration carried by Edge.To.
+    // Empty Ref.Scope may be resolved by the graph; it is not a wildcard or
+    // permission to change the declared target Kind/ID.
+    const to = row.edge.to;
+    if (!record(to) || !record(to.subject) ||
+        !exact(to.subject.kind) || !exact(to.subject.id) ||
+        (to.scope !== undefined && to.scope !== '' && !exact(to.scope)))
+      return unknown('invalid_direct_target');
+    if (row.status === 'resolved' &&
+        (to.subject.kind !== target[1] || to.subject.id !== target[2] ||
+         (to.scope && to.scope !== target[0])))
+      return unknown('resolved_edge_target_mismatch');
     if (row.status === 'unresolved' && row.resolvedTo !== undefined) return unknown('invalid_direct_edge');
     if (trace.direction === 'outgoing' && !equalKey(from,selected)) return unknown('selector_mismatch');
     if (trace.direction === 'incoming' && (!target || !equalKey(target,selected))) return unknown('selector_mismatch');
@@ -93,7 +113,7 @@ export function observeDirectTrace(envelope) {
     },
     edges,
     snapshotFingerprint:r.snapshotFingerprint,
-    graphFingerprint:trace.snapshotFingerprint,
+    graphFingerprint:trace.graphFingerprint,
     hasUnresolvedProjection:Array.isArray(r.projectionUnresolved) && r.projectionUnresolved.length > 0,
     sourceNavigation:r.source?.status === 'located' ? 'located-navigation-only' : 'unresolved',
     relationEntityIdentity:'not-provided',
