@@ -7,6 +7,7 @@ package diagramcrossref
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -313,4 +314,52 @@ func TestRealWorkspaceIndexedSourceRangeAndByteFingerprint(t *testing.T) {
 			// current edit/acceptance grant exists.
 		})
 	}
+}
+
+// Source Index validation checks artifact bytes and locator structure, not
+// whether the referenced byte range owns the declared semantic Subject.
+// This negative control deliberately forges an in-memory Subject field and
+// documents why an Index or trace PASS is insufficient for safe reverse edits.
+func TestSourceIndexStructuralValidityDoesNotAuthenticateSemanticBinding(t *testing.T) {
+	root := filepath.Join("..", "workspace")
+	requested := sourceindex.Subject{Kind: "semantic-relation", ID: "sales.order.lines"}
+	inspected, err := operations.InspectSubject(root, requested)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(inspected.Sources.References) == 0 || len(inspected.Sources.Artifacts) == 0 {
+		t.Fatal("real source evidence required to exercise false-binding control")
+	}
+	forged := sourceindex.Subject{Kind: "semantic-relation", ID: "sales.order.nonexistent_target_for_negative_control"}
+	refs := append([]sourceindex.Reference(nil), inspected.Sources.References...)
+	refs[0].Subject = forged
+	idx := sourceindex.Index{
+		Artifacts:  append([]sourceindex.Artifact(nil), inspected.Sources.Artifacts...),
+		References: refs,
+	}
+	read := func(path string) ([]byte, error) {
+		clean, err := sourceindex.NormalizeWorkspacePath(path)
+		if err != nil || clean != path {
+			return nil, fmt.Errorf("non-normalized Source path %q: %w", path, err)
+		}
+		return os.ReadFile(filepath.Join(root, filepath.FromSlash(path)))
+	}
+	if err := idx.Validate(read); err != nil {
+		t.Fatalf("byte-valid Source Index should not claim semantic-binding validation: %v", err)
+	}
+	fakeTrace, err := operations.TraceSubjectSourcesFromIndex(idx, forged)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fakeTrace.References) != 1 || fakeTrace.References[0].Subject != forged {
+		t.Fatalf("expected deliberately forged Source trace to show structural false positive: %+v", fakeTrace)
+	}
+	_, err = operations.InspectSubject(root, forged)
+	var inspection *operations.InspectionError
+	if !errors.As(err, &inspection) || inspection.Code != operations.InspectionNotFound {
+		t.Fatalf("actual Canonical World must reject forged Subject despite byte-valid trace: %v", err)
+	}
+	// The trace above cannot become Source edit authority. Consumers must
+	// resolve the exact Canonical Subject/Relation and current acceptance/Grant
+	// independently. No invented Schema, Writer, or Registry is introduced.
 }
