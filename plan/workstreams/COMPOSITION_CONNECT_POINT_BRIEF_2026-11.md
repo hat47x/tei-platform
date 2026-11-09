@@ -113,7 +113,7 @@
 - C-2 も、既存の `BindHostApplicationEnvironmentRoute`・`composition.NewSelectedCoordinator`・`NewSelectedServiceCarrierInvoker` を順に呼んで試験の外でも組み立てられることを確かめました（[記録](../evidence/SERVICE_CARRIER_CONNECT_REFERENCE_2026-11-09/README.md)）。
 - **両方とも、新しい解決器や選択の仕組みを作らずに動きました。** しかし、これは「繋げられる」ことの証明であって、「繋ぐべき」ことの証明ではありません。
 - C-1 と C-2 は対象が違います（配備の動作と Service の要求）。第 4 節の「両方を選ぶと 2 つの経路ができる」は、同じ対象を取り合う場合の話です（[記録](../evidence/CONNECT_POINT_C1_C2_2026-11-09/README.md)）。
-- **C-3はまだ実行していません。** 第4節の順序（実行Owner→役割ごとのC-1/C-2→DeploymentのC-3）と、決定のOwnerは変わりません。
+- **C-3 も、既存の3関数だけで成立することを確かめました**（[記録](../evidence/EXECUTOR_ID_RESOLUTION_REFERENCE_2026-11-09/README.md)）。`routing.RouteCommand` で Binding から executor の ID を解決し、`pruntime.BuildPlan` の plan がその ID を認めるかと `Capability.SupportsAction` を順に確かめます。実lockで `RESOLVED`、lock無しで `LOCK_REJECTED`、別のactionでは直書きの `migration.atlas` ではなく `runtime.reference` が解決され、**参照実装の直書きが Binding と食い違いうる**ことを示しました。第4節の順序（実行Owner→役割ごとのC-1/C-2→DeploymentのC-3）と、決定のOwnerは変わりません。
 - **版の訂正**：C-1は[PR #3596](https://github.com/hat47x/tei-platform/pull/3596)のReference v1で`refusedCount`と`unverifiedCount`の分離を実Go CIで合格済み。C-2も実コードではCarrier入場後の不確定を分離していたが、`Schema`と`RuleFingerprint`がv0のまま、READMEはv1という不整合が残っていた。C-2も明示的なv1へ更新して版・テスト・CIを独立に確定する（下記§11）。
 
 ## 11. 参照の版と実行主体を一致させる最小受入（2026-11-09）
@@ -128,3 +128,4 @@ C-1とC-2が**別種のOperationを運ぶ**ことが、[型・Carrierの独立�
 C-2の既存実装では、内部のArtifact Verifierが呼出しを拒否した場合、**Carrierへ入場していてもProcessは呼ばれていない**ことがある。この場合もC-2の`carrierInvoked=true`を「実Provider呼出し済み」としない。内部エラーとGeneration不一致を単なる事前拒否に平坦化しないため、v1で不確定応答の理由コードも事前拒否と区別する。C-2 v0の保存済み実測JSON／SHA-256は変更しない。
 
 **限定Exit達成**：[C-1/C-2専用Go CI #42555954660](https://github.com/hat47x/tei-platform/actions/runs/42555954660)は**completed/success**。C-1/C-2両ReferenceのGoテスト、Go vet、gofmtを同じcheckoutで実行し、C-2実コードBlob `f2952030906b80ba0bf052caeed92082f89c302c`と新V1テストBlob `67b4ed10eaaf0842e2719d5cfda724076fbc5008`を記録した。コード・テストは後続の文書改訂でも同一Blobを保持。これはReference限定であり全体Health、実Service Process資格、製品S2とは別。C-4外部Host委譲の判断、通常CLI/Studioの**S2-reference統合済み／S2-product正式Profile差替え未実証**、外部Source/BOM/Effectの資格はそれぞれ別のOwnerが保持する。Referenceのレポート種別・数値を、製品の業務成功KPIや自動再試行判断へ流用しない。
+| C-3 `reference-executor-id-resolution` | Binding が選ぶ executor の `CapabilityID` の解決と、plan への受入 | `v0`：`RESOLVED`／`BINDING_MISSING`／`NOT_IN_PLAN`／`ACTION_UNSUPPORTED`／`LOCK_REJECTED` を区別 | 実配備、Artifact信頼、実行時Effect |
