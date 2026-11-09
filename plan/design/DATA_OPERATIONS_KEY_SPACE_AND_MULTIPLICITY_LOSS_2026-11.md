@@ -39,7 +39,7 @@
 2. **Semantic/Failure**：Occurrence数、重複要素、集合のComplete、順序、Group値と独立Expected、loss/errorの観測。等しい出力値だけで同義PASSにしない。
 3. **Read/Disclosure**：実Provider取得範囲、非出力Key/Predicateを使用したか、読者/AIへ何を開示したか（#2506/#2516）。
 4. **Edit**：View行/Map Keyから元Sourceの一意の行・edge・document elementへの戻りが保証されているか。なければread-onlyまたはChoice/Conflictとして扱う（#2500/#2597）。
-5. **Authoring/Target**：元のMarkdown/SQL表層を保持し、Sourceと意味Projectionを別にPin。実TEI Operator/Providerごとの実行・独立Oracle、Owner受理は別資格（#988/#2387/#2621）。
+5. **Authoring/Target**：元のMarkdown/SQL表層を保持し、Sourceと意味Projectionを別にPin。実TEI Operator/Providerごとの実行・独立検証基準、Owner受理は別資格（#988/#2387/#2621）。
 
 ### 意図した試験の順序
 
@@ -50,6 +50,6 @@
 
 ## 4. 現在の観測・未決
 
-ローカルPython 3標準`unittest`で **8/8 PASS**（このDraftのscriptと同一論点、SQLiteはPython標準sqlite3のin-memory実行）。結果は公開合成の固定入力に対する狭いcharacterization。**元のSource→TEI DSL Parser→Data Context→実TEI Operator→DB/Doc/Graph→SHO/Host の一試行ではない。** これを法則証明/独立sealed Oracle/所有者受理に昇格させない。実TEI Go/Java/.NET/WASM/実PostgreSQL/MongoDB/Graph/Studio/SHO、実書戻し・実AI開示はNOT RUN。
+ローカルPython 3標準`unittest`で **8/8 PASS**（このDraftのscriptと同一論点、SQLiteはPython標準sqlite3のin-memory実行）。結果は公開合成の固定入力に対する狭いcharacterization。**元のSource→TEI DSL Parser→Data Context→実TEI Operator→DB/Doc/Graph→SHO/Host の一試行ではない。** これを法則証明/独立sealed 検証基準/所有者受理に昇格させない。実TEI Go/Java/.NET/WASM/実PostgreSQL/MongoDB/Graph/Studio/SHO、実書戻し・実AI開示はNOT RUN。
 
 **Owner未決**：Key Equality/Normalizationの標準表現、Duplicate policyの選択肢、lossy projectionの診断レベル、read-only/UI表示、実Targetの対象順序。正式Syntax/API/Core型/第二Query Engine/独自Host/SSOTは提案しない。担当は#2622（Data Operations）、#2495（構造Facet）、#988（Operator Law）、#2387（SQL由来の解析）、#2500（ViewChange）、#2621（元Source形式保持）。

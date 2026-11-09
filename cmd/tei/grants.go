@@ -1,31 +1,18 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"sort"
 
+	"tei/internal/access"
 	"tei/internal/environment"
 	"tei/internal/workspace"
 )
 
-// grantedPermission is one grant in the file the guarded adapters read.
-type grantedPermission struct {
-	CapabilityKind string `json:"capabilityKind,omitempty"`
-	CapabilityID   string `json:"capabilityId,omitempty"`
-	Kind           string `json:"kind"`
-	Access         string `json:"access"`
-	Scope          string `json:"scope"`
-}
-
-// grantsDocument is the file shape: a plain list, so a tool does not depend on
-// the workspace model to read it.
-type grantsDocument struct {
-	Application string              `json:"application,omitempty"`
-	Grants      []grantedPermission `json:"grants"`
-}
+// environmentIssuerPrefix names the party that decides a declared grant. The
+// grant in a file `tei grants` writes comes from an accepted environment
+// declaration, so the issuer is that environment and not the tool that reads it.
+const environmentIssuerPrefix = "environment:"
 
 // runGrantsCommand writes the permission grants an application's environments
 // declare. It reads the accepted declarations and writes a file; it does not
@@ -41,33 +28,31 @@ func runGrantsCommand(workspacePath, applicationID, outPath string) error {
 
 	document := buildGrantsDocument(loaded.World.Environments, applicationID)
 
-	raw, err := json.MarshalIndent(document, "", "  ")
-	if err != nil {
-		return err
-	}
-	raw = append(raw, '\n')
+	// Stdout is the "what would this write" view; a file is the artifact an
+	// adapter reads. Both come from the same encoder, so the two cannot drift.
 	if outPath == "" {
-		_, err = os.Stdout.Write(raw)
+		raw, err := access.EncodeDocument(document)
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Print(string(raw))
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
-		return fmt.Errorf("prepare %s: %w", outPath, err)
-	}
-	if err := os.WriteFile(outPath, raw, 0o644); err != nil {
-		return fmt.Errorf("write %s: %w", outPath, err)
-	}
-	return nil
+	return access.WriteDocument(outPath, document)
 }
 
 // buildGrantsDocument collects the grants an application's environments declare
-// and orders them so the file is stable between runs.
-func buildGrantsDocument(declared []environment.Environment, applicationID string) grantsDocument {
-	document := grantsDocument{Application: applicationID}
+// and orders them so the file is stable between runs. Each entry records the
+// environment that declared it, so a reader can tell a declared grant from one
+// a capability wrote for itself.
+func buildGrantsDocument(declared []environment.Environment, applicationID string) access.Document {
+	document := access.Document{Application: applicationID, Grants: []access.Entry{}}
 	for _, env := range declared {
 		for _, grant := range env.PermissionGrants {
-			document.Grants = append(document.Grants, grantedPermission{
+			document.Grants = append(document.Grants, access.Entry{
+				IssuedBy:       environmentIssuerPrefix + string(env.ID),
 				CapabilityKind: grant.CapabilityKind,
-				CapabilityID:   string(grant.CapabilityID),
+				CapabilityID:   grant.CapabilityID,
 				Kind:           string(grant.Permission.Kind),
 				Access:         string(grant.Permission.Access),
 				Scope:          grant.Permission.Scope,

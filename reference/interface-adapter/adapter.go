@@ -68,6 +68,7 @@ func NewCore(world ir.World, revision string) Core {
 			World:      world,
 			Executor:   command.ReferenceExecutor{World: world},
 			UnitOfWork: &command.MemoryUnitOfWork{},
+			Authorizer: command.ReferenceAuthorizer{},
 		},
 	}
 }

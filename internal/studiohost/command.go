@@ -2,7 +2,6 @@ package studiohost
 
 import (
 	"context"
-	"errors"
 
 	"tei/internal/applicationview"
 	"tei/internal/command"
@@ -21,12 +20,38 @@ type CommandPlanResponse struct {
 
 // CommandRunValue is a reference execution of a command. It has no durable effect.
 type CommandRunValue struct {
-	Plan      applicationview.CommandPlan `json:"plan"`
-	Mode      string                      `json:"mode"`
-	Outcome   *semantic.Outcome           `json:"outcome,omitempty"`
-	Effect    *semantic.DataEffect        `json:"effect,omitempty"`
-	Committed bool                        `json:"committed"`
-	Records   []command.OperationRecord   `json:"records,omitempty"`
+	Plan    applicationview.CommandPlan `json:"plan"`
+	Mode    string                      `json:"mode"`
+	Outcome *semantic.Outcome           `json:"outcome,omitempty"`
+	Effect  *semantic.DataEffect        `json:"effect,omitempty"`
+	// Committed reports that the configured UnitOfWork returned from Commit.
+	// The reference host uses MemoryUnitOfWork, which does not write data (#2998).
+	Committed bool `json:"committed"`
+	// Persisted is true only when an independent observer saw the declared
+	// effect after Commit. A reference execution has no observer.
+	Persisted bool `json:"persisted"`
+	// Persistence separates "not applicable" (reference) from "not observed"
+	// and "observed".
+	Persistence string `json:"persistence"`
+	// Durability names the storage boundary: "none" for the reference executor.
+	Durability string                    `json:"durability"`
+	Records    []command.OperationRecord `json:"records,omitempty"`
+	// Differences keeps the applied operations the declaration does not
+	// describe, so the view can show the gap beside the effect.
+	Differences []command.Difference `json:"differences,omitempty"`
+	// AppliedUnobserved is true when the executor did not enumerate its
+	// operations, so `differences` being empty is "not observed".
+	AppliedUnobserved bool `json:"appliedUnobserved,omitempty"`
+	// ReportedEffectMissing is true when the capability declared an effect but
+	// the executor reported none. It is recorded, not rejected (#2996).
+	ReportedEffectMissing bool `json:"reportedEffectMissing,omitempty"`
+	// AuthorizationMode names how the run was authorized. The Studio reference
+	// host uses reference-allow-all when no capability allow list is supplied.
+	AuthorizationMode string `json:"authorizationMode,omitempty"`
+	// Hooks records the pattern hooks this run consulted before the command.
+	// It mirrors the CLI report: a phase that could not be evaluated is named
+	// with a reason instead of being shown as a pass.
+	Hooks *HookRunReport `json:"hooks,omitempty"`
 }
 
 // CommandRunResponse is the result of a reference execution.
@@ -93,6 +118,35 @@ func (h *ReadOnly) ExecuteCommandWithLifecycle(workspaceID, applicationID, patte
 		&command.DispatchOptions{CommandID: commandID, Owner: owner, Generation: generation})
 }
 
+// recordDifferences returns the differences of the last operation record, so the
+// view can show them without exposing the whole log.
+func recordDifferences(records []command.OperationRecord) []command.Difference {
+	if len(records) == 0 {
+		return nil
+	}
+	return records[len(records)-1].Differences
+}
+
+// recordAppliedUnobserved reports whether the executor said what it applied.
+// A command that declares no effect has nothing to compare, so the absence of
+// records is not an unobserved difference check.
+func recordReportedEffectMissing(records []command.OperationRecord) bool {
+	if len(records) == 0 {
+		return false
+	}
+	return records[len(records)-1].ReportedEffectMissing
+}
+
+func recordAppliedUnobserved(records []command.OperationRecord, effectDeclared bool) bool {
+	if !effectDeclared {
+		return false
+	}
+	if len(records) == 0 {
+		return true
+	}
+	return records[len(records)-1].AppliedUnobserved
+}
+
 func (h *ReadOnly) executeCommand(workspaceID, applicationID, patternID, capabilityID string, inputs, periods map[string]string, allowed []string, attempt *command.DispatchOptions) CommandRunResponse {
 	loaded, failure := h.loadWorkspace(workspaceID)
 	if failure != nil {
@@ -102,10 +156,19 @@ func (h *ReadOnly) executeCommand(workspaceID, applicationID, patternID, capabil
 	if err != nil {
 		return CommandRunResponse{Failure: &Failure{Code: "VIEW_FAILED", Stage: "command", Message: err.Error()}}
 	}
+	// A declared hook runs before the command when this reference execution can
+	// reach it: a before-change phase whose declared reads the caller supplied.
+	// Everything else is reported as skipped or not evaluated with a reason, so
+	// a phase that did not run never reads as a phase that passed.
+	hookReport, hookErr := h.runHooks(loaded.World, core.CanonicalID(applicationID), core.CanonicalID(patternID), inputs)
+	if hookErr != nil {
+		return CommandRunResponse{Failure: &Failure{Code: "COMMAND_FAILED", Stage: "command", Message: hookErr.Error()}}
+	}
 	invoker := command.Invoker{
 		World:      loaded.World,
 		Executor:   command.ReferenceExecutor{World: loaded.World},
 		UnitOfWork: &command.MemoryUnitOfWork{},
+		Authorizer: command.ReferenceAuthorizer{},
 	}
 	if periods != nil {
 		states := map[string]operations.PeriodState{}
@@ -143,18 +206,29 @@ func (h *ReadOnly) executeCommand(workspaceID, applicationID, patternID, capabil
 		result, err = invoker.Invoke(context.Background(), request)
 	}
 	if err != nil {
-		var execution *command.ExecutionError
-		if errors.As(err, &execution) && execution.Code == "COMMAND_LIFECYCLE_REFUSED" {
-			return CommandRunResponse{Failure: &Failure{Code: "COMMAND_LIFECYCLE_REFUSED", Stage: "command", Message: execution.Message}}
+		// The same rule the CLI uses: an ExecutionError already names the
+		// reason. This entrance used to special-case only the lifecycle refusal,
+		// so a missing input, a closed period or a failed commit all arrived as
+		// COMMAND_FAILED (#3807).
+		if code, message, ok := command.ReportedFailure(err); ok {
+			return CommandRunResponse{Failure: &Failure{Code: code, Stage: "command", Message: message}}
 		}
 		return CommandRunResponse{Failure: &Failure{Code: "COMMAND_FAILED", Stage: "command", Message: err.Error()}}
 	}
 	return CommandRunResponse{OK: true, Value: &CommandRunValue{
-		Plan:      plan,
-		Mode:      "reference",
-		Outcome:   result.Outcome,
-		Effect:    result.Effect,
-		Committed: true,
-		Records:   recorder.Records,
+		Plan:                  plan,
+		Mode:                  "reference",
+		Outcome:               result.Outcome,
+		Effect:                result.Effect,
+		Committed:             true,
+		Persisted:             result.Persistence == command.PersistenceResourceObserved,
+		Persistence:           string(result.Persistence),
+		Durability:            "none",
+		Records:               recorder.Records,
+		Differences:           recordDifferences(recorder.Records),
+		AppliedUnobserved:     recordAppliedUnobserved(recorder.Records, plan.Effect != nil),
+		ReportedEffectMissing: recordReportedEffectMissing(recorder.Records),
+		AuthorizationMode:     string(result.AuthorizationMode),
+		Hooks:                 hookReport,
 	}}
 }

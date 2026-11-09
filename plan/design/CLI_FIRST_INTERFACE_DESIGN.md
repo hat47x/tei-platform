@@ -1,5 +1,7 @@
 # CLIを主入口とするTEIインターフェース設計（初期案）
 
+> 2026-11-08 方針の具体化: [ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)を採用。CLI-firstは共通APIを先に実装して各入口から使う順序を指し、CLI自体に意味処理を所有させる方針ではない。HTTPサーバーは必須にせず、CLI/MCP/HTTP/Web/Desktopの共通意味とAdapter責務・移行手順は同ADRを参照する。過去の候補・検証記録はその時点のものとして残す。
+
 - **状態**: 評価・実装着手中（2026-10-10）。初期のCLI参照実装はPR内の候補であり、mainへ統合済みとは扱わない。
 - **担当課題**: [#1155](https://github.com/hat47x/tei-platform/issues/1155)。
 - **関連文書**: [全体構成](../../docs/architecture.md)、[案件ごとのPlugin構成](PROJECT_PLUGIN_COMPOSITION_DESIGN.md)、[Web構成](WEB_APPLICATION_COMPOSITION_DESIGN.md)、[開発手順](../../CONTRIBUTING.md)。
@@ -133,7 +135,7 @@ Issue #1165に対し、既存 `index.Build` → `modelref/derivedbridge.FromInde
 
 本作業は、独立したDraft系列（[#1159](https://github.com/hat47x/tei-platform/pull/1159) → [#1169](https://github.com/hat47x/tei-platform/pull/1169) と [#1139](https://github.com/hat47x/tei-platform/pull/1139) → [#1171](https://github.com/hat47x/tei-platform/pull/1171)）を参照する**統合用Draft候補**である。統合ブランチで履歴を接続していても各元PRがmainへ統合可能と認定されたわけではない。元PRのheadを変更せず、上流の検証・マージ順序を尊重して最終的な差分を再評価する。
 
-具体的には、executable CLIによる`commands`、`inspect`、`trace`、`validate`の戻り値/出力整合性と、typed Go操作/CLIの同等性を確認する。CIは停止中につき、Goのunit/プロセステストを追加した事実とclean checkoutにおける実行済みPASSを混同しない。`AGENTS.md`に定めるexact head/full repository healthが揃うまでDraftを維持し、mainへマージしない。
+具体的には、executable CLIによる`commands`、`inspect`、`trace`、`validate`の戻り値/出力整合性と、typed Go操作/CLIの同等性を確認する。CIは停止中につき、Goのunit/プロセステストを追加した事実とclean checkoutにおける実行済みPASSを混同しない。`AGENTS.md`に定めるとおり、`tools/repository-health-check.sh`は任意の広範囲診断であり統合の一律条件にはしない。変更範囲の検証結果を記録し、Draftは解除して統合する。
 
 
 ### 8.1 統合候補の静的レビューで修正した境界
@@ -153,7 +155,7 @@ Issue #1165に対し、既存 `index.Build` → `modelref/derivedbridge.FromInde
 `tei trace` がSource Indexを含めずGraphだけで継続判定すると、同じCanonical Worldで元ファイルが移動した場合や、コメントだけが変わった場合に、古いページの位置・根拠と新しいページの元定義が混在する。この欠落を以下のように修正した。
 
 1. `workspaceProjectionFingerprints` は正規化 `ir.World` と、既存 `workspace.BuildSourceIndex` で生成・Normalizeした `sourceindex.Index` のJSONを、それぞれ独立してfingerprint化する。前者はSourceファイル移動では不変、後者はArtifact path/digest/Source Referenceの変化で変わる。
-2. `operations.TraceWorkspace` は既存 `modelref.TraceDirect` のgraph+rule+query fingerprintと、上記二種類のfingerprintを結合して `tei.operations.trace.snapshot/v1` の継続用トークンを算出する。出力 `result.snapshotFingerprint` がこのトークンであり、`result.trace.snapshotFingerprint` はGraph限定の内部読取識別子として残す。
+2. `operations.TraceWorkspace` は既存 `modelref.TraceDirect` のgraph+rule+query fingerprintと、上記二種類のfingerprintを結合して `tei.operations.trace.snapshot/v1` の継続用トークンを算出する。出力 `result.snapshotFingerprint` がこのトークンであり、`result.trace.graphFingerprint`（2026-11-09より前の名前は`result.trace.snapshotFingerprint`。旧名は1 cycleのaliasとして同値を残す）はGraph限定の内部読取識別子として残す。継続ページには `result.trace.nextOffset` の隣へ `result.trace.continuation.fingerprint`（外側のトークンと同値）と `field` を置き、どの値を継続に渡すかを応答の中だけで判別できるようにする（#3625）。
 3. CLIの `-expected-fingerprint` は**Workspaceレベルの`result.snapshotFingerprint`**のみを受け付ける。違う場合は `STALE_SNAPSHOT`、終了コード1。`summary→full`やoffset/limitだけの変更は同じWorkspace状態であれば許容し、同じWorldに対するSource移動や非意味的な原文変更は拒否する。
 4. `operations.InspectSubject` も `worldFingerprint` と `sourceIndexFingerprint` を共通ヘルパーから取得する。CLIから両操作を別々に呼んだ場合に、観測したCanonicalとSourceのスナップショットが一致したか検証できるようにする。
 
@@ -187,7 +189,9 @@ Issue #1165に対し、既存 `index.Build` → `modelref/derivedbridge.FromInde
 
 ## 10. JSON出力の契約一覧とv0内の互換規則（#2354、2026-10-29）
 
-`tei commands`が広告する12件の読取りコマンドについて、2026-10-29時点のorigin/main（`eafdfcab7`）のコードを読んで確認した結果と、版固定の候補を整理する。範囲は`cmd/tei/main.go`と各コマンドの出力型で、実行による確認は含まない。下の「採否」は提案であり、採用にはOwnerの判断が要る。
+`tei commands`が広告する読取りコマンド（件数は固定せず`tei commands`と試験を正本とする）について、版固定の候補を整理する。下の「採否」は提案であり、採用にはOwnerの判断が要る。
+
+**§10.1の表は2026-10-31時点の記録であり、現在の実装ではない。** その後の#2354第一陣〜第三陣で`workspace-files`・`source-index`・`knowledge-*`・`requirements`・`plugin-*`は`tei.cli.*/v0`のエンベロープを持つようになり、`tei commands`の各entryは`schemaVersion`と`jsonContract`を広告する（#2824）。現在の一覧と失敗時の形式は[CLI JSON出力契約](CLI_JSON_OUTPUT_CONTRACT_2026-10.md)§4を正本とし、ここへ複製しない。以下は版固定の判断材料として残す。
 
 ### 10.1 現状の一覧
 
@@ -198,7 +202,7 @@ Issue #1165に対し、既存 `index.Build` → `modelref/derivedbridge.FromInde
 | `trace` | あり（`tei.cli.trace/v0`） | JSONの`error.code`、終了コード1または2 | CLI用の応答型 |
 | `validate -workspace -json` | あり（`tei.cli.validate/v0`） | JSONの`error.code`、終了コード1または2 | CLI用の応答型 |
 | `commands` | あり（`tei.cli.discovery/v0`） | 引数があれば標準エラーの自由文、終了コード2 | CLI用の応答型 |
-| `version -json` | あり（`tei.cli.version/v0`、#2318で追加） | 未知の引数は標準出力の自由文、終了コード2 | CLI用の応答型 |
+| `version -json` | あり（`tei.cli.version/v0`、#2318で追加） | 未知の引数は標準エラーの自由文、終了コード2。標準出力は空（2026-11-07に実装を修正、#2993） | CLI用の応答型 |
 | `validate`（テキスト） | なし（tab区切り行または`ok`） | 標準エラーの自由文、終了コード1または2 | 該当なし |
 | `workspace-files` | なし | 標準エラーの自由文、終了コード2 | `workspace.ManagedFile`の配列を直接出力 |
 | `source-index` | なし | 標準エラーの自由文、終了コード2 | 主体指定なしは`sourceindex.Index`（`artifacts`・`references`）、主体指定ありは`operations.SubjectSources`を直接出力 |
@@ -209,7 +213,7 @@ Issue #1165に対し、既存 `index.Build` → `modelref/derivedbridge.FromInde
 | `plugin-resolve` | なし | 同上 | `plugin.ResolvedSet`を直接出力 |
 | `plugin-runtime-plan` | なし | 同上（計画の構築失敗は終了コード1） | `pluginruntime`の計画を直接出力 |
 
-読取りコマンドの出力型のうち、`source-index`の型は上のとおり確定した（Issue起票時は未確認だった）。いずれもschemaVersionの欄を持たない。
+読取りコマンドの出力型のうち、`source-index`の型は上のとおり確定した（Issue起票時は未確認だった）。表の「なし」は2026-10-31時点の状態であり、現在は上に書いたとおりエンベロープへ移行済みである。
 
 ### 10.2 v0の中での互換な変更と、versionを上げる変更（提案）
 

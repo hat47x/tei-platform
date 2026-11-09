@@ -37,7 +37,7 @@ python3 -B plan/fixtures/macro-m0/verify_cli.py \
 | 成果物 | `artifacts.inputRevision == operations.modelRevision`、Manifestの同版、Entries、Complete、Findings | Consumer必要Memberの網羅、物理配布、実Reader |
 | 出力 | 結果件数・比較可否・検査済み範囲だけをJSONで報告する | Raw Sourceや診断本文・OS egressの安全性 |
 
-`standard-crud`の期待する操作は5件、欠落や衝突は4件。Go側の`TestSurfaceWorkspaceStandardCRDFixture`と同じ公開合成Fixtureに由来する**制約された期待**であり、独立した業務Oracleの主張ではない。`create`と`update`が既存能力名に対応しても、現在のHost Grantがあるとは限らない。
+`standard-crud`の期待する操作は5件、欠落や衝突は4件。Go側の`TestSurfaceWorkspaceStandardCRDFixture`と同じ公開合成Fixtureに由来する**制約された期待**であり、独立した業務判定基準の主張ではない。`create`と`update`が既存能力名に対応しても、現在のHost Grantがあるとは限らない。
 
 別々のCLI呼出しのWorld/Revision照合値が一致しても、ファイル群を原子的に一回のSnapshotから読んだ保証はない。`sourceIndexFingerprint`と`modelRevision`を異なる定義の値であることを無視して直接比較しない。Source/業務対象/経路の鮮度が変わった時点では再資格化する。
 

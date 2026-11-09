@@ -1,6 +1,7 @@
-application order_entry {
+﻿application order_entry {
     uses semantic sales
     uses semantic customer
+    uses semantic master
     binds package order_entry.list_to_record ^1
 
     database sales {
@@ -8,4 +9,6 @@ application order_entry {
         access read-write
     }
 }
+
+
 
