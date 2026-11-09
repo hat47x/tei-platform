@@ -3,9 +3,7 @@ package registryreference
 import (
 	"crypto/ed25519"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -55,11 +53,7 @@ func ReadFixture(path string) (Fixture, error) {
 	if err != nil {
 		return Fixture{}, err
 	}
-	var fixture Fixture
-	if err = json.Unmarshal(raw, &fixture); err != nil {
-		return Fixture{}, err
-	}
-	return fixture, nil
+	return ParseFixture(raw)
 }
 
 func DefaultPolicy() Policy {
@@ -72,7 +66,7 @@ func verifySignature(pubHex, signatureB64 string, message []byte) error {
 	if err != nil {
 		return err
 	}
-	sig, err := base64.StdEncoding.Strict().DecodeString(signatureB64)
+	sig, err := decodeCanonicalBase64(signatureB64)
 	if err != nil {
 		return err
 	}
@@ -117,7 +111,7 @@ func Verify(f Fixture, p Policy) error {
 			return errors.New("unknown or duplicate artifact role")
 		}
 		seen[a.Role] = true
-		data, err := base64.StdEncoding.Strict().DecodeString(a.BytesBase64)
+		data, err := decodeCanonicalBase64(a.BytesBase64)
 		if err != nil {
 			return err
 		}
