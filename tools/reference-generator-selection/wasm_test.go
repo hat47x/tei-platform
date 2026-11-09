@@ -3,7 +3,6 @@ package generatorselection
 import (
 	"context"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 )
