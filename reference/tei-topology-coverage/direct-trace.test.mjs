@@ -10,7 +10,7 @@ const fixture=()=>({schemaVersion:'tei.cli.trace/v0',ok:true,result:{
   worldFingerprint:'sha256:world',sourceIndexFingerprint:'sha256:source',
   workspace:{name:'reference',formatVersion:1,manifest:{path:'tei.workspace.yaml',sha256:'sha256:manifest-bytes'}},
   source:{key:selected,status:'located',references:[{subject:selected.subject,artifactPath:'semantic/sales/order.tei',role:'definition'}]},
-  trace:{schemaVersion:'tei.modelref.trace/v0',snapshotFingerprint:'sha256:graph',
+  trace:{schemaVersion:'tei.modelref.trace/v0',graphFingerprint:'sha256:graph',snapshotFingerprint:'sha256:graph',ruleFingerprint:'sha256:rules',
     authority:'candidate-read-only',subject:selected,direction:'both',mode:'full',total:2,unresolved:0,
     rows:[{status:'resolved',edge:{from:selected,to:customer,relation:'targets'},resolvedTo:customer},
           {status:'resolved',edge:{from:parent,to:selected,relation:'references'},resolvedTo:selected}]
@@ -208,4 +208,54 @@ test('byte-identical copy is observationally equivalent but physical root/attemp
       physicalRootIdentity:'not-provided',readAttemptIdentity:'not-provided',
       sourceAndPluginClosure:'unproven',absentClaim:'unknown'});
   assert.equal(observeDirectTrace(original).workspaceIdentity,'load-manifest-observed-only');
+});
+
+test('Graph token is distinct from CLI Workspace continuation fingerprint (#3625)',()=>{
+  const f=fixture();
+  const x=observeDirectTrace(f);
+  assert.equal(x.status,'direct-edge-candidates');
+  assert.equal(x.graphFingerprint,'sha256:graph');
+  assert.equal(x.snapshotFingerprint,'sha256:workspace');
+  assert.notEqual(x.graphFingerprint,x.snapshotFingerprint);
+  // GraphFingerprint is canonical; the inner snapshotFingerprint is a
+  // deprecated alias and may be omitted during its removal cycle.
+  delete f.result.trace.snapshotFingerprint;
+  assert.equal(observeDirectTrace(f).graphFingerprint,'sha256:graph');
+  const y=fixture();delete y.result.trace.graphFingerprint;
+  assert.deepEqual(observeDirectTrace(y),
+    {status:'unknown',reason:'unqualified_trace_shape'});
+});
+
+test('mismatched deprecated graph token alias is rejected, never treated as continuation',()=>{
+  const f=fixture();f.result.trace.snapshotFingerprint='sha256:stale-graph-alias';
+  assert.deepEqual(observeDirectTrace(f),
+    {status:'unknown',reason:'graph_fingerprint_alias_mismatch'});
+  const g=fixture();g.result.trace.ruleFingerprint='';
+  assert.equal(observeDirectTrace(g).reason,'unqualified_trace_shape');
+  const h=fixture();h.result.trace.continuation={
+    fingerprint:'sha256:wrong-graph-token',field:'result.snapshotFingerprint'
+  };
+  assert.equal(observeDirectTrace(h).reason,'incomplete_direct_trace_page');
+});
+
+test('resolved edge target must match declared Ref target and optional scope',()=>{
+  for(const alter of [
+    f=>f.result.trace.rows[0].edge.to.subject.kind='application-pattern',
+    f=>f.result.trace.rows[0].edge.to.subject.id='someone.else',
+    f=>f.result.trace.rows[0].edge.to.scope='different-scope',
+  ]){
+    const f=fixture();alter(f);
+    assert.deepEqual(observeDirectTrace(f),
+      {status:'unknown',reason:'resolved_edge_target_mismatch'});
+  }
+  for(const alter of [
+    f=>delete f.result.trace.rows[0].edge.to,
+    f=>f.result.trace.rows[0].edge.to={subject:{kind:'',id:'customer.customer'}},
+  ]){
+    const f=fixture();alter(f);
+    assert.equal(observeDirectTrace(f).reason,'invalid_direct_target');
+  }
+  // Unqualified-to Scope is allowed; Graph's resolved key retains its scope.
+  const g=fixture();delete g.result.trace.rows[0].edge.to.scope;
+  assert.equal(observeDirectTrace(g).status,'direct-edge-candidates');
 });
