@@ -1,0 +1,5 @@
+== identity fields per binding ==
+   generation-binding: 2
+   observation-binding: 0
+   evidence-binding: 0
+   service-selection: 2

@@ -1,0 +1,10 @@
+?? aw/ev.sh
+?? aw/p.sh
+?? aw/p2.sh
+?? aw/r.sh
+?? aw/s.sh
+?? aw/t.sh
+?? aw/v.sh
+?? tools/reference-plugin-capability-coverage/cmd/tei-plugin-capability-coverage/main.go
+?? tools/reference-plugin-capability-coverage/coverage.go
+?? tools/reference-plugin-capability-coverage/coverage_test.go
