@@ -682,6 +682,10 @@ external LLM
 
 ## 現在の優先順
 
+**2026-11-09更新：Plugin-first InspectorのS2-referenceをmainへ統合。** [PR #3540](https://github.com/hat47x/tei-platform/pull/3540)（統合`2eeec81c36db6dfe8c4b6f5c464e0280f8facd87`）により、前回の限定S1（main #3381）から、通常`tei inspect` dispatch／通常・生成Studio Host／Wails Bridgeが**共通Contract・静的参照Provider・既存Composition**を使用する経路まで前進した。PR exact-headで全体Health、Wails Host、Windows Desktop WebView、Studio参照編集、Action Surface CLIが成功。実装・証拠の現在地は[docs/status.md](../docs/status.md)を正本とし、[D1 §15](evidence/PLUGIN_FIRST_D1_AUTHORING_ROUTE_FIT_GAP_2026-11.md)はその実装手順の履歴とする。下記に残る「通常CLI/Studio未配線」「Draft #3381」という文言は**記述当時の旧状態**であり、新しい現行状態へは読み替えない。
+
+**次のP0はS2-product・S3の不足分だけに限定する。** まず#951/#1016の**既存Profile/Provider選択**から、固定された実Build Artifact/実Provider Entryへ束縛し、通常CLI・Studioの別Consumerで`selected B → actual B`と`selected B → actual A`（出力同一でもFAIL）を独立Expectedで再検証する。続いてProvider Source raw/Manifest・選択Ruleの変更、現在Host Grant、Required Source/Role/Disclosure、2×2 Verified BOMと実Build memberを各別資格として照合する。Host実行ファイルから読めたSHA-256とPlugin実Link/署名・本番認可を混同しない。Trait Required/Hookは実装義務と実経路でのみ資格化し、Graph描画やAI統計の自己申告を実呼出しに昇格しない。CarrierのC-1/C-2、外部Host C-4は用途別に選択可能なまま維持し、新Resolver・共通常駐Host・第二Authority・新Hard Gateを増やさない。実験のOwnerは#1251/#951/#1016/#1824、独立Expectedは#1180/#2514、BOMは#3267。KON/SHO/SUIを通常のTEI読込みに必須の実行依存にしない。
+
 1. （完了、2026-09-19）判定段階Bの最終的な実環境での検証根拠を、同じ版（R = `e5231839`）についてそろえた
 2. （完了、2026-09-19）引継ぎの基準`B`と対象版`R`を固定した
 3. （完了、2026-09-19）最初のWeb向け実行先をビルド版`T1`（T = `0ba87a4e`）として実装し、判定段階Cの検証根拠を得て`Ready`と判定した
