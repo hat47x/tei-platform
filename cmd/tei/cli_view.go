@@ -84,39 +84,17 @@ type cliViewReport struct {
 // order to decide what to do next. A failure whose data effect may already be
 // applied must not read like a clean rejection, and a lifecycle refusal is a
 // replay decision rather than an execution error.
-// reportedExecutionCodes are the ExecutionError codes this command reports as
-// error.code. A code in this set is the machine-readable reason a caller
-// branches on, so it must not be flattened into COMMAND_FAILED with the reason
-// left in the message text (#3797).
-//
-// Keep this list in step with the codes internal/command returns. The previous
-// hand-written switch held three of them and silently dropped
-// INVALID_COMMAND_INPUT and COMMAND_UNAUTHORIZED, which made "your input is
-// wrong" and "you are not allowed" look like the same generic failure.
-var reportedExecutionCodes = map[string]bool{
-	"INVALID_COMMAND_INPUT":            true,
-	"COMMAND_UNAUTHORIZED":             true,
-	"COMMAND_AUTHORIZER_UNAVAILABLE":   true,
-	"COMMAND_LIFECYCLE_REFUSED":        true,
-	"COMMAND_PERIOD_SCOPE_UNAVAILABLE": true,
-	"COMMAND_PERIOD_SCOPE_UNKNOWN":     true,
-	"COMMAND_EFFECT_UNKNOWN":           true,
-}
-
 func commandFailure(err error) (string, string, bool) {
-	var execution *command.ExecutionError
-	if errors.As(err, &execution) {
-		// A period split by a closing day cannot be judged by a state that only
-		// knows whole months; naming the code keeps it distinct from a generic
-		// execution failure, so a caller can supply a half-aware state. The
-		// same holds for every other reported code: the caller's remedy differs
-		// by code, so the code is part of the answer.
-		if reportedExecutionCodes[execution.Code] {
-			return execution.Code, execution.Message, true
-		}
-	}
-	if command.EffectMayBeUnknown(err) {
-		return "COMMAND_EFFECT_UNKNOWN", err.Error(), true
+	// An ExecutionError already carries the machine-readable reason the caller
+	// branches on, and the remedy differs by code: a missing input, a closed
+	// period, a refused authorization and a failed commit all need different
+	// handling. Report the code as it is.
+	//
+	// This used to be a hand-written allow-list, which silently flattened 15 of
+	// the 21 codes internal/command returns into COMMAND_FAILED (#3807). A list
+	// kept per entrance also drifted: the CLI knew seven, the Studio one.
+	if code, err2, ok := command.ReportedFailure(err); ok {
+		return code, err2, true
 	}
 	return "", "", false
 }

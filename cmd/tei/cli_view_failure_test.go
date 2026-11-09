@@ -18,9 +18,12 @@ func TestCommandFailureDistinguishesUnknownEffect(t *testing.T) {
 		t.Fatalf("code=%q message=%q ok=%v", code, message, ok)
 	}
 
+	// A clean rejection keeps its own code. This used to fall through to a
+	// generic COMMAND_FAILED because the CLI carried a hand-written allow-list
+	// that omitted it (#3807).
 	plain := &command.ExecutionError{Code: "COMMAND_EXECUTION_FAILED", Message: "rejected"}
-	if code, _, ok := commandFailure(plain); ok {
-		t.Fatalf("a clean rejection was reported as %q", code)
+	if code, _, ok := commandFailure(plain); !ok || code != "COMMAND_EXECUTION_FAILED" {
+		t.Fatalf("a clean rejection: code=%q ok=%v", code, ok)
 	}
 
 	refused := &command.ExecutionError{Code: "COMMAND_LIFECYCLE_REFUSED", Message: "already observed"}
