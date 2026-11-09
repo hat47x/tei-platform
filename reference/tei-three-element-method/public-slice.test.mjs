@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import {projectPublicTeaSlice} from "./public-slice.mjs";
 const ref = (id, role, scope = "sales") => ({scope, kind: "subject", id, role});
 const row = (id, roleStates) => ({scope: "sales", kind: "subject", id, roleStates});
-const publicInput = () => ({scope: "sales", subjects: [
+const publicInput = () => ({scope: "sales", workspaceObservation: "load:sales-A",
+  subjects: [
   row("order", {data: "accepted", function: "accepted"}),
   row("review", {business: "accepted"}),
 ], relations: [{id: "uses", kind: "uses", from: ref("review", "business"), to: ref("order", "data")}]});
@@ -39,7 +40,8 @@ test("T06: an accidental relation to an unqualified endpoint fails without ident
 });
 
 test("T07: unresolved Business Role does not remove accepted Data Role", () => {
-  const w = {scope: "sales", subjects: [row("order", {data: "accepted", business: "unknown"})], relations: []};
+  const w = {scope: "sales", workspaceObservation: "load:sales-A",
+    subjects: [row("order", {data: "accepted", business: "unknown"})], relations: []};
   const out = projectPublicTeaSlice(w);
   assert.equal(out.views.data.length, 1);
   assert.equal(out.views.business.length, 0);
@@ -47,7 +49,8 @@ test("T07: unresolved Business Role does not remove accepted Data Role", () => {
 });
 
 test("T07: same-name other-scope Function cannot be selected by fallback", () => {
-  const w = {scope: "sales", subjects: [row("order", {data: "accepted"}),
+  const w = {scope: "sales", workspaceObservation: "load:sales-A",
+    subjects: [row("order", {data: "accepted"}),
     {scope: "billing", kind: "subject", id: "order", roleStates: {function: "accepted"}}], relations: []};
   assert.throws(() => projectPublicTeaSlice(w), /unqualified_public_slice/);
 });
@@ -55,9 +58,11 @@ test("T07: same-name other-scope Function cannot be selected by fallback", () =>
 test("T07: duplicate ids and unsupported role reject, ambiguity is retained", () => {
   for (const bad of [
     {...publicInput(), subjects: [row("order", {data: "accepted"}), row("order", {function: "accepted"})]},
-    {scope: "sales", subjects: [row("order", {hidden: "accepted"})], relations: []},
+    {scope: "sales", workspaceObservation: "load:sales-A",
+      subjects: [row("order", {hidden: "accepted"})], relations: []},
   ]) assert.throws(() => projectPublicTeaSlice(bad), /unqualified_public_slice/);
-  const ambiguous = projectPublicTeaSlice({scope: "sales", subjects: [row("order", {data: "ambiguous"})], relations: []});
+  const ambiguous = projectPublicTeaSlice({scope: "sales", workspaceObservation: "load:sales-A",
+    subjects: [row("order", {data: "ambiguous"})], relations: []});
   assert.deepStrictEqual(ambiguous.publicDiagnostics.map(x => x.status), ["ambiguous"]);
 });
 
@@ -112,4 +117,23 @@ test("public projection carries explicit caller epoch only when supplied", () =>
   assert.equal(stamped.snapshot, "source:R1|role:P1|policy:G1");
   assert.deepStrictEqual(stamped.views, unstamped.views);
   assert.throws(() => projectPublicTeaSlice(publicInput(), ""), /unqualified_public_slice/);
+});
+
+test("T12: Workspace observation is distinct from a potentially equal snapshot", () => {
+  const a = publicInput(), b = publicInput();
+  b.workspaceObservation = "load:sales-B";
+  const x = projectPublicTeaSlice(a, "same-world-source-snapshot");
+  const y = projectPublicTeaSlice(b, "same-world-source-snapshot");
+  assert.equal(x.snapshot, y.snapshot);
+  assert.notEqual(x.workspaceObservation, y.workspaceObservation);
+  assert.deepStrictEqual(x.views, y.views);
+});
+
+test("T12: Workspace observation cannot be missing or empty in public input", () => {
+  const missing = publicInput();
+  delete missing.workspaceObservation;
+  assert.throws(() => projectPublicTeaSlice(missing, "R1"), /unqualified_public_slice/);
+  const empty = publicInput();
+  empty.workspaceObservation = "";
+  assert.throws(() => projectPublicTeaSlice(empty, "R1"), /unqualified_public_slice/);
 });
