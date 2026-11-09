@@ -222,3 +222,6 @@
 
 # CON-12c scope layers output is hashed as raw bytes by its README.
 /plan/evidence/CON12C_SCOPE_LAYERS_2026-11-09/** -text
+
+# Instances/bindings resolver survey output is hashed as raw bytes by its README.
+/plan/evidence/INSTANCES_BINDINGS_RESOLVER_2026-11-09/** -text

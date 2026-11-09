@@ -42,6 +42,7 @@
 - [フック実行の配線と失敗の区別の確認](XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)（参照実装の試験記録。Runnerからの配線、NotSatisfiedと実行失敗の区別、参照規則。実PluginとCLI・Studioの配線は未実装）
 - [フック宣言の印刷面への反映の確認](XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md)（参照実装の試験記録。画面と同じフック宣言が印刷面にも出る。実印刷・用紙面の版照合は未確認）
 - [フックの位相順序と途中停止の確認](XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md)（参照実装の試験記録。位相の実行順、不成立での停止位置、`warn`の続行、未対応位相の拒否。CLI・Studioへの配線は未実装）
+- [位相ごとにフックの実装を供給できる経路の確認](XTEA_LOWCODE_HOOK_PHASE_IMPLEMENTATION_2026-11.md)（参照実装の試験記録。`Runner.ByPhase`で位相ごとに本体を選べる。規則Pluginの契約は未決定）
 - [能力入力の結び付けのData対応と、1属性の複数パラメータへの束ねの確認](XTEA_LOWCODE_HOOK_BINDING_DATA_MATCH_2026-11.md)（参照実装の試験記録。Data型パラメータへ別Dataの属性を結ぶ宣言を拒否し、1属性を複数パラメータへ束ねる形は既に動くことを固定）
 - [能力入力の結び付けの型検査の確認](XTEA_LOWCODE_HOOK_BINDING_TYPE_CHECK_2026-11.md)（参照実装の試験記録。原始型同士の食い違いを宣言段階で拒否し、Dataを名指す結び付けは比較しない）
 - [フックの`reads`から能力のパラメータへの対応規則の確認](XTEA_LOWCODE_HOOK_READS_TO_PARAMS_2026-11.md)（参照実装の試験記録。interactionの`command`の`input`が対応を述べており、読んでいない属性のパラメータは埋めない）
@@ -126,6 +127,7 @@
 - [Host guard の拒否は、実行ではない](CARRIER_GUARD_REFUSAL_2026-11-09/README.md)（C-2の参照が Invoke の前に ranCount を上げており、Host guard の拒否が「実行した」と読めていたのを、Invoke の結果を見てから数えるよう直す。guard拒否とroute不在は refusedCount にだけ入り carrierInvoked=false。C-1がExecutor.Executeの入場をwitnessで観測しているのと同じ形。route不在とguard拒否の区別はservicehost側の変更が要る）
 - [route の Selection が Binding と食い違うとき、Provider は呼ばれない（CON-12c）](SELECTION_DIGEST_BOUNDARY_2026-11-09/README.md)（識別子を持つ残る1層 ServiceProviderSelection を確かめる。digest や contract version が食い違えば Provider は0回で、ran=1/unverified=1（拒否ではない。carrierには入っている）。一致すれば通る対照も置く。最初の試験は拒否を期待して書いたが実行は ran=1 で、期待の側を直した）
 - [CON-12cの3つの識別子は、それぞれどこで守られているか](CON12C_SCOPE_LAYERS_2026-11-09/README.md)（digestはservicehostの比較、Source Scopeはcomposition.validateSelectionLockedがAcquireごとに照合、Selection.Epochはregistry epoch。Host/Grant epochはどの層にも存在しない。scope不一致とstale revisionはcarrierへ入る前に拒否されることを実行で確認）
+- [Instances と Bindings には、既に解決器がある](INSTANCES_BINDINGS_RESOLVER_2026-11-09/README.md)（第12節は「Resolverを要するとまだ判断しない」としていたが、ResolveContractQueryExecutor が Binding と Instance と Capability を束ね、製品の2経路が実行器の provider 一致まで確かめて実行に進む。ただし対象は Contract Query の1用途で、Instances/Bindings 一般の解決器ではない）
 - [C-2を試験の外で組み立て、C-1と同じ土台で比べる](SERVICE_CARRIER_CONNECT_REFERENCE_2026-11-09/README.md)（`tools/reference-service-carrier-connect` として判断材料のC-2を実装。Hostが渡したCoordinator・Runtime registry・RouteSourceからInvokerを組み立て、ピン留めした世代で要求を運ぶ。Routeが無い場合はInvokerを呼ぶ前に拒否し、別Binding用のRouteも拒否し、入力不足も拒否する。実配備の成立は示さない）
 - [C-2の数も、実行前拒否と実行後不確定を分ける](SERVICE_CARRIER_CONNECT_OUTCOME_V1_2026-11-09/README.md)（C-2の参照Reportをv1にし、ranCountをcarrier入場、refusedCountを入場前停止だけ、unverifiedCountを入場後の失敗や別世代の応答として分ける。artifact検証の拒否はcarrier内部で起きるためunverifiedに入る。反例3件でv0ならrefusedに入っていたケースを固定し、CLIの3場合はcarrierInvoked=falseを示す。製品へ繋ぐべきかは示さない）
 - [C-1とC-2は、同じ問いの2案か](CONNECT_POINT_C1_C2_2026-11-09/README.md)（判断材料が並べたC-1 routing.Router と C-2 servicehost の入口を比べ、入力の型・世代の有無・到達可能性が違うことを示す。C-1は配備の動作を実行しC-2はServiceの要求を運ぶため、両方を選ぶことは経路の重複ではない。C-2は非試験の呼出し元がまだ0件であることを記録。どちらを先に入れるべきかは示さない）
