@@ -33,7 +33,7 @@ permissions:
 
 concurrency:
   group: tei-postgres-unrun-suites-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   postgres-suites:

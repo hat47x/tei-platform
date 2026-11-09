@@ -533,6 +533,60 @@ class StaticWorkflowContract(unittest.TestCase):
                     failures.append('%s: job %s has no timeout-minutes' % (path.name, name))
         self.assertEqual([], failures)
 
+    # CONTRIBUTING.md asks every automatic workflow to set `concurrency`, so a
+    # new push to the same pull request replaces the run in flight instead of
+    # queueing another one (#3682). This checks presence, group and the
+    # cancel-in-progress key; the value is not pinned here because 30 older
+    # workflows cancel push runs too, which is a separate behaviour change.
+    def test_every_automatic_workflow_declares_concurrency(self):
+        root = Path(__file__).resolve().parent.parent / '.github' / 'workflows'
+        failures = []
+        for path in sorted(root.glob('*.yml')):
+            text = path.read_text(encoding='utf-8')
+            on = re.search(r'(?m)^on:\n((?:[ #].*\n|\n)+)', text)
+            if not on:
+                continue
+            triggers = on.group(1)
+            if not re.search(r'(?m)^  (?:pull_request|push):', triggers):
+                continue
+            block = re.search(r'(?ms)^concurrency:\n(.*?)(?=^\S|\Z)', text)
+            if not block:
+                failures.append('%s: no top-level concurrency' % path.name)
+                continue
+            body = block.group(1)
+            if not re.search(r'(?m)^  group:\s*\S', body):
+                failures.append('%s: concurrency has no group' % path.name)
+            if not re.search(r'(?m)^  cancel-in-progress:\s*\S', body):
+                failures.append('%s: concurrency has no cancel-in-progress' % path.name)
+        self.assertEqual([], failures)
+
+    # Workflows added or changed from 2026-11-09 must not cancel a main push:
+    # one result per commit is kept, and only pull-request runs are replaced.
+    def test_new_concurrency_cancels_only_pull_requests(self):
+        root = Path(__file__).resolve().parent.parent / '.github' / 'workflows'
+        failures = []
+        pr_only = re.compile(
+            r'(?m)^  cancel-in-progress:\s*'
+            r"\$\{\{\s*github\.event_name == 'pull_request'\s*\}\}\s*$")
+        for name in ('tei-postgres-unrun-suites-ci.yml',
+                     'tei-windows-go-test-survey.yml'):
+            text = (root / name).read_text(encoding='utf-8')
+            block = re.search(r'(?ms)^concurrency:\n(.*?)(?=^\S|\Z)', text)
+            if not block or not pr_only.search(block.group(1)):
+                failures.append('%s: concurrency does not cancel only pull requests' % name)
+        self.assertEqual([], failures)
+
+    def test_every_checkout_drops_persisted_credentials(self):
+        root = Path(__file__).resolve().parent.parent / '.github' / 'workflows'
+        failures = []
+        for path in sorted(root.glob('*.yml')):
+            text = path.read_text(encoding='utf-8')
+            if 'uses: actions/checkout@' not in text:
+                continue
+            if 'persist-credentials: false' not in text:
+                failures.append('%s: checkout keeps credentials' % path.name)
+        self.assertEqual([], failures)
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
