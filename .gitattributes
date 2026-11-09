@@ -238,3 +238,6 @@
 /plan/evidence/DSH_MCP_CONFIGURED_2026-11-10/** -text
 # Executor adapter identity output is hashed as raw bytes by its README.
 /plan/evidence/EXECUTOR_ADAPTER_IDENTITY_2026-11-09/** -text
+
+# MCP tool-call observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_TOOL_CALL_2026-11-10/** -text
