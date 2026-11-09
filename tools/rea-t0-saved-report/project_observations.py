@@ -7,7 +7,7 @@ or makes a business or runtime claim. The REA archive is untrusted input.
 import argparse
 import hashlib
 import json
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 
 import audit
 
@@ -51,9 +51,35 @@ def _source_hashes(root, selected):
         if rel in hashes:
             raise ValueError('duplicate manifest source')
         hashes[rel] = parts[0]
-    if not hashes:
-        raise ValueError('empty saved source manifest')
+    if set(hashes) != {'index.js', 'package.json'}:
+        raise ValueError('T0 requires exactly the two known public fixture files')
     return hashes
+
+
+def _verify_saved_snapshots(report_dir, hashes):
+    """Verify saved public fixture bytes on both sides of REA process execution.
+
+    Same bytes at two instants are not atomic closure or A->B->A detection.
+    This fixture explicitly supports only two top-level public files.
+    """
+    report_dir = Path(report_dir)
+    before, after = report_dir / 'source-pre', report_dir / 'source-post'
+    if (before.is_symlink() or after.is_symlink() or
+            before.exists() != after.exists()):
+        raise ValueError('inconsistent or symlinked source snapshot directories')
+    if not before.exists():
+        return False
+    if not before.is_dir() or not after.is_dir():
+        raise ValueError('source snapshots must be directories')
+    for name, digest in hashes.items():
+        # Top-level names have already been fixed by _source_hashes.
+        left = _file(before, name, 1024 * 1024)
+        right = _file(after, name, 1024 * 1024)
+        if hashlib.sha256(left).hexdigest() != digest:
+            raise ValueError('pre-source byte differs from saved manifest: ' + name)
+        if hashlib.sha256(right).hexdigest() != digest:
+            raise ValueError('post-source byte differs from saved manifest: ' + name)
+    return True
 
 
 def _location(evidence):
@@ -82,7 +108,7 @@ def _location(evidence):
     return None
 
 
-def _record(identity, record_kind, evidence, hashes, **extra):
+def _record(identity, record_kind, evidence, hashes, snapshots_verified=False, **extra):
     if not isinstance(identity, str) or not identity:
         raise ValueError('missing external occurrence identity')
     if not isinstance(evidence, dict):
@@ -95,7 +121,7 @@ def _record(identity, record_kind, evidence, hashes, **extra):
     if path in hashes and isinstance(digest, str):
         if digest != hashes[path]:
             raise ValueError('source digest conflict for ' + identity)
-        binding = 'saved-manifest-match-only'
+        binding = 'report-pre-post-byte-match' if snapshots_verified else 'saved-manifest-match-only'
     return {'kind': record_kind, 'externalOccurrenceID': identity,
             'observedState': evidence.get('state', 'unknown'),
             'authority': evidence.get('authority', 'unknown'),
@@ -138,6 +164,7 @@ def project(report_dir):
         return result
     target = _file(report_dir, 'selected-target.txt', 4096).decode('utf-8').strip()
     hashes = _source_hashes(report_dir, target)
+    snapshots_verified = _verify_saved_snapshots(report_dir, hashes)
     identifiers = [n.get('node_id') for n in nodes if isinstance(n, dict)]
     if len(identifiers) != len(nodes) or len(set(identifiers)) != len(nodes) or any(not isinstance(x, str) for x in identifiers):
         return result
@@ -149,7 +176,7 @@ def project(report_dir):
         for obs in observations:
             if not isinstance(obs, dict):
                 return result
-            rec = _record(obs.get('observation_id'), 'graph-node-observation', obs.get('evidence'), hashes,
+            rec = _record(obs.get('observation_id'), 'graph-node-observation', obs.get('evidence'), hashes, snapshots_verified=snapshots_verified,
                           graphNodeID=n['node_id'], graphNodeKind=n.get('kind'))
             if rec['externalOccurrenceID'] in seen:
                 return result
@@ -160,7 +187,7 @@ def project(report_dir):
     for e in edges:
         if not isinstance(e, dict) or e.get('source_node_id') not in identifiers or e.get('target_node_id') not in identifiers:
             return result
-        rec = _record(e.get('edge_id'), 'graph-relation-observation', e.get('evidence'), hashes,
+        rec = _record(e.get('edge_id'), 'graph-relation-observation', e.get('evidence'), hashes, snapshots_verified=snapshots_verified,
                       sourceNodeID=e['source_node_id'], targetNodeID=e['target_node_id'], relation=e.get('relation'))
         if rec['externalOccurrenceID'] in seen:
             return result
@@ -186,7 +213,8 @@ def project(report_dir):
                   limitationCount=len(data.get('limitations', [])) if isinstance(data.get('limitations'), list) else None,
                   REAEvidenceID=data.get('evidence_id'),
                   providerDescriptor={'id': provider.get('id'), 'version': provider.get('version')},
-                  subjectDigest=subject_hash, sourceManifestStatus='saved-run-claimed-only',
+                  subjectDigest=subject_hash,
+                  sourceManifestStatus='report-pre-post-byte-match' if snapshots_verified else 'saved-run-claimed-only',
                   selection=target)
     return result
 
