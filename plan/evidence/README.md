@@ -277,6 +277,7 @@
 - [inspectのload失敗文言のCLI/MCP一致](CLI_INSPECT_LOAD_MESSAGE_PARITY_2026-11-09.md)（4 tool×5状態の20通りで、inspectのload失敗2件だけCLIが汎用文言に置換していたのを、自プロセスの読み取り段階だけ実文言を出すよう修正。未検証Providerの文言は伏せたまま。20通りすべて文書一致）
 - [traceのoffset切詰めの観測](CLI_TRACE_OFFSET_CLAMP_2026-11-10.md)（`-offset`が最終行を超えると黙って行数へ切り詰められ、正当な空ページと区別できなかったため、切り詰め時だけ`requestedOffset`に要求値を残す。切詰め自体は不変。段の削減は未実施）
 - [inspectの権限限界の表明](CLI_INSPECT_AUTHORITY_LIMITS_2026-11-10.md)（`model catalog`と`trace`は`authorityLimits`を持つのに、Sourceのパスと件数を返す`inspect`だけが無表明だったため固定4項を追加。開示の可否は判定せず、既存Authorization Capabilityへ委ねる。実Host・認可・外部送出はNOT RUN）
+- [traceの未解決2欄の意味](CLI_TRACE_UNRESOLVED_MEANING_2026-11-10.md)（`trace.unresolved`が常に0、`projectionUnresolved`は全subjectで同一の17件＝グラフ全体、と実測し、`unresolved:0`を「未解決なし」と誤読できないよう契約へ明記。issue6値のうち到達不能な3値も明記。欄の改名・統合は未実施）
 - [viewの-inputが-command無しで黙って捨てられていた](TEI_DOGFOODING_ROUND20_VIEW_INPUT_2026-11-09/README.md)（#3778・#3420。`-input`は`-command`と組だが、無い場合に値が捨てられて成功していた。両方向の変異を検出する試験を追加。起票時の誤診と既存試験による発覚も記録）
 - [view -executeの失敗符号が潰れていた](TEI_DOGFOODING_ROUND21_VIEW_EXECUTE_2026-11-09/README.md)（#3797・#3419。入力不正と認可拒否がどちらも`COMMAND_FAILED`に潰れ、理由がmessageの先頭にしかなかった。既知7符号を`error.code`に出す。`-operation-log`の上書き挙動は未決）
 - [手書きの符号許可リストが21中15を潰していた](TEI_DOGFOODING_ROUND22_CODE_COVERAGE_2026-11-09/README.md)（#3807・#3797・#3420。CLIは7符号、Studioは1符号だけを特別扱いし、coreの21符号のうち15が`COMMAND_FAILED`に潰れていた。列挙を廃止し`command.ReportedFailure`へ。AST走査で再発防止）
