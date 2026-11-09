@@ -670,7 +670,6 @@ builder childが`compareIntentFields`で比べる。
 2. **entryのlockもchildの申告から作る。** 両方の組み立てが同じ入力に依存するため、childが申告を偽れば両方が同じように偽る。`childLockMatched`は「二つの独立した組み立ての一致」であって「入力が真であること」ではない
 
 **依存をさらに減らすには、entryが計画側も独立に持つ必要がある。** 解決childのreceiptに頼らずentry自身が宣言から計画を導く経路であり、§4.7でI-1（`internal/`への切り出し）を採らなかった制約に戻る。§7の残作業に名指しした。
-
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
