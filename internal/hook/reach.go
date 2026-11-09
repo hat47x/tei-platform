@@ -145,9 +145,18 @@ func (r Runner) RunReachable(ctx context.Context, applicationID, patternID core.
 		// only the record scope and the pattern's own unit are applied. Reporting a
 		// reason keeps the phase visible instead of silently passing it.
 		if scope := declaration.Scope; scope != "" && scope != string(application.PatternRecord) {
+			// A row-scoped hook is applied per row when the runner was given a row
+			// set. Without one it is reported as needing the rows, never run once
+			// for the record as if the scope did not matter.
+			if scope == "row" && len(r.Rows) > 0 {
+				if err := r.applyReachableRows(ctx, report, applicationID, patternID, phase, declaration); err != nil {
+					return report, err
+				}
+				continue
+			}
 			report.Skipped = append(report.Skipped, phase)
 			if scope == "row" {
-				report.Reasons[phase] = "the hook declares scope row, so it needs the row set; use RunRows"
+				report.Reasons[phase] = "the hook declares scope row, so it needs the row set; pass the rows to apply it"
 			} else {
 				report.Reasons[phase] = fmt.Sprintf("the hook declares scope %s but this runner applies one hook per record", scope)
 			}

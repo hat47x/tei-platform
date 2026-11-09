@@ -56,6 +56,10 @@ type Runner struct {
 	// Callerは、フックから能力を呼ぶ下位の境界である（`CommandCaller`など）。
 	// 宣言に制限されていない境界をそのまま実装へ渡さず、必ずDeclaredで包む。
 	Caller Caller
+	// Rows is the row set a row-scoped hook is applied to. It is empty for a run
+	// that handles one record, and a row-scoped hook is then reported as needing
+	// the row set rather than run once for the record.
+	Rows []map[core.CanonicalID]string
 }
 
 // implementationForは、位相に与えられた実装を返す。
@@ -109,9 +113,12 @@ func (r Runner) Run(ctx context.Context, invocation Invocation) error {
 	switch declared.Scope {
 	case "", string(application.PatternRecord):
 	case "row":
+		if len(r.Rows) > 0 {
+			return r.RunRows(ctx, invocation, r.Rows)
+		}
 		return &Error{
 			Code:    "HOOK_SCOPE_NEEDS_ROWS",
-			Message: fmt.Sprintf("hook %s declares scope row, so it needs the row set; use RunRows", invocation.Phase),
+			Message: fmt.Sprintf("hook %s declares scope row, so it needs the row set; set Runner.Rows or use RunRows", invocation.Phase),
 		}
 	default:
 		return &Error{

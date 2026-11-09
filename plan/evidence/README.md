@@ -102,7 +102,8 @@
 - [RQ-C1の確認方法の観測](XTEA_LOWCODE_RQC1_VERIFICATION_2026-11.md)（参照実装の試験記録。2パッケージの併存・取り外し・Core種別の不増加）
 - [フック宣言の範囲（scope）の確認](XTEA_LOWCODE_HOOK_SCOPE_2026-11.md)（参照実装の試験記録。範囲の宣言・検査・投影）
 - [フック範囲の実行時適用の確認](XTEA_LOWCODE_HOOK_SCOPE_RUN_2026-11.md)（参照実装の試験記録。適用できない範囲を拒否し、D-9の形の欠陥を作り直さない）
-- [行範囲（scope row）の適用の確認](XTEA_LOWCODE_HOOK_ROW_SCOPE_2026-11.md)（参照実装の試験記録。行ごとの繰り返し・行を名指す拒否。呼出し側の配線とitem/headerは未実装）
+- [行範囲（scope row）の適用の確認](XTEA_LOWCODE_HOOK_ROW_SCOPE_2026-11.md)（参照実装の試験記録。行ごとの繰り返し・行を名指す拒否。item/headerは未実装）
+- [行範囲を到達可能な実行へ配線した確認](XTEA_LOWCODE_HOOK_ROW_SCOPE_WIRING_2026-11.md)（参照実装の試験記録。`RunReachable`の行ごと適用。行集合を供給する呼出し側は未実装）
 - [採番の永続CounterStoreの確認](XTEA_LOWCODE_NUMBERING_SQLITE_STORE_2026-11.md)（参照実装の試験記録。PostgreSQLは未実装）
 - [採番の2プロセス同時実行の確認](XTEA_LOWCODE_NUMBERING_PROCESS_RACE_2026-11.md)（参照実装の試験記録。PostgreSQLと多プロセス構成は未実装）
 - [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
@@ -140,6 +141,7 @@
 - [観測アダプタが、provider の同一性を上書きしていた](ADAPTER_IDENTITY_MASKING_2026-11-09/README.md)（adapters.go が out.ProviderID を無条件に上書きしており、observation.Router の同一性検査が到達不能だった。空のときだけ補う形へ直し、証拠側も同じ形の関数へ切り出す。修正前のコードへ戻すと回帰試験が失敗することを実測。アダプタは未使用なので実害は出ていないが、組み立てれば別providerの応答が一致と判定される状態だった）
 - [配備実行アダプタも、executor の同一性を上書きしていた](EXECUTOR_ADAPTER_IDENTITY_2026-11-09/README.md)（DeploymentExecutor が out.ExecutorID を無条件に上書きしており、routing.ValidateResult の比較が到達不能だった。空のときだけ補う形へ直し、executor が別identityを名乗る結果が ValidateResult で拒否されることを確認。修正前へ戻すとその試験が「別executorの結果が受理された」と失敗する。C-1の過去記録は独自executorを使うため無効にならない）
 - [配備実行アダプタは、Binding を照合できない](ADAPTER_BINDING_BLINDSPOT_2026-11-09/README.md)（アダプタはPlanとCapabilityIDだけを持ちEnvironmentを持たないため、RouteCommand/ValidateResultを一度も呼ばない。4つの構築箇所はどれもDispatchを経由せずExecuteを直接呼ぶので、Dispatchの検証を強化しても届かない。C-3の直書き問題はそのまま残る。アダプタにEnvironmentを渡すべきかは設計判断）
+- [呼出し側で Binding を守る](BINDING_GUARDED_EXECUTOR_REFERENCE_2026-11-09/README.md)(`tools/reference-binding-guarded-executor` として、アダプタを構造変更せずに同じ保証を得られるかを試す。routing.RouteCommandの解決結果と要求IDを比較し、Bindingが別のexecutorを選んでいればアダプタへ渡す前に拒否する。6件の試験でSERVED/NOT_MATCHED/NOT_BOUND/UNKNOWN_EXECUTORを固定。製品へ入れるかは設計判断)
 - [C-2を試験の外で組み立て、C-1と同じ土台で比べる](SERVICE_CARRIER_CONNECT_REFERENCE_2026-11-09/README.md)（`tools/reference-service-carrier-connect` として判断材料のC-2を実装。Hostが渡したCoordinator・Runtime registry・RouteSourceからInvokerを組み立て、ピン留めした世代で要求を運ぶ。Routeが無い場合はInvokerを呼ぶ前に拒否し、別Binding用のRouteも拒否し、入力不足も拒否する。実配備の成立は示さない）
 - [C-2の数も、実行前拒否と実行後不確定を分ける](SERVICE_CARRIER_CONNECT_OUTCOME_V1_2026-11-09/README.md)（C-2の参照Reportをv1にし、ranCountをcarrier入場、refusedCountを入場前停止だけ、unverifiedCountを入場後の失敗や別世代の応答として分ける。artifact検証の拒否はcarrier内部で起きるためunverifiedに入る。反例3件でv0ならrefusedに入っていたケースを固定し、CLIの3場合はcarrierInvoked=falseを示す。製品へ繋ぐべきかは示さない）
 - [C-1とC-2は、同じ問いの2案か](CONNECT_POINT_C1_C2_2026-11-09/README.md)（判断材料が並べたC-1 routing.Router と C-2 servicehost の入口を比べ、入力の型・世代の有無・到達可能性が違うことを示す。C-1は配備の動作を実行しC-2はServiceの要求を運ぶため、両方を選ぶことは経路の重複ではない。C-2は非試験の呼出し元がまだ0件であることを記録。どちらを先に入れるべきかは示さない）
@@ -305,6 +307,7 @@
 - [MCPのsubjectKind列挙の欠落](CLI_MCP_SUBJECTKIND_ENUM_2026-11-10.md)（`inputSchema.subjectKind`だけが閉じた集合を宣言せず、CLIの12値/10値と食い違っていたため、操作の集合を直接参照するenumを追加。広告した22値すべての受理と、enum外の拒否を実バイナリで確認。実Host・認可・外部送出はNOT RUN）
 - [traceのoffset/limitの値域宣言](CLI_MCP_TRACE_PAGING_BOUNDS_2026-11-10.md)（`tei_trace`の`offset`・`limit`だけが値域を宣言せず、0が有効で負値が拒否されることをclientが読めなかったため`minimum:0`を追加。`model locate`の1..500とは意図的に異なるので各々が宣言する。宣言と実挙動の一致をdispatch経由で固定）
 - [CLIのhelpが受理しないflagを並べていた件](CLI_HELP_GRAMMAR_2026-11-10.md)（	ei validate -h等が共有FlagSetの70個を出し、実際に受け付けるのは3個だった件。ExitOnErrorのコマンドはs.Parse前に絞り込みhelpを返すよう修正。全コマンドで-hのflag数が受理範囲と一致。実行時の受理範囲は不変）
+- [validateの受理しないflagの広告](CLI_CATALOGUE_VALIDATE_FLAGS_2026-11-10.md)（	ei commandsがalidateに-analysis等4個を広告していたが実際は全て拒否。共有FlagSetの所属を取り違えた広告を削除し、catalogueが名指すflagは受理されるflagでなければならないことを単体で固定）
 - [viewの-inputが-command無しで黙って捨てられていた](TEI_DOGFOODING_ROUND20_VIEW_INPUT_2026-11-09/README.md)（#3778・#3420。`-input`は`-command`と組だが、無い場合に値が捨てられて成功していた。両方向の変異を検出する試験を追加。起票時の誤診と既存試験による発覚も記録）
 - [view -executeの失敗符号が潰れていた](TEI_DOGFOODING_ROUND21_VIEW_EXECUTE_2026-11-09/README.md)（#3797・#3419。入力不正と認可拒否がどちらも`COMMAND_FAILED`に潰れ、理由がmessageの先頭にしかなかった。既知7符号を`error.code`に出す。`-operation-log`の上書き挙動は未決）
 - [手書きの符号許可リストが21中15を潰していた](TEI_DOGFOODING_ROUND22_CODE_COVERAGE_2026-11-09/README.md)（#3807・#3797・#3420。CLIは7符号、Studioは1符号だけを特別扱いし、coreの21符号のうち15が`COMMAND_FAILED`に潰れていた。列挙を廃止し`command.ReportedFailure`へ。AST走査で再発防止）
@@ -327,3 +330,4 @@
 - [能力宣言に版付けの余地が無いことの実測](TEI_GO_SELF_BUILD_DECLARATION_VERSIONING_2026-11-10.md)（§7の「必要になった時点で決める」を検証。\ormatVersion\を足した宣言は\json: unknown field\で**拒否される**——版を名乗る手段が導入時点で使えない。D-1/D-2/D-3を比較し、D-2が最も安い理由を示すが**判断はしない**。 #2831）
 - [設計者ループは動くが補助コマンドのhelpが誤っていた](TEI_DOGFOODING_ROUND37_DESIGNER_LOOP_2026-11-09/README.md)（#3943。`security.logout`追加→validate/inspect/traceで連鎖確認。誤りは正しく検出。`-qualification-requirements`がパスなのにhelpは「JSON」、スキーマも未広告。文言を修正）
 - [validate -hが70フラグを表示していた](TEI_DOGFOODING_ROUND38_VALIDATE_FLAG_NOISE_2026-11-09/README.md)（#3956。共有FlagSetのため標準-hが全フラグを列挙。allow-listは既にありhelpTextも絞っていたが、validate/worldはExitOnErrorで到達せず。-hを既存経路へ流し70→3）
+- [13分前に他者が同じ問題を直していた（重複実装の撤回）](TEI_DOGFOODING_ROUND39_DUPLICATE_HELP_FIX_2026-11-09/README.md)（#3956・#3943。`0b85c031a`が06:25に修正、私は06:38に重複提出。寄与ゼロを分離ビルドで確認し撤回。記録の虚偽2件も訂正）
