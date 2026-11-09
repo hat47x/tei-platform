@@ -449,6 +449,23 @@ Apache Kafkaは、Kafka Topic間ではtransactional producerとconsumer offset�
 
 **設計判断**: 原子性を広範囲に一括要求する共通Gateを作らず、(a)単一ファイル置換、(b)read/modify/write競合、(c)ArtifactSet一式公開、(d)配送/取込み、(e)業務Effect/Owner受理を別の観測・受入として扱う。MFT専門DSL/統一Host/万能Scheduler/第二Manifest・Authorityの増設は現段階で正当化されない。
 
+### 12.7 2026-11-09 公開Generation pinの実CLI→独立Python Reader再取得
+
+**今回の追加試行（#2604 AP-06/09/12へ接続、採否はCI確認後）**：main統合済みCLI `tei artifacts -out`と既存#3256の`verify_real_cli_revision.py`を再利用。公開`ledger`の同一Workspace copyをR1として実Go CLIで`-out <dir>`へ公開し、独立Python側が**保存された`manifest.json`の原バイトをpin**して各MemberをReadする。その後、既存MR-03の`semantic/sales/order.tei`を同byteのままrelocateし、Source treeとInputRevisionが異なるR2を実Go CLIの別呼出しで**同じ`<dir>`へ上書き公開**する。R1/R2それぞれのCLI stdout Manifestと保存Manifest/Memberを照合する。
+
+| 試行点 | 必須の観測結果 | 成立させないClaim |
+| --- | --- | --- |
+| R1最初の実Go CLI公開 | Independent Python Readerは保存済みR1 Manifest原バイトがmember Read前後に一致し、固定Ledger Path→Member→Byteを照合 | 完全Artifact Envelopeのdiskからの再構成・Producer/Readerの独立Required closure・Sourceのsnapshot transaction |
+| R1 Source名relocate→R2 `-out`同一Directory | R1/R2のInputRevision・Manifest Digestは異なる。R2書込後はR1 Pinでの読取を**Manifest変更として拒否**。R1/R2の本文byteが一部同一でも旧版資格は昇格しない | 原子切替・同時刻に並走するReaderの一式受領・旧世代retain・GC・rollback |
+| R2公開後の再取得 | R2 `manifest.json`の実バイトとstdout Manifestを比較し、R2 Pinで現在のMember全件が実Read可能かを確認。実測した`unchanged_body_paths`はBody byteのみの観測 | R2のOwner Acceptance、MFT Recipient、実ImportUnit、Period `closed`、Current Grant |
+| Reader途中にManifestがR1→R2 | `verify_pinned_ledger_publication_paths`はmember Read前後のManifest byteを照合し、中途変更を**独立負例として拒否** | 2点照合ではR1→R2→R1の**ABA**・Member単位の間欠上書きやFSキャッシュ競合を検出し尽くせない |
+
+**使う部品**: `plan/fixtures/capability-handoff/publication_path_readback.py`へ「固定Manifest byteの前後一致」を追加、同`test_publication_path_readback.py`へ不変Pin陽性・R1旧Pin拒否（Body同一）・Reader途中でのManifest変更・Pin不正値を追加（既存11件→15件の見込み）、`verify_real_cli_revision.py`の既存real CLI呼出しをR2同一Directory再公開へ接続。**新CLI、第二Reader正本、Manifest Schema、Publisher/Rollback機構は導入しない**。成功した場合も`ledger`固定Fixtureの**sequential two-revision actual-publisher/independent-process read**という限定表示のみ。
+
+**他チャットへの整合**: [Draft #3321](https://github.com/hat47x/tei-platform/pull/3321)の同じObserved Snapshotでも物理Root/Read Attemptは同一とは限らない反例を踏まえ、同じManifest byteから独立Source Rootの同一性を主張しない。[merged #3731](https://github.com/hat47x/tei-platform/pull/3731)のPlan二回Build再現は生成側の局所Determinismであり、公開後の現在Reader取得資格ではない。#3252のClaim単位の変更影響と#2604の実Publication Ownerをそのまま維持する。
+
+**P1へ残す最小未証明**: (1)R1をpinしたConsumerがWriterと本当に並走する中で全部のMemberをR1として取得できるか、(2)固定Generationの実バイトを保持する期間とGC後の失効、(3)物理Root/Manifest ABA/同一Directory上書き・Crash/OS別FSの整合、(4)#2542の宛先別配信・ImportUnitと#1130 Period/Owner Effectの別資格。2回の`manifest.json` byte照合をCAS・Directory snapshot・実業務成功に昇格しない。専用CIによる最新HEAD検証前は全追加ケースの実行成立を主張しない。
+
 ### 追加一次資料（製品・仕様の版に依存する事実）
 
 - Apache Iceberg spec, snapshots / optimistic concurrency: https://iceberg.apache.org/spec/
