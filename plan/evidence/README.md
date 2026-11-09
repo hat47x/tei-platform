@@ -220,3 +220,4 @@
 - [trace fullの0件rows](CLI_TRACE_EMPTY_ROWS_2026-11-09.md)（`mode=full`で参照0件のとき`rows`が省略され「0件」と「欄が無い」を区別できなかったのを、宣言順を保った`MarshalJSON`で`rows: []`として出すよう修正。summaryは欄なしのまま）
 
 - [trace -mode fullのrowsが0件のとき消える](TEI_DOGFOODING_ROUND15_TRACE_MODE_ROWS_2026-11-09/README.md)（#3693・#3456。`omitempty`が長さ0のスライスも落とすため、`mode=full`の「0件」と「欄が無い」が同じ表現になることを修正前に実測した。mainの`3799997a0`で解消）
+- [継続トークンの失効条件を実測](TEI_DOGFOODING_ROUND16_CONTINUATION_EXPIRY_2026-11-09/README.md)（#3420 CAPI-2c・#3625。Sourceの変更（コメント1行でも）・`-scope`・`-direction`の変更は`STALE_SNAPSHOT`、`summary`⇄`full`は相互に許容。MCPも同じ可否で、新しい欠陥は無し）
