@@ -113,6 +113,7 @@
 | [`reference-scenario-state-diff/`](reference-scenario-state-diff/) | 型付きDataset/Snapshotの検証と、Scenario期待値・観測の差の読取り専用参照 |
 | [`reference-scoped-query-preflight/`](reference-scoped-query-preflight/) | 認可済み行スコープを物理SQLへ適用できるかを実行前に判定する参照 |
 | [`reference-tool-neutral-development/`](reference-tool-neutral-development/) | 特定の開発道具に依存しない作業経路の確認 |
+| [`reference-tei-eki-contract/`](reference-tei-eki-contract/) | TEIのJob/Flow設計がEKI（外部）へ渡す契約を、実OpenAPIの形に照らして検査する参照。射影で落ちる情報（`notBefore`のように独立した時刻）を失わないことを確かめる。test-onlyの圧力試験で、EKIクライアントや実行アダプタではなく、実Provider連携の証拠でもない |
 
 ## ビルド、配布、実行
 
@@ -236,6 +237,7 @@
 | [`reference-semantic-mapping-check/`](reference-semantic-mapping-check/) | 意味の定義と物理項目の対応について、定義へ遡る道が一つか、未記入の要素、複数の定義に一致する要素、定義の追加で変わる要素の範囲を検査する参照。合成データのみで、実在のデータ辞書とは未接続（#2095） |
 | [`reference-semantic-extension-catalog/`](reference-semantic-extension-catalog/) | 意味拡張の登録・解決・検証 |
 | [`reference-subsystem-cud/`](reference-subsystem-cud/) | 部分システムの登録・参照・更新・削除の境界確認 |
+| [`reference-tei-eki-contract/`](reference-tei-eki-contract/) | TEIのJob・Flow設計がEKIのP0 OpenAPIで失う意味（`notBefore`・期限・effect_mode・資源制約など）を、実contractへの射影で検出する隔離した試験用の参照。実Provider・認可・実行層ではなく、外部contractの受理を示さない |
 | [`reference-sui-action-boundary/`](reference-sui-action-boundary/) | SUIの操作とTEI Actionの接続例 |
 | [`reference-sui-adoption/`](reference-sui-adoption/) | SUI移行の参照データと検査 |
 | [`reference-sui-interaction/`](reference-sui-interaction/) | 画面操作とApplication Actionの接続例 |

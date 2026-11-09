@@ -156,7 +156,28 @@ func (r Runner) RunReachable(ctx context.Context, applicationID, patternID core.
 		// them here, through the restricted caller the Runner holds, so the
 		// promise is kept or reported as a refusal rather than assumed.
 		if len(declaration.Uses) > 0 {
-			calls, callErr := r.RunDeclaredCalls(ctx, applicationID, patternID, phase, r.CallInputs, r.Caller)
+			// A boundary with no caller behind it cannot keep the promise. Record
+			// the phases as not evaluated, with the capabilities named, instead of
+			// refusing a run the host legitimately started.
+			if r.Caller == nil {
+				report.Skipped = append(report.Skipped, phase)
+				report.NotEvaluated = append(report.NotEvaluated, phase)
+				report.Uncalled = appendUncalled(report.Uncalled, phase, declaration.Uses)
+				report.Reasons[phase] = ReasonCallerUnavailable
+				continue
+			}
+			// The inputs a capability receives come from this phase's own reads,
+			// through the binding the command pattern already declares. A host
+			// does not supply a mapping, and none is invented here.
+			callInputs, bindErr := DeclaredCalls(r.World, applicationID, patternID, phase, reads)
+			if bindErr != nil {
+				report.Skipped = append(report.Skipped, phase)
+				report.NotEvaluated = append(report.NotEvaluated, phase)
+				report.Uncalled = appendUncalled(report.Uncalled, phase, declaration.Uses)
+				report.Reasons[phase] = bindErr.Error()
+				continue
+			}
+			calls, callErr := r.RunDeclaredCalls(ctx, applicationID, patternID, phase, callInputs, r.Caller)
 			if len(calls) > 0 {
 				if report.Calls == nil {
 					report.Calls = map[string][]CallOutcome{}
