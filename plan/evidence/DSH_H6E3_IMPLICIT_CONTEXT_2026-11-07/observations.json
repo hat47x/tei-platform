@@ -1,0 +1,128 @@
+{
+  "note": "Synthetic implicit-context canaries only. Observed on the wire via a local mock endpoint.",
+  "canaries": {
+    "agents_md": "AGENTS_CANARY_IMPLICIT_101",
+    "claude_md": "CLAUDE_CANARY_IMPLICIT_102",
+    "skill_body": "SKILL_BODY_CANARY_IMPLICIT_103",
+    "skill_description": "SKILL_DESC_CANARY_IMPLICIT_104",
+    "projection": "PROJECTION_CANARY_ALLOWED_105"
+  },
+  "files": [
+    {
+      "path": "AGENTS.md",
+      "bytes": 159,
+      "sha256": "6d1cf6813a41788f5d0245d56d1613efdc7f70159ed07ceaebfb09d2fd16edda"
+    },
+    {
+      "path": "CLAUDE.md",
+      "bytes": 81,
+      "sha256": "3d06d701170517be801e97849dac3f7ffc84c9ec3e6dc0df5671fb12eaaaf0df"
+    },
+    {
+      "path": ".agents/skills/canary-skill/SKILL.md",
+      "bytes": 183,
+      "sha256": "d27e12c1f765790168b516efcb9ed4a476418227e6a85c67e8a0d8773819b9b2"
+    },
+    {
+      "path": "allowed/projection.txt",
+      "bytes": 30,
+      "sha256": "5ad3df95da9cc044205a889ac96af4ba009ff0684761d6ad15ebca81d7272e11"
+    }
+  ],
+  "requests": [
+    {
+      "request": "001-request.json",
+      "requestBytes": 69139,
+      "requestSha256": "635e48ecd65bf15e20696a0a024542c838e51dcc899e260f12f930e401111cee",
+      "toolCount": 24,
+      "messageCount": 1,
+      "canariesInModelInput": {
+        "agents_md": 1,
+        "claude_md": 1,
+        "skill_description": 1
+      },
+      "canariesByMessage": [
+        {
+          "index": 0,
+          "role": "user",
+          "canaries": [
+            "agents_md",
+            "claude_md",
+            "skill_description"
+          ]
+        }
+      ],
+      "canariesInSessionLog": {
+        "agents_md": 1,
+        "claude_md": 1,
+        "skill_description": 2
+      },
+      "sessionLog": {
+        "fieldBytes": 36348,
+        "afterSeq": -1,
+        "throughSeq": 18,
+        "eventCount": 19
+      }
+    },
+    {
+      "request": "002-request.json",
+      "requestBytes": 41999,
+      "requestSha256": "a86e95a4451dbc09d1473add6d25bb2cef16bb3264e8ad759a37a900d28be080",
+      "toolCount": 0,
+      "messageCount": 1,
+      "canariesInModelInput": {},
+      "canariesByMessage": [],
+      "canariesInSessionLog": {
+        "agents_md": 1,
+        "claude_md": 1,
+        "skill_description": 2
+      },
+      "sessionLog": {
+        "fieldBytes": 36348,
+        "afterSeq": -1,
+        "throughSeq": 18,
+        "eventCount": 19
+      }
+    },
+    {
+      "request": "003-request.json",
+      "requestBytes": 37711,
+      "requestSha256": "0492312e797e8077f2ef3da9a368f4947d76b50e767fecd294fb67c1e3851dfe",
+      "toolCount": 24,
+      "messageCount": 3,
+      "canariesInModelInput": {
+        "agents_md": 1,
+        "claude_md": 1,
+        "skill_description": 1,
+        "projection": 1
+      },
+      "canariesByMessage": [
+        {
+          "index": 0,
+          "role": "user",
+          "canaries": [
+            "agents_md",
+            "claude_md",
+            "skill_description"
+          ]
+        },
+        {
+          "index": 2,
+          "role": "user",
+          "canaries": [
+            "projection"
+          ]
+        }
+      ],
+      "canariesInSessionLog": {
+        "projection": 2
+      },
+      "sessionLog": {
+        "fieldBytes": 3719,
+        "afterSeq": 18,
+        "throughSeq": 26,
+        "eventCount": 8
+      }
+    }
+  ]
+}

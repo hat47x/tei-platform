@@ -52,7 +52,10 @@ func referenceLoadFingerprint(t *testing.T, r Result) string {
 // It is a computed value, not a golden file. If a legitimate change to the
 // reference Workspace or to the World schema alters it, recompute it and say so
 // in the change that does it.
-const referenceLoadFingerprintOnOriginMain = "859b1313bfd151bd99162716bb7545612a3f32ff729f32c534d1664e6f4541ca"
+// Recompute for #2823: ManagedFile gained ReadByLoader so workspace-files can
+// separate managed-but-not-interpreted files from files a domain loader read.
+// The World, Sources and Contributions are unchanged.
+const referenceLoadFingerprintOnOriginMain = "61ebb5cabef7f5037ad26eadb9d379058c1138545c379774b4d72e24d69ee259"
 
 func TestLoadReferenceWorkspaceFingerprintIsStable(t *testing.T) {
 	root := copyReferenceWorkspace(t)

@@ -1,0 +1,112 @@
+{
+  "note": "Resume after a synthetic Raw read: whether the earlier canary is re-sent and whether new work continues.",
+  "sessionId": "session-7ffdbc3c-70cc-4c44-a120-566236ac91e8",
+  "canary": "H7_RAW_CANARY_701",
+  "turns": [
+    {
+      "turn": "turn-1-read-raw",
+      "rawLogBytes": 2070,
+      "rawLogSha256": "56ee36f6f346675520d88efbac32d05d28edcd1c54c402fe978be274e2c46e0c",
+      "localResults": [
+        {
+          "callId": "toolu_cmd_0",
+          "status": "completed",
+          "canaryInResult": true,
+          "resultBytes": 1003
+        }
+      ],
+      "wire": [
+        {
+          "request": "001-request.json",
+          "requestBytes": 66922,
+          "requestSha256": "f633eead7105bf4945c97c4f0ba5e64fd18bd7ef808a6cb538e3923bbbe5f4e5",
+          "messageCount": 1,
+          "toolCount": 24,
+          "canaryInModelInput": 0,
+          "canaryInSessionLog": 0,
+          "sessionLog": {
+            "fieldBytes": 34777,
+            "afterSeq": -1,
+            "throughSeq": 17,
+            "eventCount": 18
+          }
+        },
+        {
+          "request": "002-request.json",
+          "requestBytes": 40476,
+          "requestSha256": "f54e743068b92d09a5d5a409d7293aff721b5d6b4fb460b1ff9c8c6561973a61",
+          "messageCount": 1,
+          "toolCount": 0,
+          "canaryInModelInput": 0,
+          "canaryInSessionLog": 0,
+          "sessionLog": {
+            "fieldBytes": 34777,
+            "afterSeq": -1,
+            "throughSeq": 17,
+            "eventCount": 18
+          }
+        },
+        {
+          "request": "003-request.json",
+          "requestBytes": 39823,
+          "requestSha256": "c56d1e6b44fa64a08bc6a9813e5c458c277afbbd2fe0d88e614df0a65f11bef4",
+          "messageCount": 3,
+          "toolCount": 24,
+          "canaryInModelInput": 2,
+          "canaryInSessionLog": 1,
+          "sessionLog": {
+            "fieldBytes": 5642,
+            "afterSeq": 17,
+            "throughSeq": 27,
+            "eventCount": 10
+          }
+        }
+      ]
+    },
+    {
+      "turn": "turn-2-resume",
+      "rawLogBytes": 2149,
+      "rawLogSha256": "294541c079edbf19da81a352bd99eed95acd4e1496dfb03f63951965c3a46859",
+      "localResults": [
+        {
+          "callId": "toolu_cmd_0",
+          "status": "completed",
+          "canaryInResult": false,
+          "resultBytes": 1084
+        }
+      ],
+      "wire": [
+        {
+          "request": "001-request.json",
+          "requestBytes": 58073,
+          "requestSha256": "80a7f572e9d0d78cc250748c05427c8dfa3281a0da0a9f1d64e3690371b6d545",
+          "messageCount": 5,
+          "toolCount": 24,
+          "canaryInModelInput": 1,
+          "canaryInSessionLog": 0,
+          "sessionLog": {
+            "fieldBytes": 24377,
+            "afterSeq": 27,
+            "throughSeq": 41,
+            "eventCount": 14
+          }
+        },
+        {
+          "request": "002-request.json",
+          "requestBytes": 41100,
+          "requestSha256": "93fd8cc6aa0bb76ae2d52bcb32794dc2db0acdd8dcfdc0704a96e338e4246cf5",
+          "messageCount": 7,
+          "toolCount": 24,
+          "canaryInModelInput": 1,
+          "canaryInSessionLog": 0,
+          "sessionLog": {
+            "fieldBytes": 5281,
+            "afterSeq": 41,
+            "throughSeq": 49,
+            "eventCount": 8
+          }
+        }
+      ]
+    }
+  ]
+}

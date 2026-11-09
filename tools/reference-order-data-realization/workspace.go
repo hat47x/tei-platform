@@ -253,8 +253,8 @@ func BuildTools(ctx context.Context, repoRoot, outDir string) (ToolBinaries, err
 		return ToolBinaries{}, fmt.Errorf("go version: %w", err)
 	}
 	t := ToolBinaries{
-		SharedAcceptance:   filepath.Join(outDir, "tei-shared-acceptance"),
-		StandardFunctions:  filepath.Join(outDir, "tei-standard-function-candidates"),
+		SharedAcceptance:   hostExecutable(outDir, "tei-shared-acceptance"),
+		StandardFunctions:  hostExecutable(outDir, "tei-standard-function-candidates"),
 		GoVersion:          strings.TrimSpace(string(ver)),
 		BuiltFromRepoRoot:  repoRoot,
 		BuildCommandPrefix: "go build -o <tmp> ./tools/reference-shared-acceptance ./tools/reference-standard-function-candidates",
@@ -267,6 +267,17 @@ func BuildTools(ctx context.Context, repoRoot, outDir string) (ToolBinaries, err
 		}
 	}
 	return t, nil
+}
+
+// hostExecutable returns the path for a Go-built helper binary. `go build -o
+// <path>` appends `.exe` on Windows when the given name has no extension, and
+// Windows will not execute an extensionless PE file, so every caller that
+// builds and launches a helper must resolve its path through here (#3149).
+func hostExecutable(dir, name string) string {
+	if runtime.GOOS == "windows" && filepath.Ext(name) == "" {
+		name += ".exe"
+	}
+	return filepath.Join(dir, name)
 }
 
 func runTool(ctx context.Context, bin string, args ...string) ([]byte, error) {

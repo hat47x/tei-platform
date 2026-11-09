@@ -90,6 +90,9 @@ Database、Runtime、Target等の製品固有知識は、Provider / Adapter / Ca
 
 Capabilityごとにbuiltin、generated implementation、plugin、既存実装等をBindingでき、必要なCapabilityだけを置き換えられる構造を持つ必要があります。
 
+**TEI Core以外の機能は、標準のCLIやTEI Studioを含め、原則としてContract/Providerを持つPluginとして構成できなければなりません。** CLI/Studioの開発用Pluginを作成・発見・選択・構築・テスト・利用する経路は、生成アプリケーション向けRuntime Pluginと同じ契約・構成解決・成果物追跡・検証の仕組みを用いる必要があります。表示や引数処理はSurface固有Adapterとして分離し、同じ業務/設計操作をCLI・Studio・生成アプリから利用するときに別の意味正本やResolverを作ってはいけません。既定のGo単一バイナリ構成では、未選択のPlugin実装を実成果物へ混入させず、外部Host向けには必要な能力だけを対象環境へ適応させる必要があります。Coreが特定の言語・認証・DB・UI実装へ逆依存しないこと、Plugin追加時にCore固定列挙や手書きCLI/Studio分岐の変更を原則不要にすることを、実Consumerを用いた回帰試験で示します。 Tooling・Build/Test・Application Runtimeは同じ契約解決・構築・追跡原理を利用しながら、意味解釈用Semantic Set、Authoring/Build/Runtimeの解決Scope、実行Grant、開示範囲を互いに暗黙継承してはいけません。発見したPlugin、選択したProvider、実Build/Linkに含まれた実装、実呼出した能力、現在許可される操作を別々に診断し、開発環境での成功を生成アプリケーションの本番適格性とみなしてはいけません。段階的な方式と現行Fit/Gapは[CLI/StudioからRuntimeまでのPlugin-first設計](../plan/design/PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md)を参照します。
+**TEI Core以外の機能は、標準のCLIやTEI Studioを含め、原則としてContract/Providerを持つPluginとして構成できなければなりません。** CLI/Studioの開発用Pluginを作成・発見・選択・構築・テスト・利用する経路は、生成アプリケーション向けRuntime Pluginと同じ契約・構成解決・成果物追跡・検証の仕組みを用いる必要があります。表示や引数処理はSurface固有Adapterとして分離し、同じ業務/設計操作をCLI・Studio・生成アプリから利用するときに別の意味正本やResolverを作ってはいけません。既定のGo単一バイナリ構成では、未選択のPlugin実装を実成果物へ混入させず、外部Host向けには必要な能力だけを対象環境へ適応させる必要があります。Coreが特定の言語・認証・DB・UI実装へ逆依存しないこと、Plugin追加時にCore固定列挙や手書きCLI/Studio分岐の変更を原則不要にすることを、実Consumerを用いた回帰試験で示します。段階的な方式と現行Fit/Gapは[CLI/StudioからRuntimeまでのPlugin-first設計](../plan/design/PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md)を参照します。
+
 プラグインの利用に際して、Principal、Database、業務Semantic Model等の特定分野の概念を全構成へ必須導入してはいけません。汎用の値変換・バッチは必要な型と接続だけで構成でき、業務上の意味的同一性を主張するBindingではじめて正本となる意味参照の範囲・版・受理状態を確認できる必要があります。実行時の外部権限検査とは分離します。
 
 一つのComponent Typeから、設定・DataSource・対象Semantic Entity・利用範囲の異なる複数の論理Instanceを構成できなければなりません。固定パラメータ、正本へ追跡できる型付き項目・Relation参照、許された変換式、呼出しごとの値を区別し、名前や文字列表記の一致だけでBindingを確定してはいけません。実行時に変わる値を準備時の固定設定へ暗黙に混入させず、未解決・複数候補・版不一致は検査できる必要があります。
@@ -99,6 +102,8 @@ Provider、型契約、意味参照、Instance設定、Bindingなどを変更す
 TEI管理の予約名前空間は`tei.*`とし、標準契約を`tei.std.*`、実験候補を`tei.experimental.*`、寄稿・委任管理の拡張を`tei.contrib.*`に配置できなければなりません。外部・案件Pluginには別の管理名前空間を認め、名前の類似やプレフィックスだけでContract適合、公開Authority、実行権限を認めてはいけません。既存`std.*`等の識別子は自動改名せず、参照先・版・Lock・利用Consumerを照合した移行を必要とします。
 
 外部プラグイン公開では、名前の予約・発行主体の確認、ソースリポジトリの関連付け、リリース成果物の形式・内容Digest検証、Capabilityへの適合性、Consumerの採用・実行権限を別々の状態として追跡できる必要があります。配布物の発見・検証を、Acceptedな業務意味や現在の実行許可へ自動的に昇格させてはいけません。Registryが成果物を集中保管することや、名前が逆ドメイン形式であること、実行時のオンラインRegistry接続を必須としません。参照済みリリースの同一性・来歴・検査対象と未検証範囲はオフラインでも再確認できるようにします。
+
+内容から導出する可変長・可変文字集合のIDを採用する場合も、生成Scheme・用途・Scopeと、内容バイトを検証する完全性Digest、持続的な意味ID、公開世代、転送試行・受領証拠を区別できなければなりません。短縮表示や外部システム用IDを単独の正本参照、Artifact検証、契約適合、実行許可の証拠へ昇格させず、既存の署名対象・Lock・Digestを暗黙に変更してはいけません。
 
 生成物へ案件固有の実装を結び付ける場合は、その実装の所有者、対応する拡張点と契約の版、入出力、実行段階を追跡できる必要があります。再生成は案件側の実装を上書きせず、拡張点の廃止や互換性のない変更を、利用前の不適合として検出できなければなりません。生成物への直接編集も、上書きの前に検出し、保全または明示的な判断へ渡します。特定言語の継承やファイル配置の規則は要求しません。
 
@@ -328,6 +333,14 @@ Web Targetでは、process起動、任意filesystem access等のブラウザで�
 
 現時点では、根拠のない一律の数値目標を定めません。Referenceでは、少なくともcold / warm start、初期転送量、install / cache footprint、steady memory、Extension追加時の増分cost、resolver / evaluator overheadをTargetごとに観測できるようにします。
 
+Pluginの最適化候補（静的結合・不要実装除外・部分評価・処理融合・DataSourceへの処理委譲・並列化・キャッシュ・実行方式の差替え等）は、選択済みContractの型、NULL/欠損、順序、精度、時点、失敗/Unknown、副作用、Scope、現在の実行権限およびTarget制約を保持する必要があります。これらの保証を確認できない場合、性能上の推定利益だけで変換・Provider選択・自動fallbackを認めず、未適格または不明として扱います。とりわけ業務書込みの再順序化・再試行・並列化、権限Scopeを跨ぐキャッシュは明示的な契約と実証なしに適用してはいけません。
+
+最適化は、Contract/Provider選択と物理Build・配置・実行の決定を区別して扱い、元のSemantic/Logical Instance identityと、実際に消費したBuild入力、生成・ロードされたArtifact member、Invocation/Effectへの追跡を保持できなければなりません。配布Bundle内の未選択Providerの追加・更新が、選択済みTargetの実Build/ロードに影響しないことを目標にしますが、実Compiler・初期化登録・Embed等による暗黙依存は実測で確認する必要があります。全Targetに動的Loader、Scheduler、Plugin専用Hostを強制してはいけません。
+
+正当性のConformance、実Artifact/Target適格性、性能改善を**独立したGate**で検証できる必要があります。性能BudgetはTargetと代表Workloadに合わせて事前設定し、baselineと候補のexact Source/Contract/Provider/Toolchain、負荷、試行回数、cache状態、実行環境を区別して測定します。p50/p95等の応答分布、起動・Memory・転送/Network・CPU/費用と、正しく省略した再計算、誤再利用、無用な失効を必要に応じて比較し、測定・改善が確認されない抽象化や最適化は撤回・縮小できなければなりません。具体的な実現/受入の候補は[Plugin実現・最適化要件](../plan/design/PLUGIN_REALIZATION_AND_OPTIMIZATION_REQUIREMENTS_2026-11.md)に整理します。
+
+複数のPlugin呼出しをまとめる最適化では、Transport上の一括送信、DataのChunk/Streaming、複数業務操作のBatchを区別する必要があります。通信回数の削減を、操作の原子性、全件完了、正しい順序、取消済み効果の撤回と同一視せず、元のRequest/Result相関、各Scope/Grant、部分失敗・Unknown、Backpressure/Buffer上限、実ProviderのCommit境界を維持できなければなりません。これらを満たせないTargetではBatch化を強制せず、単発呼出しを維持できることとします。実測ではThroughputに加え、待機・tail latency・Peak Memory・取消・部分失敗時の費用を区別します。
+
 ## RQ-025 業務上の行為・手順をApplication Functionから独立して設計できること
 
 TEIは、業務をApplication内部の実行手順だけへ還元せず、何のための仕事か、何を契機に行われるか、誰／どの主体が担当するか、どこが手作業・外部作業か、どのApplication Functionをどう利用するかを設計・説明できなければなりません。
@@ -445,6 +458,8 @@ TEIは、Data Model、Function / Interaction、Business Procedure、UI、workflo
 
 Plugin / DSLによる拡張は、実装関数を追加するだけでなく、概念が何を意味し、他の概念とどう関係し、何を満たす必要があるかを機械可読に宣言できる必要があります。
 
+Traitを合成可能な小さな契約要素として利用する場合、Traitごとに明確な責務・必要形状・前提条件・適用Scope・Failure/Effect・適合条件を表現しなければなりません。Traitを宣言した対象に対して、標準実装を選択して義務を充足する方式、手動実装・適合試験を必須とする方式、実行能力を保証しない助言だけの方式を区別し、実装不足・競合・同名異意味をValidationで明示します。複数のTraitを持つことだけで合成した振る舞いの適合を推定せず、必要に応じ明示的なBridge契約と独立Conformanceを要求します。Traitの宣言をProviderの実装・正式な意味受理・現在の実行権限と同一視してはいけません。Roleによる意味解釈とTraitの実現要求も別責務として扱います。
+
 少なくとも、拡張のidentity、namespace、semantic version、適用範囲、依存条件、既存概念との関係、Constraint / Validation、ProjectionやCapabilityへの接続を追跡できなければなりません。意味論と、その意味を読み書き・検証・実現する規則は、同じ拡張のidentityへ辿れる必要があります。
 
 Semantic Extensionの依存は、特定packageのidentityを必要とするものと、Semantic Interface等の契約を満たせばよいものを区別して表現できる必要があります。Semantic Interface自体も、identity、contract version、Source、contract fingerprint等へ辿れる意味契約として扱います。providerが同じInterface名を自己申告しただけで適合済みとしてはいけません。
@@ -511,6 +526,32 @@ TEI CLIは、Canonical meaning、Source、Dependency、Validation、Conformance�
 外部の開発環境が持つShell、Filesystem、Git等の操作権限を、TEI Repositoryを編集するという理由だけでTEI ApplicationのRuntime Capabilityとして再定義することも要求しません。一方、実Database、外部Service、Secret、Production相当Resource、その他の外部副作用へ到達する場合は、RQ-018〜RQ-020のCommand / Observation、Authority、Resource、unknownの境界を維持します。
 
 Agent Adapter、TEI固有のdeveloper MCP、統合Service等を追加することは妨げません。ただし、それらは特定環境との連携や利便性を高める任意機能とし、標準的なGit / CLIやHost-provided MCPによる開発、Canonical sourceへの到達に必要な前提にはしません。
+
+## RQ-035 一般開発者が異種データソースのデータと構造を管理できること
+
+TEIは、RDB、Document／Key-Value／GraphなどのNoSQL、ファイル／ログ、クラウドAPI／サービスを、Providerと標準データ構造・表現型・Functionの組合せにより、一般開発者向けの共通操作・調査・モデル化の対象にできなければなりません。SQL／NoSQLクライアントやログ閲覧画面は、この共通能力の用途別投影であり、独立した意味正本を持ちません。
+
+標準の職掌には、接続と能力発見、範囲と由来を明示した閲覧・検索・抽出・分析、Providerが許可するデータの作成／更新／削除、既存データ構造のリバースエンジニアリング、**テーブル・カラム・制約・インデックス・コレクション等の構造定義の作成／変更／削除**、構造差分とMigrationの計画・適用・再観測を含めます。データ構造の定義とその変更管理は開発ツールの責務であり、DDLを一律にDBA作業として除外してはいけません。一方、DBサーバーやクラスタの管理、バックアップ／復旧、レプリケーション、容量・表領域、DBユーザー／ロール等の基盤運用管理はTEI標準の範囲外とします。専門プラグインでの実現を禁止する意味ではありません。
+
+情報源の種類が異なっても、観測された物理構造、サンプリングによる構造候補、受理された論理的意味、望ましい構造、実際の構造、比較未確定を区別できなければなりません。RDBの物理FKやログ中の相関ID、NoSQL文書の頻出フィールドから、業務上の同一性・Relation・更新権限を自動的に受理してはいけません。NULL・欠損・未取得・非開示・サンプル外・途中失敗・空集合を混同せず、Query結果の完全性、時間窓、重複・順序、出典と鮮度を目的相対で説明できる必要があります。
+
+操作が利用可能かどうかは、Provider種別名や静的な「対応」表示だけでなく、対象Instance・環境・操作・Scope・現時点のGrantに基づいて判定します。取得をProviderへ要求した範囲、Providerが実際に取得した範囲、Consumerへ開示した範囲は独立に観測し、Read-only表示、Plan生成、受理済み意味、現在の実行権限、実効果、Receipt、独立再観測をそれぞれ別の資格として扱います。破壊的DDLは標準機能でも、外部の実対象への実行条件を満たさずに適用してはいけません。
+
+ネイティブSQL・NoSQL固有クエリ・API固有の操作と意味を保持し、共通操作で表現できない部分を黙った全件取得・編集用全置換・Query変換へ置き換えてはいけません。未知・部分取得・権限拒否・未対応・コスト上限は診断として扱い、必要に応じて明示的な代替操作を提案します。CLIで使える最小の読み取り契約と、MCP・Studio・生成AIスキルからの同じContractの利用を許し、Workbench専用の権限・キャッシュ・Query Engine・意味正本を作りません。
+
+この要求はRQ-001〜008、RQ-010〜011、RQ-018〜021、RQ-034の境界を継承します。実装・受入計画は[#3270](https://github.com/hat47x/tei-platform/issues/3270)と[横断設計](../plan/design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)に置き、要求の成立と現行参照実装の到達範囲を混同しません。
+
+## RQ-036 ドメインの全容を図表とナビゲーションで理解・拡張できること
+
+TEIは、ドメインやシステムを構成するData、Function、Business Procedure、Event／Event Group、State／Transition、Rule、Pattern、Operation、Provider、外部連携、適用されたPluginや拡張点について、**一貫した全体像をTEI自身から図表として導出**しなければなりません。個別Patternやデータ定義が単独で説明されるだけでは不十分です。利用者が事前のドメイン知識を持たなくても、全体像から「何を扱うか、何がきっかけで、誰／何が動き、状態がどう変わり、どの機能を使い、どこを変更できるか」を段階的に理解し、対応する定義へ移動できなければなりません。
+
+標準の図表体系には、全体マップ、Data／関係／組織等の構造、Business／Event Flow、Lifecycle／State Transition、FunctionとそのPatternの構成、Event×State×ActionおよびData×Functionなどの横断表、実行・出典・公開資格の参照を含め、同じ意味対象の識別子と版を保って相互に移動できる必要があります。特定の図法・GUIフレームワーク・RendererをCoreに固定することは求めません。Graphを描画できないConsumerでも、同等の階層表・テキスト図・型付き参照を提供できる必要があります。
+
+図表上で、**標準として変更してはならない契約、標準で設定できる箇所、明示的なExtension／Hook、案件固有の置換可能な箇所、観測・未受理に留まる箇所**を識別できなければなりません。カスタムがある場合は、標準Flow、カスタムの差分、合成後の実効Flowとその適用Target／Provider／Plugin版を辿れなければなりません。カスタムによって標準のIdentity、Meaning、Source/Revision、型、Guard、認可、Effect／Receipt等の不変条件を黙って迂回してはいけません。 ここで固定するのは実行手順を一つの順番に限定することではなく、**構成を変更しても破ってはならない保証**です。Lifecycleやイベント・対話フローは標準の型付きデータ／グラフから構成でき、許容された拡張点とPluginにより構造を変更しても、合成後のグラフを再検証して実行先へ生成できる必要があります。実行中の処理を、新版のグラフに暗黙に移し替えてはいけません。変更を提案・受理・生成・適用できる範囲と、実際に実行可能であるという資格を混同してはいけません。
+
+「全容」の保証は、対象となるWorld、必要なSource集合、Scope／公開資格、Model／Generator／Pluginの版に相対的なものとします。必要要素が未取得・未解決・非開示・未対応・競合・失効しているときは、その範囲と原因をガイドと図表に明示し、表示できた部分だけを全体として扱ってはいけません。出典に根拠のない関連・説明や将来状態をAI／UIが自動補完して確定してはいけません。導出された図表は意味の第二正本とせず、SourceとAccepted Meaningへ戻れる必要があります。
+
+本要求はRQ-002／003／008／010／011／014／025／026／028／031／032の境界を継承します。具体的な図表の組、ナビゲーション、標準／拡張箇所の凡例、必要集合・完全性の検収、横断的なHook/Generator実効Flowは[三要素MethodとDiagramの横断設計§19](../plan/design/THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)で扱います。**要求の追加は、その機能が現行TEIに実装済みであることを意味しません**。
 
 ## 要求を実装へ落とすときの原則
 

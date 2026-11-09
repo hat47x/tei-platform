@@ -38,36 +38,39 @@ type Parser struct {
 
 func NewParser(src string) *Parser { return &Parser{lx: NewLexer(src)} }
 
-func (p *Parser) ParseWorkspace() ([]string, error) {
+// ParseWorkspace reads the legacy `tei.workspace.tei` manifest. The name is
+// the declared workspace identity; it is returned so callers can report which
+// Workspace a read came from instead of inferring it from a path (#3181).
+func (p *Parser) ParseWorkspace() (name string, roots []string, err error) {
 	if _, err := p.expectText("workspace"); err != nil {
-		return nil, err
+		return "", nil, err
 	}
-	if _, err := p.expect(TokenIdent); err != nil {
-		return nil, err
+	nameTok, err := p.expect(TokenIdent)
+	if err != nil {
+		return "", nil, err
 	}
 	if _, err := p.expect(TokenLBrace); err != nil {
-		return nil, err
+		return "", nil, err
 	}
-	var roots []string
 	for {
 		t, err := p.peek()
 		if err != nil {
-			return nil, err
+			return "", nil, err
 		}
 		if t.Kind == TokenRBrace {
 			_, _ = p.next()
 			break
 		}
 		if _, err := p.expectText("source"); err != nil {
-			return nil, err
+			return "", nil, err
 		}
 		v, err := p.expect(TokenIdent)
 		if err != nil {
-			return nil, err
+			return "", nil, err
 		}
 		roots = append(roots, strings.TrimSuffix(v.Text, "/**"))
 	}
-	return roots, p.expectEOF()
+	return nameTok.Text, roots, p.expectEOF()
 }
 
 func (p *Parser) ParseApplication() (application.Application, error) {
@@ -1854,14 +1857,32 @@ func (p *Parser) ParseSemanticFile() (semantic.Namespace, error) {
 				return ns, err
 			}
 			ns.Validations = append(ns.Validations, v)
+		case "calendar":
+			cal, err := p.parseSemanticCalendar(nsID)
+			if err != nil {
+				return ns, err
+			}
+			ns.Calendars = append(ns.Calendars, cal)
 		case "period":
 			prd, err := p.parseSemanticPeriod(nsID)
 			if err != nil {
 				return ns, err
 			}
 			ns.Periods = append(ns.Periods, prd)
+		case "effect-rule":
+			rule, err := p.parseSemanticEffectRule(nsID)
+			if err != nil {
+				return ns, err
+			}
+			ns.EffectRules = append(ns.EffectRules, rule)
+		case "run-plan":
+			plan, err := p.parseSemanticRunPlan(nsID)
+			if err != nil {
+				return ns, err
+			}
+			ns.RunPlans = append(ns.RunPlans, plan)
 		default:
-			return ns, p.errAt(t, "expected type, data, capability, or validation")
+			return ns, p.errAt(t, "expected type, data, capability, validation, calendar, period, effect-rule, or run-plan")
 		}
 	}
 	return ns, nil
@@ -2206,8 +2227,22 @@ func (p *Parser) parseSemanticCapability(namespace core.CanonicalID) (semantic.C
 				return c, p.errAt(payloadTok, err.Error())
 			}
 			c.Outcomes = append(c.Outcomes, semantic.Outcome{Name: name, Payload: payload})
+		case "emptyPolicy":
+			if c.EmptyPolicy != "" {
+				return c, p.errAt(t, "capability emptyPolicy is declared more than once")
+			}
+			_, _ = p.next()
+			valueTok, err := p.expect(TokenIdent)
+			if err != nil {
+				return c, err
+			}
+			policy := semantic.EmptyPolicy(valueTok.Text)
+			if !policy.Valid() {
+				return c, p.errAt(valueTok, fmt.Sprintf("unsupported emptyPolicy %q (allowed: allow, requires-evidence, deny)", valueTok.Text))
+			}
+			c.EmptyPolicy = policy
 		default:
-			return c, p.errAt(t, "expected input, output, outcome, or effect")
+			return c, p.errAt(t, "expected input, output, outcome, effect, or emptyPolicy")
 		}
 	}
 	return c, nil
@@ -2450,6 +2485,13 @@ func (p *Parser) parseSemanticPeriod(namespace core.CanonicalID) (semantic.Perio
 				return period, err
 			}
 			period.ClosedRejects = values
+		case "calendar":
+			_, _ = p.next()
+			value, err := p.expectCanonicalReference()
+			if err != nil {
+				return period, err
+			}
+			period.Calendar = value
 		case "close-requires":
 			_, _ = p.next()
 			value, err := p.expectCanonicalReference()
@@ -2467,8 +2509,25 @@ func (p *Parser) parseSemanticPeriod(namespace core.CanonicalID) (semantic.Perio
 				return period, err
 			}
 			period.Correction = value
+		case "closes":
+			_, _ = p.next()
+			if _, err := p.expectText("on"); err != nil {
+				return period, err
+			}
+			if _, err := p.expectText("day"); err != nil {
+				return period, err
+			}
+			dayTok, err := p.expect(TokenIdent)
+			if err != nil {
+				return period, err
+			}
+			day, convErr := strconv.Atoi(dayTok.Text)
+			if convErr != nil {
+				return period, p.errAt(dayTok, "closing day is not a whole number")
+			}
+			period.ClosingDay = day
 		default:
-			return period, p.errAt(t, "expected data, business-date, states, close-requires, closed-rejects, or correction")
+			return period, p.errAt(t, "expected data, business-date, calendar, states, close-requires, closed-rejects, correction, or closes")
 		}
 	}
 	return period, nil
@@ -2493,6 +2552,9 @@ func (p *Parser) readPeriodNames() ([]string, error) {
 	stop := map[string]bool{
 		"data": true, "business-date": true, "states": true,
 		"close-requires": true, "closed-rejects": true, "correction": true,
+		// closes starts the closing-day declaration, so a states list must end
+		// before it; otherwise the day number is read as another state name.
+		"closes": true,
 	}
 	var values []string
 	for {
@@ -2509,4 +2571,179 @@ func (p *Parser) readPeriodNames() ([]string, error) {
 		_, _ = p.next()
 		values = append(values, t.Text)
 	}
+}
+
+func (p *Parser) parseSemanticEffectRule(namespace core.CanonicalID) (semantic.EffectRule, error) {
+	_, _ = p.next() // effect-rule
+	symTok, err := p.expect(TokenIdent)
+	if err != nil {
+		return semantic.EffectRule{}, err
+	}
+	var id core.CanonicalID
+	if strings.Contains(symTok.Text, ".") {
+		id, err = core.ParseCanonicalID(symTok.Text)
+		if err != nil {
+			return semantic.EffectRule{}, p.errAt(symTok, err.Error())
+		}
+		if !strings.HasPrefix(string(id), string(namespace)+".") {
+			id, err = core.ParseCanonicalID(string(namespace) + "." + symTok.Text)
+			if err != nil {
+				return semantic.EffectRule{}, p.errAt(symTok, err.Error())
+			}
+		}
+	} else {
+		seg, err := core.SymbolToSegment(symTok.Text)
+		if err != nil {
+			return semantic.EffectRule{}, p.errAt(symTok, err.Error())
+		}
+		id, _ = core.ParseCanonicalID(string(namespace) + "." + seg)
+	}
+	rule := semantic.EffectRule{ID: id}
+	if _, err := p.expect(TokenLBrace); err != nil {
+		return rule, err
+	}
+	for {
+		t, err := p.peek()
+		if err != nil {
+			return rule, err
+		}
+		if t.Kind == TokenRBrace {
+			_, _ = p.next()
+			break
+		}
+		switch t.Text {
+		case "on":
+			_, _ = p.next()
+			if _, err := p.expectText("capability"); err != nil {
+				return rule, err
+			}
+			value, err := p.expectCanonicalReference()
+			if err != nil {
+				return rule, err
+			}
+			rule.OnCapability = value
+		case "stage":
+			_, _ = p.next()
+			stageTok, err := p.expect(TokenIdent)
+			if err != nil {
+				return rule, err
+			}
+			rule.Stage = stageTok.Text
+		case "effect":
+			_, _ = p.next()
+			kindTok, err := p.expect(TokenIdent)
+			if err != nil {
+				return rule, err
+			}
+			kind := semantic.DataEffectKind(kindTok.Text)
+			if !kind.Valid() {
+				return rule, p.errAt(kindTok, fmt.Sprintf("unsupported data effect kind %q", kindTok.Text))
+			}
+			value, err := p.expectCanonicalReference()
+			if err != nil {
+				return rule, err
+			}
+			rule.EffectKind = kind
+			rule.EffectData = value
+		case "via":
+			_, _ = p.next()
+			if _, err := p.expectText("capability"); err != nil {
+				return rule, err
+			}
+			value, err := p.expectCanonicalReference()
+			if err != nil {
+				return rule, err
+			}
+			rule.ViaCapability = value
+		case "on-failure":
+			_, _ = p.next()
+			valueTok, err := p.expect(TokenIdent)
+			if err != nil {
+				return rule, err
+			}
+			rule.OnFailure = valueTok.Text
+		default:
+			return rule, p.errAt(t, "expected on capability, stage, effect, via capability, or on-failure")
+		}
+	}
+	return rule, nil
+}
+
+func (p *Parser) parseSemanticRunPlan(namespace core.CanonicalID) (semantic.RunPlan, error) {
+	_, _ = p.next() // run-plan
+	symTok, err := p.expect(TokenIdent)
+	if err != nil {
+		return semantic.RunPlan{}, err
+	}
+	id, err := core.ParseCanonicalID(symTok.Text)
+	if err != nil {
+		return semantic.RunPlan{}, p.errAt(symTok, err.Error())
+	}
+	if !strings.HasPrefix(string(id), string(namespace)+".") {
+		id, err = core.ParseCanonicalID(string(namespace) + "." + symTok.Text)
+		if err != nil {
+			return semantic.RunPlan{}, p.errAt(symTok, err.Error())
+		}
+	}
+	plan := semantic.RunPlan{ID: id}
+	if _, err := p.expect(TokenLBrace); err != nil {
+		return plan, err
+	}
+	for {
+		t, err := p.peek()
+		if err != nil {
+			return plan, err
+		}
+		if t.Kind == TokenRBrace {
+			_, _ = p.next()
+			break
+		}
+		switch t.Text {
+		case "operation":
+			_, _ = p.next()
+			value, err := p.expectCanonicalReference()
+			if err != nil {
+				return plan, err
+			}
+			plan.Operations = append(plan.Operations, value)
+		case "key":
+			_, _ = p.next()
+			key, err := p.expectCanonicalReference()
+			if err != nil {
+				return plan, err
+			}
+			plan.Key = append(plan.Key, key)
+		case "concurrency":
+			_, _ = p.next()
+			value, err := p.expect(TokenIdent)
+			if err != nil {
+				return plan, err
+			}
+			plan.Concurrency = value.Text
+		case "resume":
+			_, _ = p.next()
+			value, err := p.expect(TokenIdent)
+			if err != nil {
+				return plan, err
+			}
+			plan.Resume = value.Text
+		case "output":
+			_, _ = p.next()
+			value, err := p.expectCanonicalReference()
+			if err != nil {
+				return plan, err
+			}
+			plan.Outputs = append(plan.Outputs, value)
+		case "autonomy":
+			_, _ = p.next()
+			value, err := p.expect(TokenIdent)
+			if err != nil {
+				return plan, err
+			}
+			plan.Autonomy = value.Text
+		default:
+			return plan, p.errAt(t, "expected operation, key, concurrency, resume, output, or autonomy")
+		}
+	}
+	return plan, nil
 }

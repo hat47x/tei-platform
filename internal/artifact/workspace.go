@@ -48,6 +48,8 @@ func RenderWorkspace(root, applicationID string) (WorkspaceSet, error) {
 	capabilities := make(map[core.CanonicalID]semantic.Capability)
 	validations := make(map[core.CanonicalID]semantic.Validation)
 	periods := make(map[core.CanonicalID]semantic.Period)
+	effectRules := make([]semantic.EffectRule, 0)
+	runPlans := make([]semantic.RunPlan, 0)
 	used := map[core.CanonicalID]bool{}
 	for _, namespace := range target.SemanticUses {
 		used[namespace] = true
@@ -62,6 +64,8 @@ func RenderWorkspace(root, applicationID string) (WorkspaceSet, error) {
 			for _, capability := range namespace.Capabilities {
 				capabilities[capability.ID] = capability
 			}
+			effectRules = append(effectRules, namespace.EffectRules...)
+			runPlans = append(runPlans, namespace.RunPlans...)
 			for _, period := range namespace.Periods {
 				periods[period.ID] = period
 			}
@@ -103,6 +107,8 @@ func RenderWorkspace(root, applicationID string) (WorkspaceSet, error) {
 		Capabilities:  capabilities,
 		Validations:   validations,
 		Periods:       periods,
+		EffectRules:   effectRules,
+		RunPlans:      runPlans,
 	})
 	if err != nil {
 		return WorkspaceSet{}, fmt.Errorf("render function definition %s: %w", target.ID, err)

@@ -10,6 +10,7 @@ import (
 
 	"tei/internal/artifact"
 	"tei/internal/operations"
+	"tei/internal/periodstate"
 )
 
 // runOperationsCommand prints the derived operation surface. Gaps are part of
@@ -124,7 +125,7 @@ func slug(value string) string {
 // runPeriodsCommand reports the operations that may not run because their period
 // is not open. The period state is runtime information: the caller supplies it,
 // and an unspecified period is not treated as closed.
-func runPeriodsCommand(workspacePath, applicationID, statesFlag, stateFile string) error {
+func runPeriodsCommand(workspacePath, applicationID, statesFlag, stateFile, advance string) error {
 	if workspacePath == "" {
 		return fmt.Errorf("periods requires -workspace")
 	}
@@ -133,13 +134,25 @@ func runPeriodsCommand(workspacePath, applicationID, statesFlag, stateFile strin
 		return err
 	}
 	if stateFile != "" {
-		fileStates, err := periodStateFile{path: stateFile}.PeriodStates(context.Background(), applicationID)
+		fileStates, err := periodstate.File{Path: stateFile}.PeriodStates(context.Background(), applicationID)
 		if err != nil {
 			return err
 		}
 		for period, state := range fileStates {
 			states[period] = state
 		}
+	}
+	if advance != "" {
+		next, err := advancePeriod(advance, states[advance], stateFile)
+		if err != nil {
+			return err
+		}
+		if err := (periodstate.Writer{Path: stateFile}).Write(context.Background(), map[string]operations.PeriodState{
+			advance: next,
+		}); err != nil {
+			return err
+		}
+		states[advance] = next
 	}
 	surface, err := operations.SurfaceWorkspace(workspacePath, applicationID)
 	if err != nil {
@@ -158,6 +171,34 @@ func runPeriodsCommand(workspacePath, applicationID, statesFlag, stateFile strin
 		return fmt.Errorf("%d operation(s) are refused by the period state", len(rejections))
 	}
 	return nil
+}
+
+// advancePeriod returns the state one closing step past the current one, or an
+// error when the step cannot be taken.
+//
+// A period absent from the states is treated as open, because an unstated period
+// has never been closed. The write needs a file: a state given only on the command
+// line would be forgotten, and the next run would see the old state and close the
+// period twice.
+func advancePeriod(period string, current operations.PeriodState, stateFile string) (operations.PeriodState, error) {
+	if stateFile == "" {
+		return "", fmt.Errorf("-advance requires -period-state-file, so the new state is kept")
+	}
+	if period == "" {
+		return "", fmt.Errorf("-advance needs a period ID")
+	}
+	if current == "" {
+		current = operations.PeriodOpen
+	}
+	step, ok := operations.CloseStep(current)
+	if !ok {
+		return "", fmt.Errorf("period %s is %s and cannot be closed further", period, current)
+	}
+	next, err := operations.NextState(current, step.To)
+	if err != nil {
+		return "", err
+	}
+	return next, nil
 }
 
 // parsePeriodStates reads "period=state,period=state". An empty flag yields no

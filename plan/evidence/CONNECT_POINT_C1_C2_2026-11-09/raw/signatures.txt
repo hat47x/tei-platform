@@ -1,0 +1,32 @@
+== C-1: routing.Router.Dispatch ==
+90:func (r Router) Dispatch(ctx context.Context, env environment.Environment, cmd executor.Command) (executor.Result, error) {
+91-	routed, err := RouteCommand(env, cmd)
+92-	if err != nil {
+93-		return executor.Result{}, err
+94-	}
+95-	exec, ok := r.Executors[routed.ExecutorID]
+96-	if !ok {
+
+== C-1: what selects the executor ==
+20:func RouteCommand(env environment.Environment, cmd executor.Command) (RoutedCommand, error) {
+21-	type candidate struct {
+22-		binding     environment.DeploymentExecutorBinding
+23-		specificity int
+--
+70:func RouteCommands(env environment.Environment, cmds []executor.Command) ([]RoutedCommand, error) {
+71-	out := make([]RoutedCommand, 0, len(cmds))
+72-	for _, cmd := range cmds {
+73-		r, err := RouteCommand(env, cmd)
+
+== C-2: servicehost.SelectedServiceCarrierInvoker.Invoke ==
+
+== C-2: what the invoker requires ==
+50:func NewSelectedServiceCarrierInvoker(
+51-	coordinator *composition.Coordinator,
+52-	runtime pruntime.Registry,
+53-	routes ServiceCarrierRouteSource,
+54-) (*SelectedServiceCarrierInvoker, error) {
+55-	if coordinator == nil || routes == nil {
+56-		return nil, ErrServiceCarrierGenerationInvalid
+57-	}
+58-	return &SelectedServiceCarrierInvoker{

@@ -266,8 +266,8 @@ func TestBusinessDFDGoProjectionDrivesView(t *testing.T) {
 	if ctx.Err() != nil {
 		t.Fatalf("Go-produced DFD view integration timed out: %v\n%s", ctx.Err(), output)
 	}
-	if err != nil || !strings.Contains(string(output), "# fail 0") ||
-		!strings.Contains(string(output), "# pass 1") {
+	if err != nil || !nodeSummaryHas(output, "fail", 0) ||
+		!nodeSummaryHas(output, "pass", 1) {
 		t.Fatalf("Go-produced DFD view integration failed: %v\n%s", err, output)
 	}
 	t.Logf("Real Go DFD projection exercised by Node DOM view test (no browser Acceptance):\n%s", output)
