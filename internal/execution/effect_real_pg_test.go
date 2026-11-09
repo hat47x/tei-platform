@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
@@ -132,15 +133,98 @@ func (i *rpgInvoker) InvokeCapability(ctx context.Context, applicationID, capabi
 	return driver.CapabilityInvocation{}, err
 }
 
-type rpgQueryer struct{ pool *pgxpool.Pool }
+// rpgPIDs is a concurrency-safe set of PostgreSQL backend pids.
+type rpgPIDs struct {
+	mu   sync.Mutex
+	seen map[int]bool
+}
+
+func (p *rpgPIDs) add(pid int) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.seen == nil {
+		p.seen = map[int]bool{}
+	}
+	p.seen[pid] = true
+}
+
+func (p *rpgPIDs) snapshot() map[int]bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	out := map[int]bool{}
+	for pid := range p.seen {
+		out[pid] = true
+	}
+	return out
+}
+
+// rpgWriteTracer records the backend pid of every session that runs the Owner
+// routine, that is, of the connections the Command actually wrote through.
+type rpgWriteTracer struct{ pids *rpgPIDs }
+
+func (t rpgWriteTracer) TraceQueryStart(ctx context.Context, conn *pgx.Conn, data pgx.TraceQueryStartData) context.Context {
+	if strings.Contains(data.SQL, "apply_owner_effect") {
+		t.pids.add(int(conn.PgConn().PID()))
+	}
+	return ctx
+}
+
+func (rpgWriteTracer) TraceQueryEnd(context.Context, *pgx.Conn, pgx.TraceQueryEndData) {}
+
+// rpgQueryer runs each observer query on one acquired connection and records that
+// connection's pg_backend_pid(), so a test can assert which session the Observer
+// really read through.
+type rpgQueryer struct {
+	pool *pgxpool.Pool
+	pids *rpgPIDs
+}
 
 func (q rpgQueryer) QueryRowContext(ctx context.Context, query string, args ...any) execution.RowScanner {
-	return q.pool.QueryRow(ctx, query, args...)
+	conn, err := q.pool.Acquire(ctx)
+	if err != nil {
+		return rpgErrRow{err}
+	}
+	defer conn.Release()
+	var pid int
+	if err := conn.QueryRow(ctx, "SELECT pg_backend_pid()").Scan(&pid); err != nil {
+		return rpgErrRow{err}
+	}
+	q.pids.add(pid)
+	// Scan the row before the connection goes back to the pool.
+	var count int64
+	if err := conn.QueryRow(ctx, query, args...).Scan(&count); err != nil {
+		return rpgErrRow{err}
+	}
+	return rpgCountRow{count}
+}
+
+type rpgErrRow struct{ err error }
+
+func (r rpgErrRow) Scan(...any) error { return r.err }
+
+type rpgCountRow struct{ count int64 }
+
+func (r rpgCountRow) Scan(dest ...any) error {
+	if len(dest) != 1 {
+		return errors.New("rpgCountRow: one destination expected")
+	}
+	p, ok := dest[0].(*int64)
+	if !ok {
+		return errors.New("rpgCountRow: *int64 expected")
+	}
+	*p = r.count
+	return nil
 }
 
 // rpgObserver is the execution.EffectObserver: it reads the Owner tables over a
 // pool that is separate from the one the Command used. It checks only the rules it
 // has a check for; Covers reports which.
+//
+// The product has no Checks type. "A required check is missing" is modelled here,
+// in the test, by Covers and the coverage precondition below. The product's
+// EffectPreconditions only tests whether the observer is nil, so blocking on a
+// missing check is NOT a product guarantee; this test only shows that RunPlan
+// blocks, and does not run the step, when a precondition reports a reason.
 type rpgObserver struct {
 	inner  execution.SQLEffectObserver
 	checks map[string]rpgRoute
@@ -155,6 +239,8 @@ func (o rpgObserver) Covers(ruleID string) bool { _, ok := o.checks[ruleID]; ret
 type rpgHarness struct {
 	pool         *pgxpool.Pool
 	observerPool *pgxpool.Pool
+	writePIDs    *rpgPIDs // sessions that ran the Command's Owner routine
+	readPIDs     *rpgPIDs // sessions the Observer read through
 	schema       string
 	invoker      *rpgInvoker
 	observer     rpgObserver
@@ -221,7 +307,13 @@ func rpgOpen(t *testing.T) *rpgHarness {
 		t.Skip("実PostgreSQLの検証はTEI_EFFECT_POSTGRES_DSN(またはTEI_TEST_POSTGRES_DSN)がある場合のみ実行。SKIPは証拠にならない")
 	}
 	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, dsn)
+	writePIDs, readPIDs := &rpgPIDs{}, &rpgPIDs{}
+	poolConfig, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	poolConfig.ConnConfig.Tracer = rpgWriteTracer{writePIDs}
+	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -313,7 +405,7 @@ func rpgOpen(t *testing.T) *rpgHarness {
 	}
 
 	h := &rpgHarness{
-		pool: pool, observerPool: observerPool, schema: schema,
+		pool: pool, observerPool: observerPool, schema: schema, writePIDs: writePIDs, readPIDs: readPIDs,
 		effects:     effectlog.File{Path: filepath.Join(t.TempDir(), "effects.jsonl")},
 		runs:        runlog.File{Path: filepath.Join(t.TempDir(), "runs.jsonl")},
 		rules:       rpgRules(),
@@ -362,7 +454,7 @@ func rpgOpen(t *testing.T) *rpgHarness {
 	}
 	h.observer = rpgObserver{checks: checks}
 	h.observer.inner = execution.SQLEffectObserver{
-		Queryer: rpgQueryer{observerPool},
+		Queryer: rpgQueryer{observerPool, readPIDs},
 		Query: "SELECT count(*) FROM " + schema + ".history h JOIN " + schema + ".receipts rc ON rc.operation_id=h.operation_id " +
 			"WHERE h.operation_id=$1::text AND h.kind=$2::text AND rc.resource=$3::text AND CASE $2::text " +
 			"WHEN 'reserve' THEN EXISTS (SELECT 1 FROM " + schema + ".reservations r WHERE r.resource=$3::text AND r.units=$4::int) " +
@@ -377,6 +469,22 @@ func rpgOpen(t *testing.T) *rpgHarness {
 		},
 	}
 	return h
+}
+
+// assertObserverIndependent requires that the Observer ran queries, that the
+// Command wrote, and that no session served both: the Observer's reads did not go
+// through a connection the Command used.
+func (h *rpgHarness) assertObserverIndependent(t *testing.T) {
+	t.Helper()
+	reads, writes := h.readPIDs.snapshot(), h.writePIDs.snapshot()
+	if len(reads) == 0 || len(writes) == 0 {
+		t.Fatalf("no sessions were recorded: observer=%v command=%v", reads, writes)
+	}
+	for pid := range reads {
+		if writes[pid] {
+			t.Fatalf("the Observer read through backend %d, which the Command wrote through (observer=%v command=%v)", pid, reads, writes)
+		}
+	}
 }
 
 func (h *rpgHarness) count(t *testing.T, query string, args ...any) int {
@@ -438,6 +546,17 @@ func (h *rpgHarness) reconcile(t *testing.T, records []effectlog.Record) {
 		}
 		if record.Observed && !record.Succeeded {
 			t.Errorf("an effect that did not succeed cannot be observed: %+v", record)
+		}
+		// Observed is also checked against the data, not only against Succeeded.
+		// A Succeeded effect recorded as not observed must really be absent now: the
+		// same read, made over the primary pool, finds nothing. (The reverse is not
+		// asserted here because a later compensation legitimately removes an effect
+		// that was observed when it was recorded.)
+		if record.Succeeded && !record.Observed {
+			args := []any{route.operation, route.kind, route.resource, int32(route.units)}
+			if got := h.count(t, h.observer.inner.Query, args...); got != 0 {
+				t.Errorf("%s is recorded as not observed but the data shows the effect (%d row)", record.RuleID, got)
+			}
 		}
 		if record.Succeeded {
 			succeeded = append(succeeded, route.operation)
@@ -592,6 +711,7 @@ func TestRealPGEffectSucceededAndIndependentObservedAreRecordedSeparately(t *tes
 		t.Fatalf("the journal lost the separation: %+v", records)
 	}
 	h.reconcile(t, records)
+	h.assertObserverIndependent(t)
 }
 
 // A later step fails: the compensations run in declared order, one of them fails
@@ -659,6 +779,7 @@ func TestRealPGLaterStepFailureCompensatesInDeclaredOrderAndRecordsCompensationF
 	if a, b, c := h.version(t, "order-a"), h.version(t, "order-b"), h.version(t, "order-c"); a != 2 || b != 1 || c != 0 {
 		t.Fatalf("resource versions a=%d b=%d c=%d want 2/1/0", a, b, c)
 	}
+	h.assertObserverIndependent(t)
 }
 
 // An unattended run stops as blocked, not failed, when no observer is given or
