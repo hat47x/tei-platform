@@ -661,3 +661,35 @@ SHO Composerの並行Draftは、TEIのSource-safe逆編集に直接役立つ負�
 - **Self-build/Runtime**：生成用Plan・Build Receipt・実Artifact・選択Plugin・実Target Invocationと、現在のRead-only Model Projectionを独立に管理。新たなGraph Engine/Host/Registry/Acceptance Ledgerを追加しない。
 
 **次の最短作業**：上記三点の実Go試験をexact HEADで通す → #3518の型付きMap `contains/refers-to`と同じ3 Subjectで一致試験（main採用後）→ **1本のRelation ID＋Source Refを欠落せずM2 Headless Graphへ出す**。その際、Sourceで同型Relationが2本あることと、`modelref.Edge`のID不足による逆編集不可は独立の制約。Function×Data CRUD MatrixのActual Source/Unknownセルは同Graphの完成と同時に保証されたことにしない。
+
+## 28. Source Locatorの実Byte資格と意味・編集資格の分離（2026-11-09）
+
+### 28.1 既存CLI/ModelerのSource Indexを実FileのByteへつなぐ
+
+§25–27で`operations.InspectSubject`／`CatalogWorkspace`／`TraceSubjectSources`を使用し、実Query `order_entry.recent_orders` と実Relation `sales.order.lines`、さらに親Dataと参照先DataのCanonical ID・Source参照を取得できることを検証した。直前のPR HEAD `3081fb3189209e59a95e7efa50bbe1e380d6d4e3`は、[Repository Health #42604971069](https://github.com/hat47x/tei-platform/actions/runs/42604971069)・[脆弱性確認 #42604971086](https://github.com/hat47x/tei-platform/actions/runs/42604971086)とも**completed/success**。これは実Loader/Readerの限定的なSource入場を裏付けるが、Source Locatorの指す**現在の実File Byteを独立に検査した実証**とは別である。
+
+今回、[同一Goテストファイル](../../reference/diagram-crossref/real_workspace_admission_test.go)へ`TestRealWorkspaceIndexedSourceRangeAndByteFingerprint`を追加。既存の`sourceindex.Index.Validate`、`sourceindex.NormalizeWorkspacePath`、`sourceindex.Range.Validate`と**チェックアウト済みの実Source File Byte**を利用し、QueryとRelationの二つのSubjectについて次を照合する。
+
+| 反証 / 検査 | 保証できる最小条件 | これだけでは保証できないこと |
+| --- | --- | --- |
+| SL-01 Current bytes | Subjectから見つかったArtifactの相対Pathが正規化済みで、対象Fileの現在byte fingerprintが既存Source Indexと一致する | 別ファイル・外部Provider rawの閉包／Read AttemptのOS上原子的同時点 |
+| SL-02 Locator span | 全ReferenceのSubject ID・Artifact Pathが要求と結び、Offset・Line・Columnが現Byteで妥当 | Spanが本当に同じ業務意味を持つ、Ownerの受理 |
+| SL-03 Source-only変化 | Reference Rangeが収まる程度の末尾1 byteの追加でも、古いArtifact Fingerprintでは`Index.Validate`を拒否 | 過去のA→B→A履歴、Provider Import済み原文の現在性 |
+| SL-04 Span破損 | End Offsetを現在File長外へ変更すると、Fingerprintが同じでも`Range.Validate`を拒否 | Editor上のUTF-16/Unicode位置、dirty buffer、現在のEdit Grant |
+| SL-05 Consumer制約 | Source側の`Role/Scope/Artifact`と図上のSemantic Subject/Relation IDを結合し、UI Navigationの可否を別に判定 | SourceへPatch可能、Inspector Plugin実Call、SQL/DB Read、SHO Writer保存 |
+
+このテストは**登録済みの信頼された`reference/workspace`の実Fileのみ**を読み、`NormalizeWorkspacePath`をOS symlink隔離/Host許可の代用としない。Runtimeの権限検査・External Provider rawのsame-load witnessは別Owner（#3524/#3479）を使用する。範囲が現在のByteに一致しても、同型Relationの`Edge ID`を`modelref.Edge`に自動補完しない。またArtifact全体Fingerprintは現在のSource残存性を示すが、意味を受け入れたモデルのRevision/Source移管/Operation Grantとは別である。
+
+### 28.2 他チャットの最新進展との接合順
+
+- **RQ-036／Model Map [Draft #3518](https://github.com/hat47x/tei-platform/pull/3518)**：`MapWorld/MapWorkspace`の型付き`contains/refers-to`はM0 Producer候補。実Source側の`Query/Relation/Parent/Target + SourceRef + Byte Witness`を比較元とし、同じArtifactの別View OccurrenceでもSourceを二重登録しない。M0がmainへ統合される前に第二Model Map APIを作らない。
+- **Function Data Context [#2586](https://github.com/hat47x/tei-platform/issues/2586)、[Draft #3500](https://github.com/hat47x/tei-platform/pull/3500)**：FunctionのRequired Data/Relation/粒度/時点/取得条件と、実Query/SQL/Provider/Rowset/Result Sliceを別に束縛する。今回のSL-01〜04は`CRUD R`、現在DBの内容、Provider actual invocationを検収しない。
+- **Plugin-first Inspector [main #3540](https://github.com/hat47x/tei-platform/pull/3540)**：通常CLI・Studio Hostで選択した静的Reference Inspectorを呼ぶ経路は統合済み。ただし今回の`operations.InspectSubject`は組込み関数の呼出しであり、選択Plugin/Verified BOM/Principal Grant/外部Provider一致はこのTestから認定しない。
+- **SHO Composer**：UTF-16 Editor Selection→UTF-8 Byte Span、Working Copy/Save As/Relative Link、読取りAssetの現在Sourceの検収を、TEI図上選択とは独立のDocument Scopeで扱う。Source変更がなければ文書作業のRevisionを暗黙更新しない。TEIが利用するReader/Byte Spanの不変条件を共有してもWriter/Ownerを統合しない。
+- **最新mainの実証管理**：以前の成功したRepository Healthと、この新Testを含むコミットのHealth/PR mergeabilityを混同しない。mainの共通Plan/Source Reader/CLI/MCPの変更をこの小PRへ再実装しない。新規のGo testが実行されたHEADの結果を確認するまではSL-01〜04は**テストコードを追加した段階**にとどめる。
+
+### 28.3 次のM2で必ず保持する情報
+
+`P0-M`の最初のHeadless Diagramは、同じSourceで解決された`semantic-data(Parent)`→`semantic-relation(ID)`→`semantic-data(Target)`を、**Qualified Identity、Role、Source artifact fingerprint、Reference Range、World/Index Revision、Required Scope/Partial性**とともに追跡できることを優先する。別Canvasへ複数配置してもSubject/Relation IDの正本は一つ、描画Occurrenceは複数とする。`modelref.Edge`で固有Relation IDの復元ができない場合はread-only Navigationを許容し、図上Selectionからの逆Patchを不許可とする。`CRUD`はFunction宣言の既知セルを出典へ結び、未取得セルをUnknownのまま維持する。
+
+新しいAccepted Ledger／Graph Schema／Source Index／Host／MCPだけのDiagram Interpreter／Runtime Engineを追加しない。既存#1124/#2497/#3262/#2514のOwnerへ最小Source-correct Consumerの検収を引き渡す。
