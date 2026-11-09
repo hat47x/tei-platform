@@ -19,12 +19,22 @@ import (
 
 func e19Git(t *testing.T, root string, args ...string) []byte {
 	t.Helper()
-	cmd := exec.Command("git", append([]string{"-C", root}, args...)...)
+	cmd := exec.Command("git", e19GitArgs(root, args...)...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("git %v: %v: %s", args, err, out)
 	}
 	return out
+}
+
+// e19GitArgs disables line-ending rewriting for this call. The test compares a
+// worktree file with the Git object byte for byte, and a host configuration
+// with core.autocrlf=true (common on Windows) would rewrite the checked-out
+// file, so the comparison would fail as an environment artifact rather than as
+// a Source change.
+func e19GitArgs(root string, args ...string) []string {
+	base := []string{"-C", root, "-c", "core.autocrlf=false", "-c", "core.eol=lf"}
+	return append(base, args...)
 }
 
 func e19Commit(t *testing.T, root, message string) string {

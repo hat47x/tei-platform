@@ -55,7 +55,7 @@ func TestCLIProcessJSONContract(t *testing.T) {
 	}
 
 	root := t.TempDir()
-	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: cli_contract\nsources:\n  - semantic\n")
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: cli_contract\nformatVersion: 1\nsources:\n  - semantic\n")
 	writeWorkspaceFile(t, root, "semantic/sales/empty.tei", "namespace sales\n")
 	if got := string(run(0, "validate", "-workspace", root)); got != "ok\n" {
 		t.Fatalf("text output compatibility: %q", got)
@@ -111,8 +111,10 @@ func TestCLIProcessJSONContract(t *testing.T) {
 	if err := json.Unmarshal(run(2, "inspect", "-workspace", reference, "-subject-kind", "semantic-data"), &invalidInspect); err != nil {
 		t.Fatalf("inspect invalid argument not JSON: %v", err)
 	}
-	if invalidInspect.OK || invalidInspect.Error == nil || invalidInspect.Error.Code != "INVALID_SUBJECT" {
-		t.Fatalf("wrong inspect invalid argument result: %+v", invalidInspect)
+	// A missing flag is an argument problem, not an unusable subject value;
+	// every command answers it with INVALID_ARGUMENT (#3733).
+	if invalidInspect.OK || invalidInspect.Error == nil || invalidInspect.Error.Code != "INVALID_ARGUMENT" {
+		t.Fatalf("wrong inspect missing-flag result: %+v", invalidInspect)
 	}
 
 	// Malformed and unrelated flags must use one JSON envelope, without the
@@ -214,7 +216,7 @@ func TestCLIProcessJSONContract(t *testing.T) {
 
 func TestValidateJSONDoesNotDependOnOutputFile(t *testing.T) {
 	root := t.TempDir()
-	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: cli_contract\nsources:\n  - semantic\n")
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: cli_contract\nformatVersion: 1\nsources:\n  - semantic\n")
 	writeWorkspaceFile(t, root, "semantic/sales/empty.tei", "namespace sales\n")
 	var result bytes.Buffer
 	code, err := validateWorkspaceJSON(&result, root)

@@ -1,0 +1,85 @@
+name: Macro M0 actual TEI CLI reference
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'plan/fixtures/macro-m0/**'
+      - '.github/workflows/macro-m0-reference.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# 同じPRの古い実行だけを取り消し、mainへのpushは取り消さない（#3682）。
+concurrency:
+  group: tei-macro-m0-reference-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  tests-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ env.EXPECTED_HEAD }}
+
+      - name: Run isolated M0 checker cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          python3 -B plan/fixtures/macro-m0/test_verify_cli.py
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+
+  observed-macro-m0-cli:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+      PYTHONDONTWRITEBYTECODE: '1'
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ env.EXPECTED_HEAD }}
+
+      - name: Set up Go from checked module
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      - name: Build actual TEI outside checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          go build -o "$RUNNER_TEMP/tei" ./cmd/tei
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          echo "macro-m0-candidate-head=$EXPECTED_HEAD"
+          echo "macro-m0-checker-blob=$(git rev-parse HEAD:plan/fixtures/macro-m0/verify_cli.py)"
+
+      - name: Inspect operations, gaps, artifacts and input revisions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -B plan/fixtures/macro-m0/verify_cli.py \
+            --binary "$RUNNER_TEMP/tei" \
+            --workspace reference/standard-crud/workspace \
+            --expected-head "$EXPECTED_HEAD"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"

@@ -14,9 +14,35 @@ import (
 // subjects continue to use the loader's legacy point location until their
 // parser anchors are introduced.
 func BuildSourceIndex(root string, result Result) (sourceindex.Index, error) {
+	return buildSourceIndex(root, result, false)
+}
+
+// BuildSourceIndexFromLoad builds the Source Index only from bytes captured by
+// Load: the parsed-file snapshot plus the Load-time capture of managed files
+// that no loader parsed. It never reads the filesystem; a path outside both
+// is an error, as is a Result without a Load snapshot or from another root.
+//
+// Identity is bound to Load-time bytes for managed files of this Workspace.
+// This is NOT an atomic multi-file snapshot (scan, domain reads and the extra
+// capture happen at different moments), does not detect files that never
+// entered ManagedFiles, does not cover imported Workspaces, and adds no
+// authority. It also refuses (ErrImportsNotBound) a Workspace that declares
+// imports, and it does not bind the workspace manifest: see
+// Result.ManifestIdentity.
+func BuildSourceIndexFromLoad(root string, result Result) (sourceindex.Index, error) {
+	return buildSourceIndex(root, result, true)
+}
+
+func buildSourceIndex(root string, result Result, strict bool) (sourceindex.Index, error) {
 	rootReal, err := canonicalWorkspaceRoot(root)
 	if err != nil {
 		return sourceindex.Index{}, err
+	}
+	if strict && (result.sourceSnapshot == nil || result.sourceManagedExtra == nil) {
+		return sourceindex.Index{}, fmt.Errorf("Result has no Load-time source bytes; it was not produced by Load")
+	}
+	if strict && (result.sourceImportsDeclared || len(result.Imports) > 0) {
+		return sourceindex.Index{}, ErrImportsNotBound
 	}
 	if result.sourceSnapshot != nil && result.sourceSnapshotRoot != rootReal {
 		return sourceindex.Index{}, fmt.Errorf("loaded source snapshot belongs to another Workspace")
@@ -45,9 +71,22 @@ func BuildSourceIndex(root string, result Result) (sourceindex.Index, error) {
 			contents[p] = snapshot
 			return snapshot, nil
 		}
-		// Standalone Results and unparsed managed assets use a traversal-
-		// resistant rooted open per read. This is NOT a pinned multi-file
-		// Workspace snapshot, unlike the bytes retained by Load.
+		// Managed files that no domain loader parsed are still captured at
+		// Load through the same pinned Root. Use those bytes so Source Index
+		// does not re-read the filesystem after Load. They are deliberately
+		// not exposed by IndexedLoadedSnapshot, which attests parsed bytes.
+		if extra, ok := result.sourceManagedExtra[p]; ok {
+			contents[p] = extra
+			return extra, nil
+		}
+		if strict {
+			// BuildSourceIndexFromLoad never falls back to the filesystem: a path
+			// outside the Load-time bytes is an error, not a re-read.
+			return nil, fmt.Errorf("source %q is not covered by the Load-time bytes", p)
+		}
+		// Standalone Results and intentionally partial snapshots use a
+		// traversal-resistant rooted open per read. This is NOT a pinned
+		// multi-file Workspace snapshot, unlike the bytes retained by Load.
 		content, err := readWorkspaceFile(rootReal, p)
 		if err != nil {
 			return nil, err

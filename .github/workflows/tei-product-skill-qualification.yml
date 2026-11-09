@@ -1,0 +1,89 @@
+name: TEI Product Skill bounded qualification
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/tei-product-skill-qualification.yml"
+      - "skills/yi-tei-modeling/**"
+      - "plan/design/TEI_PRODUCT_SKILL_HARNESS_BINDING_2026-11.md"
+      - "cmd/tei/cli_contract.go"
+      - "cmd/tei/main.go"
+  push:
+    branches:
+      - "docs/tei-portable-modeling-skill-*"
+  workflow_dispatch:
+
+env:
+  PYTHONDONTWRITEBYTECODE: "1"
+
+permissions:
+  contents: read
+
+# 同じPRの古い実行だけを取り消し、mainへのpushは取り消さない（#3682）。
+concurrency:
+  group: tei-tei-product-skill-qualification-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  product-skill-read-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Test the Product Skill static checker against negative fixtures
+        run: python3 -m unittest discover -s skills/yi-tei-modeling/tests -p 'test_*.py' -v
+      - name: Verify actual checkout docs against CLI declarations
+        run: python3 skills/yi-tei-modeling/verify_skill.py
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Build and bind one exact read-only TEI executable
+        run: go build -o "$RUNNER_TEMP/tei" ./cmd/tei
+      - name: Run existing read-only commands on one reference workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          cli="$RUNNER_TEMP/tei"
+          printf "checkout=%s\\n" "$(git rev-parse HEAD)"
+          go version
+          sha256sum "$cli"
+          workspace="reference/workspace"
+          "$cli" commands > "$RUNNER_TEMP/commands.json"
+          "$cli" model catalog -workspace "$workspace" > "$RUNNER_TEMP/catalog.json"
+          "$cli" inspect -workspace "$workspace" -subject-kind semantic-data -subject-id sales.order > "$RUNNER_TEMP/inspect.json"
+          "$cli" trace -workspace "$workspace" -scope reference-observation -subject-kind semantic-relation -subject-id sales.order.customer -direction both -mode summary > "$RUNNER_TEMP/trace.json"
+          "$cli" validate -workspace "$workspace" -json > "$RUNNER_TEMP/validate.json"
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          root = Path(os.environ["RUNNER_TEMP"])
+          reports = {}
+          for name in ("commands", "catalog", "inspect", "trace", "validate"):
+              obj = json.loads((root / (name + ".json")).read_text())
+              assert isinstance(obj, dict), (name, "not a JSON object")
+              reports[name] = obj
+          assert reports["commands"].get("scope") == "selected-read-only-commands"
+          for name in ("catalog", "inspect", "trace", "validate"):
+              assert reports[name].get("ok") is True, (name, "not-ok", reports[name].get("error"))
+          assert reports["catalog"].get("schemaVersion") == "tei.cli.model/v0"
+          assert reports["inspect"].get("schemaVersion") == "tei.cli.inspect/v0"
+          assert reports["trace"].get("schemaVersion") == "tei.cli.trace/v0"
+          projected = {name: reports[name]["result"] for name in ("catalog", "inspect", "trace")}
+          entries = projected["catalog"]["entries"]
+          assert any(e.get("subject") == {"kind":"semantic-data","id":"sales.order"} and
+                     not e.get("ambiguous", False) for e in entries), "subject absent/ambiguous in catalog"
+          assert projected["inspect"]["subject"] == {"kind":"semantic-data","id":"sales.order"}
+          wanted = ("worldFingerprint", "sourceIndexFingerprint")
+          # Model/inspect/trace carry fingerprints inside result; validate uses top-level.
+          for key in wanted:
+              values = {name: obj.get(key) for name, obj in projected.items()}
+              values["validate"] = reports["validate"].get(key)
+              assert all(isinstance(v, str) and v for v in values.values()), (key, "missing", values)
+              assert len(set(values.values())) == 1, (key, "mismatched same-workspace observations", values)
+          print("PASS: commands/catalog/inspect/trace/validate bounded read-only smoke (single built executable)")
+          print("Validation diagnostics retained:", len(reports["validate"].get("diagnostics", [])))
+          print("Bounded scope: no Skill install, external Harness, Host grant, source mutation or business acceptance")
+          PY

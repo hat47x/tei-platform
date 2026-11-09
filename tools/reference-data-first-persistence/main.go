@@ -33,7 +33,9 @@ import (
 	"tei/internal/driver/queryresult"
 	postgresquery "tei/internal/driver/queryruntime/postgres"
 	"tei/internal/environment"
+	"tei/internal/execution"
 	"tei/internal/ir"
+	"tei/internal/operations"
 	"tei/internal/realization"
 	"tei/internal/semantic/capabilityinvoke"
 	"tei/internal/validation"
@@ -602,8 +604,29 @@ type gateResult struct {
 // submitIfReadyは、実行前の段階がすべてresolvedのときだけDriver経由でCommandを実行する。
 // 一つでも未解決・未対応があれば、adapterを呼ばずに拒否する。
 func submitIfReady(ctx context.Context, resolver driver.Resolver, preflight []stageResult, adapters *adapterSet, in submission) gateResult {
+	return submitIfReadyGuarded(ctx, resolver, preflight, adapters, in, execution.PeriodGuard{})
+}
+
+// submitIfReadyGuarded adds the period guard to the preflight decision. A
+// refusal is reported as an unresolved stage, the same shape the tool already
+// uses for a preflight that is not ready, so a caller does not need a second
+// error path. An empty guard keeps the previous behaviour.
+func submitIfReadyGuarded(ctx context.Context, resolver driver.Resolver, preflight []stageResult, adapters *adapterSet, in submission, guard execution.PeriodGuard) gateResult {
 	if !allResolved(preflight) {
 		return gateResult{Refused: true, Reasons: unresolvedStages(preflight)}
+	}
+	if guard.Source != nil {
+		rejection, refused, err := operations.GuardCapabilityWith(ctx, guard.Source, guard.Surface, string(applicationID), capabilityID)
+		if err != nil {
+			return gateResult{Err: err}
+		}
+		if refused {
+			return gateResult{Refused: true, Reasons: []stageResult{{
+				Stage:  "period",
+				Status: stageUnresolved,
+				Detail: rejection.Detail,
+			}}}
+		}
 	}
 	invocation, err := resolver.InvokeCapability(ctx, applicationID, capabilityID, adapters, in)
 	if err != nil {

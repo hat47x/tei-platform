@@ -3,51 +3,22 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
-	"sort"
-	"strings"
 
 	"tei/internal/operations"
-	"tei/internal/sourceindex"
-	"tei/internal/validation"
 )
 
-// cliValidationReport is a projection for automation, not a second semantic
-// validation model or a grant of authority to modify accepted source.
-//
-// worldFingerprint and sourceIndexFingerprint are present only when the
-// Workspace was loaded and indexed (ok=true or semantic findings). They are
-// omitted for syntax findings and execution failures, where no version exists.
-// They equal the values from inspect and model catalog for the same files, and
-// are evidence of the read version, not of correctness. Fields were added to
-// tei.cli.validate/v0; existing readers that ignore unknown fields are unaffected.
-type cliValidationReport struct {
-	SchemaVersion          string                `json:"schemaVersion"`
-	OK                     bool                  `json:"ok"`
-	Diagnostics            []cliValidationItem   `json:"diagnostics"`
-	WorldFingerprint       string                `json:"worldFingerprint,omitempty"`
-	SourceIndexFingerprint string                `json:"sourceIndexFingerprint,omitempty"`
-	Error                  *cliValidationFailure `json:"error,omitempty"`
-}
+// cliValidationReport is the document `validate -workspace ... -json` writes.
+// The type lives in internal/operations so the read-only MCP adapter writes
+// the same document instead of reshaping the operation result (#3420).
+type cliValidationReport = operations.WorkspaceValidationReport
 
 // Source locations never synthesize an empty Semantic Subject for parse errors.
-type cliValidationItem struct {
-	Diagnostic validation.Diagnostic `json:"diagnostic"`
-	Sources    []cliValidationSource `json:"sources,omitempty"`
-}
+type cliValidationItem = operations.WorkspaceValidationItem
 
-type cliValidationSource struct {
-	ArtifactPath string               `json:"artifactPath"`
-	Range        sourceindex.Range    `json:"range"`
-	Role         sourceindex.Role     `json:"role,omitempty"`
-	Subject      *sourceindex.Subject `json:"subject,omitempty"`
-}
+type cliValidationSource = operations.WorkspaceValidationSource
 
-type cliValidationFailure struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
-}
+type cliValidationFailure = operations.ValidationReportFailure
 
 // invalidJSONValidationArguments keeps an opt-in JSON response machine-readable
 // even when mutually exclusive or missing input flags are supplied.
@@ -78,10 +49,6 @@ func invalidJSONValidationParse(out io.Writer, cause error) (int, error) {
 // validateWorkspaceJSON preserves the existing text command and exit codes:
 // 0 = validated, 1 = validation findings, 2 = load/index failure.
 func validateWorkspaceJSON(out io.Writer, root string) (int, error) {
-	report := cliValidationReport{
-		SchemaVersion: "tei.cli.validate/v0",
-		Diagnostics:   []cliValidationItem{},
-	}
 	result, err := operations.ValidateWorkspace(root)
 	if err != nil {
 		code := "WORKSPACE_VALIDATION_FAILED"
@@ -94,72 +61,22 @@ func validateWorkspaceJSON(out io.Writer, root string) (int, error) {
 				code = "SOURCE_INDEX_FAILED"
 			}
 		}
-		report.Error = &cliValidationFailure{Code: code, Message: err.Error()}
-		return writeValidationReport(out, report, 2)
+		return writeValidationReport(out, cliValidationReport{
+			SchemaVersion: operations.ValidationSchemaVersion,
+			Diagnostics:   []cliValidationItem{},
+			Error:         &cliValidationFailure{Code: code, Message: err.Error()},
+		}, 2)
 	}
+	// One projection of the operation result, shared with the MCP adapter, so
+	// both transports answer the same document (#3420).
+	report := operations.WorkspaceValidationReportFrom(result)
 	if result.Direct != nil {
-		report.Diagnostics = append(report.Diagnostics, cliValidationItem{
-			Diagnostic: validation.Diagnostic{
-				Code: result.Direct.Code, Severity: result.Direct.Severity, Message: result.Direct.Message,
-			},
-			Sources: []cliValidationSource{{
-				ArtifactPath: result.Direct.Source.ArtifactPath,
-				Range:        result.Direct.Source.Range,
-			}},
-		})
 		return writeValidationReport(out, report, 1)
-	}
-	report.WorldFingerprint = result.WorldFingerprint
-	report.SourceIndexFingerprint = result.SourceIndexFingerprint
-	for _, projected := range result.Diagnostics {
-		item := cliValidationItem{Diagnostic: projected.Diagnostic}
-		for _, ref := range projected.Sources {
-			source := cliValidationSource{
-				ArtifactPath: ref.ArtifactPath,
-				Range:        ref.Range,
-				Role:         ref.Role,
-			}
-			if projected.Diagnostic.Code == "DUPLICATE_SEMANTIC_ELEMENT" {
-				subject := ref.Subject
-				source.Subject = &subject
-			}
-			item.Sources = append(item.Sources, source)
-		}
-		report.Diagnostics = append(report.Diagnostics, item)
-	}
-	// A stable order makes CLI results usable in repeatable LLM/tool workflows.
-	sort.Slice(report.Diagnostics, func(i, j int) bool {
-		return cliDiagnosticSortKey(report.Diagnostics[i]) < cliDiagnosticSortKey(report.Diagnostics[j])
-	})
-	report.OK = true
-	for _, item := range report.Diagnostics {
-		if item.Diagnostic.Severity == validation.Error {
-			report.OK = false
-			break
-		}
 	}
 	if !report.OK {
 		return writeValidationReport(out, report, 1)
 	}
 	return writeValidationReport(out, report, 0)
-}
-
-func cliDiagnosticSortKey(item cliValidationItem) string {
-	d := item.Diagnostic
-	// Length-prefixed fields avoid ambiguous concatenations.
-	fields := []string{string(d.Severity), d.Code, d.Message}
-	if d.Subject != nil {
-		fields = append(fields, d.Subject.Kind, d.Subject.ID)
-	}
-	for _, s := range item.Sources {
-		fields = append(fields, s.ArtifactPath,
-			fmt.Sprintf("%012d:%012d", s.Range.Start.Line, s.Range.Start.Column),
-			string(s.Role))
-	}
-	for i, field := range fields {
-		fields[i] = fmt.Sprintf("%d:%s", len(field), field)
-	}
-	return strings.Join(fields, "|")
 }
 
 func writeValidationReport(out io.Writer, report cliValidationReport, code int) (int, error) {

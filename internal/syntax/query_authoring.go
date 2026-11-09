@@ -47,6 +47,25 @@ func (p *Parser) ParseQueryAuthoring(owner core.CanonicalID) (QueryAuthoring, er
 			break
 		}
 		switch t.Text {
+		case "input":
+			_, _ = p.next()
+			nameTok, err := p.expect(TokenIdent)
+			if err != nil {
+				return out, err
+			}
+			name, err := core.ParseLocalName(nameTok.Text)
+			if err != nil {
+				return out, p.errAt(nameTok, err.Error())
+			}
+			typeTok, err := p.expect(TokenIdent)
+			if err != nil {
+				return out, err
+			}
+			typ, err := core.ParseCanonicalID(typeTok.Text)
+			if err != nil {
+				return out, p.errAt(typeTok, err.Error())
+			}
+			out.Value.Inputs = append(out.Value.Inputs, query.Input{Name: name, Type: typ})
 		case "datasource":
 			_, _ = p.next()
 			v, err := p.expect(TokenIdent)

@@ -1,10 +1,11 @@
 package workspace_test
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -143,13 +144,18 @@ func TestNativeSQLMoveChangesOnlyAuthoringLocator(t *testing.T) {
 
 func TestNativeSQLRejectsUnsafeOrInvalidPaths(t *testing.T) {
 	tests := []struct {
-		name      string
-		ref       string
-		prepare   func(t *testing.T, root, queryDir string)
-		wantError string
+		name         string
+		ref          string
+		prepare      func(t *testing.T, root, queryDir string)
+		wantError    string
+		wantNotExist bool
 	}{
 		{name: "workspace escape", ref: "../../../../outside.sql", wantError: "escapes the Workspace"},
-		{name: "missing", ref: "missing.sql", wantError: "no such file"},
+		// The OS error text for a missing file differs (Windows says "The
+		// system cannot find the file specified"). Assert the portable
+		// classification instead of the message, so the rejection contract
+		// is checked on every platform.
+		{name: "missing", ref: "missing.sql", wantNotExist: true},
 		{
 			name: "directory",
 			ref:  "directory.sql",
@@ -183,6 +189,12 @@ func TestNativeSQLRejectsUnsafeOrInvalidPaths(t *testing.T) {
 				tt.prepare(t, root, queryDir)
 			}
 			_, err := workspace.Load(root)
+			if tt.wantNotExist {
+				if !errors.Is(err, fs.ErrNotExist) {
+					t.Fatalf("error=%v want a not-exist classification", err)
+				}
+				return
+			}
 			if err == nil || !strings.Contains(strings.ToLower(err.Error()), strings.ToLower(tt.wantError)) {
 				t.Fatalf("error=%v want substring %q", err, tt.wantError)
 			}
@@ -191,9 +203,7 @@ func TestNativeSQLRejectsUnsafeOrInvalidPaths(t *testing.T) {
 }
 
 func TestNativeSQLRejectsSymlinkThatEscapesWorkspace(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("symlink permissions vary on Windows")
-	}
+
 	root := newQueryWorkspace(t, `query order_entry.recent_orders {
     datasource sales
     sql postgres file "outside.sql"
@@ -216,7 +226,7 @@ func TestNativeSQLRejectsSymlinkThatEscapesWorkspace(t *testing.T) {
 func newQueryWorkspace(t *testing.T, queryDeclaration, sqlFile, sqlContent string) string {
 	t.Helper()
 	root := t.TempDir()
-	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace:\n  sources:\n    - applications\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace:\nformatVersion: 1\n  sources:\n    - applications\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	unit := filepath.Join(root, "applications", "order-entry")

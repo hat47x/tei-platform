@@ -1,0 +1,246 @@
+# TEI Everything is Data — 最小Bootstrap・Role解釈循環・利用資格の接続計画（2026-11-02）
+
+**状態：横断設計候補／実TEI Core・DSL・Role Resolverへの採用前。** 本計画の設計上の中心は、標準データ構造でRole/Operator/構文Plugin自身を記述可能にしながら、**その自己記述を初めて読むための有限な解釈の根**を明示し、循環と未決、実行資格の区別を機械検査できるようにすること。
+
+- **横断Owner**：[Everything is Data #2619](https://github.com/hat47x/tei-platform/issues/2619)、[標準構造・意味Role #2620](https://github.com/hat47x/tei-platform/issues/2620)。
+- **実装Owner**：[DSL Language/Operator Plugin #988](https://github.com/hat47x/tei-platform/issues/988)、[Plugin/Service Contract #951](https://github.com/hat47x/tei-platform/issues/951)、既存Semantic Extension Lock／Source/Accepted Meaning。独立のParser Registry・Extension Resolver・実行Hostを新設しない。
+- **Consumer**：[Markdown/Source #2621](https://github.com/hat47x/tei-platform/issues/2621)、[Facet/Law #2544](https://github.com/hat47x/tei-platform/issues/2544)、[Product Skill #2605](https://github.com/hat47x/tei-platform/issues/2605)、[将来Skill #2614](https://github.com/hat47x/tei-platform/issues/2614)、[構造保存 #2497](https://github.com/hat47x/tei-platform/issues/2497)、[Studio #1124](https://github.com/hat47x/tei-platform/issues/1124)、[Context #2516](https://github.com/hat47x/tei-platform/issues/2516)。
+- **系列の先行計画**：[Draft PR #2610](https://github.com/hat47x/tei-platform/pull/2610)／[#2619 EI-01〜08](https://github.com/hat47x/tei-platform/issues/2619)。本書は**EI-01の上流にある役割記述自体のBootstrapの実証差分**に限る。別の統合受入Gateではない。
+
+## 1. 自己記述可能性と自己実行可能性を分離する
+
+「Everything is Data」は、Role Definition・Rule・Function・Syntax Pluginの説明を同じデータ構造で記述できることを目指す。ただし任意の記述を、それ自身の「これを信頼せよ」指示によって読み込み／実行することはしない。
+
+```text
+Layer 0   既存Workspace/Extension Lockに基づく入力・Pinの確認
+          + 有限な基本値・Record/Sequence/Refの読取り（既存基盤）
+                    ↓
+Layer 1   Pinで選ばれたSyntax/Role/OperatorのProvider実装を
+          既存Resolverで特定し、要求Shape/依存/適用条件をデータとしてInspect
+                    ↓
+Layer 2   Source occurrence → desugarされたplain standard data
+          → 明示Role binding → typed meaning/validation/qualification
+                    ↓
+Layer 3   CUI／Studio／Skill／SHO／Targetへの用途別Projection
+          + 外部HostのAuthority／実Effectは独立した実行時検証
+```
+
+**Layer 0は自己記述データを成立させるための有限な実装上の出発点**。現行の既存Workspace reader、標準基本型、Extension Lock、既存Plugin解決への最小契約として検証し、新しいUniversal Meta-Engineを構築する意味ではない。実際の初期Language/Semantic Setを含む正確な既存経路と、PoC用記号を対応付けてから採用を決める。文字列`role: trusted`や`effect: pure`は自己申告であり、Trusted Provider/Host Grantを生成しない。
+
+## 2. 循環を二種類に分ける
+
+### 2.1 解釈に先立って確定が必要な依存（eager）
+
+例：Role-Aの`required shape`を読むためにRole-Bの**評価完了**が必要であり、同時にBの評価にはAの完了が必要な場合。rootから到達したeager閉路は解釈の根が得られない。
+
+この場合は、既存Plugin ID/versionと依存経路を使って循環を診断し、ロード順・ファイル順・AI推測で一方を選ばない。固定点計算を採用する場合は、その意味・収束条件・失敗時の振る舞いを**該当Operator Owner**の明示契約として別途評価する。初回Referenceではeager閉路を不成立とする。
+
+### 2.2 型・関係の遅延参照（deferred）
+
+例：`Node.children: Sequence<Ref<Node>>`、Tree/Graphの循環辺や、互いを参照する二つのData Model。これは宣言同士の参照であり、直ちにそれらの**値を再帰評価して確定する要求**ではない。
+
+既存Typed Ref/Stable IDへ解決できる遅延参照は、**解釈循環とは別に**成立し得る。データ値を辿る際のtermination、Visited Set/深さ制限、結果の部分取得/未知は利用するOperation・Consumerが定める。「すべての循環参照を拒否する」設計を採用しない。
+
+### 2.3 相互依存の表示
+
+一つのRoleに複数Roleを適用できること、同じ名称で異なるProviderが候補になること、演算`combine`を持つ二つのMonoidを使い分けることを別に扱う。同じ名前・同じCarrierでの自動選択は避け、Use-siteが要求する**Role + Operator ID/version + binding + scope + evidence**で比較する（数学的公理の正本は#2544）。
+
+## 3. 構文糖衣の同一性をBootstrapの証拠へ還元する
+
+- Markdown/DOT/Goa風/MukuroL風/Chain/JSONは各Syntax Pluginが**plain data候補**に変換。Source文書そのものと、変換結果、受理済みMeaningを区別（#2623/#2625）。
+- 引用文中の`role`や`op`は**Source occurrence中の値**。Project Profileと明示Role bindingがない限り、実行定義のCandidateとならない（#2621）。
+- 同じData byteでもRole/Operator/Syntax PluginのPinが変われば**意味資格の再評価候補**になる。Source byteが変わらないこと、Role名が同じこと、独立Fixtureで同じ値が出たことは、旧Meaning Acceptanceや現在のHost Grantを引き継ぐ根拠にならない。
+- 構文／RoleからSkillやTool説明を生成できる場合も、そのSkillが指す**実CLI/API/MCP入口・版**を別に検査（#2605）。未導入Providerの`effect: read-only`宣言で、秘密Sourceの外部開示や自動実行資格を付与しない。
+
+## 4. 独立Reference：RB-01〜RB-24（有界合成の実行済み、実TEI試験はNOT RUN）
+
+初期は`plain data候補 + pinned descriptor候補 + eager/deferred依存`を有限な入力として**read-onlyで**比較する。独立Fixtureの出力Schemaを正式なCore Meta Schemaへ昇格させない。
+
+| Case | 入力 | 期待する判別 |
+| --- | --- | --- |
+| **RB-01** 最小起動 | Role providerなしでRecord/Sequence/Refを読む | データとしてinspect可能、`Function`のMeaning qualifiedとはしない |
+| **RB-02** 決定性 | 同じPin/Source/依存を別列挙順で読む | 同じ候補／診断、file load orderによる採用差なし |
+| **RB-03** 未解決Provider | 指定Role Provider ID/versionが存在しない | missing/unsupportedを返し自動導入・自動採用しない |
+| **RB-04** 同名異ID | Role名同一でProvider ID・版が異なる | explicit binding不足ならambiguous、first-match採用しない |
+| **RB-05** 解釈eager-cycle | A→B、B→Aが双方評価完了を必要とする | 読み込み完了を捏造せず閉路と依存経路を報告 |
+| **RB-06** 合法なrecursive Ref | Node.children→Ref<Node>を遅延解決 | eager評価閉路扱いせず、利用時の走査契約を分離 |
+| **RB-07** 複数Role | 同一データに独立に適合するModel Roleと説明Role | 各Roleと根拠を保持、片方の採用から他方を実行しない |
+| **RB-08** 引用と未信頼文書 | quote中の`trusted-script`／`run-as-admin` | Role実装の信頼／Tool命令／Host権限を生成しない |
+| **RB-09** Plugin改版 | Source一致、Role/Operator v1→v2 | 解釈上の資格を失効・再照合対象にし、旧受理を復活させない |
+| **RB-10** PureとEffect | `pure`宣言が外部writeを含むProvider | 宣言からpure保証せず、Provider契約と実Targetを検証対象へ |
+| **RB-11** Source occurrence | 同じ構造の定義表・Expected・引用、場所は別 | 意味同値候補と編集元Occurrence/Source locatorを分離 |
+| **RB-12** Skill/Harness | Role Descriptorから未知コマンドを生成 | 名称解決だけでToolを実在・実行許可・配布済みと認定しない |
+
+### 4.1 依存先もPinする追加負例と現在の実測
+
+最初の12ケースに、初期bootstrapの**根・未受理Role・依存先ピンの扱い**を追加した。合成JS Referenceの識別子や`source.active`は外部で既に分類済みとした**Fixtureの入力**であり、TEIがそのフィールドを見てSourceの信頼性や役割採用を判断する仕様ではない。`requested=[]`でもDataはread-only inspectでき、Roleが解決されていないことを示す。
+
+| Case | 判別すること |
+| --- | --- |
+| **RB-13** 指定Roleへのpinがない | そのRoleを採用せず`missing-or-stale-pin` |
+| **RB-14** eager依存とdeferred参照が混在 | eager依存先は評価し、遅延Refの循環のみで不成立としない |
+| **RB-15** Role required shapeを満たさない | 本文値の書換えで補わず未解決 |
+| **RB-16** 参照Roleのみpinされ、eager依存先が未pin | **依存先まで版照合が必要**。暗黙に評価可能とみなさない |
+| **RB-17** eager依存先も正しくpin | 当該限定shapeではRole候補として検査可能 |
+| **RB-18** 同じProvider IDの重複 | 同名・同ID重複は不成立、先勝ち/後勝ちをしない |
+| **RB-19** 存在しないeager依存先 | rootが有効でも依存先がなければ未解決 |
+
+**実行済みの限定証拠**：`plan/fixtures/role-bootstrap/check_bootstrap.js`の独立合成Referenceを、コード実行環境のV8 JavaScript isolateで当初**19/19 PASS**、Contract/実装identity比較を加えて**24/24 PASS**。GitHubへ保存し、保存版を再取得して再実行・SHA照合する。**実Nodeテスト、GitHub CI、TEI Language Plugin/Operator/Extension Lockの実結合はこの試行では未実行**。そもそもFixtureの`registry`は、実TEIのPlugin resolverを模擬している小さな比較器であり、新Resolverのプロダクション実装を提案しない。
+
+この有界Referenceが実証できるのは、指定したデータ・ピン・eager/deferred有界例を区別する**合成アルゴリズムの判別**だけ。Roleの意味付与、可逆Source操作、循環した実行型の一般的許容性、正式Trusted Provider契約、Runtime/Hostの権限、Owner意味受理は証明していない。
+
+### 4.2 Exact implementation identityへの強化（RB-20〜24）
+
+**適用範囲の注意（2026-11-03）**：この節で比較するPinは、選択したRole実装とその起動時依存について、特定の実装を再現・照合するための候補である。業務定義から別の定義を参照するたびに、参照先の内容ハッシュをSourceへ記述する要件ではない。通常の定義間の関係は、既存の識別子・スコープ・型付き参照で扱う。実装の選択や版固定が必要な場合も、定義ごとに手入力させるのではなく、既存のWorkspace／Extension Lock等に集約できるかを先に確かめる。
+
+本Referenceは、再現を要求する利用場面と、編集中の参照解決・表示を対照していない。両者を同じ必須条件にするかは未決であり、RB-24の「version-only Pin拒否」はこの合成試験の期待に限る。実際に同版の異なる実装が意味を変える例、既存Lockによる固定、差替え・更新・編集の負担を比較し、追加のFingerprintが必要な境界と不要な境界を決める。成果物の完全性確認や実行時の権限検査を省略するという意味ではない。
+
+**既存APIの限定対照**：`internal/plugin/logical_reference_lock_test.go` は、`modelref.Ref` を変更せず、環境のPlugin Lockを旧版と新版に切り替え、それぞれ指定した版を解決できることを検査する。同じ版のPlugin定義を変更すると旧Lockでは拒否されることも確認する。`modelref.Ref` と `plugin.Lock` を一つの試験から別々に呼んだ結果であり、Role解釈とLockが製品として統合されたこと、builtin実装のバイト列の照合、実際の編集負担や安全性を示すものではない。
+
+**実CLIによる限定対照**：`cmd/tei/reference_lock_value_cli_test.go` は一時Workspaceに同じ型を3回参照する小さなモデルと、builtin Plugin・環境を作り、実CLIをビルドして起動する。型の基底を変更しても3参照を書き換えずに検証でき、モデルのWorld表示は変化した。別の属性を追加した場合もPlugin Lockは変わらず、Sourceの移動も検証できた。存在しない型への参照は診断された。Plugin定義の変更は旧Lockで拒否され、Lockを一つ作り直すと解決でき、モデルの参照は変わらなかった。
+
+比較案として、各参照に型宣言の**生バイト列のハッシュを直接保存する**方式を仮定すると、この型変更で3箇所のPinが古くなる。実際に算出した変更前後のSHA-256が異なることは試験するが、その方式の実装、更新の自動化、入力回数・時間や実作業の負担は測っていない。正規化した意味の指紋や間接参照では結果が異なり得る。実CLIが確認するのは特定の合成WorkspaceとPlugin定義の範囲であり、異なる実装バイナリの照合、正式Role解釈、実Provider実行、データ移行の妥当性は確認していない。型変更後に参照が解決することは、変更が業務上安全であるという意味ではない。
+
+### 4.2.1 価値と照らした境界ごとの暫定整理
+
+次は[製品価値](../../product/value/TEI_PRODUCT_VALUE.md)と[RQ-008](../../requirements/TEI_PRODUCT_REQUIREMENTS.md#rq-008-capability単位で標準実装と固有実装を置き換えられること)を基準とした限定整理であり、要求の改定や安全条件の撤回ではない。
+
+| 場面 | 現在の確認と価値 | 見直す範囲 |
+| --- | --- | --- |
+| 定義の編集・参照 | 上記CLI試験では、型の参照は安定IDで解決し、3参照への内容ハッシュの手入力を要しなかった | 通常の関係を読むだけの操作に、参照先の固定バイト列を必須とする根拠は未確認。曖昧・欠落・型不一致の診断は保つ |
+| 外部Workspaceの意味Import | `internal/workspace/import_digest_pin_test.go` ではnamespace単位の `semanticDigest` は任意。固定時は意味変更を拒否し、Source移動・空白・コメント・正規化される属性順の変更や別namespace追加は許す | 個別参照への生byte Pinとは異なる既存の選択肢。固定なしでは提供元の変更を受け入れるため、変更影響の確認や受理を省略できない。Digestは推移依存を固定せず、不一致は読込み時の失敗なので後述の候補診断でも回避しない |
+| Pluginの選択 | `plugin.Lock` は環境ごとに選んだPluginの版・定義Fingerprintを保持する。上記試験で定義変更を旧Lockが拒否した | 同一試験で無関係な業務型の未解決が `plugin-lock` と `plugin-resolve` の両方を停止した。既存のGo resolverは同じWorkspaceとLockからPlugin定義を解決できた。read-only診断の継続を検討するが、検証済み構成・実行許可として返してはならない |
+| 意味に影響するEvaluator | RQ-032はAccepted Semantic SetをRuntime環境のPlugin選択と区別する。`tools/reference-semantic-extension-catalog` のReference Planは対象SetのEvaluator bindingを固定し、未解決Setや不一致・Conformance欠落を拒否する | この条件はAccepted意味に影響する評価の候補に対するものであり、全Pluginや日常の参照に意味依存を強制する根拠ではない。Planが要求する全bindingを局所化できるかは依存閉包と受理条件の実証が必要なため保留。Reference内の入力改変はEvidenceを出さず拒否するが、実Runtime Pluginの分離や信頼性を証明しない |
+| Build・配布 | RQ-008は外部Pluginの配布物の内容Digest確認を要求する。`internal/plugin/build.go` のBuildPlanは選択したPlugin、Source、Builder、Target等を固定し、成果物Lockとは別である | 通常の定義編集や定義間RefにBuildPlanを必須とする根拠ではない。Plan v1はSourceのLocator変更も別Fingerprintとする。下記の実コンパイラ比較では位置の影響はBuild条件で異なるため、固定の一律緩和は保留し、成果物の同一性確認も削らない |
+| 変更影響 | RQ-008はConsumerと再検証範囲の追跡を求め、依存の欠落を影響なしと扱わない。`internal/modelref` は渡されたGraphと変更を検査し、候補を返す | Graphの構造が正しく影響候補が空でも、動的参照や未収集のConsumerがない証明にはならない。両Review APIの `authorityLimits` に網羅性未確認を明記し、追加収集や再検証の要否は用途別に判断する |
+| 定義変更の差分 | Reference用 `tools/internal/changeanalysis` はApplicationの意味名前空間の利用宣言を比較する。既存の利用判定は名前空間IDの所属を見ている | 宣言順だけでApplication自体をchangedとする過剰な候補を避けるため、比較用コピーの `SemanticUses` のみ整列する任意の候補APIを試作する。重複は消さず、実行時に宣言順を保つValidationは整列しない。既存の厳密な `DiffApplications` はShared Acceptanceにも使われるため変更しない。候補APIは受理用ではなく、Source順・Targetへの影響と依存の網羅性が未評価であることを結果に含める。既存の受理経路には接続しない |
+| 実行・外部作用 | 現在の権限・対象・実際の結果は、定義参照の解決や過去のLock一致とは別 | 権限確認、誤対象の防止、必要な結果照合を読み取りの利便性と引き換えに外さない |
+
+Runtime側の `Registry.InvokeWithProvenance` は選択したCapability、Plugin定義・artifact、権限・必要なResource leaseを扱うが、Semantic Extension Referenceの `SemanticValidationPlan` やShared Acceptanceを入力として評価しない。両者を連結済みとみなしてはならない。Referenceの実process PluginもDeploymentExecutorの応答を返すだけで、業務意味の受理や実際の外部状態の反映を証明しない。Runtimeのin-process実装へ渡すPermission一覧はHost側のProvenanceと別コピーにし、実装が一覧を書き換えてもHostの記録とlease解放が保たれることを試験する。これはprocess分離、悪意あるin-processコードのSandbox、全Provenance要素の完全性、正式な意味評価との接続を証明しない。
+
+独立した実processの受注見積もりProviderはReferenceの業務契約で実計算するが、候補の意味Model・Shapeと正式に適合した証明や、その独立業務操作の受理は別である（`reference/candidates/order-quote/README.md`）。汎用Transportへ業務JSONの形やPrincipalを一律に必須化せず、外側の契約・Providerメタデータの曖昧な重複や別名だけを拒否する。実Provider応答の改変負例はprocess起動後に検出され、HTTP要求の同種の異常はProvider呼出し前に拒否される。Transport成功、結果Shape、業務計算の正しさ、実行権限と意味受理は別々に確認する。
+
+既存の受理済み受注意図の保護された要求内で、実見積もりprocessを副作用のないcoeffectとして呼ぶ試験では、数量・単価などの入力値を変更しても同じHost選択済み契約・Providerを使い、小計が1550から1800へ変化した。変更後も現在のHost権限確認を実施し、閲覧者は両入力ともprocess起動前に拒否された（`tools/reference-capability-transport/authorized_quote_preflight_test.go`）。これは入力値の変更に限る観測であり、意味定義・Shape・認可規則の変更後に再検証を省略できる証拠ではない。独立見積もり操作の意味受理や本番権限も示さない。
+
+**環境単位のLockに関する追加候補**：試作前のCLIの `plugin-lock` は全Environmentを対象とする一方、既存 `plugin.BuildLock` は指定されたEnvironmentの一覧を受け取る。`internal/plugin/lock_scope_value_test.go` の合成例では、productionのPlugin欠落により全環境のLock作成が失敗する一方、developmentだけのLockは作成・解決できた。そのLockでproductionを解決すること、固定したdevelopmentのPlugin定義を改変して解決することは拒否された。利用する環境だけを明示してLockを作るCLIの可能性はあるが、CLIは先にWorkspace全体を検証するため、無関係なエラーによる停止はこのAPI試験だけでは解消しない。
+
+**CLI試作**：Draftの `plugin-lock -environment development` は明示された環境だけのLockを返し、envelopeの `mode: environment` とLock内のEnvironment一覧で範囲を示す。省略時の全環境Lockは変更しない。現行Referenceを使う実CLI試験では、development部分は全環境Lockと一致し、このLockをproductionの解決・Runtime Planに使うと拒否された。明示的な空ID・不正なIDと存在しない環境も拒否する。別環境のPlugin欠落や業務型エラーを含むWorkspaceでは、明示した環境が正常でも全体検証で停止するため、未検証Workspaceから正式Lockを生成する迂回路ではない。実運用の利便性・外部利用者の部分Lockへの対応は未確認で、採用判断は行わない。
+
+**Runtime接続の限定検証**：`cmd/tei/plugin_lock_scope_runtime_test.go` は業務Semantic Dataを持たないPlugin self-build Reference（標準型 `std` は存在）からnative static-response実装をmaterializeし、その実現Digestを結んだ一時Worldに対し、実CLIで環境単位Lockを作成する。既存Runtime PlanとBuiltin adapterを通じて実装の応答を得られ、別環境、定義Fingerprintの不一致、実現byteのDigest不一致は拒否された。Referenceのin-memory検証器はDigestだけを照合し、署名・出所・Host権限を検証しない。またこれはstatic responseを返す実装であり、業務意味の評価やAcceptanceの成立を示さない。別の実CLI試験では、Referenceのdevelopmentに対し全環境Lockと部分Lockから同一のRuntime Planが生成された。
+
+`plugin-lock` と `plugin-resolve` は現在 `cmd/tei/cli_result.go` でWorkspace全体を検証してから実行する。最小の改善候補は、既存コマンドの成功条件を変えることではなく、必要なPlugin・環境の選択結果と、Workspace全体が未検証である旨・元の診断を別に返す**任意のread-only診断**を比較すること。その結果からLockの正式利用やRuntime起動を許可しない。依存する意味定義を必要とするPlugin、未解決の環境、改変されたPlugin定義を誤って有効としないことを実証できなければ、候補を採用しない。専用CLIや新たな正本が必要かも未決である。
+
+**診断の試作**：Draftでは `plugin-resolve -diagnostic-candidates` を明示した場合だけ、全体の診断と、既存Resolverが返した候補を別に表示する。常に `ok: false`、終了1、`workspaceValidated: false` とし、候補は意味受理・実行許可・Runtime Planではない。環境不明、Plugin欠落、Lock不一致では候補を返さない。Workspaceの読み込み自体に失敗した場合は診断を続行できない。未検証の意味がPluginに必要かをこの試作は判定しないため、候補があっても使用可能性は不明である。通常の `plugin-resolve` と `plugin-runtime-plan` の検証・終了条件は変更しない。実Providerや自動化利用者への影響は未確認であり、採用判断は行わない。
+
+追加の負例では、application-start Executorを `sales` の意味を使うApplicationへ結び付け、Application側の型参照を壊した。実CLIは通常のPlugin解決とRuntime Planを拒否し、診断モードだけが候補と元の意味エラーを未検証として返す。これは対象ApplicationとExecutorの接続を使った合成例であり、Plugin実装がその型を実際に消費した証明ではない。現行 `plugin.Definition` に業務意味依存を直接宣言する欄はなく、正式Role／Language Pluginの意味依存を検証できたとは扱わない。
+
+**読み取り専用の比較経路**：Reference toolの `compare-application-membership -before DIR -after DIR` は、二つのWorkspaceから厳密なApplication差分と利用集合の候補差分を別々に表示する。片方でもValidation errorがあれば既定では元診断を返し候補を表示しない。明示的な `-include-unvalidated-candidates` では、差分が計算可能な場合に限って元診断と `workspaceValidationPassed: false` を添え、終了1のまま候補を表示する。SourceやDecisionは書かず、既存のPreview・Review・Acceptanceの計算にも接続しない。候補はTargetの表示順や依存網羅性の検証ではなく、異なる時点の読込み間の原子性も保証しない。実利用者がこの比較で負担を減らせるかは未測定。
+
+**編集から選択までの対照**：`tools/reference-shared-acceptance/definition_plugin_workflow_test.go` は一時Workspaceと実CLIで、Applicationの名前空間利用順と業務Data属性を2ファイルで変更した。2件の型参照と1件のPlugin Lockは変更せず、通常の検証とPlugin解決が成功した。Application利用集合の候補は空でも業務属性は追加されているため、比較コマンドに既存のSemantic subject差分を別欄で表示し、候補側にもSemanticなどが対象外と明記する。未定義型に変えた負例では通常Plugin解決と比較が停止し、明示的なPlugin診断だけが元診断・未検証候補を非成功で返す。この件数は合成例の変更ファイル・参照・Lockの観測であり、実利用者の入力時間や全影響を測ったものではない。
+
+**定義Sourceの置き場所と注記**：現行Referenceの複製で `semantic/sales/order.tei` と `plugins/tei-health-reference/1.0.0/plugin.tei` をサブディレクトリへ移し、移動後のPlugin定義へ注記を1行追記した。`validate`、移動前に作ったLockによる `plugin-resolve`、再生成した `plugin-lock` はすべて通り、Lockの出力は移動前とバイト単位で同一だった。逆に移動した意味定義を削除すると検証は停止する。定義の同一性が置き場所や注記ではなく内容と宣言に基づくことの限定例であり、他のToolやEditorが同じ手順で編集できること、別Workspaceでの再現、実利用者の編集時間は示さない。
+
+**読み込み時のBOM**：WindowsのEditorが付け得るUTF-8 BOMは、読み込み境界で削ると `sourceSnapshot`、Source Index、バイト位置で編集する経路の基準が3バイトずれる。そこで字句解析だけが先頭の1個を無視し、`Offset` は元のbyte列に保つ。Referenceの複製で `semantic/sales/order.tei` の先頭へBOMを付けると `validate`、`plugin-resolve`、`plugin-lock` が通り、Lockは付与前と同一、`compare-application-membership` のWorld集合差分は空だった。末尾へNULを加えると `validate` は停止し、途中のBOMと2個目のBOMは字句解析で拒否する。同じ複製でapplication・database・contract・environment・plugin・release・header-detail Binding・Executor Binding・SQL realization・bundle・migration・persistenceの代表ファイルへ個別にBOMを付けても、`validate`、Lock不変、World差分なしが成立し、BOMを除いた末尾NULは各経路で拒否された。現行Referenceのこれら12経路では挙動の差は見られなかった。実Providerの実行、他ToolがBOMを保存する場合の編集往復、実利用者の負担は示さない。
+
+**既存Reference Workspaceの複製での対照**：`tools/reference-shared-acceptance/reference_workspace_value_workflow_test.go` は現在の `reference/workspace` を二つの一時Workspaceへ複製し、片方の `sales.order` に文字列属性を追加する。1ファイルの編集で検証が通り、development環境の選択済みPlugin定義8件は元のLockで解決でき、Lockの再生成結果も同一だった。実CLIのSemantic差分は追加属性1件、Application利用差分は0件で、既存の影響分析は所有Dataへの1辺とDriver／Target未評価の2項目を返した。新属性の型を未定義に変えると `plugin-lock`、通常の `plugin-resolve`、`plugin-runtime-plan` と比較コマンドは停止し、明示的なPlugin診断は元のエラーと未検証候補を返した。Workspace全体のValidationは正式なPlan・実行の境界として維持し、編集途中の情報取得を止める範囲のみ候補として検討する。対象Pluginは選択しただけで実行しておらず、入力回数・時間、実利用者、影響の網羅性は測定していない。固定されたGate B/C版ではなく複製時点のReferenceであり、元Sourceは変更しない。
+
+同じ複製の別ケースでは、`order_entry` の意味名前空間の利用宣言を1ファイル内で並べ替えた。既存LockでPluginを解決でき、厳密なApplication差分は1件、利用集合の候補は0件だった。Validationの宣言順も変えると候補は1件となり、順序の意味を消さない。存在しない名前空間に変えた負例では通常比較とPlugin解決が停止し、明示的な診断では元診断と未検証状態を残して候補を確認できた。これはSourceの表示順やTargetが不変という証拠ではなく、既存の受理条件も変更しない。
+
+型定義の変更では、Referenceの `sales.order_id` の基底を一時コピー上で変更した。実CLIの検証と旧Plugin Lockによる選択は成功し、参照するAttributeとDatabase Contract QueryのSourceは書き換えなかった。一方、従来のReference影響分析には型変更の分岐がなく、両者の明示参照を候補に出していなかった。型別名・Attribute・Contract Query入力のexact ID参照を候補として追加し、変更・削除時は変更前の参照も区別する。推移依存や保存データ・移行・互換性は未確認と明示し、読み取り専用比較にも候補と未解決事項を表示する。未定義の基底型は通常の検証・Plugin解決で拒否される。型変更が業務上安全であること、実Providerの動作、影響の網羅性は示していない。
+
+Database Contractの別ケースでは、現行Referenceの隔離コピーで `sales_core.order_line` の版を1.0から1.1に変更した。1ファイルの変更後、検証と旧Plugin Lockによるdevelopment選択は成功したが、Semantic・Applicationの候補差分は空となる。これを全体差分なしと誤認しないよう、既存のWorld collection単位比較を読み取り専用比較に追加し `databases` の変更を表示する。これは詳細なContract差分や互換性を判定しない。対照としてQuery入力型を変えると、既存header-detail Bindingの型不一致で検証が停止し、未定義型も拒否された。無効Workspaceでの既定停止と、明示的な未検証比較の終了1・診断保持は維持する。版変更の業務互換性、影響の網羅性や実Providerの動作は未確認。
+
+このContractの限定的な利用先照合では、読み込んだ一時WorkspaceにApplicationのContract利用要求、header-detail Query Binding、development Executor Binding、PostgreSQL SQL realizationが各1件あった。Query単位の3件はDatabase／Contract／Queryの完全一致で照合し、別Contractや別Queryを除外した。版変更時、それら4つのSourceは変更されていない。Query入力名を変更した負例では、既存検証がheader-detail入力とSQL realizationの不一致をともに診断した。これは試験内の明示参照の個別照合であり、比較CLIがContract利用先を網羅的に報告する機能、実SQLやProviderの実行結果、全Release・動的依存の確認ではない。
+
+この観測を基に読み取り専用比較へ `contractCandidates` を追加した。変更したContractの前後の明示参照を8種類だけ、Database・Contractの完全一致で列挙し、Query単位の参照にはQuery名を残す。対象はApplicationのContract要求、Application ReleaseのContract要求、reference PatternのContract Query呼び出し、Database Releaseの提供Contract、Solution ReleaseのContract gate、header-detail Binding、Executor Binding、SQL realizationである。Contract単位の候補であり同一Contract内の別Queryも保守的に表示する。未走査参照・動的依存・互換性・実行結果は未検証と出力へ明示し、既存の受理判定には接続しない。隔離ReferenceでApplication要求・header-detail Binding・Executor Binding・SQL realizationを前後に各1件確認し、`master_data.customer` の版変更では `order_entry.customer_reference` と `repair_intake.customer_reference` の `find_by_id` 呼び出しが前後各1件の候補になることを確認した。別Contract・別Databaseの誤一致と、削除前参照の喪失を合成負例で検査する。ApplicationのContract要求とApplication ReleaseのContract要求は、現在定義と不変のReleaseスナップショットという別の宣言であり、同じ要求を両方が持っていても統合しない。現在定義だけが要求する場合と履歴Releaseだけが要求する場合を独立した正負試験で固定した。Application Release側のContract要求はApplication・Release major系統・datasource aliasごとに、そのContractを最後に宣言したReleaseだけを表示する。削除されたContractでも各系統で最後に宣言したReleaseは残すため削除検出の情報を失わず、同一系統のpatch/minor履歴だけを畳む。数値のmajor.minor.patchでないversionは順序付けできないため表示しない。同じmajorの並行系統は最新宣言1件に集約される境界を、比較CLIの `authorityLimits` に `contract-candidates-application-release-latest-declaration-per-major-line-no-explicit-line-identity` として示す。Database Releaseの提供ContractもDatabase・Release major系統ごとに、そのContractを最後に提供したReleaseだけへ畳む。同じ系統のpatch/minor履歴だけを畳み、最後の提供が履歴側にしかなくても残すため、削除検出の系統被覆は失わない。同じmajorの並行系統が最新提供1件に集約される境界は、`authorityLimits` の `contract-candidates-database-release-latest-provider-per-major-line-no-explicit-line-identity` として示す。同一snapshotで種別・識別子・Queryが完全に同じ候補行は、区別できる情報がないため1件に畳む。
+
+**Release記録との対応**：`sales_core.order` を v4.2 から v5.0 へ上げ、同時に現行Applicationの要求を `^5` へ変えると `validate` は成功する。しかし `releases/applications/order-entry/3.8.0.tei` の `^4` と `sales_core` 4.1.0／4.2.0 の提供4.xは診断されず、Release記録と現在定義のmajor不一致が無言で残る。Application要求を変えずにv5.0へ上げた場合は `DATABASE_CONTRACT_VERSION_UNSATISFIED` で停止する。逆方向として現行定義をv3.0、現行要求を `^3` へ下げると、提供4.xが現行定義より新しいため `DATABASE_RELEASE_CONTRACT_AHEAD_OF_CURRENT_DEFINITION` が出る。つまりDatabase Releaseは「記録が現行より先行」だけを警告し、「現行が記録より先行」は警告しない。Application Releaseの要求はContractの存在と所有者だけを検査し、互換majorは現在定義と照合しない。v4.3へのminor更新は成功し、Release記録は比較の `contractCandidates` に前後とも現れる。歴史的Releaseを一律に不正としないため `validate` の受理条件は変えず、この非対称を読み取り専用候補で可視化するに留める。実Deploymentの順序・データ移行・Provider実行は未検証である。
+
+**Solution ReleaseのContract gate**：`order-rollout` の `master_ready` は `master_data.customer ^2` を宣言する。現行の `master_data.customer` をv3.0へ上げ、現行Application（`order_entry` と `repair_intake`）の要求を `^3` へ揃えると、`validate` は成功し `solution-release-graph` も `executable=true` のまま `master_ready` を `order_app` の前提として解決する。gateの `^2` は履歴Application Release 3.8.0の `^2` とだけ照合され、現在定義のv3.0とは比較されない。これはgateが実行時に観測する提供Contractのmajor（`internal/deployment/durable`）とも別の検査である。一方、gateのContractを存在しない名前に変えると、そのgateを必要とするApplication Releaseがあるため `validate` が `SOLUTION_RELEASE_NOT_EXECUTABLE` で停止する。ただし、どのApplication Releaseからも必要とされないgateを追加し、存在しないContractとmajorを宣言しても `validate` は成功し、診断は出ない。`compatibleMajor` が0の場合は `INCOMPLETE_DATABASE_GATE_STEP` で拒否される。gate宣言自体は `contractCandidates` に前後とも現れる。候補 `unreferencedUnsatisfiableGateCandidates` の参照・充足判定は、このrelease compilationの前提解決と同じ互換majorの完全一致を使い、候補側だけで条件を緩めない。gateの現在定義との照合を必須にするかは受理条件を変えるため、ここでは観測だけを残す。
+
+**未使用gateの読み取り専用候補**：未使用かつ不成立のgateを、比較CLIの `unreferencedUnsatisfiableGateCandidates` として前後snapshot別に列挙する。条件は、どのApplication Releaseの要求（Database・Contract・互換major）にも一致せず、現在のContract定義にもDatabase Releaseの提供にも互換majorを満たすものがない、の両方である。どちらか一方だけのgateは出さない。参照されるgateはrelease compilationで検査され、満たせるgateには提供元があるため、この積集合だけを観測する。現行Referenceでは候補は空で、`master_data.nonexistent ^7` の未使用gateを追加すると `validate` 成功のまま1件出て、識別子・Contract・majorが保持される。`sales_core.order_line ^1` の未使用gateは現在定義で満たせるため出ず、削除したgateは変更前snapshotにだけ残る。合成試験では、参照されるgate、現在定義で満たせるgate、Database Releaseで満たせるgateを除外し、Database所有者の異なるgateを含める。実行時のDeployment状態、動的利用者、Provider動作は未検証であり、空の候補は問題なしの証明ではない。
+
+**Application ReleaseのContract要求と現在定義**：履歴Application ReleaseのContract要求は `validate` では存在と所有者だけを検査され、互換majorは現在定義と照合されない。そこで `applicationReleaseContractCandidates` として、互換majorが現在定義のmajorと異なる要求だけを前後snapshot別に列挙する。現在定義に存在しない要求は既存の `APPLICATION_RELEASE_CONTRACT_NOT_CURRENT` が扱うため、候補では繰り返さない。ApplicationごとのRelease major系統・datasource alias・Contractごとに、その要求を最後に宣言したReleaseだけを観測し、系統内のpatch/minor Releaseが同じ要求を繰り返しても同じ状態を重複報告しない。より新しいReleaseが同じ要求を宣言すれば置き換え、新しいReleaseで要求が落ちても最後に宣言したReleaseからは報告する。数値のmajor.minor.patchでないversionは順序付けできないため観測しない。同じApplication・同じmajorで明示的な系統識別子がない並行系統では、同じContractの要求は最新宣言1件に集約される（過小報告）。この制約は比較CLIの `authorityLimits` に `application-release-candidates-latest-declaration-per-major-line-no-explicit-line-identity` として出る。現行Reference（`order_entry@3.7.0` の `sales_core.order_legacy ^1`）では候補は空で、既存警告だけが出る。`sales_core.order` をv5.0へ上げ、現行要求を `^5` に揃えると `validate` は成功し、`order_entry@3.8.0` の `^4` が `currentContractVersion: 5.0` として変更後だけに出る。v4.3へのminor更新では増えない。minor差を無視するのは互換majorの判定に合わせた限定であり、履歴Releaseの互換性や実行時の挙動を保証しない。受理条件は変更しない。
+
+**Database Releaseの提供Contractと現在定義**：Database Releaseの提供Contractは `validate` で現在定義との存在・所有者・先行方向だけを検査され、記録が現在定義より古い方向は診断されない。そこで `databaseReleaseContractCandidates` として、各Databaseの各major系統で最新のReleaseが提供するContractのmajorが現在定義のmajorより低いものを前後snapshot別に列挙する。同一系統の履歴Releaseをすべて繰り返すと同じ古い状態を重複して報告するため、系統ごとの最新Releaseだけを観測する。複数major系統の並行保守を隠さない。現在定義に存在しない提供は既存の `DATABASE_RELEASE_CONTRACT_NOT_CURRENT` が扱い、先行方向は `DATABASE_RELEASE_CONTRACT_AHEAD_OF_CURRENT_DEFINITION` が扱うため、どちらも候補にしない。minorだけが古い提供も含めない。現行Reference（`sales_core.order` v4.2）では候補は空で、v5.0へ上げると最新の4.2.0だけが `providedContractVersion: 4.2`、`currentContractVersion: 5.0` 付きで変更後に出る。v3.0へ下げると4.1.0と4.2.0は既存の先行警告だけになり候補は空、v4.3へのminor更新でも空のままである。履歴Releaseの正否、データ移行、実行時のDeployment状態、Providerの動作は未確認であり、空の候補は問題なしの証明ではない。受理条件は変更しない。`contractCandidates` の `database-release-contract-provided` は変更Contractを提供するReleaseを影響範囲として列挙する。両者は同じReleaseを含み得るが、前者は変更影響、後者は系統の古さという別の問いであり、重複として統合しない。
+
+**候補ビューの負担比較**：独立したWorkspace複製に代表的な変更を加え、4つの候補ビュー（`contractCandidates`、`unreferencedUnsatisfiableGateCandidates`、`applicationReleaseContractCandidates`、`databaseReleaseContractCandidates`）の件数が意図した境界だけを報告するかを測る。現行Referenceのbaselineはcontract 0・gate 0・appRelease 0・dbRelease 0。無関係な `sales_core.order_line` v1.0→v1.1 と `sales_core.order` v4.2→v4.3 のminor更新ではcontractだけが1件になり、他の3ビューはbaselineのまま。`sales_core.order` v5.0と現行要求 `^5` の同時変更ではdbReleaseが1件（最新の4.2.0）、appReleaseが1件（`order_entry@3.8.0` の `^4`）だけ増え、gateは0件のまま。未使用の `master_data.nonexistent ^7` gateを追加するとgateだけが1件増える。要求を `^4` のまま残したv5.0は `validate` が失敗し、既定の比較は終了1・候補0件、`-include-unvalidated-candidates` でも終了1とエラー診断を維持したままdbRelease 1件とappRelease 1件を出す。つまり、この範囲では候補ビュー間の相互混入は観測されず、未検証状態の候補は明示操作なしに出ない。ただし対象は合成Referenceの5シナリオだけで、実変更履歴・実利用者の負担、Providerの意味適合性、他環境での再現、実行時Deploymentとデータ移行は未検証である。件数が0でも問題なしの証明にはならない。
+
+**同一major内の複数系統**：Databaseが異なれば同じmajorでも別系統として扱い、合成Workspaceの `line_a` 4.2.0と `line_b` 4.8.0をそれぞれ1件だけ報告し、履歴の4.1.0／4.7.0や別DatabaseのContractを取り違えないことを実CLIで確認した。一方、同じDatabase・同じmajorで明示的な系統識別子がない場合、4.3.0と4.9.0はmajor単位で1件に集約され、4.9.0だけが報告される。これは過剰報告ではなく過小報告であり、今回は Database Release に系統識別子を追加しない。別 Database が系統の境界であり、同一 Database・同一 major の複数系統は未対応境界として受理する。実利用で分離できないケースが確認された場合に再検討する。この制約は比較CLIの `authorityLimits` に `database-release-candidates-latest-per-major-line-no-explicit-line-identity` として出る。合成Workspaceと実CLIの範囲であり、実Provider・本番の系統運用は未検証である。
+
+**Build位置の限定対照**：`internal/plugin/build_location_actual_test.go` は実Goコンパイラで同一内容の合成モジュールを二つの異なるディレクトリからBuildする。Go 1.27.3／Linuxでは `-trimpath` 有効時、同一位置の再Buildと移動後の出力バイトが一致し、Source内容を変えた出力と実行結果は変化した。`-trimpath` なしでは同じ内容でも位置によってバイトが異なった。同じSource DigestでLocatorのみ異なるBuildPlan v1のFingerprintは両条件と独立に異なる。Go単体の比較であり、実TEI Builder AdapterがPlanを実行した証拠、他Target・Compilerでの再現性、移動後のBuild省略の安全性を示さない。
+
+既存の `tools/reference-build-execution-binding` はLocatorを取得ヒントとして除く**別のReference限定**の実行Plan投影を持ち、BuildPlan v1や既存LockのFingerprintを変更しない。条件付きの再利用を検討するなら、Builderが位置の非依存性を保証できる範囲と実際の入力・出力を確認し、既存の候補を対照する。今回の実験だけでv1固定範囲やLock照合を変更しない。
+
+**実AdapterとReference Providerの追加対照**：`tools/internal/gobuilder/provider_location_test.go` は実 `BuildPackage` と `tools/reference-process-plugin` のSource・Go依存を使用し、一時Workspaceの別々のBuild stateで4回Buildする。Go 1.27.3／Linuxでは、同じ相対パスのままWorkspace全体を移すと出力は一致した。一方、Plugin Sourceの内容を保って `main.go` から `relocated.go` に改名すると出力が変わり、Source内容の変更でも出力が変わった。これらは `-trimpath` を常に指定するAdapterでの観測であり、Workspace rootの移動とSourceファイル名の変更を同じ「位置変更」と扱えない。実GoコンパイラとReference ProviderのBuildは実行したが、完全なGit checkout・self-build runner・正式なProvenance／Authority検証ではなく、他のGo版・OS・Providerへの一般化もできない。既存のBuildPlan v1と出力Digest照合は維持する。
+
+[#2620 RE-01〜10](https://github.com/hat47x/tei-platform/issues/2620)と[TAI #271 QH-01〜18](https://github.com/hat47x/tai-pleroma/issues/271)の横断研究から、**同じRole ID/versionでも実装内容が変わり得る**という受入条件を具体化した。前段ReferenceはRoot/Eager依存先について**版文字列だけを比較**していたため、同じ版の実装差を見逃すという、あくまで**このFixture自身の不足**があった。正式TEI製品に当該欠陥があると断定するものではない。
+
+そこで、各Role DescriptorとPinを、`version + contract fingerprint + actual implementation fingerprint`という**比較用の3軸**に拡張。Rootと推移するEager依存先の双方でexact照合を要求する。Fixtureのfingerprint文字列は**テストが与えたラベル**であり、現物バイトをSHA-256計算した真正なLock証拠ではない。実TEIへの接続時には、既存Extension Lock／Language Selectionが検証する**実Provider物・Pin対象・Implementation fingerprint**を利用し、自己申告Stringを信用しない。
+
+| Case | 比較する誤成功・性質 |
+| --- | --- |
+| **RB-20** | Role ID/version不変、Root実装fingerprintだけ変更→旧Pinを拒否 |
+| **RB-21** | Rootのexact pinは不変、Eager依存先の同版実装だけ変更→旧依存Pinを拒否 |
+| **RB-22** | 変更後の依存先実装に**明示的にPinを更新**→shape/循環条件が揃うならRole候補として再資格化可能。旧Meaning受理の自動継承はしない |
+| **RB-23** | 無関係なRole Provider追加→既存exact-selected Roleの合成出力は変化せず（公開候補発見自体の比較は別#2620 RE） |
+| **RB-24** | version文字列だけのPin→実装内容未照合として不成立 |
+
+**限定実行記録**：GitHub PR #2638ブランチで変更した`check_bootstrap.js`をV8で**24/24 PASS**。実際のTEI Provider/Plugin byte digestを計算したものではなく、正式Conformanceも未取得。これは新Resolverの提案ではなく、既存Versioned Selectionの**抜けを検出する受入視点**である。
+
+### 4.3 Roleの変更影響と動的Read依存を一つの「全局依存Graph」にしない
+
+[#2582 DC-01〜12](https://github.com/hat47x/tei-platform/issues/2582)では、同じAmount・同じ出力Fieldでも`Order.customerRef`の再束縛で必要なAccount.limitが変わる例、既存Row IDが0件の`NOT EXISTS`や`Hold`の追加で真理値が撤回される例を扱っている。これは**Runtime Read/Claim資格**であり、本ReferenceのEager Role Provider bootstrapとは異なる。共通概念として言えるのは、「**依存閉包を列挙できなければ不変と断言しない**」という条件のみ。
+
+| 変化 | 確認する依存 | Owner／既存成果 |
+| --- | --- | --- |
+| Role/Operator自身の同版実装差 | Root＋Eager依存Providerの実byte/Lock、解釈済Meaning、関連Artifact | #2620／#988／本RB-20〜24 |
+| FieldのValue不変だがRelation Bindingだけ変更 | Predicate、Relation occurrence、選び直した実入力、Read cohort／completeness | #2582 DC-02、#2506 |
+| 0件の否定結果へ新しいMatching rowが加入 | 結果中のRow IDではなく**未出現行を含むPredicate/Scope**と変化観測 | #2582 DC-04〜07、#2387 |
+| Provider route／Query semantics変更 | Read witness、NULL/Bag/Sort/Limit、実RDB/API、Consumer用途 | #2622／#2611／#2627／#2628 |
+| Consumer開示・Host Grantだけ変更 | 現在の公開・実行資格。歴史的なSource/Role/Receiptは変更しない | #2516／TAI #271／#1174 |
+
+ここで**Identity/Meaning/Build/Runtime Claim/Consumer資格を単一のフラグやglobal revisionで表さない**。同じ見かけの数値でも、歴史的「その期間に変化なし」のClaimと現在値のClaimは異なる（0→1→0のABA）。この表は新しいMeta Schemaや実行時Dependency Engineではなく、各Ownerの試験結果を照合するためのP1受渡し票である。
+
+### 4.4 「実Goに到達した部分」を踏まえた次の一体試行
+
+現行mainは初期基準`9c9ef4d...`から進み、[#2587](https://github.com/hat47x/tei-platform/pull/2587)は**mainへ統合済み**。従って新たなP1統合試験は旧mainを固定したまま現在の既存CLI能力が無いと仮定しない。開始時にmain exact commit・選択された実Executable/argv/Workspace/Source bytes・Extension Lock・Skill bytesを固定し直す。
+
+- **実Language/Operator Reference**：[Draft #2639](https://github.com/hat47x/tei-platform/pull/2639)は**既存Goの**`ParseSelected`/`ParsePipelineSyntax`/`LowerPinnedPipeline`を使い、別表層から同じ限定candidateを得る7件のテストを追加している。ただしSource/Role accepted meaningやFunction Contextの実結合ではなく、**そのPRのexact headのCI結果を別に確認**する。本RB Fixtureの`pinFor`はそのGo Selectionを代替しない。
+- **実CLI→Consumer Witness**：[Draft #2626](https://github.com/hat47x/tei-platform/pull/2626)には実Go CLIで公開Reference Workspaceを読んでSource relocation時の意味指紋とSource Index/Trace/引用先が異なることを確認した既報がある。公開Referenceの実Readの根拠と、別SourceのRole解釈・実Studio/SHO Clientの実Loaded bytesは**異なる試行**。これをEI-01〜08の一体PASSに合算しない。
+- **最初のB1の判別対象**：実Go Selectionが`ImplementationFingerprint`を持つ場合、(A)固定Lockと実内容byte一致、(B)Rootだけ一致／Eager依存Bは同版だが実体不一致、(C)無関係Providerを追加、(D)未実装RoleのScopeに入ることを区別。実GoがRoleのEager依存という概念を現時点で表現しないなら**unsupported/gap**として報告し、新Role Resolverを先行実装しない。
+- **P1継続条件**：Schema/Profileの選択／独立Expected／必要なRead/Role/Source参照が固定できた1モデルだけを、headless →二Consumer→Providerへ段階展開。OwnerのP0-a実DB・P0-b Owner-write・S0/J5/S3と既存Gateは従来どおり優先。
+
+## 5. 最短の既存TEIへの接続
+
+**B0**：本Referenceで、必要情報が基本型/Ref/Pin/Provider descriptor/Role候補のどれに相当するかを資料と現行Sourceから明示する。Eager/Deferred依存のモデル化を決定前のpressureとして残す。
+
+**B1**：#988のLanguage/Semantic Extension Lockと既存read-only inspect/validationへ、実在するPin／Provider ID／Role/Operator依存を渡し、RB-02/03/04/05の判別ができるかを確認する。新Provider ResolverやCore演算の再実装はしない。
+
+**B2**：#2625のSyntax正規化fixtureと#2624のFunction別Mappingを**同じ受理Source・同じ意味ID／同じPlugin版**へ繋ぐには別の契約が必要。#2625は`sales.confirmed_total`、#2624は`Order→Line→Note`と現時点で異なる合成Subjectを扱う。これらの局所PASSを単一縦断PASSと呼ばない。[#2586 HJ](https://github.com/hat47x/tei-platform/issues/2586)／[#2619 EI](https://github.com/hat47x/tei-platform/issues/2619)の同一Fixtureに各Ownerが実対応のある受渡しを提供して初めて意味・Provider/Consumer接合を判定する。
+
+**B3**：#2617のScript-first標準UI、#2605のProduct Skill、#2621のMarkdown/SHO、#2622の多Provider、#2516のConsumer Contextへ同じ確定できたReferenceを供給し、`parsed/role candidate/meaning qualified/tool invoked/actual effect/disclosure`の主張を分ける。
+
+### B4 — 変更後の選択的再資格化（歴史・現在・将来を分ける）
+
+複数AI・複数Consumerが同じ役割記述から多種類の結果を導出する場合、以前に観測した「当時の成功」という**歴史的事実**と、いまその結果を再利用してよいかという**現在の資格**を区別する。上記RB-09（Source同byte／Role Plugin版のみ変更）はその最小反例である。
+
+単一のRepo全体Revision Counterや新しい共通Evidence DBを作る代わりに、**Consumer Claimの用途に必要な、既存Source/Plugin/Role/Operator/Function Mapping/Provider/Artifact/Hostの依存参照**から再確認対象を絞る案を比較する。必要な依存が欠ける場合は「影響しない」と断定せず、当該Claimを未確定にする。**見えない依存（where条件／Sort／Rule／Scope／開示条件等）を出力Fieldだけから除外しない**。
+
+| 変更の例 | 既存Ownerで選択的に見直す事項 | 再利用上の注意 |
+| --- | --- | --- |
+| Markdown改行・Graphviz layout | Source occurrence／Authoring fidelity。意味解釈が同一と独立確認できる場合に限りMeaningを保持 | Source byteの変化を全Artifact意味変更と自動同一視しない |
+| Syntax Pluginのv1→v2 | 当該Source occurrenceの正規化結果、Role Binding、下流Meaning | Source同byteでも旧accepted meaningが新版へ自動移行するとは推測しない |
+| Role/Operator依存Bだけ改版 | Eager依存を持つ利用箇所のRole資格、利用する演算の型・Law/Effect、関連Fixture・Generated artifact | 影響していないClaimは明示根拠があれば保持可能、依存不明なら保留 |
+| Function Mapping／Rule／Provider path変更 | 宣言したRead footprintと実Provider Read Trace、Operation入力/Storage、Consumerの必要Artifact集合 | Operation ID/Basis不変でもInputs/Storageが変わる反例 #2632、生成一式の相対充足 #2630 |
+| Host Grant・Disclosure資格変更 | 現在のPrincipal/目的/開示先/時点で実利用前に再照合 | 歴史的なRole/Resultは残せても現在の実行や送出は別資格 |
+
+参照：#2505版間意味対応、#2600増分ビルド、#2630 Consumer別ArtifactSet、#2516用途相対Claim、#1174実Grant。**再資格化は再生成と同義ではない**。同じArtifactを再利用できても、新しいConsumerが要求する範囲・現在の開示資格は再確認が必要になり得る。逆にMaterialized output bytesが同じでも、Rule/Provider/Targetの依存が変われば、元の十分性が維持された保証にはならない。
+
+**選択的再確認ケース（提案／未実行）**：RI-01 layout-only変更、RI-02 Eager Role-B改版で一方のFunctionだけ影響、RI-03 意味に影響するWHERE/Sort依存が出力列に現れない、RI-04 過去Source/Artifact同一のまま現Host Disclosureが撤回。まず既存#2600/#2516/#2630の試験と重複のない入力差を比較し、必要なら#2586／#2619の同一Runへ追加する。適用根拠が取れないものは未確定として報告する。
+
+**効果測定**：新Core特別型数／Roleの重複宣言数／未解決Roleの診断品質／Plugin差替えでの予期しないMeaning変化／標準UI専用コード増分／外部Skillの架空Tool呼出／同一入力での不同結果。単なる`PASS`件数、Role定義数、ソース文字数を製品品質とみなさない。
+
+**責務と優先順位**：#2620がRole自己記述・Bootstrap判断、#988がLanguage/Operator/Pinの実装、#2544がFacetの法則、#2621がSource/引用/テスト、#2586が同一実Fixtureの縦断、#1119が既存P0/G0〜G4の優先を管理。P0-a実PG Receipt/Lookup、P0-b二Function Owner-write、S0 H2/J5とS3意味受理は維持。二Harness配布・OS/Provider/GUI実証はOwner別。
+
+**証拠の状態**：この計画および対応する独立合成Referenceは、TEI実Parser/Role Provider/Studio/Host/DB/Owner受理の成立を意味しない。正式Grammar/初期bootstrap固定仕様と`std.*` Role名は、本実証で既存契約の不足を観測した後にOwner判断する。

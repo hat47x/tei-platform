@@ -25,6 +25,22 @@
 | Bindingなし | 未解決 | `UNBOUND` |
 | 未登録Target | 拒否 | `TARGET_UNKNOWN` |
 
+### 規則変更の影響（受入4）
+
+`-mode impact` は、規則の削除・型変更・意味契約の変更・版変更が、どのBindingに何を要求するかを一覧します。Bindingを書き換えず、第二の影響グラフも作りません。
+
+| 規則の変更 | Bindingの状態 | 意味 |
+| --- | --- | --- |
+| `removed` | `BINDING_UNRESOLVED` | 規則が消えたのでBindingは解決しない |
+| `type-changed` | `REACCEPTANCE_REQUIRED` | 適用先の型と照合し、再受理なしに解決しない |
+| `contract-changed` | `REACCEPTANCE_REQUIRED` | 実装差替えではなく意味契約の変更 |
+| `version-changed` | `REVALIDATION_CANDIDATE` | 解決はするが、古い検証を現在値の根拠にしない |
+| 未知の種別 | `REACCEPTANCE_REQUIRED` | 黙って無視せず、再受理を要求する |
+| 変更なし | `BINDING_UNCHANGED` | 影響なし |
+| 適用先が無い | `TARGET_MISSING` | 別の未解決として区別 |
+
+`accepted`は全Bindingが`BINDING_UNCHANGED`のときだけ真です。再受理・再検証の判断は既存の受理境界（#267）へ委ね、本参照は候補を並べるだけです。
+
 ## 合成Fixture
 
 規則 `sales.line-amount`（quantity × unit_price）を、適用先 `sales.order-line.amount` と `query.order-list.line-total` にそれぞれBindingします。
@@ -42,6 +58,10 @@
 
 ```sh
 go run ./tools/reference-rule-binding/cmd/tei-rule-binding -input request.json
+
+# 規則変更の影響（Bindingを書き換えない）
+go run ./tools/reference-rule-binding/cmd/tei-rule-binding -mode impact \
+  -input tools/reference-rule-binding/testdata/impact-version-change.json
 ```
 
 `-input -`（既定）は標準入力から読みます。入力例：
@@ -64,5 +84,6 @@ go run ./tools/reference-rule-binding/cmd/tei-rule-binding -input request.json
 ## 限界
 
 - 合成入力に対する静的な判定です。実Application Query・実Data属性への接続や、実Pluginの実行同等性の証拠ではありません。
+- 影響一覧はBindingを書き換えず、再受理・再検証を実行しません。実際の影響範囲の確定は既存のSemantic参照と#1121の責務です。
 - `-race` は cgo を伴わない可搬Goでは実行していません。
 - M2（#1120／#1121／#988 の既存実装への接続と、二つ目のTargetでの再利用検証）は本PRの範囲外であり、未実証として残します。

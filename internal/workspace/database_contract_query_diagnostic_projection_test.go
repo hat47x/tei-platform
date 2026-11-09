@@ -12,7 +12,7 @@ import (
 
 func TestDatabaseContractQuerySignatureDiagnosticProjectsToContractSource(t *testing.T) {
 	root := t.TempDir()
-	writeContractQueryDiagnosticFixture(t, filepath.Join(root, "tei.workspace.yaml"), "workspace: fixture\nsources:\n  - databases\n")
+	writeContractQueryDiagnosticFixture(t, filepath.Join(root, "tei.workspace.yaml"), "workspace: fixture\nformatVersion: 1\nsources:\n  - databases\n")
 	writeContractQueryDiagnosticFixture(t, filepath.Join(root, "databases", "master-data", "database.tei"), `database master_data {
     kind relational
     ownership external-observed

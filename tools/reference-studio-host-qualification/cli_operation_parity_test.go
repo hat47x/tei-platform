@@ -185,7 +185,7 @@ func missingSourceIndexInputFixture(t *testing.T) (string, string) {
 	t.Helper()
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"),
-		[]byte("workspace: missing_source_input\nsources:\n  - custom\n"), 0o644); err != nil {
+		[]byte("workspace: missing_source_input\nformatVersion: 1\nsources:\n  - custom\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.MkdirAll(filepath.Join(root, "custom"), 0o755); err != nil {
@@ -231,7 +231,7 @@ func TestCLIProcessVersusReadOnlyOperations(t *testing.T) {
 	missing := filepath.Join(t.TempDir(), "missing")
 	semantic := t.TempDir()
 	if err := os.WriteFile(filepath.Join(semantic, "tei.workspace.yaml"),
-		[]byte("workspace: parity_semantic\nsources:\n  - applications\n"), 0o644); err != nil {
+		[]byte("workspace: parity_semantic\nformatVersion: 1\nsources:\n  - applications\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	source := filepath.Join(semantic, "applications", "order-entry", "application.tei")

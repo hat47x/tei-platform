@@ -1,0 +1,5 @@
+database sales_archive {
+    kind relational
+    ownership managed-here
+    uses semantic sales
+}

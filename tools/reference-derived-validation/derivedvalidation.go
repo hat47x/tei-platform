@@ -25,6 +25,7 @@ const (
 	CodeAuthorizationDenied        = "AUTHORIZATION_DENIED"
 	CodeDependencyCycle            = "DEPENDENCY_CYCLE"
 	CodeAmbiguousReference         = "AMBIGUOUS_REFERENCE"
+	CodePhaseUnknown               = "PHASE_UNKNOWN"
 	CodeInvalidRequest             = "INVALID_REQUEST"
 )
 
@@ -95,6 +96,15 @@ func Evaluate(in Input) Report {
 	if !in.ReferenceByID {
 		report.Code = CodeAmbiguousReference
 		report.Message = "明示IDに基づく参照以外は拒否する。同名属性の参照は対象を誤る。"
+		return report
+	}
+	// A typo or an unknown phase must not be silently treated as preview: the
+	// caller could believe a save-time decision was made.
+	switch strings.TrimSpace(in.Phase) {
+	case "", PhasePreview, PhaseSave:
+	default:
+		report.Code = CodePhaseUnknown
+		report.Message = fmt.Sprintf("未知のPhase %q。Previewとして黙って扱わない。", in.Phase)
 		return report
 	}
 

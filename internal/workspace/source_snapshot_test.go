@@ -12,7 +12,7 @@ import (
 
 func TestLoadedSemanticIndexRetainsParsedSourceAfterRewrite(t *testing.T) {
 	root := t.TempDir()
-	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace:\n  sources:\n    - semantic\n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace:\nformatVersion: 1\n  sources:\n    - semantic\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	path := "semantic/order.tei"
@@ -80,7 +80,7 @@ func TestLoadedNativeSQLIndexRetainsAuthoringBytesAfterRewrite(t *testing.T) {
 
 func TestLoadedSourceSnapshotDoesNotFollowRetargetedSymlink(t *testing.T) {
 	root := t.TempDir()
-	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace:\n  sources:\n    - applications\n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace:\nformatVersion: 1\n  sources:\n    - applications\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	path := "applications/demo/application.tei"
@@ -115,7 +115,7 @@ func TestLoadedSourceSnapshotDoesNotFollowRetargetedSymlink(t *testing.T) {
 
 func TestLoadedSnapshotRejectsDifferentWorkspaceRoot(t *testing.T) {
 	root := t.TempDir()
-	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace:\n  sources:\n    - applications\n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace:\nformatVersion: 1\n  sources:\n    - applications\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	writeSource(t, root, "applications/demo/application.tei", []byte("application demo {}\n"))
@@ -155,7 +155,7 @@ func TestStandaloneResultContinuesToReadCurrentFile(t *testing.T) {
 
 func TestLoadedSnapshotAcceptsRelativeAbsoluteAndSymlinkedRoot(t *testing.T) {
 	root := t.TempDir()
-	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace:\n  sources:\n    - applications\n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace:\nformatVersion: 1\n  sources:\n    - applications\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	writeSource(t, root, "applications/demo/application.tei", []byte("application demo {}\n"))

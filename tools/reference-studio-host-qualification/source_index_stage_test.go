@@ -27,7 +27,7 @@ func sourceIndexDuplicateIndexFixture(t *testing.T) string {
 			t.Fatal(err)
 		}
 	}
-	write("tei.workspace.yaml", "workspace: index_only_failure\nsources:\n  - databases\n")
+	write("tei.workspace.yaml", "workspace: index_only_failure\nformatVersion: 1\nsources:\n  - databases\n")
 	write("databases/sales-core/database.tei",
 		"database sales_core {\n    kind relational\n    ownership managed-here\n    uses semantic sales\n}\n")
 	write("databases/sales-core/persistence/order.tei",

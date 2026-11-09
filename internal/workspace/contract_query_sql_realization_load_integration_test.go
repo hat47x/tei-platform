@@ -11,7 +11,7 @@ import (
 
 func TestWorkspaceLoadIncludesContractQuerySQLRealizationAndSourceIndex(t *testing.T) {
 	root := t.TempDir()
-	mustWriteContractQuerySQLFixture(t, filepath.Join(root, "tei.workspace.yaml"), "workspace: fixture\nsources:\n  - databases\n")
+	mustWriteContractQuerySQLFixture(t, filepath.Join(root, "tei.workspace.yaml"), "workspace: fixture\nformatVersion: 1\nsources:\n  - databases\n")
 	mustWriteContractQuerySQLFixture(t, filepath.Join(root, "databases", "master-data", "database.tei"), `database master_data {
     kind relational
     ownership external-observed
@@ -69,7 +69,7 @@ func TestWorkspaceLoadIncludesContractQuerySQLRealizationAndSourceIndex(t *testi
 
 func TestWorkspaceLoadDoesNotCreateContractQuerySQLRealizationWithoutAuthoringSource(t *testing.T) {
 	root := t.TempDir()
-	mustWriteContractQuerySQLFixture(t, filepath.Join(root, "tei.workspace.yaml"), "workspace: fixture\nsources:\n  - databases\n")
+	mustWriteContractQuerySQLFixture(t, filepath.Join(root, "tei.workspace.yaml"), "workspace: fixture\nformatVersion: 1\nsources:\n  - databases\n")
 	mustWriteContractQuerySQLFixture(t, filepath.Join(root, "databases", "master-data", "database.tei"), `database master_data {
     kind relational
     ownership external-observed

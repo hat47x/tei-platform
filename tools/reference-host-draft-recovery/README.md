@@ -39,6 +39,8 @@ Reject／Preview では受理済み Source のバイトと revision を変更し
 | WebView再起動を模した切断・再接続後のDraft | `DRAFT_NOT_PROMOTED`（明示Review完了で`ACCEPT_ALLOWED`） |
 | Host途中終了で副作用完了不明 | `SIDE_EFFECT_UNKNOWN_NO_RESEND`／記録があれば `VERIFY_FROM_OBSERVATION` |
 | 多重ウィンドウ・別プロセス | `CONCURRENT_WRITER_REJECTED`（書込み直前の再検査で初めて解消） |
+| 別WorkspaceのDraft | `WRONG_WORKSPACE`（fail closed） |
+| 現在のAuthorityが失効 | `AUTHORITY_REVOKED`（表示・昇格ともに行わない） |
 
 シンボリックリンク／パス差替え・Workspace外書込みについて、Hostの実際のResource Enforcementでの拒否は**合成だけでは未実証**です。
 
@@ -53,11 +55,13 @@ go run ./tools/reference-host-draft-recovery/cmd/tei-host-draft-recovery -input 
 ```json
 {
   "workspace": { "workspaceId": "ws-repair", "revision": "r7", "sourceBytes": "externally edited bytes" },
-  "draft": { "baseRevision": "r7", "baseSourceFingerprint": "sha256:f9e6d6c9a4a522e63bb23e517f106ec6035a2d1d1a4a3d1e1c4b6a1b5d3c2e1a0" },
+  "draft": { "workspaceId": "ws-repair", "baseRevision": "r7", "baseSourceFingerprint": "sha256:f9e6d6c9a4a522e63bb23e517f106ec6035a2d1d1a4a3d1e1c4b6a1b5d3c2e1a0" },
   "wantAccept": true,
   "writeRecheck": true
 }
 ```
+
+`draft.workspaceId`は任意です。指定した場合は現在のWorkspaceと一致しなければ`WRONG_WORKSPACE`で拒否します。`authorityRevoked`が真の場合は、Previewでも`AUTHORITY_REVOKED`として表示・昇格を行いません。
 
 ## 責務と分界
 

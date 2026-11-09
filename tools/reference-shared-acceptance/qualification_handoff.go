@@ -16,25 +16,40 @@ func decodeQualificationInput(data []byte) (knowledgecontext.QualificationResult
 		return qualification, nil
 	}
 
-	// #2354: tei knowledge-qualify output may arrive as the command result
-	// envelope. Unwrap it before the bare-shape decoders reject the unknown
-	// schemaVersion field.
-	if unwrapped, envelopeErr := unwrapQualificationEnvelope(data); envelopeErr == nil {
-		result, resultErr := decodeQualificationResult(unwrapped)
-		if resultErr == nil {
-			return result, nil
+	qualification, handoffErr := qualificationFromHandoffShape(data)
+	if handoffErr == nil {
+		return qualification, nil
+	}
+
+	// #2354: tei knowledge-qualify and knowledge-review-handoff output may
+	// arrive as the command result envelope. Unwrap it and retry both bare
+	// shapes on the result before giving up.
+	if unwrapped, envelopeErr := unwrapKnowledgeEnvelope(data,
+		"tei.cli.knowledge-qualify/v0", "tei.cli.knowledge-review-handoff/v0"); envelopeErr == nil {
+		if qualification, resultErr := decodeQualificationResult(unwrapped); resultErr == nil {
+			return qualification, nil
+		}
+		if qualification, retryErr := qualificationFromHandoffShape(unwrapped); retryErr == nil {
+			return qualification, nil
 		}
 	}
 
+	return knowledgecontext.QualificationResult{}, fmt.Errorf(
+		"qualification入力をQualificationResultまたはBuilder Review Handoffとして読めません: qualification=%v handoff=%w",
+		qualificationErr,
+		handoffErr,
+	)
+}
+
+// qualificationFromHandoffShape accepts one bare BuilderReviewHandoff JSON and
+// returns the qualification it carries when it can flow into Shared Acceptance
+// Evidence.
+func qualificationFromHandoffShape(data []byte) (knowledgecontext.QualificationResult, error) {
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
 	var handoff knowledgecontext.BuilderReviewHandoff
 	if err := decoder.Decode(&handoff); err != nil {
-		return knowledgecontext.QualificationResult{}, fmt.Errorf(
-			"qualification入力をQualificationResultまたはBuilder Review Handoffとして読めません: qualification=%v handoff=%w",
-			qualificationErr,
-			err,
-		)
+		return knowledgecontext.QualificationResult{}, err
 	}
 	if _, err := decoder.Token(); err != io.EOF {
 		return knowledgecontext.QualificationResult{}, fmt.Errorf(
@@ -62,10 +77,10 @@ func decodeQualificationInput(data []byte) (knowledgecontext.QualificationResult
 	return handoff.Qualification, nil
 }
 
-// unwrapQualificationEnvelope extracts the result of a tei.cli.knowledge-qualify/v0
-// envelope. It fails for any other JSON so the caller can keep trying the bare
-// shapes.
-func unwrapQualificationEnvelope(data []byte) ([]byte, error) {
+// unwrapKnowledgeEnvelope extracts the result of a tei CLI command result
+// envelope whose schemaVersion is one of the accepted ones. It fails for any
+// other JSON so the caller can keep trying the bare shapes.
+func unwrapKnowledgeEnvelope(data []byte, acceptedSchemaVersions ...string) ([]byte, error) {
 	var envelope struct {
 		SchemaVersion string          `json:"schemaVersion"`
 		OK            bool            `json:"ok"`
@@ -79,17 +94,24 @@ func unwrapQualificationEnvelope(data []byte) ([]byte, error) {
 	if err := json.Unmarshal(data, &envelope); err != nil {
 		return nil, err
 	}
-	if envelope.SchemaVersion != "tei.cli.knowledge-qualify/v0" {
-		return nil, fmt.Errorf("schemaVersion %q is not tei.cli.knowledge-qualify/v0", envelope.SchemaVersion)
+	accepted := false
+	for _, version := range acceptedSchemaVersions {
+		if envelope.SchemaVersion == version {
+			accepted = true
+			break
+		}
+	}
+	if !accepted {
+		return nil, fmt.Errorf("schemaVersion %q is not an accepted command result envelope", envelope.SchemaVersion)
 	}
 	if envelope.Error != nil {
-		return nil, fmt.Errorf("tei knowledge-qualify failed: %s: %s", envelope.Error.Code, envelope.Error.Message)
+		return nil, fmt.Errorf("tei command failed: %s: %s", envelope.Error.Code, envelope.Error.Message)
 	}
-	if envelope.Mode != "" && envelope.Mode != "qualification" {
-		return nil, fmt.Errorf("tei knowledge-qualify returned mode %s", envelope.Mode)
+	if envelope.Mode != "" && envelope.Mode != "qualification" && envelope.Mode != "handoff" {
+		return nil, fmt.Errorf("tei command returned mode %s", envelope.Mode)
 	}
 	if len(envelope.Result) == 0 {
-		return nil, fmt.Errorf("tei knowledge-qualify envelope has no result")
+		return nil, fmt.Errorf("tei command envelope has no result")
 	}
 	return envelope.Result, nil
 }

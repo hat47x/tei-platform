@@ -46,7 +46,7 @@ func TestTraceWorkspaceRejectsMovedAndEditedSourceOnContinuation(t *testing.T) {
 	if err := os.MkdirAll(sourceDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	manifest := []byte("workspace: trace_snapshot\nsources:\n  - semantic\n")
+	manifest := []byte("workspace: trace_snapshot\nformatVersion: 1\nsources:\n  - semantic\n")
 	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), manifest, 0644); err != nil {
 		t.Fatal(err)
 	}

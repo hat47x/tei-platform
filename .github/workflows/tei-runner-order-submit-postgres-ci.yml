@@ -13,7 +13,9 @@ on:
       - '.github/workflows/tei-runner-order-submit-postgres-ci.yml'
       - 'tools/reference-first-web-target/runner_order_submit*.go'
       - 'tools/reference-first-web-target/order_submit_postgres*.go'
+      - 'tools/reference-first-web-target/cli_order_submit*.go'
       - 'internal/security/effectcommit/**'
+      - 'internal/security/effectcommit/submit/**'
 
 permissions:
   contents: read
@@ -76,13 +78,61 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          go vet ./tools/reference-first-web-target
+          go vet ./tools/reference-first-web-target ./internal/security/effectcommit/submit
+          go test -count=1 ./internal/security/effectcommit/submit
           go test -count=1 -v -run '^TestRunnerOrderSubmit' ./tools/reference-first-web-target | tee "$RUNNER_TEMP/go-test.log"
-          # 実DBの試験が全てPASSし、SKIPされていないことを確認する。
-          real="$(grep -c -- '--- PASS: TestRunnerOrderSubmitRealPostgres' "$RUNNER_TEMP/go-test.log" || true)"
-          test "$real" -ge 6
-          ! grep -q -- '--- SKIP: TestRunnerOrderSubmit' "$RUNNER_TEMP/go-test.log"
-          ! grep -q -- '--- FAIL' "$RUNNER_TEMP/go-test.log"
+          log="$RUNNER_TEMP/go-test.log"
+          # 実DBの試験は、名前ごとにPASS行が在ることを要求する（件数だけでは、
+          # 旧来の試験が新規の試験の欠落を覆い隠すため）。サブ試験も名前で要求する。
+          required=(
+            'TestRunnerOrderSubmitRealPostgresCommitsWithOneReceipt'
+            'TestRunnerOrderSubmitRealPostgresAlreadyNonDraftIsRefusedWithoutReceipt'
+            'TestRunnerOrderSubmitRealPostgresAuthorityBumpOrRevokeLeavesDraft'
+            'TestRunnerOrderSubmitRealPostgresUnknownCommitThenLookupReplayed'
+            'TestRunnerOrderSubmitRealPostgresSchemaNotReadyRefusesBeforeWrite'
+          'TestRunnerOrderSubmitRealPostgresStartupSchemaGate'
+          'TestRunnerOrderSubmitRealPostgresStartupSchemaGate/standard'
+          'TestRunnerOrderSubmitRealPostgresStartupSchemaGate/provisional'
+            'TestRunnerOrderSubmitRealPostgresHostGrantDeniedLeavesDraft'
+            'TestRunnerOrderSubmitRealPostgresSharedConstraintHappyPathAndRepeat'
+            'TestRunnerOrderSubmitRealPostgresSharedConstraintHappyPathAndRepeat/web'
+            'TestRunnerOrderSubmitRealPostgresSharedConstraintHappyPathAndRepeat/cli'
+            'TestRunnerOrderSubmitRealPostgresSharedConstraintEpochBumpAndRevoke'
+            'TestRunnerOrderSubmitRealPostgresSharedConstraintEpochBumpAndRevoke/epoch-bump/web'
+            'TestRunnerOrderSubmitRealPostgresSharedConstraintEpochBumpAndRevoke/epoch-bump/cli'
+            'TestRunnerOrderSubmitRealPostgresSharedConstraintEpochBumpAndRevoke/revoked/web'
+            'TestRunnerOrderSubmitRealPostgresSharedConstraintEpochBumpAndRevoke/revoked/cli'
+            'TestRunnerOrderSubmitRealPostgresSharedConstraintAckLossThenLookup'
+            'TestRunnerOrderSubmitRealPostgresSharedConstraintAckLossThenLookup/web'
+            'TestRunnerOrderSubmitRealPostgresSharedConstraintAckLossThenLookup/cli'
+            'TestRunnerOrderSubmitRealPostgresBarrierAuthorityChangeVersusHeldTransaction'
+            'TestRunnerOrderSubmitRealPostgresBarrierAuthorityChangeVersusHeldTransaction/epoch-bump'
+            'TestRunnerOrderSubmitRealPostgresBarrierAuthorityChangeVersusHeldTransaction/revoked'
+            'TestRunnerOrderSubmitRealPostgresAT1TargetRefusesPayloadNotReconciledWithOperationBeforeExecution'
+            'TestRunnerOrderSubmitRealPostgresAT1CallersKeepPayloadTargetConsistentWithOperation'
+            'TestRunnerOrderSubmitRealPostgresAT2ResultTypeAndAuditAcrossFailureCells'
+            'TestRunnerOrderSubmitRealPostgresAT2StaleExpectedVersionIsConflictNotFailure'
+            'TestRunnerOrderSubmitRealPostgresEvidenceHappyReplayAndObservation'
+            'TestRunnerOrderSubmitRealPostgresEvidenceDeniedHasNoReceipt'
+            'TestRunnerOrderSubmitRealPostgresEvidenceUnknownCommitThenLookupSameOperationID'
+            'TestRunnerOrderSubmitRealPostgresEvidenceIsOptIn'
+          )
+          for name in "${required[@]}"; do
+            grep -Eq -- "^[[:space:]]*--- PASS: ${name} \(" "$log" || { echo "required test did not PASS: ${name}" >&2; exit 1; }
+          done
+          # SKIPとFAILは、サブ試験（行頭が空白）も含めて一致させる。
+          # 否定した grep（! grep）は set -e では失敗扱いにならず、検査が働かない
+          # （最後の1行だけが終了コードを決める）。明示的に if で判定して終了する。
+          if grep -Eq -- '^[[:space:]]*--- SKIP:' "$log"; then
+            echo "unexpected SKIP in the real-PG run:" >&2
+            grep -E -- '^[[:space:]]*--- SKIP:' "$log" >&2
+            exit 1
+          fi
+          if grep -Eq -- '^[[:space:]]*--- FAIL:' "$log"; then
+            echo "unexpected FAIL in the real-PG run:" >&2
+            grep -E -- '^[[:space:]]*--- FAIL:' "$log" >&2
+            exit 1
+          fi
       - name: 実行後のhead・checkoutを再検証
         if: always()
         shell: bash

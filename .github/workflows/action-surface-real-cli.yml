@@ -1,0 +1,90 @@
+name: Action Surface actual Go CLI witness
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'plan/fixtures/action-surface-cli/**'
+      - 'plan/design/SEMANTIC_CONTEXT_ACTION_AFFORDANCE_2026-11.md'
+      - '.github/workflows/action-surface-real-cli.yml'
+      - 'reference/standard-crud/**'
+      - 'cmd/tei/**'
+      - 'internal/operations/**'
+      - 'internal/driver/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# 同じPRの古い実行だけを取り消し、mainへのpushは取り消さない（#3682）。
+concurrency:
+  group: tei-action-surface-real-cli-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  operation-surface-real-cli:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Checkout the exact candidate revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ env.EXPECTED_HEAD }}
+
+      - name: Verify checkout and test source fingerprint
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          echo "actual-head=$EXPECTED_HEAD"
+          echo "cli-test-blob=$(git rev-parse HEAD:plan/fixtures/action-surface-cli/verify_real_cli.py)"
+
+      - name: Set up Go from candidate go.mod
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      - name: Build the real TEI CLI in a temporary location
+        shell: bash
+        run: |
+          set -euo pipefail
+          go version
+          go build -o "$RUNNER_TEMP/tei" ./cmd/tei
+          "$RUNNER_TEMP/tei" version -json
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+
+      - name: Check Go characterization formatting and run the real Driver handoff
+        shell: bash
+        run: |
+          set -euo pipefail
+          gofmt -d internal/driver/action_surface_handoff_test.go
+          test -z "$(gofmt -l internal/driver/action_surface_handoff_test.go)"
+          go test ./internal/driver -run '^TestActionSurfaceToBoundRequestWrongTarget$' -count=1 -v
+
+      - name: Run OB-01/02 and file-effect negative witness
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -B plan/fixtures/action-surface-cli/verify_real_cli.py \
+            --binary "$RUNNER_TEMP/tei" \
+            --workspace reference/standard-crud/workspace
+
+      - name: Ensure candidate source remains unchanged
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
