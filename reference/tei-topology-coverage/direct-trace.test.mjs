@@ -261,6 +261,9 @@ test('resolved edge target must match declared Ref target and optional scope',()
     assert.equal(observeDirectTrace(f).reason,'invalid_direct_target');
   }
   // Unqualified-to Scope is allowed; Graph's resolved key retains its scope.
-  const g=fixture();delete g.result.trace.rows[0].edge.to.scope;
+  const g=fixture();
+  // Keep the resolved scope intact while removing only the Ref's optional scope.
+  g.result.trace.rows[0].edge.to=structuredClone(g.result.trace.rows[0].edge.to);
+  delete g.result.trace.rows[0].edge.to.scope;
   assert.equal(observeDirectTrace(g).status,'direct-edge-candidates');
 });
