@@ -1,0 +1,9 @@
+=== RUN   TestAPostEntryFailureIsUnknownNotRefused
+--- PASS: TestAPostEntryFailureIsUnknownNotRefused (0.00s)
+=== RUN   TestAPreEntryRefusalIsStillRefused
+--- PASS: TestAPreEntryRefusalIsStillRefused (0.00s)
+=== RUN   TestUnknownAndRefusedStaySeparateInOneRun
+--- PASS: TestUnknownAndRefusedStaySeparateInOneRun (0.00s)
+=== RUN   TestTheNotesExplainUnknownIsInsideInvoked
+--- PASS: TestTheNotesExplainUnknownIsInsideInvoked (0.00s)
+ok  	tei/tools/reference-evidence-router-connect	0.010s
