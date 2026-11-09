@@ -137,3 +137,35 @@ test("T12: Workspace observation cannot be missing or empty in public input", ()
   empty.workspaceObservation = "";
   assert.throws(() => projectPublicTeaSlice(empty, "R1"), /unqualified_public_slice/);
 });
+
+
+test("T06: reject exotic public arrays before invoking their values", () => {
+  const getterWorld = publicInput();
+  let reads = 0;
+  Object.defineProperty(getterWorld.subjects, "0", {
+    configurable: true, enumerable: true,
+    get() { reads++; return row("secret", {data: "accepted"}); },
+  });
+  assert.throws(() => projectPublicTeaSlice(getterWorld), /unqualified_public_slice/);
+  assert.equal(reads, 0);
+
+  const sparseWorld = publicInput();
+  delete sparseWorld.subjects[0];
+  assert.throws(() => projectPublicTeaSlice(sparseWorld), /unqualified_public_slice/);
+});
+
+test("T06: relation arrays reject own iterator, symbol and extra metadata", () => {
+  const ownIterator = publicInput();
+  let iteratorCalls = 0;
+  ownIterator.relations[Symbol.iterator] = function* () { iteratorCalls++; yield* []; };
+  assert.throws(() => projectPublicTeaSlice(ownIterator), /unqualified_public_slice/);
+  assert.equal(iteratorCalls, 0);
+
+  const extra = publicInput();
+  extra.relations.hiddenCount = 1;
+  assert.throws(() => projectPublicTeaSlice(extra), /unqualified_public_slice/);
+
+  const otherPrototype = publicInput();
+  Object.setPrototypeOf(otherPrototype.relations, []);
+  assert.throws(() => projectPublicTeaSlice(otherPrototype), /unqualified_public_slice/);
+});
