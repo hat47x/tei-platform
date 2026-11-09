@@ -1,0 +1,13 @@
+internal/buildintent/intent.go: 403 lines
+internal/buildintent/input_json.go: 58 lines
+internal/buildintent/resolve.go: 281 lines
+tools/reference-build-authoring-intent/fixture.go: 406 lines
+tools/reference-build-authoring-intent/resolve.go: 64 lines
+tools/reference-build-authoring-intent/intent.go: 56 lines
+DirSourceResolver block starts at 30, FixtureCatalog at 143 (total 406)
+SourceResolver appears in: internal/buildintent/resolve.go, internal/operations/trace_workspace_pinned_read_test.go, tools/reference-build-authoring-intent/README.md, tools/reference-build-authoring-intent/fixture.go, tools/reference-build-authoring-intent/resolve.go, tools/reference-plugin-build-supply/README.md
+BuilderResolver appears in: internal/buildintent/resolve.go, tools/reference-build-authoring-intent/README.md, tools/reference-build-authoring-intent/fixture.go, tools/reference-build-authoring-intent/resolve.go
+DependencyResolver appears in: internal/buildintent/resolve.go, tools/reference-build-authoring-intent/README.md, tools/reference-build-authoring-intent/fixture.go, tools/reference-build-authoring-intent/resolve.go
+TargetCatalog appears in: internal/buildintent/resolve.go, tools/reference-build-authoring-intent/README.md, tools/reference-build-authoring-intent/fixture.go, tools/reference-build-authoring-intent/resolve.go
+cmd/tei uses buildintent.ParseIntent: True
+cmd/tei calls buildintent.Resolve: False

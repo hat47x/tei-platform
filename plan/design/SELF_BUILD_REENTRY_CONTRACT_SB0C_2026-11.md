@@ -551,6 +551,46 @@ entry側（`cmd/tei`）は**変更不要**だった。childが申告するよう
 
 **座標照合をさらに広げるより、I-1bとしてまとめて扱う方がよい。** 欄ごとに照合を足していくと「照合した」が「導出した」に見えやすくなる。§4.8が禁じた混同そのものである。
 
+### 4.16 entryがin-processで計画を導くか（判断材料、2026-11-09）
+
+§4.13のI-1bを実装した（[#3654](https://github.com/hat47x/tei-platform/pull/3654)）ことで、`cmd/tei`は**subprocessを起動せずに計画を導ける**。`-intent-resolver`によるchild起動が既定のままなので、**既定経路を切り替えるかどうか**が新しい判断項目になった。本節は判断を下さず、材料を測る。
+
+#### 実測：四つのportの実装は今どこにあるか
+
+| port | 実装している場所 |
+| --- | --- |
+| `SourceResolver` | `tools/reference-build-authoring-intent`（`DirSourceResolver`）のみ |
+| `BuilderResolver` | 同上（`FixtureCatalog`）のみ |
+| `DependencyResolver` | 同上（`FixtureCatalog`）のみ |
+| `TargetCatalog` | 同上（`FixtureCatalog`）のみ |
+
+`internal/`と`cmd/`には**一つの実装も無い**。
+
+#### 実測：`internal/plugin`はBuilder catalogの代わりになるか
+
+ならない。`internal/plugin.Requirement`は`Plugin`と`CompatibleMajor`だけを持ち、**`recipeKinds`・`targets`・`profiles`・`authorityScope`を持たない**。`BuilderResolver`が解く問い（contract・recipe kind・target・profileに適合するProviderはどれか）に答えられない。
+
+#### 三つの案
+
+| 案 | 内容 | 何が要るか | 何が増えるか |
+| --- | --- | --- | --- |
+| **R-1: 既定をin-processへ** | `cmd/tei`が`internal/buildintent.Resolve`を直接呼ぶ | **`internal/`に四つのportの実装を新設**（Source解決・Builder catalog・Dependency catalog・Target catalog）。fixture catalogは参照実装専用なので移せない | subprocess起動が消え、entryが**自分で計画を導いた**と言える |
+| R-2: 既定はchild起動のまま | 現状維持 | なし | 何も変わらない |
+| R-3: 併存 | `-intent-resolver`があればchild、無ければin-process | R-1と同じ実装 | 経路が二つになり、**どちらで導いたかが出力の別欄になる** |
+
+#### 測ったうえでの所見
+
+**R-1は「配線」ではなく「catalogの製品化」である。** portは`internal/`にあるが、実装はfixtureにしかない。in-processへ切り替えるには、fixture catalogに相当するものを`internal/`へ新設する必要があり、それは§4.13が避けた「fixtureが製品に見える」問題を**別の形で**招く。今度はfixtureではなく**本物のcatalog**が必要になるが、その本物がどこから来るか（Workspaceの宣言か、外部の配布物か）は未決である。
+
+**R-3はR-1より危険が大きい。** 二つの経路が同じ出力欄を書くと、`planReceipt.resolverDigest`のような「どの実行体が導いたか」の記録が経路によって意味を変える。§4.8が避けた混同（自己申告と導出の混同）に近い。
+
+**したがって既定はR-2のまま据え置き、R-1の前提（catalogの出所）を先に決める。** これは`docs/status.md`や既存ADRの範囲ではなく、**新しい契約判断**である。§7に未決として名指しする。
+
+#### この節が言っていないこと
+
+- R-1を採らない、とは言っていない。**前提が未決**だと言っている。
+- in-processで導いても**L2-bではない**。(c)も変わらない。導出の主体が変わるだけで、「その計画がそのartifactを生んだ」ことは別の観測である。
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
@@ -611,7 +651,8 @@ entry側（`cmd/tei`）は**変更不要**だった。childが申告するよう
 - [x] I-1の実測見積りと案の選択（§4.13。**I-1a（解析だけを`internal/`へ移す）**を次の一歩に）
 - [x] **I-1a**（`ParseIntent`・`IntentFingerprint`を`internal/`の新パッケージへ移し、entryが宣言を自分で読む）の実装（§4.14、[記録](../evidence/TEI_GO_SELF_BUILD_ENTRY_INTENT_FINGERPRINT_2026-11-09.md)、`f522e8c65`）
 - [x] §4.8の(a)(b)（builder childが宣言byteを申告し、entryの保持byteと一致する）の実装（§4.14、[記録](../evidence/TEI_GO_SELF_BUILD_CHILD_DECLARATION_2026-11-09.md)、`ee7148138`）
-- [ ] entryまたはchildが宣言から**計画まで**独立に導く経路（I-1b。`ResolutionContext`の設計判断を伴う。§4.14末尾）
+- [x] entryまたはchildが宣言から**計画まで**独立に導く経路（I-1b。[#3654](https://github.com/hat47x/tei-platform/pull/3654)で`Resolve`を`internal/buildintent`へ移し、fixture catalogは`tools/`に残した。§4.13の反対理由はcatalogについてであり、portについては当たらなかった）
+- [ ] **entryの既定経路をin-processの`Resolve`へ切り替えるか**の判断。四つのportの実装は今fixtureにしかなく、切り替えには`internal/`側のcatalog新設が要る（§4.16。R-2据え置きが現時点の既定）
 - [x] 宣言とplanの**build座標**（`outputKind`・`target`・`profile`）の照合（[#3652](https://github.com/hat47x/tei-platform/pull/3652)。childが三座標を一つずつ比べ、違えばartifactを書いた後にreportを出さずexit 1。[記録](../evidence/TEI_GO_SELF_BUILD_BUILD_COORDINATES_2026-11-09.md)）
 - [ ] 宣言の他の欄（`sources`・`builder`・`recipe`・`dependencies`・`parameters`・`secretRequirements`）の照合。座標照合を広げるよりI-1bとしてまとめる方が「導出した」と「照合した」の混同を避けられる（§4.15末尾）
 - [ ] D-1（catalogの`scope`拡張）を採るかどうかの契約判断（採る場合のみ、catalogの広告と実応答の一致を照合へ載せる）
