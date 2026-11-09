@@ -1,0 +1,19 @@
+old: func itoa(n int) string { return string(rune('0' + n)) }
+
+itoa(0)   = "0"      itoa(9)   = "9"
+itoa(4)   = "4"      itoa(10)  = ":"     <- punctuation
+itoa(6)   = "6"      itoa(11)  = ";"
+                     itoa(23)  = "G"
+                     itoa(514) = "Ȳ"
+
+The only caller is numberedFiles, which builds
+    ^([0-9]{<itoa(digits)>})-.+\.md$
+and is called with digits=6 (plan/issue) and digits=4 (plan/adr).
+Both work today by accident: 4 and 6 are single digits.
+
+At digits=10 the pattern becomes ^([0-9]{:})-.+\.md$ which
+COMPILES (no panic) and matches nothing:
+    matches 1234567890-x.md: false
+    matches 1234-x.md:       false
+So assertUnique would report "no duplicates" over an empty set.
+The check does not fail; it stops existing.
