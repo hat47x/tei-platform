@@ -142,8 +142,8 @@ C-2の既存実装では、内部のArtifact Verifierが呼出しを拒否した
 | `ObservationProviders` | `observation.Binding`を通常`cmd/tei -plan`から呼ぶ | 非試験の`observation.Router`生成・`Observe`の実Provider実呼出し・取得時点/Scope |
 | `EvidenceProviders` | `evidence.Binding`を通常`cmd/tei -plan`から呼ぶ | 非試験の`evidence.Router`生成・`Collect`の実Provider実呼出し・開示Scope |
 | `ResourceBindings` | `resource.MatchBindings`による独立解決が存在 | 選択Resourceが実Consumerへ渡された同AttemptのTraceと外部変更/失効 |
-| `Instances` | 解析・索引・検証の実読者がいる | 専用Resolver／実実行を**要するとまだ判断しない** |
-| `Bindings` | 解析・索引・検証の実読者がいる | 同上。Applicationの実体対応を現在の実行採用へ昇格させない |
+| `Instances` | 解析・索引・検証の実読者に加え、**`ResolveContractQueryExecutor` が Instance を解決し、製品の2経路が実行器の選択まで進む**（[記録](../evidence/INSTANCES_BINDINGS_RESOLVER_2026-11-09/README.md)） | ただし解決されるのは **Contract Query の1用途**。Instance 一般の解決器があるとは言えない |
+| `Bindings` | 同上。**Binding は Instance と Capability と束ねて解決され、実行器の provider 一致まで確かめられる**（[記録](../evidence/INSTANCES_BINDINGS_RESOLVER_2026-11-09/README.md)） | 同上。**Contract Query の1用途**であり、Application の実体対応一般を実行採用へ昇格させない |
 
 **重要な訂正**：`ObservationProviders`と`EvidenceProviders`にはすでに`Binding`解決器があり、通常`cmd/tei`の`-plan`から**実呼出し**している。したがって「C-3と同種の解決器を新設する」は重複。反面、調査版では`observation.Router{}`／`evidence.Router{}`の**非試験組立ては0件**で、`Observe`／`Collect`が製品入口から実行できるとの受入証拠はない。`ResourceBindings`は同じ6種類に数えるが、Observation/Evidenceと同一な意味のProvider選択とは限らないので、集計件数だけで判断しない。
 
