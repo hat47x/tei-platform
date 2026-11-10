@@ -346,3 +346,4 @@
 - [realizeの実装束縛を参照グラフの辺にした](TEI_DOGFOODING_ROUND42_REALIZE_EDGE_2026-11-10/README.md)（#3983。`application -realizes-> semantic-capability`を追加し3束縛が可視化。4つ目は対象未宣言のため`unmaterialized-to`で報告され、既存不整合が可視化された。変異2種で確認）
 - [他の3種の実装束縛は依然として参照グラフに現れない](TEI_DOGFOODING_ROUND43_OTHER_BINDINGS_2026-11-10/README.md)（#3983残件。Worldに4種の束縛があるが索引はCustomGoBindingsのみ読む。executorを変えてもgraphFingerprintとtotalは不変。重複PR #3994の扱いも記録）
 - [永続化マッピングの列対応が参照グラフに現れない](TEI_DOGFOODING_ROUND44_PERSISTENCE_NOT_IN_GRAPH_2026-11-10/README.md)（#4001・#3983。属性20件中incomingを持つのは3件のみ。索引はMapping.Columnsを捨てている。commandsと-hの不一致は他者の修正で解消済みと確認）
+- [Worldの全欄と参照グラフの対応を検査で固定した](TEI_DOGFOODING_ROUND45_WORLD_FIELD_COVERAGE_2026-11-10/README.md)（#3419・#3983・#4001。17欄中14を索引が読み、未読3欄は第43ラウンドの特定と一致。reflectで全欄を列挙し未登録を落とす。ただし「読む欄が辺になるか」は未検査と明記）
