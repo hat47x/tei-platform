@@ -90,6 +90,7 @@ var repeatableFlags = map[string]map[string]bool{
 	"knowledge-data-design-candidate-review": {},
 	"model catalog":                          {},
 	"model locate":                           {},
+	"model overview":                         {},
 }
 
 // validateRepeatableArguments refuses a flag that was supplied more than once

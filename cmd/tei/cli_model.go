@@ -30,8 +30,11 @@ func runModelCommand(args []string, out io.Writer) (int, error) {
 	if len(args) > 0 && args[0] == "locate" {
 		return runModelLocateCommand(args[1:], out)
 	}
+	if len(args) > 0 && args[0] == "overview" {
+		return runModelOverviewCommand(args[1:], out)
+	}
 	if len(args) == 0 || args[0] != "catalog" {
-		return fail("INVALID_ARGUMENT", "model requires the subcommand catalog or locate", 2)
+		return fail("INVALID_ARGUMENT", "model requires the subcommand catalog, locate or overview", 2)
 	}
 	fs := flag.NewFlagSet("model catalog", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
@@ -166,6 +169,77 @@ func runModelLocateCommand(args []string, out io.Writer) (int, error) {
 }
 
 func writeModelLocateResponse(out io.Writer, response modelLocateCLIResponse, exit int) (int, error) {
+	encoder := json.NewEncoder(out)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(response); err != nil {
+		return 2, err
+	}
+	return exit, nil
+}
+
+// modelOverviewCLIResponse is the envelope for `model overview`.
+type modelOverviewCLIResponse struct {
+	SchemaVersion string                    `json:"schemaVersion"`
+	OK            bool                      `json:"ok"`
+	Result        *operations.ModelOverview `json:"result,omitempty"`
+	Error         *cliInspectionFailure     `json:"error,omitempty"`
+}
+
+const modelOverviewSchemaVersion = "tei.cli.model-overview/v0"
+
+// runModelOverviewCommand returns the model's table of contents: one row per
+// top-level section with the shape of its subtree and the problems found
+// anywhere under it (RQ-036, design §19.8 G5). Read-only; it shares the
+// catalog's load, so its fingerprints match model catalog and model locate.
+func runModelOverviewCommand(args []string, out io.Writer) (int, error) {
+	response := modelOverviewCLIResponse{SchemaVersion: modelOverviewSchemaVersion}
+	fail := func(code string, message string, exit int) (int, error) {
+		response.Error = &cliInspectionFailure{Code: code, Message: message}
+		return writeModelOverviewResponse(out, response, exit)
+	}
+	fs := flag.NewFlagSet("model overview", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	root := fs.String("workspace", "", "TEI workspace directory")
+	limit := fs.Int("limit", operations.OverviewDefaultLimit, "maximum sections listed")
+	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			printHelp(out, fs, "model overview")
+			return 0, nil
+		}
+		return fail("INVALID_ARGUMENT", err.Error(), 2)
+	}
+	if err := validateRepeatableArguments("model overview", args); err != nil {
+		return fail("INVALID_ARGUMENT", err.Error(), 2)
+	}
+	if name := emptyStringFlag(fs, emptyStringFlagsNotAllowed["model overview"]); name != "" {
+		return fail("INVALID_ARGUMENT", fmt.Sprintf("model overview: -%s must not be an empty string", name), 2)
+	}
+	if fs.NArg() != 0 || strings.TrimSpace(*root) == "" || *root != strings.TrimSpace(*root) {
+		return fail("INVALID_ARGUMENT", "model overview requires an exact -workspace, without positional arguments", 2)
+	}
+	if *limit < 1 || *limit > operations.OverviewMaxLimit {
+		return fail("INVALID_ARGUMENT", fmt.Sprintf("model overview: -limit must be between 1 and %d", operations.OverviewMaxLimit), 2)
+	}
+	result, err := operations.OverviewWorkspace(*root, *limit)
+	if err != nil {
+		code := "MODEL_OVERVIEW_FAILED"
+		var failure *operations.ValidationFailure
+		if errors.As(err, &failure) {
+			switch failure.Stage {
+			case operations.StageLoad:
+				code = "WORKSPACE_LOAD_FAILED"
+			case operations.StageSourceIndex:
+				code = "SOURCE_INDEX_FAILED"
+			}
+		}
+		return fail(code, err.Error(), 2)
+	}
+	response.OK = true
+	response.Result = &result
+	return writeModelOverviewResponse(out, response, 0)
+}
+
+func writeModelOverviewResponse(out io.Writer, response modelOverviewCLIResponse, exit int) (int, error) {
 	encoder := json.NewEncoder(out)
 	encoder.SetEscapeHTML(false)
 	if err := encoder.Encode(response); err != nil {

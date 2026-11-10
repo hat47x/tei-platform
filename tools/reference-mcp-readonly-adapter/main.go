@@ -357,6 +357,16 @@ func toolList() []tool {
 			},
 		},
 		{
+			Name:        "tei_model_overview",
+			Description: "Table of contents of the whole model: one row per top-level section with its subtree shape and the problems found anywhere under it; totals cover every section (same result as `tei model overview`).",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"limit": map[string]any{"type": "integer", "minimum": 1, "maximum": operations.OverviewMaxLimit},
+				},
+			},
+		},
+		{
 			Name:        "tei_inspect",
 			Description: "Read one exact canonical subject (same result as `tei inspect`).",
 			InputSchema: map[string]any{
@@ -524,6 +534,25 @@ func dispatch(name string, arguments map[string]json.RawMessage, workspace strin
 			return errorEnvelope("tei.cli.model-locate/v0", err), true, nil
 		}
 		return okEnvelope("tei.cli.model-locate/v0", result), false, nil
+	case "tei_model_overview":
+		if err := rejectUnknownArguments(arguments, "limit"); err != nil {
+			return nil, false, err
+		}
+		limit := operations.OverviewDefaultLimit
+		if _, present := arguments["limit"]; present {
+			var err error
+			if limit, err = optionalInt(arguments, "limit"); err != nil {
+				return nil, false, err
+			}
+			if limit < 1 || limit > operations.OverviewMaxLimit {
+				return nil, false, fmt.Errorf("limit must be between 1 and %d", operations.OverviewMaxLimit)
+			}
+		}
+		result, err := operations.OverviewWorkspace(workspace, limit)
+		if err != nil {
+			return errorEnvelope("tei.cli.model-overview/v0", err), true, nil
+		}
+		return okEnvelope("tei.cli.model-overview/v0", result), false, nil
 	case "tei_inspect":
 		if err := rejectUnknownArguments(arguments, "subjectKind", "subjectId"); err != nil {
 			return nil, false, err
