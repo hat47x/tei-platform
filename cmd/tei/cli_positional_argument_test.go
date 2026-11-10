@@ -19,27 +19,20 @@ func referenceWorkspacePath() string {
 
 // The CLI is flag-only: every command reads its inputs from flags, so a bare
 // word is a typo. `validate` and `world` used to ignore one and still exit 0,
-// which makes a mistyped run look like a clean one (#4129). Every advertised
-// command must reject it as an argument failure.
+// which makes a mistyped run look like a clean one (#4165). Every advertised
+// command must reject it as an argument failure, and say which word it rejected.
 func TestCommandsRejectPositionalArguments(t *testing.T) {
 	binary := buildCLIForLifecycle(t)
 
-	cases := []struct {
-		args []string
-		// namesValue records whether the command quotes the offending word.
-		// inspect and trace reject positional arguments with a fixed sentence
-		// that does not repeat the value; validate and world now quote it.
-		namesValue bool
-	}{
-		{args: []string{"validate", "-workspace", referenceWorkspacePath(), "stray"}, namesValue: true},
-		{args: []string{"world", "-workspace", referenceWorkspacePath(), "stray"}, namesValue: true},
-		{args: []string{"inspect", "-workspace", referenceWorkspacePath(),
-			"-subject-kind", "semantic-data", "-subject-id", "sales.order", "stray"}},
-		{args: []string{"trace", "-workspace", referenceWorkspacePath(), "-scope", "s",
-			"-subject-kind", "semantic-data", "-subject-id", "sales.order", "stray"}},
+	cases := [][]string{
+		{"validate", "-workspace", referenceWorkspacePath(), "stray"},
+		{"world", "-workspace", referenceWorkspacePath(), "stray"},
+		{"inspect", "-workspace", referenceWorkspacePath(),
+			"-subject-kind", "semantic-data", "-subject-id", "sales.order", "stray"},
+		{"trace", "-workspace", referenceWorkspacePath(), "-scope", "s",
+			"-subject-kind", "semantic-data", "-subject-id", "sales.order", "stray"},
 	}
-	for _, testCase := range cases {
-		args := testCase.args
+	for _, args := range cases {
 		t.Run(args[0], func(t *testing.T) {
 			command := exec.Command(binary, args...)
 			var stdout, stderr bytes.Buffer
@@ -56,11 +49,8 @@ func TestCommandsRejectPositionalArguments(t *testing.T) {
 			// The message has to name the offending word, or the caller cannot
 			// tell which argument was unexpected.
 			combined := stdout.String() + stderr.String()
-			if !strings.Contains(combined, "positional") {
-				t.Fatalf("%q: message does not say the argument is positional: %q", args, combined)
-			}
-			if testCase.namesValue && !strings.Contains(combined, "stray") {
-				t.Fatalf("%q: message does not name the rejected word: %q", args, combined)
+			if !strings.Contains(combined, "positional") || !strings.Contains(combined, "stray") {
+				t.Fatalf("%q: message does not name the positional argument: %q", args, combined)
 			}
 			// An envelope command answers on stdout with a stable code.
 			if stdout.Len() > 0 {

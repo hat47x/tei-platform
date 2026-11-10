@@ -305,3 +305,5 @@
 
 # Call-after-kill observations are hashed as raw bytes.
 /plan/evidence/DSH_MCP_CALL_AFTER_KILL_2026-11-10/** -text
+# Drift comparison value output is hashed as raw bytes by its README.
+/plan/evidence/DRIFT_COMPARISON_VALUE_2026-11-11/** -text

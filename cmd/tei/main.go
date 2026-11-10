@@ -296,6 +296,12 @@ func main() {
 		if parseErr == nil {
 			parseErr = validateRepeatableArguments(command, os.Args[2:])
 		}
+		// Name the offending word here too. These two commands already rejected
+		// positional arguments, but with a fixed sentence that did not say which
+		// one, so a typo looked the same as a missing flag (#4165).
+		if parseErr == nil {
+			parseErr = rejectPositionalArguments(fs, command)
+		}
 		if parseErr != nil {
 			code, writeErr := selectedReadOnlyFlagError(os.Stdout, command, parseErr)
 			if writeErr != nil {
