@@ -43,6 +43,9 @@ type l2bGoBuildResult struct {
 	DefinitionBinding *struct {
 		State string `json:"state"`
 	} `json:"definitionBinding"`
+	ChildRun *struct {
+		ChildSchema string `json:"childSchema"`
+	} `json:"childRun"`
 	Error *struct {
 		Code    string `json:"code"`
 		Message string `json:"message"`
@@ -136,7 +139,9 @@ func TestSelfBuildEstablishesL2BFromARealGoBuild(t *testing.T) {
   "subject": {"kind": "plugin", "id": "tei.native.runtime.reference", "version": "1.0.0", "definitionSource": "tei"},
   "sources": [
     {"kind": "plugin-definition", "id": "definition", "ref": "reference/plugin-self-build/workspace/plugins/tei-native-runtime-reference/1.0.0/plugin.tei"},
-    {"kind": "go-package", "id": "tei", "ref": "cmd/tei/testdata/l2b-go-command"}
+    {"kind": "go-package", "id": "tei", "ref": "cmd/tei/testdata/l2b-go-command"},
+    {"kind": "go-module", "id": "mod", "ref": "go.mod"},
+    {"kind": "go-module", "id": "sum", "ref": "go.sum"}
   ],
   "builder": {"contract": "tei.plugin-build", "compatibleMajor": 1},
   "recipe": {"kind": "go-command", "entrypoint": "./cmd/tei/testdata/l2b-go-command"},
@@ -182,6 +187,7 @@ func TestSelfBuildEstablishesL2BFromARealGoBuild(t *testing.T) {
 		"-intent", intentPath,
 		"-repo", repoRoot,
 		"-go", goExe,
+		"-isolate",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -238,6 +244,13 @@ func TestSelfBuildEstablishesL2BFromARealGoBuild(t *testing.T) {
 	}
 	if _, statErr := os.Stat(output); statErr != nil {
 		t.Fatalf("no artifact was produced: %v", statErr)
+	}
+
+	// The child reports its own record, and it says the build ran in a staged
+	// tree. That is the difference between "the plan was checked and then the
+	// working tree was built" and "the plan was built".
+	if report.ChildRun == nil || report.ChildRun.ChildSchema != "tei.reference.go-build-from-plan/v0" {
+		t.Fatalf("the child report is not the plan-reading builder: %+v", report.ChildRun)
 	}
 }
 
