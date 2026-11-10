@@ -1178,6 +1178,15 @@ X-TEA Modeler由来の**Data/Function/Businessの3図とCRUD cross-reference**�
 **他レーンの現在基線**：mainの #3540 は通常CLI/Studioの静的Inspector参照選択、#3635 はStudio参照Hookの executed/notEvaluated/skipped/refused を区別。どちらも組織実DB/現在Grantの資格ではない。#3496のREA T0実解析・Artifact独立監査はSource候補の限定証拠で、Owner意味受理/TEI Intakeは未成立。#3662のSubsystem固定Owner数理候補は現業務責任や物理Service分割でない。
 
 **優先は据え置き**：全TEIのHJ-09一Function実Read（#2586）を先行し、組織C1→D1 read-onlyとRQ-036 Model Map／三視点の同一Source照合は次段、実Case切替・旧Grant/SoD・二件Handoffは#1174/#2499/#1125/#1444のP1。実行主体と認可Sourceの比較可能なrevisionが証明されない場合は保留し、HookのnotEvaluated/partialを許可やEffectに昇格しない。新Org Status Enum/Authority Engine/Workflow Host/Proof Store/Hard Gateを設けない。本追補はdocs-onlyでORG-TRの実Go/PG/Studio/外部Host/Owner受理は未実行。
+## 2026-11-07 標準データ構造と標準表現型の対応（設計・検証候補）
+
+X-TEAのテーブル1:1/1:N→XF単票/明細の対応を、**テーブル非依存の標準データ構造**と**機能から独立して定義する標準表現型**の二つのトポロジー間のMappingへ拡張して検証します。表現型の定義/Paletteは独立してよい一方、用途・対象を持つ具体的な表現インスタンスはFunctionに配置し、Function Data Context/Result Slice/Operationと明示的に結び付けます。データ側のEntity/Relation/Occurrenceと表現側のPanel/Tab/Table/Tree等の配置を同一視しません。
+
+- **B・F・G領域の横断**：[#2495](https://github.com/hat47x/tei-platform/issues/2495)が構造Facet、[#2497](https://github.com/hat47x/tei-platform/issues/2497)が構造写像・情報損失・逆写像、[#2506](https://github.com/hat47x/tei-platform/issues/2506)/[#2507](https://github.com/hat47x/tei-platform/issues/2507)がFunction内Binding、[#997](https://github.com/hat47x/tei-platform/issues/997)がTarget別Presentationを担当します。第二のValidator/Renderer/Host/Scenario正本は作りません。
+- **時間・媒体の追加検証**：元データの時刻、取得時刻、再生/生成時刻、文書の段落/ページ位置を分離。音声・動画・文章・ページ間では、軸を保持する写像、明示的な時刻変換、新たな再生時間軸の生成を区別します。朗読時間やreflowされたページ番号を元データの本質的な時間とみなしません。
+- **順序と完了条件**：P0=分類比較、P1=Headless read-only mapping、P2=Function/Rendererへの配置、P3=逆編集/実Provider Effect、P4=SHO/SUI等の異質Consumerへの展開。先にRP-01〜08（JOIN fanout、DAG→Tree、数値→Slider、音声/動画同期、文書→TTS、Sonification、partial Tab、Function跨ぎ）の独立Expectedで誤実装を落とします。既存[#2514](https://github.com/hat47x/tei-platform/issues/2514)/[#1180](https://github.com/hat47x/tei-platform/issues/1180)へ接続し、新Gateは追加しません。
+
+詳細は[設計・反証比較票](design/STANDARD_REPRESENTATION_TOPOLOGY_AND_MEDIA_AXES_2026-11.md)。**今回の追加は計画のみ**であり、RP-01〜08の実行、実Media生成/再生、Provider/Host接続、Owner意味受理、公開契約の採用を示しません。既存の判定段階A/B/Cの評価は変更しません。
 
 ## 先に固定しないもの
 
