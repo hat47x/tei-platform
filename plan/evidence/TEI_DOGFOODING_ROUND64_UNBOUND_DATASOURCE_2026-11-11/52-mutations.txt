@@ -1,0 +1,11 @@
+M1 restore the old message
+   -> FAIL message does not contain "bind returns_intake.sales"
+M2 ignore the targeted database and offer any instance
+   -> FAIL message names another database's instance: ... master_data.dev
+M3 always use the placeholder
+   -> FAIL message does not name the declared instance
+
+M2 did not fail on the first attempt: my first mutation removed `continue` and
+broke the build, which is not a test result. The rewritten mutation disables the
+match (`_ = target`) and then failed as intended.
+restored -> validation, cmd/tei (310.7s) ok; vet and gofmt clean
