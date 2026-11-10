@@ -474,6 +474,7 @@ Data Workbench #3270、REST Decision Graph #3274、三要素モデルとCRUD/SHO
 - **実CLIドッグフーディング #3149**（横断実測はclosed）から、#3345（`view`でWorld/Source Indexの版照合値が欠落・異なる範囲のfingerprint）、#3346（`docs/plan`内MarkdownはmanagedでもLoaderで解釈されない）、#3347（応答JSON shapeの違い）が個別課題として残った。**読み取れるデータ、管理されるファイル、意味を解釈したSource、AI Toolが完全受領した出力を同一視しない**。#3183/3182等の旧観測がclosedであっても、全CLIが同じLock形式をそのまま再入力できる、すべての`read-only`宣言は無副作用、といった上位保証への自動昇格はしない。
 - **#3262/#3273系のT0.5/T1**：限定的なContext不足の検出と固定Scenario実行の進展はあるが、Required Rule/RelationをSource/Loader/Meaningから閉じてAIが未知の独立Negativeを発見し、同じ実SourceでMutantを殺した**T1-B**はまだ別資格。#3324はclosed/unmergedのDraftであり、単に最新Issue一覧へ現れたことをmain実装に数えない。
 - **BOM [Draft #3297](https://github.com/hat47x/tei-platform/pull/3297)**：現在RQ-035はData Source Workbench、RQ-036は全容Model Map、BOMは新たな**RQ-037**として独立。旧Draft #3297のRQ-036表記はmain追随時に修正が必要。純Go ReferenceはFull/Pairwise/提供済exact Lock相対の計画と同一Attempt入力の整合を検査する。**歴史的なPR head `a6cddd6778613fa9d6b2ecedfcf0aaade5e51cbc`ではHealth/依存脆弱性CI成功**。その後PRのHEADは更新されているため、旧SHAの成功を現在HEADやmainの成功へ移さない。Draft [#3297](https://github.com/hat47x/tei-platform/pull/3297)は現在も未統合であり、実Provider/Runtime/Host/正式BOM発行とは分離する。実Provider/Runtime/Host/正式BOM発行はNOT RUN。
+- **BOM [Draft #3297](https://github.com/hat47x/tei-platform/pull/3297)**：現在RQ-035はData Source Workbench、RQ-036は全容Model Map、BOMは**RQ-037**として独立。旧BOM Draft #3297にあるRQ-036表記は現行受入へ転用しない。純Go ReferenceはFull/Pairwise/提供済exact Lock相対の計画と同一Attempt入力の整合を検査する。**歴史的なPR head `a6cddd6778613fa9d6b2ecedfcf0aaade5e51cbc`ではHealth/依存脆弱性CI成功**。その後PRのHEADは更新されているため、旧SHAの成功を現在HEADやmainの成功へ移さない。Draft [#3297](https://github.com/hat47x/tei-platform/pull/3297)は現在も未統合であり、実Provider/Runtime/Host/正式BOM発行とは分離する。実Provider/Runtime/Host/正式BOM発行はNOT RUN。
 
 ### 16.2 利用と資格の五段階を一つの「Plugin使用済み」に潰さない
 
@@ -653,6 +654,7 @@ Data Workbench #3270、REST Decision Graph #3274、三要素モデルとCRUD/SHO
 
 
 **製品要求の正式な番号**：BOMは[RQ-037](../../requirements/TEI_PRODUCT_REQUIREMENTS.md)であり、[RQ-036](../../requirements/TEI_PRODUCT_REQUIREMENTS.md)は全容モデルマップ。旧Draftの設計番号を製品要件の正本と混同しない。現状のPlugin-first限定Go Consumerと実Wails/通常CLI Consumerの資格差も維持する。
+**要求の正本（2026-11-09）**：BOMの採番はRQ-037（主PAS-06）。現行RQ-036は全容Model Map／標準とCustomの表示・操作境界であり、BOMと同じ資格にはしない。製品S2に関しては#3540の静的参照Provider接続と通常CLI／実Wailsから独立に実Build・Provider選択・Invocationを観測したものを分ける。#3583が確認したC-1配備Command/C-2 Service Requestは異なる操作領域であり、二者択一を事前に固定しない。
 
 ## 18. Verified BOMの証拠鮮度：Source変更と選択規則変更を独立に追跡する（2026-11-08横断・受入案）
 
