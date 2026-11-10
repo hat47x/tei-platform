@@ -1,0 +1,7 @@
+=== RUN   TestEveryDerivedKindHasItsOwnRank
+--- PASS: TestEveryDerivedKindHasItsOwnRank (0.00s)
+=== RUN   TestTheRankedVocabularyMatchesTheDerivation
+--- PASS: TestTheRankedVocabularyMatchesTheDerivation (0.00s)
+=== RUN   TestAnUnknownKindSortsAfterEveryRankedKind
+--- PASS: TestAnUnknownKindSortsAfterEveryRankedKind (0.00s)
+ok  	tei/internal/operations	0.013s

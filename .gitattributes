@@ -299,3 +299,6 @@
 
 # Mid-run MCP kill observations are hashed as raw bytes.
 /plan/evidence/DSH_MCP_KILL_MIDRUN_2026-11-10/** -text
+
+# Kind rank vocabulary output is hashed as raw bytes by its README.
+/plan/evidence/KIND_RANK_VOCABULARY_2026-11-10/** -text

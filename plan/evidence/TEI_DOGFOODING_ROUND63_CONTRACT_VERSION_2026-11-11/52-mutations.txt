@@ -1,0 +1,7 @@
+M1 remove the version check
+   -> FAIL message does not ask for a version: unexpected token "{"
+M2 keep the check but move it after expect()   (the bug I actually made)
+   -> FAIL message does not ask for a version: unexpected token "{"
+M3 report a present-but-invalid version as missing
+   -> FAIL a present-but-invalid version must not be reported as missing
+restored -> syntax, workspace, cmd/tei (302.8s) ok; vet and gofmt clean

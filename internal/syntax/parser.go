@@ -338,6 +338,15 @@ func (p *Parser) ParseContract() (database.Contract, error) {
 	if err != nil {
 		return database.Contract{}, p.errAt(idTok, err.Error())
 	}
+	// A missing version is the mistake a first-time author makes here: the id and
+	// the version are both bare tokens, so it looks like the brace can follow the
+	// id. The generic `unexpected token "{"` left the author to guess (#4169).
+	// The check has to happen BEFORE expect(), which consumes the offending token.
+	if next, err := p.peek(); err == nil && next.Kind != TokenIdent {
+		return database.Contract{}, p.errAt(next, fmt.Sprintf(
+			"expected a version after the contract id %q: write it as \"contract %s v4 { ... }\" (the id and the version are separate tokens)",
+			idTok.Text, idTok.Text))
+	}
 	verTok, err := p.expect(TokenIdent)
 	if err != nil {
 		return database.Contract{}, err
