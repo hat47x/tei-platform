@@ -205,6 +205,7 @@ func main() {
 	periodAdvance := fs.String("advance", "", "periods: move this period one step toward closed and record it")
 	periodCloseCapability := fs.String("close-capability", "", "periods: the close capability that already ran, satisfying close-requires")
 	dbCheckDSNFlag := fs.String("dsn", "", "dbcheck: PostgreSQL DSN (defaults to TEI_TEST_POSTGRES_DSN)")
+	dbIntrospectSemanticFlag := fs.Bool("semantic", false, "db-introspect: convert schema to TEI semantic namespace")
 	grantsOut := fs.String("grants-out", "", "grants: write the grants document here instead of stdout")
 	grantCapability := fs.String("grant-capability", "", "issue-grant: the capability the grant is issued to")
 	grantKind := fs.String("grant-kind", "filesystem", "issue-grant: permission kind")
@@ -251,6 +252,21 @@ func main() {
 	parseErr := fs.Parse(os.Args[2:])
 	if errors.Is(parseErr, flag.ErrHelp) {
 		printHelp(os.Stdout, fs, command)
+		return
+	}
+
+	// db-introspect needs neither a workspace nor a world: it reads a live
+	// database and reports its physical schema, so it runs before those
+	// requirements apply.
+	if command == "db-introspect" {
+		if *providerName == "" || *dbCheckDSNFlag == "" {
+			fmt.Fprintln(os.Stderr, "-provider and -dsn are required for db-introspect")
+			os.Exit(2)
+		}
+		if err := runDBIntrospect(context.Background(), *providerName, *dbCheckDSNFlag, os.Stdout, *dbIntrospectSemanticFlag); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 		return
 	}
 
