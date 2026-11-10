@@ -123,8 +123,9 @@ func TestSelfBuildEstablishesL2BFromARealGoBuild(t *testing.T) {
 	catalogPath, catalogDigest := authorGoCommandCatalog(t, root, builder)
 	workspace := outerWorkspace(t, root)
 
-	// The declaration names a real plugin definition and a small Go package: the
-	// intent model requires a definition source even for a command build (§4.39).
+	// §4.40: a command build is defined by the package it compiles, so the
+	// definitionSource names the go-package source. The plugin declaration is
+	// still listed as a source the plan carries, but it does not define the build.
 	definitionPath := filepath.Join(repoRoot, "reference", "plugin-self-build", "workspace", "plugins",
 		"tei-native-runtime-reference", "1.0.0", "plugin.tei")
 	if _, statErr := os.Stat(definitionPath); statErr != nil {
@@ -132,7 +133,7 @@ func TestSelfBuildEstablishesL2BFromARealGoBuild(t *testing.T) {
 	}
 	intentBody := `{
   "formatVersion": 1,
-  "subject": {"kind": "plugin", "id": "tei.native.runtime.reference", "version": "1.0.0", "definitionSource": "definition"},
+  "subject": {"kind": "plugin", "id": "tei.native.runtime.reference", "version": "1.0.0", "definitionSource": "tei"},
   "sources": [
     {"kind": "plugin-definition", "id": "definition", "ref": "reference/plugin-self-build/workspace/plugins/tei-native-runtime-reference/1.0.0/plugin.tei"},
     {"kind": "go-package", "id": "tei", "ref": "cmd/tei/testdata/l2b-go-command"}
