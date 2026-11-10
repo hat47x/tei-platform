@@ -1,0 +1,7 @@
+Round 60 recorded this friction but did NOT file it, because I could not establish
+the correct fix. Round 64 established it by reading the model's environment file
+and verifying both directions.
+
+That is the sequence the earlier mistake (round 52) taught: do not file from a
+broken probe. This round the deferral paid off, and the fix went straight in
+without an issue round trip.

@@ -422,3 +422,4 @@
 - [構文の配置を教える。パターン種をapplication本体に書いたとき](TEI_DOGFOODING_ROUND61_SYNTAX_PLACEMENT_2026-11-11/README.md)（#4169。パターン5種すべてがでたらめな語と同じ汎用エラーだったことを実測し、application.PatternKindsを使って配置を名指しするようにした。変異3種で確認。一般的な構文探索の穴は残り、4案を示して起票）
 - [契約クエリをCLIで設計し診断の言語混在を検出](TEI_DOGFOODING_ROUND62_LANGUAGE_MIX_2026-11-11/README.md)（#4174。#4169のA案の材料として契約クエリを4往復で設計。PARSE_ERRORクラスに英語と日本語が併存することを実測し、非テスト555件/66ファイルを数えた。1回の実行での同時観測はしておらず、CLIに出るものの対応付けも未完。変換は方針判断のため未実施）
 - [契約ヘッダの版を名指しする](TEI_DOGFOODING_ROUND63_CONTRACT_VERSION_2026-11-11/README.md)（#4169のA案2件目。`unexpected token \"{\"`を「版が要る」に変え、`^`も同じ案内にした。実装中にpeekの順序バグを作り、ビルドと既存試験は通ったがCLIで測って気づいた。変異M2がそのバグを再現する）
+- [未束縛のdatasourceに書くべきbindを名指しさせる](TEI_DOGFOODING_ROUND64_UNBOUND_DATASOURCE_2026-11-11/README.md)（#4169のA案3件目。第60ラウンドで起票を保留した摩擦を、environmentファイルで手順を確定してから解消。案内はWorldから導出し、実在しないインスタンスを例示しない（fail-closed）。変異3種で確認）

@@ -2058,3 +2058,47 @@ CLI で測ると**修正前と同じメッセージが返り**、そこで気づ
 ### #4169 の進捗
 
 A 案で直したのは2件（第61ラウンドのパターン配置、本ラウンドの版欠落）。第62ラウンドで弱いと判定した `unexpected token "^"` も本ラウンドで一緒に直った。
+
+## 66. 第64ラウンド（2026-11-11）: 未束縛の datasource に、書くべき bind を名指しさせる
+
+第60ラウンドで踏み、正しい手順を知らなかったため**起票しなかった**摩擦を、手順を確定したうえで解消した。生出力は[第64ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND64_UNBOUND_DATASOURCE_2026-11-11/README.md)にある。
+
+### 手順の確定
+
+警告は再現できた。解消手順は**モデル自身の environment ファイル**から確定した（道具のソースではなく設計対象）。
+
+```tei
+database-instance sales_core.dev {
+    definition sales_core
+    provider postgres
+}
+
+bind order_entry.sales -> sales_core.dev
+```
+
+`bind <application>.<alias> -> <database-instance>` を environment ブロック**内**に書く。実測で両方向を確認した（足すと `ok`、削ると警告が戻る）。
+
+**途中の自分の誤り**: 閉じ括弧の後ろに追記したら `PARSE_ERROR unexpected trailing token "bind"`。置き場所が問題で、ブロック内に移すと通った（#4169 の配置問題の一例）。
+
+### 修正
+
+警告に、**World から導出した**案内を添える。対象 alias の `TargetDatabase` を引き、environment の `Instances` から定義が一致するものを探す。見つかれば実名を、無ければ `<database-instance>` の形だけを示す。
+
+```text
+warning UNBOUND_DATASOURCE  query task67.q datasource sales is not bound in any environment;
+  add "bind task67.sales -> sales_core.dev" inside environment development, which already declares that instance
+```
+
+**案内のとおりに1行足すと `ok` になる**ことを CLI で実演した。
+
+### fail-closed
+
+**実在しないインスタンスを例示しない。** 別データベースのインスタンスを借りて案内すると、そのとおりに書いた利用者が誤った束縛を作る。3試験（形の提示・実名の優先・**借用しない**）と変異3種で固定した。
+
+変異 M2 は最初ビルドを壊して「失敗しなかった」。書き直して（`_ = target` で一致判定を無効化）初めて意図した変異として落ちた。第61・63ラウンドと同じく、**変異が壊れていることに気づいて直した**。
+
+`./internal/validation` と `./cmd/tei`（310.7s）が ok。
+
+### #4169 の進捗
+
+A 案は3件（第61ラウンドのパターン配置、第63ラウンドの契約の版、本ラウンドの bind）。**いずれも実際に踏んだ誤りから作られている。**
