@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -204,5 +205,18 @@ func TestViewReferenceStoreWithoutExecuteIsAnArgumentError(t *testing.T) {
 	}
 	if doc.Error == nil || doc.Error.Code != "INVALID_ARGUMENT" {
 		t.Fatalf("error=%+v (%s)", doc.Error, stdout.String())
+	}
+}
+
+func TestViewReferenceStoreRejectsEveryNonExecutingMode(t *testing.T) {
+	for _, mode := range [][]string{nil, {"-package", "order_entry.orders"}, {"-pattern", "order_entry.order_record"}} {
+		t.Run(fmt.Sprint(mode), func(t *testing.T) {
+			args := append([]string{"-workspace", referenceWorkspacePath(), "-application", "order_entry", "-reference-store", "-format", "json"}, mode...)
+			var out bytes.Buffer
+			code, err := runViewCommand(args, &out)
+			if err != nil || code != 2 || !bytes.Contains(out.Bytes(), []byte(`"INVALID_ARGUMENT"`)) {
+				t.Fatalf("mode %v accepted or failed for another reason: code=%d err=%v %s", mode, code, err, &out)
+			}
+		})
 	}
 }
