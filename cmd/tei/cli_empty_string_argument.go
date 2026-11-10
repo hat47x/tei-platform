@@ -17,10 +17,11 @@ import (
 // rejects these as empty strings, so listing them here is what makes the CLI
 // and MCP answer the same way.
 var emptyStringFlagsNotAllowed = map[string][]string{
-	"trace":         {"mode", "direction", "expected-fingerprint"},
-	"model catalog": {"namespace"},
-	"model locate":  {"workspace", "subject-kind", "subject-id"},
-	"inspect":       {"subject-kind"},
+	"trace":          {"mode", "direction", "expected-fingerprint"},
+	"model catalog":  {"namespace"},
+	"model locate":   {"workspace", "subject-kind", "subject-id"},
+	"model overview": {"workspace"},
+	"inspect":        {"subject-kind"},
 }
 
 // emptyStringFlag returns the first flag in names that the caller passed with

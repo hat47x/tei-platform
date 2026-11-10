@@ -176,6 +176,12 @@ func helpText(fs *flag.FlagSet, command string) string {
 			fmt.Fprintf(&out, "  -limit int\n    \tmaximum entries per list (children, siblings); default %d, at most %d\n", operations.LocationDefaultLimit, operations.LocationMaxLimit)
 			return out.String()
 		}
+		if command == "model overview" {
+			// model overview parses its own FlagSet; two flags are its grammar.
+			fmt.Fprintf(&out, "  -workspace string\n    \tTEI workspace directory\n")
+			fmt.Fprintf(&out, "  -limit int\n    \tmaximum sections listed; totals still cover every section; default %d, at most %d\n", operations.OverviewDefaultLimit, operations.OverviewMaxLimit)
+			return out.String()
+		}
 		if command == "dbcheck" {
 			// dbcheck is dispatched but deliberately absent from the read-only
 			// discovery catalog, so it cannot carry an allowlist entry; the one
