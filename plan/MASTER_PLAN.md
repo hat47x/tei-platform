@@ -10,6 +10,7 @@
 
 関連文書は次のとおりです。
 
+- `plan/workstreams/CROSS_DOMAIN_VERTICAL_QUALIFICATION_2026-11.md` ：Plugin・Function実Read・三視点Model Map・実Effect・Build・Consumerを、**宣言／実選択／実入力／実呼出し／受領／現在資格**で区別する横断受入計画。§9はS2-reference（#3540）・限定L2-b（#3785/#3795）・限定L3・Hookの実績を反映。**S2-product／Function R0／全体G4は未資格**。各担当は#1251/#2586/#2831/#1124/#2600等を維持し、新Gate/第二正本を設けない。
 - `product/`
 - `requirements/`
 - `plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
