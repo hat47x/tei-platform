@@ -8,18 +8,31 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
+// BuildResult holds build artifact metadata including performance timing.
+type BuildResult struct {
+	Digest        string
+	BinaryPath    string
+	SourceDir     string
+	Platform      string
+	BuildDuration time.Duration
+	BinarySize    int64
+}
+
 // Build compiles the generated source tree into a single binary.
-func Build(workspaceRoot, appID, sourceDir, outputPath, platform string) (string, error) {
+func Build(workspaceRoot, appID, sourceDir, outputPath, platform string) (*BuildResult, error) {
 	if err := writeGoMod(sourceDir, appID); err != nil {
-		return "", fmt.Errorf("write go.mod: %w", err)
+		return nil, fmt.Errorf("write go.mod: %w", err)
 	}
+
+	buildStart := time.Now()
 	tidy := exec.Command("go", "mod", "tidy")
 	tidy.Dir = sourceDir
 	tidy.Env = minimalEnv()
 	if out, err := tidy.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("go mod tidy failed: %v\n%s", err, out)
+		return nil, fmt.Errorf("go mod tidy failed: %v\n%s", err, out)
 	}
 
 	env := minimalEnv()
@@ -35,14 +48,27 @@ func Build(workspaceRoot, appID, sourceDir, outputPath, platform string) (string
 	cmd.Env = env
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("go build failed: %v\n%s", err, out)
+		return nil, fmt.Errorf("go build failed: %v\n%s", err, out)
+	}
+	buildDuration := time.Since(buildStart)
+
+	info, err := os.Stat(outputPath)
+	if err != nil {
+		return nil, fmt.Errorf("stat binary: %w", err)
 	}
 
 	digest, err := fileDigest(outputPath)
 	if err != nil {
-		return "", fmt.Errorf("artifact digest: %w", err)
+		return nil, fmt.Errorf("artifact digest: %w", err)
 	}
-	return "sha256:" + digest, nil
+	return &BuildResult{
+		Digest:        "sha256:" + digest,
+		BinaryPath:    outputPath,
+		SourceDir:     sourceDir,
+		Platform:      platform,
+		BuildDuration: buildDuration,
+		BinarySize:    info.Size(),
+	}, nil
 }
 
 func writeGoMod(moduleDir, appID string) error {

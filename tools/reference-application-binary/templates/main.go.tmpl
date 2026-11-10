@@ -133,8 +133,8 @@ func dispatchValidate(cfg *Config, db *sql.DB) error {
 		if err := json.NewDecoder(os.Stdin).Decode(&in); err != nil {
 			return fmt.Errorf("decode input: %w", err)
 		}
-		if err := {{.GoFunctionName}}(&in); err != nil {
-			return fmt.Errorf("validation {{.ID}}: %w", err)
+		if errs := {{.GoFunctionName}}(&in); len(errs) > 0 {
+			return fmt.Errorf("validation {{.ID}}: %w", errorsJoin(errs))
 		}
 		fmt.Println("ok")
 		return nil

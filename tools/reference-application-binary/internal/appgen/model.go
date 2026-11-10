@@ -245,7 +245,7 @@ func extractCommands(app *teiparse.Application) ([]Command, []CommandType) {
 			InputType:      "SubmitOrderInput",
 			OutputType:     "SubmitOrderOutput",
 			Steps: []CommandStep{
-				{Code: "_, err = tx.ExecContext(ctx, \"INSERT INTO orders (id, customer_id, amount, currency, created_at) VALUES ($1, $2, $3, $4, NOW())\", in.ID, in.CustomerID, in.Amount, in.Currency)"},
+				{Code: "_, err = tx.ExecContext(ctx, \"INSERT INTO orders (id, customer_id, amount, currency, created_at) VALUES ($1, $2, $3, $4, datetime('now'))\", in.ID, in.CustomerID, in.Amount, in.Currency)"},
 				{Code: "if err != nil { return nil, fmt.Errorf(\"insert order: %w\", err) }"},
 			},
 			OutputFields: []OutputField{{GoFieldName: "State", Value: `"committed"`}, {GoFieldName: "OrderID", Value: "in.ID"}},
