@@ -150,15 +150,13 @@ func TestRQC1RemovingAPackageKeepsTheMeaning(t *testing.T) {
 			ID:          "order_entry.search_package",
 			Version:     "1",
 			Members:     []application.PackageMember{{Kind: application.PatternBrowse, Pattern: "order_entry.order_list"}},
+			Projection:  "screen",
 			Conformance: "search-v1",
-			Projection:  "list",
 		},
 		{
-			ID:          "order_entry.header_detail_package",
-			Version:     "1",
-			Members:     []application.PackageMember{{Kind: application.PatternHeaderDetail, Pattern: "order_entry.order_lines"}},
-			Conformance: "header-detail-v1",
-			Projection:  "header-detail",
+			ID:      "order_entry.header_detail_package",
+			Version: "1",
+			Members: []application.PackageMember{{Kind: application.PatternHeaderDetail, Pattern: "order_entry.order_lines"}},
 		},
 	}, []application.Pattern{list, headerDetail}, nil)
 
@@ -169,8 +167,8 @@ func TestRQC1RemovingAPackageKeepsTheMeaning(t *testing.T) {
 			ID:          "order_entry.search_package",
 			Version:     "1",
 			Members:     []application.PackageMember{{Kind: application.PatternBrowse, Pattern: "order_entry.order_list"}},
+			Projection:  "screen",
 			Conformance: "search-v1",
-			Projection:  "list",
 		},
 	}, []application.Pattern{list}, nil)
 
@@ -192,15 +190,13 @@ func TestRQC1RemovingAPackageKeepsTheMeaning(t *testing.T) {
 			ID:          "order_entry.search_package",
 			Version:     "1",
 			Members:     []application.PackageMember{{Kind: application.PatternBrowse, Pattern: "order_entry.order_list"}},
+			Projection:  "screen",
 			Conformance: "search-v1",
-			Projection:  "list",
 		},
 		{
-			ID:          "order_entry.header_detail_package",
-			Version:     "1",
-			Members:     []application.PackageMember{{Kind: application.PatternHeaderDetail, Pattern: "order_entry.order_lines"}},
-			Conformance: "header-detail-v1",
-			Projection:  "header-detail",
+			ID:      "order_entry.header_detail_package",
+			Version: "1",
+			Members: []application.PackageMember{{Kind: application.PatternHeaderDetail, Pattern: "order_entry.order_lines"}},
 		},
 	}, []application.Pattern{list}, nil)
 	var reported bool
@@ -227,8 +223,8 @@ func TestRQC1AddingAPackageAddsNoCoreKind(t *testing.T) {
 		ID:          "order_entry.search_package",
 		Version:     "1",
 		Members:     []application.PackageMember{{Kind: application.PatternBrowse, Pattern: "order_entry.order_list"}},
+		Projection:  "screen",
 		Conformance: "search-v1",
-		Projection:  "list",
 	}}, []application.Pattern{list}, nil)
 
 	before, after := withoutPackage.Semantics[0], withPackage.Semantics[0]
@@ -269,15 +265,13 @@ func TestRQC1PatternCollisionIsReported(t *testing.T) {
 			ID:          "order_entry.search_package",
 			Version:     "1",
 			Members:     []application.PackageMember{{Kind: application.PatternBrowse, Pattern: "order_entry.order_list"}},
+			Projection:  "screen",
 			Conformance: "search-v1",
-			Projection:  "list",
 		},
 		{
-			ID:          "order_entry.other_package",
-			Version:     "1",
-			Members:     []application.PackageMember{{Kind: application.PatternBrowse, Pattern: "order_entry.order_list"}},
-			Conformance: "other-v1",
-			Projection:  "other",
+			ID:      "order_entry.other_package",
+			Version: "1",
+			Members: []application.PackageMember{{Kind: application.PatternBrowse, Pattern: "order_entry.order_list"}},
 		},
 	}, []application.Pattern{rqListPattern()}, nil)
 	var reported bool

@@ -42,6 +42,7 @@
 - [フック実行の配線と失敗の区別の確認](XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)（参照実装の試験記録。Runnerからの配線、NotSatisfiedと実行失敗の区別、参照規則。実PluginとCLI・Studioの配線は未実装）
 - [フック宣言の印刷面への反映の確認](XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md)（参照実装の試験記録。画面と同じフック宣言が印刷面にも出る。実印刷・用紙面の版照合は未確認）
 - [フックの位相順序と途中停止の確認](XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md)（参照実装の試験記録。位相の実行順、不成立での停止位置、`warn`の続行、未対応位相の拒否。CLI・Studioへの配線は未実装）
+- [行単位フックの`uses`を二つの入口で同じに判定する確認](XTEA_LOWCODE_HOOK_ROW_USES_PARITY_2026-11.md)（参照実装の試験記録。`Run`と`RunReachable`で同じ宣言が別の答えになっていたのを、判断を一箇所に寄せて揃えた。行ごとの`uses`実行は未着手）
 - [行単位フックの宣言と実行の食い違いを直した確認](XTEA_LOWCODE_HOOK_ROW_REACHABILITY_2026-11.md)（参照実装の試験記録。検証が受理する`browse` + `scope row`を`RunRows`が実行できるようにした。ホスト配線は未実装）
 - [フックの範囲（Scope）宣言の成立確認](XTEA_LOWCODE_HOOK_SCOPE_2026-11.md)（参照実装の確認記録。範囲は宣言・検証・実行時拒否・表示の四面に在り、`row`の行ごと適用は未実装）
 - [フックの結末名とCommand拒否名の対応を実際の経路で使う確認](XTEA_LOWCODE_OUTCOME_CORRESPONDENCE_USE_2026-11.md)（参照実装の試験記録。対応がJSONとテキストに出る。対応の無い名前はCommand拒否名として出さない）
@@ -146,6 +147,7 @@
 - [配備実行アダプタも、executor の同一性を上書きしていた](EXECUTOR_ADAPTER_IDENTITY_2026-11-09/README.md)（DeploymentExecutor が out.ExecutorID を無条件に上書きしており、routing.ValidateResult の比較が到達不能だった。空のときだけ補う形へ直し、executor が別identityを名乗る結果が ValidateResult で拒否されることを確認。修正前へ戻すとその試験が「別executorの結果が受理された」と失敗する。C-1の過去記録は独自executorを使うため無効にならない）
 - [配備実行アダプタは、Binding を照合できない](ADAPTER_BINDING_BLINDSPOT_2026-11-09/README.md)（アダプタはPlanとCapabilityIDだけを持ちEnvironmentを持たないため、RouteCommand/ValidateResultを一度も呼ばない。4つの構築箇所はどれもDispatchを経由せずExecuteを直接呼ぶので、Dispatchの検証を強化しても届かない。C-3の直書き問題はそのまま残る。アダプタにEnvironmentを渡すべきかは設計判断）
 - [呼出し側で Binding を守る](BINDING_GUARDED_EXECUTOR_REFERENCE_2026-11-09/README.md)(`tools/reference-binding-guarded-executor` として、アダプタを構造変更せずに同じ保証を得られるかを試す。routing.RouteCommandの解決結果と要求IDを比較し、Bindingが別のexecutorを選んでいればアダプタへ渡す前に拒否する。6件の試験でSERVED/NOT_MATCHED/NOT_BOUND/UNKNOWN_EXECUTORを固定。製品へ入れるかは設計判断)
+- [guard は、実際のアダプタを止められるか](GUARD_WITH_REAL_ADAPTER_2026-11-09/README.md)（本物のBuildPlan・registry・DeploymentExecutorアダプタを組み立てて組合わせる。Bindingが一致すればアダプタが走り、別のexecutorを選んでいればguardが拒否してbuiltinの呼出しは0回。同じテストの後半でアダプタを直接呼ぶと走ることも示し、guardが実際に何かを防いでいることを実物で確認する）
 - [C-2を試験の外で組み立て、C-1と同じ土台で比べる](SERVICE_CARRIER_CONNECT_REFERENCE_2026-11-09/README.md)（`tools/reference-service-carrier-connect` として判断材料のC-2を実装。Hostが渡したCoordinator・Runtime registry・RouteSourceからInvokerを組み立て、ピン留めした世代で要求を運ぶ。Routeが無い場合はInvokerを呼ぶ前に拒否し、別Binding用のRouteも拒否し、入力不足も拒否する。実配備の成立は示さない）
 - [C-2の数も、実行前拒否と実行後不確定を分ける](SERVICE_CARRIER_CONNECT_OUTCOME_V1_2026-11-09/README.md)（C-2の参照Reportをv1にし、ranCountをcarrier入場、refusedCountを入場前停止だけ、unverifiedCountを入場後の失敗や別世代の応答として分ける。artifact検証の拒否はcarrier内部で起きるためunverifiedに入る。反例3件でv0ならrefusedに入っていたケースを固定し、CLIの3場合はcarrierInvoked=falseを示す。製品へ繋ぐべきかは示さない）
 - [C-1とC-2は、同じ問いの2案か](CONNECT_POINT_C1_C2_2026-11-09/README.md)（判断材料が並べたC-1 routing.Router と C-2 servicehost の入口を比べ、入力の型・世代の有無・到達可能性が違うことを示す。C-1は配備の動作を実行しC-2はServiceの要求を運ぶため、両方を選ぶことは経路の重複ではない。C-2は非試験の呼出し元がまだ0件であることを記録。どちらを先に入れるべきかは示さない）
@@ -339,4 +341,4 @@
 - [13分前に他者が同じ問題を直していた（重複実装の撤回）](TEI_DOGFOODING_ROUND39_DUPLICATE_HELP_FIX_2026-11-09/README.md)（#3956・#3943。`0b85c031a`が06:25に修正、私は06:38に重複提出。寄与ゼロを分離ビルドで確認し撤回。記録の虚偽2件も訂正）
 - [realizeによる実装束縛が参照グラフに現れない](TEI_DOGFOODING_ROUND41_REALIZE_NOT_IN_GRAPH_2026-11-10/README.md)（#3983・#3419。索引はCustomGoBindingsを保持するが投影が辺にしない。束縛を削除してもgraphFingerprintとrowsは不変。ページングと指紋のaliasは設計どおりで問題なし）
 - [realizeの実装束縛を参照グラフの辺にした](TEI_DOGFOODING_ROUND42_REALIZE_EDGE_2026-11-10/README.md)（#3983。`application -realizes-> semantic-capability`を追加し3束縛が可視化。4つ目は対象未宣言のため`unmaterialized-to`で報告され、既存不整合が可視化された。変異2種で確認）
-
+- [他の3種の実装束縛は依然として参照グラフに現れない](TEI_DOGFOODING_ROUND43_OTHER_BINDINGS_2026-11-10/README.md)（#3983残件。Worldに4種の束縛があるが索引はCustomGoBindingsのみ読む。executorを変えてもgraphFingerprintとtotalは不変。重複PR #3994の扱いも記録）

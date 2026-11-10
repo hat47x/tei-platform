@@ -1,23 +1,16 @@
 package generatorselection
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 )
 
 func TestWasmTemplateIsSelectable(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		// The wasm candidate answers every fixture case with an empty result on
-		// the Windows CI runner: the run exits 0 and prints something that
-		// decodes into an empty Result, so the comparison against the expected
-		// output fails for all cases. The same build passes on Linux and on a
-		// Windows workstation, so the difference is the runner's node/wasm
-		// combination, not the candidate (#3783). Linux CI covers this path.
-		t.Skip("the wasm candidate returns an empty result on the Windows CI runner; Linux CI runs it (#3783)")
-	}
 	if _, _, _, ok := resolveWasmRuntime(); !ok {
 		t.Skip("node or Go wasm_exec_node.js is not available")
 	}
@@ -56,15 +49,6 @@ func TestWasmTemplateIsSelectable(t *testing.T) {
 }
 
 func TestGoAndWasmCandidatesProduceSameFixtureOutputs(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		// The wasm candidate answers every fixture case with an empty result on
-		// the Windows CI runner: the run exits 0 and prints something that
-		// decodes into an empty Result, so the comparison against the expected
-		// output fails for all cases. The same build passes on Linux and on a
-		// Windows workstation, so the difference is the runner's node/wasm
-		// combination, not the candidate (#3783). Linux CI covers this path.
-		t.Skip("the wasm candidate returns an empty result on the Windows CI runner; Linux CI runs it (#3783)")
-	}
 	if _, _, _, ok := resolveWasmRuntime(); !ok {
 		t.Skip("node or Go wasm_exec_node.js is not available")
 	}
@@ -117,5 +101,42 @@ func TestUnavailableWasmRuntimeIsNotSuccess(t *testing.T) {
 	}
 	if !strings.Contains(receipt.Candidates[0].RejectReason, "runtime unavailable") {
 		t.Fatalf("unexpected rejection reason: %q", receipt.Candidates[0].RejectReason)
+	}
+}
+
+// The Go wasm runtime copies the whole environment into the instance. A host
+// with a large environment block (a CI runner carries several hundred bytes to
+// kilobytes here) overflows that buffer and every case comes back empty, so a
+// wasm candidate is started with only the variables the platform needs (#3971).
+func TestWasmCandidateSurvivesALargeEnvironment(t *testing.T) {
+	if _, _, _, ok := resolveWasmRuntime(); !ok {
+		t.Skip("node or Go wasm_exec_node.js is not available")
+	}
+	var padded [][]byte
+	for i := 0; i < 40; i++ {
+		pad := bytes.Repeat([]byte("y"), 1500)
+		padded = append(padded, pad)
+		t.Setenv(fmt.Sprintf("TEI_LARGE_ENV_%d", i), string(pad))
+	}
+	workspaceDir, contract, fixtures, _ := paths(t)
+	candidates := filepath.Join(t.TempDir(), "candidates")
+	if _, err := GenerateVersion(contract, "wasm-template", "1", filepath.Join(candidates, "wasm-template")); err != nil {
+		t.Fatal(err)
+	}
+	receipt, err := Select(context.Background(), workspaceDir, contract, fixtures, candidates)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !receipt.Passed || len(receipt.Qualified) != 1 || receipt.Qualified[0] != "wasm-template" {
+		t.Fatalf("a large environment changed the wasm result: %+v", receipt)
+	}
+	kept := 0
+	for _, entry := range os.Environ() {
+		if strings.HasPrefix(entry, "TEI_LARGE_ENV_") {
+			kept++
+		}
+	}
+	if kept != len(padded) {
+		t.Fatalf("the test environment was not in place: %d of %d", kept, len(padded))
 	}
 }
