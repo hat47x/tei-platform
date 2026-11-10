@@ -1332,3 +1332,40 @@ tei trace -scope s -subject-kind semantic-attribute \
 | 41→42 | `realize` の実装束縛 |
 | 43 | 他の3種の束縛 |
 | 44 | 永続化の列対応 |
+
+## 48. 第45ラウンド（2026-11-10）: World の全欄と参照グラフの対応を検査で固定した
+
+第28・41〜44ラウンドで「モデルにあるが参照グラフに無い」型を**4回**見つけた。個別に辺を足すだけでは、次に `ir.World` へ欄が増えたとき同じ手順を繰り返す。再発を機械的に検出する試験を追加した。生出力は[第45ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND45_WORLD_FIELD_COVERAGE_2026-11-10/README.md)にある。
+
+### 実測: 17欄のうち3欄が読まれていない
+
+`ir.World` の全欄について、`index.Build` が `w.<欄>` を参照するかを機械的に数えた。
+
+```text
+読む   : Plugins Bundles Semantics Applications Databases Persistence
+         Migrations MigrationProviders ApplicationReleases DatabaseReleases
+         SolutionReleases Environments Queries Bindings        (14)
+読まない: HeaderDetailContractQueryBindings
+         ContractQueryExecutorBindings
+         ContractQuerySQLRealizations                            (3)
+```
+
+**読まれない3欄は、第43ラウンドで手作業で特定した3種と完全に一致した。** 数え方の裏付けになった。
+
+### 追加した試験
+
+`internal/index/world_field_coverage_test.go` の2件。`reflect` で全欄を列挙し、`worldFieldCoverage` に無い欄があれば落ちる。逆方向（表にあるが World に無い欄）も落ちる。未読の欄には**理由を必須**にした。
+
+**「読まれていない」を失敗にせず、明示を要求する形**にした。plugin・release・environment のように参照グラフの subject ではない欄が正当に存在するため。
+
+変異2種（未登録の欄を追加／未読の理由を削除）が両方落ちることを確認した。
+
+### この試験が保証しないこと
+
+```text
+ir.World --[この試験が見る]--> index.Build --[見ていない]--> 参照グラフ
+```
+
+**「読む」と書いた欄の内容が辺になるかは見ていない。** `Persistence` は「読む」だが、`#4001` のとおり列対応は辺になっていない（`Mapping.Columns` を索引が捨てている）。つまり `#4001` の穴はこの試験では捕まらない。**半分だけ塞いだ。**
+
+次の段（entry 型が World の下位構造を落としていないか）は型ごとの判断が要るので、別の設計として扱うのが妥当と考えている。

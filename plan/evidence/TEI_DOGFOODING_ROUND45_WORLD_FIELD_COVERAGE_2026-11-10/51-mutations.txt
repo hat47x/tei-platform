@@ -1,0 +1,6 @@
+M1 add an unregistered field to ir.World
+   -> FAIL: ir.World.HypotheticalNewField is not in worldFieldCoverage;
+            decide whether index.Build reads it and say so here
+M2 remove the reason from an unread row
+   -> FAIL: HeaderDetailContractQueryBindings is marked unread without a reason
+restored -> index/modelref/operations ok, vet and gofmt clean

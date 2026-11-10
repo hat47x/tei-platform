@@ -1,0 +1,11 @@
+This guard covers one step of the chain:
+
+  ir.World --[checked here]--> index.Build --[NOT checked]--> reference graph
+
+A field marked "read" can still lose its substructure on the way. Persistence is
+exactly that case: index.Build reads w.Persistence, but PersistenceIndexEntry
+drops Mapping.Columns, so column mappings never become edges (#4001). This test
+passes while that gap remains.
+
+Closing the second step needs a per-entry-type judgement (which nested fields
+matter), so it is left as a separate design question rather than folded in here.
