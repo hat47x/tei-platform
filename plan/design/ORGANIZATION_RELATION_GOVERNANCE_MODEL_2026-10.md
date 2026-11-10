@@ -4084,3 +4084,47 @@ X-TEAのData Model／Field Hook／共有Scriptの知見を全Data構造へ一般
 **実装Ownerと優先順**：#3394外部Observationの一Node＋一Edge実Readを先に。#2386はOrg Meaning/Owner受理条件だけを所有し、#3492/#3518のSource-backed Model Mapへ適合済み候補だけ引渡し、#2516でConsumer開示の非干渉を検査する。#2586 Product HJ-09および次段Org C1実Readを止めない。#1180/#2514の独立Expectedに追加し、同一Fixtureの別名複製は作らない。
 
 **証拠上限**：前述のREA 4/4実Job・42/42監査試験は#3496の限定固定HEADのみ。ORG-EXT-01〜06、実TEI Application Operation受領、組織Mapping Owner採否、Model Map正式投影、Host/実DB/SHO/SEI試験は**NOT RUN**。
+
+<!-- org-shared-harness-activity-authority-20261110 -->
+## 2026-11-10 横断深化：共有Harness Sessionと組織Scope/実行権限の非継承（設計・受入前）
+
+### 1. 活動の継続と認可の継続を切り分ける
+SEI/SUI/TEI/CSWをまたぐ業務Activity（例：SUIで未整理の案件C1を見つけ、CSWで根拠を整理し、TEI Model Mapで組織Relationを確認し、承認案を作る）では、外部Harnessが**作業の文脈・選択候補・未解決問い・復帰位置**を継続することには価値がある。しかし「同じHarness Session / 同じActivity / 同じ人物名 / 同じCase ID」は、次のいずれも保証しない。
+
+- 各製品のSourceの実体・Revision・Scopeの一致、Case handlingUnitの現在値、Ownerが受理したRelation/Ruleの一致。
+- 移動先のVerified Principal/Issuer/Tenant、現在Host/Provider Grant、§58 Record Policyの実行施行と全Route（Read/Count/Page/Export）での開示権。
+- 旧Consumerへ既に送られたCopyの撤回、AI/Harnessの履歴・Log/Cacheの消去、未完了Operationの副作用なし、共有Session内での原子的更新。
+
+**責務分離**：Activity Contextは利用者の活動継続、Harness Sessionは外部エージェントの対話・Tool実行、Product View/Selectionは用途別のProjection、TEI Operation Attemptは実Query/Effectの試行、Host Grantは製品・対象・操作・時点に相対する認可。これらの同一ID化、SessionからGrantへの自動引継ぎ、全製品共通のHost/認可Engine/Session DBの新設を要求しない。Connector/Adapterが既存read-only Operationへ適格な候補を渡し、HostとConsumerがそれぞれ自身のAuthorityを再確認する。
+
+### 2. 既存契約で渡せるものと、越境時に再解決するもの
+
+| 引渡し対象 | 継続可能な候補 | 移動先で必須の検証（推定で埋めない） |
+| --- | --- | --- |
+| 作業文脈 | Activityの目的、未決の問い、戻り先、関連Issue/Source参照 | 移動先用途でのSource到達可能性・Current Revision・開示条件 |
+| 選択・組織対象 | C1／Relation occurrence／Selection Setの参照、validAt・knownAt、選択epoch | Workspace/Tenant、現在のCase関係・Source Index・同ID別版／同Label別ID、閲覧できる範囲 |
+| 判断 | SUIのItem、CSWの関連づけ、SEIのProposal、Rule候補と出典 | Candidate／Owner-accepted Meaning／Actual Effectの区別、未解決とPartialの保持 |
+| 閲覧結果 | 先のConsumerが受け取ったResult Sliceの参照、取得時Scope/Completeness、Policy epoch | 移動先のVerified Principal・現在Grant・必要なProvider/Row Filter・用途別Disclosure。古いCacheの資格は移転しない |
+| 操作案 | Source/対象Revisionに束縛したtyped Intent／Preview、Operation IDへの参照 | 実行するHostの現行Grant・Effect Fence・Target Revision・現在のRule・個別Receiptと独立post-image。Session継続は再試行許可ではない |
+| Harness送出 | 許可済みの最小Construction Context | 外部Model/Tool/Session Log/History/Cache等の**実送出経路**とDestinationの開示権。Toolに渡せたことは外部送出許可ではない |
+
+通常のOrg Dataを一律に秘匿せず、§58のPolicyは用途が指定された対象DataとRouteにだけ適用する。未取得・非開示・拒否・不存在・0件を混同しない。Clientでカードを隠すだけではProvider Scope Enforcementにならない。共有Sessionで見えるPrivate Sourceのpath、集合件数、隠れたRelationの形、診断やLLMのLogもConsumer Disclosureで別判定する。既に外部へ送達した情報を後から完全削除できるという保証も置かない。
+
+### 3. 最小独立Expected候補（ORG-HS-01〜08、未実行）
+
+| ID | 反例入力（同じC1を用いる） | 不合格となる振舞い |
+| --- | --- | --- |
+| HS-01 | SUIではC1を選択可能、TEI移動先には現Read Grantなし。同一Harness Session | 選択できた事実をTEI Read/Count/Exportの許可として引継ぐ |
+| HS-02 | Session継続中にC1 R1(D1)→R2(D2)・Policy epoch変更。旧Result/Cacheが後着 | 旧Readを新しいD1の現在権限または現行Handlingとして表示し、新旧revisionを同一視 |
+| HS-03 | 公開Sliceが同じ2世界でPrivate Relation/対象数だけ異なる | SUI/CSW/TEIの公開図、Label、Count、Gap、Diagnostics、Tool ResultからPrivate差が漏れる |
+| HS-04 | 同じCaseをCSW内部検討から外部向けSHO文書/外部Harnessへ渡す。Purpose/Audience変更 | 元ConsumerのRead許可で別DestinationへのSource/raw/件数/秘密を送る |
+| HS-05 | 部分取得・非開示・0件の組合せで「未割当てなし」候補を生成 | 参照できなかった案件を「存在しない」「移管完了」と断定 |
+| HS-06 | 同SessionでIssuer/Principal/Workspace/Tenant切替、同名Personと兼務Roleあり | 業務Membershipや旧IssuerのLogin/Grantを新Principalへ自動束縛 |
+| HS-07 | 人間がSelection Bに修正後、AIのSelection Aが後着。A→B→Aを経る | 同Label/IDで旧Response・Source版・未保存Intentが復活し、共有Sessionを全製品の排他的Lockと扱う |
+| HS-08 | 共有Sessionで承認Previewを保持中にGrant失効、別ProviderでCommit uncertain、再接続 | Preview/以前のACK/Session成功でCommit・Handoff完了と宣言、Effect確認なしで再実行 |
+
+**最小受入順**：①公開合成C1でSUI/CSWのCandidate → TEIの既存Read-only Model Map/Operationという**異質Consumer間の一回の引渡し**をheadlessで照合。Source ref・Selection epoch・Purpose/Audience・Public Sliceの保持/再検証、対象未取得/拒否/partialを独立Expectedで比較。②#2586 HJ-09の実Function→Provider→Consumer R0を先に成立させた後、組織C1の実Provider Row ScopeとHS-01〜05を同一Attemptで検証。③Current Grant/Effect・対象ACKを伴うHS-06〜08は#1174/#2499/#1125/#1444へ後続引渡し。元のOrg-TR/VTR/EXTと同じFixture／#1131・#1180・#2514・#1163の既存Scenario/Evidenceを用い、第二Expected正本や全製品共通Session Runtimeは追加しない。
+
+**責務**：組織Meaning #2386、用途相対Construction Context／Disclosure #2516、Source・SelectionとModeler #1124/#2506/#2582、実Read #2586/#1656、現在Grant/Effect #1174/#2499、Handoff #1125/#1444、Harness Tool/送出とIsolation #2509/#2515/#2017。ハーネス種別はDSH/Codex/Claude Code等を共通Adapterの利用者として扱い、DSH先行試験が他Harnessの権限資格を証明するわけではない。
+
+**今回の資格**：上記は既存の§58/ORG-VTR・製品横断設計の接合による**採用前の受入設計**。新しい実Harness共有Session、TEI/SUI/CSW連携、実Host/Provider、Org-HS試験、外部送出隔離、Owner Meaningの採用はNOT RUN／未証明。局所Go/Node/CIの既往PASSを昇格しない。
