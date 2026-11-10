@@ -1757,6 +1757,65 @@ L2-bの五条件は、childの能力に依存する。本節は、**参照実装
 - 三つを持つbuilderの実装。**まだ無い**
 - 受理・Runtime Authority・供給のTrust。いずれも未主張のまま
 
+### 4.39 TEI自身をビルドする計画の形（2026-11-09）
+
+§4.38は「五条件を満たしてTEI自身を自己構築することは今はできない。理由はflagの不足ではなく、**計画を解釈してGoをコンパイルするbuilderが存在しない**こと」で終わった。本節は、**そのbuilderが受け取る計画を先に決める。**
+
+#### 測ったこと：計画の型は既に「commandをビルドする」形を受ける
+
+次の計画を`plugin.BuildPlan`として解析し、`Validate()`と`LockBuildOutput`に通した（[記録](../evidence/TEI_GO_SELF_BUILD_GO_COMMAND_PLAN_2026-11-10.md)）。
+
+| 欄 | 値 |
+| --- | --- |
+| `recipe.kind` | `go-command` |
+| `recipe.entrypoint` | `./cmd/tei` |
+| `outputKind` | `runtime-artifact` |
+| `sources[0]` | `{kind: "go-package", locator: "cmd/tei", digest: "sha256:…"}` |
+
+**結果：`Validate()`は通り、fingerprintが出て、`LockBuildOutput`も通った。** 型を足す必要は無い。`LockBuildOutput`は`runtime-artifact`を要求するので、**commandのためのlockの種類も既にある**（`Lock`は`runtime-artifact`専用として検証される）。
+
+#### builderが満たすべき五条件
+
+| 条件 | builderがすること |
+| --- | --- |
+| 1. entryが計画を導く | 呼び手が`-build-catalog`を渡す。**builder側の仕事ではない** |
+| 2. 宣言byteの一致 | `-intent`で宣言を読み、`intentBytesDigest`を申告する |
+| 3. 計画fingerprintの一致 | `-plan`で計画を読み、`BuildPlanFingerprint`を計算して申告する |
+| 4. plan→artifact | 成果物を書き、`artifactDigest`を申告し、**自分でlockを作って検証する** |
+| 5. artifactの再現 | `-artifact-out`と`-state`を尊重し、`stateDir`を申告する |
+
+#### 入力の照合をどこまでやるか
+
+**計画の`Sources`は、builderが`DirSourceResolver`で同じrootから解釈し直して突き合わせる。** §4.36は単一ファイルだけだったが、`DirSourceResolver`はディレクトリも扱うので、**`go-package`のsource（`cmd/tei`のようなディレクトリ）でも同じ照合ができる。**
+
+| 案 | 内容 | 何が違うか |
+| --- | --- | --- |
+| **A: その場で照合してbuild** | 作業ツリーのファイルを計画と突き合わせ、一致したら**そのツリーで**`go build`する | 実装が小さく、今日のtoolchainの挙動をそのまま使える。**照合とcompileの間にファイルが変わり得る**（TOCTOU） |
+| B: 閉包を別の木へ写してbuild | 計画のsource closureだけを隔離した木へ写し、`go.mod`を合成してbuildする | 照合とcompileの間に何も変わらない。**module解決の合成が要る**（依存の取り込み方を含む） |
+
+**最初の一歩はAとする。** 理由は三つ:
+
+1. **Bの合成規則（module path・置換・依存の取り込み）は、それ自体が設計対象**であり、先に決めると計画が重くなる
+2. Aでも「計画に載っていないsourceを読んでいないか」は**列挙で確かめられる**（`go list -deps`の結果を閉包と比べる）
+3. **Aの残る危険（TOCTOU）は名前を付けて記録できる**。Bはその危険を消すが、代わりに別の危険（合成の誤り）を持ち込む
+
+#### 実装が要るもの（順）
+
+| 段 | 内容 | 何が満たされるか |
+| --- | --- | --- |
+| 1 | `tools/reference-go-build-from-plan`: `-plan`・`-intent`・`-repo`・`-artifact-out`・`-state`を受け、計画とsourceを照合して`go build`し、5項目を申告する | 条件2・3・5と、条件4の材料 |
+| 2 | そのtoolをcatalogのproviderとして宣言し、`tei self-build -build-catalog`で鎖を通す | 条件1・4・**`l2b.claimed`** |
+| 3 | 回帰試験（`cmd/tei`のエンドツーエンド）に載せる | 毎回通ること |
+
+**§4.38の表の「満たさない」は、段1と2で埋まる。** 段3が無いと、次に検査を足したときに黙って止まる（§4.38の3番目）。
+
+#### この節が言っていないこと
+
+- **段1がまだ無い。** 本節は形と順序を決めただけである
+- **AのTOCTOUを閉じていない。** 閉じるにはBが要る
+- `go list -deps`の結果と閉包の突き合わせは**案**であり、実装していない
+- 受理・Runtime Authority・供給のTrust。いずれも未主張のまま
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
