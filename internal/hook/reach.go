@@ -36,6 +36,19 @@ func (ReferenceReach) UnreachableReason(phase string) string {
 // ReasonAfterChangeUnreachable は、参照実行が after-* に到達しない理由である。
 const ReasonAfterChangeUnreachable = "the reference run writes nothing, so there is no after-change point to run this phase at"
 
+// AppliedChangeReach は、変更を適用した後の到達範囲である。before-* にも
+// after-* にも到達できる。
+//
+// after-* が「到達できる」と言えるのは、変更が実際に適用された後だけです。
+// この型はその事実を表すだけで、事実を作りません。呼出し側は、効果を適用した
+// 後に`RunAfterChange`と組にして使います。適用していないのにこの型を渡すと、
+// after-* が変更の無い時点で走り、「変更後の検証をした」と読めてしまいます。
+type AppliedChangeReach struct{}
+
+// UnreachableReason は常に空文字を返す。適用後の実行では、どの位相にも
+// 実行できる時点がある。
+func (AppliedChangeReach) UnreachableReason(string) string { return "" }
+
 // ReasonReadNotSupplied は、宣言した読み取りに値が無いために位相を評価しなかった
 // 理由の前置きである。実際の理由は属性名を続けて返す。
 const ReasonReadNotSupplied = "no value was supplied for the declared read, so this phase was not evaluated"
@@ -116,6 +129,32 @@ func (r PhaseReport) Proposed(phase string) Produced {
 // Pattern が位相を宣言していなければ `nil, nil` を返す（フックが無い実行を、
 // 「フックを見た実行」と読ませない）。
 func (r Runner) RunReachable(ctx context.Context, applicationID, patternID core.CanonicalID, inputs map[core.CanonicalID]string, reach Reach) (*PhaseReport, error) {
+	return r.runReachable(ctx, applicationID, patternID, inputs, reach, func(string) bool { return true })
+}
+
+// RunBeforeChange runs only the phases that come before the change, so a caller
+// can consult them, apply the change, and then consult the rest.
+//
+// Running the before-* phases and the after-* phases in one pass would be wrong:
+// the change happens between them, and a single pass has no point in between. The
+// two entry points exist so the order of the run is the caller's, not the
+// runner's guess.
+func (r Runner) RunBeforeChange(ctx context.Context, applicationID, patternID core.CanonicalID, inputs map[core.CanonicalID]string, reach Reach) (*PhaseReport, error) {
+	return r.runReachable(ctx, applicationID, patternID, inputs, reach, isBeforeChange)
+}
+
+// RunAfterChange runs only the phases that come after the change. It is the
+// second half of the pair RunBeforeChange starts.
+//
+// A phase outside this half is not reported at all, the same way RunReachable
+// does not report a phase the pattern does not declare: the caller asked about
+// one half, and reporting the other half as "skipped" would read as a check the
+// caller did not ask for.
+func (r Runner) RunAfterChange(ctx context.Context, applicationID, patternID core.CanonicalID, inputs map[core.CanonicalID]string, reach Reach) (*PhaseReport, error) {
+	return r.runReachable(ctx, applicationID, patternID, inputs, reach, func(phase string) bool { return !isBeforeChange(phase) })
+}
+
+func (r Runner) runReachable(ctx context.Context, applicationID, patternID core.CanonicalID, inputs map[core.CanonicalID]string, reach Reach, include func(string) bool) (*PhaseReport, error) {
 	pattern := r.findPattern(applicationID, patternID)
 	// A pattern that is not a record pattern with an interaction (for example a
 	// command pattern) cannot declare hooks. That is not a failure of the
@@ -138,6 +177,9 @@ func (r Runner) RunReachable(ctx context.Context, applicationID, patternID core.
 	for _, phase := range PhaseOrder {
 		declaration, declaredHere := declared[phase]
 		if !declaredHere {
+			continue
+		}
+		if !include(phase) {
 			continue
 		}
 		// A scope this runner cannot apply is reported as skipped rather than run
