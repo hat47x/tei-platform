@@ -1,0 +1,12 @@
+The first version also had:
+
+  TestSectionScopeListsAreDisjoint  (coveredKinds and notCoveredKinds do not
+                                     overlap)
+
+A mutation could not break it. sectionScope continues when covered[layer.kind]
+is true, so a covered kind has no path into notCoveredKinds. Adding `application`
+to the declared-layer table changes nothing.
+
+A test that cannot fail gives false confidence, so I deleted it instead of
+counting it as a guard. The three remaining tests each fail under a mutation
+recorded in 52.

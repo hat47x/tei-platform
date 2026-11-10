@@ -1,0 +1,6 @@
+The same workspace with databases/, releases/, plugins/, environments/ and
+bindings/ removed reports notCoveredKinds: bundle, custom-go-binding,
+header-detail-contract-query-binding.
+
+14 kinds -> 3 kinds. The statement is computed from the World, not a fixed
+paragraph, so it cannot drift away from what the overview does.

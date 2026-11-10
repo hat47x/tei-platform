@@ -1,0 +1,19 @@
+$ tei model overview -workspace <reference>
+
+  sectionTotal: 8
+  rootsAre: catalog-root-entries
+  coveredKinds: application, application-pattern, query, semantic,
+                semantic-attribute, semantic-capability, semantic-data,
+                semantic-relation, semantic-type, semantic-validation
+  notCoveredKinds: plugin, bundle, database, persistence-mapping, migration,
+                   migration-provider, application-release, database-release,
+                   solution-release, environment, custom-go-binding,
+                   header-detail-contract-query-binding,
+                   contract-query-executor-binding,
+                   contract-query-sql-realization
+
+$ tei model overview -h
+
+  sections mirror the model catalog roots. The response's sectionScope names
+  the kinds the catalog covers and the declared kinds it does not, so a section
+  count is never a count of every declaration.
