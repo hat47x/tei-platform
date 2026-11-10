@@ -1305,6 +1305,29 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 
 **証拠状態**：本節は横断した責務・受入の計画整理。KONリポジトリ作成は実Web/保存/公開APIの実装証拠ではない。KW-01〜05、TEI Web限定面、SSG外部公開、実Native B2C、KON/SHO/TEI一貫実行・Owner受理は**NOT RUN**。新Core、第二Host／Registry／Resolver／Auth、独立Scenario正本は追加しない。
 
+### 推移的Record Scope × 担当変更の接合（2026-11-09、設計のみ）
+
+<!-- org-visibility-cutover-plan-20261109 -->
+既存[組織意味設計§58](design/ORGANIZATION_RELATION_GOVERNANCE_MODEL_2026-10.md)の**用途を指定した広域Org Policy・明示例外・Read-only**（合成[PR #2781](https://github.com/hat47x/tei-platform/pull/2781)のVP/VE）と、ORG-TRの**Case担当切替**を新ORG-VTR-01〜06で交差検証する。Membership異動≠CaseのR1→R2変更≠現Read/Update Grant≠Handoff。旧D1のCache/表示、D2の新関係、A→B→A復帰、適用除外/not-applicable、共同責任・多重Pathによる件数増加、Host/Provider行Scopeの未確認を同一Caseで判別。広域Policyの「既定適用」は**Ownerが対象指定したData/用途内**だけであり、任意Tenantへの既定許可ではない。
+
+**既存工程**：HJ-09の最初のProduct Function/Provider read-first (#2586)は維持し、組織C1の次段P0-Rで#2506/#1656のRow Filter実施行点、SQL/実Rowset・Scope、List/Count/Page/Report/Export、Consumer/Cache現在性を独立照合。Current Grant/Effectは#1174/#2499、Model Map・UI/SHOからの開示は#1124/#2516、独立ScenarioとExpectedは#1180/#2514へ。Providerに行Scopeを強制できない保護Routeは拒否候補とし、UIで隠すだけで合格にしない。合成VP/VEのfixed-head PASS、mainのInspector/Hooks局所実装、実PostgreSQLの別Operationの成功は、Org Caseの実Policy Enforcement/Consumer/Owner受理を意味しない。第二Policy Engine/Host/Test Runnerを追加しない。**新VTRの実行・製品適合はNOT RUN**。
+
+### 組織CaseのSource→実Read→Decision候補→Effect→Handoff：証拠を接合するが、権限と正本を増やさない（2026-11-09）
+
+<!-- org-evidence-join-plan-20261109 -->
+[組織意味設計の新追補](design/ORGANIZATION_RELATION_GOVERNANCE_MODEL_2026-10.md)で、S（Source/Meaning）・Q（選択/実呼出Provider＋実Rowset/Cohort）・D（受理済Rule相対の判断候補）・E（現Principal/Grant・OperationID・Commit/Receipt）・H（必要L/実Read R/対象ACK H・実Consumer）を**別の同一性と資格**として整理。Case ID/World FP/同名・別Run成功の寄せ集めで、同一Snapshot/Authority/Attemptを捏造しない。遡及訂正は「訂正後の履歴解釈」を変え得るが、過去の実Effect/送信履歴を消さず、旧Receiptを現在有効化しない。SUI/外部REAのCandidate→SEI/人間のProposal→TEI Owner-accepted Rule→Host Effectの昇格はそれぞれ別決定で、長期Ontology DSL/Decision TwinはP0 Readの前提にしない。
+
+**最初の製品優先**は引き続き#2586のorder_entry.recent_orders 1 Function/1 Provider/実Consumer。次段組織Case C1では、同WorkspaceのRelation occurrence、Function/Queryとselected/invoked Provider、SQL/args/Scope、Rowsetのpartial/0件、§58のRecord Policy（実Provider施行は別資格）、一Consumerの受信・Disclosureまでを**同じAttempt**で確認。判断・実Effect・L/R/H Handoffは後続P1で#1174/#1125/#1444/#2514/#1180/#1163の既存Ownerへ段階接続する。#3717のPostgreSQL4系統非SKIP成功、#2781の合成Org Policy成功、mainのInspector/Hook実装は各々の限定Witnessであり、Org全体の現在Grant/Provider Enforcement/Client E2Eではない。本追補はdocs-only、新規実Go/DB/Host/SEI/SHOテストはNOT RUN。
+
+### 外部Observationから組織Relationへの候補写像を段階受入する（2026-11-09）
+
+<!-- org-external-observation-t1a-plan-20261109 -->
+[組織設計の外部Admission追補](design/ORGANIZATION_RELATION_GOVERNANCE_MODEL_2026-10.md)で、[REA T1-A前段 #3496](https://github.com/hat47x/tei-platform/pull/3496)の**実REA 6.7.0・固定HEAD 4/4 Job・独立監査＋候補試験42/42 PASS**、valid **13/14**・partial **11/12**の二時点Source byte付きCandidateと各1 unbound Rootを、組織意味の**正式採用前の観測**として接続した。元データは公開JS合成Sourceであり、組織HR/実Caseの外部Producerが動いた証拠ではない。Source前後一致はA→B→AやProvider Actual Inputの原子的Snapshotを証明しない。TEICanonicalSubject=null／acceptedMeaning=false／sourceClosure=not-qualifiedを維持。
+
+**次の欠落辺は1 Observation＋1 Edgeのみ**：既存共通Application API（ADR-0048/#1158）へProvider版・Evidence ID・Node/Edge個別ID・方向/多重性・Source path+raw digest+span・coverage/unknown・Scope/Workspaceを損失なく渡す限定read-only実Consumer。#3394が外部Producer/Consumer照合を所有し、#2386がPerson/Membership/Occupancy/CaseへのOwner意味写像、#3492/#3518/#1124がAccepted/候補を混同しない三視点Model Map、#2516が公開Slice/診断も含む開示、#2514/#1180が独立負例を所有する。ORG-EXT-01〜06で同名別ID、多重Edge、unbound端点、partial 0件、同byte別Workspace、A→B→Aを対照。既存InspectSubjectへ外部JSONを偽Canonicalとして流さず、独立Graph Store/Resolver/Parser/Hostを作らない。
+
+全TEI最初の実Product Read #2586 HJ-09は**並行して最優先のまま**。External候補が得られても、実組織のCase C1 read、現在Principal Grant、Rule受理、Effect/Handoff L/R/H、SHO/SEIの正式受信まで昇格しない。上記外部Candidate→TEI Operation／組織Owner採用／Org Map実表示の新試験はNOT RUN。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
