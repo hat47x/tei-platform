@@ -2,7 +2,7 @@
 
 - 対象Issue: [#2509](https://github.com/hat47x/tei-platform/issues/2509)（DSH外部Harness実証）、[#2515](https://github.com/hat47x/tei-platform/issues/2515)（実効隔離・全送出経路Conformance）。機密境界の正本は[TAI #232](https://github.com/hat47x/tai-pleroma/issues/232)、比較計画は[TAI #168](https://github.com/hat47x/tai-pleroma/issues/168)。
 - 状態: **既存の実行記録を並べた索引**。新しい実測は行っていない。個々の合否・Owner受理は各記録とIssueの担当。
-- この文書の役割: 43件の実行記録が**それぞれ何を確定させ、何を確定させていないか**を1枚で見えるようにし、同じ測り方の重複を避ける。記録本文の複製はせず、各記録へ参照で結ぶ。
+- この文書の役割: 44件の実行記録が**それぞれ何を確定させ、何を確定させていないか**を1枚で見えるようにし、同じ測り方の重複を避ける。記録本文の複製はせず、各記録へ参照で結ぶ。
 
 ## 1. なぜ台帳が要るか
 
@@ -43,6 +43,7 @@
 | [MCPの設定形](./DSH_MCP_CONFIGURED_2026-11-10/README.md) | 接続の条件 | 同梱の`dsh-mcp-client/lib/index.js`の`Config`は**1インスタンス1サーバー**で、`transport`は`stdio`か**`streamable-http`**（`http`は無く、`servers`入れ子も無い）。その形で挿すと**`server/discover`→`initialize`→`notifications/initialized`→`tools/list`の4件**が届き、**モデルのToolが24→28**（`mcp__synthetic__synthetic_echo`と`mcp-resources`系3つ）、要求bytesも約9,170増えた | `tools/call`の実行、stdio、認証、複数サーバー、`mcp-resources`の実挙動、実MCPサーバー |
 | [MCPのstdio経路](./DSH_MCP_STDIO_2026-11-10/README.md) | 別transport | `transport: stdio`＋`command: python`で自作サーバーを起動すると、**`initialize`→`notifications/initialized`→`tools/list`の3行**が届き（**streamable-httpと違い`server/discover`が無い**）、**モデルのToolは24→28**（`mcp__stdiomock__stdio_echo`）。**子Processは環境変数49件を引き継ぎ**（合成canaryと`DEEPSEEK_BASE_URL`を含む）、**作業ディレクトリも親と同じ**。ただし**`DEEPSEEK_API_KEY`は渡っていない** | `env`設定で明示的に渡した場合、`cwd`設定、認証・再接続、`tools/call`のstdio経路、他の資格情報の可視性 |
 | [MCPの`headers`](./DSH_MCP_HEADERS_2026-11-10/README.md) | 送り方 | streamable-httpで`headers`に合成canaryを入れると、**4件すべてのMCP要求（`server/discover`・`initialize`・`notifications/initialized`・`tools/list`）に同じ11個のヘッダ**が載り、**canaryは`Authorization`として毎回送られた**。**相手を確かめる前の最初の要求にも載る**。設定外のヘッダは**HTTPクライアントの標準のみ**（Cookie・環境の資格情報は付かない）。`user-agent`は`node`。**canaryはモデル要求には現れない** | `reconnect`時の再送、TLS、複数サーバー、`headers`の値がログへ残るか |
+| [MCPの複数サーバー](./DSH_MCP_TWO_SERVERS_2026-11-10/README.md) | 並置 | `id`を分けた2エントリで2サーバーを挿すと、**両方が独立に4件ずつハンドシェイク**し（合計8件・到着は交互）、**モデルのToolは24→29**（`mcp__servera__tool_a`と`mcp__serverb__tool_b`＋`mcp-resources`系3つ）。**`serverName`が名前空間になるので衝突しない**。**1つだけ許可しても、エントリを増やせば増える** | `serverName`を同じにした場合、片方が落ちた場合、stdioとの混在、片方だけの`headers` |
 | [MCPの`tools/call`](./DSH_MCP_TOOL_CALL_2026-11-10/README.md) | 往復 | `mcp__synthetic__synthetic_echo`を1回呼ぶと、MCPサーバーへ**`tools/call`（123 bytes）**が届き、**`arguments.text`にモデル生成のcanaryがそのまま入っていた**。**ワイヤ上のTool名は`mcp__<serverName>__<toolName>`ではなく元の名前**。サーバーの応答は**3回目のモデル要求に引数と結果の両方が載って**戻る | 引数の検閲・上限、stdio、認証、複数サーバー、`read_mcp_resource`、実MCPサーバー |
 | [MCPの引数の大きさ](./DSH_MCP_ARG_SIZE_2026-11-10/README.md) | 引数の上限 | **200,000 bytes要求→200,018 bytes受信**、**1,000,000 bytes要求→1,000,018 bytes受信**で、**どちらもcanaryが先頭にあり末尾100文字が全て`z`**（切り詰めも拒否も無い）。**Tool結果後のモデル要求は約1.05MB／約5.05MBへ膨らむ**（引数が文脈に残るため） | 1MB超、Provider側の上限、内容の検査、`maxInstructionBytes`との関係、stdio・認証・複数サーバー |
 | [上限を超える単一event](./DSH_SESSION_LOG_OVERSIZE_EVENT_2026-11-09/README.md) | 送れない単位 | `maxBytes 4096`で約8,000 bytesの`pwsh`結果を出した後も呼び出しを続けると、**要求001〜004は拡張あり（水位`-1`→`9`→`11`→`12`）、005以降は`dsh_session_log` field自体が無い**。水位は`12`で凍り作業は96 event・maxSeq 94まで進む。**`delivery-accepted`は4件で止まり増えない**。**同じ上限で小さい結果のみなら拡張は付いたまま**（3/3） | Telemetry・UI・別flagでの検知、上限を戻した回復、`maxRequestBytes`との関係、他版での再現 |
