@@ -1,0 +1,118 @@
+{
+  "schemaVersion": "tei.three-element.model/v0",
+  "effect": "read-only",
+  "modelId": "order-system",
+  "name": "Order management system",
+  "description": "Representative business system for three-element analysis",
+  "dataElements": [
+    {
+      "id": "customer",
+      "name": "Customer",
+      "attributes": [
+        {"id": "customerId", "name": "Customer ID", "type": "text", "key": true},
+        {"id": "name", "name": "Name", "type": "text"}
+      ],
+      "compositeKey": ["customerId"]
+    },
+    {
+      "id": "order",
+      "name": "Order",
+      "attributes": [
+        {"id": "orderId", "name": "Order ID", "type": "text", "key": true},
+        {"id": "customerId", "name": "Customer ID", "type": "text", "key": true},
+        {"id": "amount", "name": "Amount", "type": "number"}
+      ],
+      "compositeKey": ["orderId", "customerId"],
+      "relations": [
+        {"id": "order-customer", "name": "belongs to", "targetId": "customer", "kind": "many-to-one", "directed": true}
+      ]
+    },
+    {
+      "id": "orderLine",
+      "name": "Order line",
+      "attributes": [
+        {"id": "orderLineId", "name": "Order line ID", "type": "text", "key": true},
+        {"id": "orderId", "name": "Order ID", "type": "text", "key": true},
+        {"id": "productId", "name": "Product ID", "type": "text"},
+        {"id": "quantity", "name": "Quantity", "type": "number"}
+      ],
+      "compositeKey": ["orderLineId", "orderId"],
+      "relations": [
+        {"id": "orderline-order", "name": "belongs to", "targetId": "order", "kind": "many-to-one", "directed": true}
+      ]
+    }
+  ],
+  "functionElements": [
+    {
+      "id": "registerCustomer",
+      "name": "Register customer",
+      "type": "create",
+      "operations": [
+        {"dataId": "customer", "operations": "C"}
+      ]
+    },
+    {
+      "id": "submitOrder",
+      "name": "Submit order",
+      "type": "transaction",
+      "operations": [
+        {"dataId": "order", "operations": "C"},
+        {"dataId": "orderLine", "operations": "C"}
+      ]
+    },
+    {
+      "id": "listOrders",
+      "name": "List orders",
+      "type": "query",
+      "operations": [
+        {"dataId": "order", "operations": "R"},
+        {"dataId": "customer", "operations": "R"}
+      ]
+    },
+    {
+      "id": "updateOrderAmount",
+      "name": "Update order amount",
+      "type": "update",
+      "operations": [
+        {"dataId": "order", "operations": "U"}
+      ]
+    },
+    {
+      "id": "cancelOrder",
+      "name": "Cancel order",
+      "type": "delete",
+      "operations": [
+        {"dataId": "order", "operations": "D"},
+        {"dataId": "orderLine", "operations": "D"}
+      ]
+    }
+  ],
+  "businessElements": [
+    {
+      "id": "salesDesk",
+      "name": "Sales desk",
+      "role": "organization",
+      "activities": [
+        {"id": "enterCustomer", "name": "Enter customer", "functionIds": ["registerCustomer"]},
+        {"id": "acceptOrder", "name": "Accept order", "functionIds": ["submitOrder"]},
+        {"id": "reviewOrders", "name": "Review orders", "functionIds": ["listOrders"]},
+        {"id": "adjustOrder", "name": "Adjust order", "functionIds": ["updateOrderAmount"]},
+        {"id": "cancelOrder", "name": "Cancel order", "functionIds": ["cancelOrder"]}
+      ]
+    }
+  ],
+  "crossReferences": [
+    {"id": "xref-1", "kind": "business-to-function", "fromKind": "business", "fromId": "salesDesk", "toKind": "function", "toId": "submitOrder"},
+    {"id": "xref-2", "kind": "function-to-data", "fromKind": "function", "fromId": "submitOrder", "toKind": "data", "toId": "order"},
+    {"id": "xref-3", "kind": "data-to-data", "fromKind": "data", "fromId": "order", "toKind": "data", "toId": "customer", "directed": true}
+  ],
+  "crudDefinitions": [
+    {"id": "crud-1", "functionId": "submitOrder", "dataId": "order", "create": true, "read": true, "update": false, "delete": false, "source": "declared"},
+    {"id": "crud-2", "functionId": "submitOrder", "dataId": "orderLine", "create": true, "read": true, "update": false, "delete": false, "source": "declared"},
+    {"id": "crud-3", "functionId": "listOrders", "dataId": "order", "create": false, "read": true, "update": false, "delete": false, "source": "declared"},
+    {"id": "crud-4", "functionId": "listOrders", "dataId": "customer", "create": false, "read": true, "update": false, "delete": false, "source": "declared"},
+    {"id": "crud-5", "functionId": "updateOrderAmount", "dataId": "order", "create": false, "read": true, "update": true, "delete": false, "source": "declared"},
+    {"id": "crud-6", "functionId": "cancelOrder", "dataId": "order", "create": false, "read": true, "update": false, "delete": true, "source": "declared"},
+    {"id": "crud-7", "functionId": "cancelOrder", "dataId": "orderLine", "create": false, "read": true, "update": false, "delete": true, "source": "declared"}
+  ]
+}
