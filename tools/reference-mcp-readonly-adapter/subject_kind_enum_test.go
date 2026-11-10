@@ -64,7 +64,7 @@ func TestSubjectKindEnumsMatchTheAdvertisedKindLists(t *testing.T) {
 		t.Fatalf("inspection kinds changed to %d; update the CLI advertisement and this pin together",
 			len(operations.InspectionSubjectKinds))
 	}
-	if len(operations.TraceSubjectKinds) != 10 {
+	if len(operations.TraceSubjectKinds) != 13 {
 		t.Fatalf("trace kinds changed to %d; update the CLI advertisement and this pin together",
 			len(operations.TraceSubjectKinds))
 	}

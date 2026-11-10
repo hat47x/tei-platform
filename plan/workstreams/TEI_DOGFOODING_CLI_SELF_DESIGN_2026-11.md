@@ -1504,3 +1504,41 @@ distinct projectionUnresolved messages: 12
 ### 起票
 
 [#4068](https://github.com/hat47x/tei-platform/issues/4068)。4案を示し、**B（ノードは作るが subject-kind には加えない）+ D（`unresolved` に投影の取りこぼしを含める）**を推した。A は `trace` の subject-kind が公開契約で、`tools/reference-mcp-readonly-adapter/subject_kind_enum_test.go` が `len(TraceSubjectKinds) != 10` を固定しているため外部ツールも同時に直す必要がある。C（辺を宣言しない）は採るべきでない — 見えないという判断なら `AuthorityLimits` に書くべきで、黙って宣言して落とす現状は誰にも利益がない。
+
+## 52. 第50ラウンド（2026-11-10）: データ層のノードを materialize し、未解決を12件から1件にした
+
+第49ラウンドで起票した [#4068](https://github.com/hat47x/tei-platform/issues/4068) を解消した。生出力は[第50ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND50_DATA_LAYER_MATERIALIZED_2026-11-10/README.md)にある。
+
+### 実装前に読んだこと
+
+| 確認 | 結果 |
+| --- | --- |
+| 誰かが着手済みでないか | `gh pr list` に該当なし |
+| 案 B（ノードのみ、kind には加えない）は可能か | **不可**。`supports_kind_test.go` が「`SupportsSubjectKind` は `FromIndex` が materialize する集合と一致すべき」と明記 |
+| kind を増やすと何が固定されているか | `subject_kind_enum_test.go` の `len != 10`、`trace_workspace.go` の拒否メッセージ |
+| 公開値は単一情報源か | はい。`commands`・`-h`・MCP adapter は全て `TraceSubjectKinds` を参照 |
+
+案 B は既存の不変条件に反するため採らず、**案 A** を実装した。
+
+### 修正
+
+`projection.go` に `endpointOnlyKinds`（`database`・`database-contract`・`database-contract-query`）を置き、依存リストが名前を挙げている端点を `addEdge` の前に materialize する。`SupportedSubjectKinds` に3種を追加し、固定値（10→13）と拒否メッセージを同時に更新した。**公開値は単一情報源なので `commands` と `-h` は自動で追随した。**
+
+### 結果
+
+| | 修正前 | 修正後 |
+| --- | --- | --- |
+| `order_entry` outgoing の `total` | 14 | **19** |
+| `targets-database` | なし | **2** |
+| `requires-contract` | なし | **3** |
+| `projectionUnresolved` | 12件 | **1件** |
+
+`trace -subject-kind database -subject-id sales_core` も動くようになった（修正前は `UNSUPPORTED_SUBJECT_KIND`）。残った1件は第42ラウンドで見つけた「存在しない capability への束縛」で、ワークスペース側の不整合。
+
+### 試験と回帰
+
+`data_layer_test.go` の3件。変異2種（端点 materialize の削除／kind 一覧からの削除）が両方落ちることを確認した。`derivedbridge` を import する全11パッケージが ok（`cmd/tei` 165.9s、`reference-shared-acceptance` 80.3s、MCP adapter 33.9s を含む）。
+
+### 残した欠陥
+
+**`trace.unresolved` が投影の取りこぼしを数えられない点は未修正。** 今回は落ちる辺を12→1に減らしただけで、`TraceDirect` が `graph.Edges` しか走査しない構造は変わっていない。「穴を塞いだ」ではなく「**穴を1つに絞った**」と記録する。`inspect` の受理種は12のままで、`trace` と食い違う状態も残る。

@@ -374,3 +374,4 @@
 - [「builderの同一性」は、名指しされたファイルの同一性である](TEI_GO_SELF_BUILD_CHILD_IDENTITY_SCOPE_2026-11-10.md)（§4.37が「二回の間に実行物を差し替える」を条件5で止めるとしている点を実測。**バイトが違う二つの構築器**を用意し、`-child`のプロキシに1回目と2回目で別々を起動させると、`firstChildDigest == secondChildDigest`（プロキシのdigest）のまま**`l2b.claimed=true`**になった。**同一性の検査は`-child`のパスのbyteであり、実際に走った構築器ではない。** #2831）
 - [traceがrealizes辺を2回返す（起票→解消）](TEI_DOGFOODING_ROUND47_DUPLICATE_REALIZES_EDGE_2026-11-10/README.md)（#4024→#4038。`addEdge`が集合でなく同じ辺を2行返していた。重複はrealizesのみで他15関係は正常。起票から約2時間15分で修正され、修正後の`main`でtotal=1を実測）
 - [データ層のkindがノードにならず辺が全て落ちる](TEI_DOGFOODING_ROUND49_DATA_LAYER_UNMATERIALIZED_2026-11-10/README.md)（#4068・#4001。database/contractがmaterializeされず72対象で12種の未解決が常時あるのに`trace.unresolved`は0。`tei world`が列対応を既に答えていた点も訂正として記録）
+- [データ層のノードをmaterializeし未解決を12件から1件にした](TEI_DOGFOODING_ROUND50_DATA_LAYER_MATERIALIZED_2026-11-10/README.md)（#4068。database/contract/contract-queryを端点としてmaterializeしkindも13種へ。`targets-database`等の辺が可視化。変異2種で確認。`unresolved`の数え方は未修正と明記）
