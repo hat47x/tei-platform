@@ -33,7 +33,10 @@ func loadContractQuerySQLRealizations(root string, r *Result) error {
 		}
 		authoring, err := syntax.NewParser(string(src)).ParseContractQuerySQLRealizationAuthoring()
 		if err != nil {
-			return sourceErr(path, err)
+			if err := r.collectSourceError(path, err); err != nil {
+				return err
+			}
+			continue
 		}
 		realizationDef := authoring.Value
 		if authoring.NativeSQLPath != "" {

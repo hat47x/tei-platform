@@ -3,6 +3,7 @@ package workspace
 import (
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path"
 	"path/filepath"
@@ -283,9 +284,18 @@ func loadWorkspaceImports(root string, imports []WorkspaceImport, result *Result
 	}
 	for _, imp := range imports {
 		providerPath := filepath.Join(root, filepath.FromSlash(imp.Path))
-		provider, err := loadWithStack(providerPath, visiting)
+		provider, err := loadWithStackHooks(providerPath, visiting, loadHooks{collectSyntax: result.syntaxErrors != nil})
 		if err != nil {
+			var syntaxErrors *SourceErrors
+			if result.syntaxErrors != nil && errors.As(err, &syntaxErrors) {
+				result.syntaxErrors.Errors = append(result.syntaxErrors.Errors, syntaxErrors.Errors...)
+				continue
+			}
 			return fmt.Errorf("import %q from %q: %w", imp.Alias, imp.Path, err)
+		}
+		// Do not resolve ownership or digest against an incomplete World.
+		if result.syntaxErrors != nil && len(result.syntaxErrors.Errors) > 0 {
+			continue
 		}
 		// The provider's source map holds only its own declarations. Namespaces
 		// it imported from other providers cannot be re-exported implicitly.

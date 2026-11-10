@@ -20,8 +20,10 @@ import (
 // `declarationCounts`, `workspace`. Adding them here does not change what the
 // CLI already wrote.
 type WorkspaceValidationReport struct {
-	SchemaVersion          string                                 `json:"schemaVersion"`
-	OK                     bool                                   `json:"ok"`
+	SchemaVersion string `json:"schemaVersion"`
+	OK            bool   `json:"ok"`
+	// Parsing may skip dependent sources; semantic validation is not run.
+	InspectionIncomplete   bool                                   `json:"inspectionIncomplete,omitempty"`
 	Diagnostics            []WorkspaceValidationItem              `json:"diagnostics"`
 	WorldFingerprint       string                                 `json:"worldFingerprint,omitempty"`
 	SourceIndexFingerprint string                                 `json:"sourceIndexFingerprint,omitempty"`
@@ -66,15 +68,19 @@ func WorkspaceValidationReportFrom(result WorkspaceValidation) WorkspaceValidati
 		Diagnostics:   []WorkspaceValidationItem{},
 	}
 	if result.Direct != nil {
-		report.Diagnostics = append(report.Diagnostics, WorkspaceValidationItem{
-			Diagnostic: validation.Diagnostic{
-				Code: result.Direct.Code, Severity: result.Direct.Severity, Message: result.Direct.Message,
-			},
-			Sources: []WorkspaceValidationSource{{
-				ArtifactPath: result.Direct.Source.ArtifactPath,
-				Range:        result.Direct.Source.Range,
-			}},
-		})
+		report.InspectionIncomplete = result.InspectionIncomplete
+		directs := append([]workspace.SourceDiagnostic{*result.Direct}, result.AdditionalDirect...)
+		for _, direct := range directs {
+			report.Diagnostics = append(report.Diagnostics, WorkspaceValidationItem{
+				Diagnostic: validation.Diagnostic{
+					Code: direct.Code, Severity: direct.Severity, Message: direct.Message,
+				},
+				Sources: []WorkspaceValidationSource{{
+					ArtifactPath: direct.Source.ArtifactPath,
+					Range:        direct.Source.Range,
+				}},
+			})
+		}
 		return report
 	}
 	report.WorldFingerprint = result.WorldFingerprint
