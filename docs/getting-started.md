@@ -42,11 +42,13 @@ go version
 
 skipの総数は32件（`t.Skip`の理由にWindowsを含むもの）。Linuxで実行した結果を正とします。
 
-**Windowsで落ちやすい3つの型と、その避け方**（#3783 で18件を解消した記録から）:
+**Windowsで落ちやすい4つの型と、その避け方**（#3783・#3971 で解消した記録から）:
 
 1. **パスの同一性は両辺を解決してから判定する。** `filepath.EvalSymlinks` した子と未解決の root を `filepath.Rel` で比べると、短縮名の環境で「外に出た」と誤判定します。`os.SameFile` を使うのが確実です。
 2. **生バイトを比較する試験は LF 固定に頼る。** GitHubのWindowsランナーは `core.autocrlf=true` で、リポジトリは `.gitattributes` の `* text=auto eol=lf` でLFに固定しています。生バイトを保持したいパスは従来どおり `-text` を列挙します。
 3. **OS固有のエラー文言ではなく、エラー値で判定する。** `"no such file"` はUnixの文言で、Windowsは "The system cannot find the file specified." です。`errors.Is(err, fs.ErrNotExist)` を使います。
+
+4. **wasm候補は最小の環境で起動する。** Goのwasmランタイムは環境変数全体をインスタンスへコピーします。CIランナーの環境ブロックが大きいと `total length of command line and environment variables exceeds limit` で起動に失敗し、プロセスは終了0のまま出力が空になるため、receiptには「全ケース空」とだけ残ります（#3971）。`reference-generator-selection` は `SystemRoot`・`TEMP`・`TMP`・`HOME`・`PATH` だけを渡しています。
 
 **2. 比較試験はチェックアウトがcleanであることを前提にします。**`tools/reference-plugin-self-build`と`tools/reference-transform-runtime-engine-build`のhistorical比較は、`git status --porcelain=v1 --untracked-files=all`が空であることを確かめてから実行します。`go test ./...`はパッケージを並列に実行するため、別パッケージがcheckout内へ書いた直後にこの前提を読むと落ちることがあります（[#3637](https://github.com/hat47x/tei-platform/issues/3637)）。失敗時は汚れていたpathがメッセージに出るので、原因のパッケージを特定できます。単体で`go test ./tools/reference-plugin-self-build -count=1`を実行した場合は落ちません。
 
