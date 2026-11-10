@@ -1,0 +1,19 @@
+CLAIM AS PUBLISHED IN ROUND 51
+  "std 型の一覧は依然として CLI から引けない ... 正しい std 型名の一覧は CLI から得られない"
+
+MEASURED ON main 5d90801e7 (workspace loads normally)
+  model catalog      -> 12 semantic-type entries with a std. prefix
+                        std.binary std.boolean std.code std.date std.datetime
+                        std.decimal std.identifier std.integer std.json
+                        std.money std.text std.time
+  inspect std        -> the same 12, each kind=primitive
+  model locate       -> ok=true for std.datetime
+
+WHY I GOT IT WRONG
+  In round 51 my probe workspace still carried the parse error under study, so
+  model catalog returned zero entries. I read that as "std is not in the
+  catalog". inspect had actually answered WORKSPACE_LOAD_FAILED; I only looked
+  at the empty array.
+
+Corrected in: plan section 53 (struck through, replaced), 53-not-done.txt
+(CORRECTION appended, original kept), and a comment on #4082.
