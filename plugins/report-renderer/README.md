@@ -6,4 +6,4 @@
 
 データ取得、認証・認可、保存先の決定、ファイル保存は担当しません。CSVでは表計算ソフトによる式の解釈を防ぐため、危険な先頭文字を持つセルに引用符を加えます。JSONは元の文字列を保持します。数値の再計算や業務ルールの再実装は行いません。
 
-ルートのGoモジュールから`go test ./plugins/report-renderer`で検査できます。利用側は[画面を使わない参照実行](../../tools/reference-first-web-target/NON_SCREEN.md)です。独立配布、PDFの表示品質、本番帳票への適合は未確認です。
+ルートのGoモジュールから`go test ./plugins/report-renderer`で検査できます。参照ホストへの接続は[Issue #1223](https://github.com/hat47x/tei-platform/issues/1223)に記録した未統合の検証ブランチにあり、mainにはまだありません。独立配布、PDFの表示品質、本番帳票への適合は未確認です。
