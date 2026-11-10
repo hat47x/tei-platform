@@ -1622,6 +1622,13 @@ func runProgram(ctx context.Context, name string, args []string, input json.RawM
 		}
 		return Result{}, evidence, fmt.Errorf("candidate exited %d: %s", evidence.ExitCode, stderr.String())
 	}
+	// TEI_DEBUG_CANDIDATE_OUTPUT makes a run print what the candidate wrote.
+	// It exists to explain a candidate that exits 0 and produces an empty
+	// result, where the receipt only says that the fields were empty (#3971).
+	if os.Getenv("TEI_DEBUG_CANDIDATE_OUTPUT") != "" {
+		fmt.Fprintf(os.Stderr, "candidate %q %v: stdout=%q stderr=%q\n",
+			name, args, truncateForLog(stdout.Bytes(), 2000), truncateForLog(stderr.Bytes(), 2000))
+	}
 	var result Result
 	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
 		return Result{}, evidence, fmt.Errorf("candidate output is not a result: %w: %q", err, stdout.Bytes())
