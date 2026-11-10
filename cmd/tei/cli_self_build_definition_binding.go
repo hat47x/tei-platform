@@ -81,6 +81,9 @@ func plannedDefinitionSourceDigest(receipt *PlanReceipt) (string, bool) {
 	}
 	var parsed struct {
 		Plan struct {
+			Recipe struct {
+				Kind string `json:"kind"`
+			} `json:"recipe"`
 			Sources []struct {
 				Kind   string `json:"kind"`
 				Digest string `json:"digest"`
@@ -90,8 +93,14 @@ func plannedDefinitionSourceDigest(receipt *PlanReceipt) (string, bool) {
 	if err := json.Unmarshal([]byte(receipt.ReceiptJSON), &parsed); err != nil {
 		return "", false
 	}
+	// §4.40: which source defines the subject follows from the recipe, so the
+	// comparison does too. A command is defined by the package it compiles.
+	definitionKind := "plugin-definition"
+	if parsed.Plan.Recipe.Kind == "go-command" {
+		definitionKind = "go-package"
+	}
 	for _, source := range parsed.Plan.Sources {
-		if source.Kind == "plugin-definition" && source.Digest != "" {
+		if source.Kind == definitionKind && source.Digest != "" {
 			return source.Digest, true
 		}
 	}
