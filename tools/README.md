@@ -242,6 +242,7 @@
 | [`reference-semantic-extension-catalog/`](reference-semantic-extension-catalog/) | 意味拡張の登録・解決・検証 |
 | [`reference-subsystem-cud/`](reference-subsystem-cud/) | 部分システムの登録・参照・更新・削除の境界確認 |
 | [`reference-tei-eki-contract/`](reference-tei-eki-contract/) | TEIのJob・Flow設計がEKIのP0 OpenAPIで失う意味（`notBefore`・期限・effect_mode・資源制約など）を、実contractへの射影で検出する隔離した試験用の参照。実Provider・認可・実行層ではなく、外部contractの受理を示さない |
+| [`reference-subsystem-partition/`](reference-subsystem-partition/) | 候補として与えた固定Data Owner・直接C/U/D・所属許可・must-linkだけを対象に、越境更新重みの厳密最小値を読取り専用で算出する参照。実Sourceの受理済み所有関係・開示資格・Effectは判定しない（#3250）。 |
 | [`reference-sui-action-boundary/`](reference-sui-action-boundary/) | SUIの操作とTEI Actionの接続例 |
 | [`reference-sui-adoption/`](reference-sui-adoption/) | SUI移行の参照データと検査 |
 | [`reference-sui-interaction/`](reference-sui-interaction/) | 画面操作とApplication Actionの接続例 |
@@ -304,4 +305,5 @@ R7Bの一回限りの準備・公開・後処理を行うスクリプトは、�
 | [`reference-self-build-two-stage/`](reference-self-build-two-stage/) | stage1で作った実行ファイルをstage2のinvokerとして実起動し、invoker一致・同一レシピ・artifact一致を別々に判定する。Seed Trust・受入・権限は扱わない（#2831 SB-C1） |
 | [`reference-harness-wire-summary/`](reference-harness-wire-summary/) | 外部AIハーネスがMock Providerへ送ったHTTP要求bodyを、モデル入力と拡張field（`dsh_session_log`）を別欄で要約する参照。bodyのbyte数・SHA-256・最上位キー・event種別・水位・合成markerの出現位置を出し、既存の出力を上書きしない。送出の許可・実OS隔離・Provider側の保存は判定しない（#2515 P0-b / #2509） |
 | [`reference-harness-answer-presence/`](reference-harness-answer-presence/) | 外部Harnessの回答が、同じ実行物のCLI応答に現れた事実（属性ID・型・記号、関係、Source path・digest、World指紋、診断コード）を含むかを機械的に確かめる参照。正答の採点はせず、Reviewer-onlyの独立Expectedを置き換えない（#2509 / TAI #168） |
+| [`reference-hash-id/`](reference-hash-id/) | （追記） |
 
