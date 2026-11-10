@@ -123,7 +123,7 @@ func buildBuilderReviewHandoffFromFile(
 		return knowledgecontext.BuilderReviewHandoff{}, newArgumentError("knowledge-review-handoff requires -qualification-requirements")
 	}
 	var requirements knowledgecontext.QualificationRequirements
-	if err := decodeStrictKnowledgeJSONFile(requirementsPath, &requirements); err != nil {
+	if err := decodeStrictKnowledgeJSONFile("-qualification-requirements", requirementsPath, &requirements); err != nil {
 		return knowledgecontext.BuilderReviewHandoff{}, err
 	}
 	return buildBuilderReviewHandoff(root, subjectKind, subjectID, requirements)
@@ -155,7 +155,7 @@ func buildBuilderReviewDisclosureFromFile(
 	}
 
 	var handoff knowledgecontext.BuilderReviewHandoff
-	if err := decodeStrictKnowledgeJSONFile(handoffPath, &handoff); err != nil {
+	if err := decodeStrictKnowledgeJSONFile("-review-handoff", handoffPath, &handoff); err != nil {
 		return knowledgecontext.DisclosureProjection{},
 			knowledgecontext.BuilderReviewHandoff{},
 			err
@@ -327,23 +327,30 @@ func buildKnowledgeQualificationFromFile(root, subjectKind, subjectID, requireme
 		return knowledgecontext.QualificationResult{}, newArgumentError("knowledge-qualify requires -qualification-requirements")
 	}
 	var requirements knowledgecontext.QualificationRequirements
-	if err := decodeStrictKnowledgeJSONFile(requirementsPath, &requirements); err != nil {
+	if err := decodeStrictKnowledgeJSONFile("-qualification-requirements", requirementsPath, &requirements); err != nil {
 		return knowledgecontext.QualificationResult{}, err
 	}
 	return buildKnowledgeQualification(root, subjectKind, subjectID, requirements)
 }
 
-func decodeStrictKnowledgeJSONFile(path string, dst any) error {
+// decodeStrictKnowledgeJSONFile reads a caller-supplied JSON file. Every
+// failure it reports is the caller's input problem, so it returns an
+// argumentError: a path that cannot be opened, malformed JSON and an unknown
+// field are all "supply a different file", not "the knowledge model is broken".
+// The flag name is part of the signature so the message names what to fix. It
+// used to return the raw error, which answered KNOWLEDGE_BUILD_FAILED and read
+// as a defect in TEI itself (#3943).
+func decodeStrictKnowledgeJSONFile(flag, path string, dst any) error {
 	f, err := os.Open(path)
 	if err != nil {
-		return err
+		return newArgumentError(fmt.Sprintf("%s could not be read: %v", flag, err))
 	}
 	defer f.Close()
 
 	decoder := json.NewDecoder(f)
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(dst); err != nil {
-		return err
+		return newArgumentError(fmt.Sprintf("%s is not valid JSON for this command: %v", flag, err))
 	}
 
 	var trailing any
@@ -352,7 +359,7 @@ func decodeStrictKnowledgeJSONFile(path string, dst any) error {
 		return nil
 	}
 	if err == nil {
-		return fmt.Errorf("%s contains trailing JSON value", path)
+		return newArgumentError(fmt.Sprintf("%s contains more than one JSON value", flag))
 	}
-	return err
+	return newArgumentError(fmt.Sprintf("%s is not valid JSON for this command: %v", flag, err))
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -471,9 +472,15 @@ func TestStrictKnowledgeJSONRejectsUnknownFieldsAndTrailingValues(t *testing.T) 
 		t.Fatal(err)
 	}
 	var requirements knowledgecontext.QualificationRequirements
-	if err := decodeStrictKnowledgeJSONFile(unknownPath, &requirements); err == nil ||
-		!strings.Contains(err.Error(), "unknown field") {
+	err := decodeStrictKnowledgeJSONFile("-qualification-requirements", unknownPath, &requirements)
+	if err == nil || !strings.Contains(err.Error(), "unknown field") {
 		t.Fatalf("unknown qualification field was not rejected: %v", err)
+	}
+	// A malformed file is the caller's input problem: reporting it as
+	// KNOWLEDGE_BUILD_FAILED read as a defect in TEI (#3943).
+	var argument *argumentError
+	if !errors.As(err, &argument) {
+		t.Fatalf("a malformed requirements file was not an argument error: %T %v", err, err)
 	}
 
 	trailingPath := filepath.Join(dir, "trailing.json")
@@ -485,9 +492,23 @@ func TestStrictKnowledgeJSONRejectsUnknownFieldsAndTrailingValues(t *testing.T) 
 		t.Fatal(err)
 	}
 	requirements = knowledgecontext.QualificationRequirements{}
-	if err := decodeStrictKnowledgeJSONFile(trailingPath, &requirements); err == nil ||
-		!strings.Contains(err.Error(), "trailing JSON value") {
+	err = decodeStrictKnowledgeJSONFile("-qualification-requirements", trailingPath, &requirements)
+	if err == nil || !strings.Contains(err.Error(), "more than one JSON value") {
 		t.Fatalf("trailing qualification JSON was not rejected: %v", err)
+	}
+	if !errors.As(err, &argument) {
+		t.Fatalf("trailing JSON was not an argument error: %T %v", err, err)
+	}
+
+	// A path that cannot be opened is also the caller's input problem, and the
+	// message must name the flag so the caller knows which one to fix.
+	err = decodeStrictKnowledgeJSONFile("-qualification-requirements",
+		filepath.Join(dir, "absent.json"), &requirements)
+	if err == nil || !strings.Contains(err.Error(), "-qualification-requirements") {
+		t.Fatalf("an unreadable path was not reported against the flag: %v", err)
+	}
+	if !errors.As(err, &argument) {
+		t.Fatalf("an unreadable path was not an argument error: %T %v", err, err)
 	}
 }
 

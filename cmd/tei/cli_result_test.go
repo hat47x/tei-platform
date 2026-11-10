@@ -212,10 +212,14 @@ func TestResultEnvelopeCommandsJSONContract(t *testing.T) {
 		t.Fatalf("knowledge-qualify result lost the candidate: %+v", qualificationShape.Candidate)
 	}
 
+	// A requirements file that cannot be read is the caller's input problem, so
+	// it answers INVALID_ARGUMENT with exit 2, not KNOWLEDGE_BUILD_FAILED. The
+	// old code read as a defect in TEI, which is why a caller could not tell
+	// "fix your file" from "the knowledge model is broken" (#3943).
 	absentRequirements := run(2, "knowledge-qualify", "-workspace", reference,
 		"-subject-kind", "semantic-data", "-subject-id", "sales.order",
 		"-qualification-requirements", filepath.Join(t.TempDir(), "absent.json"))
-	if absentRequirements.OK || absentRequirements.Error == nil || absentRequirements.Error.Code != resultCodeKnowledgeFailed {
+	if absentRequirements.OK || absentRequirements.Error == nil || absentRequirements.Error.Code != resultCodeInvalidArgument {
 		t.Fatalf("wrong absent requirements envelope: %+v", absentRequirements)
 	}
 
@@ -258,10 +262,13 @@ func TestResultEnvelopeCommandsJSONContract(t *testing.T) {
 		t.Fatalf("wrong review-plan fingerprint envelope: %+v", reviewPlanFingerprint)
 	}
 
+	// The review family shares the loader, so a file that cannot be read there
+	// is also INVALID_ARGUMENT. Leaving one entrance on the old code is how the
+	// two drifted apart before (#3943).
 	reviewRequirements := run(2, "knowledge-review-handoff", "-workspace", reference,
 		"-subject-kind", "semantic-data", "-subject-id", "sales.order",
 		"-qualification-requirements", filepath.Join(t.TempDir(), "absent.json"))
-	if reviewRequirements.OK || reviewRequirements.Error == nil || reviewRequirements.Error.Code != resultCodeKnowledgeFailed {
+	if reviewRequirements.OK || reviewRequirements.Error == nil || reviewRequirements.Error.Code != resultCodeInvalidArgument {
 		t.Fatalf("wrong review-handoff requirements envelope: %+v", reviewRequirements)
 	}
 
