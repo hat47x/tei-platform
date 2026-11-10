@@ -47,6 +47,7 @@
 - [フック実行の配線と失敗の区別の確認](XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)（参照実装の試験記録。Runnerからの配線、NotSatisfiedと実行失敗の区別、参照規則。実PluginとCLI・Studioの配線は未実装）
 - [フック宣言の印刷面への反映の確認](XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md)（参照実装の試験記録。画面と同じフック宣言が印刷面にも出る。実印刷・用紙面の版照合は未確認）
 - [フックの位相順序と途中停止の確認](XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md)（参照実装の試験記録。位相の実行順、不成立での停止位置、`warn`の続行、未対応位相の拒否。CLI・Studioへの配線は未実装）
+- [CLIから`after-*`フックへ到達する配線の確認](XTEA_LOWCODE_HOOK_AFTER_CHANGE_CLI_2026-11.md)（試験記録。`view -execute -reference-store`がメモリ上のStoreへ適用し、変更後のフックを実行する。Studio配線と補償は未着手）
 - [`after-*`へ到達する実行経路の確認](XTEA_LOWCODE_HOOK_AFTER_CHANGE_2026-11.md)（試験記録。`RunBeforeChange`→変更の適用→`RunAfterChange`＋`AppliedChangeReach`で`after-*`を実行できる。ホスト配線は未着手）
 - [実行時の値変換が要らないことの確認](XTEA_LOWCODE_VALUE_CONVERSION_2026-11.md)（確認記録。受理される原始型の結び付けは同じ下位原始型で、変換すべき差が生じない。異なる原始型は検証が拒否する）
 - [Data型パラメータへ渡す属性の規約の確認](XTEA_LOWCODE_DATA_PARAM_CONVENTION_2026-11.md)（確認記録。検証は「同じDataの属性」だけを要求し、識別子に限らない。実行時は属性の値がそのまま渡る。識別子限定の検査は未着手）
