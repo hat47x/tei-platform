@@ -2,10 +2,10 @@ package bindings
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"sort"
@@ -157,14 +157,19 @@ func TestSyntheticEKIChainPassesValuesByKeyName(t *testing.T) {
 // only queued. The binding returns the body unchanged, so none of the declared
 // Attempt keys is present and the next stage cannot take it as input. This
 // records the gap as "not connected" (#3657); it does not map the shapes.
+//
+// The body lives in testdata/task_accepted.json rather than inline so that the
+// pin in ../external-contract-pin.json can be checked against the same bytes:
+// a contract change has to move the fixture and the pin together (#3836).
 func TestEKITaskSubmitHTTPOutputIsNotAnAttempt(t *testing.T) {
+	accepted, err := os.ReadFile(filepath.Join("testdata", "task_accepted.json"))
+	if err != nil {
+		t.Fatalf("read the accepted body fixture: %v", err)
+	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusAccepted)
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"schema": "eki.task-accepted/v1", "task_id": "tsk_reference", "status": "queued",
-			"submitted_at": "2026-11-09T00:00:00Z", "replayed": false, "request_fingerprint": "sha256:reference",
-		})
+		_, _ = w.Write(accepted)
 	}))
 	defer server.Close()
 
