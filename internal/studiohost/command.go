@@ -165,6 +165,11 @@ func (h *ReadOnly) executeCommand(workspaceID, applicationID, patternID, capabil
 	// a phase that did not run never reads as a phase that passed.
 	hookReport, hookErr := h.runHooks(loaded.World, core.CanonicalID(applicationID), core.CanonicalID(patternID), inputs)
 	if hookErr != nil {
+		// No input reaches this branch today: runHooks returns an error only
+		// together with a report, and returns (nil, nil) for a pattern that
+		// declares no hook (see TestCommandFailedHasNoKnownTrigger). The branch
+		// stays as the boundary for a future runner that can fail without a
+		// report; it is not a claim that the code is reachable.
 		return CommandRunResponse{Failure: &Failure{Code: "COMMAND_FAILED", Stage: "command", Message: hookErr.Error()}}
 	}
 	invoker := command.Invoker{
