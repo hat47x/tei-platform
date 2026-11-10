@@ -1,0 +1,1 @@
+{"format":"tei.hashid.scheme/v1","scheme":{"schemeId":"tei.std.hashId.v1","purpose":"example.external-record","scope":"example.application","inputKind":"bytes","canonicalization":"raw-bytes/v1","algorithm":"shake256","mode":"exactCharacters","outputBits":0,"encoding":"","alphabet":"0123456789","length":24}}

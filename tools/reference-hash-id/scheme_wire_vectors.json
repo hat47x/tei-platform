@@ -1,0 +1,8 @@
+{
+  "schemaVersion": "tei.hashid.wire-v1.fixture",
+  "schemes": {
+    "encoded256": "{\"format\":\"tei.hashid.scheme/v1\",\"scheme\":{\"schemeId\":\"tei.std.hashId.v1\",\"purpose\":\"example.record\",\"scope\":\"example.application\",\"inputKind\":\"bytes\",\"canonicalization\":\"raw-bytes/v1\",\"algorithm\":\"sha256\",\"mode\":\"encodedDigest\",\"outputBits\":256,\"encoding\":\"base16lower\",\"alphabet\":\"\",\"length\":0}}",
+    "exact32": "{\"format\":\"tei.hashid.scheme/v1\",\"scheme\":{\"schemeId\":\"tei.std.hashId.v1\",\"purpose\":\"example.record\",\"scope\":\"example.application\",\"inputKind\":\"bytes\",\"canonicalization\":\"raw-bytes/v1\",\"algorithm\":\"shake256\",\"mode\":\"exactCharacters\",\"outputBits\":0,\"encoding\":\"\",\"alphabet\":\"0123456789abcdefghjkmnpqrstvwxyz\",\"length\":32}}",
+    "specialAscii": "{\"format\":\"tei.hashid.scheme/v1\",\"scheme\":{\"schemeId\":\"tei.std.hashId.v1\",\"purpose\":\"example.record\",\"scope\":\"example.application\",\"inputKind\":\"bytes\",\"canonicalization\":\"raw-bytes/v1\",\"algorithm\":\"shake256\",\"mode\":\"exactCharacters\",\"outputBits\":0,\"encoding\":\"\",\"alphabet\":\"0123456789<>&\",\"length\":12}}"
+  }
+}
