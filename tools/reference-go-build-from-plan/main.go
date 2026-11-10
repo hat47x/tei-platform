@@ -236,6 +236,9 @@ func run(args []string, out io.Writer) error {
 		if stageErr != nil {
 			return stageErr
 		}
+		if moduleErr := checkModuleContextIsReproducible(stageRoot); moduleErr != nil {
+			return moduleErr
+		}
 		treeDigest, digestErr := digestTree(stageRoot)
 		if digestErr != nil {
 			return fmt.Errorf("digest the isolated tree: %w", digestErr)

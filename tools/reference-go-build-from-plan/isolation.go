@@ -46,6 +46,30 @@ type stagedMember struct {
 
 const isolatedTreeBoundary = "the planned sources were copied into a fresh tree and the copy was re-hashed before building; the module context is whatever the plan named, and anything taken from the working tree instead is recorded under moduleFiles and is not part of the claim"
 
+// checkModuleContextIsReproducible refuses a module whose build would depend on
+// something the staged tree does not carry. A replace directive points at a path
+// outside the module, and a vendor directory holds the dependencies beside the
+// module rather than in the cache: neither is staged, so a build that used them
+// would not be the build the plan describes.
+func checkModuleContextIsReproducible(stageRoot string) error {
+	goMod, err := os.ReadFile(filepath.Join(stageRoot, "go.mod"))
+	if err != nil {
+		// A module context that is not there is the caller's problem to see, and the
+		// build reports it. This check is about what the file says.
+		return nil
+	}
+	for _, line := range strings.Split(string(goMod), "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "replace ") || strings.HasPrefix(trimmed, "replace(") || trimmed == "replace (" {
+			return fmt.Errorf("the module context has a replace directive (%q); this build stages only the plan's sources, so it would not reproduce what that directive points at", trimmed)
+		}
+	}
+	if info, statErr := os.Stat(filepath.Join(stageRoot, "vendor")); statErr == nil && info.IsDir() {
+		return fmt.Errorf("the staged tree has a vendor directory; this build stages only the plan's sources, so vendored dependencies would be taken from outside the plan")
+	}
+	return nil
+}
+
 // planNamesModuleFile reports whether the plan already names this file as a
 // go-module source, so staging does not take a second copy from the working tree.
 func planNamesModuleFile(plan plugin.BuildPlan, name string) bool {
