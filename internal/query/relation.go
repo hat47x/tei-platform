@@ -19,6 +19,8 @@ type RelationQuery struct {
 	PageOffset  int                     `json:"pageOffset,omitempty"`
 	Depth       int                     `json:"depth,omitempty"` // max traversal depth
 	Mode        RelationQueryMode       `json:"mode,omitempty"`  // tree, graph, path
+	FetchMode   RelationFetchMode       `json:"fetchMode,omitempty"`
+	BatchSize   int                     `json:"batchSize,omitempty"`
 	ResultColumns []ResultColumnMapping `json:"resultColumns"`
 }
 
@@ -49,6 +51,29 @@ var RelationQueryModes = []RelationQueryMode{
 
 func (m RelationQueryMode) Valid() bool {
 	for _, valid := range RelationQueryModes {
+		if m == valid {
+			return true
+		}
+	}
+	return false
+}
+
+type RelationFetchMode string
+
+const (
+	RelationFetchModeEager  RelationFetchMode = "eager"
+	RelationFetchModeLazy   RelationFetchMode = "lazy"
+	RelationFetchModeBatch  RelationFetchMode = "batch"
+)
+
+var RelationFetchModes = []RelationFetchMode{
+	RelationFetchModeEager,
+	RelationFetchModeLazy,
+	RelationFetchModeBatch,
+}
+
+func (m RelationFetchMode) Valid() bool {
+	for _, valid := range RelationFetchModes {
 		if m == valid {
 			return true
 		}

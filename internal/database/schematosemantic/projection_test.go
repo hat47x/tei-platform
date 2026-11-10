@@ -320,4 +320,9 @@ func TestProjectSchemaDiffIntegration(t *testing.T) {
 	if len(oldResult.Namespace.Data[0].Attributes) == len(newResult.Namespace.Data[0].Attributes) {
 		t.Fatalf("expected attribute count to change after schema change")
 	}
+
+	impact := schematosemantic.ComputeDiffImpact(oldSnap, newSnap)
+	if len(impact.AddedColumns) != 1 || impact.AddedColumns[0] != "public.products.price" {
+		t.Fatalf("diff impact=%#v", impact)
+	}
 }

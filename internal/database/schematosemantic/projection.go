@@ -30,6 +30,18 @@ type Diagnostic struct {
 	Message string `json:"message"` // human-readable description
 }
 
+// SchemaDiffImpact describes the impact of a schema change on the semantic model.
+type SchemaDiffImpact struct {
+	AddedTables    []string `json:"addedTables,omitempty"`
+	DroppedTables  []string `json:"droppedTables,omitempty"`
+	AddedColumns   []string `json:"addedColumns,omitempty"`
+	DroppedColumns []string `json:"droppedColumns,omitempty"`
+	AlteredColumns []string `json:"alteredColumns,omitempty"`
+	AddedRelations []string `json:"addedRelations,omitempty"`
+	DroppedRelations []string `json:"droppedRelations,omitempty"`
+	AffectedCandidateKeys []string `json:"affectedCandidateKeys,omitempty"`
+}
+
 // ProjectionResult contains the generated semantic model plus provenance and diagnostics.
 type ProjectionResult struct {
 	Namespace   semantic.Namespace `json:"namespace"`
@@ -256,6 +268,92 @@ func sanitizeCandidateKeyID(table, suffix string) core.CanonicalID {
 
 func sanitizeRelationID(table, fkName string, index int) core.CanonicalID {
 	return core.MustCanonicalID(strings.ToLower(table + "_" + fkName + "_" + fmt.Sprintf("%d", index)))
+}
+
+// ComputeDiffImpact compares two schema snapshots and returns the semantic impact.
+func ComputeDiffImpact(oldSnap, newSnap physical.SchemaSnapshot) SchemaDiffImpact {
+	oldTables := make(map[string]physical.Table)
+	newTables := make(map[string]physical.Table)
+	for _, t := range oldSnap.Tables {
+		oldTables[t.QualifiedName()] = t
+	}
+	for _, t := range newSnap.Tables {
+		newTables[t.QualifiedName()] = t
+	}
+
+	impact := SchemaDiffImpact{}
+
+	// Find added/dropped tables
+	for name := range newTables {
+		if _, ok := oldTables[name]; !ok {
+			impact.AddedTables = append(impact.AddedTables, name)
+		}
+	}
+	for name := range oldTables {
+		if _, ok := newTables[name]; !ok {
+			impact.DroppedTables = append(impact.DroppedTables, name)
+		}
+	}
+
+	// Find added/dropped/altered columns and relations
+	for name, newTable := range newTables {
+		if oldTable, ok := oldTables[name]; ok {
+			oldCols := make(map[string]physical.Column)
+			for _, c := range oldTable.Columns {
+				oldCols[c.Name] = c
+			}
+			newCols := make(map[string]physical.Column)
+			for _, c := range newTable.Columns {
+				newCols[c.Name] = c
+			}
+
+			for _, c := range newTable.Columns {
+				if _, ok := oldCols[c.Name]; !ok {
+					impact.AddedColumns = append(impact.AddedColumns, fmt.Sprintf("%s.%s", name, c.Name))
+				} else if oldCols[c.Name] != c {
+					impact.AlteredColumns = append(impact.AlteredColumns, fmt.Sprintf("%s.%s", name, c.Name))
+				}
+			}
+			for _, c := range oldTable.Columns {
+				if _, ok := newCols[c.Name]; !ok {
+					impact.DroppedColumns = append(impact.DroppedColumns, fmt.Sprintf("%s.%s", name, c.Name))
+				}
+			}
+
+			oldFKs := make(map[string]physical.ForeignKey)
+			for _, fk := range oldTable.ForeignKeys {
+				oldFKs[fk.Name] = fk
+			}
+			newFKs := make(map[string]physical.ForeignKey)
+			for _, fk := range newTable.ForeignKeys {
+				newFKs[fk.Name] = fk
+			}
+			for _, fk := range newTable.ForeignKeys {
+				if _, ok := oldFKs[fk.Name]; !ok {
+					impact.AddedRelations = append(impact.AddedRelations, fmt.Sprintf("%s.%s", name, fk.Name))
+				}
+			}
+			for _, fk := range oldTable.ForeignKeys {
+				if _, ok := newFKs[fk.Name]; !ok {
+					impact.DroppedRelations = append(impact.DroppedRelations, fmt.Sprintf("%s.%s", name, fk.Name))
+				}
+			}
+
+			// Check candidate key changes
+			if len(oldTable.PrimaryKey) != len(newTable.PrimaryKey) {
+				impact.AffectedCandidateKeys = append(impact.AffectedCandidateKeys, name)
+			} else {
+				for i := range oldTable.PrimaryKey {
+					if oldTable.PrimaryKey[i] != newTable.PrimaryKey[i] {
+						impact.AffectedCandidateKeys = append(impact.AffectedCandidateKeys, name)
+						break
+					}
+				}
+			}
+		}
+	}
+
+	return impact
 }
 
 func mapPhysicalType(physicalType string) string {

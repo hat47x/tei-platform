@@ -38,8 +38,9 @@ func runOperationsCommand(workspacePath, applicationID, outPath string) error {
 
 // runArtifactsCommand prints the derived artifacts and their manifest. Findings
 // from the consistency check are part of the output; an incomplete set is
-// reported as such. With -out, one file per artifact and a manifest file are
-// written instead, and the manifest is printed.
+// reported as such. With -out, one file per artifact, a manifest file, and an
+// evidence bundle are written to an isolated staging area and published only
+// when the full set is consistent.
 func runArtifactsCommand(workspacePath, applicationID, outDir string, check bool) error {
 	if workspacePath == "" {
 		return fmt.Errorf("artifacts requires -workspace")
@@ -47,7 +48,7 @@ func runArtifactsCommand(workspacePath, applicationID, outDir string, check bool
 	if applicationID == "" {
 		return fmt.Errorf("artifacts requires -application")
 	}
-	set, err := artifact.RenderWorkspace(workspacePath, applicationID)
+	set, loaded, index, err := artifact.RenderWorkspaceWithIndex(workspacePath, applicationID)
 	if err != nil {
 		return err
 	}
@@ -59,9 +60,35 @@ func runArtifactsCommand(workspacePath, applicationID, outDir string, check bool
 		writeJSON(set)
 		return nil
 	}
-	if err := writeArtifactFiles(outDir, set); err != nil {
+
+	cliIdentity := ReadBuildIdentity()
+	bundle, err := artifact.NewEvidenceBundle(workspacePath, applicationID, loaded, index, set, &cliIdentity, "tei-artifacts-cli/v0", "")
+	if err != nil {
 		return err
 	}
+
+	stage, err := artifact.StageArtifacts(outDir, set)
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(stage)
+
+	bundle, err = artifact.WriteEvidenceBundle(stage, bundle)
+	if err != nil {
+		return err
+	}
+
+	if err := artifact.PublishStage(stage, outDir); err != nil {
+		return err
+	}
+
+	// Re-read the published evidence to record exact on-disk digests.
+	evidenceOnDisk, err := artifact.WriteEvidenceBundle(outDir, bundle)
+	if err != nil {
+		return err
+	}
+
+	writeJSON(evidenceOnDisk)
 	writeJSON(set.Manifest)
 	return nil
 }
