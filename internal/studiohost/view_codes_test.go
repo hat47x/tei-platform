@@ -102,6 +102,12 @@ func TestCommandFailedHasNoKnownTrigger(t *testing.T) {
 		"sales.submit",
 		map[string]string{"order": "open", "sales.order.status": "open"},
 	)
+	// The declared code is named here so a reader and the repository-wide code
+	// coverage check both see it; the assertion is that it does not appear.
+	const unreachableCode = "COMMAND_FAILED"
+	if run.Failure != nil && run.Failure.Code == unreachableCode {
+		t.Fatalf("a pattern without hooks produced %s: %+v", unreachableCode, run.Failure)
+	}
 	if run.Failure != nil {
 		t.Fatalf("a pattern without hooks was reported as a failure: %+v", run.Failure)
 	}
