@@ -1,0 +1,10 @@
+Suite results, stated exactly:
+
+  ./internal/syntax      alone -> ok (0.019s)
+  ./internal/workspace   alone -> ok (6.580s)
+  ./cmd/tei              alone -> ok (564.832s)
+  ./cmd/tei  while the mutation experiments ran concurrently -> FAIL (600.082s)
+
+The failure is the go test 600s limit, reached under CPU contention: 564.8s alone
+is already close to it. This is not a functional failure, but it is recorded rather
+than hidden. Running cmd/tei near a 10-minute ceiling is its own problem.
