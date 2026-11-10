@@ -1,0 +1,27 @@
+docs(self-build): move Go version and architecture independently, 2x2 identical
+
+§4.26 compared two hosts but host and Go version moved together (go1.27.0 on
+Windows, go1.27.3 on Linux), so it could not say which variable the agreement
+belonged to. This moves them independently: two toolchains by two architectures,
+all four cells run at one commit on the same fixtures.
+
+go1.26.10 came from dl.google.com and qemu-aarch64-static from the multiarch
+release, both without root, since the Ubuntu archive was unreachable but GitHub and
+dl.google.com answered. go1.26.10 is the floor go.mod requires, so it is the
+furthest version that still builds the repository.
+
+All four cells exited 0 with 2880 bytes and identical receipts (sha256 597e44ee…)。
+So the resolution values do not vary with Go version or architecture.
+
+What that does and does not establish is the part worth being careful about. The
+receipt carries no toolchain field, so this says the resolution path is free of
+architecture-dependent behaviour — map iteration order, float formatting, path
+normalisation — and it says nothing whatever about a real build's artifact digest,
+which is still unobserved. A compiled artifact would differ across architectures by
+construction. The §7 item therefore stays open, with darwin still unobservable here
+and the artifact-digest half still unmeasured.
+
+A process note is recorded again because the first attempt was not a comparison at
+all: the go1.26.10 path was wrong, that cell exited 127 with zero bytes, and the
+guard requiring both sides to exit 0 with non-empty output reported NOT COMPARABLE
+rather than recording an empty match.
