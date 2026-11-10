@@ -1,0 +1,6 @@
+Round 51 (before the vocabulary work)          Round 57 (after)
+  vocabulary obtained by grepping source         obtained from CLI diagnostics
+  one guess-and-fail per vocabulary              five vocabularies in one run
+  source access required                         not required
+
+The diagnostics change measurably reduced the round trips a designer needs.

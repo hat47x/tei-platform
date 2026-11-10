@@ -1758,3 +1758,50 @@ migration probe_step3 { ... gibberish sql postgres { ... } }
 ### #4094 の状況
 
 起票時の17件は 17→13→8→2 件。残り2件は語彙ではなく構造の検証（`INVALID_PLUGIN_ARTIFACT` 等）で本 Issue の対象外。**語彙系は本ラウンドで完了した。**
+
+## 59. 第57ラウンド（2026-11-10）: 語彙改善後に設計演習を再試行し、release 系の可視性欠陥を検出
+
+第56ラウンドで「次は実際の設計作業を再試行し、改善が効いているかを測る」と書いた。そのとおりに実行した。**今回はソースを読まず、CLI の診断だけを頼りに設計した。** 生出力は[第57ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND57_DESIGN_REEXERCISE_2026-11-10/README.md)にある。
+
+### 設計課題と経過
+
+> `sales_core` に索引を追加する migration、それを含む database release 5.0.0、それを配備する solution release を追加する。
+
+recovery strategy・migration step kind・data readiness・solution step kind/phase/strategy の有効値を知らない状態から始めた。
+
+| Attempt | CLI の応答 |
+| --- | --- |
+| 1 | `PARSE_ERROR expected schema-fingerprint, includes, provides, or data-readiness` → `includes` だと分かる |
+| 2 | `PARSE_ERROR expected "migration"` → `includes migration <id>` の形だと分かる |
+| 3 | **5つの語彙エラーが一括で返り、それぞれ有効値を名指し**。加えて `ROLLOUT_POLICY_ON_NON_APPLICATION_STEP`（strategy は application step のみ） |
+| 4 | `ok` |
+
+**修正3回で設計が通った。ソースは一度も読んでいない。**
+
+### 改善の効果
+
+| 項目 | 第51ラウンド（改善前） | 本ラウンド（改善後） |
+| --- | --- | --- |
+| 語彙の入手方法 | `grep` でソースから | **CLI の診断から** |
+| 語彙あたりの往復 | 語彙ごとに推測→失敗 | **5語彙を1回で同時に取得** |
+| ソース参照 | 必要だった | **不要** |
+
+**語彙診断の改善は、設計作業の往復を実際に減らした。**
+
+### 検出した欠陥: release 系が「モデルを見る」系に出ない
+
+設計は通ったが、追加した3つの成果物を `model` 系で確認できなかった。
+
+| コマンド | migration | database-release | solution-release |
+| --- | --- | --- | --- |
+| `validate` | 扱う | 扱う | 扱う |
+| `world` | **返す** | **返す** | **返す** |
+| `model catalog` | 出ない | 出ない | 出ない |
+| `model overview` | 出ない | 出ない | 出ない |
+| `inspect` / `trace` | `UNSUPPORTED_SUBJECT_KIND` | 同左 | 同左 |
+
+`model overview` は `sectionTotal: 8`（application 2・query 1・semantic 5）を返し、**database・environment・migration・release のセクションが1つも無い。**
+
+**正確には「答えられない」のではない。** `tei world` は3つの問いすべてに答えた（release が含む migration、solution release の step、migration の recovery と step）。**`world` を知っている必要がある**という点が摩擦で、私は JSON を手で解析して確認した。
+
+[#4128](https://github.com/hat47x/tei-platform/issues/4128) として起票した。5案を示し、**C（`inspect` の受理種を広げる）+ E（`overview` の対象範囲を明示する）が最小**と書いた。A（catalog に加える）は catalog の名前空間フィルタ設計に触れるため別判断。
