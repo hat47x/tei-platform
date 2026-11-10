@@ -3,6 +3,7 @@
 要求が受け入れシナリオや検証根拠にどう結び付くかを整理する文書を置きます。要求そのものは[`requirements/`](../../requirements/README.md)、段階判定の記録と実行手順は[`gate/`](../gate/README.md)、現在の実装状況は[`docs/status.md`](../../docs/status.md)を参照してください。
 
 - [製品品質の検証計画](PRODUCT_QUALITY_EVIDENCE_PLAN_2026-09.md)
+- [読めないqualification-requirementsの符号](CLI_QUALIFY_REQUIREMENTS_ERROR_2026-11-10.md)（存在しないパスや形の違うJSONを渡すと`KNOWLEDGE_BUILD_FAILED`になり、引数の誤りとモデルの問題を区別できなかったため`INVALID_ARGUMENT`へ分離。読めるrequirements＋読めないWorkspaceは構築失敗のまま。requirementsのスキーマ広告は未実施）
 - [製品要求と実証状況の照合](PRODUCT_REQUIREMENT_GAP_AUDIT.md)
 - [Plugin-firstのCLI/Studio共通InspectorへのD1 Fit/Gap](PLUGIN_FIRST_D1_AUTHORING_ROUTE_FIT_GAP_2026-11.md)（現行Go経路の静的監査と具体的な検証計画。実Provider二Consumerは未実証）
 - [E1合成証拠の8件原本保全と再検証](TEI_E1_SYNTHETIC_ARCHIVE_README_20261013.md)（試験用証拠。製品Gateは未資格）
@@ -109,6 +110,7 @@
 - [行範囲の宣言を通す修正の確認](XTEA_LOWCODE_HOOK_ROW_SCOPE_DECLARABLE_2026-11.md)（参照実装の試験記録。`row`が宣言できず死んだコードだった矛盾の修正。実行経路の配線は未実装）
 - [フック範囲の貫通試験の確認](XTEA_LOWCODE_HOOK_SCOPE_THROUGH_2026-11.md)（参照実装の試験記録。宣言→検証→実行を1本で通し、修正を戻すと落ちることを確認）
 - [パッケージ契約（適合試験・投影）の検査の確認](XTEA_LOWCODE_PACKAGE_CONFORMANCE_2026-11.md)（参照実装の試験記録。適合試験名と投影を検査。適合試験の実行は未実装）
+- [期間の close-requires の実行時検査の確認](XTEA_LOWCODE_CLOSE_REQUIRES_2026-11.md)（参照実装の試験記録。閉めに必要な能力を実行時に要求。`correction`は未実装）
 - [採番の永続CounterStoreの確認](XTEA_LOWCODE_NUMBERING_SQLITE_STORE_2026-11.md)（参照実装の試験記録。PostgreSQLは未実装）
 - [採番の2プロセス同時実行の確認](XTEA_LOWCODE_NUMBERING_PROCESS_RACE_2026-11.md)（参照実装の試験記録。PostgreSQLと多プロセス構成は未実装）
 - [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
@@ -148,6 +150,7 @@
 - [配備実行アダプタは、Binding を照合できない](ADAPTER_BINDING_BLINDSPOT_2026-11-09/README.md)（アダプタはPlanとCapabilityIDだけを持ちEnvironmentを持たないため、RouteCommand/ValidateResultを一度も呼ばない。4つの構築箇所はどれもDispatchを経由せずExecuteを直接呼ぶので、Dispatchの検証を強化しても届かない。C-3の直書き問題はそのまま残る。アダプタにEnvironmentを渡すべきかは設計判断）
 - [呼出し側で Binding を守る](BINDING_GUARDED_EXECUTOR_REFERENCE_2026-11-09/README.md)(`tools/reference-binding-guarded-executor` として、アダプタを構造変更せずに同じ保証を得られるかを試す。routing.RouteCommandの解決結果と要求IDを比較し、Bindingが別のexecutorを選んでいればアダプタへ渡す前に拒否する。6件の試験でSERVED/NOT_MATCHED/NOT_BOUND/UNKNOWN_EXECUTORを固定。製品へ入れるかは設計判断)
 - [guard は、実際のアダプタを止められるか](GUARD_WITH_REAL_ADAPTER_2026-11-09/README.md)（本物のBuildPlan・registry・DeploymentExecutorアダプタを組み立てて組合わせる。Bindingが一致すればアダプタが走り、別のexecutorを選んでいればguardが拒否してbuiltinの呼出しは0回。同じテストの後半でアダプタを直接呼ぶと走ることも示し、guardが実際に何かを防いでいることを実物で確認する）
+- [`unattended` の主張は、拘束されていなかった](UNATTENDED_AUTONOMY_INVARIANT_2026-11-10/README.md)（規則テキストは「listとreadは効果が無いからunattended」と書くが、検査が無くSummaryは数えるだけだった。unattendedが効果の無い種別だけに付くことを試験で固定し、createをunattendedに変えると失敗することを実測。D-3の材料になるが、unattendedは「効果のある種別ではない」ことしか意味せず、human-gatedは一度も出力されない）
 - [C-2を試験の外で組み立て、C-1と同じ土台で比べる](SERVICE_CARRIER_CONNECT_REFERENCE_2026-11-09/README.md)（`tools/reference-service-carrier-connect` として判断材料のC-2を実装。Hostが渡したCoordinator・Runtime registry・RouteSourceからInvokerを組み立て、ピン留めした世代で要求を運ぶ。Routeが無い場合はInvokerを呼ぶ前に拒否し、別Binding用のRouteも拒否し、入力不足も拒否する。実配備の成立は示さない）
 - [C-2の数も、実行前拒否と実行後不確定を分ける](SERVICE_CARRIER_CONNECT_OUTCOME_V1_2026-11-09/README.md)（C-2の参照Reportをv1にし、ranCountをcarrier入場、refusedCountを入場前停止だけ、unverifiedCountを入場後の失敗や別世代の応答として分ける。artifact検証の拒否はcarrier内部で起きるためunverifiedに入る。反例3件でv0ならrefusedに入っていたケースを固定し、CLIの3場合はcarrierInvoked=falseを示す。製品へ繋ぐべきかは示さない）
 - [C-1とC-2は、同じ問いの2案か](CONNECT_POINT_C1_C2_2026-11-09/README.md)（判断材料が並べたC-1 routing.Router と C-2 servicehost の入口を比べ、入力の型・世代の有無・到達可能性が違うことを示す。C-1は配備の動作を実行しC-2はServiceの要求を運ぶため、両方を選ぶことは経路の重複ではない。C-2は非試験の呼出し元がまだ0件であることを記録。どちらを先に入れるべきかは示さない）
@@ -315,6 +318,7 @@
 - [traceのoffset/limitの値域宣言](CLI_MCP_TRACE_PAGING_BOUNDS_2026-11-10.md)（`tei_trace`の`offset`・`limit`だけが値域を宣言せず、0が有効で負値が拒否されることをclientが読めなかったため`minimum:0`を追加。`model locate`の1..500とは意図的に異なるので各々が宣言する。宣言と実挙動の一致をdispatch経由で固定）
 - [CLIのhelpが受理しないflagを並べていた件](CLI_HELP_GRAMMAR_2026-11-10.md)（	ei validate -h等が共有FlagSetの70個を出し、実際に受け付けるのは3個だった件。ExitOnErrorのコマンドはs.Parse前に絞り込みhelpを返すよう修正。全コマンドで-hのflag数が受理範囲と一致。実行時の受理範囲は不変）
 - [validateの受理しないflagの広告](CLI_CATALOGUE_VALIDATE_FLAGS_2026-11-10.md)（	ei commandsがalidateに-analysis等4個を広告していたが実際は全て拒否。共有FlagSetの所属を取り違えた広告を削除し、catalogueが名指すflagは受理されるflagでなければならないことを単体で固定）
+- [realize束縛の参照グラフ辺](CLI_TRACE_REALIZE_EDGES_2026-11-10.md)（`realize X with custom go`が索引にあるのに投影が辺にせず`trace`で実装者が辿れなかった件。`application -realizes-> semantic-capability`の辺にし、adapterのファイル名はノードにしない。4宣言中3件が辿れ、残る1件は宣言側の欠落として`unmaterialized-to`で観測できるようにした）
 - [viewの-inputが-command無しで黙って捨てられていた](TEI_DOGFOODING_ROUND20_VIEW_INPUT_2026-11-09/README.md)（#3778・#3420。`-input`は`-command`と組だが、無い場合に値が捨てられて成功していた。両方向の変異を検出する試験を追加。起票時の誤診と既存試験による発覚も記録）
 - [view -executeの失敗符号が潰れていた](TEI_DOGFOODING_ROUND21_VIEW_EXECUTE_2026-11-09/README.md)（#3797・#3419。入力不正と認可拒否がどちらも`COMMAND_FAILED`に潰れ、理由がmessageの先頭にしかなかった。既知7符号を`error.code`に出す。`-operation-log`の上書き挙動は未決）
 - [手書きの符号許可リストが21中15を潰していた](TEI_DOGFOODING_ROUND22_CODE_COVERAGE_2026-11-09/README.md)（#3807・#3797・#3420。CLIは7符号、Studioは1符号だけを特別扱いし、coreの21符号のうち15が`COMMAND_FAILED`に潰れていた。列挙を廃止し`command.ReportedFailure`へ。AST走査で再発防止）
@@ -345,3 +349,5 @@
 - [realizeの実装束縛を参照グラフの辺にした](TEI_DOGFOODING_ROUND42_REALIZE_EDGE_2026-11-10/README.md)（#3983。`application -realizes-> semantic-capability`を追加し3束縛が可視化。4つ目は対象未宣言のため`unmaterialized-to`で報告され、既存不整合が可視化された。変異2種で確認）
 - [他の3種の実装束縛は依然として参照グラフに現れない](TEI_DOGFOODING_ROUND43_OTHER_BINDINGS_2026-11-10/README.md)（#3983残件。Worldに4種の束縛があるが索引はCustomGoBindingsのみ読む。executorを変えてもgraphFingerprintとtotalは不変。重複PR #3994の扱いも記録）
 - [永続化マッピングの列対応が参照グラフに現れない](TEI_DOGFOODING_ROUND44_PERSISTENCE_NOT_IN_GRAPH_2026-11-10/README.md)（#4001・#3983。属性20件中incomingを持つのは3件のみ。索引はMapping.Columnsを捨てている。commandsと-hの不一致は他者の修正で解消済みと確認）
+- [Worldの全欄と参照グラフの対応を検査で固定した](TEI_DOGFOODING_ROUND45_WORLD_FIELD_COVERAGE_2026-11-10/README.md)（#3419・#3983・#4001。17欄中14を索引が読み、未読3欄は第43ラウンドの特定と一致。reflectで全欄を列挙し未登録を落とす。ただし「読む欄が辺になるか」は未検査と明記）
+
