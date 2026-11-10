@@ -257,3 +257,6 @@
 
 # Unattended autonomy invariant output is hashed as raw bytes by its README.
 /plan/evidence/UNATTENDED_AUTONOMY_INVARIANT_2026-11-10/** -text
+
+# Sequential-subagent observations are hashed as raw bytes.
+/plan/evidence/DSH_SUBAGENT_SEQUENTIAL_2026-11-10/** -text
