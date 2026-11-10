@@ -1187,6 +1187,15 @@ X-TEAのテーブル1:1/1:N→XF単票/明細の対応を、**テーブル非依
 - **順序と完了条件**：P0=分類比較、P1=Headless read-only mapping、P2=Function/Rendererへの配置、P3=逆編集/実Provider Effect、P4=SHO/SUI等の異質Consumerへの展開。先にRP-01〜08（JOIN fanout、DAG→Tree、数値→Slider、音声/動画同期、文書→TTS、Sonification、partial Tab、Function跨ぎ）の独立Expectedで誤実装を落とします。既存[#2514](https://github.com/hat47x/tei-platform/issues/2514)/[#1180](https://github.com/hat47x/tei-platform/issues/1180)へ接続し、新Gateは追加しません。
 
 詳細は[設計・反証比較票](design/STANDARD_REPRESENTATION_TOPOLOGY_AND_MEDIA_AXES_2026-11.md)。**今回の追加は計画のみ**であり、RP-01〜08の実行、実Media生成/再生、Provider/Host接続、Owner意味受理、公開契約の採用を示しません。既存の判定段階A/B/Cの評価は変更しません。
+## 2026-11-07 表現型間の選択・状態連携（検証候補）
+
+標準データ構造と標準表現型を独立させ、Function内に表現Instanceを配置する[前段の設計Draft #3192](https://github.com/hat47x/tei-platform/pull/3192)に対し、**複数Viewの同期が業務対象・取得Scope・書込み資格を暗黙に共有する誤り**を検出する計画を追加します。前段PRは本節記載時点でDraft・未統合であり、正式採用済みではありません。
+
+- **設計上の差分**：Data Subject／Relation occurrence、Query Result occurrence／grain、Representation occurrence（行・Graph/Tree経路・集計点）、Context Instance／selection epoch、操作Intentを区別。Panel/Tab/Canvasの配置・Focus・Zoom・SeekをDomain Mutationへ自動変換しない。異なるViewへの同期は用途・粒度・出現ID・Read Scope／Disclosure・現在の版に従い、exact／複数候補／aggregate関連／unknownを区別する。
+- **既存責務を活用**：[#2506](https://github.com/hat47x/tei-platform/issues/2506) Context/Result Slice、[#2507](https://github.com/hat47x/tei-platform/issues/2507) Binding、[#2497](https://github.com/hat47x/tei-platform/issues/2497) Projection、[#2582](https://github.com/hat47x/tei-platform/issues/2582) Change/Refresh、[#2500](https://github.com/hat47x/tei-platform/issues/2500)/[#2598](https://github.com/hat47x/tei-platform/issues/2598) 更新Intent/Request、[#997](https://github.com/hat47x/tei-platform/issues/997) Rendererに分配し、第二のState Engine/Authority/Scenarioを作りません。
+- **受入順**：C0 MV-01〜04（Table/Form、DAG→Tree、Aggregate、partial）Headless → C1 MV-05/06（Selection ABA、非開示の同期漏えい）→ C2 MV-07/08（SUI Canvas・SHO文書・朗読区間）異質Consumer → C3 既存Function→実Provider Read/Action/Receiptの縦切りへ接続。独立Expectedは[#2514](https://github.com/hat47x/tei-platform/issues/2514)/[#1180](https://github.com/hat47x/tei-platform/issues/1180)が所有します。
+
+[表現型間連携・変更影響の設計比較票](design/REPRESENTATION_CROSSVIEW_COORDINATION_2026-11.md)を参照。**今回の成果は計画・比較票のみで、MV-01〜08、実Renderer/Provider、Owner受理はNOT RUN**。既存Gate A/B/CおよびProduct実装状況の判定には反映しません。
 
 ## 先に固定しないもの
 

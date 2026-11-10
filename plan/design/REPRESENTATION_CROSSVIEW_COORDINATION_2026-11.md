@@ -1,7 +1,6 @@
 # TEI 表現型間の選択・状態連携・更新境界（2026-11-07）
 
 > **統合Draftの位置づけ（2026-11-07）**：この資料は以前の設計Draftの内容を保存し、現行mainからの統合計画へ取り込み直したものです。最新の横断検証順と追加反例は `plan/design/COMPOSED_REPRESENTATION_MAPPING_QUALIFICATION_2026-11.md` を参照してください。本文中の旧Draft参照・NOT RUNは当時の証拠の限界として保持します。
-
 - **状態**：他チャットのTEI/SHO/SUI/TAIの構想と現行Issueの照合から抽出した、追加の設計・Headless検証計画。**採用前／新試験 NOT RUN**。Core Schema、共通Host、Renderer、同期Runtime、権限Engine、独立Scenarioを新設しない。
 - **前段**：[Draft #3192](https://github.com/hat47x/tei-platform/pull/3192)の「Data topology／Representation topology／Function-owned instance／媒体時間軸」を前提とする。ただし#3192は本書作成時Open Draft・main未統合。前段の構想を正式採用済みと主張しない。単独の縦断実証へは既存のAccepted Meaning/Function Contextが必要。
 - **責務**：#2506 Function Data Context／Result Slice、#2507 Pattern/Representation Binding、#2497 Projectionの意味保存・損失、#2582 変更依存と再取得、#2500 View→Intent逆写像、#2598 Intent→Request対象、#997 Renderer/Native Kit、#2516 Consumer Disclosure、#2514/#1180 独立Expected/Scenario。SHO #19／SUIは異質ConsumerでありTEI Function Sessionの別名ではない。
