@@ -1833,6 +1833,45 @@ L2-bの五条件は、childの能力に依存する。本節は、**参照実装
 - `go list -deps`の結果と閉包の突き合わせは**案**であり、実装していない
 - 受理・Runtime Authority・供給のTrust。いずれも未主張のまま
 
+### 4.40 定義sourceの種類は、recipeが決める（2026-11-09）
+
+段2で`./cmd/tei`の実buildを鎖に通したとき、**宣言の`definitionSource`が`plugin-definition` kindを要求する**ために、commandのビルドにも既存の`plugin.tei`を定義sourceとして差し込む必要があった（[記録](../evidence/TEI_GO_SELF_BUILD_L2B_FROM_REAL_GO_BUILD_2026-11-10.md)）。**計画は、そのビルドが読まないファイルの指紋を運んでいた。** 本節は、その規則を**recipeに応じて変える**。
+
+#### 規則
+
+| recipe | 定義sourceに要求するkind | 計画の`pluginDefinitionFingerprint`の出どころ |
+| --- | --- | --- |
+| `go-command` | **`go-package`**（ディレクトリ可） | **sourceのidentityそのもの**（`FingerprintJSON(source)`） |
+| それ以外（`go-package`など） | `plugin-definition`（単一ファイル） | 解析した宣言の`BuildDefinitionFingerprint` |
+
+**「主体を定義する入力」は、何を作るかで変わる。** pluginは宣言が定義であり、commandはコンパイルされるpackageが定義である。**単一の規則を緩めるのではなく、recipeごとの規則にする。**
+
+#### 変えたところ
+
+| 場所 | 変更 |
+| --- | --- |
+| `internal/buildintent`の宣言検証 | kindの検査を`validateDefinitionSourceKind(recipe, source)`へ |
+| 解決 | `go-command`では定義sourceを**pluginとして解析しない**。単一ファイル要求も無い。指紋はsourceのidentityから |
+| 計画 | `pluginDefinitionFingerprint`は上の表のとおり。**欄の意味は「主体を定義する入力の同一性」で、recipeが導出法を決める** |
+
+#### 実測
+
+| 試験 | 結果 |
+| --- | --- |
+| `TestValidateAcceptsTheDefinitionKindEachRecipeNeeds`（plugin宣言＋`plugin-definition`／command＋`go-package`） | **PASS** |
+| `TestValidateRefusesTheDefinitionKindTheRecipeDoesNotUse`（**両方向**で拒否し、必要なkindを名指す） | **PASS** |
+| `TestValidateStillRequiresADeclaredDefinitionSource` | **PASS** |
+| `TestResolveDerivesTheDefinitionIdentityPerRecipe`（commandの計画に定義identityが入り、**同じ入力で安定**し、**bytesが変われば変わる**） | **PASS** |
+
+環境：WSL2 Ubuntu 22.04、`go1.27.3`。
+
+#### この節が言っていないこと
+
+- **既存の宣言の移行**。`plugin-definition`を使う宣言は今までどおりで、変更は要らない（試験で確認）
+- `go-command`以外の非plugin recipe（将来増える場合）の規則。**今は`go-command`だけを分けた**
+- `pluginDefinitionFingerprint`という**欄の名前**。commandではpluginを指さないが、名前を変えると計画の形が変わるため、意味の説明で補った
+- 受理・Runtime Authority・供給のTrust。いずれも未主張のまま
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |

@@ -92,6 +92,7 @@ childDigest, err := digestOfFile(exactChild)
 
 - **`darwin` は扱っていません。** `linux/amd64` のみです
 - **悪意ある呼び手の一般論ではありません。** 示したのは「名指しされたファイルと実際に走るものが一致しない構成があり得る」ことだけです
+- **手順・フィクスチャ・生出力はリポジトリにある。** `plan/evidence/TEI_GO_SELF_BUILD_CHILD_IDENTITY_SCOPE_2026-11-10/` の `run.sh`（`proxy`・`direct`）が両方の観測を再導出します（[README](TEI_GO_SELF_BUILD_CHILD_IDENTITY_SCOPE_2026-11-10/README.md)）。**構築器はリポジトリのソースからビルドするので、digest はコミットで変わります。**
 - **本記録の構築器は振る舞いが同じです。** 振る舞いが違えば成果物が変わり、`reproduced` にならないので Claim は立ちません
 - **`qualified` は `false` のまま**です。本記録は受理・L3・Runtime Authority を主張しません
 

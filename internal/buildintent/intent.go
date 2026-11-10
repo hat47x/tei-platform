@@ -54,6 +54,28 @@ type BuildIntent struct {
 }
 
 // IntentSubject は何を構築するかの論理的な識別である。
+// sourceKindCommandDefinition is the source kind that defines a command build.
+// A command has no plugin declaration, so the code that is compiled is what
+// defines the subject; requiring a plugin-definition there would force callers to
+// invent one that the build never reads.
+const sourceKindCommandDefinition = "go-package"
+
+// RecipeKindCommand is the recipe that builds an executable from a Go package.
+const RecipeKindCommand = "go-command"
+
+// validateDefinitionSourceKind applies the rule for the recipe: a plugin build is
+// defined by its declaration, a command build by the package it compiles.
+func validateDefinitionSourceKind(recipeKind string, definition IntentSource) error {
+	want := sourceKindDefinition
+	if recipeKind == RecipeKindCommand {
+		want = sourceKindCommandDefinition
+	}
+	if definition.Kind != want {
+		return fmt.Errorf("build intent definitionSource %q must have kind %s for recipe %s", definition.ID, want, recipeKind)
+	}
+	return nil
+}
+
 // DefinitionSource はSources内のplugin-definition Sourceを指すIDであり、
 // definition fingerprintそのものは書かない。
 type IntentSubject struct {
@@ -275,8 +297,8 @@ func (i BuildIntent) Validate() error {
 	if !ok {
 		return fmt.Errorf("build intent definitionSource %q is not a declared source", i.Subject.DefinitionSource)
 	}
-	if definition.Kind != sourceKindDefinition {
-		return fmt.Errorf("build intent definitionSource %q must have kind %s", definition.ID, sourceKindDefinition)
+	if err := validateDefinitionSourceKind(i.Recipe.Kind, definition); err != nil {
+		return err
 	}
 	if strings.TrimSpace(i.Builder.Contract) == "" || i.Builder.CompatibleMajor <= 0 {
 		return fmt.Errorf("build intent builder contract and compatibleMajor are required")
