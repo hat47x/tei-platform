@@ -28,6 +28,7 @@ func satisfiedL2B() selfBuildOuterEvidence {
 			L2BClaimed: false,
 		},
 		ArtifactReproducibility: &selfBuildReproducibility{State: reproducibilityReproduced},
+		BuilderBinding:          &selfBuildBuilderBinding{State: builderBindingBound, Matched: true},
 	}
 }
 
@@ -111,6 +112,16 @@ func TestAssessL2BNamesEveryMissingCondition(t *testing.T) {
 			mutate: func(r *selfBuildOuterEvidence) { r.ArtifactReproducibility.State = reproducibilityUnperformed },
 			want:   "not reproduced from the plan",
 		},
+		{
+			name:   "started file never compared with the declared builder",
+			mutate: func(r *selfBuildOuterEvidence) { r.BuilderBinding = nil },
+			want:   "not shown to be the builder the plan declares (unperformed)",
+		},
+		{
+			name:   "started file is not the declared builder",
+			mutate: func(r *selfBuildOuterEvidence) { r.BuilderBinding.State = builderBindingMismatched },
+			want:   "not shown to be the builder the plan declares (mismatched)",
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -135,11 +146,12 @@ func TestAssessL2BOnAnEmptyAttemptReportsEveryCondition(t *testing.T) {
 	if claim.Claimed {
 		t.Fatal("an empty attempt claimed L2-b")
 	}
-	// Five independent conditions. The three facts about the plan receipt answer
-	// one question with mutually exclusive answers, so an attempt with no receipt
-	// reports one entry for it, not three.
-	if len(claim.Unmet) != 5 {
-		t.Fatalf("unmet has %d entries, want 5:\n%s", len(claim.Unmet), strings.Join(claim.Unmet, "\n"))
+	// Six independent conditions: the five of §4.23 and the builder binding of
+	// §4.40. The three facts about the plan receipt answer one question with
+	// mutually exclusive answers, so an attempt with no receipt reports one entry
+	// for it, not three.
+	if len(claim.Unmet) != 6 {
+		t.Fatalf("unmet has %d entries, want 6:\n%s", len(claim.Unmet), strings.Join(claim.Unmet, "\n"))
 	}
 }
 
