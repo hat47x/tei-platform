@@ -32,7 +32,12 @@ type ModelOverview struct {
 	Limit                  int                          `json:"limit"`
 	SectionTotal           int                          `json:"sectionTotal"`
 	SectionsOmitted        int                          `json:"sectionsOmitted"`
-	Sections               []ModelOverviewSection       `json:"sections"`
+	// SectionScope says what a section can contain. A reader must not take
+	// "sectionTotal: 8" to mean the workspace holds eight things: the sections
+	// mirror the model catalog, and the catalog does not list every layer
+	// (#4128).
+	SectionScope ModelSectionScope      `json:"sectionScope"`
+	Sections     []ModelOverviewSection `json:"sections"`
 	// Totals sums Attention over every section, listed or omitted.
 	Totals ModelAttention `json:"totals"`
 	// Unattributed holds the findings that belong to no catalog element: a
@@ -49,6 +54,70 @@ type ModelOverviewSection struct {
 	Descendants int               `json:"descendants"`
 	KindCounts  []ModelKindCount  `json:"kindCounts"`
 	Attention   ModelAttention    `json:"attention"`
+}
+
+// ModelSectionScope states the rule that selects a section and which declared
+// kinds therefore have none. Both lists are derived, so the statement cannot
+// drift away from what the overview actually does.
+type ModelSectionScope struct {
+	// RootsAre names the selection rule for a section.
+	RootsAre string `json:"rootsAre"`
+	// CoveredKinds are the subject kinds the model catalog lists. A kind here
+	// can appear inside a section.
+	CoveredKinds []string `json:"coveredKinds"`
+	// NotCoveredKinds are kinds this workspace declares that the catalog does
+	// not list. They have no section and no attention count.
+	NotCoveredKinds []string `json:"notCoveredKinds"`
+}
+
+// declaredLayerKinds names the World collections that hold author-written
+// declarations, in report order. The catalog does not list several of them, and
+// the overview must say so rather than let a section count imply otherwise.
+var declaredLayerKinds = []struct {
+	kind  string
+	count func(ir.World) int
+}{
+	{"plugin", func(w ir.World) int { return len(w.Plugins) }},
+	{"bundle", func(w ir.World) int { return len(w.Bundles) }},
+	{"database", func(w ir.World) int { return len(w.Databases) }},
+	{"persistence-mapping", func(w ir.World) int { return len(w.Persistence) }},
+	{"migration", func(w ir.World) int { return len(w.Migrations) }},
+	{"migration-provider", func(w ir.World) int { return len(w.MigrationProviders) }},
+	{"application-release", func(w ir.World) int { return len(w.ApplicationReleases) }},
+	{"database-release", func(w ir.World) int { return len(w.DatabaseReleases) }},
+	{"solution-release", func(w ir.World) int { return len(w.SolutionReleases) }},
+	{"environment", func(w ir.World) int { return len(w.Environments) }},
+	{"custom-go-binding", func(w ir.World) int { return len(w.Bindings) }},
+	{"header-detail-contract-query-binding", func(w ir.World) int { return len(w.HeaderDetailContractQueryBindings) }},
+	{"contract-query-executor-binding", func(w ir.World) int { return len(w.ContractQueryExecutorBindings) }},
+	{"contract-query-sql-realization", func(w ir.World) int { return len(w.ContractQuerySQLRealizations) }},
+}
+
+// sectionScope derives the scope statement from the catalog and the World.
+func sectionScope(catalog ModelCatalog, world ir.World) ModelSectionScope {
+	covered := map[string]bool{}
+	var coveredKinds []string
+	for _, entry := range catalog.Entries {
+		if covered[entry.Subject.Kind] {
+			continue
+		}
+		covered[entry.Subject.Kind] = true
+		coveredKinds = append(coveredKinds, entry.Subject.Kind)
+	}
+	sort.Strings(coveredKinds)
+
+	notCovered := []string{}
+	for _, layer := range declaredLayerKinds {
+		if covered[layer.kind] || layer.count(world) == 0 {
+			continue
+		}
+		notCovered = append(notCovered, layer.kind)
+	}
+	return ModelSectionScope{
+		RootsAre:        "catalog-root-entries",
+		CoveredKinds:    coveredKinds,
+		NotCoveredKinds: notCovered,
+	}
 }
 
 // ModelAttention counts what needs a look in one subtree. Each counter is a
@@ -114,6 +183,7 @@ func OverviewFromRead(catalog ModelCatalog, world ir.World, diagnostics []valida
 		Workspace:              catalog.Workspace,
 		Validation:             catalog.Validation,
 		Limit:                  limit,
+		SectionScope:           sectionScope(catalog, world),
 		Sections:               []ModelOverviewSection{},
 		Coverage: ModelLocationCoverage{
 			Derived: []string{

@@ -1,0 +1,11 @@
+M1 make notCoveredKinds always empty
+   -> FAIL: "migration" is declared in the reference workspace but is not named
+            as not covered: []
+M3 drop migration from declaredLayerKinds
+   -> FAIL: same message; the list loses migration
+M4 claim rootsAre "every-declaration"
+   -> FAIL: rootsAre is "every-declaration", want catalog-root-entries
+M2 put a covered kind into notCoveredKinds
+   -> COULD NOT BE MADE TO FAIL. See 53.
+
+restored -> operations, cmd/tei (109.6s) ok; vet and gofmt clean

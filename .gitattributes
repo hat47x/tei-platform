@@ -291,3 +291,6 @@
 
 # Late-starting MCP observations are hashed as raw bytes.
 /plan/evidence/DSH_MCP_LATE_START_2026-11-10/** -text
+
+# Mid-run MCP reconnect observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_MIDRUN_RECONNECT_2026-11-10/** -text
