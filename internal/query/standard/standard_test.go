@@ -120,6 +120,28 @@ func TestRoundTripSQLite(t *testing.T) {
 			},
 			expected: [][]interface{}{{2}, {3}},
 		},
+		{
+			name: "exists",
+			sql:  "SELECT order_id FROM orders WHERE EXISTS (SELECT 1 FROM customers WHERE customers.id = orders.customer_id AND customers.active = 1)",
+			setup: func(t *testing.T, db *sql.DB) {
+				mustExec(t, db, "CREATE TABLE orders (order_id INTEGER, customer_id INTEGER)")
+				mustExec(t, db, "CREATE TABLE customers (id INTEGER, active INTEGER)")
+				mustExec(t, db, "INSERT INTO customers VALUES (1, 1), (2, 0)")
+				mustExec(t, db, "INSERT INTO orders VALUES (1, 1), (2, 2), (3, 1)")
+			},
+			expected: [][]interface{}{{1}, {3}},
+		},
+		{
+			name: "not_exists",
+			sql:  "SELECT order_id FROM orders WHERE NOT EXISTS (SELECT 1 FROM customers WHERE customers.id = orders.customer_id AND customers.active = 1)",
+			setup: func(t *testing.T, db *sql.DB) {
+				mustExec(t, db, "CREATE TABLE orders (order_id INTEGER, customer_id INTEGER)")
+				mustExec(t, db, "CREATE TABLE customers (id INTEGER, active INTEGER)")
+				mustExec(t, db, "INSERT INTO customers VALUES (1, 1), (2, 0)")
+				mustExec(t, db, "INSERT INTO orders VALUES (1, 1), (2, 2), (3, 1)")
+			},
+			expected: [][]interface{}{{2}},
+		},
 	}
 
 	for _, tc := range cases {

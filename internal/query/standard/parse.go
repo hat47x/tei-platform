@@ -705,6 +705,23 @@ func (p *parser) parseAnd() (Expr, error) {
 
 func (p *parser) parseNot() (Expr, error) {
 	if p.matchKeyword("not") {
+		if p.matchKeyword("exists") {
+			if !p.match(tokLParen) {
+				return nil, p.error("expected '(' after EXISTS")
+			}
+			if p.peekKeyword("select") {
+				sub, err := p.parseQuery()
+				if err != nil {
+					return nil, err
+				}
+				_, err = p.expect(tokRParen)
+				if err != nil {
+					return nil, err
+				}
+				return &Exists{Negated: true, Query: sub}, nil
+			}
+			return nil, p.error("expected SELECT inside EXISTS")
+		}
 		operand, err := p.parseNot()
 		if err != nil {
 			return nil, err
@@ -816,6 +833,23 @@ func (p *parser) parseComparison() (Expr, error) {
 				return &InList{Negated: true, Expr: left, List: list}, nil
 			}
 			return nil, p.error("expected '(' after IN")
+		}
+		if p.matchKeyword("exists") {
+			if !p.match(tokLParen) {
+				return nil, p.error("expected '(' after EXISTS")
+			}
+			if p.matchKeyword("select") {
+				sub, err := p.parseQuery()
+				if err != nil {
+					return nil, err
+				}
+				_, err = p.expect(tokRParen)
+				if err != nil {
+					return nil, err
+				}
+				return &Exists{Negated: true, Query: sub}, nil
+			}
+			return nil, p.error("expected SELECT inside EXISTS")
 		}
 		if p.matchKeyword("like") {
 			right, err := p.parseAdditive()
@@ -990,6 +1024,23 @@ func (p *parser) parsePrimary() (Expr, error) {
 	if tok.kind == tokString {
 		p.next()
 		return &Literal{Kind: "string", Value: tok.text}, nil
+	}
+	if p.matchKeyword("exists") {
+		if !p.match(tokLParen) {
+			return nil, p.error("expected '(' after EXISTS")
+		}
+		if p.peekKeyword("select") {
+			sub, err := p.parseQuery()
+			if err != nil {
+				return nil, err
+			}
+			_, err = p.expect(tokRParen)
+			if err != nil {
+				return nil, err
+			}
+			return &Exists{Query: sub}, nil
+		}
+		return nil, p.error("expected SELECT inside EXISTS")
 	}
 	if tok.kind == tokParam || tok.kind == tokQuestion {
 		p.next()
