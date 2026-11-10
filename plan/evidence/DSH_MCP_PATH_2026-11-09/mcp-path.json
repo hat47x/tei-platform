@@ -1,0 +1,125 @@
+{
+  "note": "The shipped headless profile exposes no MCP tool: every captured request carries the same 24 tool names and none is an MCP tool. Inserting dsh-mcp-client with a plausible servers.synthetic {transport: http, url} config was accepted by --dump-config but changed neither the tool list nor the traffic: the mock received zero MCP requests.",
+  "defaultSurface": {
+    "toolCount": 24,
+    "toolNames": [
+      "create_goal",
+      "edit",
+      "get_goal",
+      "glob",
+      "grep",
+      "interrupt_agent",
+      "job_kill",
+      "job_list",
+      "job_output",
+      "list_agents",
+      "pwsh",
+      "read",
+      "read_image",
+      "send_message",
+      "skill",
+      "subagent",
+      "subagent_fork",
+      "todo_write",
+      "update_goal",
+      "web_fetch",
+      "web_search",
+      "workflow",
+      "working_directory",
+      "write"
+    ],
+    "mcpTools": []
+  },
+  "mountedWithoutServers": {
+    "plugin": "@deepseek-ai/dsh-mcp-resources",
+    "mountedBy": "@deepseek-ai/dsh-base",
+    "configSchema": "unknownConfig (no projected Config schema in --dump-config-schema)"
+  },
+  "clientInsertAttempt": {
+    "overlay": "insert mcp-client with servers.synthetic { transport: http, url: http://127.0.0.1:8799/mcp }",
+    "acceptedByDumpConfig": true,
+    "toolCountAfter": 24,
+    "mcpToolsAfter": [],
+    "mcpRequestsReceived": 0
+  },
+  "run": {
+    "profile": "headless",
+    "permissionMode": "read-only",
+    "task": "Say ok.",
+    "modelRequests": [
+      {
+        "file": "model-001-request.json",
+        "bytes": 90627,
+        "sha256": "f1c0d8a66756d455eb770e772192810b622537079bc35830a6ec3e7cdae5beff",
+        "toolCount": 24,
+        "toolNames": [
+          "create_goal",
+          "edit",
+          "get_goal",
+          "glob",
+          "grep",
+          "interrupt_agent",
+          "job_kill",
+          "job_list",
+          "job_output",
+          "list_agents",
+          "pwsh",
+          "read",
+          "read_image",
+          "send_message",
+          "skill",
+          "subagent",
+          "subagent_fork",
+          "todo_write",
+          "update_goal",
+          "web_fetch",
+          "web_search",
+          "workflow",
+          "working_directory",
+          "write"
+        ],
+        "messageCount": 1,
+        "sessionId": "session-fdcc0dc0-0614-40b6-a0eb-8a3edc766d00",
+        "afterSeq": -1,
+        "throughSeq": 18
+      },
+      {
+        "file": "model-002-request.json",
+        "bytes": 52681,
+        "sha256": "19b24ca76644bb76cdf6146e6dc5df9870be640b78c3fd3ac36a4381007dfefb",
+        "toolCount": 0,
+        "toolNames": [],
+        "messageCount": 1,
+        "sessionId": "session-fdcc0dc0-0614-40b6-a0eb-8a3edc766d00",
+        "afterSeq": -1,
+        "throughSeq": 18
+      }
+    ],
+    "totalModelRequestBytes": 143308
+  },
+  "parentLog": {
+    "bytes": 47886,
+    "sha256": "4fd6ee108797ae01fa6faf9566657a7130a7a4fc2eb6e0a268f7edb6a741095e",
+    "eventTypeCounts": {
+      "session": 1,
+      "permission/preset": 2,
+      "sandbox/mode": 2,
+      "approval/policy": 2,
+      "agent/inbox/spliced": 2,
+      "turn/start": 1,
+      "step/start": 1,
+      "system/message": 1,
+      "user/message": 4,
+      "request/header": 1,
+      "request/context": 1,
+      "session/title": 2,
+      "session/title-llm-request": 1,
+      "session-log-deepseek/delivery-accepted": 2,
+      "assistant/message": 1,
+      "step/end": 1,
+      "turn/end": 1
+    },
+    "mcpMentions": 0
+  },
+  "limits": "The client's config shape is undocumented in the profile schema, so a zero request count shows that this guess did not reach a server. It is not evidence that MCP cannot carry data once a server is configured correctly."
+}

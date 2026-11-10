@@ -1,0 +1,4 @@
+M1 remove the outcome derivation
+   -> FAIL: no outcome edge from security.authenticate
+restored -> ok (index 0.01s / modelref 0.54s / derivedbridge 0.06s /
+                sourcebridge 0.01s / operations 1.25s / cmd/tei 141.3s)

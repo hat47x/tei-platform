@@ -1,0 +1,15 @@
+inspect: no -subject-id                        rc=2 code=INVALID_ARGUMENT
+inspect: no -subject-kind                      rc=2 code=INVALID_ARGUMENT
+inspect: no -workspace                         rc=2 code=INVALID_ARGUMENT
+trace: no -scope                               rc=2 code=INVALID_ARGUMENT
+model catalog: no -workspace                   rc=2 code=INVALID_ARGUMENT
+source-index: no -workspace                    rc=2 code=INVALID_ARGUMENT
+requirements: no input                         rc=2 code=INVALID_ARGUMENT
+knowledge-context: no -subject-id              rc=2 code=INVALID_ARGUMENT
+knowledge-qualify: no -subject-id              rc=2 code=INVALID_ARGUMENT
+knowledge-qualify: no -requirements            rc=2 code=INVALID_ARGUMENT
+knowledge-review-plan: no -subject-kind        rc=2 code=INVALID_ARGUMENT
+inspect: whitespace-only id                    rc=2 code=INVALID_SUBJECT
+inspect: non-exact id                          rc=2 code=INVALID_SUBJECT
+inspect: absent subject                        rc=1 code=SUBJECT_NOT_FOUND
+knowledge-qualify: bad requirements file       rc=2 code=KNOWLEDGE_BUILD_FAILED

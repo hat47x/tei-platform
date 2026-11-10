@@ -7,6 +7,8 @@ import (
 	"tei/internal/application"
 	"tei/internal/core"
 	"tei/internal/database"
+	"tei/internal/database/migration"
+	"tei/internal/database/persistence"
 	"tei/internal/database/release"
 	"tei/internal/deployment"
 	"tei/internal/environment"
@@ -14,8 +16,20 @@ import (
 	"tei/internal/plugin"
 	"tei/internal/releaseplan"
 	"tei/internal/semantic"
+	"tei/internal/stdlib"
 	"tei/internal/subject"
 )
+
+// validValues renders a closed vocabulary for a diagnostic that rejected one
+// value. Naming the alternatives turns "invalid" into something an author can
+// act on without leaving the CLI (#2094 round 54).
+func validValues[T ~string](values []T) string {
+	parts := make([]string, len(values))
+	for i, v := range values {
+		parts[i] = string(v)
+	}
+	return strings.Join(parts, ", ")
+}
 
 type Severity string
 
@@ -47,16 +61,18 @@ var attributeRoles = map[string]bool{
 	"currency-rate-currency": true, "currency-rate-fiscal-year": true,
 	"currency-rate-month-sequence": true, "currency-rate-middle": true,
 	"currency-rate-buying": true, "currency-rate-selling": true,
-	"currency-rate-fallback": true,
-	"numbering-counter":      true, "numbering-digits": true, "numbering-prefix": true,
+	"currency-rate-fallback": true, "currency-rate-granularity": true,
+	"numbering-counter": true, "numbering-digits": true, "numbering-prefix": true,
 	"numbering-check": true, "numbering-overflow": true, "numbering-rule": true,
 	"holiday-date": true, "holiday-calendar": true,
+	"setting-key": true, "setting-value": true, "setting-user": true,
 }
 
 func Validate(w ir.World) []Diagnostic {
 	out := validateWorkspaceIsNotEmpty(w)
 	out = append(out, validateApplicationPatterns(w)...)
 	out = append(out, validateApplicationPackages(w)...)
+	out = append(out, validatePackageConformance(w)...)
 	out = append(out, validateQueryResultMappings(w)...)
 	out = append(out, validateQueryInputs(w)...)
 	out = append(out, validateSemanticBusinessValidations(w)...)
@@ -82,13 +98,13 @@ func Validate(w ir.World) []Diagnostic {
 			out = append(out, errd("INVALID_PLUGIN_VERSION", "plugin %s: %v", p.ID, err))
 		}
 		if !p.Runtime.Kind.Valid() {
-			out = append(out, errFor(subject.Subject{Kind: "plugin", ID: string(p.ID) + "@" + p.Version}, "INVALID_PLUGIN_RUNTIME", "plugin %s has invalid runtime %s", p.ID, p.Runtime.Kind))
+			out = append(out, errFor(subject.Subject{Kind: "plugin", ID: string(p.ID) + "@" + p.Version}, "INVALID_PLUGIN_RUNTIME", "plugin %s has invalid runtime %s; valid values are %s", p.ID, p.Runtime.Kind, validValues(plugin.RuntimeKinds)))
 		}
 		if p.Runtime.Kind == plugin.RuntimeProcess && strings.TrimSpace(p.Runtime.Command) == "" {
 			out = append(out, errd("PLUGIN_PROCESS_COMMAND_REQUIRED", "plugin %s process runtime requires a command", p.ID))
 		}
 		if !p.Runtime.Sandbox.Valid() {
-			out = append(out, errd("INVALID_PLUGIN_SANDBOX_POLICY", "plugin %s has invalid sandbox policy %s", p.ID, p.Runtime.Sandbox))
+			out = append(out, errd("INVALID_PLUGIN_SANDBOX_POLICY", "plugin %s has invalid sandbox policy %s; valid values are %s (or omit the policy)", p.ID, p.Runtime.Sandbox, validValues(plugin.SandboxPolicies)))
 		}
 		if p.Runtime.Kind != plugin.RuntimeProcess && p.Runtime.Sandbox != "" && p.Runtime.Sandbox != plugin.SandboxNone {
 			out = append(out, errd("PLUGIN_SANDBOX_REQUIRES_PROCESS_RUNTIME", "plugin %s sandbox policy %s requires process runtime", p.ID, p.Runtime.Sandbox))
@@ -98,10 +114,10 @@ func Validate(w ir.World) []Diagnostic {
 		}
 		for _, ext := range p.External {
 			if !ext.ValidScope() {
-				out = append(out, errd("INVALID_PLUGIN_EXTERNAL_SCOPE", "plugin %s external requirement %s has invalid scope %s", p.ID, ext.Name, ext.Scope))
+				out = append(out, errd("INVALID_PLUGIN_EXTERNAL_SCOPE", "plugin %s external requirement %s has invalid scope %s; valid values are %s", p.ID, ext.Name, ext.Scope, validValues(plugin.ExternalScopes)))
 			}
 			if !ext.ValidKind() {
-				out = append(out, errd("INVALID_PLUGIN_EXTERNAL_KIND", "plugin %s external requirement %s has invalid kind %s", p.ID, ext.Name, ext.Kind))
+				out = append(out, errd("INVALID_PLUGIN_EXTERNAL_KIND", "plugin %s external requirement %s has invalid kind %s; valid values are %s", p.ID, ext.Name, ext.Kind, validValues(plugin.ExternalKinds)))
 			}
 			if !ext.ValidName() {
 				out = append(out, errd("PLUGIN_EXTERNAL_NAME_REQUIRED", "plugin %s has external requirement with empty name", p.ID))
@@ -124,7 +140,7 @@ func Validate(w ir.World) []Diagnostic {
 				out = append(out, errd("INVALID_PLUGIN_CAPABILITY_ID", "plugin %s: %v", p.ID, err))
 			}
 			if !c.Kind.Valid() {
-				out = append(out, errd("INVALID_PLUGIN_CAPABILITY_KIND", "plugin %s capability %s has invalid kind %s", p.ID, c.ID, c.Kind))
+				out = append(out, errd("INVALID_PLUGIN_CAPABILITY_KIND", "plugin %s capability %s has invalid kind %s; valid values are %s", p.ID, c.ID, c.Kind, validValues(plugin.CapabilityKinds)))
 			}
 			for _, a := range c.Actions {
 				if !a.Valid() {
@@ -221,7 +237,7 @@ func Validate(w ir.World) []Diagnostic {
 				out = append(out, errFor(subject.Subject{Kind: "semantic-type", ID: string(typ.ID)}, "SEMANTIC_TYPE_NAMESPACE_MISMATCH", "type %s is declared in semantic namespace %s", typ.ID, ns.ID))
 			}
 			if !typ.Kind.Valid() {
-				out = append(out, errd("INVALID_SEMANTIC_TYPE_KIND", "type %s has invalid kind %q", typ.ID, typ.Kind))
+				out = append(out, errd("INVALID_SEMANTIC_TYPE_KIND", "type %s has invalid kind %q; valid values are %s", typ.ID, typ.Kind, validValues(semantic.TypeKinds)))
 			}
 			seenValues := map[string]bool{}
 			for _, value := range typ.Values {
@@ -257,7 +273,7 @@ func Validate(w ir.World) []Diagnostic {
 					out = append(out, errd("SEMANTIC_RELATION_PARENT_MISMATCH", "relation %s is declared under data %s", r.ID, d.ID))
 				}
 				if !r.Cardinality.Valid() {
-					out = append(out, errFor(subject.Subject{Kind: "semantic-relation", ID: string(r.ID)}, "INVALID_SEMANTIC_RELATION_CARDINALITY", "relation %s has invalid cardinality %q", r.ID, r.Cardinality))
+					out = append(out, errFor(subject.Subject{Kind: "semantic-relation", ID: string(r.ID)}, "INVALID_SEMANTIC_RELATION_CARDINALITY", "relation %s has invalid cardinality %q; valid values are %s", r.ID, r.Cardinality, validValues(semantic.Cardinalities)))
 				}
 				addSemanticElement(r.ID, "relation")
 				semanticRelations = append(semanticRelations, r)
@@ -366,7 +382,7 @@ func Validate(w ir.World) []Diagnostic {
 			}
 			seenAlias[r.Alias] = struct{}{}
 			if !r.Access.Valid() {
-				out = append(out, errFor(subject.Subject{Kind: "application", ID: string(a.ID)}, "INVALID_DATABASE_ACCESS", "application %s datasource %s has invalid access mode %q", a.ID, r.Alias, r.Access))
+				out = append(out, errFor(subject.Subject{Kind: "application", ID: string(a.ID)}, "INVALID_DATABASE_ACCESS", "application %s datasource %s has invalid access mode %q; valid values are %s", a.ID, r.Alias, r.Access, validValues(database.Accesses)))
 			}
 		}
 	}
@@ -385,7 +401,7 @@ func Validate(w ir.World) []Diagnostic {
 		}
 		dbs[d.ID] = d
 		if !d.Ownership.Valid() {
-			out = append(out, errFor(subject.Subject{Kind: "database", ID: string(d.ID)}, "INVALID_DATABASE_OWNERSHIP", "database %s has invalid ownership %q", d.ID, d.Ownership))
+			out = append(out, errFor(subject.Subject{Kind: "database", ID: string(d.ID)}, "INVALID_DATABASE_OWNERSHIP", "database %s has invalid ownership %q; valid values are %s", d.ID, d.Ownership, validValues(database.Ownerships)))
 		}
 		semanticUseSet := map[core.CanonicalID]struct{}{}
 		for _, ns := range d.SemanticUses {
@@ -475,10 +491,10 @@ func Validate(w ir.World) []Diagnostic {
 				out = append(out, errd("PERSISTENCE_ATTRIBUTE_PARENT_MISMATCH", "persistence mapping %s attribute %s does not belong to semantic data %s", m.ID, c.Attribute, m.SemanticData))
 			}
 			if !c.Storage.Valid() {
-				out = append(out, errd("INVALID_PERSISTENCE_STORAGE_TYPE", "persistence mapping %s attribute %s has invalid storage type %q", m.ID, c.Attribute, c.Storage))
+				out = append(out, errd("INVALID_PERSISTENCE_STORAGE_TYPE", "persistence mapping %s attribute %s has invalid storage type %q; valid values are %s", m.ID, c.Attribute, c.Storage, validValues(persistence.StorageTypes)))
 			}
 			if !c.Nullability.Valid() {
-				out = append(out, errd("INVALID_PERSISTENCE_NULLABILITY", "persistence mapping %s attribute %s has invalid nullability %q", m.ID, c.Attribute, c.Nullability))
+				out = append(out, errd("INVALID_PERSISTENCE_NULLABILITY", "persistence mapping %s attribute %s has invalid nullability %q; valid values are %s", m.ID, c.Attribute, c.Nullability, validValues(persistence.Nullabilities)))
 			}
 			if strings.TrimSpace(c.Column) == "" {
 				out = append(out, errd("PERSISTENCE_COLUMN_REQUIRED", "persistence mapping %s attribute %s has no physical column", m.ID, c.Attribute))
@@ -547,11 +563,11 @@ func Validate(w ir.World) []Diagnostic {
 		}
 		migrationIDs[m.Database][m.ID] = struct{}{}
 		if !m.Recovery.Valid() {
-			out = append(out, errd("INVALID_MIGRATION_RECOVERY", "migration %s has invalid recovery strategy %q", m.ID, m.Recovery))
+			out = append(out, errd("INVALID_MIGRATION_RECOVERY", "migration %s has invalid recovery strategy %q; valid values are %s", m.ID, m.Recovery, validValues(migration.RecoveryStrategies)))
 		}
 		for i, step := range m.Steps {
 			if !step.Kind.Valid() {
-				out = append(out, errd("INVALID_MIGRATION_STEP_KIND", "migration %s step %d has invalid kind %q", m.ID, i+1, step.Kind))
+				out = append(out, errd("INVALID_MIGRATION_STEP_KIND", "migration %s step %d has invalid kind %q; valid values are %s", m.ID, i+1, step.Kind, validValues(migration.StepKinds)))
 			}
 			if step.SQL != nil {
 				if !step.SQL.Provider.Known() || step.SQL.Provider == environment.ProviderGeneric {
@@ -594,7 +610,7 @@ func Validate(w ir.World) []Diagnostic {
 			}
 			seenAlias[req.Alias] = struct{}{}
 			if !req.Access.Valid() {
-				out = append(out, errd("INVALID_APPLICATION_RELEASE_DATABASE_ACCESS", "application release %s@%s datasource %s has invalid access mode %q", r.Application, r.Version, req.Alias, req.Access))
+				out = append(out, errd("INVALID_APPLICATION_RELEASE_DATABASE_ACCESS", "application release %s@%s datasource %s has invalid access mode %q; valid values are %s", r.Application, r.Version, req.Alias, req.Access, validValues(database.Accesses)))
 			}
 			if _, ok := dbs[req.TargetDatabase]; !ok {
 				out = append(out, warnd("APPLICATION_RELEASE_DATABASE_NOT_CURRENT", "application release %s@%s targets database %s which has no current definition", r.Application, r.Version, req.TargetDatabase))
@@ -640,7 +656,7 @@ func Validate(w ir.World) []Diagnostic {
 		}
 		releaseVersions[r.Database][r.Version] = struct{}{}
 		if !r.DataReadiness.Valid() {
-			out = append(out, errd("INVALID_DATABASE_RELEASE_DATA_READINESS", "database %s release %s has invalid data readiness %q", r.Database, r.Version, r.DataReadiness))
+			out = append(out, errd("INVALID_DATABASE_RELEASE_DATA_READINESS", "database %s release %s has invalid data readiness %q; valid values are %s", r.Database, r.Version, r.DataReadiness, validValues(release.DataReadinesses)))
 		}
 		seenMigrations := map[string]struct{}{}
 		for _, mid := range r.Migrations {
@@ -694,13 +710,13 @@ func Validate(w ir.World) []Diagnostic {
 			}
 			stepIDs[st.ID] = struct{}{}
 			if !st.Kind.Valid() {
-				out = append(out, errd("INVALID_SOLUTION_RELEASE_STEP_KIND", "solution release %s@%s step %s has invalid kind %q", r.ID, r.Version, st.ID, st.Kind))
+				out = append(out, errd("INVALID_SOLUTION_RELEASE_STEP_KIND", "solution release %s@%s step %s has invalid kind %q; valid values are %s", r.ID, r.Version, st.ID, st.Kind, validValues(releaseplan.StepKinds)))
 			}
 			if !st.Phase.Valid() {
-				out = append(out, errd("INVALID_SOLUTION_RELEASE_PHASE", "solution release %s@%s step %s has invalid phase %q", r.ID, r.Version, st.ID, st.Phase))
+				out = append(out, errd("INVALID_SOLUTION_RELEASE_PHASE", "solution release %s@%s step %s has invalid phase %q; valid values are %s", r.ID, r.Version, st.ID, st.Phase, validValues(releaseplan.Phases)))
 			}
 			if !st.RolloutStrategy.Valid() {
-				out = append(out, errd("INVALID_ROLLOUT_STRATEGY", "solution release %s@%s step %s has invalid rollout strategy %q", r.ID, r.Version, st.ID, st.RolloutStrategy))
+				out = append(out, errd("INVALID_ROLLOUT_STRATEGY", "solution release %s@%s step %s has invalid rollout strategy %q; valid values are %s (or omit the strategy)", r.ID, r.Version, st.ID, st.RolloutStrategy, validValues(releaseplan.RolloutStrategies)))
 			}
 			if len(st.TrafficSteps) > 0 || st.RolloutStrategy != "" {
 				if st.Kind != releaseplan.StepApplicationRelease {
@@ -1179,9 +1195,40 @@ func HasErrors(ds []Diagnostic) bool {
 // declaration, so it is excluded (#2822). The finding is a warning: an empty
 // Workspace is not an error, but ok=true alone must not be read as "model
 // declarations were loaded and checked".
+// hasNonPreludeDeclaration reports whether a namespace holds anything the
+// in-process prelude does not itself declare.
+func hasNonPreludeDeclaration(ns semantic.Namespace) bool {
+	if len(ns.Data) > 0 || len(ns.Capabilities) > 0 || len(ns.Validations) > 0 ||
+		len(ns.Calendars) > 0 || len(ns.Periods) > 0 || len(ns.EffectRules) > 0 ||
+		len(ns.RunPlans) > 0 {
+		return true
+	}
+	for _, typ := range ns.Types {
+		if !stdlibOwnsType(string(typ.ID)) {
+			return true
+		}
+	}
+	return false
+}
+
+// stdlibOwnsType reports whether the prelude declares this type itself.
+func stdlibOwnsType(id string) bool {
+	for _, typ := range stdlib.SemanticNamespace().Types {
+		if string(typ.ID) == id {
+			return true
+		}
+	}
+	return false
+}
+
 func validateWorkspaceIsNotEmpty(w ir.World) []Diagnostic {
 	for _, ns := range w.Semantics {
+		// A declaration inside the std namespace still counts if the prelude
+		// does not own it: the Workspace wrote it (#3851).
 		if string(ns.ID) != "std" {
+			return nil
+		}
+		if hasNonPreludeDeclaration(ns) {
 			return nil
 		}
 	}

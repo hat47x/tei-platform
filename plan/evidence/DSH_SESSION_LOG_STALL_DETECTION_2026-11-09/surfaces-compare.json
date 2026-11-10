@@ -1,0 +1,177 @@
+{
+  "note": "Same-condition comparison of stalled vs not-stalled session-log upload across three surfaces. Both runs captured stderr separately. The persisted log records delivery-accepted events only when a field is accepted.",
+  "stallCondition": "maxBytes=306 (below the first event's field size) vs 4096 (above it)",
+  "deliveryEventType": "session-log-deepseek/delivery-accepted",
+  "runs": [
+    {
+      "label": "stalled",
+      "maxBytes": 306,
+      "fieldSent": false,
+      "surfaces": {
+        "stdoutJson": {
+          "bytes": 6176,
+          "sha256": "4350cae65ba7b1432c4e31d4ba52fbccc922341e5bfd8de7220bd599755f25cc",
+          "eventTypes": [
+            "final",
+            "session",
+            "status",
+            "text",
+            "tool_call",
+            "tool_result"
+          ],
+          "keywordHits": {
+            "maxbytes": 0,
+            "session-log": 0,
+            "session_log": 0,
+            "too large": 0,
+            "blocking event": 0,
+            "stall": 0
+          }
+        },
+        "stderr": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "keywordHits": {
+            "maxbytes": 0,
+            "session-log": 0,
+            "session_log": 0,
+            "too large": 0,
+            "blocking event": 0,
+            "stall": 0
+          }
+        },
+        "persistedSessionLog": {
+          "decompressedBytes": 51196,
+          "lines": 51,
+          "eventTypeCounts": {
+            "session": 1,
+            "permission/preset": 2,
+            "sandbox/mode": 2,
+            "approval/policy": 2,
+            "agent/inbox/spliced": 2,
+            "turn/start": 1,
+            "step/start": 5,
+            "system/message": 1,
+            "user/message": 3,
+            "request/header": 1,
+            "request/context": 1,
+            "session/title": 2,
+            "session/title-llm-request": 1,
+            "assistant/message": 5,
+            "tool/call": 4,
+            "job/registered": 4,
+            "job/settled": 4,
+            "tool/result": 4,
+            "step/end": 5,
+            "turn/end": 1
+          },
+          "keywordHits": {
+            "maxbytes": 0,
+            "session-log": 0,
+            "session_log": 0,
+            "too large": 0,
+            "blocking event": 0,
+            "stall": 1
+          },
+          "deliveryAcceptedEvents": [],
+          "deliveryAcceptedCount": 0,
+          "warningEventType": false
+        }
+      }
+    },
+    {
+      "label": "not-stalled",
+      "maxBytes": 4096,
+      "fieldSent": true,
+      "surfaces": {
+        "stdoutJson": {
+          "bytes": 6176,
+          "sha256": "1180869788ae032b79e6b932a90bc8f782d9c65ab104649c08d5d3be47a9c5c0",
+          "eventTypes": [
+            "final",
+            "session",
+            "status",
+            "text",
+            "tool_call",
+            "tool_result"
+          ],
+          "keywordHits": {
+            "maxbytes": 0,
+            "session-log": 0,
+            "session_log": 0,
+            "too large": 0,
+            "blocking event": 0,
+            "stall": 0
+          }
+        },
+        "stderr": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "keywordHits": {
+            "maxbytes": 0,
+            "session-log": 0,
+            "session_log": 0,
+            "too large": 0,
+            "blocking event": 0,
+            "stall": 0
+          }
+        },
+        "persistedSessionLog": {
+          "decompressedBytes": 51950,
+          "lines": 55,
+          "eventTypeCounts": {
+            "session": 1,
+            "permission/preset": 2,
+            "sandbox/mode": 2,
+            "approval/policy": 2,
+            "agent/inbox/spliced": 2,
+            "turn/start": 1,
+            "step/start": 5,
+            "system/message": 1,
+            "user/message": 3,
+            "request/header": 1,
+            "request/context": 1,
+            "session/title": 2,
+            "session/title-llm-request": 1,
+            "session-log-deepseek/delivery-accepted": 4,
+            "assistant/message": 5,
+            "tool/call": 4,
+            "job/registered": 4,
+            "job/settled": 4,
+            "tool/result": 4,
+            "step/end": 5,
+            "turn/end": 1
+          },
+          "keywordHits": {
+            "maxbytes": 0,
+            "session-log": 4,
+            "session_log": 0,
+            "too large": 0,
+            "blocking event": 0,
+            "stall": 1
+          },
+          "deliveryAcceptedEvents": [
+            {
+              "seq": 18,
+              "throughSeq": 9
+            },
+            {
+              "seq": 21,
+              "throughSeq": 9
+            },
+            {
+              "seq": 28,
+              "throughSeq": 11
+            },
+            {
+              "seq": 36,
+              "throughSeq": 12
+            }
+          ],
+          "deliveryAcceptedCount": 4,
+          "warningEventType": false
+        }
+      }
+    }
+  ]
+}

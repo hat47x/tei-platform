@@ -15,15 +15,55 @@ on:
 permissions:
   contents: read
 
+# 同じPRの古い実行だけを取り消し、mainへのpushは取り消さない（#3682）。
+concurrency:
+  group: tei-developer-context-coverage-characterizat-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   bounded-discovery:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version-file: go.mod
       - name: Characterize current Discover and Rerank on public temp directories
         run: |
-          go test ./tools/reference-developer-context -run 'Test(Discovery|Rerank|CollectionComparison|CollectionFactorial|QuestionRelative|ActualProbe|BlindProbe)' -v -count=1
+          go test ./tools/reference-developer-context -run 'Test(Discovery|Rerank|CollectionComparison|CollectionFactorial|QuestionRelative|ActualProbe|ActualRead|BlindProbe)' -v -count=1
+
+  tei-sei-h3a0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out the current TEI proposal
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Check out the pinned public SEI CLI source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: hat47x/sei-cognition
+          ref: 6d98ddf2d1080a1c3a308294fb342c231a08294d
+          path: _sei_h3a0
+          persist-credentials: false
+      - name: Install Go for the actual two binaries
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+      - name: Build the TEI and pinned SEI product CLIs
+        run: |
+          test "$(git -C _sei_h3a0 rev-parse HEAD)" = "6d98ddf2d1080a1c3a308294fb342c231a08294d"
+          go build -o "$RUNNER_TEMP/tei-h3a0" ./cmd/tei
+          go -C _sei_h3a0/runtime/go build -o "$RUNNER_TEMP/sei-h3a0" ./cmd/sei
+          printf 'TEI actual source: %s\n' "$(git rev-parse HEAD)"
+          printf 'SEI actual source: %s\n' "$(git -C _sei_h3a0 rev-parse HEAD)"
+      - name: H3-A0 actual source-index to recommendation and resumed record
+        run: |
+          export TEI_H3A0_REQUIRED=1
+          export TEI_H3A0_BIN="$RUNNER_TEMP/tei-h3a0"
+          export SEI_H3A0_BIN="$RUNNER_TEMP/sei-h3a0"
+          go test ./tools/reference-developer-context -run '^TestH3A0ActualTEIToSEIRecommendationResume$' -v -count=1

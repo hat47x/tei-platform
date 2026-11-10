@@ -16,13 +16,20 @@ const (
 	StorageJSON       StorageType = "json"
 )
 
+// StorageTypes lists every accepted storage type in report order. Valid and the
+// validation diagnostics read this list, so what is accepted and what a message
+// names cannot drift (#2094 round 54).
+var StorageTypes = []StorageType{
+	StorageInt64, StorageVarchar, StorageText, StorageDateTimeTZ, StorageDecimal, StorageJSON,
+}
+
 func (s StorageType) Valid() bool {
-	switch s {
-	case StorageInt64, StorageVarchar, StorageText, StorageDateTimeTZ, StorageDecimal, StorageJSON:
-		return true
-	default:
-		return false
+	for _, valid := range StorageTypes {
+		if s == valid {
+			return true
+		}
 	}
+	return false
 }
 
 type Nullability string
@@ -32,7 +39,17 @@ const (
 	Optional Nullability = "optional"
 )
 
-func (n Nullability) Valid() bool { return n == Required || n == Optional }
+// Nullabilities lists every accepted nullability in report order.
+var Nullabilities = []Nullability{Required, Optional}
+
+func (n Nullability) Valid() bool {
+	for _, valid := range Nullabilities {
+		if n == valid {
+			return true
+		}
+	}
+	return false
+}
 
 // Mapping is a database-owned persistence realization of one semantic data
 // element. It is intentionally separate from the semantic model so the same

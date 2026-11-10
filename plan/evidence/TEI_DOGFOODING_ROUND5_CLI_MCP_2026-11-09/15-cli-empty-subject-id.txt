@@ -1,0 +1,1 @@
+{"schemaVersion":"tei.cli.inspect/v0","ok":false,"error":{"code":"INVALID_SUBJECT","message":"subject kind and id must be nonempty exact identities"}}

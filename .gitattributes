@@ -1,3 +1,12 @@
+# Checkout line endings are part of what this repository measures: source trees,
+# contract fixtures and evidence files are hashed as raw bytes. The Windows CI
+# runner sets core.autocrlf=true, so text files arrived with CRLF there and a digest
+# comparison saw different bytes than on Linux (#3832 recorded crlf_pairs=25 for
+# contract.json against 0 locally). Every text file is therefore checked out with LF
+# everywhere; the paths below that are hashed as captured bytes keep -text so they
+# stay exactly as committed.
+* text=auto eol=lf
+
 # Archived witnesses are hashed as raw bytes; checkout must not rewrite them.
 /plan/evidence/TEI_E1_SYNTHETIC_MANIFEST_20261012_38267656696.json -text
 /plan/evidence/tei-e1-synthetic-38267656696/*.json -text
@@ -113,6 +122,9 @@
 # Unpinned path purpose scan is hashed as raw bytes by its README.
 /plan/evidence/RUNTIME_UNPINNED_PATH_PURPOSES_2026-11-08/** -text
 
+# Session-log split/stall observations are hashed as raw bytes.
+/plan/evidence/DSH_SESSION_LOG_SPLIT_AND_STALL_2026-11-08/** -text
+
 # Deployment executor survey output is hashed as raw bytes by its README.
 /plan/evidence/DEPLOYMENT_EXECUTOR_BINDING_SURVEY_2026-11-08/** -text
 
@@ -122,3 +134,160 @@
 # OKF K1 synthetic bytes are compared exactly across OS; no checkout EOL conversion.
 /testdata/okf-k1-v02/** -text
 /testdata/okf-k1-v02.expected.json -text
+
+# Answer fact-presence reports are hashed as raw bytes.
+/plan/evidence/DSH_ANSWER_FACT_PRESENCE_2026-11-08/** -text
+
+# OS-ACL read-denial observations are hashed as raw bytes.
+/plan/evidence/DSH_H6E1_OS_ACL_2026-11-09/** -text
+
+# maxBytes threshold observations are hashed as raw bytes.
+/plan/evidence/DSH_SESSION_LOG_MAXBYTES_THRESHOLD_2026-11-09/** -text
+
+# Binding-to-execution reference output is hashed as raw bytes by its README.
+/plan/evidence/BINDING_TO_EXECUTION_REFERENCE_2026-11-09/** -text
+
+# Connect point comparison output is hashed as raw bytes by its README.
+/plan/evidence/CONNECT_POINT_C1_C2_2026-11-09/** -text
+
+# Stall-then-grow observations are hashed as raw bytes.
+/plan/evidence/DSH_SESSION_LOG_STALL_THEN_GROW_2026-11-09/** -text
+
+# Service carrier connect reference output is hashed as raw bytes by its README.
+/plan/evidence/SERVICE_CARRIER_CONNECT_REFERENCE_2026-11-09/** -text
+
+# Stall-visibility observations are hashed as raw bytes.
+/plan/evidence/DSH_SESSION_LOG_STALL_VISIBILITY_2026-11-09/** -text
+
+# Stall-detection comparison is hashed as raw bytes.
+/plan/evidence/DSH_SESSION_LOG_STALL_DETECTION_2026-11-09/** -text
+
+# Subagent egress observations are hashed as raw bytes.
+/plan/evidence/DSH_SUBAGENT_EGRESS_2026-11-09/** -text
+
+# Subagent fork observations are hashed as raw bytes.
+/plan/evidence/DSH_SUBAGENT_FORK_2026-11-09/** -text
+
+# C-2 outcome v1 output is hashed as raw bytes by its README.
+/plan/evidence/SERVICE_CARRIER_CONNECT_OUTCOME_V1_2026-11-09/** -text
+
+# Subagent chain observations are hashed as raw bytes.
+/plan/evidence/DSH_SUBAGENT_CHAIN_2026-11-09/** -text
+
+# Subagent depth-raised observations are hashed as raw bytes.
+/plan/evidence/DSH_SUBAGENT_DEPTH_RAISED_2026-11-09/** -text
+
+# Executor id resolution output is hashed as raw bytes by its README.
+/plan/evidence/EXECUTOR_ID_RESOLUTION_REFERENCE_2026-11-09/** -text
+
+# Subagent fork-chain observations are hashed as raw bytes.
+/plan/evidence/DSH_SUBAGENT_FORK_CHAIN_2026-11-09/** -text
+
+# Turn-boundary fork-chain observations are hashed as raw bytes.
+/plan/evidence/DSH_SUBAGENT_FORK_TURN_CHAIN_2026-11-09/** -text
+
+# Binding forms survey output is hashed as raw bytes by its README.
+/plan/evidence/BINDING_FORMS_CONSUMER_SURVEY_2026-11-09/** -text
+# Concurrent-subagent observations are hashed as raw bytes.
+/plan/evidence/DSH_SUBAGENT_CONCURRENT_LIMIT_2026-11-09/** -text
+
+# OTel path observations are hashed as raw bytes.
+/plan/evidence/DSH_OTEL_PATH_2026-11-09/** -text
+# Observation router connect output is hashed as raw bytes by its README.
+/plan/evidence/OBSERVATION_ROUTER_CONNECT_REFERENCE_2026-11-09/** -text
+
+# Evidence router connect output is hashed as raw bytes by its README.
+/plan/evidence/EVIDENCE_ROUTER_CONNECT_REFERENCE_2026-11-09/** -text
+
+# MCP path observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_PATH_2026-11-09/** -text
+
+# Binding identity layers survey output is hashed as raw bytes by its README.
+/plan/evidence/BINDING_IDENTITY_LAYERS_2026-11-09/** -text
+
+# Oversize-event observations are hashed as raw bytes.
+/plan/evidence/DSH_SESSION_LOG_OVERSIZE_EVENT_2026-11-09/** -text
+# Digest change reuse output is hashed as raw bytes by its README.
+/plan/evidence/DIGEST_CHANGE_REUSE_REFERENCE_2026-11-09/** -text
+
+# Partial run verdict output is hashed as raw bytes by its README.
+/plan/evidence/PARTIAL_RUN_VERDICT_2026-11-09/** -text
+
+# Unknown vs refused output is hashed as raw bytes by its README.
+/plan/evidence/UNKNOWN_VS_REFUSED_2026-11-09/** -text
+
+# Oversize-event recovery observations are hashed as raw bytes.
+/plan/evidence/DSH_SESSION_LOG_OVERSIZE_RECOVERY_2026-11-10/** -text
+# Carrier guard refusal output is hashed as raw bytes by its README.
+/plan/evidence/CARRIER_GUARD_REFUSAL_2026-11-09/** -text
+
+# Selection digest boundary output is hashed as raw bytes by its README.
+/plan/evidence/SELECTION_DIGEST_BOUNDARY_2026-11-09/** -text
+
+# CON-12c scope layers output is hashed as raw bytes by its README.
+/plan/evidence/CON12C_SCOPE_LAYERS_2026-11-09/** -text
+
+# Instances/bindings resolver survey output is hashed as raw bytes by its README.
+/plan/evidence/INSTANCES_BINDINGS_RESOLVER_2026-11-09/** -text
+
+# Burst-size observations are hashed as raw bytes.
+/plan/evidence/DSH_SESSION_LOG_BURST_2026-11-10/** -text
+# Unpinned adapter survey output is hashed as raw bytes by its README.
+/plan/evidence/UNPINNED_ADAPTER_SURVEY_2026-11-09/** -text
+
+# Adapter identity masking output is hashed as raw bytes by its README.
+/plan/evidence/ADAPTER_IDENTITY_MASKING_2026-11-09/** -text
+
+# Configured-MCP observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_CONFIGURED_2026-11-10/** -text
+# Executor adapter identity output is hashed as raw bytes by its README.
+/plan/evidence/EXECUTOR_ADAPTER_IDENTITY_2026-11-09/** -text
+
+# MCP tool-call observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_TOOL_CALL_2026-11-10/** -text
+
+# Adapter binding blindspot output is hashed as raw bytes by its README.
+/plan/evidence/ADAPTER_BINDING_BLINDSPOT_2026-11-09/** -text
+
+# MCP argument-size observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_ARG_SIZE_2026-11-10/** -text
+# Binding guarded executor output is hashed as raw bytes by its README.
+/plan/evidence/BINDING_GUARDED_EXECUTOR_REFERENCE_2026-11-09/** -text
+
+# Active-subagent cap observations are hashed as raw bytes.
+/plan/evidence/DSH_SUBAGENT_ACTIVE_CAP_2026-11-10/** -text
+# Guard with real adapter output is hashed as raw bytes by its README.
+/plan/evidence/GUARD_WITH_REAL_ADAPTER_2026-11-09/** -text
+
+# Unattended autonomy invariant output is hashed as raw bytes by its README.
+/plan/evidence/UNATTENDED_AUTONOMY_INVARIANT_2026-11-10/** -text
+
+# Sequential-subagent observations are hashed as raw bytes.
+/plan/evidence/DSH_SUBAGENT_SEQUENTIAL_2026-11-10/** -text
+
+# Subagent tree-cap observations are hashed as raw bytes.
+/plan/evidence/DSH_SUBAGENT_TREE_CAP_2026-11-10/** -text
+
+# Feedback-surface observations are hashed as raw bytes.
+/plan/evidence/DSH_FEEDBACK_SURFACE_2026-11-10/** -text
+
+# MCP stdio observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_STDIO_2026-11-10/** -text
+
+# MCP header observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_HEADERS_2026-11-10/** -text
+
+# Multi-server MCP observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_TWO_SERVERS_2026-11-10/** -text
+
+# MCP failure-isolation observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_FAILURE_ISOLATION_2026-11-10/** -text
+
+# MCP argument-size observations at 4.1 MB are hashed as raw bytes.
+/plan/evidence/DSH_MCP_ARG_SIZE_4M_2026-11-10/** -text
+
+# Secret-shape observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_SECRET_SHAPE_2026-11-10/** -text
+
+# Late-starting MCP observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_LATE_START_2026-11-10/** -text

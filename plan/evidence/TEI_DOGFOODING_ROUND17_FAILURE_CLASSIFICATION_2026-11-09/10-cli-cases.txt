@@ -1,0 +1,32 @@
+{"schemaVersion":"tei.cli.inspect/v0","ok":false,"error":{"code":"INVALID_SUBJECT","message":"inspect requires -workspace, -subject-kind and -subject-id; -world and positional arguments are not supported"}}
+{"schemaVersion":"tei.cli.inspect/v0","ok":false,"error":{"code":"INVALID_SUBJECT","message":"inspect requires -workspace, -subject-kind and -subject-id; -world and positional arguments are not supported"}}
+{"schemaVersion":"tei.cli.inspect/v0","ok":false,"error":{"code":"INVALID_ARGUMENT","message":"inspect: -subject-id must not be an empty string; omit the flag to use its default"}}
+{"schemaVersion":"tei.cli.inspect/v0","ok":false,"error":{"code":"INVALID_SUBJECT","message":"inspect requires -workspace, -subject-kind and -subject-id; -world and positional arguments are not supported"}}
+{"schemaVersion":"tei.cli.trace/v0","ok":false,"error":{"code":"INVALID_ARGUMENT","message":"trace requires -workspace, -scope, -subject-kind, -subject-id and no -world/positional arguments"}}
+{"schemaVersion":"tei.cli.trace/v0","ok":false,"error":{"code":"INVALID_ARGUMENT","message":"trace requires -workspace, -scope, -subject-kind, -subject-id and no -world/positional arguments"}}
+{"schemaVersion":"tei.cli.model/v0","ok":false,"error":{"code":"INVALID_ARGUMENT","message":"model catalog requires an exact -workspace and optional exact -namespace, without positional arguments"}}
+{
+  "schemaVersion": "tei.cli.source-index/v0",
+  "ok": false,
+  "error": {
+    "code": "INVALID_ARGUMENT",
+    "message": "source-index requires -workspace and does not accept -world"
+  }
+}
+exactly one of -workspace or -world is required
+{
+  "schemaVersion": "tei.cli.requirements/v0",
+  "ok": false,
+  "error": {
+    "code": "INVALID_ARGUMENT",
+    "message": "requirements requires exactly one of -workspace or -world"
+  }
+}
+{
+  "schemaVersion": "tei.cli.knowledge-context/v0",
+  "ok": false,
+  "error": {
+    "code": "KNOWLEDGE_BUILD_FAILED",
+    "message": "knowledge-context requires -subject-kind and -subject-id"
+  }
+}

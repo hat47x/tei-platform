@@ -1,0 +1,18 @@
+BEFORE THE FIX
+
+  tei trace -workspace reference/workspace -scope c \
+    -subject-kind semantic-capability -subject-id security.authenticate \
+    -direction incoming -mode full
+
+    total: 2 unresolved: 0
+      [0] application order_entry -realizes-> semantic-capability security.authenticate
+      [1] application order_entry -realizes-> semantic-capability security.authenticate
+
+  world customGoBindings = 4 (one per capability), so this is not a duplicate
+  declaration.
+
+  Scanned every subject (scope c, direction both) for repeated (From,Relation,To):
+
+    relations with duplicate rows: {'realizes': 6}
+
+  Only realizes duplicated; the other 15 relations were clean.

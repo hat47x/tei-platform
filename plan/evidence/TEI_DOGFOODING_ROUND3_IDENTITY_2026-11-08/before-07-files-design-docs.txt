@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "tei.cli.workspace-files/v0",
+  "ok": true,
+  "result": {
+    "managedFiles": [
+      {
+        "path": "docs/architecture.md",
+        "sourceRoot": "docs",
+        "extension": ".md",
+        "readByLoader": false
+      },
+      {
+        "path": "plan/adr/0048-shared-application-api-and-transport-adapters.md",
+        "sourceRoot": "plan",
+        "extension": ".md",
+        "readByLoader": false
+      }
+    ],
+    "sourceRootFindings": [
+      {
+        "root": "plan",
+        "message": "source root \"plan\" is not interpreted by this Loader; its files are managed but not read",
+        "severity": "warning"
+      },
+      {
+        "root": "docs",
+        "message": "source root \"docs\" is not interpreted by this Loader; its files are managed but not read",
+        "severity": "warning"
+      }
+    ],
+    "workspace": {
+      "name": "design_docs",
+      "formatVersion": 1,
+      "manifest": {
+        "path": "tei.workspace.yaml",
+        "sha256": "sha256:3e3bc0c72dd9dc3aeaced3deb1cdf19357b55dc7afeda0c0befdba036ddf1b12"
+      }
+    }
+  }
+}

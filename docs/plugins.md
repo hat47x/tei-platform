@@ -100,6 +100,41 @@ TEIで書いた構築器（`plugin-package-v1.transform.json`）は、入力のJ
 
 実行できる検証例と、現在確認できている範囲は[プラグインの自己構築の参照事例](../reference/plugin-self-build/README.md)を参照してください。
 
+### コマンドから実行する
+
+上の経路は`tei self-build`で一度だけ実行し、その試行が何を観測したかをJSONで受け取れます。まず`tei self-build -h`で実際の文法を見てください。
+
+```bash
+tei self-build \
+  -workspace <workspace> \
+  -intent-file <宣言.json> \
+  -build-catalog <catalog.json> \
+  -build-catalog-digest sha256:<catalogのdigest> \
+  -build-source-root <宣言のsource参照を解決する根> \
+  -child <構築器の実行物> \
+  -child-arg '["-plan","<plan.json>"]' \
+  -state <隔離state> \
+  -output <成果物のパス>
+```
+
+計画の導出は二経路あり、**呼び手が名指しした方を一つだけ**使います。resolver childを起動する`-intent-resolver`か、catalogを名指ししてTEI自身が導く`-build-catalog`・`-build-catalog-digest`・`-build-source-root`の3点セットです。両方は指定できません。
+
+**どちらか一方は必須です。** どちらも渡さないと、試行は`ok:false`・終了コード1で終わり、`l2b.unmet`の先頭が`no plan was derived for this attempt`になります（実測）。宣言はあっても、そこから計画を導く手段が無いためです。
+
+`-build-catalog`を渡すと、**二回目の構築が既定で行われます**（`-rebuild-check=false`で断れます）。二回の成果物が同じバイト列になったときだけ、その計画がその成果物を生んだという観測が成立します。
+
+出力のうち、この段階の主張を担うのは次の欄です。
+
+| 欄 | 意味 |
+| --- | --- |
+| `l2b.claimed` | 五つの条件が**すべて**成立したときだけ`true` |
+| `l2b.unmet` | 成立しなかった条件を**すべて**列挙する |
+| `l2b.boundary` | この主張が**言っていないこと** |
+
+`qualified`は常に`false`です。**構築が成功したこと、受理されたこと、実行権限を得たことは別**であり、`l2b.claimed`が`true`でも受理を意味しません。判断の中身は[自己構築の再入場契約](../plan/design/SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md)を参照してください。
+
+観測したのは`linux/amd64`と`windows/amd64`の二つのホストだけです。`darwin`・`arm64`は未観測です。
+
 ## 実行時の扱い
 
 別プロセスで動作するプラグインには、実装固定情報だけでなく、実行許可、資源の対応付け、隔離環境の設定、資源の利用権、実行管理者の所有権と世代確認などの境界も適用します。

@@ -92,6 +92,33 @@ type InvalidLockError struct {
 
 func (e *InvalidLockError) Error() string { return e.Message }
 
+// LockMismatchError marks a lock that is well formed but does not describe this
+// environment or catalog: it names another environment, pins a version the
+// catalog no longer has, or records fingerprints that diverge from the current
+// definitions.
+//
+// It is deliberately NOT an InvalidLockError (#3184): the bytes are readable, so
+// a reader can report what differs. It is still an input problem, not a
+// planning outcome, because the caller can only fix it by supplying another
+// lock. Mapping it separately lets every command answer it the same way
+// (#3765).
+type LockMismatchError struct {
+	Message string
+}
+
+func (e *LockMismatchError) Error() string { return e.Message }
+
+// IsLockMismatch reports whether err says the lock does not describe this
+// workspace.
+func IsLockMismatch(err error) bool {
+	var mismatch *LockMismatchError
+	return errors.As(err, &mismatch)
+}
+
+func lockMismatch(format string, args ...any) error {
+	return &LockMismatchError{Message: fmt.Sprintf(format, args...)}
+}
+
 // IsInvalidLock reports whether err says the lock bytes themselves are unusable.
 func IsInvalidLock(err error) bool {
 	var invalid *InvalidLockError
@@ -175,32 +202,32 @@ func (c Catalog) ResolveEnvironmentWithLock(env environment.Environment, lock Lo
 	}
 	el, ok := lock.environment(env.ID)
 	if !ok {
-		return ResolvedSet{}, fmt.Errorf("plugin lock has no environment %s", env.ID)
+		return ResolvedSet{}, lockMismatch("plugin lock has no environment %s", env.ID)
 	}
 	var subset []Definition
 	for _, lp := range el.Plugins {
 		def, ok := exactDefinition(c.Plugins, Identity{ID: lp.ID, Version: lp.Version})
 		if !ok {
-			return ResolvedSet{}, fmt.Errorf("locked plugin %s@%s is not available", lp.ID, lp.Version)
+			return ResolvedSet{}, lockMismatch("locked plugin %s@%s is not available", lp.ID, lp.Version)
 		}
 		if got := DefinitionFingerprint(def); got != lp.Fingerprint {
-			return ResolvedSet{}, fmt.Errorf("locked plugin %s@%s fingerprint diverged", lp.ID, lp.Version)
+			return ResolvedSet{}, lockMismatch("locked plugin %s@%s fingerprint diverged", lp.ID, lp.Version)
 		}
 		if lp.ArtifactDigest != def.Artifact.Digest {
-			return ResolvedSet{}, fmt.Errorf("locked plugin %s@%s artifact digest diverged", lp.ID, lp.Version)
+			return ResolvedSet{}, lockMismatch("locked plugin %s@%s artifact digest diverged", lp.ID, lp.Version)
 		}
 		subset = append(subset, def)
 	}
 	r, err := (Catalog{Plugins: subset, Bundles: c.Bundles}).ResolveEnvironment(env)
 	if err != nil {
-		return ResolvedSet{}, fmt.Errorf("locked resolution for %s: %w", env.ID, err)
+		return ResolvedSet{}, lockMismatch("locked resolution for %s: %s", env.ID, err.Error())
 	}
 	if len(r.Plugins) != len(el.Plugins) {
-		return ResolvedSet{}, fmt.Errorf("plugin lock for %s contains a different plugin set than current requirements", env.ID)
+		return ResolvedSet{}, lockMismatch("plugin lock for %s contains a different plugin set than current requirements", env.ID)
 	}
 	for i := range r.Plugins {
 		if r.Plugins[i].ID != el.Plugins[i].ID || r.Plugins[i].Version != el.Plugins[i].Version {
-			return ResolvedSet{}, fmt.Errorf("plugin lock for %s does not match current requirements", env.ID)
+			return ResolvedSet{}, lockMismatch("plugin lock for %s does not match current requirements", env.ID)
 		}
 	}
 	return r, nil

@@ -38,7 +38,7 @@ NOT RUN. [Reference](references/read-only-model-investigation.md)
 ''')
         self.put("skills/yi-tei-modeling/references/read-only-model-investigation.md", '''[Doc](../../../docs/getting-started.md)
 
-result.snapshotFingerprint result.trace.snapshotFingerprint -expected-fingerprint
+result.snapshotFingerprint result.trace.snapshotFingerprint result.trace.graphFingerprint result.trace.continuation.fingerprint -expected-fingerprint
 
 ```sh
 go run ./cmd/tei commands

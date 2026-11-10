@@ -32,9 +32,21 @@ func (e ReferenceExecutor) Execute(_ context.Context, request Request) (Result, 
 		return Result{}, fmt.Errorf("capability %s is not defined", request.Capability)
 	}
 	result := Result{}
-	if len(capability.Outcomes) > 0 {
+	// A capability may declare several outcomes, and nothing declares which one
+	// a given execution produces. Returning the first one reported a decision
+	// the declaration never made — and after the loader sorts outcomes by name,
+	// "first" means whichever name sorts earliest, so the answer changed with a
+	// rename. Only a single outcome can be returned without inventing a rule.
+	switch len(capability.Outcomes) {
+	case 0:
+	case 1:
 		outcome := capability.Outcomes[0]
 		result.Outcome = &outcome
+	default:
+		result.OutcomeUndetermined = fmt.Sprintf(
+			"capability %s declares %d outcomes and no declared rule selects one",
+			capability.ID, len(capability.Outcomes),
+		)
 	}
 	if capability.Effect != nil {
 		result.Effect = capability.Effect

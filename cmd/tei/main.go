@@ -32,6 +32,7 @@ import (
 	"tei/internal/environment"
 	"tei/internal/index"
 	"tei/internal/ir"
+	"tei/internal/modelref"
 	"tei/internal/plugin"
 	pluginruntime "tei/internal/plugin/runtime"
 	"tei/internal/query/analyzer"
@@ -144,6 +145,10 @@ func main() {
 		return
 	}
 	jsonValidationRequested := command == "validate" && wantsJSONValidation(os.Args[2:])
+	// A requested usage listing must reach printHelp, which shows only the flags
+	// this command reads. Under ExitOnError the flag package prints its own
+	// listing and exits, and that listing enumerates the shared FlagSet: validate
+	// showed 70 flags while accepting 3 (#3956).
 	parseMode := flag.ExitOnError
 	if command == "inspect" || command == "trace" || jsonValidationRequested || isResultEnvelopeCommand(command) {
 		parseMode = flag.ContinueOnError
@@ -159,11 +164,13 @@ func main() {
 	subjectKind := fs.String("subject-kind", "", "Source Index subject kind")
 	subjectID := fs.String("subject-id", "", "Source Index subject ID")
 	traceScope := fs.String("scope", "", "scope for typed modelref trace projection")
-	traceDirection := fs.String("direction", "both", "trace incoming, outgoing, or both")
-	traceMode := fs.String("mode", "summary", "trace summary or full")
+	// The CLI flag default, `tei commands` and the MCP adapter read these two
+	// values from modelref instead of each keeping a copy (#3605).
+	traceDirection := newSetStringFlag(fs, "direction", modelref.TraceDefaultDirection, "trace incoming, outgoing, or both")
+	traceMode := newSetStringFlag(fs, "mode", modelref.TraceDefaultMode, "trace summary or full")
 	traceOffset := fs.Int("offset", 0, "explicit full trace result offset")
 	traceLimit := fs.Int("limit", 0, "explicit full trace page size; 0 returns all rows")
-	traceExpectedFingerprint := fs.String("expected-fingerprint", "", "expected typed trace snapshot fingerprint for continued pages")
+	traceExpectedFingerprint := newSetStringFlag(fs, "expected-fingerprint", "", "expected typed trace snapshot fingerprint for continued pages")
 	expectedDataDesignFingerprint := fs.String("expected-data-design-fingerprint", "", "expected Data Design Context fingerprint; knowledge-context fails on mismatch")
 	dataDesignCandidateKind := fs.String("data-design-candidate-kind", "", "Data Design candidate kind: business-identity|functional-dependency")
 	dataDesignCandidateFingerprint := fs.String("data-design-candidate-fingerprint", "", "current Data Design candidate fingerprint")
@@ -174,7 +181,7 @@ func main() {
 	reviewHandoffPath := fs.String("review-handoff", "", "Builder Review Handoff JSON")
 	knowledgeDisclosure := fs.String("disclose", "", "comma-separated Knowledge sections to disclose: source,definition,dependencies,data-design")
 	expectedDisclosureFingerprint := fs.String("expected-disclosure-fingerprint", "", "expected selective Knowledge Disclosure fingerprint; valid for disclosure-producing commands")
-	qualificationRequirementsPath := fs.String("qualification-requirements", "", "knowledge qualification requirements JSON")
+	qualificationRequirementsPath := fs.String("qualification-requirements", "", "path to a file holding the knowledge qualification requirements JSON")
 	var analysisPaths pathList
 	var schemaPaths pathList
 	var planPaths pathList
@@ -195,6 +202,8 @@ func main() {
 	artifactCheck := fs.Bool("check", false, "artifacts: fail when the set is inconsistent")
 	periodStates := fs.String("period-states", "", "periods: period=state pairs, comma separated")
 	periodStatePath := fs.String("period-state-file", "", "periods: JSON object of period to state")
+	periodAdvance := fs.String("advance", "", "periods: move this period one step toward closed and record it")
+	periodCloseCapability := fs.String("close-capability", "", "periods: the close capability that already ran, satisfying close-requires")
 	dbCheckDSNFlag := fs.String("dsn", "", "dbcheck: PostgreSQL DSN (defaults to TEI_TEST_POSTGRES_DSN)")
 	grantsOut := fs.String("grants-out", "", "grants: write the grants document here instead of stdout")
 	grantCapability := fs.String("grant-capability", "", "issue-grant: the capability the grant is issued to")
@@ -226,6 +235,19 @@ func main() {
 	expectedRevision := fs.Int("expected-revision", -1, "expected durable deployment run revision for optimistic concurrency")
 	var statePaths pathList
 	fs.Var(&statePaths, "state", "database compatibility state JSON; repeatable")
+	// -h/-help is a request to read the grammar, not an argument
+	// failure. Under ExitOnError the flag package prints its own usage
+	// listing (the shared FlagSet, which holds every command flags) and
+	// exits before the ErrHelp handler below can answer. Returning the same
+	// sentinel keeps one code path for every command (#3943).
+	// ExitOnError calls os.Exit from inside Parse on -h, so the requested
+	// listing must be answered before parsing. The flag package would print the
+	// shared FlagSet (every command flags); printHelp prints only this
+	// command ones (#3943).
+	if parseMode == flag.ExitOnError && requestedHelp(os.Args[2:]) {
+		printHelp(os.Stdout, fs, command)
+		return
+	}
 	parseErr := fs.Parse(os.Args[2:])
 	if errors.Is(parseErr, flag.ErrHelp) {
 		printHelp(os.Stdout, fs, command)
@@ -271,6 +293,9 @@ func main() {
 		if parseErr == nil {
 			parseErr = validateSelectedReadOnlyFlags(fs, command)
 		}
+		if parseErr == nil {
+			parseErr = validateRepeatableArguments(command, os.Args[2:])
+		}
 		if parseErr != nil {
 			code, writeErr := selectedReadOnlyFlagError(os.Stdout, command, parseErr)
 			if writeErr != nil {
@@ -291,6 +316,7 @@ func main() {
 	if command != "inspect" && command != "trace" && !(command == "validate" && jsonValidationRequested) {
 		// #2332: text/JSON commands advertised by `tei commands` reject flags
 		// they do not read, instead of silently ignoring them.
+		repeatErr := validateRepeatableArguments(command, os.Args[2:])
 		if err := validateSelectedReadOnlyFlags(fs, command); err != nil {
 			if isResultEnvelopeCommand(command) {
 				code, writeErr := emitResult(os.Stdout, resultFailure(command, resultCodeInvalidArgument, err), 2)
@@ -300,6 +326,17 @@ func main() {
 				os.Exit(code)
 			}
 			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+		if repeatErr != nil {
+			if isResultEnvelopeCommand(command) {
+				code, writeErr := emitResult(os.Stdout, resultFailure(command, resultCodeInvalidArgument, repeatErr), 2)
+				if writeErr != nil {
+					fmt.Fprintln(os.Stderr, writeErr)
+				}
+				os.Exit(code)
+			}
+			fmt.Fprintln(os.Stderr, repeatErr)
 			os.Exit(2)
 		}
 	}
@@ -336,10 +373,26 @@ func main() {
 		}
 	}
 	if command == "trace" {
+		// An explicitly empty -direction/-mode is not "the flag was omitted":
+		// the CLI advertises direction=both and mode=summary, and the typed
+		// normalizer would otherwise turn "" into mode=full, which returns rows
+		// the caller did not ask for (#3605).
+		if traceDirection.set && traceDirection.value == "" ||
+			traceMode.set && traceMode.value == "" ||
+			traceExpectedFingerprint.set && traceExpectedFingerprint.value == "" {
+			report := cliTraceReport{SchemaVersion: "tei.cli.trace/v0",
+				Error: &cliInspectionFailure{Code: "INVALID_ARGUMENT",
+					Message: "trace -direction, -mode and -expected-fingerprint must not be empty when supplied"}}
+			code, writeErr := writeTraceReport(os.Stdout, report, 2)
+			if writeErr != nil {
+				fmt.Fprintln(os.Stderr, writeErr)
+			}
+			os.Exit(code)
+		}
 		code, err := traceWorkspaceJSON(
 			os.Stdout, *workspacePath, *worldPath, *traceScope,
-			*subjectKind, *subjectID, *traceDirection, *traceMode,
-			*traceExpectedFingerprint, *traceOffset, *traceLimit, fs.NArg(),
+			*subjectKind, *subjectID, traceDirection.value, traceMode.value,
+			traceExpectedFingerprint.value, *traceOffset, *traceLimit, fs.NArg(),
 		)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -350,7 +403,7 @@ func main() {
 		return
 	}
 	if command == "inspect" {
-		code, err := inspectWorkspaceJSON(os.Stdout, *workspacePath, *worldPath, *subjectKind, *subjectID, fs.NArg())
+		code, err := inspectWorkspaceJSONSelected(os.Stdout, *workspacePath, *worldPath, *subjectKind, *subjectID, fs.NArg())
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}
@@ -590,7 +643,7 @@ func main() {
 		}
 		return
 	case "periods":
-		if err := runPeriodsCommand(*workspacePath, *applicationID, *periodStates, *periodStatePath); err != nil {
+		if err := runPeriodsCommand(*workspacePath, *applicationID, *periodStates, *periodStatePath, *periodAdvance, *periodCloseCapability); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
@@ -1310,6 +1363,24 @@ func decodeJSONFile(path string, dst any) error {
 	return json.NewDecoder(f).Decode(dst)
 }
 
+// loadWorldWithIdentity is loadWorld plus the Workspace identity, when the
+// World came from a Workspace. A -world file has no manifest to identify, so
+// the identity stays nil and no value is invented (#3455).
+func loadWorldWithIdentity(worldPath, workspacePath string) (ir.World, *workspace.WorkspaceIdentity, error) {
+	if workspacePath != "" {
+		r, err := workspace.Load(workspacePath)
+		if err != nil {
+			return ir.World{}, nil, err
+		}
+		return r.World, workspaceIdentityPointer(r), nil
+	}
+	w, err := loadWorld(worldPath, workspacePath)
+	if err != nil {
+		return ir.World{}, nil, err
+	}
+	return w, nil, nil
+}
+
 func loadWorld(worldPath, workspacePath string) (ir.World, error) {
 	if workspacePath != "" {
 		r, err := workspace.Load(workspacePath)
@@ -1328,6 +1399,29 @@ func loadWorld(worldPath, workspacePath string) (ir.World, error) {
 		return ir.World{}, err
 	}
 	return w, nil
+}
+
+// setStringFlag records the value and whether the caller supplied the flag.
+// An omitted flag and an explicitly empty value are different requests; only
+// the first may take the advertised default (#3605).
+type setStringFlag struct {
+	value string
+	set   bool
+}
+
+func (f *setStringFlag) String() string { return f.value }
+
+func (f *setStringFlag) Set(raw string) error {
+	f.value = raw
+	f.set = true
+	return nil
+}
+
+// newSetStringFlag registers a set-aware flag with its advertised default.
+func newSetStringFlag(fs *flag.FlagSet, name, defaultValue, usage string) *setStringFlag {
+	f := &setStringFlag{value: defaultValue}
+	fs.Var(f, name, usage)
+	return f
 }
 
 func findEnvironment(w ir.World, id core.CanonicalID) (environment.Environment, bool) {

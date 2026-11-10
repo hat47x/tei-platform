@@ -1,0 +1,105 @@
+{
+  "note": "Reference-only E1/Go Host dual-view fixture. Not a TEI accepted model, public API, or runtime binding.",
+  "e1": {
+    "route": {
+      "id": "sales.submit",
+      "method": "POST",
+      "path": "/scenario/submit",
+      "exposure": "protected",
+      "actionId": "order_entry.submit_order"
+    },
+    "hostPolicy": {
+      "id": "interactive-write",
+      "requiredGuards": [
+        "authenticated",
+        "csrf-protected",
+        "action-authorized"
+      ],
+      "terminalEvents": [
+        "completed",
+        "rejected",
+        "error"
+      ]
+    },
+    "hostContracts": [
+      "action.identity"
+    ],
+    "steps": [
+      {
+        "id": "context",
+        "scope": "server",
+        "provides": [
+          "request.context"
+        ]
+      },
+      {
+        "id": "identity",
+        "scope": "server",
+        "requires": [
+          "request.context"
+        ],
+        "provides": [
+          "identity.principal"
+        ],
+        "guards": [
+          "authenticated"
+        ]
+      },
+      {
+        "id": "csrf",
+        "scope": "server",
+        "requires": [
+          "request.context"
+        ],
+        "provides": [
+          "csrf.checked"
+        ],
+        "guards": [
+          "csrf-protected"
+        ]
+      },
+      {
+        "id": "authorize",
+        "scope": "server",
+        "requires": [
+          "identity.principal",
+          "action.identity"
+        ],
+        "provides": [
+          "action.authorized"
+        ],
+        "guards": [
+          "action-authorized"
+        ]
+      },
+      {
+        "id": "invoke",
+        "scope": "server",
+        "requires": [
+          "action.authorized",
+          "csrf.checked"
+        ]
+      },
+      {
+        "id": "audit",
+        "scope": "server",
+        "requires": [
+          "request.context"
+        ],
+        "onTerminal": [
+          "completed",
+          "rejected",
+          "error"
+        ]
+      }
+    ]
+  },
+  "goHost": {
+    "method": "POST",
+    "path": "/scenario/submit",
+    "actionId": "order_entry.submit_order",
+    "providers": {
+      "corporate": "https://issuer.example.invalid/tenant1"
+    }
+  }
+}

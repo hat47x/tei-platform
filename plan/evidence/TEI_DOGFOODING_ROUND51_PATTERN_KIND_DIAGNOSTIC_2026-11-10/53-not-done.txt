@@ -1,0 +1,33 @@
+Still not discoverable from the CLI: the set of `std` types. An author who writes
+std.date-time gets "invalid canonical id", which points at the id syntax rather
+than at the available vocabulary, and nothing in the CLI lists the std types.
+I resolved it by reading internal/stdlib/semantic.go, which a CLI-only workflow
+cannot do.
+
+The same question applies to other vocabularies (capability/data/interaction
+keywords). This change covers pattern kinds only.
+
+---
+CORRECTION (round 52, 2026-11-10)
+
+The paragraphs above are wrong. The std vocabulary IS reachable from the CLI.
+I generalised from one failed probe: my probe workspace did not load (it carried
+the very parse error I was studying), so `model catalog` returned no entries and
+I concluded std was absent from it.
+
+Measured on main 741fd79bf with a workspace that loads:
+
+  model catalog -workspace reference/workspace
+    12 entries with kind semantic-type and an id starting std.
+    std.binary, std.boolean, std.code, std.date, std.datetime, std.decimal,
+    std.identifier, std.integer, std.json, std.money, std.text, std.time
+
+  inspect -subject-kind semantic -subject-id std
+    12 types, each with kind=primitive
+
+  model locate -subject-kind semantic-type -subject-id std.datetime
+    ok=true
+
+What remains true and narrower: the diagnostic for a malformed id
+("invalid canonical id") did not state the character rule, so an author could
+not tell an illegal character from a missing type. That is what round 52 fixed.

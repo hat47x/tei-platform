@@ -57,6 +57,24 @@ func (r Runner) RunSequence(ctx context.Context, invocation Invocation) (Sequenc
 				Message: fmt.Sprintf("pattern %s declares unsupported hook phase %s", invocation.Pattern, phase),
 			}
 		}
+		// A scope this runner cannot apply is refused, not ignored: the sequence
+		// runs one hook per record, so only the record scope and the pattern's own
+		// unit (empty) are applied here. A row-scoped hook needs the row set, which
+		// the sequence does not carry, and is pointed at RunRows. Running the hook
+		// anyway would leave a declaration that is present and does nothing (D-9).
+		switch scope := pattern.Interaction.Hooks[i].Scope; scope {
+		case "", string(application.PatternRecord):
+		case "row":
+			return SequenceResult{}, &Error{
+				Code:    "HOOK_SCOPE_NEEDS_ROWS",
+				Message: fmt.Sprintf("pattern %s hook %s declares scope row, so it needs the row set; use RunRows", invocation.Pattern, phase),
+			}
+		default:
+			return SequenceResult{}, &Error{
+				Code:    "HOOK_SCOPE_UNAPPLIED",
+				Message: fmt.Sprintf("pattern %s hook %s declares scope %s but the sequence runs one hook per record", invocation.Pattern, phase, scope),
+			}
+		}
 		// Two hooks with the same phase are refused by validation. The first
 		// declaration wins here so the runner does not invent an order between
 		// them, and it never silently drops a phase it did not run.
@@ -110,14 +128,15 @@ func (r Runner) RunSequence(ctx context.Context, invocation Invocation) (Sequenc
 
 // runDeclaredは、一つの宣言を実行する。`Run`と同じ境界と失敗の種類を使う。
 func (r Runner) runDeclared(ctx context.Context, invocation Invocation, declared *application.Hook) error {
-	if r.Implementation == nil {
+	implementation := r.implementationFor(invocation.Phase)
+	if implementation == nil {
 		return &Error{Code: "HOOK_IMPLEMENTATION_UNAVAILABLE", Message: "no implementation is configured for this hook boundary"}
 	}
 	var err error
-	if calling, ok := r.Implementation.(CallingImplementation); ok {
+	if calling, ok := implementation.(CallingImplementation); ok {
 		err = calling.RunWithCaller(ctx, invocation, declaredCaller(r.Caller, declared))
 	} else {
-		err = r.Implementation.Run(ctx, invocation)
+		err = implementation.Run(ctx, invocation)
 	}
 	return wrapFailure(err, declared)
 }
@@ -159,6 +178,14 @@ func wrapFailure(err error, declared *application.Hook) error {
 		return nil
 	}
 	if isNotSatisfied(err) {
+		// An unsatisfied hook may name a business outcome. The name is checked
+		// here, where every refusal passes, so an implementation cannot widen
+		// the vocabulary by reporting a name it invented.
+		if outcome, ok := OutcomeOf(err); ok {
+			if outcomeErr := ValidateOutcome(outcome); outcomeErr != nil {
+				return outcomeErr
+			}
+		}
 		return err
 	}
 	if declared != nil && declared.Failure == "warn" {

@@ -1,0 +1,340 @@
+{
+  "schemaVersion": "tei.cli.workspace-files/v0",
+  "ok": true,
+  "result": {
+    "managedFiles": [
+      {
+        "path": "applications/order-entry/application.tei",
+        "sourceRoot": "applications",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "applications/order-entry/patterns/customer-reference.tei",
+        "sourceRoot": "applications",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "applications/order-entry/patterns/order-lines.tei",
+        "sourceRoot": "applications",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "applications/order-entry/patterns/order-record.tei",
+        "sourceRoot": "applications",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "applications/order-entry/patterns/recent-orders.tei",
+        "sourceRoot": "applications",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "applications/order-entry/patterns/submit-order.tei",
+        "sourceRoot": "applications",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "applications/order-entry/queries/recent_orders.sql",
+        "sourceRoot": "applications",
+        "extension": ".sql",
+        "readByLoader": true
+      },
+      {
+        "path": "applications/order-entry/queries/recent_orders.tei",
+        "sourceRoot": "applications",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "applications/order-entry/realizations/authenticate.tei",
+        "sourceRoot": "applications",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "applications/order-entry/realizations/authorize.tei",
+        "sourceRoot": "applications",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "applications/order-entry/realizations/default.tei",
+        "sourceRoot": "applications",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "applications/order-entry/realizations/header-detail/order-lines.tei",
+        "sourceRoot": "applications",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "applications/order-entry/realizations/submit-order.tei",
+        "sourceRoot": "applications",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "applications/repair-intake/application.tei",
+        "sourceRoot": "applications",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "applications/repair-intake/patterns/customer-reference.tei",
+        "sourceRoot": "applications",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "bundles/tei-reference-providers/1.0.0/bundle.tei",
+        "sourceRoot": "bundles",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "databases/master-data/contracts/customer.tei",
+        "sourceRoot": "databases",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "databases/master-data/database.tei",
+        "sourceRoot": "databases",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "databases/sales-core/README.md",
+        "sourceRoot": "databases",
+        "extension": ".md",
+        "readByLoader": false
+      },
+      {
+        "path": "databases/sales-core/contracts/order-line.tei",
+        "sourceRoot": "databases",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "databases/sales-core/contracts/order.tei",
+        "sourceRoot": "databases",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "databases/sales-core/database.tei",
+        "sourceRoot": "databases",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "databases/sales-core/migration-provider.tei",
+        "sourceRoot": "databases",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "databases/sales-core/migrations/20260826_001/migration.tei",
+        "sourceRoot": "databases",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "databases/sales-core/persistence/order-line.tei",
+        "sourceRoot": "databases",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "databases/sales-core/persistence/order.tei",
+        "sourceRoot": "databases",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "databases/sales-core/query-realizations/order-line-find-by-order.sql",
+        "sourceRoot": "databases",
+        "extension": ".sql",
+        "readByLoader": true
+      },
+      {
+        "path": "databases/sales-core/query-realizations/order-line-find-by-order.tei",
+        "sourceRoot": "databases",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "databases/sales-core/relation-storage/order-line.tei",
+        "sourceRoot": "databases",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "environments/development/contract-query-executors/customer-find-by-id.tei",
+        "sourceRoot": "environments",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "environments/development/contract-query-executors/order-line-find-by-order.tei",
+        "sourceRoot": "environments",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "environments/development/environment.tei",
+        "sourceRoot": "environments",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "environments/production/environment.tei",
+        "sourceRoot": "environments",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "plugins/tei-database-observer-reference/1.0.0/plugin.tei",
+        "sourceRoot": "plugins",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "plugins/tei-database-oracle/1.0.0/plugin.tei",
+        "sourceRoot": "plugins",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "plugins/tei-database-postgres/1.0.0/plugin.tei",
+        "sourceRoot": "plugins",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "plugins/tei-editor-intelligence-sql/1.0.0/plugin.tei",
+        "sourceRoot": "plugins",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "plugins/tei-health-reference/1.0.0/plugin.tei",
+        "sourceRoot": "plugins",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "plugins/tei-migration-atlas/1.0.0/plugin.tei",
+        "sourceRoot": "plugins",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "plugins/tei-runtime-reference/1.0.0/plugin.tei",
+        "sourceRoot": "plugins",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "plugins/tei-traffic-reference/1.0.0/plugin.tei",
+        "sourceRoot": "plugins",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "releases/applications/order-entry/3.7.0.tei",
+        "sourceRoot": "releases",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "releases/applications/order-entry/3.8.0.tei",
+        "sourceRoot": "releases",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "releases/databases/sales-core/4.0.0.tei",
+        "sourceRoot": "releases",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "releases/databases/sales-core/4.1.0.tei",
+        "sourceRoot": "releases",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "releases/databases/sales-core/4.2.0.tei",
+        "sourceRoot": "releases",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "releases/solutions/order-rollout-fix/2026.8.28.tei",
+        "sourceRoot": "releases",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "releases/solutions/order-rollout/2026.8.27.tei",
+        "sourceRoot": "releases",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "semantic/customer/customer.tei",
+        "sourceRoot": "semantic",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "semantic/repair-intake/intake.tei",
+        "sourceRoot": "semantic",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "semantic/sales/order.tei",
+        "sourceRoot": "semantic",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "semantic/sales/validation.tei",
+        "sourceRoot": "semantic",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "semantic/security/authentication.tei",
+        "sourceRoot": "semantic",
+        "extension": ".tei",
+        "readByLoader": true
+      },
+      {
+        "path": "semantic/security/authorization.tei",
+        "sourceRoot": "semantic",
+        "extension": ".tei",
+        "readByLoader": true
+      }
+    ],
+    "workspace": {
+      "name": "tei_reference",
+      "formatVersion": 1,
+      "manifest": {
+        "path": "tei.workspace.yaml",
+        "sha256": "sha256:8e367b05de26a715ced16e384d273c983ac612dd2ff980d4310886d4f471af74"
+      }
+    }
+  }
+}

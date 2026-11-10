@@ -3,6 +3,8 @@ package compositionprocessbridge
 import (
 	"path/filepath"
 	"runtime"
+	"strings"
+	"testing"
 )
 
 // hostExecutable returns the path for a Go-built helper binary. `go build -o
@@ -16,4 +18,19 @@ func hostExecutable(dir, name string) string {
 		name += ".exe"
 	}
 	return filepath.Join(dir, name)
+}
+
+// temporaryBuildDir returns a directory the reference launcher accepts as the
+// home of an executable. The launcher refuses an executable path that contains
+// whitespace (internal/plugin/runtime/process_stdio.go), so a host whose
+// temporary directory contains a space cannot run these tests. That is a
+// property of the host, not of the operating system, so the tests skip only
+// when the path actually has one (#3460).
+func temporaryBuildDir(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	if strings.ContainsAny(dir, " \t\r\n") {
+		t.Skipf("the reference launcher refuses whitespace in an executable path and this host's temporary directory contains some: %q", dir)
+	}
+	return dir
 }

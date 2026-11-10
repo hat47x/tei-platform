@@ -1,0 +1,118 @@
+{
+  "note": "A backlog that could not be sent because maxBytes was below the field size is retained and delivered once the cap grows on a later run of the same session. Synthetic data only.",
+  "stall": {
+    "maxBytes": 306,
+    "sessionId": "session-edfeee55-ec0a-46fb-8393-d5c11c8ec7bf",
+    "anyFieldSent": false
+  },
+  "runs": [
+    {
+      "label": "stall-306",
+      "maxBytes": 306,
+      "rawLogBytes": 6176,
+      "rawLogSha256": "33029f81bddc7670df27b782973bfc7bb760e9df720fd2e9f8ddbe45d0c0e74d",
+      "requests": [
+        {
+          "file": "001-request.json",
+          "bodyBytes": 33092,
+          "sha256": "ab6f6b0f8dd59e612c7b2e8108ae740fdebba05bc689436d37e165fc2257c96f",
+          "sessionLog": null
+        },
+        {
+          "file": "002-request.json",
+          "bodyBytes": 6654,
+          "sha256": "3b531bc16a32e12a4f0c1ecd609726a9cdec01fd2acc5f97f236f18210301722",
+          "sessionLog": null
+        },
+        {
+          "file": "003-request.json",
+          "bodyBytes": 34399,
+          "sha256": "a1568f8c72c15cea017c2add2ce159696d4889502abdf65fb1e6c8e5b7b67dd7",
+          "sessionLog": null
+        },
+        {
+          "file": "004-request.json",
+          "bodyBytes": 35706,
+          "sha256": "d456fb7fd863d5d411f38ce8ca5b0357444eb468172e61f2fde9c7be45ecb2b0",
+          "sessionLog": null
+        },
+        {
+          "file": "005-request.json",
+          "bodyBytes": 37013,
+          "sha256": "9f62103c9e2e072d67dfd3aabfe764fe746fd112221fc64720aff3390ca7efd9",
+          "sessionLog": null
+        },
+        {
+          "file": "006-request.json",
+          "bodyBytes": 38320,
+          "sha256": "70553145bbbf37e1f516ddc4e01afcf398b6fadf8affc20e3b029662a6fbdbca",
+          "sessionLog": null
+        }
+      ],
+      "anyFieldSent": false,
+      "firstAfterSeq": null,
+      "maxWatermark": null,
+      "eventsCarried": 0
+    },
+    {
+      "label": "grow-4096",
+      "maxBytes": 4096,
+      "rawLogBytes": 6176,
+      "rawLogSha256": "9b16e9cadf1f72ea7f6e56e7ec3f64eee22c325f7e0bca56a5e0ac92df06a2a1",
+      "requests": [
+        {
+          "file": "001-request.json",
+          "bodyBytes": 39743,
+          "sha256": "19addebc03f945409d5978c6cfed7048ff47fc1480da1ff253fc400da6930b74",
+          "sessionLog": {
+            "rawBytes": 1273,
+            "overLimit": false,
+            "afterSeq": -1,
+            "throughSeq": 9,
+            "eventCount": 10
+          }
+        },
+        {
+          "file": "002-request.json",
+          "bodyBytes": 43275,
+          "sha256": "0fc1a7ae9ace3bc762c2f3bbbc58d5c277ac63aef4e6e2e0673dfa269a512d32",
+          "sessionLog": {
+            "rawBytes": 3498,
+            "overLimit": false,
+            "afterSeq": 9,
+            "throughSeq": 11,
+            "eventCount": 2
+          }
+        },
+        {
+          "file": "003-request.json",
+          "bodyBytes": 42829,
+          "sha256": "6f6ea0296641f58a51714700d3f1e74c253ab5a1163e4bbab547feea41825203",
+          "sessionLog": {
+            "rawBytes": 1745,
+            "overLimit": false,
+            "afterSeq": 11,
+            "throughSeq": 12,
+            "eventCount": 1
+          }
+        },
+        {
+          "file": "004-request.json",
+          "bodyBytes": 42372,
+          "sha256": "0a3e188d886fc754e16ba68bd8736a70c3aaa88fa82893751fa607417cb00a9f",
+          "sessionLog": null
+        },
+        {
+          "file": "005-request.json",
+          "bodyBytes": 43679,
+          "sha256": "0763a499be146db44def165518ad2559e68d0654cd9f1c7dfec44950854414db",
+          "sessionLog": null
+        }
+      ],
+      "anyFieldSent": true,
+      "firstAfterSeq": -1,
+      "maxWatermark": 12,
+      "eventsCarried": 13
+    }
+  ]
+}

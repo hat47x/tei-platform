@@ -1,0 +1,12 @@
+1. plan/workstreams/TEI_DOGFOODING_CLI_SELF_DESIGN_2026-11.md
+   line 514 had no body: a stale heading left by a merge
+     ## 11. …一致と入力検証        <- leftover
+     ## 11. …一致と厳密入力        <- current
+   => section 11 named two sections.
+
+2. plan/evidence/TEI_DOGFOODING_ROUND5_CLI_MCP_2026-11-09/README.md
+   ## 6. appeared twice and ## 7 sat before the second ## 6.
+   => renumbered sequentially 1..9 in document order.
+
+3. plan/design/HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md has 8 back-to-back
+   heading pairs. Reported in #3919, NOT fixed here: another owner's document.

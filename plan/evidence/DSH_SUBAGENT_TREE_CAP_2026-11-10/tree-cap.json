@@ -1,0 +1,111 @@
+{
+  "note": "With maxDepth 3 and maxActiveSubagents 2, the root started two children in parallel and both were accepted. Each child then tried to start two grandchildren; every one of those attempts was refused with 'active child limit: 2'. No grandchild session was created, so the active-child cap bound before the depth limit had any chance to.",
+  "overlay": {
+    "plugin": "@deepseek-ai/dsh-subagent",
+    "config": {
+      "maxDepth": 3,
+      "maxActiveSubagents": 2
+    }
+  },
+  "tree": {
+    "rootChildren": 2,
+    "grandchildrenAttempted": 4,
+    "grandchildrenStarted": 0
+  },
+  "rootStarted": 2,
+  "rootRefused": 0,
+  "grandchildRefusalText": "subagent limit reached (active child limit: 2); wait for an existing child to finish or complete this work with the current agents",
+  "grandchildRefusals": 2,
+  "depthRefusals": 0,
+  "sessionsSeen": [
+    "session-002e656b-fc25-4b2c-aa56-67a2936457b6",
+    "da9b612c-b458-4fb8-99c8-dca0421d5ce9",
+    "aa79069d-211b-48bc-8f73-f3cd353fd822"
+  ],
+  "sessionCount": 3,
+  "requests": [
+    {
+      "file": "001-request.json",
+      "bytes": 97189,
+      "sha256": "44ee9702f18c76dcf8566137b152a78cd531c99ab90a2f23ed1bea2cd0a7f53d",
+      "sessionId": "session-002e656b-fc25-4b2c-aa56-67a2936457b6",
+      "levelMarker": 0,
+      "hasActiveLimitRefusal": false,
+      "hasDepthRefusal": false
+    },
+    {
+      "file": "002-request.json",
+      "bytes": 56002,
+      "sha256": "24a104fa151dc0d6ec97eaa20931a7de367560f3ec13c0027eafb61d67abe46b",
+      "sessionId": "session-002e656b-fc25-4b2c-aa56-67a2936457b6",
+      "levelMarker": 0,
+      "hasActiveLimitRefusal": false,
+      "hasDepthRefusal": false
+    },
+    {
+      "file": "003-request.json",
+      "bytes": 54375,
+      "sha256": "b80971cb76f6d4e2a6cd615e8e90c36983563d3529f64a3626becafe091a3633",
+      "sessionId": "session-002e656b-fc25-4b2c-aa56-67a2936457b6",
+      "levelMarker": 1,
+      "hasActiveLimitRefusal": false,
+      "hasDepthRefusal": false
+    },
+    {
+      "file": "004-request.json",
+      "bytes": 99055,
+      "sha256": "73aa71d1a67c6ba8a97a992d2c222f824d8998fe5192e52c770876008ac0ce31",
+      "sessionId": "da9b612c-b458-4fb8-99c8-dca0421d5ce9",
+      "levelMarker": 1,
+      "hasActiveLimitRefusal": false,
+      "hasDepthRefusal": false
+    },
+    {
+      "file": "005-request.json",
+      "bytes": 99055,
+      "sha256": "432f67b77875fdac16f9d337ddc1f8a2025052ae78a64d91b4361a1ff81604c9",
+      "sessionId": "aa79069d-211b-48bc-8f73-f3cd353fd822",
+      "levelMarker": 1,
+      "hasActiveLimitRefusal": false,
+      "hasDepthRefusal": false
+    },
+    {
+      "file": "006-request.json",
+      "bytes": 55032,
+      "sha256": "400b163529c162a3ccaa98d9cb39514d767a52e30b144ccb823b483fbffe52fa",
+      "sessionId": "aa79069d-211b-48bc-8f73-f3cd353fd822",
+      "levelMarker": 2,
+      "hasActiveLimitRefusal": true,
+      "hasDepthRefusal": false
+    },
+    {
+      "file": "007-request.json",
+      "bytes": 55032,
+      "sha256": "d7b816edc831fddcc0bd2278f802e593618bd5c8f674c53d546e2a56f6472d82",
+      "sessionId": "da9b612c-b458-4fb8-99c8-dca0421d5ce9",
+      "levelMarker": 2,
+      "hasActiveLimitRefusal": true,
+      "hasDepthRefusal": false
+    },
+    {
+      "file": "008-request.json",
+      "bytes": 52894,
+      "sha256": "9f484823d942ed2e358267ee63f28f47f69c7523d71c72bcf483c66c661e43da",
+      "sessionId": "session-002e656b-fc25-4b2c-aa56-67a2936457b6",
+      "levelMarker": 1,
+      "hasActiveLimitRefusal": false,
+      "hasDepthRefusal": false
+    },
+    {
+      "file": "009-request.json",
+      "bytes": 51743,
+      "sha256": "ca1821087be3d326e73d5ab288b5eb407910e34e0318c953626d934e56a5fcf1",
+      "sessionId": "session-002e656b-fc25-4b2c-aa56-67a2936457b6",
+      "levelMarker": 1,
+      "hasActiveLimitRefusal": false,
+      "hasDepthRefusal": false
+    }
+  ],
+  "totalRequestBytes": 620377,
+  "conclusion": "maxActiveSubagents counts children across the whole tree, so a parent that fills the cap starves the next level; maxDepth alone does not let a deeper level start."
+}

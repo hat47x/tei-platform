@@ -6,6 +6,13 @@
 
 独立した参照プラグインの検査入口は [`check-reference-plugin-isolation.sh`](check-reference-plugin-isolation.sh) です。`plugins/`配下の参照実装を一時Goモジュールへ複製してオフラインで検証します。
 
+## 実行環境の前提
+
+- `tools/` の参照ツールは、Linux CI（`ubuntu-24.04`）の結果を正とします。Windowsで `go test ./...` を回すと、環境前提の差で失敗または skip になる検査があります（[#3460](https://github.com/hat47x/tei-platform/issues/3460) に原因別の一覧）。
+- 外部コマンドを `bash -c` で起動する試験（`reference-cognition-port`・`reference-generator-selection`）は POSIXシェル前提です。Windowsでは `cp <Windowsパス>` が解決できないため、該当試験は理由を付けて skip します（[#3461](https://github.com/hat47x/tei-platform/issues/3461)）。skip は「この環境では検査していない」の記録であり、成功と同じには扱いません。
+- POSIXのファイル権限（`0600` など）や rename の置換を前提にした検査は、Windowsでは skip または別経路に分けます。
+- historical parity の比較試験（`reference-plugin-self-build`・`reference-transform-runtime-engine-build`）は、`go test ./...` の並列実行で他のパッケージが checkout へ書き込む影響を受けないよう、**比較する側も比較される側も自分専用の detached worktree** から実行します（[#3637](https://github.com/hat47x/tei-platform/issues/3637)）。worktree は HEAD から作るため clean であり、live の作業ツリーを前提にしません。そのため `go test ./...` でも単体実行でも同じ結果になります。
+- 比較が自分の worktree を書き換えていないことは、試験の最後に worktree の `git status` で確認します。live の checkout が汚れているかどうかは、比較の成否に影響しません。
 ## リポジトリ検査と共通部品
 
 | 場所 | 役割 |
@@ -14,10 +21,12 @@
 | [`repository-architecture-check/`](repository-architecture-check/) | パッケージ構成と依存境界の検査 |
 | [`repository-dependency-report/`](repository-dependency-report/) | Goの直接依存関係の一覧作成 |
 | [`repository-plan-check/`](repository-plan-check/) | ADR・Issueの番号や要求と検証表の対応確認、ADR索引とADRファイルの一致・状態の確認（#2343） |
+| [`reference-adr-index-check/`](reference-adr-index-check/) | `plan/adr/README.md`の索引と`plan/adr/0*.md`の対応を単体で検査する。各ファイルが一度だけ載り、リンク先が実在し、索引の状態がファイルの状態行と一致することを確かめる。索引は文書であり、この検査は記録との対応だけを守る（#2343） |
 | [`doc-reference-probe/`](doc-reference-probe/) | 文書中の明示パス参照と暗黙候補を調べる任意実行の限定試作（#2309） |
 | [`repository-node-tests/`](repository-node-tests/) | どのworkflowからも実行されなかったNode.js試験5ファイルをgo testから実行する（#2346） |
 | [`check-public-boundary/`](check-public-boundary/) | 追跡ファイルに、非公開資料の名前・所在のマーカーが入っていないかを検査する（#2342 / #2436） |
 | [`repositoryqualification/`](repositoryqualification/) | リポジトリ検証条件の共通処理 |
+| [`reference-ai-tuning-observation/`](reference-ai-tuning-observation/) | AI性能チューニング用の設計/観測/統計/Provider/開示/受領の**合成入力のみ**を照合する試験用Consumer。実Provider/業務意味/実性能は未証明（#3271/#3262、設計文書 §9〜10）。 |
 | [`reference-cli-trace-benchmark/`](reference-cli-trace-benchmark/) | 合成Workspaceによるtraceの処理段別の時間・メモリ計測と出力不変の確認 |
 | [`reference-mcp-readonly-adapter/`](reference-mcp-readonly-adapter/) | 既存の読み取り操作（model catalog・inspect・trace・validate）をMCPのtoolとして公開する参照Adapter。Workspaceは起動時に固定し、CLIと同じ `internal/operations` を呼ぶ（#3400） |
 | [`reference-change-packet/`](reference-change-packet/) | 変更範囲・危険度・検証・停止条件をJSONで宣言し、範囲確認と検証実行・証拠記録を行う参照（#2017） |
@@ -37,6 +46,8 @@
 | [`reference-audit-log/`](reference-audit-log/) | 追記専用のhash chain、改ざん検出、pinned headによる末尾削除検出を提供する監査ログ基盤pluginの参照（#2020） |
 | [`reference-ai-write-window/`](reference-ai-write-window/) | Pluginが宣言した書込み窓にAIの編集が収まっているかを検査し、窓の外の変更を受理前に拒否する参照。未解決と確認済み違反、Target別の可用性、全体生成の境界を分ける（#2092） |
 | [`reference-authentication/`](reference-authentication/) | credentialを発行せず、principalとtenantの認証境界を検証する基盤pluginの参照（#2020） |
+| [`reference-tei-eki-contract/`](reference-tei-eki-contract/) | TEI Job/Flow設計からEKIのOpenAPI形状へ写すときの意味の欠落を、固定snapshotとの比較で検出する試験専用の参照（実Provider連携ではない） |
+| [`reference-build-catalog-authoring/`](reference-build-catalog-authoring/) | builder catalogを能力宣言から組み立てる参照。artifactのdigestは実ファイルから計算し、宣言にdigestを書くことと`-root`の外を指すことを拒否する。製品のファイル形式を変えずにcatalogを用意する手段（#2831 SB-C0 §4.32） |
 | [`reference-offline-storage/`](reference-offline-storage/) | 個人向けに、root内へ閉じたローカル保存を提供する基盤pluginの参照（#2020） |
 | [`reference-export-package/`](reference-export-package/) | SIer向けに、manifestとdigest付きの配布zipを作る基盤pluginの参照（#2020） |
 | [`reference-delivery-profile/`](reference-delivery-profile/) | 提供形態ごとにpluginを選択し、必須能力が揃っているかを検証する参照（#2020） |
@@ -103,6 +114,7 @@
 | [`reference-scenario-state-diff/`](reference-scenario-state-diff/) | 型付きDataset/Snapshotの検証と、Scenario期待値・観測の差の読取り専用参照 |
 | [`reference-scoped-query-preflight/`](reference-scoped-query-preflight/) | 認可済み行スコープを物理SQLへ適用できるかを実行前に判定する参照 |
 | [`reference-tool-neutral-development/`](reference-tool-neutral-development/) | 特定の開発道具に依存しない作業経路の確認 |
+| [`reference-tei-eki-contract/`](reference-tei-eki-contract/) | TEIのJob/Flow設計がEKI（外部）へ渡す契約を、実OpenAPIの形に照らして検査する参照。射影で落ちる情報（`notBefore`のように独立した時刻）を失わないことを確かめる。test-onlyの圧力試験で、EKIクライアントや実行アダプタではなく、実Provider連携の証拠でもない |
 
 ## ビルド、配布、実行
 
@@ -113,11 +125,13 @@
 | [`reference-build-authoring-intent/`](reference-build-authoring-intent/) | 人・生成AIが書くビルド宣言から、確定したビルド計画を導出する境界の確認 |
 | [`reference-build-execution-binding/`](reference-build-execution-binding/) | ビルド実行と主体・対象の結び付け |
 | [`reference-go-module-closure-preflight/`](reference-go-module-closure-preflight/) | Go対象の選択Module閉包をオフラインで分類する事前観測。`supported`/`external-unresolved`/`missing-module`/`unknown`を区別し、Build・Artifact・権限は行わない（#2831 SB-0a） |
+| [`reference-go-build-from-plan/`](reference-go-build-from-plan/) | `BuildPlan`を読み、**計画が名指すsourceを同じrootから解釈し直して突き合わせ**、一致したときだけGoのcommandをビルドする。計画fingerprint・宣言byteのdigest・成果物digest・stateを申告し、lockを自分で作って検証する（#2831 SB-C0 §4.39 段1） |
 | [`reference-go-build-with-supply/`](reference-go-build-with-supply/) | 供給だけを使う隔離環境で実Buildし、成果物digestとSource閉包の資格を別々に記録する。両者が食い違うX1を明示する（#2831 SB-B事前確認） |
 | [`reference-go-build-stage-driver/`](reference-go-build-stage-driver/) | Buildを別プロセスの起動として駆動し、invoker/invoked の実行ファイルdigest・argv・exit と、子の主張とディスク実物のartifact digestを別々に記録する。L3は主張しない（#2831 SB-C0/C1） |
 | [`reference-go-module-supply-verify/`](reference-go-module-supply-verify/) | オフラインGo Module供給を、対象の実選択Moduleと`go.sum`の`h1`へ束縛して再解決する検証。供給元・署名・Build権限は扱わない（#2831 SB-0b） |
 | [`reference-go-build-reproducibility/`](reference-go-build-reproducibility/) | 同じ対象を隔離した二つの状態で実Buildし、成果物digestの一致と試行の同一性を別々に記録する。Builder信頼・受入・権限は扱わない（#2831 SB-N8） |
 | [`reference-go-module-supply-verify/`](reference-go-module-supply-verify/) | オフラインGo Module供給を、対象の実選択Moduleと`go.sum`の`h1`へ束縛して再解決する検証。供給元・署名・Build権限は扱わない（#2831 SB-0b） |
+| [`reference-go-build-reproducibility/`](reference-go-build-reproducibility/) | 同じ対象を隔離した二つの状態で実Buildし、成果物digestの一致と試行の同一性を別々に記録する。Builder信頼・受入・権限は扱わない（#2831 SB-N8） |
 | [`reference-builder-contract-resolution/`](reference-builder-contract-resolution/) | Builder契約の解決と適用 |
 | [`reference-studio-composition-evidence-7/`](reference-studio-composition-evidence-7/) | TEI Studioの静的合成を実装外から検査する限定的な黒箱検査器（#1824 / #7） |
 | [`reference-host-acceptance/`](reference-host-acceptance/) | 暫定のHost Acceptance Storeへ、issuerが署名したDecisionを鍵生成・署名・取込み・失効する参照ツール。効果許可は与えない（#267 / #1121） |
@@ -128,7 +142,10 @@
 | [`reference-native-plugin-builder/`](reference-native-plugin-builder/) | ネイティブPluginの構築例 |
 | [`reference-plugin-capability-contract/`](reference-plugin-capability-contract/) | Pluginが提供する機能の契約確認 |
 | [`reference-plugin-package-builder/`](reference-plugin-package-builder/) | Plugin配布物の組立て例 |
+| [`reference-plugin-package-build-child/`](reference-plugin-package-build-child/) | 計画を消費してPlugin配布物を作り、消費した計画の照合値を申告するchild（SB-C0 §4.10 P-1 / #2831） |
 | [`reference-plugin-self-build/`](reference-plugin-self-build/) | Plugin自身が構築手順を提供する場合の確認 |
+| [`reference-plugin-registry/`](reference-plugin-registry/) | 分散Plugin RegistryのP0-A限定Reference。独立Go/NodeでPublisherとVerifierのテスト用Ed25519署名、Releaseと必須Artifactのexact byte束縛、Profile/Targetの一致・負例を検査。現在Trust・実配布・Conformance/Runtime受入は未証明（#2589） |
+| [`reference-tei-eki-contract/`](reference-tei-eki-contract/) | EKI P0の実OpenAPI(版固定のsnapshot)に対し、TEI Job側の必須意味(通知時刻・完了期限・実行者digest・書込効果)を黙って落とす写像を拒否する、Nodeのみのtest-only互換性確認。TEI Job生産者・EKI APIクライアント・実Provider接続の証拠ではない |
 | [`reference-plugin-build-supply/`](reference-plugin-build-supply/) | 技術検証用サンプル`plugin-build-supply`の工程1〜4の通しの検証。構築意図と実ファイル・観測したGoから`tei.process.reference`の計画を確定し、その照合値を、ホストが発行する発生識別子つきの二回の実構築と内容アドレスの保管庫、既存の自己構築の実行器の検証根拠(二回構築、段階の収束、ホスト登録)、保管庫から再取得したバイト列のプロセス通信の版1での呼出しまで引き継ぐ。提供元の曖昧さ・追加・信頼の失効、部分出力を残す失敗・二回構築の不一致・一回の実行の二重計上・同時の試行の強制終了、汚れた作業ツリー・外部モジュール・ソースとツールチェーンの食い違い・ホストのGo設定、工程間の識別の差替えと工程の欠落を注入する(同じ機械の上の実際のGoの構築。提供元のカタログと信頼の失効は合成) |
 | [`reference-order-multilingual-operation/`](reference-order-multilingual-operation/) | 技術検証用サンプル`order-multilingual-operation`の工程1〜6の通しの検証。複製した作業領域に受注の所有プラグイン、`std.message`、言語プラグインを加え、所有者・環境・原文言語・項目名を一組にして既存の多言語資産を変更せずに呼ぶ。日本語原文を一回改訂した前後の同じ対象一覧の突合表で、従属訳だけの失効と配布候補の再生成を確かめる。許可・受理・固定情報の失効と言語プラグインの撤去、配布候補の訳文の書換えと固定情報の差替え、改訂直後の旧配布候補、翻訳器の失敗・取消し・結果不明と機密の外部送信、翻訳中の同時編集、PostgreSQLとSQLiteの並びの差を注入する(合成のホスト、模擬の翻訳器、PostgreSQLの一つのインスタンス、SQLiteはPythonの標準モジュールでのファイル、Node) |
 | [`reference-external-adoption-authority/`](reference-external-adoption-authority/) | 技術検証用サンプル`external-adoption-authority`の工程1〜4の通しの検証。SUIの島階層の契約を固定版のまま写した影の検査の報告から、拡張の後付けと名前空間所有者の判定、意味の固定記録、署名つきのデータのみの配布物、合成ホストでの受理まで、固定版・写像報告・損失の記録の照合値と`lossless=false`を一つの記録で引き継ぐ。依存blobの変更、同じ名前空間の二つの提供元、所有者と署名者の信頼付与の失効・鍵交換・期限、損失なしへの読替え、提供元の意味の変更とファイルの移動、工程間の差替えを注入する(既存資産を変更せずに固定入力の複製で呼ぶ。外部側は固定表の複製による模擬、信頼付与・鍵・ホストは合成、時刻は論理時刻)
@@ -198,12 +215,22 @@
 | [`reference-ddl-entry/`](reference-ddl-entry/) | 物理対応から提供元が出力できるDDLを表ごとに取り出す入口（#1803） |
 | [`reference-expected-state-concurrency/`](reference-expected-state-concurrency/) | 期待状態の比較による更新が後勝ちを防ぐことを、実PostgreSQLの使い捨てDBで確かめる参照試験（#2483、仮説H1） |
 | [`reference-developer-context/`](reference-developer-context/) | TEIのGoソース1件に対し、実在する関連テストと明示参照する設計資料を根拠付きの調査候補として返す読み取り専用の参照PoC。ローカルのSystem One互換判断モデルは候補の順位付けにだけ使い、失敗時は決定的な基準順を保つ。受理・権限・実行を決めない（#2196 / #2021） |
+| [`reference-issue-test-ability/`](reference-issue-test-ability/) | 既存のTEI Driver Scenario CLIが試験可能かを、実バイナリと合成fixtureだけで確かめる境界付きのprobe。Scenario実行器やDomain Authorityの代替ではなく、正例・負例を同じ実binaryで照合する（#3304） |
+| [`reference-design-context-packet/`](reference-design-context-packet/) | 既存CLI証拠から設計コンテキストのパケットを組み立てる参照Consumer。`obligations.json`の必須項目が欠けた場合・証拠が食い違う場合・応答が完全でない場合は、空の成功ではなく明示の状態として返す。TEI Sourceの解析や開示の権限判断はしない（#3262） |
+| [`reference-verified-composition-bom/`](reference-verified-composition-bom/) | 既に選ばれたバージョン選択（QueryのProvider範囲・Consumer範囲など）を、外部から渡されたexact lock・外部で実行済みのTest Witnessと突き合わせ、束縛の一部が欠けたBOMを`qualified:false`・`reference-fixture-only`として返す参照。BOMは常にこの上限を持ち、公開やVerified BOMとしての推奨をしない（#3267） |
 | [`reference-design-output/`](reference-design-output/) | 受理済みの意味から表・機能・対応一覧・DDL・静的HTML索引を一つのrevisionへ束縛して導出する参照。書式（markdown/text）を差し替えても意味の行を保ち、編集できる正本の位置と、宣言された利用／観測された副作用を別々に示す（#1803） |
 | [`reference-access-matrix/`](reference-access-matrix/) | Application × Dataの宣言された利用の対応表を導出する参照（#1803） |
 | [`reference-operation-pattern-crosswalk/`](reference-operation-pattern-crosswalk/) | 受理済みの意味から、宣言されたPatternと導出された標準操作を、Data ID・能力ID・Relation targetの三つの宣言だけで突き合わせる参照。一致は読み取りであり実行権限ではありません。一致しない宣言は operation-surface の gap 語彙で返し、既定値で埋めません（W3の設計候補を試すためのもの） |
 | [`reference-operation-drift-check/`](reference-operation-drift-check/) | 操作面を後から保存した照合値（WorldFingerprint・ModelRevision）と比べ、一致しなければ STALE_OPERATION_SURFACE を返す参照。Basis は persist 写像の値で属性追加では変わらないため比べません。未指定は unchecked として current と区別します。既定で有効にするかは未決のままです |
 | [`reference-plugin-capability-coverage/`](reference-plugin-capability-coverage/) | プラグインが宣言した能力のうち、どの環境のBindingからも選ばれていないものを一覧する参照。database-instanceは提供技術名を指すため、能力IDと文字列で比べず SupportsDatabaseProvider で解決します。選ばれていないことは欠陥の証明ではありません |
 | [`reference-plugin-selection-matrix/`](reference-plugin-selection-matrix/) | 環境のBinding（配備実行・状態観測・検証根拠・database instance・環境の機能・移行）ごとに、対応するプラグイン能力を既存の `Supports*` で一括して解決し、selected/missing/ambiguous を一覧する参照。ambiguous は解消せず両方を列挙します。診断の権限は internal/validation が持ちます |
+| [`reference-binding-to-execution/`](reference-binding-to-execution/) | 環境の deployment-executor Binding を既存の routing.RouteCommand で解決し、routing.Router.Dispatch で実行、routing.ValidateResult で照合する参照。Executor の registry は Host が渡し、参照は組み立てません。未登録の executor を指す Binding や結果の不一致は実行せず拒否します。実配備の成立は示しません |
+| [`reference-executor-id-resolution/`](reference-executor-id-resolution/) | 環境の deployment-executor Binding から executor の CapabilityID を routing.RouteCommand で解決し、pruntime.BuildPlan の plan がその ID を認めるか（EnvironmentPlan.Capability）と、能力が action を支えるか（SupportsAction）を順に確かめる参照。直書きの ID は比較用に並べるだけで解決に使わない。実行はしない |
+| [`reference-observation-router-connect/`](reference-observation-router-connect/) | ObservationProviders の宣言から observation.Binding で provider を解決し、既存の observation.Router で実際に入る参照。resolved（宣言から解決）・selected（Hostが登録）・invoked（providerのObserveに入った）を別々に数え、解決できたことを実行できたと読み替えない。Router も Provider も参照は組み立てず Host が渡す |
+| [`reference-evidence-router-connect/`](reference-evidence-router-connect/) | EvidenceProviders の宣言から evidence.Binding で provider を解決し、既存の evidence.Router で実際に入る参照。観測側と同じ4段を別々に数え、Collect が durable.ActionRecord を要求するため証拠ゲートでない記録は専用状態で拒否する。Router も Provider も参照は組み立てず Host が渡す |
+| [`reference-digest-change-reuse/`](reference-digest-change-reuse/) | Artifact digest が変わったとき旧いピン留めがどうなるかを、既存の generation.Router だけで確かめる参照（CON-12c）。変更後の新しい取得は新しい digest、変更前にピン留めした lease は古い digest のままであることを示す。Publish が同じ世代番号と contract 越えを拒否することも固定する。実配備の切替ではない |
+| [`reference-binding-guarded-executor/`](reference-binding-guarded-executor/) | 配備実行アダプタがEnvironmentを持たずBindingを照合できない問題への、呼出し側での対処を示す参照。routing.RouteCommandの解決結果と、要求したCapabilityIDを比較し、一致しなければアダプタへ渡す前に拒否する。アダプタは変更しない。NOT_MATCHED（Bindingが別のexecutorを選んでいる）が要点 |
+| [`reference-service-carrier-connect/`](reference-service-carrier-connect/) | 判断材料のC-2を試験の外で組み立てる参照。Hostが渡したCoordinator・Runtime registry・RouteSourceから BindHostApplicationEnvironmentRoute と NewSelectedServiceCarrierInvoker を順に呼び、ピン留めした世代でService要求を運びます。Routeが無い・別Binding用・入力不足は実行前に拒否します。実配備の成立は示しません |
 | [`reference-accounting-period/`](reference-accounting-period/) | 業務日付とシステム時刻を分け、期間の状態・締め済み期間の直接更新拒否・赤黒訂正・締め後の到着方針・順序鍵と版による再生・締め時点の照合値を判定する参照（#2144） |
 | [`reference-partial-import-plan/`](reference-partial-import-plan/) | 別Workspaceから選んだData定義の取込み結果を分類する読取り専用の参照（#1805） |
 | [`reference-table-definition-document/`](reference-table-definition-document/) | 受理済みの意味から表定義書を導出する参照（#1803） |
@@ -213,6 +240,7 @@
 | [`reference-semantic-mapping-check/`](reference-semantic-mapping-check/) | 意味の定義と物理項目の対応について、定義へ遡る道が一つか、未記入の要素、複数の定義に一致する要素、定義の追加で変わる要素の範囲を検査する参照。合成データのみで、実在のデータ辞書とは未接続（#2095） |
 | [`reference-semantic-extension-catalog/`](reference-semantic-extension-catalog/) | 意味拡張の登録・解決・検証 |
 | [`reference-subsystem-cud/`](reference-subsystem-cud/) | 部分システムの登録・参照・更新・削除の境界確認 |
+| [`reference-tei-eki-contract/`](reference-tei-eki-contract/) | TEIのJob・Flow設計がEKIのP0 OpenAPIで失う意味（`notBefore`・期限・effect_mode・資源制約など）を、実contractへの射影で検出する隔離した試験用の参照。実Provider・認可・実行層ではなく、外部contractの受理を示さない |
 | [`reference-sui-action-boundary/`](reference-sui-action-boundary/) | SUIの操作とTEI Actionの接続例 |
 | [`reference-sui-adoption/`](reference-sui-adoption/) | SUI移行の参照データと検査 |
 | [`reference-sui-interaction/`](reference-sui-interaction/) | 画面操作とApplication Actionの接続例 |
@@ -274,3 +302,5 @@
 R7Bの一回限りの準備・公開・後処理を行うスクリプトは、統合と対象ブランチの終了後に削除しました。現在の根拠確認や再現に使う検査・取得ツールは上の一覧に残しています。
 | [`reference-self-build-two-stage/`](reference-self-build-two-stage/) | stage1で作った実行ファイルをstage2のinvokerとして実起動し、invoker一致・同一レシピ・artifact一致を別々に判定する。Seed Trust・受入・権限は扱わない（#2831 SB-C1） |
 | [`reference-harness-wire-summary/`](reference-harness-wire-summary/) | 外部AIハーネスがMock Providerへ送ったHTTP要求bodyを、モデル入力と拡張field（`dsh_session_log`）を別欄で要約する参照。bodyのbyte数・SHA-256・最上位キー・event種別・水位・合成markerの出現位置を出し、既存の出力を上書きしない。送出の許可・実OS隔離・Provider側の保存は判定しない（#2515 P0-b / #2509） |
+| [`reference-harness-answer-presence/`](reference-harness-answer-presence/) | 外部Harnessの回答が、同じ実行物のCLI応答に現れた事実（属性ID・型・記号、関係、Source path・digest、World指紋、診断コード）を含むかを機械的に確かめる参照。正答の採点はせず、Reviewer-onlyの独立Expectedを置き換えない（#2509 / TAI #168） |
+

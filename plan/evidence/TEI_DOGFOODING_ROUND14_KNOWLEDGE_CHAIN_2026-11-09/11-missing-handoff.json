@@ -1,0 +1,8 @@
+{
+  "schemaVersion": "tei.cli.knowledge-review-disclose/v0",
+  "ok": false,
+  "error": {
+    "code": "KNOWLEDGE_BUILD_FAILED",
+    "message": "open /no/such/handoff.json: no such file or directory"
+  }
+}

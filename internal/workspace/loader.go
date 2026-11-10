@@ -60,6 +60,9 @@ type Result struct {
 	sourceSnapshotRoot  string
 	sourceSnapshot      map[string][]byte
 	semanticSourceFiles []string
+
+	// Locally parsed Semantic Source files, grouped by their declared Namespace.
+	semanticFilesByNamespace map[string][]string
 	// Load-time bytes of managed files that no domain loader parsed (for
 	// example a forward-compatible source root asset). Kept separate from
 	// sourceSnapshot so the parser-bound meaning of that map, and of
@@ -72,6 +75,13 @@ type Result struct {
 	sourceManifest        ManifestIdentity
 	sourceManifestName    string
 	sourceImportsDeclared bool
+
+	// Original manifest bytes captured by Load; separate from Source Index.
+	sourceManifestBytes *manifestReadBytes
+
+	// Same-Load parsed evidence of explicitly selected external Namespaces.
+	// This private evidence does not grant cross-Provider snapshot qualification.
+	importedParsedLoads map[string]*importedParsedLoad
 	// Format version declared by the Workspace manifest. Semantic files may
 	// declare their own header; when they do, it must agree with this value.
 	manifestFormatVersion int
@@ -173,6 +183,7 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 	var roots []string
 	var imports []WorkspaceImport
 	var manifestID ManifestIdentity
+	var manifestRaw []byte
 	manifestName := ""
 	manifestFormatVersion := 0
 	if src, err := readPinnedWorkspaceFile(sourceRoot, "tei.workspace.yaml"); err == nil {
@@ -199,8 +210,10 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 		manifestName = manifest.Name
 		roots, imports = manifest.Sources, manifest.Imports
 		manifestID = ManifestIdentity{Path: "tei.workspace.yaml", SHA256: sourceindex.Fingerprint(src)}
+		manifestRaw = append([]byte(nil), src...)
 	} else if src, legacyErr := readPinnedWorkspaceFile(sourceRoot, "tei.workspace.tei"); legacyErr == nil {
 		manifestID = ManifestIdentity{Path: "tei.workspace.tei", SHA256: sourceindex.Fingerprint(src)}
+		manifestRaw = append([]byte(nil), src...)
 		var parseErr error
 		manifestName, roots, parseErr = syntax.NewParser(string(src)).ParseWorkspace()
 		if parseErr != nil {
@@ -218,6 +231,12 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 	// as a finding.
 	managedFiles, err := scanManagedFiles(sourceRoot, roots)
 	if err != nil {
+		return Result{}, err
+	}
+	// .tei.md is the intended TEI authoring suffix, but this loader still
+	// dispatches native declarations from .tei. Fail closed until an exact
+	// language/parser binding can consume .tei.md and preserve its provenance.
+	if err := rejectUnboundTEIMarkdownSources(managedFiles); err != nil {
 		return Result{}, err
 	}
 	// Classify declared roots after the physical boundary is verified, so a
@@ -243,6 +262,7 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 		sourceImportsDeclared:       len(imports) > 0,
 		manifestFormatVersion:       manifestFormatVersion,
 	}
+	r.sourceManifestBytes = &manifestReadBytes{content: manifestRaw}
 	// TEI standard semantic types are a library prelude, not Micro Kernel kinds.
 	r.World.Semantics = append(r.World.Semantics, stdlib.SemanticNamespace())
 	if hooks.afterPin != nil {
@@ -561,7 +581,16 @@ func loadSemantics(root string, r *Result) error {
 		return err
 	}
 
+	// Seed the index with namespaces already in the World, which includes the
+	// in-process prelude. A Workspace may add a type to `std` (for example
+	// `type email from std.text`); that declaration joins the prelude
+	// namespace instead of creating a second `std`, which validate reported as
+	// DUPLICATE_SEMANTIC_NAMESPACE and left the declaration invisible to
+	// declarationCounts (#3851).
 	byNamespace := map[core.CanonicalID]int{}
+	for i, existing := range r.World.Semantics {
+		byNamespace[existing.ID] = i
+	}
 	for _, path := range files {
 		src, err := readSourceForLoad(root, r, path)
 		if err != nil {
@@ -584,6 +613,11 @@ func loadSemantics(root string, r *Result) error {
 			return sourceErr(path, fmt.Errorf("workspace formatVersion 2 requires an explicit semantic formatVersion header"))
 		}
 		r.semanticSourceFiles = append(r.semanticSourceFiles, relPath(root, path))
+		if r.semanticFilesByNamespace == nil {
+			r.semanticFilesByNamespace = make(map[string][]string)
+		}
+		r.semanticFilesByNamespace[string(ns.ID)] = append(
+			r.semanticFilesByNamespace[string(ns.ID)], relPath(root, path))
 		idx, ok := byNamespace[ns.ID]
 		if !ok {
 			idx = len(r.World.Semantics)

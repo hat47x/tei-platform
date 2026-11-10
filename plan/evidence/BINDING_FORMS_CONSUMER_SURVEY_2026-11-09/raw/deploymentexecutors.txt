@@ -1,0 +1,7 @@
+== deployment executor (Environment.DeploymentExecutors) ==
+  internal/deployment/routing/executor.go:26:	for _, b := range env.DeploymentExecutors {
+  internal/index/index.go:452:		for _, b := range e.DeploymentExecutors {
+  internal/syntax/parser.go:526:			e.DeploymentExecutors = append(e.DeploymentExecutors, binding)
+  internal/validation/validation.go:997:		for _, b := range e.DeploymentExecutors {
+  tools/reference-plugin-capability-coverage/coverage.go:206:		for _, binding := range env.DeploymentExecutors {
+  tools/reference-plugin-selection-matrix/matrix.go:117:		for _, binding := range env.DeploymentExecutors {

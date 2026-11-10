@@ -40,7 +40,12 @@ func (a DeploymentExecutor) Execute(ctx context.Context, c executor.Command) (ex
 	if err := json.Unmarshal(inv.Response.Payload, &out); err != nil {
 		return out, err
 	}
-	out.ExecutorID = string(a.CapabilityID)
+	// Only fill an identity the executor left empty. Overwriting ExecutorID here
+	// would hide an executor that names a different one, and routing.ValidateResult
+	// compares exactly this field.
+	if out.ExecutorID == "" {
+		out.ExecutorID = string(a.CapabilityID)
+	}
 	if out.ActionID == "" {
 		out.ActionID = c.ActionID
 	}
@@ -82,8 +87,25 @@ func (a ObservationProvider) Observe(ctx context.Context, req observation.Reques
 	if err := json.Unmarshal(resp.Payload, &out); err != nil {
 		return out, err
 	}
-	out.ProviderID = a.CapabilityID
-	return out, nil
+	return completeObservedFragment(out, req, a.CapabilityID), nil
+}
+
+// completeObservedFragment fills only the identity fields the provider left
+// empty. Overwriting a provider's own identity here would hide a provider that
+// names a different one, and the Router's identity check would then never fire.
+func completeObservedFragment(
+	out observation.Fragment, req observation.Request, providerID core.CanonicalID,
+) observation.Fragment {
+	if out.ProviderID == "" {
+		out.ProviderID = providerID
+	}
+	if out.Environment == "" {
+		out.Environment = req.Environment
+	}
+	if out.Kind == "" {
+		out.Kind = req.Kind
+	}
+	return out
 }
 
 type EvidenceProvider struct {
@@ -109,11 +131,19 @@ func (a EvidenceProvider) Collect(ctx context.Context, req evidence.Request) (du
 	if err := json.Unmarshal(resp.Payload, &out); err != nil {
 		return out, err
 	}
+	return completeCollectedEvidence(out, req), nil
+}
+
+// completeCollectedEvidence fills only the identity fields the provider left
+// empty, for the same reason as completeObservedFragment.
+func completeCollectedEvidence(
+	out durable.Evidence, req evidence.Request,
+) durable.Evidence {
 	if out.ActionID == "" {
 		out.ActionID = req.ActionID
 	}
 	if out.Kind == "" {
 		out.Kind = req.Kind
 	}
-	return out, nil
+	return out
 }

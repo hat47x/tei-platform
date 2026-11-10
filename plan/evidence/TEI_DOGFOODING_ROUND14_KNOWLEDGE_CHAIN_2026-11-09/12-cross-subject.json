@@ -1,0 +1,8 @@
+{
+  "schemaVersion": "tei.cli.knowledge-review-disclose/v0",
+  "ok": false,
+  "error": {
+    "code": "KNOWLEDGE_BUILD_FAILED",
+    "message": "builder review disclosure subject mismatch: handoff=semantic-data:sales.order context=semantic-data:sales.order_line"
+  }
+}

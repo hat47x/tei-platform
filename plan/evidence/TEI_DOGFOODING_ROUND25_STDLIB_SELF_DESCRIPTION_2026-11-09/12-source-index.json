@@ -1,0 +1,2409 @@
+{
+  "schemaVersion": "tei.cli.source-index/v0",
+  "ok": true,
+  "mode": "index",
+  "result": {
+    "artifacts": [
+      {
+        "path": "applications/order-entry/application.tei",
+        "format": "tei",
+        "fingerprint": "sha256:42e74678bc22bbbe8f85333f96f8c83859f0e144b2d3dfc68c555c9dca981e5f"
+      },
+      {
+        "path": "applications/order-entry/patterns/customer-reference.tei",
+        "format": "tei",
+        "fingerprint": "sha256:ae17bb1078c0a27ceeb20a5ece20431d98bee403c28fe7bc468643691263ef21"
+      },
+      {
+        "path": "applications/order-entry/patterns/order-lines.tei",
+        "format": "tei",
+        "fingerprint": "sha256:f9cfb64c609c4ec3e16ca5aef11b037e5535b4a6c72026c157109d128a569d26"
+      },
+      {
+        "path": "applications/order-entry/patterns/order-record.tei",
+        "format": "tei",
+        "fingerprint": "sha256:699f13c6f2b38523d8b32d2f67756d91b00f67b90d55d53b7ce1575a3d80e795"
+      },
+      {
+        "path": "applications/order-entry/patterns/recent-orders.tei",
+        "format": "tei",
+        "fingerprint": "sha256:6e4d26e8e4045f562d3bee2a76458bb0d697964d4a2d09334d1005412ba6fcb2"
+      },
+      {
+        "path": "applications/order-entry/patterns/submit-order.tei",
+        "format": "tei",
+        "fingerprint": "sha256:64ff7cb75088e7a45a338ce3fb6fa0b68106f2ef992fed5e8e7186434f3b6abe"
+      },
+      {
+        "path": "applications/order-entry/queries/recent_orders.sql",
+        "format": "sql",
+        "fingerprint": "sha256:cddfef94c36449a5a063ba0a12f7b58982eb02cba1c006430767fd60f882fbba"
+      },
+      {
+        "path": "applications/order-entry/queries/recent_orders.tei",
+        "format": "tei",
+        "fingerprint": "sha256:a7c1c4f6fc55bf93ba775c444c1b2576cc2e979e4e0d93aeeecbe508c61fe3ac"
+      },
+      {
+        "path": "applications/order-entry/realizations/authenticate.tei",
+        "format": "tei",
+        "fingerprint": "sha256:9c6f6b4a67a9d25207d5e10a5801fe94020d2d8ad77c40b5230e62af2bc5745a"
+      },
+      {
+        "path": "applications/order-entry/realizations/authorize.tei",
+        "format": "tei",
+        "fingerprint": "sha256:81619991acd746e8c710d7345fb69fe3d14d45d24c05d068a35ae886436f31fb"
+      },
+      {
+        "path": "applications/order-entry/realizations/default.tei",
+        "format": "tei",
+        "fingerprint": "sha256:583c1d3c75d6d53039f8e6cbfd325fcf9baf4ad0b6d80217c12c99761d25086e"
+      },
+      {
+        "path": "applications/order-entry/realizations/header-detail/order-lines.tei",
+        "format": "tei",
+        "fingerprint": "sha256:08d5de0de5e92a61a7c63f06576e9a4c54f02e71cedaf2089842f8c04f086534"
+      },
+      {
+        "path": "applications/order-entry/realizations/submit-order.tei",
+        "format": "tei",
+        "fingerprint": "sha256:a431253449bf508c095fa731d88621a21447d15fe2b659c17544a9507ded51be"
+      },
+      {
+        "path": "applications/repair-intake/application.tei",
+        "format": "tei",
+        "fingerprint": "sha256:902a2d0346d84db34f8513650bd19b31fa484a11df2ace57c0fadc21a5addfbb"
+      },
+      {
+        "path": "applications/repair-intake/patterns/customer-reference.tei",
+        "format": "tei",
+        "fingerprint": "sha256:9c20d2661195b466fb978d8c7e726b384e03870a27d159c43baa458174d24d4d"
+      },
+      {
+        "path": "bundles/tei-reference-providers/1.0.0/bundle.tei",
+        "format": "tei",
+        "fingerprint": "sha256:aee872f5041d01486f068dcb6d1ccece3caff74cc043cdaf3ae0c390a8597518"
+      },
+      {
+        "path": "databases/master-data/contracts/customer.tei",
+        "format": "tei",
+        "fingerprint": "sha256:bfbc0ed04d258fa05e254dc6b0c6a9779069e98d4f93511d0f062631ddb5fc15"
+      },
+      {
+        "path": "databases/master-data/database.tei",
+        "format": "tei",
+        "fingerprint": "sha256:6330cd54eaac59a26f70071c247f56ec5b97f937967234f3a01aea62b7b1ed4f"
+      },
+      {
+        "path": "databases/sales-core/README.md",
+        "format": "md",
+        "fingerprint": "sha256:e830c02d59f187498cfe2fb95fd8f094a1a3a1ac5b5f2c0302750832484e4237"
+      },
+      {
+        "path": "databases/sales-core/contracts/order-line.tei",
+        "format": "tei",
+        "fingerprint": "sha256:d9f6805033885b9652fbb7ceb6eaa68453c79d08d93e1761c6e66be85569a676"
+      },
+      {
+        "path": "databases/sales-core/contracts/order.tei",
+        "format": "tei",
+        "fingerprint": "sha256:52b6b09ada6de8ac702a12e2ab63e7f261f9ed9fc6b23e09230a8be942ac73fc"
+      },
+      {
+        "path": "databases/sales-core/database.tei",
+        "format": "tei",
+        "fingerprint": "sha256:c8c5b5937facd0716f4ef29f0c13f89424b32a513ea904418a3df0379ca4b22e"
+      },
+      {
+        "path": "databases/sales-core/migration-provider.tei",
+        "format": "tei",
+        "fingerprint": "sha256:a721cce5d6a1d7e1a399aafaf679113e55b7240eec2888d689d9a382d68b5530"
+      },
+      {
+        "path": "databases/sales-core/migrations/20260826_001/migration.tei",
+        "format": "tei",
+        "fingerprint": "sha256:f63df3a70d44a91669660abcda4dac1f95c5b33b96f393f83114e1661665f51c"
+      },
+      {
+        "path": "databases/sales-core/persistence/order-line.tei",
+        "format": "tei",
+        "fingerprint": "sha256:1ad445fb702fb04f476ec5b534d38d1b89fc1338f7cd8f4c1fc888107f62109e"
+      },
+      {
+        "path": "databases/sales-core/persistence/order.tei",
+        "format": "tei",
+        "fingerprint": "sha256:638e77f53b5c5bc57f9f32e38e251d93924a70d2b423152fb7b61fbba98f0b41"
+      },
+      {
+        "path": "databases/sales-core/query-realizations/order-line-find-by-order.sql",
+        "format": "sql",
+        "fingerprint": "sha256:e1c3aefeffb18c2dad657d5ab07487d0d0b2ae9af1b3ac81626f4e55f966bba8"
+      },
+      {
+        "path": "databases/sales-core/query-realizations/order-line-find-by-order.tei",
+        "format": "tei",
+        "fingerprint": "sha256:9d679c8794b08d2f38ae7e3b08a836491a47853760d1728611d67fae5453159c"
+      },
+      {
+        "path": "databases/sales-core/relation-storage/order-line.tei",
+        "format": "tei",
+        "fingerprint": "sha256:73dad1e8386474afb3d57c3ae9ebc573394bed8fdf404dd428416f1c7884cf97"
+      },
+      {
+        "path": "environments/development/contract-query-executors/customer-find-by-id.tei",
+        "format": "tei",
+        "fingerprint": "sha256:efe7332b8fe24fdb39824fd02b406f244739a5d1faaf20d615460a7fabfb0988"
+      },
+      {
+        "path": "environments/development/contract-query-executors/order-line-find-by-order.tei",
+        "format": "tei",
+        "fingerprint": "sha256:c5d585a5298a58a7e475bd43d59e6e4ecdf80d5ac1d82abe38ac5502d5a598fd"
+      },
+      {
+        "path": "environments/development/environment.tei",
+        "format": "tei",
+        "fingerprint": "sha256:a98973255180395d611b670aac3eef36d28ca0a7c177b4bc3d287bf5ef2646a3"
+      },
+      {
+        "path": "environments/production/environment.tei",
+        "format": "tei",
+        "fingerprint": "sha256:1e9f9c614880fd6d57b460124c6034121708f8c96e7a4102f7be9eec797f3b54"
+      },
+      {
+        "path": "plugins/tei-database-observer-reference/1.0.0/plugin.tei",
+        "format": "tei",
+        "fingerprint": "sha256:4295265c96c970aaee86a6ec4905caffc34edeafb806a7e342fd1e08084e5505"
+      },
+      {
+        "path": "plugins/tei-database-oracle/1.0.0/plugin.tei",
+        "format": "tei",
+        "fingerprint": "sha256:5566779c09d010111ce5bdaaa4dee5828f1fbc1b843f8181c55b14f02a8f8fcb"
+      },
+      {
+        "path": "plugins/tei-database-postgres/1.0.0/plugin.tei",
+        "format": "tei",
+        "fingerprint": "sha256:25743e6bcfae18cca658de1d7863f7b010385fd99c11492fb4d47d6a6a9eba49"
+      },
+      {
+        "path": "plugins/tei-editor-intelligence-sql/1.0.0/plugin.tei",
+        "format": "tei",
+        "fingerprint": "sha256:2032533f81c87743c4de29adabade31a89324737a7adb831a50634f4cff82310"
+      },
+      {
+        "path": "plugins/tei-health-reference/1.0.0/plugin.tei",
+        "format": "tei",
+        "fingerprint": "sha256:0e0caacda31e6fc1f6964047b77625849ecb95127b813551a403801ef00a2ba3"
+      },
+      {
+        "path": "plugins/tei-migration-atlas/1.0.0/plugin.tei",
+        "format": "tei",
+        "fingerprint": "sha256:cff23fc01ab675ba68337e631745fd38889e0437a8e42f4875c8b9d65fa7406d"
+      },
+      {
+        "path": "plugins/tei-runtime-reference/1.0.0/plugin.tei",
+        "format": "tei",
+        "fingerprint": "sha256:94a9c62adbe9020675dbbf27b6e0bdf24d28d05f79b1e2ac168e1f4579ed9dac"
+      },
+      {
+        "path": "plugins/tei-traffic-reference/1.0.0/plugin.tei",
+        "format": "tei",
+        "fingerprint": "sha256:8e53fdd05612f68110634f4d65c7cc36e5ca98368512400446a961d34f50ed95"
+      },
+      {
+        "path": "releases/applications/order-entry/3.7.0.tei",
+        "format": "tei",
+        "fingerprint": "sha256:436fb34036932e763008d39de11b364802deab54c1fe14070ff76e85539704ce"
+      },
+      {
+        "path": "releases/applications/order-entry/3.8.0.tei",
+        "format": "tei",
+        "fingerprint": "sha256:9ecc4b21f91b2c18c2585d4c7a839772f2bcb13634cefe9f70afc86ff62d1974"
+      },
+      {
+        "path": "releases/databases/sales-core/4.0.0.tei",
+        "format": "tei",
+        "fingerprint": "sha256:6b06c9951d0d4e4838dd5a09cc8e517012e5a9d9a999002a9f124fe0823269e6"
+      },
+      {
+        "path": "releases/databases/sales-core/4.1.0.tei",
+        "format": "tei",
+        "fingerprint": "sha256:734cc5ef4bee2d959d1207a17f743750f1bd2a7414d84d26885c0b3b4f897107"
+      },
+      {
+        "path": "releases/databases/sales-core/4.2.0.tei",
+        "format": "tei",
+        "fingerprint": "sha256:47d4b2781da6b742be2193e58a9611d631481c3a29d43fa7083a6cb9e030457a"
+      },
+      {
+        "path": "releases/solutions/order-rollout-fix/2026.8.28.tei",
+        "format": "tei",
+        "fingerprint": "sha256:4b506202daca6a21cdfe8fedf5bb2a20e5fc67e881819779a0de7f0adf2fc414"
+      },
+      {
+        "path": "releases/solutions/order-rollout/2026.8.27.tei",
+        "format": "tei",
+        "fingerprint": "sha256:46344a17de03b7e86410dd58a03d605989894b944b97bdc6423b50a3efe8c314"
+      },
+      {
+        "path": "semantic/customer/customer.tei",
+        "format": "tei",
+        "fingerprint": "sha256:d0897ed9ac8ce7e01200b05285e445fa57fa402abd0725542c7cf7ebfa0ad23b"
+      },
+      {
+        "path": "semantic/repair-intake/intake.tei",
+        "format": "tei",
+        "fingerprint": "sha256:8f94abda01ec4a0d1c8c6dcb7adc858441bf137223fef9c2f29fc893894ebdb7"
+      },
+      {
+        "path": "semantic/sales/order.tei",
+        "format": "tei",
+        "fingerprint": "sha256:f2063418b893a60a9f948edbb2b23ec821f7a15ed8e5863c36e1b72abade1e33"
+      },
+      {
+        "path": "semantic/sales/validation.tei",
+        "format": "tei",
+        "fingerprint": "sha256:396c37c4cace1d91b8f6e35fd31d69eb1d45e7ff525ade5e97d808189024de40"
+      },
+      {
+        "path": "semantic/security/authentication.tei",
+        "format": "tei",
+        "fingerprint": "sha256:07abff31c8f4a8d621c105b1b4e2787f2fecd134b594f231f2032dd44f3bcc09"
+      },
+      {
+        "path": "semantic/security/authorization.tei",
+        "format": "tei",
+        "fingerprint": "sha256:818b28d34ef48485b12a751aafc1c6e6223e79fb63f0ee3bb226c8d113344844"
+      }
+    ],
+    "references": [
+      {
+        "subject": {
+          "kind": "application",
+          "id": "order_entry"
+        },
+        "artifactPath": "applications/order-entry/application.tei",
+        "range": {
+          "start": {
+            "offset": 12,
+            "line": 1,
+            "column": 13
+          },
+          "end": {
+            "offset": 23,
+            "line": 1,
+            "column": 24
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "application",
+          "id": "repair_intake"
+        },
+        "artifactPath": "applications/repair-intake/application.tei",
+        "range": {
+          "start": {
+            "offset": 12,
+            "line": 1,
+            "column": 13
+          },
+          "end": {
+            "offset": 25,
+            "line": 1,
+            "column": 26
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "application-pattern",
+          "id": "order_entry.customer_reference"
+        },
+        "artifactPath": "applications/order-entry/patterns/customer-reference.tei",
+        "range": {
+          "start": {
+            "offset": 8,
+            "line": 1,
+            "column": 9
+          },
+          "end": {
+            "offset": 38,
+            "line": 1,
+            "column": 39
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "application-pattern",
+          "id": "order_entry.order_lines"
+        },
+        "artifactPath": "applications/order-entry/patterns/order-lines.tei",
+        "range": {
+          "start": {
+            "offset": 8,
+            "line": 1,
+            "column": 9
+          },
+          "end": {
+            "offset": 31,
+            "line": 1,
+            "column": 32
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "application-pattern",
+          "id": "order_entry.order_record"
+        },
+        "artifactPath": "applications/order-entry/patterns/order-record.tei",
+        "range": {
+          "start": {
+            "offset": 8,
+            "line": 1,
+            "column": 9
+          },
+          "end": {
+            "offset": 32,
+            "line": 1,
+            "column": 33
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "application-pattern",
+          "id": "order_entry.recent_orders"
+        },
+        "artifactPath": "applications/order-entry/patterns/recent-orders.tei",
+        "range": {
+          "start": {
+            "offset": 8,
+            "line": 1,
+            "column": 9
+          },
+          "end": {
+            "offset": 33,
+            "line": 1,
+            "column": 34
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "application-pattern",
+          "id": "order_entry.submit_order"
+        },
+        "artifactPath": "applications/order-entry/patterns/submit-order.tei",
+        "range": {
+          "start": {
+            "offset": 8,
+            "line": 1,
+            "column": 9
+          },
+          "end": {
+            "offset": 32,
+            "line": 1,
+            "column": 33
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "application-pattern",
+          "id": "repair_intake.customer_reference"
+        },
+        "artifactPath": "applications/repair-intake/patterns/customer-reference.tei",
+        "range": {
+          "start": {
+            "offset": 8,
+            "line": 1,
+            "column": 9
+          },
+          "end": {
+            "offset": 40,
+            "line": 1,
+            "column": 41
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "application-release",
+          "id": "order_entry/3.7.0"
+        },
+        "artifactPath": "releases/applications/order-entry/3.7.0.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "application-release",
+          "id": "order_entry/3.8.0"
+        },
+        "artifactPath": "releases/applications/order-entry/3.8.0.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "binding",
+          "id": "order_entry/order_entry.compose_order_summary"
+        },
+        "artifactPath": "applications/order-entry/realizations/default.tei",
+        "range": {
+          "start": {
+            "offset": 8,
+            "line": 1,
+            "column": 9
+          },
+          "end": {
+            "offset": 41,
+            "line": 1,
+            "column": 42
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "binding",
+          "id": "order_entry/sales.order.submit"
+        },
+        "artifactPath": "applications/order-entry/realizations/submit-order.tei",
+        "range": {
+          "start": {
+            "offset": 8,
+            "line": 1,
+            "column": 9
+          },
+          "end": {
+            "offset": 26,
+            "line": 1,
+            "column": 27
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "binding",
+          "id": "order_entry/security.authenticate"
+        },
+        "artifactPath": "applications/order-entry/realizations/authenticate.tei",
+        "range": {
+          "start": {
+            "offset": 8,
+            "line": 1,
+            "column": 9
+          },
+          "end": {
+            "offset": 29,
+            "line": 1,
+            "column": 30
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "binding",
+          "id": "order_entry/security.authorize"
+        },
+        "artifactPath": "applications/order-entry/realizations/authorize.tei",
+        "range": {
+          "start": {
+            "offset": 8,
+            "line": 1,
+            "column": 9
+          },
+          "end": {
+            "offset": 26,
+            "line": 1,
+            "column": 27
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "bundle",
+          "id": "tei.reference.providers@1.0.0"
+        },
+        "artifactPath": "bundles/tei-reference-providers/1.0.0/bundle.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "contract-query-executor-binding",
+          "id": "development/master_data.dev/master_data/master_data.customer/find_by_id"
+        },
+        "artifactPath": "environments/development/contract-query-executors/customer-find-by-id.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 208,
+            "line": 9,
+            "column": 1
+          }
+        },
+        "role": "authoring"
+      },
+      {
+        "subject": {
+          "kind": "contract-query-executor-binding",
+          "id": "development/master_data.dev/master_data/master_data.customer/find_by_id"
+        },
+        "artifactPath": "environments/development/contract-query-executors/customer-find-by-id.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "contract-query-executor-binding",
+          "id": "development/sales_core.dev/sales_core/sales_core.order_line/find_by_order"
+        },
+        "artifactPath": "environments/development/contract-query-executors/order-line-find-by-order.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 212,
+            "line": 9,
+            "column": 1
+          }
+        },
+        "role": "authoring"
+      },
+      {
+        "subject": {
+          "kind": "contract-query-executor-binding",
+          "id": "development/sales_core.dev/sales_core/sales_core.order_line/find_by_order"
+        },
+        "artifactPath": "environments/development/contract-query-executors/order-line-find-by-order.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "contract-query-sql-realization",
+          "id": "sales_core/sales_core.order_line/find_by_order/sql/postgres"
+        },
+        "artifactPath": "databases/sales-core/query-realizations/order-line-find-by-order.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 508,
+            "line": 15,
+            "column": 1
+          }
+        },
+        "role": "authoring"
+      },
+      {
+        "subject": {
+          "kind": "contract-query-sql-realization",
+          "id": "sales_core/sales_core.order_line/find_by_order/sql/postgres"
+        },
+        "artifactPath": "databases/sales-core/query-realizations/order-line-find-by-order.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "contract-query-sql-realization",
+          "id": "sales_core/sales_core.order_line/find_by_order/sql/postgres"
+        },
+        "artifactPath": "databases/sales-core/query-realizations/order-line-find-by-order.sql",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 175,
+            "line": 10,
+            "column": 1
+          }
+        },
+        "role": "implementation"
+      },
+      {
+        "subject": {
+          "kind": "database",
+          "id": "master_data"
+        },
+        "artifactPath": "databases/master-data/database.tei",
+        "range": {
+          "start": {
+            "offset": 9,
+            "line": 1,
+            "column": 10
+          },
+          "end": {
+            "offset": 20,
+            "line": 1,
+            "column": 21
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "database",
+          "id": "sales_core"
+        },
+        "artifactPath": "databases/sales-core/database.tei",
+        "range": {
+          "start": {
+            "offset": 9,
+            "line": 1,
+            "column": 10
+          },
+          "end": {
+            "offset": 19,
+            "line": 1,
+            "column": 20
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "database-contract",
+          "id": "master_data.customer"
+        },
+        "artifactPath": "databases/master-data/contracts/customer.tei",
+        "range": {
+          "start": {
+            "offset": 9,
+            "line": 1,
+            "column": 10
+          },
+          "end": {
+            "offset": 29,
+            "line": 1,
+            "column": 30
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "database-contract",
+          "id": "sales_core.order"
+        },
+        "artifactPath": "databases/sales-core/contracts/order.tei",
+        "range": {
+          "start": {
+            "offset": 9,
+            "line": 1,
+            "column": 10
+          },
+          "end": {
+            "offset": 25,
+            "line": 1,
+            "column": 26
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "database-contract",
+          "id": "sales_core.order_line"
+        },
+        "artifactPath": "databases/sales-core/contracts/order-line.tei",
+        "range": {
+          "start": {
+            "offset": 9,
+            "line": 1,
+            "column": 10
+          },
+          "end": {
+            "offset": 30,
+            "line": 1,
+            "column": 31
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "database-contract-query",
+          "id": "master_data.customer/find_by_id"
+        },
+        "artifactPath": "databases/master-data/contracts/customer.tei",
+        "range": {
+          "start": {
+            "offset": 74,
+            "line": 3,
+            "column": 11
+          },
+          "end": {
+            "offset": 84,
+            "line": 3,
+            "column": 21
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "database-contract-query",
+          "id": "sales_core.order/find_by_id"
+        },
+        "artifactPath": "databases/sales-core/contracts/order.tei",
+        "range": {
+          "start": {
+            "offset": 93,
+            "line": 4,
+            "column": 11
+          },
+          "end": {
+            "offset": 103,
+            "line": 4,
+            "column": 21
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "database-contract-query",
+          "id": "sales_core.order_line/find_by_order"
+        },
+        "artifactPath": "databases/sales-core/contracts/order-line.tei",
+        "range": {
+          "start": {
+            "offset": 74,
+            "line": 3,
+            "column": 11
+          },
+          "end": {
+            "offset": 87,
+            "line": 3,
+            "column": 24
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "database-release",
+          "id": "sales_core/4.0.0"
+        },
+        "artifactPath": "releases/databases/sales-core/4.0.0.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "database-release",
+          "id": "sales_core/4.1.0"
+        },
+        "artifactPath": "releases/databases/sales-core/4.1.0.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "database-release",
+          "id": "sales_core/4.2.0"
+        },
+        "artifactPath": "releases/databases/sales-core/4.2.0.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "environment",
+          "id": "development"
+        },
+        "artifactPath": "environments/development/environment.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "environment",
+          "id": "production"
+        },
+        "artifactPath": "environments/production/environment.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "header-detail-contract-query-binding",
+          "id": "order_entry/order_entry.order_lines"
+        },
+        "artifactPath": "applications/order-entry/realizations/header-detail/order-lines.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 252,
+            "line": 10,
+            "column": 1
+          }
+        },
+        "role": "authoring"
+      },
+      {
+        "subject": {
+          "kind": "header-detail-contract-query-binding",
+          "id": "order_entry/order_entry.order_lines"
+        },
+        "artifactPath": "applications/order-entry/realizations/header-detail/order-lines.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "migration",
+          "id": "sales_core/20260826_001"
+        },
+        "artifactPath": "databases/sales-core/migrations/20260826_001/migration.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "migration-provider",
+          "id": "sales_core"
+        },
+        "artifactPath": "databases/sales-core/migration-provider.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "persistence",
+          "id": "sales_core.order"
+        },
+        "artifactPath": "databases/sales-core/persistence/order.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "persistence",
+          "id": "sales_core.order_line"
+        },
+        "artifactPath": "databases/sales-core/persistence/order-line.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "persistence-index",
+          "id": "sales_core.order/orders_customer_idx"
+        },
+        "artifactPath": "databases/sales-core/persistence/order.tei",
+        "range": {
+          "start": {
+            "offset": 576,
+            "line": 14,
+            "column": 11
+          },
+          "end": {
+            "offset": 595,
+            "line": 14,
+            "column": 30
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "persistence-relation-storage",
+          "id": "sales_core.order_line/sales.order.lines"
+        },
+        "artifactPath": "databases/sales-core/relation-storage/order-line.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 144,
+            "line": 5,
+            "column": 1
+          }
+        },
+        "role": "authoring"
+      },
+      {
+        "subject": {
+          "kind": "persistence-relation-storage",
+          "id": "sales_core.order_line/sales.order.lines"
+        },
+        "artifactPath": "databases/sales-core/relation-storage/order-line.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "plugin",
+          "id": "tei.database.observer.reference@1.0.0"
+        },
+        "artifactPath": "plugins/tei-database-observer-reference/1.0.0/plugin.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "plugin",
+          "id": "tei.database.oracle@1.0.0"
+        },
+        "artifactPath": "plugins/tei-database-oracle/1.0.0/plugin.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "plugin",
+          "id": "tei.database.postgres@1.0.0"
+        },
+        "artifactPath": "plugins/tei-database-postgres/1.0.0/plugin.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "plugin",
+          "id": "tei.editor.intelligence.sql@1.0.0"
+        },
+        "artifactPath": "plugins/tei-editor-intelligence-sql/1.0.0/plugin.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "plugin",
+          "id": "tei.health.reference@1.0.0"
+        },
+        "artifactPath": "plugins/tei-health-reference/1.0.0/plugin.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "plugin",
+          "id": "tei.migration.atlas@1.0.0"
+        },
+        "artifactPath": "plugins/tei-migration-atlas/1.0.0/plugin.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "plugin",
+          "id": "tei.runtime.reference@1.0.0"
+        },
+        "artifactPath": "plugins/tei-runtime-reference/1.0.0/plugin.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "plugin",
+          "id": "tei.traffic.reference@1.0.0"
+        },
+        "artifactPath": "plugins/tei-traffic-reference/1.0.0/plugin.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "query",
+          "id": "order_entry.recent_orders"
+        },
+        "artifactPath": "applications/order-entry/queries/recent_orders.sql",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 236,
+            "line": 10,
+            "column": 1
+          }
+        },
+        "role": "authoring"
+      },
+      {
+        "subject": {
+          "kind": "query",
+          "id": "order_entry.recent_orders"
+        },
+        "artifactPath": "applications/order-entry/queries/recent_orders.tei",
+        "range": {
+          "start": {
+            "offset": 6,
+            "line": 1,
+            "column": 7
+          },
+          "end": {
+            "offset": 31,
+            "line": 1,
+            "column": 32
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic",
+          "id": "customer"
+        },
+        "artifactPath": "semantic/customer/customer.tei",
+        "range": {
+          "start": {
+            "offset": 10,
+            "line": 1,
+            "column": 11
+          },
+          "end": {
+            "offset": 18,
+            "line": 1,
+            "column": 19
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic",
+          "id": "repair_intake"
+        },
+        "artifactPath": "semantic/repair-intake/intake.tei",
+        "range": {
+          "start": {
+            "offset": 10,
+            "line": 1,
+            "column": 11
+          },
+          "end": {
+            "offset": 23,
+            "line": 1,
+            "column": 24
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic",
+          "id": "sales"
+        },
+        "artifactPath": "semantic/sales/order.tei",
+        "range": {
+          "start": {
+            "offset": 10,
+            "line": 1,
+            "column": 11
+          },
+          "end": {
+            "offset": 15,
+            "line": 1,
+            "column": 16
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic",
+          "id": "security"
+        },
+        "artifactPath": "semantic/security/authentication.tei",
+        "range": {
+          "start": {
+            "offset": 10,
+            "line": 1,
+            "column": 11
+          },
+          "end": {
+            "offset": 18,
+            "line": 1,
+            "column": 19
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-attribute",
+          "id": "customer.customer.customer_id"
+        },
+        "artifactPath": "semantic/customer/customer.tei",
+        "range": {
+          "start": {
+            "offset": 87,
+            "line": 6,
+            "column": 15
+          },
+          "end": {
+            "offset": 97,
+            "line": 6,
+            "column": 25
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-attribute",
+          "id": "customer.customer.name"
+        },
+        "artifactPath": "semantic/customer/customer.tei",
+        "range": {
+          "start": {
+            "offset": 138,
+            "line": 7,
+            "column": 15
+          },
+          "end": {
+            "offset": 142,
+            "line": 7,
+            "column": 19
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-attribute",
+          "id": "repair_intake.intake.customer_id"
+        },
+        "artifactPath": "semantic/repair-intake/intake.tei",
+        "range": {
+          "start": {
+            "offset": 53,
+            "line": 4,
+            "column": 15
+          },
+          "end": {
+            "offset": 63,
+            "line": 4,
+            "column": 25
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-attribute",
+          "id": "sales.order.customer_id"
+        },
+        "artifactPath": "semantic/sales/order.tei",
+        "range": {
+          "start": {
+            "offset": 188,
+            "line": 9,
+            "column": 15
+          },
+          "end": {
+            "offset": 198,
+            "line": 9,
+            "column": 25
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-attribute",
+          "id": "sales.order.external_id"
+        },
+        "artifactPath": "semantic/sales/order.tei",
+        "range": {
+          "start": {
+            "offset": 361,
+            "line": 13,
+            "column": 15
+          },
+          "end": {
+            "offset": 371,
+            "line": 13,
+            "column": 25
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-attribute",
+          "id": "sales.order.order_id"
+        },
+        "artifactPath": "semantic/sales/order.tei",
+        "range": {
+          "start": {
+            "offset": 146,
+            "line": 8,
+            "column": 15
+          },
+          "end": {
+            "offset": 153,
+            "line": 8,
+            "column": 22
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-attribute",
+          "id": "sales.order.ordered_at"
+        },
+        "artifactPath": "semantic/sales/order.tei",
+        "range": {
+          "start": {
+            "offset": 239,
+            "line": 10,
+            "column": 15
+          },
+          "end": {
+            "offset": 248,
+            "line": 10,
+            "column": 24
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-attribute",
+          "id": "sales.order.status"
+        },
+        "artifactPath": "semantic/sales/order.tei",
+        "range": {
+          "start": {
+            "offset": 281,
+            "line": 11,
+            "column": 15
+          },
+          "end": {
+            "offset": 287,
+            "line": 11,
+            "column": 21
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-attribute",
+          "id": "sales.order.total"
+        },
+        "artifactPath": "semantic/sales/order.tei",
+        "range": {
+          "start": {
+            "offset": 326,
+            "line": 12,
+            "column": 15
+          },
+          "end": {
+            "offset": 331,
+            "line": 12,
+            "column": 20
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-attribute",
+          "id": "sales.order_line.item_code"
+        },
+        "artifactPath": "semantic/sales/order.tei",
+        "range": {
+          "start": {
+            "offset": 673,
+            "line": 22,
+            "column": 15
+          },
+          "end": {
+            "offset": 681,
+            "line": 22,
+            "column": 23
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-attribute",
+          "id": "sales.order_line.line_number"
+        },
+        "artifactPath": "semantic/sales/order.tei",
+        "range": {
+          "start": {
+            "offset": 631,
+            "line": 21,
+            "column": 15
+          },
+          "end": {
+            "offset": 641,
+            "line": 21,
+            "column": 25
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-attribute",
+          "id": "sales.order_line.order_line_id"
+        },
+        "artifactPath": "semantic/sales/order.tei",
+        "range": {
+          "start": {
+            "offset": 580,
+            "line": 20,
+            "column": 15
+          },
+          "end": {
+            "offset": 591,
+            "line": 20,
+            "column": 26
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-attribute",
+          "id": "sales.order_line.quantity"
+        },
+        "artifactPath": "semantic/sales/order.tei",
+        "range": {
+          "start": {
+            "offset": 710,
+            "line": 23,
+            "column": 15
+          },
+          "end": {
+            "offset": 718,
+            "line": 23,
+            "column": 23
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-attribute",
+          "id": "sales.order_line.unit_price"
+        },
+        "artifactPath": "semantic/sales/order.tei",
+        "range": {
+          "start": {
+            "offset": 750,
+            "line": 24,
+            "column": 15
+          },
+          "end": {
+            "offset": 759,
+            "line": 24,
+            "column": 24
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-attribute",
+          "id": "security.authenticated_subject.subject_id"
+        },
+        "artifactPath": "semantic/security/authentication.tei",
+        "range": {
+          "start": {
+            "offset": 139,
+            "line": 7,
+            "column": 15
+          },
+          "end": {
+            "offset": 148,
+            "line": 7,
+            "column": 24
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-attribute",
+          "id": "security.authentication_denial.reason"
+        },
+        "artifactPath": "semantic/security/authentication.tei",
+        "range": {
+          "start": {
+            "offset": 214,
+            "line": 11,
+            "column": 15
+          },
+          "end": {
+            "offset": 220,
+            "line": 11,
+            "column": 21
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-attribute",
+          "id": "security.authorization_denial.reason"
+        },
+        "artifactPath": "semantic/security/authorization.tei",
+        "range": {
+          "start": {
+            "offset": 382,
+            "line": 14,
+            "column": 15
+          },
+          "end": {
+            "offset": 388,
+            "line": 14,
+            "column": 21
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-attribute",
+          "id": "security.authorization_grant.action"
+        },
+        "artifactPath": "semantic/security/authorization.tei",
+        "range": {
+          "start": {
+            "offset": 236,
+            "line": 9,
+            "column": 15
+          },
+          "end": {
+            "offset": 242,
+            "line": 9,
+            "column": 21
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-attribute",
+          "id": "security.authorization_grant.resource"
+        },
+        "artifactPath": "semantic/security/authorization.tei",
+        "range": {
+          "start": {
+            "offset": 292,
+            "line": 10,
+            "column": 15
+          },
+          "end": {
+            "offset": 300,
+            "line": 10,
+            "column": 23
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-attribute",
+          "id": "security.authorization_grant.subject_id"
+        },
+        "artifactPath": "semantic/security/authorization.tei",
+        "range": {
+          "start": {
+            "offset": 192,
+            "line": 8,
+            "column": 15
+          },
+          "end": {
+            "offset": 201,
+            "line": 8,
+            "column": 24
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-capability",
+          "id": "sales.order.submit"
+        },
+        "artifactPath": "semantic/sales/order.tei",
+        "range": {
+          "start": {
+            "offset": 789,
+            "line": 27,
+            "column": 12
+          },
+          "end": {
+            "offset": 807,
+            "line": 27,
+            "column": 30
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-capability",
+          "id": "security.authenticate"
+        },
+        "artifactPath": "semantic/security/authentication.tei",
+        "range": {
+          "start": {
+            "offset": 278,
+            "line": 14,
+            "column": 12
+          },
+          "end": {
+            "offset": 299,
+            "line": 14,
+            "column": 33
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-capability",
+          "id": "security.authorize"
+        },
+        "artifactPath": "semantic/security/authorization.tei",
+        "range": {
+          "start": {
+            "offset": 445,
+            "line": 17,
+            "column": 12
+          },
+          "end": {
+            "offset": 463,
+            "line": 17,
+            "column": 30
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-data",
+          "id": "customer.customer"
+        },
+        "artifactPath": "semantic/customer/customer.tei",
+        "range": {
+          "start": {
+            "offset": 62,
+            "line": 5,
+            "column": 6
+          },
+          "end": {
+            "offset": 70,
+            "line": 5,
+            "column": 14
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-data",
+          "id": "repair_intake.intake"
+        },
+        "artifactPath": "semantic/repair-intake/intake.tei",
+        "range": {
+          "start": {
+            "offset": 30,
+            "line": 3,
+            "column": 6
+          },
+          "end": {
+            "offset": 36,
+            "line": 3,
+            "column": 12
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-data",
+          "id": "sales.order"
+        },
+        "artifactPath": "semantic/sales/order.tei",
+        "range": {
+          "start": {
+            "offset": 124,
+            "line": 7,
+            "column": 6
+          },
+          "end": {
+            "offset": 129,
+            "line": 7,
+            "column": 11
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-data",
+          "id": "sales.order_line"
+        },
+        "artifactPath": "semantic/sales/order.tei",
+        "range": {
+          "start": {
+            "offset": 554,
+            "line": 19,
+            "column": 6
+          },
+          "end": {
+            "offset": 563,
+            "line": 19,
+            "column": 15
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-data",
+          "id": "security.authenticated_subject"
+        },
+        "artifactPath": "semantic/security/authentication.tei",
+        "range": {
+          "start": {
+            "offset": 102,
+            "line": 6,
+            "column": 6
+          },
+          "end": {
+            "offset": 122,
+            "line": 6,
+            "column": 26
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-data",
+          "id": "security.authentication_denial"
+        },
+        "artifactPath": "semantic/security/authentication.tei",
+        "range": {
+          "start": {
+            "offset": 177,
+            "line": 10,
+            "column": 6
+          },
+          "end": {
+            "offset": 197,
+            "line": 10,
+            "column": 26
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-data",
+          "id": "security.authorization_denial"
+        },
+        "artifactPath": "semantic/security/authorization.tei",
+        "range": {
+          "start": {
+            "offset": 346,
+            "line": 13,
+            "column": 6
+          },
+          "end": {
+            "offset": 365,
+            "line": 13,
+            "column": 25
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-data",
+          "id": "security.authorization_grant"
+        },
+        "artifactPath": "semantic/security/authorization.tei",
+        "range": {
+          "start": {
+            "offset": 157,
+            "line": 7,
+            "column": 6
+          },
+          "end": {
+            "offset": 175,
+            "line": 7,
+            "column": 24
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-relation",
+          "id": "repair_intake.intake.customer"
+        },
+        "artifactPath": "semantic/repair-intake/intake.tei",
+        "range": {
+          "start": {
+            "offset": 103,
+            "line": 5,
+            "column": 14
+          },
+          "end": {
+            "offset": 111,
+            "line": 5,
+            "column": 22
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-relation",
+          "id": "sales.order.customer"
+        },
+        "artifactPath": "semantic/sales/order.tei",
+        "range": {
+          "start": {
+            "offset": 399,
+            "line": 14,
+            "column": 14
+          },
+          "end": {
+            "offset": 407,
+            "line": 14,
+            "column": 22
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-relation",
+          "id": "sales.order.lines"
+        },
+        "artifactPath": "semantic/sales/order.tei",
+        "range": {
+          "start": {
+            "offset": 515,
+            "line": 16,
+            "column": 14
+          },
+          "end": {
+            "offset": 520,
+            "line": 16,
+            "column": 19
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-type",
+          "id": "customer.customer_id"
+        },
+        "artifactPath": "semantic/customer/customer.tei",
+        "range": {
+          "start": {
+            "offset": 25,
+            "line": 3,
+            "column": 6
+          },
+          "end": {
+            "offset": 35,
+            "line": 3,
+            "column": 16
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-type",
+          "id": "sales.order_id"
+        },
+        "artifactPath": "semantic/sales/order.tei",
+        "range": {
+          "start": {
+            "offset": 22,
+            "line": 3,
+            "column": 6
+          },
+          "end": {
+            "offset": 29,
+            "line": 3,
+            "column": 13
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-type",
+          "id": "sales.order_line_id"
+        },
+        "artifactPath": "semantic/sales/order.tei",
+        "range": {
+          "start": {
+            "offset": 55,
+            "line": 4,
+            "column": 6
+          },
+          "end": {
+            "offset": 66,
+            "line": 4,
+            "column": 17
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-type",
+          "id": "sales.order_status"
+        },
+        "artifactPath": "semantic/sales/order.tei",
+        "range": {
+          "start": {
+            "offset": 92,
+            "line": 5,
+            "column": 6
+          },
+          "end": {
+            "offset": 103,
+            "line": 5,
+            "column": 17
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-type",
+          "id": "security.authentication_denial_reason"
+        },
+        "artifactPath": "semantic/security/authentication.tei",
+        "range": {
+          "start": {
+            "offset": 55,
+            "line": 4,
+            "column": 6
+          },
+          "end": {
+            "offset": 81,
+            "line": 4,
+            "column": 32
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-type",
+          "id": "security.authorization_action"
+        },
+        "artifactPath": "semantic/security/authorization.tei",
+        "range": {
+          "start": {
+            "offset": 25,
+            "line": 3,
+            "column": 6
+          },
+          "end": {
+            "offset": 44,
+            "line": 3,
+            "column": 25
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-type",
+          "id": "security.authorization_denial_reason"
+        },
+        "artifactPath": "semantic/security/authorization.tei",
+        "range": {
+          "start": {
+            "offset": 111,
+            "line": 5,
+            "column": 6
+          },
+          "end": {
+            "offset": 136,
+            "line": 5,
+            "column": 31
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-type",
+          "id": "security.authorization_resource"
+        },
+        "artifactPath": "semantic/security/authorization.tei",
+        "range": {
+          "start": {
+            "offset": 64,
+            "line": 4,
+            "column": 6
+          },
+          "end": {
+            "offset": 85,
+            "line": 4,
+            "column": 27
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-type",
+          "id": "security.credential"
+        },
+        "artifactPath": "semantic/security/authentication.tei",
+        "range": {
+          "start": {
+            "offset": 25,
+            "line": 3,
+            "column": 6
+          },
+          "end": {
+            "offset": 35,
+            "line": 3,
+            "column": 16
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-validation",
+          "id": "sales.order.lines.line_number_unique"
+        },
+        "artifactPath": "semantic/sales/validation.tei",
+        "range": {
+          "start": {
+            "offset": 128,
+            "line": 7,
+            "column": 12
+          },
+          "end": {
+            "offset": 164,
+            "line": 7,
+            "column": 48
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-validation",
+          "id": "sales.order_line.line_number_positive"
+        },
+        "artifactPath": "semantic/sales/validation.tei",
+        "range": {
+          "start": {
+            "offset": 271,
+            "line": 12,
+            "column": 12
+          },
+          "end": {
+            "offset": 308,
+            "line": 12,
+            "column": 49
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-validation",
+          "id": "sales.order_line.quantity_positive"
+        },
+        "artifactPath": "semantic/sales/validation.tei",
+        "range": {
+          "start": {
+            "offset": 28,
+            "line": 3,
+            "column": 12
+          },
+          "end": {
+            "offset": 62,
+            "line": 3,
+            "column": 46
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "solution-release",
+          "id": "order_rollout/2026.8.27"
+        },
+        "artifactPath": "releases/solutions/order-rollout/2026.8.27.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "solution-release",
+          "id": "order_rollout_fix/2026.8.28"
+        },
+        "artifactPath": "releases/solutions/order-rollout-fix/2026.8.28.tei",
+        "range": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          }
+        },
+        "role": "definition"
+      }
+    ],
+    "workspace": {
+      "name": "tei_reference",
+      "formatVersion": 1,
+      "manifest": {
+        "path": "tei.workspace.yaml",
+        "sha256": "sha256:8e367b05de26a715ced16e384d273c983ac612dd2ff980d4310886d4f471af74"
+      }
+    }
+  }
+}

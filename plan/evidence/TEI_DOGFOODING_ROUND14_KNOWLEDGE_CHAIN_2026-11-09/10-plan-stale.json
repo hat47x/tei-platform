@@ -1,0 +1,8 @@
+{
+  "schemaVersion": "tei.cli.knowledge-review-plan/v0",
+  "ok": false,
+  "error": {
+    "code": "KNOWLEDGE_BUILD_FAILED",
+    "message": "Builder Review Plan fingerprint mismatch: expected=sha256:0000 current=sha256:36d7178b0bf180e84140f7f52d5ef0475f1a2824eaeab3a5250b619a2f46b440"
+  }
+}

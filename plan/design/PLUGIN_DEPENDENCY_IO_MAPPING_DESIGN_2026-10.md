@@ -776,3 +776,92 @@ Source/Authoring Graph → Resolved/Lowered Graph → Targetの実行・観測�
 **最初の受入に必要な差分**：一つの固定Legacy機能に対し、①元Sourceから取り出した事実と未解決、②人間が採用した意味、③選択Targetで再生成した成果物、④別実装の独立Expectedを一枚の照合票に結ぶ。ST-02の値域改版、ST-03の情報損失、ST-04のScope不一致を最低一件ずつ負例に含める。二つ目のTarget/連携方式へ切替えたとき既存の意味上の型・保証が再利用できるかを確認した後にのみ標準型拡充を判断する。
 
 **現状の資格**：ここでのLegacy実ソース解析、独立動作比較、Java/.NET/Wails/OData/ファイルの実E2E、完全なSource closure、Owner意味受理はいずれも**NOT RUN / NOT PROVEN**。既存参照実装・外部OwnerのCI成功を移行Conformanceへ加算しない。
+
+
+## 18. 大プラグイン主義：緩やかな公開・依存者責任・明示的保証（2026-11-07／調査・採用前）
+
+### 18.1 設計論点と暫定的な結論
+
+生成AIによって第三者Pluginの改修・互換性試験・Adapter作成のコストが下がり得るため、上流Pluginに全公開APIの列挙と安定保証を一律要求すると、拡張参加の障壁を不必要に高める懸念がある。反対に、技術的に到達可能な内部状態、秘密、未権限Resourceを無条件で実行可能にしてはならない。
+
+**比較すべき既定案**は「原則として再利用・検査可能、互換性保証は上流の明示宣言、保証外利用と追随変更は下流の責任、物理EffectとDisclosureは現在Host/Policyが強制」である。これは第三者ライセンス、Publisherの契約発行権限、元Pluginの非公開コード／秘密への突破を許す意味ではない。
+
+1. **技術的可視性**（Consumerから型・Contract/Role/Operator/公開SDKを参照できるか）と、**発見可能性**（許可されたCatalogへ載るか）、**契約上の安定保証**、**実呼出し可能性**、**Host Grant/Effect**を分ける。OpenをRuntime permissionと定義しない。
+2. 既に配布・アクセス許可済みのContract/Role/Extension Pointは、公開者が個別の `export` を大量追加せずに、型・説明・利用条件を **Open / unpromised** としてConsumer側の発見・参照候補にできる。ただし**未発行・非公開・非開示Sourceを外部へ自動送出しない**。第三者に対するRelease/Registry登録自体はPublisherのRelease宣言に従う。
+3. 上流は**保証したい契約だけ** Stable（保証Scope、互換性の意味、サポート期間/終了）を明示、破壊の可能性を示す Experimental/Deprecated、外部利用不可の Internal/Restrictedを最小の例外指定で示す。指定なしのOpenは「存在してよい／機械で読める」が「安定」「現在許可」「正式Provider Conformance」のどれも意味しない。
+4. 上流が専用Service Contractを提供していない既存の到達可能APIに、下流が自分の**Consumer-owned Adapter/Requirement**を作ることを許す余地を評価する。ただし必要な可視性・公開ライセンス・Host入口が実在し、上流の禁止や境界を越えない場合だけ。下流の独自Contractに上流の公式保証を帰属させない。上流へ新しいStable Contractの採用を要求しない。
+5. **互換性が破れても全Pluginを一律停止しない**：未依存Pluginは無影響、任意連携は機能単位でDegraded/Unavailable、必須依存は当該Function/Targetのみunsupported。実Targetの安全なError Boundaryの外で「自己責任」を理由にCrash/誤Effectを許さない。
+
+### 18.2 公開度は3区分、使用資格は直交させる（暫定分類／新Core enumではない）
+
+| 公開上の説明 | 上流Publisherがすること | 下流Consumerがすること | TEIの診断・資格 |
+| --- | --- | --- | --- |
+| Stable / Supported | 特定Contract identity・version・Semantic Profileと保証Scopeを明示。公開者がPromiseを変更する場合はBreakingを示す | 宣言した範囲内で利用し、実質的なEffect/Null等のConformanceを確認 | Promiseは独立Conformance/現在Grantの代替でない |
+| Open / Unpromised（既定候補） | 既に公開したCapability・操作が参照可能なことを許し、**保守義務を自動負担しない**。個々の `export` 指定不要 | 具体的なInterface/Contract fingerprint・検証済みVersion/Artifactと追随Testを自分でPin。破壊時は自ら修正・上流へ任意提案 | 静的に存在しても実Call可能・Semantic互換とは限らない。任意依存のdegrade理由を説明 |
+| Internal / Restricted | 実装内部、秘密/管理操作、再利用禁止、Scope制限を明示または既存Access Policyで保護 | 公開や実Grantを推測しない。上流実装を自己都合で外部露出しない | 読取・開示・呼出しは既存Provider/Host/Policy境界で拒否。AnnotationだけをSecurity Boundaryとしない |
+
+**注意**：上記は上流が「外部向け利用を保証する度合い」に関する分類であり、配布物に含むバイト、Plugin ID、User/Tenant、組織所属、Authority、Receiver Disclosureの分類と同一視しない。Source/licenseが非公開の場合、未注釈ゆえにOpenと推定しない。「明示されなければOpen」は **Publisherが既に配布・可視化を許した範囲内** に限定する。
+
+### 18.3 実際の依存の表現（既存標準Record/Relationを使う要求票、DSL文法未採用）
+
+同じ上流Providerでも、利用側Functionは「どこまで保証されるか」を自分の要件として宣言できる。
+
+| consumer/use-site | requires | 版要求 | 義務 | 利用する面 | 下流の責任 |
+| --- | --- | --- | --- | --- | --- |
+| `order.analytics` | `example.order.query` Contract | `>=1.4.0,<2` | required | Stable Contract: `search,get` | 意味適合とScope/Targetを再検証 |
+| `order.analytics.extra` | `vendor.query.debug` Open API | `tested:3.2.1`（例） | optional | Open/unpromised、Publisher未保証 | 実APIのexact fingerprintをLock、破壊時にAdapter再生成、失敗時はその機能だけ停止 |
+| `order.analytics.preview` | `example.render.table` | `^2.1`（例） | optional | 表示のみのExtension Point | 必要Shape/Grainを再検査し、非可逆編集不可 |
+
+**版を最低5列に分離**：Contract semantic version／Contract revision-fingerprint／Provider implementation version／Bundle publication version／**実Resolved Lock（exact artifact・selected scope・Target）**。上流が公開保証をしないOpen APIではSemVer範囲に自動的な意味互換性を与えず、下流の `testedVersion / testedFingerprint`、互換試験と改版後の再生成記録を重視する。Providerを実行Targetで実際に選ぶのは#951/#1016の唯一の解決経路であり、「上流がOpenだから自動起動」はしない。
+
+**選択規則の候補**：
+- Stable契約：許容範囲のProviderを#951で選び、同一候補が複数なら明示Selectionを要求。ReferenceのScope/Source、Semantic Conformance、実Artifact、Host Grantを別に照合。
+- Open依存：Consumer自身のCompatibility Testがまだ対象Revで未実行なら、**read-onlyで存在・形状をInspectできてもProduction実行資格はunverified**。安全なread-only previewに限りConsumerが明示的にexperimental modeを選べるか試す。Side-effectを伴う呼出しで実Grant/Effect境界を緩めない。
+- Optional依存：不存在・未選択・非互換・失効のそれぞれを別理由で診断し、対象機能だけをdegradeする。直接・推移的Requiredを省略したOpen APIの「偶然見つかった」状態は、検証済みの解決結果に昇格させない。
+- 複数Version共存：Consumerごとの名前空間/インスタンス/Build実装で可能な場合だけ許可。Go同一package pathの複数版を単一静的Linkで無条件許容しない。JS/NPM・Jenkins等も重複Class/グローバルSingletonが問題になるためTarget別に反証する。
+
+**上流の明示的言及は保証限定でよい**。必要なのは、少なくとも「このContractはStableである／この拡張点はOpenだが非保証／この入口はInternalである」という説明であって、「全関数を利用させるための逐一export宣言」ではない。開発者体験では、Version差分・依存者一覧・影響関数・修復PR/Adapter/回帰Testの生成を優先する。
+
+### 18.4 外部製品の比較（公式資料からの限定的観測）
+
+| 比較例 | 具体的な仕組み | TEIで取り込む点／注意 |
+| --- | --- | --- |
+| WordPress | Actions/Filtersで他Pluginが寄与。6.5の `Requires Plugins` はslug依存、最小/最大版をHeaderでは表現しない。Plugin作者による実Version/存在確認が必要 | **下流責任で自由に拡張できる**長所。互換保証/Load order/安全性が自動成立しない弱点。[Hooks](https://developer.wordpress.org/plugins/hooks/) / [Plugin Dependencies](https://make.wordpress.org/core/2024/03/05/introducing-plugin-dependencies-in-wordpress-6-5/) |
+| Factorio | Modの必須/任意/推奨/非互換＋比較演算子つき版条件、`remote.add_interface`→`remote.call`で明示的な関数辞書を公開 | **公開面を小さなInterfaceで提示、依存の強さは下流に委ねる**。呼出可能性と業務意味・Host認可を同値にしない。[Mod Structure](https://lua-api.factorio.com/latest/auxiliary/mod-structure.html) / [LuaRemote](https://lua-api.factorio.com/latest/classes/LuaRemote.html) |
+| Neovim / lazy.nvim | Lua `require`でPlugin間モジュール読取と遅延ロード、Specで依存/版範囲/commit pin | **同じPluginを上流の厳密Export指定なく利用**。更新時の互換確認・衝突はConsumer側。[Plugin Spec](https://lazy.folke.io/spec) / [Versioning](https://lazy.folke.io/spec/versioning) |
+| VS Code | `extensionDependencies`、別拡張が`activate()`の戻りAPIを`exports`参照。Stableな公式APIとInsiders限定Proposed APIを分離 | 公開保証の境界が明確だが上流側のAPI明示に依存。Proposed APIはMarketplace配布では不可。[VS Code API](https://code.visualstudio.com/api/references/vscode-api) / [Proposed API](https://code.visualstudio.com/api/advanced-topics/using-proposed-api) |
+| IntelliJ Platform | Plugin IDによるRequired/Optional（追加plugin.xmlにoptional機能）、`@ApiStatus.Experimental/Internal`、Plugin Verifier | **安定性のAnnotationと機械的な依存者互換チェック**が示唆的。Internal APIの制限を無視しない。[Dependencies](https://plugins.jetbrains.com/docs/intellij/plugin-dependencies.html) / [Verifier](https://plugins.jetbrains.com/docs/intellij/verifying-plugin-compatibility.html) |
+| Jenkins | Optional plugin dependencies、Plugin BOM、DependencyBot/Renovate、複数Majorのlibrary wrapperでの共存 | 上流API保証よりも、**動作した組合せのPinと自動更新PR**が実務的。厳密Version/BOMと互換範囲を区別。[Dependency Management](https://www.jenkins.io/doc/developer/plugin-development/dependency-management/) / [Class Loading](https://www.jenkins.io/doc/developer/plugin-development/dependencies-and-class-loading/) |
+| npm / Node.js | `peerDependencies`の互換範囲、`exports`で入口限定、未設定時の深いPath読取の余地。Node `exports`は強固なSecurity Encapsulationではない | 下流が期待するHost版と、上流の保証した入口を別にする。深い内部API利用のコストは下流が負う。[npm package.json](https://docs.npmjs.com/cli/configuring-npm/package-json/) / [Node Modules](https://nodejs.org/api/packages.html) |
+| OSGi | `Import-Package`の版範囲、`Export-Package`の公開とBundle版を区別 | **契約とProviderパッケージ版分離**の参照例。一律明示Exportの手間はTEIにそのまま移植しない。[OSGi Core](https://docs.osgi.org/specification/osgi.core/8.0.0/framework.module.html) |
+| WooCommerce | 既存WordPress Hook文化を保ちつつ、外部連携に明示APIと局所化したHookを推奨 | 開放面が大きいほど内部変更の結合が増える。**拡張自由度は保持し、安定保証・Blast Radiusのみ限定**。[Curated Extensibility](https://developer.woocommerce.com/overview/) |
+
+実際のコミュニティ参加数・保守費用・障害頻度の定量比較は今回していない。OSSの設計説明からエコシステムの長期的成功因果を証明したものではない。
+
+### 18.5 既存Ownerと最小反証（追加の試験正本を作らない）
+
+- **#951**：`Requires/Provides`とVersion range／exact Pin／StableとOpenの契約互換・二版共存、Publisher契約権限。
+- **#1223**：依存のoptional/required/degrade、動的Change、GenerationとScope、OS/Host Effectの停止境界。
+- **#1016**：Consumer-owned Open API Adapter/Selection、上流Bundle同梱と実Target選択/Linkの分離。
+- **#2589**：Open契約のRegistry発見／Publisherが明示保証するStable宣言、公開手間・第三者契約の可搬性。公開者承認・署名・現在Trustは維持。
+- **#2390**：外部独立Consumer。TEI Runtime/Studioを要求しない利用法。
+- **#2497/#2516/#2515**：公開情報の構造、Raw/データの開示、Tool/Session Egress、個別Resourceの拒否。
+- **#1180/#2514**：独立Expectedと同一対象のFixture。第二Test Runner/Registryは追加しない。
+
+| ID | 最小の独立Expected候補 | 停止条件 |
+| --- | --- | --- |
+| OPEN-01 | 上流Stableが0件でも既配布Open Contractを下流が参照しConsumer-owned Adapter/Queryを提案可能。上流の手動export注釈追加は0件 | 元Sourceの非公開byteや未許可実呼出を前提にした場合は拒否 |
+| OPEN-02 | 上流がStableと明示したContract v1にのみPublisher保証を表示。Open依存はバージョン追随時の下流責任、同版Fingerprint変更は再試験 | Openを永続互換や実行資格と誤表示しない |
+| OPEN-03 | Optional Open連携が破損したとき主Functionは継続、付加機能だけunavailable | 例外をHost外へ漏らす・必要な副作用を取り消したと偽るなら拒否 |
+| OPEN-04 | 上流の非保証APIへ自動修復PRを生成。旧版と新版の独立Fixture+Mutantに対し新Adapterの適合/誤りを判別 | AIが生成したExpectedのみで自己PASSさせない |
+| OPEN-05 | 上流がStable Contractを公開、PublisherがProviderを未配布→第三者が独立実装しConformanceを実行 | 公開契約だけからProvider存在・現在Grantを推論しない |
+| OPEN-06 | 同一Plugin Bundleに未選択Implementationを追加→選択済みGo Build closure/Artifactへ非干渉 | Go init/blank import/embed等で実混入した場合は不合格 |
+| OPEN-07 | Open APIとInternal Serviceが同Bundleに存在。Contract一覧と実OS/Host accessを分離しTenant B/Secretへ不当越境させない | 技術可視性・Experimentalの自己責任で秘密取得や認可欠落を許さない |
+| OPEN-08 | 二つの下流が別Majorを要求。同一静的Targetで物理共存不能ならunsupportedとし別Process等のAdapterを提案 | 解決器で選択できたという事実だけで実Go Link可能と誤報しない |
+| OPEN-09 | 上流Open→Stable、Stable→Deprecated、撤回、Publisher移転、Index停止を比較。過去Lock/参照は保持し現在資格のみ失効範囲を評価 | Publisher宣言とConsumerの同意・現在Trust・Runtime権限を混同しない |
+
+**成功指標**：依存Plugin実装の初回接続に必要な上流変更件数、上流手動Annotation数、下流追随修正の成功率／必要人手、Version変更に対する破壊検出率・誤PASS、選択外への過剰Build/失効、Runtime副作用とEgressの越境件数。AIの改修負担低下は仮説であり、測定せず既成事実にしない。
+
+**着手順**：P-1 read-onlyで現Contract/Source/APIのOpen候補とRequired/Observedを照合 → P0で上流無変更＋下流Adapterの2つのPluginを実現・依存Optional/Versionの対照 → P1で実Go静的Build/Actual Invokeと独立Conformance → P2で外部Hostや副作用付きPluginを選択的に検証。#1119のG1/G2/G4を増設したり、既存IssueのOwnerを移さない。
+
+**状態**：外部公式資料の静的比較と設計・受入案のみ。新Production Schema、CLI、公開Registry、二版実Link、上流無変更Adapter、AI自動修復、実Host/DB/OS/外部Consumer、正式Owner受理は**NOT RUN／未採用**。Open-by-defaultの意味を「公開者が発行・許諾済みの利用可能面での保証非強制」と限定し、未許可データの外部公開自動化へ拡張しない。

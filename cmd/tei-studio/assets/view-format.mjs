@@ -53,9 +53,10 @@ function summarizeRecord(view) {
   if (Array.isArray(view.hooks) && view.hooks.length) {
     sections.push({
       title: "フック",
-      header: ["位相", "読み取り", "使用", "生成", "失敗時"],
+      header: ["位相", "範囲", "読み取り", "使用", "生成", "失敗時"],
       rows: view.hooks.map((hook) => [
         valueOf(hook.phase),
+        valueOf(hook.scope),
         joined(hook.reads),
         joined(hook.uses),
         joined(hook.produces),
@@ -162,11 +163,21 @@ function summarizeApplication(view) {
   if (Array.isArray(view.periods) && view.periods.length) {
     sections.push({
       title: "期間",
-      header: ["ID", "Data", "業務日付", "状態", "暦"],
-      rows: view.periods.map((period) => [valueOf(period.id), valueOf(period.data), valueOf(period.businessDate), joined(period.states), valueOf(period.calendar)]),
+      header: ["ID", "Data", "業務日付", "状態", "暦", "締め日"],
+      rows: view.periods.map((period) => [valueOf(period.id), valueOf(period.data), valueOf(period.businessDate), joined(period.states), valueOf(period.calendar), closingOf(period)]),
     });
   }
   return sections;
+}
+
+// closingOf renders the declared closing day, so a period narrower than a month
+// is visible without the reader inferring a default day.
+function closingOf(period) {
+  const day = period.closingDay;
+  if (typeof day !== "number" || day <= 0) {
+    return "";
+  }
+  return `${day}日`;
 }
 
 function summarizePackage(view) {
@@ -229,6 +240,37 @@ function summarizeCommand(view) {
 
 // differenceSections lists the operations the declaration did not describe, so
 // a reader can see which data the execution reached beyond the declared effect.
+// hookSummary renders the hook report a reference execution returned. It
+// counts executed, warned, and not-evaluated phases, and names the phases that
+// did not run so the summary does not imply a pass.
+function hookSummary(hooks) {
+  if (!hooks || typeof hooks !== "object") return "not declared";
+  const executed = Array.isArray(hooks.executed) ? hooks.executed : [];
+  const warned = Array.isArray(hooks.warned) ? hooks.warned : [];
+  const notEvaluated = Array.isArray(hooks.notEvaluated) ? hooks.notEvaluated : [];
+  const skipped = Array.isArray(hooks.skipped) ? hooks.skipped : [];
+  const parts = [`executed ${executed.length}`, `warned ${warned.length}`];
+  if (notEvaluated.length) parts.push(`not evaluated ${notEvaluated.join(",")}`);
+  if (skipped.length) parts.push(`skipped ${skipped.join(",")}`);
+  if (hooks.refused) parts.push(`refused ${hooks.refused}`);
+  // A proposal is a candidate value, not an applied one. Naming it here keeps
+  // "executed" from reading as "the hook changed nothing".
+  const uncalled = hooks.uncalled && typeof hooks.uncalled === "object" ? hooks.uncalled : {};
+  for (const phase of Object.keys(uncalled).sort()) {
+    const names = Array.isArray(uncalled[phase]) ? uncalled[phase] : [];
+    if (names.length) parts.push(`uncalled at ${phase} ${names.join(",")}`);
+  }
+  const proposed = hooks.produced && typeof hooks.produced === "object" ? hooks.produced : {};
+  for (const phase of Object.keys(proposed).sort()) {
+    const values = proposed[phase] && typeof proposed[phase] === "object" ? proposed[phase] : {};
+    const names = Object.keys(values).sort();
+    if (names.length) {
+      parts.push(`proposes at ${phase} ${names.map((name) => `${name}=${values[name]}`).join(",")}`);
+    }
+  }
+  return parts.join("; ");
+}
+
 function differenceSections(differences) {
   if (!Array.isArray(differences) || !differences.length) return [];
   return [{
@@ -291,6 +333,10 @@ export function summarizeView(value) {
         ["differences", Array.isArray(value.differences) ? String(value.differences.length) : "0"],
         ["difference-check", value.appliedUnobserved ? "not observed" : "checked"],
         ["reported-effect", value.reportedEffectMissing ? "missing" : "reported"],
+        // The hook row names what the reference execution did with the pattern's
+        // declared hooks. A phase that did not run is listed as not evaluated,
+        // so an empty row never reads as "the hooks passed".
+        ["hooks", hookSummary(value.hooks)],
       ],
     }]).concat(differenceSections(value.differences));
   }
@@ -306,6 +352,9 @@ export function summarizeView(value) {
     rows: Object.entries(value).map(([key, entry]) => [key, JSON.stringify(entry)]),
   }];
 }
+
+
+
 
 
 

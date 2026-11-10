@@ -1,0 +1,26 @@
+Q1 chain closed (after round 28's outcome edges)
+  security.authenticate  total=4 unresolved=0
+    outcome -> security.authenticated_subject
+    outcome -> security.authentication_denial
+    input   -> std.identifier
+    input   -> security.credential
+  security.authorize     total=5 unresolved=0
+    input   -> security.authenticated_subject   (matches authenticate's outcome)
+
+Q2 no dangling references
+  declared subjects: 70 ; edges pointing at undeclared subjects: 0
+  unresolved rows: semantic-capability 0 / semantic-data 0 / semantic-validation 0
+
+Q3 "input with no producer" is NOT a design gap  (hypothesis rejected)
+  inputs may come from outside the model; sales.order.submit both takes and
+  returns sales.order, which is a normal round trip.
+
+Q4 a dangling outcome payload IS detected, but not where I first looked
+  validate  exit 1  UNKNOWN_SEMANTIC_CAPABILITY_OUTCOME_PAYLOAD
+  inspect   canonical.outcomes[0].payload = app.not_declared_anywhere
+  trace     result.trace.unresolved = 0            <- row-level
+            result.projectionUnresolved = ["unresolved-semantic-element:..."]
+  = not a defect; documented at docs/getting-started.md:212
+
+Q5 reference/workspace genuinely exercises projectionUnresolved
+  17 entries (unmaterialized-from:database-contract:*, unmaterialized-from:database:*)

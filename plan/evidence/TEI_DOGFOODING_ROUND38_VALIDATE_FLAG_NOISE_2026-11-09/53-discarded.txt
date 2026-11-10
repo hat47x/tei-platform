@@ -1,0 +1,3 @@
+I first overrode fs.Usage and printed the allow-list myself. That produced two
+"usage:" blocks, because helpText already does the same filtering and both ran.
+Discarded in favour of routing -h into the existing path.

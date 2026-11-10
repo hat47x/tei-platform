@@ -125,13 +125,14 @@ func TestBindReportsANonPositiveRate(t *testing.T) {
 }
 
 // TestBindReportsAnImpossibleMonthSequence checks that a month sequence outside
-// 1..12 is refused rather than wrapping into another year.
+// 1..12 is refused rather than wrapping into another year. The annual marker 0 is
+// accepted on purpose, because a table that holds annual rows has to bind them.
 func TestBindReportsAnImpossibleMonthSequence(t *testing.T) {
 	declaration, err := currencyrate.Resolve(exchangeWorld(), "fx.rate")
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, sequence := range []string{"0", "13"} {
+	for _, sequence := range []string{"-1", "13"} {
 		rows := []map[core.CanonicalID]string{exchangeRow("USD", "2026", sequence, "150.25", "", "")}
 		if _, err := declaration.Bind(rows); err == nil {
 			t.Fatalf("sequence %q was accepted", sequence)

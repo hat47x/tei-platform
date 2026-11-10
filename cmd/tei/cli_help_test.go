@@ -34,6 +34,20 @@ func TestHelpIsASuccessOnStandardOutput(t *testing.T) {
 			want: "-namespace",
 		},
 		{
+			name: "model locate",
+			run: func(out *bytes.Buffer) (int, error) {
+				return runModelCommand([]string{"locate", "-h"}, out)
+			},
+			want: "-subject-kind",
+		},
+		{
+			name: "model overview",
+			run: func(out *bytes.Buffer) (int, error) {
+				return runModelCommand([]string{"overview", "-h"}, out)
+			},
+			want: "-limit",
+		},
+		{
 			name: "view",
 			run: func(out *bytes.Buffer) (int, error) {
 				return runViewCommand([]string{"-h"}, out)

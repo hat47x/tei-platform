@@ -9,6 +9,7 @@ on:
     paths:
       - 'internal/security/effectcommit/**'
       - 'internal/security/legacyauthorization/**'
+      - 'internal/execution/**'
       - '.github/workflows/tei-effect-fence-postgres-ci.yml'
       - 'go.mod'
       - 'go.sum'
@@ -17,6 +18,7 @@ on:
     paths:
       - 'internal/security/effectcommit/**'
       - 'internal/security/legacyauthorization/**'
+      - 'internal/execution/**'
       - '.github/workflows/tei-effect-fence-postgres-ci.yml'
       - 'go.mod'
       - 'go.sum'
@@ -85,12 +87,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          go vet ./internal/security/effectcommit/... ./internal/security/legacyauthorization
-          test -z "$(gofmt -l internal/security/effectcommit/postgres)"
+          go vet ./internal/security/effectcommit/... ./internal/security/legacyauthorization ./internal/execution
+          test -z "$(gofmt -l internal/security/effectcommit/postgres internal/execution)"
           # DSNが空だと実DBの試験はSKIPして緑に見える。ここで空を拒否する。
           test -n "${TEI_EFFECT_POSTGRES_DSN:-}"
           log="$RUNNER_TEMP/go-test.log"
-          go test -race -count=3 -v ./internal/security/effectcommit/... ./internal/security/legacyauthorization | tee "$log"
+          go test -race -count=3 -v ./internal/security/effectcommit/... ./internal/security/legacyauthorization ./internal/execution | tee "$log"
           # 保証水準の宣言（D10）を支える試験は、名前ごとにPASS行が在ることを要求する。
           # 件数だけでは、既存の試験が新規・改名後の試験の欠落を覆い隠す。
           # -count=3 のためPASS行は複数回出るが、1回以上在れば足りる。
@@ -122,6 +124,13 @@ jobs:
             'TestTrustedOwnerRoutineDistinguishesVersionConflictOwnerDenialAndInvalidInput/matching-version-invalid-units'
             'TestTrustedOwnerRoutineDistinguishesVersionConflictOwnerDenialAndInvalidInput/matching-version-stock-available'
             'TestTrustedOwnerRoutineAckLossReconnectedReplay'
+            # internal/execution: RunEffect・Compensate・RunPlanを実PostgreSQLのCommandへ接続する試験。
+            'TestRealPGEffectSucceededAndIndependentObservedAreRecordedSeparately'
+            'TestRealPGLaterStepFailureCompensatesInDeclaredOrderAndRecordsCompensationFailure'
+            'TestRealPGUnattendedRunIsBlockedNotFailedWithoutObserverOrChecks'
+            'TestRealPGUnattendedRunIsBlockedNotFailedWithoutObserverOrChecks/no_observer'
+            'TestRealPGUnattendedRunIsBlockedNotFailedWithoutObserverOrChecks/observer_lacks_a_required_check'
+            'TestRealPGUnattendedRunIsBlockedNotFailedWithoutObserverOrChecks/covered_run_completes'
           )
           for name in "${required[@]}"; do
             grep -Eq -- "^[[:space:]]*--- PASS: ${name} \(" "$log" || { echo "required test did not PASS: ${name}" >&2; exit 1; }

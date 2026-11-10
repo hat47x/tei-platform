@@ -316,3 +316,40 @@ Registryの初回登録、Version Bindingの公開確定後にも、Publisher移
 **P0優先**は既存RG-P1〜P3のByte/ArtifactSet readbackとE0署名・Profile対象一致。続いてRG-L3/L4の実選択と実消費の差、RG-L1/L5/L6の公開後変化を反証する。L2/L7/L8の意味・権限・運用の結果は既存Ownerとの接合後。どの局所試験の成功もRegistry E2Eや製品受入へ自動昇格させない。
 
 **状態**：静的Issue/PR照合による設計追補、公開プロトコルやCore schemaの正式採用ではない。RG-L1〜L8、実GitHub Release・署名・別Host・Producer/Consumer readback・CIは本追補ではNOT RUN。新しいPlugin Lifecycle Engine、第二Resolver、Host常駐基盤、全Pluginへの強制停止を追加しない。
+
+
+---
+
+## 12. 二実装によるRelease証拠束縛P0-A（2026-11-07／限定Reference）
+
+### 12.1 設計統合後に固定できる小さな実証単位
+
+[PR #2591](https://github.com/hat47x/tei-platform/pull/2591)による本設計文書のmain統合は、**Registry API・独立公開/Trust・E0〜E3の実行資格を確立した証拠ではない**。実際の新規実装を始める前に、[#2589](https://github.com/hat47x/tei-platform/issues/2589)の「独立Readerでも正確な対象に束縛された署名とByteの関係を検査できる」P0-Aを、最小の対象だけで検証する。
+
+検証用Reference：[`tools/reference-plugin-registry/`](../../tools/reference-plugin-registry/README.md)（独立Go/Node、固定Fixture、テスト専用鍵）。これは既存[#1104](https://github.com/hat47x/tei-platform/issues/1104)のTrustの本番実装でも[#951](https://github.com/hat47x/tei-platform/issues/951)のResolverでもなく、**署名のByte Bindingと対象一致のみ**を検査する。Fixtureの文字列フォーマットは採用済みTEI Canonical Schema/Release Descriptor文法ではない。
+
+| P0-Aの局所Claim | Referenceに必要なEvidence | 未到達の保証 |
+| --- | --- | --- |
+| Publication declaration signature | 外部に固定したPublisherのテスト用公開鍵、Releaseの実Byte、目的分離した署名 | GitHub Repositoryの所有権・実Publisher委任・失効の最新性 |
+| Release/Artifact content binding | Release正確なByte Digest、2件の必須Artifact roleと実Byte、欠落・重複拒否 | GitHub/OCIからの実readback、同時更新時のConsumer一式受領 |
+| Conformance statement scope | Release Subject Digest、Profile Digest、Target、`passed`と独立Verifierのテスト用署名 | Contract意味的適合、独立Oracle、実Host Target実行 |
+| Test Policy inputs | 固定Owner Epoch、固定Profile、模擬Issuer信頼/鮮度 | 現在のAuthority、署名鍵管理、Production Trust/Revocation |
+
+GoとNodeの実装が**同一のReference Fixtureを独立に読んだ場合の判定一致**だけを問う。実装されたGo/Node Readerが同じテスト用Issuerを許容しても、それは実Issuerが信頼できるという結論ではない。鍵とProfileは受入Policyから固定され、Fixture自身が提供した公開鍵やProfileを信頼根として採用しない。
+
+### 12.2 Refactor・Production化を止める条件
+
+- **新しいRegistry Canonical Schemaではない**：ASCIIの固定行順とtest-only署名prefixはfixtureの解釈差を抑えるためであり、正式なDigest profile、JCS/DSSE/in-toto/SCITT、可変長HashId、Name Authorityの採用を意味しない（#2814/#951/#1104）。
+- **合成Conformanceである**：`passed`はテスト用Verifierの署名済みClaimであり、実Contract試験を実行した証拠ではない。実Profile/Target適合は#951/#2390の既存証拠に引き継ぐ。
+- **模擬された鮮度である**：`fresh=true`、Issuer信頼・Owner Epochは外部PolicyのFixture値であり、Trust APIや取り消し情報から観測した現在性ではない。
+- **実配布は未検証**：ArtifactはFixtureにBase64で同梱。GitHub Release、実Consumerのexact-byte readback、途中公開の原子的切替、Code/Load TOCTOUは#1105/#2604/#1370の別Gate。
+- **独立Reader成功をE0全体の成功へ昇格しない**：Issuer証拠やRepository所有権、Registry登録・Version一意性、別の実Hostを使った実行は未接続。既存Gateの判定はOpen/Unqualifiedを保持する。
+
+### 12.3 次に結合する順序
+
+1. **P0-A固定対象検査**：各Readerが正例、改ざん、Role欠落/重複、Subject/Profile/Target違い、模擬権限失効を拒否できるか。同一データに対する両Readerの判定差を記録する。
+2. **P0-B外部証拠へのBinding**：#1104から**実際に検証されたIssuer/Trust証拠**を入力として受けるための差分だけを抽出。固定テスト用鍵をProduction設定へ流用しない。
+3. **P1配布実証**：#1105/#2604の実Artifact Set Member/Publication Generation/Consumer Readの参照を受け、全必須Memberの実byteとReleaseを照合。Repo/Tagの見かけだけでは合格にしない。
+4. **P2 Consumer受入**：#2390の独立した外部Host＋#951のContract/Provider選択・Targetと意味Oracleを参照。実行権限/EffectsはOwnerに委ねる。
+
+**この節の主張の上限**：実際のRegistry/API/CIでの合格ではなく、局所の試験用Byte/Signature Bindingの受入条件整理である。Repository変更・PRのCI・現在Trust・実GitHub配布は別Evidence。新しい署名/Key管理サービス、第二Resolver、第二Self-buildを作らない。

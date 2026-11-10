@@ -119,6 +119,47 @@ func TestInvokerReportsReadOnlyDatasourceWithTheDeclaration(t *testing.T) {
 	}
 }
 
+// TestInvokerDatasourceRefusalDoesNotDependOnDeclarationOrder checks that two
+// datasources covering the same namespace give the same result in either
+// declaration order. The request names no datasource, so a writable declaration
+// must not hide a read-only one that covers the same data (#2611).
+func TestInvokerDatasourceRefusalDoesNotDependOnDeclarationOrder(t *testing.T) {
+	archive := application.DatabaseRequirement{Alias: "archive", TargetDatabase: "archive_db", Access: database.AccessRead}
+	primary := application.DatabaseRequirement{Alias: "primary", TargetDatabase: "primary_db", Access: database.AccessReadWrite}
+	orders := map[string][]application.DatabaseRequirement{
+		"archive-first": {archive, primary},
+		"primary-first": {primary, archive},
+	}
+	for name, requirements := range orders {
+		t.Run(name, func(t *testing.T) {
+			world := commandWorld()
+			world.Databases = []database.Database{
+				{ID: "archive_db", Kind: "relational", Ownership: database.OwnershipManagedHere, SemanticUses: []core.CanonicalID{"sales"}},
+				{ID: "primary_db", Kind: "relational", Ownership: database.OwnershipManagedHere, SemanticUses: []core.CanonicalID{"sales"}},
+			}
+			world.Applications[0].Databases = requirements
+			executor := &datasourceRecordingExecutor{}
+			invoker := Invoker{
+				World:      world,
+				Executor:   executor,
+				UnitOfWork: &MemoryUnitOfWork{},
+				Authorizer: ReferenceAuthorizer{},
+			}
+			_, err := invoker.Invoke(context.Background(), request())
+			var executionError *ExecutionError
+			if !errors.As(err, &executionError) || executionError.Code != "COMMAND_DATASOURCE_READ_ONLY" {
+				t.Fatalf("err=%v", err)
+			}
+			if executor.called {
+				t.Fatal("read-only datasource reached the executor")
+			}
+			if !strings.Contains(err.Error(), "archive_db") {
+				t.Fatalf("refusal %q does not name the read-only datasource", err.Error())
+			}
+		})
+	}
+}
+
 type datasourceRecordingExecutor struct {
 	called bool
 }

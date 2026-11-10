@@ -1,0 +1,73 @@
+name: TEI Studio EV-R0 synthetic display Node
+
+# EV-R0 synthetic fixture verification ONLY.
+# Does not qualify Policy/Grant, actual Consumer rendering, Source, Provider,
+# Recipient delivery, or Owner-accepted business meaning.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - 'reference/tei-studio-evidence-view/**'
+      - '.github/workflows/tei-studio-evidence-view-r0-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'reference/tei-studio-evidence-view/**'
+      - '.github/workflows/tei-studio-evidence-view-r0-ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-evidence-r0-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  ev-r0-node:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      TARGET_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact PR head or main push
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Pin Node runtime used by W1 independent review
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.21.0
+          check-latest: false
+
+      - name: Verify source identity and clean tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          node --version
+          printf 'ev-r0-checked-sha=%s\n' "$TARGET_SHA"
+          for file in \
+            reference/tei-studio-evidence-view/project.mjs \
+            reference/tei-studio-evidence-view/project.test.mjs \
+            reference/tei-studio-evidence-view/README.md; do
+            test -f "$file"
+            printf 'ev-r0-blob=%s path=%s\n' "$(git hash-object "$file")" "$file"
+          done
+
+      - name: Run eight synthetic-only EV-R0 display tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test reference/tei-studio-evidence-view/project.test.mjs
+
+      - name: Verify no mutation and exact tested revision
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"

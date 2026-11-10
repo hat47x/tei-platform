@@ -1,0 +1,12 @@
+Read before writing (after three rounds of writing before reading):
+
+  nobody had taken #3983          gh pr list / git log show nothing
+  BindingIndexEntry fields        Application, Capability, Adapter, Hook
+  DeclaredDependency fields       FromKind, From, Relation, ToKind, To, Alias
+  relation naming                 kebab-case verbs already in use
+  Application always set?         yes: loader.go:747 sets b.Application = a.ID
+  application is a node?          yes, but only via ApplicationPatterns
+  target applications exist?      order_entry, repair_intake
+
+The "Application always set" question is why the empty-side guard exists: an
+edge from an empty key would be reported as unmaterialized-from.

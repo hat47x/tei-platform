@@ -149,7 +149,7 @@ func (s *PGStore) Apply(ctx context.Context, req UpdateRequest) (Result, error) 
 			req.IdempotencyKey).Scan(&existingKey, &existingBefore, &existingNew); err != nil {
 			return Result{}, fmt.Errorf("read idempotency record: %w", err)
 		}
-		if existingKey == req.Key && existingNew == req.NewValue {
+		if existingKey == req.Key && existingNew == req.NewValue && existingBefore == req.Expected {
 			result.Outcome = OutcomeIdempotentReplay
 			result.Before = existingBefore
 			result.NewValue = existingNew

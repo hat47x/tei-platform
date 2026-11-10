@@ -35,6 +35,13 @@ func standardBusinessWorld() ir.World {
 						},
 					},
 					{
+						ID: "master.setting",
+						Attributes: []semantic.Attribute{
+							{ID: "master.setting.key", TypeRef: "std.identifier", Role: "setting-key"},
+							{ID: "master.setting.value", TypeRef: "std.text", Role: "setting-value"},
+						},
+					},
+					{
 						ID: "master.other",
 						Attributes: []semantic.Attribute{
 							{ID: "master.other.name", TypeRef: "std.text", Role: "name"},
@@ -63,7 +70,7 @@ func TestBuildApplicationProjectsStandardBusiness(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(view.StandardBusiness) != 2 {
+	if len(view.StandardBusiness) != 3 {
 		t.Fatalf("standard business=%+v", view.StandardBusiness)
 	}
 	kinds := map[core.CanonicalID]applicationview.StandardBusinessRef{}
@@ -82,6 +89,10 @@ func TestBuildApplicationProjectsStandardBusiness(t *testing.T) {
 	if !ok || holiday.Data != "master.holiday" || len(holiday.Attributes) != 1 {
 		t.Fatalf("holiday ref=%+v", kinds)
 	}
+	setting, ok := kinds["setting"]
+	if !ok || setting.Data != "master.setting" || len(setting.Attributes) != 2 {
+		t.Fatalf("setting ref=%+v", kinds)
+	}
 	// A Data with no standard business role is not listed.
 	for _, ref := range view.StandardBusiness {
 		if ref.Data == "master.other" {
@@ -95,7 +106,8 @@ func TestBuildApplicationProjectsStandardBusiness(t *testing.T) {
 // the standard business binders.
 func TestStandardBusinessSkipsADataWithNoBinderRole(t *testing.T) {
 	world := standardBusinessWorld()
-	world.Semantics[0].Data = world.Semantics[0].Data[2:]
+	// Keep only the Data that carries display roles, which is the last one.
+	world.Semantics[0].Data = world.Semantics[0].Data[len(world.Semantics[0].Data)-1:]
 	world.Semantics[0].Data[0].ID = "master.other"
 	view, err := applicationview.BuildApplication(world, "order_entry")
 	if err != nil {

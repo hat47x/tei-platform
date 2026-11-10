@@ -2,11 +2,11 @@ package studiohost
 
 import (
 	"context"
-	"errors"
 
 	"tei/internal/applicationview"
 	"tei/internal/command"
 	"tei/internal/core"
+	"tei/internal/hook"
 	"tei/internal/operations"
 	"tei/internal/semantic"
 	"tei/internal/workspace"
@@ -24,7 +24,10 @@ type CommandRunValue struct {
 	Plan    applicationview.CommandPlan `json:"plan"`
 	Mode    string                      `json:"mode"`
 	Outcome *semantic.Outcome           `json:"outcome,omitempty"`
-	Effect  *semantic.DataEffect        `json:"effect,omitempty"`
+	// OutcomeUndetermined states why no outcome was returned although the
+	// capability declares some.
+	OutcomeUndetermined string               `json:"outcomeUndetermined,omitempty"`
+	Effect              *semantic.DataEffect `json:"effect,omitempty"`
 	// Committed reports that the configured UnitOfWork returned from Commit.
 	// The reference host uses MemoryUnitOfWork, which does not write data (#2998).
 	Committed bool `json:"committed"`
@@ -49,6 +52,10 @@ type CommandRunValue struct {
 	// AuthorizationMode names how the run was authorized. The Studio reference
 	// host uses reference-allow-all when no capability allow list is supplied.
 	AuthorizationMode string `json:"authorizationMode,omitempty"`
+	// Hooks records the pattern hooks this run consulted before the command.
+	// It mirrors the CLI report: a phase that could not be evaluated is named
+	// with a reason instead of being shown as a pass.
+	Hooks *HookRunReport `json:"hooks,omitempty"`
 }
 
 // CommandRunResponse is the result of a reference execution.
@@ -144,7 +151,22 @@ func recordAppliedUnobserved(records []command.OperationRecord, effectDeclared b
 	return records[len(records)-1].AppliedUnobserved
 }
 
+// ExecuteCommandWithReferenceStore runs the command against an in-memory
+// reference store, so the after-change phases have a point to run at.
+//
+// The reference execution writes nothing durable: the store is created for this
+// run and dropped when it ends, and the response keeps saying so. The change is
+// still real for the length of the run, which is what `after-*` needs; without a
+// store there is no after-change point and those phases are reported as skipped.
+func (h *ReadOnly) ExecuteCommandWithReferenceStore(workspaceID, applicationID, patternID, capabilityID string, inputs, periods map[string]string, allowed []string) CommandRunResponse {
+	return h.executeCommandWithStore(workspaceID, applicationID, patternID, capabilityID, inputs, periods, allowed, nil, true)
+}
+
 func (h *ReadOnly) executeCommand(workspaceID, applicationID, patternID, capabilityID string, inputs, periods map[string]string, allowed []string, attempt *command.DispatchOptions) CommandRunResponse {
+	return h.executeCommandWithStore(workspaceID, applicationID, patternID, capabilityID, inputs, periods, allowed, attempt, false)
+}
+
+func (h *ReadOnly) executeCommandWithStore(workspaceID, applicationID, patternID, capabilityID string, inputs, periods map[string]string, allowed []string, attempt *command.DispatchOptions, applyToStore bool) CommandRunResponse {
 	loaded, failure := h.loadWorkspace(workspaceID)
 	if failure != nil {
 		return CommandRunResponse{Failure: failure}
@@ -153,9 +175,35 @@ func (h *ReadOnly) executeCommand(workspaceID, applicationID, patternID, capabil
 	if err != nil {
 		return CommandRunResponse{Failure: &Failure{Code: "VIEW_FAILED", Stage: "command", Message: err.Error()}}
 	}
+	// A declared hook runs before the command when this reference execution can
+	// reach it: a before-change phase whose declared reads the caller supplied.
+	// Everything else is reported as skipped or not evaluated with a reason, so
+	// a phase that did not run never reads as a phase that passed.
+	var hookReport *HookRunReport
+	var hookErr error
+	if applyToStore {
+		// The before-* phases decide before the change; the after-* phases are
+		// consulted below, after the effect was applied.
+		hookReport, hookErr = h.runHooksHalf(loaded.World, core.CanonicalID(applicationID), core.CanonicalID(patternID), inputs, hook.ReferenceReach{}, hookHalfBefore)
+	} else {
+		hookReport, hookErr = h.runHooks(loaded.World, core.CanonicalID(applicationID), core.CanonicalID(patternID), inputs)
+	}
+	if hookErr != nil {
+		// No input reaches this branch today: runHooks returns an error only
+		// together with a report, and returns (nil, nil) for a pattern that
+		// declares no hook (see TestCommandFailedHasNoKnownTrigger). The branch
+		// stays as the boundary for a future runner that can fail without a
+		// report; it is not a claim that the code is reachable.
+		return CommandRunResponse{Failure: &Failure{Code: "COMMAND_FAILED", Stage: "command", Message: hookErr.Error()}}
+	}
+	referenceStore := command.NewMemoryStore()
+	var executor command.Executor = command.ReferenceExecutor{World: loaded.World}
+	if applyToStore {
+		executor = command.ReferenceDataExecutor{World: loaded.World, Store: referenceStore}
+	}
 	invoker := command.Invoker{
 		World:      loaded.World,
-		Executor:   command.ReferenceExecutor{World: loaded.World},
+		Executor:   executor,
 		UnitOfWork: &command.MemoryUnitOfWork{},
 		Authorizer: command.ReferenceAuthorizer{},
 	}
@@ -195,16 +243,44 @@ func (h *ReadOnly) executeCommand(workspaceID, applicationID, patternID, capabil
 		result, err = invoker.Invoke(context.Background(), request)
 	}
 	if err != nil {
-		var execution *command.ExecutionError
-		if errors.As(err, &execution) && execution.Code == "COMMAND_LIFECYCLE_REFUSED" {
-			return CommandRunResponse{Failure: &Failure{Code: "COMMAND_LIFECYCLE_REFUSED", Stage: "command", Message: execution.Message}}
+		// The same rule the CLI uses: an ExecutionError already names the
+		// reason. This entrance used to special-case only the lifecycle refusal,
+		// so a missing input, a closed period or a failed commit all arrived as
+		// COMMAND_FAILED (#3807).
+		if code, message, ok := command.ReportedFailure(err); ok {
+			return CommandRunResponse{Failure: &Failure{Code: code, Stage: "command", Message: message}}
 		}
 		return CommandRunResponse{Failure: &Failure{Code: "COMMAND_FAILED", Stage: "command", Message: err.Error()}}
+	}
+	if applyToStore {
+		// The change is applied, so the after-* phases have a point to run at.
+		// Their report is joined with the before-* one so the caller sees both
+		// halves of the run.
+		after, afterErr := h.runHooksHalf(loaded.World, core.CanonicalID(applicationID), core.CanonicalID(patternID), inputs, hook.AppliedChangeReach{}, hookHalfAfter)
+		if after != nil && after.PhaseReport != nil {
+			if hookReport == nil {
+				hookReport = after
+			} else {
+				hookReport.PhaseReport.Merge(after.PhaseReport)
+				if after.CommandOutcome != "" {
+					hookReport.CommandOutcome = after.CommandOutcome
+				}
+			}
+		}
+		if afterErr != nil {
+			// The after-change phase refused after the effect was applied. The run
+			// does not claim the change held. The store is dropped with the run, so
+			// no revert has to be reported; a business outcome is not separated from
+			// an execution fault here yet, and COMMAND_FAILED is what this entrance
+			// already answers for a phase that stops the run.
+			return CommandRunResponse{Failure: &Failure{Code: "COMMAND_FAILED", Stage: "command", Message: afterErr.Error()}}
+		}
 	}
 	return CommandRunResponse{OK: true, Value: &CommandRunValue{
 		Plan:                  plan,
 		Mode:                  "reference",
 		Outcome:               result.Outcome,
+		OutcomeUndetermined:   result.OutcomeUndetermined,
 		Effect:                result.Effect,
 		Committed:             true,
 		Persisted:             result.Persistence == command.PersistenceResourceObserved,
@@ -215,5 +291,6 @@ func (h *ReadOnly) executeCommand(workspaceID, applicationID, patternID, capabil
 		AppliedUnobserved:     recordAppliedUnobserved(recorder.Records, plan.Effect != nil),
 		ReportedEffectMissing: recordReportedEffectMissing(recorder.Records),
 		AuthorizationMode:     string(result.AuthorizationMode),
+		Hooks:                 hookReport,
 	}}
 }

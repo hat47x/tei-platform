@@ -1,0 +1,118 @@
+{
+  "note": "Follow-up on maxBytes: (1) the field's raw byte span differs from a re-serialized copy, so an earlier 'over the limit' claim is corrected; (2) a backlog continues on a later accepted request; (3) events that cannot fit stop the field entirely.",
+  "unitCorrection": {
+    "earlierRecord": "plan/evidence/DSH_SESSION_LOG_MAXBYTES_2026-11-08/README.md",
+    "earlierClaim": "maxBytes=512 で field が 518 bytes 載り、上限を超えた",
+    "observedRawSpan": 474,
+    "recomputedSpan": 518,
+    "correctedReading": "生のbyte spanは474で上限512以下。518は e-serialized した値であり、Harnessが判定する量とは別。"
+  },
+  "runs": [
+    {
+      "label": "maxBytes=1024",
+      "maxBytes": 1024,
+      "rawLogBytes": 6176,
+      "rawLogSha256": "b01d3aad3b046ca22a488377eaea9849e79c9ffd9f1123b9423ef0c66a70743f",
+      "requests": [
+        {
+          "file": "001-request.json",
+          "bodyBytes": 34086,
+          "sha256": "05352507774e6786b083b26d70ac48273e9c5312df514235c6fdb191feba7cc4",
+          "sessionLog": {
+            "rawBytes": 975,
+            "overLimit": false,
+            "afterSeq": -1,
+            "throughSeq": 6,
+            "eventCount": 7
+          }
+        },
+        {
+          "file": "002-request.json",
+          "bodyBytes": 7648,
+          "sha256": "9e70152e51ba8f234825073039fcdb1cae532d932fe725ed70e318c7ddfa3366",
+          "sessionLog": {
+            "rawBytes": 975,
+            "overLimit": false,
+            "afterSeq": -1,
+            "throughSeq": 6,
+            "eventCount": 7
+          }
+        },
+        {
+          "file": "003-request.json",
+          "bodyBytes": 34908,
+          "sha256": "c2d8be90b1380ce0f901e15e78e4f1f39877ee05a354c084b7edb2c4f1099fca",
+          "sessionLog": {
+            "rawBytes": 490,
+            "overLimit": false,
+            "afterSeq": 6,
+            "throughSeq": 9,
+            "eventCount": 3
+          }
+        },
+        {
+          "file": "004-request.json",
+          "bodyBytes": 35706,
+          "sha256": "d456fb7fd863d5d411f38ce8ca5b0357444eb468172e61f2fde9c7be45ecb2b0",
+          "sessionLog": null
+        },
+        {
+          "file": "005-request.json",
+          "bodyBytes": 37013,
+          "sha256": "9f62103c9e2e072d67dfd3aabfe764fe746fd112221fc64720aff3390ca7efd9",
+          "sessionLog": null
+        },
+        {
+          "file": "006-request.json",
+          "bodyBytes": 38320,
+          "sha256": "70553145bbbf37e1f516ddc4e01afcf398b6fadf8affc20e3b029662a6fbdbca",
+          "sessionLog": null
+        }
+      ]
+    },
+    {
+      "label": "maxBytes=256",
+      "maxBytes": 256,
+      "rawLogBytes": 6176,
+      "rawLogSha256": "dde51c17eca7611d29eff3fe7d2e148b4ba057e8ec9f747986cb219886ee41c4",
+      "requests": [
+        {
+          "file": "001-request.json",
+          "bodyBytes": 33092,
+          "sha256": "ab6f6b0f8dd59e612c7b2e8108ae740fdebba05bc689436d37e165fc2257c96f",
+          "sessionLog": null
+        },
+        {
+          "file": "002-request.json",
+          "bodyBytes": 6654,
+          "sha256": "3b531bc16a32e12a4f0c1ecd609726a9cdec01fd2acc5f97f236f18210301722",
+          "sessionLog": null
+        },
+        {
+          "file": "003-request.json",
+          "bodyBytes": 34399,
+          "sha256": "a1568f8c72c15cea017c2add2ce159696d4889502abdf65fb1e6c8e5b7b67dd7",
+          "sessionLog": null
+        },
+        {
+          "file": "004-request.json",
+          "bodyBytes": 35706,
+          "sha256": "d456fb7fd863d5d411f38ce8ca5b0357444eb468172e61f2fde9c7be45ecb2b0",
+          "sessionLog": null
+        },
+        {
+          "file": "005-request.json",
+          "bodyBytes": 37013,
+          "sha256": "9f62103c9e2e072d67dfd3aabfe764fe746fd112221fc64720aff3390ca7efd9",
+          "sessionLog": null
+        },
+        {
+          "file": "006-request.json",
+          "bodyBytes": 38320,
+          "sha256": "70553145bbbf37e1f516ddc4e01afcf398b6fadf8affc20e3b029662a6fbdbca",
+          "sessionLog": null
+        }
+      ]
+    }
+  ]
+}

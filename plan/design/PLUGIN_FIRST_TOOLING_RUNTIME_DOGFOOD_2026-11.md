@@ -473,7 +473,7 @@ Data Workbench #3270、REST Decision Graph #3274、三要素モデルとCRUD/SHO
 - **実main #3336**（merge `04f75301f408eb98b95ca90a103d6d8ad21ffdba`）に`tools/reference-go-build-stage-driver`が追加された。Buildを別プロセスとして実駆動し、**invoker実行ファイルのdigest／invoked実行ファイルのdigest・argv・PID・exit／子の申告artifact digestとディスクで読み直したdigest**を別々に観測できた。このReference単独ではStage1生成物によるStage2の真の再帰的セルフビルド(L3)は未実施で`l3Claimed=false`。**後続[#3440](https://github.com/hat47x/tei-platform/pull/3440)で`cmd/tei`自体のStage1 ArtifactをStage2 Invokerに使用した限定L3の実行証拠がmainへ統合済み**。ただしSeed Trust・一般的なPlugin組合せBuild・Runtime Authority・Source閉包資格は示さない。BOMの`Built`を「Builderが呼ばれた」「Reportにdigestがある」だけで保証しないための実証部品とする。
 - **実CLIドッグフーディング #3149**（横断実測はclosed）から、#3345（`view`でWorld/Source Indexの版照合値が欠落・異なる範囲のfingerprint）、#3346（`docs/plan`内MarkdownはmanagedでもLoaderで解釈されない）、#3347（応答JSON shapeの違い）が個別課題として残った。**読み取れるデータ、管理されるファイル、意味を解釈したSource、AI Toolが完全受領した出力を同一視しない**。#3183/3182等の旧観測がclosedであっても、全CLIが同じLock形式をそのまま再入力できる、すべての`read-only`宣言は無副作用、といった上位保証への自動昇格はしない。
 - **#3262/#3273系のT0.5/T1**：限定的なContext不足の検出と固定Scenario実行の進展はあるが、Required Rule/RelationをSource/Loader/Meaningから閉じてAIが未知の独立Negativeを発見し、同じ実SourceでMutantを殺した**T1-B**はまだ別資格。#3324はclosed/unmergedのDraftであり、単に最新Issue一覧へ現れたことをmain実装に数えない。
-- **BOM [Draft #3297](https://github.com/hat47x/tei-platform/pull/3297)**：RQ-035はData Source Workbench、BOMは**RQ-036**へ分離。純Go ReferenceはFull/Pairwise/提供済exact Lock相対の計画と同一Attempt入力の整合を検査する。**歴史的なPR head `a6cddd6778613fa9d6b2ecedfcf0aaade5e51cbc`ではHealth/依存脆弱性CI成功**。その後PRのHEADは更新されているため、旧SHAの成功を現在HEADやmainの成功へ移さない。Draft [#3297](https://github.com/hat47x/tei-platform/pull/3297)は現在も未統合であり、実Provider/Runtime/Host/正式BOM発行とは分離する。実Provider/Runtime/Host/正式BOM発行はNOT RUN。
+- **BOM [Draft #3297](https://github.com/hat47x/tei-platform/pull/3297)**：現在RQ-035はData Source Workbench、RQ-036は全容Model Map、BOMは新たな**RQ-037**として独立。旧Draft #3297のRQ-036表記はmain追随時に修正が必要。純Go ReferenceはFull/Pairwise/提供済exact Lock相対の計画と同一Attempt入力の整合を検査する。**歴史的なPR head `a6cddd6778613fa9d6b2ecedfcf0aaade5e51cbc`ではHealth/依存脆弱性CI成功**。その後PRのHEADは更新されているため、旧SHAの成功を現在HEADやmainの成功へ移さない。Draft [#3297](https://github.com/hat47x/tei-platform/pull/3297)は現在も未統合であり、実Provider/Runtime/Host/正式BOM発行とは分離する。実Provider/Runtime/Host/正式BOM発行はNOT RUN。
 
 ### 16.2 利用と資格の五段階を一つの「Plugin使用済み」に潰さない
 
@@ -552,6 +552,40 @@ Data Workbench #3270、REST Decision Graph #3274、三要素モデルとCRUD/SHO
 **証拠範囲**：#3439は採用方針、#3458は`validate`限定実コード、#3474は静的依存経路、#3408は限定`validate`実行、#3440は限定セルフビルド、#3445はread-only CLI実測。これらを全体のPlugin-first End-to-end合格と合算しない。D1実Provider×CLI/Studio、BOM実4組合せ、実DB/外部Host、Owner正式意味受理は未実証。
 
 
+### 16.7 Source-only driftでSemantic再利用・Source来歴・実Provider適格性を別票にする（#3477／Draft #3479）
+
+**新たに成立した観測**：main統合[#3477](https://github.com/hat47x/tei-platform/pull/3477)は、同一Workspace内のRaw末尾LFだけを変更し、Canonical Worldは不変でもSource Index FPは変化するケースについて、**実TEI CLI**のContext→Scenario消費前後の再照合で旧Contextを拒否した（限定Fixture/単一Process環境）。一方[Draft #3479](https://github.com/hat47x/tei-platform/pull/3479)は、**import先ProviderのRaw Source**を同じくLFだけ変更し、ConsumerのWorld、Import Semantic Digest、Consumer-owned Source Index Artifact/Reference/Model Revisionは維持されるのに、`LocateImportedSource`が再読取したProviderのSource Fingerprintだけ変化することを、既存`externalPair`のGo負例で検査する。#3479の旧HEAD `f6934fd4`ではexact-head CIが成功したが、その後HEADが更新されており、**現HEAD `1451bf69`のCIは別途確認が必要**。2026-11-08時点でDraft/未統合。二例は同じ「Source-only」でも**再取得する所属・観測可能なSource集合が異なる**。#3477の成功を外部Importの完全取得へ拡大しない。
+
+**Providerという呼称の衝突を明確に区別する**：#3479のProviderは**外部Import元のWorkspace/Sourceの提供者**であり、#951のPlugin Provider（Capability/Contractの**実装者**）と同一とは限らない。前者のRaw byte改訂から後者の実装改版・Linked Artifact変更・BOM tuple失効は**直接には導けない**。ある特定のPlugin/Builder/Generatorが当該外部Sourceを実際にInputとして消費する場合にのみ、その依存閉包へ影響を伝播させる。逆に実消費を検証せず「非依存」と断定もしない。Source位置の鮮度、Semantic Meaning、Pluginの実装同一性、実Artifact、現在Grantは元々別Claimである。
+
+**区分を共有するが新Kernel Fingerprintを作らない**：現在の資格は既存#3262 Design Context/Source Index、#2743／外部Reference、#951/#1016 Plugin Resolver/Lock、#943/#2600 Build/Evidence、#3267 BOM、#1158 Operation、#1174 Current Grantの**用途別read-only照合**から導く。単一`worldFingerprint`、`sourceIndexFingerprint`、`semanticDigest`、`pluginVersion`のどれかだけを「全入力現在一致」の証明にしない。対象ProviderのRaw Bytes/Source Occurrenceと、Consumer側のCanonical meaning/managed Source Indexは独立。外部Plugin/Providerの実装Source/Contract/Generator inputにSource provenanceが必要な場合は、**実Build・Selection・Invocationと同じAttemptのProvider側の観測**を別に要求する。
+
+| 変化の所在／現象 | 限定的に維持できるClaim | 再照合を要するClaim・拒否する誤推論 |
+| --- | --- | --- |
+| Consumer自己管理SourceのLFだけ変更、World不変、Source Index変更（main #3477） | 観測済みの同一Semantic Worldに基づく純粋意味計算は再利用**候補** | Source位置・Design Context/Scenario PacketのCurrent性は失効し得る。World不変→Source Indexも現在一致、は誤り |
+| 外部Import ProviderのLFだけ変更、Consumer World/IndexとSemantic Digest不変（Draft #3479） | Consumerの限定Semantic Model/生成結果は実消費依存を照合して維持**候補** | Imported Source occurrenceの原Byte/位置、Provider Raw、P0b完全Load/独立Source provenanceはConsumerの2指紋からは判定不能 |
+| Sourceは同じだがCapability分類規則/Contract/Selected Provider変更（#3379／#3267） | 確定済みの無関係Source読取観測は維持候補 | 過去の`selected`/Trait履行/BOM資格を新Rule/Lockへ無断流用しない |
+| Provider実装/Generator/Build Closure変更、同一Resultを返す | 旧Artifactと旧AttemptのHistorical Evidenceは保存 | 実Build member/Host entry/Targetが異なればexact tuple再資格化。結果のByte一致だけでPASSにしない |
+| Raw Providerからの`LocateImportedSource`をConsumerの古いResultで再呼出 | Consumerの旧Meaning revisionという歴史的主張 | **新しく読んだProviderの現在位置情報**を旧Import snapshotで取得済みと詐称しない。複数Source・A→B→Aの原子的時点は未証明 |
+| Source/Artifactが同じでもDisclosure/Host Grant/受信Sinkが変化 | 過去の受理済み設計判断とByte Evidence | **現在の実行許可や開示・保存先**は別資格。過去のCurrent Permissionを復活させない |
+
+**Plugin-first最小接続**：D1 S1（exact選択）→S2（CLI/Studio実Provider Entry）→S3（Build/Artifact同一Attempt）の通常正例の**前後**で、Consumer管理Source／外部Provider RawをそれぞれSource-only変更する。変更後に旧Resultを無条件で`fresh`として採用しない。Semantic Digestが変わらない場合、既存Semantic資格を必ず全失効させるわけでもない。まず`unknown/partial/stale`を対象Claim相対で記録し、現Source occurrenceと必要Closureを再取得・照合できた場合だけその用途のCurrent性を回復する。入力と出力の整合性は**単一Attemptだけ**の主張であり、異時点の二回Loadをatomic snapshotとは呼ばない。Provider Source取得経路が`ErrImportsNotBound`を返す場合、空集合／完全取得／BOM資格へ読み替えない。
+
+**独立Expectedへ委譲する追加反例（既存#1180/#2514に載せる、実装していない）**：
+
+| ID | 独立入力と既存観測 | 期待する停止線 |
+| --- | --- | --- |
+| **PDC-15** | Consumer Raw LFだけ変更、World同じ、Source Index違い（#3477の実CLI） | Semantic再利用候補とSource/Scenario Context拒否を分離。旧PacketはCurrent SourceとしてPASSにしない |
+| **PDC-16** | 外部Provider Raw LFだけ変更、Consumer World/Index同一（#3479の限定Go反例） | Consumerの両FP一致だけでImported Provider Raw Freshと表示しない。Provider occurrenceの独立照合が必要 |
+| **PDC-17** | `before`のConsumer Resultに対し改変後の`LocateImportedSource`を呼ぶ | Fresh Provider readを旧Immutable Snapshotの一部としない。Sourceの実取得Attemptを記録 |
+| **PDC-18** | P0b Provider Sourceが`ErrImportsNotBound`、Provider/Contract/Result bytesは一致 | Required Source Closure未確認でPlugin/Inspector/BOMの**完全資格**を拒否。既に観測した部分Claimは保持 |
+| **PDC-19** | Consumer ModelとSourceIndexが同じ・Provider実装Sourceだけ改版、CLI A/Studio Bが同じResult | 同値PayloadでもBuilder/Provider実Entry/Source/Target/Attemptが揃わなければ2 Consumer qualifiedとしない |
+| **PDC-20** | A→B→AでFingerprint復帰、またはRead中にProvider Raw置換 | Byte一致した二観測から中間履歴不存在・multi-file同時性・Current Grantを推定しない |
+
+**最短順序とOwner**：#3477の**既に実行済みの同一Workspace差分**をBaseline、#3479の**Draftの外部Provider差分**を別LaneのReferenceとし、後続#1251 D1 Inspector実ProviderでPDC-16/18/19を一Targetだけで実際に圧力試験する。P0bのSource/Import Full Input Closureは#2743／#3262／#2812、Provider Raw/Load/Provenanceは外部Reference Owner、実Builder・再利用は#2600、BOM 2×2のexact行資格は#3267、Function依存の独立Required集合は[#3482](https://github.com/hat47x/tei-platform/pull/3482)の別Consumerが担当。第2Resolver/Source Store/Fingerprint Service/BOM Engine/Runnerは置かない。
+
+**採用境界**：#3477は限定的なmain実Source-only CLI試験。#3479はDraftのGo反証テスト候補であり、旧HEADの局所CI成功は現HEAD／mainへの統合と同一ではない。Provider Source Closure完成を意味しない。PDC-15〜20の一組としてのD1実二Consumer、Provider/Build/同一Attempt、現Host Grant、正式BOM/Owner Meaning Acceptanceは**NOT RUN／NOT QUALIFIED**。
+
 ## 17. Traitの原子性と実装義務：Extension TypeからPlugin/BOM/CLI/Studioへ（2026-11-07追補）
 
 **位置づけ**：他レーンで具体化した「拡張型を明示すると、デフォルト実装が選ばれるか、手動実装が必須と診断される」「Traitは合成できるよう原子的にする」という要求を、上記 D1〜D6 の実証条件へ接続する。正式Trait DSL、Core enum、特定実装方式の採用ではない。既存[#2619](https://github.com/hat47x/tei-platform/issues/2619)/[#2620](https://github.com/hat47x/tei-platform/issues/2620) のEverything is Data・Semantic Role、[#951](https://github.com/hat47x/tei-platform/issues/951) のContract/Resolver、[#2507](https://github.com/hat47x/tei-platform/issues/2507) の型付きFunction Pattern適合、[#3267](https://github.com/hat47x/tei-platform/issues/3267) のVerified BOMを第二の正本なしに再利用する。
@@ -616,3 +650,173 @@ Data Workbench #3270、REST Decision Graph #3274、三要素モデルとCRUD/SHO
 **比較参考（TEI固有方式の採用ではない）**：Rust Traitは実装必須memberとDefault memberを区別する（https://doc.rust-lang.org/reference/items/traits.html）。Go interfaceはMethod Set/埋込みを合成し、同名別Signatureの合成は不正である（https://go.dev/ref/spec）。Java interfaceのDefault実装は多重継承時に衝突し得る（https://docs.oracle.com/javase/tutorial/java/IandI/multipleinheritance.html）。TEIはこれらの言語記法を日常DSLへ露出せず、原子性・実装必須・適合診断・明示Conflict解決という振る舞いだけを候補にする。
 
 **現在の資格**：本節はIssue・現行Code・他チャット方針を照合した設計計画であり、Trait公開Schema/DSL、実Plugin移行、TRF-01〜12、新しいGo/CLI/Studio/Provider試験、Owner正式採用は **NOT RUN／未採用**。本DocのD1試験を通したときだけ、実装方式の判断を更新する。
+
+
+**製品要求の正式な番号**：BOMは[RQ-037](../../requirements/TEI_PRODUCT_REQUIREMENTS.md)であり、[RQ-036](../../requirements/TEI_PRODUCT_REQUIREMENTS.md)は全容モデルマップ。旧Draftの設計番号を製品要件の正本と混同しない。現状のPlugin-first限定Go Consumerと実Wails/通常CLI Consumerの資格差も維持する。
+
+## 18. Verified BOMの証拠鮮度：Source変更と選択規則変更を独立に追跡する（2026-11-08横断・受入案）
+
+### 18.1 実mainとDraftが示した三つの非同値
+
+- **Consumer内Source-only変更**：main統合[#3477](https://github.com/hat47x/tei-platform/pull/3477)の限定実CLI負例では、Source末尾だけ変更してもCanonical Worldが同じまま、Source Index FingerprintとScenario利用資格が変わり得る。旧Context→旧Scenarioの再利用には現在のSource Index照合が必要。これは実H3完全受領や原子的Workspace snapshotを証明しない。
+- **Consumer外部のImported Provider Source変更**：[#3479](https://github.com/hat47x/tei-platform/pull/3479)は現在**Draft／未統合**で、Provider raw末尾の差分をConsumerのWorld、Semantic Digest、Source Indexが捉えられない反例を実Go Testで提案している。外部Reference/Providerの**実Source occurrence/raw fingerprint／Binding/取得時点**はConsumerのSource Indexと別の依存辺。#3479のTest/CIが確定するまで「実証済み」と呼ばず、現行#2812のNested Load snapshot受理も推測しない。
+- **Capability選択Rule変更**：main統合[#3337](https://github.com/hat47x/tei-platform/pull/3337)の初回raw JSONは`unselected=6/12`、その後のmain #3350/#3363でDB Providerの選択規則が変わり、過去の`ruleFingerprint`と現在のものが異なる。見かけの`schema=v0`／`ruleVersion=v0`が一致しても履歴選択結果を再利用できない。[旧Draft #3379](https://github.com/hat47x/tei-platform/pull/3379)の歴史vs現在Regressionは、[後継Draft #3490](https://github.com/hat47x/tei-platform/pull/3490)として新main基線に移植した（実CIは別途確認）。旧rawは上書きせず出典を維持する。
+
+これらは**同じ「リビジョン変更」という一個の真偽値へ圧縮できない**。Source Index、外部Reference/実消費、Rule implementation、Build closure、Test run、現在Grantが別々のOwnerを持つためである。
+
+### 18.2 Requalificationの最小依存票（新Schema/新Engineではない）
+
+| 変更するもの | 何を再確認するか | 自動的に失効させないもの |
+| --- | --- | --- |
+| Consumer managed Sourceだけ変更 | #3262のSource Index/Required Rule/関係/Source位置と、#1180のScenario Context pin | 既に不変と確認した無関係Target Artifact・Plugin選択 |
+| 外部Provider raw/取得位置・Authority変更、Consumer World/Index不変 | 外部Reference契約（Source identity/revision/raw fingerprint／Provider実消費）と、そのProviderに依存した選択/Build/Test/BOM行 | 実消費しなかった別Provider/PluginのBOM行 |
+| Capability適用Ruleの内容・実装だけ変更 | Rule Fingerprint、適用されたEnvironment/Scope/Kind+ID・現在のBindingとTrait Required Closure | 無関係ProviderのArtifact byte・業務Meaning |
+| Builder/Generator/Toolchain変更 | 旧実消費closureと新Artifact実byte、Target/Hostの呼出し入口、必要独立Expected | 旧Artifact履歴／現在Grantとは別の意味受理 |
+| Host Grant・Disclosureのみ失効 | 今このConsumerに公開/呼出/Effect可能かを現在のHost側へ再照合 | 過去の受理済み意味・歴史的Conformance記録 |
+| 参照A→B→A／途中受領／取得不可 | 履歴の完全性・Source occurrence・欠落/非開示/partialの再確認 | Aへのbyte復帰を「途中で変わらなかった」証拠と扱わない |
+
+**判定するのは要求された用途に相対的な依存閉包だけ**。必要なSource/Rule/Provider/Host/Build入力が未取得なら`unknown/not-loaded/stale`を保持し、`not-required/compatible/qualified`へ偽装しない。キャッシュ（#3271/#2600）のhitやVerified Compositionの過去の行は、新しいSource/Rule適格性または現在Grantを発行しない。
+
+### 18.3 既存Scenarioへ渡す負例（BFR-01〜07）
+
+| Case | 一要因だけ変える | 独立Expected／Claim上限 |
+| --- | --- | --- |
+| **BFR-01** | 消費元Worldを保持、Consumer managed Sourceの改行だけ変更 | World同一でSource Index changed。必要Context再取得まで旧Scenarioの利用資格保留（main #3477の限定既存反例） |
+| **BFR-02** | Consumer World/Source Indexを保持、Imported Provider原文だけ変更 | 必要なExternal Ref/Provider occurrenceの鮮度を未確認として停止。#3479はDraftで追加実証待ち |
+| **BFR-03** | 同じScope/Source/Plugin表示VersionのままCapability Rule内容だけ変更 | 旧`selected/unselected`は現在の選択資格ではない。Rule Fingerprint違いを拒否 |
+| **BFR-04** | Provider Package選択は同じ、必要Kind+ID Bindingのみ削除 | selected packageとselected capability／Trait fulfillmentを分離。実Invoke不可 |
+| **BFR-05** | Bを選択、実CallはA（戻り値同一） | 実Host側Provider identity/Artifact Call traceとSelectionが不一致。2×2の対象行はqualified不可 |
+| **BFR-06** | 未選択・未消費のPlugin資産だけ更新 | 実依存closureで非干渉が示された行のEvidenceを機械的に全失効させない。過剰失効を検出 |
+| **BFR-07** | 同じ構成で実Target/Build/Snapshotを変える、あるいは同一Attemptだが欠落Check | 同じ源のTest証拠が無ければ旧PASSを合算しない。別Target/OS/Scope、現Grantも独立 |
+
+**所有権と順序**：#3262 Source/Required Closureと#3479 External Source、#951 Selection、#3278/#3279 Trait/Consumer、#1251実Inspector→実Call、#943/#2600 Build/Artifact、#1180/#2514独立Expected/Attempt、#3267 RQ-037 BOM。**BFRをここで独自Runnerや第二BOM Registryとして実装しない**。CLI/Studioという2 Consumerで実Providerの同一性を示すD1は依然P0。#3478の実HTTP Host Branch/監査、#3440の限定Self-buildは別Target・別Claimであり、このBOM行を自動で資格化しない。
+
+**受理状況**：#3477/#3337/#3350/#3363はmain履歴、#3479と今回の履歴Policy比較Go RegressionはDraft、BFR-01〜07を横断する製品Inspector/Version Matrix実行、現在Host Grant、真正なTrusted Witness・Owner受理は**NOT RUN**。完成済みE2E/BOMではなく、既存計画に必要な再資格化判別を増やした段階である。
+
+### 18.4 Consumer実行の断絶を閉じるには、呼出し元を確認する（Host/Plugin D1）
+
+[main統合 #3446](https://github.com/hat47x/tei-platform/pull/3446)の静的走査では`internal/servicehost.NewSelectedServiceCarrierInvoker`の**非試験Callerが0**、`BindHostApplicationEnvironmentRoute`も非試験Callerが0（ただし`composition.NewSelectedCoordinator`等の部品を非試験で使う経路は別にある）。つまり「Provider選択部品が実装済み」「テスト内でService CarrierがInvokeできる」「一部のCLI/Studioが同じtyped Resultを返す」だけでは、現実のTooling Consumerから**選択済みProviderへ到達した事実をまだ得られない**。既存の`servicehost`経由を全Hostの義務にするのではなく、どの入口で実Routeを組み立てるかを選択した構成ごとに確定する。
+
+[Draft #3371 Studio](https://github.com/hat47x/tei-platform/pull/3371)／[Draft #3381 CLI](https://github.com/hat47x/tei-platform/pull/3381)は型付きInspectorのfail-closed seamとして利用できる候補だが、当時のCI Health FAILを実Plugin適合のPASSへ転記しない。**D1の次のコード変更で必要な最小証拠**は、(a) exact Contract+SelectionをRunner/Host側で読み、(b) 実CLI/Studioの別call-siteがそのImplementation identityを呼び、(c) B選択時にAへ誤接続した同一結果の負例を拒否し、(d) 実Buildに含まれるSource/Target/ArtifactをProvider証拠へ束縛すること。Shadow比較で既存Builtinを呼んだだけの場合は`reference-parity`、実経路の切替確認後だけ`consumer-invocation-observed`とする。どちらも単独でBOMのqualifiedではない。
+
+**BFR-08**：同一`Inspector`入力で旧Builtinと新typed Serviceの結果が等しくても、実Plugin Contract Resolution/Host Route/Provider Callを通らなければ不合格。既存実行入口が0なのにMock内部でだけService Carrierが呼ばれるケースを必須負例にする（#1251/#1158/#3279）。この検査は#1180/#2514へ渡す候補であり、製品CLI/Studioの実Bindingが成立したことはまだ**NOT RUN**。
+
+### 18.5 Provider Manifest-only変更と、Selection→Invoke間の同一性（#3479・#3381・#3482の非重複差分）
+
+前節の`Source/Rule`鮮度に加え、**ProviderのManifest原byte変更と、Selection完了後に実Host Entryが変わる場合**を独立に検査する。[Draft #3479](https://github.com/hat47x/tei-platform/pull/3479)は、外部ProviderのRaw Source改訂だけでなく、**Provider Manifestの末尾改行のみ改訂してもConsumer World/SourceIndexとProvider Source Anchorが不変**となる別のGo負例を追加した。ImportしたProvider側のManifest Revisionは、Consumer Context二指紋やRaw Source Anchorから導出できない。#3479の追加後HEADは独立したCI検収が必要であり、別Provider Loadの照合結果を「同一原子Snapshot」とは宣言しない。
+
+**D1で必要な観測**：Consumer Subject/World/IndexとRequired Closure、#951のexact Provider Selectionに用いた**Provider raw Source occurrence／Manifest identity／Classifier rule fingerprint**、#1016によりHost登録した実Implementation/Target/Artifact member、実`Inspect`のEntry/AttemptとOperation結果を**別欄で結ぶ**。内部ファイルの改訂を発見しても、そのProviderを実際に使用するFunction/Operation/Build Closure以外のArtifactを全失効させない。逆に同じ結果Canonical、同じConsumer World/SourceIndex、同じPlugin表示Versionを根拠に旧Provider Source引用・Build/Invoke資格を使い回さない。
+
+特に、**時点を一個に潰してはいけない**。`select(B)`後`invoke()`前にBのManifestが差し替わった、またはHostのEntryがAへ置き換わった場合、BとAが同じJSONを返しても実選択資格の成立ではない。`Selected`と`Actually Invoked`の整合はHost側の実呼出し観測で照合し、単なるProvider自己申告値やSynthetic Testの結果一致で保証しない。Source/Manifestを選択時に観測し、Invoke時の実消費と同時版であることが証明できなければ**unverified**とする。検査の再実行が原子的Snapshotにならない場合、未証明をPASSへ変換しない。
+
+| Case | 一要因の対照 | 必要な独立Expected／既存Owner |
+| --- | --- | --- |
+| **BFR-09** | 外部Provider Manifest末尾のみ変更、Provider Raw Source/Consumer World・Indexは同じ | Manifest identity/必要Selection/実消費閉包を再照合。Provider Source FP一致だけで現在のBOM資格を維持しない。#3479/#951 |
+| **BFR-10** | BのManifestを選択後に変更／Hostの実EntryをAへ交換（Result byteはBと同じ） | 実Host Entry・Source/Manifest版・Selection/Target不一致で対象Attemptをqualifiedにしない。#1251/#3381/#3371/#3267 |
+| **BFR-11** | main [#3482](https://github.com/hat47x/tei-platform/pull/3482)の`sales.order.submit`宣言Requiredは13 CLI Reply／42限定Controlで一致するが、実Query/Provider Entryは未取得 | `boundedFunctionSlice.declarationStatus=bounded-present`のみ。Function実Invocation・Trait Fulfillment・Host Effect・BOM行を証明済みにしない。#3262/#2586 |
+| **BFR-12** | `ErrImportsNotBound`またはProvider Manifest/Sourceが取得不能だがConsumer Contextの既知部分だけが正常 | Required Closure不足を`absent`/完全/無変更としない。必要な用途の資格はunknown/unverified。#2743/#3262/#2514 |
+
+**実行順を変更しない**：まず#3378で旧Builtin二入口のBaselineを独立固定し、#3381が候補提示した既存Composition`→`Host登録の`inspectoradapter`局所実Go呼出・負例、#3371のStudio Factory、通常CLI/Studio入口への実Bindingを別の合否にする。次に同じAttemptでSource/Manifest/Build Artifact/現在Grant/実二Consumerの独立Expectedを照合し、#3267の2×2実BOMへ渡す。今回の文書追補・#3490の歴史Rule比較と#3479の外部Sourceテストを結合しただけでは、実Plugin二Consumer、原子的Import Snapshot、正式Trusted WitnessまたはOwner受理は**NOT RUN／NOT PROVEN**。新Source Store／Resolver／Contract Schema／Host／Test Runnerは設けない。
+
+## 19. 実呼出しの証拠をLifecycle・HTTP・性能観測へ接続する（2026-11-08横断受入案）
+
+### 19.1 現mainで成立したことと、未成立のProduct経路
+
+[ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)に従い、CLI/MCP/HTTP/Web/Desktopの共通部分は**Operationの意味、入力・結果・失敗・Effect・前提**であって、同じHostプロセス・同じTransport・同じ実Plugin Binaryを要求しない。
+
+- [main #3371](https://github.com/hat47x/tei-platform/pull/3371)：Studio Hostの型付きInspector Serviceと、明示Serviceがない場合のfail-closed、Provider由来の非信頼Error Code/Messageの秘匿処理が成立。生成Hostへ暫定Builtin Inspectorを明示Bindingしており、Plugin B実選択とは別。
+- [main #3378](https://github.com/hat47x/tei-platform/pull/3378)：6 SubjectのCLI/Studio **従来direct Operation**のread-only同値基線。Pluginの選択・実呼出しの証拠ではない。
+- [Draft #3381](https://github.com/hat47x/tei-platform/pull/3381)：既存Composition→Host登録Go関数を使うB選択/B実Call・A誤登録拒否、CLI・Studioの**二つの局所Go Consumer**から同一Bを呼ぶ試験コードを統合候補に集約。**通常CLI`main.go`／Wails Bridgeの製品起動経路は依然未接続**であり、PR最新HEADのHealth・main統合とは別判定。旧重複Draft #3517はclosed/unmerged。
+- [main #3516](https://github.com/hat47x/tei-platform/pull/3516)：実Workspace・実Go HTTP Host・Canonical認可・Driver・**合成Adapterの実Callback**を7正負例で検査。限定HTTP Characterization Workflowは成功、全Repo Healthは別にfailure。HTTP Adapterへの到達は確認できても、任意の本番Plugin Artifactが選択・実Linkされたことも実DB Commitも、`503`後の無副作用も証明しない。
+- [main #3520](https://github.com/hat47x/tei-platform/pull/3520)：AI性能チューニング用の合成Design/Call/Statistics/Delivery/Disclosure Joinを19独立Expectedで局所検査。専用CIは成功するが、`input-consistent`は**Consumerが受け取った自己申告JSONの整合性**でありHostによるB実Callの独立証言ではない。実Function/DB/Telemetry・改善幅は未実証。
+- [main #3510](https://github.com/hat47x/tei-platform/pull/3510)／[Draft #3507](https://github.com/hat47x/tei-platform/pull/3507)：Trait原子義務とLifecycle Graph/Hook Patchの**全経路上の不変条件**を別Ownerで扱う。Graph/Diagramの描画と実Targetで通ったPathを同一視しない。
+
+### 19.2 共通に利用する「実経路の証拠」：第二Ledgerではなく読み取り専用Join
+
+既存Source Index／Composition Selection／Build Evidence／Host Call-site／Effect・Run Journal／Tool Deliveryを**同一Attempt・同一用途Scope**へ関連付けて表示する。以下は要求する照合項目であり、新Product Schema・永続Store・Trusted Attesterの採用決定ではない。
+
+| 区別する観測 | 証拠の所在と判定 | それだけでは証明できないこと |
+| --- | --- | --- |
+| **要求されたOperation** | ID/Variant、Subject・Workspace実Root、Required Source/Role、入力Revision、Consumer/Target、必要Traitと独立Expected | 原文の存在だけで意味受理や実行資格があること |
+| **構成上の選択** | 選択されたContract/Provider/Scope/epoch、Capability Kind/ID、選択規則FingerprintとHost側候補解決の不在・曖昧さ | 宣言・選択だけで実BinaryへLink済み／実Invoke済み |
+| **実行可能な成果物** | Target、実Build Source/Plugin memberとArtifact digest、Hostが実Load/RegistrationしたEntryとの一致 | Programに含まれるだけでそのEntryが呼ばれたこと |
+| **実際の呼出し** | Host側Call-site、実Entry/Handler/Provider、入力・Attempt、開始／終了と失敗段階、SelectionからInvocationまでの変更・撤回 | Provider自己申告の`invoked`、Callbackが返っただけで業務Effectが確定したこと |
+| **受領とEffect** | Consumer別のResult/Failure投影、partial/end・Tool Replyの完結、Local Journal／外部Sink・実Effect／独立Observation・現在Disclosure | 同じJSON＝同じActor／同じ結果＝同じ業務Commit／`read-only`＝出力ゼロ |
+| **図表・統計への投影** | 上記Factへqualified Refで到達するEffective Lifecycle Graph・Runtime Trace・計測Window／欠測／Sampling Context | GraphにEdgeが描かれているだけで当該Pathが通ったこと／同一Query名だけで計測値が比較可能であること |
+
+必要な一列が`unknown/partial/stale/withheld`なら、その列を他のFingerprint一致やChart表示の成功で補完しない。外部Providerのraw Source/Manifest、Consumer Source Index、選択RuleのFingerprintは[main #3479](https://github.com/hat47x/tei-platform/pull/3479)・[main #3490](https://github.com/hat47x/tei-platform/pull/3490)により**独立の失効契機**と分かっている。Semantic計算の再利用、Source引用の鮮度、実Build/Callの資格、現在Grantは必要な範囲だけ再判定する。
+
+### 19.3 Lifecycleの不変部分・Pluginによる可変部分・実効Graph
+
+[#3503](https://github.com/hat47x/tei-platform/issues/3503)と[Draft #3507](https://github.com/hat47x/tei-platform/pull/3507)のLifecycle Graph案を利用し、Authoritative Source→Typed Graph→選択Plugin Patch→**Effective Graph**→Target生成→**Observed Path**を別段階として扱う。標準Data/Relation/Graph・三視点/Navigation（[main #3505](https://github.com/hat47x/tei-platform/pull/3505)）からの投影であり、描画座標はSource/業務コードを変更しない。
+
+**不変部分**は固定Node列ではなく、Operation/Scope/Variantごとに要求されたValidation、現在Host Grant、Effect/Unknown、情報開示、Required Trait等の**すべての実行可能Path上の義務**である。可変部分はHook Slot/Guard/Step順序/Target Adapter/外部イベント等のPlugin Patch。各PatchはSource位置・契約・選択Scope・版・適用順序・拒否理由を持つ候補とし、未選択Patchの混入／順序だけでの不変条件迂回／選択BからAへの実配線を拒否する。RuleやPatchを削除してValidation Pathが消えた場合、Diffが空だから無変更とは扱わない。
+
+音声・Web ChatのStreaming delta、Tool Call、承認前入力、Resume、B2C ExperimentのExposure等は**イベント候補・観測**として扱い、Operation確定・Business Effect・Grantへ自動昇格しない。各TargetがNative/Headless/Static/Hybrid/動的実装を選んでも、共通Operationと必要な経路義務を維持する。新中央Workflow Host・Graph Compiler・VUI固有認証基盤を本節から要求しない。
+
+### 19.4 既存Scenarioへ委譲する小さな反証（WIT-01〜09、実行前）
+
+| ID | 最初に試す一因子変更 | 独立Expected／帰属 |
+| --- | --- | --- |
+| **WIT-01** | `inspect` Provider B選択、通常CLI dispatchと実Studio BridgeでそれぞれBのHost Entryを呼ぶ | 二つの実Call-siteと同版のSelection/Result。単なる局所Go二Consumerやdirect shadowを製品S2へ加算しない。#1251/#1824 |
+| **WIT-02** | B選択のまま実Host登録をAへ切替、AとBのReturnを同一byteにする | 選択/実Call不一致でFAIL。値一致・統計一致・Trace自己申告で救済しない。#951/#1251 |
+| **WIT-03** | Selection直後にProvider Manifest/SourceまたはRuleFingerprintを変更し、Consumer Worldを保持 | 用途相対Source/Selection再資格化まで旧Evidenceをfreshにしない。無関係Sourceだけの変更で全面再Buildもしない。#3262/#2600/#3267 |
+| **WIT-04** | Host Grant失効とProvider Error内の秘密Path/Tokenを同時に与える | 実Invoke前に拒否、公開応答は許可Code/固定文、Internal Causeは外部に出ない。失敗後Effect未知を勝手に無作用にしない。#1174/#2516 |
+| **WIT-05** | 呼出し成功だがTool Reply一部欠損／Session Logだけが別Sinkに保存 | Provider実CallとConsumer完全受領・Disclosureを別々に表示。Part/end/書込先不明なら後者はunverified。#2509/#2515 |
+| **WIT-06** | HTTP Hostで認可拒否／CSRF／Adapter障害／Invoke後503を切替 | 主体・Driver・Callback順とHost Auditを照合。合成Adapter試験PASSを実Plugin/DB Commit/無副作用に広げない。#3274/#3516 |
+| **WIT-07** | Hook Graph PatchでAuthorize/Validateを迂回する別Pathを追加 | 選択済みGraphが全Path Obligationに不適合ならTarget生成・実行資格を拒否。図として表示できることは合格でない。#3503/#3278 |
+| **WIT-08** | 性能統計を同一Query名の旧Provider A／別WindowからBの最新Attemptへ付け替える | Attempt・Provider・Scope・Window・Sample欠損を比較し、AI最適化の根拠として不適格。19合成Testは実Provider測定ではない。#3520/#3271 |
+| **WIT-09** | Provider B1/B2×Consumer C1/C2の4候補のうち1件だけ未実行 | 3件の結果同値でも4件目をVerified BOMにしない。実Artifact/Entry/独立Expected/同一Attemptを各行で固定。#3267 |
+
+**順序・停止条件**：P0は[#1251](https://github.com/hat47x/tei-platform/issues/1251)の**通常CLI／Studioから選択済みBを実呼出しする一Operation**。そのProduct経路が成立したらread-only Hook一Slotを選び、Effective Graphが実Targetで通ったPathと一致する限定試験をP1とする。HTTP・音声/Chat・B2C・性能統計・Verified BOMはP0を妨げず、P1以降の**異質Consumerまたは反証用Pressure**として並行させる。WITのExpected／採否記録は#1180/#2514がOwnerであり、ここに第二Test Runnerや正式Gateを設けない。
+
+**今回の上限**：既存コード/限定CI/他チャットの設計判断を横断した**仕様・実証順序の提案**。WIT-01〜09の同一実行、実Plugin二Consumer、Lifecycle Graph Target生成、実AI最適化、本番HTTP Plugin/実DB、外部Harness完全受領、Owner Meaning Acceptanceは **NOT RUN／NOT ACCEPTED**。部分的なGo/Node/Python Reference成功やmainへの文書統合は、この未完了資格を埋めない。
+## 18. Source時点と外部Providerの実入力を、D1選択・実呼出し・BOM資格へ束縛する（2026-11-08実証接続）
+
+**追補の理由**：§16は`Declared → Selected → Built → Invoked`を分けたが、選択した**Provider原文・Manifestの現在のbyte**がConsumerの`World/SourceIndex`で必ず把握できる、とは限らない。これはPlugin-firstを実行可能にする際の独立した欠落である。#3262のRequired Context、#951/#1016のSelection、#2600の再利用、#3267のBOM、#1180/#2514の独立Expectedを**新しい証拠正本や中央Registryなしに接続**する。既存§15のFunction局所失効は維持し、すべてのSource変更を全Artifact再Buildにはしない。
+
+### 18.1 観測済みの二つの異なるSource-only変更と、未完成の外部受入
+
+| 最小差分 | 現在までに実証できた範囲 | D1/BOMへ転用してはいけない推論 |
+| --- | --- | --- |
+| **同一Workspace内**：意味Worldは不変、Source Byte/Indexだけ変更 | [main #3477](https://github.com/hat47x/tei-platform/pull/3477)の実TEI CLI/Design Context→Scenarioは、WorldとSource Indexを別々に照合し、古いContextを限定拒否。中間A→B→Aの履歴はCurrent fingerprintのみでは復元不可 | World/Canonicalが同じなら旧Source Anchor/Scenario/Plugin Contextが現在も有効だとしない |
+| **外部からimportしたProvider原文**のみ改訂 | [Draft #3479](https://github.com/hat47x/tei-platform/pull/3479)は、Consumer World/Semantic Digest/Managed Source Indexが変わらなくてもProvider raw SHA/現在`LocateImportedSource`の指紋が変わる反例を実Go Testへ追加。先行HEADのHealth successと、Manifest負例追加後HEADのCIは別判定 | ConsumerのWorld+SourceIndex二指紋一致を外部Provider SourceのFresh証明にしない |
+| **外部Provider Manifest**のみ改訂（原文Source Anchor不変） | 同Draft #3479が別のManifest raw SHA改訂負例を追加。元Provider SourceとConsumer Indexでは改訂を見つけられない条件を区別する。**新HEADのCI成功・同一Nested Load Snapshotは未確認** | Plugin ID/Version・原文Source位置が同じなら実装Manifest/Selection規則も同じとしない |
+| **選択Classifier Rule**だけ改訂 | main #3337→#3368の12 Capability未選択6→4はRule Revision/判定方法の変化。古いraw Evidenceは保持する | Coverageが改善した、Providerが実Loadされた、Verified BOMが更新済みとしない |
+| **Functionの宣言・依存だけが部分照合** | [main #3482](https://github.com/hat47x/tei-platform/pull/3482)は`sales.order.submit`の独立Requiredを13実CLI Reply・42限定Controlsで照合しmain pushで限定PASS。Statusは`bounded-present`／全体`partial` | `application uses semantic sales`やCapability宣言だけでFunction→実Query/Provider→実Host Invocationが結線済みとしない |
+
+**鮮度は用途相対**：同じSource表現のbyte変更でも、(a) 原文引用・再解釈・Designer/SHOの出典、(b) 構造候補・受理済意味、(c) 具体Provider実行、(d) Build Artifact、(e) Result/Disclosureへ影響する範囲が異なる。ConsumerのProject Indexのみでは外部Providerの原文/Manifest/取得時点を網羅しない。Import Referenceが`partial/unavailable/not-bound`なら存在しない・無変更と見なさない。Source修正の現在値だけでA→B→Aの経緯を証明しない。
+
+### 18.2 一つのD1 Requestで必要な最小のInput Evidence chain
+
+**同一`Attempt`で別欄に記録する観測（新しい固定API Schemaとはしない）**：
+
+1. **Consumer Input**：Workspace/Function/Subject ID、Scope、直接消費したWorld/Source Index FingerprintとそのObservation時点、取得済みRequired Closureとpartial/unknown/拒否の有無。#3482の限定`bounded-present`はこの入口まで。
+2. **Provider Selection Input**：Contract/Trait ID・Version/Kind、実解決結果、Selection Rule実内容Fingerprint、Environment Binding、選択に実際に使ったProvider Manifest/Source Revision/Origin、候補数と曖昧性（#951/#1016）。
+3. **Provider Execution Input**：その同じ解決で選ばれた実Implementation/Build member、Host登録したProvider entry、実呼出し時のProvider Source/Manifest Revision、Process/Artifact/Target、実Call-site、入力Digest。値が同じ結果を返すA/Bでも**B選択→A実EntryはFAIL**。
+4. **Result and Delivery**：型付きApplication OperationのSubject/Source Anchor、World/Index、Null/Unknown/partial、Effect/Failure、CLI/Studioの独立Consumer実受領・Disclosure/Sink。Transport文書同値、Provider実Call同一性、現在Grantは別Claim。共通操作は採用済み[ADR-0048](https://github.com/hat47x/tei-platform/blob/main/plan/adr/0048-shared-application-api-and-transport-adapters.md)を使う。
+5. **Independent Qualification**：#1180/#2514の実独立Expected、Source/Provider/Attempt/Targetに束縛したScenarioとCoverage。#3267のBOMはこのうち実測済み組合せだけに資格を付与し、以前のContext/Result/Artifactを現在のHost Grantへ昇格させない。
+
+**TOCTOU停止線**：ConsumerがSourceを観測→Providerを選択→Build/Invoke→結果を受領する間のSource/Manifest/Rule改訂は、一回の`World/Index`再取得だけで取り消せない。**選択に使ったInputと実消費したInputが同じ版と証明できる**ときに限り当該Attemptをqualified候補とする。別Provider Loadの原文SHAとConsumer LoadのFPが各々読めても、同時点の結合を保証しない場合は`unverified`。Sourceのローカルコピーや指紋の一致は、Source Authority・Import Permission・Runtime Grant・Accepted Meaningの代替ではない。
+
+**再検証範囲**：Provider原文のみ変わったときは原文引用/取得/Provider Inputの資格を再評価し、意味非依存が実証された無関係Function/Artifactは維持候補。Manifest・Classifier Rule変更時はSelection/Required Closureと実影響を再照合する。Build Inputが変わっていなければArtifact byteまで無根拠に失効させない一方、実読み込むModule/Manifest/Plugin初期化が変われば同じ表示ResultでもBuild/Invocationの資格を再評価する。
+
+### 18.3 既存Scenarioへ追加する最小の負例（PDC-15〜20）
+
+| ID | 独立した改変と観測 | Expected・Owner |
+| --- | --- | --- |
+| **PDC-15** | 同一WorkspaceのSourceにLF改訂、World不変・SourceIndex変化 | 過去Context/Source位置はstale。意味が同じであることだけを根拠に引用やScenarioを再利用しない（#3477/#3262） |
+| **PDC-16** | 外部import Provider原文のみ改訂、Consumer World/Index不変 | Provider原文SHA/Source occurrenceの現在確認なしで`fresh`やPlugin evidence reuseを返さない。#3479は限定Test候補、Nested Load一貫性は別（#951/#2600） |
+| **PDC-17** | 外部Provider Manifestのみ改訂、同じCapability名・Consumer FP・Provider原文Anchor | Manifest Identity/Selection Ruleと実Resolveを再照合。単に`Source unchanged`ではqualifiedにしない（#3479/#951） |
+| **PDC-18** | 旧Selection Rule Fingerprint、同名Versionの新判定規則でCandidate集合が変わる | 判定由来と母数を維持し、既存`selected`を実Providerに昇格しない。BOM Historyは別証拠（#3368/#3267） |
+| **PDC-19** | 13 CLI Responseで`sales.order.submit`の宣言Requiredが一致しても、Query/Provider Entry未結線 | Declaration`bounded-present`、`invocationBinding=not-observed`。実Function実行やGrantをPASSしない（#3482/#1251） |
+| **PDC-20** | Bを選択→B登録した後、Invoke前にB ManifestまたはHost EntryをAに差替え。返却Canonical byte同一 | 選択時Inputと実Entry・実Artifactを比較し、不一致をFAIL/unknownで保持。単なる結果再検証では代替不可（#1251/#3381/#3371） |
+
+### 18.4 変更順と独立実証の境界
+
+- **P0／既存作業を合成する**：#3378の旧Direct二Consumer shadow、#3381の既存Compositionを使う`inspectoradapter`（Host登録Bの実関数Call・誤登録拒否）、#3371のStudio Host Factoryを、正式コードに入れる前に各Draftのexact-head CIと合流時回帰を別々に通す。先に同じGo関数を2回呼んだだけの`2 Consumer PASS`を禁止。既存`operations.ValidateInspectionProjection`へGuardを収束し、CLI通常入口とStudio Production Host双方へ**実Provider Binding**をつなぐ。
+- **P0並行／Source Fenceの欠落を実証**：#3477 mainのin-Workspace testを既存Fixtureとして再利用。外部Providerは#3479のSource-only/Manifest-only二負例を再利用し、ConsumerのWorld/Indexに**外部Provider同時点の資格が含まれない**という限界を明示。新Importer、Snapshot Store、Source Index別正本を作らない。
+- **P1／Qualified BOMへの限定投入**：#3297/#3267のMatrixは実Provider×Consumer×Targetの**同一Attempt**と独立Expectedが揃う場合のみ合格。#3479のSource raw観測と#3482のFunction宣言検査は、それ単独ではBOMの実Invocation・Conformance欄を埋めない。現在のSource Scope/Grantの不足はunknown。
+- **P1／異質なConsumerへの圧力**：REA/SHOの外部引用、KON Dataspace交換、Data WorkbenchのRead/DDL、CLI/MCP/StudioのRecipient SinkとSource Referenceを同じ既存契約で比較。ただしSHO文書生成・DB書込・外部Harness受領をInspector D1のHard Gateに積み上げない。外部Source/Import時の実Host Grantは既存Authorityが所有する。
+
+**状態**：#3477/#3482のmain局所実証、#3384の計画統合、#3371/#3378/#3381/#3479の別Draft/未統合の実装候補を分離。**本節は実Go/CLI/Studio/Providerの新試験ではなく、PDC-15〜20の受入設計**。新Importer/Resolver/BOM issuer/Runner/Host/Authority/正式API/Owner Meaning Acceptanceは追加・取得していない。全外部Reference Current Source Closure、CLI+Studio同じ選択Provider実Call、Production BOM、Current Grantは**NOT PROVEN**。

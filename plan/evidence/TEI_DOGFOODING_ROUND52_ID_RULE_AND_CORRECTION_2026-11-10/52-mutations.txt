@@ -1,0 +1,7 @@
+M1 remove the rule from the message
+   -> FAIL: message does not state the accepted character rule:
+            invalid canonical id "std.date-time"
+M2 quote a WRONG rule ([a-z0-9_-]* instead of [a-z][a-z0-9_]*)
+   -> FAIL: the regexp-equivalence tests (3 of them) detect the divergence
+restored -> core/identity 8.5s, plugin/... 5 packages, syntax, workspace,
+            operations, realization, reference-durable-run-golden all ok

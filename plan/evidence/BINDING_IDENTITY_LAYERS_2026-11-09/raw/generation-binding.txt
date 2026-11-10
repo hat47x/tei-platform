@@ -1,0 +1,9 @@
+== generation.Binding (used by C-1/C-2) ==
+   file: core/generation/router.go
+   type Binding struct {
+   	ContractID      string
+   	ContractVersion string
+   	ProviderID      string
+   	ArtifactDigest  string
+   	Generation      uint64
+   }

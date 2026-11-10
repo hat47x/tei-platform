@@ -1,0 +1,22 @@
+The design validated, but the three new artefacts could not be seen through the
+"look at my model" commands:
+
+  command            migration  database-release  solution-release
+  validate           yes        yes               yes
+  world              yes        yes               yes
+  model catalog      no         no                no
+  model overview     no         no                no
+  inspect            UNSUPPORTED_SUBJECT_KIND for all three
+  trace              UNSUPPORTED_SUBJECT_KIND for all three
+
+model overview reports sectionTotal: 8
+  application order_entry, repair_intake
+  query order_entry.recent_orders
+  semantic customer, repair_intake, sales, security, std
+
+No section for database, environment, migration or release.
+
+Stated precisely: tei world DOES answer the questions (which migrations a release
+includes, what a solution release does, what a migration is). The gap is that the
+model-facing commands never show these kinds, and there is no release/migration
+read command. Filed as #4128.

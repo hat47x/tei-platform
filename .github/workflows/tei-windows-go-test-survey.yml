@@ -8,6 +8,12 @@ on:
     paths:
       - .github/workflows/tei-windows-go-test-survey.yml
   workflow_dispatch:
+    inputs:
+      scope:
+        description: 'survey=固定7パッケージ（既定、約30分） / full=./... 全体（約90分）'
+        type: choice
+        options: [survey, full]
+        default: survey
 
 permissions:
   contents: read
@@ -19,12 +25,17 @@ concurrency:
 jobs:
   windows-go-test:
     runs-on: windows-2025
-    timeout-minutes: 40
+    # The survey list takes about 30 minutes; a full `./...` run takes about 90.
+    # The bound is one value because the repository requires every job to state
+    # a literal limit (tools/ci-workflows-test.py).
+    timeout-minutes: 120
     env:
       GOENV: off
+      TEI_DEBUG_CANDIDATE_OUTPUT: '1'
       GOWORK: off
       GOFLAGS: ''
       GOTOOLCHAIN: local
+      SCOPE_INPUT: ${{ inputs.scope }}
     steps:
       - name: 対象のGit版を取得
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -39,14 +50,50 @@ jobs:
           check-latest: false
           cache: false
 
+      - name: checkoutの行末とダイジェストを記録
+        shell: pwsh
+        run: |
+          # The Windows runner may check text files out with CRLF, which changes
+          # the bytes a digest comparison sees. Record what this checkout
+          # actually contains so a Windows-only failure can be told apart from a
+          # real regression (#3783).
+          "core.autocrlf=$(git config --get core.autocrlf)"
+          "core.eol=$(git config --get core.eol)"
+          $crlf = (git ls-files --eol | Select-String -Pattern 'i/crlf' | Measure-Object).Count
+          $lf = (git ls-files --eol | Select-String -Pattern 'i/lf' | Measure-Object).Count
+          "index: crlf=$crlf lf=$lf"
+          foreach ($path in @('tools/reference-generator-selection/testdata/line-amount/contract.json', 'plan/adr/README.md', 'tools/reference-target-profile/testdata/server.json')) {
+            if (Test-Path $path) {
+              $hash = (Get-FileHash -Algorithm SHA256 -Path $path).Hash.ToLower()
+              $bytes = [System.IO.File]::ReadAllBytes($path)
+              $crlfInFile = ([regex]::Matches([System.Text.Encoding]::UTF8.GetString($bytes), "`r`n")).Count
+              "$path sha256=$hash bytes=$($bytes.Length) crlf_pairs=$crlfInFile"
+            }
+          }
+
       - name: 対象パッケージのgo testを実行
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           if ((go env GOOS).Trim() -ne 'windows') { throw 'Not running native Windows Go' }
-          $packages = @('./internal/plugin/runtime', './internal/desktophost', './internal/operations', './cmd/tei')
+          # The finite list below is where a Windows-specific failure is worth
+          # watching on every PR. `./...` on Windows now passes (#3460), but a
+          # full run takes 90 minutes, so it is the `full` dispatch scope; the
+          # survey covers the packages whose Windows-only branches the code
+          # actually uses.
+          $packages = @('./internal/plugin/runtime', './internal/desktophost', './internal/operations', './cmd/tei', './internal/workspace', './internal/modelref', './reference/application-composition', './tools/reference-developer-context', './tools/reference-build-catalog-authoring', './tools/reference-gate-b-final-evidence', './tools/reference-target-package-evidence', './tools/reference-generator-selection')
+          $scope = "$env:SCOPE_INPUT".Trim()
+          if ($scope -eq 'full') {
+            # `./...` includes every package, so it replaces the survey list
+            # rather than being appended to it.
+            $packages = @('./...')
+            Write-Host 'scope=full: running go test ./...'
+          } else {
+            Write-Host 'scope=survey: running the fixed package list'
+          }
           # 失敗があっても集計まで進める。終了コードは最後の工程で判定する。
-          go test -json -count=1 -timeout 30m @packages > "$env:RUNNER_TEMP/gotest.jsonl"
+          $timeoutArg = if ($scope -eq 'full') { '90m' } else { '30m' }
+          go test -json -count=1 -timeout $timeoutArg @packages > "$env:RUNNER_TEMP/gotest.jsonl"
           $code = $LASTEXITCODE
           "GOTEST_EXIT=$code" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
           exit 0

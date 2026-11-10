@@ -1,0 +1,13 @@
+PR #3994 fixes the same #3983 in projection.go instead of index.go:
+
+  23:08:05Z  PR #3989 created (mine)
+  23:13:02Z  PR #3994 first commit
+  23:20:04Z  PR #3989 merged (c25664465)
+
+main has index.go's realizes (1 occurrence) and not projection.go's
+CustomGoBindings loop (0). Behaviour is the same: trace reports
+"order_entry - realizes" for security.authenticate.
+
+Both in main would emit the edge twice: projection.addEdge appends to
+Graph.Edges unconditionally, so d.DeclaredDependencies (mine) plus a direct
+CustomGoBindings loop (theirs) would produce two rows. I commented on #3994.

@@ -56,9 +56,13 @@ func TestHistoricalProcessPluginRunnerEvidenceParity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := requireCleanRepository(repo); err != nil {
-		t.Fatalf("comparison requires the same clean committed source revision: %v", err)
-	}
+	// The comparison must run against committed source, not a working tree that
+	// another package in the same `go test ./...` run may be writing into
+	// (#3637). Rather than requiring the whole live checkout to be clean — a
+	// precondition the test cannot control and that made the result depend on
+	// scheduling — both sides build from their own detached worktree at a
+	// pinned revision. A worktree created from HEAD is clean by construction, so
+	// the comparison keeps its meaning without reading the live working tree.
 	// A shallow clone lacks the pinned revision, and the later `git show` would
 	// fail with a misleading "path ... not in <rev>" message. Fail with the
 	// real cause instead of skipping, so a missing history is never a pass.
@@ -75,18 +79,6 @@ func TestHistoricalProcessPluginRunnerEvidenceParity(t *testing.T) {
 		return bytes.TrimSpace(data)
 	}
 	oldSource := git("show", historicalPluginGoBuildRunnerRevision+":tools/reference-plugin-self-build/main.go")
-	currentSource, err := os.ReadFile(filepath.Join(repo, "tools", "reference-plugin-self-build", "main.go"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	before := []byte("cmd := exec.Command(")
-	extracted := []byte("return gobuilder.BuildPackage(repo, goPath, packagePath, output, stateDir)")
-	if !bytes.Contains(oldSource, before) ||
-		!bytes.Contains(oldSource, []byte("\"-mod=readonly\"")) ||
-		bytes.Contains(oldSource, extracted) ||
-		!bytes.Contains(currentSource, extracted) {
-		t.Fatal("pinned historical and current source are not opposite sides of the exact Go builder extraction")
-	}
 
 	temp := t.TempDir()
 	if runtime.GOOS == "windows" {
@@ -100,6 +92,36 @@ func TestHistoricalProcessPluginRunnerEvidenceParity(t *testing.T) {
 			t.Fatalf("allocate isolated same-volume comparison directory: %v", err)
 		}
 		t.Cleanup(func() { os.RemoveAll(temp) })
+	}
+	// The current side also runs from its own worktree, so a change another
+	// package left in the live working tree cannot alter what is compared
+	// (#3637). The revision compared is HEAD, the same commit a clean checkout
+	// would have.
+	currentTree := filepath.Join(temp, "current-worktree")
+	addCurrent := exec.Command("git", "-C", repo, "worktree", "add", "--detach", currentTree, "HEAD")
+	if out, err := addCurrent.CombinedOutput(); err != nil {
+		t.Fatalf("create current checkout at HEAD: %v: %s", err, out)
+	}
+	t.Cleanup(func() {
+		cmd := exec.Command("git", "-C", repo, "worktree", "remove", "--force", currentTree)
+		if output, err := cmd.CombinedOutput(); err != nil {
+			t.Errorf("remove current checkout: %v: %s", err, output)
+		}
+	})
+	if output := git("-C", currentTree, "status", "--porcelain=v1", "--untracked-files=all"); len(output) != 0 {
+		t.Fatalf("current checkout at HEAD is not clean: %s", output)
+	}
+	currentSource, err := os.ReadFile(filepath.Join(currentTree, "tools", "reference-plugin-self-build", "main.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := []byte("cmd := exec.Command(")
+	extracted := []byte("return gobuilder.BuildPackage(repo, goPath, packagePath, output, stateDir)")
+	if !bytes.Contains(oldSource, before) ||
+		!bytes.Contains(oldSource, []byte("\"-mod=readonly\"")) ||
+		bytes.Contains(oldSource, extracted) ||
+		!bytes.Contains(currentSource, extracted) {
+		t.Fatal("pinned historical and current source are not opposite sides of the exact Go builder extraction")
 	}
 	historicalTree := filepath.Join(temp, "historic-worktree")
 	add := exec.Command("git", "-C", repo, "worktree", "add", "--detach", historicalTree, historicalPluginGoBuildRunnerRevision)
@@ -139,7 +161,7 @@ func TestHistoricalProcessPluginRunnerEvidenceParity(t *testing.T) {
 		filepath.Join("reference", "plugin-self-build", "workspace", "tei.workspace.yaml"): "tools/reference-plugin-self-build/testdata/frozen-workspace/reference.tei.workspace.yaml",
 	}
 	for target, source := range frozenManifests {
-		raw, err := os.ReadFile(filepath.Join(repo, filepath.FromSlash(source)))
+		raw, err := os.ReadFile(filepath.Join(currentTree, filepath.FromSlash(source)))
 		if err != nil {
 			t.Fatalf("read frozen manifest %s: %v", source, err)
 		}
@@ -186,7 +208,7 @@ func TestHistoricalProcessPluginRunnerEvidenceParity(t *testing.T) {
 		}
 	}
 	compile("historical", historicalTree, oldCLI)
-	compile("current", repo, newCLI)
+	compile("current", currentTree, newCLI)
 
 	run := func(label, executable, checkout string) evidence {
 		t.Helper()
@@ -197,6 +219,16 @@ func TestHistoricalProcessPluginRunnerEvidenceParity(t *testing.T) {
 		// historical runner ignores the variable.
 		cmd.Env = append(os.Environ(), "GOENV=off", "GOWORK=off", "GOFLAGS=", "GOTOOLCHAIN=local", "GOPROXY=off",
 			"TEI_WORKSPACE_ALLOW_UNSPECIFIED_FORMAT=1")
+		if runtime.GOOS == "windows" {
+			// The runners create isolated build state with os.MkdirTemp("", ...).
+			// A Windows host that runs the executable from a non-system drive
+			// cannot create directories under the system temp directory
+			// (observed as `mkdir ...: Access is denied`), while the same
+			// executable can when TMP/TEMP point at a directory on its own
+			// volume. Point the inherited temp variables at the comparison
+			// directory, which is already allocated on that volume.
+			cmd.Env = append(cmd.Env, "TMP="+temp, "TEMP="+temp, "TMPDIR="+temp)
+		}
 		var stdout, stderr bytes.Buffer
 		cmd.Stdout, cmd.Stderr = &stdout, &stderr
 		if err := cmd.Run(); err != nil {
@@ -275,8 +307,14 @@ func TestHistoricalProcessPluginRunnerEvidenceParity(t *testing.T) {
 		t.Fatalf("historical/current Plugin self-build Evidence drift: old=sha256:%s new=sha256:%s\nold=%s\nnew=%s",
 			hex.EncodeToString(oldSum[:]), hex.EncodeToString(newSum[:]), oldJSON, newJSON)
 	}
-	if status := git("status", "--porcelain=v1", "--untracked-files=all"); len(status) != 0 {
-		t.Fatalf("comparison modified current source checkout: %s", status)
+	// The comparison builds both sides from detached worktrees, so the invariant
+	// worth asserting is that those worktrees are still exactly as committed.
+	// The live checkout is not an input any more, and failing on it would make
+	// this test depend on what other packages did (#3637).
+	for label, checkout := range map[string]string{"historical": historicalTree, "current": currentTree} {
+		if status := git("-C", checkout, "status", "--porcelain=v1", "--untracked-files=all"); len(status) != 0 {
+			t.Fatalf("comparison modified its own %s checkout: %s", label, status)
+		}
 	}
 	newSum := sha256.Sum256([]byte(newEvidence.ProcessSourceClosureDigest + newEvidence.FirstArtifactDigest + newEvidence.NativeFirstArtifactDigest))
 	t.Logf("historical/current self-build build evidence equal on frozen revision %s: selectedSource=%s processPlugin=%s combinedSHA256=%s",

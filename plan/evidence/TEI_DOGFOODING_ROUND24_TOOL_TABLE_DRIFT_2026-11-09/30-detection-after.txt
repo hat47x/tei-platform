@@ -1,0 +1,12 @@
+After deriving the list from inputSchema:
+M1 declaredArguments drops one property
+   -> FAIL: tei_model_catalog: declaredArguments=[], schema properties=[namespace]
+M2 required names a property that is not declared
+   -> FAIL: tei_inspect requires "ghost" but does not declare it as a property
+restored -> ok (adapter 39.5s)
+
+End to end (real adapter):
+  tei_model_catalog + namespace   -> result returned
+  tei_model_catalog + nope        -> -32602 unknown argument "nope"
+  tei_validate + x                -> -32602 unknown argument "x"
+  tei_validate + {}               -> ok

@@ -1,0 +1,7 @@
+== observation provider (Environment.ObservationProviders) ==
+  internal/deployment/observation/provider.go:39:	for _, b := range env.ObservationProviders {
+  internal/index/index.go:455:		for _, b := range e.ObservationProviders {
+  internal/syntax/parser.go:544:			e.ObservationProviders = append(e.ObservationProviders, environment.ObservationProviderBinding{Kind: deployment.ObservationKind(kind.Text), Provider: providerID})
+  internal/validation/validation.go:1033:		for _, b := range e.ObservationProviders {
+  tools/reference-plugin-capability-coverage/coverage.go:209:		for _, binding := range env.ObservationProviders {
+  tools/reference-plugin-selection-matrix/matrix.go:123:		for _, binding := range env.ObservationProviders {

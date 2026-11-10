@@ -1,0 +1,2 @@
+0a8fc33a3fb906987be4c1a93328296c7317137be019f425dbb223424af66103  /home/hat47x/dogfood/bin/tei-r11
+88b558efe69a185dfa5a4838c6f247af35bce36e00500fc9781f81b4363cba22  /home/hat47x/dogfood/bin/tei-mcp11

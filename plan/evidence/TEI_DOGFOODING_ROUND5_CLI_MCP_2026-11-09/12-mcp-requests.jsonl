@@ -1,0 +1,8 @@
+{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}
+{"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}
+{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "tei_validate", "arguments": {}}}
+{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "tei_model_catalog", "arguments": {}}}
+{"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "tei_inspect", "arguments": {"subjectKind": "semantic-data", "subjectId": "sales.order"}}}
+{"jsonrpc": "2.0", "id": 6, "method": "tools/call", "params": {"name": "tei_trace", "arguments": {"scope": "r5", "subjectKind": "semantic-data", "subjectId": "sales.order"}}}
+{"jsonrpc": "2.0", "id": 7, "method": "tools/call", "params": {"name": "tei_inspect", "arguments": {"subjectKind": "semantic-data", "subjectId": "no.such.element"}}}
+{"jsonrpc": "2.0", "id": 8, "method": "tools/call", "params": {"name": "tei_trace", "arguments": {"scope": "r5", "subjectKind": "semantic-candidate-key", "subjectId": "x"}}}

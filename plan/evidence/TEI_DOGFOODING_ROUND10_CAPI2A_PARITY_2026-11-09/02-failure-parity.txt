@@ -1,0 +1,8 @@
+inspect missing subject	CLI rc=1 ok=False code=SUBJECT_NOT_FOUND	MCP status=isError code=SUBJECT_NOT_FOUND same=True
+inspect unknown kind	CLI rc=2 ok=False code=UNSUPPORTED_SUBJECT_KIND	MCP status=isError code=UNSUPPORTED_SUBJECT_KIND same=True
+trace missing subject	CLI rc=1 ok=False code=SUBJECT_NOT_FOUND	MCP status=isError code=SUBJECT_NOT_FOUND same=True
+trace unsupported kind	CLI rc=2 ok=False code=UNSUPPORTED_SUBJECT_KIND	MCP status=isError code=UNSUPPORTED_SUBJECT_KIND same=True
+trace stale fingerprint	CLI rc=1 ok=False code=STALE_SNAPSHOT	MCP status=isError code=STALE_SNAPSHOT same=True
+trace negative offset	CLI rc=2 ok=False code=INVALID_ARGUMENT	MCP status=isError code=INVALID_ARGUMENT same=True
+catalog unknown namespace	CLI rc=1 ok=False code=NAMESPACE_NOT_FOUND	MCP status=isError code=NAMESPACE_NOT_FOUND same=True
+inspect absent workspace	CLI rc=2 ok=False code=WORKSPACE_LOAD_FAILED	MCP status=ok code=None same=False

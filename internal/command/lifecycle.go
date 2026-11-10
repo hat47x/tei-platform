@@ -176,14 +176,12 @@ func (l *Lifecycle) MarkUnknown(commandID, owner string, generation int, reason 
 	return nil
 }
 
-// MayReplayは、同じowner/generationで再送してよいかを返す。unknownとobservedは
-// 再送できない。
+// MayReplayは、同じcommandを新たにDispatchできるかを返す。
+// dispatchedは既に実行中、unknownは不明な副作用があり、observedは
+// 結末を記録済みのため、いずれも再送できない。
 func (l *Lifecycle) MayReplay(commandID string) bool {
-	existing, ok := l.attempts[commandID]
-	if !ok {
-		return true
-	}
-	return existing.Stage != StageUnknown && existing.Stage != StageObserved
+	_, alreadyDispatched := l.attempts[commandID]
+	return !alreadyDispatched
 }
 
 // StageLifecycleは、Command試行の段階を保持する境界である。in-memoryの
@@ -262,16 +260,18 @@ func (l LifecycleInvoker) Invoke(ctx context.Context, request Request, options D
 	return result, nil
 }
 
-// lifecycleRecordErrorは、業務結果と段階記録の食い違いを表す。結果は既に
-// 適用されている可能性があるため、EffectUnknownは立てない。
+// lifecycleRecordErrorは、業務結果と段階記録の食い違いを表す。
+// Executorが効果を適用した後で段階の記録だけが失敗した可能性があるため、
+// clean rejectionへ変換せずunknownを呼出し元へ伝える。
 func lifecycleRecordError(recordErr, cause error) error {
 	var inner error
 	if cause != nil {
 		inner = cause
 	}
 	return &ExecutionError{
-		Code:    "COMMAND_LIFECYCLE_RECORD_FAILED",
-		Message: recordErr.Error(),
-		Cause:   inner,
+		Code:          "COMMAND_LIFECYCLE_RECORD_FAILED",
+		Message:       recordErr.Error(),
+		Cause:         inner,
+		EffectUnknown: true,
 	}
 }

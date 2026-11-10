@@ -1,0 +1,6 @@
+== resource binding (Environment.ResourceBindings) ==
+  internal/index/index.go:428:		for _, rb := range e.ResourceBindings {
+  internal/plugin/runtime/model.go:155:		bindings, err := resource.MatchBindings(perms, env.ResourceBindings)
+  internal/syntax/parser.go:616:			e.ResourceBindings = append(e.ResourceBindings, binding)
+  internal/validation/validation.go:793:		for _, rb := range e.ResourceBindings {
+  tools/reference-runtime-capability-identity/legacy_projection.go:235:		bindings, err = resource.MatchBindings(normalizedGrants, env.ResourceBindings)

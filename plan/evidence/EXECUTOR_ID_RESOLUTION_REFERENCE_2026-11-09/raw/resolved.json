@@ -1,0 +1,20 @@
+{
+  "schema": "tei.reference.executor-id-resolution/v0",
+  "authority": "derived-reference",
+  "ruleId": "tei.reference.executor-id-resolution",
+  "ruleVersion": "v0",
+  "ruleFingerprint": "sha256:513efb0c943afe65acd769270e648d76c00c7e3790cd3ad8363167c1178adec7",
+  "environment": "development",
+  "action": "database-release",
+  "resolvedId": "migration.atlas",
+  "status": "RESOLVED",
+  "admitted": true,
+  "hardCodedId": "migration.atlas",
+  "notes": [
+    "resolution uses the Environment binding, not a name written in code",
+    "admission means the plugin lock produced a plan containing that capability",
+    "neither admission nor support proves the executor works or that an effect occurred",
+    "hardCodedId is reported for comparison only; it does not take part in resolution",
+    "no authentication, authority, permission or durable receipt is issued here"
+  ]
+}

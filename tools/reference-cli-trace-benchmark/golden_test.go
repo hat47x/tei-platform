@@ -25,6 +25,11 @@ import (
 // 成功時のJSON全体が変わった。モデルの内容・行の順序・ページ継続の結果が変わって
 // いないことは、上の各比較（pagedRowsとfullの一致、Workspace更新後のSTALE_SNAPSHOT）で
 // 別に検査している。変更前の実装の値はgit履歴から参照する。
+//
+// 2026-11-09の更新: #3625で内側のtrace fingerprintをgraphFingerprintへ改名し
+// （snapshotFingerprintは1 cycleのaliasとして同値を残す）、継続ページへ
+// result.trace.continuationを足したため、成功時のJSON全体が変わった。
+// 行の順序・ページ継続の結果・STALE_SNAPSHOTの拒否は上の各比較で別に検査している。
 const goldenFile = "testdata/golden.json"
 
 func digest(v any) string {

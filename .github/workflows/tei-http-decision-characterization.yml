@@ -1,7 +1,7 @@
 name: HTTP Decision Graph 限定Node/Go Characterization
 
-# 既存Web構成E1の宣言検査とRuntime Path証明の差だけを実行する。
-# このWorkflowが成功しても実Host監査・実DB Effect・Graph Loaderは未検証。
+# E1の宣言検査・参照Go Hostの有限分岐実行・両Sourceのroute identityを限定実証する。
+# 実TEI Graph Loader、E1->Host実Binding、実DB Effect、Host現在資格は検証対象外。
 on:
   pull_request:
     branches: [main]
@@ -9,16 +9,42 @@ on:
       - '.github/workflows/tei-http-decision-characterization.yml'
       - 'reference/web-composition/plan-check.mjs'
       - 'reference/web-composition/plan-check.terminal-gap.test.mjs'
+      - 'reference/web-composition/e1-go-route-pair.test.mjs'
+      - 'reference/web-composition/e1-go-route-pair.fixture.json'
       - 'reference/web-composition/go-host/**'
+      - 'reference/workspace/applications/order-entry/patterns/submit-order.tei'
+      - 'reference/workspace/applications/order-entry/realizations/submit-order.tei'
+      - 'reference/workspace/semantic/sales/order.tei'
+      - 'reference/workspace/tei.workspace.yaml'
+      - 'internal/driver/invocation.go'
+      - 'internal/driver/observation.go'
+      - 'internal/semantic/capabilityinvoke/invocation.go'
+      - 'reference/legacy-auth/**'
   push:
     branches: [main]
     paths:
       - '.github/workflows/tei-http-decision-characterization.yml'
       - 'reference/web-composition/plan-check.mjs'
       - 'reference/web-composition/plan-check.terminal-gap.test.mjs'
+      - 'reference/web-composition/e1-go-route-pair.test.mjs'
+      - 'reference/web-composition/e1-go-route-pair.fixture.json'
+      - 'reference/web-composition/go-host/**'
+      - 'reference/workspace/applications/order-entry/patterns/submit-order.tei'
+      - 'reference/workspace/applications/order-entry/realizations/submit-order.tei'
+      - 'reference/workspace/semantic/sales/order.tei'
+      - 'reference/workspace/tei.workspace.yaml'
+      - 'internal/driver/invocation.go'
+      - 'internal/driver/observation.go'
+      - 'internal/semantic/capabilityinvoke/invocation.go'
+      - 'reference/legacy-auth/**'
 
 permissions:
   contents: read
+
+# 同じPRの古い実行だけを取り消し、mainへのpushは取り消さない（#3682）。
+concurrency:
+  group: tei-tei-http-decision-characterization-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   hdg21-characterization:
@@ -41,11 +67,14 @@ jobs:
           node --version
           node --check reference/web-composition/plan-check.mjs
           node --check reference/web-composition/plan-check.terminal-gap.test.mjs
+          node --check reference/web-composition/e1-go-route-pair.test.mjs
       - name: HDG-21 構成器の現行挙動を実Nodeテスト
         shell: bash
         run: |
           set -euo pipefail
-          node --test reference/web-composition/plan-check.terminal-gap.test.mjs
+          printf 'e1-go-fixture-blob=%s\n' "$(git rev-parse HEAD:reference/web-composition/e1-go-route-pair.fixture.json)"
+          printf 'e1-go-node-test-blob=%s\n' "$(git rev-parse HEAD:reference/web-composition/e1-go-route-pair.test.mjs)"
+          node --test reference/web-composition/plan-check.terminal-gap.test.mjs reference/web-composition/e1-go-route-pair.test.mjs
       - name: 対象版Goを準備
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
@@ -63,10 +92,27 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           printf 'go-host-blob=%s\n' "$(git rev-parse HEAD:reference/web-composition/go-host/host.go)"
           printf 'go-path-test-blob=%s\n' "$(git rev-parse HEAD:reference/web-composition/go-host/decision_path_test.go)"
+          printf 'go-route-pair-test-blob=%s\n' "$(git rev-parse HEAD:reference/web-composition/go-host/e1_go_route_pair_test.go)"
+          printf 'workspace-command-source-blob=%s\n' "$(git rev-parse HEAD:reference/workspace/applications/order-entry/patterns/submit-order.tei)"
+          printf 'workspace-capability-source-blob=%s\n' "$(git rev-parse HEAD:reference/workspace/semantic/sales/order.tei)"
+          printf 'source-admission-test-blob=%s\n' "$(git rev-parse HEAD:reference/web-composition/go-host/e1_workspace_source_admission_test.go)"
+          printf 'workspace-realization-source-blob=%s\n' "$(git rev-parse HEAD:reference/workspace/applications/order-entry/realizations/submit-order.tei)"
+          printf 'resolver-source-blob=%s\n' "$(git rev-parse HEAD:internal/driver/binding.go)"
+          printf 'command-binding-test-blob=%s\n' "$(git rev-parse HEAD:reference/web-composition/go-host/e1_real_workspace_command_binding_test.go)"
+          printf 'driver-invocation-blob=%s\n' "$(git rev-parse HEAD:internal/driver/invocation.go)"
+          printf 'capability-invocation-blob=%s\n' "$(git rev-parse HEAD:internal/semantic/capabilityinvoke/invocation.go)"
+          printf 'host-adapter-dispatch-test-blob=%s\n' "$(git rev-parse HEAD:reference/web-composition/go-host/e1_real_workspace_driver_invocation_test.go)"
+          printf 'observation-read-source-blob=%s\n' "$(git rev-parse HEAD:internal/driver/observation.go)"
+          printf 'effect-unknown-test-blob=%s\n' "$(git rev-parse HEAD:reference/web-composition/go-host/effect_unknown_observation_test.go)"
           go version
           go test -count=1 -v ./reference/web-composition/go-host
-          if [[ -n "$(gofmt -l reference/web-composition/go-host/decision_path_test.go)" ]]; then
+          if [[ -n "$(gofmt -l reference/web-composition/go-host/decision_path_test.go reference/web-composition/go-host/e1_go_route_pair_test.go reference/web-composition/go-host/e1_workspace_source_admission_test.go reference/web-composition/go-host/e1_real_workspace_command_binding_test.go reference/web-composition/go-host/e1_real_workspace_driver_invocation_test.go reference/web-composition/go-host/effect_unknown_observation_test.go)" ]]; then
             gofmt -d reference/web-composition/go-host/decision_path_test.go
+            gofmt -d reference/web-composition/go-host/e1_go_route_pair_test.go
+            gofmt -d reference/web-composition/go-host/e1_workspace_source_admission_test.go
+            gofmt -d reference/web-composition/go-host/e1_real_workspace_command_binding_test.go
+            gofmt -d reference/web-composition/go-host/e1_real_workspace_driver_invocation_test.go
+            gofmt -d reference/web-composition/go-host/effect_unknown_observation_test.go
             echo "Focused Go witness source is not gofmt-clean" >&2
             exit 1
           fi

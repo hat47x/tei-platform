@@ -39,7 +39,7 @@ test("application view is summarized into patterns, packages, and periods", () =
     application: "order_entry",
     patterns: [{id: "order_entry.order_record", kind: "record"}],
     packages: [{id: "order_entry.list_to_record", version: "1", bound: true}],
-    periods: [{id: "sales.period", data: "sales.order", businessDate: "sales.order.order_date", states: ["open", "closed"], calendar: "sales.fiscal"}],
+    periods: [{id: "sales.period", data: "sales.order", businessDate: "sales.order.order_date", states: ["open", "closed"], calendar: "sales.fiscal", closingDay: 20}],
     standardBusiness: [{kind: "tax", data: "master.tax_rate", attributes: ["master.tax_rate.applies_from", "master.tax_rate.rate"]}],
   });
   assert.deepEqual(sections.map((section) => section.title), ["Application", "Pattern", "Package", "標準業務", "期間"]);
@@ -50,6 +50,8 @@ test("application view is summarized into patterns, packages, and periods", () =
   // A period names the calendar its boundary follows, so the view shows it
   // instead of leaving the reader to guess a default.
   assert.equal(sections[4].rows[0][4], "sales.fiscal");
+  // A closing day narrower than a month is shown, so a reader does not infer one.
+  assert.equal(sections[4].rows[0][5], "20日");
 });
 
 test("command run includes the plan and the reference execution", () => {
@@ -85,6 +87,83 @@ test("command run includes the plan and the reference execution", () => {
   assert.equal(rows[8][1], "0");
   assert.equal(rows[9][0], "differences");
   assert.equal(rows[9][1], "0");
+  const hooksRow = rows.find((row) => row[0] === "hooks");
+  assert.ok(hooksRow, "the summary has no hooks row");
+  assert.equal(hooksRow[1], "not declared");
+});
+
+test("a reference run with a declared hook names the phases that did not run", () => {
+  const sections = summarizeView({
+    mode: "reference",
+    committed: true,
+    persistence: "not-applicable",
+    durability: "none",
+    plan: {
+      capability: "sales.order.submit",
+      inputs: [{name: "order", type: "sales.order", value: "ORD-1", provided: true}],
+      outcomes: [{name: "submitted", payload: "sales.order"}],
+    },
+    hooks: {
+      pattern: "order_entry.order_record",
+      executed: ["before-read"],
+      skipped: ["before-update", "after-update"],
+      notEvaluated: ["before-update"],
+      reasons: {"before-update": "no data source for the declared read"},
+    },
+  });
+  const rows = sections[sections.length - 1].rows;
+  const hooksRow = rows.find((row) => row[0] === "hooks");
+  assert.ok(hooksRow, "the summary has no hooks row");
+  assert.match(hooksRow[1], /executed 1/);
+  assert.match(hooksRow[1], /not evaluated before-update/);
+  assert.match(hooksRow[1], /skipped before-update,after-update/);
+});
+
+test("a proposal a hook made is named as a candidate, not as an applied value", () => {
+  const sections = summarizeView({
+    mode: "reference",
+    committed: true,
+    persistence: "not-applicable",
+    durability: "none",
+    plan: {
+      capability: "sales.order.submit",
+      inputs: [{name: "order", type: "sales.order", value: "ORD-1", provided: true}],
+      outcomes: [{name: "submitted", payload: "sales.order"}],
+    },
+    hooks: {
+      pattern: "order_entry.order_record",
+      executed: ["before-update"],
+      produced: {"before-update": {"sales.order.amount": "2000"}},
+    },
+  });
+  const rows = sections[sections.length - 1].rows;
+  const hooksRow = rows.find((row) => row[0] === "hooks");
+  assert.ok(hooksRow, "the summary has no hooks row");
+  assert.match(hooksRow[1], /proposes at before-update sales\.order\.amount=2000/);
+});
+
+test("a declared call that never ran is named in the summary", () => {
+  const sections = summarizeView({
+    mode: "reference",
+    committed: true,
+    persistence: "not-applicable",
+    durability: "none",
+    plan: {
+      capability: "sales.order.submit",
+      inputs: [{name: "order", type: "sales.order", value: "ORD-1", provided: true}],
+      outcomes: [{name: "submitted", payload: "sales.order"}],
+    },
+    hooks: {
+      pattern: "order_entry.order_record",
+      notEvaluated: ["before-update"],
+      uncalled: {"before-update": ["sales.submit_order"]},
+      reasons: {"before-update": "no caller is configured"},
+    },
+  });
+  const rows = sections[sections.length - 1].rows;
+  const hooksRow = rows.find((row) => row[0] === "hooks");
+  assert.ok(hooksRow, "the summary has no hooks row");
+  assert.match(hooksRow[1], /uncalled at before-update sales\.submit_order/);
 });
 
 test("package view is summarized into members and requirements", () => {
@@ -140,6 +219,8 @@ test("validation view lists diagnostics and unanswered proposals", () => {
   assert.equal(sections[1].rows[0][1], "未受理");
   assert.equal(sections[1].rows[0][2], "sha256:abc");
 });
+
+
 
 
 

@@ -1,0 +1,23 @@
+== resolved ==
+  status: RESOLVED  admitted: True
+  resolvedId: migration.atlas
+  hardCodedId: migration.atlas
+
+== no-lock ==
+  status: LOCK_REJECTED  admitted: False
+  resolvedId: migration.atlas
+  hardCodedId: migration.atlas
+  detail: unsupported plugin lock format 0
+
+== other-bound-executor ==
+  status: RESOLVED  admitted: True
+  resolvedId: runtime.reference
+  hardCodedId: migration.atlas
+
+== wrong-database ==
+  status: BINDING_MISSING  admitted: False
+  resolvedId: -
+  hardCodedId: migration.atlas
+  detail: environment development has no executor binding for action database-release targ
+
+ruleFingerprint: sha256:513efb0c943afe65acd769270e648d76c00c7e3790cd3ad8363167c1178adec7

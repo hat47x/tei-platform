@@ -1,0 +1,111 @@
+{
+  "note": "A forced MCP tool call with a 4.1 MB argument reached the server intact: the received text was the requested size plus the canary prefix, with no truncation. This is past the telemetry maxRequestBytes default of 4,000,000, so that limit does not bound MCP arguments. The following model request grew to about 4.15 MB.",
+  "requestedArgBytes": 4100000,
+  "argumentCanary": "BIGARG_CANARY_996",
+  "resultCanary": "BIGARG_RESULT_997",
+  "mcpRequests": [
+    {
+      "file": "mcp-001-request.bin",
+      "bytes": 280,
+      "sha256": "2d6e560663b30185c0680e157110159805f2f628045dd515a6a0557bcd66916f",
+      "method": "server/discover",
+      "argTextBytes": null,
+      "argHasCanary": false,
+      "argTailAllZ": false
+    },
+    {
+      "file": "mcp-002-request.bin",
+      "bytes": 163,
+      "sha256": "40902c765afca2b3658a4c98787806ed8b1a716cf4a4874b273eadce48a9ffb8",
+      "method": "initialize",
+      "argTextBytes": null,
+      "argHasCanary": false,
+      "argTailAllZ": false
+    },
+    {
+      "file": "mcp-003-request.bin",
+      "bytes": 54,
+      "sha256": "59951ca0b212b103876fa23a9e58bcbbc8fbcc0120e3f5ee7214461e2bd1cd5e",
+      "method": "notifications/initialized",
+      "argTextBytes": null,
+      "argHasCanary": false,
+      "argTailAllZ": false
+    },
+    {
+      "file": "mcp-004-request.bin",
+      "bytes": 46,
+      "sha256": "75f0c7627a35c7e96a0a88482622a0d1ec7e81c0eb5414a88ba7aab9450cf73b",
+      "method": "tools/list",
+      "argTextBytes": null,
+      "argHasCanary": false,
+      "argTailAllZ": false
+    },
+    {
+      "file": "mcp-005-request.bin",
+      "bytes": 4100123,
+      "sha256": "221fded2c468503f4c62564d0dd8d199414f69daf84d06f8d5cdb5608a33d538",
+      "method": "tools/call",
+      "argTextBytes": 4100018,
+      "argHasCanary": true,
+      "argTailAllZ": true
+    }
+  ],
+  "toolsCall": {
+    "file": "mcp-005-request.bin",
+    "bytes": 4100123,
+    "sha256": "221fded2c468503f4c62564d0dd8d199414f69daf84d06f8d5cdb5608a33d538",
+    "method": "tools/call",
+    "argTextBytes": 4100018,
+    "argHasCanary": true,
+    "argTailAllZ": true
+  },
+  "modelRequests": [
+    {
+      "file": "model-001-request.json",
+      "bytes": 100012,
+      "sha256": "31acf975f82094eda0114853f8209c8dfec5ed71d535649475168df5ad67738b",
+      "argCanaryPresent": false,
+      "resultCanaryPresent": false
+    },
+    {
+      "file": "model-002-request.json",
+      "bytes": 57484,
+      "sha256": "b286ec1e2381a75f3a86d9783a2b1c2744594125f504fc824180f60c74dd69a5",
+      "argCanaryPresent": false,
+      "resultCanaryPresent": false
+    },
+    {
+      "file": "model-003-request.json",
+      "bytes": 51568,
+      "sha256": "fa42cd3d9a9b084bcfbf4dc4ca2ce12891a528a5c803d8c80fe9226dd7300bf6",
+      "argCanaryPresent": false,
+      "resultCanaryPresent": false
+    },
+    {
+      "file": "model-004-request.json",
+      "bytes": 32982,
+      "sha256": "42d7ed85f84ce0102d7b3ea5fbf5e0d96d5ecd507985c383238256814af8d845",
+      "argCanaryPresent": false,
+      "resultCanaryPresent": false
+    },
+    {
+      "file": "model-005-request.json",
+      "bytes": 4149793,
+      "sha256": "ce5ad6c01ec38b67d85d7ba517edd8c735463b6e5ac2218a9b0e1a1d53471e16",
+      "argCanaryPresent": true,
+      "resultCanaryPresent": true
+    }
+  ],
+  "largestModelRequestBytes": 4149793,
+  "telemetryMaxRequestBytesDefault": 4000000,
+  "exceedsTelemetryDefault": true,
+  "comparison": {
+    "earlierRecord": "DSH_MCP_ARG_SIZE_2026-11-10",
+    "sizesTested": [
+      200000,
+      1000000,
+      4100000
+    ],
+    "anyTruncationObserved": false
+  }
+}

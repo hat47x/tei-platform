@@ -771,6 +771,23 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 	if actualDigest != manifest.SourceDigest {
 		return reject("source digest mismatch: declared " + manifest.SourceDigest + ", actual " + actualDigest)
 	}
+	if expectedExtension == ".go" {
+		built, err := goSourceFiles(dir)
+		if err != nil {
+			return reject("go source selection failed: " + err.Error())
+		}
+		declaredName := filepath.Clean(filepath.FromSlash(manifest.Source))
+		bound := false
+		for _, name := range built {
+			if name == declaredName {
+				bound = true
+				break
+			}
+		}
+		if !bound {
+			return reject("declared source " + manifest.Source + " is not among the files passed to go build: " + strings.Join(built, ", "))
+		}
+	}
 	if manifest.Generation != nil && manifest.Generation.OutputDigest != actualDigest {
 		return reject("generation output digest does not match the candidate source")
 	}
@@ -975,9 +992,9 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		case LanguageJava:
 			got, execution, err = runProgram(ctx, javaPath, []string{"-cp", javaClassesDir, "Main"}, tc.Input, executionOptions)
 		case LanguageWasm:
-			got, execution, err = runProgram(ctx, nodePath, []string{wasmExecPath, wasmPath}, tc.Input, executionOptions)
+			got, execution, err = runWasmProgram(ctx, nodePath, []string{wasmExecPath, wasmPath}, tc.Input, executionOptions)
 		case LanguageWasi:
-			got, execution, err = runProgram(ctx, nodePath, []string{"--no-warnings", wasiRunnerPath, wasmPath}, tc.Input, executionOptions)
+			got, execution, err = runWasmProgram(ctx, nodePath, []string{"--no-warnings", wasiRunnerPath, wasmPath}, tc.Input, executionOptions)
 		default:
 			got, execution, err = runCandidate(ctx, binaryPath, tc.Input, executionOptions)
 		}
@@ -1544,11 +1561,39 @@ func runCandidate(ctx context.Context, binary string, input json.RawMessage, opt
 	return runProgram(ctx, binary, nil, input, options)
 }
 
+// minimalWasmEnvironment returns the variables a wasm runtime needs on this
+// host and nothing else. Everything else is dropped on purpose: the Go wasm
+// runtime copies the environment into the instance, and a CI runner's block
+// overflows that buffer (#3971).
+func minimalWasmEnvironment() []string {
+	names := []string{"SystemRoot", "TEMP", "TMP", "HOME", "PATH"}
+	env := make([]string, 0, len(names))
+	for _, name := range names {
+		if value, ok := os.LookupEnv(name); ok {
+			env = append(env, name+"="+value)
+		}
+	}
+	return env
+}
+
+// runWasmProgram runs a wasm candidate with a minimal environment. The Go wasm
+// runtime copies the whole environment into the instance, and on a Windows
+// runner the inherited block overflows that buffer ("total length of command
+// line and environment variables exceeds limit"), which makes every case look
+// like an empty result (#3971). A candidate is hermetic, so it gets the few
+// variables the platform needs rather than the host's settings.
+func runWasmProgram(ctx context.Context, name string, args []string, input json.RawMessage, options ExecutionOptions) (Result, *ExecutionEvidence, error) {
+	result, evidence, err := runProgram(ctx, name, args, input, options.withMinimalEnvironment())
+	return result, evidence, err
+}
 func runProgram(ctx context.Context, name string, args []string, input json.RawMessage, options ExecutionOptions) (Result, *ExecutionEvidence, error) {
 	runCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	cmd := options.Command(runCtx, name, args...)
 	cmd.Stdin = bytes.NewReader(input)
+	if options.MinimalEnvironment {
+		cmd.Env = minimalWasmEnvironment()
+	}
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -1558,6 +1603,13 @@ func runProgram(ctx context.Context, name string, args []string, input json.RawM
 	evidence := &ExecutionEvidence{
 		Measurement: MeasureProcess(cmd.ProcessState, elapsed),
 		ExitCode:    0, StdoutDigest: digest(stdout.Bytes()), StderrDigest: digest(stderr.Bytes()),
+	}
+	// TEI_DEBUG_CANDIDATE_OUTPUT makes a run print what the candidate wrote.
+	// It exists to explain a candidate that exits 0 and produces an empty
+	// result, where the receipt only says that the fields were empty (#3971).
+	if os.Getenv("TEI_DEBUG_CANDIDATE_OUTPUT") != "" {
+		fmt.Fprintf(os.Stderr, "candidate %q %v: stdout=%q stderr=%q\n",
+			name, args, truncateForLog(stdout.Bytes(), 2000), truncateForLog(stderr.Bytes(), 2000))
 	}
 	if err != nil {
 		evidence.ExitCode = -1
@@ -1570,9 +1622,25 @@ func runProgram(ctx context.Context, name string, args []string, input json.RawM
 		}
 		return Result{}, evidence, fmt.Errorf("candidate exited %d: %s", evidence.ExitCode, stderr.String())
 	}
+	// TEI_DEBUG_CANDIDATE_OUTPUT makes a run print what the candidate wrote.
+	// It exists to explain a candidate that exits 0 and produces an empty
+	// result, where the receipt only says that the fields were empty (#3971).
+	if os.Getenv("TEI_DEBUG_CANDIDATE_OUTPUT") != "" {
+		fmt.Fprintf(os.Stderr, "candidate %q %v: stdout=%q stderr=%q\n",
+			name, args, truncateForLog(stdout.Bytes(), 2000), truncateForLog(stderr.Bytes(), 2000))
+	}
 	var result Result
 	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
 		return Result{}, evidence, fmt.Errorf("candidate output is not a result: %w: %q", err, stdout.Bytes())
 	}
 	return result, evidence, nil
+}
+
+// truncateForLog keeps a diagnostic line readable without dropping the start of
+// the output, which is where a decoder error usually shows itself.
+func truncateForLog(raw []byte, limit int) string {
+	if len(raw) <= limit {
+		return string(raw)
+	}
+	return string(raw[:limit]) + "...(truncated)"
 }

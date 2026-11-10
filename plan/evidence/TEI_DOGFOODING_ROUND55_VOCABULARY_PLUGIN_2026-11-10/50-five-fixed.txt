@@ -1,0 +1,13 @@
+Five plugin diagnostics now name their accepted values:
+
+  INVALID_PLUGIN_RUNTIME            builtin, process
+  INVALID_PLUGIN_SANDBOX_POLICY     none, preferred, required (or omit the policy)
+  INVALID_PLUGIN_CAPABILITY_KIND    deployment-executor, observation-provider,
+                                    evidence-provider, database-provider,
+                                    contract-query-executor, migration-provider,
+                                    editor-intelligence
+  INVALID_PLUGIN_EXTERNAL_SCOPE     editor, build, test, runtime, migration
+  INVALID_PLUGIN_EXTERNAL_KIND      toolchain, runtime, language-package, tool
+
+All five were reached through the CLI against a workspace copy. Unlike
+INVALID_SEMANTIC_TYPE_KIND (round 54), none of these is unreachable.

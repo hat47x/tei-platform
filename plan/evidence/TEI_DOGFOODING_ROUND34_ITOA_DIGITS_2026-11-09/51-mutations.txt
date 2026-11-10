@@ -1,0 +1,5 @@
+M1 restore string(rune('0'+n))
+   -> FAIL TestItoaSpellsMultiDigitCounts: itoa(10) = ":", want "10"
+   -> FAIL TestDigitCountPatternStillMatches:
+        digits=10 pattern "^([0-9]{:})-.+\\.md$" does not match "7777777777-entry.md"
+restored -> ok (repository-plan-check, vet, gofmt clean)

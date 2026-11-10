@@ -1,0 +1,27 @@
+{
+  "schema": "tei.reference.service-carrier-connect/v0",
+  "authority": "derived-reference",
+  "ruleId": "tei.reference.service-carrier-connect",
+  "ruleVersion": "v0",
+  "ruleFingerprint": "sha256:f8c7bc2b23c152a3068a8872309a5f99c0237e7e9759fe8a2b10b94ef7355236",
+  "application": "",
+  "environment": "",
+  "outcomes": [
+    {
+      "requestId": "reference-request",
+      "generation": 0,
+      "pinnedGeneration": false,
+      "error": "CONNECT_INPUT_INVALID: a current route source, a registry and a guard are required"
+    }
+  ],
+  "ranCount": 0,
+  "refusedCount": 1,
+  "unverifiedCount": 0,
+  "notes": [
+    "ranCount counts carrier entry, refusedCount only pre-invocation and unverifiedCount post-invocation errors or an answer for another generation",
+    "an answer is the Provider responding, not proof that external state changed",
+    "the coordinator, runtime registry and route source are supplied by the Host",
+    "the Host's pinned Binding is compared with the route before anything runs",
+    "no authentication, authority, permission or durable receipt is issued here"
+  ]
+}

@@ -336,3 +336,107 @@ Webアプリケーションでは、UI構成キットだけでなく、HTTP要�
 **既存Issueへの反映先**：決定表の参照入口=#1016、本番契約のOwner=#951、構文・演算=#988/#2639、データ操作/Provider=#2622、生成Target=#1121/#259、Bundleと未使用除外=#1251/#943/#1167、キャッシュ・Evidence再利用=#2600、実Effect・Authority=#1174、Process/外部Host=#1145/#2390/#1223、UI/生成Hook=#997/#2090。新Issue、共通実行Host、Plugin万能ABI、固定Capability enum、新Policy/Lock、業務意味の第二正本を作らない。
 
 **状態**：今回の追補は**契約・配置方式の選定に関する設計/検収案**。EXD-01〜09、実DB／Windows Wails／他言語実Host、動的交換／無停止切替、実Provider Commit/Receipt、正式Owner意味受理はこの追補で**NOT RUN／未採用**。Closed Issueや既存Referenceの限定PASSを新しい統合E2E・Production保証へ読み替えない。
+
+
+<!-- tei-plugin-standard-graph-representation-20261107 -->
+## 2026-11-07 Pluginの組合せ・接続を標準データ構造と標準表現型だけで説明する（設計候補／実装NOT RUN）
+
+### 目的・採否の境界
+
+Plugin向けの専用Graph Core型、特製Node/Edgeデータモデル、新Resolver、新権限Engine、Canvas専用の意味正本を作らない。既存[#2495](https://github.com/hat47x/tei-platform/issues/2495)（標準構造）・[#2497](https://github.com/hat47x/tei-platform/issues/2497)（構造保存写像）・[#2507](https://github.com/hat47x/tei-platform/issues/2507)（Function Pattern/Presentation Binding）・[#1016](https://github.com/hat47x/tei-platform/issues/1016)（案件選択）へ乗せ、**Record/Collection/Relation/Graph/時点付きFacet**をPlugin DomainのRole付きデータとして解釈する。Graph、Tree、Table、Matrix、Timeline等は**標準表現型**の候補であり、型の定義はFunctionから独立、具体的な表現インスタンスは**Function内だけ**に置く（Headlessは0件可）。[Draft #3236](https://github.com/hat47x/tei-platform/pull/3236)の合成写像・情報損失、および[Draft #3222](https://github.com/hat47x/tei-platform/pull/3222)の複数View同期とは責務を重複させない。
+
+ここで「Pluginトポロジー」は**次の相対的な構造投影**の呼び名であり、新Canonical形式名ではない。
+
+| 観測する関係層 | 元の標準データ構造とPlugin Domain Role | 最低限保持する異同 |
+| --- | --- | --- |
+| 論理要求 | Function/ApplicationのRequired Capability/Contract、ProviderのProvides、typed I/O PortのConsumes/Produces | Contract ID+version、Input/Output Shape、Relation向き/多重度、NULL/Failure/Effect、必須/任意、未解決 |
+| Provider選択・接続 | 案件Profile/Environment/Targetで選択したBinding/Selection **Record** がContract・Provider・ConsumerをRelationで結ぶ | Consumer/Function・Contract・Provider・Target・Tenant/Scope・Selection revisionを独立特定。多項関係を単なる「線」へ潰さない |
+| Bundleと構成資産 | Bundle Contains Provider/Source/Asset、Provider Declares Dependency、Release/ArtifactのPackaging Relation | 同梱≠選択≠実Build収録。Bundle単位の更新を選択済みProvider以外へ過剰伝播しない |
+| 実Build | Build Plan Requires / actual selected Member / Artifact Includes を、Source/Build fingerprintに束縛 | 計画依存≠実Go import/init/embed/Link。rejected/unknown Source closureを「依存なし」としない（#1251/#2831） |
+| 実Runtime | Consumer Instance Invoked Provider Instance、Observed Read/Effect/ReceiptのAttempt相対Relation | Selected Provider≠invoked target。Host/Tenant/current Grant、Read Scope、時点、受領証拠をGraph定義へ「既定許可」として注入しない（#1174） |
+
+**関係の最小性質**：安定した各端点のqualified identity（Plugin ID・Capability ID・Business IDを混用しない）、**Relation occurrence ID**、source/targetとrole/direction、cardinality/multiplicity、選択範囲（Application/Function/Target/Tenant）、valid time と観測時点、source provenance/revision、Relationの「宣言／解決／実消費／観測」の根拠、Required Source/世界の取得完全性を必要な粒度で保持する。未知・stale・permission-denied・partialは消えた辺/0件へ正規化しない。同labelの二Node・同一二Node間の多重有向辺を保存する。特定機能の多数端点接続は新Hypergraph型を作らず、端点・Roleを持つ**Connection Record + Relation集合**で表す。
+
+### 標準表現型の選択と情報損失
+
+| 標準表現型 | Plugin構成で最も有用な閲覧 | 表示だけでは成立しないこと |
+| --- | --- | --- |
+| **Graph**（有向多重辺） | required/provides/selected/contains/invokedの関係を種類・時点・Scope別の層に分けて表示。Portを必要なら独立NodeまたはRole付きEndpointとして表現 | 一本の矢印で依存/データ配送/呼出/許可を兼用すること。矢印の描画だけでBinding/Grantを変更しない |
+| **Table**（Record/Relation表） | Node/Relation occurrence ID、端点、kind、source revision、Context、evidence、unresolved reasonの**損失の少ない検査面** | 表示行数＝業務実体/実消費件数、NULL＝不存在 |
+| **Tree**（依存探索・Bundle階層） | 特定Rootからの展開、親子・Bundle内容や段階的な詳細 | 共通Providerへの複数親、DAG/循環、同一Nodeの別Path occurrenceを自動同一化。Tree化には複製PathとLossを明示 |
+| **Matrix**（相互適合） | Consumer × Contract/ProviderのRequired/Provided/Selected/Qualifiedを版・Target別比較 | 値の色やチェック欄だけで選択を確定・現在権限付与 |
+| **Timeline/差分Table** | Contract/Provider/Artifact変更、Selection改訂と失効、Invocation/Receiptの独立Attempt | valid time、Source revision、実Read/Execution time、媒体clockを同じ時間軸へ勝手に混ぜない |
+
+Graphはデータの意味正本ではなく、**標準Graph→Representation Instanceへの写像**。Layout/zoom/drag/focus・表示層選択はPresentation Stateであり、Source/Selectionの書換えではない。Graph編集が必要なら、View occurrence→元Relation occurrence/Port/Bindingへの**逆写像の一意性**を先に確定し、Action Offer→明示Intent→既存#951 Resolver/Owner review→Host Grant/Effectへ渡す。情報損失・多対一・部分取得・未開示を伴う場合は表示・候補生成までで停止する（#2497/#2500/#2516）。
+
+### 単一の標準構造を複数表示に投影する有限例
+
+**前提（説明用であり正式DSL/Schemaではない）**：Function FはContract Qを必須とする。Provider A/Bが同じQを提供し、Bundle XはA/Bを両方同梱する。Project/Target/Tenantを条件とするSelection Record Sは**Bを指定**する。実Binary/Runtimeの観測Eでは**Aが呼ばれた**とする。A/Bの返却結果は同じ23期待値と一致する場合を想定する。
+
+| 元データの独立Relation | Graphでの表示候補 | Tableで確認すべき正本ID・異常 |
+| --- | --- | --- |
+| F requires Q / A provides Q / B provides Q | 論理層の要求・提供の有向多重辺 | F/Q/A/Bのqualified ID、Contract版、二つのProviderの存在 |
+| X contains A / X contains B | Bundle階層の二Edge | Bundleに2つあるだけでBの選択確定ではない |
+| S selects B for (F,Q,Target,Tenant,Revision) | Scope付き選択Edge（SはRecordに保持） | 選択根拠・Profile/Lock・Tenant Scope・証拠時点 |
+| E invokes A for (F,Q,Target,Attempt) | Runtime観測の別レイヤー（selectionと視覚的に差異表示） | **B selected / A invoked => 不適合**。計算結果が同一でもD1 PASS不可 |
+| Eの実呼出しを取得できない | 観測層unknown/partialの表示 | 「A/Bいずれも呼ばれない」ではなく「証拠未取得」 |
+
+**単位・軸の扱い**：構成の辺に物理単位は不要だが、Latency(ms)、Bytes、Cost(currency/時点)、Throughput(events/s)、Availability区間などを属性として載せる場合は標準Quantity/Time Facetへ束縛する。Graphのx/y座標は基本的にLayout値で、業務上の距離・依存強度・時間/性能の単位ではない。性能比較Chartや時間軸へ投影するときだけ元の単位・基準時刻・変換を検証する（#2495/#2497）。
+
+### 検収・実施順（既存Expected SSOTを再利用）
+
+1. **P0 Headless**：既存ContractとD0/D1の23件独立Expected、A/B・Bundle X・Selection S・実Call Eを、標準Record/Relation/Collection/Graphで読める構造候補へ写像。Graph/Table/Treeの各投影で同じSource-qualified identityとRelation occurrenceが追えることを検査。ラベル同名二Node、多重Edge、同じProviderへの多親、DAG→TreeのPath重複を追加の**判別条件**とする（新Fixture SSOTは作らない）。
+2. **P1 Context別・複数表現**：一つのFunctionのData ContextからTableとGraphを投影し、Treeの非単射性/Partial Read/hidden Edge、Contract違い・同版異byte・Tenant A/B・Selection epoch ABAを診断。別Function/別Tenantへ選択状態を共有してもAuthorityへ昇格しない（#2506/#2507/#2497/#3222）。
+3. **P2 実消費**：選択B→Go binaryの実Link/Invoke B、B選択・A呼出し誤接続、未選択Bundle収録、実Source closure/独立Consumer資格を既存#1251/#2390で検証。Graphは**その実Evidenceの表示**であって証拠作成者ではない。
+4. **P3 操作導線**：Function内Graph Instanceに「接続候補を見る」「選択変更を提案する」「出典と未検証を確認する」Action Offerを配置し、実Source/Binding変更・再Build・Runtime Grantは既存の適切なHost/Ownerへ委譲。自動Link/Unlink、Drag-to-Grant、Graphからの直接Commitは禁止。
+
+**担当**：Plugin構成Source・選択=#1016、Capability Contract/Binding=#951、標準形状=#2495、Projectionと情報損失=#2497、Function文脈と表示型=#2506/#2507/#997、Actual Build/Call=#1251/#2600、Evidence/独立Expected=#1163/#2514、Host/Effect=#1174。#3236/#3222の表現全般と重複するCore型・Renderer・逆写像Engineを作らず、Plugin固有の**関係Roleと受入例**だけを本節で所有する。
+
+**証拠状態**：この追補は既存標準データ構造・標準表現型をPlugin Domainに適用する計画。新Graph Parser、実表現Renderer、Function内Graph Instance、実Go D1、Provider、Host、Owner正式受理は**NOT RUN／未採用**。Graphが描けることをContractの意味同等性・Current Grant・実Effectとして扱わない。
+
+
+<!-- tei-plugin-crossref-tea-crud-typed-relations-20261107 -->
+### 三要素分析法・CRUD・Subsystemとの共通Cross-reference：型付きRelationの多視点投影
+
+[三要素Method](THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)のData/Function/Business、[Subsystem分割 #3255](https://github.com/hat47x/tei-platform/pull/3255)のdirect CRUDとEffective Effect、[標準表現の合成写像 #3236](https://github.com/hat47x/tei-platform/pull/3236)のLossを、前節のPlugin Graphに接続する。**Plugin専用のGraph/CRUD Core型や独立した表編集Engineは作らない**。共通の導出単位は、標準Record/Relationのqualified Subject ID、Relation occurrence ID、endpoint/role/direction、Scope/Source Revision、証拠種別と開示資格である。Graph、Table、Matrix、Treeは、この同じ**公開可能なSource Slice**の異なる投影とする。
+
+| 元の関係（標準データ構造） | Graphでの表現 | Matrix/Cross-referenceでの導出の禁止事項 |
+| --- | --- | --- |
+| Function requires Contract、Provider provides Contract | 要求/提供の有向・多重辺 | Consumer × Contract × Providerのセルは複数fact集合。available/selected/build-included/invokedを単一Booleanに潰さない |
+| Profile/Target/Tenant/Revisionを持つSelection Record | Connection Recordのrole付き端点とBへの選択線 | 選択は多項関係。別Tenant/版での選択を一本の矢印で上書きしない |
+| Bundle contains Provider、Build consumes Source、Runtime invokes Provider | 同梱、実収録、実Callを異なるRelation/Layerに分離 | 同梱＝選択＝実リンク＝実Callとは推論しない。未知の実消費を0件とはしない |
+| Business Step → Function → Data | 業務Data授受とFunction I/Oの型付き線 | Business StepからFunctionへ到達可能でも、Step自身のC/R/U/DやBusiness Effectを自動生成しない |
+| Function → Operation → Data（direct/derived/observed） | Data読取/書込、Rule/Trigger経由の推移効果、実Provider/Receipt観測を分離 | Function × DataのCRUDセルは**Direct Declared C/R/U/D、Derived Effective Impact、Observed Effect**を別に保持。空欄は未取得／不在を区別 |
+| 複合Key/多親DAG/Relation occurrence | 元Relationと参加Field/Endpoint Roleを別Recordで参照 | 一つの図上Edgeを消しただけでComposite Key/Field等の一意逆Patchを主張しない（TEA T03／#2497） |
+| Subsystem候補 × Function/Data | 所属候補と越境Data/Effect辺 | サブシステム境界はCRUD凝集・直接/間接効果・未取得Coverageを照合。Folderや見た目から物理DB/サービス境界を断定しない（#3255） |
+
+図上のEdgeは**Semantic Relation、特定Ruleから導出したDerived Relation、単なるPresentation Edge**のいずれかを区別する。DerivedはRule/Source Pin、ObservedはAttempt/Provider/Scopeに束縛。Layout・Zoom・表示Matrixの列順の変更は原則Presentation Stateであり、Relation/選択Sourceの書込みではない。元データと図/表の関係は、表示Occurrenceと元Relation occurrenceを別IDで保持する。Graph→Tree時の複数Path・集計時の非単射・隠されたEdgeを、元Relationの不存在/単一性へ昇格しない。
+
+### 共通のread-only InspectionをCLI/CUI/MCPへ投影する条件（正式コマンド／Schema未採用）
+
+AI用CLI/MCPと対人Studioから同じ既存Source/Query/Function Contextを使うため、まずHeadlessで以下を**既存モデルから導出できるか**照合する。
+
+| 照合するもの | 必須情報と失敗時の扱い |
+| --- | --- |
+| Source/Identity | qualified ID、Role付きRelation occurrence、endpoint identity、元Source位置・Revision、Function/Context |
+| 問いの閉包 | Relation kind、Target/Tenant/as-of、Readerが実取得したScope、required Sourceの欠損・partial・hidden・unknown。閉包不明の空結果をabsentへしない |
+| Interpretation/Evidence | Declared/Derived/Observedの層、Rule/Operator/Providerの明示Pin、実消費/実Callの独立Evidence、未観測を表示 |
+| Projection | Graph Node/EdgeとMatrix cell factが**同じRelation occurrenceを逆参照**できる。変換Loss、Path重複、公開Consumer範囲を明示 |
+| 編集 | 一意にsource-ownedなRelationならtyped Proposal候補。多対一/Derived/Observed/非開示/旧Sourceの場合はread-onlyと理由。DragやMatrixセル変更だけでCommitしない |
+
+CLIに新しい名称のコマンドがあることを前提にせず、既存のreader/inspect/operation境界で足りない属性を先に測る。三要素MethodがProperty/Key/Roleに対して追加する意味規則は#1124/#1126のOwner、Plugin選択の意味は#951/#1016のOwnerに残す。Diagram ProfileとGraph Layoutは投影側であり、業務・契約・現在Grantの第二正本ではない。
+
+### 同一Fixtureから導出する独立対照（新Test/Expected正本を作らない）
+
+| Case | 一因子の変更 | 各Viewと判定の独立期待 |
+| --- | --- | --- |
+| **PX-01** | Provider A/BがQを提供、Bundleは両方含み、選択Bだが実Call A | Graph選択層と実行層が不一致。Matrix selected B / invoked A。同一23計算ExpectedでもD1不合格（#1251） |
+| **PX-02** | FunctionはData DのRを宣言、D更新は選択未確定Rule経由 | CRUD表のdirect Rのみ確認済み、derived Uはunresolved。実Uや効果なしと断定しない |
+| **PX-03** | Business Step→Function→DataだがOperation Source未読込 | DFD線は表示可能でもStepのCRUD・実Commit/Receiptを作らない（#1125） |
+| **PX-04** | 複親DAGをTreeに変え、同じSourceを二Pathに表示 | Table/GraphではRelation occurrence数を保持、Tree表示Node数を実Source行数へ読み替えない |
+| **PX-05** | 公開Slice同じままPrivate Plugin/Relationだけ追加 | 公開Graph/MatrixのEdge、列、件数、layout、ARIA、Tool JSON、検索候補が秘密差分で変わらない（TEA T06/#2516） |
+| **PX-06** | Source位置だけ移動、Meaning ID不変 | Graph/Matrixの意味投影は再利用候補、旧Source Jumpはstale。新位置再読込の確認を要求（TEA T01） |
+| **PX-07** | GraphのComposite Relation線をDragで変更 | Layout-onlyならSource writes 0。意味変更なら複合Proposal、Source版再照合、既存Shared Acceptanceへ（TEA T03/#267） |
+| **PX-08** | Pattern/SourceにOperation記述あり、実Operationsに未導出 | Declared/Derived/ExecutableをGraph/Matrixで分離し、Action OfferやGrantを実装済み扱いしない（#2507/#2586） |
+
+**実施順の補強**：前節P0へ「同一Qualified Relation Slice→Graph＋Table＋MatrixのHeadless再導出と、Projection間での元Relation ID/Scope一致」を最初の合否条件として追加する。TEAのData/Function/BusinessとPluginのContract/Providerを**同じ写像機構**で試すが、意味Roleや期待値は互いに流用しない。P1はFunction内複数View・公開Scope/Selection epoch、P2は実Source/Build/Provider Evidence、P3はView Edit→Proposal→Owner受理を既存#2497/#2507/#267へ渡す。**PX-01〜08は今回計画のみ。新Graph/Matrix Renderer、CLI/MCP End-to-end、実D1/DB・Owner意味受理はNOT RUN**。

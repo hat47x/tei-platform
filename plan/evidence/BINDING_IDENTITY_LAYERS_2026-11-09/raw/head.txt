@@ -1,0 +1,2 @@
+6fef2539cfdbcf476482895c5e11bf6958dc65e0
+go version go1.27.3 linux/amd64

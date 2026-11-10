@@ -7,7 +7,6 @@ import (
 	"errors"
 	"os"
 	"os/exec"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -25,15 +24,13 @@ import (
 // A failed readiness check must dispose only the candidate's resources and
 // must leave the previously verified provider callable.
 func TestRejectedProcessArtifactStageRetainsVerifiedProvider(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("reference launcher does not support executable paths containing spaces on Windows")
-	}
+
 	// #2057: buildは実プロセスの期限と切り離し、独立した長い期限で待つ。
 	buildCtx, cancelBuild := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancelBuild()
 	build := func(revision string) (string, string) {
 		t.Helper()
-		path := hostExecutable(t.TempDir(), "process-"+revision)
+		path := hostExecutable(temporaryBuildDir(t), "process-"+revision)
 		cmd := exec.CommandContext(buildCtx, "go", "build", "-ldflags", "-X main.referenceRevision="+revision,
 			"-o", path, "../../plugins/reference-process-executor")
 		if out, err := cmd.CombinedOutput(); err != nil {

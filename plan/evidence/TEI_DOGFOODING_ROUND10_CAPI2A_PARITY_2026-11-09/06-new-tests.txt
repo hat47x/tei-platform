@@ -1,0 +1,20 @@
+=== RUN   TestInspectAndTraceMatchAcrossRealProcesses
+=== RUN   TestInspectAndTraceMatchAcrossRealProcesses/inspect_success
+=== RUN   TestInspectAndTraceMatchAcrossRealProcesses/trace_success
+=== RUN   TestInspectAndTraceMatchAcrossRealProcesses/inspect_missing_subject
+=== RUN   TestInspectAndTraceMatchAcrossRealProcesses/inspect_unknown_kind
+=== RUN   TestInspectAndTraceMatchAcrossRealProcesses/trace_missing_subject
+=== RUN   TestInspectAndTraceMatchAcrossRealProcesses/trace_unsupported_kind
+=== RUN   TestInspectAndTraceMatchAcrossRealProcesses/trace_stale_fingerprint
+--- PASS: TestInspectAndTraceMatchAcrossRealProcesses (8.21s)
+    --- PASS: TestInspectAndTraceMatchAcrossRealProcesses/inspect_success (0.86s)
+    --- PASS: TestInspectAndTraceMatchAcrossRealProcesses/trace_success (0.85s)
+    --- PASS: TestInspectAndTraceMatchAcrossRealProcesses/inspect_missing_subject (0.80s)
+    --- PASS: TestInspectAndTraceMatchAcrossRealProcesses/inspect_unknown_kind (0.71s)
+    --- PASS: TestInspectAndTraceMatchAcrossRealProcesses/trace_missing_subject (0.80s)
+    --- PASS: TestInspectAndTraceMatchAcrossRealProcesses/trace_unsupported_kind (0.85s)
+    --- PASS: TestInspectAndTraceMatchAcrossRealProcesses/trace_stale_fingerprint (1.32s)
+=== RUN   TestMissingRequiredArgumentIsRefusedByBothEntrances
+--- PASS: TestMissingRequiredArgumentIsRefusedByBothEntrances (3.21s)
+PASS
+ok  	tei/tools/reference-mcp-readonly-adapter	11.420s

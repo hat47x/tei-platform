@@ -87,6 +87,11 @@ type Router struct {
 	Executors map[core.CanonicalID]executor.Executor
 }
 
+// Dispatch routes the command, checks that the executor conforms, runs it, and
+// fills the identity fields the executor left empty. It does NOT decide whether
+// the answer is attributable: a result that names another executor comes back
+// unchanged, so the caller must run ValidateResult. Keeping the two stages
+// separate is what lets a forged acknowledgement be detected at all.
 func (r Router) Dispatch(ctx context.Context, env environment.Environment, cmd executor.Command) (executor.Result, error) {
 	routed, err := RouteCommand(env, cmd)
 	if err != nil {

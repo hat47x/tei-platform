@@ -1,0 +1,398 @@
+{
+  "schemaVersion": "tei.cli.discovery/v0",
+  "scope": "selected-read-only-commands",
+  "commands": [
+    {
+      "name": "version",
+      "effect": "read-only",
+      "required": [
+        "none"
+      ],
+      "optional": [
+        "-json"
+      ],
+      "output": "text; json when -json",
+      "schemaVersion": "tei.cli.version/v0",
+      "jsonContract": "enveloped",
+      "successShape": "identity"
+    },
+    {
+      "name": "model catalog",
+      "effect": "read-only",
+      "required": [
+        "-workspace"
+      ],
+      "optional": [
+        "-namespace"
+      ],
+      "output": "json",
+      "schemaVersion": "tei.cli.model/v0",
+      "jsonContract": "enveloped"
+    },
+    {
+      "name": "workspace-files",
+      "effect": "read-only",
+      "required": [
+        "-workspace"
+      ],
+      "output": "json",
+      "schemaVersion": "tei.cli.workspace-files/v0",
+      "jsonContract": "enveloped"
+    },
+    {
+      "name": "inspect",
+      "effect": "read-only",
+      "required": [
+        "-workspace",
+        "-subject-kind",
+        "-subject-id"
+      ],
+      "output": "json",
+      "schemaVersion": "tei.cli.inspect/v0",
+      "jsonContract": "enveloped",
+      "argumentValues": {
+        "subject-kind": [
+          "semantic",
+          "semantic-type",
+          "semantic-data",
+          "semantic-attribute",
+          "semantic-relation",
+          "semantic-candidate-key",
+          "semantic-functional-dependency",
+          "semantic-capability",
+          "semantic-validation",
+          "application",
+          "application-pattern",
+          "query"
+        ]
+      },
+      "argumentType": {
+        "subject-kind": "string"
+      }
+    },
+    {
+      "name": "view",
+      "effect": "read-only",
+      "required": [
+        "-workspace",
+        "-application"
+      ],
+      "optional": [
+        "-format",
+        "at most one of -pattern, -package, -command",
+        "-input and -execute with -command",
+        "-period-state with -execute",
+        "-allow-capability with -execute",
+        "-operation-log with -execute",
+        "-lifecycle-state and -lifecycle-command with -execute",
+        "-lifecycle-owner and -lifecycle-generation with -lifecycle-state"
+      ],
+      "output": "text; json when -format json",
+      "schemaVersion": "tei.cli.view/v0",
+      "jsonContract": "enveloped",
+      "argumentValues": {
+        "format": [
+          "text",
+          "json",
+          "html",
+          "print"
+        ]
+      },
+      "argumentType": {
+        "format": "string"
+      },
+      "argumentDefaults": {
+        "format": "text"
+      },
+      "writeFlags": [
+        "-operation-log",
+        "-lifecycle-state"
+      ]
+    },
+    {
+      "name": "trace",
+      "effect": "read-only",
+      "required": [
+        "-workspace",
+        "-scope",
+        "-subject-kind",
+        "-subject-id"
+      ],
+      "optional": [
+        "-direction",
+        "-mode",
+        "-offset and -limit (full only)",
+        "-expected-fingerprint"
+      ],
+      "output": "json",
+      "schemaVersion": "tei.cli.trace/v0",
+      "jsonContract": "enveloped",
+      "argumentValues": {
+        "direction": [
+          "outgoing",
+          "incoming",
+          "both"
+        ],
+        "mode": [
+          "summary",
+          "full"
+        ],
+        "subject-kind": [
+          "semantic",
+          "semantic-type",
+          "semantic-data",
+          "semantic-attribute",
+          "semantic-relation",
+          "semantic-validation",
+          "semantic-capability",
+          "application",
+          "application-pattern",
+          "query"
+        ]
+      },
+      "argumentType": {
+        "direction": "string",
+        "mode": "string",
+        "subject-kind": "string"
+      },
+      "argumentDefaults": {
+        "direction": "both",
+        "mode": "summary"
+      }
+    },
+    {
+      "name": "source-index",
+      "effect": "read-only",
+      "required": [
+        "-workspace"
+      ],
+      "optional": [
+        "-subject-kind and -subject-id together"
+      ],
+      "output": "json",
+      "schemaVersion": "tei.cli.source-index/v0",
+      "jsonContract": "enveloped",
+      "modes": [
+        "index",
+        "subject"
+      ]
+    },
+    {
+      "name": "knowledge-context",
+      "effect": "read-only",
+      "required": [
+        "-workspace"
+      ],
+      "optional": [
+        "-subject-kind",
+        "-subject-id",
+        "-disclose",
+        "-expected-data-design-fingerprint",
+        "-expected-disclosure-fingerprint"
+      ],
+      "output": "json",
+      "schemaVersion": "tei.cli.knowledge-context/v0",
+      "jsonContract": "enveloped",
+      "modes": [
+        "context",
+        "disclosure"
+      ],
+      "argumentValues": {
+        "disclose": [
+          "data-design",
+          "definition",
+          "dependencies",
+          "source"
+        ]
+      },
+      "argumentType": {
+        "disclose": "comma-separated string"
+      }
+    },
+    {
+      "name": "knowledge-qualify",
+      "effect": "read-only",
+      "required": [
+        "-workspace",
+        "-subject-kind",
+        "-subject-id",
+        "-qualification-requirements"
+      ],
+      "output": "json",
+      "schemaVersion": "tei.cli.knowledge-qualify/v0",
+      "jsonContract": "enveloped",
+      "modes": [
+        "qualification"
+      ]
+    },
+    {
+      "name": "knowledge-review-plan",
+      "effect": "read-only",
+      "required": [
+        "-workspace",
+        "-subject-kind",
+        "-subject-id"
+      ],
+      "optional": [
+        "-expected-review-plan-fingerprint"
+      ],
+      "output": "json",
+      "schemaVersion": "tei.cli.knowledge-review-plan/v0",
+      "jsonContract": "enveloped",
+      "modes": [
+        "plan"
+      ]
+    },
+    {
+      "name": "knowledge-review-handoff",
+      "effect": "read-only",
+      "required": [
+        "-workspace",
+        "-subject-kind",
+        "-subject-id",
+        "-qualification-requirements"
+      ],
+      "optional": [
+        "-expected-review-handoff-fingerprint"
+      ],
+      "output": "json",
+      "schemaVersion": "tei.cli.knowledge-review-handoff/v0",
+      "jsonContract": "enveloped",
+      "modes": [
+        "handoff"
+      ]
+    },
+    {
+      "name": "knowledge-review-disclose",
+      "effect": "read-only",
+      "required": [
+        "-workspace",
+        "-subject-kind",
+        "-subject-id",
+        "-review-handoff"
+      ],
+      "optional": [
+        "-expected-review-handoff-fingerprint",
+        "-expected-disclosure-fingerprint"
+      ],
+      "output": "json",
+      "schemaVersion": "tei.cli.knowledge-review-disclose/v0",
+      "jsonContract": "enveloped",
+      "modes": [
+        "disclosure"
+      ]
+    },
+    {
+      "name": "knowledge-data-design-candidate-review",
+      "effect": "read-only",
+      "required": [
+        "-workspace",
+        "-subject-kind",
+        "-subject-id",
+        "-data-design-candidate-kind",
+        "-data-design-candidate-fingerprint"
+      ],
+      "optional": [
+        "-expected-data-design-fingerprint",
+        "-expected-data-design-candidate-evidence-requirement-fingerprint",
+        "-expected-data-design-candidate-review-fingerprint"
+      ],
+      "output": "json",
+      "schemaVersion": "tei.cli.knowledge-data-design-candidate-review/v0",
+      "jsonContract": "enveloped",
+      "modes": [
+        "review"
+      ],
+      "argumentValues": {
+        "data-design-candidate-kind": [
+          "business-identity",
+          "functional-dependency"
+        ]
+      },
+      "argumentType": {
+        "data-design-candidate-kind": "string"
+      }
+    },
+    {
+      "name": "validate",
+      "effect": "read-only",
+      "required": [
+        "exactly one of -workspace or -world"
+      ],
+      "optional": [
+        "-json (workspace only)"
+      ],
+      "output": "text; json when -workspace -json",
+      "schemaVersion": "tei.cli.validate/v0",
+      "jsonContract": "enveloped"
+    },
+    {
+      "name": "world",
+      "effect": "read-only",
+      "required": [
+        "exactly one of -workspace or -world"
+      ],
+      "output": "json",
+      "jsonContract": "raw"
+    },
+    {
+      "name": "requirements",
+      "effect": "read-only",
+      "required": [
+        "exactly one of -workspace or -world"
+      ],
+      "output": "json",
+      "schemaVersion": "tei.cli.requirements/v0",
+      "jsonContract": "enveloped",
+      "resultShape": "array"
+    },
+    {
+      "name": "plugin-lock",
+      "effect": "read-only",
+      "required": [
+        "exactly one of -workspace or -world"
+      ],
+      "optional": [
+        "-environment"
+      ],
+      "output": "json",
+      "schemaVersion": "tei.cli.plugin-lock/v0",
+      "jsonContract": "enveloped",
+      "modes": [
+        "",
+        "environment"
+      ]
+    },
+    {
+      "name": "plugin-resolve",
+      "effect": "read-only",
+      "required": [
+        "exactly one of -workspace or -world",
+        "-environment"
+      ],
+      "optional": [
+        "-plugin-lock",
+        "-diagnostic-candidates"
+      ],
+      "output": "json",
+      "schemaVersion": "tei.cli.plugin-resolve/v0",
+      "jsonContract": "enveloped",
+      "modes": [
+        "",
+        "unvalidated-candidates"
+      ]
+    },
+    {
+      "name": "plugin-runtime-plan",
+      "effect": "read-only",
+      "required": [
+        "exactly one of -workspace or -world",
+        "-environment",
+        "-plugin-lock"
+      ],
+      "output": "json",
+      "schemaVersion": "tei.cli.plugin-runtime-plan/v0",
+      "jsonContract": "enveloped"
+    }
+  ]
+}

@@ -341,3 +341,30 @@ func TestPGDigestComparisonIsRefused(t *testing.T) {
 		t.Fatal("digest comparison was silently accepted by the PostgreSQL store")
 	}
 }
+
+// 実DBでも、同じキー・同じ対象・同じ新値で期待値だけが違う要求は再送として扱わない(#2564)。
+func TestPGIdempotencyKeyWithAnotherExpectationIsRejectedNotReplayed(t *testing.T) {
+	ctx := context.Background()
+	store := openPGStore(t, 0)
+	if err := store.Seed(ctx, "order:1", "old"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Apply(ctx, pgRequest("A", "update-a")); err != nil {
+		t.Fatal(err)
+	}
+	other := pgRequest("A", "update-a")
+	other.Expected = "other"
+	got, err := store.Apply(ctx, other)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Outcome != OutcomeRejected || got.Reason != ReasonIdempotencyKeyReused {
+		t.Fatalf("outcome=%q reason=%q, want %s/%s", got.Outcome, got.Reason, OutcomeRejected, ReasonIdempotencyKeyReused)
+	}
+	if got.Before != "" {
+		t.Fatalf("the first receipt leaked into a different request: before=%q", got.Before)
+	}
+	if value, _, err := store.Value(ctx, "order:1"); err != nil || value != "A" {
+		t.Fatalf("final value=%q err=%v", value, err)
+	}
+}

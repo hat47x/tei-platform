@@ -1,0 +1,110 @@
+{
+  "axes": [
+    {
+      "name": "provider",
+      "options": [
+        "1.4",
+        "1.5"
+      ]
+    },
+    {
+      "name": "consumer",
+      "options": [
+        "2.0",
+        "2.1"
+      ]
+    }
+  ],
+  "maxCases": 4,
+  "requiredChecks": [
+    "contract",
+    "integration"
+  ],
+  "locks": [
+    {
+      "selections": [
+        {
+          "axis": "provider",
+          "value": "1.4"
+        },
+        {
+          "axis": "consumer",
+          "value": "2.0"
+        }
+      ],
+      "fingerprint": "lock-14-20",
+      "sourceFingerprint": "source-1",
+      "artifactDigest": "artifact-1",
+      "target": "linux-amd64"
+    },
+    {
+      "selections": [
+        {
+          "axis": "provider",
+          "value": "1.5"
+        },
+        {
+          "axis": "consumer",
+          "value": "2.0"
+        }
+      ],
+      "fingerprint": "lock-15-20",
+      "sourceFingerprint": "source-2",
+      "artifactDigest": "artifact-2",
+      "target": "linux-amd64"
+    },
+    {
+      "selections": [
+        {
+          "axis": "provider",
+          "value": "1.4"
+        },
+        {
+          "axis": "consumer",
+          "value": "2.1"
+        }
+      ],
+      "fingerprint": "lock-14-21",
+      "sourceFingerprint": "source-3",
+      "artifactDigest": "artifact-3",
+      "target": "linux-amd64"
+    }
+  ],
+  "checks": [
+    {
+      "lockFingerprint": "lock-14-20",
+      "checkId": "contract",
+      "status": "pass",
+      "evidenceRef": "e1",
+      "independentExpectedRef": "expected-1"
+    },
+    {
+      "lockFingerprint": "lock-14-20",
+      "checkId": "integration",
+      "status": "pass",
+      "evidenceRef": "e2",
+      "independentExpectedRef": "expected-2"
+    },
+    {
+      "lockFingerprint": "lock-15-20",
+      "checkId": "contract",
+      "status": "fail",
+      "evidenceRef": "e3",
+      "independentExpectedRef": "expected-1"
+    },
+    {
+      "lockFingerprint": "lock-15-20",
+      "checkId": "integration",
+      "status": "pass",
+      "evidenceRef": "e4",
+      "independentExpectedRef": "expected-2"
+    },
+    {
+      "lockFingerprint": "lock-14-21",
+      "checkId": "contract",
+      "status": "skip",
+      "evidenceRef": "e5",
+      "independentExpectedRef": "expected-1"
+    }
+  ]
+}

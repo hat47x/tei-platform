@@ -516,6 +516,52 @@ ChatGPTなどのチャット実行環境・Codex・Claude Code・一般的なIDE
 主となるPAS-03では、同じProvider・対象Instance・Scopeを条件として、宣言された構造と実観測の差、Migration計画、許可されたDDLの実適用、適用後の再観測を区別する。PAS-01は観測構造と受理済み論理意味の分離、PAS-02はFunction/Providerのデータ操作、PAS-04はCLI/Studio等のTarget別投影を補う。SQL/NoSQL固有のQueryが失われないこと、部分取得・非開示・権限拒否・実効果不明が成功に丸められないことを独立に受け入れる。TEI標準の職掌にはSchema CRUDを含む一方、クラスタ運用・バックアップなどのDBA業務は標準外とする。
 
 **これは受入シナリオの割当であってPAS-03の実適合ではない。** 実NoSQL/ログ/Cloud、動的Grant、破壊的DDL、実DB変更・再読取、CLI/MCP/Studio同一Consumer、OwnerによるMeaning受理の一連の証拠は未取得。仕様の正本はRQ-035、受入計画のOwnerは[#3270](https://github.com/hat47x/tei-platform/issues/3270)と[データソースワークベンチ設計](design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)を参照する。
+### RQ-035 — 異種データソースのデータと構造を一般開発者が管理する
+
+主にPAS-02のデータ・機能の実利用を対象とし、RDB/NoSQL/ログ/APIから実データを調査し、Providerが許す範囲のデータCRUD・スキーマ／コレクション等の構造定義を既存の意味Source/Provider/Authorityで扱えることを確認する。PAS-03でDesired/Actual/Diff/Migrationと本番への安全な適用を、PAS-06でCLI/MCP/Studioを通した同一Contractの探索を横断確認する。
+
+標準DBA機能の提供は要求しない。Snapshotの推測同一性、Sample結果を全件とみなすこと、Native SQLやOData固有意味の破棄、DDL Plan生成を実DB Commitとみなすことは禁止。実DB/Provider/権限・独立Readによる受入は[#3270](https://github.com/hat47x/tei-platform/issues/3270)が所有し、現段階では要求の追加のみでPAS成立とはしない。
+
+### RQ-036 — 検証済みPlugin BOMとVersion組合せ試験
+
+主にPAS-06の「既存の意味・Pluginを探索して再利用する」を、実際に検証した構成として再使用できるところまで確認する。PAS-04では同一Contractの異Target/ビルド版の適用範囲、PAS-02では構成したFunctionが実際のScenarioを満たすかを別に確認する。
+
+受入例は、実Provider/Consumer各2版のexact Lock→実Target Build/Artifact→同じAttemptで独立Expected/必要Checkを実行→合格組合せだけを限定BOMへ登録、という一往復。Pairwise計画の2項Coverage、C0/C1、Requirement/Trait/Graph分岐Coverageを異なる分母で示し、未実行・Tool切断・別Tenant/Grant・古いArtifact/ExpectedをPASSへ合算しない。実Providerが存在しない段階の合成ReferenceはPAS成立のEvidenceではない。Ownerは[#3267](https://github.com/hat47x/tei-platform/issues/3267)、設計は[Verified Composition BOM](design/VERIFIED_COMPOSITION_BOM_AND_MATRIX_DESIGN_2026-11.md)へ接続し、第二Resolver/Runnerを作らない。
+
+#### RQ-035の一機能P0受入入口（2026-11-08・計画、未実行）
+
+最初の利用者可視な検収を、既存[横断最短経路（#3481）](https://github.com/hat47x/tei-platform/pull/3481)と[共通Operation・Harness判断（#3487）](https://github.com/hat47x/tei-platform/pull/3487)に接続する。一対象`order_entry.recent_orders`／`sales.order`、[既存PostgreSQL 3行＋JSONL 5行Fixture](../examples/data-source-workbench/README.md)を使用し、**Source → Query → 明示Alias／実DB Instance → Selected Provider → Actual Provider Read → Function Data Context → Consumer（CLI/Studio）**を同一Attemptで追跡する。FixtureのSQLに3行あるだけでは、実DBへの投入・3行の実取得を証明できない。
+
+- **PAS-02のReadと契約**：既知IDの1件、条件に一致しない0件、Provider Errorを独立期待値で判別。0件を母集団全体の不存在に変換せず、Declared/Requested Scope、Actual Retrieved Range、Disclosed Range、Cursor/end／completeness、Source/版、Grant/Consumerを区別する。同一Semantic Dataに対する`primary`／`archive`の曖昧なBindingは止める。CLIとStudioの静的Service選択・実Provider Invocationを別Witnessとする（#2586/#2611/#1251/#951/#3262）。
+- **PAS-03の構造変更と失敗**：Catalogから観測できたFK/UNIQUE/Index、実DBで強制・使用可能な制約状態、Ownerが受理した業務Rule/Key/Relationを**三つの異なる資格**として検収。観測した`Valid/Ready/Live`はその時点のProvider-owned事実であり、Migration Planの適用許可や現在の権限ではない。Schema Diff→DDL Apply直前に実Instance・History・Grant・Scope/Revisionが変化したら再照合し、unknown/ACK喪失でAppliedや盲目の再送へ進まない（#3270/#2892/#2887/#1163）。
+- **資格と試験の引継ぎ**：この一機能の詳細受渡しは[WB Read P0: RD-01〜06（#3270）](https://github.com/hat47x/tei-platform/issues/3270#issuecomment-6719326679)に委譲し、既存WB-01〜54・F-01〜10の第二正本を作らない。実Provider／実Consumerの独立試験と、異質なJSONL Source、BDD/SHO/REA/KON等の後続接続は別の合格列である。SUI/SEI/SHO/KONの製品完成をP0の新しい必須依存にしない。
+
+**受入状態：NOT RUN／RQ-035のProduct資格未成立。** [Workbenchの物理Schema投影PR #3486](https://github.com/hat47x/tei-platform/pull/3486)は旧[#3372](https://github.com/hat47x/tei-platform/pull/3372)を未統合で置換したDraftの**合成Catalog限定コード変更**であり、本書が実PostgreSQL/Function Read/共通Operation/Schema Apply/Owner受理の成立を宣言するものではない。
+
+### RQ-036 — 全容モデルマップ・ナビゲーションと標準／カスタムFlowの説明（対応候補）
+
+**主PASはPAS-07**：同一受理World/必要Source集合/公開Scope/Revisionから、Data・Function・Business・Event Group・State Transition・Patternの相互リンクを含む全体マップ、イベントと状態遷移、CRUD/イベント×状態×作用の表を導出する。所属・案件（組織）だけでなく、人工知能チャット／外部Eventなど異質なInteractionでも意味と表示の混同を避ける。**すべてのPatternが全体のどのData／Event／State／Functionに属するか、該当しない／未受理ならなぜ未接続か**を説明する。未取得・非開示・不明の要素は「存在しない」扱いにせず、(World, Source, Scope, Consumer)に相対的な被覆と欠落理由を提示する。
+
+**PAS-01**では、標準不変契約／設定可能／拡張Hook／明示置換／観測のみの型付き区分と、標準Flow→Custom差分→合成後実効FlowをPreviewし、意味変更はShared Acceptanceへ、単なるLayout変更は意味の不変へ接続する。**PAS-04**ではCLI/Studio/SHO/Targetから型付きRef・版・Disclosure・Gapを同義に読めるか、**PAS-06**では予備知識のない利用者やAIが「何か・なぜ・どこで変えるか」を出典へ辿れるかを検証する。
+
+**段階**：#1124の共通Diagram/Navigationの既存M0→M4に、MAP-01〜16を追加した[横断§19](design/THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)を受入基準として接続する。組織の具体例は[Draft #3243 §12](https://github.com/hat47x/tei-platform/pull/3243)。全体Catalog/Read-only Graph＋Gap→Pattern/State/Flowの型付き跳躍→標準/Custom/実効Flow→Target/Consumerの実観測の順に確認し、合格しない試験を新しい既成PASに数えない。ADR-0017のApplication Patternの所有、提案中ADR-0046のLifecycle Role、生成時のPlugin/Target実選択・実Invokeの資格を守り、新しいEngine・Graph正本を作らない。新RQ-036の採用は**製品要件を定める**ことであり、GUI/Generator/初心者試験/MAP-01〜16の実装完了・Owner意味受理は**NOT RUN**。現Gate B/CやPAS-07既存受理を遡及して変えない。
+
+### RQ-037 — Verified Composition BOMと複数バージョンの組合せ資格（対応候補）
+
+**主PASはPAS-06**：利用者や生成AIが、特定のContract／Provider／Consumer／Targetの互換候補を探索し、検証済みの範囲、出典、未検証・競合・未知の理由を区別して再利用の可否を判断する。Pluginの宣言やPackage選択、Capability選択、Build成功、Pairwise試験計画だけで適格性を推定しない。**PAS-02**では実Driver／独立Expectedと各exact tupleの実Invokeを検証し、**PAS-04**ではTarget別ArtifactとCLI／Studio Consumerを区別して照合する。**PAS-01**ではSource／Rule／Provider Manifest変更の影響と受理境界、**PAS-05**では現在のGrant／実Effectと過去Conformanceの非同値を検証する。
+
+| 受入Case | 実Targetで観測すべき条件 | 拒否・未達の判定 |
+| --- | --- | --- |
+| VCB-R37-01 | Provider A1/A2 × Consumer B1/B2の4 exact Lockを個別にBuild／Invoke／独立Expectedで評価 | 3行PASS＋1行NOT RUNを4行Verifiedとしない |
+| VCB-R37-02 | Provider Bを選択して実B Callを観測し、Source／Artifact／Consumerを束縛 | B選択だがA実Call（同値結果でも）はFAIL |
+| VCB-R37-03 | Consumer Source Indexだけ、Imported Provider Raw／Manifestだけ、Producer Rule Fingerprintだけを各変更 | WorldやSchema Versionの表示が不変でも古いSelection／Scenario証拠を流用しない |
+| VCB-R37-04 | 正確な必要Build／Test依存閉包の差分を照合 | 未消費Pluginの変更による過剰失効を抑制。ただし不足閉包ならunknown |
+| VCB-R37-05 | CLI／Studioと別のTarget/Hostで実取得範囲・Grant・Effect/Disclosureを独立照合 | 履歴BOMやLocal Cache hitから現在権限を発行しない |
+| VCB-R37-06 | Pairwiseの選択集合と実Run／Coverage分母を別に表示 | 計画のPairwise 100%を実PASS／全Cartesianへ換算しない |
+
+**現状と優先順**：main統合[#3490](https://github.com/hat47x/tei-platform/pull/3490)は歴史的Capability Ruleの変更を検出する限定Go Regression、main[#3477](https://github.com/hat47x/tei-platform/pull/3477)はConsumer Source-only改訂の局所検証、main[#3479](https://github.com/hat47x/tei-platform/pull/3479)はImported Providerの変更検知の限定検証であり、いずれも本表全行の受入ではない。#1251の実read-only Inspectorを通常CLIと実Studio Bridgeへ配線するS2を先行し、その後#3267で2×2の実組合せ試験S3へ進む。[旧Draft #3297](https://github.com/hat47x/tei-platform/pull/3297)のRQ-036記述は**現mainの全容Model Map RQ-036と衝突**しているため、統合前にRQ-037へ修正・mainに追随し、PAS/GAP監査の二重登録を解消する必要がある。
+
+**評価区分：Design Only／VCB-R37-01〜06の全体実行はNOT RUN**。旧Referenceの`qualified:false`、現在のOwner／Host判断、既存Gateを維持する。新しいRunner／Resolver／BOM Authorityは追加しない。
 
 ## 11. Requirement → Primary PAS mapping
 
@@ -556,6 +602,8 @@ ChatGPTなどのチャット実行環境・Codex・Claude Code・一般的なIDE
 | RQ-033 | PAS-06 | PAS-01 |
 | RQ-034 | PAS-06 | PAS-01 |
 | RQ-035 | PAS-03 | PAS-01 / PAS-02 / PAS-04 / PAS-07 |
+| RQ-036 | PAS-06 | PAS-04 / PAS-02 |
+| RQ-037 | PAS-06 | PAS-02 / PAS-04 / PAS-01 / PAS-05 |
 
 Primaryは最初に具体化する代表的なPASを示し、要求の網羅率を表す点数ではありません。
 

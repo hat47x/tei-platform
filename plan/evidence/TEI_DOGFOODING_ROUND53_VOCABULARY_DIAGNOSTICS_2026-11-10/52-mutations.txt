@@ -1,0 +1,7 @@
+M1 remove the value list from the storage diagnostic
+   -> FAIL: storage type: message does not name "int64":
+            ... has invalid storage type "NUMBERISH"
+M2 drop `text` from StorageTypes
+   -> FAIL: TestStorageTypesAndValidAgree (a declared constant is missing)
+restored -> validation, database/... (10 pkgs), workspace, operations,
+            cmd/tei (233.9s), reference-access-survey all ok; vet and gofmt clean

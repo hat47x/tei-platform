@@ -1,0 +1,11 @@
+(reportedExecutionCodes in cmd/tei/cli_view.go, main e348bd987)
+INVALID_COMMAND_INPUT
+COMMAND_UNAUTHORIZED
+COMMAND_AUTHORIZER_UNAVAILABLE
+COMMAND_LIFECYCLE_REFUSED
+COMMAND_PERIOD_SCOPE_UNAVAILABLE
+COMMAND_PERIOD_SCOPE_UNKNOWN
+COMMAND_EFFECT_UNKNOWN        <- CLI-synthesized, not a core code
+
+=> 15 core codes were flattened to COMMAND_FAILED.
+   Studio (internal/studiohost) special-cased only COMMAND_LIFECYCLE_REFUSED.

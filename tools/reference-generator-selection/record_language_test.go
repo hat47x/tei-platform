@@ -2,7 +2,7 @@ package generatorselection
 
 import (
 	"context"
-	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -170,11 +170,15 @@ func TestExternalCommandRecordsPythonCandidate(t *testing.T) {
 	}
 	base := filepath.Join(repoRoot(t), "tools", "reference-generator-selection", "testdata", "generation")
 	root := t.TempDir()
+	pythonSource, err := os.ReadFile(filepath.Join(generated.Path, "main.py"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	manifest, err := GenerateWithCommand(context.Background(), ModelOptions{
 		ID: "model-python", Provider: "external-command", Model: "fixture-model-v0", Language: LanguagePython,
 		ContractPath: contract, PromptPath: filepath.Join(base, "prompt.txt"),
 		ContextPath: filepath.Join(base, "context.json"), OutDir: filepath.Join(root, "model-python"),
-		Command: fmt.Sprintf("cp %q \"$TEI_SOURCE\"", filepath.Join(generated.Path, "main.py")),
+		Command: externalSourceCommand(t, "TEI_SOURCE", pythonSource),
 	})
 	if err != nil {
 		t.Fatal(err)

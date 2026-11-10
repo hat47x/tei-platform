@@ -27,13 +27,17 @@ var rolePrimitives = map[string]string{
 	"currency-rate-buying":         "decimal",
 	"currency-rate-selling":        "decimal",
 	"currency-rate-fallback":       "", // any type: a rule name
+	"currency-rate-granularity":    "", // any type: a granularity name
 	"numbering-counter":            "integer",
 	"numbering-digits":             "integer",
 	"numbering-prefix":             "",
 	"numbering-check":              "",
 	"numbering-overflow":           "",
 	"holiday-date":                 "date",
-	"holiday-calendar":             "", // any type: a calendar identity is a code or text
+	"holiday-calendar":             "",           // any type: a calendar identity is a code or text
+	"setting-key":                  "identifier", // a setting is named by an identifier
+	"setting-value":                "",           // any type: a setting value is what the key holds
+	"setting-user":                 "identifier", // a user is named by an identifier
 }
 
 // validateAttributeRoleTypes reports an attribute whose role requires a

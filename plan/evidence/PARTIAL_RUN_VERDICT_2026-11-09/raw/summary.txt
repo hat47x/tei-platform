@@ -1,0 +1,13 @@
+== obs-complete ==
+  attempted=2 observedCount=2 refused=0 invoked=2 complete=True
+
+== obs-none ==
+  attempted=2 observedCount=0 refused=2 invoked=0 complete=False
+
+== ev-complete ==
+  attempted=1 collectedCount=1 refused=0 invoked=1 complete=True
+
+== ev-none ==
+  attempted=1 collectedCount=0 refused=1 invoked=0 complete=False
+
+ruleFingerprint: sha256:f999ca3a39bc6dbe44f37aab81e77159b1958a3da02ec8307308258763e118d4

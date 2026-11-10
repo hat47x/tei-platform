@@ -1,0 +1,5 @@
+M1 revert the document to the pre-round-22 list
+   -> FAIL: the view row does not name 20 code(s)
+M2 add a new code COMMAND_BRAND_NEW_PROBE to internal/command, document untouched
+   -> FAIL: the view row does not name 1 code(s)
+restored -> ok (cmd/tei 117.6s, plan-check ok)

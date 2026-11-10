@@ -53,7 +53,9 @@ func readOneFixedScope(root, target, scope string, enabled bool) (scopeReadRecei
 		result.Attempts++
 		body, err := readInside(root, rel)
 		if err != nil {
-			result.State = "read-failed"
+			// Name the cause: "read-failed" alone cannot be acted on when the
+			// host's path handling differs (#3783).
+			result.State = "read-failed: " + err.Error()
 			return result, nil
 		}
 		result.Path = rel

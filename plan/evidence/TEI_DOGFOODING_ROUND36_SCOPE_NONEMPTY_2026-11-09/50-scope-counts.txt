@@ -1,0 +1,20 @@
+Measured on a9d98e5fe with a temporary probe test:
+
+  markdown files visited: 951
+  issue numbered:          0
+  adr numbered:           47
+  requirementIDs:         36
+
+  plan            15 entries
+  plan/adr        48
+  plan/issue       1   (README.md only)
+  plan/evidence  290
+  plan/workstreams 30
+  tools          249
+
+  go.mod                 826 bytes
+  cmd/tei-studio/go.mod  498 bytes
+  THIRD_PARTY_NOTICES.md 18984 bytes
+
+Only plan/issue was empty. The round-35 concern ("do other checks share this
+hole?") is therefore closed: they do not.

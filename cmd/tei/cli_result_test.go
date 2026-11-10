@@ -181,8 +181,10 @@ func TestResultEnvelopeCommandsJSONContract(t *testing.T) {
 		t.Fatalf("unexpected disclosure envelope: %+v", disclosureEnvelope)
 	}
 
+	// A missing flag is an argument problem, not a knowledge build failure
+	// (#3733).
 	missingSubject := run(2, "knowledge-context", "-workspace", reference)
-	if missingSubject.OK || missingSubject.Error == nil || missingSubject.Error.Code != resultCodeKnowledgeFailed {
+	if missingSubject.OK || missingSubject.Error == nil || missingSubject.Error.Code != resultCodeInvalidArgument {
 		t.Fatalf("wrong missing-subject envelope: %+v", missingSubject)
 	}
 
@@ -213,7 +215,9 @@ func TestResultEnvelopeCommandsJSONContract(t *testing.T) {
 	absentRequirements := run(2, "knowledge-qualify", "-workspace", reference,
 		"-subject-kind", "semantic-data", "-subject-id", "sales.order",
 		"-qualification-requirements", filepath.Join(t.TempDir(), "absent.json"))
-	if absentRequirements.OK || absentRequirements.Error == nil || absentRequirements.Error.Code != resultCodeKnowledgeFailed {
+	// A requirements path that cannot be read is an argument problem, not a
+	// Workspace whose knowledge failed to build (#3943).
+	if absentRequirements.OK || absentRequirements.Error == nil || absentRequirements.Error.Code != resultCodeInvalidArgument {
 		t.Fatalf("wrong absent requirements envelope: %+v", absentRequirements)
 	}
 
@@ -259,7 +263,7 @@ func TestResultEnvelopeCommandsJSONContract(t *testing.T) {
 	reviewRequirements := run(2, "knowledge-review-handoff", "-workspace", reference,
 		"-subject-kind", "semantic-data", "-subject-id", "sales.order",
 		"-qualification-requirements", filepath.Join(t.TempDir(), "absent.json"))
-	if reviewRequirements.OK || reviewRequirements.Error == nil || reviewRequirements.Error.Code != resultCodeKnowledgeFailed {
+	if reviewRequirements.OK || reviewRequirements.Error == nil || reviewRequirements.Error.Code != resultCodeInvalidArgument {
 		t.Fatalf("wrong review-handoff requirements envelope: %+v", reviewRequirements)
 	}
 

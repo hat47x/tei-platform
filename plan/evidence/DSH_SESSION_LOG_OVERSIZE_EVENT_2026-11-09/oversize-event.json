@@ -1,0 +1,252 @@
+{
+  "note": "With maxBytes=4096 and a tool result larger than the cap in the pending backlog, the extension disappears from every later request: the field is absent, not empty and not truncated, and no further delivery-accepted event appears. With the same cap and only small events the extension stays attached and the watermark advances.",
+  "overlay": {
+    "plugin": "@deepseek-ai/dsh-session-log-deepseek",
+    "config": {
+      "enabled": true,
+      "maxBytes": 4096
+    }
+  },
+  "capped": {
+    "capture": "mock-run-be3",
+    "probe": "one pwsh call with about 8,000 bytes of stdout, then five small calls",
+    "requests": [
+      {
+        "file": "001-request.json",
+        "bytes": 34382,
+        "sha256": "293bafdac66bfd91a4480cf1eacc5c82e3210465f857e8e3b8ed08dd2d434cba",
+        "toolCount": 24,
+        "messageCount": 1,
+        "hasSessionLogExtension": true,
+        "eventCount": 10,
+        "afterSeq": -1,
+        "throughSeq": 9,
+        "largestEventBytes": 281
+      },
+      {
+        "file": "002-request.json",
+        "bytes": 7944,
+        "sha256": "b0a82d5b8f74de755d873a6174120b8b62e241c92c2a382f06c9c469035c2b6f",
+        "toolCount": 0,
+        "messageCount": 1,
+        "hasSessionLogExtension": true,
+        "eventCount": 10,
+        "afterSeq": -1,
+        "throughSeq": 9,
+        "largestEventBytes": 281
+      },
+      {
+        "file": "003-request.json",
+        "bytes": 45999,
+        "sha256": "030de8f29f777de710b857f16624719c28463c00158b0c9fcc8127ca9b3fa08b",
+        "toolCount": 24,
+        "messageCount": 3,
+        "hasSessionLogExtension": true,
+        "eventCount": 2,
+        "afterSeq": 9,
+        "throughSeq": 11,
+        "largestEventBytes": 3070
+      },
+      {
+        "file": "004-request.json",
+        "bytes": 45616,
+        "sha256": "a368893135ccc3e9212c181e780dbc2bb792770b8ef2e36b7b64532fffb56d70",
+        "toolCount": 24,
+        "messageCount": 5,
+        "hasSessionLogExtension": true,
+        "eventCount": 1,
+        "afterSeq": 11,
+        "throughSeq": 12,
+        "largestEventBytes": 1545
+      },
+      {
+        "file": "005-request.json",
+        "bytes": 45251,
+        "sha256": "4b33405cd91dd18f577d2eaf61654092f2368e26a9e8e3db237d82928947edfd",
+        "toolCount": 24,
+        "messageCount": 7,
+        "hasSessionLogExtension": false,
+        "eventCount": 0,
+        "afterSeq": null,
+        "throughSeq": null,
+        "largestEventBytes": 0
+      },
+      {
+        "file": "006-request.json",
+        "bytes": 54643,
+        "sha256": "92f54602ecb5cc44d1aa490c9a4b906e4576dd6aba1434c3b5d7a3fa00db985c",
+        "toolCount": 24,
+        "messageCount": 9,
+        "hasSessionLogExtension": false,
+        "eventCount": 0,
+        "afterSeq": null,
+        "throughSeq": null,
+        "largestEventBytes": 0
+      },
+      {
+        "file": "007-request.json",
+        "bytes": 56022,
+        "sha256": "d2972978ede4311547c9a65bbe67081bc258c51343ab99428f6ce6ce398d5072",
+        "toolCount": 24,
+        "messageCount": 11,
+        "hasSessionLogExtension": false,
+        "eventCount": 0,
+        "afterSeq": null,
+        "throughSeq": null,
+        "largestEventBytes": 0
+      },
+      {
+        "file": "008-request.json",
+        "bytes": 57401,
+        "sha256": "6f6b468ecec78ce12cdbada109157f7bddcb42aa74b15634025caea1db8e5b47",
+        "toolCount": 24,
+        "messageCount": 13,
+        "hasSessionLogExtension": false,
+        "eventCount": 0,
+        "afterSeq": null,
+        "throughSeq": null,
+        "largestEventBytes": 0
+      },
+      {
+        "file": "009-request.json",
+        "bytes": 59042,
+        "sha256": "f75c9a2724e39bf33eacfd1dac19ec8ad9490abd6c498f113235359f718b0743",
+        "toolCount": 24,
+        "messageCount": 15,
+        "hasSessionLogExtension": false,
+        "eventCount": 0,
+        "afterSeq": null,
+        "throughSeq": null,
+        "largestEventBytes": 0
+      },
+      {
+        "file": "010-request.json",
+        "bytes": 60421,
+        "sha256": "bb0e5ba9b6db859ac197dabd4be61f62c48023ffb9d338a21276de24608c40c3",
+        "toolCount": 24,
+        "messageCount": 17,
+        "hasSessionLogExtension": false,
+        "eventCount": 0,
+        "afterSeq": null,
+        "throughSeq": null,
+        "largestEventBytes": 0
+      },
+      {
+        "file": "011-request.json",
+        "bytes": 62266,
+        "sha256": "4de45815d3d1fa6ff99cc91eb773bd6cc1904682b6163b79a3712ce0f7366973",
+        "toolCount": 24,
+        "messageCount": 19,
+        "hasSessionLogExtension": false,
+        "eventCount": 0,
+        "afterSeq": null,
+        "throughSeq": null,
+        "largestEventBytes": 0
+      }
+    ],
+    "requestsWithExtension": 4,
+    "requestsWithoutExtension": 7,
+    "log": {
+      "file": "be3-parent.jsonl",
+      "bytes": 93353,
+      "sha256": "321b75a5720b2a278a5a4a6c1f569b151c9c3573b715e716e3e270d5886b6553",
+      "eventCount": 96,
+      "maxSeq": 94,
+      "deliveryAcceptedEvents": 4,
+      "eventTypeCounts": {
+        "session": 1,
+        "permission/preset": 2,
+        "sandbox/mode": 2,
+        "approval/policy": 2,
+        "agent/inbox/spliced": 6,
+        "turn/start": 1,
+        "step/start": 10,
+        "system/message": 1,
+        "user/message": 5,
+        "request/header": 1,
+        "request/context": 1,
+        "session/title": 2,
+        "session/title-llm-request": 1,
+        "session-log-deepseek/delivery-accepted": 4,
+        "assistant/message": 10,
+        "tool/call": 9,
+        "job/registered": 9,
+        "job/settled": 9,
+        "tool/result": 9,
+        "step/end": 10,
+        "turn/end": 1
+      },
+      "largeEvents": [
+        {
+          "seq": 13,
+          "type": "user/message",
+          "bytes": 5792
+        },
+        {
+          "seq": 14,
+          "type": "request/header",
+          "bytes": 20639
+        },
+        {
+          "seq": 25,
+          "type": "tool/result",
+          "bytes": 9407
+        },
+        {
+          "seq": 48,
+          "type": "tool/result",
+          "bytes": 9407
+        }
+      ]
+    }
+  },
+  "control": {
+    "capture": "mock-run-be4096s",
+    "probe": "one pwsh call with about 50 bytes of stdout",
+    "requests": [
+      {
+        "file": "001-request.json",
+        "bytes": 34378,
+        "sha256": "cccbc7ae47f0445a90594e0cca4a90fdfb375391ebc46ef9623e96f69ed0fc29",
+        "toolCount": 24,
+        "messageCount": 1,
+        "hasSessionLogExtension": true,
+        "eventCount": 10,
+        "afterSeq": -1,
+        "throughSeq": 9,
+        "largestEventBytes": 279
+      },
+      {
+        "file": "002-request.json",
+        "bytes": 7940,
+        "sha256": "153bd7a6768e323dc661dd97818917ecf80790111aea54b5838ca3e9f3d05131",
+        "toolCount": 0,
+        "messageCount": 1,
+        "hasSessionLogExtension": true,
+        "eventCount": 10,
+        "afterSeq": -1,
+        "throughSeq": 9,
+        "largestEventBytes": 279
+      },
+      {
+        "file": "003-request.json",
+        "bytes": 38039,
+        "sha256": "ea580c21929632dae158fc94d2b7a34f203568b729b0c59eba4d18534d15db35",
+        "toolCount": 24,
+        "messageCount": 3,
+        "hasSessionLogExtension": true,
+        "eventCount": 2,
+        "afterSeq": 9,
+        "throughSeq": 11,
+        "largestEventBytes": 3070
+      }
+    ],
+    "requestsWithExtension": 3,
+    "log": null
+  },
+  "contrast256": {
+    "capture": "mock-run-bigevent3",
+    "note": "maxBytes=256 with a small event also dropped the extension, so 256 is below the minimum deliverable unit in this build.",
+    "requestsWithExtension": 0
+  }
+}

@@ -196,3 +196,7 @@ go run ./tools/reference-deployment-attempt
 - 値を更新したとき、設計上どの意味が変わるのか
 
 この考え方の背景は、[ADR-0003](../plan/adr/0003-reference-fixtures.md) に記録しています。
+
+## 複合図表の限定不在判定（合成評価）
+
+[tei-topology-coverage](tei-topology-coverage/README.md) は、同一SnapshotのGraph／関係表におけるscope、関係role、表示省略、版、Reader/Composition/Disclosureの資格を区別する**read-only・合成の評価用Reference**です。「図に無い」を外部実行や本番Sourceの不存在証明へ拡張しません。実CLI/Studio/Source Readerの縦断接続は未実施です。

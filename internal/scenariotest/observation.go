@@ -16,6 +16,9 @@ type ObservationFixture struct {
 }
 
 func ParseObservationFixture(source []byte) (ObservationFixture, error) {
+	if err := RejectDuplicateJSONMembers(source); err != nil {
+		return ObservationFixture{}, fmt.Errorf("decode Observation Fixture: %w", err)
+	}
 	var f ObservationFixture
 	d := json.NewDecoder(bytes.NewReader(source))
 	d.DisallowUnknownFields()

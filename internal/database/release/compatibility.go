@@ -37,11 +37,23 @@ type ApplicationCompatibility struct {
 // no single-database shortcut in the model.
 func CheckApplication(app application.Application, states []StateSnapshot) ApplicationCompatibility {
 	byDB := map[core.CanonicalID]StateSnapshot{}
+	duplicateDB := map[core.CanonicalID]bool{}
 	for _, s := range states {
+		if _, exists := byDB[s.Database]; exists {
+			duplicateDB[s.Database] = true
+			continue
+		}
 		byDB[s.Database] = s
 	}
 	out := ApplicationCompatibility{Application: app.ID, Overall: Compatible}
 	for _, req := range app.Databases {
+		if duplicateDB[req.TargetDatabase] {
+			for _, cr := range req.RequiredContracts {
+				out.Checks = append(out.Checks, ContractCheck{Datasource: req.Alias, Database: req.TargetDatabase, Contract: cr.ContractID, RequiredMajor: cr.CompatibleMajor, State: Unknown, Reason: "multiple database state snapshots for the same database"})
+			}
+			out.Overall = combine(out.Overall, Unknown)
+			continue
+		}
 		s, exists := byDB[req.TargetDatabase]
 		if !exists {
 			for _, cr := range req.RequiredContracts {
@@ -51,13 +63,20 @@ func CheckApplication(app application.Application, states []StateSnapshot) Appli
 			continue
 		}
 		provided := map[core.CanonicalID]ProvidedContract{}
+		duplicateProvided := map[core.CanonicalID]bool{}
 		for _, p := range s.Provides {
+			if _, exists := provided[p.ID]; exists {
+				duplicateProvided[p.ID] = true
+				continue
+			}
 			provided[p.ID] = p
 		}
 		for _, cr := range req.RequiredContracts {
 			c := ContractCheck{Datasource: req.Alias, Database: req.TargetDatabase, Contract: cr.ContractID, RequiredMajor: cr.CompatibleMajor}
 			p, ok := provided[cr.ContractID]
 			switch {
+			case duplicateProvided[cr.ContractID]:
+				c.State, c.Reason = Unknown, "multiple provided contracts for the same contract"
 			case !ok:
 				c.State, c.Reason = Blocked, "required database contract is not provided"
 			case s.DataReadiness != DataReady:

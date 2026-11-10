@@ -1,0 +1,226 @@
+{
+  "schemaVersion": "tei.cli.plugin-resolve/v0",
+  "ok": true,
+  "result": {
+    "environment": "development",
+    "plugins": [
+      {
+        "id": "tei.database.observer.reference",
+        "version": "1.0.0"
+      },
+      {
+        "id": "tei.database.oracle",
+        "version": "1.0.0"
+      },
+      {
+        "id": "tei.database.postgres",
+        "version": "1.0.0"
+      },
+      {
+        "id": "tei.editor.intelligence.sql",
+        "version": "1.0.0"
+      },
+      {
+        "id": "tei.health.reference",
+        "version": "1.0.0"
+      },
+      {
+        "id": "tei.migration.atlas",
+        "version": "1.0.0"
+      },
+      {
+        "id": "tei.runtime.reference",
+        "version": "1.0.0"
+      },
+      {
+        "id": "tei.traffic.reference",
+        "version": "1.0.0"
+      }
+    ],
+    "capabilities": [
+      {
+        "plugin": {
+          "id": "tei.database.oracle",
+          "version": "1.0.0"
+        },
+        "capability": {
+          "kind": "contract-query-executor",
+          "id": "database.query.oracle",
+          "databaseProviders": [
+            "oracle"
+          ]
+        }
+      },
+      {
+        "plugin": {
+          "id": "tei.database.postgres",
+          "version": "1.0.0"
+        },
+        "capability": {
+          "kind": "contract-query-executor",
+          "id": "database.query.postgres",
+          "databaseProviders": [
+            "postgres"
+          ]
+        }
+      },
+      {
+        "plugin": {
+          "id": "tei.database.oracle",
+          "version": "1.0.0"
+        },
+        "capability": {
+          "kind": "database-provider",
+          "id": "database.oracle",
+          "databaseProviders": [
+            "oracle"
+          ]
+        }
+      },
+      {
+        "plugin": {
+          "id": "tei.database.postgres",
+          "version": "1.0.0"
+        },
+        "capability": {
+          "kind": "database-provider",
+          "id": "database.postgres",
+          "databaseProviders": [
+            "postgres"
+          ]
+        }
+      },
+      {
+        "plugin": {
+          "id": "tei.migration.atlas",
+          "version": "1.0.0"
+        },
+        "capability": {
+          "kind": "deployment-executor",
+          "id": "migration.atlas",
+          "actions": [
+            "database-release"
+          ],
+          "permissions": [
+            {
+              "kind": "filesystem",
+              "access": "read-write",
+              "scope": "migration-workdir"
+            },
+            {
+              "kind": "network",
+              "access": "connect",
+              "scope": "database-endpoint"
+            },
+            {
+              "kind": "secret",
+              "access": "read",
+              "scope": "database-credential"
+            }
+          ]
+        }
+      },
+      {
+        "plugin": {
+          "id": "tei.runtime.reference",
+          "version": "1.0.0"
+        },
+        "capability": {
+          "kind": "deployment-executor",
+          "id": "runtime.reference",
+          "actions": [
+            "application-retire",
+            "application-start",
+            "stop-accepting-work"
+          ]
+        }
+      },
+      {
+        "plugin": {
+          "id": "tei.traffic.reference",
+          "version": "1.0.0"
+        },
+        "capability": {
+          "kind": "deployment-executor",
+          "id": "traffic.reference",
+          "actions": [
+            "traffic-shift"
+          ]
+        }
+      },
+      {
+        "plugin": {
+          "id": "tei.editor.intelligence.sql",
+          "version": "1.0.0"
+        },
+        "capability": {
+          "kind": "editor-intelligence",
+          "id": "editor.sqlglot",
+          "features": [
+            "editor.sql_analysis"
+          ]
+        }
+      },
+      {
+        "plugin": {
+          "id": "tei.health.reference",
+          "version": "1.0.0"
+        },
+        "capability": {
+          "kind": "evidence-provider",
+          "id": "health.reference",
+          "evidence": [
+            "rollout-health"
+          ]
+        }
+      },
+      {
+        "plugin": {
+          "id": "tei.migration.atlas",
+          "version": "1.0.0"
+        },
+        "capability": {
+          "kind": "migration-provider",
+          "id": "migration.atlas",
+          "migrationTools": [
+            "atlas"
+          ]
+        }
+      },
+      {
+        "plugin": {
+          "id": "tei.database.observer.reference",
+          "version": "1.0.0"
+        },
+        "capability": {
+          "kind": "observation-provider",
+          "id": "database.observer",
+          "observations": [
+            "database-state"
+          ]
+        }
+      },
+      {
+        "plugin": {
+          "id": "tei.runtime.reference",
+          "version": "1.0.0"
+        },
+        "capability": {
+          "kind": "observation-provider",
+          "id": "runtime.observer",
+          "observations": [
+            "application-runtime"
+          ]
+        }
+      }
+    ]
+  },
+  "workspace": {
+    "name": "tei_reference",
+    "formatVersion": 1,
+    "manifest": {
+      "path": "tei.workspace.yaml",
+      "sha256": "sha256:8e367b05de26a715ced16e384d273c983ac612dd2ff980d4310886d4f471af74"
+    }
+  }
+}

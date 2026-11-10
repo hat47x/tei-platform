@@ -1,0 +1,1 @@
+{"schemaVersion":"tei.cli.inspect/v0","ok":false,"error":{"code":"SUBJECT_NOT_FOUND","message":"canonical subject semantic-data:no.such.element not found"}}

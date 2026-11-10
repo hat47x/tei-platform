@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"tei/internal/core"
+	"tei/internal/database/physical"
 	"tei/internal/database/plan"
 	"tei/internal/index"
 	"tei/internal/query"
@@ -16,22 +17,46 @@ type Model struct {
 	Queries []QueryView  `json:"queries,omitempty"`
 }
 
+// SchemaView is a read-only projection of an observed physical schema.
+// It does not establish accepted business identity or relationship meaning.
 type SchemaView struct {
-	Database core.CanonicalID `json:"database"`
-	Tables   []TableView      `json:"tables,omitempty"`
+	Database    core.CanonicalID `json:"database"`
+	CapturedAt  string           `json:"capturedAt,omitempty"`
+	Fingerprint string           `json:"fingerprint,omitempty"`
+	Tables      []TableView      `json:"tables,omitempty"`
 }
 
 type TableView struct {
-	Name       string       `json:"name"`
-	Kind       string       `json:"kind"`
-	Columns    []ColumnView `json:"columns,omitempty"`
-	PrimaryKey []string     `json:"primaryKey,omitempty"`
+	Name              string                 `json:"name"`
+	Kind              string                 `json:"kind"`
+	Columns           []ColumnView           `json:"columns,omitempty"`
+	PrimaryKey        []string               `json:"primaryKey,omitempty"`
+	UniqueConstraints []UniqueConstraintView `json:"uniqueConstraints,omitempty"`
+	ForeignKeys       []ForeignKeyView       `json:"foreignKeys,omitempty"`
+	Indexes           []physical.Index       `json:"indexes,omitempty"`
 }
 
 type ColumnView struct {
 	Name         string `json:"name"`
 	PhysicalType string `json:"physicalType,omitempty"`
 	Nullable     bool   `json:"nullable"`
+}
+
+// These are database-owned constraints observed in the physical catalog.
+// They are not automatically accepted semantic keys or Data/Business relations.
+type UniqueConstraintView struct {
+	Name          string   `json:"name,omitempty"`
+	NameGenerated bool     `json:"nameGenerated,omitempty"`
+	Columns       []string `json:"columns"`
+}
+
+type ForeignKeyView struct {
+	Name              string   `json:"name,omitempty"`
+	NameGenerated     bool     `json:"nameGenerated,omitempty"`
+	Columns           []string `json:"columns"`
+	ReferencedSchema  string   `json:"referencedSchema,omitempty"`
+	ReferencedTable   string   `json:"referencedTable"`
+	ReferencedColumns []string `json:"referencedColumns"`
 }
 
 type QueryView struct {
@@ -122,14 +147,61 @@ type LineageView struct {
 	To   query.FieldID `json:"to"`
 }
 
+// copyObservedIndex ensures that an observed physical index, including its
+// provider-specific expressions and actual readiness, survives read-only UI
+// projection without sharing mutable slices or pointers with the observation.
+// The index is still a physical database fact, not a business index claim.
+func copyObservedIndex(idx physical.Index) physical.Index {
+	out := idx
+	out.IncludedColumns = append([]string(nil), idx.IncludedColumns...)
+	out.Keys = append([]physical.IndexKey(nil), idx.Keys...)
+	for j := range out.Keys {
+		out.Keys[j].Expression = copyObservedExpression(idx.Keys[j].Expression)
+	}
+	out.Predicate = copyObservedExpression(idx.Predicate)
+	if idx.State != nil {
+		state := *idx.State
+		out.State = &state
+	}
+	return out
+}
+
+func copyObservedExpression(source *physical.ProviderExpression) *physical.ProviderExpression {
+	if source == nil {
+		return nil
+	}
+	out := *source
+	if source.Normalization != nil {
+		meta := *source.Normalization
+		out.Normalization = &meta
+	}
+	return &out
+}
+
 func Build(d index.Derived) Model {
 	var m Model
 	for _, s := range d.PhysicalSchemas {
-		sv := SchemaView{Database: s.Database}
+		sv := SchemaView{Database: s.Database, CapturedAt: s.CapturedAt, Fingerprint: s.Fingerprint}
 		for _, t := range s.Tables {
 			tv := TableView{Name: t.QualifiedName(), Kind: string(t.Kind), PrimaryKey: append([]string(nil), t.PrimaryKey...)}
 			for _, c := range t.Columns {
 				tv.Columns = append(tv.Columns, ColumnView{Name: c.Name, PhysicalType: c.PhysicalType, Nullable: c.Nullable})
+			}
+			for _, c := range t.UniqueConstraints {
+				tv.UniqueConstraints = append(tv.UniqueConstraints, UniqueConstraintView{
+					Name: c.Name, NameGenerated: c.NameGenerated, Columns: append([]string(nil), c.Columns...),
+				})
+			}
+			for _, fk := range t.ForeignKeys {
+				tv.ForeignKeys = append(tv.ForeignKeys, ForeignKeyView{
+					Name: fk.Name, NameGenerated: fk.NameGenerated,
+					Columns:          append([]string(nil), fk.Columns...),
+					ReferencedSchema: fk.ReferencedSchema, ReferencedTable: fk.ReferencedTable,
+					ReferencedColumns: append([]string(nil), fk.ReferencedColumns...),
+				})
+			}
+			for _, idx := range t.Indexes {
+				tv.Indexes = append(tv.Indexes, copyObservedIndex(idx))
 			}
 			sv.Tables = append(sv.Tables, tv)
 		}

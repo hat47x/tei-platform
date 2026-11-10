@@ -1,0 +1,28 @@
+{
+  "schema": "tei.reference.service-carrier-connect/v1",
+  "authority": "derived-reference",
+  "ruleId": "tei.reference.service-carrier-connect",
+  "ruleVersion": "v1",
+  "ruleFingerprint": "sha256:a77e451a7fa6bfb40d85196a66f6cd19cec18220a2534b65578c59b79143595e",
+  "application": "order_entry",
+  "environment": "development",
+  "outcomes": [
+    {
+      "requestId": "reference-request",
+      "generation": 1,
+      "pinnedGeneration": true,
+      "carrierInvoked": true,
+      "payload": "{\"subtotalMinor\":1550}"
+    }
+  ],
+  "ranCount": 1,
+  "refusedCount": 0,
+  "unverifiedCount": 0,
+  "notes": [
+    "ranCount counts carrier entry, refusedCount only pre-invocation and unverifiedCount post-invocation errors or an answer for another generation",
+    "an answer is the Provider responding, not proof that external state changed",
+    "the coordinator, runtime registry and route source are supplied by the Host",
+    "the Host's pinned Binding is compared with the route before anything runs",
+    "no authentication, authority, permission or durable receipt is issued here"
+  ]
+}

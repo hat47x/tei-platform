@@ -1,0 +1,10 @@
+Two steps, both now checked:
+
+  ir.World --[round 45: worldFieldCoverage]--> index.Build
+                                              --[round 46: entryFieldCoverage]--> entry types
+
+A dropped field must name its reason, the same way an unread World field must.
+
+But this only makes the hole visible and pinned. #4001 itself is NOT fixed:
+trace still returns no column mapping. Closing it needs a decision about the
+edge endpoints (database is not in SupportedSubjectKinds today).

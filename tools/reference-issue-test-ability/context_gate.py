@@ -14,7 +14,8 @@ import json
 from pathlib import Path
 
 COMMANDS = ("commands", "version", "workspace-files", "catalog", "inspect",
-            "source-index", "source-index-all", "inspect-validation", "trace", "requirements", "validate")
+            "source-index", "source-index-all", "inspect-validation",
+            "inspect-capability", "inspect-application", "trace", "requirements", "validate")
 ENVELOPES = {
     "workspace-files": "tei.cli.workspace-files/v0",
     "catalog": "tei.cli.model/v0",
@@ -22,6 +23,8 @@ ENVELOPES = {
     "source-index": "tei.cli.source-index/v0",
     "source-index-all": "tei.cli.source-index/v0",
     "inspect-validation": "tei.cli.inspect/v0",
+    "inspect-capability": "tei.cli.inspect/v0",
+    "inspect-application": "tei.cli.inspect/v0",
     "trace": "tei.cli.trace/v0",
     "requirements": "tei.cli.requirements/v0",
     "validate": "tei.cli.validate/v0",
@@ -41,6 +44,19 @@ FOCUS_RULE_CANONICAL = {
     "attribute": "sales.order_line.line_number",
 }
 FOCUS_RELATION = {"kind": "semantic-relation", "id": "sales.order.lines"}
+# P-1b1 independent, fixed *declaration-level* Function Case. Do not infer
+# actual business invocation, query binding, Host Grant or complete closure.
+FUNCTION_SUBJECT = {"kind": "semantic-capability", "id": "sales.order.submit"}
+APPLICATION_SUBJECT = {"kind": "application", "id": "order_entry"}
+APPLICATION_SOURCE = "applications/order-entry/application.tei"
+FUNCTION_INPUT = {"name": "order", "type": "sales.order"}
+FUNCTION_OUTPUT = "sales.order"
+FUNCTION_VALIDATIONS = (
+    "sales.order_line.quantity_positive",
+    "sales.order.lines.line_number_unique",
+    "sales.order_line.line_number_positive",
+)
+
 
 REQUIRED_VALIDATIONS = (
     ("sales.order_line.quantity_positive", "positive"),
@@ -281,6 +297,148 @@ def focused_structure_slice(docs: dict[str, dict]) -> tuple[dict, list[str]]:
     return state, sorted(set(errors))
 
 
+
+def bounded_function_slice(docs: dict[str, dict]) -> tuple[dict, list[str]]:
+    """P-1b1: one independent declaration obligation, from existing CLI only.
+
+    The Application uses *namespace sales*, not a specific executable
+    Capability. A matching definition cannot make the Function invocable.
+    """
+    errors: list[str] = []
+    catalog = docs.get("catalog", {}).get("result", {})
+    entries = catalog.get("entries", []) if isinstance(catalog, dict) else []
+    if not isinstance(entries, list):
+        entries = []
+    managed = docs.get("workspace-files", {}).get("result", {}).get("managedFiles", [])
+    if not isinstance(managed, list):
+        managed = []
+    allidx = docs.get("source-index-all", {}).get("result", {})
+    allidx = allidx if isinstance(allidx, dict) else {}
+    allrefs = allidx.get("references", [])
+    allartifacts = allidx.get("artifacts", [])
+    if not isinstance(allrefs, list):
+        allrefs = []
+        errors.append("function-index:references-not-observed")
+    if not isinstance(allartifacts, list):
+        allartifacts = []
+        errors.append("function-index:artifacts-not-observed")
+    states = {}
+    for key, subject, required_path in (
+            ("capability", FUNCTION_SUBJECT, REQUIRED_SOURCE),
+            ("application", APPLICATION_SUBJECT, APPLICATION_SOURCE)):
+        matches = [e for e in entries if isinstance(e, dict)
+                   and e.get("subject") == subject]
+        if not matches:
+            subject_state = "missing"
+        elif len(matches) != 1 or matches[0].get("ambiguous") is True:
+            subject_state = "ambiguous"
+        elif matches[0].get("sourceStatus") != "indexed":
+            subject_state = "not-indexed"
+        else:
+            subject_state = "cataloged"
+        if subject_state != "cataloged":
+            errors.append(f"function-{key}-catalog:{subject_state}")
+
+        owned = [e for e in managed if isinstance(e, dict)
+                 and e.get("path") == required_path]
+        if len(owned) != 1:
+            source_state = "missing-or-ambiguous"
+        elif owned[0].get("readByLoader") is not True:
+            source_state = "not-loaded"
+        else:
+            source_state = "loaded"
+        if source_state != "loaded":
+            errors.append(f"function-{key}-source:{source_state}")
+
+        result = docs.get("inspect-" + key, {}).get("result", {})
+        result = result if isinstance(result, dict) else {}
+        canonical = result.get("canonical")
+        canonical = canonical if isinstance(canonical, dict) else {}
+        source = result.get("sources")
+        source = source if isinstance(source, dict) else {}
+        ref = source.get("references", [])
+        art = source.get("artifacts", [])
+        if not isinstance(ref, list):
+            ref = []
+        if not isinstance(art, list):
+            art = []
+        indexed_refs = [x for x in allrefs if isinstance(x, dict)
+                        and x.get("subject") == subject]
+        inspected_refs = [x for x in ref if isinstance(x, dict)
+                          and x.get("subject") == subject]
+        matching_indexed_artifacts = [x for x in allartifacts if isinstance(x, dict)
+                                     and x.get("path") == required_path]
+        matching_inspected_artifacts = [x for x in art if isinstance(x, dict)
+                                       and x.get("path") == required_path]
+        if (result.get("subject") != subject or result.get("sourceStatus") != "indexed"
+                or len(indexed_refs) != 1 or len(inspected_refs) != 1
+                or indexed_refs[0] != inspected_refs[0]
+                or indexed_refs[0].get("role") != "definition"
+                or indexed_refs[0].get("artifactPath") != required_path
+                or len(matching_indexed_artifacts) != 1
+                or len(matching_inspected_artifacts) != 1
+                or matching_indexed_artifacts[0] != matching_inspected_artifacts[0]
+                or not isinstance(matching_indexed_artifacts[0].get("fingerprint"), str)
+                or not matching_indexed_artifacts[0]["fingerprint"].startswith("sha256:")):
+            anchor_state = "missing-or-conflicting"
+            errors.append(f"function-{key}-definition:{anchor_state}")
+        else:
+            anchor_state = "same-indexed-definition"
+        states[key] = {"catalog": subject_state, "source": source_state,
+                       "definition": anchor_state, "canonical": canonical}
+
+    capability = states["capability"]["canonical"]
+    if (capability.get("id") != FUNCTION_SUBJECT["id"]
+            or capability.get("inputs") != [FUNCTION_INPUT]
+            or capability.get("output") != FUNCTION_OUTPUT):
+        contract_state = "not-matched"
+        errors.append("function-signature:" + contract_state)
+    else:
+        contract_state = "matched"
+
+    app = states["application"]["canonical"]
+    namespace_uses = app.get("semanticUses")
+    declared_validations = app.get("validations")
+    dbs = app.get("databases")
+    if (app.get("id") != APPLICATION_SUBJECT["id"]
+            or not isinstance(namespace_uses, list)
+            or namespace_uses.count("sales") != 1
+            or not isinstance(declared_validations, list)
+            or any(declared_validations.count(v) != 1 for v in FUNCTION_VALIDATIONS)):
+        use_state = "missing-or-conflicting"
+        errors.append("function-application-uses:" + use_state)
+    else:
+        use_state = "matched"
+    if not isinstance(dbs, list):
+        dbs = []
+    bound_dbs = [d for d in dbs if isinstance(d, dict)
+                 and d.get("alias") == "sales"]
+    if (len(bound_dbs) != 1
+            or bound_dbs[0].get("target") != "sales_core"
+            or bound_dbs[0].get("access") != "read-write"):
+        binding_state = "missing-or-drifted"
+        errors.append("function-application-database:" + binding_state)
+    else:
+        binding_state = "declared-only"
+
+    return {
+        "scope": "fixed-reference:sales.order.submit declaration and order_entry namespace use",
+        "capability": FUNCTION_SUBJECT,
+        "application": APPLICATION_SUBJECT,
+        "sourcePaths": [REQUIRED_SOURCE, APPLICATION_SOURCE],
+        "capabilitySource": {k: states["capability"][k] for k in ("catalog", "source", "definition")},
+        "applicationSource": {k: states["application"][k] for k in ("catalog", "source", "definition")},
+        "signature": contract_state,
+        "namespaceAndValidationUses": use_state,
+        "databaseRequirement": binding_state,
+        "declarationStatus": "bounded-present" if not errors else "blocked",
+        "functionInvocationBinding": "not-observed",
+        "queryOrProviderRead": "not-observed",
+        "hostGrantAndEffect": "not-observed",
+        "functionQualifiedForTestGeneration": False,
+    }, sorted(set(errors))
+
+
 def assess(docs: dict[str, dict], failures: list[str] | None = None) -> dict:
     """Fail closed; 'partial' is a measured narrow slice, not full readiness."""
     blockers = list(failures or [])
@@ -336,6 +494,8 @@ def assess(docs: dict[str, dict], failures: list[str] | None = None) -> dict:
             docs.get("catalog", {}).get("result", {}).get(key),
             inspected.get(key),
             docs.get("inspect-validation", {}).get("result", {}).get(key),
+            docs.get("inspect-capability", {}).get("result", {}).get(key),
+            docs.get("inspect-application", {}).get("result", {}).get(key),
             docs.get("trace", {}).get("result", {}).get(key),
             docs.get("validate", {}).get(key),
         ]
@@ -365,6 +525,8 @@ def assess(docs: dict[str, dict], failures: list[str] | None = None) -> dict:
 
     rule_slice, rule_blockers = required_validation_slice(docs)
     focus_slice, focus_blockers = focused_structure_slice(docs)
+    function_slice, function_blockers = bounded_function_slice(docs)
+    blockers.extend(function_blockers)
     blockers.extend(rule_blockers)
     blockers.extend(focus_blockers)
     blockers = sorted(set(blockers))
@@ -375,6 +537,7 @@ def assess(docs: dict[str, dict], failures: list[str] | None = None) -> dict:
         "requiredSource": REQUIRED_SOURCE,
         "requiredValidationSlice": rule_slice,
         "focusedStructureSlice": focus_slice,
+        "boundedFunctionSlice": function_slice,
         "observations": {
             "localReplies": f"{len(docs)}/{len(COMMANDS)}",
             "requiredSourceRead": source_state,
@@ -636,6 +799,102 @@ def focused_structure_selftest(docs: dict[str, dict], baseline: dict) -> dict[st
     check("Rule-inspection-mixed-revision", mixed_inspect_revision,
           "fingerprint:stale", structure_blocked=False)
     return controls
+
+def function_slice_selftest(docs: dict[str, dict], baseline: dict) -> dict[str, str]:
+    """Same source fingerprint strings can accompany one missing Function facet."""
+    if baseline["boundedFunctionSlice"]["declarationStatus"] != "bounded-present":
+        raise AssertionError("public Function prerequisite was not observed by real CLI")
+    controls: dict[str, str] = {}
+
+    def reject(name: str, change, expected: str) -> None:
+        mutant = copy.deepcopy(docs)
+        original = {x: docs["catalog"]["result"][x] for x in
+                    ("worldFingerprint", "sourceIndexFingerprint")}
+        change(mutant)
+        if any(mutant["catalog"]["result"].get(x) != val
+               for x, val in original.items()):
+            raise AssertionError(name + ": must preserve declared fingerprints")
+        observed = assess(mutant)
+        if (observed["boundedReference"] != "blocked"
+                or observed["boundedFunctionSlice"]["declarationStatus"] != "blocked"
+                or observed["qualifiedTestGeneration"] is not False
+                or not any(expected in error for error in observed["blockers"])):
+            raise AssertionError(f"{name}: missing rejection: {observed['blockers']}")
+        controls[name] = "blocked"
+
+    def omit_capability(d):
+        e = d["catalog"]["result"]["entries"]
+        d["catalog"]["result"]["entries"] = [
+            x for x in e if x.get("subject") != FUNCTION_SUBJECT]
+
+    reject("TT-function-capability-only-omitted", omit_capability, "function-capability-catalog:missing")
+
+    def omit_application(d):
+        e = d["catalog"]["result"]["entries"]
+        d["catalog"]["result"]["entries"] = [
+            x for x in e if x.get("subject") != APPLICATION_SUBJECT]
+
+    reject("TT-function-application-only-omitted", omit_application, "function-application-catalog:missing")
+
+    def mismatch_input(d):
+        d["inspect-capability"]["result"]["canonical"]["inputs"][0]["type"] = "sales.other"
+
+    reject("TT-function-input-drift", mismatch_input, "function-signature:not-matched")
+
+    def mismatch_output(d):
+        d["inspect-capability"]["result"]["canonical"]["output"] = "sales.other"
+
+    reject("TT-function-output-drift", mismatch_output, "function-signature:not-matched")
+
+    def omit_namespace_use(d):
+        a = d["inspect-application"]["result"]["canonical"]
+        a["semanticUses"] = [x for x in a["semanticUses"] if x != "sales"]
+
+    reject("TT-function-namespace-use-omitted", omit_namespace_use, "function-application-uses:")
+
+    def omit_validation_use(d):
+        a = d["inspect-application"]["result"]["canonical"]
+        a["validations"] = [x for x in a["validations"]
+                            if x != "sales.order_line.line_number_positive"]
+
+    reject("TT-function-rule-use-omitted", omit_validation_use, "function-application-uses:")
+
+    def mismatch_db(d):
+        a = d["inspect-application"]["result"]["canonical"]
+        next(x for x in a["databases"] if x["alias"] == "sales")["target"] = "master_data"
+
+    reject("TT-function-declared-database-changed", mismatch_db, "function-application-database:")
+
+    def omit_definition(d):
+        d["inspect-capability"]["result"]["sources"]["references"] = []
+
+    reject("TT-function-definition-reference-omitted", omit_definition, "function-capability-definition:")
+
+    def unread_application(d):
+        for e in d["workspace-files"]["result"]["managedFiles"]:
+            if e.get("path") == APPLICATION_SOURCE:
+                e["readByLoader"] = False
+
+    reject("TT-function-application-source-unread", unread_application, "function-application-source:not-loaded")
+
+    # Only bounded Required is measured: unrelated sibling omission remains
+    # partial, and the absence cannot qualify a global Function census.
+    control = copy.deepcopy(docs)
+    original = control["catalog"]["result"]["entries"]
+    control["catalog"]["result"]["entries"] = [
+        x for x in original if x.get("subject") !=
+        {"kind": "semantic-type", "id": "std.money"}]
+    if len(control["catalog"]["result"]["entries"]) == len(original):
+        raise AssertionError("nonrequired prelude control unavailable")
+    observed = assess(control)
+    if (observed["boundedReference"] != "partial"
+            or observed["boundedFunctionSlice"]["declarationStatus"] != "bounded-present"
+            or observed["qualifiedTestGeneration"] is not False):
+        raise AssertionError("unrelated subject erroneously blocked bounded Function")
+    controls["TT-function-unrequired-prelude-omitted"] = "bounded-partial-only"
+    return controls
+
+
 def transport_selftest(folder: Path) -> dict[str, str]:
     """Corrupt real received CLI JSON bytes, not just an in-memory decoded dict.
 
@@ -695,6 +954,7 @@ def main() -> None:
     report["additionalManifestControls"] = manifest_selftest(docs)
     report["requiredValidationControls"] = required_validation_selftest(docs, baseline)
     report["focusedStructureControls"] = focused_structure_selftest(docs, baseline)
+    report["boundedFunctionControls"] = function_slice_selftest(docs, baseline)
     report["transportByteControls"] = transport_selftest(args.folder)
     report["localReplyEvidence"] = byte_evidence
     args.out.parent.mkdir(parents=True, exist_ok=True)
@@ -703,8 +963,8 @@ def main() -> None:
           f"{len(controls)} base controls + {len(report['additionalManifestControls'])} manifest "
           f"+ {len(report['transportByteControls'])} byte-reply rejection controls "
           f"+ {len(report['requiredValidationControls'])} bounded Rule-slice checks "
-          f"+ {len(report['focusedStructureControls'])} Rule/Relation Canonical checks; "
-          f"+ {len(report['transportByteControls'])} byte-reply rejection controls; "
+          f"+ {len(report['focusedStructureControls'])} Rule/Relation Canonical checks "
+          f"+ {len(report['boundedFunctionControls'])} bounded Function checks; "
           "test generation qualification withheld")
 
 

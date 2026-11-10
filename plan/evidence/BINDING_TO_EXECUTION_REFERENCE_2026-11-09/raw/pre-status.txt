@@ -1,0 +1,10 @@
+?? aw/fix.py
+?? aw/fix2.py
+?? aw/r.sh
+?? aw/v.sh
+?? aw/v2.sh
+?? aw/v4.sh
+?? aw/v6.sh
+?? tools/reference-binding-to-execution/bindingexecution.go
+?? tools/reference-binding-to-execution/bindingexecution_test.go
+?? tools/reference-binding-to-execution/cmd/tei-binding-to-execution/main.go

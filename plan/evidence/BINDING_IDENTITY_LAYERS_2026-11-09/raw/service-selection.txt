@@ -1,0 +1,11 @@
+== runtime.ServiceProviderSelection (used by the service carrier) ==
+   file: internal/plugin/runtime/service_carrier.go
+   type ServiceProviderSelection struct {
+   	ContractID          string          `json:"contractId"`
+   	ContractVersion     string          `json:"contractVersion"`
+   	ContractFingerprint string          `json:"contractFingerprint"`
+   	Scope               string          `json:"scope"`
+   	Provider            plugin.Identity `json:"provider"`
+   	ImplementationID    string          `json:"implementationId"`
+   	ArtifactDigest      string          `json:"artifactDigest"`
+   }

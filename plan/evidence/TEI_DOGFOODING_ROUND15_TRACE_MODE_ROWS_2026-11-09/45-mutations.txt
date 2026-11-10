@@ -1,0 +1,18 @@
+=== M1: remove the marshaler entirely ===
+        trace_rows_test.go:41: rows is absent for a full trace: map[authority:[34 34] direction:[34 34] graphFingerprint:[34 34] mode:[34 102 117 108 108 34] ruleFingerprint:[34 34] schemaVersion:[34 34] subject:[123 34 115 99 111 112 101 34 58 34 34 44 34 115 117 98 106 101 99 116 34 58 123 34 107 105 110 100 34 58 34 34 44 34 105 100 34 58 34 34 125 125] total:[48] unresolved:[48]]
+        trace_rows_test.go:41: rows is absent for a full trace: map[authority:[34 34] direction:[34 34] graphFingerprint:[34 34] mode:[34 102 117 108 108 34] ruleFingerprint:[34 34] schemaVersion:[34 34] subject:[123 34 115 99 111 112 101 34 58 34 34 44 34 115 117 98 106 101 99 116 34 58 123 34 107 105 110 100 34 58 34 34 44 34 105 100 34 58 34 34 125 125] total:[48] unresolved:[48]]
+FAIL
+FAIL	tei/internal/modelref	0.018s
+
+=== M2: emit rows in summary too ===
+    trace_rows_test.go:63: summary emitted rows: []
+FAIL
+FAIL	tei/internal/modelref	0.027s
+FAIL
+
+=== M3: write null instead of [] ===
+        trace_rows_test.go:44: rows was written as null
+FAIL
+FAIL	tei/internal/modelref	0.017s
+FAIL
+

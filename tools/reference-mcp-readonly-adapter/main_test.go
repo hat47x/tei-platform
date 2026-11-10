@@ -26,11 +26,11 @@ func referenceWorkspace(t *testing.T) string {
 	return root
 }
 
-// The adapter must expose exactly the four read-only operations and no other
+// The adapter must expose exactly the six read-only operations and no other
 // tool, so a client cannot reach a write, acceptance, deployment, or grant path
 // through it (#3400).
 func TestAdapterAdvertisesOnlyReadOnlyOperations(t *testing.T) {
-	want := []string{"tei_model_catalog", "tei_inspect", "tei_trace", "tei_validate"}
+	want := []string{"tei_model_catalog", "tei_model_locate", "tei_model_overview", "tei_inspect", "tei_trace", "tei_validate"}
 	tools := toolList()
 	if len(tools) != len(want) {
 		t.Fatalf("tool count = %d, want %d", len(tools), len(want))
@@ -78,6 +78,14 @@ func TestAdapterMatchesTheSameOperationResults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	location, err := operations.LocateWorkspace(root, sourceindex.Subject{Kind: "semantic-data", ID: "sales.order"}, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	overview, err := operations.OverviewWorkspace(root, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
 	trace, err := operations.TraceWorkspace(root,
 		modelref.Key{Scope: "mcp-test", Subject: subject.Subject{Kind: "semantic-relation", ID: "sales.order.customer"}},
 		modelref.TraceOptions{Direction: "both", Mode: "summary"})
@@ -103,6 +111,42 @@ func TestAdapterMatchesTheSameOperationResults(t *testing.T) {
 				}
 				if body["schemaVersion"] != "tei.cli.model/v0" {
 					t.Fatalf("catalog schemaVersion = %v", body["schemaVersion"])
+				}
+			},
+		},
+		{
+			name:    "locate",
+			request: []byte(`{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"tei_model_locate","arguments":{"subjectKind":"semantic-data","subjectId":"sales.order"}}}`),
+			check: func(t *testing.T, body map[string]any) {
+				result := body["result"].(map[string]any)
+				if result["worldFingerprint"] != location.WorldFingerprint || result["worldFingerprint"] != catalog.WorldFingerprint {
+					t.Fatalf("locate worldFingerprint = %v", result["worldFingerprint"])
+				}
+				if result["sourceIndexFingerprint"] != location.SourceIndexFingerprint {
+					t.Fatalf("locate sourceIndexFingerprint = %v", result["sourceIndexFingerprint"])
+				}
+				path := result["path"].([]any)
+				if len(path) != len(location.Path) {
+					t.Fatalf("locate path = %v, want %d entries", path, len(location.Path))
+				}
+				if body["schemaVersion"] != "tei.cli.model-locate/v0" {
+					t.Fatalf("locate schemaVersion = %v", body["schemaVersion"])
+				}
+			},
+		},
+		{
+			name:    "overview",
+			request: []byte(`{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"tei_model_overview","arguments":{}}}`),
+			check: func(t *testing.T, body map[string]any) {
+				result := body["result"].(map[string]any)
+				if result["worldFingerprint"] != overview.WorldFingerprint || result["worldFingerprint"] != catalog.WorldFingerprint {
+					t.Fatalf("overview worldFingerprint = %v", result["worldFingerprint"])
+				}
+				if int(result["sectionTotal"].(float64)) != overview.SectionTotal {
+					t.Fatalf("overview sectionTotal = %v, want %d", result["sectionTotal"], overview.SectionTotal)
+				}
+				if body["schemaVersion"] != "tei.cli.model-overview/v0" {
+					t.Fatalf("overview schemaVersion = %v", body["schemaVersion"])
 				}
 			},
 		},
@@ -212,6 +256,48 @@ func TestAdapterReportsReadFailures(t *testing.T) {
 	}
 	if !strings.Contains(response.Result.Content[0].Text, "UNSUPPORTED_SUBJECT_KIND") {
 		t.Fatalf("error text = %q", response.Result.Content[0].Text)
+	}
+}
+
+// An argument the tool does not declare must be rejected, not dropped. The CLI
+// refuses an undefined flag with INVALID_ARGUMENT, so accepting it here would
+// make the same call succeed through one entrance and fail through the other
+// (#3575).
+func TestAdapterRejectsUndeclaredArguments(t *testing.T) {
+	root := referenceWorkspace(t)
+	requests := strings.Join([]string{
+		`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"tei_inspect","arguments":{"subjectKind":"semantic-data","subjectId":"sales.order","extra":1}}}`,
+		`{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"tei_validate","arguments":{"workspace":"/tmp"}}}`,
+	}, "\n") + "\n"
+	var out bytes.Buffer
+	if err := serve(strings.NewReader(requests), &out, root); err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("expected two replies, got %d: %q", len(lines), out.String())
+	}
+	for _, line := range lines {
+		var response struct {
+			Error *struct {
+				Code    int    `json:"code"`
+				Message string `json:"message"`
+			} `json:"error"`
+			Result json.RawMessage `json:"result"`
+		}
+		if err := json.Unmarshal([]byte(line), &response); err != nil {
+			t.Fatal(err)
+		}
+		if response.Result != nil {
+			t.Fatalf("undeclared argument was accepted: %s", line)
+		}
+		if response.Error == nil || response.Error.Code != -32602 {
+			t.Fatalf("want -32602 for an undeclared argument: %s", line)
+		}
+		if !strings.Contains(response.Error.Message, "unknown argument") &&
+			!strings.Contains(response.Error.Message, "unknown tool") {
+			t.Fatalf("message does not name the unknown argument: %s", line)
+		}
 	}
 }
 

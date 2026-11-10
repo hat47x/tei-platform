@@ -74,10 +74,28 @@ func FromIndex(d index.Derived, scope string) Projection {
 		add("query", string(e.Query))
 	}
 	ruleSet := map[modelref.Rule]bool{}
+	// The same edge can be declared by more than one collection — `realizes` is
+	// built both from DeclaredDependencies and from CustomGoBindings — so the
+	// projection must be a set here. Appending unconditionally reported one
+	// incoming edge as two, which read as "two applications implement this
+	// capability" (#4024).
+	//
+	// Unresolved drops repeats for the same reason: the message names the
+	// reference and nothing else, so a second copy adds no information and
+	// inflates every count taken from it.
+	edgeSeen := map[string]bool{}
+	unresolvedSeen := map[string]bool{}
+	unresolve := func(message string) {
+		if unresolvedSeen[message] {
+			return
+		}
+		unresolvedSeen[message] = true
+		p.Unresolved = append(p.Unresolved, message)
+	}
 	addEdge := func(fromKind, fromID, relation, toKind, toID string) {
 		from := modelref.Key{Scope: scope, Subject: subject.Subject{Kind: fromKind, ID: fromID}}
 		if !nodes[from] {
-			p.Unresolved = append(p.Unresolved, "unmaterialized-from:"+fromKind+":"+fromID)
+			unresolve("unmaterialized-from:" + fromKind + ":" + fromID)
 			return
 		}
 		if toKind == "semantic-element" {
@@ -86,25 +104,62 @@ func FromIndex(d index.Derived, scope string) Projection {
 			// interchangeable; they must remain explicitly ambiguous.
 			kinds := semanticKindsByID[toID]
 			if len(kinds) != 1 {
-				p.Unresolved = append(p.Unresolved, "unresolved-semantic-element:"+toID)
+				unresolve("unresolved-semantic-element:" + toID)
 				return
 			}
 			toKind = kinds[0]
 		}
 		to := modelref.Key{Scope: scope, Subject: subject.Subject{Kind: toKind, ID: toID}}
 		if !nodes[to] {
-			p.Unresolved = append(p.Unresolved, "unmaterialized-to:"+toKind+":"+toID)
+			unresolve("unmaterialized-to:" + toKind + ":" + toID)
 			return
 		}
+		// The identity of an edge is what a caller can see: the endpoints and
+		// the relation. A repeat is the same statement, not a second one.
+		identity := fromKind + "\x00" + fromID + "\x00" + relation + "\x00" + toKind + "\x00" + toID
+		if edgeSeen[identity] {
+			return
+		}
+		edgeSeen[identity] = true
 		rule := modelref.Rule{Relation: relation, FromKind: fromKind, ToKind: toKind}
 		ruleSet[rule] = true
 		p.Graph.Edges = append(p.Graph.Edges, modelref.Edge{From: from, To: modelref.Ref{Scope: scope, Subject: to.Subject}, Relation: relation})
+	}
+	// The index declares edges that name database subjects, but those subjects
+	// have no entry list of their own: `database`, `database-contract` and
+	// `database-contract-query` appear only as endpoints. Without a node,
+	// addEdge drops every such edge and reports it as unmaterialized, so the
+	// whole data layer was invisible to trace while the projection still said
+	// "unresolved: 0" (#4068). Materialize the endpoints the index names, so a
+	// declared edge is either projected or reported for a real reason.
+	for _, e := range d.SemanticDependencies {
+		addEndpointNode(add, e.FromKind, string(e.From))
+		addEndpointNode(add, e.ToKind, string(e.To))
+	}
+	for _, e := range d.DeclaredDependencies {
+		addEndpointNode(add, e.FromKind, string(e.From))
+		addEndpointNode(add, e.ToKind, string(e.To))
 	}
 	for _, e := range d.SemanticDependencies {
 		addEdge(e.FromKind, string(e.From), e.Relation, e.ToKind, string(e.To))
 	}
 	for _, e := range d.DeclaredDependencies {
 		addEdge(e.FromKind, string(e.From), e.Relation, e.ToKind, string(e.To))
+	}
+	// `realize X with custom go`, declared under an application, states that
+	// the application implements the capability with a generated Go adapter.
+	// The index already carried the binding in CustomGoBindings, but the graph
+	// never made it an edge, so `trace` could not answer "what implements this
+	// capability" (#3983). The edge runs application -> capability named
+	// `realizes`: a reader asking about a capability reads -direction incoming.
+	// The adapter filename and hook name stay index metadata; they name a
+	// generated file, not a model subject, so they are not graph nodes.
+	for _, b := range d.CustomGoBindings {
+		if b.Application == "" || b.Capability == "" {
+			p.Unresolved = append(p.Unresolved, "incomplete-realization:"+string(b.Capability))
+			continue
+		}
+		addEdge("application", string(b.Application), "realizes", "semantic-capability", string(b.Capability))
 	}
 	for rule := range ruleSet {
 		p.Rules = append(p.Rules, rule)
@@ -168,6 +223,11 @@ var SupportedSubjectKinds = []string{
 	"semantic", "semantic-type", "semantic-data", "semantic-attribute",
 	"semantic-relation", "semantic-validation", "semantic-capability",
 	"application", "application-pattern", "query",
+	// The data layer. These are named by the index as edge endpoints and are
+	// materialized so a declared edge is visible; without them a reader could
+	// not ask which database an application targets or what a contract reads
+	// (#4068).
+	"database", "database-contract", "database-contract-query",
 }
 
 func semanticKind(kind string) (string, bool) {
@@ -188,5 +248,23 @@ func semanticKind(kind string) (string, bool) {
 		return "semantic-capability", true
 	default:
 		return "", false
+	}
+}
+
+// endpointOnlyKinds are subject kinds the Derived Index names as edge endpoints
+// without carrying a dedicated entry list for them. FromIndex still has to
+// place them in the graph: an edge whose endpoint has no node is dropped, and a
+// dropped edge is indistinguishable from an absent declaration to a reader.
+var endpointOnlyKinds = map[string]bool{
+	"database":                true,
+	"database-contract":       true,
+	"database-contract-query": true,
+}
+
+// addEndpointNode materializes an edge endpoint that belongs to an
+// endpoint-only kind. Other kinds are left to the entry lists that define them.
+func addEndpointNode(add func(kind, id string), kind, id string) {
+	if endpointOnlyKinds[kind] {
+		add(kind, id)
 	}
 }

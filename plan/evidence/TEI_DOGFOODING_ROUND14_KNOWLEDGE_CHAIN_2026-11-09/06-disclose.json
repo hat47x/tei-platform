@@ -1,0 +1,80 @@
+{
+  "schemaVersion": "tei.cli.knowledge-context/v0",
+  "ok": true,
+  "mode": "disclosure",
+  "result": {
+    "projectionRevision": "tei.knowledge.disclosure/v1",
+    "fingerprint": "sha256:b368a6f5bb24e92ae80c86b373460b2ea9d3b92229d242f94a12199fb98a07bb",
+    "status": "complete",
+    "subject": {
+      "kind": "semantic-data",
+      "id": "sales.order"
+    },
+    "availableSections": [
+      "data-design",
+      "definition",
+      "dependencies",
+      "source"
+    ],
+    "selectedSections": [
+      "source"
+    ],
+    "disclosedSections": [
+      "source"
+    ],
+    "omittedAvailableSections": [
+      "data-design",
+      "definition",
+      "dependencies"
+    ],
+    "artifacts": [
+      {
+        "path": "semantic/sales/order.tei",
+        "format": "tei",
+        "fingerprint": "sha256:f2063418b893a60a9f948edbb2b23ec821f7a15ed8e5863c36e1b72abade1e33"
+      }
+    ],
+    "references": [
+      {
+        "subject": {
+          "kind": "semantic-data",
+          "id": "sales.order"
+        },
+        "artifactPath": "semantic/sales/order.tei",
+        "range": {
+          "start": {
+            "offset": 124,
+            "line": 7,
+            "column": 6
+          },
+          "end": {
+            "offset": 129,
+            "line": 7,
+            "column": 11
+          }
+        },
+        "role": "definition"
+      }
+    ],
+    "authorityLimits": [
+      "dependency-edge-is-not-semantic-applicability",
+      "dependency-edge-is-not-write-or-runtime-authority",
+      "derived-context-is-not-canonical-authority",
+      "disclosure-fingerprint-is-cache-identity-not-semantic-proof",
+      "omitted-knowledge-is-not-negative-evidence",
+      "projection-or-runtime-identity-is-not-business-data-identity",
+      "selection-does-not-change-qualification-or-canonical-meaning",
+      "selective-disclosure-is-derived-not-authority",
+      "selective-disclosure-is-not-access-control-or-redaction",
+      "unavailable-requested-section-is-not-empty-meaning"
+    ]
+  },
+  "workspace": {
+    "name": "tei_reference",
+    "formatVersion": 1,
+    "manifest": {
+      "path": "tei.workspace.yaml",
+      "sha256": "sha256:8e367b05de26a715ced16e384d273c983ac612dd2ff980d4310886d4f471af74"
+    }
+  }
+}
