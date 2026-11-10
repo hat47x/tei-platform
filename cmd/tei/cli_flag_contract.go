@@ -130,6 +130,18 @@ func validateRepeatableArguments(command string, args []string) error {
 // Each selected read-only CLI command owns its advertised flags, even though
 // the older tei binary shares one FlagSet across many commands. Rejecting an
 // unrelated *recognized* flag prevents silent loss of caller intent.
+// rejectPositionalArguments turns an unexpected bare word into an argument
+// error. Every command reads its inputs from flags, so a positional argument is
+// a typo. `validate` and `world` used to ignore them and still report success,
+// which makes a mistyped run look like a clean one (#4129).
+func rejectPositionalArguments(fs *flag.FlagSet, command string) error {
+	if fs.NArg() == 0 {
+		return nil
+	}
+	return fmt.Errorf("%s does not take positional arguments: %s",
+		command, strings.Join(fs.Args(), " "))
+}
+
 func validateSelectedReadOnlyFlags(fs *flag.FlagSet, command string) error {
 	names, ok := selectedReadOnlyFlagAllowlist[command]
 	if !ok {

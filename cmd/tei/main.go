@@ -339,6 +339,17 @@ func main() {
 			fmt.Fprintln(os.Stderr, repeatErr)
 			os.Exit(2)
 		}
+		if positionalErr := rejectPositionalArguments(fs, command); positionalErr != nil {
+			if isResultEnvelopeCommand(command) {
+				code, writeErr := emitResult(os.Stdout, resultFailure(command, resultCodeInvalidArgument, positionalErr), 2)
+				if writeErr != nil {
+					fmt.Fprintln(os.Stderr, writeErr)
+				}
+				os.Exit(code)
+			}
+			fmt.Fprintln(os.Stderr, positionalErr)
+			os.Exit(2)
+		}
 	}
 	if command == "validate" && jsonValidationRequested {
 		if parseErr == nil {
