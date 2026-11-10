@@ -412,3 +412,4 @@
 - [TEI_GO_SELF_BUILD_STRONG_FLAG_2026-11-09](TEI_GO_SELF_BUILD_STRONG_FLAG_2026-11-09.md)（-strong が -rebuild-check を含意し、in-process route を要求することを固定した記録）
 - [inspectでmigration・database release・solution releaseを読めるようにする](TEI_DOGFOODING_ROUND58_INSPECT_DELIVERY_2026-11-10/README.md)（#4128のC案を実装。受理種を15種にし、releaseはowner単位でバージョンを集約。当初の`owner@version`案はcanonicalのid一致という安全不変条件に反するため破棄。変異4種のうち2種は試験を強化して初めて捕捉）
 - [model overviewが自分の対象範囲を明示する](TEI_DOGFOODING_ROUND59_OVERVIEW_SCOPE_2026-11-10/README.md)（#4128のE案を実装。sectionScopeでrootsAre/coveredKinds/notCoveredKindsを導出し、sectionTotalが全部に見える誤読を閉じた。恒真な重複なし試験は変異で壊せないため削除）
+- [設計演習の第2回。縦の一連をCLIで設計しapplication-releaseの欠落を検出](TEI_DOGFOODING_ROUND60_DESIGN_VERTICAL_2026-11-10/README.md)（8往復のうち7往復はCLI診断のみで解決。inspectは7成果物のうち6つを返し、application-releaseだけ未対応だったため追加し16種に。既存の種非依存な試験が変異を捕捉。構文の配置を引くコマンドが無いという穴を記録）

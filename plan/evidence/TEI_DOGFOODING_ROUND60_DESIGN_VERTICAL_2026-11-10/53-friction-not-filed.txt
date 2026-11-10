@@ -1,0 +1,8 @@
+warning UNBOUND_DATASOURCE query returns_intake.returns_list datasource sales is
+        not bound in any environment
+
+It names what is missing but not what to write. Environment bindings are spread
+across environments/** and interact with contract-query-executor-binding.
+
+NOT FILED. I hit this once and could not establish the correct form. It stays in
+the record until I hit it again and can describe the fix precisely.

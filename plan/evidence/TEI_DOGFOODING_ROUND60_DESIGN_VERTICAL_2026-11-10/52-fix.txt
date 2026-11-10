@@ -1,0 +1,18 @@
+Added application-release to inspect, same shape as the other releases: the
+subject is the owner (the application), the projection lists every version.
+
+  accepted kinds: 15 -> 16
+  MCP adapter enum pin: 15 -> 16
+
+After the fix:
+  application-release returns_intake -> ok, versions ['1.0.0']
+
+All seven designed artefacts are now readable through the CLI.
+
+Mutation M1 (remove the application-release dispatch):
+  -> FAIL TestDeliveryLayerSubjectsAreInspectable
+       application-release:order_entry did not resolve
+  -> FAIL TestEveryAdvertisedKindWithADeclarationResolves
+
+No new test was needed for the second failure: the advertised-vs-declared check
+added in round 58 is kind-agnostic and caught the omission by itself.

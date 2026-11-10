@@ -1,0 +1,2 @@
+error	SOLUTION_RELEASE_NOT_EXECUTABLE	solution release returns_rollout@5.0.0: application release not found: returns_intake@1.0.0
+warning	UNBOUND_DATASOURCE	query returns_intake.returns_list datasource sales is not bound in any environment

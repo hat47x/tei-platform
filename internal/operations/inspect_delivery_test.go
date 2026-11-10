@@ -20,6 +20,7 @@ func TestDeliveryLayerSubjectsAreInspectable(t *testing.T) {
 		wantVersions []string
 	}{
 		{kind: "migration", id: "20260826_001"},
+		{kind: "application-release", id: "order_entry"},
 		{kind: "database-release", id: "sales_core", wantVersions: []string{"4.0.0", "4.1.0", "4.2.0"}},
 		{kind: "solution-release", id: "order_rollout", wantVersions: []string{"2026.8.27"}},
 	}
