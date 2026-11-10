@@ -64,7 +64,7 @@ exec /home/hat47x/qemuprobe/qemu-aarch64-static /tmp/l2b-arm64/bin/child "$@"
 - **`qualified=true` ではない。** 両方とも `false` であり、本記録は受理・Runtime Authority・L2-c・L3 を主張しません
 - **クロスアーキテクチャでの成果物の再現性は主張しません。** 主張したのは「各アーキテクチャの内部で二回の build が一致した」こと（`reproduced`）だけです
 - **child は `/bin/sh` ラッパー経由で起動した。** `binfmt_misc` を使う構成（root あり）とは起動経路が違います。child の実行内容は同じですが、`tei` から見た実行ファイルの同一性（`-child` のパス）は異なります
-- **フィクスチャはリポジトリに無い。** 一時ディレクトリで組み立てました
+- **フィクスチャと手順はリポジトリにある。** `plan/evidence/TEI_GO_SELF_BUILD_ARM64_L2B_CHAIN_2026-11-10/` の `run.sh`・`fixture/`・`raw/` が再導出の一式です（[README](TEI_GO_SELF_BUILD_ARM64_L2B_CHAIN_2026-11-10/README.md)）。**ただし builder に依存する値はコミットで変わる**ので、`raw/` の再実行（`4d04036e4`）では `catalogDigest`・`planFingerprint`・`artifactDigest` が本記録の値と一致しません。一致するのは構造です
 
 ## 検証
 
@@ -75,6 +75,12 @@ exec /home/hat47x/qemuprobe/qemu-aarch64-static /tmp/l2b-arm64/bin/child "$@"
 - `planCrossCheck.resolverPlanFingerprint == builderReportedPlanFingerprint`
 
 **NOT RUN**：`darwin`、ネイティブ arm64、`binfmt_misc` を用いた起動経路。
+
+## 再導出
+
+手順・フィクスチャ・生出力を `plan/evidence/TEI_GO_SELF_BUILD_ARM64_L2B_CHAIN_2026-11-10/` に置きました。リポジトリのルートから `run.sh amd64` と `run.sh arm64` を実行すると同じ連鎖を再導出できます（`arm64` はエミュレータが要り、無い場合は終了コード 2 で理由を出して止まります）。
+
+**値はコミットに依存します。** `raw/` は `4d04036e4` での再実行であり、本記録の表（`706fab080`）とは `catalogDigest`・`planFingerprint`・`artifactDigest` が一致しません。**再導出で確かめられるのは「どちらが一致し、どちらが相違するか」という構造です。**
 
 ## 限界
 

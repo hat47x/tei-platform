@@ -1,0 +1,18 @@
+=== build tools for amd64 ===
+=== author the catalog ===
+catalogDigest=sha256:84177d3b45df7a8d763ea82aaba61855a4a6fb5fc77c95429098513ba7fce662
+=== resolve, to give the child a plan file ===
+=== tei self-build ===
+tei exit=0
+=== result ===
+arch             : amd64
+ok               : True
+qualified        : False
+l2b.claimed      : True
+l2b.unmet        : None
+reproducibility  : reproduced
+intentFingerprint: 0909a60dab0993e2c1a5c7dc7fe1b62439382edfbe99187e3f93bc5e74fe28ea
+sourceClosure    : 034ca748b20dbf95af24786bc814607c55c975e2ef99c8c199ce616da1f0c390
+catalogDigest    : sha256:84177d3b45df7a8d763ea82aaba61855a4a6fb5fc77c95429098513ba7fce662
+planFingerprint  : 96f28e0d553d36a69fc67baf8a03323bbac4eab5e190584ff75e32501aa3df24
+artifactDigest   : sha256:dce79cdad2149953042e750354d6262c8809b568d2fb80e87245d241536f86d6
