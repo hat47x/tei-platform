@@ -278,3 +278,6 @@
 
 # MCP failure-isolation observations are hashed as raw bytes.
 /plan/evidence/DSH_MCP_FAILURE_ISOLATION_2026-11-10/** -text
+
+# MCP argument-size observations at 4.1 MB are hashed as raw bytes.
+/plan/evidence/DSH_MCP_ARG_SIZE_4M_2026-11-10/** -text

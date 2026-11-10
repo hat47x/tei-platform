@@ -10,7 +10,17 @@ const (
 	AccessReadWrite Access = "read-write"
 )
 
-func (a Access) Valid() bool { return a == AccessRead || a == AccessWrite || a == AccessReadWrite }
+// Accesses lists every accepted access mode in report order.
+var Accesses = []Access{AccessRead, AccessWrite, AccessReadWrite}
+
+func (a Access) Valid() bool {
+	for _, valid := range Accesses {
+		if a == valid {
+			return true
+		}
+	}
+	return false
+}
 
 type Ownership string
 
@@ -19,7 +29,17 @@ const (
 	OwnershipExternalObserved Ownership = "external-observed"
 )
 
-func (o Ownership) Valid() bool { return o == OwnershipManagedHere || o == OwnershipExternalObserved }
+// Ownerships lists every accepted ownership in report order.
+var Ownerships = []Ownership{OwnershipManagedHere, OwnershipExternalObserved}
+
+func (o Ownership) Valid() bool {
+	for _, valid := range Ownerships {
+		if o == valid {
+			return true
+		}
+	}
+	return false
+}
 
 type Database struct {
 	ID           core.CanonicalID   `json:"id"`

@@ -6,7 +6,7 @@
 
 **本記録は、これが「`-child` に名指しされたファイル」の同一性であって、「実際に走った構築器」の同一性ではないことを実測で示します。**
 
-> **後続の記録による更新**：本記録の実測は、書かれた時点の観測です。その後、[宣言したbuilderと起動したファイルを結ぶ検査](TEI_GO_SELF_BUILD_BUILDER_BINDING_2026-11-10.md)（§4.40）が入りました。本記録のプロキシの構成（catalogは`builder`を宣言し、起動するのはプロキシ）は、**現行では `l2b.claimed=false` になります**。条件5の範囲についての本記録の結論はそのまま成り立ちます。
+> **後続の記録による更新**：本記録の実測は、書かれた時点の観測です。その後、[宣言したbuilderと起動したファイルを結ぶ検査](TEI_GO_SELF_BUILD_BUILDER_BINDING_2026-11-10.md)（§4.42）が入りました。本記録のプロキシの構成（catalogは`builder`を宣言し、起動するのはプロキシ）は、**現行では `l2b.claimed=false` になります**。条件5の範囲についての本記録の結論はそのまま成り立ちます。
 
 ## なぜ差が出るか
 
@@ -94,6 +94,7 @@ childDigest, err := digestOfFile(exactChild)
 
 - **`darwin` は扱っていません。** `linux/amd64` のみです
 - **悪意ある呼び手の一般論ではありません。** 示したのは「名指しされたファイルと実際に走るものが一致しない構成があり得る」ことだけです
+- **手順・フィクスチャ・生出力はリポジトリにある。** `plan/evidence/TEI_GO_SELF_BUILD_CHILD_IDENTITY_SCOPE_2026-11-10/` の `run.sh`（`proxy`・`direct`）が両方の観測を再導出します（[README](TEI_GO_SELF_BUILD_CHILD_IDENTITY_SCOPE_2026-11-10/README.md)）。**構築器はリポジトリのソースからビルドするので、digest はコミットで変わります。**
 - **本記録の構築器は振る舞いが同じです。** 振る舞いが違えば成果物が変わり、`reproduced` にならないので Claim は立ちません
 - **`qualified` は `false` のまま**です。本記録は受理・L3・Runtime Authority を主張しません
 

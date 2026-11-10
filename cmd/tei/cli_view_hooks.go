@@ -58,7 +58,31 @@ func runDeclaredHooks(ctx context.Context, world ir.World, applicationID, patter
 
 // runDeclaredHooksWithRule is runDeclaredHooks with an explicit reference rule,
 // so a caller (or a test) can decide what the hook considers unsatisfied.
-func runDeclaredHooksWithRule(ctx context.Context, world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string, rule hook.ReferenceRule) (*cliHookReport, error) {
+func runDeclaredHooksWithRule(ctx context.Context, world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string, rule hook.Implementation) (*cliHookReport, error) {
+	return runDeclaredHooksHalf(ctx, world, applicationID, patternID, inputs, rule, hook.ReferenceReach{}, hookHalfAll)
+}
+
+// hookHalf selects which side of the change a hook run covers.
+//
+// A run that applies its change cannot consult every phase in one pass: the
+// before-* phases have to decide before the change and the after-* phases after
+// it, with the change in between. The two named halves let the caller put the
+// change where it belongs instead of the runner guessing a point.
+type hookHalf int
+
+const (
+	// hookHalfAll consults every declared phase, which is what a reference run
+	// does because it has no change to sit between the halves.
+	hookHalfAll hookHalf = iota
+	// hookHalfBefore consults the before-* phases only.
+	hookHalfBefore
+	// hookHalfAfter consults the after-* phases only.
+	hookHalfAfter
+)
+
+// runDeclaredHooksHalf consults one half of the declared phases, with the reach
+// the caller says applies.
+func runDeclaredHooksHalf(ctx context.Context, world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string, rule hook.Implementation, reach hook.Reach, half hookHalf) (*cliHookReport, error) {
 	runner := hook.Runner{World: world, Implementation: rule}
 	// A hook that declares `uses` promises a call. Give the runner the boundary
 	// that can keep it: the Command invoker, with the pattern resolution
@@ -81,7 +105,16 @@ func runDeclaredHooksWithRule(ctx context.Context, world ir.World, applicationID
 			return pattern, true
 		},
 	}
-	report, err := runner.RunReachable(ctx, applicationID, patternID, attributeValues(inputs), hook.ReferenceReach{})
+	var report *hook.PhaseReport
+	var err error
+	switch half {
+	case hookHalfBefore:
+		report, err = runner.RunBeforeChange(ctx, applicationID, patternID, attributeValues(inputs), reach)
+	case hookHalfAfter:
+		report, err = runner.RunAfterChange(ctx, applicationID, patternID, attributeValues(inputs), reach)
+	default:
+		report, err = runner.RunReachable(ctx, applicationID, patternID, attributeValues(inputs), reach)
+	}
 	if report == nil {
 		return nil, err
 	}
@@ -152,4 +185,90 @@ func hookReportHolds(list []string, value string) bool {
 		}
 	}
 	return false
+}
+
+// mergeHookReports joins the two halves of an applied run into the one report the
+// CLI prints.
+//
+// The halves are separate runs, so each carries only what it saw. A refusal or a
+// proposal belongs to the phase that produced it, and the order the halves were
+// run in is the order the report lists.
+func mergeHookReports(before, after *cliHookReport) *cliHookReport {
+	if before == nil {
+		return after
+	}
+	if after == nil {
+		return before
+	}
+	out := &cliHookReport{
+		PhaseReport: &hook.PhaseReport{
+			Reasons: map[string]string{},
+		},
+		Pattern: before.Pattern,
+		Note:    before.Note,
+	}
+	for _, source := range []*cliHookReport{before, after} {
+		if source.PhaseReport == nil {
+			continue
+		}
+		out.Executed = append(out.Executed, source.Executed...)
+		out.Warned = append(out.Warned, source.Warned...)
+		out.Skipped = append(out.Skipped, source.Skipped...)
+		out.NotEvaluated = append(out.NotEvaluated, source.NotEvaluated...)
+		for phase, reason := range source.Reasons {
+			out.Reasons[phase] = reason
+		}
+		if source.Refused != "" {
+			out.Refused = source.Refused
+		}
+		if source.Outcome != "" {
+			out.Outcome = source.Outcome
+		}
+		for phase, produced := range source.Produced {
+			if out.Produced == nil {
+				out.Produced = map[string]hook.Produced{}
+			}
+			out.Produced[phase] = produced
+		}
+		if len(source.Uncalled) > 0 && out.Uncalled == nil {
+			out.Uncalled = map[string][]core.CanonicalID{}
+		}
+		for phase, capabilities := range source.Uncalled {
+			out.Uncalled[phase] = append(out.Uncalled[phase], capabilities...)
+		}
+		if len(source.Calls) > 0 && out.Calls == nil {
+			out.Calls = map[string][]hook.CallOutcome{}
+		}
+		for phase, calls := range source.Calls {
+			out.Calls[phase] = append(out.Calls[phase], calls...)
+		}
+	}
+	out.CommandOutcome = before.CommandOutcome
+	if after.CommandOutcome != "" {
+		out.CommandOutcome = after.CommandOutcome
+	}
+	return out
+}
+
+// runAfterHalfRevertingOnRefusal consults the after-change phases, and puts the
+// store back when one of them refuses.
+//
+// The effect was applied before this runs, so a refusal here comes after the
+// change. Leaving the change in place would keep something the declaration did
+// not accept; leaving the report silent about it would read as "nothing was
+// applied". Both are avoided: the store is restored to the snapshot taken
+// before the run, and the caller is told the effect was reverted.
+//
+// The reference rule never refuses, so the CLI's own runs do not reach the
+// revert today. The path exists and is tested with a refusing rule, because the
+// rule a plugin supplies is what makes it reachable — that is the boundary this
+// function is written for.
+func runAfterHalfRevertingOnRefusal(ctx context.Context, world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string, rule hook.Implementation, store *command.MemoryStore, snapshot command.StoreSnapshot, before *cliHookReport) (*cliHookReport, bool, error) {
+	after, err := runDeclaredHooksHalf(ctx, world, applicationID, patternID, inputs, rule, hook.AppliedChangeReach{}, hookHalfAfter)
+	merged := mergeHookReports(before, after)
+	if err == nil {
+		return merged, false, nil
+	}
+	store.Restore(snapshot)
+	return merged, true, err
 }

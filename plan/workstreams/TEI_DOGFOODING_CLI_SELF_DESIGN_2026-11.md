@@ -1626,3 +1626,101 @@ distinct projectionUnresolved messages: 12
 ### 位置付け
 
 **公開済みの主張を測り直して訂正した回**である。原因は**壊れた探査状態から一般化したこと**で、第43ラウンド（PR の状態だけを見た）・第49ラウンド（`tei world` を試さず一般化した）と同じ型の**3回目**。今回は「解消に着手する前にまず主張を測り直す」を実行したことで、公開後の1ラウンドで捕まえられた。
+
+## 55. 第53ラウンド（2026-11-10）: 閉じた語彙の診断が有効値を挙げるようにした
+
+第52ラウンドで `pattern` の種別を診断で列挙した。同じ型が他の語彙にもあるかを実測し、3件を修正して残り17件を起票した。生出力は[第53ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND53_VOCABULARY_DIAGNOSTICS_2026-11-10/README.md)にある。
+
+### 観測（修正前）
+
+| 語彙 | 診断 | 有効値を挙げるか |
+| --- | --- | --- |
+| storage type | `has invalid storage type "NUMBERISH"` | **いいえ** |
+| nullability | `has invalid nullability "maybe"` | **いいえ** |
+| access mode | `has invalid access mode "read-write-nothing"` | **いいえ** |
+
+いずれも `file:line:col` は出るが、有効値が分からないため著者はソースか既存の `.tei` を読む必要があった。
+
+### 修正
+
+各語彙に値のスライス（`persistence.StorageTypes`・`persistence.Nullabilities`・`database.Accesses`）を置き、`Valid()` がそれを読む。診断は `validValues` ヘルパで列挙する。
+
+```text
+has invalid storage type "NUMBERISH";
+  valid values are int64, varchar, text, datetime-tz, decimal, json
+has invalid nullability "maybe"; valid values are required, optional
+has invalid access mode "read-write-nothing"; valid values are read, write, read-write
+```
+
+試験は3件（診断が値を名指す／語彙リストと `Valid()` の一致×2）。変異2種（診断から一覧を削る／`StorageTypes` から `text` を落とす）が両方落ちることを確認した。`cmd/tei`（233.9s）を含む全対象が ok。
+
+### 残り17件を起票した
+
+[#4094](https://github.com/hat47x/tei-platform/issues/4094)。`internal/validation/validation.go` を実測し、同じ形の診断が17件残ることを記録した（`INVALID_PLUGIN_RUNTIME`・`INVALID_SEMANTIC_RELATION_CARDINALITY`・`INVALID_DATABASE_OWNERSHIP`・`INVALID_ROLLOUT_STRATEGY` など）。
+
+**1ラウンドでまとめて直さなかった理由**: 17件は語彙の定義が `plugin`・`semantic`・`database/release`・`deployment`・`releaseplan` に分散し、それぞれに単一情報源の追加が要る。実測した3件を先に通し、残りを Issue にした。
+
+`INVALID_APPLICATION_RELEASE_DATABASE_ACCESS` は `database.Accesses` を再利用できるため、次に着手するなら最も容易。
+
+## 56. 第54ラウンド（2026-11-10）: 語彙診断の第2弾と、未検証だった疑問の解消
+
+第53ラウンドで残した2つを処理した。生出力は[第54ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND54_VOCABULARY_BATCH2_2026-11-10/README.md)にある。
+
+### 未検証の疑問は「欠陥なし」だった
+
+第52ラウンドで `std` について「引けない」と誤ったため、同じ型の誤りが残っていないかを先に実測した。
+
+| 対象 | 不正な語を書いたときの診断 |
+| --- | --- |
+| `capability` ブロック | `expected input, output, outcome, effect, or emptyPolicy` |
+| `data` ブロック | `expected attribute, relation, candidate-key, or functional-dependency` |
+| `interaction` ブロック | `expected item, navigate, or command in interaction` |
+
+**いずれも受理する語を列挙している。** 第51〜53ラウンドで「同じ問いが残る」と書いたのは**過度な一般化**だった。`std` は「型名という値の集合」の話で、ブロック内キーワードとは性質が違う。
+
+### #4094 の第2弾: 4件を修正
+
+| コード | 語彙 | 値 |
+| --- | --- | --- |
+| `INVALID_APPLICATION_RELEASE_DATABASE_ACCESS` | access mode | read, write, read-write（`database.Accesses` を再利用） |
+| `INVALID_DATABASE_OWNERSHIP` | ownership | managed-here, external-observed |
+| `INVALID_SEMANTIC_TYPE_KIND` | type kind | primitive, alias |
+| `INVALID_SEMANTIC_RELATION_CARDINALITY` | cardinality | one, many |
+
+`database.Ownerships`・`semantic.TypeKinds`・`semantic.Cardinalities` を追加し、各 `Valid()` がそれを読む。
+
+**`INVALID_SEMANTIC_TYPE_KIND` は CLI から到達できない。** `type` の種別は構文（`from` の有無）から導出されるため著者が不正値を書けない。診断文は正しいが CLI では観測できない。この差を明記した。
+
+変異2種（ownership 診断から一覧を削る／`Cardinalities` から `many` を落とす）が両方落ちることを確認した。`cmd/tei`（124.9s）を含む全対象が ok。
+
+### 残り
+
+#4094 の17件のうち4件を直したので**13件**が残る。`plugin`・`migration`・`deployment`・`releaseplan` 側の語彙で、それぞれ単一情報源の新設が要る。
+
+## 57. 第55ラウンド（2026-11-10）: 語彙診断の第3弾、plugin 系統5件
+
+#4094 の残り13件のうち、`plugin` にまとまっている5件を処理した。生出力は[第55ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND55_VOCABULARY_PLUGIN_2026-11-10/README.md)にある。
+
+### 修正した5件
+
+| コード | 語彙 | 値 |
+| --- | --- | --- |
+| `INVALID_PLUGIN_RUNTIME` | runtime kind | builtin, process |
+| `INVALID_PLUGIN_SANDBOX_POLICY` | sandbox policy | none, preferred, required（**または省略**） |
+| `INVALID_PLUGIN_CAPABILITY_KIND` | capability kind | 7種すべて |
+| `INVALID_PLUGIN_EXTERNAL_SCOPE` | external scope | editor, build, test, runtime, migration |
+| `INVALID_PLUGIN_EXTERNAL_KIND` | external kind | toolchain, runtime, language-package, tool |
+
+`plugin.RuntimeKinds`・`SandboxPolicies`・`CapabilityKinds`・`ExternalScopes`・`ExternalKinds` を単一情報源として追加し、各述語がそれを読む。
+
+### sandbox だけ扱いが違う
+
+`SandboxPolicy.Valid()` は**空文字も受理する**（「宣言していない」の意味）。そこで一覧には空を含めず、診断文を `valid values are none, preferred, required (or omit the policy)` とした。空を選択肢として並べると「空を書け」と読めるため。この区別を試験で固定した。
+
+**5件すべて CLI から到達できた。** 前ラウンドの `INVALID_SEMANTIC_TYPE_KIND` と違い、到達不能なものは無い。
+
+変異3種（external scope の一覧削除／`SandboxPolicies` への空の追加／`CapabilityKinds` から1件削除）がすべて落ちることを確認した。`cmd/tei`（195.7s）を含む全対象が ok。
+
+### 残り8件
+
+#4094 は 17→13→8 件。残りは `migration`（2件）・`releaseplan`/`deployment`（4件）と、語彙ではなく構造を検証する `INVALID_PLUGIN_ARTIFACT` 等。

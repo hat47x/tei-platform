@@ -1,0 +1,4 @@
+workspace: self_build_outer
+formatVersion: 1
+sources:
+  - semantic

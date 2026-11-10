@@ -8,23 +8,30 @@ import (
 
 // ValidScope reports whether an external requirement declares a supported
 // lifecycle phase.
+// ExternalScopes lists every accepted external requirement scope in report
+// order.
+var ExternalScopes = []string{"editor", "build", "test", "runtime", "migration"}
+
 func (r ExternalRequirement) ValidScope() bool {
-	switch r.Scope {
-	case "editor", "build", "test", "runtime", "migration":
-		return true
-	default:
-		return false
+	for _, valid := range ExternalScopes {
+		if r.Scope == valid {
+			return true
+		}
 	}
+	return false
 }
 
 // ValidKind reports whether the external dependency category is supported.
+// ExternalKinds lists every accepted external requirement kind in report order.
+var ExternalKinds = []string{"toolchain", "runtime", "language-package", "tool"}
+
 func (r ExternalRequirement) ValidKind() bool {
-	switch r.Kind {
-	case "toolchain", "runtime", "language-package", "tool":
-		return true
-	default:
-		return false
+	for _, valid := range ExternalKinds {
+		if r.Kind == valid {
+			return true
+		}
 	}
+	return false
 }
 
 func (r ExternalRequirement) ValidName() bool {

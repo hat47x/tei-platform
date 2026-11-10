@@ -1,0 +1,10 @@
+#4094 was filed with 17 unfixed diagnostics (the three fixed in round 53 were
+already excluded from that count). This round fixes 4 of those 17, so 13 remain.
+
+Of the 4 fixed here, INVALID_SEMANTIC_TYPE_KIND is not reachable from authored
+source: the type kind is derived from syntax (presence of `from`), so an author
+cannot write an invalid one. Its message is correct but cannot be observed
+through the CLI.
+
+The 13 live in plugin, migration, deployment and releaseplan, each needing its
+own single-source list.

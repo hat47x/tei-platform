@@ -1,0 +1,22 @@
+Fixed (message now names the accepted values):
+
+  INVALID_APPLICATION_RELEASE_DATABASE_ACCESS
+    access mode: read, write, read-write        (reuses database.Accesses)
+  INVALID_DATABASE_OWNERSHIP
+    ownership: managed-here, external-observed
+  INVALID_SEMANTIC_TYPE_KIND
+    type kind: primitive, alias
+  INVALID_SEMANTIC_RELATION_CARDINALITY
+    cardinality: one, many
+
+New single-source lists: database.Ownerships, semantic.TypeKinds,
+semantic.Cardinalities (database.Accesses came in round 53).
+
+Reachability, measured with the CLI:
+  ownership            reached  -> message names the values
+  cardinality          reached  -> message names the values
+  app-release access   reached  -> message names the values
+  semantic type kind   NOT reachable from authored source: the kind is derived
+                       from syntax (presence of `from`), so an author cannot
+                       write an invalid one. The message is correct but a CLI
+                       observation of it is impossible.

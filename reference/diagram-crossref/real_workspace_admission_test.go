@@ -363,3 +363,92 @@ func TestSourceIndexStructuralValidityDoesNotAuthenticateSemanticBinding(t *test
 	// resolve the exact Canonical Subject/Relation and current acceptance/Grant
 	// independently. No invented Schema, Writer, or Registry is introduced.
 }
+
+// M0 must project one real Parent -> Relation -> Target topology without
+// inventing an accepted Business Flow or treating a Source trace as meaning.
+// MapWorkspace uses a single Loader/Source Index internally. The subsequent
+// Inspect calls are separate reads and cannot establish an atomic snapshot.
+func TestRealWorkspaceModelMapMatchesSourceIndexedRelationTriplet(t *testing.T) {
+	root := filepath.Join("..", "workspace")
+	mapped, err := operations.MapWorkspace(root)
+	if err != nil {
+		t.Fatalf("read real TEI native typed Model Map: %v", err)
+	}
+	if mapped.SchemaVersion != "tei.operations.model-map/v0" ||
+		mapped.Effect != "read-only" || mapped.Coverage != "partial-projection" ||
+		mapped.Catalog.Workspace == nil || mapped.Catalog.WorldFingerprint == "" ||
+		mapped.Catalog.SourceIndexFingerprint == "" {
+		t.Fatalf("typed Model Map overclaimed coverage or lost Workspace evidence: %+v", mapped)
+	}
+
+	relation := sourceindex.Subject{Kind: "semantic-relation", ID: "sales.order.lines"}
+	entries := 0
+	var parent sourceindex.Subject
+	for _, entry := range mapped.Catalog.Entries {
+		if entry.Subject != relation {
+			continue
+		}
+		entries++
+		if entry.Ambiguous || entry.Prelude || entry.SourceStatus != "indexed" ||
+			entry.Parent == nil || entry.Parent.Kind != "semantic-data" {
+			t.Fatalf("real relation is not uniquely source-indexed: %+v", entry)
+		}
+		parent = *entry.Parent
+	}
+	if entries != 1 {
+		t.Fatalf("expected one exact canonical relation entry, got %d", entries)
+	}
+	inspected, err := operations.InspectSubject(root, relation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var canonical struct {
+		ID     string `json:"id"`
+		Target string `json:"target"`
+	}
+	if err := json.Unmarshal(inspected.Canonical, &canonical); err != nil ||
+		canonical.ID != relation.ID || canonical.Target == "" {
+		t.Fatalf("real relation Canonical identity/target missing: %+v err=%v", canonical, err)
+	}
+	target := sourceindex.Subject{Kind: "semantic-data", ID: canonical.Target}
+	if inspected.WorldFingerprint != mapped.Catalog.WorldFingerprint ||
+		inspected.SourceIndexFingerprint != mapped.Catalog.SourceIndexFingerprint ||
+		inspected.Workspace == nil ||
+		!reflect.DeepEqual(*inspected.Workspace, *mapped.Catalog.Workspace) {
+		t.Fatal("the M0 projection and canonical relation observation differ in Workspace/revision")
+	}
+
+	for _, subject := range []sourceindex.Subject{parent, relation, target} {
+		observed, err := operations.InspectSubject(root, subject)
+		if err != nil {
+			t.Fatalf("one endpoint cannot be resolved as canonical TEI Source: %+v: %v", subject, err)
+		}
+		if observed.Subject != subject || observed.SourceStatus != "indexed" ||
+			len(observed.Sources.References) == 0 ||
+			observed.WorldFingerprint != mapped.Catalog.WorldFingerprint ||
+			observed.SourceIndexFingerprint != mapped.Catalog.SourceIndexFingerprint {
+			t.Fatalf("Model Map endpoint lacks matching canonical Source evidence: %+v", subject)
+		}
+	}
+
+	for _, expected := range []operations.ModelMapLink{
+		{From: parent, To: relation, Relation: "contains", Resolution: "resolved"},
+		{From: relation, To: target, Relation: "refers-to", Resolution: "resolved"},
+	} {
+		matches := 0
+		for _, got := range mapped.Links {
+			if got.From == expected.From && got.To == expected.To && got.Relation == expected.Relation {
+				matches++
+				if got.Resolution != "resolved" {
+					t.Fatalf("actual indexed relation rendered as ambiguous/unresolved: %+v", got)
+				}
+			}
+		}
+		if matches != 1 {
+			t.Fatalf("exact native Model Map edge must appear once: edge=%+v count=%d", expected, matches)
+		}
+	}
+	// In M0 "resolved" means unique declared endpoints, never Owner
+	// acceptance, required-world closure, Plugin Invoke, authorized effect,
+	// safe inverse editing, complete CRUD, or external Consumer receipt.
+}

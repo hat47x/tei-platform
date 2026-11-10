@@ -53,6 +53,10 @@ type referenceCommandRun struct {
 	// operations, so `differences` being empty is "not observed" rather than
 	// "none found".
 	AppliedUnobserved bool `json:"appliedUnobserved,omitempty"`
+	// EffectReverted is true when the effect was applied and then put back
+	// because an after-change phase refused. It is the one case where the run
+	// applied something and the reported state is the state before the run.
+	EffectReverted bool `json:"effectReverted,omitempty"`
 	// ReportedEffectMissing is true when the capability declared an effect but
 	// the executor reported none. The run is not rejected, but a reader must not
 	// treat the absence as proof the declared effect was applied.
@@ -119,6 +123,7 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	packageID := fs.String("package", "", "exact application package ID")
 	commandID := fs.String("command", "", "command capability to plan")
 	execute := fs.Bool("execute", false, "reference execution of the planned command")
+	referenceStore := fs.Bool("reference-store", false, "with -execute, apply the declared effect to an in-memory reference store and run the after-change hooks; the store is not persistence")
 	periodStateFile := fs.String("period-state", "", "period state JSON for -execute")
 	operationLogFile := fs.String("operation-log", "", "write reference operation records as JSON")
 	lifecycleState := fs.String("lifecycle-state", "", "SQLite state file for restart-safe command lifecycle")
@@ -234,13 +239,28 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		if err != nil {
 			return fail("VIEW_FAILED", err.Error(), 1)
 		}
+		if *referenceStore && !*execute {
+			// The flag changes what an execution does, so asking for it without an
+			// execution is an argument problem, not a run that quietly ignores it.
+			return fail("INVALID_ARGUMENT", newArgumentError("view requires -execute with -reference-store").Error(), 2)
+		}
 		if *execute {
 			// A declared hook runs before the command when the reference run
 			// can reach it: a before-change phase whose declared reads the
 			// caller supplied. Everything else is reported as skipped or not
 			// evaluated with a reason, so a phase that did not run never reads
 			// as a phase that passed.
-			hookReport, hookErr := runDeclaredHooks(context.Background(), loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*patternID), values)
+			// A run that applies its change consults the before-* phases first, then
+			// applies, then consults the after-* phases: the change belongs between
+			// the halves, and one pass has no point in between. A reference run keeps
+			// the single pass, because it has no change to sit there.
+			var hookReport *cliHookReport
+			var hookErr error
+			if !*referenceStore {
+				hookReport, hookErr = runDeclaredHooks(context.Background(), loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*patternID), values)
+			} else {
+				hookReport, hookErr = runDeclaredHooksHalf(context.Background(), loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*patternID), values, hook.ReferenceRule{}, hook.ReferenceReach{}, hookHalfBefore)
+			}
 			if hookErr != nil {
 				if hookReport != nil {
 					run := referenceCommandRun{
@@ -258,10 +278,19 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 				}
 				return fail("COMMAND_FAILED", hookErr.Error(), 1)
 			}
+			// The store is created per run and dropped at the end. It makes the change
+			// something the after-* phases can be consulted about; it is not
+			// persistence, and the response says so.
+			referenceStoreInstance := command.NewMemoryStore()
+			var storeSnapshot command.StoreSnapshot
+			var executor command.Executor = command.ReferenceExecutor{World: loaded.World}
+			if *referenceStore {
+				executor = command.ReferenceDataExecutor{World: loaded.World, Store: referenceStoreInstance}
+			}
 			invoker := command.Invoker{
 				Authorizer: command.ReferenceAuthorizer{},
 				World:      loaded.World,
-				Executor:   command.ReferenceExecutor{World: loaded.World},
+				Executor:   executor,
 				UnitOfWork: &command.MemoryUnitOfWork{},
 			}
 			if len(allowedCapabilities) > 0 {
@@ -312,6 +341,31 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 					return fail(code, message, 1)
 				}
 				return fail("COMMAND_FAILED", err.Error(), 1)
+			}
+			if *referenceStore {
+				// The change is applied, so the after-* phases have a point to run at.
+				// Their report is joined with the before-* one so the printed run shows
+				// both halves.
+				storeSnapshot = referenceStoreInstance.Snapshot()
+				storeSnapshot = referenceStoreInstance.Snapshot()
+				var reverted bool
+				var afterErr error
+				hookReport, reverted, afterErr = runAfterHalfRevertingOnRefusal(context.Background(), loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*patternID), values, hook.ReferenceRule{}, referenceStoreInstance, storeSnapshot, hookReport)
+				if afterErr != nil {
+					run := referenceCommandRun{
+						SchemaVersion:  applicationview.SchemaVersion,
+						Mode:           "reference",
+						Plan:           plan,
+						Hooks:          hookReport,
+						EffectReverted: reverted,
+					}
+					report.OK = false
+					report.Result = run
+					if *format == "json" {
+						return writeViewReport(out, report, 1)
+					}
+					return writeReferenceRunText(out, run)
+				}
 			}
 			if *operationLogFile != "" {
 				encoded, encodeErr := json.MarshalIndent(recorder.Records, "", "  ")
@@ -936,6 +990,14 @@ func writeReferenceRunText(out io.Writer, run referenceCommandRun) (int, error) 
 	}
 	if code, err := writeCommandPlanText(out, run.Plan); err != nil {
 		return code, err
+	}
+	if run.EffectReverted {
+		// The change was applied and then put back. Say so where the run is
+		// printed, so a reader never takes the reported state for a change that
+		// survived the after-change phases.
+		if _, err := fmt.Fprintln(out, "effect: reverted (an after-change phase refused after the effect was applied)"); err != nil {
+			return 2, err
+		}
 	}
 	if run.OutcomeUndetermined != "" {
 		// An outcome nobody determined must not read as "the capability has no

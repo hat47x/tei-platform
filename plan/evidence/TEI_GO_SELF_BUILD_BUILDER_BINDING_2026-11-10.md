@@ -1,6 +1,6 @@
 # 宣言したbuilderと、起動したファイルを結ぶ
 
-[#2831](https://github.com/hat47x/tei-platform/issues/2831) のSB-C0 §4.40 の実測記録です。[child同一性の範囲の記録](TEI_GO_SELF_BUILD_CHILD_IDENTITY_SCOPE_2026-11-10.md)が測った「プロキシの背後の差し替えは止まらない」に対し、**何を塞ぎ、何が残るか**を示します。
+[#2831](https://github.com/hat47x/tei-platform/issues/2831) のSB-C0 §4.42 の実測記録です。[child同一性の範囲の記録](TEI_GO_SELF_BUILD_CHILD_IDENTITY_SCOPE_2026-11-10.md)が測った「プロキシの背後の差し替えは止まらない」に対し、**何を塞ぎ、何が残るか**を示します。
 
 ## 評価：欠陥か、保証範囲の限定か
 
@@ -52,11 +52,11 @@
 - 既存の正例（`TestSelfBuildEstablishesL2BEndToEnd`、`TestSelfBuildEstablishesL2BFromARealGoBuild`）は、catalogが実際に起動するbuilderのbyteを宣言しているので、変更なしで通る
 - `TestBuildCatalogAloneRunsTheSecondBuild`は、catalogのbuilder digestが仮の値のままClaimを期待していた。**この試験自体が塞いだ欠落に依存していた**ので、catalogが起動するファイルを宣言するように直した
 
-**NOT RUN**：`linux`・`darwin`・`arm64`、CI。[#4071](https://github.com/hat47x/tei-platform/pull/4071)の`run.sh proxy`（シェルのプロキシ）は未実行です。現行では`l2b.claimed=false`になるはずで、同PRの期待値（`true`）は更新が要ります。
+**NOT RUN**：`linux`・`darwin`・`arm64`、CI。[再導出の一式](TEI_GO_SELF_BUILD_CHILD_IDENTITY_SCOPE_2026-11-10/README.md)の`run.sh proxy`（シェルのプロキシ）は未実行です。現行では`l2b.claimed=false`になるはずで、その旨を同READMEに注記しました。`raw/`の取り直しは残っています。
 
 ## 限界
 
 - TOCTOU（読んでから起動するまで）は閉じていません
-- `mismatched`は試行を失敗にしません。Claimだけを落とします（理由と覆し方は§4.40）
+- `mismatched`は試行を失敗にしません。Claimだけを落とします（理由と覆し方は§4.42）
 - catalogを渡さない試行には計画が無いので、`builderBinding`は記録されません。その試行はもともとClaimが立ちません
 - `qualified`は`false`、G4は`UNQUALIFIED`のままです

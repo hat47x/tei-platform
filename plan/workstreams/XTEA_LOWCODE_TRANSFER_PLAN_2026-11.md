@@ -387,7 +387,9 @@ WP10 統合と引継ぎ
 | 行単位フックの`uses`の判定の一本化 | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_ROW_USES_PARITY_2026-11.md) |
 | 行単位フックの`uses`の実行（`RunRowCalls`） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_ROW_USES_CALLS_2026-11.md) |
 | Data型パラメータへ渡す属性の規約 | 確認済み（限定なし） | 付録C.5、`internal/validation`・`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_DATA_PARAM_CONVENTION_2026-11.md) |
-| `after-*`へ到達する実行経路（フック層） | 実装（参照・ホスト未配線） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_AFTER_CHANGE_2026-11.md) |
+| `after-*`へ到達する実行経路（フック層） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_AFTER_CHANGE_2026-11.md) |
+| `after-*`へ到達するCLI配線（`-reference-store`） | 実装（参照） | 付録C.5、`cmd/tei`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_AFTER_CHANGE_CLI_2026-11.md) |
+| `after-*`拒否時の効果の取り消し | 実装（参照・既定経路は未到達） | 付録C.5、`cmd/tei`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_AFTER_CHANGE_REVERT_2026-11.md) |
 | 実行時の値変換 | 不要と確認 | 付録C.5、`internal/validation`、[確認記録](../evidence/XTEA_LOWCODE_VALUE_CONVERSION_2026-11.md)（受理条件が同一の下位原始型を要求するため、変換を要する組は通らない） |
 | 行単位のフックの実行（`RunRows`・`applyReachableRows`） | 実装（参照） | 付録C.5、`internal/hook`（二つの行経路が併存し`uses`の扱いが違う。`Runner.Rows`を設定するホストは未実装）、[確認記録](../evidence/XTEA_LOWCODE_HOOK_ROW_REACHABILITY_2026-11.md) |
 | フックの位相の重複宣言の拒否 | 実装 | 付録C.5、`internal/validation` |
