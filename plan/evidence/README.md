@@ -1,4 +1,4 @@
-# 受入条件と検証根拠
+﻿# 受入条件と検証根拠
 
 要求が受け入れシナリオや検証根拠にどう結び付くかを整理する文書を置きます。要求そのものは[`requirements/`](../../requirements/README.md)、段階判定の記録と実行手順は[`gate/`](../gate/README.md)、現在の実装状況は[`docs/status.md`](../../docs/status.md)を参照してください。
 
@@ -123,7 +123,8 @@
 - [行範囲の宣言を通す修正の確認](XTEA_LOWCODE_HOOK_ROW_SCOPE_DECLARABLE_2026-11.md)（参照実装の試験記録。`row`が宣言できず死んだコードだった矛盾の修正。実行経路の配線は未実装）
 - [フック範囲の貫通試験の確認](XTEA_LOWCODE_HOOK_SCOPE_THROUGH_2026-11.md)（参照実装の試験記録。宣言→検証→実行を1本で通し、修正を戻すと落ちることを確認）
 - [パッケージ契約（適合試験・投影）の検査の確認](XTEA_LOWCODE_PACKAGE_CONFORMANCE_2026-11.md)（参照実装の試験記録。適合試験名と投影を検査。適合試験の実行は未実装）
-- [期間の close-requires の実行時検査の確認](XTEA_LOWCODE_CLOSE_REQUIRES_2026-11.md)（参照実装の試験記録。閉めに必要な能力を実行時に要求。`correction`は未実装）
+- [期間の close-requires の実行時検査の確認](XTEA_LOWCODE_CLOSE_REQUIRES_2026-11.md)（参照実装の試験記録。閉めに必要な能力を実行時に要求）
+- [期間の correction の実行時検査の確認](XTEA_LOWCODE_PERIOD_CORRECTION_2026-11.md)（参照実装の試験記録。閉じた期間の訂正を宣言した能力に限る。訂正能力を走らせる経路は未実装）
 - [採番の永続CounterStoreの確認](XTEA_LOWCODE_NUMBERING_SQLITE_STORE_2026-11.md)（参照実装の試験記録。PostgreSQLは未実装）
 - [採番の2プロセス同時実行の確認](XTEA_LOWCODE_NUMBERING_PROCESS_RACE_2026-11.md)（参照実装の試験記録。PostgreSQLと多プロセス構成は未実装）
 - [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
@@ -420,3 +421,4 @@
 - [設計演習の第2回。縦の一連をCLIで設計しapplication-releaseの欠落を検出](TEI_DOGFOODING_ROUND60_DESIGN_VERTICAL_2026-11-10/README.md)（8往復のうち7往復はCLI診断のみで解決。inspectは7成果物のうち6つを返し、application-releaseだけ未対応だったため追加し16種に。既存の種非依存な試験が変異を捕捉。構文の配置を引くコマンドが無いという穴を記録）
 - [構文の配置を教える。パターン種をapplication本体に書いたとき](TEI_DOGFOODING_ROUND61_SYNTAX_PLACEMENT_2026-11-11/README.md)（#4169。パターン5種すべてがでたらめな語と同じ汎用エラーだったことを実測し、application.PatternKindsを使って配置を名指しするようにした。変異3種で確認。一般的な構文探索の穴は残り、4案を示して起票）
 - [契約クエリをCLIで設計し診断の言語混在を検出](TEI_DOGFOODING_ROUND62_LANGUAGE_MIX_2026-11-11/README.md)（#4174。#4169のA案の材料として契約クエリを4往復で設計。PARSE_ERRORクラスに英語と日本語が併存することを実測し、非テスト555件/66ファイルを数えた。1回の実行での同時観測はしておらず、CLIに出るものの対応付けも未完。変換は方針判断のため未実施）
+
