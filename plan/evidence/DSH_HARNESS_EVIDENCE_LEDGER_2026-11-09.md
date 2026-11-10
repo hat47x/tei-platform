@@ -2,7 +2,7 @@
 
 - 対象Issue: [#2509](https://github.com/hat47x/tei-platform/issues/2509)（DSH外部Harness実証）、[#2515](https://github.com/hat47x/tei-platform/issues/2515)（実効隔離・全送出経路Conformance）。機密境界の正本は[TAI #232](https://github.com/hat47x/tai-pleroma/issues/232)、比較計画は[TAI #168](https://github.com/hat47x/tai-pleroma/issues/168)。
 - 状態: **既存の実行記録を並べた索引**。新しい実測は行っていない。個々の合否・Owner受理は各記録とIssueの担当。
-- この文書の役割: 50件の実行記録が**それぞれ何を確定させ、何を確定させていないか**を1枚で見えるようにし、同じ測り方の重複を避ける。記録本文の複製はせず、各記録へ参照で結ぶ。
+- この文書の役割: 51件の実行記録が**それぞれ何を確定させ、何を確定させていないか**を1枚で見えるようにし、同じ測り方の重複を避ける。記録本文の複製はせず、各記録へ参照で結ぶ。
 
 ## 1. なぜ台帳が要るか
 
@@ -48,6 +48,7 @@
 | [落ちていたサーバーの復帰](./DSH_MCP_LATE_START_2026-11-10/README.md) | 状態の非持続 | MCPサーバーを止めたままTurn 1を実行し、起動してから同じSessionでTurn 2を実行すると、**Turn 1はTool 27個でMCP Toolなし**、**Turn 2は28個で`mcp__latemock__header_echo`あり**（ハンドシェイク2回分=8件を受信）。**「1回繋がらなかった」は状態として残らず、次の起動で普通に繋がる**。よって**前回の観測を今回の構成の根拠にできない** | 1プロセス内での再接続、起動後の切断、`failOnStartupError: true`との組み合わせ |
 | [実行中の再接続](./DSH_MCP_MIDRUN_RECONNECT_2026-11-10/README.md) | 再接続の実効 | MCPサーバーを止めたまま実行を開始し、**1手目の`pwsh`でサーバーを起動**させると、**同じプロセスの中でToolが27→28**（`mcp__latemock__header_echo`）に増えた。ハンドシェイクは1回分（4件）。**`reconnect`は実際に効く**（既定は`initialDelayMs 500`・`maxDelayMs 30000`・`maxAttempts 10`）。**実行中にも送出先が増え得る**ので、開始時の点検だけでは足りない | 実行中にサーバーが落ちる向き、`enabled: false`、`maxAttempts`超過後、再接続時の`headers`再送 |
 | [サーバーを落とした場合](./DSH_MCP_KILL_MIDRUN_2026-11-10/README.md) | 広告面の非対称 | MCPサーバーが生きている状態で開始し、**1手目の`pwsh`でそのポートのProcessを落として**10秒待つと、**その後のモデル要求でもToolは28個のまま**で`mcp__latemock__header_echo`が残っていた（停止後にlistenは0）。**広告された面はサーバーが死んでも縮まない**ので、**「Tool一覧に在る」は「繋がっている」の証拠にならない**。前記録（落ちている→起動する）と合わせ、**一覧は増えるが減らない** | 落ちた後に呼んだ場合、`maxAttempts`超過後に消えるか、stdioの子Processが落ちた場合 |
+| [落ちた後に呼んだ場合](./DSH_MCP_CALL_AFTER_KILL_2026-11-10/README.md) | 失敗の形 | MCPサーバーを**1手目の`pwsh`で落として**から、**2手目で残っているMCP Toolを呼ぶ**と、**`status: error`・`Error: fetch failed`**が返った（呼ぶ時点でもTool数28・`hasTargetTool: true`）。**失敗は呼んだ時点で初めて分かり、形は汎用の通信エラー**でサーバーを名指さない。実行はexit 0で完了 | `maxAttempts`超過後に一覧から消えるか、時間をおいた再試行、stdioの子Processのエラー形 |
 | [MCPの`tools/call`](./DSH_MCP_TOOL_CALL_2026-11-10/README.md) | 往復 | `mcp__synthetic__synthetic_echo`を1回呼ぶと、MCPサーバーへ**`tools/call`（123 bytes）**が届き、**`arguments.text`にモデル生成のcanaryがそのまま入っていた**。**ワイヤ上のTool名は`mcp__<serverName>__<toolName>`ではなく元の名前**。サーバーの応答は**3回目のモデル要求に引数と結果の両方が載って**戻る | 引数の検閲・上限、stdio、認証、複数サーバー、`read_mcp_resource`、実MCPサーバー |
 | [MCPの引数の大きさ](./DSH_MCP_ARG_SIZE_2026-11-10/README.md) | 引数の上限 | **200,000 bytes要求→200,018 bytes受信**、**1,000,000 bytes要求→1,000,018 bytes受信**で、**どちらもcanaryが先頭にあり末尾100文字が全て`z`**（切り詰めも拒否も無い）。**Tool結果後のモデル要求は約1.05MB／約5.05MBへ膨らむ**（引数が文脈に残るため） | 1MB超、Provider側の上限、内容の検査、`maxInstructionBytes`との関係、stdio・認証・複数サーバー |
 | [MCPの引数4.1MB](./DSH_MCP_ARG_SIZE_4M_2026-11-10/README.md) | 上限の所在 | `mcp__synthetic__synthetic_echo`を**4,100,000 bytes**の引数で1回呼ぶと、**4,100,018 bytesがそのまま届き**（canaryあり・末尾100文字が全て`z`）、`tools/call`全体は**4,100,123 bytes**。**Telemetry側`maxRequestBytes`の既定4,000,000を超えている**ので、**その上限はMCPの引数を制限しない**。**結果後のモデル要求は約4.15MB**。200KB・1MB・4.1MBの3点で**切り詰め無し** | 4.1MB超、実Providerの受信、MCPサーバー側の上限、内容の検査、`maxInstructionBytes` |
