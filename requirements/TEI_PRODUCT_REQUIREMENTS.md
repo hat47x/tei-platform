@@ -571,6 +571,18 @@ BOMや試験証拠の再利用は、同じVersion文字列やJSONの意味上の
 
 **本要求は標準製品能力の要件であり、実装・受入完了の宣言ではありません。** 現時点のPairwise／Witness整合の限定Referenceは、真正なProvider×Consumerの実2×2 Conformance、実二Consumer、Trusted Receipt、現在Grantを証明しません。設計・受入のOwnerは[#3267](https://github.com/hat47x/tei-platform/issues/3267)、既存の限定Reference Draftは[#3297](https://github.com/hat47x/tei-platform/pull/3297)とします。RQ-035は異種Data Source Workbench、**RQ-036は全容Model Map**であり、番号・意味を兼用しません。
 
+## RQ-037 Plugin／Contractの検証済み組合せを構成BOMとして再利用できること
+
+TEIは、Plugin、Contract、Provider、Consumer、Target等の互換な組合せを、適用範囲と検証根拠を伴う**Verified Composition BOM**として記録・検索・再評価できなければなりません。Packageを列挙する在庫表・SBOM、宣言されたCapability、Plugin Lock、実Build Artifact、試験計画、実行されたConformance、現在のHost Grantは異なる情報です。選択・ロード・実呼出し・独立Expectedに対する合格を区別し、宣言が揃っただけで「検証済み」と表示してはいけません。
+
+複数バージョンのProviderとConsumerを組み合わせる試験では、組合せごとのexact Contract／Provider実装／Consumer実装／Target／Sourceと外部依存の実消費範囲／Build Artifact／Toolchain／Scope／試験Scenario／独立Expected／実行Attemptを辿れる必要があります。2×2の全4行を合格と呼ぶには各行の実Build・Link／Load・Invokeと適格な検証根拠が必要です。Full Cartesian／Pairwise／制約付きの選択はテスト計画の効率化手段であり、未選択・未実行・不可能・未知の組合せをPASSへ変換してはいけません。特定Scopeでの履歴Conformanceと現在の実行権限・開示資格・業務上のMeaning受理も別に検証します。
+
+BOMや試験証拠の再利用は、同じVersion文字列やJSONの意味上の同値だけでは認めません。Consumer自身のSource／Source Index、別Workspaceから読み込んだProviderの原文・Manifest・Revision、Capability等の選択規則とその内容の指紋、実際にBuildへ取り込んだ入力とArtifact、独立Expectedの版・範囲を用途相対で照合する必要があります。A→B→A、取得不可・部分受領、過去の別Attempt、Tenant／Host Grant変更は、その原因と再評価範囲を保持します。必要な依存が未知なら資格も未知とし、一方で未消費・非干渉と確認できた資産の変更だけで無関係な全組合せを失効させてはいけません。
+
+利用者・生成AIは、組合せ候補、試験した版、限定された適格範囲、未試験・失敗・失効理由、変更時に必要な再試験を、CLI／Studio等の共通Application APIを通して確認できることを目指します。BOMが参照する証拠は、#951のContract／Provider解決、#1016のComposition、#943／#2600の実Build、#1180／#2514のDriver Scenarioと独立Expected、#3262の必要Design Context、#1251の実Provider呼出しを再利用し、第二のResolver・Runner・Artifact Store・独立Host・権限発行機構を作りません。
+
+**本要求は標準製品能力の要件であり、実装・受入完了の宣言ではありません。** 現時点のPairwise／Witness整合の限定Referenceは、真正なProvider×Consumerの実2×2 Conformance、実二Consumer、Trusted Receipt、現在Grantを証明しません。設計・受入のOwnerは[#3267](https://github.com/hat47x/tei-platform/issues/3267)、既存の限定Reference Draftは[#3297](https://github.com/hat47x/tei-platform/pull/3297)とします。RQ-035は異種Data Source Workbench、**RQ-036は全容Model Map**であり、番号・意味を兼用しません。
+
 ## 要求を実装へ落とすときの原則
 
 個別IssueやADRを起票するときは、どのProduct Requirementの不確実性を減らす作業なのかを明記します。

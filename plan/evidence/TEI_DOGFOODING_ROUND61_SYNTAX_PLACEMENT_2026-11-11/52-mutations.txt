@@ -1,0 +1,10 @@
+M1 remove the placement branch
+   -> FAIL browse: message does not quote the kind
+M2 check only browse/record instead of application.PatternKinds
+   -> FAIL reference: message does not quote the kind
+M3 put the generic message back
+   -> FAIL browse: message is still the generic one
+
+M2 imitates copying the list instead of reading it. Because the test iterates
+application.PatternKinds, a transcription fails at the third kind.
+restored -> syntax, workspace, cmd/tei (101.9s) ok; vet and gofmt clean

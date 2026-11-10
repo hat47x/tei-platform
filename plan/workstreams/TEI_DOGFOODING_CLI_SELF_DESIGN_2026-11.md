@@ -1900,3 +1900,88 @@ notCoveredKinds: plugin, bundle, database, persistence-mapping, migration,
 ### #4128 の残り
 
 C（第58ラウンド）・E（本ラウンド）が完了。残りは A（catalog に加える。名前空間フィルタ設計に触れる）・B（overview にセクションを加える）・D（専用コマンド）。
+
+## 62. 第60ラウンド（2026-11-10）: 設計演習の第2回。縦の一連を CLI で設計し、application-release の欠落を検出
+
+目的文は「再びドッグフーディングに戻る」ことを求めている。第58・59ラウンドは道具側だったので、本ラウンドは設計演習に戻り、改善の効果を測った。生出力は[第60ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND60_DESIGN_VERTICAL_2026-11-10/README.md)にある。
+
+### 設計課題と往復
+
+> `returns_intake` を browse パターンで作り、索引 migration、database release、solution release を加え、CLI で読み返す。
+
+| Attempt | 応答 | 学んだこと |
+| --- | --- | --- |
+| 1 | `expected database, uses, or binds` | `semantic` ではなく `uses` |
+| 2 | `expected semantic or validation after uses` | `uses semantic <ns>` |
+| 3 | `expected database, uses, or binds` | パターンは application 本体に書かない（**置き場所は教えない**） |
+| 4 | `browse pattern ... requires query` | browse には query が要る |
+| 6 | `SOLUTION_RELEASE_NOT_EXECUTABLE ... application release not found` | application release が要る |
+| 7 | `expected source-revision or database` | `datasource` ではなく `database` |
+
+**アプリ層3往復、配備層2往復。8回中7回は CLI の診断だけで進んだ。**
+
+Attempt 3 だけは CLI で詰まった。診断は「そこに書くな」とは言うが「どこに書くか」は言わない。`world` も `inspect` も既存のものしか返さないため、無い構文の置き場所は引けない。**構文の配置を引くコマンドが無い**という穴である（語彙＝値の集合は診断が教えるが、配置は教えない）。
+
+### 読み返し（第58・59ラウンドの検証）
+
+```text
+model overview: sectionTotal 8 -> 10
+  application returns_intake: セクションに現れる
+  query returns_intake.returns_list: セクションに現れる
+```
+
+`inspect` は7成果物のうち6つを返した。**`application-release` だけ `UNSUPPORTED_SUBJECT_KIND`。** 今回まさに自分で作った種で、第58ラウンドの取りこぼしだった。
+
+### 修正
+
+`application-release` を追加（subject は application、射影は全バージョン）。受理種は 15→16。
+
+```text
+application-release returns_intake -> ok, versions ['1.0.0']
+```
+
+**設計した7成果物すべてが CLI で読み返せるようになった。**
+
+変異1種（dispatch を外す）は2つの試験で落ちた。うち `TestEveryAdvertisedKindWithADeclarationResolves` は第58ラウンドで足した**種に依存しない**検査なので、新しい種を足しても試験を書き換えずに捕捉できた。
+
+### 起票しなかった摩擦
+
+`UNBOUND_DATASOURCE` 警告（query の datasource が環境に束縛されていない）は、何が足りないかは言うが何を書けばよいかは言わない。**今回は `ok`（警告のみ）で先に進み、起票もしなかった。** 一度しか踏んでおらず、正しい書き方を特定できていないため。次に踏んだら起票する。
+
+## 63. 第61ラウンド（2026-11-11）: 構文の配置を教える。パターン種を application 本体に書いたとき
+
+第60ラウンドで記録した「構文の配置を引くコマンドが無い」という穴のうち、**実際に踏んだ1点**を測り直して直した。生出力は[第61ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND61_SYNTAX_PLACEMENT_2026-11-11/README.md)にある。
+
+### 修正前の実測
+
+`tei commands` の21コマンドに構文・文法を返すものは無い。そして**パターン5種すべてが、でたらめな語と同じ診断**になった。
+
+```text
+browse / record / reference / command / header-detail  -> expected database, uses, or binds
+frobnicate                                             -> expected database, uses, or binds
+```
+
+**誤った配置と打ち間違いが区別できない。**
+
+### 修正
+
+`internal/syntax/parser.go` の application 本体の `default:` で、語が `application.PatternKinds` に含まれるかを先に見る。
+
+```text
+"browse" starts an application pattern, which is not declared in the application body;
+declare it as "pattern <application>.<id> browse { ... }" in its own file
+```
+
+`application.PatternKinds` は第52ラウンド（#4082）で単一情報源として作ったものなので、パターン解析器が受理する種と取り残されない。**試験もリストを回す**ので、種が増えれば自動で対象になる。
+
+未知の語（`frobnicate`）は汎用メッセージのまま。既存の2つのピン（`internal/syntax/error_test.go`・`internal/workspace/source_diagnostic_test.go`）は無変更で通る。正しい配置も `ok` のまま。
+
+変異3種（分岐を削る／2種だけ書き写す／汎用に戻す）がすべて落ちることを確認した。特にM2は「単一情報源を使わず書き写した」場合を模しており、**3種目で落ちる**。
+
+`./internal/syntax`・`./internal/workspace`・`./cmd/tei`（101.9s）が ok。
+
+### 残った穴
+
+**構文の配置を一般的に引く手段は無いままである。** 直したのは1ケースだけで、「正しい書き方を知らない人が、正しい書き方を知るために間違える必要がある」という構造は残る。
+
+[#4169](https://github.com/hat47x/tei-platform/issues/4169) として起票し、4案を示した。**A（今回の手法を、既存の単一情報源がある場所から順に広げる）**が現実的で、B・C（構文一覧コマンド）はDSL全体の設計判断なので後でよいと書いた。

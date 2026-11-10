@@ -20,13 +20,14 @@ reference-plugin-package-build-child
 
 ## 出力
 
-stdoutへ1件のJSONを出します。`tei self-build`が読む欄は`artifactDigest`と`planFingerprint`です。
+stdoutへ1件のJSONを出します。`tei self-build`が読む欄は`artifactDigest`・`planFingerprint`・`stateDir`です。**`stateDir`は省略できません**（下の表を参照）。
 
 | 欄 | 意味 |
 | --- | --- |
 | `planBytesDigest` | **このchildが保持した**planファイルのbyte digest |
 | `planFingerprint` | `internal/pluginのBuildPlanFingerprint`が**正規化したplanから導いた**照合値 |
 | `artifactDigest` | 書いた配布物のbyte digest |
+| `stateDir` | `-state`で渡されたディレクトリをそのまま返す。**省略すると再現の観測が`unperformed`になり、`l2b.claimed`は`false`・終了コード1になる**（実測） |
 | `claimBoundary` | 何を主張しないかの文 |
 | `intentBytesDigest` / `intentFingerprint` | **このchildが読んだ宣言**のbyte digestと照合値（`-intent`指定時のみ） |
 | `intentBoundToPlan` | 宣言のsubjectがplanのPluginと一致することをchild自身が確かめたか |
