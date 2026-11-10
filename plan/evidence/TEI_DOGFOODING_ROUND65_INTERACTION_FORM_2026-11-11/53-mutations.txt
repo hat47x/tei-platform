@@ -1,0 +1,8 @@
+M1 remove the block-form check
+   -> BUILD FAILED: expected '}', found 'default'
+      The deletion cut into the default case. A broken mutation is not a test
+      result (same as round 67's M2); M1 is reported as inconclusive.
+M2 offer the record example for every kind
+   -> FAIL does not say the command pattern rejects an interaction
+M3 treat every kind as accepting an interaction
+   -> FAIL "browse" must not be treated as accepting an interaction

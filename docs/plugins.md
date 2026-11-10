@@ -121,6 +121,8 @@ tei self-build \
 
 **どちらか一方は必須です。** どちらも渡さないと、試行は`ok:false`・終了コード1で終わり、`l2b.unmet`の先頭が`no plan was derived for this attempt`になります（実測）。宣言はあっても、そこから計画を導く手段が無いためです。
 
+`-strong`は、再現の確認を有効にし、**in-process経路（catalog 3点セット）を要求**します。経路が無いと**終了コード2**で拒否し、JSONレポートを出しません（実測）。**設計文書§4.34は「`-strong`は採らない」と記録しており、実装と食い違っています**（[設計](../plan/design/SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md)の同節の追記を参照）。`-strong`を渡さなくても、catalogを名指しすれば二回目のbuildは既定で走ります（§4.30）。
+
 `-expected-plan-fingerprint`を渡すと、導出した計画の`planFingerprint`がその値と一致することを要求できます。**手元に別経路で得た計画があり、その計画でだけ構築したいとき**に使います。
 
 一致しないときは、試行は**終了コード2**で止まり、`error.code`は`SELF_BUILD_PLAN_MISMATCH`、`error.message`は`the plan derived in this process differs from the caller-declared expectation`になります（実測）。**この場合`l2b`の欄は出力されません**——構築の観測まで進んでいないためです。
@@ -137,7 +139,7 @@ tei self-build \
 
 `qualified`は常に`false`です。**構築が成功したこと、受理されたこと、実行権限を得たことは別**であり、`l2b.claimed`が`true`でも受理を意味しません。判断の中身は[自己構築の再入場契約](../plan/design/SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md)を参照してください。
 
-観測したのは`linux/amd64`と`windows/amd64`の二つのホストだけです。`darwin`・`arm64`は未観測です。
+観測したのは`linux/amd64`（native）・`windows/amd64`・`linux/arm64`（qemuによるエミュレーション）です。**`arm64`は実機ではなくエミュレーションであり、`l2b.claimed=true`に到達することを実測しています**（[記録](../plan/evidence/TEI_GO_SELF_BUILD_ARM64_L2B_CHAIN_2026-11-10.md)）。**`darwin`は未観測です**（macOSの実行環境が無い）。
 
 ## 実行時の扱い
 

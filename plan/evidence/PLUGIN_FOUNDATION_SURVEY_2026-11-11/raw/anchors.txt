@@ -1,0 +1,46 @@
+== 1. dependency resolution: does it exist? ==
+  16:func (c Catalog) resolvePlugin(req Requirement) (Definition, error) {
+  36:func (c Catalog) resolveBundle(req environment.ExtensionRequirement) (Bundle, error) {
+  67:func (c Catalog) ResolveEnvironment(env environment.Environment) (ResolvedSet, error) {
+
+   cycle detection:
+    101:			return fmt.Errorf("plugin dependency cycle at %s", req.Plugin)
+
+   transitive requirement check:
+    96:				return fmt.Errorf("plugin %s already resolved to %s, incompatible with required major %d", req.Plugin, existing.Version, req.CompatibleMajor)
+
+== 2. what resolution returns: a value or structured diagnostics? ==
+  plain fmt.Errorf returns: 2
+  a Diagnostic type in internal/plugin:
+    (none)
+
+  the nearest existing Diagnostic type lives elsewhere:
+    85:type Diagnostic struct {
+    type Diagnostic struct {
+    	Severity  Severity
+    	Code      string
+    	ElementID string
+    	Attribute string
+    	Message   string
+    }
+
+== 3. do callers depend on the error text? ==
+  test assertions matching substrings: 26
+  internal/plugin/bundle_requirements_test.go:62:		} else if err.Error() != firstError {
+
+== 4. the core's capability vocabulary: closed or open? ==
+  16:type CapabilityKind string
+  23:	CapabilityContractQueryExecutor CapabilityKind = "contract-query-executor"
+
+== 5. extension points beyond the capability kind ==
+  internal/plugin/implementation/:
+  builtin
+  model.go
+  model_test.go
+  
+  internal/plugin/inputprofile/:
+  admission.go
+  current_host.go
+  current_host_test.go
+  definition.go
+  schema_values_test.go

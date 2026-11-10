@@ -1,0 +1,7 @@
+removed the rank for a kind the derivation emits (update)
+--- FAIL: TestEveryDerivedKindHasItsOwnRank (0.00s)
+    surface_kind_rank_test.go:30: derived kind "update" has no rank and falls through to the catch-all
+FAIL
+FAIL	tei/internal/operations	0.010s
+FAIL
+restored surface.go

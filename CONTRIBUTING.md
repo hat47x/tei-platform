@@ -127,6 +127,7 @@ fatal: Invalid path '/mnt': No such file or directory
 | `tools/repository-plan-check/diagnostic_code_coverage_test.go` | `internal/**` の `Code:` 値すべて | 未言及 0 |
 | `cmd/tei/schema_version_coverage_test.go` | CLI が広告する `schemaVersion` | 未検証 0 |
 | `internal/modelref/trace_issue_values_test.go` | `TraceRow.issue` の6値 | 全値に発生入力 |
+| `tools/repository-plan-check/schema_version_coverage_test.go` | `internal/`・`cmd/` が書く `tei.*/vN` | 未言及 0 |
 
 ### 到達できない値を宣言したとき
 

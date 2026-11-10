@@ -2014,3 +2014,139 @@ Attempt 4 のメッセージだけが日本語だった。同じ `PARSE_ERROR` �
 [#4174](https://github.com/hat47x/tei-platform/issues/4174) として5案を提示して起票した。**A（利用者に出る診断のみ英語、対象は4層の137件）が最小**と書いた。
 
 **555件の変換は行っていない。** 方針判断であり、オーナーの言語選択に関わるため。
+
+## 65. 第63ラウンド（2026-11-11）: 契約ヘッダの版を名指しする
+
+第62ラウンドで「次の対象は `unexpected token "{"`」と記録したので、その1点を直した。生出力は[第63ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND63_CONTRACT_VERSION_2026-11-11/README.md)にある。
+
+### 修正前
+
+```text
+contract sales_core.probe {           -> unexpected token "{"   ← 何が要るか言わない
+contract sales_core.probe ^1 {        -> unexpected token "^"
+contract sales_core.probe version 1 { -> invalid version "version"
+contract sales_core.probe v1 {        -> ok
+```
+
+### 修正後
+
+```text
+no version / caret version ->
+  expected a version after the contract id "sales_core.probe":
+  write it as "contract sales_core.probe v4 { ... }"
+  (the id and the version are separate tokens)
+```
+
+`ParseContract` のヘッダで、版の**前**に次のトークンを見る（`p.peek()` が `TokenIdent` でないとき）。`^` の場合も同じ案内になる。
+
+対照は変わらない（`contract {`・本体の未知語・`read sales.order`）。
+
+### 実装中に作った自分のバグ
+
+**最初の版は `p.expect(TokenIdent)` を呼んだ後で `p.peek()` していた。** `expect` は失敗時にトークンを消費するので、peek が次を見てしまい条件が成立しない。**ビルドは通り、既存の試験も通った。**
+
+CLI で測ると**修正前と同じメッセージが返り**、そこで気づいた。現在の版は `expect` の前に peek する。変異 M2 がこの順序バグを再現し、試験が捕捉する。
+
+**「テストが通った」だけでは見つからず、実物を走らせて初めて分かった**誤りである。
+
+### 試験と変異
+
+4試験（版欠落の案内・不正な版と欠落の区別・対照の不変・範囲が `{` を指す）と変異3種。M1（判定を削る）・M2（順序バグの再現）・M3（不正を欠落と報告）がいずれも落ちる。
+
+`./internal/syntax`・`./internal/workspace`・`./cmd/tei`（302.8s）が ok。
+
+### #4169 の進捗
+
+A 案で直したのは2件（第61ラウンドのパターン配置、本ラウンドの版欠落）。第62ラウンドで弱いと判定した `unexpected token "^"` も本ラウンドで一緒に直った。
+
+## 66. 第64ラウンド（2026-11-11）: 未束縛の datasource に、書くべき bind を名指しさせる
+
+第60ラウンドで踏み、正しい手順を知らなかったため**起票しなかった**摩擦を、手順を確定したうえで解消した。生出力は[第64ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND64_UNBOUND_DATASOURCE_2026-11-11/README.md)にある。
+
+### 手順の確定
+
+警告は再現できた。解消手順は**モデル自身の environment ファイル**から確定した（道具のソースではなく設計対象）。
+
+```tei
+database-instance sales_core.dev {
+    definition sales_core
+    provider postgres
+}
+
+bind order_entry.sales -> sales_core.dev
+```
+
+`bind <application>.<alias> -> <database-instance>` を environment ブロック**内**に書く。実測で両方向を確認した（足すと `ok`、削ると警告が戻る）。
+
+**途中の自分の誤り**: 閉じ括弧の後ろに追記したら `PARSE_ERROR unexpected trailing token "bind"`。置き場所が問題で、ブロック内に移すと通った（#4169 の配置問題の一例）。
+
+### 修正
+
+警告に、**World から導出した**案内を添える。対象 alias の `TargetDatabase` を引き、environment の `Instances` から定義が一致するものを探す。見つかれば実名を、無ければ `<database-instance>` の形だけを示す。
+
+```text
+warning UNBOUND_DATASOURCE  query task67.q datasource sales is not bound in any environment;
+  add "bind task67.sales -> sales_core.dev" inside environment development, which already declares that instance
+```
+
+**案内のとおりに1行足すと `ok` になる**ことを CLI で実演した。
+
+### fail-closed
+
+**実在しないインスタンスを例示しない。** 別データベースのインスタンスを借りて案内すると、そのとおりに書いた利用者が誤った束縛を作る。3試験（形の提示・実名の優先・**借用しない**）と変異3種で固定した。
+
+変異 M2 は最初ビルドを壊して「失敗しなかった」。書き直して（`_ = target` で一致判定を無効化）初めて意図した変異として落ちた。第61・63ラウンドと同じく、**変異が壊れていることに気づいて直した**。
+
+`./internal/validation` と `./cmd/tei`（310.7s）が ok。
+
+### #4169 の進捗
+
+A 案は3件（第61ラウンドのパターン配置、第63ラウンドの契約の版、本ラウンドの bind）。**いずれも実際に踏んだ誤りから作られている。**
+
+## 67. 第65ラウンド（2026-11-11）: コマンドパターンを設計し、interaction の形を名指しさせる
+
+目的文の「再びドッグフーディングに戻る」を実行した回。まだ触っていない層として command パターンを選んだ。生出力は[第65ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND65_INTERACTION_FORM_2026-11-11/README.md)にある。
+
+### 設計の経過
+
+| Attempt | 応答 | 学んだこと |
+| --- | --- | --- |
+| 1 | `command pattern ... does not accept data` | command は `data` を取らない |
+| 2A | `UNKNOWN_APPLICATION_PATTERN_CAPABILITY ... sales.record_return` | 能力を先に宣言する |
+| 2B | `unexpected token "command"` | `interaction` を行として書けない（**形は教えない**） |
+| 2C | `expected data, relation, query, capability, datasource, contract-query, or interaction` | 本体の語彙は引けた |
+| 4 | `expected "namespace"` | 意味ファイルにはヘッダが要る |
+| 5〜7 | `ok` | コマンドパターンが解決 |
+
+**`interaction` の形（行かブロックか）だけは CLI で分からなかった。**
+
+### 読み返し
+
+```text
+model catalog に returns.accept_return が application-pattern として現れる
+inspect -> {"id": "returns.accept_return", "kind": "command", "capability": "sales.record_return"}
+```
+
+第58ラウンドで足した `application-pattern` の受理が効いている。
+
+### 修正: `interaction` の形を名指しする
+
+**案内文を2回書き直した。**
+
+| 版 | 出力 | 問題 |
+| --- | --- | --- |
+| v1 | `for example "interaction { command command }"` | 違反トークンを例に埋め、無意味 |
+| v2 | `for example "interaction { command <capability name> }"` | command パターンでは契約が即拒否する例。**往復が1回増える** |
+| v3 | record には `"interaction { item <data>.<attribute> }"`、他は「この種は受けられない」 | 種に合った案内 |
+
+v1 と v2 はどちらも **CLI で走らせて初めて気づいた**。案内文は正しさだけでなく、**それに従ったときに通るか**まで確かめる必要がある。
+
+### 変異と回帰
+
+変異3種のうち M1（ブロック形の判定を削る）は**ビルドを壊して「失敗しなかった」**（削除範囲が `default:` に食い込んだ）。第67ラウンドの M2 と同じ類型で、壊れた変異は結果ではないと判断し、M2・M3 を根拠にした。
+
+`./internal/syntax`・`./internal/workspace`・`./cmd/tei` は**単独実行で ok**（`cmd/tei` は 564.8s）。**変異作業と同時実行した `cmd/tei` は 600.1s で FAIL**（`go test` の600秒上限）。機能の失敗ではなく実行環境の競合だが、両方を記録した。**`cmd/tei` の実行時間が上限に近いこと自体が別の課題**である。
+
+### #4169 の進捗
+
+A 案は4件（パターン配置・契約の版・bind・interaction の形）。

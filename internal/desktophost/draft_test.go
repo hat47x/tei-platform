@@ -32,6 +32,14 @@ func TestCompareObservations(t *testing.T) {
 	}
 }
 
+// MarkerVersion is written into every marker file, so its literal is a wire
+// contract: a different value makes stored markers unreadable (#4032).
+func TestDraftMarkerVersionIsFixed(t *testing.T) {
+	if MarkerVersion != "tei.desktop.draft-marker/v0" {
+		t.Fatalf("MarkerVersion=%q", MarkerVersion)
+	}
+}
+
 func TestDraftRecoveryNeverAccepts(t *testing.T) {
 	marker := DraftMarker{Version: MarkerVersion, CandidateRef: "candidate-7", BaseModelRevision: "rev-42", Baseline: baseline()}
 	encoded, err := EncodeDraftMarker(marker)

@@ -1,0 +1,6 @@
+#4169 option A has now fixed two cases: pattern placement (round 61) and the
+contract version (this round). The weak `unexpected token "^"` from round 62 was
+fixed along with the version case.
+
+Still open: placements nobody has exercised yet cannot be located by guessing.
+#4174 (language mix), #4128 options A/B/D, and UNBOUND_DATASOURCE stay as recorded.

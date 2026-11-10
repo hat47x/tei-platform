@@ -1,0 +1,6 @@
+model catalog lists returns.accept_return among application-pattern subjects.
+
+inspect -subject-kind application-pattern -subject-id returns.accept_return
+  {"id": "returns.accept_return", "kind": "command", "capability": "sales.record_return"}
+
+The application-pattern kind added in round 58 covers this.

@@ -1,0 +1,12 @@
+Design task: add an accept-return command pattern to the returns slice.
+
+Attempt 1  -> command pattern does not accept data
+Attempt 2A -> UNKNOWN_APPLICATION_PATTERN_CAPABILITY ... sales.record_return
+Attempt 2B -> unexpected token "command"      (interaction is not a line)
+Attempt 2C -> expected data, relation, query, capability, datasource,
+              contract-query, or interaction
+Attempt 4  -> expected "namespace"            (semantic files need a header)
+Attempt 5  -> ok
+Attempt 6/7-> ok
+
+Everything except the interaction form came from CLI diagnostics.

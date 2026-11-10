@@ -628,7 +628,7 @@ Ownerは#1180（Scenario）、#2813/#988（DSL Candidate）、#2514（検証基�
 
 ## 17. テスト基本設計・証拠台帳への接続（2026-11-06）
 
-**独立した基本設計参照**：[TEI_TEST_BASIC_DESIGN_AND_EVIDENCE_LEDGER_2026-11.md](./TEI_TEST_BASIC_DESIGN_AND_EVIDENCE_LEDGER_2026-11.md)（本Draftで追加・docs-only）。本章は§8〜16のAI-first Case作成・Required/Discovered/Loaded/Executed/Qualifiedの仕組みを、Unit/Fixture・Conformance・実Provider/DB・実Host/UI・Owner受理へ**誤資格昇格させずに**接続する引継ぎであり、第二Scenario正本・新Evidence Store/Runner・新Gates/Authorityを導入しない。
+**独立した基本設計参照**：[テスト基本設計と証拠台帳（Issue #2514）](https://github.com/hat47x/tei-platform/issues/2514#issuecomment-6773033710)（本Draftで追加・docs-only）。本章は§8〜16のAI-first Case作成・Required/Discovered/Loaded/Executed/Qualifiedの仕組みを、Unit/Fixture・Conformance・実Provider/DB・実Host/UI・Owner受理へ**誤資格昇格させずに**接続する引継ぎであり、第二Scenario正本・新Evidence Store/Runner・新Gates/Authorityを導入しない。
 
 **層別の最低受入契約**：
 - L1は指定Fixture/実装の局所結果。L2は独立Expected/Mutant/Profile/Scopeの限定適合。L3は実Provider/DB/Read・Commit・Receipt/独立Read。L4は同一Binary/実Target/Host/Consumer受領。L5は業務Ownerの意味・Scope・版受理（自動試験の上位PASSではない）。
@@ -641,7 +641,7 @@ Ownerは#1180（Scenario）、#2813/#988（DSL Candidate）、#2514（検証基�
 
 ## 18. 実証済みEvidenceの記入例とAI-first最小検収（2026-11-06）
 
-**参照・状態**：[テスト基本設計と証拠台帳§8](./TEI_TEST_BASIC_DESIGN_AND_EVIDENCE_LEDGER_2026-11.md)に、異なるSource/Run/Environmentで得られた実験を**ケース×Claim×Attempt**に分けて記入した。#2811はAI-firstのCase作成・実走への入口のみを担当し、検証基準/Provider/Host/Owner Gateの別正本を作らない。本接続はdocs-only、新しいGo/Provider/E2E/AI自律生成実験はNOT RUN。
+**参照・状態**：[テスト基本設計と証拠台帳§8](https://github.com/hat47x/tei-platform/issues/2514#issuecomment-6773033710)に、異なるSource/Run/Environmentで得られた実験を**ケース×Claim×Attempt**に分けて記入した。#2811はAI-firstのCase作成・実走への入口のみを担当し、検証基準/Provider/Host/Owner Gateの別正本を作らない。本接続はdocs-only、新しいGo/Provider/E2E/AI自律生成実験はNOT RUN。
 
 ### 18.1 実証した範囲の更新
 
@@ -686,7 +686,7 @@ main統合済み[PR #2894](https://github.com/hat47x/tei-platform/pull/2894)の`
 
 ### 18.5 有限AI候補の実CIとG0修正の未結合を確認する（2026-11-06）
 
-[証拠台帳§8.5](./TEI_TEST_BASIC_DESIGN_AND_EVIDENCE_LEDGER_2026-11.md)の現在判定を本計画へ引き継ぐ。**#2895の積層HEAD `8d3dc2fc5058ff3945d0981d2979138d4fc461be`**は、[#2828](https://github.com/hat47x/tei-platform/pull/2828)→[#2890](https://github.com/hat47x/tei-platform/pull/2890)→[#2895](https://github.com/hat47x/tei-platform/pull/2895)を同一Go checkoutへ含む。実[Health #42109027966](https://github.com/hat47x/tei-platform/actions/runs/42109027966)は**completed/success**。job logで`go test -count=1 -timeout 60m ./...`（`tei/cmd/tei`含む）、gofmt、vet、Workspace validateのPASSを確認した。比較Diffから、#2890→#2895の追加は**独立有限検証基準のGo test-only 1ファイル**と確認できる。#2890単独HEADのActionsは0件であり、その単独CI成功と誤表示しない。
+[証拠台帳§8.5](https://github.com/hat47x/tei-platform/issues/2514#issuecomment-6773033710)の現在判定を本計画へ引き継ぐ。**#2895の積層HEAD `8d3dc2fc5058ff3945d0981d2979138d4fc461be`**は、[#2828](https://github.com/hat47x/tei-platform/pull/2828)→[#2890](https://github.com/hat47x/tei-platform/pull/2890)→[#2895](https://github.com/hat47x/tei-platform/pull/2895)を同一Go checkoutへ含む。実[Health #42109027966](https://github.com/hat47x/tei-platform/actions/runs/42109027966)は**completed/success**。job logで`go test -count=1 -timeout 60m ./...`（`tei/cmd/tei`含む）、gofmt、vet、Workspace validateのPASSを確認した。比較Diffから、#2890→#2895の追加は**独立有限検証基準のGo test-only 1ファイル**と確認できる。#2890単独HEADのActionsは0件であり、その単独CI成功と誤表示しない。
 
 **証明範囲**：#2895の単一Go Testでは、固定2 Step・入力Fixture・有限集合の行番号重複Property、Expectedだけ反転/入力Keysだけ反転の対照を検査。既存#2828 Go Testは候補Glob・既存Scenario `verify/generate/check/generated-pinned run`・Stepごとの限定`evidenceNature`を検証する。**同HEADのGo全体PASSはこの局所Scenario検収を支持する**が、個別Stepの外部Receipt JSONをCIから独立保存した証拠・業務Ownerが受理したMeaning・実Rule本体Mutant kill・実Provider/Target/全Coverageの証拠にはならない。
 
@@ -709,7 +709,7 @@ main統合済み[PR #2894](https://github.com/hat47x/tei-platform/pull/2894)の`
 
 **P0後の選定**：次は#2514の小さな公開・合成の実Product Rule Mutant（特定Validation Ruleの比較・一意性判定の意図的誤実装）を**事前Expected固定**の状態で試す。Mutant killなら対象Contract/Case/Environment/Roleの限定判別力、見逃したら必要Observation/Rule Selectの不足を記録する。Candidate Expected・Required Obligationの分母をAgentが自己修正して「PASS」にしない。#2892 Migration Historyのunknown偽成功、#2884 Required Guardの欠落と現在Grantは別Owner/別Evidenceで扱い、同じ仕組みへ無理に統一しない。
 
-**証拠台帳参照**：[基本設計§8.6](./TEI_TEST_BASIC_DESIGN_AND_EVIDENCE_LEDGER_2026-11.md)。今回の計画更新はdocs-only。#2901のコード・CI実行とは別の改訂として保存し、当該Docs HEADのCIも独立確認。
+**証拠台帳参照**：[基本設計§8.6](https://github.com/hat47x/tei-platform/issues/2514#issuecomment-6773033710)。今回の計画更新はdocs-only。#2901のコード・CI実行とは別の改訂として保存し、当該Docs HEADのCIも独立確認。
 
 ### 18.7 実Product Rule Mutantを使う判別力検収（2026-11-06）
 
@@ -722,7 +722,7 @@ main統合済み[PR #2894](https://github.com/hat47x/tei-platform/pull/2894)の`
 - **M4 survivor**：対象Caseの実走と固定Expectedが揃っても緑ならRule Mutantがsurvive。Scenario選択・actual Loaded Source/Rule・実Observationが不足している可能性を記録し、AIがExpectedをGotに合わせて更新しない。
 - **出口**：M1なら**当該合成Rule/対象Case/固定Revision限定のMutant kill**だけ認定。業務OwnerによるMeaning受理や全Required Coverage、他Rule/NULL/部分Read、実Provider/Hostを証明しない。#1163/#1119 Product Gateは別途維持。
 
-**証拠参照**：[基本設計台帳§8.7](./TEI_TEST_BASIC_DESIGN_AND_EVIDENCE_LEDGER_2026-11.md)。#3017の[Health #42181290981](https://github.com/hat47x/tei-platform/actions/runs/42181290981)は本計画追加時点で**in_progress**。該当Go Testの実FAILログ確認前は「Mutant kill NOT VERIFIED」。本章はdocs-onlyであり、実コードは隔離Draftに保持。新Runner、Policy Engine、判定基準専用DB、第二Case正本は作らない。
+**証拠参照**：[基本設計台帳§8.7](https://github.com/hat47x/tei-platform/issues/2514#issuecomment-6773033710)。#3017の[Health #42181290981](https://github.com/hat47x/tei-platform/actions/runs/42181290981)は本計画追加時点で**in_progress**。該当Go Testの実FAILログ確認前は「Mutant kill NOT VERIFIED」。本章はdocs-onlyであり、実コードは隔離Draftに保持。新Runner、Policy Engine、判定基準専用DB、第二Case正本は作らない。
 
 #### 18.7.1 実CIによるProduct Mutant kill確定（M1）
 
@@ -735,11 +735,11 @@ main統合済み[PR #2894](https://github.com/hat47x/tei-platform/pull/2894)の`
 - **P1 next**：#2514でMeaning/Rule版・独立Expected provenance・選択された実Ruleを対応付け、欠損/NULL、別粒度、Relation scopeの誤実装を**必要な一つずつ**負例にする。既知Mutantをsurvivedにした場合は不足した観測を別記。採用Suite/Readerの実受領は#1180/#2604/#2516、実Provider/Hostや一改訂Packetは#2622/#1163。
 - **禁止**：不正コードの#3017は**永久にDraft、絶対mainへmergeしない**。CIのFailureを正常なRepository Health successと呼ばない。AI生成による検出率・Business Coverage一般化も主張しない。
 
-詳細Evidenceは[基本設計台帳§8.7](./TEI_TEST_BASIC_DESIGN_AND_EVIDENCE_LEDGER_2026-11.md)と[#2514](https://github.com/hat47x/tei-platform/issues/2514)へ記録。本追補はdocs-onlyで、新Runtime/Provider/Generatorの実装は追加しない。
+詳細Evidenceは[基本設計台帳§8.7](https://github.com/hat47x/tei-platform/issues/2514#issuecomment-6773033710)と[#2514](https://github.com/hat47x/tei-platform/issues/2514)へ記録。本追補はdocs-onlyで、新Runtime/Provider/Generatorの実装は追加しない。
 
 ### 18.8 AI Scenarioの局所Mutation感度とOwner母集団の資格を分離する（2026-11-06）
 
-[証拠台帳§8.8](./TEI_TEST_BASIC_DESIGN_AND_EVIDENCE_LEDGER_2026-11.md)の境界を、本計画の次の受入順に接続する。**既に実証済み**：[#2901](https://github.com/hat47x/tei-platform/pull/2901) `a6eb80cffe16a57f4cb2461ff2946065955a4e50` [Health #42111973682](https://github.com/hat47x/tei-platform/actions/runs/42111973682) successと、[#3017](https://github.com/hat47x/tei-platform/pull/3017) `0f795a012dc16200ee85e5f6b3f0b921add7bdc4` [Health #42181290981](https://github.com/hat47x/tei-platform/actions/runs/42181290981) expected failure（AI追加Caseが誤って重複を受理するEvaluatorを直接検出）。**次提案は未実行**であり、当該成功を全件Read/Owner資格に一般化しない。
+[証拠台帳§8.8](https://github.com/hat47x/tei-platform/issues/2514#issuecomment-6773033710)の境界を、本計画の次の受入順に接続する。**既に実証済み**：[#2901](https://github.com/hat47x/tei-platform/pull/2901) `a6eb80cffe16a57f4cb2461ff2946065955a4e50` [Health #42111973682](https://github.com/hat47x/tei-platform/actions/runs/42111973682) successと、[#3017](https://github.com/hat47x/tei-platform/pull/3017) `0f795a012dc16200ee85e5f6b3f0b921add7bdc4` [Health #42181290981](https://github.com/hat47x/tei-platform/actions/runs/42181290981) expected failure（AI追加Caseが誤って重複を受理するEvaluatorを直接検出）。**次提案は未実行**であり、当該成功を全件Read/Owner資格に一般化しない。
 
 **次の1 Mutant**は`ValidationRelationUnique`の**最後のキーを比較ループから外す**実装誤り。#2901の固定Source・Application`uses validation`・2 Fixture（`[1,2]`正常／`[1,1]`重複）・Scenario・独立Expected・Go Testの各Blobを不変にして、誤実装1箇所だけを別の**絶対merge禁止**隔離HEADへ置く。予測：AI追加`ai-line-number-duplicate`が本来`not-satisfied`なのに`satisfied`となる。実Go Test/Receiptでその対象Stepが失敗するまでは`Mutant killed`と記載しない。基線CI Green／Mutant CI Redの**失敗の帰属**（AI Case自身、別Goテストのみ、Build/infraのみ、survived）を分離する。
 
@@ -768,13 +768,13 @@ main統合済み[PR #2894](https://github.com/hat47x/tei-platform/pull/2894)の`
 
 **再資格の最短規則**：Owner対象L・Predicateの意味/粒度、DataSource/Reader/snapshot/Grant、Workspace Manifest/Source参照/Plugin/Toolchain、独立Expectedの受理範囲が変わるたび、*影響するClaimだけ*を`historical-pass / current-unqualified`へ移し、必要なReaderとCaseを再実行する。単なるRaw Source Path移動は別途実Resolveを確かめるが、意味・Runtime権限を自動否定／自動再受理しない。Source A→B→Aで旧Receiptを新時点の実Read資格として復活させない。
 
-**責務と未実証**：#2811は観測束縛と検収順、#2514は独立Expected/Mutant、#1180はScenario、#2586/#1163は実Reader/同一Attempt、#2595/#2600は実Sourceと失効、#2621/#3030はAuthoring移行を担当する。#2514・#3030の主担当PRや製品Codeへ重複投稿・変更しない。現行Sourceの静的比較と過去CIの再取得以外、新Completion Caseの実Goテスト、実Provider全件性、末尾Mutant、`*.tei.md` Reader移行、Owner受理は**NOT RUN**。[台帳§8.9](./TEI_TEST_BASIC_DESIGN_AND_EVIDENCE_LEDGER_2026-11.md)に独立条件・境界の詳細を記録。
+**責務と未実証**：#2811は観測束縛と検収順、#2514は独立Expected/Mutant、#1180はScenario、#2586/#1163は実Reader/同一Attempt、#2595/#2600は実Sourceと失効、#2621/#3030はAuthoring移行を担当する。#2514・#3030の主担当PRや製品Codeへ重複投稿・変更しない。現行Sourceの静的比較と過去CIの再取得以外、新Completion Caseの実Goテスト、実Provider全件性、末尾Mutant、`*.tei.md` Reader移行、Owner受理は**NOT RUN**。[台帳§8.9](https://github.com/hat47x/tei-platform/issues/2514#issuecomment-6773033710)に独立条件・境界の詳細を記録。
 
 ### 18.10 空集合Policyの未取得断定を抑える入場条件と実読込Sourceの版（2026-11-07）
 
 **§18.9の補正・旧mainと現行実証の区別**：修正前のmain `internal/semantic/completion.go`（blob `512a835ca445d81dd043f8af78ca29df4e7adb3b`）では、`CompletionEvidence.Targets=[]`でも`CoverageUnestablished`のとき、`EmptyPolicyDeny`なら`fails`、`EmptyPolicyRequiresEvidence`かつ`EmptyJustified=true`なら`holds`を返す。前者は[#3051](https://github.com/hat47x/tei-platform/pull/3051)で`unverified`へ修正、merge commit `b30ce3708a8385dcf219aed9f53e594bc0e95d12`で**main統合済み**。[統合側Health #42298116044](https://github.com/hat47x/tei-platform/actions/runs/42298116044)成功。いずれもCallerの申告であり、実Providerの全件Read/Ownerが要求した集合を関数内では独立立証しない。前者の`fails`を**実際に0件と確認した業務不成立**と読み替えるのは危険であり、後者の`holds`もboolだけで正当化しない。[`completion_test.go`](https://github.com/hat47x/tei-platform/blob/main/internal/semantic/completion_test.go)の既存単体テストはCoverage既知の空Policyを中心に検査しており、これらの「空だと申告されたが完全集合かは未取得」対照の実行証拠ではない。
 
-**追加受入票**（[台帳§8.10](./TEI_TEST_BASIC_DESIGN_AND_EVIDENCE_LEDGER_2026-11.md) CEC-01〜05）。計画の順序は検証対象を一つずつ増やし、担当Ownerを跨ぐ証拠を統合せずに引き渡す。
+**追加受入票**（[台帳§8.10](https://github.com/hat47x/tei-platform/issues/2514#issuecomment-6773033710) CEC-01〜05）。計画の順序は検証対象を一つずつ増やし、担当Ownerを跨ぐ証拠を統合せずに引き渡す。
 
 1. **C0（Source/Case固定）**：`Owner TargetSet ID/revision/scope/asOf`、独立期待値の出典、`EmptyPolicy`、対象Row IDs、同版のReader Snapshot/ページ終端・RLS/Disclosure、実Caller引数を固定。正しいSource/期待の意味受理がない段階で正式Conformance PASSとは呼ばない。
 2. **C1（局所入力の対照）**：空集合禁止で`Targets=[]+CoverageUnestablished`なら**旧mainは`fails`、現mainは`unverified`**。#1125 CDE-02に沿った修正と4つの追加正負対照は同一HEADのGo全体テスト成功で確認済み。ただしmainの局所Go修正と実Readerによる完全性・現Grant・Owner受理は別資格。`requires-evidence+EmptyJustified=true`はCoverage未確立でもコード上`holds`。別Scope/旧Snapshotのboolは独立空証明として利用不可。
@@ -796,7 +796,7 @@ main統合済み[PR #2894](https://github.com/hat47x/tei-platform/pull/2894)の`
 
 ### 18.11 テスト導出の次の一手：Claim別Coverageの3反証を実受領に結び付ける（2026-11-07）
 
-**先行成果との接続**：[台帳§8.11](./TEI_TEST_BASIC_DESIGN_AND_EVIDENCE_LEDGER_2026-11.md)の固定Sourceと、独立期待値Owner [#2514 CDE-Q05〜07](https://github.com/hat47x/tei-platform/issues/2514#issuecomment-6698037813)・Result Slice Owner [#2506 R05〜07](https://github.com/hat47x/tei-platform/issues/2506#issuecomment-6698048070)を使用する。#3051はmain統合済みの**局所Completionの未観測空否定修正**、#2901/#3017は**既知の合成Relation判別力**。いずれも今回の「全Owner対象・Required Predicate Field・Reader Completeness」の合格を代替しない。
+**先行成果との接続**：[台帳§8.11](https://github.com/hat47x/tei-platform/issues/2514#issuecomment-6773033710)の固定Sourceと、独立期待値Owner [#2514 CDE-Q05〜07](https://github.com/hat47x/tei-platform/issues/2514#issuecomment-6698037813)・Result Slice Owner [#2506 R05〜07](https://github.com/hat47x/tei-platform/issues/2506#issuecomment-6698048070)を使用する。#3051はmain統合済みの**局所Completionの未観測空否定修正**、#2901/#3017は**既知の合成Relation判別力**。いずれも今回の「全Owner対象・Required Predicate Field・Reader Completeness」の合格を代替しない。
 
 | 実装を増やさず先に行う検収 | 最小の固定材料 | 採点するClaim／停止線 |
 | --- | --- | --- |

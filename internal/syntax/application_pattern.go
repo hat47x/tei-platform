@@ -283,6 +283,22 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 			}
 			hasInteraction = true
 			_, _ = p.next()
+			// `interaction` opens a block; its entries are item / navigate /
+			// command. Writing it as a line (`interaction command accept`) gave
+			// only `unexpected token "command"`, so an author had to guess
+			// whether interaction is a line or a block (#4169).
+			if next, perr := p.peek(); perr == nil && next.Kind != TokenLBrace {
+				// Show an example that is valid for the pattern kind in hand.
+				// Echoing the offending token produced "command command", and a
+				// command-pattern example would be rejected by the interaction
+				// contract immediately, so suggesting it would waste a round trip.
+				if isRecordPatternKind(out.Kind) {
+					return out, p.errAt(next, `expected "{" after interaction: interaction is a block, for example "interaction { item <data>.<attribute> }"`)
+				}
+				return out, p.errAt(next, fmt.Sprintf(
+					"expected \"{\" after interaction: interaction is a block \"interaction { ... }\", but this %s pattern does not accept one; the first interaction contract is limited to record patterns",
+					out.Kind))
+			}
 			interaction, err := p.parsePatternInteraction()
 			if err != nil {
 				return out, err
@@ -392,6 +408,10 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 
 // parsePatternInteractionは、Pattern内のinteractionブロックを読み取る。
 // 表示上の幅・部品・配置はここへ入れず、項目の並び・参照入力・遷移だけを構文として固定する。
+// isRecordPatternKind reports whether the pattern kind accepts an interaction
+// block. The first interaction contract is limited to record patterns.
+func isRecordPatternKind(kind application.PatternKind) bool { return kind == application.PatternRecord }
+
 func (p *Parser) parsePatternInteraction() (*application.Interaction, error) {
 	if _, err := p.expect(TokenLBrace); err != nil {
 		return nil, err

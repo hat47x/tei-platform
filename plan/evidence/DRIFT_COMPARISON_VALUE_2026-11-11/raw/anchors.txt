@@ -1,0 +1,41 @@
+== candidate 1: the CLI surface (tei operations) identity fields ==
+  type OperationSurface struct {
+  	SchemaVersion    string            `json:"schemaVersion"`
+  	Effect           string            `json:"effect"`
+  	Application      string            `json:"application,omitempty"`
+  	WorldFingerprint string            `json:"worldFingerprint"`
+  	ModelRevision    string            `json:"modelRevision"`
+  	Rule             SurfaceRule       `json:"rule"`
+  	Operations       []Operation       `json:"operations"`
+  	Gaps             []SurfaceGap      `json:"gaps"`
+  	Conflicts        []SurfaceConflict `json:"conflicts"`
+  	Summary          SurfaceSummary    `json:"summary"`
+  	AuthorityLimits  []string          `json:"authorityLimits"`
+  }
+
+== who fills those fields ==
+  130:	out.WorldFingerprint = worldFP
+  131:	out.ModelRevision = sourceindex.ModelRevision(idx)
+  (DeriveOperationSurface does NOT fill them; SurfaceWorkspace does)
+
+== candidate 2: the artifact payload (what gets digested) ==
+  type operationSurfacePayload struct {
+  	SchemaVersion string                    `json:"schemaVersion"`
+  	Application   string                    `json:"application,omitempty"`
+  	Rule          operations.SurfaceRule    `json:"rule"`
+  	Operations    []operations.Operation    `json:"operations"`
+  	Gaps          []operations.SurfaceGap   `json:"gaps"`
+  	Summary       operations.SurfaceSummary `json:"summary"`
+  }
+
+== does the artifact payload carry the world identity? ==
+  world-identity fields in the payload: 0
+
+== can the CLI read a saved surface back for comparison? ==
+  os.ReadFile in the operations command: 0
+
+== any drift-comparison flag on the operations command? ==
+  such flags: 0
+
+== what the artifact digest is computed over ==
+  92:	artifact.Digest = fingerprint(artifact)

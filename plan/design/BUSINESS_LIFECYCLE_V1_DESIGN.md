@@ -389,7 +389,7 @@ Conformanceは`docs/conformance/business-lifecycle-v1.md`へまとめ、少な�
 
 ## Buri設計調査からの追補（2026-11-03、採用前）
 
-[S2Buri設計知見のTEI還元・反証計画](BURI_TO_TEI_LIFECYCLE_TRANSFER_2026-11.md)に、静的調査から得た参考原理と、受注／組織所属／独立Workflowの意味差を整理した。**Buriの機能・実装をそのまま移植する計画ではない**。旧Java環境での実動確認は、TEI拡充の設計参考に限る今回の完了条件に含めない。
+[S2Buri設計知見のTEI還元・反証計画](https://github.com/hat47x/tei-platform/issues/1129#issuecomment-6772868652)に、静的調査から得た参考原理と、受注／組織所属／独立Workflowの意味差を整理した。**Buriの機能・実装をそのまま移植する計画ではない**。旧Java環境での実動確認は、TEI拡充の設計参考に限る今回の完了条件に含めない。
 
 このLifecycle v1の最小対象はあくまで`order_entry`の単一遷移であり、独立`LifecycleInstance`表、版固定されたWorkflow Instance、履歴表、Worklist、AND/XOR Joinを前提にしない。業務状態はまずData本体の状態属性で表し、独立した待機／分岐／到着記録は必要性を示す別の業務Scenarioが現れたときに評価する。Buriの「待機状態のみ保存」をTEI全体の正本保存規則にはしない。
 
@@ -401,7 +401,7 @@ Buriのプロセス改版と既存案件継続は参考になるが、**本v1で
 
 ### 業務Lifecycleと汎用状態機械の関係（2026-11-03、採用前）
 
-[非業務も含むState Machine・Validation／Derivation／Flow・図表交差の設計圧力](STATE_MACHINE_CROSS_DOMAIN_DESIGN_PRESSURE_2026-11.md)を、汎用性の反証・可読性／コード生成検証の入力として参照する。業務Lifecycle v1は受注`pending → submitted`の最小意味契約のままで、UI通信・ゲーム・組込の状態機械をこの文書のCoreや実行契約へ直接統合しない。
+[非業務も含むState Machine・Validation／Derivation／Flow・図表交差の設計圧力](https://github.com/hat47x/tei-platform/issues/4193#issuecomment-6773006983)を、汎用性の反証・可読性／コード生成検証の入力として参照する。業務Lifecycle v1は受注`pending → submitted`の最小意味契約のままで、UI通信・ゲーム・組込の状態機械をこの文書のCoreや実行契約へ直接統合しない。
 
 状態図・状態表・遷移表・条件表をTEI Modeler/SHOで同一意味から投影し、ヒアリング中の編集差分をSource／Meaning／生成Targetへ戻す構想は重要だが、`Validation`・`Derivation`・`Flow`の新Core enumや汎用実行エンジンを採用したものではない。意味Role、Source／Snapshot、Independent Expected、Provider現在資格の区別は既存#2620/#2621/#2497/#2514/#1121が所有する。履歴的Buriに同名三モードの実装があったと一次資料からは未確認。
 

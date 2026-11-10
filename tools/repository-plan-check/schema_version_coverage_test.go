@@ -16,20 +16,7 @@ var schemaVersionPattern = regexp.MustCompile(`"(tei\.[a-z0-9._-]+/v[0-9]+)"`)
 // unmentionedSchemaVersionsAllowed lists the identifiers that no test names yet.
 // Each entry names the package that owns the response shape, so the list stays a
 // to-do rather than a place to park new identifiers (#4032).
-var unmentionedSchemaVersionsAllowed = map[string]string{
-	"tei.cli-scenario-plan/v0":                                     "internal/scenario: no test asserts the plan schema",
-	"tei.desktop.draft-marker/v0":                                  "internal/desktophost: draft markers are written to disk",
-	"tei.host-acceptance-store/v0":                                 "internal/desktophost-acceptance: store header",
-	"tei.knowledge.data-design-candidate-review/v1":                "internal/knowledge: candidate review record",
-	"tei.knowledge.data-design.business-identity-candidate/v2":     "internal/knowledge: candidate record",
-	"tei.knowledge.data-design.functional-dependency-candidate/v2": "internal/knowledge: candidate record",
-	"tei.modelref.impact-review/v0":                                "internal/modelref: impact review response",
-
-	"tei.plugin-definition-json/v2":            "internal/plugin: plugin definition file",
-	"tei.plugin-package-input-binding/v1":      "internal/plugin: package admission input",
-	"tei.plugin-package-output-observation/v1": "internal/plugin: package admission output",
-	"tei.xeadsource.cross-view/v4":             "internal/xeadsource: cross-view source",
-}
+var unmentionedSchemaVersionsAllowed = map[string]string{}
 
 // TestSchemaVersionLiteralsHaveATest keeps the set of unnamed schema identifiers
 // visible: a new identifier fails here until it gets a test or a listed reason,
