@@ -44,10 +44,10 @@ var entryFieldCoverage = []struct {
 	{
 		source: reflect.TypeOf(persistence.Mapping{}),
 		entry:  reflect.TypeOf(PersistenceIndexEntry{}),
-		// The mapping's own ID is stored as Mapping.
+		// The mapping's own ID is stored as Mapping. Columns is kept: the column
+		// correspondence is what #4001 needed, so it is no longer a dropped field.
 		renamed: map[string]string{"ID": "Mapping"},
 		dropped: map[string]string{
-			"Columns":           "column mappings; #4001 records that these do not reach the graph",
 			"RelationStorage":   "#4001: not carried by the entry type",
 			"PrimaryKey":        "#4001: not carried by the entry type",
 			"UniqueConstraints": "#4001: not carried by the entry type",
