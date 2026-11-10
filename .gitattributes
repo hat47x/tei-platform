@@ -284,3 +284,6 @@
 
 # Secret-shape observations are hashed as raw bytes.
 /plan/evidence/DSH_MCP_SECRET_SHAPE_2026-11-10/** -text
+# OKF K1 synthetic bytes are compared exactly across OS; no checkout EOL conversion.
+/testdata/okf-k1-v02/** -text
+/testdata/okf-k1-v02.expected.json -text
