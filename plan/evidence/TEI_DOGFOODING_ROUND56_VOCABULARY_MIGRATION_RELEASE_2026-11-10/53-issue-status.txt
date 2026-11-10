@@ -1,0 +1,8 @@
+#4094 progress: 17 (filed) -> 13 -> 8 -> 2.
+
+The two left are not vocabularies; they validate structure (INVALID_PLUGIN_ARTIFACT
+and similar), so they fall outside this issue.
+
+Two of the fixed diagnostics cannot be reached from authored source
+(INVALID_SEMANTIC_TYPE_KIND, INVALID_MIGRATION_STEP_KIND). Their messages are
+correct, but the CLI cannot show them.

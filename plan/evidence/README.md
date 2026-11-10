@@ -397,3 +397,4 @@
 - [語彙診断の第2弾と未検証だった疑問の解消](TEI_DOGFOODING_ROUND54_VOCABULARY_BATCH2_2026-11-10/README.md)（#4094。ownership/type kind/cardinality/application-release accessの4件を追加修正し残り13件。capability/data/interactionは既に語彙を列挙しており、私の一般化が過度だったと確認）
 - [view -formatの形式別制限の広告](CLI_VIEW_FORMAT_ADVERTISEMENT_2026-11-11.md)（iewのcatalogueが-formatの和集合だけを広告し、-application単独や-packageではhtml/printが拒否されることを伝えていなかった件。optionalに形式ごとの受理集合を書く。browse -patternでは実際にHTML/printを描画することを試験で固定）
 - [語彙診断の第3弾、plugin系統5件](TEI_DOGFOODING_ROUND55_VOCABULARY_PLUGIN_2026-11-10/README.md)（#4094。runtime/sandbox/capability kind/external scope/external kindの5件を追加修正し残り8件。sandboxは空も受理するため一覧に載せず省略可能と明記。5件ともCLIから到達可、変異3種で確認）
+- [語彙診断の第4弾、migrationとrelease planの6件](TEI_DOGFOODING_ROUND56_VOCABULARY_MIGRATION_RELEASE_2026-11-10/README.md)（#4094。migration recovery/step kind、data readiness、solution step kind/phase、rollout strategyの6件を修正。#4094は17→2件（残りは構造検証で対象外）。step kindは構文エラーが先で到達不能と実測）
