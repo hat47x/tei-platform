@@ -1805,3 +1805,51 @@ recovery strategy・migration step kind・data readiness・solution step kind/ph
 **正確には「答えられない」のではない。** `tei world` は3つの問いすべてに答えた（release が含む migration、solution release の step、migration の recovery と step）。**`world` を知っている必要がある**という点が摩擦で、私は JSON を手で解析して確認した。
 
 [#4128](https://github.com/hat47x/tei-platform/issues/4128) として起票した。5案を示し、**C（`inspect` の受理種を広げる）+ E（`overview` の対象範囲を明示する）が最小**と書いた。A（catalog に加える）は catalog の名前空間フィルタ設計に触れるため別判断。
+
+## 60. 第58ラウンド（2026-11-10）: #4128 の C 案。`inspect` で migration・database release・solution release を読む
+
+第57ラウンドで起票した [#4128](https://github.com/hat47x/tei-platform/issues/4128) のうち、**C 案（`inspect` の受理種を広げる）**を実装した。生出力は[第58ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND58_INSPECT_DELIVERY_2026-11-10/README.md)にある。
+
+### 実装
+
+`InspectionSubjectKinds` に3種を追加し、`inspectCanonical` に3つの case を足した。
+
+```go
+"migration", "database-release", "solution-release",
+```
+
+`commands` と `-h` は単一情報源を読むため、15種に追随している（個別更新は不要）。MCP アダプタの enum ピンは 12→15。
+
+### subject ID の設計判断
+
+当初は `<owner>@<version>`（`sales_core@4.2.0`）にしたが、**`INSPECTION_PROVIDER_INVALID: inconsistent projection` で拒否された**。`ValidateInspectionProjection` は「canonical の最上位 `id` が要求 ID と一致」を要求し、release 構造体の `id` は owner だからである。
+
+**安全不変条件は緩めず、subject を owner にした。** 射影は「その owner の全バージョン」を返す。
+
+```go
+type releaseSet struct {
+	ID       string               `json:"id"`
+	Releases []release.Definition `json:"releases"`
+}
+```
+
+`id` が要求 ID と一致するので不変条件を満たし、`@` の規約を発明せずに済む。
+
+### 実測
+
+```text
+migration        20260826_001  -> ok, id=20260826_001, keys: database,id,recovery,steps
+database-release sales_core    -> ok, id=sales_core, versions: 4.0.0,4.1.0,4.2.0
+solution-release order_rollout -> ok, id=order_rollout, versions: 2026.8.27
+database-release nope_core     -> SUBJECT_NOT_FOUND
+```
+
+既存種の回帰なし（`semantic-data:sales.order` は `sourceStatus: indexed` のまま）。
+
+**限界**: 新3種の `sourceStatus` は `not-indexed`。Source Index が migration・release の参照を記録していないため、canonical と fingerprint は返るが source location は返らない。`trace` も同じ根で対象外。
+
+### 試験と変異
+
+4変異のうち **M1（広告したが dispatch 無し）と M3（空集合を成功として返す）は第1版で素通りした**。広告リストと受理述語が同じリストを読むだけ、not-found が1種のみだったため。広告と実宣言の突き合わせ、2種の not-found を足して初めて捕捉。M2（`id` をバージョンにする）と M4（case 名の変更）は当初から捕捉。
+
+`./internal/operations`・`./tools/reference-mcp-readonly-adapter`・`./cmd/tei`（121.5s）が ok。
