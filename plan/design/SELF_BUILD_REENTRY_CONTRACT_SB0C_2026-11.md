@@ -2019,6 +2019,39 @@ L2-bの五条件は、childの能力に依存する。本節は、**参照実装
 
 **したがって本節が言えるのは「隔離ビルドの経路でも鎖が成立する」までで、「この試行が隔離された」ではない。** 両者を一つの试验で言うには、entryがchildの隔離記録を読む必要がある（未着手）。
 
+### 4.45 entryが、builderの隔離記録を読む（2026-11-09）
+
+§4.44は「隔離ビルドの経路でも鎖が成立する」までしか言えなかった。**entryがchildの`isolatedTree`を解析していなかった**からである。本節は、それを読んで記録するようにしたことを残す。
+
+#### 何をするか
+
+| 段 | 内容 |
+| --- | --- |
+| 1 | childの`isolatedTree`（`root`・`members`・`moduleFiles`・`boundary`）を解析する |
+| 2 | **`moduleFiles`が空なら`isolated`**、あれば`isolated-with-external-context`（理由に何を持ち込んだかを並べる） |
+| 3 | 報告の`childIsolation`として出す。**五条件には加えない** |
+
+#### 五条件に加えない理由
+
+**条件を増やすことは契約の変更**であり、§4.23の述語を変える。**記録を足すだけなら、述語はそのままで、読む人が「この試行は隔離されていた」を確認できる。**
+
+**加えるべきかは、`-isolate`を既定にする判断と同じ場所で決める**（§4.43）。今は記録だけを置く。
+
+#### 実測
+
+| 試験 | 結果 |
+| --- | --- |
+| `TestReadChildIsolation`（未申告は記録なし／`moduleFiles`空で`isolated`／あれば`isolated-with-external-context`と理由） | **PASS** |
+| `TestSelfBuildEstablishesL2BFromARealGoBuild`（`childIsolation.state=isolated`・`moduleFiles`空・`memberCount=4`を確認） | **PASS**（12.8秒） |
+
+**`memberCount=4`の内訳**：package・計画が持つ宣言・`go.mod`・`go.sum`。**宣言は§4.40で定義sourceではなくなったが、計画のsourceとしては残っている**（ビルドは読まないが、写す対象ではある）。
+
+#### この節が言っていないこと
+
+- **entryが隔離木を見たこと**。見えるのはchildの申告だけである（§4.37の「信じている」に属する）
+- 五条件への追加。**契約変更であり、別途決める**
+- `-isolate`の既定化
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
