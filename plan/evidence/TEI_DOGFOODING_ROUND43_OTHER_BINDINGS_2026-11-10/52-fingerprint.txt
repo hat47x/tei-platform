@@ -1,0 +1,9 @@
+Changed contract-query-executor-binding's executor from
+database.query.oracle to database.query.postgres:
+
+  worldFingerprint   c92de09f... -> 8e8c60a7...   changed
+  graphFingerprint   48a12db2... -> 48a12db2...   UNCHANGED
+  trace.total        14 -> 14                     UNCHANGED
+
+The execution backend can change without the reference graph noticing, exactly
+as customGoBindings did before #3989.

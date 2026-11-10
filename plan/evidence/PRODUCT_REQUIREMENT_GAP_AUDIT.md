@@ -142,6 +142,7 @@ Gate C — PAS-04 — Ready
 | RQ-034 | **Design Only** | PAS-06 | ISSUE-000083 / #972にExecutable Reference candidateを追加。current TEI Repository全体のclean local cloneで`cmd/tei`をbuildし、targeted test、workspace-files / source-index / knowledge-context / validate / world、file-native Validation edit、ordinary Git commit、別integration cloneでのrebuild / reloadまでを一往復する。`.tei/decisions`を除去してもCanonical Worldが同一であることを要求し、Git上は無競合でも同一Canonical ID重複を`DUPLICATE_SEMANTIC_ELEMENT`で拒否するnegative pressureを持つ。Agent Adapter / Structured Proposal / TEI独自Change Set / Agent Session stateは使わない。Chat側のMCPはHost-provided Shell / Filesystem / Git MCPからCLIを呼ぶ構成でよく、TEI固有developer MCPは必須にしない | runnerはBash構文と期待diagnosticのsource存在を確認し、さらに最小の合成Go Repositoryでfull clone / build / test / commit / separate clone / semantic-conflict orchestrationがPASSした。ただしこれはrunner自体の検証でありTEI Evidenceには数えない。current execution environmentにRepository checkoutがなくGitHub DNS解決も失敗するためactual Go build / test / CLI / Git round tripは未実行。Host-mediated MCPを含む実chat/coding-agent consumerとRepository healthのactual Evidenceも未取得。native MCPを将来追加する場合だけCLIとの意味・Authority同値性検証が必要 |
 | RQ-035 | **Design Only** | PAS-03（PAS-01 / 02 / 04 / 06 / 07補助） | 汎用Data Source Workbenchを開発者向け標準能力として要求定義。異種SQL/NoSQL/Log/API Providerの構造とデータの観測・Schema DDL作成/更新/削除は対象、DBA運用は標準対象外。実装・適合計画は[#3270](https://github.com/hat47x/tei-platform/issues/3270) と[標準範囲設計](../design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)に集約。 | 現時点のSQL/DB参照例やread-only CLIは異種Providerの共通Operation、現在Grant、Schema DDL実適用・独立再読取を貫いた製品証明ではない。G1/G2や正式Owner意味受理は未成立。Verified BOMは別要求として計画中で、このRQの適格根拠に流用しない。 |
 | RQ-036 | **Design Only** | PAS-06（PAS-04 / PAS-02） | [Issue #3267](https://github.com/hat47x/tei-platform/issues/3267)と[設計案](../design/VERIFIED_COMPOSITION_BOM_AND_MATRIX_DESIGN_2026-11.md)でVersion Matrix/BOMの要求と、合成Go ReferenceのPairwise/提供Lock Candidate/同一Attempt Witness照合を分離。RQ-036に対する構成要素の候補のみ | 実#951 Resolver/Provider 2版×Consumer 2版の実Target Build、#1180独立Scenario/Evidence、#2514独立Expected、Qualified BOM発行・別Target/Host実証・Owner受理が未実施。Referenceの`reported-pass`/`coveredPairs`は製品資格ではない |
+| RQ-037 | **Design Only** | PAS-06（PAS-02 / 04 / 01 / 05補助） | Verified Composition BOMを標準製品要求として登録。#3267にProvider×Consumer版の4 exact tuple、実Build/Invoke、Source/Provider Manifest/Rule Producerの鮮度、独立Expected、同一Attempt・Target/Scope限定の再利用条件を委譲。main #3490のRule履歴比較、#3477 Consumer Source-only、#3479 Imported Provider raw-onlyの局所実証は進んだが、全体BOMの資格ではない。旧Draft #3297のRQ-036は現行Model Map RQ-036と衝突しており再基線化・改番が必要。 | 現状のBOM Referenceはsynthetic/read-onlyで qualified:false。通常CLIと実Studio Bridgeのselected Provider B実Invoke/実Artifact、実Provider/Consumer 2×2の4行 Conformance/Trusted Receipt/Current Grantは未実施。Source/Rule/Buildの差を一律失効しないExact Closureも未認定。PAS既存Gateの変更・Owner Meaning受理は行っていない。 |
 | RQ-025 | **Partial Evidence** | PAS-07 | Business Action != Application Function、manual / external Action、actor / authority分離、Business Procedure Reference / Pressure、Lane C Gate A actual execution（2026-09-20）、独立second corpus（2026-09-21、作成者self-review） | 独立review未実施。Canonical identity最終判断。Contract ADRはNot Ready |
 | RQ-026 | **Partial Evidence** | PAS-07 | Data / Function / Business cross-view Reference、Handoff identity Pressure、derived Projection原則、realistic second-case actual Evidence（`R = 82e4301`、Gate A A1〜A8） | 独立review未実施。Data-state / ownership cross-check（RRB-P2項目4）はData identityが無く未確認。diagnostic severityの確定 |
 | RQ-027 | **Partial Evidence** | PAS-06 | `tei world` / `source-index`（artifact fingerprint + reference） / `validate` / `index` / `consumer-impact` / `workbench-model`、`changeanalysis`のdependency / impact、ACTOR_CONTEXT R0 source map・R1 builder challenge（production codeを検証）。**accepted Decisionの機械到達**（2026-09-21）: Shared Acceptance Boundaryを通った受理が`.tei/decisions/`へ残り、`decisions`が現在のworkspaceと照合して`current` / `superseded`と`intact` / `diverged`を返す。記録はauthorityではない（消去・偽造しても意味とrevisionは動かない） | 残る到達不能: **`Variation`は表現を持たない**（`internal/`に0件）。Gate Evidence / Release locatorは索引の無い散文からの参照のまま。決定記録はこの境界を通った変更に限られ、Coreには同等の仕組みが無い。再入場の十分性を判定するconformanceが無い。担当Issueが無い（ADR-0028のみ） |
@@ -153,6 +154,8 @@ Gate C — PAS-04 — Ready
 | RQ-033 | **Design Only** | PAS-06 | catalogはWorkspace Source Index subjectとExtension meaningを統合し、dependency why / reverse dependency / structured failure、Interface contract / provider wiring / Conformance、namespace Authority、Semantic Lockを機械可読に返す。`SemanticValidationPlan`はSemantic Set fingerprint、Constraint→implementation/artifact binding、Plan fingerprintを固定する。既存Knowledge ContextへSemantic Catalogを重ねる`Subject Semantic Context`は、対象subjectからExtension Source / version / dependency path / Constraint / Interface / evaluator provider / Connection / Unresolvedへ戻れるread-only surfaceを持つ。ISSUE-000086 P3ではtransport前の`TransportDispatchPlan`とreceipt fingerprintを追加し、AI / Toolがphysical transportを越えて同じInvocation identityへ戻るための候補を追加 | Shared Acceptance ProposalへのValidation Evidence接続、Studioの実consumer、Evidence発行Authority、exact-head executable Evidenceが未成立。TransportDispatchPlanを上流Capability resolution / Runtime Authorityから導出する再入場経路も未実証。`kind-applicable`候補とAccepted semantics、transport planとRuntime AuthorityをAIが混同しないE2Eも未完成 |
 
 **2026-11-08の要件追加**：RQ-036（全容Model Mapとカスタム境界）はPAS-07を主、PAS-01/04/06を補助とする。モデルの概念図・導出試験が局所PASSでも、モデル全容の閲覧、未定義要素の可視化、標準とカスタムの合成結果、実Target／初学者での理解を証明しない。評価はDesign Onlyを維持し、既存Gate B/Cや他RQのEvidence Tierを変更しない。
+
+**2026-11-08のRQ-037登録**：#3267が担当するVerified Composition BOMを独立の標準要件としてPAS-06主（PAS-02/04/01/05補助）へ追加した。既存RQ-036はModel MapとGraph Navigationの要求として保持する。旧Draft #3297のRQ-036 BOM記述を現行RQ-036の成立と数えず、再基線化時にRQ-037へ改める。#3490/#3477/#3479は限定Evidenceであり、実2×2・実二Consumer・権限/Owner受理が未達のためDesign Onlyを維持する。
 
 ## 5. 評価集約
 
@@ -188,7 +191,7 @@ Gate C — PAS-04 — Ready
 - RQ-028
 - RQ-029
 
-### Design Only — 10
+### Design Only — 11
 
 - RQ-010
 - RQ-015
@@ -199,8 +202,8 @@ Gate C — PAS-04 — Ready
 - RQ-033
 - RQ-034
 - RQ-035
-
 - RQ-036
+- RQ-037
 
 ### Not Started — 0
 

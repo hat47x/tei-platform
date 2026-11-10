@@ -37,13 +37,26 @@ Host が渡した入力から、以下の3つの既存関数を順に呼んで I
 | 数 | 意味 |
 | --- | --- |
 | `ranCount` | **carrier へ入った回数**。失敗しても、応答が使えなくても数えます |
-| `refusedCount` | **carrier へ入る前に止めた回数**（Route 不在・入力不足・Route の Binding 違い） |
+| `refusedCount` | **carrier へ入る前に止めた回数**（Route 不在・入力不足・Route の Binding 違い・**Host guard の拒否**） |
 | `unverifiedCount` | `ranCount` の内数。carrier に入ったが、エラーまたは別世代の応答で確定できなかった回数 |
 
 **初期のv0実測**はCarrierへ入った後の失敗も`refusedCount`へ数える可能性があり、「未実行」と読めてしまいます。現行の[参照レポートv1](connect.go)は`Schema`・`RuleVersion`・`RuleFingerprint`を別版にして、呼出し前の拒否と呼出し後の不確定を分けます。過去の[実行記録](../../plan/evidence/SERVICE_CARRIER_CONNECT_REFERENCE_2026-11-09/README.md)のv0 JSON・SHA-256は変更せず保持します。
 
 **参照が「入る前に止めた」と言えるのは、自分の事前検査だけで止めた場合だけです。** carrier の内部で
 artifact 検証が拒否した場合は、carrier には入っているので `unverifiedCount` になります。
+
+## Host guard の拒否は、実行ではない（2026-11-09追補）
+
+`SelectedServiceCarrierInvoker.Invoke` は、**Host guard を通ってから** carrier に入ります。
+したがって guard の拒否は **carrier へ入る前**に起きており、`refusedCount` です。
+
+**初期の実装は `Invoke` を呼ぶ前に `ranCount` を上げていたため、guard の拒否が「実行した」と読めました。** 現行は入場を観測してから数えます。
+
+| 事象 | 数え方 |
+| --- | --- |
+| Host guard が拒否 | `refusedCount++`（`carrierInvoked=false`） |
+| Route 取得失敗 | `refusedCount++`（`carrierInvoked=false`） |
+| carrier に入った後の失敗 | `ranCount++` / `unverifiedCount++`（`carrierInvoked=true`） |
 
 ## この参照が示さないこと
 

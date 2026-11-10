@@ -74,3 +74,39 @@ go run ./cmd/tei validate -workspace reference/workspace
 - 同時に開くPRは2〜3本を目安にします。並行作業が増える場合は、ブランチとPRを分けて判定段階を保ちます。
 - CIを追加するときは、`paths` で対象を絞り、`concurrency` を設定します。全体の健全性確認（`tei-repository-health-ci.yml`）は常に実行する入口（統合条件ではありません）なので、対象を絞りません。
 - 文書のみの変更は、専門のワークフローを `paths-ignore` でスキップし、全体の健全性確認だけを実行します。
+
+## 並行作業でメインworktreeのGit設定を書き換えない
+
+複数のセッション・エージェントが同じリポジトリで同時に作業するため、**メインworktreeの `.git/config` を書き換える操作はしません**。ここが壊れると、Windows側の `git` が全コマンドで停止し、他の全作業が巻き添えになります（[#3880](https://github.com/hat47x/tei-platform/issues/3880)）。
+
+実際に起きた症状:
+
+```
+$ git status
+fatal: Invalid path '/mnt': No such file or directory
+```
+
+`.git/config` に次の行が入っていました。
+
+```
+[core]
+	worktree = /mnt/d/GIT/hat47x/tei-wt-wf-20261109
+```
+
+`core.worktree` は**そのリポジトリの作業ツリー全体**を別の場所へ向ける設定です。WSLから `git worktree add` すると（またはWSL側で `git config core.worktree` を実行すると）、Windowsのパスとして解釈できない `/mnt/...` が書き込まれ、以後の `git` が起動時に失敗します。
+
+### 守ること
+
+- worktreeごとの情報は `.git/worktrees/<name>/gitdir` に自動で入るため、`core.worktree` を手で設定する必要はありません。**設定しないでください。**
+- 別の作業ツリーで作業するときは `git worktree add <path> <ref>` を使い、メインworktreeの設定を変えません。WSLとWindowsで同じリポジトリを共有する場合は、`/mnt/d/...` を書かないよう、Windows側のパスでworktreeを作ります。
+- 一時的な切り替えには `GIT_WORK_TREE` 環境変数を使い、設定ファイルへ書き込みません。
+
+### 壊れたときの復旧
+
+`git` 自体が動かないため `git config --unset` は使えません。`.git/config` を直接編集して該当行を削除します（復旧後は `git rev-parse --show-toplevel` が自分のリポジトリを返すことを確認します）。
+
+**注意**: この状態では `git fetch` が `origin/main` を更新せず `FETCH_HEAD` だけを書きます。古い `origin/main` を読んで「main が巻き戻った」と誤認した事例があるため、異常を疑う前に `.git/config` の `core.worktree` を確認してください。
+
+### worktreeを増やしすぎない
+
+登録済みworktreeが多いと、`git worktree prune` や状態確認が遅くなり、上記の取り違えも起きやすくなります。作業が終わったworktreeは `git worktree remove` で消します。

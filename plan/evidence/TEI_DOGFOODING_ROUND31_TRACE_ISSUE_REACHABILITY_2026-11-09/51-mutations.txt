@@ -1,0 +1,5 @@
+M1 delete the "judge by projectionUnresolved" sentence
+   -> FAIL: missing "`projectionUnresolved` で判断する"
+M2 delete the rule-synthesis explanation
+   -> FAIL: missing "投影した辺そのものから規則を作る"
+restored -> ok (cmd/tei doc test + repository-plan-check)

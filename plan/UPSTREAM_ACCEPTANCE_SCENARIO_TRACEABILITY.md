@@ -546,6 +546,23 @@ ChatGPTなどのチャット実行環境・Codex・Claude Code・一般的なIDE
 
 **段階**：#1124の共通Diagram/Navigationの既存M0→M4に、MAP-01〜16を追加した[横断§19](design/THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)を受入基準として接続する。組織の具体例は[Draft #3243 §12](https://github.com/hat47x/tei-platform/pull/3243)。全体Catalog/Read-only Graph＋Gap→Pattern/State/Flowの型付き跳躍→標準/Custom/実効Flow→Target/Consumerの実観測の順に確認し、合格しない試験を新しい既成PASに数えない。ADR-0017のApplication Patternの所有、提案中ADR-0046のLifecycle Role、生成時のPlugin/Target実選択・実Invokeの資格を守り、新しいEngine・Graph正本を作らない。新RQ-036の採用は**製品要件を定める**ことであり、GUI/Generator/初心者試験/MAP-01〜16の実装完了・Owner意味受理は**NOT RUN**。現Gate B/CやPAS-07既存受理を遡及して変えない。
 
+### RQ-037 — Verified Composition BOMと複数バージョンの組合せ資格（対応候補）
+
+**主PASはPAS-06**：利用者や生成AIが、特定のContract／Provider／Consumer／Targetの互換候補を探索し、検証済みの範囲、出典、未検証・競合・未知の理由を区別して再利用の可否を判断する。Pluginの宣言やPackage選択、Capability選択、Build成功、Pairwise試験計画だけで適格性を推定しない。**PAS-02**では実Driver／独立Expectedと各exact tupleの実Invokeを検証し、**PAS-04**ではTarget別ArtifactとCLI／Studio Consumerを区別して照合する。**PAS-01**ではSource／Rule／Provider Manifest変更の影響と受理境界、**PAS-05**では現在のGrant／実Effectと過去Conformanceの非同値を検証する。
+
+| 受入Case | 実Targetで観測すべき条件 | 拒否・未達の判定 |
+| --- | --- | --- |
+| VCB-R37-01 | Provider A1/A2 × Consumer B1/B2の4 exact Lockを個別にBuild／Invoke／独立Expectedで評価 | 3行PASS＋1行NOT RUNを4行Verifiedとしない |
+| VCB-R37-02 | Provider Bを選択して実B Callを観測し、Source／Artifact／Consumerを束縛 | B選択だがA実Call（同値結果でも）はFAIL |
+| VCB-R37-03 | Consumer Source Indexだけ、Imported Provider Raw／Manifestだけ、Producer Rule Fingerprintだけを各変更 | WorldやSchema Versionの表示が不変でも古いSelection／Scenario証拠を流用しない |
+| VCB-R37-04 | 正確な必要Build／Test依存閉包の差分を照合 | 未消費Pluginの変更による過剰失効を抑制。ただし不足閉包ならunknown |
+| VCB-R37-05 | CLI／Studioと別のTarget/Hostで実取得範囲・Grant・Effect/Disclosureを独立照合 | 履歴BOMやLocal Cache hitから現在権限を発行しない |
+| VCB-R37-06 | Pairwiseの選択集合と実Run／Coverage分母を別に表示 | 計画のPairwise 100%を実PASS／全Cartesianへ換算しない |
+
+**現状と優先順**：main統合[#3490](https://github.com/hat47x/tei-platform/pull/3490)は歴史的Capability Ruleの変更を検出する限定Go Regression、main[#3477](https://github.com/hat47x/tei-platform/pull/3477)はConsumer Source-only改訂の局所検証、main[#3479](https://github.com/hat47x/tei-platform/pull/3479)はImported Providerの変更検知の限定検証であり、いずれも本表全行の受入ではない。#1251の実read-only Inspectorを通常CLIと実Studio Bridgeへ配線するS2を先行し、その後#3267で2×2の実組合せ試験S3へ進む。[旧Draft #3297](https://github.com/hat47x/tei-platform/pull/3297)のRQ-036記述は**現mainの全容Model Map RQ-036と衝突**しているため、統合前にRQ-037へ修正・mainに追随し、PAS/GAP監査の二重登録を解消する必要がある。
+
+**評価区分：Design Only／VCB-R37-01〜06の全体実行はNOT RUN**。旧Referenceの`qualified:false`、現在のOwner／Host判断、既存Gateを維持する。新しいRunner／Resolver／BOM Authorityは追加しない。
+
 ## 11. Requirement → Primary PAS mapping
 
 | Requirement | Primary PAS | Secondary / cross-cutting |
@@ -586,6 +603,7 @@ ChatGPTなどのチャット実行環境・Codex・Claude Code・一般的なIDE
 | RQ-034 | PAS-06 | PAS-01 |
 | RQ-035 | PAS-03 | PAS-01 / PAS-02 / PAS-04 / PAS-07 |
 | RQ-036 | PAS-06 | PAS-04 / PAS-02 |
+| RQ-037 | PAS-06 | PAS-02 / PAS-04 / PAS-01 / PAS-05 |
 
 Primaryは最初に具体化する代表的なPASを示し、要求の網羅率を表す点数ではありません。
 

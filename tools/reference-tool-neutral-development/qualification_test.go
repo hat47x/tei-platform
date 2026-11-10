@@ -10,6 +10,14 @@ import (
 )
 
 func TestQualificationReceiptAndIntegrationPreflightControlFlow(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// qualify.sh and integration-preflight.sh are POSIX shell scripts that
+		// read the checkout they are started in. The bash a Windows host
+		// provides is WSL, whose view of a Windows working directory does not
+		// match the path this test hands it, so the scripts stop at
+		// "run from repository root" (#3783). Linux CI runs this flow.
+		t.Skip("the qualification flow is a POSIX script; Linux CI runs it (#3783)")
+	}
 	for _, command := range []string{"git", "bash", "go", "awk", "grep"} {
 		if _, err := exec.LookPath(command); err != nil {
 			t.Skipf("%s is unavailable: %v", command, err)

@@ -46,13 +46,32 @@ func (w *Warning) Unwrap() error { return w.Err }
 type Runner struct {
 	World          ir.World
 	Implementation Implementation
+	// ByPhaseは、位相ごとに別の実装を供給する。規則Pluginは位相ごとに本体を
+	// 持ちうるため、一つの実装ですべての位相を賄う前提を置かない。
+	//
+	// 位相が載っていればその実装を、載っていなければImplementationを使う。
+	// どちらも無ければHOOK_IMPLEMENTATION_UNAVAILABLEで止まる（黙って成功に
+	// しない）。
+	ByPhase map[string]Implementation
 	// Callerは、フックから能力を呼ぶ下位の境界である（`CommandCaller`など）。
 	// 宣言に制限されていない境界をそのまま実装へ渡さず、必ずDeclaredで包む。
 	Caller Caller
-	// CallInputsは、能力ごとに渡す入力である。宣言が能力への結び付けを持たない
-	// 場合、呼出し側がここで与える。与えられていない能力は、推測して呼ぶのでは
-	// なく「呼ばなかった」として理由つきで記録する。
-	CallInputs map[core.CanonicalID]map[string]string
+	// Rows is the row set a row-scoped hook is applied to. It is empty for a run
+	// that handles one record, and a row-scoped hook is then reported as needing
+	// the row set rather than run once for the record.
+	Rows []map[core.CanonicalID]string
+}
+
+// implementationForは、位相に与えられた実装を返す。
+//
+// 位相ごとの指定が先で、全体のImplementationが後である。位相の名前は
+// PhaseOrderが持つものだけを鍵にする（呼出し側が任意の文字列で別の実装を
+// 差し込めないよう、宣言された位相だけを見る）。
+func (r Runner) implementationFor(phase string) Implementation {
+	if impl, ok := r.ByPhase[phase]; ok && impl != nil {
+		return impl
+	}
+	return r.Implementation
 }
 
 // Runは、Patternの対話に宣言されたフックを実行する。
@@ -86,17 +105,39 @@ func (r Runner) Run(ctx context.Context, invocation Invocation) error {
 	if declared == nil {
 		return &Error{Code: "HOOK_NOT_DECLARED", Message: fmt.Sprintf("pattern %s does not declare a %s hook", invocation.Pattern, invocation.Phase)}
 	}
-	if r.Implementation == nil {
+	// Run is the single-record entry point, so it applies a record scope and the
+	// pattern's own unit. A row-scoped hook needs the row set, which this entry
+	// point does not carry: RunRows does that. Any other scope is declared but not
+	// applied, which is the X-TEA defect this boundary exists to avoid (D-9: a
+	// definition present in the source and inert at run time).
+	switch declared.Scope {
+	case "", string(application.PatternRecord):
+	case "row":
+		if len(r.Rows) > 0 {
+			return r.RunRows(ctx, invocation, r.Rows)
+		}
+		return &Error{
+			Code:    "HOOK_SCOPE_NEEDS_ROWS",
+			Message: fmt.Sprintf("hook %s declares scope row, so it needs the row set; set Runner.Rows or use RunRows", invocation.Phase),
+		}
+	default:
+		return &Error{
+			Code:    "HOOK_SCOPE_UNAPPLIED",
+			Message: fmt.Sprintf("hook %s declares scope %s but this runner applies one hook per record", invocation.Phase, declared.Scope),
+		}
+	}
+	implementation := r.implementationFor(invocation.Phase)
+	if implementation == nil {
 		return &Error{Code: "HOOK_IMPLEMENTATION_UNAVAILABLE", Message: "no implementation is configured for this hook boundary"}
 	}
 	var err error
-	if calling, ok := r.Implementation.(CallingImplementation); ok {
+	if calling, ok := implementation.(CallingImplementation); ok {
 		// A hook that calls capabilities is only given the caller its own
 		// declaration permits. An unset caller is not a licence: Declared refuses
 		// every call without an inner boundary.
 		err = calling.RunWithCaller(ctx, invocation, declaredCaller(r.Caller, declared))
 	} else {
-		err = r.Implementation.Run(ctx, invocation)
+		err = implementation.Run(ctx, invocation)
 	}
 	return wrapFailure(err, declared)
 }

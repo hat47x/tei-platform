@@ -1,0 +1,168 @@
+{
+  "note": "dsh-mcp-client takes one server per plugin instance and the transport must be 'streamable-http' (not 'http'). With that shape the client performed a JSON-RPC handshake against the local mock and the model's tool list grew from 24 to 28.",
+  "configShapeFromSource": {
+    "source": "dsh/node_modules/@deepseek-ai/dsh-mcp-client/lib/index.js",
+    "union": [
+      {
+        "transport": "stdio",
+        "required": [
+          "serverName",
+          "command"
+        ],
+        "optional": [
+          "args",
+          "env",
+          "cwd",
+          "toolCallTimeoutMs",
+          "failOnStartupError",
+          "maxInstructionBytes",
+          "reconnect"
+        ]
+      },
+      {
+        "transport": "streamable-http",
+        "required": [
+          "serverName",
+          "url"
+        ],
+        "optional": [
+          "headers",
+          "toolCallTimeoutMs",
+          "failOnStartupError",
+          "maxInstructionBytes",
+          "reconnect"
+        ]
+      }
+    ],
+    "oneServerPerInstance": true
+  },
+  "overlay": {
+    "insert": [
+      {
+        "id": "mcp-client",
+        "name": "@deepseek-ai/dsh-mcp-client",
+        "config": {
+          "transport": "streamable-http",
+          "serverName": "synthetic",
+          "url": "http://127.0.0.1:8799/mcp",
+          "toolCallTimeoutMs": 5000,
+          "failOnStartupError": false
+        }
+      }
+    ]
+  },
+  "mcpRequests": [
+    {
+      "file": "mcp-001-request.bin",
+      "bytes": 280,
+      "sha256": "2d6e560663b30185c0680e157110159805f2f628045dd515a6a0557bcd66916f",
+      "method": "server/discover",
+      "id": "server-discover-probe-1",
+      "hasParams": true
+    },
+    {
+      "file": "mcp-002-request.bin",
+      "bytes": 163,
+      "sha256": "40902c765afca2b3658a4c98787806ed8b1a716cf4a4874b273eadce48a9ffb8",
+      "method": "initialize",
+      "id": 0,
+      "hasParams": true
+    },
+    {
+      "file": "mcp-003-request.bin",
+      "bytes": 54,
+      "sha256": "59951ca0b212b103876fa23a9e58bcbbc8fbcc0120e3f5ee7214461e2bd1cd5e",
+      "method": "notifications/initialized",
+      "id": null,
+      "hasParams": false
+    },
+    {
+      "file": "mcp-004-request.bin",
+      "bytes": 46,
+      "sha256": "75f0c7627a35c7e96a0a88482622a0d1ec7e81c0eb5414a88ba7aab9450cf73b",
+      "method": "tools/list",
+      "id": 1,
+      "hasParams": false
+    }
+  ],
+  "mcpRequestCount": 4,
+  "methodsSeen": [
+    "server/discover",
+    "initialize",
+    "notifications/initialized",
+    "tools/list"
+  ],
+  "modelRequests": [
+    {
+      "file": "model-001-request.json",
+      "bytes": 99797,
+      "sha256": "ebb63b947d23aab4858291aed0c774766901f2c5e935a7073c50f0c66f42dfce",
+      "toolCount": 28,
+      "toolNames": [
+        "create_goal",
+        "edit",
+        "get_goal",
+        "glob",
+        "grep",
+        "interrupt_agent",
+        "job_kill",
+        "job_list",
+        "job_output",
+        "list_agents",
+        "list_mcp_resource_templates",
+        "list_mcp_resources",
+        "mcp__synthetic__synthetic_echo",
+        "pwsh",
+        "read",
+        "read_image",
+        "read_mcp_resource",
+        "send_message",
+        "skill",
+        "subagent",
+        "subagent_fork",
+        "todo_write",
+        "update_goal",
+        "web_fetch",
+        "web_search",
+        "workflow",
+        "working_directory",
+        "write"
+      ],
+      "mcpTools": [
+        "list_mcp_resource_templates",
+        "list_mcp_resources",
+        "mcp__synthetic__synthetic_echo",
+        "read_mcp_resource"
+      ],
+      "messageCount": 1,
+      "sessionId": "session-08c09fc5-9a55-4345-964d-80128a83a16f",
+      "afterSeq": -1,
+      "throughSeq": 18
+    },
+    {
+      "file": "model-002-request.json",
+      "bytes": 57293,
+      "sha256": "bfde439479b6ee3f333fffd6bb49f4b0f0442d6ac8b5cd0057dcc238d42fea76",
+      "toolCount": 0,
+      "toolNames": [],
+      "mcpTools": [],
+      "messageCount": 1,
+      "sessionId": "session-08c09fc5-9a55-4345-964d-80128a83a16f",
+      "afterSeq": -1,
+      "throughSeq": 18
+    }
+  ],
+  "toolCountBefore": 24,
+  "toolCountAfter": 28,
+  "mcpToolNames": [
+    "list_mcp_resource_templates",
+    "list_mcp_resources",
+    "mcp__synthetic__synthetic_echo",
+    "read_mcp_resource"
+  ],
+  "toolNamespacePattern": "mcp__<serverName>__<toolName>",
+  "correction": {
+    "earlierClaim": "A plausible servers.synthetic {transport: http, url} config was accepted by --dump-config but produced no MCP tool and no MCP traffic.",
+    "whatIsTrue": "The config is one server per instance with transport 'streamable-http'; the earlier shape was not the schema, so nothing connected. With the schema shape the handshake runs and the tool list grows."
+  }
+}

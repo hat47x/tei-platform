@@ -65,6 +65,14 @@ func (d Declaration) Granularity(rows []Rate) (Granularity, error) {
 }
 
 // ResolveTable reads a rate Data and binds its rows in one call.
+// ResolveTable reads a rate Data and binds its rows in one call, and reconciles the
+// granularity the rows imply with the one the Data declares.
+//
+// The declaration is checked here rather than left to the caller because the two
+// can disagree in a way neither alone shows: a table declared annual whose rows use
+// month sequences 1..12 would be read as monthly by a caller that trusts the rows
+// and as annual by a caller that trusts the declaration. A table with no rows has no
+// implied granularity, so it keeps the declared one without a comparison.
 func ResolveTable(world ir.World, dataID core.CanonicalID, rows []map[core.CanonicalID]string) (Table, error) {
 	declaration, err := Resolve(world, dataID)
 	if err != nil {
@@ -74,11 +82,30 @@ func ResolveTable(world ir.World, dataID core.CanonicalID, rows []map[core.Canon
 	if err != nil {
 		return Table{}, err
 	}
-	granularity, err := declaration.Granularity(bound)
+	declared, err := ResolveGranularity(world, dataID)
 	if err != nil {
 		return Table{}, err
 	}
-	return Table{Declaration: declaration, Granularity: granularity, Rows: bound}, nil
+	declaredValue, hasDeclared, err := declared.GranularityRows(rows)
+	if err != nil {
+		return Table{}, err
+	}
+	if len(bound) == 0 {
+		// The granularity value lives in the rows, so an empty table has none: the
+		// role says which column would carry it, not what it holds. An empty table
+		// is therefore unknown and is refused rather than guessed.
+		return Table{}, fmt.Errorf("%w: %s has no rows, so its granularity is unknown", ErrInvalidRate, dataID)
+	}
+	implied, err := declaration.Granularity(bound)
+	if err != nil {
+		return Table{}, err
+	}
+	if hasDeclared {
+		if err := CheckDeclared(declaredValue, implied); err != nil {
+			return Table{}, err
+		}
+	}
+	return Table{Declaration: declaration, Granularity: implied, Rows: bound}, nil
 }
 
 // Pair is a monthly table and an annual table joined by declaration.

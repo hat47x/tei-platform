@@ -341,3 +341,191 @@ Else absence remains unknown; no universal closed-world assumption.
 **次の最小証拠**: (a)同一qualified要素の複数View occurrence、(b)role付き関係のGraph/Table間の完全往復（描画・意味変更なし）、(c)queryを制限して初めて成立する「不在」の正負例、(d)Layoutのみ変更でSource不変、(e)旧Snapshotまたは曖昧scopeではInspect/Locate呼出し0。まずこの五つのread-only検査を確認し、標準構造不足の観測なしにCoreやStudioフックを追加しない。
 
 **検証状態**: 本追補は既存Issue/PRとコード公開契約に対する静的設計照合である。Reference本体の追加、実GUI、実Provider/Runtime、独立Observation、認知負荷実測、実Production Artifact検査は **NOT RUN / NOT PROVEN**。
+
+## 12. 2026-11-06：P1限定不在判定Reference（合成・採用前）
+
+**既存§9〜11の実装候補をコード化した最小実験**：[reference/tei-topology-coverage](../../reference/tei-topology-coverage/README.md)。基準main `36bda76271db4db72ddd41a8566d281f02764b8a`。本節は基準設計を置換せず、新たなCore型・正本Graph・Source Reader・実行Host/Authorityを採用しない。
+
+- 一つの合成Source/Projection snapshotから、scope付きSubjectをGraphとTableへ投影。同じkind/IDでも別scopeなら別keyとし、view IDは画面内のOccurrence識別子のまま維持する。
+- 多項関係（Operation、Artifact、Evidence）を「関係ノード＋role付きEdge」と「role付き関係表」で同時に表す。端点欠落・role脱落・Relationの描画欠落は不在判定ではなく`unknown`とする。
+- `boundedAbsence`は**合成fixtureが宣言した閉包内の不在だけ**`absent-in-declared-snapshot`と返す。scope未閉鎖、Plugin/Composition/Reader未確認、版混在、省略・opaque領域、Disclosure未資格では`unknown`。表示上に要素が存在しても、非開示なら公開Claimを出さない。
+- レイアウトだけの変更でSource/表/閉包判定が変わらないことを確認する。対照ケースには重複qualified subjectと欠落端点を含む。
+
+**実行証拠と非主張**：Node v22.16.0で`node --test reference/tei-topology-coverage/coverage.test.mjs`をローカル実行し、**12/12 PASS**（合成fixture、2026-11-06）。ただし本Evaluatorは`subjectsComplete=true`等の**申告値の真正性を証明しない**。実TEI `modelref`/CLI/Source Index、実Reader/Policy/Provider closure、旧DOMと4入口、非公開二世界の非干渉、実Target/Effect、認知負荷の改善は**NOT RUN／未証明**。#1124 M0/M1より先にこのReferenceの製品導入を要求しない。
+
+**セルフビルドと非画面パイプラインへの適用境界**：[TEI全体セルフビルド #2831](https://github.com/hat47x/tei-platform/issues/2831)のSB-P0.1は**宣言した工程と実際に消費・起動・生成した工程/bytesの照合**がOwnerであり、本Referenceの「宣言Graph→表示Graph/Tableの損失検査」だけでは代用できない。実Run側の独立Read/Traceがない場合、図に無い実行工程・動的ロード・pre/post hookの不在を推測しない。非画面ETL/ELT・バッチ・ファイル中継も、Source上のstage記述／実Producer・Transfer・Consumer／再送・ACK/Receipt／外部Effectを別レーンに保持し、未観測はopaque/unknownとする（[非画面実証 #1130](https://github.com/hat47x/tei-platform/issues/1130)、[Scenario SSOT #1180](https://github.com/hat47x/tei-platform/issues/1180)）。#2831の実Build witnessと#1124のConsumerは別のOwner／別資格であり、この試験はその両者を結合したと主張しない。
+
+**次の反証可能な接続**：#1124の実CLI→同一Consumerで同じqualified SubjectとSource/Model revisionを取得し、(a)元Source/関係roleの閉包が実Readerで確認できる範囲、(b)不完全で`unknown`となる範囲、(c)Graph・Table・関連表間の局所変更が意味Sourceを変えないこと、を別の証拠として測る。実験が必要な新Core primitiveを示さなければ既存Standard Structureで継続する。
+
+## 13. 2026-11-06 横断追補：表示同一性の整合と「不存在」の主張資格
+
+**状態：合成Referenceの局所実証。新Core/Open-World API/Policy Engineの採用ではない。** 根拠は、Script-firstの三要素分析 [Draft #2878](https://github.com/hat47x/tei-platform/pull/2878)、Role自己記述・必要閉包 [Draft #2860](https://github.com/hat47x/tei-platform/pull/2860)、実工程セルフビルド [#2831](https://github.com/hat47x/tei-platform/issues/2831)／[Draft #2876](https://github.com/hat47x/tei-platform/pull/2876)、Studioの実Consumer [#1124](https://github.com/hat47x/tei-platform/issues/1124)、許可済み合成Evidence [Draft #2833](https://github.com/hat47x/tei-platform/pull/2833)。他Draftの設計・限定PASSを、本Referenceの製品資格へ合算しない。
+
+### 13.1 Claimごとに異なる三つの「閉じている」を分ける
+
+| 区分 | 限定された肯定に必要な観測 | 不足時の扱い |
+| --- | --- | --- |
+| **表示整合** | 同一SnapshotのTable行（scope/kind/id/key/view ID）、Graphノード、Relation role/端点/Edgeが**値とIDの両方**で一致。SourceIndexと投影版が変われば再結合する | stale / unresolved。誤ったView選択からInspect・Editへ昇格しない |
+| **宣言された問いへの閉包** | bounded scope、対象種別・Relation IDを含むquery、subject/relation/role/viewの完全な列挙、opaque/omittedなし、Reader/Plugin Compositionの申告 | unknown。個別図の完全性や単純な件数一致から不存在を断定しない |
+| **現物・利用資格** | そのSource/Artifact/Plugin/Target/Providerの**実際のReaderと消費byte**、現在のPolicy/Disclosure、実Run/Delivery/Receipt、Owner受理を、それぞれの必要Claimへ対応付け | **本Referenceは証明しない**。Synthetic `evidenceId`やboolの申告をAuthority・現物閉包・独立Oracleにしない |
+
+同じSubjectやMeaningVersionが不変でも、Sourceの位置移動・Role/Operator Pin差替え・Policy失効・Reader世代更新・外部工程追加は異なる依存へ作用し得る。単一のグローバルepochやモデル全体Digestだけで各Claimを一括資格化しない。また低権限Consumerへ`unknown`の内訳を返すこと自体が非公開依存の存在を漏らす可能性があるため、公開画面への変換は[#2516](https://github.com/hat47x/tei-platform/issues/2516)の既存Policyが許可したsliceを用いる（本Referenceは**Policyにより選別済みの合成入力のみ**を対象にする）。
+
+### 13.2 実装から得た具体的な負例
+
+[read-only Reference](../../reference/tei-topology-coverage/README.md)で、次を追加して確認する。View全体の版文字列だけを確認しても防げない事例を中心にした。
+
+| ケース | 反例 | 局所的な期待 |
+| --- | --- | --- |
+| TC-I01 | Table行の`scope`だけが別値、保存されたqualified keyは旧値 | 表示一致ではなく`unknown`、選択は`unresolved` |
+| TC-I02 | Graph nodeの`viewId`を残したままkeyが別scopeへ再束縛 | `unresolved`、scopeなしInspectへ接続しない |
+| TC-I03 | Graph nodeを重複表示し、別nodeの欠落を件数で隠す | 不在Claimは`unknown` |
+| TC-R01 | 同じRelation型が存在するが、queryのrelation IDは別 | 別Relationを存在証明に流用しない。閉じたfixture内に限り限定的不在 |
+| TC-R02 | Relation role文字列またはGraph Edgeのrelation IDのみ改変 | `unknown`。二項Edgeの見た目で元の多項意味を復元しない |
+| TC-F01 | Meaning/Model revision不変でSourceIndex fingerprintだけ改変 | 旧View選択は`stale`、複合表示は`unknown` |
+
+**今回の実測**：新規[専用GitHub Actions](https://github.com/hat47x/tei-platform/actions/runs/42155243921)でNode 24.21.0・**18/18 PASS**。当該runがcheckoutしたexact head `577bbe60d961c58e142502ab5835c9a7610214df`、`coverage.mjs` blob `5cc3ca120e2995650bcaba1121a2416b3be8010a`、試験blob `6ece714d49a7b6f8dfa4ff7d376dfe4eb61e7f4d`、終了時clean treeを確認。これはSource Closure/Policy/製品UI/実Target E2Eではなく**synthetic identity/coverage logic**の検証。第12節の12/12は旧時点の限定記録として残す。
+
+### 13.3 次の研究で評価する効果と撤回条件
+
+- **Studio優先**：#1124のM0実CLI→同一Consumer、M1四入口0/1 RPC、PR3旧DOM・後着・scope epochを先行。Referenceの`selectView`が返すcandidateは実Source locator/Inspect可能性を証明せず、製品UIへ直接組み込まない。
+- **Self-build/ETL優先**：#2831は宣言Buildと実消費Input/実行工程/Artifactの一致を独立Traceで確認する。#1130のETL/Batch/File Relayでは転送Producer/Consumer、再送、ACK/Receipt、外部Effectを区別。合成Viewの閉包は実処理の完全性に昇格しない。
+- **Role・Plugin共通性**：Role Typeの検証と、複数InstanceごとのBinding・Operator Pin・Role coverageは別。二つ以上の独立Consumer/domainで標準構造の不足を反証するまで、Core primitiveやStudio固定フックを追加しない。
+- **認知負荷の検証**：正答率（不存在の誤断定率）、Sourceへ辿る操作数、Graph/Table/関連表の再照合回数、局所変更の無関係波及、AIの見落とした不明点とToken/修正回数を、従来の単一図と複合図表で比較する。**測定未実施**であり優位性を前提化しない。
+
+**採用停止線**：実Source/Role/Reader closure・Policy/Consumer・Build Runnerの各Ownerが証明できる前に、`boundedAbsence`の合成ステータスを「実TEIに存在しない」「Productionで実行されない」「Ownerが受理した」へ昇格させない。#2881はP1独立実験のDraftを維持する。
+
+### 13.4 Relation自身のscopeと端点scopeの独立性（2026-11-06追補）
+
+他チャットの[Role自己記述 #2620](https://github.com/hat47x/tei-platform/issues/2620)／[Draft #2860](https://github.com/hat47x/tei-platform/pull/2860)、[TEI全体セルフビルド #2831](https://github.com/hat47x/tei-platform/issues/2831)、[ファイル・メッセージ連携 #2542](https://github.com/hat47x/tei-platform/issues/2542)の横断レビューから、**Relationの識別scopeと、Relationが結ぶ各Subjectのscopeを同一視しない**という反例を独立させた。これは既存ModelRef/Relation Schemaの採用変更ではなく、Read-only Projectionが保持しなければならない情報に対する圧力試験である。
+
+- 例：scope `batch-A`で宣言したTransfer Relation `flow`が、scope `file-bridge`のArtifactとscope `erp`のConsumerへ結ばれても、Relationの宣言元が端点のどちらかへ自動的に移ることはない。セルフビルドでもBuild Operation・Target Artifact・Toolchainの所属は一致するとは限らない。
+- 試験FixtureのRelationは、**明示された`scope + relation ID`** を自身のqualified keyとする。別scopeの同じrelation IDは区別し、役割・端点は別のscope付きSubject keyへ参照する。GraphのRelation node/各role EdgeとTableのRelation recordは**key、type、role、端点**を同一Snapshotで照合する。
+- `query.scope`のRelationの不存在を問うときは、端点のscopeを検索範囲の代用にしない。Relation自身の宣言scopeが未取得・未解決なら、実Consumerは`unknown`のままにし、対象集合を勝手に閉じない。これは内部Referenceで明示scopeを**要求する**理由であって、既存TEI SourceのRelationがすべてそう表現されているという主張ではない。
+- Reference上の負例は、(1)他scopeの端点を持つRelationでも宣言scopeのみで存在判定、(2)別scopeの同ID Relationの併存、(3)宣言scope欠落・同scope重複の拒否、(4)Table宣言scopeまたはGraph relation keyの後編集、(5)端点scopeからの誤った存在推定、(6)GraphとTableのRelation type齟齬。Roleの重複宣言を後値で上書きする[別Parser問題 #2898](https://github.com/hat47x/tei-platform/pull/2898)の正式修正/受理とは別問題である。
+
+**実装・証拠上限**：同一合成RelationをGraph/Tableへ無損失に投影するためのReference契約を検査する。実TEI ModelRef/Reader、未宣言関係の実不存在、Build・ETLのactual execution/transfer/Receipt、Current Policy、Owner受理は証明しない。[#2877のP0-A0/A1](https://github.com/hat47x/tei-platform/pull/2877)が扱うRequired/Declared/Selected/ActuallyConsumed/Observed/Undischargedを表示完全性に足し算して、実Pipeline完全性に昇格させない。
+
+**追加の実行証拠**：[専用Node CI #42156720965](https://github.com/hat47x/tei-platform/actions/runs/42156720965) は、変更後exact head `760597b2aaddde1bf3990ee8f57a35deb9bdb9ea`で **26/26 PASS**。対象コードGit blob `c20ceb222a690d486ce5b8f95782dba6c84d9a13`／試験Git blob `9ec51ea2518b05499405bc86e21398b91856084a`、Node 24.21.0、テスト前後のclean treeを確認した。これらは**合成のscope/type/role/Graph/Table内部整合だけ**の証拠であり、元Source・実Consumer・実Build・実Transferの保証ではない。第13.2節の18/18は当時の限定記録として残す。
+
+**次段の最小受入**：既存Go Reader/Source Indexから(1)実Relation identity、(2)Relationの宣言元scopeを取得できる契約、(3)端点のqualified key、(4)roles/typeとSource/Projection revision、(5)開示済みscopeの閉包根拠を確認する。いずれかが欠けたら、図表は候補・部分表示にとどめ`absent-in-declared-snapshot`のProducer資格を実Sourceへ移さない。既存#1124/#2620/#2831/#2542の担当境界を変更せず、新共通Relation Registry/第二Resolverを追加しない。
+
+### 13.5 Query相対の条件被覆と、無視されたPredicateからの偽の不存在を禁止（2026-11-06追補）
+
+[研究計画 Draft #2966](https://github.com/hat47x/tei-platform/pull/2966)は、合成Referenceとは独立した実Source Readerと認知負荷比較を所有する。本節はその研究を再実装せず、**既存#2881の合成Evaluator内で確認できるQuery意味の欠落**だけを扱う。
+
+**具体的な不具合候補（固定Sourceを静的に確認）**：従来の`boundedAbsence`は`kind/scope/type/id`のみを読んでいる。したがって、たとえば`{kind:"relation",scope:"two",type:"produces",participantScope:"two"}`という問い合わせで`participantScope`を無視し、宣言scopeが`two`に無いだけで`absent-in-declared-snapshot`を返し得る。しかし、scope `one`に所属するRelationがscope `two`のSubjectへ接続していることと矛盾しない。この「無視した条件で得た不在」は、閉包をどれほど正しく検査しても元の問いへの答えにならない。
+
+**最小対策（新Query DSLではない）**：この合成Referenceで受理する条件を`kind`、`scope`、`type`、任意の`id`に限定し、それ以外の`participantScope`、`role`、`where`、`window`、`subjectKey`等は **`unknown:unsupported_query_predicate`** へ戻す。Relation queryの`scope`は**Relationの宣言scope**であり、接続先のscopeや、特定Roleを通じた入射関係、依存の推移閉包を表さない。これらの問い合わせを今後実装するときは、必要なEndpoint/Role/Scope/Window/Source closureを独立に列挙し、そのQueryについての完全性を示すまで不在断定を禁止する。
+
+| 反例 | 誤った判定の型 | このReferenceの許容する判断 |
+| --- | --- | --- |
+| 別scopeのSubjectへ接続するRelationの端点条件を無視 | 所属Relationが無い→接続Relationも無い | `unknown` |
+| `role=receiver`を無視してRelationの型だけで存在確定 | 別Roleの関係を同じ解釈へ昇格 | `unknown` |
+| ETLの`window/end`、BatchのACK条件を無視 | 対象期間の全件処理・配送完了を宣言Graphから推測 | `unknown`、実Event/Receiptは別Owner |
+| Buildの`where/target/selectedModules`を無視 | 未選択Dependency・実消費Inputの不存在を断言 | `unknown`、#2831のSelected/Consumed証拠は別 |
+| 無効ID、未対応の式・伝播条件の暗黙削除 | 広いQueryの結果を狭いQueryの答えに転用 | `invalid_query`または`unsupported_query_predicate` |
+
+これは単なる入力Validationの拡充ではなく、**意味解析していない条件を処理済みと見なさない**というEverything is Data/Role自己解釈の共有原則に対応する。正本Source、意味解釈部品、Projection、Query、必要な観測の各区分で「未解決」を保持する。既存実装の`present-in-snapshot`と`absent-in-declared-snapshot`はいずれも**fixture内部**のClaimであり、Owner Authority、現在Policy、実Readerの完全性を意味しない。
+
+**受入／未受入**：同一合成Fixtureで、Queryに未対応Predicateを追加したとき、存在系・不在系双方が`unknown`となることを回帰試験で固定する。実TEIのQuery/Role DSL、Source closure、Studio/AIでの問い解釈、ETL WindowやSelf-build Target/Selected Inputs、現在の開示非干渉は**別Owner／NOT RUN**。新Core Query型・汎用Solver・第二Authorityは導入しない。
+
+### 13.6 実Go ModelRef／Source IndexのFit/Gap（2026-11-06静的照合）
+
+固定main `3572dcedfa50c3de2903dd4d8ca4ad45ccfa1417` の既存コードを確認した。これはGo実装を変更・実行したことを意味しない。別担当[研究計画 Draft #2966](https://github.com/hat47x/tei-platform/pull/2966)にある**独立実Source照合・認知負荷研究**を重複実装しない。
+
+| 既存の事実（該当Source） | 実Readerと合成Referenceの間に残る不足 |
+| --- | --- |
+| [`modelref/model.go:15–56`](https://github.com/hat47x/tei-platform/blob/3572dcedfa50c3de2903dd4d8ca4ad45ccfa1417/internal/modelref/model.go#L15-L56)：`Key{Scope,Subject}`、`Edge{From Key,To Ref,Relation string,Evidence}`、`Graph{Nodes,Edges}`が存在 | Edgeの`Relation`は**関係種別文字列**であり、すべてのRelationが独立の`declaringScope+relationID`、多項role列、Source anchorを保持するとは証明しない。合成RelationをGo Edgeへ1:1対応させない |
+| [`modelref/trace.go:13–55`](https://github.com/hat47x/tei-platform/blob/3572dcedfa50c3de2903dd4d8ca4ad45ccfa1417/internal/modelref/trace.go#L13-L55)：`TraceDirect`は直接宣言Edge、方向、full/summary、ページ、snapshot fingerprint、unresolved件数を提供 | **直接Edgeの候補観測**には利用可能。Graph全体のRelation実体・多項role・全Source閉包、未読込Pluginの不存在を証明しない。fullのページングと失効も別確認 |
+| [`sourceindex/model.go:41–56`](https://github.com/hat47x/tei-platform/blob/3572dcedfa50c3de2903dd4d8ca4ad45ccfa1417/internal/sourceindex/model.go#L41-L56)：Source Index Referenceは`Subject(kind,id),ArtifactPath,Range,Role` | Scope付きRelation/Subjectの独立Source位置が直接結び付く仕様ではない。形式上ある`Role`はSource anchorのdefinition/authoring等の**証拠役割**であり、業務関係の多項Roleと同一視しない |
+| [`modelref/sourcebridge/source.go:21–37`](https://github.com/hat47x/tei-platform/blob/3572dcedfa50c3de2903dd4d8ca4ad45ccfa1417/internal/modelref/sourcebridge/source.go#L21-L37) ／ [`resolver.go:85–110`](https://github.com/hat47x/tei-platform/blob/3572dcedfa50c3de2903dd4d8ca4ad45ccfa1417/internal/modelref/sourcebridge/resolver.go#L85-L110)：Source Indexにscopeがなく、同kind+IDの異scope衝突は`subject-scope-ambiguous`で停止 | 欠けたscopeをnamespaceや表示ラベルから推定しない。Source locatorがあることを編集権限や現在のOwner受理へ昇格させない |
+| [`operations/model_catalog.go:15–33`](https://github.com/hat47x/tei-platform/blob/3572dcedfa50c3de2903dd4d8ca4ad45ccfa1417/internal/operations/model_catalog.go#L15-L33)：Catalogは`ModelRevision`・World/Source FP・Subject・global `ambiguous`を持つ | Catalogはread-onlyの候補表示であり、全Relation宣言scope・roles・用途相対Closureの実Reader証拠ではない |
+
+**最小Fit/Gap判断**：共通のqualified Subject、direct Edge候補、版付きTrace、Source位置は既存の足場として再利用できる。一方、(a)Relation宣言scope・個別ID、(b)多項Relationのすべてのroleと端点、(c)Input/Source/Plugin/Providerの問い相対なRequired/Consumed被覆、(d)QueryのWHERE/Role/Window等の型付き解釈、(e)Current Disclosure/Authorityは別資格。合成Referenceの真偽値から逆算して実契約へ追加しない。**不足の反証が二つ以上の独立Consumerで確認された場合のみ**、#2620等のOwnerが既存構造／Plugin／Readerの拡張を判断する。
+
+**低権限向けの停止線**：合成Referenceでも、開示資格の無いfixtureはGraphの世代・要素数・relation欠落・unsupported条件の差を公開結果に反映しない。内部関数の同一返答だけではDOM/ARIA/Count/Tool JSON/実Providerの二世界非干渉ではない（#2516）。合成の開示フラグ自体は偽造可能で、実Policy受理を代替しない。
+
+**確認・未確認**：上記はGo Sourceの静的読取と合成Node試験であり、実Go Reader→合成Graph/Tableの変換、実多項Relation／Source Anchorの往復、実CLI/Studio 4入口、実Policy/Disclosure、実Build/ETL・認知負荷の検証は**NOT RUN**。次は#1124のM0実CLIが取得した同一Source/Subject候補を、独立Reader/Expectedと比較する最小一例から始める。
+
+## 14. 2026-11-06 実CLI direct-edge観測と多項Relation再構成の停止線
+
+**研究成果の段階変更**：§13.6のGo Source静的Fit/Gapを受け、既存`cmd/tei trace`→read-only Node Consumerの小さな実Workspace縦切りを、[PR #2881](https://github.com/hat47x/tei-platform/pull/2881)の合成Referenceと独立に追加。CLIは既存の`operations.TraceWorkspace`と`modelref.TraceDirect`、SourceBridgeを使用する。本実験のために新しいReader、Relation Runtime、正本Graph、共通Host、Policy Engineを実装しない。
+
+### 14.1 同じ「関係」を扱っても識別資格が異なる
+
+| 表現または事実 | 既存実装で確認可能なもの | **導出してはならないもの** |
+| --- | --- | --- |
+| **Actual Workspace CLI Trace** | `tei.cli.trace/v0`のread-only成功、`tei.operations.trace/v0`、scope付きSubjectとdirect Edgeの`From/To/Relation`、World/SourceIndex/Trace fingerprint、resolved/unresolved、SourceNavigation | すべてのRelation instanceの`declaringScope + relationID`、多項roleと端点の完全列挙、Source closure、編集・実行資格 |
+| **Reference direct-edge observation** | 実CLI出力を既存JSON schema・scope／方向・row cardinalityで検査し、**direct-edge候補**のみ返す。traceのページ不足、誤版、解決不能を`unknown`へ退避 | 型名`Relation`を独立した業務Relation IDとして再解釈すること、直接Edge 0件から不存在を推論すること、Claim `qualified`への昇格 |
+| **Synthetic composite view** | Fixtureが明示したRelation ID／宣言scope／role配列をGraph/Tableへ損失なく投影し、fixture内の`unknown`と限定的不在を区別 | 実CLI direct Edgeを仮想的な多項Relationへ「復元できた」こと、fixtureの`subjectsComplete=true`を実Source Readerの独立証明とすること |
+| **Actual Source Closure / Disclosure** | 既存Source Index、Load、Traceの個別限定証拠と別Ownerの実Policy/Reader/Oracleの候補 | 実Sourceの全Root、Plugin未選択、外部File/Build/ETL、Current Grantが完全だという無条件の主張 |
+
+この区別はEverything is Dataの**Role型／Instance／意味解釈／Source／実現・観測**の分離と一致するが、**合成の新Core型を採用したという意味ではない**。また #2831 Self-BuildのL1/L2/L3や#2542 ETL/MFTのArtifact／Transfer Attempt／ACK／Effectは、直接Graphがあることと異なるClaimであり、横断図表の被覆合格へ加算しない。
+
+### 14.2 固定Workspaceの実証と再現手順
+
+`reference/workspace`の`semantic-relation:sales.order.customer`について、既存CLIのfull/direct traceを取得し、別のNode Consumer `reference/tei-topology-coverage/verify-cli-trace.mjs`が独立Expectedとして以下を要求する。
+
+- incoming：scope `reference-observation`の`application-pattern:order_entry.customer_reference` → `semantic-relation:sales.order.customer`。
+- outgoing：同じscopeの`semantic-relation:sales.order.customer` → `semantic-data:customer.customer`。
+- SourceNavigationは`located-navigation-only`まで。結果の`relationEntityIdentity`は`not-provided`、`multiRoleClosure`/`sourceAndPluginClosure`は`unproven`、`absentClaim`は`unknown`、`authority`は`read-only-candidate`から昇格しない。
+
+専用[GitHub Actions #42205912384](https://github.com/hat47x/tei-platform/actions/runs/42205912384)はexact source head `6b99fed018dc9cc9c44bd0cee2031aecb1939a7b`で、**Go 1.26.10実CLI→Node観測 PASS**、Node 24.21.0のSynthetic Graph/Table **31/31**とTrace境界の合成負例 **7/7 PASS**、試験前後clean treeを確認。実CLIの既存Go試験を再実装したのではなく、**別言語のConsumerに届く輸送・表示前の意味の損失／過剰昇格**を最小限検証した。Go CLIから受け取ったPrivate Source path等の生JSONをPublic Consumerへ配布しない。
+
+### 14.3 次段階の受入と優先順位
+
+1. **P0・別Owner**：[#1124](https://github.com/hat47x/tei-platform/issues/1124)のM0実CLI→同一Workbench Consumer、M1のGraph/List/Initial/Command 0/1 Inspect、M2のSource/Grant別失効は先行。今回のNode直結成功を実Workbench/DOMやOwner認可の成功へ転用しない。
+2. **P0並行・別Owner**：[#2831](https://github.com/hat47x/tei-platform/issues/2831)のGo module実閉包、実Build入力・Processとstage1駆動のre-entry、[#2542](https://github.com/hat47x/tei-platform/issues/2542)のMFT実Delivery／ImportのReceiptは別証拠として保持する。
+3. **P1・本研究**：実Source Readerに**独立のRelation宣言ID・宣言scope・roleと端点**が存在する対象を特定する。実Go Index/SourceSpanの再読取で独立Expectedを作り、その要素だけGraph/Tableへ無損失に投影できるか確認する。無いものは`unknown/partial`。二つの異なるConsumerで不足が明確化するまで新Core構造を足さない。
+4. **研究・別Owner**：[Draft #2966](https://github.com/hat47x/tei-platform/pull/2966)が人／AIの偽の不存在、到達操作数、Complect/変更波及を比較し、表示の理解負荷低減を仮説のまま測定する。今回の実CLI 2本のPASSからその優位性を推測しない。
+
+**公開境界**：この実Sourceからの読取は実PolicyのDisclosureを判定しない。外部Consumer/AI/Studioへ実データを公開する場合は[#2516](https://github.com/hat47x/tei-platform/issues/2516)が資格化したpublic sliceを先に要求し、非公開Sourceの個数、Path、診断、roleを別経路から漏らさない。独立Policy/Source/Owner Oracleが欠けるClaimは、候補または`unknown`のままとする。
+
+### 14.4 caller-provided scopeとSource-declared identityを分ける実CLI負例
+
+固定Go `internal/modelref/derivedbridge/projection.go` の`FromIndex(d, scope)`は、**callerが指定したscope**をDerived Indexの各Node/Edgeへ付与する。ここにSourceが独立に宣言したscopeを読み取る処理はない。また`sourceindex.Reference`にはscopeが直接存在せず、`sourcebridge`は同kind/ID異scopeの衝突を安全側へ拒否する。したがって`TraceWorkspace`の`trace.subject.scope`が形式上qualifiedであっても、元Sourceの権威ある宣言scopeとの一致は**未証明**。
+
+**実行した反例**：同じ実`reference/workspace`、同じ`semantic-relation:sales.order.customer`に対して、実`tei trace`を`-scope reference-observation`と`-scope alternate-observation`で**別々に**実行し、二つのJSONを独立Node Consumerで比較した。
+
+| 独立に比較した事実 | 結果と意味 |
+| --- | --- |
+| 実CLIが返すDirect Edgeの`From/To`（scope以外）、Relation種別 | 同一。Sourceが同じ二つの観測で直接宣言参照は維持 |
+| `WorldFingerprint`／`SourceIndexFingerprint` | 同一。Source/Worldの意味や版が変わったことではない |
+| `trace.subject.scope`と各`From/ResolvedTo.scope` | Caller引数に応じて変更。実Sourceの自動発見scopeの証拠ではない |
+| `SnapshotFingerprint`（selectorを含む） | 変更を確認。古いselectorの継続tokenを別scopeへ流用しない |
+| `relationEntityIdentity`／`sourceAndPluginClosure`／`absentClaim` | 引き続き`not-provided`／`unproven`／`unknown`。scope変更後も昇格しない |
+
+**exact HEAD証拠**：[GitHub Actions #42206842519](https://github.com/hat47x/tei-platform/actions/runs/42206842519)、head `8bf4347fa587a66bbc500a8a2fd5927d150437d2`、Go1.26.10実CLI二回＋Node24.21.0の受信比較 **PASS**、合成試験 **31+7 PASS**。追加後に継続する運用・CIは別資格。既存`TraceWorkspace`そのものを変更せず、read-only Reference Consumer側だけを修正した。
+
+**不変条件／採用停止線**：`Source-declared scope`、`Projection caller-scope`、`Workspace/Observation scope`、`Principal/AuthZ scope`は同じ文字列であっても、生成元と証拠が異なる限り同一概念へ畳まない。画面の表示グループ、namespace filter、ラベル、実CLIの`-scope`からSource側Relation ID/declaring scopeを推測しない。製品のScope/Source identity契約を拡張する場合は#1120/#1124/#2620の既存Ownerへ、実Source Readerと独立Source anchor・必要閉包の証拠を渡して判断する。**新しいScope Registry/Resolver、正式Role Schemaはここで作らない**。
+
+## 15. 2026-11-07：Intent／Realization／Assessment間のSource位置を同一Subjectへ束縛
+
+**位置づけ**：[研究計画PR #2966](https://github.com/hat47x/tei-platform/pull/2966)（2026-11-07 main統合済み）のIntent／Realization／Assessmentを前提とした、既存read-only実CLI観測Referenceの**具体的な境界修正**。三視点Source設計 [#2878](https://github.com/hat47x/tei-platform/pull/2878) とPlugin最適化要件 [#2933](https://github.com/hat47x/tei-platform/pull/2933) も同日時点で統合済み。これらの研究内容を第二正本化せず、PR #2881が所有する実CLI→Node ConsumerのSourceナビゲーション誤帰属だけを扱う。確認main `680646b8629ce7af5b9bb0ba7db3529151b63a4c`（2026-11-07）。
+
+### 15.1 成熟した小さな反例
+
+既存Go [`sourcebridge.Navigation`](https://github.com/hat47x/tei-platform/blob/680646b8629ce7af5b9bb0ba7db3529151b63a4c/internal/modelref/sourcebridge/source.go) は `Key` と `Status`（located/unresolved）、`References`、`AuthorityLimits` を持つ。一方、修正前のReference `observeDirectTrace` は **`source.status === "located"`だけ**を確認し、`trace.subject`と`source.key`が別Subject／別scopeでも`sourceNavigation:located-navigation-only`を返すことができた。これは同じCLI JSONに含まれた**Realizationの誤帰属**であり、Graph/Viewのkey整合とは独立した問題である。
+
+最小修正は、SourceNavigationの`key`を同一Traceの選択Subject（scope＋kind＋id）に照合し、SourceNavが`located`を名乗るなら空でない`References`を要求すること。未解決SourceNavは**直接Edgeの候補観測とは独立**して`unresolved`に保ち、Source位置や編集資格を捏造しない。型の不正な`ProjectionUnresolved`を「未解決0件」と解釈することも拒否する。
+
+| 境界 | 修正後の局所結果 | なお要求される独立根拠 |
+| --- | --- | --- |
+| **Direct Edge candidate** | `tei trace`のsubject/方向・完全な1ページとread-only資格を検査 | 実業務Relation ID／多項Role／完全なSource・Plugin依存の証明なし |
+| **Same-packet SourceNavigation** | Trace選択対象とNavigationのKeyが一致。LocatedならSource参照が少なくとも1件 | 同一時点の物理Source再読取・現在Grant・Authoring権限ではない |
+| **Query/Closure** | 未対応Role/WHERE/Windowや不明なProjectionは`unknown`。非存在の断定なし | 要求入力の全Root、Readerによる実解析、独立Expected |
+| **Disclosure** | 内部Referenceの結果を公開スライスと誤認しない | #2516のCurrent Policy／W0/W1二世界、実Producer→Consumer非干渉 |
+| **Intent／Assessment** | 正本Intentと今回のbounded observed direct edgeを区別し、同じSubjectへの帰属だけ検査 | Accepted Meaning・Source/Version一致・独立受入者・正否の業務判断 |
+
+この5段階は新たなCore enumではない。Role観測について #2620 が整理した **Inventoried → Read-by-Loader → Parsed/Anchored → Claim-Qualified → Currently Disclosable** を勝手に一本の成功フラグへ集約せず、Product Studio／AI／ETLと共通する**別Claimの集合**として扱う。特にSource IndexにNavigationが存在してもParser/Role意味が取得・受理されたとは判断しない。
+
+### 15.2 検証と停止線
+
+`direct-trace.test.mjs` に、(1)他Subjectのlocated Source Key、(2)同Subject ID／別scope、(3)Source Key欠落・Source未提供、(4)locatedだがSource参照が0、(5)unresolved Sourceは未解決のまま、(6)ProjectionUnresolvedの不正型を拒否する負例を加える。さらに実CLIで取得したJSONを**一箇所だけ意図的に変更**し、Navigation Keyの取り違えがNode Consumerで拒否されることを、実Go Source・実Consumer間のnegative controlとして確認する。
+
+**証拠階層**：合成負例PASS＝局所パーサーの防御。実CLI JSONを変更した負例PASS＝同一Attemptの通信文書に対する防御。実Source Reader＋独立Oracleの成功＝別途必要。実Current Policy、WebView/DOM/ARIA、Owner Meaning Acceptance、実Build/ETL/DB、認知負荷の改善は **NOT PROVEN**。旧CIは新HEADの証拠に転用しない。
+
+### 15.3 優先順位と他チャットの成果
+
+#1124のM0実CLI→同一Workbench M1四入口／M2 stale UI・Grantを直接P0とし、本PRのNode側をWorkbenchの受入に流用しない。#2831はBuildのDeclared／Selected／ActuallyConsumedとStage1生成物の再入を別に実証。#2542/#2827はTransfer/ImportのReceipt・ACKと外部Effectを独立判定する。#2620のRole自己記述と#2972の公開三視点は独立Producer/Policyの資格を持ち、今回のSourceNavigation Key検証を役割意味・開示保証へ昇格しない。複合図表研究に新Resolver、Host、Policy Engine、Writer、関係の第二正本を導入しない。

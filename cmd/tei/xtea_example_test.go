@@ -31,6 +31,11 @@ func TestXTEAExampleWorkspace(t *testing.T) {
 	if len(view.Items) != 2 || len(view.Unused) != 2 || len(view.Hooks) != 1 || len(view.Commands) != 1 {
 		t.Fatalf("unexpected record view: %+v", view)
 	}
+	// The example declares the hook's scope, so a reader sees which unit the hook
+	// decides for instead of inferring it from the pattern kind.
+	if view.Hooks[0].Scope != "record" {
+		t.Fatalf("hook scope lost: %+v", view.Hooks[0])
+	}
 
 	plan, err := applicationview.BuildCommandPlan(loaded.World, "order_entry", "order_entry.order_record", "sales.submit_order", map[string]string{"order": "ORD-1"})
 	if err != nil {

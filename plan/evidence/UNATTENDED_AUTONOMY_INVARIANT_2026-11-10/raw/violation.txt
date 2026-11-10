@@ -1,0 +1,7 @@
+marked an effectful kind (create) unattended
+--- FAIL: TestOnlyEffectFreeKindsAreUnattended (0.00s)
+    surface_autonomy_test.go:27: effectful kind "create" was marked unattended (operation order_entry.create.sales.order)
+FAIL
+FAIL	tei/internal/operations	0.006s
+FAIL
+restored surface.go

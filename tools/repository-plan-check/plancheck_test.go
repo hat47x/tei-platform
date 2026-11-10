@@ -38,11 +38,18 @@ func numberedFiles(t *testing.T, dir string, digits int) map[string][]string {
 }
 
 func itoa(n int) string {
-	return string(rune('0' + n))
+	return strconv.Itoa(n)
 }
 
+// assertUnique reports duplicate numbers. It fails when there is nothing to
+// examine: a uniqueness check over zero files is true but says nothing, and it
+// silently stopped covering plan/issue once those records moved to GitHub
+// Issues (#3931).
 func assertUnique(t *testing.T, kind string, byNumber map[string][]string) {
 	t.Helper()
+	if len(byNumber) == 0 {
+		t.Fatalf("%s: 対象が0件です。一意性を検査できません", kind)
+	}
 	var numbers []string
 	for number, files := range byNumber {
 		if len(files) > 1 {
@@ -55,8 +62,16 @@ func assertUnique(t *testing.T, kind string, byNumber map[string][]string) {
 	}
 }
 
-func TestIssueNumbersAreUnique(t *testing.T) {
-	assertUnique(t, "Issue", numberedFiles(t, filepath.Join(repositoryRoot(t), "plan", "issue"), 6))
+// Issue records live in GitHub Issues, not in plan/issue: that directory holds
+// only a README saying the local documents were retired (#3931). The number
+// uniqueness rule therefore has nothing to read here and must not pretend
+// otherwise; this test states the arrangement so the gap is visible.
+func TestIssueNumbersAreLocalDocumentsAbsent(t *testing.T) {
+	root := filepath.Join(repositoryRoot(t), "plan", "issue")
+	files := numberedFiles(t, root, 6)
+	if len(files) != 0 {
+		t.Fatalf("plan/issue now holds %d numbered documents; restore a uniqueness check for them", len(files))
+	}
 }
 
 func TestADRNumbersAreUnique(t *testing.T) {
@@ -71,7 +86,11 @@ func TestIssueStatesUseTheSixAllowedValues(t *testing.T) {
 	}
 	statusLine := regexp.MustCompile(`(?m)^- 状態:[ \t]*(.+)$`)
 	separator := regexp.MustCompile(`\s+[—–-]\s+|\s*/\s*|[（(]`)
-	for _, files := range numberedFiles(t, root, 6) {
+	files := numberedFiles(t, root, 6)
+	if len(files) == 0 {
+		t.Skip("plan/issue に番号付き文書が無い（GitHub Issues へ移行済み）。6値規則はローカル文書に適用されない (#3931)")
+	}
+	for _, files := range files {
 		for _, name := range files {
 			content, err := os.ReadFile(filepath.Join(root, name))
 			if err != nil {

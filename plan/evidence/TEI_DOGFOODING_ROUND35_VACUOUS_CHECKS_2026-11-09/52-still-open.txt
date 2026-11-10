@@ -1,0 +1,4 @@
+AGENTS.md's six-state rule is implemented only for local plan/issue documents.
+Those documents moved to GitHub, so the rule currently has no enforcement
+anywhere. Checking it would need `gh issue list` in CI (network + token), which
+is an operational decision left in #3931.

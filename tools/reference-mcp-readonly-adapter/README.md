@@ -28,6 +28,8 @@ go build -o /tmp/tei-mcp ./tools/reference-mcp-readonly-adapter
 | tool | 呼ぶ操作 | CLI の対応 |
 | --- | --- | --- |
 | `tei_model_catalog` | `operations.CatalogWorkspace` | `tei model catalog` |
+| `tei_model_locate` | `operations.LocateWorkspace` | `tei model locate` |
+| `tei_model_overview` | `operations.OverviewWorkspace` | `tei model overview` |
 | `tei_inspect` | `operations.InspectSubject` | `tei inspect` |
 | `tei_trace` | `operations.TraceWorkspace` | `tei trace` |
 | `tei_validate` | `operations.ValidateWorkspace` | `tei validate -workspace ... -json` |
@@ -65,13 +67,13 @@ tool が宣言していない引数は、操作を呼ぶ前に **`-32602` で拒
 
 `main_test.go` が次を検査します。
 
-- 公開する tool が上の4つだけで、名前に書込み系の語を含まないこと
-- 4つの tool の結果が、同じ Workspace に対する `operations` の戻り値と一致すること（`worldFingerprint`・`sourceIndexFingerprint`・`snapshotFingerprint`・`schemaVersion`）
+- 公開する tool が上の6つだけで、名前に書込み系の語を含まないこと
+- 6つの tool の結果が、同じ Workspace に対する `operations` の戻り値と一致すること（`worldFingerprint`・`sourceIndexFingerprint`・`snapshotFingerprint`・`schemaVersion`）
 - `tei_validate` の文書が、実 CLI の `validate -workspace ... -json` と同じ欄と同じ値を持ち、`isError` と `ok` が対応すること（`validate_parity_test.go`）
 - 未対応の対象種類が `isError: true` と `UNSUPPORTED_SUBJECT_KIND` で返ること
 - `inspect`・`trace` が、実CLIと実MCPの別プロセスで同じ値と同じ `error.code` を返すこと（成功2件・対象不在・未知kind・古い指紋・負のoffset）。`ok` と `isError` の反転一致も含む（`inspect_trace_parity_test.go`）
 - 必須引数の欠落が**両方拒否**されること。CLI は `INVALID_ARGUMENT`（#3733 で統一）、MCP は `-32602` で、層が違うだけである。CLI の符号が 1 つであることと、`INVALID_SUBJECT` が「値は渡されたが使えない」に残ることは `cmd/tei/cli_failure_classification_test.go` が固定する（#3420 の層の統一は未着手）
-- 広告する4 tool が、実CLIの `commands` と一致すること（対応するコマンドの存在・`effect` が read-only・`writeFlags` が無い・`schemaVersion`・`jsonContract`）。tool の説明が対応する CLI 呼出しを名指しすること（`discovery_parity_test.go`）
+- 広告する6 tool が、実CLIの `commands` と一致すること（対応するコマンドの存在・`effect` が read-only・`writeFlags` が無い・`schemaVersion`・`jsonContract`）。tool の説明が対応する CLI 呼出しを名指しすること（`discovery_parity_test.go`）
 - 宣言していない引数が結果を返さず `-32602` で拒否されること（`TestAdapterRejectsUndeclaredArguments`）
 - `initialize` の応答と、通知に返答しないこと
 - 要求の封筒の不正（不正JSON、非オブジェクト、`jsonrpc`・`method`・`params`・`id` の型不正、`id: null`）を `-32700`／`-32600` で1回だけ拒否して処理を続けること。`id` を返せない応答は `id: null`。不正な通知に応答しないこと。`tools/call` の `params`・`name`・`arguments` 欠落や型不正が `-32602` になること（`envelope_test.go`）

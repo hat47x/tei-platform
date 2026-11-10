@@ -1,0 +1,12 @@
+I reported in round 43 that merging both would produce a duplicate edge. It did.
+
+But my reading of the state was wrong. I assumed a closed PR means its commit is
+not in main:
+
+  gh pr view 3994 --json state,mergedAt     -> CLOSED, merged=null
+  git log --oneline origin/main -S "range d.CustomGoBindings" \
+      -- internal/modelref/derivedbridge/projection.go
+      -> 8219cc3d4    (IS in main)
+
+The commit reached main without the PR being merged. The right check is git log
+-S on the path, not the PR state.

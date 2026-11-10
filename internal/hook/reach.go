@@ -140,6 +140,28 @@ func (r Runner) RunReachable(ctx context.Context, applicationID, patternID core.
 		if !declaredHere {
 			continue
 		}
+		// A scope this runner cannot apply is reported as skipped rather than run
+		// as if the scope did not matter: this runner runs one hook per record, so
+		// only the record scope and the pattern's own unit are applied. Reporting a
+		// reason keeps the phase visible instead of silently passing it.
+		if scope := declaration.Scope; scope != "" && scope != string(application.PatternRecord) {
+			// A row-scoped hook is applied per row when the runner was given a row
+			// set. Without one it is reported as needing the rows, never run once
+			// for the record as if the scope did not matter.
+			if scope == "row" && len(r.Rows) > 0 {
+				if err := r.applyReachableRows(ctx, report, applicationID, patternID, phase, declaration); err != nil {
+					return report, err
+				}
+				continue
+			}
+			report.Skipped = append(report.Skipped, phase)
+			if scope == "row" {
+				report.Reasons[phase] = "the hook declares scope row, so it needs the row set; pass the rows to apply it"
+			} else {
+				report.Reasons[phase] = fmt.Sprintf("the hook declares scope %s but this runner applies one hook per record", scope)
+			}
+			continue
+		}
 		if reason := reach.UnreachableReason(phase); reason != "" {
 			report.Skipped = append(report.Skipped, phase)
 			report.Reasons[phase] = reason
@@ -156,7 +178,28 @@ func (r Runner) RunReachable(ctx context.Context, applicationID, patternID core.
 		// them here, through the restricted caller the Runner holds, so the
 		// promise is kept or reported as a refusal rather than assumed.
 		if len(declaration.Uses) > 0 {
-			calls, callErr := r.RunDeclaredCalls(ctx, applicationID, patternID, phase, r.CallInputs, r.Caller)
+			// A boundary with no caller behind it cannot keep the promise. Record
+			// the phases as not evaluated, with the capabilities named, instead of
+			// refusing a run the host legitimately started.
+			if r.Caller == nil {
+				report.Skipped = append(report.Skipped, phase)
+				report.NotEvaluated = append(report.NotEvaluated, phase)
+				report.Uncalled = appendUncalled(report.Uncalled, phase, declaration.Uses)
+				report.Reasons[phase] = ReasonCallerUnavailable
+				continue
+			}
+			// The inputs a capability receives come from this phase's own reads,
+			// through the binding the command pattern already declares. A host
+			// does not supply a mapping, and none is invented here.
+			callInputs, bindErr := DeclaredCalls(r.World, applicationID, patternID, phase, reads)
+			if bindErr != nil {
+				report.Skipped = append(report.Skipped, phase)
+				report.NotEvaluated = append(report.NotEvaluated, phase)
+				report.Uncalled = appendUncalled(report.Uncalled, phase, declaration.Uses)
+				report.Reasons[phase] = bindErr.Error()
+				continue
+			}
+			calls, callErr := r.RunDeclaredCalls(ctx, applicationID, patternID, phase, callInputs, r.Caller)
 			if len(calls) > 0 {
 				if report.Calls == nil {
 					report.Calls = map[string][]CallOutcome{}

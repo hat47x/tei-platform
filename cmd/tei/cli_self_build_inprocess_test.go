@@ -19,8 +19,17 @@ import (
 // route; refusing both at once keeps one attempt to one derivation.
 
 type selfBuildInProcessResult struct {
-	OK          bool `json:"ok"`
-	Qualified   bool `json:"qualified"`
+	OK        bool `json:"ok"`
+	Qualified bool `json:"qualified"`
+	// DefinitionBinding is the entry-side reading of §4.36: what the builder said
+	// it read, compared with what the plan names.
+	DefinitionBinding *struct {
+		State          string `json:"state"`
+		PlannedDigest  string `json:"plannedDigest"`
+		ReportedDigest string `json:"reportedDigest"`
+		Matched        bool   `json:"matched"`
+		Reason         string `json:"reason"`
+	} `json:"definitionBinding"`
 	PlanReceipt *struct {
 		State             string `json:"state"`
 		DerivedBy         string `json:"derivedBy"`

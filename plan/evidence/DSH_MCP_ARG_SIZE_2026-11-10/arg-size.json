@@ -1,0 +1,79 @@
+{
+  "note": "A forced MCP tool call with a 200 KB argument and another with a 1 MB argument both reached the MCP server with the argument intact: the received text was the requested size plus the canary prefix, with no truncation. The argument then reappeared in the next model request, inflating it roughly fivefold at 1 MB.",
+  "argumentCanary": "BIGARG_CANARY_996",
+  "resultCanary": "BIGARG_RESULT_997",
+  "runs": [
+    {
+      "capture": "mock-run-bigarg",
+      "requestedArgBytes": 200000,
+      "mcpRequests": 5,
+      "toolsCall": {
+        "file": "mcp-005-request.bin",
+        "bytes": 200123,
+        "method": "tools/call",
+        "argTextBytes": 200018,
+        "argHasCanary": true,
+        "argTailAllZ": true
+      },
+      "modelRequests": [
+        {
+          "file": "model-001-request.json",
+          "bytes": 99992,
+          "sha256": "8a423cee9cc5ceb99291cbcda7b1cd72b02976057af4222280e32ce72a1e8b59",
+          "argCanaryPresent": false,
+          "resultCanaryPresent": false
+        },
+        {
+          "file": "model-002-request.json",
+          "bytes": 57464,
+          "sha256": "1a4980b00025ee150b9e25dab6ac44d5ff874e2f4c33e3a6443ea0c53e0a7bd8",
+          "argCanaryPresent": false,
+          "resultCanaryPresent": false
+        },
+        {
+          "file": "model-003-request.json",
+          "bytes": 1052647,
+          "sha256": "038d3ad6096667d2ca724abc66e769aa24daca31d7492440e8fc4aeca001813f",
+          "argCanaryPresent": true,
+          "resultCanaryPresent": true
+        }
+      ]
+    },
+    {
+      "capture": "mock-run-bigarg2",
+      "requestedArgBytes": 1000000,
+      "mcpRequests": 5,
+      "toolsCall": {
+        "file": "mcp-005-request.bin",
+        "bytes": 1000123,
+        "method": "tools/call",
+        "argTextBytes": 1000018,
+        "argHasCanary": true,
+        "argTailAllZ": true
+      },
+      "modelRequests": [
+        {
+          "file": "model-001-request.json",
+          "bytes": 100012,
+          "sha256": "72c5a9ac17d5264f51a8d47e7a9c19b25aaffb813013371dd8261e83c9bee6fd",
+          "argCanaryPresent": false,
+          "resultCanaryPresent": false
+        },
+        {
+          "file": "model-002-request.json",
+          "bytes": 57484,
+          "sha256": "bc2b08628671c62db7a281f4bf26a3876aebbf00af0154b46ca1f925527be676",
+          "argCanaryPresent": false,
+          "resultCanaryPresent": false
+        },
+        {
+          "file": "model-003-request.json",
+          "bytes": 5052652,
+          "sha256": "f5ba0707b061bae4dad24e12fa360e79151f9f7764a41ce03eace21e2e32824b",
+          "argCanaryPresent": true,
+          "resultCanaryPresent": true
+        }
+      ]
+    }
+  ]
+}

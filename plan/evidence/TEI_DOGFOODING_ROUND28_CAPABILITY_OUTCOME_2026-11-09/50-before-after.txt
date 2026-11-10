@@ -1,0 +1,22 @@
+BEFORE (sha256:0b710200)   trace security.authenticate -mode full
+  total: 2
+    input -> std.identifier
+    input -> security.credential
+  incoming security.authenticated_subject
+  total: 1
+    security.authorize - input          (no producer visible)
+
+AFTER  (sha256:fe609c54)
+  total: 4
+    outcome -> security.authenticated_subject
+    outcome -> security.authentication_denial
+    input   -> std.identifier
+    input   -> security.credential
+  incoming security.authenticated_subject
+  total: 2
+    security.authorize    - input
+    security.authenticate - outcome     (chain closed)
+
+source-index references stay 106: that count tracks file-origin references,
+not derived graph edges. worldFingerprint unchanged; sourceIndexFingerprint and
+therefore the trace continuation token change.

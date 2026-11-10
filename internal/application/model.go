@@ -87,7 +87,13 @@ type InteractionCommand struct {
 // Hookは、対話の前後に差し込む処理の宣言である。
 // 実装はL4のPlugin・Providerに置き、ここでは位相・読み書き・失敗時の扱いだけを持つ。
 type Hook struct {
-	Phase    string             `json:"phase"`
+	Phase string `json:"phase"`
+	// Scope is the unit the hook decides for: one row, the record, or one item.
+	// X-TEA's event script had no such declaration, so a hook that decided per row
+	// and a hook that decided per record were told apart only by reading the script.
+	// An empty scope means the pattern's own unit, which is the row for a browse or
+	// record pattern and the header for a header-detail pattern.
+	Scope    string             `json:"scope,omitempty"`
 	Reads    []core.CanonicalID `json:"reads,omitempty"`
 	Uses     []core.CanonicalID `json:"uses,omitempty"`
 	Produces []core.CanonicalID `json:"produces,omitempty"`

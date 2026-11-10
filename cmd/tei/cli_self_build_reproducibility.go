@@ -41,9 +41,19 @@ type selfBuildReproducibility struct {
 	FirstArtifactDigest string `json:"firstArtifactDigest,omitempty"`
 	// SecondArtifactDigest is what the second build reported.
 	SecondArtifactDigest string `json:"secondArtifactDigest,omitempty"`
-	// SecondChildDigest is the executable digest of the second run, so a reader
-	// can see that both runs used the same binary.
+	// FirstChildDigest and SecondChildDigest are the builder executables the two
+	// runs actually launched. Reproducibility across two different builders is not
+	// the claim, so the two are recorded and compared rather than assumed equal.
+	FirstChildDigest  string `json:"firstChildDigest,omitempty"`
 	SecondChildDigest string `json:"secondChildDigest,omitempty"`
+	// MismatchReason says what disagreed when State is "mismatched", so a reader
+	// learns whether the bytes, the builders or the state directories differed.
+	MismatchReason string `json:"mismatchReason,omitempty"`
+	// FirstStateDir and SecondStateDir are the state directories the entry
+	// passed. SecondStateDir is freshly created for the second build; the claim
+	// is that the two runs did not share state.
+	FirstStateDir  string `json:"firstStateDir,omitempty"`
+	SecondStateDir string `json:"secondStateDir,omitempty"`
 	// OnDiskDigest is the artifact this attempt left in place, re-read after the
 	// second build so a later overwrite would be visible.
 	OnDiskDigest string `json:"onDiskDigest,omitempty"`
@@ -90,6 +100,9 @@ func checkArtifactReproducibility(
 	childPath string,
 	childArgs []string,
 	firstArtifactDigest string,
+	firstChildDigest string,
+	firstStateDir string,
+	firstReportedStateDir string,
 	outputPath string,
 ) selfBuildReproducibility {
 	record := selfBuildReproducibility{Boundary: reproducibilityBoundary}
@@ -122,7 +135,29 @@ func checkArtifactReproducibility(
 
 	record.FirstArtifactDigest = firstArtifactDigest
 	record.SecondArtifactDigest = evidence.ChildArtifact
-	record.SecondChildDigest = evidence.InvokerDigest
+	record.FirstChildDigest = firstChildDigest
+	record.SecondChildDigest = evidence.Invoked.ExecutableDigest
+	record.FirstStateDir = firstStateDir
+	record.SecondStateDir = secondState
+
+	// "In separate state" is the reason two runs count as independent. The entry
+	// passes a fresh -state to the second run; the child reports which it used, so
+	// the separation is checked instead of assumed. A child that reports nothing
+	// leaves the observation unsupported, which is not the same as agreeing.
+	if reason := reproducibilityStateVerdict(firstStateDir, firstReportedStateDir); reason != "" {
+		return unperformed(reason)
+	}
+	if reason := reproducibilityStateVerdict(secondState, evidence.ChildStateDir); reason != "" {
+		return unperformed(reason)
+	}
+
+	// The claim is about one builder. If the executable changed between the two
+	// runs, matching bytes would say nothing about the builder the caller named.
+	if reason := reproducibilityBuilderVerdict(firstChildDigest, record.SecondChildDigest); reason != "" {
+		record.State = reproducibilityMismatched
+		record.MismatchReason = reason
+		return record
+	}
 
 	// A child that honours -artifact-out writes to the temporary path; if it does,
 	// confirm the bytes it actually wrote so a digest it did not earn cannot
@@ -135,6 +170,7 @@ func checkArtifactReproducibility(
 		}
 		if secondOnDisk != evidence.ChildArtifact {
 			record.State = reproducibilityMismatched
+			record.MismatchReason = "the second build reported an artifact digest that does not match the bytes it wrote"
 			return record
 		}
 	}
@@ -150,10 +186,38 @@ func checkArtifactReproducibility(
 
 	if firstArtifactDigest != evidence.ChildArtifact || onDisk != firstArtifactDigest {
 		record.State = reproducibilityMismatched
+		record.MismatchReason = "the two builds of the same plan produced different artifact bytes"
 		return record
 	}
 	record.State = reproducibilityReproduced
 	return record
+}
+
+// reproducibilityBuilderVerdict reports why two builder digests cannot support the
+// claim, or "" when they can. A missing digest is refused rather than treated as
+// agreement: an unrecorded builder is not the same builder (SC0-18's rule).
+func reproducibilityBuilderVerdict(first, second string) string {
+	if first == "" || second == "" {
+		return "the builder executable digest was not recorded for both runs"
+	}
+	if first != second {
+		return "the two runs used different builder executables"
+	}
+	return ""
+}
+
+// reproducibilityStateVerdict reports why a run's state directory cannot support
+// the claim, or "" when it can. The child must report the directory it used, and
+// it must be the one this entry passed: two runs that shared state are one
+// observation repeated, not two.
+func reproducibilityStateVerdict(passed, reported string) string {
+	if strings.TrimSpace(reported) == "" {
+		return "the child did not report the state directory it used, so the separation of the two runs is not shown"
+	}
+	if filepath.Clean(passed) != filepath.Clean(reported) {
+		return "the child used a different state directory than the one this entry passed"
+	}
+	return ""
 }
 
 func reasonSuffix(reason string) string {

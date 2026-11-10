@@ -1,0 +1,11 @@
+All times +09:00.
+
+06:14  f8286ca73  the main I branched from. -h was NOT yet filtered.
+06:25  0b85c031a  another worker fixed it (references #3943):
+                    requestedHelp + printHelp call at main.go:246
+06:38  6b5be43a6  I submitted an equivalent fix and filed #3956
+07:0x  (merge)    PR #3959 merged, still unaware of the duplicate
+07:59  365789bd8  PR #3972 removed my duplicate
+
+git merge-base --is-ancestor 0b85c031a f8286ca73
+  -> false   (my base genuinely did not contain the fix)

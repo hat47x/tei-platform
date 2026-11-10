@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -269,8 +270,33 @@ func longRunningEvidence(ctx context.Context, opts RunOptions, selected generato
 
 // runLongRunningProbe handles the stream after the executable/source binding
 // has been checked. Protocol regression tests use synthetic executables here.
+// longRunningProbeBudget bounds one probe run. It covers process start plus one
+// round trip per fixture case, so it is a wall-clock budget for the whole
+// stream, not a per-request timeout.
+//
+// A deadline that fires mid-stream is not the same finding as a candidate that
+// answered wrongly, and the two used to be indistinguishable: the truncated
+// stream left the remaining cases with the zero Result, so a case such as
+// precision-overflow reported {State:"" Amount:"" ...} and the evidence looked
+// like "the candidate computed the wrong answer" (#3801). The budget was also
+// the reason a loaded CI host failed intermittently in the first place: the run
+// took 30-32s against a 30s limit, and the same commit passed when rerun.
+//
+// A probe that reads ten round trips on an idle host finishes in a few seconds,
+// but the same run on a loaded CI host has taken over 30 seconds (#3801). 30s
+// was the original value, which made the budget itself the thing that failed
+// intermittently: the run ended at 30-32s, exactly at the limit, and the same
+// commit passed when rerun.
+//
+// The budget is a ceiling for a hung candidate, not a performance assertion.
+// Raising it does not weaken the check, because the receipt still records the
+// elapsed time and the first-response latency, so a genuinely slow candidate
+// remains visible as a measurement. The value is a variable so a test can prove
+// the deadline path without waiting for the real ceiling.
+var longRunningProbeBudget = 2 * time.Minute
+
 func runLongRunningProbe(ctx context.Context, opts RunOptions, fixture generatorselection.Fixture, executable string, args []string, evidence *ProcessModelEvidence) *ProcessModelEvidence {
-	runCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	runCtx, cancel := context.WithTimeout(ctx, longRunningProbeBudget)
 	defer cancel()
 	cmd := opts.execution.Command(runCtx, executable, args...)
 	var input bytes.Buffer
@@ -327,7 +353,25 @@ func runLongRunningProbe(ctx context.Context, opts RunOptions, fixture generator
 		evidence.ExitCode = cmd.ProcessState.ExitCode()
 	}
 	evidence.StderrDigest = digestBytes(stderr.Bytes())
-	if waitErr != nil && evidence.Reason == "" {
+	// A run that hit the probe budget must say so, before the generic "wait
+	// failed" cause: the deadline explains that failure, and without the
+	// explanation the user sees a short response stream and the zero-valued
+	// cases that follow it, which reads like the candidate answered wrongly
+	// (#3801). The stderr tail is included because the truncation is usually
+	// the runtime dying mid-write, and without it the cause is not recoverable
+	// from the receipt.
+	if deadlineErr := runCtx.Err(); errors.Is(deadlineErr, context.DeadlineExceeded) && evidence.Responses < evidence.Requests {
+		// The stream was cut short: this is the failure #3801 reported. Naming
+		// the budget stops the missing cases from reading as wrong answers.
+		evidence.Reason = fmt.Sprintf("probe exceeded its %s budget after %d of %d responses; %s",
+			longRunningProbeBudget, evidence.Responses, evidence.Requests, stderrTail(stderr.String(), 512))
+	} else if deadlineErr := runCtx.Err(); errors.Is(deadlineErr, context.DeadlineExceeded) {
+		// Every response arrived, but the process outlived the budget instead of
+		// exiting. That is a different finding: the protocol completed and the
+		// candidate did not shut down, so the fix is in the candidate's exit.
+		evidence.Reason = fmt.Sprintf("probe read all %d responses but the candidate did not exit within the %s budget; %s",
+			evidence.Responses, longRunningProbeBudget, stderrTail(stderr.String(), 512))
+	} else if waitErr != nil && evidence.Reason == "" {
 		evidence.Reason = "candidate wait failed: " + waitErr.Error()
 	}
 	evidence.Passed = evidence.Responses == evidence.Requests && evidence.Reason == ""

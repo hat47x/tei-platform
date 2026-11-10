@@ -42,7 +42,9 @@ export function createActionFormStarter(React, {fields, invoke, slots = {}, titl
         const values=Object.fromEntries(fields.map(f=>[f.name,fd.get(f.name)]));
         if (Object.hasOwn(values,'row')) {
           if (!/^(0|[1-9]\d*)$/.test(String(values.row))) throw Error('invalid_row');
-          values.row=Number(values.row);
+          const parsed=Number(values.row);
+          if (!Number.isSafeInteger(parsed)) throw Error('invalid_row');
+          values.row=parsed;
         }
         const result=await invoke(values);
         setReceipt({kind:result.kind,stage:result.stage,

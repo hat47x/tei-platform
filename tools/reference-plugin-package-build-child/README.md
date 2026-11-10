@@ -68,6 +68,9 @@ stdoutへ1件のJSONを出します。`tei self-build`が読む欄は`artifactDi
 | `profile`の省略 | planの値と一致しないものとして拒否する |
 | **builder要求の不一致** | `contract`・`compatibleMajor`・`provider`・`pin`のいずれかが解決結果と違えばreportを出さずexit 1。欄を名指しする |
 | builder要求の一致 | `provider`と`pin`が一致すれば`intentBoundToPlan=true`で通る（常に失敗する比較ではないことの確認） |
+| **その他の欄** | `recipe`・`sources`・`dependencies`の不一致を名指しで拒否し、**導出値**（sourceの`locator`/`digest`、dependencyの`version`/`artifactDigest`）の違いは不一致と読まない |
+| **`parameters`** | 名前で突き合わせ、逆順でも一致し、値が違えば名前と両方の値を名指しする |
+| 正規化の性質 | 両側とも名前順ソートのみで**値を変えない**ことを直接固定する（照合がこの性質に依存しているため） |
 
 ## child自身のlock
 
@@ -99,6 +102,35 @@ lockが`Validate`を通らなければ、**artifactを書いた後にreportを�
 **`profile`の省略は一致と読まない。** 宣言が`profile`を書かないことは「planの`profile`と同じ」ではなく「profileを宣言していない」である。
 
 座標の一致が言えるのは「**宣言とplanが同じbuildを指す**」ことまでで、「その宣言がそのplanを生んだ」ことではない。
+
+## 宣言のその他の欄
+
+identity・座標・`builder`要求に加えて、このchildは**宣言とplanが同じ形で持つ欄**も比べる。違えばreportを出さずexit 1にし、**どの欄が違ったかを名指しする**。
+
+| 欄 | 比べ方 |
+| --- | --- |
+| `recipe.kind`・`recipe.entrypoint` | 完全一致 |
+| `sources` | **kindとid**を集合として（件数も） |
+| `dependencies` | **kindとid**を集合として（件数も） |
+| `parameters` | **名前と値**を対応として（件数も） |
+
+### 比べない欄と、その理由
+
+| 欄 | 理由 |
+| --- | --- |
+| sourceの`locator`・`digest` | **plan側は導出値**。宣言は参照を書き、planは解決済みの値を持つ。比べると**正しいbuildをすべて不一致と呼ぶ** |
+| dependencyの`version`・`artifactDigest` | 同じく導出値 |
+| `builder.provider`・`builder.pin` | **方針**であり、解決結果ではない |
+
+**「比べられる欄」と「比べるべき欄」は違う。** 導出値を比べると常に不一致になるので、比べないことを明示している。
+
+### `parameters`を比べる根拠
+
+`parameters`は一度「正規化の意味が未決」として除外していたが、**測るとどちらの側も名前順にソートするだけで値を変えない**（`buildintent.NormalizeIntent`と`plugin.NormalizeBuildPlan`）。したがって値の違いは本物の違いであり、名前で突き合わせれば順序に依存しない。**この性質自体を試験で固定している**（`TestNormalisersOnlyReorderParameters`）。
+
+### この照合が効く範囲
+
+**同じ宣言からresolverが導いたplanに対しては決して失敗しない。** 要求を満たさない宣言からはresolverがplanを作らないためである。効くのは**planがその宣言から導かれたものではない**場合だけであり、そのときにどこが食い違うかを名指しで示す。**保証の強さを増やすものではなく、原因究明を助けるものである。**
 
 ## 宣言の`builder`要求とplanの解決結果
 

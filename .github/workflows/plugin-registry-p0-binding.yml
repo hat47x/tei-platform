@@ -1,0 +1,75 @@
+name: Plugin Registry P0-A binding reference
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - .github/workflows/plugin-registry-p0-binding.yml
+      - tools/reference-plugin-registry/**
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/plugin-registry-p0-binding.yml
+      - tools/reference-plugin-registry/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-plugin-registry-p0-binding-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  release-evidence-binding:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      GOWORK: off
+      GOENV: off
+      GOTOOLCHAIN: local
+      GOPROXY: off
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Report verified revision and clean inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          printf 'candidate=%s\n' "$GITHUB_SHA"
+
+      - name: Use reference Go toolchain
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: tools/reference-plugin-registry/go.mod
+          cache: false
+
+      - name: Test exact release and signature binding (Go)
+        working-directory: tools/reference-plugin-registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          go version
+          go test -count=1 ./...
+
+      - name: Test independent Node reader
+        working-directory: tools/reference-plugin-registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --version
+          node --test verify.test.mjs
+          node verify.mjs
+
+      - name: Assert reference did not modify checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"

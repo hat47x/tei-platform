@@ -29,6 +29,11 @@ type cliHookReport struct {
 	// Note states the boundary: running a declared hook is not evidence that a
 	// rule plugin decided it, and it does not make the command effect observed.
 	Note string `json:"note"`
+	// CommandOutcome is the Command-side name this refusal corresponds to, when
+	// the hook named one that Command also uses. It is empty when the hook's
+	// outcome has no Command counterpart (`not-satisfied`), so a caller does not
+	// read "the hook was not satisfied" as a Command refusal reason.
+	CommandOutcome string `json:"commandOutcome,omitempty"`
 }
 
 const cliHookNote = "the reference rule evaluates the declared reads only; running it does not accept the rule, observe the command effect, or grant authority"
@@ -76,12 +81,18 @@ func runDeclaredHooksWithRule(ctx context.Context, world ir.World, applicationID
 			return pattern, true
 		},
 	}
-	runner.CallInputs = hookCallInputs(world, applicationID, patternID, inputs)
 	report, err := runner.RunReachable(ctx, applicationID, patternID, attributeValues(inputs), hook.ReferenceReach{})
 	if report == nil {
 		return nil, err
 	}
-	return &cliHookReport{PhaseReport: report, Pattern: patternID, Note: cliHookNote}, err
+	out := &cliHookReport{PhaseReport: report, Pattern: patternID, Note: cliHookNote}
+	// Only a refusal names an outcome. The name is mapped through the declared
+	// correspondence; a name with no Command counterpart stays empty rather than
+	// being reported as a Command refusal reason.
+	if name, ok := hook.CommandOutcomeFor(report.Outcome); ok {
+		out.CommandOutcome = name
+	}
+	return out, err
 }
 
 // hookCallInputs binds, for each capability a pattern's hooks declare in

@@ -1,0 +1,19 @@
+FIX
+
+  102e5fa09  2026-11-10 16:37:14 +0900  (#4038)
+  fix(modelref): 投影の辺と未解決の報告を集合として扱い、同じ宣言を2回数えない (#4024)
+
+  edgeSeen := map[string]bool{}
+  unresolvedSeen := map[string]bool{}
+
+  The root fix I proposed in #4024 (make addEdge a set) was the one taken. It
+  also collapses duplicate projectionUnresolved messages.
+
+AFTER (main 735f7278d)
+
+  tei trace ... -subject-id security.authenticate -direction incoming -mode full
+    total: 1
+      [0] order_entry - realizes
+
+Filed 06:07:36Z, fixed 07:37:14Z, closed 08:22:25Z: about 2h15m from filing to
+resolution. I did not write the fix; I verified the result.

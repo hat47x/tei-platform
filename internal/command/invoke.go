@@ -24,6 +24,13 @@ type Request struct {
 type Result struct {
 	Outcome *semantic.Outcome    `json:"outcome,omitempty"`
 	Effect  *semantic.DataEffect `json:"effect,omitempty"`
+	// OutcomeUndetermined states why the executor did not return an outcome
+	// although the capability declares some. A capability may declare several
+	// outcomes, and no declared rule selects one of them; an executor that
+	// picked one anyway would report a decision nobody made. Nil Outcome with
+	// this set means "not determined", which is different from "the capability
+	// declares no outcome".
+	OutcomeUndetermined string `json:"outcomeUndetermined,omitempty"`
 	// AuthorizationMode names the authorization decision that let this
 	// execution run. It is set by the Invoker, never by an Executor.
 	AuthorizationMode AuthorizationMode `json:"authorizationMode,omitempty"`
@@ -341,6 +348,7 @@ func (i Invoker) execute(ctx context.Context, request Request, plan applicationv
 			Request:               request,
 			Reported:              result.Effect,
 			Outcome:               result.Outcome,
+			OutcomeUndetermined:   result.OutcomeUndetermined,
 			Applied:               result.Applied,
 			Differences:           differences,
 			ReportedEffectMissing: plan.Effect != nil && result.Effect == nil,
@@ -353,7 +361,10 @@ func (i Invoker) execute(ctx context.Context, request Request, plan applicationv
 			record.Declared = &semantic.DataEffect{Kind: semantic.DataEffectKind(plan.Effect.Kind), Data: plan.Effect.Data}
 		}
 		if err := i.Recorder.Record(ctx, record); err != nil {
-			return Result{}, &ExecutionError{Code: "COMMAND_RECORD_FAILED", Message: err.Error(), Cause: err}
+			// The executor has already returned. Its effects need not share our
+			// UnitOfWork transaction; a failed operation record cannot prove
+			// the provider did nothing, even when rollback returns nil.
+			return Result{}, NewUnknownExecutionError("COMMAND_RECORD_FAILED", err.Error(), err)
 		}
 	}
 	return result, nil

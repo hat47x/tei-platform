@@ -38,7 +38,10 @@ type PackageRef struct {
 
 // HookRefは、対話の前後に差し込む処理の宣言を解決した結果である。
 type HookRef struct {
-	Phase    string             `json:"phase"`
+	Phase string `json:"phase"`
+	// Scope is the unit the hook decides for. An empty value means the pattern's
+	// own unit, so a reader sees "no scope declared" rather than assuming one.
+	Scope    string             `json:"scope,omitempty"`
 	Reads    []core.CanonicalID `json:"reads,omitempty"`
 	Uses     []core.CanonicalID `json:"uses,omitempty"`
 	Produces []core.CanonicalID `json:"produces,omitempty"`
@@ -281,6 +284,7 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 	for _, hook := range interaction.Hooks {
 		view.Hooks = append(view.Hooks, HookRef{
 			Phase:    hook.Phase,
+			Scope:    hook.Scope,
 			Reads:    hook.Reads,
 			Uses:     hook.Uses,
 			Produces: hook.Produces,

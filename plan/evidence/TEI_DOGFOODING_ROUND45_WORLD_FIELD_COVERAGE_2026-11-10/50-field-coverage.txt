@@ -1,0 +1,22 @@
+ir.World has 17 fields. Measured whether index.Build mentions w.<field>:
+
+  Plugins                         read
+  Bundles                         read
+  Semantics                       read
+  Applications                    read
+  Databases                       read
+  Persistence                     read
+  Migrations                      read
+  MigrationProviders              read
+  ApplicationReleases             read
+  DatabaseReleases                read
+  SolutionReleases                read
+  Environments                    read
+  Queries                         read
+  Bindings                        read
+  HeaderDetailContractQueryBindings   NOT read
+  ContractQueryExecutorBindings       NOT read
+  ContractQuerySQLRealizations        NOT read
+
+14 of 17 read. The three unread ones are exactly the set round 43 identified by
+hand, which confirms the counting method.

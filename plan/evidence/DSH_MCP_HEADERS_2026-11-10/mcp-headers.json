@@ -1,0 +1,140 @@
+{
+  "note": "The headers map in the streamable-http config is sent verbatim on every MCP request, including the first server/discover, so a credential placed there leaves the harness before any server trust is established. The canary never appears in model requests.",
+  "configuredHeaders": {
+    "Authorization": "Bearer MCP_HEADER_CANARY_1001",
+    "X-Synthetic-Trace": "trace-1001"
+  },
+  "headerCanary": "MCP_HEADER_CANARY_1001",
+  "mcpRequestCount": 4,
+  "canarySentOnEveryRequest": true,
+  "requests": [
+    {
+      "file": "mcp-001-headers.json",
+      "method": "server/discover",
+      "requestBytes": 280,
+      "requestSha256": "2d6e560663b30185c0680e157110159805f2f628045dd515a6a0557bcd66916f",
+      "canaryInAnyHeader": true,
+      "canaryHeaderNames": [
+        "Authorization"
+      ],
+      "headerNames": [
+        "Authorization",
+        "X-Synthetic-Trace",
+        "accept",
+        "accept-encoding",
+        "accept-language",
+        "connection",
+        "content-length",
+        "content-type",
+        "host",
+        "mcp-method",
+        "mcp-protocol-version",
+        "sec-fetch-mode",
+        "user-agent"
+      ],
+      "headerCount": 13
+    },
+    {
+      "file": "mcp-002-headers.json",
+      "method": "initialize",
+      "requestBytes": 163,
+      "requestSha256": "40902c765afca2b3658a4c98787806ed8b1a716cf4a4874b273eadce48a9ffb8",
+      "canaryInAnyHeader": true,
+      "canaryHeaderNames": [
+        "Authorization"
+      ],
+      "headerNames": [
+        "Authorization",
+        "X-Synthetic-Trace",
+        "accept",
+        "accept-encoding",
+        "accept-language",
+        "connection",
+        "content-length",
+        "content-type",
+        "host",
+        "sec-fetch-mode",
+        "user-agent"
+      ],
+      "headerCount": 11
+    },
+    {
+      "file": "mcp-003-headers.json",
+      "method": "notifications/initialized",
+      "requestBytes": 54,
+      "requestSha256": "59951ca0b212b103876fa23a9e58bcbbc8fbcc0120e3f5ee7214461e2bd1cd5e",
+      "canaryInAnyHeader": true,
+      "canaryHeaderNames": [
+        "Authorization"
+      ],
+      "headerNames": [
+        "Authorization",
+        "X-Synthetic-Trace",
+        "accept",
+        "accept-encoding",
+        "accept-language",
+        "connection",
+        "content-length",
+        "content-type",
+        "host",
+        "mcp-protocol-version",
+        "sec-fetch-mode",
+        "user-agent"
+      ],
+      "headerCount": 12
+    },
+    {
+      "file": "mcp-004-headers.json",
+      "method": "tools/list",
+      "requestBytes": 46,
+      "requestSha256": "75f0c7627a35c7e96a0a88482622a0d1ec7e81c0eb5414a88ba7aab9450cf73b",
+      "canaryInAnyHeader": true,
+      "canaryHeaderNames": [
+        "Authorization"
+      ],
+      "headerNames": [
+        "Authorization",
+        "X-Synthetic-Trace",
+        "accept",
+        "accept-encoding",
+        "accept-language",
+        "connection",
+        "content-length",
+        "content-type",
+        "host",
+        "mcp-protocol-version",
+        "sec-fetch-mode",
+        "user-agent"
+      ],
+      "headerCount": 12
+    }
+  ],
+  "observedHeaderSet": [
+    "Authorization",
+    "X-Synthetic-Trace",
+    "accept",
+    "accept-encoding",
+    "accept-language",
+    "connection",
+    "content-length",
+    "content-type",
+    "host",
+    "sec-fetch-mode",
+    "user-agent"
+  ],
+  "modelRequests": [
+    {
+      "file": "model-001-request.json",
+      "bytes": 69567,
+      "sha256": "f919280a6ed62e1a9941344ebadf08c3a345086855df51ccdcc5ff787dc6ea0a",
+      "canaryPresent": false
+    },
+    {
+      "file": "model-002-request.json",
+      "bytes": 41806,
+      "sha256": "1b3717153989c83a33d8d8c274c21f6ddbf7a5e449a26a94b7072b02918ddc09",
+      "canaryPresent": false
+    }
+  ],
+  "canaryInModelRequests": false
+}

@@ -1,0 +1,7 @@
+=== RUN   TestASelectionWhoseScopeDoesNotMatchIsRefused
+--- PASS: TestASelectionWhoseScopeDoesNotMatchIsRefused (0.00s)
+=== RUN   TestTheMatchingScopeStillRuns
+--- PASS: TestTheMatchingScopeStillRuns (0.00s)
+=== RUN   TestASelectionWithAStaleRevisionIsRefused
+--- PASS: TestASelectionWithAStaleRevisionIsRefused (0.00s)
+ok  	tei/tools/reference-service-carrier-connect	0.007s

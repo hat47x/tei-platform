@@ -53,6 +53,56 @@ runnerは、通常Referenceとself-build専用Referenceの双方を既存の`int
 Pluginの妥当性規則をself-build側へ複製せず、既存Validationをそのまま正本として使います。
 
 
+## CLIから自己構築を実行する（`tei self-build`）
+
+BuildをCLIから一度だけ実行し、その試行が何を観測したかをJSONで受け取れます。`-h`が実際の文法を出すので、まずそれを見てください。
+
+```bash
+tei self-build -h
+```
+
+宣言と、呼び手が用意したcatalogを名指しして実行します。
+
+```bash
+tei self-build \
+  -workspace <workspace> \
+  -intent-file <intent.json> \
+  -build-catalog <catalog.json> \
+  -build-catalog-digest sha256:<catalogのdigest> \
+  -build-source-root <宣言のsource参照を解決する根> \
+  -child <builder childの実行物> \
+  -child-arg '["-plan","<plan.json>"]' \
+  -state <隔離state> \
+  -output <artifact path>
+```
+
+`-build-catalog`・`-build-catalog-digest`・`-build-source-root`は**同時に**指定します。`-intent-resolver`とは排他です（一回の試行は一つの導出）。
+
+**`-build-catalog`を渡すと、二回目のbuildが既定で行われます**（`-rebuild-check=false`で断れます）。二回目のdigestが一致したときだけ、その計画がartifactを生んだという観測（§4.8(c)）が成立します。
+
+出力の`l2b`が、この試行がL2-bを主張できるかを述べます。
+
+| 欄 | 意味 |
+| --- | --- |
+| `l2b.claimed` | 五つの条件が**すべて**成立したときだけ`true` |
+| `l2b.unmet` | 成立しなかった条件を**すべて**列挙する |
+| `l2b.boundary` | この主張が**言っていないこと**（受理・Runtime Authority・catalogの正しさ・Trust・L2-c/L3） |
+
+`qualified`は常に`false`です。`l2b.claimed`が`true`でも受理を意味しません。判断の中身は[自己構築の再入場契約](../../plan/design/SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md)を参照してください。
+
+catalogは呼び手が用意するデータです。catalogの各欄はWorkspaceやplugin定義には現れないため、**既存の宣言からは生成できません**（§4.29の実測）。
+
+代わりに、**能力宣言から catalog を作るツール**があります。`tools/reference-build-catalog-authoring` が宣言を読み、artifact の digest は**実ファイルから計算して**catalog を書き、`-build-catalog-digest` に渡す値を出力します。宣言に digest を書くことはできません（手書きの digest を許すと、リポジトリに無い builder を名乗る catalog が作れてしまうため）。
+
+```bash
+go run ./tools/reference-build-catalog-authoring \
+  -declaration <能力宣言.json> \
+  -root <artifactの相対pathを解決する根> \
+  -output <catalog.json>
+```
+
+catalog を製品の外に置く決定と、このツールの位置づけは[自己構築の再入場契約](../../plan/design/SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md)の §4.32・§4.33 を参照してください。
+
 ## Runtime Plugin Lockのbuild trace
 
 process Pluginのruntime artifactをBuildArtifactLockへ固定した後、既存Runtime Plugin Lockへexact Build Plan fingerprintをbindします。

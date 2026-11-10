@@ -1,0 +1,138 @@
+name: TEI topology coverage synthetic P1 Node
+
+# Verifies only declared synthetic Graph/Table preservation and fail-closed
+# bounded absence. This is NOT real Source/Provider/Policy completeness.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - 'reference/tei-topology-coverage/**'
+      - '.github/workflows/tei-topology-coverage-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'reference/tei-topology-coverage/**'
+      - '.github/workflows/tei-topology-coverage-ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-topology-p1-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  topology-p1-node:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      TARGET_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact PR head or push
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Pin Node 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.21.0
+          check-latest: false
+
+      - name: Verify source identity before test
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          node --version
+          for file in reference/tei-topology-coverage/coverage.mjs reference/tei-topology-coverage/coverage.test.mjs; do
+            test -f "$file"
+            printf 'topology-p1-blob=%s file=%s\n' "$(git hash-object "$file")" "$file"
+          done
+
+      - name: Run synthetic Graph/Table bounded-absence tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test reference/tei-topology-coverage/coverage.test.mjs
+          node --test reference/tei-topology-coverage/direct-trace.test.mjs
+
+      - name: Verify tested revision remains unchanged
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+
+  topology-cli-actual-workspace:
+    # This is a bounded CLI->Node read-only observation, not Source or relation
+    # closure, not Policy/Authority, and not a production/UI integration gate.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      TARGET_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact PR head or push
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Use declared Go toolchain
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+
+      - name: Pin Node 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.21.0
+          check-latest: false
+
+      - name: Verify exact checkout and source bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          go version
+          node --version
+          for file in reference/tei-topology-coverage/direct-trace.mjs \
+                      reference/tei-topology-coverage/direct-trace.test.mjs \
+                      reference/tei-topology-coverage/verify-cli-trace.mjs; do
+            printf 'topology-cli-blob=%s path=%s\n' "$(git hash-object "$file")" "$file"
+          done
+
+      - name: Read actual Workspace via existing tei trace CLI
+        shell: bash
+        env:
+          GOFLAGS: -mod=readonly
+        run: |
+          set -euo pipefail
+          go run ./cmd/tei trace \
+            -workspace reference/workspace \
+            -scope reference-observation \
+            -subject-kind semantic-relation \
+            -subject-id sales.order.customer \
+            -direction both -mode full > "$RUNNER_TEMP/tei_topology_trace.json"
+          go run ./cmd/tei trace \
+            -workspace reference/workspace \
+            -scope alternate-observation \
+            -subject-kind semantic-relation \
+            -subject-id sales.order.customer \
+            -direction both -mode full > "$RUNNER_TEMP/tei_topology_trace_alternate.json"
+          node reference/tei-topology-coverage/verify-cli-trace.mjs \
+            "$RUNNER_TEMP/tei_topology_trace.json" \
+            "$RUNNER_TEMP/tei_topology_trace_alternate.json"
+
+      - name: Verify exact tested checkout is still clean
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"

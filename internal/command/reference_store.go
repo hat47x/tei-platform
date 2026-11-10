@@ -304,9 +304,16 @@ func (e ReferenceDataExecutor) Execute(_ context.Context, request Request) (Resu
 	}
 	applied = append(applied, AppliedOperation{Kind: capability.Effect.Kind, Data: capability.Effect.Data, Key: key})
 	result := Result{Effect: capability.Effect, Applied: applied}
-	if len(capability.Outcomes) > 0 {
+	switch len(capability.Outcomes) {
+	case 0:
+	case 1:
 		outcome := capability.Outcomes[0]
 		result.Outcome = &outcome
+	default:
+		result.OutcomeUndetermined = fmt.Sprintf(
+			"capability %s declares %d outcomes and no declared rule selects one",
+			capability.ID, len(capability.Outcomes),
+		)
 	}
 	return result, nil
 }

@@ -30,16 +30,34 @@ type DeclarationCounts struct {
 	Total               int `json:"total"`
 }
 
-// CountDeclarations excludes the `std` namespace and everything in it. Any
-// other namespace contributes its own counts.
+// CountDeclarations counts what the Workspace itself authored. The prelude
+// namespace and the twelve types it declares are excluded; anything else is
+// counted, including a type the Workspace put inside the std namespace.
+//
+// Excluding the whole `std` namespace by name was wrong (#3851): a Workspace
+// that writes `namespace std { type email from std.text }` declared a model
+// element, yet its declarationCounts stayed zero and validate warned that it
+// declared nothing, while inspect happily resolved the type from its file.
 func CountDeclarations(world ir.World) DeclarationCounts {
 	counts := DeclarationCounts{}
 	for _, ns := range world.Semantics {
-		if string(ns.ID) == "std" {
+		preludeNamespace := string(ns.ID) == stdlibNamespaceID
+		types := len(ns.Types)
+		if preludeNamespace {
+			// Subtract only the types the prelude itself contributes.
+			for _, typ := range ns.Types {
+				if isPreludeType(string(typ.ID)) {
+					types--
+				}
+			}
+		}
+		if preludeNamespace && types == 0 && len(ns.Data) == 0 && len(ns.Capabilities) == 0 &&
+			len(ns.Validations) == 0 {
+			// The prelude namespace with nothing added is not a declaration.
 			continue
 		}
 		counts.Namespaces++
-		counts.Types += len(ns.Types)
+		counts.Types += types
 		counts.Data += len(ns.Data)
 		for _, data := range ns.Data {
 			counts.Attributes += len(data.Attributes)

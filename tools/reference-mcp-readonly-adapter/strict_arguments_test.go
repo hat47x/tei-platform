@@ -58,6 +58,10 @@ func TestAdapterRejectsInvalidArgumentsInsteadOfDefaulting(t *testing.T) {
 		{"expectedFingerprint is null", "tei_trace", `{"scope":"reference/workspace","subjectKind":"entity","subjectId":"sales.order","expectedFingerprint":null}`, "expectedFingerprint must be a string"},
 		{"limit is a string", "tei_trace", `{"scope":"reference/workspace","subjectKind":"entity","subjectId":"sales.order","limit":"10"}`, "limit must be an integer"},
 		{"offset is null", "tei_trace", `{"scope":"reference/workspace","subjectKind":"entity","subjectId":"sales.order","offset":null}`, "offset must be an integer"},
+		{"overview limit zero", "tei_model_overview", `{"limit":0}`, "limit must be between 1 and"},
+		{"overview unknown member", "tei_model_overview", `{"namespace":"sales"}`, `unknown argument "namespace"`},
+		{"locate limit zero", "tei_model_locate", `{"subjectKind":"semantic-data","subjectId":"sales.order","limit":0}`, "limit must be between 1 and"},
+		{"locate limit is a string", "tei_model_locate", `{"subjectKind":"semantic-data","subjectId":"sales.order","limit":"5"}`, "limit must be an integer"},
 		{"trace unknown member", "tei_trace", `{"scope":"reference/workspace","subjectKind":"entity","subjectId":"sales.order","depth":2}`, `unknown argument "depth"`},
 	}
 	for _, tc := range cases {
@@ -79,6 +83,8 @@ func TestAdapterAcceptsOmittedOptionalArguments(t *testing.T) {
 	root := referenceWorkspace(t)
 	for _, tc := range []struct{ tool, arguments string }{
 		{"tei_model_catalog", `{}`},
+		{"tei_model_locate", `{"subjectKind":"semantic-data","subjectId":"sales.order"}`},
+		{"tei_model_overview", `{}`},
 		{"tei_validate", `{}`},
 	} {
 		isError, code, message := callRaw(t, root, tc.tool, tc.arguments)

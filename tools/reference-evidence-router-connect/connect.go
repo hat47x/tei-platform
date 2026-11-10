@@ -40,6 +40,8 @@ counted: resolved (Binding returned an id), selected (the registry held it),
          invoked (the provider's Collect was entered)
 refused when: the record is not an evidence gate, the binding is missing or
               ambiguous, the id is not registered, or the provider does not conform
+after entry: a failure inside the provider is unknown, not a refusal; it is
+             counted separately because the call already happened
 not verified: that the evidence reflects external state, that its outcome is
               correct, or that a grant is current
 not issued: authentication, authority, permission, or a durable receipt
@@ -86,17 +88,19 @@ type Report struct {
 	RuleFingerprint string    `json:"ruleFingerprint"`
 	Environment     string    `json:"environment"`
 	Outcomes        []Outcome `json:"outcomes"`
-	// Collected counts outcomes with StatusCollected. Refused counts every other
-	// status. Invoked counts entries into a provider's Collect regardless of
-	// whether the answer was usable.
+	// Collected counts outcomes with StatusCollected. Refused is strictly before
+	// entry: nothing was called. Unknown is a subset of Invoked: the provider was
+	// entered and then failed, so whether the evidence reflects the world cannot
+	// be established.
 	Collected int `json:"collectedCount"`
 	Refused   int `json:"refusedCount"`
+	Unknown   int `json:"unknownCount"`
 	Invoked   int `json:"invokedCount"`
 	// Attempted is how many records were tried. It makes Collected readable: 1
 	// of 1 and 1 of 2 both give Collected=1, and only Attempted tells them apart.
 	Attempted int `json:"attemptedCount"`
 	// Complete reports that every attempted record was collected. A partial run
-	// keeps its refusals and is never presented as complete.
+	// keeps its refusals and unknowns and is never presented as complete.
 	Complete bool     `json:"complete"`
 	Notes    []string `json:"notes"`
 }
@@ -174,13 +178,17 @@ func Run(ctx context.Context, in Input) Report {
 			report.Invoked++
 		}
 		if collectErr != nil {
-			if witness.invoked {
-				outcome.Status = StatusCollectFailed
-			} else {
-				outcome.Status = StatusNotConforming
-			}
 			outcome.Detail = collectErr.Error()
-			report.Refused++
+			if witness.invoked {
+				// The provider was entered and then failed. Whether the evidence
+				// reflects the world is now unknown, so this is not a refusal.
+				outcome.Status = StatusCollectFailed
+				report.Unknown++
+			} else {
+				// The router stopped before the provider was entered.
+				outcome.Status = StatusNotConforming
+				report.Refused++
+			}
 			report.Outcomes = append(report.Outcomes, outcome)
 			continue
 		}
@@ -225,6 +233,7 @@ func notes() []string {
 		"the router is the existing evidence.Router; no second registry is added",
 		"invoked means the provider's Collect was entered, not that the evidence is true",
 		"a pass outcome is the provider's claim, not proof that external state matches it",
+		"unknownCount counts entries that failed after the provider was called; it is a subset of invokedCount",
 		"complete means every attempted record was collected; it is not proof that the evidence is true",
 		"no authentication, authority, permission or durable receipt is issued here",
 	}

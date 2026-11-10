@@ -33,23 +33,27 @@ const (
 
 // BuildEvidence is one attempt.
 type BuildEvidence struct {
-	SchemaVersion          string   `json:"schemaVersion"`
-	Nature                 string   `json:"nature"`
-	Package                string   `json:"package"`
-	GoOS                   string   `json:"goos"`
-	GoArch                 string   `json:"goarch"`
-	GoExecutableDigest     string   `json:"goExecutableDigest"`
-	SupplyRoot             string   `json:"supplyRoot"`
-	BuildCommand           []string `json:"buildCommand"`
-	BuildSucceeded         bool     `json:"buildSucceeded"`
-	BuildExitCode          int      `json:"buildExitCode"`
-	BuildError             string   `json:"buildError,omitempty"`
-	ToolchainPopulated     []string `json:"moduleCacheEntries,omitempty"`
-	ArtifactDigest         string   `json:"artifactDigest,omitempty"`
-	SourceClosureState     string   `json:"sourceClosureState"`
-	SourceClosureError     string   `json:"sourceClosureError,omitempty"`
-	ArtifactWithoutClosure bool     `json:"artifactProducedDespiteUnqualifiedClosure"`
-	Boundary               string   `json:"claimBoundary"`
+	SchemaVersion      string   `json:"schemaVersion"`
+	Nature             string   `json:"nature"`
+	Package            string   `json:"package"`
+	GoOS               string   `json:"goos"`
+	GoArch             string   `json:"goarch"`
+	GoExecutableDigest string   `json:"goExecutableDigest"`
+	SupplyRoot         string   `json:"supplyRoot"`
+	BuildCommand       []string `json:"buildCommand"`
+	BuildSucceeded     bool     `json:"buildSucceeded"`
+	BuildExitCode      int      `json:"buildExitCode"`
+	BuildError         string   `json:"buildError,omitempty"`
+	ToolchainPopulated []string `json:"moduleCacheEntries,omitempty"`
+	ArtifactDigest     string   `json:"artifactDigest,omitempty"`
+	// StateDir is the isolated build state this process actually used. It is a
+	// statement about this run, not a reading of a plan: a caller that asked for a
+	// separate state can check that it got one.
+	StateDir               string `json:"stateDir,omitempty"`
+	SourceClosureState     string `json:"sourceClosureState"`
+	SourceClosureError     string `json:"sourceClosureError,omitempty"`
+	ArtifactWithoutClosure bool   `json:"artifactProducedDespiteUnqualifiedClosure"`
+	Boundary               string `json:"claimBoundary"`
 }
 
 func main() {
@@ -127,6 +131,7 @@ func BuildWithSupply(repo, goArgument, packagePath, supply, artifactOut, stateDi
 		return BuildEvidence{}, err
 	}
 	evidence := BuildEvidence{
+		StateDir:           stateDir,
 		SchemaVersion:      buildSchema,
 		Nature:             "one isolated build attempt from a named supply; not an acceptance",
 		Package:            packagePath,

@@ -73,7 +73,7 @@ var selectedReadOnlyFlagAllowlist = map[string][]string{
 // (#3675).
 var repeatableFlags = map[string]map[string]bool{
 	"view":                                   {"input": true, "allow-capability": true},
-	"validate":                               {"analysis": true, "schema": true, "plan": true, "evidence": true},
+	"validate":                               {},
 	"knowledge-context":                      {},
 	"inspect":                                {},
 	"trace":                                  {},
@@ -89,6 +89,8 @@ var repeatableFlags = map[string]map[string]bool{
 	"knowledge-review-disclose":              {},
 	"knowledge-data-design-candidate-review": {},
 	"model catalog":                          {},
+	"model locate":                           {},
+	"model overview":                         {},
 }
 
 // validateRepeatableArguments refuses a flag that was supplied more than once

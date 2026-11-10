@@ -1,0 +1,10 @@
+Deleting applications/order-entry/realizations/authenticate.tei:
+
+  worldFingerprint        c92de09f... -> b465bf81...   changed
+  sourceIndexFingerprint  1827f4b4... -> 4a559093...   changed
+  graphFingerprint        a1b016fc... -> a1b016fc...   UNCHANGED
+  trace.rows              4 -> 4                       UNCHANGED
+  trace.total             4 -> 4                       UNCHANGED
+
+A semantic-layer change does not reach the reference graph, so trace cannot
+show a missing or wrong implementation binding.

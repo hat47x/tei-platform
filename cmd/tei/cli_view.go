@@ -28,7 +28,10 @@ type referenceCommandRun struct {
 	Mode          string                      `json:"mode"`
 	Plan          applicationview.CommandPlan `json:"plan"`
 	Outcome       *semantic.Outcome           `json:"outcome,omitempty"`
-	Effect        *semantic.DataEffect        `json:"effect,omitempty"`
+	// OutcomeUndetermined states why no outcome was returned although the
+	// capability declares some, so an absent outcome is not read as a decision.
+	OutcomeUndetermined string               `json:"outcomeUndetermined,omitempty"`
+	Effect              *semantic.DataEffect `json:"effect,omitempty"`
 	// Committed reports that the configured UnitOfWork returned from Commit.
 	// It is not evidence that data was persisted: a reference run uses
 	// MemoryUnitOfWork, which counts the call without writing anything. Read it
@@ -336,6 +339,7 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 				Mode:                  "reference",
 				Plan:                  plan,
 				Outcome:               result.Outcome,
+				OutcomeUndetermined:   result.OutcomeUndetermined,
 				Effect:                result.Effect,
 				Committed:             true,
 				Persisted:             result.Persistence == command.PersistenceResourceObserved,
@@ -520,6 +524,11 @@ func writeViewText(out io.Writer, view applicationview.View) (int, error) {
 		}
 		for _, hook := range view.Hooks {
 			line := fmt.Sprintf("  - %s", hook.Phase)
+			// A declared scope is printed beside the phase; an absent one means the
+			// pattern's own unit and is left implicit.
+			if hook.Scope != "" {
+				line += fmt.Sprintf(" scope %s", hook.Scope)
+			}
 			if len(hook.Reads) > 0 {
 				line += fmt.Sprintf(" reads %s", joinIDs(hook.Reads))
 			}
@@ -897,7 +906,14 @@ func writeHookReportText(out io.Writer, report cliHookReport) (int, error) {
 		if _, err := fmt.Fprintf(out, "  hook %s: refused", report.Refused); err != nil {
 			return 2, err
 		}
-		if report.Outcome != "" {
+		if report.CommandOutcome != "" {
+			// Name both: the hook's own outcome and the Command name it
+			// corresponds to, so the correspondence is visible rather than
+			// silently applied.
+			if _, err := fmt.Fprintf(out, " (%s, command outcome %s)", report.Outcome, report.CommandOutcome); err != nil {
+				return 2, err
+			}
+		} else if report.Outcome != "" {
 			if _, err := fmt.Fprintf(out, " (%s)", report.Outcome); err != nil {
 				return 2, err
 			}
@@ -920,6 +936,13 @@ func writeReferenceRunText(out io.Writer, run referenceCommandRun) (int, error) 
 	}
 	if code, err := writeCommandPlanText(out, run.Plan); err != nil {
 		return code, err
+	}
+	if run.OutcomeUndetermined != "" {
+		// An outcome nobody determined must not read as "the capability has no
+		// outcome". Print the reason where the outcome would have been.
+		if _, err := fmt.Fprintf(out, "outcome: not determined (%s)\n", run.OutcomeUndetermined); err != nil {
+			return 2, err
+		}
 	}
 	if run.Outcome != nil {
 		if _, err := fmt.Fprintf(out, "outcome: %s -> %s\n", run.Outcome.Name, run.Outcome.Payload); err != nil {

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"tei/internal/artifact"
+	"tei/internal/core"
 	"tei/internal/operations"
 	"tei/internal/periodstate"
 )
@@ -125,7 +126,7 @@ func slug(value string) string {
 // runPeriodsCommand reports the operations that may not run because their period
 // is not open. The period state is runtime information: the caller supplies it,
 // and an unspecified period is not treated as closed.
-func runPeriodsCommand(workspacePath, applicationID, statesFlag, stateFile, advance string) error {
+func runPeriodsCommand(workspacePath, applicationID, statesFlag, stateFile, advance, closeCapability string) error {
 	if workspacePath == "" {
 		return fmt.Errorf("periods requires -workspace")
 	}
@@ -142,10 +143,35 @@ func runPeriodsCommand(workspacePath, applicationID, statesFlag, stateFile, adva
 			states[period] = state
 		}
 	}
+	surface, err := operations.SurfaceWorkspace(workspacePath, applicationID)
+	if err != nil {
+		return err
+	}
 	if advance != "" {
 		next, err := advancePeriod(advance, states[advance], stateFile)
 		if err != nil {
 			return err
+		}
+		// A period that declares close-requires must have run that capability before
+		// it closes. The declaration was validated but never read when the period was
+		// closed, so a close could name a capability and then close without it (D-9).
+		//
+		// The CLI itself runs no capability: it only records state. So a period with a
+		// requirement is refused here rather than closed as if the capability had run.
+		// A caller that can run the capability (the Command boundary) supplies
+		// `-close-capability` once it has.
+		requirements, err := operations.PeriodRequirementsFromWorkspace(workspacePath, applicationID)
+		if err != nil {
+			return err
+		}
+		if requirement, ok := requirements[core.CanonicalID(advance)]; ok {
+			current := states[advance]
+			if current == "" {
+				current = operations.PeriodOpen
+			}
+			if err := operations.CheckCloseRequirement(requirement, current, next, core.CanonicalID(closeCapability)); err != nil {
+				return err
+			}
 		}
 		if err := (periodstate.Writer{Path: stateFile}).Write(context.Background(), map[string]operations.PeriodState{
 			advance: next,
@@ -153,10 +179,6 @@ func runPeriodsCommand(workspacePath, applicationID, statesFlag, stateFile, adva
 			return err
 		}
 		states[advance] = next
-	}
-	surface, err := operations.SurfaceWorkspace(workspacePath, applicationID)
-	if err != nil {
-		return err
 	}
 	rejections := operations.CheckPeriods(surface, states)
 	if rejections == nil {

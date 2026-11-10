@@ -6,6 +6,8 @@
 - 状態：**設計候補。採用・実装・qualified PASSではない**
 - 前段：[SB-0bの供給境界](GO_MODULE_SUPPLY_FOR_SELF_BUILD_SB0B_2026-11.md)、[X1の記録](../evidence/TEI_GO_BUILD_WITH_SUPPLY_X1_2026-11-07.md)、[再現性の記録](../evidence/TEI_GO_BUILD_REPRODUCIBILITY_2026-11-07.md)
 
+**読み方。** 本稿は§4.1から§4.34までを**書いた順に積んだ記録**であり、各節は**その時点の状態**を述べる。後の節が前の節の問いを閉じていることがあるため、中間の節にある「未着手」「未決」は現在の状態とは限らない。**現在の決定は§4.34、残っている項目は§7を見る。**節ごとの記述を今の状態として引用しない。
+
 ## 1. この文書が解く問題
 
 SB-0a〜SB-Bの実測で、次が分かっている。
@@ -586,6 +588,22 @@ entry側（`cmd/tei`）は**変更不要**だった。childが申告するよう
 
 **したがって既定はR-2のまま据え置き、R-1の前提（catalogの出所）を先に決める。** これは`docs/status.md`や既存ADRの範囲ではなく、**新しい契約判断**である。§7に未決として名指しする。
 
+#### 補足：二回のbuildが同じbuilderだったことを記録する（2026-11-09）
+
+本節の観測は「**同じchild実行物**を二回」である。しかし実装では、`artifactReproducibility.secondChildDigest`に**entry自身（`tei`）のdigest**が入っており、二回のbuilderが同じだったことを**比較する検査が無かった**（[記録](../evidence/TEI_GO_SELF_BUILD_REPRODUCIBILITY_BUILDER_2026-11-10.md)）。
+
+修正して、`firstChildDigest`と`secondChildDigest`に**実際に起動したchildのdigest**を入れ、両者を比較するようにした。**違えば不成立、未記録も不成立**である（SC0-18と同じ規則）。食い違いの理由は`mismatchReason`に述べる。
+
+**この修正は主張を弱めない。** 二回の間に実行物が差し替わった試行が`reproduced`になり得た点だけを塞ぐ。
+
+同じ観測の残る前提である「**別state**」も、確かめていなかった。entryは二回目に新しい`-state`を渡すが、**childがそれを使ったかは見ていなかった**（`-state`を無視すれば二回は同じstateを共有し、同じ観測の繰り返しになる）。修正して、childが申告する`stateDir`が**渡した先と一致することを検査**するようにした。**申告が無ければ不成立**である（SC0-18と同じ規則）。
+
+**これは「childがそう申告した」までである。** 申告どおりに使ったことの証明ではない（builderの他の申告と同じ限界）。
+
+**この検査を足した時点で、実buildを走らせる`reference-go-build-with-supply`は`stateDir`を申告していなかった**ため、実buildの再現は`unperformed`になっていた。このchildは`-state`の中に`GOCACHE`・`GOMODCACHE`・`GOPATH`・`HOME`を置いて実際に分離しており、申告が無いだけであった。**申告を足して、実buildで`reproduced`が戻った**（[記録](../evidence/TEI_GO_SELF_BUILD_GO_BUILDER_STATE_2026-11-10.md)）。
+
+**これはP-2（計画を解釈しないchildに`planFingerprint`欄を足す）とは違う。** stateの申告は「この実行が何をしたか」の事実であり、計画の解釈ではない。P-2を採らない判断は変わらない。
+
 #### この節が言っていないこと
 
 - R-1を採らない、とは言っていない。**前提が未決**だと言っている。
@@ -981,6 +999,8 @@ ContractVersion: fmt.Sprintf("%s/v%d", p.Contract, p.ContractMajor),
 
 ### 4.25 既定経路をどこまで強くするか（三つの未決を一つの判断として、2026-11-09）
 
+> **後続の節で決定済み。** 本節はP-4（`-strong`）を推したが、§4.30が「catalogを名指しすれば最強の観測が既定で揃う」を実現し、§4.34が**`-strong`を採らない**と決めた。本節のP-1〜P-4の比較は当時の材料であり、現在の決定ではない。既定の扱いは§4.34を参照。
+
 §7に三つの未決が並んでいる。**同じ根に三つ実がある。**
 
 | 未決 | 問い |
@@ -1313,6 +1333,504 @@ Claimの`boundary`文言を、**このホスト**から**観測した二つの�
 
 [記録](../evidence/TEI_GO_SELF_BUILD_INPROCESS_DEFAULT_EVIDENCE_2026-11-09.md)。`-rebuild-check`を**渡さずに**`l2b.claimed=true`になること、`-rebuild-check=false`で`unperformed`の理由が「呼び手が断った」に変わることを確かめた。
 
+### 4.31 `l2b.claimed`に必要なflagを実測で確かめる（2026-11-09）
+
+§7は`l2b.claimed`について「今は呼び手がin-processと`-rebuild-check`を明示する必要がある」と書いていた。**§4.30の後、後半が成り立たない。**
+
+#### 何が変わったか
+
+§4.30は「`-build-catalog`を渡した試行は、`-rebuild-check`を明示しなくても二回目のbuildを行う」と決めた。五条件の五つ目（再現）が**`-build-catalog`だけで満たされる**ことになる。
+
+#### 実測
+
+**`-build-catalog`のみ（`-rebuild-check`を渡さない）**
+
+| 項目 | 結果 |
+| --- | --- |
+| `artifactReproducibility.state` | **`reproduced`** |
+| `l2b.claimed` | **`true`** |
+| `l2b.unmet` | 空 |
+
+**`-rebuild-check=false`を明示**
+
+| 項目 | 結果 |
+| --- | --- |
+| `state` | `unperformed` |
+| 理由 | **`-rebuild-check=false`を名指し**（「渡されなかった」ではなく「呼び手が断った」） |
+| `l2b.claimed` | `false` |
+
+**断り方が区別されている。** 同じ`unperformed`でも、flagが無い場合と明示的に断った場合で理由文が違う。
+
+#### 記述の訂正
+
+| 旧 | 新 |
+| --- | --- |
+| in-process と`-rebuild-check`を明示する必要がある | **in-process経路を明示すれば足りる**（再現は§4.30が既定にした） |
+
+#### 残る問い
+
+**「何も渡さない試行」でclaimを立てるかは未決である。** 現在の状態は次のとおり。
+
+| 試行 | claim |
+| --- | --- |
+| 何も渡さない | 立たない（計画を導出しない） |
+| `-build-catalog`一式 | 立つ（五条件が揃えば） |
+| `-intent-resolver` | 立たない（entryが解釈しない） |
+| `-build-catalog` + `-rebuild-check=false` | 立たない（呼び手が断った） |
+
+**既定化には§4.29の「catalogを書く場所」の決定が前提になる。** 何も渡さない試行にcatalogを供給できなければ、その試行は計画を導出できず、claimも立てられない。
+
+#### この節がしていないこと
+
+- **§7の判断をしていない。** 記述の訂正と実測だけである。
+- 「既定でclaimを立てるべき」とは言っていない。§4.29の決定を待つ。
+
+### 4.32 catalogを書く場所は製品の外に置く（2026-11-09）
+
+§4.29は、catalogの7欄のうち5欄に**宣言面が無い**ことを示した。本節は「ではどこに書くか」を、**既存readerへの影響**という軸で決める。
+
+#### 測ったこと：三つの案は、どれも既存readerを壊しうる
+
+| 案 | 何を変えるか | 既存readerへの影響（実測） |
+| --- | --- | --- |
+| **K-1** Workspaceに`builders:`を足す | `tei.workspace.yaml` | **壊れる。** manifest parserは未知のentryで**fail closed**する（`internal/workspace/imports.go`の`unsupported workspace manifest entry`）。さらに`formatVersion`は1と2だけを受理し、未知の版もfail closed（`internal/workspace/loader.go`）。**古いbinaryがWorkspaceを読めなくなる** |
+| **K-2** plugin定義に構文を足す | `.tei`の構文 | **壊れる。** parserは構文ごとのfield集合を明示し、未知のfieldでエラーにする（`internal/syntax/parser.go`の`unknown lease-policy field`と同じ形）。**古いbinaryがplugin定義を検証できなくなる** |
+| **外部成果物** catalogを独立したファイルとして渡し、digestで名指しする | **何も足さない** | **壊れない。** 既存のどのファイルにも新しいentryが増えない |
+
+**Workspaceもplugin定義も、未知の入力を拒否する設計である。** これは「分からないことを成功として扱わない」という本リポジトリの原則そのもので、正しい。だからこそ、**既存のファイルへ欄を足す案は、古いbinaryとの互換を壊す**。
+
+#### 決めたこと
+
+**catalogは製品の外で作り、呼び手がdigestで名指しする。** §4.22のK-3が既にこの形を実装しているので、**製品側の変更は要らない**。
+
+| 項目 | 決定 |
+| --- | --- |
+| catalogの置き場所 | **製品のファイル形式の外**（独立したJSON） |
+| 誰が作るか | **ツール**。能力宣言を入力に取り、catalogを組み立ててdigestを付ける |
+| entryの読み方 | 変わらない（`-build-catalog`＋`-build-catalog-digest`＋`-build-source-root`、K-3） |
+| Workspaceの`formatVersion` | 変えない（1と2のまま） |
+| plugin構文 | 変えない |
+
+**製品の契約を一つも変えずに、catalogを用意できるようにする。** これが「最短経路」である。
+
+#### なぜこれで足りるのか
+
+catalogは**データ**であり、entryはそれを**名指しされたものとして読む**（§4.22が「entryはbuilderを自分で探さない」と決めた）。**誰がそのデータを作ったかは、entryの観測の対象ではない。** 作る手段が製品の外にあっても、entryの振る舞いは変わらない。
+
+能力宣言（どのcontractを、どのrecipe kindで、どのtarget/profileに向けて提供するか）は、**catalogを作る者の入力**であって、Workspaceの意味でもpluginの意味でもない。だから製品の構文に入れない。
+
+#### この決定が言っていないこと
+
+- **能力宣言の形式**（ツールの入力の形）。本節は決めない
+- **catalogが正しいこと**。§4.22 K-3、SC0-26のまま。呼び手が名指ししたデータを使った、という記録しかない
+- **誰が能力を宣言してよいか**（権限）。catalogは「buildできると名乗るデータ」であり、**その名乗りの妥当性は本節の範囲外**
+- 既定の試行でのClaim（§4.30のまま。catalogを渡す一手が要る）
+
+#### 覆す条件
+
+- 能力宣言を**Workspaceの意味として扱う必要が出た場合**（例：Workspaceの妥当性検査がbuilderの有無に依存するようになる）。そのときは`formatVersion`の改版と一緒にK-1を採る
+- 能力宣言を**pluginの意味として扱う必要が出た場合**（例：pluginの起動時に自分のbuild能力を検証する）。同じくK-2を版付けで採る
+
+いずれも**後から足せる**。逆（製品に足してから外す）は互換を壊すので、順序はこちらが正しい。
+
+### 4.33 capability declarationからcatalogを作る（2026-11-09）
+
+§4.32はcatalogを**製品の外のデータ**と決めた。その決定が残した「誰が書くか」を、`tools/reference-build-catalog-authoring`が埋める。
+
+#### 何をするか
+
+**能力宣言**（build toolが何をできるか）を読み、**artifactのdigestを実ファイルから計算して**、catalog JSONを書く。
+
+| 欄 | 扱い |
+| --- | --- |
+| `plugin`・`version`・`implementation`・`contract`・`contractMajor`・`recipeKinds`・`targets`・`profiles` | 宣言から写す |
+| `authorityScope` | **書かせない。** 常に`build-tool`（build toolとして名乗れる値は一つだけ） |
+| `artifact` | `-root`からの**相対パス**。このファイルのdigestが`artifactDigest`になる |
+| `artifactDigest` | **書かせない。** 書くと拒否する |
+
+**digestを宣言させないことが要点である。** 手で書いたdigestを許すと、リポジトリに無いbuilderを名乗るcatalogが作れてしまう。ツールは実ファイルを読み、そのバイトのdigestを入れる。
+
+#### 拒否するもの
+
+| 入力 | 理由 |
+| --- | --- |
+| 宣言の`artifactDigest` | 読んでいないバイトを名乗れなくする |
+| `-root`の外を指す`artifact` | ルートが持たないファイルをcatalogに載せない |
+| 存在しない・通常ファイルでない`artifact` | 同上 |
+| 既存の`-output` | 上書きしない |
+| 組み立てたcatalogが`ParseBuildCatalog`で読めない | entryが読めないcatalogを「catalogがある」と誤解させない |
+
+#### 実測：宣言からClaimまで一本で通った
+
+| 段 | 結果 |
+| --- | --- |
+| 能力宣言を書く | 1 provider |
+| ツールでcatalogを作る | `catalogDigest=sha256:6d1e5929…`、`artifactDigest=sha256:84db7752…` |
+| **宣言のartifactと実ファイルのdigest** | `sha256:84db7752…` で**一致**（`sha256sum`で確認） |
+| 参照実装がそのcatalogを解決 | `planFingerprint=a6b756b8…` |
+| **`tei self-build`（`-rebuild-check`を書かない）** | `derivedBy=entry-in-process`・`artifactReproducibility=reproduced`・**`l2b.claimed=true`**・`qualified=false` |
+
+**§4.29で「catalogを書く場所が無い」と分かってから、製品の契約を一つも変えずに、宣言からL2-bのClaimまでが一本で通った。**
+
+#### この形式は製品の形式ではない
+
+能力宣言には**互換性の約束も`formatVersion`も無い**。製品が読むのは、このツールが出力するcatalogだけである。宣言の形を変えても、catalogの形（`BuildCatalog`）を変えなければ製品には影響しない。
+
+#### 回帰試験に載せた
+
+**宣言からClaimまでの鎖は、`cmd/tei`のエンドツーエンド試験が毎回通す。** 試験は参照catalogをコピーせず、**ツールでcatalogを作る**。
+
+| 段 | 試験が確かめること |
+| --- | --- |
+| 能力宣言 | builder childの実体を宣言が名指しする |
+| authoring | ツールがcatalogを書き、`catalogDigest`を返す |
+| **catalogの中身** | **`artifactDigest`が、実際に走るbuilderのバイトのdigestと一致する** |
+| `self-build` | `l2b.claimed=true`・`unmet`空・`qualified=false` |
+
+**digestの一致を試験で確かめるのは、下流が気づけないからである。** builderの解決はdigestで照合しないため、catalogが別のバイトを名指ししていても試行は通ってしまう。鎖の意味は「名指ししたバイトが実際に走る」ことにあるので、そこを固定した。
+
+#### 二つのホストで同じcatalogになる
+
+同じ宣言と**同じバイトのbuilder**から、`linux/amd64`と`windows/amd64`でcatalogを作った。
+
+| 値 | 結果 |
+| --- | --- |
+| `catalogDigest` | **両ホストで同じ**（`sha256:f7e1c879…`） |
+| catalogのバイト数 | 667（同じ） |
+| `artifactDigest` | **両ホストで同じ**（`sha256:cabf793a…`） |
+
+**catalogのバイトが一致するのは、`artifact`が相対パスで、ツールが絶対パスをcatalogへ書き込まないからである。** 同じ宣言と同じbuilderがあれば、どのホストでも同じ`catalogDigest`を呼び手に渡せる。
+
+鎖そのものも**WindowsのGoで直接**通した（`TestSelfBuildEstablishesL2BEndToEnd`が25.13秒でPASS）。観測したのは`linux/amd64`と`windows/amd64`だけで、`darwin`・`arm64`は未観測である。
+
+#### この節が言っていないこと
+
+- **catalogが正しいこと**（§4.22 K-3、SC0-26のまま）。名指しされたデータを使った記録しかない
+- **誰が能力を宣言してよいか**（権限）。catalogは「buildできると名乗るデータ」であり、名乗りの妥当性は範囲外
+- **builderの実装が正しいこと**。digestを計算するだけで中身は見ない
+- 既定の試行でのClaim（§4.30のまま。catalogを渡す一手が要る）
+- 能力宣言の**版付け**。必要になった時点で決める
+- **すべてのOSでの成立**。二つのホストを観測しただけである
+
+### 4.34 既定に関する残りの判断を閉じる（2026-11-09）
+
+§7に残っていた既定の問いに、**測った材料の範囲で**答える。いずれも**今の振る舞いを変えない**判断で、覆す条件を添える。
+
+#### 判断1：`-rebuild-check`をすべての試行で既定にしない
+
+| 材料 | 内容 |
+| --- | --- |
+| 費用（§4.27） | 参照childで+110 ms（1.807倍） |
+| 費用（§4.28） | 実buildで+5.4秒（**1.926倍**） |
+| 効果 | child経路では`l2b.claimed`が**立てられない**（entryが解釈していない） |
+
+**child経路に二回目のbuildを既定で足すのは、費用だけを倍にして主張を増やさない。** §4.25が「P-2は非対称」と呼んだとおりである。§4.30で**catalogを名指しした試行に限って**既定にしたので、Claimを立てたい呼び手は既に自動で最強の観測を得る。
+
+**決定：既定のまま（catalogを名指ししたときだけ行う）。**
+
+**覆す条件**：child経路がL2-bを立てられるようになったとき。
+
+#### 判断2：既定の導出経路をin-processへ切り替えない（R-1は据え置き）
+
+in-processを既定にするには、**entryがcatalogを自分で選ぶ**必要がある。しかし§4.22は「entryはbuilderを自分で探さない」と決め、K-3でcatalogは**呼び手が名指しするデータ**とした。§4.29はcatalogの5欄に宣言面が無いことを示し、§4.32はcatalogを製品の外に置いた。
+
+**したがって「既定でin-process」は、entryが名指しされていないデータを読むことに等しく、K-3を取り消さない限り実装できない。**
+
+**決定：R-1は据え置き。既定はchild経路のまま。** 強い経路は呼び手が`-build-catalog`一式で選ぶ。
+
+**覆す条件**：呼び手が**一度だけ設定する**catalogの場所が製品の契約として決まったとき（Workspaceの`formatVersion`改版を伴う決定）。
+
+#### 判断3：`l2b.claimed`を既定の試行で立てない
+
+判断2の帰結である。既定はchild経路で、その経路ではentryが解釈しないので五条件の一つ目が成立しない。
+
+**決定：既定では立てない。** Claimは**呼び手の行為**であり、`-build-catalog`一式を渡すことがその表明になる。§4.30により、渡した時点で残りの観測は自動で揃う。
+
+**覆す条件**：判断2を覆すとき。
+
+#### 判断4：D-1（catalogの`scope`拡張）を採らない
+
+| 材料 | 内容 |
+| --- | --- |
+| 既存consumer | `tools/reference-mcp-readonly-adapter`が`effect=read-only`を前提にしている |
+| `scope`の意味 | `selected-read-only-commands`。「選んだ読取り専用」であって「dispatchする全部」ではない |
+| 外在consumer | **測れない** |
+| 失われるもの | `-h`と文書で知れるので**発見性だけ**。§4.33でヘルプに全flagが出るようにした |
+
+**決定：D-3のまま（catalogへ載せない）。** `scope`を広げると、外在consumerの前提を測れないまま変えることになる。発見性は`-h`と`reference/plugin-self-build/README.md`で確保した。
+
+**覆す条件**：外在consumerの一覧ができ、`scope`ではなく`effect`を見ることを契約に書けるようになったとき。
+
+#### 閉じないもの
+
+| 項目 | 状態 |
+| --- | --- |
+| `darwin`・`arm64`・別のGo版の観測 | **未観測のまま。** 本環境では実行できない |
+| 能力宣言の版付け | **未決のまま。** 第二のconsumerが現れた時点で決める |
+| `-strong`（§4.25のP-4） | **採らない。** §4.30が「catalogを名指しすれば最強の観測が既定で揃う」を実現したので、強さを選ぶ別flagは要らない。第二の強さの段が要るようになったら再考する |
+
+### 4.37 L2-bの五条件は、何を確かめ、何を信じているか（2026-11-09）
+
+§4.23の述語は五条件の同時成立を要求する。本節は、**各条件がどこまで検査で、どこからが自己申告か**を一か所にまとめる。
+
+**§4.21・§4.24・§4.36で三つの穴を塞いだ結果、条件ごとの中身が変わっている。** 読む人が「欄があるから確かめた」と読まないよう、現状を固定する。
+
+#### 条件ごとの内訳
+
+| 条件 | 検査（entryが自分で見る） | 自己申告（childの言い分） | 塞いだ節 |
+| --- | --- | --- | --- |
+| 1. entry自身が計画を導いた | `derivedBy`・`state`・`unmet`の整合 | — | §4.22段2 |
+| 2. 宣言byteの一致 | 宣言のdigest（entryが保持）と、childが申告したdigestの**比較** | **childが実際にそのbyteを読んだこと** | §4.14 |
+| 3. 計画fingerprintの一致 | 二つの値の**比較**（両方とも空なら`unperformed`） | **childの計画fingerprint** | §4.9・§4.11 |
+| 4. plan→artifactの束縛 | **ディスクのbyteのdigest**と、lockの整合・検証 | childの`artifactDigest` | §4.11・§4.12 |
+| 5. artifactの再現 | 二回の**バイト一致**、**builderの同一性**、**stateの分離**、ディスクの一致 | childの`stateDir`・`artifactDigest` | §4.21・§4.36・(直近2件) |
+
+#### 検査で止められるもの
+
+| childがしようとしたこと | 止まる場所 |
+| --- | --- |
+| 宣言と違うバイトを読んだ**と申告する** | 条件2で不一致 |
+| 計画と違うfingerprintを申告する | 条件3で不一致 |
+| 成果物と違うdigestを申告する | 条件4（ディスクとの比較）で不一致 |
+| 同じバイトを二回出さない | 条件5で不一致 |
+| 二回の間に実行物を差し替える | 条件5の**builder同一性**（**`-child`に名指ししたファイルのbyte**。そのファイルが別の実行物を起動するプロキシだと、背後での差し替えは止まらない——[実測](../evidence/TEI_GO_SELF_BUILD_CHILD_IDENTITY_SCOPE_2026-11-10.md)） |
+| `-state`を無視して同じstateで二回buildする | 条件5の**state分離**（申告が合わない） |
+| **計画と違うdefinitionを読んでbuildする** | childが**成果物を作る前に停止**（§4.36） |
+
+#### 検査で止められないもの（信じている部分）
+
+**childの「自分が何をしたか」という申告は、すべて信じている。** 具体的には:
+
+1. **宣言を実際に読んだこと**（条件2は「読んだ」という申告のdigestを比べるだけで、読んだ行為は見えない）
+2. **計画から成果物を作ったこと**（条件4は「申告したdigest」と「ディスクのbyte」を比べる。ディスクのbyteが計画から出たかは、条件5の再現と§4.36のsource照合で**間接的に**支えるだけ）
+3. **使ったstate**（条件5は申告が渡した先と一致するかを見る。申告どおりに使ったかは見えない）
+4. **§4.36の停止が働くこと**（childが自分で止まる。止まらないchildは、そもそもこの検査を実装していない）
+
+**つまりL2-bは「entryの観測」と「childの申告」の合成であり、childを敵と見なす安全性ではない。** これは§4.8がL2-bを「解釈の層」として定義したことの帰結である。
+
+#### 敵対的なchildを想定するなら何が要るか
+
+| 必要になるもの | 何を閉じるか |
+| --- | --- |
+| OSレベルの読み取り制限（計画のsourceだけをbind mountする） | 申告1（読んだこと） |
+| childの実行をentryが監視する（open/execveの記録） | 申告2（作ったこと） |
+| stateディレクトリの実体をentryが用意し、childには渡さない | 申告3（state） |
+| §4.36の照合を**entry側でも**持つ（childの申告に依存しない） | 申告4（停止が働くこと） |
+
+**いずれも本設計の範囲外である。** §4.8はL2-bを「宣言が計画として解釈され、その計画がartifactを生んだこと」の**解釈層**として定義しており、敵対的builderに対する防御は別の層（供給のTrust、Seed Trust、Runtime Authority）の仕事である。
+
+#### この節が言っていないこと
+
+- childが**正直であること**の保証。していない
+- 敵対的なbuilderへの防御。**層が違う**
+- 受理・Runtime Authority・供給のTrust。いずれも未主張のまま
+
+### 4.36 計画が名指すsourceを、builderが確かめる（2026-11-09）
+
+§4.8(c)は「その計画がそのartifactを生んだ」を主張します。本節は、その連鎖に**入力の照合が無かった**ことを記録し、塞いだ結果を残す。
+
+#### 見つけたこと
+
+計画は`Sources`に**source closureのdigest**を持ちます。entryは`-build-source-root`からsourceを解決してこのdigestを作ります。**ところがbuilder childは、計画が名指すdigestを入力と突き合わせていませんでした。**
+
+| 観測 | 「計画がSを名指し、childがS'を読む」とき |
+| --- | --- |
+| `planCrossCheck=matched` | **成立する。** 計画fingerprintはchildが計画ファイルから取る |
+| `planArtifactBinding=bound` | **成立する。** 成果物digestはchildの申告とディスクが一致する |
+| `artifactReproducibility=reproduced` | **成立する。** 二回とも同じS'を使えば同じバイト |
+
+**どれも「入力が計画のものか」を見ていない。** 三つの観測がすべて通ったまま、計画が記述しない成果物ができる。
+
+#### 直したこと
+
+**childが、読んだdefinitionのdigestを計画の値と突き合わせ、違えば成果物を作る前に停止する。**
+
+| 変更 | 内容 |
+| --- | --- |
+| `buildintent.SingleFileSourceDigest` | 単一ファイルsourceのdigest。**resolverと同じ枠組み**で計算する |
+| child | 計画の`plugin-definition` sourceと比較し、**違えば停止**。計画がdigestを持たない場合も停止 |
+| 報告 | `definitionBytesDigest`と`definitionMatchesPlan` |
+
+**照合をchildに置いたのは、計画と入力の両方を持つ唯一の場所だからである。** entryはchildが何を読んだか見えない。
+
+**枠組みを一か所にしたのは、二か所に書くと必ず食い違うからである。** 当初は生の`sha256`で比較して食い違い、resolverの枠組み（メンバー名と長さを先に書く）を知って直した。
+
+#### 副産物：fixtureが存在しないbuildを記述していた
+
+childの試験の計画が`sha256:aaaa…`という**実在しないdigest**を名指ししていた。検査が無かったので通っていた。**fixtureが実在しないdigestを持っていたこと自体が、この検査が無かった証拠**である。実ファイルのdigestに直した。
+
+#### 補足：同じ照合をentry側にも置く（2026-11-09）
+
+上の照合は**builderが自分で止まる**ことで成り立つ。**その検査を実装していないbuilderは、この穴を塞がない。** §4.37の「信じている4項目」のうち「§4.36の停止が働くこと」がこれに当たる。
+
+そこで、childが申告する`definitionBytesDigest`を**entryが自分の計画の値と比較**するようにした（`definitionBinding`）。不一致は**試行の失敗**として扱い、両方のdigestを記録に残す。**未申告は`unperformed`**（一致として扱わない）。
+
+**これで「§4.36の停止が働くこと」は信じる対象から外れた。** 残る信じている項目は、宣言を実際に読んだこと・計画から成果物を作ったこと・申告どおりのstateを使ったことである。
+
+#### この節が言っていないこと
+
+- **childが本当にそのファイルを読んだこと**（digestはchildの申告である）
+- **ディレクトリのclosure**の照合。今回は単一ファイル（`plugin-definition`）だけを塞いだ
+- 計画が名指す他のsource（`go-package`など）の照合
+- 別ホスト・別Go版での成立
+
+### 4.35 能力宣言に版を付けない（配るのはcatalogだから、2026-11-09）
+
+§4.33で足した能力宣言について、§7は「版付けは必要になった時点で決める」としていました。しかし**実測すると、必要になった時点では決められません**（[記録](../evidence/TEI_GO_SELF_BUILD_DECLARATION_VERSIONING_2026-11-10.md)）——宣言は`DisallowUnknownFields`で解析されるので、`formatVersion`を足した宣言は**版を名乗ろうとした瞬間に拒否**されます。
+
+本節は、その未決を**「宣言を誰に配るか」という問いとして決めます。**
+
+#### 測ったこと：版を持つべきなのは、配る側である
+
+| 対象 | 配るか | 版の扱い（実測） |
+| --- | --- | --- |
+| **catalog**（entryが読む） | **配る**。呼び手が名指しし、digestで固定する | `formatVersion`を持ち、**未知の版を拒否する**（`unsupported build catalog format 2`） |
+| **能力宣言**（ツールの入力） | **配らない**。ツールと同じリポジトリに置く | 版を持たない。キー集合に一致しない入力を拒否する |
+
+#### 決定
+
+**能力宣言に版を付けない。配るのはcatalogであり、catalogは既に版を持つ。**
+
+| 理由 | 内容 |
+| --- | --- |
+| 配る側が版を持つ | 版を必要とするのは「作った時と読む時が離れている」データである。catalogはその条件を満たし、宣言は満たさない |
+| 宣言はツールと同じ場所で変わる | ツールを上げるときに宣言も同じリポジトリで直す。版を名指す相手がいない |
+| **版を足すこと自体が拒否される** | 後から足すと、その時点で宣言を持つ全員にとって破壊的変更になる（実測） |
+
+**宣言を配ることになった場合は、配る前に`formatVersion`を足す（D-2）。** これは「後から決める」ではなく「**配る前に決める**」であり、判断の時期を「必要になった時点」から「配布の決断時」へ移す。
+
+#### 実測
+
+| 入力 | 結果 |
+| --- | --- |
+| 版を書かない宣言 | **成功**。catalogを生成 |
+| `formatVersion`をトップレベルに足した宣言 | **`declaration: json: unknown field "formatVersion"`** で拒否 |
+| `formatVersion: 2`のcatalog | **`refused: unsupported build catalog format 2`** |
+
+**配る側（catalog）は未知の版を拒否し、配らない側（宣言）は未知のキーを拒否する。** どちらも「分からない入力を成功として扱わない」という同じ原則の現れである。
+
+#### この節が言っていないこと
+
+- 宣言を**配らない**ことの妥当性は、§4.32の「製品の外のデータ」という決定に依拠する。**配布する製品になった場合は本節を覆す**
+- catalogの版を**上げる方法**（版番号の意味、移行手順）は決めていない
+- 誰が能力を宣言してよいか（権限）は範囲外のまま
+
+### 4.38 どのchildが、どの条件を満たせるか（2026-11-09）
+
+L2-bの五条件は、childの能力に依存する。本節は、**参照実装のどれがどの条件を満たせるか**を一覧にする。
+
+**§4.21でstate分離の検査を足したとき、実buildの観測が黙って`unperformed`になった**（[記録](../evidence/TEI_GO_SELF_BUILD_GO_BUILDER_STATE_2026-11-10.md)）。childが申告しない欄を条件にすると、**そのchildを使った観測は止まる**。条件を足す前に、この表を確かめる。
+
+#### 一覧
+
+| child | 条件1（in-process） | 条件2（宣言byte） | 条件3（計画fingerprint） | 条件4（plan→artifact） | 条件5（再現） |
+| --- | --- | --- | --- | --- | --- |
+| `reference-plugin-package-build-child` | 呼び手が`-build-catalog`を渡せば満たす | **満たす**（`-intent`で宣言を読む） | **満たす**（`-plan`で計画を読む） | **満たす**（lockを自分で作る） | **満たす**（`stateDir`を申告） |
+| `reference-go-build-with-supply` | 同上 | **満たさない**（宣言を読まない） | **満たさない**（計画を解釈しない） | **満たさない**（lockを作らない） | **満たす**（`stateDir`を申告。§4.21補足） |
+| `reference-go-build-reproducibility` | — | — | — | — | **満たす**（`stateDir`を申告） |
+
+**`l2b.claimed`が立つのは、上の表で五条件すべてを満たすchildだけである。** 現在それは`reference-plugin-package-build-child`だけであり、**これはplanを解釈する参照実装**であって、TEI自身をビルドする道具ではない。
+
+#### この表が意味すること
+
+**TEI自身（Goのバイナリ）を、五条件を満たして自己構築することは、今はできない。** 理由はflagの不足ではなく、**計画を解釈してGoをコンパイルするbuilderが存在しない**ことである（§4.10.2のP-2を採らない判断と同じ理由）。
+
+**最短経路でこれを実現するには、次の三つを持つbuilderが要る。**
+
+| 必要なもの | 何のためか |
+| --- | --- |
+| 計画を読む（`-plan`） | 条件3のfingerprintを自分の入力から出す |
+| 宣言を読む（`-intent`） | 条件2のbyte digestを自分の読みから出す |
+| 計画のsource closureから`go build`する | 条件4・5を自分の成果物で満たす（§4.36の照合もここに入る） |
+
+**`reference-go-build-with-supply`に欄を足すのでは足りない。** それは転記であり、§4.10.2がP-2として退けた案である。
+
+#### 検査を足すときに確かめること
+
+1. **既存の観測が止まらないか。** 新しい条件がchildの申告を要求するなら、そのchildが申告するか（本節の表）
+2. **止まるのが正しい停止か。** 止まること自体は悪くない。悪いのは、**止まったことに気づかない**ことである（§4.21の場合は実buildの観測が失われた）
+3. **そのchildを使う試験があるか。** 無ければ、止まったことをCIが知らせない
+
+#### この節が言っていないこと
+
+- 表に無いchildの能力。**測ったものだけを載せている**
+- 三つを持つbuilderの実装。**まだ無い**
+- 受理・Runtime Authority・供給のTrust。いずれも未主張のまま
+
+### 4.39 TEI自身をビルドする計画の形（2026-11-09）
+
+§4.38は「五条件を満たしてTEI自身を自己構築することは今はできない。理由はflagの不足ではなく、**計画を解釈してGoをコンパイルするbuilderが存在しない**こと」で終わった。本節は、**そのbuilderが受け取る計画を先に決める。**
+
+#### 測ったこと：計画の型は既に「commandをビルドする」形を受ける
+
+次の計画を`plugin.BuildPlan`として解析し、`Validate()`と`LockBuildOutput`に通した（[記録](../evidence/TEI_GO_SELF_BUILD_GO_COMMAND_PLAN_2026-11-10.md)）。
+
+| 欄 | 値 |
+| --- | --- |
+| `recipe.kind` | `go-command` |
+| `recipe.entrypoint` | `./cmd/tei` |
+| `outputKind` | `runtime-artifact` |
+| `sources[0]` | `{kind: "go-package", locator: "cmd/tei", digest: "sha256:…"}` |
+
+**結果：`Validate()`は通り、fingerprintが出て、`LockBuildOutput`も通った。** 型を足す必要は無い。`LockBuildOutput`は`runtime-artifact`を要求するので、**commandのためのlockの種類も既にある**（`Lock`は`runtime-artifact`専用として検証される）。
+
+#### builderが満たすべき五条件
+
+| 条件 | builderがすること |
+| --- | --- |
+| 1. entryが計画を導く | 呼び手が`-build-catalog`を渡す。**builder側の仕事ではない** |
+| 2. 宣言byteの一致 | `-intent`で宣言を読み、`intentBytesDigest`を申告する |
+| 3. 計画fingerprintの一致 | `-plan`で計画を読み、`BuildPlanFingerprint`を計算して申告する |
+| 4. plan→artifact | 成果物を書き、`artifactDigest`を申告し、**自分でlockを作って検証する** |
+| 5. artifactの再現 | `-artifact-out`と`-state`を尊重し、`stateDir`を申告する |
+
+#### 入力の照合をどこまでやるか
+
+**計画の`Sources`は、builderが`DirSourceResolver`で同じrootから解釈し直して突き合わせる。** §4.36は単一ファイルだけだったが、`DirSourceResolver`はディレクトリも扱うので、**`go-package`のsource（`cmd/tei`のようなディレクトリ）でも同じ照合ができる。**
+
+| 案 | 内容 | 何が違うか |
+| --- | --- | --- |
+| **A: その場で照合してbuild** | 作業ツリーのファイルを計画と突き合わせ、一致したら**そのツリーで**`go build`する | 実装が小さく、今日のtoolchainの挙動をそのまま使える。**照合とcompileの間にファイルが変わり得る**（TOCTOU） |
+| B: 閉包を別の木へ写してbuild | 計画のsource closureだけを隔離した木へ写し、`go.mod`を合成してbuildする | 照合とcompileの間に何も変わらない。**module解決の合成が要る**（依存の取り込み方を含む） |
+
+**最初の一歩はAとする。** 理由は三つ:
+
+1. **Bの合成規則（module path・置換・依存の取り込み）は、それ自体が設計対象**であり、先に決めると計画が重くなる
+2. Aでも「計画に載っていないsourceを読んでいないか」は**列挙で確かめられる**（`go list -deps`の結果を閉包と比べる）
+3. **Aの残る危険（TOCTOU）は名前を付けて記録できる**。Bはその危険を消すが、代わりに別の危険（合成の誤り）を持ち込む
+
+#### 実装が要るもの（順）
+
+| 段 | 内容 | 何が満たされるか | 状態 |
+| --- | --- | --- | --- |
+| 1 | `tools/reference-go-build-from-plan`: `-plan`・`-intent`・`-repo`・`-artifact-out`・`-state`を受け、計画とsourceを照合して`go build`し、5項目を申告する | 条件2・3・5と、条件4の材料 | **実装済み**（[記録](../evidence/TEI_GO_SELF_BUILD_BUILDER_FROM_PLAN_2026-11-10.md)） |
+| 2 | そのtoolをcatalogのproviderとして宣言し、`tei self-build -build-catalog`で鎖を通す | 条件1・4・**`l2b.claimed`** | **一度通した**（[記録](../evidence/TEI_GO_SELF_BUILD_L2B_FROM_REAL_GO_BUILD_2026-11-10.md)。`./cmd/tei`の実buildで`l2b.claimed=true`） |
+| 3 | 回帰試験（`cmd/tei`のエンドツーエンド）に載せる | 毎回通ること | 未着手 |
+
+**段1で確かめたこと**：計画が名指すsourceと実際のsourceが違えば**ビルドしない**。実buildが通り、`planFingerprint`・`artifactDigest`・`stateDir`・自分で作って検証したlockが出る。**`DirSourceResolver`をそのまま呼んでいる**ので、枠組みがentryと食い違わない。
+
+#### 段2で分かったこと
+
+**`./cmd/tei`の実buildで`l2b.claimed=true`が立った。** 五条件がすべて成立し、`unmet`は空である。ただし次の四点が残った。
+
+| # | 残ったこと | 意味 |
+| --- | --- | --- |
+| 1 | 宣言の`definitionSource`は**`plugin-definition` kind**を要求する | **宣言モデルがplugin前提**である。commandだけの宣言は書けない（既存の`plugin.tei`を定義sourceにして通した） |
+| 2 | `gobuilder`の固定設定が`GOPROXY=off` | 依存のある対象はビルドできない。`BuildPackageWithSupply`と`-supply`を足した |
+| 3 | `definitionBinding`が`unperformed` | 新しいbuilderが`definitionBytesDigest`を申告しない。**§4.36のentry側照合が効いていない** |
+| 4 | **回帰試験が無い** | 到達点は「一度通した」ままである |
+
+**段3（回帰試験）を先に片づける。** 載せない限り、次に検査を足したときに黙って止まる（§4.38の3番目）。
+
+**§4.38の表の「満たさない」は、段1と2で埋まる。** 段3が無いと、次に検査を足したときに黙って止まる（§4.38の3番目）。
+
+#### この節が言っていないこと
+
+- **段2・3がまだ無い。** 段1だけでは`l2b.claimed`は立たない
+- **AのTOCTOUを閉じていない。** 閉じるにはBが要る
+- `go list -deps`の結果と閉包の突き合わせは**案**であり、実装していない
+- 受理・Runtime Authority・供給のTrust。いずれも未主張のまま
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
@@ -1391,16 +1909,16 @@ Claimの`boundary`文言を、**このホスト**から**観測した二つの�
 - [x] **実build**での`-rebuild-check`のコスト測定（§4.28。`reference-go-build-with-supply`をchildにして`./internal/core`を実際に`go build`。中央値5852.7 ms→11272.4 ms、**+5419.7 ms・1.926倍**で、§4.27の推論が当たった。二回のbuildのdigestは一致し`artifactReproducibility=reproduced`。[記録](../evidence/TEI_GO_SELF_BUILD_GO_BUILD_REBUILD_COST_2026-11-09.md)）
 - [x] `-rebuild-check`の実コストの測定（§4.27。[記録](../evidence/TEI_GO_SELF_BUILD_REBUILD_CHECK_COST_2026-11-09.md)。参照childでは中央値136.4 ms→246.5 ms（+110.1 ms・1.807倍）で、**増分の大半はchildの仕事ではなくentryの固定費**（child単体3.4 ms）。実buildは未測定）
 - [x] `-rebuild-check`の既定を**catalogを名指しした試行に限って**強くする決定と実装（§4.30。`-build-catalog`を渡せば二回目のbuildが既定になり、`-rebuild-check=false`で断れる。child経路と何も渡さない試行は変わらない）
-- [ ] `-rebuild-check`を**すべての試行で既定**にするかどうかの判断。**§4.25で三つの未決を一つの判断として扱う案（P-1〜P-4）を示した**。実buildの所要時間は未測（§4.25末尾）
+- [x] `-rebuild-check`を**すべての試行で既定**にするかどうかの判断（**§4.34で閉じた：既定にしない。** child経路では費用が倍になるだけでClaimが増えない。catalogを名指しした試行では§4.30が既定で行う） **§4.25がP-1〜P-4を示し、§4.27が参照child、§4.28が実buildのコストを実測した**（それぞれ1.807倍・1.93倍）。**§4.30がcatalog経路だけ既定にした**ので、残る問いはそれ以外の経路でも既定にするかである
 - [x] catalogの出所の決定（§4.22。**K-3: 呼び手が名指しするcatalogデータ＋必須のdigest**。新しいAuthorityを作らず、既存の`-supply`・`-intent-resolver`と同じ形）
-- [ ] **entryの既定経路をin-processの`Resolve`へ切り替えるか**の判断（§4.16のR-1/R-2/R-3）。前提だったcatalogの出所は§4.22で決めた（K-3）。切り替え自体は段2の完了後に別途決める
+- [x] **entryの既定経路をin-processの`Resolve`へ切り替えるか**の判断（**§4.34で閉じた：R-1据え置き。** entryが名指しされていないcatalogを読むことはK-3の取り消しになる。既定はchild経路のまま） 前提だったcatalogの出所は§4.22で決めた（K-3）。切り替え自体は段2の完了後に別途決める
 - [x] **段1**：`fixture`を外した名前で`BuildCatalog`・`ParseBuildCatalog`・`ResolveBuilder`・`ResolveDependency`・`CheckTarget`・`DirSourceResolver`を`internal/buildintent`へ移した（`tools/`側は型aliasと薄い委譲。参照実装の試験は**無変更で通る**。§4.22の移行表、[記録](../evidence/TEI_GO_SELF_BUILD_CATALOG_MOVE_2026-11-09.md)）
 - [x] **段2**：`cmd/tei`に`-build-catalog`・`-build-catalog-digest`・`-build-source-root`を足し、in-processで計画を導く経路を作った（`-intent-resolver`とは排他。§4.22、[記録](../evidence/TEI_GO_SELF_BUILD_INPROCESS_RESOLUTION_2026-11-09.md)）。**entryが導いた計画のfingerprintは参照実装のchildが出した値と一致した。** `planRecompute`・`planCrossCheck`・`planArtifactBinding`はin-process経路でも成立する
 - [x] L2-bのClaimを立てるかの判断と実装（§4.23。**五条件の同時成立**を述語にし、`l2b.claimed`と`l2b.unmet`として出す。[記録](../evidence/TEI_GO_SELF_BUILD_L2B_CLAIM_2026-11-09.md)。単一観測の`l2bClaimed`欄は`false`のまま据え置き、述語はそれらを読まない）
 - [x] L2-bのClaimを**回帰試験**にする（§4.24。参照catalogと参照builder childで五条件が揃うことを`cmd/tei`の試験で固定し、`go test ./...`経由で健康性確認に載る。[記録](../evidence/TEI_GO_SELF_BUILD_L2B_GATE_2026-11-09.md)）
 - [x] 二つのホスト（`linux/amd64`・`windows/amd64`）で同じ計画とartifactが出ることの実測（§4.26。[記録](../evidence/TEI_GO_SELF_BUILD_CROSS_OS_DIGESTS_2026-11-09.md)。`intentFingerprint`・`sourceClosure`・`planFingerprint`・`artifactDigest`の四つが一致し、L2-bのエンドツーエンド試験もWindowsでPASSした。**Go版も違う**）
-- [ ] `darwin`・`arm64`・別のGo版の組合せでの観測（§4.26の範囲外）
-- [ ] `l2b.claimed`を**既定の試行**で立てられるようにするか（今は呼び手がin-processと`-rebuild-check`を明示する必要がある。§4.23末尾）
+- [ ] `darwin`・`arm64`・別のGo版の組合せでの観測（§4.26の範囲外）。**`arm64`では連鎖全体が成立した。** `tei`・child・著者ツール・resolverをすべてarm64へビルドしqemu上で`tei self-build`を走らせると、**`l2b.claimed=true`・`unmet`空・`reproduced`** になり、amd64と同じ結果だった（[記録](../evidence/TEI_GO_SELF_BUILD_ARM64_L2B_CHAIN_2026-11-10.md)）。**宣言とソースに依存する値は一致し、builderに依存する値は相違する**——`catalogDigest`は走るbuilderのバイトを名指しするので、アーキが違えば別の値になる。**Claimはクロスアーキテクチャの成果物一致を要求しない。**版は`go1.26.10`と`go1.27.3`で2×2を観測済み（[記録](../evidence/TEI_GO_SELF_BUILD_GO_VERSION_AND_ARCH_MATRIX_2026-11-10.md)）。**`darwin`は未観測のまま**（macOSの実行環境が無い）
+- [x] `l2b.claimed`を**既定の試行**で立てられるようにするか（**§4.34で閉じた：立てない。** 既定はchild経路で五条件の一つ目が成立しない。Claimは呼び手が`-build-catalog`一式を渡す行為） **呼び手が要るのはin-process経路（`-build-catalog`一式）だけで、`-rebuild-check`は§4.30が既定にした**（実測：`-build-catalog`のみで`claimed=true`・`-rebuild-check=false`で`false`。[記録](../evidence/TEI_GO_SELF_BUILD_L2B_DEFAULT_PREMISE_2026-11-09.md)）。残る問いは「何も渡さない試行」で立てるかであり、§4.29のcatalog決定が前提（§4.31）
 - [x] 宣言とplanの**build座標**（`outputKind`・`target`・`profile`）の照合（[#3652](https://github.com/hat47x/tei-platform/pull/3652)。childが三座標を一つずつ比べ、違えばartifactを書いた後にreportを出さずexit 1。[記録](../evidence/TEI_GO_SELF_BUILD_BUILD_COORDINATES_2026-11-09.md)）
 - [x] 宣言の他の欄のうち、planが同じ形で持つもの（`recipe`・`sources`・`dependencies`）の照合（[#3661](https://github.com/hat47x/tei-platform/pull/3661)。§4.17）
 - [x] `parameters`の照合（[#3664](https://github.com/hat47x/tei-platform/pull/3664)。測るとどちらの側も名前順ソートのみで値を変えないと分かったので、名前で突き合わせる。§4.18）
@@ -1409,8 +1927,12 @@ Claimの`boundary`文言を、**このホスト**から**観測した二つの�
 - [x] **欄ごとの照合をここで打ち切る**決定（§4.20。原因究明の道具として既存は残すが、これ以上足さない。残る段差は欄照合では埋まらない）
 - [x] 依存の更なる削減：**entryが計画側も独立に持つ**経路（[#3729](https://github.com/hat47x/tei-platform/pull/3729)）。lockの計画側はbuilderの申告を優先し、申告が無ければentryの再計算値を使う。どちらを使ったかを`planSideSource`で記録するので、弱い根拠を強い根拠と読ませない（[記録](../evidence/TEI_GO_SELF_BUILD_ENTRY_PLAN_SIDE_2026-11-09.md)）
 - [x] catalogの欄がどこで宣言されているかの実測（§4.29。7欄のうち**5欄にcatalog以外の宣言面が無く**、既存の宣言からは導出できないと分かった。[記録](../evidence/TEI_GO_SELF_BUILD_CATALOG_FIELD_PROVENANCE_2026-11-09.md)）
-- [ ] catalogを**書く場所**を製品に作るか（§4.29。K-1のWorkspace欄・K-2のplugin構文拡張・外部配布物の三択。既定の試行でClaimを立てるには、この決定が要る）
-- [ ] D-1（catalogの`scope`拡張）を採るかどうかの契約判断（採る場合のみ、catalogの広告と実応答の一致を照合へ載せる）
+- [x] catalogを**書く場所**の決定（§4.32。**製品の外**に置く。Workspaceもplugin構文も変えない。既存readerは未知のentryと未知の`formatVersion`を拒否するため、K-1・K-2は古いbinaryとの互換を壊す。K-3の読み方はそのままで、製品の契約を一つも変えない）
+- [x] 鎖の**Windows**での観測と、catalogのホスト間一致（§4.33。`TestSelfBuildEstablishesL2BEndToEnd`がWindowsのGoでPASSし、同じ宣言とbuilderから作ったcatalogの`catalogDigest`が`linux/amd64`と`windows/amd64`で一致した。観測は二ホストで、`darwin`・`arm64`は未観測。[記録](../evidence/TEI_GO_SELF_BUILD_CHAIN_WINDOWS_2026-11-10.md)）
+- [x] 宣言からClaimまでの鎖の**回帰試験**（§4.33。`cmd/tei`のエンドツーエンド試験がツールでcatalogを作り、**`artifactDigest`が実際に走るbuilderのバイトと一致すること**を確かめてから`l2b.claimed`を要求する。builderの解決はdigestで照合しないので、下流では気づけない）
+- [x] catalogを作る**ツール**の能力宣言の形式と実装（§4.33。`tools/reference-build-catalog-authoring`が能力宣言からcatalogを作り、**artifactのdigestは実ファイルから計算**する。宣言にdigestを書くことと`-root`の外を拒否する。宣言から`l2b.claimed=true`まで一本で通った。[記録](../evidence/TEI_GO_SELF_BUILD_CATALOG_AUTHORING_2026-11-09.md)）
+- [x] 能力宣言の**版付け**（**§4.35で閉じた：版を付けない。** 配るのはcatalogで、catalogは既に`formatVersion`を持ち未知の版を拒否する。宣言はツールと同じ場所で変わるので版を名指す相手がいない。**宣言を配ることになったら、配る前に`formatVersion`を足す**） **実測すると「必要になった時点」に決められない**——`formatVersion`を足した宣言は`json: unknown field`で拒否され、版を名乗る手段が導入時点で使えない。宣言を配るなら今足すのが最も安い（D-2）。**判断には「宣言を誰に配るか」が要り、これは§4.32が範囲外とした問い**（[記録](../evidence/TEI_GO_SELF_BUILD_DECLARATION_VERSIONING_2026-11-10.md)）。**§4.34が未決のまま閉じ、覆す条件を「第二のconsumerが現れた時点」とした**ので、本項目はその条件を待つ
+- [x] D-1（catalogの`scope`拡張）を採るかどうかの契約判断（**§4.34で閉じた：採らない。** 外在consumerの前提を測れないまま変えない。発見性は`-h`とREADMEで確保した） （採る場合のみ、catalogの広告と実応答の一致を照合へ載せる）
 
 **A-1（`gobuilder`移動）は採らないため、影響範囲の洗い出しは終了条件から外した。** 29ファイルの内訳は[記録](../evidence/TEI_GO_INTERNAL_RULE_AND_BUILDER_MOVE_2026-11-07.md)として残す。I-1は「採らない」から「I-1aとして着手」へ改めた（§4.13）。`ParseFixtureCatalog`（fixture catalog）は`tools/`に残す。
 

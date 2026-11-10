@@ -1,0 +1,21 @@
+Possible row.issue values (11):
+
+ from trace.go switch:
+   invalid-source  ambiguous-source  invalid-target
+   invalid-edge-type  invalid-rule  conflicting-rule
+ from lookup.resolve (assigned straight into row.Issue):
+   invalid-reference  wrong-kind  missing-reference
+   ambiguous-reference  version-mismatch
+ from evidenceDiagnostics: any code
+
+Reachability through the CLI:
+   counts is built from graph.Nodes, and the projection dedupes Keys, so
+   counts[edge.From] can only be 1 -> neither invalid-source nor ambiguous-source.
+   addEdge drops an unmaterialised From into projectionUnresolved first.
+   Rules are synthesised from the projected edges, so the three rule issues
+   cannot arise. The projection drops unmaterialised To into projectionUnresolved
+   before a row exists, so missing/wrong-kind/ambiguous-reference cannot arise.
+   -scope is validated first: " bad " -> INVALID_ARGUMENT, "a\nb" -> INVALID_SUBJECT.
+   Ref.Version and Edge.Evidence are never set by the projection.
+
+Measured over every subject of reference/workspace: issues observed: none.

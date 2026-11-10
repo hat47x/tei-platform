@@ -14,10 +14,12 @@ import (
 // a string transform, because the two surfaces name operations differently
 // (`model catalog` vs `tei_model_catalog`).
 var cliCommandNameForTool = map[string]string{
-	"tei_model_catalog": "model catalog",
-	"tei_inspect":       "inspect",
-	"tei_trace":         "trace",
-	"tei_validate":      "validate",
+	"tei_model_catalog":  "model catalog",
+	"tei_model_locate":   "model locate",
+	"tei_model_overview": "model overview",
+	"tei_inspect":        "inspect",
+	"tei_trace":          "trace",
+	"tei_validate":       "validate",
 }
 
 // cliResponseSchemaForTool pins the response document each tool answers. A
@@ -25,10 +27,12 @@ var cliCommandNameForTool = map[string]string{
 // two must agree; otherwise a client has to know which surface to trust
 // (ADR-0048 §2.6).
 var cliResponseSchemaForTool = map[string]string{
-	"tei_model_catalog": "tei.cli.model/v0",
-	"tei_inspect":       "tei.cli.inspect/v0",
-	"tei_trace":         "tei.cli.trace/v0",
-	"tei_validate":      "tei.cli.validate/v0",
+	"tei_model_catalog":  "tei.cli.model/v0",
+	"tei_model_locate":   "tei.cli.model-locate/v0",
+	"tei_model_overview": "tei.cli.model-overview/v0",
+	"tei_inspect":        "tei.cli.inspect/v0",
+	"tei_trace":          "tei.cli.trace/v0",
+	"tei_validate":       "tei.cli.validate/v0",
 }
 
 // TestToolListAgreesWithTheCLICatalog runs the real CLI discovery document and

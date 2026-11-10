@@ -383,6 +383,12 @@ WP10 統合と引継ぎ
 | 期間の閉塞によるCommand拒否 | 実装 | 付録C.5 |
 | CLI参照実行の期間状態 | 実装 | 付録C.5 |
 | フックの宣言（位相・読み書き・失敗時） | 実装 | 付録C.5 |
+| フックの範囲（行・レコード・項目）の宣言と拒否 | 実装（参照） | 付録C.5、`internal/application`・`internal/validation`・`internal/hook`（行単位は`RunRows`、ホストからの呼出しは未実装）、[確認記録](../evidence/XTEA_LOWCODE_HOOK_SCOPE_2026-11.md) |
+| 行単位フックの`uses`の判定の一本化 | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_ROW_USES_PARITY_2026-11.md) |
+| 行単位フックの`uses`の実行（`RunRowCalls`） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_ROW_USES_CALLS_2026-11.md) |
+| Data型パラメータへ渡す属性の規約 | 確認済み（限定なし） | 付録C.5、`internal/validation`・`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_DATA_PARAM_CONVENTION_2026-11.md) |
+| 実行時の値変換 | 不要と確認 | 付録C.5、`internal/validation`、[確認記録](../evidence/XTEA_LOWCODE_VALUE_CONVERSION_2026-11.md)（受理条件が同一の下位原始型を要求するため、変換を要する組は通らない） |
+| 行単位のフックの実行（`RunRows`・`applyReachableRows`） | 実装（参照） | 付録C.5、`internal/hook`（二つの行経路が併存し`uses`の扱いが違う。`Runner.Rows`を設定するホストは未実装）、[確認記録](../evidence/XTEA_LOWCODE_HOOK_ROW_REACHABILITY_2026-11.md) |
 | フックの位相の重複宣言の拒否 | 実装 | 付録C.5、`internal/validation` |
 | フックの位相順序と途中停止の記録（`RunSequence`） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md) |
 | フックの宣言した読み取りだけの授受（`ReadsFor`） | 実装 | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_DECLARED_READS_2026-11.md) |
@@ -398,6 +404,12 @@ WP10 統合と引継ぎ
 | フックの提案のCLI・Studio表示 | 実装（参照） | 付録C.5、`cmd/tei`、`cmd/tei-studio`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_SHOW_PROPOSALS_2026-11.md) |
 | 宣言した能力を呼ばないまま実行済みと報告しない（`RunReachable`） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_DECLARED_CALL_HONESTY_2026-11.md) |
 | 宣言した能力を実際に呼ぶ配線（`RunDeclaredCalls`） | 実装（参照） | 付録C.5、`internal/hook`、`cmd/tei`、`internal/studiohost`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_DECLARED_CALL_WIRING_2026-11.md) |
+| フックの`reads`から能力のパラメータへの対応（`BindInputsFromReads`） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_READS_TO_PARAMS_2026-11.md) |
+| 能力入力の結び付けの型検査 | 実装 | 付録C.5、`internal/validation`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_BINDING_TYPE_CHECK_2026-11.md) |
+| 能力入力の結び付けのData対応 | 実装 | 付録C.5、`internal/validation`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_BINDING_DATA_MATCH_2026-11.md) |
+| 位相ごとのフック実装の供給（`Runner.ByPhase`） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_PHASE_IMPLEMENTATION_2026-11.md) |
+| 複数の結末を持つ能力の未確定の報告 | 実装（参照） | 付録C.5、`internal/command`、[確認記録](../evidence/XTEA_LOWCODE_MULTI_OUTCOME_2026-11.md) |
+| フック結末名とCommand拒否名の対応の実出力 | 実装（参照） | 付録C.5、`internal/hook`、`cmd/tei`、`internal/studiohost`、[確認記録](../evidence/XTEA_LOWCODE_OUTCOME_CORRESPONDENCE_USE_2026-11.md) |
 | フックが使う能力の`command` Pattern不在の拒否 | 実装 | 付録C.5、`internal/validation` |
 | フックの実行境界（reject/warn） | 実装 | 付録C.5 |
 | 未使用属性の表示 | 実装 | 付録C.5 |

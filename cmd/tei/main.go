@@ -145,6 +145,10 @@ func main() {
 		return
 	}
 	jsonValidationRequested := command == "validate" && wantsJSONValidation(os.Args[2:])
+	// A requested usage listing must reach printHelp, which shows only the flags
+	// this command reads. Under ExitOnError the flag package prints its own
+	// listing and exits, and that listing enumerates the shared FlagSet: validate
+	// showed 70 flags while accepting 3 (#3956).
 	parseMode := flag.ExitOnError
 	if command == "inspect" || command == "trace" || jsonValidationRequested || isResultEnvelopeCommand(command) {
 		parseMode = flag.ContinueOnError
@@ -177,7 +181,7 @@ func main() {
 	reviewHandoffPath := fs.String("review-handoff", "", "Builder Review Handoff JSON")
 	knowledgeDisclosure := fs.String("disclose", "", "comma-separated Knowledge sections to disclose: source,definition,dependencies,data-design")
 	expectedDisclosureFingerprint := fs.String("expected-disclosure-fingerprint", "", "expected selective Knowledge Disclosure fingerprint; valid for disclosure-producing commands")
-	qualificationRequirementsPath := fs.String("qualification-requirements", "", "knowledge qualification requirements JSON")
+	qualificationRequirementsPath := fs.String("qualification-requirements", "", "path to a file holding the knowledge qualification requirements JSON")
 	var analysisPaths pathList
 	var schemaPaths pathList
 	var planPaths pathList
@@ -199,6 +203,7 @@ func main() {
 	periodStates := fs.String("period-states", "", "periods: period=state pairs, comma separated")
 	periodStatePath := fs.String("period-state-file", "", "periods: JSON object of period to state")
 	periodAdvance := fs.String("advance", "", "periods: move this period one step toward closed and record it")
+	periodCloseCapability := fs.String("close-capability", "", "periods: the close capability that already ran, satisfying close-requires")
 	dbCheckDSNFlag := fs.String("dsn", "", "dbcheck: PostgreSQL DSN (defaults to TEI_TEST_POSTGRES_DSN)")
 	grantsOut := fs.String("grants-out", "", "grants: write the grants document here instead of stdout")
 	grantCapability := fs.String("grant-capability", "", "issue-grant: the capability the grant is issued to")
@@ -230,6 +235,19 @@ func main() {
 	expectedRevision := fs.Int("expected-revision", -1, "expected durable deployment run revision for optimistic concurrency")
 	var statePaths pathList
 	fs.Var(&statePaths, "state", "database compatibility state JSON; repeatable")
+	// -h/-help is a request to read the grammar, not an argument
+	// failure. Under ExitOnError the flag package prints its own usage
+	// listing (the shared FlagSet, which holds every command flags) and
+	// exits before the ErrHelp handler below can answer. Returning the same
+	// sentinel keeps one code path for every command (#3943).
+	// ExitOnError calls os.Exit from inside Parse on -h, so the requested
+	// listing must be answered before parsing. The flag package would print the
+	// shared FlagSet (every command flags); printHelp prints only this
+	// command ones (#3943).
+	if parseMode == flag.ExitOnError && requestedHelp(os.Args[2:]) {
+		printHelp(os.Stdout, fs, command)
+		return
+	}
 	parseErr := fs.Parse(os.Args[2:])
 	if errors.Is(parseErr, flag.ErrHelp) {
 		printHelp(os.Stdout, fs, command)
@@ -625,7 +643,7 @@ func main() {
 		}
 		return
 	case "periods":
-		if err := runPeriodsCommand(*workspacePath, *applicationID, *periodStates, *periodStatePath, *periodAdvance); err != nil {
+		if err := runPeriodsCommand(*workspacePath, *applicationID, *periodStates, *periodStatePath, *periodAdvance, *periodCloseCapability); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}

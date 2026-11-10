@@ -1,0 +1,22 @@
+{
+  "releaseText": "TEI-REF-RELEASE-V0\nplugin=tei:plugin:fixture-alpha\nversion=1.0.0\nepoch=3\nartifact.core=sha256:2b818edb5e00e8477faa0c0d222503a074dd9b1adcd64a7016a4f0e0186f71a6\nartifact.ui=sha256:b60929a1d3328e522717fd340a5940cb1aa465b0abaa74454b714920303464cf\n",
+  "publisherSignatureBase64": "uiwQQ/JvY5+3B25ghBUFyHMsSkiF79eYKdh7WbxfQ8cBiaorW5ovlMF6dKsmdcS5B0Fy856sqdadk4szYGUrBQ==",
+  "profileText": "TEI-REF-PROFILE-V0\ncheck=exact-artifact-digest\n",
+  "artifacts": [
+    {
+      "role": "core",
+      "bytesBase64": "cGx1Z2luLWNvcmUtcmVmLXYwCg=="
+    },
+    {
+      "role": "ui",
+      "bytesBase64": "cGx1Z2luLXVpLXJlZi12MAo="
+    }
+  ],
+  "attestation": {
+    "subject": "sha256:b486c89cb4663762e1ac0d4d2d4391f9fd74b88d716526c8d10c760a5687e4c7",
+    "profileDigest": "sha256:ee8702820103a27f205b511d8dfb25c339bddfd55c63326e0fafc2f9effa12ea",
+    "target": "linux-amd64",
+    "result": "passed",
+    "signatureBase64": "EW+8IZsD9ifINfjDrkd0GidThOCPSkKCpvpLg4ZoDcvP55mc8MwRiRjuKFTqBw0kRWcibTtCjhPpFq6MVeGqAg=="
+  }
+}

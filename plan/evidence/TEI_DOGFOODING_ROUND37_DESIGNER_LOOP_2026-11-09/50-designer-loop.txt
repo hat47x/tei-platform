@@ -1,0 +1,26 @@
+Task: add a capability that consumes security.authenticate's outcome.
+
+  namespace security
+  capability security.logout {
+      input subject security.authenticated_subject
+      outcome logged_out std.boolean
+  }
+
+  validate  -> ok:true, no new diagnostic
+  inspect   -> inputs/outcomes returned
+  trace     -> input   -> security.authenticated_subject  (resolved)
+               outcome -> std.boolean                     (resolved)
+
+Errors were caught, not accepted:
+  unknown payload security.session_token
+     validate -> UNKNOWN_SEMANTIC_CAPABILITY_OUTCOME_PAYLOAD (error)
+     trace    -> no row; projectionUnresolved has
+                 "unresolved-semantic-element:security.session_token"
+  duplicate capability in two files
+     validate -> DUPLICATE_SEMANTIC_ELEMENT (error)
+     trace    -> SUBJECT_AMBIGUOUS exit 1, "2 declarations"
+
+Impact question:
+  trace -subject-id security.authenticated_subject -direction both
+    security.authorize    -input->   security.authenticated_subject
+    security.authenticate -outcome-> security.authenticated_subject

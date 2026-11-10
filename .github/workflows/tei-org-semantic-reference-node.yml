@@ -64,6 +64,7 @@ jobs:
             reference/org-semantic-views/verify-succession.mjs \
             reference/org-semantic-views/verify-consumer-freshness.mjs \
             reference/org-semantic-views/verify-field-observation.mjs \
+            reference/org-semantic-views/verify-temporal.mjs \
             reference/org-semantic-views/verify-transitive-record-policy.mjs \
             reference/org-semantic-views/verify-transition-simulation.mjs \
             reference/org-semantic-views/verify-visibility-epoch.mjs; do
@@ -87,6 +88,7 @@ jobs:
             reference/org-semantic-views/verify-succession.mjs \
             reference/org-semantic-views/verify-consumer-freshness.mjs \
             reference/org-semantic-views/verify-field-observation.mjs \
+            reference/org-semantic-views/verify-temporal.mjs \
             reference/org-semantic-views/verify-transitive-record-policy.mjs \
             reference/org-semantic-views/verify-transition-simulation.mjs \
             reference/org-semantic-views/verify-visibility-epoch.mjs

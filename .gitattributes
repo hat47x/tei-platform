@@ -208,3 +208,70 @@
 
 # Partial run verdict output is hashed as raw bytes by its README.
 /plan/evidence/PARTIAL_RUN_VERDICT_2026-11-09/** -text
+
+# Unknown vs refused output is hashed as raw bytes by its README.
+/plan/evidence/UNKNOWN_VS_REFUSED_2026-11-09/** -text
+
+# Oversize-event recovery observations are hashed as raw bytes.
+/plan/evidence/DSH_SESSION_LOG_OVERSIZE_RECOVERY_2026-11-10/** -text
+# Carrier guard refusal output is hashed as raw bytes by its README.
+/plan/evidence/CARRIER_GUARD_REFUSAL_2026-11-09/** -text
+
+# Selection digest boundary output is hashed as raw bytes by its README.
+/plan/evidence/SELECTION_DIGEST_BOUNDARY_2026-11-09/** -text
+
+# CON-12c scope layers output is hashed as raw bytes by its README.
+/plan/evidence/CON12C_SCOPE_LAYERS_2026-11-09/** -text
+
+# Instances/bindings resolver survey output is hashed as raw bytes by its README.
+/plan/evidence/INSTANCES_BINDINGS_RESOLVER_2026-11-09/** -text
+
+# Burst-size observations are hashed as raw bytes.
+/plan/evidence/DSH_SESSION_LOG_BURST_2026-11-10/** -text
+# Unpinned adapter survey output is hashed as raw bytes by its README.
+/plan/evidence/UNPINNED_ADAPTER_SURVEY_2026-11-09/** -text
+
+# Adapter identity masking output is hashed as raw bytes by its README.
+/plan/evidence/ADAPTER_IDENTITY_MASKING_2026-11-09/** -text
+
+# Configured-MCP observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_CONFIGURED_2026-11-10/** -text
+# Executor adapter identity output is hashed as raw bytes by its README.
+/plan/evidence/EXECUTOR_ADAPTER_IDENTITY_2026-11-09/** -text
+
+# MCP tool-call observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_TOOL_CALL_2026-11-10/** -text
+
+# Adapter binding blindspot output is hashed as raw bytes by its README.
+/plan/evidence/ADAPTER_BINDING_BLINDSPOT_2026-11-09/** -text
+
+# MCP argument-size observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_ARG_SIZE_2026-11-10/** -text
+# Binding guarded executor output is hashed as raw bytes by its README.
+/plan/evidence/BINDING_GUARDED_EXECUTOR_REFERENCE_2026-11-09/** -text
+
+# Active-subagent cap observations are hashed as raw bytes.
+/plan/evidence/DSH_SUBAGENT_ACTIVE_CAP_2026-11-10/** -text
+# Guard with real adapter output is hashed as raw bytes by its README.
+/plan/evidence/GUARD_WITH_REAL_ADAPTER_2026-11-09/** -text
+
+# Unattended autonomy invariant output is hashed as raw bytes by its README.
+/plan/evidence/UNATTENDED_AUTONOMY_INVARIANT_2026-11-10/** -text
+
+# Sequential-subagent observations are hashed as raw bytes.
+/plan/evidence/DSH_SUBAGENT_SEQUENTIAL_2026-11-10/** -text
+
+# Subagent tree-cap observations are hashed as raw bytes.
+/plan/evidence/DSH_SUBAGENT_TREE_CAP_2026-11-10/** -text
+
+# Feedback-surface observations are hashed as raw bytes.
+/plan/evidence/DSH_FEEDBACK_SURFACE_2026-11-10/** -text
+
+# MCP stdio observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_STDIO_2026-11-10/** -text
+
+# MCP header observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_HEADERS_2026-11-10/** -text
+
+# Multi-server MCP observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_TWO_SERVERS_2026-11-10/** -text

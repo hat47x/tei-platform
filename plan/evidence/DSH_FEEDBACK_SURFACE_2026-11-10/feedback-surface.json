@@ -1,0 +1,76 @@
+{
+  "note": "In this installation only the desktop and headless profiles exist, and headless mounts no command surface. A typed /feedback line went to the model as an ordinary prompt, produced no feedback event in the canonical session log, and produced zero OTLP requests even with the endpoint pointed at a local receiver.",
+  "probePrompt": "/feedback FBOTEL_CANARY_998 telemetry probe",
+  "env": {
+    "DSH_TELEMETRY_OTLP_URL": "http://127.0.0.1:8799/v1/logs",
+    "DSH_TELEMETRY_MODE": "FEEDBACK_ONLY"
+  },
+  "sessionId": "session-df8bf3f6-d827-46ea-9b14-3f3a288feb73",
+  "modelRequests": [
+    {
+      "file": "model-001-request.json",
+      "bytes": 97286,
+      "sha256": "bd22c379228b86a283da6a1e546a753612a283fe80807daf5e7accf8ab057ef1",
+      "messageCount": 1,
+      "canaryPresent": true,
+      "sessionId": "session-df8bf3f6-d827-46ea-9b14-3f3a288feb73"
+    },
+    {
+      "file": "model-002-request.json",
+      "bytes": 56099,
+      "sha256": "f9b4f25d517c700d2e2a9017e042d257938ba2a59c21ef9e1c7404d91ee1ddcf",
+      "messageCount": 1,
+      "canaryPresent": true,
+      "sessionId": "session-df8bf3f6-d827-46ea-9b14-3f3a288feb73"
+    }
+  ],
+  "modelRequestCount": 2,
+  "otelRequestCount": 0,
+  "otelFiles": [],
+  "canaryReachedModel": true,
+  "canonicalEventTypes": {
+    "session": 1,
+    "permission/preset": 2,
+    "sandbox/mode": 2,
+    "approval/policy": 2,
+    "agent/inbox/spliced": 2,
+    "turn/start": 1,
+    "step/start": 1,
+    "system/message": 1,
+    "user/message": 4,
+    "request/header": 1,
+    "request/context": 1,
+    "session/title": 2,
+    "session/title-llm-request": 1,
+    "session-log-deepseek/delivery-accepted": 2,
+    "assistant/message": 1,
+    "step/end": 1,
+    "turn/end": 1
+  },
+  "feedbackEventCount": 0,
+  "egressTriggerFromSource": {
+    "source": "dsh/node_modules/@deepseek-ai/dsh-session-telemetry-otel/lib/index.js",
+    "accepts": [
+      "feedback/record",
+      "feedback/message-put (same session id)",
+      "feedback/message-delete (same session id)"
+    ],
+    "requires": "event.seq >= session.inheritedEventCount",
+    "rejects": "fork seeds (inherited events) and every other event type",
+    "modes": [
+      "FEEDBACK_ONLY (default)",
+      "DISABLED"
+    ]
+  },
+  "feedbackSurfaceFromSource": {
+    "package": "dsh-command-feedback",
+    "slashCommand": "/feedback <text>",
+    "webDialog": "sessionFeedback.record with a category",
+    "availability": "the package README states headless, ACP, and JSON-RPC entry points provide no slash commands"
+  },
+  "profilesInstalled": [
+    "desktop",
+    "headless"
+  ],
+  "conclusion": "The feedback-gated Telemetry egress cannot be exercised in this installation: the gate needs a feedback event, and no installed profile can produce one in a scriptable way. The zero OTLP count here is the gate holding, not a measurement of the upload payload."
+}

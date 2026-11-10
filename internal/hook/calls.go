@@ -116,10 +116,16 @@ func declarationForPhase(pattern *application.Pattern, phase string) *applicatio
 // guessing the target.
 //
 // The command pattern is resolved through `CommandPatternFor`, which refuses an
-// undeclared or ambiguous capability. The inputs a hook passes are the hook's
-// own inputs: this function does not invent a mapping from hook reads to
-// capability parameters.
-func DeclaredCalls(world ir.World, applicationID, patternID core.CanonicalID, phase string, inputs map[core.CanonicalID]map[string]string) (map[core.CanonicalID]map[string]string, error) {
+// undeclared or ambiguous capability.
+//
+// The inputs a hook passes are derived from its own `reads` by the binding the
+// declaration already carries: the record pattern's `command <capability> {
+// input <name> <attribute> }` says which attribute feeds which capability
+// parameter. A hook read of that attribute therefore supplies that parameter.
+// Nothing is invented here — a parameter whose attribute the hook does not read
+// is simply absent, and the call is reported as not made rather than called with
+// a guessed value.
+func DeclaredCalls(world ir.World, applicationID, patternID core.CanonicalID, phase string, reads map[core.CanonicalID]string) (map[core.CanonicalID]map[string]string, error) {
 	pattern := findPhasePattern(world, applicationID, patternID)
 	declared := declarationForPhase(pattern, phase)
 	if declared == nil {
@@ -127,14 +133,57 @@ func DeclaredCalls(world ir.World, applicationID, patternID core.CanonicalID, ph
 	}
 	bound := make(map[core.CanonicalID]map[string]string, len(declared.Uses))
 	for _, capability := range declared.Uses {
+		// The command pattern is resolved so an undeclared or ambiguous
+		// capability is refused before any call is attempted. Its identity is
+		// not what carries the binding: a command pattern has no interaction,
+		// so the binding lives on this pattern's own interaction command.
 		if _, err := CommandPatternFor(world, applicationID, capability); err != nil {
 			return nil, err
 		}
-		if values, ok := inputs[capability]; ok {
-			bound[capability] = values
-		}
+		bound[capability] = BindInputsFromReads(pattern, capability, reads)
 	}
 	return bound, nil
+}
+
+// BindInputsFromReads maps a hook's reads to the capability parameters that the
+// pattern's interaction command binds.
+//
+// A binding `input <name> <attribute>` inside `command <capability> { ... }`
+// states the correspondence: the parameter <name> is fed by the attribute
+// <attribute>. A hook read of that attribute supplies that parameter. A
+// parameter whose attribute the hook does not read is left out, so the caller
+// can report a missing value instead of passing the wrong one.
+func BindInputsFromReads(pattern *application.Pattern, capability core.CanonicalID, reads map[core.CanonicalID]string) map[string]string {
+	if pattern == nil || pattern.Interaction == nil {
+		return nil
+	}
+	bindings := map[string]core.CanonicalID{}
+	for _, command := range pattern.Interaction.Commands {
+		if command.Capability != capability {
+			continue
+		}
+		for _, binding := range command.Inputs {
+			if _, exists := bindings[binding.Name]; exists {
+				continue
+			}
+			bindings[binding.Name] = binding.Attribute
+		}
+	}
+	if len(bindings) == 0 {
+		return nil
+	}
+	bound := make(map[string]string, len(bindings))
+	for name, attribute := range bindings {
+		value, observed := reads[attribute]
+		if !observed {
+			continue
+		}
+		bound[name] = value
+	}
+	if len(bound) == 0 {
+		return nil
+	}
+	return bound
 }
 
 // findPhasePattern returns the pattern without an error, for the paths that only

@@ -14,6 +14,7 @@ import (
 	"tei/internal/plugin"
 	"tei/internal/releaseplan"
 	"tei/internal/semantic"
+	"tei/internal/stdlib"
 	"tei/internal/subject"
 )
 
@@ -47,8 +48,8 @@ var attributeRoles = map[string]bool{
 	"currency-rate-currency": true, "currency-rate-fiscal-year": true,
 	"currency-rate-month-sequence": true, "currency-rate-middle": true,
 	"currency-rate-buying": true, "currency-rate-selling": true,
-	"currency-rate-fallback": true,
-	"numbering-counter":      true, "numbering-digits": true, "numbering-prefix": true,
+	"currency-rate-fallback": true, "currency-rate-granularity": true,
+	"numbering-counter": true, "numbering-digits": true, "numbering-prefix": true,
 	"numbering-check": true, "numbering-overflow": true, "numbering-rule": true,
 	"holiday-date": true, "holiday-calendar": true,
 	"setting-key": true, "setting-value": true, "setting-user": true,
@@ -58,6 +59,7 @@ func Validate(w ir.World) []Diagnostic {
 	out := validateWorkspaceIsNotEmpty(w)
 	out = append(out, validateApplicationPatterns(w)...)
 	out = append(out, validateApplicationPackages(w)...)
+	out = append(out, validatePackageConformance(w)...)
 	out = append(out, validateQueryResultMappings(w)...)
 	out = append(out, validateQueryInputs(w)...)
 	out = append(out, validateSemanticBusinessValidations(w)...)
@@ -1180,9 +1182,40 @@ func HasErrors(ds []Diagnostic) bool {
 // declaration, so it is excluded (#2822). The finding is a warning: an empty
 // Workspace is not an error, but ok=true alone must not be read as "model
 // declarations were loaded and checked".
+// hasNonPreludeDeclaration reports whether a namespace holds anything the
+// in-process prelude does not itself declare.
+func hasNonPreludeDeclaration(ns semantic.Namespace) bool {
+	if len(ns.Data) > 0 || len(ns.Capabilities) > 0 || len(ns.Validations) > 0 ||
+		len(ns.Calendars) > 0 || len(ns.Periods) > 0 || len(ns.EffectRules) > 0 ||
+		len(ns.RunPlans) > 0 {
+		return true
+	}
+	for _, typ := range ns.Types {
+		if !stdlibOwnsType(string(typ.ID)) {
+			return true
+		}
+	}
+	return false
+}
+
+// stdlibOwnsType reports whether the prelude declares this type itself.
+func stdlibOwnsType(id string) bool {
+	for _, typ := range stdlib.SemanticNamespace().Types {
+		if string(typ.ID) == id {
+			return true
+		}
+	}
+	return false
+}
+
 func validateWorkspaceIsNotEmpty(w ir.World) []Diagnostic {
 	for _, ns := range w.Semantics {
+		// A declaration inside the std namespace still counts if the prelude
+		// does not own it: the Workspace wrote it (#3851).
 		if string(ns.ID) != "std" {
+			return nil
+		}
+		if hasNonPreludeDeclaration(ns) {
 			return nil
 		}
 	}

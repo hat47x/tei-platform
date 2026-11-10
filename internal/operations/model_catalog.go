@@ -7,6 +7,7 @@ import (
 
 	"tei/internal/ir"
 	"tei/internal/sourceindex"
+	"tei/internal/stdlib"
 	"tei/internal/validation"
 	"tei/internal/workspace"
 )
@@ -65,13 +66,39 @@ type CatalogValidation struct {
 	WarningCount int  `json:"warningCount"`
 }
 
+// stdlibNamespaceID is the in-process standard semantic namespace.
+const stdlibNamespaceID = "std"
+
+// isPreludeType reports whether id is one of the types the prelude itself
+// declares. A std.* name the prelude does not declare belongs to whoever wrote
+// it.
+func isPreludeType(id string) bool {
+	for _, typ := range stdlib.SemanticNamespace().Types {
+		if string(typ.ID) == id {
+			return true
+		}
+	}
+	return false
+}
+
 // preludeSubject reports whether a catalog subject belongs to the in-process
 // standard semantic prelude. The prelude is the std namespace and every
 // subject whose ID is std or starts with std.; the Loader always adds it, so
 // no source can own it. The check is by ID because that is the identity the
 // prelude uses, not by Source Status (the prelude is never indexed).
 func preludeSubject(s sourceindex.Subject) bool {
-	return s.ID == "std" || strings.HasPrefix(s.ID, "std.")
+	// Judge by identity, not by the name. A Workspace may declare its own type
+	// inside the std namespace (for example `type email from std.text`); that
+	// declaration is the caller's, so it must not carry the prelude mark. The
+	// contract defines prelude:true as "the in-process standard meaning, not
+	// something the Workspace declared" (#3347, #3851).
+	//
+	// standardSemanticSubject is the rule that already answers this correctly
+	// for duplicate detection; this reuses it so the two cannot disagree.
+	if s.Kind == "semantic" {
+		return s.ID == stdlibNamespaceID
+	}
+	return isPreludeType(s.ID)
 }
 
 type ModelCatalogEntry struct {
@@ -97,23 +124,58 @@ func CatalogWorkspace(root, namespace string) (ModelCatalog, error) {
 	if namespace != strings.TrimSpace(namespace) {
 		return ModelCatalog{}, fmt.Errorf("namespace filter must be an exact ID")
 	}
+	catalog, _, err := catalogWorkspaceLoaded(root, namespace)
+	return catalog, err
+}
+
+// catalogRead is one Workspace load. A caller that needs the catalog together
+// with the World or the diagnostics (model locate, model overview) reads them
+// from here instead of loading twice and risking two Source snapshots.
+//
+// catalogRead is one Workspace load with everything the catalog, location and
+// overview projections derive from it. Diagnostics are the ones the catalog's
+// validation verdict counted, so a roll-up and the verdict cannot disagree.
+type catalogRead struct {
+	Catalog            ModelCatalog
+	World              ir.World
+	Diagnostics        []validation.Diagnostic
+	SourceRootFindings []workspace.WorkspaceSourceRootFinding
+}
+
+func loadCatalogRead(root string) (catalogRead, error) {
+	if strings.TrimSpace(root) == "" || root != strings.TrimSpace(root) {
+		return catalogRead{}, fmt.Errorf("workspace path must be nonempty and exact")
+	}
+	catalog, loaded, err := catalogWorkspaceLoaded(root, "")
+	if err != nil {
+		return catalogRead{}, err
+	}
+	return catalogRead{
+		Catalog:            catalog,
+		World:              loaded.World,
+		Diagnostics:        validation.Validate(loaded.World),
+		SourceRootFindings: loaded.SourceRootFindings,
+	}, nil
+}
+
+func catalogWorkspaceLoaded(root, namespace string) (ModelCatalog, workspace.Result, error) {
 	loaded, err := workspace.Load(root)
 	if err != nil {
-		return ModelCatalog{}, &ValidationFailure{Stage: StageLoad, Err: err}
+		return ModelCatalog{}, workspace.Result{}, &ValidationFailure{Stage: StageLoad, Err: err}
 	}
 	idx, err := workspace.BuildSourceIndex(root, loaded)
 	if err != nil {
-		return ModelCatalog{}, &ValidationFailure{Stage: StageSourceIndex, Err: err}
+		return ModelCatalog{}, workspace.Result{}, &ValidationFailure{Stage: StageSourceIndex, Err: err}
 	}
 	worldFP, sourceFP, err := workspaceProjectionFingerprints(loaded.World, idx)
 	if err != nil {
-		return ModelCatalog{}, err
+		return ModelCatalog{}, workspace.Result{}, err
 	}
 	catalog := CatalogWorld(loaded.World, idx, namespace, worldFP, sourceFP)
 	identity := loaded.Identity()
 	catalog.Workspace = &identity
 	catalog.Validation = catalogValidation(loaded)
-	return catalog, nil
+	return catalog, loaded, nil
 }
 
 // catalogValidation applies validate's rule to the same loaded Workspace, so a
