@@ -159,6 +159,9 @@ func findNode(graph modelref.Graph, key modelref.Key) (modelref.Node, bool) {
 // already been selected. A missing or ambiguous grant rejects the projection,
 // rather than silently allowing a localization plugin to replace another.
 func Compose(input Input) (Projection, string) {
+	// One index for the whole pass: resolving each reference against
+	// input.Graph.Nodes rebuilds a map of every node per reference.
+	modelResolver := modelref.NewResolver(input.Graph.Nodes)
 	if input.Resolved.Environment == "" || input.Graph.Schema != "tei.modelref.v0" {
 		return Projection{}, "invalid-composition-input"
 	}
@@ -188,7 +191,7 @@ func Compose(input Input) (Projection, string) {
 			return Projection{}, "duplicate-display-surface"
 		}
 		ref := modelref.Ref{Scope: s.Subject.Scope, Subject: s.Subject.Subject}
-		found, code := modelref.Resolve(input.Graph.Nodes, ref)
+		found, code := modelResolver.Resolve(ref)
 		node, exists := findNode(input.Graph, s.Subject)
 		if code != "" || !exists || found != s.Subject || strings.TrimSpace(node.DisplayName) == "" {
 			return Projection{}, "unbound-display-surface"
