@@ -200,3 +200,6 @@ go run ./tools/reference-deployment-attempt
 ## 複合図表の限定不在判定（合成評価）
 
 [tei-topology-coverage](tei-topology-coverage/README.md) は、同一SnapshotのGraph／関係表におけるscope、関係role、表示省略、版、Reader/Composition/Disclosureの資格を区別する**read-only・合成の評価用Reference**です。「図に無い」を外部実行や本番Sourceの不存在証明へ拡張しません。実CLI/Studio/Source Readerの縦断接続は未実施です。
+## CLI直接参照のWorkspace同一性検査（Read-only評価）
+
+[tei-topology-coverage](tei-topology-coverage/README.md)は、既存`tei trace`の実Workspace出力を独立Node Consumerで照合し、ScopeのCaller由来、SourceNavigationの対象一致、Load-time Manifest同一性の**限定的な検査**を行います。旧Draft #2881の複合Graph/Table研究全体をmainへ採用するものではなく、Source閉包・Current Policy・意味受理・Studio実イベントの資格は引き続き別です。
