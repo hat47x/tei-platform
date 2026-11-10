@@ -57,6 +57,10 @@ type report struct {
 	IsolatedTree       *isolatedTree `json:"isolatedTree,omitempty"`
 	IsolatedTreeDigest string        `json:"isolatedTreeDigest,omitempty"`
 
+	// BuildSource says which tree was compiled: the plan's staged sources, or the
+	// working tree after a check.
+	BuildSource string `json:"buildSource"`
+
 	// DependencyCoverage answers "does the plan cover what the build compiles?".
 	DependencyCoverage *dependencyCoverage `json:"dependencyCoverage,omitempty"`
 
@@ -113,7 +117,7 @@ func run(args []string, out io.Writer) error {
 	goExecutable := fs.String("go", "", "exact Go実行ファイル（省略時はPATHのgo）")
 	artifactOut := fs.String("artifact-out", "", "成果物を置くパス（必須）")
 	stateDir := fs.String("state", "", "分離したBuild state（必須）")
-	isolate := fs.Bool("isolate", false, "計画のsourceだけを新しい木へ写してビルドする（照合とcompileの間を空けない）")
+	isolate := fs.Bool("isolate", false, "計画のsourceだけを新しい木へ写してビルドする（照合とcompileの間を空けない）。計画がmodule contextを名指す場合は既定で有効")
 	supplyDir := fs.String("supply", "", "モジュール供給ディレクトリ（依存がある対象では必須）")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -198,11 +202,31 @@ func run(args []string, out io.Writer) error {
 	if strings.TrimSpace(goExe) == "" {
 		goExe = "go"
 	}
-	// With -isolate the build runs in a tree made only of the planned sources, so
+	// With the plan naming the module context there is nothing the isolated tree
+	// would need from the working tree, so staging is the default: the build then
+	// uses the plan alone. A caller can still turn it off, and the report says
+	// which happened either way.
+	isolateExplicit := false
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "isolate" {
+			isolateExplicit = true
+		}
+	})
+	planNamesModule := planNamesModuleContext(plan)
+	isolateBuild := *isolate
+	if !isolateExplicit && planNamesModule {
+		isolateBuild = true
+	}
+	rep.BuildSource = buildSourceWorkingTree
+	if isolateBuild {
+		rep.BuildSource = buildSourcePlanOnly
+	}
+
+	// With isolation the build runs in a tree made only of the planned sources, so
 	// nothing can change between the check and the compile. Without it, the working
 	// tree is checked and then compiled, which leaves that window open.
 	buildRoot := root
-	if *isolate {
+	if isolateBuild {
 		stageRoot, stageErr := os.MkdirTemp("", "tei-plan-tree-")
 		if stageErr != nil {
 			return fmt.Errorf("create the isolated tree: %w", stageErr)
@@ -343,6 +367,23 @@ func checkSources(root string, plan plugin.BuildPlan) ([]checkedSource, error) {
 var sourceKindsReadByCommand = map[string]bool{
 	"go-package": true,
 	"go-module":  true,
+}
+
+const (
+	buildSourcePlanOnly    = "plan-only"
+	buildSourceWorkingTree = "working-tree"
+)
+
+// planNamesModuleContext reports whether the plan names its module context, which
+// is what makes an isolated build possible without taking anything from the
+// working tree.
+func planNamesModuleContext(plan plugin.BuildPlan) bool {
+	for _, source := range plan.Sources {
+		if source.Kind == "go-module" {
+			return true
+		}
+	}
+	return false
 }
 
 // checkSourcesAreRead refuses a plan whose recipe does not consume every source it

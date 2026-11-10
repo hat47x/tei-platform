@@ -2089,6 +2089,42 @@ L2-bの五条件は、childの能力に依存する。本節は、**参照実装
 - 計画に載る`go-package`が**複数**の場合の扱い（今は全部写す）
 - 記録側（`sources`）の意味の変更。**計画のsourceは、ビルドが読むものだけになった**
 
+### 4.47 計画がmodule contextを名指すなら、隔離ビルドを既定にする（2026-11-09）
+
+§4.42は`-isolate`を**既定にしなかった**。理由は「module contextが計画の外にある」だった。§4.43でそれが計画の内側に入ったので、**条件が変わった。**
+
+#### 規則
+
+| 計画が`go-module`を名指すか | 既定 | 記録 |
+| --- | --- | --- |
+| **名指す** | **隔離ビルド**（`buildSource=plan-only`） | 木は計画のsourceだけ |
+| 名指さない | 作業ツリーを照合してビルド（`buildSource=working-tree`） | 隔離しない |
+
+**`-isolate=false`で明示的に断れる。** 明示された指定は既定に優先する。
+
+#### なぜ「条件付きの既定」なのか
+
+**無条件に既定にすると、module contextを持たない計画で「隔離した」と読まれる。** 実際には`go.mod`を作業ツリーから取ることになり、§4.42が避けたかった読み違えそのものになる。**計画が名指すときだけ既定にする**ことで、既定の意味が「計画だけでビルドした」に固定される。
+
+#### 五条件は変えない
+
+**隔離を6番目の条件にはしない。** 条件を増やすのは§4.23の述語の変更であり、**隔離できないbuilderを一律に排除する**（§4.38の表が示すとおり、childの能力に依存する）。**既定を強くする**ことで、通常の経路が隔離になり、記録（`childIsolation`・`buildSource`）がそれを示す。
+
+#### 実測
+
+| 試験 | 結果 |
+| --- | --- |
+| `TestIsolationIsTheDefaultWhenThePlanNamesTheModuleContext`（`buildSource=plan-only`・`moduleFiles`空） | **PASS**（34.2秒） |
+| `TestIsolationStaysOffWhenThePlanNamesNoModuleContext`（`buildSource=working-tree`） | **PASS**（14.1秒） |
+| `TestIsolationCanBeTurnedOffExplicitly`（`-isolate=false`が既定に勝つ・木を作らない） | **PASS**（9.1秒） |
+| 既存の隔離試験・回帰試験（`./tools/reference-go-build-from-plan`・`cmd/tei`） | **PASS** |
+
+#### この節が言っていないこと
+
+- **依存のある対象**（外部moduleを引く）の隔離ビルド。合成規則が要る（§4.39の案B本体）
+- `replace`・`vendor/`の扱い
+- 隔離を6番目の条件にすること。**今はしない**（判断の材料は揃いつつある）
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
