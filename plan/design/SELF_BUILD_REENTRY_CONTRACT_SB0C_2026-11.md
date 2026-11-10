@@ -2274,6 +2274,60 @@ L2-bの五条件は、childの能力に依存する。本節は、**参照実装
 - 計画の自動生成が「読むもの全部」であることの証明。**ビルド時の被覆検査が確かめる**（§4.41）
 - `replace`・`vendor/`（§4.48で拒否）
 
+### 4.50 本物の対象で、鎖を一本に通した（2026-11-09）
+
+§4.49は「`./cmd/tei`の隔離ビルドは通ったが、五条件のClaimは再測していない」で終わっていた。本節は、**その接続を閉じた**ことを記録する。
+
+#### 何を通したか
+
+| 段 | 内容 |
+| --- | --- |
+| 宣言 | `./cmd/tei`と**module内の閉包73件**、`go.mod`・`go.sum`を名指す（合計75 source） |
+| catalog | 能力宣言から作成（providerの`artifact`は実バイトから計算） |
+| 計画 | reference resolverで解決 |
+| build | `tei self-build`（`-build-catalog`・`-supply`・隔離は既定） |
+
+#### 実測
+
+| 項目 | 値 |
+| --- | --- |
+| `planFingerprint` | `42e8a622d3590ec15b440019ca8b6ec7dd81da0afecf5f0094fcc331c2295b10` |
+| `ok` | **true** |
+| `l2b.claimed` | **true**（`unmet`空） |
+| `planReceipt` | resolved |
+| `planCrossCheck` | matched |
+| `planArtifactBinding` | bound |
+| `artifactReproducibility` | **reproduced** |
+| `definitionBinding` | **bound** |
+| `childIsolation` | **isolated**（members 75・`moduleFiles`なし） |
+| artifact | `sha256:6b9290ed442d798f7227ac41847ef2da5ccc15f776b2c002ff29a3d4507c8ca7` |
+
+**`./cmd/tei`（73のpackageを持つ実在の対象）で、五条件がすべて成立した。** しかもビルドは**計画のsourceだけを写した木**で行われている。
+
+#### 試験に載せた
+
+`TestSelfBuildFullChainOnTheRealSubject`（`cmd/tei`）。
+
+| 項目 | 値 |
+| --- | --- |
+| 実行時間 | **254秒** |
+| `-short` | skip |
+
+**この試験は重い。** 内部ツリー全体を二回ビルドするためである。**それでも載せた**のは、これが「セルフビルドが実現した」と言うための唯一の観測だからである。
+
+#### 途中で踏んだこと
+
+**`t.TempDir`の後片付けが失敗した。** Goはmodule cacheを**読み取り専用**で書くので、`RemoveAll`が`permission denied`で止まり、**試験は通っているのに失敗として報告された**。手動のディレクトリと、権限を直す後片付けに変えた。
+
+**「合格したのに不合格と表示される」**のは、観測として最悪の形である。記録に残す。
+
+#### この節が言っていないこと
+
+- **外部moduleの完全性**。供給から来たものであり、供給のTrustは範囲外
+- 別ホスト・別Go版での成立（`darwin`・`arm64`は未観測）
+- 受理・Runtime Authority・G4適格性。**`qualified`は`false`のまま**
+- この試験をCIの標準時間に収める工夫。**254秒は重い**
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
