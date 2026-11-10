@@ -12,8 +12,9 @@ import (
 // later change that marks a write kind unattended fails here rather than
 // silently telling a consumer it may run without a person.
 func TestOnlyEffectFreeKindsAreUnattended(t *testing.T) {
-	// Read-write access is what produces create/update/retire alongside list and
-	// read, so this fixture covers every kind the derivation can emit.
+	// Read-write access produces create and update alongside list and read. It
+	// covers every kind the derivation actually emits: "retire" is never an
+	// operation, only a gap that names the missing lifecycle declaration.
 	surface := DeriveOperationSurface(surfaceTestWorld(database.AccessReadWrite, true), "")
 
 	effectFree := map[string]bool{"list": true, "read": true}

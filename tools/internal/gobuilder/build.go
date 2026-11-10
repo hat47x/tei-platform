@@ -64,6 +64,41 @@ func buildPackage(repo, goExecutable, packagePath, output, stateDir, supply stri
 	return nil
 }
 
+// ListDependencies runs go list over the same isolated environment a build uses
+// and returns the packages it would compile, as "importPath<TAB>dir" lines. A
+// caller can then ask whether the plan covers every package the build pulls in.
+//
+// It resolves the same way BuildPackage does, so the answer describes the build
+// that would run rather than a different one.
+func ListDependencies(repo, goExecutable, packagePath, stateDir, supply string) ([]string, error) {
+	cmd := exec.Command(goExecutable, "list", "-deps", "-f", "{{if not .Standard}}{{.ImportPath}}\t{{.Dir}}{{end}}", packagePath)
+	cmd.Dir = repo
+	env, err := Environment(os.Environ(), stateDir, runtime.GOOS, runtime.GOARCH)
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(supply) != "" {
+		absolute, absErr := filepath.Abs(supply)
+		if absErr != nil {
+			return nil, absErr
+		}
+		env = replaceEnv(env, "GOPROXY", "file://"+filepath.ToSlash(absolute))
+	}
+	cmd.Env = env
+	combined, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("go list %s: %w: %s", packagePath, err, strings.TrimSpace(string(combined)))
+	}
+	lines := strings.Split(strings.TrimSpace(string(combined)), "\n")
+	out := make([]string, 0, len(lines))
+	for _, line := range lines {
+		if strings.TrimSpace(line) != "" {
+			out = append(out, line)
+		}
+	}
+	return out, nil
+}
+
 // replaceEnv returns env with key set to value, dropping any earlier entry. The
 // last duplicate would win in practice, but leaving both would make the recorded
 // environment ambiguous.
