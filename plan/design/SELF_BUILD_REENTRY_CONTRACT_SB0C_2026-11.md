@@ -1872,6 +1872,44 @@ L2-bの五条件は、childの能力に依存する。本節は、**参照実装
 - `pluginDefinitionFingerprint`という**欄の名前**。commandではpluginを指さないが、名前を変えると計画の形が変わるため、意味の説明で補った
 - 受理・Runtime Authority・供給のTrust。いずれも未主張のまま
 
+### 4.41 計画が、ビルドが実際にコンパイルするpackageを覆っているか（2026-11-09）
+
+§4.39の案Aは「計画と作業ツリーを照合してから、そのツリーで`go build`する」形にした。しかし**照合するのは計画が名指したsourceだけ**であり、**ビルドが計画に載っていないmodule内packageを引き込んでいないか**は見ていなかった。
+
+本節は、その検査を足したことを記録する（TOCTOUを閉じるものではない。§4.39の案Bは別）。
+
+#### 何をするか
+
+| 段 | 内容 |
+| --- | --- |
+| 1 | `go list -deps -f '{{if not .Standard}}{{.ImportPath}}\t{{.Dir}}{{end}}'`を、ビルドと同じ隔離環境・同じ供給で走らせる |
+| 2 | module内（root配下）の各packageのdirが、計画の`go-package` sourceの**いずれかの配下**にあるかを調べる |
+| 3 | **覆われていないpackageがあればビルドしない**。理由にpackageとdirを並べる |
+
+**標準ライブラリは対象外**（`-f`の`{{if not .Standard}}`）。**外部moduleは`external`として別に記録する**——供給から来るものであり、計画のsourceが覆う対象ではない。
+
+#### 実測
+
+| 試験 | 結果 |
+| --- | --- |
+| `TestCheckDependencyCoverageRefusesAnUncoveredModulePackage`（`./internal/buildintent`を、無関係なsourceだけを名指す計画でビルドしようとする → **覆われていないと判定**） | **PASS** |
+| `TestCheckDependencyCoverageAcceptsASelfContainedPackage`（module内依存の無いpackageは自分のsourceで覆われる） | **PASS** |
+| `TestRunBuildsFromThePlanAndReportsWhatItDid`（依存の無いprobeをビルド） | **PASS** |
+| `TestSelfBuildEstablishesL2BFromARealGoBuild`（回帰試験） | **PASS**（16.1秒） |
+
+#### この検査が意味すること
+
+**`./cmd/tei`のビルドは、`cmd/tei`だけを名指す計画では通らない。** 実際に試すと、`internal/`配下の30弱のpackageが「覆われていない」と出る。**これは正しい。** 計画が`cmd/tei`だけを名指している以上、その計画は「`cmd/tei`をコンパイルする」ことを記述していない。
+
+**したがって、宣言の`sources`はmodule内の閉包を含まなければならない。** これは宣言を書く側の負担増だが、**「計画が記述していないビルド」を通さない**という意味を持つ。
+
+#### この節が言っていないこと
+
+- **TOCTOUは閉じていない。** 照合と`go list`と`go build`の間にファイルは変わり得る
+- 外部moduleの完全性。**供給のTrustの範囲**であり、ここでは`external`として並べるだけ
+- 覆われていないpackageを自動で計画へ足すこと。**計画は呼び手が書くもの**である
+- `vendor/`の扱い。**今は対象から外している**
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
