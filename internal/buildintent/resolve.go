@@ -130,6 +130,7 @@ func Resolve(intent BuildIntent, ctx ResolutionContext) (ResolvedBuildReceipt, e
 
 	sources := make([]plugin.BuildSource, 0, len(n.Sources))
 	var definitionRaw []byte
+	var definitionSource plugin.BuildSource
 	for _, s := range n.Sources {
 		resolved, err := ctx.Sources.Resolve(s)
 		if err != nil {
@@ -137,11 +138,16 @@ func Resolve(intent BuildIntent, ctx ResolutionContext) (ResolvedBuildReceipt, e
 		}
 		sources = append(sources, resolved.Source)
 		if s.ID == n.Subject.DefinitionSource {
-			data, ok := resolved.Files["."]
-			if !ok || len(resolved.Files) != 1 {
-				return ResolvedBuildReceipt{}, fmt.Errorf("plugin definition source %q must be a single file", s.ID)
+			// A command build is defined by the package it compiles, which may be a
+			// directory of files; only a plugin build needs one file it can parse.
+			if n.Recipe.Kind != RecipeKindCommand {
+				data, ok := resolved.Files["."]
+				if !ok || len(resolved.Files) != 1 {
+					return ResolvedBuildReceipt{}, fmt.Errorf("plugin definition source %q must be a single file", s.ID)
+				}
+				definitionRaw = data
 			}
-			definitionRaw = data
+			definitionSource = resolved.Source
 		}
 	}
 	// Source closureの観測値は、Source自体のidentity（Kind/ID/Locator/Digest）である。
@@ -150,15 +156,29 @@ func Resolve(intent BuildIntent, ctx ResolutionContext) (ResolvedBuildReceipt, e
 		return ResolvedBuildReceipt{}, err
 	}
 
-	definition, err := syntax.NewParser(string(definitionRaw)).ParsePlugin()
-	if err != nil {
-		return ResolvedBuildReceipt{}, fmt.Errorf("parse plugin definition: %w", err)
-	}
-	if definition.ID != n.Subject.ID || definition.Version != n.Subject.Version {
-		return ResolvedBuildReceipt{}, fmt.Errorf(
-			"plugin definition %s@%s does not match build intent subject %s@%s",
-			definition.ID, definition.Version, n.Subject.ID, n.Subject.Version,
-		)
+	// The plan carries one identity for the input that defines the subject. A
+	// plugin build takes it from the parsed declaration; a command build takes it
+	// from the package source itself, because there is no declaration to parse.
+	// The recipe kind says which derivation applies, so a reader is never left to
+	// guess what the value was computed from.
+	var definitionFingerprint string
+	if n.Recipe.Kind == RecipeKindCommand {
+		definitionFingerprint, err = FingerprintJSON(definitionSource)
+		if err != nil {
+			return ResolvedBuildReceipt{}, err
+		}
+	} else {
+		definition, parseErr := syntax.NewParser(string(definitionRaw)).ParsePlugin()
+		if parseErr != nil {
+			return ResolvedBuildReceipt{}, fmt.Errorf("parse plugin definition: %w", parseErr)
+		}
+		if definition.ID != n.Subject.ID || definition.Version != n.Subject.Version {
+			return ResolvedBuildReceipt{}, fmt.Errorf(
+				"plugin definition %s@%s does not match build intent subject %s@%s",
+				definition.ID, definition.Version, n.Subject.ID, n.Subject.Version,
+			)
+		}
+		definitionFingerprint = plugin.BuildDefinitionFingerprint(definition)
 	}
 
 	if err := ctx.Targets.Check(n.Target, n.Profile); err != nil {
@@ -189,7 +209,7 @@ func Resolve(intent BuildIntent, ctx ResolutionContext) (ResolvedBuildReceipt, e
 	plan := plugin.NormalizeBuildPlan(plugin.BuildPlan{
 		FormatVersion:               plugin.BuildPlanFormatVersion,
 		Plugin:                      plugin.Identity{ID: n.Subject.ID, Version: n.Subject.Version},
-		PluginDefinitionFingerprint: plugin.BuildDefinitionFingerprint(definition),
+		PluginDefinitionFingerprint: definitionFingerprint,
 		Sources:                     sources,
 		Builder:                     builder.Identity,
 		Recipe:                      n.Recipe,
