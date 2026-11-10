@@ -386,3 +386,4 @@
 - [データ層のノードをmaterializeし未解決を12件から1件にした](TEI_DOGFOODING_ROUND50_DATA_LAYER_MATERIALIZED_2026-11-10/README.md)（#4068。database/contract/contract-queryを端点としてmaterializeしkindも13種へ。`targets-database`等の辺が可視化。変異2種で確認。`unresolved`の数え方は未修正と明記）
 - [設計作業をCLIだけで完遂しpatternの種別診断を改善した](TEI_DOGFOODING_ROUND51_PATTERN_KIND_DIAGNOSTIC_2026-11-10/README.md)（#4082。capability/pattern/realizeを追加しグラフで3方向に確認。種別なしのpatternが`unexpected token`だけで語彙を示さなかったため`PatternKinds`を単一情報源にして列挙。変異2種と14パッケージで確認。`std`型一覧は未解決と明記）
 - [自分の誤りを訂正しinvalid canonical idに文字規則を載せた](TEI_DOGFOODING_ROUND52_ID_RULE_AND_CORRECTION_2026-11-10/README.md)（#4082・#2620。第51ラウンドの「std型一覧は引けない」は誤りで、catalog/inspect/locateの3経路で引けた。壊れた探査状態からの一般化が原因。原文を残して訂正し、`invalid canonical id`に規則を追加。変異2種で確認）
+- [閉じた語彙の診断が有効値を挙げるようにした](TEI_DOGFOODING_ROUND53_VOCABULARY_DIAGNOSTICS_2026-11-10/README.md)（#4094。storage・nullability・accessの3件で`valid values are ...`を出すようにし、語彙リストと`Valid()`を単一情報源にした。同型17件はIssueに記録。変異2種で確認）

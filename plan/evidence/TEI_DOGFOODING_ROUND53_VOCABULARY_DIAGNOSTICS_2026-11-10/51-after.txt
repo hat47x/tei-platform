@@ -1,0 +1,14 @@
+  INVALID_PERSISTENCE_STORAGE_TYPE
+    ... has invalid storage type "NUMBERISH";
+    valid values are int64, varchar, text, datetime-tz, decimal, json
+
+  INVALID_PERSISTENCE_NULLABILITY
+    ... has invalid nullability "maybe"; valid values are required, optional
+
+  INVALID_DATABASE_ACCESS
+    ... has invalid access mode "read-write-nothing";
+    valid values are read, write, read-write
+
+Each vocabulary now has one slice that Valid() reads and the diagnostic quotes:
+  persistence.StorageTypes, persistence.Nullabilities, database.Accesses
+A healthy workspace still validates ok.
