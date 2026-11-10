@@ -573,3 +573,41 @@ P1 Inspectorでまず判別するのは、①Contractと対象Operationの宣言
 **判別に必要な独立負例を新Case番号なしで渡す**：同一World/別Provider raw改訂（#3479）、管理ファイルだがLoader未読込（#3346）、正しいRequiredが一件欠けた正常JSON（#3354）、同名別Schema/二つのFKで物理Relationから業務CRUDを過大合成（#3372）、選択B/実Invoker A（#1251）、部分Scenario目録から未試験を確定（#3365）、CLI/MCP `validate`の成否分岐（#3458）、Working Copyの同bytes異FileとA→B→A（SHO #25）。**#1180のScenario正本と#2514独立Expectedの既存Ownerにのみ試験採否を返す**。
 
 **最短の次の実行**：P0-DとP0-Iを並列、P0-MとP0-Rも並列とし、**最初に不足する接続辺**（Source/Provider/Tool/Consumer）を1つずつ閉じる。P0-Cは先行する両方の実証が揃った後だけ。外部Parser、全UI、全MCP Tool、分散SEI、BOM完全組合せ、Generated Runtime Self-build完成をP0-Rの前提に増やさない。正式Owner Meaningと現在Host Grantは各々別Claim。これは**現行main根拠を整理したdocs-only計画**であり、新Go/実DB/Studio/SHO/外部H3実行・本番認可・製品E2E・Owner正式受理は**今回NOT RUN**。
+<!-- tei-dogfood-t1-new-test-20261107 -->
+## 13. T1に進むための最小実証：未カバー設計義務から新しいScenario負例を作る（2026-11-07）
+
+### 確認したT0の到達点と、T1の非同一性
+
+[#3264](https://github.com/hat47x/tei-platform/pull/3264)、[#3266](https://github.com/hat47x/tei-platform/pull/3266)、[#3268](https://github.com/hat47x/tei-platform/pull/3268)はmain統合済み。main exact SHA 69a2996187852a036057b7155d6e847527b67346 の[Push CI #42359610226](https://github.com/hat47x/tei-platform/actions/runs/42359610226)は completed/success。同一checkoutで、9件のread-only CLI、Skill静的14件、既存6 Stepの生成済みpinned実CLI、4件の実CLI拒否・2件の独立義務負例を照合した。Go文Coverageは一つの選択テストに対するC0相当10.1%、C1は未計測。これは**限定T0の実績**であり、全設計取得・新規AIテスト生成の成功ではない。
+
+**T1の新しい合格条件**は、Issueと設計から未カバー義務を特定→独立Expectedを先に別担当で固定→許可されたSource ContextだけでAIが候補を提案→Scenario候補のレビュー→既存の生成器でpinned CLIを生成・実行→独立判別・未カバー差分を示すこと。既存の固定Step再実行や、[#2901](https://github.com/hat47x/tei-platform/pull/2901)で実証した既知Candidateの直接実行だけではこの合格条件を満たさない。
+
+### 最小実例：行番号の正数制約について「正常は検証済、ゼロの拒否は未実証」
+
+- 対象は公開合成の sales.order_line.line_number_positive。既存の6 Step Scenarioは、行番号1の正常を確認し、数量0による拒否は別のRuleで確認する。行番号0による業務拒否の実行は既存T0には含まれていない。
+- P-1aでIssue・Ruleと元Source、実Loader/Parser、Role/Operator Pin、対象Source revisionを読取る。取得されなかったRule・未読込のSource・非公開対象はunknownとし、要求0件と扱わない。read-only Skillの説明文だけでSource closure completeとは判定しない（Owner [#3262](https://github.com/hat47x/tei-platform/issues/3262)）。
+- 独立Expectedを作成担当が事前に固定する：数量は正で数量Rule=satisfied、行番号0なので行番号正数Rule=not-satisfied、Relation Keyは重複せず一意Rule=satisfied。このPropertyは公開合成Referenceの有限範囲であり、業務意味のOwner受理ではない。
+- 候補生成担当AIへは、実取得できた設計Context・未カバーの義務・合法なBaselineだけを渡す。Expected/Mutant holdoutや実Evaluator出力を与えず、新規FixtureおよびScenario候補と「なぜその値・Ruleを選んだか」を生成する。AIがToolを呼んだことは実ログで証明し、人間が作った場合はhuman-authoredと記録する。
+- Candidateは受理済みDriver Scenario SSOTを上書きせず、[#1180](https://github.com/hat47x/tei-platform/issues/1180)の verify → generate → check → 実pinned argv で検査。Case中の自己申告Expectedを独立Expectedの代わりにしない。採否後だけScenario ID/Revisionを固定してCLI/Webを再生成。
+- 実CLIでは業務拒否と技術エラー、Rule別Resultと独立Expected、stdout/stderr/exit、実Binary・Source/Fixture digest、Tool replyの完全受領を別Witnessとする。Host/Provider/Consumer/Current Grantの合格には昇格しない。
+
+### 判別用の最小Case（新規テストSSOTを作らない）
+
+| ID | 注入と照合 | 拒否する誤った合格 |
+| --- | --- | --- |
+| TG-01 | 行番号0・数量正・Key一意の新Candidate。実CLIでRule別に独立Expectedと比較 | 単にValidation全体がfailedなら正しいRuleを検出したとみなす |
+| TG-02 | 当該新Candidateを採用候補集合から除外 | Scenario実行成功を未カバー義務の消滅とみなす |
+| TG-03 | 当該Ruleだけ常時satisfiedにする既知Mutant、Expectedのみ反転させるCandidateも対照 | AI生成Expectedの自己整合、またはテストを壊すだけで独立Mutant Killと宣言 |
+| TG-04 | Source/Operator Pinを変える、またはA→B→Aで元Byteに戻す | 同じScenario JSON・同じ末尾Byteから旧Evidenceを自動復活 |
+| TG-05 | 対象Rule/Sourceが未Load、Tool Replyが途中切断、別Snapshot pageが混在 | 未発見＝不存在、Tool exit0＝完全受領、部分Scope＝全Scope |
+| TG-06 | Quantity分岐だけでなく行番号の正負を実行 | 実Branch Coverage計測なしにGo C1の網羅率を宣言 |
+
+「新Caseを増やした」と認めるのは**対象の未カバー義務に紐付く新しい入力差分と、旧Suiteでは区別できなかった誤りを独立Expectedで判別した場合**に限定する。Productコードに意図的なMutationを入れる実験は[#2514](https://github.com/hat47x/tei-platform/issues/2514)の隔離手順を適用し、Mutantをmainへmergeしない。テスト手法・パターンの比較は[Draft #3223](https://github.com/hat47x/tei-platform/pull/3223)に委譲する。
+
+### 成果物と資格の分離
+
+一つのCaseの証拠票は、Issue Requirement/Source exact revision、Requiredと読めた集合・不明集合、未カバーObligation、AI/人間のCandidate作成者とPrompt/Input Scope、Ownerレビュー、独立Expectedの固定根拠、Scenario/Fixture/Artifact Lock、実CLI Invocation/Exit/Result、Known Mutant検出、残るC0/C1/機能/NFR/Host/Consumer未実施を並記する。これは**既存[#2514](https://github.com/hat47x/tei-platform/issues/2514)／[#1163](https://github.com/hat47x/tei-platform/issues/1163)の検証・Evidenceへの受渡し形式**であり、新しい中央Oracle/Registry/Runner/Hostの導入ではない。
+
+**最初の実装順**：① #3262で当該Ruleの実Source/Required Closureを照合→② 候補1件＋誤期待/未Loadの負例→③ #1180の実pinned CLIで実行・独立Expected/Mutant対照→④ 既存Suiteに採択するかOwnerが判断→⑤ #2018で人手手作業B0とAI+CLI/Skill B1の指示数・誤合格・費用・追加判別力を比較。実H2/H3 Harnessのモデル・Tool受領差は[#2509](https://github.com/hat47x/tei-platform/issues/2509)/TAI #168で別途測定する。
+
+**Evidence ceiling**：本節は既存mainのT0実証を反映した、T1の具体的受入計画。TG-01〜06の新規試験、AIからの新Candidate、実H2/H3、C1、Web/実DB/Provider、Owner正式意味受理は**NOT RUN**。G1/G2業務一往復とG4 TEI Self-Buildに新しいHard依存を増やさない。
