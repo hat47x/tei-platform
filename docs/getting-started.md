@@ -198,6 +198,19 @@ go run ./cmd/tei model catalog -workspace reference/workspace -namespace sales
 go run ./cmd/tei model locate -workspace reference/workspace -subject-kind semantic-data -subject-id sales.order
 ```
 
+`model locate`の結果には、その要素と配下全体の要注意の件数`attention`も入ります（`model overview`と同じ数え方です）。
+
+モデル全体の目次と、どこに問題があるかを先に見るには、`model overview`を使います（2026-11-10から）。最上位の要素（意味名前空間、Application、Query）を区画として並べ、区画ごとに次を返します。
+
+- `descendants`・`kindCounts`：配下の要素数と種類別の件数
+- `attention`：配下のどこかにある要注意の件数。validationのerror・warning、参照先が存在しない宣言参照（`role`別）、重複宣言、Source参照を辿れないWorkspace宣言要素を、別々に数えます。`needsAttention`はどれかが0でないときに`true`です
+
+区画の一覧は`-limit`件（既定100、上限1000）で切りますが、`totals`は切った区画も含めた合計です。どの要素にも属さないfinding（対象の無い診断、catalogに無い種類の診断、Source rootのfinding）は`unattributed`に残します。`totals`と`unattributed`のerror・warningを足すと、`model catalog`の`validation`の件数と一致します。`attention`は案内のための件数で、検証の合否ではありません。合否は`validation.ok`か`validate -json`で読みます。カスタム・Extension Slot、業務イベント・状態遷移の欠落、実装との対応、利用者ごとの開示判定はまだ集約していません（`coverage.notDerived`）。MCPの参照adapterでは`tei_model_overview`が同じ結果を返します。
+
+```bash
+go run ./cmd/tei model overview -workspace reference/workspace
+```
+
 正規化された業務モデルから特定の要素だけを確認するには、`inspect`を使います。現在対応するのは`semantic`、`semantic-type`、`semantic-data`、`semantic-attribute`、`semantic-relation`、`semantic-candidate-key`、`semantic-functional-dependency`、`semantic-capability`、`semantic-validation`、`application`、`application-pattern`、`query`の12種類です。対象の種類と正本の識別子を、完全一致で指定します。
 
 ```bash

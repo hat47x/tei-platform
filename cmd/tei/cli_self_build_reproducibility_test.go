@@ -32,15 +32,18 @@ import (
 // The child reports the digest of the bytes it actually wrote, so the entry's
 // own disk check can pass; the -counter file makes the second run differ.
 func main() {
-	artifact, counter := "", ""
+	artifact, counter, state := "", "", ""
 	for i := 1; i < len(os.Args); i++ {
 		switch os.Args[i] {
-		case "-artifact", "-counter":
+		case "-artifact", "-counter", "-state":
 			value := os.Args[i+1]
-			if os.Args[i] == "-artifact" {
+			switch os.Args[i] {
+			case "-artifact":
 				artifact = value
-			} else {
+			case "-counter":
 				counter = value
+			case "-state":
+				state = value
 			}
 			i++
 		}
@@ -67,7 +70,11 @@ func main() {
 		}
 	}
 	sum := sha256.Sum256([]byte(body))
-	fmt.Printf("{\"schemaVersion\":\"tei.reference.go-build-with-supply/v0\",\"artifactDigest\":\"sha256:%s\"}\n", hex.EncodeToString(sum[:]))
+	if state != "" {
+		fmt.Printf("{\"schemaVersion\":\"tei.reference.go-build-with-supply/v0\",\"artifactDigest\":\"sha256:%s\",\"stateDir\":%q}\n", hex.EncodeToString(sum[:]), state)
+	} else {
+		fmt.Printf("{\"schemaVersion\":\"tei.reference.go-build-with-supply/v0\",\"artifactDigest\":\"sha256:%s\"}\n", hex.EncodeToString(sum[:]))
+	}
 }
 `
 

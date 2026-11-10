@@ -2,10 +2,9 @@ internal/index/index.go:488          adds realizes to d.DeclaredDependencies  (#
 internal/modelref/derivedbridge/projection.go:117
                                      walks d.CustomGoBindings and calls addEdge  (8219cc3d4)
 
-FromIndex runs both. addEdge only checks that the endpoints are nodes and then
-appends unconditionally:
+FromIndex ran both. addEdge only checked that the endpoints were nodes and then
+appended unconditionally, so the same edge landed in Graph.Edges twice.
 
-  if !nodes[to] { p.Unresolved = append(...); return }
-  p.Graph.Edges = append(p.Graph.Edges, modelref.Edge{...})
-
-so the same edge lands in Graph.Edges twice.
+Provenance mistake worth recording: I checked gh pr view 3994 --json state and
+saw CLOSED/merged=null, and concluded the commit was not in main. It was. The
+right check is git log -S on the path.

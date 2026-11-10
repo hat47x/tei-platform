@@ -57,6 +57,11 @@ type selfBuildOuterEvidence struct {
 	// reported plan fingerprint to the artifact digest, with the digest
 	// independently read back from disk.
 	PlanArtifactBinding *planArtifactBinding `json:"planArtifactBinding,omitempty"`
+	// DefinitionBinding is the entry-side reading of §4.36: the builder reports
+	// the definition it read, and this compares that statement with the digest the
+	// plan names. The builder refuses such a build itself; this is the check that
+	// does not depend on the builder doing so.
+	DefinitionBinding *selfBuildDefinitionBinding `json:"definitionBinding,omitempty"`
 	// ArtifactReproducibility is §4.21: a second, independent build of the same
 	// plan produced the same artifact bytes. Together with planArtifactBinding it
 	// is the observation §4.8(c) asks for; it is never present with state
@@ -553,6 +558,16 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 		if binding.State == planArtifactMismatched {
 			appendSelfBuildFailure(&evidence, planArtifactMismatchCause(binding))
 		}
+
+		// §4.36's builder-side refusal only holds for a builder that implements
+		// it. This compares the same two values on this side, so a builder that
+		// skipped the check still cannot report a definition the plan does not
+		// name without the attempt failing.
+		definitionBinding := bindDefinitionToPlan(report.PlanReceipt, evidence.ChildDefinitionDigest)
+		report.DefinitionBinding = &definitionBinding
+		if definitionBinding.State == definitionBindingFailed {
+			appendSelfBuildFailure(&evidence, definitionBinding.Reason)
+		}
 	}
 
 	// §4.21: a second independent build answers §4.8(c) — whether the artifact on
@@ -573,7 +588,15 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 		Boundary:          reproducibilityBoundary,
 	}
 	if parsed.RebuildCheck {
-		reproducibility = checkArtifactReproducibility(parsed.Child, childArgs, evidence.ChildArtifact, evidence.Invoked.ExecutableDigest, parsed.Output)
+		reproducibility = checkArtifactReproducibility(
+			parsed.Child,
+			childArgs,
+			evidence.ChildArtifact,
+			evidence.Invoked.ExecutableDigest,
+			parsed.State,
+			evidence.ChildStateDir,
+			parsed.Output,
+		)
 		switch reproducibility.State {
 		case reproducibilityMismatched:
 			appendSelfBuildFailure(&evidence, "a second build of the same plan produced different artifact bytes")

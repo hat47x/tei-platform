@@ -1,6 +1,8 @@
 package buildintent
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -233,5 +235,38 @@ func TestBuildCatalogFingerprintsIgnoreOrder(t *testing.T) {
 	}
 	if a != b {
 		t.Fatalf("the builder fingerprint changed without a content change: %q != %q", a, b)
+	}
+}
+
+// The builder side checks that the definition it read is the one the plan names.
+// That comparison is only meaningful if both sides derive the value the same way,
+// so the helper must agree with the resolver on the same bytes.
+func TestSingleFileSourceDigestAgreesWithTheResolver(t *testing.T) {
+	root := t.TempDir()
+	source := []byte("plugin tei.probe v1.0.0")
+	if err := os.WriteFile(filepath.Join(root, "plugin.tei"), source, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	resolved, err := (DirSourceResolver{Root: root}).Resolve(IntentSource{
+		Kind: "plugin-definition", ID: "definition", Ref: "plugin.tei",
+	})
+	if err != nil {
+		t.Fatalf("resolve: %v", err)
+	}
+	if got := SingleFileSourceDigest(source); got != resolved.Source.Digest {
+		t.Fatalf("helper = %q, resolver = %q", got, resolved.Source.Digest)
+	}
+}
+
+// A digest must change when the bytes change: that is the only property the
+// comparison in the builder relies on.
+func TestSingleFileSourceDigestFollowsTheBytes(t *testing.T) {
+	a := SingleFileSourceDigest([]byte("plugin-a"))
+	b := SingleFileSourceDigest([]byte("plugin-b"))
+	if a == b {
+		t.Fatal("different bytes produced the same digest")
+	}
+	if a != SingleFileSourceDigest([]byte("plugin-a")) {
+		t.Fatal("the same bytes produced different digests")
 	}
 }

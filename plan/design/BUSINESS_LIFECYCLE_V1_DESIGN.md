@@ -387,6 +387,24 @@ Conformanceは`docs/conformance/business-lifecycle-v1.md`へまとめ、少な�
 
   参考: kintoneは、該当する記録がある状態の削除や、ある記録で実行できる操作が無くなる変更を拒否する（[公式ヘルプ](https://jp.kintone.help/k/ja/app/process/change_processsettings.html)）。Camunda 8は進行中の業務を既定では開始時の版で完了させ、別の版へ移す場合は要素の対応を明示させて構造を検査するが、移行時には要素対応と構造上の制約が検証される。業務上の前提が満たされるかは別途受入条件で確認する（後半はTEI側の設計上の整理）（[移行の説明](https://docs.camunda.io/docs/components/concepts/process-instance-migration/)）。
 
+## Buri設計調査からの追補（2026-11-03、採用前）
+
+[S2Buri設計知見のTEI還元・反証計画](BURI_TO_TEI_LIFECYCLE_TRANSFER_2026-11.md)に、静的調査から得た参考原理と、受注／組織所属／独立Workflowの意味差を整理した。**Buriの機能・実装をそのまま移植する計画ではない**。旧Java環境での実動確認は、TEI拡充の設計参考に限る今回の完了条件に含めない。
+
+このLifecycle v1の最小対象はあくまで`order_entry`の単一遷移であり、独立`LifecycleInstance`表、版固定されたWorkflow Instance、履歴表、Worklist、AND/XOR Joinを前提にしない。業務状態はまずData本体の状態属性で表し、独立した待機／分岐／到着記録は必要性を示す別の業務Scenarioが現れたときに評価する。Buriの「待機状態のみ保存」をTEI全体の正本保存規則にはしない。
+
+状態のCanonical ID、実レコードKey、物理PK、Operation Identity、Receiptは異なる識別子である。状態遷移候補の解決、一覧への表示、現在認可、条件付き更新、COMMIT後の観測も別の段階である。詳細な責務は#1126（Identity/Relation）、#1129（Data Rule・副作用）、#2622（Data Operations/Derived Dataset）、#2386（組織）、#1119（横断受入）へ委ね、ここに第二のOwnerやRegistryを設けない。
+
+Buriのプロセス改版と既存案件継続は参考になるが、**本v1で既存レコードごとに定義版を固定する決定にはしない**。定義変更時の既存Dataの再受理・移行可能性は従前どおりSemantic Change Data Evolutionと本設計の未決項目が扱う。Workflow固有の長期インスタンスが必要になれば、別シナリオで明示的版結合と移行拒否を検証する。
+
+この追補はADR-0024/0025のStatusやLifecycle新Core種別の採否を変更しない。Buri由来の検証候補BL-01〜08は、TEIへの導入時に各既存Issueの独立Expected・反例として選択的に使うものであり、**今回のTEI実試験はNOT RUN**。
+
+### 業務Lifecycleと汎用状態機械の関係（2026-11-03、採用前）
+
+[非業務も含むState Machine・Validation／Derivation／Flow・図表交差の設計圧力](STATE_MACHINE_CROSS_DOMAIN_DESIGN_PRESSURE_2026-11.md)を、汎用性の反証・可読性／コード生成検証の入力として参照する。業務Lifecycle v1は受注`pending → submitted`の最小意味契約のままで、UI通信・ゲーム・組込の状態機械をこの文書のCoreや実行契約へ直接統合しない。
+
+状態図・状態表・遷移表・条件表をTEI Modeler/SHOで同一意味から投影し、ヒアリング中の編集差分をSource／Meaning／生成Targetへ戻す構想は重要だが、`Validation`・`Derivation`・`Flow`の新Core enumや汎用実行エンジンを採用したものではない。意味Role、Source／Snapshot、Independent Expected、Provider現在資格の区別は既存#2620/#2621/#2497/#2514/#1121が所有する。履歴的Buriに同名三モードの実装があったと一次資料からは未確認。
+
 ## 関連文書
 
 - ISSUE-000038: 作業範囲、実装順、完了条件

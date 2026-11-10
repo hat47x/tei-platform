@@ -26,11 +26,11 @@ func referenceWorkspace(t *testing.T) string {
 	return root
 }
 
-// The adapter must expose exactly the five read-only operations and no other
+// The adapter must expose exactly the six read-only operations and no other
 // tool, so a client cannot reach a write, acceptance, deployment, or grant path
 // through it (#3400).
 func TestAdapterAdvertisesOnlyReadOnlyOperations(t *testing.T) {
-	want := []string{"tei_model_catalog", "tei_model_locate", "tei_inspect", "tei_trace", "tei_validate"}
+	want := []string{"tei_model_catalog", "tei_model_locate", "tei_model_overview", "tei_inspect", "tei_trace", "tei_validate"}
 	tools := toolList()
 	if len(tools) != len(want) {
 		t.Fatalf("tool count = %d, want %d", len(tools), len(want))
@@ -82,6 +82,10 @@ func TestAdapterMatchesTheSameOperationResults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	overview, err := operations.OverviewWorkspace(root, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
 	trace, err := operations.TraceWorkspace(root,
 		modelref.Key{Scope: "mcp-test", Subject: subject.Subject{Kind: "semantic-relation", ID: "sales.order.customer"}},
 		modelref.TraceOptions{Direction: "both", Mode: "summary"})
@@ -127,6 +131,22 @@ func TestAdapterMatchesTheSameOperationResults(t *testing.T) {
 				}
 				if body["schemaVersion"] != "tei.cli.model-locate/v0" {
 					t.Fatalf("locate schemaVersion = %v", body["schemaVersion"])
+				}
+			},
+		},
+		{
+			name:    "overview",
+			request: []byte(`{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"tei_model_overview","arguments":{}}}`),
+			check: func(t *testing.T, body map[string]any) {
+				result := body["result"].(map[string]any)
+				if result["worldFingerprint"] != overview.WorldFingerprint || result["worldFingerprint"] != catalog.WorldFingerprint {
+					t.Fatalf("overview worldFingerprint = %v", result["worldFingerprint"])
+				}
+				if int(result["sectionTotal"].(float64)) != overview.SectionTotal {
+					t.Fatalf("overview sectionTotal = %v, want %d", result["sectionTotal"], overview.SectionTotal)
+				}
+				if body["schemaVersion"] != "tei.cli.model-overview/v0" {
+					t.Fatalf("overview schemaVersion = %v", body["schemaVersion"])
 				}
 			},
 		},

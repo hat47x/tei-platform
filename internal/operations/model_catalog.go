@@ -124,38 +124,58 @@ func CatalogWorkspace(root, namespace string) (ModelCatalog, error) {
 	if namespace != strings.TrimSpace(namespace) {
 		return ModelCatalog{}, fmt.Errorf("namespace filter must be an exact ID")
 	}
-	catalog, _, err := catalogWorkspaceFiltered(root, namespace)
+	catalog, _, err := catalogWorkspaceLoaded(root, namespace)
 	return catalog, err
 }
 
-// catalogWorkspaceWithWorld returns the unfiltered catalog together with the
-// World it was derived from, from one Workspace load. A caller that needs both
-// (model locate) must not load twice and risk two Source snapshots.
-func catalogWorkspaceWithWorld(root string) (ModelCatalog, ir.World, error) {
-	if strings.TrimSpace(root) == "" || root != strings.TrimSpace(root) {
-		return ModelCatalog{}, ir.World{}, fmt.Errorf("workspace path must be nonempty and exact")
-	}
-	return catalogWorkspaceFiltered(root, "")
+// catalogRead is one Workspace load. A caller that needs the catalog together
+// with the World or the diagnostics (model locate, model overview) reads them
+// from here instead of loading twice and risking two Source snapshots.
+//
+// catalogRead is one Workspace load with everything the catalog, location and
+// overview projections derive from it. Diagnostics are the ones the catalog's
+// validation verdict counted, so a roll-up and the verdict cannot disagree.
+type catalogRead struct {
+	Catalog            ModelCatalog
+	World              ir.World
+	Diagnostics        []validation.Diagnostic
+	SourceRootFindings []workspace.WorkspaceSourceRootFinding
 }
 
-func catalogWorkspaceFiltered(root, namespace string) (ModelCatalog, ir.World, error) {
+func loadCatalogRead(root string) (catalogRead, error) {
+	if strings.TrimSpace(root) == "" || root != strings.TrimSpace(root) {
+		return catalogRead{}, fmt.Errorf("workspace path must be nonempty and exact")
+	}
+	catalog, loaded, err := catalogWorkspaceLoaded(root, "")
+	if err != nil {
+		return catalogRead{}, err
+	}
+	return catalogRead{
+		Catalog:            catalog,
+		World:              loaded.World,
+		Diagnostics:        validation.Validate(loaded.World),
+		SourceRootFindings: loaded.SourceRootFindings,
+	}, nil
+}
+
+func catalogWorkspaceLoaded(root, namespace string) (ModelCatalog, workspace.Result, error) {
 	loaded, err := workspace.Load(root)
 	if err != nil {
-		return ModelCatalog{}, ir.World{}, &ValidationFailure{Stage: StageLoad, Err: err}
+		return ModelCatalog{}, workspace.Result{}, &ValidationFailure{Stage: StageLoad, Err: err}
 	}
 	idx, err := workspace.BuildSourceIndex(root, loaded)
 	if err != nil {
-		return ModelCatalog{}, ir.World{}, &ValidationFailure{Stage: StageSourceIndex, Err: err}
+		return ModelCatalog{}, workspace.Result{}, &ValidationFailure{Stage: StageSourceIndex, Err: err}
 	}
 	worldFP, sourceFP, err := workspaceProjectionFingerprints(loaded.World, idx)
 	if err != nil {
-		return ModelCatalog{}, ir.World{}, err
+		return ModelCatalog{}, workspace.Result{}, err
 	}
 	catalog := CatalogWorld(loaded.World, idx, namespace, worldFP, sourceFP)
 	identity := loaded.Identity()
 	catalog.Workspace = &identity
 	catalog.Validation = catalogValidation(loaded)
-	return catalog, loaded.World, nil
+	return catalog, loaded, nil
 }
 
 // catalogValidation applies validate's rule to the same loaded Workspace, so a

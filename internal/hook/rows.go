@@ -46,15 +46,6 @@ func (r Runner) RunRows(ctx context.Context, invocation Invocation, rows []map[c
 			Message: fmt.Sprintf("hook %s declares scope %q, so it is not applied per row", invocation.Phase, declared.Scope),
 		}
 	}
-	// A row-scoped hook that also declares `uses` is refused here too. The record
-	// path keeps that promise through RunDeclaredCalls, once per phase; there is
-	// no per-row equivalent, so calling once for the whole page would keep the
-	// promise for no particular row. Answering differently from
-	// applyReachableRows made the same declaration succeed through Run and fail
-	// through RunReachable.
-	if err := refuseRowScopeWithUses(invocation.Phase, declared); err != nil {
-		return err
-	}
 	if len(rows) == 0 {
 		// No rows means nothing to apply the hook to. That is not a failure: a
 		// browse result can be empty, and refusing it would turn an empty page
@@ -68,6 +59,14 @@ func (r Runner) RunRows(ctx context.Context, invocation Invocation, rows []map[c
 	for index, row := range rows {
 		rowInvocation := invocation
 		rowInvocation.Reads = narrowTo(row, declared.Reads)
+		// A `uses` promise is one call per row, made with that row's values. The
+		// record path keeps the same promise through RunDeclaredCalls; rows differ
+		// only in how many times the promise is kept.
+		if len(declared.Uses) > 0 {
+			if _, callErr := r.RunRowCalls(ctx, rowInvocation, declared, rows[index:index+1]); callErr != nil {
+				return callErr
+			}
+		}
 		var rowErr error
 		if calling, ok := implementation.(CallingImplementation); ok {
 			rowErr = calling.RunWithCaller(ctx, rowInvocation, declaredCaller(r.Caller, declared))

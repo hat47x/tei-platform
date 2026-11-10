@@ -55,6 +55,15 @@ type selfBuildEntryEvidence struct {
 	ChildIntentBytesDigest string `json:"childIntentBytesDigest,omitempty"`
 	ChildIntentFingerprint string `json:"childIntentFingerprint,omitempty"`
 	ChildPlanFingerprint   string `json:"childPlanFingerprint,omitempty"`
+	// ChildStateDir is the state directory the child says it used. The entry
+	// passes -state; this is the child's own reading of it, so the separation the
+	// reproducibility claim rests on can be checked rather than assumed.
+	ChildStateDir string `json:"childStateDir,omitempty"`
+	// ChildDefinitionDigest is the digest the child reports for the definition
+	// file it read. The child checks it itself before building (§4.36); recording
+	// it lets this entry check the claim rather than rely on the child's own
+	// enforcement.
+	ChildDefinitionDigest string `json:"childDefinitionBytesDigest,omitempty"`
 	// ChildLock is the child's own validated plan-to-artifact lock (§4.11),
 	// copied verbatim. The entry checks it against the file rather than
 	// treating it as proof.
@@ -227,6 +236,8 @@ func driveSelfBuild(childPath string, childArgs []string, artifactPath, claimedS
 		IntentBytesDigest string `json:"intentBytesDigest"`
 		IntentFingerprint string `json:"intentFingerprint"`
 		PlanFingerprint   string `json:"planFingerprint"`
+		StateDir          string `json:"stateDir"`
+		DefinitionDigest  string `json:"definitionBytesDigest"`
 		// The child's own validated plan-to-artifact lock (§4.11). When a child
 		// forms and checks it itself, the entry no longer assembles the binding
 		// from two separate self-reports.
@@ -241,6 +252,8 @@ func driveSelfBuild(childPath string, childArgs []string, artifactPath, claimedS
 	evidence.ChildIntentBytesDigest = child.IntentBytesDigest
 	evidence.ChildIntentFingerprint = child.IntentFingerprint
 	evidence.ChildPlanFingerprint = child.PlanFingerprint
+	evidence.ChildStateDir = child.StateDir
+	evidence.ChildDefinitionDigest = child.DefinitionDigest
 	if child.BuildArtifactLock != nil {
 		evidence.ChildLock = &childSelfLock{
 			FormatVersion:   child.BuildArtifactLock.FormatVersion,

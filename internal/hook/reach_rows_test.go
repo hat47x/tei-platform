@@ -132,10 +132,14 @@ func TestRunReachableWithoutRowsSkipsARowScope(t *testing.T) {
 	}
 }
 
-// TestRunReachableRefusesRowScopeWithUses checks the fail-closed choice: a row-scoped
-// hook that also declares a call is refused, because calling once for the page would
-// keep the promise for one row and not the others.
-func TestRunReachableRefusesRowScopeWithUses(t *testing.T) {
+// TestRunReachableRefusesRowScopeWithAnUnresolvableCall checks the fail-closed side
+// that remains: a row-scoped hook that declares a call which cannot be resolved is
+// refused, and the rule does not run for that row.
+//
+// The blanket refusal this test used to pin is gone: a row-scoped `uses` now makes
+// its call once per row. What stays fail-closed is a declaration whose call has
+// nowhere to go.
+func TestRunReachableRefusesRowScopeWithAnUnresolvableCall(t *testing.T) {
 	implementation := &ruleImplementation{}
 	runner := hook.Runner{
 		World:          rowReachWorld(true),
@@ -143,11 +147,11 @@ func TestRunReachableRefusesRowScopeWithUses(t *testing.T) {
 		Rows:           rowReachRows("10", "20"),
 	}
 	_, err := runner.RunReachable(context.Background(), "order_entry", "order_entry.order_record", nil, hook.ReferenceReach{})
-	if err == nil || !strings.Contains(err.Error(), "HOOK_SCOPE_ROW_USES_UNSUPPORTED") {
+	if err == nil || !strings.Contains(err.Error(), "HOOK_PATTERN_NOT_DECLARED") {
 		t.Fatalf("err=%v", err)
 	}
 	if implementation.calls != 0 {
-		t.Fatalf("the hook ran anyway: %d calls", implementation.calls)
+		t.Fatalf("the rule ran for a row whose call could not be made: %d calls", implementation.calls)
 	}
 }
 

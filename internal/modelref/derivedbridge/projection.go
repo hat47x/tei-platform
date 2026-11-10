@@ -74,10 +74,28 @@ func FromIndex(d index.Derived, scope string) Projection {
 		add("query", string(e.Query))
 	}
 	ruleSet := map[modelref.Rule]bool{}
+	// The same edge can be declared by more than one collection — `realizes` is
+	// built both from DeclaredDependencies and from CustomGoBindings — so the
+	// projection must be a set here. Appending unconditionally reported one
+	// incoming edge as two, which read as "two applications implement this
+	// capability" (#4024).
+	//
+	// Unresolved drops repeats for the same reason: the message names the
+	// reference and nothing else, so a second copy adds no information and
+	// inflates every count taken from it.
+	edgeSeen := map[string]bool{}
+	unresolvedSeen := map[string]bool{}
+	unresolve := func(message string) {
+		if unresolvedSeen[message] {
+			return
+		}
+		unresolvedSeen[message] = true
+		p.Unresolved = append(p.Unresolved, message)
+	}
 	addEdge := func(fromKind, fromID, relation, toKind, toID string) {
 		from := modelref.Key{Scope: scope, Subject: subject.Subject{Kind: fromKind, ID: fromID}}
 		if !nodes[from] {
-			p.Unresolved = append(p.Unresolved, "unmaterialized-from:"+fromKind+":"+fromID)
+			unresolve("unmaterialized-from:" + fromKind + ":" + fromID)
 			return
 		}
 		if toKind == "semantic-element" {
@@ -86,16 +104,23 @@ func FromIndex(d index.Derived, scope string) Projection {
 			// interchangeable; they must remain explicitly ambiguous.
 			kinds := semanticKindsByID[toID]
 			if len(kinds) != 1 {
-				p.Unresolved = append(p.Unresolved, "unresolved-semantic-element:"+toID)
+				unresolve("unresolved-semantic-element:" + toID)
 				return
 			}
 			toKind = kinds[0]
 		}
 		to := modelref.Key{Scope: scope, Subject: subject.Subject{Kind: toKind, ID: toID}}
 		if !nodes[to] {
-			p.Unresolved = append(p.Unresolved, "unmaterialized-to:"+toKind+":"+toID)
+			unresolve("unmaterialized-to:" + toKind + ":" + toID)
 			return
 		}
+		// The identity of an edge is what a caller can see: the endpoints and
+		// the relation. A repeat is the same statement, not a second one.
+		identity := fromKind + "\x00" + fromID + "\x00" + relation + "\x00" + toKind + "\x00" + toID
+		if edgeSeen[identity] {
+			return
+		}
+		edgeSeen[identity] = true
 		rule := modelref.Rule{Relation: relation, FromKind: fromKind, ToKind: toKind}
 		ruleSet[rule] = true
 		p.Graph.Edges = append(p.Graph.Edges, modelref.Edge{From: from, To: modelref.Ref{Scope: scope, Subject: to.Subject}, Relation: relation})

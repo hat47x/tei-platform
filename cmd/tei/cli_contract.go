@@ -75,6 +75,7 @@ func commandCatalog() cliCommandCatalog {
 		Commands: []cliCommandRecord{
 			{Name: "version", Effect: "read-only", Required: []string{"none"}, Optional: []string{"-json"}, Output: "text; json when -json", SchemaVersion: "tei.cli.version/v0", JSONContract: "enveloped", SuccessShape: "identity"},
 			{Name: "model catalog", Effect: "read-only", Required: []string{"-workspace"}, Optional: []string{"-namespace"}, Output: "json", SchemaVersion: "tei.cli.model/v0", JSONContract: "enveloped"},
+			{Name: "model overview", Effect: "read-only", Required: []string{"-workspace"}, Optional: []string{"-limit"}, Output: "json", SchemaVersion: "tei.cli.model-overview/v0", JSONContract: "enveloped"},
 			{Name: "model locate", Effect: "read-only", Required: []string{"-workspace", "-subject-kind", "-subject-id"}, Optional: []string{"-limit"}, Output: "json", SchemaVersion: "tei.cli.model-locate/v0", JSONContract: "enveloped"},
 			{Name: "workspace-files", Effect: "read-only", Required: []string{"-workspace"}, Output: "json", SchemaVersion: "tei.cli.workspace-files/v0", JSONContract: "enveloped"},
 			{Name: "inspect", Effect: "read-only", Required: []string{"-workspace", "-subject-kind", "-subject-id"}, Output: "json", SchemaVersion: "tei.cli.inspect/v0", JSONContract: "enveloped", ArgumentValues: valueSets("inspect"), ArgumentType: valueTypes("inspect")},

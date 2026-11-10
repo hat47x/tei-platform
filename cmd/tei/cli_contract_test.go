@@ -64,8 +64,8 @@ func TestDiscoveryAdvertisesTheCommandsOwnSchemaVersion(t *testing.T) {
 		if cmd.SchemaVersion == "" {
 			t.Errorf("%s advertises no schemaVersion", cmd.Name)
 		}
-		if cmd.Name == "model locate" {
-			if cmd.SchemaVersion != "tei.cli.model-locate/v0" {
+		if cmd.Name == "model locate" || cmd.Name == "model overview" {
+			if cmd.SchemaVersion != "tei.cli."+strings.ReplaceAll(cmd.Name, " ", "-")+"/v0" {
 				t.Errorf("%s schemaVersion=%q", cmd.Name, cmd.SchemaVersion)
 			}
 			continue
@@ -136,6 +136,13 @@ func TestDiscoverySchemaVersionsMatchActualResponses(t *testing.T) {
 			t.Fatalf("code=%d err=%v body=%s", code, err, out.String())
 		}
 		assertAdvertisedVersion(t, "model locate", decode(t, &out))
+	})
+	t.Run("model overview", func(t *testing.T) {
+		var out bytes.Buffer
+		if code, err := runModelCommand([]string{"overview", "-workspace", root}, &out); err != nil || code != 0 {
+			t.Fatalf("code=%d err=%v body=%s", code, err, out.String())
+		}
+		assertAdvertisedVersion(t, "model overview", decode(t, &out))
 	})
 	t.Run("workspace-files", func(t *testing.T) {
 		var out bytes.Buffer

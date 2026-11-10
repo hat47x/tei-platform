@@ -15,13 +15,10 @@ import (
 // the row that refused and the phase is recorded as refused with the row named in
 // the reason, so a partly-applied page never reads as a passed phase.
 //
-// A row-scoped hook that also declares `uses` is refused, for the reason
-// refuseRowScopeWithUses states. The decision is shared with RunRows so both row
-// entry points answer the same declaration the same way.
+// A row-scoped hook that also declares `uses` makes its calls once per row,
+// through the same per-row path RunRows uses. The promise is the same in both
+// entry points; only the bookkeeping differs.
 func (r Runner) applyReachableRows(ctx context.Context, report *PhaseReport, applicationID, patternID core.CanonicalID, phase string, declaration *application.Hook) error {
-	if err := refuseRowScopeWithUses(phase, declaration); err != nil {
-		return err
-	}
 	for index, row := range r.Rows {
 		// The row's own values are used, and only the reads the declaration names.
 		// A pattern-level value is not substituted for a read the row lacks: that
@@ -37,6 +34,14 @@ func (r Runner) applyReachableRows(ctx context.Context, report *PhaseReport, app
 			Pattern:     patternID,
 			Phase:       phase,
 			Reads:       reads,
+		}
+		// A `uses` promise is one call per row, made with that row's values.
+		if len(declaration.Uses) > 0 {
+			if _, callErr := r.RunRowCalls(ctx, invocation, declaration, r.Rows[index:index+1]); callErr != nil {
+				report.Refused = phase
+				report.Reasons[phase] = fmt.Sprintf("row %d: %v", index, callErr)
+				return &RowRefusal{Row: index, Err: callErr}
+			}
 		}
 		produced, err := r.RunWithDeclaredValues(ctx, invocation)
 		if err == nil {

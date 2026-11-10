@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"tei/internal/buildintent"
 	"tei/internal/core"
 	"tei/internal/plugin"
 	"tei/internal/syntax"
@@ -43,7 +44,9 @@ func writeFixture(t *testing.T) (string, string) {
 			Kind:    "plugin-definition",
 			ID:      "definition", // the declaration names this source; compareIntentFields compares kind and id
 			Locator: "plugin.tei",
-			Digest:  "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			// The plan must name the bytes that will be read. A placeholder here
+			// would make the fixture describe a build that cannot happen.
+			Digest: buildintent.SingleFileSourceDigest([]byte(testPluginSource)),
 		}},
 		Builder: plugin.BuilderIdentity{
 			ID:              core.MustCanonicalID("tei.builder.package.reference.seed"),

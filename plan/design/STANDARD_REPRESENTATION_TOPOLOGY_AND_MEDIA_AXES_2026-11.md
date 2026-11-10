@@ -1,7 +1,6 @@
 # 標準データ構造と標準表現型：構造間Binding・媒体時間軸の設計案（2026-11-07）
 
 > **統合Draftの位置づけ（2026-11-07）**：この資料は以前の設計Draftの内容を保存し、現行mainからの統合計画へ取り込み直したものです。最新の横断検証順と追加反例は `plan/design/COMPOSED_REPRESENTATION_MAPPING_QUALIFICATION_2026-11.md` を参照してください。本文中の旧Draft参照・NOT RUNは当時の証拠の限界として保持します。
-
 - **状態**：Ownerから示されたX-TEA→TEIの構想に対する設計・実証計画。既存Core/公開Schemaへの採用、実装、今回の独立試験、実Target/Provider、意味受理は **NOT RUN / 未採用**。
 - **目的**：データ構造と表現型を型として独立させ、表現インスタンスをFunctionへ配置し、その両側の構造間に検証可能な写像を設ける。RDBの1:1・1:NとXF単票/明細の対応を、文書・音声・動画・科学/空間/グラフ表現にも通用する概念へ拡張する。
 - **責務Owner**：[データFacet #2495](https://github.com/hat47x/tei-platform/issues/2495)、[Pressure Corpus #2501](https://github.com/hat47x/tei-platform/issues/2501)、[Projection/損失/逆写像 #2497](https://github.com/hat47x/tei-platform/issues/2497)、[Function Context #2506](https://github.com/hat47x/tei-platform/issues/2506)、[Function Pattern #2507](https://github.com/hat47x/tei-platform/issues/2507)、[表示Kit #997](https://github.com/hat47x/tei-platform/issues/997)、[編集逆写像 #2500](https://github.com/hat47x/tei-platform/issues/2500)。本資料は**受渡し用の横断比較票**で、第二の型Registry、Projection Engine、Validator、Action/Authority、Scenario SSOTを設けない。

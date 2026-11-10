@@ -35,8 +35,12 @@ type ModelLocation struct {
 	Outgoing               []ModelLocationLink          `json:"outgoing"`
 	Incoming               []ModelLocationLink          `json:"incoming"`
 	Limit                  int                          `json:"limit"`
-	Coverage               ModelLocationCoverage        `json:"coverage"`
-	AuthorityLimits        []string                     `json:"authorityLimits"`
+	// Attention counts the problems on this element and everything under it.
+	// It is set by LocateWorkspace, which has the diagnostics; LocateInCatalog
+	// alone leaves it nil rather than reporting zero problems it did not count.
+	Attention       *ModelAttention       `json:"attention,omitempty"`
+	Coverage        ModelLocationCoverage `json:"coverage"`
+	AuthorityLimits []string              `json:"authorityLimits"`
 }
 
 // ModelLocationSlice is a bounded list. Total is the full count, Entries holds
@@ -112,14 +116,18 @@ func LocateWorkspace(root string, subject sourceindex.Subject, limit int) (Model
 		subject.Kind != strings.TrimSpace(subject.Kind) || subject.ID != strings.TrimSpace(subject.ID) {
 		return ModelLocation{}, fmt.Errorf("subject kind and id must be nonempty and exact")
 	}
-	catalog, world, err := catalogWorkspaceWithWorld(root)
+	read, err := loadCatalogRead(root)
 	if err != nil {
 		return ModelLocation{}, err
 	}
-	location, failure := LocateInCatalog(catalog, world, subject, limit)
+	location, failure := LocateInCatalog(read.Catalog, read.World, subject, limit)
 	if failure != nil {
 		return ModelLocation{}, failure
 	}
+	// The problems under this element, counted the same way model overview
+	// counts a section (§19.8 G5), so the detail and the overview agree.
+	attention := newCatalogTree(read.Catalog, read.World, read.Diagnostics).subtreeAttention(subject)
+	location.Attention = &attention
 	return location, nil
 }
 

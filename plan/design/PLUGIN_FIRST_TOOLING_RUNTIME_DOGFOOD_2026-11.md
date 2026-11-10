@@ -473,7 +473,7 @@ Data Workbench #3270、REST Decision Graph #3274、三要素モデルとCRUD/SHO
 - **実main #3336**（merge `04f75301f408eb98b95ca90a103d6d8ad21ffdba`）に`tools/reference-go-build-stage-driver`が追加された。Buildを別プロセスとして実駆動し、**invoker実行ファイルのdigest／invoked実行ファイルのdigest・argv・PID・exit／子の申告artifact digestとディスクで読み直したdigest**を別々に観測できた。このReference単独ではStage1生成物によるStage2の真の再帰的セルフビルド(L3)は未実施で`l3Claimed=false`。**後続[#3440](https://github.com/hat47x/tei-platform/pull/3440)で`cmd/tei`自体のStage1 ArtifactをStage2 Invokerに使用した限定L3の実行証拠がmainへ統合済み**。ただしSeed Trust・一般的なPlugin組合せBuild・Runtime Authority・Source閉包資格は示さない。BOMの`Built`を「Builderが呼ばれた」「Reportにdigestがある」だけで保証しないための実証部品とする。
 - **実CLIドッグフーディング #3149**（横断実測はclosed）から、#3345（`view`でWorld/Source Indexの版照合値が欠落・異なる範囲のfingerprint）、#3346（`docs/plan`内MarkdownはmanagedでもLoaderで解釈されない）、#3347（応答JSON shapeの違い）が個別課題として残った。**読み取れるデータ、管理されるファイル、意味を解釈したSource、AI Toolが完全受領した出力を同一視しない**。#3183/3182等の旧観測がclosedであっても、全CLIが同じLock形式をそのまま再入力できる、すべての`read-only`宣言は無副作用、といった上位保証への自動昇格はしない。
 - **#3262/#3273系のT0.5/T1**：限定的なContext不足の検出と固定Scenario実行の進展はあるが、Required Rule/RelationをSource/Loader/Meaningから閉じてAIが未知の独立Negativeを発見し、同じ実SourceでMutantを殺した**T1-B**はまだ別資格。#3324はclosed/unmergedのDraftであり、単に最新Issue一覧へ現れたことをmain実装に数えない。
-- **BOM [Draft #3297](https://github.com/hat47x/tei-platform/pull/3297)**：RQ-035はData Source Workbench、BOMは**RQ-036**へ分離。純Go ReferenceはFull/Pairwise/提供済exact Lock相対の計画と同一Attempt入力の整合を検査する。**歴史的なPR head `a6cddd6778613fa9d6b2ecedfcf0aaade5e51cbc`ではHealth/依存脆弱性CI成功**。その後PRのHEADは更新されているため、旧SHAの成功を現在HEADやmainの成功へ移さない。Draft [#3297](https://github.com/hat47x/tei-platform/pull/3297)は現在も未統合であり、実Provider/Runtime/Host/正式BOM発行とは分離する。実Provider/Runtime/Host/正式BOM発行はNOT RUN。
+- **BOM [Draft #3297](https://github.com/hat47x/tei-platform/pull/3297)**：現在RQ-035はData Source Workbench、RQ-036は全容Model Map、BOMは新たな**RQ-037**として独立。旧Draft #3297のRQ-036表記はmain追随時に修正が必要。純Go ReferenceはFull/Pairwise/提供済exact Lock相対の計画と同一Attempt入力の整合を検査する。**歴史的なPR head `a6cddd6778613fa9d6b2ecedfcf0aaade5e51cbc`ではHealth/依存脆弱性CI成功**。その後PRのHEADは更新されているため、旧SHAの成功を現在HEADやmainの成功へ移さない。Draft [#3297](https://github.com/hat47x/tei-platform/pull/3297)は現在も未統合であり、実Provider/Runtime/Host/正式BOM発行とは分離する。実Provider/Runtime/Host/正式BOM発行はNOT RUN。
 
 ### 16.2 利用と資格の五段階を一つの「Plugin使用済み」に潰さない
 
@@ -652,6 +652,8 @@ Data Workbench #3270、REST Decision Graph #3274、三要素モデルとCRUD/SHO
 **現在の資格**：本節はIssue・現行Code・他チャット方針を照合した設計計画であり、Trait公開Schema/DSL、実Plugin移行、TRF-01〜12、新しいGo/CLI/Studio/Provider試験、Owner正式採用は **NOT RUN／未採用**。本DocのD1試験を通したときだけ、実装方式の判断を更新する。
 
 
+**製品要求の正式な番号**：BOMは[RQ-037](../../requirements/TEI_PRODUCT_REQUIREMENTS.md)であり、[RQ-036](../../requirements/TEI_PRODUCT_REQUIREMENTS.md)は全容モデルマップ。旧Draftの設計番号を製品要件の正本と混同しない。現状のPlugin-first限定Go Consumerと実Wails/通常CLI Consumerの資格差も維持する。
+
 ## 18. Verified BOMの証拠鮮度：Source変更と選択規則変更を独立に追跡する（2026-11-08横断・受入案）
 
 ### 18.1 実mainとDraftが示した三つの非同値
@@ -687,7 +689,7 @@ Data Workbench #3270、REST Decision Graph #3274、三要素モデルとCRUD/SHO
 | **BFR-06** | 未選択・未消費のPlugin資産だけ更新 | 実依存closureで非干渉が示された行のEvidenceを機械的に全失効させない。過剰失効を検出 |
 | **BFR-07** | 同じ構成で実Target/Build/Snapshotを変える、あるいは同一Attemptだが欠落Check | 同じ源のTest証拠が無ければ旧PASSを合算しない。別Target/OS/Scope、現Grantも独立 |
 
-**所有権と順序**：#3262 Source/Required Closureと#3479 External Source、#951 Selection、#3278/#3279 Trait/Consumer、#1251実Inspector→実Call、#943/#2600 Build/Artifact、#1180/#2514独立Expected/Attempt、#3267 RQ-036 BOM。**BFRをここで独自Runnerや第二BOM Registryとして実装しない**。CLI/Studioという2 Consumerで実Providerの同一性を示すD1は依然P0。#3478の実HTTP Host Branch/監査、#3440の限定Self-buildは別Target・別Claimであり、このBOM行を自動で資格化しない。
+**所有権と順序**：#3262 Source/Required Closureと#3479 External Source、#951 Selection、#3278/#3279 Trait/Consumer、#1251実Inspector→実Call、#943/#2600 Build/Artifact、#1180/#2514独立Expected/Attempt、#3267 RQ-037 BOM。**BFRをここで独自Runnerや第二BOM Registryとして実装しない**。CLI/Studioという2 Consumerで実Providerの同一性を示すD1は依然P0。#3478の実HTTP Host Branch/監査、#3440の限定Self-buildは別Target・別Claimであり、このBOM行を自動で資格化しない。
 
 **受理状況**：#3477/#3337/#3350/#3363はmain履歴、#3479と今回の履歴Policy比較Go RegressionはDraft、BFR-01〜07を横断する製品Inspector/Version Matrix実行、現在Host Grant、真正なTrusted Witness・Owner受理は**NOT RUN**。完成済みE2E/BOMではなく、既存計画に必要な再資格化判別を増やした段階である。
 
