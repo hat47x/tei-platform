@@ -1910,6 +1910,54 @@ L2-bの五条件は、childの能力に依存する。本節は、**参照実装
 - 覆われていないpackageを自動で計画へ足すこと。**計画は呼び手が書くもの**である
 - `vendor/`の扱い。**今は対象から外している**
 
+### 4.42 照合した木をビルドする（案Bの第一歩、2026-11-09）
+
+§4.39の案Aには**TOCTOU**が残る——計画と作業ツリーを照合してから`go build`するまでの間に、ファイルは変わり得る。本節は、**案Bの第一歩**を実装したことを記録する。
+
+#### 何をするか
+
+`-isolate`を付けると、**計画が名指すsourceだけを新しい木へ写し、その木をビルドする。**
+
+| 段 | 内容 |
+| --- | --- |
+| 1 | 各sourceを`DirSourceResolver`で読み、**locatorの形を保って**新しい木へ書く |
+| 2 | 写した木を**同じresolverで読み直し**、計画のdigestと一致することを確かめる。**違えばビルドしない** |
+| 3 | `go.mod`・`go.sum`を作業ツリーから取り、**そのdigestを記録**する |
+| 4 | その木で`go list -deps`と`go build`を行う（§4.41の被覆検査もこの木に対して行う） |
+
+**「確かめたもの」と「ビルドしたもの」が同じ木になる。** 作業ツリーの後からの変更は、ビルドに届かない。
+
+#### 素直でない点：module contextは計画のsourceではない
+
+`go build`には`go.mod`が要る。**これはsourceではない**ので計画は名指さない。そこで**作業ツリーから取り、`moduleFiles`としてdigestを記録**する。**境界に明記**した——「module contextは主張に含まれない」。
+
+**これは穴を塞ぎ切っていない。** `go.mod`を後から変えれば、依存の解決は変わり得る。塞ぐにはmodule contextも計画の一部にする（`Dependencies`の拡張）必要があり、それは未着手である。
+
+#### 実測
+
+| 試験 | 結果 |
+| --- | --- |
+| `TestStageSourcesCopiesExactlyThePlannedBytes`（写した木が計画と同じdigestで、module contextが記録される） | **PASS** |
+| `TestStageSourcesRefusesACopyThatDoesNotMatchThePlan`（写した木が計画と違えば**拒否**） | **PASS** |
+| `TestRunWithIsolateBuildsFromTheStagedTree`（`-isolate`で実際にビルドし、木のdigestと境界が記録され、被覆検査も通る） | **PASS** |
+| `go test ./tools/reference-go-build-from-plan -count=1` | **PASS**（20.6秒） |
+
+#### 既定にしない理由
+
+**`-isolate`は既定にしていない。** 理由は二つ:
+
+1. **module contextが計画の外にある**ので、隔離しても主張は完全には閉じない。既定にすると「閉じた」と読まれやすい
+2. 依存のある対象では、**module解決の合成規則**（§4.39の案Bの本体）がまだ無い
+
+**既定にできるのは、module contextを計画の一部にした後である。**
+
+#### この節が言っていないこと
+
+- **TOCTOUを完全には閉じていない。** `go.mod`・`go.sum`は作業ツリーから取る
+- 複数sourceが同じdirectoryを共有する場合の合成規則（今はlocatorごとに独立して写す）
+- `vendor/`・置換（`replace`）の扱い
+- 既定化。**上の二つの理由で見送っている**
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
