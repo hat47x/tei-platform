@@ -78,3 +78,11 @@ go run ./cmd/tei validate -workspace reference/workspace
 ## 位置付け
 
 参照実装の試験記録であり、製品の受入や本番適格性を示しません。同じ宣言が入口で別の答えになる欠陥を、判断を一箇所へ寄せて直した記録です。行ごとの`uses`実行は未着手のまま残ります。
+
+## 後継（2026-11-10）
+
+この記録は、`RunRows`と`RunReachable`が同じ宣言に同じ答えを返すようにした時点の内容です。当時そろえた答えは**拒否**（`HOOK_SCOPE_ROW_USES_UNSUPPORTED`、判定は`refuseRowScopeWithUses`）でした。
+
+その後、行単位の`uses`を実行する経路（[確認記録](XTEA_LOWCODE_HOOK_ROW_USES_CALLS_2026-11.md)）を入れ、`refuseRowScopeWithUses`は削除しました。`HOOK_SCOPE_ROW_USES_UNSUPPORTED`は現在のコードに存在しません。`RunRows`も`applyReachableRows`も`hook.RunRowCalls`を通し、宣言した能力を**1行ごとにその行の値で呼びます**。
+
+したがって本記録の「拒否でそろえた」という結論は、そろえる方針（両経路が同じ答えを返すこと）としてのみ有効です。答えの中身は実行へ変わりました。
