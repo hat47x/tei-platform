@@ -1,0 +1,19 @@
+Declarations exist:
+  databases/sales-core/persistence/order.tei:10
+    column sales.order.total -> total_amount storage decimal required
+  applications/order-entry/queries/recent_orders.tei:9
+    column total_amount -> sales.order.total
+
+  reference/workspace: 16 mappings, 21 column mappings under databases/,
+  5 under applications/.
+
+trace cannot see it:
+  trace -scope s -subject-kind semantic-attribute \
+        -subject-id sales.order.total -direction incoming -mode full
+    total: 0
+
+  attributes: 20
+  with incoming edges: 3      (all three are semantic-validation -attribute->)
+
+  trace -subject-kind persistence -> UNSUPPORTED_SUBJECT_KIND
+  inspect's InspectionSubjectKinds has no persistence kind either.

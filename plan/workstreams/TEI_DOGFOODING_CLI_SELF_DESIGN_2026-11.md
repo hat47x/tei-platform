@@ -1289,3 +1289,83 @@ CustomGoBindings                   index.go:4 projection.go:0
 ### 併せて処理した重複PR
 
 `#3983` には私の PR #3989 と、別の作業者の PR #3994 が同時に出ていた（私が5分先に作成、7分先にマージ）。**両方を `main` に入れると辺が二重になる**（`projection.addEdge` は重複排除しない）ため、#3994 に経緯と判断材料をコメントした。
+
+## 47. 第44ラウンド（2026-11-10）: 永続化マッピングの列対応が参照グラフに現れない
+
+「この属性はどの列に格納されるか」を CLI だけで答えられるかを試した。生出力は[第44ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND44_PERSISTENCE_NOT_IN_GRAPH_2026-11-10/README.md)にある。
+
+### 先に確認した正常な挙動
+
+第38ラウンドで私が指摘した `commands` と `-h` の不一致は、他者の修正で**解消済み**だった（全6コマンドで一致）。第28・42ラウンドの辺（`outcome`・`realizes`）も健在。
+
+### 観測
+
+`column sales.order.total -> total_amount` の対応は `reference/workspace` に21件ある。しかし:
+
+```bash
+tei trace -scope s -subject-kind semantic-attribute \
+  -subject-id sales.order.total -direction incoming -mode full
+# total: 0
+```
+
+属性20件のうち incoming を持つのは**3件だけ**（いずれも `semantic-validation -attribute->` を持つもの）。残り17件は永続化やクエリから参照されていても incoming を持たない。`trace -subject-kind persistence` は `UNSUPPORTED_SUBJECT_KIND`、`inspect` の受理集合にも無い。
+
+### 原因は前回と一段違う
+
+| 層 | 状態 |
+| --- | --- |
+| `ir.World` | `Mapping.Columns []ColumnMapping`（`Attribute`＋`Column`）を持つ |
+| 派生索引 | `PersistenceIndexEntry` に**列対応の欄が無く、写していない** |
+| 依存リスト | 1本も写していない |
+
+前回（#3983）は「索引が読んでいない」だったが、今回は「**索引は読んでいるが中間段を捨てている**」。
+
+### 起票
+
+[#4001](https://github.com/hat47x/tei-platform/issues/4001)。案 A（`persistence` を subject-kind に加え `-column-> semantic-attribute` を作る）を本筋としたが、`ir.World`→索引→投影の3段に列対応を通す変更が要る。層分離を理由に意図的に除外されている可能性もあるが、**その根拠を文書で見つけられなかった**ので、判断は Owner に委ねる。
+
+### 同じ型の4例目
+
+| ラウンド | 見えなかったもの |
+| --- | --- |
+| 28 | `capability.outcome` |
+| 41→42 | `realize` の実装束縛 |
+| 43 | 他の3種の束縛 |
+| 44 | 永続化の列対応 |
+
+## 48. 第45ラウンド（2026-11-10）: World の全欄と参照グラフの対応を検査で固定した
+
+第28・41〜44ラウンドで「モデルにあるが参照グラフに無い」型を**4回**見つけた。個別に辺を足すだけでは、次に `ir.World` へ欄が増えたとき同じ手順を繰り返す。再発を機械的に検出する試験を追加した。生出力は[第45ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND45_WORLD_FIELD_COVERAGE_2026-11-10/README.md)にある。
+
+### 実測: 17欄のうち3欄が読まれていない
+
+`ir.World` の全欄について、`index.Build` が `w.<欄>` を参照するかを機械的に数えた。
+
+```text
+読む   : Plugins Bundles Semantics Applications Databases Persistence
+         Migrations MigrationProviders ApplicationReleases DatabaseReleases
+         SolutionReleases Environments Queries Bindings        (14)
+読まない: HeaderDetailContractQueryBindings
+         ContractQueryExecutorBindings
+         ContractQuerySQLRealizations                            (3)
+```
+
+**読まれない3欄は、第43ラウンドで手作業で特定した3種と完全に一致した。** 数え方の裏付けになった。
+
+### 追加した試験
+
+`internal/index/world_field_coverage_test.go` の2件。`reflect` で全欄を列挙し、`worldFieldCoverage` に無い欄があれば落ちる。逆方向（表にあるが World に無い欄）も落ちる。未読の欄には**理由を必須**にした。
+
+**「読まれていない」を失敗にせず、明示を要求する形**にした。plugin・release・environment のように参照グラフの subject ではない欄が正当に存在するため。
+
+変異2種（未登録の欄を追加／未読の理由を削除）が両方落ちることを確認した。
+
+### この試験が保証しないこと
+
+```text
+ir.World --[この試験が見る]--> index.Build --[見ていない]--> 参照グラフ
+```
+
+**「読む」と書いた欄の内容が辺になるかは見ていない。** `Persistence` は「読む」だが、`#4001` のとおり列対応は辺になっていない（`Mapping.Columns` を索引が捨てている）。つまり `#4001` の穴はこの試験では捕まらない。**半分だけ塞いだ。**
+
+次の段（entry 型が World の下位構造を落としていないか）は型ごとの判断が要るので、別の設計として扱うのが妥当と考えている。

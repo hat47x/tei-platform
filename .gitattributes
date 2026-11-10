@@ -250,5 +250,7 @@
 # Binding guarded executor output is hashed as raw bytes by its README.
 /plan/evidence/BINDING_GUARDED_EXECUTOR_REFERENCE_2026-11-09/** -text
 
+# Active-subagent cap observations are hashed as raw bytes.
+/plan/evidence/DSH_SUBAGENT_ACTIVE_CAP_2026-11-10/** -text
 # Guard with real adapter output is hashed as raw bytes by its README.
 /plan/evidence/GUARD_WITH_REAL_ADAPTER_2026-11-09/** -text
