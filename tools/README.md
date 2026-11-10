@@ -77,6 +77,7 @@
 | [`reference-business-procedure-check/`](reference-business-procedure-check/) | 業務手順と担当・機能・データの整合確認 |
 | [`reference-capability-invocation-context/`](reference-capability-invocation-context/) | Capability実行時の文脈境界の確認 |
 | [`reference-capability-mutation-protocol/`](reference-capability-mutation-protocol/) | 変更を伴うCapabilityの手順確認 |
+| [`reference-hash-id/`](reference-hash-id/) | 可変長・可変文字集合のHash由来ID、Source/Target申告・衝突予算のread-only Reference（#2814、未採用）。正本ID・実Providerの一意登録・Owner資格は対象外 |
 | [`reference-capability-transport/`](reference-capability-transport/) | Capabilityの伝送形式と境界の確認 |
 | [`reference-capability-degradation/`](reference-capability-degradation/) | 既存DB・Providerが観測された能力と業務操作が要求する保証を照合し、不足時に操作を生成しないか明示の弱い保証を宣言するかを記録する参照。縮退を同等と認証しない（#2096） |
 | [`reference-chat-cli-host/`](reference-chat-cli-host/) | 信頼された開発用Hostの事前診断 |
@@ -125,7 +126,10 @@
 | [`reference-build-authoring-intent/`](reference-build-authoring-intent/) | 人・生成AIが書くビルド宣言から、確定したビルド計画を導出する境界の確認 |
 | [`reference-build-execution-binding/`](reference-build-execution-binding/) | ビルド実行と主体・対象の結び付け |
 | [`reference-go-module-closure-preflight/`](reference-go-module-closure-preflight/) | Go対象の選択Module閉包をオフラインで分類する事前観測。`supported`/`external-unresolved`/`missing-module`/`unknown`を区別し、Build・Artifact・権限は行わない（#2831 SB-0a） |
+<<<<<<< HEAD
 | [`reference-go-build-from-plan/`](reference-go-build-from-plan/) | `BuildPlan`を読み、**計画が名指すsourceを同じrootから解釈し直して突き合わせ**、一致したときだけGoのcommandをビルドする。計画fingerprint・宣言byteのdigest・成果物digest・stateを申告し、lockを自分で作って検証する（#2831 SB-C0 §4.39 段1） |
+=======
+>>>>>>> origin/work/issue-2814-hash-derived-id-scheme
 | [`reference-go-build-with-supply/`](reference-go-build-with-supply/) | 供給だけを使う隔離環境で実Buildし、成果物digestとSource閉包の資格を別々に記録する。両者が食い違うX1を明示する（#2831 SB-B事前確認） |
 | [`reference-go-build-stage-driver/`](reference-go-build-stage-driver/) | Buildを別プロセスの起動として駆動し、invoker/invoked の実行ファイルdigest・argv・exit と、子の主張とディスク実物のartifact digestを別々に記録する。L3は主張しない（#2831 SB-C0/C1） |
 | [`reference-go-module-supply-verify/`](reference-go-module-supply-verify/) | オフラインGo Module供給を、対象の実選択Moduleと`go.sum`の`h1`へ束縛して再解決する検証。供給元・署名・Build権限は扱わない（#2831 SB-0b） |
@@ -226,10 +230,13 @@
 | [`reference-plugin-selection-matrix/`](reference-plugin-selection-matrix/) | 環境のBinding（配備実行・状態観測・検証根拠・database instance・環境の機能・移行）ごとに、対応するプラグイン能力を既存の `Supports*` で一括して解決し、selected/missing/ambiguous を一覧する参照。ambiguous は解消せず両方を列挙します。診断の権限は internal/validation が持ちます |
 | [`reference-binding-to-execution/`](reference-binding-to-execution/) | 環境の deployment-executor Binding を既存の routing.RouteCommand で解決し、routing.Router.Dispatch で実行、routing.ValidateResult で照合する参照。Executor の registry は Host が渡し、参照は組み立てません。未登録の executor を指す Binding や結果の不一致は実行せず拒否します。実配備の成立は示しません |
 | [`reference-executor-id-resolution/`](reference-executor-id-resolution/) | 環境の deployment-executor Binding から executor の CapabilityID を routing.RouteCommand で解決し、pruntime.BuildPlan の plan がその ID を認めるか（EnvironmentPlan.Capability）と、能力が action を支えるか（SupportsAction）を順に確かめる参照。直書きの ID は比較用に並べるだけで解決に使わない。実行はしない |
+<<<<<<< HEAD
 | [`reference-observation-router-connect/`](reference-observation-router-connect/) | ObservationProviders の宣言から observation.Binding で provider を解決し、既存の observation.Router で実際に入る参照。resolved（宣言から解決）・selected（Hostが登録）・invoked（providerのObserveに入った）を別々に数え、解決できたことを実行できたと読み替えない。Router も Provider も参照は組み立てず Host が渡す |
 | [`reference-evidence-router-connect/`](reference-evidence-router-connect/) | EvidenceProviders の宣言から evidence.Binding で provider を解決し、既存の evidence.Router で実際に入る参照。観測側と同じ4段を別々に数え、Collect が durable.ActionRecord を要求するため証拠ゲートでない記録は専用状態で拒否する。Router も Provider も参照は組み立てず Host が渡す |
 | [`reference-digest-change-reuse/`](reference-digest-change-reuse/) | Artifact digest が変わったとき旧いピン留めがどうなるかを、既存の generation.Router だけで確かめる参照（CON-12c）。変更後の新しい取得は新しい digest、変更前にピン留めした lease は古い digest のままであることを示す。Publish が同じ世代番号と contract 越えを拒否することも固定する。実配備の切替ではない |
 | [`reference-binding-guarded-executor/`](reference-binding-guarded-executor/) | 配備実行アダプタがEnvironmentを持たずBindingを照合できない問題への、呼出し側での対処を示す参照。routing.RouteCommandの解決結果と、要求したCapabilityIDを比較し、一致しなければアダプタへ渡す前に拒否する。アダプタは変更しない。NOT_MATCHED（Bindingが別のexecutorを選んでいる）が要点 |
+=======
+>>>>>>> origin/work/issue-2814-hash-derived-id-scheme
 | [`reference-service-carrier-connect/`](reference-service-carrier-connect/) | 判断材料のC-2を試験の外で組み立てる参照。Hostが渡したCoordinator・Runtime registry・RouteSourceから BindHostApplicationEnvironmentRoute と NewSelectedServiceCarrierInvoker を順に呼び、ピン留めした世代でService要求を運びます。Routeが無い・別Binding用・入力不足は実行前に拒否します。実配備の成立は示しません |
 | [`reference-accounting-period/`](reference-accounting-period/) | 業務日付とシステム時刻を分け、期間の状態・締め済み期間の直接更新拒否・赤黒訂正・締め後の到着方針・順序鍵と版による再生・締め時点の照合値を判定する参照（#2144） |
 | [`reference-partial-import-plan/`](reference-partial-import-plan/) | 別Workspaceから選んだData定義の取込み結果を分類する読取り専用の参照（#1805） |
@@ -303,5 +310,8 @@ R7Bの一回限りの準備・公開・後処理を行うスクリプトは、�
 | [`reference-self-build-two-stage/`](reference-self-build-two-stage/) | stage1で作った実行ファイルをstage2のinvokerとして実起動し、invoker一致・同一レシピ・artifact一致を別々に判定する。Seed Trust・受入・権限は扱わない（#2831 SB-C1） |
 | [`reference-harness-wire-summary/`](reference-harness-wire-summary/) | 外部AIハーネスがMock Providerへ送ったHTTP要求bodyを、モデル入力と拡張field（`dsh_session_log`）を別欄で要約する参照。bodyのbyte数・SHA-256・最上位キー・event種別・水位・合成markerの出現位置を出し、既存の出力を上書きしない。送出の許可・実OS隔離・Provider側の保存は判定しない（#2515 P0-b / #2509） |
 | [`reference-harness-answer-presence/`](reference-harness-answer-presence/) | 外部Harnessの回答が、同じ実行物のCLI応答に現れた事実（属性ID・型・記号、関係、Source path・digest、World指紋、診断コード）を含むかを機械的に確かめる参照。正答の採点はせず、Reviewer-onlyの独立Expectedを置き換えない（#2509 / TAI #168） |
+<<<<<<< HEAD
 | [`reference-okf-k1/`](reference-okf-k1/) | （追記） |
 
+=======
+>>>>>>> origin/work/issue-2814-hash-derived-id-scheme
