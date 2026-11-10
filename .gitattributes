@@ -281,3 +281,6 @@
 
 # MCP argument-size observations at 4.1 MB are hashed as raw bytes.
 /plan/evidence/DSH_MCP_ARG_SIZE_4M_2026-11-10/** -text
+
+# Secret-shape observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_SECRET_SHAPE_2026-11-10/** -text
