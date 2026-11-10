@@ -263,3 +263,6 @@
 
 # Subagent tree-cap observations are hashed as raw bytes.
 /plan/evidence/DSH_SUBAGENT_TREE_CAP_2026-11-10/** -text
+
+# Feedback-surface observations are hashed as raw bytes.
+/plan/evidence/DSH_FEEDBACK_SURFACE_2026-11-10/** -text
