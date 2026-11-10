@@ -1250,3 +1250,42 @@ inline:  KNOWLEDGE_BUILD_FAILED: open {"qualifications": [...]}: no such file or
 `graphFingerprint` が変わる（辺が増えるため）。保存済み継続トークンは失効する。`projectionUnresolved` に上記の `unmaterialized-to` が新たに現れるが、これは既存不整合の可視化である。
 
 **「見えないこと」自体が欠陥だった**ことの証拠でもある。
+
+## 46. 第43ラウンド（2026-11-10）: 他の3種の実装束縛は依然として参照グラフに現れない
+
+第42ラウンドで `customGoBindings` を辺にした。同じ層に他の束縛種が3つあるので確かめた。生出力は[第43ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND43_OTHER_BINDINGS_2026-11-10/README.md)にある。
+
+### World には4種、trace には1種
+
+```text
+tei world -workspace reference/workspace
+  customGoBindings                  : 4
+  headerDetailContractQueryBindings : 1
+  contractQueryExecutorBindings     : 2
+  contractQuerySQLRealizations      : 1
+```
+
+全 subject（scope `c`・`s`・`e`、`-direction both`）を走査した関係は16種で、`realizes`（`customGoBindings` 由来）は18件。**他の3種に対応する関係は0件。** `trace -subject-kind` にも該当する kind が無く、subject としても辺としても辿れない。
+
+### 原因（実測）
+
+```text
+HeaderDetailContractQueryBindings  index.go:0 projection.go:0
+ContractQueryExecutorBindings      index.go:0 projection.go:0
+ContractQuerySQLRealizations       index.go:0 projection.go:0
+CustomGoBindings                   index.go:4 projection.go:0
+```
+
+`ir.World` には4種すべての欄がある（`world.go:35-38`）が、派生索引は `CustomGoBindings` しか読んでいない。
+
+### 影響の実測
+
+`contract-query-executor-binding` の `executor` を `database.query.oracle` から `database.query.postgres` に変えると、`worldFingerprint` は変わるが **`graphFingerprint` と `trace.total` は変わらない**。実行基盤の選択が変わっても参照グラフは何も言わない。
+
+### 扱い
+
+新規 Issue は作らず #3983 に残件として追記した（同じ層・同じ原因で、分割すると重複が増えるため）。辺の両端を何にするかは3種とも設計判断が要るので、案の材料を提示するに留めた。
+
+### 併せて処理した重複PR
+
+`#3983` には私の PR #3989 と、別の作業者の PR #3994 が同時に出ていた（私が5分先に作成、7分先にマージ）。**両方を `main` に入れると辺が二重になる**（`projection.addEdge` は重複排除しない）ため、#3994 に経緯と判断材料をコメントした。
