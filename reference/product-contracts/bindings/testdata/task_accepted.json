@@ -1,0 +1,8 @@
+{
+  "schema": "eki.task-accepted/v1",
+  "task_id": "tsk_reference",
+  "status": "queued",
+  "submitted_at": "2026-11-09T00:00:00Z",
+  "replayed": false,
+  "request_fingerprint": "sha256:reference"
+}
