@@ -302,3 +302,6 @@
 
 # Kind rank vocabulary output is hashed as raw bytes by its README.
 /plan/evidence/KIND_RANK_VOCABULARY_2026-11-10/** -text
+
+# Drift comparison value output is hashed as raw bytes by its README.
+/plan/evidence/DRIFT_COMPARISON_VALUE_2026-11-11/** -text
