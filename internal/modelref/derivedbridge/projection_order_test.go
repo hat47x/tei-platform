@@ -72,25 +72,42 @@ func fromIndexReference(d index.Derived, scope string) Projection {
 		add("query", string(e.Query))
 	}
 	ruleSet := map[modelref.Rule]bool{}
+	// Mirrors FromIndex: an edge and an unresolved message are each recorded
+	// once, so this reference stays comparable with the production projection
+	// and the property below also proves deduplication is order-independent.
+	edgeSeen := map[string]bool{}
+	unresolvedSeen := map[string]bool{}
+	unresolve := func(message string) {
+		if unresolvedSeen[message] {
+			return
+		}
+		unresolvedSeen[message] = true
+		p.Unresolved = append(p.Unresolved, message)
+	}
 	addEdge := func(fromKind, fromID, relation, toKind, toID string) {
 		from := modelref.Key{Scope: scope, Subject: subject.Subject{Kind: fromKind, ID: fromID}}
 		if !nodes[from] {
-			p.Unresolved = append(p.Unresolved, "unmaterialized-from:"+fromKind+":"+fromID)
+			unresolve("unmaterialized-from:" + fromKind + ":" + fromID)
 			return
 		}
 		if toKind == "semantic-element" {
 			kinds := semanticKindsByID[toID]
 			if len(kinds) != 1 {
-				p.Unresolved = append(p.Unresolved, "unresolved-semantic-element:"+toID)
+				unresolve("unresolved-semantic-element:" + toID)
 				return
 			}
 			toKind = kinds[0]
 		}
 		to := modelref.Key{Scope: scope, Subject: subject.Subject{Kind: toKind, ID: toID}}
 		if !nodes[to] {
-			p.Unresolved = append(p.Unresolved, "unmaterialized-to:"+toKind+":"+toID)
+			unresolve("unmaterialized-to:" + toKind + ":" + toID)
 			return
 		}
+		identity := fromKind + "\x00" + fromID + "\x00" + relation + "\x00" + toKind + "\x00" + toID
+		if edgeSeen[identity] {
+			return
+		}
+		edgeSeen[identity] = true
 		rule := modelref.Rule{Relation: relation, FromKind: fromKind, ToKind: toKind}
 		ruleSet[rule] = true
 		p.Graph.Edges = append(p.Graph.Edges, modelref.Edge{From: from, To: modelref.Ref{Scope: scope, Subject: to.Subject}, Relation: relation})
@@ -172,15 +189,19 @@ func TestFromIndexMatchesPerComparisonKeyDefinition(t *testing.T) {
 }
 
 // 構造が異なるのに整列キーの文字列が同じになる辺（関係名や参照元IDに"/"を含む）でも、
-// 同じキーの辺の並びまで書き換え前と一致する。
+// 同じキーの辺の並びまで書き換え前と一致する。同じ辺の繰り返しは1つに畳まれるので、
+// 衝突する「別々の」辺で作る（#4024）。
 func TestFromIndexKeepsOrderOfEdgesWhoseSortKeysCollide(t *testing.T) {
 	d := index.Derived{
 		SemanticElements: []index.SemanticElementEntry{
 			{Kind: "data", ID: "a"}, {Kind: "data", ID: "a/b"}, {Kind: "data", ID: "x"},
+			{Kind: "data", ID: "a/b/c"},
 		},
 		SemanticDependencies: []index.SemanticDependency{
+			// この2つは整列キーが同じで、辺としては別物。
 			{FromKind: "semantic-data", From: "a/b", Relation: "c", ToKind: "semantic-data", To: "x"},
 			{FromKind: "semantic-data", From: "a", Relation: "b/c", ToKind: "semantic-data", To: "x"},
+			// さらに、その2つを繰り返す。畳まれて2件になることを確かめる。
 			{FromKind: "semantic-data", From: "a/b", Relation: "c", ToKind: "semantic-data", To: "x"},
 			{FromKind: "semantic-data", From: "a", Relation: "b/c", ToKind: "semantic-data", To: "x"},
 		},
@@ -190,8 +211,8 @@ func TestFromIndexKeepsOrderOfEdgesWhoseSortKeysCollide(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("order of colliding sort keys changed:\n got %+v\nwant %+v", got.Graph.Edges, want.Graph.Edges)
 	}
-	if len(got.Graph.Edges) != 4 {
-		t.Fatalf("expected the four edges to be kept, got %d", len(got.Graph.Edges))
+	if len(got.Graph.Edges) != 2 {
+		t.Fatalf("expected the two distinct edges to be kept once each, got %d", len(got.Graph.Edges))
 	}
 }
 
