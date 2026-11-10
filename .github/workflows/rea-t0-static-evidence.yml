@@ -179,14 +179,19 @@ jobs:
           assert len(raw) <= 16 * 1024 * 1024
           envelope = json.loads(raw)
           assert isinstance(envelope, dict) and envelope.get('ok') is True
+          # Live REA 6.7.0 rejects both evidence-file and an inline CLI envelope.
+          # The inline payload is exactly the Evidence object in envelope.data.
+          evidence = envelope.get('data')
+          assert isinstance(evidence, dict) and isinstance(evidence.get('evidence_id'), str)
+          assert isinstance(evidence.get('normalized_result'), dict)
           request = {
-              'source': {'kind': 'inline', 'evidence': envelope},
+              'source': {'kind': 'inline', 'evidence': evidence},
               'view': {'kind': 'javascript-facts', 'property_keys': [], 'offset': 0, 'limit': 32},
           }
           (root / 'view-request.json').write_text(json.dumps(request), encoding='utf-8')
-          # Verify that the derived request retains exactly the same decoded
-          # evidence, but never treat its JSON encoding as the raw source bytes.
-          assert json.loads((root / 'view-request.json').read_bytes())['source']['evidence'] == envelope
+          # Preserve the entire decoded Evidence object, including null and
+          # limitations. The JSON request bytes remain a separate derived digest.
+          assert json.loads((root / 'view-request.json').read_bytes())['source']['evidence'] == evidence
           PY
           sha256sum "$REPORT_DIR/view-request.json" > "$REPORT_DIR/view-request-sha256.txt"
           set +e
