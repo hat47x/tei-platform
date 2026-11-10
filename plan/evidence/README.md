@@ -48,6 +48,7 @@
 - [フック宣言の印刷面への反映の確認](XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md)（参照実装の試験記録。画面と同じフック宣言が印刷面にも出る。実印刷・用紙面の版照合は未確認）
 - [フックの位相順序と途中停止の確認](XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md)（参照実装の試験記録。位相の実行順、不成立での停止位置、`warn`の続行、未対応位相の拒否。CLI・Studioへの配線は未実装）
 - [`uses`経由で呼んだ能力の効果に補償が要らないことの確認](XTEA_LOWCODE_HOOK_USES_COMPENSATION_2026-11.md)（確認記録。フックの呼出しは参照Executorを通りデータを適用しないため、戻す対象が無い）
+- [Studio経路での`after-*`拒否時の取り消しの確認](XTEA_LOWCODE_HOOK_AFTER_CHANGE_STUDIO_REVERT_2026-11.md)（試験記録。拒否する規則を差し込むと適用した効果がStoreから取り消され`effectReverted`が出る。既定経路での到達は規則Pluginの供給待ち）
 - [Studioから`after-*`フックへ到達する配線の確認](XTEA_LOWCODE_HOOK_AFTER_CHANGE_STUDIO_2026-11.md)（試験記録。`ExecuteCommandWithReferenceStore`が変更を適用し、変更後のフックを実行する。`PhaseReport.Merge`を`internal/hook`に置いて両ホストで共有。UIからの呼出しは未着手）
 - [`after-*`拒否時の効果の補償の確認](XTEA_LOWCODE_HOOK_AFTER_CHANGE_REVERT_2026-11.md)（試験記録。拒否する規則を差し込むと適用した効果がStoreから取り消され`effectReverted`が出る。既定経路での到達は規則Pluginの供給待ち）
 - [CLIから`after-*`フックへ到達する配線の確認](XTEA_LOWCODE_HOOK_AFTER_CHANGE_CLI_2026-11.md)（試験記録。`view -execute -reference-store`がメモリ上のStoreへ適用し、変更後のフックを実行する。Studio配線と補償は未着手）
@@ -416,3 +417,4 @@
 - [model overviewが自分の対象範囲を明示する](TEI_DOGFOODING_ROUND59_OVERVIEW_SCOPE_2026-11-10/README.md)（#4128のE案を実装。sectionScopeでrootsAre/coveredKinds/notCoveredKindsを導出し、sectionTotalが全部に見える誤読を閉じた。恒真な重複なし試験は変異で壊せないため削除）
 - [設計演習の第2回。縦の一連をCLIで設計しapplication-releaseの欠落を検出](TEI_DOGFOODING_ROUND60_DESIGN_VERTICAL_2026-11-10/README.md)（8往復のうち7往復はCLI診断のみで解決。inspectは7成果物のうち6つを返し、application-releaseだけ未対応だったため追加し16種に。既存の種非依存な試験が変異を捕捉。構文の配置を引くコマンドが無いという穴を記録）
 - [構文の配置を教える。パターン種をapplication本体に書いたとき](TEI_DOGFOODING_ROUND61_SYNTAX_PLACEMENT_2026-11-11/README.md)（#4169。パターン5種すべてがでたらめな語と同じ汎用エラーだったことを実測し、application.PatternKindsを使って配置を名指しするようにした。変異3種で確認。一般的な構文探索の穴は残り、4案を示して起票）
+- [契約クエリをCLIで設計し診断の言語混在を検出](TEI_DOGFOODING_ROUND62_LANGUAGE_MIX_2026-11-11/README.md)（#4174。#4169のA案の材料として契約クエリを4往復で設計。PARSE_ERRORクラスに英語と日本語が併存することを実測し、非テスト555件/66ファイルを数えた。1回の実行での同時観測はしておらず、CLIに出るものの対応付けも未完。変換は方針判断のため未実施）

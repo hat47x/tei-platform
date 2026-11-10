@@ -27,6 +27,7 @@ stdoutへ1件のJSONを出します。`tei self-build`が読む欄は`artifactDi
 | `planBytesDigest` | **このchildが保持した**planファイルのbyte digest |
 | `planFingerprint` | `internal/pluginのBuildPlanFingerprint`が**正規化したplanから導いた**照合値 |
 | `artifactDigest` | 書いた配布物のbyte digest |
+| `definitionBytesDigest` | `-plugin`で読んだ定義ファイルのbyte digest。省略すると`definitionBinding`が`unperformed`になるが、**試行は失敗せず`l2b.claimed`も変わらない**（実測）。値が計画の名指す定義と違えば`mismatched`になり、**`ok:false`・終了コード1**になる（実測） |
 | `stateDir` | `-state`で渡されたディレクトリをそのまま返す。**省略すると再現の観測が`unperformed`になり、`l2b.claimed`は`false`・終了コード1になる**（実測） |
 | `claimBoundary` | 何を主張しないかの文 |
 | `intentBytesDigest` / `intentFingerprint` | **このchildが読んだ宣言**のbyte digestと照合値（`-intent`指定時のみ） |
@@ -34,6 +35,20 @@ stdoutへ1件のJSONを出します。`tei self-build`が読む欄は`artifactDi
 | `intentBindingNote` | 何を主張しないかの文（宣言側） |
 
 **`planBytesDigest`と`planFingerprint`は別物です。** 前者は「読んだバイト」、後者は「正規化した意味」であり、同じ値になるとは限りません。両方を出すのは、呼び手が「同じ計画を渡したか」と「同じ計画を名乗ったか」を別々に確かめられるようにするためです。
+
+### `definitionBinding`と`l2b.claimed`は別の問いに答える
+
+実測した三つの状態です。
+
+| childが返す`definitionBytesDigest` | `definitionBinding.state` | `ok` | 終了コード | `l2b.claimed` |
+| --- | --- | --- | --- | --- |
+| 正しい値 | `bound` | `true` | 0 | `true` |
+| **省略** | `unperformed` | `true` | 0 | `true` |
+| **誤った値** | `mismatched` | **`false`** | **1** | **`true`** |
+
+**`l2b.claimed`は試行全体の成否ではありません。** 誤った定義digestでは**試行が失敗しているのに`l2b.claimed`は`true`のまま**です。`claimed`は五条件だけを述べ、定義の束縛は別の欄だからです。
+
+**`l2b.claimed`だけを読んで成功と判断しないでください。** 終了コードと`ok`、そして`definitionBinding.state`を併せて読みます。
 
 ## 何を保証し、何を保証しないか
 

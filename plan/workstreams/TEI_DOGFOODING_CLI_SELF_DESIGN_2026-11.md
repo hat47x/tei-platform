@@ -1985,3 +1985,32 @@ declare it as "pattern <application>.<id> browse { ... }" in its own file
 **構文の配置を一般的に引く手段は無いままである。** 直したのは1ケースだけで、「正しい書き方を知らない人が、正しい書き方を知るために間違える必要がある」という構造は残る。
 
 [#4169](https://github.com/hat47x/tei-platform/issues/4169) として起票し、4案を示した。**A（今回の手法を、既存の単一情報源がある場所から順に広げる）**が現実的で、B・C（構文一覧コマンド）はDSL全体の設計判断なので後でよいと書いた。
+
+## 64. 第62ラウンド（2026-11-11）: 契約クエリを CLI で設計し、診断の言語混在を検出
+
+第61ラウンドの続き。#4169 の A 案（配置の誤りを1件ずつ名指しする）を進めるため、**まだ設計したことのない層**として database contract query を CLI だけで設計し、踏む誤りを集めた。生出力は[第62ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND62_LANGUAGE_MIX_2026-11-11/README.md)にある。
+
+### 設計の経過（4往復）
+
+| Attempt | 応答 | 学んだこと |
+| --- | --- | --- |
+| 1 | `expected "contract"` | 先頭は `contract` |
+| 2 | `unexpected token "{"` | ID の後に版が要る（**何が要るかは言わない**） |
+| 3a | `ok` | 版は裸のトークン（`v1`） |
+| 3b | `unexpected token "^"` | `^` は requirement 側だけ |
+| 3c | `invalid version "version"` | 版の位置の語は版として解釈される（**良い診断**） |
+| 4 | `Query signatureではinputまたはresultを指定してください` | `input` か `result` が要る |
+
+**#4169 A 案の次の対象は `unexpected token "{"`。** 版が要ると言えば1往復減る。今回は実装せず材料として記録した。
+
+### 検出: 診断の言語が混在している
+
+Attempt 4 のメッセージだけが日本語だった。同じ `PARSE_ERROR` クラスに英語と日本語が併存している。
+
+非ASCII の文字列リテラル（テスト除く）は **66ファイル / 555件**。`internal/validation` 99件・`internal/syntax` 17件は、そのまま `validate` の診断文になる層である。診断経路の4層（`syntax`・`validation`・`workspace`・`semantic`）で **137件**。
+
+**正確に書いておく限界**: 1回の実行で両言語を同時に観測したわけではない（`validate` は最初の構文エラーで止まる）。555件のどれが CLI に出るかも対応付けていない。「日本語であること」自体が欠陥かは方針の問題である。
+
+[#4174](https://github.com/hat47x/tei-platform/issues/4174) として5案を提示して起票した。**A（利用者に出る診断のみ英語、対象は4層の137件）が最小**と書いた。
+
+**555件の変換は行っていない。** 方針判断であり、オーナーの言語選択に関わるため。

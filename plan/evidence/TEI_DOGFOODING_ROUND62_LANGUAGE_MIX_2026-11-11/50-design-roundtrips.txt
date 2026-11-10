@@ -1,0 +1,12 @@
+Task: add a contract query to sales_core, readable by an application.
+
+Attempt 1  query <id> { ... } in contracts/        -> expected "contract"
+Attempt 2  contract <id> { ... }                   -> unexpected token "{"
+Attempt 3a contract <id> v1 { }                    -> ok        (version is a bare token)
+Attempt 3b contract <id> ^1 { }                    -> unexpected token "^"
+Attempt 3c contract <id> version 1 { }             -> invalid version "version"
+Attempt 4  query <name> { sql ... } inside         -> Query signature needs input or result
+
+Four round trips. Attempt 3c is a good diagnostic: it says what the token in that
+position must be. Attempt 2 is the weakest: `unexpected token "{"` does not say
+that a version token is missing.

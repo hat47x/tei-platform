@@ -1,0 +1,30 @@
+Attempt 4's message was the only Japanese one in the run:
+
+  databases/sales-core/contracts/open_orders_by_customer.tei:3:9
+    error PARSE_ERROR Query signatureではinputまたはresultを指定してください
+
+The same PARSE_ERROR class also carries English, for example the message added in
+round 61:
+
+  applications/probe/application.tei:4:5
+    error PARSE_ERROR "browse" starts an application pattern, which is not
+    declared in the application body; declare it as "pattern <application>.<id>
+    browse { ... }" in its own file
+
+Measured surface (non-test Go files, non-ASCII string literals):
+
+  66 files, 555 literals
+    internal/driver          214
+    internal/validation       99
+    internal/security         66
+    internal/database         50
+    internal/applicationview  42
+    internal/realization      33
+    internal/syntax           17
+    internal/semantic         15
+    cmd/tei                   10
+    internal/workspace         6
+    internal/execution         3
+
+validation (99) and syntax (17) become validate diagnostics directly. The four
+diagnostic-path packages hold 137.
