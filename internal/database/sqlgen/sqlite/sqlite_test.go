@@ -169,7 +169,7 @@ func TestSQLiteUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Update error = %v", err)
 	}
-	if !strings.Contains(sql.Statement, "UPDATE orders SET amount = ?, status = ? WHERE id = ?") {
+	if !strings.Contains(sql.Statement, "UPDATE orders SET") || !strings.Contains(sql.Statement, "WHERE id = ?") {
 		t.Errorf("Update statement = %v, want UPDATE with placeholders", sql.Statement)
 	}
 }

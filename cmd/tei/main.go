@@ -1245,6 +1245,11 @@ func main() {
 	case "index":
 		validateOrExit(w)
 		writeJSON(index.Build(w))
+	case "relation-query":
+		if err := runRelationQueryCommand(os.Args[2:], os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	default:
 		flag.Usage()
 		os.Exit(2)

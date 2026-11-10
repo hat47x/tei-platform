@@ -65,6 +65,7 @@ var acceptedCommands = []string{
 	"workbench-model",
 	"workspace-files",
 	"world",
+	"relation-query",
 }
 
 // helperDispatchedCommands are handled by helper functions whose command

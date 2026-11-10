@@ -143,6 +143,27 @@ func (p *Parser) ParseRelationQueryAuthoring(owner core.CanonicalID) (RelationQu
 			if !out.Value.Mode.Valid() {
 				return RelationQueryAuthoring{}, p.errAt(v, fmt.Sprintf("invalid mode %q; expected tree, graph, or path", v.Text))
 			}
+		case "fetch":
+			_, _ = p.next()
+			v, err := p.expect(TokenIdent)
+			if err != nil {
+				return RelationQueryAuthoring{}, err
+			}
+			out.Value.FetchMode = query.RelationFetchMode(v.Text)
+			if !out.Value.FetchMode.Valid() {
+				return RelationQueryAuthoring{}, p.errAt(v, fmt.Sprintf("invalid fetch %q; expected eager, lazy, or batch", v.Text))
+			}
+		case "batch":
+			_, _ = p.next()
+			v, err := p.expect(TokenIdent)
+			if err != nil {
+				return RelationQueryAuthoring{}, err
+			}
+			n, err := strconv.Atoi(v.Text)
+			if err != nil {
+				return RelationQueryAuthoring{}, p.errAt(v, "batch must be a number")
+			}
+			out.Value.BatchSize = n
 		case "result":
 			if hasResult {
 				return RelationQueryAuthoring{}, p.errAt(t, "resultは一つのQueryで一度だけ定義できます")
@@ -155,7 +176,7 @@ func (p *Parser) ParseRelationQueryAuthoring(owner core.CanonicalID) (RelationQu
 			}
 			out.Value.ResultColumns = columns
 		default:
-			return RelationQueryAuthoring{}, p.errAt(t, "expected datasource, from, relation, filter, sort, limit, offset, depth, mode, or result")
+			return RelationQueryAuthoring{}, p.errAt(t, "expected datasource, from, relation, filter, sort, limit, offset, depth, mode, fetch, batch, or result")
 		}
 	}
 	if out.Value.Root == "" {

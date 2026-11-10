@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"tei/internal/core"
+	"tei/internal/query"
 )
 
 func TestParseRelationQueryAcceptsMinimalQuery(t *testing.T) {
@@ -60,5 +61,31 @@ relation-query order_entry.bad {
 `
 	if _, err := NewParser(src).ParseRelationQuery(core.MustCanonicalID("order_entry")); err == nil {
 		t.Fatal("expected error for missing relation")
+	}
+}
+
+func TestParseRelationQueryAcceptsFetchAndBatch(t *testing.T) {
+	src := `
+relation-query order_entry.order_with_customer {
+    datasource master
+    from sales.order
+    relation sales.order.customer
+    fetch batch
+    batch 100
+    result {
+        column order_id -> sales.order.order_id
+        column name -> customer.customer.name
+    }
+}
+`
+	got, err := NewParser(src).ParseRelationQuery(core.MustCanonicalID("order_entry"))
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	if got.FetchMode != query.RelationFetchModeBatch {
+		t.Fatalf("unexpected fetch mode: %s", got.FetchMode)
+	}
+	if got.BatchSize != 100 {
+		t.Fatalf("unexpected batch size: %d", got.BatchSize)
 	}
 }

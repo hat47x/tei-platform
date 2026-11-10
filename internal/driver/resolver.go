@@ -337,6 +337,9 @@ func (r Resolver) resolveRelationStep(source semantic.Data, step query.RelationS
 	if relation.Source.ID != source.ID {
 		return query.ResolvedRelationStep{}, fmt.Errorf("Relation %sのsource %sとstepのsource %sが一致しません", relation.Relation.ID, relation.Source.ID, source.ID)
 	}
+	if err := r.checkAmbiguousPaths(source.ID, relation.Relation.Target, step.Relation); err != nil {
+		return query.ResolvedRelationStep{}, err
+	}
 	return query.ResolvedRelationStep{
 		Step:      step,
 		Relation:  relation.Relation,
@@ -344,4 +347,24 @@ func (r Resolver) resolveRelationStep(source semantic.Data, step query.RelationS
 		Target:    relation.Target,
 		JoinAlias: step.Alias,
 	}, nil
+}
+
+func (r Resolver) checkAmbiguousPaths(sourceID, targetID core.CanonicalID, _ core.CanonicalID) error {
+	var candidates []core.CanonicalID
+	for _, namespace := range r.world.Semantics {
+		for _, data := range namespace.Data {
+			if data.ID != sourceID {
+				continue
+			}
+			for _, rel := range data.Relations {
+				if rel.Target == targetID {
+					candidates = append(candidates, rel.ID)
+				}
+			}
+		}
+	}
+	if len(candidates) <= 1 {
+		return nil
+	}
+	return fmt.Errorf("Relation Queryの経路が曖昧です: %s -> %s には複数のRelation %v が存在します。明示的にrelationを指定してください", sourceID, targetID, candidates)
 }
