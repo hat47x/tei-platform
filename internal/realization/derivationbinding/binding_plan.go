@@ -157,12 +157,16 @@ func ResolveBindings(request BindingRequest) BindingPlan {
 		definitions[d.ID] = d
 	}
 
+	// One index for the whole plan: resolving each reference against
+	// request.Graph.Nodes rebuilds a map of every node per reference, so a plan
+	// with R references over N nodes did O(N*R) work building indexes.
+	resolver := modelref.NewResolver(request.Graph.Nodes)
 	resolve := func(ref modelref.Ref, at string) (modelref.Key, bool) {
 		if strings.TrimSpace(ref.Scope) == "" || ref.Scope != strings.TrimSpace(ref.Scope) || strings.TrimSpace(ref.Version) == "" {
 			diag("unqualified-reference", at)
 			return modelref.Key{}, false
 		}
-		key, issue := modelref.Resolve(request.Graph.Nodes, ref)
+		key, issue := resolver.Resolve(ref)
 		if issue != "" {
 			diag(issue, at)
 			return modelref.Key{}, false
