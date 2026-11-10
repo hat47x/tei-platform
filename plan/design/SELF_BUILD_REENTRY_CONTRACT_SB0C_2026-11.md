@@ -1805,7 +1805,7 @@ L2-bの五条件は、childの能力に依存する。本節は、**参照実装
 | --- | --- | --- | --- |
 | 1 | `tools/reference-go-build-from-plan`: `-plan`・`-intent`・`-repo`・`-artifact-out`・`-state`を受け、計画とsourceを照合して`go build`し、5項目を申告する | 条件2・3・5と、条件4の材料 | **実装済み**（[記録](../evidence/TEI_GO_SELF_BUILD_BUILDER_FROM_PLAN_2026-11-10.md)） |
 | 2 | そのtoolをcatalogのproviderとして宣言し、`tei self-build -build-catalog`で鎖を通す | 条件1・4・**`l2b.claimed`** | **一度通した**（[記録](../evidence/TEI_GO_SELF_BUILD_L2B_FROM_REAL_GO_BUILD_2026-11-10.md)。`./cmd/tei`の実buildで`l2b.claimed=true`） |
-| 3 | 回帰試験（`cmd/tei`のエンドツーエンド）に載せる | 毎回通ること | 未着手 |
+| 3 | 回帰試験（`cmd/tei`のエンドツーエンド）に載せる | 毎回通ること | **実装済み**（[記録](../evidence/TEI_GO_SELF_BUILD_L2B_GO_COMMAND_GATE_2026-11-10.md)。66.8秒） |
 
 **段1で確かめたこと**：計画が名指すsourceと実際のsourceが違えば**ビルドしない**。実buildが通り、`planFingerprint`・`artifactDigest`・`stateDir`・自分で作って検証したlockが出る。**`DirSourceResolver`をそのまま呼んでいる**ので、枠組みがentryと食い違わない。
 
@@ -1820,7 +1820,9 @@ L2-bの五条件は、childの能力に依存する。本節は、**参照実装
 | 3 | `definitionBinding`が`unperformed` | 新しいbuilderが`definitionBytesDigest`を申告しない。**§4.36のentry側照合が効いていない** |
 | 4 | **回帰試験が無い** | 到達点は「一度通した」ままである |
 
-**段3（回帰試験）を先に片づける。** 載せない限り、次に検査を足したときに黙って止まる（§4.38の3番目）。
+**段3で回帰試験に載せた**（[記録](../evidence/TEI_GO_SELF_BUILD_L2B_GO_COMMAND_GATE_2026-11-10.md)）。あわせて`reference-go-build-from-plan`が`definitionBytesDigest`を申告するようにして、**§4.36のentry側照合がこのbuilderでも効く**ようにした（段2では`unperformed`だった）。
+
+**試験の対象は小さなcommandである。** `./cmd/tei`を対象にすると101.6秒かかったため、機構が同じで軽い対象に変えて66.8秒にした。`./cmd/tei`そのものの観測は段2の記録に残っている。**`-short`では飛ぶ**（実buildを二回することが観測そのものだから）。
 
 **§4.38の表の「満たさない」は、段1と2で埋まる。** 段3が無いと、次に検査を足したときに黙って止まる（§4.38の3番目）。
 

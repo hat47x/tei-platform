@@ -43,6 +43,10 @@ type report struct {
 
 	SourceRoot string          `json:"sourceRoot"`
 	Sources    []checkedSource `json:"sources"`
+	// DefinitionBytesDigest is the digest of the plugin-definition source this
+	// process checked. The entry compares it with its own plan (§4.36), so a
+	// builder that read something else cannot pass unnoticed.
+	DefinitionBytesDigest string `json:"definitionBytesDigest,omitempty"`
 
 	ArtifactDigest string `json:"artifactDigest,omitempty"`
 	ArtifactPath   string `json:"artifactPath,omitempty"`
@@ -151,6 +155,12 @@ func run(args []string, out io.Writer) error {
 		return err
 	}
 	rep.Sources = checked
+	for _, source := range checked {
+		if source.Kind == "plugin-definition" {
+			rep.DefinitionBytesDigest = source.Actual
+			break
+		}
+	}
 
 	goExe := *goExecutable
 	if strings.TrimSpace(goExe) == "" {
