@@ -588,6 +588,14 @@ entry側（`cmd/tei`）は**変更不要**だった。childが申告するよう
 
 **したがって既定はR-2のまま据え置き、R-1の前提（catalogの出所）を先に決める。** これは`docs/status.md`や既存ADRの範囲ではなく、**新しい契約判断**である。§7に未決として名指しする。
 
+#### 補足：二回のbuildが同じbuilderだったことを記録する（2026-11-09）
+
+本節の観測は「**同じchild実行物**を二回」である。しかし実装では、`artifactReproducibility.secondChildDigest`に**entry自身（`tei`）のdigest**が入っており、二回のbuilderが同じだったことを**比較する検査が無かった**（[記録](../evidence/TEI_GO_SELF_BUILD_REPRODUCIBILITY_BUILDER_2026-11-10.md)）。
+
+修正して、`firstChildDigest`と`secondChildDigest`に**実際に起動したchildのdigest**を入れ、両者を比較するようにした。**違えば不成立、未記録も不成立**である（SC0-18と同じ規則）。食い違いの理由は`mismatchReason`に述べる。
+
+**この修正は主張を弱めない。** 二回の間に実行物が差し替わった試行が`reproduced`になり得た点だけを塞ぐ。
+
 #### この節が言っていないこと
 
 - R-1を採らない、とは言っていない。**前提が未決**だと言っている。

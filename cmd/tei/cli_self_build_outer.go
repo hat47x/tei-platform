@@ -573,7 +573,7 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 		Boundary:          reproducibilityBoundary,
 	}
 	if parsed.RebuildCheck {
-		reproducibility = checkArtifactReproducibility(parsed.Child, childArgs, evidence.ChildArtifact, parsed.Output)
+		reproducibility = checkArtifactReproducibility(parsed.Child, childArgs, evidence.ChildArtifact, evidence.Invoked.ExecutableDigest, parsed.Output)
 		switch reproducibility.State {
 		case reproducibilityMismatched:
 			appendSelfBuildFailure(&evidence, "a second build of the same plan produced different artifact bytes")
