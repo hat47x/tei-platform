@@ -171,12 +171,24 @@ jobs:
           python3 - "$REPORT_DIR" <<'PY'
           import json, pathlib, sys
           root = pathlib.Path(sys.argv[1]).resolve()
+          # REA 6.7.0's actual CLI validation accepts retained-evidence / inline,
+          # but rejects evidence-file (T0-05 negative actual Run #42650177051).
+          # This public T0 report is bounded (16 MiB); retain the saved raw as
+          # authoritative and embed its complete JSON envelope for the view.
+          raw = (root / 'analysis.json').read_bytes()
+          assert len(raw) <= 16 * 1024 * 1024
+          envelope = json.loads(raw)
+          assert isinstance(envelope, dict) and envelope.get('ok') is True
           request = {
-              'source': {'kind': 'evidence-file', 'path': str(root / 'analysis.json')},
+              'source': {'kind': 'inline', 'evidence': envelope},
               'view': {'kind': 'javascript-facts', 'property_keys': [], 'offset': 0, 'limit': 32},
           }
           (root / 'view-request.json').write_text(json.dumps(request), encoding='utf-8')
+          # Verify that the derived request retains exactly the same decoded
+          # evidence, but never treat its JSON encoding as the raw source bytes.
+          assert json.loads((root / 'view-request.json').read_bytes())['source']['evidence'] == envelope
           PY
+          sha256sum "$REPORT_DIR/view-request.json" > "$REPORT_DIR/view-request-sha256.txt"
           set +e
           rea inspect-analysis-view "$REPORT_DIR/view-request.json" --format jsonl \
             > "$REPORT_DIR/view.jsonl" 2> "$REPORT_DIR/view.stderr"
