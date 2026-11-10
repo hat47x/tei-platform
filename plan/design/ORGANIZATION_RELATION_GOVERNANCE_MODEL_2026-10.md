@@ -3946,7 +3946,7 @@ X-TEAのData Model／Field Hook／共有Scriptの知見を全Data構造へ一般
 
 ## 85. 組織トポロジーと数量・標準表現型の合成Profile：表現力を固定Org図から解放する（2026-11-07、採用前）
 
-**独立の横断比較票**：[組織トポロジー・Quantity Kind・標準表現型の合成Profile](ORGANIZATION_TOPOLOGY_QUANTITY_REPRESENTATION_PROFILE_2026-11.md)。既存§16/19/25/39/44/53/84と、標準Data Facet #2495、演算法則 #2544、単位/丸め #1705、Measure再集計 #2593、Projection #2497、Function #2506/#2507、Organization Corpus #2510を**一つの反証可能な適合条件**へ束ねた。Organization専用Core/Ontology/Widget Registryを新設せず、組織ProfileとしてData/Relation/Time/Quantity/Rule/Representationを合成する。新たな実装・試験成功、正式Owner受理の記録ではない。
+**独立の横断比較票**：[組織トポロジー・Quantity Kind・標準表現型の合成Profile](https://github.com/hat47x/tei-platform/issues/2510#issuecomment-6772933215)。既存§16/19/25/39/44/53/84と、標準Data Facet #2495、演算法則 #2544、単位/丸め #1705、Measure再集計 #2593、Projection #2497、Function #2506/#2507、Organization Corpus #2510を**一つの反証可能な適合条件**へ束ねた。Organization専用Core/Ontology/Widget Registryを新設せず、組織ProfileとしてData/Relation/Time/Quantity/Rule/Representationを合成する。新たな実装・試験成功、正式Owner受理の記録ではない。
 
 この横断比較での主要判断は次のとおり。
 
@@ -3958,9 +3958,9 @@ X-TEAのData Model／Field Hook／共有Scriptの知見を全Data構造へ一般
 
 [W3C ORG](https://www.w3.org/TR/vocab-org/)の拡張可能な組織語彙、[QUDT](https://qudt.org/doc/2026/02/DOC_SCHEMA-QUDT.html)のQuantity/Unit/Dimension、[W3C RDF Data Cube](https://www.w3.org/TR/vocab-data-cube/)のMeasure/Dimension区分を比較対象とする。ただしそれらのSchemaをTEI Coreへ移植・正式採用するものではなく、異なる数学的TopologyとRelation Graphの同一視も避ける。
 
-**三視点図面・クロスリファレンスへの接続**：同じData/Relation・Quantity/Measureを、Data ER/組織Graph、Function Data Context/Operation、Business DFD/Procedure、CRUD等の交差表、SHOの読みやすい図解へ別投影する場合の適合性を[比較票§7](ORGANIZATION_TOPOLOGY_QUANTITY_REPRESENTATION_PROFILE_2026-11.md)に追加した。C1担当の直接Relation、Membershipの実体化関係、Purpose別階層、FTE集約を同じEdge/数値/CRUDセルへ潰さない。ORG-XV-01〜07の単一要因対照で、別軸への変更・FTE値だけの変更・二Pathによる二重計上・業務DFDだけの変更・集計セル逆編集・非公開差異・ABAを検査する。Data/Function/Businessの図面とCRUD表は派生Projection／Source navigateを持ち、図上の一意なTyped Change候補だけ#1124のPreview/Acceptance/reparseへ接続する。#1125はDFDと手作業、#1803は設計書生成、#2514は独立Expectedを所有し、**図面・CRUD表の表示成功は実DB CRUD/Host Grant/業務完了を示さない**。
+**三視点図面・クロスリファレンスへの接続**：同じData/Relation・Quantity/Measureを、Data ER/組織Graph、Function Data Context/Operation、Business DFD/Procedure、CRUD等の交差表、SHOの読みやすい図解へ別投影する場合の適合性を[比較票§7](https://github.com/hat47x/tei-platform/issues/2510#issuecomment-6772933215)に追加した。C1担当の直接Relation、Membershipの実体化関係、Purpose別階層、FTE集約を同じEdge/数値/CRUDセルへ潰さない。ORG-XV-01〜07の単一要因対照で、別軸への変更・FTE値だけの変更・二Pathによる二重計上・業務DFDだけの変更・集計セル逆編集・非公開差異・ABAを検査する。Data/Function/Businessの図面とCRUD表は派生Projection／Source navigateを持ち、図上の一意なTyped Change候補だけ#1124のPreview/Acceptance/reparseへ接続する。#1125はDFDと手作業、#1803は設計書生成、#2514は独立Expectedを所有し、**図面・CRUD表の表示成功は実DB CRUD/Host Grant/業務完了を示さない**。
 
-**モデル由来テスト義務の接続**：[比較票§8](ORGANIZATION_TOPOLOGY_QUANTITY_REPRESENTATION_PROFILE_2026-11.md)に、他チャットのテスト生成Draft #3258〜#3261との受渡しを追加。合成W0を受理済み本番FTEへ昇格せず、独立Expectedの固定値（Unique Person=2、Membership=3、FTE=2.0、FTE一因子変更後1.9、同一Factへの二Path・部分取得・曖昧逆編集）と、既知Mutant/非空正例を組にしたORG-TG-01〜08で検証の判別力を評価する。#1131がDataset候補、#1180がScenario正本、#2514が独立Expected/Mutant、#2811がAI-firstテスト入口、#1163が実Attempt証拠を所有。**C0/C1は実生成Code/Target別の文・分岐Coverage、業務Coverageは受理済みData/Function/Business Obligationの分母**として分け、AI生成件数や全部SKIPをCoverage達成に数えない。現NativeにはQuantity Kind/Allocation分母がなく、推定からテスト自動成功を導かない。
+**モデル由来テスト義務の接続**：[比較票§8](https://github.com/hat47x/tei-platform/issues/2510#issuecomment-6772933215)に、他チャットのテスト生成Draft #3258〜#3261との受渡しを追加。合成W0を受理済み本番FTEへ昇格せず、独立Expectedの固定値（Unique Person=2、Membership=3、FTE=2.0、FTE一因子変更後1.9、同一Factへの二Path・部分取得・曖昧逆編集）と、既知Mutant/非空正例を組にしたORG-TG-01〜08で検証の判別力を評価する。#1131がDataset候補、#1180がScenario正本、#2514が独立Expected/Mutant、#2811がAI-firstテスト入口、#1163が実Attempt証拠を所有。**C0/C1は実生成Code/Target別の文・分岐Coverage、業務Coverageは受理済みData/Function/Business Obligationの分母**として分け、AI生成件数や全部SKIPをCoverage達成に数えない。現NativeにはQuantity Kind/Allocation分母がなく、推定からテスト自動成功を導かない。
 
 **検収状態**：この節と新比較票はdocs-onlyの採用前候補。組織FTE計算、マルチグラフのProduct Query/Renderer、SHO実出力、現Host Grant、案件移管Write／Receipt、業務OwnerのQuantity/Rule受理は**NOT RUN**。
 
