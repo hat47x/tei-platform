@@ -1220,6 +1220,54 @@ TEIの三要素分析（Data / Function / Business）を、単なる入力デー
 - **Consumer**：main #3403にread-only MCP参照Adapter4 Toolが存在し、ADR-0048 (#3439)はCLI/MCP/API/Web/Desktopの共通Operation方針を採用。#3458は`validate`のCLI/MCP正常・失敗の局所Parityを検証。残るTool、実Web/Desktop/外部H3/Hostの受領・効果・現在Grantまで同値とはしない。
 - **最初の縦切り**：実TEI Source→read-only型付きGraph/Relation locator（P0-M）と、同一Product Function→実SQL/Provider→Data Context/Form/Table（P0-R）を並列実証し、同じSource/Scope/Revision/Read Cohortが観測できた部分だけP0-Cで結ぶ。Graph/CRUDの未取得はunknown、物理観測は未受理Candidate、参照CLI/MCPの値一致は現在の実Invoke/Effectではない。
 - **担当と停止線**：#3263三視点、#2586実Read、#3262必要Source、#3479 Import鮮度、#3486 Workbench候補、#1158/#3420共通API、#2514/#1180独立Expectedを再利用。IA-01〜04は一因子の負例候補。新Source Registry/Parser/API/Host/Runnerを作らず、追加Product E2EとOwner意味受理は**NOT RUN**。
+## 2026-11-07 組織表現と業務手順の非自動接続（#2386/#1125、受入提案）
+
+[組織設計§84.6〜84.9](design/ORGANIZATION_RELATION_GOVERNANCE_MODEL_2026-10.md)へ、組織の**Data/Relationトポロジー**、再利用可能な**標準表現型**、**Function内のPresentation/Contextインスタンス**、一階層の**業務DFD（業務間データ授受）**、内部**Business Procedure**、実**Workflow Instance/Host/Provider Effect**を分ける最小受入を接続した。画面Treeの部門後継線、案件担当Pickerの選択、DFDのデータ授受矢印、Procedureの引継ぎStep、実Case移管と人手の受領は、似た図形や同じC1/D1/D2でも同じ出来事ではない。
+
+**具体的な検証は既存Ownerへ委譲**：#2506/#2507/#997は組織Tree/TableとCase Panel/PickerでFunction ContextとTarget・Scope/epochの保持を検査、#2500/#2598はViewChange→受理済みAction/実Requestの不一致を検査、#1125/#1444はDFD→Handoff/Procedure（人手/外部/機械）の**read-only対応**を検査、#1174/#1163は現在Grant/Target・Effect/Receipt/独立再読取を所有する。既存ORG-SU/SM・APP/TB・VE/RITの独立期待を再利用し、新Workflow/Policy Engine/専用Org Core型は設けない。
+
+対象集合を使う業務完了判定では、#3238が扱う重複ID・TOP1・非出力Predicate、mainのCompletion APIへ渡すCaller提供Coverageの独立資格を§84.8で追加確認する。Receipt再照会だけで保存後資源の独立Readや人手引受を確定しない。
+
+#3236の組合せ表現では、Data→Function View→SHO/AIの各写像が局所成功しても全体のRelation/Scope/開示を保証しない。#1129の**Data-attached Rule Attachment**はMembership発生やCaseの直接Relationへ明示Bindingし、read-time導出・validation・before-write・Tx内効果・post-commitを区別する。表示変化やSQL JOINの重複を発火・完了の証拠にしない（§84.7/84.9）。
+
+Sourceの論理Workspace IDと物理root/realpathも別資格とし、Manifestの名前が同じでも実読込Sourceの位置・内容・現在許可範囲を検査する（組織設計§84.5.1、#2823/#2605/#2017）。
+
+**製品E2の優先は不変**：main統合#2681のNative組織E1を起点に、[#2586](https://github.com/hat47x/tei-platform/issues/2586)で**一件のC1→D1を実Function→Query→Provider Read→Consumer**まで同じSource/Attemptで検証。旧[#3024](https://github.com/hat47x/tei-platform/pull/3024)と設計PR[#2389](https://github.com/hat47x/tei-platform/pull/2389)は**closed・unmerged**であり、その旧CI/未マージ草案から現main Product E2 PASSやOwner意味採用を主張しない。ここでの追補は**docs-only／独立期待・接続案**で、組織二Functionの実UI・実DB/Host・Procedure Instance、正式Owner受理はNOT RUN。
+
+## 2026-11-07 組織トポロジー・単位系と標準表現型の横断受入（#2386/#2495/#2593、採用前）
+
+[組織設計§85](design/ORGANIZATION_RELATION_GOVERNANCE_MODEL_2026-10.md)と[組織トポロジー・数量・表現型合成Profile](design/ORGANIZATION_TOPOLOGY_QUANTITY_REPRESENTATION_PROFILE_2026-11.md)に、**同じ組織の多軸Graph/多項Relation/時間・空間と、人数・FTE・予算・工数等のQuantity Kind／Unit/Basis／Rollup lawは直交するが互いに適合条件を持つ**という比較票を追加。組織を専用Tree Core型へ限定せず、#2495/#2544/#1705/#2593の一般Facetを組み合わせ、組織ProfileはRelation Role・用途別多重度・集計規範の不足分だけを与える。
+
+独立Expectedの最小例は合成P1(A1 D1=0.6 FTE,A2 D2=0.4 FTE)、P2(A3 D1=1.0 FTE)。**Unique Person全体2人／Membership3件／FTE2.0**を混同しない。H→D1→CとH→D2→Cの二Pathは、Cの同一0.4 FTE Factを自動で0.8へ増やさない。現mainの`Membership.allocation std.decimal`はFTE Unit/分母・60と0.6の換算Ruleを宣言していないため、合成期待値を実Sourceの業務計算済み資格へ昇格しない。#2510/§16/39のTopologyケース、#2593 MC、#2497 CX、#2514の独立Expectedへ差分を引き渡し、第二テスト正本を作らない。
+
+**表現型適合**はGraph、Tree、Matrix、Table、Chart、Timeline、Map、SHOの平易なMermaid風テキストを同じDataから構成し、用途/Scope/Unit/Path/時間/Disclosure・Lossと逆編集資格を別々に検証する。TEI表現インスタンスはFunction Data Contextに所属し、SHOは別Consumerとして再資格化。Readableな図の生成成功≠元Relationの再構成可能性／現在Grant／実編集Effect。標準の表現型と専門Profileを分離し、新Renderer/Topology Engineを組織専用で複製しない。
+
+**三要素・図面・CRUD横断の受入差分**：[組織合成Profile§7](design/ORGANIZATION_TOPOLOGY_QUANTITY_REPRESENTATION_PROFILE_2026-11.md)で、Data/Function/Businessの図面・SHO図解・CRUD等クロスリファレンスを同一Semantic Sourceから導出するときの意味、必要Source/Role/Quantity、Source逆編集資格を明示。合成例Org Explore／Case Handling／Workforce Report／人手Handoffでは、Rは**宣言された依存**、U?は**未受理の操作候補**であり、実Read/実Effect/Host Grantではない。Graphで二経路へ出現する同一C、D1のFTE集計セル、DFDの移管矢印、CRUDのセルは自動で同一更新対象にならない。ORG-XV-01〜07（軸だけ変更、FTEだけ変更、Path多重、DFDのみ変更、集計セル編集、非公開差、ABA）を既存#1124/#1125/#1803/#2497/#2593/#2514の検証へ接続する。モデル図面とCRUD表は派生表示であり、**一意なSource対象を持つ型付き変更候補だけ**既存Preview/Acceptance/reparseへ渡す。C0/C1の未カバー範囲は#1180/#2514の既存独立Expected/Scenarioの側で判定し、新Org専用Runner/Canonical/生成器は作らない。
+
+**組織モデル由来の独立テスト義務**：[組織Profile§8](design/ORGANIZATION_TOPOLOGY_QUANTITY_REPRESENTATION_PROFILE_2026-11.md)に、他チャットの未統合テスト生成Draft #3258〜#3261を組織の具体的反証へ接続した。ORG-TG-01〜08はHC≠Membership≠FTE、二Path配賦、軸だけの変更、欠落した集合、非単射図編集、DFD≠Effect、Public/Private差とABAを、**手で固定した独立Expected＋既知の誤実装＋常時unknownを防ぐ正例**で評価する候補。#1131のDataset候補→#1180のScenario正本→#2514の独立検証基準/Mutant→#2811のAIテスト入口→#1163の実Attempt Evidenceを再利用する。**コードC0/C1と、受理済み業務ObligationのCoverageと、Mutant判別力は別分母**。単なるAI生成ケース増加・全SKIP・未実行は充足に算入しない。現Native `allocation std.decimal`だけからFTE意味/単位系を自動採用せず、必要条件不明なら候補のまま停止する。新Org Test Generator/Runner/Expected Store/第二Scenarioを採用しない。
+
+**優先順位**：#2586の実C1→D1 Function→Query→Provider Read→Consumerを先行し、その後P0合成のGraph/Headcount/FTE、P1二Function/SHO表示、P2原本への一意なIntent/Host Effectを段階検証。#2506/#2507/#2516/#2510/#2497/#2593が対応Owner。新Go/DB/GUI/SHO実行、Owner Quantity/Meaning受理、実Provider実証は**NOT RUN**。既存の組織計画§84・§85と並行採用可否を評価し、無根拠な大量Core新設やP0実Readの延期を避ける。
+
+## 2026-11-08 組織Product E2の三ゲートと汎用Referenceからの証拠移転禁止
+
+[組織Profile §9](design/ORGANIZATION_TOPOLOGY_QUANTITY_REPRESENTATION_PROFILE_2026-11.md)へ、他チャットの#3263（三視点図/CRUDの実Source生成）、#3330（P0-M/P0-R/P0-Cの独立ゲート）、#3262（Design Context必要集合の取得完全性）、#2586（実Function→Query→Provider→Context）を、**単一Ownerを維持した実証依存**として接合した。P0-M（三視点Diagram/CRUD Source provenance）とP0-R（実行された物理ReadとRow/Field/Scope）は並行可能。P0-Cは同じMeaning ID／Source版／Snapshot／粒度／許可Scopeのもとで両証拠と独立Expectedを照合したときだけ成立する。図面表示PASS・Local Completion Holds・別DomainのPG PASSを組織E2へ流用しない。
+
+**現Sourceで判明した具体的欠落**：main `reference/org-headless-workspace/semantic/organization/model.tei` には `CaseRecord.handlingUnitId→OrgUnit` の関係があるが、検査済み組織Source/現Operation SurfaceはCase用Function、Query、実Persistence Mapping、Provider Read／Host Grantを示していない。したがってC1→D1は、現時点では**意味を表す合成Expectedであって実DBから読み取った案件ではない**。#2586の既存受注Referenceでの汎用E2検査を先行可能とする一方、組織側に必要なFunction/Bindingを具体化し、P0-C接合前は `product-read-not-connected` を保持。何が実Workspace全体に存在しないかは#3262の範囲付き探索を経ずに断言しない。
+
+**受入報告はM/R/Cの各状態と未解決を独立記録**：Model/Diagram Source、実SQL・args・Provider・row IDs/fields・read extent、必要母集団/非出力Predicate、Consumer Disclosure、exact HEAD/Attempt、Owner採否。#3238のTOP1・重複ID・隠れたPredicateはR→Cの負例として再利用するが、Caller申告 `CoverageComplete` を完全性のProducerとしない。実組織Provider/DB・三視点UI/SHO・全件業務完了・正式Owner受理は**NOT RUN**。
+
+**実装回帰の追加（2026-11-08）**：[main統合済み #3353](https://github.com/hat47x/tei-platform/pull/3353)（squash `6cf510d6301a1e133ebbe69ad7bf004f03361b54`）で、`EvaluateCompletion`が`EmptyPolicyHandoff`・0件・`EmptyJustified=true`で、引継ぎ受領なしでも`holds`になり得た分岐を修正した。6ケースで`allow/requires-evidence/deny`と受領有無を対照し、確定`fails`を損なわない。**空集合の独立証拠≠相手方の受領証拠**を組織Profile§9.4のP0-C検収へ追加。ただし`HandoffConfirmed`/`CoverageComplete`はなおCaller申告なので、局所Go PASSだけを実Case引継ぎ・製品E2完了へ昇格させない。#3353のPR HEAD `cf3de9a61906167b3b5cc2fbd246e238a5018d5f` の[Repository Health #42391982442](https://github.com/hat47x/tei-platform/actions/runs/42391982442)はcompleted/success（gofmt、go vet、Go全体テスト、モデル検証）。ただし実案件Reader、相手方の受領、組織Product E2、Owner正式受理はNOT RUN。
+
+**全件Handoffの残余条件（組織Profile§9.5）**：Local Evaluatorの`HandoffConfirmed`はClaim単位のboolなので、`L={C1,C2}`に対してC1だけのACK・同じACK二重計上・適用集合不明の一括ACK・旧版のACKでも、Callerが`true`と報告すれば局所的に`holds`を返し得る。#1125/#1444はOwnerが受理した対象別／正確な集合に束縛した一括Handoff証拠`H`を、#2586/#2622は実Read集合`R`を、#2514は必要集合`L`の独立Expectedを所有する。`L/R/H`のID・Scope・Revision・確認者／適用時点の適格性が揃うまでProducerは全件`HandoffConfirmed`をTrueにしない。#3353の6 GoケースとORG-HC-01〜07は別検証段階であり、Hの実読取や組織製品一気通貫は未実施。新専用Ledger/Completion Engineは作らない。
+
+**外部Source・二時点・引継ぎ集合の再資格化（2026-11-08）**：[組織Profile§11](design/ORGANIZATION_TOPOLOGY_QUANTITY_REPRESENTATION_PROFILE_2026-11.md)に、mainへ統合された[#3482](https://github.com/hat47x/tei-platform/pull/3482)の**限定Function Design Context（実CLI 13 Reply／42局所Control、宣言上の必要集合のみ）**と[ADR-0048](adr/0048-shared-application-api-and-transport-adapters.md)／main [#3403](https://github.com/hat47x/tei-platform/pull/3403)の**共通API／CLI-MCP Adapter**を、組織C1の次の未接続辺へ接合する。前者はCapability宣言を実Function→Query→ProviderへBindingした証拠でなく、後者の同値JSON・Tool広告は実Consumer受領／現在Authorityではない。
+
+[#3380](https://github.com/hat47x/tei-platform/pull/3380)の二時点合成（現HEAD Node CI [#42462892409](https://github.com/hat47x/tei-platform/actions/runs/42462892409)成功、main未統合）、外部Provider Source-only driftの[Draft #3479](https://github.com/hat47x/tei-platform/pull/3479)、複合/並列FKの物理Catalog投影[Draft #3486](https://github.com/hat47x/tei-platform/pull/3486)は**別種の観測**。HRが申告する`knownFrom`≠TEI受信時刻、物理FK≠Owner受理Relation、Consumer World一致≠Imported Provider原Sourceの現在資格。Owner必要集合`L`／実Read`R`／対象に束縛された受領`H`と、必要Design Source`D`・Provider/Manifest観測を照合するORG-EC-01〜07を§11に配置した。正式Scenario/Runnerを複製せず#3262/#2586/#1125/#2514へ渡す。
+
+**優先はP0-R一件Case実Readのまま**。組織実Case Function/Provider Binding・同一Snapshot観測・複数Consumerの実受領、全件Handoff/正式Owner受理は未成立。局所GoやSynthetic NodeのPASSをOrg E2/業務完了へ流用しない。
+
+<!-- org-cf-plan-20261109 -->
+**2026-11-09 組織改編・承認の時間整合差分（設計・未実行）**：組織Profile [§13](design/ORGANIZATION_TOPOLOGY_QUANTITY_REPRESENTATION_PROFILE_2026-11.md) にORG-CF-01〜08を追加。C1→D1/D2の担当切替・旧Read・失効Grant・Replica遅延・比較不能revision・動的職務分掌・重複ACK・遡及Source訂正を、業務valid/known、TEI observed、実Provider Scope/Read Cohort、Business Rule、現在Host Grant、相手方Handoffの**別証拠**で判定する。異なるAuthority domainの時刻／版の大小を因果順序とみなさない。**#2586の一件P0-R実Readを先行**し、ORG-CF-01/04の読み取り観測を既存Attemptへ添付。その後、実行時再確認は#1174/#2499、受領と時間訂正は#1125/#1444/#3380、独立Expectedは#2514/#1180へ渡す。新Token、Global Clock、Authorization Engine、Provider、Gateを作らず、CF新テスト・実DB/Host・Owner受理はNOT RUN。
 
 ## 先に固定しないもの
 
