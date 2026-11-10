@@ -64,6 +64,9 @@ type selfBuildEntryEvidence struct {
 	// it lets this entry check the claim rather than rely on the child's own
 	// enforcement.
 	ChildDefinitionDigest string `json:"childDefinitionBytesDigest,omitempty"`
+	// ChildIsolation is the builder's report that it built from a staged tree.
+	// Recorded as a statement about the run, not as a condition of the claim.
+	ChildIsolation *selfBuildChildIsolation `json:"childIsolation,omitempty"`
 	// ChildLock is the child's own validated plan-to-artifact lock (§4.11),
 	// copied verbatim. The entry checks it against the file rather than
 	// treating it as proof.
@@ -238,6 +241,16 @@ func driveSelfBuild(childPath string, childArgs []string, artifactPath, claimedS
 		PlanFingerprint   string `json:"planFingerprint"`
 		StateDir          string `json:"stateDir"`
 		DefinitionDigest  string `json:"definitionBytesDigest"`
+		// The builder may report that it built from a tree made only of the
+		// planned sources. It is a statement about what it did, like the rest.
+		IsolatedTree *struct {
+			Root        string   `json:"root"`
+			ModuleFiles []string `json:"moduleFiles"`
+			Boundary    string   `json:"boundary"`
+			Members     []struct {
+				Locator string `json:"locator"`
+			} `json:"members"`
+		} `json:"isolatedTree"`
 		// The child's own validated plan-to-artifact lock (§4.11). When a child
 		// forms and checks it itself, the entry no longer assembles the binding
 		// from two separate self-reports.
@@ -254,6 +267,14 @@ func driveSelfBuild(childPath string, childArgs []string, artifactPath, claimedS
 	evidence.ChildPlanFingerprint = child.PlanFingerprint
 	evidence.ChildStateDir = child.StateDir
 	evidence.ChildDefinitionDigest = child.DefinitionDigest
+	if child.IsolatedTree != nil {
+		evidence.ChildIsolation = &selfBuildChildIsolation{
+			Root:        child.IsolatedTree.Root,
+			MemberCount: len(child.IsolatedTree.Members),
+			ModuleFiles: child.IsolatedTree.ModuleFiles,
+			Boundary:    child.IsolatedTree.Boundary,
+		}
+	}
 	if child.BuildArtifactLock != nil {
 		evidence.ChildLock = &childSelfLock{
 			FormatVersion:   child.BuildArtifactLock.FormatVersion,
