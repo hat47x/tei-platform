@@ -150,6 +150,22 @@ func (r DirSourceResolver) Resolve(src IntentSource) (ResolvedSource, error) {
 	}, nil
 }
 
+// SingleFileSourceDigest returns the digest a plan records for a source that is
+// one regular file (as opposed to a directory of members). The builder side needs
+// this to check that the bytes it read are the bytes the plan names; without one
+// implementation the two sides could frame the input differently and agree on
+// nothing.
+//
+// The framing is part of the value, not an implementation detail: the resolver
+// writes the member name and length before the bytes, so this reproduces it
+// exactly for the single-file case, where the member name is ".".
+func SingleFileSourceDigest(data []byte) string {
+	h := sha256.New()
+	fmt.Fprintf(h, "%d:%s\n%d\n", len("."), ".", len(data))
+	h.Write(data)
+	return "sha256:" + hex.EncodeToString(h.Sum(nil))
+}
+
 // BuildCatalog is the data a caller supplies so a declaration can be resolved
 // into an exact BuildPlan: which builder providers exist, which build
 // dependencies are available, and which targets and profiles are defined.
