@@ -43,7 +43,7 @@ func Build(workspaceRoot, appID, sourceDir, outputPath, platform string) (*Build
 		}
 	}
 
-	cmd := exec.Command("go", "build", "-trimpath", "-buildvcs=false", "-o", outputPath, ".")
+	cmd := exec.Command("go", "build", "-trimpath", "-buildvcs=false", "-ldflags=-s -w", "-o", outputPath, ".")
 	cmd.Dir = sourceDir
 	cmd.Env = env
 	out, err := cmd.CombinedOutput()
