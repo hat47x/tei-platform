@@ -58,7 +58,7 @@ func runDeclaredHooks(ctx context.Context, world ir.World, applicationID, patter
 
 // runDeclaredHooksWithRule is runDeclaredHooks with an explicit reference rule,
 // so a caller (or a test) can decide what the hook considers unsatisfied.
-func runDeclaredHooksWithRule(ctx context.Context, world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string, rule hook.ReferenceRule) (*cliHookReport, error) {
+func runDeclaredHooksWithRule(ctx context.Context, world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string, rule hook.Implementation) (*cliHookReport, error) {
 	return runDeclaredHooksHalf(ctx, world, applicationID, patternID, inputs, rule, hook.ReferenceReach{}, hookHalfAll)
 }
 
@@ -82,7 +82,7 @@ const (
 
 // runDeclaredHooksHalf consults one half of the declared phases, with the reach
 // the caller says applies.
-func runDeclaredHooksHalf(ctx context.Context, world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string, rule hook.ReferenceRule, reach hook.Reach, half hookHalf) (*cliHookReport, error) {
+func runDeclaredHooksHalf(ctx context.Context, world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string, rule hook.Implementation, reach hook.Reach, half hookHalf) (*cliHookReport, error) {
 	runner := hook.Runner{World: world, Implementation: rule}
 	// A hook that declares `uses` promises a call. Give the runner the boundary
 	// that can keep it: the Command invoker, with the pattern resolution
@@ -248,4 +248,27 @@ func mergeHookReports(before, after *cliHookReport) *cliHookReport {
 		out.CommandOutcome = after.CommandOutcome
 	}
 	return out
+}
+
+// runAfterHalfRevertingOnRefusal consults the after-change phases, and puts the
+// store back when one of them refuses.
+//
+// The effect was applied before this runs, so a refusal here comes after the
+// change. Leaving the change in place would keep something the declaration did
+// not accept; leaving the report silent about it would read as "nothing was
+// applied". Both are avoided: the store is restored to the snapshot taken
+// before the run, and the caller is told the effect was reverted.
+//
+// The reference rule never refuses, so the CLI's own runs do not reach the
+// revert today. The path exists and is tested with a refusing rule, because the
+// rule a plugin supplies is what makes it reachable — that is the boundary this
+// function is written for.
+func runAfterHalfRevertingOnRefusal(ctx context.Context, world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string, rule hook.Implementation, store *command.MemoryStore, snapshot command.StoreSnapshot, before *cliHookReport) (*cliHookReport, bool, error) {
+	after, err := runDeclaredHooksHalf(ctx, world, applicationID, patternID, inputs, rule, hook.AppliedChangeReach{}, hookHalfAfter)
+	merged := mergeHookReports(before, after)
+	if err == nil {
+		return merged, false, nil
+	}
+	store.Restore(snapshot)
+	return merged, true, err
 }

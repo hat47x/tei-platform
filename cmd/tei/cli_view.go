@@ -53,6 +53,10 @@ type referenceCommandRun struct {
 	// operations, so `differences` being empty is "not observed" rather than
 	// "none found".
 	AppliedUnobserved bool `json:"appliedUnobserved,omitempty"`
+	// EffectReverted is true when the effect was applied and then put back
+	// because an after-change phase refused. It is the one case where the run
+	// applied something and the reported state is the state before the run.
+	EffectReverted bool `json:"effectReverted,omitempty"`
 	// ReportedEffectMissing is true when the capability declared an effect but
 	// the executor reported none. The run is not rejected, but a reader must not
 	// treat the absence as proof the declared effect was applied.
@@ -278,6 +282,7 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 			// something the after-* phases can be consulted about; it is not
 			// persistence, and the response says so.
 			referenceStoreInstance := command.NewMemoryStore()
+			var storeSnapshot command.StoreSnapshot
 			var executor command.Executor = command.ReferenceExecutor{World: loaded.World}
 			if *referenceStore {
 				executor = command.ReferenceDataExecutor{World: loaded.World, Store: referenceStoreInstance}
@@ -341,14 +346,18 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 				// The change is applied, so the after-* phases have a point to run at.
 				// Their report is joined with the before-* one so the printed run shows
 				// both halves.
-				afterReport, afterErr := runDeclaredHooksHalf(context.Background(), loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*patternID), values, hook.ReferenceRule{}, hook.AppliedChangeReach{}, hookHalfAfter)
-				hookReport = mergeHookReports(hookReport, afterReport)
+				storeSnapshot = referenceStoreInstance.Snapshot()
+				storeSnapshot = referenceStoreInstance.Snapshot()
+				var reverted bool
+				var afterErr error
+				hookReport, reverted, afterErr = runAfterHalfRevertingOnRefusal(context.Background(), loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*patternID), values, hook.ReferenceRule{}, referenceStoreInstance, storeSnapshot, hookReport)
 				if afterErr != nil {
 					run := referenceCommandRun{
-						SchemaVersion: applicationview.SchemaVersion,
-						Mode:          "reference",
-						Plan:          plan,
-						Hooks:         hookReport,
+						SchemaVersion:  applicationview.SchemaVersion,
+						Mode:           "reference",
+						Plan:           plan,
+						Hooks:          hookReport,
+						EffectReverted: reverted,
 					}
 					report.OK = false
 					report.Result = run
@@ -981,6 +990,14 @@ func writeReferenceRunText(out io.Writer, run referenceCommandRun) (int, error) 
 	}
 	if code, err := writeCommandPlanText(out, run.Plan); err != nil {
 		return code, err
+	}
+	if run.EffectReverted {
+		// The change was applied and then put back. Say so where the run is
+		// printed, so a reader never takes the reported state for a change that
+		// survived the after-change phases.
+		if _, err := fmt.Fprintln(out, "effect: reverted (an after-change phase refused after the effect was applied)"); err != nil {
+			return 2, err
+		}
 	}
 	if run.OutcomeUndetermined != "" {
 		// An outcome nobody determined must not read as "the capability has no
