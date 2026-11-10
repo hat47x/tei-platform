@@ -333,17 +333,23 @@ func buildKnowledgeQualificationFromFile(root, subjectKind, subjectID, requireme
 	return buildKnowledgeQualification(root, subjectKind, subjectID, requirements)
 }
 
+// decodeStrictKnowledgeJSONFile decodes one JSON document from a path the
+// caller named. A path that cannot be opened, or that holds something other
+// than the expected document, is an argument problem: the caller passed the
+// wrong value, not a Workspace whose knowledge failed to build. Reporting it
+// as KNOWLEDGE_BUILD_FAILED made a mistyped path look like a broken model
+// (#3943), so these failures are marked as argument errors.
 func decodeStrictKnowledgeJSONFile(path string, dst any) error {
 	f, err := os.Open(path)
 	if err != nil {
-		return err
+		return newArgumentError("-qualification-requirements must name a readable JSON file: " + err.Error())
 	}
 	defer f.Close()
 
 	decoder := json.NewDecoder(f)
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(dst); err != nil {
-		return err
+		return newArgumentError("-qualification-requirements is not the expected JSON document: " + err.Error())
 	}
 
 	var trailing any
