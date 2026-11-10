@@ -342,6 +342,7 @@ Else absence remains unknown; no universal closed-world assumption.
 
 **検証状態**: 本追補は既存Issue/PRとコード公開契約に対する静的設計照合である。Reference本体の追加、実GUI、実Provider/Runtime、独立Observation、認知負荷実測、実Production Artifact検査は **NOT RUN / NOT PROVEN**。
 
+<<<<<<< HEAD
 ## 12. 2026-11-06：P1限定不在判定Reference（合成・採用前）
 
 **既存§9〜11の実装候補をコード化した最小実験**：[reference/tei-topology-coverage](../../reference/tei-topology-coverage/README.md)。基準main `36bda76271db4db72ddd41a8566d281f02764b8a`。本節は基準設計を置換せず、新たなCore型・正本Graph・Source Reader・実行Host/Authorityを採用しない。
@@ -529,3 +530,70 @@ Else absence remains unknown; no universal closed-world assumption.
 ### 15.3 優先順位と他チャットの成果
 
 #1124のM0実CLI→同一Workbench M1四入口／M2 stale UI・Grantを直接P0とし、本PRのNode側をWorkbenchの受入に流用しない。#2831はBuildのDeclared／Selected／ActuallyConsumedとStage1生成物の再入を別に実証。#2542/#2827はTransfer/ImportのReceipt・ACKと外部Effectを独立判定する。#2620のRole自己記述と#2972の公開三視点は独立Producer/Policyの資格を持ち、今回のSourceNavigation Key検証を役割意味・開示保証へ昇格しない。複合図表研究に新Resolver、Host、Policy Engine、Writer、関係の第二正本を導入しない。
+=======
+### 11.5 P1への限定移管：実CLI Direct TraceとWorkspace Manifest（2026-11-08）
+
+統合済み[研究計画 #2966](https://github.com/hat47x/tei-platform/pull/2966)のIntent／Realization／Assessmentを前提に、旧[複合Reference Draft #2881](https://github.com/hat47x/tei-platform/pull/2881)の**実CLI直接参照だけ**を最新main `c2b8062b7737816e33f85f80ac5f3956f5494f65`へ分割する（[read-only Reference](../../reference/tei-topology-coverage/README.md)）。旧PRの合成Graph/Table閉包31件や汎用Relationスキーマを本件の製品契約として移管しない。
+
+| Claim・証拠 | 小さなReferenceで照合する値 | 昇格しない結論 |
+| --- | --- | --- |
+| **Observer Workspace由来** | 現行Go `WorkspaceTrace.Workspace`のLoad-time `Manifest(Path,SHA256)`・FormatVersion | 同WorldFPだから同Workspace、Manifest SHAが現在の全Source/依存を固定した、Accepted/Lockである |
+| **Caller Projection Scope** | 同じ実Workspaceに別々の`-scope`を与え、Direct Edgeの非scope部とWorld/SourceIndex fingerprintが同じこと | 投影で付与したScopeがSource自身の宣言Scope・PrincipalのGrantである |
+| **Source Navigation** | `trace.subject`と`source.key`のScope/Kind/ID一致、`located`なら非空の参照情報と各Reference.SubjectのKind/ID一致（Source Indexに無いScopeを補完しない） | Source位置が現在も有効、Source ReaderがRole全件を解析した、Ownerの編集受理がある |
+| **Direct Edge** | Read-only Full/Unpaged/方向/解決・未解決を区別したCLI JSON | `Edge.Relation`種別文字列が独立Relation ID/多項Role、0件が業務Relationの不存在である |
+
+**受入と停止線**：負例で別Subjectの`located`誤帰属、Manifest欠落、scope変更、CLI partial、0行の不存在への誤昇格を拒否。基準GoコードとCI固定headで試験し、実CLIを使用しても非公開二世界・現在Grant・Studio M0/M1・セルフビルドStage2は未証明とする。結果の受理は実施したexact-head CIとOwner Reviewが別途必要。新Core Relation Registry、第二Source Reader、共通Host、専用Query DSLは設けない。
+
+### 11.6 同じWorld/Source Indexでも別Workspaceを結合しない（2026-11-08）
+
+**関連議論**：[統合済み研究 #2966](https://github.com/hat47x/tei-platform/pull/2966)はIntent/Realization/Assessmentを、[#3255](https://github.com/hat47x/tei-platform/pull/3255)は論理Subsystem/更新Owner/実Effectを、[#2831](https://github.com/hat47x/tei-platform/issues/2831)はRequired/Declared/ActuallyConsumed/Observedを別に扱う。これはSource断片の同一ハッシュから異なるWorkspace・Target・Ownerの同一性を推論してはいけない、という共通の制約につながる。これらの別Ownerの正本・Runnerを本設計では再実装しない。
+
+**新しい実CLI負例（P1 Referenceの契約）**：同じ`reference/workspace`を一時ディレクトリにコピーし、`tei.workspace.yaml`の`workspace:`名だけを変更する。両者の業務Sourceと直接Edgeは同じでも、Load-time Workspaceの`name`と`manifest.sha256`は変わる。このケースでWorld／Source Index fingerprintが一致するかを実CLIで照合し、**仮に一致しても同一Workspaceの根拠としてJoinしない**。`WorkspaceTrace.Workspace`が保持するManifestのPath/SHA256とFormatVersion、Name（省略可能）を照合する。これらはLoad時の観測値であり、Accepted Meaning・実Read-set閉包・Lock/Grantではない。
+
+| 変更・比較 | 同一観測コンテキストとして許すか | 根拠と停止条件 |
+| --- | --- | --- |
+| 同じWorkspace、同じSource/World、Callerだけscopeを変更 | **限定的に比較可能** | Manifest/FormatVersion/NameとWorld/Source Index FPが同じ。Subjectのqualified keyやTrace token自体は別 |
+| 同じWorld/Source Index FP、別WorkspaceのManifest/Name | **不許可** | `workspace_manifest_mismatch`。元Sourceに対する意味OwnerやTargetの同一性を推論しない |
+| 同じManifestだがWorld/Source Index FPが変化 | **不許可** | `read_snapshot_mismatch`。必要Read-setが閉じているとの断定も禁止 |
+| Manifest不足／不正SourceNavigation／未解決・旧Trace | **不許可** | `trace_unqualified`等へ退避。旧成功を新Attemptへ移送しない |
+| Manifest・Source FPすべて同じ | **read-only比較候補にとどまる** | Current Disclosure、Role/Authority、実Target、実Effect、Source/Plugin全Rootの独立資格は残る |
+
+read-only Referenceは`compareObservedLoadContext`をテスト専用の候補比較として提供する。新たな正本Identity/Resolver/Policy Engineではなく、異なるWorkspaceを一つのGraph/関係表へ誤結合しないための局所停止線とする。外部Consumerがこれを使う場合は別途#2516の現在開示と、#1124のScope/Source/描画Epochの受入が必要。**実Runner、ActualConsumed、Graph/Tableの多項Relation全被覆や不存在証明には流用しない。**
+
+**実観測の結果（2026-11-08）**：[GitHub Actions #42434859063](https://github.com/hat47x/tei-platform/actions/runs/42434859063)で、Go1.26.10の実`tei trace`を同じWorkspace/別Caller scopeの2回と、Manifest名だけ異なる一時Workspaceの1回、計3回実行した。元Workspaceと別Manifestのコピーは**World FP・Source Index FPだけでなく、Operation-level Snapshot tokenも等しかった**（CI `snapshot-token-equal=true`）。にもかかわらずManifest Name/SHAは異なり、read-only比較は`workspace_manifest_mismatch`として拒否した。Node24.21.0の17件の合成試験も**17/17 PASS**。これは「意味内容のFingerprintだけでWorkspaceをJoinしてはいけない」の実証であり、**受理済み意味や実Source全依存が同じ／異なるという証明ではない**。
+
+**証拠の区分**：Node合成反例は局所比較関数の検証、実CLIの3つの観測は現行ReaderとManifestの分離を再現した限定証拠。これらはいずれもOwner Meaning Acceptance、現在Policy/Grant、ActualConsumed、Source/Plugin Closure、Studio本番の選択資格を意味しない。正確なGitHub head・試験結果をPR #3321に固定し、後続mainへの追随は別途再資格化する。
+
+### 11.7 完全コピーは物理WorkspaceやRead Attemptを識別できない（2026-11-09）
+
+**発見した残余Gap**：前節の「Manifestが異なるWorkspaceはJoin拒否」を満たしても、**Manifestを含むSource全バイトが等しい別Root**は識別できない。特に実CLIの`WorkspaceIdentity{Name,FormatVersion,Manifest{Path,SHA256}}`と`World/SourceIndex/Snapshot` fingerprintは物理Root ID／Open handle／Read Attempt IDを提供しない。文字列が同じだからといって同じOS Rootや同じ時点のSource Readとは限らない。逆に、Rootが違うことだけでは業務Meaningが異なるとも限らない。
+
+| Case（read-only） | 実観測の比較 | 許されるClaim／拒否するClaim |
+| --- | --- | --- |
+| A: 元Workspace・Caller scope X | `tei trace`のread-only候補とManifest | Direct Edge候補。Source Closure/Owner/Policyは`unknown` |
+| B: Aと同じWorkspace・Caller scope Y | Workspace/World/SourceIndex一致、selectorとscope付きKeyは異なる | **観測文脈の値**だけ比較可能。YがSource宣言scopeであるとは言わない |
+| C: 別Root、Manifest `workspace:`名だけ変更、業務Sourceは同一 | World・SourceIndex・Snapshot token一致、Manifest Name/SHAは異なる | `workspace_manifest_mismatch`でJoin拒否（実CLIで2026-11-08観測済み） |
+| D: **別RootにManifestも含めて完全コピー** | Manifest/World・SourceIndex・Snapshot tokenがすべて一致し得る | `same-observed-load-context-only`でも**物理RootとRead Attemptは共に`not-provided`**。同一実行、同一権限、同じWorkspaceの現在性は認めない |
+
+**Referenceでの最小処置**：`compareObservedLoadContext`の一致結果に`physicalRootIdentity:not-provided`／`readAttemptIdentity:not-provided`を明示し、実CLIによる4観測でDを再現する。別Rootであることは**試験ハーネス側の実行引数と一時ディレクトリ作成**で分かるが、CLI応答だけを見たConsumerには分からない点が重要。識別できないものを安全な一意IDとしてハッシュ化しない。可変ハッシュID候補[Draft #2815](https://github.com/hat47x/tei-platform/pull/2815)も、Inputに存在しない物理Root/Attemptの識別・Provider真正性を創出しない。
+
+**他Laneとの契約**：Studio [#1124](https://github.com/hat47x/tei-platform/issues/1124)のScope/Source/描画Epoch、セルフビルド[#2831](https://github.com/hat47x/tei-platform/issues/2831)の実消費入力と実Process/Artifact、移行設計[Draft #3252](https://github.com/hat47x/tei-platform/pull/3252)の再資格化（Source/Provider/Grant/Target変化）では、同じdigestでも実行主体・時点・RootのCurrent資格を自動継承しない。P0に新しいGlobal Workspace UUID、Host、独自Source Registryを要求するのではなく、各Ownerが必要な独立根拠（pinned Root/Reader/Attemptと現在Policy/Owner）をClaimごとに取得し、欠けたものを`unknown`として保持する。
+
+**受入の限界**：ここでのNode比較と実CLI 4観測は、実Goの`TraceWorkspace`応答の**識別不能性**を反証可能にするための限定試験。実Provider、2つの同時Reader、異なるPrincipal、OS hardlink/symlink/rename race、Source全Required Root、ActualConsumed/Target Effect、AI/Studioへの現在公開は **NOT RUN / NOT PROVEN**。更新後PRのexact-head CIと最新mainの再base/healthは別Gate。
+
+### 11.8 Graph Token・Workspace継続Token・直接Edge解決先の別資格（2026-11-09）
+
+**現行mainに追随した契約**：2026-11-09固定main `e348bd987626de2c14bddb45f852fae7457b51a7`の[ModelRef `TraceResult`](https://github.com/hat47x/tei-platform/blob/e348bd987626de2c14bddb45f852fae7457b51a7/internal/modelref/trace.go#L40-L86)では、`trace.graphFingerprint`がGraph／Rule／選択Subject／方向の候補トークン、`trace.snapshotFingerprint`は同値の**deprecated alias**であり、CLIの再読込・ページ継続には別の外側`result.snapshotFingerprint`（World＋Source Index＋Graph）を使用する。仮に両方同じ文字列でも役割を取り違えない。新`continuation.fingerprint`は`nextOffset`があるときのみCLIが外側値を明示する。別途[#3693](https://github.com/hat47x/tei-platform/issues/3693)のfull 0件では`rows:[]`を必須出力する現在のGo実装に合わせ、`rows`欠落を「不在」と解釈しない。
+
+| 受信フィールド | 何を証明するか | してはならない昇格 |
+| --- | --- | --- |
+| `trace.graphFingerprint` | 提示されたGraph候補の内容・Rule・Selector（型付きModelRef） | Workspace同一性、CLIページ継続・Ownerの確定意味 |
+| `trace.snapshotFingerprint` | v0互換期間中のGraph別名で、Graph tokenと一致すべき | CLIの外側継続Tokenの代用（#3625） |
+| `result.snapshotFingerprint` | 外側World・SourceIndex・Graphに拘束されたCLI snapshot観測 | 物理Root、Read Attempt、現在Authority、同一Owner |
+| `row.edge.to`／`row.resolvedTo` | 宣言Ref（scope省略可能）と候補解決Keyの対 | 宣言Kind/IDを勝手に別Subjectへ再結線した成功Claim |
+| `workspace.manifest` | Load時の名前・形式版・Manifest byte hash | 現在の全Required Source閉包・実消費入力・Full Source Acceptance |
+
+**新たな局所Fit/Gap修正**：本Referenceが旧`trace.snapshotFingerprint`のみを正本として読んでいた点を、`trace.graphFingerprint`へ変更。互換Aliasが存在する間は一致必須、将来Aliasが欠落しても正本Graph tokenがあれば許容する。fullの1ページ観測へ`continuation`が紛れ込む場合や`RuleFingerprint`欠落は`unknown`、独立に検査した`row.edge.to.subject.kind/id`と`row.resolvedTo`が矛盾する場合も`unknown`で停止する。Scopeが省略された`Ref`は合法だが、任意のKind/IDへすり替えてはいけない。**この処置は新Graph/Query Resolverでも、Source/Permission再読込でもない。**
+
+**実証の境界と他Lane**：[Catalog検証結果のmain統合PR #3728](https://github.com/hat47x/tei-platform/pull/3728)により、`catalog.entries`が読めたことと`validation.ok`は別になった。同様に、本Traceの`direct-edge-candidates`と`Current Disclosure／Source読込閉包／Target Effect`は独立。[Model Map Draft #3518](https://github.com/hat47x/tei-platform/pull/3518)、[実Workbench Draft #3543](https://github.com/hat47x/tei-platform/pull/3543)、[Self Build #2831](https://github.com/hat47x/tei-platform/issues/2831)に受入上の新Hard Dependencyを導入しない。CIで「Graph tokenを外側Tokenへ偽装」「不一致ResolvedToへ別のEdge targetを代入」の両負例が拒否されても、実Sourceの完全・権限現在性・独立Provider/Owner受理は**NOT PROVEN**。
+>>>>>>> origin/ref/topology-direct-trace-main-port-20261108
