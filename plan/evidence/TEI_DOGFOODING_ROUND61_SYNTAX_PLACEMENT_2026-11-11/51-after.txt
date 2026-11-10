@@ -1,0 +1,7 @@
+"browse" starts an application pattern, which is not declared in the application
+body; declare it as "pattern <application>.<id> browse { ... }" in its own file
+
+Same shape for record, reference, command and header-detail.
+
+An unknown token keeps the generic message, and the correct placement
+(patterns/*.tei with `pattern probe.something record { ... }`) still parses ok.

@@ -1947,3 +1947,41 @@ application-release returns_intake -> ok, versions ['1.0.0']
 ### 起票しなかった摩擦
 
 `UNBOUND_DATASOURCE` 警告（query の datasource が環境に束縛されていない）は、何が足りないかは言うが何を書けばよいかは言わない。**今回は `ok`（警告のみ）で先に進み、起票もしなかった。** 一度しか踏んでおらず、正しい書き方を特定できていないため。次に踏んだら起票する。
+
+## 63. 第61ラウンド（2026-11-11）: 構文の配置を教える。パターン種を application 本体に書いたとき
+
+第60ラウンドで記録した「構文の配置を引くコマンドが無い」という穴のうち、**実際に踏んだ1点**を測り直して直した。生出力は[第61ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND61_SYNTAX_PLACEMENT_2026-11-11/README.md)にある。
+
+### 修正前の実測
+
+`tei commands` の21コマンドに構文・文法を返すものは無い。そして**パターン5種すべてが、でたらめな語と同じ診断**になった。
+
+```text
+browse / record / reference / command / header-detail  -> expected database, uses, or binds
+frobnicate                                             -> expected database, uses, or binds
+```
+
+**誤った配置と打ち間違いが区別できない。**
+
+### 修正
+
+`internal/syntax/parser.go` の application 本体の `default:` で、語が `application.PatternKinds` に含まれるかを先に見る。
+
+```text
+"browse" starts an application pattern, which is not declared in the application body;
+declare it as "pattern <application>.<id> browse { ... }" in its own file
+```
+
+`application.PatternKinds` は第52ラウンド（#4082）で単一情報源として作ったものなので、パターン解析器が受理する種と取り残されない。**試験もリストを回す**ので、種が増えれば自動で対象になる。
+
+未知の語（`frobnicate`）は汎用メッセージのまま。既存の2つのピン（`internal/syntax/error_test.go`・`internal/workspace/source_diagnostic_test.go`）は無変更で通る。正しい配置も `ok` のまま。
+
+変異3種（分岐を削る／2種だけ書き写す／汎用に戻す）がすべて落ちることを確認した。特にM2は「単一情報源を使わず書き写した」場合を模しており、**3種目で落ちる**。
+
+`./internal/syntax`・`./internal/workspace`・`./cmd/tei`（101.9s）が ok。
+
+### 残った穴
+
+**構文の配置を一般的に引く手段は無いままである。** 直したのは1ケースだけで、「正しい書き方を知らない人が、正しい書き方を知るために間違える必要がある」という構造は残る。
+
+[#4169](https://github.com/hat47x/tei-platform/issues/4169) として起票し、4案を示した。**A（今回の手法を、既存の単一情報源がある場所から順に広げる）**が現実的で、B・C（構文一覧コマンド）はDSL全体の設計判断なので後でよいと書いた。

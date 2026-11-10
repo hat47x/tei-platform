@@ -1,0 +1,15 @@
+No command reveals syntax placement: `tei commands` lists 21 commands and none is
+about grammar (version, model *, inspect, view, trace, source-index, knowledge-*,
+validate, world, requirements, plugin-*).
+
+All five pattern kinds inside the application body, and a nonsense token, produce
+the same message:
+
+  browse        PARSE_ERROR  expected database, uses, or binds
+  record        PARSE_ERROR  expected database, uses, or binds
+  reference     PARSE_ERROR  expected database, uses, or binds
+  command       PARSE_ERROR  expected database, uses, or binds
+  header-detail PARSE_ERROR  expected database, uses, or binds
+  frobnicate    PARSE_ERROR  expected database, uses, or binds
+
+A wrong placement and a typo are indistinguishable.
