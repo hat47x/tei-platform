@@ -110,6 +110,7 @@
 - [行範囲の宣言を通す修正の確認](XTEA_LOWCODE_HOOK_ROW_SCOPE_DECLARABLE_2026-11.md)（参照実装の試験記録。`row`が宣言できず死んだコードだった矛盾の修正。実行経路の配線は未実装）
 - [フック範囲の貫通試験の確認](XTEA_LOWCODE_HOOK_SCOPE_THROUGH_2026-11.md)（参照実装の試験記録。宣言→検証→実行を1本で通し、修正を戻すと落ちることを確認）
 - [パッケージ契約（適合試験・投影）の検査の確認](XTEA_LOWCODE_PACKAGE_CONFORMANCE_2026-11.md)（参照実装の試験記録。適合試験名と投影を検査。適合試験の実行は未実装）
+- [期間の close-requires の実行時検査の確認](XTEA_LOWCODE_CLOSE_REQUIRES_2026-11.md)（参照実装の試験記録。閉めに必要な能力を実行時に要求。`correction`は未実装）
 - [採番の永続CounterStoreの確認](XTEA_LOWCODE_NUMBERING_SQLITE_STORE_2026-11.md)（参照実装の試験記録。PostgreSQLは未実装）
 - [採番の2プロセス同時実行の確認](XTEA_LOWCODE_NUMBERING_PROCESS_RACE_2026-11.md)（参照実装の試験記録。PostgreSQLと多プロセス構成は未実装）
 - [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
@@ -348,3 +349,4 @@
 - [他の3種の実装束縛は依然として参照グラフに現れない](TEI_DOGFOODING_ROUND43_OTHER_BINDINGS_2026-11-10/README.md)（#3983残件。Worldに4種の束縛があるが索引はCustomGoBindingsのみ読む。executorを変えてもgraphFingerprintとtotalは不変。重複PR #3994の扱いも記録）
 - [永続化マッピングの列対応が参照グラフに現れない](TEI_DOGFOODING_ROUND44_PERSISTENCE_NOT_IN_GRAPH_2026-11-10/README.md)（#4001・#3983。属性20件中incomingを持つのは3件のみ。索引はMapping.Columnsを捨てている。commandsと-hの不一致は他者の修正で解消済みと確認）
 - [Worldの全欄と参照グラフの対応を検査で固定した](TEI_DOGFOODING_ROUND45_WORLD_FIELD_COVERAGE_2026-11-10/README.md)（#3419・#3983・#4001。17欄中14を索引が読み、未読3欄は第43ラウンドの特定と一致。reflectで全欄を列挙し未登録を落とす。ただし「読む欄が辺になるか」は未検査と明記）
+
