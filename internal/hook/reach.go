@@ -112,6 +112,60 @@ func (r PhaseReport) Ran() bool {
 	return len(r.Executed) > 0 || len(r.Warned) > 0 || r.Refused != ""
 }
 
+// Merge joins a second report into this one and returns it.
+//
+// A run that applies its change consults the before-* phases, applies, then
+// consults the after-* phases. Each half produces its own report because each is
+// a separate run; a caller that prints one record needs them joined. The merge
+// keeps what each half saw — executed, warned, skipped, not evaluated, reasons,
+// the refusal, the outcome, proposals, uncalled calls and call records — and
+// takes the first refusal as the reason the run stopped. It does not invent an
+// ordering the halves did not have: they are appended in the order the runs
+// happened.
+func (r *PhaseReport) Merge(other *PhaseReport) *PhaseReport {
+	if r == nil {
+		return other
+	}
+	if other == nil {
+		return r
+	}
+	if r.Reasons == nil {
+		r.Reasons = map[string]string{}
+	}
+	r.Executed = append(r.Executed, other.Executed...)
+	r.Warned = append(r.Warned, other.Warned...)
+	r.Skipped = append(r.Skipped, other.Skipped...)
+	r.NotEvaluated = append(r.NotEvaluated, other.NotEvaluated...)
+	for phase, reason := range other.Reasons {
+		r.Reasons[phase] = reason
+	}
+	if r.Refused == "" {
+		r.Refused = other.Refused
+	}
+	if r.Outcome == "" {
+		r.Outcome = other.Outcome
+	}
+	for phase, produced := range other.Produced {
+		if r.Produced == nil {
+			r.Produced = map[string]Produced{}
+		}
+		r.Produced[phase] = produced
+	}
+	for phase, capabilities := range other.Uncalled {
+		if r.Uncalled == nil {
+			r.Uncalled = map[string][]core.CanonicalID{}
+		}
+		r.Uncalled[phase] = append(r.Uncalled[phase], capabilities...)
+	}
+	for phase, calls := range other.Calls {
+		if r.Calls == nil {
+			r.Calls = map[string][]CallOutcome{}
+		}
+		r.Calls[phase] = append(r.Calls[phase], calls...)
+	}
+	return r
+}
+
 // Proposed は、位相が提案した値を返す。提案が無ければ空を返す。
 func (r PhaseReport) Proposed(phase string) Produced {
 	return r.Produced[phase]

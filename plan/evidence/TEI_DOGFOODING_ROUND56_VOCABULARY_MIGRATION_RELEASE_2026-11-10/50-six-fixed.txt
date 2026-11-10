@@ -1,0 +1,9 @@
+  INVALID_MIGRATION_RECOVERY               forward-fix, explicit-rollback, not-reversible
+  INVALID_MIGRATION_STEP_KIND              schema, data, verify
+  INVALID_DATABASE_RELEASE_DATA_READINESS  ready, preparing, not-ready, unknown
+  INVALID_SOLUTION_RELEASE_STEP_KIND       database-release, application-release,
+                                           application-retire, database-gate
+  INVALID_SOLUTION_RELEASE_PHASE           expand, populate, transition, rollout,
+                                           contract, verify, other
+  INVALID_ROLLOUT_STRATEGY                 direct, canary, blue-green, gradual
+                                           (or omit the strategy)
