@@ -11,16 +11,21 @@ import (
 	"testing"
 )
 
-// EB-02 (#2595): the Python candidate is run under a test-only wrapper that
-// swaps the script bytes (D1 -> D2) after the pre-case digest check and before
-// the interpreter starts, then restores D1 before the post-case digest check.
-// The pre/post digests are both D1, so the digest comparison cannot see the swap.
+// EB-02/EB-04 (#2595): the Python candidate is run under a test-only wrapper
+// that swaps script bytes (D1 -> D2) after the pre-case check and before the
+// interpreter starts, then restores D1 before the post-case check.
 //
-// This file characterizes the current behavior. The wrapper is a test-only
-// execution path and does not prove how an unmodified run behaves. The
-// assertions on the Passed value and on Execution.SourceDigest record what the
-// product reports today; they are expected to flip when EB-04 (an isolated
-// execution snapshot, or a fail-closed claim) lands.
+// The selector runs a script from an execution snapshot written from the bytes
+// it verified, so the wrapper has two places to attack:
+//   - the declared path in the candidate directory: the interpreter no longer
+//     reads it, so D1 runs and the candidate passes with a correct attribution;
+//   - the snapshot handed to the interpreter ("$2"): the rewrite changes the
+//     modification time of the snapshot, so the candidate is rejected.
+//
+// The wrapper is a test-only execution path. A process with the same OS
+// privileges that also restores the modification time is not detected; that
+// is OS isolation (#2515) and is not claimed here. The wrapper's sha256sum of
+// "$2" is the independent observation of the bytes handed to the interpreter.
 
 type abaObservation struct {
 	passed          bool
@@ -72,20 +77,32 @@ func runScriptUnderWrapper(t *testing.T, mode string) (d1, d2 string, obs abaObs
 			t.Fatal(err)
 		}
 	}
-	var body string
+	var body, restore string
 	switch mode {
-	case "D1 fixed":
-		body = ""
-	case "D2 fixed":
+	case "D1 fixed", "D2 fixed":
+	case "declared path D1-D2-D1":
+		body = fmt.Sprintf("cp %q %q\n", d2Path, sourcePath)
+		restore = fmt.Sprintf("cp %q %q\n", d1Path, sourcePath)
+	case "snapshot D1-D2-D1":
 		body = fmt.Sprintf("cp %q \"$2\"\n", d2Path)
-	case "D1-D2-D1":
-		body = fmt.Sprintf("cp %q \"$2\"\n", d2Path)
+		restore = fmt.Sprintf("cp %q \"$2\"\n", d1Path)
+	case "symlink retarget":
+		// The declared source is a symlink inside the candidate directory. The
+		// wrapper points it at D2 for the run and back at D1 afterwards.
+		dir := filepath.Dir(sourcePath)
+		if err := os.Rename(sourcePath, filepath.Join(dir, "real.py")); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "other.py"), d2Bytes, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink("real.py", sourcePath); err != nil {
+			t.Skipf("symlink is unavailable: %v", err)
+		}
+		body = fmt.Sprintf("ln -sfn other.py %q\n", sourcePath)
+		restore = fmt.Sprintf("ln -sfn real.py %q\n", sourcePath)
 	default:
 		t.Fatalf("unknown mode %q", mode)
-	}
-	restore := ""
-	if mode == "D1-D2-D1" {
-		restore = fmt.Sprintf("cp %q \"$2\"\n", d1Path)
 	}
 	wrapper := "#!/bin/sh\n" + body +
 		fmt.Sprintf("sha256sum \"$2\" | cut -d' ' -f1 >> %q\n", logPath) +
@@ -152,22 +169,38 @@ func TestScriptABAControlsAttributeSourceByDigest(t *testing.T) {
 	})
 }
 
-// Characterization: the interpreter read D2 for every case, the pre/post digest
-// checks saw D1 only, and the receipt attributes the execution to D1.
-func TestScriptABAIsNotDetectedAndAttributedToDeclaredSource(t *testing.T) {
-	d1, d2, obs := runScriptUnderWrapper(t, "D1-D2-D1")
-	if obs.caseCount == 0 || len(obs.executedDigests) != obs.caseCount {
-		t.Fatalf("wrapper observation is incomplete: %+v", obs)
+// A D1 -> D2 -> D1 rewrite of the bytes handed to the interpreter is rejected:
+// D2 ran for the first case, the digest is D1 again afterwards, and the changed
+// modification time of the snapshot gives the rewrite away.
+func TestScriptABAOnExecutionSnapshotIsRejected(t *testing.T) {
+	d1, d2, obs := runScriptUnderWrapper(t, "snapshot D1-D2-D1")
+	if len(obs.executedDigests) != 1 || obs.executedDigests[0] != d2 {
+		t.Fatalf("the wrapper did not hand D2 to the interpreter for exactly one case (D1=%s D2=%s): %+v", d1, d2, obs)
 	}
-	if !allEqual(obs.executedDigests, d2) {
-		t.Fatalf("the interpreter did not receive D2 (D1=%s D2=%s): %+v", d1, d2, obs)
+	if obs.passed || !strings.Contains(obs.rejectReason, "source changed during execution after case") {
+		t.Fatalf("the ABA rewrite of the execution snapshot was not rejected: %+v", obs)
 	}
-	if !obs.passed || obs.rejectReason != "" {
-		t.Fatalf("current behavior changed: the ABA candidate is now rejected (%q); update this characterization together with EB-04", obs.rejectReason)
+	if obs.caseCount != 1 {
+		t.Fatalf("no further case may run after the rewrite was detected: %+v", obs)
 	}
-	if obs.candidateDigest != d1 || !allEqual(obs.recordedDigests, d1) {
-		t.Fatalf("current attribution changed: candidate=%s recorded=%v D1=%s", obs.candidateDigest, obs.recordedDigests, d1)
+}
+
+// A D1 -> D2 -> D1 rewrite of the declared path in the candidate directory, or
+// a retargeted symlink at that path, does not reach the interpreter: every case
+// runs the verified D1 bytes, so the D1 attribution in the receipt is correct.
+func TestScriptChangeOfDeclaredPathDoesNotReachInterpreter(t *testing.T) {
+	for _, mode := range []string{"declared path D1-D2-D1", "symlink retarget"} {
+		t.Run(mode, func(t *testing.T) {
+			d1, _, obs := runScriptUnderWrapper(t, mode)
+			if obs.caseCount == 0 || len(obs.executedDigests) != obs.caseCount {
+				t.Fatalf("wrapper observation is incomplete: %+v", obs)
+			}
+			if !allEqual(obs.executedDigests, d1) {
+				t.Fatalf("the interpreter received bytes other than the verified D1=%s: %+v", d1, obs)
+			}
+			if !obs.passed || obs.candidateDigest != d1 || !allEqual(obs.recordedDigests, d1) {
+				t.Fatalf("the verified D1 run was not qualified and attributed to D1=%s: %+v", d1, obs)
+			}
+		})
 	}
-	// Recorded for the reader: Execution.SourceDigest says D1 while D2 ran.
-	t.Logf("EB-02 characterization: executed=%s recorded=%s (receipt Passed=%v)", d2, d1, obs.passed)
 }
