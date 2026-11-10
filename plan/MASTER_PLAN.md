@@ -1212,6 +1212,15 @@ TEIの三要素分析（Data / Function / Business）を、単なる入力デー
 
 **「強属性」の原典定義は未受理**であるため、業務Key・FD・必須属性と自動同一視しない。未取得、業務NULL、非選択SQL NULL、部分取得、異Snapshot、非公開条件の照合も区別する。詳細と16件の独立対照候補、P0〜P2の開発順、実行済み/未実行境界は [ドメインモデル由来のテスト生成・開発者支援計画](design/DOMAIN_MODEL_DERIVED_TEST_AND_DEVELOPER_SUPPORT_2026-11.md) にまとめる（Draft、**生成機能は未実装・NOT RUN**）。
 
+### 2026-11-08 標準表現型の残差：実Source入場と共通Consumerを最小検収へ接続
+
+[合成写像の検収§20](design/COMPOSED_REPRESENTATION_MAPPING_QUALIFICATION_2026-11.md)へ、mainで実証した限定Factと未接続Edgeを統合した。**第1〜13章と基本P0-M/R/Cは現mainに既に存在するため二重導入しない**。
+
+- **Source**：main #3482は13実CLI Reply／42合成Consumer Controlsで`sales.order.submit`の宣言・Application・Rule/Source位置を限定確認したが、Product Function→SQL/物理Provider実Readを証明していない。main #3477は同Workspace Source-only改訂を検知。Import Provider原文だけの改訂は未マージ#3479が別の反例として扱う。Managed Markdown（#3346）は`readByLoader:false`で、物理FK/Index（後継Draft #3486、旧#3372は未マージClose）は業務意味の**Candidate**に留まる。
+- **Consumer**：main #3403にread-only MCP参照Adapter4 Toolが存在し、ADR-0048 (#3439)はCLI/MCP/API/Web/Desktopの共通Operation方針を採用。#3458は`validate`のCLI/MCP正常・失敗の局所Parityを検証。残るTool、実Web/Desktop/外部H3/Hostの受領・効果・現在Grantまで同値とはしない。
+- **最初の縦切り**：実TEI Source→read-only型付きGraph/Relation locator（P0-M）と、同一Product Function→実SQL/Provider→Data Context/Form/Table（P0-R）を並列実証し、同じSource/Scope/Revision/Read Cohortが観測できた部分だけP0-Cで結ぶ。Graph/CRUDの未取得はunknown、物理観測は未受理Candidate、参照CLI/MCPの値一致は現在の実Invoke/Effectではない。
+- **担当と停止線**：#3263三視点、#2586実Read、#3262必要Source、#3479 Import鮮度、#3486 Workbench候補、#1158/#3420共通API、#2514/#1180独立Expectedを再利用。IA-01〜04は一因子の負例候補。新Source Registry/Parser/API/Host/Runnerを作らず、追加Product E2EとOwner意味受理は**NOT RUN**。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
