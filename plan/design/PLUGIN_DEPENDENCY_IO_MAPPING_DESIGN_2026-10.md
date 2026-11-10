@@ -778,6 +778,7 @@ Source/Authoring Graph → Resolved/Lowered Graph → Targetの実行・観測�
 **現状の資格**：ここでのLegacy実ソース解析、独立動作比較、Java/.NET/Wails/OData/ファイルの実E2E、完全なSource closure、Owner意味受理はいずれも**NOT RUN / NOT PROVEN**。既存参照実装・外部OwnerのCI成功を移行Conformanceへ加算しない。
 
 
+<<<<<<< HEAD
 ## 18. 大プラグイン主義：緩やかな公開・依存者責任・明示的保証（2026-11-07／調査・採用前）
 
 ### 18.1 設計論点と暫定的な結論
@@ -865,3 +866,30 @@ Source/Authoring Graph → Resolved/Lowered Graph → Targetの実行・観測�
 **着手順**：P-1 read-onlyで現Contract/Source/APIのOpen候補とRequired/Observedを照合 → P0で上流無変更＋下流Adapterの2つのPluginを実現・依存Optional/Versionの対照 → P1で実Go静的Build/Actual Invokeと独立Conformance → P2で外部Hostや副作用付きPluginを選択的に検証。#1119のG1/G2/G4を増設したり、既存IssueのOwnerを移さない。
 
 **状態**：外部公式資料の静的比較と設計・受入案のみ。新Production Schema、CLI、公開Registry、二版実Link、上流無変更Adapter、AI自動修復、実Host/DB/OS/外部Consumer、正式Owner受理は**NOT RUN／未採用**。Open-by-defaultの意味を「公開者が発行・許諾済みの利用可能面での保証非強制」と限定し、未許可データの外部公開自動化へ拡張しない。
+=======
+### 17.11 Role付きDataの実装資格と未検証のValue/Consumer境界（2026-11-08、限定差分）
+
+統合済み [#3248](https://github.com/hat47x/tei-platform/pull/3248) はRole名を認識し、[#3308](https://github.com/hat47x/tei-platform/pull/3308) はRoleと`date/decimal/integer`の要求primitive（Alias連鎖を含む）を検査し、[#3318](https://github.com/hat47x/tei-platform/pull/3318) は `examples/xtea-lowcode` の税・為替・採番・休日の実Sourceを読んだ上で、**試験内で供給した行**を既存Binderへ渡す正常系を確認した。旧[Draft #3251](https://github.com/hat47x/tei-platform/pull/3251)はClosed/未統合であり、その当時の「Role→型が未実装」という説明を現況に転用しない。
+
+| 現在の証拠 | そこで保証される範囲 | 次の独立した反証 |
+| --- | --- | --- |
+| **V0** Role語彙 (#3248、および後続追加) | mainの現行Role語彙と誤記の静的識別。Role名の集合は改版される | 宣言Roleの存在は正しい値型・必須集合・業務意味を保証しない |
+| **V1** Role→primitive (#3308) | 必要primitive（date/decimal/integer/identifier等）の一致・Aliasの終端・未知TypeRefの二重診断回避 | 実Workspaceからの `tax-value/std.decimal` を `std.date` または未知TypeRefへ変えた時、異なる診断へ分岐するか（[Draft #3320](https://github.com/hat47x/tei-platform/pull/3320)、in-memory World負例） |
+| **V2** Source→Binder正常系 (#3318) | 実Workspace定義をResolveし、試験内rowをBindする限定Reference | 行データの真正なSource・欠落/NULL/値域/丸め・実DB/旧Runtimeは未確認。Binder成功だけで実Consumer効果を主張しない |
+| **V3** 異質Consumer・Target | **未証明**。ETL/FileとTarget生成を同じSource/Meaning/Scopeで比較する計画 | #2542/#2827の配送Receipt、#1121/#3252の再生成、#2514の独立Expected、#2831の実Build Closure。新しい共通Runtimeを作らない |
+
+**閉域型との独立条件**：`semantic.Type.Values` は宣言された候補値を保持し、`validation.Validate` は空/重複値を診断する（#2495のclosedness研究に接続）。ただし宣言した値集合と、実Provider行・生成Target・別Schemaの受理値域が一致することはこれだけでは証明されない。Enum/MECE、同一primitive、Sourceの同一Hash、現在のAuthorityを自動的に相互保証へ昇格しない。値を取得できないときの`unknown`と、実在する値の明示的な契約違反を区別する。
+
+**限定的な反証と修正候補（#3320）**：main `39d4debae386442c11149c7d3995bcfffa711c20` 時点の`internal/validation/attribute_role_type.go`では、Alias終端の`TypePrimitive`を**Type IDの末尾文字列**に縮約していた。そのため合成IRに`foreign.decimal`という別NamespaceのPrimitiveを置くと、`tax-value`の要求`decimal`に名目上一致してしまう。#3320にこの合成負例を追加し、`std.decimal`などの**完全修飾されたCanonical TypeRef**へ比較を限定する小修正を実装候補として含めた。従来の`std.decimal`そのものとそれへのDomain Aliasは許容し、未定義TypeRefと不適合は別診断に保つ。**exact-head CIと採否は未確認**。この修正だけで`std.decimal`宣言のPublisher/Sourceの真正性、`tei.std.*`への移行、外部Providerの独自Primitiveの正当な互換契約を証明しない。外部Primitiveの互換関係を追加する場合は#951/#2620の明示Contract/Owner受理へ返し、末尾名の偶然の一致を互換性根拠にしない。
+
+**停止線**：#3308のprimitive照合を新しいRole Registryへ複製せず、#3318の正常系を実DB/Production資格へ拡大しない。標準化判断は、少なくとも一つの非画面Data Consumerと一つのTarget再実現Consumerで同じ意味上の不足が独立に再現された場合に限る。#3320の追加Go試験・修正コードはCI確認前の候補であり、この文書ではPASSを宣言しない。ETL/Target/Owner Acceptanceと実Source改変の再Loadは**NOT RUN**。
+
+
+#### 2026-11-09 現行Role増補と異Source観測へのFit/Gap接続
+
+- 現行main（検討時 `52db6aef2fb2ca9bda94f0687fcbf71a5cfcfffa`）の`rolePrimitives`には、初期17件から増えた`currency-rate-fallback`、`holiday-calendar`、`setting-key`、`setting-value`、`setting-user`が存在する。Role語彙や要求Primitiveの追加と、各Roleの実Value/Consumer保証が実証済みかを分ける。今回の#3320修正は**現在のmapをそのまま保存**し、型IDの末尾`decimal`と完全Canonical ID`std.decimal`の区別だけを追加する。
+- [Draft #3252](https://github.com/hat47x/tei-platform/pull/3252)と[Draft #3742](https://github.com/hat47x/tei-platform/pull/3742)では、固定A/B SourceのRole宣言が17→18（`master.numbering_rule.rule`追加）、一方`master.tax_rate.rate`の`tax-value/std.decimal`が局所一致するケースを検証・計画中。**Role・TypeRef局所一致 ≠ Source revision不変・Source closure・Business Meaning・Provider値・Migration資格**。#3320は一つの`World`のin-memory変異診断を担当し、A/B実Loader・Source Index・改訂拒否は#3742/#3477/#3479のOwnerへ渡す。いずれも単一の全体`validated` booleanへ畳まない。
+- [Draft #3321](https://github.com/hat47x/tei-platform/pull/3321)の実CLI限定観測では、Manifestを含む別物理Workspaceの完全コピーが同じWorld/Source Index/Snapshot tokenになり得た。したがって**同じSnapshot tokenは物理Root/Read Attempt/Current Grantの証明ではない**。型照合結果にこの同一性を付与しない。Observedで見えないRequired Sourceや非公開Roleは`absent`に昇格させず、#2620のInventoried→Disclosable境界に従う。
+- **標準化の停止線**：`foreign.decimal`またはそれを指すAliasが`std.decimal`を要求するRoleに誤適合するなら、既存`validation`にCanonical Ref比較の負例を配置する。逆に非`std` Primitiveを**明示的に互換化する要求**が出た場合は、名称末尾一致へ戻さず、#951のProvider/Contract Definition Authority・Consumer Accepted Baselineで別に受理する。TypeRef文字列自体は真正性・権限を証明しない。
+- [#2831](https://github.com/hat47x/tei-platform/issues/2831)の実セルフビルド、[#2827](https://github.com/hat47x/tei-platform/pull/2827)のETL/MFT受領、[#2514](https://github.com/hat47x/tei-platform/issues/2514)の独立Expectedはいずれも別資格。A/Bの実Go試験、ETL/生成Target/実DB、全Source closure、Owner正式意味受理は**本節では未実施／未証明**。
+>>>>>>> origin/work/role-type-workspace-drift-negative-20261108
