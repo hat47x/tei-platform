@@ -390,6 +390,7 @@ WP10 統合と引継ぎ
 | `after-*`へ到達する実行経路（フック層） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_AFTER_CHANGE_2026-11.md) |
 | `after-*`へ到達するCLI配線（`-reference-store`） | 実装（参照） | 付録C.5、`cmd/tei`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_AFTER_CHANGE_CLI_2026-11.md) |
 | `after-*`拒否時の効果の取り消し | 実装（参照・既定経路は未到達） | 付録C.5、`cmd/tei`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_AFTER_CHANGE_REVERT_2026-11.md) |
+| `uses`呼出しの効果の補償 | 不要と確認 | 付録C.5、`internal/hook`・`internal/command`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_USES_COMPENSATION_2026-11.md) |
 | `after-*`へ到達するStudio配線 | 実装（参照・UI未呼出し） | 付録C.5、`internal/studiohost`・`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_AFTER_CHANGE_STUDIO_2026-11.md) |
 | 実行時の値変換 | 不要と確認 | 付録C.5、`internal/validation`、[確認記録](../evidence/XTEA_LOWCODE_VALUE_CONVERSION_2026-11.md)（受理条件が同一の下位原始型を要求するため、変換を要する組は通らない） |
 | 行単位のフックの実行（`RunRows`・`applyReachableRows`） | 実装（参照） | 付録C.5、`internal/hook`（二つの行経路が併存し`uses`の扱いが違う。`Runner.Rows`を設定するホストは未実装）、[確認記録](../evidence/XTEA_LOWCODE_HOOK_ROW_REACHABILITY_2026-11.md) |

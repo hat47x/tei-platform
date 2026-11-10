@@ -44,7 +44,18 @@ type stagedMember struct {
 	Changed bool   `json:"changed"`
 }
 
-const isolatedTreeBoundary = "the planned sources were copied into a fresh tree and the copy was re-hashed before building; go.mod and go.sum are taken from the working tree and recorded, so the module context is not part of the claim"
+const isolatedTreeBoundary = "the planned sources were copied into a fresh tree and the copy was re-hashed before building; the module context is whatever the plan named, and anything taken from the working tree instead is recorded under moduleFiles and is not part of the claim"
+
+// planNamesModuleFile reports whether the plan already names this file as a
+// go-module source, so staging does not take a second copy from the working tree.
+func planNamesModuleFile(plan plugin.BuildPlan, name string) bool {
+	for _, source := range plan.Sources {
+		if source.Kind == "go-module" && filepath.ToSlash(source.Locator) == name {
+			return true
+		}
+	}
+	return false
+}
 
 // stageSources copies each planned source into root, preserving the locator, and
 // refuses when the copy does not hash to the planned value.
@@ -56,24 +67,20 @@ func stageSources(repoRoot, stageRoot string, plan plugin.BuildPlan, checked []c
 		if err != nil {
 			return isolatedTree{}, fmt.Errorf("resolve source %q: %w", source.Locator, err)
 		}
+		// A source is either one file (resolved under the name ".") or a directory
+		// of members. The locator is the file's own path in the first case, so the
+		// copy must not turn it into a directory.
 		destination := filepath.Join(stageRoot, filepath.FromSlash(source.Locator))
-		if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
-			return isolatedTree{}, err
-		}
-		if err := os.MkdirAll(destination, 0o755); err != nil {
-			return isolatedTree{}, err
-		}
 		names := make([]string, 0, len(resolved.Files))
 		for name := range resolved.Files {
 			names = append(names, name)
 		}
 		sort.Strings(names)
 		for _, name := range names {
-			relative := name
-			if relative == "." {
-				relative = ""
+			target := destination
+			if name != "." {
+				target = filepath.Join(destination, filepath.FromSlash(name))
 			}
-			target := filepath.Join(destination, filepath.FromSlash(relative))
 			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 				return isolatedTree{}, err
 			}
@@ -99,7 +106,13 @@ func stageSources(repoRoot, stageRoot string, plan plugin.BuildPlan, checked []c
 		tree.Members = append(tree.Members, member)
 	}
 
+	// A plan may name the module context itself (kind go-module). When it does,
+	// staging already copied those files and nothing is taken from the working
+	// tree, so the isolated tree depends on the plan alone.
 	for _, name := range []string{"go.mod", "go.sum"} {
+		if planNamesModuleFile(plan, name) {
+			continue
+		}
 		source := filepath.Join(repoRoot, name)
 		data, err := os.ReadFile(source)
 		if err != nil {

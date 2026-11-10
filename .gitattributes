@@ -284,3 +284,6 @@
 
 # Secret-shape observations are hashed as raw bytes.
 /plan/evidence/DSH_MCP_SECRET_SHAPE_2026-11-10/** -text
+
+# Late-starting MCP observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_LATE_START_2026-11-10/** -text

@@ -1960,6 +1960,65 @@ L2-bの五条件は、childの能力に依存する。本節は、**参照実装
 - `vendor/`・置換（`replace`）の扱い
 - 既定化。**上の二つの理由で見送っている**
 
+### 4.43 module contextも計画のsourceにする（2026-11-09）
+
+§4.42の`-isolate`は、**`go.mod`・`go.sum`を作業ツリーから取る**ので、隔離してもTOCTOUが残った。本節は、**module contextも計画のsourceにする**ことで、その例外を消す。
+
+#### 規則
+
+**`kind: "go-module"`のsourceとして`go.mod`・`go.sum`を宣言できる。** 宣言すれば、隔離ビルドはそれらを**他のsourceと同じように写し、同じようにdigestを照合する**。
+
+| 計画がmodule contextを名指すか | 隔離ビルドの`moduleFiles` | 何が言えるか |
+| --- | --- | --- |
+| **名指す** | **空** | **木は計画のsourceだけでできている**（作業ツリーからの持ち込みが無い） |
+| 名指さない | `go.mod:<digest>`など | 木は計画＋作業ツリーのmodule contextでできている（境界に明記） |
+
+**「例外は無い」と言えるのは、名指した場合だけである。** 名指さない場合は従来どおりで、記録がそのことを示す。
+
+#### 実測
+
+| 試験 | 結果 |
+| --- | --- |
+| `TestIsolatedTreeTakesNoModuleFileFromTheWorkingTreeWhenThePlanNamesThem`（`go.mod`・`go.sum`を`go-module` sourceとして宣言 → `moduleFiles`が**空**、写したmembersは**3件**＝package＋2ファイル） | **PASS** |
+| `go test ./tools/reference-go-build-from-plan -count=1`（全試験） | **PASS**（79.4秒） |
+
+#### 途中で直した欠陥
+
+**単一ファイルのsourceを写す処理が、そのパスをディレクトリとして作っていた。** ディレクトリのsourceしか写していなかったので表面化していなかったが、`go.mod`をsourceにした瞬間に`is a directory`で落ちた。**ファイルとディレクトリを分けて書く**ように直した。
+
+#### この節が言っていないこと
+
+- **`go-module` sourceの検証**（`go.mod`という名前に限るか、任意のmoduleファイルを許すか）。今は**kindの意味だけ**を決め、名前は呼び手に任せている
+- `go.sum`が無いmodule（依存の無いmodule）での扱い
+- `-isolate`の既定化。**module contextを名指す計画が一般的になってから**
+- `replace`・`vendor/`の扱い
+
+### 4.44 隔離ビルドでもL2-bが立つことを回帰試験で確かめる（2026-11-09）
+
+§4.42・§4.43で隔離ビルドを作ったが、**その経路で五条件が立つかは確かめていなかった。** 本節は、回帰試験を隔離ビルドへ切り替え、**隔離した木からビルドしても`l2b.claimed=true`が立つ**ことを固定した。
+
+#### 変えたこと
+
+| 対象 | 変更 |
+| --- | --- |
+| 宣言 | `go-module`のsourceとして`go.mod`・`go.sum`を追加（§4.43の規則） |
+| child args | `-isolate`を追加 |
+| 試験 | 主張に加えて、**childが計画を読むbuilderであること**（`childSchema`）を確かめる |
+
+#### 実測
+
+| 項目 | 値 |
+| --- | --- |
+| `TestSelfBuildEstablishesL2BFromARealGoBuild` | **PASS**（14.5〜71.3秒。環境の負荷で変動） |
+| `l2b.claimed` | **true** |
+| `planCrossCheck` / `planArtifactBinding` / `artifactReproducibility` / `definitionBinding` | すべて成立 |
+
+#### この試験が示していないこと
+
+**隔離が実際に行われたことを、entryは見ていない。** entryはchildのstdoutをdigestとして記録するが、`isolatedTree`の中身は解析しない。**隔離そのものの観測は、ツール自身の試験（写した木が計画と一致する・`moduleFiles`が空・実buildが通る）が担う。**
+
+**したがって本節が言えるのは「隔離ビルドの経路でも鎖が成立する」までで、「この試行が隔離された」ではない。** 両者を一つの试验で言うには、entryがchildの隔離記録を読む必要がある（未着手）。
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
