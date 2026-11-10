@@ -726,3 +726,146 @@ SHO Composerの並行Draftは、TEIのSource-safe逆編集に直接役立つ負�
 ### 29.3 CI・前提への限定
 
 前HEAD `536a8364a873610997ad8749f74aa463ddcdfdc1` の[Health #42609326764](https://github.com/hat47x/tei-platform/actions/runs/42609326764)はこの更新時点**in_progress**、[脆弱性確認 #42609326691](https://github.com/hat47x/tei-platform/actions/runs/42609326691)は**success**である。新しいSubject偽装負例と本節を含むHEADのGo試験・Healthを、旧HEADの状態から推定しない。現在main進行中の[RQ-036 Model Map Draft #3518](https://github.com/hat47x/tei-platform/pull/3518)、[組織責任切替 Draft #3741](https://github.com/hat47x/tei-platform/pull/3741)、[Org 実DB検証 Draft #3500](https://github.com/hat47x/tei-platform/pull/3500)の局所試験・Meaningと合算しない。
+
+## 30. 型付きModel Map M0の実Workspace対照と三視点・実行証拠の切断面（2026-11-09）
+
+### 30.1 RQ-036の実装主体を現在mainへ統合する
+
+[Draft #3518](https://github.com/hat47x/tei-platform/pull/3518)の`internal/operations/model_map.go`／`model_map_test.go`（前HEAD `40420ea70ec1ed518ddbd294bee7356dcfb5c8a5`、2件の旧Source Blob）を、現在のmain `7a37d3558cf28d8890af6fc8289ef18b7c10ac50`を第一親とする**非強制二親合成**で同じPRへ前方移植した。旧コードに第二のGraph Store/Role Registry/Provider/Hostはなく、`MapWorkspace(root)`が一回の`workspace.Load`と`BuildSourceIndex`から既存`CatalogWorld`へつなぐ、**read-only／`partial-projection`のM0**を提供する。旧Draftの本PR以外への重複統合は行わない。
+
+M0の`ModelMapLink`は`From(Kind,ID)`／`To(Kind,ID)`／`Relation`／`Resolution`を保持する。`Resolution=resolved`は**Catalog中に両Endpointが一意に宣言された**意味だけであり、Sourceの現在Byte資格、Owner Meaning Acceptance、Role/Scope Disclosure、Host選択・実呼出し・業務Effectの証明ではない。Source Indexに存在するReferenceもParserで採用されたSubjectかを別に検証する（§29）。Data/Function/Business三視点とそのCross-referenceは、**このM0にSource-backedな表示／操作の接続を追加するConsumer**として扱い、M0を第二のDomain Canonicalへ昇格させない。
+
+### 30.2 本物の同じRelationをM0とSource Readerの双方から照合
+
+[実Workspace Go Test](../../reference/diagram-crossref/real_workspace_admission_test.go)に`TestRealWorkspaceModelMapMatchesSourceIndexedRelationTriplet`を追加し、実`reference/workspace`にある一つの`semantic-relation:sales.order.lines`のParent DataとTarget Dataを、実`InspectSubject`から取得する。これを同一Workspace上の`MapWorkspace`から生成された次の**2本の型付きLink**と比較する。
+
+| 実Source側の宣言 | M0から要求するLink | 断定できること／できないこと |
+| --- | --- | --- |
+| CatalogのRelation Parentが`semantic-data`で一意 | `Parent Data --contains--> Relation`、`resolved`、1本 | Parent/Relationの宣言一意性。実Owner関係・更新順序・トランザクション境界ではない |
+| Relationの`Canonical.target`で指定したDataが実SourceでIndexed | `Relation --refers-to--> Target Data`、`resolved`、1本 | 1件の型付き参照。全Relation閉包・FK・繰返し関係のGraph Instance IDではない |
+| 3 Subjectの各`InspectSubject` | 個別Source Referenceが非空、同Workspace/World/Source Index fingerprintとKind/IDが一致 | 一定範囲の観測整合性。原子的multi-read Snapshot・外部Provider raw/current Grantではない |
+| `MapWorkspace`のCoverage | `partial-projection`で未資格Rolesを明示 | Event/State/Business/Plugin/Function CRUD/Result Sliceが完成したという推論を拒否 |
+
+このテストの一意なRelationは、実Source三点（§27）、Byte/Range（§28）、Canonical偽装の負例（§29）に続く**新しいProduct M0/Reader照合の足場**。しかし、Source Browserが安全に位置を表示できること、M0が一意なLinkを描けること、図面で同型Edge Instanceを逆編集できることは別。引き続き`modelref.Edge`にRelation固有IDがない経路のWriteは`ambiguous/read-only`とする。
+
+### 30.3 他チャット最新の境界：観測・認知・実呼出しを分けて表示
+
+- **SUI/KONの複数Island/Canvas・Ontology**：M0で表示される型付き`Data→Relation→Data`の意味参照を一つに保ち、View Occurrence/局所接続／権限で見えない対象は別の表示状態。現Viewの対象集合から**存在しないこと**を推論しない。プライベートRelationやFieldの情報を現在Disclosure資格なしに返さない。Ontology DSL用の第二Graph正本を作らない。
+- **組織・REA**：[Draft #3741](https://github.com/hat47x/tei-platform/pull/3741)のRecord Scope/責務Cutover、[REA Draft #3496](https://github.com/hat47x/tei-platform/pull/3496)の外部Observation→Structural Candidate→Accepted Meaningは、M0の`resolved`とは独立。人／組織の関係を図示できても、異動後の現在Grant・遡及訂正・Handoff・外部Observationの受理までは示さない。
+- **Plugin Provider**：[main #3757](https://github.com/hat47x/tei-platform/pull/3757)はEnvironmentの複数宣言について**解決到達と実行到達を別々に観測**。`ObservationProviders/EvidenceProviders`がBindingで解決できても、非テスト経路のRouter Observe/Collectは未接続と記録。Graph上のPlugin Linkは`declared/selected/resolved/loaded/invoked/observed/consumer-received`の区別を残し、選択Providerの宣言を実Invokeの証明に転用しない。
+- **実データ読取**：標準M0のPattern→QueryやRelation解決を、`order_entry.recent_orders`の実Provider Read・Result Slice／Row/Field Mappingに昇格させない。P0-Rは#2586、組織Pressureは[Draft #3500](https://github.com/hat47x/tei-platform/pull/3500)、P0-Cの同一Attempt接続は既存Ownerへ残す。
+- **Lifecycle／SHO**：Graph/Hookの意味上の変更（[main #3761](https://github.com/hat47x/tei-platform/pull/3761)の宣言外Outcome拒否等）とLayout/Markdown上の引用は異なる。SHO Document Writerで図を保存することはTEI Semantic Patch・実Runtime Hook・Host Grant・Effect Receiptの承認を意味しない。Editor位置とSource Rangeが現在Byteに照合できることもMeaning受理ではない。
+
+### 30.4 次に製品として進める最短の受入経路
+
+**M0 read-only Mapの実Source一致 → Source-backed Relation ID/Role/Scope／Coverageを付けた最小Headless Diagram Consumer → Function Data Context由来CRUDの既知セルだけをSource逆引き → 実Query/Provider/Result Slice → Studio/SHOの実受領**を順序として保持。全工程を一つの巨大なGraph Editor／業務Runtimeにまとめず、各々既存Operation・Generator/Consumer・Authority/ScenarioのOwnerへ渡す。
+
+今回の`MapWorld/MapWorkspace`はまだ**Draft上のGo実装**であり、前方移植後の全Go/Health、OS横断、正式M0 API、Event/State/Hookの完全集合、GUI、SHO、業務Effect、Owner意味受理は**CIと別検収で判断**。前のPR HEADや別Productの成功を現HEADの成功に転記しない。
+
+### 30.5 M0に対する2つの誤認防止反例（実Go候補）
+
+`internal/operations/model_map_test.go`に次の独立した合成負例を追加する。どちらもM0 Producerの**読み取り投影**を対象とし、Source Indexの`Index.Validate`やCurrent Grantを再実装しない。
+
+1. **M0-N01：宣言上のResolved ≠ Source Indexed** — Data、Relation、Target Dataの宣言が一意であれば`ModelMapLink.Resolution=resolved`になるが、入力Source Indexが空なら各`Catalog.Entry.SourceStatus=not-indexed`のまま。`resolved`をSource-current／Owner-accepted／編集可能に読み替えない。
+2. **M0-N02：偽Source Index ≠ Canonical Relation** — 実IRに存在しないRelation IDをSource IndexのReferenceだけに足しても、`Catalog`へ新Subjectは生まれず、`MapWorld`にそのSubjectを端点とするLinkも生まれない。旧§29のByte-valid Reference偽装をM0側でも第二正本へ昇格させない。
+
+二つの局所Goテスト（`TestMapWorldDeclaredLinkIsNotSourceQualified`、`TestMapWorldDoesNotInventRelationFromForgedSourceReference`）は、§30.2の**実Native Source→M0 Link比較**と別の検収である。実Source・OS敵対的Path／漏洩、外部Provider、Source/Meaning Owner受理、Event/State/Function CRUD、実Consumer/Editor/SHO/Effectは未証明。最新HEADのCI終了前は「実装済み負例候補」として扱う。
+
+### 30.6 多重Relation Identityと同ID衝突の局所Graph負例（#3866）
+
+既存`model_map_test.go`へ次の2つの**合成IR負例**を追加した。旧#3518が未マージでCloseされたため、コード検収Ownerは**新Draft #3866**に集約する。`modelref.Edge`の型/Endpointだけに縮約した場合の逆編集損失を、M0の`Relation Subject Kind/ID`を保持したread-onlyリンクで回避できるか確認する。
+
+| Case | 要求する型付きM0結果 | 依然として未実証 |
+| --- | --- | --- |
+| M0-N03：同じFrom/To、同じラベル`lines`、異なる2つのRelation ID | `Parent Data --contains--> Relation --refers-to--> Target Data`を各IDについて保持し、**計4 Link**を失わない。IDをラベル・端点・配列位置で代用しない。 | Synthetic Source Indexは空で、`SourceStatus=not-indexed`。どちらのEdgeもSource逆Patch資格なし。 |
+| M0-N04：二つの親Dataが**同じRelation ID**を重複宣言 | 2つのParent→Relation Linkと1つのRelation→Target Linkを保持し、重複Identityの`Catalog.Ambiguous`／`Link.Resolution=ambiguous`を表明。First-winsしない。 | 重複IDを正当化・自動改名・Owner受理したわけではない。 |
+
+これは**宣言した関係のナビゲーション構造**の反証であり、Data/Function/Business図面の見た目・CRUD自動生成、実Source位置の最新性、現在Grantや実行を試していない。#2497のLoss/Reverse編集と#2514の独立Expectedへ分離して引き継ぐ。二つのGoテストの実行・CI成功は、**新HEADのログで確認するまで未資格**。
+
+### 30.7 Model locate・Studio選択・AI Harnessは既存Ownerへ接続
+
+[PR #3865](https://github.com/hat47x/tei-platform/pull/3865)の`model locate`候補はCatalogに基づく親経路・近傍（現在地G1/G3）をCLI/MCPへ返す**別のread-only Consumer**。新Draft #3866のM0型付きLinkと同じ`Subject Kind/ID`・Workspace/Source版で比較するが、LocateのGraphをM0へ複製せず、`model locate`の現在地表示成功を全Data/Function/Business Closureや編集資格に読み替えない。#3865は現時点ではPRであり、main統合と全E2Eは未資格。
+
+StudioでUI要素を選択しAI/DSH系Harnessへ細かく指示する設計は、**main統合済み[PR #3863](https://github.com/hat47x/tei-platform/pull/3863)** のAI性能計画§21がOwner。ここでは、M0型付きSubjectとView Occurrenceを分けた選択Contextから許容されたread-only Sourceへ辿り、AIのProposalと現在Grant付きApplyを分離する、という**既存検収条件への入力**のみを定義。第二Harness Loop/Gateway/Adapterを本PRに作らず、特定の定額AI契約を製品の基本動作の前提としない。
+
+## 31. M0実装Ownerの現行PRと合格条件（2026-11-09）
+
+**現行のコード検収Ownerは[Draft PR #3866](https://github.com/hat47x/tei-platform/pull/3866)。** 本書§23〜30で歴史的に参照している旧[#3518](https://github.com/hat47x/tei-platform/pull/3518)は**close/unmerged**。理由は現在mainへ二親統合してもGitHub PR Files上では975ファイルの旧差分が表示され、レビュー可能な変更集合と一致しなかったため。#3866では現main単一親に4つのGit Blobのみを加え、GitHubのPRファイル一覧が**厳密に4件**（`model_map.go`、`model_map_test.go`、本Plan、`real_workspace_admission_test.go`）であることを確認した。旧M0正本は削除せず、コード/Scenario/Planの内容を引き継ぐ。**この置換はmainへmergeした意味ではない**。
+
+初期M0の採用判定は、新PRの**exact-head**に対して`gofmt`、`go test`、実`reference/workspace`のReader→型付きM0 Linkの2本一致、M0-N01/N02の拒否対照、Repository Healthの結果を照合し、Ownerの意味受理と製品全体受入を別にする。旧Branchのテスト成功やSHA一致は再検証の代替ではない。#3492のRead-only Source入場はmain統合済みだが、標準M0/三視点Graph・CRUDの**本番表示・編集・実Provider read・Studio/SHO実受領**の受入はまだ行っていない。
+
+実装順：M0 Producerを最小read-onlyに維持 → 同じSourceと型付きLinkを使うData三点のHeadless Diagram Consumer → Function×Data CRUD Source Cell → 実Provider Result Slice → Studio/SHOの別Consumer。**見えている集合、取得済み集合、公開許可された集合、Ownerが受理した集合、実行した集合は互いに同一視しない**。SUIのCanvas/島やKON DataspaceのOntology表示も、この情報区分を踏まえて設計し、第二Source/Graph/Authorityを作らない。
+
+## 32. Source-only RevisionとH0/H1/H2の次段検収（2026-11-09横断更新）
+
+### 32.1 M0のTopologyは変更されなくてもSourceの現在資格は変わる
+
+新Go局所テスト `TestMapWorldSourceOnlyRevisionMustNotBeConfusedWithSemanticTopology` は、**同じ宣言World**に対しSource Indexの参照元Pathの移動、Artifact Byteの変更、A→B→Aの復帰を与える。既存`sourceindex.NewArtifact`／`workspaceProjectionFingerprints`／`CatalogWorld`／`MapWorld`を使用し、新Cache/Revision Engineを追加しない。
+
+| Case | M0の観測 | 引き継ぐべき判定 |
+| --- | --- | --- |
+| M0-N05a Path Move | Link topology、World Fingerprintは同じ。Source Index Fingerprint／Model Revisionは変化 | Display Nodeに変化がなくてもSource Locator・Source-origin Evidence/編集資格の再検証が必要 |
+| M0-N05b Raw Byte Change | 同じPath・同じWorldでもArtifact fingerprintが変わり、Source Index Fingerprint／Model Revisionが変化 | World同一性や描画Cacheの一致を現在のSource Span・Host Grantの証明に転用しない |
+| M0-N05c A→B→A | Aと同じ現在Byte/Pathへ戻れば、現在のGraph/Index/Model RevisionはAに一致し得る | **中間Bがなかったことは証明できない**。履歴・実Effect・Owner受理は別Evidenceが必要 |
+
+これらは`Source Index`の**合成Artifactと宣言World**を使う限定試験であり、OS実Fileの移動・中間BのAudit保存、同一Load原子性、Source Write/CAS、実Provider Importの`same-load`証拠を試験しない。以前の§28・§29の**実Workspace Byte/偽Subject負例**と併せても、全部のRequired Source closure/Meaning Acceptanceへ自動昇格させない。
+
+### 32.2 横断計画の優先順位を製品の利用価値へ戻す
+
+[横断受入Draft #3535](https://github.com/hat47x/tei-platform/pull/3535)と、[Studio AI性能計画main #3863](https://github.com/hat47x/tei-platform/pull/3863)の成熟した順序を、このGraph/Modelerレーンで参照する。全体受入をM0/Diagramの完成待ちにしない。
+
+| 既存OwnerのP0 | M0/三視点側の役割 | 未実証のまま残すもの |
+| --- | --- | --- |
+| **D1/S2-product** #1251: 正式Profileで選択されたProviderが通常CLI/Studio経路で実際に呼ばれる | Map上は`declared/selected/resolved`をナビできるようにする。実Plugin CallはExecution/Host側から観測 | 同一Go関数・バイナリの一致だけでProvider実差替え／現在Principal/Grant／BOMを認定しない |
+| **R0実Read** #2586: Function→Query→実DB Provider→SQL/Rowset→明示Mapping→Data Context→Consumer Receiptを同一Attemptで取得 | Function→Data/RelationとQueryのSource定位、`CRUD R`宣言とObserved Readの別列 | [隔離SQL Fixture Draft #3862](https://github.com/hat47x/tei-platform/pull/3862)の3/2/0 Expectedはまだ実DBクエリ実行ではない |
+| **G1/G3現在地** [Draft #3865](https://github.com/hat47x/tei-platform/pull/3865) | M0 `Subject Kind/ID` とCatalog Parent/Link・World/Index Revisionを共有。Graphが不完全でも親経路と近傍の欠落理由を提示 | CLI/MCP locateが存在してもG2/G4〜G7全体図・往復ナビ・Studio/E2Eは未資格 |
+| **AI選択** main #3863 | 選択UI Occurrence→Qualified Subject/Source/Current Disclosureの**必要なフィールド**を提示。H0決定論的検証／H1外部Harness／H2モデルProvider切替を同一Task/Expectedで比較する | 外部DSHへの送出・実OS隔離・費用/利用規約・Owner受理・実変更はNOT RUN |
+
+**停止線**：read-only Map/Locateは日常利用者に役立つ最初の全体案内であって、正式Provider・実Readを妨げるP0新Gateではない。ユーザーがUIで細かく選んだ要素にAIが応答する際、選択文字列だけからSource/Grantを推測しない。既存Operationが返す範囲だけを明示的に渡し、AI Proposal→Source Revision再検査→共有Acceptance→Authorized Apply→Receipt/Consumer受領を**別観測**する。定額生成AI契約による自動API利用許可・企業内の情報持出し可能性を推定しない。
+
+### 32.3 今回の変更の到達点
+
+**実コード変更**はM0のSource-only Revisionに対する局所Go試験1件と本設計追補。新CLI/MCPコマンド・正式Studio Renderer・SHO Writer・Graph Patch Adapter・Cache Engine・専用Harness/Hostは追加しない。最小のread-only全体案内から、実Function→Provider→Data Contextの証拠と照合できる状態へ段階化する。旧#3518はclosed/unmerged、採用検討対象は現在の[Draft #3866](https://github.com/hat47x/tei-platform/pull/3866)のみである。
+
+**CI判断**はこの新HEADの実Runで行う。`ModelRevision`・`World Fingerprint`・`Source Index Fingerprint`の用途を記述したことは、Productの全キャッシュ失効やHistory Auditの実装達成を意味しない。
+
+## 33. 選択した実RelationのModel Map／model locate同一性とHarnessへの限定Context（2026-11-10）
+
+### 33.1 RQ-036の二つのread-only Consumerを同一対象へ束縛する
+
+[main統合 #3865](https://github.com/hat47x/tei-platform/pull/3865)で`tei model locate`およびMCP `tei_model_locate`が**実装済み**。モデル内の位置／親経路／兄弟／近傍参照を型付きで返し、`limit`で省略された件数や未導出の関係種別を明示する。一方、[本Draft #3866](https://github.com/hat47x/tei-platform/pull/3866)の`MapWorkspace/MapWorld`はData・Relation・Pattern等の**型付き関係のread-only M0 Projection**を提供する。双方とも既存`World/Catalog/SourceIndex`に由来するが、**別々の役割**を担う。Locatorを第二Graph Storeにせず、MapのGraphを第二Source Authorityにも使わない。
+
+新設の`TestRealWorkspaceTypedModelMapAndModelLocateAgreeOnRelation`は、現行`reference/workspace`の**実`semantic-relation:sales.order.lines`一件**について、両既存Operationを呼ぶ。独立する観測として：
+
+| 観測 | 期待する同一性 | 未資格 |
+| --- | --- | --- |
+| Source/Version | `Workspace identity`、`WorldFingerprint`、`SourceIndexFingerprint`、`ModelRevision`の値がMapとLocateで一致 | **別Load**なので原子的な同時観測、外部Provider Raw/Manifest/A→B→A履歴 |
+| 選択要素 | `Kind+ID=semantic-relation:sales.order.lines`、`SourceStatus=indexed`、`read-only` | 図上に表示されたLabelだけでCanonical選択を確定 |
+| 親とTarget | Locate親経路の末尾`semantic-data(parent)`と`relation-target`のFrom/Toを、Mapの`contains(parent→relation)`／`refers-to(relation→target)`の**各一件**へ照合 | Functionや業務Action全件の存在、Same-EndPoint別Edgeの安全なWrite資格 |
+| 部分集合 | `limit=1`でも`coverage.notDerived`に`query-data-dependency`が残ること | 表示されない依存が「不存在」、Map`resolved`でMeaning/GrantがAccept |
+
+**検収上限**は実Sourceの一Relationのread-only二Reader同一性。以前の3 Reader (Catalog/Inspect/Trace)と型付きM0への接続を確認するが、Graphの全体像・Function CRUD・データ取得・Studio画面・MCP実受領のE2Eには昇格しない。CLI/MCP間の輸送形式やDisclosureも別検査。ユーザーがDiagramの一部を選択してAIへ問う場面で、`selected string`だけでGraph・Source・権限を推論させない。
+
+### 33.2 選択要素からHarnessへ渡すContextを、小さく・拒否可能にする
+
+[main統合 #3863](https://github.com/hat47x/tei-platform/pull/3863)において、Studio上のFunction/Query/Rule/Trace等の**細粒度Selection→限定Design Context→AI提案→検証・承認・適用**の設計方針は既に計画へ採用済み。ここでは三視点Modeler固有のSelection Requestを既存Ownerへの受入票として定義するだけで、Harness/AI製品をModelerに内蔵せず、DSH専用の接続層を新設しない。
+
+| 選択Contextの最低欄 | 実行時の取扱い |
+| --- | --- |
+| `Product/Workspace identity`、`Qualified Subject Kind+ID`、`View/Occurrence ID`、選択時点の`World/Index/Model Revision` | 異なるCanvasに同じSubjectが何度現れても同じ意味正本。別Workspaceや別表示Occurrenceと混同しない |
+| `Purpose/Requested Operation`、`Bounded Scope`、`Limit/Total/Omitted`、`coverage.notDerived`、`unresolved/ambiguous` | 要求された周辺情報だけを投影。見えていない部分をゼロ件・完全と扱わない。大量の会話ログ・Source全文を既定送信しない |
+| `SourceRef/Observation Status`、外部Rawの鮮度不明、`Current Disclosure` | Loader/Index上の参照可能性と、Actorへの開示・外部AI送信許可を別評価。欠落・非開示・古いSourceをAIが補完しない |
+| `Candidate Diff`／再Load後の`Revision`／`Owner Acceptance`／`Host Grant`／`Effect Receipt` | AI提案を自動的にSource/業務効果へ適用せず、現在版を再検査して実Ownerへ受理を戻す |
+
+同一Harness SessionをTEI/SUI/SEI/SHOの間で共有する場合も、Sessionは**選択対象への参照と復帰位置**を引き継ぐにとどまる。元製品の権限・意味受理・DisclosureをSessionへ集約して移植しない。DSH先行の理由はTEIのEverything is Pluginとの実装適合性であり、他のHarnessを排除しない。H0決定論的TEI操作、H1外部Harness、H2交換可能なHarness/モデルの同一Task・同一Independent Expected比較は#3863側が所有する。
+
+### 33.3 最初の実業務縦断を妨げない実装順
+
+- **P0-R：#2586の`order_entry.recent_orders`**。単一Function→Query/SQL byteとargs→正式に選択/InvokeしたProvider→実Rowset→明示Mapping→Data Context→Consumerまでの同一Attemptを最優先。Go実Referenceの限定結果、テストConnectorと実DB、Current Grant/Owner Meaningを別列で判定する。AIモデルの強い推論は、この最小横断のRoot Cause/不足接続/負例に集中する。
+- **P0-D1：#1251の正式Plugin Provider選択→実呼出し**。main統合[#3843](https://github.com/hat47x/tei-platform/pull/3843)の宣言制限付き能力呼出しや[#3540](https://github.com/hat47x/tei-platform/pull/3540)のReference Inspectorを、外部Provider/S2-product/Verified BOMの完成としない。
+- **P1-M：今回のM0↔Locate Go Test → 三視点Graph/CRUDとUI Selection**。先に実RelationのSource連鎖を確認し、M2で一意なRelation Identity、CRUD Cell Source、Unknown、Consumer Disclosureを条件にread-only投影。編集はSource/RevisionとOwnerで一意性が成立する場合に限る。
+- **P2：Studio/SHO**。SHOのUTF-16→Source byte range、Working Copy/Save As、文書参照の変更は同様の安全対照として利用するが、Document WriterとTEI意味モデルの適用・共有Harness Sessionを別受入に残す。
+
+新しいGate／Registry／Domain Parser／Graph Authority／Host／Runner／専用Harness Session Storeを導入しない。必要なテストは既存Go/CLI、[#2514](https://github.com/hat47x/tei-platform/issues/2514)/[#1180](https://github.com/hat47x/tei-platform/issues/1180)のIndependent Expectedに接続する。
+
+**現在の状態**：本§33・二Reader照合Go試験は当該Draftのソースとして保存する計画変更。新Headの`gofmt/go test/vet`とRepository Healthが実際に成功するまで、Product MapやAI-Harness操作を合格扱いしない。図表の完全性・実Studio/SHO/DSH送出、業務効果・Meaning Acceptanceは未実証。
