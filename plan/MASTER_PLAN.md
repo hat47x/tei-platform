@@ -1196,6 +1196,13 @@ X-TEAのテーブル1:1/1:N→XF単票/明細の対応を、**テーブル非依
 - **受入順**：C0 MV-01〜04（Table/Form、DAG→Tree、Aggregate、partial）Headless → C1 MV-05/06（Selection ABA、非開示の同期漏えい）→ C2 MV-07/08（SUI Canvas・SHO文書・朗読区間）異質Consumer → C3 既存Function→実Provider Read/Action/Receiptの縦切りへ接続。独立Expectedは[#2514](https://github.com/hat47x/tei-platform/issues/2514)/[#1180](https://github.com/hat47x/tei-platform/issues/1180)が所有します。
 
 [表現型間連携・変更影響の設計比較票](design/REPRESENTATION_CROSSVIEW_COORDINATION_2026-11.md)を参照。**今回の成果は計画・比較票のみで、MV-01〜08、実Renderer/Provider、Owner受理はNOT RUN**。既存Gate A/B/CおよびProduct実装状況の判定には反映しません。
+## ドメインモデル由来のテスト生成と開発者支援（設計・未実装）
+
+TEIの三要素分析（Data / Function / Business）を、単なる入力データの生成にとどめず、値域・型・強属性の意味候補・業務Key/FD・Relation・業務Rule・手作業/承認を含むProcedure・広域のデータ整合性から**検証義務と正負テスト候補を導出する開発者支援**へ展開する。独立Expected、実Runner、実Provider、Source/Attempt Evidence、Owner受理の正本は増設しない。
+
+最初は#1131の型付きDataset/Snapshot・候補生成、#1126/#2495の制約、#2514の独立Expected、#1180のScenario、#1163の実証Evidenceを利用し、**受理済みConstraintだけを決定論的に検査して正常例・境界値・一因子違反の反例を生成する**。次に#1125の業務手順・手作業/承認、#2506/#2586のContext/実Read、複数Tenant/Provider・変更/同時実行への横断検査を段階的に足す。AIは反例探索と変更影響分析を支援し、業務意味の採否や本番の副作用は実行しない。
+
+**「強属性」の原典定義は未受理**であるため、業務Key・FD・必須属性と自動同一視しない。未取得、業務NULL、非選択SQL NULL、部分取得、異Snapshot、非公開条件の照合も区別する。詳細と16件の独立対照候補、P0〜P2の開発順、実行済み/未実行境界は [ドメインモデル由来のテスト生成・開発者支援計画](design/DOMAIN_MODEL_DERIVED_TEST_AND_DEVELOPER_SUPPORT_2026-11.md) にまとめる（Draft、**生成機能は未実装・NOT RUN**）。
 
 ## 先に固定しないもの
 
