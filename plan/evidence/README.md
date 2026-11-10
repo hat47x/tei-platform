@@ -3,6 +3,7 @@
 要求が受け入れシナリオや検証根拠にどう結び付くかを整理する文書を置きます。要求そのものは[`requirements/`](../../requirements/README.md)、段階判定の記録と実行手順は[`gate/`](../gate/README.md)、現在の実装状況は[`docs/status.md`](../../docs/status.md)を参照してください。
 
 - [製品品質の検証計画](PRODUCT_QUALITY_EVIDENCE_PLAN_2026-09.md)
+- [データ層のsubjectのノード化](CLI_DATA_LAYER_NODES_2026-11-11.md)（`database`・`database-contract`・`database-contract-query`がノードにならず、それらを端点にする辺が全て落ちていた件。索引に`DatabaseElements`を記録して投影がmaterializeする。`targets-database`と`requires-contract`が出るようになり、72subject走査の`projectionUnresolved`が864件6種から72件1種へ。`subject-kind`の公開列挙は変えない（案B）。`trace.unresolved`の意味も変えない）
 - [永続化の列対応の参照グラフ辺](CLI_COLUMN_MAPPING_EDGES_2026-11-10.md)（column A -> Bの列対応を索引が捨て投影も参照せず、属性のincomingが0件に見えた件。semantic-data --maps-column--> semantic-attributeの辺にし、列名はAliasで運ぶ。incomingを持つ属性が3件から12件へ。残る8件は列対応が未宣言）
 - [読めないqualification-requirementsの符号](CLI_QUALIFY_REQUIREMENTS_ERROR_2026-11-10.md)（存在しないパスや形の違うJSONを渡すと`KNOWLEDGE_BUILD_FAILED`になり、引数の誤りとモデルの問題を区別できなかったため`INVALID_ARGUMENT`へ分離。読めるrequirements＋読めないWorkspaceは構築失敗のまま。requirementsのスキーマ広告は未実施）
 - [製品要求と実証状況の照合](PRODUCT_REQUIREMENT_GAP_AUDIT.md)

@@ -73,6 +73,21 @@ func FromIndex(d index.Derived, scope string) Projection {
 	for _, e := range d.Queries {
 		add("query", string(e.Query))
 	}
+	// The data layer declares subjects of its own: a database, the contracts
+	// it publishes, and each contract query. Declared edges name them, and an
+	// edge whose endpoint is not a node is dropped, so `targets-database`,
+	// `requires-contract`, `contract-query`, `reads` and `writes` all vanished
+	// and the data layer never appeared in `trace` (#4068).
+	//
+	// These nodes are addressable as edges but are not added to the advertised
+	// subject-kind list: that list is the public query grammar, and widening it
+	// is a contract change (option B of #4068).
+	for _, e := range d.DatabaseElements {
+		if e.Kind == "" || e.ID == "" {
+			continue
+		}
+		add(e.Kind, string(e.ID))
+	}
 	ruleSet := map[modelref.Rule]bool{}
 	// The same edge can be declared by more than one collection — `realizes` is
 	// built both from DeclaredDependencies and from CustomGoBindings — so the

@@ -221,6 +221,16 @@ type BindingIndexEntry struct {
 	Hook        string           `json:"hook"`
 }
 
+// DatabaseElementIndexEntry names one subject of the data layer. The
+// declared edges point at these IDs, and the projection can only keep an
+// edge whose endpoints are nodes, so the declaration has to be readable
+// here. Without it every data-layer edge was dropped and the projection
+// reported it as unmaterialized (#4068).
+type DatabaseElementIndexEntry struct {
+	Kind string           `json:"kind"`
+	ID   core.CanonicalID `json:"id"`
+}
+
 type Derived struct {
 	Plugins                      []PluginIndexEntry                 `json:"plugins,omitempty"`
 	Bundles                      []BundleIndexEntry                 `json:"bundles,omitempty"`
@@ -230,6 +240,7 @@ type Derived struct {
 	DeclaredDependencies         []DeclaredDependency               `json:"declaredDependencies"`
 	ApplicationPatterns          []ApplicationPatternIndexEntry     `json:"applicationPatterns,omitempty"`
 	ApplicationDatabases         []ApplicationDatabaseEdge          `json:"applicationDatabases"`
+	DatabaseElements             []DatabaseElementIndexEntry        `json:"databaseElements,omitempty"`
 	EnvironmentBindings          []EnvironmentBinding               `json:"environmentBindings"`
 	DeploymentExecutorRoutes     []DeploymentExecutorRouteEntry     `json:"deploymentExecutorRoutes,omitempty"`
 	ObservationProviderRoutes    []ObservationProviderRouteEntry    `json:"observationProviderRoutes,omitempty"`
@@ -401,6 +412,18 @@ func Build(w ir.World) Derived {
 		}
 	}
 	for _, db := range w.Databases {
+		d.DatabaseElements = append(d.DatabaseElements, DatabaseElementIndexEntry{Kind: "database", ID: db.ID})
+		for _, c := range db.Contracts {
+			d.DatabaseElements = append(d.DatabaseElements, DatabaseElementIndexEntry{Kind: "database-contract", ID: c.ID})
+			for _, q := range c.Queries {
+				if q.Name == "" {
+					continue
+				}
+				// The workspace names a contract query <contract>/<query>.
+				d.DatabaseElements = append(d.DatabaseElements, DatabaseElementIndexEntry{
+					Kind: "database-contract-query", ID: core.CanonicalID(string(c.ID) + "/" + q.Name)})
+			}
+		}
 		for _, s := range db.SemanticUses {
 			d.DeclaredDependencies = append(d.DeclaredDependencies, DeclaredDependency{FromKind: "database", From: db.ID, Relation: "uses-semantic", ToKind: "semantic", To: s})
 		}
@@ -565,6 +588,12 @@ func Build(w ir.World) Derived {
 			return d.ApplicationPatterns[i].Pattern < d.ApplicationPatterns[j].Pattern
 		}
 		return d.ApplicationPatterns[i].Application < d.ApplicationPatterns[j].Application
+	})
+	sort.Slice(d.DatabaseElements, func(i, j int) bool {
+		if d.DatabaseElements[i].Kind != d.DatabaseElements[j].Kind {
+			return d.DatabaseElements[i].Kind < d.DatabaseElements[j].Kind
+		}
+		return d.DatabaseElements[i].ID < d.DatabaseElements[j].ID
 	})
 	sort.Slice(d.ApplicationDatabases, func(i, j int) bool {
 		return d.ApplicationDatabases[i].Application < d.ApplicationDatabases[j].Application || (d.ApplicationDatabases[i].Application == d.ApplicationDatabases[j].Application && d.ApplicationDatabases[i].Alias < d.ApplicationDatabases[j].Alias)
