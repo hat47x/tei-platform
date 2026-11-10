@@ -469,3 +469,19 @@ REA Candidate Projectorの外部IDを`InspectSubject`のCanonical IDとして偽
 **責務分離**：外部からの`1 Observation + 1 Relation`のProduct read-only受領に必要な型のFit/Gapは既存#1158/#3419・Plugin #1251、正式な三視点／Model Mapは#1124/#2497およびDraft #3866、SHO編集は別Repo #6。ERAではなく**REA**の本実験（#3394/#3496）が所有するのは生の外部EvidenceとCandidateへの損失なしの受渡し、実AttemptでのSource/Provider/Delivery Witnessまで。新しいCore Host／意味Registry／解析Runner／Framework Routerは作らない。
 
 **検証の現況**：今回の追補は既存実Source／実PRの設計・コードの静的照合。上表のREA-O1/R1/M1/D1を製品TEI/SHO/Harnessで実行したものではない。JSONL T0-05はワークフロー登録済み・対象HEADの完了実Artifact未確認。既存Go/CIの別HEAD成功を現在Branch全体へ昇格しない。
+
+
+---
+
+<!-- rea-t0-jsonl-actual-negative-20261110 -->
+## 22. T0-05実JSONL失敗を負例として保存し、REA 6.7.0の現物入力境界へ修正（2026-11-10）
+
+**観測済みの失敗（未修正時）**：[T0 Run #42650177051](https://github.com/hat47x/tei-platform/actions/runs/42650177051)、tested HEAD `d4a6e363448a13c8c2e2fb37f0548b34dd838de3`。missing/unsupported/partialの3 JobはPASS。valid Jobは元のREA静的解析とT1-A Candidate-only投影まで成功したが、`inspect-analysis-view --format jsonl`段で**FAIL**。アップロードされた[Artifact `rea-t0-valid` #13689649228](https://github.com/hat47x/tei-platform/actions/runs/42650177051/artifacts/13689649228)を実読取し、`view-exit-code.txt=1`、`view.jsonl`は成功行ではなく`invalid_request/invalid_input`。指摘は`source.kind`の`evidence-file`がそのインストール実CLIで拒否され、**許容値が`retained-evidence`／`inline`である**こと。これをcomplete-view末尾metadata欠落と混同してはいけない。元解析が成功したのでT0-01実績を取り消す必要はないが、**T0-05は未合格**。
+
+**上流の文書と実Binaryの食い違い**：上流[CLIガイド](https://github.com/morluto/rea/blob/main/docs/getting-started/cli.md)は`source.kind=evidence-file`例を掲載。しかし固定`rea-agents@6.7.0`の実Runは上記の実診断を返した。文書上の例をactual Invocationに優先させず、`REA 6.7.0の実CLiが報告した許可入力`に合わせる。上流仕様が将来変化した場合は再びCapability/入力形式を再判定する。
+
+**このDraftで実施した最小修正**：`.github/workflows/rea-t0-static-evidence.yml`のJSONL検査だけで、保存済み`analysis.json`（最大16 MiBの公開合成Fixture）をread-onlyで`json.loads`し、`source.kind=inline`・`source.evidence=<元の完全Envelope>`のリクエストを作成する。保存原本のraw bytesはそのまま保持し、作成したリクエストの`source.evidence`と保存元のdecoded JSONが同値であること、リクエストSHA-256を別確認する。加工済みRequestのbyte digestは**元raw Evidence Digestと区別**する。外部送信・別Evidence Registry・新Parser/Runner/Tool依存は導入しない。
+
+**合否判定**：実REAのJSONL再出力がexit0かつ`jsonl/v1` object collection metadata・emitted行数一致なら、元出力から最終metadataレコードを削った**派生コピー**が`missing-metadata`として拒否されることを独立確認。元EvidenceのCoverage、Source全量、REA Profile/依存closureは引き続きunknown/partial。**上記修正の現HEAD実CIは、GitHub Actionsによる実行とArtifact再読取まで未検収**。GitHubワークフロー定義の更新成功をT0-05完了としない。
+
+**並行領域の引渡し**：[main #3540](https://github.com/hat47x/tei-platform/pull/3540)のInspector実CLI/Studio到達と本試験用REA CLI Invocationは別。現行既存`internal/deployment/observation`のRuntime/DB Snapshot型へ静的Source解析候補を流用しない（§20）。T1-Aの最小Product受入はSource付き1 Observation+有向1 Relationの**既存Application APIでのread-only実受領**であり、受入型が無い場合はFit/Gap/未対応診断をOwnerへ返し、新しい並列Operation/意味正本を先行実装しない。製品側の`order_entry.recent_orders`実Rowset最優先を変更しない。
