@@ -1,0 +1,184 @@
+{
+  "note": "The stdio transport connects: the child process received initialize, notifications/initialized and tools/list (no server/discover, unlike streamable-http), and the model's tool list grew to 28 with mcp__stdiomock__stdio_echo. The child inherited 49 environment variables including a canary, but not DEEPSEEK_API_KEY.",
+  "overlay": {
+    "insert": [
+      {
+        "id": "mcp-client",
+        "name": "@deepseek-ai/dsh-mcp-client",
+        "config": {
+          "transport": "stdio",
+          "serverName": "stdiomock",
+          "command": "python",
+          "args": [
+            "<record-dir-script>",
+            "<record-dir>"
+          ],
+          "toolCallTimeoutMs": 5000,
+          "failOnStartupError": false
+        }
+      }
+    ]
+  },
+  "stdioLines": [
+    {
+      "file": "001-line.json",
+      "bytes": 163,
+      "method": "initialize",
+      "id": 0,
+      "sha256": "40902c765afca2b3658a4c98787806ed8b1a716cf4a4874b273eadce48a9ffb8"
+    },
+    {
+      "file": "002-line.json",
+      "bytes": 54,
+      "method": "notifications/initialized",
+      "id": null,
+      "sha256": "59951ca0b212b103876fa23a9e58bcbbc8fbcc0120e3f5ee7214461e2bd1cd5e"
+    },
+    {
+      "file": "003-line.json",
+      "bytes": 46,
+      "method": "tools/list",
+      "id": 1,
+      "sha256": "75f0c7627a35c7e96a0a88482622a0d1ec7e81c0eb5414a88ba7aab9450cf73b"
+    }
+  ],
+  "stdioMethods": [
+    "initialize",
+    "notifications/initialized",
+    "tools/list"
+  ],
+  "stdioHasServerDiscover": false,
+  "httpTransportHadServerDiscover": true,
+  "envRunLines": [
+    {
+      "file": "001-line.json",
+      "method": "initialize",
+      "id": 0
+    },
+    {
+      "file": "002-line.json",
+      "method": "notifications/initialized",
+      "id": null
+    },
+    {
+      "file": "003-line.json",
+      "method": "tools/list",
+      "id": 1
+    }
+  ],
+  "childEnvironment": {
+    "cwd": "D:\\GIT\\hat47x\\.tmp_h2",
+    "envKeyCount": 49,
+    "envKeys": [
+      "ALLUSERSPROFILE",
+      "APPDATA",
+      "COMMONPROGRAMFILES",
+      "COMMONPROGRAMFILES(X86)",
+      "COMMONPROGRAMW6432",
+      "COMPUTERNAME",
+      "COMSPEC",
+      "DEEPSEEK_BASE_URL",
+      "DRIVERDATA",
+      "EFC_9820_1592913036",
+      "EFC_9820_4126798990",
+      "ELECTRON_RUN_AS_NODE",
+      "GIT_PAGER",
+      "GODOT_BIN",
+      "GOPATH",
+      "HOMEDRIVE",
+      "HOMEPATH",
+      "LOCALAPPDATA",
+      "LOGONSERVER",
+      "NO_COLOR",
+      "NUMBER_OF_PROCESSORS",
+      "ONEDRIVE",
+      "OS",
+      "PAGER",
+      "PATH",
+      "PATHEXT",
+      "PROCESSOR_ARCHITECTURE",
+      "PROCESSOR_IDENTIFIER",
+      "PROCESSOR_LEVEL",
+      "PROCESSOR_REVISION",
+      "PROGRAMDATA",
+      "PROGRAMFILES",
+      "PROGRAMFILES(X86)",
+      "PROGRAMW6432",
+      "PROMPT",
+      "PSMODULEPATH",
+      "PUBLIC",
+      "SESSIONNAME",
+      "STDIO_ENV_CANARY_997",
+      "SYSTEMDRIVE",
+      "SYSTEMROOT",
+      "TEMP",
+      "TMP",
+      "USERDOMAIN",
+      "USERDOMAIN_ROAMINGPROFILE",
+      "USERNAME",
+      "USERPROFILE",
+      "WINDIR",
+      "ZES_ENABLE_SYSMAN"
+    ],
+    "sensitive": {
+      "DEEPSEEK_BASE_URL": {
+        "length": 21,
+        "present": true,
+        "sha256_prefix": "13a46d544d9a074d",
+        "marksDummyKey": false,
+        "marksCanary": false
+      }
+    },
+    "canaryPresent": true,
+    "baseUrlPresent": true,
+    "apiKeyPresent": false
+  },
+  "modelRequests": [
+    {
+      "file": "001-request.json",
+      "bytes": 99849,
+      "sha256": "19944bb9d0f10a4b74cba70ab2e7956b80b00beddfaae89dcc16ee234498e68a",
+      "toolCount": 28,
+      "mcpTools": [
+        "list_mcp_resource_templates",
+        "list_mcp_resources",
+        "mcp__stdiomock__stdio_echo",
+        "read_mcp_resource"
+      ]
+    },
+    {
+      "file": "002-request.json",
+      "bytes": 57319,
+      "sha256": "867f21c87b1aa1d8e142476080c9774483250f311d89090661c2526c1829139b",
+      "toolCount": 0,
+      "mcpTools": []
+    },
+    {
+      "file": "003-request.json",
+      "bytes": 69607,
+      "sha256": "1f1a5d0716234316865028f095e7e62fe5bdfd1b3b27121a0190df6ddb7824dc",
+      "toolCount": 28,
+      "mcpTools": [
+        "list_mcp_resource_templates",
+        "list_mcp_resources",
+        "mcp__stdiomock__stdio_echo",
+        "read_mcp_resource"
+      ]
+    },
+    {
+      "file": "004-request.json",
+      "bytes": 41826,
+      "sha256": "2c33688fc311f5c3bf8312d3c1031d403b2c444a1211fabc6f0821d6ad8314fa",
+      "toolCount": 0,
+      "mcpTools": []
+    }
+  ],
+  "toolCountBefore": 24,
+  "toolCountAfter": 28,
+  "mcpToolNames": [
+    "list_mcp_resource_templates",
+    "list_mcp_resources",
+    "mcp__stdiomock__stdio_echo",
+    "read_mcp_resource"
+  ]
+}

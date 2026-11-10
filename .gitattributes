@@ -266,3 +266,6 @@
 
 # Feedback-surface observations are hashed as raw bytes.
 /plan/evidence/DSH_FEEDBACK_SURFACE_2026-11-10/** -text
+
+# MCP stdio observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_STDIO_2026-11-10/** -text
