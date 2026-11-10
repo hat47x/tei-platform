@@ -236,7 +236,7 @@ func Validate(w ir.World) []Diagnostic {
 				out = append(out, errFor(subject.Subject{Kind: "semantic-type", ID: string(typ.ID)}, "SEMANTIC_TYPE_NAMESPACE_MISMATCH", "type %s is declared in semantic namespace %s", typ.ID, ns.ID))
 			}
 			if !typ.Kind.Valid() {
-				out = append(out, errd("INVALID_SEMANTIC_TYPE_KIND", "type %s has invalid kind %q", typ.ID, typ.Kind))
+				out = append(out, errd("INVALID_SEMANTIC_TYPE_KIND", "type %s has invalid kind %q; valid values are %s", typ.ID, typ.Kind, validValues(semantic.TypeKinds)))
 			}
 			seenValues := map[string]bool{}
 			for _, value := range typ.Values {
@@ -272,7 +272,7 @@ func Validate(w ir.World) []Diagnostic {
 					out = append(out, errd("SEMANTIC_RELATION_PARENT_MISMATCH", "relation %s is declared under data %s", r.ID, d.ID))
 				}
 				if !r.Cardinality.Valid() {
-					out = append(out, errFor(subject.Subject{Kind: "semantic-relation", ID: string(r.ID)}, "INVALID_SEMANTIC_RELATION_CARDINALITY", "relation %s has invalid cardinality %q", r.ID, r.Cardinality))
+					out = append(out, errFor(subject.Subject{Kind: "semantic-relation", ID: string(r.ID)}, "INVALID_SEMANTIC_RELATION_CARDINALITY", "relation %s has invalid cardinality %q; valid values are %s", r.ID, r.Cardinality, validValues(semantic.Cardinalities)))
 				}
 				addSemanticElement(r.ID, "relation")
 				semanticRelations = append(semanticRelations, r)
@@ -400,7 +400,7 @@ func Validate(w ir.World) []Diagnostic {
 		}
 		dbs[d.ID] = d
 		if !d.Ownership.Valid() {
-			out = append(out, errFor(subject.Subject{Kind: "database", ID: string(d.ID)}, "INVALID_DATABASE_OWNERSHIP", "database %s has invalid ownership %q", d.ID, d.Ownership))
+			out = append(out, errFor(subject.Subject{Kind: "database", ID: string(d.ID)}, "INVALID_DATABASE_OWNERSHIP", "database %s has invalid ownership %q; valid values are %s", d.ID, d.Ownership, validValues(database.Ownerships)))
 		}
 		semanticUseSet := map[core.CanonicalID]struct{}{}
 		for _, ns := range d.SemanticUses {
@@ -609,7 +609,7 @@ func Validate(w ir.World) []Diagnostic {
 			}
 			seenAlias[req.Alias] = struct{}{}
 			if !req.Access.Valid() {
-				out = append(out, errd("INVALID_APPLICATION_RELEASE_DATABASE_ACCESS", "application release %s@%s datasource %s has invalid access mode %q", r.Application, r.Version, req.Alias, req.Access))
+				out = append(out, errd("INVALID_APPLICATION_RELEASE_DATABASE_ACCESS", "application release %s@%s datasource %s has invalid access mode %q; valid values are %s", r.Application, r.Version, req.Alias, req.Access, validValues(database.Accesses)))
 			}
 			if _, ok := dbs[req.TargetDatabase]; !ok {
 				out = append(out, warnd("APPLICATION_RELEASE_DATABASE_NOT_CURRENT", "application release %s@%s targets database %s which has no current definition", r.Application, r.Version, req.TargetDatabase))

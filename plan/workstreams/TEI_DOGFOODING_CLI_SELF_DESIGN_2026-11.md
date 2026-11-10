@@ -1661,3 +1661,38 @@ has invalid access mode "read-write-nothing"; valid values are read, write, read
 **1ラウンドでまとめて直さなかった理由**: 17件は語彙の定義が `plugin`・`semantic`・`database/release`・`deployment`・`releaseplan` に分散し、それぞれに単一情報源の追加が要る。実測した3件を先に通し、残りを Issue にした。
 
 `INVALID_APPLICATION_RELEASE_DATABASE_ACCESS` は `database.Accesses` を再利用できるため、次に着手するなら最も容易。
+
+## 56. 第54ラウンド（2026-11-10）: 語彙診断の第2弾と、未検証だった疑問の解消
+
+第53ラウンドで残した2つを処理した。生出力は[第54ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND54_VOCABULARY_BATCH2_2026-11-10/README.md)にある。
+
+### 未検証の疑問は「欠陥なし」だった
+
+第52ラウンドで `std` について「引けない」と誤ったため、同じ型の誤りが残っていないかを先に実測した。
+
+| 対象 | 不正な語を書いたときの診断 |
+| --- | --- |
+| `capability` ブロック | `expected input, output, outcome, effect, or emptyPolicy` |
+| `data` ブロック | `expected attribute, relation, candidate-key, or functional-dependency` |
+| `interaction` ブロック | `expected item, navigate, or command in interaction` |
+
+**いずれも受理する語を列挙している。** 第51〜53ラウンドで「同じ問いが残る」と書いたのは**過度な一般化**だった。`std` は「型名という値の集合」の話で、ブロック内キーワードとは性質が違う。
+
+### #4094 の第2弾: 4件を修正
+
+| コード | 語彙 | 値 |
+| --- | --- | --- |
+| `INVALID_APPLICATION_RELEASE_DATABASE_ACCESS` | access mode | read, write, read-write（`database.Accesses` を再利用） |
+| `INVALID_DATABASE_OWNERSHIP` | ownership | managed-here, external-observed |
+| `INVALID_SEMANTIC_TYPE_KIND` | type kind | primitive, alias |
+| `INVALID_SEMANTIC_RELATION_CARDINALITY` | cardinality | one, many |
+
+`database.Ownerships`・`semantic.TypeKinds`・`semantic.Cardinalities` を追加し、各 `Valid()` がそれを読む。
+
+**`INVALID_SEMANTIC_TYPE_KIND` は CLI から到達できない。** `type` の種別は構文（`from` の有無）から導出されるため著者が不正値を書けない。診断文は正しいが CLI では観測できない。この差を明記した。
+
+変異2種（ownership 診断から一覧を削る／`Cardinalities` から `many` を落とす）が両方落ちることを確認した。`cmd/tei`（124.9s）を含む全対象が ok。
+
+### 残り
+
+#4094 の17件のうち4件を直したので**13件**が残る。`plugin`・`migration`・`deployment`・`releaseplan` 側の語彙で、それぞれ単一情報源の新設が要る。

@@ -29,7 +29,17 @@ const (
 	OwnershipExternalObserved Ownership = "external-observed"
 )
 
-func (o Ownership) Valid() bool { return o == OwnershipManagedHere || o == OwnershipExternalObserved }
+// Ownerships lists every accepted ownership in report order.
+var Ownerships = []Ownership{OwnershipManagedHere, OwnershipExternalObserved}
+
+func (o Ownership) Valid() bool {
+	for _, valid := range Ownerships {
+		if o == valid {
+			return true
+		}
+	}
+	return false
+}
 
 type Database struct {
 	ID           core.CanonicalID   `json:"id"`

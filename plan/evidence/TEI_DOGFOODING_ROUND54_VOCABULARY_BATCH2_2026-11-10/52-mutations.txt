@@ -1,0 +1,7 @@
+M1 remove the value list from the ownership diagnostic
+   -> FAIL: database ownership: message does not name "managed-here":
+            database sales_core has invalid ownership "managed-elsewhere"
+M2 drop `many` from Cardinalities
+   -> FAIL: Cardinalities has 1 entries but 2 are declared
+restored -> validation, database/... (10 pkgs), semantic, workspace,
+            operations, cmd/tei (124.9s) all ok; vet and gofmt clean
