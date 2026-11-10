@@ -1,0 +1,5 @@
+M1 remove the edge (the original defect)
+   -> FAIL: no realizes edge from order_entry
+M2 replace the empty-side guard with `if true`
+   -> FAIL: a binding with no application produced "" -> "security.authenticate"
+restored -> index/modelref/operations ok, cmd/tei ok (170.8s), vet and gofmt clean
