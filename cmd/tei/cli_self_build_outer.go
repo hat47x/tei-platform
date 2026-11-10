@@ -70,8 +70,11 @@ type selfBuildOuterEvidence struct {
 	// L2B is the combined claim (§4.23). The per-observation flags above each
 	// still say false, because no single observation is the claim; this record
 	// answers whether all of them hold together and names every one that did not.
-	L2B   *selfBuildL2BClaim `json:"l2b,omitempty"`
-	Error *cliFailure        `json:"error,omitempty"`
+	L2B *selfBuildL2BClaim `json:"l2b,omitempty"`
+	// Strong records what -strong changed, so the second build is attributable to
+	// the flag rather than to a caller who asked for it directly.
+	Strong *selfBuildStrong `json:"strong,omitempty"`
+	Error  *cliFailure      `json:"error,omitempty"`
 }
 
 // selfBuildIntentBinding separates "which declaration this entry held" from
@@ -148,6 +151,9 @@ type selfBuildOuterArgs struct {
 	// that the caller spoke, so an explicit false is honoured rather than defaulted.
 	RebuildCheck    bool
 	RebuildCheckSet bool
+	// Strong asks for an attempt that can support the L2-b claim: it implies
+	// -rebuild-check and requires the in-process route (§4.25 P-4, §4.30).
+	Strong bool
 	// InProcess selects deriving the plan in this process from a caller-named
 	// build catalog (§4.22 step 2). It is mutually exclusive with IntentResolver.
 	InProcess selfBuildInProcessArgs
@@ -189,6 +195,7 @@ func newSelfBuildOuterFlagSet(parsed *selfBuildOuterArgs) *flag.FlagSet {
 	fs.StringVar(&parsed.IntentResolverArg, "intent-resolver-arg", "", "extra arguments for the intent resolver as a JSON array")
 	fs.StringVar(&parsed.ExpectedPlanFingerprint, "expected-plan-fingerprint", "", "planFingerprint the resolved plan must equal")
 	fs.BoolVar(&parsed.RebuildCheck, "rebuild-check", false, "build the same plan a second time in fresh state and compare the artifact bytes (§4.21); on by default when -build-catalog is given, and -rebuild-check=false keeps it off (§4.30)")
+	fs.BoolVar(&parsed.Strong, "strong", false, "ask for an attempt that can support the L2-b claim: implies -rebuild-check and requires -build-catalog (§4.30)")
 	fs.StringVar(&parsed.InProcess.CatalogPath, "build-catalog", "", "build catalog JSON the entry resolves against in process (§4.22)")
 	fs.StringVar(&parsed.InProcess.CatalogDigest, "build-catalog-digest", "", "sha256 digest of -build-catalog; required with it")
 	fs.StringVar(&parsed.InProcess.SourceRoot, "build-source-root", "", "root the declaration's source references resolve from; required with -build-catalog")
@@ -239,6 +246,14 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 		return 2, fmt.Errorf("INVALID_ARGUMENT: %w", err)
 	}
 	parsed = applyEvidenceDefaults(parsed)
+	// §4.30: -strong is one flag for one meaning. It implies the reproduction
+	// check and refuses without the route that could support the claim, rather
+	// than returning a strong name over a weak attempt.
+	rebuildCheck, strongRecord, strongErr := applyStrong(parsed.Strong, parsed.RebuildCheck, parsed.InProcess.requested())
+	if strongErr != nil {
+		return 2, fmt.Errorf("INVALID_ARGUMENT: %w", strongErr)
+	}
+	parsed.RebuildCheck = rebuildCheck
 	if parsed.InProcess.requested() && strings.TrimSpace(parsed.IntentResolver) != "" {
 		// §4.16 warned that two derivation routes writing the same record make its
 		// meaning depend on the route. One attempt gets one derivation.
@@ -254,6 +269,9 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 		Output:        parsed.Output,
 		Qualified:     false,
 		Boundary:      selfBuildOuterBoundary,
+	}
+	if strongRecord.Requested {
+		report.Strong = &strongRecord
 	}
 
 	// SC0-09: the builder is an argument of this command, not a property of the
