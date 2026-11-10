@@ -1369,3 +1369,32 @@ ir.World --[この試験が見る]--> index.Build --[見ていない]--> 参照�
 **「読む」と書いた欄の内容が辺になるかは見ていない。** `Persistence` は「読む」だが、`#4001` のとおり列対応は辺になっていない（`Mapping.Columns` を索引が捨てている）。つまり `#4001` の穴はこの試験では捕まらない。**半分だけ塞いだ。**
 
 次の段（entry 型が World の下位構造を落としていないか）は型ごとの判断が要るので、別の設計として扱うのが妥当と考えている。
+
+## 49. 第46ラウンド（2026-11-10）: 索引の entry 型が World の下位構造を捨てていないかを検査で固定した
+
+第45ラウンドで「半分だけ塞いだ」と書いた2段目を塞いだ。生出力は[第46ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND46_ENTRY_FIELD_COVERAGE_2026-11-10/README.md)にある。
+
+### 実測: `PersistenceIndexEntry` は10欄のうち6欄を捨てている
+
+| 型 | 欄 |
+| --- | --- |
+| `persistence.Mapping`（World 側） | `ID`・`Database`・`SemanticData`・`Table`・`Columns`・`RelationStorage`・`PrimaryKey`・`UniqueConstraints`・`Indexes`・`ForeignKeys`（10） |
+| `PersistenceIndexEntry`（索引側） | `Mapping`・`Database`・`SemanticData`・`Table`（4） |
+
+対照として `realization.CustomGoBinding` → `BindingIndexEntry` は2欄とも保持し、`Adapter`・`Hook` を加えている（捨てていない）。
+
+### 追加した試験
+
+`internal/index/entry_field_coverage_test.go`。各 source 型の全欄が entry 型に在るか、`renamed`／`dropped` に記録されているかを検査する。**捨てている欄には理由を必須**にした（第45ラウンドと同じ方針）。`ID` が `Mapping` に改名されている事実も表に記録した。
+
+変異3種（未登録の欄追加／`Columns` の dropped 行削除／`ID` の rename 行削除）がすべて落ちることを確認した。
+
+### これで2段とも塞がったが、#4001 は直っていない
+
+```text
+ir.World --[第45ラウンド]--> index.Build --[第46ラウンド]--> entry 型
+```
+
+**両方の段が「判断を書かなければ通らない」になった。** しかし `#4001` の欠陥（列対応が辺にならない）は残る。今は理由付きで記録されているだけで、`trace` は依然として列対応を返さない。**検出を完成させ、修正は設計判断として残した。**
+
+`database` は `SupportedSubjectKinds` に無いため、辺を作るには kind の追加も伴う。私は材料を提示するに留める。
