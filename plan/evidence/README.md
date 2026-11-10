@@ -312,6 +312,7 @@
 - [traceのoffset/limitの値域宣言](CLI_MCP_TRACE_PAGING_BOUNDS_2026-11-10.md)（`tei_trace`の`offset`・`limit`だけが値域を宣言せず、0が有効で負値が拒否されることをclientが読めなかったため`minimum:0`を追加。`model locate`の1..500とは意図的に異なるので各々が宣言する。宣言と実挙動の一致をdispatch経由で固定）
 - [CLIのhelpが受理しないflagを並べていた件](CLI_HELP_GRAMMAR_2026-11-10.md)（	ei validate -h等が共有FlagSetの70個を出し、実際に受け付けるのは3個だった件。ExitOnErrorのコマンドはs.Parse前に絞り込みhelpを返すよう修正。全コマンドで-hのflag数が受理範囲と一致。実行時の受理範囲は不変）
 - [validateの受理しないflagの広告](CLI_CATALOGUE_VALIDATE_FLAGS_2026-11-10.md)（	ei commandsがalidateに-analysis等4個を広告していたが実際は全て拒否。共有FlagSetの所属を取り違えた広告を削除し、catalogueが名指すflagは受理されるflagでなければならないことを単体で固定）
+- [realize束縛の参照グラフ辺](CLI_TRACE_REALIZE_EDGES_2026-11-10.md)（`realize X with custom go`が索引にあるのに投影が辺にせず`trace`で実装者が辿れなかった件。`application -realizes-> semantic-capability`の辺にし、adapterのファイル名はノードにしない。4宣言中3件が辿れ、残る1件は宣言側の欠落として`unmaterialized-to`で観測できるようにした）
 - [viewの-inputが-command無しで黙って捨てられていた](TEI_DOGFOODING_ROUND20_VIEW_INPUT_2026-11-09/README.md)（#3778・#3420。`-input`は`-command`と組だが、無い場合に値が捨てられて成功していた。両方向の変異を検出する試験を追加。起票時の誤診と既存試験による発覚も記録）
 - [view -executeの失敗符号が潰れていた](TEI_DOGFOODING_ROUND21_VIEW_EXECUTE_2026-11-09/README.md)（#3797・#3419。入力不正と認可拒否がどちらも`COMMAND_FAILED`に潰れ、理由がmessageの先頭にしかなかった。既知7符号を`error.code`に出す。`-operation-log`の上書き挙動は未決）
 - [手書きの符号許可リストが21中15を潰していた](TEI_DOGFOODING_ROUND22_CODE_COVERAGE_2026-11-09/README.md)（#3807・#3797・#3420。CLIは7符号、Studioは1符号だけを特別扱いし、coreの21符号のうち15が`COMMAND_FAILED`に潰れていた。列挙を廃止し`command.ReportedFailure`へ。AST走査で再発防止）
@@ -332,6 +333,7 @@
 - [空回りする検査を1箇所に集約して可視化した](TEI_DOGFOODING_ROUND36_SCOPE_NONEMPTY_2026-11-09/README.md)（#3931。全スコープを計測し空は`plan/issue`のみと確認。`TestEveryCheckScopeIsNonEmpty`で0件を検出。私の初版ガードがディレクトリ件数を見て除外分岐が未実行だったことも記録）
 
 - [能力宣言に版付けの余地が無いことの実測](TEI_GO_SELF_BUILD_DECLARATION_VERSIONING_2026-11-10.md)（§7の「必要になった時点で決める」を検証。\ormatVersion\を足した宣言は\json: unknown field\で**拒否される**——版を名乗る手段が導入時点で使えない。D-1/D-2/D-3を比較し、D-2が最も安い理由を示すが**判断はしない**。 #2831）
+- [能力宣言に版を付けない（配るのはcatalogだから）](TEI_GO_SELF_BUILD_DECLARATION_VERSIONING_DECISION_2026-11-10.md)（先行記録が「版付けは必要になった時点では決められない」と実測したのを受け、未決を**「宣言を誰に配るか」**として決めた。**配るのはcatalogで、catalogは既に`formatVersion`を持ち未知の版を拒否する**（`unsupported build catalog format 2`）。宣言はツールと同じリポジトリで変わるので版を名指す相手がいない。実測：版を書かない宣言は通り、`formatVersion`を足した宣言は`json: unknown field`で拒否される。**宣言を配ることになったら配る前に版を足す**。これで§7の未チェックは`darwin`/`arm64`の1項目だけになった。SB-C0 §4.35 / #2831）
 - [設計者ループは動くが補助コマンドのhelpが誤っていた](TEI_DOGFOODING_ROUND37_DESIGNER_LOOP_2026-11-09/README.md)（#3943。`security.logout`追加→validate/inspect/traceで連鎖確認。誤りは正しく検出。`-qualification-requirements`がパスなのにhelpは「JSON」、スキーマも未広告。文言を修正）
 - [validate -hが70フラグを表示していた](TEI_DOGFOODING_ROUND38_VALIDATE_FLAG_NOISE_2026-11-09/README.md)（#3956。共有FlagSetのため標準-hが全フラグを列挙。allow-listは既にありhelpTextも絞っていたが、validate/worldはExitOnErrorで到達せず。-hを既存経路へ流し70→3）
 - [13分前に他者が同じ問題を直していた（重複実装の撤回）](TEI_DOGFOODING_ROUND39_DUPLICATE_HELP_FIX_2026-11-09/README.md)（#3956・#3943。`0b85c031a`が06:25に修正、私は06:38に重複提出。寄与ゼロを分離ビルドで確認し撤回。記録の虚偽2件も訂正）
