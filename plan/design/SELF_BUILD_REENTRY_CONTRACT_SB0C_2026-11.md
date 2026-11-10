@@ -1583,7 +1583,9 @@ in-processを既定にするには、**entryがcatalogを自分で選ぶ**必要
 | 2. 宣言byteの一致 | 宣言のdigest（entryが保持）と、childが申告したdigestの**比較** | **childが実際にそのbyteを読んだこと** | §4.14 |
 | 3. 計画fingerprintの一致 | 二つの値の**比較**（両方とも空なら`unperformed`） | **childの計画fingerprint** | §4.9・§4.11 |
 | 4. plan→artifactの束縛 | **ディスクのbyteのdigest**と、lockの整合・検証 | childの`artifactDigest` | §4.11・§4.12 |
-| 5. artifactの再現 | 二回の**バイト一致**、**builderの同一性**、**stateの分離**、ディスクの一致 | childの`stateDir`・`artifactDigest` | §4.21・§4.36・(直近2件) |
+| 5. artifactの再現 | 二回の**バイト一致**、**builderの同一性**、**stateの分離**、ディスクの一致 | childの`stateDir`・`artifactDigest` | §4.21（#4002・#4015）・§4.36 |
+
+**「直近2件」は #4002 と #4015 を指す。** 本節を書いた時点で、`cmd/tei/cli_self_build_reproducibility.go` を最後に変更した2件がこの二つであり（`git log` で確認できる）、どちらも §4.21 の変更として記録されている。**欄が未完成のまま残っていたので、名指しに置き換えた。**
 
 #### 検査で止められるもの
 
