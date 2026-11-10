@@ -571,6 +571,8 @@ S1 realistic intent / candidate frontier
 
 ## 関連する参照事例と評価
 
+- [DeepSeek Harnessのプラグイン構成とTEIへの適用研究](PLUGIN_COMPOSITION_HARNESS_RESEARCH_2026-10.md) — 契約・依存・登録の寿命・構成説明を既存のCapability / Semantic Extension / 案件構成の作業へ接続する比較研究
+- [プラグイン構成研究の追試と責務の整理](PLUGIN_COMPOSITION_CONVERGENCE_2026-10.md) — Capability Contractの既存試験、構成観測器、UI変更とDB接続変更を検証し、Productionへ引き継ぐ範囲と不足を整理した評価待ちの記録
 `DESIGN_SYNTHESIS_CROSS_VIEW_PROOF_DESIGN.md`の評価順序は、後続の読み取り専用の検証結果に合わせ、R1～R6へ反映済みです。当初、変更や古い状態の再評価として扱う予定だった論点は、R3～R5を先に個別に評価したうえで、R6のスナップショットの失効として扱います。
 
 R3の初期構想にある`proposal_origin`は、現在の本番用フィールドの候補ではありません。R5と、異なる種類の候補が混在する場合の精緻化を優先し、候補が表す意味と、発見経路・出所の記録を別の観点で扱います。
