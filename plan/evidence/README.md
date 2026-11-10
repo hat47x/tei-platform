@@ -3,6 +3,7 @@
 要求が受け入れシナリオや検証根拠にどう結び付くかを整理する文書を置きます。要求そのものは[`requirements/`](../../requirements/README.md)、段階判定の記録と実行手順は[`gate/`](../gate/README.md)、現在の実装状況は[`docs/status.md`](../../docs/status.md)を参照してください。
 
 - [製品品質の検証計画](PRODUCT_QUALITY_EVIDENCE_PLAN_2026-09.md)
+- [読めないqualification-requirementsの符号](CLI_QUALIFY_REQUIREMENTS_ERROR_2026-11-10.md)（存在しないパスや形の違うJSONを渡すと`KNOWLEDGE_BUILD_FAILED`になり、引数の誤りとモデルの問題を区別できなかったため`INVALID_ARGUMENT`へ分離。読めるrequirements＋読めないWorkspaceは構築失敗のまま。requirementsのスキーマ広告は未実施）
 - [製品要求と実証状況の照合](PRODUCT_REQUIREMENT_GAP_AUDIT.md)
 - [Plugin-firstのCLI/Studio共通InspectorへのD1 Fit/Gap](PLUGIN_FIRST_D1_AUTHORING_ROUTE_FIT_GAP_2026-11.md)（現行Go経路の静的監査と具体的な検証計画。実Provider二Consumerは未実証）
 - [E1合成証拠の8件原本保全と再検証](TEI_E1_SYNTHETIC_ARCHIVE_README_20261013.md)（試験用証拠。製品Gateは未資格）
