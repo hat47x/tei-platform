@@ -1993,6 +1993,65 @@ L2-bの五条件は、childの能力に依存する。本節は、**参照実装
 - `-isolate`の既定化。**module contextを名指す計画が一般的になってから**
 - `replace`・`vendor/`の扱い
 
+### 4.44 隔離ビルドでもL2-bが立つことを回帰試験で確かめる（2026-11-09）
+
+§4.42・§4.43で隔離ビルドを作ったが、**その経路で五条件が立つかは確かめていなかった。** 本節は、回帰試験を隔離ビルドへ切り替え、**隔離した木からビルドしても`l2b.claimed=true`が立つ**ことを固定した。
+
+#### 変えたこと
+
+| 対象 | 変更 |
+| --- | --- |
+| 宣言 | `go-module`のsourceとして`go.mod`・`go.sum`を追加（§4.43の規則） |
+| child args | `-isolate`を追加 |
+| 試験 | 主張に加えて、**childが計画を読むbuilderであること**（`childSchema`）を確かめる |
+
+#### 実測
+
+| 項目 | 値 |
+| --- | --- |
+| `TestSelfBuildEstablishesL2BFromARealGoBuild` | **PASS**（14.5〜71.3秒。環境の負荷で変動） |
+| `l2b.claimed` | **true** |
+| `planCrossCheck` / `planArtifactBinding` / `artifactReproducibility` / `definitionBinding` | すべて成立 |
+
+#### この試験が示していないこと
+
+**隔離が実際に行われたことを、entryは見ていない。** entryはchildのstdoutをdigestとして記録するが、`isolatedTree`の中身は解析しない。**隔離そのものの観測は、ツール自身の試験（写した木が計画と一致する・`moduleFiles`が空・実buildが通る）が担う。**
+
+**したがって本節が言えるのは「隔離ビルドの経路でも鎖が成立する」までで、「この試行が隔離された」ではない。** 両者を一つの试验で言うには、entryがchildの隔離記録を読む必要がある（未着手）。
+
+### 4.45 entryが、builderの隔離記録を読む（2026-11-09）
+
+§4.44は「隔離ビルドの経路でも鎖が成立する」までしか言えなかった。**entryがchildの`isolatedTree`を解析していなかった**からである。本節は、それを読んで記録するようにしたことを残す。
+
+#### 何をするか
+
+| 段 | 内容 |
+| --- | --- |
+| 1 | childの`isolatedTree`（`root`・`members`・`moduleFiles`・`boundary`）を解析する |
+| 2 | **`moduleFiles`が空なら`isolated`**、あれば`isolated-with-external-context`（理由に何を持ち込んだかを並べる） |
+| 3 | 報告の`childIsolation`として出す。**五条件には加えない** |
+
+#### 五条件に加えない理由
+
+**条件を増やすことは契約の変更**であり、§4.23の述語を変える。**記録を足すだけなら、述語はそのままで、読む人が「この試行は隔離されていた」を確認できる。**
+
+**加えるべきかは、`-isolate`を既定にする判断と同じ場所で決める**（§4.43）。今は記録だけを置く。
+
+#### 実測
+
+| 試験 | 結果 |
+| --- | --- |
+| `TestReadChildIsolation`（未申告は記録なし／`moduleFiles`空で`isolated`／あれば`isolated-with-external-context`と理由） | **PASS** |
+| `TestSelfBuildEstablishesL2BFromARealGoBuild`（`childIsolation.state=isolated`・`moduleFiles`空・`memberCount=4`を確認） | **PASS**（12.8秒） |
+
+**`memberCount=4`の内訳**：package・計画が持つ宣言・`go.mod`・`go.sum`。**宣言は§4.40で定義sourceではなくなったが、計画のsourceとしては残っている**（ビルドは読まないが、写す対象ではある）。
+
+#### この節が言っていないこと
+
+- **entryが隔離木を見たこと**。見えるのはchildの申告だけである（§4.37の「信じている」に属する）
+- 五条件への追加。**契約変更であり、別途決める**
+- `-isolate`の既定化
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |

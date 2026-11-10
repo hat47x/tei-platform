@@ -108,6 +108,9 @@ TEIで書いた構築器（`plugin-package-v1.transform.json`）は、入力のJ
 tei self-build \
   -workspace <workspace> \
   -intent-file <宣言.json> \
+  -build-catalog <catalog.json> \
+  -build-catalog-digest sha256:<catalogのdigest> \
+  -build-source-root <宣言のsource参照を解決する根> \
   -child <構築器の実行物> \
   -child-arg '["-plan","<plan.json>"]' \
   -state <隔離state> \
@@ -115,6 +118,8 @@ tei self-build \
 ```
 
 計画の導出は二経路あり、**呼び手が名指しした方を一つだけ**使います。resolver childを起動する`-intent-resolver`か、catalogを名指ししてTEI自身が導く`-build-catalog`・`-build-catalog-digest`・`-build-source-root`の3点セットです。両方は指定できません。
+
+**どちらか一方は必須です。** どちらも渡さないと、試行は`ok:false`・終了コード1で終わり、`l2b.unmet`の先頭が`no plan was derived for this attempt`になります（実測）。宣言はあっても、そこから計画を導く手段が無いためです。
 
 `-build-catalog`を渡すと、**二回目の構築が既定で行われます**（`-rebuild-check=false`で断れます）。二回の成果物が同じバイト列になったときだけ、その計画がその成果物を生んだという観測が成立します。
 

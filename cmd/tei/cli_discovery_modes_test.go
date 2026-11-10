@@ -37,6 +37,31 @@ func discoveryRun(t *testing.T, binary string, args ...string) []byte {
 	return stdout.Bytes()
 }
 
+// discoverySchemaVersion returns the top-level schemaVersion of an envelope.
+func discoverySchemaVersion(t *testing.T, body []byte) string {
+	t.Helper()
+	var response struct {
+		SchemaVersion string `json:"schemaVersion"`
+	}
+	if err := json.Unmarshal(body, &response); err != nil {
+		t.Fatalf("decode envelope: %v", err)
+	}
+	return response.SchemaVersion
+}
+
+// advertisedSchemaVersion returns the schemaVersion the catalog advertises for a
+// command, or "" when the command advertises none.
+func advertisedSchemaVersion(t *testing.T, name string) string {
+	t.Helper()
+	for _, record := range commandCatalog().Commands {
+		if record.Name == name {
+			return record.SchemaVersion
+		}
+	}
+	t.Fatalf("%s is not advertised by tei commands", name)
+	return ""
+}
+
 // discoveryMode returns the top-level `mode` of an envelope, and whether the
 // field was present at all.
 func discoveryMode(t *testing.T, body []byte) (string, bool) {
@@ -134,7 +159,17 @@ func TestDiscoveryAdvertisesEveryModeAResponseCanCarry(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		mode, present := discoveryMode(t, discoveryRun(t, binary, tc.args...))
+		body := discoveryRun(t, binary, tc.args...)
+		// The response must carry the schemaVersion the catalog advertises, so
+		// advancing a command's schema without changing the response (or the
+		// reverse) fails here rather than only in the discovery comparison that
+		// covers a subset of commands (#4032).
+		if want := advertisedSchemaVersion(t, tc.args[0]); want != "" {
+			if got := discoverySchemaVersion(t, body); got != want {
+				t.Fatalf("%q: schemaVersion=%q want %q", tc.args, got, want)
+			}
+		}
+		mode, present := discoveryMode(t, body)
 		if tc.mustAbsent {
 			if present {
 				t.Fatalf("%q: mode=%q, but this call has one output shape", tc.args, mode)
