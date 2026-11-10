@@ -1801,17 +1801,19 @@ L2-bの五条件は、childの能力に依存する。本節は、**参照実装
 
 #### 実装が要るもの（順）
 
-| 段 | 内容 | 何が満たされるか |
-| --- | --- | --- |
-| 1 | `tools/reference-go-build-from-plan`: `-plan`・`-intent`・`-repo`・`-artifact-out`・`-state`を受け、計画とsourceを照合して`go build`し、5項目を申告する | 条件2・3・5と、条件4の材料 |
-| 2 | そのtoolをcatalogのproviderとして宣言し、`tei self-build -build-catalog`で鎖を通す | 条件1・4・**`l2b.claimed`** |
-| 3 | 回帰試験（`cmd/tei`のエンドツーエンド）に載せる | 毎回通ること |
+| 段 | 内容 | 何が満たされるか | 状態 |
+| --- | --- | --- | --- |
+| 1 | `tools/reference-go-build-from-plan`: `-plan`・`-intent`・`-repo`・`-artifact-out`・`-state`を受け、計画とsourceを照合して`go build`し、5項目を申告する | 条件2・3・5と、条件4の材料 | **実装済み**（[記録](../evidence/TEI_GO_SELF_BUILD_BUILDER_FROM_PLAN_2026-11-10.md)） |
+| 2 | そのtoolをcatalogのproviderとして宣言し、`tei self-build -build-catalog`で鎖を通す | 条件1・4・**`l2b.claimed`** | 未着手 |
+| 3 | 回帰試験（`cmd/tei`のエンドツーエンド）に載せる | 毎回通ること | 未着手 |
+
+**段1で確かめたこと**：計画が名指すsourceと実際のsourceが違えば**ビルドしない**。実buildが通り、`planFingerprint`・`artifactDigest`・`stateDir`・自分で作って検証したlockが出る。**`DirSourceResolver`をそのまま呼んでいる**ので、枠組みがentryと食い違わない。
 
 **§4.38の表の「満たさない」は、段1と2で埋まる。** 段3が無いと、次に検査を足したときに黙って止まる（§4.38の3番目）。
 
 #### この節が言っていないこと
 
-- **段1がまだ無い。** 本節は形と順序を決めただけである
+- **段2・3がまだ無い。** 段1だけでは`l2b.claimed`は立たない
 - **AのTOCTOUを閉じていない。** 閉じるにはBが要る
 - `go list -deps`の結果と閉包の突き合わせは**案**であり、実装していない
 - 受理・Runtime Authority・供給のTrust。いずれも未主張のまま
