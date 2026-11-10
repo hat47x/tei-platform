@@ -1,0 +1,218 @@
+# T0 external tool execution against a synthetic public fixture only.
+# Product qualification, source completeness and external Provider admission remain separate.
+name: REA T0 public static fixture
+
+on:
+  push:
+    branches: [docs/rea-t0-evidence-admission-20261108]
+    paths:
+      - '.github/workflows/rea-t0-static-evidence.yml'
+      - 'tools/rea-t0-saved-report/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/rea-t0-static-evidence.yml'
+      - 'tools/rea-t0-saved-report/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Cancel only stale PR runs; never cancel an independent main/branch run.
+concurrency:
+  group: rea-t0-static-evidence-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+
+jobs:
+  t0-static:
+    name: T0 observed ${{ matrix.t0_case }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        t0_case: [valid, missing, unsupported, partial]
+    env:
+      T0_CASE: ${{ matrix.t0_case }}
+    steps:
+      - name: Prepare isolated diagnostics before fallible steps
+        id: reports
+        shell: bash
+        run: |
+          directory=$(mktemp -d "${RUNNER_TEMP:?}/rea-t0.XXXXXX")
+          printf 'directory=%s\n' "$directory" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24.22.1"
+
+      - name: Install REA 6.7.0 without changing project dependencies
+        shell: bash
+        run: |
+          npm install --prefix "${RUNNER_TEMP}/rea-tool" --no-audit --no-fund --ignore-scripts --save-exact rea-agents@6.7.0
+          echo "${RUNNER_TEMP}/rea-tool/node_modules/.bin" >> "$GITHUB_PATH"
+
+      - name: Build small synthetic JavaScript directory
+        shell: bash
+        run: |
+          mkdir -p build/rea-ci-demo
+          printf '%s\n' '{"name":"rea-ci-demo","version":"1.0.0","type":"module","main":"index.js"}' > build/rea-ci-demo/package.json
+          printf '%s\n' 'export const message = "hello";' 'throw new Error("This artifact must not be executed.");' > build/rea-ci-demo/index.js
+          if [[ "$T0_CASE" == "partial" ]]; then
+            printf '%s\n' 'export const broken = ;' >> build/rea-ci-demo/index.js
+          fi
+
+      - name: Capture actual REA exit and untouched raw outputs
+        shell: bash
+        env:
+          REPORT_DIR: ${{ steps.reports.outputs.directory }}
+        run: |
+          case "$T0_CASE" in
+            valid|partial) target=build/rea-ci-demo ;;
+            missing) target=build/missing-artifact ;;
+            unsupported) target=build/rea-ci-demo/index.js ;;
+            *) exit 4 ;;
+          esac
+          printf '%s\n' "$target" > "$REPORT_DIR/selected-target.txt"
+          printf 'rea analyze-javascript-application <workspace>/%s --json --full-output\n' "$target" > "$REPORT_DIR/argv.txt"
+          node --version > "$REPORT_DIR/node-version.txt"
+          rea --version > "$REPORT_DIR/rea-version.txt"
+          sha256sum build/rea-ci-demo/package.json build/rea-ci-demo/index.js > "$REPORT_DIR/fixture-source-sha256.txt"
+          # Only the two publicly generated fixture files may be archived.
+          mkdir -p "$REPORT_DIR/source-pre" "$REPORT_DIR/source-post"
+          cp -- build/rea-ci-demo/package.json build/rea-ci-demo/index.js "$REPORT_DIR/source-pre/"
+          set +e
+          rea analyze-javascript-application "${GITHUB_WORKSPACE}/$target" --json --full-output > "$REPORT_DIR/analysis.json" 2> "$REPORT_DIR/analysis.stderr"
+          status=$?
+          set -e
+          cp -- build/rea-ci-demo/package.json build/rea-ci-demo/index.js "$REPORT_DIR/source-post/"
+          sha256sum "$REPORT_DIR/source-pre/"* "$REPORT_DIR/source-post/"* > "$REPORT_DIR/source-snapshot-digests.txt"
+          printf '%s\n' "$status" > "$REPORT_DIR/exit-code.txt"
+          sha256sum "$REPORT_DIR/analysis.json" "$REPORT_DIR/analysis.stderr" > "$REPORT_DIR/raw-report-sha256.txt"
+          printf 'Original REA exit for case %s: %s\n' "$T0_CASE" "$status"
+
+      - name: Independently audit saved report and compare expected outcomes
+        shell: bash
+        env:
+          REPORT_DIR: ${{ steps.reports.outputs.directory }}
+        run: |
+          python3 tools/rea-t0-saved-report/audit.py "$REPORT_DIR" > "$REPORT_DIR/consumer-audit.json"
+          python3 - "$REPORT_DIR" "$T0_CASE" <<'PY'
+          import json
+          import pathlib
+          import sys
+          directory, case = pathlib.Path(sys.argv[1]), sys.argv[2]
+          audit = json.loads((directory / "consumer-audit.json").read_text())
+          code = audit["processExitCode"]
+          if case in ("valid", "partial"):
+              assert code == 0, f"expected REA success for {case}; actual exit={code}"
+              assert audit["reportShape"] == "json-document", audit
+              assert audit["reportedOK"] is True, audit
+              if case == "partial":
+                  assert (audit["reportedParseFailures"] or 0) > 0, audit
+                  assert audit["analysisQualification"] == "partial", audit
+          else:
+              assert code != 0, f"expected explicit REA refusal for {case}; actual exit={code}"
+              assert audit["processOutcome"] == "exit-nonzero", audit
+              if case == "unsupported" and audit["reportShape"] == "json-document":
+                  raw = json.loads((directory / "analysis.json").read_text())
+                  assert "unsupported_target" in json.dumps(raw), raw
+          print(f"T0 expected control {case}: verified. Actual REA exit={code}; no full-coverage claim.")
+          PY
+
+      - name: Project external observations without accepting TEI meaning
+        shell: bash
+        env:
+          REPORT_DIR: ${{ steps.reports.outputs.directory }}
+        run: |
+          python3 tools/rea-t0-saved-report/project_observations.py "$REPORT_DIR" > "$REPORT_DIR/external-candidates.json"
+          python3 - "$REPORT_DIR" "$T0_CASE" <<'PY'
+          import json
+          import pathlib
+          import sys
+          root, case = pathlib.Path(sys.argv[1]), sys.argv[2]
+          candidate = json.loads((root / 'external-candidates.json').read_text())
+          assert candidate['effect'] == 'read-only'
+          assert candidate['TEICanonicalSubject'] is None
+          assert candidate['qualifiedTEISource'] is False
+          assert candidate['acceptedMeaning'] is False
+          assert candidate['sourceClosure'] == 'not-qualified'
+          assert candidate['rawReportSHA256'] == json.loads((root / 'consumer-audit.json').read_text())['stdoutSHA256']
+          if case in ('valid', 'partial'):
+              assert candidate['admission'] == 'external-candidates-only'
+              assert candidate['sourceManifestStatus'] == 'report-pre-post-byte-match', candidate
+              assert sum(r['sourceBinding'] == 'report-pre-post-byte-match' for r in candidate['records']) > 0, candidate
+              assert all(r['sourceBinding'] != 'saved-manifest-match-only' for r in candidate['records']), candidate
+              expected = {'valid': (14, 1, 'complete'), 'partial': (12, 0, 'partial')}
+              records, unknowns, coverage = expected[case]
+              assert len(candidate['records']) == records, candidate
+              assert len(candidate['unknowns']) == unknowns, candidate
+              assert candidate['graphCoverage']['status'] == coverage, candidate
+              assert candidate['semanticCoverage']['status'] == 'unknown', candidate
+              if case == 'partial':
+                  assert any(r['observedState'] == 'unavailable' for r in candidate['records'])
+          else:
+              assert candidate['admission'] == 'refused'
+              assert candidate['records'] == []
+          print(f'T1-A candidate-only projection {case}: checked; TEI admission not performed.')
+          PY
+
+      - name: Verify real JSONL view and simulated interrupted consumer
+        if: ${{ matrix.t0_case == 'valid' }}
+        shell: bash
+        env:
+          REPORT_DIR: ${{ steps.reports.outputs.directory }}
+        run: |
+          python3 - "$REPORT_DIR" <<'PY'
+          import json, pathlib, sys
+          root = pathlib.Path(sys.argv[1]).resolve()
+          request = {
+              'source': {'kind': 'evidence-file', 'path': str(root / 'analysis.json')},
+              'view': {'kind': 'javascript-facts', 'property_keys': [], 'offset': 0, 'limit': 32},
+          }
+          (root / 'view-request.json').write_text(json.dumps(request), encoding='utf-8')
+          PY
+          set +e
+          rea inspect-analysis-view "$REPORT_DIR/view-request.json" --format jsonl \
+            > "$REPORT_DIR/view.jsonl" 2> "$REPORT_DIR/view.stderr"
+          export_status=$?
+          set -e
+          printf '%s\n' "$export_status" > "$REPORT_DIR/view-exit-code.txt"
+          sha256sum "$REPORT_DIR/view.jsonl" "$REPORT_DIR/view.stderr" > "$REPORT_DIR/view-digests.txt"
+          python3 - "$REPORT_DIR" <<'PY'
+          import json, pathlib, sys
+          sys.path.insert(0, 'tools/rea-t0-saved-report')
+          from audit import jsonl_audit
+          root = pathlib.Path(sys.argv[1])
+          status = int((root / 'view-exit-code.txt').read_text().strip())
+          view = root / 'view.jsonl'
+          complete = jsonl_audit(view, object_collection=True)
+          out = {'realExportExit': status, 'completeView': complete}
+          if status != 0 or complete['framing'] != 'object-collection-framed':
+              (root / 'jsonl-controls.json').write_text(json.dumps(out, sort_keys=True))
+              raise AssertionError(out)
+          # A missing terminal record must not be mistaken for successful delivery.
+          source_lines = view.read_bytes().splitlines(keepends=True)
+          assert source_lines, 'valid JSONL object collection must include metadata'
+          truncated = root / 'view-missing-terminal.jsonl'
+          truncated.write_bytes(b''.join(source_lines[:-1]))
+          incomplete = jsonl_audit(truncated, object_collection=True)
+          out['interruptedView'] = incomplete
+          (root / 'jsonl-controls.json').write_text(json.dumps(out, sort_keys=True))
+          assert incomplete['framing'] == 'missing-metadata', out
+          print('REA real JSONL export framed, interrupted copy rejected; source coverage remains unproven.')
+          PY
+
+      - name: Upload original reports and diagnostics even after failure
+        if: ${{ always() && steps.reports.outputs.directory != '' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: rea-t0-${{ matrix.t0_case }}
+          path: ${{ steps.reports.outputs.directory }}
+          if-no-files-found: warn
+          retention-days: 7
