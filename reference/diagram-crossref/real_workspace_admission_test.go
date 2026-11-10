@@ -453,7 +453,6 @@ func TestRealWorkspaceModelMapMatchesSourceIndexedRelationTriplet(t *testing.T) 
 	// safe inverse editing, complete CRUD, or external Consumer receipt.
 }
 
-
 // The native Model Map and the already-shipped model locate operation are
 // independent read-only projections. A UI selection must recover the same
 // qualified semantic Relation, its parent Data and its declared target.
