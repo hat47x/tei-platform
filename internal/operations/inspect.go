@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	apprelease "tei/internal/application/release"
 	"tei/internal/database/release"
 	"tei/internal/ir"
 	"tei/internal/releaseplan"
@@ -134,7 +135,7 @@ var InspectionSubjectKinds = []string{
 	// a release plan and then have no way to read it back (#4128). A release
 	// subject is its owner (the database or the plan), and the projection lists
 	// every declared version of that owner.
-	"migration", "database-release", "solution-release",
+	"migration", "application-release", "database-release", "solution-release",
 }
 
 func supportedInspectionKind(kind string) bool {
@@ -144,6 +145,13 @@ func supportedInspectionKind(kind string) bool {
 		}
 	}
 	return false
+}
+
+// applicationReleaseSet is the Canonical object for an application-release
+// subject. Its top-level id is the application, matching the requested id.
+type applicationReleaseSet struct {
+	ID       string                  `json:"id"`
+	Releases []apprelease.Definition `json:"releases"`
 }
 
 // releaseSet is the Canonical object for a database-release subject. Its
@@ -264,6 +272,16 @@ func inspectCanonical(world ir.World, subject sourceindex.Subject) (json.RawMess
 			if item.ID == subject.ID {
 				matches = append(matches, item)
 			}
+		}
+	case "application-release":
+		var versions []apprelease.Definition
+		for _, item := range world.ApplicationReleases {
+			if string(item.Application) == subject.ID {
+				versions = append(versions, item)
+			}
+		}
+		if len(versions) > 0 {
+			matches = append(matches, applicationReleaseSet{ID: subject.ID, Releases: versions})
 		}
 	case "database-release":
 		// A database holds several versions, so the subject is the owner and the

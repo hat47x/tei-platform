@@ -1,0 +1,18 @@
+Task declared before looking anything up: add an application with a browse
+pattern, an index migration, a database release, and a solution release, then
+read them back.
+
+Attempt 1 -> expected database, uses, or binds          (use `uses`)
+Attempt 2 -> expected semantic or validation after uses (use `uses semantic <ns>`)
+Attempt 3 -> expected database, uses, or binds          (patterns do not go here)
+Attempt 4 -> browse pattern ... requires query
+Attempt 5 -> ok (1 warning)
+Attempt 6 -> SOLUTION_RELEASE_NOT_EXECUTABLE ... application release not found
+Attempt 7 -> expected source-revision or database        (`database`, not `datasource`)
+Attempt 8 -> ok (1 warning)
+
+Application layer: 3 round trips. Delivery layer: 2.
+7 of 8 corrections came from CLI diagnostics alone. Attempt 3 did not: the
+diagnostic says patterns do not go in the application body but not where they go.
+I found the placement by reading the model's own .tei files (the design target,
+not the tool source).
