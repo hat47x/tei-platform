@@ -1268,6 +1268,42 @@ Sourceの論理Workspace IDと物理root/realpathも別資格とし、Manifest�
 
 <!-- org-cf-plan-20261109 -->
 **2026-11-09 組織改編・承認の時間整合差分（設計・未実行）**：組織Profile [§13](design/ORGANIZATION_TOPOLOGY_QUANTITY_REPRESENTATION_PROFILE_2026-11.md) にORG-CF-01〜08を追加。C1→D1/D2の担当切替・旧Read・失効Grant・Replica遅延・比較不能revision・動的職務分掌・重複ACK・遡及Source訂正を、業務valid/known、TEI observed、実Provider Scope/Read Cohort、Business Rule、現在Host Grant、相手方Handoffの**別証拠**で判定する。異なるAuthority domainの時刻／版の大小を因果順序とみなさない。**#2586の一件P0-R実Readを先行**し、ORG-CF-01/04の読み取り観測を既存Attemptへ添付。その後、実行時再確認は#1174/#2499、受領と時間訂正は#1125/#1444/#3380、独立Expectedは#2514/#1180へ渡す。新Token、Global Clock、Authorization Engine、Provider、Gateを作らず、CF新テスト・実DB/Host・Owner受理はNOT RUN。
+### 2026-11-08 TEI／SHO／KONの境界とHeadless／静的公開の最小受入（横断統合・KON実装は未着手）
+
+TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI全体のWebアプリ化」「KON経由の必須Gateway」「標準UIを経由しないFrontend禁止」を採用しない**。これはWeb利用の否定ではなく、次の独立した仕事と責務を混ぜないための方針である。
+
+| 役割 | 最初に所有する事実と境界 | 今回確約しないもの |
+| --- | --- | --- |
+| **TEI** | Source/Accepted Meaning、標準Data・Function/Operation・Trait/Provider Contract、生成Artifact、CLI/Studio等の型付きApplication API。既存ADR-0048に従いAdapterのTransportと意味Operationを分離 | TEIの全Authoring/Runtimeを新しい中央Web Hostで動かすこと、各WebページにTEI製Renderer/JSを同梱すること |
+| **SHO Composer** | 自然言語文書・図表・引用を構成し、外部SourceのIdentity/Revision/受理済み部分を保持するDocument Consumer。分散・自由な執筆を妨げない | 文書が参照するデータのDB真値や現在Grant、TEIモデルの意味受理をSHO文面から自動確定すること |
+| **KON Dataspace**（`hat47x/kon-dataspace`） | 足場のあるデータ保持・共有・版付き参照・公開を必要とする場合の**選択可能な**共通データ基盤。KONの実提供範囲は別リポジトリの実証で決める | TEI/SHO/SUIの必須サービス化、全Sourceの一括移管、別の意味正本・一元認可をTEIへ導入すること |
+| **Web/Native Frontend・配信先** | Route/Brand固有のUX、DOM/Router、配信/SEO/SSR/Client・Edge/CDN、外部の実閲覧。B2Cでは完全Headless利用を正規の使い方とする | 標準表現型への強制マッピング、既存Commerce/CMS/決済の置換、TEIが配信状態を自己申告するだけで公開完了とすること |
+
+**拡張契約の語彙を混同しない**：Hookはライフサイクル上の拡張点、Traitは満たすべき原子的な実装義務、Providerは選択・組込み・実呼出しが必要な実装、Pipelineはそれらの実行順・遷移である。静的サイトGenerator、Publish Adapter、Web編集UI、B2C Journeyはそれぞれ必要なHook/Operation/Providerを既存Contractへ載せる。図表で記述したLifecycleやWebチャット型Interactionも、Diagramだけで稼働と認めず、Generator入力→実Target/Hostの選択されたAction→Effect/Receipt→独立Readで実証する（#3503/#3278/#951）。Go単一バイナリのローカルTEIを基本経路として保持し、KON常駐やBrowser実行を導入前提にしない。
+
+**利用形態は要求に相対的に選ぶ**。技術者はローカルTEI CLI→既存Git/CI→静的Artifact→外部配信を選べる。一方、Git運用を前提にできない執筆者向けには、**編集・Preview・Revision・公開申請・履歴参照等の限定操作面だけ**をブラウザへ出す案を検証する。その際、TEIの意味/Build処理を共通Operationに委譲し、保存が必要ならKONまたは既存CMS/ストレージをProviderとして接続する。BrowserがTEI製品の第二Modeler/Second Host/Authorityになることを前提にしない。B2Cの完全Native UIはTEI Core/Rendererをロードしなくても業務Action Contractを使えることを条件にする（既存[#3509](https://github.com/hat47x/tei-platform/issues/3509)／Draft[#3512](https://github.com/hat47x/tei-platform/pull/3512)のOwnerへ圧力を返す）。
+
+**公開成功の判定は4段階**：①対象Source/Meaning/依存とDisclosure資格に対して生成・PreviewしたArtifact、②Host/Providerによる保存・Revision受領、③独立したPublish／Deploy ACK、④配信URL等から別Consumerが受け取った外部実Byte/版。Git push成功、SHO本文の保存、KONへの格納、Build Artifactの存在だけで④をPASSにしない。異なるSourceや外部Provider Raw/Manifestが変わった場合、World FP一致だけで公開物・引用・BOMの鮮度を継承しない（[#3477](https://github.com/hat47x/tei-platform/pull/3477)／[#3479](https://github.com/hat47x/tei-platform/pull/3479)／[#3490](https://github.com/hat47x/tei-platform/pull/3490)）。認可・公開範囲・未取得・partial・not-loadedを空集合または既存Grantと見なさない。
+
+**既存Scenario/独立Expectedで検証する最小の横断反例（未実行）**：
+
+| ID | 試行と独立に固定するExpected | 既存Owner |
+| --- | --- | --- |
+| **KW-01** | 同一受理Source→TEI CLI静的生成→Git/外部配信の実Byteを再取得。Build・Publish・公開後Readを別版・別証拠にし、外部未反映ならPublish完了を拒否 | #943/#1163/#1180、配備は対象Host |
+| **KW-02** | Browser編集面で既存の型付き保存Operationを呼ぶ。KON/ストレージが未選択でも、別適格Providerがあれば機能を拒否しない。権限外/Version staleは拒否。UIからSource Meaningを再定義しない | #1158/#951/#1016、保存・公開Host |
+| **KW-03** | 外部Providerの引用Rawだけ変更、TEI World FPは同一。SHO引用Revisionと公開物の再利用資格を差分として失効。必要Sourceがunavailableなら未取得を明示 | #2044/#3262/#3479、SHO Composer |
+| **KW-04** | Native B2C Routeは標準Renderer/KON/TEI Browser Runtimeを搭載せず、外部Commerce ProviderのTyped Operationを利用。零の追加Runtime依存と実Effect/Consentを別に測り、CVR向上は実験なしで主張しない | #3509/#1158/#1174/#2514 |
+| **KW-05** | 同一Function/SourceのCLI・Studio・限定Web操作で**選択Provider Bと実呼出B**を突合。B選択→A実呼出（結果同値）を失格、未受理/未Loadedはunknown。表現が同じでも逆編集の一意性を仮定しない | #1251/#951/#2497/#3267、既存D1受入 |
+
+**高度B2Cの変更レーンと検証順（[#3509](https://github.com/hat47x/tei-platform/issues/3509)／[設計Draft #3512](https://github.com/hat47x/tei-platform/pull/3512)から受領）**：施策・Creative・Presentationだけの差分は、業務意味・Provider・契約・Host Grantに影響しないことを差分で証明できる場合、無関係なMeaning再受理を要求しない。一方、価格・在庫・決済・同意・注文Effectに触れる変更は通常の業務Operation／Effect／Disclosure／独立Expectedの再資格化を省略しない。実際のVariant配信、実表示・Intent、権威あるOrder Effect、計測対象・同意・帰属、採用・撤回は別の観測段階とする。画面のRollbackが実注文の補償になるとは扱わず、CVR向上は実験による独立測定の前には主張しない。
+
+**B0〜B4の圧力試験**：B0=Native HeadlessのRead-only Fit/Gap、B1=独自FrontendからTyped Operationを実Provider経由で呼び別Consumerが実結果を再読取、B2=一部標準UIとの比較とExperiment/Publish/Browser・Cache負例、B3=AIチューニングの統計品質・独立Benchmark、B4=外部サービスAdapterとしてのPlugin採否判断。初手はECの一操作とし、予約・会員等は後続の異質Consumer候補。KW-04との独立Expectedを#2514/#1180へ、仕様・業務効果のOwnerを#3509へ返す。B0〜B4は全件未実行であり、#1251の通常CLI/Studio S2、#2586の実Function ReadのHard Gateを増やさない。
+
+**実装された範囲と横断判断を更新する（2026-11-09）**：[main #3579](https://github.com/hat47x/tei-platform/pull/3579)はFunction定義書へHook宣言を既存Phase順で導出する実GeneratorコードとGo試験を統合した。ただし**宣言が出力されることと、Runnerが実Targetで実Hookを呼んだことは別**であり、Provider実呼出・実Effect・B2C配信を認定しない。さらに[main #3549](https://github.com/hat47x/tei-platform/pull/3549)／[#3588](https://github.com/hat47x/tei-platform/pull/3588)でC-1 Router／C-2 ServiceCarrier／C-3 Deployment Binding／C-4非接続を選択前の比較候補として保持し、C-2は試験外の限定Reference組立に進んだ。**TEI/KON/Headless全体のためにC-1/C-2を両方常設したり、中央Gatewayを必須化したりしない**。どの入口を製品化するかは#951/#1016/#1251と実二Consumer・Host現在権限の証拠で別判断する。公開CLIとStudioへ静的参照Inspectorを配線する[Draft #3540](https://github.com/hat47x/tei-platform/pull/3540)はS2-referenceの実装候補だが、正式Profileでの任意Provider切替と実Target/BOMのS2-productは未実証である。
+
+**実行順は現行P0を変えない**：まず[#3378](https://github.com/hat47x/tei-platform/pull/3378)の既存CLI/Studio直結Baseline、main[#3371](https://github.com/hat47x/tei-platform/pull/3371)のHost選択Service、main[#3381](https://github.com/hat47x/tei-platform/pull/3381)のComposition選択Inspector（局所Go二Consumer実呼出まで）を、**通常CLI dispatchと実Studio Bridge双方の実Invoke**へ接続（#1251のS2）。並行して#2586の実Function→Query/Provider Read→Context/表現を検証する。KW-01〜04はこの結果から必要な小さなConsumer/Targetだけ実験し、KON全製品・B2C全機能・静的サイト配信サービスを新Hard Gateにしない。Performance/AIのHint→統計→独立測定はmain[#3520](https://github.com/hat47x/tei-platform/pull/3520)の限定Referenceを再利用し、計測資格なしの最適化やCVR効果を成功とは呼ばない。
+
+**証拠状態**：本節は横断した責務・受入の計画整理。KONリポジトリ作成は実Web/保存/公開APIの実装証拠ではない。KW-01〜05、TEI Web限定面、SSG外部公開、実Native B2C、KON/SHO/TEI一貫実行・Owner受理は**NOT RUN**。新Core、第二Host／Registry／Resolver／Auth、独立Scenario正本は追加しない。
 
 ## 先に固定しないもの
 
