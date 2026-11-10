@@ -272,3 +272,6 @@
 
 # MCP header observations are hashed as raw bytes.
 /plan/evidence/DSH_MCP_HEADERS_2026-11-10/** -text
+
+# Multi-server MCP observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_TWO_SERVERS_2026-11-10/** -text
