@@ -247,7 +247,11 @@
 | [`reference-semantic-mapping-check/`](reference-semantic-mapping-check/) | 意味の定義と物理項目の対応について、定義へ遡る道が一つか、未記入の要素、複数の定義に一致する要素、定義の追加で変わる要素の範囲を検査する参照。合成データのみで、実在のデータ辞書とは未接続（#2095） |
 | [`reference-semantic-extension-catalog/`](reference-semantic-extension-catalog/) | 意味拡張の登録・解決・検証 |
 | [`reference-subsystem-cud/`](reference-subsystem-cud/) | 部分システムの登録・参照・更新・削除の境界確認 |
+<<<<<<< HEAD
 | [`reference-tei-eki-contract/`](reference-tei-eki-contract/) | TEIのJob・Flow設計がEKIのP0 OpenAPIで失う意味（`notBefore`・期限・effect_mode・資源制約など）を、実contractへの射影で検出する隔離した試験用の参照。実Provider・認可・実行層ではなく、外部contractの受理を示さない |
+=======
+| [`reference-subsystem-partition/`](reference-subsystem-partition/) | 候補として与えた固定Data Owner・直接C/U/D・所属許可・must-linkだけを対象に、越境更新重みの厳密最小値を読取り専用で算出する参照。実Sourceの受理済み所有関係・開示資格・Effectは判定しない（#3250）。 |
+>>>>>>> origin/ref/subsystem-mustlink-exact-20261109
 | [`reference-sui-action-boundary/`](reference-sui-action-boundary/) | SUIの操作とTEI Actionの接続例 |
 | [`reference-sui-adoption/`](reference-sui-adoption/) | SUI移行の参照データと検査 |
 | [`reference-sui-interaction/`](reference-sui-interaction/) | 画面操作とApplication Actionの接続例 |
