@@ -62,6 +62,9 @@ type selfBuildOuterEvidence struct {
 	// plan names. The builder refuses such a build itself; this is the check that
 	// does not depend on the builder doing so.
 	DefinitionBinding *selfBuildDefinitionBinding `json:"definitionBinding,omitempty"`
+	// ChildIsolation is what the builder said about the tree it built from. It is
+	// recorded, not required: the five conditions do not include it.
+	ChildIsolation *selfBuildChildIsolationRecord `json:"childIsolation,omitempty"`
 	// ArtifactReproducibility is §4.21: a second, independent build of the same
 	// plan produced the same artifact bytes. Together with planArtifactBinding it
 	// is the observation §4.8(c) asks for; it is never present with state
@@ -605,6 +608,7 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 		}
 	}
 	report.ArtifactReproducibility = &reproducibility
+	report.ChildIsolation = readChildIsolation(evidence.ChildIsolation)
 	report.OK = evidence.CrossCheckOK && evidence.FailureCause == ""
 	if !report.OK {
 		report.Error = &cliFailure{Code: "SELF_BUILD_CHILD_FAILED", Message: evidence.FailureCause}
