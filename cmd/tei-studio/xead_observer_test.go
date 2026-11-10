@@ -28,6 +28,11 @@ func TestStudioXeadObserverReturnsBoundedProjectionAndRedactsSourceValues(t *tes
 	if !got.OK || got.Value == nil || got.Value.Effect != "read-only" {
 		t.Fatalf("observation = %+v", got)
 	}
+	// The observation names its own schema; the repository-wide coverage check
+	// counts this identifier, so assert it here (#4032).
+	if got.Value.SchemaVersion != "tei.operations.xead-observation/v0" {
+		t.Fatalf("schemaVersion = %q", got.Value.SchemaVersion)
+	}
 	if len(got.Value.Observation.Tables) != 1 || got.Value.Observation.Tables[0].Source.ID != "T1" || got.Value.Observation.Tables[0].Name != "Order" {
 		t.Fatalf("tables = %+v", got.Value.Observation.Tables)
 	}
