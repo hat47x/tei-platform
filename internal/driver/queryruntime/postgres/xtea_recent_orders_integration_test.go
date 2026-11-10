@@ -89,36 +89,67 @@ func TestXTEARecentOrdersReadsActualPostgresThroughEnvironmentBinding(t *testing
 	for _, r := range observed {
 		statuses[r.status] = true
 	}
+	// Independent Expected: the Pattern declares sort status asc and page-size 20.
+	// The test sorts in Go with order_id as the tie-break the Query adds for stable paging.
+	const pageSize = 20
+	sawFullPage, sawSecondPage := false, false
 	for status := range statuses {
-		want := []string{}
-		for _, r := range observed {
-			if r.status == status {
-				want = append(want, r.order+"\x00"+r.customer)
+		for _, operator := range []string{"eq", "ne"} {
+			matched := []row{}
+			for _, r := range observed {
+				if (operator == "eq") == (r.status == status) {
+					matched = append(matched, r)
+				}
+			}
+			sort.Slice(matched, func(i, j int) bool {
+				if matched[i].status != matched[j].status {
+					return matched[i].status < matched[j].status
+				}
+				return matched[i].order < matched[j].order
+			})
+			for offset := 0; offset == 0 || offset < len(matched); offset += pageSize {
+				end := offset + pageSize
+				if end > len(matched) {
+					end = len(matched)
+				}
+				want := []string{}
+				if offset < len(matched) {
+					for _, r := range matched[offset:end] {
+						want = append(want, r.order+"\x00"+r.customer)
+					}
+				}
+				got, err := resolver.ExecuteBrowseQueryInEnvironment(ctx, "development", "order_entry",
+					"order_entry.recent_orders", executor, map[string]any{
+						"status": status, "status_operator": operator, "page_offset": int64(offset)})
+				if err != nil {
+					t.Fatalf("status=%q op=%s offset=%d: did not execute on actual PostgreSQL: %v", status, operator, offset, err)
+				}
+				if got.Instance.ID != "sales_core.dev" || got.Execution.Resolution.Query == nil ||
+					got.Execution.Resolution.Query.ID != "order_entry.recent_orders" {
+					t.Fatalf("result not attributed to the declared instance/Query: %+v", got.Instance)
+				}
+				columns := got.Execution.Result.Mapped.Columns
+				if len(columns) != 2 || columns[0].Attribute != "sales.order.order_id" || columns[1].Attribute != "sales.order.customer_id" {
+					t.Fatalf("mapped columns=%+v", columns)
+				}
+				actual := []string{}
+				for _, r := range got.Execution.Result.Mapped.Rows {
+					actual = append(actual, fmt.Sprint(textValue(r[0]))+"\x00"+fmt.Sprint(textValue(r[1])))
+				}
+				if !reflect.DeepEqual(actual, want) { // order is part of the Expected: no re-sorting
+					t.Fatalf("status=%q op=%s offset=%d: physical rows mismatch: actual=%d want=%d", status, operator, offset, len(actual), len(want))
+				}
+				if len(actual) == pageSize {
+					sawFullPage = true
+				}
+				if offset > 0 {
+					sawSecondPage = true
+				}
 			}
 		}
-		sort.Strings(want)
-
-		got, err := resolver.ExecuteBrowseQueryInEnvironment(ctx, "development", "order_entry",
-			"order_entry.recent_orders", executor, map[string]any{"status": status})
-		if err != nil {
-			t.Fatalf("status=%q: recent_orders did not execute on actual PostgreSQL: %v", status, err)
-		}
-		if got.Instance.ID != "sales_core.dev" || got.Execution.Resolution.Query == nil ||
-			got.Execution.Resolution.Query.ID != "order_entry.recent_orders" {
-			t.Fatalf("result not attributed to the declared instance/Query: %+v", got.Instance)
-		}
-		columns := got.Execution.Result.Mapped.Columns
-		if len(columns) != 2 || columns[0].Attribute != "sales.order.order_id" || columns[1].Attribute != "sales.order.customer_id" {
-			t.Fatalf("mapped columns=%+v", columns)
-		}
-		actual := []string{}
-		for _, r := range got.Execution.Result.Mapped.Rows {
-			actual = append(actual, fmt.Sprint(textValue(r[0]))+"\x00"+fmt.Sprint(textValue(r[1])))
-		}
-		sort.Strings(actual)
-		if !reflect.DeepEqual(actual, want) {
-			t.Fatalf("status=%q: physical rows mismatch: actual=%d rows want=%d rows", status, len(actual), len(want))
-		}
+	}
+	if !sawFullPage || !sawSecondPage {
+		t.Fatalf("data does not exercise paging (fullPage=%v secondPage=%v): seed >20 matching rows", sawFullPage, sawSecondPage)
 	}
 }
 

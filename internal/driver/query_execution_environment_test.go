@@ -77,7 +77,7 @@ func TestExecuteBrowseQueryInEnvironmentConnectsRecentOrdersThroughDeclaredBindi
 			if datasource.Alias != "sales" || datasource.TargetDatabase != "sales_core" {
 				return driver.BrowseQueryResult{}, fmt.Errorf("Datasource=%#v", datasource)
 			}
-			if !reflect.DeepEqual(parameters, map[string]any{"status": "OPEN"}) {
+			if !reflect.DeepEqual(parameters, map[string]any{"status": "OPEN", "status_operator": "eq", "page_offset": int64(0)}) {
 				return driver.BrowseQueryResult{}, fmt.Errorf("parameters=%#v", parameters)
 			}
 			// 物理列順をQueryのresult宣言と逆にし、明示mappingだけで対応付くことを確かめる。
@@ -90,7 +90,7 @@ func TestExecuteBrowseQueryInEnvironmentConnectsRecentOrdersThroughDeclaredBindi
 
 	got, err := driver.NewResolver(xteaWorld(t)).ExecuteBrowseQueryInEnvironment(
 		context.Background(), "development", "order_entry", "order_entry.recent_orders",
-		executor, map[string]any{"status": "OPEN"},
+		executor, map[string]any{"status": "OPEN", "status_operator": "eq", "page_offset": int64(0)},
 	)
 	if err != nil {
 		t.Fatalf("Environment経由でbrowse Queryを実行できません: %v", err)
@@ -148,7 +148,7 @@ func TestExecuteBrowseQueryInEnvironmentRefusesBeforeInvokingExecutor(t *testing
 			}}
 			_, err := driver.NewResolver(world).ExecuteBrowseQueryInEnvironment(
 				context.Background(), tc.environment, "order_entry", "order_entry.recent_orders",
-				executor, map[string]any{"status": "OPEN"},
+				executor, map[string]any{"status": "OPEN", "status_operator": "eq", "page_offset": int64(0)},
 			)
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("error=%v want substring %q", err, tc.want)
