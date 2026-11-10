@@ -344,7 +344,7 @@ REAのT0原本観測→T1-A外部Evidence→T1-B正式TEI Source・意味受理�
 
 ### 21.1 同一OperationとMigration適用直前の競合窓
 
-採用済み[ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)により、読取、Schema Plan、DDL Applyは共通OperationとCLI/MCP/Studio Adapterを分離する。型付きInspector入口のDraft [#3381](https://github.com/hat47x/tei-platform/pull/3381)／[#3371](https://github.com/hat47x/tei-platform/pull/3371)は実Provider選択・Link/Invoke・現在Grantをまだ証明しない。
+採用済み[ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)により、読取、Schema Plan、DDL Applyは共通OperationとCLI/MCP/Studio Adapterを分離する。型付きInspectorは[main #3381](https://github.com/hat47x/tei-platform/pull/3381)と[main #3371](https://github.com/hat47x/tei-platform/pull/3371)へ統合され、[main #3540](https://github.com/hat47x/tei-platform/pull/3540)で通常CLI／Studio Hostから静的参照Providerを実呼出しするS2-referenceに達した。ただし外部Plugin/実Provider ArtifactのLink/Invoke、Current Grant、Function Data Contextを証明しない。
 
 DDL Plan→Applyでは、実DB Instance／Provider、Scope、Actual Schema Revision、Migration History、Grant、適用直前の世代を同じ対象で照合する。再検査・必要な競合制御を提供できなければ**安全に停止して再計画**する。履歴のpartial/unknown、別DBなのに同名、同じbyteだがA→B→A、ACK喪失をApplied／無条件Retryへ変換しない。詳細Ownerは[#2887](https://github.com/hat47x/tei-platform/pull/2887)のMA-11、[#2892](https://github.com/hat47x/tei-platform/issues/2892)のHIST負例、[#1163](https://github.com/hat47x/tei-platform/issues/1163)の実Target証拠であり、第二Migration Engineは作らない。
 
@@ -355,3 +355,27 @@ DDL Plan→Applyでは、実DB Instance／Provider、Scope、Actual Schema Revis
 既存WB-02/04/05（Schema/History unknown）、WB-29/31/32（Binding/Consumer/Build）、WB-42〜54（物理Schemaと意味の区別）を使い、新Runnerやテスト正本を重複させない。Source/Revision、選択Provider、実Read、Function Binding、開示、Effect、Independent Expectedの**同一Attempt**を検収する。#3354のCLI＋合成Consumerの限定成功と本PRのFake Catalog Go試験は、実DB・Studio/SHO・Owner Meaning・DDL安全性の合格には転用しない。
 
 **撤回条件**：新しい共通Host/中央Registry/第二認可・Schema正本・暗黙の全件Read・Provider固有のSource意味喪失を要するなら、Provider局所Contractに縮小する。
+
+
+## 22. 初回実Product Queryを実行可能入力まで固定する（2026-11-09）
+
+### 22.1 独立合成Fixtureの**名前が一致しない**という最初の不足を解消
+
+現行[実Query原文](../../reference/workspace/applications/order-entry/queries/recent_orders.sql)と[Query宣言](../../reference/workspace/applications/order-entry/queries/recent_orders.tei)のSourceを照合すると、`order_entry.recent_orders`は`public.orders`の5列と`ordered_at >= :from`、`ordered_at DESC`を必要とする。一方、従来の[独立合成Fixture](../../examples/data-source-workbench/postgres_seed.sql)のテーブルは`sales_order`で、`id/customer_id/amount/status`の4列のみ。**汎用Fixtureの3行だけから実Product SQLのRowset資格を付与できない**。形式的にSQL File/Query IDが存在していても、実物理入力が不一致では読取縦断の再現ができない。
+
+そこで[Product SQL専用の隔離DB用Seed](../../examples/data-source-workbench/recent_orders_product_seed.sql)を別ファイルとして固定し、`public.orders`の5列・Timestamp/Decimal精度と3行、`:from`の境界一致・0件・降順の独立Expected PQ-01〜05を[Fixture説明](../../examples/data-source-workbench/README.md)に置く。汎用`sales_order`用F-01〜10／JSONL 5行は変更しない。`product_query_fixture_test.go`は**現行実Query/宣言/Application→Synthetic Source**の静的破綻を検出するが、実SQL Parseの完全性や実PostgreSQLの実Rowset取得を証明しない。
+
+### 22.2 いま証明できる辺と、これから実行しなければならない辺
+
+| 受渡し辺 | 実装・Sourceで現在確認できること | 本件で獲得**しない**資格／Owner |
+| --- | --- | --- |
+| `Pattern/Query` | `order_entry.recent_orders`のQueryとNative SQL実Source、宣言`datasource sales`→`target sales_core`、5つのResult Column Mapping | 特定のFunctionの実Required/Selected SQL/実Consumedを別名から推論しない。#2586 |
+| `Physical Seed` | 以前の`sales_order`はProduct SQLと異なる。新しい`public.orders` Fixtureは実SQL入力の形に一致 | 実DBへ適用できたこと・Schema Version・SQL Rowset/Scopeは隔離DBと実Readerで別実証。#2622/#2586 |
+| `Inspector` | [main #3540](https://github.com/hat47x/tei-platform/pull/3540)で**通常CLIとWails Studio Hostの静的参照Inspector S2-reference**が成立。以前の「CLI/Studio通常起動未配線」は歴史記述 | 動的に選択した外部Plugin BinaryのLoad/Invoke、正式Contract Conformance、Current Grant、Verified BOMは未証明。#1251/#951 |
+| `Model Map` | [main #3505](https://github.com/hat47x/tei-platform/pull/3505)のRQ-036（図表・全容Navigation）を維持。M0/Graphや物理FKはSource観測・宣言位置へ案内できる | 観測FK/列名/Graph近接から業務Relation、Function Binding、CRUD・更新可を受理しない。#1124/#3492 |
+| `Runtime Read` | 一Functionに必要なP0の順路は**Function Required→実選択Query SQL+args→Instance/Provider→Rowset/Grain/NULL/Scope/Completeness→Data Context** | 0件/partial/Error/Disclosure／CLI・Studio実受領と独立Expectedを、同一Attemptで後続実試験。#2586/#2514 |
+| `Schema Apply` | FK/UNIQUE/Index/read-only Workbench投影は現mainの製品Goコードに存在（本章新実装ではない） | DDL適用前のHistory Unknown/partial、Target/Grant再検査、実Apply/別Reader再観測は#2892/#2887。DBA運用は標準外 |
+
+**最小P0順序**：既存Required/Query/Mappingの実Source入場→隔離PostgreSQLへ新Seedを明示的に投入し**独立Readerで3行・Schema確認**→実TEI Providerに`:from`を安全にBindし1/2/0行のResultと範囲を対照→Function Data Context→CLI/Studioで同Scope/版のResult/Disclosureを確認する。偽0件を防ぐため、Query Errorや部分受領を空Listとして代用せず、`not-run/partial/permission-denied`など実契約に沿う別結果を記録する。次の異質Sourceは既存JSONL FixtureのReaderであり、DBとJSONLが同一Snapshotである保証はしない。
+
+**資格の上限**：本章はSource-static Fixtureと回帰テストを追加するにとどまる。データを投入した実PostgreSQL、SQL実行、Runtime/Plugin/Grant、Function Data Context、CLI/Studio同一実Provider、Read Receipt、Schema Apply、REA/SHO/KON/SEI本番結合、Owner Meaningは**NOT RUN**。新しいHost/Resolver/Query Engine/Plugin必須Core、製品GateやWB-55以降の独立ケースは設けず、既存WB-01〜54・#2586 HJ/QX・#2514を再利用する。
