@@ -1,0 +1,110 @@
+{
+  "fixture": "okf-k1-v02",
+  "purpose": "Provisional specification-derived expected results for a repository-health-clean synthetic baseline. Distinct mutation copies contain F0-allowed broken/bundle-absolute links.",
+  "okf": {
+    "version": "0.2",
+    "repository": "GoogleCloudPlatform/open-knowledge-format",
+    "spec_commit": "ad30107c31c06aec8a7d5636e0d1058118604e6f",
+    "spec_blob_git_sha": "c06e3eede0c910d0ecf12524c34204156f8795ac",
+    "spec_sha256_utf8": "26aa5da029278939f914e578107242d9607d4f2dc5fe153272b82f9ed1030101",
+    "reference_document_git_blob": "b770a92f33adf9942e2932529308d066430b02a6",
+    "reference_document_path": "src/reference_agent/bundle/document.py",
+    "reference_pyyaml_version": "6.0.3"
+  },
+  "required_files": [
+    "index.md",
+    "data/order.md",
+    "functions/submit.md",
+    "business/submit.md"
+  ],
+  "concept_count": 3,
+  "index_count": 1,
+  "format_expected": {
+    "conformant": true,
+    "missing_type": 0,
+    "malformed_frontmatter": 0,
+    "root_index_okf_version": "0.2",
+    "nonstandard_type_is_allowed": true,
+    "unknown_extension_key_is_allowed": true,
+    "unresolved_markdown_link_is_allowed": true,
+    "baseline_link_integrity": "Committed baseline uses only resolvable repository-relative links; broken and bundle-absolute links are generated in temporary copies for F0/F1 tests"
+  },
+  "positive_controls": {
+    "singleton_verified_maps_to_event_count": 1,
+    "source_resource_can_be_scope_descriptor": true,
+    "concept_ids": [
+      "data/order",
+      "functions/submit",
+      "business/submit"
+    ],
+    "baseline_relative_link": "../data/order.md"
+  },
+  "negative_mutants": [
+    {
+      "name": "delete type from data/order.md",
+      "expected_format_conformant": false
+    },
+    {
+      "name": "make business/submit.md YAML unparseable",
+      "expected_format_conformant": false
+    },
+    {
+      "name": "add extra x-unknown frontmatter key to data/order.md",
+      "expected_format_conformant": true
+    },
+    {
+      "name": "delete index.md",
+      "expected_format_conformant": true
+    },
+    {
+      "name": "change business/submit.md type to Future Experimental Role",
+      "expected_format_conformant": true
+    },
+    {
+      "name": "append broken link to temporary copy of business/submit.md",
+      "expected_format_conformant": true,
+      "expected_document_quality": "warning-only"
+    },
+    {
+      "name": "append OKF bundle-root absolute link /data/order.md to temporary copy of functions/submit.md",
+      "expected_format_conformant": true,
+      "expected_document_quality": "link resolves from bundle root; repository-wide Markdown checker not applied to temporary copy"
+    },
+    {
+      "name": "change data/order.md type to a nonempty YAML list",
+      "expected_format_conformant": false,
+      "expected_upstream_reference_accepts": true,
+      "reason": "upstream sample validate() requires truthy type but not explicitly string; the SPEC requires a string"
+    }
+  ],
+  "must_not_infer": [
+    "TEI Domain/Role/Trait adoption",
+    "original source actually read",
+    "business owner acceptance",
+    "verified human identity",
+    "runtime attestation",
+    "external publication grant",
+    "full Source closure",
+    "SUI tree/island recoverability",
+    "independent oracle qualification based only on this JSON or same-author fixture"
+  ],
+  "expected_runtime_status": "NOT RUN",
+  "oracle_qualification": "PROVISIONAL: created in same design attempt as fixture; separate independent specification review and mutant kill proof required before acceptance",
+  "raw_sha256_utf8": {
+    "index.md": "53ed2efbe2b5ac8fb3eb628c5ac6a3ddb152badd7f2d9e7bec7b55b9efeccd59",
+    "data/order.md": "e199969f714240a573128432b30704cb7960505d00e991994d1fae28e47fe2c5",
+    "functions/submit.md": "6087a406c0cb5aa9aea116668401e3af5afd5c22797871a2ecf8888de8042c6e",
+    "business/submit.md": "111b2b32860ff46d23af4eaa3eee5e8b89a4f3cb13d50b79af494dfe38a8001e"
+  },
+  "validation_status": {
+    "github_file_readback": "PASS: source bytes rechecked; 2 changed files have recalculated SHA-256",
+    "raw_sha256_algorithm": "two standard SHA-256 known vectors PASS",
+    "yaml_parse_with_product_reader": "NOT RUN",
+    "okf_formal_conformance": "NOT RUN",
+    "owner_review": "NOT RUN",
+    "repository_plan_check": "PENDING: previous CI #42392171058 failed only on two committed Markdown links; baseline links patched. New exact HEAD CI not yet checked.",
+    "reference_reader_k1_probe": "NOT RUN (test-only pinned upstream module; exact-CI pending)"
+  },
+  "fixture_generation_note": "Baseline all Markdown links resolve under TEI repository health. Broken links and bundle-root absolute links remain independently testable by mutations in a temporary checkout copy, not persisted to managed repository .md.",
+  "reference_reader_limit": "upstream example is not normative OKF conformance; type list is an anticipated known permissiveness gap"
+}

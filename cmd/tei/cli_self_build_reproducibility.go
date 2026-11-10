@@ -44,7 +44,7 @@ type selfBuildReproducibility struct {
 	// FirstChildDigest and SecondChildDigest are the bytes of the file named by
 	// -child, read before each of the two starts. They are not an observation of
 	// the process that ran: a -child that launches another executable keeps the
-	// same digest whatever it launches (§4.46). Reproducibility across two
+	// same digest whatever it launches (§4.47). Reproducibility across two
 	// different named files is not the claim, so the two are recorded and compared
 	// rather than assumed equal.
 	FirstChildDigest  string `json:"firstChildDigest,omitempty"`

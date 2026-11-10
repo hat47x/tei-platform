@@ -1,6 +1,6 @@
 # 宣言したbuilderと、起動したファイルを結ぶ
 
-[#2831](https://github.com/hat47x/tei-platform/issues/2831) のSB-C0 §4.46 の実測記録です。[child同一性の範囲の記録](TEI_GO_SELF_BUILD_CHILD_IDENTITY_SCOPE_2026-11-10.md)が測った「プロキシの背後の差し替えは止まらない」に対し、**何を塞ぎ、何が残るか**を示します。
+[#2831](https://github.com/hat47x/tei-platform/issues/2831) のSB-C0 §4.47 の実測記録です。[child同一性の範囲の記録](TEI_GO_SELF_BUILD_CHILD_IDENTITY_SCOPE_2026-11-10.md)が測った「プロキシの背後の差し替えは止まらない」に対し、**何を塞ぎ、何が残るか**を示します。
 
 ## 評価：欠陥か、保証範囲の限定か
 
@@ -57,6 +57,6 @@
 ## 限界
 
 - TOCTOU（読んでから起動するまで）は閉じていません
-- `mismatched`は試行を失敗にしません。Claimだけを落とします（理由と覆し方は§4.46）
+- `mismatched`は試行を失敗にしません。Claimだけを落とします（理由と覆し方は§4.47）
 - catalogを渡さない試行には計画が無いので、`builderBinding`は記録されません。その試行はもともとClaimが立ちません
 - `qualified`は`false`、G4は`UNQUALIFIED`のままです

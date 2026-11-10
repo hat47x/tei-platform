@@ -110,3 +110,24 @@ fatal: Invalid path '/mnt': No such file or directory
 ### worktreeを増やしすぎない
 
 登録済みworktreeが多いと、`git worktree prune` や状態確認が遅くなり、上記の取り違えも起きやすくなります。作業が終わったworktreeは `git worktree remove` で消します。
+
+## 宣言した値と、それを発生させる試験を対応させる
+
+診断コード・拒否コード・応答スキーマのような**宣言された値**は、読み手にとっての契約です。値を宣言しているのに、その値を発生させる入力がどこにも無ければ、契約は検証できません。実際に次の型の欠陥が繰り返し見つかりました。
+
+- 空集合に対して常に成功する検査（#3931）
+- 宣言されているが CLI 経路から観測できない値（#3906）
+- どのテストからも言及されていない診断コード 55 件（#4032）
+
+同じ型を繰り返さないため、次の検査を置いています。**新しい値には、それを発生させる試験を付けてください。**
+
+| 検査 | 対象 | 現在 |
+| --- | --- | --- |
+| `internal/validation/code_coverage_ratchet_test.go` | `internal/validation` が書く診断コード | 未試験 0 |
+| `tools/repository-plan-check/diagnostic_code_coverage_test.go` | `internal/**` の `Code:` 値すべて | 未言及 0 |
+| `cmd/tei/schema_version_coverage_test.go` | CLI が広告する `schemaVersion` | 未検証 0 |
+| `internal/modelref/trace_issue_values_test.go` | `TraceRow.issue` の6値 | 全値に発生入力 |
+
+### 到達できない値を宣言したとき
+
+値を消すか残すかを決める前に、**到達できないことを実測で確かめ、コードとテストの両方に残してください**。例: `internal/studiohost` の `COMMAND_FAILED` は、`runHooks` が report なしでエラーを返す経路が無いため発生しません（`TestCommandFailedHasNoKnownTrigger`）。コメントに埋めるだけでは検査から見えないため、テスト内でコード名を文字列として明示します。

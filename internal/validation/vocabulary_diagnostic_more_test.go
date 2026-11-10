@@ -6,6 +6,8 @@ import (
 
 	"tei/internal/core"
 	"tei/internal/database"
+	"tei/internal/deployment"
+	"tei/internal/environment"
 	"tei/internal/ir"
 	"tei/internal/semantic"
 )
@@ -46,6 +48,24 @@ func TestMoreVocabularyDiagnosticsNameTheirValues(t *testing.T) {
 			},
 			code:   "INVALID_SEMANTIC_RELATION_CARDINALITY",
 			values: []string{"one", "many"},
+		},
+		{
+			// An executor scope is a closed vocabulary too, but the issue's list of
+			// 17 did not include it (#4094).
+			name: "deployment executor scope",
+			world: ir.World{
+				Environments: []environment.Environment{{
+					ID: "production",
+					DeploymentExecutors: []environment.DeploymentExecutorBinding{{
+						Action:   deployment.ActionDatabaseRelease,
+						Scope:    environment.ExecutorScope("tenant"),
+						Target:   "sales_core",
+						Executor: "runner-a",
+					}},
+				}},
+			},
+			code:   "UNKNOWN_DEPLOYMENT_EXECUTOR_SCOPE",
+			values: []string{"global", "application", "database"},
 		},
 	}
 	for _, c := range cases {

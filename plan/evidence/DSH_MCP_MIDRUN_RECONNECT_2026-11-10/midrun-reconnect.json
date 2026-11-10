@@ -1,0 +1,79 @@
+{
+  "note": "In one run the MCP server was down at startup. A pwsh call started it, the client reconnected, and the next model request carried mcp__latemock__header_echo. Reconnect works within a single process, not only across restarts.",
+  "overlay": {
+    "url": "http://127.0.0.1:8797/mcp/late",
+    "serverName": "latemock",
+    "failOnStartupError": false
+  },
+  "reconnectDefaultsFromSource": {
+    "source": "dsh/node_modules/@deepseek-ai/dsh-mcp-client/lib/index.js",
+    "initialDelayMs": 500,
+    "maxDelayMs": 30000,
+    "maxAttempts": 10,
+    "behaviour": "one outage shares one attempt budget; delays double"
+  },
+  "firstModelRequest": {
+    "toolCount": 27,
+    "hasMcpTool": false
+  },
+  "lastModelRequest": {
+    "toolCount": 28,
+    "hasMcpTool": true,
+    "mcpTools": [
+      "mcp__latemock__header_echo"
+    ]
+  },
+  "toolAppearedMidRun": true,
+  "mcpRequests": [
+    {
+      "file": "mcp-001-request.bin",
+      "method": "server/discover",
+      "bytes": 280
+    },
+    {
+      "file": "mcp-002-request.bin",
+      "method": "initialize",
+      "bytes": 163
+    },
+    {
+      "file": "mcp-003-request.bin",
+      "method": "notifications/initialized",
+      "bytes": 54
+    },
+    {
+      "file": "mcp-004-request.bin",
+      "method": "tools/list",
+      "bytes": 46
+    }
+  ],
+  "mcpRequestCount": 4,
+  "handshakesObserved": 1,
+  "modelRequests": [
+    {
+      "file": "001-request.json",
+      "bytes": 99242,
+      "sha256": "a98ccc634aad939ed3b0971ae7ccc5cde7da1f617d98d676d4cd3b7d4eb074e6",
+      "toolCount": 27,
+      "hasMcpTool": false,
+      "mcpTools": []
+    },
+    {
+      "file": "002-request.json",
+      "bytes": 57023,
+      "sha256": "1d63d063c40300b8562b838fc61063b61cab0f63d84d6c2df545166bb06b433d",
+      "toolCount": 0,
+      "hasMcpTool": false,
+      "mcpTools": []
+    },
+    {
+      "file": "003-request.json",
+      "bytes": 77078,
+      "sha256": "8febacabd1c01e473c22cfa4e4d44b98276adedc9a0a18b192967c1383e55831",
+      "toolCount": 28,
+      "hasMcpTool": true,
+      "mcpTools": [
+        "mcp__latemock__header_echo"
+      ]
+    }
+  ]
+}

@@ -101,8 +101,10 @@ func evidenceDiagnostics(prefix string, values []Evidence) []Diagnostic {
 
 // Resolve is intentionally strict: an omitted scope must identify exactly one
 // subject across all scopes, and a version constraint must match exactly.
+// Resolve resolves one reference. Callers that resolve several references
+// against the same snapshot should build a Resolver once and reuse it.
 func Resolve(nodes []Node, ref Ref) (Key, string) {
-	return newLookup(nodes).resolve(ref)
+	return NewResolver(nodes).Resolve(ref)
 }
 
 // Validate validates references without elevating any candidate to Accepted

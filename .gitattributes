@@ -131,6 +131,10 @@
 # Executor binding consumer survey output is hashed as raw bytes by its README.
 /plan/evidence/EXECUTOR_BINDING_CONSUMER_SURVEY_2026-11-08/** -text
 
+# OKF K1 synthetic bytes are compared exactly across OS; no checkout EOL conversion.
+/testdata/okf-k1-v02/** -text
+/testdata/okf-k1-v02.expected.json -text
+
 # Answer fact-presence reports are hashed as raw bytes.
 /plan/evidence/DSH_ANSWER_FACT_PRESENCE_2026-11-08/** -text
 
@@ -287,3 +291,6 @@
 
 # Late-starting MCP observations are hashed as raw bytes.
 /plan/evidence/DSH_MCP_LATE_START_2026-11-10/** -text
+
+# Mid-run MCP reconnect observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_MIDRUN_RECONNECT_2026-11-10/** -text

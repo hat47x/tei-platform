@@ -176,8 +176,19 @@ func run(args []string, out io.Writer) error {
 		return err
 	}
 	rep.Sources = checked
+
+	// A plan that names a source this recipe never reads describes a build that
+	// does not exist — the mirror of §4.41, where the build read something the plan
+	// did not name. Both are refused rather than recorded.
+	if err := checkSourcesAreRead(plan); err != nil {
+		return err
+	}
+	definitionKind := "plugin-definition"
+	if plan.Recipe.Kind == buildintent.RecipeKindCommand {
+		definitionKind = "go-package"
+	}
 	for _, source := range checked {
-		if source.Kind == "plugin-definition" {
+		if source.Kind == definitionKind {
 			rep.DefinitionBytesDigest = source.Actual
 			break
 		}
@@ -325,6 +336,35 @@ func checkSources(root string, plan plugin.BuildPlan) ([]checkedSource, error) {
 	}
 	sort.Slice(checked, func(i, j int) bool { return checked[i].Locator < checked[j].Locator })
 	return checked, nil
+}
+
+// sourceKindsReadByCommand are the source kinds a go-command build actually
+// reads: the package it compiles, and the module context it compiles inside.
+var sourceKindsReadByCommand = map[string]bool{
+	"go-package": true,
+	"go-module":  true,
+}
+
+// checkSourcesAreRead refuses a plan whose recipe does not consume every source it
+// names. An unused source is not harmless bookkeeping: it makes the plan describe
+// more than the build, and a reader cannot tell which half was meant.
+func checkSourcesAreRead(plan plugin.BuildPlan) error {
+	if plan.Recipe.Kind != buildintent.RecipeKindCommand {
+		// Only the command recipe has a defined set of consumed kinds. Other
+		// recipes keep the behaviour they had.
+		return nil
+	}
+	unused := make([]string, 0)
+	for _, source := range plan.Sources {
+		if !sourceKindsReadByCommand[source.Kind] {
+			unused = append(unused, source.Kind+"/"+source.ID)
+		}
+	}
+	if len(unused) > 0 {
+		sort.Strings(unused)
+		return fmt.Errorf("the plan names %s, which a %s build does not read; a plan must name only the sources the build consumes", strings.Join(unused, ", "), plan.Recipe.Kind)
+	}
+	return nil
 }
 
 // checkDependencyCoverage compares the packages the build compiles with the
