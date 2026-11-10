@@ -46,6 +46,7 @@ tei trace -scope s -subject-kind semantic-attribute \
   - 列対応を持たないマッピングは辺を作らないこと。
   - 属性または列名が空の組は辺にも索引にも残らないこと。
 - 負例: `Relation: "maps-column"` を別名に変えると `no maps-column edge; declared edges: [...]` で失敗する（コードは戻した）。
+- 既存の網羅性テスト `TestEntryTypesKeepOrExplainEverySourceField`（main の並行変更で追加）が、`Columns` を「落としている」と記録していたため失敗した。実際に保持するようになったので、その記録から `Columns` を外した。**この表は「どのフィールドを落としたか」の判断記録であり、判断を変えたときに更新するもの**である。
 
 ## 主張しないこと
 
