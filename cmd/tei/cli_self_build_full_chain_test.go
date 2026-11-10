@@ -5,16 +5,15 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"testing"
-
-	"tei/internal/buildintent"
 )
 
 // §4.50: the whole chain, on the real subject. A declaration that names ./cmd/tei
 // and its module-local closure is resolved into a plan, the plan is built from a
-// tree made only of its sources, and the five conditions hold.
+// tree made only of its sources, and the six conditions (§4.47) hold.
 //
 // This is the observation §4.49 said was missing: there, the isolated build of
 // ./cmd/tei was measured but the claim was not re-established on that subject.
@@ -40,6 +39,9 @@ type fullChainReport struct {
 	DefinitionBinding *struct {
 		State string `json:"state"`
 	} `json:"definitionBinding"`
+	BuilderBinding *struct {
+		State string `json:"state"`
+	} `json:"builderBinding"`
 	ChildIsolation *struct {
 		State       string   `json:"state"`
 		MemberCount int      `json:"memberCount"`
@@ -82,7 +84,6 @@ func writeFullChainDeclaration(t *testing.T, repoRoot, entry, dir string) string
 	}
 	sort.Strings(ordered)
 
-	resolver := buildintent.DirSourceResolver{Root: repoRoot}
 	type source struct {
 		Kind string `json:"kind"`
 		ID   string `json:"id"`
@@ -101,7 +102,6 @@ func writeFullChainDeclaration(t *testing.T, repoRoot, entry, dir string) string
 		source{Kind: "go-module", ID: "go.mod", Ref: "go.mod"},
 		source{Kind: "go-module", ID: "go.sum", Ref: "go.sum"},
 	)
-	_ = resolver
 
 	body := map[string]any{
 		"formatVersion": 1,
@@ -139,6 +139,9 @@ func itoa(i int) string {
 }
 
 func TestSelfBuildFullChainOnTheRealSubject(t *testing.T) {
+	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
+		t.Skip("this declaration targets host/linux/amd64; other hosts need their own measured declaration")
+	}
 	if testing.Short() {
 		t.Skip("the full chain builds the whole tree twice; -short skips it knowingly")
 	}
@@ -164,6 +167,16 @@ func TestSelfBuildFullChainOnTheRealSubject(t *testing.T) {
 	t.Cleanup(func() { removeReadOnlyTree(dir) })
 	workspace := outerWorkspace(t, dir)
 	intentPath := writeFullChainDeclaration(t, repoRoot, "./cmd/tei", dir)
+	intentBytes, err := os.ReadFile(intentPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var declared struct {
+		Sources []json.RawMessage `json:"sources"`
+	}
+	if err := json.Unmarshal(intentBytes, &declared); err != nil {
+		t.Fatal(err)
+	}
 
 	// The catalog, authored from a capability declaration.
 	builderBytes, err := os.ReadFile(builder)
@@ -289,6 +302,9 @@ func TestSelfBuildFullChainOnTheRealSubject(t *testing.T) {
 	if report.DefinitionBinding == nil || report.DefinitionBinding.State != definitionBindingBound {
 		t.Fatalf("definitionBinding = %+v", report.DefinitionBinding)
 	}
+	if report.BuilderBinding == nil || report.BuilderBinding.State != builderBindingBound {
+		t.Fatalf("builderBinding = %+v", report.BuilderBinding)
+	}
 	// The plan named the module context, so isolation is the default and the tree
 	// is made only of planned sources.
 	if report.ChildIsolation == nil || report.ChildIsolation.State != childIsolationIsolated {
@@ -297,8 +313,8 @@ func TestSelfBuildFullChainOnTheRealSubject(t *testing.T) {
 	if len(report.ChildIsolation.ModuleFiles) != 0 {
 		t.Fatalf("the tree took module files from the working tree: %v", report.ChildIsolation.ModuleFiles)
 	}
-	if report.ChildIsolation.MemberCount != 75 {
-		t.Fatalf("memberCount = %d, want 75 (73 packages plus go.mod and go.sum)", report.ChildIsolation.MemberCount)
+	if report.ChildIsolation.MemberCount != len(declared.Sources) {
+		t.Fatalf("memberCount = %d, want %d declared sources", report.ChildIsolation.MemberCount, len(declared.Sources))
 	}
 	if report.ChildRun == nil || report.ChildRun.ChildArtifactDigest == "" {
 		t.Fatal("the child reported no artifact")

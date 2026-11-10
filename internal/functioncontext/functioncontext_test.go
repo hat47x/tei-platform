@@ -98,7 +98,7 @@ func TestEntityGrainDefinitionBindingAndScope(t *testing.T) {
 	}
 }
 
-func TestCoverageFollowsOnlyTheDeclaredPageContract(t *testing.T) {
+func TestDeclaredPageContractDoesNotProveCoverage(t *testing.T) {
 	for _, tc := range []struct {
 		name       string
 		rows       int
@@ -107,11 +107,11 @@ func TestCoverageFollowsOnlyTheDeclaredPageContract(t *testing.T) {
 		state      functioncontext.SliceState
 		emptyProof bool
 	}{
-		{"first page shorter than page-size", 2, 0, semantic.CoverageComplete, functioncontext.SliceStatePage, false},
-		{"first page exactly page-size", 20, 0, semantic.CoveragePartial, functioncontext.SliceStatePage, false},
-		{"later page is never complete", 2, 20, semantic.CoveragePartial, functioncontext.SliceStatePage, false},
-		{"empty first page proves emptiness", 0, 0, semantic.CoverageComplete, functioncontext.SliceStateEmpty, true},
-		{"empty later page proves nothing", 0, 20, semantic.CoveragePartial, functioncontext.SliceStateEmpty, false},
+		{"first page shorter than page-size", 2, 0, semantic.CoverageUnestablished, functioncontext.SliceStatePage, false},
+		{"first page exactly page-size", 20, 0, semantic.CoverageUnestablished, functioncontext.SliceStatePage, false},
+		{"later page is never complete", 2, 20, semantic.CoverageUnestablished, functioncontext.SliceStatePage, false},
+		{"empty first page does not prove subject emptiness", 0, 0, semantic.CoverageUnestablished, functioncontext.SliceStateEmpty, false},
+		{"empty later page proves nothing", 0, 20, semantic.CoverageUnestablished, functioncontext.SliceStateEmpty, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := derive(t, world(t), tc.rows, request(tc.offset)).Slice

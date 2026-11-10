@@ -30,7 +30,7 @@ ModelRevision    string   `json:"modelRevision"`
 
 **読み戻す経路も、照合用のフラグもありません。** この案を採るなら、**両方を新設する必要があります。**
 
-## 3. 案3: artifact の digest を比べる —— 意味の識別子は入っていない
+## 3. 案3: artifact の digest を比べる —— payload と envelope を区別する
 
 `tei artifacts` が作る operation-surface の artifact は digest を持ちますが、**payload に World の識別子が入っていません**。
 
@@ -40,7 +40,9 @@ ModelRevision    string   `json:"modelRevision"`
 == world-identity fields in the payload: 0
 ```
 
-**digest は「操作の一覧と gap と summary」の指紋であって、意味の版の指紋ではありません。** 同じ操作一覧を出す別の意味の版でも、digest は同じになりえます。
+ただし、**payloadに識別子がないことからdigestにも入力の版が含まれないとは言えません**。`Artifact.fingerprint`はKind、**InputRevision**、Rule、Generator、Content、Unresolvedを含めます。`RenderWorkspace`は`sourceindex.ModelRevision(index)`を`RenderOperationSurface`へ渡します。同じContentでもInputRevisionが変わればdigestは変わります。初回調査は`Digest = fingerprint(artifact)`という呼出しだけを見て、その中身と呼出元を確認していませんでした。
+
+したがってdigestは入力revisionも束縛するenvelopeの指紋です。ただしRule等の変更でも変わるため、意味のdriftだけを表す専用値ではありません。また、保存された`operation-surface.json`はContentだけであり、そのファイル単体のSHA-256と`Artifact.Digest`は異なります。ModelRevisionの網羅性と比較方針は別途検証が必要です。
 
 ## 4. 比較の材料は、どの案でも「既にある」とは言えない
 
@@ -48,11 +50,11 @@ ModelRevision    string   `json:"modelRevision"`
 | --- | --- |
 | 再導出して比べる | **運べます**（`WorldFingerprint`・`ModelRevision` が surface にある） |
 | 保存済みを読み戻す | **運べません**（読み戻し0件・フラグ0件。両方の新設が要る） |
-| artifact の digest | **運べますが意味の版を表しません**（payload に World 識別子が0） |
+| artifact の digest | **入力revisionを含むenvelopeの指紋を運べます**。Content単体のhashとは異なり、意味以外の変更でも変わります |
 
 ## 5. この記録が示すこと
 
-- **D-4 の「照合値の受け渡し経路」について、材料が揃いました。** 再導出は**既存の2つの識別子**で足ります。保存済みの読み戻しは**新しい口が2つ**要ります。digest は**別のものを測っている**ので、意味の drift には使えません。
+- **D-4の候補値が置かれる場所を確認しました。** 再導出側に既存の識別子はありますが、比較する以前の期待値とその供給経路は別途必要です。保存済み操作面の比較は現CLIに未実装です。読戻しと期待値の指定を別々のフラグにする必要があるとは限りません。artifactのdigestも入力revisionを含みますが、意味だけのdriftと同一視できません。
 - **D-4 の既定（有効／明示指定）と独立に、経路そのものが未決です。** 有効にしても、**どの値を渡すかが決まらなければ照合は動きません。**
 
 ## 6. この記録が示さないこと
@@ -63,6 +65,8 @@ ModelRevision    string   `json:"modelRevision"`
 - 実配備、実 Provider。
 
 ## 7. 生データ
+
+`raw/anchors.txt`と以下のhashは初回調査の記録として維持します。これはコード断片の静的な抽出であり、比較経路の実行試験ではありません。上記§3・§5は2026-11-11のレビューで、`internal/artifact/artifact.go`の`fingerprint`と`workspace.go`のrevision受渡しを確認して訂正しました。
 
 | ファイル | 内容 |
 | --- | --- |

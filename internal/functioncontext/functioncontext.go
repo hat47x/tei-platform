@@ -80,7 +80,8 @@ type PageScope struct {
 	Offset int64 `json:"offset"`
 }
 
-// Scope holds only conditions the Pattern declared. Other inputs appear by name.
+// Scope holds only conditions the Pattern declared, not proof that native SQL
+// or the provider applied them. Other inputs appear by name.
 type Scope struct {
 	Filters     []FilterScope `json:"filters,omitempty"`
 	Sorts       []SortScope   `json:"sorts,omitempty"`
@@ -222,14 +223,10 @@ func FromBrowseExecution(
 	if len(rows) == 0 {
 		slice.State = SliceStateEmpty
 	}
-	if scope.Page != nil {
-		if scope.Page.Offset == 0 && len(rows) < scope.Page.Size {
-			slice.Coverage = semantic.CoverageComplete
-		} else {
-			slice.Coverage = semantic.CoveragePartial
-		}
-	}
-	slice.EmptyJustified = slice.Coverage == semantic.CoverageComplete && len(rows) == 0
+	// A declared LIMIT and an exhausted result do not prove that native SQL or
+	// the provider covered the declared subject (RLS, extra predicates, hidden
+	// LIMITs, and ignored parameters can all yield a short or empty page).
+	// Keep coverage unestablished until the execution supplies that evidence.
 
 	return Context{
 		Definition: definition,

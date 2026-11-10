@@ -87,3 +87,19 @@ func TestUnboundDatasourceDoesNotBorrowAnotherDatabasesInstance(t *testing.T) {
 		t.Errorf("message does not fall back to the shape: %s", message)
 	}
 }
+
+func TestUnboundDatasourceDoesNotSuggestIncompatibleProvider(t *testing.T) {
+	w := unboundWorld([]environment.DatabaseInstance{
+		{ID: "sales_core.oracle", Definition: "sales_core", Provider: "oracle"},
+		{ID: "sales_core.pg", Definition: "sales_core", Provider: "postgres"},
+	})
+	message := diagnosticMessage(t, w, "UNBOUND_DATASOURCE")
+	if strings.Contains(message, "sales_core.oracle") || !strings.Contains(message, "sales_core.pg") {
+		t.Fatalf("hint must select a dialect-compatible instance: %s", message)
+	}
+	w.Environments[0].Instances = w.Environments[0].Instances[:1]
+	message = diagnosticMessage(t, w, "UNBOUND_DATASOURCE")
+	if strings.Contains(message, "sales_core.oracle") || !strings.Contains(message, "<database-instance>") {
+		t.Fatalf("incompatible instance must leave the binding unresolved: %s", message)
+	}
+}

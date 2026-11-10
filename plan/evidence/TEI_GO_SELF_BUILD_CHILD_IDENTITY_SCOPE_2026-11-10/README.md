@@ -18,7 +18,7 @@ plan/evidence/TEI_GO_SELF_BUILD_CHILD_IDENTITY_SCOPE_2026-11-10/run.sh direct
 | `proxy` | `-child`のプロキシが**自分のバイトを変えずに**起動先を切り替える | **`l2b.claimed=true`**（差し替えは見えない） |
 | `direct` | `-child`のファイル自体が初回に書き換わる | **`l2b.claimed=false`**、`mismatched`、`mismatchReason`が実行者違いを名指しする |
 
-> **現行の期待は、宣言したbuilderと起動したファイルを結ぶ検査（SB-C0 §4.47、[記録](../TEI_GO_SELF_BUILD_BUILDER_BINDING_2026-11-10.md)）の後の値です。** 上の表の `proxy` の期待（`true`）は、検査が入る前の観測です。`raw/*-summary.txt` はその時点の出力で、`raw/*-summary-with-builder-binding.txt` が検査の後の出力です（下の表）。
+> **現行の期待は、宣言したbuilderと起動したファイルを結ぶ検査（SB-C0 §4.51、[記録](../TEI_GO_SELF_BUILD_BUILDER_BINDING_2026-11-10.md)）の後の値です。** 上の表の `proxy` の期待（`true`）は、検査が入る前の観測です。`raw/*-summary.txt` はその時点の出力で、`raw/*-summary-with-builder-binding.txt` が検査の後の出力です（下の表）。
 
 エミュレータは要りません。どちらもエントリの記帳に関する観測で、childのアーキテクチャに依存しないためです。
 

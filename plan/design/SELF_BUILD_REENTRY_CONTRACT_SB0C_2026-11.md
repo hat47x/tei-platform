@@ -2051,108 +2051,6 @@ L2-bの五条件は、childの能力に依存する。本節は、**参照実装
 - **entryが隔離木を見たこと**。見えるのはchildの申告だけである（§4.37の「信じている」に属する）
 - 五条件への追加。**契約変更であり、別途決める**
 - `-isolate`の既定化
-### 4.47 宣言したbuilderと、起動したファイルを結ぶ（2026-11-10）
-
-§4.33は「builderの解決はdigestで照合しないため、catalogが別のバイトを名指ししていても試行は通ってしまう」と書き、§4.37の実測は「`-child`がプロキシなら背後の差し替えは止まらない」ことを示した。本節は、この二つが**同じ一つの欠落**であると整理し、塞いだ範囲と残る範囲を分ける。
-
-#### 何が欠けていたか
-
-同一性には三つの対象がある。
-
-| 対象 | 値の出どころ | 変更前の扱い |
-| --- | --- | --- |
-| **宣言したbuilder** | 計画の`builder.artifactDigest`（catalogから解決。entryが自分で導く） | **どこにも比べられていなかった** |
-| **起動したファイル** | entryが`-child`のbyteを起動の直前に読んだdigest | 二回の起動どうしを比べるだけ（条件5） |
-| **実際に動いた構築器** | OSが読み込んだプロセスイメージと、それが起動したもの | 観測していない |
-
-条件5は二番目を**それ自身と**比べていた。一番目と二番目を結ぶ検査が無かったので、計画がbuilder Dを宣言し、entryがbyte Eのファイルを起動しても、**「この計画がこのartifactを生んだ」というClaimが立った**。プロキシはその一例であり、catalogが別のbyteを名指しする場合も同じ欠落である。
-
-**これは実装の欠落である。** 両方の値をentryが既に持っており、childの申告を一つも要さずに比べられた。保証範囲の限定ではない。
-
-#### 足したもの
-
-`builderBinding`という記録を一つ足した。計画の`builder.artifactDigest`と、起動したファイルのdigestを比べる。
-
-| 状態 | 意味 |
-| --- | --- |
-| `bound` | 起動したファイルのbyteが、計画の宣言するbuilderのbyteと同じ |
-| `mismatched` | 違う。ラッパー、プロキシ、別ビルドのbuilderはいずれも「別のファイル」 |
-| `unperformed` | 計画が無い、計画がdigestを持たない、起動したファイルのdigestが無い |
-
-**`l2b.claimed`は`bound`を要求する**（§4.23の五条件に並ぶ六つ目の条件）。新しい型、新しい実行器、新しいEvidenceの形式は足していない。値は既存の`plugin.BuildPlan`と、既存の起動記録（`invoked.executableDigest`）である。
-
-**`mismatched`は試行を失敗にしない。** childは動き、成果物は照合されている。落とすのはClaimだけである。理由は、catalogを渡さない試行（計画が無い）が今も`ok`であることと揃えるため、また宣言と違うファイルを起動する正当な構成（エミュレータのラッパー）を「buildの失敗」と呼ばないためである。**試行ごと止めるべきだと分かったら、`appendSelfBuildFailure`を一行足せば覆せる。**
-
-#### 止まるもの、止まらないもの（実プロセスの試験で固定）
-
-| 構成 | 結果 | 止める検査 |
-| --- | --- | --- |
-| catalogがbuilder Aを宣言し、`-child`もA | Claimが立つ | — |
-| catalogが別のbyteを宣言（§4.33の穴） | **Claimが立たない**（試行は`ok`） | `builderBinding` |
-| catalogがAを宣言し、`-child`は1回目にA・2回目にBを起動するプロキシ | **Claimが立たない**（再現は`reproduced`のまま） | `builderBinding` |
-| `-child`のファイル自体が二回の間に書き換わる | **Claimが立たず、試行も失敗** | 条件5（1回目は`bound`） |
-| **catalogがプロキシ自体を宣言**し、プロキシが背後でA→Bと起動 | **Claimが立つ** | 止まらない（下記） |
-
-#### Claimが言うこと、言わないこと
-
-**言う**：entryが起動を依頼したファイルは、起動の直前に読んだ時点で、計画が宣言するbuilderと同じbyteだった。二回とも同じだった。
-
-**言わない**：
-
-1. **OSが読み込んだイメージがそのbyteであること。** entryはファイルを読んでから、パスで起動する。この二つは不可分ではない（TOCTOU）。閉じるには保持したイメージから起動する仕組みが要り、それはRuntime側（`internal/plugin/runtime`の保持イメージ検証、#973）の仕事である
-2. **起動したファイルが何を起動したか。** 宣言されたbuilderが別のプログラムへ処理を渡すなら、それは**宣言されたbuilderの振る舞い**である。Goのbuilderがコンパイラを起動するのと、プロキシが別のbuilderを起動するのを、entryは区別しない。区別するにはexecの監視が要る（§4.37「敵対的なchildを想定するなら」の2行目と同じ）
-3. **catalogが正しいこと。** プロキシを宣言するcatalogは、プロキシをbuilderとして宣言している。それを受け入れるかは供給のTrustの判断である
-
-したがって「同じ構築器で二回buildした」は、**「同じ宣言済みファイルを二回起動した」**までしか言えない。`l2b`と再現の境界文は、この表現に直した。
-
-#### 既存の記録への影響
-
-- arm64のL2-b連鎖（§4.25以降の記録）は、catalogが`builder`を名指しし、entryはラッパーを起動した。**現行では同じ構成でClaimは立たない**。Claimを立てるには、catalogがラッパーを宣言する必要がある（その場合、宣言されたbuilderはラッパーである）。過去の記録は当時の観測として残す
-- §4.23・§4.37・§4.38・§4.39の「五条件」は当時の述語である。現行の述語は六条件である
-
-#### この節が言っていないこと
-
-- 上の1〜3を閉じた、とは言っていない
-- `-child`に通常ファイル以上の制約（実行形式の判定）は課していない
-- 受理・Runtime Authority・供給のTrust。いずれも未主張のまま
-
-### 4.46 計画は、ビルドが読むsourceだけを名指す（2026-11-09）
-
-§4.41は「ビルドが計画に載っていないpackageを読む」を拒否した。**逆向きの食い違い**——計画が、ビルドが読まないsourceを名指す——は残っていた。§4.40で`definitionSource`が`go-package`になった後も、宣言は`plugin-definition`を計画に残していた（写すだけで、ビルドは読まない）。
-
-#### 規則
-
-**`go-command`の計画は、`go-package`と`go-module`だけを名指せる。** それ以外のkindがあれば**ビルドしない**。
-
-| なぜ | 内容 |
-| --- | --- |
-| 記述の一致 | 使わないsourceを載せると、計画は「ビルドより多い」ことを言う。読み手はどちらが本意か分からない |
-| §4.41との対称 | あちらは「ビルドが計画より多い」、こちらは「計画がビルドより多い」。**どちらも計画とビルドが別物** |
-
-**`go-command`以外のrecipeは従来どおり**（規則を決めた範囲だけに適用する）。
-
-#### あわせて直したこと：定義sourceのkindを両側で揃える
-
-`definitionBytesDigest`の照合（§4.36・§4.40）が**`plugin-definition`固定**だったため、宣言を外すと`definitionBinding`が`unperformed`になった。**builderとentryの両方で、recipeに応じてkindを決める**ようにした（`go-command`なら`go-package`）。
-
-**片側だけ直すと、静かに`unperformed`へ落ちる。** 実際にその順序で踏んだ。
-
-#### 実測
-
-| 試験 | 結果 |
-| --- | --- |
-| `TestCheckSourcesAreReadAcceptsTheSourcesACommandBuildUses` | **PASS** |
-| `TestCheckSourcesAreReadRefusesASourceTheCommandBuildNeverReads`（`plugin-definition`を名指すと拒否し、理由を述べる） | **PASS** |
-| `TestCheckSourcesAreReadLeavesOtherRecipesAlone` | **PASS** |
-| `TestRunRefusesAPlanWithAnUnusedSource`（試行ごと拒否） | **PASS** |
-| `TestSelfBuildEstablishesL2BFromARealGoBuild`（宣言を外した計画で`l2b.claimed=true`・`definitionBinding=bound`・`memberCount=3`） | **PASS**（26.6秒） |
-
-#### この節が言っていないこと
-
-- **`go-command`以外のrecipeの「読むsource」の集合**。決めていない
-- 計画に載る`go-package`が**複数**の場合の扱い（今は全部写す）
-- 記録側（`sources`）の意味の変更。**計画のsourceは、ビルドが読むものだけになった**
-
 ### 4.47 計画がmodule contextを名指すなら、隔離ビルドを既定にする（2026-11-09）
 
 §4.42は`-isolate`を**既定にしなかった**。理由は「module contextが計画の外にある」だった。§4.43でそれが計画の内側に入ったので、**条件が変わった。**
@@ -2328,6 +2226,108 @@ L2-bの五条件は、childの能力に依存する。本節は、**参照実装
 - 受理・Runtime Authority・G4適格性。**`qualified`は`false`のまま**
 - この試験をCIの標準時間に収める工夫。**254秒は重い**
 
+### 4.51 宣言したbuilderと、起動したファイルを結ぶ（2026-11-10）
+
+§4.33は「builderの解決はdigestで照合しないため、catalogが別のバイトを名指ししていても試行は通ってしまう」と書き、§4.37の実測は「`-child`がプロキシなら背後の差し替えは止まらない」ことを示した。本節は、この二つが**同じ一つの欠落**であると整理し、塞いだ範囲と残る範囲を分ける。
+
+#### 何が欠けていたか
+
+同一性には三つの対象がある。
+
+| 対象 | 値の出どころ | 変更前の扱い |
+| --- | --- | --- |
+| **宣言したbuilder** | 計画の`builder.artifactDigest`（catalogから解決。entryが自分で導く） | **どこにも比べられていなかった** |
+| **起動したファイル** | entryが`-child`のbyteを起動の直前に読んだdigest | 二回の起動どうしを比べるだけ（条件5） |
+| **実際に動いた構築器** | OSが読み込んだプロセスイメージと、それが起動したもの | 観測していない |
+
+条件5は二番目を**それ自身と**比べていた。一番目と二番目を結ぶ検査が無かったので、計画がbuilder Dを宣言し、entryがbyte Eのファイルを起動しても、**「この計画がこのartifactを生んだ」というClaimが立った**。プロキシはその一例であり、catalogが別のbyteを名指しする場合も同じ欠落である。
+
+**これは実装の欠落である。** 両方の値をentryが既に持っており、childの申告を一つも要さずに比べられた。保証範囲の限定ではない。
+
+#### 足したもの
+
+`builderBinding`という記録を一つ足した。計画の`builder.artifactDigest`と、起動したファイルのdigestを比べる。
+
+| 状態 | 意味 |
+| --- | --- |
+| `bound` | 起動したファイルのbyteが、計画の宣言するbuilderのbyteと同じ |
+| `mismatched` | 違う。ラッパー、プロキシ、別ビルドのbuilderはいずれも「別のファイル」 |
+| `unperformed` | 計画が無い、計画がdigestを持たない、起動したファイルのdigestが無い |
+
+**`l2b.claimed`は`bound`を要求する**（§4.23の五条件に並ぶ六つ目の条件）。新しい型、新しい実行器、新しいEvidenceの形式は足していない。値は既存の`plugin.BuildPlan`と、既存の起動記録（`invoked.executableDigest`）である。
+
+**`mismatched`は試行を失敗にしない。** childは動き、成果物は照合されている。落とすのはClaimだけである。理由は、catalogを渡さない試行（計画が無い）が今も`ok`であることと揃えるため、また宣言と違うファイルを起動する正当な構成（エミュレータのラッパー）を「buildの失敗」と呼ばないためである。**試行ごと止めるべきだと分かったら、`appendSelfBuildFailure`を一行足せば覆せる。**
+
+#### 止まるもの、止まらないもの（実プロセスの試験で固定）
+
+| 構成 | 結果 | 止める検査 |
+| --- | --- | --- |
+| catalogがbuilder Aを宣言し、`-child`もA | Claimが立つ | — |
+| catalogが別のbyteを宣言（§4.33の穴） | **Claimが立たない**（試行は`ok`） | `builderBinding` |
+| catalogがAを宣言し、`-child`は1回目にA・2回目にBを起動するプロキシ | **Claimが立たない**（再現は`reproduced`のまま） | `builderBinding` |
+| `-child`のファイル自体が二回の間に書き換わる | **Claimが立たず、試行も失敗** | 条件5（1回目は`bound`） |
+| **catalogがプロキシ自体を宣言**し、プロキシが背後でA→Bと起動 | **Claimが立つ** | 止まらない（下記） |
+
+#### Claimが言うこと、言わないこと
+
+**言う**：entryが起動を依頼したファイルは、起動の直前に読んだ時点で、計画が宣言するbuilderと同じbyteだった。二回とも同じだった。
+
+**言わない**：
+
+1. **OSが読み込んだイメージがそのbyteであること。** entryはファイルを読んでから、パスで起動する。この二つは不可分ではない（TOCTOU）。閉じるには保持したイメージから起動する仕組みが要り、それはRuntime側（`internal/plugin/runtime`の保持イメージ検証、#973）の仕事である
+2. **起動したファイルが何を起動したか。** 宣言されたbuilderが別のプログラムへ処理を渡すなら、それは**宣言されたbuilderの振る舞い**である。Goのbuilderがコンパイラを起動するのと、プロキシが別のbuilderを起動するのを、entryは区別しない。区別するにはexecの監視が要る（§4.37「敵対的なchildを想定するなら」の2行目と同じ）
+3. **catalogが正しいこと。** プロキシを宣言するcatalogは、プロキシをbuilderとして宣言している。それを受け入れるかは供給のTrustの判断である
+
+したがって「同じ構築器で二回buildした」は、**「同じ宣言済みファイルを二回起動した」**までしか言えない。`l2b`と再現の境界文は、この表現に直した。
+
+#### 既存の記録への影響
+
+- arm64のL2-b連鎖（§4.25以降の記録）は、catalogが`builder`を名指しし、entryはラッパーを起動した。**現行では同じ構成でClaimは立たない**。Claimを立てるには、catalogがラッパーを宣言する必要がある（その場合、宣言されたbuilderはラッパーである）。過去の記録は当時の観測として残す
+- §4.23・§4.37・§4.38・§4.39の「五条件」は当時の述語である。現行の述語は六条件である
+
+#### この節が言っていないこと
+
+- 上の1〜3を閉じた、とは言っていない
+- `-child`に通常ファイル以上の制約（実行形式の判定）は課していない
+- 受理・Runtime Authority・供給のTrust。いずれも未主張のまま
+
+### 4.46 計画は、ビルドが読むsourceだけを名指す（2026-11-09）
+
+§4.41は「ビルドが計画に載っていないpackageを読む」を拒否した。**逆向きの食い違い**——計画が、ビルドが読まないsourceを名指す——は残っていた。§4.40で`definitionSource`が`go-package`になった後も、宣言は`plugin-definition`を計画に残していた（写すだけで、ビルドは読まない）。
+
+#### 規則
+
+**`go-command`の計画は、`go-package`と`go-module`だけを名指せる。** それ以外のkindがあれば**ビルドしない**。
+
+| なぜ | 内容 |
+| --- | --- |
+| 記述の一致 | 使わないsourceを載せると、計画は「ビルドより多い」ことを言う。読み手はどちらが本意か分からない |
+| §4.41との対称 | あちらは「ビルドが計画より多い」、こちらは「計画がビルドより多い」。**どちらも計画とビルドが別物** |
+
+**`go-command`以外のrecipeは従来どおり**（規則を決めた範囲だけに適用する）。
+
+#### あわせて直したこと：定義sourceのkindを両側で揃える
+
+`definitionBytesDigest`の照合（§4.36・§4.40）が**`plugin-definition`固定**だったため、宣言を外すと`definitionBinding`が`unperformed`になった。**builderとentryの両方で、recipeに応じてkindを決める**ようにした（`go-command`なら`go-package`）。
+
+**片側だけ直すと、静かに`unperformed`へ落ちる。** 実際にその順序で踏んだ。
+
+#### 実測
+
+| 試験 | 結果 |
+| --- | --- |
+| `TestCheckSourcesAreReadAcceptsTheSourcesACommandBuildUses` | **PASS** |
+| `TestCheckSourcesAreReadRefusesASourceTheCommandBuildNeverReads`（`plugin-definition`を名指すと拒否し、理由を述べる） | **PASS** |
+| `TestCheckSourcesAreReadLeavesOtherRecipesAlone` | **PASS** |
+| `TestRunRefusesAPlanWithAnUnusedSource`（試行ごと拒否） | **PASS** |
+| `TestSelfBuildEstablishesL2BFromARealGoBuild`（宣言を外した計画で`l2b.claimed=true`・`definitionBinding=bound`・`memberCount=3`） | **PASS**（26.6秒） |
+
+#### この節が言っていないこと
+
+- **`go-command`以外のrecipeの「読むsource」の集合**。決めていない
+- 計画に載る`go-package`が**複数**の場合の扱い（今は全部写す）
+- 記録側（`sources`）の意味の変更。**計画のsourceは、ビルドが読むものだけになった**
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
@@ -2359,7 +2359,7 @@ L2-bの五条件は、childの能力に依存する。本節は、**参照実装
 | SC0-25 | `-build-catalog`だけを渡し、digestを渡さない | 起動しない。**どのcatalogで導いたかを記録できない経路を許さない**（§4.22） |
 | SC0-26 | 呼び手が名指ししたcatalogを使ったことを「そのcatalogが正しい」と読む | 読まない。K-3が言えるのは「名指しされたcatalogを使った」ことまでである（§4.22） |
 | SC0-27 | `l2b.claimed=true`を受理・Runtime Authorityと読む | 読まない。`qualified`は`false`のままで、`l2b.boundary`が範囲を明記する（§4.23） |
-| SC0-28 | 単一の観測（`bound`だけ、`reproduced`だけ）でL2-bを主張する | 主張しない。述語は五条件の同時成立を要求し、欠けた条件をすべて列挙する（§4.23） |
+| SC0-28 | 単一の観測（`bound`だけ、`reproduced`だけ）でL2-bを主張する | 主張しない。述語は六条件の同時成立を要求し（§4.23と§4.51）、、欠けた条件をすべて列挙する（§4.23） |
 | SC0-29 | `l2bClaimed`を`false`に固定したまま「L2-bは未成立」と述べ続ける | 述べ続けない。ただし**Claimを立てるには呼び手がin-processと`-rebuild-check`を明示する必要がある**（既定は変わっていない。§4.23） |
 | SC0-30 | 二つのホストで一致したことを「すべてのOSで一致する」と読む | 読まない。観測したのは`linux/amd64`と`windows/amd64`で、他のホストは未観測である（§4.26） |
 

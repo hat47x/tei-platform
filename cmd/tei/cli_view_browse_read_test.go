@@ -189,10 +189,7 @@ func TestBrowseReadReportsDataContextFromActualPostgres(t *testing.T) {
 		if got := identities(report); !reflect.DeepEqual(got, want) {
 			t.Fatalf("%+v: identities=%v want=%v", tc, got, want)
 		}
-		wantCoverage := "partial"
-		if tc.offset == 0 && len(want) < 20 {
-			wantCoverage = "complete"
-		}
+		wantCoverage := "unestablished"
 		if s := slice(report); s["coverage"] != wantCoverage || int(s["rowCount"].(float64)) != len(want) {
 			t.Fatalf("%+v: slice=%v want coverage %s", tc, s, wantCoverage)
 		}

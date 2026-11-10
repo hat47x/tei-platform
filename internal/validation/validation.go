@@ -71,7 +71,7 @@ var attributeRoles = map[string]bool{
 // unboundDatasourceHint says what to write, using an instance the workspace
 // actually declares when there is one. A fail-closed rule: if no instance is
 // declared, the hint names the shape without inventing one.
-func unboundDatasourceHint(w ir.World, a application.Application, alias core.LocalName) string {
+func unboundDatasourceHint(w ir.World, a application.Application, alias core.LocalName, dialect environment.DatabaseProvider) string {
 	var target core.CanonicalID
 	for _, req := range a.Databases {
 		if req.Alias == alias {
@@ -81,7 +81,8 @@ func unboundDatasourceHint(w ir.World, a application.Application, alias core.Loc
 	}
 	for _, e := range w.Environments {
 		for _, inst := range e.Instances {
-			if target != "" && inst.Definition != target {
+			if target == "" || inst.Definition != target || !inst.Provider.Known() ||
+				(dialect != environment.ProviderGeneric && inst.Provider != dialect) {
 				continue
 			}
 			return fmt.Sprintf("add \"bind %s.%s -> %s\" inside environment %s, which already declares that instance",
@@ -1193,7 +1194,7 @@ func Validate(w ir.World) []Diagnostic {
 			// author down another wrong path.
 			out = append(out, Diagnostic{Code: "UNBOUND_DATASOURCE", Severity: Warning, Message: fmt.Sprintf(
 				"query %s datasource %s is not bound in any environment; %s",
-				q.ID, q.Datasource, unboundDatasourceHint(w, a, q.Datasource))})
+				q.ID, q.Datasource, unboundDatasourceHint(w, a, q.Datasource, q.Dialect))})
 		}
 	}
 
