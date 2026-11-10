@@ -1,0 +1,11 @@
+internal/index/index.go:488          adds realizes to d.DeclaredDependencies  (#3989)
+internal/modelref/derivedbridge/projection.go:117
+                                     walks d.CustomGoBindings and calls addEdge  (8219cc3d4)
+
+FromIndex runs both. addEdge only checks that the endpoints are nodes and then
+appends unconditionally:
+
+  if !nodes[to] { p.Unresolved = append(...); return }
+  p.Graph.Edges = append(p.Graph.Edges, modelref.Edge{...})
+
+so the same edge lands in Graph.Edges twice.

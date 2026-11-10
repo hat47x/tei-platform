@@ -1398,3 +1398,44 @@ ir.World --[第45ラウンド]--> index.Build --[第46ラウンド]--> entry 型
 **両方の段が「判断を書かなければ通らない」になった。** しかし `#4001` の欠陥（列対応が辺にならない）は残る。今は理由付きで記録されているだけで、`trace` は依然として列対応を返さない。**検出を完成させ、修正は設計判断として残した。**
 
 `database` は `SupportedSubjectKinds` に無いため、辺を作るには kind の追加も伴う。私は材料を提示するに留める。
+
+## 50. 第47ラウンド（2026-11-10）: trace が realizes 辺を2回返す
+
+計画 §5 の残った問い（「発見の粒度」「『効果的』の測り方」）に答えるため、設計者の問いに何回の CLI 呼出しで答えるかを測った。その過程で、応答に同一の辺が2行含まれることに気づいた。生出力は[第47ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND47_DUPLICATE_REALIZES_EDGE_2026-11-10/README.md)にある。
+
+### 設計の問いは3呼出しで答えられた（ただし1つ目が誤っていた）
+
+「どの application が `security.authenticate` を実装し、何を受け取って何を返すか」は `trace -direction incoming` → `trace -mode full` → `inspect` の3回で答えられた。**ただし1回目の応答が正しくなかった。**
+
+```text
+total: 2
+  [0] application order_entry -realizes-> semantic-capability security.authenticate
+  [1] application order_entry -realizes-> semantic-capability security.authenticate
+```
+
+`world` の `customGoBindings` は4件（各 capability 1件）なので宣言の重複ではない。全 subject を走査すると、**重複するのは `realizes` だけ**（6 subject）で、他の15関係は重複しない。
+
+### 原因: 2つの経路が同じ辺を作っている
+
+| 場所 | 実装 |
+| --- | --- |
+| `internal/index/index.go:488` | `d.DeclaredDependencies` に追加（#3989、私の修正） |
+| `internal/modelref/derivedbridge/projection.go:117` | `d.CustomGoBindings` を直接走査（`8219cc3d4`） |
+
+`addEdge` は `nodes` の存在だけを見て `Graph.Edges` に無条件で追加するため、同じ辺が2行になる。
+
+### PR の状態とコミットの所在は別だった
+
+第43ラウンドで「両方入れると二重になる」と #3994 にコメントした。それが実現していた。ただし**私の状態の読み方が誤っていた**。
+
+```bash
+$ gh pr view 3994 --json state,mergedAt     # CLOSED, merged=null
+$ git log --oneline origin/main -S "range d.CustomGoBindings" -- internal/modelref/derivedbridge/projection.go
+# 8219cc3d4    ← main に在る
+```
+
+**PR が閉じられていればコミットも入っていない**と暗黙に仮定していた。実際は `CLOSED` の PR のコミットが `main` に在った。**PR の状態ではなく `git log -S` で確認すべきだった。** 第39ラウンドの「提出前に `git log` を見なかった」と同じ根（検証手段の選択ミス）である。
+
+### 起票
+
+[#4024](https://github.com/hat47x/tei-platform/issues/4024)。片方の経路を削除する2案と、`addEdge` に重複排除を入れる根本案を示した。案 A は `incomplete-realization` 報告を失い、案 B は保てるという差がある。

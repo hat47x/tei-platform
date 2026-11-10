@@ -43,6 +43,7 @@
 - [フック実行の配線と失敗の区別の確認](XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)（参照実装の試験記録。Runnerからの配線、NotSatisfiedと実行失敗の区別、参照規則。実PluginとCLI・Studioの配線は未実装）
 - [フック宣言の印刷面への反映の確認](XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md)（参照実装の試験記録。画面と同じフック宣言が印刷面にも出る。実印刷・用紙面の版照合は未確認）
 - [フックの位相順序と途中停止の確認](XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md)（参照実装の試験記録。位相の実行順、不成立での停止位置、`warn`の続行、未対応位相の拒否。CLI・Studioへの配線は未実装）
+- [行単位フックの`uses`を1行ごとに果たす確認](XTEA_LOWCODE_HOOK_ROW_USES_CALLS_2026-11.md)（参照実装の試験記録。行ごとに1回ずつその行の値で能力を呼ぶ。ホスト配線は未実装）
 - [行単位フックの`uses`を二つの入口で同じに判定する確認](XTEA_LOWCODE_HOOK_ROW_USES_PARITY_2026-11.md)（参照実装の試験記録。`Run`と`RunReachable`で同じ宣言が別の答えになっていたのを、判断を一箇所に寄せて揃えた。行ごとの`uses`実行は未着手）
 - [行単位フックの宣言と実行の食い違いを直した確認](XTEA_LOWCODE_HOOK_ROW_REACHABILITY_2026-11.md)（参照実装の試験記録。検証が受理する`browse` + `scope row`を`RunRows`が実行できるようにした。ホスト配線は未実装）
 - [フックの範囲（Scope）宣言の成立確認](XTEA_LOWCODE_HOOK_SCOPE_2026-11.md)（参照実装の確認記録。範囲は宣言・検証・実行時拒否・表示の四面に在り、`row`の行ごと適用は未実装）
@@ -350,3 +351,4 @@
 - [永続化マッピングの列対応が参照グラフに現れない](TEI_DOGFOODING_ROUND44_PERSISTENCE_NOT_IN_GRAPH_2026-11-10/README.md)（#4001・#3983。属性20件中incomingを持つのは3件のみ。索引はMapping.Columnsを捨てている。commandsと-hの不一致は他者の修正で解消済みと確認）
 - [Worldの全欄と参照グラフの対応を検査で固定した](TEI_DOGFOODING_ROUND45_WORLD_FIELD_COVERAGE_2026-11-10/README.md)（#3419・#3983・#4001。17欄中14を索引が読み、未読3欄は第43ラウンドの特定と一致。reflectで全欄を列挙し未登録を落とす。ただし「読む欄が辺になるか」は未検査と明記）
 - [索引のentry型がWorldの下位構造を捨てていないかを検査で固定](TEI_DOGFOODING_ROUND46_ENTRY_FIELD_COVERAGE_2026-11-10/README.md)（#4001・#3419。`PersistenceIndexEntry`が10欄中6欄を捨てていることを検査で固定。第45ラウンドの残り半分を塞ぎ2段とも機械化。ただし#4001の欠陥自体は設計判断として残す）
+- [traceがrealizes辺を2回返す](TEI_DOGFOODING_ROUND47_DUPLICATE_REALIZES_EDGE_2026-11-10/README.md)（#4024・#3983。index.goとprojection.goの両経路が同じ辺を作る。重複はrealizesのみで他15関係は正常。閉じたPRのコミットがmainに在ったことをgit log -Sで確認）
