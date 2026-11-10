@@ -49,6 +49,36 @@ type selfBuildEntryEvidence struct {
 	L3Claimed      bool             `json:"l3Claimed"`
 	FailureCause   string           `json:"failureCause,omitempty"`
 	Boundary       string           `json:"claimBoundary"`
+	// The child's own report about the declaration it read (§4.8). They are
+	// copied from the child's JSON and never compared by the primitive form;
+	// the outer shape does the comparison.
+	ChildIntentBytesDigest string `json:"childIntentBytesDigest,omitempty"`
+	ChildIntentFingerprint string `json:"childIntentFingerprint,omitempty"`
+	ChildPlanFingerprint   string `json:"childPlanFingerprint,omitempty"`
+	// ChildStateDir is the state directory the child says it used. The entry
+	// passes -state; this is the child's own reading of it, so the separation the
+	// reproducibility claim rests on can be checked rather than assumed.
+	ChildStateDir string `json:"childStateDir,omitempty"`
+	// ChildDefinitionDigest is the digest the child reports for the definition
+	// file it read. The child checks it itself before building (§4.36); recording
+	// it lets this entry check the claim rather than rely on the child's own
+	// enforcement.
+	ChildDefinitionDigest string `json:"childDefinitionBytesDigest,omitempty"`
+	// ChildLock is the child's own validated plan-to-artifact lock (§4.11),
+	// copied verbatim. The entry checks it against the file rather than
+	// treating it as proof.
+	ChildLock *childSelfLock `json:"childLock,omitempty"`
+}
+
+// childSelfLock mirrors the lock a child may form about its own work. Every
+// field is the child's claim; the entry compares them with what it can see.
+type childSelfLock struct {
+	FormatVersion   int    `json:"formatVersion"`
+	PlanFingerprint string `json:"planFingerprint"`
+	ArtifactDigest  string `json:"artifactDigest"`
+	LockFingerprint string `json:"lockFingerprint"`
+	Validated       bool   `json:"validated"`
+	Boundary        string `json:"boundary,omitempty"`
 }
 
 func runSelfBuildCommand(args []string, out io.Writer) (int, error) {
@@ -201,6 +231,17 @@ func driveSelfBuild(childPath string, childArgs []string, artifactPath, claimedS
 	var child struct {
 		SchemaVersion  string `json:"schemaVersion"`
 		ArtifactDigest string `json:"artifactDigest"`
+		// The child's own readings of the declaration it read (§4.8). They are
+		// optional: a child that does not interpret a declaration omits them.
+		IntentBytesDigest string `json:"intentBytesDigest"`
+		IntentFingerprint string `json:"intentFingerprint"`
+		PlanFingerprint   string `json:"planFingerprint"`
+		StateDir          string `json:"stateDir"`
+		DefinitionDigest  string `json:"definitionBytesDigest"`
+		// The child's own validated plan-to-artifact lock (§4.11). When a child
+		// forms and checks it itself, the entry no longer assembles the binding
+		// from two separate self-reports.
+		BuildArtifactLock *childSelfLock `json:"buildArtifactLock"`
 	}
 	if err := json.Unmarshal([]byte(stdout), &child); err != nil {
 		appendSelfBuildFailure(&evidence, "child output is not one JSON object: "+err.Error())
@@ -208,6 +249,21 @@ func driveSelfBuild(childPath string, childArgs []string, artifactPath, claimedS
 	}
 	evidence.ChildSchema = child.SchemaVersion
 	evidence.ChildArtifact = child.ArtifactDigest
+	evidence.ChildIntentBytesDigest = child.IntentBytesDigest
+	evidence.ChildIntentFingerprint = child.IntentFingerprint
+	evidence.ChildPlanFingerprint = child.PlanFingerprint
+	evidence.ChildStateDir = child.StateDir
+	evidence.ChildDefinitionDigest = child.DefinitionDigest
+	if child.BuildArtifactLock != nil {
+		evidence.ChildLock = &childSelfLock{
+			FormatVersion:   child.BuildArtifactLock.FormatVersion,
+			PlanFingerprint: child.BuildArtifactLock.PlanFingerprint,
+			ArtifactDigest:  child.BuildArtifactLock.ArtifactDigest,
+			LockFingerprint: child.BuildArtifactLock.LockFingerprint,
+			Validated:       child.BuildArtifactLock.Validated,
+			Boundary:        child.BuildArtifactLock.Boundary,
+		}
+	}
 
 	actual, err := digestOfFile(artifactPath)
 	if err != nil {

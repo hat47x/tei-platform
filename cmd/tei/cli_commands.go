@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"strings"
+
+	"tei/internal/operations"
 )
 
 // acceptedCommands is the single list of command names the CLI dispatches.
@@ -80,6 +82,49 @@ func init() {
 
 // usageText describes the command grammar without naming options, because
 // every command has its own flags.
+// writeFlagHelp renders one FlagSet the way `-h` shows it. `wanted` filters the
+// names when the caller has an allowlist; nil means every flag is part of the
+// grammar.
+func writeFlagHelp(out *strings.Builder, fs *flag.FlagSet, command string, wanted map[string]bool) {
+	fs.VisitAll(func(f *flag.Flag) {
+		if wanted != nil && !wanted[f.Name] {
+			return
+		}
+		placeholder, usage := flag.UnquoteUsage(f)
+		line := "  -" + f.Name
+		if placeholder != "" {
+			line += " " + placeholder
+		}
+		fmt.Fprintf(out, "%s\n", line)
+		if usage != "" {
+			fmt.Fprintf(out, "    \t%s\n", usage)
+		}
+		if values, ok := valueSets(command)[f.Name]; ok {
+			fmt.Fprintf(out, "    \tvalues: %s\n", strings.Join(values, ", "))
+		}
+		if value, ok := valueDefaults(command)[f.Name]; ok {
+			fmt.Fprintf(out, "    \tdefault: %s\n", value)
+		}
+	})
+}
+
+// selfBuildHelpFlags holds both grammars the command accepts. It is built from
+// the §4 FlagSet so the two cannot drift, and adds the primitive-only flags that
+// the §4 form does not register.
+func selfBuildHelpFlags() *flag.FlagSet {
+	var scratch selfBuildOuterArgs
+	outer := newSelfBuildOuterFlagSet(&scratch)
+	fs := flag.NewFlagSet("self-build", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	outer.VisitAll(func(f *flag.Flag) {
+		fs.Var(f.Value, f.Name, f.Usage)
+	})
+	fs.String("child-arg-file", "", "JSON array of child arguments in a file")
+	fs.String("artifact", "", "path the child writes its artifact to (no-clobber)")
+	fs.String("claimed-self", "", "digest this binary claims about itself; compared with the running image")
+	return fs
+}
+
 func usageText() string {
 	return "usage: tei <" + strings.Join(acceptedCommands, "|") + "> [options]"
 }
@@ -122,15 +167,40 @@ func helpText(fs *flag.FlagSet, command string) string {
 			fmt.Fprintf(&out, "  -namespace string\n    \toptional exact semantic namespace ID\n")
 			return out.String()
 		}
+		if command == "model locate" {
+			// model locate parses its own FlagSet too; these four flags are its
+			// whole grammar.
+			fmt.Fprintf(&out, "  -workspace string\n    \tTEI workspace directory\n")
+			fmt.Fprintf(&out, "  -subject-kind string\n    \texact subject kind from model catalog entries[].subject.kind\n")
+			fmt.Fprintf(&out, "  -subject-id string\n    \texact subject ID\n")
+			fmt.Fprintf(&out, "  -limit int\n    \tmaximum entries per list (children, siblings); default %d, at most %d\n", operations.LocationDefaultLimit, operations.LocationMaxLimit)
+			return out.String()
+		}
+		if command == "model overview" {
+			// model overview parses its own FlagSet; two flags are its grammar.
+			fmt.Fprintf(&out, "  -workspace string\n    \tTEI workspace directory\n")
+			fmt.Fprintf(&out, "  -limit int\n    \tmaximum sections listed; totals still cover every section; default %d, at most %d\n", operations.OverviewDefaultLimit, operations.OverviewMaxLimit)
+			return out.String()
+		}
+		if command == "dbcheck" {
+			// dbcheck is dispatched but deliberately absent from the read-only
+			// discovery catalog, so it cannot carry an allowlist entry; the one
+			// flag it reads is stated here instead of dumping the shared set
+			// (#3943).
+			fmt.Fprintf(&out, "  -dsn string\n    \tdbcheck: PostgreSQL DSN (defaults to TEI_TEST_POSTGRES_DSN)\n")
+			return out.String()
+		}
 		if command == "self-build" {
 			// self-build is dispatched but deliberately absent from the
-			// read-only discovery catalog, so "run `tei commands`" would
-			// point at a list that does not contain it (#3414 §4.5).
-			fmt.Fprintf(&out, "  -child string\n    \texact child executable to start (never resolved from PATH)\n")
-			fmt.Fprintf(&out, "  -child-arg string\n    \tchild arguments as a JSON array of strings\n")
-			fmt.Fprintf(&out, "  -child-arg-file string\n    \tJSON array of child arguments in a file\n")
-			fmt.Fprintf(&out, "  -artifact string\n    \tpath the child writes its artifact to (required, no-clobber)\n")
-			fmt.Fprintf(&out, "  -claimed-self string\n    \tdigest this binary claims about itself; compared with the running image\n")
+			// read-only discovery catalog, so "run `tei commands`" would point
+			// at a list that does not contain it (#3414 §4.5).
+			//
+			// Two forms share this name: the §4 workspace form and the primitive
+			// -child/-artifact form (§4.6). The text is derived from one FlagSet
+			// holding both grammars, so a flag added to either form appears here
+			// without a second edit — restating them by hand is what left the
+			// catalog flags missing from -h.
+			writeFlagHelp(&out, selfBuildHelpFlags(), command, nil)
 			return out.String()
 		}
 		fmt.Fprintf(&out, "run `tei commands` for the advertised commands\n")
@@ -140,30 +210,23 @@ func helpText(fs *flag.FlagSet, command string) string {
 	for _, name := range allowed {
 		wanted[name] = true
 	}
-	fs.VisitAll(func(f *flag.Flag) {
-		if !wanted[f.Name] {
-			return
-		}
-		placeholder, usage := flag.UnquoteUsage(f)
-		line := "  -" + f.Name
-		if placeholder != "" {
-			line += " " + placeholder
-		}
-		fmt.Fprintf(&out, "%s\n", line)
-		if usage != "" {
-			fmt.Fprintf(&out, "    \t%s\n", usage)
-		}
-		// A closed value set is part of the grammar, not prose the caller has
-		// to find in a document (#3242). Print the same sets `tei commands`
-		// advertises, and do not restate them by hand.
-		if values, ok := valueSets(command)[f.Name]; ok {
-			fmt.Fprintf(&out, "    \tvalues: %s\n", strings.Join(values, ", "))
-		}
-		if value, ok := valueDefaults(command)[f.Name]; ok {
-			fmt.Fprintf(&out, "    \tdefault: %s\n", value)
-		}
-	})
+	writeFlagHelp(&out, fs, command, wanted)
 	return out.String()
+}
+
+// requestedHelp reports whether the arguments ask for the usage listing.
+// Only the flag form counts, so a value that happens to be "-h" after a
+// positional argument is not taken for a help request.
+func requestedHelp(args []string) bool {
+	for _, arg := range args {
+		if arg == "--" {
+			return false
+		}
+		if arg == "-h" || arg == "-help" || arg == "--help" {
+			return true
+		}
+	}
+	return false
 }
 
 // printHelp answers a requested usage listing on standard output. It is not an

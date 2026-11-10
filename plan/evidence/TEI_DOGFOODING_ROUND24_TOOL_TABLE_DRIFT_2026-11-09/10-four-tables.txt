@@ -1,0 +1,7 @@
+Tables that describe a tool (before this round):
+1. toolList()               main.go               advertised tools + InputSchema
+2. toolArguments            main.go               arguments checkArguments accepts
+3. dispatch switch          main.go               where a call goes
+4. cliCommandNameForTool    discovery_parity_test.go   CLI command name
+
+#2 duplicated #1's inputSchema properties: the same fact written twice.

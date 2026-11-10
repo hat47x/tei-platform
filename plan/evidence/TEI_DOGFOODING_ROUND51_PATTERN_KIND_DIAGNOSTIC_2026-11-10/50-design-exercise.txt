@@ -1,0 +1,19 @@
+Task: add the inverse of security.authenticate (a revocation capability) to a
+copy of reference/workspace, using only the CLI for feedback.
+
+  1 capability with std.date-time      -> PARSE_ERROR invalid canonical id
+  2   ... with std.nonexistent         -> UNKNOWN_SEMANTIC_ATTRIBUTE_TYPE (names
+                                          the attribute and the unknown type)
+  3   ... with std.datetime             -> ok
+  4 pattern without a kind              -> PARSE_ERROR unexpected token "{"   <-- friction
+  5 pattern with a bogus kind           -> unsupported application pattern kind "bogus"
+  6 pattern with kind command           -> ok
+  7 realize ... with custom go          -> ok
+
+The design landed correctly in the graph (trace -subject-kind semantic-capability
+-subject-id security.revoke -> total 6, with realizes/capability/outcome/input),
+and from both the application side and the pattern side.
+
+Type diagnostics were good: file:line:col plus the referring element. Only the
+pattern-kind vocabulary was undiscoverable from the CLI; I had to grep the
+reference workspace for the accepted kinds.

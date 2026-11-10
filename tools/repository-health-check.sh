@@ -95,6 +95,7 @@ if [[ "$fast" == false ]]; then
   run_step "go test -count=1 -timeout 60m ./..." go test -count=1 -timeout 60m ./...
 fi
 run_step "tei validate -workspace reference/workspace" workspace_valid
+run_step "ADR index matches plan/adr/0*.md" go run ./tools/reference-adr-index-check .
 
 echo >&2
 for name in "${passed[@]}"; do

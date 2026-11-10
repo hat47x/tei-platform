@@ -1,7 +1,6 @@
 package studiohost
 
 import (
-	"strings"
 	"tei/internal/command"
 	"testing"
 )
@@ -36,7 +35,10 @@ func TestExecuteCommandReportsInvalidInput(t *testing.T) {
 		t.Fatal(err)
 	}
 	run := host.ExecuteCommand("workspace-1", "order_entry", "order_entry.submit_order", "sales.order.submit", nil)
-	if run.OK || run.Failure == nil || run.Failure.Code != "COMMAND_FAILED" {
+	// The entrance passes through the code the core already made
+	// machine-readable, so a caller can tell a missing input from a failed
+	// commit without parsing the message (#3807).
+	if run.OK || run.Failure == nil || run.Failure.Code != "INVALID_COMMAND_INPUT" {
 		t.Fatalf("run=%+v failure=%+v", run, run.Failure)
 	}
 }
@@ -58,7 +60,9 @@ func TestExecuteCommandWithPolicyRejectsUnlistedCapability(t *testing.T) {
 		t.Fatal(err)
 	}
 	run := host.ExecuteCommandWithPolicy("workspace-1", "order_entry", "order_entry.submit_order", "sales.order.submit", map[string]string{"order": "ORD-1"}, nil, []string{"sales.other"})
-	if run.OK || run.Failure == nil || !strings.Contains(run.Failure.Message, "COMMAND_UNAUTHORIZED") {
+	// The refusal is its own code now, so this no longer has to search the
+	// message text for "COMMAND_UNAUTHORIZED" (#3807).
+	if run.OK || run.Failure == nil || run.Failure.Code != "COMMAND_UNAUTHORIZED" {
 		t.Fatalf("run=%+v failure=%+v", run, run.Failure)
 	}
 	allowed := host.ExecuteCommandWithPolicy("workspace-1", "order_entry", "order_entry.submit_order", "sales.order.submit", map[string]string{"order": "ORD-1"}, nil, []string{"sales.order.submit"})

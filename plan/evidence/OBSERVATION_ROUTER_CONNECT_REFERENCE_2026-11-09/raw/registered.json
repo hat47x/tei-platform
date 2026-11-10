@@ -1,0 +1,38 @@
+{
+  "schema": "tei.reference.observation-router-connect/v0",
+  "authority": "derived-reference",
+  "ruleId": "tei.reference.observation-router-connect",
+  "ruleVersion": "v0",
+  "ruleFingerprint": "sha256:f999ca3a39bc6dbe44f37aab81e77159b1958a3da02ec8307308258763e118d4",
+  "environment": "development",
+  "outcomes": [
+    {
+      "kind": "application-runtime",
+      "providerId": "runtime.observer",
+      "status": "OBSERVED",
+      "resolved": true,
+      "selected": true,
+      "invoked": true,
+      "fragmentFields": 1
+    },
+    {
+      "kind": "database-state",
+      "providerId": "database.observer",
+      "status": "OBSERVED",
+      "resolved": true,
+      "selected": true,
+      "invoked": true,
+      "fragmentFields": 1
+    }
+  ],
+  "observedCount": 2,
+  "refusedCount": 0,
+  "invokedCount": 2,
+  "notes": [
+    "resolution uses observation.Binding, the same function cmd/tei already calls",
+    "the router is the existing observation.Router; no second registry is added",
+    "invoked means the provider's Observe was entered, not that external state was read",
+    "a non-empty fragment is not proof that the observation succeeded in the world",
+    "no authentication, authority, permission or durable receipt is issued here"
+  ]
+}

@@ -3,6 +3,8 @@
  * This is a read-only handoff oracle, not a TEI Action, Host or Tx implementation.
  * Run with: node --test reference/org-semantic-views/verify-handoff.mjs
  */
+// Reuse the existing synthetic-node CI entrypoint for commercial negative controls.
+import './verify-commercial-probes.mjs';
 import { scenario } from './source-fixture.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';

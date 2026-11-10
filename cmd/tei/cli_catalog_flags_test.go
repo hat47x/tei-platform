@@ -38,7 +38,7 @@ func advertisedFlags(record cliCommandRecord) []string {
 // set. A flag removed from the implementation or from the catalog fails here.
 func TestCommandCatalogFlagsMatchAcceptedFlags(t *testing.T) {
 	for _, record := range commandCatalog().Commands {
-		if record.Name == "model catalog" {
+		if record.Name == "model catalog" || record.Name == "model locate" || record.Name == "model overview" {
 			continue // parses its own arguments, not the shared FlagSet
 		}
 		allowed, ok := selectedReadOnlyFlagAllowlist[record.Name]

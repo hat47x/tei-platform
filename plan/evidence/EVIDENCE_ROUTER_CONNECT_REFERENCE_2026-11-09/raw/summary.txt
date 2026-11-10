@@ -1,0 +1,9 @@
+== registered ==
+  collected=1 refused=0 invoked=1
+    action=reference-gate   provider=health.reference   status=COLLECTED        resolved=True selected=True invoked=True outcome=pass
+
+== unregistered ==
+  collected=0 refused=1 invoked=0
+    action=reference-gate   provider=health.reference   status=NOT_REGISTERED   resolved=True selected=False invoked=False outcome=-
+
+ruleFingerprint: sha256:3fa298f421e731ee3d612eabe474134e579d265995a49d8605da6f54378308bb

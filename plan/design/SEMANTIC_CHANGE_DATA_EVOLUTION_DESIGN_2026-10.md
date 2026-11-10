@@ -175,9 +175,3 @@ contract（縮約）
 - PostgreSQL以外の提供元での安全な手順は扱っていません。
 - イベントを正本とする保存方式の版の扱い（読込み時の変換など）は、現在のTEIの保存方式ではないため比較の参考に留めました。
 - 合成した試験データで移行が通ったことを、本番のデータでの成立として扱いません。
-
-## 2026-11-06 横断追補（既存方針は維持・未採用）
-
-この2026-10の文書は意味変更に起因するデータ移行の**評価待ち設計**であり、担当Issueなしという冒頭記録は当時の履歴として残す。11月5日以降の旧新Client共存／異種DB・業務キーと物理PK・時点付き履歴・再実行/Commit Unknown・独立ExpectedとOwner判断に関する追加検討は、[DB移行互換性ゲート計画（2026-11）](DB_MIGRATION_COMPATIBILITY_GATES_2026-11.md)を参照する。既存のReleasePlan（expand/populate/transition/rollout/contract/verify）を第二Engineへ複製せず、その上でExpand/Backfill/Validate/Cutover/Contractの**検収条件**を提案する。
-
-過去の#2143/#2147 PostgreSQL参照実証はその範囲の歴史的Evidenceとして保持する。未決の正本切替・コード変換表・本番CDC・異種DBは[#2555](https://github.com/hat47x/tei-platform/issues/2555)、Business Key/PK/履歴は[#1126](https://github.com/hat47x/tei-platform/issues/1126)、Provider/型・能力は[#2622](https://github.com/hat47x/tei-platform/issues/2622)、Commit Unknown/現Grantは[#1174](https://github.com/hat47x/tei-platform/issues/1174)へ帰属する。正式なGate/ADR、実DB移行・Owner受理はこの追補で成立しない。

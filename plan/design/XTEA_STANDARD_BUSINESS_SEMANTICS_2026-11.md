@@ -198,7 +198,7 @@ X-TEAの`setVariant`・`setUserValueOf`は、スクリプトから任意の値�
 
 ## 5. 実装の順序と現在地
 
-1〜5は参照実装まで進み、6は設計のみです。どの段階も「宣言 → 実行時の値の結合 → 照会」の三段で作り、各段階の試験記録を`plan/evidence/`へ残しています。
+1〜6は参照実装まで進みました（6は読み取りと更新、監査と権限は未実装）。どの段階も「宣言 → 実行時の値の結合 → 照会」の三段で作り、各段階の試験記録を`plan/evidence/`へ残しています。
 
 | 段階 | 実装 | 結合（Data宣言の属性役割） | 確認記録 |
 | --- | --- | --- | --- |
@@ -207,7 +207,7 @@ X-TEAの`setVariant`・`setUserValueOf`は、スクリプトから任意の値�
 | 3. 税 | `internal/taxrate` | `tax-applies-from`・`tax-applies-until`・`tax-category`・`tax-value`・`tax-rounding` | [税率の適用期間と端数処理](../evidence/XTEA_LOWCODE_TAX_RATE_2026-11.md)、[Data結合](../evidence/XTEA_LOWCODE_TAX_RATE_BINDING_2026-11.md) |
 | 4. 通貨 | `internal/currencyrate`（年次フォールバックは`currency-rate-fallback`の宣言で選ぶ） | `currency-rate-currency`・`-fiscal-year`・`-month-sequence`・`-middle`・`-buying`・`-selling`・`-fallback` | [通貨換算の率の種類と方向](../evidence/XTEA_LOWCODE_CURRENCY_RATE_2026-11.md)、[Data結合](../evidence/XTEA_LOWCODE_CURRENCY_BINDING_2026-11.md) |
 | 5. 採番 | `internal/numbering`（`ReserveInTransaction`で取引に参加） | `numbering-counter`・`numbering-digits`・`numbering-prefix`・`numbering-check`・`numbering-overflow` | [採番の契約](../evidence/XTEA_LOWCODE_NUMBERING_2026-11.md)、[Data結合](../evidence/XTEA_LOWCODE_NUMBERING_BINDING_2026-11.md) |
-| 6. 利用者設定 | 未実装 | — | — |
+| 6. 利用者設定 | `internal/usersetting`（`Resolve`・`Bind`・`Settings.Value`・`Table.Change`・`Table.Apply`） | `setting-key`・`setting-value`・`setting-user` | [読み取りの確認](../evidence/XTEA_LOWCODE_USER_SETTINGS_2026-11.md)、[書込みの確認](../evidence/XTEA_LOWCODE_USER_SETTINGS_WRITE_2026-11.md) |
 
 三段の分け方には理由があります。
 
@@ -219,7 +219,7 @@ X-TEAの`setVariant`・`setUserValueOf`は、スクリプトから任意の値�
 
 `internal/businesscalendar`は、業務日付から**期間キー**（会計年度のラベルと、開始月を1とする月順序）を導きます。`period key`が年月なら、この組が閉めの単位になります。
 
-X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設定（`LAST_DAY`）より後の日付を**翌月の順序**へずらし、`getFYearOfDate`（同 L2440–2507）も同じ理由で年度を変えていました。TEIの導出はその規則を引き継ぎません。日付は、その日付が名指す月に属します。月内の締め（20日締めなど）を期間にしたい場合は、月ではなく**独立した期間**として宣言します。
+X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設定（`LAST_DAY`）より後の日付を**翌月の順序**へずらし、`getFYearOfDate`（同 L2440–2507）も同じ理由で年度を変えていました。TEIの導出はその規則を引き継ぎません。日付は、その日付が名指す月に属します。月内の締め（20日締めなど）を期間にしたい場合は、期間が`closes on day N`を宣言します。日付は月から動かず、月の前半と後半が`PeriodKey.ClosingSegment`で分かれます（`internal/businesscalendar/closing.go`）。
 
 ## 6. 未確認の事項
 
@@ -234,11 +234,11 @@ X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設�
 
 | 残り | 理由 | 何が分かれば決まるか |
 | --- | --- | --- |
-| 月内の締め（20日締めなど）の期間化 | X-TEAの「締め日を過ぎた日付を翌月へずらす」規則（`getMSeqOfDate` L2476–2484）を引き継がない方針にしたため、月内締めは独立した期間として宣言する必要がある | 期間キーに日を含めるか、期間を分けるかの宣言 |
+| 月内締めの閉めの実行内容 | 状態遷移（`open`→`closing`→`closed`）・記録（`periods -advance`）・`close-requires`の実行時検査は実装したが、対象データの集計・繰越・帳票は未実装 | 閉めを Command にするか、運用操作として分けるか |
 | 採番の例での規則行データ | 例のDataに`numbering-rule`の役割を足したが、行は試験で与えている | 例へ行データを置くかどうかの判断 |
-| 為替の月次・年次を別Dataに分ける構成 | 参照実装は1つのDataに月順序0の年次行を置く形だけを試した | 別Dataにする場合の結合規則 |
-| 番号の永続CounterStore | 参照用の記憶域しかない | 実DBの表・版・競合の実装 |
-| 利用者設定 | 設計のみ | 宣言された設定項目の形と、受理の対象範囲 |
+| 為替の粒度を宣言必須にするか | `ResolveTable`が宣言と行を照合し、空の表は拒否する。宣言は任意のままなので、宣言の無い表は行だけに頼る | 宣言を必須にするか、任意のままにするか |
+| 番号のPostgreSQL実装 | SQLiteの永続格納と2プロセス同時実行の不変条件（同一番号を出さない・カウンタが発行数に一致する）は確認したが、PostgreSQLは未実装 | PostgreSQLを先にするか、多プロセス構成を広げるか |
+| 利用者設定の監査と権限 | 更新の検査と記録（`Table.Change`・`Table.Apply`）は実装したが、変更履歴と「誰が変えられるか」は未実装 | 設定更新をCommandにするか、運用操作として分けるか |
 
 実装が進んだことで、以前ここに挙げていた項目のうち次の3つは解消しました。
 
@@ -254,17 +254,6 @@ X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設�
 - [評価時点の決定性](EVALUATION_CONTEXT_DETERMINISM_2026-10.md)
 - [移行計画](../workstreams/XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)（WP8）
 - [受容要件](../../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md)（RQ-C3）
-
-
-
-
-
-
-
-
-
-
-
 
 
 

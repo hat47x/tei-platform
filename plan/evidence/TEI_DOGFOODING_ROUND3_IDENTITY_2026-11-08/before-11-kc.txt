@@ -1,0 +1,768 @@
+{
+  "schemaVersion": "tei.cli.knowledge-context/v0",
+  "ok": true,
+  "mode": "context",
+  "result": {
+    "subject": {
+      "kind": "semantic-data",
+      "id": "sales.order"
+    },
+    "artifacts": [
+      {
+        "path": "semantic/sales/order.tei",
+        "format": "tei",
+        "fingerprint": "sha256:f2063418b893a60a9f948edbb2b23ec821f7a15ed8e5863c36e1b72abade1e33"
+      }
+    ],
+    "references": [
+      {
+        "subject": {
+          "kind": "semantic-data",
+          "id": "sales.order"
+        },
+        "artifactPath": "semantic/sales/order.tei",
+        "range": {
+          "start": {
+            "offset": 124,
+            "line": 7,
+            "column": 6
+          },
+          "end": {
+            "offset": 129,
+            "line": 7,
+            "column": 11
+          }
+        },
+        "role": "definition"
+      }
+    ],
+    "semanticElement": {
+      "kind": "data",
+      "id": "sales.order",
+      "namespace": "sales"
+    },
+    "dataDesign": {
+      "projectionRevision": "tei.knowledge.data-design/v7",
+      "fingerprint": "sha256:6c419c22b46eee554651f6245ec00423f413a54d9979a9d62c7ed692f714c33e",
+      "resolutionStatus": "resolved",
+      "evidenceCoverageStatus": "complete",
+      "data": "sales.order",
+      "focus": {
+        "kind": "semantic-data",
+        "id": "sales.order"
+      },
+      "attributes": [
+        {
+          "id": "sales.order.customer_id",
+          "type": "customer.customer_id"
+        },
+        {
+          "id": "sales.order.external_id",
+          "type": "std.text"
+        },
+        {
+          "id": "sales.order.order_id",
+          "type": "sales.order_id"
+        },
+        {
+          "id": "sales.order.ordered_at",
+          "type": "std.datetime"
+        },
+        {
+          "id": "sales.order.status",
+          "type": "sales.order_status"
+        },
+        {
+          "id": "sales.order.total",
+          "type": "std.money"
+        }
+      ],
+      "relations": [
+        {
+          "id": "sales.order.customer",
+          "source": "sales.order",
+          "target": "customer.customer",
+          "cardinality": "one",
+          "keys": [
+            {
+              "sourceAttribute": "sales.order.customer_id",
+              "targetAttribute": "customer.customer.customer_id"
+            }
+          ],
+          "businessMeaning": {
+            "nature": "unresolved",
+            "reason": "relation-business-meaning-not-first-class-in-current-canonical-model"
+          },
+          "temporalSemantics": {
+            "nature": "unresolved",
+            "reason": "relation-temporal-semantics-not-first-class-in-current-canonical-model"
+          }
+        },
+        {
+          "id": "sales.order.lines",
+          "source": "sales.order",
+          "target": "sales.order_line",
+          "cardinality": "many",
+          "businessMeaning": {
+            "nature": "unresolved",
+            "reason": "relation-business-meaning-not-first-class-in-current-canonical-model"
+          },
+          "temporalSemantics": {
+            "nature": "unresolved",
+            "reason": "relation-temporal-semantics-not-first-class-in-current-canonical-model"
+          }
+        }
+      ],
+      "constraints": [
+        {
+          "id": "sales.order.lines.line_number_unique",
+          "kind": "relation-unique",
+          "attribute": "sales.order_line.line_number",
+          "relation": "sales.order.lines"
+        }
+      ],
+      "scopedUniqueness": [
+        {
+          "constraint": "sales.order.lines.line_number_unique",
+          "relation": "sales.order.lines",
+          "source": "sales.order",
+          "target": "sales.order_line",
+          "attribute": "sales.order_line.line_number",
+          "scope": "per-relation-source-occurrence",
+          "nature": "accepted"
+        }
+      ],
+      "businessIdentityCandidates": [
+        {
+          "fingerprint": "sha256:58ac6166e470ff018807cd813a41719937e7be009d8431611b8d556c94068e13",
+          "evidenceRequirementFingerprint": "sha256:55100bc21e2b8fe47d710d31bbd0d5ea3c6266ad61400121c477a49f1c85a32a",
+          "relation": "sales.order.lines",
+          "components": [
+            {
+              "kind": "related-occurrence",
+              "relation": "sales.order.lines",
+              "end": "source",
+              "data": "sales.order"
+            },
+            {
+              "kind": "attribute",
+              "data": "sales.order_line",
+              "attribute": "sales.order_line.line_number"
+            }
+          ],
+          "targetOccurrence": "sales.order_line",
+          "basisConstraint": "sales.order.lines.line_number_unique",
+          "scope": "per-relation-source-occurrence",
+          "nature": "candidate-from-accepted-scoped-uniqueness",
+          "evidenceNeeded": [
+            "source-occurrence-business-identifier",
+            "relation-business-meaning",
+            "target-membership-exclusivity",
+            "identifier-stability",
+            "temporal-validity",
+            "history-version-identity",
+            "identifier-reuse-policy"
+          ]
+        }
+      ],
+      "functionalDependencyCandidates": [
+        {
+          "fingerprint": "sha256:731d4a010f90eab00a43963bb385ec9590b3f94e73897e190e874fa8ecb1ac61",
+          "evidenceRequirementFingerprint": "sha256:a606629188f073cba9d5578a8de32b800a9a3828c5facd33d1129c277f9a760f",
+          "relation": "sales.order.lines",
+          "determinants": [
+            {
+              "kind": "related-occurrence",
+              "relation": "sales.order.lines",
+              "end": "source",
+              "data": "sales.order"
+            },
+            {
+              "kind": "attribute",
+              "data": "sales.order_line",
+              "attribute": "sales.order_line.line_number"
+            }
+          ],
+          "dependentOccurrence": "sales.order_line",
+          "basisConstraint": "sales.order.lines.line_number_unique",
+          "scope": "per-relation-source-occurrence",
+          "nature": "candidate-from-accepted-scoped-uniqueness",
+          "evidenceNeeded": [
+            "source-occurrence-business-identifier",
+            "relation-business-meaning",
+            "target-membership-exclusivity",
+            "temporal-validity",
+            "history-version-identity",
+            "temporal-dependency-scope"
+          ]
+        }
+      ],
+      "persistenceRealizations": [
+        {
+          "mapping": "sales_core.order",
+          "database": "sales_core",
+          "table": "public.orders",
+          "columns": [
+            {
+              "attribute": "sales.order.customer_id",
+              "column": "customer_id",
+              "storage": "int64",
+              "nullability": "required"
+            },
+            {
+              "attribute": "sales.order.external_id",
+              "column": "external_id",
+              "storage": "varchar",
+              "nullability": "optional"
+            },
+            {
+              "attribute": "sales.order.order_id",
+              "column": "order_id",
+              "storage": "int64",
+              "nullability": "required"
+            },
+            {
+              "attribute": "sales.order.ordered_at",
+              "column": "ordered_at",
+              "storage": "datetime-tz",
+              "nullability": "required"
+            },
+            {
+              "attribute": "sales.order.status",
+              "column": "status",
+              "storage": "varchar",
+              "nullability": "required"
+            },
+            {
+              "attribute": "sales.order.total",
+              "column": "total_amount",
+              "storage": "decimal",
+              "nullability": "required"
+            }
+          ],
+          "uniqueness": [
+            {
+              "kind": "primary-key",
+              "attributes": [
+                "sales.order.order_id"
+              ],
+              "nature": "accepted-realization"
+            }
+          ],
+          "authority": "database-owned-realization"
+        }
+      ],
+      "evidence": [
+        {
+          "subject": {
+            "kind": "persistence",
+            "id": "sales_core.order"
+          },
+          "source": "databases/sales-core/persistence/order.tei",
+          "sourceFingerprint": "sha256:638e77f53b5c5bc57f9f32e38e251d93924a70d2b423152fb7b61fbba98f0b41",
+          "range": {
+            "start": {
+              "offset": 0,
+              "line": 1,
+              "column": 1
+            },
+            "end": {
+              "offset": 0,
+              "line": 1,
+              "column": 1
+            }
+          },
+          "role": "definition"
+        },
+        {
+          "subject": {
+            "kind": "semantic-attribute",
+            "id": "customer.customer.customer_id"
+          },
+          "source": "semantic/customer/customer.tei",
+          "sourceFingerprint": "sha256:d0897ed9ac8ce7e01200b05285e445fa57fa402abd0725542c7cf7ebfa0ad23b",
+          "range": {
+            "start": {
+              "offset": 87,
+              "line": 6,
+              "column": 15
+            },
+            "end": {
+              "offset": 97,
+              "line": 6,
+              "column": 25
+            }
+          },
+          "role": "definition"
+        },
+        {
+          "subject": {
+            "kind": "semantic-attribute",
+            "id": "sales.order.customer_id"
+          },
+          "source": "semantic/sales/order.tei",
+          "sourceFingerprint": "sha256:f2063418b893a60a9f948edbb2b23ec821f7a15ed8e5863c36e1b72abade1e33",
+          "range": {
+            "start": {
+              "offset": 188,
+              "line": 9,
+              "column": 15
+            },
+            "end": {
+              "offset": 198,
+              "line": 9,
+              "column": 25
+            }
+          },
+          "role": "definition"
+        },
+        {
+          "subject": {
+            "kind": "semantic-attribute",
+            "id": "sales.order.external_id"
+          },
+          "source": "semantic/sales/order.tei",
+          "sourceFingerprint": "sha256:f2063418b893a60a9f948edbb2b23ec821f7a15ed8e5863c36e1b72abade1e33",
+          "range": {
+            "start": {
+              "offset": 361,
+              "line": 13,
+              "column": 15
+            },
+            "end": {
+              "offset": 371,
+              "line": 13,
+              "column": 25
+            }
+          },
+          "role": "definition"
+        },
+        {
+          "subject": {
+            "kind": "semantic-attribute",
+            "id": "sales.order.order_id"
+          },
+          "source": "semantic/sales/order.tei",
+          "sourceFingerprint": "sha256:f2063418b893a60a9f948edbb2b23ec821f7a15ed8e5863c36e1b72abade1e33",
+          "range": {
+            "start": {
+              "offset": 146,
+              "line": 8,
+              "column": 15
+            },
+            "end": {
+              "offset": 153,
+              "line": 8,
+              "column": 22
+            }
+          },
+          "role": "definition"
+        },
+        {
+          "subject": {
+            "kind": "semantic-attribute",
+            "id": "sales.order.ordered_at"
+          },
+          "source": "semantic/sales/order.tei",
+          "sourceFingerprint": "sha256:f2063418b893a60a9f948edbb2b23ec821f7a15ed8e5863c36e1b72abade1e33",
+          "range": {
+            "start": {
+              "offset": 239,
+              "line": 10,
+              "column": 15
+            },
+            "end": {
+              "offset": 248,
+              "line": 10,
+              "column": 24
+            }
+          },
+          "role": "definition"
+        },
+        {
+          "subject": {
+            "kind": "semantic-attribute",
+            "id": "sales.order.status"
+          },
+          "source": "semantic/sales/order.tei",
+          "sourceFingerprint": "sha256:f2063418b893a60a9f948edbb2b23ec821f7a15ed8e5863c36e1b72abade1e33",
+          "range": {
+            "start": {
+              "offset": 281,
+              "line": 11,
+              "column": 15
+            },
+            "end": {
+              "offset": 287,
+              "line": 11,
+              "column": 21
+            }
+          },
+          "role": "definition"
+        },
+        {
+          "subject": {
+            "kind": "semantic-attribute",
+            "id": "sales.order.total"
+          },
+          "source": "semantic/sales/order.tei",
+          "sourceFingerprint": "sha256:f2063418b893a60a9f948edbb2b23ec821f7a15ed8e5863c36e1b72abade1e33",
+          "range": {
+            "start": {
+              "offset": 326,
+              "line": 12,
+              "column": 15
+            },
+            "end": {
+              "offset": 331,
+              "line": 12,
+              "column": 20
+            }
+          },
+          "role": "definition"
+        },
+        {
+          "subject": {
+            "kind": "semantic-attribute",
+            "id": "sales.order_line.line_number"
+          },
+          "source": "semantic/sales/order.tei",
+          "sourceFingerprint": "sha256:f2063418b893a60a9f948edbb2b23ec821f7a15ed8e5863c36e1b72abade1e33",
+          "range": {
+            "start": {
+              "offset": 631,
+              "line": 21,
+              "column": 15
+            },
+            "end": {
+              "offset": 641,
+              "line": 21,
+              "column": 25
+            }
+          },
+          "role": "definition"
+        },
+        {
+          "subject": {
+            "kind": "semantic-data",
+            "id": "customer.customer"
+          },
+          "source": "semantic/customer/customer.tei",
+          "sourceFingerprint": "sha256:d0897ed9ac8ce7e01200b05285e445fa57fa402abd0725542c7cf7ebfa0ad23b",
+          "range": {
+            "start": {
+              "offset": 62,
+              "line": 5,
+              "column": 6
+            },
+            "end": {
+              "offset": 70,
+              "line": 5,
+              "column": 14
+            }
+          },
+          "role": "definition"
+        },
+        {
+          "subject": {
+            "kind": "semantic-data",
+            "id": "sales.order"
+          },
+          "source": "semantic/sales/order.tei",
+          "sourceFingerprint": "sha256:f2063418b893a60a9f948edbb2b23ec821f7a15ed8e5863c36e1b72abade1e33",
+          "range": {
+            "start": {
+              "offset": 124,
+              "line": 7,
+              "column": 6
+            },
+            "end": {
+              "offset": 129,
+              "line": 7,
+              "column": 11
+            }
+          },
+          "role": "definition"
+        },
+        {
+          "subject": {
+            "kind": "semantic-data",
+            "id": "sales.order_line"
+          },
+          "source": "semantic/sales/order.tei",
+          "sourceFingerprint": "sha256:f2063418b893a60a9f948edbb2b23ec821f7a15ed8e5863c36e1b72abade1e33",
+          "range": {
+            "start": {
+              "offset": 554,
+              "line": 19,
+              "column": 6
+            },
+            "end": {
+              "offset": 563,
+              "line": 19,
+              "column": 15
+            }
+          },
+          "role": "definition"
+        },
+        {
+          "subject": {
+            "kind": "semantic-relation",
+            "id": "sales.order.customer"
+          },
+          "source": "semantic/sales/order.tei",
+          "sourceFingerprint": "sha256:f2063418b893a60a9f948edbb2b23ec821f7a15ed8e5863c36e1b72abade1e33",
+          "range": {
+            "start": {
+              "offset": 399,
+              "line": 14,
+              "column": 14
+            },
+            "end": {
+              "offset": 407,
+              "line": 14,
+              "column": 22
+            }
+          },
+          "role": "definition"
+        },
+        {
+          "subject": {
+            "kind": "semantic-relation",
+            "id": "sales.order.lines"
+          },
+          "source": "semantic/sales/order.tei",
+          "sourceFingerprint": "sha256:f2063418b893a60a9f948edbb2b23ec821f7a15ed8e5863c36e1b72abade1e33",
+          "range": {
+            "start": {
+              "offset": 515,
+              "line": 16,
+              "column": 14
+            },
+            "end": {
+              "offset": 520,
+              "line": 16,
+              "column": 19
+            }
+          },
+          "role": "definition"
+        },
+        {
+          "subject": {
+            "kind": "semantic-validation",
+            "id": "sales.order.lines.line_number_unique"
+          },
+          "source": "semantic/sales/validation.tei",
+          "sourceFingerprint": "sha256:396c37c4cace1d91b8f6e35fd31d69eb1d45e7ff525ade5e97d808189024de40",
+          "range": {
+            "start": {
+              "offset": 128,
+              "line": 7,
+              "column": 12
+            },
+            "end": {
+              "offset": 164,
+              "line": 7,
+              "column": 48
+            }
+          },
+          "role": "definition"
+        }
+      ],
+      "businessOccurrenceIdentifier": {
+        "nature": "unresolved",
+        "reason": "business-occurrence-identifier-not-first-class-in-current-canonical-model"
+      },
+      "candidateKeys": {
+        "nature": "unresolved",
+        "reason": "candidate-key-not-first-class-in-current-canonical-model"
+      },
+      "functionalDependencies": {
+        "nature": "unresolved",
+        "reason": "functional-dependency-not-first-class-in-current-canonical-model"
+      },
+      "compositeDomainConstraints": {
+        "nature": "unresolved",
+        "reason": "composite-domain-constraint-not-first-class-in-current-canonical-model"
+      },
+      "temporalHistoryConditions": {
+        "nature": "unresolved",
+        "reason": "temporal-history-condition-not-first-class-in-current-canonical-model"
+      },
+      "businessIdentityEvidenceQuestions": [
+        "which-fields-identify-the-business-occurrence",
+        "what-is-the-uniqueness-scope",
+        "when-is-the-identifier-valid",
+        "is-this-business-occurrence-identity-or-history-version-identity",
+        "which-relations-or-constraints-depend-on-the-identity",
+        "which-source-or-contract-owns-the-uniqueness-claim",
+        "which-normalization-or-equivalence-policy-applies",
+        "does-persistence-key-represent-business-identity-or-only-realization",
+        "if-surrogate-key-is-used-which-accepted-uniqueness-preserves-business-identity"
+      ],
+      "functionalDependencyEvidenceQuestions": [
+        "which-determinants-determine-which-dependents",
+        "under-what-scope-and-time-does-the-dependency-hold",
+        "which-source-or-evidence-establishes-the-dependency",
+        "is-the-dependency-an-accepted-business-rule-or-only-observed-in-current-data",
+        "does-the-dependency-hold-for-all-valid-occurrences-in-scope-or-only-current-samples",
+        "is-the-reverse-dependency-also-accepted-or-only-the-stated-direction",
+        "is-this-a-functional-dependency-or-a-composite-domain-constraint",
+        "does-scoped-uniqueness-imply-business-functional-dependency-or-only-local-constraint"
+      ],
+      "compositeDomainConstraintEvidenceQuestions": [
+        "which-value-combinations-are-allowed-or-forbidden",
+        "is-this-constraint-about-identity-functional-dependency-or-domain-membership",
+        "under-what-scope-and-time-does-the-composite-domain-constraint-hold",
+        "which-source-or-contract-establishes-the-allowed-combinations",
+        "is-the-domain-static-or-derived-from-reference-data"
+      ],
+      "temporalHistoryEvidenceQuestions": [
+        "when-is-the-business-occurrence-or-identity-valid",
+        "can-the-business-identifier-be-reused-across-time",
+        "does-the-history-record-represent-a-version-of-the-same-occurrence-or-a-new-occurrence",
+        "may-validity-periods-overlap",
+        "is-current-state-derived-from-validity-or-marked-by-a-latest-flag",
+        "which-state-transitions-change-identity-membership-or-validity",
+        "which-history-or-validity-period-must-be-preserved",
+        "which-source-or-contract-establishes-the-temporal-semantics"
+      ],
+      "relationEvidenceQuestions": [
+        "what-business-meaning-does-the-relation-express",
+        "is-the-relation-a-changeable-reference-parent-contained-repeat-or-independent-association",
+        "does-this-relation-archetype-support-business-identity-or-functional-dependency-or-only-topology",
+        "what-cardinality-is-required",
+        "is-the-relation-current-only-or-temporal",
+        "what-history-or-validity-period-must-be-preserved",
+        "which-source-or-contract-owns-the-relation"
+      ],
+      "designReviewProtocol": [
+        "resolve-current-semantic-data-and-source-evidence-before-design-change",
+        "separate-business-occurrence-identity-from-persistence-runtime-and-ui-identifiers",
+        "classify-relation-archetype-before-promoting-business-identity-or-functional-dependency",
+        "require-source-backed-association-semantics-before-composite-identity",
+        "establish-business-identifier-candidate-key-scope-time-and-equivalence-from-evidence",
+        "preserve-accepted-business-uniqueness-when-using-surrogate-identifiers",
+        "establish-functional-dependency-as-business-semantic-claim-not-sample-data-correlation",
+        "distinguish-functional-dependency-from-composite-domain-constraint",
+        "treat-relation-keys-scoped-uniqueness-and-persistence-keys-as-candidates-not-authority",
+        "preserve-unresolved-when-required-business-evidence-is-missing",
+        "review-derived-candidates-by-stable-fingerprint-and-evidence-requirement-before-authoring",
+        "resolve-first-class-authoring-contract-before-promoting-derived-candidate",
+        "route-derived-identity-and-dependency-proposals-through-shared-acceptance"
+      ],
+      "authorityLimits": [
+        "data-design-context-is-derived-not-authority",
+        "data-design-fingerprint-is-cache-invalidation-not-semantic-proof",
+        "data-design-resolution-status-is-structural-not-business-certainty",
+        "data-design-review-protocol-is-derived-guidance-not-semantic-authority",
+        "relation-archetype-review-is-guidance-not-semantic-proof",
+        "ambiguous-data-design-context-blocks-cache-reuse",
+        "data-design-evidence-coverage-is-not-source-freshness-proof",
+        "incomplete-data-design-evidence-blocks-complete-cache-reuse",
+        "absence-of-authored-business-identifier-is-not-no-identifier",
+        "business-identity-candidate-is-not-business-identifier-or-candidate-key",
+        "derived-design-candidate-fingerprint-is-identity-not-acceptance",
+        "derived-design-candidate-evidence-requirement-fingerprint-is-review-contract-not-acceptance",
+        "absence-of-authored-functional-dependency-is-not-no-dependency",
+        "functional-dependency-candidate-is-not-accepted-functional-dependency",
+        "current-data-uniqueness-is-not-functional-dependency-proof",
+        "statistical-correlation-is-not-functional-dependency",
+        "functional-dependency-direction-is-not-symmetric-by-default",
+        "discovered-functional-dependency-is-proposal-not-accepted-business-semantics",
+        "absence-of-authored-composite-domain-constraint-is-not-no-composite-domain-constraint",
+        "relation-shape-is-not-composite-domain-constraint-evidence",
+        "scoped-uniqueness-is-not-composite-domain-constraint",
+        "persistence-unique-constraint-is-not-composite-domain-constraint",
+        "absence-of-authored-temporal-history-condition-is-not-timeless-semantics",
+        "datetime-or-timestamp-attribute-is-not-temporal-semantics",
+        "persistence-history-column-is-not-business-temporal-semantics",
+        "effective-date-or-history-number-is-not-business-occurrence-identity-by-default",
+        "latest-flag-is-not-business-identity-evidence",
+        "history-row-identity-is-not-business-occurrence-identity-by-default",
+        "temporal-history-model-is-opt-in-not-universal",
+        "ambiguous-semantic-identity-does-not-produce-design-candidates",
+        "ambiguous-persistence-identity-does-not-produce-realization-facts",
+        "relation-shape-does-not-establish-business-meaning",
+        "relation-shape-does-not-establish-temporal-semantics",
+        "relation-key-is-not-business-identifier",
+        "scoped-uniqueness-is-not-business-identifier-or-candidate-key",
+        "persistence-primary-key-is-not-business-identifier-or-candidate-key",
+        "persistence-unique-constraint-is-not-business-identifier-or-candidate-key",
+        "persistence-semantic-data-reference-is-reverse-trace-not-business-identity",
+        "application-pattern-data-reference-is-context-not-business-identity",
+        "contract-query-sql-realization-identity-is-not-business-data-identity",
+        "raw-result-column-is-not-business-identity",
+        "provider-specific-realization-is-not-semantic-authority",
+        "attribute-name-or-id-shape-is-not-key-evidence",
+        "identifier-like-attribute-is-not-business-identity",
+        "identifier-value-presence-is-not-uniqueness-evidence",
+        "normalized-string-equality-is-not-business-identity-evidence",
+        "application-pattern-ui-or-runtime-identity-is-not-data-identity"
+      ]
+    },
+    "incoming": [
+      {
+        "from": {
+          "kind": "application-pattern",
+          "id": "order_entry.order_record"
+        },
+        "relation": "data",
+        "to": {
+          "kind": "semantic-data",
+          "id": "sales.order"
+        }
+      },
+      {
+        "from": {
+          "kind": "application-pattern",
+          "id": "order_entry.recent_orders"
+        },
+        "relation": "data",
+        "to": {
+          "kind": "semantic-data",
+          "id": "sales.order"
+        }
+      },
+      {
+        "from": {
+          "kind": "semantic-capability",
+          "id": "sales.order.submit"
+        },
+        "relation": "input",
+        "to": {
+          "kind": "semantic-element",
+          "id": "sales.order"
+        }
+      },
+      {
+        "from": {
+          "kind": "semantic-capability",
+          "id": "sales.order.submit"
+        },
+        "relation": "output",
+        "to": {
+          "kind": "semantic-element",
+          "id": "sales.order"
+        }
+      },
+      {
+        "from": {
+          "kind": "database-contract",
+          "id": "sales_core.order"
+        },
+        "relation": "reads",
+        "to": {
+          "kind": "semantic-element",
+          "id": "sales.order"
+        }
+      }
+    ],
+    "authorityLimits": [
+      "derived-context-is-not-canonical-authority",
+      "dependency-edge-is-not-semantic-applicability",
+      "dependency-edge-is-not-write-or-runtime-authority",
+      "projection-or-runtime-identity-is-not-business-data-identity"
+    ]
+  }
+}

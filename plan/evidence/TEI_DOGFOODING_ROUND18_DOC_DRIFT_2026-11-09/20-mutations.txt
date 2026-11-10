@@ -1,0 +1,3 @@
+M1 README reverted to INVALID_SUBJECT -> FAIL
+M2 README claim removed -> FAIL
+restored -> ok (whole package 44.8s)

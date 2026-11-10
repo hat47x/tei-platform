@@ -1,0 +1,29 @@
+[
+  {
+    "tool": "catalog",
+    "cli_exit": 0,
+    "documents_equal": true,
+    "mcp_isError": null,
+    "cli_schemaVersion": "tei.cli.model/v0",
+    "mcp_schemaVersion": "tei.cli.model/v0",
+    "allowed_differences": []
+  },
+  {
+    "tool": "inspect",
+    "cli_exit": 0,
+    "documents_equal": true,
+    "mcp_isError": null,
+    "cli_schemaVersion": "tei.cli.inspect/v0",
+    "mcp_schemaVersion": "tei.cli.inspect/v0",
+    "allowed_differences": []
+  },
+  {
+    "tool": "trace",
+    "cli_exit": 0,
+    "documents_equal": true,
+    "mcp_isError": null,
+    "cli_schemaVersion": "tei.cli.trace/v0",
+    "mcp_schemaVersion": "tei.cli.trace/v0",
+    "allowed_differences": []
+  }
+]

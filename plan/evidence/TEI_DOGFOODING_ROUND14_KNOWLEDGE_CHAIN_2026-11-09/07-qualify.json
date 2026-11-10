@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "tei.cli.knowledge-qualify/v0",
+  "ok": true,
+  "mode": "qualification",
+  "result": {
+    "candidate": {
+      "kind": "semantic-data",
+      "id": "sales.order"
+    },
+    "status": "applicable",
+    "requirements": {
+      "expectedKind": "semantic-data"
+    },
+    "evidence": [
+      {
+        "subjectKind": "semantic-data",
+        "subject": "sales.order",
+        "source": "semantic/sales/order.tei",
+        "sourceFingerprint": "sha256:f2063418b893a60a9f948edbb2b23ec821f7a15ed8e5863c36e1b72abade1e33"
+      }
+    ],
+    "authorityLimits": [
+      "only-explicit-requirements-were-evaluated",
+      "qualification-is-not-acceptance",
+      "qualification-is-not-write-or-runtime-authority"
+    ]
+  }
+}

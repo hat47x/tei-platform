@@ -1,0 +1,32 @@
+[
+  {
+    "attempt": "workspace member",
+    "rpc_error": -32602,
+    "tool_text": "",
+    "leaked_outside_bytes": false
+  },
+  {
+    "attempt": "root member",
+    "rpc_error": -32602,
+    "tool_text": "",
+    "leaked_outside_bytes": false
+  },
+  {
+    "attempt": "path member",
+    "rpc_error": -32602,
+    "tool_text": "",
+    "leaked_outside_bytes": false
+  },
+  {
+    "attempt": "subject traversal",
+    "rpc_error": null,
+    "tool_text": "{\"schemaVersion\":\"tei.cli.inspect/v0\",\"ok\":false,\"error\":{\"code\":\"SUBJECT_NOT_FOUND\",\"message\":\"canonical subject semantic-data:../../../secret not found\"}}",
+    "leaked_outside_bytes": false
+  },
+  {
+    "attempt": "namespace traversal",
+    "rpc_error": null,
+    "tool_text": "{\"schemaVersion\":\"tei.cli.model/v0\",\"ok\":false,\"error\":{\"code\":\"NAMESPACE_NOT_FOUND\",\"message\":\"namespace ../../outside is not a semantic namespace in this workspace\"}}",
+    "leaked_outside_bytes": false
+  }
+]

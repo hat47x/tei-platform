@@ -12,29 +12,39 @@ import (
 	"tei/internal/workspace"
 )
 
-func buildKnowledgeContext(root, subjectKind, subjectID string) (knowledgecontext.Context, error) {
+// buildKnowledgeContextWithIdentity is buildKnowledgeContext plus the Workspace
+// identity the read observed (#3455). The plain builder stays for callers that
+// only need the Context.
+func buildKnowledgeContextWithIdentity(root, subjectKind, subjectID string) (knowledgecontext.Context, *workspace.WorkspaceIdentity, error) {
 	if strings.TrimSpace(root) == "" {
-		return knowledgecontext.Context{}, fmt.Errorf("knowledge-context requires -workspace")
+		return knowledgecontext.Context{}, nil, newArgumentError("knowledge-context requires -workspace")
 	}
 	kind := strings.TrimSpace(subjectKind)
 	id := strings.TrimSpace(subjectID)
 	if kind == "" || id == "" {
-		return knowledgecontext.Context{}, fmt.Errorf("knowledge-context requires -subject-kind and -subject-id")
+		return knowledgecontext.Context{}, nil, newArgumentError("knowledge-context requires -subject-kind and -subject-id")
 	}
 
 	loaded, err := workspace.Load(root)
 	if err != nil {
-		return knowledgecontext.Context{}, err
+		return knowledgecontext.Context{}, nil, err
 	}
 	sources, err := workspace.BuildSourceIndex(root, loaded)
 	if err != nil {
-		return knowledgecontext.Context{}, err
+		return knowledgecontext.Context{}, nil, err
 	}
 	return knowledgecontext.Build(
 		loaded.World,
 		sources,
 		subject.Subject{Kind: kind, ID: id},
-	), nil
+	), workspaceIdentityPointer(loaded), nil
+}
+
+// buildKnowledgeContext keeps the Context-only signature used by the other
+// knowledge builders and the existing tests.
+func buildKnowledgeContext(root, subjectKind, subjectID string) (knowledgecontext.Context, error) {
+	context, _, err := buildKnowledgeContextWithIdentity(root, subjectKind, subjectID)
+	return context, err
 }
 func buildDataDesignCandidateReview(
 	root, subjectKind, subjectID, candidateKind, candidateFingerprint,
@@ -63,14 +73,12 @@ func buildBuilderReviewPlan(
 	root, subjectKind, subjectID string,
 ) (knowledgecontext.BuilderReviewPlan, error) {
 	if strings.TrimSpace(root) == "" {
-		return knowledgecontext.BuilderReviewPlan{}, fmt.Errorf("knowledge-review-plan requires -workspace")
+		return knowledgecontext.BuilderReviewPlan{}, newArgumentError("knowledge-review-plan requires -workspace")
 	}
 	kind := strings.TrimSpace(subjectKind)
 	id := strings.TrimSpace(subjectID)
 	if kind == "" || id == "" {
-		return knowledgecontext.BuilderReviewPlan{}, fmt.Errorf(
-			"knowledge-review-plan requires -subject-kind and -subject-id",
-		)
+		return knowledgecontext.BuilderReviewPlan{}, newArgumentError("knowledge-review-plan requires -subject-kind and -subject-id")
 	}
 	ctx, err := buildKnowledgeContext(root, kind, id)
 	if err != nil {
@@ -84,16 +92,12 @@ func buildBuilderReviewHandoff(
 	requirements knowledgecontext.QualificationRequirements,
 ) (knowledgecontext.BuilderReviewHandoff, error) {
 	if strings.TrimSpace(root) == "" {
-		return knowledgecontext.BuilderReviewHandoff{}, fmt.Errorf(
-			"knowledge-review-handoff requires -workspace",
-		)
+		return knowledgecontext.BuilderReviewHandoff{}, newArgumentError("knowledge-review-handoff requires -workspace")
 	}
 	kind := strings.TrimSpace(subjectKind)
 	id := strings.TrimSpace(subjectID)
 	if kind == "" || id == "" {
-		return knowledgecontext.BuilderReviewHandoff{}, fmt.Errorf(
-			"knowledge-review-handoff requires -subject-kind and -subject-id",
-		)
+		return knowledgecontext.BuilderReviewHandoff{}, newArgumentError("knowledge-review-handoff requires -subject-kind and -subject-id")
 	}
 
 	loaded, err := workspace.Load(root)
@@ -116,12 +120,10 @@ func buildBuilderReviewHandoffFromFile(
 	root, subjectKind, subjectID, requirementsPath string,
 ) (knowledgecontext.BuilderReviewHandoff, error) {
 	if strings.TrimSpace(requirementsPath) == "" {
-		return knowledgecontext.BuilderReviewHandoff{}, fmt.Errorf(
-			"knowledge-review-handoff requires -qualification-requirements",
-		)
+		return knowledgecontext.BuilderReviewHandoff{}, newArgumentError("knowledge-review-handoff requires -qualification-requirements")
 	}
 	var requirements knowledgecontext.QualificationRequirements
-	if err := decodeStrictKnowledgeJSONFile(requirementsPath, &requirements); err != nil {
+	if err := decodeStrictKnowledgeJSONFile("-qualification-requirements", requirementsPath, &requirements); err != nil {
 		return knowledgecontext.BuilderReviewHandoff{}, err
 	}
 	return buildBuilderReviewHandoff(root, subjectKind, subjectID, requirements)
@@ -137,25 +139,23 @@ func buildBuilderReviewDisclosureFromFile(
 	if strings.TrimSpace(root) == "" {
 		return knowledgecontext.DisclosureProjection{},
 			knowledgecontext.BuilderReviewHandoff{},
-			fmt.Errorf("knowledge-review-disclose requires -workspace")
+			newArgumentError("knowledge-review-disclose requires -workspace")
 	}
 	kind := strings.TrimSpace(subjectKind)
 	id := strings.TrimSpace(subjectID)
 	if kind == "" || id == "" {
 		return knowledgecontext.DisclosureProjection{},
 			knowledgecontext.BuilderReviewHandoff{},
-			fmt.Errorf(
-				"knowledge-review-disclose requires -subject-kind and -subject-id",
-			)
+			newArgumentError("knowledge-review-disclose requires -subject-kind and -subject-id")
 	}
 	if strings.TrimSpace(handoffPath) == "" {
 		return knowledgecontext.DisclosureProjection{},
 			knowledgecontext.BuilderReviewHandoff{},
-			fmt.Errorf("knowledge-review-disclose requires -review-handoff")
+			newArgumentError("knowledge-review-disclose requires -review-handoff")
 	}
 
 	var handoff knowledgecontext.BuilderReviewHandoff
-	if err := decodeStrictKnowledgeJSONFile(handoffPath, &handoff); err != nil {
+	if err := decodeStrictKnowledgeJSONFile("-review-handoff", handoffPath, &handoff); err != nil {
 		return knowledgecontext.DisclosureProjection{},
 			knowledgecontext.BuilderReviewHandoff{},
 			err
@@ -299,12 +299,12 @@ func checkDataDesignFingerprint(ctx knowledgecontext.Context, expected string) e
 
 func buildKnowledgeQualification(root, subjectKind, subjectID string, requirements knowledgecontext.QualificationRequirements) (knowledgecontext.QualificationResult, error) {
 	if strings.TrimSpace(root) == "" {
-		return knowledgecontext.QualificationResult{}, fmt.Errorf("knowledge-qualify requires -workspace")
+		return knowledgecontext.QualificationResult{}, newArgumentError("knowledge-qualify requires -workspace")
 	}
 	kind := strings.TrimSpace(subjectKind)
 	id := strings.TrimSpace(subjectID)
 	if kind == "" || id == "" {
-		return knowledgecontext.QualificationResult{}, fmt.Errorf("knowledge-qualify requires -subject-kind and -subject-id")
+		return knowledgecontext.QualificationResult{}, newArgumentError("knowledge-qualify requires -subject-kind and -subject-id")
 	}
 	loaded, err := workspace.Load(root)
 	if err != nil {
@@ -324,35 +324,49 @@ func buildKnowledgeQualification(root, subjectKind, subjectID string, requiremen
 
 func buildKnowledgeQualificationFromFile(root, subjectKind, subjectID, requirementsPath string) (knowledgecontext.QualificationResult, error) {
 	if strings.TrimSpace(requirementsPath) == "" {
-		return knowledgecontext.QualificationResult{}, fmt.Errorf("knowledge-qualify requires -qualification-requirements")
+		return knowledgecontext.QualificationResult{}, newArgumentError("knowledge-qualify requires -qualification-requirements")
 	}
 	var requirements knowledgecontext.QualificationRequirements
-	if err := decodeStrictKnowledgeJSONFile(requirementsPath, &requirements); err != nil {
+	if err := decodeStrictKnowledgeJSONFile("-qualification-requirements", requirementsPath, &requirements); err != nil {
 		return knowledgecontext.QualificationResult{}, err
 	}
 	return buildKnowledgeQualification(root, subjectKind, subjectID, requirements)
 }
 
-func decodeStrictKnowledgeJSONFile(path string, dst any) error {
+// decodeStrictKnowledgeJSONFile decodes one JSON document from a path the
+// caller named. A path that cannot be opened, or that holds something other
+// than the expected document, is an argument problem: the caller passed the
+// wrong value, not a Workspace whose knowledge failed to build. Reporting it
+// as KNOWLEDGE_BUILD_FAILED made a mistyped path look like a broken model
+// (#3943), so every failure here is an argument error.
+//
+// flag is the name of the option the path came from. One loader serves several
+// options — `-qualification-requirements` and `-review-handoff` — so naming one
+// of them inside the message pointed the caller at a flag they had not used.
+func decodeStrictKnowledgeJSONFile(flag, path string, dst any) error {
 	f, err := os.Open(path)
 	if err != nil {
-		return err
+		return newArgumentError(flag + " must name a readable JSON file: " + err.Error())
 	}
 	defer f.Close()
 
 	decoder := json.NewDecoder(f)
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(dst); err != nil {
-		return err
+		return newArgumentError(flag + " is not the expected JSON document: " + err.Error())
 	}
 
+	// A second document is a malformed input, not a partially usable file: the
+	// command cannot tell which of the two the caller meant, so it must refuse
+	// rather than pick the first. Leaving this path on a plain error answered
+	// KNOWLEDGE_BUILD_FAILED, which read as a defect in TEI (#3943).
 	var trailing any
 	err = decoder.Decode(&trailing)
 	if err == io.EOF {
 		return nil
 	}
 	if err == nil {
-		return fmt.Errorf("%s contains trailing JSON value", path)
+		return newArgumentError(flag + " must hold one JSON document: " + path + " contains trailing JSON value")
 	}
-	return err
+	return newArgumentError(flag + " is not the expected JSON document: " + err.Error())
 }

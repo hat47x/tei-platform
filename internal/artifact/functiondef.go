@@ -7,6 +7,7 @@ import (
 
 	"tei/internal/application"
 	"tei/internal/core"
+	"tei/internal/hook"
 	"tei/internal/permission"
 	"tei/internal/semantic"
 	"tei/internal/sourceindex"
@@ -23,8 +24,8 @@ const (
 )
 
 const functionDefinitionRulePolicy = `function-definition/v1
-lines: application, capability (<id>), input, outcome, output, effect, permission, validation, period, effect-rule, run-plan, pattern
-order: capabilities by id, inputs and outcomes in the authored order, patterns by id
+lines: application, capability (<id>), input, outcome, output, effect, permission, validation, period, effect-rule, run-plan, pattern, hook
+order: capabilities by id, inputs and outcomes in the authored order, patterns by id, hooks under their pattern by phase name
 unresolved: capability without input, capability without output or outcomes, capability without effect`
 
 // FunctionDefinitionInput is everything the producer reads.
@@ -176,6 +177,30 @@ func renderFunctionDefinition(input FunctionDefinitionInput) (string, []Unresolv
 	sort.Slice(patterns, func(i, j int) bool { return patterns[i].ID < patterns[j].ID })
 	for _, pattern := range patterns {
 		fmt.Fprintf(&b, "pattern %s %s\n", pattern.ID, pattern.Kind)
+		// A hook is part of the pattern contract: the phase, what it reads, which
+		// capability it may call, what it proposes, and how a refusal is treated.
+		// Listing it here keeps the declaration visible in the function definition
+		// instead of only in the interactive view.
+		hooks := append([]application.Hook(nil), hookDeclarations(pattern)...)
+		// Hooks are listed in the same phase order the runner executes. The order is
+		// defined once (hook.PhaseOrder), so the artifact and the execution agree.
+		sort.Slice(hooks, func(i, j int) bool { return hookPhaseRank(hooks[i].Phase) < hookPhaseRank(hooks[j].Phase) })
+		for _, hook := range hooks {
+			fmt.Fprintf(&b, "  hook %s", hook.Phase)
+			if len(hook.Reads) > 0 {
+				fmt.Fprintf(&b, " reads %s", joinIDs(hook.Reads))
+			}
+			if len(hook.Uses) > 0 {
+				fmt.Fprintf(&b, " uses %s", joinIDs(hook.Uses))
+			}
+			if len(hook.Produces) > 0 {
+				fmt.Fprintf(&b, " produces %s", joinIDs(hook.Produces))
+			}
+			if hook.Failure != "" {
+				fmt.Fprintf(&b, " on-failure %s", hook.Failure)
+			}
+			b.WriteString("\n")
+		}
 	}
 	if len(patterns) == 0 {
 		unresolved = append(unresolved, Unresolved{
@@ -196,6 +221,27 @@ func sortedValidations(used []core.CanonicalID, definitions map[core.CanonicalID
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	return out
+}
+
+// hookPhaseRank returns the position of a phase in hook.PhaseOrder. A phase that
+// is not in that order sorts last, so an unsupported phase is not silently placed
+// in the middle of the list.
+func hookPhaseRank(phase string) int {
+	for index, known := range hook.PhaseOrder {
+		if known == phase {
+			return index
+		}
+	}
+	return len(hook.PhaseOrder)
+}
+
+// hookDeclarations returns the hooks a pattern declares. A pattern without an
+// interaction declares none.
+func hookDeclarations(pattern application.Pattern) []application.Hook {
+	if pattern.Interaction == nil {
+		return nil
+	}
+	return pattern.Interaction.Hooks
 }
 
 // joinIDs renders canonical identifiers as a comma separated list.

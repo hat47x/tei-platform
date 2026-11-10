@@ -1,0 +1,30 @@
+=== M1: adapter maps a tool to a CLI command that does not exist ===
+    discovery_parity_test.go:96: tool "tei_inspect" maps to "inspectt", which the CLI catalog does not advertise
+FAIL
+FAIL	tei/tools/reference-mcp-readonly-adapter	1.564s
+
+=== M2: adapter pins a different response schemaVersion ===
+    discovery_parity_test.go:105: "validate": CLI schemaVersion="tei.cli.validate/v0", adapter pins "tei.cli.validate/v1"
+FAIL
+FAIL	tei/tools/reference-mcp-readonly-adapter	2.546s
+
+=== M3: adapter advertises a tool the CLI has no command for ===
+    discovery_parity_test.go:88: adapter advertises 4 tools, the mapping names 5
+FAIL
+FAIL	tei/tools/reference-mcp-readonly-adapter	1.886s
+
+=== M4: CLI catalog advertises a different validate schemaVersion ===
+    discovery_parity_test.go:105: "validate": CLI schemaVersion="tei.cli.validate/v9", adapter pins "tei.cli.validate/v0"
+FAIL
+FAIL	tei/tools/reference-mcp-readonly-adapter	2.793s
+
+=== M5: CLI catalog marks inspect as effect=write ===
+    discovery_parity_test.go:99: "inspect" is advertised as effect="write"; the adapter must expose read-only operations only
+FAIL
+FAIL	tei/tools/reference-mcp-readonly-adapter	2.680s
+
+=== M6: CLI catalog drops the trace command ===
+    discovery_parity_test.go:96: tool "tei_trace" maps to "trace", which the CLI catalog does not advertise
+FAIL
+FAIL	tei/tools/reference-mcp-readonly-adapter	2.589s
+

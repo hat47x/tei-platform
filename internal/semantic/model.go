@@ -45,6 +45,11 @@ type Period struct {
 	// An empty value means the period does not declare one, and a checker
 	// must not assume a default.
 	Calendar core.CanonicalID `json:"calendar,omitempty"`
+	// ClosingDay splits every month into two segments, 1..28. Zero means the
+	// period is the whole month. X-TEA moved a date after a last-day setting into
+	// the next month (getMSeqOfDate, D:Session.java L2471–2484); here the month
+	// does not move and the segment says which side of the closing the date is on.
+	ClosingDay int `json:"closingDay,omitempty"`
 }
 
 type TypeKind string
@@ -54,7 +59,17 @@ const (
 	TypeAlias     TypeKind = "alias"
 )
 
-func (k TypeKind) Valid() bool { return k == TypePrimitive || k == TypeAlias }
+// TypeKinds lists every accepted type kind in report order.
+var TypeKinds = []TypeKind{TypePrimitive, TypeAlias}
+
+func (k TypeKind) Valid() bool {
+	for _, valid := range TypeKinds {
+		if k == valid {
+			return true
+		}
+	}
+	return false
+}
 
 // Type is a semantic type identity. Primitive types are normally supplied by
 // the TEI standard library; workspace definitions generally introduce aliases
@@ -121,7 +136,17 @@ const (
 	CardinalityMany Cardinality = "many"
 )
 
-func (c Cardinality) Valid() bool { return c == CardinalityOne || c == CardinalityMany }
+// Cardinalities lists every accepted cardinality in report order.
+var Cardinalities = []Cardinality{CardinalityOne, CardinalityMany}
+
+func (c Cardinality) Valid() bool {
+	for _, valid := range Cardinalities {
+		if c == valid {
+			return true
+		}
+	}
+	return false
+}
 
 // RelationKeyは、Relationを実データのinstance間で辿るために、
 // source側とtarget側のどのSemantic attributeを対応付けるかを表す。

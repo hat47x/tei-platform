@@ -282,6 +282,7 @@ func TestArtifactReceiptDoesNotPromoteStoreAuthority(t *testing.T) {
 }
 
 func TestStoreRejectsReplacedAlgorithmDirectory(t *testing.T) {
+	requirePOSIXInodeReplacement(t)
 	root := t.TempDir()
 	store, err := openLocalArtifactStore(root, 1<<20)
 	if err != nil {

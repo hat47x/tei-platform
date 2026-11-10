@@ -1,25 +1,32 @@
 package cognitionport
 
 import (
+	"encoding/base64"
+	"fmt"
 	"os/exec"
-	"runtime"
 	"testing"
 )
 
 // requireExternalCommandHost skips the tests that run an external command
-// through `bash -c`. Those tests pass a `cp <fixture> $TEI_COGNITION_OUTPUT`
-// script, and on Windows the fixture path contains a backslash or drive letter
-// that neither WSL bash nor Git Bash resolves, so the command fails before the
-// cognition boundary can observe it (#3461).
+// through `bash -c` when the host has no POSIX shell at all.
 //
-// Linux runs the reference behaviour, and the skip is logged so a reader does
-// not mistake it for a failure of the implementation.
+// The fixture command used to be `cp <fixture> $TEI_COGNITION_OUTPUT`, which
+// only worked when the bash on PATH could resolve the host's fixture path: the
+// bash that Windows provides is WSL bash, which needs /mnt/d/... rather than a
+// drive letter (#3461). The command is now built by externalOutputCommand,
+// which names no host path, so these tests run on Windows too.
 func requireExternalCommandHost(t *testing.T) {
 	t.Helper()
 	if _, err := exec.LookPath("bash"); err != nil {
 		t.Skip("POSIX shell is unavailable: external command cannot be run on this host")
 	}
-	if runtime.GOOS == "windows" {
-		t.Skip("Windows paths are not resolved by the bash -c cp fixture; Linux CI checks this (#3461)")
-	}
+}
+
+// externalOutputCommand writes content to the file named by envVar without
+// naming a host path, so the same command works under WSL bash, Git Bash and
+// Linux bash. Content travels as base64 to keep quoting out of the picture.
+func externalOutputCommand(t *testing.T, envVar string, content []byte) string {
+	t.Helper()
+	return fmt.Sprintf(`printf '%%s' %s | base64 -d > "$%s"`,
+		base64.StdEncoding.EncodeToString(content), envVar)
 }

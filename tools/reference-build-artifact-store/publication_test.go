@@ -464,6 +464,7 @@ func TestPublishExactMembersRejectsLateMissingMemberAndAllowsRetry(t *testing.T)
 // both Put receipts succeeded, replacing a member's inode between Lstat and
 // Open during the final getMembers pass must not produce a set receipt.
 func TestPublishExactMembersRejectsSameBytesObjectReplacementDuringReverify(t *testing.T) {
+	requirePOSIXInodeReplacement(t)
 	store := openTestStore(t, 1<<20)
 	first := []byte("stable content, unstable CAS object")
 	second := []byte("another exact artifact")
@@ -524,6 +525,7 @@ func TestPublishExactMembersRejectsSameBytesObjectReplacementDuringReverify(t *t
 // Replacing it with another inode AFTER its bytes have been read is distinct
 // from replacement between the initial Lstat and Open.
 func TestPublishExactMembersRejectsSameBytesPathReplacementAfterRead(t *testing.T) {
+	requirePOSIXInodeReplacement(t)
 	store := openTestStore(t, 1<<20)
 	first := []byte("bytes remain exact even when the CAS path moves after read")
 	second := []byte("independently available second member")

@@ -45,7 +45,7 @@ func (r ReferenceRule) evaluate(invocation Invocation) error {
 		if !observed {
 			return &NotSatisfied{
 				Reason:  fmt.Sprintf("attribute %s was not observed", attribute),
-				Outcome: "not-satisfied",
+				Outcome: OutcomeUnmet,
 			}
 		}
 		if !r.requiresPositive(attribute) {
@@ -55,14 +55,14 @@ func (r ReferenceRule) evaluate(invocation Invocation) error {
 		if err != nil {
 			return &NotSatisfied{
 				Reason:  fmt.Sprintf("attribute %s is not a number: %s", attribute, value),
-				Outcome: "value-rejected",
+				Outcome: OutcomeValueRejected,
 				Cause:   err,
 			}
 		}
 		if number <= 0 {
 			return &NotSatisfied{
 				Reason:  fmt.Sprintf("attribute %s is not positive: %s", attribute, value),
-				Outcome: "value-rejected",
+				Outcome: OutcomeValueRejected,
 			}
 		}
 	}

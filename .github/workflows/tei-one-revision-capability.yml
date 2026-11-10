@@ -5,11 +5,17 @@ on:
     branches: [main]
     paths:
       - 'plan/fixtures/capability-handoff/**'
+      - 'cmd/tei/cli_operations_artifacts*.go'
       - '.github/workflows/tei-one-revision-capability.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
+
+# 同じPRの古い実行だけを取り消し、mainへのpushは取り消さない（#3682）。
+concurrency:
+  group: tei-tei-one-revision-capability-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   real-cli-one-revision:
@@ -44,7 +50,15 @@ jobs:
           test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
           python3 -B -c 'import ast, pathlib; ast.parse(pathlib.Path("plan/fixtures/capability-handoff/verify_real_cli_revision.py").read_text(encoding="utf-8"))'
+          python3 -B -m unittest discover -v -s plan/fixtures/capability-handoff -p 'test_publication_path_readback.py'
           echo "scenario-blob=$(git rev-parse HEAD:plan/fixtures/capability-handoff/verify_real_cli_revision.py)"
+
+      - name: Characterize valid Manifest R1/R2 publication and independent byte read
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test ./cmd/tei -run '^TestValidManifestPublication' -count=1 -v
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
 
       - name: Build actual Go CLI outside checkout
         shell: bash

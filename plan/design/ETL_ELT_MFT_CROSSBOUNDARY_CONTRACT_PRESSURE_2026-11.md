@@ -380,6 +380,109 @@ Apache Kafkaは、Kafka Topic間ではtransactional producerとconsumer offset�
 
 **資格**：ここまでの差分は既存Go/Pythonの静的読取とIssue/PR照合だけ。AP-12の新たな実行、正規Manifest＋別Readerの同Attempt E2E、MFT Recipient/実PG/Owner受理はNOT RUN。既存merged testsとRepository Healthの合格は、その限定範囲のみの実証。
 
+### 12.3 2026-11-07 既存AP-12の限定Executable Reference接続
+
+[本設計のmain統合 PR #2827](https://github.com/hat47x/tei-platform/pull/2827)後、受入実証を既存[#2604 AP-12/13](https://github.com/hat47x/tei-platform/issues/2604#issuecomment-6585644900)へ委ねたまま、**小さな候補[Draft #3256](https://github.com/hat47x/tei-platform/pull/3256)**を追加した。これは**一般のManifest→Path方式の採用ではなく、公開`ledger` Fixtureの限定Reader検証**である。
+
+- **入力／Owned Scope**: `reference/standard-crud/workspace`、Application `ledger`。既存`tei artifacts`のfull ArtifactSet/Manifest出力と、`-out`のfresh directoryの同一試行比較を継続。Writerが別途呼ぶ`artifactFileName`をExpected生成に再利用せず、3つのtable（`public.notes`／`public.orders`／`public.order_archive`）、1つのfunction（`ledger`）、operation surfaceの5相対Pathを**Reference固定のExpected Layout**とする。別Applicationへ一般化しない。
+- **P0-A負例**: 二つのTableの物理ファイル名は固定のままBodyを交換する。旧Python Readerの`Counter(expected Bodies)==Counter(actual Bodies)`はTrueでも、`path→member→byte`を照合すれば拒否（AP-12）。Rename／余剰／Directory／欠落／重複／Role改変／Body改変も個別に拒否する。
+- **局所結果**: Python helper＋単体試験をローカルで**9/9 PASS**（2ファイルをGitHubで再取得し、ローカル実行版とGit blob SHA一致）。これは**合成FixtureのReaderロジック**の結果であって、Go ArtifactSetの正式Manifest出版、複数Consumerの原子的一式読取、HULFT/PG/Business Owner受理ではない。
+- **既存実CLI CI**: [`tei-one-revision-capability.yml`](../../.github/workflows/tei-one-revision-capability.yml)へ上記9試験を追加し、同Workflowの実Go CLI build／実`ledger` Artifact/Manifest出力を新Readerへ接続。**exact-headのCI合否が観測されるまでは実CLI検証未成立**。Repository Healthや別PRのCIを代入しない。
+- **P1/P2への引継ぎ**: #2604 AP-06/08〜16のR1/R2世代切替・旧Member GC・Manifest自体のPath/Content byte Binding資格、#2630の用途別Required Member、#2542 EF-01〜03のRecipient/ImportUnit、#1130のRunPlan・#1174のEffectを独立した未成立Claimとして保持。Path/byte Witnessの成功だけで`Artifact.Verify`をdiskから再構築したとも、`Manifest.Complete`がConsumer必要集合全件を保証したとも称さない。
+
+**採否**: 一般のPublication Mapping、標準RoleやManifest Entryの変更、任意Transport/MFT Adapterは、現在の5ファイルFixtureだけでは根拠不足。別Reader・別Host・第二Scenario正本を作らず、#2604 Ownerが実証と互換性に基づき方式を選択する。
+
+### 12.4 2026-11-08 結果確認と、Byte／Envelope境界の独立負例
+
+**PR #3256 の最初のexact HEAD `bcf77d7bd8dd1dc7e9242a6d708761c1f613693a`についてGitHub APIで実結果を確認**:
+
+| 実行根拠 | 成立した範囲／別資格 |
+| --- | --- |
+| [one-revision actual Go CLI＋Python Reader CI #42348103565](https://github.com/hat47x/tei-platform/actions/runs/42348103565) | completed/success。exact HEAD checkout、pinされたGoツールチェーンによる実CLI build、9件のPython単体、同一公開`ledger` WorkspaceのArtifact生成と実Path/Byte Reader、改名によるSource revision差の実検証。これは**一つのfresh-dir**での受領に限る |
+| [Repository Health #42348103549](https://github.com/hat47x/tei-platform/actions/runs/42348103549) | completed/success。上記実CLIとは別の全体健全性検査 |
+| [Dependency scan #42348103617](https://github.com/hat47x/tei-platform/actions/runs/42348103617) | completed/success。root/studioのgovulncheckと参照Workbench等のnpm auditのWorkflow結果。実Provider接続やBusiness Policyの安全証明ではない |
+
+追加する**同じ既存Unit Testへの負例**（本節執筆時点で新HEADのCIは別に必要）:
+
+- **AP-01/06（読取側の反応）**: R1のManifestを保持しつつ一つのMemberだけR2のBodyに置換。限定ReaderはR1受領資格を拒否することを確認する。ただし**既存Writerが必ず原子公開することの実証ではなく**、失敗後のRecoveryと旧版pin/GCの保証でもない。
+- **AP-10/11（過剰資格化の拒止）**: Bodyを同じに保ち、Rule Version／Generator／Unresolved詳細だけを変更。Byte限定Readerは同じBody digestを返し得るため、結果の資格を`ledger-fixture-path-to-bytes-only`に限定し、`Artifact.Verify`・意味の同一性・業務受理を出力しない。**同じbyteだから同じArtifactとはしない**。
+- **実装担当を増やさない**: #2604が物理Publication/Consumer Reader、#2482がArtifact Envelopeの内部検証、#2630が用途別RequiredMember、#2542が外部Recipient/Import、#1174がEffectを担当。#2831／PR #3313の外部Module opt-inはBuild Sourceの独立証拠であり、Ledgerのファイル読取PASSをSelf-build全閉包や実MFT保証へ移さない。
+
+**次の受入順**: (i) #3256 exact HEADの11 Python例＋actual Go CLI CI結果、(ii) #2604が所有する**正規Manifestを維持したR1/R2公開競合と独立Consumer pin/GC**、(iii) #2542 EF-01〜03で実送達/ImportUnit/期間、(iv) Owner承認付きEffect。新Renderer、Publication Mappingの正式API、専用Completion Engineの先行採用は不要。製品E2E・Windows/FS差・実MFT・業務Owner受理は引き続きNOT RUN。
+
+
+### 12.5 2026-11-08 正規ManifestでのWriter実挙動と旧世代pinの残余（P1候補）
+
+**背景と変更範囲**: 既存#2604 AP-01〜03のmain統合済み`cli_operations_artifacts_publication_test.go`は`WorkspaceSet.Manifest`をゼロ値のままWriterへ渡す**逐次書込の特性試験**。一方、[#3256](https://github.com/hat47x/tei-platform/pull/3256)のPython Readerはfresh-directoryの正常Publish＋Body/Pathに限定した資格を得た。**両実装を含む最初の小さな接続**として、同一Go Writerで`artifact.NewManifest`が成功するR1/R2の実Fileを保存し、次の3つの観測を追加した。今回の試験の採否・CIは更新HEADごとに別記する。
+
+| 既存Ownerのケースへ渡す観測 | 実行方法（局所Go実ファイル） | 証拠の上限／禁止する飛躍 |
+| --- | --- | --- |
+| **正の基線** AP-08/10 | 2 Member `a/b`、同一R1 InputRevisionで`Artifact.New`→`NewManifest`→`Verify`し`writeArtifactFiles`出力。保存された`manifest.json`をファイルから再読取・Verifyし、双方の実Bodyを比較 | **Go内のdisk read**であって別Process Consumerや独立に受理したPublication Bindingではない |
+| **途中失敗** AP-01/06 | R1は正規Manifest/2 Memberで公開。R2で`a/b/c`を選び、新Member `c`宛先へ事前にDirectoryを作り書込み失敗を注入。`b`はR2に置換され、R1 Manifestは改訂されない | 論理Manifest Verify成功でもR1の物理Read一致は成立しない。**観測上のReader拒否を検査**するだけでAtomic Publisherの修正ではない |
+| **正常R2への移行と旧pin** AP-06/09 | R1のManifest版を固定後、同じ出力Directoryへ正常R2を書き込み、旧Memberの保存Byteが取り出せるか比較 | R2が正常でもこのDirectoryにはR1の実Body保持機構がない。旧版Readerは別世代Pin/Retention契約なしに同一版と主張しない |
+
+**最小の計画差分**: テスト専用`cmd/tei/cli_operations_artifacts_valid_manifest_readback_test.go`（production Writer変更なし）を既存`tei-one-revision-capability.yml`のexact-HEAD Go unitへ追加し、既存Python Readerの**11ケース/実CLI**とは別Stepで結果を取得する。これらを#2604のAP-01/06/08/09へ戻す。**次の実製品P1**は#2604 Ownerがimmutable generation／stage→pointer／pin+verifyのどれを選ぶか、実Consumer2プロセス・FS条件・GCに照合して判断する。Providerの整合・暗号化/署名・Business Owner認証、MFTの実配送/Importは#2542等の別レーンを保持する。
+
+**他チャットとの契約境界**: [merged #3313](https://github.com/hat47x/tei-platform/pull/3313)は選択した外部Go Moduleをopt-inでBuild Source Closureへ供給できることに関する実装であり、Artifact Publication／MFT Transferの一式性を自動保証しない。Build閉包とReceiver実Readは対象・Attempt・実質的な保証が別。#3244外部Registry/Release Readerの署名・現在Trustも別Ownerであり本テストに含めない。
+
+**状態**: 設計は今回の試験候補を記録する。追加Go 3件のCI、最新mainとのmerge時資格はHEADごとに確認する。新Core型、第二Publisher、汎用Manifest Mapping、Scheduler、Hostは未導入。外部Consumer/実MFT/Business Effect/Owner採用はNOT RUN。
+
+### 12.6 2026-11-09 期間状態の原子的保存と一式公開を分離する
+
+**今回の追加根拠**: 2026-11-09確認main `3c8bebefef30a9407fef71c0e6a5a76680f46719` では、[merged PR #3718](https://github.com/hat47x/tei-platform/pull/3718)により `tei periods -advance`（`open→closing→closed`）と `internal/periodstate/writer.go` のtemporary file+renameが実装済み。これを[#1130 RunPlan](https://github.com/hat47x/tei-platform/issues/1130)／[#2542 EF-01/04](https://github.com/hat47x/tei-platform/issues/2542)の業務期へ接続する。ただし**期間状態ファイルの一回の置換原子性と、Artifact Setの一式公開原子性、同時実行の排他・CAS、実業務の確定は別**。
+
+| 境界 | 現mainで確認できる実装 | 現時点で成立しない資格・反証対象 |
+| --- | --- | --- |
+| **期間状態の単一保存** | `periodstate.Writer.Write`が既存JSONを読み、渡された期間を上書きして同一directoryの一時ファイルを`os.Rename`する。既存テストは単一Writerで他期間保持・新規作成・未知state拒否を検証 | renameにより個別JSONファイルの途中書込み露出を抑えるが、複数Writerの**read/modify/write全体がCAS/直列化された**証拠にはならない。ファイル/ディレクトリfsyncやWindows/Network FSの耐久性・原子性も未証明 |
+| **期間遷移** | `operations.NextState`は宣言済み状態からの一段遷移だけを許し、`closed→open`は更正のため明示。CLIは現在の状態を読んで次状態を計算し、別呼出しのWriterで保存する | 二CLIが同じ`open`を読んで両方`closing`へ書く場合、**古い状態を前提にした二つの遷移の成功**を排除する現在Grant/Expected state revision/CASがない。複数期間の並列更新なら一方の状態を他方が消すlost-updateも条件付きで成立し得る。実並走負例はNOT RUN |
+| **Artifact Publication** | #3256により現`writeArtifactFiles`のR1正常2Member→R2部分失敗／R2正常上書きを正規Manifestで観測した（旧HEAD実CLI focused CI成功） | **期間stateファイルのrenameをArtifact Setの公開完了・旧版pin・Retention/GC・外部Recipient実読取の保証に転用しない**。公開Memberは別々の`os.WriteFile`であり、Manifestは最後の別書込み |
+| **Business Period D** | R1/R2のArtifact Generation、Data Window/Watermark、RunPlan Guard、Period Stateを個別に表現できる | `closed`への状態遷移だけでSource必要File/明細/合計の網羅、全Recipient受領、実Import/Commit/独立Read、Owner受理までが同時に成立したとは言えない。更正時は新しい業務Operation/Generation/ReceiptとOwner判断が必要 |
+
+**優先度P1の有限反証（既存Owner配分）**：
+
+1. **#3718→#1130**: 二Writer A/Bが同じPeriod State revisionを読んで各々別の期間を進める競合を、同期点を持つ参照Fixtureで注入。結果が`Aのみ`または`Bのみ`となる経路なら、単一Writeの原子性と状態更新全体の直列化を分離して**unqualified**へ。RPL-02/04やExisting Period Transitionの受入を再利用し、ETL固有の新Authorityを設けない。
+2. **#2604**: 正規Manifest付きR1/R2を別Process Consumerに実際に読ませ、Pin中のR2切替・部分失敗・Retention/GCを対象OS/FSごとに測る。現#3256のGo内Disk ReadとPython Fresh-dir Readを別Attemptと明記し、両者のPASSを原子的一式公開へ合成しない。
+3. **#2542 EF-01/04＋#1130 RPL-05**: 業務期Dの`closing`/ `closed`と必要F/Tの欠落・後着、Watermarkと実Recipient ACK/ImportUnitを別列にする。`closed`の観測後にF2が遅延到着しても自動再Accept/自動再Effectをしない。Source/Business ScopeのOwner承認を保留し、Reader/Producer/Providerごとに未実証を表示する。
+4. **#2831 / PR #3731（別Owner）**: 同一Planによる二回のBuild byte再現候補は**Build Determinism**の資格。完成したArtifactを実Consumerが読んだか、期間Stateと同一Attemptか、配送されたかとは別。PR #3731はこの観測を`reproduced`とし得るが、L2-b／G4を未資格としている。PRの正式merge/製品実行資格とは混同しない。
+
+**CIの正確な履歴**: [#3256 HEAD `32782a42011ed0d3642c6344caddd845fa3c3a1c` の focused CLI #42434906001](https://github.com/hat47x/tei-platform/actions/runs/42434906001)は成功、[同HEAD Repository Health #42434905882](https://github.com/hat47x/tei-platform/actions/runs/42434905882)は失敗。GitHub Job logの唯一の失敗Stepは`gofmt -l . is empty`、指摘は`reference/dsl-language-plugin/everything_data_cross_surface_test.go`（本PR変更対象外）。失敗ファイルBlob `97483b653a1f04ffe919e70dbc075dfcc24d4346`はPRの分岐元と候補HEADで同一。mainは[後続#3398等の整形](https://github.com/hat47x/tei-platform/commit/7cd70eaee39e608fd0401649bb4c68a7b1d7b1e4)を取り込み、[2026-11-09 main Health #42573811654](https://github.com/hat47x/tei-platform/actions/runs/42573811654)は成功。ただし**PRにmainを統合した新HEADを検証するまではRepository Healthの成功へ昇格しない**。
+
+**設計判断**: 原子性を広範囲に一括要求する共通Gateを作らず、(a)単一ファイル置換、(b)read/modify/write競合、(c)ArtifactSet一式公開、(d)配送/取込み、(e)業務Effect/Owner受理を別の観測・受入として扱う。MFT専門DSL/統一Host/万能Scheduler/第二Manifest・Authorityの増設は現段階で正当化されない。
+
+### 12.7 2026-11-09 公開Generation pinの実CLI→独立Python Reader再取得
+
+**今回の追加試行（#2604 AP-06/09/12へ接続、採否はCI確認後）**：main統合済みCLI `tei artifacts -out`と既存#3256の`verify_real_cli_revision.py`を再利用。公開`ledger`の同一Workspace copyをR1として実Go CLIで`-out <dir>`へ公開し、独立Python側が**保存された`manifest.json`の原バイトをpin**して各MemberをReadする。その後、既存MR-03の`semantic/sales/order.tei`を同byteのままrelocateし、Source treeとInputRevisionが異なるR2を実Go CLIの別呼出しで**同じ`<dir>`へ上書き公開**する。R1/R2それぞれのCLI stdout Manifestと保存Manifest/Memberを照合する。
+
+| 試行点 | 必須の観測結果 | 成立させないClaim |
+| --- | --- | --- |
+| R1最初の実Go CLI公開 | Independent Python Readerは保存済みR1 Manifest原バイトがmember Read前後に一致し、固定Ledger Path→Member→Byteを照合 | 完全Artifact Envelopeのdiskからの再構成・Producer/Readerの独立Required closure・Sourceのsnapshot transaction |
+| R1 Source名relocate→R2 `-out`同一Directory | R1/R2のInputRevision・Manifest Digestは異なる。R2書込後はR1 Pinでの読取を**Manifest変更として拒否**。R1/R2の本文byteが一部同一でも旧版資格は昇格しない | 原子切替・同時刻に並走するReaderの一式受領・旧世代retain・GC・rollback |
+| R2公開後の再取得 | R2 `manifest.json`の実バイトとstdout Manifestを比較し、R2 Pinで現在のMember全件が実Read可能かを確認。実測した`unchanged_body_paths`はBody byteのみの観測 | R2のOwner Acceptance、MFT Recipient、実ImportUnit、Period `closed`、Current Grant |
+| Reader途中にManifestがR1→R2 | `verify_pinned_ledger_publication_paths`はmember Read前後のManifest byteを照合し、中途変更を**独立負例として拒否** | 2点照合ではR1→R2→R1の**ABA**・Member単位の間欠上書きやFSキャッシュ競合を検出し尽くせない |
+
+**使う部品**: `plan/fixtures/capability-handoff/publication_path_readback.py`へ「固定Manifest byteの前後一致」を追加、同`test_publication_path_readback.py`へ不変Pin陽性・R1旧Pin拒否（Body同一）・Reader途中でのManifest変更・Pin不正値を追加（既存11件→15件の見込み）、`verify_real_cli_revision.py`の既存real CLI呼出しをR2同一Directory再公開へ接続。**新CLI、第二Reader正本、Manifest Schema、Publisher/Rollback機構は導入しない**。成功した場合も`ledger`固定Fixtureの**sequential two-revision actual-publisher/independent-process read**という限定表示のみ。
+
+**他チャットへの整合**: [Draft #3321](https://github.com/hat47x/tei-platform/pull/3321)の同じObserved Snapshotでも物理Root/Read Attemptは同一とは限らない反例を踏まえ、同じManifest byteから独立Source Rootの同一性を主張しない。[merged #3731](https://github.com/hat47x/tei-platform/pull/3731)のPlan二回Build再現は生成側の局所Determinismであり、公開後の現在Reader取得資格ではない。#3252のClaim単位の変更影響と#2604の実Publication Ownerをそのまま維持する。
+
+**P1へ残す最小未証明**: (1)R1をpinしたConsumerがWriterと本当に並走する中で全部のMemberをR1として取得できるか、(2)固定Generationの実バイトを保持する期間とGC後の失効、(3)物理Root/Manifest ABA/同一Directory上書き・Crash/OS別FSの整合、(4)#2542の宛先別配信・ImportUnitと#1130 Period/Owner Effectの別資格。2回の`manifest.json` byte照合をCAS・Directory snapshot・実業務成功に昇格しない。専用CIによる最新HEAD検証前は全追加ケースの実行成立を主張しない。
+
+### 12.7.1 2026-11-09 exact-HEAD実測：5 Body同一・Manifest世代相違
+
+**実行済み**: [Draft #3256](https://github.com/hat47x/tei-platform/pull/3256)のHEAD `06293192394ed908ce13a06474fc5f3d94495cff`で[one-revision actual Go CLI + independent Python reader #42621235600](https://github.com/hat47x/tei-platform/actions/runs/42621235600)は**completed/success**。Log Job `real-cli-one-revision`で**Python 15/15 PASS（0.017s）／実Writerの正規Manifest R1/R2 Go 3件 PASS／実Go Build PASS／実CLI R1/R2上書き公開後の独立Python Reader PASS**を個別に観測。ここでの「独立」はProducerとは別Process・別言語のReadを指し、Publisherと並走するReaderではない。
+
+| 実行ログの比較項目 | R1 | R2 |
+| --- | --- | --- |
+| Source tree SHA256 | `af320664fbd4a84a903172373f39b78723c43188cc68d7aea1f5177e0abc7279` | `e6eeb6b75aa18cea69ea7a051c910547765985e583779e9b398b2b61855b5716` |
+| InputRevision | `sha256:c60ed68c7c85ab218883b18970df85db1ebcae7d9090336452766d7a95d2b04d` | `sha256:b596f00201f39ac542b305dd284a9cc4d3daf59d31f41340c91c390a94f89240` |
+| Manifest Digest | `sha256:e8ff4b37acbbaa9cbf343de7ef5614eec120e12f799ff1ad9f8b852f9c947a13` | `sha256:3632c2c8e81ef0423588e408b9acdc25b39e5a108c56e2e3fdd07400bd3d0e3e` |
+| WorldFingerprint | **共通** `sha256:bd53dbaca0ac2c20bc911e0b69083467f2ad38273911269d525db666e681817f` | **同左** |
+| 公開Body bytes | **5/5同一**：`function-ledger.md`、`operation-surface.json`、`table-public-notes.md`、`table-public-order_archive.md`、`table-public-orders.md` | **5/5同一**（同じ相対Pathのbody SHA256一致） |
+| 実Read資格 | R1公開直後のPin Read=PASS | R2再公開後の**旧R1 Pin=REJECTED、新R2 Pin Read=PASS（5 Member）** |
+
+**この反例が示す新しい設計上の分離**: `Body byte identity` と `Artifact Envelope identity` と `Manifest generation membership` が互いに異なる。**同一Bodyの再利用は可能な設計候補**だが、仮に物理Blobをcontent-addressedで共有する場合でも、`(Generation, Consumer Required Member Role, Actual Path/Object, Byte Digest, Source Revision, Disclosure)`の対応と現在性を別に確保しなければR1をR2へ誤昇格する。これは**既存#2604のAP-08〜16と#2630の用途相対Member閉包への受入条件**であり、新共通Manifest型／第二Artifact Registryの採用を意味しない。実Body byteを共有できるかはStorage Provider・GC/Retention・開示範囲が成立する場合に限る。
+
+**残る反証**: ここではSource relocate後に別々の`tei artifacts -out`が**順次**実行された。2点Manifest一致検査はABA/R1→R2→R1・途中のMember上書き・複数FS/OS・R1 pinの継続読取保証を証明しない。実Sourceの物理Root/同一Read Attempt、Recipient ACK、ImportUnit、Business Period`closed`、Effect/Ownerの資格も別。正式なPublication方式の選定は**#2604 Owner**に委ねる。
+
 ### 追加一次資料（製品・仕様の版に依存する事実）
 
 - Apache Iceberg spec, snapshots / optimistic concurrency: https://iceberg.apache.org/spec/

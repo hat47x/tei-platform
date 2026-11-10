@@ -1,0 +1,7 @@
+M1 move plan/adr away            -> FAIL (numbered scope empty)
+M2 empty plan/workstreams        -> FAIL "plan/workstreams yields 0 documents;
+                                          the checks over it would pass without
+                                          examining anything"
+M3 add a numbered doc to plan/issue -> FAIL "plan/issue now holds 1 numbered
+                                          documents; restore a uniqueness check"
+restored -> ok

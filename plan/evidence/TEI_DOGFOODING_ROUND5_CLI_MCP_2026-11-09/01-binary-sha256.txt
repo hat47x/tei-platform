@@ -1,0 +1,1 @@
+72d32c7e8d826522bf3f9247e2120cdc43176b8804dee028ae86fd8bcc36d66c  /home/hat47x/dogfood/bin/tei-r5

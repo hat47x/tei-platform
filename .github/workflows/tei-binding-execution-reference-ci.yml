@@ -1,0 +1,84 @@
+name: TEI C-1/C-2 bounded invocation evidence
+
+# Read-only references. Executor and Service Carrier entry are distinct,
+# and neither is a verified external effect or receipt.
+# and product execution/Host ownership is not selected by this workflow.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/tei-binding-execution-reference-ci.yml'
+      - 'tools/reference-binding-to-execution/**'
+      - 'tools/reference-service-carrier-connect/**'
+      - 'internal/deployment/routing/executor.go'
+      - 'internal/deployment/executor/model.go'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/tei-binding-execution-reference-ci.yml'
+      - 'tools/reference-binding-to-execution/**'
+      - 'tools/reference-service-carrier-connect/**'
+      - 'internal/deployment/routing/executor.go'
+      - 'internal/deployment/executor/model.go'
+
+permissions:
+  contents: read
+
+# 同じPRの古い実行だけを取り消し、mainへのpushは取り消さない（#3682）。
+concurrency:
+  group: tei-tei-binding-execution-reference-ci-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  bounded-executor-invocation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+    steps:
+      - name: 対象Sourceを取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: 対象Commitと実装/テストのGit Blobを記録
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          printf 'checked-sha=%s\n' "$GITHUB_SHA"
+          printf 'binding-reference-blob=%s\n' "$(git rev-parse HEAD:tools/reference-binding-to-execution/bindingexecution.go)"
+          printf 'effect-negative-test-blob=%s\n' "$(git rev-parse HEAD:tools/reference-binding-to-execution/bindingexecution_effect_unknown_test.go)"
+          printf 'routing-source-blob=%s\n' "$(git rev-parse HEAD:internal/deployment/routing/executor.go)"
+          printf 'service-carrier-reference-blob=%s\n' "$(git rev-parse HEAD:tools/reference-service-carrier-connect/connect.go)"
+          printf 'service-carrier-v1-test-blob=%s\n' "$(git rev-parse HEAD:tools/reference-service-carrier-connect/connect_report_v1_test.go)"
+      - name: 対象Go版を用意
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+      - name: C-1 ExecutorとC-2 Service Carrierの実入口と効果不明をGo検証
+        shell: bash
+        run: |
+          set -euo pipefail
+          go version
+          go test -count=1 -v ./tools/reference-binding-to-execution/... ./tools/reference-service-carrier-connect/... ./internal/deployment/routing
+          go vet ./tools/reference-binding-to-execution/... ./tools/reference-service-carrier-connect/... ./internal/deployment/routing
+          files=(
+            tools/reference-binding-to-execution/bindingexecution.go
+            tools/reference-binding-to-execution/bindingexecution_test.go
+            tools/reference-binding-to-execution/bindingexecution_effect_unknown_test.go
+            tools/reference-service-carrier-connect/connect.go
+            tools/reference-service-carrier-connect/connect_test.go
+            tools/reference-service-carrier-connect/connect_effect_unknown_test.go
+            tools/reference-service-carrier-connect/connect_report_v1_test.go
+          )
+          if [[ -n "$(gofmt -l "${files[@]}")" ]]; then
+            gofmt -d "${files[@]}"
+            echo 'Focused Go reference source is not gofmt-clean' >&2
+            exit 1
+          fi

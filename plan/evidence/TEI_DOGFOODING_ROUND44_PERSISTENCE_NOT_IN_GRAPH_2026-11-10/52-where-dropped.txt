@@ -1,0 +1,17 @@
+World carries the column mapping:
+
+  internal/database/persistence/model.go:40
+    type Mapping struct { ... Columns []ColumnMapping ... }
+    type ColumnMapping struct { Attribute; Column; Storage; Nullability }
+
+The index drops it:
+
+  internal/index/index.go:405
+    PersistenceIndexEntry{Mapping, Database, SemanticData, Table}
+    -- m.Columns is not copied
+
+  internal/index/index.go:153
+    type PersistenceIndexEntry struct { ... }   // no column field
+
+So unlike the realize case (index never read the field), here the index reads
+the mapping and discards the middle step. No dependency list receives it either.

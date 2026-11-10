@@ -1,0 +1,1 @@
+{"schemaVersion":"tei.cli.view/v0","ok":false,"error":{"code":"VIEW_FAILED","message":"application nopeがありません"},"workspace":{"name":"tei_reference","formatVersion":1,"manifest":{"path":"tei.workspace.yaml","sha256":"sha256:8e367b05de26a715ced16e384d273c983ac612dd2ff980d4310886d4f471af74"}}}

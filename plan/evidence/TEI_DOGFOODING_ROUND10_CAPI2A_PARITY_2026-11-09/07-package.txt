@@ -1,0 +1,1 @@
+ok  	tei/tools/reference-mcp-readonly-adapter	38.813s

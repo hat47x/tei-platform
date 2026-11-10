@@ -1,0 +1,538 @@
+{
+  "note": "Twelve subagent calls were requested in one assistant message. Eight started and four were refused with an active-child limit error, so maxActiveSubagents (schema default 8) binds.",
+  "requestedConcurrent": 12,
+  "started": 8,
+  "refused": 4,
+  "activeChildLimitInMessage": 8,
+  "childSessions": 8,
+  "parent": {
+    "file": "many-parent.jsonl",
+    "sessionId": "session-a370c64b-5ec9-4e23-a42b-23bd9120e80d",
+    "bytes": 82800,
+    "sha256": "ad55a0fe79f783c6853d70f397800cb48f5f5dade7c2f1224e1ce0400e17fe41",
+    "lines": 90,
+    "eventTypeCounts": {
+      "session": 1,
+      "permission/preset": 2,
+      "sandbox/mode": 2,
+      "approval/policy": 2,
+      "agent/inbox/spliced": 12,
+      "turn/start": 2,
+      "step/start": 4,
+      "system/message": 1,
+      "user/message": 12,
+      "request/header": 1,
+      "request/context": 1,
+      "session/title": 2,
+      "session/title-llm-request": 1,
+      "session-log-deepseek/delivery-accepted": 5,
+      "assistant/message": 4,
+      "tool/call": 12,
+      "subagent/catalog": 8,
+      "tool/result": 12,
+      "step/end": 4,
+      "turn/end": 2
+    },
+    "catalogEvents": 8,
+    "toolResults": [
+      {
+        "seq": 36,
+        "isError": false,
+        "toolCallId": "toolu_m_1_0",
+        "text": "started subagent 82f1bd57-fde1-4b2e-bc05-4e1d24a0e7c3",
+        "limitError": false,
+        "started": true
+      },
+      {
+        "seq": 38,
+        "isError": false,
+        "toolCallId": "toolu_m_1_1",
+        "text": "started subagent a60d238a-108e-4df1-ba7b-edbbc075d659",
+        "limitError": false,
+        "started": true
+      },
+      {
+        "seq": 40,
+        "isError": false,
+        "toolCallId": "toolu_m_1_2",
+        "text": "started subagent d07b250b-9f7b-46ab-b757-418eb9260a68",
+        "limitError": false,
+        "started": true
+      },
+      {
+        "seq": 42,
+        "isError": false,
+        "toolCallId": "toolu_m_1_3",
+        "text": "started subagent 6c1bb328-37f9-4e45-b2d0-63c1af8f66e8",
+        "limitError": false,
+        "started": true
+      },
+      {
+        "seq": 44,
+        "isError": false,
+        "toolCallId": "toolu_m_1_4",
+        "text": "started subagent 1f050279-148b-4ef9-889b-41d463fa3fa7",
+        "limitError": false,
+        "started": true
+      },
+      {
+        "seq": 46,
+        "isError": false,
+        "toolCallId": "toolu_m_1_5",
+        "text": "started subagent 7cb17118-0f41-4262-b1ac-b10d376fd7ee",
+        "limitError": false,
+        "started": true
+      },
+      {
+        "seq": 48,
+        "isError": false,
+        "toolCallId": "toolu_m_1_6",
+        "text": "started subagent b4ebecc0-53c7-49da-aef9-99434972f72e",
+        "limitError": false,
+        "started": true
+      },
+      {
+        "seq": 50,
+        "isError": false,
+        "toolCallId": "toolu_m_1_7",
+        "text": "started subagent bbab3e9e-d065-45ab-a434-1bf2baea0a76",
+        "limitError": false,
+        "started": true
+      },
+      {
+        "seq": 51,
+        "isError": true,
+        "toolCallId": "toolu_m_1_8",
+        "text": "Error: subagent limit reached (active child limit: 8); wait for an existing child to finish or complete this work with the current agents",
+        "limitError": true,
+        "started": false
+      },
+      {
+        "seq": 52,
+        "isError": true,
+        "toolCallId": "toolu_m_1_9",
+        "text": "Error: subagent limit reached (active child limit: 8); wait for an existing child to finish or complete this work with the current agents",
+        "limitError": true,
+        "started": false
+      },
+      {
+        "seq": 53,
+        "isError": true,
+        "toolCallId": "toolu_m_1_10",
+        "text": "Error: subagent limit reached (active child limit: 8); wait for an existing child to finish or complete this work with the current agents",
+        "limitError": true,
+        "started": false
+      },
+      {
+        "seq": 54,
+        "isError": true,
+        "toolCallId": "toolu_m_1_11",
+        "text": "Error: subagent limit reached (active child limit: 8); wait for an existing child to finish or complete this work with the current agents",
+        "limitError": true,
+        "started": false
+      }
+    ],
+    "startedCount": 8,
+    "limitErrorCount": 4,
+    "childSleepSeconds": 25
+  },
+  "requests": [
+    {
+      "file": "001-request.json",
+      "bytes": 90747,
+      "sha256": "7368da43b65c5b6489aa180275ffdbb9f402fc8c24f478dec48a4d330059cef7",
+      "toolCount": 24,
+      "messageCount": 1,
+      "sessionId": "session-a370c64b-5ec9-4e23-a42b-23bd9120e80d",
+      "afterSeq": -1,
+      "throughSeq": 18
+    },
+    {
+      "file": "002-request.json",
+      "bytes": 52801,
+      "sha256": "ffefab1468fee144fbd2dae56776c3c4f5d506434b5161b80232a84ea9241685",
+      "toolCount": 0,
+      "messageCount": 1,
+      "sessionId": "session-a370c64b-5ec9-4e23-a42b-23bd9120e80d",
+      "afterSeq": -1,
+      "throughSeq": 18
+    },
+    {
+      "file": "003-request.json",
+      "bytes": 70746,
+      "sha256": "ad9cf0ad8d31f34941737c0200991307f73f653b3815989ce16336ade41c9654",
+      "toolCount": 24,
+      "messageCount": 3,
+      "sessionId": "session-a370c64b-5ec9-4e23-a42b-23bd9120e80d",
+      "afterSeq": 18,
+      "throughSeq": 56
+    },
+    {
+      "file": "004-request.json",
+      "bytes": 93339,
+      "sha256": "5bf530af37eec6361072c16a8596bba2cad44cf9a5aa5747da27e848627cb152",
+      "toolCount": 24,
+      "messageCount": 1,
+      "sessionId": "82f1bd57-fde1-4b2e-bc05-4e1d24a0e7c3",
+      "afterSeq": -1,
+      "throughSeq": 14
+    },
+    {
+      "file": "005-request.json",
+      "bytes": 93339,
+      "sha256": "c84b1626bcde498db3095db5d91fa3e82482f388c336f3f27bdb9ed979f27806",
+      "toolCount": 24,
+      "messageCount": 1,
+      "sessionId": "6c1bb328-37f9-4e45-b2d0-63c1af8f66e8",
+      "afterSeq": -1,
+      "throughSeq": 14
+    },
+    {
+      "file": "006-request.json",
+      "bytes": 93339,
+      "sha256": "ca151dbbfd444f900a07c390801e8104abebbd2426b9ce78e41cd86d68cd8164",
+      "toolCount": 24,
+      "messageCount": 1,
+      "sessionId": "1f050279-148b-4ef9-889b-41d463fa3fa7",
+      "afterSeq": -1,
+      "throughSeq": 14
+    },
+    {
+      "file": "007-request.json",
+      "bytes": 93339,
+      "sha256": "db8e7e1a1b84dd3e6199cd24c9efd467ba8c1f97cfefd92d0dd1bb0388637e05",
+      "toolCount": 24,
+      "messageCount": 1,
+      "sessionId": "7cb17118-0f41-4262-b1ac-b10d376fd7ee",
+      "afterSeq": -1,
+      "throughSeq": 14
+    },
+    {
+      "file": "008-request.json",
+      "bytes": 93339,
+      "sha256": "c60eccd70e8b9e620eec2ddc469e34c4fbefe11159c62aee0de8939846808f22",
+      "toolCount": 24,
+      "messageCount": 1,
+      "sessionId": "a60d238a-108e-4df1-ba7b-edbbc075d659",
+      "afterSeq": -1,
+      "throughSeq": 14
+    },
+    {
+      "file": "009-request.json",
+      "bytes": 93339,
+      "sha256": "983f38d2c406b05ddadb97dfdc7f841d2feec0f068955ee0aa0227d207c4d2bc",
+      "toolCount": 24,
+      "messageCount": 1,
+      "sessionId": "d07b250b-9f7b-46ab-b757-418eb9260a68",
+      "afterSeq": -1,
+      "throughSeq": 14
+    },
+    {
+      "file": "010-request.json",
+      "bytes": 93339,
+      "sha256": "edfb3c8a77bb275b17765ee144050bd322aa58a708fe00f5237e90fc09b07461",
+      "toolCount": 24,
+      "messageCount": 1,
+      "sessionId": "bbab3e9e-d065-45ab-a434-1bf2baea0a76",
+      "afterSeq": -1,
+      "throughSeq": 14
+    },
+    {
+      "file": "011-request.json",
+      "bytes": 93339,
+      "sha256": "23bb3a6b11838ff38d5fc0ac0f89d31f1bf833f22e737c7b3e8ac76e6f3a6cd7",
+      "toolCount": 24,
+      "messageCount": 1,
+      "sessionId": "b4ebecc0-53c7-49da-aef9-99434972f72e",
+      "afterSeq": -1,
+      "throughSeq": 14
+    },
+    {
+      "file": "012-request.json",
+      "bytes": 56847,
+      "sha256": "d9bcf478884d81f2703424714f070d033ee2e8b170c1407b228608b7aa27c616",
+      "toolCount": 24,
+      "messageCount": 5,
+      "sessionId": "session-a370c64b-5ec9-4e23-a42b-23bd9120e80d",
+      "afterSeq": 56,
+      "throughSeq": 72
+    },
+    {
+      "file": "013-request.json",
+      "bytes": 56824,
+      "sha256": "a8fb1717db747871eb6189e197c74fa44da9da9a6e3c3310518d8e89ff516f78",
+      "toolCount": 24,
+      "messageCount": 7,
+      "sessionId": "session-a370c64b-5ec9-4e23-a42b-23bd9120e80d",
+      "afterSeq": 72,
+      "throughSeq": 84
+    }
+  ],
+  "distinctSessions": 9,
+  "totalRequestBytes": 1074677,
+  "controlInstantChildren": {
+    "file": "many2-parent.jsonl",
+    "sessionId": "session-740b31b2-41b2-4df8-ab0e-4249a6de0618",
+    "bytes": 82821,
+    "sha256": "f8d9c459a4c74e8d054faebef71e21eb8cab4ed7df9d4cd3e2706c702eb9cfba",
+    "lines": 90,
+    "eventTypeCounts": {
+      "session": 1,
+      "permission/preset": 2,
+      "sandbox/mode": 2,
+      "approval/policy": 2,
+      "agent/inbox/spliced": 12,
+      "turn/start": 2,
+      "step/start": 4,
+      "system/message": 1,
+      "user/message": 12,
+      "request/header": 1,
+      "request/context": 1,
+      "session/title": 2,
+      "session/title-llm-request": 1,
+      "session-log-deepseek/delivery-accepted": 5,
+      "assistant/message": 4,
+      "tool/call": 12,
+      "subagent/catalog": 8,
+      "tool/result": 12,
+      "step/end": 4,
+      "turn/end": 2
+    },
+    "catalogEvents": 8,
+    "toolResults": [
+      {
+        "seq": 36,
+        "isError": false,
+        "toolCallId": "toolu_m_1_0",
+        "text": "started subagent 73596d5c-5a91-44cf-98ed-f79315be5e02",
+        "limitError": false,
+        "started": true
+      },
+      {
+        "seq": 38,
+        "isError": false,
+        "toolCallId": "toolu_m_1_1",
+        "text": "started subagent e4821aad-2d1a-40bb-914d-be71c7f4d86a",
+        "limitError": false,
+        "started": true
+      },
+      {
+        "seq": 40,
+        "isError": false,
+        "toolCallId": "toolu_m_1_2",
+        "text": "started subagent 2a8f9aa4-3379-4cc3-9ce9-8559f0f43f75",
+        "limitError": false,
+        "started": true
+      },
+      {
+        "seq": 42,
+        "isError": false,
+        "toolCallId": "toolu_m_1_3",
+        "text": "started subagent 147c93f7-ed07-456e-a4e3-a9a50304560d",
+        "limitError": false,
+        "started": true
+      },
+      {
+        "seq": 44,
+        "isError": false,
+        "toolCallId": "toolu_m_1_4",
+        "text": "started subagent dfa232f3-4a10-440a-b88a-ef55f5e02082",
+        "limitError": false,
+        "started": true
+      },
+      {
+        "seq": 46,
+        "isError": false,
+        "toolCallId": "toolu_m_1_5",
+        "text": "started subagent b0c472e7-0503-4aa5-9b8d-acbd902a2a55",
+        "limitError": false,
+        "started": true
+      },
+      {
+        "seq": 48,
+        "isError": false,
+        "toolCallId": "toolu_m_1_6",
+        "text": "started subagent a9f487df-359a-4948-b9bd-6879cc8d65b9",
+        "limitError": false,
+        "started": true
+      },
+      {
+        "seq": 50,
+        "isError": false,
+        "toolCallId": "toolu_m_1_7",
+        "text": "started subagent 3ca10b4e-528d-4b1e-8e8a-d35ffe8426d2",
+        "limitError": false,
+        "started": true
+      },
+      {
+        "seq": 51,
+        "isError": true,
+        "toolCallId": "toolu_m_1_8",
+        "text": "Error: subagent limit reached (active child limit: 8); wait for an existing child to finish or complete this work with the current agents",
+        "limitError": true,
+        "started": false
+      },
+      {
+        "seq": 52,
+        "isError": true,
+        "toolCallId": "toolu_m_1_9",
+        "text": "Error: subagent limit reached (active child limit: 8); wait for an existing child to finish or complete this work with the current agents",
+        "limitError": true,
+        "started": false
+      },
+      {
+        "seq": 53,
+        "isError": true,
+        "toolCallId": "toolu_m_1_10",
+        "text": "Error: subagent limit reached (active child limit: 8); wait for an existing child to finish or complete this work with the current agents",
+        "limitError": true,
+        "started": false
+      },
+      {
+        "seq": 54,
+        "isError": true,
+        "toolCallId": "toolu_m_1_11",
+        "text": "Error: subagent limit reached (active child limit: 8); wait for an existing child to finish or complete this work with the current agents",
+        "limitError": true,
+        "started": false
+      }
+    ],
+    "startedCount": 8,
+    "limitErrorCount": 4,
+    "childSleepSeconds": 0,
+    "requests": [
+      {
+        "file": "001-request.json",
+        "bytes": 90775,
+        "sha256": "420818498c877ca245113655d477673f3195c40b50a0ce410716016a565d8ed0",
+        "toolCount": 24,
+        "messageCount": 1,
+        "sessionId": "session-740b31b2-41b2-4df8-ab0e-4249a6de0618",
+        "afterSeq": -1,
+        "throughSeq": 18
+      },
+      {
+        "file": "002-request.json",
+        "bytes": 52829,
+        "sha256": "94c4d7987baf071924a47f6ff7be3073ac058efbfed4f2034e66118a5c192d8f",
+        "toolCount": 0,
+        "messageCount": 1,
+        "sessionId": "session-740b31b2-41b2-4df8-ab0e-4249a6de0618",
+        "afterSeq": -1,
+        "throughSeq": 18
+      },
+      {
+        "file": "003-request.json",
+        "bytes": 70753,
+        "sha256": "344632049c4e9f8570da04d48f88c5043af51ddf4b380562d75496dffcf02ebf",
+        "toolCount": 24,
+        "messageCount": 3,
+        "sessionId": "session-740b31b2-41b2-4df8-ab0e-4249a6de0618",
+        "afterSeq": 18,
+        "throughSeq": 56
+      },
+      {
+        "file": "004-request.json",
+        "bytes": 93339,
+        "sha256": "4e04377a8ecabc0a2d77c93366765b7e312700a0d5c915713eae79f0ae35a0e6",
+        "toolCount": 24,
+        "messageCount": 1,
+        "sessionId": "2a8f9aa4-3379-4cc3-9ce9-8559f0f43f75",
+        "afterSeq": -1,
+        "throughSeq": 14
+      },
+      {
+        "file": "005-request.json",
+        "bytes": 93339,
+        "sha256": "f3c96de219cb7f0305ab2dcf54dad539fcb7843ebc24172ed166036d86db1cac",
+        "toolCount": 24,
+        "messageCount": 1,
+        "sessionId": "e4821aad-2d1a-40bb-914d-be71c7f4d86a",
+        "afterSeq": -1,
+        "throughSeq": 14
+      },
+      {
+        "file": "006-request.json",
+        "bytes": 93339,
+        "sha256": "63b662eda4150471e6fc3e0d01da223f8babae0e5e0ae98260265a03a703e355",
+        "toolCount": 24,
+        "messageCount": 1,
+        "sessionId": "73596d5c-5a91-44cf-98ed-f79315be5e02",
+        "afterSeq": -1,
+        "throughSeq": 14
+      },
+      {
+        "file": "007-request.json",
+        "bytes": 93339,
+        "sha256": "f3f8c7eaeda0020ac3c9f7fa65a28a0087cf2a9356c9e5d820b0b798079ca4a0",
+        "toolCount": 24,
+        "messageCount": 1,
+        "sessionId": "dfa232f3-4a10-440a-b88a-ef55f5e02082",
+        "afterSeq": -1,
+        "throughSeq": 14
+      },
+      {
+        "file": "008-request.json",
+        "bytes": 93339,
+        "sha256": "fdc91979d02265fcd78ce63d05635e33dea2be950bf6cafc2144b95e05f77f92",
+        "toolCount": 24,
+        "messageCount": 1,
+        "sessionId": "147c93f7-ed07-456e-a4e3-a9a50304560d",
+        "afterSeq": -1,
+        "throughSeq": 14
+      },
+      {
+        "file": "009-request.json",
+        "bytes": 93339,
+        "sha256": "a5e1236d2440497d6bd637c60b243f8ff67be44dcdbe1cff1a821d2072d7624a",
+        "toolCount": 24,
+        "messageCount": 1,
+        "sessionId": "b0c472e7-0503-4aa5-9b8d-acbd902a2a55",
+        "afterSeq": -1,
+        "throughSeq": 14
+      },
+      {
+        "file": "010-request.json",
+        "bytes": 93339,
+        "sha256": "08f8a3ce098ea05d1ed8ff68ef2aef5c056b2412d387c26d1af82b617b36d7c5",
+        "toolCount": 24,
+        "messageCount": 1,
+        "sessionId": "a9f487df-359a-4948-b9bd-6879cc8d65b9",
+        "afterSeq": -1,
+        "throughSeq": 14
+      },
+      {
+        "file": "011-request.json",
+        "bytes": 93339,
+        "sha256": "cb663129c3402970d2f7cdcab846355e33d12d3a6f87ac456dc552b488279b4e",
+        "toolCount": 24,
+        "messageCount": 1,
+        "sessionId": "3ca10b4e-528d-4b1e-8e8a-d35ffe8426d2",
+        "afterSeq": -1,
+        "throughSeq": 14
+      },
+      {
+        "file": "012-request.json",
+        "bytes": 56854,
+        "sha256": "123c676cb00f1489c302f1280412c94387680634f0bc4c7aa2774ee034a21a04",
+        "toolCount": 24,
+        "messageCount": 5,
+        "sessionId": "session-740b31b2-41b2-4df8-ab0e-4249a6de0618",
+        "afterSeq": 56,
+        "throughSeq": 72
+      },
+      {
+        "file": "013-request.json",
+        "bytes": 56831,
+        "sha256": "94ae3f632b82171d9d70ab90ae4d7e37d5b55808d9625968072e4adee8530aa6",
+        "toolCount": 24,
+        "messageCount": 7,
+        "sessionId": "session-740b31b2-41b2-4df8-ab0e-4249a6de0618",
+        "afterSeq": 72,
+        "throughSeq": 84
+      }
+    ],
+    "distinctSessions": 9,
+    "totalRequestBytes": 1074754
+  }
+}

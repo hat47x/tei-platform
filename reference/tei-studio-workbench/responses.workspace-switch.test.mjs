@@ -66,3 +66,45 @@ test('a path change invalidates the pending XEAD observation', async () => {
   assert.deepEqual(view, { status: 'path changed; not observed', result: null });
   scope.dispose();
 });
+
+for (const lateOutcome of ["success", "failure"]) {
+  test("same Workspace and Subject after A→B→A reject first A late " + lateOutcome, async () => {
+    // Deliberately return to the same visible A and same Subject. Neither the
+    // name nor the Subject ID is a substitute for the response-scope epoch.
+    const scope = createResponseScope();
+    const old = deferred();
+    const published = [];
+    const view = {
+      workspace: "A", subject: "sales.order", content: "A1 pending", error: null,
+    };
+    const success = value => { view.content = value.text; published.push(value.attempt); };
+    const failure = error => {
+      view.error = error.message;
+      published.push("error:" + error.message);
+    };
+
+    const a1 = scope.run("inspection", () => old.promise, success, failure);
+    scope.reset();
+    view.workspace = "B";
+    await scope.run("inspection",
+      async () => ({ attempt: "B", text: "B inspected" }), success, failure);
+    scope.reset();
+    view.workspace = "A";
+    view.subject = "sales.order";
+    await scope.run("inspection",
+      async () => ({ attempt: "A2", text: "current A inspected" }), success, failure);
+    const expected = structuredClone(view);
+
+    if (lateOutcome === "success") {
+      old.resolve({ attempt: "A1", text: "stale A inspected" });
+    } else {
+      old.reject(Error("old A failed"));
+    }
+    assert.equal(await a1, false);
+    assert.deepEqual(view, expected);
+    assert.deepEqual(published, ["B", "A2"]);
+    assert.equal(view.content, "current A inspected");
+    assert.equal(view.error, null);
+    scope.dispose();
+  });
+}

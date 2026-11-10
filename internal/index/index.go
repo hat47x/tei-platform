@@ -155,6 +155,17 @@ type PersistenceIndexEntry struct {
 	Database     core.CanonicalID `json:"database"`
 	SemanticData core.CanonicalID `json:"semanticData"`
 	Table        string           `json:"table"`
+	// Columns is the declared `column <attribute> -> <name>` correspondence.
+	// The mapping names an Attribute, so the pair is what answers "which column
+	// stores this attribute" and the reverse. Dropping it left the question
+	// unanswerable from `trace` even though the Workspace declared it (#4001).
+	Columns []PersistenceColumnIndexEntry `json:"columns,omitempty"`
+}
+
+// PersistenceColumnIndexEntry is one stored column and the Attribute it holds.
+type PersistenceColumnIndexEntry struct {
+	Attribute core.CanonicalID `json:"attribute"`
+	Column    string           `json:"column"`
 }
 
 type MigrationProviderIndexEntry struct {
@@ -314,6 +325,19 @@ func Build(w ir.World) Derived {
 			if c.Output != "" {
 				d.SemanticDependencies = append(d.SemanticDependencies, SemanticDependency{FromKind: "semantic-capability", From: c.ID, Relation: "output", ToKind: "semantic-element", To: c.Output})
 			}
+			// A capability's outcomes are business results it produces, and a
+			// later capability may take one as an input (security.authorize
+			// takes security.authenticated_subject, which
+			// security.authenticate declares as an outcome). Leaving them out of
+			// the derived graph made such a chain look like a consumer with no
+			// producer, and left an unresolvable outcome payload undetected
+			// (#3884). One relation per outcome keeps the DSL term.
+			for _, o := range c.Outcomes {
+				if o.Payload == "" {
+					continue
+				}
+				d.SemanticDependencies = append(d.SemanticDependencies, SemanticDependency{FromKind: "semantic-capability", From: c.ID, Relation: "outcome", ToKind: "semantic-element", To: o.Payload})
+			}
 		}
 	}
 	for _, a := range w.Applications {
@@ -390,7 +414,21 @@ func Build(w ir.World) Derived {
 		}
 	}
 	for _, m := range w.Persistence {
-		d.PersistenceMappings = append(d.PersistenceMappings, PersistenceIndexEntry{Mapping: m.ID, Database: m.Database, SemanticData: m.SemanticData, Table: m.Table})
+		entry := PersistenceIndexEntry{Mapping: m.ID, Database: m.Database, SemanticData: m.SemanticData, Table: m.Table}
+		for _, c := range m.Columns {
+			if c.Attribute == "" || c.Column == "" {
+				continue
+			}
+			entry.Columns = append(entry.Columns, PersistenceColumnIndexEntry{Attribute: c.Attribute, Column: c.Column})
+			// `data --maps-column--> attribute` keeps both ends real nodes and
+			// lets a reader reach the attribute from either direction.
+			d.DeclaredDependencies = append(d.DeclaredDependencies, DeclaredDependency{
+				FromKind: "semantic-data", From: m.SemanticData,
+				Relation: "maps-column", ToKind: "semantic-attribute", To: c.Attribute,
+				Alias: core.LocalName(c.Column),
+			})
+		}
+		d.PersistenceMappings = append(d.PersistenceMappings, entry)
 	}
 	for _, cfg := range w.MigrationProviders {
 		d.MigrationProviders = append(d.MigrationProviders, MigrationProviderIndexEntry{Database: cfg.Database, Tool: string(cfg.Tool), Mode: string(cfg.Mode), Source: cfg.Source})
@@ -464,6 +502,16 @@ func Build(w ir.World) Derived {
 	}
 	for _, b := range w.Bindings {
 		d.CustomGoBindings = append(d.CustomGoBindings, BindingIndexEntry{Application: b.Application, Capability: b.Capability, Adapter: b.ExpectedAdapterFilename(), Hook: b.ExpectedHookName()})
+		// A `realize X with custom go` is a declared edge between the
+		// application and the capability it implements. Recording it only in
+		// CustomGoBindings left it out of the reference graph, so trace could
+		// not answer "what implements this capability?" and a missing binding
+		// changed no graph fingerprint (#3983). The loader always sets
+		// Application, so both ends name a node; skip an empty one rather than
+		// emit an edge the projection would report as unmaterialized.
+		if b.Application != "" && b.Capability != "" {
+			d.DeclaredDependencies = append(d.DeclaredDependencies, DeclaredDependency{FromKind: "application", From: b.Application, Relation: "realizes", ToKind: "semantic-capability", To: b.Capability})
+		}
 	}
 
 	d.EnvironmentRequirements = dependency.Derive(w)

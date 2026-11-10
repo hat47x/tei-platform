@@ -1,0 +1,10 @@
+#4094 went 17 -> 13 (round 54) -> 8 (this round).
+
+Still open:
+  migration     INVALID_MIGRATION_RECOVERY, INVALID_MIGRATION_STEP_KIND
+  releaseplan   INVALID_DATABASE_RELEASE_DATA_READINESS,
+                INVALID_SOLUTION_RELEASE_STEP_KIND,
+                INVALID_SOLUTION_RELEASE_PHASE,
+                INVALID_ROLLOUT_STRATEGY
+  other         INVALID_PLUGIN_ARTIFACT and similar, which validate structure
+                rather than a vocabulary

@@ -192,6 +192,18 @@ instance.callFunction("SRANGE_MENU");
 instance.returnMap.put("UI_RESULT",instance.returnMap.get("RETURN_CODE")+":"+
 instance.returnMap.get("RANGE_DECISION")+":"+session.getAttribute("AcceptedFrom")+":"+
 session.getAttribute("AcceptedThru")+":"+instance.returnMap.containsKey("RANGE_REACHED"));''' % start
+    # Reach the real Driver's key prompt without choosing a business row.
+    scripts["RANGE_KEY_INPUT"] = scripts["RANGE_INPUT"].replace(
+        'instance.callFunction("SRANGE_ACCEPT")',
+        'instance.returnMap.put("RANGE_DECISION","accepted"); '
+        'instance.parmMap.remove("ID"); instance.callFunction("F310")')
+    scripts["RANGE_KEY_MENU"] = scripts["RANGE_MENU"].replace("SRANGE_INPUT", "SRANGE_KEY_INPUT")
+    scripts["ROUTE_KEY"] = scripts["ROUTE"].replace("SRANGE_MENU", "SRANGE_KEY_MENU")
+    for action in ("commit", "rollback"):
+        scripts["ROUTE_KEY_" + action.upper()] = (
+            '''instance.createTableOperator("UPDATE ITEM SET NAME='OuterPending', UPDCOUNTER=UPDCOUNTER+1 WHERE ID='001'").execute();\n'''
+            + scripts["ROUTE_KEY"].replace('instance.callFunction("SRANGE_KEY_MENU");',
+                                          'instance.callFunction("SRANGE_KEY_MENU"); instance.' + action + '();'))
     for typ in ("104", "290", "390"):
         scripts["NESTED_" + typ] = scripts["NESTED_CALL"].replace('callFunction("F200")',
                                                                  'callFunction("F' + typ + '")')

@@ -1,0 +1,5 @@
+M1 preludeSubject marks every std.* as prelude
+   -> FAIL: std.email was declared by the Workspace, so it is not the prelude
+M2 declaration_counts skips the whole std namespace again
+   -> FAIL: types=0, want 1 (the added std.email)
+restored -> ok (operations 2.6s / validation 0.1s / workspace 2.9s / cmd/tei 105.1s)

@@ -47,6 +47,8 @@ func checkDatasourceAccess(world ir.World, request Request, effect *semantic.Dat
 		if !databaseUsesNamespace(target, namespace) {
 			continue
 		}
+		// 書込み可能な宣言で走査を止めない。要求は書込み先のdatasourceを
+		// 指定しないため、同じdataを覆うread-only宣言を宣言順で隠してはならない(#2611)。
 		if requirement.Access == database.AccessRead {
 			return &ExecutionError{
 				Code: "COMMAND_DATASOURCE_READ_ONLY",
@@ -55,7 +57,6 @@ func checkDatasourceAccess(world ir.World, request Request, effect *semantic.Dat
 					request.Capability, effect.Data, app.ID, requirement.Alias, requirement.TargetDatabase),
 			}
 		}
-		return nil
 	}
 	return nil
 }

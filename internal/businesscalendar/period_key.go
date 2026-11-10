@@ -22,11 +22,20 @@ type PeriodKey struct {
 	// kept beside the sequence because the sequence alone is ambiguous when the
 	// fiscal year does not start in January.
 	CalendarMonth int
+	// ClosingSegment is 0 for a whole-month period, and 1 or 2 when a period
+	// declares a closing day. A zero value keeps the key of a month period
+	// unchanged, so an existing declaration does not have to say "no closing".
+	ClosingSegment ClosingSegment
 }
 
-// String renders the key in the form a period declaration can use as a value.
+// String renders the key in the form a period declaration can use as a value. A
+// month period renders as "YYYY-NN"; a period with a closing day adds the segment,
+// so the two halves of one month are distinguishable.
 func (k PeriodKey) String() string {
-	return fmt.Sprintf("%04d-%02d", k.FiscalYear, k.MonthSequence)
+	if k.ClosingSegment == 0 {
+		return fmt.Sprintf("%04d-%02d", k.FiscalYear, k.MonthSequence)
+	}
+	return fmt.Sprintf("%04d-%02d-%d", k.FiscalYear, k.MonthSequence, k.ClosingSegment)
 }
 
 // PeriodKeyFor returns the period key of a business date under the declared

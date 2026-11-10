@@ -5,17 +5,18 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
-// #2595 EB-01: 宣言したSource(manifest.Source)と、go buildへ実際に渡るファイル
-// (goSourceFiles)が別でも、現行のSelectは候補を拒否しない。
+// #2595 EB-01/EB-04: 宣言したSource(manifest.Source)と、go buildへ実際に渡るファイル
+// (goSourceFiles)が別の候補。
 //
-// このテストは現状を記録する特性化試験である。main.goがあれば他の.goファイルを
-// ビルドしない選択規則(generator.go混入の防止が意図)は変えていない。
-// 修正(#2595 EB-04)を入れたら、この試験の期待を拒否へ反転させる。
+// EB-04の修正後は、宣言SourceがBuild対象に含まれない候補を評価前に拒否する。
+// main.goがあれば他の.goファイルをビルドしない選択規則(generator.go混入の防止が
+// 意図)は変えていない。
 // 実行はTEI外の実Provider・Hostを使わず、合成した一時ディレクトリだけで行う。
-func TestGoDeclaredSourceDiffersFromBuiltFileIsCurrentlyAccepted(t *testing.T) {
+func TestGoDeclaredSourceDiffersFromBuiltFileIsRejected(t *testing.T) {
 	workspaceDir, contract, fixtures, candidates := paths(t)
 	built, err := os.ReadFile(filepath.Join(candidates, "template", "main.go"))
 	if err != nil {
@@ -63,25 +64,14 @@ func TestGoDeclaredSourceDiffersFromBuiltFileIsCurrentlyAccepted(t *testing.T) {
 	if !control.Passed {
 		t.Fatalf("control candidate (declared == built) was not qualified: %+v", control)
 	}
-	if control.BuildEvidence == nil || mismatch.BuildEvidence == nil {
-		t.Fatalf("build evidence is missing: control=%+v mismatch=%+v", control.BuildEvidence, mismatch.BuildEvidence)
+	// 宣言Source D1(audit.go)と、go buildへ渡るD2(main.go)が別の候補は拒否する。
+	if mismatch.Passed {
+		t.Fatalf("declared/built source mismatch was qualified: %+v", mismatch)
 	}
-
-	// 現状: 宣言Source D1(audit.go)の候補が、実際にはD2(main.go)から作られた
-	// 同一binaryで評価され、合格している。
-	if !mismatch.Passed {
-		t.Fatalf("current behavior changed: the declared/built mismatch is now rejected (%q); invert this test and record it on #2595", mismatch.RejectReason)
+	if !strings.Contains(mismatch.RejectReason, "not among the files passed to go build") {
+		t.Fatalf("unexpected reject reason: %q", mismatch.RejectReason)
 	}
-	if mismatch.BinaryDigest != control.BinaryDigest {
-		t.Fatalf("mismatch binary %s differs from the control binary %s", mismatch.BinaryDigest, control.BinaryDigest)
-	}
-	if mismatch.SourceDigest != digest(declared) || mismatch.SourceDigest == control.SourceDigest {
-		t.Fatalf("receipt SourceDigest does not carry the declared digest: %+v", mismatch)
-	}
-	if mismatch.BuildEvidence.SourceDigest != digest(declared) {
-		t.Fatalf("build evidence SourceDigest=%s want the declared %s", mismatch.BuildEvidence.SourceDigest, digest(declared))
-	}
-	if mismatch.BuildEvidence.BuildInputDigest == control.BuildEvidence.BuildInputDigest {
-		t.Fatal("BuildInputDigest should differ because it is derived from the declared source, not the built file")
+	if mismatch.BuildEvidence != nil || mismatch.BinaryDigest != "" {
+		t.Fatalf("rejected candidate must not carry a built binary: %+v", mismatch)
 	}
 }

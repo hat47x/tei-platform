@@ -153,3 +153,33 @@ func TestPathWithinRepository(t *testing.T) {
 		t.Fatal("Repository siblingをinside扱いしています")
 	}
 }
+
+// A root that is itself reached through a link must still identify its children
+// as inside. The Windows CI runner's temporary directory is a short name
+// (C:\Users\RUNNER~1\...) that EvalSymlinks expands, which made every child look
+// like a sibling (#3783).
+func TestPathWithinRepositoryResolvesTheRoot(t *testing.T) {
+	base := t.TempDir()
+	real := filepath.Join(base, "real")
+	if err := os.MkdirAll(filepath.Join(real, "child"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	// The target must exist: EvalSymlinks cannot resolve a path that is not
+	// there, and an unresolved target is compared as written.
+	if err := os.WriteFile(filepath.Join(real, "child", "evidence.json"), []byte("{}"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(base, "link")
+	if err := os.Symlink(real, link); err != nil {
+		t.Skipf("cannot create a symlink to a directory on this host: %v", err)
+	}
+	if !pathWithinRepository(link, filepath.Join(link, "child", "evidence.json")) {
+		t.Fatal("a child of a linked root was treated as outside")
+	}
+	if !pathWithinRepository(link, filepath.Join(real, "child", "evidence.json")) {
+		t.Fatal("an equivalent path through the resolved root was treated as outside")
+	}
+	if pathWithinRepository(link, filepath.Join(base, "other", "evidence.json")) {
+		t.Fatal("a sibling was treated as inside")
+	}
+}

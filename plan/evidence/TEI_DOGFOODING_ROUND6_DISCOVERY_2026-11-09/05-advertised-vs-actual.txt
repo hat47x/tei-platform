@@ -1,0 +1,8 @@
+trace offset with mode=summary (advertised: full only)	rc=2	code=INVALID_ARGUMENT
+trace limit with mode=summary	rc=2	code=INVALID_ARGUMENT
+trace offset without limit	rc=0	code=None
+validate -json with -world (advertised: workspace only)	rc=2	code=INVALID_ARGUMENT
+view -execute without -command	rc=2	code=INVALID_ARGUMENT
+view -pattern with -package	rc=2	code=INVALID_ARGUMENT
+inspect with -world	rc=2	code=INVALID_ARGUMENT
+source-index with both subject flags	rc=0	code=None

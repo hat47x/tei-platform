@@ -93,6 +93,9 @@ type BrowseFixture struct {
 }
 
 func ParseBrowseFixture(source []byte) (BrowseFixture, error) {
+	if err := RejectDuplicateJSONMembers(source); err != nil {
+		return BrowseFixture{}, fmt.Errorf("decode Browse Fixture: %w", err)
+	}
 	var fixture BrowseFixture
 	d := json.NewDecoder(bytes.NewReader(source))
 	d.DisallowUnknownFields()

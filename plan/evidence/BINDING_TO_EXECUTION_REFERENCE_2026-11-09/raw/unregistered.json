@@ -1,0 +1,24 @@
+{
+  "schema": "tei.reference.binding-to-execution/v0",
+  "authority": "derived-reference",
+  "ruleId": "tei.reference.binding-to-execution",
+  "ruleVersion": "v0",
+  "ruleFingerprint": "sha256:329b1d5311a748ffece0c60c1cd723dc6323884fceae35b4ad6c3591a3613c35",
+  "environment": "development",
+  "outcomes": [
+    {
+      "actionId": "app/start",
+      "executorId": "runtime.reference",
+      "bindingResolved": false,
+      "error": "EXECUTOR_NOT_REGISTERED: the binding names an executor this Host did not register"
+    }
+  ],
+  "ranCount": 0,
+  "refusedCount": 1,
+  "notes": [
+    "an acknowledgement is the executor accepting the intent, not proof that external state changed",
+    "the executor registry is supplied by the Host; this reference constructs no executor",
+    "the environment binding selects the executor; Supports is only a conformance check",
+    "no authentication, authority, permission or durable receipt is issued here"
+  ]
+}

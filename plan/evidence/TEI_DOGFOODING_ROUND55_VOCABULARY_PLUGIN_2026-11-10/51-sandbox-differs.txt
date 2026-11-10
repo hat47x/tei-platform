@@ -1,0 +1,9 @@
+SandboxPolicy.Valid() accepts the empty string as well as the three values; empty
+means "not declared".
+
+So SandboxPolicies lists only none/preferred/required, and the message says
+"(or omit the policy)". Listing "" would tell an author to write an empty value,
+which is not a choice.
+
+Pinned by TestSandboxDiagnosticSaysThePolicyMayBeOmitted (message mentions
+omission, does not list "").

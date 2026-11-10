@@ -1,0 +1,13 @@
+internal/modelref/derivedbridge/projection.go
+  + endpointOnlyKinds {database, database-contract, database-contract-query}
+  + addEndpointNode() called for both ends of every declared dependency
+  + the three kinds added to SupportedSubjectKinds
+
+tools/reference-mcp-readonly-adapter/subject_kind_enum_test.go
+  pin 10 -> 13 (the contract changed on purpose)
+
+internal/operations/trace_workspace.go
+  the refusal message now names the data layer it accepts
+
+internal/modelref/derivedbridge/supports_kind_test.go
+  fixture declares edges to the data layer; the checked list includes the new kinds

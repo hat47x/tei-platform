@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"strings"
 )
 
 // selectedReadOnlyFlagError returns a machine-readable argument error for the
@@ -33,7 +34,7 @@ func selectedReadOnlyFlagError(out io.Writer, command string, err error) (int, e
 // parses its own arguments instead of the shared FlagSet.
 var selectedReadOnlyFlagAllowlist = map[string][]string{
 	"inspect": {"workspace", "subject-kind", "subject-id"},
-	"view":    {"workspace", "application", "pattern", "package", "format", "command", "input", "execute", "period-state", "allow-capability", "operation-log", "lifecycle-state", "lifecycle-command", "lifecycle-owner", "lifecycle-generation"},
+	"view":    {"workspace", "application", "pattern", "package", "format", "command", "input", "execute", "reference-store", "period-state", "allow-capability", "operation-log", "lifecycle-state", "lifecycle-command", "lifecycle-owner", "lifecycle-generation"},
 	"trace": {
 		"workspace", "scope", "subject-kind", "subject-id",
 		"direction", "mode", "offset", "limit", "expected-fingerprint",
@@ -65,6 +66,67 @@ var selectedReadOnlyFlagAllowlist = map[string][]string{
 	"plugin-runtime-plan": {"workspace", "world", "environment", "plugin-lock"},
 }
 
+// repeatableFlags lists the flags that collect several values by design. They
+// are registered with flag.Var rather than flag.String/Int, so repeating them
+// appends instead of overwriting. Every other advertised flag holds one value:
+// a second occurrence would silently replace the first, so it is refused
+// (#3675).
+var repeatableFlags = map[string]map[string]bool{
+	"view":                                   {"input": true, "allow-capability": true},
+	"validate":                               {},
+	"knowledge-context":                      {},
+	"inspect":                                {},
+	"trace":                                  {},
+	"source-index":                           {},
+	"workspace-files":                        {},
+	"requirements":                           {},
+	"plugin-lock":                            {},
+	"plugin-resolve":                         {},
+	"plugin-runtime-plan":                    {},
+	"knowledge-qualify":                      {},
+	"knowledge-review-plan":                  {},
+	"knowledge-review-handoff":               {},
+	"knowledge-review-disclose":              {},
+	"knowledge-data-design-candidate-review": {},
+	"model catalog":                          {},
+	"model locate":                           {},
+	"model overview":                         {},
+}
+
+// validateRepeatableArguments refuses a flag that was supplied more than once
+// when the flag holds one value. Go's flag package keeps the last value and
+// reports nothing, so a caller that concatenates arguments (an environment
+// default plus an explicit override, for example) loses the earlier one without
+// a trace. Repeats of a documented repeatable flag are fine.
+func validateRepeatableArguments(command string, args []string) error {
+	repeatable := repeatableFlags[command]
+	seen := map[string]bool{}
+	afterValue := false
+	for _, arg := range args {
+		if afterValue {
+			// The previous argument was a flag that takes its value as the next
+			// argument, so this one is that value, not a flag.
+			afterValue = false
+			continue
+		}
+		if !strings.HasPrefix(arg, "-") || arg == "-" || arg == "--" {
+			break // flag parsing stops at the first positional argument
+		}
+		name := strings.TrimPrefix(arg, "-")
+		name = strings.TrimPrefix(name, "-")
+		if index := strings.IndexByte(name, '='); index >= 0 {
+			name = name[:index]
+		} else {
+			afterValue = true
+		}
+		if seen[name] && !repeatable[name] {
+			return fmt.Errorf("%s: -%s was given more than once; it holds one value (omit the earlier one)", command, name)
+		}
+		seen[name] = true
+	}
+	return nil
+}
+
 // Each selected read-only CLI command owns its advertised flags, even though
 // the older tei binary shares one FlagSet across many commands. Rejecting an
 // unrelated *recognized* flag prevents silent loss of caller intent.
@@ -83,5 +145,97 @@ func validateSelectedReadOnlyFlags(fs *flag.FlagSet, command string) error {
 			err = fmt.Errorf("%s does not accept -%s", command, f.Name)
 		}
 	})
+	if err != nil {
+		return err
+	}
+	// A string flag given as "" is not the same claim as an omitted flag (#3605).
+	// The flag default is what an omitted flag means; an explicit empty string
+	// used to fall through to a different value inside the operation (for
+	// example trace -mode "" became "full" while the advertised default is
+	// "summary"). Reject it here so the advertised default and the applied
+	// value stay the same value.
+	return validateNoEmptyStringArguments(fs, command)
+}
+
+// validateNoEmptyStringArguments rejects an explicitly supplied empty string for
+// the read-only commands whose flags feed a closed vocabulary or a fingerprint.
+// Only flags that were actually set are inspected, so omitting a flag keeps its
+// advertised default.
+func validateNoEmptyStringArguments(fs *flag.FlagSet, command string) error {
+	guarded := emptyStringGuardedFlags[command]
+	if len(guarded) == 0 {
+		return nil
+	}
+	var err error
+	fs.Visit(func(f *flag.Flag) {
+		if err != nil {
+			return
+		}
+		if guarded[f.Name] && f.Value.String() == "" {
+			err = fmt.Errorf("%s: -%s must not be an empty string; omit the flag to use its default", command, f.Name)
+		}
+	})
 	return err
+}
+
+// emptyStringGuardedFlags lists, per command, the flags for which an explicit
+// empty string is a different claim than an omitted flag: a closed value set
+// (-mode, -direction, -format), an exact selector (-scope, -subject-kind,
+// -subject-id, -namespace, -application), or a fingerprint that switches on a
+// comparison (-expected-fingerprint and friends). A path or an output target
+// stays out of this list, because "" there already means "not given" and the
+// command reports its own required-argument error.
+var emptyStringGuardedFlags = map[string]map[string]bool{
+	"inspect": {
+		"subject-kind": true, "subject-id": true, "workspace": true,
+	},
+	"trace": {
+		"workspace": true, "scope": true, "subject-kind": true, "subject-id": true,
+		"direction": true, "mode": true, "expected-fingerprint": true,
+	},
+	"source-index": {
+		"workspace": true, "subject-kind": true, "subject-id": true,
+	},
+	"workspace-files": {"workspace": true},
+	"knowledge-context": {
+		"workspace": true, "subject-kind": true, "subject-id": true,
+		"disclose":                         true,
+		"expected-data-design-fingerprint": true,
+		"expected-disclosure-fingerprint":  true,
+	},
+	"knowledge-qualify": {
+		"workspace": true, "subject-kind": true, "subject-id": true,
+		"qualification-requirements": true,
+	},
+	"knowledge-review-plan": {
+		"workspace": true, "subject-kind": true, "subject-id": true,
+		"expected-review-plan-fingerprint": true,
+	},
+	"knowledge-review-handoff": {
+		"workspace": true, "subject-kind": true, "subject-id": true,
+		"qualification-requirements":          true,
+		"expected-review-handoff-fingerprint": true,
+	},
+	"knowledge-review-disclose": {
+		"workspace": true, "subject-kind": true, "subject-id": true,
+		"review-handoff":                      true,
+		"expected-review-handoff-fingerprint": true,
+		"expected-disclosure-fingerprint":     true,
+	},
+	"knowledge-data-design-candidate-review": {
+		"workspace": true, "subject-kind": true, "subject-id": true,
+		"data-design-candidate-kind":                                      true,
+		"data-design-candidate-fingerprint":                               true,
+		"expected-data-design-fingerprint":                                true,
+		"expected-data-design-candidate-evidence-requirement-fingerprint": true,
+		"expected-data-design-candidate-review-fingerprint":               true,
+	},
+	"requirements": {"workspace": true},
+	"plugin-lock":  {"workspace": true, "environment": true},
+	"plugin-resolve": {
+		"workspace": true, "environment": true, "plugin-lock": true,
+	},
+	"plugin-runtime-plan": {
+		"workspace": true, "environment": true, "plugin-lock": true,
+	},
 }

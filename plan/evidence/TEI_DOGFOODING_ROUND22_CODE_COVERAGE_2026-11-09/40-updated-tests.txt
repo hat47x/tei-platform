@@ -1,0 +1,6 @@
+Behaviour changed on purpose; three assertions were rewritten:
+  cmd/tei/cli_view_failure_test.go: COMMAND_EXECUTION_FAILED now reported
+  studiohost TestExecuteCommandReportsInvalidInput: COMMAND_FAILED -> INVALID_COMMAND_INPUT
+  studiohost TestExecuteCommandWithPolicyRejectsUnlistedCapability:
+    was strings.Contains(message, "COMMAND_UNAUTHORIZED") -- a workaround because
+    the code was unusable; now Failure.Code == "COMMAND_UNAUTHORIZED"

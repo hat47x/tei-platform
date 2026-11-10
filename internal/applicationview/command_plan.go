@@ -46,6 +46,17 @@ type CommandPeriodRef struct {
 	BusinessDate  core.CanonicalID `json:"businessDate"`
 	States        []string         `json:"states,omitempty"`
 	ClosedRejects []string         `json:"closedRejects,omitempty"`
+	// ClosingDay splits the month into two halves. Zero means the period is the
+	// whole month, so a reader sees "no closing" as an absence, not a default.
+	ClosingDay int `json:"closingDay,omitempty"`
+	// CloseRequires names the capability a period close must run. The declaration
+	// was validated (the capability must exist) but never reached the plan, so a
+	// period could declare a close capability and close without it. Carrying it
+	// here lets the invoker refuse that.
+	CloseRequires core.CanonicalID `json:"closeRequires,omitempty"`
+	// Correction names the capability a correction after closing must run, for the
+	// same reason.
+	Correction core.CanonicalID `json:"correction,omitempty"`
 }
 
 // CommandPlanIssueは、入力の不足以外の不備を表す。
@@ -121,6 +132,9 @@ func BuildCommandPlan(world ir.World, applicationID, patternID, capabilityID cor
 						BusinessDate:  period.BusinessDate,
 						States:        period.States,
 						ClosedRejects: period.ClosedRejects,
+						ClosingDay:    period.ClosingDay,
+						CloseRequires: period.CloseRequires,
+						Correction:    period.Correction,
 					}
 					break
 				}
@@ -198,6 +212,9 @@ func periodForEffect(world ir.World, data core.CanonicalID) *CommandPeriodRef {
 					BusinessDate:  period.BusinessDate,
 					States:        period.States,
 					ClosedRejects: period.ClosedRejects,
+					ClosingDay:    period.ClosingDay,
+					CloseRequires: period.CloseRequires,
+					Correction:    period.Correction,
 				}
 			}
 		}

@@ -1,0 +1,3 @@
+M1 remove the new -input guard            -> FAIL: view accepted -input without -command
+M2 over-tighten (drop *commandID == "")   -> FAIL: -input with -command was refused
+restored                                  -> ok (cmd/tei 145.1s)

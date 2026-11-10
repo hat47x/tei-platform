@@ -1,0 +1,14 @@
+tei world -workspace reference/workspace
+
+  customGoBindings                  : 4
+  headerDetailContractQueryBindings : 1
+  contractQueryExecutorBindings     : 2
+  contractQuerySQLRealizations      : 1
+
+trace relations across every subject, scopes c/s/e, -direction both:
+
+  type 120 / underlying 54 / owns-pattern 36 / input 36 / uses-semantic 30
+  relation 24 / outcome 24 / realizes 18 / uses-validation 18 / attribute 18
+  targets 18 / contract-query-input 12 / data 12 / query 6 / capability 6 / output 6
+
+realizes (from customGoBindings) = 18. Nothing for the other three kinds.

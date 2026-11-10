@@ -1,0 +1,10 @@
+=== M1: adapter reports a different failure code for trace ===
+        inspect_trace_parity_test.go:202: failure code differs: CLI="SUBJECT_NOT_FOUND" MCP="TRACE_NOT_FOUND"
+        inspect_trace_parity_test.go:202: failure code differs: CLI="UNSUPPORTED_SUBJECT_KIND" MCP="TRACE_NOT_FOUND"
+        inspect_trace_parity_test.go:202: failure code differs: CLI="STALE_SNAPSHOT" MCP="TRACE_NOT_FOUND"
+
+=== M2: adapter drops the failure code entirely ===
+        inspect_trace_parity_test.go:202: failure code differs: CLI="SUBJECT_NOT_FOUND" MCP="OPERATION_FAILED"
+        inspect_trace_parity_test.go:202: failure code differs: CLI="UNSUPPORTED_SUBJECT_KIND" MCP="OPERATION_FAILED"
+FAIL
+

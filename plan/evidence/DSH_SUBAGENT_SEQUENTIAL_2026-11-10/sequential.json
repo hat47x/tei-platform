@@ -1,0 +1,152 @@
+{
+  "note": "With maxActiveSubagents 3, four subagents started one per turn, each finishing before the next was requested, all four were accepted. Only simultaneous children are capped.",
+  "overlay": {
+    "plugin": "@deepseek-ai/dsh-subagent",
+    "config": {
+      "maxActiveSubagents": 3
+    }
+  },
+  "mode": "sequential (one subagent call per turn; each child finished before the next request)",
+  "requested": 4,
+  "started": 4,
+  "refused": 0,
+  "childSessions": [
+    "55aec156-ca74-4306-b993-73092b85a44e",
+    "7ff2b3a3-6758-43dc-981c-96abc4cc5d84",
+    "831a0497-76a8-4a2a-8d87-274a820483cf",
+    "9987cf50-f0e9-4761-9b57-ea505cb7e11d"
+  ],
+  "childSessionCount": 4,
+  "results": [
+    {
+      "status": "completed",
+      "started": true,
+      "limitError": false,
+      "text": "started subagent 55aec156-ca74-4306-b993-73092b85a44e"
+    },
+    {
+      "status": "completed",
+      "started": true,
+      "limitError": false,
+      "text": "started subagent 9987cf50-f0e9-4761-9b57-ea505cb7e11d"
+    },
+    {
+      "status": "completed",
+      "started": true,
+      "limitError": false,
+      "text": "started subagent 7ff2b3a3-6758-43dc-981c-96abc4cc5d84"
+    },
+    {
+      "status": "completed",
+      "started": true,
+      "limitError": false,
+      "text": "started subagent 831a0497-76a8-4a2a-8d87-274a820483cf"
+    }
+  ],
+  "requests": [
+    {
+      "file": "001-request.json",
+      "bytes": 97241,
+      "sha256": "704cc7e8ac1cdfad4ab202a49206abf1b8ca36587824380ba41a7b10e3afc973",
+      "toolCount": 24,
+      "messageCount": 1,
+      "sessionId": "session-529d646e-03fc-49fc-8a4b-fb4894158a1c"
+    },
+    {
+      "file": "002-request.json",
+      "bytes": 56054,
+      "sha256": "b0d633f43f0665d6acec8e50b106aaa46a4d3c502e46d1d66ff25b286664f761",
+      "toolCount": 0,
+      "messageCount": 1,
+      "sessionId": "session-529d646e-03fc-49fc-8a4b-fb4894158a1c"
+    },
+    {
+      "file": "003-request.json",
+      "bytes": 51964,
+      "sha256": "2970c2c68f3ec846682c63182670d7d1f601cd1cb9a5667b4da31eb38cfb2c30",
+      "toolCount": 24,
+      "messageCount": 3,
+      "sessionId": "session-529d646e-03fc-49fc-8a4b-fb4894158a1c"
+    },
+    {
+      "file": "004-request.json",
+      "bytes": 99986,
+      "sha256": "5ada82c012aec776650791bbc39fada8f3ada2013a26ef3f5e9d51e23d53609b",
+      "toolCount": 24,
+      "messageCount": 1,
+      "sessionId": "55aec156-ca74-4306-b993-73092b85a44e"
+    },
+    {
+      "file": "005-request.json",
+      "bytes": 52606,
+      "sha256": "9ddd8f4ba02466f166fc87709e16a50afc4068b5ff0414b48b4f889a352d51c8",
+      "toolCount": 24,
+      "messageCount": 5,
+      "sessionId": "session-529d646e-03fc-49fc-8a4b-fb4894158a1c"
+    },
+    {
+      "file": "006-request.json",
+      "bytes": 99986,
+      "sha256": "6dc972e323bdd8282a69c4b71e0448455e903dcf51003fdcbf758c2fd2be189a",
+      "toolCount": 24,
+      "messageCount": 1,
+      "sessionId": "9987cf50-f0e9-4761-9b57-ea505cb7e11d"
+    },
+    {
+      "file": "007-request.json",
+      "bytes": 53994,
+      "sha256": "db38b68966521ecfc26586c390418b7c6ae370f358bf5776e2901854337f2ce8",
+      "toolCount": 24,
+      "messageCount": 7,
+      "sessionId": "session-529d646e-03fc-49fc-8a4b-fb4894158a1c"
+    },
+    {
+      "file": "008-request.json",
+      "bytes": 99986,
+      "sha256": "4614e978279039ccbd4d0e55ab6a21e90e32d3f783b9d6030b535d80c9f561be",
+      "toolCount": 24,
+      "messageCount": 1,
+      "sessionId": "7ff2b3a3-6758-43dc-981c-96abc4cc5d84"
+    },
+    {
+      "file": "009-request.json",
+      "bytes": 54635,
+      "sha256": "2e5e8cc3225c6e16e7dd543233b6841afdbbcc93e374c7b9cdfd27625460adba",
+      "toolCount": 24,
+      "messageCount": 9,
+      "sessionId": "session-529d646e-03fc-49fc-8a4b-fb4894158a1c"
+    },
+    {
+      "file": "010-request.json",
+      "bytes": 52751,
+      "sha256": "208fa4096935d3dd8149e2ea4960c19819288888169217bf08dd1be2bb2eadf9",
+      "toolCount": 24,
+      "messageCount": 11,
+      "sessionId": "session-529d646e-03fc-49fc-8a4b-fb4894158a1c"
+    },
+    {
+      "file": "011-request.json",
+      "bytes": 99986,
+      "sha256": "95be1d8bd7be3d36dedab29a87ce4646c33e39feb32331639a4d74765cba487b",
+      "toolCount": 24,
+      "messageCount": 1,
+      "sessionId": "831a0497-76a8-4a2a-8d87-274a820483cf"
+    },
+    {
+      "file": "012-request.json",
+      "bytes": 53877,
+      "sha256": "faa9f77f910962d18ef5b2cd0b042d3a03fb0990749390f5bca6c549d285fda1",
+      "toolCount": 24,
+      "messageCount": 13,
+      "sessionId": "session-529d646e-03fc-49fc-8a4b-fb4894158a1c"
+    }
+  ],
+  "totalRequestBytes": 873066,
+  "contrast": {
+    "record": "DSH_SUBAGENT_ACTIVE_CAP_2026-11-10",
+    "mode": "parallel (six subagent calls in one message, children kept alive 20s)",
+    "cap": 3,
+    "started": 3,
+    "refused": 3
+  }
+}

@@ -14,6 +14,8 @@ GitHub #1109の読取り専用の参照実装です。人や生成AIが書く`Bu
 
 宣言の照合値`IntentFingerprint`には、ソースの内容、カタログの状態、解決結果を混ぜません。同じ宣言でも、ソースやカタログが変われば別の確定計画になります。
 
+**カタログとソース解決の機構は[`internal/buildintent`](../../internal/buildintent/catalog.go)にあります**（SB-C0 §4.22の段1）。この参照実装の`fixture.go`は型aliasと薄い委譲だけで、名前だけが`Fixture…`のまま残っています。機構が製品側の名前（`BuildCatalog`・`ParseBuildCatalog`・`NewBuildContext`・`DirSourceResolver`）で`internal/`にあるのは、§4.22がカタログを「呼び手が名指ししてdigestを取るデータ」と決めたためです。
+
 ## 導出の規則
 
 1. `ParseIntent`と`ParseFixtureCatalog`は共通の`transform.ParseJSON`でJSONを検査します。不正なUTF-8、対応しないサロゲート、重複キー（エスケープ表記や大文字小文字の別名を含む）、末尾の別JSONを拒否します。宣言とカタログのキーは、構造体のJSON名へ完全一致で照合します。`ParseIntent`はさらに次を拒否します。

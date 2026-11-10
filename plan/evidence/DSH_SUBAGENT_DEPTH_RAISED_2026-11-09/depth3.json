@@ -1,0 +1,299 @@
+{
+  "note": "Chain probe with subagent.maxDepth raised from the default 1 to 3. The chain now reaches depth 3 (four sessions) instead of stopping at depth 1.",
+  "overlay": "subagent plugin config maxDepth: 3",
+  "sessions": [
+    {
+      "label": "parent",
+      "sessionId": "session-f0bd7ca8-7d4f-4826-9453-01e33dacf9d2",
+      "bytes": 53946,
+      "sha256": "a9b15551418d626a5f246b0c2b0e132a60b6bdbbf110b35912e82c61caa2392e",
+      "lines": 42,
+      "eventTypeCounts": {
+        "session": 1,
+        "permission/preset": 2,
+        "sandbox/mode": 2,
+        "approval/policy": 2,
+        "agent/inbox/spliced": 4,
+        "turn/start": 2,
+        "step/start": 3,
+        "system/message": 1,
+        "user/message": 5,
+        "request/header": 1,
+        "request/context": 1,
+        "session/title": 2,
+        "session/title-llm-request": 1,
+        "session-log-deepseek/delivery-accepted": 4,
+        "assistant/message": 3,
+        "tool/call": 1,
+        "subagent/catalog": 1,
+        "tool/result": 1,
+        "step/end": 3,
+        "turn/end": 2
+      },
+      "descriptorEvents": 0,
+      "catalogEvents": 1,
+      "toolResults": [
+        {
+          "seq": 25,
+          "isError": false,
+          "text": "started subagent 5f472c18-3d3e-4f9e-b0e5-a838937c2d20",
+          "depthError": false
+        }
+      ],
+      "depthErrorCount": 0
+    },
+    {
+      "label": "depth1",
+      "sessionId": "5f472c18-3d3e-4f9e-b0e5-a838937c2d20",
+      "bytes": 54311,
+      "sha256": "7c98aff143f6e0456821c493406d32d8c9d7536107318a36005abcb32b74c498",
+      "lines": 36,
+      "eventTypeCounts": {
+        "session": 1,
+        "subagent/descriptor": 1,
+        "sandbox/mode": 1,
+        "approval/policy": 1,
+        "agent/inbox/spliced": 4,
+        "turn/start": 2,
+        "step/start": 3,
+        "system/message": 1,
+        "user/message": 5,
+        "request/header": 1,
+        "request/context": 1,
+        "session/title": 1,
+        "session-log-deepseek/delivery-accepted": 3,
+        "assistant/message": 3,
+        "tool/call": 1,
+        "subagent/catalog": 1,
+        "tool/result": 1,
+        "step/end": 3,
+        "turn/end": 2
+      },
+      "descriptorEvents": 1,
+      "catalogEvents": 1,
+      "toolResults": [
+        {
+          "seq": 19,
+          "isError": false,
+          "text": "started subagent 82dd07eb-cd99-47c5-990e-00bcebcf19c1",
+          "depthError": false
+        }
+      ],
+      "depthErrorCount": 0
+    },
+    {
+      "label": "depth2",
+      "sessionId": "82dd07eb-cd99-47c5-990e-00bcebcf19c1",
+      "bytes": 54271,
+      "sha256": "f2602cd52369cacb03eab4c7efdf3f9b290bf882fce29d9ca04ba4239697364b",
+      "lines": 36,
+      "eventTypeCounts": {
+        "session": 1,
+        "subagent/descriptor": 1,
+        "sandbox/mode": 1,
+        "approval/policy": 1,
+        "agent/inbox/spliced": 4,
+        "turn/start": 2,
+        "step/start": 3,
+        "system/message": 1,
+        "user/message": 5,
+        "request/header": 1,
+        "request/context": 1,
+        "session/title": 1,
+        "session-log-deepseek/delivery-accepted": 3,
+        "assistant/message": 3,
+        "tool/call": 1,
+        "subagent/catalog": 1,
+        "tool/result": 1,
+        "step/end": 3,
+        "turn/end": 2
+      },
+      "descriptorEvents": 1,
+      "catalogEvents": 1,
+      "toolResults": [
+        {
+          "seq": 19,
+          "isError": false,
+          "text": "started subagent daa8b750-6325-4328-8cc1-51212c5a04a8",
+          "depthError": false
+        }
+      ],
+      "depthErrorCount": 0
+    },
+    {
+      "label": "depth3",
+      "sessionId": "daa8b750-6325-4328-8cc1-51212c5a04a8",
+      "bytes": 51703,
+      "sha256": "f3bbaba9c6b06d5f05c097b4970fbd9a27c1f2d0284b5df02e9ff1c424e1cd52",
+      "lines": 26,
+      "eventTypeCounts": {
+        "session": 1,
+        "subagent/descriptor": 1,
+        "sandbox/mode": 1,
+        "approval/policy": 1,
+        "agent/inbox/spliced": 2,
+        "turn/start": 1,
+        "step/start": 2,
+        "system/message": 1,
+        "user/message": 4,
+        "request/header": 1,
+        "request/context": 1,
+        "session/title": 1,
+        "session-log-deepseek/delivery-accepted": 2,
+        "assistant/message": 2,
+        "tool/call": 1,
+        "tool/result": 1,
+        "step/end": 2,
+        "turn/end": 1
+      },
+      "descriptorEvents": 1,
+      "catalogEvents": 0,
+      "toolResults": [
+        {
+          "seq": 18,
+          "isError": true,
+          "text": "Error: subagent depth 4 exceeds maxDepth 3",
+          "depthError": true
+        }
+      ],
+      "depthErrorCount": 1
+    }
+  ],
+  "requests": [
+    {
+      "file": "001-request.json",
+      "bytes": 90732,
+      "sha256": "2fd7bce62d95c2408b676da5a3d146b67ea8a8ff513bc74eb3724b4b0cd0676a",
+      "toolCount": 24,
+      "messageCount": 1,
+      "sessionId": "session-f0bd7ca8-7d4f-4826-9453-01e33dacf9d2",
+      "afterSeq": -1,
+      "throughSeq": 18,
+      "depthErrorInBody": false
+    },
+    {
+      "file": "002-request.json",
+      "bytes": 52786,
+      "sha256": "17be88ee715924c8fe0f365d956323e08bfed055e7dc46af5777254486779d69",
+      "toolCount": 0,
+      "messageCount": 1,
+      "sessionId": "session-f0bd7ca8-7d4f-4826-9453-01e33dacf9d2",
+      "afterSeq": -1,
+      "throughSeq": 18,
+      "depthErrorInBody": false
+    },
+    {
+      "file": "003-request.json",
+      "bytes": 48615,
+      "sha256": "a466590134c4f2eb250867e2435b555a6664c18b2b81fbba8077e3f4eb439ab3",
+      "toolCount": 24,
+      "messageCount": 3,
+      "sessionId": "session-f0bd7ca8-7d4f-4826-9453-01e33dacf9d2",
+      "afterSeq": 18,
+      "throughSeq": 27,
+      "depthErrorInBody": false
+    },
+    {
+      "file": "004-request.json",
+      "bytes": 92467,
+      "sha256": "02e025fd54c3995147bfdbf8a6c38b2131816b8528e3c5775abfeacd1ad8f309",
+      "toolCount": 24,
+      "messageCount": 1,
+      "sessionId": "5f472c18-3d3e-4f9e-b0e5-a838937c2d20",
+      "afterSeq": -1,
+      "throughSeq": 14,
+      "depthErrorInBody": false
+    },
+    {
+      "file": "005-request.json",
+      "bytes": 49176,
+      "sha256": "e0da3be931ac3fc723d90b1551e2619f62dbd081baa589faeaa729ccb154028c",
+      "toolCount": 24,
+      "messageCount": 3,
+      "sessionId": "5f472c18-3d3e-4f9e-b0e5-a838937c2d20",
+      "afterSeq": 14,
+      "throughSeq": 21,
+      "depthErrorInBody": false
+    },
+    {
+      "file": "006-request.json",
+      "bytes": 92411,
+      "sha256": "edd13bc39f1b98b18047b35f61c59778ca846f34127aa031407302b2c5a91ac1",
+      "toolCount": 24,
+      "messageCount": 1,
+      "sessionId": "82dd07eb-cd99-47c5-990e-00bcebcf19c1",
+      "afterSeq": -1,
+      "throughSeq": 14,
+      "depthErrorInBody": false
+    },
+    {
+      "file": "007-request.json",
+      "bytes": 49152,
+      "sha256": "a8ba811220b097bf8c1bb5ed33c2b65212cd4ff76deba7771ffc1bb39302235e",
+      "toolCount": 24,
+      "messageCount": 3,
+      "sessionId": "82dd07eb-cd99-47c5-990e-00bcebcf19c1",
+      "afterSeq": 14,
+      "throughSeq": 21,
+      "depthErrorInBody": false
+    },
+    {
+      "file": "008-request.json",
+      "bytes": 93390,
+      "sha256": "bc0ab6fa21724ca5670e2e0f0294d4c7dae2d94bf46eb8fc7c045229abf571ed",
+      "toolCount": 24,
+      "messageCount": 1,
+      "sessionId": "daa8b750-6325-4328-8cc1-51212c5a04a8",
+      "afterSeq": -1,
+      "throughSeq": 14,
+      "depthErrorInBody": false
+    },
+    {
+      "file": "009-request.json",
+      "bytes": 49216,
+      "sha256": "b0d4a6e08b9715db20f6eba36d86b1c0174d3f4604064d67f47ae6af4f2f0129",
+      "toolCount": 24,
+      "messageCount": 3,
+      "sessionId": "daa8b750-6325-4328-8cc1-51212c5a04a8",
+      "afterSeq": 14,
+      "throughSeq": 20,
+      "depthErrorInBody": true
+    },
+    {
+      "file": "010-request.json",
+      "bytes": 49557,
+      "sha256": "ce5024a17101c1a0dc541026719132f2d5b34c5673777ee51085e72c04928252",
+      "toolCount": 24,
+      "messageCount": 5,
+      "sessionId": "82dd07eb-cd99-47c5-990e-00bcebcf19c1",
+      "afterSeq": 21,
+      "throughSeq": 30,
+      "depthErrorInBody": false
+    },
+    {
+      "file": "011-request.json",
+      "bytes": 49581,
+      "sha256": "6d789b2c213e182935cd5afa5f3a0900b5e5376a0361a399ef2a5cd192de6b2e",
+      "toolCount": 24,
+      "messageCount": 5,
+      "sessionId": "5f472c18-3d3e-4f9e-b0e5-a838937c2d20",
+      "afterSeq": 21,
+      "throughSeq": 30,
+      "depthErrorInBody": false
+    },
+    {
+      "file": "012-request.json",
+      "bytes": 48594,
+      "sha256": "21c1c29021708d17ac20b120a46d2127115d67e9b1deb78f4a7858f6a429b1cd",
+      "toolCount": 24,
+      "messageCount": 5,
+      "sessionId": "session-f0bd7ca8-7d4f-4826-9453-01e33dacf9d2",
+      "afterSeq": 27,
+      "throughSeq": 36,
+      "depthErrorInBody": false
+    }
+  ],
+  "distinctSessions": 4,
+  "chainDepthObserved": 3,
+  "totalRequestBytes": 765677
+}

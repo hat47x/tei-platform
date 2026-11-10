@@ -169,9 +169,18 @@ func ensureExternalExistingRegularFile(path, repositoryRoot string) (string, err
 	return resolved, nil
 }
 
+// pathWithinRepository reports whether target is inside repositoryRoot.
+//
+// Both sides are resolved before the comparison. Comparing a resolved target
+// against an unresolved root says "outside" whenever the root is reached
+// through a link or a short name, and the Windows CI runner's temporary
+// directory (C:\Users\RUNNER~1\...) is exactly that shape (#3783). Resolution
+// failures fall back to the cleaned path: a path that does not exist cannot be
+// resolved, and refusing it for the wrong reason would be worse than comparing
+// the text.
 func pathWithinRepository(repositoryRoot, target string) bool {
-	root := filepath.Clean(repositoryRoot)
-	target = filepath.Clean(target)
+	root := resolveForComparison(repositoryRoot)
+	target = resolveForComparison(target)
 	rel, err := filepath.Rel(root, target)
 	if err != nil {
 		return false
@@ -180,6 +189,17 @@ func pathWithinRepository(repositoryRoot, target string) bool {
 		return true
 	}
 	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
+func resolveForComparison(path string) string {
+	cleaned := filepath.Clean(path)
+	if abs, err := filepath.Abs(cleaned); err == nil {
+		cleaned = abs
+	}
+	if resolved, err := filepath.EvalSymlinks(cleaned); err == nil {
+		return resolved
+	}
+	return cleaned
 }
 
 func allChildArtifactsRetained(lanes []laneEvidence) bool {

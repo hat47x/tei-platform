@@ -49,3 +49,38 @@ period sales.month {
 		t.Fatalf("closed rejects lost: %+v", period.ClosedRejects)
 	}
 }
+
+// TestSemanticPeriodParsesClosingDay checks that "closes on day N" is read and that
+// a states list before it ends there. The day number is an identifier, so a states
+// reader that does not stop at "closes" swallows the declaration and the period
+// silently stays a whole month.
+func TestSemanticPeriodParsesClosingDay(t *testing.T) {
+	src := `namespace sales
+
+data Order {
+    attribute order_date type std.date
+}
+
+period sales.month {
+    data sales.order
+    business-date sales.order.order_date
+    states open closing closed
+    closes on day 20
+    closed-rejects update
+}
+`
+	namespace, err := syntax.NewParser(src).ParseSemanticFile()
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	period := namespace.Periods[0]
+	if period.ClosingDay != 20 {
+		t.Fatalf("closing day lost: %+v", period)
+	}
+	if len(period.States) != 3 {
+		t.Fatalf("the states list took the closing declaration: %+v", period.States)
+	}
+	if len(period.ClosedRejects) != 1 || period.ClosedRejects[0] != "update" {
+		t.Fatalf("closed rejects lost: %+v", period.ClosedRejects)
+	}
+}

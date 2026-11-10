@@ -1,0 +1,12 @@
+The first version of the consolidated guard used os.ReadDir counts. plan/issue
+holds README.md, so it counted 1 entry and the exempt branch never ran.
+
+Noticed because `-v` never printed the exemption line:
+
+  (first version) Markdown 951 / Requirement 36  -- no exemption line
+
+Fixed by measuring the numbered DOCUMENTS the checks read, not the directory
+entries:
+
+  plan/issue yields 0 documents by design: Issue records live in GitHub Issues;
+  the directory keeps only a README (#3931)

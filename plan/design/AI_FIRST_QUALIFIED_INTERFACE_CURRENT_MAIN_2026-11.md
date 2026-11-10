@@ -1,6 +1,9 @@
 # AI-firstインターフェイスの資格分離・実測対応（2026-11-07）
 
 - **文書の性格**：現行mainから実装へ渡す、横断受入の圧縮設計。採用済みADR、各Issueの受入基準、実装・CIの代替ではない。
+> **2026-11-08 現行mainへの移送**：本文§1〜9は[旧PR #3241](https://github.com/hat47x/tei-platform/pull/3241)の時点別受入設計を保持する。**実装状態・次の作業の現行判断は§10を優先**。例えば§9の「TT-56二候補の統合待ち」は[main統合 #3354](https://github.com/hat47x/tei-platform/pull/3354)で解決済みであり、旧候補[#3324](https://github.com/hat47x/tei-platform/pull/3324)・[#3326](https://github.com/hat47x/tei-platform/pull/3326)はclosed/unmerged。ここに記す過去のRunとDraftは当時のEvidenceであって現mainの未実装一覧ではない。本文の設計はIssue・ADR・Runbook/現行実装を上書きしない。
+
+
 - **来歴**：古いmainを基点とする[PR #2492](https://github.com/hat47x/tei-platform/pull/2492)のAI-first設計§5.4〜5.11で成熟した結果を、**新しい実観測と現在のOwner**に照合して凝縮移送する。#2492全体（要求・研究・基礎データ設計）の自動代替・無条件Closeではない。
 - **今回の範囲**：read-only CLI/Skill/Harness、診断・提案、Source/Target完全性、独立期待値、実行・送出・Resource確認の資格を接続する。Go単一実行バイナリ・既存Shared Acceptance・外部Hostの権限主体を維持し、新Host/Runner/Proof Registry/受理正本を設けない。
 - **実証状態**：記載する既存PR/固定HEADの限定実績を採用する。本文の統合手順は**新規NOT RUN／NOT ACCEPTED**。
@@ -247,3 +250,67 @@ AI/Plugin Inspectorの一縦切りは、**Declared Offer/Capability→Environmen
 4. **P1 Plugin/Build**：一つのread-only Inspectorの実Provider Invokeと、Build invoker/invoked・Source Closureの別証拠を接続。#3337の未選択Capability一覧や#3350の選択解決の改善候補は**診断**であり、実Host GrantやBOMの資格ではない。
 
 **実証の上限**：本節は既存のmainコード・固定HEAD CIとDraft仕様の照合による**設計/計画追補のみ**。#3324/#3326合同CI、新H2/H3比較、盲検T1-B、CLI/Studio実同一Plugin Invoke、実Provider DB、Owner正式Meaning受理、Self Build L3は今回**NOT RUN**。#3324/#3326、#3350の製品main導入を先取りしない。
+
+
+## 10. TT-56統合後のAI-first受入順：不足の診断から盲検新規発見へ（2026-11-08、現行状態）
+
+### 10.1 今回、新しく資格を持った部分
+
+| 既存Owner／成果 | 最新の実証・採用限界 | 新しく主張してよいこと／いけないこと |
+| --- | --- | --- |
+| **[#3262](https://github.com/hat47x/tei-platform/issues/3262) Design Context** | [main統合 #3354](https://github.com/hat47x/tei-platform/pull/3354) が、旧[#3324](https://github.com/hat47x/tei-platform/pull/3324)/[#3326](https://github.com/hat47x/tei-platform/pull/3326)を**一つのContext Gate**に統合。専用[exact-head CI #42391707962](https://github.com/hat47x/tei-platform/actions/runs/42391707962) success、[PR Health #42392009764](https://github.com/hat47x/tei-platform/actions/runs/42392009764) success。固定公開Caseで**11実CLI read-only Reply＋32 Consumer Controls**：7基礎＋2 Manifest＋7 Reply Byte＋8 Required三Rule集合（拒否7・過剰拒否防止1）＋8 Canonical/Relation/Source参照ずれ | 「実Tool出力の一時コピーを変形した負例を正しく拒否する」限定成立。実外部Harnessでの11 Reply完全配送・原子的Workspace snapshot・全Function/Business/Rule依存・実Provider行集合・Unknown Goalを発見するAI能力の証明**ではない**。`boundedReference=partial`、`testExecutionAdmission=exploration-only`、`qualifiedTestGeneration=false`を維持。旧二Draftはclosed/unmerged（合同で単純マージしない） |
+| **[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514) Scenario/Expected** | main #3304の「既知の行番号=0」T1-A実走は別件。続く[Draft #3365](https://github.com/hat47x/tei-platform/pull/3365)の固定HEAD `1e2531fe` は[専用Dogfood CI #42394673357](https://github.com/hat47x/tei-platform/actions/runs/42394673357)＋Health #42394673331＋依存 #42394673273 が各completed/success。部分Scenario Receipt目録のtest-only投影と7対照を試す | 「指定Stepが返却されない」＝`notObserved`。未テストが証明された`untestedConfirmed`へ変換しない。別の受領済Stepの局所肯定を保持し、**全Product Coverageはunknown**。このDraftは未マージ。AIが未知Gapを盲検で見つける**T1-BはNOT RUN** |
+| **[#1125](https://github.com/hat47x/tei-platform/issues/1125) Completion/Handoff** | [main #3353](https://github.com/hat47x/tei-platform/pull/3353)は`EmptyPolicyHandoff`＋空Targets＋`EmptyJustified=true`でも`HandoffConfirmed=false`なら`CompletionUnverified`とする限定修正を統合 | 空集合の証拠と受領確認は独立。Caller申告`HandoffConfirmed`/ `CoverageComplete` は外部Host/相手方の実Receiptでも必要行・Scopeの全読取り証拠でもない。両方の真偽をProduct Completionへ自動昇格しない |
+| **[#951](https://github.com/hat47x/tei-platform/issues/951)/[#1251](https://github.com/hat47x/tei-platform/issues/1251) Capability/Provider** | [main #3350](https://github.com/hat47x/tei-platform/pull/3350)は`SupportsDatabaseProvider`を再利用して未選択数を旧方式6→**現参照方式4**へ修正。[main #3363](https://github.com/hat47x/tei-platform/pull/3363)は実Workspaceの24環境Bindingに`selected=22/missing=2/ambiguous=0`を返す（missingは`editor.database_workbench`2件） | 一覧の`missing`は**製品Validatorの違反とは限らない**。Referenceは`editor.database_workbench`まで調べるが製品Validatorは`editor.sql_analysis`だけに対応検査を限定。旧6件を現結果へ再利用しない。`selected`≠実Provider実装/Load/Invoke/Grant |
+| **[#1824](https://github.com/hat47x/tei-platform/issues/1824) Studio/Inspector** | [Draft #3371](https://github.com/hat47x/tei-platform/pull/3371)はHost ServiceFactoryが非nilなら`RootServices.Inspection.Inspect`へ委譲し、未提供・誤Subject・誤Schema・誤Fingerprint等をfail closedするGo候補。PR作成後のCIは**一部成功・一部進行中/queuedを観測**。CLIは現在手書きInspect経路 | 「Hostが選んだServiceの型付き入口を利用可能にする」候補まで。exact selected Plugin/Providerが実Build/Load/Invokeされたこと、CLIとStudioの同一Provider Consumer、Wails実WebViewでのSource/権限適格は**未達** |
+| **[#3149](https://github.com/hat47x/tei-platform/issues/3149) CLI実ドッグフーディング** | [Open #3356](https://github.com/hat47x/tei-platform/pull/3356)の第2回実Binary計測ではD-1/2/4/5/7/8に改善、D-3（`view`版のScope）、D-9（Managed文書≠Loaded Meaning）、D-10（内側JSON形状）が残る。CLIの`commands`19件にMCP入口は無く、独自MCP Server実装も未確認 | **実測できたのはCLIのみ**。利用可能な現行MCP経路を作り出したり、新MCPをP0のHard dependencyにしない。Tool resultの`result`配列/オブジェクト差やSource managed/Parsed/Consumedを同一視しない |
+
+### 10.2 実証の「次の不足一辺」を小さく測る
+
+**P0-A｜Source/必要Ruleの受領資格（main #3354を再利用）**。公開合成Subject一つで、`Required→Selected→Managed→LoaderRead→Canonical Rule/Relation/Attribute/Source Anchor→Tool Returned→Consumer Received`を同一Inputの版に束縛する。11のCLI応答は逐次取得なので共同原子的Snapshotではない。`partial`の残余Domain/Function/Businessと、欠損を示した時の否定を区別し、同じWorld FP・JSON正常だけで全域の存在/不存在を断定しない。これ以上TT-56 Gateを複製せず、必要なら#3262の現実装へ最小差分。
+
+**P0-B｜実外部Harnessの盲検資格**。TAI #168／TEI #2509/#2515で、Participantに**独立Expected・未公開Gap・旧回答・Skill（H2）**への物理アクセスを拒否し、Toolの許可`Command+Flag variant`・実argv・Raw stdout/stderr→Tool Replyの全Byte/終端・Session Log再送/Audience/実Network Sinkを別欄で固定。ローカルMock/Tool制限/CLI`writeFlags`の合成PASSは実OSでの全出口拒否を代用しない。比較適格なH2/H3の事前割当4Sessionは依然0/4。
+
+**P0-C｜T1-Bの盲検新規Rule/Case発見**。#3273/#1180/#2514が、AI参加者へ見せない未予告Gap・独立Expected/Mutantを事前固定し、#3354で実取得が成立した**狭いScope**に限ってAIが新Candidate一つを生成する。既知の行番号0を未知発見として数えず、Candidate新規性、実CLI実行、Known Mutantを判別したか、局所Coverage、未測定C1/NFRを別分母で採点。部分Scenario Resultについて`notObserved`を「未実施」や「失敗」へ推定しない（#3365）。
+
+**P1｜Inspector一Pluginの実選択・実Invoke**。#3371のHost factory委譲候補とmain #3363のEnvironment Capability診断を接続するが、`Declared→Env Selected→Contract/Provider Resolved→Build Included→Actually Loaded/Invoked→CLI & Studio Result→Independent Expected`の各Witnessが必要。B SelectedなのにA InvokedならResult値一致でも不合格。実Provider Row/現在Grant/Effectや、同Provider×Consumer 2×2 Version BOMはさらに別（#3292/#3297/#1174）。新Kernel/Registry/Hostは作らない。
+
+**P1別｜実Read／業務Handoff**。旧`*.tei`一Function→実SQL/Provider/Row/Predicateへ#2586で接続する。#3353の空Target Handoff改善は実Commit/外部確認の代用でない。新`*.tei.md` Reader、Diagram/CRUD/SHO、OKF Attester/Matrix、Self Build L3は各既存Ownerへ残し、P0-B/Cの前提にしない。
+
+### 10.3 統合計画の保守と証拠上限
+
+本節への移送では、旧PR #3241の設計§1〜9を履歴資料として保存し、実装状態の変更は§10を優先する。基本計画Hには**次の受入順と担当だけを一節にまとめ**、旧PR #3241の4つの重複小節をそのまま持ち込まない。新たなScenario集合・Helper Registry・Domain Gate・Test Runner・独立Expected Storeを増やさない。
+
+**実施済みは既存mainの有限Go/CLI/Consumer・特定PRのCIと、今回の計画移送のみ**。新しい外部H2/H3正式比較、実OSの機密到達拒否、盲検T1-B、全Product Scenario Catalog/C1、実CLI/Studio同Plugin、実Provider DB・Host/Ownerの正式Meaning・外部Handoff受領は**今回NOT RUN／NOT QUALIFIED**。必ずPR exact-headのGo/CI、main push、同一Attemptの証拠を分けて示す。
+
+
+## 11. Inspector D1の直接経路→Host選択Provider実消費を最短で証明する（2026-11-08）
+
+### 11.1 既存の二Surfaceは、同じProviderを実行した証拠ではない
+
+他チャットのInspector D1/Plugin-first設計では、**宣言→Capability選択→Contract/Provider解決→実Build収録→実Provider呼出し→CLI/Studio受領→現在Grant/Effect**を別々に扱う。これは[main統合Plugin-first §14/15 #3338](https://github.com/hat47x/tei-platform/pull/3338)や[#3367](https://github.com/hat47x/tei-platform/pull/3367)の既存契約に従うもので、本AI-first側に新Kernel・Registry・Host・BOM発行Engineは作らない。
+
+| 既存PRの責務 | 実コード/試験の範囲 | 採用上限 |
+| --- | --- | --- |
+| **D1a 既存直結の基準**：[Draft #3378](https://github.com/hat47x/tei-platform/pull/3378) | Data `sales.order`、Validation `sales.order_line.line_number_positive`、Relation `sales.order.lines`を、CLIの`inspectWorkspaceJSON`とStudioHost`ReadOnly.InspectSubject`で別々に読み、Canonical/Source Anchor/Workspace・World・Index FP・Subject・Effectと不存在Errorを対照。**両方とも既存の`operations.InspectSubject`直接経路** | 「従来経路の応答基準」を得る候補のみ。Plugin経由・2実Binary・実Wails・Providerの選択・本番権限ではない。PR exact-head Repository Healthは**failure**、他Workflowの成功を一括PASSにしない |
+| **D1b-C CLI型付き入口**：[Draft #3381](https://github.com/hat47x/tei-platform/pull/3381) | `inspectWorkspaceJSONWithService`の明示的な`cliInspectionService`で、nil/Subject不一致/schema/effect/Canonical/FP不正・未分類エラーを拒否。既定`inspectWorkspaceJSON`は従来Builtinのまま | **注入可能なPort**でありEnvironmentで選択したProviderが実ロードされた証拠ではない。exact-head Repository Healthは**failure**（ログは`gofmt`）、局所Workflow成功と別扱い |
+| **D1b-S Studio型付き入口**：[Draft #3371](https://github.com/hat47x/tei-platform/pull/3371) | Host `ServiceFactory`非nil時は`RootServices.Inspection.Inspect`へ必ず委譲、Service未提供/不正応答はfail-closed。factory nilのPoC経路は従来Operationへ委譲 | **Host選択Serviceへの委譲**であり、Hostが実ProviderをResolve・Loadした証拠ではない。exact-head Repository Healthに`TestInjectedOperationsOnlyReceiveAllowlistedResolvedRoot`失敗も観測され、Wails PoC Aも失敗。他のStudio/WebView Smoke成功をこの失敗へ合算しない |
+| **D1c 選択・実呼出しの連結（未実証）**：[#951](https://github.com/hat47x/tei-platform/issues/951)/[#1251](https://github.com/hat47x/tei-platform/issues/1251)/[Draft #3292](https://github.com/hat47x/tei-platform/pull/3292) | 一つのread-only Inspectorについて、実Environment/Plugin Lock→exact Contract/Provider B→Build/Loadの実Byte→CLI/Studioの型付きService注入→**actual Provider B invocation**を同一Attemptに固定 | **B選択→Aを呼ぶ負例**は値が一致してもFAIL。Provider未提供→Builtin黙示Fallback、旧Source/FP、別Workspace、誤Canonical、権限外Subject、旧Consumer応答の採用を拒否する。二Consumerの結果一致＝2×2 BOM適合ではない |
+
+**次の最小受入票（追加のContract正本ではない）**：正例ではA/Bの二Providerのうち明示したBを選択し、CLIとStudioがBを各1回実呼出し、`Provider identity + artifact/contract pin + Source Revision + Subject + Result digest + Consumer/epoch`を照合する。負例はB選択に対するA実呼出し、Provider missing/ambiguous、型付きService内部エラー、旧Responseの遅着とContext/Provider版ずれを**明示的な不合格・unknown**に分ける。基本の独立Expected/Mutationは[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)、契約と実Provider選択は#951/#1016、二Consumer/Wailsは#1824が所有する。
+
+**実装順**：#3378のdirect parityを基線として保持→#3371 Studioと#3381 CLIのそれぞれの型付きPortを個別に正す→両者が共有する`internal/operations/inspect_projection.go`の一つの検証規則へ正規化（**結果検証の二重実装を放置しない**）→#951の現行Resolver/Contractから一つのProviderを実Composeして二Consumerへ注入→同一Attemptの実呼出し/独立Expectedを確認。旧Builtin direct経路をPoC互換として残す場合も、**明示Host選択時だけは暗黙Fallback禁止**。既存`application-runtime`のService CarrierをInspector目的で無条件に拡張しない。
+
+### 11.2 AI Toolの結果受領と試験の資格もD1と独立
+
+CLIは実BinaryのCommand/Flag/Value/Default`をDiscoveryに広告するが、[現在Draft #3370](https://github.com/hat47x/tei-platform/pull/3370)は`requirements`の内側`result`が**array**であることを限定契約`resultShape:array`へ追加する候補。`successShape`・外側Envelope・内側Resultの三者を分ける。未広告Shapeを`object`と補完して実Toolの配列を欠落扱いにせず、`resultShape`の存在からSource/対象集合/独立Expectedの完全集合性を推論しない。現在MCP Serverの実入口は未確認なので、新MCPをD1実証の依存条件としない。
+
+[main #3354](https://github.com/hat47x/tei-platform/pull/3354)の11 CLI Reply/32 Controlsは**取得した設計情報の局所判別**、[Draft #3365](https://github.com/hat47x/tei-platform/pull/3365)のTT-105/106は**部分Scenarioの局所観測**、T1-Bは**独立Holdoutを秘匿してAIが未知Gapから候補を新規発見**できるかの試験。各ClaimのRequired Universe/Actually Consumed/Tool Reply全Byte/Source Pin/適格Audienceを別資格とし、`notObserved`を`untestedConfirmed`へ、局所C0をC1/NFR/全業務Coverageへ転換しない。Plugin D1とT1-Bは並列で進め、双方が他方のHard dependencyにならない。
+
+### 11.3 実CIで観測した停止理由を現在の計画に反映する
+
+[PR #3385](https://github.com/hat47x/tei-platform/pull/3385)のexact-head [Repository Health #42396703358](https://github.com/hat47x/tei-platform/actions/runs/42396703358)は**failure**。Job logでは`go vet ./...`、`go test -count=1 -timeout 60m ./...`、`tei validate -workspace reference/workspace`がPASSし、`gofmt -l .`が`tools/reference-plugin-capability-coverage/coverage_test.go`の差分によりFAIL。これは当PRのDocs/Plan内容に関係するGoテスト失敗と同義ではない。現在mainの整形済み同ファイルへ当Branchを揃える**別Commit**を行ったが、**当該新HEADのCI成功は別途要検証**。
+
+並行Draftの限定CIも同一視しない。#3381の旧exact-head Healthは`gofmt`で失敗、#3371の旧exact-head HealthはStudioHost `TestInjectedOperationsOnlyReceiveAllowlistedResolvedRoot`失敗と`gofmt`が重なる。#3378のHealthもfailure。個別Go/Node/WebView/ドッグフードの成功だけをPR完成やBOM/Provider実証の資格へ昇格しない。修正に際しては**そのPRのHeadと仮統合Baseで失敗を再現**し、現在mainにある共通Formatting driftと、Branch自身のGoテスト契約不整合を分けてOwnerが対処する。
+
+**実証上限**：この§11は他チャット設計の現行差分・CI原因の照合およびDocs追補のみ。新D1a/b/cのGo/CLI/Wails検収、T1-B盲検、H2/H3隔離4Session、実Provider DB、業務Meaningの正式受理・Host current Grantを新たに実行していない。

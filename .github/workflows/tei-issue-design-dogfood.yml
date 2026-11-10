@@ -38,6 +38,11 @@ on:
 permissions:
   contents: read
 
+# 同じPRの古い実行だけを取り消し、mainへのpushは取り消さない（#3682）。
+concurrency:
+  group: tei-tei-issue-design-dogfood-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   bounded-design-context:
     runs-on: ubuntu-24.04
@@ -76,9 +81,10 @@ jobs:
           "$cli" model catalog -workspace reference/workspace > "$out/catalog.json"
           "$cli" inspect -workspace reference/workspace -subject-kind semantic-data -subject-id sales.order > "$out/inspect.json"
           "$cli" inspect -workspace reference/workspace -subject-kind semantic-validation -subject-id sales.order_line.line_number_positive > "$out/inspect-validation.json"
+          "$cli" inspect -workspace reference/workspace -subject-kind semantic-capability -subject-id sales.order.submit > "$out/inspect-capability.json"
+          "$cli" inspect -workspace reference/workspace -subject-kind application -subject-id order_entry > "$out/inspect-application.json"
           "$cli" source-index -workspace reference/workspace -subject-kind semantic-data -subject-id sales.order > "$out/source-index.json"
           "$cli" source-index -workspace reference/workspace > "$out/source-index-all.json"
-          "$cli" source-index -workspace reference/workspace -subject-kind semantic-data -subject-id sales.order > "$out/source-index.json"
           "$cli" trace -workspace reference/workspace -scope reference-observation -subject-kind semantic-relation -subject-id sales.order.customer -direction both -mode summary > "$out/trace.json"
           "$cli" requirements -workspace reference/workspace > "$out/requirements.json"
           "$cli" validate -workspace reference/workspace -json > "$out/validate.json"
@@ -91,7 +97,8 @@ jobs:
 
           folder = Path(os.environ["RUNNER_TEMP"]) / "issue-to-design"
           names = ("commands", "version", "workspace-files", "catalog", "inspect",
-                   "source-index", "source-index-all", "inspect-validation", "trace", "requirements", "validate")
+                   "source-index", "source-index-all", "inspect-validation",
+                   "inspect-capability", "inspect-application", "trace", "requirements", "validate")
           docs = {}
           sizes = {}
           for name in names:
@@ -105,7 +112,7 @@ jobs:
           assert docs["commands"].get("schemaVersion") == "tei.cli.discovery/v0"
           assert docs["commands"].get("scope") == "selected-read-only-commands"
           assert docs["version"].get("schemaVersion") == "tei.cli.version/v0"
-          for name in ("workspace-files", "catalog", "inspect", "inspect-validation", "source-index",
+          for name in ("workspace-files", "catalog", "inspect", "inspect-validation", "inspect-capability", "inspect-application", "source-index",
                        "source-index-all", "trace", "requirements", "validate"):
               assert docs[name].get("ok") is True, (name, docs[name].get("error"))
           schemas = {
@@ -113,9 +120,10 @@ jobs:
               "catalog": "tei.cli.model/v0",
               "inspect": "tei.cli.inspect/v0",
               "inspect-validation": "tei.cli.inspect/v0",
+              "inspect-capability": "tei.cli.inspect/v0",
+              "inspect-application": "tei.cli.inspect/v0",
               "source-index": "tei.cli.source-index/v0",
               "source-index-all": "tei.cli.source-index/v0",
-              "source-index": "tei.cli.source-index/v0",
               "trace": "tei.cli.trace/v0",
               "requirements": "tei.cli.requirements/v0",
               "validate": "tei.cli.validate/v0",
@@ -259,7 +267,18 @@ jobs:
           assert len(r["syntheticControls"]) == 7
           assert len(r["additionalManifestControls"]) == 2
           assert len(r["transportByteControls"]) == 7
-          assert r["observations"]["localReplies"] == "11/11"
+          assert r["observations"]["localReplies"] == "13/13"
+          assert r["boundedFunctionSlice"]["declarationStatus"] == "bounded-present"
+          assert r["boundedFunctionSlice"]["signature"] == "matched"
+          assert r["boundedFunctionSlice"]["namespaceAndValidationUses"] == "matched"
+          assert r["boundedFunctionSlice"]["capabilitySource"]["definition"] == "same-indexed-definition"
+          assert r["boundedFunctionSlice"]["applicationSource"]["definition"] == "same-indexed-definition"
+          assert r["boundedFunctionSlice"]["functionInvocationBinding"] == "not-observed"
+          assert r["boundedFunctionSlice"]["queryOrProviderRead"] == "not-observed"
+          assert r["boundedFunctionSlice"]["functionQualifiedForTestGeneration"] is False
+          assert len(r["boundedFunctionControls"]) == 10
+          assert sum(x == "blocked" for x in r["boundedFunctionControls"].values()) == 9
+          assert r["boundedFunctionControls"]["TT-function-unrequired-prelude-omitted"] == "bounded-partial-only"
           assert r["focusedStructureSlice"]["status"] == "bounded-present"
           assert r["focusedStructureSlice"]["relationState"] == "matched"
           assert r["focusedStructureSlice"]["canonical"] == "matched"
@@ -277,12 +296,14 @@ jobs:
           lines = [
               "## Design Context → Test Ability 事前資格（#3262）",
               "",
-              "- 実11 CLI応答＝既存9＋全Source Index＋Validation Inspectで、3 Rule・Relation・Canonical・Source Anchor/FPを限定照合。",
+              "- 実13 CLI応答＝既存11にCapability Inspect／Application Inspectを追加。3 Rule・Relation・Canonical・Source Anchor/FPを限定照合。",
+              "- **P-1b1 Function**：sales.order.submitのCapability signature、order_entryのnamespace/validation/database宣言、Source Index definitionとLoader Readを1つの独立Requiredで対照。",
+              "- 同FP・正常JSONでもCapability/Application/入出力/namespace/Rule/use/DB/Source欠落9件を拒否。必要集合外のPrelude 1件は過剰拒否しない。",
               "- 合成負例: Subject欠落、Inventory未Read、Fingerprint版混合、Reply欠落、Schema Drift、Source Root欠損 + 外部Provider/Grant未観測（7種）。",
               "- **TT-56**：独立必須3 Validation を既存Catalog＋Source IndexのDefinition Role＋Loader Readへ結合。",
               "- JSON正常・World/Index FP一致でも3 Ruleの必須欠落など7件を拒否、不要な1件は過剰拒否しない。",
               "- さらにRelation欠落・二重・親差分、Rule kind/attribute差、Inspect/Source IndexのSource差、Inspect版混合の8件を拒否。",
-              "- 必須Ruleのこの小さな範囲が揃っても、Function/Business/ProcedureやOwner Meaningの全閉包は**未資格**。",
+              "- Function宣言の限定部分が揃っても**実Function入口・Query/Provider Read・Build収録/Host・Owner Meaningの全閉包は未資格**。",
               "- Test生成資格: **false**。固定公開Scenarioの局所探索のみ可能。",
               "- Function/Business/RuleのRequired Closure、Parser/Meaning、Provider実Read、外部Harness完全受領/開示、C1/NFRは未知。",
           ]
@@ -342,6 +363,18 @@ jobs:
           assert report["mutantsKilled"]["changed-real-canonical-source"] == "real-cli-stale-world-rejected"
           assert report["mutantsKilled"]["changed-real-plugin-lock"] == "real-cli-stale-lock-rejected"
           assert report["coverage"]["goC1BranchCoverage"] == "unmeasured"
+          assert report["scenarioInventory"]["inventory"] == "complete-for-one-pinned-scenario"
+          assert report["scenarioInventory"]["localObserved"] == sorted([
+              "browse-pattern", "record-pattern", "browse-synthetic",
+              "validate-positive", "validate-denied", "observe-synthetic",
+          ])
+          assert report["scenarioInventory"]["untestedConfirmed"] == []
+          assert report["scenarioInventory"]["productCoverage"] == "unknown"
+          assert len(report["scenarioInventoryControls"]) == 9
+          assert report["scenarioInventoryControls"]["TT-105-partial-step-inventory"] == "absence-unqualified"
+          assert report["scenarioInventoryControls"]["TT-106-positive-local-but-global-unknown"] == "bounded-observation-maintained"
+          assert report["scenarioInventoryControls"]["wrong-operation-for-step-id"] == "unqualified"
+          assert report["scenarioInventoryControls"]["TT-154-coupled-operation-corruption"] == "independent-obligation-rejected"
           lines = [
               "## TEI Test Ability — 独立検証基準（#2514 / #1180）",
               "",
@@ -353,6 +386,7 @@ jobs:
               "- Source A→B→Aで元pinは再び有効になる。中間履歴、Owner受理、Plugin実Load、現在Grantは未証明。",
               f"- Go局所statement C0: `{report['coverage']['goC0StatementCoverageForCmdTei']}`。",
               "- **C1は未計測**。全要求Coverage/NFR/実DB/GUI/正式意味受理も未評価。",
+              "- **TT-105/106**：実6 stepから限定局所証人を保持。Scenario receiptを部分取得した9対照では未テスト断定を拒否し、Product全体Coverageはunknown。",
               "- 結果は限定JSONとActions Artifactに保持。全製品のテスト能力証明ではない。",
           ]
           print("\n".join(lines))
@@ -391,6 +425,18 @@ jobs:
           assert drift["AtoBtoAOriginalFingerprintReturns"] is True
           assert drift["intermediateHistoryOrCurrentGrantProven"] is False
           assert binding["atomicReadOrExternalDeliveryProven"] is False
+          pin = r["contextToScenarioBinding"]
+          assert pin["generatedWorldMatchesDesignContext"] is True
+          assert pin["freshBeforeCandidate"] is True
+          assert pin["freshAfterPinnedRun"] is True
+          source_only = pin["sourceOnlyDrift"]
+          assert source_only["observedCanonicalWorldUnchanged"] is True
+          assert source_only["observedSourceIndexChanged"] is True
+          assert source_only["staleDesignContextRejectedByConsumer"] is True
+          assert source_only["originalWorldPinnedScenarioStillExecutesInIsolatedCopy"] is True
+          assert source_only["AtoBtoAOriginalFingerprintReturns"] is True
+          assert source_only["intermediateHistoryOrCurrentGrantProven"] is False
+          assert pin["atomicReadOrExternalDeliveryProven"] is False
           assert r["independentBlindHoldoutApplied"] is False
           assert r["ownerMeaningAccepted"] is False
           assert r["scenarioSSOTChanged"] is False
@@ -404,6 +450,8 @@ jobs:
               "- 嘘Expected、異なる値のFixture、Plan生成後Fixture変更の3負例は実CLIで拒否。",
               "- **Context→Scenario World束縛**：Context FPと生成Plan SHAの一致、実CLIを使ったSource Indexの生成前・Pinned実行後の版を再照合。",
               "- **Source-only drift**：隔離Sourceの末尾LFでWorld不変／Source Index改版を観測。既存World PinでScenario自体は成功しても、旧Contextの採用は拒否。A→B→Aの履歴は証明しない。",
+              "- **Context→Scenario版束縛**：ContextのWorld FPと生成Plan WorldSHA一致、Source Indexを実CLIで実行前後に再観測。",
+              "- **Source-only TOCTOU**：隔離WorkspaceのSource末尾改行でCanonical Worldは不変、Source Indexだけ変化。World-pinned Scenario実行だけでは失効を検出できず、Context Consumerが拒否。A→B→Aの履歴は不明。",
               "- **外部AI Harness/Skillからの盲検テスト生成ではない**。Issue #3273既知候補の初回実行に限定。",
               "- Contextはpartial/exploration-only。Scenario Owner採用、C1、全要件・実DB/Hostは未資格。",
           ]

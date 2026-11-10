@@ -386,6 +386,34 @@ func looksLikeNegativeValue(statement string) bool {
 	return strings.Contains(lower, "negative") || strings.Contains(statement, "負") || strings.Contains(statement, "未満")
 }
 
+// cognitionPathVariables are the variables that hold the file names the
+// external command writes and reads. They are substituted into the command
+// itself: the bash a Windows host provides is WSL bash, which replaces $NAME in
+// the -c string from the Windows environment before bash parses it, so a value
+// we export is gone by the time the command reads it (#3461).
+//
+// Only these two are substituted. Their values are file names this package
+// chooses, so the literal text needs no shell quoting and cannot break a
+// command that already quotes the variable.
+var cognitionPathVariables = []string{
+	"TEI_COGNITION_CONTEXT",
+	"TEI_COGNITION_OUTPUT",
+}
+
+// substituteCognitionPaths replaces $NAME and ${NAME} with the file name.
+func substituteCognitionPaths(command string, values map[string]string) string {
+	for _, name := range cognitionPathVariables {
+		command = strings.ReplaceAll(command, "${"+name+"}", values[name])
+		command = strings.ReplaceAll(command, "$"+name, values[name])
+	}
+	return command
+}
+
+// literally, and encodes an embedded quote as '\”.
+func shellSingleQuote(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", `'\''`) + "'"
+}
+
 func proposeExternal(ctx context.Context, request Request, provider Provider, command string, contextRaw []byte) (*Proposal, error) {
 	if strings.TrimSpace(command) == "" {
 		return nil, fmt.Errorf("external provider requires a command")
@@ -406,12 +434,28 @@ func proposeExternal(ctx context.Context, request Request, provider Provider, co
 		runCtx, cancel = context.WithTimeout(ctx, time.Duration(provider.Limits.TimeoutSeconds)*time.Second)
 		defer cancel()
 	}
-	cmd := exec.CommandContext(runCtx, "bash", "-c", command)
+	// The bash a Windows host provides is WSL bash: it addresses files as
+	// /mnt/d/... and cannot open a C:\... path, and it substitutes $NAME in the
+	// -c string from the Windows environment before bash parses it. Passing an
+	// absolute Windows path made every external command fail before it ran
+	// (#3461). So the command runs with the temporary directory as its working
+	// directory, receives bare file names, and has the variables substituted
+	// into it. A command that changes directory must turn the names into
+	// absolute paths itself.
+	values := map[string]string{
+		"TEI_COGNITION_CONTEXT":  filepath.Base(contextPath),
+		"TEI_COGNITION_OUTPUT":   filepath.Base(outputPath),
+		"TEI_COGNITION_PROVIDER": provider.ID,
+		"TEI_COGNITION_MODEL":    provider.Model,
+		"TEI_COGNITION_VERSION":  provider.Version,
+	}
+	cmd := exec.CommandContext(runCtx, "bash", "-c", substituteCognitionPaths(command, values))
+	cmd.Dir = tempDir
 	cmd.Env = append(os.Environ(),
-		"TEI_COGNITION_CONTEXT="+contextPath,
-		"TEI_COGNITION_OUTPUT="+outputPath,
-		"TEI_COGNITION_PROVIDER="+provider.ID,
-		"TEI_COGNITION_MODEL="+provider.Model,
+		"TEI_COGNITION_CONTEXT="+values["TEI_COGNITION_CONTEXT"],
+		"TEI_COGNITION_OUTPUT="+values["TEI_COGNITION_OUTPUT"],
+		"TEI_COGNITION_PROVIDER="+values["TEI_COGNITION_PROVIDER"],
+		"TEI_COGNITION_MODEL="+values["TEI_COGNITION_MODEL"],
 		"TEI_COGNITION_VERSION="+provider.Version,
 	)
 	output, err := cmd.CombinedOutput()

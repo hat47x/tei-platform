@@ -1,0 +1,7 @@
+== evidence provider (Environment.EvidenceProviders) ==
+  internal/deployment/evidence/provider.go:32:	for _, b := range env.EvidenceProviders {
+  internal/index/index.go:458:		for _, b := range e.EvidenceProviders {
+  internal/syntax/parser.go:562:			e.EvidenceProviders = append(e.EvidenceProviders, environment.EvidenceProviderBinding{Kind: deployment.EvidenceKind(kind.Text), Provider: providerID})
+  internal/validation/validation.go:1056:		for _, b := range e.EvidenceProviders {
+  tools/reference-plugin-capability-coverage/coverage.go:212:		for _, binding := range env.EvidenceProviders {
+  tools/reference-plugin-selection-matrix/matrix.go:129:		for _, binding := range env.EvidenceProviders {

@@ -1,0 +1,237 @@
+{
+  "note": "Run 1 capped the session log at 4096 bytes with one ~8 KB tool result pending; the extension disappeared from request 4 onward and the watermark froze at 11. Resuming the same session with the default cap delivered the frozen backlog in one request: 86 events, watermark 11 -> 97, then normal delivery resumed.",
+  "sessionId": "session-c72a4e16-2c4f-4dcb-b053-b9826dd71d88",
+  "run1": {
+    "overlay": {
+      "plugin": "@deepseek-ai/dsh-session-log-deepseek",
+      "config": {
+        "enabled": true,
+        "maxBytes": 4096
+      }
+    },
+    "probe": "one pwsh call with about 8,000 bytes of stdout, then five small calls",
+    "summary": {
+      "requests": 10,
+      "withExtension": 3,
+      "withoutExtension": 7,
+      "eventsDelivered": 22,
+      "totalBytes": 606472,
+      "watermarkStart": -1,
+      "watermarkEnd": 11
+    },
+    "requests": [
+      {
+        "file": "001-request.json",
+        "bytes": 49136,
+        "sha256": "681a95aeaebfb314cb3cdc728df5c5b9c4b62d6ce37ab72580275e4949e7f7dc",
+        "toolCount": 24,
+        "messageCount": 1,
+        "sessionId": "session-c72a4e16-2c4f-4dcb-b053-b9826dd71d88",
+        "hasSessionLogExtension": true,
+        "eventCount": 10,
+        "afterSeq": -1,
+        "throughSeq": 9,
+        "largestEventBytes": 281
+      },
+      {
+        "file": "002-request.json",
+        "bytes": 7949,
+        "sha256": "a2ed1940047c8dd5224c12c39dcfc72416caf7f44cc46b4e5b1a15c07e11ec45",
+        "toolCount": 0,
+        "messageCount": 1,
+        "sessionId": "session-c72a4e16-2c4f-4dcb-b053-b9826dd71d88",
+        "hasSessionLogExtension": true,
+        "eventCount": 10,
+        "afterSeq": -1,
+        "throughSeq": 9,
+        "largestEventBytes": 281
+      },
+      {
+        "file": "003-request.json",
+        "bytes": 60753,
+        "sha256": "82fbbca4859157d570f0079caed43ba54b1c222c6a7eee9c8754e62b623e0b69",
+        "toolCount": 24,
+        "messageCount": 3,
+        "sessionId": "session-c72a4e16-2c4f-4dcb-b053-b9826dd71d88",
+        "hasSessionLogExtension": true,
+        "eventCount": 2,
+        "afterSeq": 9,
+        "throughSeq": 11,
+        "largestEventBytes": 3070
+      },
+      {
+        "file": "004-request.json",
+        "bytes": 58621,
+        "sha256": "5d0c926149a7254ec6ecadb9a2e648c3d7e9a5002ecafb709446f95e4d41b850",
+        "toolCount": 24,
+        "messageCount": 5,
+        "sessionId": null,
+        "hasSessionLogExtension": false,
+        "eventCount": 0,
+        "afterSeq": null,
+        "throughSeq": null,
+        "largestEventBytes": 0
+      },
+      {
+        "file": "005-request.json",
+        "bytes": 68013,
+        "sha256": "08fb907b6de2a2b7738366bd51f6fcf56a68c3d45018fe7b9be32c3b32f3614a",
+        "toolCount": 24,
+        "messageCount": 7,
+        "sessionId": null,
+        "hasSessionLogExtension": false,
+        "eventCount": 0,
+        "afterSeq": null,
+        "throughSeq": null,
+        "largestEventBytes": 0
+      },
+      {
+        "file": "006-request.json",
+        "bytes": 69392,
+        "sha256": "bdbe0fb06c98cfb9b5614b84de6593a7b3d1f224d55b7b78ec68b7f844a0946d",
+        "toolCount": 24,
+        "messageCount": 9,
+        "sessionId": null,
+        "hasSessionLogExtension": false,
+        "eventCount": 0,
+        "afterSeq": null,
+        "throughSeq": null,
+        "largestEventBytes": 0
+      },
+      {
+        "file": "007-request.json",
+        "bytes": 70771,
+        "sha256": "e992e3afdc4d0f4b5b404d59633bc81f01925ba86fe212ac99eeb03ea02d5b13",
+        "toolCount": 24,
+        "messageCount": 11,
+        "sessionId": null,
+        "hasSessionLogExtension": false,
+        "eventCount": 0,
+        "afterSeq": null,
+        "throughSeq": null,
+        "largestEventBytes": 0
+      },
+      {
+        "file": "008-request.json",
+        "bytes": 72412,
+        "sha256": "f328ade00bcfd5c43382d3774cb2798a89a59924832b724ff5b6a995acf1e4e1",
+        "toolCount": 24,
+        "messageCount": 13,
+        "sessionId": null,
+        "hasSessionLogExtension": false,
+        "eventCount": 0,
+        "afterSeq": null,
+        "throughSeq": null,
+        "largestEventBytes": 0
+      },
+      {
+        "file": "009-request.json",
+        "bytes": 73791,
+        "sha256": "d38c292b463e11b32d3fdf60525349b2e17dad7fe5c395a9fdfaa3ee4d75aacc",
+        "toolCount": 24,
+        "messageCount": 15,
+        "sessionId": null,
+        "hasSessionLogExtension": false,
+        "eventCount": 0,
+        "afterSeq": null,
+        "throughSeq": null,
+        "largestEventBytes": 0
+      },
+      {
+        "file": "010-request.json",
+        "bytes": 75634,
+        "sha256": "2c02568930c97ddfc00864b7f53321f8634ca3c29e6ccf0c89ed5cd9c12cc32c",
+        "toolCount": 24,
+        "messageCount": 17,
+        "sessionId": null,
+        "hasSessionLogExtension": false,
+        "eventCount": 0,
+        "afterSeq": null,
+        "throughSeq": null,
+        "largestEventBytes": 0
+      }
+    ]
+  },
+  "run2": {
+    "overlay": "none (default maxBytes)",
+    "probe": "resume the same session and continue",
+    "summary": {
+      "requests": 5,
+      "withExtension": 5,
+      "withoutExtension": 0,
+      "eventsDelivered": 121,
+      "totalBytes": 535264,
+      "watermarkStart": 11,
+      "watermarkEnd": 132
+    },
+    "requests": [
+      {
+        "file": "011-request.json",
+        "bytes": 197693,
+        "sha256": "4eeee1c6d634936a710ad07d1f5a1dd5541f5efa0da3b96712d42ac6a5fa8964",
+        "toolCount": 24,
+        "messageCount": 19,
+        "sessionId": "session-c72a4e16-2c4f-4dcb-b053-b9826dd71d88",
+        "hasSessionLogExtension": true,
+        "eventCount": 86,
+        "afterSeq": 11,
+        "throughSeq": 97,
+        "largestEventBytes": 21297
+      },
+      {
+        "file": "012-request.json",
+        "bytes": 81898,
+        "sha256": "b8b70da7f6af0daf4cd3bef0709698f1992bfafbea30616a2e415878bfe975c4",
+        "toolCount": 24,
+        "messageCount": 21,
+        "sessionId": "session-c72a4e16-2c4f-4dcb-b053-b9826dd71d88",
+        "hasSessionLogExtension": true,
+        "eventCount": 8,
+        "afterSeq": 97,
+        "throughSeq": 105,
+        "largestEventBytes": 1882
+      },
+      {
+        "file": "013-request.json",
+        "bytes": 83283,
+        "sha256": "662ea20c4a9b17b44528cd01c535dcf82c703865d7629e35e2425e5a4db47dad",
+        "toolCount": 24,
+        "messageCount": 23,
+        "sessionId": "session-c72a4e16-2c4f-4dcb-b053-b9826dd71d88",
+        "hasSessionLogExtension": true,
+        "eventCount": 8,
+        "afterSeq": 105,
+        "throughSeq": 113,
+        "largestEventBytes": 1883
+      },
+      {
+        "file": "014-request.json",
+        "bytes": 86083,
+        "sha256": "216384519f4118939d6845ad896d3adfa3537995522bed8a1b82dc435cc83726",
+        "toolCount": 24,
+        "messageCount": 25,
+        "sessionId": "session-c72a4e16-2c4f-4dcb-b053-b9826dd71d88",
+        "hasSessionLogExtension": true,
+        "eventCount": 11,
+        "afterSeq": 113,
+        "throughSeq": 124,
+        "largestEventBytes": 1883
+      },
+      {
+        "file": "015-request.json",
+        "bytes": 86307,
+        "sha256": "5e54b00c7f5bb09aa24001f2767cef300050a0eabf14a9e5168620696e92860a",
+        "toolCount": 24,
+        "messageCount": 27,
+        "sessionId": "session-c72a4e16-2c4f-4dcb-b053-b9826dd71d88",
+        "hasSessionLogExtension": true,
+        "eventCount": 8,
+        "afterSeq": 124,
+        "throughSeq": 132,
+        "largestEventBytes": 1883
+      }
+    ]
+  },
+  "recovered": true,
+  "burstEventCount": 86
+}

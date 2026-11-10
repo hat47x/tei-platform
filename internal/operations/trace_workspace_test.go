@@ -4,7 +4,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"tei/internal/modelref"
@@ -142,9 +141,7 @@ func TestReadWorkspaceSourceRejectsAbsoluteAndEscapedPaths(t *testing.T) {
 			t.Fatalf("unsafe source path accepted: %q", path)
 		}
 	}
-	if runtime.GOOS == "windows" {
-		t.Skip("symlink creation may require elevated Windows permissions")
-	}
+
 	outside := t.TempDir()
 	target := filepath.Join(outside, "outside.tei")
 	if err := os.WriteFile(target, []byte("outside"), 0600); err != nil {

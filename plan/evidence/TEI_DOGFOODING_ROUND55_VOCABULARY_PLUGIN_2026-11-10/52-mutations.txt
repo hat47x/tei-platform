@@ -1,0 +1,9 @@
+M1 remove the list from the external scope diagnostic
+   -> FAIL: external scope: message does not name "editor":
+            ... has invalid scope gibberish
+M2 add the empty policy to SandboxPolicies
+   -> FAIL: the empty sandbox policy must not appear in SandboxPolicies
+M3 drop editor-intelligence from CapabilityKinds
+   -> FAIL: CapabilityKinds has 6 entries but 7 are declared
+restored -> plugin/... (6 pkgs), validation, workspace, operations,
+            cmd/tei (195.7s) all ok; vet and gofmt clean

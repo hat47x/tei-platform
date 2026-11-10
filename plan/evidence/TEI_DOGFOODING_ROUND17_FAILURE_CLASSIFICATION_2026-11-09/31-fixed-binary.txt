@@ -1,0 +1,1 @@
+782fc6d2cd88bfcb16a28c3e9d45b75fb1a6c347c4654775ca404f717477d9d6  /home/hat47x/dogfood/bin/tei-r17fix

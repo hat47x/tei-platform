@@ -1,0 +1,84 @@
+{
+  "schemaVersion": "tei.cli.source-index/v0",
+  "ok": true,
+  "mode": "index",
+  "result": {
+    "artifacts": [
+      {
+        "path": "semantic/mine.tei",
+        "format": "tei",
+        "fingerprint": "sha256:111ffc86e5d8a244cf2eb6a76540f621d06572692ccad2022da7da81a8b42475"
+      }
+    ],
+    "references": [
+      {
+        "subject": {
+          "kind": "semantic",
+          "id": "mine"
+        },
+        "artifactPath": "semantic/mine.tei",
+        "range": {
+          "start": {
+            "offset": 10,
+            "line": 1,
+            "column": 11
+          },
+          "end": {
+            "offset": 14,
+            "line": 1,
+            "column": 15
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-type",
+          "id": "mine.money_t"
+        },
+        "artifactPath": "semantic/mine.tei",
+        "range": {
+          "start": {
+            "offset": 47,
+            "line": 4,
+            "column": 6
+          },
+          "end": {
+            "offset": 54,
+            "line": 4,
+            "column": 13
+          }
+        },
+        "role": "definition"
+      },
+      {
+        "subject": {
+          "kind": "semantic-type",
+          "id": "mine.text_t"
+        },
+        "artifactPath": "semantic/mine.tei",
+        "range": {
+          "start": {
+            "offset": 21,
+            "line": 3,
+            "column": 6
+          },
+          "end": {
+            "offset": 27,
+            "line": 3,
+            "column": 12
+          }
+        },
+        "role": "definition"
+      }
+    ],
+    "workspace": {
+      "name": "criterion",
+      "formatVersion": 1,
+      "manifest": {
+        "path": "tei.workspace.yaml",
+        "sha256": "sha256:8e1b454b115a7187bd0a6b71815397f51d1c0f1599f4cac066a51fd78fbb0786"
+      }
+    }
+  }
+}

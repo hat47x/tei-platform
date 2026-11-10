@@ -1,0 +1,7 @@
+ M internal/plugin/runtime/adapters.go
+?? aw/f.sh
+?? aw/fix.py
+?? aw/proof.sh
+?? aw/t.sh
+?? aw/t2.sh
+?? internal/plugin/runtime/adapters_executor_identity_test.go

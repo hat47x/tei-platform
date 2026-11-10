@@ -1,0 +1,537 @@
+{
+  "note": "Mechanical presence check: which facts from captured TEI CLI output each of the four harness answers mentions. Correctness is NOT graded here.",
+  "source": {
+    "answers": "plan/evidence/DSH_H2_H3_FOUR_SESSION_2026-11-07/answer-*.md",
+    "inspect": "plan/evidence/DSH_H2_TOOL_ONLY_READ_ONLY_2026-11-07/cli-inspect-sales-order.txt",
+    "validate": "plan/evidence/DSH_H2_TOOL_ONLY_READ_ONLY_2026-11-07/cli-validate-json.txt"
+  },
+  "tool": "tools/reference-harness-answer-presence",
+  "sessions": [
+    {
+      "label": "H2-A（Skill非公開）",
+      "answerFile": "plan/evidence/DSH_H2_H3_FOUR_SESSION_2026-11-07/answer-h2-a.md",
+      "found": 13,
+      "missing": 0,
+      "presence": [
+        {
+          "key": "canonical-id",
+          "tokens": [
+            "sales.order"
+          ],
+          "found": true,
+          "matched": "sales.order"
+        },
+        {
+          "key": "attribute:sales.order.customer_id",
+          "tokens": [
+            "sales.order.customer_id",
+            "customer.customer_id",
+            "customerId"
+          ],
+          "found": true,
+          "matched": "customerId"
+        },
+        {
+          "key": "attribute:sales.order.external_id",
+          "tokens": [
+            "sales.order.external_id",
+            "std.text",
+            "externalId"
+          ],
+          "found": true,
+          "matched": "externalId"
+        },
+        {
+          "key": "attribute:sales.order.order_id",
+          "tokens": [
+            "sales.order.order_id",
+            "sales.order_id",
+            "orderId"
+          ],
+          "found": true,
+          "matched": "orderId"
+        },
+        {
+          "key": "attribute:sales.order.ordered_at",
+          "tokens": [
+            "sales.order.ordered_at",
+            "std.datetime",
+            "orderedAt"
+          ],
+          "found": true,
+          "matched": "orderedAt"
+        },
+        {
+          "key": "attribute:sales.order.status",
+          "tokens": [
+            "sales.order.status",
+            "sales.order_status",
+            "status"
+          ],
+          "found": true,
+          "matched": "status"
+        },
+        {
+          "key": "attribute:sales.order.total",
+          "tokens": [
+            "sales.order.total",
+            "std.money",
+            "total"
+          ],
+          "found": true,
+          "matched": "sales.order.total"
+        },
+        {
+          "key": "relation:sales.order.customer",
+          "tokens": [
+            "sales.order.customer",
+            "customer.customer",
+            "customer"
+          ],
+          "found": true,
+          "matched": "customer.customer"
+        },
+        {
+          "key": "relation:sales.order.lines",
+          "tokens": [
+            "sales.order.lines",
+            "sales.order_line",
+            "lines"
+          ],
+          "found": true,
+          "matched": "sales.order_line"
+        },
+        {
+          "key": "source:semantic/sales/order.tei",
+          "tokens": [
+            "semantic/sales/order.tei",
+            "sha256:f2063418b893a60a9f948edbb2b23ec821f7a15ed8e5863c36e1b72abade1e33",
+            "f2063418b893a60a"
+          ],
+          "found": true,
+          "matched": "semantic/sales/order.tei"
+        },
+        {
+          "key": "worldFingerprint",
+          "tokens": [
+            "sha256:c92de09f9595b1f46bfc18e6f99260d8391113b6d2639357d372abf634a1d65a"
+          ],
+          "found": true,
+          "matched": "sha256:c92de09f9595b1f46bfc18e6f99260d8391113b6d2639357d372abf634a1d65a"
+        },
+        {
+          "key": "diagnostic:APPLICATION_RELEASE_CONTRACT_NOT_CURRENT",
+          "tokens": [
+            "APPLICATION_RELEASE_CONTRACT_NOT_CURRENT"
+          ],
+          "found": true,
+          "matched": "APPLICATION_RELEASE_CONTRACT_NOT_CURRENT"
+        },
+        {
+          "key": "diagnostic:DATABASE_RELEASE_CONTRACT_NOT_CURRENT",
+          "tokens": [
+            "DATABASE_RELEASE_CONTRACT_NOT_CURRENT"
+          ],
+          "found": true,
+          "matched": "DATABASE_RELEASE_CONTRACT_NOT_CURRENT"
+        }
+      ]
+    },
+    {
+      "label": "H3-A（Skill実Load）",
+      "answerFile": "plan/evidence/DSH_H2_H3_FOUR_SESSION_2026-11-07/answer-h3-a.md",
+      "found": 13,
+      "missing": 0,
+      "presence": [
+        {
+          "key": "canonical-id",
+          "tokens": [
+            "sales.order"
+          ],
+          "found": true,
+          "matched": "sales.order"
+        },
+        {
+          "key": "attribute:sales.order.customer_id",
+          "tokens": [
+            "sales.order.customer_id",
+            "customer.customer_id",
+            "customerId"
+          ],
+          "found": true,
+          "matched": "customerId"
+        },
+        {
+          "key": "attribute:sales.order.external_id",
+          "tokens": [
+            "sales.order.external_id",
+            "std.text",
+            "externalId"
+          ],
+          "found": true,
+          "matched": "externalId"
+        },
+        {
+          "key": "attribute:sales.order.order_id",
+          "tokens": [
+            "sales.order.order_id",
+            "sales.order_id",
+            "orderId"
+          ],
+          "found": true,
+          "matched": "orderId"
+        },
+        {
+          "key": "attribute:sales.order.ordered_at",
+          "tokens": [
+            "sales.order.ordered_at",
+            "std.datetime",
+            "orderedAt"
+          ],
+          "found": true,
+          "matched": "orderedAt"
+        },
+        {
+          "key": "attribute:sales.order.status",
+          "tokens": [
+            "sales.order.status",
+            "sales.order_status",
+            "status"
+          ],
+          "found": true,
+          "matched": "status"
+        },
+        {
+          "key": "attribute:sales.order.total",
+          "tokens": [
+            "sales.order.total",
+            "std.money",
+            "total"
+          ],
+          "found": true,
+          "matched": "sales.order.total"
+        },
+        {
+          "key": "relation:sales.order.customer",
+          "tokens": [
+            "sales.order.customer",
+            "customer.customer",
+            "customer"
+          ],
+          "found": true,
+          "matched": "customer.customer"
+        },
+        {
+          "key": "relation:sales.order.lines",
+          "tokens": [
+            "sales.order.lines",
+            "sales.order_line",
+            "lines"
+          ],
+          "found": true,
+          "matched": "sales.order_line"
+        },
+        {
+          "key": "source:semantic/sales/order.tei",
+          "tokens": [
+            "semantic/sales/order.tei",
+            "sha256:f2063418b893a60a9f948edbb2b23ec821f7a15ed8e5863c36e1b72abade1e33",
+            "f2063418b893a60a"
+          ],
+          "found": true,
+          "matched": "semantic/sales/order.tei"
+        },
+        {
+          "key": "worldFingerprint",
+          "tokens": [
+            "sha256:c92de09f9595b1f46bfc18e6f99260d8391113b6d2639357d372abf634a1d65a"
+          ],
+          "found": true,
+          "matched": "sha256:c92de09f9595b1f46bfc18e6f99260d8391113b6d2639357d372abf634a1d65a"
+        },
+        {
+          "key": "diagnostic:APPLICATION_RELEASE_CONTRACT_NOT_CURRENT",
+          "tokens": [
+            "APPLICATION_RELEASE_CONTRACT_NOT_CURRENT"
+          ],
+          "found": true,
+          "matched": "APPLICATION_RELEASE_CONTRACT_NOT_CURRENT"
+        },
+        {
+          "key": "diagnostic:DATABASE_RELEASE_CONTRACT_NOT_CURRENT",
+          "tokens": [
+            "DATABASE_RELEASE_CONTRACT_NOT_CURRENT"
+          ],
+          "found": true,
+          "matched": "DATABASE_RELEASE_CONTRACT_NOT_CURRENT"
+        }
+      ]
+    },
+    {
+      "label": "H3-B（Skill実Load）",
+      "answerFile": "plan/evidence/DSH_H2_H3_FOUR_SESSION_2026-11-07/answer-h3-b.md",
+      "found": 13,
+      "missing": 0,
+      "presence": [
+        {
+          "key": "canonical-id",
+          "tokens": [
+            "sales.order"
+          ],
+          "found": true,
+          "matched": "sales.order"
+        },
+        {
+          "key": "attribute:sales.order.customer_id",
+          "tokens": [
+            "sales.order.customer_id",
+            "customer.customer_id",
+            "customerId"
+          ],
+          "found": true,
+          "matched": "sales.order.customer_id"
+        },
+        {
+          "key": "attribute:sales.order.external_id",
+          "tokens": [
+            "sales.order.external_id",
+            "std.text",
+            "externalId"
+          ],
+          "found": true,
+          "matched": "std.text"
+        },
+        {
+          "key": "attribute:sales.order.order_id",
+          "tokens": [
+            "sales.order.order_id",
+            "sales.order_id",
+            "orderId"
+          ],
+          "found": true,
+          "matched": "sales.order_id"
+        },
+        {
+          "key": "attribute:sales.order.ordered_at",
+          "tokens": [
+            "sales.order.ordered_at",
+            "std.datetime",
+            "orderedAt"
+          ],
+          "found": true,
+          "matched": "std.datetime"
+        },
+        {
+          "key": "attribute:sales.order.status",
+          "tokens": [
+            "sales.order.status",
+            "sales.order_status",
+            "status"
+          ],
+          "found": true,
+          "matched": "sales.order_status"
+        },
+        {
+          "key": "attribute:sales.order.total",
+          "tokens": [
+            "sales.order.total",
+            "std.money",
+            "total"
+          ],
+          "found": true,
+          "matched": "sales.order.total"
+        },
+        {
+          "key": "relation:sales.order.customer",
+          "tokens": [
+            "sales.order.customer",
+            "customer.customer",
+            "customer"
+          ],
+          "found": true,
+          "matched": "sales.order.customer"
+        },
+        {
+          "key": "relation:sales.order.lines",
+          "tokens": [
+            "sales.order.lines",
+            "sales.order_line",
+            "lines"
+          ],
+          "found": true,
+          "matched": "sales.order_line"
+        },
+        {
+          "key": "source:semantic/sales/order.tei",
+          "tokens": [
+            "semantic/sales/order.tei",
+            "sha256:f2063418b893a60a9f948edbb2b23ec821f7a15ed8e5863c36e1b72abade1e33",
+            "f2063418b893a60a"
+          ],
+          "found": true,
+          "matched": "semantic/sales/order.tei"
+        },
+        {
+          "key": "worldFingerprint",
+          "tokens": [
+            "sha256:c92de09f9595b1f46bfc18e6f99260d8391113b6d2639357d372abf634a1d65a"
+          ],
+          "found": true,
+          "matched": "sha256:c92de09f9595b1f46bfc18e6f99260d8391113b6d2639357d372abf634a1d65a"
+        },
+        {
+          "key": "diagnostic:APPLICATION_RELEASE_CONTRACT_NOT_CURRENT",
+          "tokens": [
+            "APPLICATION_RELEASE_CONTRACT_NOT_CURRENT"
+          ],
+          "found": true,
+          "matched": "APPLICATION_RELEASE_CONTRACT_NOT_CURRENT"
+        },
+        {
+          "key": "diagnostic:DATABASE_RELEASE_CONTRACT_NOT_CURRENT",
+          "tokens": [
+            "DATABASE_RELEASE_CONTRACT_NOT_CURRENT"
+          ],
+          "found": true,
+          "matched": "DATABASE_RELEASE_CONTRACT_NOT_CURRENT"
+        }
+      ]
+    },
+    {
+      "label": "H2-B（Skill非公開）",
+      "answerFile": "plan/evidence/DSH_H2_H3_FOUR_SESSION_2026-11-07/answer-h2-b.md",
+      "found": 13,
+      "missing": 0,
+      "presence": [
+        {
+          "key": "canonical-id",
+          "tokens": [
+            "sales.order"
+          ],
+          "found": true,
+          "matched": "sales.order"
+        },
+        {
+          "key": "attribute:sales.order.customer_id",
+          "tokens": [
+            "sales.order.customer_id",
+            "customer.customer_id",
+            "customerId"
+          ],
+          "found": true,
+          "matched": "customerId"
+        },
+        {
+          "key": "attribute:sales.order.external_id",
+          "tokens": [
+            "sales.order.external_id",
+            "std.text",
+            "externalId"
+          ],
+          "found": true,
+          "matched": "externalId"
+        },
+        {
+          "key": "attribute:sales.order.order_id",
+          "tokens": [
+            "sales.order.order_id",
+            "sales.order_id",
+            "orderId"
+          ],
+          "found": true,
+          "matched": "orderId"
+        },
+        {
+          "key": "attribute:sales.order.ordered_at",
+          "tokens": [
+            "sales.order.ordered_at",
+            "std.datetime",
+            "orderedAt"
+          ],
+          "found": true,
+          "matched": "orderedAt"
+        },
+        {
+          "key": "attribute:sales.order.status",
+          "tokens": [
+            "sales.order.status",
+            "sales.order_status",
+            "status"
+          ],
+          "found": true,
+          "matched": "sales.order.status"
+        },
+        {
+          "key": "attribute:sales.order.total",
+          "tokens": [
+            "sales.order.total",
+            "std.money",
+            "total"
+          ],
+          "found": true,
+          "matched": "sales.order.total"
+        },
+        {
+          "key": "relation:sales.order.customer",
+          "tokens": [
+            "sales.order.customer",
+            "customer.customer",
+            "customer"
+          ],
+          "found": true,
+          "matched": "customer.customer"
+        },
+        {
+          "key": "relation:sales.order.lines",
+          "tokens": [
+            "sales.order.lines",
+            "sales.order_line",
+            "lines"
+          ],
+          "found": true,
+          "matched": "sales.order_line"
+        },
+        {
+          "key": "source:semantic/sales/order.tei",
+          "tokens": [
+            "semantic/sales/order.tei",
+            "sha256:f2063418b893a60a9f948edbb2b23ec821f7a15ed8e5863c36e1b72abade1e33",
+            "f2063418b893a60a"
+          ],
+          "found": true,
+          "matched": "semantic/sales/order.tei"
+        },
+        {
+          "key": "worldFingerprint",
+          "tokens": [
+            "sha256:c92de09f9595b1f46bfc18e6f99260d8391113b6d2639357d372abf634a1d65a"
+          ],
+          "found": true,
+          "matched": "sha256:c92de09f9595b1f46bfc18e6f99260d8391113b6d2639357d372abf634a1d65a"
+        },
+        {
+          "key": "diagnostic:APPLICATION_RELEASE_CONTRACT_NOT_CURRENT",
+          "tokens": [
+            "APPLICATION_RELEASE_CONTRACT_NOT_CURRENT"
+          ],
+          "found": true,
+          "matched": "APPLICATION_RELEASE_CONTRACT_NOT_CURRENT"
+        },
+        {
+          "key": "diagnostic:DATABASE_RELEASE_CONTRACT_NOT_CURRENT",
+          "tokens": [
+            "DATABASE_RELEASE_CONTRACT_NOT_CURRENT"
+          ],
+          "found": true,
+          "matched": "DATABASE_RELEASE_CONTRACT_NOT_CURRENT"
+        }
+      ]
+    }
+  ],
+  "limits": [
+    "that mentioning a token means the answer used it correctly",
+    "that the answer is complete, ordered or free of wrong claims",
+    "that the harness understood the source rather than copied a token",
+    "anything about source acceptance, authority or provider effects"
+  ]
+}

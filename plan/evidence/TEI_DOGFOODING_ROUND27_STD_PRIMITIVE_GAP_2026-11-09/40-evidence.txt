@@ -1,0 +1,17 @@
+1. The prelude participates in worldFingerprint
+   with prelude    sha256:c92de09f9595b1f46...
+   without prelude sha256:8d7e160bee26c2884...   (loader injection removed, experiment only)
+   sourceIndexFingerprint: identical in both
+   => moving std into a .tei changes every Workspace fingerprint.
+
+2. The DSL cannot declare a primitive
+   grammar: internal/syntax/parser.go:1902 always expects "from"
+   probe:   `namespace mine` + `type text`  ->  PARSE_ERROR | expected "from"
+   => every .tei type is an alias; a root type can only come from Go.
+
+3. Writing std.text as a .tei cycles
+   `type text from std.text`
+     -> SEMANTIC_TYPE_ALIAS_CYCLE reaches std.text -> std.text
+     -> DUPLICATE_SEMANTIC_ELEMENT
+
+4. Call sites that depend on the Go prelude (non-test): 6

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "tei.cli.source-index/v0",
+  "ok": true,
+  "mode": "index",
+  "result": {
+    "artifacts": [
+      {
+        "path": "docs/architecture.md",
+        "format": "md",
+        "fingerprint": "sha256:4d8b3c715c531a4d45530176e9b7b42c22d2751ad9314844d7d90ffec933d3bd"
+      },
+      {
+        "path": "plan/adr/0048-shared-application-api-and-transport-adapters.md",
+        "format": "md",
+        "fingerprint": "sha256:724585a28cff271fbf64162ca6555378956bbaf745d8b0511e5167c2ce360553"
+      }
+    ],
+    "references": null
+  }
+}

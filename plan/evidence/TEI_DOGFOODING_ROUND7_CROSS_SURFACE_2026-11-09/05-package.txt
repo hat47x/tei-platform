@@ -1,0 +1,1 @@
+ok  	tei/tools/reference-mcp-readonly-adapter	8.651s

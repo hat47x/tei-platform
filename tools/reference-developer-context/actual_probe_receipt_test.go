@@ -26,6 +26,10 @@ type localProbeObservation struct {
 	ReadFailed     int
 	BudgetExceeded bool
 	Reads          []localReadWitness
+	// FirstReadError records why a read failed. Without it a failing read on a
+	// host whose path handling differs (the Windows CI runner) reports only
+	// "ReadFailed: N" and the cause has to be guessed (#3783).
+	FirstReadError string
 }
 
 // The evaluator proposes "inspect docs/*.md" with an explicit fixed budget.
@@ -71,6 +75,9 @@ func localDocsProbe(root, target string, allowed bool, budget int) (localProbeOb
 		body, readErr := readInside(root, rel)
 		if readErr != nil {
 			out.ReadFailed++
+			if out.FirstReadError == "" {
+				out.FirstReadError = rel + ": " + readErr.Error()
+			}
 			continue
 		}
 		out.ReadSucceeded++

@@ -1,0 +1,71 @@
+name: TEI Markdown parser-boundary fail-closed probe
+
+on:
+  push:
+    branches:
+      - work/tei-md-unbound-source-guard-20261106
+      - main
+    paths:
+      - 'internal/workspace/loader.go'
+      - 'internal/workspace/tei_md_source_guard.go'
+      - 'internal/workspace/tei_md_source_guard_test.go'
+      - '.github/workflows/tei-md-parser-unbound-ci.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'internal/workspace/loader.go'
+      - 'internal/workspace/tei_md_source_guard.go'
+      - 'internal/workspace/tei_md_source_guard_test.go'
+      - '.github/workflows/tei-md-parser-unbound-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-tei-md-parser-unbound-ci-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  tei-md-admission:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      TARGET_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+      - name: Exact checkout and gofmt
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          test -z "$(gofmt -l internal/workspace/tei_md_source_guard.go internal/workspace/tei_md_source_guard_test.go)"
+          printf 'actual-head=%s\n' "$(git rev-parse HEAD)"
+          printf 'guard-blob=%s\n' "$(git rev-parse HEAD:internal/workspace/tei_md_source_guard.go)"
+          printf 'test-blob=%s\n' "$(git rev-parse HEAD:internal/workspace/tei_md_source_guard_test.go)"
+          go version
+      - name: Workspace selected-source and legacy regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test ./internal/workspace -run '^TestWorkspace(TEIMarkdown|LegacyTEI)' -count=1 -v
+          go test ./internal/workspace -count=1
+          go vet ./internal/workspace
+      - name: Exact checkout remains clean
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+

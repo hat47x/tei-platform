@@ -66,6 +66,20 @@ func validatePeriodCalendars(w ir.World) []Diagnostic {
 				out = append(out, errFor(subj, "PERIOD_CALENDAR_NAMESPACE_MISMATCH", "period %s refers to calendar %s from another namespace %s", period.ID, period.Calendar, owner))
 			}
 		}
+		// A closing day splits a month, so it needs a month to split: the period
+		// must also name the calendar that decides the month.
+		for _, period := range namespace.Periods {
+			if period.ClosingDay == 0 {
+				continue
+			}
+			subj := subject.Subject{Kind: "semantic-period", ID: string(period.ID)}
+			if period.Calendar == "" {
+				out = append(out, errFor(subj, "PERIOD_CLOSING_REQUIRES_CALENDAR", "period %s declares closing day %d but no calendar", period.ID, period.ClosingDay))
+			}
+			if period.ClosingDay < 1 || period.ClosingDay > 28 {
+				out = append(out, errFor(subj, "PERIOD_CLOSING_DAY_RANGE", "period %s declares closing day %d, which is outside 1..28", period.ID, period.ClosingDay))
+			}
+		}
 	}
 	return out
 }

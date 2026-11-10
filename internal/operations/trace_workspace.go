@@ -69,7 +69,7 @@ func TraceWorkspace(root string, key modelref.Key, options modelref.TraceOptions
 	if !supportedTraceKind(key.Subject.Kind) {
 		return WorkspaceTrace{}, &modelref.TraceError{
 			Code: "UNSUPPORTED_SUBJECT_KIND",
-			Message: fmt.Sprintf("trace does not project subject kind %q; the typed graph carries namespace, type, data, attribute, relation, validation, capability, application, application-pattern and query",
+			Message: fmt.Sprintf("trace does not project subject kind %q; the typed graph carries namespace, type, data, attribute, relation, validation, capability, application, application-pattern, query and the data layer (database, database-contract, database-contract-query)",
 				key.Subject.Kind),
 		}
 	}
@@ -184,6 +184,15 @@ func TraceWorkspace(root string, key modelref.Key, options modelref.TraceOptions
 		ProjectionUnresolved:   append([]string(nil), projection.Unresolved...),
 		AuthorityLimits:        append([]string(nil), projection.AuthorityLimits...),
 		Workspace:              &identity,
+	}
+	// A page that can be continued must say, next to nextOffset, which value
+	// continues it. The value is this Workspace-level token; modelref's own
+	// graphFingerprint is not a continuation token (#3625).
+	if out.Trace.NextOffset != nil {
+		out.Trace.Continuation = &modelref.TraceContinuation{
+			Fingerprint: snapshotFP,
+			Field:       "result.snapshotFingerprint",
+		}
 	}
 	if result.Mode == "summary" {
 		return out, nil

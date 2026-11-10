@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -32,20 +33,28 @@ func TestReferenceBaselineProtectionFollowsWorkspaceAlias(t *testing.T) {
 	}
 	// Keep the unclean spelling: a symlink is resolved before ".." by the
 	// filesystem, whereas filepath.Abs would discard that segment first.
-	aliasThroughParent := alias + string(os.PathSeparator) + ".." + string(os.PathSeparator) + "workspace"
-	aliasInfo, err := os.Stat(aliasThroughParent)
-	if err != nil {
-		t.Fatal(err)
-	}
-	baselineInfo, err := os.Stat(baseline)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !os.SameFile(aliasInfo, baselineInfo) {
-		t.Fatal("test setup: alias through parent does not refer to baseline")
-	}
-	if !isReferenceBaseline(aliasThroughParent) {
-		t.Fatal("symlink alias with parent segment bypassed baseline protection")
+	//
+	// Windows resolves ".." lexically before following a link, so
+	// <alias>\..\workspace names <root>\workspace and does not exist. That is a
+	// POSIX path-resolution rule, not a Windows one (#3783).
+	if runtime.GOOS == "windows" {
+		t.Log("skipping the parent-segment spelling: Windows normalizes \"..\" before following a link")
+	} else {
+		aliasThroughParent := alias + string(os.PathSeparator) + ".." + string(os.PathSeparator) + "workspace"
+		aliasInfo, err := os.Stat(aliasThroughParent)
+		if err != nil {
+			t.Fatal(err)
+		}
+		baselineInfo, err := os.Stat(baseline)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !os.SameFile(aliasInfo, baselineInfo) {
+			t.Fatal("test setup: alias through parent does not refer to baseline")
+		}
+		if !isReferenceBaseline(aliasThroughParent) {
+			t.Fatal("symlink alias with parent segment bypassed baseline protection")
+		}
 	}
 	ordinary := filepath.Join(filepath.Dir(alias), "ordinary-scratch")
 	if err := os.Mkdir(ordinary, 0o755); err != nil {

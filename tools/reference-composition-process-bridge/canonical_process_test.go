@@ -10,7 +10,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -60,15 +59,13 @@ func (r *canonicalProcessRecorder) Invoke(ctx context.Context, command pruntime.
 // external process and the legacy deployment transport. All identity, session,
 // CSRF and grant mutation is synthetic; no business effect occurs.
 func TestCanonicalAuthorizationGatesRealSelectedProcessReceipt(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("reference process launcher does not allow whitespace in executable paths")
-	}
+
 	// #2057: go buildはキャッシュなし・CPU競合のCIで数十秒かかる一方、実プロセスの起動は
 	// 1回あたり数十ms以内である。buildは独立した長い期限で待ち、実プロセスの期限は
 	// build後に始めて、build時間が起動側の予算を食わないようにする。
 	buildCtx, cancelBuild := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancelBuild()
-	binary := hostExecutable(t.TempDir(), "canonical-process-receiver")
+	binary := hostExecutable(temporaryBuildDir(t), "canonical-process-receiver")
 	build := exec.CommandContext(buildCtx, "go", "build", "-o", binary, "../../plugins/reference-process-executor")
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build independent plugin: %v\n%s", err, output)

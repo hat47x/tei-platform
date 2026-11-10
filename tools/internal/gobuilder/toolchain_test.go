@@ -120,9 +120,7 @@ func TestHashToolchainRejectsMissingRootAndSymlinks(t *testing.T) {
 	if _, err := HashToolchain(filepath.Join(t.TempDir(), "missing"), "linux", "amd64"); err == nil {
 		t.Fatal("nonexistent toolchain root accepted")
 	}
-	if strings.EqualFold(os.Getenv("OS"), "Windows_NT") {
-		t.Skip("symlink permission differs on Windows")
-	}
+
 	root := t.TempDir()
 	for _, path := range []string{"VERSION", "bin/go", "pkg/tool/linux_amd64/compile", "src/runtime.go"} {
 		full := filepath.Join(root, filepath.FromSlash(path))

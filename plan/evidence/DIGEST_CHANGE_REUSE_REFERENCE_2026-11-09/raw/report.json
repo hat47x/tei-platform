@@ -1,0 +1,35 @@
+{
+  "schema": "tei.reference.digest-change-reuse/v0",
+  "authority": "derived-reference",
+  "ruleId": "tei.reference.digest-change-reuse",
+  "ruleVersion": "v0",
+  "ruleFingerprint": "sha256:2492daf32562efc27dec61517b7a0e945606546ba3ae53c7cb8bc63720469bf2",
+  "oldDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000001",
+  "newDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000002",
+  "outcomes": [
+    {
+      "name": "before the change",
+      "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000001",
+      "matches": "the OLD digest"
+    },
+    {
+      "name": "a new acquisition after the change",
+      "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000002",
+      "matches": "the NEW digest"
+    },
+    {
+      "name": "the lease pinned before the change",
+      "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000001",
+      "matches": "the OLD digest"
+    }
+  ],
+  "oldLeaseStillPinned": true,
+  "newLeaseUsesNewDigest": true,
+  "notes": [
+    "the change happens inside one Router; it performs no real cutover",
+    "a new acquisition after the change is expected to carry the new digest",
+    "a lease pinned before the change is expected to keep the old digest",
+    "neither digest was produced by a real artifact build or verified by a Host",
+    "no authentication, authority, permission or durable receipt is issued here"
+  ]
+}

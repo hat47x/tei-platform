@@ -1,0 +1,137 @@
+{
+  "note": "With subagent.maxActiveSubagents set to 3, six parallel subagent calls produced three starts and three refusals naming 'active child limit: 3'. The cap follows the configured value, not a fixed 8.",
+  "overlay": {
+    "plugin": "@deepseek-ai/dsh-subagent",
+    "config": {
+      "maxActiveSubagents": 3
+    }
+  },
+  "requestedConcurrent": 6,
+  "started": 3,
+  "refused": 3,
+  "limitValueInMessage": 3,
+  "results": [
+    {
+      "status": "completed",
+      "started": true,
+      "limitError": false,
+      "text": "started subagent 9d9c62c2-172b-41ba-8b8f-a21ae310fd72"
+    },
+    {
+      "status": "completed",
+      "started": true,
+      "limitError": false,
+      "text": "started subagent c3bddfd4-860f-4cab-a750-ffd09c7676f6"
+    },
+    {
+      "status": "completed",
+      "started": true,
+      "limitError": false,
+      "text": "started subagent b13a8518-bea8-433f-8f0e-9459c12af6a7"
+    },
+    {
+      "status": "error",
+      "started": false,
+      "limitError": true,
+      "text": "Error: subagent limit reached (active child limit: 3); wait for an existing child to finish or complete this work with the current agents"
+    },
+    {
+      "status": "error",
+      "started": false,
+      "limitError": true,
+      "text": "Error: subagent limit reached (active child limit: 3); wait for an existing child to finish or complete this work with the current agents"
+    },
+    {
+      "status": "error",
+      "started": false,
+      "limitError": true,
+      "text": "Error: subagent limit reached (active child limit: 3); wait for an existing child to finish or complete this work with the current agents"
+    }
+  ],
+  "requests": [
+    {
+      "file": "001-request.json",
+      "bytes": 97214,
+      "sha256": "ca76437aec20f19aa6b7ab44734f9dfe1c3d55c9e98ef43b1857fac157a108f5",
+      "toolCount": 24,
+      "messageCount": 1,
+      "sessionId": "session-e900d2dc-d22a-4d1e-b6ea-f9fb396facac",
+      "afterSeq": -1,
+      "throughSeq": 18
+    },
+    {
+      "file": "002-request.json",
+      "bytes": 56027,
+      "sha256": "b221930d4a73066272882ded1e0d5124862daefec0c5a0d3d8843e935483aeba",
+      "toolCount": 0,
+      "messageCount": 1,
+      "sessionId": "session-e900d2dc-d22a-4d1e-b6ea-f9fb396facac",
+      "afterSeq": -1,
+      "throughSeq": 18
+    },
+    {
+      "file": "003-request.json",
+      "bytes": 61834,
+      "sha256": "b311a97a860a0cd2dea5f6774d7979c9b536d94e23c24afa2dffa80f46378aa7",
+      "toolCount": 24,
+      "messageCount": 3,
+      "sessionId": "session-e900d2dc-d22a-4d1e-b6ea-f9fb396facac",
+      "afterSeq": 18,
+      "throughSeq": 39
+    },
+    {
+      "file": "004-request.json",
+      "bytes": 99821,
+      "sha256": "3dc226ca6408da7ab80bdb4ac75e947dcaaa8c2f7a15f7da4ec7e16482e2876f",
+      "toolCount": 24,
+      "messageCount": 1,
+      "sessionId": "9d9c62c2-172b-41ba-8b8f-a21ae310fd72",
+      "afterSeq": -1,
+      "throughSeq": 14
+    },
+    {
+      "file": "005-request.json",
+      "bytes": 99821,
+      "sha256": "b2dbf20e65f192e1b84045288b93e103c66b91239830e2a86e6f8a4b8905bd86",
+      "toolCount": 24,
+      "messageCount": 1,
+      "sessionId": "b13a8518-bea8-433f-8f0e-9459c12af6a7",
+      "afterSeq": -1,
+      "throughSeq": 14
+    },
+    {
+      "file": "006-request.json",
+      "bytes": 99821,
+      "sha256": "08f56556554e3aad9263769636c935273f656a8a2d60f742d7680dcfe39eb5ed",
+      "toolCount": 24,
+      "messageCount": 1,
+      "sessionId": "c3bddfd4-860f-4cab-a750-ffd09c7676f6",
+      "afterSeq": -1,
+      "throughSeq": 14
+    },
+    {
+      "file": "007-request.json",
+      "bytes": 54899,
+      "sha256": "4d10a1943b04d8023585830def7f2d07346106d4d4f56a4ba8db6848c0e59b84",
+      "toolCount": 24,
+      "messageCount": 5,
+      "sessionId": "session-e900d2dc-d22a-4d1e-b6ea-f9fb396facac",
+      "afterSeq": 39,
+      "throughSeq": 50
+    },
+    {
+      "file": "008-request.json",
+      "bytes": 53936,
+      "sha256": "4abbddf574294fac22ae84513dea6d16683e12cab32397a7d135e7ed5dc7fac3",
+      "toolCount": 24,
+      "messageCount": 7,
+      "sessionId": "session-e900d2dc-d22a-4d1e-b6ea-f9fb396facac",
+      "afterSeq": 50,
+      "throughSeq": 57
+    }
+  ],
+  "distinctSessions": 4,
+  "totalRequestBytes": 623373,
+  "defaultCapFromEarlierRecord": 8,
+  "earlierRecord": "DSH_SUBAGENT_CONCURRENT_LIMIT_2026-11-09"
+}

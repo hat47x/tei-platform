@@ -1,0 +1,19 @@
+Four realize declarations exist in reference/workspace:
+
+  applications/order-entry/realizations/default.tei
+    realize order_entry.compose_order_summary with custom go
+  applications/order-entry/realizations/authenticate.tei
+    realize security.authenticate with custom go
+  applications/order-entry/realizations/authorize.tei
+    realize security.authorize with custom go
+  applications/order-entry/realizations/submit-order.tei
+    realize sales.order.submit with custom go
+
+Relations observed across every subject, both scopes, -direction both:
+
+  type 80 / underlying 36 / owns-pattern 24 / input 24 / uses-semantic 20
+  relation 16 / outcome 16 / uses-validation 12 / attribute 12 / targets 12
+  contract-query-input 8 / data 8 / query 4 / capability 4 / output 4
+
+No relation for a custom Go binding. trace on security.authenticate with
+-direction incoming returns total: 0.

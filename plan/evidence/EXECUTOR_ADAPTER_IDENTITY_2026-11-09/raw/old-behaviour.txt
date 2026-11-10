@@ -1,0 +1,9 @@
+reverted adapters.go to the old unconditional overwrite
+--- FAIL: TestAForeignExecutorIdentityIsNotOverwritten (0.00s)
+    adapters_executor_identity_test.go:106: a foreign executor id was overwritten with "runtime.main"
+--- FAIL: TestAForeignExecutorIdentityIsRejectedByValidateResult (0.00s)
+    adapters_executor_identity_test.go:121: a result from another executor was accepted
+FAIL
+FAIL	tei/internal/plugin/runtime	0.015s
+FAIL
+restored adapters.go

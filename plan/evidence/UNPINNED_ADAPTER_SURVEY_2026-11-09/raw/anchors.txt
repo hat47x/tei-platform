@@ -1,0 +1,26 @@
+== all non-test InvokeWithProvenance callers ==
+  internal/plugin/runtime/adapters.go:35:	inv, err := a.Registry.InvokeWithProvenance(ctx, a.Plan, plugin.CapabilityDeploymentExecutor, a.CapabilityID, "execute", c.ActionID, c)
+  internal/plugin/runtime/model.go:595:	inv, err := r.InvokeWithProvenance(ctx, plan, kind, id, operation, requestID, payload)
+  internal/plugin/runtime/service_carrier.go:193:	invocation, err := r.InvokeWithProvenance(
+  tools/reference-order-rollout-host-continuity/host.go:337:	inv, callErr := reg.InvokeWithProvenance(ctx, start.Plan, plugin.CapabilityDeploymentExecutor, core.CanonicalID(CapabilityID), "execute", start.RequestID, start.Command)
+  tools/reference-plugin-capability-contract/runtime_authority_bridge.go:171:	invocation, err := e.registry.InvokeWithProvenance(
+
+== all non-test Registry.Invoke callers inside internal/ ==
+  internal/plugin/runtime/adapters.go:77:	resp, err := a.Registry.Invoke(ctx, a.Plan, plugin.CapabilityObservationProvider, a.CapabilityID, "observe", string(req.Kind), req)
+  internal/plugin/runtime/adapters.go:104:	resp, err := a.Registry.Invoke(ctx, a.Plan, plugin.CapabilityEvidenceProvider, a.CapabilityID, "collect", req.ActionID, req)
+
+== is the Host-facing ObservationProvider adapter constructed anywhere? ==
+  (zero constructions, including tests)
+
+== is the Host-facing EvidenceProvider adapter constructed anywhere? ==
+  (zero constructions, including tests)
+
+== for comparison: DeploymentExecutor non-test constructions ==
+  ./examples/process-plugin/main.go:53:	adapter := pruntime.DeploymentExecutor{
+  ./tools/reference-deployment-attempt/main.go:131:	adapter := pruntime.DeploymentExecutor{Plan: plan, Registry: pruntime.Registry{Sandboxes: sandbox, Verifier: verifier{}, Resources: broker, SupervisorOwnerships: ownerships, SupervisorOwnerID: "reference-host-a", SupervisorOwnershipTTL: 30 * time.Millisecond}, CapabilityID: core.MustCanonicalID("migration.atlas")}
+  ./tools/reference-plugin-build-supply/stage4.go:117:	adapter := pruntime.DeploymentExecutor{
+  ./tools/reference-plugin-self-build/main.go:764:	nativeAdapter := pruntime.DeploymentExecutor{
+
+== does the pinned wrapper exist and who calls it? ==
+  internal/plugin/runtime/service_carrier.go:107:func (r Registry) InvokeSelectedServiceCarrier(
+  internal/servicehost/service_carrier.go:112:	result, err := i.runtime.InvokeSelectedServiceCarrier(

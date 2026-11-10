@@ -1,0 +1,5 @@
+fix  (sha256:9e27f6f7)
+missing input      rc=1 code=INVALID_COMMAND_INPUT   msg="missing inputs: [order]"
+unauthorized       rc=1 code=COMMAND_UNAUTHORIZED    msg="capability ... is not allowed"
+lifecycle resend   rc=1 code=COMMAND_LIFECYCLE_REFUSED
+ok control         rc=0

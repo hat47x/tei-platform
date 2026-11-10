@@ -1,0 +1,308 @@
+{
+  "note": "Sequential caps locate the exact maxBytes threshold: a field is sent when the cap equals its raw serialized size and not one byte below. Synthetic data only.",
+  "probe": "4 tool calls in one session, so several session events accumulate",
+  "runs": [
+    {
+      "maxBytes": 320,
+      "rawLogBytes": 6176,
+      "rawLogSha256": "92335a6a76804928efb6ac3a1d5580a146baaaec27145a633a5d3cd201ba378f",
+      "requests": [
+        {
+          "file": "001-request.json",
+          "bodyBytes": 33418,
+          "sha256": "00b7cf6c1bcc4d00f16a73644a1dbf169491a22dc55c875068d1ef6af723c1c6",
+          "sessionLog": {
+            "rawBytes": 307,
+            "overLimit": false,
+            "afterSeq": -1,
+            "throughSeq": 0,
+            "eventCount": 1
+          }
+        },
+        {
+          "file": "002-request.json",
+          "bodyBytes": 6980,
+          "sha256": "7f01d7ba3815d9dc4eb39238042a5f02ec89639d8babbce163bb1c8e63bd8192",
+          "sessionLog": {
+            "rawBytes": 307,
+            "overLimit": false,
+            "afterSeq": -1,
+            "throughSeq": 0,
+            "eventCount": 1
+          }
+        },
+        {
+          "file": "003-request.json",
+          "bodyBytes": 34717,
+          "sha256": "4777afe038fb952d74249e52e2f3741f35bbbab7f28f83a208b2d042f60669e8",
+          "sessionLog": {
+            "rawBytes": 299,
+            "overLimit": false,
+            "afterSeq": 0,
+            "throughSeq": 1,
+            "eventCount": 1
+          }
+        },
+        {
+          "file": "004-request.json",
+          "bodyBytes": 36017,
+          "sha256": "945adbe8f2737ae5bf51b9eeeafa25a553a93e468d4b498ecbe95febf4d275f7",
+          "sessionLog": {
+            "rawBytes": 292,
+            "overLimit": false,
+            "afterSeq": 1,
+            "throughSeq": 2,
+            "eventCount": 1
+          }
+        },
+        {
+          "file": "005-request.json",
+          "bodyBytes": 37332,
+          "sha256": "7680ca241bb4f2904d41fbf335dcd1503eed74bcd90a3a847e3210d34f0bb09b",
+          "sessionLog": {
+            "rawBytes": 300,
+            "overLimit": false,
+            "afterSeq": 2,
+            "throughSeq": 3,
+            "eventCount": 1
+          }
+        },
+        {
+          "file": "006-request.json",
+          "bodyBytes": 38632,
+          "sha256": "ee4c77375f294e283606ad12d6f07d1e6d12096605920dff2ed4c372fb510ea7",
+          "sessionLog": {
+            "rawBytes": 293,
+            "overLimit": false,
+            "afterSeq": 3,
+            "throughSeq": 4,
+            "eventCount": 1
+          }
+        }
+      ],
+      "anyFieldSent": true,
+      "firstFieldRawBytes": 307,
+      "maxWatermark": 4
+    },
+    {
+      "maxBytes": 307,
+      "rawLogBytes": 6176,
+      "rawLogSha256": "04197f9c4413cedd1b3a74bd1e3b05e286261455a36add7ac3de2e16e9a663dc",
+      "requests": [
+        {
+          "file": "001-request.json",
+          "bodyBytes": 33418,
+          "sha256": "2c805062fed0cbd5ca3c06088a2ce76f0f9d0a23c725b402b79de89cbe33dbea",
+          "sessionLog": {
+            "rawBytes": 307,
+            "overLimit": false,
+            "afterSeq": -1,
+            "throughSeq": 0,
+            "eventCount": 1
+          }
+        },
+        {
+          "file": "002-request.json",
+          "bodyBytes": 6980,
+          "sha256": "ecd16e2690fc620ac486f313bfbc90daaf1ac7f2c308f8376f04ce695f520df3",
+          "sessionLog": {
+            "rawBytes": 307,
+            "overLimit": false,
+            "afterSeq": -1,
+            "throughSeq": 0,
+            "eventCount": 1
+          }
+        },
+        {
+          "file": "003-request.json",
+          "bodyBytes": 34717,
+          "sha256": "d76af7ccea45d2e1801e567847db2dabf6cdb4d5b6ab5a8b8d46c73de754b551",
+          "sessionLog": {
+            "rawBytes": 299,
+            "overLimit": false,
+            "afterSeq": 0,
+            "throughSeq": 1,
+            "eventCount": 1
+          }
+        },
+        {
+          "file": "004-request.json",
+          "bodyBytes": 36017,
+          "sha256": "eb6225e307d6e03cf4441d169eff712b91d9378a19be872fe29bf7d778dd03c0",
+          "sessionLog": {
+            "rawBytes": 292,
+            "overLimit": false,
+            "afterSeq": 1,
+            "throughSeq": 2,
+            "eventCount": 1
+          }
+        },
+        {
+          "file": "005-request.json",
+          "bodyBytes": 37332,
+          "sha256": "f424adeca553718a897cde46589c8dc5316a162f52ee375fc75347873ec87263",
+          "sessionLog": {
+            "rawBytes": 300,
+            "overLimit": false,
+            "afterSeq": 2,
+            "throughSeq": 3,
+            "eventCount": 1
+          }
+        },
+        {
+          "file": "006-request.json",
+          "bodyBytes": 38632,
+          "sha256": "18da0229a9d6a920c2e448d2b442dbac9a66c8342451c32a52aa76655668df8b",
+          "sessionLog": {
+            "rawBytes": 293,
+            "overLimit": false,
+            "afterSeq": 3,
+            "throughSeq": 4,
+            "eventCount": 1
+          }
+        }
+      ],
+      "anyFieldSent": true,
+      "firstFieldRawBytes": 307,
+      "maxWatermark": 4
+    },
+    {
+      "maxBytes": 306,
+      "rawLogBytes": 6176,
+      "rawLogSha256": "379eeb507a75f503628bdbd7810fea9aa67f1c14802a2b30ef655e82dfbc1474",
+      "requests": [
+        {
+          "file": "001-request.json",
+          "bodyBytes": 33092,
+          "sha256": "ab6f6b0f8dd59e612c7b2e8108ae740fdebba05bc689436d37e165fc2257c96f",
+          "sessionLog": null
+        },
+        {
+          "file": "002-request.json",
+          "bodyBytes": 6654,
+          "sha256": "3b531bc16a32e12a4f0c1ecd609726a9cdec01fd2acc5f97f236f18210301722",
+          "sessionLog": null
+        },
+        {
+          "file": "003-request.json",
+          "bodyBytes": 34399,
+          "sha256": "a1568f8c72c15cea017c2add2ce159696d4889502abdf65fb1e6c8e5b7b67dd7",
+          "sessionLog": null
+        },
+        {
+          "file": "004-request.json",
+          "bodyBytes": 35706,
+          "sha256": "d456fb7fd863d5d411f38ce8ca5b0357444eb468172e61f2fde9c7be45ecb2b0",
+          "sessionLog": null
+        },
+        {
+          "file": "005-request.json",
+          "bodyBytes": 37013,
+          "sha256": "9f62103c9e2e072d67dfd3aabfe764fe746fd112221fc64720aff3390ca7efd9",
+          "sessionLog": null
+        },
+        {
+          "file": "006-request.json",
+          "bodyBytes": 38320,
+          "sha256": "70553145bbbf37e1f516ddc4e01afcf398b6fadf8affc20e3b029662a6fbdbca",
+          "sessionLog": null
+        }
+      ],
+      "anyFieldSent": false,
+      "firstFieldRawBytes": 0,
+      "maxWatermark": null
+    },
+    {
+      "maxBytes": 300,
+      "rawLogBytes": 6176,
+      "rawLogSha256": "90e7cf87e4865758a9f52436e4e3b758c27a0ef931c41e201be00d7823bcaa24",
+      "requests": [
+        {
+          "file": "001-request.json",
+          "bodyBytes": 33092,
+          "sha256": "ab6f6b0f8dd59e612c7b2e8108ae740fdebba05bc689436d37e165fc2257c96f",
+          "sessionLog": null
+        },
+        {
+          "file": "002-request.json",
+          "bodyBytes": 6654,
+          "sha256": "3b531bc16a32e12a4f0c1ecd609726a9cdec01fd2acc5f97f236f18210301722",
+          "sessionLog": null
+        },
+        {
+          "file": "003-request.json",
+          "bodyBytes": 34399,
+          "sha256": "a1568f8c72c15cea017c2add2ce159696d4889502abdf65fb1e6c8e5b7b67dd7",
+          "sessionLog": null
+        },
+        {
+          "file": "004-request.json",
+          "bodyBytes": 35706,
+          "sha256": "d456fb7fd863d5d411f38ce8ca5b0357444eb468172e61f2fde9c7be45ecb2b0",
+          "sessionLog": null
+        },
+        {
+          "file": "005-request.json",
+          "bodyBytes": 37013,
+          "sha256": "9f62103c9e2e072d67dfd3aabfe764fe746fd112221fc64720aff3390ca7efd9",
+          "sessionLog": null
+        },
+        {
+          "file": "006-request.json",
+          "bodyBytes": 38320,
+          "sha256": "70553145bbbf37e1f516ddc4e01afcf398b6fadf8affc20e3b029662a6fbdbca",
+          "sessionLog": null
+        }
+      ],
+      "anyFieldSent": false,
+      "firstFieldRawBytes": 0,
+      "maxWatermark": null
+    },
+    {
+      "maxBytes": 288,
+      "rawLogBytes": 6176,
+      "rawLogSha256": "4b5336ba859fc7e894720c51a112c55dcf3eb387d0f7bc68cc24f35f2dce0b08",
+      "requests": [
+        {
+          "file": "001-request.json",
+          "bodyBytes": 33092,
+          "sha256": "ab6f6b0f8dd59e612c7b2e8108ae740fdebba05bc689436d37e165fc2257c96f",
+          "sessionLog": null
+        },
+        {
+          "file": "002-request.json",
+          "bodyBytes": 6654,
+          "sha256": "3b531bc16a32e12a4f0c1ecd609726a9cdec01fd2acc5f97f236f18210301722",
+          "sessionLog": null
+        },
+        {
+          "file": "003-request.json",
+          "bodyBytes": 34399,
+          "sha256": "a1568f8c72c15cea017c2add2ce159696d4889502abdf65fb1e6c8e5b7b67dd7",
+          "sessionLog": null
+        },
+        {
+          "file": "004-request.json",
+          "bodyBytes": 35706,
+          "sha256": "d456fb7fd863d5d411f38ce8ca5b0357444eb468172e61f2fde9c7be45ecb2b0",
+          "sessionLog": null
+        },
+        {
+          "file": "005-request.json",
+          "bodyBytes": 37013,
+          "sha256": "9f62103c9e2e072d67dfd3aabfe764fe746fd112221fc64720aff3390ca7efd9",
+          "sessionLog": null
+        },
+        {
+          "file": "006-request.json",
+          "bodyBytes": 38320,
+          "sha256": "70553145bbbf37e1f516ddc4e01afcf398b6fadf8affc20e3b029662a6fbdbca",
+          "sessionLog": null
+        }
+      ],
+      "anyFieldSent": false,
+      "firstFieldRawBytes": 0,
+      "maxWatermark": null
+    }
+  ]
+}

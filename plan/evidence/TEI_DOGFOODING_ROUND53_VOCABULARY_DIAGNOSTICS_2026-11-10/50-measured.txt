@@ -1,0 +1,8 @@
+Three closed vocabularies, invalid value supplied, diagnostic inspected:
+
+  storage type   INVALID_PERSISTENCE_STORAGE_TYPE   has invalid storage type "NUMBERISH"
+  nullability    INVALID_PERSISTENCE_NULLABILITY    has invalid nullability "maybe"
+  access mode    INVALID_DATABASE_ACCESS            has invalid access mode "read-write-nothing"
+
+All three carry file:line:col. None named a valid value, so an author had to
+read the source or another .tei file to learn the accepted set.

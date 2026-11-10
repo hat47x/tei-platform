@@ -1,0 +1,15 @@
+BEFORE (main, no realizes edge):
+  trace -scope c -subject-kind semantic-capability \
+        -subject-id security.authenticate -direction incoming -mode full
+    total: 0
+  and removing applications/order-entry/realizations/authenticate.tei
+  changed neither graphFingerprint nor rows.
+
+AFTER:
+    total: 1
+      application order_entry - realizes
+
+  security.authenticate            realizes=1  [order_entry]
+  security.authorize               realizes=1  [order_entry]
+  sales.order.submit               realizes=1  [order_entry]
+  order_entry.compose_order_summary realizes=0

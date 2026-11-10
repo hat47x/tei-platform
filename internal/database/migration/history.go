@@ -126,6 +126,11 @@ func CompareHistory(database core.CanonicalID, defs []Definition, history Histor
 		if strings.TrimSpace(e.ID) == "" {
 			return HistoryComparison{}, fmt.Errorf("history entry has empty migration id")
 		}
+		if e.State != AppliedSucceeded && e.State != AppliedFailed {
+			// Reject unknown and unrecognized outcomes even for migrations
+			// absent from this repository; orphan does not imply success.
+			return HistoryComparison{}, fmt.Errorf("migration %s has unqualified applied state %q", e.ID, e.State)
+		}
 		if _, dup := applied[e.ID]; dup {
 			return HistoryComparison{}, fmt.Errorf("history contains migration %s more than once", e.ID)
 		}

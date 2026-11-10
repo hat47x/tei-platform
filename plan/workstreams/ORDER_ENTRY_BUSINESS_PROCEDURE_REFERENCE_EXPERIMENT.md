@@ -666,3 +666,120 @@ For the minimum-row proof, depend on the **actual executed** predicate, sort, ty
 - Consequently, the proof's **non-output dependency** (filter/sort/limit/order/attribute grain/Provider policy, Source and execution version) must be retained in the same existing review evidence packet for **selective requalification**. A display-only projection or artifact byte match does not revalidate the query's hidden dependencies or current authority.
 
 **Owner decision and rollout unchanged:** classify the one `review-validation-scope` difference by the existing four human outcomes; remain `undecided` until the BP-05 target cohort and responsibility are accepted. Reuse #2387 (Query Explain), #988/#2619 (conditional Operator laws), #2506/#2622 (Context and actual Provider), #1174 (effect-time authority), #2582/#2600 (runtime versus build requalification), #2516 (disclosure), and #267 (meaning acceptance). An Issue/SHO representation may explain **which conditions would support the Claim**, but may not auto-connect Business Procedure to a Query, infer an unknown missing field as zero, declare a real Command blocked, or promote a synthetic success to a production guarantee. New tests, actual Provider, third-rule rejection, whole-cohort guarantee and Owner acceptance are **NOT RUN/NOT ACCEPTED** by this document change.
+
+### 15.9 空集合の形式的成立と業務上の完了条件をOwner判断へ引き渡す（2026-11-03、計画・未受理）
+
+この節は[空集合の意味に関する調査ノート（統合済みPR #2722）](../research/EMPTY_SET_COMPLETION_SEMANTICS_2026-11.md)の**実験計画への受渡し**であり、調査ノートの複製、新Core `EmptyPolicy`型、Lean導入決定ではない。§15.7のE0〜E3と§15.5のQ1〜Q5を再利用する。
+
+BP-05の対象を人手の受理票では `(TargetSet L, EmptyPolicy E, Predicate P)` と**三つの判断欄**で扱う（候補表現でありCanonical DSL/Schemaではない）。
+
+| Ownerが判断する欄 | 判断材料 | 技術が提供できる証拠／まだ代替できないもの |
+| --- | --- | --- |
+| `L`（対象集合と時点） | 編集対象の一明細か、提出対象の明細集合か。固定ID集合か、提出時の親子Relation述語で再解決するか | #2506/#2622のScope/Grain/Relation・取得範囲、#1708の既存Snapshot契約。SQLの`WHERE order_id`やFKだけから業務上の集合意味を採用しない |
+| `E`（空集合時の扱い） | 空を許す・提出不可・別の業務確認を要求する等の**候補**から案件の扱いを判断。不在確認や集計から一律の既定を推測しない | 観測された`R=[]`、真に`L=∅`である独立の完全性根拠、空集合でのBusiness Action判断を別列で扱う。形式的`∀x∈∅ P(x)`の真だけではSubmit可としない |
+| `P`（対象行の条件） | 明細番号正値、数量正値、明細番号一意性のどれをBP-05自身が負い、どれを別経路に委ねるか | 3規則の合成正常系は現存するが、`quantity`先頭行・`lineNumber`先頭行・`lineNumbers`集合の実際の入力被覆は別。第3規則不成立時の後続停止や本番業務保証は未証明 |
+
+**受理順序**：構造観測（SQLの型・列・Sort、FK等）→曖昧な業務意味候補→Ownerが対象Scope・空集合扱い・規則責務を受理→該当Operationの実Provider/Hostで条件を実証、を区別する。これは[#1126のER/物理表現](https://github.com/hat47x/tei-platform/issues/1126)、[#267の既存Shared Acceptance](https://github.com/hat47x/tei-platform/issues/267)、[#1125の責務四分類](https://github.com/hat47x/tei-platform/issues/1125#issuecomment-6400716990)の分担を利用する。`line_number int64 required`、SQLの`ORDER BY`、物理PKやFK、型/ID一致は、明細番号正値を**業務必須**と認定する証拠ではない。過去の意味受理や実行資格は、Source byte一致・A→B→A・プラグイン/Operator再選択から自動復活しない。
+
+**Ownerへ渡す一問（拡張するが増やさない）**：「BP-05が対象とする明細集合`L`と空集合時の扱い`E`は何か。その`L`の明細番号・数量に求める条件`P`を、BP-05自身が負うか、特定できる別経路が負うか」。回答は意思決定の候補であり、本文を直ちにBusiness Sourceへ反映しない。別経路を採用するならOperation、対象集合、規則、版と否定時停止の証拠を要求する。
+
+### 15.10 意味受理、形式的証明、現在利用資格を混ぜない最小検収（NOT RUN）
+
+`Predicate P`の形式的証明と、`R=L`の実観測、`E`の業務上の採否、`P`を評価したOperationの実行資格は相互代替不能。Leanによる形式系への写像は[調査ノート](../research/EMPTY_SET_COMPLETION_SEMANTICS_2026-11.md)で未採用・特定版未検証であり、BP-05の本計画では形式証明Engineや新Registryを実装しない。
+
+| 既存例を再利用する独立期待（全件計画段階） | 必要な結論・停止条件 |
+| --- | --- |
+| `L=∅, R=∅, complete=true` と `L≠∅, R=∅, partial/hidden` を対照 | 同じ画面上の0件でも、前者はOwnerの`E`判断待ち、後者は全対象Claim根拠不足。双方を`satisfied`や`not-satisfied`へ自動縮約しない |
+| 同じ公開SQL・データ型・固定行でも、Ownerが`line_number`を表示順序と解釈する世界と提出必須制約とする世界 | 静的構造・同一ID/型だけでは意味同値でもBP-05責務でもない。受理記録なしなら`undecided` |
+| 受理済み`L/E/P`が同一でも、Query非出力Predicate、Sort、実Providerの完全性、Role/Operator版、対象Relation membership、現在Grantのいずれかが変化 | 当該Claimの依存閉包に沿って選択的再資格化（#2582/#2600）。過去Evidenceの歴史的保持と今回の`satisfied`／Consumer開示／Commit資格は分ける |
+| 第3規則に0を与える合成負例から、現状の三規則正常系の`t.Fatalf`を見比べる | 評価`ResultNotSatisfied`と**実Operationの認可/Commandが呼ばれない**ことは別命題。後者は同一経路の呼出し証拠を得るまで未確認 |
+
+**検収出力**は既存のread-only #1125レビュー票に`L/E/P + Owner decision/revision + evidence scope (static/synthetic/actual) + Provider route/slice/completeness/as-of + rule/operator/query versions + negative-stop proof + consumer use/authority + unresolved`を関連付けるだけとする。新しいStatus/Acceptance正本、形式証明器、Host、Gate、Query/Validation DSL実装は作らない。業務確認の履歴・正式Commit/Receipt・独立ObservationのClaimは[別S3設計](https://github.com/hat47x/tei-platform/issues/1125#issuecomment-6585850700)および#1174を参照し、BP-05の評価PASSに合算しない。
+
+**段階**：S0（本節の静的・read-only整理）→既存S1の第3規則負例→S2の実Provider/cohort証拠→S3でOwnerの`L/E/P`受理と説明。実Go/DB/Provider/Lean/Studio/SHOの追加試験、正式Owner受理、#1119製品Gateの合格はこの文書では**NOT RUN/NOT ACCEPTED**。現時点の比較器`review-needed`、人手分類`undecided`を維持する。
+
+### 15.11 全件成立と不成立の証拠非対称性（2026-11-03、read-only計画・NOT RUN）
+
+§15.5のQ1–Q5と§15.9の`(L,E,P)`を前提に、全行正値の評価主張を**成立証拠**と**反例証拠**に分ける。これは新しい`Result`型やValidation Engineを追加する仕様ではなく、既存`review-validation-scope`とContext/Provider証拠に付ける判定理由である。
+
+- `∀x∈L P(x)` の**成立**には、対象`L`の意味受理、必要な`R`の集合・Field完全性、同版・同時点、適切なRule適用の証拠が必要。部分取得`R⊂L`で見えている行がすべて正値でも、全行成立とは主張できない。
+- 一方、`b∈L`と`P(b)=false`を同一Scope・有効時点・正しい型で**確実に観測した**なら、他の未取得行が存在しても当該時点の全称命題は不成立と証明できる。これは**限定的な反例証人**であり、対象`b`のmembershipが未解決、既知でない`NULL/absent`、無関係tenant、古いSnapshot、非開示情報の無権限取得からは導かない。Owner未受理のBP-05責務や正式Submit拒否への昇格も禁止する。
+- `line_number_unique`については、`a,b∈L`、異なる明細identity、同一番号を正しい粒度・時点で観測した場合、**重複の存在**は全件取得せず反証可能。一方、部分取得で重複を見つけられなかったことから**全件一意**とは主張できない。`quantity_positive`も同じ全称／反例の区別を持つが、既存の`ORDER BY line_number`だけで数量の全件成立は証明できない。
+- 真に`L=∅`の場合の形式的な全称命題は§15.9の`E`に従って別判定する。観測`R=[]`かつcoverage unknownを`L=∅`へ昇格させない。「明示的な0は規則不成立」と「未取得・部分取得によって規則の評価ができない」を混同しない。
+
+| 既存の二明細を使う限定比較（いずれも新規実行NOT RUN） | Predicateに関して導けること／導けないこと |
+| --- | --- |
+| **U1** `R=[A(1)]`、提出`L`が全件だが取得`partial`、違反行は未観測 | **全行成立は未確立**。存在するはずのBの個数や値を一般Consumerへ漏らさない |
+| **U2** `R=[B(0)]`、Bが受理済み`L`へ所属すること、数値0、時点を資格確認済み、他行未取得 | **当該時点の全行正値は反証可能**。ただし正式Operationを止める根拠には別途受理規則・現在性・認可/Commandへの接続が必要 |
+| **U3** 同じ`B(0)`だが、BのRelation所属／tenant／行Versionが不明、またはFieldが`absent` | **違反の主張も未確立**。`NULL/absent`を0へ変換しない |
+| **U4** 異なる明細A/Bの同一行番号を同じ`L`で観測／逆に部分集合で衝突なし | 前者は当該時点の**一意性違反の証人**。後者は**全件一意性を保証しない** |
+
+既存#2506/#2622が行・Fieldの取得とContext完全性、#2582が同一Claimの変更・Membership、#2387がQuery Predicate・Source版、#2516が表示・非開示を担当する。**一件の有効な反例を検知できることと、全件を完全に取得できることは別の能力**であり、いずれも合成Fixtureの局所PASSを本番保証へ昇格しない。
+
+### 15.12 同一Ruleのオンライン検査と後追いData Quality監査を分離（計画・NOT RUN）
+
+[#2622のData Quality構想](https://github.com/hat47x/tei-platform/issues/2622#issuecomment-6598969026)と[増分監査の制約](https://github.com/hat47x/tei-platform/issues/2622#issuecomment-6599457368)を既存BP-05へ限定接続する。Ownerに受理された**同じ**`L/E/P`、Rule/Operator/Relation版から、(1)提出時の必要条件の評価と、(2)特定Snapshot・対象母集団の読取専用監査を派生できる可能性はある。ただし二つは**同じ実行資格ではない**。新たなRule正本、共通Scheduler、実行Host、全面スキャンEngineを提案しない。
+
+- **Online**：そのOperationが必須とする入力・時点・Rule版・現在権限と、規則不成立時に実際に認可/Commandを止める証拠を扱う。実ProviderのCoverage/時点が不足する場合、業務`satisfied`へ推測しない。
+- **Offline**：`asOf`、対象集合の粒度・Scope、Rule/Query/Provider版、Row/Field completeness、Snapshot、RLS/取得権限を固定した**過去時点相対のQuality Finding**を返す。監査で後から行番号0を発見しても、過去のCommitを「実行されなかった」ことへ書き換えず、現在のSubmit可否・再試行権限やOwnerの業務完了を自動判定しない。
+- **増分再監査**：前回Checkpointと今回の間に**関連する全変更**（Value、追加・削除、Relation membership、Query Predicate/Sort、Rule/Operator/Schema、Provider/Scope）が被覆される証拠がある場合だけ、無関係変更を理由に全面再Scanを省略する候補とする。見えた変更が0件、Source byte一致、旧合格だけでは無変更を証明しない。[#1125の変更窓の反例](https://github.com/hat47x/tei-platform/issues/1125#issuecomment-6579870075)と#2600を再利用する。
+- **同一Attemptの縦断**：最小の実証に進むときは、#2586の既存Scenarioで`Owner候補L/E/P→実Function Mapping/Query→Provider Result Slice→Rule評価→Authorization/Command呼出し→Consumer表示`の**同一Attempt**と時点を照合。#1174のEffect/Receipt、#2516の現在開示資格は独立列とし、別試験の成功を継ぎ足さない。既存の第3規則不成立時停止の負例（S1）は未実施のまま残す。
+
+**実施順は既存S0–S3を変更しない**。追加したU1–U4とOnline/Offlineの記録はread-only検収票の比較欄であり、製品の新GateでもOwner決定でもない。BP-05の`canonical:false`、checker=`review-needed`、人手=`undecided`を維持する。Go/SQL/DB/Provider/SHO/Studio/Owner意味受理と同一Attemptの新規実測は本節では**NOT RUN**。
+
+### 15.13 Ruleの正本・適用対象・実行Phaseを混同しない（2026-11-03、計画・NOT RUN）
+
+[Data Model配下のData Script/Rule共有設計 #1129](https://github.com/hat47x/tei-platform/issues/1129#issuecomment-6587145160)と[旧仕様Parity／TEI適合を一Attemptで分ける #2783](https://github.com/hat47x/tei-platform/pull/2783)の**BP-05固有の受渡し**。基本的なField ValidationはData Modelの属性拡張で表す方向、独自条件・更新時の導出／複合条件はData-attached Scriptを利用する方向とする。ただし現行のCanonical `sales.order_line.quantity_positive` / `sales.order_line.line_number_positive` / `sales.order.lines.line_number_unique` を、事実確認なしに新Sourceへ移設・二重定義・自動受理しない。名称・構文・Rule定義格納形式の正式採否は#1129/#988/#267の既存Ownerが扱う。
+
+| 共有Ruleの意味側（候補） | BP-05へBindingするとき確定が必要なもの |
+| --- | --- |
+| Field値の正値（`line_number_positive`, `quantity_positive`） | **一行のRule定義**と、**どの行を何行評価するか**という適用量化/Contextは別。FieldへのAttachmentだけでSubmitの全行検査実施済みとは扱わない |
+| Relation集合の一意性（`line_number_unique`） | 業務上の関係Role/集合L/明細identity・同版をBinding。局所`lineNumbers`固定配列や部分集合の重複未発見は全件一意の証拠ではない |
+| Data Script／Derivation／更新時Hook | Script原文と型付きRule候補、Attachment、依存Read Set、`before-write / in-Tx / post-commit`等のPhaseとEffectを区別。IFで書けることと実Operationで呼ばれたことは別。派生プレビューや通知発火を正式Commitへ昇格させない |
+| 標準Function／API／バッチの利用 | 同じ受理済みRule ID・版を参照し、入口別にRuleのコピーや実行Phaseの差がないか確認。画面表示/Manual BP-04を新しい強制Ruleへ自動変換しない |
+
+**Parity（P）**は旧Source/Scriptの忠実観測と実発火の独立期待、**Adaptation（A）**はTEI Context→Rule適用→同一Request/Grant/Owner-write/Receiptという安全適合、**Extension（E）**は追加機能とする。#2783のE0–E6受入票を**既存担当に渡すだけ**で、BP-05へ旧Runtime同義・実Provider・Owner受理の実績を持ち込まない。特に本計画のS1「第3規則不成立時の後続停止」は、Data Scriptの`IF`/Rule宣言やStudio表示だけで解消しない。
+
+### 15.14 検査の配置・実行期限・免除と現在資格（設計・NOT RUN）
+
+[Everything is Data横断計画 #2667 の§27.6（品質保証の範囲・期限・例外）](https://github.com/hat47x/tei-platform/pull/2667)を、§15.12のOnline/Offline分離へ**最小追加**する。Rule別の検査配置は案件Ownerの判断事項であり、特定のOnline必須条件をデータ品質Jobへ移すだけでWriteの許可根拠にしてはならない。
+
+| 配置候補（未採用の検討欄） | BP-05/Claimに対する意味上の停止条件 |
+| --- | --- |
+| **Online mandatory** | Submitの必要条件なら、その**同一Operation**で対象L/版/Rule入力を評価し、`not-satisfied`なら定められた後続を止める。`input unavailable / partial / error`は業務不成立と同義ではないが、**成功資格も与えない**。実停止は既存S1で独立に証明 |
+| **Deferred with deadline** | 期限・母集団・Snapshot・Provider/Role・完了証拠を保持。未実施・遅延・検査不能・局所PASSと、対象全体の適格なPASSを区別。期限内Job完了があってもRuleの全件合格・現在のSubmit許可とは別 |
+| **Advisory / formal-only** | 顧客向けの説明・候補・静的形式検査であり、Ownerが必須としたWrite/Business Guardを代替しない。Leanの形式命題証明は取得被覆`R=L`や実Provider強制の証明ではない |
+| **例外・免除（期間／範囲限定）** | Owner/Authority、対象・適用期間・理由・Rule版・失効条件を別に記録する候補。例外は既知の違反や過去Quality Findingを消さず、無期限の全行正常主張にもならない。例外によるWrite許可はHostの現在Authority/Effect Fenceとは別に検証 |
+
+**独立した最小反例（既存Q1–Q5/E0–E3/U1–U4/DQX/DQAを再利用、全NOT RUN）**：同じ`L={A(1),B(0)}`について (a) RLS部分取得Aのみ＋Offline 0異常、(b) B(0)の有効な反例をOfflineで後から検出、(c) Quality Jobが期限超過しているのに実行Jobだけ`completed`、(d) 期限付き例外が失効、(e) 同じRule版でも異Snapshotの結果を合算、を各々**Scope付きClaim**として比較。検査結果には「実行されたか」「どの範囲の正常・違反を証明したか」「現在の利用資格」「何が未検証か」を別列で保持。長期Quality実績やJobメトリクスを、BP-05の実Command・実Effectの証拠としない。
+
+**実証の優先順位は変更しない**。既存S1の第三規則のみ不成立→認可/Command停止、S2の同一Provider/Context取得、S3の`L/E/P` Owner受理を先に進める。Data Script Parityと共通Rule実装は#1129/#2783、品質の監査/増分/Jobは#2622/#2667、業務Actionと独立Effectは#1174、開示は#2516へ委譲する。新Script正本・Quality Scheduler・汎用Host・Rule Engine・Gate・ADRは追加しない。Go/PG/旧Driver/EKI Job/Studio/SHO同一Attemptは本追補で**NOT RUN**。
+
+### 15.15 Validation成立対象と実Write対象の意味接合（2026-11-03、計画・未実証）
+
+§15.5の対象集合`L`と、§15.13の`Rule/Attachment/Phase`を、実Commandの**目的・対象・提案変更後状態**と接合する。これは[main統合済みCommand→EffectCommit Adapter #2773](https://github.com/hat47x/tei-platform/pull/2773)の現物および[別担当Draft #2780](https://github.com/hat47x/tei-platform/pull/2780)の**特性確認**から判明したBP-05固有の不足であり、Adapter/Runner/Hostを本計画で改変しない。
+
+- 既存`internal/driver/final_gate_b_scenario_test.go`は、同じBrowse `orderID`を合成Command入力の`orderId`へ渡し、test-only Adapterがその一致を検査する**正常系**を持つ。これは**実製品の`commandadapter.Executor`への実Request拘束、実DB Target、事前Validation→Commitの同一Attemptを証明しない**。現在mainの`internal/security/effectcommit/commandadapter/executor.go`は明示`Payload`を受けると`request.Inputs`からの組立てより優先し、両者のTarget意味照合をAdapter単独では行わない。
+- [Draft #2780 MC-B01](https://github.com/hat47x/tei-platform/pull/2780)は、Command入力`ORD-1`と明示Payload`ORD-2`の乖離がFake Providerの`WriteResource`まで到達する**現行構成の特性を限定Go試験で観測**したもの（当該Draftのexact-head focused Go 4/4 PASS報告）。**安全に拒否できたこと、BP-05経路を実走したこと、実PostgreSQLに誤更新したことの証拠ではない**。
+- 同一のOrder Identityでも、評価した保存済み`R0`と、Editing Sessionの未保存Patch/Commandの**提案後状態**が異なる場合がある。提出前必須条件が提案後状態へ適用されるなら、保存済み`R0`の正値は未保存`B(0)`を保証しない。逆に、無条件にDB再読取りだけすればよいわけでもなく、評価対象の「現在保存状態／書込み予定状態」はOwnerが定めるPhaseに従う。親Orderの`ExpectedVersion`だけで、子明細の追加・削除やRelation変更までFenceされたとは推測しない。
+- 対象Bindingは単なる`ID equality`規則ではない。SubmitがOrder statusを更新し別Resourceへ正当な予約Effectを生む場合、異なるTarget ID/Relation Roleが正しいこともある。**Accepted Action→Validation対象集合→typed Intent→実Payload/Provider Target→必要Effect対象**を、Ownerが受理したRole/Relation/Scope/Versionへ対応付ける。暗黙の同一視と、根拠のない異対象許容の双方を禁止する。
+
+| 実証票（既存Ownerへ引渡し、BP-05同一Attemptでは全てNOT RUN） | 分離すべき結果 |
+| --- | --- |
+| **VB-01 Target drift**：`L(O1)`に対する三規則PASS、Command選択`O1`、明示Payloadは`O2` | Rule PASSと`O2`のWrite許可を混ぜない。対象の対応根拠なしなら`unqualified`、実行前拒否が必要な契約なら**拒否を試験** |
+| **VB-02 proposed post-image**：`L(O1)`の保存済み行は全て正値、未保存Patchで明細Bを`0`に変更し、その値を提出 | 旧Readの`satisfied`と**提出予定の状態**の判定を分離。未保存Patch/選択epoch/Field観測/Rule Phaseが必要 |
+| **VB-03 membership/version drift**：Header CAS版は同じだが、Validation後にChild B(0)が対象へ加入 | Parent版一致のみで`L`の現在完全性を証明しない。既存Context/Provider/Hostが保証する適切な再評価・対象集合Fenceを実測する。新分散Txを要求しない |
+| **VB-04 legitimate multi-target**：受理済みSubmitが別Roleの予約Targetへ書く | 単純な`O1==effect.Target`強制は誤拒否になり得る。受理済みAction purposeとTarget RoleのMappingを必要とし、Targetの一致「だけ」で意味受理しない |
+
+### 15.16 Command結果・Effect観測・業務完了Claimの階層（2026-11-03、計画・未実証）
+
+[Draft #2780 MC-C/D](https://github.com/hat47x/tei-platform/pull/2780)、[実装済み`SQLEffectObserver` #2771](https://github.com/hat47x/tei-platform/pull/2771)、[別担当のPostCommit Claim Draft #2671](https://github.com/hat47x/tei-platform/pull/2671)を、**BP-05がClaimへ付けてよい資格の上限**として引き継ぐ。現mainのAdapterは`effectcommit.StatusCommitted`と`StatusReplayed`をともに空`command.Result{}`へ写すため、**Command成功だけから「今回の新規Write」を認定しない**。また、一般`COMMAND_EXECUTION_FAILED`の内部に型付き`CommitUncertainError`が残り得るので、Commit未確定を「書込みなし」や「新IDで自動再送可」へ縮約しない。
+
+| 証拠の継ぎ目（既存試験に受渡す） | 間違ったBusiness Claimを防ぐ条件 |
+| --- | --- |
+| **VR-01 committed vs replayed** | 同一OperationIDの初回・Replayは`command.Result{}`だけでは区別不能。Runnerのqualified Receipt/LookupとRequestの同一性・Target版を照合し、`effect applied`と`this attempt newly committed`の主張を分離 |
+| **VR-02 uncertain/outer failure** | `CommitUncertainError`、外側`UnitOfWork.Commit`失敗と内側Runner確定（MC-C01はFakeの特性）は、効果なしの証拠ではない。同じOperationIDのLookup、同一物理Tx/再試行適合と独立Readは#1174が実証する |
+| **VR-03 unrelated positive read** | 現`SQLEffectObserver`は設定SQLのcount>0で`Observed=true`になり得る。Query/Args/対象Identity/Operation/Reader Cutに拘束されない`SELECT count(*)`は、無関係な過去行でも正数となるため、**今回のO1のEffect**を示す証拠ではない |
+| **VR-04 business completion** | 実Receiptと対象へ束縛した独立Readが一致しても、Ownerの`L/E/P`、BP-04手作業・外部Handoff、現在Consumer開示資格は別。#2671/#1125のS3へ委譲する |
+
+**次の実証を小さく保つ**：先にS1の「第3規則のみ不成立→認可/Command呼出0」を既存test-local継ぎ目で再現し、同じfixtureの選択Identity／Payload/適用対象を観測できる受渡し欄を残す。S2以降、対象`O1`と提案後状態・子集合版・実Target/Provider Scope・OperationID・RequestHash・Receipt・独立Readを**同一Attempt**に揃える。異なる既存PRのGo PASS・実PG局所PASSを足して本件End-to-End資格としない。UI/SHOへは「規則PASS」「Write確定」「過去Replay」「確定不明」「Owner完了」の違いを、現行開示権限で説明する。これは既存#2597 Editing Session、#2598 Intent→Request、#1174 Effect、#2586縦断、#2516開示への**受渡し**であり、新しいAction/Result Schema・Host・Recovery Engine・Gate・ADRは追加しない。BP-05のchecker=`review-needed`、人手=`undecided`、正式実Provider/Owner受理/三規則本番経路は**未実証**。

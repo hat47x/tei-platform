@@ -1,0 +1,10 @@
+My new tests were silently vacuous twice before they worked:
+
+a) filepath.Walk("..") reached 0 files.  The existing tests use
+   filepath.Join("..", "..", "plan").  With ".." the walk stayed inside
+   tools/ and never saw the plan documents.
+b) After fixing (a) for the first test, the second test still walked ".."
+   because the replacement matched only one site.
+
+Both were found by mutation testing: the guard has to fail when the defect is
+put back. Neither was caught by the code reading alone.

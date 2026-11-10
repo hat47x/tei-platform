@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -19,7 +20,9 @@ func TestCommandCatalogReadOnlyDiscovery(t *testing.T) {
 		}
 		switch cmd.JSONContract {
 		case "enveloped":
-			if cmd.SchemaVersion != "tei.cli."+cmd.Name+"/v0" && cmd.SchemaVersion != "tei.cli.model/v0" {
+			// A subcommand's schema joins its words with "-" (model locate ->
+			// tei.cli.model-locate/v0); model catalog keeps its older name.
+			if cmd.SchemaVersion != "tei.cli."+strings.ReplaceAll(cmd.Name, " ", "-")+"/v0" && cmd.SchemaVersion != "tei.cli.model/v0" {
 				t.Fatalf("%s has an unexpected schemaVersion %q", cmd.Name, cmd.SchemaVersion)
 			}
 		case "raw":
@@ -60,6 +63,12 @@ func TestDiscoveryAdvertisesTheCommandsOwnSchemaVersion(t *testing.T) {
 		}
 		if cmd.SchemaVersion == "" {
 			t.Errorf("%s advertises no schemaVersion", cmd.Name)
+		}
+		if cmd.Name == "model locate" || cmd.Name == "model overview" {
+			if cmd.SchemaVersion != "tei.cli."+strings.ReplaceAll(cmd.Name, " ", "-")+"/v0" {
+				t.Errorf("%s schemaVersion=%q", cmd.Name, cmd.SchemaVersion)
+			}
+			continue
 		}
 		if cmd.Name != "model catalog" && cmd.SchemaVersion != "tei.cli."+cmd.Name+"/v0" {
 			t.Errorf("%s schemaVersion=%q", cmd.Name, cmd.SchemaVersion)
@@ -120,6 +129,20 @@ func TestDiscoverySchemaVersionsMatchActualResponses(t *testing.T) {
 			t.Fatalf("code=%d err=%v body=%s", code, err, out.String())
 		}
 		assertAdvertisedVersion(t, "model catalog", decode(t, &out))
+	})
+	t.Run("model locate", func(t *testing.T) {
+		var out bytes.Buffer
+		if code, err := runModelCommand([]string{"locate", "-workspace", root, "-subject-kind", "semantic", "-subject-id", "std"}, &out); err != nil || code != 0 {
+			t.Fatalf("code=%d err=%v body=%s", code, err, out.String())
+		}
+		assertAdvertisedVersion(t, "model locate", decode(t, &out))
+	})
+	t.Run("model overview", func(t *testing.T) {
+		var out bytes.Buffer
+		if code, err := runModelCommand([]string{"overview", "-workspace", root}, &out); err != nil || code != 0 {
+			t.Fatalf("code=%d err=%v body=%s", code, err, out.String())
+		}
+		assertAdvertisedVersion(t, "model overview", decode(t, &out))
 	})
 	t.Run("workspace-files", func(t *testing.T) {
 		var out bytes.Buffer

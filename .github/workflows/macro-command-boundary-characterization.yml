@@ -1,0 +1,54 @@
+﻿name: Macro Command effectcommit boundary characterization
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'internal/security/effectcommit/commandadapter/**'
+      - '.github/workflows/macro-command-boundary-characterization.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-macro-command-boundary-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  characterize-command-effectcommit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ env.EXPECTED_HEAD }}
+
+      - name: Set up Go from checked module
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      - name: Check formatting and run focused real Go tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          test -z "$(gofmt -l internal/security/effectcommit/commandadapter)"
+          go test ./internal/security/effectcommit/commandadapter -run TestCharacterization -count=1 -v
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          echo "command-effectcommit-characterization-head=$EXPECTED_HEAD"
+          echo "test-blob=$(git rev-parse HEAD:internal/security/effectcommit/commandadapter/executor_characterization_test.go)"
+          echo "result-test-blob=$(git rev-parse HEAD:internal/security/effectcommit/commandadapter/executor_result_characterization_test.go)"
+

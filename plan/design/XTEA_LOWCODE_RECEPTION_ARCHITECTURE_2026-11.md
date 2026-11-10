@@ -927,12 +927,13 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | 参照Storeの拒否符号 | 実装済み（`ReferenceFailure`が`record-missing`・`record-exists`・`value-rejected`・`rule-rejected`を持ち、`FailureOutcome`が結末名へ写す。CLIは`COMMAND_REFUSED`で返す） |
 | フックの宣言外呼出し | 実装済み（`hook.Declared`が`uses`外の能力呼出しを`HOOK_UNDECLARED_CALL`で拒否。無宣言は拒否。`hook.CommandCaller`が宣言済みの呼出しをCommand境界へ委譲し、認可・取引・効果照合・記録を継承する） |
 | 暦の宣言 | 実装済み（`calendar`の`fiscal-year starts month`・`week starts`・`business-day excludes`と、`period`の`calendar`。`CALENDAR_*`・`PERIOD_*CALENDAR*`の検証） |
-| 期間と暦の投影 | 実装済み（`view`のApplication投影に`periods[].calendar`、テキスト出力に行、Studioの「期間」表に列を追加） |
+| 期間と暦の投影 | 実装済み（`view`のApplication投影に`periods[].calendar`と`periods[].closingDay`、テキスト出力に行、Studioの「期間」表に列を追加） |
 | 標準業務Dataの投影 | 実装済み（`view`のApplication投影に`standardBusiness`（種別・Data・結合器が読む属性）、テキスト出力の`standard-business`行、Studioの「標準業務」表） |
+| 利用者設定の宣言と読み取り | 実装済み（`internal/usersetting`。鍵・値・利用者の役割で宣言し、宣言されていない鍵は空ではなく報告。`Table.Change`・`Table.Apply`が宣言済みの鍵だけを更新し、拒否された変更は格納へ届かない） |
 | 標準業務の属性役割 | 実装済み（`attributeRoles`に税5・通貨6・採番5・休日1の17役割を追加。綴り誤りは`SEMANTIC_ATTRIBUTE_ROLE_UNSUPPORTED`で継続して報告。役割が要求するプリミティブ型との一致は`SEMANTIC_ATTRIBUTE_ROLE_TYPE_MISMATCH`、別名は下地まで辿る） |
 | 休日のData結合 | 実装済み（暦が休日Dataを名指し、Dataが`holiday-date`の役割で日付属性を名指す。解釈できない日付は行番号つきで報告。`holiday-calendar`役割がある場合は暦名で行を分け、名前なしの読み取りは拒否。暦識別の型が値域を宣言していれば、宣言外の識別は`CalendarDomain.Validate`で報告。`HolidayResolve`・`CalendarForPeriod`が期間→暦→休日→行を一続きに解決し、識別検査を行全体へ適用） |
-| 採番の契約 | 実装済み（`internal/numbering`。桁・接頭辞・検査数字・桁あふれの宣言。桁あふれの既定は停止、`wrap`は宣言時のみ。検査数字は1文字。`numbering-*`の属性役割からDataの行を結び付け、`Reserve`の予約を`Commit`/`Release`で取引に参加させ、`ReserveInTransaction`が呼出し側の取引と同じ境界で確定・取消する。`numbering-rule`役割で1つのDataに複数規則を置け、`ResolveRules`が規則名から束縛・発行までを一続きにし、`internal/numberingcommand`がCommand側`UnitOfWork`とのアダプタになる） |
-| 通貨の率と方向 | 実装済み（`internal/currencyrate`。中値・買値・売値の宣言、換算方向の宣言、システム通貨の率1、行の欠落と重複の検出、`currency-rate-*`の属性役割からのData結合。年次へのフォールバックは`currency-rate-fallback`役割の行の値で宣言し、既定`none`は行の欠落を報告） |
+| 採番の契約 | 実装済み（`internal/numbering`。桁・接頭辞・検査数字・桁あふれの宣言。桁あふれの既定は停止、`wrap`は宣言時のみ。検査数字は1文字。`numbering-*`の属性役割からDataの行を結び付け、`Reserve`の予約を`Commit`/`Release`で取引に参加させ、`ReserveInTransaction`が呼出し側の取引と同じ境界で確定・取消する。`numbering-rule`役割で1つのDataに複数規則を置け、`ResolveRules`が規則名から束縛・発行までを一続きにし、`internal/numberingcommand`がCommand側`UnitOfWork`とのアダプタになり、`internal/numberingsqlite`が版付きの永続格納になり、2プロセス同時実行で同一番号を出さないことを子プロセス2つで確認） |
+| 通貨の率と方向 | 実装済み（`internal/currencyrate`。中値・買値・売値の宣言、換算方向の宣言、システム通貨の率1、行の欠落と重複の検出、`currency-rate-*`の属性役割からのData結合。年次へのフォールバックは`currency-rate-fallback`役割の行の値で宣言し、既定`none`は行の欠落を報告。月次表と年次表は別Dataとして宣言でき、`ResolveTable`が行から粒度を読み`Pair`が結合する。`currency-rate-granularity`役割で宣言し、宣言と行の矛盾は`CheckDeclared`で報告する） |
 | 税の適用期間と端数 | 実装済み（`internal/taxrate`。適用期間の両端、`floor`・`ceiling`・`half-up`・`half-even`の宣言、行の欠落と重なりの検出。`tax-applies-from`等の属性役割からDataの行を結び付ける） |
 | 暦からの日付導出 | 実装済み（`internal/businesscalendar`。日付差の規則（`elapsed`・`calendar`・`business`）、営業日加算、会計年度と年度開始、期間キー（年度＋月順序）と期間開始日の逆算。宣言から暦を解決し、休日Dataは呼出し側が与える） |
 | 画面・帳票の版 | 実装済み（全HTML・印刷テンプレートが`tei-semantic-fingerprint`を出力） |
@@ -974,7 +975,6 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
-
 
 
 

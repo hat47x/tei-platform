@@ -36,3 +36,38 @@ func TestBuildWorkbenchProjection(t *testing.T) {
 }
 
 func floatPtr(v float64) *float64 { return &v }
+
+func TestWorkbenchProjectionRetainsCompositeAndParallelForeignKeys(t *testing.T) {
+	// Physical FK direction and multiplicity are catalog facts, not accepted
+	// Data/Business relationships. These cannot be collapsed by label or target.
+	d := index.Derived{PhysicalSchemas: []physical.SchemaSnapshot{{
+		Database: core.MustCanonicalID("edges_db"),
+		Tables: []physical.Table{{
+			Schema: "public", Name: "links", Kind: physical.TableKindTable,
+			ForeignKeys: []physical.ForeignKey{
+				{Name: "links_from_fk", Columns: []string{"from_tenant", "from_id"},
+					ReferencedSchema: "public", ReferencedTable: "nodes",
+					ReferencedColumns: []string{"tenant_id", "id"}},
+				{Name: "links_to_fk", Columns: []string{"to_tenant", "to_id"},
+					ReferencedSchema: "public", ReferencedTable: "nodes",
+					ReferencedColumns: []string{"tenant_id", "id"}},
+			},
+		}},
+	}}}
+	model := databaseworkbench.Build(d)
+	if len(model.Schemas) != 1 || len(model.Schemas[0].Tables) != 1 {
+		t.Fatalf("schemas=%#v", model.Schemas)
+	}
+	table := model.Schemas[0].Tables[0]
+	if table.Name != "public.links" || len(table.ForeignKeys) != 2 {
+		t.Fatalf("physical edge count / qualified source lost: %#v", table)
+	}
+	from, to := table.ForeignKeys[0], table.ForeignKeys[1]
+	if from.Name != "links_from_fk" || to.Name != "links_to_fk" ||
+		from.ReferencedTable != "nodes" || to.ReferencedTable != "nodes" ||
+		from.Columns[0] != "from_tenant" || from.Columns[1] != "from_id" ||
+		to.Columns[0] != "to_tenant" || to.Columns[1] != "to_id" ||
+		from.ReferencedColumns[0] != "tenant_id" || from.ReferencedColumns[1] != "id" {
+		t.Fatalf("physical FK direction/order/multiplicity changed: %#v", table.ForeignKeys)
+	}
+}

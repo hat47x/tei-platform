@@ -1,0 +1,6 @@
+tei commands entry fields:
+argumentDefaults argumentType argumentValues effect jsonContract modes name
+optional output repeatableFlags required resultShape schemaVersion successShape writeFlags
+
+No field advertises failure codes, so the contract document is the only place a
+caller can learn which error.code values a command can return.

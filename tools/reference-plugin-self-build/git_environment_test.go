@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -11,6 +12,41 @@ func TestGitEnvironmentDropsRedirectionVariables(t *testing.T) {
 	got := gitEnvironment([]string{"PATH=/bin", "GIT_DIR=/other", "git_work_tree=/x", "HOME=/h", "GIT_INDEX_FILE=/i"})
 	if len(got) != 2 || got[0] != "PATH=/bin" || got[1] != "HOME=/h" {
 		t.Fatalf("unexpected environment: %v", got)
+	}
+}
+
+// #3637: `go test ./...` runs packages in parallel, and another package's
+// temporary file can make this check fail. The message must name what was
+// dirty, otherwise the failure reads like a mistake in this test's own input.
+func TestRequireCleanRepositoryNamesTheDirtyPaths(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git is not available")
+	}
+	dir := t.TempDir()
+	run := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v: %s", args, err, out)
+		}
+	}
+	run("init", "-q")
+	if err := os.WriteFile(filepath.Join(dir, "tracked.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	run("add", "tracked.txt")
+	run("-c", "user.name=t", "-c", "user.email=t@example.invalid", "commit", "-qm", "base")
+	if err := os.WriteFile(filepath.Join(dir, "stray.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	err := requireCleanRepository(dir)
+	if err == nil {
+		t.Fatal("an untracked file was accepted")
+	}
+	message := err.Error()
+	if !strings.Contains(message, "stray.txt") || !strings.Contains(message, "?? ") {
+		t.Fatalf("the dirty path is not named: %s", message)
 	}
 }
 

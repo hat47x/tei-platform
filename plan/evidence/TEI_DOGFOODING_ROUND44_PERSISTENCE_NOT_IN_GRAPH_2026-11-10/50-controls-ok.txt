@@ -1,0 +1,9 @@
+Checked first and found correct, recorded so a later reader need not repeat it:
+
+commands vs -h (the round-38 gap) is now closed by someone else's fix:
+  validate 3/3  world 2/2  inspect 3/3  trace 9/9  plugin-resolve 5/5  view 15/15
+
+Earlier rounds' fixes still hold:
+  security.authenticate  total=5  (realizes + 2 outcome + 2 input)
+  security.authorize     total=6  (realizes + 2 outcome + 3 input)
+  incoming of security.authenticate: order_entry - realizes

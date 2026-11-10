@@ -1,0 +1,11 @@
+== registered ==
+  observed=2 refused=0 invoked=2
+    kind=application-runtime  provider=runtime.observer   status=OBSERVED         resolved=True selected=True invoked=True
+    kind=database-state       provider=database.observer  status=OBSERVED         resolved=True selected=True invoked=True
+
+== unregistered ==
+  observed=0 refused=2 invoked=0
+    kind=application-runtime  provider=runtime.observer   status=NOT_REGISTERED   resolved=True selected=False invoked=False
+    kind=database-state       provider=database.observer  status=NOT_REGISTERED   resolved=True selected=False invoked=False
+
+ruleFingerprint: sha256:f999ca3a39bc6dbe44f37aab81e77159b1958a3da02ec8307308258763e118d4

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -471,7 +472,7 @@ func TestStrictKnowledgeJSONRejectsUnknownFieldsAndTrailingValues(t *testing.T) 
 		t.Fatal(err)
 	}
 	var requirements knowledgecontext.QualificationRequirements
-	if err := decodeStrictKnowledgeJSONFile(unknownPath, &requirements); err == nil ||
+	if err := decodeStrictKnowledgeJSONFile("-qualification-requirements", unknownPath, &requirements); err == nil ||
 		!strings.Contains(err.Error(), "unknown field") {
 		t.Fatalf("unknown qualification field was not rejected: %v", err)
 	}
@@ -485,9 +486,22 @@ func TestStrictKnowledgeJSONRejectsUnknownFieldsAndTrailingValues(t *testing.T) 
 		t.Fatal(err)
 	}
 	requirements = knowledgecontext.QualificationRequirements{}
-	if err := decodeStrictKnowledgeJSONFile(trailingPath, &requirements); err == nil ||
-		!strings.Contains(err.Error(), "trailing JSON value") {
+	err := decodeStrictKnowledgeJSONFile("-qualification-requirements", trailingPath, &requirements)
+	if err == nil || !strings.Contains(err.Error(), "trailing JSON value") {
 		t.Fatalf("trailing qualification JSON was not rejected: %v", err)
+	}
+	// Two documents is the caller sending the wrong file, so it answers as an
+	// argument error rather than a build failure (#3943).
+	var argument *argumentError
+	if !errors.As(err, &argument) {
+		t.Fatalf("trailing JSON was not an argument error: %T %v", err, err)
+	}
+
+	// The message must name the option the path came from: one loader serves
+	// both -qualification-requirements and -review-handoff.
+	err = decodeStrictKnowledgeJSONFile("-review-handoff", unknownPath, &requirements)
+	if err == nil || !strings.Contains(err.Error(), "-review-handoff") {
+		t.Fatalf("the message did not name the option it came from: %v", err)
 	}
 }
 

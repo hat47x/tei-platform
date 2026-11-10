@@ -1,0 +1,1 @@
+{"schemaVersion":"tei.cli.validate/v0","ok":false,"diagnostics":[],"error":{"code":"WORKSPACE_LOAD_FAILED","message":"TEI workspace manifest not found: expected tei.workspace.yaml"}}

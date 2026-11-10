@@ -16,6 +16,7 @@ function payload(stage='completed',extra={}) {return {
 function fakeReact(){
   const states=[];
   return {states,createElement:(type,props,...children)=>({type,props:props??{},children}),
+    useRef:(x)=>({current:x}),
     useState:(x)=>{const index=states.length;states.push(x);return [x,(v)=>{states[index]=v;}];}};
 }
 function allNodes(node){return (!node||typeof node!=='object')?[]:[node,...node.children.flatMap(allNodes)];}

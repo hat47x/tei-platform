@@ -1,0 +1,173 @@
+{
+  "note": "subagent_fork after a completed turn: the child is a separate session but is seeded with the parent's completed turns, including a canary produced by an earlier tool call.",
+  "parentCanary": "PARENT_CANARY_941",
+  "forkCanary": "FORK_PROMPT_CANARY_942",
+  "runs": [
+    {
+      "label": "turn1-pwsh",
+      "rawLogBytes": 2004,
+      "rawLogSha256": "71ced33bc87e445922584954c8e95d6ef5c7ce45c7e7439897da6f7e54662b56",
+      "stdoutEventTypes": [
+        "final",
+        "session",
+        "status",
+        "text",
+        "tool_call",
+        "tool_result"
+      ],
+      "requests": [
+        {
+          "file": "001-request.json",
+          "bytes": 66912,
+          "sha256": "441e9148c3e454531a534a5eca4511fc85005cdba7ce738f1bebe57a88a7bb01",
+          "toolCount": 24,
+          "messageCount": 1,
+          "roles": [
+            "user"
+          ],
+          "sessionId": "session-533eefac-6399-4f5e-9260-283b81c28443",
+          "afterSeq": -1,
+          "throughSeq": 17,
+          "eventCount": 18,
+          "parentCanaryPresent": false,
+          "forkCanaryPresent": false
+        },
+        {
+          "file": "002-request.json",
+          "bytes": 40474,
+          "sha256": "a26f8f045fa1f704539e9da02a19475c82b82fa4fa4fdac98df45f0bc44a0a4f",
+          "toolCount": 0,
+          "messageCount": 1,
+          "roles": [
+            "user"
+          ],
+          "sessionId": "session-533eefac-6399-4f5e-9260-283b81c28443",
+          "afterSeq": -1,
+          "throughSeq": 17,
+          "eventCount": 18,
+          "parentCanaryPresent": false,
+          "forkCanaryPresent": false
+        },
+        {
+          "file": "003-request.json",
+          "bytes": 39385,
+          "sha256": "43b25fcc497f9e5e031f4dda7e4d54b13231bcc124d8421344ba4fc649698dfb",
+          "toolCount": 24,
+          "messageCount": 3,
+          "roles": [
+            "user",
+            "assistant",
+            "user"
+          ],
+          "sessionId": "session-533eefac-6399-4f5e-9260-283b81c28443",
+          "afterSeq": 17,
+          "throughSeq": 27,
+          "eventCount": 10,
+          "parentCanaryPresent": true,
+          "forkCanaryPresent": false
+        }
+      ]
+    },
+    {
+      "label": "turn2-fork",
+      "rawLogBytes": 1387,
+      "rawLogSha256": "3c7ff123da42cc89416c1d6aa845f76f6f0cb75e2ac6d03391375d8e863572e6",
+      "stdoutEventTypes": [
+        "final",
+        "session",
+        "status",
+        "text",
+        "tool_call",
+        "tool_result"
+      ],
+      "requests": [
+        {
+          "file": "001-request.json",
+          "bytes": 58033,
+          "sha256": "1b64f728fd3bfcc553ff79f8cc4fc1b08472591a804969ebe1440ab1675c2f43",
+          "toolCount": 24,
+          "messageCount": 5,
+          "roles": [
+            "user",
+            "assistant",
+            "user",
+            "assistant",
+            "user"
+          ],
+          "sessionId": "session-533eefac-6399-4f5e-9260-283b81c28443",
+          "afterSeq": 27,
+          "throughSeq": 41,
+          "eventCount": 14,
+          "parentCanaryPresent": true,
+          "forkCanaryPresent": false
+        },
+        {
+          "file": "002-request.json",
+          "bytes": 38121,
+          "sha256": "1ff49d4e01e7e5991737709436dd1f9bd4e46e84031195c4ca1070e6525cc874",
+          "toolCount": 24,
+          "messageCount": 7,
+          "roles": [
+            "user",
+            "assistant",
+            "user",
+            "assistant",
+            "user",
+            "assistant",
+            "user"
+          ],
+          "sessionId": "session-533eefac-6399-4f5e-9260-283b81c28443",
+          "afterSeq": 41,
+          "throughSeq": 48,
+          "eventCount": 7,
+          "parentCanaryPresent": true,
+          "forkCanaryPresent": true
+        },
+        {
+          "file": "003-request.json",
+          "bytes": 102516,
+          "sha256": "22407fa6d930dcb1aaca983f2bd539a9321abfa7c6cdf7cfe721c0f6fcff003a",
+          "toolCount": 24,
+          "messageCount": 5,
+          "roles": [
+            "user",
+            "assistant",
+            "user",
+            "assistant",
+            "user"
+          ],
+          "sessionId": "cee99189-17b4-4ef8-a2f0-aa0046686f15",
+          "afterSeq": -1,
+          "throughSeq": 42,
+          "eventCount": 43,
+          "parentCanaryPresent": true,
+          "forkCanaryPresent": true
+        },
+        {
+          "file": "004-request.json",
+          "bytes": 38558,
+          "sha256": "48c43910245b365feb7d00daccfd6668d39cb6a38ac89c36df8697dd7aae4788",
+          "toolCount": 24,
+          "messageCount": 9,
+          "roles": [
+            "user",
+            "assistant",
+            "user",
+            "assistant",
+            "user",
+            "assistant",
+            "user",
+            "assistant",
+            "user"
+          ],
+          "sessionId": "session-533eefac-6399-4f5e-9260-283b81c28443",
+          "afterSeq": 48,
+          "throughSeq": 57,
+          "eventCount": 9,
+          "parentCanaryPresent": true,
+          "forkCanaryPresent": true
+        }
+      ]
+    }
+  ]
+}

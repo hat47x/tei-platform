@@ -1,6 +1,6 @@
 # 三要素分析方法論とDiagram Projectionの接続契約（設計候補）
 
-- **状態**: 評価待ち・未採用。要求・ADR・Production schemaではない。コード変更・実行試験なし。
+- **状態**: §1〜18の図法・具体方式は評価待ち（未採用）。**§19の『全体モデルを図表で理解・探索でき、標準固定箇所とCustomを明示する』は2026-11-08に利用者が明示したTEI製品標準要件**。その要求を満たす個別Schema/Generator/GUIの実装・検証は未完であり、文書更新をProduction適合とみなさない。
 - **整理日**: 2026-10-31
 - **調査基線**: TEI main commit 4325ca79a52bf0d576db6fb4027bdc516b1023fd。XeadModeler M49公開ソース commit 68f1535b1c5dd80a327dfced37be401ecd3093c9（静的確認、M50/実GUI未実証）。
 - **目的**: Data / Function / Businessの三視点、X-TEA系の図法、具体例、定義ジャンプ、図上編集を、TEIの既存の意味正本と共通構造から再現する最小縦断設計。
@@ -444,3 +444,323 @@ Node.js 22.16.0で`node --test /tmp/tei-tea-ref/public-slice.test.mjs`を実行�
 **初回の最小縦断**: T10の`sales.order.status`をSemantic Data/Business State/Function Validatorの三視点で**同一Source、同一Attempt、同一公開資格**へjoinするread-only fixtureを検討する。T11〜13は既存#1126・#2516・#2620と実験Ownerを合わせて順次実証。初回の`T01/T03`（Source移動・不可逆編集）、`T06/T07`（公開Slice・Role不明）を置き換えない。Trait Overlayをsourceへ書き戻す新Writer、全Trait自動検出器、別のSource Registry/Policy/Reasoner、単独Studio Editorは作らない。
 
 **現状**: [Draft #3027](https://github.com/hat47x/tei-platform/pull/3027)のTR判別票と本節を静的照合した設計成果であり、上記T10〜13の実Fixture、Source Index・DB/Java観測Reader、実Workbench/Policy、Go/Node、独立Expected、Owner受理・実Effectの新しい実行証拠は**NOT RUN/NOT PROVEN**。現行[#2972](https://github.com/hat47x/tei-platform/pull/2972)の9件局所PASSは、Trait Overlayや実Source制約の適合を証明しない。
+
+## 19. TEI標準のモデル全容マップ・イベント／Lifecycle・Patternの可視化契約（2026-11-08）
+
+**製品上の基準要件（利用者の明示）**：TEIが扱う各ドメインの**構造、責務、イベント群、状態・遷移、操作・効果、Function、Pattern、Provider、外部連携**を、TEI自身が導出する**相互参照可能な図表の体系**として示す。利用者が当該ドメインの予備知識を持たなくても、全体像から個別要素の目的・影響・拡張箇所を辿れることを、特定の組織ModelやStudioの追加機能でなく**TEI標準機能の成立条件**とする。図を単一画像に詰め込むことは「完全」ではない。俯瞰・階層化・表・詳細・出典・未確定箇所を**同じモデル集合から**導出し、どの図からも行き来できることが必要である。
+
+これは標準**要求**であり、現行TEIに完成したGenerator、標準Model Map API、全ドメイン対応が実装済みとの宣言ではない。本節を新しいCanonical World／専用Graph Editor／第二モデル正本として採用せず、既存#1124（Modeler・共通Diagram Projection）、#1125（Business Flow）、#1126（Data Graph）、#1127（Function Pattern・Operation）、#2497（表現Projectionの忠実性）、#2506/#2507（Context/Pattern）、#2619/#2620（Everything is Data／Role）の実装・検証Ownerへ受入条件を渡す。
+
+### 19.1 「全容」の対象集合と、初心者が辿る主経路
+
+対象Worldを`W`、対象ドメイン／Function／Source集合を`S`、採用した意味解釈・Projection/Generatorの版を`G`、閲覧Consumerと公開Scopeを`C`とする。**全容の適格性は`(W,S,G,C)`相対**である。選択可能なPlugin・外部Provider・Sourceの存在を「TEIが知っているすべて」と誤認しない。必要定義の集合を確認できない場合は**全容未確認**を表示し、有限な取得済み範囲だけを`qualified partial`として説明する。Hidden／Not Loaded／Not Found／Permission Denied／Unsupported／Conflicted／Staleは「モデルにない」という表示へ丸めない。
+
+標準の**ナビゲーション根**は「このモデルは何を扱い、誰／何が関与し、どのイベントが何を起こし、状態がどう変わり、利用者はどこを拡張できるか」とする。専用用語を知らない利用者向けに、**概要→業務の流れ→関係するデータ／役割→イベント・状態変化→Function/Pattern→実行と出典→編集・カスタム候補**の道筋を標準で提供する。どの図面・表の要素にも、平易な短い説明、型付きQualified Ref、受理意味とSourceへのジャンプ、影響先、適用Scope、更新版と証拠資格を辿る操作を用意する。意味説明が原典に無ければAIがもっともらしい説明を確定するのでなく`description-unverified`を表示し、Ownerが説明を受理するまで候補に留める。
+
+### 19.2 固定の図表体系（異なる意味を一枚に潰さない）
+
+| 標準図表／入口 | 必須の可視化対象（存在を確認できた範囲） | 明示すべき混同・欠落 |
+| --- | --- | --- |
+| **全体マップ / Navigation Catalog** | ドメイン、サブシステム、Function、Pattern、Role、Data、Event Group、Lifecycle、外部Actor、Plugin/Extension、Sourceへのリンクと集約数 | 不明・非公開・未取得を数と理由で示す。表示1枚＝全件検証ではない |
+| **Data / Organization Topology** | Entity、属性、Relation occurrence、Position/Membership/Occupancy等の異なる関係、多重度・時点・粒度、物理対応 | 同一Personの兼務、JOIN増幅、同label別ID、FKと受理Relationを区別 |
+| **Business/Event Flow** | 入口Trigger（人／Timer／外部Event／API／VUI）、Event group／correlation、Producer、Consumer、手作業、Branch、Handoff、拒否・再試行・終端、関連Function | Event発生・受信・適用・完了を別に描く。外部未受領を成功経路で隠さない |
+| **Lifecycle / State Transition** | State identity、from/to、遷移Trigger、Guard、Owner Action、Effect/Receipt、観測・補償・失敗、許されない／未定義遷移 | 物理状態コードとMeaningを混ぜず、`allowed`と`authorized`と`committed`を別記 |
+| **Function / Pattern Composition** | 既存`browse/record/reference/command/header-detail`等のFunction内での役割・入出力・Context/Result Slice・Data/Query・Hook・Plugin実装の束縛 | Pattern単品の説明でなく、全体のどのEvent、State、Data、Effectを扱うかを辿れる |
+| **Cross-reference Matrix** | Data×FunctionのCRUD・Event×Transition・Transition×Action/Validation・Function×Pattern・Pattern×Representation/Target・Requirement×Evidence | 宣言／導出／実観測／未検証の各セルを別資格で示す。欠落セルを実行なしと即断しない |
+| **Execution & Evidence Trace** | Logic／Query／Provider／Target／Consumer、Domain time／known/observed time、Scope／Source revision、実Read／Effect／Receipt | Diagramから実行成功や現在Grantを推定しない。実行・生成資格のない辺は`unverified` |
+
+図表は共通の**意味付きノード／関係／イベント／時点／作用／参照**のProjectionであり、特定表現を唯一の図法として固定しない。**同じ要素の異図表示は同じQualified IDへ収束**する。一方でBusiness eventと状態、Operation intentと副作用、データ関係と表示上の接続は、見た目が同じ線でも意味が異なるので必ず種別を持つ。Event Groupを全ドメインで必ず同じ物理テーブルにすることは要求しない。
+
+### 19.3 標準固定領域とカスタム領域を同一図表で見分ける
+
+**「カスタム可能か」を図から隠さない**。図中の各要素・Edge/Hookに、(a)由来＝標準導出／案件宣言／Plugin実装／観測結果、(b)操作区分＝固定／設定可／置換可／拡張可／閲覧のみ／未確定、(c)現在の意味版・Source・権限／Provider資格、(d)カスタム点の明示契約を表示する。視覚上の色や線種だけに依存させず、同等の表／CLI／SHO説明にもテキスト属性で出す。
+
+| 区分 | 固定するもの／許容するもの | 代表例 |
+| --- | --- | --- |
+| **Standard invariant** | ID/Scope/型・Meaning受理・副作用境界・順序制約・出典保存・検証前後条件は、表示や案件Hookで黙って削除・迂回できない | 状態遷移のCommit時再照合、権限境界、Source版失効、Eventの相関Identity |
+| **Standard configurable** | 許された値域の設定／表示／有効化、版・選択を宣言で変更できる | 表示階層、図法、選択可能なLayout、既定Label、利用する標準Pattern |
+| **Extension slot / Hook** | Trait・Contractと型付き入力／出力、適用位置、実行前後条件、失敗時動作、優先順位を宣言して差し込み、合成後の**有効フロー**を再描画する | Event handler、状態遷移Guard追加、FunctionのData取得／検証／後続Action、Target Generator差替 |
+| **Project-owned replacement** | 明示的に置換可能と認められた節だけ、互換性と意味保存・失効影響を検収し、旧節と置換節のDiffを提示する | 顧客固有Approvalフロー、業務上の追加State/Role、VUI専用対話フロー |
+| **Observation-only / Unqualified** | Providerのread-only実観測、権限不明、生成未対応、Source未解決の辺は編集許可や確定意味にしない | 外部Eventの観測、実DB物理FK、History欠落・未接続Consumer |
+
+**フックポイントの原則**：標準処理にカスタムが差し込まれた場合、標準フローとカスタム差分の**両方**、そして合成後の**実効フロー**を図で見られるようにする。標準図にはない隠れたHook、未資格のPlugin置換、実行しない死んだHookを「有効」と表記してはならない。TEI生成ロジックもTEI自身がモデル化した定義を参照してよいが、データの変換・コード生成・Runtime束縛の版は別資格で保持する。実行TargetごとにHook可否が異なるならTargetごとの差を明示し、非対応Targetで標準動作を黙って変えない。
+
+VUIのような異質媒体は「音声用の別意味正本」を作らず、Event受信／Flow制御／状態・Contextの操作として標準マップに接続する。音声再生・確認・対話順序の媒体差分をカスタムRepresentationへ落とし、業務State Commitを音声UI状態で代用しない。同様にWeb/Desktop/API/CLI/MCPは**同じ意味モデル**の異なる入口・出口として辿れることを要求する。
+
+### 19.4 標準ガイド・ナビゲーションとカスタム編集の体験
+
+初期表示は**何を扱うシステムか／主要な主体・イベント・ゴール／標準と独自の割合／未解決件数**の概要。利用者が`CaseRecord`を選択すると「何の案件か→誰が扱うか→どのイベントで担当が変わるか→どの状態遷移が可能か→どのFunction/Patternが閲覧・変更するか→どのRule/Provider/Sourceで成立するか」へ型付きリンクで段階的に掘れる。導入利用者には一般語の説明・用語集・代表Scenarioを提示し、専門家には原DSL・Source Position・Rule・Diff・Evidenceへ即座に到達させる。ナビゲーションの導出はMethod/Modelが責任を持ち、Studio固有の手動リンク集を標準要件の代わりにしない。
+
+カスタム時は **①全体で対象の位置を特定 → ②変更可能領域・影響・不適格の理由を表示 → ③標準との差分と合成後フローをPreview → ④Source/Rule/Targetの版と型・Guard・副作用・Source閉包を検査 → ⑤既存Shared Acceptanceで受理 → ⑥再生成・差分再検収** の経路を共通にする。Layout変更だけなら意味受理を再要求しない。Hookの適用順やAction/State/ProviderのMeaningを変えたとき、見た目の変更として再検証を省かない。AIも同じ入力・出力／検証・権限を使い、人間と別の秘密の編集経路を持たない。
+
+### 19.5 標準受入ケースと「完全」の不成立条件
+
+既存の`organization`/Case C1→D1、Membership/Occupancy二時点、標準Action/Query、Event/Handoff、Lifecycleのケースを再利用し、**新しい全体像Scenario正本を作らない**。初回はread-onlyで同一Source/Scope/Consumerの次の負例を含む受入票を#1124/#2514/#1180へ接続する。
+
+| 受入ID | 期待する機械的区別／操作 | 失格とする実装 |
+| --- | --- | --- |
+| **MAP-01** | 全体マップの全てのFunction/PatternがBusiness Event・Data・Stateの少なくとも一つの**説明付き型付き参照**に位置づく。非該当/未束縛はgapへ列挙 | Patternが検索結果の孤立項目として並ぶだけ |
+| **MAP-02** | Event→Transition→Action→Effect/Observation→Handoffの正負・失敗・補償を辿れる。非同期遅延・取消・未受信を別ノード/状態で示す | 成功一本道の描画、手作業／外部工程の自動完了 |
+| **MAP-03** | State×Eventの禁止／未定義遷移とGuard、依存Rule、現在Grant未確認をMatrix／Graphで区別 | 表示上の矢印を実行許可やCommit成功と表示 |
+| **MAP-04** | 標準固定節／設定可／明示Extension Slot／案件置換／観測限定の区別が図・表・CLIに同義で表れる | 固定処理をUIだけで上書き、暗黙のHookを非表示 |
+| **MAP-05** | Plugin追加・変更・拒否で標準フロー、Extension差分、実効フローの三者を比較し、Target/Generator/Source版の変化を追跡 | Generator変更をLayout-only扱い、未束縛Pluginを有効表示 |
+| **MAP-06** | 初学者が概要→イベント→状態→Pattern→Data/Sourceへジャンプでき、どの段階でも「何・なぜ・どこで変える」が説明される | 予備知識がなければPattern名しか見えない、説明が出典なし推測 |
+| **MAP-07** | Scopeを固定して対象集合／描画集合／Unknown/Hidden/Unsupported/Incomplete集合と被覆率・理由を提示する | 未取得を不存在と表示、部分グラフを「完全な全容」と表示 |
+| **MAP-08** | 同じModelをGraph、表、CLI、SHO/Studio候補へ投影してもID・Role・Source rev・公開資格が整合する | Graphだけが別SSOT、非公開属性・存在をFigure Labelから漏えい |
+| **MAP-09** | 図上のカスタム変更はtyped Intent→Diff/Impact→Shared Acceptance→再読取へ。標準不変条件と現在Authorityは変更不可 | 見た目の線やHookボタンから無条件のDB/業務書込 |
+| **MAP-10** | 必須図表やLink/Scenarioに未対応・欠落があればModel Map自身が**不足の場所と原因**をガイドとして表示する | 欠落を黙殺して「完成」と認定 |
+
+**初期検証順**：M0＝同じSourceのNode/Relation/Event/State/Pattern/Hook catalogとUnknown CountをCLI/read-onlyで導出 → M1＝組織の代表Business EventとState/Patternをつないだ2階層Graph＋横断Matrix（未解決を明示） → M2＝Studio/SHOの表示一致・ナビゲーション／初学者向け説明・利用者の理解課題（非AIの人的評価ができない場合はAI盲検/客観課題で代替し、その限界を明記） → M3＝標準/Custom差分・実効フロー・Typed Change Intent → M4＝実Provider/Host/Target生成物に対する欠落/適用成績の独立確認。**M0が未成立ならM1の美しい図を製品の全容保証と呼ばない**。試験票・Owner・Source集合と検証結果は既存Issue/CIを使い、本節に第二台帳を作らない。
+
+**対応する実装Owner**：モデル全体のDiagram/Navigate #1124、Business Flow/Event/Handoff #1125、Data/Org Topology #1126、Function/Pattern #1127/#2507、Lifecycle/Guard #2620/#1174、Projection意味保存 #2497、完全性/Source #1706/#2516、独立Expected #2514/#1180、組織最小例は[Draft #3243](https://github.com/hat47x/tei-platform/pull/3243)。現行の限定Reference試験や[Draft #3500](https://github.com/hat47x/tei-platform/pull/3500)のNative Query→Pattern Go試験はこの10件の全体受入を証明していない。**MAP-01〜10は受入提案・新実行NOT RUN**。
+
+### 19.6 コード生成時のカスタムフロー可視化：Target間で異なるカスタム実装を同じモデルから説明する
+
+Code Generatorの入力は「TEIのAuthoringで宣言したPattern」だけではない。**選択された標準Plugin／個別Plugin、Traitの手動/生成Implementation、Provider、Target制約、適用済みHook順序**を解決した**実効Composition候補**が必要である。ただし宣言・選択・実Build／Load・実Host Invoke・Effectは別資格であり、宣言だけで「利用中」と表示しない。Model Mapには、実効Compositionの**有資格範囲**と未解決の部分を帰属させる。実バイナリに差し込まれた処理の証拠を、Source Diagramの見た目から創作しない。
+
+| Model Mapに表示する処理段 | TEI標準の固定境界 | 明示的なカスタム点（存在すれば） | 一致が必要な実行・生成資格 |
+| --- | --- | --- | --- |
+| **Receive / Normalize** | Source/Request/Messageの出所、入力型・Epoch・Correlationの確定、秘密／非開示の境界 | 媒体ごとのDecoder／VUI Recognition／入力Validator | 実Adapter選択、Contract/Version、Trusted Origin、未取得の拒否 |
+| **Resolve / Bind** | 意味ID／Relation/Pattern/Function Contextと実Providerの一致、Scope資格、曖昧拒否 | 許容範囲の選択規則、追加Binding、Target固有Adapter | 実Provider/Manifest/Source rev／選択Epoch、current Grantは独立 |
+| **Validate / Decide / Transition** | Declared State/Guard、現在Validation/AuthorityとCommit条件の分離、禁止遷移の拒否 | 業務Rule／承認段階／遷移前後の追加業務判定 | 採用されたRole／Validation、Contractのpre/post、Action結果 |
+| **Execute / Persist / Effect** | Operation ID、Concurrency/Period、Effect/Receipt、重複処理境界、失敗・部分副作用 | Provider実装／保存フック／承認済み追加Action | Transaction/Effectの実証、独立Read、Host Side-effect許可 |
+| **Publish / Observe / Handoff** | ConsumerのDisclosure、Observed vs Accepted/Committed、送出・受領の適用集合 | Web/Desktop/CLI/MCP/VUIの表示/通知/後続Workflow | Consumer実受信、ACK対象／版、Result Slice、再試行／失効 |
+| **Generate / Package / Deploy** | 受理WorldとTarget/Generator/Plugin versionの束縛、未対応Capability明示 | 置換可能なTemplate／生成Section／Manifest付き実装差込み | 生成Source/Artifact/Evidence、実Target接続・実行資格 |
+
+この表の「固定」は**標準が検証しなければならない不変条件**を指し、「特定のMiddleware/認証方式/一つの実装」を全Targetで強制することではない。Targetにその段の機能がない、または外部Hostが担当するときは**外部実装の束縛／未確認Gap**を表示する。ユーザーが差し替えたFlowが標準Contractのpre/postと整合しない場合、Generatorは出力を「標準適合済み」として扱わず、Diagnostics→Preview差分→既存Acceptanceへ返す。
+
+**完成Model Mapでの見せ方**：①標準参照Flow、②変更したHook/Stepと入力・出力・権限／版、③生成Targetごとの合成後Flow、④同じ対象のGraph/Matrix/Traceにおける影響集合、をリンクして提示する。CLIなど図形描画不可のConsumerには同型の階層表/ASCII graph/Typed JSONを用意する。これは特定の正規化JSON Schema採用ではなく、既存のRole付標準データとProjectionを使う標準受入要求である。
+
+**追加負例**（既存MAP-05/08/10へ集約）：Generator Templateのみ変更でSemantic World fingerprint不変の場合もTarget生成資格を再評価する。Plugin宣言だけ追加・実選択なしなら合成後Flowに「非稼働」と示す。標準Guardの無いTargetへ配置する場合は警告を消して固定部分を描くのではなく`unsupported/unqualified`を明示する。Hookで前後のEvent順を入れ替えてContext/Effectを破壊する場合は適合拒否。**コードジェネレータのHook実装やTarget実証は本PRではNOT RUN**。
+
+### 19.7 Lifecycle・イベント・対話を型付きGraphとして合成し、生成器入力へつなぐ（他チャットのPlugin/Lifecycle/AI Chat横断、採用前の方式候補）
+
+**【同一テストの重複回避】**：Lifecycle Graph/Patchの方式検討・Runtime/Target Loweringへの引渡しは[Draft #3507 のHook/Interaction Flow設計](https://github.com/hat47x/tei-platform/pull/3507)を、原子的TraitとGraph全経路保証のOwnerは**main統合済み[#3510](https://github.com/hat47x/tei-platform/pull/3510)**の[設計§15](TRAIT_ATOMIC_COMPOSITION_AND_FULFILLMENT_2026-11.md)を参照する。本§19.7が所有するのは**RQ-036の図表への表示、分かりやすいナビゲーション、欠落診断、標準／Patch／実効Graphの同一Ref・Revisionでの比較受入**のみ。MAP-11〜16はそこでの表示・資格の観点を追加するもので、#3510のTLG-01〜08や#3507のLGXケースと別のScenario SSOT・Runner／Validatorを増やす提案ではない。実装を採用・実行した証拠は本節から発行しない。
+
+**設計上の補正**：§19.3／§19.6で「標準固定」と呼ぶのは、全ドメインに単一の固定**手続き順**を強いることではない。固定対象は、型付き参照／Guard/Authorityの迂回拒否、承認が必要なEffectのCommit資格、出典追跡、Effect/Receipt、失敗の伝播、版・Scopeの整合、要求する前提と事後保証などの**成立義務**である。これを守りながら、業務Graphの経路／Step／イベント群／State／Plugin Hook／Target適用を構成時に可変とする。互換なGraph Patchの導入は**意味変更**として扱う。Layout/Notationだけの変更とは区別する。
+
+受理された同じWorldに、**Roleが付いた型付きData/Graph**をProjectionできることを最小要件とし、新しいWorkflow専用Canonical、固定Runtime Dispatcher、独立Graph Storeを導入しない。各Viewは以下の**論理属性**を持つが、この表を新たなGo公開構造体や正式DSL宣言として固定しない。
+
+| Graph要素／束縛 | 必要な意味・由来・検証 |
+| --- | --- |
+| Node / Relation / Edge | Qualified identity、役割（Event/State/Guard/Action/Effect/Observation/Interaction/Join/Retry/Timeout/Handoff）、端点ID／方向／多重性／必要なら順序・条件、意味版とSource位置 |
+| Port / Trait / Contract | Input/Output型・Result/NULL/partial、粒度、前提／保証、Owner、Hook挿入契約。Traitは原子的義務であり**Hook Slotという編集許可自体ではない** |
+| Event Group / Correlation | 発生源、業務時点と観測時点、correlation/causation、重複・遅延・欠落、start/end/acceptance。発生・受信・適用・完了を混同しない |
+| State / Transition | 有効な状態とfrom/to、禁止・不明、Guard、Owner Action、Commit再評価、明示取消／補償。認証の方式は固定せず、束縛した場合にだけ挿入する |
+| Graph Extension / Patch | 変更対象のQualified node/edge、base revision、追加・削除・置換可能なslot、Plugin identity/Version、適用Scope/Target、期待する型・前提／保証、競合と順序。任意edgeの書換権限を暗黙付与しない |
+| Effective Graph / Generation | Standard Graphと受理済みProject Graph、選択Plugin/Provider/Hookの実Bindingを合成。各Targetへの生成候補・未対応・生成器版・Artifact/Evidenceを別版で持つ |
+
+**処理構成の順**：①Source/Role/Scopeと必要集合の閉包を列挙→②標準Graphに受理済み案件Graphと宣言されたPatchを合成→③同一node/edge・Priority・強制順序を巡る競合、型・Trait・pre/post・入出力粒度を診断→④Guard/Authorization／Effect Fenceを迂回する経路、到達不能Node、合流の条件不一致、無期限待機、部分成功の未処理、Cancel/TimeoutやRetryの欠落を検査→⑤Target別に実装可能な部分だけを生成し、Source/Generator/Plugin版を束縛→⑥実Targetが本当にそのFlowをロード／Invoke／Receive／Commitしたかは別の実証で確認。①〜⑤の一段でも不足があれば**生成済み図があること**をRuntime適合や完全性の証拠としない。
+
+Graphを**描いていること**、Graphの**構文と型が通ること**、受理したMeaningとRequired Contractを**意味保存していること**、Targetへ**生成可能であること**、選択したPluginが**実呼出しされたこと**、実行Effectが**確定したこと**は全て別の合格列。Model Map／Pattern詳細／Generator Previewはこの区分を同一IDとRevisionで表示する。編集中にSourceが変更されたときは、初期Graph・Patch対象・Revisionを再解決して競合を拒否する。すでに走っている長期Executionを新Graphへ暗黙に移し替えず、実行継続／Migration／Resumeの資格は#1174/#2390等既存Runtime Ownerの別課題とする。
+
+**異質な検証領域：生成AIのWebチャット**。Webチャットの`message`／`turn`／`run`／`streaming`／`tool-call`／`tool-result`／`approval`／`regenerate`／`branch`は、**Interaction FlowのState/Event候補**として同じGraph体系に位置づける。Tool応答の未受信・部分Streaming・中断・承認待ち・二重送出・Branch Resumeを明示し、会話画面上の「回答完了」を業務TransactionのCommitや現在Tool Grantへ自動昇格しない。UI Adapter/ProtocolはGraphの入出力であり、AG-UI等のEvent Transport、A2UI等の宣言的UI記述、MCP等のOperation Adapterは**可能な外部比較対象**にとどめ、いずれかの採用や実対応をこの要求から強制しない。AIがGraphを解釈・改善提案しても、Ownerの意味受理やHostの実行権限を代行しない。
+
+**独立反例（MAP-11〜16、全件新規試験NOT RUN）**：
+
+| ケース | 独立に比較する期待 | 実装を不合格とする条件 |
+| --- | --- | --- |
+| MAP-11 | 標準FlowのGuardを保持しつつ、許可済みApproval Stepを途中へ加えた合成後GraphとTarget別Diff | 形状が異なるだけで一律拒否、またはGuardを迂回して成功 |
+| MAP-12 | 同じExtension Slotを二Pluginが異なるOutput契約で同時置換した際のConflictと未選択表示 | 先着Pluginを黙って採用、見た目だけ競合解消 |
+| MAP-13 | State Graphの未接続／到達不能／合流Guard矛盾／Timeout未処理を独立Diagnosticsにする | 正規化だけ成功して全Graphが有効と表示 |
+| MAP-14 | 配置・Notationのみ変更ならMeaning/Generator inputは不変、型付きEdge/Hook変更は生成・検証対象 | 表示変更で意味変更を起こす、意味変更なのにLayout更新として無検証 |
+| MAP-15 | Graph Revision変更後も既存Running Attemptを自動切替せず、別案／移行資格／停止を明示 | 新しいGraphができたので実行中も暗黙に切替 |
+| MAP-16 | AI chatのStreaming/Tool/Approval/BranchをInteraction側に示し、Tool未受信・Host Grant未照合をUnknownに保持 | メッセージ表示済み＝外部Effect確定／AIの承認済みと表示 |
+
+**既存Ownerへの分担**：Everything is Data・Role #2619/#2620、PatternのAssume/Guarantee #2507、Rule/Operator #988、標準Plugin/Trait #951/#3278、生成器契約 #2090/#2092/#2096、Event/Business Flow #1125、Lifecycleの採否 ADR-0046/#1174、実AI Interaction/Tool #2390、Graph表示／参照 #1124、独立Expected #2514/#1180。三要素Methodは投影・案内・差分の**共通受入窓口**であって、これらのDefinition/Runtime正本を複製しない。
+
+### 19.8 図表を全体のガイドとして保つ：現在地・往復・階層化、生成AI向け表現、設計書から実装への導線（2026-11-09、利用者明示の設計原則）
+
+**原則（利用者の明示）**：大きなBusiness／Event Flow、状態遷移図、構成図のように機能や処理の全体像を描く図表は、個別要素を確認・編集している間も**全体の道案内**として働かなければならない。利用者は全体像の中の現在地を保ったまま個別要素へジャンプし、内容を確認し、元の位置へ戻れる。対象ドメインの知識がない人でも、大きな概念の中で個別要素を把握し、迷わずに作業できることを狙う。同じ案内は生成AIにも、直接読みやすい表現で提供する。
+
+§19.1の主経路と§19.4の段階的な掘り下げは「どこへ進めるか」を定めていた。本節は、進んだ後も**どこにいるか**を失わない条件を加える。新しい正本、専用Graph Store、Studio固有のリンク集は作らない。案内は§19.2の図表体系と同じ意味集合から導出する。
+
+#### 19.8.1 案内として成立する条件
+
+| 条件 | 利用者に見えること | 導出元・責務 |
+| --- | --- | --- |
+| **G1 現在地** | 個別の定義・表・詳細図を開いている間も、全体像のどの区画・段階・階層にいるかを示す。GUIでは概観図上の強調、テキストでは上位からの経路で表す | 選択対象のQualified IDから、Model Mapの包含・所属関係を引いて求める。画面座標から逆算しない |
+| **G2 往復** | 概観→詳細→概観の移動で、元の概観の表示位置・展開状態・選択が戻る。詳細から隣接要素へ横移動しても経路を辿り直せる | 表示位置・展開・履歴はPresentation state（[表現型間の連携設計§2・§4](REPRESENTATION_CROSSVIEW_COORDINATION_2026-11.md)）。意味変更として扱わず、Source Revisionの変更後は古い位置を現在の対象として復元しない |
+| **G3 近傍と位置づけ** | 詳細側に、上位要素、前段と後段（何から来て何へ渡るか）、同じ段階の兄弟、関係するEvent・State・Function・Dataを示す | §19.2の型付き関係から導出する。関係の種別（業務の流れ、状態遷移、データ関係、所属）を同じ線に畳まない |
+| **G4 階層化した概観** | 一枚で読めない規模の図表は、区画（サブシステム、業務段階、Event Group、Lifecycle）単位の概観と、その内訳の詳細図に分ける。概観の各区画から内訳へ入れ、内訳から概観へ戻れる | 区画は意味上の包含・Group・段階から決める。描画器の自動クラスタリングや見た目の近さを、意味上の区画として確定しない |
+| **G5 集約の伝播** | 概観の区画に、内訳にある未解決・欠落・非公開・カスタム・Extension Slotの件数と種別が集約されて見える。詳細へ入らないと異常に気づけない状態にしない | §19.3の区分と§19.1の欠落区分を区画単位で集計する。集計値から非公開要素の存在・件数を漏らさない（#2516の開示判定に従う） |
+| **G6 配置の安定** | 再生成や詳細からの復帰で、概観の主要区画の相対配置が意味の変更なしに入れ替わらない。利用者が形で覚えた全体像を壊さない | Layoutの保持はPresentation側の責務。意味の変更で配置が変わる場合は、変わった区画を示す |
+| **G7 平易な入口** | 各区画と要素に、専門語を知らない人向けの短い説明（何をする所か、なぜここにあるか）を付ける | §19.1と同じく、原典に説明がなければ`description-unverified`とし、AIの推測を確定説明にしない |
+
+これらは特定のGUI部品（ミニマップ、パンくず、分割表示など）の採用を強制しない。満たすべきは、現在地・往復・近傍・集約が**どのConsumerからも得られる**ことである。
+
+#### 19.8.2 生成AIにとって読みやすい表現
+
+生成AIも同じ全体像の中で作業する利用者として扱う。描画済みの画像、座標付きの図形データ、全件を展開した大きなGraph JSONを、AIが毎回直接読み解く前提にはしない。CLI・MCP等の既存の入口から、次の性質を持つ表現を得られるようにする。
+
+1. **概観の目次**：Model Mapを区画の階層として返す。各項目に型、Qualified ID、平易な一行説明、内訳件数、未解決・カスタムの集約（G5）を付ける。深さと件数は呼出し側が指定でき、省略した部分は「省略した」と明示する。
+2. **現在地の問合せ**：Qualified IDを渡すと、上位からの経路（G1）、前段・後段・兄弟・関係要素（G3）、属する図表とその中での位置、定義・Source・Evidenceへの型付き参照を一度に返す。AIが何度も全体を読み直さずに位置づけを把握できる。
+3. **段階的な展開**：区画IDや要素IDを指定して一段ずつ内訳へ進む。一度に返す量に上限を設け、上限で切った場合は続きの取得方法と残件数を示す。
+4. **欠落の明示**：未取得・未解決・非公開・未対応を、テキスト上でも「存在しない」と区別して返す（§19.1、MAP-07と同じ区分）。
+5. **人間向け図表との一致**：同じ要素について、人間向けの図表とAI向けの表現で、Qualified ID、版、公開資格、区画の割当てが一致する（MAP-08の拡張）。
+
+この表現は**AI専用の新しい正本や要約台帳ではない**。同じAccepted Meaning／Sourceからの別Projectionであり、具体的なMCP Toolの形やCLIの出力形式は既存の担当（#2516の用途相対Context Projection、[ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)の共通API方針、[RQ-027](../../requirements/TEI_PRODUCT_REQUIREMENTS.md)の再入場Context）で決める。本節は受入条件だけを渡し、新しいSchemaを固定しない。AIが要素の位置づけを把握できても、それは意味の受理、編集権限、実行資格を与えない。
+
+#### 19.8.3 図表は実装である以前に設計書であり、実装の直接のガイドになる
+
+**原則（利用者の明示）**：Model Mapと§19.2の図表は、実装の状態を後から描く説明図ではない。まず**設計書**であり、その設計書が**直接的に実装のガイド**になる。
+
+1. **設計書として読めること**：実装がまだ無い要素も、責務、入出力の型、前段と後段、State／Guard／Effectの不変条件、§19.3の操作区分（固定・設定可・Extension Slot・置換可）を図表と要素の説明から読める。実装が無いことは「要素が無い」ことではなく、`未実装`という資格として表示する。
+2. **設計の資格を区別すること**：要素ごとに、設計の段階（提案中・受理済み）と、実装の段階（未実装・生成済み・手書き実装あり・検証済み）を別の列として持つ。図表が描けたことを実装済みや検証済みの証拠にしない（§19.7の「描けた／意味保存／生成可能／実呼出し／Effect確定は別の合格列」と同じ扱い）。
+3. **要素から実装へ辿れること**：各要素から、実現を担う生成器・Template、Plugin／Trait実装、Hook、手書きのnative実装、試験・Driver Scenario、Evidenceの所在へ型付き参照で移動できる。対応する実装が無い要素、試験の無い要素は、概観の区画にも集約する（G5）。実装者は概観から「次に実装すべき未実装の要素」を選び、その要素の設計（G3の近傍、不変条件、変更可能箇所）を見ながら実装し、終わったら同じ要素へ戻って資格の変化を確認できる。
+4. **方向を逆にしないこと**：設計書は受理済み意味（Accepted Meaning／Source）から導出する。実装コードや生成物から構造を読み取って設計書を上書きしたり、正本にしたりしない。実装からの観測は§19.3の`Observation-only`として設計との差分に示し、設計を変える場合は通常の受理経路（§19.4のカスタム経路⑤）へ戻す。
+5. **生成AIの実装者にも同じ導線を渡すこと**：§19.8.2の現在地の問合せは、要素の設計内容と並べて、実装・試験の所在と未実装の範囲を返す。AIは全体像を読み直さずに、今実装する要素の設計上の位置づけ、守るべき不変条件、触ってよい範囲を把握できる。この導線はAIに編集権限や受理資格を与えない。
+
+ここでいう「実装への参照」は、既存のSource Index、Generator・Plugin・Trait実装の束縛（§19.6、§19.7）、Driver Scenario（RQ-012）の所在を引くものであり、新しい実装台帳を作るものではない。参照が引けない場合は`unbound`として示す。
+
+#### 19.8.4 受入ケース（MAP-17〜23、全件NOT RUN）
+
+既存のOrg Case／Orderの受入対象を再利用し、新しいScenario正本を作らない。
+
+| 受入ID | 期待する区別・操作 | 不合格とする実装 |
+| --- | --- | --- |
+| **MAP-17** | 状態遷移図の一つのTransitionから、Guard定義、関係するFunction、Source位置へ移動しても、全体の何段目・どの区画にいるかが表示され続ける | 詳細を開くと全体像との対応が消え、利用者が自分で元の図を探し直す |
+| **MAP-18** | 概観→詳細→隣接要素→概観と移動したとき、概観の表示位置・展開・選択が戻る。途中でSource Revisionが変わった場合は、古い位置を現在の対象として復元せず、変わったことを示す | 戻ると初期表示にリセットされる。または旧版の選択を新版の同じIDとして黙って復元する |
+| **MAP-19** | 一枚に収まらない業務Flowを、意味上の区画に基づく概観と内訳に分け、両方向に移動できる。区画にまたがる線は、概観では区画間の関係として集約され、内訳では端点が分かる | 全要素を一枚に縮小して読めない。描画器の自動配置の塊を意味の区画として扱う |
+| **MAP-20** | 内訳にある未解決・カスタム・Extension Slotの件数が概観の区画に表示され、非公開要素は公開資格に従って件数も伏せる | 異常が詳細でしか見えない。集計値から非公開要素の存在が分かる |
+| **MAP-21** | AIがCLI/MCPで、概観の目次、指定要素の現在地と近傍、一段ずつの展開を、上限付きの構造化テキストで得られ、人間向け図表とIDと区画が一致する | AIが画像や全件Graphを読まないと位置づけが分からない。AI向けの別要約が人間向け図表と食い違う |
+| **MAP-22** | 予備知識のない利用者（人とAIを区別して記録）が、概観から一要素の目的・前後関係・変更可能箇所を説明し、概観へ戻って隣の区画へ進める | 個別要素は読めるが、全体のどこにあるかを説明できない |
+| **MAP-23** | 実装が一部しか無いFlowで、未実装の要素も責務・入出力・不変条件が読める。各要素から生成器・Plugin・Hook・手書き実装・試験の所在へ移動でき、設計の段階（提案中・受理済み）と実装の段階（未実装・生成済み・検証済み）が別に示される。未実装・未試験の件数が概観の区画に集約される | 実装済みの部分しか図に出ない。図があることで実装済みと表示する。実装コードから読み取った構造で設計書を上書きする |
+
+MAP-22は理解課題であり、§19.5のM2と同じく、人の評価が得られない場合はAI盲検や客観課題で代替し、その限界を記録する。
+
+#### 19.8.5 既存段階への位置づけと担当
+
+- **成熟段階**：G1・G3・G4とAI向けの目次・現在地問合せ（§19.8.2の1〜2）は、M0 Catalog／M1 Graphの上に**read-onlyで**成立させる。設計の段階と実装の段階の区別、実装の所在への参照（§19.8.3、MAP-23）もM0／M1で`unbound`を含めて出し、生成・実呼出しの資格はM4で確認する。GUIの往復・配置の安定（G2・G6）と理解課題（MAP-22）はM2に含める。M0が未成立のまま、見た目の概観図だけを先に作ってRQ-036の案内が成立したと呼ばない。
+- **実装の現在地（2026-11-10）**：G1（経路）とG3（近傍）の最小形を、CLI `tei model locate`とMCP参照adapterの`tei_model_locate`としてread-onlyで実装した。`model catalog`と同じ読込みから、最上位からの経路、上限付きの子・兄弟（`total`・`omitted`・種類別件数）、宣言参照6種（Relationの参照先、属性の型、PatternのData・Relation・Query・Capability）の入出力を返す。参照先が無いものは`resolved:false`で残し、重複宣言は位置を選ばず`SUBJECT_AMBIGUOUS`にする。導出していない関係（業務イベントの流れ、状態遷移、Queryのデータ依存、実装・試験との対応）は`coverage.notDerived`に名指しする。これで成立したのは§19.8.2の2（現在地の問合せ）のData・Pattern部分だけであり、G2・G4〜G7、§19.8.3の実装への参照、MAP-17〜23の受入は**未成立**。
+- **実装の現在地（2026-11-10、G5の最小形）**：CLI `tei model overview`とMCP `tei_model_overview`で、§19.8.2の1（概観の目次）を最上位要素（意味名前空間、Application、Query）の区画として返す。各区画には部分木の件数・種類別件数と、部分木のどこかにある**要注意の集約**（validationのerror・warning、未解決の宣言参照とそのrole別件数、重複宣言、Source参照の無いWorkspace宣言要素）を付ける。区画一覧を`-limit`で切っても`totals`は全区画の合計であり、切ったことで問題を隠さない。どの要素にも帰属しないfinding（subjectの無い診断、catalogに無い種類の診断、Source rootのfinding）は`unattributed`に種類別で残す。`model locate`も同じ数え方の`attention`を、位置を示した要素の部分木について返すため、詳細と概観の数は食い違わない。**集約していないもの**：カスタム・Extension Slot（標準とカスタムの区分がまだ型付きで導出できない）、業務イベント・状態遷移の欠落、実装との対応、Consumerごとの開示判定。開示判定は未適用であり、見える範囲は`model catalog`と同じである（G5の「非公開要素の件数を漏らさない」は、#2516の開示判定をこの経路へ通すまで**未成立**）。
+- **担当**：Model Mapの包含関係と現在地の導出は#1124、区画をまたぐBusiness/Event Flowの集約は#1125、選択・表示位置の連携はPresentation stateとして[表現型間の連携設計](REPRESENTATION_CROSSVIEW_COORDINATION_2026-11.md)と#2500の境界、AI向け表現と開示判定は#2516、CLI・MCPの入口は[ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)の共通API、要素から生成器・Plugin実装への参照は§19.6／§19.7の担当（#2090/#2092/#2096、#951/#3278）、独立したExpectedは#2514/#1180。本節は表示・案内の受入条件を加えるだけで、これらの正本を複製しない。
+- **撤回条件**：区画化や現在地表示が、利用者の理解課題（MAP-22）で全体を一枚で見せる場合より改善しないと分かった場合、G4の分割方式を見直す。現在地・往復・欠落表示（G1・G2・G5）は、改善の有無にかかわらず誤った全体像を見せないための条件として維持する。
+
+## 19. Trait根拠の三視点Bind Reference（2026-11-07、限定試験）
+
+**依存関係の更新**: 本設計の旧[Draft #2878](https://github.com/hat47x/tei-platform/pull/2878)およびTrait定義・Intent／Observation／Assessmentの[Draft #3027](https://github.com/hat47x/tei-platform/pull/3027)は**2026-11-07にmain統合済み**。両者の設計文書を新たな第二正本に複製しない。本節は前節T10〜T13を、独立したread-only Reference [Draft PR #2972](https://github.com/hat47x/tei-platform/pull/2972)でどこまで実証したかを追記するもの。Product採用・本番Provider・Meaning Acceptanceではない。
+
+### 19.1 意図・事実・適合を三視点の表示Occurrenceへ明示結合
+
+追加した`reference/tei-three-element-method/trait-attachments.mjs`の`bindPublicTraitClaims(publicProjection, envelope)`は、既存`projectPublicTeaSlice`が返す**公開資格済みData/Function/Business Occurrence**を入力とし、外部Ownerが選択・開示したTraitの参照だけを束縛する。演繹や判定は行わず、`Intent`、`Observation`、`Assessment`の来歴・局所状態・Evidence参照を**そのまま**表示向けに運ぶ。概念上は`Trait Reference → (Qualified Subject, Role, View Occurrence, exact caller snapshot)`という対応。Reference内で新しいTrait Definition/Proof/Assessment/Policy/Source ReaderやWriterは実装しない。
+
+- `sales.order.status`相当の同一合成Subjectで、Businessのclosed-domain意図は`proposal`、DataのJava Enum・DB制約は独立`source-observed`、FunctionのWriter保証不足は`not-proven`という**入力側の異なる主張**として表示する。Enum/DDLからAssessmentを生成せず、業務MECE・実DB違反件数・実Provider適合を自動確定しない。
+- `View ID`の型付き表示対応を使い、同名異Scope、欠落Subject、Role不一致、重複Claim、旧`snapshot`、秘密属性が混入した不正Inputは`unqualified_trait_attachment`で拒否する。新旧一貫性の判断は呼出側が供給する`snapshot`文字列の**一致検査だけ**であり、Sourceの現在性/Role実実装/現在Grantの独立readbackではない。
+- 「強属性」は厳密な原典定義未確認につき追加しない。物理PK・業務Identity・FD・immutable等の異なるClaimを自動統合せず、新`tei.std` Role/Facetや「Strong」というBadgeを生成しない。ClosedDomainとMECEの母集団/排他/網羅も別。
+- 入力は**すでに開示資格確認済み**である必要がある。非公開TraitやSecret Source Pathを投入して「出力から消えたから安全」とみなさない。#2516の実二世界Disclosure判断、#1124の実DOM/ARIA/Tool/Workbenchと旧応答失効は独立検証。新しい`lanes/states`定数は合成Fixture内の表現であってTEI正式Enumではない。
+
+### 19.2 追加Referenceの限定実証
+
+2026-11-07、**Node.js 22.16.0**で、既存`public-slice.mjs`→新`trait-attachments.mjs`を**同一テスト内で実行**した。10件すべてPASS。主な検査はT10（Intent/Observation/Assessmentを区分して表示・静的観測から適合を捏造しない）、T11（強属性/業務Identityを捏造しない）、T12（別Scope/旧Snapshot拒否）、T13（Public投影に存在しないPrivate Trait拒否）、入力順序、Claim ID重複、未知Role/過剰Metadata、Getter非実行。ローカル実行ファイルとGitHubのBlob SHAを照合した。
+
+| 固定ファイル（PR #2972） | Git blob SHA |
+| --- | --- |
+| 既存`public-slice.mjs` | `9b46cf13f3683607a384ea629eebba99a59ce872` |
+| 新`trait-attachments.mjs` | `72d3a993792bfd09715271b0d0030249a052fd42` |
+| 新`trait-attachments.test.mjs` | `4f6e625bff475ed5e9fb529912123edadd2c4ae3` |
+
+**未実行・未資格**: 実Java/Go/.NET Enum Reader・実DDL/DB値・未読込Writer inventory、実Source Index/Role/Operator Pins、実PolicyがPrivateから正しいPublic Sliceを生成すること、完全な同一AttemptでのSource→Studio 4入口・Graph/DOM/ARIA/Tool/AI、現在Grant/Source readback、Owner受理/Target Effect、trusted全Repo Health。旧`public-slice`の9件と新10件は**別Fixture資格**であり、両者を合算してTEI製品E2E合格とはしない。JavaScriptの任意Proxy・特殊配列による入力side effectも一般保証しない。
+
+### 19.3 次のP0への引渡しと撤回条件
+
+直接クリティカルパスは従来どおり[#1124](https://github.com/hat47x/tei-platform/issues/1124) M0実CLI→M1同一Workbenchの曖昧0/一意1 InspectとGraph旧DOM拒否。三要素MethodはこのConsumerへ**すでに資格確認されたSlice/Role/Claim**を渡すのを優先し、Method独自の認可・Source Writer・Plugin Resolver・Assessmentを新設しない。並行Referenceの次の最小一巡は`sales.order.status`について同一Source/Scope/Attemptを固定し、(1)実Script/Roleの必須Source・Parser診断、(2)実Sourceで観測されたJava/DB/Function制約、(3)既存Trait Ownerによる比較・現在Disclosure、(4)実Workbench三視点の同一根拠表示を順に結ぶ。実Providerが不在なら`unverified`を出し、架空の独立Expectedを採用しない。
+
+**停止**: 方法論Plugin更新や表示だけでAccepted Meaningが変わる、Java EnumからMECEを証明したことにする、未知Writerを0件とみなす、Private Traitの存在を件数やBadgeで漏らす、局所PASSを全Consumer／Production／セルフビルドの資格へ昇格する場合には、受入対象を縮小・撤回して既存Ownerへ返す。
+
+### 19.4 三者Snapshotの結合不足を閉じる限定Reference（2026-11-08）
+
+[Draft #2972](https://github.com/hat47x/tei-platform/pull/2972)の前版は、`Envelope.snapshot = Claim.snapshot`を検査していたが、**実際の公開ProjectionにSnapshotがなく**、同じ`viewId`を持つ旧図へ新Claimを結べた。Sourceの現在性とは別の、合成Reference内部の欠陥である。新Referenceは`projectPublicTeaSlice(publicSlice, callerSnapshot)`が公開されたOccurrenceに**任意の呼出元世代Witness**を付与できるようにし、`bindPublicTraitClaims`で`Projection.snapshot = Envelope.snapshot = 各Claim.snapshot`を要求する。Stampなしの従来Projectionは単独閲覧を維持するが、Trait結合を拒否。旧版と新版で同じ`viewId`のまま、前者を新Envelopeに渡す反例とStamp未提供の負例を加えた。
+
+**追加の限定検証**: GitHubから実ソース4件を取得し、そのままV8内で読み込んだNode test互換ハーネスで**22/22件PASS**（`public-slice`10件＋`trait-attachments`12件、うち新規T12 Projection世代差・未Stamp拒否）。これは正規の`node --test`による実行ではない。これを補うため[別Draft #2972](https://github.com/hat47x/tei-platform/pull/2972)へ専用の[exact-head Node 22 CI](https://github.com/hat47x/tei-platform/blob/reference/tea-public-slice-two-world-20261106/.github/workflows/tei-tea-three-view-reference-node.yml)を追加し、同じ10件＋12件を実Node test runnerで確認する契約を置いた。[PR #2972 exact head `7289e86581af9e91a74e7e3b73667293886c5f9f`の専用synthetic-nodeジョブ](https://github.com/hat47x/tei-platform/actions/runs/42385331823/job/128441389821)は**completed / success**。ワークフローはNode 22.16.0と実headを固定し、上記公開Slice10件・Trait Bind12件を正規`node --test`で実行する。これは新しい**局所Native Node資格**であり、Repository Health・脆弱性スキャン・Studio製品受入の成功を含意しない。新コードの固定Git blobは`public-slice.mjs=265206ab45a3a8d357e113dd9e02a65e2137ed59`、`trait-attachments.mjs=2d9e2eefdb2e4edb2370471c0a1c1ce0c7b29b13`、テストは`ca83ee66a97550213653db5a8a0bf8c8282afbe0`／`3795cbedbbff2cf1bf6f7f2dee55468ec9a41f19`。旧§19.2の10件Node PASSは更新前の履歴で、今回の最新資格と混ぜない。
+
+**重要な非主張**: このSnapshotは呼出元が割り当てる**等値Witness**であって、改版した実Source、Source Index、Role/Operator実bytes、現在のGrant、Producerが実読んだ対象、Callback時の表示世代を独立して証明しない。同じ文字列の再利用・ABAや偽Stampを単体では検知できない。#1124 M0/M1と#2516の実Consumerでは、Source/Role/Policy/Consumerの独立現行証拠と画面上の失効・後着拒否を別assertする。いま達成したのは、**明示的に異なる表示世代の合成Reference内誤結合を拒否すること**だけである。
+
+## 20. サブシステム分割候補の三視点表示（2026-11-08、未採用・未実行）
+
+他チャットの[Issue #3250](https://github.com/hat47x/tei-platform/issues/3250)／[Draft #3255](https://github.com/hat47x/tei-platform/pull/3255)で提案される**更新凝集を基準としたサブシステム分割**を、本TEA Methodからは「計算アルゴリズム」ではなく**提案と根拠の三視点Projection**として扱う。#1132は越境Direct CUDのread-only診断Ownerであり、TEAは最適化・Owner受理・Shared Acceptance・実DB Effectを再実装しない。
+
+| Data | Function | Business |
+| --- | --- | --- |
+| 業務Dataの所有候補、Relation、ER範囲と外部参照を保持。物理DB配置・代理PKと混同しない | **宣言上のDirect C/U/D**、Read、別Functionへの委譲、**潜在／観測済みEffective Effect**を別Relationとして示す | Procedure、Manual Step、担当Actor、Trigger、委譲による業務責務・制約を示す。Actorは実Authorization Principalでない |
+
+**局所契約**: `Accepted Source/Qualified Subject/Scope/Revision/解析Policy/必要Closure/現在Disclosure`を固定できる部分についてだけ同じDiagram/CRUD表/Subsystem別ER図を照合する。分割案は`proposal`、規則に照らした比較は`derived assessment`、実現されたFunction/DB/Effectは別Evidence。提案の見た目や境界移動だけで実SourceのDirect CRUDを消したことにしない。未知のFunction/Relation、未読込Source、非公開CUDは`0`へ変換せず、母集団の被覆不明なら「図にない＝全Sourceに存在しない」と主張しない。View間の同名端点はQualified identityとRelation roleが確定するまで保留。公開用配置・線は既存T06の開示Slice境界を守り、秘密の越境Edge数・評価点を漏らさない。
+
+| TEA専用受入候補 | 反証すべき誤結合 | 所有する独立証拠 |
+| --- | --- | --- |
+| **T14 Scope固定の越境Direct CUD** | Sales FunctionがInventory Dataへ直接`Update`を持つとき、別Subsystemへの`Read`だけと同列に扱う／未読込辺を0本とする | #3250の計算・#1132のCUD診断、#1124の同一Consumer、#2881の限定被覆 |
+| **T15 委譲による境界修復** | Function所属変更と、Command委譲による実行契約の変更を同じ可逆図面操作とする／Direct CUD削除だけでEffective Effect・Tx・Recoveryが保証されたとする | #3255のpartition-only／repair区別、#1121/#1174の実Effect、#267 Shared Acceptance |
+| **T16 Proposalの表示と開示** | 最適化候補やOwner/ScoreをAcceptedと表示する／非公開Dataの追加でPublic図の位置・候補数・評価を変える | #3250の候補証拠、#2516/T06の二世界、#1124 Studio |
+
+**優先順・停止線**: #1124の実CLI→同一Workbench Consumer結合を最優先のまま維持する。T14は既存#3250/#1132の*同じAccepted Sourceと解析範囲*を持つread-only結果が得られた後、T15/T16は委譲/Current PolicyのOwner証拠が揃った場合のみ検証を起動する。新たなSubsystem ID正本、最適化エンジン、Graph schema、権限主体、実行Provider/DB移行、トランザクション制御をTEAに導入しない。**T14〜T16は設計Caseであり、Go/Node・実Source/Policy/Studioの試験もOwner採用もNOT RUN。**
+
+## 21. WorkspaceとSnapshot同一性、およびRead／Validation／Coverageの独立資格（2026-11-09）
+
+### 21.1 Workspaceを区別しないSnapshot一致は三視点根拠のJoin条件として不足
+
+[Draft #3321](https://github.com/hat47x/tei-platform/pull/3321)は、**異なる実WorkspaceでもWorld／SourceIndex／Snapshot Fingerprintが等しい**事例を実Go CLIで再現している。ManifestのNameだけ異なるCopyはManifest差を検出できるが、Manifestもbyte-identicalの別Rootは既存Load-time値だけでは区別できない。**表示ID・同名Subject・Source fingerprint・Snapshot文字列の一致だけで「同じWorkspace」「同じ実Read Attempt」を証明しない。**
+
+[TEA Reference Draft #2972](https://github.com/hat47x/tei-platform/pull/2972)では合成限定の追加受入として、事前公開された`publicSlice.workspaceObservation`を`publicProjection`へ渡し、`Projection / Envelope / 各Trait Claim`の`workspaceObservation`が**同じCaller公開用Witness**であることを必要条件に加えた。従来の`snapshot`三者一致とは独立。**T12-W1** 同じSnapshot・ViewIDでも異なるWorkspace観測なら拒否、**T12-W2** Claim側の異WorkspaceまたはWorkspace観測欠落を拒否、**T12-W3** Public SliceのWorkspace観測なし／空は拒否。秘密のManifest path/物理Root識別子を公開Payloadへ持ち込まず、開示資格済みopaque値をCallerが用意する前提を明記する。
+
+これは**実WorkspaceのIdentityを保証する実装ではない**。Callerが完全コピーした別Rootへ同じ`workspaceObservation`を誤発行すれば見分けられない。Root/Source Reader/Attempt/現在Grant・Policyの実測と照合するのは#1124/#2516/#3181等のOwnerであり、ここでは新UUID、Hash方針、Context Registry、第二Policy Engineを採用しない。
+
+**限定試験の更新**: GitHub実ソース4件を同じV8互換test runnerで実行して`12 public-slice + 15 Trait = 27/27 PASS`（合成Referenceのみ）。[PR #2972 exact head `7627f5d59dc66cbb161067c0ca7bfb44a7587c12`の専用Node 22 CI](https://github.com/hat47x/tei-platform/actions/runs/42591779028)は**completed / success**。対象は公開Slice 12件とTrait Bind 15件（合成27件）であり、GitHubへのSource/Fixture保存と別に正式Node test runnerで再現できた。**Repository Health・実Policy/Studio/Root identity・Owner受理は別資格**。以前の`10 + 12`や旧head CI成功を新headの合格とは扱わない。**実CLI #3321のSource照合と局所Referenceの成功を足し合わせても、同一Workspaceの実Consumer受入は未実証**。
+
+### 21.2 各三視点Claimを一つのVerifiedへ縮約しない
+
+最新の実装境界と反例から、TEA複合図は少なくとも下表の**独立した確認事項**を混同しない。各欄を合成RoleのState Enumへ固定するのではなく、既存Ownerの型付き結果・版・根拠リンクを対応付ける表示設計とする。
+
+| 確認する問い | 実際の境界／現況 | 図でしてはいけない断定 |
+| --- | --- | --- |
+| **Read**：実Catalog/Inspect/Traceを取得したか | [Draft #3543](https://github.com/hat47x/tei-platform/pull/3543)は実CLI A/Jと同一WorkbenchのInitial/List操作を限定実証。曖昧AのInspect増分0/0、一意Jは1。Graph/Command、現在開示は別 | 実CLI値一致だけで全四入口と旧DOM操作まで合格 |
+| **Validation**：ソース／意味制約を検証したか | [PR #3728](https://github.com/hat47x/tei-platform/pull/3728)は検証NGでもCatalog読取に成功するのを保ち、`validation.ok`を別提示する候補。World Fingerprintは同じでもRead OKとValidate NGが同時成立し得る | `catalog.ok=true`やSnapshot一致を`validation.ok=true`に昇格 |
+| **Identity**：Workspace/Source/Role/Subject/Attemptが同一か | #3321では実Workspace同士でSnapshot同値。#3543の実CLIとStudio Catalog比較は原子的同一Read Attemptではない | 同名＋同FPだけでRoot/Read Attempt同一を断定 |
+| **Coverage**：必要Source/Relation/Role/Writerをすべて取得したか | [Draft #3518](https://github.com/hat47x/tei-platform/pull/3518)は不完全なModel Mapを限定的に表示。旧#2881はGraph/Table合成Reference。未読込・非公開は0件と別 | 図に線がないことから全SourceでRelation不在、越境CUD 0を断定 |
+| **Eligibility**：現在の用途で表示・Inspect・提案を許せるか | #2516の現在Disclosure、#1124のSelection/Consumer freshness、#267のShared Acceptanceを再利用 | Render可能・Validation成功・Meaning一致から認可／Effect／Owner受理を得たとする |
+
+### 21.3 次の反証可能なTEA Consumer引継ぎ（全て新規実行前）
+
+- **T18 正常Read・検証NG**：同じWorkspaceでCatalog内容は取得しつつValidationがNGのData/Function/Businessビューを表示できる場合、`Read成功`と`Source健全`を別の表示根拠とし、編集提案への資格を勝手に付与しない。#3728の実行証拠をそのままTEA GUI実証に転用しない。
+- **T19 別Workspace同Token**：#3321の実Workspace W0/W1と同じSnapshot・同じSubjectを、別の観測Load Contextとして実Consumerへ提示する。CallerのWorkspace文脈が違えば旧Claim添付を拒否。完全コピーで同じLoad Witnessを誤発行する場合は未検出と明示し、実Reader/Root側の独立証拠を別Ownerへ返す。
+- **T20 部分被覆と曖昧選択**：#3543のA/J実Workbench証拠に#3518の部分Model Map・#3728のValidationを**同じWorkspace/Subject/Attemptで**接続できる範囲のみ再利用。Ambiguous AはInspect 0、許可済み一意Jは1、未知Relation/未検証Ruleを非存在へ昇格させず、公開Policyは別に検査する。
+
+**計画への反映**: #1124 M0→M1の直接P0は、実CLI A/J→同一Workbench Initial/Listの**限定成功**を再利用し、残るGraph/Command・旧DOM・Source/Role/Grant/current Disclosureとの実合流へ絞る。TEAは独立のTarget/UI/Policy/Validatorを設けない。T18〜20は**設計受入候補であり、実Studio GUI・実Policyを結合した試験はNOT RUN**。Builder/Self-build、ETL/MFT、#3250のSubsystem計算・実DB Effect、Plugin意味受理は既存Ownerの別証拠を待つ。
+
+## 22. 型付きRead/ValidationとPublic Projectionの入力境界を分離する（2026-11-09）
+
+**追加で実際に照合したOwner証拠**: [merged #3728](https://github.com/hat47x/tei-platform/pull/3728) は`operations.ModelCatalog.validation.{ok,errorCount,warningCount}`を`validate`と同じ規則で出す一方、検証NGのWorkspaceでも**Catalog readが成功する**契約を実装。[merged #3492](https://github.com/hat47x/tei-platform/pull/3492) は実Source IndexのPath/Range/Fingerprintが構造的に正しくても、そのReferenceのSubject IDを偽装すると`Index.Validate`とTraceが通り得て、実`InspectSubject`が`SUBJECT_NOT_FOUND`となる負例を追加。これらの実Goテスト・Source Reader・Validatorを本TEA Referenceに複製しない。
+
+### 22.1 Read / Validation / Semantic Binding / Disclosureはそれぞれ非同値
+
+| TEAが受け取る情報 | 適用資格と禁止する推論 |
+| --- | --- |
+| **Catalog read**: CLI envelopeの`ok`、表示可能なEntries | Read可能な場合でも`validation.ok=false`を維持できる。読めたことから正常／Accepted／Edit可能を導出しない |
+| **Validation summary**: `ok`、errorCount、warningCount | これは**観測Workspace全体**に対する結果であり、各Data/Function/Business Subjectの個別違反件数やRelation不存在証明ではない。詳細の正本は`validate -json`でありTEAが複製しない |
+| **Source/Subject binding**: Source Index Artifact/Range/Byteと実Canonical Inspect | Byte/Rangeの構造妥当性は意味Subject実在性ではない。Pathだけ合致する旧Indexや偽装SubjectをGraph Source jump/可逆編集根拠へ昇格しない |
+| **Disclosure**: 現在Consumer用途に公開可能なSlice/診断 | 生のCatalog全体ErrorCountや非公開Subjectに起因する診断を、そのまま公開図・検索件数・ARIA/Tool JSONへ投影しない。全体Validation公開可否そのものは#2516の現在Policyへ委譲 |
+
+Readに失敗した場合はValidationが`false`なのではなく**未観測**。Validationに失敗しても、現在許可される**read-onlyでのData/Function/Business閲覧**を機械的に全停止しない。ただし出典Span・Use-site・Role/Operatorの必要依存・現在開示が不明なら、その局所Source Jump/Inspect/Proposalは保留する。公開図で`errorCount=0`の意味を「見えないエラーなし」から「全Sourceにエラーなし」へ強めない。
+
+### 22.2 公開済みSliceの入力配列は非実行のデータに限定
+
+[TEA Reference Draft #2972](https://github.com/hat47x/tei-platform/pull/2972) の従来`onlyFields`はObject fieldのgetterを拒否していたが、`subjects`・`relations`・`claims`・`views[role]`の**配列要素getter／独自`Symbol.iterator`／疎配列／余剰Metadata／改変Prototype**を拒否できなかった。新しい`plainArray`は各配列について普通のArray prototype、Own key総数`length+1`、全要素のOwn Data Descriptorを確認してから反復する。匿名公開端点やPrivate Stateへの意図しないgetter実行を防ぐ**局所Referenceの制限**であり、入力の意味的資格や開示判断は引き続き外部Ownerが供給する。
+
+新T06/T13負例を**4件**追加。GitHub上の更新済み4モジュール/試験のbyteを直接取得してV8 test互換ハーネスで**31/31 PASS**を確認したが、**Node test runnerの正規CI・Repository Healthは更新headの完了結果を別途照合する**。従来27件のCI成功を新31件の合格として流用しない。任意Proxy/Array prototype全域のmonkeypatch、入力規模による資源攻撃、タイミング/副作用の一般非干渉はこのReferenceでは保証しない。正式な実入力隔離と認可は既存#2516/#1124に接続する。
+
+### 22.3 追加の反例候補と実行順
+
+| ID | 反証 | 状態／責務 |
+| --- | --- | --- |
+| **T21 Read-success / Validation-fail** | Catalog Readに成功した実Workspaceで`validation.ok=false`、かつ許可済みread-only三視点は表示可能。全Source正常／Owner受理は出さない | #3728のGo局所実証はmerged。TEA実Consumerへの結合は**NOT RUN**（#1124） |
+| **T22 Structurally-valid / Semantic-invalid Locator** | Source Byte/Range照合が通ってもSubjectを偽装すると実Inspectが拒否。Source Jump、Graph/CUD Cell、Proposalを有効化しない | #3492の実Workspace Go反例はmerged。TEA実GUI Source Jumpは**NOT RUN** |
+| **T23 Private diagnostic-count noninterference** | 非公開制約の追加で生Catalogの総Warning/Error数が変わる場合、Policyで開示不可な低権限Graph/Table/ARIA/Tool JSONの件数を変えない | #2516の実Disclosure二世界検査に接続。TEAでの実Policy実行は**NOT RUN** |
+
+**ロードマップ**: #1124の同一Workbenchで実CLI A/JのInitial/Listに続きGraph/Command/旧DOM/Current Policyの負例を先行。並行してT21〜T23を既存#3728/#3492/#2516のOwner証拠へ照合し、Sourceの現在位置／意味Subject・読取／Validation／開示の資格を独立表示する。新Source Validator・Trait Evaluation・Policy/Authority判定・Second SSOT・専用HostやModel Mapを作らず、Self-build/ETL/SubsystemのOwnerと既存Gateを変更しない。
+
+### 22.4 T18の限定Read/Validation表示Reference（2026-11-09夜）
+
+[Reference Draft #2972](https://github.com/hat47x/tei-platform/pull/2972)へ`catalog-validation.mjs`と`catalog-validation.test.mjs`を追加。これは[main統合済み#3728](https://github.com/hat47x/tei-platform/pull/3728)の`ModelCatalog.validation`を**計算し直す実装ではない**。Callerが既に開示資格を確認した`catalogReadSucceeded:true`と`validation.{ok,errorCount,warningCount}`を、同じ`scope/snapshot/workspaceObservation`の三視点Public Projectionへ添えて、Read成功とValidation NGを独立表示するread-only Fixture。CLIの`ok`や実Read Attemptを本Referenceが検査したわけではなく、`catalogReadSucceeded`の真偽も呼出側の申告である。
+
+**新たな6件の合成T18負例**: (a) Read成功＋Validation NGでも三視点read-only Occurrenceを保持、(b)warning>0でも`validation.ok=true`をそのまま表示、(c)Read失敗/未観測・Validation欠落から`false`を発明しない、(d)同じ表示IDでも別Workspace/Snapshot/Scopeは拒否、(e)件数・booleanの型不正や負数を拒否、(f)秘密Source metadataやGetterを評価せず拒否。現行の合成Reference計**37件（Public Slice14 / Trait17 / Catalog6）**をGitHubから取得した正確な3ソース・3テストでV8互換ハーネスにより**37/37 PASS**。これは**正規Node test runnerの完了結果ではなく、実Go Workspace・実Catalog JSON・現在Policyを受領したテストでもない**。更新後exact-headの専用Node CIとRepository Healthは別途確認する。
+
+特に**グローバルなValidationのError/Warning総数**は非公開Sourceに由来し得るため、公開可能かの判定は#2516が先に行う。未開示の生Countsを「TEAが実際に秘密を除去する」目的で流し込まない。合成RuntimeはAssessment・個別Subjectの健全性・Editable・Owner Meaningを創作しない。今後T21〜T23へ接続するには、**実Catalog Producerの読取版・Workspace・Scope・現在Disclosure→同一Workbench Consumer**の別資格を必要とする。

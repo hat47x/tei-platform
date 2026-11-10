@@ -1,0 +1,6 @@
+=== RUN   TestToolListAgreesWithTheCLICatalog
+--- PASS: TestToolListAgreesWithTheCLICatalog (1.39s)
+=== RUN   TestToolDescriptionsNameTheCLICommand
+--- PASS: TestToolDescriptionsNameTheCLICommand (0.00s)
+PASS
+ok  	tei/tools/reference-mcp-readonly-adapter	1.394s

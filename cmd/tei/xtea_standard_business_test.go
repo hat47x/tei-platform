@@ -10,6 +10,7 @@ import (
 	"tei/internal/currencyrate"
 	"tei/internal/numbering"
 	"tei/internal/taxrate"
+	"tei/internal/usersetting"
 	"tei/internal/workspace"
 )
 
@@ -49,6 +50,44 @@ func TestXTEAExampleDeclaresStandardBusinessRoles(t *testing.T) {
 	}
 	if sequence.Counter != "master.numbering_rule.counter" || sequence.Digits != "master.numbering_rule.digits" {
 		t.Fatalf("numbering declaration=%+v", sequence)
+	}
+
+	// The example declares a setting table with the user role, so a caller can
+	// change a declared key and read the user's own row back.
+	settingDeclaration, err := usersetting.Resolve(loaded.World, "master.setting")
+	if err != nil {
+		t.Fatalf("setting declaration: %v", err)
+	}
+	if settingDeclaration.Key != "master.setting.key" || settingDeclaration.User != "master.setting.user" {
+		t.Fatalf("setting declaration=%+v", settingDeclaration)
+	}
+	settingRows, err := settingDeclaration.Bind([]map[core.CanonicalID]string{
+		{"master.setting.key": "page_size", "master.setting.value": "50", "master.setting.user": ""},
+	})
+	if err != nil {
+		t.Fatalf("setting bind: %v", err)
+	}
+	settingTable, err := usersetting.NewTable(settingDeclaration, settingRows)
+	if err != nil {
+		t.Fatalf("setting table: %v", err)
+	}
+	updated, err := settingTable.Change(usersetting.Change{Key: "page_size", User: "alice", Value: "200"})
+	if err != nil {
+		t.Fatalf("setting change: %v", err)
+	}
+	settingIndex, err := usersetting.NewSettings(true, updated)
+	if err != nil {
+		t.Fatalf("setting index: %v", err)
+	}
+	if value, err := settingIndex.Value("page_size", "alice"); err != nil || value != "200" {
+		t.Fatalf("alice setting=%q err=%v", value, err)
+	}
+	if value, err := settingIndex.Value("page_size", "bob"); err != nil || value != "50" {
+		t.Fatalf("shared setting=%q err=%v", value, err)
+	}
+	emptyRows, err := settingDeclaration.Bind(nil)
+	if err != nil || len(emptyRows) != 0 {
+		t.Fatalf("empty setting rows were refused: %v", err)
 	}
 
 	calendar, err := businesscalendar.Resolve(loaded.World, "sales.fiscal")

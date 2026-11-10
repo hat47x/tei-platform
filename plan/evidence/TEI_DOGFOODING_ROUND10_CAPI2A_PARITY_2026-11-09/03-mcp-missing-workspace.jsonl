@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"{\"schemaVersion\":\"tei.cli.validate/v0\",\"ok\":false,\"diagnostics\":[],\"error\":{\"code\":\"WORKSPACE_LOAD_FAILED\",\"message\":\"resolve Workspace root: lstat /no: no such file or directory\"}}"}],"isError":true}}

@@ -1,0 +1,7 @@
+ir.World                     Bindings []realization.CustomGoBinding   (world.go:35)
+internal/index/index.go:478  copies them into d.CustomGoBindings
+                             (Application, Capability, Adapter, Hook)
+projection.go                grep -c "CustomGoBindings" -> 0
+
+FromIndex only turns d.SemanticDependencies and d.DeclaredDependencies into
+edges. The bindings sit in d and are never copied into either list.

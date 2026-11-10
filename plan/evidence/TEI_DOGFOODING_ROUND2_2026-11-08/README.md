@@ -65,6 +65,7 @@
 | D-1 `trace` の未対応kind | `UNSUPPORTED_SUBJECT_KIND`・終了コード2。`SUBJECT_NOT_FOUND`（1）と区別できる（`03`） | **閉じた** |
 | D-2 Workspace同一性 | `validate` の最上位と `model catalog`・`inspect`・`trace` の `result.workspace` に `name`・`formatVersion`・`manifest` が入る（`04`・`09`・`10`） | **閉じた** |
 | D-3 版の欄の不統一 | 実測時点（`4fd88c2b1`）は `view -format json` の `result` が `application`・`patterns`・`schemaVersion`・`semanticFingerprint`・`semanticUses` のみで、`worldFingerprint` を持たなかった（`30`・`31`）。**その後 #3366（`9bc015876`）で解消**し、現在の main は応答の最上位に `worldFingerprint`・`sourceIndexFingerprint` を返す（§9） | 実測時点は残る／現在は解消 |
+| D-3 版の欄の不統一 | `view -format json` の `result` は `application`・`patterns`・`schemaVersion`・`semanticFingerprint`・`semanticUses` のみ。`worldFingerprint` を持たず、`semanticFingerprint` は `sha256:f6c4cf29…` で `model catalog` の `worldFingerprint` `sha256:c92de09f…` と異なる（`30`・`31`） | **残る** |
 | D-4 `view` の作用と広告 | `view` は `effect: read-only` のまま、`writeFlags` に `-operation-log`・`-lifecycle-state` を挙げる（`01`） | **閉じた**（`effect` 語彙の統一は未着手） |
 | D-5 `plugin-lock` のround-trip | envelopeをそのまま `-plugin-lock` へ渡して成功（`06`、終了コード0） | **閉じた** |
 | D-6 不正lockの終了コード | 第1ラウンドで観測した2コマンドの差は、mainの修正で終了コード2に揃った（個別の再実行はしていない） | 閉じた（間接確認） |

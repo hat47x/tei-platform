@@ -1,0 +1,11 @@
+=== RUN   TestAnArtifactRefusalHappensInsideTheCarrier
+--- PASS: TestAnArtifactRefusalHappensInsideTheCarrier (0.00s)
+=== RUN   TestAFailureAfterEntryIsUnverifiedNotRefused
+--- PASS: TestAFailureAfterEntryIsUnverifiedNotRefused (0.00s)
+=== RUN   TestAnUnavailableRouteIsTheOnlyPreInvocationRefusal
+--- PASS: TestAnUnavailableRouteIsTheOnlyPreInvocationRefusal (0.00s)
+=== RUN   TestAnUnavailableRouteIsRefusedBeforeAnyInvocation
+--- PASS: TestAnUnavailableRouteIsRefusedBeforeAnyInvocation (0.00s)
+=== RUN   TestARouteForAnotherBindingIsRefused
+--- PASS: TestARouteForAnotherBindingIsRefused (0.00s)
+ok  	tei/tools/reference-service-carrier-connect	0.011s

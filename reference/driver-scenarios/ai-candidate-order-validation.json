@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "tei.driver-scenario/v0",
+  "id": "ai-candidate-order-validation",
+  "application": "order_entry",
+  "steps": [
+    {
+      "id": "ai-validation-positive",
+      "operation": "evaluate-validations",
+      "fixture": "fixtures/order_valid.json",
+      "expectValidations": {
+        "sales.order_line.quantity_positive": "satisfied",
+        "sales.order.lines.line_number_unique": "satisfied",
+        "sales.order_line.line_number_positive": "satisfied"
+      }
+    },
+    {
+      "id": "ai-validation-denied",
+      "operation": "evaluate-validations",
+      "fixture": "fixtures/order_invalid.json",
+      "expectValidations": {
+        "sales.order_line.quantity_positive": "not-satisfied",
+        "sales.order.lines.line_number_unique": "satisfied",
+        "sales.order_line.line_number_positive": "satisfied"
+      }
+    }
+  ]
+}

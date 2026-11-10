@@ -65,3 +65,36 @@ A **real loopback HTTP server** tests the fetch/JSON contract, application bindi
 5. Only after that decide whether this Starter is promoted to a TEI basic UI Plugin and design its exact compatibility descriptor/lock rather than inventing a Core `UIKind`.
 
 Customization request prompt: [../requirements-prompt.md](../requirements-prompt.md).
+
+## BBR-12 typed input boundary — 2026-11-08 reference change (proposed)
+
+An integer `row` comes from a DOM/FormData *string*, but the existing reference
+Action port accepts only a JavaScript **safe integer**. The original Starter
+checked decimal syntax and converted it with `Number()`, which can round
+`9007199254740993` to `9007199254740992` before invoking a custom
+Action callback. The current `order_entry` Action port independently checks
+`Number.isSafeInteger`, so this is a **UI Starter contract gap**, not proof
+of a DB wrong-target update. Another legitimate `invoke` callback might
+not perform the same transport-boundary check.
+
+This proposed fix rejects out-of-range row values at the UI boundary before
+any Action invocation. The dedicated `row-safe-integer.test.mjs` uses an
+independent expected input table and checks zero, MAX_SAFE_INTEGER, values
+above the safe range, decimal/exponent, negative, blank and leading zero:
+
+```sh
+node --test reference/ui-customization/web-react/row-safe-integer.test.mjs
+node --test reference/ui-customization/web-react/action-port.test.mjs
+```
+
+This test remains a **Node/fakeReact and UI-only** reference: it does not
+validate actual ReactDOM, IME/keyboard sequencing, an actual Go Host,
+Provider authorization, Receipt, business outcome or owner-accepted meanings.
+A failure produces the legacy `input_or_transport_error` display kind;
+changing the Result/Failure contract belongs to #3274/#1158/#1174 and
+requires separate acceptance. The unmerged Draft #2864 also modifies
+`starter.mjs` for synchronous double-submit protection; reconcile both
+changes and re-run both suites before merging either branch.
+
+Primary reference: [#997 BBR-12](https://github.com/hat47x/tei-platform/issues/997#issuecomment-6710660284)
+and [#1000 implementation handoff](https://github.com/hat47x/tei-platform/issues/1000#issuecomment-6710667026).

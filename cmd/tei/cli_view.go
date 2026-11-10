@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
 
 	"tei/internal/application"
@@ -15,6 +16,7 @@ import (
 	"tei/internal/command"
 	"tei/internal/command/lifecyclesqlite"
 	"tei/internal/core"
+	"tei/internal/hook"
 	"tei/internal/operations"
 	"tei/internal/periodstate"
 	"tei/internal/semantic"
@@ -26,7 +28,10 @@ type referenceCommandRun struct {
 	Mode          string                      `json:"mode"`
 	Plan          applicationview.CommandPlan `json:"plan"`
 	Outcome       *semantic.Outcome           `json:"outcome,omitempty"`
-	Effect        *semantic.DataEffect        `json:"effect,omitempty"`
+	// OutcomeUndetermined states why no outcome was returned although the
+	// capability declares some, so an absent outcome is not read as a decision.
+	OutcomeUndetermined string               `json:"outcomeUndetermined,omitempty"`
+	Effect              *semantic.DataEffect `json:"effect,omitempty"`
 	// Committed reports that the configured UnitOfWork returned from Commit.
 	// It is not evidence that data was persisted: a reference run uses
 	// MemoryUnitOfWork, which counts the call without writing anything. Read it
@@ -48,6 +53,10 @@ type referenceCommandRun struct {
 	// operations, so `differences` being empty is "not observed" rather than
 	// "none found".
 	AppliedUnobserved bool `json:"appliedUnobserved,omitempty"`
+	// EffectReverted is true when the effect was applied and then put back
+	// because an after-change phase refused. It is the one case where the run
+	// applied something and the reported state is the state before the run.
+	EffectReverted bool `json:"effectReverted,omitempty"`
 	// ReportedEffectMissing is true when the capability declared an effect but
 	// the executor reported none. The run is not rejected, but a reader must not
 	// treat the absence as proof the declared effect was applied.
@@ -56,6 +65,10 @@ type referenceCommandRun struct {
 	// reference-allow-all, reference-allow-list, or external. It is evidence
 	// about which check ran, not a grant of authority (#2997).
 	AuthorizationMode string `json:"authorizationMode,omitempty"`
+	// Hooks records the pattern hooks this run consulted before the command.
+	// A refusal here is why the command did not run; an after-change hook is
+	// named as skipped, because the reference run has no after-change point.
+	Hooks *cliHookReport `json:"hooks,omitempty"`
 }
 
 type cliViewReport struct {
@@ -70,6 +83,8 @@ type cliViewReport struct {
 	WorldFingerprint       string                `json:"worldFingerprint,omitempty"`
 	SourceIndexFingerprint string                `json:"sourceIndexFingerprint,omitempty"`
 	Error                  *cliInspectionFailure `json:"error,omitempty"`
+	// Workspace identifies which Workspace the view was read from (#3455).
+	Workspace *workspace.WorkspaceIdentity `json:"workspace,omitempty"`
 }
 
 // runViewCommandは、Application Patternの対話契約を解決し、textまたはjsonで返す。
@@ -79,12 +94,16 @@ type cliViewReport struct {
 // applied must not read like a clean rejection, and a lifecycle refusal is a
 // replay decision rather than an execution error.
 func commandFailure(err error) (string, string, bool) {
-	var execution *command.ExecutionError
-	if errors.As(err, &execution) && execution.Code == "COMMAND_LIFECYCLE_REFUSED" {
-		return "COMMAND_LIFECYCLE_REFUSED", execution.Message, true
-	}
-	if command.EffectMayBeUnknown(err) {
-		return "COMMAND_EFFECT_UNKNOWN", err.Error(), true
+	// An ExecutionError already carries the machine-readable reason the caller
+	// branches on, and the remedy differs by code: a missing input, a closed
+	// period, a refused authorization and a failed commit all need different
+	// handling. Report the code as it is.
+	//
+	// This used to be a hand-written allow-list, which silently flattened 15 of
+	// the 21 codes internal/command returns into COMMAND_FAILED (#3807). A list
+	// kept per entrance also drifted: the CLI knew seven, the Studio one.
+	if code, err2, ok := command.ReportedFailure(err); ok {
+		return code, err2, true
 	}
 	return "", "", false
 }
@@ -104,6 +123,7 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	packageID := fs.String("package", "", "exact application package ID")
 	commandID := fs.String("command", "", "command capability to plan")
 	execute := fs.Bool("execute", false, "reference execution of the planned command")
+	referenceStore := fs.Bool("reference-store", false, "with -execute, apply the declared effect to an in-memory reference store and run the after-change hooks; the store is not persistence")
 	periodStateFile := fs.String("period-state", "", "period state JSON for -execute")
 	operationLogFile := fs.String("operation-log", "", "write reference operation records as JSON")
 	lifecycleState := fs.String("lifecycle-state", "", "SQLite state file for restart-safe command lifecycle")
@@ -132,6 +152,11 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		(*lifecycleGeneration < 1) ||
 		(len(allowedCapabilities) > 0 && !*execute) ||
 		(*operationLogFile != "" && !*execute) ||
+		// -input only feeds the command plan, which exists only with -command.
+		// Without this, `view -application X -input order=ORD-1` succeeded and
+		// dropped the value (and never parsed it), so a caller could believe it
+		// had supplied input to a command that was never planned (#3778).
+		(len(inputPairs) > 0 && *commandID == "") ||
 		*root != strings.TrimSpace(*root) || *applicationID != strings.TrimSpace(*applicationID) ||
 		*patternID != strings.TrimSpace(*patternID) || *packageID != strings.TrimSpace(*packageID) ||
 		*commandID != strings.TrimSpace(*commandID) {
@@ -148,6 +173,9 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	if err != nil {
 		return fail("WORKSPACE_LOAD_FAILED", err.Error(), 2)
 	}
+	// Every view shape is a read of this Workspace, so the identity belongs on
+	// the report next to the fingerprints (#3455).
+	report.Workspace = workspaceIdentityPointer(loaded)
 	if *format == "json" {
 		// The JSON projection reports the same read-only observations the other
 		// read commands report (#3345). `result.semanticFingerprint` stays as it
@@ -211,11 +239,58 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		if err != nil {
 			return fail("VIEW_FAILED", err.Error(), 1)
 		}
+		if *referenceStore && !*execute {
+			// The flag changes what an execution does, so asking for it without an
+			// execution is an argument problem, not a run that quietly ignores it.
+			return fail("INVALID_ARGUMENT", newArgumentError("view requires -execute with -reference-store").Error(), 2)
+		}
 		if *execute {
+			// A declared hook runs before the command when the reference run
+			// can reach it: a before-change phase whose declared reads the
+			// caller supplied. Everything else is reported as skipped or not
+			// evaluated with a reason, so a phase that did not run never reads
+			// as a phase that passed.
+			// A run that applies its change consults the before-* phases first, then
+			// applies, then consults the after-* phases: the change belongs between
+			// the halves, and one pass has no point in between. A reference run keeps
+			// the single pass, because it has no change to sit there.
+			var hookReport *cliHookReport
+			var hookErr error
+			if !*referenceStore {
+				hookReport, hookErr = runDeclaredHooks(context.Background(), loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*patternID), values)
+			} else {
+				hookReport, hookErr = runDeclaredHooksHalf(context.Background(), loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*patternID), values, hook.ReferenceRule{}, hook.ReferenceReach{}, hookHalfBefore)
+			}
+			if hookErr != nil {
+				if hookReport != nil {
+					run := referenceCommandRun{
+						SchemaVersion: applicationview.SchemaVersion,
+						Mode:          "reference",
+						Plan:          plan,
+						Hooks:         hookReport,
+					}
+					report.OK = false
+					report.Result = run
+					if *format == "json" {
+						return writeViewReport(out, report, 1)
+					}
+					return writeReferenceRunText(out, run)
+				}
+				return fail("COMMAND_FAILED", hookErr.Error(), 1)
+			}
+			// The store is created per run and dropped at the end. It makes the change
+			// something the after-* phases can be consulted about; it is not
+			// persistence, and the response says so.
+			referenceStoreInstance := command.NewMemoryStore()
+			var storeSnapshot command.StoreSnapshot
+			var executor command.Executor = command.ReferenceExecutor{World: loaded.World}
+			if *referenceStore {
+				executor = command.ReferenceDataExecutor{World: loaded.World, Store: referenceStoreInstance}
+			}
 			invoker := command.Invoker{
 				Authorizer: command.ReferenceAuthorizer{},
 				World:      loaded.World,
-				Executor:   command.ReferenceExecutor{World: loaded.World},
+				Executor:   executor,
 				UnitOfWork: &command.MemoryUnitOfWork{},
 			}
 			if len(allowedCapabilities) > 0 {
@@ -267,6 +342,31 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 				}
 				return fail("COMMAND_FAILED", err.Error(), 1)
 			}
+			if *referenceStore {
+				// The change is applied, so the after-* phases have a point to run at.
+				// Their report is joined with the before-* one so the printed run shows
+				// both halves.
+				storeSnapshot = referenceStoreInstance.Snapshot()
+				storeSnapshot = referenceStoreInstance.Snapshot()
+				var reverted bool
+				var afterErr error
+				hookReport, reverted, afterErr = runAfterHalfRevertingOnRefusal(context.Background(), loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*patternID), values, hook.ReferenceRule{}, referenceStoreInstance, storeSnapshot, hookReport)
+				if afterErr != nil {
+					run := referenceCommandRun{
+						SchemaVersion:  applicationview.SchemaVersion,
+						Mode:           "reference",
+						Plan:           plan,
+						Hooks:          hookReport,
+						EffectReverted: reverted,
+					}
+					report.OK = false
+					report.Result = run
+					if *format == "json" {
+						return writeViewReport(out, report, 1)
+					}
+					return writeReferenceRunText(out, run)
+				}
+			}
 			if *operationLogFile != "" {
 				encoded, encodeErr := json.MarshalIndent(recorder.Records, "", "  ")
 				if encodeErr != nil {
@@ -293,6 +393,7 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 				Mode:                  "reference",
 				Plan:                  plan,
 				Outcome:               result.Outcome,
+				OutcomeUndetermined:   result.OutcomeUndetermined,
 				Effect:                result.Effect,
 				Committed:             true,
 				Persisted:             result.Persistence == command.PersistenceResourceObserved,
@@ -302,6 +403,7 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 				AppliedUnobserved:     appliedUnobserved,
 				ReportedEffectMissing: reportedEffectMissing,
 				AuthorizationMode:     string(result.AuthorizationMode),
+				Hooks:                 hookReport,
 			}
 			report.OK = true
 			report.Result = run
@@ -476,6 +578,11 @@ func writeViewText(out io.Writer, view applicationview.View) (int, error) {
 		}
 		for _, hook := range view.Hooks {
 			line := fmt.Sprintf("  - %s", hook.Phase)
+			// A declared scope is printed beside the phase; an absent one means the
+			// pattern's own unit and is left implicit.
+			if hook.Scope != "" {
+				line += fmt.Sprintf(" scope %s", hook.Scope)
+			}
 			if len(hook.Reads) > 0 {
 				line += fmt.Sprintf(" reads %s", joinIDs(hook.Reads))
 			}
@@ -689,6 +796,13 @@ func writeApplicationText(out io.Writer, view applicationview.ApplicationView) (
 				return 2, err
 			}
 		}
+		// A closing day splits the month into two segments; printing it shows the
+		// period is narrower than a month without the reader inferring a default.
+		if period.ClosingDay != 0 {
+			if _, err := fmt.Fprintf(out, "period %s closes on day %d\n", period.ID, period.ClosingDay); err != nil {
+				return 2, err
+			}
+		}
 	}
 	for _, use := range view.SemanticUses {
 		if _, err := fmt.Fprintf(out, "uses %s\n", use); err != nil {
@@ -778,6 +892,93 @@ func writeCommandPatternText(out io.Writer, view applicationview.CommandPatternV
 	return 0, nil
 }
 
+// writeHookReportText prints which declared hooks ran, which were skipped, and
+// why. A skipped phase is printed with its reason so the absence of a phase is
+// not read as a pass.
+// writeProposalText prints the values a phase proposed, in attribute order so
+// the same proposal always prints the same way.
+func writeProposalText(out io.Writer, proposed hook.Produced) (int, error) {
+	if len(proposed) == 0 {
+		return 0, nil
+	}
+	attributes := make([]string, 0, len(proposed))
+	for attribute := range proposed {
+		attributes = append(attributes, string(attribute))
+	}
+	sort.Strings(attributes)
+	for _, attribute := range attributes {
+		if _, err := fmt.Fprintf(out, "    proposes %s = %s (candidate, not adopted)\n", attribute, proposed[core.CanonicalID(attribute)]); err != nil {
+			return 2, err
+		}
+	}
+	return 0, nil
+}
+
+func writeHookReportText(out io.Writer, report cliHookReport) (int, error) {
+	if _, err := fmt.Fprintf(out, "hooks: %s (%d executed, %d warned, %d skipped)\n", report.Pattern, len(report.Executed), len(report.Warned), len(report.Skipped)); err != nil {
+		return 2, err
+	}
+	for _, phase := range report.Executed {
+		if _, err := fmt.Fprintf(out, "  hook %s: executed\n", phase); err != nil {
+			return 2, err
+		}
+		// A proposal is a candidate value, not a settled one. Printing it beside
+		// the phase keeps a reader from treating `executed` as "the hook changed
+		// nothing" when it in fact proposed a value the command did not adopt.
+		if code, err := writeProposalText(out, report.Proposed(phase)); err != nil {
+			return code, err
+		}
+	}
+	for _, phase := range report.Warned {
+		if _, err := fmt.Fprintf(out, "  hook %s: warned (on-failure warn)\n", phase); err != nil {
+			return 2, err
+		}
+	}
+	for _, phase := range report.NotEvaluated {
+		if _, err := fmt.Fprintf(out, "  hook %s: not evaluated (%s)\n", phase, report.Reasons[phase]); err != nil {
+			return 2, err
+		}
+		// A declared `uses` that was never called is the difference between
+		// "the hook passed" and "the hook's call did not happen". Print it.
+		if uncalled := report.Uncalled[phase]; len(uncalled) > 0 {
+			for _, capability := range uncalled {
+				if _, err := fmt.Fprintf(out, "    uncalled %s\n", capability); err != nil {
+					return 2, err
+				}
+			}
+		}
+	}
+	for _, phase := range report.Skipped {
+		if hookReportHolds(report.NotEvaluated, phase) {
+			continue
+		}
+		if _, err := fmt.Fprintf(out, "  hook %s: skipped (%s)\n", phase, report.Reasons[phase]); err != nil {
+			return 2, err
+		}
+	}
+	if report.Refused != "" {
+		if _, err := fmt.Fprintf(out, "  hook %s: refused", report.Refused); err != nil {
+			return 2, err
+		}
+		if report.CommandOutcome != "" {
+			// Name both: the hook's own outcome and the Command name it
+			// corresponds to, so the correspondence is visible rather than
+			// silently applied.
+			if _, err := fmt.Fprintf(out, " (%s, command outcome %s)", report.Outcome, report.CommandOutcome); err != nil {
+				return 2, err
+			}
+		} else if report.Outcome != "" {
+			if _, err := fmt.Fprintf(out, " (%s)", report.Outcome); err != nil {
+				return 2, err
+			}
+		}
+		if _, err := fmt.Fprintln(out); err != nil {
+			return 2, err
+		}
+	}
+	return 0, nil
+}
+
 func writeReferenceRunText(out io.Writer, run referenceCommandRun) (int, error) {
 	if _, err := fmt.Fprintln(out, "mode: reference (no durable effects)"); err != nil {
 		return 2, err
@@ -790,6 +991,21 @@ func writeReferenceRunText(out io.Writer, run referenceCommandRun) (int, error) 
 	if code, err := writeCommandPlanText(out, run.Plan); err != nil {
 		return code, err
 	}
+	if run.EffectReverted {
+		// The change was applied and then put back. Say so where the run is
+		// printed, so a reader never takes the reported state for a change that
+		// survived the after-change phases.
+		if _, err := fmt.Fprintln(out, "effect: reverted (an after-change phase refused after the effect was applied)"); err != nil {
+			return 2, err
+		}
+	}
+	if run.OutcomeUndetermined != "" {
+		// An outcome nobody determined must not read as "the capability has no
+		// outcome". Print the reason where the outcome would have been.
+		if _, err := fmt.Fprintf(out, "outcome: not determined (%s)\n", run.OutcomeUndetermined); err != nil {
+			return 2, err
+		}
+	}
 	if run.Outcome != nil {
 		if _, err := fmt.Fprintf(out, "outcome: %s -> %s\n", run.Outcome.Name, run.Outcome.Payload); err != nil {
 			return 2, err
@@ -798,6 +1014,11 @@ func writeReferenceRunText(out io.Writer, run referenceCommandRun) (int, error) 
 	if run.Effect != nil {
 		if _, err := fmt.Fprintf(out, "effect: %s %s\n", run.Effect.Kind, run.Effect.Data); err != nil {
 			return 2, err
+		}
+	}
+	if run.Hooks != nil {
+		if code, err := writeHookReportText(out, *run.Hooks); err != nil {
+			return code, err
 		}
 	}
 	if _, err := fmt.Fprintf(out, "committed: %t (reference unit of work)\n", run.Committed); err != nil {

@@ -1,0 +1,9 @@
+Checked and found correct, recorded so a later reader does not re-investigate:
+
+  -limit 2 paging           2 + 2 + 1 = 5, nextOffset 2 -> 4 -> null
+  continuation.fingerprint  points at result.snapshotFingerprint
+  unrelated namespace added STALE_SNAPSHOT (the token binds the whole World)
+  graphFingerprint          always equals trace.snapshotFingerprint; the latter
+                            is a documented deprecated alias (trace.go)
+  comment-only edit         sourceIndexFingerprint changes, GraphFingerprint does not
+  deleting sales/order.tei  validate reports 33 errors

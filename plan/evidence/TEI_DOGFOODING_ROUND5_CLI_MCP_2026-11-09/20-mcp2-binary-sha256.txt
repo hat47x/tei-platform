@@ -1,0 +1,1 @@
+2f919c7ef0cebd1c2d973cd2f10e2676338200251f62019993139b57c1cb599d  /home/hat47x/dogfood/bin/tei-mcp2
