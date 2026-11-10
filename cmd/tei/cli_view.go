@@ -248,6 +248,13 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		}
 		return writePackageText(out, view)
 	}
+	if *referenceStore && !*execute {
+		// The flag changes what an execution does, so asking for it without an
+		// execution is an argument problem, not a run that quietly ignores it.
+		// The check sits before the per-mode branches: the flag is not a view
+		// option, so no mode may accept it and drop it.
+		return fail("INVALID_ARGUMENT", newArgumentError("view requires -execute with -reference-store").Error(), 2)
+	}
 	if *commandID != "" {
 		if *format != "text" && *format != "json" {
 			return fail("INVALID_ARGUMENT", "view -command supports -format text or json", 2)
@@ -259,11 +266,6 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		plan, err := applicationview.BuildCommandPlan(loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*patternID), core.CanonicalID(*commandID), values)
 		if err != nil {
 			return fail("VIEW_FAILED", err.Error(), 1)
-		}
-		if *referenceStore && !*execute {
-			// The flag changes what an execution does, so asking for it without an
-			// execution is an argument problem, not a run that quietly ignores it.
-			return fail("INVALID_ARGUMENT", newArgumentError("view requires -execute with -reference-store").Error(), 2)
 		}
 		if *execute {
 			// A declared hook runs before the command when the reference run

@@ -51,6 +51,7 @@
 - [Studio経路での`after-*`拒否時の取り消しの確認](XTEA_LOWCODE_HOOK_AFTER_CHANGE_STUDIO_REVERT_2026-11.md)（試験記録。拒否する規則を差し込むと適用した効果がStoreから取り消され`effectReverted`が出る。既定経路での到達は規則Pluginの供給待ち）
 - [Studioから`after-*`フックへ到達する配線の確認](XTEA_LOWCODE_HOOK_AFTER_CHANGE_STUDIO_2026-11.md)（試験記録。`ExecuteCommandWithReferenceStore`が変更を適用し、変更後のフックを実行する。`PhaseReport.Merge`を`internal/hook`に置いて両ホストで共有。UIからの呼出しは未着手）
 - [`after-*`拒否時の効果の補償の確認](XTEA_LOWCODE_HOOK_AFTER_CHANGE_REVERT_2026-11.md)（試験記録。拒否する規則を差し込むと適用した効果がStoreから取り消され`effectReverted`が出る。既定経路での到達は規則Pluginの供給待ち）
+- [CLIの`-reference-store`配線の実プロセス確認と引数検査の位置の修正](XTEA_LOWCODE_HOOK_AFTER_CHANGE_CLI_E2E_2026-11.md)（試験記録。ビルドした`tei`を起動して`after-*`到達と`INVALID_ARGUMENT`を確認。`-reference-store`のみの呼出しが成功していた欠陥を修正）
 - [CLIから`after-*`フックへ到達する配線の確認](XTEA_LOWCODE_HOOK_AFTER_CHANGE_CLI_2026-11.md)（試験記録。`view -execute -reference-store`がメモリ上のStoreへ適用し、変更後のフックを実行する。Studio配線と補償は未着手）
 - [`after-*`へ到達する実行経路の確認](XTEA_LOWCODE_HOOK_AFTER_CHANGE_2026-11.md)（試験記録。`RunBeforeChange`→変更の適用→`RunAfterChange`＋`AppliedChangeReach`で`after-*`を実行できる。ホスト配線は未着手）
 - [実行時の値変換が要らないことの確認](XTEA_LOWCODE_VALUE_CONVERSION_2026-11.md)（確認記録。受理される原始型の結び付けは同じ下位原始型で、変換すべき差が生じない。異なる原始型は検証が拒否する）
