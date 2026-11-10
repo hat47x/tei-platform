@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"tei/internal/buildintent"
 	"tei/internal/plugin"
 )
 
@@ -111,3 +112,53 @@ func TestRunWithIsolateBuildsFromTheStagedTree(t *testing.T) {
 }
 
 var _ = plugin.BuildPlan{}
+
+// §4.43: when the plan names the module context itself, the isolated tree is made
+// only of planned sources — nothing is taken from the working tree — so "what was
+// checked" and "what was built" are the same tree with no exception.
+func TestIsolatedTreeTakesNoModuleFileFromTheWorkingTreeWhenThePlanNamesThem(t *testing.T) {
+	root := repoRoot(t)
+	locator := "tools/reference-go-build-from-plan/testdata/probe"
+	plan := planFor(t, root, locator, "./tools/reference-go-build-from-plan/testdata/probe", "runtime-artifact")
+
+	// Add the module context as planned sources.
+	resolver := buildintent.DirSourceResolver{Root: root}
+	for _, name := range []string{"go.mod", "go.sum"} {
+		resolved, err := resolver.Resolve(buildintent.IntentSource{Kind: "go-module", ID: name, Ref: name})
+		if err != nil {
+			t.Fatalf("resolve %s: %v", name, err)
+		}
+		plan.Sources = append(plan.Sources, plugin.BuildSource{
+			Kind: "go-module", ID: name, Locator: name, Digest: resolved.Source.Digest,
+		})
+	}
+	if err := plan.Validate(); err != nil {
+		t.Fatalf("the plan with a module context does not validate: %v", err)
+	}
+
+	dir := t.TempDir()
+	planPath := writePlan(t, dir, plan)
+	rep, err := runTool(t,
+		"-plan", planPath,
+		"-repo", root,
+		"-artifact-out", filepath.Join(dir, "artifact"),
+		"-state", filepath.Join(dir, "state"),
+		"-isolate",
+	)
+	if err != nil {
+		t.Fatalf("isolated build failed: %v", err)
+	}
+	if !rep.BuildOK {
+		t.Fatalf("buildSucceeded = false: %s", rep.BuildError)
+	}
+	if rep.IsolatedTree == nil {
+		t.Fatal("no isolated tree was reported")
+	}
+	if len(rep.IsolatedTree.ModuleFiles) != 0 {
+		t.Fatalf("the isolated tree still took module files from the working tree: %v", rep.IsolatedTree.ModuleFiles)
+	}
+	// Every staged member is a planned source, module context included.
+	if len(rep.IsolatedTree.Members) != 3 {
+		t.Fatalf("staged members = %d, want 3 (the package, go.mod, go.sum)", len(rep.IsolatedTree.Members))
+	}
+}
