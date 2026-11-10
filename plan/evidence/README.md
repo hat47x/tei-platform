@@ -43,6 +43,7 @@
 - [フック実行の配線と失敗の区別の確認](XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)（参照実装の試験記録。Runnerからの配線、NotSatisfiedと実行失敗の区別、参照規則。実PluginとCLI・Studioの配線は未実装）
 - [フック宣言の印刷面への反映の確認](XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md)（参照実装の試験記録。画面と同じフック宣言が印刷面にも出る。実印刷・用紙面の版照合は未確認）
 - [フックの位相順序と途中停止の確認](XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md)（参照実装の試験記録。位相の実行順、不成立での停止位置、`warn`の続行、未対応位相の拒否。CLI・Studioへの配線は未実装）
+- [Data型パラメータへ渡す属性の規約の確認](XTEA_LOWCODE_DATA_PARAM_CONVENTION_2026-11.md)（確認記録。検証は「同じDataの属性」だけを要求し、識別子に限らない。実行時は属性の値がそのまま渡る。識別子限定の検査は未着手）
 - [行単位フックの`uses`を1行ごとに果たす確認](XTEA_LOWCODE_HOOK_ROW_USES_CALLS_2026-11.md)（参照実装の試験記録。行ごとに1回ずつその行の値で能力を呼ぶ。ホスト配線は未実装）
 - [行単位フックの`uses`を二つの入口で同じに判定する確認](XTEA_LOWCODE_HOOK_ROW_USES_PARITY_2026-11.md)（参照実装の試験記録。`Run`と`RunReachable`で同じ宣言が別の答えになっていたのを、判断を一箇所に寄せて揃えた。行ごとの`uses`実行は未着手）
 - [行単位フックの宣言と実行の食い違いを直した確認](XTEA_LOWCODE_HOOK_ROW_REACHABILITY_2026-11.md)（参照実装の試験記録。検証が受理する`browse` + `scope row`を`RunRows`が実行できるようにした。ホスト配線は未実装）
