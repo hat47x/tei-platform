@@ -1,0 +1,15 @@
+72 subjects (scope c, direction both):
+
+  sum of trace.unresolved across them: 0
+  distinct projectionUnresolved messages: 12
+
+  unmaterialized-from  database-contract        216
+  unmaterialized-to    database-contract        216
+  unmaterialized-from  database                 144
+  unmaterialized-to    database                 144
+  unmaterialized-to    database-contract-query   72
+  unmaterialized-to    semantic-capability       72
+
+12 unresolved references, reported for every one of 72 subjects, while
+trace.unresolved sums to zero. "unresolved: 0" reads as "everything resolved"
+but means "no edge was even considered".

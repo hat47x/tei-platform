@@ -1451,3 +1451,56 @@ $ git log --oneline origin/main -S "range d.CustomGoBindings" -- internal/modelr
 ### この1件で確認できたこと
 
 起票の内容（再現手順・原因の特定・3案の比較・`addEdge` が根本という指摘）が、そのまま修正方針に使われた。**分析を渡せば、修正は他者が進められる**という分業が成立した形である。
+
+## 51. 第49ラウンド（2026-11-10）: データ層のkindがノードにならず、辺が全て落ちる
+
+#4001 の解消を試みたが、**着手前の再実測で自分の主張が過大だったことが分かった**。生出力は[第49ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND49_DATA_LAYER_UNMATERIALIZED_2026-11-10/README.md)にある。
+
+### 訂正: `tei world` は既に答えていた
+
+#4001 で私は「CLI で答えられない」と書いた。**`trace` だけを試して一般化したのが誤りだった。**
+
+```text
+tei world -workspace reference/workspace
+  FOUND: sales.order.total -> sales_core.public.orders.total_amount
+  mappings=2 columns=11
+```
+
+`persistenceMappings` は列対応を含めて出力される。**「この属性はどの列か」は既に CLI で答えられる。** `trace` が運ばないのは事実なので、Issue は #4068 の依存として残した。
+
+### 根本原因: database 系がノードにならない
+
+`order_entry` は `database sales { target sales_core }` を宣言し、索引も `targets-database` 辺を宣言しているのに、trace には出ない。
+
+```text
+total: 14  unresolved: 0
+relations: {owns-pattern:5, realizes:3, uses-validation:3, uses-semantic:3}
+targets-database present? NO
+```
+
+`projectionUnresolved` に `unmaterialized-to:database:sales_core` などがあった。72 subject を走査した結果:
+
+```text
+sum of trace.unresolved across them: 0
+distinct projectionUnresolved messages: 12
+  unmaterialized-from/to database-contract        216 each
+  unmaterialized-from/to database                 144 each
+  unmaterialized-to    database-contract-query     72
+```
+
+**12種の未解決参照が 72 subject すべてで報告され、それでも `trace.unresolved` は 0。**
+
+### 原因は2つ
+
+| 原因 | 内容 |
+| --- | --- |
+| (a) | `SupportedSubjectKinds` に database 系が無く、索引は database ノードを作らない。端点が無い辺は必ず落ちる |
+| (b) | `TraceDirect` は `graph.Edges` を走査するので、投影で落ちた辺を数えられない |
+
+### 影響: 7ラウンド見落としていた
+
+私は第41〜47ラウンドで `unresolved: 0` を見て正常と判断し続けた。実際には12種の未解決が常にあった。**この表示は「正常」ではなく「何も見ていない」だった。** これが #4001 の根本原因を隠していた。
+
+### 起票
+
+[#4068](https://github.com/hat47x/tei-platform/issues/4068)。4案を示し、**B（ノードは作るが subject-kind には加えない）+ D（`unresolved` に投影の取りこぼしを含める）**を推した。A は `trace` の subject-kind が公開契約で、`tools/reference-mcp-readonly-adapter/subject_kind_enum_test.go` が `len(TraceSubjectKinds) != 10` を固定しているため外部ツールも同時に直す必要がある。C（辺を宣言しない）は採るべきでない — 見えないという判断なら `AuthorityLimits` に書くべきで、黙って宣言して落とす現状は誰にも利益がない。
