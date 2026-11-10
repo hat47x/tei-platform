@@ -1804,10 +1804,23 @@ L2-bの五条件は、childの能力に依存する。本節は、**参照実装
 | 段 | 内容 | 何が満たされるか | 状態 |
 | --- | --- | --- | --- |
 | 1 | `tools/reference-go-build-from-plan`: `-plan`・`-intent`・`-repo`・`-artifact-out`・`-state`を受け、計画とsourceを照合して`go build`し、5項目を申告する | 条件2・3・5と、条件4の材料 | **実装済み**（[記録](../evidence/TEI_GO_SELF_BUILD_BUILDER_FROM_PLAN_2026-11-10.md)） |
-| 2 | そのtoolをcatalogのproviderとして宣言し、`tei self-build -build-catalog`で鎖を通す | 条件1・4・**`l2b.claimed`** | 未着手 |
+| 2 | そのtoolをcatalogのproviderとして宣言し、`tei self-build -build-catalog`で鎖を通す | 条件1・4・**`l2b.claimed`** | **一度通した**（[記録](../evidence/TEI_GO_SELF_BUILD_L2B_FROM_REAL_GO_BUILD_2026-11-10.md)。`./cmd/tei`の実buildで`l2b.claimed=true`） |
 | 3 | 回帰試験（`cmd/tei`のエンドツーエンド）に載せる | 毎回通ること | 未着手 |
 
 **段1で確かめたこと**：計画が名指すsourceと実際のsourceが違えば**ビルドしない**。実buildが通り、`planFingerprint`・`artifactDigest`・`stateDir`・自分で作って検証したlockが出る。**`DirSourceResolver`をそのまま呼んでいる**ので、枠組みがentryと食い違わない。
+
+#### 段2で分かったこと
+
+**`./cmd/tei`の実buildで`l2b.claimed=true`が立った。** 五条件がすべて成立し、`unmet`は空である。ただし次の四点が残った。
+
+| # | 残ったこと | 意味 |
+| --- | --- | --- |
+| 1 | 宣言の`definitionSource`は**`plugin-definition` kind**を要求する | **宣言モデルがplugin前提**である。commandだけの宣言は書けない（既存の`plugin.tei`を定義sourceにして通した） |
+| 2 | `gobuilder`の固定設定が`GOPROXY=off` | 依存のある対象はビルドできない。`BuildPackageWithSupply`と`-supply`を足した |
+| 3 | `definitionBinding`が`unperformed` | 新しいbuilderが`definitionBytesDigest`を申告しない。**§4.36のentry側照合が効いていない** |
+| 4 | **回帰試験が無い** | 到達点は「一度通した」ままである |
+
+**段3（回帰試験）を先に片づける。** 載せない限り、次に検査を足したときに黙って止まる（§4.38の3番目）。
 
 **§4.38の表の「満たさない」は、段1と2で埋まる。** 段3が無いと、次に検査を足したときに黙って止まる（§4.38の3番目）。
 
