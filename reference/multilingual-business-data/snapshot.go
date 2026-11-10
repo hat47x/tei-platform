@@ -97,6 +97,9 @@ func findPublication(s Snapshot, k Key) (string, bool) {
 // acceptance authority. Stale source relations remain valid history and are
 // handled by Select and CheckProposal.
 func Validate(s Snapshot) []Diagnostic {
+	// One index for the whole pass: resolving each reference against
+	// s.Model.Nodes rebuilds a map of every node per reference.
+	modelResolver := modelref.NewResolver(s.Model.Nodes)
 	var out []Diagnostic
 	if s.Model.Schema != "tei.modelref.v0" {
 		out = append(out, Diagnostic{"unsupported-model", "model"})
@@ -127,7 +130,7 @@ func Validate(s Snapshot) []Diagnostic {
 		}
 		if s.Model.Schema == "tei.modelref.v0" {
 			ref := modelref.Ref{Scope: r.Key.Field.Scope, Subject: r.Key.Field.Subject}
-			if k, code := modelref.Resolve(s.Model.Nodes, ref); code != "" || k != r.Key.Field {
+			if k, code := modelResolver.Resolve(ref); code != "" || k != r.Key.Field {
 				out = append(out, Diagnostic{"unbound-attribute", at})
 			}
 		}

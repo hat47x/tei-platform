@@ -114,6 +114,9 @@ func Validate(entries []Entry) []Diagnostic {
 // the plugin, resource set and effective locale. Invalid catalogs fail closed.
 // An existing but stale/unapproved exact translation blocks fallback.
 func Resolve(graph modelref.Graph, entries []Entry, req Request) Result {
+	// One index for the whole pass: resolving each reference against
+	// graph.Nodes rebuilds a map of every node per reference.
+	modelResolver := modelref.NewResolver(graph.Nodes)
 	if len(Validate(entries)) != 0 {
 		return Result{Diagnostic: "invalid-catalog"}
 	}
@@ -130,7 +133,7 @@ func Resolve(graph modelref.Graph, entries []Entry, req Request) Result {
 	if graph.Schema != "tei.modelref.v0" {
 		return Result{Diagnostic: "unsupported-model"}
 	}
-	target, issue := modelref.Resolve(graph.Nodes, modelref.Ref{Scope: req.Key.Target.Scope, Subject: req.Key.Target.Subject})
+	target, issue := modelResolver.Resolve(modelref.Ref{Scope: req.Key.Target.Scope, Subject: req.Key.Target.Subject})
 	if issue != "" || target != req.Key.Target {
 		return Result{Diagnostic: "unbound-subject"}
 	}
