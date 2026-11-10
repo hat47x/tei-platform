@@ -347,3 +347,4 @@
 - [他の3種の実装束縛は依然として参照グラフに現れない](TEI_DOGFOODING_ROUND43_OTHER_BINDINGS_2026-11-10/README.md)（#3983残件。Worldに4種の束縛があるが索引はCustomGoBindingsのみ読む。executorを変えてもgraphFingerprintとtotalは不変。重複PR #3994の扱いも記録）
 - [永続化マッピングの列対応が参照グラフに現れない](TEI_DOGFOODING_ROUND44_PERSISTENCE_NOT_IN_GRAPH_2026-11-10/README.md)（#4001・#3983。属性20件中incomingを持つのは3件のみ。索引はMapping.Columnsを捨てている。commandsと-hの不一致は他者の修正で解消済みと確認）
 - [Worldの全欄と参照グラフの対応を検査で固定した](TEI_DOGFOODING_ROUND45_WORLD_FIELD_COVERAGE_2026-11-10/README.md)（#3419・#3983・#4001。17欄中14を索引が読み、未読3欄は第43ラウンドの特定と一致。reflectで全欄を列挙し未登録を落とす。ただし「読む欄が辺になるか」は未検査と明記）
+- [`arm64`での解決を実測した（darwinは依然として未観測）](TEI_GO_SELF_BUILD_ARM64_RESOLUTION_2026-11-10.md)（qemu-aarch64-staticを**rootなしで**入手し、同じフィクスチャで`linux/amd64`と`linux/arm64`の解決を実行。**両方exit 0・2,880 B・バイト単位で一致**（receipt sha256 `597e44ee…`）。`intentFingerprint`・`sourceClosure`・`planFingerprint`を含む。**`darwin`は未観測のまま**、実buildの`artifactDigest`も未観測、エミュレーションであって実機ではない。 #2831）
