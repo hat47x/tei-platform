@@ -144,6 +144,14 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 				}
 				filter.Parameter = paramTok.Text
 			}
+			if nt, _ := p.peek(); nt.Text == "operator-parameter" {
+				_, _ = p.next()
+				opParamTok, err := p.expect(TokenIdent)
+				if err != nil {
+					return out, err
+				}
+				filter.OperatorParameter = opParamTok.Text
+			}
 			out.Filters = append(out.Filters, filter)
 		case "sort":
 			_, _ = p.next()
@@ -171,6 +179,22 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 				return out, p.errAt(sizeTok, "page-size requires an integer")
 			}
 			out.PageSize = size
+			if nt, _ := p.peek(); nt.Text == "parameter" {
+				_, _ = p.next()
+				sizeParam, err := p.expect(TokenIdent)
+				if err != nil {
+					return out, err
+				}
+				out.PageSizeParameter = sizeParam.Text
+				if nt, _ := p.peek(); nt.Text == "offset" {
+					_, _ = p.next()
+					offsetParam, err := p.expect(TokenIdent)
+					if err != nil {
+						return out, err
+					}
+					out.PageOffsetParameter = offsetParam.Text
+				}
+			}
 		case "print-template":
 			_, _ = p.next()
 			templateTok, err := p.expect(TokenIdent)

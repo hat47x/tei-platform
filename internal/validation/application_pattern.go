@@ -185,6 +185,7 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 			if pattern.Kind == application.PatternBrowse {
 				out = append(out, validateBrowseFilters(pattern, patternSubject, semanticDataAttributes, queryInputs)...)
 				out = append(out, validateBrowseSorts(pattern, patternSubject, semanticDataAttributes)...)
+				out = append(out, validateBrowseQueryParameters(pattern, patternSubject, queryInputs)...)
 			} else {
 				if len(pattern.Filters) > 0 {
 					out = append(out, errFor(
@@ -1165,6 +1166,45 @@ func validateBrowseFilters(
 			out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_FILTER_DUPLICATE", "browse pattern %s declares filter %s more than once", pattern.ID, filter.Attribute))
 		}
 		seen[filter.Attribute] = true
+	}
+	return out
+}
+
+// validateBrowseQueryParametersは、Patternが宣言した演算子・page-sizeの受け口が、Queryのinputとして
+// 実在し型が合うことだけを確かめる。native SQL本文は解析しない。SQLがその値を実際に使うかは
+// 実DBでの独立Expectedで確かめる。
+func validateBrowseQueryParameters(
+	pattern application.Pattern,
+	patternSubject subject.Subject,
+	queryInputs map[core.CanonicalID]map[string]core.CanonicalID,
+) []Diagnostic {
+	var out []Diagnostic
+	inputs := queryInputs[pattern.Query]
+	check := func(name, wantType, unknownCode, mismatchCode, what string) {
+		if name == "" {
+			return
+		}
+		got, ok := inputs[name]
+		switch {
+		case !ok:
+			out = append(out, errFor(patternSubject, unknownCode, "browse pattern %s %s binds unknown query input %s", pattern.ID, what, name))
+		case string(got) != wantType:
+			out = append(out, errFor(patternSubject, mismatchCode, "browse pattern %s %s needs %s but query input %s has type %s", pattern.ID, what, wantType, name, got))
+		}
+	}
+	for _, filter := range pattern.Filters {
+		check(filter.OperatorParameter, "std.code", "UNKNOWN_APPLICATION_PATTERN_FILTER_OPERATOR_PARAMETER",
+			"APPLICATION_PATTERN_FILTER_OPERATOR_PARAMETER_TYPE_MISMATCH", "filter "+string(filter.Attribute)+" operator-parameter")
+	}
+	if pattern.PageSizeParameter != "" || pattern.PageOffsetParameter != "" {
+		if pattern.PageSize == 0 {
+			out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_PAGE_PARAMETER_REQUIRES_PAGE_SIZE",
+				"browse pattern %s declares a page parameter without page-size", pattern.ID))
+		}
+		check(pattern.PageSizeParameter, "std.integer", "UNKNOWN_APPLICATION_PATTERN_PAGE_PARAMETER",
+			"APPLICATION_PATTERN_PAGE_PARAMETER_TYPE_MISMATCH", "page-size parameter")
+		check(pattern.PageOffsetParameter, "std.integer", "UNKNOWN_APPLICATION_PATTERN_PAGE_PARAMETER",
+			"APPLICATION_PATTERN_PAGE_PARAMETER_TYPE_MISMATCH", "page-size offset")
 	}
 	return out
 }

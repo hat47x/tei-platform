@@ -1,6 +1,7 @@
 query order_entry.recent_orders {
     input status std.code
     input status_operator std.code
+    input page_size std.integer
     input page_offset std.integer
     datasource sales
     sql postgres file "recent_orders.sql"

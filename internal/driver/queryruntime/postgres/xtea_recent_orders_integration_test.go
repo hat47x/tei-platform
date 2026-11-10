@@ -89,8 +89,15 @@ func TestXTEARecentOrdersReadsActualPostgresThroughEnvironmentBinding(t *testing
 	for _, r := range observed {
 		statuses[r.status] = true
 	}
-	// Independent Expected: the Pattern declares sort status asc and page-size 20.
-	// The test sorts in Go with order_id as the tie-break the Query adds for stable paging.
+	// An operator the Pattern does not declare must fail before any SQL runs, not
+	// silently behave like eq.
+	if _, err := resolver.ExecuteBrowseQueryInEnvironment(ctx, "development", "order_entry",
+		"order_entry.recent_orders", executor, map[string]any{"status": "OPEN", "status_operator": "ge"}); err == nil {
+		t.Fatal("undeclared operator ge was accepted")
+	}
+	// Independent Expected: the test sorts in Go by the Pattern's declared sorts
+	// (status asc, order_id asc), never by the product SQL.
+	// The Pattern declares page-size 20; the Driver, not this test, feeds it to the Query.
 	const pageSize = 20
 	sawFullPage, sawSecondPage := false, false
 	for status := range statuses {

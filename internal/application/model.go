@@ -122,9 +122,13 @@ type Pattern struct {
 	Filters       []Filter                 `json:"filters,omitempty"`
 	Sorts         []Sort                   `json:"sorts,omitempty"`
 	PageSize      int                      `json:"pageSize,omitempty"`
-	PageBreak     *PageBreak               `json:"pageBreak,omitempty"`
-	Layout        *Layout                  `json:"layout,omitempty"`
-	PrintTemplate string                   `json:"printTemplate,omitempty"`
+	// PageSizeParameterはPageSizeをQueryへ渡すinput、PageOffsetParameterは呼出側が選ぶ頁位置(行offset)を
+	// 受けるinputである。Pattern.PageSizeを正本とし、SQL側へlimit値を重複して書かせない。
+	PageSizeParameter   string     `json:"pageSizeParameter,omitempty"`
+	PageOffsetParameter string     `json:"pageOffsetParameter,omitempty"`
+	PageBreak           *PageBreak `json:"pageBreak,omitempty"`
+	Layout              *Layout    `json:"layout,omitempty"`
+	PrintTemplate       string     `json:"printTemplate,omitempty"`
 }
 
 // Layoutは、対話の項目の並びを宣言する。画面座標ではなく、意味の順序だけを持つ。
@@ -150,6 +154,8 @@ type Filter struct {
 	Attribute core.CanonicalID `json:"attribute"`
 	Operators []string         `json:"operators,omitempty"`
 	Parameter string           `json:"parameter,omitempty"`
+	// OperatorParameterは、選ばれた演算子(Operatorsのいずれか)をQueryへ渡すinputである。
+	OperatorParameter string `json:"operatorParameter,omitempty"`
 }
 
 // Aggregateは、header-detailの明細に対する集計の宣言である。

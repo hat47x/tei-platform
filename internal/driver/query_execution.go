@@ -70,6 +70,11 @@ func (r Resolver) ExecuteBrowseQuery(
 		return BrowseQueryExecution{}, fmt.Errorf("browse Pattern %sを実行するQuery Executorが指定されていません", resolved.Pattern.ID)
 	}
 
+	parameters, err = browseQueryParameters(resolved.Pattern, parameters)
+	if err != nil {
+		return BrowseQueryExecution{}, err
+	}
+
 	result, err := executor.ExecuteBrowseQuery(ctx, *resolved.Query, *resolved.Datasource, parameters)
 	if err != nil {
 		return BrowseQueryExecution{}, fmt.Errorf("browse Pattern %sのQuery %sをDatasource %sで実行できませんでした: %w", resolved.Pattern.ID, resolved.Query.ID, resolved.Datasource.Alias, err)

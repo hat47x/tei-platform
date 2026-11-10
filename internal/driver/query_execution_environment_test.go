@@ -77,7 +77,7 @@ func TestExecuteBrowseQueryInEnvironmentConnectsRecentOrdersThroughDeclaredBindi
 			if datasource.Alias != "sales" || datasource.TargetDatabase != "sales_core" {
 				return driver.BrowseQueryResult{}, fmt.Errorf("Datasource=%#v", datasource)
 			}
-			if !reflect.DeepEqual(parameters, map[string]any{"status": "OPEN", "status_operator": "eq", "page_offset": int64(0)}) {
+			if !reflect.DeepEqual(parameters, map[string]any{"status": "OPEN", "status_operator": "eq", "page_size": int64(20), "page_offset": int64(0)}) {
 				return driver.BrowseQueryResult{}, fmt.Errorf("parameters=%#v", parameters)
 			}
 			// 物理列順をQueryのresult宣言と逆にし、明示mappingだけで対応付くことを確かめる。
@@ -155,6 +155,63 @@ func TestExecuteBrowseQueryInEnvironmentRefusesBeforeInvokingExecutor(t *testing
 			}
 			if called {
 				t.Fatal("束縛が成立していないのにExecutorが呼び出されました")
+			}
+		})
+	}
+}
+
+func TestExecuteBrowseQueryAppliesPatternDeclaredOperatorAndPageParameters(t *testing.T) {
+	base := func() map[string]any {
+		return map[string]any{"status": "OPEN", "status_operator": "eq"}
+	}
+	for _, tc := range []struct {
+		name    string
+		mutate  func(map[string]any)
+		wantErr string // empty = must reach the executor
+		want    map[string]any
+	}{
+		{name: "offset defaults to first page and page-size comes from the Pattern",
+			want: map[string]any{"status": "OPEN", "status_operator": "eq", "page_size": int64(20), "page_offset": int64(0)}},
+		{name: "second page offset is passed through as integer",
+			mutate: func(p map[string]any) { p["page_offset"] = 20 },
+			want:   map[string]any{"status": "OPEN", "status_operator": "eq", "page_size": int64(20), "page_offset": int64(20)}},
+		{name: "ne is a declared operator",
+			mutate: func(p map[string]any) { p["status_operator"] = "ne" },
+			want:   map[string]any{"status": "OPEN", "status_operator": "ne", "page_size": int64(20), "page_offset": int64(0)}},
+		{name: "operator not declared by the Pattern", mutate: func(p map[string]any) { p["status_operator"] = "ge" }, wantErr: "宣言していません"},
+		{name: "operator missing is not defaulted", mutate: func(p map[string]any) { delete(p, "status_operator") }, wantErr: "指定されていません"},
+		{name: "operator of wrong type", mutate: func(p map[string]any) { p["status_operator"] = 1 }, wantErr: "宣言していません"},
+		{name: "page size contradicting the Pattern", mutate: func(p map[string]any) { p["page_size"] = 50 }, wantErr: "宣言値"},
+		{name: "negative offset", mutate: func(p map[string]any) { p["page_offset"] = -1 }, wantErr: "0以上"},
+		{name: "non-integer offset", mutate: func(p map[string]any) { p["page_offset"] = "20" }, wantErr: "0以上"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			params := base()
+			if tc.mutate != nil {
+				tc.mutate(params)
+			}
+			var got map[string]any
+			called := false
+			executor := browseQueryExecutorFunc(func(_ context.Context, q query.EmbeddedSQL, _ application.DatabaseRequirement, p map[string]any) (driver.BrowseQueryResult, error) {
+				called = true
+				got = p
+				return driver.BrowseQueryResult{Raw: queryresult.RawResult{Columns: []string{"order_id", "customer_id"}}}, nil
+			})
+			_, err := driver.NewResolver(xteaWorld(t)).ExecuteBrowseQuery(context.Background(), "order_entry", "order_entry.recent_orders", executor, params)
+			if tc.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+					t.Fatalf("error=%v want substring %q", err, tc.wantErr)
+				}
+				if called {
+					t.Fatal("拒否されるべき入力でExecutorが呼び出されました")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("executor parameters=%#v want=%#v", got, tc.want)
 			}
 		})
 	}
