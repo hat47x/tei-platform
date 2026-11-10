@@ -55,6 +55,10 @@ type selfBuildEntryEvidence struct {
 	ChildIntentBytesDigest string `json:"childIntentBytesDigest,omitempty"`
 	ChildIntentFingerprint string `json:"childIntentFingerprint,omitempty"`
 	ChildPlanFingerprint   string `json:"childPlanFingerprint,omitempty"`
+	// ChildStateDir is the state directory the child says it used. The entry
+	// passes -state; this is the child's own reading of it, so the separation the
+	// reproducibility claim rests on can be checked rather than assumed.
+	ChildStateDir string `json:"childStateDir,omitempty"`
 	// ChildLock is the child's own validated plan-to-artifact lock (§4.11),
 	// copied verbatim. The entry checks it against the file rather than
 	// treating it as proof.
@@ -227,6 +231,7 @@ func driveSelfBuild(childPath string, childArgs []string, artifactPath, claimedS
 		IntentBytesDigest string `json:"intentBytesDigest"`
 		IntentFingerprint string `json:"intentFingerprint"`
 		PlanFingerprint   string `json:"planFingerprint"`
+		StateDir          string `json:"stateDir"`
 		// The child's own validated plan-to-artifact lock (§4.11). When a child
 		// forms and checks it itself, the entry no longer assembles the binding
 		// from two separate self-reports.
@@ -241,6 +246,7 @@ func driveSelfBuild(childPath string, childArgs []string, artifactPath, claimedS
 	evidence.ChildIntentBytesDigest = child.IntentBytesDigest
 	evidence.ChildIntentFingerprint = child.IntentFingerprint
 	evidence.ChildPlanFingerprint = child.PlanFingerprint
+	evidence.ChildStateDir = child.StateDir
 	if child.BuildArtifactLock != nil {
 		evidence.ChildLock = &childSelfLock{
 			FormatVersion:   child.BuildArtifactLock.FormatVersion,

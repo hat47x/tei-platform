@@ -26,7 +26,7 @@ import (
 )
 
 func main() {
-	artifact, digest, code := "", "", 0
+	artifact, digest, code, state := "", "", 0, ""
 	for i := 1; i < len(os.Args); i++ {
 		switch os.Args[i] {
 		case "-artifact":
@@ -37,6 +37,9 @@ func main() {
 			i++
 		case "-exit":
 			fmt.Sscan(os.Args[i+1], &code)
+			i++
+		case "-state":
+			state = os.Args[i+1]
 			i++
 		}
 	}
@@ -50,7 +53,11 @@ func main() {
 			os.Exit(2)
 		}
 	}
-	fmt.Printf("{\"schemaVersion\":\"tei.reference.go-build-with-supply/v0\",\"artifactDigest\":%q}\n", digest)
+	if state != "" {
+		fmt.Printf("{\"schemaVersion\":\"tei.reference.go-build-with-supply/v0\",\"artifactDigest\":%q,\"stateDir\":%q}\n", digest, state)
+	} else {
+		fmt.Printf("{\"schemaVersion\":\"tei.reference.go-build-with-supply/v0\",\"artifactDigest\":%q}\n", digest)
+	}
 	os.Exit(code)
 }
 `
