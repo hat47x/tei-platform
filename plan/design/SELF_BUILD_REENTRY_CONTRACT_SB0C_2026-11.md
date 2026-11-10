@@ -1565,6 +1565,62 @@ in-processを既定にするには、**entryがcatalogを自分で選ぶ**必要
 | 能力宣言の版付け | **未決のまま。** 第二のconsumerが現れた時点で決める |
 | `-strong`（§4.25のP-4） | **採らない。** §4.30が「catalogを名指しすれば最強の観測が既定で揃う」を実現したので、強さを選ぶ別flagは要らない。第二の強さの段が要るようになったら再考する |
 
+### 4.37 L2-bの五条件は、何を確かめ、何を信じているか（2026-11-09）
+
+§4.23の述語は五条件の同時成立を要求する。本節は、**各条件がどこまで検査で、どこからが自己申告か**を一か所にまとめる。
+
+**§4.21・§4.24・§4.36で三つの穴を塞いだ結果、条件ごとの中身が変わっている。** 読む人が「欄があるから確かめた」と読まないよう、現状を固定する。
+
+#### 条件ごとの内訳
+
+| 条件 | 検査（entryが自分で見る） | 自己申告（childの言い分） | 塞いだ節 |
+| --- | --- | --- | --- |
+| 1. entry自身が計画を導いた | `derivedBy`・`state`・`unmet`の整合 | — | §4.22段2 |
+| 2. 宣言byteの一致 | 宣言のdigest（entryが保持）と、childが申告したdigestの**比較** | **childが実際にそのbyteを読んだこと** | §4.14 |
+| 3. 計画fingerprintの一致 | 二つの値の**比較**（両方とも空なら`unperformed`） | **childの計画fingerprint** | §4.9・§4.11 |
+| 4. plan→artifactの束縛 | **ディスクのbyteのdigest**と、lockの整合・検証 | childの`artifactDigest` | §4.11・§4.12 |
+| 5. artifactの再現 | 二回の**バイト一致**、**builderの同一性**、**stateの分離**、ディスクの一致 | childの`stateDir`・`artifactDigest` | §4.21・§4.36・(直近2件) |
+
+#### 検査で止められるもの
+
+| childがしようとしたこと | 止まる場所 |
+| --- | --- |
+| 宣言と違うバイトを読んだ**と申告する** | 条件2で不一致 |
+| 計画と違うfingerprintを申告する | 条件3で不一致 |
+| 成果物と違うdigestを申告する | 条件4（ディスクとの比較）で不一致 |
+| 同じバイトを二回出さない | 条件5で不一致 |
+| 二回の間に実行物を差し替える | 条件5の**builder同一性** |
+| `-state`を無視して同じstateで二回buildする | 条件5の**state分離**（申告が合わない） |
+| **計画と違うdefinitionを読んでbuildする** | childが**成果物を作る前に停止**（§4.36） |
+
+#### 検査で止められないもの（信じている部分）
+
+**childの「自分が何をしたか」という申告は、すべて信じている。** 具体的には:
+
+1. **宣言を実際に読んだこと**（条件2は「読んだ」という申告のdigestを比べるだけで、読んだ行為は見えない）
+2. **計画から成果物を作ったこと**（条件4は「申告したdigest」と「ディスクのbyte」を比べる。ディスクのbyteが計画から出たかは、条件5の再現と§4.36のsource照合で**間接的に**支えるだけ）
+3. **使ったstate**（条件5は申告が渡した先と一致するかを見る。申告どおりに使ったかは見えない）
+4. **§4.36の停止が働くこと**（childが自分で止まる。止まらないchildは、そもそもこの検査を実装していない）
+
+**つまりL2-bは「entryの観測」と「childの申告」の合成であり、childを敵と見なす安全性ではない。** これは§4.8がL2-bを「解釈の層」として定義したことの帰結である。
+
+#### 敵対的なchildを想定するなら何が要るか
+
+| 必要になるもの | 何を閉じるか |
+| --- | --- |
+| OSレベルの読み取り制限（計画のsourceだけをbind mountする） | 申告1（読んだこと） |
+| childの実行をentryが監視する（open/execveの記録） | 申告2（作ったこと） |
+| stateディレクトリの実体をentryが用意し、childには渡さない | 申告3（state） |
+| §4.36の照合を**entry側でも**持つ（childの申告に依存しない） | 申告4（停止が働くこと） |
+
+**いずれも本設計の範囲外である。** §4.8はL2-bを「宣言が計画として解釈され、その計画がartifactを生んだこと」の**解釈層**として定義しており、敵対的builderに対する防御は別の層（供給のTrust、Seed Trust、Runtime Authority）の仕事である。
+
+#### この節が言っていないこと
+
+- childが**正直であること**の保証。していない
+- 敵対的なbuilderへの防御。**層が違う**
+- 受理・Runtime Authority・供給のTrust。いずれも未主張のまま
+
 ### 4.36 計画が名指すsourceを、builderが確かめる（2026-11-09）
 
 §4.8(c)は「その計画がそのartifactを生んだ」を主張します。本節は、その連鎖に**入力の照合が無かった**ことを記録し、塞いだ結果を残す。
@@ -1599,9 +1655,17 @@ in-processを既定にするには、**entryがcatalogを自分で選ぶ**必要
 
 childの試験の計画が`sha256:aaaa…`という**実在しないdigest**を名指ししていた。検査が無かったので通っていた。**fixtureが実在しないdigestを持っていたこと自体が、この検査が無かった証拠**である。実ファイルのdigestに直した。
 
+#### 補足：同じ照合をentry側にも置く（2026-11-09）
+
+上の照合は**builderが自分で止まる**ことで成り立つ。**その検査を実装していないbuilderは、この穴を塞がない。** §4.37の「信じている4項目」のうち「§4.36の停止が働くこと」がこれに当たる。
+
+そこで、childが申告する`definitionBytesDigest`を**entryが自分の計画の値と比較**するようにした（`definitionBinding`）。不一致は**試行の失敗**として扱い、両方のdigestを記録に残す。**未申告は`unperformed`**（一致として扱わない）。
+
+**これで「§4.36の停止が働くこと」は信じる対象から外れた。** 残る信じている項目は、宣言を実際に読んだこと・計画から成果物を作ったこと・申告どおりのstateを使ったことである。
+
 #### この節が言っていないこと
 
-- **childの実装が正しいこと**（childが自分で申告し、自分で止まる）
+- **childが本当にそのファイルを読んだこと**（digestはchildの申告である）
 - **ディレクトリのclosure**の照合。今回は単一ファイル（`plugin-definition`）だけを塞いだ
 - 計画が名指す他のsource（`go-package`など）の照合
 - 別ホスト・別Go版での成立
@@ -1733,7 +1797,7 @@ childの試験の計画が`sha256:aaaa…`という**実在しないdigest**を�
 - [x] L2-bのClaimを立てるかの判断と実装（§4.23。**五条件の同時成立**を述語にし、`l2b.claimed`と`l2b.unmet`として出す。[記録](../evidence/TEI_GO_SELF_BUILD_L2B_CLAIM_2026-11-09.md)。単一観測の`l2bClaimed`欄は`false`のまま据え置き、述語はそれらを読まない）
 - [x] L2-bのClaimを**回帰試験**にする（§4.24。参照catalogと参照builder childで五条件が揃うことを`cmd/tei`の試験で固定し、`go test ./...`経由で健康性確認に載る。[記録](../evidence/TEI_GO_SELF_BUILD_L2B_GATE_2026-11-09.md)）
 - [x] 二つのホスト（`linux/amd64`・`windows/amd64`）で同じ計画とartifactが出ることの実測（§4.26。[記録](../evidence/TEI_GO_SELF_BUILD_CROSS_OS_DIGESTS_2026-11-09.md)。`intentFingerprint`・`sourceClosure`・`planFingerprint`・`artifactDigest`の四つが一致し、L2-bのエンドツーエンド試験もWindowsでPASSした。**Go版も違う**）
-- [ ] `darwin`・`arm64`・別のGo版の組合せでの観測（§4.26の範囲外）。**版とアーキテクチャは観測できた。** `go1.26.10`と`qemu-aarch64-static`をいずれも**rootなしで**入手でき、**2×2の行列**（Go版2つ×アーキテクチャ2つ）を同一コミットで実行すると**4通りともexit 0・2,880 B・バイト単位で一致**した（[記録](../evidence/TEI_GO_SELF_BUILD_GO_VERSION_AND_ARCH_MATRIX_2026-11-10.md)）。**ただし観測したのは解決の経路だけである。** receiptにツールチェーンの欄が無いので、「解決の値が版とアーキテクチャに依存しない」ことは言えるが、**実buildの`artifactDigest`が一致することは言えない**（未観測）。`darwin`も未観測のまま（macOSの実行環境が無く、クロスコンパイルは通るが走らせられない）
+- [ ] `darwin`・`arm64`・別のGo版の組合せでの観測（§4.26の範囲外）。**`arm64`では連鎖全体が成立した。** `tei`・child・著者ツール・resolverをすべてarm64へビルドしqemu上で`tei self-build`を走らせると、**`l2b.claimed=true`・`unmet`空・`reproduced`** になり、amd64と同じ結果だった（[記録](../evidence/TEI_GO_SELF_BUILD_ARM64_L2B_CHAIN_2026-11-10.md)）。**宣言とソースに依存する値は一致し、builderに依存する値は相違する**——`catalogDigest`は走るbuilderのバイトを名指しするので、アーキが違えば別の値になる。**Claimはクロスアーキテクチャの成果物一致を要求しない。**版は`go1.26.10`と`go1.27.3`で2×2を観測済み（[記録](../evidence/TEI_GO_SELF_BUILD_GO_VERSION_AND_ARCH_MATRIX_2026-11-10.md)）。**`darwin`は未観測のまま**（macOSの実行環境が無い）
 - [x] `l2b.claimed`を**既定の試行**で立てられるようにするか（**§4.34で閉じた：立てない。** 既定はchild経路で五条件の一つ目が成立しない。Claimは呼び手が`-build-catalog`一式を渡す行為） **呼び手が要るのはin-process経路（`-build-catalog`一式）だけで、`-rebuild-check`は§4.30が既定にした**（実測：`-build-catalog`のみで`claimed=true`・`-rebuild-check=false`で`false`。[記録](../evidence/TEI_GO_SELF_BUILD_L2B_DEFAULT_PREMISE_2026-11-09.md)）。残る問いは「何も渡さない試行」で立てるかであり、§4.29のcatalog決定が前提（§4.31）
 - [x] 宣言とplanの**build座標**（`outputKind`・`target`・`profile`）の照合（[#3652](https://github.com/hat47x/tei-platform/pull/3652)。childが三座標を一つずつ比べ、違えばartifactを書いた後にreportを出さずexit 1。[記録](../evidence/TEI_GO_SELF_BUILD_BUILD_COORDINATES_2026-11-09.md)）
 - [x] 宣言の他の欄のうち、planが同じ形で持つもの（`recipe`・`sources`・`dependencies`）の照合（[#3661](https://github.com/hat47x/tei-platform/pull/3661)。§4.17）

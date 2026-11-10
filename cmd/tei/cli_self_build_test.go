@@ -26,7 +26,7 @@ import (
 )
 
 func main() {
-	artifact, digest, code, state := "", "", 0, ""
+	artifact, digest, code, state, definition := "", "", 0, "", ""
 	for i := 1; i < len(os.Args); i++ {
 		switch os.Args[i] {
 		case "-artifact":
@@ -41,6 +41,9 @@ func main() {
 		case "-state":
 			state = os.Args[i+1]
 			i++
+		case "-report-definition":
+			definition = os.Args[i+1]
+			i++
 		}
 	}
 	if artifact != "" {
@@ -53,11 +56,15 @@ func main() {
 			os.Exit(2)
 		}
 	}
+	report := fmt.Sprintf("{\"schemaVersion\":\"tei.reference.go-build-with-supply/v0\",\"artifactDigest\":%q", digest)
 	if state != "" {
-		fmt.Printf("{\"schemaVersion\":\"tei.reference.go-build-with-supply/v0\",\"artifactDigest\":%q,\"stateDir\":%q}\n", digest, state)
-	} else {
-		fmt.Printf("{\"schemaVersion\":\"tei.reference.go-build-with-supply/v0\",\"artifactDigest\":%q}\n", digest)
+		report += fmt.Sprintf(",\"stateDir\":%q", state)
 	}
+	if definition != "" {
+		report += fmt.Sprintf(",\"definitionBytesDigest\":%q", definition)
+	}
+	report += "}"
+	fmt.Println(report)
 	os.Exit(code)
 }
 `
