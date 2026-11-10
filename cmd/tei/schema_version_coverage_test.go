@@ -5,45 +5,37 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
 
 // A command that advertises a SchemaVersion promises the caller a response
-// shape. Two of them are asserted here because their response bodies are cheap
-// to produce; the rest are listed with the reason they are not, so the set of
-// advertised-but-unasserted schemas can only shrink (#4032).
+// shape. A command whose schema no test checks advertises something no test has
+// seen (#4032).
+//
+// TestDiscoveryAdvertisesEveryModeAResponseCanCarry compares the schemaVersion of
+// every command in its case table with the catalog, so those commands count as
+// asserted here. Anything else has to be listed below with a reason, and a
+// listed command that gains an assertion has to be removed, so the gap can only
+// shrink.
 var unassertedSchemaVersionCommands = map[string]string{
-	"knowledge-context":                      "asserted through TestDiscoveryAdvertisesEveryModeAResponseCanCarry, which reads modes rather than the schema literal",
-	"knowledge-data-design-candidate-review": "asserted through the discovery modes test, which reads result shapes rather than the schema literal",
-	"knowledge-qualify":                      "asserted through the discovery modes test, which reads result shapes rather than the schema literal",
-	"knowledge-review-disclose":              "asserted through the discovery modes test, which reads result shapes rather than the schema literal",
-	"knowledge-review-handoff":               "asserted through the discovery modes test, which reads result shapes rather than the schema literal",
-	"knowledge-review-plan":                  "asserted through the discovery modes test, which reads result shapes rather than the schema literal",
-	"plugin-lock":                            "asserted through the discovery modes test, which reads modes rather than the schema literal",
-	"plugin-resolve":                         "asserted through the discovery modes test, which reads modes rather than the schema literal",
-	"plugin-runtime-plan":                    "asserted through the discovery modes test, which reads result shapes rather than the schema literal",
-	"requirements":                           "asserted through the discovery modes test, which reads result shapes rather than the schema literal",
-	"self-build-entry":                       "spawns a child executable; its schema is asserted by the self-build test",
-	"source-index":                           "asserted through TestDiscoveryAdvertisesEveryModeAResponseCanCarry, which reads modes rather than the schema literal",
+	"self-build-entry":    "spawns a child executable; its schema is asserted by the self-build test",
+	"plugin-runtime-plan": "needs a runtime plan fixture; no case runs it",
 }
 
-// TestAdvertisedSchemaVersionsAreAsserted keeps the gap visible: a command added
-// without a schema assertion fails here until it is either asserted or listed
-// with a reason.
 func TestAdvertisedSchemaVersionsAreAsserted(t *testing.T) {
-	asserted := schemaVersionsAssertedByTests(t)
-	catalog := commandCatalog()
+	asserted := assertedCommandNames(t)
 	var missing []string
-	for _, record := range catalog.Commands {
+	for _, record := range commandCatalog().Commands {
 		if record.SchemaVersion == "" {
 			continue
 		}
 		_, listed := unassertedSchemaVersionCommands[record.Name]
 		switch {
-		case asserted[record.SchemaVersion] && listed:
-			t.Errorf("%s now asserts %s; remove it from unassertedSchemaVersionCommands", record.Name, record.SchemaVersion)
-		case !asserted[record.SchemaVersion] && !listed:
+		case asserted[record.Name] && listed:
+			t.Errorf("%s now has an assertion; remove it from unassertedSchemaVersionCommands", record.Name)
+		case !asserted[record.Name] && !listed:
 			missing = append(missing, record.Name+" ("+record.SchemaVersion+")")
 		}
 	}
@@ -55,15 +47,18 @@ func TestAdvertisedSchemaVersionsAreAsserted(t *testing.T) {
 	}
 }
 
-// schemaVersionsAssertedByTests returns every `tei.cli.*/v0` literal that
-// appears in this package's tests.
-func schemaVersionsAssertedByTests(t *testing.T) map[string]bool {
+// assertedCommandNames returns the commands whose schema a test checks: either
+// the command's schemaVersion literal appears in a test, or the command is a
+// case in the discovery modes test, which compares responses with the catalog.
+func assertedCommandNames(t *testing.T) map[string]bool {
 	t.Helper()
 	entries, err := os.ReadDir(".")
 	if err != nil {
 		t.Fatal(err)
 	}
-	asserted := map[string]bool{}
+	literals := map[string]bool{}
+	caseCommands := map[string]bool{}
+	argsPattern := regexp.MustCompile(`args: \[\]string\{"([a-z][a-z0-9-]*)"`)
 	for _, entry := range entries {
 		name := entry.Name()
 		if entry.IsDir() || !strings.HasSuffix(name, "_test.go") {
@@ -76,17 +71,31 @@ func schemaVersionsAssertedByTests(t *testing.T) map[string]bool {
 		for _, field := range strings.Fields(string(source)) {
 			field = strings.Trim(field, "\"'`(),;{}")
 			if strings.HasPrefix(field, "tei.cli.") {
-				asserted[field] = true
+				literals[field] = true
 			}
 		}
+		for _, match := range argsPattern.FindAllStringSubmatch(string(source), -1) {
+			caseCommands[match[1]] = true
+		}
 	}
-	if len(asserted) == 0 {
-		t.Fatal("no schema version was found in the tests; the literal shape changed")
+	if len(literals) == 0 {
+		t.Fatal("no schema version literal was found in the tests; the shape changed")
+	}
+	if len(caseCommands) == 0 {
+		t.Fatal("no command was found in the discovery modes case table; the shape changed")
+	}
+	asserted := map[string]bool{}
+	for _, record := range commandCatalog().Commands {
+		if record.SchemaVersion == "" {
+			continue
+		}
+		if literals[record.SchemaVersion] || caseCommands[record.Name] {
+			asserted[record.Name] = true
+		}
 	}
 	return asserted
 }
 
-// TestWorkspaceFilesSchemaVersionIsAsserted pins the two cheap response bodies.
 func TestWorkspaceFilesSchemaVersionIsAsserted(t *testing.T) {
 	root := filepath.Join("..", "..", "reference", "workspace")
 	var out bytes.Buffer
