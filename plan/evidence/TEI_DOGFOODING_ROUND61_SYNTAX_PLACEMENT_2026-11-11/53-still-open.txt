@@ -1,0 +1,13 @@
+This fixes one case, not the hole.
+
+Still true: there is no way to discover where a construct belongs. A person who
+does not know the correct form must write the wrong one to learn it.
+
+  - `pattern` lives in its own file; nothing says so except this new message.
+  - Other placements (realize, environment bindings,
+    contract-query-executor-binding) have no equivalent guidance.
+  - UNBOUND_DATASOURCE says what is missing but not what to write (round 60,
+    not filed).
+
+Filed as #4169 with four options; A (extend this one-case technique using
+existing single-source lists, in order) is the recommended next step.
