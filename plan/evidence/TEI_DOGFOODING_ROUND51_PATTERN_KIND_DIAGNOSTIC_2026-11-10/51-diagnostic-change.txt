@@ -1,0 +1,10 @@
+before: applications/.../revoke.tei:1:28 error PARSE_ERROR unexpected token "{"
+after : applications/.../revoke.tei:1:28 error PARSE_ERROR
+        pattern order_entry.revoke requires a kind before its body;
+        valid kinds are browse, record, reference, command, header-detail
+
+before: unsupported application pattern kind "bogus"
+after : unsupported application pattern kind "bogus";
+        valid kinds are browse, record, reference, command, header-detail
+
+Accepted syntax is unchanged; only the message grew.

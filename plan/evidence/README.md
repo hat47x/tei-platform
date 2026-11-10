@@ -45,6 +45,7 @@
 - [フック実行の配線と失敗の区別の確認](XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)（参照実装の試験記録。Runnerからの配線、NotSatisfiedと実行失敗の区別、参照規則。実PluginとCLI・Studioの配線は未実装）
 - [フック宣言の印刷面への反映の確認](XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md)（参照実装の試験記録。画面と同じフック宣言が印刷面にも出る。実印刷・用紙面の版照合は未確認）
 - [フックの位相順序と途中停止の確認](XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md)（参照実装の試験記録。位相の実行順、不成立での停止位置、`warn`の続行、未対応位相の拒否。CLI・Studioへの配線は未実装）
+- [`after-*`へ到達する実行経路の確認](XTEA_LOWCODE_HOOK_AFTER_CHANGE_2026-11.md)（試験記録。`RunBeforeChange`→変更の適用→`RunAfterChange`＋`AppliedChangeReach`で`after-*`を実行できる。ホスト配線は未着手）
 - [実行時の値変換が要らないことの確認](XTEA_LOWCODE_VALUE_CONVERSION_2026-11.md)（確認記録。受理される原始型の結び付けは同じ下位原始型で、変換すべき差が生じない。異なる原始型は検証が拒否する）
 - [Data型パラメータへ渡す属性の規約の確認](XTEA_LOWCODE_DATA_PARAM_CONVENTION_2026-11.md)（確認記録。検証は「同じDataの属性」だけを要求し、識別子に限らない。実行時は属性の値がそのまま渡る。識別子限定の検査は未着手）
 - [行単位フックの`uses`を1行ごとに果たす確認](XTEA_LOWCODE_HOOK_ROW_USES_CALLS_2026-11.md)（参照実装の試験記録。行ごとに1回ずつその行の値で能力を呼ぶ。ホスト配線は未実装）
@@ -379,4 +380,5 @@
 - [traceがrealizes辺を2回返す（起票→解消）](TEI_DOGFOODING_ROUND47_DUPLICATE_REALIZES_EDGE_2026-11-10/README.md)（#4024→#4038。`addEdge`が集合でなく同じ辺を2行返していた。重複はrealizesのみで他15関係は正常。起票から約2時間15分で修正され、修正後の`main`でtotal=1を実測）
 - [データ層のkindがノードにならず辺が全て落ちる](TEI_DOGFOODING_ROUND49_DATA_LAYER_UNMATERIALIZED_2026-11-10/README.md)（#4068・#4001。database/contractがmaterializeされず72対象で12種の未解決が常時あるのに`trace.unresolved`は0。`tei world`が列対応を既に答えていた点も訂正として記録）
 - [データ層のノードをmaterializeし未解決を12件から1件にした](TEI_DOGFOODING_ROUND50_DATA_LAYER_MATERIALIZED_2026-11-10/README.md)（#4068。database/contract/contract-queryを端点としてmaterializeしkindも13種へ。`targets-database`等の辺が可視化。変異2種で確認。`unresolved`の数え方は未修正と明記）
+- [設計作業をCLIだけで完遂しpatternの種別診断を改善した](TEI_DOGFOODING_ROUND51_PATTERN_KIND_DIAGNOSTIC_2026-11-10/README.md)（#4082。capability/pattern/realizeを追加しグラフで3方向に確認。種別なしのpatternが`unexpected token`だけで語彙を示さなかったため`PatternKinds`を単一情報源にして列挙。変異2種と14パッケージで確認。`std`型一覧は未解決と明記）
 - [`TEI_GO_SELF_BUILD_CHILD_IDENTITY_SCOPE_2026-11-10/`](TEI_GO_SELF_BUILD_CHILD_IDENTITY_SCOPE_2026-11-10/README.md)（上の記録の**再導出の一式**。`run.sh proxy`が差し替えを見逃すこと、`run.sh direct`が止まることを、両方とも実測で再現する。フィクスチャと生出力を含む。 #2831）

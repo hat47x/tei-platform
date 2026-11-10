@@ -102,6 +102,8 @@ func TestCLIInspectRejectsInconsistentServiceResult(t *testing.T) {
 		{"no-source-fingerprint", func(v *operations.SubjectInspection) { v.SourceIndexFingerprint = "" }},
 		{"no-canonical", func(v *operations.SubjectInspection) { v.Canonical = nil }},
 		{"malformed-canonical", func(v *operations.SubjectInspection) { v.Canonical = json.RawMessage(`{"id":`) }},
+		{"wrong-canonical-id", func(v *operations.SubjectInspection) { v.Canonical = json.RawMessage(`{"id":"sales.other"}`) }},
+		{"no-canonical-id", func(v *operations.SubjectInspection) { v.Canonical = json.RawMessage(`{"other":"value"}`) }},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			calls := 0
