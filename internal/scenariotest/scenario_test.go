@@ -9,6 +9,17 @@ import (
 
 const good = `{"schemaVersion":"tei.driver-scenario/v0","id":"order-entry-smoke","application":"order_entry","steps":[{"id":"browse","operation":"resolve-pattern","pattern":"order_entry.recent_orders","expectKind":"browse","expectData":"sales.order","expectQuery":"order_entry.recent_orders"}]}`
 
+// The scenario schema and the plan version it produces are wire values: a
+// reader branches on them, and a generated plan is compared against them (#4032).
+func TestScenarioVersionsAreFixed(t *testing.T) {
+	if SchemaVersion != "tei.driver-scenario/v0" {
+		t.Fatalf("SchemaVersion=%q", SchemaVersion)
+	}
+	if PlanVersion != "tei.cli-scenario-plan/v0" {
+		t.Fatalf("PlanVersion=%q", PlanVersion)
+	}
+}
+
 func TestGenerateIsDeterministicAndComplete(t *testing.T) {
 	s, e := Parse([]byte(good))
 	if e != nil {
