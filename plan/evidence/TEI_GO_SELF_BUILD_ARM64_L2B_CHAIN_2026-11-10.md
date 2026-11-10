@@ -40,7 +40,13 @@ exec /home/hat47x/qemuprobe/qemu-aarch64-static /tmp/l2b-arm64/bin/child "$@"
 | `catalogDigest` | `69019e4a…` | `b1ae953e…` | **相違** |
 | `planFingerprint` | `18607f38…` | `797099f6…` | **相違** |
 | `artifactDigest` | `f5bc2a7f…` | `c0cabc71…` | **相違** |
-| child の digest | `a2a09bab…` | `77011940…` | **相違** |
+| `-child` に渡したファイルの digest | `a2a09bab…` | `77011940…` | **相違**（下記） |
+
+**`-child` の digest については、何を数えた値を書く必要があります。** この試行は child を `/bin/sh` のラッパー経由で起動したので、エントリが記録する値は**ラッパーの byte digest** であり、arm64 の builder バイナリの digest ではありません（`cli_self_build.go` の `childDigest, err := digestOfFile(exactChild)`、`exactChild` は `-child` のパス）。
+
+**相違の原因は二つあります。** 一つは arm64 と amd64 で builder のバイトが違うこと、もう一つは**ラッパーの内容がアーキテクチャごとに違う**こと（arm64 版はエミュレータのパスを埋め込む）。したがってこの行は、builder のバイトについて何も述べていません。
+
+**そして、catalog が名指しした builder のバイトと、実際に起動したファイルは照合されません。** 本試行では catalog が `builder`（arm64 の builder バイナリ）を名指しし、エントリは `child-run`（ラッパー）を起動しました。それでも Claim が立ったのは、**エントリが両者を digest で照合しないから**です。これは §4.33 が明記しているとおりで（「builderの解決はdigestで照合しないため、catalogが別のバイトを名指ししていても試行は通ってしまう」）、対応は**試験**が固定しています。**本記録はその対応を確かめていません。**
 
 **きれいに二つに分かれました。**
 
@@ -63,7 +69,8 @@ exec /home/hat47x/qemuprobe/qemu-aarch64-static /tmp/l2b-arm64/bin/child "$@"
 - **ネイティブの arm64 実機ではない。** qemu のユーザーモードエミュレーションです
 - **`qualified=true` ではない。** 両方とも `false` であり、本記録は受理・Runtime Authority・L2-c・L3 を主張しません
 - **クロスアーキテクチャでの成果物の再現性は主張しません。** 主張したのは「各アーキテクチャの内部で二回の build が一致した」こと（`reproduced`）だけです
-- **child は `/bin/sh` ラッパー経由で起動した。** `binfmt_misc` を使う構成（root あり）とは起動経路が違います。child の実行内容は同じですが、`tei` から見た実行ファイルの同一性（`-child` のパス）は異なります
+- **child は `/bin/sh` ラッパー経由で起動した。** `binfmt_misc` を使う構成（root あり）とは起動経路が違います。そのため `childDigest` はラッパーの digest であり、**arm64 の builder バイナリの digest ではありません**
+- **catalog が名指しした builder のバイトは、本試行では照合されていない。** エントリは `-child` のパスと catalog の `artifactDigest` を比べません（§4.33）。この対応を確かめるのは試験であり、本記録の範囲外です
 - **フィクスチャと手順はリポジトリにある。** `plan/evidence/TEI_GO_SELF_BUILD_ARM64_L2B_CHAIN_2026-11-10/` の `run.sh`・`fixture/`・`raw/` が再導出の一式です（[README](TEI_GO_SELF_BUILD_ARM64_L2B_CHAIN_2026-11-10/README.md)）。**ただし builder に依存する値はコミットで変わる**ので、`raw/` の再実行（`4d04036e4`）では `catalogDigest`・`planFingerprint`・`artifactDigest` が本記録の値と一致しません。一致するのは構造です
 
 ## 検証
