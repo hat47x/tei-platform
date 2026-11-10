@@ -1,0 +1,26 @@
+BEFORE (a new application, query and browse pattern; no bind line):
+  warning UNBOUND_DATASOURCE query task67.q datasource sales is not bound in any
+          environment
+  ok
+
+The shape, learned from the model's own environment file (not tool source):
+
+  database-instance sales_core.dev { definition sales_core   provider postgres }
+  bind order_entry.sales -> sales_core.dev
+
+`bind <application>.<alias> -> <database-instance>` inside the environment block.
+
+Verified both ways:
+  add the bind line inside the block -> warning disappears, validate is ok
+  remove it                          -> the warning returns
+
+My own mistake on the way: I first appended the line AFTER the closing brace and
+got PARSE_ERROR unexpected trailing token "bind". The placement matters.
+
+AFTER:
+  warning UNBOUND_DATASOURCE query task67.q datasource sales is not bound in any
+          environment; add "bind task67.sales -> sales_core.dev" inside
+          environment development, which already declares that instance
+  ok
+
+Adding that one line verbatim clears the warning (shown through the CLI).
