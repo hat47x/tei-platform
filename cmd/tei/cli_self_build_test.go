@@ -132,6 +132,11 @@ func TestSelfBuildRecordsBothIdentitiesAndCrossChecksArtifact(t *testing.T) {
 	}
 	// The entry advertises its own schema; this is the assertion the catalog
 	// coverage check counts for self-build-entry (#4032).
+	// The literal is written here as well as the constant, so the repository-wide
+	// schema coverage check sees the identifier (#4032).
+	if evidence.SchemaVersion != "tei.cli.self-build-entry/v0" {
+		t.Fatalf("schemaVersion=%q, want the literal and the constant %q", evidence.SchemaVersion, selfBuildEntrySchema)
+	}
 	if evidence.SchemaVersion != selfBuildEntrySchema {
 		t.Fatalf("schemaVersion=%q, want %q", evidence.SchemaVersion, selfBuildEntrySchema)
 	}
