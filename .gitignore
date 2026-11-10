@@ -2,6 +2,7 @@
 .tei-generated/
 .tei/cache/
 .tei/index/
+.tei/dispatcher/
 
 # Go
 *.test
