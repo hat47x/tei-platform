@@ -294,3 +294,6 @@
 # Historical B Git blob is a byte-exact test witness, not live authoring Source.
 /cmd/tei/testdata/xtea_standard_20261108_b.tei -text
 
+# Mid-run MCP reconnect observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_MIDRUN_RECONNECT_2026-11-10/** -text
+

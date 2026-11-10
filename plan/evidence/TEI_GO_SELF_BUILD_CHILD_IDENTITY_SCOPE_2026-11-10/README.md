@@ -7,8 +7,8 @@
 リポジトリのルートから。
 
 ```bash
-plan/evidence/TEI_GO_SELF_BUILD_CHILD_IDENTITY_SCOPE_2026-11-10/run.sh proxy
-plan/evidence/TEI_GO_SELF_BUILD_CHILD_IDENTITY_SCOPE_2026-11-10/run.sh direct
+bash plan/evidence/TEI_GO_SELF_BUILD_CHILD_IDENTITY_SCOPE_2026-11-10/run.sh proxy
+bash plan/evidence/TEI_GO_SELF_BUILD_CHILD_IDENTITY_SCOPE_2026-11-10/run.sh direct
 ```
 
 | モード | 何をするか | 期待 |

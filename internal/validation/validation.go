@@ -1017,7 +1017,7 @@ func Validate(w ir.World) []Diagnostic {
 				b.Scope = environment.ExecutorScopeGlobal
 			}
 			if !b.Scope.Valid() {
-				out = append(out, errd("UNKNOWN_DEPLOYMENT_EXECUTOR_SCOPE", "environment %s action %s has invalid executor scope %s", e.ID, b.Action, b.Scope))
+				out = append(out, errd("UNKNOWN_DEPLOYMENT_EXECUTOR_SCOPE", "environment %s action %s has invalid executor scope %s; valid values are %s", e.ID, b.Action, b.Scope, validValues(environment.ExecutorScopes)))
 			}
 			if b.Scope == environment.ExecutorScopeGlobal && b.Target != "" {
 				out = append(out, errd("GLOBAL_EXECUTOR_BINDING_HAS_TARGET", "environment %s action %s global binding cannot target %s", e.ID, b.Action, b.Target))

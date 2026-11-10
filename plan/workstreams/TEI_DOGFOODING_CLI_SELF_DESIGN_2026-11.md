@@ -1853,3 +1853,50 @@ database-release nope_core     -> SUBJECT_NOT_FOUND
 4変異のうち **M1（広告したが dispatch 無し）と M3（空集合を成功として返す）は第1版で素通りした**。広告リストと受理述語が同じリストを読むだけ、not-found が1種のみだったため。広告と実宣言の突き合わせ、2種の not-found を足して初めて捕捉。M2（`id` をバージョンにする）と M4（case 名の変更）は当初から捕捉。
 
 `./internal/operations`・`./tools/reference-mcp-readonly-adapter`・`./cmd/tei`（121.5s）が ok。
+
+## 61. 第59ラウンド（2026-11-10）: #4128 の E 案。`model overview` が自分の対象範囲を明示する
+
+第58ラウンドで C 案を実装したのに続き、**E 案（対象範囲の明示）**を実装した。生出力は[第59ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND59_OVERVIEW_SCOPE_2026-11-10/README.md)にある。
+
+### 実装
+
+応答に `sectionScope` を足した。3つとも**計算で出す**ので、説明が実装からずれない。
+
+```go
+type ModelSectionScope struct {
+	RootsAre        string   `json:"rootsAre"`
+	CoveredKinds    []string `json:"coveredKinds"`
+	NotCoveredKinds []string `json:"notCoveredKinds"`
+}
+```
+
+`coveredKinds` は catalog の entries から集め、`notCoveredKinds` は `declaredLayerKinds`（14層）と World の件数から「宣言があるのに catalog が載せていない種」を出す。`-h` にも同じ趣旨を書いた。
+
+### 実測
+
+```text
+sectionTotal: 8
+rootsAre: catalog-root-entries
+coveredKinds: application, application-pattern, query, semantic, semantic-attribute,
+              semantic-capability, semantic-data, semantic-relation, semantic-type,
+              semantic-validation
+notCoveredKinds: plugin, bundle, database, persistence-mapping, migration,
+                 migration-provider, application-release, database-release,
+                 solution-release, environment, custom-go-binding,
+                 header-detail-contract-query-binding, contract-query-executor-binding,
+                 contract-query-sql-realization
+```
+
+**導出であることの確認**: 配備層を消した写しでは `notCoveredKinds` が14件→3件に縮む。固定文言ではない。
+
+### 恒真な試験を1つ削除した
+
+最初に「2つの一覧が重複しない」試験を書いたが、**変異で壊せない**ことが分かった。`sectionScope` は `covered[layer.kind]` が真なら `continue` するため、被覆済みの種が `notCoveredKinds` に入る経路が構造的に無い。表に `application` を足しても一覧は変わらない。
+
+**反証できない試験は偽の安心を与えるので削除した。** 残した3試験（範囲の明示・根の一致・層の会計）はいずれも変異3種（一覧を空にする／表から migration を落とす／`rootsAre` を偽る）で落ちることを確認した。
+
+`./internal/operations` と `./cmd/tei`（109.6s）が ok。
+
+### #4128 の残り
+
+C（第58ラウンド）・E（本ラウンド）が完了。残りは A（catalog に加える。名前空間フィルタ設計に触れる）・B（overview にセクションを加える）・D（専用コマンド）。

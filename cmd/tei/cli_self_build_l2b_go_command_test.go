@@ -133,8 +133,8 @@ func TestSelfBuildEstablishesL2BFromARealGoBuild(t *testing.T) {
 	workspace := outerWorkspace(t, root)
 
 	// §4.40: a command build is defined by the package it compiles, so the
-	// definitionSource names the go-package source. The plugin declaration is
-	// still listed as a source the plan carries, but it does not define the build.
+	// definitionSource names the go-package source. §4.46: the plan names only the
+	// sources the build reads, so there is no declaration here to carry.
 	definitionPath := filepath.Join(repoRoot, "reference", "plugin-self-build", "workspace", "plugins",
 		"tei-native-runtime-reference", "1.0.0", "plugin.tei")
 	if _, statErr := os.Stat(definitionPath); statErr != nil {
@@ -144,7 +144,6 @@ func TestSelfBuildEstablishesL2BFromARealGoBuild(t *testing.T) {
   "formatVersion": 1,
   "subject": {"kind": "plugin", "id": "tei.native.runtime.reference", "version": "1.0.0", "definitionSource": "tei"},
   "sources": [
-    {"kind": "plugin-definition", "id": "definition", "ref": "reference/plugin-self-build/workspace/plugins/tei-native-runtime-reference/1.0.0/plugin.tei"},
     {"kind": "go-package", "id": "tei", "ref": "cmd/tei/testdata/l2b-go-command"},
     {"kind": "go-module", "id": "mod", "ref": "go.mod"},
     {"kind": "go-module", "id": "sum", "ref": "go.sum"}
@@ -272,8 +271,8 @@ func TestSelfBuildEstablishesL2BFromARealGoBuild(t *testing.T) {
 	}
 	// Every planned source is staged: the package, the plugin declaration the plan
 	// still carries, go.mod and go.sum.
-	if report.ChildIsolation.MemberCount != 4 {
-		t.Fatalf("memberCount = %d, want 4 (the package, the declaration, go.mod and go.sum)", report.ChildIsolation.MemberCount)
+	if report.ChildIsolation.MemberCount != 3 {
+		t.Fatalf("memberCount = %d, want 3 (the package, go.mod and go.sum)", report.ChildIsolation.MemberCount)
 	}
 }
 

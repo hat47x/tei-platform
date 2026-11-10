@@ -9,8 +9,8 @@
 リポジトリのルートから。
 
 ```bash
-plan/evidence/TEI_GO_SELF_BUILD_ARM64_L2B_CHAIN_2026-11-10/run.sh amd64
-plan/evidence/TEI_GO_SELF_BUILD_ARM64_L2B_CHAIN_2026-11-10/run.sh arm64
+bash plan/evidence/TEI_GO_SELF_BUILD_ARM64_L2B_CHAIN_2026-11-10/run.sh amd64
+bash plan/evidence/TEI_GO_SELF_BUILD_ARM64_L2B_CHAIN_2026-11-10/run.sh arm64
 ```
 
 `arm64` には aarch64 のエミュレータが要ります。

@@ -1,0 +1,6 @@
+#4128: C (round 58) and E (this round) are done. Still open: A (add the kinds to
+model catalog, which touches the namespace-filter design), B (add sections to
+model overview), D (a dedicated release/migration command).
+
+E only says these kinds are not covered. It does not make them readable through
+model catalog or model overview; inspect does that for one subject at a time.

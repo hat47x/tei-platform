@@ -2052,6 +2052,43 @@ L2-bの五条件は、childの能力に依存する。本節は、**参照実装
 - 五条件への追加。**契約変更であり、別途決める**
 - `-isolate`の既定化
 
+### 4.46 計画は、ビルドが読むsourceだけを名指す（2026-11-09）
+
+§4.41は「ビルドが計画に載っていないpackageを読む」を拒否した。**逆向きの食い違い**——計画が、ビルドが読まないsourceを名指す——は残っていた。§4.40で`definitionSource`が`go-package`になった後も、宣言は`plugin-definition`を計画に残していた（写すだけで、ビルドは読まない）。
+
+#### 規則
+
+**`go-command`の計画は、`go-package`と`go-module`だけを名指せる。** それ以外のkindがあれば**ビルドしない**。
+
+| なぜ | 内容 |
+| --- | --- |
+| 記述の一致 | 使わないsourceを載せると、計画は「ビルドより多い」ことを言う。読み手はどちらが本意か分からない |
+| §4.41との対称 | あちらは「ビルドが計画より多い」、こちらは「計画がビルドより多い」。**どちらも計画とビルドが別物** |
+
+**`go-command`以外のrecipeは従来どおり**（規則を決めた範囲だけに適用する）。
+
+#### あわせて直したこと：定義sourceのkindを両側で揃える
+
+`definitionBytesDigest`の照合（§4.36・§4.40）が**`plugin-definition`固定**だったため、宣言を外すと`definitionBinding`が`unperformed`になった。**builderとentryの両方で、recipeに応じてkindを決める**ようにした（`go-command`なら`go-package`）。
+
+**片側だけ直すと、静かに`unperformed`へ落ちる。** 実際にその順序で踏んだ。
+
+#### 実測
+
+| 試験 | 結果 |
+| --- | --- |
+| `TestCheckSourcesAreReadAcceptsTheSourcesACommandBuildUses` | **PASS** |
+| `TestCheckSourcesAreReadRefusesASourceTheCommandBuildNeverReads`（`plugin-definition`を名指すと拒否し、理由を述べる） | **PASS** |
+| `TestCheckSourcesAreReadLeavesOtherRecipesAlone` | **PASS** |
+| `TestRunRefusesAPlanWithAnUnusedSource`（試行ごと拒否） | **PASS** |
+| `TestSelfBuildEstablishesL2BFromARealGoBuild`（宣言を外した計画で`l2b.claimed=true`・`definitionBinding=bound`・`memberCount=3`） | **PASS**（26.6秒） |
+
+#### この節が言っていないこと
+
+- **`go-command`以外のrecipeの「読むsource」の集合**。決めていない
+- 計画に載る`go-package`が**複数**の場合の扱い（今は全部写す）
+- 記録側（`sources`）の意味の変更。**計画のsourceは、ビルドが読むものだけになった**
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |

@@ -65,8 +65,18 @@ const (
 	ExecutorScopeDatabase    ExecutorScope = "database"
 )
 
+// ExecutorScopes lists every accepted scope in report order. A diagnostic that
+// rejects a value quotes this slice, so the set Valid accepts and the set the
+// message names cannot drift (#4094).
+var ExecutorScopes = []ExecutorScope{ExecutorScopeGlobal, ExecutorScopeApplication, ExecutorScopeDatabase}
+
 func (s ExecutorScope) Valid() bool {
-	return s == ExecutorScopeGlobal || s == ExecutorScopeApplication || s == ExecutorScopeDatabase
+	for _, valid := range ExecutorScopes {
+		if s == valid {
+			return true
+		}
+	}
+	return false
 }
 
 type DeploymentExecutorBinding struct {
