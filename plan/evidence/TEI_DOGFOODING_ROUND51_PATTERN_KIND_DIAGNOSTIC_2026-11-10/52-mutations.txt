@@ -1,0 +1,8 @@
+M1 remove the kind pre-check (the previous behaviour)
+   -> FAIL: error does not explain that a kind is required: 1:28: unexpected
+            token "{"
+            error does not name the valid kind "browse": ...
+M2 delete only `command` from PatternKinds
+   -> FAIL: TestPatternKindsAndValidAgree
+restored -> 14 packages referencing pattern kinds all ok
+            (cmd/tei 125.7s, reference-shared-acceptance 76.8s), vet and gofmt clean

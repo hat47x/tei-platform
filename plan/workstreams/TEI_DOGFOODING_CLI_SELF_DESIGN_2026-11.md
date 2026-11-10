@@ -1542,3 +1542,45 @@ distinct projectionUnresolved messages: 12
 ### 残した欠陥
 
 **`trace.unresolved` が投影の取りこぼしを数えられない点は未修正。** 今回は落ちる辺を12→1に減らしただけで、`TraceDirect` が `graph.Edges` しか走査しない構造は変わっていない。「穴を塞いだ」ではなく「**穴を1つに絞った**」と記録する。`inspect` の受理種は12のままで、`trace` と食い違う状態も残る。
+
+## 53. 第51ラウンド（2026-11-10）: 設計作業をCLIだけで完遂し、`pattern` の種別診断を改善した
+
+- 対象: [#4082](https://github.com/hat47x/tei-platform/issues/4082)（起票・本ラウンドで解消）。
+
+第41〜50ラウンドは「モデルにあるが参照グラフに無い」型の追跡に集中した。本ラウンドは**実際の設計作業**に戻り、CLI の診断だけを頼りに新機能を設計できるかを試した。生出力は[第51ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND51_PATTERN_KIND_DIAGNOSTIC_2026-11-10/README.md)にある。
+
+### 設計演習
+
+`security.authenticate` の逆操作（失効）を、`reference/workspace` の複製に追加した。
+
+| # | 操作 | 応答 |
+| --- | --- | --- |
+| 1 | capability に `std.date-time` | `PARSE_ERROR invalid canonical id`（`file:5:30`） |
+| 2 | `std.nonexistent` | `UNKNOWN_SEMANTIC_ATTRIBUTE_TYPE`（参照元を明示） |
+| 3 | `std.datetime` | `ok` |
+| 4 | `pattern order_entry.revoke { }`（種別なし） | **`PARSE_ERROR unexpected token "{"`** |
+| 5 | 種別 `bogus` | `unsupported application pattern kind "bogus"` |
+| 6 | 種別 `command` | `ok` |
+| 7 | `realize ... with custom go` | `ok` |
+
+設計は完遂でき、グラフに正しく現れた（`security.revoke` の total 6。`realizes`・`capability`・`outcome`×2・`input`×2）。application 側（`owns-pattern`・`realizes`）と pattern 側（`capability`）からも辿れる。
+
+### 摩擦点は語彙の列挙だった
+
+型の診断は `file:line:col` と参照元を出して高品質だった。**`pattern` の種別だけが手がかりを出さなかった。** 位置は正確だが「種別が必要」とも「どんな種別があるか」とも言わず、CLI から種別集合を知る手段も無かった。私は `reference/workspace` を `grep` して `browse`・`record`・`reference`・`command`・`header-detail` を割り出した。
+
+### 修正
+
+`internal/application/model.go` に `PatternKinds` を置き、`Valid()` がそれを読むようにした（診断文と受理集合の単一情報源）。`internal/syntax/application_pattern.go` で、種別なしと不正種別の両方で一覧を出すようにした。
+
+```text
+変更前: unexpected token "{"
+変更後: pattern order_entry.revoke requires a kind before its body;
+        valid kinds are browse, record, reference, command, header-detail
+```
+
+受理する構文は変えていない。変異2種（種別チェックの削除／`command` の脱落）が両方落ちることを確認した。`pattern` 種別を参照する**全14パッケージ**が ok（`cmd/tei` 125.7s、`reference-shared-acceptance` 76.8s）。
+
+### 残した問い
+
+**`std` 型の一覧は依然として CLI から引けない。** `std.date-time` は「canonical id が不正」と出るが、これは id の構文を指しており、利用可能な語彙を指していない。私は `internal/stdlib/semantic.go` を読んで解決したが、CLI 利用主体の制約下では真似できない。capability・data・interaction などの語彙にも同じ問いが残る。
