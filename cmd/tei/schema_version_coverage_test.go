@@ -19,10 +19,7 @@ import (
 // asserted here. Anything else has to be listed below with a reason, and a
 // listed command that gains an assertion has to be removed, so the gap can only
 // shrink.
-var unassertedSchemaVersionCommands = map[string]string{
-	"self-build-entry":    "spawns a child executable; its schema is asserted by the self-build test",
-	"plugin-runtime-plan": "needs a runtime plan fixture; no case runs it",
-}
+var unassertedSchemaVersionCommands = map[string]string{}
 
 func TestAdvertisedSchemaVersionsAreAsserted(t *testing.T) {
 	asserted := assertedCommandNames(t)
@@ -58,7 +55,7 @@ func assertedCommandNames(t *testing.T) map[string]bool {
 	}
 	literals := map[string]bool{}
 	caseCommands := map[string]bool{}
-	argsPattern := regexp.MustCompile(`args: \[\]string\{"([a-z][a-z0-9-]*)"`)
+	argsPattern := regexp.MustCompile(`\[\]string\{"([a-z][a-z0-9-]*)"`)
 	for _, entry := range entries {
 		name := entry.Name()
 		if entry.IsDir() || !strings.HasSuffix(name, "_test.go") {

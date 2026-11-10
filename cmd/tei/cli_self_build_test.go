@@ -130,6 +130,11 @@ func TestSelfBuildRecordsBothIdentitiesAndCrossChecksArtifact(t *testing.T) {
 	if err := json.Unmarshal(stdout.Bytes(), &evidence); err != nil {
 		t.Fatalf("self-build did not emit one JSON record: %v", err)
 	}
+	// The entry advertises its own schema; this is the assertion the catalog
+	// coverage check counts for self-build-entry (#4032).
+	if evidence.SchemaVersion != selfBuildEntrySchema {
+		t.Fatalf("schemaVersion=%q, want %q", evidence.SchemaVersion, selfBuildEntrySchema)
+	}
 	if evidence.InvokerDigest == "" || evidence.Invoked.ExecutableDigest == "" {
 		t.Fatalf("identities were not both recorded: %+v", evidence)
 	}
