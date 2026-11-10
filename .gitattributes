@@ -272,3 +272,18 @@
 
 # MCP header observations are hashed as raw bytes.
 /plan/evidence/DSH_MCP_HEADERS_2026-11-10/** -text
+
+# Multi-server MCP observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_TWO_SERVERS_2026-11-10/** -text
+
+# MCP failure-isolation observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_FAILURE_ISOLATION_2026-11-10/** -text
+
+# MCP argument-size observations at 4.1 MB are hashed as raw bytes.
+/plan/evidence/DSH_MCP_ARG_SIZE_4M_2026-11-10/** -text
+
+# Secret-shape observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_SECRET_SHAPE_2026-11-10/** -text
+
+# Late-starting MCP observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_LATE_START_2026-11-10/** -text

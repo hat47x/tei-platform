@@ -1,0 +1,79 @@
+name: TEI three-view public-slice and Trait binding Reference (Node)
+
+# Focused exact-head native Node qualification for isolated synthetic fixtures.
+# NOT real Source/Role/Policy/Disclosure, Workbench, Owner or Target acceptance.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - 'reference/tei-three-element-method/**'
+      - '.github/workflows/tei-tea-three-view-reference-node.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'reference/tei-three-element-method/**'
+      - '.github/workflows/tei-tea-three-view-reference-node.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tea-three-view-node-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  synthetic-node:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      TARGET_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact candidate head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Pin Node runtime
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22.16.0
+          check-latest: false
+
+      - name: Verify exact head and reference bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          node --version
+          printf 'tea-reference-head=%s\n' "$TARGET_SHA"
+          for file in \
+            reference/tei-three-element-method/public-slice.mjs \
+            reference/tei-three-element-method/public-slice.test.mjs \
+            reference/tei-three-element-method/trait-attachments.mjs \
+            reference/tei-three-element-method/trait-attachments.test.mjs \
+            reference/tei-three-element-method/catalog-validation.mjs \
+            reference/tei-three-element-method/catalog-validation.test.mjs; do
+            test -f "$file"
+            printf 'blob=%s file=%s\n' "$(git hash-object "$file")" "$file"
+          done
+
+      - name: Run native Node tests for T06/T07, T10-T13 and T18
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test \
+            reference/tei-three-element-method/public-slice.test.mjs \
+            reference/tei-three-element-method/trait-attachments.test.mjs \
+            reference/tei-three-element-method/catalog-validation.test.mjs
+
+      - name: Verify tests did not mutate checkout
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"

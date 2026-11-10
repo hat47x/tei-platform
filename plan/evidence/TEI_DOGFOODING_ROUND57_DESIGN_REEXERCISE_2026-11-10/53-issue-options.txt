@@ -1,0 +1,6 @@
+#4128 proposes five options and recommends C + E as the minimum:
+  C  widen inspect's accepted kinds
+  E  state what model overview covers, so it is not read as "everything"
+
+A (add the kinds to model catalog) touches catalog's namespace-filter design and
+needs a separate decision.

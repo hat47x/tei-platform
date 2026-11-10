@@ -1,0 +1,16 @@
+Reached through the CLI:
+  migration recovery, data readiness, solution step kind, solution phase,
+  rollout strategy
+
+NOT reached:
+  INVALID_MIGRATION_STEP_KIND
+
+Why, measured: a migration step is written as a `schema`, `data` or `verify`
+block, so an unknown word fails in the parser first:
+
+  migration probe_step3 { ... gibberish sql postgres { ... } }
+    -> PARSE_ERROR expected database, parent, recovery, schema, data, or verify
+
+There is no authored path to an invalid step kind. The message is correct but a
+CLI observation of it is impossible. Same shape as INVALID_SEMANTIC_TYPE_KIND
+(round 54).

@@ -2,6 +2,7 @@ import { createHash, createPublicKey, verify as verifySignature } from 'node:cry
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { parseFixture } from './wire.mjs';
 
 // Reference-only public keys, NOT production trusted identities.
 const publisherPubHex = '03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8';
@@ -53,7 +54,7 @@ export function validate(f,p) {
   validateSig(verifierPubHex,att.signatureBase64,Buffer.from(body,'utf8'));
   return true;
 }
-export function loadFixture(location=new URL('./fixture.json',import.meta.url)) {return JSON.parse(readFileSync(location,'utf8'));}
+export function loadFixture(location=new URL('./fixture.json',import.meta.url)) {return parseFixture(readFileSync(location));}
 if (process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
   const f=loadFixture();
   validate(f,defaultPolicy());

@@ -59,7 +59,17 @@ const (
 	TypeAlias     TypeKind = "alias"
 )
 
-func (k TypeKind) Valid() bool { return k == TypePrimitive || k == TypeAlias }
+// TypeKinds lists every accepted type kind in report order.
+var TypeKinds = []TypeKind{TypePrimitive, TypeAlias}
+
+func (k TypeKind) Valid() bool {
+	for _, valid := range TypeKinds {
+		if k == valid {
+			return true
+		}
+	}
+	return false
+}
 
 // Type is a semantic type identity. Primitive types are normally supplied by
 // the TEI standard library; workspace definitions generally introduce aliases
@@ -126,7 +136,17 @@ const (
 	CardinalityMany Cardinality = "many"
 )
 
-func (c Cardinality) Valid() bool { return c == CardinalityOne || c == CardinalityMany }
+// Cardinalities lists every accepted cardinality in report order.
+var Cardinalities = []Cardinality{CardinalityOne, CardinalityMany}
+
+func (c Cardinality) Valid() bool {
+	for _, valid := range Cardinalities {
+		if c == valid {
+			return true
+		}
+	}
+	return false
+}
 
 // RelationKeyは、Relationを実データのinstance間で辿るために、
 // source側とtarget側のどのSemantic attributeを対応付けるかを表す。

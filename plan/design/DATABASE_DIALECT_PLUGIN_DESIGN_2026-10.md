@@ -218,3 +218,13 @@ SQLiteは書込みが一つで、リポジトリの参照試験は`BEGIN IMMEDIA
 根拠は、`internal/database/`、`internal/driver/`、`internal/plugin/`、`internal/environment/`、`reference/effect-fence/`、`reference/multilingual-business-data/`の読取りと、既存のADRである。実行試験や実機での検証は行っておらず、SQLiteの挙動と導入版の記述は、実際の検証で確かめる必要がある。
 
 この文書は、契約の最終形や識別子の採用を決めるものではない。PostgreSQLとSQLiteの2製品で試すまで、抽象化が適切に成立するかはわからない。Oracleは、契約が固まった後に同じ手順で加える。手元のOracleでの参照実装（[PR #1636](https://github.com/hat47x/tei-platform/pull/1636)）は、その入力として参照できるが、本文書の判断の根拠にはしていない。
+
+## 2026-11-05 既存Contract QueryとDoma型SQL候補の整合（別計画へ引継ぎ）
+
+[DBアクセス・Query選択・2way SQLの最小適合計画](DB_QUERY_SELECTION_AND_2WAY_SQL_FIT_2026-11.md#7-db共通sqlの位置づけと同一claimの検証)で、これまでの**「対象ProviderのContract Query SQL Realizationがなければ停止」**という既存基準と、Doma型の「共通SQLを候補とする」簡便なauthoring規約との矛盾を整理した。
+
+- 共通SQLファイルは、Providerごとに明示された実現と実際の適合確認を**共有し得るSource asset**であり、ファイルが存在するだけで任意Providerへの自動fallback資格を得ない。
+- SQLファイル名の接尾辞は候補発見を支援するが、Canonical Query identity・DB Instanceの実対象・実行権限を決定しない。選択済みのProvider専用SQLが失効した場合は、共通SQLがあっても黙って切り替えない。
+- 実装予定は#2862 Draft PRのDBX-01〜14と#2622 RDB-01〜08へ接続し、本書は引き続き**採用前のPlugin/Dialect比較資料**とする。Provider ID/実DB製品版、Contract適合、Target/Toolchain/Source選択を混同しない。SQLite本体依存の配布方針、SQL候補規約、新DSLの正式採否は保留する。
+
+この追記はADR-0007/0013/0015等の採用済み判断を変更せず、既存Runtimeや正式Provider APIの実装完了も意味しない。実SQL選択・二DB互換・Owner意味受理は未実施。

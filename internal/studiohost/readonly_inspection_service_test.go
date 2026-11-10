@@ -120,6 +120,12 @@ func TestInspectionFactoryRejectsInconsistentProjection(t *testing.T) {
 		{"invalid-canonical-json", func(v *operations.SubjectInspection) {
 			v.Canonical = json.RawMessage(`{"id":`)
 		}},
+		{"wrong-canonical-id", func(v *operations.SubjectInspection) {
+			v.Canonical = json.RawMessage(`{"id":"sales.other"}`)
+		}},
+		{"missing-canonical-id", func(v *operations.SubjectInspection) {
+			v.Canonical = json.RawMessage(`{"other":"value"}`)
+		}},
 		{"unsupported-schema", func(v *operations.SubjectInspection) {
 			v.SchemaVersion = "custom"
 		}},

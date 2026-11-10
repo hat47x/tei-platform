@@ -69,7 +69,7 @@ func TraceWorkspace(root string, key modelref.Key, options modelref.TraceOptions
 	if !supportedTraceKind(key.Subject.Kind) {
 		return WorkspaceTrace{}, &modelref.TraceError{
 			Code: "UNSUPPORTED_SUBJECT_KIND",
-			Message: fmt.Sprintf("trace does not project subject kind %q; the typed graph carries namespace, type, data, attribute, relation, validation, capability, application, application-pattern and query",
+			Message: fmt.Sprintf("trace does not project subject kind %q; the typed graph carries namespace, type, data, attribute, relation, validation, capability, application, application-pattern, query and the data layer (database, database-contract, database-contract-query)",
 				key.Subject.Kind),
 		}
 	}

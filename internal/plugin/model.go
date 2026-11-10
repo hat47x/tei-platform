@@ -25,14 +25,22 @@ const (
 	CapabilityEditorIntelligence    CapabilityKind = "editor-intelligence"
 )
 
+// CapabilityKinds lists every accepted capability kind in report order. Valid
+// and the validation diagnostic read this list, so what is accepted and what a
+// message names cannot drift (#4094).
+var CapabilityKinds = []CapabilityKind{
+	CapabilityDeploymentExecutor, CapabilityObservationProvider, CapabilityEvidenceProvider,
+	CapabilityDatabaseProvider, CapabilityContractQueryExecutor, CapabilityMigrationProvider,
+	CapabilityEditorIntelligence,
+}
+
 func (k CapabilityKind) Valid() bool {
-	switch k {
-	case CapabilityDeploymentExecutor, CapabilityObservationProvider, CapabilityEvidenceProvider,
-		CapabilityDatabaseProvider, CapabilityContractQueryExecutor, CapabilityMigrationProvider, CapabilityEditorIntelligence:
-		return true
-	default:
-		return false
+	for _, valid := range CapabilityKinds {
+		if k == valid {
+			return true
+		}
 	}
+	return false
 }
 
 type RuntimeKind string
@@ -42,7 +50,17 @@ const (
 	RuntimeProcess RuntimeKind = "process"
 )
 
-func (k RuntimeKind) Valid() bool { return k == RuntimeBuiltin || k == RuntimeProcess }
+// RuntimeKinds lists every accepted runtime kind in report order.
+var RuntimeKinds = []RuntimeKind{RuntimeBuiltin, RuntimeProcess}
+
+func (k RuntimeKind) Valid() bool {
+	for _, valid := range RuntimeKinds {
+		if k == valid {
+			return true
+		}
+	}
+	return false
+}
 
 type SandboxPolicy string
 
@@ -52,8 +70,21 @@ const (
 	SandboxRequired  SandboxPolicy = "required"
 )
 
+// SandboxPolicies lists every accepted sandbox policy in report order. The empty
+// policy is also accepted (it means "not declared"), but it is not a value an
+// author should be told to write, so it stays out of the list.
+var SandboxPolicies = []SandboxPolicy{SandboxNone, SandboxPreferred, SandboxRequired}
+
 func (p SandboxPolicy) Valid() bool {
-	return p == "" || p == SandboxNone || p == SandboxPreferred || p == SandboxRequired
+	if p == "" {
+		return true
+	}
+	for _, valid := range SandboxPolicies {
+		if p == valid {
+			return true
+		}
+	}
+	return false
 }
 
 type Runtime struct {

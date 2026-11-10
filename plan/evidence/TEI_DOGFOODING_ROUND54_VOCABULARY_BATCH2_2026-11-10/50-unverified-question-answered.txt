@@ -1,0 +1,13 @@
+Round 52 taught me that I had wrongly claimed the std type list was unreachable.
+Round 51-53 also carried an unverified "the same gap probably exists for
+capability / data / interaction". Measured this round:
+
+  capability  block, unknown keyword -> expected input, output, outcome, effect,
+                                       or emptyPolicy
+  data        block, unknown keyword -> expected attribute, relation,
+                                       candidate-key, or functional-dependency
+  interaction block, unknown keyword -> expected item, navigate, or command
+
+All three already name what they accept. There is no gap; my generalisation from
+the std case was too broad. The std case was about a VALUE SET (type names), not
+about block keywords.

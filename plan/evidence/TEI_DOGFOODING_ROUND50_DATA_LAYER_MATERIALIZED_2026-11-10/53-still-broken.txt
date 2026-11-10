@@ -1,0 +1,9 @@
+Not fixed by this change, recorded so it is not read as solved:
+
+trace.unresolved still counts only rows whose resolution is ambiguous. It cannot
+count an edge the projection dropped, because TraceDirect iterates graph.Edges
+and a dropped edge never gets there. This change removed almost all drops
+(12 -> 1) rather than changing the counting.
+
+inspect's InspectionSubjectKinds is still 12 and has no database kind, so trace
+and inspect disagree about which kinds exist.

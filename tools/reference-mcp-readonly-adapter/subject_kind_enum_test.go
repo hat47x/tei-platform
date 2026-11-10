@@ -60,11 +60,11 @@ func TestSubjectKindEnumsComeFromTheOperations(t *testing.T) {
 func TestSubjectKindEnumsMatchTheAdvertisedKindLists(t *testing.T) {
 	// The CLI advertises these same slices; the adapter now reads them directly,
 	// so a mismatch here would mean the adapter stopped using the operation.
-	if len(operations.InspectionSubjectKinds) != 12 {
+	if len(operations.InspectionSubjectKinds) != 15 {
 		t.Fatalf("inspection kinds changed to %d; update the CLI advertisement and this pin together",
 			len(operations.InspectionSubjectKinds))
 	}
-	if len(operations.TraceSubjectKinds) != 10 {
+	if len(operations.TraceSubjectKinds) != 13 {
 		t.Fatalf("trace kinds changed to %d; update the CLI advertisement and this pin together",
 			len(operations.TraceSubjectKinds))
 	}

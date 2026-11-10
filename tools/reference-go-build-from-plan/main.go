@@ -43,10 +43,22 @@ type report struct {
 
 	SourceRoot string          `json:"sourceRoot"`
 	Sources    []checkedSource `json:"sources"`
+	// DefinitionBytesDigest is the digest of the plugin-definition source this
+	// process checked. The entry compares it with its own plan (§4.36), so a
+	// builder that read something else cannot pass unnoticed.
+	DefinitionBytesDigest string `json:"definitionBytesDigest,omitempty"`
 
 	ArtifactDigest string `json:"artifactDigest,omitempty"`
 	ArtifactPath   string `json:"artifactPath,omitempty"`
 	StateDir       string `json:"stateDir,omitempty"`
+
+	// IsolatedTree is set when the build ran in a tree made only of the planned
+	// sources; it records the staged members and the module context taken.
+	IsolatedTree       *isolatedTree `json:"isolatedTree,omitempty"`
+	IsolatedTreeDigest string        `json:"isolatedTreeDigest,omitempty"`
+
+	// DependencyCoverage answers "does the plan cover what the build compiles?".
+	DependencyCoverage *dependencyCoverage `json:"dependencyCoverage,omitempty"`
 
 	BuildCommand []string `json:"buildCommand"`
 	BuildOK      bool     `json:"buildSucceeded"`
@@ -64,6 +76,18 @@ type checkedSource struct {
 	Planned string `json:"plannedDigest"`
 	Actual  string `json:"actualDigest"`
 	Matched bool   `json:"matched"`
+}
+
+// dependencyCoverage records which compiled packages the plan covers. External
+// modules come from the supply rather than from the plan's sources, so they are
+// listed separately instead of being counted as uncovered.
+type dependencyCoverage struct {
+	Checked           bool     `json:"checked"`
+	Covered           []string `json:"covered,omitempty"`
+	External          []string `json:"external,omitempty"`
+	Uncovered         []string `json:"uncovered,omitempty"`
+	UnperformedReason string   `json:"notPerformedReason,omitempty"`
+	Boundary          string   `json:"boundary"`
 }
 
 type lockReport struct {
@@ -89,6 +113,8 @@ func run(args []string, out io.Writer) error {
 	goExecutable := fs.String("go", "", "exact Go実行ファイル（省略時はPATHのgo）")
 	artifactOut := fs.String("artifact-out", "", "成果物を置くパス（必須）")
 	stateDir := fs.String("state", "", "分離したBuild state（必須）")
+	isolate := fs.Bool("isolate", false, "計画のsourceだけを新しい木へ写してビルドする（照合とcompileの間を空けない）")
+	supplyDir := fs.String("supply", "", "モジュール供給ディレクトリ（依存がある対象では必須）")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -150,14 +176,61 @@ func run(args []string, out io.Writer) error {
 		return err
 	}
 	rep.Sources = checked
+	for _, source := range checked {
+		if source.Kind == "plugin-definition" {
+			rep.DefinitionBytesDigest = source.Actual
+			break
+		}
+	}
 
 	goExe := *goExecutable
 	if strings.TrimSpace(goExe) == "" {
 		goExe = "go"
 	}
+	// With -isolate the build runs in a tree made only of the planned sources, so
+	// nothing can change between the check and the compile. Without it, the working
+	// tree is checked and then compiled, which leaves that window open.
+	buildRoot := root
+	if *isolate {
+		stageRoot, stageErr := os.MkdirTemp("", "tei-plan-tree-")
+		if stageErr != nil {
+			return fmt.Errorf("create the isolated tree: %w", stageErr)
+		}
+		defer os.RemoveAll(stageRoot)
+		tree, stageErr := stageSources(root, stageRoot, plan, checked)
+		if stageErr != nil {
+			return stageErr
+		}
+		treeDigest, digestErr := digestTree(stageRoot)
+		if digestErr != nil {
+			return fmt.Errorf("digest the isolated tree: %w", digestErr)
+		}
+		rep.IsolatedTree = &tree
+		rep.IsolatedTreeDigest = treeDigest
+		buildRoot = stageRoot
+	}
+
+	// Ask what the build would compile before it compiles: a plan that does not
+	// cover the module-local packages the build pulls in does not describe it.
+	coverage := checkDependencyCoverage(buildRoot, goExe, plan, *stateDir, *supplyDir, checked)
+	rep.DependencyCoverage = &coverage
+	if len(coverage.Uncovered) > 0 {
+		rep.BuildError = "the plan does not cover every package this build compiles: " + strings.Join(coverage.Uncovered, ", ")
+		return emit(out, rep)
+	}
+	if coverage.UnperformedReason != "" {
+		rep.BuildError = "the dependency coverage check did not run: " + coverage.UnperformedReason
+		return emit(out, rep)
+	}
+
 	rep.BuildCommand = []string{goExe, "build", "-trimpath", "-buildvcs=false", "-mod=readonly", "-o", *artifactOut, plan.Recipe.Entrypoint}
 
-	buildErr := gobuilder.BuildPackage(root, goExe, plan.Recipe.Entrypoint, *artifactOut, *stateDir)
+	var buildErr error
+	if strings.TrimSpace(*supplyDir) != "" {
+		buildErr = gobuilder.BuildPackageWithSupply(buildRoot, goExe, plan.Recipe.Entrypoint, *artifactOut, *stateDir, *supplyDir)
+	} else {
+		buildErr = gobuilder.BuildPackage(buildRoot, goExe, plan.Recipe.Entrypoint, *artifactOut, *stateDir)
+	}
 	rep.StateDir = *stateDir
 	if buildErr != nil {
 		rep.BuildError = buildErr.Error()
@@ -252,6 +325,66 @@ func checkSources(root string, plan plugin.BuildPlan) ([]checkedSource, error) {
 	}
 	sort.Slice(checked, func(i, j int) bool { return checked[i].Locator < checked[j].Locator })
 	return checked, nil
+}
+
+// checkDependencyCoverage compares the packages the build compiles with the
+// sources the plan names. A module-local package that no planned source contains
+// means the plan and the build describe different things.
+//
+// External modules are listed separately: they come from the supply, and this
+// check is about the tree the plan claims to describe.
+func checkDependencyCoverage(root, goExe string, plan plugin.BuildPlan, stateDir, supply string, checked []checkedSource) dependencyCoverage {
+	coverage := dependencyCoverage{
+		Boundary: "every module-local package the build compiles is inside a source the plan names; external modules come from the supply and are listed, not judged",
+	}
+	lines, err := gobuilder.ListDependencies(root, goExe, plan.Recipe.Entrypoint, stateDir, supply)
+	if err != nil {
+		coverage.UnperformedReason = err.Error()
+		return coverage
+	}
+	coverage.Checked = true
+
+	planned := make([]string, 0, len(checked))
+	for _, source := range checked {
+		if source.Kind == "go-package" {
+			planned = append(planned, filepath.Clean(filepath.Join(root, filepath.FromSlash(source.Locator))))
+		}
+	}
+	root = filepath.Clean(root)
+	for _, line := range lines {
+		parts := strings.SplitN(line, "\t", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		importPath, dir := parts[0], filepath.Clean(parts[1])
+		if dir == "" || strings.HasPrefix(importPath, "vendor/") {
+			continue
+		}
+		if !strings.HasPrefix(dir, root) {
+			coverage.External = append(coverage.External, importPath)
+			continue
+		}
+		if containsPath(planned, dir) {
+			coverage.Covered = append(coverage.Covered, importPath)
+			continue
+		}
+		coverage.Uncovered = append(coverage.Uncovered, importPath+" ("+dir+")")
+	}
+	sort.Strings(coverage.Covered)
+	sort.Strings(coverage.External)
+	sort.Strings(coverage.Uncovered)
+	return coverage
+}
+
+// containsPath reports whether dir is one of the planned directories or inside
+// one of them.
+func containsPath(planned []string, dir string) bool {
+	for _, base := range planned {
+		if dir == base || strings.HasPrefix(dir, base+string(filepath.Separator)) {
+			return true
+		}
+	}
+	return false
 }
 
 func emit(out io.Writer, rep report) error {

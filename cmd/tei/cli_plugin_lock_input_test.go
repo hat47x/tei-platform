@@ -50,6 +50,13 @@ func TestPluginLockEnvelopeIsAcceptedAsPluginLockInput(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			body := discoveryRun(t, binary, tc.args...)
+			// The command's advertised schema must be what it wrote, so a
+			// schema change cannot pass unnoticed here (#4032).
+			if want := advertisedSchemaVersion(t, tc.args[0]); want != "" {
+				if got := discoverySchemaVersion(t, body); got != want {
+					t.Fatalf("%q: schemaVersion=%q want %q", tc.args, got, want)
+				}
+			}
 			var response struct {
 				OK     bool            `json:"ok"`
 				Result json.RawMessage `json:"result"`

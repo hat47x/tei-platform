@@ -24,12 +24,24 @@ const (
 	PatternHeaderDetail PatternKind = "header-detail"
 )
 
+// PatternKinds lists every valid PatternKind in the order they are reported to
+// an author. Valid and the parser's diagnostics both read this list, so the
+// accepted set and the set named in an error cannot drift apart.
+var PatternKinds = []string{
+	string(PatternBrowse),
+	string(PatternRecord),
+	string(PatternReference),
+	string(PatternCommand),
+	string(PatternHeaderDetail),
+}
+
 func (k PatternKind) Valid() bool {
-	return k == PatternBrowse ||
-		k == PatternRecord ||
-		k == PatternReference ||
-		k == PatternCommand ||
-		k == PatternHeaderDetail
+	for _, valid := range PatternKinds {
+		if string(k) == valid {
+			return true
+		}
+	}
+	return false
 }
 
 // ContractQueryInputBindingは、reference PatternでRelation target keyの値を

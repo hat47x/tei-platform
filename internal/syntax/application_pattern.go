@@ -3,6 +3,7 @@ package syntax
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"tei/internal/application"
 	"tei/internal/core"
@@ -22,13 +23,27 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 	if err != nil {
 		return application.Pattern{}, p.errAt(idTok, err.Error())
 	}
+	// A missing kind is the most likely authoring slip here, and the generic
+	// "unexpected token" left the author to discover the accepted set from the
+	// source (#4078). Name the kinds in both failure paths.
+	peeked, peekErr := p.peek()
+	if peekErr != nil {
+		return application.Pattern{}, peekErr
+	}
+	if peeked.Kind != TokenIdent {
+		return application.Pattern{}, p.errAt(peeked, fmt.Sprintf(
+			"pattern %s requires a kind before its body; valid kinds are %s",
+			idTok.Text, strings.Join(application.PatternKinds, ", ")))
+	}
 	kindTok, err := p.expect(TokenIdent)
 	if err != nil {
 		return application.Pattern{}, err
 	}
 	out := application.Pattern{ID: id, Kind: application.PatternKind(kindTok.Text)}
 	if !out.Kind.Valid() {
-		return out, p.errAt(kindTok, fmt.Sprintf("unsupported application pattern kind %q", kindTok.Text))
+		return out, p.errAt(kindTok, fmt.Sprintf(
+			"unsupported application pattern kind %q; valid kinds are %s",
+			kindTok.Text, strings.Join(application.PatternKinds, ", ")))
 	}
 	if _, err := p.expect(TokenLBrace); err != nil {
 		return out, err

@@ -1,0 +1,94 @@
+{
+  "note": "The MCP server was down for the first run and up for the resumed run. The first run saw 27 tools and no MCP tool; the resumed run saw 28 including mcp__latemock__header_echo. A server that was unreachable is not remembered as broken: the next start connects.",
+  "overlay": {
+    "url": "http://127.0.0.1:8797/mcp/late",
+    "serverName": "latemock",
+    "failOnStartupError": false
+  },
+  "turn1": {
+    "serverState": "down",
+    "toolCount": 27,
+    "mcpTools": []
+  },
+  "turn2": {
+    "serverState": "up",
+    "toolCount": 28,
+    "mcpTools": [
+      "mcp__latemock__header_echo"
+    ]
+  },
+  "toolCountDelta": 1,
+  "mcpRequests": [
+    {
+      "file": "mcp-001-request.bin",
+      "method": "server/discover",
+      "bytes": 280
+    },
+    {
+      "file": "mcp-002-request.bin",
+      "method": "initialize",
+      "bytes": 163
+    },
+    {
+      "file": "mcp-003-request.bin",
+      "method": "notifications/initialized",
+      "bytes": 54
+    },
+    {
+      "file": "mcp-004-request.bin",
+      "method": "tools/list",
+      "bytes": 46
+    },
+    {
+      "file": "mcp-005-request.bin",
+      "method": "server/discover",
+      "bytes": 280
+    },
+    {
+      "file": "mcp-006-request.bin",
+      "method": "initialize",
+      "bytes": 163
+    },
+    {
+      "file": "mcp-007-request.bin",
+      "method": "notifications/initialized",
+      "bytes": 54
+    },
+    {
+      "file": "mcp-008-request.bin",
+      "method": "tools/list",
+      "bytes": 46
+    }
+  ],
+  "mcpRequestCount": 8,
+  "handshakesObserved": 2,
+  "modelRequests": [
+    {
+      "file": "001-request.json",
+      "bytes": 99667,
+      "sha256": "cbd689582575a42334ec56796c623025bf76d194b7837416998256fe76f9ff69",
+      "toolCount": 27,
+      "mcpTools": [],
+      "turn": 1
+    },
+    {
+      "file": "002-request.json",
+      "bytes": 57290,
+      "sha256": "5aef43a9609a01cbe0487f46aac7f8fd1fe74ccdd0ce16d206ff34741102c44e",
+      "toolCount": 0,
+      "mcpTools": [],
+      "turn": 1
+    },
+    {
+      "file": "003-request.json",
+      "bytes": 74896,
+      "sha256": "c529af0f3957b18475431cbcc789964995f1156725b83640cd1107945268fec8",
+      "toolCount": 28,
+      "mcpTools": [
+        "mcp__latemock__header_echo"
+      ],
+      "turn": 2
+    }
+  ],
+  "reconnectWithinOneProcess": "NOT RUN"
+}

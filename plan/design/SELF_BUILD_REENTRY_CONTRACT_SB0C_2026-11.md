@@ -6,7 +6,7 @@
 - 状態：**設計候補。採用・実装・qualified PASSではない**
 - 前段：[SB-0bの供給境界](GO_MODULE_SUPPLY_FOR_SELF_BUILD_SB0B_2026-11.md)、[X1の記録](../evidence/TEI_GO_BUILD_WITH_SUPPLY_X1_2026-11-07.md)、[再現性の記録](../evidence/TEI_GO_BUILD_REPRODUCIBILITY_2026-11-07.md)
 
-**読み方。** 本稿は§4.1から§4.34までを**書いた順に積んだ記録**であり、各節は**その時点の状態**を述べる。後の節が前の節の問いを閉じていることがあるため、中間の節にある「未着手」「未決」は現在の状態とは限らない。**現在の決定は§4.34、残っている項目は§7を見る。**節ごとの記述を今の状態として引用しない。
+**読み方。** 本稿は**書いた順に積んだ記録**であり、各節は**その時点の状態**を述べる。後の節が前の節の問いを閉じていることがあるため、中間の節にある「未着手」「未決」は現在の状態とは限らない。**残っている項目は§7の一覧が示し、そこへ至る最後の決定節が現在の判断を示す。** 節ごとの記述を今の状態として引用しない。
 
 ## 1. この文書が解く問題
 
@@ -1583,7 +1583,9 @@ in-processを既定にするには、**entryがcatalogを自分で選ぶ**必要
 | 2. 宣言byteの一致 | 宣言のdigest（entryが保持）と、childが申告したdigestの**比較** | **childが実際にそのbyteを読んだこと** | §4.14 |
 | 3. 計画fingerprintの一致 | 二つの値の**比較**（両方とも空なら`unperformed`） | **childの計画fingerprint** | §4.9・§4.11 |
 | 4. plan→artifactの束縛 | **ディスクのbyteのdigest**と、lockの整合・検証 | childの`artifactDigest` | §4.11・§4.12 |
-| 5. artifactの再現 | 二回の**バイト一致**、**builderの同一性**、**stateの分離**、ディスクの一致 | childの`stateDir`・`artifactDigest` | §4.21・§4.36・(直近2件) |
+| 5. artifactの再現 | 二回の**バイト一致**、**builderの同一性**、**stateの分離**、ディスクの一致 | childの`stateDir`・`artifactDigest` | §4.21（#4002・#4015）・§4.36 |
+
+**「直近2件」は #4002 と #4015 を指す。** 本節を書いた時点で、`cmd/tei/cli_self_build_reproducibility.go` を最後に変更した2件がこの二つであり（`git log` で確認できる）、どちらも §4.21 の変更として記録されている。**欄が未完成のまま残っていたので、名指しに置き換えた。**
 
 #### 検査で止められるもの
 
@@ -1804,10 +1806,25 @@ L2-bの五条件は、childの能力に依存する。本節は、**参照実装
 | 段 | 内容 | 何が満たされるか | 状態 |
 | --- | --- | --- | --- |
 | 1 | `tools/reference-go-build-from-plan`: `-plan`・`-intent`・`-repo`・`-artifact-out`・`-state`を受け、計画とsourceを照合して`go build`し、5項目を申告する | 条件2・3・5と、条件4の材料 | **実装済み**（[記録](../evidence/TEI_GO_SELF_BUILD_BUILDER_FROM_PLAN_2026-11-10.md)） |
-| 2 | そのtoolをcatalogのproviderとして宣言し、`tei self-build -build-catalog`で鎖を通す | 条件1・4・**`l2b.claimed`** | 未着手 |
-| 3 | 回帰試験（`cmd/tei`のエンドツーエンド）に載せる | 毎回通ること | 未着手 |
+| 2 | そのtoolをcatalogのproviderとして宣言し、`tei self-build -build-catalog`で鎖を通す | 条件1・4・**`l2b.claimed`** | **一度通した**（[記録](../evidence/TEI_GO_SELF_BUILD_L2B_FROM_REAL_GO_BUILD_2026-11-10.md)。`./cmd/tei`の実buildで`l2b.claimed=true`） |
+| 3 | 回帰試験（`cmd/tei`のエンドツーエンド）に載せる | 毎回通ること | **実装済み**（[記録](../evidence/TEI_GO_SELF_BUILD_L2B_GO_COMMAND_GATE_2026-11-10.md)。66.8秒） |
 
 **段1で確かめたこと**：計画が名指すsourceと実際のsourceが違えば**ビルドしない**。実buildが通り、`planFingerprint`・`artifactDigest`・`stateDir`・自分で作って検証したlockが出る。**`DirSourceResolver`をそのまま呼んでいる**ので、枠組みがentryと食い違わない。
+
+#### 段2で分かったこと
+
+**`./cmd/tei`の実buildで`l2b.claimed=true`が立った。** 五条件がすべて成立し、`unmet`は空である。ただし次の四点が残った。
+
+| # | 残ったこと | 意味 |
+| --- | --- | --- |
+| 1 | 宣言の`definitionSource`は**`plugin-definition` kind**を要求する | **宣言モデルがplugin前提**である。commandだけの宣言は書けない（既存の`plugin.tei`を定義sourceにして通した） |
+| 2 | `gobuilder`の固定設定が`GOPROXY=off` | 依存のある対象はビルドできない。`BuildPackageWithSupply`と`-supply`を足した |
+| 3 | `definitionBinding`が`unperformed` | 新しいbuilderが`definitionBytesDigest`を申告しない。**§4.36のentry側照合が効いていない** |
+| 4 | **回帰試験が無い** | 到達点は「一度通した」ままである |
+
+**段3で回帰試験に載せた**（[記録](../evidence/TEI_GO_SELF_BUILD_L2B_GO_COMMAND_GATE_2026-11-10.md)）。あわせて`reference-go-build-from-plan`が`definitionBytesDigest`を申告するようにして、**§4.36のentry側照合がこのbuilderでも効く**ようにした（段2では`unperformed`だった）。
+
+**試験の対象は小さなcommandである。** `./cmd/tei`を対象にすると101.6秒かかったため、機構が同じで軽い対象に変えて66.8秒にした。`./cmd/tei`そのものの観測は段2の記録に残っている。**`-short`では飛ぶ**（実buildを二回することが観測そのものだから）。
 
 **§4.38の表の「満たさない」は、段1と2で埋まる。** 段3が無いと、次に検査を足したときに黙って止まる（§4.38の3番目）。
 
@@ -1817,6 +1834,223 @@ L2-bの五条件は、childの能力に依存する。本節は、**参照実装
 - **AのTOCTOUを閉じていない。** 閉じるにはBが要る
 - `go list -deps`の結果と閉包の突き合わせは**案**であり、実装していない
 - 受理・Runtime Authority・供給のTrust。いずれも未主張のまま
+
+### 4.40 定義sourceの種類は、recipeが決める（2026-11-09）
+
+段2で`./cmd/tei`の実buildを鎖に通したとき、**宣言の`definitionSource`が`plugin-definition` kindを要求する**ために、commandのビルドにも既存の`plugin.tei`を定義sourceとして差し込む必要があった（[記録](../evidence/TEI_GO_SELF_BUILD_L2B_FROM_REAL_GO_BUILD_2026-11-10.md)）。**計画は、そのビルドが読まないファイルの指紋を運んでいた。** 本節は、その規則を**recipeに応じて変える**。
+
+#### 規則
+
+| recipe | 定義sourceに要求するkind | 計画の`pluginDefinitionFingerprint`の出どころ |
+| --- | --- | --- |
+| `go-command` | **`go-package`**（ディレクトリ可） | **sourceのidentityそのもの**（`FingerprintJSON(source)`） |
+| それ以外（`go-package`など） | `plugin-definition`（単一ファイル） | 解析した宣言の`BuildDefinitionFingerprint` |
+
+**「主体を定義する入力」は、何を作るかで変わる。** pluginは宣言が定義であり、commandはコンパイルされるpackageが定義である。**単一の規則を緩めるのではなく、recipeごとの規則にする。**
+
+#### 変えたところ
+
+| 場所 | 変更 |
+| --- | --- |
+| `internal/buildintent`の宣言検証 | kindの検査を`validateDefinitionSourceKind(recipe, source)`へ |
+| 解決 | `go-command`では定義sourceを**pluginとして解析しない**。単一ファイル要求も無い。指紋はsourceのidentityから |
+| 計画 | `pluginDefinitionFingerprint`は上の表のとおり。**欄の意味は「主体を定義する入力の同一性」で、recipeが導出法を決める** |
+
+#### 実測
+
+| 試験 | 結果 |
+| --- | --- |
+| `TestValidateAcceptsTheDefinitionKindEachRecipeNeeds`（plugin宣言＋`plugin-definition`／command＋`go-package`） | **PASS** |
+| `TestValidateRefusesTheDefinitionKindTheRecipeDoesNotUse`（**両方向**で拒否し、必要なkindを名指す） | **PASS** |
+| `TestValidateStillRequiresADeclaredDefinitionSource` | **PASS** |
+| `TestResolveDerivesTheDefinitionIdentityPerRecipe`（commandの計画に定義identityが入り、**同じ入力で安定**し、**bytesが変われば変わる**） | **PASS** |
+
+環境：WSL2 Ubuntu 22.04、`go1.27.3`。
+
+#### この節が言っていないこと
+
+- **既存の宣言の移行**。`plugin-definition`を使う宣言は今までどおりで、変更は要らない（試験で確認）
+- `go-command`以外の非plugin recipe（将来増える場合）の規則。**今は`go-command`だけを分けた**
+- `pluginDefinitionFingerprint`という**欄の名前**。commandではpluginを指さないが、名前を変えると計画の形が変わるため、意味の説明で補った
+- 受理・Runtime Authority・供給のTrust。いずれも未主張のまま
+
+### 4.41 計画が、ビルドが実際にコンパイルするpackageを覆っているか（2026-11-09）
+
+§4.39の案Aは「計画と作業ツリーを照合してから、そのツリーで`go build`する」形にした。しかし**照合するのは計画が名指したsourceだけ**であり、**ビルドが計画に載っていないmodule内packageを引き込んでいないか**は見ていなかった。
+
+本節は、その検査を足したことを記録する（TOCTOUを閉じるものではない。§4.39の案Bは別）。
+
+#### 何をするか
+
+| 段 | 内容 |
+| --- | --- |
+| 1 | `go list -deps -f '{{if not .Standard}}{{.ImportPath}}\t{{.Dir}}{{end}}'`を、ビルドと同じ隔離環境・同じ供給で走らせる |
+| 2 | module内（root配下）の各packageのdirが、計画の`go-package` sourceの**いずれかの配下**にあるかを調べる |
+| 3 | **覆われていないpackageがあればビルドしない**。理由にpackageとdirを並べる |
+
+**標準ライブラリは対象外**（`-f`の`{{if not .Standard}}`）。**外部moduleは`external`として別に記録する**——供給から来るものであり、計画のsourceが覆う対象ではない。
+
+#### 実測
+
+| 試験 | 結果 |
+| --- | --- |
+| `TestCheckDependencyCoverageRefusesAnUncoveredModulePackage`（`./internal/buildintent`を、無関係なsourceだけを名指す計画でビルドしようとする → **覆われていないと判定**） | **PASS** |
+| `TestCheckDependencyCoverageAcceptsASelfContainedPackage`（module内依存の無いpackageは自分のsourceで覆われる） | **PASS** |
+| `TestRunBuildsFromThePlanAndReportsWhatItDid`（依存の無いprobeをビルド） | **PASS** |
+| `TestSelfBuildEstablishesL2BFromARealGoBuild`（回帰試験） | **PASS**（16.1秒） |
+
+#### この検査が意味すること
+
+**`./cmd/tei`のビルドは、`cmd/tei`だけを名指す計画では通らない。** 実際に試すと、`internal/`配下の30弱のpackageが「覆われていない」と出る。**これは正しい。** 計画が`cmd/tei`だけを名指している以上、その計画は「`cmd/tei`をコンパイルする」ことを記述していない。
+
+**したがって、宣言の`sources`はmodule内の閉包を含まなければならない。** これは宣言を書く側の負担増だが、**「計画が記述していないビルド」を通さない**という意味を持つ。
+
+#### この節が言っていないこと
+
+- **TOCTOUは閉じていない。** 照合と`go list`と`go build`の間にファイルは変わり得る
+- 外部moduleの完全性。**供給のTrustの範囲**であり、ここでは`external`として並べるだけ
+- 覆われていないpackageを自動で計画へ足すこと。**計画は呼び手が書くもの**である
+- `vendor/`の扱い。**今は対象から外している**
+
+### 4.42 照合した木をビルドする（案Bの第一歩、2026-11-09）
+
+§4.39の案Aには**TOCTOU**が残る——計画と作業ツリーを照合してから`go build`するまでの間に、ファイルは変わり得る。本節は、**案Bの第一歩**を実装したことを記録する。
+
+#### 何をするか
+
+`-isolate`を付けると、**計画が名指すsourceだけを新しい木へ写し、その木をビルドする。**
+
+| 段 | 内容 |
+| --- | --- |
+| 1 | 各sourceを`DirSourceResolver`で読み、**locatorの形を保って**新しい木へ書く |
+| 2 | 写した木を**同じresolverで読み直し**、計画のdigestと一致することを確かめる。**違えばビルドしない** |
+| 3 | `go.mod`・`go.sum`を作業ツリーから取り、**そのdigestを記録**する |
+| 4 | その木で`go list -deps`と`go build`を行う（§4.41の被覆検査もこの木に対して行う） |
+
+**「確かめたもの」と「ビルドしたもの」が同じ木になる。** 作業ツリーの後からの変更は、ビルドに届かない。
+
+#### 素直でない点：module contextは計画のsourceではない
+
+`go build`には`go.mod`が要る。**これはsourceではない**ので計画は名指さない。そこで**作業ツリーから取り、`moduleFiles`としてdigestを記録**する。**境界に明記**した——「module contextは主張に含まれない」。
+
+**これは穴を塞ぎ切っていない。** `go.mod`を後から変えれば、依存の解決は変わり得る。塞ぐにはmodule contextも計画の一部にする（`Dependencies`の拡張）必要があり、それは未着手である。
+
+#### 実測
+
+| 試験 | 結果 |
+| --- | --- |
+| `TestStageSourcesCopiesExactlyThePlannedBytes`（写した木が計画と同じdigestで、module contextが記録される） | **PASS** |
+| `TestStageSourcesRefusesACopyThatDoesNotMatchThePlan`（写した木が計画と違えば**拒否**） | **PASS** |
+| `TestRunWithIsolateBuildsFromTheStagedTree`（`-isolate`で実際にビルドし、木のdigestと境界が記録され、被覆検査も通る） | **PASS** |
+| `go test ./tools/reference-go-build-from-plan -count=1` | **PASS**（20.6秒） |
+
+#### 既定にしない理由
+
+**`-isolate`は既定にしていない。** 理由は二つ:
+
+1. **module contextが計画の外にある**ので、隔離しても主張は完全には閉じない。既定にすると「閉じた」と読まれやすい
+2. 依存のある対象では、**module解決の合成規則**（§4.39の案Bの本体）がまだ無い
+
+**既定にできるのは、module contextを計画の一部にした後である。**
+
+#### この節が言っていないこと
+
+- **TOCTOUを完全には閉じていない。** `go.mod`・`go.sum`は作業ツリーから取る
+- 複数sourceが同じdirectoryを共有する場合の合成規則（今はlocatorごとに独立して写す）
+- `vendor/`・置換（`replace`）の扱い
+- 既定化。**上の二つの理由で見送っている**
+
+### 4.43 module contextも計画のsourceにする（2026-11-09）
+
+§4.42の`-isolate`は、**`go.mod`・`go.sum`を作業ツリーから取る**ので、隔離してもTOCTOUが残った。本節は、**module contextも計画のsourceにする**ことで、その例外を消す。
+
+#### 規則
+
+**`kind: "go-module"`のsourceとして`go.mod`・`go.sum`を宣言できる。** 宣言すれば、隔離ビルドはそれらを**他のsourceと同じように写し、同じようにdigestを照合する**。
+
+| 計画がmodule contextを名指すか | 隔離ビルドの`moduleFiles` | 何が言えるか |
+| --- | --- | --- |
+| **名指す** | **空** | **木は計画のsourceだけでできている**（作業ツリーからの持ち込みが無い） |
+| 名指さない | `go.mod:<digest>`など | 木は計画＋作業ツリーのmodule contextでできている（境界に明記） |
+
+**「例外は無い」と言えるのは、名指した場合だけである。** 名指さない場合は従来どおりで、記録がそのことを示す。
+
+#### 実測
+
+| 試験 | 結果 |
+| --- | --- |
+| `TestIsolatedTreeTakesNoModuleFileFromTheWorkingTreeWhenThePlanNamesThem`（`go.mod`・`go.sum`を`go-module` sourceとして宣言 → `moduleFiles`が**空**、写したmembersは**3件**＝package＋2ファイル） | **PASS** |
+| `go test ./tools/reference-go-build-from-plan -count=1`（全試験） | **PASS**（79.4秒） |
+
+#### 途中で直した欠陥
+
+**単一ファイルのsourceを写す処理が、そのパスをディレクトリとして作っていた。** ディレクトリのsourceしか写していなかったので表面化していなかったが、`go.mod`をsourceにした瞬間に`is a directory`で落ちた。**ファイルとディレクトリを分けて書く**ように直した。
+
+#### この節が言っていないこと
+
+- **`go-module` sourceの検証**（`go.mod`という名前に限るか、任意のmoduleファイルを許すか）。今は**kindの意味だけ**を決め、名前は呼び手に任せている
+- `go.sum`が無いmodule（依存の無いmodule）での扱い
+- `-isolate`の既定化。**module contextを名指す計画が一般的になってから**
+- `replace`・`vendor/`の扱い
+
+### 4.44 隔離ビルドでもL2-bが立つことを回帰試験で確かめる（2026-11-09）
+
+§4.42・§4.43で隔離ビルドを作ったが、**その経路で五条件が立つかは確かめていなかった。** 本節は、回帰試験を隔離ビルドへ切り替え、**隔離した木からビルドしても`l2b.claimed=true`が立つ**ことを固定した。
+
+#### 変えたこと
+
+| 対象 | 変更 |
+| --- | --- |
+| 宣言 | `go-module`のsourceとして`go.mod`・`go.sum`を追加（§4.43の規則） |
+| child args | `-isolate`を追加 |
+| 試験 | 主張に加えて、**childが計画を読むbuilderであること**（`childSchema`）を確かめる |
+
+#### 実測
+
+| 項目 | 値 |
+| --- | --- |
+| `TestSelfBuildEstablishesL2BFromARealGoBuild` | **PASS**（14.5〜71.3秒。環境の負荷で変動） |
+| `l2b.claimed` | **true** |
+| `planCrossCheck` / `planArtifactBinding` / `artifactReproducibility` / `definitionBinding` | すべて成立 |
+
+#### この試験が示していないこと
+
+**隔離が実際に行われたことを、entryは見ていない。** entryはchildのstdoutをdigestとして記録するが、`isolatedTree`の中身は解析しない。**隔離そのものの観測は、ツール自身の試験（写した木が計画と一致する・`moduleFiles`が空・実buildが通る）が担う。**
+
+**したがって本節が言えるのは「隔離ビルドの経路でも鎖が成立する」までで、「この試行が隔離された」ではない。** 両者を一つの试验で言うには、entryがchildの隔離記録を読む必要がある（未着手）。
+
+### 4.45 entryが、builderの隔離記録を読む（2026-11-09）
+
+§4.44は「隔離ビルドの経路でも鎖が成立する」までしか言えなかった。**entryがchildの`isolatedTree`を解析していなかった**からである。本節は、それを読んで記録するようにしたことを残す。
+
+#### 何をするか
+
+| 段 | 内容 |
+| --- | --- |
+| 1 | childの`isolatedTree`（`root`・`members`・`moduleFiles`・`boundary`）を解析する |
+| 2 | **`moduleFiles`が空なら`isolated`**、あれば`isolated-with-external-context`（理由に何を持ち込んだかを並べる） |
+| 3 | 報告の`childIsolation`として出す。**五条件には加えない** |
+
+#### 五条件に加えない理由
+
+**条件を増やすことは契約の変更**であり、§4.23の述語を変える。**記録を足すだけなら、述語はそのままで、読む人が「この試行は隔離されていた」を確認できる。**
+
+**加えるべきかは、`-isolate`を既定にする判断と同じ場所で決める**（§4.43）。今は記録だけを置く。
+
+#### 実測
+
+| 試験 | 結果 |
+| --- | --- |
+| `TestReadChildIsolation`（未申告は記録なし／`moduleFiles`空で`isolated`／あれば`isolated-with-external-context`と理由） | **PASS** |
+| `TestSelfBuildEstablishesL2BFromARealGoBuild`（`childIsolation.state=isolated`・`moduleFiles`空・`memberCount=4`を確認） | **PASS**（12.8秒） |
+
+**`memberCount=4`の内訳**：package・計画が持つ宣言・`go.mod`・`go.sum`。**宣言は§4.40で定義sourceではなくなったが、計画のsourceとしては残っている**（ビルドは読まないが、写す対象ではある）。
+
+#### この節が言っていないこと
+
+- **entryが隔離木を見たこと**。見えるのはchildの申告だけである（§4.37の「信じている」に属する）
+- 五条件への追加。**契約変更であり、別途決める**
+- `-isolate`の既定化
 
 ## 5. 追加の負例（試験仕様）
 

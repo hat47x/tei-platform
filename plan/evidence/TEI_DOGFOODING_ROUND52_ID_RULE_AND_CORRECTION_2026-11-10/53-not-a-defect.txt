@@ -1,0 +1,7 @@
+Investigated and found correct, so not filed:
+
+  attribute Bad-Name type std.text   -> ok
+
+SymbolToSegment("Bad-Name") == "bad_name" (and "badName" too). Attribute names
+are display symbols that normalise to snake_case segments, so a hyphen is a
+spelling of the same id, not an error. I had suspected a missing check.

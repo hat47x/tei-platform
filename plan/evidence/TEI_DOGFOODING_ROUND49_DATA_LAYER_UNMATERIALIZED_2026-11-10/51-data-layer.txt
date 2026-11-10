@@ -1,0 +1,17 @@
+order_entry declares `database sales { target sales_core }` and the index emits
+
+  DeclaredDependency{application, order_entry, targets-database, database, sales_core}
+
+but the trace has no such edge:
+
+  total: 14  unresolved: 0
+  relations: {owns-pattern:5, realizes:3, uses-validation:3, uses-semantic:3}
+  targets-database present? NO
+
+projectionUnresolved explains why:
+
+  unmaterialized-to:database:sales_core
+  unmaterialized-to:database-contract:sales_core.order
+  unmaterialized-to:database-contract-query:master_data.customer/find_by_id
+  unmaterialized-from:database:sales_core
+  ...

@@ -95,7 +95,7 @@ func runTool(t *testing.T, args ...string) (report, error) {
 func TestRunRefusesASourceThePlanDoesNotDescribe(t *testing.T) {
 	root := repoRoot(t)
 	dir := t.TempDir()
-	plan := planFor(t, root, "tools/reference-build-authoring-intent", "./tools/reference-build-authoring-intent", "runtime-artifact")
+	plan := planFor(t, root, "tools/reference-go-build-from-plan/testdata/probe", "./tools/reference-go-build-from-plan/testdata/probe", "runtime-artifact")
 	plan.Sources[0].Digest = "sha256:" + strings.Repeat("c", 64)
 	planPath := writePlan(t, dir, plan)
 
@@ -118,7 +118,7 @@ func TestRunRefusesASourceThePlanDoesNotDescribe(t *testing.T) {
 func TestRunRefusesAnUnknownPlanKey(t *testing.T) {
 	root := repoRoot(t)
 	dir := t.TempDir()
-	plan := planFor(t, root, "tools/reference-build-authoring-intent", "./tools/reference-build-authoring-intent", "runtime-artifact")
+	plan := planFor(t, root, "tools/reference-go-build-from-plan/testdata/probe", "./tools/reference-go-build-from-plan/testdata/probe", "runtime-artifact")
 	body, err := json.Marshal(plan)
 	if err != nil {
 		t.Fatal(err)
@@ -175,7 +175,7 @@ func TestRunBuildsFromThePlanAndReportsWhatItDid(t *testing.T) {
 	}
 	root := repoRoot(t)
 	dir := t.TempDir()
-	plan := planFor(t, root, "tools/reference-build-authoring-intent", "./tools/reference-build-authoring-intent", "runtime-artifact")
+	plan := planFor(t, root, "tools/reference-go-build-from-plan/testdata/probe", "./tools/reference-go-build-from-plan/testdata/probe", "runtime-artifact")
 	planPath := writePlan(t, dir, plan)
 	artifact := filepath.Join(dir, "artifact")
 	state := filepath.Join(dir, "state")

@@ -1,0 +1,20 @@
+$ tei inspect -h
+  values: semantic, ..., application-pattern, query, migration,
+          database-release, solution-release
+
+$ tei inspect -workspace <ws> -subject-kind migration -subject-id 20260826_001
+  ok  canonical.id = 20260826_001  keys: database, id, recovery, steps
+  sourceStatus = not-indexed
+
+$ tei inspect -workspace <ws> -subject-kind database-release -subject-id sales_core
+  ok  canonical.id = sales_core  versions: 4.0.0, 4.1.0, 4.2.0
+  sourceStatus = not-indexed
+
+$ tei inspect -workspace <ws> -subject-kind solution-release -subject-id order_rollout
+  ok  canonical.id = order_rollout  versions: 2026.8.27
+  sourceStatus = not-indexed
+
+$ tei inspect -workspace <ws> -subject-kind database-release -subject-id nope_core
+  SUBJECT_NOT_FOUND canonical subject database-release:nope_core not found
+
+regression: semantic-data:sales.order still sourceStatus=indexed, 1 artifact

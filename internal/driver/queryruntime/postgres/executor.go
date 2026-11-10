@@ -20,11 +20,17 @@ type Result struct {
 	ParameterNames []string `json:"parameterNames,omitempty"`
 }
 
+// Queryer accepts either a connection pool or an explicitly owned transaction.
+// The host chooses transaction isolation and lifetime; the executor never commits.
+type Queryer interface {
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+}
+
 // Executorは、解決済みのPostgreSQL Queryを一つの明示的なDatabase接続へ渡す。
 //
 // DBとDatabaseの対応はcomposition側が注入する。SQL本文やDatasource aliasから接続先を推測しない。
 type Executor struct {
-	DB       *sql.DB
+	DB       Queryer
 	Database core.CanonicalID
 }
 
