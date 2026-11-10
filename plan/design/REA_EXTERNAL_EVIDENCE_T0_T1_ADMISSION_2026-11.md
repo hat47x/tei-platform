@@ -480,8 +480,12 @@ REA Candidate Projectorの外部IDを`InspectSubject`のCanonical IDとして偽
 
 **上流の文書と実Binaryの食い違い**：上流[CLIガイド](https://github.com/morluto/rea/blob/main/docs/getting-started/cli.md)は`source.kind=evidence-file`例を掲載。しかし固定`rea-agents@6.7.0`の実Runは上記の実診断を返した。文書上の例をactual Invocationに優先させず、`REA 6.7.0の実CLiが報告した許可入力`に合わせる。上流仕様が将来変化した場合は再びCapability/入力形式を再判定する。
 
-**このDraftで実施した最小修正**：`.github/workflows/rea-t0-static-evidence.yml`のJSONL検査だけで、保存済み`analysis.json`（最大16 MiBの公開合成Fixture）をread-onlyで`json.loads`し、`source.kind=inline`・`source.evidence=<元の完全Envelope>`のリクエストを作成する。保存原本のraw bytesはそのまま保持し、作成したリクエストの`source.evidence`と保存元のdecoded JSONが同値であること、リクエストSHA-256を別確認する。加工済みRequestのbyte digestは**元raw Evidence Digestと区別**する。外部送信・別Evidence Registry・新Parser/Runner/Tool依存は導入しない。
+**このDraftで実施した最小修正**：`.github/workflows/rea-t0-static-evidence.yml`のJSONL検査だけで、保存済み`analysis.json`（最大16 MiBの公開合成Fixture）をread-onlyで`json.loads`し、`source.kind=inline`・`source.evidence=<元のCLI envelope.data（Evidence本体）>`のリクエストを作成する。保存原本のraw bytesはそのまま保持し、作成したリクエストの`source.evidence`と保存元の`analysis.json.data`が同値であること、リクエストSHA-256を別確認する。加工済みRequestのbyte digestは**元raw Evidence Digestと区別**する。外部送信・別Evidence Registry・新Parser/Runner/Tool依存は導入しない。
 
 **合否判定**：実REAのJSONL再出力がexit0かつ`jsonl/v1` object collection metadata・emitted行数一致なら、元出力から最終metadataレコードを削った**派生コピー**が`missing-metadata`として拒否されることを独立確認。元EvidenceのCoverage、Source全量、REA Profile/依存closureは引き続きunknown/partial。**上記修正の現HEAD実CIは、GitHub Actionsによる実行とArtifact再読取まで未検収**。GitHubワークフロー定義の更新成功をT0-05完了としない。
 
 **並行領域の引渡し**：[main #3540](https://github.com/hat47x/tei-platform/pull/3540)のInspector実CLI/Studio到達と本試験用REA CLI Invocationは別。現行既存`internal/deployment/observation`のRuntime/DB Snapshot型へ静的Source解析候補を流用しない（§20）。T1-Aの最小Product受入はSource付き1 Observation+有向1 Relationの**既存Application APIでのread-only実受領**であり、受入型が無い場合はFit/Gap/未対応診断をOwnerへ返し、新しい並列Operation/意味正本を先行実装しない。製品側の`order_entry.recent_orders`実Rowset最優先を変更しない。
+
+
+<!-- rea-t0-inline-payload-second-negative-20261110 -->
+**T0-05二次負例と修正**：[Run #42803425409](https://github.com/hat47x/tei-platform/actions/runs/42803425409)では `source.kind=inline` は受理されたが、`source.evidence` にCLI `{"ok":true,"data":...,"meta":...}`の**外側Envelope**をそのまま渡してしまい、実CLIが `source.evidence.evidence_id/subject/provider/...` 未取得および`ok/data/meta`未知キーとして拒否。raw [Artifact `rea-t0-valid` #13756958086](https://github.com/hat47x/tei-platform/actions/runs/42803425409/artifacts/13756958086)の`view.jsonl`と`view-request.json`を再読取して確認した。修正後は`analysis.json`を原本として保持し、**`envelope.data`だけを`source.evidence`へ入れ、保存元Decoded Evidenceとの同値を検証**。この修正も実Actionsで完了するまでは`T0-05=NOT VERIFIED`とする。正常解析の過去のT0-01～04実績と混同しない。
