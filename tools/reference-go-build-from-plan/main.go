@@ -52,6 +52,11 @@ type report struct {
 	ArtifactPath   string `json:"artifactPath,omitempty"`
 	StateDir       string `json:"stateDir,omitempty"`
 
+	// IsolatedTree is set when the build ran in a tree made only of the planned
+	// sources; it records the staged members and the module context taken.
+	IsolatedTree       *isolatedTree `json:"isolatedTree,omitempty"`
+	IsolatedTreeDigest string        `json:"isolatedTreeDigest,omitempty"`
+
 	// DependencyCoverage answers "does the plan cover what the build compiles?".
 	DependencyCoverage *dependencyCoverage `json:"dependencyCoverage,omitempty"`
 
@@ -108,6 +113,7 @@ func run(args []string, out io.Writer) error {
 	goExecutable := fs.String("go", "", "exact Go実行ファイル（省略時はPATHのgo）")
 	artifactOut := fs.String("artifact-out", "", "成果物を置くパス（必須）")
 	stateDir := fs.String("state", "", "分離したBuild state（必須）")
+	isolate := fs.Bool("isolate", false, "計画のsourceだけを新しい木へ写してビルドする（照合とcompileの間を空けない）")
 	supplyDir := fs.String("supply", "", "モジュール供給ディレクトリ（依存がある対象では必須）")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -181,9 +187,32 @@ func run(args []string, out io.Writer) error {
 	if strings.TrimSpace(goExe) == "" {
 		goExe = "go"
 	}
+	// With -isolate the build runs in a tree made only of the planned sources, so
+	// nothing can change between the check and the compile. Without it, the working
+	// tree is checked and then compiled, which leaves that window open.
+	buildRoot := root
+	if *isolate {
+		stageRoot, stageErr := os.MkdirTemp("", "tei-plan-tree-")
+		if stageErr != nil {
+			return fmt.Errorf("create the isolated tree: %w", stageErr)
+		}
+		defer os.RemoveAll(stageRoot)
+		tree, stageErr := stageSources(root, stageRoot, plan, checked)
+		if stageErr != nil {
+			return stageErr
+		}
+		treeDigest, digestErr := digestTree(stageRoot)
+		if digestErr != nil {
+			return fmt.Errorf("digest the isolated tree: %w", digestErr)
+		}
+		rep.IsolatedTree = &tree
+		rep.IsolatedTreeDigest = treeDigest
+		buildRoot = stageRoot
+	}
+
 	// Ask what the build would compile before it compiles: a plan that does not
 	// cover the module-local packages the build pulls in does not describe it.
-	coverage := checkDependencyCoverage(root, goExe, plan, *stateDir, *supplyDir, checked)
+	coverage := checkDependencyCoverage(buildRoot, goExe, plan, *stateDir, *supplyDir, checked)
 	rep.DependencyCoverage = &coverage
 	if len(coverage.Uncovered) > 0 {
 		rep.BuildError = "the plan does not cover every package this build compiles: " + strings.Join(coverage.Uncovered, ", ")
@@ -198,9 +227,9 @@ func run(args []string, out io.Writer) error {
 
 	var buildErr error
 	if strings.TrimSpace(*supplyDir) != "" {
-		buildErr = gobuilder.BuildPackageWithSupply(root, goExe, plan.Recipe.Entrypoint, *artifactOut, *stateDir, *supplyDir)
+		buildErr = gobuilder.BuildPackageWithSupply(buildRoot, goExe, plan.Recipe.Entrypoint, *artifactOut, *stateDir, *supplyDir)
 	} else {
-		buildErr = gobuilder.BuildPackage(root, goExe, plan.Recipe.Entrypoint, *artifactOut, *stateDir)
+		buildErr = gobuilder.BuildPackage(buildRoot, goExe, plan.Recipe.Entrypoint, *artifactOut, *stateDir)
 	}
 	rep.StateDir = *stateDir
 	if buildErr != nil {
