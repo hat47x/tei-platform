@@ -2,7 +2,7 @@
 
 - 対象Issue: [#2509](https://github.com/hat47x/tei-platform/issues/2509)（DSH外部Harness実証）、[#2515](https://github.com/hat47x/tei-platform/issues/2515)（実効隔離・全送出経路Conformance）。機密境界の正本は[TAI #232](https://github.com/hat47x/tai-pleroma/issues/232)、比較計画は[TAI #168](https://github.com/hat47x/tai-pleroma/issues/168)。
 - 状態: **既存の実行記録を並べた索引**。新しい実測は行っていない。個々の合否・Owner受理は各記録とIssueの担当。
-- この文書の役割: 39件の実行記録が**それぞれ何を確定させ、何を確定させていないか**を1枚で見えるようにし、同じ測り方の重複を避ける。記録本文の複製はせず、各記録へ参照で結ぶ。
+- この文書の役割: 40件の実行記録が**それぞれ何を確定させ、何を確定させていないか**を1枚で見えるようにし、同じ測り方の重複を避ける。記録本文の複製はせず、各記録へ参照で結ぶ。
 
 ## 1. なぜ台帳が要るか
 
@@ -36,6 +36,7 @@
 | [同時起動の上限](./DSH_SUBAGENT_CONCURRENT_LIMIT_2026-11-09/README.md) | 同時数 | 1メッセージで12体の`subagent`を並列要求すると**8体が起動し4体が拒否**された。拒否は`isError: true`のTool結果で本文は`active child limit: 8`。**子が即応答する対照でも8/4で変わらない**ため、上限は**起動時に見る同時数**で、子の完了を待って順に通す形ではない。親1＋子8で13要求・1,074,677 bytes | 時間を分けた起動、`maxActiveSubagents`の変更、`maxDepth`との同時作用、Telemetry・MCP |
 | [同時起動の上限は設定値に従う](./DSH_SUBAGENT_ACTIVE_CAP_2026-11-10/README.md) | 上限の可変性 | `subagent`の`maxActiveSubagents`を**3**にして1メッセージで**6体**を並列要求すると、**3体が起動し3体が拒否**された。拒否の本文は**`active child limit: 3`**で、**設定値がそのまま制限値**として現れる。既定`8`では8/4だったので、**上限は既定値の話であり設定で変わる** | 時間を分けた起動、`maxDepth`との同時作用、`0`や`1`にした場合、Telemetry・MCP、実Provider |
 | [時間を分けた起動](./DSH_SUBAGENT_SEQUENTIAL_2026-11-10/README.md) | 同時性と総量の区別 | `maxActiveSubagents`**3**のまま、**1ターンに1体ずつ**子を起動し起動直後に完了させて4回繰り返すと、**4体すべて起動し拒否0**（子Sessionも4つ）。並列6体では3/3だったので、**この上限は「同時に生きている子」に効き、起動した総数の上限ではない** | 上限を大きく超える順次起動、子が完了しないままの要求、`maxDepth`との同時作用、レート制限 |
+| [2つの上限の同時作用](./DSH_SUBAGENT_TREE_CAP_2026-11-10/README.md) | 資源の奪い合い | **`maxDepth: 3`と`maxActiveSubagents: 2`**を同時に設定し、根が子2体を並列起動（2体とも成功）、各子が孫2体を並列起動しようとすると、**孫は0体**で、子2体は**`active child limit: 2`**の拒否を受け取った。**深さ上限による拒否は0件**、**作られたSessionは3つ**（根＋子2）。**同時数は木全体で数え、先に埋まった方が勝つ** | 子が完了してから孫を起動した場合、3段以上の木、`maxActiveSubagents`を4以上にした場合、`subagent_fork`の木 |
 | [Telemetry経路](./DSH_OTEL_PATH_2026-11-09/README.md) | 送出のgate | `session-telemetry-otel`は`dsh-base`が**既定で登録**しており、`mode`は`DSH_TELEMETRY_MODE || FEEDBACK_ONLY`、`exporter.url`は`DSH_TELEMETRY_OTLP_URL ?? 'https://dsh-otel-collector.deepseeksvc.com/v1/logs'`。`DSH_TELEMETRY_OTLP_URL`をローカルMockへ向けた1往復で**OTLP要求は0件**（モデル要求は2件・143,308 bytes）。**止めているのはプラグインの不在ではなく`FEEDBACK_ONLY`のgate**で、headlessにはfeedbackの面が無い | feedbackを与えた場合の送出内容、web・tui面、`DISABLED`の実測、`maxRequestBytes`超過、MCP |
 | [MCP経路](./DSH_MCP_PATH_2026-11-09/README.md) | 既定の面 | 既定のheadlessの面は**Tool 24個で名前に`mcp`を含むものは0**。`mcp-resources`は`dsh-base`が**登録済みだがサーバー未設定**で、`--dump-config-schema`の`configRef`は`unknownConfig`。`mcp-client`を`servers.synthetic {transport: http, url}`で挿すと`--dump-config`は受理するが、実行後も**Tool 24個・MCP Tool 0・MCP要求0件**（モデル要求は2件・143,308 bytes） | 正しい設定形を与えた場合の送出、MCPサーバー側の保存、stdio transport、認証、`mcp-resources`の実挙動 |
 | [MCPの設定形](./DSH_MCP_CONFIGURED_2026-11-10/README.md) | 接続の条件 | 同梱の`dsh-mcp-client/lib/index.js`の`Config`は**1インスタンス1サーバー**で、`transport`は`stdio`か**`streamable-http`**（`http`は無く、`servers`入れ子も無い）。その形で挿すと**`server/discover`→`initialize`→`notifications/initialized`→`tools/list`の4件**が届き、**モデルのToolが24→28**（`mcp__synthetic__synthetic_echo`と`mcp-resources`系3つ）、要求bytesも約9,170増えた | `tools/call`の実行、stdio、認証、複数サーバー、`mcp-resources`の実挙動、実MCPサーバー |
