@@ -66,18 +66,11 @@ func TestResolveRelationQueryAllowsSelfReference(t *testing.T) {
 	}
 }
 
-func TestResolveRelationQueryAllowsCycle(t *testing.T) {
-	world := irWorldWithCycle()
+func TestResolveRelationQueryRejectsMultiStepCycle(t *testing.T) {
+	world := irWorldWithMultiStepCycle()
 	resolver := NewResolver(world)
-	resolved, err := resolver.ResolveRelationQuery("org", "org.org_tree")
-	if err != nil {
-		t.Fatalf("resolve error: %v", err)
-	}
-	if len(resolved.Steps) != 1 {
-		t.Fatalf("expected 1 step, got %d", len(resolved.Steps))
-	}
-	if resolved.Steps[0].Target.ID != "org.organization" {
-		t.Fatalf("unexpected target: %s", resolved.Steps[0].Target.ID)
+	if _, err := resolver.ResolveRelationQuery("org", "org.cycle"); err == nil {
+		t.Fatal("expected error for multi-step cycle")
 	}
 }
 
@@ -294,6 +287,64 @@ func irWorldWithCycle() ir.World {
 		Applications: []application.Application{app},
 		Semantics: []semantic.Namespace{
 			{ID: "org", Data: []semantic.Data{orgData}},
+		},
+		RelationQueries: []query.RelationQuery{relationQuery},
+	}
+}
+
+func irWorldWithMultiStepCycle() ir.World {
+	orgDataA := semantic.Data{
+		ID: "org.department_a",
+		Attributes: []semantic.Attribute{
+			{ID: "org.department_a.id", TypeRef: "org.dept_id"},
+		},
+	}
+	orgDataB := semantic.Data{
+		ID: "org.department_b",
+		Attributes: []semantic.Attribute{
+			{ID: "org.department_b.id", TypeRef: "org.dept_id"},
+		},
+	}
+	relationAtoB := semantic.Relation{
+		ID:         "org.department_a.links",
+		Target:     "org.department_b",
+		Cardinality: semantic.CardinalityOne,
+		Keys: []semantic.RelationKey{
+			{SourceAttribute: "org.department_a.id", TargetAttribute: "org.department_b.id"},
+		},
+	}
+	relationBtoA := semantic.Relation{
+		ID:         "org.department_b.links",
+		Target:     "org.department_a",
+		Cardinality: semantic.CardinalityOne,
+		Keys: []semantic.RelationKey{
+			{SourceAttribute: "org.department_b.id", TargetAttribute: "org.department_a.id"},
+		},
+	}
+	orgDataA.Relations = []semantic.Relation{relationAtoB}
+	orgDataB.Relations = []semantic.Relation{relationBtoA}
+	app := application.Application{
+		ID:           "org",
+		Databases:    []application.DatabaseRequirement{{Alias: "master", TargetDatabase: "master_data", Access: database.AccessRead}},
+		SemanticUses: []core.CanonicalID{"org"},
+	}
+	relationQuery := query.RelationQuery{
+		ID:          "org.cycle",
+		Application: "org",
+		Datasource:  "master",
+		Root:        "org.department_a",
+		Relations: []query.RelationStep{
+			{Relation: "org.department_a.links"},
+			{Relation: "org.department_b.links"},
+		},
+		ResultColumns: []query.ResultColumnMapping{
+			{Column: "id", Attribute: "org.department_a.id"},
+		},
+	}
+	return ir.World{
+		Applications: []application.Application{app},
+		Semantics: []semantic.Namespace{
+			{ID: "org", Data: []semantic.Data{orgDataA, orgDataB}},
 		},
 		RelationQueries: []query.RelationQuery{relationQuery},
 	}

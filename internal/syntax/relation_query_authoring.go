@@ -88,11 +88,31 @@ func (p *Parser) ParseRelationQueryAuthoring(owner core.CanonicalID) (RelationQu
 			out.Value.Relations = append(out.Value.Relations, query.RelationStep{Relation: relID})
 		case "filter":
 			_, _ = p.next()
+			if _, err := p.expect(TokenLBrace); err != nil {
+				return RelationQueryAuthoring{}, err
+			}
 			body, _, err := p.lx.ReadRawBlock()
 			if err != nil {
 				return RelationQueryAuthoring{}, err
 			}
-			out.Value.Filters = append(out.Value.Filters, query.Filter{Expression: strings.TrimSpace(body)})
+			filter := query.Filter{Expression: strings.TrimSpace(body)}
+			if strings.Contains(body, "AS OF") || strings.Contains(body, "BETWEEN") || strings.Contains(body, "validAt") {
+				filter.Temporal = &query.TemporalFilter{}
+				if idx := strings.Index(body, "AS OF"); idx >= 0 {
+					filter.Temporal.ValidAt = strings.TrimSpace(body[idx+5:])
+				}
+				if idx := strings.Index(body, "BETWEEN"); idx >= 0 {
+					parts := strings.Split(body[idx+7:], "AND")
+					if len(parts) == 2 {
+						filter.Temporal.From = strings.TrimSpace(parts[0])
+						filter.Temporal.To = strings.TrimSpace(parts[1])
+					}
+				}
+				filter.Temporal.ValidAt = strings.Trim(filter.Temporal.ValidAt, "'\"")
+				filter.Temporal.From = strings.Trim(filter.Temporal.From, "'\"")
+				filter.Temporal.To = strings.Trim(filter.Temporal.To, "'\"")
+			}
+			out.Value.Filters = append(out.Value.Filters, filter)
 		case "sort":
 			_, _ = p.next()
 			body, _, err := p.lx.ReadRawBlock()

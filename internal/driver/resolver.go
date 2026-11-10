@@ -296,11 +296,16 @@ func (r Resolver) ResolveRelationQuery(applicationID, queryID core.CanonicalID) 
 	}
 	var current semantic.Data
 	current = rootData
+	visited := map[core.CanonicalID]bool{rootData.ID: true}
 	for _, step := range relationQuery.Relations {
 		resolvedStep, err := r.resolveRelationStep(current, step)
 		if err != nil {
 			return query.ResolvedRelationQuery{}, fmt.Errorf("Relation Query %sのstep %sを解決できません: %w", queryID, step.Relation, err)
 		}
+		if visited[resolvedStep.Target.ID] && resolvedStep.Target.ID != current.ID {
+			return query.ResolvedRelationQuery{}, fmt.Errorf("Relation Query %sは循環参照を含んでいます: %s -> %s", queryID, current.ID, resolvedStep.Target.ID)
+		}
+		visited[resolvedStep.Target.ID] = true
 		resolved.Steps = append(resolved.Steps, resolvedStep)
 		current = resolvedStep.Target
 	}

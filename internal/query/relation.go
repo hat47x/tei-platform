@@ -27,6 +27,17 @@ type RelationQuery struct {
 // Filter represents a WHERE clause expression.
 type Filter struct {
 	Expression string `json:"expression"`
+	// Temporal specifies optional validity-time bounds for temporal relations.
+	Temporal *TemporalFilter `json:"temporal,omitempty"`
+}
+
+// TemporalFilter represents a temporal condition on a relation traversal.
+type TemporalFilter struct {
+	// ValidAt is a point-in-time predicate (e.g., AS OF).
+	ValidAt string `json:"validAt,omitempty"`
+	// Between specifies a closed interval predicate.
+	From string `json:"from,omitempty"`
+	To   string `json:"to,omitempty"`
 }
 
 // Sort represents an ORDER BY expression.

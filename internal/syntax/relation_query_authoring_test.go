@@ -89,3 +89,33 @@ relation-query order_entry.order_with_customer {
 		t.Fatalf("unexpected batch size: %d", got.BatchSize)
 	}
 }
+
+func TestParseRelationQueryAcceptsTemporalFilter(t *testing.T) {
+	src := `
+relation-query order_entry.order_with_customer_temporal {
+    datasource master
+    from sales.order
+    relation sales.order.customer
+    filter {
+        status = 'active' AS OF '2024-01-01'
+    }
+    result {
+        column order_id -> sales.order.order_id
+        column name -> customer.customer.name
+    }
+}
+`
+	got, err := NewParser(src).ParseRelationQuery(core.MustCanonicalID("order_entry"))
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	if len(got.Filters) != 1 {
+		t.Fatalf("expected 1 filter, got %d", len(got.Filters))
+	}
+	if got.Filters[0].Temporal == nil {
+		t.Fatal("expected temporal filter to be parsed")
+	}
+	if got.Filters[0].Temporal.ValidAt != "2024-01-01" {
+		t.Fatalf("unexpected validAt: %s", got.Filters[0].Temporal.ValidAt)
+	}
+}
