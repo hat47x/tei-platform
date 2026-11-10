@@ -2781,3 +2781,12 @@ func (p *Parser) parseSemanticRunPlan(namespace core.CanonicalID) (semantic.RunP
 	}
 	return plan, nil
 }
+
+// ParseRelationQueryは、Relation Queryブロックを読み取るための簡易wrapperである。
+func (p *Parser) ParseRelationQuery(owner core.CanonicalID) (query.RelationQuery, error) {
+	authoring, err := p.ParseRelationQueryAuthoring(owner)
+	if err != nil {
+		return query.RelationQuery{}, err
+	}
+	return authoring.Value, nil
+}

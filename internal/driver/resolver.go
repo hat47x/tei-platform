@@ -274,3 +274,74 @@ func readableDatasource(app application.Application, alias core.LocalName) (appl
 	}
 	return datasource, nil
 }
+
+// ResolveRelationQueryは、ApplicationとRelation QueryのCanonical IDを起点として、
+// Relation Queryで参照されるDataとRelationを解決する。
+func (r Resolver) ResolveRelationQuery(applicationID, queryID core.CanonicalID) (query.ResolvedRelationQuery, error) {
+	app, err := r.applicationByID(applicationID)
+	if err != nil {
+		return query.ResolvedRelationQuery{}, fmt.Errorf("Application %sを解決できません: %w", applicationID, err)
+	}
+	relationQuery, err := r.relationQueryByID(app, queryID)
+	if err != nil {
+		return query.ResolvedRelationQuery{}, err
+	}
+	rootData, err := r.dataByID(relationQuery.Root)
+	if err != nil {
+		return query.ResolvedRelationQuery{}, fmt.Errorf("Relation Query %sのroot Data %sを解決できません: %w", queryID, relationQuery.Root, err)
+	}
+	resolved := query.ResolvedRelationQuery{
+		Query:    relationQuery,
+		RootData: rootData,
+	}
+	var current semantic.Data
+	current = rootData
+	for _, step := range relationQuery.Relations {
+		resolvedStep, err := r.resolveRelationStep(current, step)
+		if err != nil {
+			return query.ResolvedRelationQuery{}, fmt.Errorf("Relation Query %sのstep %sを解決できません: %w", queryID, step.Relation, err)
+		}
+		resolved.Steps = append(resolved.Steps, resolvedStep)
+		current = resolvedStep.Target
+	}
+	return resolved, nil
+}
+
+func (r Resolver) relationQueryByID(app application.Application, id core.CanonicalID) (query.RelationQuery, error) {
+	var found query.RelationQuery
+	count := 0
+	for _, candidate := range r.world.RelationQueries {
+		if candidate.ID != id {
+			continue
+		}
+		if candidate.Application != app.ID {
+			continue
+		}
+		found = candidate
+		count++
+	}
+	if count == 0 {
+		return query.RelationQuery{}, fmt.Errorf("Relation Query %sが見つかりません", id)
+	}
+	if count > 1 {
+		return query.RelationQuery{}, fmt.Errorf("Relation Query %sが複数定義されています: %d件", id, count)
+	}
+	return found, nil
+}
+
+func (r Resolver) resolveRelationStep(source semantic.Data, step query.RelationStep) (query.ResolvedRelationStep, error) {
+	relation, err := r.relationByID(step.Relation)
+	if err != nil {
+		return query.ResolvedRelationStep{}, err
+	}
+	if relation.Source.ID != source.ID {
+		return query.ResolvedRelationStep{}, fmt.Errorf("Relation %sのsource %sとstepのsource %sが一致しません", relation.Relation.ID, relation.Source.ID, source.ID)
+	}
+	return query.ResolvedRelationStep{
+		Step:      step,
+		Relation:  relation.Relation,
+		Source:    relation.Source,
+		Target:    relation.Target,
+		JoinAlias: step.Alias,
+	}, nil
+}

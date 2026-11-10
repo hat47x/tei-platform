@@ -1,0 +1,64 @@
+package syntax
+
+import (
+	"testing"
+
+	"tei/internal/core"
+)
+
+func TestParseRelationQueryAcceptsMinimalQuery(t *testing.T) {
+	src := `
+relation-query order_entry.order_with_customer {
+    datasource master
+    from sales.order
+    relation sales.order.customer
+    result {
+        column order_id -> sales.order.order_id
+        column name -> customer.customer.name
+    }
+}
+`
+	got, err := NewParser(src).ParseRelationQuery(core.MustCanonicalID("order_entry"))
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	if got.ID != "order_entry.order_with_customer" {
+		t.Fatalf("unexpected id: %s", got.ID)
+	}
+	if got.Datasource != "master" {
+		t.Fatalf("unexpected datasource: %s", got.Datasource)
+	}
+	if got.Root != "sales.order" {
+		t.Fatalf("unexpected root: %s", got.Root)
+	}
+	if len(got.Relations) != 1 || got.Relations[0].Relation != "sales.order.customer" {
+		t.Fatalf("unexpected relations: %+v", got.Relations)
+	}
+	if len(got.ResultColumns) != 2 {
+		t.Fatalf("expected 2 result columns, got %d", len(got.ResultColumns))
+	}
+}
+
+func TestParseRelationQueryRejectsMissingFrom(t *testing.T) {
+	src := `
+relation-query order_entry.bad {
+    relation sales.order.customer
+    result { column order_id -> sales.order.order_id }
+}
+`
+	if _, err := NewParser(src).ParseRelationQuery(core.MustCanonicalID("order_entry")); err == nil {
+		t.Fatal("expected error for missing from clause")
+	}
+}
+
+func TestParseRelationQueryRejectsMissingRelation(t *testing.T) {
+	src := `
+relation-query order_entry.bad {
+    from sales.order
+    result { column order_id -> sales.order.order_id }
+}
+`
+	if _, err := NewParser(src).ParseRelationQuery(core.MustCanonicalID("order_entry")); err == nil {
+		t.Fatal("expected error for missing relation")
+	}
+}
