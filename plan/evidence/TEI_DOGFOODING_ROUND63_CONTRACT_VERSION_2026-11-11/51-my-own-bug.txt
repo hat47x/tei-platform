@@ -1,0 +1,9 @@
+My first version checked the next token AFTER calling p.expect(TokenIdent).
+expect consumes the token on failure, so the peek looked past the offending brace
+and the new branch never fired.
+
+The build passed. The existing tests passed. Running the CLI showed the SAME
+message as before the fix, which is how I found it.
+
+The committed version peeks BEFORE expect. Mutation M2 re-creates the ordering
+bug, so the test now catches what the compiler and the old tests did not.

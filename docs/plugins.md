@@ -137,7 +137,7 @@ tei self-build \
 
 `qualified`は常に`false`です。**構築が成功したこと、受理されたこと、実行権限を得たことは別**であり、`l2b.claimed`が`true`でも受理を意味しません。判断の中身は[自己構築の再入場契約](../plan/design/SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md)を参照してください。
 
-観測したのは`linux/amd64`と`windows/amd64`の二つのホストだけです。`darwin`・`arm64`は未観測です。
+観測したのは`linux/amd64`（native）・`windows/amd64`・`linux/arm64`（qemuによるエミュレーション）です。**`arm64`は実機ではなくエミュレーションであり、`l2b.claimed=true`に到達することを実測しています**（[記録](../plan/evidence/TEI_GO_SELF_BUILD_ARM64_L2B_CHAIN_2026-11-10.md)）。**`darwin`は未観測です**（macOSの実行環境が無い）。
 
 ## 実行時の扱い
 

@@ -44,6 +44,32 @@ func TestAssessL2BClaimsWhenEveryConditionHolds(t *testing.T) {
 	}
 }
 
+// The boundary is the only place a caller of the JSON report learns which hosts have
+// been observed. It read "not proven for any other host" after arm64 had been observed,
+// so pin the claims that must survive edits: the two native hosts, arm64 as emulation
+// rather than hardware, and the refusal to speak for any other host.
+func TestAssessL2BBoundaryStatesWhichHostsWereObserved(t *testing.T) {
+	boundary := assessL2B(satisfiedL2B()).Boundary
+
+	for _, want := range []string{
+		"linux/amd64",
+		"windows/amd64",
+		"linux/arm64 under emulation",
+		"not observed on hardware",
+		"no other host has been proven",
+	} {
+		if !strings.Contains(boundary, want) {
+			t.Fatalf("the boundary no longer states %q: %s", want, boundary)
+		}
+	}
+
+	// The old sentence would read as "nothing beyond these two hosts", which is false
+	// now that arm64 has been observed.
+	if strings.Contains(boundary, "not proven for any other host") {
+		t.Fatalf("the boundary still carries the superseded host claim: %s", boundary)
+	}
+}
+
 func TestAssessL2BNamesEveryMissingCondition(t *testing.T) {
 	cases := []struct {
 		name   string

@@ -1,0 +1,1 @@
+databases/sales-core/contracts/open_orders_by_customer.tei:1:1	error	PARSE_ERROR	expected "contract"

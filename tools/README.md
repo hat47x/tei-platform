@@ -126,6 +126,7 @@
 | [`reference-build-authoring-intent/`](reference-build-authoring-intent/) | 人・生成AIが書くビルド宣言から、確定したビルド計画を導出する境界の確認 |
 | [`reference-build-execution-binding/`](reference-build-execution-binding/) | ビルド実行と主体・対象の結び付け |
 | [`reference-go-module-closure-preflight/`](reference-go-module-closure-preflight/) | Go対象の選択Module閉包をオフラインで分類する事前観測。`supported`/`external-unresolved`/`missing-module`/`unknown`を区別し、Build・Artifact・権限は行わない（#2831 SB-0a） |
+| [`reference-build-plan-authoring/`](reference-build-plan-authoring/) | あるpackageとmodule内の閉包を名指す`BuildPlan`を書く。`go list -deps`から閉包を取り、**digestはresolverで実ファイルから計算**する（宣言はできない）。§4.46の「ビルドが読むsourceだけを名指す」を満たす計画を、73件でも手で並べずに作れる（#2831 SB-C0 §4.49） |
 | [`reference-go-build-from-plan/`](reference-go-build-from-plan/) | `BuildPlan`を読み、**計画が名指すsourceを同じrootから解釈し直して突き合わせ**、一致したときだけGoのcommandをビルドする。計画fingerprint・宣言byteのdigest・成果物digest・stateを申告し、lockを自分で作って検証する（#2831 SB-C0 §4.39 段1） |
 | [`reference-go-build-with-supply/`](reference-go-build-with-supply/) | 供給だけを使う隔離環境で実Buildし、成果物digestとSource閉包の資格を別々に記録する。両者が食い違うX1を明示する（#2831 SB-B事前確認） |
 | [`reference-go-build-stage-driver/`](reference-go-build-stage-driver/) | Buildを別プロセスの起動として駆動し、invoker/invoked の実行ファイルdigest・argv・exit と、子の主張とディスク実物のartifact digestを別々に記録する。L3は主張しない（#2831 SB-C0/C1） |

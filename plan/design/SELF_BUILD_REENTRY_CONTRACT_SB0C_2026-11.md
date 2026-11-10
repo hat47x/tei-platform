@@ -2161,6 +2161,55 @@ L2-bの五条件は、childの能力に依存する。本節は、**参照実装
 - `replace`を**計画で名指せるようにする**案。置換先をsourceとして宣言できれば再現できるが、その設計はしていない
 - `vendor/`を計画に含める案。同上
 
+### 4.49 依存のある対象でも、計画だけからビルドできた（2026-11-09）
+
+§4.47の記録は「依存のある対象の隔離ビルドは未対応」で終わっていた。本節は、**それを実測した**結果を残す。
+
+#### 何が要だったか
+
+§4.46により、計画は**ビルドが読むsourceだけ**を名指さなければならない。`./cmd/tei`はmodule内だけで**73のpackage**を読む。手で並べるのは現実的でない。
+
+そこで**計画を書くツール**を足した（`tools/reference-build-plan-authoring`）。
+
+| 段 | 内容 |
+| --- | --- |
+| 1 | `go list -deps` でmodule内のpackageを集める |
+| 2 | 各sourceを`DirSourceResolver`で解決し、**digestは実ファイルから計算**する（宣言はできない） |
+| 3 | `go-module`として`go.mod`・`go.sum`も名指す |
+| 4 | `BuildPlan`として書き出す |
+
+#### 実測
+
+`./cmd/tei`を対象に、計画を書いてから隔離ビルドを実行した。
+
+| 項目 | 値 |
+| --- | --- |
+| 計画のsource数 | **75**（`go-package` 73・`go-module` 2） |
+| `buildSource` | **`plan-only`** |
+| `buildSucceeded` | **true** |
+| `isolatedTree.moduleFiles` | **なし**（作業ツリーからの持ち込みゼロ） |
+| 被覆検査 | **covered=73・uncovered=0**、external=36（供給から来る外部module） |
+| lock | **validated** |
+| artifact | `sha256:3e9a8d07a714300d8103fc4381b98a525ea19ec333842524f21325e413f266ee` |
+
+**依存のある対象でも、計画のsourceだけでビルドできた。** module contextも計画から来ており、作業ツリーからは何も取っていない。
+
+#### 何が言えるようになったか
+
+| 以前 | 今 |
+| --- | --- |
+| 「隔離ビルドは依存の無い対象だけ」 | **依存のある対象（`./cmd/tei`全体）でも隔離できる** |
+| 「計画を書くには73件を手で並べる」 | **ツールで作れる**（digestは実ファイルから） |
+
+**ただし、これはビルドの話である。** 五条件のClaim（`l2b.claimed`）はまだ小さなcommandでしか立てておらず、`./cmd/tei`を対象にしたClaimは再測していない（§4.39段2の観測は隔離前のもの）。
+
+#### この節が言っていないこと
+
+- **`./cmd/tei`を対象にした五条件のClaim**。隔離ビルドが通ることと、Claimが立つことは別である
+- 外部moduleの完全性（供給のTrust）
+- 計画の自動生成が「読むもの全部」であることの証明。**ビルド時の被覆検査が確かめる**（§4.41）
+- `replace`・`vendor/`（§4.48で拒否）
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
@@ -2247,7 +2296,8 @@ L2-bの五条件は、childの能力に依存する。本節は、**参照実装
 - [x] L2-bのClaimを立てるかの判断と実装（§4.23。**五条件の同時成立**を述語にし、`l2b.claimed`と`l2b.unmet`として出す。[記録](../evidence/TEI_GO_SELF_BUILD_L2B_CLAIM_2026-11-09.md)。単一観測の`l2bClaimed`欄は`false`のまま据え置き、述語はそれらを読まない）
 - [x] L2-bのClaimを**回帰試験**にする（§4.24。参照catalogと参照builder childで五条件が揃うことを`cmd/tei`の試験で固定し、`go test ./...`経由で健康性確認に載る。[記録](../evidence/TEI_GO_SELF_BUILD_L2B_GATE_2026-11-09.md)）
 - [x] 二つのホスト（`linux/amd64`・`windows/amd64`）で同じ計画とartifactが出ることの実測（§4.26。[記録](../evidence/TEI_GO_SELF_BUILD_CROSS_OS_DIGESTS_2026-11-09.md)。`intentFingerprint`・`sourceClosure`・`planFingerprint`・`artifactDigest`の四つが一致し、L2-bのエンドツーエンド試験もWindowsでPASSした。**Go版も違う**）
-- [ ] `darwin`・`arm64`・別のGo版の組合せでの観測（§4.26の範囲外）。**`arm64`では連鎖全体が成立した。** `tei`・child・著者ツール・resolverをすべてarm64へビルドしqemu上で`tei self-build`を走らせると、**`l2b.claimed=true`・`unmet`空・`reproduced`** になり、amd64と同じ結果だった（[記録](../evidence/TEI_GO_SELF_BUILD_ARM64_L2B_CHAIN_2026-11-10.md)）。**宣言とソースに依存する値は一致し、builderに依存する値は相違する**——`catalogDigest`は走るbuilderのバイトを名指しするので、アーキが違えば別の値になる。**Claimはクロスアーキテクチャの成果物一致を要求しない。**版は`go1.26.10`と`go1.27.3`で2×2を観測済み（[記録](../evidence/TEI_GO_SELF_BUILD_GO_VERSION_AND_ARCH_MATRIX_2026-11-10.md)）。**`darwin`は未観測のまま**（macOSの実行環境が無い）
+- [x] **`arm64`と別のGo版**での観測（§4.26の範囲外）。**`arm64`では連鎖全体が成立した。** `tei`・child・著者ツール・resolverをすべてarm64へビルドしqemu上で`tei self-build`を走らせると、**`l2b.claimed=true`・`unmet`空・`reproduced`** になり、amd64と同じ結果だった（[記録](../evidence/TEI_GO_SELF_BUILD_ARM64_L2B_CHAIN_2026-11-10.md)）。**宣言とソースに依存する値は一致し、builderに依存する値は相違する**——`catalogDigest`は走るbuilderのバイトを名指しするので、アーキが違えば別の値になる。**Claimはクロスアーキテクチャの成果物一致を要求しない。**版は`go1.26.10`と`go1.27.3`で2×2を観測済み（[記録](../evidence/TEI_GO_SELF_BUILD_GO_VERSION_AND_ARCH_MATRIX_2026-11-10.md)）。
+- [ ] `darwin`での観測。**未観測のまま**（macOSの実行環境が無い。クロスコンパイルは通るが走らせられない）。**この一項目だけが残っている。**
 - [x] `l2b.claimed`を**既定の試行**で立てられるようにするか（**§4.34で閉じた：立てない。** 既定はchild経路で五条件の一つ目が成立しない。Claimは呼び手が`-build-catalog`一式を渡す行為） **呼び手が要るのはin-process経路（`-build-catalog`一式）だけで、`-rebuild-check`は§4.30が既定にした**（実測：`-build-catalog`のみで`claimed=true`・`-rebuild-check=false`で`false`。[記録](../evidence/TEI_GO_SELF_BUILD_L2B_DEFAULT_PREMISE_2026-11-09.md)）。残る問いは「何も渡さない試行」で立てるかであり、§4.29のcatalog決定が前提（§4.31）
 - [x] 宣言とplanの**build座標**（`outputKind`・`target`・`profile`）の照合（[#3652](https://github.com/hat47x/tei-platform/pull/3652)。childが三座標を一つずつ比べ、違えばartifactを書いた後にreportを出さずexit 1。[記録](../evidence/TEI_GO_SELF_BUILD_BUILD_COORDINATES_2026-11-09.md)）
 - [x] 宣言の他の欄のうち、planが同じ形で持つもの（`recipe`・`sources`・`dependencies`）の照合（[#3661](https://github.com/hat47x/tei-platform/pull/3661)。§4.17）

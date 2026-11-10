@@ -1358,6 +1358,18 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 
 全TEI最初の実Product Read #2586 HJ-09は**並行して最優先のまま**。External候補が得られても、実組織のCase C1 read、現在Principal Grant、Rule受理、Effect/Handoff L/R/H、SHO/SEIの正式受信まで昇格しない。上記外部Candidate→TEI Operation／組織Owner採用／Org Map実表示の新試験はNOT RUN。
 
+
+### 共有Harnessで製品間を移る際の組織Scope／権限の再資格化（2026-11-10、設計のみ）
+
+<!-- org-shared-harness-authority-plan-20261110 -->
+[組織意味設計：ORG-HS-01〜08](design/ORGANIZATION_RELATION_GOVERNANCE_MODEL_2026-10.md)に、他チャットの**製品共有Harness Session／Activity Contextの分離**を、既存§58 Record Policy・ORG-VTR Case切替・#2516 Construction Context/Consumer Disclosureへ接合した。SEI/SUI/TEI/CSW間で活動の目的、候補Selection、出典、未決、復帰位置は引き渡せるが、**Verified Principal/Issuer/Tenant、現行Grant、Policy epoch、Source実体/版、Recipientへの開示権、Operation Effect/Receiptは引き継がない**。Harness自体をTEIに内蔵せず、製品別UI/APIと既存Adapterを利用する。共有Session・選択済みCase・前Consumer成功は、実Provider Scope/Read/Count/ExportやCommitの許可ではない。
+
+**追加する最小検収**：HS-01移動先のRead拒否／HS-02組織異動後の旧Cache／HS-03 Privateの件数・図・診断漏えい／HS-04目的・受信先変更／HS-05 partial 0件の不存在誤認／HS-06 Issuer/Tenant越境／HS-07 Selection ABA・後着AI応答／HS-08失効中のCommit uncertain再試行。既存#1131/#1180/#2514を独立Expectedの正本として使用し、#1163で同Attemptを照合。成果を新しい全製品共通Session Store、Org Grant Engine、全Route共通Policyの追加要件にはしない。
+
+**順序とOwner**：#2586 order_entry.recent_orders の初回実Function→Provider→Consumer R0をP0最優先に維持。並行して公開合成C1をheadlessでCandidate→TEI read-only Operationへ引き渡す**試験準備**（#2386/#2516/#1124）。後続でCase C1実Provider/Scope、Product Consumer（#2506/#1656）、Current Grant・Effect（#1174/#2499）、ACK/Handoff（#1125/#1444）、Harness実Tool/送出・Log（#2509/#2515）をそれぞれ実証する。通常Org Data全体への秘密指定、全Session切替での一律再取得、旧送達済みCopyの消去保証はしない。
+
+**資格**：ORG-HSは設計／受入候補のみ。共有Harnessの実製品間連携、実Grant、Row Scope Enforcement、Egress、Owner受理、HS-01〜08試験はNOT RUN。既存M0、合成Org Policy、DSHのTool Read、別Operation実PostgreSQL成功をこの縦断のPASSとして集計しない。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
