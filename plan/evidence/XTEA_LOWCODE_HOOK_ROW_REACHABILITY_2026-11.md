@@ -103,3 +103,13 @@ go run ./cmd/tei validate -workspace examples/xtea-lowcode
 ## 位置付け
 
 参照実装の試験記録であり、製品の受入や本番適格性を示しません。検証と実行の食い違いという実装上の欠陥を直し、範囲の妥当性の規則を検証側一つに寄せた記録です。ホストが行集合を渡す経路と、二つの行経路の統合は未着手のまま残ります。
+
+## 後継（2026-11-10）
+
+この記録にある「`uses`を伴う行単位フックを`HOOK_SCOPE_ROW_USES_UNSUPPORTED`で拒否する」「二つの経路で`uses`の扱いが違う」という状態は、その後解消しました。
+
+- 行単位の`uses`を実行する経路（[確認記録](XTEA_LOWCODE_HOOK_ROW_USES_CALLS_2026-11.md)）を入れ、`RunRows`も`applyReachableRows`も`hook.RunRowCalls`を通します。
+- 宣言した能力は**1行ごとにその行の値で呼ばれます**。
+- `refuseRowScopeWithUses`は削除し、`HOOK_SCOPE_ROW_USES_UNSUPPORTED`は現在のコードに存在しません。
+
+本記録の観察（当時は経路ごとに扱いが違ったこと）は履歴として有効ですが、**現在の宣言規則として読まないでください**。
