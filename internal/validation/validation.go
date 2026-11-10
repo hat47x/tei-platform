@@ -59,6 +59,7 @@ func Validate(w ir.World) []Diagnostic {
 	out := validateWorkspaceIsNotEmpty(w)
 	out = append(out, validateApplicationPatterns(w)...)
 	out = append(out, validateApplicationPackages(w)...)
+	out = append(out, validatePackageConformance(w)...)
 	out = append(out, validateQueryResultMappings(w)...)
 	out = append(out, validateQueryInputs(w)...)
 	out = append(out, validateSemanticBusinessValidations(w)...)

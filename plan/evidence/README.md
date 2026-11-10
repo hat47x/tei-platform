@@ -107,6 +107,7 @@
 - [行範囲を到達可能な実行へ配線した確認](XTEA_LOWCODE_HOOK_ROW_SCOPE_WIRING_2026-11.md)（参照実装の試験記録。`RunReachable`の行ごと適用。行集合を供給する呼出し側は未実装）
 - [行範囲の宣言を通す修正の確認](XTEA_LOWCODE_HOOK_ROW_SCOPE_DECLARABLE_2026-11.md)（参照実装の試験記録。`row`が宣言できず死んだコードだった矛盾の修正。実行経路の配線は未実装）
 - [フック範囲の貫通試験の確認](XTEA_LOWCODE_HOOK_SCOPE_THROUGH_2026-11.md)（参照実装の試験記録。宣言→検証→実行を1本で通し、修正を戻すと落ちることを確認）
+- [パッケージ契約（適合試験・投影）の検査の確認](XTEA_LOWCODE_PACKAGE_CONFORMANCE_2026-11.md)（参照実装の試験記録。適合試験名と投影を検査。適合試験の実行は未実装）
 - [採番の永続CounterStoreの確認](XTEA_LOWCODE_NUMBERING_SQLITE_STORE_2026-11.md)（参照実装の試験記録。PostgreSQLは未実装）
 - [採番の2プロセス同時実行の確認](XTEA_LOWCODE_NUMBERING_PROCESS_RACE_2026-11.md)（参照実装の試験記録。PostgreSQLと多プロセス構成は未実装）
 - [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
@@ -331,6 +332,7 @@
 - [空回りする検査を1箇所に集約して可視化した](TEI_DOGFOODING_ROUND36_SCOPE_NONEMPTY_2026-11-09/README.md)（#3931。全スコープを計測し空は`plan/issue`のみと確認。`TestEveryCheckScopeIsNonEmpty`で0件を検出。私の初版ガードがディレクトリ件数を見て除外分岐が未実行だったことも記録）
 
 - [能力宣言に版付けの余地が無いことの実測](TEI_GO_SELF_BUILD_DECLARATION_VERSIONING_2026-11-10.md)（§7の「必要になった時点で決める」を検証。\ormatVersion\を足した宣言は\json: unknown field\で**拒否される**——版を名乗る手段が導入時点で使えない。D-1/D-2/D-3を比較し、D-2が最も安い理由を示すが**判断はしない**。 #2831）
+- [能力宣言に版を付けない（配るのはcatalogだから）](TEI_GO_SELF_BUILD_DECLARATION_VERSIONING_DECISION_2026-11-10.md)（先行記録が「版付けは必要になった時点では決められない」と実測したのを受け、未決を**「宣言を誰に配るか」**として決めた。**配るのはcatalogで、catalogは既に`formatVersion`を持ち未知の版を拒否する**（`unsupported build catalog format 2`）。宣言はツールと同じリポジトリで変わるので版を名指す相手がいない。実測：版を書かない宣言は通り、`formatVersion`を足した宣言は`json: unknown field`で拒否される。**宣言を配ることになったら配る前に版を足す**。これで§7の未チェックは`darwin`/`arm64`の1項目だけになった。SB-C0 §4.35 / #2831）
 - [設計者ループは動くが補助コマンドのhelpが誤っていた](TEI_DOGFOODING_ROUND37_DESIGNER_LOOP_2026-11-09/README.md)（#3943。`security.logout`追加→validate/inspect/traceで連鎖確認。誤りは正しく検出。`-qualification-requirements`がパスなのにhelpは「JSON」、スキーマも未広告。文言を修正）
 - [validate -hが70フラグを表示していた](TEI_DOGFOODING_ROUND38_VALIDATE_FLAG_NOISE_2026-11-09/README.md)（#3956。共有FlagSetのため標準-hが全フラグを列挙。allow-listは既にありhelpTextも絞っていたが、validate/worldはExitOnErrorで到達せず。-hを既存経路へ流し70→3）
 - [13分前に他者が同じ問題を直していた（重複実装の撤回）](TEI_DOGFOODING_ROUND39_DUPLICATE_HELP_FIX_2026-11-09/README.md)（#3956・#3943。`0b85c031a`が06:25に修正、私は06:38に重複提出。寄与ゼロを分離ビルドで確認し撤回。記録の虚偽2件も訂正）

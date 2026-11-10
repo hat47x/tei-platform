@@ -1549,6 +1549,47 @@ in-processを既定にするには、**entryがcatalogを自分で選ぶ**必要
 | 能力宣言の版付け | **未決のまま。** 第二のconsumerが現れた時点で決める |
 | `-strong`（§4.25のP-4） | **採らない。** §4.30が「catalogを名指しすれば最強の観測が既定で揃う」を実現したので、強さを選ぶ別flagは要らない。第二の強さの段が要るようになったら再考する |
 
+### 4.35 能力宣言に版を付けない（配るのはcatalogだから、2026-11-09）
+
+§4.33で足した能力宣言について、§7は「版付けは必要になった時点で決める」としていました。しかし**実測すると、必要になった時点では決められません**（[記録](../evidence/TEI_GO_SELF_BUILD_DECLARATION_VERSIONING_2026-11-10.md)）——宣言は`DisallowUnknownFields`で解析されるので、`formatVersion`を足した宣言は**版を名乗ろうとした瞬間に拒否**されます。
+
+本節は、その未決を**「宣言を誰に配るか」という問いとして決めます。**
+
+#### 測ったこと：版を持つべきなのは、配る側である
+
+| 対象 | 配るか | 版の扱い（実測） |
+| --- | --- | --- |
+| **catalog**（entryが読む） | **配る**。呼び手が名指しし、digestで固定する | `formatVersion`を持ち、**未知の版を拒否する**（`unsupported build catalog format 2`） |
+| **能力宣言**（ツールの入力） | **配らない**。ツールと同じリポジトリに置く | 版を持たない。キー集合に一致しない入力を拒否する |
+
+#### 決定
+
+**能力宣言に版を付けない。配るのはcatalogであり、catalogは既に版を持つ。**
+
+| 理由 | 内容 |
+| --- | --- |
+| 配る側が版を持つ | 版を必要とするのは「作った時と読む時が離れている」データである。catalogはその条件を満たし、宣言は満たさない |
+| 宣言はツールと同じ場所で変わる | ツールを上げるときに宣言も同じリポジトリで直す。版を名指す相手がいない |
+| **版を足すこと自体が拒否される** | 後から足すと、その時点で宣言を持つ全員にとって破壊的変更になる（実測） |
+
+**宣言を配ることになった場合は、配る前に`formatVersion`を足す（D-2）。** これは「後から決める」ではなく「**配る前に決める**」であり、判断の時期を「必要になった時点」から「配布の決断時」へ移す。
+
+#### 実測
+
+| 入力 | 結果 |
+| --- | --- |
+| 版を書かない宣言 | **成功**。catalogを生成 |
+| `formatVersion`をトップレベルに足した宣言 | **`declaration: json: unknown field "formatVersion"`** で拒否 |
+| `formatVersion: 2`のcatalog | **`refused: unsupported build catalog format 2`** |
+
+**配る側（catalog）は未知の版を拒否し、配らない側（宣言）は未知のキーを拒否する。** どちらも「分からない入力を成功として扱わない」という同じ原則の現れである。
+
+#### この節が言っていないこと
+
+- 宣言を**配らない**ことの妥当性は、§4.32の「製品の外のデータ」という決定に依拠する。**配布する製品になった場合は本節を覆す**
+- catalogの版を**上げる方法**（版番号の意味、移行手順）は決めていない
+- 誰が能力を宣言してよいか（権限）は範囲外のまま
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
@@ -1649,7 +1690,7 @@ in-processを既定にするには、**entryがcatalogを自分で選ぶ**必要
 - [x] 鎖の**Windows**での観測と、catalogのホスト間一致（§4.33。`TestSelfBuildEstablishesL2BEndToEnd`がWindowsのGoでPASSし、同じ宣言とbuilderから作ったcatalogの`catalogDigest`が`linux/amd64`と`windows/amd64`で一致した。観測は二ホストで、`darwin`・`arm64`は未観測。[記録](../evidence/TEI_GO_SELF_BUILD_CHAIN_WINDOWS_2026-11-10.md)）
 - [x] 宣言からClaimまでの鎖の**回帰試験**（§4.33。`cmd/tei`のエンドツーエンド試験がツールでcatalogを作り、**`artifactDigest`が実際に走るbuilderのバイトと一致すること**を確かめてから`l2b.claimed`を要求する。builderの解決はdigestで照合しないので、下流では気づけない）
 - [x] catalogを作る**ツール**の能力宣言の形式と実装（§4.33。`tools/reference-build-catalog-authoring`が能力宣言からcatalogを作り、**artifactのdigestは実ファイルから計算**する。宣言にdigestを書くことと`-root`の外を拒否する。宣言から`l2b.claimed=true`まで一本で通った。[記録](../evidence/TEI_GO_SELF_BUILD_CATALOG_AUTHORING_2026-11-09.md)）
-- [ ] 能力宣言の**版付け**。**実測すると「必要になった時点」に決められない**——`formatVersion`を足した宣言は`json: unknown field`で拒否され、版を名乗る手段が導入時点で使えない。宣言を配るなら今足すのが最も安い（D-2）。**判断には「宣言を誰に配るか」が要り、これは§4.32が範囲外とした問い**（[記録](../evidence/TEI_GO_SELF_BUILD_DECLARATION_VERSIONING_2026-11-10.md)）。**§4.34が未決のまま閉じ、覆す条件を「第二のconsumerが現れた時点」とした**ので、本項目はその条件を待つ
+- [x] 能力宣言の**版付け**（**§4.35で閉じた：版を付けない。** 配るのはcatalogで、catalogは既に`formatVersion`を持ち未知の版を拒否する。宣言はツールと同じ場所で変わるので版を名指す相手がいない。**宣言を配ることになったら、配る前に`formatVersion`を足す**） **実測すると「必要になった時点」に決められない**——`formatVersion`を足した宣言は`json: unknown field`で拒否され、版を名乗る手段が導入時点で使えない。宣言を配るなら今足すのが最も安い（D-2）。**判断には「宣言を誰に配るか」が要り、これは§4.32が範囲外とした問い**（[記録](../evidence/TEI_GO_SELF_BUILD_DECLARATION_VERSIONING_2026-11-10.md)）。**§4.34が未決のまま閉じ、覆す条件を「第二のconsumerが現れた時点」とした**ので、本項目はその条件を待つ
 - [x] D-1（catalogの`scope`拡張）を採るかどうかの契約判断（**§4.34で閉じた：採らない。** 外在consumerの前提を測れないまま変えない。発見性は`-h`とREADMEで確保した） （採る場合のみ、catalogの広告と実応答の一致を照合へ載せる）
 
 **A-1（`gobuilder`移動）は採らないため、影響範囲の洗い出しは終了条件から外した。** 29ファイルの内訳は[記録](../evidence/TEI_GO_INTERNAL_RULE_AND_BUILDER_MOVE_2026-11-07.md)として残す。I-1は「採らない」から「I-1aとして着手」へ改めた（§4.13）。`ParseFixtureCatalog`（fixture catalog）は`tools/`に残す。
