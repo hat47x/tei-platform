@@ -1,0 +1,12 @@
+persistence.Mapping (World side, 10 fields)
+  ID Database SemanticData Table Columns RelationStorage PrimaryKey
+  UniqueConstraints Indexes ForeignKeys
+
+PersistenceIndexEntry (index side, 4 fields)
+  Mapping Database SemanticData Table
+
+=> 6 fields dropped. Columns is the direct cause of #4001 (column mappings never
+   reach the graph). ID is kept under the name Mapping.
+
+control: realization.CustomGoBinding (2) -> BindingIndexEntry (4: +Adapter +Hook)
+=> nothing dropped.

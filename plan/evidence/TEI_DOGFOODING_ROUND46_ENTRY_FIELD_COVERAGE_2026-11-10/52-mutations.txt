@@ -1,0 +1,10 @@
+M1 add a field to persistence.Mapping
+   -> FAIL: Mapping.UndeclaredField neither appears in PersistenceIndexEntry
+            nor is listed as dropped
+M2 delete the Columns dropped row
+   -> FAIL: Mapping.Columns neither appears in PersistenceIndexEntry nor is
+            listed as dropped
+M3 delete the ID rename row
+   -> FAIL: Mapping.ID neither appears in PersistenceIndexEntry nor is listed
+            as dropped
+restored -> index/modelref/operations ok, vet and gofmt clean

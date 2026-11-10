@@ -1,0 +1,6 @@
+=== RUN   TestOnlyEffectFreeKindsAreUnattended
+--- PASS: TestOnlyEffectFreeKindsAreUnattended (0.00s)
+=== RUN   TestTheUnattendedCountMatchesTheOperations
+--- PASS: TestTheUnattendedCountMatchesTheOperations (0.00s)
+PASS
+ok  	tei/internal/operations	0.008s

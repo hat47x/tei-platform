@@ -1,0 +1,820 @@
+{
+  "kind": "tei-plugin-composition-research-validation-v0",
+  "date": "2026-10-09",
+  "status": "evaluation-pending",
+  "evidence_scope": "local exploratory reproduction; no merge, deployment, production adoption, semantic compatibility or user-value authority",
+  "environment": {
+    "host": "Windows / WSL Ubuntu, trusted local Git clones",
+    "container_user": "1000:1000",
+    "go": "go version go1.25.14 linux/amd64",
+    "image": "golang:1.25-bookworm",
+    "image_id": "sha256:3b4a11519ad929d1e1d261a12cff056f0c85b735253d7d861346b9c6f8b36437",
+    "node": "v20.20.2",
+    "go_env": {
+      "GOENV": "off",
+      "GOWORK": "off",
+      "GOFLAGS": "",
+      "GOTOOLCHAIN": "local"
+    }
+  },
+  "commands": {
+    "capability_focused": "go test -count=1 -json ./tools/reference-plugin-capability-contract",
+    "repository_health": "bash tools/repository-health-check.sh",
+    "composition_synthetic": "node --test reference/application-composition/e1-observe.test.mjs",
+    "composition_observe": "node <PR1020-checkout>/reference/application-composition/e1-observe.mjs <target-root>",
+    "ui_existing": "node --test reference/ui-customization/web-react/action-port.test.mjs",
+    "workspace_validate": "go run ./cmd/tei validate -workspace reference/workspace"
+  },
+  "capability": {
+    "head": "b2172847990bf9bea71971a2709fa02408e81543",
+    "pre_git_status": "",
+    "post_git_status": "",
+    "focused_exit": 0,
+    "focused_top_level_pass_count": 103,
+    "focused_test_names": [
+      "TestCapabilityConformanceRequiresAcceptedIssuerAuthority",
+      "TestCapabilityConformanceEvidenceCannotSelfAuthorize",
+      "TestCapabilityConformanceRejectsMissingIssuerAttestation",
+      "TestCapabilityConformanceRejectsStaleAuthorityEvidence",
+      "TestCapabilityAuthorityRefreshDoesNotChangeResolutionIdentity",
+      "TestCapabilityConformanceRejectsWrongContractAuthority",
+      "TestCapabilityConformanceRejectsConflictingIssuerAttestations",
+      "TestCapabilityContractResolutionRequiresDefinitionAuthority",
+      "TestUnauthorizedHigherCompatibleContractCannotPreemptAcceptedContract",
+      "TestAuthorizedHigherCompatibleContractCanAdvanceFreshResolution",
+      "TestContractAuthorityRotationDoesNotChangeContractMeaningIdentity",
+      "TestMostSpecificContractNamespaceAuthorityOwnsChildContract",
+      "TestStandardContractNamespaceCannotBeClaimedByThirdPartyPublication",
+      "TestConflictingContractNamespaceAuthoritiesFailClosed",
+      "TestLockedContractAuthorityIsRevalidatedSeparatelyFromLockReplay",
+      "TestExecutionProfileNormalizesPermissionOrdering",
+      "TestExecutionAuthorityBindsExactPermissionsWithoutCapabilityKind",
+      "TestExecutionAuthorityRejectsMissingAndExtraPermissions",
+      "TestExecutionProfileDriftChangesResolutionIdentityAndInvalidatesReplay",
+      "TestExecutionAuthorityCanAuthorizeZeroAmbientPermissions",
+      "TestExecutionAuthorityEvidenceRefreshDoesNotChangeCapabilityLock",
+      "TestExecutionProfileRejectsDuplicatePermission",
+      "TestLegacyCapabilityFingerprintNormalizesOrderingButTracksPayload",
+      "TestLegacyProjectionBindsToExactAuthoritativeCapabilityDeclaration",
+      "TestLegacyConformanceEvidenceDoesNotSurviveSourceDeclarationDrift",
+      "TestLegacyContractQueryCapabilityProjectsFromExistingPluginAuthority",
+      "TestLegacyBuiltinProjectionExposesMissingImplementationIdentity",
+      "TestLegacyRuntimeProvidersRemainAmbiguousAfterExactArtifactsAreSupplied",
+      "TestProjectedRuntimeProviderCannotSatisfyAuthoringSourceAdapterScope",
+      "TestLegacyProjectionDisappearsWhenAuthoritativeCapabilityDisappears",
+      "TestLegacyProjectionDoesNotMutateAuthoritativePluginDefinition",
+      "TestSourceAdapterContractDoesNotRequireCoreCapabilityKind",
+      "TestProviderSelfClaimWithoutConformanceEvidenceFailsClosed",
+      "TestRuntimeProviderCannotSatisfyAuthoringToolRequirement",
+      "TestAmbiguousProvidersRequireExplicitWiring",
+      "TestHigherCompatibleContractWithoutProviderFallsBackToCompleteSolution",
+      "TestCatalogOrderingDoesNotChangeResolutionIdentity",
+      "TestEvidenceRefreshDoesNotChangeResolutionIdentity",
+      "TestContractFingerprintMismatchFailsClosed",
+      "TestCapabilityResolutionLockPinsExactProviderAcrossCatalogGrowth",
+      "TestCapabilityResolutionLockRejectsContractAndArtifactDrift",
+      "TestCapabilityResolutionLockSeparatesReplayFromEvidenceRefresh",
+      "TestDuplicateLogicalProviderWithDifferentArtifactsFailsClosed",
+      "TestMalformedConformanceEvidenceFingerprintFailsClosed",
+      "TestConformanceEvidenceDoesNotSurviveArtifactReplacement",
+      "TestCapabilityResolutionLockRejectsWiringDrift",
+      "TestCapabilityResolutionLockRejectsInternallyContradictoryWiring",
+      "TestCapabilityResolutionReplayIgnoresMalformedCurrentEvidence",
+      "TestIncompleteProviderInOtherScopeDoesNotBlockValidResolution",
+      "TestRelevantProviderWithoutArtifactRemainsIneligibleNotGloballyInvalid",
+      "TestIncompleteAndExactDuplicateLogicalProviderStillFailsClosed",
+      "TestCapabilityContractRequiresExplicitUnknownSemantics",
+      "TestUnknownSemanticsDriftInvalidatesProviderConformance",
+      "TestProductionExecutionBridgeMatchesExistingHostTrustedAuthority",
+      "TestProductionExecutionBridgeMatchesRequiredProcessSandbox",
+      "TestProductionExecutionBridgeRejectsSandboxPreferredForEnforcedProfile",
+      "TestProductionExecutionBridgeRejectsAmbientExtraPermission",
+      "TestProductionExecutionBridgeRejectsLegacyCapabilityDeclarationDrift",
+      "TestProductionExecutionBridgeIgnoresUnrelatedPluginRuntime",
+      "TestProductionExecutionBridgeChangesWhenSelectedResourcePolicyChanges",
+      "TestGenericCapabilityBridgeInvokesExistingHostSandboxPath",
+      "TestGenericCapabilityBridgeDoesNotBypassMissingHostSandboxEnforcement",
+      "TestGenericCapabilityBridgeUsesExistingResourceBrokerAndSandboxMount",
+      "TestGenericCapabilityBridgeDoesNotBypassMissingResourceBroker",
+      "TestLegacyBuiltinProviderCanAcquireExactArtifactFromBuildArtifactLock",
+      "TestLegacyProviderBuildRejectsBuildPlanForDifferentAuthoritativeDefinition",
+      "TestProviderBuildRealizationDoesNotGrantConformance",
+      "TestBuildArtifactLockCanCoalesceDifferentLogicalProviders",
+      "TestBuildArtifactLockCanDescribeSplitProviderArtifactsButRuntimeLockStillCannot",
+      "TestProviderBuildRealizationSeparatesBuildProvenanceFromArtifactIdentity",
+      "TestProviderBuildRealizationReplayDetectsBuildPlanDrift",
+      "TestProviderBuildRealizationRejectsSourceDeclarationDrift",
+      "TestRuntimeCapabilityBindingUsesExistingPluginLockAuthority",
+      "TestRuntimeCapabilityBindingIgnoresUnrelatedPluginLockEntries",
+      "TestRuntimeCapabilityBindingRejectsProviderRemovalAndDrift",
+      "TestRuntimeCapabilityBindingRejectsWrongScope",
+      "TestLegacyRuntimeBindingRejectsProjectionNotDerivedFromLockedDefinition",
+      "TestRuntimeCapabilityBindingRejectsDuplicateEnvironmentLock",
+      "TestRuntimeCapabilityBindingSeparatesBuildPlanProvenanceFromRuntimeArtifactIdentity",
+      "TestRuntimeCapabilityBindingRejectsSplitProviderArtifactUntilRuntimeAuthorityCanRepresentIt",
+      "TestExistingTargetSpecificBindingOwnsRuntimeProviderSelection",
+      "TestTargetSpecificRuntimeSelectionRejectsGenericWiringAsSecondSelector",
+      "TestSelectedRuntimeCapabilityRejectsForgedInstanceProvider",
+      "TestSelectedRuntimeCapabilityRejectsTargetDatabaseMismatch",
+      "TestRuntimeCapabilitySelectionReplaysCurrentProductionBindingAuthority",
+      "TestRuntimeCapabilitySelectionRejectsCurrentBindingToDifferentExecutor",
+      "TestLegacyRuntimeSelectionReplayRequiresCurrentPluginAuthority",
+      "TestTargetPackagingPlanRepresentsCoalescingWithoutCollapsingProviders",
+      "TestTargetPackagingPlanRepresentsSplitPluginArtifacts",
+      "TestTargetPackagingPlanIsInputOrderIndependent",
+      "TestTargetPackagingPlanRejectsMixedTargets",
+      "TestTargetPackagingPlanRejectsOneLogicalProviderOnMultipleArtifacts",
+      "TestTargetPackagingPlanValidationRejectsStaleCountsAndNormalizesOrder",
+      "TestTargetPackagingPlanAllowsOneImplementationToSatisfyMultipleContracts",
+      "TestTargetPackagingPlanIsExplicitlyNonAuthoritative",
+      "TestTargetPackagingPlanReplayDetectsBuildProvenanceDrift",
+      "TestSameLogicalProviderCanUseDifferentArtifactsForDifferentTargets",
+      "TestTargetSpecificProvidersAreNotGuessedWithoutTargetContext",
+      "TestTargetSpecificProviderDoesNotFallbackAcrossTargets",
+      "TestTargetSpecificProviderRequiresEvidenceForExactTarget",
+      "TestCapabilityResolutionLockRejectsTargetDrift",
+      "TestSameLogicalProviderDuplicateWithinOneTargetFailsClosed",
+      "TestCapabilityResolutionLockRejectsNonCanonicalTargetText"
+    ],
+    "focused_raw_json_sha256": "86b9b6e9839583784dee5af7fa692c355deb9691376db46d6c35267fab3fd990",
+    "health_exit": 0,
+    "health_log": {
+      "sha256": "0d093f7cae95ff066799bf4799d26f4a6c81f800d4f2ad3ae0201398219d02ff",
+      "text": "==> gofmt -l . is empty\n==> go vet ./...\ngo: downloading github.com/lib/pq v1.12.3\n==> go test -count=1 ./...\nok  \ttei/cmd/tei\t0.361s\n?   \ttei/examples/process-plugin\t[no test files]\n?   \ttei/examples/runtime-reattach\t[no test files]\nok  \ttei/internal/application\t0.006s\nok  \ttei/internal/application/release\t0.013s\nok  \ttei/internal/consumerimpact\t0.014s\n?   \ttei/internal/core\t[no test files]\nok  \ttei/internal/database\t0.066s\nok  \ttei/internal/database/externalqueryevidence\t0.014s\nok  \ttei/internal/database/migration\t0.020s\nok  \ttei/internal/database/persistence\t0.051s\n?   \ttei/internal/database/physical\t[no test files]\nok  \ttei/internal/database/plan\t0.003s\nok  \ttei/internal/database/provider\t0.015s\n?   \ttei/internal/database/providers/oracle\t[no test files]\nok  \ttei/internal/database/providers/postgres\t0.056s\nok  \ttei/internal/database/realization\t0.040s\nok  \ttei/internal/database/reconcile\t0.056s\nok  \ttei/internal/database/release\t0.023s\nok  \ttei/internal/database/schemadiff\t0.036s\nok  \ttei/internal/dependency\t0.036s\n?   \ttei/internal/deployment\t[no test files]\nok  \ttei/internal/deployment/durable\t0.116s\nok  \ttei/internal/deployment/evidence\t0.019s\nok  \ttei/internal/deployment/execution\t0.012s\n?   \ttei/internal/deployment/executor\t[no test files]\nok  \ttei/internal/deployment/observation\t0.031s\nok  \ttei/internal/deployment/routing\t0.008s\nok  \ttei/internal/driver\t0.733s\nok  \ttei/internal/driver/queryresult\t0.006s\nok  \ttei/internal/driver/queryruntime/oracle\t0.004s\nok  \ttei/internal/driver/queryruntime/postgres\t0.007s\nok  \ttei/internal/driver/queryruntime/sql\t0.005s\n?   \ttei/internal/environment\t[no test files]\nok  \ttei/internal/index\t0.017s\nok  \ttei/internal/ir\t0.015s\nok  \ttei/internal/knowledgecontext\t0.015s\n?   \ttei/internal/permission\t[no test files]\nok  \ttei/internal/plugin\t0.018s\nok  \ttei/internal/plugin/runtime\t0.381s\nok  \ttei/internal/query\t0.019s\n?   \ttei/internal/query/analyzer\t[no test files]\nok  \ttei/internal/realization\t0.038s\nok  \ttei/internal/releasegraph\t0.050s\nok  \ttei/internal/releaseplan\t0.034s\nok  \ttei/internal/resource\t0.034s\nok  \ttei/internal/security/legacyauth\t0.065s\nok  \ttei/internal/security/legacyauthorization\t0.094s\nok  \ttei/internal/semantic\t0.015s\nok  \ttei/internal/semantic/capabilityinvoke\t0.150s\nok  \ttei/internal/semantic/validationeval\t0.137s\nok  \ttei/internal/sourceindex\t0.080s\n?   \ttei/internal/stdlib\t[no test files]\n?   \ttei/internal/subject\t[no test files]\nok  \ttei/internal/syntax\t0.018s\nok  \ttei/internal/validation\t0.160s\nok  \ttei/internal/workbench/database\t0.045s\nok  \ttei/internal/workspace\t1.585s\nok  \ttei/internal/xeadsource\t0.033s\nok  \ttei/tools/internal/changeanalysis\t2.244s\nok  \ttei/tools/internal/repositoryevidence\t0.062s\n?   \ttei/tools/internal/semanticevidence\t[no test files]\nok  \ttei/tools/reference-business-procedure-check\t6.193s\n?   \ttei/tools/reference-deployment-attempt\t[no test files]\n?   \ttei/tools/reference-driver-postgres-query\t[no test files]\nok  \ttei/tools/reference-durable-run-golden\t0.073s\nok  \ttei/tools/reference-external-query-evidence\t0.012s\nok  \ttei/tools/reference-first-web-target\t0.544s\nok  \ttei/tools/reference-first-web-target-architecture-evidence\t0.032s\nok  \ttei/tools/reference-first-web-target-evidence-audit\t0.054s\nok  \ttei/tools/reference-first-web-target-gate-c-readiness-audit\t0.089s\nok  \ttei/tools/reference-first-web-target-r7a-handoff\t0.021s\nok  \ttei/tools/reference-first-web-target-r7b-intake\t0.045s\nok  \ttei/tools/reference-first-web-target-r7b-qualification-receipt-audit\t0.006s\nok  \ttei/tools/reference-first-web-target-r7b-replay-plan\t0.028s\nok  \ttei/tools/reference-first-web-target-visual-evidence-audit\t0.069s\nok  \ttei/tools/reference-first-web-target-visual-replay\t0.078s\nok  \ttei/tools/reference-gate-b-final-evidence\t1.632s\nok  \ttei/tools/reference-gate-b-readiness-artifact-audit\t0.251s\nok  \ttei/tools/reference-gate-b-repository-evidence\t0.033s\nok  \ttei/tools/reference-generated-artifact-evidence\t0.039s\nok  \ttei/tools/reference-golden\t0.431s\n?   \ttei/tools/reference-lease-supervision\t[no test files]\nok  \ttei/tools/reference-plugin-capability-contract\t0.293s\n?   \ttei/tools/reference-plugin-self-build\t[no test files]\nok  \ttei/tools/reference-postgres-header-detail-runtime\t0.051s\n?   \ttei/tools/reference-postgres-integration\t[no test files]\n?   \ttei/tools/reference-postgres-migration-rendering\t[no test files]\n?   \ttei/tools/reference-postgres-query-runtime\t[no test files]\n?   \ttei/tools/reference-process-plugin\t[no test files]\n?   \ttei/tools/reference-resource\t[no test files]\nok  \ttei/tools/reference-semantic-extension-catalog\t0.533s\nok  \ttei/tools/reference-semantic-extension-catalog/acyclicgraph\t0.021s\nok  \ttei/tools/reference-shared-acceptance\t19.482s\nok  \ttei/tools/reference-sui-adoption\t0.015s\n?   \ttei/tools/reference-sui-adoption/hierarchy\t[no test files]\n?   \ttei/tools/reference-supervisor-takeover\t[no test files]\nok  \ttei/tools/reference-xead-source-inspect\t0.009s\nok  \ttei/tools/repository-plan-check\t0.222s\nok  \ttei/tools/sei-resume-reference\t0.009s\n==> tei validate -workspace reference/workspace\n\nPASS  gofmt -l . is empty\nPASS  go vet ./...\nPASS  go test -count=1 ./...\nPASS  tei validate -workspace reference/workspace\n"
+    }
+  },
+  "composition": {
+    "original_head": "ccc3a8c70209969bd4ff07375189ad0a365d770d",
+    "pre_git_status": "",
+    "post_git_status": "",
+    "synthetic_exit": 0,
+    "synthetic_log": {
+      "sha256": "e818fed0eb4cc67e28ba3633ec0c63536b8c551c4b92c6fb3db4c69c6018a3d1",
+      "text": "TAP version 13\n# Subtest: the E1 probe catalog identifies two distinct consumers\nok 1 - the E1 probe catalog identifies two distinct consumers\n  ---\n  duration_ms: 2.056204\n  ...\n# Subtest: observes only an actual literal in an existing source\nok 2 - observes only an actual literal in an existing source\n  ---\n  duration_ms: 36.957409\n  ...\n# Subtest: missing or changed source cannot be silently accepted\nok 3 - missing or changed source cannot be silently accepted\n  ---\n  duration_ms: 15.616505\n  ...\n# Subtest: refuses traversal and a symlink pointing outside the root\nok 4 - refuses traversal and a symlink pointing outside the root\n  ---\n  duration_ms: 22.758798\n  ...\n1..4\n# tests 4\n# suites 0\n# pass 4\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 268.860859\n"
+    },
+    "observed_pr_sources": {
+      "kind": "tei-application-composition-e1-source-observation-v0",
+      "observations": [
+        {
+          "id": "order.application",
+          "group": "order_entry",
+          "path": "reference/workspace/applications/order-entry/application.tei",
+          "status": "observed",
+          "reason": "literal-present",
+          "sha256": "d9152277abbeb0fdc1ea23e5d54084b8c2ef1ebb5e45e3d32b2340fe04eff71a"
+        },
+        {
+          "id": "order.semantic-reference",
+          "group": "order_entry",
+          "path": "reference/workspace/applications/order-entry/application.tei",
+          "status": "observed",
+          "reason": "literal-present",
+          "sha256": "d9152277abbeb0fdc1ea23e5d54084b8c2ef1ebb5e45e3d32b2340fe04eff71a"
+        },
+        {
+          "id": "order.database-contract",
+          "group": "order_entry",
+          "path": "reference/workspace/applications/order-entry/application.tei",
+          "status": "observed",
+          "reason": "literal-present",
+          "sha256": "d9152277abbeb0fdc1ea23e5d54084b8c2ef1ebb5e45e3d32b2340fe04eff71a"
+        },
+        {
+          "id": "order.command-pattern",
+          "group": "order_entry",
+          "path": "reference/workspace/applications/order-entry/patterns/submit-order.tei",
+          "status": "observed",
+          "reason": "literal-present",
+          "sha256": "64ff7cb75088e7a45a338ce3fb6fa0b68106f2ef992fed5e8e7186434f3b6abe"
+        },
+        {
+          "id": "order.dev-binding",
+          "group": "order_entry",
+          "path": "reference/workspace/environments/development/environment.tei",
+          "status": "observed",
+          "reason": "literal-present",
+          "sha256": "a98973255180395d611b670aac3eef36d28ca0a7c177b4bc3d287bf5ef2646a3"
+        },
+        {
+          "id": "order.provider-bundle",
+          "group": "order_entry",
+          "path": "reference/workspace/environments/development/environment.tei",
+          "status": "observed",
+          "reason": "literal-present",
+          "sha256": "a98973255180395d611b670aac3eef36d28ca0a7c177b4bc3d287bf5ef2646a3"
+        },
+        {
+          "id": "order.plugin-lock-entry",
+          "group": "order_entry",
+          "path": "reference/workspace/.tei/plugin-lock.json",
+          "status": "observed",
+          "reason": "literal-present",
+          "sha256": "0e63bd60ea50999de79858cdf340bc00e8c1ffb95c32620d01349adc244fe3fa"
+        },
+        {
+          "id": "order.web-endpoint",
+          "group": "order_entry",
+          "path": "tools/reference-first-web-target/server.go",
+          "status": "observed",
+          "reason": "literal-present",
+          "sha256": "c5752c9bb090c78d6695cad507eb800e11c9c422c894640b28f5de7bbedcd6c0"
+        },
+        {
+          "id": "order.ui-adapter",
+          "group": "order_entry",
+          "path": "reference/ui-customization/web-react/order-entry-example.mjs",
+          "status": "observed",
+          "reason": "literal-present",
+          "sha256": "e01a999420531888f78b64945b8ae2b3a6825c7b3d085e0bc97e9a67afbf726d"
+        },
+        {
+          "id": "order.project-ui-extension",
+          "group": "order_entry",
+          "path": "reference/ui-customization/web-react/project-extension.mjs",
+          "status": "observed",
+          "reason": "literal-present",
+          "sha256": "d26a50d475231f43f9257330dba4802837d639609e923a7ad03d45d30673a371"
+        },
+        {
+          "id": "sui.workspace-scope",
+          "group": "sui_stage0",
+          "path": "reference/sui-adoption/workspace/tei.workspace.yaml",
+          "status": "observed",
+          "reason": "literal-present",
+          "sha256": "2296ad618620a6bad82dab0c5239d6b401777a66daca4bfaeffb7aa017323721"
+        },
+        {
+          "id": "sui.semantic-definition",
+          "group": "sui_stage0",
+          "path": "reference/sui-adoption/workspace/semantic/sui/island.tei",
+          "status": "observed",
+          "reason": "literal-present",
+          "sha256": "786fd986daf1b22d34f02854d73246703ebd74bdd07e9d82ad18e450f9878f26"
+        },
+        {
+          "id": "sui.semantic-relation",
+          "group": "sui_stage0",
+          "path": "reference/sui-adoption/workspace/semantic/sui/island.tei",
+          "status": "observed",
+          "reason": "literal-present",
+          "sha256": "786fd986daf1b22d34f02854d73246703ebd74bdd07e9d82ad18e450f9878f26"
+        },
+        {
+          "id": "sui.fixture-root",
+          "group": "sui_stage0",
+          "path": "reference/sui-adoption/M1-root.valid.json",
+          "status": "observed",
+          "reason": "literal-present",
+          "sha256": "f3f76f680313d34f56c45ec52b50b6aa357d970cb03fcb3c52b57111444dea0b"
+        }
+      ]
+    },
+    "original_health_exit": 1,
+    "original_health_log": {
+      "sha256": "ed7d3ee32880d79ca7cc0396834ba166c8d2bcc32edb11fbba70775b9c2f0da6",
+      "text": "==> gofmt -l . is empty\n==> go vet ./...\ngo: downloading github.com/lib/pq v1.12.3\n==> go test -count=1 ./...\nok  \ttei/cmd/tei\t0.348s\n?   \ttei/examples/process-plugin\t[no test files]\n?   \ttei/examples/runtime-reattach\t[no test files]\nok  \ttei/internal/application\t0.006s\nok  \ttei/internal/application/release\t0.004s\nok  \ttei/internal/consumerimpact\t0.040s\n?   \ttei/internal/core\t[no test files]\nok  \ttei/internal/database\t0.005s\nok  \ttei/internal/database/externalqueryevidence\t0.009s\nok  \ttei/internal/database/migration\t0.006s\nok  \ttei/internal/database/persistence\t0.045s\n?   \ttei/internal/database/physical\t[no test files]\nok  \ttei/internal/database/plan\t0.013s\nok  \ttei/internal/database/provider\t0.004s\n?   \ttei/internal/database/providers/oracle\t[no test files]\nok  \ttei/internal/database/providers/postgres\t0.012s\nok  \ttei/internal/database/realization\t0.007s\nok  \ttei/internal/database/reconcile\t0.020s\nok  \ttei/internal/database/release\t0.036s\nok  \ttei/internal/database/schemadiff\t0.022s\nok  \ttei/internal/dependency\t0.005s\n?   \ttei/internal/deployment\t[no test files]\nok  \ttei/internal/deployment/durable\t0.124s\nok  \ttei/internal/deployment/evidence\t0.004s\nok  \ttei/internal/deployment/execution\t0.026s\n?   \ttei/internal/deployment/executor\t[no test files]\nok  \ttei/internal/deployment/observation\t0.020s\nok  \ttei/internal/deployment/routing\t0.004s\nok  \ttei/internal/driver\t0.292s\nok  \ttei/internal/driver/queryresult\t0.006s\nok  \ttei/internal/driver/queryruntime/oracle\t0.004s\nok  \ttei/internal/driver/queryruntime/postgres\t0.005s\nok  \ttei/internal/driver/queryruntime/sql\t0.020s\n?   \ttei/internal/environment\t[no test files]\nok  \ttei/internal/index\t0.005s\nok  \ttei/internal/ir\t0.020s\nok  \ttei/internal/knowledgecontext\t0.017s\n?   \ttei/internal/permission\t[no test files]\nok  \ttei/internal/plugin\t0.067s\nok  \ttei/internal/plugin/implementation\t0.053s\n?   \ttei/internal/plugin/implementation/builtin\t[no test files]\nok  \ttei/internal/plugin/runtime\t0.357s\nok  \ttei/internal/query\t0.006s\n?   \ttei/internal/query/analyzer\t[no test files]\nok  \ttei/internal/realization\t0.006s\nok  \ttei/internal/releasegraph\t0.005s\nok  \ttei/internal/releaseplan\t0.014s\nok  \ttei/internal/resource\t0.011s\nok  \ttei/internal/security/legacyauth\t0.064s\nok  \ttei/internal/security/legacyauthorization\t0.028s\nok  \ttei/internal/semantic\t0.019s\nok  \ttei/internal/semantic/capabilityinvoke\t0.028s\nok  \ttei/internal/semantic/validationeval\t0.042s\nok  \ttei/internal/sourceindex\t0.004s\n?   \ttei/internal/stdlib\t[no test files]\n?   \ttei/internal/subject\t[no test files]\nok  \ttei/internal/syntax\t0.023s\nok  \ttei/internal/validation\t0.114s\nok  \ttei/internal/workbench/database\t0.008s\nok  \ttei/internal/workspace\t0.894s\nok  \ttei/internal/xeadsource\t0.050s\nok  \ttei/tools/internal/changeanalysis\t2.237s\nok  \ttei/tools/internal/repositoryevidence\t0.074s\n?   \ttei/tools/internal/semanticevidence\t[no test files]\nok  \ttei/tools/reference-business-procedure-check\t3.765s\n?   \ttei/tools/reference-deployment-attempt\t[no test files]\n?   \ttei/tools/reference-driver-postgres-query\t[no test files]\nok  \ttei/tools/reference-durable-run-golden\t0.034s\nok  \ttei/tools/reference-external-query-evidence\t0.015s\nok  \ttei/tools/reference-first-web-target\t0.235s\nok  \ttei/tools/reference-first-web-target-architecture-evidence\t0.008s\nok  \ttei/tools/reference-first-web-target-evidence-audit\t0.044s\nok  \ttei/tools/reference-first-web-target-gate-c-readiness-audit\t0.023s\nok  \ttei/tools/reference-first-web-target-r7a-handoff\t0.007s\nok  \ttei/tools/reference-first-web-target-r7b-intake\t0.038s\nok  \ttei/tools/reference-first-web-target-r7b-qualification-receipt-audit\t0.017s\nok  \ttei/tools/reference-first-web-target-r7b-replay-plan\t0.019s\nok  \ttei/tools/reference-first-web-target-visual-evidence-audit\t0.031s\nok  \ttei/tools/reference-first-web-target-visual-replay\t0.061s\nok  \ttei/tools/reference-gate-b-final-evidence\t0.472s\nok  \ttei/tools/reference-gate-b-readiness-artifact-audit\t0.085s\nok  \ttei/tools/reference-gate-b-repository-evidence\t0.011s\nok  \ttei/tools/reference-generated-artifact-evidence\t0.004s\nok  \ttei/tools/reference-golden\t0.052s\n?   \ttei/tools/reference-lease-supervision\t[no test files]\nok  \ttei/tools/reference-native-plugin-builder\t0.009s\nok  \ttei/tools/reference-plugin-capability-contract\t0.012s\nok  \ttei/tools/reference-plugin-package-builder\t0.012s\n?   \ttei/tools/reference-plugin-self-build\t[no test files]\nok  \ttei/tools/reference-postgres-header-detail-runtime\t0.008s\n?   \ttei/tools/reference-postgres-integration\t[no test files]\n?   \ttei/tools/reference-postgres-migration-rendering\t[no test files]\n?   \ttei/tools/reference-postgres-query-runtime\t[no test files]\n?   \ttei/tools/reference-process-plugin\t[no test files]\n?   \ttei/tools/reference-resource\t[no test files]\nok  \ttei/tools/reference-semantic-extension-catalog\t0.251s\nok  \ttei/tools/reference-semantic-extension-catalog/acyclicgraph\t0.005s\nok  \ttei/tools/reference-shared-acceptance\t14.621s\nok  \ttei/tools/reference-sui-adoption\t0.032s\n?   \ttei/tools/reference-sui-adoption/hierarchy\t[no test files]\n?   \ttei/tools/reference-supervisor-takeover\t[no test files]\nok  \ttei/tools/reference-xead-source-adapter\t0.022s\nok  \ttei/tools/reference-xead-source-inspect\t0.018s\nok  \ttei/tools/repository-architecture-check\t0.023s\nok  \ttei/tools/repository-dependency-report\t0.052s\n--- FAIL: TestMarkdownHasNoEscapedBackticks (0.04s)\n    plancheck_test.go:279: バッククォートがバックスラッシュでescapeされています（heredocのescape事故の疑い）: plan/design/PROJECT_PLUGIN_COMPOSITION_DESIGN.md:77\n    plancheck_test.go:279: バッククォートがバックスラッシュでescapeされています（heredocのescape事故の疑い）: reference/application-composition/requirements-prompt.md:16\nFAIL\nFAIL\ttei/tools/repository-plan-check\t0.170s\nok  \ttei/tools/sei-resume-reference\t0.007s\nFAIL\n==> tei validate -workspace reference/workspace\n\nPASS  gofmt -l . is empty\nPASS  go vet ./...\nPASS  tei validate -workspace reference/workspace\nFAIL  go test -count=1 ./...\n"
+    },
+    "local_corrected_head": "7ccbbb8e53d9f52abba385d04925e66c7758c65a",
+    "correction": "Remove unintended escaped inline backticks in two Markdown files; no JavaScript or Go change",
+    "correction_published": false,
+    "fixed_pre_git_status": "",
+    "fixed_post_git_status": "",
+    "fixed_health_exit": 0,
+    "fixed_health_log": {
+      "sha256": "00a5b40b5a9e7788f4823c4645536fd6139469d5f3e0478f5bdd63b65e7ef450",
+      "text": "==> gofmt -l . is empty\n==> go vet ./...\ngo: downloading github.com/lib/pq v1.12.3\n==> go test -count=1 ./...\nok  \ttei/cmd/tei\t0.443s\n?   \ttei/examples/process-plugin\t[no test files]\n?   \ttei/examples/runtime-reattach\t[no test files]\nok  \ttei/internal/application\t0.006s\nok  \ttei/internal/application/release\t0.007s\nok  \ttei/internal/consumerimpact\t0.033s\n?   \ttei/internal/core\t[no test files]\nok  \ttei/internal/database\t0.020s\nok  \ttei/internal/database/externalqueryevidence\t0.039s\nok  \ttei/internal/database/migration\t0.030s\nok  \ttei/internal/database/persistence\t0.037s\n?   \ttei/internal/database/physical\t[no test files]\nok  \ttei/internal/database/plan\t0.007s\nok  \ttei/internal/database/provider\t0.016s\n?   \ttei/internal/database/providers/oracle\t[no test files]\nok  \ttei/internal/database/providers/postgres\t0.022s\nok  \ttei/internal/database/realization\t0.009s\nok  \ttei/internal/database/reconcile\t0.007s\nok  \ttei/internal/database/release\t0.004s\nok  \ttei/internal/database/schemadiff\t0.040s\nok  \ttei/internal/dependency\t0.021s\n?   \ttei/internal/deployment\t[no test files]\nok  \ttei/internal/deployment/durable\t0.435s\nok  \ttei/internal/deployment/evidence\t0.008s\nok  \ttei/internal/deployment/execution\t0.044s\n?   \ttei/internal/deployment/executor\t[no test files]\nok  \ttei/internal/deployment/observation\t0.062s\nok  \ttei/internal/deployment/routing\t0.017s\nok  \ttei/internal/driver\t0.341s\nok  \ttei/internal/driver/queryresult\t0.006s\nok  \ttei/internal/driver/queryruntime/oracle\t0.021s\nok  \ttei/internal/driver/queryruntime/postgres\t0.008s\nok  \ttei/internal/driver/queryruntime/sql\t0.014s\n?   \ttei/internal/environment\t[no test files]\nok  \ttei/internal/index\t0.027s\nok  \ttei/internal/ir\t0.008s\nok  \ttei/internal/knowledgecontext\t0.021s\n?   \ttei/internal/permission\t[no test files]\nok  \ttei/internal/plugin\t0.022s\nok  \ttei/internal/plugin/implementation\t0.043s\n?   \ttei/internal/plugin/implementation/builtin\t[no test files]\nok  \ttei/internal/plugin/runtime\t0.301s\nok  \ttei/internal/query\t0.013s\n?   \ttei/internal/query/analyzer\t[no test files]\nok  \ttei/internal/realization\t0.006s\nok  \ttei/internal/releasegraph\t0.025s\nok  \ttei/internal/releaseplan\t0.032s\nok  \ttei/internal/resource\t0.007s\nok  \ttei/internal/security/legacyauth\t0.118s\nok  \ttei/internal/security/legacyauthorization\t0.124s\nok  \ttei/internal/semantic\t0.006s\nok  \ttei/internal/semantic/capabilityinvoke\t0.141s\nok  \ttei/internal/semantic/validationeval\t0.074s\nok  \ttei/internal/sourceindex\t0.022s\n?   \ttei/internal/stdlib\t[no test files]\n?   \ttei/internal/subject\t[no test files]\nok  \ttei/internal/syntax\t0.043s\nok  \ttei/internal/validation\t0.097s\nok  \ttei/internal/workbench/database\t0.049s\nok  \ttei/internal/workspace\t1.631s\nok  \ttei/internal/xeadsource\t0.051s\nok  \ttei/tools/internal/changeanalysis\t3.493s\nok  \ttei/tools/internal/repositoryevidence\t0.030s\n?   \ttei/tools/internal/semanticevidence\t[no test files]\nok  \ttei/tools/reference-business-procedure-check\t5.090s\n?   \ttei/tools/reference-deployment-attempt\t[no test files]\n?   \ttei/tools/reference-driver-postgres-query\t[no test files]\nok  \ttei/tools/reference-durable-run-golden\t0.020s\nok  \ttei/tools/reference-external-query-evidence\t0.027s\nok  \ttei/tools/reference-first-web-target\t0.226s\nok  \ttei/tools/reference-first-web-target-architecture-evidence\t0.016s\nok  \ttei/tools/reference-first-web-target-evidence-audit\t0.085s\nok  \ttei/tools/reference-first-web-target-gate-c-readiness-audit\t0.081s\nok  \ttei/tools/reference-first-web-target-r7a-handoff\t0.023s\nok  \ttei/tools/reference-first-web-target-r7b-intake\t0.043s\nok  \ttei/tools/reference-first-web-target-r7b-qualification-receipt-audit\t0.045s\nok  \ttei/tools/reference-first-web-target-r7b-replay-plan\t0.026s\nok  \ttei/tools/reference-first-web-target-visual-evidence-audit\t0.074s\nok  \ttei/tools/reference-first-web-target-visual-replay\t0.038s\nok  \ttei/tools/reference-gate-b-final-evidence\t0.691s\nok  \ttei/tools/reference-gate-b-readiness-artifact-audit\t0.061s\nok  \ttei/tools/reference-gate-b-repository-evidence\t0.010s\nok  \ttei/tools/reference-generated-artifact-evidence\t0.009s\nok  \ttei/tools/reference-golden\t0.135s\n?   \ttei/tools/reference-lease-supervision\t[no test files]\nok  \ttei/tools/reference-native-plugin-builder\t0.018s\nok  \ttei/tools/reference-plugin-capability-contract\t0.049s\nok  \ttei/tools/reference-plugin-package-builder\t0.033s\n?   \ttei/tools/reference-plugin-self-build\t[no test files]\nok  \ttei/tools/reference-postgres-header-detail-runtime\t0.008s\n?   \ttei/tools/reference-postgres-integration\t[no test files]\n?   \ttei/tools/reference-postgres-migration-rendering\t[no test files]\n?   \ttei/tools/reference-postgres-query-runtime\t[no test files]\n?   \ttei/tools/reference-process-plugin\t[no test files]\n?   \ttei/tools/reference-resource\t[no test files]\nok  \ttei/tools/reference-semantic-extension-catalog\t0.298s\nok  \ttei/tools/reference-semantic-extension-catalog/acyclicgraph\t0.004s\nok  \ttei/tools/reference-shared-acceptance\t21.890s\nok  \ttei/tools/reference-sui-adoption\t0.014s\n?   \ttei/tools/reference-sui-adoption/hierarchy\t[no test files]\n?   \ttei/tools/reference-supervisor-takeover\t[no test files]\nok  \ttei/tools/reference-xead-source-adapter\t0.021s\nok  \ttei/tools/reference-xead-source-inspect\t0.018s\nok  \ttei/tools/repository-architecture-check\t0.121s\nok  \ttei/tools/repository-dependency-report\t0.126s\nok  \ttei/tools/repository-plan-check\t0.612s\nok  \ttei/tools/sei-resume-reference\t0.010s\n==> tei validate -workspace reference/workspace\n\nPASS  gofmt -l . is empty\nPASS  go vet ./...\nPASS  go test -count=1 ./...\nPASS  tei validate -workspace reference/workspace\n"
+    }
+  },
+  "e2": {
+    "variants": {
+      "baseline": {
+        "source_commit": "fbcf4b8fc02e205ec624cd68a39b6c642c4d34b9",
+        "intentional_patch": "",
+        "git_status": "",
+        "observation_exit": 0,
+        "observations": [
+          {
+            "id": "order.application",
+            "group": "order_entry",
+            "path": "reference/workspace/applications/order-entry/application.tei",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "42e74678bc22bbbe8f85333f96f8c83859f0e144b2d3dfc68c555c9dca981e5f"
+          },
+          {
+            "id": "order.semantic-reference",
+            "group": "order_entry",
+            "path": "reference/workspace/applications/order-entry/application.tei",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "42e74678bc22bbbe8f85333f96f8c83859f0e144b2d3dfc68c555c9dca981e5f"
+          },
+          {
+            "id": "order.database-contract",
+            "group": "order_entry",
+            "path": "reference/workspace/applications/order-entry/application.tei",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "42e74678bc22bbbe8f85333f96f8c83859f0e144b2d3dfc68c555c9dca981e5f"
+          },
+          {
+            "id": "order.command-pattern",
+            "group": "order_entry",
+            "path": "reference/workspace/applications/order-entry/patterns/submit-order.tei",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "64ff7cb75088e7a45a338ce3fb6fa0b68106f2ef992fed5e8e7186434f3b6abe"
+          },
+          {
+            "id": "order.dev-binding",
+            "group": "order_entry",
+            "path": "reference/workspace/environments/development/environment.tei",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "a98973255180395d611b670aac3eef36d28ca0a7c177b4bc3d287bf5ef2646a3"
+          },
+          {
+            "id": "order.provider-bundle",
+            "group": "order_entry",
+            "path": "reference/workspace/environments/development/environment.tei",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "a98973255180395d611b670aac3eef36d28ca0a7c177b4bc3d287bf5ef2646a3"
+          },
+          {
+            "id": "order.plugin-lock-entry",
+            "group": "order_entry",
+            "path": "reference/workspace/.tei/plugin-lock.json",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "0e63bd60ea50999de79858cdf340bc00e8c1ffb95c32620d01349adc244fe3fa"
+          },
+          {
+            "id": "order.web-endpoint",
+            "group": "order_entry",
+            "path": "tools/reference-first-web-target/server.go",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "c5752c9bb090c78d6695cad507eb800e11c9c422c894640b28f5de7bbedcd6c0"
+          },
+          {
+            "id": "order.ui-adapter",
+            "group": "order_entry",
+            "path": "reference/ui-customization/web-react/order-entry-example.mjs",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "e01a999420531888f78b64945b8ae2b3a6825c7b3d085e0bc97e9a67afbf726d"
+          },
+          {
+            "id": "order.project-ui-extension",
+            "group": "order_entry",
+            "path": "reference/ui-customization/web-react/project-extension.mjs",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "d26a50d475231f43f9257330dba4802837d639609e923a7ad03d45d30673a371"
+          },
+          {
+            "id": "sui.workspace-scope",
+            "group": "sui_stage0",
+            "path": "reference/sui-adoption/workspace/tei.workspace.yaml",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "2296ad618620a6bad82dab0c5239d6b401777a66daca4bfaeffb7aa017323721"
+          },
+          {
+            "id": "sui.semantic-definition",
+            "group": "sui_stage0",
+            "path": "reference/sui-adoption/workspace/semantic/sui/island.tei",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "786fd986daf1b22d34f02854d73246703ebd74bdd07e9d82ad18e450f9878f26"
+          },
+          {
+            "id": "sui.semantic-relation",
+            "group": "sui_stage0",
+            "path": "reference/sui-adoption/workspace/semantic/sui/island.tei",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "786fd986daf1b22d34f02854d73246703ebd74bdd07e9d82ad18e450f9878f26"
+          },
+          {
+            "id": "sui.fixture-root",
+            "group": "sui_stage0",
+            "path": "reference/sui-adoption/M1-root.valid.json",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "f3f76f680313d34f56c45ec52b50b6aa357d970cb03fcb3c52b57111444dea0b"
+          }
+        ],
+        "changed_observation_file_hashes": [],
+        "workspace_validate_exit": 0,
+        "workspace_validate_log": {
+          "sha256": "2f495c06bc0281ebba5161dd931e25dea0966dc6f704d9a3c52cde7e7e9f22fa",
+          "text": "warning\tAPPLICATION_RELEASE_CONTRACT_NOT_CURRENT\tapplication release order_entry@3.7.0 requires historical contract sales_core.order_legacy which has no current definition\nwarning\tDATABASE_RELEASE_CONTRACT_NOT_CURRENT\tdatabase sales_core release 4.0.0 provides historical contract sales_core.order_legacy which has no current definition\nwarning\tDATABASE_RELEASE_CONTRACT_NOT_CURRENT\tdatabase sales_core release 4.1.0 provides historical contract sales_core.order_legacy which has no current definition\nok\n"
+        }
+      },
+      "ui": {
+        "source_commit": "fbcf4b8fc02e205ec624cd68a39b6c642c4d34b9",
+        "intentional_patch": "diff --git a/reference/ui-customization/web-react/project-extension.mjs b/reference/ui-customization/web-react/project-extension.mjs\nindex c454f31d..1f371f68 100644\n--- a/reference/ui-customization/web-react/project-extension.mjs\n+++ b/reference/ui-customization/web-react/project-extension.mjs\n@@ -2,7 +2,7 @@\n // UI starter or re-declaring the TEI business rule/permission/submit action.\n export function projectSidePanel({React,receipt}) {\n   return React.createElement('aside',{'aria-label':'Project details panel'},\n-    React.createElement('h2',null,'Details'),\n+    React.createElement('h2',null,'Order details'),\n     React.createElement('p',null,receipt?.command?\n       'Result for action: '+receipt.command : 'Select a row and submit to see the result.'));\n }\n",
+        "git_status": " M reference/ui-customization/web-react/project-extension.mjs\n",
+        "observation_exit": 0,
+        "observations": [
+          {
+            "id": "order.application",
+            "group": "order_entry",
+            "path": "reference/workspace/applications/order-entry/application.tei",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "42e74678bc22bbbe8f85333f96f8c83859f0e144b2d3dfc68c555c9dca981e5f"
+          },
+          {
+            "id": "order.semantic-reference",
+            "group": "order_entry",
+            "path": "reference/workspace/applications/order-entry/application.tei",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "42e74678bc22bbbe8f85333f96f8c83859f0e144b2d3dfc68c555c9dca981e5f"
+          },
+          {
+            "id": "order.database-contract",
+            "group": "order_entry",
+            "path": "reference/workspace/applications/order-entry/application.tei",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "42e74678bc22bbbe8f85333f96f8c83859f0e144b2d3dfc68c555c9dca981e5f"
+          },
+          {
+            "id": "order.command-pattern",
+            "group": "order_entry",
+            "path": "reference/workspace/applications/order-entry/patterns/submit-order.tei",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "64ff7cb75088e7a45a338ce3fb6fa0b68106f2ef992fed5e8e7186434f3b6abe"
+          },
+          {
+            "id": "order.dev-binding",
+            "group": "order_entry",
+            "path": "reference/workspace/environments/development/environment.tei",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "a98973255180395d611b670aac3eef36d28ca0a7c177b4bc3d287bf5ef2646a3"
+          },
+          {
+            "id": "order.provider-bundle",
+            "group": "order_entry",
+            "path": "reference/workspace/environments/development/environment.tei",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "a98973255180395d611b670aac3eef36d28ca0a7c177b4bc3d287bf5ef2646a3"
+          },
+          {
+            "id": "order.plugin-lock-entry",
+            "group": "order_entry",
+            "path": "reference/workspace/.tei/plugin-lock.json",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "0e63bd60ea50999de79858cdf340bc00e8c1ffb95c32620d01349adc244fe3fa"
+          },
+          {
+            "id": "order.web-endpoint",
+            "group": "order_entry",
+            "path": "tools/reference-first-web-target/server.go",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "c5752c9bb090c78d6695cad507eb800e11c9c422c894640b28f5de7bbedcd6c0"
+          },
+          {
+            "id": "order.ui-adapter",
+            "group": "order_entry",
+            "path": "reference/ui-customization/web-react/order-entry-example.mjs",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "e01a999420531888f78b64945b8ae2b3a6825c7b3d085e0bc97e9a67afbf726d"
+          },
+          {
+            "id": "order.project-ui-extension",
+            "group": "order_entry",
+            "path": "reference/ui-customization/web-react/project-extension.mjs",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "e3769dbdad1c040d3675d3767fb960527084f8b2df2b698ea06be5011eeaa7df"
+          },
+          {
+            "id": "sui.workspace-scope",
+            "group": "sui_stage0",
+            "path": "reference/sui-adoption/workspace/tei.workspace.yaml",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "2296ad618620a6bad82dab0c5239d6b401777a66daca4bfaeffb7aa017323721"
+          },
+          {
+            "id": "sui.semantic-definition",
+            "group": "sui_stage0",
+            "path": "reference/sui-adoption/workspace/semantic/sui/island.tei",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "786fd986daf1b22d34f02854d73246703ebd74bdd07e9d82ad18e450f9878f26"
+          },
+          {
+            "id": "sui.semantic-relation",
+            "group": "sui_stage0",
+            "path": "reference/sui-adoption/workspace/semantic/sui/island.tei",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "786fd986daf1b22d34f02854d73246703ebd74bdd07e9d82ad18e450f9878f26"
+          },
+          {
+            "id": "sui.fixture-root",
+            "group": "sui_stage0",
+            "path": "reference/sui-adoption/M1-root.valid.json",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "f3f76f680313d34f56c45ec52b50b6aa357d970cb03fcb3c52b57111444dea0b"
+          }
+        ],
+        "changed_observation_file_hashes": [
+          "order.project-ui-extension"
+        ],
+        "workspace_validate_exit": 0,
+        "workspace_validate_log": {
+          "sha256": "2f495c06bc0281ebba5161dd931e25dea0966dc6f704d9a3c52cde7e7e9f22fa",
+          "text": "warning\tAPPLICATION_RELEASE_CONTRACT_NOT_CURRENT\tapplication release order_entry@3.7.0 requires historical contract sales_core.order_legacy which has no current definition\nwarning\tDATABASE_RELEASE_CONTRACT_NOT_CURRENT\tdatabase sales_core release 4.0.0 provides historical contract sales_core.order_legacy which has no current definition\nwarning\tDATABASE_RELEASE_CONTRACT_NOT_CURRENT\tdatabase sales_core release 4.1.0 provides historical contract sales_core.order_legacy which has no current definition\nok\n"
+        }
+      },
+      "db-valid": {
+        "source_commit": "fbcf4b8fc02e205ec624cd68a39b6c642c4d34b9",
+        "intentional_patch": "diff --git a/reference/workspace/environments/development/environment.tei b/reference/workspace/environments/development/environment.tei\nindex 4ffe7d71..dbf13f4e 100644\n--- a/reference/workspace/environments/development/environment.tei\n+++ b/reference/workspace/environments/development/environment.tei\n@@ -14,7 +14,12 @@ environment development {\n         provider oracle\n     }\n \n-    bind order_entry.sales -> sales_core.dev\n+    database-instance sales_core.preview {\n+        definition sales_core\n+        provider postgres\n+    }\n+\n+    bind order_entry.sales -> sales_core.preview\n     bind order_entry.master -> master_data.dev\n \n \n",
+        "git_status": " M reference/workspace/environments/development/environment.tei\n",
+        "observation_exit": 1,
+        "observations": [
+          {
+            "id": "order.application",
+            "group": "order_entry",
+            "path": "reference/workspace/applications/order-entry/application.tei",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "42e74678bc22bbbe8f85333f96f8c83859f0e144b2d3dfc68c555c9dca981e5f"
+          },
+          {
+            "id": "order.semantic-reference",
+            "group": "order_entry",
+            "path": "reference/workspace/applications/order-entry/application.tei",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "42e74678bc22bbbe8f85333f96f8c83859f0e144b2d3dfc68c555c9dca981e5f"
+          },
+          {
+            "id": "order.database-contract",
+            "group": "order_entry",
+            "path": "reference/workspace/applications/order-entry/application.tei",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "42e74678bc22bbbe8f85333f96f8c83859f0e144b2d3dfc68c555c9dca981e5f"
+          },
+          {
+            "id": "order.command-pattern",
+            "group": "order_entry",
+            "path": "reference/workspace/applications/order-entry/patterns/submit-order.tei",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "64ff7cb75088e7a45a338ce3fb6fa0b68106f2ef992fed5e8e7186434f3b6abe"
+          },
+          {
+            "id": "order.dev-binding",
+            "group": "order_entry",
+            "path": "reference/workspace/environments/development/environment.tei",
+            "status": "unresolved",
+            "reason": "marker-missing",
+            "sha256": "1f7079091b048b2310a28c947e026fc3e868b656f6b2955b21b5b50ec89e00a3"
+          },
+          {
+            "id": "order.provider-bundle",
+            "group": "order_entry",
+            "path": "reference/workspace/environments/development/environment.tei",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "1f7079091b048b2310a28c947e026fc3e868b656f6b2955b21b5b50ec89e00a3"
+          },
+          {
+            "id": "order.plugin-lock-entry",
+            "group": "order_entry",
+            "path": "reference/workspace/.tei/plugin-lock.json",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "0e63bd60ea50999de79858cdf340bc00e8c1ffb95c32620d01349adc244fe3fa"
+          },
+          {
+            "id": "order.web-endpoint",
+            "group": "order_entry",
+            "path": "tools/reference-first-web-target/server.go",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "c5752c9bb090c78d6695cad507eb800e11c9c422c894640b28f5de7bbedcd6c0"
+          },
+          {
+            "id": "order.ui-adapter",
+            "group": "order_entry",
+            "path": "reference/ui-customization/web-react/order-entry-example.mjs",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "e01a999420531888f78b64945b8ae2b3a6825c7b3d085e0bc97e9a67afbf726d"
+          },
+          {
+            "id": "order.project-ui-extension",
+            "group": "order_entry",
+            "path": "reference/ui-customization/web-react/project-extension.mjs",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "d26a50d475231f43f9257330dba4802837d639609e923a7ad03d45d30673a371"
+          },
+          {
+            "id": "sui.workspace-scope",
+            "group": "sui_stage0",
+            "path": "reference/sui-adoption/workspace/tei.workspace.yaml",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "2296ad618620a6bad82dab0c5239d6b401777a66daca4bfaeffb7aa017323721"
+          },
+          {
+            "id": "sui.semantic-definition",
+            "group": "sui_stage0",
+            "path": "reference/sui-adoption/workspace/semantic/sui/island.tei",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "786fd986daf1b22d34f02854d73246703ebd74bdd07e9d82ad18e450f9878f26"
+          },
+          {
+            "id": "sui.semantic-relation",
+            "group": "sui_stage0",
+            "path": "reference/sui-adoption/workspace/semantic/sui/island.tei",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "786fd986daf1b22d34f02854d73246703ebd74bdd07e9d82ad18e450f9878f26"
+          },
+          {
+            "id": "sui.fixture-root",
+            "group": "sui_stage0",
+            "path": "reference/sui-adoption/M1-root.valid.json",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "f3f76f680313d34f56c45ec52b50b6aa357d970cb03fcb3c52b57111444dea0b"
+          }
+        ],
+        "changed_observation_file_hashes": [
+          "order.dev-binding",
+          "order.provider-bundle"
+        ],
+        "workspace_validate_exit": 0,
+        "workspace_validate_log": {
+          "sha256": "2f495c06bc0281ebba5161dd931e25dea0966dc6f704d9a3c52cde7e7e9f22fa",
+          "text": "warning\tAPPLICATION_RELEASE_CONTRACT_NOT_CURRENT\tapplication release order_entry@3.7.0 requires historical contract sales_core.order_legacy which has no current definition\nwarning\tDATABASE_RELEASE_CONTRACT_NOT_CURRENT\tdatabase sales_core release 4.0.0 provides historical contract sales_core.order_legacy which has no current definition\nwarning\tDATABASE_RELEASE_CONTRACT_NOT_CURRENT\tdatabase sales_core release 4.1.0 provides historical contract sales_core.order_legacy which has no current definition\nok\n"
+        }
+      },
+      "db-invalid": {
+        "source_commit": "fbcf4b8fc02e205ec624cd68a39b6c642c4d34b9",
+        "intentional_patch": "diff --git a/reference/workspace/environments/development/environment.tei b/reference/workspace/environments/development/environment.tei\nindex 4ffe7d71..7a8b2e26 100644\n--- a/reference/workspace/environments/development/environment.tei\n+++ b/reference/workspace/environments/development/environment.tei\n@@ -14,7 +14,7 @@ environment development {\n         provider oracle\n     }\n \n-    bind order_entry.sales -> sales_core.dev\n+    bind order_entry.sales -> master_data.dev\n     bind order_entry.master -> master_data.dev\n \n \n",
+        "git_status": " M reference/workspace/environments/development/environment.tei\n",
+        "observation_exit": 1,
+        "observations": [
+          {
+            "id": "order.application",
+            "group": "order_entry",
+            "path": "reference/workspace/applications/order-entry/application.tei",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "42e74678bc22bbbe8f85333f96f8c83859f0e144b2d3dfc68c555c9dca981e5f"
+          },
+          {
+            "id": "order.semantic-reference",
+            "group": "order_entry",
+            "path": "reference/workspace/applications/order-entry/application.tei",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "42e74678bc22bbbe8f85333f96f8c83859f0e144b2d3dfc68c555c9dca981e5f"
+          },
+          {
+            "id": "order.database-contract",
+            "group": "order_entry",
+            "path": "reference/workspace/applications/order-entry/application.tei",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "42e74678bc22bbbe8f85333f96f8c83859f0e144b2d3dfc68c555c9dca981e5f"
+          },
+          {
+            "id": "order.command-pattern",
+            "group": "order_entry",
+            "path": "reference/workspace/applications/order-entry/patterns/submit-order.tei",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "64ff7cb75088e7a45a338ce3fb6fa0b68106f2ef992fed5e8e7186434f3b6abe"
+          },
+          {
+            "id": "order.dev-binding",
+            "group": "order_entry",
+            "path": "reference/workspace/environments/development/environment.tei",
+            "status": "unresolved",
+            "reason": "marker-missing",
+            "sha256": "3f989f6e806bd10eee220f5665ba69c4ffa342b2fe3423c906d1fc46f41b4565"
+          },
+          {
+            "id": "order.provider-bundle",
+            "group": "order_entry",
+            "path": "reference/workspace/environments/development/environment.tei",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "3f989f6e806bd10eee220f5665ba69c4ffa342b2fe3423c906d1fc46f41b4565"
+          },
+          {
+            "id": "order.plugin-lock-entry",
+            "group": "order_entry",
+            "path": "reference/workspace/.tei/plugin-lock.json",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "0e63bd60ea50999de79858cdf340bc00e8c1ffb95c32620d01349adc244fe3fa"
+          },
+          {
+            "id": "order.web-endpoint",
+            "group": "order_entry",
+            "path": "tools/reference-first-web-target/server.go",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "c5752c9bb090c78d6695cad507eb800e11c9c422c894640b28f5de7bbedcd6c0"
+          },
+          {
+            "id": "order.ui-adapter",
+            "group": "order_entry",
+            "path": "reference/ui-customization/web-react/order-entry-example.mjs",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "e01a999420531888f78b64945b8ae2b3a6825c7b3d085e0bc97e9a67afbf726d"
+          },
+          {
+            "id": "order.project-ui-extension",
+            "group": "order_entry",
+            "path": "reference/ui-customization/web-react/project-extension.mjs",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "d26a50d475231f43f9257330dba4802837d639609e923a7ad03d45d30673a371"
+          },
+          {
+            "id": "sui.workspace-scope",
+            "group": "sui_stage0",
+            "path": "reference/sui-adoption/workspace/tei.workspace.yaml",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "2296ad618620a6bad82dab0c5239d6b401777a66daca4bfaeffb7aa017323721"
+          },
+          {
+            "id": "sui.semantic-definition",
+            "group": "sui_stage0",
+            "path": "reference/sui-adoption/workspace/semantic/sui/island.tei",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "786fd986daf1b22d34f02854d73246703ebd74bdd07e9d82ad18e450f9878f26"
+          },
+          {
+            "id": "sui.semantic-relation",
+            "group": "sui_stage0",
+            "path": "reference/sui-adoption/workspace/semantic/sui/island.tei",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "786fd986daf1b22d34f02854d73246703ebd74bdd07e9d82ad18e450f9878f26"
+          },
+          {
+            "id": "sui.fixture-root",
+            "group": "sui_stage0",
+            "path": "reference/sui-adoption/M1-root.valid.json",
+            "status": "observed",
+            "reason": "literal-present",
+            "sha256": "f3f76f680313d34f56c45ec52b50b6aa357d970cb03fcb3c52b57111444dea0b"
+          }
+        ],
+        "changed_observation_file_hashes": [
+          "order.dev-binding",
+          "order.provider-bundle"
+        ],
+        "workspace_validate_exit": 1,
+        "workspace_validate_log": {
+          "sha256": "0be3cc8042af8225419b6203808d2dc0f2d36f0bcd11cf93f22c56a680ad0fed",
+          "text": "warning\tAPPLICATION_RELEASE_CONTRACT_NOT_CURRENT\tapplication release order_entry@3.7.0 requires historical contract sales_core.order_legacy which has no current definition\nwarning\tDATABASE_RELEASE_CONTRACT_NOT_CURRENT\tdatabase sales_core release 4.0.0 provides historical contract sales_core.order_legacy which has no current definition\nwarning\tDATABASE_RELEASE_CONTRACT_NOT_CURRENT\tdatabase sales_core release 4.1.0 provides historical contract sales_core.order_legacy which has no current definition\nerror\tDATABASE_BINDING_TARGET_MISMATCH\tenvironment development binds order_entry.sales to database master_data, expected sales_core\nerror\tSQL_DIALECT_TARGET_MISMATCH\tquery order_entry.recent_orders uses postgres SQL but environment development binds datasource sales to oracle\nexit status 1\n"
+        }
+      }
+    },
+    "ui_existing_tests_exit": 0,
+    "ui_existing_tests_log": {
+      "sha256": "f8ef169edb3c565f4176b0ad8e6b0499174d57c86a37f0d7a612a49f7fddd291",
+      "text": "TAP version 13\n# Subtest: same First Web Target JSON contract via real HTTP; no business logic duplicated\nok 1 - same First Web Target JSON contract via real HTTP; no business logic duplicated\n  ---\n  duration_ms: 162.810542\n  ...\n# Subtest: auth and authorization denial remain business outcomes, not execution errors\nok 2 - auth and authorization denial remain business outcomes, not execution errors\n  ---\n  duration_ms: 42.879106\n  ...\n# Subtest: validation not-satisfied preserves authoritative validation identity\nok 3 - validation not-satisfied preserves authoritative validation identity\n  ---\n  duration_ms: 40.444985\n  ...\n# Subtest: HTTP 422 execution errors are distinct; no error text/credential leaks\nok 4 - HTTP 422 execution errors are distinct; no error text/credential leaks\n  ---\n  duration_ms: 44.030527\n  ...\n# Subtest: unexpected app binding and silent HTTP errors fail closed\nok 5 - unexpected app binding and silent HTTP errors fail closed\n  ---\n  duration_ms: 51.08497\n  ...\n# Subtest: UI-only input validation rejects wrong row before network read/write\nok 6 - UI-only input validation rejects wrong row before network read/write\n  ---\n  duration_ms: 0.807214\n  ...\n# Subtest: React UI scaffold composes project side panel without editing default fields or action\nok 7 - React UI scaffold composes project side panel without editing default fields or action\n  ---\n  duration_ms: 13.363053\n  ...\n# Subtest: React starter clears password after submit; project slot cannot override callback binding\nok 8 - React starter clears password after submit; project slot cannot override callback binding\n  ---\n  duration_ms: 1.823836\n  ...\n# Subtest: unknown slots and invalid renderer fields fail before creating a UI\nok 9 - unknown slots and invalid renderer fields fail before creating a UI\n  ---\n  duration_ms: 1.209961\n  ...\n1..9\n# tests 9\n# suites 0\n# pass 9\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 602.078631\n"
+    },
+    "ui_changed_label_check_exit": 0,
+    "ui_changed_label_log": {
+      "sha256": "dd4bc85fa9fd7b1015a1df20dc9216f5b7d2c7f488e2e7d7acde3e2b89406305",
+      "text": "changed label rendered in fake React element structure\n"
+    },
+    "limits": [
+      "source comparison and static Workspace validation",
+      "fake React element structure, no ReactDOM/browser execution",
+      "no physical database connection or different database provider",
+      "SUI Stage 0 only; no live SUI Canvas integration"
+    ]
+  }
+}
