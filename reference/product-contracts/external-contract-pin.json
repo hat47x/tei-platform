@@ -1,0 +1,44 @@
+{
+  "schema": "tei.external-contract-pin/v0",
+  "producer": {
+    "repository": "hat47x/eki-fabric",
+    "commit": "f8047c1",
+    "specPath": "spec/external/openapi.json",
+    "openapiVersion": "3.2.1",
+    "apiVersion": "0.1.0"
+  },
+  "consumedBy": {
+    "package": "tei/reference/product-contracts/bindings",
+    "readme": "reference/product-contracts/README.md"
+  },
+  "operations": [
+    {
+      "operationId": "submitTask",
+      "method": "POST",
+      "path": "/v1/tasks",
+      "requestSchema": "TaskRequest",
+      "requestSchemaConst": "eki.task-request/v1",
+      "acceptedStatus": 202,
+      "acceptedSchema": "TaskAccepted",
+      "acceptedSchemaConst": "eki.task-accepted/v1",
+      "acceptedRequiredKeys": [
+        "schema",
+        "task_id",
+        "status",
+        "submitted_at",
+        "replayed",
+        "request_fingerprint"
+      ],
+      "acceptedStatusConst": "queued"
+    }
+  ],
+  "notConsumed": [
+    "Attempt",
+    "ResultClaim",
+    "AcceptedResult"
+  ],
+  "notes": [
+    "ここに挙げるのはTEIが依拠する部分だけで、EKIの契約本文は転載しない。",
+    "TaskAccepted は Attempt を含まない。EKITaskSubmitHTTP が Attempt へ接続していない理由がこれである（README の #3657 節）。"
+  ]
+}
