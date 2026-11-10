@@ -18,6 +18,8 @@ plan/evidence/TEI_GO_SELF_BUILD_CHILD_IDENTITY_SCOPE_2026-11-10/run.sh direct
 | `proxy` | `-child`のプロキシが**自分のバイトを変えずに**起動先を切り替える | **`l2b.claimed=true`**（差し替えは見えない） |
 | `direct` | `-child`のファイル自体が初回に書き換わる | **`l2b.claimed=false`**、`mismatched`、`mismatchReason`が実行者違いを名指しする |
 
+> **現行の期待は、宣言したbuilderと起動したファイルを結ぶ検査（SB-C0 §4.47、[記録](../TEI_GO_SELF_BUILD_BUILDER_BINDING_2026-11-10.md)）の後の値です。** 上の表の `proxy` の期待（`true`）は、検査が入る前の観測です。`raw/*-summary.txt` はその時点の出力で、`raw/*-summary-with-builder-binding.txt` が検査の後の出力です（下の表）。
+
 エミュレータは要りません。どちらもエントリの記帳に関する観測で、childのアーキテクチャに依存しないためです。
 
 ## 何をするか
@@ -59,6 +61,17 @@ plan/evidence/TEI_GO_SELF_BUILD_CHILD_IDENTITY_SCOPE_2026-11-10/run.sh direct
 
 **どちらのモードでも成果物は一致しています。** 違うのは `builder` の同一性だけで、それが判定を分けます。
 
+## 検査の後の生出力（`*-summary-with-builder-binding.txt`）
+
+| 項目 | `proxy` | `direct` |
+| --- | --- | --- |
+| `l2b.claimed` | **`false`** | **`false`** |
+| `l2b.unmet` | `the file this entry started was not shown to be the builder the plan declares (mismatched)` のみ | 再現の不一致と、上の宣言との不一致の二つ |
+| `reproducibility` | `reproduced`（再現だけでは見えない） | `mismatched`（`the two runs used different builder executables`） |
+
+- `proxy` を止めているのは**宣言との照合だけ**です。成果物は一致し、二回の child digest も等しいままです。
+- `direct` は、catalog が宣言した `builder` ではなく**シェルのラッパー**を `-child` に渡すので、再現とは別に宣言との不一致も立ちます。ファイルの差し替えは従来どおり再現で止まります。
+- **取得環境**：WSL2（Ubuntu 24.04、linux/amd64）。**ネイティブのLinux版Goではなく**、Windows版Go 1.27.0に`GOOS=linux`を渡すラッパー経由でビルドしました（`raw/commit-with-builder-binding.txt`）。構造は確かめましたが、digestの値はネイティブ版のツールチェーンとは異なり得ます。
 ## この一式が主張しないこと
 
 - **`darwin` は扱いません。** `linux/amd64` のみです

@@ -1,0 +1,2 @@
+tree: this branch's merge of origin/main 2bb1c4456 (HEAD 627bf2361 plus uncommitted raw files)
+host: WSL2 Ubuntu-24.04 linux/amd64; binaries cross-built with the Windows Go 1.27.0 toolchain (GOOS=linux) through a go shim, not a native Linux toolchain

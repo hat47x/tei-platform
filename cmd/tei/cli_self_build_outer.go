@@ -62,6 +62,10 @@ type selfBuildOuterEvidence struct {
 	// plan names. The builder refuses such a build itself; this is the check that
 	// does not depend on the builder doing so.
 	DefinitionBinding *selfBuildDefinitionBinding `json:"definitionBinding,omitempty"`
+	// BuilderBinding is §4.47: the digest of the file this entry started, compared
+	// with the builder artifact digest the entry's own plan declares. Both values
+	// are the entry's; a wrapper or proxy named as -child does not match.
+	BuilderBinding *selfBuildBuilderBinding `json:"builderBinding,omitempty"`
 	// ChildIsolation is what the builder said about the tree it built from. It is
 	// recorded, not required: the five conditions do not include it.
 	ChildIsolation *selfBuildChildIsolationRecord `json:"childIsolation,omitempty"`
@@ -589,6 +593,14 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 		if definitionBinding.State == definitionBindingFailed {
 			appendSelfBuildFailure(&evidence, definitionBinding.Reason)
 		}
+
+		// §4.47: the plan declares its builder by digest. Compare that with the
+		// file this entry started. A mismatch does not fail the attempt — the
+		// child ran and its artifact was checked — but it withholds the L2-b claim,
+		// because "this plan produced this artifact" names a builder that did not
+		// demonstrably run.
+		builderBinding := bindBuilderToPlan(report.PlanReceipt, evidence.Invoked.ExecutableDigest)
+		report.BuilderBinding = &builderBinding
 	}
 
 	// §4.21: a second independent build answers §4.8(c) — whether the artifact on

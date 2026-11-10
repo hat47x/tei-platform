@@ -1,0 +1,25 @@
+=== build the tools ===
+builder-a 7ced6a60d96890a4…
+builder-b b07a1fa634d47dd6…
+child-run digest before: 7d80a2bffe3b3fb5…
+
+=== author the catalog ===
+catalogDigest=sha256:fcf8f38723007190c231c7b79b4930c6ed0c5e898c8bcdaaad6f6fd33762d347
+=== resolve a plan for the child ===
+=== tei self-build (mode: proxy) ===
+tei exit=0
+child-run digest after : 7d80a2bffe3b3fb5…
+--- which builder ran ---
+wrapper: invocation 1 -> builder-a
+wrapper: invocation 2 -> builder-b
+
+=== report ===
+mode                : proxy
+l2b.claimed         : False
+l2b.unmet           : ['the file this entry started was not shown to be the builder the plan declares (mismatched)']
+reproducibility     : reproduced
+mismatchReason      : None
+firstChildDigest    : sha256:7d80a2bffe3b3fb517f57b3d876ec5e68da9cfbefae7fabd7d4efe861456c78f
+secondChildDigest   : sha256:7d80a2bffe3b3fb517f57b3d876ec5e68da9cfbefae7fabd7d4efe861456c78f
+firstArtifactDigest : sha256:ff9fe882e5dc4877312b5c0e69fe3d6343cddf3e56f9529e51d801ec20c93f95
+secondArtifactDigest: sha256:ff9fe882e5dc4877312b5c0e69fe3d6343cddf3e56f9529e51d801ec20c93f95
