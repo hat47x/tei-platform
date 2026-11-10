@@ -18,7 +18,7 @@ var (
 func parseCanonicalIDReference(s string) (CanonicalID, error) {
 	s = strings.TrimSpace(s)
 	if !canonicalIDReference.MatchString(s) {
-		return "", fmt.Errorf("invalid canonical id %q", s)
+		return "", fmt.Errorf("invalid canonical id %q (each dot-separated segment must match [a-z][a-z0-9_]*)", s)
 	}
 	return CanonicalID(s), nil
 }
@@ -26,7 +26,7 @@ func parseCanonicalIDReference(s string) (CanonicalID, error) {
 func parseLocalNameReference(s string) (LocalName, error) {
 	s = strings.TrimSpace(s)
 	if !localNameReference.MatchString(s) {
-		return "", fmt.Errorf("invalid local name %q", s)
+		return "", fmt.Errorf("invalid local name %q (must match [a-z][a-z0-9_]*)", s)
 	}
 	return LocalName(s), nil
 }
