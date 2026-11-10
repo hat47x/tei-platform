@@ -150,3 +150,28 @@ func TestFileURLKeepsVolumeOnWindows(t *testing.T) {
 		t.Fatalf("file URL lost the volume: %s", got)
 	}
 }
+
+// The reproducibility check asks the child which state directory it used, so a
+// report that omits it turns a real build into an unperformed observation. This
+// pins the field so that stays visible instead of silently degrading.
+func TestBuildWithSupplyReportsTheStateDirectoryItUsed(t *testing.T) {
+	if _, err := exec.LookPath("go"); err != nil {
+		t.Skipf("exact Go binary unavailable: %v", err)
+	}
+	repo, err := filepath.Abs("../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := filepath.Join(stateDir(t), "artifact-state")
+	evidence, err := BuildWithSupply(repo, "go", "./tools/reference-build-authoring-intent",
+		supplyRoot(t), filepath.Join(state, "artifact"), state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !evidence.BuildSucceeded {
+		t.Fatalf("build failed: %s", evidence.BuildError)
+	}
+	if evidence.StateDir != state {
+		t.Fatalf("stateDir = %q, want %q", evidence.StateDir, state)
+	}
+}
