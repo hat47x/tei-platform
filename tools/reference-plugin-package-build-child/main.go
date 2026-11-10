@@ -58,9 +58,15 @@ type childReport struct {
 	// The declaration readings. Present only when the caller names -intent, so
 	// a caller that passes no declaration gets no values it might mistake for a
 	// check that ran.
-	IntentPath        string `json:"intentPath,omitempty"`
-	IntentBytesDigest string `json:"intentBytesDigest,omitempty"`
-	IntentFingerprint string `json:"intentFingerprint,omitempty"`
+	IntentPath string `json:"intentPath,omitempty"`
+	// DefinitionBytesDigest is the digest of the definition file this process
+	// read, and DefinitionMatchesPlan says whether it equals the digest the plan
+	// records for that source. A plan that names one file and a run that reads
+	// another would otherwise produce an artifact the plan does not describe.
+	DefinitionBytesDigest string `json:"definitionBytesDigest,omitempty"`
+	DefinitionMatchesPlan bool   `json:"definitionMatchesPlan"`
+	IntentBytesDigest     string `json:"intentBytesDigest,omitempty"`
+	IntentFingerprint     string `json:"intentFingerprint,omitempty"`
 	// IntentBoundToPlan says whether this process checked that the declaration
 	// it read names the same subject and target as the plan it consumed. It is
 	// the child's own check, not a proof that the plan came from that
@@ -186,6 +192,19 @@ func materialize(planPath, pluginPath, artifactOut, stateDir, intentPath string)
 	if err != nil {
 		return childReport{}, fmt.Errorf("read plugin definition: %w", err)
 	}
+	// The plan names an exact source closure. A run that reads a different file
+	// would build something the plan does not describe, and no later observation
+	// would notice: the plan fingerprint still matches (this process took it from
+	// the plan) and the bytes are reproducible. So the match is checked here,
+	// before the artifact exists.
+	definitionDigest := buildintent.SingleFileSourceDigest(definitionSource)
+	plannedDigest := plannedDefinitionDigest(plan)
+	if plannedDigest == "" {
+		return childReport{}, fmt.Errorf("the plan does not record a digest for the plugin definition source, so this run cannot show that it built the planned input")
+	}
+	if definitionDigest != plannedDigest {
+		return childReport{}, fmt.Errorf("the definition read (%s) is not the one the plan names (%s); this run would build an artifact the plan does not describe", definitionDigest, plannedDigest)
+	}
 	definition, err := syntax.NewParser(string(definitionSource)).ParsePlugin()
 	if err != nil {
 		return childReport{}, fmt.Errorf("parse plugin definition: %w", err)
@@ -217,19 +236,21 @@ func materialize(planPath, pluginPath, artifactOut, stateDir, intentPath string)
 	}
 
 	report := childReport{
-		SchemaVersion:   childSchema,
-		Nature:          "one child process that consumes an exact BuildPlan and materializes its Plugin package",
-		PlanPath:        planPath,
-		PlanBytesDigest: digestOf(planBytes),
-		PlanFingerprint: fingerprint,
-		PluginID:        string(plan.Plugin.ID),
-		PluginVersion:   plan.Plugin.Version,
-		OutputKind:      string(plan.OutputKind),
-		ArtifactPath:    artifactOut,
-		ArtifactDigest:  artifactDigest,
-		StateDir:        stateDir,
-		Boundary:        childBoundary,
-		Lock:            &lock,
+		SchemaVersion:         childSchema,
+		Nature:                "one child process that consumes an exact BuildPlan and materializes its Plugin package",
+		PlanPath:              planPath,
+		PlanBytesDigest:       digestOf(planBytes),
+		DefinitionBytesDigest: definitionDigest,
+		DefinitionMatchesPlan: true,
+		PlanFingerprint:       fingerprint,
+		PluginID:              string(plan.Plugin.ID),
+		PluginVersion:         plan.Plugin.Version,
+		OutputKind:            string(plan.OutputKind),
+		ArtifactPath:          artifactOut,
+		ArtifactDigest:        artifactDigest,
+		StateDir:              stateDir,
+		Boundary:              childBoundary,
+		Lock:                  &lock,
 	}
 
 	// §4.14: when the caller names the declaration, this process reads it with
@@ -423,6 +444,17 @@ func compareIntentFields(intent buildintent.BuildIntent, plan plugin.BuildPlan) 
 		}
 	}
 	return nil
+}
+
+// plannedDefinitionDigest returns the digest the plan records for its plugin
+// definition source, or "" when the plan does not name one.
+func plannedDefinitionDigest(plan plugin.BuildPlan) string {
+	for _, source := range plan.Sources {
+		if source.Kind == "plugin-definition" && source.Digest != "" {
+			return source.Digest
+		}
+	}
+	return ""
 }
 
 func digestOf(raw []byte) string {

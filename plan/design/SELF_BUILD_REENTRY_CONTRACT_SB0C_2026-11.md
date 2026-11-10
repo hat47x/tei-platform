@@ -1565,6 +1565,47 @@ in-processを既定にするには、**entryがcatalogを自分で選ぶ**必要
 | 能力宣言の版付け | **未決のまま。** 第二のconsumerが現れた時点で決める |
 | `-strong`（§4.25のP-4） | **採らない。** §4.30が「catalogを名指しすれば最強の観測が既定で揃う」を実現したので、強さを選ぶ別flagは要らない。第二の強さの段が要るようになったら再考する |
 
+### 4.36 計画が名指すsourceを、builderが確かめる（2026-11-09）
+
+§4.8(c)は「その計画がそのartifactを生んだ」を主張します。本節は、その連鎖に**入力の照合が無かった**ことを記録し、塞いだ結果を残す。
+
+#### 見つけたこと
+
+計画は`Sources`に**source closureのdigest**を持ちます。entryは`-build-source-root`からsourceを解決してこのdigestを作ります。**ところがbuilder childは、計画が名指すdigestを入力と突き合わせていませんでした。**
+
+| 観測 | 「計画がSを名指し、childがS'を読む」とき |
+| --- | --- |
+| `planCrossCheck=matched` | **成立する。** 計画fingerprintはchildが計画ファイルから取る |
+| `planArtifactBinding=bound` | **成立する。** 成果物digestはchildの申告とディスクが一致する |
+| `artifactReproducibility=reproduced` | **成立する。** 二回とも同じS'を使えば同じバイト |
+
+**どれも「入力が計画のものか」を見ていない。** 三つの観測がすべて通ったまま、計画が記述しない成果物ができる。
+
+#### 直したこと
+
+**childが、読んだdefinitionのdigestを計画の値と突き合わせ、違えば成果物を作る前に停止する。**
+
+| 変更 | 内容 |
+| --- | --- |
+| `buildintent.SingleFileSourceDigest` | 単一ファイルsourceのdigest。**resolverと同じ枠組み**で計算する |
+| child | 計画の`plugin-definition` sourceと比較し、**違えば停止**。計画がdigestを持たない場合も停止 |
+| 報告 | `definitionBytesDigest`と`definitionMatchesPlan` |
+
+**照合をchildに置いたのは、計画と入力の両方を持つ唯一の場所だからである。** entryはchildが何を読んだか見えない。
+
+**枠組みを一か所にしたのは、二か所に書くと必ず食い違うからである。** 当初は生の`sha256`で比較して食い違い、resolverの枠組み（メンバー名と長さを先に書く）を知って直した。
+
+#### 副産物：fixtureが存在しないbuildを記述していた
+
+childの試験の計画が`sha256:aaaa…`という**実在しないdigest**を名指ししていた。検査が無かったので通っていた。**fixtureが実在しないdigestを持っていたこと自体が、この検査が無かった証拠**である。実ファイルのdigestに直した。
+
+#### この節が言っていないこと
+
+- **childの実装が正しいこと**（childが自分で申告し、自分で止まる）
+- **ディレクトリのclosure**の照合。今回は単一ファイル（`plugin-definition`）だけを塞いだ
+- 計画が名指す他のsource（`go-package`など）の照合
+- 別ホスト・別Go版での成立
+
 ### 4.35 能力宣言に版を付けない（配るのはcatalogだから、2026-11-09）
 
 §4.33で足した能力宣言について、§7は「版付けは必要になった時点で決める」としていました。しかし**実測すると、必要になった時点では決められません**（[記録](../evidence/TEI_GO_SELF_BUILD_DECLARATION_VERSIONING_2026-11-10.md)）——宣言は`DisallowUnknownFields`で解析されるので、`formatVersion`を足した宣言は**版を名乗ろうとした瞬間に拒否**されます。
