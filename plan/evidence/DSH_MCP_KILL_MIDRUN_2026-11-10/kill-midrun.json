@@ -1,0 +1,82 @@
+{
+  "note": "The MCP server was up at startup and a pwsh call killed it mid-run. The next model request still advertised the dead server's tool: the tool list did not shrink. The advertised surface therefore does not prove the server is alive.",
+  "overlay": {
+    "url": "http://127.0.0.1:8797/mcp/late",
+    "serverName": "latemock",
+    "failOnStartupError": false
+  },
+  "killEvidenceLines": [
+    "{\"type\":\"tool_call\",\"callId\":\"toolu_start_1\",\"tool\":\"pwsh\",\"input\":{\"description\":\"start the late MCP server\",\"command\":\"$p = (Get-NetTCPConnection -LocalPort 8797 -State Listen -ErrorAction SilentlyC",
+    "{\"type\":\"tool_result\",\"callId\":\"toolu_start_1\",\"status\":\"completed\",\"result\":\"killed:36536\\r\\n\"}"
+  ],
+  "serverAliveAfterKill": false,
+  "firstModelRequest": {
+    "toolCount": 28,
+    "hasMcpTool": true
+  },
+  "lastModelRequest": {
+    "toolCount": 28,
+    "hasMcpTool": true,
+    "mcpTools": [
+      "mcp__latemock__header_echo"
+    ]
+  },
+  "toolSurvivedServerDeath": true,
+  "handshakeRequestsBeforeKill": 4,
+  "mcpRequests": [
+    {
+      "file": "mcp-001-request.bin",
+      "method": "server/discover",
+      "bytes": 280
+    },
+    {
+      "file": "mcp-002-request.bin",
+      "method": "initialize",
+      "bytes": 163
+    },
+    {
+      "file": "mcp-003-request.bin",
+      "method": "notifications/initialized",
+      "bytes": 54
+    },
+    {
+      "file": "mcp-004-request.bin",
+      "method": "tools/list",
+      "bytes": 46
+    }
+  ],
+  "modelRequests": [
+    {
+      "file": "001-request.json",
+      "bytes": 99493,
+      "sha256": "52893e1c3f9407a86ba74901c0acfd0849951d6659da50a8525418a67cee3206",
+      "toolCount": 28,
+      "hasMcpTool": true,
+      "mcpTools": [
+        "mcp__latemock__header_echo"
+      ]
+    },
+    {
+      "file": "002-request.json",
+      "bytes": 57145,
+      "sha256": "c540044a7608a14574b232f76f204c07927f4d431c5654353d741000e46aa075",
+      "toolCount": 0,
+      "hasMcpTool": false,
+      "mcpTools": []
+    },
+    {
+      "file": "003-request.json",
+      "bytes": 54767,
+      "sha256": "8d2ed7f5f95442ca9d9b0a00a47c7c9c3b0aee8cb5e78a57b609e0327d6c3e63",
+      "toolCount": 28,
+      "hasMcpTool": true,
+      "mcpTools": [
+        "mcp__latemock__header_echo"
+      ]
+    }
+  ],
+  "contrast": {
+    "upDirection": "DSH_MCP_MIDRUN_RECONNECT_2026-11-10 (down -> up: tool appears)",
+    "downDirection": "this record (up -> down: tool stays advertised)"
+  }
+}

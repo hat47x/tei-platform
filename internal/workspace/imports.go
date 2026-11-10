@@ -314,8 +314,9 @@ func loadWorkspaceImports(root string, imports []WorkspaceImport, result *Result
 		if imp.SemanticDigest != "" && imp.SemanticDigest != actualDigest {
 			return fmt.Errorf("import %q: semantic digest mismatch for namespace %q (expected %s, got %s); review the provider changes and their impact before updating the pin", imp.Alias, imp.Namespace, imp.SemanticDigest, actualDigest)
 		}
-		// Capture only the selected Namespace's parsed Source bytes from this
-		// provider Load. Source re-location may re-Load a later provider state.
+		// Record the selected Namespace's actual Parser-consumed bytes and
+		// Provider Manifest from the same nested Load. This is deliberately
+		// private, selected-scope and does not qualify full input closure.
 		capture, err := captureImportedParsedLoad(imp, actualDigest, provider)
 		if err != nil {
 			return fmt.Errorf("import %q: %w", imp.Alias, err)

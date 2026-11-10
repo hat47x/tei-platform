@@ -61,8 +61,9 @@ type Result struct {
 	sourceSnapshot      map[string][]byte
 	semanticSourceFiles []string
 
-	// Locally parsed Semantic Source files, grouped by their declared Namespace.
+	// Exact file membership as observed by this Parser Load, not a rescan.
 	semanticFilesByNamespace map[string][]string
+
 	// Load-time bytes of managed files that no domain loader parsed (for
 	// example a forward-compatible source root asset). Kept separate from
 	// sourceSnapshot so the parser-bound meaning of that map, and of
@@ -76,12 +77,11 @@ type Result struct {
 	sourceManifestName    string
 	sourceImportsDeclared bool
 
-	// Original manifest bytes captured by Load; separate from Source Index.
+	// Retained privately for the selected nested Provider's same-Load input.
+	// Do not include raw Manifest or Provider Source in a public projection.
 	sourceManifestBytes *manifestReadBytes
-
-	// Same-Load parsed evidence of explicitly selected external Namespaces.
-	// This private evidence does not grant cross-Provider snapshot qualification.
 	importedParsedLoads map[string]*importedParsedLoad
+
 	// Format version declared by the Workspace manifest. Semantic files may
 	// declare their own header; when they do, it must agree with this value.
 	manifestFormatVersion int
@@ -260,6 +260,7 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 		sourceManifest:              manifestID,
 		sourceManifestName:          manifestName,
 		sourceImportsDeclared:       len(imports) > 0,
+		sourceManifestBytes:         &manifestReadBytes{content: manifestRaw},
 		manifestFormatVersion:       manifestFormatVersion,
 	}
 	r.sourceManifestBytes = &manifestReadBytes{content: manifestRaw}
@@ -617,7 +618,8 @@ func loadSemantics(root string, r *Result) error {
 			r.semanticFilesByNamespace = make(map[string][]string)
 		}
 		r.semanticFilesByNamespace[string(ns.ID)] = append(
-			r.semanticFilesByNamespace[string(ns.ID)], relPath(root, path))
+			r.semanticFilesByNamespace[string(ns.ID)], relPath(root, path),
+		)
 		idx, ok := byNamespace[ns.ID]
 		if !ok {
 			idx = len(r.World.Semantics)
