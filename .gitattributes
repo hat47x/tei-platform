@@ -294,3 +294,6 @@
 
 # Mid-run MCP reconnect observations are hashed as raw bytes.
 /plan/evidence/DSH_MCP_MIDRUN_RECONNECT_2026-11-10/** -text
+
+# Mid-run MCP kill observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_KILL_MIDRUN_2026-11-10/** -text
