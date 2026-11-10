@@ -139,8 +139,11 @@ func itoa(i int) string {
 }
 
 func TestSelfBuildFullChainOnTheRealSubject(t *testing.T) {
-	if testing.Short() {
-		t.Skip("the full chain builds the whole tree twice; -short skips it knowingly")
+	if os.Getenv("TEI_SELF_BUILD_FULL_CHAIN") == "" {
+		// This builds the whole tree twice and takes around four minutes. It is
+		// opt-in rather than skipped by -short, because the default of a plain
+		// `go test ./...` is what most callers run.
+		t.Skip("set TEI_SELF_BUILD_FULL_CHAIN=1 to run the full chain on ./cmd/tei (about 4 minutes)")
 	}
 	if _, err := exec.LookPath("go"); err != nil {
 		t.Skipf("Go toolchain unavailable: %v", err)
