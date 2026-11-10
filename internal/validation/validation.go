@@ -68,6 +68,29 @@ var attributeRoles = map[string]bool{
 	"setting-key": true, "setting-value": true, "setting-user": true,
 }
 
+// unboundDatasourceHint says what to write, using an instance the workspace
+// actually declares when there is one. A fail-closed rule: if no instance is
+// declared, the hint names the shape without inventing one.
+func unboundDatasourceHint(w ir.World, a application.Application, alias core.LocalName) string {
+	var target core.CanonicalID
+	for _, req := range a.Databases {
+		if req.Alias == alias {
+			target = req.TargetDatabase
+			break
+		}
+	}
+	for _, e := range w.Environments {
+		for _, inst := range e.Instances {
+			if target != "" && inst.Definition != target {
+				continue
+			}
+			return fmt.Sprintf("add \"bind %s.%s -> %s\" inside environment %s, which already declares that instance",
+				a.ID, alias, inst.ID, e.ID)
+		}
+	}
+	return fmt.Sprintf("add \"bind %s.%s -> <database-instance>\" inside an environment block", a.ID, alias)
+}
+
 func Validate(w ir.World) []Diagnostic {
 	out := validateWorkspaceIsNotEmpty(w)
 	out = append(out, validateApplicationPatterns(w)...)
@@ -1162,7 +1185,15 @@ func Validate(w ir.World) []Diagnostic {
 			}
 		}
 		if !bound {
-			out = append(out, Diagnostic{Code: "UNBOUND_DATASOURCE", Severity: Warning, Message: fmt.Sprintf("query %s datasource %s is not bound in any environment", q.ID, q.Datasource)})
+			// Name the declaration that closes this. "is not bound in any
+			// environment" says what is missing but not what to write, and the
+			// binding lives in a different file from the query (#4169). The
+			// instance is derived from the World, never a fixed example: a hint
+			// that names an instance the workspace does not declare sends the
+			// author down another wrong path.
+			out = append(out, Diagnostic{Code: "UNBOUND_DATASOURCE", Severity: Warning, Message: fmt.Sprintf(
+				"query %s datasource %s is not bound in any environment; %s",
+				q.ID, q.Datasource, unboundDatasourceHint(w, a, q.Datasource))})
 		}
 	}
 

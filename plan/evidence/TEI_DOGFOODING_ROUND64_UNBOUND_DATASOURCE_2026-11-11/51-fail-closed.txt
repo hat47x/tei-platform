@@ -1,0 +1,10 @@
+The hint is derived from the World, never a fixed example.
+
+  target = the application's TargetDatabase for that alias
+  find an environment instance whose Definition == target
+  found     -> name it
+  not found -> "<database-instance>" shape only
+
+It must not borrow another database's instance: following that hint would create
+the wrong binding. Pinned by
+TestUnboundDatasourceDoesNotBorrowAnotherDatabasesInstance.
