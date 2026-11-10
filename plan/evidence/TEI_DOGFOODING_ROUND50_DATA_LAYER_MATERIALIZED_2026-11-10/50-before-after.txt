@@ -1,0 +1,18 @@
+BEFORE (main d160581ca)
+  trace -subject-kind application -subject-id order_entry -direction outgoing
+    total: 14  unresolved: 0
+    relations: owns-pattern 5, realizes 3, uses-validation 3, uses-semantic 3
+    projectionUnresolved: 12 entries
+  trace -subject-kind database -subject-id sales_core -> UNSUPPORTED_SUBJECT_KIND
+
+AFTER
+  total: 19  unresolved: 0
+  relations: owns-pattern 5, realizes 3, uses-validation 3, uses-semantic 3,
+             targets-database 2, requires-contract 3
+  projectionUnresolved: 1 entry
+    unmaterialized-to:semantic-capability:order_entry.compose_order_summary
+
+  trace -subject-kind database -subject-id sales_core
+    total: 2
+      order_entry - targets-database -> sales_core
+      sales_core  - uses-semantic    -> sales

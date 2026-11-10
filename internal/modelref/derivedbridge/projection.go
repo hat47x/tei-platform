@@ -125,6 +125,21 @@ func FromIndex(d index.Derived, scope string) Projection {
 		ruleSet[rule] = true
 		p.Graph.Edges = append(p.Graph.Edges, modelref.Edge{From: from, To: modelref.Ref{Scope: scope, Subject: to.Subject}, Relation: relation})
 	}
+	// The index declares edges that name database subjects, but those subjects
+	// have no entry list of their own: `database`, `database-contract` and
+	// `database-contract-query` appear only as endpoints. Without a node,
+	// addEdge drops every such edge and reports it as unmaterialized, so the
+	// whole data layer was invisible to trace while the projection still said
+	// "unresolved: 0" (#4068). Materialize the endpoints the index names, so a
+	// declared edge is either projected or reported for a real reason.
+	for _, e := range d.SemanticDependencies {
+		addEndpointNode(add, e.FromKind, string(e.From))
+		addEndpointNode(add, e.ToKind, string(e.To))
+	}
+	for _, e := range d.DeclaredDependencies {
+		addEndpointNode(add, e.FromKind, string(e.From))
+		addEndpointNode(add, e.ToKind, string(e.To))
+	}
 	for _, e := range d.SemanticDependencies {
 		addEdge(e.FromKind, string(e.From), e.Relation, e.ToKind, string(e.To))
 	}
@@ -208,6 +223,11 @@ var SupportedSubjectKinds = []string{
 	"semantic", "semantic-type", "semantic-data", "semantic-attribute",
 	"semantic-relation", "semantic-validation", "semantic-capability",
 	"application", "application-pattern", "query",
+	// The data layer. These are named by the index as edge endpoints and are
+	// materialized so a declared edge is visible; without them a reader could
+	// not ask which database an application targets or what a contract reads
+	// (#4068).
+	"database", "database-contract", "database-contract-query",
 }
 
 func semanticKind(kind string) (string, bool) {
@@ -228,5 +248,23 @@ func semanticKind(kind string) (string, bool) {
 		return "semantic-capability", true
 	default:
 		return "", false
+	}
+}
+
+// endpointOnlyKinds are subject kinds the Derived Index names as edge endpoints
+// without carrying a dedicated entry list for them. FromIndex still has to
+// place them in the graph: an edge whose endpoint has no node is dropped, and a
+// dropped edge is indistinguishable from an absent declaration to a reader.
+var endpointOnlyKinds = map[string]bool{
+	"database":                true,
+	"database-contract":       true,
+	"database-contract-query": true,
+}
+
+// addEndpointNode materializes an edge endpoint that belongs to an
+// endpoint-only kind. Other kinds are left to the entry lists that define them.
+func addEndpointNode(add func(kind, id string), kind, id string) {
+	if endpointOnlyKinds[kind] {
+		add(kind, id)
 	}
 }

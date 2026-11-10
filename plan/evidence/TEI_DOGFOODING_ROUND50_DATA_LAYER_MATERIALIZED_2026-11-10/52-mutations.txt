@@ -1,0 +1,7 @@
+M1 remove the endpoint materialization (the original defect)
+   -> FAIL: edge "targets-database" ... was dropped (also requires-contract,
+            contract-query)
+M2 keep the nodes but remove the kinds from the contract
+   -> FAIL: database has a node but SupportsSubjectKind refuses it; trace would
+            reject a subject the graph contains (also the other two)
+restored -> 11 dependent packages ok, cmd/tei ok (165.9s), vet and gofmt clean
