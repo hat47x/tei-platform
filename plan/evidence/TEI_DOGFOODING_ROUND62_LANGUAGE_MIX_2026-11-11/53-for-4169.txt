@@ -1,0 +1,10 @@
+Material for #4169 option A, from the four mistakes this round:
+
+  missing `contract`     -> expected "contract"                     good
+  missing version        -> unexpected token "{"                   WEAK
+  `^1` for version       -> unexpected token "^"                    weak
+  `version 1`            -> invalid version "version"               good
+  no input/result        -> Japanese "input or result required"     wording ok, language differs
+
+`unexpected token "{"` is the weakest: saying a version is required would save a
+round trip. Recorded as the next candidate for option A; not implemented here.

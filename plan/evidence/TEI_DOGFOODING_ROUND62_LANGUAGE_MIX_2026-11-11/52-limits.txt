@@ -1,0 +1,11 @@
+What I did NOT establish:
+  - I did not observe both languages in the SAME run. validate stops at the first
+    syntax error, so I saw them in separate runs.
+  - I did not map which of the 555 reach the CLI. driver and security messages may
+    stay internal or be wrapped.
+  - Whether Japanese itself is wrong is a product decision, not a defect I should
+    settle. The owner writes Japanese.
+
+I did NOT convert any of the 555. Filed as #4174 with five options and named A
+(user-facing diagnostics in English; the four diagnostic-path packages, 137
+literals) as the smallest.
