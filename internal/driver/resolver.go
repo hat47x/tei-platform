@@ -290,6 +290,9 @@ func (r Resolver) ResolveRelationQuery(applicationID, queryID core.CanonicalID) 
 	if err != nil {
 		return query.ResolvedRelationQuery{}, fmt.Errorf("Relation Query %sのroot Data %sを解決できません: %w", queryID, relationQuery.Root, err)
 	}
+	if relationQuery.Depth > 0 && len(relationQuery.Relations) > relationQuery.Depth {
+		return query.ResolvedRelationQuery{}, fmt.Errorf("Relation Query %sのdepth %dを超えています: %d steps", queryID, relationQuery.Depth, len(relationQuery.Relations))
+	}
 	resolved := query.ResolvedRelationQuery{
 		Query:    relationQuery,
 		RootData: rootData,
@@ -345,13 +348,18 @@ func (r Resolver) resolveRelationStep(source semantic.Data, step query.RelationS
 	if err := r.checkAmbiguousPaths(source.ID, relation.Relation.Target, step.Relation); err != nil {
 		return query.ResolvedRelationStep{}, err
 	}
-	return query.ResolvedRelationStep{
+	resolved := query.ResolvedRelationStep{
 		Step:      step,
 		Relation:  relation.Relation,
 		Source:    relation.Source,
 		Target:    relation.Target,
 		JoinAlias: step.Alias,
-	}, nil
+		JoinTable: relation.Relation.JoinTable,
+	}
+	if resolved.JoinTable == "" && step.Alias != "" {
+		resolved.JoinTable = step.Alias
+	}
+	return resolved, nil
 }
 
 func (r Resolver) checkAmbiguousPaths(sourceID, targetID core.CanonicalID, _ core.CanonicalID) error {

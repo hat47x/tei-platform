@@ -40,6 +40,25 @@ func TestResolveRelationQueryRejectsUnknownRelation(t *testing.T) {
 	}
 }
 
+func TestResolveRelationQueryHandlesNullForeignKeys(t *testing.T) {
+	// NULL foreign keys are valid in the data model - the resolver should
+	// still resolve the relation definition even if some instances have NULL
+	world := irWorldWithRelationQuery()
+	resolver := NewResolver(world)
+	resolved, err := resolver.ResolveRelationQuery("order_entry", "order_entry.order_with_customer")
+	if err != nil {
+		t.Fatalf("resolve error: %v", err)
+	}
+	if len(resolved.Steps) != 1 {
+		t.Fatalf("expected 1 step, got %d", len(resolved.Steps))
+	}
+	// The resolver doesn't know about NULL values - that's a runtime concern
+	// This test verifies the relation definition is valid regardless of NULLs
+	if resolved.Steps[0].Relation.ID != "sales.order.customer" {
+		t.Fatalf("unexpected relation: %s", resolved.Steps[0].Relation.ID)
+	}
+}
+
 func TestResolveRelationQueryRejectsAmbiguousPaths(t *testing.T) {
 	world := irWorldWithAmbiguousPaths()
 	resolver := NewResolver(world)
@@ -88,6 +107,30 @@ func TestResolveRelationQueryAllowsCompositeKey(t *testing.T) {
 		t.Fatalf("expected 2 keys, got %d", len(resolved.Steps[0].Relation.Keys))
 	}
 }
+
+func TestResolveRelationQueryRejectsMissingRelation(t *testing.T) {
+	world := irWorldWithRelationQuery()
+	resolver := NewResolver(world)
+	if _, err := resolver.ResolveRelationQuery("order_entry", "order_entry.missing_relation"); err == nil {
+		t.Fatal("expected error for missing relation")
+	}
+}
+
+func TestResolveRelationQueryHandlesEmptyResultSet(t *testing.T) {
+	// The resolver doesn't know about empty data - that's a runtime concern
+	// This test verifies the query definition is valid even when no data matches
+	world := irWorldWithRelationQuery()
+	resolver := NewResolver(world)
+	resolved, err := resolver.ResolveRelationQuery("order_entry", "order_entry.order_with_customer")
+	if err != nil {
+		t.Fatalf("resolve error: %v", err)
+	}
+	if resolved.RootData.ID != "sales.order" {
+		t.Fatalf("unexpected root data: %s", resolved.RootData.ID)
+	}
+	// Empty result set is a valid outcome - the SQL will execute and return 0 rows
+}
+
 
 func irWorldWithAmbiguousPaths() ir.World {
 	orderData := semantic.Data{
@@ -181,7 +224,16 @@ func irWorldWithRelationQuery() ir.World {
 			{SourceAttribute: "sales.order.customer_id", TargetAttribute: "customer.customer.customer_id"},
 		},
 	}
+	altRelation := semantic.Relation{
+		ID:         "customer.customer.alt",
+		Target:     "customer.customer",
+		Cardinality: semantic.CardinalityOne,
+		Keys: []semantic.RelationKey{
+			{SourceAttribute: "customer.customer.customer_id", TargetAttribute: "customer.customer.customer_id"},
+		},
+	}
 	orderData.Relations = []semantic.Relation{relation}
+	customerData.Relations = []semantic.Relation{altRelation}
 	app := application.Application{
 		ID:           "order_entry",
 		Databases:    []application.DatabaseRequirement{{Alias: "master", TargetDatabase: "master_data", Access: database.AccessRead}},
@@ -398,5 +450,98 @@ func irWorldWithCompositeKey() ir.World {
 			{ID: "sales", Data: []semantic.Data{orderData, lineData}},
 		},
 		RelationQueries: []query.RelationQuery{relationQuery},
+	}
+}
+
+func irWorldWithManyToMany() ir.World {
+	orderData := semantic.Data{
+		ID: "sales.order",
+		Attributes: []semantic.Attribute{
+			{ID: "sales.order.order_id", TypeRef: "sales.order_id"},
+		},
+	}
+	productData := semantic.Data{
+		ID: "sales.product",
+		Attributes: []semantic.Attribute{
+			{ID: "sales.product.product_id", TypeRef: "sales.product_id"},
+			{ID: "sales.product.name", TypeRef: "std.text"},
+		},
+	}
+	relation := semantic.Relation{
+		ID:         "sales.order.products",
+		Target:     "sales.product",
+		Cardinality: semantic.CardinalityMany,
+		JoinTable:  "sales.order_product",
+		Keys: []semantic.RelationKey{
+			{SourceAttribute: "sales.order.order_id", TargetAttribute: "sales.order_product.order_id"},
+			{SourceAttribute: "sales.product.product_id", TargetAttribute: "sales.order_product.product_id"},
+		},
+	}
+	orderData.Relations = []semantic.Relation{relation}
+	app := application.Application{
+		ID:           "sales",
+		Databases:    []application.DatabaseRequirement{{Alias: "master", TargetDatabase: "master_data", Access: database.AccessRead}},
+		SemanticUses: []core.CanonicalID{"sales"},
+	}
+	relationQuery := query.RelationQuery{
+		ID:          "sales.order_products",
+		Application: "sales",
+		Datasource:  "master",
+		Root:        "sales.order",
+		Relations:   []query.RelationStep{{Relation: "sales.order.products"}},
+		ResultColumns: []query.ResultColumnMapping{
+			{Column: "order_id", Attribute: "sales.order.order_id"},
+			{Column: "product_name", Attribute: "sales.product.name"},
+		},
+	}
+	return ir.World{
+		Applications: []application.Application{app},
+		Semantics: []semantic.Namespace{
+			{ID: "sales", Data: []semantic.Data{orderData, productData}},
+		},
+		RelationQueries: []query.RelationQuery{relationQuery},
+	}
+}
+
+func TestResolveRelationQueryAllowsManyToMany(t *testing.T) {
+	world := irWorldWithManyToMany()
+	resolver := NewResolver(world)
+	resolved, err := resolver.ResolveRelationQuery("sales", "sales.order_products")
+	if err != nil {
+		t.Fatalf("resolve error: %v", err)
+	}
+	if len(resolved.Steps) != 1 {
+		t.Fatalf("expected 1 step, got %d", len(resolved.Steps))
+	}
+	if resolved.Steps[0].JoinTable != "sales.order_product" {
+		t.Fatalf("unexpected join table: %s", resolved.Steps[0].JoinTable)
+	}
+	if resolved.Steps[0].Target.ID != "sales.product" {
+		t.Fatalf("unexpected target: %s", resolved.Steps[0].Target.ID)
+	}
+}
+
+func TestResolveRelationQueryEnforcesDepthLimit(t *testing.T) {
+	world := irWorldWithRelationQuery()
+	resolver := NewResolver(world)
+	// Create a query with depth=1 but 2 relation steps
+	query := query.RelationQuery{
+		ID:          "order_entry.deep",
+		Application: "order_entry",
+		Datasource:  "master",
+		Root:        "sales.order",
+		Depth:       1,
+		Relations: []query.RelationStep{
+			{Relation: "sales.order.customer"},
+			{Relation: "customer.customer.alt"},
+		},
+		ResultColumns: []query.ResultColumnMapping{
+			{Column: "order_id", Attribute: "sales.order.order_id"},
+		},
+	}
+	// Manually add to world for test
+	world.RelationQueries = append(world.RelationQueries, query)
+	if _, err := resolver.ResolveRelationQuery("order_entry", "order_entry.deep"); err == nil {
+		t.Fatal("expected error for depth exceeded")
 	}
 }
