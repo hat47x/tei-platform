@@ -1583,4 +1583,46 @@ distinct projectionUnresolved messages: 12
 
 ### 残した問い
 
-**`std` 型の一覧は依然として CLI から引けない。** `std.date-time` は「canonical id が不正」と出るが、これは id の構文を指しており、利用可能な語彙を指していない。私は `internal/stdlib/semantic.go` を読んで解決したが、CLI 利用主体の制約下では真似できない。capability・data・interaction などの語彙にも同じ問いが残る。
+- ~~`std` 型の一覧は依然として CLI から引けない~~ → **第52ラウンドで訂正。この記述は誤りだった。**`model catalog` は std 型12件を返し、`inspect -subject-kind semantic -subject-id std` は種類付きで列挙し、`model locate` も引ける。私の探査用ワークスペースがロードに失敗していたため `model catalog` が0件を返し、それを「std が無い」と誤読した。残る欠陥は別で、`invalid canonical id` が文字規則を言わない点（第52ラウンドで修正）。capability・data・interaction の語彙にも同じ問いが残る。
+
+## 54. 第52ラウンド（2026-11-10）: 自分の誤りを訂正し、`invalid canonical id` に文字規則を載せた
+
+第51ラウンドで「`std` 型の一覧は CLI から引けない」と記録した。本ラウンドはその解消に着手する予定だったが、**着手前の再実測でその主張自体が誤りだと分かった**。生出力は[第52ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND52_ID_RULE_AND_CORRECTION_2026-11-10/README.md)にある。
+
+### 訂正: `std` 型は CLI から引ける
+
+| 経路 | 結果 |
+| --- | --- |
+| `model catalog` | `std.` 始まりの `semantic-type` が **12件** |
+| `inspect -subject-kind semantic -subject-id std` | **12件**、各 `kind=primitive` |
+| `model locate -subject-kind semantic-type -subject-id std.datetime` | `ok=true` |
+
+**誤った理由**: 第51ラウンドの探査用ワークスペースに解析エラーを残したまま `model catalog` を実行し、0件を得た。それを「std がカタログに無い」と読んだ。実際は**ワークスペースのロード自体が失敗**しており、`inspect` は `WORKSPACE_LOAD_FAILED` と答えていた。空配列だけを見て判断した。
+
+**原文は消さずに残した。** 計画 §53 は打ち消し線＋訂正に置換、証拠 `53-not-done.txt` は原文を保持したまま `CORRECTION` 節を追記、#4082 にも訂正コメントを付けた。
+
+### 残っていた実際の欠陥
+
+`std.date-time` の診断は `invalid canonical id "std.date-time"` で**文字規則を言わない**。著者は「型が無い」のか「文字が不正」なのか区別できない。規則は `core/identity/id.go` の `validCanonicalID` に在るのに、届いていなかった。
+
+```text
+変更前: invalid canonical id "std.date-time"
+変更後: invalid canonical id "std.date-time"
+        (each dot-separated segment must match [a-z][a-z0-9_]*)
+```
+
+`ParseLocalName` も同様。既存の `id_equivalence_test.go` がエラー文字列を厳密比較していたため、参照実装側の文面も同時に更新した（固定している主眼は「受理する文字列集合の一致」で、それは不変）。
+
+### 試験
+
+`id_rule_diagnostic_test.go` の3件。特に `TestTheQuotedRuleMatchesTheAcceptedLanguage` は、**診断が引用する規則が実際の受理言語と一致すること**を固定する。変異2種（規則の削除／**誤った規則**への差し替え）が両方落ちることを確認した。後者は「診断が嘘をついても通らない」ことを示す。
+
+`invalid canonical id` を参照する19箇所は `strings.Contains` なので文面追加で壊れない。`core/identity`・`plugin/...`・`syntax`・`workspace`・`operations`・`realization`・`reference-durable-run-golden` がすべて ok。
+
+### 調べたが欠陥ではなかったこと
+
+`attribute Bad-Name type std.text` が `ok` になったので疑ったが、`SymbolToSegment("Bad-Name") == "bad_name"` で、**記号は表示名であり正規化される**仕様だった。起票していない。
+
+### 位置付け
+
+**公開済みの主張を測り直して訂正した回**である。原因は**壊れた探査状態から一般化したこと**で、第43ラウンド（PR の状態だけを見た）・第49ラウンド（`tei world` を試さず一般化した）と同じ型の**3回目**。今回は「解消に着手する前にまず主張を測り直す」を実行したことで、公開後の1ラウンドで捕まえられた。

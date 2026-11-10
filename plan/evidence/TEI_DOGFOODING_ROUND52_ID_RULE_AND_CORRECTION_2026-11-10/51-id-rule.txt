@@ -1,0 +1,14 @@
+Rule that was in the code but not in the message:
+  core/identity/id.go validCanonicalID: ^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$
+
+before: invalid canonical id "std.date-time"
+after : invalid canonical id "std.date-time"
+        (each dot-separated segment must match [a-z][a-z0-9_]*)
+
+Also applied to ParseLocalName:
+before: invalid local name "Bad-Alias"
+after : invalid local name "Bad-Alias" (must match [a-z][a-z0-9_]*)
+
+Unchanged: a well-formed but unknown type still reports
+  UNKNOWN_SEMANTIC_ATTRIBUTE_TYPE ... unknown semantic type std.foo
+and a healthy workspace still validates ok.
