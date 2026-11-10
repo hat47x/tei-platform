@@ -1,0 +1,8 @@
+counted occurrences in the two files that would have to read them:
+
+  HeaderDetailContractQueryBindings  index.go:0  projection.go:0
+  ContractQueryExecutorBindings      index.go:0  projection.go:0
+  ContractQuerySQLRealizations       index.go:0  projection.go:0
+  CustomGoBindings                   index.go:4  projection.go:0
+
+ir.World carries all four fields (world.go:35-38); the derived index reads one.
