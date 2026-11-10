@@ -121,6 +121,10 @@ tei self-build \
 
 **どちらか一方は必須です。** どちらも渡さないと、試行は`ok:false`・終了コード1で終わり、`l2b.unmet`の先頭が`no plan was derived for this attempt`になります（実測）。宣言はあっても、そこから計画を導く手段が無いためです。
 
+`-expected-plan-fingerprint`を渡すと、導出した計画の`planFingerprint`がその値と一致することを要求できます。**手元に別経路で得た計画があり、その計画でだけ構築したいとき**に使います。
+
+一致しないときは、試行は**終了コード2**で止まり、`error.code`は`SELF_BUILD_PLAN_MISMATCH`、`error.message`は`the plan derived in this process differs from the caller-declared expectation`になります（実測）。**この場合`l2b`の欄は出力されません**——構築の観測まで進んでいないためです。
+
 `-build-catalog`を渡すと、**二回目の構築が既定で行われます**（`-rebuild-check=false`で断れます）。二回の成果物が同じバイト列になったときだけ、その計画がその成果物を生んだという観測が成立します。
 
 出力のうち、この段階の主張を担うのは次の欄です。
