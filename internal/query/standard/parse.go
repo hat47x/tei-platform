@@ -367,6 +367,40 @@ func (p *parser) parseQuery() (*StandardQuery, error) {
 	if err != nil {
 		return nil, err
 	}
+	for p.matchKeyword("union") {
+		all := p.matchKeyword("all")
+		rightB := &queryBuilder{}
+		_, rerr := p.parseQueryBody(rightB)
+		if rerr != nil {
+			return nil, rerr
+		}
+		union := &Union{NodeID: p.nextNodeID(), All: all, Left: nodeID(root), Right: nodeID(rightB.nodes[len(rightB.nodes)-1])}
+		b.nodes = append(b.nodes, rightB.nodes...)
+		b.nodes = append(b.nodes, union)
+		root = union
+	}
+	if p.matchKeyword("intersect") {
+		rightB := &queryBuilder{}
+		_, rerr := p.parseQueryBody(rightB)
+		if rerr != nil {
+			return nil, rerr
+		}
+		union := &Union{NodeID: p.nextNodeID(), All: false, Left: nodeID(root), Right: nodeID(rightB.nodes[len(rightB.nodes)-1])}
+		b.nodes = append(b.nodes, rightB.nodes...)
+		b.nodes = append(b.nodes, union)
+		root = union
+	}
+	if p.matchKeyword("except") {
+		rightB := &queryBuilder{}
+		_, rerr := p.parseQueryBody(rightB)
+		if rerr != nil {
+			return nil, rerr
+		}
+		union := &Union{NodeID: p.nextNodeID(), All: false, Left: nodeID(root), Right: nodeID(rightB.nodes[len(rightB.nodes)-1])}
+		b.nodes = append(b.nodes, rightB.nodes...)
+		b.nodes = append(b.nodes, union)
+		root = union
+	}
 	q := &StandardQuery{Root: nodeID(root), Nodes: b.nodes, CTEs: ctes}
 	if len(p.diags) > 0 {
 		q.Diagnostics = append(q.Diagnostics, p.diags...)
@@ -1199,7 +1233,19 @@ func (p *parser) parseOrderBy() (Node, error) {
 		} else if p.matchKeyword("asc") {
 			desc = false
 		}
-		keys = append(keys, SortKey{Expr: expr, Desc: desc})
+		key := SortKey{Expr: expr, Desc: desc}
+		if p.matchKeyword("nulls") {
+			if p.matchKeyword("first") {
+				v := true
+				key.NullsFirst = &v
+			} else if p.matchKeyword("last") {
+				v := false
+				key.NullsFirst = &v
+			} else {
+				return nil, p.error("expected FIRST or LAST after NULLS")
+			}
+		}
+		keys = append(keys, key)
 		if !p.match(tokComma) {
 			break
 		}

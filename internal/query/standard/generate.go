@@ -38,6 +38,7 @@ func StandardToSQL(q *StandardQuery) (string, []Diagnostic) {
 	var sort *Sort
 	var limit *Limit
 	var hasDistinct bool
+	var union *Union
 	subqueries := make(map[string]*Subquery)
 
 	for _, n := range q.Nodes {
@@ -64,6 +65,8 @@ func StandardToSQL(q *StandardQuery) (string, []Diagnostic) {
 			hasDistinct = true
 		case *Subquery:
 			subqueries[v.ID] = v
+		case *Union:
+			union = v
 		}
 	}
 
@@ -165,6 +168,13 @@ func StandardToSQL(q *StandardQuery) (string, []Diagnostic) {
 			} else {
 				sb.WriteString(" ASC")
 			}
+			if k.NullsFirst != nil {
+				if *k.NullsFirst {
+					sb.WriteString(" NULLS FIRST")
+				} else {
+					sb.WriteString(" NULLS LAST")
+				}
+			}
 		}
 	}
 
@@ -177,7 +187,21 @@ func StandardToSQL(q *StandardQuery) (string, []Diagnostic) {
 		}
 	}
 
-	return sb.String(), diags
+	mainSQL := sb.String()
+
+	if union != nil {
+		leftSQL, d := StandardToSQL(&StandardQuery{Nodes: q.Nodes, Root: union.Left, CTEs: q.CTEs})
+		diags = append(diags, d...)
+		rightSQL, d := StandardToSQL(&StandardQuery{Nodes: q.Nodes, Root: union.Right, CTEs: q.CTEs})
+		diags = append(diags, d...)
+		op := "UNION"
+		if union.All {
+			op = "UNION ALL"
+		}
+		return leftSQL + " " + op + " " + rightSQL, diags
+	}
+
+	return mainSQL, diags
 }
 
 func writeScan(sb *strings.Builder, s *Scan, subqueries map[string]*Subquery) {

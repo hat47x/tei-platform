@@ -148,9 +148,9 @@ type Sort struct {
 }
 
 type SortKey struct {
-	Expr       Expr `json:"expr"`
-	Desc       bool `json:"desc"`
-	NullsFirst bool `json:"nullsFirst,omitempty"`
+	Expr       Expr  `json:"expr"`
+	Desc       bool  `json:"desc"`
+	NullsFirst *bool `json:"nullsFirst,omitempty"`
 }
 
 type Limit struct {
