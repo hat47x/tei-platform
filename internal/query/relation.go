@@ -8,19 +8,19 @@ import (
 // RelationQuery represents a query that traverses semantic relations
 // to fetch related data without requiring explicit SQL JOINs.
 type RelationQuery struct {
-	ID          core.CanonicalID        `json:"id"`
-	Application core.CanonicalID        `json:"application"`
-	Datasource  string                  `json:"datasource"`
-	Root        core.CanonicalID        `json:"root"`          // root data ID
-	Relations   []RelationStep          `json:"relations"`     // ordered traversal
-	Filters     []Filter                `json:"filters,omitempty"`
-	Sorts       []Sort                  `json:"sorts,omitempty"`
-	PageSize    int                     `json:"pageSize,omitempty"`
-	PageOffset  int                     `json:"pageOffset,omitempty"`
-	Depth       int                     `json:"depth,omitempty"` // max traversal depth
-	Mode        RelationQueryMode       `json:"mode,omitempty"`  // tree, graph, path
-	FetchMode   RelationFetchMode       `json:"fetchMode,omitempty"`
-	BatchSize   int                     `json:"batchSize,omitempty"`
+	ID            core.CanonicalID      `json:"id"`
+	Application   core.CanonicalID      `json:"application"`
+	Datasource    string                `json:"datasource"`
+	Root          core.CanonicalID      `json:"root"`      // root data ID
+	Relations     []RelationStep        `json:"relations"` // ordered traversal
+	Filters       []Filter              `json:"filters,omitempty"`
+	Sorts         []Sort                `json:"sorts,omitempty"`
+	PageSize      int                   `json:"pageSize,omitempty"`
+	PageOffset    int                   `json:"pageOffset,omitempty"`
+	Depth         int                   `json:"depth,omitempty"` // max traversal depth
+	Mode          RelationQueryMode     `json:"mode,omitempty"`  // tree, graph, path
+	FetchMode     RelationFetchMode     `json:"fetchMode,omitempty"`
+	BatchSize     int                   `json:"batchSize,omitempty"`
 	ResultColumns []ResultColumnMapping `json:"resultColumns"`
 }
 
@@ -61,9 +61,9 @@ func (m RelationQueryMode) Valid() bool {
 type RelationFetchMode string
 
 const (
-	RelationFetchModeEager  RelationFetchMode = "eager"
-	RelationFetchModeLazy   RelationFetchMode = "lazy"
-	RelationFetchModeBatch  RelationFetchMode = "batch"
+	RelationFetchModeEager RelationFetchMode = "eager"
+	RelationFetchModeLazy  RelationFetchMode = "lazy"
+	RelationFetchModeBatch RelationFetchMode = "batch"
 )
 
 var RelationFetchModes = []RelationFetchMode{
@@ -83,11 +83,11 @@ func (m RelationFetchMode) Valid() bool {
 
 // RelationStep represents one traversal step in a relation query.
 type RelationStep struct {
-	Relation   core.CanonicalID `json:"relation"`
-	Direction  string           `json:"direction,omitempty"`   // outgoing, incoming, both
-	Alias      string           `json:"alias,omitempty"`
-	Cardinality string          `json:"cardinality,omitempty"` // one, many
-	JoinKind   string           `json:"joinKind,omitempty"`    // inner, left, right
+	Relation    core.CanonicalID `json:"relation"`
+	Direction   string           `json:"direction,omitempty"` // outgoing, incoming, both
+	Alias       string           `json:"alias,omitempty"`
+	Cardinality string           `json:"cardinality,omitempty"` // one, many
+	JoinKind    string           `json:"joinKind,omitempty"`    // inner, left, right
 }
 
 // ResolvedRelationQuery resolves a RelationQuery against the semantic model.
@@ -121,8 +121,8 @@ type ResolvedColumn struct {
 
 // ResolvedParameter represents a query parameter.
 type ResolvedParameter struct {
-	Name         string
-	Attribute    core.CanonicalID
-	DataType     core.CanonicalID
-	Required     bool
+	Name      string
+	Attribute core.CanonicalID
+	DataType  core.CanonicalID
+	Required  bool
 }
