@@ -3,9 +3,11 @@ package operations_test
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"tei/internal/operations"
+	"tei/internal/sourceindex"
 )
 
 func writeValidationWorkspace(t *testing.T, extra string) string {
@@ -128,5 +130,75 @@ func TestCatalogStillAnswersForAnUnsoundWorkspace(t *testing.T) {
 	}
 	if catalog.Validation.OK {
 		t.Fatal("an unsound Workspace was reported as sound")
+	}
+}
+
+// TestUnsoundWorkspaceCatalogInspectAndTraceKeepValidationDistinct covers the
+// cross-view gap in MV-01. Reading a canonical Source and its references must
+// remain possible when semantic validation fails, but none of those successes
+// changes the validation verdict. The three operations load independently:
+// agreement on fingerprints does not prove an atomic multi-operation snapshot.
+func TestUnsoundWorkspaceCatalogInspectAndTraceKeepValidationDistinct(t *testing.T) {
+	root := writeValidationWorkspace(t, "namespace scn\n\ndata X {\n    attribute a type scn.nothere\n}\n")
+	subject := sourceindex.Subject{Kind: "semantic-data", ID: "scn.X"}
+
+	catalog, err := operations.CatalogWorkspace(root, "")
+	if err != nil {
+		t.Fatalf("catalog: %v", err)
+	}
+	validation, err := operations.ValidateWorkspace(root)
+	if err != nil {
+		t.Fatalf("validate: %v", err)
+	}
+	if catalog.Validation.OK || catalog.Validation.ErrorCount == 0 || !validation.HasErrors() {
+		t.Fatalf("unsound Workspace must remain unsound: catalog=%+v validate=%+v", catalog.Validation, validation)
+	}
+	if catalog.Effect != "read-only" || catalog.WorldFingerprint == "" ||
+		catalog.SourceIndexFingerprint == "" || catalog.Workspace == nil ||
+		validation.Workspace == nil || catalog.WorldFingerprint != validation.WorldFingerprint ||
+		catalog.SourceIndexFingerprint != validation.SourceIndexFingerprint ||
+		!reflect.DeepEqual(*catalog.Workspace, *validation.Workspace) {
+		t.Fatal("catalog and validate do not agree on their separately observed Workspace")
+	}
+
+	matches := 0
+	for _, entry := range catalog.Entries {
+		if entry.Subject != subject {
+			continue
+		}
+		matches++
+		if entry.Ambiguous || entry.Prelude || entry.SourceStatus != "indexed" {
+			t.Fatalf("unsound canonical Subject must remain navigable, not accepted: %+v", entry)
+		}
+	}
+	if matches != 1 {
+		t.Fatalf("expected one exact canonical Subject, got %d", matches)
+	}
+
+	inspected, err := operations.InspectSubject(root, subject)
+	if err != nil {
+		t.Fatalf("inspect unsound canonical Subject: %v", err)
+	}
+	if inspected.Subject != subject || inspected.Effect != "read-only" ||
+		inspected.SourceStatus != "indexed" || len(inspected.Sources.References) == 0 ||
+		inspected.Workspace == nil || !reflect.DeepEqual(*catalog.Workspace, *inspected.Workspace) ||
+		inspected.WorldFingerprint != catalog.WorldFingerprint ||
+		inspected.SourceIndexFingerprint != catalog.SourceIndexFingerprint {
+		t.Fatalf("inspection is not bound to the same observed canonical Subject: %+v", inspected)
+	}
+
+	traced, err := operations.TraceSubjectSources(root, subject)
+	if err != nil {
+		t.Fatalf("trace unsound canonical Subject: %v", err)
+	}
+	if traced.Subject != subject ||
+		!reflect.DeepEqual(traced.References, inspected.Sources.References) ||
+		!reflect.DeepEqual(traced.Artifacts, inspected.Sources.Artifacts) {
+		t.Fatalf("trace/inspect Source references disagree for %v", subject)
+	}
+	// Inspect and Source Trace do not carry a validation grant. In particular,
+	// successful Source navigation does not turn the earlier validation NG into OK.
+	if catalog.Validation.OK {
+		t.Fatal("Source navigation must not upgrade failed validation")
 	}
 }
