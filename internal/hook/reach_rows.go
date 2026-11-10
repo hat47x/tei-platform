@@ -15,16 +15,12 @@ import (
 // the row that refused and the phase is recorded as refused with the row named in
 // the reason, so a partly-applied page never reads as a passed phase.
 //
-// A row-scoped hook that also declares `uses` is refused here: the declared call
-// would have to be made once per row and this path does not do that yet. Refusing
-// is the fail-closed choice, because calling once for the whole page would keep the
-// promise for one row and not the others.
+// A row-scoped hook that also declares `uses` is refused, for the reason
+// refuseRowScopeWithUses states. The decision is shared with RunRows so both row
+// entry points answer the same declaration the same way.
 func (r Runner) applyReachableRows(ctx context.Context, report *PhaseReport, applicationID, patternID core.CanonicalID, phase string, declaration *application.Hook) error {
-	if len(declaration.Uses) > 0 {
-		return &Error{
-			Code:    "HOOK_SCOPE_ROW_USES_UNSUPPORTED",
-			Message: fmt.Sprintf("hook %s declares scope row with uses, which this path does not call per row", phase),
-		}
+	if err := refuseRowScopeWithUses(phase, declaration); err != nil {
+		return err
 	}
 	for index, row := range r.Rows {
 		// The row's own values are used, and only the reads the declaration names.
