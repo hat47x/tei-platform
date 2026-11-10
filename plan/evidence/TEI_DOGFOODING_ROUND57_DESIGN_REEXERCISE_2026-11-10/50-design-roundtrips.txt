@@ -1,0 +1,15 @@
+Task declared before looking anything up:
+  add a migration for sales_core, a database release 5.0.0 including it, and a
+  solution release that rolls it out.
+
+I did NOT know: recovery strategy, migration step kind, data readiness, solution
+step kind/phase/strategy.
+
+Attempt 1  -> PARSE_ERROR expected schema-fingerprint, includes, provides, or
+              data-readiness                      (learned: `includes`)
+Attempt 2  -> PARSE_ERROR expected "migration"     (learned: `includes migration <id>`)
+Attempt 3  -> five vocabulary errors at once, each naming its valid values,
+              plus ROLLOUT_POLICY_ON_NON_APPLICATION_STEP
+Attempt 4  -> ok
+
+Three corrections. No source file read at any point.

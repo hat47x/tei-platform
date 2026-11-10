@@ -1960,6 +1960,39 @@ L2-bの五条件は、childの能力に依存する。本節は、**参照実装
 - `vendor/`・置換（`replace`）の扱い
 - 既定化。**上の二つの理由で見送っている**
 
+### 4.43 module contextも計画のsourceにする（2026-11-09）
+
+§4.42の`-isolate`は、**`go.mod`・`go.sum`を作業ツリーから取る**ので、隔離してもTOCTOUが残った。本節は、**module contextも計画のsourceにする**ことで、その例外を消す。
+
+#### 規則
+
+**`kind: "go-module"`のsourceとして`go.mod`・`go.sum`を宣言できる。** 宣言すれば、隔離ビルドはそれらを**他のsourceと同じように写し、同じようにdigestを照合する**。
+
+| 計画がmodule contextを名指すか | 隔離ビルドの`moduleFiles` | 何が言えるか |
+| --- | --- | --- |
+| **名指す** | **空** | **木は計画のsourceだけでできている**（作業ツリーからの持ち込みが無い） |
+| 名指さない | `go.mod:<digest>`など | 木は計画＋作業ツリーのmodule contextでできている（境界に明記） |
+
+**「例外は無い」と言えるのは、名指した場合だけである。** 名指さない場合は従来どおりで、記録がそのことを示す。
+
+#### 実測
+
+| 試験 | 結果 |
+| --- | --- |
+| `TestIsolatedTreeTakesNoModuleFileFromTheWorkingTreeWhenThePlanNamesThem`（`go.mod`・`go.sum`を`go-module` sourceとして宣言 → `moduleFiles`が**空**、写したmembersは**3件**＝package＋2ファイル） | **PASS** |
+| `go test ./tools/reference-go-build-from-plan -count=1`（全試験） | **PASS**（79.4秒） |
+
+#### 途中で直した欠陥
+
+**単一ファイルのsourceを写す処理が、そのパスをディレクトリとして作っていた。** ディレクトリのsourceしか写していなかったので表面化していなかったが、`go.mod`をsourceにした瞬間に`is a directory`で落ちた。**ファイルとディレクトリを分けて書く**ように直した。
+
+#### この節が言っていないこと
+
+- **`go-module` sourceの検証**（`go.mod`という名前に限るか、任意のmoduleファイルを許すか）。今は**kindの意味だけ**を決め、名前は呼び手に任せている
+- `go.sum`が無いmodule（依存の無いmodule）での扱い
+- `-isolate`の既定化。**module contextを名指す計画が一般的になってから**
+- `replace`・`vendor/`の扱い
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
