@@ -392,3 +392,4 @@
 - [閉じた語彙の診断が有効値を挙げるようにした](TEI_DOGFOODING_ROUND53_VOCABULARY_DIAGNOSTICS_2026-11-10/README.md)（#4094。storage・nullability・accessの3件で`valid values are ...`を出すようにし、語彙リストと`Valid()`を単一情報源にした。同型17件はIssueに記録。変異2種で確認）
 - [CLI_MISSING_ARGUMENT_CODE_2026-11-09](CLI_MISSING_ARGUMENT_CODE_2026-11-09.md)（引数が足りない場合に `INVALID_ARGUMENT` と `MISSING_ARGUMENT` が混在していたため、1つの符号へ寄せたことの記録）
 - [TEI_GO_SELF_BUILD_REBUILD_COST_2026-11-09](TEI_GO_SELF_BUILD_REBUILD_COST_2026-11-09.md)（同一planの2回目ビルドに要した時間を実測し、再現確認を既定にしたときの費用を記録）
+- [語彙診断の第2弾と未検証だった疑問の解消](TEI_DOGFOODING_ROUND54_VOCABULARY_BATCH2_2026-11-10/README.md)（#4094。ownership/type kind/cardinality/application-release accessの4件を追加修正し残り13件。capability/data/interactionは既に語彙を列挙しており、私の一般化が過度だったと確認）
