@@ -153,10 +153,30 @@ func (p *Parser) ParseApplication() (application.Application, error) {
 			}
 			a.PackageBindings = append(a.PackageBindings, application.PackageBinding{ID: packageID, Version: versionTok.Text})
 		default:
+			// A pattern kind is the most likely reason someone writes a stray
+			// block here. Naming the placement is the difference between "this
+			// token is wrong" and "patterns live in their own file", which the
+			// generic message cannot express. application.PatternKinds is the same
+			// list the pattern parser accepts, so the two cannot drift (#4128).
+			if isApplicationPatternKind(t.Text) {
+				return a, p.errAt(t, fmt.Sprintf(
+					"%s starts an application pattern, which is not declared in the application body; declare it as \"pattern <application>.<id> %s { ... }\" in its own file",
+					strconv.Quote(t.Text), t.Text))
+			}
 			return a, p.errAt(t, "expected database, uses, or binds")
 		}
 	}
 	return a, p.expectEOF()
+}
+
+// isApplicationPatternKind reports whether the token starts a pattern block.
+func isApplicationPatternKind(text string) bool {
+	for _, kind := range application.PatternKinds {
+		if text == kind {
+			return true
+		}
+	}
+	return false
 }
 
 func (p *Parser) parseDatabaseRequirement() (application.DatabaseRequirement, error) {
