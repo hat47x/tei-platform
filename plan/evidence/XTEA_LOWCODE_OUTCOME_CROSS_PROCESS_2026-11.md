@@ -44,12 +44,25 @@ go test ./cmd/tei -run 'TestCLIProcessRestartRefusesObservedCommandReplay' -coun
 - 結末（`submitted`）と段階（`observed`）が永続格納へ記録され、別プロセスから読める。
 - 2つ目のプロセスは、観測済みのコマンドを再実行できない（`COMMAND_LIFECYCLE_REFUSED`）。
 
+### 4. 同時に起動した2つのプロセスでも、段階の更新は1つだけ通る
+
+段階の更新そのものは、**同時**に起動したプロセスでも排他されます。`internal/command/lifecyclesqlite`の次の2件を実行しました。
+
+```text
+go test ./internal/command/lifecyclesqlite -run 'TestTwoProcessesCannotBothDispatch|TestTwoProcessesCannotBothTakeOver' -count=1
+```
+
+結果: **2件とも成功**（2.69秒・2.46秒）。子プロセスは`-test.run`で同じテストバイナリを起動し、stdinを閉じる**バリア**で同時に開始します。
+
+- `TestTwoProcessesCannotBothDispatch`: 同じ`commandID`・同じ世代を2プロセスが`Dispatch`しようとすると、成功は**ちょうど1件**、負けた側は`REFUSED`。最終的な段階は`dispatched`、ownerは`owner-a`、世代は1。
+- `TestTwoProcessesCannotBothTakeOver`: `unknown`からの`Takeover`を2プロセスが競うと、こちらも成功は1件。
+
 ## 読み取れないこと
 
 - **実Provider・実データベースでの結末**（参照実装とメモリ上の効果のみ）。
-- 適用の有無が確定しない失敗（`StageUnknown`）からの復帰を跨いだ結末の扱い（`Takeover`の実運用手順）。
+- 適用の有無が確定しない失敗（`StageUnknown`）からの復帰を跨いだ結末の**実運用手順**（`Takeover`の段階排他は試験で確認したが、運用者がどの条件で実行するかは未決定）。
 - CLIとStudio以外のホスト（将来のHost）での同じ検査。
-- 複数プロセスの**同時**実行（並行競合）。試験は逐次起動です。
+- **同じコマンドの効果そのものを2プロセスが同時に適用した場合**の整合（段階の排他は確認したが、Store側の同時適用は別の話）。
 
 ## 位置付け
 
