@@ -97,13 +97,13 @@ func Validate(w ir.World) []Diagnostic {
 			out = append(out, errd("INVALID_PLUGIN_VERSION", "plugin %s: %v", p.ID, err))
 		}
 		if !p.Runtime.Kind.Valid() {
-			out = append(out, errFor(subject.Subject{Kind: "plugin", ID: string(p.ID) + "@" + p.Version}, "INVALID_PLUGIN_RUNTIME", "plugin %s has invalid runtime %s", p.ID, p.Runtime.Kind))
+			out = append(out, errFor(subject.Subject{Kind: "plugin", ID: string(p.ID) + "@" + p.Version}, "INVALID_PLUGIN_RUNTIME", "plugin %s has invalid runtime %s; valid values are %s", p.ID, p.Runtime.Kind, validValues(plugin.RuntimeKinds)))
 		}
 		if p.Runtime.Kind == plugin.RuntimeProcess && strings.TrimSpace(p.Runtime.Command) == "" {
 			out = append(out, errd("PLUGIN_PROCESS_COMMAND_REQUIRED", "plugin %s process runtime requires a command", p.ID))
 		}
 		if !p.Runtime.Sandbox.Valid() {
-			out = append(out, errd("INVALID_PLUGIN_SANDBOX_POLICY", "plugin %s has invalid sandbox policy %s", p.ID, p.Runtime.Sandbox))
+			out = append(out, errd("INVALID_PLUGIN_SANDBOX_POLICY", "plugin %s has invalid sandbox policy %s; valid values are %s (or omit the policy)", p.ID, p.Runtime.Sandbox, validValues(plugin.SandboxPolicies)))
 		}
 		if p.Runtime.Kind != plugin.RuntimeProcess && p.Runtime.Sandbox != "" && p.Runtime.Sandbox != plugin.SandboxNone {
 			out = append(out, errd("PLUGIN_SANDBOX_REQUIRES_PROCESS_RUNTIME", "plugin %s sandbox policy %s requires process runtime", p.ID, p.Runtime.Sandbox))
@@ -113,10 +113,10 @@ func Validate(w ir.World) []Diagnostic {
 		}
 		for _, ext := range p.External {
 			if !ext.ValidScope() {
-				out = append(out, errd("INVALID_PLUGIN_EXTERNAL_SCOPE", "plugin %s external requirement %s has invalid scope %s", p.ID, ext.Name, ext.Scope))
+				out = append(out, errd("INVALID_PLUGIN_EXTERNAL_SCOPE", "plugin %s external requirement %s has invalid scope %s; valid values are %s", p.ID, ext.Name, ext.Scope, validValues(plugin.ExternalScopes)))
 			}
 			if !ext.ValidKind() {
-				out = append(out, errd("INVALID_PLUGIN_EXTERNAL_KIND", "plugin %s external requirement %s has invalid kind %s", p.ID, ext.Name, ext.Kind))
+				out = append(out, errd("INVALID_PLUGIN_EXTERNAL_KIND", "plugin %s external requirement %s has invalid kind %s; valid values are %s", p.ID, ext.Name, ext.Kind, validValues(plugin.ExternalKinds)))
 			}
 			if !ext.ValidName() {
 				out = append(out, errd("PLUGIN_EXTERNAL_NAME_REQUIRED", "plugin %s has external requirement with empty name", p.ID))
@@ -139,7 +139,7 @@ func Validate(w ir.World) []Diagnostic {
 				out = append(out, errd("INVALID_PLUGIN_CAPABILITY_ID", "plugin %s: %v", p.ID, err))
 			}
 			if !c.Kind.Valid() {
-				out = append(out, errd("INVALID_PLUGIN_CAPABILITY_KIND", "plugin %s capability %s has invalid kind %s", p.ID, c.ID, c.Kind))
+				out = append(out, errd("INVALID_PLUGIN_CAPABILITY_KIND", "plugin %s capability %s has invalid kind %s; valid values are %s", p.ID, c.ID, c.Kind, validValues(plugin.CapabilityKinds)))
 			}
 			for _, a := range c.Actions {
 				if !a.Valid() {

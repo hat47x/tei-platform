@@ -1696,3 +1696,31 @@ has invalid access mode "read-write-nothing"; valid values are read, write, read
 ### 残り
 
 #4094 の17件のうち4件を直したので**13件**が残る。`plugin`・`migration`・`deployment`・`releaseplan` 側の語彙で、それぞれ単一情報源の新設が要る。
+
+## 57. 第55ラウンド（2026-11-10）: 語彙診断の第3弾、plugin 系統5件
+
+#4094 の残り13件のうち、`plugin` にまとまっている5件を処理した。生出力は[第55ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND55_VOCABULARY_PLUGIN_2026-11-10/README.md)にある。
+
+### 修正した5件
+
+| コード | 語彙 | 値 |
+| --- | --- | --- |
+| `INVALID_PLUGIN_RUNTIME` | runtime kind | builtin, process |
+| `INVALID_PLUGIN_SANDBOX_POLICY` | sandbox policy | none, preferred, required（**または省略**） |
+| `INVALID_PLUGIN_CAPABILITY_KIND` | capability kind | 7種すべて |
+| `INVALID_PLUGIN_EXTERNAL_SCOPE` | external scope | editor, build, test, runtime, migration |
+| `INVALID_PLUGIN_EXTERNAL_KIND` | external kind | toolchain, runtime, language-package, tool |
+
+`plugin.RuntimeKinds`・`SandboxPolicies`・`CapabilityKinds`・`ExternalScopes`・`ExternalKinds` を単一情報源として追加し、各述語がそれを読む。
+
+### sandbox だけ扱いが違う
+
+`SandboxPolicy.Valid()` は**空文字も受理する**（「宣言していない」の意味）。そこで一覧には空を含めず、診断文を `valid values are none, preferred, required (or omit the policy)` とした。空を選択肢として並べると「空を書け」と読めるため。この区別を試験で固定した。
+
+**5件すべて CLI から到達できた。** 前ラウンドの `INVALID_SEMANTIC_TYPE_KIND` と違い、到達不能なものは無い。
+
+変異3種（external scope の一覧削除／`SandboxPolicies` への空の追加／`CapabilityKinds` から1件削除）がすべて落ちることを確認した。`cmd/tei`（195.7s）を含む全対象が ok。
+
+### 残り8件
+
+#4094 は 17→13→8 件。残りは `migration`（2件）・`releaseplan`/`deployment`（4件）と、語彙ではなく構造を検証する `INVALID_PLUGIN_ARTIFACT` 等。
