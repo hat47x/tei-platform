@@ -1,0 +1,11 @@
+v1  for example "interaction { command command }"
+    Echoed the offending token into the example. Nonsense.
+v2  for example "interaction { command <capability name> }"
+    A command pattern cannot take an interaction at all, so this example would be
+    rejected by the contract immediately: following it costs another round trip.
+v3  record  -> "interaction { item <data>.<attribute> }"
+    others  -> "this <kind> pattern does not accept one; the first interaction
+               contract is limited to record patterns"
+
+v1 and v2 were both found by running the CLI, not by reading the code. An example
+is only useful if following it actually validates.

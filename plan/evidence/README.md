@@ -430,3 +430,4 @@
 - [契約クエリをCLIで設計し診断の言語混在を検出](TEI_DOGFOODING_ROUND62_LANGUAGE_MIX_2026-11-11/README.md)（#4174。#4169のA案の材料として契約クエリを4往復で設計。PARSE_ERRORクラスに英語と日本語が併存することを実測し、非テスト555件/66ファイルを数えた。1回の実行での同時観測はしておらず、CLIに出るものの対応付けも未完。変換は方針判断のため未実施）
 - [契約ヘッダの版を名指しする](TEI_DOGFOODING_ROUND63_CONTRACT_VERSION_2026-11-11/README.md)（#4169のA案2件目。`unexpected token \"{\"`を「版が要る」に変え、`^`も同じ案内にした。実装中にpeekの順序バグを作り、ビルドと既存試験は通ったがCLIで測って気づいた。変異M2がそのバグを再現する）
 - [未束縛のdatasourceに書くべきbindを名指しさせる](TEI_DOGFOODING_ROUND64_UNBOUND_DATASOURCE_2026-11-11/README.md)（#4169のA案3件目。第60ラウンドで起票を保留した摩擦を、environmentファイルで手順を確定してから解消。案内はWorldから導出し、実在しないインスタンスを例示しない（fail-closed）。変異3種で確認）
+- [コマンドパターンを設計しinteractionの形を名指しさせる](TEI_DOGFOODING_ROUND65_INTERACTION_FORM_2026-11-11/README.md)（#4169のA案4件目。commandパターンをCLIだけで設計し、interactionを行形式で書くと形が分からない点を直した。案内文を2度書き直した（違反トークンの埋め込み→契約が拒否する例→種に合った案内）。cmd/teiは単独564.8sでok、同時実行では600秒上限に達した）

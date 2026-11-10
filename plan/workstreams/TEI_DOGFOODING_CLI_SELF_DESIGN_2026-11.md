@@ -2102,3 +2102,51 @@ warning UNBOUND_DATASOURCE  query task67.q datasource sales is not bound in any 
 ### #4169 の進捗
 
 A 案は3件（第61ラウンドのパターン配置、第63ラウンドの契約の版、本ラウンドの bind）。**いずれも実際に踏んだ誤りから作られている。**
+
+## 67. 第65ラウンド（2026-11-11）: コマンドパターンを設計し、interaction の形を名指しさせる
+
+目的文の「再びドッグフーディングに戻る」を実行した回。まだ触っていない層として command パターンを選んだ。生出力は[第65ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND65_INTERACTION_FORM_2026-11-11/README.md)にある。
+
+### 設計の経過
+
+| Attempt | 応答 | 学んだこと |
+| --- | --- | --- |
+| 1 | `command pattern ... does not accept data` | command は `data` を取らない |
+| 2A | `UNKNOWN_APPLICATION_PATTERN_CAPABILITY ... sales.record_return` | 能力を先に宣言する |
+| 2B | `unexpected token "command"` | `interaction` を行として書けない（**形は教えない**） |
+| 2C | `expected data, relation, query, capability, datasource, contract-query, or interaction` | 本体の語彙は引けた |
+| 4 | `expected "namespace"` | 意味ファイルにはヘッダが要る |
+| 5〜7 | `ok` | コマンドパターンが解決 |
+
+**`interaction` の形（行かブロックか）だけは CLI で分からなかった。**
+
+### 読み返し
+
+```text
+model catalog に returns.accept_return が application-pattern として現れる
+inspect -> {"id": "returns.accept_return", "kind": "command", "capability": "sales.record_return"}
+```
+
+第58ラウンドで足した `application-pattern` の受理が効いている。
+
+### 修正: `interaction` の形を名指しする
+
+**案内文を2回書き直した。**
+
+| 版 | 出力 | 問題 |
+| --- | --- | --- |
+| v1 | `for example "interaction { command command }"` | 違反トークンを例に埋め、無意味 |
+| v2 | `for example "interaction { command <capability name> }"` | command パターンでは契約が即拒否する例。**往復が1回増える** |
+| v3 | record には `"interaction { item <data>.<attribute> }"`、他は「この種は受けられない」 | 種に合った案内 |
+
+v1 と v2 はどちらも **CLI で走らせて初めて気づいた**。案内文は正しさだけでなく、**それに従ったときに通るか**まで確かめる必要がある。
+
+### 変異と回帰
+
+変異3種のうち M1（ブロック形の判定を削る）は**ビルドを壊して「失敗しなかった」**（削除範囲が `default:` に食い込んだ）。第67ラウンドの M2 と同じ類型で、壊れた変異は結果ではないと判断し、M2・M3 を根拠にした。
+
+`./internal/syntax`・`./internal/workspace`・`./cmd/tei` は**単独実行で ok**（`cmd/tei` は 564.8s）。**変異作業と同時実行した `cmd/tei` は 600.1s で FAIL**（`go test` の600秒上限）。機能の失敗ではなく実行環境の競合だが、両方を記録した。**`cmd/tei` の実行時間が上限に近いこと自体が別の課題**である。
+
+### #4169 の進捗
+
+A 案は4件（パターン配置・契約の版・bind・interaction の形）。
