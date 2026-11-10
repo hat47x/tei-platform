@@ -287,3 +287,5 @@
 # OKF K1 synthetic bytes are compared exactly across OS; no checkout EOL conversion.
 /testdata/okf-k1-v02/** -text
 /testdata/okf-k1-v02.expected.json -text
+# Historical B Git blob is a byte-exact test witness, not live authoring Source.
+/cmd/tei/testdata/xtea_standard_20261108_b.tei -text
