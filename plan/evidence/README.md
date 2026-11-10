@@ -46,6 +46,7 @@
 - [フック実行の配線と失敗の区別の確認](XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)（参照実装の試験記録。Runnerからの配線、NotSatisfiedと実行失敗の区別、参照規則。実PluginとCLI・Studioの配線は未実装）
 - [フック宣言の印刷面への反映の確認](XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md)（参照実装の試験記録。画面と同じフック宣言が印刷面にも出る。実印刷・用紙面の版照合は未確認）
 - [フックの位相順序と途中停止の確認](XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md)（参照実装の試験記録。位相の実行順、不成立での停止位置、`warn`の続行、未対応位相の拒否。CLI・Studioへの配線は未実装）
+- [CLIから`after-*`フックへ到達する配線の確認](XTEA_LOWCODE_HOOK_AFTER_CHANGE_CLI_2026-11.md)（試験記録。`view -execute -reference-store`がメモリ上のStoreへ適用し、変更後のフックを実行する。Studio配線と補償は未着手）
 - [`after-*`へ到達する実行経路の確認](XTEA_LOWCODE_HOOK_AFTER_CHANGE_2026-11.md)（試験記録。`RunBeforeChange`→変更の適用→`RunAfterChange`＋`AppliedChangeReach`で`after-*`を実行できる。ホスト配線は未着手）
 - [実行時の値変換が要らないことの確認](XTEA_LOWCODE_VALUE_CONVERSION_2026-11.md)（確認記録。受理される原始型の結び付けは同じ下位原始型で、変換すべき差が生じない。異なる原始型は検証が拒否する）
 - [Data型パラメータへ渡す属性の規約の確認](XTEA_LOWCODE_DATA_PARAM_CONVENTION_2026-11.md)（確認記録。検証は「同じDataの属性」だけを要求し、識別子に限らない。実行時は属性の値がそのまま渡る。識別子限定の検査は未着手）
@@ -385,5 +386,6 @@
 - [データ層のノードをmaterializeし未解決を12件から1件にした](TEI_DOGFOODING_ROUND50_DATA_LAYER_MATERIALIZED_2026-11-10/README.md)（#4068。database/contract/contract-queryを端点としてmaterializeしkindも13種へ。`targets-database`等の辺が可視化。変異2種で確認。`unresolved`の数え方は未修正と明記）
 - [設計作業をCLIだけで完遂しpatternの種別診断を改善した](TEI_DOGFOODING_ROUND51_PATTERN_KIND_DIAGNOSTIC_2026-11-10/README.md)（#4082。capability/pattern/realizeを追加しグラフで3方向に確認。種別なしのpatternが`unexpected token`だけで語彙を示さなかったため`PatternKinds`を単一情報源にして列挙。変異2種と14パッケージで確認。`std`型一覧は未解決と明記）
 - [自分の誤りを訂正しinvalid canonical idに文字規則を載せた](TEI_DOGFOODING_ROUND52_ID_RULE_AND_CORRECTION_2026-11-10/README.md)（#4082・#2620。第51ラウンドの「std型一覧は引けない」は誤りで、catalog/inspect/locateの3経路で引けた。壊れた探査状態からの一般化が原因。原文を残して訂正し、`invalid canonical id`に規則を追加。変異2種で確認）
+- [閉じた語彙の診断が有効値を挙げるようにした](TEI_DOGFOODING_ROUND53_VOCABULARY_DIAGNOSTICS_2026-11-10/README.md)（#4094。storage・nullability・accessの3件で`valid values are ...`を出すようにし、語彙リストと`Valid()`を単一情報源にした。同型17件はIssueに記録。変異2種で確認）
 - [CLI_MISSING_ARGUMENT_CODE_2026-11-09](CLI_MISSING_ARGUMENT_CODE_2026-11-09.md)（引数が足りない場合に `INVALID_ARGUMENT` と `MISSING_ARGUMENT` が混在していたため、1つの符号へ寄せたことの記録）
 - [TEI_GO_SELF_BUILD_REBUILD_COST_2026-11-09](TEI_GO_SELF_BUILD_REBUILD_COST_2026-11-09.md)（同一planの2回目ビルドに要した時間を実測し、再現確認を既定にしたときの費用を記録）

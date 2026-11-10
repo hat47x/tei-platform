@@ -1626,3 +1626,38 @@ distinct projectionUnresolved messages: 12
 ### 位置付け
 
 **公開済みの主張を測り直して訂正した回**である。原因は**壊れた探査状態から一般化したこと**で、第43ラウンド（PR の状態だけを見た）・第49ラウンド（`tei world` を試さず一般化した）と同じ型の**3回目**。今回は「解消に着手する前にまず主張を測り直す」を実行したことで、公開後の1ラウンドで捕まえられた。
+
+## 55. 第53ラウンド（2026-11-10）: 閉じた語彙の診断が有効値を挙げるようにした
+
+第52ラウンドで `pattern` の種別を診断で列挙した。同じ型が他の語彙にもあるかを実測し、3件を修正して残り17件を起票した。生出力は[第53ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND53_VOCABULARY_DIAGNOSTICS_2026-11-10/README.md)にある。
+
+### 観測（修正前）
+
+| 語彙 | 診断 | 有効値を挙げるか |
+| --- | --- | --- |
+| storage type | `has invalid storage type "NUMBERISH"` | **いいえ** |
+| nullability | `has invalid nullability "maybe"` | **いいえ** |
+| access mode | `has invalid access mode "read-write-nothing"` | **いいえ** |
+
+いずれも `file:line:col` は出るが、有効値が分からないため著者はソースか既存の `.tei` を読む必要があった。
+
+### 修正
+
+各語彙に値のスライス（`persistence.StorageTypes`・`persistence.Nullabilities`・`database.Accesses`）を置き、`Valid()` がそれを読む。診断は `validValues` ヘルパで列挙する。
+
+```text
+has invalid storage type "NUMBERISH";
+  valid values are int64, varchar, text, datetime-tz, decimal, json
+has invalid nullability "maybe"; valid values are required, optional
+has invalid access mode "read-write-nothing"; valid values are read, write, read-write
+```
+
+試験は3件（診断が値を名指す／語彙リストと `Valid()` の一致×2）。変異2種（診断から一覧を削る／`StorageTypes` から `text` を落とす）が両方落ちることを確認した。`cmd/tei`（233.9s）を含む全対象が ok。
+
+### 残り17件を起票した
+
+[#4094](https://github.com/hat47x/tei-platform/issues/4094)。`internal/validation/validation.go` を実測し、同じ形の診断が17件残ることを記録した（`INVALID_PLUGIN_RUNTIME`・`INVALID_SEMANTIC_RELATION_CARDINALITY`・`INVALID_DATABASE_OWNERSHIP`・`INVALID_ROLLOUT_STRATEGY` など）。
+
+**1ラウンドでまとめて直さなかった理由**: 17件は語彙の定義が `plugin`・`semantic`・`database/release`・`deployment`・`releaseplan` に分散し、それぞれに単一情報源の追加が要る。実測した3件を先に通し、残りを Issue にした。
+
+`INVALID_APPLICATION_RELEASE_DATABASE_ACCESS` は `database.Accesses` を再利用できるため、次に着手するなら最も容易。

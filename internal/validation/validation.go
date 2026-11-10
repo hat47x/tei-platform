@@ -7,6 +7,7 @@ import (
 	"tei/internal/application"
 	"tei/internal/core"
 	"tei/internal/database"
+	"tei/internal/database/persistence"
 	"tei/internal/database/release"
 	"tei/internal/deployment"
 	"tei/internal/environment"
@@ -17,6 +18,17 @@ import (
 	"tei/internal/stdlib"
 	"tei/internal/subject"
 )
+
+// validValues renders a closed vocabulary for a diagnostic that rejected one
+// value. Naming the alternatives turns "invalid" into something an author can
+// act on without leaving the CLI (#2094 round 54).
+func validValues[T ~string](values []T) string {
+	parts := make([]string, len(values))
+	for i, v := range values {
+		parts[i] = string(v)
+	}
+	return strings.Join(parts, ", ")
+}
 
 type Severity string
 
@@ -369,7 +381,7 @@ func Validate(w ir.World) []Diagnostic {
 			}
 			seenAlias[r.Alias] = struct{}{}
 			if !r.Access.Valid() {
-				out = append(out, errFor(subject.Subject{Kind: "application", ID: string(a.ID)}, "INVALID_DATABASE_ACCESS", "application %s datasource %s has invalid access mode %q", a.ID, r.Alias, r.Access))
+				out = append(out, errFor(subject.Subject{Kind: "application", ID: string(a.ID)}, "INVALID_DATABASE_ACCESS", "application %s datasource %s has invalid access mode %q; valid values are %s", a.ID, r.Alias, r.Access, validValues(database.Accesses)))
 			}
 		}
 	}
@@ -478,10 +490,10 @@ func Validate(w ir.World) []Diagnostic {
 				out = append(out, errd("PERSISTENCE_ATTRIBUTE_PARENT_MISMATCH", "persistence mapping %s attribute %s does not belong to semantic data %s", m.ID, c.Attribute, m.SemanticData))
 			}
 			if !c.Storage.Valid() {
-				out = append(out, errd("INVALID_PERSISTENCE_STORAGE_TYPE", "persistence mapping %s attribute %s has invalid storage type %q", m.ID, c.Attribute, c.Storage))
+				out = append(out, errd("INVALID_PERSISTENCE_STORAGE_TYPE", "persistence mapping %s attribute %s has invalid storage type %q; valid values are %s", m.ID, c.Attribute, c.Storage, validValues(persistence.StorageTypes)))
 			}
 			if !c.Nullability.Valid() {
-				out = append(out, errd("INVALID_PERSISTENCE_NULLABILITY", "persistence mapping %s attribute %s has invalid nullability %q", m.ID, c.Attribute, c.Nullability))
+				out = append(out, errd("INVALID_PERSISTENCE_NULLABILITY", "persistence mapping %s attribute %s has invalid nullability %q; valid values are %s", m.ID, c.Attribute, c.Nullability, validValues(persistence.Nullabilities)))
 			}
 			if strings.TrimSpace(c.Column) == "" {
 				out = append(out, errd("PERSISTENCE_COLUMN_REQUIRED", "persistence mapping %s attribute %s has no physical column", m.ID, c.Attribute))
