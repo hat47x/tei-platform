@@ -1,0 +1,17 @@
+#4001 claimed "the CLI cannot answer which column stores an attribute". That was
+wrong. I tested trace only and generalised.
+
+  tei world -workspace reference/workspace
+    FOUND: sales.order.total -> sales_core.public.orders.total_amount
+    mappings=2 columns=11
+
+persistenceMappings is emitted with column mappings. The question IS answerable
+today.
+
+trace genuinely does not carry it:
+
+  trace -scope s -subject-kind semantic-attribute \
+        -subject-id sales.order.total -direction incoming
+    total: 0
+
+So the issue stays open as a dependent of #4068, with the premise corrected.

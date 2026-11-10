@@ -27,7 +27,7 @@ var anyUppercaseLiteralPattern = regexp.MustCompile(`"([A-Z][A-Z0-9]*(?:_[A-Z0-9
 // no test mentions is a contract the tests do not hold, and the number is only
 // allowed to go down: when a code gains a test, lower this value in the same
 // change (#4032).
-const maxUncoveredDiagnosticCodes = 9
+const maxUncoveredDiagnosticCodes = 0
 
 // TestDiagnosticCodeCoverageOnlyImproves keeps the count of untested diagnostic
 // codes visible. It fails when a new code arrives without a test, and it fails

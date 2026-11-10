@@ -1,0 +1,3 @@
+cause,evidence
+database kinds never become nodes,"SupportedSubjectKinds and node creation cover only semantic*/application*/query; FromIndex drops any edge whose endpoint is absent"
+trace.unresolved cannot see drops,"TraceDirect loops graph.Edges, so an edge dropped by the projection never reaches the counter"

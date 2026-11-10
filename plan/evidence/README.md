@@ -4,6 +4,7 @@
 
 - [製品品質の検証計画](PRODUCT_QUALITY_EVIDENCE_PLAN_2026-09.md)
 - [型の値ファセット（単位・尺度・値域・軸）が無いことの実測](TEI_TYPE_FACET_UNIT_AXIS_GAP_2026-11-10.md)（型は基底型と列挙値しか持てず、`std.money`は通貨も小数桁も持たない。mmと%を別の型として宣言しても`validate`は`ok`で、`unit "mm"`は`PARSE_ERROR`になることを実測。#3827の第1段の完了条件との対応を記録。型へのファセット追加は未判断）
+- [永続化の列対応の参照グラフ辺](CLI_COLUMN_MAPPING_EDGES_2026-11-10.md)（column A -> Bの列対応を索引が捨て投影も参照せず、属性のincomingが0件に見えた件。semantic-data --maps-column--> semantic-attributeの辺にし、列名はAliasで運ぶ。incomingを持つ属性が3件から12件へ。残る8件は列対応が未宣言）
 - [読めないqualification-requirementsの符号](CLI_QUALIFY_REQUIREMENTS_ERROR_2026-11-10.md)（存在しないパスや形の違うJSONを渡すと`KNOWLEDGE_BUILD_FAILED`になり、引数の誤りとモデルの問題を区別できなかったため`INVALID_ARGUMENT`へ分離。読めるrequirements＋読めないWorkspaceは構築失敗のまま。requirementsのスキーマ広告は未実施）
 - [製品要求と実証状況の照合](PRODUCT_REQUIREMENT_GAP_AUDIT.md)
 - [Plugin-firstのCLI/Studio共通InspectorへのD1 Fit/Gap](PLUGIN_FIRST_D1_AUTHORING_ROUTE_FIT_GAP_2026-11.md)（現行Go経路の静的監査と具体的な検証計画。実Provider二Consumerは未実証）
@@ -44,6 +45,7 @@
 - [フック実行の配線と失敗の区別の確認](XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)（参照実装の試験記録。Runnerからの配線、NotSatisfiedと実行失敗の区別、参照規則。実PluginとCLI・Studioの配線は未実装）
 - [フック宣言の印刷面への反映の確認](XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md)（参照実装の試験記録。画面と同じフック宣言が印刷面にも出る。実印刷・用紙面の版照合は未確認）
 - [フックの位相順序と途中停止の確認](XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md)（参照実装の試験記録。位相の実行順、不成立での停止位置、`warn`の続行、未対応位相の拒否。CLI・Studioへの配線は未実装）
+- [Data型パラメータへ渡す属性の規約の確認](XTEA_LOWCODE_DATA_PARAM_CONVENTION_2026-11.md)（確認記録。検証は「同じDataの属性」だけを要求し、識別子に限らない。実行時は属性の値がそのまま渡る。識別子限定の検査は未着手）
 - [行単位フックの`uses`を1行ごとに果たす確認](XTEA_LOWCODE_HOOK_ROW_USES_CALLS_2026-11.md)（参照実装の試験記録。行ごとに1回ずつその行の値で能力を呼ぶ。ホスト配線は未実装）
 - [行単位フックの`uses`を二つの入口で同じに判定する確認](XTEA_LOWCODE_HOOK_ROW_USES_PARITY_2026-11.md)（参照実装の試験記録。`Run`と`RunReachable`で同じ宣言が別の答えになっていたのを、判断を一箇所に寄せて揃えた。行ごとの`uses`実行は未着手）
 - [行単位フックの宣言と実行の食い違いを直した確認](XTEA_LOWCODE_HOOK_ROW_REACHABILITY_2026-11.md)（参照実装の試験記録。検証が受理する`browse` + `scope row`を`RunRows`が実行できるようにした。ホスト配線は未実装）
@@ -371,3 +373,5 @@
 - [`l2b.claimed`を`arm64`でも観測した（連鎖全体を実プロセスで）](TEI_GO_SELF_BUILD_ARM64_L2B_CHAIN_2026-11-10.md)（`tei`・child・著者ツール・resolverをすべてarm64へビルドし、qemu上で`tei self-build`を実行。**両アーキテクチャで`l2b.claimed=true`・`unmet`空・`reproduced`**。**宣言とソースに依存する値（`intentFingerprint`・`sourceClosure`）は一致し、builderに依存する値（`catalogDigest`・`planFingerprint`・`artifactDigest`）は相違する**——Claimはクロスアーキの成果物一致を要求しない。childは`/bin/sh`ラッパー経由（`binfmt_misc`はroot要）。`darwin`は未観測。 #2831）
 - [`TEI_GO_SELF_BUILD_ARM64_L2B_CHAIN_2026-11-10/`](TEI_GO_SELF_BUILD_ARM64_L2B_CHAIN_2026-11-10/README.md)（上の記録の**再導出の一式**。`run.sh`が`amd64`・`arm64`を引数に取り、`fixture/`と`raw/`を持つ。記録が限界として挙げた「フィクスチャがリポジトリに無い」を埋める。**builderに依存する値はコミットで変わる**ので、再導出で確かめられるのは構造。 #2831）
 - [「builderの同一性」は、名指しされたファイルの同一性である](TEI_GO_SELF_BUILD_CHILD_IDENTITY_SCOPE_2026-11-10.md)（§4.37が「二回の間に実行物を差し替える」を条件5で止めるとしている点を実測。**バイトが違う二つの構築器**を用意し、`-child`のプロキシに1回目と2回目で別々を起動させると、`firstChildDigest == secondChildDigest`（プロキシのdigest）のまま**`l2b.claimed=true`**になった。**同一性の検査は`-child`のパスのbyteであり、実際に走った構築器ではない。** #2831）
+- [traceがrealizes辺を2回返す（起票→解消）](TEI_DOGFOODING_ROUND47_DUPLICATE_REALIZES_EDGE_2026-11-10/README.md)（#4024→#4038。`addEdge`が集合でなく同じ辺を2行返していた。重複はrealizesのみで他15関係は正常。起票から約2時間15分で修正され、修正後の`main`でtotal=1を実測）
+- [データ層のkindがノードにならず辺が全て落ちる](TEI_DOGFOODING_ROUND49_DATA_LAYER_UNMATERIALIZED_2026-11-10/README.md)（#4068・#4001。database/contractがmaterializeされず72対象で12種の未解決が常時あるのに`trace.unresolved`は0。`tei world`が列対応を既に答えていた点も訂正として記録）
