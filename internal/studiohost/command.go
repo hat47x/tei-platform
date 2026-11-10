@@ -38,8 +38,11 @@ type CommandRunValue struct {
 	// and "observed".
 	Persistence string `json:"persistence"`
 	// Durability names the storage boundary: "none" for the reference executor.
-	Durability string                    `json:"durability"`
-	Records    []command.OperationRecord `json:"records,omitempty"`
+	// EffectReverted is true when the effect was applied and then put back
+	// because an after-change phase refused.
+	EffectReverted bool                      `json:"effectReverted,omitempty"`
+	Durability     string                    `json:"durability"`
+	Records        []command.OperationRecord `json:"records,omitempty"`
 	// Differences keeps the applied operations the declaration does not
 	// describe, so the view can show the gap beside the effect.
 	Differences []command.Difference `json:"differences,omitempty"`
@@ -181,10 +184,11 @@ func (h *ReadOnly) executeCommandWithStore(workspaceID, applicationID, patternID
 	// a phase that did not run never reads as a phase that passed.
 	var hookReport *HookRunReport
 	var hookErr error
+	var effectReverted bool
 	if applyToStore {
 		// The before-* phases decide before the change; the after-* phases are
 		// consulted below, after the effect was applied.
-		hookReport, hookErr = h.runHooksHalf(loaded.World, core.CanonicalID(applicationID), core.CanonicalID(patternID), inputs, hook.ReferenceReach{}, hookHalfBefore)
+		hookReport, hookErr = h.runHooksHalf(loaded.World, core.CanonicalID(applicationID), core.CanonicalID(patternID), inputs, hook.ReferenceRule{}, hook.ReferenceReach{}, hookHalfBefore)
 	} else {
 		hookReport, hookErr = h.runHooks(loaded.World, core.CanonicalID(applicationID), core.CanonicalID(patternID), inputs)
 	}
@@ -255,8 +259,10 @@ func (h *ReadOnly) executeCommandWithStore(workspaceID, applicationID, patternID
 	if applyToStore {
 		// The change is applied, so the after-* phases have a point to run at.
 		// Their report is joined with the before-* one so the caller sees both
-		// halves of the run.
-		after, afterErr := h.runHooksHalf(loaded.World, core.CanonicalID(applicationID), core.CanonicalID(patternID), inputs, hook.AppliedChangeReach{}, hookHalfAfter)
+		// halves of the run. A refusal here comes after the change, so the store
+		// is put back and the caller is told the effect was reverted.
+		snapshot := referenceStore.Snapshot()
+		after, reverted, afterErr := h.runAfterHalfRevertingOnRefusal(loaded.World, core.CanonicalID(applicationID), core.CanonicalID(patternID), inputs, hook.ReferenceRule{}, referenceStore, snapshot, hookReport)
 		if after != nil && after.PhaseReport != nil {
 			if hookReport == nil {
 				hookReport = after
@@ -268,13 +274,9 @@ func (h *ReadOnly) executeCommandWithStore(workspaceID, applicationID, patternID
 			}
 		}
 		if afterErr != nil {
-			// The after-change phase refused after the effect was applied. The run
-			// does not claim the change held. The store is dropped with the run, so
-			// no revert has to be reported; a business outcome is not separated from
-			// an execution fault here yet, and COMMAND_FAILED is what this entrance
-			// already answers for a phase that stops the run.
 			return CommandRunResponse{Failure: &Failure{Code: "COMMAND_FAILED", Stage: "command", Message: afterErr.Error()}}
 		}
+		effectReverted = reverted
 	}
 	return CommandRunResponse{OK: true, Value: &CommandRunValue{
 		Plan:                  plan,
@@ -292,5 +294,6 @@ func (h *ReadOnly) executeCommandWithStore(workspaceID, applicationID, patternID
 		ReportedEffectMissing: recordReportedEffectMissing(recorder.Records),
 		AuthorizationMode:     string(result.AuthorizationMode),
 		Hooks:                 hookReport,
+		EffectReverted:        effectReverted,
 	}}
 }

@@ -42,13 +42,13 @@ const (
 
 // runHooks runs every declared phase a reference execution can reach.
 func (h *ReadOnly) runHooks(world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string) (*HookRunReport, error) {
-	return h.runHooksHalf(world, applicationID, patternID, inputs, hook.ReferenceReach{}, hookHalfAll)
+	return h.runHooksHalf(world, applicationID, patternID, inputs, hook.ReferenceRule{}, hook.ReferenceReach{}, hookHalfAll)
 }
 
 // runHooksHalf runs one half of the declared phases, with the reach the caller
 // says applies.
-func (h *ReadOnly) runHooksHalf(world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string, reach hook.Reach, half hookHalf) (*HookRunReport, error) {
-	runner := hook.Runner{World: world, Implementation: hook.ReferenceRule{}}
+func (h *ReadOnly) runHooksHalf(world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string, rule hook.Implementation, reach hook.Reach, half hookHalf) (*HookRunReport, error) {
+	runner := hook.Runner{World: world, Implementation: rule}
 	// A hook that declares `uses` promises a call. Give the runner the boundary
 	// that can keep it, the same way the CLI does, so Studio does not report a
 	// phase as executed while its declared call never happened.
@@ -130,4 +130,24 @@ func studioAttributeValues(inputs map[string]string) map[core.CanonicalID]string
 		values[core.CanonicalID(name)] = value
 	}
 	return values
+}
+
+// runAfterHalfRevertingOnRefusal consults the after-change phases, and puts the
+// store back when one of them refuses.
+//
+// The effect was applied before this runs, so a refusal here comes after the
+// change. Leaving it in place would keep something the declaration did not
+// accept; the store is restored to the snapshot taken before the run, and the
+// caller is told the effect was reverted.
+//
+// The reference rule never refuses, so Studio's own runs do not reach the
+// revert today. The path exists and is tested with a refusing rule, because the
+// rule a plugin supplies is what makes it reachable.
+func (h *ReadOnly) runAfterHalfRevertingOnRefusal(world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string, rule hook.Implementation, store *command.MemoryStore, snapshot command.StoreSnapshot, before *HookRunReport) (*HookRunReport, bool, error) {
+	after, err := h.runHooksHalf(world, applicationID, patternID, inputs, rule, hook.AppliedChangeReach{}, hookHalfAfter)
+	if err != nil {
+		store.Restore(snapshot)
+		return after, true, err
+	}
+	return after, false, nil
 }
