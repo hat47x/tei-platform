@@ -408,3 +408,4 @@
 - [語彙診断の第4弾、migrationとrelease planの6件](TEI_DOGFOODING_ROUND56_VOCABULARY_MIGRATION_RELEASE_2026-11-10/README.md)（#4094。migration recovery/step kind、data readiness、solution step kind/phase、rollout strategyの6件を修正。#4094は17→2件（残りは構造検証で対象外）。step kindは構文エラーが先で到達不能と実測）
 - [語彙改善後に設計演習を再試行しrelease系の可視性欠陥を検出](TEI_DOGFOODING_ROUND57_DESIGN_REEXERCISE_2026-11-10/README.md)（#4128・#4094。ソースを読まずCLI診断のみで設計し、語彙5つを1回で取得、修正3回でok。改善の効果を実測。一方migration/releaseがcatalog/overview/inspect/traceに出ず、worldのみが返す）
 - [TEI_GO_SELF_BUILD_STRONG_FLAG_2026-11-09](TEI_GO_SELF_BUILD_STRONG_FLAG_2026-11-09.md)（-strong が -rebuild-check を含意し、in-process route を要求することを固定した記録）
+- [inspectでmigration・database release・solution releaseを読めるようにする](TEI_DOGFOODING_ROUND58_INSPECT_DELIVERY_2026-11-10/README.md)（#4128のC案を実装。受理種を15種にし、releaseはowner単位でバージョンを集約。当初の`owner@version`案はcanonicalのid一致という安全不変条件に反するため破棄。変異4種のうち2種は試験を強化して初めて捕捉）

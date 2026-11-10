@@ -1,0 +1,17 @@
+First attempt keyed a release subject as "<owner>@<version>" (sales_core@4.2.0).
+The CLI rejected it:
+
+  INSPECTION_PROVIDER_INVALID  inspection service returned an inconsistent
+                               projection
+
+ValidateInspectionProjection requires the Canonical object's own top-level `id`
+to equal the requested id. A release struct's id is its owner, never the compound
+string.
+
+I did not weaken the safety invariant. Instead the subject is the owner and the
+projection lists every version:
+
+  type releaseSet struct { ID string; Releases []release.Definition }
+
+so `id` equals the requested id, no `@` convention had to be invented, and
+"show me this database's releases" is one call.

@@ -1,0 +1,17 @@
+M1 advertise application-release with no dispatch case
+   -> FAIL: advertised kind "application-release" has a declaration "order_entry"
+            but does not resolve: inspect does not support subject kind ...
+M2 key the release set by version instead of the owner
+   -> FAIL: database-release:sales_core failed the projection check:
+            inspection service returned a Canonical object for another subject
+            database-release: canonical id is "4.0.0", want the requested "sales_core"
+M3 return an empty set instead of not-found
+   -> FAIL: database-release: want an InspectionError, got <nil> (<nil>)
+M4 rename the solution-release dispatch case
+   -> FAIL: advertised kind "solution-release" has a declaration "order_rollout"
+            but does not resolve
+
+M1 and M3 were NOT caught by the first version of the tests. The first version
+only compared the advertised list against itself, and the not-found test only
+covered database-release. The tests were strengthened (advertised-vs-declared
+cross-check, both release kinds) before these mutations failed.

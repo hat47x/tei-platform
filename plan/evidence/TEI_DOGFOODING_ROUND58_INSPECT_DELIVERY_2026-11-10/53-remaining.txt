@@ -1,0 +1,10 @@
+#4128 option C is done. Still open from the same issue:
+  E  state what model overview covers
+  A  add the kinds to model catalog (touches the namespace-filter design)
+  B  add sections to model overview
+  D  a dedicated release/migration command
+
+Also: the new kinds report sourceStatus=not-indexed. The Source Index does not
+record migration/release references, so inspect returns canonical + fingerprints
+but no source location. trace cannot cover them either, since the graph has no
+such subjects.
