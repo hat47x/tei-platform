@@ -8,8 +8,7 @@ description: >-
 
 # TEIモデリング調査（Product Skill）
 
-> **2026-11-05 検証状態**：このProduct Skillの文書・参照資料は[merged PR #2607](https://github.com/hat47x/tei-platform/pull/2607)によってmainに統合済み。[GitHub Actions #41532988114](https://github.com/hat47x/tei-platform/actions/runs/41532988114)では、対象版 `d0de429ae5aac38b7949c2cfe6eacafff059675f` の公開 `reference/workspace` について、ビルド済みの実TEI CLIから `commands`・`model catalog`・`inspect`・`trace`・`validate` を読み取る**限定S1試験**が成功した。一方、外部AI HarnessへのSkillインストール・実ロード・実呼出し、MCP/Provider/業務Effect、Ownerの正式な意味受理は**NOT RUN／未受理**。他の版や任意Workspaceへ試験成功を一般化しない。
-> **2026-11-05 実行資格の更新**：このSkillの初期ファイルは[PR #2607](https://github.com/hat47x/tei-platform/pull/2607)でmainへ統合済み。対象HEAD `d0de429ae5aac38b7949c2cfe6eacafff059675f`の[Product Skill CI #41532988114](https://github.com/hat47x/tei-platform/actions/runs/41532988114)では、静的チェッカーと、公開Reference Workspaceに対する実Goバイナリの`commands`／`model catalog`／`inspect`／`trace`／`validate`が限定的に成功した。一方、**外部ハーネスでのSkill実ロード・Tool呼出し、実OS/Provider権限・開示、業務Owner受理と正式Releaseは未実証**。利用時は現在の実環境とSource対象を改めて確認する。
+> **2026-11-10 時点の証拠範囲**：初期Product Skillは[merged #2607](https://github.com/hat47x/tei-platform/pull/2607)でmain統合済み。固定HEAD `d0de429ae5aac38b7949c2cfe6eacafff059675f`の[CI #41532988114](https://github.com/hat47x/tei-platform/actions/runs/41532988114)は、公開Reference Workspaceに対する同一実Goバイナリのread-only S0/S1を限定確認した。さらに[TAI #168](https://github.com/hat47x/tai-pleroma/issues/168)／[TEI #2509](https://github.com/hat47x/tei-platform/issues/2509)の2026-11-07実DSH記録では、H3-A/Bで固定Skill本文と参照資料の実Tool Readが成立した。ただし固定Task/Source配置の不一致、OS読取隔離不足、不完全Tool Reply、H2 Session再利用等があり、**H2/H3比較適格0/4、Skillの増分効果・二Harness互換・実Provider/業務Effect・Owner正式受理はNOT RUN／未成立**。これは最新mainでの再実行証明ではなく、各固定版の履歴Evidenceである。
 
 ## いつ使うか
 
@@ -19,9 +18,7 @@ TEIのSource・モデル要素・入力元・参照関係・Validationを調べ�
 
 ## 実行の流れ
 
-1. **実環境を確認**：TEIリポジトリのcheckoutとWorkspaceの所在・利用目的・利用可能な情報範囲を確認する。`go.mod`の`go`行の要求版と`go version`の出力を照合し、不足なら実行を止めて環境不備として記録する（TEIの結果と区別する）。CLIの使用可能なread-only入口を`go run ./cmd/tei commands`で確認する。ビルド済み実行ファイルがあれば`tei version -json`などで版を照合し、Gitの改訂・Working Treeを別記する。**発見したCLIと実際の呼出しで使用した実行物（path/bytes/argv/cwd）を区別する**。必要な場合は固定したビルド成果物を使い、異なる実行物を同じ試行と見なさない。`go run`からVCS revisionが得られるとは仮定しない。
-2. **対象を発見**：`go run ./cmd/tei model catalog -workspace <workspace>`の`entries[].subject.kind/id`から対象候補を選び、重複・曖昧なら特定を保留する。名前や一覧順を正本IDとして推測しない。
-1. **実環境を確認**：TEIリポジトリのcheckoutとWorkspaceの所在・利用目的・利用可能な情報範囲を確認する。CLIの使用可能なread-only入口を`go run ./cmd/tei commands`で確認する。ビルド済み実行ファイルがあれば`tei version -json`などで版を照合し、Gitの改訂・Working Treeを別記する。**発見したCLIと実際の呼出しで使用した実行物（path/bytes/argv/cwd）を区別する**。`go run`例は探索用であり、**比較試験の実行物固定**には一度ビルドした同一バイナリを全コマンドで使い、その実bytesとGit/Go/Workspace改訂を別々に記録する。ビルド済バイナリの版表示だけでビルド入力全体の閉包を保証しない。CLI使用中にSource/Rootが変化した場合は同一試行として混ぜず、現在の実Sourceを再照合する。`go run`からVCS revisionが得られるとは仮定しない。
+1. **実環境を確認**：TEIリポジトリのcheckoutとWorkspaceの所在・利用目的・利用可能な情報範囲を確認する。`go.mod`の`go`行の要求版と実際の`go version`を照合し、不足する場合は環境不備として停止する（Productの意味検証失敗と区別）。CLIの使用可能なread-only入口を`go run ./cmd/tei commands`で確認する。ビルド済み実行ファイルがあれば`tei version -json`などで版を照合し、Gitの改訂・Working Treeを別記する。**発見したCLIと実際の呼出しで使用した実行物（path/bytes/argv/cwd）を区別する**。`go run`例は探索用であり、**比較試験の実行物固定**には一度ビルドした同一バイナリを全コマンドで使い、その実bytesとGit/Go/Workspace改訂を別々に記録する。ビルド済バイナリの版表示だけでビルド入力全体の閉包を保証しない。CLI使用中にSource/Rootが変化した場合は同一試行として混ぜず、現在の実Sourceを再照合する。`go run`からVCS revisionが得られるとは仮定しない。
 2. **対象を発見**：`go run ./cmd/tei model catalog -workspace <workspace>`の`entries[].subject.kind/id`から対象候補を選び、重複・曖昧なら特定を保留する。名前や一覧順を正本IDとして推測しない。**標準 `std` 定義と利用者定義を区別し、目的に必要な利用者のSubject kind/idを明示して照合する。**Catalog非空だけでは利用者定義が読まれたとは言えない（[#2822](https://github.com/hat47x/tei-platform/issues/2822)）。
 3. **対象を読む**：`go run ./cmd/tei inspect -workspace <workspace> -subject-kind <kind> -subject-id <id>`で指定要素を調べ、必要な場合のみ`trace`で宣言済み直接参照を追う。Source indexの候補と元ファイルの所在を分ける。
 4. **検証する**：`go run ./cmd/tei validate -workspace <workspace> -json`の終了コード、`ok`、`diagnostics`、Warning、エラーをそれぞれ確認する。exit 0や`ok=true`だけからWarningなし・業務受理済みと判断しない。**空Workspace・未読込Sourceでも`ok=true`となり得る**ため、必要なSource root／実Parsed・Loaded Subjectの到達と検証成功を別に評価する（[#2822](https://github.com/hat47x/tei-platform/issues/2822)、[#2823](https://github.com/hat47x/tei-platform/issues/2823)）。
@@ -42,5 +39,4 @@ TEIのSource・モデル要素・入力元・参照関係・Validationを調べ�
 - [TEI Product Skill課題](https://github.com/hat47x/tei-platform/issues/2605)
 - [YIシリーズ横断Skill設計（TAI Draft）](https://github.com/hat47x/tai-pleroma/pull/270)
 
-**現在の評価状態**：Product Skillのmain統合と、公開Workspaceでの実ビルド済TEI CLIの限定read-only S1試験は確認済み（上記のexact HEAD／CI）。しかしSkill本文を読んだAIが**実際にToolを呼べる／正しく使える**ことは未検証。外部Harnessの実install/load/invoke、Tool-onlyとSkill付きのH2/H3独立4 Session比較、実外部送出・全Source完全性・正式Release/Owner受理はいずれも未実施。比較のOwnerは[TAI #168](https://github.com/hat47x/tai-pleroma/issues/168)／[Draft #270](https://github.com/hat47x/tai-pleroma/pull/270)。
-**現在の評価状態（2026-11-05）**：mainにある試作Skillの静的チェッカーと公開Fixtureの**実CLI単体CIは限定成功**。その実行はSkillを外部ハーネスからロード・呼出した試験ではない。次の資格は、必要な利用者定義Sourceが実解析済みであることの確認、同じTaskでのH2 Tool-only／H3 Tool＋Skillの実四Session比較、独立Expectedによる採点、適切な現在開示・Tool権限の確認である。二Harness互換、実外部Host/Provider、業務Owner受理、正式Releaseは**NOT RUN**（[TEI #2605](https://github.com/hat47x/tei-platform/issues/2605)／[TAI #168](https://github.com/hat47x/tai-pleroma/issues/168)）。
+**現在の評価状態（2026-11-10）**：Portable Skillがmainに存在すること、固定版の実CLI read-only S0/S1、DSH H3-A/Bでの限定Skill本文・参照実Readはそれぞれ観測済み。一方、同一Root/権限/Sourceで隔離した独立H2/H3比較、実回答の独立Expected採点、全Tool Reply受領、現在のOS/Network開示資格、二Harness接続、Owner正式受理・実業務Effectは**NOT RUN／未成立**。[TEI #2605](https://github.com/hat47x/tei-platform/issues/2605)と[TAI #168](https://github.com/hat47x/tai-pleroma/issues/168)の実証Gateを参照する。
