@@ -3,6 +3,7 @@
 要求が受け入れシナリオや検証根拠にどう結び付くかを整理する文書を置きます。要求そのものは[`requirements/`](../../requirements/README.md)、段階判定の記録と実行手順は[`gate/`](../gate/README.md)、現在の実装状況は[`docs/status.md`](../../docs/status.md)を参照してください。
 
 - [製品品質の検証計画](PRODUCT_QUALITY_EVIDENCE_PLAN_2026-09.md)
+- [X-TEAの型指定とTypeOptionsの読取り](XTEA_TYPE_MAPPING_STATIC_READING_2026-11-10.md)（型の同一性が`型名_長さ`で小数桁を含まず、Editorは`Decimal`属性を読まず`SQLExpression`の括弧から推測するため取込み製の`DECIMAL`の小数桁が空になる。基本型の導出が取込みと4語・実行時は9語で別規則。`TypeOptions`の`VIRTUAL`判定が3通り併存で、`getOptionList`は`replace`の戻り値を捨てている。静的読取りのみでJava実行はNOT RUN）
 - [型の値ファセット（単位・尺度・値域・軸）が無いことの実測](TEI_TYPE_FACET_UNIT_AXIS_GAP_2026-11-10.md)（型は基底型と列挙値しか持てず、`std.money`は通貨も小数桁も持たない。mmと%を別の型として宣言しても`validate`は`ok`で、`unit "mm"`は`PARSE_ERROR`になることを実測。#3827の第1段の完了条件との対応を記録。型へのファセット追加は未判断）
 - [永続化の列対応の参照グラフ辺](CLI_COLUMN_MAPPING_EDGES_2026-11-10.md)（column A -> Bの列対応を索引が捨て投影も参照せず、属性のincomingが0件に見えた件。semantic-data --maps-column--> semantic-attributeの辺にし、列名はAliasで運ぶ。incomingを持つ属性が3件から12件へ。残る8件は列対応が未宣言）
 - [読めないqualification-requirementsの符号](CLI_QUALIFY_REQUIREMENTS_ERROR_2026-11-10.md)（存在しないパスや形の違うJSONを渡すと`KNOWLEDGE_BUILD_FAILED`になり、引数の誤りとモデルの問題を区別できなかったため`INVALID_ARGUMENT`へ分離。読めるrequirements＋読めないWorkspaceは構築失敗のまま。requirementsのスキーマ広告は未実施）
