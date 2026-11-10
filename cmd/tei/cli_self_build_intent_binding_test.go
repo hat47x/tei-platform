@@ -64,9 +64,12 @@ import (
 )
 
 func main() {
-	artifact, digest, intentDigest, intentFP, planFP := "", "", "", "", ""
+	artifact, digest, intentDigest, intentFP, planFP, state := "", "", "", "", "", ""
 	for i := 1; i < len(os.Args); i++ {
 		switch os.Args[i] {
+		case "-state":
+			state = os.Args[i+1]
+			i++
 		case "-artifact":
 			artifact = os.Args[i+1]
 			i++
@@ -93,6 +96,10 @@ func main() {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(2)
 		}
+	}
+	if state != "" {
+		fmt.Printf("{\"schemaVersion\":\"tei.reference.go-build-with-supply/v0\",\"artifactDigest\":%q,\"intentBytesDigest\":%q,\"intentFingerprint\":%q,\"planFingerprint\":%q,\"stateDir\":%q}\n", digest, intentDigest, intentFP, planFP, state)
+		return
 	}
 	fmt.Printf("{\"schemaVersion\":\"tei.reference.go-build-with-supply/v0\",\"artifactDigest\":%q,\"intentBytesDigest\":%q,\"intentFingerprint\":%q,\"planFingerprint\":%q}\n", digest, intentDigest, intentFP, planFP)
 }

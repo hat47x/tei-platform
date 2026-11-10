@@ -596,6 +596,10 @@ entry側（`cmd/tei`）は**変更不要**だった。childが申告するよう
 
 **この修正は主張を弱めない。** 二回の間に実行物が差し替わった試行が`reproduced`になり得た点だけを塞ぐ。
 
+同じ観測の残る前提である「**別state**」も、確かめていなかった。entryは二回目に新しい`-state`を渡すが、**childがそれを使ったかは見ていなかった**（`-state`を無視すれば二回は同じstateを共有し、同じ観測の繰り返しになる）。修正して、childが申告する`stateDir`が**渡した先と一致することを検査**するようにした。**申告が無ければ不成立**である（SC0-18と同じ規則）。
+
+**これは「childがそう申告した」までである。** 申告どおりに使ったことの証明ではない（builderの他の申告と同じ限界）。
+
 #### この節が言っていないこと
 
 - R-1を採らない、とは言っていない。**前提が未決**だと言っている。
@@ -1688,7 +1692,7 @@ in-processを既定にするには、**entryがcatalogを自分で選ぶ**必要
 - [x] L2-bのClaimを立てるかの判断と実装（§4.23。**五条件の同時成立**を述語にし、`l2b.claimed`と`l2b.unmet`として出す。[記録](../evidence/TEI_GO_SELF_BUILD_L2B_CLAIM_2026-11-09.md)。単一観測の`l2bClaimed`欄は`false`のまま据え置き、述語はそれらを読まない）
 - [x] L2-bのClaimを**回帰試験**にする（§4.24。参照catalogと参照builder childで五条件が揃うことを`cmd/tei`の試験で固定し、`go test ./...`経由で健康性確認に載る。[記録](../evidence/TEI_GO_SELF_BUILD_L2B_GATE_2026-11-09.md)）
 - [x] 二つのホスト（`linux/amd64`・`windows/amd64`）で同じ計画とartifactが出ることの実測（§4.26。[記録](../evidence/TEI_GO_SELF_BUILD_CROSS_OS_DIGESTS_2026-11-09.md)。`intentFingerprint`・`sourceClosure`・`planFingerprint`・`artifactDigest`の四つが一致し、L2-bのエンドツーエンド試験もWindowsでPASSした。**Go版も違う**）
-- [ ] `darwin`・`arm64`・別のGo版の組合せでの観測（§4.26の範囲外）。**このホストでは実行できない**（macOS無し・`qemu-aarch64`無し・Go版は`go1.27.3`と`go1.27.0`のみ）。クロスコンパイルは4 target で成功し、`internal/buildintent`にhost依存の分岐は0件だが、**どちらも実行による一致の証拠ではない**（[記録](../evidence/TEI_GO_SELF_BUILD_CROSS_COMPILE_SCOPE_2026-11-10.md)）
+- [ ] `darwin`・`arm64`・別のGo版の組合せでの観測（§4.26の範囲外）。**`arm64`は観測できた。** `qemu-aarch64-static`は**rootなしで**入手でき（静的バイナリをホームディレクトリへ置くだけ）、同じフィクスチャの解決を`linux/amd64`と比べると**両方exit 0・2,880 B・バイト単位で一致**した（[記録](../evidence/TEI_GO_SELF_BUILD_ARM64_RESOLUTION_2026-11-10.md)）。**ただし残りは未観測である。** `darwin`はmacOSの実行環境が無いためクロスコンパイルは通るが走らせられない（[記録](../evidence/TEI_GO_SELF_BUILD_CROSS_COMPILE_SCOPE_2026-11-10.md)）。別のGo版は無い（`go1.27.3`と`go1.27.0`のみ）。実buildの`artifactDigest`も未観測（観測したのは解決の値だけ）。**そしてエミュレーションであり実機のarm64ではない**
 - [x] `l2b.claimed`を**既定の試行**で立てられるようにするか（**§4.34で閉じた：立てない。** 既定はchild経路で五条件の一つ目が成立しない。Claimは呼び手が`-build-catalog`一式を渡す行為） **呼び手が要るのはin-process経路（`-build-catalog`一式）だけで、`-rebuild-check`は§4.30が既定にした**（実測：`-build-catalog`のみで`claimed=true`・`-rebuild-check=false`で`false`。[記録](../evidence/TEI_GO_SELF_BUILD_L2B_DEFAULT_PREMISE_2026-11-09.md)）。残る問いは「何も渡さない試行」で立てるかであり、§4.29のcatalog決定が前提（§4.31）
 - [x] 宣言とplanの**build座標**（`outputKind`・`target`・`profile`）の照合（[#3652](https://github.com/hat47x/tei-platform/pull/3652)。childが三座標を一つずつ比べ、違えばartifactを書いた後にreportを出さずexit 1。[記録](../evidence/TEI_GO_SELF_BUILD_BUILD_COORDINATES_2026-11-09.md)）
 - [x] 宣言の他の欄のうち、planが同じ形で持つもの（`recipe`・`sources`・`dependencies`）の照合（[#3661](https://github.com/hat47x/tei-platform/pull/3661)。§4.17）
