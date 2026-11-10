@@ -1,6 +1,7 @@
 package operations
 
 import (
+	"errors"
 	"tei/internal/validation"
 	"tei/internal/workspace"
 )
@@ -16,6 +17,8 @@ import (
 // of the read version only, not of correctness or acceptance.
 type WorkspaceValidation struct {
 	Direct                 *workspace.SourceDiagnostic
+	AdditionalDirect       []workspace.SourceDiagnostic
+	InspectionIncomplete   bool
 	Diagnostics            []workspace.ProjectedDiagnostic
 	WorldFingerprint       string
 	SourceIndexFingerprint string
@@ -77,10 +80,26 @@ func (f *ValidationFailure) Unwrap() error {
 // existing validation diagnostics onto the existing Source Index. A syntax
 // finding has no Canonical Subject and is kept distinct from semantic errors.
 func ValidateWorkspace(root string) (WorkspaceValidation, error) {
-	loaded, err := workspace.Load(root)
+	loaded, err := workspace.LoadForValidation(root)
 	if err != nil {
+		var multiple *workspace.SourceErrors
+		if errors.As(err, &multiple) && len(multiple.Errors) > 0 {
+			result := WorkspaceValidation{InspectionIncomplete: true}
+			for _, sourceError := range multiple.Errors {
+				direct, ok := workspace.SourceDiagnosticFromError(root, sourceError)
+				if !ok {
+					return WorkspaceValidation{}, &ValidationFailure{Stage: StageLoad, Err: err}
+				}
+				if result.Direct == nil {
+					result.Direct = &direct
+				} else {
+					result.AdditionalDirect = append(result.AdditionalDirect, direct)
+				}
+			}
+			return result, nil
+		}
 		if direct, ok := workspace.SourceDiagnosticFromError(root, err); ok {
-			return WorkspaceValidation{Direct: &direct}, nil
+			return WorkspaceValidation{Direct: &direct, InspectionIncomplete: true}, nil
 		}
 		return WorkspaceValidation{}, &ValidationFailure{Stage: StageLoad, Err: err}
 	}

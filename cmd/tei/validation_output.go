@@ -16,6 +16,12 @@ func validateWorkspace(out io.Writer, root string) (int, error) {
 	}
 	if result.Direct != nil {
 		printSourceDiagnostic(out, *result.Direct)
+		for _, diagnostic := range result.AdditionalDirect {
+			printSourceDiagnostic(out, diagnostic)
+		}
+		if result.InspectionIncomplete {
+			fmt.Fprintln(out, "構文検査の網羅は未確認です。意味検証は実行していません。")
+		}
 		return 1, nil
 	}
 	hasSourceRootError := false
