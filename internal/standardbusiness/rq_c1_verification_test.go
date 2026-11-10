@@ -147,9 +147,11 @@ func TestRQC1RemovingAPackageKeepsTheMeaning(t *testing.T) {
 	headerDetail := rqHeaderDetailPattern()
 	withBoth := rqPackageWorld([]application.Package{
 		{
-			ID:      "order_entry.search_package",
-			Version: "1",
-			Members: []application.PackageMember{{Kind: application.PatternBrowse, Pattern: "order_entry.order_list"}},
+			ID:          "order_entry.search_package",
+			Version:     "1",
+			Members:     []application.PackageMember{{Kind: application.PatternBrowse, Pattern: "order_entry.order_list"}},
+			Projection:  "screen",
+			Conformance: "search-v1",
 		},
 		{
 			ID:      "order_entry.header_detail_package",
@@ -162,9 +164,11 @@ func TestRQC1RemovingAPackageKeepsTheMeaning(t *testing.T) {
 	// same, and only one projection remains.
 	withoutOne := rqPackageWorld([]application.Package{
 		{
-			ID:      "order_entry.search_package",
-			Version: "1",
-			Members: []application.PackageMember{{Kind: application.PatternBrowse, Pattern: "order_entry.order_list"}},
+			ID:          "order_entry.search_package",
+			Version:     "1",
+			Members:     []application.PackageMember{{Kind: application.PatternBrowse, Pattern: "order_entry.order_list"}},
+			Projection:  "screen",
+			Conformance: "search-v1",
 		},
 	}, []application.Pattern{list}, nil)
 
@@ -183,9 +187,11 @@ func TestRQC1RemovingAPackageKeepsTheMeaning(t *testing.T) {
 	// is not silent.
 	stale := rqPackageWorld([]application.Package{
 		{
-			ID:      "order_entry.search_package",
-			Version: "1",
-			Members: []application.PackageMember{{Kind: application.PatternBrowse, Pattern: "order_entry.order_list"}},
+			ID:          "order_entry.search_package",
+			Version:     "1",
+			Members:     []application.PackageMember{{Kind: application.PatternBrowse, Pattern: "order_entry.order_list"}},
+			Projection:  "screen",
+			Conformance: "search-v1",
 		},
 		{
 			ID:      "order_entry.header_detail_package",
@@ -214,9 +220,11 @@ func TestRQC1AddingAPackageAddsNoCoreKind(t *testing.T) {
 	list := rqListPattern()
 	withoutPackage := rqPackageWorld(nil, []application.Pattern{list}, nil)
 	withPackage := rqPackageWorld([]application.Package{{
-		ID:      "order_entry.search_package",
-		Version: "1",
-		Members: []application.PackageMember{{Kind: application.PatternBrowse, Pattern: "order_entry.order_list"}},
+		ID:          "order_entry.search_package",
+		Version:     "1",
+		Members:     []application.PackageMember{{Kind: application.PatternBrowse, Pattern: "order_entry.order_list"}},
+		Projection:  "screen",
+		Conformance: "search-v1",
 	}}, []application.Pattern{list}, nil)
 
 	before, after := withoutPackage.Semantics[0], withPackage.Semantics[0]
@@ -254,9 +262,11 @@ func TestRQC1AddingAPackageAddsNoCoreKind(t *testing.T) {
 func TestRQC1PatternCollisionIsReported(t *testing.T) {
 	world := rqPackageWorld([]application.Package{
 		{
-			ID:      "order_entry.search_package",
-			Version: "1",
-			Members: []application.PackageMember{{Kind: application.PatternBrowse, Pattern: "order_entry.order_list"}},
+			ID:          "order_entry.search_package",
+			Version:     "1",
+			Members:     []application.PackageMember{{Kind: application.PatternBrowse, Pattern: "order_entry.order_list"}},
+			Projection:  "screen",
+			Conformance: "search-v1",
 		},
 		{
 			ID:      "order_entry.other_package",
