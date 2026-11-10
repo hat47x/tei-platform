@@ -29,7 +29,25 @@ const hookRunNote = "the reference rule evaluates the declared reads only; runni
 
 // runHooks runs the hooks a pattern declares that the reference execution can
 // reach, before the reference command runs.
+// hookHalf selects which side of the change a hook run covers, the same split the
+// CLI uses: a run that applies its change consults the before-* phases first,
+// applies, then consults the after-* phases.
+type hookHalf int
+
+const (
+	hookHalfAll hookHalf = iota
+	hookHalfBefore
+	hookHalfAfter
+)
+
+// runHooks runs every declared phase a reference execution can reach.
 func (h *ReadOnly) runHooks(world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string) (*HookRunReport, error) {
+	return h.runHooksHalf(world, applicationID, patternID, inputs, hook.ReferenceReach{}, hookHalfAll)
+}
+
+// runHooksHalf runs one half of the declared phases, with the reach the caller
+// says applies.
+func (h *ReadOnly) runHooksHalf(world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string, reach hook.Reach, half hookHalf) (*HookRunReport, error) {
 	runner := hook.Runner{World: world, Implementation: hook.ReferenceRule{}}
 	// A hook that declares `uses` promises a call. Give the runner the boundary
 	// that can keep it, the same way the CLI does, so Studio does not report a
@@ -50,7 +68,16 @@ func (h *ReadOnly) runHooks(world ir.World, applicationID, patternID core.Canoni
 			return pattern, true
 		},
 	}
-	report, err := runner.RunReachable(context.Background(), applicationID, patternID, studioAttributeValues(inputs), hook.ReferenceReach{})
+	var report *hook.PhaseReport
+	var err error
+	switch half {
+	case hookHalfBefore:
+		report, err = runner.RunBeforeChange(context.Background(), applicationID, patternID, studioAttributeValues(inputs), reach)
+	case hookHalfAfter:
+		report, err = runner.RunAfterChange(context.Background(), applicationID, patternID, studioAttributeValues(inputs), reach)
+	default:
+		report, err = runner.RunReachable(context.Background(), applicationID, patternID, studioAttributeValues(inputs), reach)
+	}
 	if report == nil {
 		return nil, err
 	}
