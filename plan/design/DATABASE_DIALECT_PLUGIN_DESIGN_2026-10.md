@@ -221,7 +221,7 @@ SQLiteは書込みが一つで、リポジトリの参照試験は`BEGIN IMMEDIA
 
 ## 2026-11-05 既存Contract QueryとDoma型SQL候補の整合（別計画へ引継ぎ）
 
-[DBアクセス・Query選択・2way SQLの最小適合計画](DB_QUERY_SELECTION_AND_2WAY_SQL_FIT_2026-11.md#7-db共通sqlの位置づけと同一claimの検証)で、これまでの**「対象ProviderのContract Query SQL Realizationがなければ停止」**という既存基準と、Doma型の「共通SQLを候補とする」簡便なauthoring規約との矛盾を整理した。
+[DBアクセス・Query選択・2way SQLの最小適合計画](https://github.com/hat47x/tei-platform/issues/2622#issuecomment-6772875802)で、これまでの**「対象ProviderのContract Query SQL Realizationがなければ停止」**という既存基準と、Doma型の「共通SQLを候補とする」簡便なauthoring規約との矛盾を整理した。
 
 - 共通SQLファイルは、Providerごとに明示された実現と実際の適合確認を**共有し得るSource asset**であり、ファイルが存在するだけで任意Providerへの自動fallback資格を得ない。
 - SQLファイル名の接尾辞は候補発見を支援するが、Canonical Query identity・DB Instanceの実対象・実行権限を決定しない。選択済みのProvider専用SQLが失効した場合は、共通SQLがあっても黙って切り替えない。
